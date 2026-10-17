@@ -421,9 +421,151 @@ local function watchEmptyPage(page)
   if key then GW.WatchEmpty(page.ScrollBox, function() return _G[key] end) end
 end
 
+-- The listing page -------------------------------------------------------------------------------
+
+-- A role button (tank, healer, damage; the group's one): the game's plate faded, its icon (the normal texture) and the dimming
+-- cover kept on a raised tile, its check box (the solo roles have one) in the theme.
+local function skinRole(role)
+  if not isFrame(role) then return end
+  local keep = glyphTextures(role)
+  if type(role.cover) == "table" then keep[role.cover] = true end
+  T.FadeRegions(role, keep)
+  T.Panel(role, { raised = true, noSheen = true })
+  GW.SkinCheck(role.CheckButton)
+end
+
+-- The roles strip: the solo role buttons, or the group's role icon with its role dropdown (its arrow kept).
+local function skinRoles(page)
+  local solo, group = page.SoloRoleButtons, page.GroupRoleButtons
+  for _, role in ipairs(type(solo) == "table" and type(solo.RoleButtons) == "table" and solo.RoleButtons or {}) do skinRole(role) end
+  if type(group) ~= "table" then return end
+  skinRole(group.RoleIcon)
+  GW.SkinDropdown(group.RoleDropdown)
+end
+
+-- One category picker: the game's frame art faded (its picture kept) under a raised tile, its name a heading.
+local function skinCategoryButton(button)
+  if not isFrame(button) then return end
+  T.FadeRegions(button, GW.KeepKeys(button, { "Icon" }))
+  T.Panel(button, { raised = true, noSheen = true })
+  GW.SkinText(button.Label, "heading", "text")
+end
+
+-- The category pickers the view holds now (the game makes one for each category as they appear).
+local function skinCategories(view)
+  if type(view) ~= "table" or type(view.CategoryButtons) ~= "table" then return end
+  for _, button in ipairs(view.CategoryButtons) do skinCategoryButton(button) end
+end
+
+-- Whether the game's category updater is hooked (a global it runs on the listing's category view).
+local categoriesHooked = false
+
+-- Dresses the category pickers now and after each time the game lays them out. Hooked once.
+local function watchCategories(page)
+  skinCategories(page.CategoryView)
+  if categoriesHooked or type(_G.LFGListingCategorySelection_UpdateCategoryButtons) ~= "function" then return end
+  categoriesHooked = true
+  hooksecurefunc("LFGListingCategorySelection_UpdateCategoryButtons", ns.Guard("hook category buttons", skinCategories))
+end
+
+-- The group description box's old scroll bar (UIPanelScrollFrameTemplate: a slider with a thumb picture and arrow buttons).
+local function skinCommentBar(view)
+  local bar = type(view.Comment) == "table" and view.Comment.ScrollBar
+  if type(bar) == "table" then T.ScrollBar(bar) end
+end
+
+-- The activity view: its play style and voice chat dropdowns (arrows kept), the voice chat label, the level box, the
+-- description's scroll bar and the check box of each activity row (as the list acquires it).
+local function skinActivityView(view)
+  if type(view) ~= "table" then return end
+  skinCommentBar(view)
+  GW.SkinDropdown(view.PlayStyleDropdown)
+  GW.SkinDropdown(view.VoiceChatDropdown)
+  GW.SkinText(view.VoiceChatLabel, "small", "text")
+  GW.SkinCheck(GW.Part(view, "LevelRangesCheckbox.Checkbox"))
+  GW.WatchRows(view.ScrollBox, function(row) GW.SkinCheck(row.CheckButton) end)
+end
+
+-- The line between the roles strip and the list as one pixel of `divider` (the page's art was faded with its frame).
+local function skinDivider(page)
+  local divider = GW.Part(page, "DividerFrame.Divider")
+  if divider then T.Divider(divider) end
+end
+
+-- The listing page's own parts: the roles, the new player check box, the category pickers, the activity view and the divider.
+local function skinListing(page)
+  skinRoles(page)
+  GW.SkinCheck(GW.Part(page, "NewPlayerFriendlyButton.CheckButton"))
+  watchCategories(page)
+  skinActivityView(page.ActivityView)
+  skinDivider(page)
+end
+
+-- The browse and who pages -------------------------------------------------------------------------
+
+-- The pictures a browse row keeps: the leader, class and newcomer marks, the discord mark and the group header's plus and minus.
+GW.BROWSE_KEEP = { "PartyIcon", "DiscordIcon", "ClassIcon", "NewPlayerFriendlyIcon", "ExpandIcon", "CollapseIcon" }
+
+-- One browse row (a group, a nested group or a group header): a theme row, its plate and glows faded, showing the selected
+-- look the game's Selected glow stands for, and its delist button keeping its X.
+local function skinBrowseRow(row)
+  GW.DressRow(row, GW.BROWSE_KEEP)
+  GW.FollowMark(row, row.Selected)
+  keepArt(GW.Part(row, "DataDisplay.DelistButton"), "Icon")
+end
+
+-- Whether the game's browse row selection is hooked (a global it runs when a row is selected or unselected).
+local browseHooked = false
+
+-- Has a browse row's selected look follow the game's SetSelection of it (a row not dressed is left alone). Hooked once.
+local function watchBrowseSelection()
+  if browseHooked or type(_G.LFGBrowseSearchEntry_SetSelection) ~= "function" then return end
+  browseHooked = true
+  hooksecurefunc("LFGBrowseSearchEntry_SetSelection", ns.Guard("hook browse selection", function(row, on) T.SelectRow(row, on == true) end))
+end
+
+-- The browse page's own parts: its two dropdowns (arrows kept), the refresh button (its picture kept) and its rows.
+local function skinBrowse(page)
+  GW.SkinDropdown(page.CategoryDropdown)
+  GW.SkinDropdown(page.ActivityDropdown)
+  keepArt(page.RefreshButton, "Icon")
+  GW.WatchRows(page.ScrollBox, skinBrowseRow)
+  watchBrowseSelection()
+end
+
+-- One who-list row: a theme row (its plate and glows faded) showing the selected look the game's SetSelected sets, and its
+-- invite button keeping its picture.
+local function skinWhoRow(row)
+  GW.DressRow(row)
+  GW.FollowMark(row, row.Selected)
+  GW.HookAfter(row, "SetSelected", function(r, on) T.SelectRow(r, on == true) end)
+  keepArt(row.InviteButton, "Icon")
+end
+
+-- The who page's own parts: the search box (magnifier kept), the search button (picture kept), the filter dropdown with a
+-- light label, the total line and the rows.
+local function skinWho(page)
+  GW.SkinSearch(page.EditBox)
+  keepArt(page.WhoSearch, "Icon")
+  skinFlatButton(page.FilterDropdown)
+  GW.SkinText(GW.Part(page, "FilterDropdown.Text"), "label", "text")
+  GW.SkinText(page.WhoFrameTotals, "small", "text2")
+  GW.WatchRows(page.ScrollBox, skinWhoRow)
+end
+
+-- Each page's own parts, by the page's name.
+local LFG_OWN = { LFGListingFrame = skinListing, LFGBrowseFrame = skinBrowse, LFGWhoListFrame = skinWho }
+
+-- The parts only the page of that name has, in the theme.
+local function dressOwnParts(page)
+  local skin = LFG_OWN[page:GetName() or ""]
+  if skin then skin(page) end
+end
+
 -- One page of the group finder (listing, browse or who list), which fills the finder's window: its template
 -- art (the portrait badge and the border too) and extras faded, an inset panel, title, buttons and edit box
--- in the theme, its gear beside the close button and the who list's empty note. The outer window has the panel.
+-- in the theme, its gear beside the close button and the who list's empty note, and the parts only that page has (the roles
+-- and categories, the browse rows, the who rows). The outer window has the panel.
 function GW.SkinLFGPage(page)
   GW.FadeWindowArt(page)
   GW.FadeParts(page, GW.LFG_PAGE_ART)
@@ -432,6 +574,7 @@ function GW.SkinLFGPage(page)
   dressPage(page)
   placeGear(page)
   watchEmptyPage(page)
+  dressOwnParts(page)
 end
 
 -- The finder's window: a panel with a shadow, the close button in the theme, and the eye (its portrait)

@@ -535,6 +535,138 @@ it("group finder: switched off it stays the game's; a client missing parts of it
   expect(bare.eval("return #ns.errors"), "bare frames (a gear but no close button, a who page without a list): no errors").toBe(0);
 });
 
+
+// TEST-ONLY parts inside the group finder's pages (Blizzard_LFGVanilla_Listing.xml, _Browse.xml, WhoList.xml) on top of FINDER_ENV:
+// the listing's role buttons (a plate, a role icon as the normal texture, a dimming cover, a check box), the group's role icon
+// and dropdown, the newcomer check box, the category pickers the game makes one at a time, the activity view's dropdowns, label,
+// level box and rows with a check box, the divider; the browse page's dropdowns, refresh button and rows (a plate, a selected and
+// a hover glow, a leader mark, a delist button); the who page's search box, search button, filter, total line and rows.
+const FINDER_PARTS_ENV = FINDER_ENV + `
+  ScrollUtil = { AddAcquiredFrameCallback = function(box, cb, owner) table.insert(box.callbacks, function(row) cb(owner, row) end) end }
+  function __acquire(box, row) table.insert(box.items, row) for _, cb in ipairs(box.callbacks) do cb(row) end return row end
+  function __box(parent)
+    local b = CreateFrame("Frame", nil, parent) b.items, b.callbacks = {}, {}
+    function b:ForEachFrame(fn) for _, r in ipairs(self.items) do fn(r) end end
+    return b
+  end
+  function __check(parent) local c = CreateFrame("CheckButton", nil, parent) c:CreateTexture() return c end
+  function __activityRow() local r = CreateFrame("Frame", nil, LFGListingFrame.ActivityView.ScrollBox) r.CheckButton = __check(r) return r end
+  function __role(parent, withCheck)
+    local b = CreateFrame("Button", nil, parent)
+    b.Background, b.icon, b.cover = b:CreateTexture(), b:CreateTexture(), b:CreateTexture()
+    b.GetNormalTexture = function(self) return self.icon end
+    if withCheck then b.CheckButton = __check(b) end
+    return b
+  end
+  function __dropdown(parent, withText)
+    local d = CreateFrame("Button", nil, parent) d.Plate, d.Arrow = d:CreateTexture(), d:CreateTexture()
+    if withText then d.Text = d:CreateFontString(nil, "OVERLAY") d.Text:SetFont("TEST-ONLY-GAME", 12, "") end
+    return d
+  end
+  function __iconButton(parent) local b = CreateFrame("Button", nil, parent) b.Plate, b.Icon = b:CreateTexture(), b:CreateTexture() return b end
+  function __browseRow(selected)
+    local r = CreateFrame("Button", nil, LFGBrowseFrame.ScrollBox)
+    r.ResultBG, r.Selected, r.Highlight, r.PartyIcon = r:CreateTexture(), r:CreateTexture(), r:CreateTexture(), r:CreateTexture()
+    r.Selected:SetShown(selected == true)
+    r.DataDisplay = CreateFrame("Frame", nil, r) r.DataDisplay.DelistButton = __iconButton(r.DataDisplay)
+    return r
+  end
+  function __whoRow()
+    local r = CreateFrame("Button", nil, LFGWhoListFrame.ScrollBox)
+    r.Background, r.Selected = r:CreateTexture(), r:CreateTexture() r.Selected:Hide()
+    function r:SetSelected(on) self.Selected:SetShown(on) end
+    r.InviteButton = __iconButton(r)
+    return r
+  end
+  function LFGListingCategorySelection_UpdateCategoryButtons(view)
+    local b = CreateFrame("Button", nil, view) b.Icon, b.Cover = b:CreateTexture(), b:CreateTexture()
+    b.Label = b:CreateFontString(nil, "OVERLAY") b.Label:SetFont("TEST-ONLY-GAME", 16, "")
+    view.CategoryButtons[#view.CategoryButtons + 1] = b
+  end
+  function LFGBrowseSearchEntry_SetSelection(row, selected) row.Selected:SetShown(selected) end
+  function __finderParts()
+    local l, b, w = LFGListingFrame, LFGBrowseFrame, LFGWhoListFrame
+    l.SoloRoleButtons = CreateFrame("Frame", nil, l)
+    l.SoloRoleButtons.RoleButtons = { __role(l.SoloRoleButtons, true), __role(l.SoloRoleButtons, true) }
+    l.GroupRoleButtons.RoleIcon, l.GroupRoleButtons.RoleDropdown = __role(l.GroupRoleButtons), __dropdown(l.GroupRoleButtons)
+    l.NewPlayerFriendlyButton = CreateFrame("Button", nil, l) l.NewPlayerFriendlyButton.CheckButton = __check(l.NewPlayerFriendlyButton)
+    l.CategoryView = CreateFrame("Frame", nil, l) l.CategoryView.CategoryButtons = {}
+    l.DividerFrame.Divider = l.DividerFrame:CreateTexture()
+    local view = l.ActivityView
+    view.PlayStyleDropdown, view.VoiceChatDropdown = __dropdown(view), __dropdown(view)
+    view.VoiceChatLabel = view:CreateFontString(nil, "OVERLAY") view.VoiceChatLabel:SetFont("TEST-ONLY-GAME", 10, "")
+    view.LevelRangesCheckbox = CreateFrame("Frame", nil, view) view.LevelRangesCheckbox.Checkbox = __check(view.LevelRangesCheckbox)
+    view.ScrollBox = __box(view)
+    local bar = CreateFrame("Frame", nil, view.Comment) view.Comment.ScrollBar = bar
+    bar.Top, bar.ThumbTexture = bar:CreateTexture(), bar:CreateTexture() bar.ScrollUpButton = CreateFrame("Button", nil, bar)
+    b.CategoryDropdown, b.ActivityDropdown, b.RefreshButton = __dropdown(b), __dropdown(b), __iconButton(b)
+    b.ScrollBox = __box(b)
+    w.EditBox = CreateFrame("EditBox", nil, w) w.EditBox.art, w.EditBox.searchIcon = w.EditBox:CreateTexture(), w.EditBox:CreateTexture()
+    w.WhoSearch, w.FilterDropdown = __iconButton(w), __dropdown(w, true)
+    w.WhoFrameTotals = w:CreateFontString(nil, "OVERLAY") w.WhoFrameTotals:SetFont("TEST-ONLY-GAME", 12, "")
+    w.ScrollBox.items, w.ScrollBox.callbacks = {}, {}
+    function w.ScrollBox:ForEachFrame(fn) for _, r in ipairs(self.items) do fn(r) end end
+  end
+`;
+
+it("group finder listing: the role buttons keep their icons on raised tiles with theme check boxes, the dropdowns keep their arrows, the category pickers are dressed as the game makes them", () => {
+  const addon = loggedIn(FINDER_PARTS_ENV);
+  // One activity row and one category picker exist when the page is skinned; the game makes more afterwards.
+  addon.eval("__finder() __finderParts() __acquire(LFGListingFrame.ActivityView.ScrollBox, __activityRow()) LFGListingCategorySelection_UpdateCategoryButtons(LFGListingFrame.CategoryView)");
+  addon.fire("ADDON_LOADED", "Blizzard_GroupFinder_VanillaStyle");
+  addon.eval("LFGParentFrame:Show() LFGListingFrame:Show() __acquire(LFGListingFrame.ActivityView.ScrollBox, __activityRow())");
+  // A role button's plate, icon and cover alphas, and whether its check box is a theme check box.
+  const role = (expr) => addon.eval(`local r = ${expr} return { r.Background:GetAlpha(), r.icon:GetAlpha(), r.cover:GetAlpha(), ns.Theme.CheckParts(r.CheckButton or r) ~= nil }`);
+  expect(role("LFGListingFrame.SoloRoleButtons.RoleButtons[1]"), "a solo role: the plate faded, the icon and the cover kept, its check box a theme check box").toEqual([0, 1, 1, true]);
+  expect(role("LFGListingFrame.SoloRoleButtons.RoleButtons[2]"), "all of them").toEqual([0, 1, 1, true]);
+  expect([fills(addon, "LFGListingFrame.SoloRoleButtons.RoleButtons[1]"), fills(addon, "LFGListingFrame.GroupRoleButtons.RoleIcon")], "each on a raised tile, the group's too").toEqual([1, 1]);
+  expect(addon.eval("local g = LFGListingFrame.GroupRoleButtons return { g.RoleIcon.Background:GetAlpha(), g.RoleDropdown.Plate:GetAlpha(), g.RoleDropdown.Arrow:GetAlpha() }"), "the group's role icon plate faded; the role dropdown's plate faded, its arrow kept").toEqual([0, 0, 1]);
+  expect(addon.eval("return ns.Theme.CheckParts(LFGListingFrame.NewPlayerFriendlyButton.CheckButton) ~= nil"), "the newcomer box is a theme check box").toBe(true);
+  expect(addon.eval("local v = LFGListingFrame.ActivityView return { v.PlayStyleDropdown.Plate:GetAlpha(), v.PlayStyleDropdown.Arrow:GetAlpha(), v.VoiceChatDropdown.Arrow:GetAlpha(), __looks(v.VoiceChatLabel, 'small', 'text'), ns.Theme.CheckParts(v.LevelRangesCheckbox.Checkbox) ~= nil }"), "the activity view's dropdowns keep their arrows; the voice chat label is small and light; the level box a theme check box").toEqual([0, 1, 1, true, true]);
+  expect(addon.eval("local items = LFGListingFrame.ActivityView.ScrollBox.items return { ns.Theme.CheckParts(items[1].CheckButton) ~= nil, ns.Theme.CheckParts(items[2].CheckButton) ~= nil }"), "each activity row's check box is a theme check box, the one the page had and the one it acquired").toEqual([true, true]);
+  addon.eval("LFGListingCategorySelection_UpdateCategoryButtons(LFGListingFrame.CategoryView)");
+  // Category picker n: its picture, cover and name.
+  const category = (n) => addon.eval(`local b = LFGListingFrame.CategoryView.CategoryButtons[${n}] return { b.Icon:GetAlpha(), b.Cover:GetAlpha(), __looks(b.Label, 'heading', 'text') }`);
+  expect(category(1), "a picker the page had: its picture kept, its cover faded, its name a heading").toEqual([1, 0, true]);
+  expect([fills(addon, "LFGListingFrame.CategoryView.CategoryButtons[1]"), addon.eval("return #LFGListingFrame.CategoryView.CategoryButtons")], "on a raised tile").toEqual([1, 2]);
+  expect(category(2), "a picker the game made after the skin").toEqual([1, 0, true]);
+  expect(addon.eval("local d = LFGListingFrame.DividerFrame.Divider return { d:GetAlpha(), ns.Theme.DividerParts(d) ~= nil }"), "the divider is one pixel of divider").toEqual([0, true]);
+  expect(addon.eval("local bar = LFGListingFrame.ActivityView.Comment.ScrollBar return { bar.Top:GetAlpha(), bar.ThumbTexture:GetAlpha(), bar.ScrollUpButton:GetAlpha(), ns.FrameState('vgThumb')[bar] ~= nil }"), "the description's old scroll bar: art and thumb picture faded, the arrow buttons away, the one scroll line drawn").toEqual([0, 0, 0, true]);
+  expect(addon.eval("return #ns.errors"), "and nothing failed").toBe(0);
+});
+
+it("group finder browse page: the dropdowns and refresh button keep their pictures, the rows are theme rows following the game's selection, the delist button keeps its X", () => {
+  const addon = loggedIn(FINDER_PARTS_ENV);
+  addon.eval("__finder() __finderParts() __acquire(LFGBrowseFrame.ScrollBox, __browseRow(true))");
+  addon.fire("ADDON_LOADED", "Blizzard_GroupFinder_VanillaStyle");
+  addon.eval("LFGParentFrame:Show() LFGBrowseFrame:Show() __acquire(LFGBrowseFrame.ScrollBox, __browseRow(false))");
+  expect(addon.eval("local b = LFGBrowseFrame return { b.CategoryDropdown.Plate:GetAlpha(), b.CategoryDropdown.Arrow:GetAlpha(), b.ActivityDropdown.Arrow:GetAlpha(), b.RefreshButton.Plate:GetAlpha(), b.RefreshButton.Icon:GetAlpha() }"), "dropdown plates faded, arrows kept; the refresh button's plate faded, its picture kept").toEqual([0, 1, 1, 0, 1]);
+  // Browse row n: a theme row, the alphas of its plate, glows, leader mark and delist button, and whether its rail shows.
+  const row = (n) => addon.eval(`local r = LFGBrowseFrame.ScrollBox.items[${n}] local d = r.DataDisplay.DelistButton
+    return { ns.Theme.RowParts(r) ~= nil, r.ResultBG:GetAlpha(), r.Selected:GetAlpha(), r.Highlight:GetAlpha(), r.PartyIcon:GetAlpha(), d.Plate:GetAlpha(), d.Icon:GetAlpha(), ns.Theme.RowParts(r).rail:IsShown() }`);
+  expect(row(1), "a row the page had: a theme row, plate and glows faded, the leader mark and the delist X kept, the selected look on (its Selected glow was shown)").toEqual([true, 0, 0, 0, 1, 0, 1, true]);
+  expect(row(2), "a row the box acquires later: dressed, not selected").toEqual([true, 0, 0, 0, 1, 0, 1, false]);
+  addon.eval("LFGBrowseSearchEntry_SetSelection(LFGBrowseFrame.ScrollBox.items[2], true) LFGBrowseSearchEntry_SetSelection(LFGBrowseFrame.ScrollBox.items[1], false)");
+  expect([row(1)[7], row(2)[7]], "the selected look follows the game's selection").toEqual([false, true]);
+  addon.eval("LFGBrowseSearchEntry_SetSelection({ Selected = LFGBrowseFrame.ScrollBox.items[1].Selected }, true)");
+  expect(addon.eval("return #ns.errors"), "a row that is not dressed is left alone").toBe(0);
+});
+
+it("group finder who page: the search box, search button, filter and total line are in the theme, the rows are theme rows following SetSelected", () => {
+  const addon = loggedIn(FINDER_PARTS_ENV);
+  addon.eval("__finder() __finderParts() __acquire(LFGWhoListFrame.ScrollBox, __whoRow())");
+  addon.fire("ADDON_LOADED", "Blizzard_GroupFinder_VanillaStyle");
+  addon.eval("LFGParentFrame:Show() LFGWhoListFrame:Show() __acquire(LFGWhoListFrame.ScrollBox, __whoRow())");
+  expect(addon.eval("local w = LFGWhoListFrame return { w.EditBox.art:GetAlpha(), w.EditBox.searchIcon:GetAlpha(), w.WhoSearch.Plate:GetAlpha(), w.WhoSearch.Icon:GetAlpha(), w.FilterDropdown.Plate:GetAlpha(), __looks(w.FilterDropdown.Text, 'label', 'text'), __looks(w.WhoFrameTotals, 'small', 'text2') }"),
+    "the search box's art faded, its magnifier kept; the search button's picture kept; the filter's plate faded and its label light; the total line small and grey").toEqual([0, 1, 0, 1, 0, true, true]);
+  // Who row n: a theme row, the alphas of its plate, glow, invite plate and picture, and whether its rail shows.
+  const row = (n) => addon.eval(`local r = LFGWhoListFrame.ScrollBox.items[${n}] return { ns.Theme.RowParts(r) ~= nil, r.Background:GetAlpha(), r.Selected:GetAlpha(), r.InviteButton.Plate:GetAlpha(), r.InviteButton.Icon:GetAlpha(), ns.Theme.RowParts(r).rail:IsShown() }`);
+  expect([row(1), row(2)], "rows, those the page had and those it acquired: plates faded, the invite picture kept, not selected").toEqual([[true, 0, 0, 0, 1, false], [true, 0, 0, 0, 1, false]]);
+  addon.eval("LFGWhoListFrame.ScrollBox.items[2]:SetSelected(true)");
+  expect([row(1)[5], row(2)[5]], "the selected look follows the game's SetSelected").toEqual([false, true]);
+  expect(addon.eval("return #ns.errors"), "and nothing failed").toBe(0);
+});
+
 // TEST-ONLY Legacy system window, shaped like Blizzard_LegacySystem's XML: a portrait frame with three pages (each with its
 // Background, the tree's divider frame and node button, the challenges' two panes and divider), the side tabs and their
 // indicators. Made when the game loads the part.
