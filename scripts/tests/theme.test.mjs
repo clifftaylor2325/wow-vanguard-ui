@@ -1059,6 +1059,7 @@ it("T.Capsule: a fill of the tier and a 1 px outline in three parts, round ends 
   expect([out[7], /Pill$/.test(out[8]), /PillLine$/.test(out[9])], "layer option and the textures").toEqual(["ARTWORK", true, true]);
   addon.slash("variant midnight");
   expect(isTok(addon, addon.eval("return ({ ns.Theme.Capsule(CreateFrame('Frame'), 8, 'inset').fill[1]:GetVertexColor() })"), "inset"), "a capsule's fill follows the variant").toBe(true);
+});
 
 it("T.SetText: a role with the upper flag (section) shows capitals, any other role shows the text as given", () => {
   const addon = loggedIn();
