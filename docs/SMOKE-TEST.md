@@ -559,6 +559,12 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 - Expect: the rename window is a flat panel; its two options (rename, refund) are plain rows that wash lighter under the mouse and keep their little icon; the descriptions and the cost label are light text (not black); the new-name box is a dark input box; the cost and your money are in the Vanguard number font; the button at the bottom is a themed button and still works.
 - If it fails, paste: a screenshot and `/vg errors`.
 
+### 14.2.12 Guild control window
+
+- Do: as a guild master (an officer sees only the Discord page), open the guild control window (the Guild Control button in the guild window, or `/script GuildControlUI_Show()`). On Guild Ranks add a rank, rename it, move it up and down and delete it; on Rank Permissions pick a rank in the dropdown and tick a few boxes and the gold-per-day box; on Bank Tab Permissions tick View and Deposit on a tab and type a withdrawal number; if the Discord page is offered, open it. Close it.
+- Expect: the window is a flat dark panel with a Vanguard close button and a title in the same size and light text as the other windows, with one thin line under the header (no rock texture, no carved bar) and the page dropdown a flat button with its arrow. The rank rows have a dark name box, a light "Rank n:" caption, flat up and down arrows that grey out when a rank cannot move, and a flat delete button with its cross; New rank is a flat button; a new rank's row is dressed the moment it appears. The permission boxes are Vanguard check boxes (a greyed Authenticator box with its label grey), the gold-per-day box is a dark edit box, the officer list is light text and the Bank heading small grey capitals. The bank tab list sits in a dark inset with each tab's name light, its two check boxes, its withdraw box and, on the tab you can still buy, the price in the Vanguard font and a flat Purchase button. Every change still saves as before.
+- If it fails, paste: a screenshot of the page that looks wrong, and `/vg errors`.
+
 ### 14.3.1 Stable (a hunter)
 
 - Do: with a hunter, talk to a stable master.
