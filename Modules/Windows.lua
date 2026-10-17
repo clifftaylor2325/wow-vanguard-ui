@@ -987,10 +987,22 @@ GW.TALENT_ICONS = { "ResetButton", "UndoButton" }
 -- own); each is looked for on both, and one the client lacks is skipped.
 GW.BOOK_REFILLS = { "SetDataProvider", "SetCurrentPage", "UpdateFrames", "UpdateDisplay" }
 
+-- The icon button of a book entry: its bronze laurel frame and other art faded (the icon and the game's hover
+-- highlight kept), the icon cropped and a thin inset border round it, like an item slot.
+local function dressBookIcon(button)
+  if type(button) ~= "table" or not button.GetRegions or not button.CreateTexture then return end
+  T.FadeRegions(button, GW.KeepKeys(button, { "Icon", "icon", "IconHighlight", "Highlight" }))
+  local icon = button.Icon or button.icon
+  if type(icon) == "table" and icon.SetTexCoord then T.Crop(icon) end
+  T.Panel(button, { inset = true, noBg = true })
+end
+
 -- One spell entry of the book (a name, a rank line and an icon button on a smudged plate): the plate faded, the
--- name and rank in the theme's text roles (the game colours them for parchment, dark brown on the dark panel).
+-- icon in the item-slot look, the name and rank in the theme's text roles (the game colours them for parchment,
+-- dark brown on the dark panel).
 local function dressBookEntry(entry)
   GW.FadeParts(entry, { "Backplate" })
+  dressBookIcon(entry.Button)
   GW.SkinText(entry.Name, "label", "text")
   GW.SkinText(entry.SubName, "small", "muted")
 end
