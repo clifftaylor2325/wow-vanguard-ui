@@ -920,19 +920,25 @@ const PAPER_ENV = SIDE_PANE_ENV + `
     return p
   end
   __titles, __sets = __pane("TitleManagerPane"), __pane("EquipmentManagerPane")
-  function __titleRow()
+  function __titleRow(selected)
     local r = CreateFrame("Button", nil, __titles.ScrollBox)
     r.Stripe, r.Check, r.SelectedBar = __art(r), __art(r, "BORDER"), __art(r, "OVERLAY")
     r.text = r:CreateFontString() r.text:SetTextColor(NORMAL_FONT_COLOR:GetRGB())
+    r.SelectedBar:SetShown(selected == true)
     return __titles.ScrollBox:Acquire(r)
   end
-  function __setRow(id)
+  function __setRow(id, selected)
     local r = CreateFrame("Button", nil, __sets.ScrollBox)
     r.setID, r.plate, r.ring, r.SpecRing = id, __art(r), __art(r, "ARTWORK"), __art(r, "OVERLAY")
     r.icon, r.Check, r.SpecIcon, r.HighlightBar, r.SelectedBar = __art(r, "ARTWORK"), __art(r, "BORDER"), __art(r, "OVERLAY"), __art(r), __art(r)
     r.text = r:CreateFontString() r.text:SetTextColor(NORMAL_FONT_COLOR:GetRGB())
+    r.SelectedBar:SetShown(selected == true)
     return __sets.ScrollBox:Acquire(r)
   end
+  -- The game's selection functions, which its init and click run with the row and whether it is the selected one.
+  function PaperDollTitlesPane_SetButtonSelected(button, selected) button.SelectedBar:SetShown(selected) end
+  function PaperDollEquipmentManagerPane_SetButtonSelected(button, selected) button.SelectedBar:SetShown(selected) end
+  function __lit(r) return ns.Theme.RowParts(r).rail:IsShown() end
   for _, key in ipairs({ "EquipSet", "SaveSet", "NewSet" }) do
     local b = CreateFrame("Button", nil, __sets) b.StateTexture, b.plus = __art(b), __art(b, "ARTWORK") b.label = b:CreateFontString()
     __sets[key] = b
@@ -945,15 +951,24 @@ it("paper doll lists: the titles and sets panes are flat insets, a title row los
   addon.eval("CharacterFrame:Show()");
   expect(addon.eval("return { __a(__titles.Border), __panel(__titles), __a(__sets.Border), __a(__sets.Line), __panel(__sets) }"), "both panes: edge and rule faded, an inset panel").toEqual([0, true, 0, 0, true]);
   // A title row's stripe alpha, its tick and selected bar alphas (-1: the game's), and whether its text is in the text colour.
-  const title = (i) => addon.eval(`local r = __titles.ScrollBox.rows[${i}] return { __a(r.Stripe), __a(r.Check), __a(r.SelectedBar), __text(r.text) }`);
-  expect(title(1), "stripe faded, tick and selected bar the game's, text in the text colour").toEqual([0, -1, -1, true]);
+  const title = (i) => addon.eval(`local r = __titles.ScrollBox.rows[${i}] return { __a(r.Stripe), __a(r.Check), __a(r.SelectedBar), __text(r.text), __lit(r) }`);
+  expect(title(1), "stripe and selected bar faded, tick the game's, text in the text colour, not lit").toEqual([0, -1, 0, true, false]);
   addon.eval("__titleRow()");
-  expect(title(2), "a title row acquired later too").toEqual([0, -1, -1, true]);
+  expect(title(2), "a title row acquired later too").toEqual([0, -1, 0, true, false]);
+  addon.eval("PaperDollTitlesPane_SetButtonSelected(__titles.ScrollBox.rows[2], true)");
+  expect([title(1)[4], title(2)[4]], "the selected rail follows the game marking a title selected").toEqual([false, true]);
+  addon.eval("PaperDollTitlesPane_SetButtonSelected(__titles.ScrollBox.rows[2], false) PaperDollTitlesPane_SetButtonSelected(__titles.ScrollBox.rows[1], true)");
+  expect([title(1)[4], title(2)[4]], "and moves with the selection").toEqual([true, false]);
   // A set row's plate and rings, then what stays (icon, tick, spec icon, hover and selected card), then its name's colour.
-  const set = (i) => addon.eval(`local r = __sets.ScrollBox.rows[${i}] return { __a(r.plate), __a(r.ring), __a(r.SpecRing), __a(r.icon), __a(r.Check), __a(r.SpecIcon), __a(r.HighlightBar), __a(r.SelectedBar), __text(r.text), __panel(r) }`);
-  expect(set(1), "plate and rings faded, no panel of its own, the rest the game's, name in the text colour").toEqual([0, 0, 0, -1, -1, -1, -1, -1, true, false]);
+  const set = (i) => addon.eval(`local r = __sets.ScrollBox.rows[${i}] return { __a(r.plate), __a(r.ring), __a(r.SpecRing), __a(r.icon), __a(r.Check), __a(r.SpecIcon), __a(r.HighlightBar), __a(r.SelectedBar), __text(r.text), ns.Theme.RowParts(r) ~= nil, __lit(r) }`);
+  expect(set(1), "plate, rings and cards faded, icon, tick and spec icon the game's, name in the text colour, a theme row, not lit").toEqual([0, 0, 0, -1, -1, -1, 0, 0, true, true, false]);
+  addon.eval("PaperDollEquipmentManagerPane_SetButtonSelected(__sets.ScrollBox.rows[2], true)");
+  expect([set(1)[10], set(2)[10]], "the selected rail follows the game marking a set selected").toEqual([false, true]);
+  addon.eval("PaperDollEquipmentManagerPane_SetButtonSelected(__sets.ScrollBox.rows[2], false)");
+  expect(set(2)[10], "and clears with it").toBe(false);
   expect(addon.eval("return __gold(__sets.ScrollBox.rows[2].text)"), "a set with items missing keeps the game's name colour").toBe(true);
-  addon.eval("__setRow(1)");
+  addon.eval("__setRow(1, true) __titleRow(true)");
+  expect(addon.eval("return { __lit(__sets.ScrollBox.rows[1]), __lit(__sets.ScrollBox.rows[3]), __lit(__titles.ScrollBox.rows[3]) }"), "a row the game already marked selected when dressed is lit at once").toEqual([false, true, true]);
   expect(set(3)[0], "a set row acquired later too").toBe(0);
   expect(addon.eval("return #ns.errors"), "no errors").toBe(0);
 });
@@ -969,7 +984,7 @@ it("paper doll lists: the set buttons are theme buttons, the New set button keep
 });
 
 it("paper doll lists: a client without the equipment set API, or panes without parts, loads cleanly", () => {
-  const bare = loggedIn(PAPER_ENV + `C_EquipmentSet = nil __setRow(2) __sets.NewSet = {} __sets.EquipSet = nil __titles.ScrollBox = nil`);
+  const bare = loggedIn(PAPER_ENV + `C_EquipmentSet = nil PaperDollTitlesPane_SetButtonSelected, PaperDollEquipmentManagerPane_SetButtonSelected = nil, nil __setRow(2) __sets.NewSet = {} __sets.EquipSet = nil __titles.ScrollBox = nil`);
   expect(bare.eval("CharacterFrame:Show() return { __text(__sets.ScrollBox.rows[1].text), #ns.errors }"), "no API: the name goes to the text colour").toEqual([true, 0]);
   const hollow = loggedIn(PAPER_ENV + `PaperDollFrame.TitleManagerPane = {} PaperDollFrame.EquipmentManagerPane = {}`);
   expect(hollow.eval("CharacterFrame:Show() return #ns.errors"), "panes that are not frames").toBe(0);
@@ -1012,8 +1027,11 @@ const WARDROBE_ENV = COLLECTIONS_ENV + `
     sets.DetailsFrame.VariantSetsDropdown = __dropdown(sets.DetailsFrame)
     sets.ListContainer = CreateFrame("Frame", nil, sets) sets.ListContainer.ScrollBox = __box(sets.ListContainer)
     __setsRow = CreateFrame("Button", nil, sets.ListContainer.ScrollBox)
-    __setsRow.Background, __setsRow.HighlightTexture, __setsRow.Name = __art(__setsRow), __art(__setsRow), __setsRow:CreateFontString()
+    __setsRow.Background, __setsRow.HighlightTexture, __setsRow.SelectedTexture, __setsRow.Name = __art(__setsRow), __art(__setsRow), __art(__setsRow), __setsRow:CreateFontString()
+    __setsRow.ProgressBar, __setsRow.New = __art(__setsRow, "ARTWORK"), __art(__setsRow, "OVERLAY")
     __setsRow.Name:SetTextColor(0.5, 0.5, 0.5)
+    __setsRow.SelectedTexture:Hide()
+    function __setsRow:SetSelected(on) self.SelectedTexture:SetShown(on) end
     sets.ListContainer.ScrollBox:Acquire(__setsRow)
   end
 `;
@@ -1031,9 +1049,16 @@ it("appearances: the search box, dropdowns, page arrows and the sets tab's rows 
     .toEqual([[1, true], [1, true], [1, true], [1, true]]);
   expect(addon.eval(`local p = ${w}.ItemsCollectionFrame.PagingFrame return { __panel(p.PrevPageButton), __panel(p.NextPageButton) }`), "the page arrows flat buttons").toEqual([true, true]);
   expect(addon.eval(`local d = ${w}.SetsCollectionFrame.DetailsFrame return { __a(d.IconRowBackground), __a(d.ModelFadeTexture) }`), "the icon row plate and the model fade gone").toEqual([0, 0]);
-  expect(addon.eval("return { __a(__setsRow.Background), __a(__setsRow.HighlightTexture), __panel(__setsRow), __text(__setsRow.Name) }"), "a sets row: plate faded, hover the game's, no fill, name colour the game's").toEqual([0, -1, false, false]);
-  addon.eval("local row = CreateFrame('Button', nil, __setsRow:GetParent()) row.Background = __art(row) __laterRow = WardrobeCollectionFrame.SetsCollectionFrame.ListContainer.ScrollBox:Acquire(row)");
-  expect(addon.eval("return { __a(__laterRow.Background), #ns.errors }"), "a row acquired later too").toEqual([0, 0]);
+  // A sets row: its plate, hover and selected art alphas, the progress line and new glow alphas, whether it is a theme row,
+  // whether its name is still the game's colour, and whether the selected rail is lit.
+  const setsRow = (r) => addon.eval(`local r = ${r} return { __a(r.Background), __a(r.HighlightTexture), __a(r.SelectedTexture), __a(r.ProgressBar), __a(r.New), ns.Theme.RowParts(r) ~= nil, not __text(r.Name), ns.Theme.RowParts(r).rail:IsShown() }`);
+  expect(setsRow("__setsRow"), "a sets row: plate, hover and selected art faded, progress and glow kept, a theme row, name colour the game's, not lit").toEqual([0, 0, 0, -1, -1, true, true, false]);
+  addon.eval("__setsRow:SetSelected(true)");
+  expect(setsRow("__setsRow")[7], "the selected rail follows the game's SetSelected").toBe(true);
+  addon.eval("__setsRow:SetSelected(false)");
+  expect(setsRow("__setsRow")[7], "and clears with it").toBe(false);
+  addon.eval("local row = CreateFrame('Button', nil, __setsRow:GetParent()) row.Background, row.SelectedTexture = __art(row), __art(row) row.Name = row:CreateFontString() function row:SetSelected(on) self.SelectedTexture:SetShown(on) end __laterRow = WardrobeCollectionFrame.SetsCollectionFrame.ListContainer.ScrollBox:Acquire(row)");
+  expect(addon.eval("return { __a(__laterRow.Background), ns.Theme.RowParts(__laterRow).rail:IsShown(), #ns.errors }"), "a row acquired later too, lit as the game shows its mark").toEqual([0, true, 0]);
   const painted = addon.eval("return ns.Theme.PaintedCount()");
   addon.eval("CollectionsJournal:Hide() CollectionsJournal:Show()");
   expect(addon.eval("return { ns.Theme.PaintedCount(), #ns.errors }"), "showing it again paints nothing new").toEqual([painted, 0]);

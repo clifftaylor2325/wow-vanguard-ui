@@ -667,12 +667,16 @@ local function dressTicketRow(row)
   GW.ShowTexture(GW.Part(row, "RevokeButton.Icon"))
 end
 
+-- A part's Background faded; a part the client lacks is skipped.
+local function fadeBackground(part)
+  if type(part) == "table" then GW.FadeParts(part, { "Background" }) end
+end
+
 -- The invite links list: the marble and the bronze corners faded, an inset panel, the column headers flat, its rows dressed.
 local function dressInviteManager(list)
   if not isFrame(list) then return end
   GW.FadeParts(list, { "ArtOverlay" })
-  GW.FadeParts(list.ScrollBox, { "Background" })
-  GW.FadeParts(list.ScrollBar, { "Background" })
+  GW.EachKey(list, { "ScrollBox", "ScrollBar" }, fadeBackground)
   T.Panel(list, { inset = true, noSheen = true })
   if isFrame(list.ColumnDisplay) then T.FadeRegions(list.ColumnDisplay) dressHeaders(list.ColumnDisplay) end
   GW.WatchRows(list.ScrollBox, dressTicketRow)

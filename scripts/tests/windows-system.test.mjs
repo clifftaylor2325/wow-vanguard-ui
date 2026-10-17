@@ -103,6 +103,13 @@ it("game options: the window in the theme, its art faded, buttons, search box, t
     art: 0, nine: 0, bg: 0, panel: true, titleFont: true, apply: true, close: true, x: 0, search: true, tab: true, list: true, settings: true,
   });
   expect(first.canvas, "the settings canvas is left to its pages").toBe(false);
+  // The Apply button carries the secondary kind's inset fill (the window frame is not read as the button's kind).
+  expect(addon.eval(`local c = { ns.Theme.PanelColor(true) }
+    for _, r in ipairs({ SettingsPanel.ApplyButton:GetRegions() }) do
+      local v = r.__vertexColor
+      if v and v[1] == c[1] and v[2] == c[2] and v[3] == c[3] then return true end
+    end
+    return false`), "the window's buttons are the one game button look: the secondary inset").toBe(true);
   addon.eval("SettingsPanel:Hide() SettingsPanel:Show()");
   expect(settings(addon).painted, "showing it again paints nothing new").toBe(first.painted);
 });

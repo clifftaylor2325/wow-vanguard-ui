@@ -1247,9 +1247,9 @@ it("social dialogs: with the group off they stay the game's; dialogs with odd or
     CommunitiesAvatarPickerDialog.Selector, CommunitiesTicketManagerDialog.InviteManager, CommunitiesTicketManagerDialog.Separator = {}, {}, {}
     GuildInviteFrameJoinButton, GuildInviteFrameTabardBackground = nil, nil CreateChannelPopup.Header, AddFriendFrame.InfoFrame = nil, nil`);
   for (const name of [...DIALOGS, "CreateChannelPopup", "AddFriendFrame"]) odd.eval(`${name}:Show()`);
-  const rowless = loggedIn(DIALOG_PARTS_ENV + `CommunitiesTicketManagerDialog.InviteManager.ScrollBox.rows[1] = false CommunitiesTicketManagerDialog.InviteManager.ColumnDisplay = {}`);
+  const rowless = loggedIn(DIALOG_PARTS_ENV + `CommunitiesTicketManagerDialog.InviteManager.ScrollBox.rows[1] = false CommunitiesTicketManagerDialog.InviteManager.ColumnDisplay = {} CommunitiesTicketManagerDialog.InviteManager.ScrollBar = nil`);
   rowless.eval("CommunitiesTicketManagerDialog:Show()");
-  expect([windowErrors(odd), odd.eval("return #ns.errors"), windowErrors(rowless), rowless.eval("return #ns.errors")], "parts that are missing or not frames").toEqual(["none", 0, "none", 0]);
+  expect([windowErrors(odd), odd.eval("return #ns.errors"), windowErrors(rowless), rowless.eval("return #ns.errors")], "parts that are missing or not frames (a links list without its scroll bar too)").toEqual(["none", 0, "none", 0]);
 });
 
 // The guild window's own dialogs, R2.27 parts -------------------------------------------------------------

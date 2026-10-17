@@ -600,9 +600,9 @@ local function skinModelArea()
   end
 end
 
--- What stays on a gear set row (GearSetButtonTemplate): the set's icon, the equipped tick, the spec icon and the card
--- art the game shows for hover and selection.
-GW.SET_ROW_KEEP = { "icon", "Check", "SpecIcon", "HighlightBar", "SelectedBar" }
+-- What stays on a gear set row (GearSetButtonTemplate): the set's icon, the equipped tick and the spec icon. The card's
+-- hover and selected art (HighlightBar, SelectedBar) is faded: the row shows the one hover and selected look.
+GW.SET_ROW_KEEP = { "icon", "Check", "SpecIcon" }
 
 -- A pane's edge and rule faded for a flat inset panel behind its list.
 local function insetPane(pane)
@@ -611,10 +611,23 @@ local function insetPane(pane)
   T.Panel(pane, { inset = true, noSheen = true })
 end
 
--- A title row (PlayerTitleButtonTemplate): its zebra stripe faded and its text (the game's gold) in the text colour.
+-- The game's selection globals already hooked (see watchSelection).
+local selectHooked = {}
+
+-- Has a row's selected look follow the game's global that marks a row selected or not (called with the row and a flag at
+-- every init and click; a row not dressed is left alone). Hooked once, when the game has the function.
+local function watchSelection(name)
+  if selectHooked[name] or type(_G[name]) ~= "function" then return end
+  selectHooked[name] = true
+  hooksecurefunc(name, ns.Guard("hook " .. name, function(row, on) T.SelectRow(row, on == true) end))
+end
+
+-- A title row (PlayerTitleButtonTemplate): a theme row (its zebra stripe, hover and selected bars faded, the tick kept)
+-- showing the selected look the game's SelectedBar stands for, its text (the game's gold) in the text colour.
 local function skinTitleRow(row)
   if type(row) ~= "table" then return end
-  GW.FadeParts(row, { "Stripe" })
+  GW.DressRow(row, { "Check" })
+  GW.FollowMark(row, row.SelectedBar)
   colorText(row.text, "text")
 end
 
@@ -625,11 +638,13 @@ local function setLost(row)
   return (select(8, sets.GetEquipmentSetInfo(row.setID)) or 0) > 0
 end
 
--- A gear set row (GearSetButtonTemplate): its card plate and the rings round the icons faded, no fill of its own (the
--- game's hover and selected card stay), its name in the text colour unless the game marked it red.
+-- A gear set row (GearSetButtonTemplate): a theme row (its card plate, rings and hover and selected cards faded, the icon,
+-- tick and spec icon kept) showing the selected look the game's SelectedBar stands for, its name in the text colour
+-- unless the game marked it red.
 local function skinSetRow(row)
   if type(row) ~= "table" or not row.GetRegions then return end
-  T.FadeRegions(row, keepKeys(row, GW.SET_ROW_KEEP))
+  GW.DressRow(row, GW.SET_ROW_KEEP)
+  GW.FollowMark(row, row.SelectedBar)
   if not setLost(row) then colorText(row.text, "text") end
 end
 
@@ -658,10 +673,17 @@ local function dressGearPane(pane, skin)
   GW.WatchRows(pane.ScrollBox, skin)
 end
 
+-- The two lists' selected looks following the game's marking of a title or a set (hooked once).
+local function watchGearSelection()
+  watchSelection("PaperDollTitlesPane_SetButtonSelected")
+  watchSelection("PaperDollEquipmentManagerPane_SetButtonSelected")
+end
+
 -- The titles list and equipment sets list in the theme: their panels and rows, and the set buttons.
 local function skinGearPanes()
   local paper = _G.PaperDollFrame
   if type(paper) ~= "table" then return end
+  watchGearSelection()
   dressGearPane(paper.TitleManagerPane, skinTitleRow)
   dressGearPane(paper.EquipmentManagerPane, skinSetRow)
   local sets = paper.EquipmentManagerPane
@@ -768,10 +790,17 @@ local function dressItemsControls(items)
   GW.SkinPaging(items.PagingFrame)
 end
 
--- A sets list row (WardrobeSetsScrollFrameButtonTemplate): its plate faded and no fill of its own (the game's hover and
--- selected art stay, and the name keeps its collected, in-progress or none colour, which says how far the set is).
+-- What stays on a sets list row (WardrobeSetsScrollFrameButtonTemplate): the progress line and the new-set glow.
+GW.SETS_ROW_KEEP = { "ProgressBar", "New" }
+
+-- A sets list row (WardrobeSetsScrollFrameButtonTemplate): a theme row (its plate, hover and selected art faded) showing
+-- the selected look the game's SelectedTexture stands for and following its SetSelected; the name keeps its collected,
+-- in-progress or none colour, which says how far the set is.
 local function skinSetsRow(row)
-  if type(row) == "table" then GW.FadeParts(row, { "Background" }) end
+  if type(row) ~= "table" then return end
+  GW.DressRow(row, GW.SETS_ROW_KEEP)
+  GW.FollowMark(row, row.SelectedTexture)
+  GW.HookAfter(row, "SetSelected", function(r, on) T.SelectRow(r, on == true) end)
 end
 
 -- The sets tab's variant dropdown, the plate behind the set's icons and the fade over its model, and its list's rows.

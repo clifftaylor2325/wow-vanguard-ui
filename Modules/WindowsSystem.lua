@@ -118,7 +118,7 @@ end
 -- What a skin spec can list, in order: the parts (parentKey paths) each step is applied to (each
 -- step is given the part and the window).
 local STEPS = {
-  { "art", fadeAll }, { "fade", fadeRegions }, { "close", close }, { "buttons", T.Button },
+  { "art", fadeAll }, { "fade", fadeRegions }, { "close", close }, { "buttons", GW.SkinButton },
   { "edits", T.EditBox }, { "searches", GW.SkinSearch }, { "tabs", skinTab }, { "insets", inset }, { "layoutInsets", layoutInset },
   { "titles", GW.SkinTitle }, { "labels", label }, { "hints", hint }, { "sections", GW.SkinSection },
   { "bars", T.ScrollBar }, { "dropdowns", GW.SkinDropdown }, { "checks", GW.SkinCheck }, { "radios", GW.SkinRadio },
