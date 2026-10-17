@@ -19,6 +19,7 @@ local ADDON, ns = ...
 local vgCorner = ns.FrameState("vgCorner")
 local vgDurability = ns.FrameState("vgDurability")
 local vgMenuSkinned = ns.FrameState("vgMenuSkinned")
+local vgTimerHook = ns.FrameState("vgTimerHook")
 local vgWindow = ns.FrameState("vgWindow")
 
 local T = ns.Theme
@@ -42,6 +43,8 @@ GW.FRAMED = {
   "GroupLootFrame1", "GroupLootFrame2", "GroupLootFrame3", "GroupLootFrame4",
 }
 GW.POPUPS = { "StaticPopup1", "StaticPopup2", "StaticPopup3", "StaticPopup4" }
+-- The breath and fatigue bars' holder (the bars are its unnamed children), skinned by GW.SkinTimerContainer.
+GW.TIMERS = { "MirrorTimerContainer" }
 -- The windows Vanguard's quest dialog stands in for: the game never shows them while it is on, so they are not skinned.
 GW.QUEST_WINDOWS = { QuestFrame = true, GossipFrame = true }
 -- Windows that load with their own part of the game: addon name -> window names
@@ -241,22 +244,22 @@ function GW.SkinTimer(frame)
   if type(bar) == "table" and bar.SetStatusBarTexture then T.StyleBar(bar) end
 end
 
--- The breath and fatigue bars are MirrorTimerContainer's unnamed children on the 12.x
--- engine (there are no MirrorTimer1-3 globals): skins every timer frame it holds.
-local function skinContainerTimers()
-  for _, child in ipairs({ _G.MirrorTimerContainer:GetChildren() }) do
+-- The breath and fatigue bars are the container's unnamed children on the 12.x engine
+-- (there are no MirrorTimer1-3 globals): skins every timer frame it holds.
+local function skinContainerTimers(box)
+  for _, child in ipairs({ box:GetChildren() }) do
     if type(child) == "table" and type(child.StatusBar) == "table" then GW.SkinTimer(child) end
   end
 end
 
--- Watches MirrorTimerContainer, where the client has it: its timers now, and
--- again each time it sets one up (it makes them as they're needed).
-local function watchContainer()
-  local box = _G.MirrorTimerContainer
-  if type(box) ~= "table" or not box.GetChildren or vgWindow[box] then return end
-  vgWindow[box] = true
-  skinContainerTimers()
-  if type(box.SetupTimer) == "function" and type(hooksecurefunc) == "function" then hooksecurefunc(box, "SetupTimer", ns.Guard("hook SetupTimer", skinContainerTimers)) end
+-- The breath bars' container (MirrorTimerContainer, the timers group): its timers now and each time it
+-- shows, and again after the game sets one up (it gives the bar its own texture back then), hooked once.
+function GW.SkinTimerContainer(box)
+  if type(box.GetChildren) ~= "function" then return end
+  skinContainerTimers(box)
+  if vgTimerHook[box] or type(box.SetupTimer) ~= "function" or type(hooksecurefunc) ~= "function" then return end
+  vgTimerHook[box] = true
+  hooksecurefunc(box, "SetupTimer", ns.Guard("hook SetupTimer", function() skinContainerTimers(box) end))
 end
 
 -- The game menu -------------------------------------------------------------------------------
@@ -475,21 +478,21 @@ local function watchDurability()
   for _, e in ipairs({ "UPDATE_INVENTORY_DURABILITY", "UNIT_INVENTORY_CHANGED" }) do ns.On(e, GW.PaintAllDurability) end
 end
 
--- The windows this file skins itself: framed windows, popups and the windows that load later
--- (the breath bars' container is watched from GW.Enable). Other groups register from Modules/Windows<Area>.lua.
+-- The windows this file skins itself: framed windows, popups, the breath bars' container and the
+-- windows that load later. Other groups register from Modules/Windows<Area>.lua.
 GW.Add("windows", "framed", GW.FRAMED)
 GW.Add("popups", "popups", GW.POPUPS)
+GW.Add("timers", "framed", GW.TIMERS, GW.SkinTimerContainer)
 for addon, names in pairs(GW.LATER) do GW.Add("windows", "onDemand", addon, names) end
 
 -- Module entry point (Core/Modules.lua): every registered window whose group is on is
--- watched (those loaded now and later), plus the game menu, readable text, durability,
--- the breath bars' container and dragging windows by their title bar.
+-- watched (those loaded now and later), plus the game menu, readable text, durability
+-- and dragging windows by their title bar.
 function GW.Enable(settings)
   GW.settings = settings
   ns.On("ADDON_LOADED", onLoaded)
   watchAll(GW.ORDER)
   if settings.windows then watchGameMenu() keepTextReadable() end
   if settings.durability then watchDurability() end
-  if settings.timers then watchContainer() end
   if settings.movable then GW.WatchMoves() end
 end

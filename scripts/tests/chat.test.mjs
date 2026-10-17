@@ -474,6 +474,9 @@ it("game windows in the Vanguard look: framed windows, popups, breath bar, and w
   expect(timers(), "the breath bars (the container's unnamed timers) take the theme's bar texture, their art faded").toBe(true);
   addon.eval("MirrorTimerContainer:SetupTimer(2)");
   expect(timers(), "the game sets a timer up with its own bar texture: Vanguard puts the theme's back").toBe(true);
+  const painted = addon.eval("return ns.Theme.PaintedCount()");
+  addon.eval("MirrorTimerContainer:Hide() MirrorTimerContainer:Show() MirrorTimerContainer:SetupTimer(1)");
+  expect([timers(), addon.eval("return ns.Theme.PaintedCount()")], "the container showing again (a timer starting) keeps the look and paints nothing new").toEqual([true, painted]);
   addon.eval('__window("PlayerSpellsFrame")');
   addon.fire("ADDON_LOADED", "Blizzard_PlayerSpells");
   expect(windowState(addon, "PlayerSpellsFrame"), "the spellbook is skinned when it loads").toMatchObject({ art: 0, panel: true });
@@ -535,7 +538,7 @@ it("game windows registry: a window added under a group is skinned, its group's 
   expect([windowState(off, "TestOnlySocialFrame").art !== 0, off.eval("return ns.FrameState('vgWindow')[TestOnlySocialFrame] == nil")], "with its group off: not hooked, its art left").toEqual([true, true]);
   expect(windowState(off, "MerchantFrame").panel, "other groups still are").toBe(true);
   expect(on.eval("return ns.GetModule('Windows').ON_DEMAND.Blizzard_EncounterJournal == nil"), "the encounter journal (never on Forever) is not listed").toBe(true);
-  expect(on.eval("local GW = ns.GetModule('Windows') return { GW.REGISTERED.PlayerSpellsFrame.group, GW.REGISTERED.StaticPopup1.group }"), "the first groups").toEqual(["windows", "popups"]);
+  expect(on.eval("local GW = ns.GetModule('Windows') return { GW.REGISTERED.PlayerSpellsFrame.group, GW.REGISTERED.StaticPopup1.group, GW.REGISTERED.MirrorTimerContainer.group }"), "the first groups").toEqual(["windows", "popups", "timers"]);
 });
 it("game windows registry: parts and named art faded, missing ones skipped", () => {
   const addon = loggedIn(`TestOnlyNamedArt = UIParent:CreateTexture()`);
