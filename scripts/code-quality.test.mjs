@@ -212,6 +212,13 @@ function bareIgnored() {
   expect(problems("scripts/lib/t.lua", inFn("C_Timer.After(1, fn)"))).toBe("");
 }
 
+// An off-scale padding constant fails; scale values and T.SPACE pass.
+function spacingScale() {
+  expect(problems("Modules/t.lua", "local PAD = 10\n")).toMatch(/spacing constant/);
+  expect(problems("Modules/t.lua", "local PAD = 12\n")).toBe("");
+  expect(problems("Core/Layout.lua", "L.GAP = 6\n")).toBe("");
+}
+
 describe(
   "code quality",
   // Hooks, clicks and timers run under ns.Guard.
@@ -470,4 +477,9 @@ it("the scan covers new files, not ignored or deleted ones", () => {
   for (const f of ["new.lua", "ignored.lua", "notes.txt"]) fs.writeFileSync(path.join(dir, f), "-- x\n");
   expect(sourceFiles(dir).sort()).toEqual(["new.lua", "tracked.lua"]);
   fs.rmSync(dir, { recursive: true, force: true });
+});
+
+// Padding constants off T.SPACE's scale.
+describe("code quality: spacing", () => {
+  it("off-scale padding constants fail", spacingScale);
 });

@@ -311,6 +311,24 @@ function fontProblems(file, src) {
   return [...code.matchAll(FONT_SIZE)].map((m) => ({ line: line(m.index), message: FONT_MESSAGE }));
 }
 
+// Spacing constants ---------------------------------------------------------------------
+
+// A padding, gap, margin or inset constant set to one written number.
+const SPACING_CONST = /\b[\w.]*(?:PAD|GAP|MARGIN|INSET)\s*=\s*(\d+)\s*$/gm;
+const SPACING_SCALE = new Set([0, 1, 2, 4, 8, 12, 16, 24]);
+// HUD placement constants that keep their numbers: default spots, slot gaps, hit boxes and the game menu's own section gap, not window padding.
+const SPACING_HOME = new Set(["Core/Layout.lua", "Modules/BagSections.lua", "Modules/Minimap.lua", "Modules/Nameplates.lua", "Core/GameMenu.lua"]);
+const SPACING_MESSAGE = "spacing constant off the scale: use T.SPACE (tight 4, gap 8, col 12, pad 16, section 24)";
+
+// Padding constants that are not on T.SPACE's scale: [{ line, message }].
+function spacingProblems(file, src) {
+  if (!COLOR_SCOPE.test(file) || SPACING_HOME.has(file)) return [];
+  const code = luaCodeOnly(src);
+  const line = lineIndex(code);
+  const off = [...code.matchAll(SPACING_CONST)].filter((m) => !SPACING_SCALE.has(Number(m[1])));
+  return off.map((m) => ({ line: line(m.index), message: SPACING_MESSAGE }));
+}
+
 // Bare hooks, clicks and timers --------------------------------------------------------
 
 const TIMER_CALLS = new Set(["After", "NewTimer", "NewTicker"]);
@@ -399,7 +417,7 @@ export function checkSource(file, src) {
   const fns = lua ? luaFunctions(src) : jsFunctions(src);
   const documented = documentedSet(fns, kinds);
   const out = fns.flatMap((fn) => functionProblems(fn, kinds, documented));
-  return lua ? out.concat(colorProblems(file, src), fontProblems(file, src), bareCallbackProblems(file, src)) : out;
+  return lua ? out.concat(colorProblems(file, src), fontProblems(file, src), spacingProblems(file, src), bareCallbackProblems(file, src)) : out;
 }
 
 // Report-only rules (#263) -------------------------------------------------------------

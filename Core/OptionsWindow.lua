@@ -408,7 +408,7 @@ end
 
 -- The nav's air above its first entry and below its last, and what a divider between groups takes (the
 -- divider, with 3 units of air above it and 3 below).
-local NAV_TOP, NAV_FOOT, GROUP_GAP = T.SPACE.gap, T.SPACE.tight, 7
+local NAV_TOP, NAV_FOOT, GROUP_GAP = T.SPACE.gap, T.SPACE.tight, T.SPACE.gap
 
 -- How tall one nav entry is: a list row (T.ROW.height), or less when that many pages and dividers would run past the nav's foot.
 local function navStep(list)
