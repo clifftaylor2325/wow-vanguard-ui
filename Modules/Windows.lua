@@ -1166,6 +1166,45 @@ GW.INSIDES.GuildBankFrame = function(frame)
   skinBankTexts(frame)
 end
 
+-- The collections journals ----------------------------------------------------------------------------
+
+-- The journals' pages (children of CollectionsJournal; the appearances page is dressed in Modules/WindowsTabs.lua).
+GW.JOURNAL_PAGES = { "MountJournal", "PetJournal", "ToyBox", "HeirloomsJournal" }
+-- The wells on a page (the mount and pet journals' list and display), the count plates (mounts, pets, toys) and the
+-- keys a search box, a dropdown and a push button are found under on a page.
+GW.JOURNAL_INSETS = { "LeftInset", "BottomLeftInset", "RightInset", "iconsFrame" }
+GW.JOURNAL_COUNTS = { "MountCount", "PetCount", "ProgressTracker" }
+GW.JOURNAL_SEARCH = { "searchBox", "SearchBox" }
+GW.JOURNAL_DROPDOWNS = { "FilterDropdown", "ClassDropdown" }
+GW.JOURNAL_BUTTONS = { "MountButton", "SummonButton" }
+
+-- A count plate (CollectionsCountTemplate: a label and a figure on an inset frame) an inset, its gold label in small
+-- grey text; anything that is not a frame is skipped.
+local function skinJournalCount(count)
+  if type(count) ~= "table" then return end
+  GW.InsetPanel(count)
+  GW.SkinText(count.Label, "small", "text2")
+end
+
+-- One journal page: its wells and leather grid as insets, its count plates and collected-count bar, search box,
+-- dropdowns, action button and page arrows in the theme.
+local function skinJournal(page)
+  if type(page) ~= "table" then return end
+  GW.EachKey(page, GW.JOURNAL_INSETS, GW.InsetPanel)
+  GW.EachKey(page, GW.JOURNAL_COUNTS, skinJournalCount)
+  GW.SkinProgress(page.progressBar)
+  GW.EachKey(page, GW.JOURNAL_SEARCH, GW.SkinSearch)
+  GW.EachKey(page, GW.JOURNAL_DROPDOWNS, GW.SkinDropdown)
+  GW.EachKey(page, GW.JOURNAL_BUTTONS, GW.SkinButton)
+  GW.SkinPaging(page.PagingFrame)
+end
+
+-- The mount, pet, toy and heirloom journals, each skipped when this client does not show it. The list rows of the
+-- mount and pet journals stay as the game draws them.
+function GW.DressJournals()
+  for _, name in ipairs(GW.JOURNAL_PAGES) do skinJournal(_G[name]) end
+end
+
 -- Readable text ------------------------------------------------------------------------------
 
 -- Colors each named font string this client has with a theme color.

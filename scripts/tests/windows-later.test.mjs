@@ -400,3 +400,67 @@ it("R2.17 the guild bank: the windows group off leaves it the game's; a bare or 
   odd.eval("GuildBankFrame:Show()");
   expect(odd.eval("return #ns.errors"), "odd parts are skipped").toBe(0);
 });
+
+// TEST-ONLY collections journals (Camelot over Classic Blizzard_MountCollection.xml, PetCollection, ToyBox,
+// HeirloomCollection, CollectionTemplates): the window and its four pages with the parts each has.
+const JOURNAL_ENV = `${READERS_ENV}
+  local f = __window("CollectionsJournal")
+  local function bar(parent) local b = CreateFrame("StatusBar", nil, parent) b.border = __art(b) b:SetStatusBarTexture("TEST-ONLY-ART") return b end
+  local function count(parent) local c = __well(nil, parent) c.Label, c.Count = __text(c, "Mounts"), __text(c, "12") return c end
+  local mount = CreateFrame("Frame", "MountJournal", f)
+  mount.LeftInset, mount.RightInset, mount.BottomLeftInset = __well(nil, mount), __well(nil, mount), __well(nil, mount)
+  mount.searchBox, mount.FilterDropdown, mount.MountButton, mount.MountCount = __mkbox(mount), __mkbutton(mount, "Arrow"), __mkbutton(mount), count(mount)
+  local pet = CreateFrame("Frame", "PetJournal", f)
+  pet.LeftInset, pet.RightInset, pet.searchBox = __well(nil, pet), __well(nil, pet), __mkbox(pet)
+  pet.FilterDropdown, pet.SummonButton, pet.PetCount = __mkbutton(pet, "Arrow"), __mkbutton(pet), count(pet)
+  local toys = CreateFrame("Frame", "ToyBox", f)
+  toys.progressBar, toys.searchBox, toys.FilterDropdown, toys.iconsFrame = bar(toys), __mkbox(toys), __mkbutton(toys, "Arrow"), __well(nil, toys)
+  toys.PagingFrame, toys.ProgressTracker = __mkpaging(toys), count(toys)
+  local heirlooms = CreateFrame("Frame", "HeirloomsJournal", f)
+  heirlooms.progressBar, heirlooms.SearchBox, heirlooms.FilterDropdown = bar(heirlooms), __mkbox(heirlooms), __mkbutton(heirlooms, "Arrow")
+  heirlooms.ClassDropdown, heirlooms.iconsFrame, heirlooms.PagingFrame = __mkbutton(heirlooms, "Arrow"), __well(nil, heirlooms), __mkpaging(heirlooms)
+  -- TEST-ONLY reader of the journals (see journalState).
+  function __journalState()
+    local function well(w) return __faded(w) and w.NineSlice.__alpha == 0 and __sunk(w) end
+    local function plate(c) return well(c) and __lit(c.Label, "small", "text2") end
+    local function track(b) return b.border.__alpha == 0 and __sunk(b) and b:GetStatusBarTexture().__alpha ~= 0 end
+    local function drop(d) return __button(d) and d.Arrow.__alpha == 1 end
+    return { mount = well(mount.LeftInset) and well(mount.RightInset) and well(mount.BottomLeftInset), pet = well(pet.LeftInset) and well(pet.RightInset),
+      counts = plate(mount.MountCount) and plate(pet.PetCount) and plate(toys.ProgressTracker), bars = track(toys.progressBar) and track(heirlooms.progressBar),
+      search = __box(mount.searchBox) and __box(pet.searchBox) and __box(toys.searchBox) and __box(heirlooms.SearchBox),
+      dropdowns = drop(mount.FilterDropdown) and drop(pet.FilterDropdown) and drop(toys.FilterDropdown) and drop(heirlooms.FilterDropdown) and drop(heirlooms.ClassDropdown),
+      buttons = __button(mount.MountButton) and __button(pet.SummonButton), grids = well(toys.iconsFrame) and well(heirlooms.iconsFrame),
+      paging = __arrow(toys.PagingFrame.PrevPageButton) and __arrow(heirlooms.PagingFrame.NextPageButton) and __lit(toys.PagingFrame.PageText, "small", "text2"),
+      painted = ns.Theme.PaintedCount(), errors = #ns.errors }
+  end
+`;
+// The journals' parts as the skin leaves them (see __journalState).
+const journalState = (addon) => addon.eval("return __journalState()");
+it("R2.18 the collections journals: wells and grids as insets, counts, bars, search boxes, dropdowns, buttons and arrows themed", () => {
+  const addon = loggedIn(JOURNAL_ENV);
+  addon.fire("ADDON_LOADED", "Blizzard_Collections");
+  addon.eval("CollectionsJournal:Show()");
+  const first = journalState(addon);
+  expect(first, "the mount and pet wells and the toy and heirloom grids sunk, three count plates, two collected-count bars").toMatchObject({
+    mount: true, pet: true, grids: true, counts: true, bars: true, errors: 0,
+  });
+  expect(first, "the four search boxes, five dropdowns with arrows, the Mount and Summon buttons, the paging arrows and count").toMatchObject({
+    search: true, dropdowns: true, buttons: true, paging: true,
+  });
+  addon.eval("CollectionsJournal:Hide() CollectionsJournal:Show()");
+  expect(journalState(addon).painted, "a second show paints nothing new").toBe(first.painted);
+});
+it("R2.18 the collections journals: the tabs switch off leaves them the game's; absent or odd pages load cleanly", () => {
+  const off = loggedIn(JOURNAL_ENV, { savedVariables: "VanguardDB.profiles = { Default = { Windows = { tabs = false } } }" });
+  off.fire("ADDON_LOADED", "Blizzard_Collections");
+  off.eval("CollectionsJournal:Show()");
+  expect(journalState(off), "nothing faded or painted").toMatchObject({ mount: false, grids: false, search: false, buttons: false });
+  const none = loggedIn(`${WINDOWS_ENV}__window("CollectionsJournal")`);
+  none.fire("ADDON_LOADED", "Blizzard_Collections");
+  none.eval("CollectionsJournal:Show()");
+  const odd = loggedIn(`${JOURNAL_ENV} MountJournal.LeftInset = 1 PetJournal.PetCount = 1 ToyBox.progressBar = {} ToyBox.PagingFrame = 1 HeirloomsJournal.iconsFrame = {} PetJournal.searchBox = {}
+    HeirloomsJournal.ClassDropdown = {} MountJournal.MountCount = { Label = 1 } ToyBox = 5`);
+  odd.fire("ADDON_LOADED", "Blizzard_Collections");
+  odd.eval("CollectionsJournal:Show()");
+  expect([none, odd].map((a) => a.eval("return #ns.errors")), "none of them reports an error").toEqual([0, 0]);
+});

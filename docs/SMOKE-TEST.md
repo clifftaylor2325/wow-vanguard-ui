@@ -902,6 +902,12 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 - Expect: no red marble, slot-grid art or gold-edged plate: the columns are flat dark panels with square item slots and a thin border in each item's quality colour; the money lines and the withdrawal limit are in the theme font and the plate behind them is flat; Deposit and Withdraw are flat buttons; the search box is a flat dark box with its magnifier and dims tabs that do not match; the log and the tab info text sit on flat dark panels; the tab name is light heading text and the limit and cost labels small grey text. The guild emblem beside the portrait looks as the game draws it.
 - If it fails, paste: a screenshot of the bank on the first tab and on the Log tab, and `/vg errors`.
 
+### 14.14.11 Collections journals
+
+- Do: open the collections window (Shift+P) and visit each tab the window shows (mounts, pets, toys, heirlooms, appearances); type in each search box, open each filter dropdown, turn the pages of the toy box, heirlooms and appearances; select a mount or pet and look at the Mount or Summon button.
+- Expect: no bronze frames round the lists and displays and no leather backdrop behind the toy and heirloom icons: they sit on flat dark panels; the "collected" count plates and bars are flat (the bar's fill keeps its green); search boxes and dropdowns are flat with their magnifier and arrows; Mount and Summon are flat buttons; the page arrows are flat tiles with the theme's arrows and the page count is small grey text. The mount and pet list rows look as the game draws them. [Needs in game: which of these tabs Forever shows.]
+- If it fails, paste: a screenshot of each tab that looks wrong, and `/vg errors`.
+
 ## 15. Talent planner
 
 ### 15.1 Bar and plan mode

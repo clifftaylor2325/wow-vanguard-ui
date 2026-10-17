@@ -755,13 +755,11 @@ local function dressWardrobeControls(wardrobe)
   GW.SkinDropdown(wardrobe.ClassDropdown)
 end
 
--- The item grid's weapon dropdown and its page arrows (pictures on buttons), kept as pictures on flat buttons.
+-- The item grid's weapon dropdown and its page arrows and count.
 local function dressItemsControls(items)
   if type(items) ~= "table" then return end
   GW.SkinDropdown(items.WeaponDropdown)
-  if type(items.PagingFrame) ~= "table" then return end
-  GW.SkinGlyph(items.PagingFrame.PrevPageButton)
-  GW.SkinGlyph(items.PagingFrame.NextPageButton)
+  GW.SkinPaging(items.PagingFrame)
 end
 
 -- A sets list row (WardrobeSetsScrollFrameButtonTemplate): its plate faded and no fill of its own (the game's hover and
@@ -778,9 +776,11 @@ local function dressSetsControls(sets)
   if type(sets.ListContainer) == "table" then GW.WatchRows(sets.ListContainer.ScrollBox, skinSetsRow) end
 end
 
--- Dresses the inside of the collections window: the appearances tab's backdrops, tabs, search box, dropdowns, page
--- arrows and sets list, and the grid's empty note. Safe to run again.
+-- Dresses the inside of the collections window: the mount, pet, toy and heirloom journals (GW.DressJournals), and the
+-- appearances tab's backdrops, tabs, search box, dropdowns, page arrows and sets list, and the grid's empty note. Safe
+-- to run again.
 function GW.DressCollections()
+  GW.DressJournals()
   local wardrobe = _G.WardrobeCollectionFrame
   if type(wardrobe) ~= "table" then return end
   for _, path in ipairs(GW.WARDROBE_BACKDROPS) do skinBackdrop(walk(wardrobe, path)) end
