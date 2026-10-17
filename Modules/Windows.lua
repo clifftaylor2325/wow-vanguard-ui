@@ -1111,6 +1111,61 @@ GW.INSIDES.FlightMapFrame = function(frame)
   GW.Skin(border)
 end
 
+-- The guild bank -------------------------------------------------------------------------------------
+
+-- How many columns of slots the bank has (Column1 ... 7) and how many item buttons each holds (Button1 ... 14).
+GW.BANK_COLUMNS = 7
+GW.BANK_SLOTS = 14
+-- The bank's push buttons by key (the purchase and save buttons sit inside BuyInfo and Info).
+GW.BANK_BUTTONS = { "DepositButton", "WithdrawButton" }
+-- The gold labels the bank keeps as globals: your withdrawal limit for money, and what a new tab costs.
+GW.BANK_LABELS = { "GuildBankMoneyLimitLabel", "GuildBankFrameTabCost" }
+
+-- One column of slots: its slot-grid art faded for an inset, each item button in the bags' item look.
+local function skinBankColumn(column)
+  if type(column) ~= "table" then return end
+  GW.InsetPanel(column)
+  for i = 1, GW.BANK_SLOTS do GW.SkinItem(column["Button" .. i]) end
+end
+
+-- The three money lines (the bank's balance, your withdrawal allowance, the cost of a new tab) in the theme font,
+-- the gold-edged plate behind them an inset.
+local function skinBankMoney(frame)
+  GW.SkinMoney(frame.MoneyFrame)
+  GW.SkinMoney(frame.WithdrawMoneyFrame)
+  GW.SkinMoney(_G.GuildBankFrameTabCostMoneyFrame)
+  GW.InsetPanel(frame.MoneyFrameBG)
+end
+
+-- The deposit, withdraw, purchase and save buttons, the item search box, and the tab info and log areas as insets
+-- (the log's message frame, not the 10 unit frame that holds it).
+local function skinBankControls(frame)
+  GW.EachKey(frame, GW.BANK_BUTTONS, GW.SkinButton)
+  GW.SkinButton(GW.Part(frame, "BuyInfo.PurchaseButton"))
+  GW.SkinButton(GW.Part(frame, "Info.SaveButton"))
+  GW.SkinSearch(_G.GuildItemSearchBox)
+  GW.InsetPanel(GW.Part(frame, "Info.ScrollFrame"))
+  GW.InsetPanel(GW.Part(frame, "Log.MessageFrame"))
+end
+
+-- The tab's name over the grid (its plate faded with the window's art) in heading text, the limit labels in small
+-- grey text and the notice for a bank without tabs in the text colour.
+local function skinBankTexts(frame)
+  GW.SkinText(frame.TabTitle, "heading", "text")
+  GW.SkinText(frame.LimitLabel, "small", "text2")
+  GW.SkinText(frame.ErrorMessage, "label", "text")
+  GW.TextNamed(GW.BANK_LABELS, "small", "text2")
+end
+
+-- The guild bank's inside: seven columns of slots, the money lines, the controls and the texts. The side tabs are
+-- dressed in Modules/WindowsTabs.lua, the portrait stays (GW.CONTENT_ART).
+GW.INSIDES.GuildBankFrame = function(frame)
+  for i = 1, GW.BANK_COLUMNS do skinBankColumn(frame["Column" .. i]) end
+  skinBankMoney(frame)
+  skinBankControls(frame)
+  skinBankTexts(frame)
+end
+
 -- Readable text ------------------------------------------------------------------------------
 
 -- Colors each named font string this client has with a theme color.

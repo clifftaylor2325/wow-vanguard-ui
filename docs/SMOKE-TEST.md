@@ -896,6 +896,12 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 - Expect: the model sits on a flat dark panel with no bronze corners or painted backdrop; the gear slots are squares with a thin border in the item's quality colour and no bronze slot frames; the View button is flat; the level line is light text and the title and guild lines (when shown) small grey text. The flight map has no bronze frame, portrait or dark underlay: a thin edge round the map, a themed title and a close button at the top right that works. [Needs in game: the close button's place on the flight map, and that the map stays fully visible.]
 - If it fails, paste: a screenshot of the inspect window and of the flight map, and `/vg errors`.
 
+### 14.14.10 Guild bank
+
+- Do: open the guild bank at its vault; look at the slots, the money line at the foot, the tab name over the grid; type in the item search box; open the Log, Money Log and Tab Info tabs (the last one as an officer if you can); if a tab can be bought, look at the purchase line.
+- Expect: no red marble, slot-grid art or gold-edged plate: the columns are flat dark panels with square item slots and a thin border in each item's quality colour; the money lines and the withdrawal limit are in the theme font and the plate behind them is flat; Deposit and Withdraw are flat buttons; the search box is a flat dark box with its magnifier and dims tabs that do not match; the log and the tab info text sit on flat dark panels; the tab name is light heading text and the limit and cost labels small grey text. The guild emblem beside the portrait looks as the game draws it.
+- If it fails, paste: a screenshot of the bank on the first tab and on the Log tab, and `/vg errors`.
+
 ## 15. Talent planner
 
 ### 15.1 Bar and plan mode

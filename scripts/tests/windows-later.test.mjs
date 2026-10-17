@@ -332,3 +332,71 @@ it("R2.16 the flight map: the windows group off leaves it the game's; a map with
   odd.eval("FlightMapFrame:Show()");
   expect([bare, odd].map((a) => a.eval("return #ns.errors")), "none of them reports an error").toEqual([0, 0]);
 });
+
+// TEST-ONLY guild bank (Blizzard_GuildBankUI.xml): the window with its tab title plate and labels, seven columns of
+// fourteen item buttons on a slot-grid texture, the money plate and three money lines, the push buttons, the search
+// box and the info and log areas.
+const BANK_ENV = `${READERS_ENV}
+  local f = __window("GuildBankFrame")
+  f.TabTitle, f.LimitLabel, f.ErrorMessage = __text(f, "Tab 1"), __text(f, "Limit"), __text(f, "No tabs")
+  for c = 1, 7 do
+    local column = __well(nil, f) f["Column" .. c] = column
+    for i = 1, 14 do column["Button" .. i] = __itemButton(nil, column) end
+  end
+  f.MoneyFrameBG = __well(nil, f)
+  f.MoneyFrame, f.WithdrawMoneyFrame = __moneyLine("GuildBankMoneyFrame", f), __moneyLine("GuildBankWithdrawMoneyFrame", f)
+  __moneyLine("GuildBankFrameTabCostMoneyFrame", f)
+  f.DepositButton, f.WithdrawButton = __mkbutton(f), __mkbutton(f)
+  f.BuyInfo = CreateFrame("Frame", nil, f) f.BuyInfo.PurchaseButton = __mkbutton(f.BuyInfo)
+  f.Info = CreateFrame("Frame", nil, f) f.Info.SaveButton, f.Info.ScrollFrame = __mkbutton(f.Info), __well(nil, f.Info)
+  f.Log = CreateFrame("Frame", nil, f) f.Log.MessageFrame = __well(nil, f.Log)
+  GuildItemSearchBox = __mkbox(f)
+  GuildBankMoneyLimitLabel, GuildBankFrameTabCost = __text(f.MoneyFrameBG, "Withdraw"), __text(f.BuyInfo, "Costs")
+  -- TEST-ONLY reader of the guild bank (see bankState).
+  function __bankState()
+    local items, columns = 0, 0
+    for c = 1, 7 do
+      local column = f["Column" .. c]
+      if __faded(column) and __sunk(column) then columns = columns + 1 end
+      for i = 1, 14 do if column["Button" .. i].icon.__texCoord ~= nil then items = items + 1 end end
+    end
+    return { columns = columns, items = items, plate = __faded(f.MoneyFrameBG) and __sunk(f.MoneyFrameBG),
+      money = __themed(f.MoneyFrame.GoldButton.Text) and __themed(f.WithdrawMoneyFrame.CopperButton.Text) and __themed(GuildBankFrameTabCostMoneyFrame.SilverButton.Text),
+      buttons = __button(f.DepositButton) and __button(f.WithdrawButton) and __button(f.BuyInfo.PurchaseButton) and __button(f.Info.SaveButton),
+      search = __box(GuildItemSearchBox), info = __sunk(f.Info.ScrollFrame), log = __sunk(f.Log.MessageFrame) and not __sunk(f.Log),
+      title = __lit(f.TabTitle, "heading", "text"), limit = __lit(f.LimitLabel, "small", "text2"), notice = __lit(f.ErrorMessage, "label", "text"),
+      labels = __lit(GuildBankMoneyLimitLabel, "small", "text2") and __lit(GuildBankFrameTabCost, "small", "text2"),
+      painted = ns.Theme.PaintedCount(), errors = #ns.errors }
+  end
+`;
+// The guild bank's parts as the skin leaves them (see __bankState).
+const bankState = (addon) => addon.eval("return __bankState()");
+it("R2.17 the guild bank: columns faded and inset, ninety-eight slots in the item look, money, controls and texts themed", () => {
+  const addon = loggedIn(BANK_ENV);
+  addon.fire("ADDON_LOADED", "Blizzard_GuildBankUI");
+  addon.eval("GuildBankFrame:Show()");
+  const first = bankState(addon);
+  expect(first, "seven columns on insets, ninety-eight item buttons, the money plate sunk, three money lines, four buttons, the search box").toMatchObject({
+    columns: 7, items: 98, plate: true, money: true, buttons: true, search: true, errors: 0,
+  });
+  expect(first, "the info area and the log's message frame insets, the tab title, the limit labels and the notice in their roles").toMatchObject({
+    info: true, log: true, title: true, limit: true, notice: true, labels: true,
+  });
+  expect(windowState(addon, "GuildBankFrame"), "and the window skin as ever").toMatchObject({ art: 0, panel: true, title: true });
+  addon.eval("GuildBankFrame:Hide() GuildBankFrame:Show()");
+  expect(bankState(addon).painted, "a second show paints nothing new").toBe(first.painted);
+});
+it("R2.17 the guild bank: the windows group off leaves it the game's; a bare or odd window loads cleanly", () => {
+  const off = loggedIn(BANK_ENV, { savedVariables: "VanguardDB.profiles = { Default = { Windows = { windows = false } } }" });
+  off.fire("ADDON_LOADED", "Blizzard_GuildBankUI");
+  off.eval("GuildBankFrame:Show()");
+  expect(bankState(off), "nothing faded or painted").toMatchObject({ columns: 0, items: 0, plate: false, buttons: false });
+  const bare = loggedIn(`${WINDOWS_ENV}__window("GuildBankFrame")`);
+  bare.fire("ADDON_LOADED", "Blizzard_GuildBankUI");
+  bare.eval("GuildBankFrame:Show()");
+  expect([windowState(bare, "GuildBankFrame").panel, bare.eval("return #ns.errors")], "a bare window is skinned, no part missing is an error").toEqual([true, 0]);
+  const odd = loggedIn(`${BANK_ENV} local f = GuildBankFrame f.Column1 = 1 f.Column2.Button1 = 1 f.MoneyFrame = {} f.Info = 1 f.Log = { MessageFrame = 1 } f.BuyInfo = {} GuildItemSearchBox = {} GuildBankFrameTabCostMoneyFrame = 1 f.TabTitle = 1`);
+  odd.fire("ADDON_LOADED", "Blizzard_GuildBankUI");
+  odd.eval("GuildBankFrame:Show()");
+  expect(odd.eval("return #ns.errors"), "odd parts are skipped").toBe(0);
+});
