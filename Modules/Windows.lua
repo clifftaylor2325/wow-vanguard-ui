@@ -1205,6 +1205,145 @@ function GW.DressJournals()
   for _, name in ipairs(GW.JOURNAL_PAGES) do skinJournal(_G[name]) end
 end
 
+-- The achievements window ------------------------------------------------------------------------------
+-- (Forever may send the game's achievements key to the Legacy challenges window instead; this skin is for the window
+-- when the game does show it.)
+
+-- The list areas the game draws as a dark tile inside a gold tooltip border, as globals: the achievements and stats
+-- lists, the summary page and the comparison page.
+GW.ACH_AREAS = { "AchievementFrameAchievements", "AchievementFrameStats", "AchievementFrameSummary", "AchievementFrameComparison" }
+-- The two headers of the summary page (a gold plate and its title), as globals, and how many category bars it has.
+GW.ACH_HEADS = { "AchievementFrameSummaryAchievementsHeader", "AchievementFrameSummaryCategoriesHeader" }
+GW.ACH_BARS = 12
+-- What an achievement card keeps of the art it fades: the expand mark and the tracked mark.
+GW.ACH_KEEP = { "Check", "PlusMinus" }
+
+-- A section head over rows (small grey capitals): the section role in the secondary text colour, the text it has now
+-- in capitals; anything that is not a font string is skipped.
+function GW.SkinSection(fs)
+  if type(fs) ~= "table" or not fs.SetFont then return end
+  T.Text(fs, "section", "text2")
+  local text = fs.GetText and fs:GetText()
+  if type(text) == "string" then T.SetText(fs, text) end
+end
+
+-- A list area: its dark tile, watermark and gold border faded for an inset. The border is a frame of its own over
+-- the area (a child with a NineSlice), found among the area's direct children.
+local function skinAchievementArea(area)
+  if type(area) ~= "table" or not area.GetChildren then return end
+  GW.InsetPanel(area)
+  for _, child in ipairs({ area:GetChildren() }) do GW.FadeFrame(child.NineSlice) end
+end
+
+-- An achievement card (a list row, a comparison card): its parchment, title bar, glow and corners faded with its
+-- gold border; the parts named in keep (and the icon and shield, which are frames) stay.
+local function fadeCard(card, keep)
+  if type(card) ~= "table" or not card.GetRegions then return end
+  T.FadeRegions(card, keep)
+  GW.FadeFrame(card.NineSlice)
+end
+
+-- A card's description in the text colour (the game makes a completed one black for its parchment).
+local function lightDescription(card)
+  local text = card.Description
+  if type(text) == "table" and text.SetTextColor then T.Color(text, "text") end
+end
+
+-- One achievement row: the card faded, the track check box a theme check box, the description light now and after
+-- the game paints it as completed (Saturate).
+local function skinAchievementRow(row)
+  if type(row) ~= "table" or not row.GetRegions then return end
+  fadeCard(row, GW.KeepKeys(row, GW.ACH_KEEP))
+  if type(row.Tracked) == "table" and row.Tracked.GetChecked then T.CheckBox(row.Tracked) end
+  lightDescription(row)
+  GW.HookAfter(row, "Saturate", lightDescription)
+end
+
+-- One category row (a frame holding the Button the player clicks): the button a selectable row whose selected look
+-- follows the game's UpdateSelectionState, its label in the text colour as the game sets it for each category.
+local function skinCategoryRow(row)
+  local button = type(row) == "table" and row.Button
+  if type(button) ~= "table" or not button.CreateTexture then return end
+  T.Row(button, { fade = true })
+  GW.HookAfter(row, "UpdateSelectionState", function(_, selected) T.SelectRow(button, selected and true or false) end)
+  GW.HookAfter(row, "Init", function() GW.SkinText(button.Label, "label", "text") end)
+end
+
+-- One comparison row: the player's card and the friend's.
+local function skinComparisonRow(row)
+  if type(row) ~= "table" then return end
+  fadeCard(row.Player)
+  fadeCard(row.Friend)
+end
+
+-- Every pooled list the window has: the categories, the achievements, the statistics and the comparison's two lists.
+local function watchAchievementRows(frame)
+  GW.WatchRows(GW.Part(frame, "Categories.ScrollBox"), skinCategoryRow)
+  GW.WatchRows(GW.Part(_G, "AchievementFrameAchievements.ScrollBox"), skinAchievementRow)
+  GW.WatchRows(GW.Part(_G, "AchievementFrameStats.ScrollBox"), GW.FadeArt)
+  GW.WatchRows(GW.Part(_G, "AchievementFrameComparison.AchievementContainer.ScrollBox"), skinComparisonRow)
+  GW.WatchRows(GW.Part(_G, "AchievementFrameComparison.StatContainer.ScrollBox"), GW.FadeArt)
+end
+
+-- One of the summary page's headers (a gold plate and its title, by the header's global name): the plate faded, the
+-- title a section head.
+local function skinSummaryHead(name)
+  GW.FadeArt(_G[name])
+  GW.SkinSection(_G[name .. "Title"])
+end
+
+-- The summary page's bars: the completed bar and the twelve category bars flat on dark tracks, and the comparison's
+-- two cards (player and friend) with theirs.
+local function skinSummaryBars()
+  GW.SkinProgress(_G.AchievementFrameSummaryCategoriesStatusBar)
+  for i = 1, GW.ACH_BARS do GW.SkinProgress(_G["AchievementFrameSummaryCategoriesCategory" .. i]) end
+  for _, key in ipairs({ "Player", "Friend" }) do
+    local card = GW.Part(_G, "AchievementFrameComparison.Summary." .. key)
+    fadeCard(card)
+    GW.SkinProgress(card and card.StatusBar)
+  end
+end
+
+-- The search preview under the search box: the game's frame and rows' border faded for a tooltip panel.
+local function skinSearchPreview(box)
+  local list = type(box) == "table" and box.SearchPreviewContainer
+  if type(list) ~= "table" or not list.GetRegions then return end
+  T.FadeRegions(list)
+  T.Tooltip(list)
+end
+
+-- The row under the title: its streaks faded, the Back button, the filter, the search box with its preview and the
+-- progress bar that shows while it searches.
+local function skinAchievementHeader(details)
+  if type(details) ~= "table" or not details.GetRegions then return end
+  T.FadeRegions(details)
+  GW.SkinButton(details.Back)
+  GW.SkinDropdown(GW.Part(details, "Filters.FilterDropdown"))
+  GW.SkinSearch(GW.Part(details, "Filters.SearchBox"))
+  skinSearchPreview(GW.Part(details, "Filters.SearchBox"))
+  GW.SkinProgress(GW.Part(details, "Filters.SearchBox.SearchProgressBar"))
+end
+
+-- The window's header plate (its bronze ends and points border faded, the small shield kept) and its title line.
+local function skinAchievementPlate(header)
+  if type(header) ~= "table" or not header.GetRegions then return end
+  T.FadeRegions(header, GW.KeepKeys(header, { "Shield" }))
+  GW.SkinTitle(header.Title)
+end
+
+-- The achievements window's inside. The full search results are a window of their own (their rows stay the game's).
+GW.INSIDES.AchievementFrame = function(frame)
+  skinAchievementPlate(frame.Header)
+  skinAchievementArea(frame.Categories)
+  eachNamed(GW.ACH_AREAS, skinAchievementArea)
+  GW.FadeArt(_G.AchievementFrameStatsBG)
+  for _, name in ipairs(GW.ACH_HEADS) do skinSummaryHead(name) end
+  skinSummaryBars()
+  skinAchievementHeader(frame.HeaderDetails)
+  watchAchievementRows(frame)
+  if type(frame.SearchResults) == "table" and frame.SearchResults.GetRegions then GW.Skin(frame.SearchResults) end
+end
+
 -- Readable text ------------------------------------------------------------------------------
 
 -- Colors each named font string this client has with a theme color.

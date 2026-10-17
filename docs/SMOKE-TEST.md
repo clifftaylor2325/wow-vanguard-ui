@@ -908,6 +908,12 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 - Expect: no bronze frames round the lists and displays and no leather backdrop behind the toy and heirloom icons: they sit on flat dark panels; the "collected" count plates and bars are flat (the bar's fill keeps its green); search boxes and dropdowns are flat with their magnifier and arrows; Mount and Summon are flat buttons; the page arrows are flat tiles with the theme's arrows and the page count is small grey text. The mount and pet list rows look as the game draws them. [Needs in game: which of these tabs Forever shows.]
 - If it fails, paste: a screenshot of each tab that looks wrong, and `/vg errors`.
 
+### 14.14.12 Achievements
+
+- Do: open the achievements window (Y). [Needs in game: Forever may open the Legacy window instead; if so, this step only checks that nothing broke, and the window below never shows.] If it opens: click through the categories, the Guild and Statistics tabs, open an achievement card and tick Track, use the search box (a preview list drops down), press Enter for the full results, and compare with a player if you can.
+- Expect: no bronze header plate, wooden frame or parchment: the category list, the achievements, the statistics, the summary and the comparison each sit on a flat dark panel with no gold border; an achievement card has no parchment or border (its icon, shield and the +/- mark stay) and its description is light even when completed (if completed descriptions or criteria text are black, paste a screenshot); the category you pick shows the selected look; Track is a flat check box; Back, the filter and the search box are flat; the search preview is a small dark panel; the summary's two headings are small grey capitals over flat bars; the full results are a framed panel with a themed title and a close button.
+- If it fails, paste: a screenshot of the tab that looks wrong, and `/vg errors`.
+
 ## 15. Talent planner
 
 ### 15.1 Bar and plan mode

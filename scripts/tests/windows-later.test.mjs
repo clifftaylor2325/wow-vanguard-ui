@@ -464,3 +464,145 @@ it("R2.18 the collections journals: the tabs switch off leaves them the game's; 
   odd.eval("CollectionsJournal:Show()");
   expect([none, odd].map((a) => a.eval("return #ns.errors")), "none of them reports an error").toEqual([0, 0]);
 });
+
+// TEST-ONLY achievements window (Mainline Blizzard_AchievementUI.xml, which Camelot loads): the window with its
+// header plate, categories, header row (back, filter, search box with its preview and progress bar), the four list
+// areas (each with a gold border child), summary headers and bars, comparison cards, the search results window and
+// pooled rows (category, achievement, statistic, comparison).
+const ACHIEVEMENT_ENV = `${READERS_ENV}
+  local f = __window("AchievementFrame")
+  local function border(parent) local b = CreateFrame("Frame", nil, parent) b.NineSlice = CreateFrame("Frame", nil, b) b.NineSlice:CreateTexture() return b end
+  local function bar(parent) local b = CreateFrame("StatusBar", nil, parent) b.Left = __art(b) b:SetStatusBarTexture("TEST-ONLY-ART") return b end
+  local function area(name, scroll)
+    local a = __well(name, f) a.border = border(a) if scroll then a.ScrollBox = __list(a) end
+    return a
+  end
+  f.Header = CreateFrame("Frame", nil, f) f.Header.Left, f.Header.Shield, f.Header.Title = __art(f.Header), __art(f.Header), __text(f.Header, "Achievement Points")
+  f.Categories = area(nil, true)
+  local d = CreateFrame("Frame", nil, f) f.HeaderDetails = d __art(d)
+  d.Back, d.Filters = __mkbutton(d), CreateFrame("Frame", nil, d)
+  d.Filters.FilterDropdown, d.Filters.SearchBox = __mkbutton(d.Filters, "Arrow"), __mkbox(d.Filters)
+  local list = CreateFrame("Frame", nil, d.Filters.SearchBox) d.Filters.SearchBox.SearchPreviewContainer = list __art(list)
+  d.Filters.SearchBox.SearchProgressBar = bar(d.Filters.SearchBox)
+  area("AchievementFrameAchievements", true) area("AchievementFrameStats", true) __art(CreateFrame("Frame", "AchievementFrameStatsBG", f))
+  area("AchievementFrameSummary") area("AchievementFrameComparison")
+  for _, name in ipairs(ns.GetModule("Windows").ACH_HEADS) do
+    local head = CreateFrame("Frame", name, f) __art(head) _G[name .. "Title"] = __text(head, "Latest Unlocked")
+  end
+  AchievementFrameSummaryCategoriesStatusBar = bar(f)
+  for i = 1, 12 do _G["AchievementFrameSummaryCategoriesCategory" .. i] = bar(f) end
+  local c = AchievementFrameComparison
+  c.Summary = CreateFrame("Frame", nil, c) c.Summary.Player, c.Summary.Friend = border(c.Summary), border(c.Summary)
+  c.Summary.Player.StatusBar, c.Summary.Friend.StatusBar = bar(c.Summary.Player), bar(c.Summary.Friend)
+  c.AchievementContainer, c.StatContainer = CreateFrame("Frame", nil, c), CreateFrame("Frame", nil, c)
+  c.AchievementContainer.ScrollBox, c.StatContainer.ScrollBox = __list(c.AchievementContainer), __list(c.StatContainer)
+  local sr = CreateFrame("Frame", nil, f) f.SearchResults = sr __art(sr)
+  sr.TitleText, sr.CloseButton = __text(sr, "Results"), CreateFrame("Button", nil, sr)
+  -- Rows as the game acquires them.
+  function __categoryRow(box)
+    local row = CreateFrame("Frame", nil, box) row.Button = CreateFrame("Button", nil, row) row.Button.Background, row.Button.Label = __art(row.Button), __text(row.Button, "Quests")
+    function row:UpdateSelectionState() end function row:Init() end
+    return box:Acquire(row)
+  end
+  function __cardRow(box)
+    local row = CreateFrame("Button", nil, box) row.Background, row.Check, row.PlusMinus = __art(row), __art(row), __art(row)
+    row.NineSlice, row.Description = border(row).NineSlice, __text(row, "Kill things") row.NineSlice:SetParent(row)
+    row.Tracked = CreateFrame("CheckButton", nil, row) row.Tracked.Art = __art(row.Tracked)
+    function row:Saturate() self.Description:SetTextColor(0, 0, 0, 1) end
+    return box:Acquire(row)
+  end
+  function __pairRow(box) local row = CreateFrame("Frame", nil, box) row.Player, row.Friend = __well(nil, row), __well(nil, row) return box:Acquire(row) end
+  function __flatRow(box) local row = CreateFrame("Button", nil, box) __art(row) return box:Acquire(row) end
+  -- TEST-ONLY reader of the achievements window (see achievementState).
+  function __achievementState()
+    local function tile(a) return __faded(a) and __sunk(a) end
+    local function edge(a) for _, child in ipairs({ a:GetChildren() }) do if child.NineSlice and child.NineSlice:GetAlpha() ~= 0 then return false end end return true end
+    local function track(b) return b.Left.__alpha == 0 and __sunk(b) end
+    local function panelled(p) for _, r in ipairs({ p:GetRegions() }) do if r.__texture ~= "TEST-ONLY-ART" and r.__alpha ~= 0 then return true end end return false end
+    local areas = 0
+    for _, a in ipairs({ f.Categories, AchievementFrameAchievements, AchievementFrameStats, AchievementFrameSummary, AchievementFrameComparison }) do
+      if tile(a) and a.NineSlice.__alpha == 0 and edge(a) then areas = areas + 1 end
+    end
+    local heads = __faded(AchievementFrameSummaryAchievementsHeader) and __lit(AchievementFrameSummaryAchievementsHeaderTitle, "section", "text2")
+      and AchievementFrameSummaryCategoriesHeaderTitle:GetText() == "LATEST UNLOCKED"
+    local bars, cats = track(AchievementFrameSummaryCategoriesStatusBar), 0
+    for i = 1, 12 do if track(_G["AchievementFrameSummaryCategoriesCategory" .. i]) then cats = cats + 1 end end
+    local details, box = f.HeaderDetails, f.HeaderDetails.Filters.SearchBox
+    return { plate = __faded(f.Header, f.Header.Shield) and f.Header.Shield.__alpha ~= 0 and __titled(f.Header.Title), areas = areas, heads = heads,
+      bars = bars and cats == 12 and track(c.Summary.Player.StatusBar) and track(c.Summary.Friend.StatusBar), cards = c.Summary.Player.NineSlice:GetAlpha() == 0,
+      streaks = __faded(details), back = __button(details.Back), filter = __button(details.Filters.FilterDropdown) and details.Filters.FilterDropdown.Arrow.__alpha == 1,
+      search = __box(box), preview = __faded(box.SearchPreviewContainer) and panelled(box.SearchPreviewContainer), progress = track(box.SearchProgressBar),
+      stats = __faded(AchievementFrameStatsBG), results = __faded(f.SearchResults) and panelled(f.SearchResults) and __titled(f.SearchResults.TitleText) and __plate(f.SearchResults.CloseButton),
+      painted = ns.Theme.PaintedCount(), errors = #ns.errors }
+  end
+  -- TEST-ONLY reader of a pooled row (see rowState).
+  function __achievementRow(row)
+    local tracked = ns.Theme.CheckParts(row.Tracked) ~= nil and row.Tracked.Art.__alpha == 0
+    return { card = row.Background.__alpha == 0 and row.NineSlice:GetAlpha() == 0, marks = row.Check.__alpha ~= 0 and row.PlusMinus.__alpha ~= 0, tracked = tracked,
+      light = row.Description.__textColor[1] == (ns.Theme.RGB("text")) }
+  end
+`;
+// A pooled row's parts as the skin leaves them (see __achievementRow).
+const rowState = (addon, row) => addon.eval(`return __achievementRow(${row})`);
+it("R2.19 the achievements window: plate, areas, header row, summary and the search results window in the theme", () => {
+  const addon = loggedIn(ACHIEVEMENT_ENV);
+  addon.fire("ADDON_LOADED", "Blizzard_AchievementUI");
+  addon.eval("AchievementFrame:Show()");
+  // The achievements window's parts as the skin leaves them.
+  const read = () => addon.eval("return __achievementState()");
+  const first = read();
+  expect(first, "the plate faded with its shield kept and its title in the heading role; five areas on insets with their gold borders faded").toMatchObject({
+    plate: true, areas: 5, stats: true, errors: 0,
+  });
+  expect(first, "the summary's headers as section heads, its thirteen bars and the comparison's two as flat tracks, the comparison cards without borders").toMatchObject({
+    heads: true, bars: true, cards: true,
+  });
+  expect(first, "the header row: streaks, back, filter, the search box with its preview as a panel and its progress bar; the results window").toMatchObject({
+    streaks: true, back: true, filter: true, search: true, preview: true, progress: true, results: true,
+  });
+  expect(windowState(addon, "AchievementFrame"), "and the window skin as ever").toMatchObject({ art: 0, panel: true, title: true });
+  addon.eval("AchievementFrame:Hide() AchievementFrame:Show()");
+  expect(read().painted, "a second show paints nothing new").toBe(first.painted);
+});
+it("R2.19 the achievements window: pooled rows are dressed as the lists make them, categories are selectable rows", () => {
+  const addon = loggedIn(ACHIEVEMENT_ENV + `
+    __early = __cardRow(AchievementFrameAchievements.ScrollBox) __flatRow(AchievementFrameStats.ScrollBox)`);
+  addon.fire("ADDON_LOADED", "Blizzard_AchievementUI");
+  addon.eval("AchievementFrame:Show()");
+  expect(rowState(addon, "__early"), "an achievement row that was there: card faded, expand and tracked marks kept, track box a theme box, text light").toMatchObject({
+    card: true, marks: true, tracked: true, light: true,
+  });
+  addon.eval(`__late = __cardRow(AchievementFrameAchievements.ScrollBox) __late:Saturate()`);
+  expect(rowState(addon, "__late"), "a row acquired later, and the black the game gives a completed description made light again").toMatchObject({ card: true, marks: true, tracked: true, light: true });
+  addon.eval(`__stat = __flatRow(AchievementFrameStats.ScrollBox) __stat2 = __flatRow(AchievementFrameComparison.StatContainer.ScrollBox) __pair = __pairRow(AchievementFrameComparison.AchievementContainer.ScrollBox)`);
+  expect(addon.eval("return { __faded(__stat), __faded(__stat2), __faded(__pair.Player) and __pair.Player.NineSlice.__alpha == 0, #ns.errors }"), "statistic rows and comparison rows lose their plates").toEqual([true, true, true, 0]);
+  addon.eval("__cat = __categoryRow(AchievementFrame.Categories.ScrollBox) __cat:Init()");
+  // The category row's theme parts, whether its selected fill and rail show, and its label.
+  const lit = () => addon.eval("local p = ns.Theme.RowParts(__cat.Button) return { p ~= nil, p.fill:IsShown(), p.rail:IsShown(), __lit(__cat.Button.Label, 'label', 'text') }");
+  expect(lit(), "a category row: a theme row, not selected, its label in the text colour").toEqual([true, false, false, true]);
+  addon.eval("__cat:UpdateSelectionState(true)");
+  expect(lit().slice(1, 3), "the game selects it: the one selected look").toEqual([true, true]);
+  addon.eval("__cat:UpdateSelectionState(nil)");
+  expect(lit().slice(1, 3), "and deselects it").toEqual([false, false]);
+  expect(addon.eval("return #ns.errors"), "no errors").toBe(0);
+});
+it("R2.19 the achievements window: the windows group off leaves it the game's; a bare or odd window loads cleanly", () => {
+  const off = loggedIn(ACHIEVEMENT_ENV, { savedVariables: "VanguardDB.profiles = { Default = { Windows = { windows = false } } }" });
+  off.fire("ADDON_LOADED", "Blizzard_AchievementUI");
+  off.eval("AchievementFrame:Show()");
+  expect(off.eval("return __achievementState()"), "nothing faded or painted").toMatchObject({ plate: false, areas: 0, back: false, results: false });
+  const bare = loggedIn(`${WINDOWS_ENV}__window("AchievementFrame")`);
+  bare.fire("ADDON_LOADED", "Blizzard_AchievementUI");
+  bare.eval("AchievementFrame:Show()");
+  expect([windowState(bare, "AchievementFrame").panel, bare.eval("return #ns.errors")], "a bare window is skinned, no part missing is an error").toEqual([true, 0]);
+  const odd = loggedIn(`${ACHIEVEMENT_ENV} local f = AchievementFrame f.Header = 1 f.Categories = {} f.HeaderDetails = { Filters = 1 } f.SearchResults = 1 AchievementFrameStats = 1
+    AchievementFrameSummaryAchievementsHeader = 1 AchievementFrameSummaryCategoriesStatusBar = 1 AchievementFrameComparison.Summary = 1 AchievementFrameAchievements.ScrollBox = {}`);
+  odd.fire("ADDON_LOADED", "Blizzard_AchievementUI");
+  odd.eval("AchievementFrame:Show()");
+  const oddRows = loggedIn(ACHIEVEMENT_ENV + `
+    local box = AchievementFrameAchievements.ScrollBox box:Acquire(1) box:Acquire({}) AchievementFrame.Categories.ScrollBox:Acquire({ Button = 1 }) AchievementFrameComparison.AchievementContainer.ScrollBox:Acquire(1)
+    local plain = CreateFrame("Button", nil, box) plain.Tracked = {} box:Acquire(plain) AchievementFrame.Header.Title = 1 AchievementFrameSummaryCategoriesHeaderTitle = {}`);
+  oddRows.fire("ADDON_LOADED", "Blizzard_AchievementUI");
+  oddRows.eval("AchievementFrame:Show()");
+  expect([odd, oddRows].map((a) => a.eval("return #ns.errors")), "odd parts are skipped").toEqual([0, 0]);
+});
