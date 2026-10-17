@@ -239,14 +239,14 @@ Plans:
 ### Phase 8.3: One material per window (INSERTED)
 
 **Goal**: Inside the inbox, the spellbook and talent pages and the character pane, every inner surface is `inset`, `raised` or `panel`, and the material tier table the coverage batches paint to is written down.
-**Owner**: the UI/UX design research thread (`work/one-material`)
-**Depends on**: nothing to start (no shared helper file); the merchant rows after the coverage thread's batch 1 merges (it builds them; this phase puts the material on top). The tier table must be on `main` before coverage batch 2 starts.
+**Owner**: the Game interface coverage audit thread, inside its batch 2 (`work/reskin-coverage-2`); moved from the design thread's `work/one-material` on 2026-10-17 so one thread edits the `Modules/Windows*.lua` files. The design thread wrote the tier table.
+**Depends on**: the coverage thread's batch 1 merged (this phase is part of batch 2); the tier table on `main` in any of its copies (`docs/design/UI-COHERENCE.md` §2.3, `docs/design/DESIGN-PRINCIPLES.md` §1.6 or `docs/THEME.md` from the check-box PR) before the painting starts.
 **Requirements**: UI-11
 **Success Criteria** (what must be TRUE):
-  1. `docs/THEME.md` carries the material tier table (`docs/design/UI-COHERENCE.md` §2.3) and the nesting rule, and the coverage thread's batch 2 reads its tiers from it.
+  1. `docs/THEME.md` carries the material tier table (`docs/design/UI-COHERENCE.md` §2.3) and the nesting rule, written by the design thread in the check-box PR, and batch 2 paints to it rather than inventing tiers.
   2. The inbox rows and parchment (`MailFrame`, `InboxFrame`), `PlayerSpellsFrame`'s page and tree art and the character pane's leftover stats art are faded by alpha and painted to the table; portraits, icons and the talent tree's spell icons stay.
   3. A test opens each of the three windows and finds the game's art at alpha 0 with the tier panel behind, and no error with the matching `Windows` group off.
-**Files**: `Modules/WindowsSocial.lua` (mail), `Modules/WindowsTabs.lua` (spellbook and talents, character pane), `Modules/WindowsTown.lua` (merchant material, after batch 1), `docs/THEME.md`, `scripts/tests/windows-social.test.mjs`, `scripts/tests/windows-tabs.test.mjs`, `scripts/tests/windows-town.test.mjs`.
+**Files**: `Modules/WindowsSocial.lua` (mail), `Modules/WindowsTabs.lua` (spellbook and talents, character pane), `Modules/WindowsTown.lua` (merchant material; batch 1 builds the rows), `docs/THEME.md` (the tier table, from the check-box PR), `scripts/tests/windows-social.test.mjs`, `scripts/tests/windows-tabs.test.mjs`, `scripts/tests/windows-town.test.mjs`.
 **Size**: M.
 **Waits on [DECIDE]**: none.
 **Needs in-game check**: the inbox with mail in it, the spellbook and the talent tree, the character pane's stats, each in two variants.
@@ -451,7 +451,7 @@ Plans:
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 9 → 10 → 11 → 12. Phases 9-11 are cut first if time runs short; Phase 12 runs regardless. The inserted UI coherence phases (8.1 to 8.11) follow the gates in `docs/design/UI-COHERENCE.md` §4.2 rather than the numeric order: 8.2 and 8.3 may start now and merge after G0 (the consistency PR on `main`; PR #393 merged 2026-10-17); 8.1, 8.5 and 8.6 start at G0; 8.4 after 8.1; 8.7, 8.8, 8.9 and 8.10 after 8.4; 8.11 last. Phases 8.1 to 8.8 merge before the 2026-10-28 freeze; 8.9 and 8.10 are cut first.
+Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 9 → 10 → 11 → 12. Phases 9-11 are cut first if time runs short; Phase 12 runs regardless. The inserted UI coherence phases (8.1 to 8.11) follow the gates in `docs/design/UI-COHERENCE.md` §4.2 rather than the numeric order: 8.2 may start now and merges after G0 (the consistency PR on `main`; PR #393 merged 2026-10-17); 8.3 rides the coverage thread's batch 2 after its batch 1 merges; 8.1, 8.5 and 8.6 start at G0; 8.4 after 8.1; 8.7, 8.8, 8.9 and 8.10 after 8.4; 8.11 last. Phases 8.1 to 8.8 merge before the 2026-10-28 freeze; 8.9 and 8.10 are cut first.
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
