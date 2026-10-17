@@ -58,6 +58,7 @@ Every `/vg` command (`/vanguard` works too), grouped by what it does. `/vg help`
 | Command | What it does |
 | --- | --- |
 | `/vg quests`, `/vg way`, `/vg questdata` | Quest log, waypoints, what the client says about a quest |
+| `/vg guide probe` | What this client returns for the reads a levelling guide would use (chat only) |
 | `/vg ah ...` | Auction prices, shopping lists, scans |
 | `/vg weights [wizard\|...]` | Stat weights for gear upgrades |
 | `/vg craft ...`, `/vg mail ...` | Craft queue; mail tools (off until switched on) |

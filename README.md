@@ -164,6 +164,7 @@ Download `Vanguard-<version>.zip` from the [latest release](https://github.com/c
 /vg quests                      open or close Vanguard's quest log
 /vg lfg [probe]                 open or close the group board: looking-for-more and looking-for-group posts from chat; `probe` says what chat it has heard and which channels you are in
 /vg questdata [questID]         what the client says about a quest (or the quests an open NPC offers and those you track), and whether it flags quests new in WoW Forever
+/vg guide probe                 what this client returns for the quest, map, taxi and unit reads a levelling guide would use (chat only; nothing changes)
 /vg stock [<item> <n>]          items to keep in your bags; a merchant tops them up (0 removes, clear empties)
 /vg inventory [forget <name>|clear]   your characters remembered here and when their bags were read
 /vg weights [wizard|set <stat> <n>|reset|export|import]   the stat weights gear upgrades use for your class and role
