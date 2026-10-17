@@ -31,6 +31,7 @@ local function addHeader(f)
   f.header:SetPoint("TOPLEFT", f, "TOPLEFT", 0, 0)
   f.count = f.header.count
   f.rule = T.Tint(T.Snap(f:CreateTexture(nil, "ARTWORK"), "divider"), "accent")
+  f.rule:SetTexture(T.WHITE)
   f.rule:SetHeight(T.Pixel(f))
   f.rule:SetPoint("TOPLEFT", f, "TOPLEFT", 0, -QT.HEADER + T.SPACE.tight)
   f.rule:SetPoint("TOPRIGHT", f, "TOPRIGHT", 0, -QT.HEADER + T.SPACE.tight)

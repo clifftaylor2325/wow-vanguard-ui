@@ -328,6 +328,7 @@ local function openMenu(d)
   menu:ClearAllPoints()
   menu:SetPoint("TOPLEFT", d, "BOTTOMLEFT", 0, -2)
   menu:Show()
+  menu:Raise() -- over a dialog in the same strata (ns.Dialog's), whichever was made first
 end
 
 -- Shows the current choice's text.

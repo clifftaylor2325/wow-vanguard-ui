@@ -74,7 +74,7 @@ end
 -- The scrolling list the switches sit in: a dialog scroll view under the note, over the buttons, with the
 -- thumb in the right pad; its content (panel.list) is as wide as a switch row.
 local function addList(f)
-  f.view = ns.DialogView(f, { width = ROW_WIDTH })
+  f.view = ns.ScrollView(f, { width = ROW_WIDTH })
   f.view:SetPoint("TOPLEFT", f.note, "BOTTOMLEFT", 0, -T.SPACE.gap)
   f.view:SetPoint("BOTTOMRIGHT", -(T.SPACE.pad + T.SPACE.col), ns.DIALOG.foot)
   f.list = f.view.child

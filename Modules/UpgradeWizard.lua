@@ -107,7 +107,7 @@ end
 -- thumb in the right pad.
 local function addList()
   local stats = #WZ.Order("caster")
-  frame.view = ns.DialogView(frame, { width = ROW_WIDTH })
+  frame.view = ns.ScrollView(frame, { width = ROW_WIDTH })
   frame.view:SetPoint("TOPLEFT", frame.caption, "BOTTOMLEFT", 0, -T.SPACE.gap)
   frame.view:SetPoint("BOTTOMRIGHT", -(T.SPACE.pad + T.SPACE.col), ns.DIALOG.foot)
   frame.view:Fit(T.ROW.height * stats)

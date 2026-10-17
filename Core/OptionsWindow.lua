@@ -697,10 +697,11 @@ local function firstRow(view, text)
 end
 
 -- Marks a row (found by search, or the keyboard's) with an accent wash (the last one marked loses its mark).
+-- A text row is a font string, which can't hold a texture: its card holds the wash, laid over the text.
 function O.MarkRow(w)
   if window.found then window.found:Hide() end
-  w.found = w.found or W.Flat(w, "BACKGROUND", "accent")
-  w.found:SetAllPoints()
+  w.found = w.found or (w.CreateTexture and W.Flat(w, "BACKGROUND", "accent") or W.Flat(w.card, "BORDER", "accent"))
+  w.found:SetAllPoints(w)
   w.found:SetAlpha(0.18)
   w.found:Show()
   window.found = w.found

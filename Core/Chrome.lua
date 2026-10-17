@@ -12,10 +12,10 @@ local T, W = ns.Theme, ns.Widgets
 -- The text role of each title tier: a window's title, a card's heading (the two display roles).
 local TITLE_ROLES = { window = "title", card = "heading" }
 -- Where a title sits, by tier and alignment: its point, the frame's point it anchors to, x and y.
--- A window's title sits on the close button's line (T.CONTROL.inset down), T.SPACE.pad in from the
--- left; a card's T.SPACE.gap in from its corner. Centred, it hangs from the top at the same height.
+-- A window's title sits on the close button's line (its middle T.CONTROL.inset down), T.SPACE.pad in from
+-- the left or centred; a card's top T.SPACE.gap in from its corner, or centred at that height.
 local TITLE_SPOTS = {
-  window = { left = { "LEFT", "TOPLEFT", T.SPACE.pad, -T.CONTROL.inset }, center = { "TOP", "TOP", 0, -T.CONTROL.inset } },
+  window = { left = { "LEFT", "TOPLEFT", T.SPACE.pad, -T.CONTROL.inset }, center = { "CENTER", "TOP", 0, -T.CONTROL.inset } },
   card = { left = { "TOPLEFT", "TOPLEFT", T.SPACE.gap, -T.SPACE.gap }, center = { "TOP", "TOP", 0, -T.SPACE.gap } },
 }
 -- The gap between a title and its count: right of it, or under it when the title is centred.
@@ -150,12 +150,14 @@ local function stopDrag(view)
   lightThumb(view)
 end
 
--- The grip's mouse: the thumb lights under it, and dragging it scrolls the view.
+-- The grip's mouse: the thumb lights under it, and dragging it scrolls the view. A grip hidden mid-drag (its
+-- window closed, or the content fits now) never hears the button let go, so hiding it ends the drag too.
 local function wireGrip(view, grip)
   grip:SetScript("OnEnter", ns.Guard("enter scroll grip", function() lightThumb(view) end))
   grip:SetScript("OnLeave", ns.Guard("leave scroll grip", function() lightThumb(view) end))
   grip:SetScript("OnMouseDown", ns.Guard("press scroll grip", function(_, button) startDrag(view, button) end))
   grip:SetScript("OnMouseUp", ns.Guard("release scroll grip", function() stopDrag(view) end))
+  grip:SetScript("OnHide", ns.Guard("hide scroll grip", function() stopDrag(view) end))
 end
 
 -- The thumb: the one scroll line (T.SCROLL) right of the view, with its invisible grip over it.
@@ -213,14 +215,19 @@ end
 
 -- Keeps a multi-line edit box's cursor in view: each time it moves (OnCursorChanged's x, y, w, h; y is how
 -- far down from the box's top the cursor is, as a negative offset), the view scrolls so its rectangle is inside.
+-- The client can move the cursor to a new last line before it makes the box taller, so the span is kept
+-- (view.cursor) and followed again when the box's size changes.
 local function followCursor(view, box)
-  box:HookScript("OnCursorChanged", ns.Guard("follow cursor", function(_, _, y, _, h) showSpan(view, -y, h) end))
+  box:HookScript("OnCursorChanged", ns.Guard("follow cursor", function(_, _, y, _, h) view.cursor = { -y, h }; showSpan(view, -y, h) end))
+  box:HookScript("OnSizeChanged", ns.Guard("follow grown box", function() if view.cursor then showSpan(view, view.cursor[1], view.cursor[2]) end end))
 end
 
 -- A scroll view: a ScrollFrame holding view.child (opts.child, a frame you made, or a Frame opts.width wide),
 -- with the one scroll thumb (T.SCROLL) right of it under a grip you can drag, soft panel-coloured edges where
--- there is more above or below, the wheel scrolling WHEEL_STEP a step, and no arrows. view:Fit(height) sizes
--- the content and clamps the scroll; view:ScrollTo(y); view:FollowCursor(editBox) keeps a cursor in view.
+-- there is more above or below, the wheel scrolling WHEEL_STEP a step, and no arrows. It re-reads its thumb and
+-- edges when its own size changes, as when the client first lays out a view sized by its anchors (no height
+-- before that, so a thumb worked out earlier would be missing). view:Fit(height) sizes the content and clamps
+-- the scroll; view:ScrollTo(y); view:FollowCursor(editBox) keeps a cursor in view.
 ---@param parent table
 ---@param opts table|nil  child, width
 ---@return table view  the ScrollFrame, with child, thumb, grip, Fit, ScrollTo and FollowCursor
@@ -231,6 +238,7 @@ function ns.ScrollView(parent, opts)
   addOverlay(view)
   view:EnableMouseWheel(true)
   view:SetScript("OnMouseWheel", ns.Guard("wheel scroll view", function(self, delta) scrollTo(self, (self:GetVerticalScroll() or 0) - delta * WHEEL_STEP) end))
+  view:HookScript("OnSizeChanged", ns.Guard("size scroll view", function() scrollTo(view, view:GetVerticalScroll() or 0) end))
   view.Fit, view.ScrollTo, view.FollowCursor = fit, scrollTo, followCursor
   scrollTo(view, 0)
   return view

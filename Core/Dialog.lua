@@ -66,18 +66,6 @@ local function dialog(name, w, h, title)
 end
 ns.Dialog = dialog
 
--- A scroll view for a dialog (ns.ScrollView): it also re-reads its thumb and edges when its own size changes, as
--- it does when the client lays it out the first time its dialog shows (a view sized by its anchors has no height
--- before that, so a thumb worked out while the dialog was hidden would be missing).
----@param parent table
----@param opts table|nil  child, width
----@return table view  the ns.ScrollView
-function ns.DialogView(parent, opts)
-  local view = ns.ScrollView(parent, opts)
-  view:HookScript("OnSizeChanged", ns.Guard("size dialog view", function() view:ScrollTo(view:GetVerticalScroll() or 0) end))
-  return view
-end
-
 -- A scroll view around a multi-line edit box, painted as one input: it follows the cursor, and re-reads the box's
 -- height (the client grows it with the text) as the cursor moves or the box is resized, so the thumb shows
 -- while the text overflows.
@@ -85,7 +73,7 @@ end
 ---@param edit table  a multi-line EditBox
 ---@return table view  the ns.ScrollView, with view.edit
 local function textView(parent, edit)
-  local view = T.EditBox(ns.DialogView(parent, { child = edit }))
+  local view = T.EditBox(ns.ScrollView(parent, { child = edit }))
   T.Tint(view.fadeTop, "inset")
   T.Tint(view.fadeBottom, "inset")
   view:FollowCursor(edit)

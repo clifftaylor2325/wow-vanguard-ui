@@ -50,9 +50,9 @@ it("a window title centred, a card heading left or centred, and the parts that a
   const centred = addon.eval(`local f = __panel("TestOnlyCentred")
     local p = ns.WindowTitle(f, "Setup", { align = "center", count = "Step 1 of 3" })
     local t, c = p.title, p.count
-    return { t:GetTop() - f:GetTop(), (t:GetLeft() + t:GetRight()) / 2 - (f:GetLeft() + f:GetRight()) / 2, c:GetTop() - t:GetBottom(),
+    return { (t:GetTop() + t:GetBottom()) / 2 - f:GetTop(), (t:GetLeft() + t:GetRight()) / 2 - (f:GetLeft() + f:GetRight()) / 2, c:GetTop() - t:GetBottom(),
       (c:GetLeft() + c:GetRight()) / 2 - (t:GetLeft() + t:GetRight()) / 2, p.close == nil, f.close == nil }`);
-  expect(centred, "a centred window title hangs T.CONTROL.inset down, its count T.SPACE.tight under it, both centred; no close unless asked").toEqual([-24, 0, -4, 0, true, true]);
+  expect(centred, "a centred window title has its middle T.CONTROL.inset down (the close button's line), its count T.SPACE.tight under it, both centred; no close unless asked").toEqual([-24, 0, -4, 0, true, true]);
   addon.eval(`__cardClosed = 0
     local f = __panel("TestOnlyCard")
     __card = ns.WindowTitle(f, "Rolls", { kind = "card", onClose = function() __cardClosed = __cardClosed + 1 end })`);
@@ -143,6 +143,18 @@ it("a scroll view's grip: the thumb lights under the mouse, and dragging it scro
     __wfgStub.update(0.05)
     return { right, dragged, lit, v:GetVerticalScroll(), v.thumb:GetAlpha(), v.grip:GetScript("OnUpdate") == nil }`);
   expect(drag, "the right button starts nothing; the left drags half the travel (150) for half the content (600), lit while held, and stops when let go").toEqual([true, 300, 1, 300, 0.5, true]);
+  const hidden = addon.eval(`local v = __view
+    __wfgWorld.mouse = { x = 0, y = 500 }
+    v.grip:GetScript("OnMouseDown")(v.grip, "LeftButton")
+    local held = v.drag ~= nil
+    v.grip:Hide()
+    local out = { held, v.drag == nil, v.grip:GetScript("OnUpdate") == nil, v.thumb:GetAlpha() }
+    v.grip:Show()
+    __wfgWorld.mouse = { x = 0, y = 0 }
+    __wfgStub.update(0.05)
+    out[#out + 1] = v:GetVerticalScroll()
+    return out`);
+  expect(hidden, "a grip hidden mid-drag (it never hears the button let go) ends the drag: shown again, the cursor moves nothing").toEqual([true, true, true, 0.5, 300]);
   const short = addon.eval(`local f = __panel("TestOnlyShort")
     local v = ns.ScrollView(f, { width = 100 })
     v:SetPoint("TOPLEFT", 16, -40)
@@ -173,8 +185,11 @@ it("a scroll view around a multi-line edit box follows its cursor", () => {
     moved(box, 0, -250, 1, 14) out[#out + 1] = v:GetVerticalScroll()
     moved(box, 0, -50, 1, 14) out[#out + 1] = v:GetVerticalScroll()
     moved(box, 0, -60, 1, 14) out[#out + 1] = v:GetVerticalScroll()
+    moved(box, 0, -500, 1, 14) out[#out + 1] = v:GetVerticalScroll()
+    box:SetHeight(530) box:GetScript("OnSizeChanged")(box)
+    out[#out + 1] = v:GetVerticalScroll()
     return out`);
-  expect(out, "the box is the content; a cursor below the view scrolls so its line's bottom is in view (264 - 100), one above scrolls to it, one inside moves nothing").toEqual([true, 0, 164, 50, 50]);
+  expect(out, "the box is the content; a cursor below the view scrolls so its line's bottom is in view (264 - 100), one above scrolls to it, one inside moves nothing; a new last line the box hasn't grown for yet is followed once it has (514 - 100)").toEqual([true, 0, 164, 50, 50, 400, 414]);
 });
 
 it("a section header: small muted capitals 18 tall, a count after it, and SetText keeps the capitals", () => {

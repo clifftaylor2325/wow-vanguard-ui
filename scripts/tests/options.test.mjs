@@ -844,6 +844,9 @@ it("options: the General page's captions are nouns, with a note under the two th
   expect(addon.eval("return Vanguard_Options.nav.general:GetAlpha() == 1 and Vanguard_Options.nav.raid:GetAlpha() < 1"), "and by the words in its note").toBe(true);
   addon.eval('ns.Options.JumpTo("Window ornaments")');
   expect(addon.eval("return Vanguard_Options.found ~= nil and Vanguard_Options.found:IsShown()"), "a jump to the new caption marks its row").toBe(true);
+  addon.eval('ns.Options.JumpTo("hostile vermilion")');
+  expect(addon.eval(`local f, n = Vanguard_Options.found, __fontString("Friendly blue, neutral yellow, hostile vermilion.")
+    return { f:IsShown(), f:GetParent() == n:GetParent(), f:GetTop() == n:GetTop(), f:GetBottom() == n:GetBottom() }`), "a jump to a note marks it through its card (a font string holds no texture), over the note's text").toEqual([true, true, true, true]);
 });
 
 it("options: the header keeps its bar but wears the window tier: 48 tall, the title role in the text colour centred on the 24 line with the crest beside it, the logo and close at the window offsets, the opaque alpha", () => {
