@@ -684,6 +684,19 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 - Do: on a test character, die to a mob and click the Death Recap button on the release popup. Then open the Combat tab of your chat and click two of its filter buttons.
 - Expect: the death recap on a flat panel with a themed Close button and title, the damage rows on a darker inset with the theme's scroll bar (as the game draws them), a thin line under the title; the combat log's filter bar on a darker strip with flat filter buttons and a flat arrow button on the right, still switching filters and opening the filter menu when clicked (the green progress bar that shows while a filter applies is the accent color).
 - If it fails, paste: a screenshot and `/vg errors`.
+
+### 14.4.7 Movement pad
+
+- Do: in the game's Options, Controls, tick "Enable Movement Pad"; click its forward arrow, then click it again; hold the pad's jump button; click the small gear on the pad; drag the pad by its edge (unlock it from the gear if it is locked).
+- Expect: the pad is a dark panel with no tooltip border; its seven buttons are flat with their arrows and jump picture showing, lighting under the mouse; a direction the game has on (forward after the first click) shows the accent selected look until you click it off, instead of the game's glow; the gear is on a grey tile; moving, jumping and locking work as before.
+- If it fails, paste: a screenshot of the pad and `/vg errors`. If you cannot enable the pad in this client, mark this step skipped.
+
+### 14.4.8 Lua error window
+
+- Do: turn on "Display Lua Errors" in the game's Options (Gameplay, Game Options), then cause an error (for example `/run error("test")`) and click the arrows, Reload and Close buttons.
+- Expect: the error window is a flat panel with a theme title, a theme close cross, flat Reload and Close buttons, flat previous and next arrows with the "1 / 2" count in light text and a themed scroll bar; the error text itself keeps the game's colours; the window stays in the middle of the screen and still pages, scrolls and closes.
+- If it fails, paste: a screenshot of the window and `/vg errors`.
+
 ### 14.5 World map, group finder, Legacy and calendar
 
 - Do: hover the zone name on the minimap's top band, click it, then click it again; press `M` for the world map, then use its minimise and maximise button, click a few zones, open the quest panel on its side and click a quest; hover the group finder eye by the minimap, then click it to open the group finder; open the Legacy window from its button on the menu bar; type `/calendar`, open a day with an event and the "Create event" dialog. Look at the info strip under the minimap, then click the small calendar button at the right end of its date row.

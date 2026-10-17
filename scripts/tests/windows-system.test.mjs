@@ -450,6 +450,76 @@ it("Cooldown Manager alert dialogs: border faded, title, close, name, group labe
   expect(bare.eval("return __errors('Windows')"), "a dialog without its parts").toBe("none");
 });
 
+// TEST-ONLY: the movement pad (a tooltip-backdrop frame, a settings gear, six check-button toggles and a jump button, each with its picture under icon and the game's checked glow) and the Lua error window.
+const PAD_ENV = BUTTON_FRAME_ENV + `
+  function __pad()
+    local f = __frame("MovePadFrame") __sub(f, "NineSlice")
+    f.SettingsDropdown = CreateFrame("Button", nil, f) f.SettingsDropdown.Art = f.SettingsDropdown:CreateTexture() f.SettingsDropdown.Icon = f.SettingsDropdown:CreateTexture()
+    for _, name in ipairs({ "MovePadForward", "MovePadBackward", "MovePadStrafeLeft", "MovePadStrafeRight", "MovePadRotateLeft", "MovePadRotateRight" }) do
+      local b = CreateFrame("CheckButton", name, f) b.plate, b.icon, b.glow = b:CreateTexture(), b:CreateTexture(), b:CreateTexture()
+    end
+    local jump = CreateFrame("Button", "MovePadJump", f) jump.plate, jump.icon = jump:CreateTexture(), jump:CreateTexture()
+  end
+  __pad()
+`;
+const ERRORS_ENV = BUTTON_FRAME_ENV + `
+  local f = __frame("ScriptErrorsFrame") f.Title, f.IndexLabel = __label(f, "Lua Error"), __label(f, "1 / 2")
+  __sub(f, "Reload", "Button") __sub(f, "CloseButton", "Button") __sub(f, "PreviousError", "Button") __sub(f, "NextError", "Button")
+  f.ScrollFrame = CreateFrame("ScrollFrame", nil, f) f.ScrollFrame.ScrollBar = __bar(f.ScrollFrame)
+  local x = CreateFrame("Button", "ScriptErrorsFrameClose", f) x.__piece = __art(x)
+`;
+
+it("movement pad: a HUD panel, the buttons as rows with their pictures, the toggles lit while the game has them checked", () => {
+  const addon = loggedIn(PAD_ENV);
+  addon.fire("ADDON_LOADED", "Blizzard_MovePad");
+  addon.eval("MovePadFrame:Show()");
+  expect(addon.eval("return { __faded(MovePadFrame), MovePadFrame.NineSlice:GetAlpha(), __panelled(MovePadFrame), __panelled(MovePadFrame.SettingsDropdown), MovePadFrame.SettingsDropdown.Icon.__alpha ~= 0 }"),
+    "the backdrop faded under a panel, the gear on a control tile with its picture").toEqual([0, 0, true, true, true]);
+  expect(addon.eval(`local n, kept = 0, 0
+    for _, name in ipairs(ns.GetModule("Windows").MOVE_BUTTONS) do
+      local b = _G[name]
+      if ns.Theme.RowParts(b) and b.plate.__alpha == 0 then n = n + 1 end
+      if b.icon.__alpha ~= 0 then kept = kept + 1 end
+    end
+    return { n, kept }`), "all seven buttons are rows with their plate faded and their picture kept").toEqual([7, 7]);
+  // Whether the selected look shows on Forward and on Strafe Left.
+  const lit = () => addon.eval("return { ns.Theme.RowParts(MovePadForward).rail:IsShown(), ns.Theme.RowParts(MovePadStrafeLeft).rail:IsShown() }");
+  expect(lit(), "none lit at first").toEqual([false, false]);
+  addon.eval("MovePadForward:SetChecked(true)");
+  expect(lit(), "the game checks Forward: its selected look comes on").toEqual([true, false]);
+  addon.eval("MovePadForward:SetChecked(false)");
+  expect(lit(), "and goes when the game unchecks it").toEqual([false, false]);
+  const painted = addon.eval("return ns.Theme.PaintedCount()");
+  addon.eval("MovePadFrame:Hide() MovePadFrame:Show()");
+  expect(addon.eval("return ns.Theme.PaintedCount()"), "showing it again paints nothing new").toBe(painted);
+  const off = loggedIn(PAD_ENV, SWITCH_OFF);
+  off.fire("ADDON_LOADED", "Blizzard_MovePad");
+  off.eval("MovePadFrame:Show()");
+  expect(off.eval("return { MovePadFrame.NineSlice:GetAlpha(), ns.Theme.RowParts(MovePadForward) == nil }"), "switched off").toEqual([1, true]);
+  const bare = loggedIn(SYSTEM_ENV + 'CreateFrame("Frame", "MovePadFrame", UIParent):Hide() CreateFrame("Button", "MovePadJump", MovePadFrame)');
+  bare.fire("ADDON_LOADED", "Blizzard_MovePad");
+  bare.eval("MovePadFrame:Show()");
+  expect(bare.eval("return __errors('Windows')"), "a pad without its parts, or buttons that are not toggles").toBe("none");
+});
+
+it("Lua error window: panel, title and index in the theme, scroll bar, buttons, the cross and the arrows", () => {
+  const addon = loggedIn(ERRORS_ENV);
+  addon.eval("ScriptErrorsFrame:Show()");
+  expect(addon.eval(`local f = ScriptErrorsFrame
+    return { __faded(f), __panelled(f), __titled(f.Title), __looks(f.IndexLabel, "label", "text"), __barred(f.ScrollFrame.ScrollBar), __panelled(f.Reload), __panelled(f.CloseButton),
+      ScriptErrorsFrameClose.__piece.__alpha, ns.Theme.ArrowParts(f.PreviousError) ~= nil, ns.Theme.ArrowParts(f.NextError) ~= nil }`),
+    "art faded, a panel, the title and index in the theme, the scroll bar, Reload and the bottom Close as buttons, the cross, both arrows").toEqual([0, true, true, true, true, true, true, 0, true, true]);
+  const painted = addon.eval("return ns.Theme.PaintedCount()");
+  addon.eval("ScriptErrorsFrame:Hide() ScriptErrorsFrame:Show()");
+  expect(addon.eval("return ns.Theme.PaintedCount()"), "showing it again paints nothing new").toBe(painted);
+  const off = loggedIn(ERRORS_ENV, SWITCH_OFF);
+  off.eval("ScriptErrorsFrame:Show()");
+  expect(off.eval("return __titled(ScriptErrorsFrame.Title)"), "switched off").toBe(false);
+  const bare = loggedIn(SYSTEM_ENV + '__frame("ScriptErrorsFrame")');
+  bare.eval("ScriptErrorsFrame:Show()");
+  expect(bare.eval("return __errors('Windows')"), "a window without its parts").toBe("none");
+});
+
 it("click bindings: skinned when their addon loads, with the three buttons and the list backdrop", () => {
   const addon = loggedIn(COOLDOWN_ENV);
   addon.eval("__clickBinding()");
