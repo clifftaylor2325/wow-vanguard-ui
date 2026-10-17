@@ -198,13 +198,15 @@ local function keepsOwnIcon()
 end
 
 -- Paints Vanguard's pin, in the accent, on the game's waypoint icon (its size stays the game's); an icon the
--- game fills itself is left as it is, untinted.
+-- game fills itself is left as it is, untinted. The game sets its pin as an atlas, and a texture set after one
+-- keeps the atlas's sub-rectangle, so the pin's whole art is asked for again.
 function WP.PaintPin()
   local f = _G.SuperTrackedFrame
   local icon = type(f) == "table" and f.Icon
   if type(icon) ~= "table" or type(icon.SetTexture) ~= "function" then return end
   if keepsOwnIcon() then return T.Tint(icon, "white") end
   icon:SetTexture(T.Icon("Pin"))
+  if type(icon.SetTexCoord) == "function" then icon:SetTexCoord(0, 1, 0, 1) end
   T.Tint(icon, "accent")
 end
 
