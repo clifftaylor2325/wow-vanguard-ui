@@ -55,6 +55,7 @@ Levelling and group features (priority 4, cut first):
 - [x] **Phase 9: Levelling helpers** - Quest XP, kills to level and low-supply warnings (completed 2026-10-12)
 - [x] **Phase 10: Roll tracking** - `/roll` results and loot rolls are tracked (loot rolls cuttable) (completed 2026-10-12)
 - [ ] **Phase 11: Party quest progress** - Live party quest progress over addon messages (cuttable; the author's call)
+- [ ] **Phase 11.1: Levelling guide** (INSERTED) - Vanguard's own levelling guide from the client's data: a chat-only probe first (LG-0), then an owner tag on waypoints (LG-1) and a ranking engine only if the probe passes (LG-2)
 
 Launch:
 
@@ -477,4 +478,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | 9. Levelling helpers | TBD | Complete | 2026-10-12 |
 | 10. Roll tracking | TBD | Complete | 2026-10-12 |
 | 11. Party quest progress | 0/TBD | Not started | - |
+| 11.1 Levelling guide | 0/TBD | Not started | - |
 | 12. Launch readiness | 0/TBD | Not started | - |

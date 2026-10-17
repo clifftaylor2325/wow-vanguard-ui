@@ -2742,6 +2742,37 @@ function T.HoldHover(button, on)
   T.EaseHover(button, on == true or (button.IsMouseOver ~= nil and button:IsMouseOver() == true))
 end
 
+-- How long a switch knob or slider thumb glides to its new spot, in seconds (docs/THEME.md, Fades and flashes).
+T.KNOB_EASE = 0.1
+-- Per owner (weak): { x = where it is now, from, to, t, frame = the ticker }.
+local glides = setmetatable({}, { __mode = "k" })
+
+-- One tick of a glide: eased out, applying the position; the ticker stops at the end.
+local function glideStep(g, dt, apply)
+  g.t = g.t + dt
+  local p = math.min(1, g.t / T.KNOB_EASE)
+  g.x = g.from + (g.to - g.from) * (1 - (1 - p) * (1 - p))
+  apply(g.x)
+  if p >= 1 then g.frame:SetScript("OnUpdate", nil) end
+end
+
+-- True when a glide must not animate: Reduce motion, or a fight (docs/THEME.md, Motion and sound).
+local function glideOff()
+  return T.Settings().reduceMotion or fighting or ns.InCombat()
+end
+
+-- Moves something (a knob, a thumb) to `to`, calling apply(x) with each position on the way: a 0.1 s ease out, or
+-- one call at once on the first placement, with `now`, with Reduce motion, and in combat. `key` (the owner) remembers where it is.
+function T.Glide(key, to, apply, now)
+  local g = glides[key] or { x = to }
+  glides[key] = g
+  if g.frame then g.frame:SetScript("OnUpdate", nil) end
+  if now or g.x == to or glideOff() then g.x = to return apply(to) end
+  g.from, g.to, g.t = g.x, to, 0
+  g.frame = g.frame or CreateFrame("Frame")
+  g.frame:SetScript("OnUpdate", function(_, dt) glideStep(g, dt, apply) end)
+end
+
 -- Stops a fade in progress and leaves the frame fully visible.
 function T.StopFade(frame)
   local f = vgFader[frame]
