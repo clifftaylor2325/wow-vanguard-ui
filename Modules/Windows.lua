@@ -2,7 +2,7 @@
 -- quest, gossip, trade, loot and roll windows, friends, the dressing room,
 -- the flight map, books and letters, the game menu, the ready check, popups,
 -- the windows that load later (spellbook, auction house, professions,
--- inspect, guild bank, collections, achievements, dungeon journal) and the
+-- inspect, guild bank, collections, achievements) and the
 -- breath and fatigue bars. Each window keeps its own layout and buttons: its art is faded out
 -- (alpha only) and a flat panel, the close button, title font and push
 -- buttons are themed. It's done every time a window shows, so parts the game
@@ -39,10 +39,9 @@ GW.REGISTERED, GW.ORDER = {}, {}
 GW.FRAMED = {
   "CharacterFrame", "MerchantFrame", "MailFrame", "QuestFrame", "GossipFrame", "TradeFrame",
   "LootFrame", "GameMenuFrame", "ReadyCheckFrame", "FriendsFrame", "DressUpFrame", "TaxiFrame", "ItemTextFrame",
-  "SpellBookFrame", "GroupLootFrame1", "GroupLootFrame2", "GroupLootFrame3", "GroupLootFrame4",
+  "GroupLootFrame1", "GroupLootFrame2", "GroupLootFrame3", "GroupLootFrame4",
 }
 GW.POPUPS = { "StaticPopup1", "StaticPopup2", "StaticPopup3", "StaticPopup4" }
-GW.TIMERS = { "MirrorTimer1", "MirrorTimer2", "MirrorTimer3" }
 -- The windows Vanguard's quest dialog stands in for: the game never shows them while it is on, so they are not skinned.
 GW.QUEST_WINDOWS = { QuestFrame = true, GossipFrame = true }
 -- Windows that load with their own part of the game: addon name -> window names
@@ -234,15 +233,16 @@ function GW.FadeNamed(names)
   end
 end
 
--- A breath or fatigue bar: the window skin hugging the bar (no room around it), and its bar in the theme's bar texture.
+-- A breath or fatigue bar (MirrorTimerTemplate): the window skin hugging the bar (no room around it), and its
+-- StatusBar in the theme's bar texture.
 function GW.SkinTimer(frame)
   GW.Skin(frame, 0)
-  local bar = frame.StatusBar or _G[(frame:GetName() or "") .. "StatusBar"]
+  local bar = frame.StatusBar
   if type(bar) == "table" and bar.SetStatusBarTexture then T.StyleBar(bar) end
 end
 
--- Newer clients (WoW Forever) keep the breath and fatigue bars in one container
--- instead of MirrorTimer1-3: skins every timer frame it holds.
+-- The breath and fatigue bars are MirrorTimerContainer's unnamed children on the 12.x
+-- engine (there are no MirrorTimer1-3 globals): skins every timer frame it holds.
 local function skinContainerTimers()
   for _, child in ipairs({ _G.MirrorTimerContainer:GetChildren() }) do
     if type(child) == "table" and type(child.StatusBar) == "table" then GW.SkinTimer(child) end
@@ -475,11 +475,10 @@ local function watchDurability()
   for _, e in ipairs({ "UPDATE_INVENTORY_DURABILITY", "UNIT_INVENTORY_CHANGED" }) do ns.On(e, GW.PaintAllDurability) end
 end
 
--- The windows this file skins itself: framed windows, popups, breath bars, and the
--- windows that load later. Other groups register from Modules/Windows<Area>.lua.
+-- The windows this file skins itself: framed windows, popups and the windows that load later
+-- (the breath bars' container is watched from GW.Enable). Other groups register from Modules/Windows<Area>.lua.
 GW.Add("windows", "framed", GW.FRAMED)
 GW.Add("popups", "popups", GW.POPUPS)
-GW.Add("timers", "framed", GW.TIMERS, GW.SkinTimer)
 for addon, names in pairs(GW.LATER) do GW.Add("windows", "onDemand", addon, names) end
 
 -- Module entry point (Core/Modules.lua): every registered window whose group is on is
