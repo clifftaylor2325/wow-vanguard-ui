@@ -165,11 +165,11 @@ it("the scrolling combat text and the floating damage numbers in the theme font,
   addon.fire("ADDON_LOADED", "Blizzard_TEST-ONLY-Other");
   expect(combatFont(addon)[0], "another part loading changes nothing").toBe(false);
   addon.fire("ADDON_LOADED", "Blizzard_CombatText");
-  expect(combatFont(addon), "the part loaded: the theme's bold face at the largest HUD text size").toEqual([true, 32]);
+  expect(combatFont(addon), "the part loaded: the theme's bold face at the game's own size, so the heights the game scales each line to stay sharp").toEqual([true, 64]);
   addon.eval("ns.Theme.Settings().textScale = 1.5 ns.Theme.Refresh()");
-  expect(combatFont(addon)[1], "re-applied at the new Text size").toBe(48);
+  expect(combatFont(addon)[1], "re-applied at the new Text size").toBe(96);
   const already = loggedIn(COMBAT_TEXT_ENV + ' C_AddOns.IsAddOnLoaded = function(name) return name == "Vanguard" or name == "Blizzard_CombatText" end');
-  expect(combatFont(already), "already loaded at login: themed at once").toEqual([true, 32]);
+  expect(combatFont(already), "already loaded at login: themed at once").toEqual([true, 64]);
   const off = loggedIn(COMBAT_TEXT_ENV, { savedVariables: "VanguardDB.profiles = { Default = { modules = { Merchant = false } } }" });
   off.fire("ADDON_LOADED", "Blizzard_CombatText");
   expect([off.eval("return DAMAGE_TEXT_FONT"), combatFont(off)], "with the module off both are the game's").toEqual(["TEST-ONLY-DAMAGE", [false, 64]]);

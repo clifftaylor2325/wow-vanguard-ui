@@ -126,9 +126,10 @@ function MC.ThemeFonts()
 end
 
 -- The scrolling combat text's font object (Blizzard_CombatText, a part of the game that loads
--- when its setting is on). The game sets each line's height itself (25, up to 60 for a critical
--- hit), so the face and weight are what change; the size is the largest of the HUD text's.
-MC.COMBAT_FONTS = { CombatTextFont = { 32, true } }
+-- when its setting is on), at the game's own size like the HUD text above: the game sets each
+-- line's height itself (25, up to 60 for a critical hit) by scaling what the face drew, so a
+-- smaller face would draw critical hits soft. The face and weight are what change.
+MC.COMBAT_FONTS = { CombatTextFont = { 64, true } }
 
 -- True when a part of the game is loaded (a client without the call, or a hidden answer, counts as no).
 local function partLoaded(name)
@@ -137,10 +138,11 @@ local function partLoaded(name)
   return not ns.IsSecret(on) and on == true
 end
 
--- The scrolling combat text in the theme font: now, if its part of the game is loaded, else
--- when it loads (ADDON_LOADED names it). The game draws the lines in the font object's colour.
-function MC.ThemeCombatText(_, name)
-  if name == "Blizzard_CombatText" or (name == nil and partLoaded("Blizzard_CombatText")) then T.FontObjects(MC.COMBAT_FONTS) end
+-- The scrolling combat text in the theme font: when its part of the game has just loaded
+-- (justLoaded, from ADDON_LOADED) or, at Enable, if the client says it is loaded already.
+-- The game draws the lines in the font object's colour.
+function MC.ThemeCombatText(justLoaded)
+  if justLoaded or partLoaded("Blizzard_CombatText") then T.FontObjects(MC.COMBAT_FONTS) end
 end
 
 -- The engine's floating damage numbers (over your target) in the theme font: the path the engine
@@ -153,9 +155,11 @@ function MC.ThemeDamageFont()
   DAMAGE_TEXT_FONT = path
 end
 
--- Vanguard's settings are back (its ADDON_LOADED): the damage font, while the module is on.
+-- A part of the game loaded: Vanguard's own (its settings are back: the damage font, while the
+-- module is on) or the scrolling combat text's (its font object, once the module is enabled).
 local function onLoaded(_, name)
   if name == ADDON and ns.ModuleEnabled("Merchant") then MC.ThemeDamageFont() end
+  if name == "Blizzard_CombatText" and MC.settings then MC.ThemeCombatText(true) end
 end
 ns.On("ADDON_LOADED", onLoaded)
 
@@ -166,5 +170,4 @@ function MC.Enable(settings)
   if settings.errors then filterErrors() end
   MC.ThemeFonts()
   MC.ThemeCombatText()
-  ns.On("ADDON_LOADED", MC.ThemeCombatText)
 end
