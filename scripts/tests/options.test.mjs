@@ -818,14 +818,14 @@ it("options: the sample unit frame shows the player's own name, or You when the 
 // A font string's size and whether its colour is this token, as { size, color match }.
 const lookOf = (addon, expr, token) => [addon.eval(`return select(2, (${expr}):GetFont())`), isTok(addon, addon.eval(`return (${expr}).__textColor`), token)];
 
-it("options: the nav is a list of rows (T.ROW): the current page's row shows the rail and the wash, which move with the page, in the accent, and no row is taller than T.ROW.height", () => {
+it("options: the nav is a list of rows (T.ROW): the current page's row shows the rail (accent) and the lighter fill (raisedHover), which move with the page, and no row is taller than T.ROW.height", () => {
   const addon = loggedIn(CLICK_LUA);
   addon.eval('ns.Options.Show("general")');
   // A nav row's kind, rail shown, wash shown, the wash's alpha, the rail's width, its colour and its height.
   const row = (key) => addon.eval(`local b = Vanguard_Options.nav.${key} return { b.__kind, b.rail:IsShown(), b.wash:IsShown(), b.wash.__vertexColor[4], b.rail:GetWidth() / ns.Theme.Pixel(b), b.rail.__vertexColor, b:GetHeight() }`);
-  const [wash, rail, height] = addon.eval("return { ns.Theme.ROW.wash, ns.Theme.ROW.rail, ns.Theme.ROW.height }");
+  const [wash, rail, height] = addon.eval("return { 1, ns.Theme.SELECT.rail, ns.Theme.ROW.height }");
   const here = row("general");
-  expect([here[0], here[1], here[2], here[3], here[4]], "a nav entry is a Button; the current page's shows the rail (T.ROW.rail screen pixels wide) and the wash (T.ROW.wash)").toEqual(["Button", true, true, wash, rail]);
+  expect([here[0], here[1], here[2], here[3], here[4]], "a nav entry is a Button; the current page's shows the rail (T.SELECT.rail screen pixels wide) and the fill (opaque)").toEqual(["Button", true, true, wash, rail]);
   expect(isTok(addon, here[5], "accent"), "the rail is in the accent").toBe(true);
   expect(row("raid").slice(1, 3), "another page's row shows neither").toEqual([false, false]);
   addon.eval('ns.Options.Show("raid")');

@@ -134,7 +134,7 @@ it("the layout constants: T.SPACE, T.ALPHA, T.CREST, T.ROW, T.SCROLL and the con
     { tight: 4, gap: 8, col: 12, pad: 16, section: 24 },
     { opaque: 1, dialog: 0.98, overlay: 0.94, alert: 0.92 },
     { title: 20, card: 44, watermark: 96, wash: 0.1 },
-    { height: 28, rail: 2, wash: 0.12 },
+    { height: 28 },
     { thumb: 4, rest: 0.5, lit: 1 },
     [20, 26],
     { title: true, heading: true },

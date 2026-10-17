@@ -845,13 +845,13 @@ it("quest log: the chosen quest's line shows the rail and wash of W.Row, the oth
   // A line's selected look: { rail shown, rail width in screen pixels, wash shown, wash alpha, height, selected }.
   const mark = (i) => addon.eval(`local b = Vanguard_QuestLog.lines[${i}]
     return { b.rail:IsShown(), b.rail:GetWidth() / ns.Theme.Pixel(b), b.wash:IsShown(), b.wash.__vertexColor[4], b:GetHeight(), b.selected }`);
-  expect([mark(1), mark(2)], "the first quest is chosen: the 2-pixel rail and the 0.12 wash on it alone; every line is T.ROW.height").toEqual([[true, 2, true, 0.12, row, true], [false, 2, false, 0.12, row, false]]);
-  expect([isTok(addon, addon.eval("return Vanguard_QuestLog.lines[1].rail.__vertexColor"), "accent"), isTok(addon, addon.eval("return Vanguard_QuestLog.lines[1].wash.__vertexColor"), "accent")], "the rail and wash are the accent").toEqual([true, true]);
+  expect([mark(1), mark(2)], "the first quest is chosen: the 2-pixel rail and the opaque fill on it alone; every line is T.ROW.height").toEqual([[true, 2, true, 1, row, true], [false, 2, false, 1, row, false]]);
+  expect([isTok(addon, addon.eval("return Vanguard_QuestLog.lines[1].rail.__vertexColor"), "accent"), isTok(addon, addon.eval("return Vanguard_QuestLog.lines[1].wash.__vertexColor"), "raisedHover")], "the rail is the accent, the fill raisedHover").toEqual([true, true]);
   logLine(addon, 3);
   expect([mark(1)[0], mark(2)[0], mark(3)[0], mark(3)[5]], "choosing the third moves the mark").toEqual([false, false, true, true]);
   addon.eval("ns.Theme.SetAccent(0.1, 0.2, 0.3)");
   expect(addon.eval("return Vanguard_QuestLog.lines[3].rail.__vertexColor[3]"), "and it follows an accent change").toBe(0.3);
-  expect(addon.frames('w.__kind == "Texture" and w.__layer == "HIGHLIGHT" and w.__parent == Vanguard_QuestLog.lines[2]').length, "W.Row's hover wash is on the line, the only one").toBe(1);
+  expect(addon.eval("return ns.Theme.RowParts(Vanguard_QuestLog.lines[2]).hover:GetParent() == Vanguard_QuestLog.lines[2]"), "W.Row's hover wash is on the line").toBe(true);
   expect(addon.eval("return Vanguard_QuestLog.lines[1].text:GetText()"), "no numbers in the log").toBe("[8] TEST-ONLY Wolves");
 });
 it("quest log: a ready quest keeps the log's check, untinted, and a quest in progress has no mark", () => {
