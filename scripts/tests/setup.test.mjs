@@ -18,12 +18,12 @@ it("the setup wizard's title and step caption are centred across the window", ()
   const addon = loggedIn("UISpecialFrames = {}", { firstRun: true });
   expect(addon.eval("local w, t, c = Vanguard_Setup, Vanguard_Setup.title, Vanguard_Setup.caption return { math.abs(select(1, t:GetCenter()) - select(1, w:GetCenter())) < 1, math.abs(select(1, c:GetCenter()) - select(1, w:GetCenter())) < 1 }"), "the title and the caption sit on the window's centre line").toEqual([true, true]);
 });
-it("the setup wizard's title block: the title hangs at the window's 24 offset in the title role and text colour, the faction crest (T.CREST.title) sits just right of it, the step caption is small text2 under it", () => {
+it("the setup wizard's title block: the title sits on the window's 24 line (the X's) in the title role and text colour, the faction crest (T.CREST.title) sits just right of it, the step caption is small text2 under it", () => {
   const addon = loggedIn("UISpecialFrames = {}", { firstRun: true });
   const [inset, pad, gap, tight, crest, small, title] = addon.eval("local T = ns.Theme return { T.CONTROL.inset, T.SPACE.pad, T.SPACE.gap, T.SPACE.tight, T.CREST.title, T.RoleSize('small'), T.RoleSize('title') }");
-  const block = addon.eval(`local f = Vanguard_Setup local t, c, k = f.title.__points.TOP, f.caption.__points.TOP, f.crest.__points.LEFT
+  const block = addon.eval(`local f = Vanguard_Setup local t, c, k = f.title.__points.CENTER, f.caption.__points.TOP, f.crest.__points.LEFT
     return { t.rel == f, t.relPoint, t.x, t.y, select(2, f.title:GetFont()), f.crest:GetWidth(), k.rel == f.title, k.relPoint, k.x, c.rel == f.title, c.relPoint, c.y, (select(2, f.caption:GetFont())) }`);
-  expect(block, "the title is the window's TOP centre, T.CONTROL.inset down; the crest a gap right of the title; the caption a tight gap under it").toEqual([true, "TOP", 0, -inset, title, crest, true, "RIGHT", gap, true, "BOTTOM", -tight, small]);
+  expect(block, "the title's middle is T.CONTROL.inset down the window's top centre, on the X's line; the crest a gap right of the title; the caption a tight gap under it").toEqual([true, "TOP", 0, -inset, title, crest, true, "RIGHT", gap, true, "BOTTOM", -tight, small]);
   const colors = addon.eval("local f = Vanguard_Setup return { f.title.__textColor, f.caption.__textColor }");
   expect([colors[0], colors[1]], "the title in the text colour, the caption in text2").toEqual([tok(addon, "text").slice(0, 3).concat(1), tok(addon, "text2").slice(0, 3).concat(1)]);
   expect(addon.eval("local f = Vanguard_Setup return f.crest:GetLeft() >= f.title:GetRight() and math.abs((f.crest:GetTop() + f.crest:GetBottom()) / 2 - (f.title:GetTop() + f.title:GetBottom()) / 2) < 1"), "the crest sits right of the title, centred on its line").toBe(true);

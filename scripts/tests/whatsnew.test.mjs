@@ -49,9 +49,9 @@ it("after an update the first login shows what's new once, grouped by module", (
 it("what's new: the title is centred at the window offset with the X, the hint sits under it, and the window is at the dialog alpha", () => {
   const addon = loggedIn(ENV);
   const [inset, tight, small, title] = addon.eval("local T = ns.Theme return { T.CONTROL.inset, T.SPACE.tight, T.RoleSize('small'), T.RoleSize('title') }");
-  const block = addon.eval(`local f = Vanguard_WhatsNew local t, h = f.title.__points.TOP, f.hint.__points.TOP
+  const block = addon.eval(`local f = Vanguard_WhatsNew local t, h = f.title.__points.CENTER, f.hint.__points.TOP
     return { t.rel == f, t.relPoint, t.x, t.y, (select(2, f.title:GetFont())), h.rel == f.title, h.relPoint, h.y, (select(2, f.hint:GetFont())), f.hint:GetText() }`);
-  expect(block, "the title hangs T.CONTROL.inset down the window's top centre in the title role; the hint a tight gap under it in the small role").toEqual([true, "TOP", 0, -inset, title, true, "BOTTOM", -tight, small, "Click a line to open its setting."]);
+  expect(block, "the title's middle is T.CONTROL.inset down the window's top centre (the X's line) in the title role; the hint a tight gap under it in the small role").toEqual([true, "TOP", 0, -inset, title, true, "BOTTOM", -tight, small, "Click a line to open its setting."]);
   expect([addon.eval("return Vanguard_WhatsNew.title.__textColor"), addon.eval("return Vanguard_WhatsNew.hint.__textColor")], "the title in the text colour, the hint in text2").toEqual([tok(addon, "text").slice(0, 3).concat(1), tok(addon, "text2").slice(0, 3).concat(1)]);
   const close = addon.eval(`local b = CreateFrame("Button", nil, UIParent) ns.Theme.PlaceClose(b, Vanguard_WhatsNew) local p, c = b.__points.CENTER, Vanguard_WhatsNew.close.__points.CENTER return { p.x == c.x and p.y == c.y, c.relPoint }`);
   expect(close, "the X is where T.PlaceClose puts every window's").toEqual([true, "TOPRIGHT"]);
