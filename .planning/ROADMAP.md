@@ -205,7 +205,7 @@ Plans:
 
 **Goal**: Every theme variant keeps its surfaces in lightness order, and the pill shape PR #393 introduced is one theme primitive and one checked media set that any control, badge or thumb can use.
 **Owner**: a new thread (Sonnet, medium)
-**Depends on**: G0 (the consistency PR on `main`; PR #393 merged 2026-10-17) and PR #395 merged (it changes the slider parts this phase moves into `T.Capsule`)
+**Depends on**: G0 (the consistency PR on `main`; PR #393 merged 2026-10-17); PR #395, whose slider parts this phase moves into `T.Capsule`, merged 2026-10-17
 **Requirements**: UI-09
 **Success Criteria** (what must be TRUE):
   1. A `theme.test.mjs` case checks, for every variant, that `inset` < `panel` < `raised` < `raisedHover` < `divider` < `borderHi` in OKLCH lightness, and the contrast variant passes it (its `divider` moves below `borderHi`; `raisedHover` and `borderHi` become per-variant tokens).
@@ -451,7 +451,7 @@ Plans:
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 9 → 10 → 11 → 12. Phases 9-11 are cut first if time runs short; Phase 12 runs regardless. The inserted UI coherence phases (8.1 to 8.11) follow the gates in `docs/design/UI-COHERENCE.md` §4.2 rather than the numeric order: 8.2 merged as PR #397 before G0 (the consistency PR on `main`; PR #393 merged 2026-10-17); 8.3 rides the coverage thread's batch 2 after its batch 1 merges; 8.1 (after PR #395 too), 8.5 and 8.6 start at G0; 8.4 after 8.1; 8.7, 8.8, 8.9 and 8.10 after 8.4; 8.11 last. Phases 8.1 to 8.8 merge before the 2026-10-28 freeze; 8.9 and 8.10 are cut first.
+Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 9 → 10 → 11 → 12. Phases 9-11 are cut first if time runs short; Phase 12 runs regardless. The inserted UI coherence phases (8.1 to 8.11) follow the gates in `docs/design/UI-COHERENCE.md` §4.2 rather than the numeric order: 8.2 merged as PR #397 before G0 (the consistency PR on `main`; PR #393 merged 2026-10-17); 8.3 rides the coverage thread's batch 2 after its batch 1 merges; 8.1, 8.5 and 8.6 start at G0; 8.4 after 8.1; 8.7, 8.8, 8.9 and 8.10 after 8.4; 8.11 last. Phases 8.1 to 8.8 merge before the 2026-10-28 freeze; 8.9 and 8.10 are cut first.
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
