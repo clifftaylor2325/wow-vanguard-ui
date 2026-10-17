@@ -848,6 +848,12 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 - Expect: the item columns and the two money lines sit on darker flat panels; each item slot is a square with a thin border in the item's quality colour and no gold or bronze slot plate or name plate (an enchant slot keeps its icon); your gold, silver and copper boxes are flat dark boxes that keep their coin pictures; the other player's money has no gold-edged plate; the two names over the columns are light text, not gold; the Trade button keeps its warning icon when the game shows it. Trade and Cancel still work. [Needs in game: all of it.]
 - If it fails, paste: a screenshot of the window and `/vg errors`.
 
+### 14.14.2 Mail window
+
+- Do: open a mailbox with some mail in it (some read, some with items, one cash on delivery if you have one). Look at the inbox, hover a row, then click the Send Mail tab, type a name and a subject, write a line in the letter, drag an item onto an attachment slot, and click Send money and C.O.D. in turn.
+- Expect: the inbox has no parchment and the rows have no brown plates; each row's item is a square with a thin border in the item's quality colour (read mail's border greyed); the sender and subject are in the theme font with the game's colours; the Previous and Next arrows are flat tiles with the theme's arrow and a light caption. On the Send Mail tab the letter sits on a darker flat panel and your text is light, not dark brown; To and Subject are flat dark boxes with light labels; the amount boxes are flat with their coins; the two choices are round radios that fill with the accent when picked; the money well at the bottom left is a flat panel; the two bronze bars are thin lines; the attachment slots are squares that show the item's picture. Cancel and Send are themed buttons. [Needs in game: all of it, most of all that the letter text is readable.]
+- If it fails, paste: a screenshot of each tab and `/vg errors`.
+
 ## 15. Talent planner
 
 ### 15.1 Bar and plan mode

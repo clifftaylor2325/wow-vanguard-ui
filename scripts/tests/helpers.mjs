@@ -673,7 +673,8 @@ export const WINDOWS_ENV = TITLE_LUA + `
 
 // TEST-ONLY builders for what a game window holds inside its frame (the R2.8-R2.13 windows): __art(f, name) a
 // game art texture; __well(name) a framed well (InsetFrameTemplate: art and a NineSlice); __sunk(f) whether f
-// carries the inset panel's fill; __itemButton / __moneyInput / __moneyLine the game's item button, money
+// carries the inset panel's fill; __text(parent, text) a font string in a game font and __themed(fs) whether the theme has restyled it; __faded(f, keep) whether every game art texture on f is faded (keep: one that
+// may stay); __itemButton / __moneyInput / __moneyLine the game's item button, money
 // input line (gold, silver and copper boxes with their coin) and money display (a figure beside each coin).
 export const INSIDES_LUA = `
   function __art(f, name) local t = f:CreateTexture(name) t:SetTexture("TEST-ONLY-ART") return t end
@@ -689,6 +690,18 @@ export const INSIDES_LUA = `
     end
     return false
   end
+  function __text(parent, text)
+    local fs = parent:CreateFontString(nil, "OVERLAY") fs:SetFont("TEST-ONLY-GAME", 12, "")
+    if text then fs:SetText(text) end
+    return fs
+  end
+  function __themed(fs) return fs:GetFont() ~= "TEST-ONLY-GAME" end
+  function __faded(f, keep)
+    for _, r in ipairs({ f:GetRegions() }) do
+      if r.__texture == "TEST-ONLY-ART" and r ~= keep and r.__alpha ~= 0 then return false end
+    end
+    return true
+  end
   function __itemButton(name, parent)
     local b = CreateFrame("Button", name, parent) b.icon, b.IconBorder = b:CreateTexture(), b:CreateTexture()
     return b
@@ -703,7 +716,7 @@ export const INSIDES_LUA = `
   function __moneyLine(name, parent)
     local f = CreateFrame("Frame", name, parent)
     for _, key in ipairs({ "GoldButton", "SilverButton", "CopperButton" }) do
-      f[key] = CreateFrame("Button", nil, f) f[key].Text = f[key]:CreateFontString(nil, "OVERLAY")
+      f[key] = CreateFrame("Button", nil, f) f[key].Text = __text(f[key])
     end
     return f
   end

@@ -741,7 +741,7 @@ const TRADE_ENV = `${WINDOWS_ENV}${INSIDES_LUA}
       if box.texture.__alpha == 1 then coins = coins + 1 end
     end
     return { wells = wells, rows = rows, skinned = skinned, icons = icons, boxes = boxes, coins = coins, bg = TradeRecipientMoneyBg.__alpha,
-      figure = TradeRecipientMoneyFrame.GoldButton.Text:GetFont() ~= nil, heads = __looks(TradeFramePlayerNameText, "label", "text") and __looks(TradeFrameRecipientNameText, "label", "text"),
+      figure = __themed(TradeRecipientMoneyFrame.GoldButton.Text), heads = __looks(TradeFramePlayerNameText, "label", "text") and __looks(TradeFrameRecipientNameText, "label", "text"),
       warning = TradeFrameTradeButton.WarningIcon.__alpha, painted = ns.Theme.PaintedCount() }
   end
 `;
@@ -770,4 +770,117 @@ it("R2.8 the trade window: the windows group off leaves it the game's; a trade w
   const odd = loggedIn(`${TRADE_ENV} TradeRecipientItem3 = {} TradeFrameTradeButton.WarningIcon = nil TradeRecipientMoneyFrame = {} TradePlayerInputMoneyFrame.gold = {} TradePlayerInputMoneyFrame.silver = nil`);
   odd.eval("TradeFrame:Show()");
   expect(odd.eval("return #ns.errors"), "odd parts (a row that is no frame, no warning icon, a bare money line) are skipped").toBe(0);
+});
+// TEST-ONLY mail window (MailFrame.xml): the frame and its buttons; the inbox (parchment, page count, seven rows
+// each with plates, an item button and its slot plate, texts coloured as the game does for unread mail, the two
+// page arrows with captions); the send page (four bar textures sharing one picture and a coin that does not, the
+// letter's scroll frame with stationery and a dark body, the To and Subject boxes with a label and their typed
+// text, the money input, radios, well, plate and lines, sixteen attachment slots of which three hold a picture).
+const MAIL_ENV = `${WINDOWS_ENV}${INSIDES_LUA}
+  PREV, NEXT, MAIL_TO_LABEL, MAIL_SUBJECT_LABEL = "TEST-ONLY Prev", "TEST-ONLY Next", "TEST-ONLY To:", "TEST-ONLY Subject:"
+  local f = __window("MailFrame")
+  for _, name in ipairs({ "OpenAllMail", "SendMailCancelButton", "SendMailMailButton" }) do CreateFrame("Button", name, f) end
+  local inbox = CreateFrame("Frame", "InboxFrame", f)
+  InboxFrameBg, InboxCurrentPage = __art(inbox), __text(inbox)
+  for _, key in ipairs({ "PrevPageButton", "NextPageButton" }) do
+    inbox[key] = CreateFrame("Button", nil, inbox) __art(inbox[key])
+    __text(inbox[key], key == "PrevPageButton" and PREV or NEXT)
+  end
+  for i = 1, 7 do
+    local row = CreateFrame("Frame", "MailItem" .. i, inbox) __art(row) __art(row)
+    row.Button = __itemButton("MailItem" .. i .. "Button", row)
+    _G["MailItem" .. i .. "ButtonSlot"] = __art(row.Button)
+    for _, part in ipairs({ "Sender", "Subject" }) do
+      _G["MailItem" .. i .. part] = __text(row) _G["MailItem" .. i .. part]:SetTextColor(1, 0.82, 0)
+    end
+  end
+  local send = CreateFrame("Frame", "SendMailFrame", f)
+  SendMailErrorCoin = send:CreateTexture("SendMailErrorCoin") SendMailErrorCoin:SetTexture("TEST-ONLY-COIN")
+  SendMailHorizontalBarLeft, SendMailHorizontalBarLeft2 = __art(send, "SendMailHorizontalBarLeft"), __art(send, "SendMailHorizontalBarLeft2")
+  send.rightHalves = { __art(send), __art(send) }
+  SendMailScrollFrame = __well("SendMailScrollFrame", send)
+  SendStationeryBackgroundLeft = __art(SendMailScrollFrame)
+  SendMailBodyEditBox = CreateFrame("EditBox", "SendMailBodyEditBox", send) SendMailBodyEditBox:SetTextColor(0.2, 0.1, 0.05)
+  for _, key in ipairs({ "Name", "Subject" }) do
+    local box = CreateFrame("EditBox", "SendMail" .. key .. "EditBox", send) __art(box)
+    __text(box, key == "Name" and MAIL_TO_LABEL or MAIL_SUBJECT_LABEL)
+    box.typed = __text(box, "typed")
+  end
+  __moneyInput("SendMailMoney", send)
+  for _, name in ipairs({ "SendMailSendMoneyButton", "SendMailCODButton" }) do __art(CreateFrame("CheckButton", name, send)) end
+  __well("SendMailMoneyInset", send)
+  CreateFrame("Frame", "SendMailMoneyBg", send)
+  SendMailMoneyText = __text(send)
+  __moneyLine("SendMailMoneyFrame", send) __moneyLine("SendMailCostMoneyFrame", send)
+  for i = 1, 16 do
+    local b = __itemButton("SendMailAttachment" .. i, send) __art(b)
+    if i <= 3 then b.picture = b:CreateTexture() b.GetNormalTexture = function() return b.picture end end
+  end
+  -- TEST-ONLY reader of the mail window's inside (see mailState).
+  function __mailState()
+    local out, rows, items, slots, texts = {}, 0, 0, 0, 0
+    for i = 1, 7 do
+      local row = _G["MailItem" .. i]
+      if __faded(row) then rows = rows + 1 end
+      if ns.FrameState("vgSkinned")[row.Button] then items = items + 1 end
+      if _G["MailItem" .. i .. "ButtonSlot"].__alpha == 0 then slots = slots + 1 end
+      local s, j = _G["MailItem" .. i .. "Sender"], _G["MailItem" .. i .. "Subject"]
+      if __themed(s) and __themed(j) and s.__textColor[2] == 0.82 and j.__textColor[2] == 0.82 then texts = texts + 1 end
+    end
+    local pagers = 0
+    for _, key in ipairs({ "PrevPageButton", "NextPageButton" }) do
+      local b = InboxFrame[key]
+      if ns.Theme.ArrowParts(b) and __faded(b) and __themed(select(2, b:GetRegions())) then pagers = pagers + 1 end
+    end
+    local bars = 0
+    for _, r in ipairs({ SendMailFrame:GetRegions() }) do if ns.Theme.DividerParts(r) then bars = bars + 1 end end
+    local attached, pictures = 0, 0
+    for i = 1, 16 do
+      local b = _G["SendMailAttachment" .. i]
+      if ns.FrameState("vgSkinned")[b] and __faded(b) then attached = attached + 1 end
+      if b.picture and b.picture.__alpha == 1 then pictures = pictures + 1 end
+    end
+    local boxes = 0
+    for _, name in ipairs({ "SendMailNameEditBox", "SendMailSubjectEditBox" }) do
+      local box = _G[name]
+      if __faded(box) and __themed(select(2, box:GetRegions())) and not __themed(box.typed) then boxes = boxes + 1 end
+    end
+    return { parchment = InboxFrameBg.__alpha == 0, rows = rows, items = items, slots = slots, texts = texts, pagers = pagers, page = __themed(InboxCurrentPage),
+      bars = bars, coin = SendMailErrorCoin.__alpha ~= 0, attached = attached, pictures = pictures, boxes = boxes,
+      letter = __faded(SendMailScrollFrame) and __sunk(SendMailScrollFrame) and SendStationeryBackgroundLeft.__alpha == 0, body = SendMailBodyEditBox.__textColor[1] > 0.5,
+      radios = ns.Theme.PaintedCount() > 0 and __faded(SendMailCODButton) and __faded(SendMailSendMoneyButton), plate = SendMailMoneyBg.__alpha,
+      well = __faded(SendMailMoneyInset) and __sunk(SendMailMoneyInset), label = __themed(SendMailMoneyText), lines = __themed(SendMailMoneyFrame.GoldButton.Text) and __themed(SendMailCostMoneyFrame.CopperButton.Text),
+      coins = (SendMailMoney.gold.texture.__alpha == 1 and 1 or 0) + (SendMailMoney.silver.texture.__alpha == 1 and 1 or 0) + (SendMailMoney.copper.texture.__alpha == 1 and 1 or 0), painted = ns.Theme.PaintedCount() }
+  end
+`;
+// The mail window's inside as __mailState reads it.
+const mailState = (addon) => addon.eval("return __mailState()");
+it("R2.9 the mail window: inbox rows and arrows, the send page's letter, boxes, money, bars and attachments in the theme", () => {
+  const addon = loggedIn(MAIL_ENV);
+  addon.eval("MailFrame:Show()");
+  const first = mailState(addon);
+  expect(first, "the inbox page and its seven rows, themed once the window shows").toMatchObject({ parchment: true, rows: 7, items: 7, slots: 7, texts: 7, pagers: 2, page: true });
+  expect(first, "the send page: four bars as dividers (the coin is no bar), the letter on an inset with a light body, boxes, radios, the money well and lines").toMatchObject({ bars: 4, coin: true, letter: true, body: true, boxes: 2, radios: true, plate: 0, well: true, label: true, lines: true, coins: 3 });
+  expect(first, "sixteen attachment slots in the item look, their pictures kept").toMatchObject({ attached: 16, pictures: 3 });
+  expect(windowState(addon, "MailFrame"), "and the window skin as ever").toMatchObject({ art: 0, panel: true, title: true });
+  addon.eval("MailFrame:Hide() MailFrame:Show()");
+  expect(mailState(addon).painted, "a second show paints nothing new").toBe(first.painted);
+  expect(addon.eval("return #ns.errors"), "no errors").toBe(0);
+});
+it("R2.9 the mail window: a picture that arrives later is kept; the windows group off leaves it the game's; a bare or odd mail window loads cleanly", () => {
+  const addon = loggedIn(MAIL_ENV);
+  addon.eval("MailFrame:Show() local b = SendMailAttachment5 b.picture = b:CreateTexture() b.GetNormalTexture = function() return b.picture end MailFrame:Hide() MailFrame:Show()");
+  expect(addon.eval("return SendMailAttachment5.picture.__alpha"), "an item dropped on a slot after the first show keeps its picture on the next").toBe(1);
+  const off = loggedIn(MAIL_ENV, { savedVariables: "VanguardDB.profiles = { Default = { Windows = { windows = false } } }" });
+  off.eval("MailFrame:Show()");
+  expect(mailState(off), "nothing faded or painted").toMatchObject({ parchment: false, rows: 0, items: 0, bars: 0, attached: 0, boxes: 0, pagers: 0, letter: false });
+  const bare = loggedIn(`${WINDOWS_ENV}__window("MailFrame")`);
+  bare.eval("MailFrame:Show()");
+  expect([windowState(bare, "MailFrame").panel, bare.eval("return #ns.errors")], "a bare window is skinned without an error").toEqual([true, 0]);
+  const odd = loggedIn(`${MAIL_ENV} MailItem3 = {} InboxFrame.PrevPageButton = {} SendMailHorizontalBarLeft = {} SendMailAttachment2 = {} SendMailNameEditBox = {} SendMailSendMoneyButton = {} SendMailScrollFrame = {}`);
+  odd.eval("MailFrame:Show()");
+  expect(odd.eval("return #ns.errors"), "odd parts (rows, arrows, bars, slots, boxes, radios that are no frames) are skipped").toBe(0);
+  const noBars = loggedIn(`${MAIL_ENV} SendMailFrame = nil`);
+  noBars.eval("MailFrame:Show()");
+  expect(noBars.eval("return #ns.errors"), "no send page is no error").toBe(0);
 });

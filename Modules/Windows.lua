@@ -70,8 +70,11 @@ GW.ITEM_TEXT_TAGS = { P = "text", H1 = "text", H2 = "text", H3 = "text" }
 -- on the dark panel): body text and headings go light.
 GW.QUEST_BODY = { "QuestInfoDescriptionText", "QuestInfoObjectivesText", "QuestInfoRewardText", "QuestProgressText", "GreetingText" }
 GW.QUEST_HEADS = { "QuestInfoTitleHeader", "QuestInfoDescriptionHeader", "QuestInfoObjectivesHeader", "QuestProgressTitleText", "CurrentQuestsText", "AvailableQuestsText" }
--- Push buttons a window keeps outside its button row (the mail's Open All; the trade's Trade and Cancel).
-GW.EXTRA_BUTTONS = { MailFrame = { "OpenAllMail" }, TradeFrame = { "TradeFrameTradeButton", "TradeFrameCancelButton" } }
+-- Push buttons a window keeps outside its button row (the mail's Open All, Cancel and Send; the trade's Trade and Cancel).
+GW.EXTRA_BUTTONS = {
+  MailFrame = { "OpenAllMail", "SendMailCancelButton", "SendMailMailButton" },
+  TradeFrame = { "TradeFrameTradeButton", "TradeFrameCancelButton" },
+}
 -- The character pane's gear slots (Character<slot>Slot; each button's ID is its inventory slot).
 GW.SLOTS = { "Head", "Neck", "Shoulder", "Back", "Chest", "Wrist", "Hands", "Waist", "Legs", "Feet",
   "Finger0", "Finger1", "Trinket0", "Trinket1", "MainHand", "SecondaryHand", "Ranged" }
@@ -397,6 +400,51 @@ function GW.TextNamed(names, role, token)
   eachNamed(names, function(fs) if fs.SetFont then T.Text(fs, role, token) end end)
 end
 
+-- The game's strings for the inbox arrows' captions.
+GW.PAGER_CAPTIONS = { "PREV", "NEXT" }
+
+-- Colours and fonts each font string among a frame's regions whose text is one of the game's strings named in
+-- names (MAIL_TO_LABEL...): the game's labels carry no name or key to find them by.
+function GW.TextRegions(frame, names, role, token)
+  if type(frame) ~= "table" or not frame.GetRegions then return end
+  local texts = {}
+  for _, name in ipairs(names) do
+    if type(_G[name]) == "string" then texts[_G[name]] = true end
+  end
+  for _, region in ipairs({ frame:GetRegions() }) do
+    if region.SetFont and region.GetText and texts[region:GetText()] then T.Text(region, role, token) end
+  end
+end
+
+-- A radio button (UIRadioButtonTemplate) as a theme radio; anything that is not a frame is skipped.
+function GW.SkinRadio(button)
+  if type(button) == "table" and button.CreateTexture then T.Radio(button) end
+end
+
+-- An edit box (the game's input border and all) as a theme edit box; anything that is not one is skipped.
+function GW.SkinEditBox(box)
+  if type(box) == "table" and box.SetText and box.GetRegions then T.EditBox(box) end
+end
+
+-- An item button whose picture is its normal texture (a mail attachment's): the slot art faded, the border in the
+-- item's quality colour, the picture kept as the game sets it.
+function GW.SkinPictureSlot(button)
+  if type(button) ~= "table" or not button.GetRegions then return end
+  local picture, keep = button.GetNormalTexture and button:GetNormalTexture(), {}
+  if picture then keep[picture] = true end
+  T.FadeRegions(button, keep)
+  GW.SkinItem(button)
+  GW.ShowTexture(picture)
+end
+
+-- A paging arrow with a caption (the inbox's Previous and Next): a theme arrow button pointing `direction`,
+-- the caption beside it in small text.
+function GW.SkinPager(button, direction)
+  if type(button) ~= "table" or not button.CreateTexture then return end
+  T.ArrowButton(button, direction)
+  GW.TextRegions(button, GW.PAGER_CAPTIONS, "small", "text2")
+end
+
 -- The three denominations of a money input line (MoneyInputFrameTemplate: edit boxes under these keys).
 GW.MONEY_INPUTS = { "gold", "silver", "copper" }
 
@@ -534,6 +582,78 @@ GW.INSIDES.TradeFrame = function()
   for i = 1, 7 do skinTradeRow("TradePlayerItem" .. i) skinTradeRow("TradeRecipientItem" .. i) end
   skinTradeMoney()
   GW.TextNamed(GW.TRADE_HEADS, "label", "text")
+end
+
+-- The mail window ------------------------------------------------------------------------------
+
+-- The game's strings for the To and Subject labels beside the send page's boxes.
+GW.MAIL_LABELS = { "MAIL_TO_LABEL", "MAIL_SUBJECT_LABEL" }
+-- The send page's two text boxes and its money radios.
+GW.MAIL_BOXES = { "SendMailNameEditBox", "SendMailSubjectEditBox" }
+GW.MAIL_RADIOS = { "SendMailSendMoneyButton", "SendMailCODButton" }
+
+-- One inbox row (MailItem1-7): its plates and its item's slot plate faded, the item button in the bags' look,
+-- the sender and subject in the theme font with the colours the game gives them (read mail is greyed).
+local function skinMailRow(i)
+  local row = _G["MailItem" .. i]
+  if type(row) ~= "table" or not row.GetRegions then return end
+  T.FadeRegions(row)
+  GW.FadeNamed({ "MailItem" .. i .. "ButtonSlot" })
+  GW.SkinItem(row.Button)
+  GW.TextNamed({ "MailItem" .. i .. "Sender" }, "label", false)
+  GW.TextNamed({ "MailItem" .. i .. "Subject" }, "small", false)
+end
+
+-- The inbox page: its parchment faded, the seven rows, the page arrows and the page count.
+local function skinInbox()
+  GW.FadeNamed({ "InboxFrameBg" })
+  for i = 1, 7 do skinMailRow(i) end
+  local inbox = _G.InboxFrame
+  if type(inbox) ~= "table" then return end
+  GW.SkinPager(inbox.PrevPageButton, "left")
+  GW.SkinPager(inbox.NextPageButton, "right")
+  GW.TextNamed({ "InboxCurrentPage" }, "small", "text2")
+end
+
+-- The send page's two bronze bars: every texture of the page that shows the first bar's picture (the named left
+-- halves and the unnamed right halves) as one pixel of the divider colour.
+local function skinMailBars(page)
+  local first = type(_G.SendMailHorizontalBarLeft) == "table" and _G.SendMailHorizontalBarLeft
+  if not first or not first.GetTexture or not page.GetRegions then return end
+  for _, region in ipairs({ page:GetRegions() }) do
+    if region.GetTexture and region:GetTexture() == first:GetTexture() then T.Divider(region) end
+  end
+end
+
+-- The send page's letter: the stationery faded and the scroll frame an inset panel, the body in light text
+-- (the game draws it dark for the parchment), the To and Subject boxes as theme edit boxes with their labels.
+local function skinLetter()
+  GW.InsetPanel(_G.SendMailScrollFrame)
+  GW.PaintNamed({ "SendMailBodyEditBox" }, "text")
+  eachNamed(GW.MAIL_BOXES, function(box)
+    GW.SkinEditBox(box)
+    GW.TextRegions(box, GW.MAIL_LABELS, "small", "text")
+  end)
+end
+
+-- The send page's money: the amount boxes, the radios, the well and its plate, the amount label and both money lines.
+local function skinSendMoney()
+  GW.SkinMoneyInput(_G.SendMailMoney)
+  eachNamed(GW.MAIL_RADIOS, GW.SkinRadio)
+  GW.InsetPanel(_G.SendMailMoneyInset)
+  GW.FadeNamed({ "SendMailMoneyBg" })
+  GW.TextNamed({ "SendMailMoneyText" }, "small", "text")
+  GW.SkinMoney(_G.SendMailMoneyFrame)
+  GW.SkinMoney(_G.SendMailCostMoneyFrame)
+end
+
+-- The mail window's inside: the inbox, then the send page (its bars, letter, money and sixteen attachment slots).
+GW.INSIDES.MailFrame = function()
+  skinInbox()
+  skinMailBars(_G.SendMailFrame or {})
+  skinLetter()
+  skinSendMoney()
+  for i = 1, 16 do GW.SkinPictureSlot(_G["SendMailAttachment" .. i]) end
 end
 
 -- Readable text ------------------------------------------------------------------------------
