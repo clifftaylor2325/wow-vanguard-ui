@@ -70,10 +70,11 @@ GW.ITEM_TEXT_TAGS = { P = "text", H1 = "text", H2 = "text", H3 = "text" }
 -- on the dark panel): body text and headings go light.
 GW.QUEST_BODY = { "QuestInfoDescriptionText", "QuestInfoObjectivesText", "QuestInfoRewardText", "QuestProgressText", "GreetingText" }
 GW.QUEST_HEADS = { "QuestInfoTitleHeader", "QuestInfoDescriptionHeader", "QuestInfoObjectivesHeader", "QuestProgressTitleText", "CurrentQuestsText", "AvailableQuestsText" }
--- Push buttons a window keeps outside its button row (the mail's Open All, Cancel and Send; the trade's Trade and Cancel).
+-- Push buttons a window keeps outside its button row (the mail's Open All, Cancel and Send; the trade's Trade and Cancel; the dressing room's Close and Reset).
 GW.EXTRA_BUTTONS = {
   MailFrame = { "OpenAllMail", "SendMailCancelButton", "SendMailMailButton" },
   TradeFrame = { "TradeFrameTradeButton", "TradeFrameCancelButton" },
+  DressUpFrame = { "DressUpFrameCancelButton", "DressUpFrameResetButton" },
   QuestFrame = {
     "QuestFrameAcceptButton", "QuestFrameDeclineButton", "QuestFrameCompleteQuestButton", "QuestFrameGoodbyeButton",
     "QuestFrameCompleteButton", "QuestFrameGreetingGoodbyeButton",
@@ -438,6 +439,22 @@ function GW.FadeArt(part)
   if type(part) == "table" and part.GetRegions then T.FadeRegions(part) end
 end
 
+-- A button of a window's control row that keeps its own icon (a roll button's dice, the dressing room's outfit
+-- toggle) on the control tile; anything that is not a frame is skipped.
+function GW.SkinPlate(button)
+  if type(button) == "table" and button.CreateTexture then T.ControlPlate(button) end
+end
+
+-- A progress bar (a countdown, a reading bar) as a flat inset track with the theme's bar texture: the game's
+-- frame and background faded, and the fill (which the fade reaches too) shown again; anything else is skipped.
+function GW.SkinProgress(bar)
+  if type(bar) ~= "table" or not bar.SetStatusBarTexture then return end
+  T.FadeRegions(bar)
+  T.StyleBar(bar)
+  T.Panel(bar, { inset = true, noSheen = true })
+  GW.ShowTexture(bar:GetStatusBarTexture())
+end
+
 -- A radio button (UIRadioButtonTemplate) as a theme radio; anything that is not a frame is skipped.
 function GW.SkinRadio(button)
   if type(button) == "table" and button.CreateTexture then T.Radio(button) end
@@ -503,13 +520,12 @@ function GW.SkinMenuButton(button)
   T.Button(button)
 end
 
--- The menu's header: the plate behind the title hidden, the title in the title role, inside the panel.
+-- The menu's header: the plate behind the title faded (nothing in the game's Lua shows or fades it again, and
+-- it stays the game's own to show), the title in the title role, inside the panel.
 local function dressMenuHeader(menu)
   local header = menu.Header
   if type(header) ~= "table" then return end
-  for _, key in ipairs(GW.MENU_PLATE) do
-    if type(header[key]) == "table" then header[key]:Hide() end
-  end
+  GW.FadeParts(header, GW.MENU_PLATE)
   GW.SkinTitle(header.Text)
   header:SetPoint("TOP", menu, "TOP", 0, -8)
 end
@@ -680,6 +696,23 @@ GW.INSIDES.MailFrame = function()
   for i = 1, 16 do GW.SkinPictureSlot(_G["SendMailAttachment" .. i]) end
 end
 
+-- The group loot rolls ------------------------------------------------------------------------
+
+-- A roll window's four buttons (the dice, coin and pass keys of LootButtonContainer).
+GW.LOOT_ROLLS = { "NeedButton", "GreedButton", "PassButton", "TransmogButton" }
+
+-- One roll window's inside: its four buttons on control tiles (the game sets their icons), the countdown as a
+-- flat track, and the item's icon in the item look (the game's quality ring faded: the item's name keeps its colour).
+local function rollInside(frame)
+  local box = frame.LootButtonContainer
+  for _, key in ipairs(GW.LOOT_ROLLS) do GW.SkinPlate(type(box) == "table" and box[key] or nil) end
+  GW.SkinProgress(frame.Timer)
+  if type(frame.IconFrame) ~= "table" then return end
+  GW.FadeParts(frame.IconFrame, { "Border" })
+  GW.SkinItem(frame.IconFrame)
+end
+for i = 1, 4 do GW.INSIDES["GroupLootFrame" .. i] = rollInside end
+
 -- Popups and the ready check ------------------------------------------------------------------
 
 -- A popup's text box (a tooltip-backdrop edit box) as a theme edit box, the backdrop's nine-slice faded.
@@ -721,6 +754,40 @@ GW.INSIDES.ReadyCheckFrame = function()
   GW.SkinButton(listener.YesButton)
   GW.SkinButton(listener.NoButton)
   GW.TextNamed({ "ReadyCheckFrameText" }, "label", "text")
+end
+
+-- The dressing room ---------------------------------------------------------------------------
+
+-- The two side panels of the outfit controls (a list of sets, and the details of a custom set).
+GW.DRESS_PANELS = { "SetSelectionPanel", "CustomSetDetailsPanel" }
+
+-- The outfit controls on the dressing room's model: the outfit dropdown and its Save button, the Link button, the
+-- details toggle and the two side panels. Each is skipped when the client lacks it.
+local function dressControls(frame)
+  GW.SkinDropdown(frame.CustomSetDropdown)
+  GW.SkinButton(type(frame.CustomSetDropdown) == "table" and frame.CustomSetDropdown.SaveButton or nil)
+  GW.SkinButton(frame.LinkButton)
+  GW.SkinPlate(frame.ToggleCustomSetDetailsButton)
+  for _, key in ipairs(GW.DRESS_PANELS) do GW.InsetPanel(frame[key]) end
+end
+
+-- The dressing room's inside: the model's painted backdrop an inset, then its outfit controls (Cancel and Reset
+-- are in GW.EXTRA_BUTTONS).
+GW.INSIDES.DressUpFrame = function(frame)
+  GW.InsetPanel(frame.ModelScene)
+  dressControls(frame)
+end
+
+-- Books and letters ---------------------------------------------------------------------------
+
+-- A book or letter's inside: the page area an inset (its parchment is faded with the text, GW.LightItemText),
+-- the page arrows and the reading bar, and the page count in small text.
+GW.INSIDES.ItemTextFrame = function()
+  GW.InsetPanel(_G.ItemTextScrollFrame)
+  GW.SkinPager(_G.ItemTextPrevPageButton, "left")
+  GW.SkinPager(_G.ItemTextNextPageButton, "right")
+  GW.SkinProgress(_G.ItemTextStatusBar)
+  GW.TextNamed({ "ItemTextCurrentPage" }, "small", "text2")
 end
 
 -- The quest and gossip windows ----------------------------------------------------------------

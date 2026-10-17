@@ -1003,3 +1003,79 @@ it("R2.11 the loot window's close button, the breath bars' caption and the guild
   expect(addon.eval(`local ok = true for _, t in ipairs({ MirrorTimerContainer:GetChildren() }) do
     local _, size = t.Text:GetFont() ok = ok and size == ns.Theme.RoleSize("barSmall") end return ok`), "each breath bar's caption takes the small bar text").toBe(true);
 });
+// TEST-ONLY group loot roll window, dressing room and book window (GroupLootFrame.xml, DressUpFrames.xml,
+// ItemTextFrame.xml): the roll window's four buttons, countdown bar with its background, item icon with its quality
+// ring; the dressing room's model with backdrops, buttons, dropdown and side panels; the book's page area,
+// arrows with captions, reading bar and page count.
+const INNER_ENV = `${WINDOWS_ENV}${INSIDES_LUA}
+  PREV, NEXT = "TEST-ONLY Prev", "TEST-ONLY Next"
+  local roll = __window("GroupLootFrame1")
+  roll.LootButtonContainer = CreateFrame("Frame", nil, roll)
+  for _, key in ipairs(ns.GetModule("Windows").LOOT_ROLLS) do roll.LootButtonContainer[key] = CreateFrame("Button", nil, roll.LootButtonContainer) end
+  roll.Timer = CreateFrame("StatusBar", nil, roll) roll.Timer.Background = __art(roll.Timer) roll.Timer:SetStatusBarTexture("TEST-ONLY-ART")
+  roll.IconFrame = __itemButton(nil, roll) roll.IconFrame.Border = __art(roll.IconFrame)
+  local dress = __window("DressUpFrame")
+  dress.ModelScene = __well(nil, dress)
+  for _, name in ipairs({ "DressUpFrameCancelButton", "DressUpFrameResetButton" }) do CreateFrame("Button", name, dress) end
+  dress.CustomSetDropdown = CreateFrame("Button", nil, dress) dress.CustomSetDropdown.Arrow = __art(dress.CustomSetDropdown)
+  dress.CustomSetDropdown.SaveButton = CreateFrame("Button", nil, dress.CustomSetDropdown)
+  dress.LinkButton, dress.ToggleCustomSetDetailsButton = CreateFrame("Button", nil, dress), CreateFrame("Button", nil, dress)
+  dress.SetSelectionPanel, dress.CustomSetDetailsPanel = __well(nil, dress), __well(nil, dress)
+  __window("ItemTextFrame")
+  ItemTextScrollFrame, ItemTextCurrentPage = __well("ItemTextScrollFrame", ItemTextFrame), __text(ItemTextFrame)
+  for _, name in ipairs({ "ItemTextPrevPageButton", "ItemTextNextPageButton" }) do local b = CreateFrame("Button", name, ItemTextFrame) __art(b) __text(b, name == "ItemTextPrevPageButton" and PREV or NEXT) end
+  ItemTextStatusBar = CreateFrame("StatusBar", "ItemTextStatusBar", ItemTextFrame) __art(ItemTextStatusBar) ItemTextStatusBar:SetStatusBarTexture("TEST-ONLY-ART")
+  -- Whether a bar is a flat track: its game art faded, the theme's bar texture on a visible fill, an inset panel behind.
+  function __track(bar)
+    local fill = bar:GetStatusBarTexture()
+    return __faded(bar) and fill.__texture ~= "TEST-ONLY-ART" and fill.__alpha ~= 0 and __sunk(bar)
+  end
+  -- Whether a button has a theme control tile (it gained a texture).
+  function __tiled(b) return select("#", b:GetRegions()) > 0 end
+`;
+it("R2.12 group loot rolls: the four buttons on tiles, the countdown a flat track, the item icon in the item look", () => {
+  const addon = loggedIn(INNER_ENV);
+  addon.eval("GroupLootFrame1:Show()");
+  // The roll window's parts as the skin leaves them.
+  const read = () => addon.eval(`local f = GroupLootFrame1 local keys = ns.GetModule("Windows").LOOT_ROLLS local tiles = 0
+    for _, key in ipairs(keys) do if __tiled(f.LootButtonContainer[key]) then tiles = tiles + 1 end end
+    return { tiles = tiles, track = __track(f.Timer), ring = f.IconFrame.Border.__alpha, item = ns.FrameState("vgSkinned")[f.IconFrame] == true, painted = ns.Theme.PaintedCount(), errors = #ns.errors }`);
+  const first = read();
+  expect(first, "four tiles, a flat countdown, the ring faded and the icon in the item look").toMatchObject({ tiles: 4, track: true, ring: 0, item: true, errors: 0 });
+  addon.eval("GroupLootFrame1:Hide() GroupLootFrame1:Show()");
+  expect(read().painted, "a second show paints nothing new").toBe(first.painted);
+  const odd = loggedIn(`${INNER_ENV} GroupLootFrame1.LootButtonContainer = nil GroupLootFrame1.Timer = {} GroupLootFrame1.IconFrame = 1`);
+  odd.eval("GroupLootFrame1:Show()");
+  expect(odd.eval("return #ns.errors"), "a roll window without its buttons, bar or icon is no error").toBe(0);
+});
+it("R2.12 the dressing room: the model an inset, the outfit controls and side panels in the theme", () => {
+  const addon = loggedIn(INNER_ENV);
+  addon.eval("DressUpFrame:Show()");
+  // The dressing room's parts as the skin leaves them.
+  const read = () => addon.eval(`local f = DressUpFrame
+    return { model = __faded(f.ModelScene) and __sunk(f.ModelScene), panels = __sunk(f.SetSelectionPanel) and __faded(f.SetSelectionPanel) and __sunk(f.CustomSetDetailsPanel),
+      buttons = __tiled(DressUpFrameCancelButton) and __tiled(DressUpFrameResetButton) and __tiled(f.LinkButton) and __tiled(f.CustomSetDropdown.SaveButton), dropdown = f.CustomSetDropdown.Arrow.__alpha,
+      toggle = __tiled(f.ToggleCustomSetDetailsButton), painted = ns.Theme.PaintedCount(), errors = #ns.errors }`);
+  const first = read();
+  expect(first, "model and panels sunk, buttons themed, the dropdown keeps its arrow, the toggle on a control tile").toMatchObject({ model: true, panels: true, buttons: true, dropdown: 1, toggle: true, errors: 0 });
+  addon.eval("DressUpFrame:Hide() DressUpFrame:Show()");
+  expect(read().painted, "a second show paints nothing new").toBe(first.painted);
+  const odd = loggedIn(`${INNER_ENV} DressUpFrame.ModelScene = nil DressUpFrame.CustomSetDropdown = {} DressUpFrame.LinkButton = 1 DressUpFrame.SetSelectionPanel = {}`);
+  odd.eval("DressUpFrame:Show()");
+  expect(odd.eval("return #ns.errors"), "a dressing room without the outfit controls is no error").toBe(0);
+});
+it("R2.12 books and letters: the page area an inset, flat page arrows, a flat reading bar, the page count in small text", () => {
+  const addon = loggedIn(INNER_ENV);
+  addon.eval("ItemTextFrame:Show()");
+  // The book window's parts as the skin leaves them.
+  const read = () => addon.eval(`return { page = __sunk(ItemTextScrollFrame), arrows = ns.Theme.ArrowParts(ItemTextPrevPageButton) ~= nil and ns.Theme.ArrowParts(ItemTextNextPageButton) ~= nil,
+    captions = __themed(select(2, ItemTextPrevPageButton:GetRegions())) and __themed(select(2, ItemTextNextPageButton:GetRegions())), bar = __track(ItemTextStatusBar), count = __themed(ItemTextCurrentPage),
+    painted = ns.Theme.PaintedCount(), errors = #ns.errors }`);
+  const first = read();
+  expect(first, "all themed").toMatchObject({ page: true, arrows: true, captions: true, bar: true, count: true, errors: 0 });
+  addon.eval("ItemTextFrame:Hide() ItemTextFrame:Show()");
+  expect(read().painted, "a second show paints nothing new").toBe(first.painted);
+  const bare = loggedIn(`${WINDOWS_ENV} __window("ItemTextFrame")`);
+  bare.eval("ItemTextFrame:Show()");
+  expect([windowState(bare, "ItemTextFrame").panel, bare.eval("return #ns.errors")], "a book window without its parts is skinned without an error").toEqual([true, 0]);
+});

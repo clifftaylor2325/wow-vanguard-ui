@@ -866,6 +866,12 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 - Expect: a popup is a flat slate panel with no dark game tile or ornate border behind it; its warning icon and a progress bar's fill still show; the text box and money boxes are flat dark boxes; buttons are the theme's. The ready check is a flat panel with a light title and prompt, themed Ready and Not Ready buttons, the caller's portrait still showing and no game border. The loot window's close button is the same square as other windows' (red under the mouse). The breath bar's caption is small, light, outlined text on the bar. [Needs in game: whether a popup keeps any game border or corner art; if it does, paste a screenshot.]
 - If it fails, paste: a screenshot of the popup or ready check and `/vg errors`.
 
+### 14.14.5 Roll windows, dressing room, books and the game menu header
+
+- Do: roll on an item in a group (or loot with a friend), and look at the roll window. Open the dressing room (Ctrl-click an item), open the outfit dropdown and the details toggle. Read a book or a letter and turn a page; read a timed book if you know one. Press Escape and look at the top of the game menu.
+- Expect: the roll window has Need, Greed, Pass (and Transmog when offered) on the same small tiles as the window controls elsewhere, with their dice and coin icons; its countdown is a flat bar on a dark track that runs down; the item icon is a square with a thin border and no game ring, the item name keeps its colour. The dressing room's model sits on a flat darker panel; Close, Reset and Link are themed buttons, the outfit dropdown keeps its arrow, and the side panels that open beside it are flat. The book's page area is a flat darker panel with the page arrows as flat tiles and the page count small; a timed book's bar is flat. The game menu has no gold plate behind its title; its title is still readable and inside the panel.
+- If it fails, paste: a screenshot of the window and `/vg errors`.
+
 ## 15. Talent planner
 
 ### 15.1 Bar and plan mode
