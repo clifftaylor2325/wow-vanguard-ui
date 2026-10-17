@@ -589,6 +589,13 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 - Do: die and look at the return-to-graveyard button; open the addon list (`/addons` or the game menu) and change an addon that is out of date, if one is; trigger a message box (for example `/run BasicMessageDialog.Text:SetText("test") BasicMessageDialog:Show()`).
 - Expect: the graveyard button is a flat button with its icon and text (nothing changes while you are in combat); the addon confirmation and the message box are flat panels with flat buttons, not full-screen dimmers of a different shade.
 - If it fails, paste: a screenshot and `/vg errors`.
+
+### 14.3.10 Loot window rows
+
+- Do: with auto-loot off, kill something that drops several items (one of them a stack, one green if you can) and open the loot window; hover a row, take one item, then loot something else.
+- Expect: the loot window is a flat panel and its rows have no item card behind them: each row is a square slot with a thin border in the item's quality colour (none for white items), the stack count on it, the item's name and its rarity word in the Vanguard font in the game's quality colours; the row still lights up under the mouse and a quest item keeps its mark; clicking a row still loots it; the next corpse's rows look the same.
+- If it fails, paste: a screenshot of the open loot window and `/vg errors`.
+
 ### 14.4.1 Game options
 
 - Do: press Escape, click Options. Look at the window, click through Game and AddOns, type in the search box, change a setting, click Apply, then Close.

@@ -507,6 +507,56 @@ it("game windows: switched off they stay the game's, and missing windows are fin
     t = CreateFrame("Frame", "MirrorTimer2", UIParent) CreateFrame("StatusBar", "MirrorTimer2StatusBar", t)`);
   expect(plain.eval("return { select('#', LootFrame.ButtonContainer.Buttons[1]:GetRegions()) > 0, MirrorTimer2StatusBar:GetStatusBarTexture() ~= nil }"), "a window with a button container, and a bar found by name").toEqual([true, true]);
 });
+// TEST-ONLY loot window (ScrollingFlatPanelTemplate): the window, and its list as the game's ScrollBox hands out
+// rows (LootFrameItemElementTemplate: an item card with its slot, name and rarity tag).
+const LOOT_ROWS_ENV = `${WINDOWS_ENV}
+  ScrollBoxListMixin = { Event = { OnAcquiredFrame = "OnAcquiredFrame" } }
+  local f = __window("LootFrame")
+  local box = { rows = {}, callbacks = {} }
+  function box:RegisterCallback(event, fn, owner) self.callbacks[event] = { fn, owner } end
+  function box:ForEachFrame(fn) for _, row in ipairs(self.rows) do fn(row) end end
+  f.ScrollBox = box
+  -- A row as the game acquires it: the card art, the item slot (icon, quality border, count), the texts.
+  function __lootRow()
+    local row = CreateFrame("Frame", nil, UIParent)
+    for _, key in ipairs({ "NameFrame", "BorderFrame", "QualityStripe", "HighlightNameFrame", "IconQuestTexture" }) do row[key] = row:CreateTexture() end
+    row.Text, row.QualityText = row:CreateFontString(nil, "ARTWORK"), row:CreateFontString(nil, "ARTWORK")
+    row.Item = CreateFrame("Button", nil, row) row.Item.icon = row.Item:CreateTexture() row.Item.IconBorder = row.Item:CreateTexture()
+    return row
+  end
+  table.insert(box.rows, __lootRow())
+`;
+// A loot row's look: its card art and hover stroke alphas, its slot in the bags' item look, its texts' fonts.
+const lootRow = (addon, lua) => addon.eval(`local row = ${lua}
+  return { row.NameFrame:GetAlpha(), row.BorderFrame:GetAlpha(), row.QualityStripe:GetAlpha(), row.HighlightNameFrame:GetAlpha(), row.IconQuestTexture:GetAlpha(),
+    ns.FrameState("vgSkinned")[row.Item] == true, row.Text:GetFont() ~= nil, row.QualityText:GetFont() ~= nil }`);
+it("R1.2 the loot window: its rows lose the game's card art and take the bags' item look, on show and as the list acquires them", () => {
+  const addon = loggedIn(LOOT_ROWS_ENV);
+  addon.eval("LootFrame:Show()");
+  const first = windowState(addon, "LootFrame");
+  expect(first, "the window skin").toMatchObject({ art: 0, nine: 0, panel: true, title: true });
+  expect(lootRow(addon, "LootFrame.ScrollBox.rows[1]"), "the row that was there: card, stroke and rarity ribbon faded, the hover stroke and quest mark kept, the slot done, the texts in the theme font").toEqual([0, 0, 0, 1, 1, true, true, true]);
+  addon.eval("local box = LootFrame.ScrollBox local cb = box.callbacks.OnAcquiredFrame box.later = __lootRow() cb[1](cb[2], box.later) cb[1](cb[2], nil)");
+  expect(lootRow(addon, "LootFrame.ScrollBox.later"), "a row acquired later, the same; a missing row is skipped").toEqual([0, 0, 0, 1, 1, true, true, true]);
+  const painted = windowState(addon, "LootFrame").painted;
+  addon.eval("LootFrame:Hide() LootFrame:Show() local cb = LootFrame.ScrollBox.callbacks.OnAcquiredFrame cb[1](cb[2], LootFrame.ScrollBox.later)");
+  expect([windowState(addon, "LootFrame").painted, addon.eval("local n = 0 for _ in pairs(LootFrame.ScrollBox.callbacks) do n = n + 1 end return n")], "a second show, and a row acquired again, paint nothing more; the list is watched once").toEqual([painted, 1]);
+});
+it("R1.2 the loot window: the windows group off leaves its rows the game's; a loot window without a list, or a client without the list mixin, loads cleanly", () => {
+  const off = loggedIn(LOOT_ROWS_ENV, { savedVariables: "VanguardDB.profiles = { Default = { Windows = { windows = false } } }" });
+  off.eval("LootFrame:Show()");
+  expect([windowState(off, "LootFrame").art !== 0, lootRow(off, "LootFrame.ScrollBox.rows[1]"), off.eval("return LootFrame.ScrollBox.callbacks.OnAcquiredFrame == nil")], "not hooked, the row's art left").toEqual([true, [1, 1, 1, 1, 1, false, false, false], true]);
+  // Any error Vanguard reported from the windows modules, or "none".
+  const errors = (addon) => addon.eval("for _, e in ipairs(ns.errors) do if e.text:find('Windows') then return e.text end end return 'none'");
+  const noList = loggedIn(`${WINDOWS_ENV} __window("LootFrame")`);
+  noList.eval("LootFrame:Show()");
+  const noMixin = loggedIn(LOOT_ROWS_ENV + " ScrollBoxListMixin = nil");
+  noMixin.eval("LootFrame:Show()");
+  const noEvent = loggedIn(LOOT_ROWS_ENV + " ScrollBoxListMixin.Event = nil");
+  noEvent.eval("LootFrame:Show()");
+  expect([noList, noMixin, noEvent].map(errors), "none of them reports an error").toEqual(["none", "none", "none"]);
+  expect([windowState(noList, "LootFrame").panel, noMixin.eval("return LootFrame.ScrollBox.callbacks.OnAcquiredFrame == nil")], "the window is still skinned; no list events without the game's mixin").toEqual([true, true]);
+});
 it("game windows registry: a window added under a group is skinned, its group's switch keeps it the game's", () => {
   const reg = `__window("TestOnlySocialFrame") __window("TestOnlyLaterFrame")
     local GW = ns.GetModule("Windows")
