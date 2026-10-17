@@ -878,6 +878,12 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 - Expect: the three check boxes are flat squares with an accent tick; the dropdowns are flat buttons that keep their arrows; the message box is a flat dark box; the captions (Alarm time, Alarm message, Show stopwatch) and the window's title are light, not gold; the stopwatch switch keeps its clock icon on a small tile; the globe at the window's top left still shows; the stopwatch's title is light text.
 - If it fails, paste: a screenshot and `/vg errors`.
 
+### 14.14.7 Spellbook and talents
+
+- Do: press P to open the spellbook; turn a page; type in the search box; open the settings button (top right) and the category tabs. Open the Talents tab, move the mouse over the search box, the options and loadout dropdowns, Apply, reset and undo; spend a point if you can, then apply it; watch the tree for a few seconds. Open the Specialization tab and a hero talent choice.
+- Expect: the spellbook has no parchment, top bar or bookmark: the pages are a flat dark panel; the page arrows are flat tiles with the theme's arrows and the page count is small grey text; the search box is a flat dark box with its magnifier; the settings button is a flat button with its picture. Spell names and headings are readable (if they are dark on the dark pages, paste a screenshot). The talent tree has no painted backdrop, bronze frame or gold dividers but still shows the clouds and, when you apply, the burst; its buttons and dropdowns are flat with their arrows; the points count has no bronze plate. Specialization cards and hero talents look as the game draws them.
+- If it fails, paste: a screenshot of the spellbook and of the talents, and `/vg errors`.
+
 ## 15. Talent planner
 
 ### 15.1 Bar and plan mode

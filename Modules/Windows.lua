@@ -485,6 +485,60 @@ function GW.SkinPager(button, direction)
   GW.TextRegions(button, GW.PAGER_CAPTIONS, "small", "text2")
 end
 
+-- The part reached from frame by a dotted path of parentKeys ("PagedSpellsFrame.PagingControls"); nil when a step
+-- is missing or is no table.
+function GW.Part(frame, path)
+  local part = frame
+  for key in string.gmatch(path, "[^.]+") do
+    if type(part) ~= "table" then return nil end
+    part = part[key]
+  end
+  return type(part) == "table" and part or nil
+end
+
+-- Runs fn on frame[key] for each key (fn skips what is not a frame); a frame that is no table is skipped.
+function GW.EachKey(frame, keys, fn)
+  if type(frame) ~= "table" then return end
+  for _, key in ipairs(keys) do fn(frame[key]) end
+end
+
+-- The parts of frame under those keys as a set, for T.FadeRegions' keep argument (art the game animates or the
+-- window shows as content).
+function GW.KeepKeys(frame, keys)
+  local keep = {}
+  for _, key in ipairs(keys) do
+    if type(frame[key]) == "table" then keep[frame[key]] = true end
+  end
+  return keep
+end
+
+-- A font string in a role and a theme colour; anything that is not a font string is skipped.
+function GW.SkinText(fs, role, token)
+  if type(fs) == "table" and fs.SetFont then T.Text(fs, role, token) end
+end
+
+-- A paging arrow as a theme arrow button pointing `direction`; anything that is not a frame is skipped.
+function GW.SkinArrow(button, direction)
+  if type(button) == "table" and button.CreateTexture then T.ArrowButton(button, direction) end
+end
+
+-- A pager of two arrows and a page count (PagingControlsTemplate, the collections' paging frame: PrevPageButton,
+-- NextPageButton and PageText): the arrows as theme arrow buttons, the count in small text.
+function GW.SkinPaging(controls)
+  if type(controls) ~= "table" then return end
+  GW.SkinArrow(controls.PrevPageButton, "left")
+  GW.SkinArrow(controls.NextPageButton, "right")
+  GW.SkinText(controls.PageText, "small", "text2")
+end
+
+-- A dropdown whose picture is an Icon (UIPanelArrowDropdownButtonTemplate, the spellbook's settings) as a theme
+-- button that keeps it.
+function GW.SkinIconDropdown(dropdown)
+  if type(dropdown) ~= "table" or not dropdown.CreateTexture then return end
+  T.Button(dropdown)
+  GW.ShowTexture(dropdown.Icon)
+end
+
 -- The three denominations of a money input line (MoneyInputFrameTemplate: edit boxes under these keys).
 GW.MONEY_INPUTS = { "gold", "silver", "copper" }
 
@@ -846,6 +900,58 @@ GW.INSIDES.GossipFrame = function(frame)
   local panel = frame.GreetingPanel
   GW.FadeArt(panel)
   GW.SkinButton(type(panel) == "table" and panel.GoodbyeButton or nil)
+end
+
+-- The spellbook and the talents ----------------------------------------------------------------
+
+-- The talent tree's art that stays: the clouds and particles drifting over it and the effects played when
+-- changes are applied (the game animates their alpha).
+GW.TALENT_FX = {
+  "Clouds1", "Clouds2", "AirParticlesClose", "AirParticlesFar", "ActivationExpandFx", "ActivationTitansFX",
+  "ActivationClassFx", "ActivationClassFx2", "ActivationClassFx3", "ActivationClassFx4",
+}
+-- The talent page's push buttons by key (apply, copy an inspected build), and its two icon buttons (reset, undo).
+GW.TALENT_BUTTONS = { "ApplyButton", "InspectCopyButton" }
+GW.TALENT_ICONS = { "ResetButton", "UndoButton" }
+
+-- The spellbook: its parchment (top bar, pages, bookmark, corner) faded, the page area an inset, the search box,
+-- the settings dropdown (a picture) and the page arrows with their count in the theme.
+local function skinSpellBook(book)
+  if type(book) ~= "table" or not book.GetRegions then return end
+  T.FadeRegions(book)
+  GW.InsetPanel(book.PagedSpellsFrame)
+  GW.SkinSearch(book.SearchBox)
+  GW.SkinIconDropdown(book.SettingsDropdown)
+  GW.SkinPaging(GW.Part(book, "PagedSpellsFrame.PagingControls"))
+end
+
+-- The talent tree's painted backdrop, bronze frame and dividers faded (its clouds, particles and activation
+-- effects stay) and the tree an inset; the tree's buttons are content.
+local function skinTalentBackdrop(talents)
+  T.FadeRegions(talents, GW.KeepKeys(talents, GW.TALENT_FX))
+  T.Panel(talents, { inset = true, noSheen = true })
+  local currency = talents.ClassCurrencyDisplay
+  if type(currency) == "table" then GW.FadeParts(currency, { "Border" }) end
+end
+
+-- The talent page's controls: push buttons, the activate button, the search box and its options, the loadout
+-- dropdown and the reset and undo buttons (which keep their pictures on control tiles).
+local function skinTalentControls(talents)
+  GW.EachKey(talents, GW.TALENT_BUTTONS, GW.SkinButton)
+  GW.EachKey(talents, GW.TALENT_ICONS, GW.SkinPlate)
+  GW.SkinButton(GW.Part(talents, "ActiveSpec.ActivateButton"))
+  GW.SkinSearch(talents.SearchBox)
+  GW.SkinDropdown(talents.SearchOptionsDropdown)
+  GW.SkinDropdown(GW.Part(talents, "LoadSystem.Dropdown"))
+end
+
+-- The spellbook and the talents' insides. The spec cards and the hero talents are left as the game draws them.
+GW.INSIDES.PlayerSpellsFrame = function(frame)
+  skinSpellBook(frame.SpellBookFrame)
+  local talents = frame.TalentsFrame
+  if type(talents) ~= "table" or not talents.GetRegions then return end
+  skinTalentBackdrop(talents)
+  skinTalentControls(talents)
 end
 
 -- Readable text ------------------------------------------------------------------------------
