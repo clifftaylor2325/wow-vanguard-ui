@@ -6,7 +6,10 @@
 --   /way clear                      removes it
 -- /way is Vanguard's only while no other addon (TomTom, say) has it; /vg way
 -- always works. While the world map is open, a line along its bottom shows
--- your coordinates and the cursor's.
+-- your coordinates and the cursor's. The floating pin and distance the game
+-- draws over the world for a waypoint or a supertracked quest (SuperTrackedFrame)
+-- take Vanguard's pin in the accent and the theme font; a party member's portrait
+-- and the corpse's tombstone stay the game's.
 --
 -- Written for WoW Forever: C_Map's user waypoint, UiMapPoint and
 -- C_SuperTrack's arrow are in its UI source (1.60.1). Coordinates are map
@@ -16,7 +19,7 @@ local ADDON, ns = ...
 
 local T = ns.Theme
 
-local WP = ns.Module("Waypoints", { defaults = { slash = true, mapCoords = true } })
+local WP = ns.Module("Waypoints", { defaults = { slash = true, mapCoords = true, pin = true } })
 
 -- Seconds between updates of the world map's coordinates line.
 WP.MAP_INTERVAL = 0.1
@@ -173,10 +176,54 @@ function WP.OnLoaded(_, name)
   if name == "Blizzard_WorldMap" and _G.WorldMapFrame and not WP.mapLine then buildMapLine(_G.WorldMapFrame) end
 end
 
+-- The floating waypoint pin ---------------------------------------------------------------------
+-- The game's SuperTrackedFrame (Blizzard_QuestNavigation/SuperTrackedFrame.xml: Icon, DistanceText) floats
+-- over the world for a /way point or a supertracked quest. Its icon takes Vanguard's pin in the accent after
+-- each time the game sets its own (SuperTrackedFrameMixin:UpdateIcon, on SUPER_TRACKING_CHANGED), its
+-- distance the theme font; the frame's own placing, distance and fading stay the game's.
+
+-- The super-tracking kinds (Enum.SuperTrackingType) whose icon the game fills with something of its own,
+-- kept as it is: a party member's portrait and the corpse's tombstone.
+WP.OWN_ICONS = { "PartyMember", "Corpse" }
+
+-- Whether the game's pin shows one of WP.OWN_ICONS right now (no when the client can't say).
+local function keepsOwnIcon()
+  local kinds, get = Enum and Enum.SuperTrackingType, C_SuperTrack and C_SuperTrack.GetHighestPrioritySuperTrackingType
+  if type(kinds) ~= "table" or type(get) ~= "function" then return false end
+  local kind = get()
+  for _, name in ipairs(WP.OWN_ICONS) do
+    if not ns.IsSecret(kind) and kind == kinds[name] then return true end
+  end
+  return false
+end
+
+-- Paints Vanguard's pin, in the accent, on the game's waypoint icon (its size stays the game's); an icon the
+-- game fills itself is left as it is, untinted.
+function WP.PaintPin()
+  local f = _G.SuperTrackedFrame
+  local icon = type(f) == "table" and f.Icon
+  if type(icon) ~= "table" or type(icon.SetTexture) ~= "function" then return end
+  if keepsOwnIcon() then return T.Tint(icon, "white") end
+  icon:SetTexture(T.Icon("Pin"))
+  T.Tint(icon, "accent")
+end
+
+-- Dresses the game's floating pin: the distance in the theme font, the pin painted now and again whenever
+-- the game redraws its icon or the theme changes. Nothing without the frame.
+local function skinPin()
+  local f = _G.SuperTrackedFrame
+  if type(f) ~= "table" then return end
+  if type(f.DistanceText) == "table" and type(f.DistanceText.SetFont) == "function" then T.Text(f.DistanceText, "world", "text") end
+  if type(f.UpdateIcon) == "function" and type(hooksecurefunc) == "function" then hooksecurefunc(f, "UpdateIcon", ns.Guard("hook waypoint pin", WP.PaintPin)) end
+  T.OnChanged(WP.PaintPin)
+  WP.PaintPin()
+end
+
 -- Module entry point (Core/Modules.lua).
 function WP.Enable(settings)
   WP.settings = settings
   if settings.slash then WP.claimed = claimWay() end
+  if settings.pin then skinPin() end
   if not settings.mapCoords then return end
   if _G.WorldMapFrame then buildMapLine(_G.WorldMapFrame) else ns.On("ADDON_LOADED", WP.OnLoaded) end
 end
