@@ -186,7 +186,7 @@ Vanguard shares its three bars through LibSharedMedia as "Vanguard", "Vanguard S
 | Panel (the window) | `panel` | the window itself, dialogs, cards, menus and tooltips (at 0.94, `T.Tooltip`), a selected window tab | `T.Panel(f, { shadow = true })` for anything floating, `T.Panel(f)` for a card inside a window |
 | Raised (lifted) | `raised` | buttons and dropdowns, a scroll bar's thumb, slot tiles, a selected tab on a card, a window control's resting tile | `T.Button`, `T.Panel(f, { raised = true })`, `T.Slot` |
 
-Depth is said by the fill, the one-pixel `edge` border, the sheen, the bevel on raised things and one soft shadow under floating things; never by a second border, a glow or a bigger shadow. Rows inside a list have no fill of their own: they sit on the inset and show their state by a wash. A divider between groups is one pixel of `divider`.
+Depth is said by the fill, the one-pixel `edge` border, the sheen, the bevel on raised things and one soft shadow under floating things; never by a second border, a glow or a bigger shadow. A game window's own Inset (the sunk area behind its list or content, which every window made from the game's ButtonFrameTemplate has) is painted as an inset by `GW.Skin`, once, after its art is faded. Rows inside a list have no fill of their own: they sit on the inset and show their state by a wash. A divider between groups is one pixel of `divider`.
 
 **One state matrix.** Every control shows its states the same way, as layers over an unchanged base, so hover and selected stack, and nothing but a press moves anything (one pixel).
 

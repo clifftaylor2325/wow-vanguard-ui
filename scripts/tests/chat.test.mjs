@@ -532,10 +532,12 @@ it("game windows in the Vanguard look: framed windows, popups, breath bar, and w
   const addon = loggedIn(WINDOWS_ENV);
   addon.eval("MerchantFrame:Show()");
   const first = windowState(addon, "MerchantFrame");
-  expect(first, "the game's art is faded, a panel is painted, the title takes the theme font").toMatchObject({ art: 0, nine: 0, portrait: 0, insetNine: 0, panel: true, title: true });
+  expect(first, "the game's art is faded, a panel is painted, its Inset is an inset panel, the title takes the title role").toMatchObject({ art: 0, nine: 0, portrait: 0, insetNine: 0, inset: true, panel: true, title: true });
   addon.eval("MerchantFrame:Hide() MerchantFrame:Show()");
   expect(windowState(addon, "MerchantFrame"), "showing it again keeps the panel and paints nothing new").toMatchObject({ panel: true, painted: first.painted });
-  expect(windowState(addon, "StaticPopup1"), "popups too").toMatchObject({ art: 0, panel: true });
+  expect(windowState(addon, "StaticPopup1"), "popups too").toMatchObject({ art: 0, inset: true, panel: true });
+  addon.eval('__window("TestOnlyNoInset").Inset = nil __window("TestOnlyBareInset").Inset = {} ns.GetModule("Windows").Add("windows", "framed", { "TestOnlyNoInset", "TestOnlyBareInset" })');
+  expect(addon.eval("TestOnlyNoInset:Show() TestOnlyBareInset:Show() return { ns.Theme.PaintedCount() > 0, #ns.errors }"), "a window without an Inset, or with one that is no frame, is skinned all the same").toEqual([true, 0]);
   // Whether every breath bar in the container has the theme's bar texture (not the game's) and its frame art faded.
   const timers = () => addon.eval(`local ok = true
     for _, t in ipairs({ MirrorTimerContainer:GetChildren() }) do ok = ok and t.StatusBar:GetStatusBarTexture() ~= nil and t.StatusBar:GetStatusBarTexture().__texture ~= "TEST-ONLY-ART" and t.Border.__alpha == 0 end
@@ -579,6 +581,7 @@ it("game windows: switched off they stay the game's, and missing windows are fin
   const off = loggedIn(WINDOWS_ENV, { savedVariables: "VanguardDB.profiles = { Default = { Windows = { windows = false, popups = false, timers = false } } }" });
   off.eval("MerchantFrame:Show() StaticPopup1:Show()");
   expect([windowState(off, "MerchantFrame").art, windowState(off, "StaticPopup1").art].every((a) => a !== 0), "nothing is faded").toBe(true);
+  expect([windowState(off, "MerchantFrame").inset, windowState(off, "StaticPopup1").inset], "and no Inset is painted").toEqual([false, false]);
   expect(off.eval("local t = MirrorTimerContainer:GetChildren() return t.StatusBar:GetStatusBarTexture() == nil and t.Border.__alpha ~= 0"), "the breath bars keep the game's bar and art").toBe(true);
   const bare = loggedIn("");
   expect(bare.eval("for _, e in ipairs(ns.errors) do if e.text:find('Windows') then return e.text end end return 'none'"), "a client without these windows loads cleanly").toBe("none");

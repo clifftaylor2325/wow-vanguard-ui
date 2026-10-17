@@ -817,6 +817,12 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 - Expect: every window's and dialog's title is the same size and light text colour (not gold), still where the game centres it; the game menu's title sits inside its panel.
 - If it fails, paste: a screenshot of the window whose title differs and `/vg errors`.
 
+### 14.13 Window insets
+
+- Do: open the merchant, the class trainer, the macro window and the addon list (Escape → AddOns).
+- Expect: the list or content area of each is a darker flat panel with the thin edge, set into the window's panel; no bronze frame or dark tile of the game's around it.
+- If it fails, paste: a screenshot of the window and `/vg errors`.
+
 ## 15. Talent planner
 
 ### 15.1 Bar and plan mode

@@ -215,11 +215,20 @@ local function keepContent(frame, name)
   end
 end
 
--- Skins one window: art faded (its content art kept), a flat opaque panel (the world never shows through a
--- window) with a soft shadow `pad` units (default GW.PAD) out past it, its parts themed.
+-- A ButtonFrameTemplate window's Inset (the sunk area behind its list or content, its art already faded) painted
+-- as an inset panel, once (T.Panel paints a frame only once); a window without one is skipped.
+local function paintInset(frame)
+  local inset = frame.Inset
+  if type(inset) == "table" and inset.CreateTexture then T.Panel(inset, { inset = true, noSheen = true }) end
+end
+
+-- Skins one window: art faded (its content art kept), its Inset painted as an inset panel, a flat opaque panel
+-- (the world never shows through a window) with a soft shadow `pad` units (default GW.PAD) out past it, its
+-- parts themed.
 function GW.Skin(frame, pad)
   local name = frame.GetName and frame:GetName()
   fadeArt(frame)
+  paintInset(frame)
   keepContent(frame, name)
   T.Panel(frame, { shadow = true, pad = pad or GW.PAD, alpha = 1 })
   dressParts(frame, name)

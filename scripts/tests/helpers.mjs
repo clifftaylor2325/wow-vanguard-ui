@@ -671,9 +671,14 @@ export const WINDOWS_ENV = TITLE_LUA + `
   end
 `;
 
-// A window's state: its own art faded, its parts dressed, how many frames are painted.
+// A window's state: its own art faded, its Inset painted as an inset panel, its parts dressed, how many frames are painted.
 export const windowState = (addon, name) => addon.eval(`local f = ${name}
   local art for _, r in ipairs({ f:GetRegions() }) do if r.__texture == "TEST-ONLY-ART" then art = r.__alpha end end
   local panel = 0 for _, r in ipairs({ f:GetRegions() }) do if r.__texture ~= "TEST-ONLY-ART" and r.__alpha ~= 0 then panel = panel + 1 end end
+  local c, inset = { ns.Theme.PanelColor(true) }, false
+  for _, r in ipairs({ f.Inset:GetRegions() }) do
+    local v = r.__vertexColor
+    if v and v[1] == c[1] and v[2] == c[2] and v[3] == c[3] then inset = true end
+  end
   return { art = art, nine = f.NineSlice.__alpha, portrait = f.PortraitContainer.__alpha, insetNine = f.Inset.NineSlice.__alpha,
-    panel = panel > 0, title = __titled(f.TitleContainer.TitleText), painted = ns.Theme.PaintedCount() }`);
+    inset = inset, panel = panel > 0, title = __titled(f.TitleContainer.TitleText), painted = ns.Theme.PaintedCount() }`);
