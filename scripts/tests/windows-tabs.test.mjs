@@ -5,8 +5,8 @@ import { expect, it } from "vitest";
 import { isTok, loggedIn, px, WINDOWS_ENV } from "./helpers.mjs";
 
 // TEST-ONLY tab buttons shaped like the game's tab templates, and a reader for a tab's state:
-// art = the alpha of its Left texture (-1 while the game's own), line = whether its accent
-// line (the only OVERLAY texture T.Tab adds) shows, icon = whether its icon was left alone.
+// art = the alpha of its Left texture (-1 while the game's own), raised = whether it is the
+// selected tab's raised fill (the last BACKGROUND texture T.Tab tints), icon = whether its icon was left alone.
 const TABS_ENV = `
   function __tab(parent, name, keys, kind)
     local b = CreateFrame(kind or "Button", name, parent)
@@ -14,12 +14,20 @@ const TABS_ENV = `
     b.Icon = b:CreateTexture(nil, "ARTWORK")
     return b
   end
-  function __line(b)
-    for _, r in ipairs({ b:GetRegions() }) do if r.__layer == "OVERLAY" then return r end end
+  function __tabBg(b)
+    local bg
+    for _, r in ipairs({ b:GetRegions() }) do if r.__layer == "BACKGROUND" and r.__vertexColor then bg = r end end
+    return bg
+  end
+  function __raised(b)
+    local bg = __tabBg(b)
+    if not bg then return false end
+    local c = bg.__vertexColor
+    local r, g, bl = ns.Theme.RGB("raised")
+    return c[1] == r and c[2] == g and c[3] == bl
   end
   function __tabState(b)
-    local line = __line(b)
-    return { art = b.Left and b.Left.__alpha or -1, icon = b.Icon.__alpha == nil, line = line ~= nil and line:IsShown() }
+    return { art = b.Left and b.Left.__alpha or -1, icon = b.Icon.__alpha == nil, raised = __raised(b) }
   end
   -- A tab system as TabSystemMixin has it: tabs added one at a time, read back by GetTabButton.
   function __system(parent)
@@ -59,7 +67,7 @@ it("the tabs group loads cleanly on a client without its windows", () => {
   expect(addon.eval("for _, e in ipairs(ns.errors) do if e.text:find('Windows') then return e.text end end return 'none'")).toBe("none");
 });
 
-it("tab buttons on framed windows: named, array and tab-system tabs in the theme, the selected one lit", () => {
+it("tab buttons on framed windows: named, array and tab-system tabs in the theme, the selected one raised", () => {
   const addon = loggedIn(WINDOWS_ENV + WINDOW_TABS_ENV);
   addon.eval("MerchantFrame:Show() TestOnlyFriends:Show() TestOnlySpells:Show() TestOnlyHeader:Show()");
   const states = addon.eval(`return {
@@ -67,9 +75,9 @@ it("tab buttons on framed windows: named, array and tab-system tabs in the theme
     __tabState(TestOnlySpells.TabSystem:GetTabButton(2)), __tabState(TestOnlyHeader.FriendsTabHeader.TabSystem:GetTabButton(1)) }`);
   expect(states.map((s) => s.art), "every kind of tab has its game art faded").toEqual([0, 0, 0, 0, 0]);
   expect(states.map((s) => s.icon), "and its icon left alone").toEqual([true, true, true, true, true]);
-  expect(states.map((s) => s.line), "only the disabled (selected) Merchant tab shows the accent line").toEqual([false, true, false, false, false]);
+  expect(states.map((s) => s.raised), "only the disabled (selected) Merchant tab is raised").toEqual([false, true, false, false, false]);
   addon.eval("TestOnlySpells.TabSystem:GetTabButton(1):SetTabSelected(true)");
-  expect(addon.eval("return __tabState(TestOnlySpells.TabSystem:GetTabButton(1)).line"), "a tab system's selection lights its tab").toBe(true);
+  expect(addon.eval("return __tabState(TestOnlySpells.TabSystem:GetTabButton(1)).raised"), "a tab system's selection raises its tab").toBe(true);
   expect(addon.eval("return ns.errors[1] == nil"), "nothing failed, a window this client lacks included").toBe(true);
 });
 
@@ -82,7 +90,7 @@ it("tab buttons: a second show paints nothing more, and tabs a tab system adds l
   addon.eval("TestOnlySpells.TabSystem:AddTab()");
   expect(addon.eval("return __tabState(TestOnlySpells.TabSystem:GetTabButton(3)).art"), "a tab the game adds after the window was dressed").toBe(0);
   addon.eval("MerchantFrameTab2:Enable() MerchantFrameTab1:Disable()");
-  expect(addon.eval("return { __tabState(MerchantFrameTab1).line, __tabState(MerchantFrameTab2).line }"), "the line follows the game's selection").toEqual([true, false]);
+  expect(addon.eval("return { __tabState(MerchantFrameTab1).raised, __tabState(MerchantFrameTab2).raised }"), "the raised tab follows the game's selection").toEqual([true, false]);
 });
 
 it("tab buttons: windows that load later are dressed when their part of the game loads", () => {
@@ -111,7 +119,7 @@ it("tab buttons: the tabs switch off, or a window's own group off, leaves the ga
 
 // TEST-ONLY side tabs: a LargeSideTabButtonTemplate one (a Frame: art keys, SelectedTexture,
 // SetChecked from its mixin) and a RightSideTabTemplate one (a CheckButton with an unkeyed frame
-// texture, an icon and its overlay). __sideState reads the line, the faded art and the icon:
+// texture, an icon and its overlay). __sideState reads the raised state, the faded art and the icon:
 // icon = the icon still shows (never faded out) and its overlay is the game's; dim = greyed and faded.
 const SIDE_ENV = TABS_ENV + `
   function __side(parent, key)
@@ -132,14 +140,14 @@ const SIDE_ENV = TABS_ENV + `
     return t
   end
   function __sideState(t)
-    local line = __line(t)
+    local raised = __raised(t)
     return { art = t.Background and t.Background.__alpha or (t.frameArt and t.frameArt.__alpha) or -1,
       icon = (t.Icon.__alpha == nil or t.Icon.__alpha > 0) and (t.IconOverlay == nil or t.IconOverlay.__alpha == nil),
-      dim = t.Icon.__desaturated == true and t.Icon:GetAlpha() < 1, line = line ~= nil and line:IsShown() }
+      dim = t.Icon.__desaturated == true and t.Icon:GetAlpha() < 1, raised = raised }
   end
 `;
 
-it("side tabs: the character pane's mode tabs in the theme, the checked one lit from the start and as the game moves it", () => {
+it("side tabs: the character pane's mode tabs in the theme, the checked one raised from the start and as the game moves it", () => {
   const addon = loggedIn(WINDOWS_ENV + SIDE_ENV + `
     __window("CharacterFrame")
     CharacterFrame.ModeTabs = CreateFrame("Frame", nil, CharacterFrame)
@@ -156,10 +164,10 @@ it("side tabs: the character pane's mode tabs in the theme, the checked one lit 
   const first = addon.eval(`${tabs}`);
   expect(first.map((s) => s.art), "the side art is faded").toEqual([0, 0, 0]);
   expect(first.map((s) => s.icon), "the icons are the game's").toEqual([true, true, true]);
-  expect(first.map((s) => s.line), "the tab the game had checked before the skin hooked it is already lit").toEqual([true, false, false]);
-  expect(first.map((s) => s.dim), "the other tabs' icons are greyed, the lit one's in color").toEqual([false, true, true]);
+  expect(first.map((s) => s.raised), "the tab the game had checked before the skin hooked it is already raised").toEqual([true, false, false]);
+  expect(first.map((s) => s.dim), "the other tabs' icons are greyed, the raised one's in color").toEqual([false, true, true]);
   addon.eval("local m = CharacterFrame.ModeTabs m.CharacterTab:SetChecked(false) m.ReputationTab:SetChecked(true)");
-  expect(addon.eval(tabs).map((s) => s.line), "the line follows SetChecked, as the game's RefreshDisplay does").toEqual([false, true, false]);
+  expect(addon.eval(tabs).map((s) => s.raised), "the raised tab follows SetChecked, as the game's RefreshDisplay does").toEqual([false, true, false]);
   expect(addon.eval("return CharacterFrame.TabIndicators.Glyph.__alpha"), "the gamepad tab indicators' art is faded").toBe(0);
   addon.eval("CharacterFrame:Show()");
   const painted = addon.eval("return ns.Theme.PaintedCount()");
@@ -175,9 +183,9 @@ it("side tabs: the guild window's, whether or not another group registered it, u
   const state = addon.eval("return { __sideState(CommunitiesFrame.ChatTab), __sideState(CommunitiesFrame.RosterTab) }");
   expect(state.map((s) => s.art), "its frame texture (no key) is faded").toEqual([0, 0]);
   expect(state.map((s) => s.icon), "its icon and the icon's overlay are kept").toEqual([true, true]);
-  expect(state.map((s) => s.line), "the checked tab is lit").toEqual([true, false]);
+  expect(state.map((s) => s.raised), "the checked tab is raised").toEqual([true, false]);
   addon.eval("CommunitiesFrame.RosterTab:SetChecked(true) CommunitiesFrame.ChatTab:SetChecked(false)");
-  expect(addon.eval("return { __sideState(CommunitiesFrame.ChatTab).line, __sideState(CommunitiesFrame.RosterTab).line }"), "and it moves with SetChecked").toEqual([false, true]);
+  expect(addon.eval("return { __sideState(CommunitiesFrame.ChatTab).raised, __sideState(CommunitiesFrame.RosterTab).raised }"), "and it moves with SetChecked").toEqual([false, true]);
   expect(addon.eval("return { __sideState(CommunitiesFrame.ChatTab).dim, __sideState(CommunitiesFrame.RosterTab).dim }"), "the greyed icon moves with it").toEqual([true, false]);
   const registered = guild + `ns.GetModule("Windows").Add("social", "framed", { "CommunitiesFrame" })`;
   expect(loggedIn(registered).eval("return __sideState(CommunitiesFrame.ChatTab).art"), "registered by the social group, still dressed").toBe(0);
@@ -202,7 +210,7 @@ it("side tabs: Legacy, inspect and group finder windows are dressed when their p
     __tabState(LFGParentFrameTab3).art, __sideState(LFGParentFrame.BrowsingTab).art, __tabState(InspectFrameTab2).art }`);
   expect(out, "the Legacy side tabs, the group finder's tabs and side tabs and the inspect tabs").toEqual([0, 0, 0, 0, 0]);
   addon.eval("InspectFrameTab2:Disable()");
-  expect(addon.eval("return __tabState(InspectFrameTab2).line"), "the inspect tab the game selects (disables) is lit").toBe(true);
+  expect(addon.eval("return __tabState(InspectFrameTab2).raised"), "the inspect tab the game selects (disables) is raised").toBe(true);
   expect(addon.eval("return ns.errors[1] == nil")).toBe(true);
 });
 
@@ -570,7 +578,7 @@ it("scroll bars: only on registered windows whose groups are on; a bar that isn'
   expect(groupOff.eval("CommunitiesFrame:Show() return __barState(CommunitiesFrame.ScrollBar)[1]"), "a window whose own group is off (the guild window, social) keeps the game's bars").toBe(-1);
 });
 
-it("tabs and the window's padding: a tab set outside the window moves out to the panel's edge, once, with its bar on its outer edge", () => {
+it("tabs and the window's padding: a tab set outside the window moves out to the panel's edge, once", () => {
   const addon = loggedIn(WINDOWS_ENV + SIDE_ENV + `
     __window("CommunitiesFrame") CommunitiesFrame:SetSize(400, 300) CommunitiesFrame:SetPoint("CENTER")
     local chat = __right(CommunitiesFrame, "ChatTab", true) chat:SetSize(32, 32) chat:SetPoint("TOPLEFT", CommunitiesFrame, "TOPRIGHT", 2, -40)
@@ -583,10 +591,6 @@ it("tabs and the window's padding: a tab set outside the window moves out to the
     local c, r, b = CommunitiesFrame.ChatTab.__points.TOPLEFT, CommunitiesFrame.RosterTab.__points.TOP, TestOnlyBottomTab1.__points.TOPLEFT
     return { math.abs(c.x - pad) < 1e-9, c.y, r.rel == CommunitiesFrame.ChatTab, r.y, b.x, math.abs(b.y + pad) < 1e-9, ns.Theme.Padding(CommunitiesFrame) }`);
   expect(out, "the guild window's first side tab sits on the panel's padded edge (shown twice: moved once), the next still follows it; the bottom tab drops below the padding").toEqual([true, -40, true, -8, 11, true, 12]);
-  const bars = addon.eval(`local function bar(t) for _, r in ipairs({ t:GetRegions() }) do if r.__layer == "OVERLAY" then return r end end end
-    local side, bottom = bar(CommunitiesFrame.ChatTab), bar(TestOnlyBottomTab1)
-    return { side.__points.TOPRIGHT ~= nil and side.__points.BOTTOMRIGHT ~= nil, bottom.__points.BOTTOMLEFT ~= nil and bottom.__points.BOTTOMRIGHT ~= nil }`);
-  expect(bars, "the accent bar runs along the edge away from the window: the side tab's right, the bottom tab's bottom").toEqual([true, true]);
   expect(addon.eval("return ns.errors[1] == nil")).toBe(true);
 });
 

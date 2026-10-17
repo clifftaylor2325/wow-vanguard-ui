@@ -100,12 +100,12 @@ function scanFindsMedia() {
 // halves (T.Texture("Logo" .. half)), the shadow and glow rings (ring(frame, { texture = ... })), the
 // rounded-corner arcs and discs (cornerPieces(frame, "CornerLine" or "CornerFill")) and
 // the window controls' glyphs (Modules/Windows.lua maxMinButton), the dispel badge letters
-// (Core/Auras.lua A.DISPEL_GLYPHS) and the warn state's glyph (Core/Theme.lua T.STATE_GLYPHS), and the
+// (Core/Auras.lua A.DISPEL_GLYPHS) and the warn state's glyph (Core/Theme.lua T.STATE_GLYPHS), a switch's track, outline, knob and knob shade (Core/Controls.lua art()), and the
 // quest marks for the quest dialog and quest log lines (F17; QuestBang, QuestQuery), drawn ahead of
 // the Lua that will name them in place of the game's gossip icons (Modules/QuestDialogParts.lua QP.ICONS).
 // The sized copies of the line and menu icons (#232), named by T.Icon(name, size) in the Lua.
 const SIZED_NAMES = SIZED_ICONS.flatMap((n) => ICON_SIZES.map((s) => `Media/Icons/${n}${s}.tga`));
-const BUILT_NAMES = ["Media/Textures/LogoRight.tga", "Media/Textures/Shadow.tga", "Media/Textures/Glow.tga", "Media/Textures/CornerLine.tga", "Media/Textures/CornerFill.tga", "Media/Icons/Maximize.tga", "Media/Icons/Minimize.tga",
+const BUILT_NAMES = ["Media/Textures/Pill.tga", "Media/Textures/PillLine.tga", "Media/Textures/Knob.tga", "Media/Textures/KnobShade.tga", "Media/Textures/LogoRight.tga", "Media/Textures/Shadow.tga", "Media/Textures/Glow.tga", "Media/Textures/CornerLine.tga", "Media/Textures/CornerFill.tga", "Media/Icons/Maximize.tga", "Media/Icons/Minimize.tga",
   ...["Magic", "Curse", "Disease", "Poison"].map((t) => `Media/Icons/Dispel${t}.tga`), "Media/Icons/Warn.tga", "Media/Icons/QuestBang.tga", "Media/Icons/QuestQuery.tga"];
 
 // The images in Media/ (not the fonts and license texts), as repo paths.

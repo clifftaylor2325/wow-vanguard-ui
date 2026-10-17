@@ -259,10 +259,9 @@ it("shared media: the bundled LibSharedMedia-3.0 carries Vanguard's font and bar
     .toEqual([8020003, 8, FIRA + "Medium.ttf", FIRA + "SemiBold.ttf", "Interface\\AddOns\\Vanguard\\Media\\Textures\\Bar", "Interface\\AddOns\\Vanguard\\Media\\Textures\\BarSoft", "Interface\\Buttons\\WHITE8X8"]);
   addon.eval('ns.Options.Show("general") __dropdown("Font")');
   const fonts = addon.eval("return __menuTexts()");
-  expect([fonts.slice(0, 2), fonts.includes("TEST-ONLY Font"), fonts.includes("Friz Quadrata TT"), fonts.some((f) => /^Vanguard/.test(f))], "the Font picker: the built-ins first, then every shared font but Vanguard's own")
-    .toEqual([["Fira Sans Condensed", "the game's font"], true, true, false]);
-  addon.eval('__pick("TEST-ONLY Font")');
-  expect(addon.eval("return { (ns.Theme.Font()), (ns.Theme.Font(true)), (Vanguard_Options.title:GetFont()), Vanguard_Options.reload:IsShown() }"), "picking a shared font uses it for all text at once, no reload")
+  expect(fonts, "the Font picker: Vanguard's own two fonts only (other addons' fonts are not listed)").toEqual(["Fira Sans Condensed", "the game's font"]);
+  addon.eval('ns.Theme.Settings().font = "TEST-ONLY Font" ns.Theme.Refresh()');
+  expect(addon.eval("return { (ns.Theme.Font()), (ns.Theme.Font(true)), (Vanguard_Options.title:GetFont()), Vanguard_Options.reload:IsShown() }"), "a font another addon shares, once in use, is used for all text at once, no reload")
     .toEqual(["Interface\\AddOns\\TestOnly\\Font.ttf", "Interface\\AddOns\\TestOnly\\Font.ttf", "Interface\\AddOns\\TestOnly\\Font.ttf", false]);
   addon.eval('__dropdown("Bar texture")');
   const bars = addon.eval("return __menuTexts()");
@@ -291,20 +290,32 @@ it("shared media: a name no longer shared, or no LibSharedMedia at all, falls ba
 
 it("a long dropdown shows 16 choices at once, scrolls with the wheel and opens at the current choice", () => {
   const addon = loggedIn(CLICK_LUA + DROPDOWN_LUA + `local lsm = LibStub("LibSharedMedia-3.0")
-    for i = 1, 40 do lsm:Register("font", string.format("TEST-ONLY Font %02d", i), [[Interface\\AddOns\\TestOnly\\Font.ttf]]) end`);
-  addon.eval('ns.Options.Show("general") __dropdown("Font")');
-  const total = addon.eval('return #ns.Theme.SharedChoices("font", { {}, {} })');
+    for i = 1, 40 do lsm:Register("statusbar", string.format("TEST-ONLY Bar %02d", i), [[Interface\\AddOns\\TestOnly\\Bar.tga]]) end`);
+  addon.eval('ns.Options.Show("general") __dropdown("Bar texture")');
+  const total = addon.eval('return #ns.Theme.SharedChoices("statusbar", { {}, {}, {} })');
   // The first choice the menu shows.
   const first = () => addon.eval("return __menuTexts()[1]");
-  expect([addon.eval("return #__menuTexts()"), addon.eval("return Vanguard_Menu:GetHeight()"), first()], "16 of the choices, from the top, each an inline control tall").toEqual([16, 16 * addon.eval("return ns.Theme.CONTROL_H") + 2, "Fira Sans Condensed"]);
+  expect([addon.eval("return #__menuTexts()"), addon.eval("return Vanguard_Menu:GetHeight()"), first()], "16 of the choices, from the top, each an inline control tall").toEqual([16, 16 * addon.eval("return ns.Theme.CONTROL_H") + 2, "Vanguard"]);
   addon.wheel("Vanguard_Menu", -3);
-  expect(first(), "the wheel scrolls down a choice per step").toBe("2002 Bold");
+  expect(first(), "the wheel scrolls down a choice per step").toBe(addon.eval(`return ns.Theme.SharedChoices("statusbar", { {}, {}, {} })[4][2]`));
   addon.wheel("Vanguard_Menu", -100);
-  expect([first(), addon.eval("return __menuTexts()[16]")], "and stops at the end of the list").toEqual([addon.eval(`return ns.Theme.SharedChoices("font", { {}, {} })[${total - 15}][2]`), "TEST-ONLY Font 40"]);
+  expect([first(), addon.eval("return __menuTexts()[16]")], "and stops at the end of the list").toEqual([addon.eval(`return ns.Theme.SharedChoices("statusbar", { {}, {}, {} })[${total - 15}][2]`), "TEST-ONLY Bar 40"]);
   addon.wheel("Vanguard_Menu", 100);
-  expect(first(), "and at the top").toBe("Fira Sans Condensed");
-  addon.eval('ns.Theme.Settings().font = "TEST-ONLY Font 10" ns.Widgets.CloseMenu() __dropdown("Font")');
-  expect(addon.eval("local t = __menuTexts() return { t[16], Vanguard_Menu.items[16].check:IsShown() }"), "a menu opens scrolled to show the current choice, checked").toEqual(["TEST-ONLY Font 10", true]);
+  expect(first(), "and at the top").toBe("Vanguard");
+  addon.eval('ns.Theme.Settings().barTexture = "TEST-ONLY Bar 10" ns.Widgets.CloseMenu() __dropdown("Bar texture")');
+  expect(addon.eval("local t = __menuTexts() return { t[16], Vanguard_Menu.items[16].check:IsShown() }"), "a menu opens scrolled to show the current choice, checked").toEqual(["TEST-ONLY Bar 10", true]);
+});
+
+it("the font picker lists Vanguard's two fonts and the one in use, not every font another addon shares", () => {
+  const addon = loggedIn(CLICK_LUA + DROPDOWN_LUA + `local lsm = LibStub("LibSharedMedia-3.0")
+    lsm:Register("font", "TEST-ONLY Shared", [[Interface\\AddOns\\TestOnly\\Font.ttf]])`);
+  addon.eval('ns.Options.Show("general") __dropdown("Font")');
+  expect(addon.eval("return __menuTexts()"), "Vanguard's two fonts only").toEqual(["Fira Sans Condensed", "the game's font"]);
+  // A profile that uses the shared font loads before the window is built, so its list starts with it.
+  const used = loggedIn(CLICK_LUA + DROPDOWN_LUA + `LibStub("LibSharedMedia-3.0"):Register("font", "TEST-ONLY Shared", [[Interface\\AddOns\\TestOnly\\Font.ttf]])
+    ns.Theme.Settings().font = "TEST-ONLY Shared"`);
+  used.eval('ns.Options.Show("general") __dropdown("Font")');
+  expect(used.eval("return __menuTexts()"), "a font from another addon that is in use is listed after them").toEqual(["Fira Sans Condensed", "the game's font", "TEST-ONLY Shared"]);
 });
 
 it("the faction look on a Russian client keeps Fira Sans for headings (the faction fonts have no Cyrillic); the crest stays", () => {
@@ -321,8 +332,9 @@ it("the faction look on a Russian client keeps Fira Sans for headings (the facti
   expect(look(german)[0], "a German client gets Cinzel (it has the Latin accents)").toBe("Cinzel-SemiBold.ttf");
 });
 
-// TEST-ONLY game tab buttons shaped like the game's three tab templates, and a reader
-// for a tab's accent line (the only OVERLAY texture T.Tab adds) and its art's alpha.
+// TEST-ONLY game tab buttons shaped like the game's three tab templates, and readers for a
+// tab's art alpha and its fill: the selected tab is raised (the theme's raised colour), the
+// others inset. The fill is the last BACKGROUND texture T.Tab tints.
 const TABS_LUA = `
   function __tab(keys, kind)
     local b = CreateFrame(kind or "Button", nil, UIParent)
@@ -330,51 +342,56 @@ const TABS_LUA = `
     b.Icon = b:CreateTexture(nil, "ARTWORK")
     return b
   end
-  function __line(b)
-    for _, r in ipairs({ b:GetRegions() }) do if r.__layer == "OVERLAY" then return r end end
+  function __tabBg(b)
+    local bg
+    for _, r in ipairs({ b:GetRegions() }) do if r.__layer == "BACKGROUND" and r.__vertexColor then bg = r end end
+    return bg
+  end
+  function __raised(b)
+    local c = __tabBg(b).__vertexColor
+    local r, g, bl = ns.Theme.RGB("raised")
+    return c[1] == r and c[2] == g and c[3] == bl
   end
 `;
 
-it("game tabs: art faded, icon kept, a panel, and an accent line that follows the game's selection", () => {
+it("game tabs: art faded, icon kept, a panel, and the selected tab raised while the game has it selected", () => {
   const addon = loggedIn(TABS_LUA);
   const panelTab = addon.eval(`
     local tab = __tab({ "Left", "Middle", "Right", "LeftActive", "MiddleActive", "RightActive" })
     ns.Theme.Tab(tab) ns.Theme.Tab(tab) __panelTab = tab
-    local line = __line(tab)
-    local before = line:IsShown()
-    tab:Disable() local selected = line:IsShown()
-    tab:Enable() local after = line:IsShown()
+    local before = __raised(tab)
+    tab:Disable() local selected = __raised(tab)
+    tab:Enable() local after = __raised(tab)
     return { tab.Left.__alpha, tab.RightActive.__alpha, tab.Icon.__alpha == nil, before, selected, after }`);
-  expect(panelTab, "a panel tab: art faded, icon left, the line shows only while the game has it disabled (selected)").toEqual([0, 0, true, false, true, false]);
+  expect(panelTab, "a panel tab: art faded, icon left, raised only while the game has it disabled (selected)").toEqual([0, 0, true, false, true, false]);
   const sideTab = addon.eval(`
     local tab = __tab({ "Background", "SelectedTexture", "HighlightTexture" })
     function tab:SetChecked(on) self.SelectedTexture:SetShown(on) end
     ns.Theme.Tab(tab)
-    tab:SetChecked(true) local on = __line(tab):IsShown()
+    tab:SetChecked(true) local on = __raised(tab)
     tab:SetChecked(false)
-    return { tab.Background.__alpha, tab.SelectedTexture.__alpha, on, __line(tab):IsShown() }`);
+    return { tab.Background.__alpha, tab.SelectedTexture.__alpha, on, __raised(tab) }`);
   expect(sideTab, "a side tab follows SetChecked").toEqual([0, 0, true, false]);
   const systemTab = addon.eval(`
     local tab = __tab({ "Left", "Middle", "Right" })
     function tab:SetTabSelected(on) self.isSelected = on end
     ns.Theme.Tab(tab)
-    tab:SetTabSelected(true) local on = __line(tab):IsShown()
+    tab:SetTabSelected(true) local on = __raised(tab)
     tab:Disable()
     tab:SetTabSelected(false)
-    return { on, __line(tab):IsShown() }`);
+    return { on, __raised(tab) }`);
   expect(systemTab, "a tab-system tab follows SetTabSelected, not its enabled state").toEqual([true, false]);
   const frameTab = addon.eval(`
     local tab = __tab({ "Background", "SelectedTexture" }, "Frame")
     function tab:HookScript(name, fn) if name == "OnEnable" or name == "OnDisable" then error("Frame doesn't have a " .. name .. " script") end end
     function tab:SetChecked(on) end
     ns.Theme.Tab(tab) tab:SetChecked(true)
-    return __line(tab):IsShown()`);
+    return __raised(tab)`);
   expect(frameTab, "a side tab that is a Frame (no OnEnable script) still follows SetChecked").toBe(true);
   expect(addon.eval("return #ns.errors"), "and nothing is reported").toBe(0);
-  const bare = addon.eval("local b = CreateFrame('Button', nil, UIParent) ns.Theme.Tab(b) return __line(b) ~= nil");
+  const bare = addon.eval("local b = CreateFrame('Button', nil, UIParent) ns.Theme.Tab(b) return __tabBg(b) ~= nil");
   expect(bare, "a button with none of the parts is panelled, nothing errors").toBe(true);
-  addon.eval("__panelTab:Disable() ns.Theme.SetAccent(0.1, 0.2, 0.3)");
-  expect(addon.eval("return __line(__panelTab).__vertexColor[3]"), "the line follows the accent").toBeCloseTo(0.3);
+  expect(addon.eval("__panelTab:Disable() return __raised(__panelTab)"), "a tab the game has disabled is raised, with the theme's raised colour").toBe(true);
 });
 
 it("tooltip-like frames: a panel with a shadow and the game's NineSlice faded, once", () => {

@@ -1523,17 +1523,8 @@ local function tabSelected(button)
   return type(button.IsEnabled) == "function" and not button:IsEnabled()
 end
 
--- A selected tab's accent bar: how thick it is (screen pixels); and how faded an unselected tab's icon is.
-T.TAB_BAR, T.TAB_DIM = 2, 0.55
-
--- Places a tab's accent bar along one of its edges (TOP, BOTTOM, LEFT or RIGHT), T.TAB_BAR pixels thick.
-local function placeBar(bar, frame, edge)
-  local points, thick = EDGE_POINTS[edge:lower()] or EDGE_POINTS.top, T.TAB_BAR * T.Pixel(frame)
-  bar:ClearAllPoints()
-  bar:SetPoint(points[1])
-  bar:SetPoint(points[2])
-  if edge == "LEFT" or edge == "RIGHT" then bar:SetWidth(thick) else bar:SetHeight(thick) end
-end
+-- How faded an unselected tab's icon is.
+T.TAB_DIM = 0.55
 
 -- Greys and fades a tab's icon while another tab is selected (dim), or gives it back its color.
 local function dimIcon(button, dim)
@@ -1543,15 +1534,12 @@ local function dimIcon(button, dim)
   icon:SetAlpha(dim and T.TAB_DIM or 1)
 end
 
--- Paints a tab for its state: the selected one raised, with the accent bar on its outer edge (opts.bar)
--- and its icon in color; the others inset, their icon greyed when opts.dimIcon asks.
+-- Paints a tab for its state: the selected one raised and its icon in color; the others
+-- inset, their icon greyed when opts.dimIcon asks.
 local function paintTab(entry, frame)
   local on, p = tabSelected(frame), entry.parts
   entry.opts.inset, entry.opts.raised = not on, on
   paintBg(p, entry.opts, entry.round > 0)
-  p.line:SetShown(on)
-  placeBar(p.line, frame, entry.opts.bar or "TOP")
-  T.Tint(p.line, "accent")
   if entry.opts.dimIcon then dimIcon(frame, not on) end
 end
 
@@ -1586,19 +1574,18 @@ local function fadeKeys(frame, keys)
   end
 end
 
--- A tab's own parts (made once): the accent bar (placed when painted) and the hover wash.
+-- A tab's own parts (made once): the hover wash.
 local function tabParts(button, entry)
-  entry.parts.line, entry.parts.hover = solid(button, "OVERLAY", nil, "divider"), solid(button, "HIGHLIGHT", nil, "fill")
+  entry.parts.hover = solid(button, "HIGHLIGHT", nil, "fill")
   entry.parts.hover:SetAllPoints()
   T.Tint(entry.parts.hover, "hover")
   entry.paint = paintTab
 end
 
 -- One of the game's tab buttons in the theme: its template art faded (its icon and text
--- kept), an inset panel and the faint hover; the selected tab is raised, with a T.TAB_BAR
--- pixel accent bar along one edge. opts (each call may change them): bar, the edge for the
--- bar (TOP, BOTTOM, LEFT, RIGHT; default TOP), and dimIcon, to grey the icon of a tab that
--- isn't selected. Safe to run again; follows the game's selection.
+-- kept), an inset panel and the faint hover; the selected tab is raised. opts (each call may
+-- change them): dimIcon, to grey the icon of a tab that isn't selected. Safe to run again;
+-- follows the game's selection.
 function T.Tab(button, opts)
   local entry = painted[button]
   if not entry then

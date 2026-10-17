@@ -43,7 +43,7 @@ local function heading(p)
   if p.SetFont then T.Text(p, "heading", "gold") end
 end
 
--- A game tab's selected state: the accent line follows the game's SelectableButton calls.
+-- A game tab's selected state: the tab's raised look follows the game's SelectableButton calls.
 local function tabSelected(tab, selected)
   vgChecked[tab] = selected == true
   T.Tab(tab)
