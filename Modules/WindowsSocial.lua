@@ -45,6 +45,16 @@ local function paintRegions(frame, token)
   for _, region in ipairs({ frame:GetRegions() }) do paintText(region, token) end
 end
 
+-- One option of a gossip-style list (the registrar's two, QuestTitleButtonTemplate, the source has a third commented out; the
+-- rename window's two, GossipTitleButtonTemplate: an icon and a title) as a see-through theme row keeping its icon, its title in
+-- the text colour (the game draws it black for its parchment).
+local function dressOptionRow(button)
+  if type(button) ~= "table" or not button.CreateTexture then return end
+  T.Row(button, { fade = true })
+  GW.ShowTexture(button.Icon)
+  paintText(button.GetFontString and button:GetFontString(), "text")
+end
+
 -- Open mail -------------------------------------------------------------------------------------
 
 -- The letter's parchment: the stationery behind the body text.
@@ -794,8 +804,22 @@ GW.Add("social", "framed", { "GuildInviteFrame" }, dialogWith(dressGuildInvite))
 GW.Add("social", "framed", { "CommunitiesSettingsDialog" }, dialogWith(dressSettings))
 GW.Add("social", "framed", { "CommunitiesAvatarPickerDialog" }, dialogWith(dressSelector))
 GW.Add("social", "framed", { "CommunitiesTicketManagerDialog" }, dialogWith(dressTicketManager))
--- The rename window is a ButtonFrameTemplate: the window skin does it all.
-GW.Add("social", "framed", { "GuildRenameFrame" })
+-- The rename window's descriptions and cost label (QuestFont, black for the game's parchment), paths from the window.
+GW.RENAME_TEXTS = { "TitleFlow.Description", "RenameFlow.Description", "RenameFlow.CostLabel" }
+
+-- The rename window: the window skin (a ButtonFrameTemplate), its texts light, its two options rows, its name box, button and
+-- two money lines themed.
+local function dressGuildRename(frame)
+  GW.Skin(frame)
+  for _, path in ipairs(GW.RENAME_TEXTS) do paintText(GW.Part(frame, path), "text") end
+  GW.EachKey(frame.TitleFlow, { "RenameOption", "RefundOption" }, dressOptionRow)
+  GW.SkinButton(frame.ContextButton)
+  GW.SkinEditBox(GW.Part(frame, "RenameFlow.NameBox"))
+  GW.SkinMoney(GW.Part(frame, "RenameFlow.CostFrame"))
+  GW.SkinMoney(frame.MoneyFrame)
+end
+
+GW.Add("social", "framed", { "GuildRenameFrame" }, dressGuildRename)
 
 -- Channels and friends dialogs ------------------------------------------------------------------
 
@@ -822,8 +846,54 @@ function GW.SkinAddFriend(frame)
   end
 end
 
--- The channels window is a ButtonFrameTemplate; the dialogs are dialog frames.
-GW.Add("social", "framed", { "ChannelFrame" })
+-- The channel list keeps its rows in four pools of its own (category headers and text, voice and community channels).
+GW.CHANNEL_POOLS = { "headerButtonPool", "textChannelButtonPool", "voiceChannelButtonPool", "communityChannelButtonPool" }
+-- The parts of a channel row that stay: a category header's plus and minus signs.
+GW.CHANNEL_ROW_KEEP = { "Collapsed", "Expanded" }
+
+-- A channel list row with its plate faded (the game shows the plate again on each of its own Update).
+local function fadeChannelRow(row)
+  GW.DressRow(row, GW.CHANNEL_ROW_KEEP)
+end
+
+-- A channel list row (a pooled button) as a theme row: the plate faded again after each Update, its selected look following the
+-- game's own mark (SetIsSelectedChannel), set now from the list's selection.
+local function dressChannelRow(row, list)
+  if type(row) ~= "table" or not row.CreateTexture then return end
+  fadeChannelRow(row)
+  afterWith(row, "Update", fadeChannelRow)
+  afterWith(row, "SetIsSelectedChannel", function(self, on) T.SelectRow(self, on == true) end)
+  if type(list.GetSelectedChannelButton) == "function" then T.SelectRow(row, list:GetSelectedChannelButton() == row) end
+end
+
+-- Every row the channel list has now, after each of its Updates.
+local function dressChannelList(list)
+  for _, key in ipairs(GW.CHANNEL_POOLS) do
+    local pool = list[key]
+    if type(pool) == "table" and type(pool.EnumerateActive) == "function" then
+      for row in pool:EnumerateActive() do dressChannelRow(row, list) end
+    end
+  end
+end
+
+-- One row of the channel roster: a hoverable row, its rank icon kept.
+local function dressRosterRow(row)
+  GW.DressRow(row, { "Rank" })
+end
+
+-- The channels window: the window skin, its two buttons, its two insets, the roster's heading and rows, the channel list's rows.
+local function dressChannels(frame)
+  GW.Skin(frame)
+  GW.EachKey(frame, { "NewButton", "SettingsButton" }, GW.SkinButton)
+  GW.EachKey(frame, { "LeftInset", "RightInset" }, GW.InsetPanel)
+  paintKeys(frame.ChannelRoster, { "ChannelName", "ChannelCount" }, "text")
+  GW.WatchRows(GW.Part(frame, "ChannelRoster.ScrollBox"), dressRosterRow)
+  if type(frame.ChannelList) ~= "table" then return end
+  dressChannelList(frame.ChannelList)
+  after(frame.ChannelList, "Update", dressChannelList)
+end
+
+GW.Add("social", "framed", { "ChannelFrame" }, dressChannels)
 
 -- The create channel dialog: its title (on the header when the client has one), its two field labels light, its voice check box.
 local function dressCreateChannel(popup)
@@ -962,18 +1032,9 @@ function GW.LightCreationText()
   GW.TextNamed({ GW.CREATION_TITLE }, "heading", "text")
 end
 
--- The registrar's two options (QuestTitleButtonTemplate: a quest icon and a title; the source has a third, commented out) as
--- see-through theme rows keeping their icon, their titles in the text colour (the game draws them black for its parchment).
-local function dressRegistrarOption(button)
-  if type(button) ~= "table" or not button.CreateTexture then return end
-  T.Row(button, { fade = true })
-  GW.ShowTexture(button.Icon)
-  paintText(button.GetFontString and button:GetFontString(), "text")
-end
-
 -- The registrar's options and the charter's price in the number font.
 local function dressRegistrar()
-  for i = 1, 3 do dressRegistrarOption(_G["GuildRegistrarButton" .. i]) end
+  for i = 1, 3 do dressOptionRow(_G["GuildRegistrarButton" .. i]) end
   GW.SkinMoney(_G.GuildRegistrarMoneyFrame)
 end
 
@@ -1023,8 +1084,20 @@ GW.AddButtons("TabardFrame", { "TabardFrameAcceptButton", "TabardFrameCancelButt
 GW.POPUP_BUTTON_KEYS = { "acceptButton" }
 GW.POPUP_BUTTON_NAMES = { "AcceptButton", "DeclineButton" }
 
+-- The role buttons of the two popups (name suffixes; the buttons are named $parentRoleButtonTank and so on) and how each popup
+-- draws the box under a role icon: a radio on the role poll (one role), a check box on the dungeon invite (several).
+GW.ROLE_BUTTONS = { "RoleButtonTank", "RoleButtonHealer", "RoleButtonDPS" }
+GW.ROLE_CHECKS = { RolePollPopup = GW.SkinRadio, LFGInvitePopup = GW.SkinCheck }
+
+-- The box under each role icon (its checkButton) as the popup draws it; the icons stay as the game draws them.
+local function dressRoleChecks(name)
+  local skin = GW.ROLE_CHECKS[name or ""]
+  if not skin then return end
+  for _, suffix in ipairs(GW.ROLE_BUTTONS) do skin(GW.Part(_G[name .. suffix], "checkButton")) end
+end
+
 -- The role poll and the dungeon invite popups: the dialog border faded, a flat panel with a soft shadow, the
--- close and accept/decline buttons themed. The role buttons keep their art (it is their role icon and check).
+-- close and accept/decline buttons themed, the box under each role icon (a radio or a check box). The role icons keep their art.
 function GW.SkinRolePopup(frame)
   local name = frame.GetName and frame:GetName()
   T.FadeRegions(frame)
@@ -1032,10 +1105,8 @@ function GW.SkinRolePopup(frame)
   T.Panel(frame, { shadow = true })
   dressClose(frame, frame.CloseButton)
   dressKeys(frame, GW.POPUP_BUTTON_KEYS, "CreateTexture", T.Button)
-  for _, suffix in ipairs(GW.POPUP_BUTTON_NAMES) do
-    local button = name and _G[name .. suffix]
-    if type(button) == "table" and button.CreateTexture then T.Button(button) end
-  end
+  for _, suffix in ipairs(GW.POPUP_BUTTON_NAMES) do GW.SkinButton(name and _G[name .. suffix]) end
+  dressRoleChecks(name)
 end
 
 GW.Add("social", "popups", { "RolePollPopup", "LFGInvitePopup" }, GW.SkinRolePopup)
@@ -1048,13 +1119,54 @@ GW.RAID_GROUPS, GW.RAID_BUTTONS = 8, 40
 GW.RAID_PUSH_BUTTONS = { "RaidFrameRaidInfoButton", "RaidFrameConvertToRaidButton" }
 GW.RAID_LABELS = { "RaidFrameAllAssistCheckButtonText" }
 
--- One group box: its outline and title art faded, an inset panel behind its slots.
+-- One group box: its outline and title art faded, an inset panel behind its slots, its "Group n" caption in the text colour.
 local function dressRaidGroup(i)
   local group = _G["RaidGroup" .. i]
   if type(group) ~= "table" or not group.GetRegions then return end
   T.FadeRegions(group)
-  fadeFrameArt(_G["RaidGroup" .. i .. "Label"])
+  local label = _G["RaidGroup" .. i .. "Label"]
+  fadeFrameArt(label)
+  paintText(type(label) == "table" and type(label.GetFontString) == "function" and label:GetFontString(), "text")
   T.Panel(group, { inset = true, noSheen = true })
+end
+
+-- How many class count buttons run along the raid tab's edge (RaidClassButton1-16).
+GW.RAID_CLASS_BUTTONS = 16
+
+-- One class count button: the spellbook tab plate faded (its class icon kept) under a raised tile.
+local function dressRaidClassButton(i)
+  local button = _G["RaidClassButton" .. i]
+  if type(button) ~= "table" or not button.GetRegions then return end
+  T.FadeRegions(button, { [_G["RaidClassButton" .. i .. "IconTexture"] or false] = true })
+  T.Panel(button, { raised = true, noSheen = true })
+end
+
+-- The old raid info pop-out's column headers (own frames with a three-piece tab) and the buttons it names.
+GW.RAID_INFO_HEADERS = { "RaidInfoInstanceLabel", "RaidInfoIDLabel" }
+GW.RAID_INFO_BUTTONS = { "RaidInfoExtendButton", "RaidInfoCancelButton" }
+
+-- One row of the raid info list: the instance's name in the text colour (the game draws it gold).
+local function dressRaidInfoRow(row)
+  if type(row) == "table" then paintText(row.name, "text") end
+end
+
+-- A raid info column header: its tab art faded under a raised panel.
+local function dressRaidInfoHeader(header)
+  if type(header) ~= "table" or not header.GetRegions then return end
+  T.FadeRegions(header)
+  T.Panel(header, { raised = true, noSheen = true })
+end
+
+-- The old raid tab's saved-instance pop-out (RaidInfoFrame, its close cross and buttons named, not keyed): the dialog skin, the
+-- close cross in its corner, the headers, the buttons, the list in an inset, the instance names light.
+local function dressRaidInfo(frame)
+  if type(frame) ~= "table" or not frame.GetRegions then return end
+  GW.SkinSocialDialog(frame)
+  GW.DressClose(frame, _G.RaidInfoCloseButton)
+  for _, name in ipairs(GW.RAID_INFO_HEADERS) do dressRaidInfoHeader(_G[name]) end
+  for _, name in ipairs(GW.RAID_INFO_BUTTONS) do GW.SkinButton(_G[name]) end
+  GW.InsetPanel(frame.ScrollBox)
+  GW.WatchRows(frame.ScrollBox, dressRaidInfoRow)
 end
 
 -- The member buttons as flat buttons. They are secure unit buttons: only textures are touched, and
@@ -1073,6 +1185,8 @@ GW.RAID_CHECK = "RaidFrameAllAssistCheckButton"
 -- so a disabled box greys its label last. (The tab sits inside the friends window, which is panelled already.)
 function GW.SkinRaidTab()
   for i = 1, GW.RAID_GROUPS do dressRaidGroup(i) end
+  for i = 1, GW.RAID_CLASS_BUTTONS do dressRaidClassButton(i) end
+  dressRaidInfo(_G.RaidInfoFrame)
   ns.OutOfCombat(dressRaidButtons, "vgSocialRaidButtons")
   for _, name in ipairs(GW.RAID_PUSH_BUTTONS) do
     if type(_G[name]) == "table" and _G[name].CreateTexture then T.Button(_G[name]) end
@@ -1093,11 +1207,11 @@ GW.Add("social", "framed", { "RaidParentFrame" })
 -- Toasts ----------------------------------------------------------------------------------------
 
 -- The toasts' lines (parentKeys) with their text role and colour. Top and middle lines keep the game's
--- colour (a friend's name in Battle.net blue); the bottom line's grey is hard to read on the dark panel,
--- so it goes to the theme's secondary text on each show (the game greys it again before every toast,
+-- colour (a friend's name in Battle.net blue); the bottom line's grey (and the single-line variant's) is hard to read on
+-- the dark panel, so it goes to the theme's secondary text on each show (the game greys it again before every toast,
 -- by SetTextColor or, for a friend coming online, by a colour code inside the text itself).
 -- Text is the time-played alert's one line.
-GW.TOAST_LINES = { TopLine = { "label", false }, MiddleLine = { "small", false }, BottomLine = { "small", "text2" }, DoubleLine = { "label", false }, Text = { "label", false } }
+GW.TOAST_LINES = { TopLine = { "label", false }, MiddleLine = { "small", false }, BottomLine = { "small", "text2" }, DoubleLine = { "label", "text2" }, Text = { "label", false } }
 
 -- A line's text with the game's inline colour codes stripped, so the role colour can show: SetTextColor
 -- cannot override a colour the game wrote into the text. Text the client hides is left alone.

@@ -513,8 +513,8 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 
 ### 14.2.4 Channels window and a channel dialog
 
-- Do: type `/join test`, then open the channels window (the chat channels button, or `O`) and click Create Channel.
-- Expect: the channels window and the create-channel dialog are flat panels with themed buttons and input boxes, and you are in the channel; the create-channel dialog's title, Channel Name and Password labels are light text (not gold) and its voice chat option, when shown, is a flat check box.
+- Do: type `/join test`, then open the channels window (the chat channels button, or `O`), click a channel, hover the others, and click Create Channel.
+- Expect: the channels window and the create-channel dialog are flat panels with themed buttons and input boxes, and you are in the channel; in the channels window Add and Settings are flat buttons, the channel list and the roster sit on sunk boxes without the marble, the channel rows and category headers have no plate (a header keeps its plus or minus sign), wash lighter under the mouse and the open channel is lit with the accent rail (and the rail moves when you pick another channel, even right after the game redraws the list), the roster's names wash lighter under the mouse with their rank icons and mute buttons kept, and its heading and member count are light text, not gold; the create-channel dialog's title, Channel Name and Password labels are light text (not gold) and its voice chat option, when shown, is a flat check box.
 - If it fails, paste: a screenshot and `/vg errors`.
 
 ### 14.2.5 Invite a friend
@@ -532,13 +532,13 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 ### 14.2.7 Role check popup
 
 - Do: in a group, as leader, start a role check (the raid tools, or the group menu's Initiate Role Poll); also queue for a dungeon and let an invite popup show if you can.
-- Expect: the role poll popup is a flat panel with themed Accept and close buttons; the role buttons still show their icons and still check when clicked; the dungeon invite popup looks the same.
+- Expect: the role poll popup is a flat panel with themed Accept and close buttons; the role buttons still show their icons and still check when clicked, and the little round button under each icon is a dark ring with a brass dot on the chosen role (one role at a time); the dungeon invite popup looks the same, except that the small box under each role icon is Vanguard's check box (several roles can be ticked).
 - If it fails, paste: a screenshot and `/vg errors`. [Needs the game: tagged VERIFY IN GAME.]
 
 ### 14.2.8 Raid tab
 
 - Do: in a party, open the raid tab (the friends window's Raid tab), then convert to a raid and look again.
-- Expect: the eight group boxes are flat panels, the member buttons are flat and keep each name's class colour, Raid Info and Convert to Raid are themed buttons, the All assist box is Vanguard's check box (grey, with its label, when you are not the leader or an assistant); nothing changes while you are in combat and it catches up after.
+- Expect: the eight group boxes are flat panels with their "Group n" captions in light text (not gold), the member buttons are flat and keep each name's class colour, the class count buttons along the tab's edge are small raised tiles that keep their class icon and count, Raid Info and Convert to Raid are themed buttons, the All assist box is Vanguard's check box (grey, with its label, when you are not the leader or an assistant); nothing changes while you are in combat and it catches up after. Click Raid Info (a pop-out listing saved instances): it is a flat panel with the close cross in its corner, flat column headers, a sunk list with the instance names in light text, and flat Extend and Close buttons.
 - If it fails, paste: a screenshot of the tab and `/vg errors`.
 
 ### 14.2.9 Social window (Forever's friends list)
@@ -550,8 +550,14 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 ### 14.2.10 Battle.net and time-played toasts
 
 - Do: have a Battle.net friend log in or out (or send you an invite) so the toast slides in at the bottom-left, and if you can, a second friend right after, while the first toast is still up; hover it; then stay logged in long enough for the time-played alert, or `/played` where it is shown as a toast.
-- Expect: the toast is a flat, slightly see-through slate panel with a soft shadow instead of the game's framed box; the friend's name keeps its Battle.net blue, the grey detail line under it is in the theme's lighter secondary text, the Battle.net icon on the left is still there and the game's glow still flares as the toast arrives; the X in its top-right corner is the theme's cross on a red tile under the mouse and closes the toast; hovering the toast shows its tooltip as a flat panel; the time-played toast is the same panel with its one line of text.
+- Expect: the toast is a flat, slightly see-through slate panel with a soft shadow instead of the game's framed box; the friend's name keeps its Battle.net blue, the grey detail line under it (and the grey single line of an invite toast) is in the theme's lighter secondary text, the Battle.net icon on the left is still there and the game's glow still flares as the toast arrives; the X in its top-right corner is the theme's cross on a red tile under the mouse and closes the toast; hovering the toast shows its tooltip as a flat panel; the time-played toast is the same panel with its one line of text.
 - If it fails, paste: a screenshot of the toast and `/vg errors`.
+
+### 14.2.11 Guild rename window
+
+- Do: if your guild has been flagged for a name change, talk to the guild registrar or open the rename window the game offers (the guild master's Rename option); otherwise skip.
+- Expect: the rename window is a flat panel; its two options (rename, refund) are plain rows that wash lighter under the mouse and keep their little icon; the descriptions and the cost label are light text (not black); the new-name box is a dark input box; the cost and your money are in the Vanguard number font; the button at the bottom is a themed button and still works.
+- If it fails, paste: a screenshot and `/vg errors`.
 
 ### 14.3.1 Stable (a hunter)
 
