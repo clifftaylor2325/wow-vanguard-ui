@@ -890,6 +890,12 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 - Expect: the recipe list and the recipe form are flat dark panels with no bronze frame or parchment; the filter is a flat button with its arrow, the search box a flat dark box with its magnifier; the recipe you click shows the selected look (a rail and fill, not the gold bar) and the one you leave loses it, and hovering a row washes it; the skill bar is a thin bar in a dark box with the game's fill; the quantity box and buttons are flat; the link button keeps its picture; the gear slots and each reagent slot are squares with a thin border in the item's quality colour; Track recipe has a flat check box with a small label; the gold notes (what it makes, the first-craft bonus, "not learned") read in the light text colour. The inspect window shows the same form. Category headers stay as the game draws them.
 - If it fails, paste: a screenshot of the window with a recipe selected, and `/vg errors`.
 
+### 14.14.9 Inspect window and flight map
+
+- Do: inspect another player (right-click their portrait, Inspect) while in range; look at the model, the gear slots, the View in Dressing Room button and the lines over the model; click the Guild and PvP tabs. Then talk to a flight master and open the flight map.
+- Expect: the model sits on a flat dark panel with no bronze corners or painted backdrop; the gear slots are squares with a thin border in the item's quality colour and no bronze slot frames; the View button is flat; the level line is light text and the title and guild lines (when shown) small grey text. The flight map has no bronze frame, portrait or dark underlay: a thin edge round the map, a themed title and a close button at the top right that works. [Needs in game: the close button's place on the flight map, and that the map stays fully visible.]
+- If it fails, paste: a screenshot of the inspect window and of the flight map, and `/vg errors`.
+
 ## 15. Talent planner
 
 ### 15.1 Bar and plan mode

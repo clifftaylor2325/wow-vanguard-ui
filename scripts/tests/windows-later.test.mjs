@@ -239,3 +239,96 @@ it("R2.15 the professions window: the windows group off leaves them the game's; 
   noForm.eval("ProfessionsFrame:Show()");
   expect(noForm.eval("return #ns.errors"), "a form or list that is no frame is skipped").toBe(0);
 });
+
+// TEST-ONLY inspect window (Camelot Blizzard_InspectUI.xml, InspectPaperDollFrame.xml): the window, the model with its
+// backdrop and border textures, the gear slots (each with a BorderFrame child holding the slot art), the View button
+// and the three lines over the model.
+const INSPECT_ENV = `${READERS_ENV}
+  local f = __window("InspectFrame")
+  local model = __well("InspectModelFrame", f) model.BackgroundOverlay = __art(model)
+  local paper = CreateFrame("Frame", "InspectPaperDollFrame", f) paper.ViewButton = __mkbutton(paper)
+  for _, name in ipairs(ns.GetModule("Windows").EQUIP_SLOTS) do
+    if name ~= "Ammo" then
+      local slot = __itemButton("Inspect" .. name .. "Slot", paper) slot.BorderFrame = CreateFrame("Frame", nil, slot) __art(slot.BorderFrame)
+    end
+  end
+  for _, name in ipairs({ "InspectTitleText", "InspectGuildText", "InspectLevelText" }) do _G[name] = __text(paper, name) end
+  -- TEST-ONLY reader of the inspect window (see inspectState).
+  function __inspectState()
+    local slots, plates = 0, 0
+    for _, name in ipairs(ns.GetModule("Windows").EQUIP_SLOTS) do
+      local slot = _G["Inspect" .. name .. "Slot"]
+      if slot and slot.icon.__texCoord ~= nil then slots = slots + 1 end
+      if slot and __faded(slot.BorderFrame) then plates = plates + 1 end
+    end
+    return { model = __faded(model) and model.BackgroundOverlay.__alpha == 0 and model.NineSlice.__alpha == 0 and __sunk(model), slots = slots, plates = plates,
+      view = __button(paper.ViewButton), title = __lit(InspectTitleText, "small", "text2"), guild = __lit(InspectGuildText, "small", "text2"),
+      level = __lit(InspectLevelText, "heading", "text"), painted = ns.Theme.PaintedCount(), errors = #ns.errors }
+  end
+`;
+// The inspect window's parts as the skin leaves them (see __inspectState).
+const inspectState = (addon) => addon.eval("return __inspectState()");
+it("R2.16 the inspect window: model on an inset, nineteen gear slots in the item look, button and texts themed", () => {
+  const addon = loggedIn(INSPECT_ENV);
+  addon.fire("ADDON_LOADED", "Blizzard_InspectUI");
+  addon.eval("InspectFrame:Show()");
+  const first = inspectState(addon);
+  expect(first, "the model's backdrop and border faded and sunk; the slots and their bronze frames; the View button; the lines").toMatchObject({
+    model: true, slots: 19, plates: 19, view: true, title: true, guild: true, level: true, errors: 0,
+  });
+  expect(windowState(addon, "InspectFrame"), "and the window skin as ever").toMatchObject({ art: 0, panel: true, title: true });
+  addon.eval("InspectFrame:Hide() InspectFrame:Show()");
+  expect(inspectState(addon).painted, "a second show paints nothing new").toBe(first.painted);
+});
+it("R2.16 the inspect window: the windows group off leaves it the game's; a bare or odd window loads cleanly", () => {
+  const off = loggedIn(INSPECT_ENV, { savedVariables: "VanguardDB.profiles = { Default = { Windows = { windows = false } } }" });
+  off.fire("ADDON_LOADED", "Blizzard_InspectUI");
+  off.eval("InspectFrame:Show()");
+  expect(inspectState(off), "nothing faded or painted").toMatchObject({ model: false, slots: 0, view: false });
+  const bare = loggedIn(`${WINDOWS_ENV}__window("InspectFrame")`);
+  bare.fire("ADDON_LOADED", "Blizzard_InspectUI");
+  bare.eval("InspectFrame:Show()");
+  expect([windowState(bare, "InspectFrame").panel, bare.eval("return #ns.errors")], "a bare window is skinned, no part missing is an error").toEqual([true, 0]);
+  const odd = loggedIn(`${INSPECT_ENV} InspectPaperDollFrame.ViewButton = 1 InspectHeadSlot = 1 InspectNeckSlot.BorderFrame = 1 InspectModelFrame = {}`);
+  odd.fire("ADDON_LOADED", "Blizzard_InspectUI");
+  odd.eval("InspectFrame:Show()");
+  const noPaper = loggedIn(`${INSPECT_ENV} InspectPaperDollFrame = 1`);
+  noPaper.fire("ADDON_LOADED", "Blizzard_InspectUI");
+  noPaper.eval("InspectFrame:Show()");
+  expect([odd, noPaper].map((a) => a.eval("return #ns.errors")), "odd parts are skipped").toEqual([0, 0]);
+});
+
+// TEST-ONLY flight map (Blizzard_FlightMap.xml): the map frame and its BorderFrame (a portrait frame with an underlay
+// and a top border texture over the whole map).
+const FLIGHT_ENV = `${WINDOWS_ENV}${INSIDES_LUA}
+  local f = CreateFrame("Frame", "FlightMapFrame", UIParent) f:Hide()
+  local border = __window("TestOnlyFlightBorder") f.BorderFrame = border
+  border.Underlay, border.TopBorder = border:CreateTexture(), border:CreateTexture()
+  border.CloseButton:CreateTexture() border.CloseButton:SetPoint("TOPRIGHT", border, "TOPRIGHT", 5, 5)
+`;
+it("R2.16 the flight map: the border frame's art, underlay and edge faded, close button and title in the theme", () => {
+  const addon = loggedIn(FLIGHT_ENV);
+  addon.fire("ADDON_LOADED", "Blizzard_FlightMap");
+  addon.eval("FlightMapFrame:Show()");
+  // The border frame's underlay, top border, bronze frame and portrait alphas.
+  const art = () => addon.eval("local b = FlightMapFrame.BorderFrame return { b.Underlay:GetAlpha(), b.TopBorder:GetAlpha(), b.NineSlice.__alpha, b.PortraitContainer.__alpha }");
+  expect(art(), "underlay, top border, bronze frame and portrait faded").toEqual([0, 0, 0, 0]);
+  const border = windowState(addon, "FlightMapFrame.BorderFrame");
+  expect(border, "the border has its title in the heading role and a panel without a fill").toMatchObject({ title: true });
+  expect(addon.eval("local p = FlightMapFrame.BorderFrame.CloseButton.__points.CENTER return p.x"), "the close button is placed 24 in from the right edge like the other windows'").toBeCloseTo(-24, 0);
+  addon.eval("FlightMapFrame:Hide() FlightMapFrame:Show()");
+  expect(windowState(addon, "FlightMapFrame.BorderFrame").painted, "a second show paints nothing new").toBe(border.painted);
+});
+it("R2.16 the flight map: the windows group off leaves it the game's; a map without a border loads cleanly", () => {
+  const off = loggedIn(FLIGHT_ENV, { savedVariables: "VanguardDB.profiles = { Default = { Windows = { windows = false } } }" });
+  off.fire("ADDON_LOADED", "Blizzard_FlightMap");
+  off.eval("FlightMapFrame:Show()");
+  expect(off.eval("return FlightMapFrame.BorderFrame.Underlay:GetAlpha()"), "the underlay is the game's").toBe(1);
+  const bare = loggedIn(`${WINDOWS_ENV}CreateFrame("Frame", "FlightMapFrame", UIParent):Hide()`);
+  bare.fire("ADDON_LOADED", "Blizzard_FlightMap");
+  bare.eval("FlightMapFrame:Show()");
+  const odd = loggedIn(`${FLIGHT_ENV} FlightMapFrame.BorderFrame = {}`);
+  odd.fire("ADDON_LOADED", "Blizzard_FlightMap");
+  odd.eval("FlightMapFrame:Show()");
+  expect([bare, odd].map((a) => a.eval("return #ns.errors")), "none of them reports an error").toEqual([0, 0]);
+});

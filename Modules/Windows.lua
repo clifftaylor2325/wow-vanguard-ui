@@ -1076,6 +1076,41 @@ GW.INSIDES.InspectRecipeFrame = function(frame)
   GW.SkinSchematicForm(frame.SchematicForm)
 end
 
+-- The inspect window and the flight map's border -----------------------------------------------------
+
+-- The inspect window's lines over the model (the inspected player's title and guild, gold in the game).
+GW.INSPECT_TEXTS = { "InspectTitleText", "InspectGuildText" }
+
+-- One inspect gear slot (Inspect<name>Slot; a slot the client lacks is skipped) in the bags' item look, the bronze
+-- frame the game keeps in a child of the button faded.
+local function skinInspectSlot(name)
+  local button = _G["Inspect" .. name .. "Slot"]
+  if type(button) ~= "table" then return end
+  GW.SkinItem(button)
+  GW.FadeParts(button, { "BorderFrame" })
+end
+
+-- The inspect window's inside: the model's painted backdrop and bronze frame an inset, the gear slots, the View in
+-- Dressing Room button, and the level, title and guild lines. The tabs are in GW.TAB_WINDOWS.
+GW.INSIDES.InspectFrame = function()
+  GW.InsetPanel(_G.InspectModelFrame)
+  for _, name in ipairs(GW.EQUIP_SLOTS) do skinInspectSlot(name) end
+  local paper = _G.InspectPaperDollFrame
+  GW.SkinButton(type(paper) == "table" and paper.ViewButton or nil)
+  GW.TextNamed(GW.INSPECT_TEXTS, "small", "text2")
+  GW.TextNamed({ "InspectLevelText" }, "heading", "text")
+end
+
+-- The flight map's frame is a child (BorderFrame, a PortraitFrameTemplate over the whole map): its edge painted
+-- without a fill (the map shows through; the window behind it has the shadow), its art, portrait and underlay
+-- faded, its close button and title in the theme.
+GW.INSIDES.FlightMapFrame = function(frame)
+  local border = frame.BorderFrame
+  if type(border) ~= "table" or not border.GetRegions then return end
+  T.Panel(border, { noBg = true })
+  GW.Skin(border)
+end
+
 -- Readable text ------------------------------------------------------------------------------
 
 -- Colors each named font string this client has with a theme color.
