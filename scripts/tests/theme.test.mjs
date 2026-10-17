@@ -444,6 +444,18 @@ it("the game's scroll bars: track art faded, the one T.SCROLL line on the thumb 
   expect(addon.eval("local f = CreateFrame('Frame', nil, UIParent) f.Back = CreateFrame('Button', nil, f) ns.Theme.ScrollBar(f) return ns.FrameState('vgArrow')[f.Back] == nil"), "a frame without a thumb is left alone").toBe(true);
 });
 
+it("the game's old scroll bar (UIPanelScrollFrameTemplate): its art and thumb texture faded, the one T.SCROLL line on the slider along the thumb, the up and down buttons faded away", () => {
+  const addon = loggedIn(`
+    local bar = CreateFrame("Frame", "TEST_OldScroll", UIParent) bar.Top = bar:CreateTexture() bar.ThumbTexture = bar:CreateTexture()
+    bar.ScrollUpButton = CreateFrame("Button", nil, bar) CreateFrame("Button", "TEST_OldScrollScrollDownButton", bar)
+    ns.Theme.ScrollBar(bar) ns.Theme.ScrollBar(bar)`);
+  const out = addon.eval(`local bar = TEST_OldScroll local line = ns.FrameState('vgThumb')[bar].bar
+    local rest = line:GetAlpha() bar.__scripts.OnMouseDown(bar) local held = line:GetAlpha() bar.__scripts.OnMouseUp(bar)
+    return { bar.Top.__alpha, bar.ThumbTexture.__alpha, line:GetAlpha(), line.__points.TOP.rel == bar.ThumbTexture, line.__points.BOTTOM.rel == bar.ThumbTexture,
+      rest, held, line:GetAlpha(), bar.ScrollUpButton:GetAlpha(), TEST_OldScrollScrollDownButton:GetAlpha(), select("#", bar:GetRegions()) }`);
+  expect(out, "faded; the line along the thumb texture at the rest alpha, lit while held; the up button (by key) and down button (by name) at alpha 0; painted once").toEqual([0, 0, 0.5, true, true, 0.5, 1, 0.5, 0, 0, 3]);
+});
+
 it("the game's font objects: the theme font at Text size, kept after a theme change", () => {
   const addon = loggedIn(`
     __FontA = CreateFrame("Frame"):CreateFontString()
