@@ -474,7 +474,7 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 
 ## 14. Game windows, by area
 
-Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsections with fixed numbers, so parallel streams never collide: 14.2 mail, guild, channels, friends (S1); 14.3 stable, trainer, bags, loot and item dialogs (S2); 14.4 game options, Edit Mode, keybinding and help (S3); 14.5 world map, group finder, calendar and Legacy (S4); 14.6 menus and tooltips (S5); 14.7 the game's swing timer, aura frames, crafting cast bar, possess bar, zone text and breath bars (S6); 14.8 tabs and the inside of the character pane (S7); 14.9 battleground windows (S8). For every window: it has the flat panel with the theme's close button and title, its buttons and tabs still work, and `/vg errors` stays empty.
+Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsections with fixed numbers, so parallel streams never collide: 14.2 mail, guild, channels, friends (S1); 14.3 stable, trainer, bags, loot and item dialogs (S2); 14.4 game options, Edit Mode, keybinding and help (S3); 14.5 world map, group finder, calendar and Legacy (S4); 14.6 menus and tooltips (S5); 14.7 the game's swing timer, aura frames, crafting cast bar, possess bar and zone text (S6); 14.8 tabs and the inside of the character pane (S7); 14.9 battleground windows (S8). For every window: it has the flat panel with the theme's close button and title, its buttons and tabs still work, and `/vg errors` stays empty.
 
 ### 14.1 Switches
 
@@ -672,12 +672,6 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 - Expect: it shows in Vanguard's buff row only; the game's external defensives frame (an extra icon near the buffs) never shows.
 - If it fails, paste: a screenshot and `/vg errors`.
 
-### 14.7.6 Breath and fatigue bars
-
-- Do: swim under water until the breath bar shows and stay down a few seconds; surface. Then swim out to sea until the fatigue bar shows, and swim back.
-- Expect: each bar at the top center is a flat bar in the theme's bar texture on a slate panel that hugs it, with no gold frame and no dark band behind its label; it runs down as the game's does and goes when you surface (or turn back). The second time it shows, it looks the same.
-- If it fails, paste: a screenshot while the bar shows and `/vg errors`.
-
 ### 14.8.1 Character pane side tabs
 
 - Do: press C, then click each side tab in turn (Character, Reputation, Skills, Honor, Currency, Statistics).
@@ -756,6 +750,12 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 - Do: open the character pane (C), drag it by its title bar to the middle of the screen and close it; open it again, then open the spellbook (P) beside it and close that. Open your bags (B) and drag the combined bag by its top edge; close and reopen them. Drag the game menu (Escape) by its header, the guild window, the group finder, the Legacy window and the auction house by their title bars. `/reload` and open the character pane and the bags again. Then start a fight, open the character pane, and leave combat. Then open the calendar and drag it by the empty strip along its top edge (not on the month arrows), and drag the friends window the same way; close and reopen both. Last, `/vg` → Game windows → Reset window positions, and open the character pane.
 - Expect: each window follows the mouse and stays where it is dropped; it opens there again, after opening another window beside it and after the reload too; the close and minimize buttons, the calendar's month arrows and the bag's portrait button still work (the drag area stops short of them, and the top-edge drag only starts on an empty spot). In the fight the pane may open where the game puts it and jumps to your spot when combat ends, never moving while you fight. `/vg` itself can be dragged by its header and reopens there. After Reset window positions the options window is in the middle and the character pane opens where the game puts it. [Needs in game: the drag itself, by the title bar and by the top edge; which windows have mouse enabled on their own frame (a window that doesn't can only be dragged by its title bar); that no window jumps back while you hold it; whether the game refuses any of them.]
 - If it fails, paste: the window's name, a screenshot after the drop and after reopening, and `/vg errors`.
+
+### 14.11 Breath and fatigue bars
+
+- Do: swim under water until the breath bar shows and stay down a few seconds; surface. Then swim out to sea until the fatigue bar shows, and swim back.
+- Expect: each bar at the top center is a flat bar in the theme's bar texture on a slate panel that hugs it, with no gold frame and no dark band behind its label; it runs down as the game's does and goes when you surface (or turn back). The second time it shows, it looks the same.
+- If it fails, paste: a screenshot while the bar shows and `/vg errors`.
 
 ## 15. Talent planner
 
