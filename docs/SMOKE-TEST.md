@@ -82,6 +82,8 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 
 - Do: type `/vg`, then click each page in the left list in turn: General, Modules, Unit frames, Raid frames, Healing, Click casting, Talents, Action bars, Nameplates, Quests, Bars and bags, Map, Chat, Game windows, Combat tools, Town and gear, Situations, Profiles and Feedback (19 pages in all). After each, type `/vg errors`.
 - Expect: each page draws its rows with no Lua error popup, and `/vg errors` stays empty. All 19 entries fit in the list without running off the bottom, each with its own icon (the six that replaced Bars, map, chat have a laurel crown, a compass, a raven, a checked shield, a battle axe and a castle), and every icon and label starts at the same spot down the list, and a search for a setting that used to be on Bars, map, chat (say "Craft queue") lights the page that has it now.
+- Also expect (switches): on any page, a switch is a pill track in the theme's inset colour with a thin outline and a round knob with a shade under its edge; on is the accent fill with the knob at the right, off the knob at the left, and the knob brightens under the mouse. Try the Accent and Theme settings: the on fill follows the accent. [Needs in game: the pill and knob art at 1x and at a larger UI scale.]
+- Also expect (sliders): a slider's track is a pill in the inset colour with a thin outline, its fill runs in the accent to a round thumb with a shade under its edge, and the thumb moves as you drag. The Font picker under General lists Fira Sans Condensed and the game's font (and a font from another addon only while you use it); the Bar texture picker still lists the bars other addons share. [Needs in game: the pill ends at 1x and at a larger UI scale.]
 - If it fails, paste: the page name, a screenshot of it, and `/vg errors`.
 
 ### 2.1a Situations: Stop recording only while recording
@@ -592,7 +594,7 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 ### 14.4.1 Game options
 
 - Do: press Escape, click Options. Look at the window, click through Game and AddOns, type in the search box, change a setting, click Apply, then Close.
-- Expect: a flat slate panel with the theme's close button; the Game and AddOns tabs with an accent line under the one you are on; the category list and the settings list on darker panels; flat Apply and Close buttons and search box. Every settings page still draws and works, and the title is still readable.
+- Expect: a flat slate panel with the theme's close button; the Game and AddOns tabs with the one you are on raised (lighter than the other); the category list and the settings list on darker panels; flat Apply and Close buttons and search box. Every settings page still draws and works, and the title is still readable.
 - If it fails, paste: a screenshot of the window and `/vg errors`.
 
 ### 14.4.2 Edit Mode
@@ -674,13 +676,13 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 ### 14.8.1 Character pane side tabs
 
 - Do: press C, then click each side tab in turn (Character, Reputation, Skills, Honor, Currency, Statistics).
-- Expect: each tab is a flat dark tile with its icon still showing (none blank), a thin accent line on the selected tab only that moves with every click, and a faint wash under the mouse. [Needs in game: the tab art is faded by T.Tab, including its icon mask; if an icon is missing, paste a screenshot.]
+- Expect: each tab is a flat dark tile with its icon still showing (none blank), the selected tab raised (lighter) and the others sunk, that moves with every click, and a faint wash under the mouse. [Needs in game: the tab art is faded by T.Tab, including its icon mask; if an icon is missing, paste a screenshot.]
 - If it fails, paste: a screenshot of the pane with the tabs, the tab that is wrong and `/vg errors`.
 
 ### 14.8.2 Tabs on the other windows
 
 - Do: open the friends window (O) and click each tab; at a mailbox click Inbox and Send Mail; at a merchant click Merchant and Buyback; inspect another player and click each tab; open the spellbook (P) and click its tabs and its category tabs; open the guild window and click its side tabs; open the group finder and the Legacy window and click their tabs.
-- Expect: every tab is a flat dark tile with its text, the accent line is on the selected tab only and follows every click, tabs that the game shows later (a new profession, talents after learning them) look the same, and every tab still switches its page.
+- Expect: every tab is a flat dark tile with its text, the selected tab is the only raised one and follows every click, tabs that the game shows later (a new profession, talents after learning them) look the same, and every tab still switches its page.
 - If it fails, paste: which window and tab, a screenshot and `/vg errors`.
 
 ### 14.8.3 Inside the character pane

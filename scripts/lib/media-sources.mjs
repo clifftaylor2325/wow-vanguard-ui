@@ -77,6 +77,37 @@ function stripes() {
   return fill(image(8, 8), (x, y) => [1, 1, 1, (x + y) % 8 < 3 ? 0.55 : 0.12]);
 }
 
+// A clamp to 0..1, for coverage.
+const clamp01 = (v) => Math.max(0, Math.min(1, v));
+
+// A capsule (a pill) on a 64 x 32 canvas: its round ends have radius 16, its middle runs flat between them. With
+// `ring` set it is only the outline, 2 px wide (about one pixel on a switch's 18-unit track).
+function capsule(ring) {
+  return fill(image(64, 32), (x, y) => {
+    const px = x + 0.5;
+    const py = y + 0.5;
+    const d = Math.hypot(px - Math.max(16, Math.min(48, px)), py - 16);
+    const outer = clamp01(16 - d + 0.5);
+    const inner = ring ? clamp01(14 - d + 0.5) : 0;
+    return [1, 1, 1, outer - inner];
+  });
+}
+
+// A switch's knob: a white round disc on a 32 px canvas, for the theme to tint.
+function knob() {
+  return fill(image(32, 32), (x, y) => [1, 1, 1, clamp01(16 - Math.hypot(x + 0.5 - 16, y + 0.5 - 16) + 0.5)]);
+}
+
+// The knob's shade: the crescent under its lit top-left edge, a white disc less one shifted up and left, so the
+// theme's shade color darkens the lower right of the knob.
+function knobShade() {
+  return fill(image(32, 32), (x, y) => {
+    const disc = clamp01(16 - Math.hypot(x + 0.5 - 16, y + 0.5 - 16) + 0.5);
+    const lit = clamp01(16 - Math.hypot(x + 0.5 - 13, y + 0.5 - 13) + 0.5);
+    return [1, 1, 1, disc * (1 - lit)];
+  });
+}
+
 // The in-game logo (T.Logo), on a 64-unit grid: two linked diamonds, the left one with a filled middle.
 const LOGO_LEFT = [path([[22, 17], [37, 32], [22, 47], [7, 32]], 5, true), poly([[32, 27], [37, 32], [32, 37], [27, 32]])];
 const LOGO_RIGHT = [path([[42, 17], [57, 32], [42, 47], [27, 32]], 5, true)];
@@ -86,6 +117,11 @@ export const TEXTURES = {
   Bar: bar,
   BarSoft: barSoft,
   Spark: spark,
+  // A switch's track (the pill, tinted the inset color), its outline, and the round knob and its shade (Core/Controls.lua).
+  Pill: () => capsule(false),
+  PillLine: () => capsule(true),
+  Knob: knob,
+  KnobShade: knobShade,
   // A small filled diamond (minimap corners, the assist mark), on a 16-unit grid.
   Diamond: () => draw(image(16, 16), 16, [poly([[8, 1], [15, 8], [8, 15], [1, 8]])]),
   // Shadow (filled) and glow (hollow) share the soft falloff.

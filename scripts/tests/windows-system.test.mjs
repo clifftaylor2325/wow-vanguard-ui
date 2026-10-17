@@ -74,15 +74,15 @@ it("game options: the window in the theme, its art faded, buttons, search box, t
   expect(settings(addon).painted, "showing it again paints nothing new").toBe(first.painted);
 });
 
-it("game options: the tabs' accent line follows the game's selection, the title text stays visible", () => {
+it("game options: the selected tab is raised and the raised tab follows the game's selection, the title text stays visible", () => {
   const addon = loggedIn(SETTINGS_ENV);
   addon.eval("SettingsPanel:Show()");
-  // Whether a settings tab's selected-line (its OVERLAY region) shows.
-  const line = (tab) => addon.eval(`for _, r in ipairs({ SettingsPanel.${tab}:GetRegions() }) do if r.__layer == "OVERLAY" then return r:IsShown() end end`);
+  // Whether a settings tab is raised: its fill (the last BACKGROUND texture T.Tab tints) is the theme's raised colour.
+  const raised = (tab) => addon.eval(`local bg for _, r in ipairs({ SettingsPanel.${tab}:GetRegions() }) do if r.__layer == "BACKGROUND" and r.__vertexColor then bg = r end end local c = bg.__vertexColor local r, g, b = ns.Theme.RGB("raised") return c[1] == r and c[2] == g and c[3] == b`);
   addon.eval("SettingsPanel.GameTab:OnSelected(true)");
-  expect([line("GameTab"), line("AddOnsTab")], "the selected tab has the line").toEqual([true, false]);
+  expect([raised("GameTab"), raised("AddOnsTab")], "the selected tab is raised").toEqual([true, false]);
   addon.eval("SettingsPanel.GameTab:OnSelected(false) SettingsPanel.AddOnsTab:OnSelected(true)");
-  expect([line("GameTab"), line("AddOnsTab")], "and it moves with the selection").toEqual([false, true]);
+  expect([raised("GameTab"), raised("AddOnsTab")], "and it moves with the selection").toEqual([false, true]);
   expect(addon.eval("return SettingsPanel.NineSlice.__alpha ~= 0"), "the NineSlice frame itself is not faded: its title text is a child").toBe(true);
 });
 
