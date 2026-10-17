@@ -2,7 +2,7 @@
 // TEST-ONLY headless client. Cases follow docs/handoff/RESKIN-PLAN.md section 0 ("Writing a task's test").
 
 import { expect, it } from "vitest";
-import { isTok, loggedIn, px, WINDOWS_ENV } from "./helpers.mjs";
+import { expectErrors, isTok, loggedIn, px, WINDOWS_ENV } from "./helpers.mjs";
 
 // TEST-ONLY tab buttons shaped like the game's tab templates, and a reader for a tab's state:
 // art = the alpha of its Left texture (-1 while the game's own), raised = whether it is the
@@ -724,4 +724,183 @@ it("guild bank side tabs: the plate faded, the icon button a tab with its icon a
   expect(out[6], "the first tab sits at the panel's edge").toBe(true);
   expect(out[7], "a tab without its button still has its plate faded").toBe(0);
   expect(addon.eval("return #ns.errors"), "nothing reported").toBe(0);
+});
+
+// TEST-ONLY side panes shaped like CharacterFrameSidePaneTemplate (Camelot CharacterFrame.lua): a Title and Subtitle, a
+// Divider, a Content holding pooled rows, and the methods that add rows (each row numbered by layoutIndex, shown on
+// acquire, hidden by ResetRows); the game paints a label gold unless the caller gives a colour. __text says whether a
+// font string is in the text colour, __gold whether it still has the game's gold.
+const SIDE_PANE_ENV = BARS_ENV + `
+  NORMAL_FONT_COLOR = { GetRGB = function() return 1, 0.82, 0 end }
+  GREEN_FONT_COLOR = { GetRGB = function() return 0.1, 1, 0.1 end }
+  function __text(fs) local c, t = fs.__textColor, { ns.Theme.RGB("text") } return c ~= nil and c[1] == t[1] and c[2] == t[2] and c[3] == t[3] end
+  function __gold(fs) local c = fs.__textColor return c ~= nil and c[1] == 1 and c[2] == 0.82 and c[3] == 0 end
+  function __sidePane(parent, key)
+    local p = CreateFrame("Frame", nil, parent)
+    p.Title, p.Subtitle, p.Divider = p:CreateFontString(), p:CreateFontString(), __art(p, "BORDER")
+    p.Content, p.pool, p.layoutIndex = CreateFrame("Frame", nil, p), {}, 0
+    function p:SetPaneTitle(title) self.Title:SetText(title) end
+    function p:SetPaneTitleColor(c) self.Title:SetTextColor(c:GetRGB()) end
+    function p:ResetRows() for _, r in ipairs(self.pool) do r:Hide() end self.layoutIndex = 0 end
+    function p:Acquire(kind, color)
+      local row
+      for _, r in ipairs(self.pool) do if not r:IsShown() and r.kind == kind then row = r end end
+      if not row then
+        row = CreateFrame("Frame", nil, self.Content) row.kind, row.Label = kind, row:CreateFontString()
+        if kind == "category" then row.Background = __art(row) end
+        if kind == "icon" then row.IconSlot, row.Icon = __art(row), row:CreateTexture(nil, "ARTWORK") end
+        table.insert(self.pool, row)
+      end
+      self.layoutIndex = self.layoutIndex + 1 row.layoutIndex = self.layoutIndex row:Show()
+      row.Label:SetTextColor((color or NORMAL_FONT_COLOR):GetRGB())
+      return row
+    end
+    function p:AddRow(label, value, labelColor) return self:Acquire("row", labelColor) end
+    function p:AddWrappedRow(text, color) return self:Acquire("wrapped", color) end
+    function p:AddIconRow(icon, text, color) if not icon then return self:AddWrappedRow(text, color) end return self:Acquire("icon", color) end
+    function p:AddCategory(text) return self:Acquire("category") end
+    if key then parent[key] = p end
+    return p
+  end
+  local rep = __sidePane(ReputationFrame, "ReputationDetailFrame")
+  for _, key in ipairs({ "AtWarCheckbox", "MakeInactiveCheckbox", "WatchFactionCheckbox" }) do
+    local box = CreateFrame("CheckButton", nil, rep) box.Label = box:CreateFontString() box.Label:SetTextColor(NORMAL_FONT_COLOR:GetRGB()) rep[key] = box
+  end
+  rep.AtWarCheckbox.Label:SetTextColor(1, 0, 0)
+  rep.StandingBar = CreateFrame("Frame", nil, rep) rep.StandingBar.backdrop, rep.StandingBar.Fill = __art(rep.StandingBar), __art(rep.StandingBar, "BORDER")
+  rep.ViewRenownButton = CreateFrame("Button", nil, rep)
+  __bar(rep, "DescriptionScrollBar")
+  __sidePane(SkillsFrame, "SkillDetailFrame")
+  local tok = __sidePane(TokenFrame, "DetailFrame")
+  for _, key in ipairs({ "InactiveCheckbox", "BackpackCheckbox" }) do
+    local box = CreateFrame("CheckButton", nil, tok) box.Label = box:CreateFontString() box.Label:SetTextColor(NORMAL_FONT_COLOR:GetRGB()) tok[key] = box
+  end
+  tok.CurrencyTransferToggleButton = CreateFrame("Button", nil, tok)
+  PVPRankFrame = CreateFrame("Frame", "PVPRankFrame", CharacterFrame)
+  __sidePane(PVPRankFrame, "DetailFrame")
+`;
+
+it("side panes: heading in the heading role and the text colour (again after the game recolours it), the rule faded", () => {
+  const addon = loggedIn(SIDE_PANE_ENV);
+  // Reads whether each pane's heading is in the heading role and the text colour.
+  const heads = () => addon.eval(`return { __headed(ReputationFrame.ReputationDetailFrame.Title), __headed(SkillsFrame.SkillDetailFrame.Title), __headed(TokenFrame.DetailFrame.Title), __headed(PVPRankFrame.DetailFrame.Title) }`);
+  expect(heads(), "all four panes' headings").toEqual([true, true, true, true]);
+  addon.eval(`local p = ReputationFrame.ReputationDetailFrame p:SetPaneTitle("Stormwind") p:SetPaneTitleColor(GREEN_FONT_COLOR) PVPRankFrame.DetailFrame:SetPaneTitleColor(GREEN_FONT_COLOR)`);
+  expect(heads(), "the game sets the pane's colour on every refresh: the text colour goes back on").toEqual([true, true, true, true]);
+  expect(addon.eval(`return { __a(ReputationFrame.ReputationDetailFrame.Divider), __a(PVPRankFrame.DetailFrame.Divider) }`), "the rule under the subtitle is faded").toEqual([0, 0]);
+  expect(addon.eval("return #ns.errors"), "nothing reported").toBe(0);
+});
+
+it("side panes: each row the game adds is dressed: gold labels to the text colour, a colour the game gave stays, plates faded", () => {
+  const addon = loggedIn(SIDE_PANE_ENV);
+  addon.eval(`rep = ReputationFrame.ReputationDetailFrame
+    rows = { rep:AddRow("Cap", "100"), rep:AddRow("Paid", "1", GREEN_FONT_COLOR), rep:AddWrappedRow("Hello", NORMAL_FONT_COLOR), rep:AddWrappedRow("Account", GREEN_FONT_COLOR),
+      rep:AddCategory("Next reward"), rep:AddIconRow(134, "Reward", NORMAL_FONT_COLOR), rep:AddIconRow(nil, "No icon") }`);
+  // Reads whether a row's label is in the text colour and the game's gold.
+  const row = (i) => addon.eval(`return { __text(rows[${i}].Label), __gold(rows[${i}].Label) }`);
+  expect([row(1), row(3), row(5), row(6), row(7)].map((r) => r[0]), "a label left gold, one given the game's gold, a category's, an icon row's and a wrapped row without an icon").toEqual([true, true, true, true, true]);
+  expect([row(2), row(4)].map((r) => r[0]), "a colour the game chose (green) is content").toEqual([false, false]);
+  expect(addon.eval("return { __a(rows[5].Background), __a(rows[6].IconSlot) }"), "the category's plate and the icon row's bronze plate are faded").toEqual([0, 0]);
+  expect(addon.eval("return { ns.FrameState('vgSideSlot')[rows[6]] ~= nil, ns.FrameState('vgSideSlot')[rows[1]] == nil }"), "only the icon row gets a slot tile").toEqual([true, true]);
+  const tile = addon.eval(`local slot = ns.FrameState('vgSideSlot')[rows[6]] local row = rows[6]
+    return { slot:GetParent() == row, slot:GetFrameLevel() < row:GetFrameLevel(), slot.__points.TOPLEFT.rel == row.Icon, __panel(slot) }`);
+  expect(tile, "a slot on a frame under the row, sized to the icon, painted").toEqual([true, true, true, true]);
+  addon.eval(`rep:ResetRows() rows2 = { rep:AddIconRow(134, "Again"), rep:AddCategory("Back") }`);
+  expect(addon.eval("return { rows2[1] == rows[6], select('#', rows2[1]:GetChildren()), __text(rows2[2].Label), __a(rows2[2].Background) }"), "a pooled row comes back dressed with its one slot").toEqual([true, 1, true, 0]);
+  expect(addon.eval("return #ns.errors"), "nothing reported").toBe(0);
+});
+
+it("side panes: rows a pane already has when it is dressed get their art done; a pane without the methods or parts is left alone", () => {
+  const addon = loggedIn(SIDE_PANE_ENV + `
+    early = PVPRankFrame.DetailFrame
+    earlyIcon, earlyCategory = early:AddIconRow(1, "Already"), early:AddCategory("Here")
+    early.AddRow, early.SetPaneTitleColor = nil, nil
+    SkillsFrame.SkillDetailFrame.Title = nil
+    TokenFrame.DetailFrame.Content = nil
+    ReputationFrame.ReputationDetailFrame.ViewRenownButton = true
+  `);
+  expect(addon.eval("return { __a(earlyIcon.IconSlot), __a(earlyCategory.Background), ns.FrameState('vgSideSlot')[earlyIcon] ~= nil }"), "faded and the slot made").toEqual([0, 0, true]);
+  addon.eval("early:SetPaneTitle('Rank') early:AddWrappedRow('Note', GREEN_FONT_COLOR)");
+  expect(addon.eval("return { __headed(early.Title), #ns.errors }"), "the pane's heading is dressed without the methods; no errors for a pane without Title, Content or a real button").toEqual([true, 0]);
+});
+
+it("side panes: the reputation and currency panes' check boxes, standing bar, push buttons and description scroll bar are in the theme", () => {
+  const addon = loggedIn(SIDE_PANE_ENV);
+  const parts = addon.eval(`local r, t = ReputationFrame.ReputationDetailFrame, TokenFrame.DetailFrame
+    local function box(b) return ns.Theme.CheckParts(b) ~= nil end
+    return { box(r.AtWarCheckbox), box(r.MakeInactiveCheckbox), box(r.WatchFactionCheckbox), box(t.InactiveCheckbox), box(t.BackpackCheckbox),
+      __text(r.AtWarCheckbox.Label), __text(r.MakeInactiveCheckbox.Label), __text(r.WatchFactionCheckbox.Label), __text(t.InactiveCheckbox.Label), __text(t.BackpackCheckbox.Label),
+      __a(r.StandingBar.backdrop), __a(r.StandingBar.Fill), __panel(r.StandingBar), __panel(r.ViewRenownButton), __panel(t.CurrencyTransferToggleButton) }`);
+  expect(parts.slice(0, 5), "five check boxes as the theme's").toEqual([true, true, true, true, true]);
+  expect(parts.slice(5, 10), "their labels go to the text colour, At war's red stays").toEqual([false, true, true, true, true]);
+  expect(parts.slice(10), "the standing bar's backdrop faded with its fill kept and a panel behind, and the push buttons painted").toEqual([0, -1, true, true, true]);
+  expect(addon.eval("return __barState(ReputationFrame.ReputationDetailFrame.DescriptionScrollBar)"), "the description's scroll bar is reached with the window's").toEqual([0, 0, true, true]);
+  const bare = loggedIn(SIDE_PANE_ENV + `ReputationFrame.ReputationDetailFrame.MakeInactiveCheckbox = CreateFrame("Frame", nil, UIParent) TokenFrame.DetailFrame.ViewRenownButton = true`);
+  expect(bare.eval("return #ns.errors"), "a part that is not a check button or a button is skipped").toBe(0);
+});
+
+it("pane lists: the rules over and under each list are faded, a header's name goes to the text colour", () => {
+  const addon = loggedIn(PANE_ENV + `
+    function __ruled(f) local line = CreateFrame("Frame", nil, f.ScrollBox) line.rule = __art(line, "OVERLAY") f.rule = line.rule end
+    __ruled(ReputationFrame) __ruled(SkillsFrame) __ruled(TokenFrame)
+    __text = function(fs) local c, t = fs.__textColor, { ns.Theme.RGB("text") } return c ~= nil and c[1] == t[1] and c[2] == t[2] and c[3] == t[3] end
+    __repHeader.Name = __repHeader:CreateFontString() __repHeader.Name:SetTextColor(1, 0.82, 0)
+  `);
+  expect(addon.eval("return { __a(ReputationFrame.rule), __a(SkillsFrame.rule), __a(TokenFrame.rule) }"), "the rule lines of all three lists").toEqual([0, 0, 0]);
+  expect(addon.eval("return { __a(__repHeader.banner), __a(__repHeader.StateIcon) }"), "a header row's own art is not taken for a rule line").toEqual([0, 1]);
+  const later = addon.eval(`local h = __header(ReputationFrame.ScrollBox) h.Name = h:CreateFontString() h.Name:SetTextColor(1, 0.82, 0) ReputationFrame.ScrollBox:Acquire(h) return { __text(__repHeader.Name), __text(h.Name) }`);
+  expect(later, "the header's name in the text colour, a header acquired later too").toEqual([true, true]);
+});
+
+it("stat boxes: the bronze edge, class crest and rule are faded for an inset panel, stat lines lose their stripe and their names go to the text colour", () => {
+  const addon = loggedIn(PANE_ENV + `
+    __text = function(fs) local c, t = fs.__textColor, { ns.Theme.RGB("text") } return c ~= nil and c[1] == t[1] and c[2] == t[2] and c[3] == t[3] end
+    CharacterStatsPane = CreateFrame("Frame", "CharacterStatsPane", CharacterFrame)
+    CharacterStatsPane.ItemLevelFrame = CreateFrame("Frame", nil, CharacterStatsPane) CharacterStatsPane.ItemLevelFrame.Background = __art(CharacterStatsPane.ItemLevelFrame)
+    local function box(name) local b = CreateFrame("Frame", name, CharacterFrame) b.Border, b.ClassBackground, b.rule = __art(b, "BORDER"), __art(b), __art(b, "BORDER") b.ScrollBox = __box(b) return b end
+    box("CharacterStatsPaneScrollBox") box("CharacterStatsPanePetScrollBox")
+    local function line(parent, withIcon)
+      local r = CreateFrame("Frame", nil, parent) r.Background, r.Label = __art(r), r:CreateFontString() r.Label:SetTextColor(1, 0.82, 0)
+      r.Value = r:CreateFontString() r.Value:SetTextColor(1, 1, 1)
+      return parent:Acquire(r)
+    end
+    __line, __petLine = line(CharacterStatsPaneScrollBox.ScrollBox), line(CharacterStatsPanePetScrollBox.ScrollBox)
+  `);
+  // Reads whether a scroll box's parts are faded and its panel is there.
+  const box = (name) => addon.eval(`local b = ${name} return { __a(b.Border), __a(b.ClassBackground), __a(b.rule), __panel(b) }`);
+  expect([box("CharacterStatsPaneScrollBox"), box("CharacterStatsPanePetScrollBox")], "both boxes: edge, crest and rule faded, a panel in their place").toEqual([[0, 0, 0, true], [0, 0, 0, true]]);
+  expect(addon.eval("return { __a(__line.Background), __text(__line.Label), __a(__petLine.Background), __text(__petLine.Label), __text(__line.Value) }"), "a stat line: stripe faded, name in the text colour, value untouched").toEqual([0, true, 0, true, false]);
+  expect(addon.eval("local f = CharacterStatsPane.ItemLevelFrame return { __a(f.Background), __panel(f) }"), "the item level's plate faded with a panel behind the number").toEqual([0, true]);
+  const later = addon.eval("local r = CharacterStatsPaneScrollBox.ScrollBox:Acquire(CreateFrame('Frame')) return #ns.errors");
+  expect(later, "a row the game acquires without parts is left alone").toBe(0);
+});
+
+it("honor tab: the season timer, the season's name and the progress line go to the text colour", () => {
+  const addon = loggedIn(PANE_ENV + `
+    PVPRankFrame = CreateFrame("Frame", "PVPRankFrame", CharacterFrame)
+    PVPRankFrame.SeasonTimerField = PVPRankFrame:CreateFontString() PVPRankFrame.MainInfoFrame = CreateFrame("Frame", nil, PVPRankFrame)
+    PVPRankFrame.MainInfoFrame.CurrentSeasonField, PVPRankFrame.MainInfoFrame.CurrentRankProgressField = PVPRankFrame.MainInfoFrame:CreateFontString(), PVPRankFrame.MainInfoFrame:CreateFontString()
+    __text = function(fs) local c, t = fs.__textColor, { ns.Theme.RGB("text") } return c ~= nil and c[1] == t[1] and c[2] == t[2] and c[3] == t[3] end
+    PVPRankFrame.MainInfoFrame.CurrentRankField = PVPRankFrame.MainInfoFrame:CreateFontString()
+  `);
+  expect(addon.eval("local i = PVPRankFrame.MainInfoFrame return { __text(PVPRankFrame.SeasonTimerField), __text(i.CurrentSeasonField), __text(i.CurrentRankProgressField), i.CurrentRankField.__textColor == nil }"), "the three gold texts, not the rank name (white already)").toEqual([true, true, true, true]);
+  const bare = loggedIn(PANE_ENV + `PVPRankFrame = CreateFrame("Frame", "PVPRankFrame", CharacterFrame) PVPRankFrame.SeasonTimerField = PVPRankFrame:CreateFontString()`);
+  expect(bare.eval("return { __text and 1 or 0, #ns.errors }").slice(1), "a tab without its main frame").toEqual([0]);
+});
+
+it("GW.WatchRows: rows now and later, once per box, a failing skin reported and the others still done, boxes that are not lists skipped", () => {
+  expectErrors(/^skin row: eval:\d+: TEST-ONLY: bad row$/);
+  const addon = loggedIn(PANE_ENV + `
+    __seen = {}
+    __first = __box(UIParent) __first:Acquire(CreateFrame("Frame", nil, __first))
+    local GW = ns.GetModule("Windows")
+    GW.WatchRows(__first, function(row) table.insert(__seen, row) if #__seen == 2 then error("TEST-ONLY: bad row") end end)
+    GW.WatchRows(__first, function() error("TEST-ONLY: watched twice") end)
+    GW.WatchRows(nil, function() end) GW.WatchRows({}, function() end)
+  `);
+  expect(addon.eval("return #__seen"), "the row it had").toBe(1);
+  addon.eval("__first:Acquire(CreateFrame('Frame', nil, __first)) __first:Acquire(CreateFrame('Frame', nil, __first))");
+  expect(addon.eval("return { #__seen, #ns.errors }"), "rows acquired later, one failing is reported once and the next still done").toEqual([3, 1]);
+  const noUtil = loggedIn(PANE_ENV + `ScrollUtil = nil local b = __box(UIParent) ns.GetModule("Windows").WatchRows(b, function() end)`);
+  expect(noUtil.eval("return #ns.errors"), "a client without ScrollUtil").toBe(0);
 });

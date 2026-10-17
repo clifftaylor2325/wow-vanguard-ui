@@ -20,6 +20,7 @@ local vgCorner = ns.FrameState("vgCorner")
 local vgDurability = ns.FrameState("vgDurability")
 local vgLootRows = ns.FrameState("vgLootRows")
 local vgMenuSkinned = ns.FrameState("vgMenuSkinned")
+local vgRowsWatched = ns.FrameState("vgRowsWatched")
 local vgTimerHook = ns.FrameState("vgTimerHook")
 local vgWindow = ns.FrameState("vgWindow")
 
@@ -336,6 +337,28 @@ function GW.DressChecks(frame, depth)
   for _, child in ipairs({ frame:GetChildren() }) do
     if child.GetObjectType and child:GetObjectType() == "CheckButton" then T.CheckBox(child)
     elseif depth > 1 then GW.DressChecks(child, depth - 1) end
+  end
+end
+
+-- The scroll bars a window keeps, by key: the usual one and the description, no-recruits and scrolling-description
+-- ones (GW.DressBars in Modules/WindowsTabs.lua looks for each of them on a frame).
+GW.SCROLL_KEYS = { "ScrollBar", "DescriptionScrollBar", "NoRecruitsScrollBar", "ScrollingDescriptionScrollBar" }
+
+-- Owner of the callbacks GW.WatchRows leaves on the game's scroll boxes (ScrollUtil wants one).
+local rowOwner = {}
+
+-- Runs skin(row) on every row of a ScrollBox now and on each row the game acquires later (a pooled row comes back
+-- skinned), once per box. The game's own iterateExisting argument calls back with other arguments than the event
+-- does, so it is not used; a failing skin is reported (the box fires it inside its acquire lock) and does not stop the
+-- others. A box without ForEachFrame, or already watched, is skipped.
+function GW.WatchRows(box, skin)
+  if type(box) ~= "table" or vgRowsWatched[box] or type(box.ForEachFrame) ~= "function" then return end
+  vgRowsWatched[box] = true
+  local run = ns.Guard("skin row", skin)
+  box:ForEachFrame(function(row) run(row) end)
+  local util = _G.ScrollUtil
+  if type(util) == "table" and type(util.AddAcquiredFrameCallback) == "function" then
+    util.AddAcquiredFrameCallback(box, function(_, row) run(row) end, rowOwner)
   end
 end
 

@@ -781,6 +781,12 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 - Expect: each side tab is a flat dark tile with its icon still showing, the selected one raised (lighter) and the others' icons greyed, a faint wash under the mouse, and it sits against the window's panel edge with no gap and no overlap; the guild bank's tabs keep their item icon (and the search's dark film while you search) and lose their bronze plate; Items and Sets are flat tabs with the one you are on raised. Every tab still switches its page. [Needs in game: the names the collections tabs have on Forever; whether the guild bank tabs line up with the panel's edge.]
 - If it fails, paste: which window and tab, a screenshot and `/vg errors`.
 
+### 14.8.10 The character pane's side panes and stat boxes
+
+- Do: open the character pane (C) and click the Reputation, Skills, Currency and Honor tabs in turn; expand and fold a header on each list, tick "Show as experience bar" or "Inactive" on a reputation, and hover a row. Then show the stats half and look at the stat boxes (and the item level line).
+- Expect: each pane's title is small text in the text colour, not gold, and its gold rule is gone; the list rows lose their wooden or stone plate and their labels read in the text colour (a row the game colours, such as a reputation standing, keeps its colour); each row's icon sits on a flat square slot; the check boxes are Vanguard's, the standing bar is a flat bar and the pane's buttons are flat; the game's own row highlight under the mouse is unchanged; the stat boxes sit on flat inset panels with a flat title box and no wooden art, and the honor texts read in the text colour. Scrolling a long list or folding a header never leaves a row with the game's plate. [Needs in game: the names of the side-pane and stat-box parts on Forever.]
+- If it fails, paste: which pane, a screenshot with a row or two on screen and `/vg errors`.
+
 ### 14.9.1 Battleground queue dialogs
 
 - Do: queue for a battleground (alone, then in a group if you can) and wait for it to pop; on the role check pick a role and accept; if you can, get a war game or arena invite.
