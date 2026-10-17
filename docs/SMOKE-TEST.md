@@ -562,20 +562,20 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 ### 14.3.2 Trainer
 
 - Do: talk to your class trainer; open the filter; click a skill; collapse and expand a category if the list has them; click Train.
-- Expect: flat panel, no parchment behind the list, each row has no plate but keeps its icon, name, requirements and cost; the selected row shows the game's highlight; the filter button works (note whether its arrow is visible); Train works and Vanguard's Train all sits beside it.
-- If it fails, paste: a screenshot with a row selected, and `/vg errors`.
+- Expect: flat panel, no parchment behind the list and a dark box under the Train button; each skill row has no plate or hover strip but keeps its icon (a lock or the grey shade over a skill you cannot learn stays), with its name, requirements and cost in the Vanguard font; the row you click shows the one selected look (a thin accent rail and tint along its left edge), which moves when you click another skill, and rows wash lightly under the mouse; a category heading (if the list has them) is small grey capitals with no plate and stays that way when the mouse is over it; the scroll bar is a thin line; your money at the bottom is in the Vanguard font; a profession trainer's rank bar is a flat bar on a dark track in the accent colour with its numbers in the Vanguard font (a hunter's pet trainer shows training points in the light text colour); the filter button works (note whether its arrow is visible); Train works and Vanguard's Train all sits beside it. The skill names keep the colour the game gives them (not changed on purpose).
+- If it fails, paste: a screenshot with a row selected and one with the mouse over a category heading, and `/vg errors`.
 
 ### 14.3.3 Shift-click a stack
 
 - Do: shift-click a stack of items in a bag, then use the arrows, type a number and press Okay; open the side dress-up window by control-clicking an item at a merchant or the auction house.
-- Expect: the stack split window is a small flat panel with the amount in the Vanguard font and visible arrows; Okay and Cancel are Vanguard buttons and work; the dress-up window is flat with a Reset button.
-- If it fails, paste: a screenshot and `/vg errors`.
+- Expect: the stack split window is a small flat panel with the amount in the Vanguard font and visible arrows, a thin border round the amount between the arrows and the "x / y" count line under it in the light text colour (not gold); Okay and Cancel are Vanguard buttons and work; the dress-up window is flat with a Reset button and its model on a dark box without the game's frame, the zoom and rotate buttons still over it.
+- If it fails, paste: a screenshot (note whether the amount is readable inside its border) and `/vg errors`.
 
 ### 14.3.4 Coins from the money frame
 
 - Do: click your gold in the backpack's money line (a plain click picks coins up and opens the amount window).
-- Expect: the coin amount window is a flat panel; its coin icon and arrows are visible; Okay and Cancel work.
-- If it fails, paste: a screenshot and `/vg errors`.
+- Expect: the coin amount window is a flat panel; its coin icon and arrows are visible; the typed figure and the letter beside it are in the Vanguard font with a thin border round the figure; Okay and Cancel work. Your money at the bottom of the backpack (or of the combined bag) sits in a flat dark box, not the gold-edged one, with its figures in the Vanguard font and its coins.
+- If it fails, paste: a screenshot of the window and of the bag's foot, and `/vg errors`.
 
 ### 14.3.5 Separate bags
 
@@ -604,7 +604,7 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 ### 14.3.9 Small dialogs
 
 - Do: die and look at the return-to-graveyard button; open the addon list (`/addons` or the game menu) and change an addon that is out of date, if one is; trigger a message box (for example `/run BasicMessageDialog.Text:SetText("test") BasicMessageDialog:Show()`).
-- Expect: the graveyard button is a flat button with its icon and text (nothing changes while you are in combat); the addon confirmation and the message box are flat panels with flat buttons, not full-screen dimmers of a different shade.
+- Expect: the graveyard button is a flat button with its icon and its text in the light text colour, not gold (nothing changes while you are in combat); the addon confirmation and the message box are flat panels with flat buttons, the addon confirmation's message in the light text colour, not full-screen dimmers of a different shade.
 - If it fails, paste: a screenshot and `/vg errors`.
 
 ### 14.3.10 Loot window rows
@@ -616,7 +616,7 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 ### 14.3.11 Merchant rows, buttons and money
 
 - Do: with damaged gear, open a merchant who repairs and sells more than ten items (a general goods vendor); turn the page with the arrows and the mouse wheel; open the Buyback tab after selling something; hover and click the repair, repair-all and sell-junk buttons; open the filter dropdown.
-- Expect: no dark-red plates behind the item names and no round slot art: each item is a square slot with a thin border in its quality colour, its name and price in the Vanguard font (a price you can't pay still red, the icon still greyed), the buyback slot and the Buyback tab's rows the same; the repair buttons and the sell-junk button are flat tiles that keep their icons (greyed when there is nothing to repair or sell), the page arrows keep their arrows with Prev and Next in the Vanguard font, the page count too; the gold bar at the bottom right is a dark box with your money in the Vanguard font beside its coins; every button still does what it did, and the second page looks like the first.
+- Expect: no dark-red plates behind the item names and no round slot art: each item is a square slot with a thin border in its quality colour, its name and price in the Vanguard font (a price you can't pay still red, the icon still greyed), the buyback slot and the Buyback tab's rows the same; the repair buttons and the sell-junk button are flat tiles that keep their icons (greyed when there is nothing to repair or sell), the page arrows keep their arrows with Prev and Next in the Vanguard font and the light text colour (not gold), the page count too; the gold bar at the bottom right is a dark box with your money in the Vanguard font beside its coins; every button still does what it did, and the second page looks like the first.
 - If it fails, paste: a screenshot of the merchant window and `/vg errors`.
 
 ### 14.4.1 Game options

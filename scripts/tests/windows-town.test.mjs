@@ -140,37 +140,50 @@ it("R2.21 the pet stable: its group switched off leaves it the game's; windows a
   expect([odd.eval("return ns.FrameState('vgPetSlots')[PetStableCurrentPet]"), odd.eval("return ns.FrameState('vgPetSlots')[PetStableStabledPet1]"), windowErrors(odd)], "a slot without a checked texture is dressed, one that is no frame is skipped; a strip that is no texture, a divider and a coin box that are missing are skipped").toEqual([true, null, "none"]);
 });
 
-// TEST-ONLY trainer (Blizzard_TrainerUI, loads on demand): the window, its list as the game's ScrollBox hands out rows.
-const TRAINER_ENV = `${WINDOWS_ENV}
-  ScrollBoxListMixin = { Event = { OnAcquiredFrame = "OnAcquiredFrame" } }
+// TEST-ONLY trainer (Blizzard_TrainerUI, loads on demand): the window, its list as the game's ScrollBox hands out rows,
+// and the two row initialisers the game fills them with (the skill's sets the selected strip, the category's the label font).
+const TRAINER_ENV = `${TOWN_READERS}
+  ScrollUtil = { AddAcquiredFrameCallback = function(box, cb, owner) table.insert(box.callbacks, function(row) cb(owner, row) end) end }
+  -- A row as the game acquires it: a skill row (plates, name, requirements, price, icon, lock, shade, selected strip) or a
+  -- category row (plate pieces and its label); sel is whether the skill is the chosen one.
+  function __row(sel, category)
+    local row = CreateFrame("Button", nil, UIParent)
+    if category then
+      row.LeftPiece, row.RightPiece, row.CenterPiece = row:CreateTexture(), row:CreateTexture(), row:CreateTexture()
+      row.Label = __text(row, "Fire")
+    else
+      row.plate, row.glow = row:CreateTexture(), row:CreateTexture()
+      row.GetNormalTexture, row.GetHighlightTexture = function() return row.plate end, function() return row.glow end
+      row.name, row.subText, row.nameSubText = __text(row), __text(row), __text(row)
+      row.selectedTex, row.icon, row.lock, row.disabledBG = row:CreateTexture(), row:CreateTexture(), row:CreateTexture(), row:CreateTexture()
+      if not sel then row.selectedTex:Hide() end
+      row.money = __moneyLine(nil, row)
+    end
+    return row
+  end
+  function ClassTrainerFrame_InitServiceButton(row, data) if data == "chosen" then row.selectedTex:Show() else row.selectedTex:Hide() end end
+  function ClassTrainerFrame_InitCategoryButton(row) row.Label:SetFont("TEST-ONLY-GAME", 14, "") end
   function __trainer()
     local f = __window("ClassTrainerFrame")
     f.BG = f:CreateTexture() f.BG:SetTexture("TEST-ONLY-ART2") f:CreateTexture("ClassTrainerFrameMoneyBg")
     f.bottomInset = CreateFrame("Frame", nil, f) f.bottomInset.NineSlice = CreateFrame("Frame", nil, f.bottomInset)
     f.FilterDropdown = CreateFrame("Button", nil, f)
     CreateFrame("Button", "ClassTrainerTrainButton", f)
+    f.money = __moneyLine(nil, f)
+    f.trainingPoints = CreateFrame("Frame", nil, f) f.trainingPoints.text = __text(f.trainingPoints, "3")
+    local bar = CreateFrame("StatusBar", "ClassTrainerStatusBar", f) bar.rankText = __text(bar, "Rank 3")
+    f.ScrollBar = CreateFrame("Frame", nil, f) f.ScrollBar.Track = CreateFrame("Frame", nil, f.ScrollBar)
+    f.ScrollBar.Thumb = CreateFrame("Button", nil, f.ScrollBar.Track) __art(f.ScrollBar.Track)
+    f.skillStepButton = __row(false)
     local box = { rows = {}, callbacks = {} }
-    function box:RegisterCallback(event, fn, owner) self.callbacks[event] = { fn, owner } end
     function box:ForEachFrame(fn) for _, row in ipairs(self.rows) do fn(row) end end
     f.ScrollBox = box
     return f
   end
-  -- A row as the game acquires it: a skill row (plate, name, requirements) or a category row (plate pieces).
-  function __row(box, category)
-    local row = CreateFrame("Button", nil, UIParent)
-    row.plate = row:CreateTexture() row.GetNormalTexture = function() return row.plate end
-    if category then
-      row.LeftPiece, row.RightPiece, row.CenterPiece = row:CreateTexture(), row:CreateTexture(), row:CreateTexture()
-    else
-      row.name, row.subText, row.nameSubText = row:CreateFontString(), row:CreateFontString(), row:CreateFontString()
-      row.selectedTex, row.icon = row:CreateTexture(), row:CreateTexture()
-    end
-    return row
-  end
 `;
 
-it("S2.2 the trainer: window, filter and train buttons themed, rows dressed as the list acquires them", () => {
-  const addon = loggedIn(TRAINER_ENV + "local box = __trainer().ScrollBox table.insert(box.rows, __row(box))");
+it("S2.2 the trainer: window, bars, texts and rows in the theme; skill rows follow the game's selection, category rows are section heads", () => {
+  const addon = loggedIn(TRAINER_ENV + "local box = __trainer().ScrollBox table.insert(box.rows, __row(true)) table.insert(box.rows, __row(false))");
   addon.fire("ADDON_LOADED", "Blizzard_TrainerUI");
   addon.eval("ClassTrainerFrame:Show()");
   const first = windowState(addon, "ClassTrainerFrame");
@@ -178,30 +191,43 @@ it("S2.2 the trainer: window, filter and train buttons themed, rows dressed as t
   const f = "ClassTrainerFrame";
   expect(alphas(addon, `${f}.BG`, "ClassTrainerFrameMoneyBg", `${f}.bottomInset.NineSlice`), "backdrop, money plate and inset art faded").toEqual([0, 0, 0]);
   expect(dressed(addon, `${f}.bottomInset`, `${f}.FilterDropdown`, "ClassTrainerTrainButton"), "inset panel, filter and Train buttons themed").toEqual([true, true, true]);
-  expect(addon.eval(`local row = ${f}.ScrollBox.rows[1] return { row.plate:GetAlpha(), row.name:GetFont() ~= nil, row.subText:GetFont() ~= nil, row.selectedTex:GetAlpha(), row.icon:GetAlpha() }`), "the row that was there: plate faded, texts in the theme font, the selected mark and icon kept").toEqual([0, true, true, 1, 1]);
-  addon.eval(`local box = ${f}.ScrollBox local skill, head = __row(box), __row(box, true)
-    local cb = box.callbacks.OnAcquiredFrame cb[1](cb[2], skill) cb[1](cb[2], head) cb[1](cb[2], nil) box.skill, box.head = skill, head`);
-  expect(addon.eval(`local b = ${f}.ScrollBox return { b.skill.plate:GetAlpha(), b.skill.name:GetFont() ~= nil, b.head.plate:GetAlpha(), b.head.LeftPiece:GetAlpha(), b.head.CenterPiece:GetAlpha() }`), "rows acquired later: a skill row and a category row").toEqual([0, true, 0, 0, 0]);
+  expect(addon.eval(`return { __themed(${f}.money.GoldButton.Text), __lit(${f}.trainingPoints.text, "small", "text"), __themed(ClassTrainerStatusBar.rankText), ${f}.ScrollBar.Track:GetRegions():GetAlpha() }`), "the money line, training points and rank text in the theme font, the scroll bar's track faded").toEqual([true, true, true, 0]);
+  expect(addon.eval(`local bar = ClassTrainerStatusBar return { bar.__barTexture ~= nil, bar.__barColor[1] == ns.Theme.RGB("accent") }`), "the rank bar a flat track with the accent fill").toEqual([true, true]);
+  expect(addon.eval(`local row = ${f}.ScrollBox.rows[1] return { row.plate:GetAlpha(), row.glow:GetAlpha(), row.selectedTex:GetAlpha(), row.icon:GetAlpha(), row.lock:GetAlpha(), row.disabledBG:GetAlpha() }`), "a row there already: plates and strip faded, icon, lock and shade kept").toEqual([0, 0, 0, 1, 1, 1]);
+  expect(addon.eval(`local row = ${f}.ScrollBox.rows[1] return { __themed(row.name), __themed(row.subText), __themed(row.nameSubText), __themed(row.money.CopperButton.Text) }`), "its texts and price in the theme font").toEqual([true, true, true, true]);
+  expect(addon.eval(`local r = ${f}.ScrollBox.rows return { ns.Theme.RowParts(r[1]).rail:IsShown(), ns.Theme.RowParts(r[2]).rail:IsShown() }`), "the chosen skill shows the selected look, the other does not").toEqual([true, false]);
+  expect(addon.eval(`return ns.Theme.RowParts(${f}.skillStepButton) ~= nil`), "the profession step above the list is a row too").toBe(true);
+  addon.eval(`local box = ${f}.ScrollBox local skill, head = __row(false), __row(false, true)
+    box.callbacks[1](skill) box.callbacks[1](head) box.skill, box.head = skill, head`);
+  expect(addon.eval(`local b = ${f}.ScrollBox return { b.skill.plate:GetAlpha(), __themed(b.skill.name), b.head.LeftPiece:GetAlpha(), b.head.CenterPiece:GetAlpha(), __lit(b.head.Label, "section", "text2") }`), "rows acquired later: a skill row and a category row with its label a section head").toEqual([0, true, 0, 0, true]);
+  addon.eval(`local b = ${f}.ScrollBox ClassTrainerFrame_InitServiceButton(b.skill, "chosen")`);
+  expect(addon.eval(`return ns.Theme.RowParts(${f}.ScrollBox.skill).rail:IsShown()`), "the game picks the skill: the row takes the selected look").toBe(true);
+  addon.eval(`local b = ${f}.ScrollBox ClassTrainerFrame_InitServiceButton(b.skill, "other")`);
+  expect(addon.eval(`return ns.Theme.RowParts(${f}.ScrollBox.skill).rail:IsShown()`), "the game fills the row with another skill: the look goes").toBe(false);
+  addon.eval(`local b = ${f}.ScrollBox ClassTrainerFrame_InitCategoryButton(b.head)`);
+  expect(addon.eval(`return __lit(${f}.ScrollBox.head.Label, "section", "text2")`), "the game puts its gold label font back as it fills the row: the section look returns").toBe(true);
+  addon.eval(`local b = ${f}.ScrollBox b.head.Label:SetFont("TEST-ONLY-GAME", 14, "") __wfgStub.runScript(b.head, "OnEnter")`);
+  expect(addon.eval(`return __lit(${f}.ScrollBox.head.Label, "section", "text2")`), "and when the mouse enters the row").toBe(true);
   addon.eval(`${f}:Hide() ${f}:Show()`);
-  expect([windowState(addon, f).painted, addon.eval(`local n = 0 for _ in pairs(${f}.ScrollBox.callbacks) do n = n + 1 end return n`)], "a second show paints nothing more and watches the list once").toEqual([first.painted, 1]);
+  expect(windowState(addon, f).painted, "a second show paints nothing more").toBe(first.painted);
 });
 
-it("S2.2 the trainer: group off leaves it the game's; a trainer without a list or mixin loads cleanly", () => {
+it("S2.2 the trainer: group off leaves it the game's; a trainer missing parts loads cleanly", () => {
   const off = loggedIn(TRAINER_ENV + "__trainer()", { savedVariables: OFF });
   off.fire("ADDON_LOADED", "Blizzard_TrainerUI");
   off.eval("ClassTrainerFrame:Show()");
-  expect([windowState(off, "ClassTrainerFrame").art !== 0, off.eval("return ClassTrainerFrame.ScrollBox.callbacks.OnAcquiredFrame == nil")], "not hooked").toEqual([true, true]);
+  expect([windowState(off, "ClassTrainerFrame").art !== 0, off.eval("return #ClassTrainerFrame.ScrollBox.callbacks")], "not hooked").toEqual([true, 0]);
   const bare = loggedIn('CreateFrame("Frame", "ClassTrainerFrame", UIParent):Hide()');
   bare.fire("ADDON_LOADED", "Blizzard_TrainerUI");
   bare.eval("ClassTrainerFrame:Show()");
-  const plain = loggedIn(TRAINER_ENV + "__trainer() ScrollBoxListMixin = nil");
+  const plain = loggedIn(TRAINER_ENV + "__trainer() ScrollUtil = nil ClassTrainerFrame_InitServiceButton = nil ClassTrainerFrame_InitCategoryButton = nil ClassTrainerStatusBar.SetStatusBarTexture = nil");
   plain.fire("ADDON_LOADED", "Blizzard_TrainerUI");
-  const noEvent = loggedIn(TRAINER_ENV + "__trainer() ScrollBoxListMixin.Event = nil");
-  noEvent.fire("ADDON_LOADED", "Blizzard_TrainerUI");
-  const noCallbacks = loggedIn(TRAINER_ENV + "__trainer() ClassTrainerFrame.ScrollBox = {}");
-  noCallbacks.fire("ADDON_LOADED", "Blizzard_TrainerUI");
-  expect([bare, plain, noEvent, noCallbacks].map(windowErrors), "none of them reports an error").toEqual(["none", "none", "none", "none"]);
-  expect(plain.eval("return ClassTrainerFrame.ScrollBox.callbacks.OnAcquiredFrame == nil"), "no list events without the game's mixin").toBe(true);
+  plain.eval("ClassTrainerFrame:Show()");
+  const noBox = loggedIn(TRAINER_ENV + "__trainer() ClassTrainerFrame.ScrollBox = {} ClassTrainerFrame.ScrollBar = nil ClassTrainerFrame.skillStepButton.name = {} hooksecurefunc = nil");
+  noBox.fire("ADDON_LOADED", "Blizzard_TrainerUI");
+  noBox.eval("ClassTrainerFrame:Show()");
+  expect([bare, plain, noBox].map(windowErrors), "none of them reports an error").toEqual(["none", "none", "none"]);
+  expect(plain.eval("return #ClassTrainerFrame.ScrollBox.callbacks"), "no list events without the game's ScrollUtil").toBe(0);
 });
 
 // TEST-ONLY helpers for button art: a button whose normal and disabled textures are an arrow, as the money arrows are.
@@ -215,12 +241,12 @@ const ARROWS_ENV = `
 `;
 
 // TEST-ONLY side dress-up, stack split and coin pickup windows.
-const DRESSUP_ENV = `${WINDOWS_ENV}${ARROWS_ENV}
+const DRESSUP_ENV = `${TOWN_READERS}${ARROWS_ENV}
   local d = __window("SideDressUpFrame")
   d.BGTopLeft, d.BGBottomLeft = d:CreateTexture(), d:CreateTexture()
   for _, n in ipairs({ "SideDressUpFrameTop", "SideDressUpFrameBackgroundTop", "SideDressUpFrameBackgroundBot" }) do d:CreateTexture(n) end
   d.ResetButton = CreateFrame("Button", nil, d)
-  d.ModelScene = CreateFrame("Frame", nil, d) d.ModelScene.ControlFrame = CreateFrame("Frame", nil, d.ModelScene)
+  d.ModelScene = CreateFrame("Frame", nil, d) __art(d.ModelScene) d.ModelScene.ControlFrame = CreateFrame("Frame", nil, d.ModelScene)
   for _, key in ipairs({ "zoomInButton", "rotateLeftButton" }) do
     local b = CreateFrame("Button", nil, d.ModelScene.ControlFrame) b.Icon = b:CreateTexture() d.ModelScene.ControlFrame[key] = b
   end
@@ -229,11 +255,11 @@ const DRESSUP_ENV = `${WINDOWS_ENV}${ARROWS_ENV}
   s.FrameGlow = CreateFrame("Frame", nil, s)
   s.OkayButton, s.CancelButton = CreateFrame("Button", nil, s), CreateFrame("Button", nil, s)
   s.LeftButton, s.RightButton = __arrow(s), __arrow(s)
-  s.StackSplitText = s:CreateFontString(nil, "BACKGROUND")
+  s.StackSplitText = s:CreateFontString(nil, "BACKGROUND") s.StackItemCountText = __text(s, "x / 20")
   local c = __window("CoinPickupFrame")
   for _, n in ipairs({ "CoinPickupGoldIcon", "CoinPickupSilverIcon" }) do c:CreateTexture(n) end
   CreateFrame("Button", "CoinPickupOkayButton", c) CreateFrame("Button", "CoinPickupCancelButton", c)
-  __arrow(c, "CoinPickupLeftButton") __arrow(c, "CoinPickupRightButton") c:CreateFontString("CoinPickupText", "ARTWORK")
+  __arrow(c, "CoinPickupLeftButton") __arrow(c, "CoinPickupRightButton") c:CreateFontString("CoinPickupText", "ARTWORK") c:CreateFontString("CoinPickupLabel", "ARTWORK")
 `;
 
 it("S2.3 side dress-up, stack split and coin pickup: plates faded, buttons themed with their glyphs kept", () => {
@@ -246,14 +272,16 @@ it("S2.3 side dress-up, stack split and coin pickup: plates faded, buttons theme
   expect(alphas(addon, `${d}.BGTopLeft`, `${d}.BGBottomLeft`, "SideDressUpFrameTop", "SideDressUpFrameBackgroundBot"), "the dress-up window's named art").toEqual([0, 0, 0, 0]);
   expect(dressed(addon, `${d}.ResetButton`, `${d}.ModelScene.ControlFrame.zoomInButton`), "Reset and the model's buttons themed").toEqual([true, true]);
   expect(addon.eval(`local b = ${d}.ModelScene.ControlFrame.rotateLeftButton return b.Icon:GetAlpha()`), "a model button keeps its icon").toBe(1);
+  expect(addon.eval(`return { __faded(${d}.ModelScene), __sunk(${d}.ModelScene) }`), "the model sits on an inset: the game's art faded").toEqual([true, true]);
   const s = "StackSplitFrame";
   expect(alphas(addon, `${s}.SingleItemSplitBackground`, `${s}.MultiItemSplitBackground`, `${s}.FrameGlow`), "the stack window's plates and glow").toEqual([0, 0, 0]);
   expect(dressed(addon, `${s}.OkayButton`, `${s}.CancelButton`, `${s}.LeftButton`, `${s}.RightButton`), "its four buttons themed").toEqual([true, true, true, true]);
   expect(alphas(addon, `${s}.LeftButton.up`, `${s}.RightButton.off`), "the arrows stay visible").toEqual([1, 1]);
-  expect(addon.eval(`return ${s}.StackSplitText:GetFont() ~= nil`), "the amount in the theme font").toBe(true);
+  expect(addon.eval(`return { ${s}.StackSplitText:GetFont() ~= nil, __lit(${s}.StackItemCountText, "number", "text") }`), "the amount in the theme font, the stack count in the text colour (not gold)").toEqual([true, true]);
+  expect(addon.eval(`local field = ns.FrameState("vgAmountFields")[${s}] return { field ~= nil, field.__parent == ${s}, __sunk(field) }`), "a field round the amount, between the arrows: a thin border, no fill over the number").toEqual([true, true, false]);
   expect(alphas(addon, "CoinPickupGoldIcon", "CoinPickupSilverIcon", "CoinPickupLeftButton.up"), "the coin icons and arrows stay").toEqual([1, 1, 1]);
   expect(dressed(addon, "CoinPickupOkayButton", "CoinPickupCancelButton", "CoinPickupLeftButton"), "its buttons themed").toEqual([true, true, true]);
-  expect(addon.eval("return CoinPickupText:GetFont() ~= nil"), "its amount in the theme font").toBe(true);
+  expect(addon.eval("return { CoinPickupText:GetFont() ~= nil, CoinPickupLabel:GetFont() ~= nil, ns.FrameState('vgAmountFields')[CoinPickupFrame] ~= nil }"), "its amount and the label beside it in the theme font, with a field round the amount").toEqual([true, true, true]);
   addon.eval("SideDressUpFrame:Hide() SideDressUpFrame:Show() StackSplitFrame:Hide() StackSplitFrame:Show() CoinPickupFrame:Hide() CoinPickupFrame:Show()");
   expect(windowState(addon, "CoinPickupFrame").painted, "showing them again paints nothing more").toBe(first[2].painted);
 });
@@ -269,7 +297,7 @@ it("S2.3 side dress-up, stack split and coin pickup: group off leaves them the g
 
 // TEST-ONLY separate bag windows (ContainerFrame1-7): a window per bag, each holding item buttons the way
 // the game's ContainerFrameMixin hands them out (EnumerateValidItems) and refilling them in UpdateItems.
-const BAGS_ENV = `${WINDOWS_ENV}
+const BAGS_ENV = `${TOWN_READERS}
   function __bag(name, slots)
     local f = __window(name) f.items = {}
     for i = 1, slots do
@@ -280,6 +308,8 @@ const BAGS_ENV = `${WINDOWS_ENV}
     return f
   end
   __bag("ContainerFrame1", 2) __bag("ContainerFrame2", 1)
+  -- The backpack's money line in its coin box (ContainerMoneyFrameTemplate).
+  ContainerFrame1.MoneyFrame = __moneyLine(nil, ContainerFrame1) ContainerFrame1.MoneyFrame.Border = __well(nil, ContainerFrame1.MoneyFrame)
 `;
 
 // How many of a bag window's item buttons have the Bags module's item look.
@@ -290,6 +320,7 @@ it("S2.4 separate bag windows: with Combined bags off the window and its items t
   addon.eval("ContainerFrame1:Show()");
   const first = windowState(addon, "ContainerFrame1");
   expect([first.art, first.panel, skinnedItems(addon, "ContainerFrame1")], "the window skinned and both item slots done").toEqual([0, true, 2]);
+  expect(addon.eval("local m = ContainerFrame1.MoneyFrame return { __themed(m.GoldButton.Text), __faded(m.Border), __sunk(m.Border) }"), "the backpack's money line in the theme font, its coin box a flat inset").toEqual([true, true, true]);
   addon.eval("local b = CreateFrame('Button', nil, ContainerFrame1) b.icon = b:CreateTexture() b.IconBorder = b:CreateTexture() table.insert(ContainerFrame1.items, b) ContainerFrame1:UpdateItems()");
   expect(skinnedItems(addon, "ContainerFrame1"), "a slot the game adds is dressed when it fills the bag").toBe(3);
   addon.eval("ContainerFrame1:Hide() ContainerFrame1:Show() ContainerFrame2:Show()");
@@ -411,12 +442,12 @@ it("S2.6 macro, icon pickers, stopwatch, recipe inspection: group off leaves the
 
 // TEST-ONLY small dialogs: the ghost button, the message dialog, the addon dialog (a full-screen frame holding
 // the dialog) and the currency transfer window.
-const DIALOGS_ENV = `${WINDOWS_ENV}
+const DIALOGS_ENV = `${TOWN_READERS}
   local g = CreateFrame("Button", "GhostFrame", UIParent) g:CreateTexture() g:Hide()
   CreateFrame("Frame", "GhostFrameContentsFrame", g):CreateFontString("GhostFrameContentsFrameText", "ARTWORK")
   local b = __window("BasicMessageDialog") b.Border = CreateFrame("Frame", nil, b) b.Border:CreateTexture()
   local a = CreateFrame("Frame", "AddonDialog", UIParent) a:Hide()
-  local box = CreateFrame("Frame", "AddonDialogBackground", a) box:CreateTexture("AddonDialogBackgroundBg")
+  local box = CreateFrame("Frame", "AddonDialogBackground", a) box:CreateTexture("AddonDialogBackgroundBg") box:CreateFontString("AddonDialogText", "ARTWORK")
   CreateFrame("Button", "AddonDialogButton1", box) CreateFrame("Button", "AddonDialogButton2", box)
   local c = __window("CurrencyTransferMenu") c.Content = CreateFrame("Frame", nil, c)
   c.Content.ConfirmButton, c.Content.CancelButton = CreateFrame("Button", nil, c.Content), CreateFrame("Button", nil, c.Content)
@@ -426,7 +457,7 @@ it("S2.7 small dialogs: ghost button, message dialog, addon dialog and currency 
   const addon = loggedIn(DIALOGS_ENV);
   addon.eval("GhostFrame:Show() BasicMessageDialog:Show() AddonDialog:Show() CurrencyTransferMenu:Show()");
   expect(addon.eval("return select('#', GhostFrame:GetRegions()) > 1"), "the ghost button is a theme button (its own texture and the theme's)").toBe(true);
-  expect(addon.eval("return GhostFrameContentsFrameText:GetFont() ~= nil"), "its text in the theme font").toBe(true);
+  expect(addon.eval("return { __lit(GhostFrameContentsFrameText, 'label', 'text'), __lit(AddonDialogText, 'label', 'text') }"), "the ghost button's text and the addon dialog's message in the label font and the text colour (not gold)").toEqual([true, true]);
   const message = windowState(addon, "BasicMessageDialog");
   expect(message, "the message dialog: art faded, panel").toMatchObject({ art: 0, panel: true });
   expect(alphas(addon, "BasicMessageDialog.Border"), "its Border faded").toEqual([0]);
@@ -461,7 +492,7 @@ it("S2.7 small dialogs: group off leaves them the game's; a client without the d
 // rows and the buyback slot (a slot plate, a named name plate, the name, an item button, a money line, a token price),
 // the repair and sell-junk tiles, the page arrows with their captions, the page count, the money line, its plates and
 // insets, the filter button, and the game's call that fills a page.
-const MERCHANT_ENV = `${WINDOWS_ENV}${ARROWS_ENV}
+const MERCHANT_ENV = `${TOWN_READERS}${ARROWS_ENV}
   function __money(name, parent)
     local m = CreateFrame("Frame", name, parent)
     for _, key in ipairs({ "GoldButton", "SilverButton", "CopperButton" }) do
@@ -511,7 +542,7 @@ it("R1.3 the merchant: rows, buyback slot, repair tiles, page arrows and money l
   expect(addon.eval("return { ns.Theme.HoverParts(MerchantRepairAllButton) ~= nil, ns.Theme.HoverParts(MerchantSellAllJunkButton) ~= nil, MerchantRepairAllButton.Icon:GetAlpha(), MerchantGuildBankRepairButton.Icon:GetAlpha(), ns.Theme.HoverParts(MerchantFrame.FilterDropdown) ~= nil }"), "the tiles and the filter button are theme buttons, the tiles keep their icon").toEqual([true, true, 1, 1, true]);
   expect([plateAlpha(addon, "MerchantRepairItemButton"), plateAlpha(addon, "MerchantSellAllJunkButton")], "the tiles' slot plates faded").toEqual([0, 0]);
   expect(alphas(addon, "MerchantPrevPageButton.up", "MerchantNextPageButton.off", "MerchantMoneyBg", "MerchantExtraCurrencyBg", "MerchantMoneyInset.NineSlice"), "the page arrows kept; the money plates and the insets' art faded").toEqual([1, 1, 0, 0, 0]);
-  expect(addon.eval("local fs for _, r in ipairs({ MerchantPrevPageButton:GetRegions() }) do if r:GetObjectType() == 'FontString' then fs = r end end return { fs:GetFont() ~= nil, MerchantPageText:GetFont() ~= nil, MerchantMoneyFrame.SilverButton.Text:GetFont() ~= nil }"), "the arrow's caption, the page count and the money line in the theme font").toEqual([true, true, true]);
+  expect(addon.eval("local fs for _, r in ipairs({ MerchantPrevPageButton:GetRegions() }) do if r:GetObjectType() == 'FontString' then fs = r end end return { __lit(fs, 'label', 'text'), __lit(MerchantPageText, 'label', 'text'), MerchantMoneyFrame.SilverButton.Text:GetFont() ~= nil }"), "the arrow's caption and the page count in the label font and the text colour (not gold), the money line in the theme font").toEqual([true, true, true]);
   expect(dressed(addon, "MerchantPrevPageButton", "MerchantMoneyInset", "MerchantExtraCurrencyInset"), "the arrows are theme buttons; dark panels under the money and token lines").toEqual([true, true, true]);
   addon.eval("MerchantItem3.SlotTexture:SetAlpha(1) MerchantFrame_UpdateMerchantInfo()");
   expect(alphas(addon, "MerchantItem3.SlotTexture"), "a page turn runs the pass again").toEqual([0]);
