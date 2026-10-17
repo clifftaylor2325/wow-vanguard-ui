@@ -335,13 +335,14 @@ local function skinLootRow(_, row)
 end
 
 -- The list's rows now and each row it acquires later (the game reuses its rows, one callback is enough);
--- the list is watched once.
+-- the list is watched once. The callback is guarded: the game's list fires it inside its acquire lock, so a
+-- failure in it must be reported, not raised, or the list stays locked.
 local function watchLootRows(box)
   local mixin = _G.ScrollBoxListMixin
   if type(box) ~= "table" or vgLootRows[box] or type(box.RegisterCallback) ~= "function" then return end
   if type(mixin) ~= "table" or type(mixin.Event) ~= "table" then return end
   vgLootRows[box] = true
-  box:RegisterCallback(mixin.Event.OnAcquiredFrame, skinLootRow, GW)
+  box:RegisterCallback(mixin.Event.OnAcquiredFrame, ns.Guard("acquire loot row", skinLootRow), GW)
   if type(box.ForEachFrame) == "function" then box:ForEachFrame(function(row) skinLootRow(nil, row) end) end
 end
 

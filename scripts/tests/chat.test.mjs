@@ -542,6 +542,15 @@ it("R1.2 the loot window: its rows lose the game's card art and take the bags' i
   addon.eval("LootFrame:Hide() LootFrame:Show() local cb = LootFrame.ScrollBox.callbacks.OnAcquiredFrame cb[1](cb[2], LootFrame.ScrollBox.later)");
   expect([windowState(addon, "LootFrame").painted, addon.eval("local n = 0 for _ in pairs(LootFrame.ScrollBox.callbacks) do n = n + 1 end return n")], "a second show, and a row acquired again, paint nothing more; the list is watched once").toEqual([painted, 1]);
 });
+it("R1.2 the loot window: a row the skin cannot handle is reported, not raised into the game's list, and the rows after it are still done", () => {
+  expectErrors(/^acquire loot row: eval:\d+: TEST-ONLY broken row$/);
+  const addon = loggedIn(LOOT_ROWS_ENV);
+  addon.eval("LootFrame:Show()");
+  addon.eval(`local box = LootFrame.ScrollBox local cb = box.callbacks.OnAcquiredFrame
+    local broken = __lootRow() broken.Text = { SetFont = function() error("TEST-ONLY broken row") end }
+    box.after = __lootRow() cb[1](cb[2], broken) cb[1](cb[2], box.after)`);
+  expect(lootRow(addon, "LootFrame.ScrollBox.after"), "the list went on: the next row is skinned").toEqual([0, 0, 0, 1, 1, true, true, true]);
+});
 it("R1.2 the loot window: the windows group off leaves its rows the game's; a loot window without a list, or a client without the list mixin, loads cleanly", () => {
   const off = loggedIn(LOOT_ROWS_ENV, { savedVariables: "VanguardDB.profiles = { Default = { Windows = { windows = false } } }" });
   off.eval("LootFrame:Show()");
