@@ -220,3 +220,26 @@ it("first-run setup: Done suggests exporting a profile string; Skip and a rerun 
   for (let i = 0; i < 4; i += 1) setupClick(skipped, "next");
   expect(skipped.eval("return Vanguard_Question == nil"), "nor does finishing setup again").toBe(true);
 });
+
+it("the setup wizard takes Tab focus over the showing page's choices, then Skip and Next, and Enter presses the focused one", () => {
+  const addon = loggedIn("UISpecialFrames = {}", { firstRun: true });
+  // Which of the wizard's buttons wears the ring: its index in choices (c1, c2...) or its name.
+  const where = () => addon.eval(`local f = Vanguard_Setup
+    local function on(b) local p = ns.Theme.FocusParts(b) return p ~= nil and p.ring.top:IsShown() end
+    for _, page in pairs(f.pages) do for i, b in ipairs(page.choices or {}) do if on(b) then return "c" .. i end end end
+    for _, name in ipairs({ "skip", "back", "next" }) do if on(f[name]) then return name end end
+    return "none"`);
+  const choices = addon.eval("local n = 0 for _, page in pairs(Vanguard_Setup.pages) do if page:IsShown() then n = #(page.choices or {}) end end return n");
+  expect(where(), "no ring until Tab").toBe("none");
+  addon.key("Vanguard_Setup", "TAB");
+  expect(where(), "Tab starts at the page's first choice").toBe("c1");
+  for (let i = 1; i < choices; i++) addon.key("Vanguard_Setup", "TAB");
+  addon.key("Vanguard_Setup", "TAB");
+  expect(where(), "after the last choice comes Skip setup (first step), then Next (Back is hidden)").toBe("skip");
+  addon.key("Vanguard_Setup", "TAB");
+  expect(where(), "then Next").toBe("next");
+  addon.key("Vanguard_Setup", "ENTER");
+  expect(addon.eval("return ns.Setup.Step()"), "Enter on the focused Next goes to step 2").toBe(2);
+  addon.eval("Vanguard_Setup:Hide()");
+  expect(where(), "closing the wizard clears the ring").toBe("none");
+});

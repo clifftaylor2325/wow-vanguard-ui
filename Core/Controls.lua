@@ -82,15 +82,17 @@ local function tintTrack(r, track, line)
   for _, part in ipairs(r.outline) do T.Tint(part, line) end
 end
 
--- Shows the switch: on (accent fill, bright knob right) or off (dark track, dim knob left); the knob is bright under the mouse, the fill darker while pressed.
+-- Shows the switch: on (accent fill, bright knob right) or off (dark track, dim knob left); the knob is bright under
+-- the mouse and drops a pixel (T.PRESS.drop) while pressed; the track never changes colour for a press.
 local function refreshSwitch(r)
   local on = r.get() == true
   tintTrack(r, "inset", "borderHi")
   r.fill:SetShown(on)
-  T.Tint(r.fill, r.pressed and "accentDim" or "accent")
+  T.Tint(r.fill, "accent")
+  local drop = r.pressed and -T.PRESS.drop * T.Pixel(r.track) or 0
   for _, part in ipairs({ r.knob, r.shade }) do
     part:ClearAllPoints()
-    part:SetPoint(on and "RIGHT" or "LEFT", r.track, on and "RIGHT" or "LEFT", on and -2 or 2, 0)
+    part:SetPoint(on and "RIGHT" or "LEFT", r.track, on and "RIGHT" or "LEFT", on and -2 or 2, drop)
   end
   T.Tint(r.knob, (on or r.hot) and "white" or "muted")
 end
@@ -278,6 +280,11 @@ function W.CloseMenu()
   if menu then menu:Hide() end
 end
 
+-- True while a dropdown menu is open.
+function W.MenuOpen()
+  return menu ~= nil and menu:IsShown()
+end
+
 -- One item in the menu: its text, a check on the current choice.
 local function menuItem(i)
   local b = CreateFrame("Button", nil, menu)
@@ -303,12 +310,25 @@ local function fillItem(i, choice, current, pick)
   b:Show()
 end
 
+-- Sizes and places the menu's scroll thumb (T.SCROLL): shown only when the list is longer than the menu, as tall as
+-- the menu's share of it, down its travel as far as the list is scrolled.
+local function placeMenuThumb(shown)
+  local total, h = #menu.choices, shown * MENU_ROW
+  menu.thumb:SetShown(total > MENU_ROWS)
+  if total <= MENU_ROWS then return end
+  local size = math.max(MENU_ROW, h * shown / total)
+  menu.thumb:SetHeight(size)
+  menu.thumb:ClearAllPoints()
+  menu.thumb:SetPoint("TOPRIGHT", menu, "TOPRIGHT", -2, -1 - menu.offset / (total - MENU_ROWS) * (h - size))
+end
+
 -- Fills the menu's items from its choices, from the one after menu.offset.
 local function fillMenu()
   local d, shown = menu.owner, math.min(#menu.choices, MENU_ROWS)
   for i = 1, shown do fillItem(i, menu.choices[menu.offset + i], d.get(), d.set) end
   for i = shown + 1, #menu.items do menu.items[i]:Hide() end
   menu:SetSize(d:GetWidth(), shown * MENU_ROW + 2)
+  placeMenuThumb(shown)
 end
 
 -- Scrolls a long menu one item per wheel step, within its list.
@@ -317,7 +337,40 @@ local function scrollMenu(_, delta)
   fillMenu()
 end
 
--- The shared menu frame, built once: a raised panel above everything.
+-- The invisible full-screen catcher under the open menu: a click anywhere else closes the menu (and goes no further).
+local function addCatcher()
+  menu.catcher = CreateFrame("Button", nil, UIParent)
+  menu.catcher:SetAllPoints(UIParent)
+  menu.catcher:SetFrameStrata("FULLSCREEN_DIALOG")
+  menu.catcher:SetScript("OnMouseDown", ns.Guard("menu outside click", W.CloseMenu))
+  menu.catcher:Hide()
+end
+
+-- Lets Escape close the menu through the game's list of special frames (where the client has it).
+local function closeOnEscape()
+  if type(UISpecialFrames) == "table" then table.insert(UISpecialFrames, "Vanguard_Menu") end
+end
+
+-- The menu showed or hid: its catcher follows (just under it), and the dropdown that opened it keeps its hover
+-- look (T.HoldHover) only while it is open.
+local function wireMenuState()
+  menu:SetScript("OnShow", ns.Guard("menu show", function(m) m.catcher:Show() end))
+  menu:SetScript("OnHide", ns.Guard("menu hide", function(m)
+    m.catcher:Hide()
+    if m.owner then T.HoldHover(m.owner, false) end
+  end))
+end
+
+-- The menu's item list and its scroll thumb (T.SCROLL): a text2 line at the rest alpha, placed by fillMenu.
+local function addMenuThumb()
+  menu.items = {}
+  menu.thumb = T.Tint(menu:CreateTexture(nil, "OVERLAY"), "text2")
+  menu.thumb:SetTexture(T.WHITE)
+  menu.thumb:SetWidth(T.SCROLL.thumb)
+  menu.thumb:SetAlpha(T.SCROLL.rest)
+end
+
+-- The shared menu frame, built once: a raised panel above everything, closed by Escape, a click outside or a pick.
 local function menuFrame()
   if menu then return menu end
   menu = T.Panel(CreateFrame("Frame", "Vanguard_Menu", UIParent), { raised = true, shadow = true })
@@ -326,7 +379,7 @@ local function menuFrame()
   menu:SetClampedToScreen(true)
   menu:EnableMouseWheel(true)
   menu:SetScript("OnMouseWheel", scrollMenu)
-  menu.items = {}
+  for _, add in ipairs({ addMenuThumb, addCatcher, wireMenuState, closeOnEscape }) do add() end
   menu:Hide()
   return menu
 end
@@ -339,17 +392,30 @@ local function startOffset(choices, current)
   return 0
 end
 
--- Opens the menu under a dropdown with its choices (scrolled to the current one).
-local function openMenu(d)
-  menuFrame()
-  menu.owner = d
-  menu.choices = type(d.choices) == "function" and d.choices() or d.choices
-  menu.offset = startOffset(menu.choices, d.get())
-  fillMenu()
+-- Raises the menu over a dialog in the same strata (ns.Dialog's), whichever was made first, and its catcher to just under it.
+local function raiseMenu()
+  menu:Raise()
+  menu.catcher:SetFrameLevel(math.max(0, menu:GetFrameLevel() - 1))
+end
+
+-- Puts the menu under a dropdown and shows it, over everything.
+local function showMenuUnder(d)
   menu:ClearAllPoints()
   menu:SetPoint("TOPLEFT", d, "BOTTOMLEFT", 0, -2)
   menu:Show()
-  menu:Raise() -- over a dialog in the same strata (ns.Dialog's), whichever was made first
+  raiseMenu()
+end
+
+-- Opens the menu under a dropdown with its choices (scrolled to the current one).
+local function openMenu(d)
+  menuFrame()
+  if menu.owner and menu.owner ~= d then T.HoldHover(menu.owner, false) end
+  menu.owner = d
+  T.HoldHover(d, true)
+  menu.choices = type(d.choices) == "function" and d.choices() or d.choices
+  menu.offset = startOffset(menu.choices, d.get())
+  fillMenu()
+  showMenuUnder(d)
 end
 
 -- Shows the current choice's text.
@@ -534,7 +600,7 @@ end
 function W.Slider(parent, caption, opts, get, set, width)
   local r = row(parent, caption, width)
   r.min, r.max, r.step, r.format = opts.min, opts.max, opts.step, opts.format or roundedText(opts.step)
-  r.get, r.set, r.Refresh = get, set, refreshSlider
+  r.get, r.set, r.Refresh, r.Step = get, set, refreshSlider, stepBy
   fitCaption(r, width)
   addTrack(r)
   if opts.locked then addLock(r, opts.locked) end
@@ -548,18 +614,35 @@ end
 
 -- Shows the hint only while the box is empty.
 local function refreshHint(e)
-  e.hint:SetShown((e:GetText() or "") == "")
+  local empty = (e:GetText() or "") == ""
+  e.hint:SetShown(empty)
+  if e.clear then e.clear:SetShown(not empty) end
+end
+
+-- The clear glyph at a search box's right end: a small Close button, shown only while the box has text; a click
+-- empties the box (which runs onChange through OnTextChanged) and hands the typing back to it.
+local function addClear(e)
+  e.clear = CreateFrame("Button", nil, e)
+  e.clear:SetSize(T.CONTROL_H, T.CONTROL_H)
+  e.clear:SetPoint("RIGHT")
+  e.clear.glyph = W.IconTexture(e.clear, "Close", 10, "text2")
+  e.clear.glyph:SetPoint("CENTER")
+  e.clear:SetScript("OnClick", ns.Guard("clear search", function() e:SetText("") e:ClearFocus() end))
+  e.clear:SetScript("OnEnter", ns.Guard("hover clear", function(b) T.Tint(b.glyph, "text") end))
+  e.clear:SetScript("OnLeave", ns.Guard("hover clear", function(b) T.Tint(b.glyph, "text2") end))
+  e.clear:Hide()
 end
 
 -- A search box with a magnifier and a hint; onChange(text) runs as you type.
 function W.Search(parent, width, hint, onChange)
   local e = W.Input(parent, width)
-  e:SetTextInsets(24, 6, 0, 0)
+  e:SetTextInsets(24, T.CONTROL_H, 0, 0)
   e.glass = icon(e, "Search", 12, "text2")
   e.glass:SetPoint("LEFT", 7, 0)
   e.hint = T.Text(e:CreateFontString(nil, "OVERLAY"), "label", "disabled")
   e.hint:SetPoint("LEFT", 24, 0)
   e.hint:SetText(hint)
+  addClear(e)
   e:SetScript("OnTextChanged", function(self) refreshHint(self); onChange(self:GetText() or "") end)
   return e
 end

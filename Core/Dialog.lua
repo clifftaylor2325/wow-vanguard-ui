@@ -136,6 +136,15 @@ local function boxText(f, text)
   f.view:ScrollTo(0)
 end
 
+-- The text dialog's buttons: the primary at the bottom right and, left of it, the one that closes the box.
+local function addTextButtons(f)
+  f.primary = ns.Widgets.Primary(f, "Import")
+  f.primary:SetPoint("BOTTOMRIGHT", -T.SPACE.pad, T.SPACE.pad)
+  f.close = button(f, "Close")
+  f.close:SetPoint("RIGHT", f.primary, "LEFT", -T.SPACE.gap, 0)
+  f.close:SetScript("OnClick", ns.Guard("click close text box", function() f:Hide() end))
+end
+
 -- Builds the text dialog once: title, text area, the primary (accent) button and the one that
 -- dismisses it, which reads Cancel beside the primary and Close when the box only shows text.
 local function textBox()
@@ -143,11 +152,8 @@ local function textBox()
   box = dialog("Vanguard_TextDialog", TEXT_W, TEXT_H)
   addEditBox(box)
   limitTitle(box)
-  box.primary = ns.Widgets.Primary(box, "Import")
-  box.primary:SetPoint("BOTTOMRIGHT", -T.SPACE.pad, T.SPACE.pad)
-  box.close = button(box, "Close")
-  box.close:SetPoint("RIGHT", box.primary, "LEFT", -T.SPACE.gap, 0)
-  box.close:SetScript("OnClick", ns.Guard("click close text box", function() box:Hide() end))
+  addTextButtons(box)
+  ns.TabFocus(box, function() return { box.primary, box.close } end)
   return box
 end
 
@@ -218,6 +224,7 @@ local function questionDialog()
   question.yes:SetPoint("BOTTOMRIGHT", -T.SPACE.pad, T.SPACE.pad)
   question.no = button(question, "No")
   question.no:SetPoint("RIGHT", question.yes, "LEFT", -T.SPACE.gap, 0)
+  ns.TabFocus(question, function() return { question.no, question.yes } end)
   return question
 end
 
@@ -318,6 +325,7 @@ local function reloadDialog()
   reload.cancel = button(reload, "Later")
   reload.cancel:SetPoint("RIGHT", reload.accept, "LEFT", -T.SPACE.gap, 0)
   reload.cancel:SetScript("OnClick", ns.Guard("click reload later", function() reload:Hide() end))
+  ns.TabFocus(reload, function() return { reload.cancel, reload.accept } end)
   return reload
 end
 

@@ -321,3 +321,81 @@ function W.Row(parent, height, opts)
   row.rail, row.wash, row.selected, row.SetSelected = parts.rail, parts.fill, false, setSelected
   return row
 end
+
+-- Keyboard focus ---------------------------------------------------------------------------------
+
+-- Each window's keyboard focus (weak): { list = a function giving its buttons, at = the focused one }.
+local focusOf = setmetatable({}, { __mode = "k" })
+
+-- The window's buttons that can take focus now: shown and enabled, in the list's order.
+local function focusable(frame)
+  local out = {}
+  for _, b in ipairs(focusOf[frame].list()) do
+    if b:IsVisible() and (not b.IsEnabled or b:IsEnabled()) then out[#out + 1] = b end
+  end
+  return out
+end
+
+-- Moves a window's focus to b (or to none), the T.FocusRing with it.
+local function setFocused(frame, b)
+  local f = focusOf[frame]
+  if f.at then T.FocusRing(f.at, false) end
+  f.at = b
+  if b then T.FocusRing(b, true) end
+end
+
+-- Moves a window's focus to the next (dir 1) or previous (dir -1) button, wrapping; the first Shift-Tab lands on the last.
+local function stepFocus(frame, dir)
+  local list, at = focusable(frame), 0
+  for i, b in ipairs(list) do
+    if b == focusOf[frame].at then at = i end
+  end
+  if #list == 0 then return end
+  if at == 0 and dir < 0 then at = 1 end
+  setFocused(frame, list[(at - 1 + dir) % #list + 1])
+end
+
+-- What a key does in a window with focus; true when it used the key. Tab and Shift-Tab step; Enter and Space press
+-- the focused button (and do nothing with no focus: Enter then belongs to the window's own primary).
+local function focusKey(frame, key)
+  if key == "TAB" then stepFocus(frame, IsShiftKeyDown and IsShiftKeyDown() and -1 or 1) return true end
+  local b = focusOf[frame].at
+  if (key == "ENTER" or key == "SPACE") and b and b:IsVisible() then b:GetScript("OnClick")(b, "LeftButton") return true end
+  return false
+end
+
+-- Takes the keyboard only while the window is shown, out of combat and where the client can pass keys on (a key
+-- the window doesn't use must reach the game); a fight lets it go and the combat queue takes it back.
+local function holdKeys(frame, on)
+  frame:EnableKeyboard(on and not ns.InCombat() and ns.Client.Has("keyPropagate"))
+end
+
+-- The window's key script hook: a key the focus uses stops here, every other one goes on to the game (out of combat).
+local function hookFocusKeys(frame)
+  frame:HookScript("OnKeyDown", ns.Guard("window focus key", function(f, key)
+    local used = focusKey(f, key)
+    if not ns.InCombat() and ns.Client.Has("keyPropagate") then f:SetPropagateKeyboardInput(not used) end
+  end))
+end
+
+-- A fight lets the keyboard go; the combat queue takes it back after, if the window is still up.
+local function releaseInCombat(frame)
+  ns.On("PLAYER_REGEN_DISABLED", function()
+    holdKeys(frame, false)
+    ns.AfterCombat(function() holdKeys(frame, frame:IsShown()) end, "window focus keys")
+  end)
+end
+
+-- Gives a window Tab focus over the buttons list() returns (a function, read at each key): a Tab or Shift-Tab
+-- moves a T.FocusRing along them, Enter or Space presses the focused one, every other key goes on to the game. The
+-- ring clears when the window shows or hides. Hooks only; the window's own key script, if any, still runs.
+---@param frame table  a window of Vanguard's own
+---@param list function  returns the buttons that can take focus, in order
+function ns.TabFocus(frame, list)
+  focusOf[frame] = { list = list }
+  hookFocusKeys(frame)
+  frame:HookScript("OnShow", ns.Guard("window focus show", function(f) setFocused(f, nil) holdKeys(f, true) end))
+  frame:HookScript("OnHide", ns.Guard("window focus hide", function(f) setFocused(f, nil) holdKeys(f, false) end))
+  releaseInCombat(frame)
+  if frame:IsShown() then holdKeys(frame, true) end
+end

@@ -878,6 +878,7 @@ local function borderColor(entry)
   local own = entry.opts.border
   if own then return own[1], own[2], own[3], 1 end
   if entry.opts.accent then return T.Accent() end
+  if entry.focused then return T.RGB("accentText") end
   return T.RGB("edge")
 end
 
@@ -1303,12 +1304,27 @@ function T.Button(button, kind)
   return button
 end
 
--- A near-black input box with a border; template art faded.
+-- Turns an edit box's focus border on or off (accentText while it has the typing); not a ring: the box's own border changes.
+local function focusBox(box, on)
+  local entry = painted[box]
+  entry.focused = on
+  repaint(box, entry)
+end
+
+-- Hooks a real edit box's focus (a scroll view painted as an input has none).
+local function watchFocus(box)
+  if not (box.GetObjectType and box:GetObjectType() == "EditBox") then return end
+  box:HookScript("OnEditFocusGained", ns.Guard("edit focus", function(b) focusBox(b, true) end))
+  box:HookScript("OnEditFocusLost", ns.Guard("edit focus", function(b) focusBox(b, false) end))
+end
+
+-- A near-black input box with a border (accentText while it has the typing); template art faded.
 function T.EditBox(box)
   local fresh = not painted[box]
   local entry = base(box, "editbox", { inset = true })
   if fresh then
     T.FadeRegions(box, { [entry.parts.bg] = true })
+    watchFocus(box)
   end
   repaint(box, entry)
   return box
@@ -2575,14 +2591,24 @@ local function easeTo(t, to, now)
   t:SetAlpha(to)
 end
 
+-- Buttons whose hover look is held on while their menu is open (weak).
+local heldHover = setmetatable({}, { __mode = "k" })
+
 -- Eases a button's hover look (every texture of its fill, and its line) in (on, while it is enabled) or
 -- out, from where it is now; at once with Reduce motion, or when `now` (the button was hidden).
+-- A held button (T.HoldHover) keeps it until it is let go.
 function T.EaseHover(button, on, now)
   local h = hoverOf[button]
   if not h then return end
-  local to = on and (not button.IsEnabled or button:IsEnabled()) and 1 or 0
+  local to = (on or heldHover[button]) and (not button.IsEnabled or button:IsEnabled()) and 1 or 0
   for _, t in ipairs(h.fill.textures) do easeTo(t, to, now) end
   easeTo(h[2], to, now)
+end
+
+-- Holds a button's hover look on (a dropdown while its menu is open, even with the mouse gone) or lets it go.
+function T.HoldHover(button, on)
+  heldHover[button] = on and true or nil
+  T.EaseHover(button, on == true)
 end
 
 -- Stops a fade in progress and leaves the frame fully visible.
