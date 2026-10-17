@@ -405,7 +405,7 @@ it("options: Up and Down walk the pages, Tab the rows, Enter presses one; other 
   expect(press(addon, "W"), "a key it doesn't use goes on to the game: you can still walk").toEqual(["general", true]);
   expect(press(addon, "SPACE")[1], "so do Space and Enter until a row has the keyboard").toBe(true);
   press(addon, "TAB");
-  expect(keyRow(addon), "Tab marks the first row that does something (the sample and the swatches are skipped)").toEqual(["Color assist: friendly blue, neutral yellow, hostile vermilion (reload)", true, true]);
+  expect(keyRow(addon), "Tab marks the first row that does something (the sample and the swatches are skipped)").toEqual(["Color assist (reload)", true, true]);
   press(addon, "TAB");
   expect(keyRow(addon)[0], "Tab again: the next").toBe("Font");
   addon.keys({ shift: true });
@@ -415,7 +415,7 @@ it("options: Up and Down walk the pages, Tab the rows, Enter presses one; other 
   const last = keyRow(addon);
   expect([last[0], last[2], addon.eval("return Vanguard_Options.found:IsShown()")], "Shift-Tab goes back, and past the first wraps to the last row, scrolled into view").toEqual([addon.eval("local rows = {} for _, w in ipairs(__wfgStub.frames) do if w.card and w:IsVisible() and w:GetObjectType() == 'Button' then rows[#rows + 1] = w end end table.sort(rows, function(a, b) return a.pageY < b.pageY end) return rows[#rows].caption"), true, true]);
   press(addon, "TAB");
-  expect(keyRow(addon), "and Tab from the last wraps to the first, scrolled back up").toEqual(["Color assist: friendly blue, neutral yellow, hostile vermilion (reload)", true, true]);
+  expect(keyRow(addon), "and Tab from the last wraps to the first, scrolled back up").toEqual(["Color assist (reload)", true, true]);
   press(addon, "TAB");
   const font = addon.eval("return ns.Theme.Settings().font");
   expect([press(addon, "ENTER")[1], addon.eval("return ns.Theme.Settings().font") !== font], "Enter presses the row (it steps the font), and stops there").toEqual([false, true]);
@@ -577,8 +577,9 @@ it("a note row wraps to its card and the row grows to fit; a dropdown's choice s
   addon.slash("");
   addon.eval('ns.Options.Show("feedback")');
   const note = addon.eval(`local fs = __fontString("A bug or an idea?")
-    return { fs.__width, fs:GetStringHeight(), fs.__points.TOPLEFT.y, __fontString("Report a bug").__parent.__points.TOPLEFT.y }`);
-  expect(note[0], "the note is as wide as the card's inside (the card is 564 wide, 8 off for the rows and 14 of padding)").toBe(564 - 8 - 14);
+    return { fs.__width, fs:GetStringHeight(), fs.__points.TOPLEFT.y, __fontString("Report a bug").__parent.__points.TOPLEFT.y, fs:GetParent():GetWidth(), fs.__points.TOPLEFT.x }`);
+  expect(note.slice(4), "the card is 568 wide (the page is 12 in from the nav, its thumb 12 out and 12 in from the edge), the note starts 12 in").toEqual([568, 12]);
+  expect(note[0], "the note is as wide as the card's inside: the card's 12 of padding kept on both sides").toBe(note[4] - 2 * 12);
   expect(note[1] > 20 && note[3] <= note[2] - note[1] - 6, "its text wraps to more than one line, and the next row starts under all of it").toBe(true);
   addon.eval('ns.Options.Show("town")');
   const choice = addon.eval(`local fs = __fontString("group role, else damage")
@@ -595,7 +596,7 @@ it("options: the scroll thumb drags its page, and the copy box opens above the w
     -- TEST-ONLY page taller than its view: the thumb is 24 tall and travels 76.
     view.__height, view.__scrollChild.__height = 100, 800
     view:GetScript("OnMouseWheel")(view, 0)
-    local grip, y = Vanguard_Options.grip, 500
+    local grip, y = view.grip, 500
     GetCursorPosition = function() return 0, y end
     grip:GetScript("OnMouseDown")(grip, "LeftButton")
     y = 500 - 38 * Vanguard_Options:GetEffectiveScale()
@@ -614,7 +615,7 @@ it("options: the pages, their nav order and each page's row count stay as they w
   const pages = addon.eval("local out = {} for i, p in ipairs(ns.Options.PAGES) do out[i] = p.key .. '|' .. p.title .. '|' .. p.order .. '|' .. #p.rows() end return out");
   // Adding or removing a row (or a module, which adds a row under Modules) changes these counts on purpose.
   expect(pages, "the page list and each page's row count (a new row is one more on its page)").toEqual([
-    "general|General|10|34", "modules|Modules|20|67", "unitframes|Unit frames|30|24", "raid|Raid frames|40|22",
+    "general|General|10|36", "modules|Modules|20|67", "unitframes|Unit frames|30|24", "raid|Raid frames|40|22",
     "actionbars|Action bars|60|73", "quests|Quests|70|19", "bars|Bars and bags|80|17", "map|Map|81|29", "chat|Chat|82|31", "windows|Game windows|83|30", "tools|Combat tools|84|38", "town|Town and gear|85|49", "profiles|Profiles|90|22",
     "feedback|Feedback|100|7", "healing|Healing|45|44", "talents|Talents|47|7", "nameplates|Nameplates|65|15",
     "situations|Situations|86|16", "clickcast|Click casting|46|11",
@@ -631,10 +632,10 @@ it("options: the pages, their nav order and each page's row count stay as they w
 it("options: every nav entry fits inside the nav, however many pages there are", () => {
   const addon = loggedIn(CLICK_LUA);
   addon.eval('ns.Options.Show("general")');
-  // The foot of the lowest nav entry and the shortest entry, in px (the nav is 520 px tall: the window's 600 less its header and footer).
+  // The foot of the lowest nav entry and the shortest entry, in px (the nav is 512 px tall: the window's 600 less its 48 header and 40 footer).
   const fit = addon.eval(`local foot, least = 0, 99 for _, b in pairs(Vanguard_Options.nav) do local _, _, _, _, y = b:GetPoint()
     foot, least = math.max(foot, -y + b:GetHeight()), math.min(least, b:GetHeight()) end return { foot, least }`);
-  expect(fit[0] <= 520 && fit[1] >= 24, "the last entry ends above the nav's foot and no entry is squeezed under 24 px").toBe(true);
+  expect(fit[0] <= 512 && fit[1] >= 24, "the last entry ends above the nav's foot and no entry is squeezed under 24 px").toBe(true);
 });
 
 it("slider values show rounded, never as float noise", () => {
@@ -665,26 +666,26 @@ it("options: the Theme variant and Corners choices list every variant in T.VARIA
   // Clicks a cycle row n times and returns the setting it set after each click.
   const cycle = (caption, key, n) => Array.from({ length: n }, () => (addon.eval(`__click("${caption}") return ns.Theme.Settings().${key}`)));
   const order = addon.eval("return ns.Theme.VARIANT_ORDER");
-  expect(cycle("Theme variant: surfaces and text", "variant", order.length), "one click per variant goes round every one, back to the default").toEqual([...order.slice(1), order[0]]);
-  expect(cycle("Corners: square or rounded panels", "corners", 2), "corners cycle rounded then square").toEqual(["rounded", "square"]);
+  expect(cycle("Theme variant", "variant", order.length), "one click per variant goes round every one, back to the default").toEqual([...order.slice(1), order[0]]);
+  expect(cycle("Corners", "corners", 2), "corners cycle rounded then square").toEqual(["rounded", "square"]);
 });
 
 it("options: choice segments are as wide as their labels and follow the text size, and the selected one draws no shadow under its dark text", () => {
   const addon = loggedIn(CLICK_LUA);
   addon.eval('ns.Options.Show("general")');
   // Each segment of the Corners row: its width, its label's width, its left edge and its text's shadow alpha.
-  const segments = () => addon.eval(`local r = ${rowNamed("Corners: square or rounded panels")} local out = {}
+  const segments = () => addon.eval(`local r = ${rowNamed("Corners")} local out = {}
     for i, s in ipairs(r.segments) do out[i] = { width = s:GetWidth(), label = s.text:GetStringWidth(), left = s:GetLeft(), shadow = s.text.__shadowColor[4] } end return out`);
   const before = segments();
   expect(before.map((s) => s.width >= s.label + 16), "8 px of air each side of every label").toEqual([true, true]);
   expect(before[0].left + before[0].width <= before[1].left + 1, "the segments sit side by side, overlapping only the shared 1 px edge").toBe(true);
   expect(before.map((s) => s.shadow), "Square (selected, dark text on the accent) has no shadow; Rounded keeps the theme's").toEqual([0, 0.9]);
   // The harness measures text at one size, so a longer label stands in for a larger text size.
-  addon.eval(`local r = ${rowNamed("Corners: square or rounded panels")} r.segments[2].text:SetText("Rounded corners") ns.Theme.Refresh()`);
+  addon.eval(`local r = ${rowNamed("Corners")} r.segments[2].text:SetText("Rounded corners") ns.Theme.Refresh()`);
   const after = segments();
   expect(after.map((s, i) => s.width >= before[i].width && s.width >= s.label + 16), "a theme refresh re-measures: the segments grow with their labels").toEqual([true, true]);
   expect(after[1].width > before[1].width && after[0].left + after[0].width <= after[1].left + 1, "and still don't overlap").toBe(true);
-  addon.eval('__click("Corners: square or rounded panels")');
+  addon.eval('__click("Corners")');
   expect(segments().map((s) => s.shadow), "Rounded selected: the shadow moves with the selection").toEqual([0.9, 0]);
 });
 
@@ -775,4 +776,100 @@ it("options: the sample unit frame shows the player's own name, or You when the 
   expect(sample()[0], "a hidden name falls back to You").toBe("You");
   addon.eval("__wfgWorld.units.player.name = nil");
   expect(sample()[0], "so does no name").toBe("You");
+});
+
+// A font string's size and whether its colour is this token, as { size, color match }.
+const lookOf = (addon, expr, token) => [addon.eval(`return select(2, (${expr}):GetFont())`), isTok(addon, addon.eval(`return (${expr}).__textColor`), token)];
+
+it("options: the nav is a list of rows (T.ROW): the current page's row shows the rail and the wash, which move with the page, in the accent, and no row is taller than T.ROW.height", () => {
+  const addon = loggedIn(CLICK_LUA);
+  addon.eval('ns.Options.Show("general")');
+  // A nav row's kind, rail shown, wash shown, the wash's alpha, the rail's width, its colour and its height.
+  const row = (key) => addon.eval(`local b = Vanguard_Options.nav.${key} return { b.__kind, b.rail:IsShown(), b.wash:IsShown(), b.wash.__vertexColor[4], b.rail:GetWidth() / ns.Theme.Pixel(b), b.rail.__vertexColor, b:GetHeight() }`);
+  const [wash, rail, height] = addon.eval("return { ns.Theme.ROW.wash, ns.Theme.ROW.rail, ns.Theme.ROW.height }");
+  const here = row("general");
+  expect([here[0], here[1], here[2], here[3], here[4]], "a nav entry is a Button; the current page's shows the rail (T.ROW.rail screen pixels wide) and the wash (T.ROW.wash)").toEqual(["Button", true, true, wash, rail]);
+  expect(isTok(addon, here[5], "accent"), "the rail is in the accent").toBe(true);
+  expect(row("raid").slice(1, 3), "another page's row shows neither").toEqual([false, false]);
+  addon.eval('ns.Options.Show("raid")');
+  expect([row("general").slice(1, 3), row("raid").slice(1, 3)], "the selection moves with the page").toEqual([[false, false], [true, true]]);
+  const tallest = addon.eval("local h = 0 for _, b in pairs(Vanguard_Options.nav) do h = math.max(h, b:GetHeight()) end return h");
+  expect(tallest <= height, "no nav row is taller than a list row").toBe(true);
+});
+
+it("options: a card's title is a section header: capitals in small muted text, an 18 high band 12 in from the card's edge and as wide as the card's inside", () => {
+  const addon = loggedIn(CLICK_LUA);
+  addon.eval('ns.Options.Show("general")');
+  const head = addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.text and w.text.__text == "LOOK" and w:IsVisible() then
+    return { w.__kind, w:GetHeight(), w:GetWidth(), w.__points.TOPLEFT.x, w.__points.TOPLEFT.y, w.__parent:GetWidth() } end end`);
+  expect(head, "a Button 18 tall, the card less its 12 of padding on both sides wide, at 12 across and 12 down in the card").toEqual(["Button", 18, 568 - 24, 12, -12, 568]);
+  const title = '(function() for _, w in ipairs(__wfgStub.frames) do if w.text and w.text.__text == "LOOK" and w:IsVisible() then return w.text end end end)()';
+  expect(lookOf(addon, title, "muted"), "the title is small muted text, in capitals").toEqual([addon.eval("return ns.Theme.RoleSize('small')"), true]);
+});
+
+it("options: a long page scrolls in the shared view: the thumb is T.SCROLL.thumb wide at the rest alpha, 12 right of the view, the wheel moves it 40 and the thumb and top edge follow; a short page has no thumb", () => {
+  const addon = loggedIn(CLICK_LUA);
+  addon.eval('ns.Options.Show("general")');
+  // The visible page view: scroll, child height, view height, thumb shown, width, alpha, offset right of the view, top edge shown.
+  const view = () => addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.fadeTop and w:IsVisible() then
+    return { math.floor(w:GetVerticalScroll()), w.child:GetHeight() > w:GetHeight(), w.thumb:IsShown(), w.thumb:GetWidth(), w.thumb:GetAlpha(), (w.thumb.__points.TOPRIGHT or {}).x, w.fadeTop:IsShown() } end end`);
+  const [scroll, overflows, shown, width, alpha, out, top] = view();
+  expect([scroll, overflows, shown, alpha, out, top], "General is taller than its view: the thumb shows at the rest alpha, 12 right of the view; at the top").toEqual([0, true, true, addon.eval("return ns.Theme.SCROLL.rest"), 12, false]);
+  expect(width, "T.SCROLL.thumb wide").toBe(addon.eval("return ns.Theme.SCROLL.thumb"));
+  // How far down the view its thumb sits.
+  const thumbTop = () => addon.eval("for _, w in ipairs(__wfgStub.frames) do if w.fadeTop and w:IsVisible() then return -w.thumb.__points.TOPRIGHT.y end end");
+  addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.fadeTop and w:IsVisible() then __page = w end end`);
+  addon.wheel("__page", -1);
+  expect([view()[0], view()[6], thumbTop() > 0], "a notch down scrolls 40; the top edge shows and the thumb moves down").toEqual([40, true, true]);
+  addon.eval('ns.Options.Show("feedback")');
+  expect(view()[2], "a page that fits has no thumb").toBe(false);
+});
+
+it("options: the General page's captions are nouns, with a note under the two that lost words; search finds a row by its new caption or its note, and the old captions are gone", () => {
+  const addon = loggedIn(CLICK_LUA + FIND_LUA);
+  addon.eval('ns.Options.Show("general")');
+  // A caption's top and bottom edges on screen, or null when it isn't shown.
+  const at = (text) => (addon.texts(text)[0] || {}).rect || null;
+  for (const caption of ["Color assist (reload)", "Faction look", "Theme variant", "Corners", "Window ornaments", "Pixel-perfect scale"]) expect(at(caption), caption + " is a caption on the page").not.toBeNull();
+  for (const old of ["Color assist: friendly blue, neutral yellow, hostile vermilion (reload)", "Theme variant: surfaces and text", "Corners: square or rounded panels", "Window ornaments: a brass rule or corners on large windows", "Pixel perfect scale"]) expect(at(old), old + " is gone").toBeNull();
+  const notes = [["Color assist (reload)", "Friendly blue, neutral yellow, hostile vermilion."], ["Window ornaments", "A brass rule or corners on large windows."]];
+  for (const [caption, note] of notes) {
+    const row = at(caption), under = at(note);
+    expect(under.top < row.bottom && row.bottom - under.top <= 8, "the note sits right under " + caption).toBe(true);
+    expect(lookOf(addon, `__fontString(${JSON.stringify(note)})`, "muted"), "a note is small muted text").toEqual([addon.eval("return ns.Theme.RoleSize('small')"), true]);
+  }
+  addon.eval('ns.Options.Search("faction look")');
+  expect(addon.eval("return Vanguard_Options.nav.general:GetAlpha()"), "search finds General by the row's caption").toBe(1);
+  addon.eval('ns.Options.Search("hostile vermilion")');
+  expect(addon.eval("return Vanguard_Options.nav.general:GetAlpha() == 1 and Vanguard_Options.nav.raid:GetAlpha() < 1"), "and by the words in its note").toBe(true);
+  addon.eval('ns.Options.JumpTo("Window ornaments")');
+  expect(addon.eval("return Vanguard_Options.found ~= nil and Vanguard_Options.found:IsShown()"), "a jump to the new caption marks its row").toBe(true);
+});
+
+it("options: the header keeps its bar but wears the window tier: 48 tall, the title role in the text colour centred on the 24 line with the crest beside it, the logo and close at the window offsets, the opaque alpha", () => {
+  const addon = loggedIn(CLICK_LUA);
+  addon.eval('ns.Options.Show("general")');
+  const head = addon.eval(`local o = Vanguard_Options
+    return { o.header:GetHeight(), o.title:GetText(), select(2, o.title:GetFont()), o.title.__textColor, o.crest:GetWidth(), o.crest.__points.LEFT.rel == o.title, o.logo.__points.LEFT.x, o.title.__points.LEFT.y }`);
+  expect(head.slice(0, 3).concat(head.slice(4)), "48 tall; the title role; the crest T.CREST.title right of the title; the logo T.SPACE.pad in; the title on the header's middle line").toEqual([48, "Vanguard", addon.eval("return ns.Theme.RoleSize('title')"), addon.eval("return ns.Theme.CREST.title"), true, addon.eval("return ns.Theme.SPACE.pad"), 0]);
+  expect(isTok(addon, head[3], "text"), "the title is in the text colour").toBe(true);
+  const close = addon.eval(`local b = CreateFrame("Button", nil, UIParent) ns.Theme.PlaceClose(b, Vanguard_Options) local p, c = b.__points.CENTER, Vanguard_Options.close.__points.CENTER return { p.x == c.x and p.y == c.y, c.relPoint }`);
+  expect(close, "the close button is where T.PlaceClose puts every window's: on the top right corner").toEqual([true, "TOPRIGHT"]);
+  const alpha = addon.eval(`for _, t in ipairs(__wfgStub.frames) do if t.__kind == "Texture" and t.__parent == Vanguard_Options and t.__layer == "BACKGROUND" then return t.__vertexColor[4] end end`);
+  expect(alpha, "the window is T.ALPHA.opaque").toBe(addon.eval("return ns.Theme.ALPHA.opaque"));
+});
+
+it("options: the General page's buttons are T.BUTTON_H tall in a 32 high row, and a module's description is small muted text", () => {
+  const addon = loggedIn(CLICK_LUA);
+  addon.eval('ns.Options.Show("general")');
+  // The three buttons of the General page's top card: caption, height and how far down their rows start.
+  const buttons = addon.eval(`local out = {} for _, w in ipairs(__wfgStub.frames) do if w.caption and w.__kind == "Button" and w:IsVisible() and w.__parent:GetHeight() == 472
+    and (w.caption == "Run setup" or w.caption == "What's new" or w.caption == "Move frames") then out[#out + 1] = { w.caption, w:GetHeight(), -w.__points.TOPLEFT.y } end end
+    table.sort(out, function(a, b) return a[3] < b[3] end) return out`);
+  const buttonH = addon.eval("return ns.Theme.BUTTON_H");
+  expect(buttons.map((b) => b[1]), "each is T.BUTTON_H tall, not 28").toEqual([buttonH, buttonH, buttonH]);
+  expect([buttons[1][2] - buttons[0][2], buttons[2][2] - buttons[1][2]], "and the rows stay 32 apart").toEqual([32, 32]);
+  addon.eval('ns.Options.Show("modules")');
+  const desc = addon.eval('for _, w in ipairs(__wfgStub.frames) do if w.desc and w.label.__text == "Unit frames" and w:IsVisible() then return { select(2, w.desc:GetFont()), w.desc.__textColor } end end');
+  expect([desc[0], isTok(addon, desc[1], "muted")], "a module's line on what it does is small and muted").toEqual([addon.eval("return ns.Theme.RoleSize('small')"), true]);
 });
