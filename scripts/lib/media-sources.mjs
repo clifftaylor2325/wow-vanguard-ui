@@ -81,29 +81,36 @@ function stripes() {
 const clamp01 = (v) => Math.max(0, Math.min(1, v));
 
 // A capsule (a pill) on a 64 x 32 canvas: its round ends have radius 16, its middle runs flat between them. With
-// `ring` set it is only the outline, 2 px wide (about one pixel on a switch's 18-unit track).
+// `ring` set (texels) it is only the outline, that wide: 2 is about one pixel on a switch's 18-unit track, 4 one
+// pixel on a slider's 8-unit track.
 function capsule(ring) {
   return fill(image(64, 32), (x, y) => {
     const px = x + 0.5;
     const py = y + 0.5;
     const d = Math.hypot(px - Math.max(16, Math.min(48, px)), py - 16);
     const outer = clamp01(16 - d + 0.5);
-    const inner = ring ? clamp01(14 - d + 0.5) : 0;
+    const inner = ring ? clamp01(16 - ring - d + 0.5) : 0;
     return [1, 1, 1, outer - inner];
   });
 }
 
-// A switch's knob: a white round disc on a 32 px canvas, for the theme to tint.
-function knob() {
-  return fill(image(32, 32), (x, y) => [1, 1, 1, clamp01(16 - Math.hypot(x + 0.5 - 16, y + 0.5 - 16) + 0.5)]);
+// A switch's knob: a white round disc on a 32 px canvas (radius 15, so a clear pixel stays inside the edge, as the
+// other stand-alone shapes keep), for the theme to tint. With `ring` set (texels) it is only the disc's outline,
+// that wide: 3 is about one pixel on a slider's 12-unit thumb.
+function knob(ring) {
+  return fill(image(32, 32), (x, y) => {
+    const d = Math.hypot(x + 0.5 - 16, y + 0.5 - 16);
+    const inner = ring ? clamp01(15 - ring - d + 0.5) : 0;
+    return [1, 1, 1, clamp01(15 - d + 0.5) - inner];
+  });
 }
 
 // The knob's shade: the crescent under its lit top-left edge, a white disc less one shifted up and left, so the
 // theme's shade color darkens the lower right of the knob.
 function knobShade() {
   return fill(image(32, 32), (x, y) => {
-    const disc = clamp01(16 - Math.hypot(x + 0.5 - 16, y + 0.5 - 16) + 0.5);
-    const lit = clamp01(16 - Math.hypot(x + 0.5 - 13, y + 0.5 - 13) + 0.5);
+    const disc = clamp01(15 - Math.hypot(x + 0.5 - 16, y + 0.5 - 16) + 0.5);
+    const lit = clamp01(15 - Math.hypot(x + 0.5 - 13, y + 0.5 - 13) + 0.5);
     return [1, 1, 1, disc * (1 - lit)];
   });
 }
@@ -117,10 +124,13 @@ export const TEXTURES = {
   Bar: bar,
   BarSoft: barSoft,
   Spark: spark,
-  // A switch's track (the pill, tinted the inset color), its outline, and the round knob and its shade (Core/Controls.lua).
-  Pill: () => capsule(false),
-  PillLine: () => capsule(true),
-  Knob: knob,
+  // A switch's or slider's track (the pill, tinted the inset color), the switch's outline, the slider's (thicker, for its
+  // lower track), the round knob with its shade, and the slider thumb's outline (Core/Controls.lua).
+  Pill: () => capsule(0),
+  PillLine: () => capsule(2),
+  SliderLine: () => capsule(4),
+  Knob: () => knob(0),
+  KnobLine: () => knob(3),
   KnobShade: knobShade,
   // A small filled diamond (minimap corners, the assist mark), on a 16-unit grid.
   Diamond: () => draw(image(16, 16), 16, [poly([[8, 1], [15, 8], [8, 15], [1, 8]])]),

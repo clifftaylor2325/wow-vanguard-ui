@@ -1382,23 +1382,36 @@ end
 -- box stays `inset` and only the mark carries the accent, so many-of-many stays light). [DECIDE] 6.8
 -- there asks whether it becomes an `accent`-filled box with a `void` mark: fill = "accent", markColor = "void".
 T.CHECK = { size = 16, mark = 12, markColor = "accentText", hover = "borderHi", fill = nil }
+-- A slider's look, read by the options window's pill slider (and by the game's own sliders once they are skinned): the track's height and its
+-- colour with its outline, the fill under the thumb (`borderHi`, a quiet grey, so a page of sliders is not a row
+-- of brass bars: [DECIDE] 5a, Cliff 2026-10-17), the thumb's size and colour, the thumb's colour while the slider
+-- is locked or disabled, and the shade under the thumb's lit edge.
+T.SLIDER = { height = 8, thumb = 12, track = "inset", line = "borderHi", fill = "borderHi", thumbColor = "white",
+  thumbOff = "disabled", shade = "shade" }
 -- Each themed check button's parts (weak): { box = the inset panel, fill = its checked fill, mark = the glyph }.
 local checkOf = setmetatable({}, { __mode = "k" })
 
 -- A check button's themed parts, { box, fill, mark }, or nil for one T.CheckBox never painted.
 function T.CheckParts(button) return checkOf[button] end
 
+-- Whether a check button (or radio) is checked: the game's mark shown, for a plain frame whose mark the
+-- game shows and hides (T.CheckBox's `mark`), else its checked state.
+local function isChecked(button, c)
+  if c.source then return c.source:IsShown() == true end
+  return type(button.GetChecked) == "function" and button:GetChecked() == true
+end
+
 -- Paints a check button for its state: the mark (and the fill, when T.CHECK names one) shown while it
--- is checked, in their colours, or the disabled tier while the button is disabled (its label too, and
--- the hover border let go, as a disabled button gets no OnLeave).
+-- is checked, in their colours, the hover border while the mouse is over it, or the disabled tier while
+-- the button is disabled (its label too, and no hover border).
 local function paintCheck(button, c)
-  local on = type(button.GetChecked) == "function" and button:GetChecked() == true
-  local off = type(button.IsEnabled) == "function" and not button:IsEnabled()
+  local on, off = isChecked(button, c), type(button.IsEnabled) == "function" and not button:IsEnabled()
+  c.hover = c.hover and not off -- a disabled button gets no OnLeave, so its hover ends here
   c.mark:SetShown(on)
   T.Tint(c.mark, off and "disabled" or T.CHECK.markColor)
   c.fill:SetShown(on and T.CHECK.fill ~= nil)
   T.Tint(c.fill, off and "disabled" or T.CHECK.fill or "inset")
-  if off then T.SetBorder(c.box, nil) end
+  T.SetBorder(c.box, c.hover and not off and { T.RGB(T.CHECK.hover) } or nil)
   T.DisabledLook(button, off)
 end
 
@@ -1414,42 +1427,232 @@ local function checkParts(button)
   press:SetAllPoints()
   press:Hide()
   pressOf[button] = { overlay = press, row = true } -- row: the shade only, the label stays put
-  checkOf[button] = { box = box, fill = fill, mark = centered(box, "OVERLAY", T.Icon("Check"), T.CHECK.mark) }
-  return checkOf[button]
+  return { box = box, fill = fill, mark = centered(box, "OVERLAY", T.Icon("Check"), T.CHECK.mark), paint = paintCheck }
 end
 
--- Repaints a check button after the game changes its state.
+-- Repaints a check button or radio after the game changes its state.
 local function repaintCheck(button)
   local c = checkOf[button]
-  if c then paintCheck(button, c) end
+  if c then c.paint(button, c) end
 end
 
--- Follows the game: SetChecked (its own calls), a click (the client flips the state before OnClick
--- runs), enabling and disabling (pcall: a widget without those scripts can't have them hooked); the
--- mouse for the press look and the hover border; a hide clears both.
-local function watchCheck(button)
+-- Notes whether the mouse is over a check button or radio, then repaints it.
+local function hoverCheck(button, over)
+  checkOf[button].hover = over
+  repaintCheck(button)
+end
+
+-- Runs fn (guarded as `where`) after each of a region's show calls (Show, Hide, SetShown), as the game makes them.
+local function hookShown(region, where, fn)
+  if type(hooksecurefunc) ~= "function" then return end
+  for _, method in ipairs({ "Show", "Hide", "SetShown" }) do hooksecurefunc(region, method, ns.Guard(where, fn)) end
+end
+
+-- Follows the game's state: SetChecked (its own calls), a click (the client flips the state before
+-- OnClick runs), enabling and disabling (pcall: a widget without those scripts can't have them hooked).
+local function watchState(button)
   local repaint = ns.Guard("check state", repaintCheck)
   for _, script in ipairs({ "OnClick", "OnEnable", "OnDisable" }) do pcall(button.HookScript, button, script, repaint) end
-  if type(hooksecurefunc) == "function" then hooksecurefunc(button, "SetChecked", ns.Guard("hook SetChecked", repaintCheck)) end
+  if type(button.SetChecked) == "function" and type(hooksecurefunc) == "function" then
+    hooksecurefunc(button, "SetChecked", ns.Guard("hook SetChecked", repaintCheck))
+  end
+end
+
+-- Has a plain frame's box follow the mark the game shows while it is checked (`mark`), from now on.
+local function watchMark(button, c, mark)
+  c.source = mark
+  hookShown(mark, "check mark", function() repaintCheck(button) end)
+end
+
+-- Follows the mouse: the press look while held, the hover look while over it; a hide clears both.
+local function watchCheck(button)
+  watchState(button)
   button:HookScript("OnMouseDown", ns.Guard("check press", function(b) T.PressButton(b, true) end))
   button:HookScript("OnMouseUp", ns.Guard("check press", function(b) T.PressButton(b, false) end))
-  button:HookScript("OnHide", ns.Guard("check press", function(b) T.PressButton(b, false) T.SetBorder(checkOf[b].box, nil) end))
-  button:HookScript("OnEnter", ns.Guard("check hover", function(b) T.SetBorder(checkOf[b].box, { T.RGB(T.CHECK.hover) }) end))
-  button:HookScript("OnLeave", ns.Guard("check hover", function(b) T.SetBorder(checkOf[b].box, nil) end))
+  button:HookScript("OnHide", ns.Guard("check press", function(b) T.PressButton(b, false) hoverCheck(b, false) end))
+  button:HookScript("OnEnter", ns.Guard("check hover", function(b) hoverCheck(b, true) end))
+  button:HookScript("OnLeave", ns.Guard("check hover", function(b) hoverCheck(b, false) end))
 end
 
 -- One of the game's check buttons (UICheckButtonTemplate and kin) in the theme (DESIGN-PRINCIPLES
 -- 2.6): its art faded (its label kept), a T.CHECK.size inset box centred on it with the Check glyph in
 -- accentText while checked, a borderHi border under the mouse, a shade while pressed, the disabled tier
--- while disabled. Follows the game's SetChecked and clicks. Safe to run again.
-function T.CheckBox(button)
+-- while disabled. Follows the game's SetChecked and clicks. opts.mark: the texture a plain frame shows
+-- while checked (QuestLogTrackCheckboxTemplate's CheckMark), which the box then follows. Safe to run again.
+function T.CheckBox(button, opts)
   local c = checkOf[button]
   if not c then
     c = checkParts(button)
+    checkOf[button] = c
+    watchCheck(button)
+  end
+  if opts and opts.mark and not c.source then watchMark(button, c, opts.mark) end
+  T.FadeRegions(button)
+  c.paint(button, c)
+  return button
+end
+
+-- A radio button's look (choose one of several, DESIGN-PRINCIPLES 2.6): the ring's size (an even
+-- count of screen pixels), how thick its edge is, the dot's size and colour, the ring's colour under
+-- the mouse. The dot is accentText like the check box's mark, so a dark ring with a brass dot pairs
+-- with the dark box with a brass check.
+T.RADIO = { size = 16, ring = 1, dot = 6, dotColor = "accentText", hover = "borderHi" }
+
+-- A disc of Media/Textures/Knob centred on frame, size units across (even pixels), on a layer, in a colour.
+local function disc(frame, layer, size, color)
+  return T.Tint(centered(frame, layer, T.Texture("Knob"), size), color)
+end
+
+-- Paints a radio for its state: the dot while checked, the ring borderHi under the mouse, the
+-- disabled tier while disabled (its label too).
+local function paintRadio(button, r)
+  local on, off = isChecked(button, r), type(button.IsEnabled) == "function" and not button:IsEnabled()
+  r.hover = r.hover and not off -- a disabled button gets no OnLeave, so its hover ends here
+  r.mark:SetShown(on)
+  T.Tint(r.mark, off and "disabled" or T.RADIO.dotColor)
+  T.Tint(r.ring, r.hover and not off and T.RADIO.hover or "edge")
+  T.Tint(r.well, "inset")
+  T.DisabledLook(button, off)
+end
+
+-- Makes a radio's parts on a frame centred on it: the ring (an `edge` disc), the well inside it (an
+-- `inset` disc one edge narrower each side), the press shade over the well and the dot.
+local function radioParts(button)
+  local holder = T.PixelSize(CreateFrame("Frame", nil, button), T.RADIO.size, T.RADIO.size, true)
+  holder:SetPoint("CENTER")
+  local inner = T.RADIO.size - 2 * T.RADIO.ring
+  local press = T.Tint(centered(holder, "ARTWORK", T.Texture("Knob"), inner), T.PRESS[1], T.PRESS[2])
+  press:Hide()
+  pressOf[button] = { overlay = press, row = true }
+  local r = { holder = holder, ring = disc(holder, "BACKGROUND", T.RADIO.size, "edge"), well = disc(holder, "BORDER", inner, "inset") }
+  r.mark, r.paint = disc(holder, "OVERLAY", T.RADIO.dot, T.RADIO.dotColor), paintRadio
+  return r
+end
+
+-- One of the game's radio buttons (UIRadioButtonTemplate) in the theme: its art faded (its label
+-- kept), a T.RADIO.size dark ring centred on it with an accentText dot while checked, a borderHi ring
+-- under the mouse, a shade while pressed, the disabled tier while disabled. Follows the game's
+-- SetChecked and clicks like T.CheckBox. Safe to run again.
+function T.Radio(button)
+  local r = checkOf[button]
+  if not r then
+    r = radioParts(button)
+    checkOf[button] = r
     watchCheck(button)
   end
   T.FadeRegions(button)
-  paintCheck(button, c)
+  r.paint(button, r)
+  return button
+end
+
+-- A divider's look: one screen pixel of this colour, over the game's faded divider art.
+T.DIVIDER = { color = "divider" }
+-- Each themed divider (a texture or a frame) -> { holder = the frame its line is on, line }. Weak.
+local dividerOf = setmetatable({}, { __mode = "k" })
+
+-- A themed divider's parts, { holder, line }, or nil for one T.Divider never painted.
+function T.DividerParts(region) return dividerOf[region] end
+
+-- Whether a region is a texture (else a frame).
+local function isTexture(region)
+  return type(region.GetObjectType) == "function" and region:GetObjectType() == "Texture"
+end
+
+-- Sizes a divider's line to one screen pixel thick at its scale now (again after a scale change).
+local function sizeDivider(d)
+  if d.vertical then d.line:SetWidth(T.Pixel(d.holder)) else d.line:SetHeight(T.Pixel(d.holder)) end
+end
+
+-- Sizes every divider's line again (T.OnScale, after a UI scale or screen change).
+local function sizeDividers()
+  for _, d in pairs(dividerOf) do sizeDivider(d) end
+end
+T.OnScale(sizeDividers)
+
+-- Makes a divider's line: on its own frame laid over the divider (so fading the game frame's art never
+-- fades it), one screen pixel thick, along its top edge (its left edge when vertical), so it sits on
+-- whole pixels as the divider does, where a line through an even-height middle would straddle two.
+local function dividerLine(region, host, vertical)
+  local holder = CreateFrame("Frame", nil, host)
+  holder:SetAllPoints(region)
+  local d = { holder = holder, line = solid(holder, "ARTWORK", nil, "divider"), vertical = vertical }
+  d.line:SetPoint("TOPLEFT")
+  d.line:SetPoint(vertical and "BOTTOMLEFT" or "TOPRIGHT")
+  sizeDivider(d)
+  return d
+end
+
+-- Shows a texture divider's line while the game shows the texture.
+local function followDivider(region)
+  local d = dividerOf[region]
+  if d then d.holder:SetShown(region:IsShown()) end
+end
+
+-- One of the game's dividers (a texture, or a frame of divider art: Options_HorizontalDivider, the
+-- mail window's bar, the quest log's separator) as one pixel of `divider` along it, the game's art
+-- faded. opts.vertical (read on the first call): the line runs down it. A texture's line follows the
+-- game showing and hiding it. Safe to run again.
+function T.Divider(region, opts)
+  local tex = isTexture(region)
+  if not dividerOf[region] then
+    dividerOf[region] = dividerLine(region, tex and region:GetParent() or region, opts and opts.vertical)
+    if tex then hookShown(region, "divider shown", followDivider) end
+  end
+  if tex then region:SetAlpha(0) else T.FadeRegions(region) end
+  T.Tint(dividerOf[region].line, T.DIVIDER.color)
+  followDivider(region)
+  return region
+end
+
+-- An arrow button's look: the glyph's size and colour at rest and under the mouse.
+T.ARROW = { glyph = 10, color = "text2", hover = "text" }
+-- Each direction: the theme icon it turns, and the texture coordinates that turn it.
+local ARROW_TURN = {
+  down = { "Down", 0, 1, 0, 1 }, up = { "Down", 0, 1, 1, 0 },
+  right = { "Right", 0, 1, 0, 1 }, left = { "Right", 1, 0, 0, 1 },
+}
+-- Each themed arrow button -> { glyph, hover }. Weak.
+local arrowOf = setmetatable({}, { __mode = "k" })
+
+-- A themed arrow button's parts, { glyph, hover }, or nil for one T.ArrowButton never painted.
+function T.ArrowParts(button) return arrowOf[button] end
+
+-- Paints an arrow's glyph: disabled, under the mouse, or at rest.
+local function paintArrow(button)
+  local a, off = arrowOf[button], type(button.IsEnabled) == "function" and not button:IsEnabled()
+  a.hover = a.hover and not off -- a disabled button gets no OnLeave, so its hover ends here
+  T.Tint(a.glyph, off and "disabled" or a.hover and T.ARROW.hover or T.ARROW.color)
+end
+
+-- Notes whether the mouse is over an arrow button, then repaints it.
+local function hoverArrow(button, over)
+  arrowOf[button].hover = over
+  paintArrow(button)
+end
+
+-- Makes an arrow button's glyph, on its own frame over the button (so fading the button's art never
+-- fades it), remembers whether it is flat, and follows the mouse (a hide ends the hover) and its state.
+local function arrowParts(button, flat)
+  local holder = CreateFrame("Frame", nil, button)
+  holder:SetAllPoints()
+  arrowOf[button] = { glyph = centered(holder, "OVERLAY", T.Icon("Down"), T.ARROW.glyph), flat = flat }
+  for _, script in ipairs({ "OnEnable", "OnDisable" }) do pcall(button.HookScript, button, script, ns.Guard("arrow state", paintArrow)) end
+  button:HookScript("OnEnter", ns.Guard("arrow hover", function(b) hoverArrow(b, true) end))
+  button:HookScript("OnLeave", ns.Guard("arrow hover", function(b) hoverArrow(b, false) end))
+  button:HookScript("OnHide", ns.Guard("arrow hover", function(b) hoverArrow(b, false) end))
+end
+
+-- One of the game's arrow buttons (paging, move up and down, steppers) in the theme: the theme's
+-- arrow glyph pointing `direction` ("up", "down", "left", "right"; default down) in text2, text under
+-- the mouse, the disabled tier while disabled; a flat button panel under it, or with opts.flat (read on
+-- the first call) just the glyph, its art faded (for the small steppers beside a slider). Safe to run again.
+function T.ArrowButton(button, direction, opts)
+  local turn = ARROW_TURN[direction] or ARROW_TURN.down
+  if not arrowOf[button] then arrowParts(button, opts and opts.flat) end
+  if arrowOf[button].flat then T.FadeRegions(button) else T.Button(button) end
+  arrowOf[button].glyph:SetTexture(T.Icon(turn[1]))
+  arrowOf[button].glyph:SetTexCoord(turn[2], turn[3], turn[4], turn[5])
+  paintArrow(button)
   return button
 end
 
@@ -1760,11 +1963,14 @@ function T.OnChanged(fn)
   listeners[#listeners + 1] = fn
 end
 
--- Repaints the crests, the ornaments and the check boxes' marks.
+-- Repaints the crests, the ornaments and the game frame primitives (check boxes, radios, arrows,
+-- dividers).
 local function repaintArt()
   for t in pairs(crests) do T.PaintCrest(t) end
   for frame, o in pairs(ornaments) do T.PaintOrnament(frame, o) end
-  for button, c in pairs(checkOf) do paintCheck(button, c) end
+  for button, c in pairs(checkOf) do c.paint(button, c) end
+  for button in pairs(arrowOf) do paintArrow(button) end
+  for _, d in pairs(dividerOf) do T.Tint(d.line, T.DIVIDER.color) end
 end
 
 -- Repaints every painted frame, re-fonts styled text and tells the listeners.
