@@ -362,7 +362,7 @@ function lifecycle(addon) {
 //   openMailbox()                  the mailbox opens: MAIL_SHOW, then the inbox (world.mail) arrives
 //   openMailWindow()               the mail window shows with the mailbox; showSendMail() its Send Mail tab; closeMailWindow() fires MAIL_CLOSED
 //   openProfession(recipeID), selectRecipe(recipeID), closeProfession()   the profession window and its recipe form
-//   addChatBubble(text, opts)      a chat bubble over a speaker's head (CHAT_MSG_SAY fires); opts { forbidden, empty, unkeyed }; returns its index
+//   addChatBubble(text, opts)      a chat bubble over a speaker's head (CHAT_MSG_SAY, or opts.event, fires); opts { forbidden, empty, unkeyed, event }; returns its index
 const WORLD_CALLS = ["unit", "setUnit", "removeUnit", "combat", "secretGeometry", "addAura", "removeAura", "setAction", "addQuest", "openNpc", "learn", "forgetAll",
   "openAuctionHouse", "closeAuctionHouse", "postFromBag", "finishPost", "fireAuctionEvents", "openMailbox", "openMailWindow", "showSendMail", "closeMailWindow", "openProfession", "selectRecipe", "closeProfession",
   "addChatBubble"];

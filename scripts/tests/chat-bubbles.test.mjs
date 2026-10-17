@@ -41,6 +41,10 @@ it("chat bubbles: a bubble's art fades and a flat panel sits behind its text in 
   addon.update(0.1);
   const u = bubbleLook(addon, 4);
   expect([u.keyed, u.panel, u.font], "a bubble whose text is not keyed String: the font string is found among the panel's regions and dressed the same").toEqual([false, true, THEME_FONT]);
+  addon.world.addChatBubble("TEST-ONLY raid line", { event: "CHAT_MSG_RAID" });
+  addon.world.addChatBubble("TEST-ONLY raid lead line", { event: "CHAT_MSG_RAID_LEADER" });
+  addon.update(0.1);
+  expect([bubbleLook(addon, 5).panel, bubbleLook(addon, 6).panel], "a raid line and a raid leader's line (the game's Raid Chat Bubbles option) raise bubbles that are dressed too").toEqual([true, true]);
   expect(addon.eval("return #ns.errors"), "no errors").toBe(0);
 });
 
@@ -57,10 +61,14 @@ it("chat bubbles: a forbidden bubble, a bubble inside an instance and one withou
   addon.world.addChatBubble("TEST-ONLY outside", { empty: true });
   addon.update(0.1);
   expect([bubbleLook(addon, 2).panel, bubbleLook(addon, 1).panel], "back outside, the next message dresses the bubble made inside; the forbidden one stays the engine's").toEqual([true, false]);
+  addon.world.addChatBubble("TEST-ONLY forbidden panel");
+  addon.eval("__wfgWorld.bubbles[4]:GetChildren().IsForbidden = function() return true end");
+  addon.update(0.1);
+  expect(bubbleLook(addon, 4), "a bubble whose panel addons may not touch keeps its art and gets no panel").toMatchObject({ art: { 1: true }, panel: false });
   addon.eval("IsInInstance = function() return __wfgWorld.secret(1) end");
   addon.world.addChatBubble("TEST-ONLY hidden state");
   addon.update(0.1);
-  expect(bubbleLook(addon, 4).panel, "when the client hides whether you are in an instance, bubbles are left alone").toBe(false);
+  expect(bubbleLook(addon, 5).panel, "when the client hides whether you are in an instance, bubbles are left alone").toBe(false);
   expect(addon.eval("return #ns.errors"), "no errors, the panel-less bubble included").toBe(0);
 });
 

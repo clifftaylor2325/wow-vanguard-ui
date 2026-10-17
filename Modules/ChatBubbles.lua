@@ -14,8 +14,9 @@ local CB = ns.Module("ChatBubbles", { defaults = {} })
 -- Bubbles already dressed (Core/Events.lua, ns.FrameState): the engine reuses its bubble frames.
 local vgBubble = ns.FrameState("vgBubble")
 
--- The chat events that can raise a bubble.
-CB.EVENTS = { "CHAT_MSG_SAY", "CHAT_MSG_YELL", "CHAT_MSG_PARTY", "CHAT_MSG_PARTY_LEADER", "CHAT_MSG_MONSTER_SAY", "CHAT_MSG_MONSTER_YELL", "CHAT_MSG_MONSTER_PARTY" }
+-- The chat events that can raise a bubble: say and yell, party and raid lines (the game's Party and Raid
+-- Chat Bubbles options), and the NPC kinds.
+CB.EVENTS = { "CHAT_MSG_SAY", "CHAT_MSG_YELL", "CHAT_MSG_PARTY", "CHAT_MSG_PARTY_LEADER", "CHAT_MSG_RAID", "CHAT_MSG_RAID_LEADER", "CHAT_MSG_MONSTER_SAY", "CHAT_MSG_MONSTER_YELL", "CHAT_MSG_MONSTER_PARTY" }
 -- How long after a message the bubbles are looked at: the engine makes the bubble on a later frame.
 CB.DELAY = 0.05
 
@@ -45,12 +46,16 @@ local function dressBubble(panel)
   if text then T.Text(text, "chat") end
 end
 
--- Dresses one bubble, once, when it is a frame addons may touch and it has its panel.
+-- Whether a frame is one addons may touch (a forbidden frame, an instance's bubble or its panel, raises on most calls).
+local function touchable(frame)
+  return type(frame) == "table" and not (type(frame.IsForbidden) == "function" and frame:IsForbidden())
+end
+
+-- Dresses one bubble, once, when it and its panel are frames addons may touch.
 local function skinBubble(bubble)
-  if type(bubble) ~= "table" or vgBubble[bubble] or type(bubble.GetChildren) ~= "function" then return end
-  if type(bubble.IsForbidden) == "function" and bubble:IsForbidden() then return end
+  if type(bubble) ~= "table" or vgBubble[bubble] or type(bubble.GetChildren) ~= "function" or not touchable(bubble) then return end
   local panel = bubble:GetChildren()
-  if type(panel) ~= "table" or type(panel.GetRegions) ~= "function" then return end
+  if not touchable(panel) or type(panel.GetRegions) ~= "function" then return end
   vgBubble[bubble] = true
   dressBubble(panel)
 end

@@ -1875,7 +1875,8 @@ local function alwaysForbidden() return true end
 
 -- A chat bubble appears over a speaker's head saying `text`, and CHAT_MSG_SAY fires (the message the engine
 -- raised it for). opts.forbidden makes it a bubble addons may not touch (an instance's); opts.empty one with no
--- panel yet; opts.unkeyed one whose text has no String key. Returns the bubble's index in world.bubbles.
+-- panel yet; opts.unkeyed one whose text has no String key; opts.event the chat event the line came in on
+-- (CHAT_MSG_SAY unless given). Returns the bubble's index in world.bubbles.
 function world.addChatBubble(text, opts)
   opts = opts or {}
   local bubble = stub.newWidget("Frame", nil, UIParent)
@@ -1884,7 +1885,7 @@ function world.addChatBubble(text, opts)
   if not opts.empty then bubblePanel(bubble, text, opts.unkeyed) end
   if opts.forbidden then bubble.IsForbidden = alwaysForbidden end
   world.bubbles[#world.bubbles + 1] = bubble
-  stub.fire("CHAT_MSG_SAY", text, "TEST-ONLY Speaker")
+  stub.fire(opts.event or "CHAT_MSG_SAY", text, "TEST-ONLY Speaker")
   return #world.bubbles
 end
 
