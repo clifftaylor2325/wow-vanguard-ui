@@ -472,6 +472,12 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Expect: both strips stay where you put them.
 - If it fails, paste: a screenshot after the reload.
 
+### 13.4 The game's durability figure stays away
+
+- Do: with damaged gear, under `/vg` → Map untick the info strip's Durability block and `/reload`; then switch the whole Info strip module off and `/reload` again (switch both back after).
+- Expect: with the block off, the strip has no durability line and the game's armoured-man figure still does not appear beside the minimap (the character pane's gear slots still show each item's percent); with the module off, the game's armoured man is back in its own spot.
+- If it fails, paste: a screenshot of the minimap's corner and `/vg errors`.
+
 ## 14. Game windows, by area
 
 Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsections with fixed numbers, so parallel streams never collide: 14.2 mail, guild, channels, friends (S1); 14.3 stable, trainer, bags, loot and item dialogs (S2); 14.4 game options, Edit Mode, keybinding and help (S3); 14.5 world map, group finder, calendar and Legacy (S4); 14.6 menus and tooltips (S5); 14.7 the game's swing timer, aura frames, crafting cast bar, possess bar and zone text (S6); 14.8 tabs and the inside of the character pane (S7); 14.9 battleground windows (S8). For every window: it has the flat panel with the theme's close button and title, its buttons and tabs still work, and `/vg errors` stays empty.
