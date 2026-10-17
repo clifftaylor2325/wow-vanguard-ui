@@ -158,7 +158,8 @@ T.VARIANTS = {
   contrast = {
     label = "High contrast", assist = true, ring = 2, flat = true,
     tokens = {
-      panel = "0a0b0e", inset = "050608", raised = "14161b", divider = "4a5260", sheen = { "ffffff", 0 },
+      panel = "0a0b0e", inset = "050608", raised = "14161b", raisedHover = "22262d", divider = "3a414c", borderHi = "5a6270",
+      sheen = { "ffffff", 0 },
       text = "ffffff", text2 = "dfe3ea", muted = "b8bfca",
       good = "00e060", warn = "ff9a1f", bad = "ff4040", info = "4da6ff",
     },
@@ -1525,6 +1526,52 @@ T.CHECK = { size = 16, mark = 12, markColor = "accentText", hover = "borderHi", 
 -- is locked or disabled, and the shade under the thumb's lit edge.
 T.SLIDER = { height = 8, thumb = 12, track = "inset", line = "borderHi", fill = "borderHi", thumbColor = "white",
   thumbOff = "disabled", shade = "shade" }
+-- ---- Capsule kit (Phase 8.1): the one pill shape ----
+-- The three slices of the Pill textures (a round left end, a flat middle, a round right end), so a capsule
+-- stretches to any width and keeps its ends round.
+local CAPSULE_CUTS = { { 0, 0.25 }, { 0.25, 0.75 }, { 0.75, 1 } }
+
+-- A capsule's three parts of Media/Textures/<name> (Pill, PillLine, SliderLine) on frame, in one theme
+-- color, not yet placed. Returns the parts left to right.
+function T.CapsuleArt(frame, layer, name, color)
+  local parts = {}
+  for i, cut in ipairs(CAPSULE_CUTS) do
+    parts[i] = frame:CreateTexture(nil, layer)
+    parts[i]:SetTexture(T.Texture(name))
+    parts[i]:SetTexCoord(cut[1], cut[2], 0, 1)
+    T.Tint(parts[i], color)
+  end
+  return parts
+end
+
+-- Lays a capsule's parts across frame: each round end half the capsule's height wide, the middle between them.
+function T.PlaceCapsule(parts, frame, height)
+  local cap = height / 2
+  parts[1]:SetPoint("TOPLEFT", frame)
+  parts[1]:SetPoint("BOTTOMLEFT", frame)
+  parts[1]:SetWidth(cap)
+  parts[2]:SetPoint("TOPLEFT", frame, "TOPLEFT", cap, 0)
+  parts[2]:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -cap, 0)
+  parts[3]:SetPoint("TOPRIGHT", frame)
+  parts[3]:SetPoint("BOTTOMRIGHT", frame)
+  parts[3]:SetWidth(cap)
+end
+
+-- A capsule of `height` across frame: its fill in the color `tier` (a theme token, "inset" for a track) and a
+-- 1 px outline over it. opts.layer is the fill's layer (BORDER); opts.line the outline's color (borderHi, or
+-- false for none) and opts.edge its texture (PillLine; SliderLine is the thicker one for an 8 px track).
+-- Returns { fill = parts, line = parts or nil }, for a caller that retints them with the theme.
+function T.Capsule(frame, height, tier, opts)
+  opts = opts or {}
+  local capsule = { fill = T.CapsuleArt(frame, opts.layer or "BORDER", "Pill", tier) }
+  T.PlaceCapsule(capsule.fill, frame, height)
+  if opts.line ~= false then
+    capsule.line = T.CapsuleArt(frame, "OVERLAY", opts.edge or "PillLine", opts.line or "borderHi")
+    T.PlaceCapsule(capsule.line, frame, height)
+  end
+  return capsule
+end
+
 -- Each themed check button's parts (weak): { box = the inset panel, fill = its checked fill, mark = the glyph }.
 local checkOf = setmetatable({}, { __mode = "k" })
 

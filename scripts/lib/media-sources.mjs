@@ -185,6 +185,7 @@ const ICON_SHAPES = {
   Close: [line(3.5, 4, 11.5, 12, STROKE), line(12.5, 4, 4.5, 12, STROKE)],
   Check: [path([[3, 8.5], [6.5, 12], [13, 5.5]], STROKE)],
   Down: [path([[4, 6.5], [8, 10.5], [12, 6.5]], STROKE)],
+  Up: [path([[4, 9.5], [8, 5.5], [12, 9.5]], STROKE)],
   Right: [path([[6.5, 4], [10.5, 8], [6.5, 12]], STROKE)],
   Search: [ring(7, 7, 4, STROKE), line(10.5, 10.5, 14, 14, STROKE)],
   // Raid marks, filled so they read at 10 px: a tank's shield, a healer's cross,

@@ -75,10 +75,15 @@ function controlArt(src) {
   return [...src.matchAll(/\b(?:art|pillParts)\([\w.]+, "\w+", "(\w+)"/g)].map((m) => `Media/Textures/${m[1]}.tga`);
 }
 
-// Media files one Lua or TOC source names, as repo paths: T.Texture/T.Icon calls, control art, an options
+// The capsule textures a source names (T.CapsuleArt's third argument, the edge option).
+function capsuleArt(src) {
+  return [...src.matchAll(/\b(?:CapsuleArt\([^,]+, [^,]+, |edge = |opts\.edge or )"(\w*(?:Pill|Line))"/g)].map((m) => `Media/Textures/${m[1]}.tga`);
+}
+
+// Media files one Lua or TOC source names, as repo paths: T.Texture/T.Icon calls, capsule art (T.CapsuleArt and the edge option), control art, an options
 // page's icon or a minimap slot's, Media paths, fonts and crests.
 function mediaIn(src) {
-  const files = controlArt(src);
+  const files = [...controlArt(src), ...capsuleArt(src)];
   for (const m of src.matchAll(/T\.(Texture|Icon)\("(\w+)"\)/g)) files.push(`Media/${m[1] === "Icon" ? "Icons" : "Textures"}/${m[2]}.tga`);
   for (const m of src.matchAll(/T\.Icon\(\w+ and "(\w+)" or "(\w+)"\)/g)) files.push(`Media/Icons/${m[1]}.tga`, `Media/Icons/${m[2]}.tga`);
   for (const m of src.matchAll(/\b(?:icon|IconTexture|WindowControl)\(\w+, "(\w+)"/g)) files.push(`Media/Icons/${m[1]}.tga`);
@@ -285,6 +290,19 @@ describe(
   },
 );
 
+// The pill outlines land on one screen pixel at the heights capsules are drawn at (18 a switch, 14 the error badge, 12 a thumb):
+// a ring of r texels on the 32-texel canvas is r * height / 32 pixels.
+function capsuleOutlinesOnePixel() {
+  // The outline's thickness in texels: the alpha down the middle column, half of it (top and bottom).
+  const ring = (img) => {
+    let sum = 0;
+    for (let y = 0; y < img.h; y++) sum += img.px[(y * img.w + 32) * 4 + 3];
+    return sum / 2;
+  };
+  const px = ring(MEDIA["Textures/PillLine.tga"]());
+  for (const h of [18, 14, 12]) expect(Math.abs((px * h) / 32 - 1) <= 0.3, `PillLine at ${h}: ${((px * h) / 32).toFixed(2)} px`).toBe(true);
+}
+
 describe(
   "media icons",
   // How icons and tinted shapes sit on the pixel grid and under their clear pixels.
@@ -294,6 +312,7 @@ describe(
     it("the quest marks (F17) are a crisp bang and a round query", questMarksDrawn);
     it("tinted art is white under its clear pixels", clearPixelsWhite);
     it("icons and shapes keep a clear pixel inside their edge", shapesPadded);
+    it("the pill outline is about one screen pixel at 18, 14 and 12 high", capsuleOutlinesOnePixel);
     it("the addons-list icon is the pre-coloured crest", iconIsCrest);
   },
 );

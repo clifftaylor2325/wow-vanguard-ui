@@ -76,7 +76,7 @@ local function paintArrow(t, h, reverse)
   local right = h.side == "RIGHT"
   t.arrow:ClearAllPoints()
   t.arrow:SetPoint(right and "RIGHT" or "LEFT", h.text, right and "LEFT" or "RIGHT", right and -2 or 2, 0)
-  t.arrow:SetRotation(reverse and 0 or math.pi)
+  t.arrow:SetTexture(T.Icon(reverse and "Down" or "Up"))
   t.arrow:Show()
 end
 
