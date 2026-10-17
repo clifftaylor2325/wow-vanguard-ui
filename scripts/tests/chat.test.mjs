@@ -437,8 +437,8 @@ it("more game windows: friends, books and letters, and windows that load later",
   addon.eval("FriendsFrame:Show()");
   expect(borderOf(addon, "FriendsFrame") !== undefined, "friends in the Vanguard look").toBe(true);
   addon.eval('ItemTextFrame:Show() ItemTextFrame.__scripts.OnEvent(ItemTextFrame, "ITEM_TEXT_READY")');
-  const page = addon.eval("return { ItemTextPageText.__colors.P, ItemTextPageText.__colors.H1, ItemTextMaterialTopLeft.__alpha }");
-  expect([isTok(addon, page[0], "text"), isTok(addon, page[1], "gold"), page[2]], "a book's page in light text, gold headings, its parchment faded").toEqual([true, true, 0]);
+  const page = addon.eval("local c = ItemTextPageText.__colors return { c.P, c.H1, c.H2, c.H3, ItemTextMaterialTopLeft.__alpha }");
+  expect([isTok(addon, page[0], "text"), isTok(addon, page[1], "text"), isTok(addon, page[2], "text"), isTok(addon, page[3], "text"), page[4]], "a book's page in light text, its headings too (not gold), its parchment faded").toEqual([true, true, true, true, 0]);
   addon.eval('AuctionHouseFrame = CreateFrame("Frame", "AuctionHouseFrame", UIParent)');
   addon.fire("ADDON_LOADED", "Blizzard_AuctionHouseUI");
   expect(borderOf(addon, "AuctionHouseFrame") !== undefined, "the auction house, when it loads").toBe(true);

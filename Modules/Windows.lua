@@ -63,9 +63,9 @@ GW.LATER = {
 -- The parchment behind book and letter pages (faded: the page text goes light on the dark panel).
 GW.ITEM_TEXT_ART = { "ItemTextMaterialTopLeft", "ItemTextMaterialTopRight", "ItemTextMaterialBotLeft", "ItemTextMaterialBotRight", "ItemTextFramePageBg" }
 -- A book or letter page's text parts: body text, and its headings.
-GW.ITEM_TEXT_TAGS = { P = "text", H1 = "gold", H2 = "gold", H3 = "gold" }
+GW.ITEM_TEXT_TAGS = { P = "text", H1 = "text", H2 = "text", H3 = "text" }
 -- Quest window texts the game colors for its parchment (dark brown, unreadable
--- on the dark panel): body text goes light, headings gold.
+-- on the dark panel): body text and headings go light.
 GW.QUEST_BODY = { "QuestInfoDescriptionText", "QuestInfoObjectivesText", "QuestInfoRewardText", "QuestProgressText", "GreetingText" }
 GW.QUEST_HEADS = { "QuestInfoTitleHeader", "QuestInfoDescriptionHeader", "QuestInfoObjectivesHeader", "QuestProgressTitleText", "CurrentQuestsText", "AvailableQuestsText" }
 -- Push buttons a window keeps outside its button row (the mail's Open All).
@@ -380,10 +380,10 @@ local function paintNamed(names, token)
 end
 GW.PaintNamed = paintNamed
 
--- The quest window's texts in light body text and gold headings.
+-- The quest window's texts in light body text and light headings (the quest's name included).
 function GW.LightQuestText()
   paintNamed(GW.QUEST_BODY, "text")
-  paintNamed(GW.QUEST_HEADS, "gold")
+  paintNamed(GW.QUEST_HEADS, "text")
 end
 
 -- The gossip window's list of lines (greeting and options), or nil on a client without it.
@@ -405,7 +405,7 @@ function GW.LightGossip()
   if type(box) == "table" and box.ForEachFrame then box:ForEachFrame(lightGossipLine) end
 end
 
--- A book or letter page in light text with gold headings, its parchment faded
+-- A book or letter page in light text (headings too), its parchment faded
 -- (the game sets the page's colors as each page loads, so this runs after it).
 function GW.LightItemText()
   for _, name in ipairs(GW.ITEM_TEXT_ART) do
@@ -428,7 +428,7 @@ end
 -- each page shows, so Vanguard's colors go on after it does, every time.
 local function keepTextReadable()
   after(nil, "QuestFrame_SetTextColor", function(fs) T.Color(fs, "text") end)
-  after(nil, "QuestFrame_SetTitleTextColor", function(fs) T.Color(fs, "gold") end)
+  after(nil, "QuestFrame_SetTitleTextColor", function(fs) T.Color(fs, "text") end)
   after(nil, "QuestInfo_Display", GW.LightQuestText)
   local box = gossipBox()
   if type(box) == "table" then after(box, "Update", GW.LightGossip) end

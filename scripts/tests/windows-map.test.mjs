@@ -2,7 +2,7 @@
 // TEST-ONLY headless client. Cases follow docs/handoff/RESKIN-PLAN.md section 0 ("Writing a task's test").
 
 import { expect, it } from "vitest";
-import { WINDOWS_ENV, loggedIn, windowState } from "./helpers.mjs";
+import { WINDOWS_ENV, isTok, loggedIn, windowState } from "./helpers.mjs";
 
 // The switch off: the map group's windows stay the game's.
 const MAP_OFF = { savedVariables: "VanguardDB.profiles = { Default = { Windows = { map = false } } }" };
@@ -249,6 +249,8 @@ it("quest panel in the map: the zone headers lose the game's yellow bar for a ch
   const down = addon.eval('return ns.Theme.Icon("Down")'), right = addon.eval('return ns.Theme.Icon("Right")');
   expect(headers(addon), "bar and button art faded; Down while open, Right while folded, Down when the entry is unknown").toEqual([[0, 0, down], [0, 0, right], [0, 0, down]]);
   addon.eval("QuestLogQuests_Update()");
+  expect(isTok(addon, addon.eval(`for _, h in ipairs({ QuestMapFrame.QuestsFrame.ScrollFrame.Contents:GetChildren() }) do
+    local g = h.ButtonText and ns.FrameState("vgHeaderGlyph")[h] if g then return g.__vertexColor end end`), "text"), "the chevron is light text, not gold").toBe(true);
   expect(headers(addon).length, "a header the game makes on a redraw is dressed too").toBe(4);
   expect(headers(addon)[3], "the new one").toEqual([0, 0, down]);
   expect(addon.eval("return { #ns.errors, ns.Theme.PaintedCount() > 0 }"), "and nothing failed").toEqual([0, true]);

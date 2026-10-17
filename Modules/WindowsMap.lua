@@ -207,7 +207,7 @@ end
 -- A header's chevron (made once, over its collapse button): Down while the zone is open, Right while folded.
 local function headerGlyph(header)
   if not vgHeaderGlyph[header] then
-    vgHeaderGlyph[header] = T.Tint(T.Snap(header:CreateTexture(nil, "OVERLAY")), "gold")
+    vgHeaderGlyph[header] = T.Tint(T.Snap(header:CreateTexture(nil, "OVERLAY")), "text")
     T.PixelSize(vgHeaderGlyph[header], 12, 12, true)
     vgHeaderGlyph[header]:SetPoint("CENTER", header.CollapseButton, "CENTER")
   end

@@ -495,7 +495,7 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 ### 14.2.1 Open a letter
 
 - Do: at a mailbox, open a letter that has text and, if you can, one with an attachment or money (an auction invoice works).
-- Expect: the letter window is a flat panel with no parchment behind the text; the text is light and any headings gold; Reply, Delete, Cancel and Report Spam are flat buttons; the attachment and money buttons have a thin border in the item's quality color; open a second letter and the text is still light.
+- Expect: the letter window is a flat panel with no parchment behind the text; the text and any headings are light (not gold); Reply, Delete, Cancel and Report Spam are flat buttons; the attachment and money buttons have a thin border in the item's quality color; open a second letter and the text is still light.
 - If it fails, paste: a screenshot of the open letter and `/vg errors`.
 
 ### 14.2.2 Guild window and its pages
@@ -525,7 +525,7 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 ### 14.2.6 Guild registrar and petition
 
 - Do: visit a guild registrar and read the greeting, click to buy a charter; open a charter you hold or are asked to sign, and open the tabard designer from the tabard vendor.
-- Expect: the registrar, petition and tabard windows are flat panels with no parchment; the registrar text, charter names and signatures are light, the headings gold; the tabard model and its colour choices look as the game draws them.
+- Expect: the registrar, petition and tabard windows are flat panels with no parchment; the registrar text, charter names, signatures and headings are light (not gold); the tabard model and its colour choices look as the game draws them.
 - If it fails, paste: a screenshot and `/vg errors`.
 
 ### 14.2.7 Role check popup

@@ -38,7 +38,8 @@ it("open mail: the letter window in the theme, its stationery faded, body text l
   expect(windowState(addon, "OpenMailFrame")).toMatchObject({ art: 0, nine: 0, panel: true, title: true });
   expect(addon.eval("return { OpenStationeryBackgroundLeft.__alpha, OpenStationeryBackgroundRight.__alpha }"), "the parchment faded").toEqual([0, 0]);
   expect(addon.eval(`local c = OpenMailBodyText.__colors
-    return { c.P ~= nil and c.P[1] == ns.Theme.RGB("text"), c.H1 ~= nil and c.H1[1] == ns.Theme.RGB("gold") }`), "body light, headings gold").toEqual([true, true]);
+    local t = ns.Theme.RGB("text")
+    return { c.P ~= nil and c.P[1] == t, c.H1 ~= nil and c.H1[1] == t, c.H2[1] == t, c.H3[1] == t, ns.Theme.RGB("gold") ~= t }`), "body and headings light, not gold").toEqual([true, true, true, true, true]);
   expect(addon.eval(`local n = 0 for _, name in ipairs({ "OpenMailReplyButton", "OpenMailReportSpamButton" }) do
       if select('#', _G[name]:GetRegions()) > 0 then n = n + 1 end end return n`), "its buttons themed").toBe(2);
   expect(addon.eval("return { ns.FrameState('vgSkinned')[OpenMailLetterButton], ns.FrameState('vgSkinned')[OpenMailMoneyButton], ns.FrameState('vgSkinned')[OpenMailAttachmentButton1] }"), "the item buttons get the bags' border").toEqual([true, true, true]);
@@ -430,7 +431,7 @@ const CREATION_ENV = WINDOWS_ENV + `
 // The creation windows' names.
 const CREATION = ["GuildRegistrarFrame", "PetitionFrame", "TabardFrame"];
 
-it("guild creation: the three windows skinned, their texts light and gold, again after the game recolors them", () => {
+it("guild creation: the three windows skinned, their texts and headings light, again after the game recolors them", () => {
   const addon = loggedIn(CREATION_ENV);
   for (const name of CREATION) {
     addon.eval(`${name}:Show()`);
@@ -441,10 +442,11 @@ it("guild creation: the three windows skinned, their texts light and gold, again
   const color = (n) => addon.eval(`local c = ${n}.__textColor return { c[1], c[2], c[3] }`);
   const text = addon.eval('return { ns.Theme.RGB("text") }').slice(0, 3);
   const gold = addon.eval('return { ns.Theme.RGB("gold") }').slice(0, 3);
+  expect(gold, "(gold is its own colour)").not.toEqual(text);
   expect(color("GuildRegistrarText"), "registrar text light").toEqual(text);
-  expect(color("PetitionFrameCharterTitle"), "petition headings gold").toEqual(gold);
+  expect(color("PetitionFrameCharterTitle"), "petition headings light, not gold").toEqual(text);
   addon.eval("GuildRegistrar_OnShow() PetitionFrame_Update()");
-  expect([color("GuildRegistrarPurchaseText"), color("PetitionFrameMemberTitle"), color("PetitionFrameMemberName3")], "light again after the game's redraw").toEqual([text, gold, text]);
+  expect([color("GuildRegistrarPurchaseText"), color("PetitionFrameMemberTitle"), color("PetitionFrameMemberName3")], "light again after the game's redraw").toEqual([text, text, text]);
   expect(addon.eval("return __redraws"), "the game's functions still run").toBe(2);
   expect(addon.eval(`local function themed(x) for _, r in ipairs({ x:GetRegions() }) do if r.__alpha ~= 0 then return true end end return false end
     return { GuildRegistrarFrameGoodbyeButton.Art.__alpha, PetitionFrameSignButton.Art.__alpha, TabardFrameAcceptButton.Art.__alpha, GuildRegistrarFrameEditBox.Art.__alpha,

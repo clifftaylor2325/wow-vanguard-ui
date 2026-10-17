@@ -42,7 +42,7 @@ GW.MAIL_ART = { "OpenStationeryBackgroundLeft", "OpenStationeryBackgroundRight" 
 GW.MAIL_ITEMS = { "OpenMailLetterButton", "OpenMailMoneyButton" }
 for i = 1, 16 do GW.MAIL_ITEMS[#GW.MAIL_ITEMS + 1] = "OpenMailAttachmentButton" .. i end
 
--- The letter's stationery faded and its body text in light text with gold headings (the
+-- The letter's stationery faded and its body text in light text, headings too (the
 -- game colors the body for its parchment as each letter loads, so this runs after it).
 function GW.LightMailText()
   GW.FadeNamed(GW.MAIL_ART)
@@ -438,10 +438,10 @@ GW.CREATION_HEADS = { "PetitionFrameCharterTitle", "PetitionFrameMasterTitle", "
 -- The game functions that set those texts; the look goes on again after each.
 GW.CREATION_REDRAWS = { "GuildRegistrar_OnShow", "GuildRegistrar_ShowPurchaseFrame", "PetitionFrame_Update" }
 
--- The registrar and petition texts in light body text with gold headings.
+-- The registrar and petition texts in light body text and light headings.
 function GW.LightCreationText()
   GW.PaintNamed(GW.CREATION_BODY, "text")
-  GW.PaintNamed(GW.CREATION_HEADS, "gold")
+  GW.PaintNamed(GW.CREATION_HEADS, "text")
 end
 
 -- A guild creation window: the window skin, its texts light, its name box themed; the texts again
