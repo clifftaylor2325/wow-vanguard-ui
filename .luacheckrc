@@ -23,6 +23,8 @@ globals = {
   "GetMinimapShape",
   -- Addon compartment click handler named in the TOC (Core/Options.lua)
   "Vanguard_OnAddonCompartmentClick",
+  -- The engine's floating damage font path, set to the theme font at load (Modules/Merchant.lua)
+  "DAMAGE_TEXT_FONT",
   SlashCmdList = { other_fields = true },
 }
 

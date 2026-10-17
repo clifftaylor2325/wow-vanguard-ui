@@ -146,6 +146,8 @@ Enum = {
 }
 
 STANDARD_TEXT_FONT = "Fonts\\FRIZQT__.TTF"
+-- The engine's floating damage font path (Blizzard_Fonts_Shared/Shared/GameFonts.xml, the enUS value).
+DAMAGE_TEXT_FONT = "Fonts\\FRIZQT__.TTF"
 UISpecialFrames = {}
 
 -- securecallfunction: calls fn with the arguments (the bundled

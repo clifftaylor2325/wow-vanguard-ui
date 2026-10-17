@@ -138,7 +138,9 @@ change fires the events the client would.
 | `without(...names)` | Removes global APIs, as an older client would lack them. |
 
 The world's tables are open: `addon.eval("__wfgWorld.units.player.level = 10")`
-is fine when no call covers a case.
+is fine when no call covers a case. The client's font paths are plain globals,
+`STANDARD_TEXT_FONT` and `DAMAGE_TEXT_FONT` (both `Fonts\FRIZQT__.TTF`, the enUS
+values); a test that must tell them apart sets one in `env`.
 
 ### Input
 
