@@ -481,6 +481,47 @@ end
 
 GW.Add("social", "popups", { "RolePollPopup", "LFGInvitePopup" }, GW.SkinRolePopup)
 
+-- Toasts ----------------------------------------------------------------------------------------
+
+-- The toasts' lines (parentKeys) with their text role and colour. Top and middle lines keep the game's
+-- colour (a friend's name in Battle.net blue); the bottom line's grey is hard to read on the dark panel,
+-- so it goes to the theme's secondary text on each show (the game greys it again before every toast).
+-- Text is the time-played alert's one line.
+GW.TOAST_LINES = { TopLine = { "label", false }, MiddleLine = { "small", false }, BottomLine = { "small", "text2" }, DoubleLine = { "label", false }, Text = { "label", false } }
+
+-- A toast's texts in their roles, those this toast has.
+local function dressToastLines(frame)
+  for key, role in pairs(GW.TOAST_LINES) do
+    local fs = frame[key]
+    if type(fs) == "table" and type(fs.SetFont) == "function" then T.Text(fs, role[1], role[2]) end
+  end
+end
+
+-- The toast's hover tooltip (the Battle.net toast has one): a themed tooltip panel with light text.
+local function dressToastTooltip(tip)
+  if type(tip) ~= "table" or not tip.GetRegions then return end
+  fadeFrameArt(tip)
+  T.Tooltip(tip)
+  if type(tip.Text) == "table" and type(tip.Text.SetFont) == "function" then T.Text(tip.Text, "small") end
+end
+
+-- A social toast (a Battle.net friend or invite toast, the time-played alert): its backdrop and glow
+-- faded (the glow's own flare animation still plays over the panel), a tooltip-style panel, the
+-- Battle.net icon kept, its lines in theme roles and its X as the theme's close glyph where the game
+-- put it (the toast is too small for the window corner inset). The game reuses one frame per kind of
+-- toast and this runs on each show, so the lines are dressed again every time.
+function GW.SkinToast(frame)
+  if type(frame) ~= "table" or not frame.GetRegions then return end
+  local icon = frame.IconTexture
+  T.FadeRegions(frame, { [type(icon) == "table" and icon or false] = true })
+  T.Tooltip(frame)
+  dressToastLines(frame)
+  if type(frame.CloseButton) == "table" and frame.CloseButton.CreateTexture then T.CloseButton(frame.CloseButton) end
+  dressToastTooltip(frame.TooltipFrame)
+end
+
+GW.Add("social", "popups", { "BNToastFrame", "TimeAlertFrame" }, GW.SkinToast)
+
 -- Raid tab --------------------------------------------------------------------------------------
 
 -- How many group boxes and member buttons the raid tab has (RaidGroup1-8, RaidGroupButton1-40).

@@ -536,6 +536,12 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 - Expect: the window is a flat panel with the theme's close button and title; the Battle.net bar's blue band is gone (the status dropdown and menu button are flat, the menu button keeps its icon); the side tabs are flat with their icons, the selected one marked on its outer edge, the others greyed; the search box is a dark input box with its magnifier, Filter and Add New Friend are themed buttons, the list scrolls; the ignore list and broadcast windows beside it are flat panels with themed buttons.
 - If it fails, paste: a screenshot and `/vg errors`.
 
+### 14.2.10 Battle.net and time-played toasts
+
+- Do: have a Battle.net friend log in or out (or send you an invite) so the toast slides in at the bottom-left; hover it; then stay logged in long enough for the time-played alert, or `/played` where it is shown as a toast.
+- Expect: the toast is a flat, slightly see-through slate panel with a soft shadow instead of the game's framed box; the friend's name keeps its Battle.net blue, the grey detail line under it is in the theme's lighter secondary text, the Battle.net icon on the left is still there and the game's glow still flares as the toast arrives; the X in its top-right corner is the theme's cross on a red tile under the mouse and closes the toast; hovering the toast shows its tooltip as a flat panel; the time-played toast is the same panel with its one line of text.
+- If it fails, paste: a screenshot of the toast and `/vg errors`.
+
 ### 14.3.1 Stable (a hunter)
 
 - Do: with a hunter, talk to a stable master.
