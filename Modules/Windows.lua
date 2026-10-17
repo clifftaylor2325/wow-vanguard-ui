@@ -88,7 +88,12 @@ GW.MENU_PLATE = { "LeftBG", "RightBG", "CenterBG" }
 GW.ART = { "NineSlice", "Bg", "TopTileStreaks", "PortraitContainer", "Border", "Inset" }
 -- Art that is a window's content, not its frame, by window: faded with the rest, then shown again.
 -- The flight map draws its map on a texture of its own (SetTaxiMap: the TaxiMap texture, InsetBg on newer builds).
-GW.CONTENT_ART = { TaxiFrame = { "TaxiMap", "InsetBg" } }
+-- A popup's warning icon and its progress bar's fill are content; the guild bank's portrait is too.
+local POPUP_CONTENT = { "AlertIcon", "ProgressBarFill" }
+GW.CONTENT_ART = {
+  TaxiFrame = { "TaxiMap", "InsetBg" }, GuildBankFrame = { "Portrait" },
+  StaticPopup1 = POPUP_CONTENT, StaticPopup2 = POPUP_CONTENT, StaticPopup3 = POPUP_CONTENT, StaticPopup4 = POPUP_CONTENT,
+}
 -- What each window adds inside its frame, by name: function(frame), run by GW.SkinFramed after the window skin
 -- (the sections below fill it, each beside the window's other code).
 GW.INSIDES = {}
@@ -279,12 +284,13 @@ function GW.SkinMoney(frame)
   end
 end
 
--- A breath or fatigue bar (MirrorTimerTemplate): the window skin hugging the bar (no room around it), and its
--- StatusBar in the theme's bar texture.
+-- A breath or fatigue bar (MirrorTimerTemplate): the window skin hugging the bar (no room around it), its
+-- StatusBar in the theme's bar texture and its caption in the small bar text.
 function GW.SkinTimer(frame)
   GW.Skin(frame, 0)
   local bar = frame.StatusBar
   if type(bar) == "table" and bar.SetStatusBarTexture then T.StyleBar(bar) end
+  if type(frame.Text) == "table" and frame.Text.SetFont then T.Text(frame.Text, "barSmall", "text") end
 end
 
 -- The breath and fatigue bars are the container's unnamed children on the 12.x engine
@@ -556,9 +562,11 @@ local function watchLootRows(box)
   if type(box.ForEachFrame) == "function" then box:ForEachFrame(function(row) skinLootRow(nil, row) end) end
 end
 
--- The loot window: the window skin, and its rows as the list hands them out.
+-- The loot window: the window skin, its close button (a ClosePanelButton, which the skin does not look for), and
+-- its rows as the list hands them out.
 function GW.SkinLoot(frame)
   GW.Skin(frame)
+  GW.DressClose(frame, frame.ClosePanelButton)
   watchLootRows(frame.ScrollBox)
 end
 
@@ -670,6 +678,49 @@ GW.INSIDES.MailFrame = function()
   skinLetter()
   skinSendMoney()
   for i = 1, 16 do GW.SkinPictureSlot(_G["SendMailAttachment" .. i]) end
+end
+
+-- Popups and the ready check ------------------------------------------------------------------
+
+-- A popup's text box (a tooltip-backdrop edit box) as a theme edit box, the backdrop's nine-slice faded.
+local function skinPopupBox(box)
+  GW.SkinEditBox(box)
+  if type(box) == "table" and type(box.NineSlice) == "table" and box.NineSlice.SetAlpha then box.NineSlice:SetAlpha(0) end
+end
+
+-- A popup's item (the item to hand over: a name plate and an item button): the plate faded, the item look.
+local function skinPopupItem(frame)
+  local holder = frame.ItemFrame
+  if type(holder) ~= "table" then return end
+  GW.FadeParts(holder, { "NameFrame" })
+  GW.SkinItem(holder.Item)
+end
+
+-- The controls a popup shows when it has them, in the theme: its dark tile faded, the text box, the money
+-- boxes and line, the dropdown, the fifth button and the item. Its buttons and close button are the window skin's.
+local function popupInside(frame)
+  GW.FadeParts(frame, { "BG" })
+  skinPopupBox(frame.EditBox)
+  GW.SkinMoneyInput(frame.MoneyInputFrame)
+  GW.SkinMoney(frame.MoneyFrame)
+  GW.SkinDropdown(frame.Dropdown)
+  GW.SkinButton(frame.ExtraButton)
+  skinPopupItem(frame)
+end
+for _, name in ipairs(GW.POPUPS) do GW.INSIDES[name] = popupInside end
+
+-- The ready check's dialog is a child of its holder (ReadyCheckListenerFrame): its dark tile and border faded
+-- (the portrait of who called it stays), its title in the title role, its prompt in light text, its Yes and No buttons themed. The panel
+-- the window skin painted on the holder sits behind it.
+GW.INSIDES.ReadyCheckFrame = function()
+  local listener = _G.ReadyCheckListenerFrame
+  if type(listener) ~= "table" then return end
+  GW.FadeParts(listener, { "Bg", "NineSlice" })
+  if type(listener.NineSlice) == "table" and listener.NineSlice.SetAlpha then listener.NineSlice:SetAlpha(0) end
+  GW.SkinTitle(type(listener.TitleContainer) == "table" and listener.TitleContainer.TitleText or nil)
+  GW.SkinButton(listener.YesButton)
+  GW.SkinButton(listener.NoButton)
+  GW.TextNamed({ "ReadyCheckFrameText" }, "label", "text")
 end
 
 -- The quest and gossip windows ----------------------------------------------------------------

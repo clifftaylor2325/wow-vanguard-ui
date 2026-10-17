@@ -934,3 +934,72 @@ it("R2.10 the quest and gossip windows: Vanguard's quest dialog on leaves them t
   odd.eval("QuestFrame:Show() GossipFrame:Show()");
   expect(odd.eval("return #ns.errors"), "odd parts are skipped").toBe(0);
 });
+// TEST-ONLY popup and ready check (GameDialog.xml, ReadyCheck.xml): StaticPopup1 with its dark tile (BG), its warning
+// icon and progress fill (content), and every optional control; the ready check holder with its listener (tile,
+// nine-slice, portrait, title, prompt, Yes and No).
+const POPUP_ENV = `${WINDOWS_ENV}${INSIDES_LUA}
+  local p = StaticPopup1
+  p.BG = CreateFrame("Frame", nil, p) p.BG.Top, p.BG.Bottom = __art(p.BG), __art(p.BG)
+  p.AlertIcon, p.ProgressBarFill = __art(p), __art(p)
+  p.EditBox = CreateFrame("EditBox", nil, p) __art(p.EditBox) p.EditBox.NineSlice = CreateFrame("Frame", nil, p.EditBox)
+  p.MoneyInputFrame, p.MoneyFrame = __moneyInput(nil, p), __moneyLine(nil, p)
+  p.Dropdown = CreateFrame("Button", nil, p) p.Dropdown.Arrow = __art(p.Dropdown)
+  p.ExtraButton = CreateFrame("Button", nil, p)
+  p.ItemFrame = CreateFrame("Frame", nil, p) p.ItemFrame.NameFrame = __art(p.ItemFrame) p.ItemFrame.Item = __itemButton(nil, p.ItemFrame)
+  local r = CreateFrame("Frame", "ReadyCheckFrame", UIParent) r:Hide()
+  local l = CreateFrame("Frame", "ReadyCheckListenerFrame", r)
+  l.Bg, l.NineSlice = __art(l), CreateFrame("Frame", nil, l)
+  l.NineSlice:CreateTexture():SetTexture("TEST-ONLY-ART")
+  l.TitleContainer = CreateFrame("Frame", nil, l) l.TitleContainer.TitleText = __text(l.TitleContainer)
+  l.PortraitContainer = CreateFrame("Frame", nil, l) l.PortraitContainer.Portrait = __art(l.PortraitContainer)
+  l.YesButton, l.NoButton = CreateFrame("Button", nil, l), CreateFrame("Button", nil, l)
+  ReadyCheckFrameText = __text(l)
+`;
+it("R2.11 popups: the dark tile faded, the warning icon and progress fill kept, every optional control in the theme", () => {
+  const addon = loggedIn(POPUP_ENV);
+  addon.eval("StaticPopup1:Show()");
+  // The popup's parts as the skin leaves them.
+  const read = () => addon.eval(`local p = StaticPopup1
+    return { tile = __faded(p.BG), icon = p.AlertIcon.__alpha, fill = p.ProgressBarFill.__alpha, box = __faded(p.EditBox) and p.EditBox.NineSlice.__alpha == 0,
+      money = __themed(p.MoneyFrame.GoldButton.Text) and p.MoneyInputFrame.gold.texture.__alpha == 1, arrow = p.Dropdown.Arrow.__alpha,
+      extra = select("#", p.ExtraButton:GetRegions()) > 0, item = p.ItemFrame.NameFrame.__alpha == 0 and ns.FrameState("vgSkinned")[p.ItemFrame.Item] == true,
+      painted = ns.Theme.PaintedCount(), errors = #ns.errors }`);
+  const first = read();
+  expect(first, "tile faded, content kept, text box and money in the theme, the dropdown keeps its arrow, the extra button themed, the item in the item look").toMatchObject({ tile: true, icon: 1, fill: 1, box: true, money: true, arrow: 1, extra: true, item: true, errors: 0 });
+  addon.eval("StaticPopup1:Hide() StaticPopup1:Show()");
+  expect(read().painted, "a second show paints nothing new").toBe(first.painted);
+  const bare = loggedIn(`${WINDOWS_ENV}${INSIDES_LUA} StaticPopup1.EditBox = {} StaticPopup1.ItemFrame = {} StaticPopup1.Dropdown = {} StaticPopup1.BG = 1`);
+  bare.eval("StaticPopup1:Show()");
+  expect([windowState(bare, "StaticPopup1").panel, bare.eval("return #ns.errors")], "a bare popup, or odd controls, are skinned without an error").toEqual([true, 0]);
+});
+it("R2.11 the ready check: the listener's tile and border faded, the portrait kept, title, prompt and buttons in the theme", () => {
+  const addon = loggedIn(POPUP_ENV);
+  addon.eval("ReadyCheckFrame:Show()");
+  // The ready check listener's parts as the skin leaves them.
+  const read = () => addon.eval(`local l = ReadyCheckListenerFrame
+    return { bg = l.Bg.__alpha, nine = l.NineSlice.__alpha, ninePiece = __faded(l.NineSlice), portrait = l.PortraitContainer.Portrait.__alpha, title = __titled(l.TitleContainer.TitleText),
+      prompt = __themed(ReadyCheckFrameText), yes = select("#", l.YesButton:GetRegions()) > 0, no = select("#", l.NoButton:GetRegions()) > 0,
+      panel = ns.Theme.PaintedCount(), errors = #ns.errors }`);
+  const first = read();
+  expect(first, "the listener's art faded, the portrait kept").toMatchObject({ bg: 0, nine: 0, ninePiece: true, title: true, prompt: true, yes: true, no: true, errors: 0 });
+  expect(first.portrait, "the portrait of who called the check is content").not.toBe(0);
+  addon.eval("ReadyCheckFrame:Hide() ReadyCheckFrame:Show()");
+  expect(read().panel, "a second show paints nothing new").toBe(first.panel);
+  const bare = loggedIn(`${WINDOWS_ENV} CreateFrame("Frame", "ReadyCheckFrame", UIParent):Hide()`);
+  bare.eval("ReadyCheckFrame:Show()");
+  const noTitle = loggedIn(`${POPUP_ENV} ReadyCheckListenerFrame.TitleContainer = nil ReadyCheckListenerFrame.NineSlice = nil`);
+  noTitle.eval("ReadyCheckFrame:Show()");
+  expect([bare, noTitle].map((a) => a.eval("return #ns.errors")), "a holder without its listener, or a listener without title or border, is no error").toEqual([0, 0]);
+});
+it("R2.11 the loot window's close button, the breath bars' caption and the guild bank's portrait", () => {
+  const env = `${LOOT_ROWS_ENV}${INSIDES_LUA} LootFrame.ClosePanelButton = CreateFrame("Button", nil, LootFrame)
+    __window("GuildBankFrame").Portrait = __art(GuildBankFrame) __art(GuildBankFrame)`;
+  const addon = loggedIn(env);
+  const off = loggedIn(env, { savedVariables: "VanguardDB.profiles = { Default = { Windows = { windows = false } } }" });
+  expect([off, addon].map((a) => a.eval("return select('#', LootFrame.ClosePanelButton:GetRegions()) > 0")), "the loot window's ClosePanelButton is a theme close button (the game's, with the group off, is not)").toEqual([false, true]);
+  addon.fire("ADDON_LOADED", "Blizzard_GuildBankUI");
+  addon.eval("GuildBankFrame:Show()");
+  expect(addon.eval("local out = {} for _, r in ipairs({ GuildBankFrame:GetRegions() }) do if r.__texture == 'TEST-ONLY-ART' then out[#out + 1] = r.__alpha end end return { GuildBankFrame.Portrait.__alpha, out[3] }"), "the guild bank's portrait is shown again, its other art faded").toEqual([1, 0]);
+  expect(addon.eval(`local ok = true for _, t in ipairs({ MirrorTimerContainer:GetChildren() }) do
+    local _, size = t.Text:GetFont() ok = ok and size == ns.Theme.RoleSize("barSmall") end return ok`), "each breath bar's caption takes the small bar text").toBe(true);
+});

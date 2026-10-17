@@ -860,6 +860,12 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 - Expect: no brown parchment behind the text on any page; the text sits on the window's darker flat panel and stays readable (light text, light headings); on the turn-in page each required item is a square with a thin quality-coloured border and no gold name plate, the required money is in the theme font; Accept, Decline, Complete Quest, Continue, Cancel and Goodbye are themed buttons; the gossip window's list sits on the flat panel and its Goodbye button is a themed button. With the dialog switched on, the game's own windows are not used.
 - If it fails, paste: a screenshot of the page and `/vg errors`.
 
+### 14.14.4 Popups, ready check, loot close button and breath caption
+
+- Do: open a popup with a text box (rename a guild rank or the delete-an-item confirmation that asks you to type), one with a dropdown or money boxes if you can find one (inviting to a guild bank tab, a group-finder role check), and look at the warning icon on a popup that has one (leave a group while queued). In a group, start a ready check (or have a friend do it). Open a loot window on a corpse and look at its top corner. Swim under water and look at the breath bar's caption.
+- Expect: a popup is a flat slate panel with no dark game tile or ornate border behind it; its warning icon and a progress bar's fill still show; the text box and money boxes are flat dark boxes; buttons are the theme's. The ready check is a flat panel with a light title and prompt, themed Ready and Not Ready buttons, the caller's portrait still showing and no game border. The loot window's close button is the same square as other windows' (red under the mouse). The breath bar's caption is small, light, outlined text on the bar. [Needs in game: whether a popup keeps any game border or corner art; if it does, paste a screenshot.]
+- If it fails, paste: a screenshot of the popup or ready check and `/vg errors`.
+
 ## 15. Talent planner
 
 ### 15.1 Bar and plan mode
