@@ -261,8 +261,8 @@ it("shared media: the bundled LibSharedMedia-3.0 carries Vanguard's font and bar
   const fonts = addon.eval("return __menuTexts()");
   expect(fonts, "the Font picker: Vanguard's own two fonts only (other addons' fonts are not listed)").toEqual(["Fira Sans Condensed", "the game's font"]);
   addon.eval('ns.Theme.Settings().font = "TEST-ONLY Font" ns.Theme.Refresh()');
-  expect(addon.eval("return { (ns.Theme.Font()), (ns.Theme.Font(true)), (Vanguard_Options.title:GetFont()), Vanguard_Options.reload:IsShown() }"), "a font another addon shares, once in use, is used for all text at once, no reload")
-    .toEqual(["Interface\\AddOns\\TestOnly\\Font.ttf", "Interface\\AddOns\\TestOnly\\Font.ttf", "Interface\\AddOns\\TestOnly\\Font.ttf", false]);
+  expect(addon.eval("return { (ns.Theme.Font()), (ns.Theme.Font(true)), (Vanguard_Options.title:GetFont()) }"), "a font another addon shares, once in use, is used for all text at once")
+    .toEqual(["Interface\\AddOns\\TestOnly\\Font.ttf", "Interface\\AddOns\\TestOnly\\Font.ttf", "Interface\\AddOns\\TestOnly\\Font.ttf"]);
   addon.eval('__dropdown("Bar texture")');
   const bars = addon.eval("return __menuTexts()");
   expect([bars.slice(0, 3), bars.includes("TEST-ONLY Bar"), bars.includes("Blizzard"), bars.slice(3).some((b) => /^Vanguard/.test(b))], "the Bar texture picker: Vanguard, Soft, Flat, then every shared bar texture but Vanguard's own")
@@ -316,6 +316,8 @@ it("the font picker lists Vanguard's two fonts and the one in use, not every fon
     ns.Theme.Settings().font = "TEST-ONLY Shared"`);
   used.eval('ns.Options.Show("general") __dropdown("Font")');
   expect(used.eval("return __menuTexts()"), "a font from another addon that is in use is listed after them").toEqual(["Fira Sans Condensed", "the game's font", "TEST-ONLY Shared"]);
+  used.eval('ns.Theme.Settings().font = "Fira Sans Condensed" ns.Theme.Refresh() __pick("TEST-ONLY Shared")');
+  expect(used.eval("return { (ns.Theme.Font()), Vanguard_Options.reload:IsShown() }"), "picking it from the row applies it at once, no reload").toEqual(["Interface\\AddOns\\TestOnly\\Font.ttf", false]);
 });
 
 it("the faction look on a Russian client keeps Fira Sans for headings (the faction fonts have no Cyrillic); the crest stays", () => {
@@ -391,7 +393,8 @@ it("game tabs: art faded, icon kept, a panel, and the selected tab raised while 
   expect(addon.eval("return #ns.errors"), "and nothing is reported").toBe(0);
   const bare = addon.eval("local b = CreateFrame('Button', nil, UIParent) ns.Theme.Tab(b) return __tabBg(b) ~= nil");
   expect(bare, "a button with none of the parts is panelled, nothing errors").toBe(true);
-  expect(addon.eval("__panelTab:Disable() return __raised(__panelTab)"), "a tab the game has disabled is raised, with the theme's raised colour").toBe(true);
+  addon.eval('__panelTab:Disable() ns.Theme.Settings().variant = "midnight" ns.Theme.Refresh()');
+  expect(addon.eval("return __raised(__panelTab)"), "a theme variant change repaints the selected tab in the variant's raised colour").toBe(true);
 });
 
 it("tooltip-like frames: a panel with a shadow and the game's NineSlice faded, once", () => {
