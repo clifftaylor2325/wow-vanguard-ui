@@ -49,6 +49,21 @@ local function dressKeys(frame, keys)
   end
 end
 
+-- A game font string in the theme font for a text role, at the size the game gave it; its colour left alone unless
+-- a theme colour is given.
+local function themeFont(fs, role, color)
+  local _, size = fs:GetFont()
+  T.Text(fs, role, color or false)
+  if size then T.TextSize(fs, size) end
+end
+
+-- The font string under a path of keys from frame (the game's gold headings and labels), in a role and the text colour
+-- at the game's size; a part this client lacks is skipped.
+local function textAt(frame, path, role)
+  local fs = GW.Part(frame, path)
+  if fs and fs.GetFont then themeFont(fs, role, "text") end
+end
+
 -- Scoreboards -----------------------------------------------------------------------------------
 
 -- Where the scoreboard (Content) and the match results (content) keep the table, and its tab strip.
@@ -58,6 +73,8 @@ GW.PVP_TAB_STRIP = { "TabContainer", "tabContainer" }
 GW.PVP_PUSH = { "requeueButton", "leaveButton" }
 -- The light the results play over their reward band when rewards come in: kept, it is an animation.
 GW.PVP_BURST = { "OrangeGlow", "OrangeSmoke" }
+-- Where the table's tab strip keeps the matchmaking line (the scoreboard's and the results' spellings).
+GW.PVP_MATCHMAKING = { "MatchmakingText", "matchmakingText" }
 
 -- The table's frame: its backdrop and inset border faded, a flat inset panel behind the rows (the rows, their
 -- column headers and the team colour wash over them stay the game's), the edge lines of its tab strip faded.
@@ -79,17 +96,63 @@ local function skinEarnings(content)
   T.FadeRegions(band, keep)
 end
 
+-- The reward item tiles the results make as the match ends (PVPMatchResultsLoot, from a pool), what a tile keeps:
+-- the item's picture and quality ring, its overlays and spec icon, the light and arrows the game plays on it.
+local REWARD_KEEP = { "Icon", "IconBorder", "IconOverlay", "IconOverlay2", "SpecIcon", "ItemBurst", "ItemBorderGlow", "GlowSmokeBurst" }
+-- The reward tiles already dressed (the pool hands the same buttons out again).
+local vgRewards = ns.FrameState("vgRewards")
+
+-- One reward tile as a quiet slot: its drop shadow and spec ring faded, the picture, quality ring and effects kept.
+local function dressReward(button)
+  if type(button) ~= "table" or not button.GetRegions or vgRewards[button] then return end
+  vgRewards[button] = true
+  local keep = GW.KeepKeys(button, REWARD_KEEP)
+  for _, arrow in ipairs(button.arrows or {}) do keep[arrow] = true end
+  T.FadeRegions(button, keep)
+  T.Slot(button, { quiet = true })
+end
+
+-- Every reward tile the results hold now (run after the game adds one, since the pool gives no event).
+local function dressRewards(frame)
+  local pool = frame.itemPool
+  if type(pool) ~= "table" or type(pool.EnumerateActive) ~= "function" then return end
+  for button in pool:EnumerateActive() do dressReward(button) end
+end
+
+-- The results' title (Victory, Defeat): the heading font and the text colour at the game's big size, its place unchanged.
+local function skinMatchTitle(title)
+  if type(title) ~= "table" or not title.GetFont then return end
+  local _, size = title:GetFont()
+  GW.SkinTitle(title)
+  if size then T.TextSize(title, size) end
+end
+
+-- The results' texts: the title, the Rewards and Progress headings, and the matchmaking line under the table (the
+-- scoreboard's has the same).
+local function skinMatchTexts(frame, content)
+  skinMatchTitle(frame.header)
+  textAt(content, "earningsContainer.rewardsContainer.header", "heading")
+  textAt(content, "earningsContainer.progressContainer.header", "heading")
+  local strip = partOf(content, GW.PVP_TAB_STRIP)
+  local line = strip and partOf(strip, GW.PVP_MATCHMAKING)
+  if line and line.GetFont then themeFont(line, "label", "text") end
+end
+
 -- The scoreboard and the match results: the window skin hugging the frame (the room its border art had is
--- inside the frame), the table, the reward band, the scroll bar and the push buttons; again after the game
--- lays the match's faction border on the frame (SetupArtwork). The tabs are dressed by WindowsTabs.lua.
+-- inside the frame), the table, the reward band, the faction banner over the top edge, the scroll bar and the push
+-- buttons; again after the game lays the match's faction border on the frame (SetupArtwork). The tabs are dressed by
+-- WindowsTabs.lua.
 function GW.SkinPvPMatch(frame)
   GW.Skin(frame, 0)
+  GW.FadeParts(frame.overlay or {}, { "decorator" })
   local content = partOf(frame, GW.PVP_CONTENT)
-  if content then skinTable(content) skinEarnings(content) end
+  if content then skinTable(content) skinEarnings(content) skinMatchTexts(frame, content) end
   local bar = frame.ScrollBar or frame.scrollBar
   if type(bar) == "table" then T.ScrollBar(bar) end
   dressKeys(frame, GW.PVP_PUSH)
+  dressRewards(frame)
   after(frame, "SetupArtwork", GW.SkinPvPMatch)
+  after(frame, "AddItemReward", dressRewards)
 end
 
 -- Blizzard_PVPMatch loads at login on Forever (LoadOnDemand 0); registered on demand as well, so a client
@@ -106,13 +169,34 @@ GW.AddButtons("PVPReadyDialog", { "PVPReadyDialogEnterBattleButton", "PVPReadyDi
 GW.AddButtons("PVPRoleCheckPopup", { "PVPRoleCheckPopupAcceptButton", "PVPRoleCheckPopupDeclineButton" })
 GW.AddButtons("PVPFramePopup", { "PVPFramePopupAcceptButton", "PVPFramePopupDeclineButton" })
 
+-- The ready dialog's battleground heading and status line under it, and its role's name beside the role icon.
+local READY_TEXTS = { { "instanceInfo.name", "heading" }, { "instanceInfo.statusText", "label" }, { "roleLabel", "name" } }
+-- The role check popup's three role buttons, each holding a check box.
+local ROLE_BUTTONS = { "TankIcon", "HealerIcon", "DPSIcon" }
+
+-- The ready dialog's parts: the rule under the battleground's name faded (the child holds only that texture) and its
+-- gold texts in the text colour.
+local function skinReadyParts(frame)
+  GW.FadeParts(frame, { "instanceInfo" })
+  for _, text in ipairs(READY_TEXTS) do GW.SkinText(GW.Part(frame, text[1]), text[2], "text") end
+end
+
+-- A role button's check box (the role icon and its shortage and lock art stay) as a theme check box.
+local function skinRoleCheck(role)
+  local box = type(role) == "table" and role.checkButton
+  if type(box) == "table" and box.GetRegions and box.HookScript then T.CheckBox(box) end
+end
+
 -- A queue dialog: its dialog border and art faded (its content art kept), a flat panel with a soft shadow hugging
--- it, the close and push buttons themed, and the invite's hide button as a window control with the Minimize glyph.
--- The role buttons keep their art (it is their role icon and check).
+-- it, the close and push buttons themed (the ready dialog's close button is a hide button: GW.HIDE_BUTTONS), the invite's
+-- hide button as a window control with the Minimize glyph, the ready dialog's heading and texts, and the role check
+-- popup's check boxes. The role buttons keep their art (it is their role icon).
 function GW.SkinPvPDialog(frame)
   GW.Skin(frame, 0)
   local hide = frame.minimizeButton
   if type(hide) == "table" and hide.CreateTexture then T.WindowControl(hide, "Minimize") end
+  skinReadyParts(frame)
+  GW.EachKey(frame, ROLE_BUTTONS, skinRoleCheck)
 end
 
 -- The ready popup draws itself on a child (ReadyStatus: the border, the title and the close button): every child
@@ -166,13 +250,6 @@ function GW.SkinWidgetBox(box)
 end
 
 GW.Add("pvp", "framed", { "UIWidgetTopCenterContainerFrame", "UIWidgetBelowMinimapContainerFrame" }, GW.SkinWidgetBox)
-
--- A game font string in the theme font for a text role, at the size the game gave it; its colour left alone.
-local function themeFont(fs, role)
-  local _, size = fs:GetFont()
-  T.Text(fs, role, false)
-  if size then T.TextSize(fs, size) end
-end
 
 -- One countdown bar of the match timer, once: the theme's bar texture, its border and backdrop faded, a flat HUD
 -- panel, and the time in the theme font at the game's size. The big numbers stay the game's.

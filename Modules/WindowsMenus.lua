@@ -32,13 +32,16 @@ end
 -- A menu just opened (EventRegistry "MenuProxy.OnShow", fired by MenuProxyMixin:OnShow), with the
 -- menus group on: the background the game attached for this open faded, the gamepad focus glow
 -- (Camelot's MenuTemplateBase.FrameGlow) faded, and the panel behind it. Only the menu frame's own
--- textures are touched: never its rows, which run the unit menu's secure actions, its anchors or its keys.
+-- textures are touched: never its rows, which run the unit menu's secure actions, its anchors or its keys. A long menu's
+-- scroll bar (a child of the menu, made with it) is put in the theme through the theme's own side tables, so nothing is
+-- written on the menu.
 function GW.SkinContextMenu(_, menu)
   if not (GW.settings and GW.settings.menus) then return end
   if type(menu) ~= "table" or type(menu.GetRegions) ~= "function" then return end
   T.FadeRegions(menu)
   local glow = menu.FrameGlow
   if type(glow) == "table" and glow.SetAlpha then glow:SetAlpha(0) end
+  if type(menu.ScrollBar) == "table" then T.ScrollBar(menu.ScrollBar) end
   menuPanel(menu)
 end
 
@@ -69,3 +72,40 @@ function GW.SkinDropDownList(list)
 end
 
 GW.Add("menus", "framed", GW.DROPDOWN_LISTS, GW.SkinDropDownList)
+
+-- A heading row's text (the game's disabled gold font) in the text colour, by the row's text name; only the colour
+-- changes, by r, g, b so a later row filled into the same button is not recoloured by a theme refresh.
+local function colorHeading(name)
+  local fs = _G[name]
+  if type(fs) == "table" and fs.SetTextColor then T.Color(fs, T.RGB("text")) end
+end
+
+-- A row's tick or box glyph (the game's gold art on a plain texture) in a theme colour: greyed first so the colour
+-- reads true. A row with an icon of its own (a custom check) is shown in the icon's own colours (white).
+local function tintGlyph(glyph, token, custom)
+  if type(glyph) ~= "table" or not glyph.SetVertexColor then return end
+  if not custom and glyph.SetDesaturated then glyph:SetDesaturated(true) end
+  T.Tint(glyph, custom and "white" or token)
+end
+
+-- The row the game's UIDropDownMenu_AddButton(info, level) just made: a heading's text in the text colour, the tick in the
+-- accent and the empty box in the quiet text colour. The row's highlight and the rest stay the game's.
+local function dressDropdownRow(info, level)
+  local list = _G["DropDownList" .. (level or 1)]
+  if not (GW.settings and GW.settings.menus) or type(info) ~= "table" or type(list) ~= "table" then return end
+  local row = (list:GetName() or "") .. "Button" .. tostring(list.numButtons)
+  if info.isTitle then colorHeading(row .. "NormalText") end
+  if info.notCheckable then return end
+  local custom = info.customCheckIconAtlas or info.customCheckIconTexture
+  tintGlyph(_G[row .. "Check"], "accentText", custom)
+  tintGlyph(_G[row .. "UnCheck"], "text2", custom)
+end
+
+-- Listens for the old dropdown's rows being made, where the client has the call. Done at login, after the game's
+-- own files have loaded; the menus group's switch is read on each row.
+function GW.WatchDropdownRows()
+  if type(hooksecurefunc) ~= "function" or type(_G.UIDropDownMenu_AddButton) ~= "function" then return end
+  hooksecurefunc("UIDropDownMenu_AddButton", ns.Guard("hook UIDropDownMenu_AddButton", dressDropdownRow))
+end
+
+ns.On("PLAYER_LOGIN", GW.WatchDropdownRows)

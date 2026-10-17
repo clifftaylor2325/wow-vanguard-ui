@@ -202,10 +202,15 @@ function GW.BesideClose(part, close)
   part:SetPoint("RIGHT", close, "CENTER", -T.PixelRound(close, T.CONTROL.step - T.CONTROL.tile / 2), 0)
 end
 
--- A window's close button (when it has one) in the theme and in its corner (GW.PlaceControls).
-function GW.DressClose(frame, close)
+-- The windows whose close button only hides them (the game's UIPanelHideButton: the dialog hides and its queue or
+-- check stays): it takes the Minimize glyph on the grey control tile, not the red close cross.
+GW.HIDE_BUTTONS = { PVPReadyDialog = true, ReadyStatus = true }
+
+-- A window's close button (when it has one) in the theme and in its corner (GW.PlaceControls); with hide set, the
+-- button of a window that only hides (GW.HIDE_BUTTONS) as a Minimize control.
+function GW.DressClose(frame, close, hide)
   if type(close) ~= "table" or not close.CreateTexture then return end
-  T.CloseButton(close)
+  if hide then T.WindowControl(close, "Minimize") else T.CloseButton(close) end
   if close.GetPoint then GW.PlaceControls(frame, close) end
 end
 
@@ -217,7 +222,7 @@ end
 
 -- The close, maximize and minimize buttons, title and push buttons in the theme.
 local function dressParts(frame, name)
-  GW.DressClose(frame, frame.CloseButton or (name and _G[name .. "CloseButton"]))
+  GW.DressClose(frame, frame.CloseButton or (name and _G[name .. "CloseButton"]), GW.HIDE_BUTTONS[name or ""])
   GW.DressMaxMin(frame)
   raiseTitle(frame, name)
   GW.SkinTitle((type(frame.TitleContainer) == "table" and frame.TitleContainer.TitleText) or frame.TitleText)
