@@ -481,6 +481,52 @@ end
 
 GW.Add("social", "popups", { "RolePollPopup", "LFGInvitePopup" }, GW.SkinRolePopup)
 
+-- Raid tab --------------------------------------------------------------------------------------
+
+-- How many group boxes and member buttons the raid tab has (RaidGroup1-8, RaidGroupButton1-40).
+GW.RAID_GROUPS, GW.RAID_BUTTONS = 8, 40
+-- The tab's own push buttons, and its labels the game colors for its own look.
+GW.RAID_PUSH_BUTTONS = { "RaidFrameRaidInfoButton", "RaidFrameConvertToRaidButton" }
+GW.RAID_LABELS = { "RaidFrameAllAssistCheckButtonText" }
+
+-- One group box: its outline and title art faded, an inset panel behind its slots.
+local function dressRaidGroup(i)
+  local group = _G["RaidGroup" .. i]
+  if type(group) ~= "table" or not group.GetRegions then return end
+  T.FadeRegions(group)
+  fadeFrameArt(_G["RaidGroup" .. i .. "Label"])
+  T.Panel(group, { inset = true, noSheen = true })
+end
+
+-- The member buttons as flat buttons. They are secure unit buttons: only textures are touched, and
+-- never in combat (the game recolors each button's name text itself, so the class color stays).
+local function dressRaidButtons()
+  for i = 1, GW.RAID_BUTTONS do
+    local button = _G["RaidGroupButton" .. i]
+    if type(button) == "table" and button.CreateTexture then T.Button(button) end
+  end
+end
+
+-- The raid roster tab: its group boxes, member buttons, push buttons and labels. (The tab sits inside the
+-- friends window, which is panelled already; the checkbox keeps the game's art.)
+function GW.SkinRaidTab()
+  for i = 1, GW.RAID_GROUPS do dressRaidGroup(i) end
+  ns.OutOfCombat(dressRaidButtons, "vgSocialRaidButtons")
+  for _, name in ipairs(GW.RAID_PUSH_BUTTONS) do
+    if type(_G[name]) == "table" and _G[name].CreateTexture then T.Button(_G[name]) end
+  end
+  GW.PaintNamed(GW.RAID_LABELS, "text")
+end
+
+-- The group boxes and buttons are made when Blizzard_RaidUI loads, after the tab itself is skinned.
+local function onRaidUILoaded(_, addon)
+  if addon == "Blizzard_RaidUI" and GW.settings and GW.settings.social then GW.SkinRaidTab() end
+end
+ns.On("ADDON_LOADED", onRaidUILoaded)
+
+GW.Add("social", "onDemand", "Blizzard_RaidUI", { "RaidFrame" }, GW.SkinRaidTab)
+GW.Add("social", "framed", { "RaidParentFrame" })
+
 -- Toasts ----------------------------------------------------------------------------------------
 
 -- The toasts' lines (parentKeys) with their text role and colour. Top and middle lines keep the game's
@@ -533,49 +579,3 @@ function GW.SkinToast(frame)
 end
 
 GW.Add("social", "popups", { "BNToastFrame", "TimeAlertFrame" }, GW.SkinToast)
-
--- Raid tab --------------------------------------------------------------------------------------
-
--- How many group boxes and member buttons the raid tab has (RaidGroup1-8, RaidGroupButton1-40).
-GW.RAID_GROUPS, GW.RAID_BUTTONS = 8, 40
--- The tab's own push buttons, and its labels the game colors for its own look.
-GW.RAID_PUSH_BUTTONS = { "RaidFrameRaidInfoButton", "RaidFrameConvertToRaidButton" }
-GW.RAID_LABELS = { "RaidFrameAllAssistCheckButtonText" }
-
--- One group box: its outline and title art faded, an inset panel behind its slots.
-local function dressRaidGroup(i)
-  local group = _G["RaidGroup" .. i]
-  if type(group) ~= "table" or not group.GetRegions then return end
-  T.FadeRegions(group)
-  fadeFrameArt(_G["RaidGroup" .. i .. "Label"])
-  T.Panel(group, { inset = true, noSheen = true })
-end
-
--- The member buttons as flat buttons. They are secure unit buttons: only textures are touched, and
--- never in combat (the game recolors each button's name text itself, so the class color stays).
-local function dressRaidButtons()
-  for i = 1, GW.RAID_BUTTONS do
-    local button = _G["RaidGroupButton" .. i]
-    if type(button) == "table" and button.CreateTexture then T.Button(button) end
-  end
-end
-
--- The raid roster tab: its group boxes, member buttons, push buttons and labels. (The tab sits inside the
--- friends window, which is panelled already; the checkbox keeps the game's art.)
-function GW.SkinRaidTab()
-  for i = 1, GW.RAID_GROUPS do dressRaidGroup(i) end
-  ns.OutOfCombat(dressRaidButtons, "vgSocialRaidButtons")
-  for _, name in ipairs(GW.RAID_PUSH_BUTTONS) do
-    if type(_G[name]) == "table" and _G[name].CreateTexture then T.Button(_G[name]) end
-  end
-  GW.PaintNamed(GW.RAID_LABELS, "text")
-end
-
--- The group boxes and buttons are made when Blizzard_RaidUI loads, after the tab itself is skinned.
-local function onRaidUILoaded(_, addon)
-  if addon == "Blizzard_RaidUI" and GW.settings and GW.settings.social then GW.SkinRaidTab() end
-end
-ns.On("ADDON_LOADED", onRaidUILoaded)
-
-GW.Add("social", "onDemand", "Blizzard_RaidUI", { "RaidFrame" }, GW.SkinRaidTab)
-GW.Add("social", "framed", { "RaidParentFrame" })
