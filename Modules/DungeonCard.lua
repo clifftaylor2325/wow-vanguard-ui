@@ -3,7 +3,8 @@
 --   * your quests for it: from your own quest log (in a dungeon, the quests the
 --     client puts on its map; anywhere else, the log's dungeon and raid quests),
 --     lowest level first, "done" when turned in ready;
---   * the keys in your bags.
+--   * the keys in your bags;
+--   * when you last came here before this visit (kept per character, per dungeon).
 -- Everything comes from the client and your own log: no dungeon, quest or loot
 -- database ships. Any value the client hides or lacks is left out, never
 -- compared, and nothing is read in combat.
@@ -62,6 +63,41 @@ function DC.Heading()
   local group = ns.PlainNumber(size)
   if group and group > 0 then parts[#parts + 1] = string.format("%d-player%s", group, plainText(difficulty) and (" " .. difficulty) or "") end
   return table.concat(parts, " · ")
+end
+
+-- Last run -------------------------------------------------------------------------------------
+
+-- Seconds in a day; a re-entry (a reload, a quick run back in) inside SAME_VISIT counts as the same visit.
+DC.DAY, DC.SAME_VISIT = 86400, 3600
+
+-- The dungeon you stand in, by the client's instance ID, or nil.
+local function instanceID()
+  return ns.PlainNumber((select(8, ask("GetInstanceInfo"))))
+end
+
+-- This character's visits, { [instanceID] = { at = time of the latest visit, prior = the one before } }.
+local function visits()
+  if type(VanguardCharDB) ~= "table" then return {} end
+  if type(VanguardCharDB.dungeonRuns) ~= "table" then VanguardCharDB.dungeonRuns = {} end
+  return VanguardCharDB.dungeonRuns
+end
+
+-- Notes a visit to the dungeon you stand at: the latest visit becomes the prior one, unless it was this same visit.
+function DC.Record()
+  local id, now = instanceID(), type(time) == "function" and time()
+  if not id or not now or ns.InCombat() then return end
+  local seen = visits()[id]
+  if type(seen) == "table" and type(seen.at) == "number" and now - seen.at < DC.SAME_VISIT then return end
+  visits()[id] = { at = now, prior = type(seen) == "table" and seen.at or nil }
+end
+
+-- "Last run: today", "yesterday" or "5 days ago" for the dungeon you stand at, or nil when there was no earlier visit.
+function DC.LastRun()
+  local id, now = instanceID(), type(time) == "function" and time()
+  local seen = id and visits()[id]
+  if not now or type(seen) ~= "table" or type(seen.prior) ~= "number" then return nil end
+  local days = math.max(0, math.floor((now - seen.prior) / DC.DAY))
+  return "Last run: " .. (days == 0 and "today" or days == 1 and "yesterday" or days .. " days ago")
 end
 
 -- Quests ---------------------------------------------------------------------------------------
@@ -163,6 +199,8 @@ function DC.Lines()
   if ns.InCombat() then return {} end
   local out, heading = {}, DC.Heading()
   if heading then out[1] = { heading, "head" } end
+  local last = heading and DC.LastRun()
+  if last then out[#out + 1] = { last } end
   local quests, n = questLines(heading ~= nil)
   if n > 0 then out[#out + 1] = { heading and "Your quests here" or "Dungeon quests in your log", "head" } end
   for _, text in ipairs(quests) do out[#out + 1] = { text } end
