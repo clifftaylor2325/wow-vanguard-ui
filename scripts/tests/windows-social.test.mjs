@@ -690,19 +690,22 @@ const TOAST_ENV = WINDOWS_ENV + `
   bn.TooltipFrame.Text = bn.TooltipFrame:CreateFontString(nil, "ARTWORK") bn.TooltipFrame.Text:SetFont("TEST-ONLY-FONT", 10, "")
   local time = __toast("TimeAlertFrame")
   time.Text = time:CreateFontString(nil, "ARTWORK") time.Text:SetFont("TEST-ONLY-FONT", 12, "")
-  function __showToast()
-    BNToastFrame.TopLine:SetText("TEST-ONLY Friend") BNToastFrame.BottomLine:SetTextColor(0.5, 0.5, 0.5) BNToastFrame:Show()
+  function __showToast(online)
+    BNToastFrame.TopLine:SetText("|cff82c5ffTEST-ONLY Friend|r")
+    if online then BNToastFrame.BottomLine:SetText("|cff999999TEST-ONLY has come online|r")
+    else BNToastFrame.BottomLine:SetText("TEST-ONLY has gone offline") BNToastFrame.BottomLine:SetTextColor(0.5, 0.5, 0.5) end
+    BNToastFrame:Show()
   end
 `;
-// What the toasts look like: the Battle.net toast's art alphas, icon alpha, panel, bottom line colour, top and bottom
-// line sizes, close glyph, whether the X kept the game's anchor, its tooltip's NineSlice alpha, panel and text colour;
-// the time-played alert's panel and line size; the painted count.
+// What the toasts look like: the Battle.net toast's art alphas, icon alpha, panel, bottom line colour and text, top line
+// text, top and bottom line sizes, close glyph, whether the X kept the game's anchor, its tooltip's NineSlice alpha, panel
+// and text colour; the time-played alert's panel and line size; the painted count.
 const toastLook = (addon) => addon.eval(`
   local function painted(f) for _, r in ipairs({ f:GetRegions() }) do if r:GetObjectType() == "Texture" and r.__texture ~= "TEST-ONLY-ART" and r.__texture ~= "TEST-ONLY-ICON" and r:GetAlpha() ~= 0 then return true end end return false end
   local bn, time = BNToastFrame, TimeAlertFrame
   local art = {} for _, r in ipairs({ bn:GetRegions() }) do if r.__texture == "TEST-ONLY-ART" then art[#art + 1] = r:GetAlpha() end end
   local glyph = false for _, r in ipairs({ bn.CloseButton:GetRegions() }) do if r.__layer == "OVERLAY" and type(r.__texture) == "string" then glyph = r.__texture:match("Icons\\\\(%w+)$") or glyph end end
-  return { art = art, icon = bn.IconTexture:GetAlpha(), panel = painted(bn), bottom = bn.BottomLine.__textColor, top = select(2, bn.TopLine:GetFont()), small = select(2, bn.BottomLine:GetFont()),
+  return { art = art, icon = bn.IconTexture:GetAlpha(), panel = painted(bn), bottom = bn.BottomLine.__textColor, bottomText = bn.BottomLine:GetText(), topText = bn.TopLine:GetText(), top = select(2, bn.TopLine:GetFont()), small = select(2, bn.BottomLine:GetFont()),
     glyph = glyph, anchored = bn.CloseButton.__points.TOPRIGHT ~= nil, tipNine = bn.TooltipFrame.NineSlice:GetAlpha(), tipPanel = painted(bn.TooltipFrame), tipText = bn.TooltipFrame.Text.__textColor,
     timePanel = painted(time), timeText = select(2, time.Text:GetFont()), painted = ns.Theme.PaintedCount() }`);
 
@@ -711,20 +714,23 @@ it("social toasts: the Battle.net and time-played toasts are flat tooltip panels
   addon.eval("__showToast() TimeAlertFrame:Show()");
   const t = toastLook(addon);
   expect([t.art, t.icon, t.panel, t.glyph, t.anchored], "backdrop and glow at alpha 0, the Battle.net icon kept, a panel, the close glyph on the X, which stays in the toast's corner").toEqual([[0, 0, 0, 0], 1, true, "CloseMark", true]);
-  expect([isTok(addon, t.bottom, "text2"), t.top, t.small], "the greyed bottom line in secondary text; top line at label size, bottom at small").toEqual([true, 12, 10]);
+  expect([isTok(addon, t.bottom, "text2"), t.bottomText, t.top, t.small], "the bottom line the game greyed by SetTextColor: in secondary text, its words kept; top line at label size, bottom at small").toEqual([true, "TEST-ONLY has gone offline", 12, 10]);
   expect([t.tipNine, t.tipPanel, isTok(addon, t.tipText, "text")], "its hover tooltip: NineSlice faded, a panel, light text").toEqual([0, true, true]);
   expect([t.timePanel, t.timeText], "the time-played alert: a panel, its line at label size").toEqual([true, 12]);
-  addon.eval("BNToastFrame:Hide() TimeAlertFrame:Hide() __showToast() TimeAlertFrame:Show()");
+  addon.eval("BNToastFrame:Hide() TimeAlertFrame:Hide() __showToast(true) TimeAlertFrame:Show()");
   const again = toastLook(addon);
-  expect([again.painted, isTok(addon, again.bottom, "text2")], "the next toast (the game greys the line again) is re-dressed without piling up").toEqual([t.painted, true]);
+  expect([again.painted, isTok(addon, again.bottom, "text2"), again.bottomText, again.topText], "the next toast, a friend coming online (the game writes the grey into the text): re-dressed without piling up, the grey code stripped so the line reads in secondary text, the name's Battle.net blue kept")
+    .toEqual([t.painted, true, "TEST-ONLY has come online", "|cff82c5ffTEST-ONLY Friend|r"]);
+  addon.eval("BNToastFrame:Hide() BNToastFrame.BottomLine:SetText(__wfgWorld.secret(1)) BNToastFrame:Show()");
+  expect(addon.eval("return issecretvalue(BNToastFrame.BottomLine:GetText())"), "a line whose text the client hides is left as it is").toBe(true);
   expect([windowErrors(addon), addon.eval("return #ns.errors")], "no errors").toEqual(["none", 0]);
 });
 
 it("social toasts: the switch off leaves them the game's; a toast missing its parts shows cleanly", () => {
   const off = loggedIn(TOAST_ENV, OFF);
-  off.eval("__showToast()");
+  off.eval("__showToast(true)");
   const t = toastLook(off);
-  expect([t.art, t.panel, t.glyph, off.eval("return ns.FrameState('vgWindow')[BNToastFrame] == nil")], "art kept, no panel, no glyph, not watched").toEqual([[1, 1, 1, 1], false, false, true]);
+  expect([t.art, t.panel, t.glyph, t.bottomText, off.eval("return ns.FrameState('vgWindow')[BNToastFrame] == nil")], "art kept, no panel, no glyph, the game's grey code left in the line, not watched").toEqual([[1, 1, 1, 1], false, false, "|cff999999TEST-ONLY has come online|r", true]);
   const bare = loggedIn(WINDOWS_ENV + 'local f = CreateFrame("Frame", "BNToastFrame", UIParent) f:Hide()');
   bare.eval("BNToastFrame:Show()");
   expect([windowErrors(bare), bare.eval("return #ns.errors"), bare.eval(`${PAINTED} return painted(BNToastFrame)`)], "a toast with no lines, icon, X or tooltip: a panel, no errors").toEqual(["none", 0, true]);

@@ -485,15 +485,27 @@ GW.Add("social", "popups", { "RolePollPopup", "LFGInvitePopup" }, GW.SkinRolePop
 
 -- The toasts' lines (parentKeys) with their text role and colour. Top and middle lines keep the game's
 -- colour (a friend's name in Battle.net blue); the bottom line's grey is hard to read on the dark panel,
--- so it goes to the theme's secondary text on each show (the game greys it again before every toast).
+-- so it goes to the theme's secondary text on each show (the game greys it again before every toast,
+-- by SetTextColor or, for a friend coming online, by a colour code inside the text itself).
 -- Text is the time-played alert's one line.
 GW.TOAST_LINES = { TopLine = { "label", false }, MiddleLine = { "small", false }, BottomLine = { "small", "text2" }, DoubleLine = { "label", false }, Text = { "label", false } }
 
--- A toast's texts in their roles, those this toast has.
+-- A line's text with the game's inline colour codes stripped, so the role colour can show: SetTextColor
+-- cannot override a colour the game wrote into the text. Text the client hides is left alone.
+local function uncolourText(fs)
+  local text = fs:GetText()
+  if ns.IsSecret(text) or type(text) ~= "string" or not text:find("|c", 1, true) then return end
+  fs:SetText((text:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", "")))
+end
+
+-- A toast's texts in their roles, those this toast has; a line given a role colour loses the game's inline colour first.
 local function dressToastLines(frame)
   for key, role in pairs(GW.TOAST_LINES) do
     local fs = frame[key]
-    if type(fs) == "table" and type(fs.SetFont) == "function" then T.Text(fs, role[1], role[2]) end
+    if type(fs) == "table" and type(fs.SetFont) == "function" then
+      if role[2] then uncolourText(fs) end
+      T.Text(fs, role[1], role[2])
+    end
   end
 end
 
