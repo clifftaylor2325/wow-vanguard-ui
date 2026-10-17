@@ -63,6 +63,19 @@ it("beside the profession window, a recipe's reagents, what they cost, what it s
   expect([p.left - w.right, p.top, p.width], "right of the window, past its side tabs, from its top").toEqual([52, w.top, 240]);
 });
 
+it("the panel is a card: its heading is the card title in its corner, its padding the HUD card's gap, its controls on the control scale", () => {
+  const addon = crafter();
+  addon.world.openProfession(100);
+  const [heading, gap, tight, buttonH, controlH] = addon.eval("local T = ns.Theme return { T.RoleSize('heading'), T.SPACE.gap, T.SPACE.tight, T.BUTTON_H, T.CONTROL_H }");
+  const t = addon.frame("Vanguard_CraftingPanel.title");
+  expect([t.text, t.font.size, isTok(addon, t.textColor, "text")], "the recipe's name in the heading role and the text colour").toEqual(["TEST-ONLY Linen Bag", heading, true]);
+  const at = addon.eval(`local f = Vanguard_CraftingPanel local t = f.title
+    return { t:GetLeft() - f:GetLeft(), f:GetTop() - t:GetTop(), t:GetWidth(), f.add:GetHeight(), f.crafts:GetHeight(), f:GetRight() - f.add:GetRight(), f.add:GetBottom() - f:GetBottom(),
+      f.crafts:GetLeft() - f.craftsLabel:GetRight(), f.add:GetLeft() - f.crafts:GetRight(), f.lines[3].label:GetBottom() - f.add:GetTop(), f.rows[1]:GetHeight(), ${CR}.PAD }`);
+  expect(at.slice(0, 7), "the title at the corner (T.SPACE.gap in, one line the panel's width less the padding), the button and the box on the control scale, the button a gap from the corner").toEqual([gap, gap, 240 - 2 * gap, buttonH, controlH, gap, gap]);
+  expect(at.slice(7, 9), "the label T.SPACE.tight left of the box, the box a gap left of the button").toEqual([tight, gap]);
+  expect([at[9] >= gap, at[10], at[11]], "the totals end a gap above the button; reagent rows as tall as the shop's; the padding the gap").toEqual([true, addon.eval("return ns.GetModule('AuctionHelper').ROW_H"), gap]);
+});
 it("another recipe repaints it: an enchant sells nothing, a recipe that makes several sells their average, a loss is red", () => {
   const addon = crafter("", {});
   addon.world.openProfession(101);

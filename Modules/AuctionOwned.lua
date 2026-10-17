@@ -316,10 +316,11 @@ local function paintNext(c)
   T.Color(c.cancelNext.text, nextOne and "text" or "disabled")
 end
 
--- The status line while there are no rows: what Check undercuts does, or that none are up.
+-- The status line while there are no rows, an empty-state line (the table's second return): what Check
+-- undercuts does, or that none are up.
 local function ownedStatus()
   if #AH.owned > 0 then return "" end
-  return AH.checked and "No auctions of yours are up." or "Check undercuts lists your auctions and marks the ones someone asks less for."
+  return AH.checked and "No auctions of yours are up." or "Check undercuts lists your auctions and marks the ones someone asks less for.", true
 end
 
 -- Your auctions from the table's scroll offset, and the toolbar's line and button.
@@ -331,10 +332,10 @@ function AH.PaintOwned()
   paintNext(c)
 end
 
--- A button whose tooltip says what it costs (Cancel and Cancel next undercut), 18 high.
+-- A button whose tooltip says what it costs (Cancel and Cancel next undercut), T.CONTROL_H high.
 local function costButton(parent, text, onClick, width, tip)
   local b = W.Button(parent, text, onClick, width)
-  b:SetHeight(18)
+  b:SetHeight(T.CONTROL_H)
   b:SetScript("OnEnter", tip)
   b:SetScript("OnLeave", function() GameTooltip:Hide() end)
   return b
@@ -344,19 +345,19 @@ end
 local function ownedButtons(r)
   r.cancel = costButton(r, "Cancel", function(self) AH.Cancel(self:GetParent().id) end, 60, cancelTip)
   r.relist = W.Button(r, "Relist", function(self) AH.Relist(self:GetParent().id) end, 60)
-  for _, b in ipairs({ r.cancel, r.relist }) do b:SetHeight(18) b:SetPoint("RIGHT", 0, 0) end
+  for _, b in ipairs({ r.cancel, r.relist }) do b:SetHeight(T.CONTROL_H) b:SetPoint("RIGHT", 0, 0) end
 end
 
 -- The card's toolbar: Check undercuts at the right, Cancel next undercut (what it cancels next
 -- and the cost on hover) left of it, and the line beside the heading.
 local function toolbar(c)
   c.check = W.Button(c, "Check undercuts", function() AH.CheckUndercuts() end, 120)
-  c.check:SetHeight(18)
+  c.check:SetHeight(T.CONTROL_H)
   c.check:SetPoint("TOPRIGHT", 0, 2)
   c.cancelNext = costButton(c, "Cancel next undercut", function() AH.CancelNext() end, 140, nextTip)
-  c.cancelNext:SetPoint("RIGHT", c.check, "LEFT", -4, 0)
+  c.cancelNext:SetPoint("RIGHT", c.check, "LEFT", -T.SPACE.tight, 0)
   c.summary = T.Text(c:CreateFontString(nil, "OVERLAY"), "small", "text2")
-  c.summary:SetPoint("LEFT", c.title, "RIGHT", 8, 0)
+  c.summary:SetPoint("LEFT", c.title, "RIGHT", T.SPACE.gap, 0)
 end
 
 -- The Your auctions card on a column, from y (h tall): the toolbar, and the rows as a table

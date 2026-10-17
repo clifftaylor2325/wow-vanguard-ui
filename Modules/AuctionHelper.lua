@@ -51,20 +51,23 @@ local AH = ns.Module("AuctionHelper", { defaults = { panel = true, tooltip = tru
 
 -- Seconds between scans, listings read per frame of a scan; the Sell card's column's width, the
 -- room between the cards' boxes and the column's edges, and between a box's border and what it
--- holds; the scan card's height; the Lists pane's width, and the height of a card's toolbar
+-- holds (a card's inset, T.SPACE.gap, as the theme sets it for the cards that sit on the game's
+-- window); the scan card's height; the Lists pane's width, and the height of a card's toolbar
 -- line (the heading with buttons on its right).
 AH.SCAN_GAP, AH.SCAN_ROWS = 900, 400
-AH.WIDTH, AH.PAD, AH.INSET, AH.SCAN_H = 300, 8, 8, 80
+AH.WIDTH, AH.PAD, AH.INSET, AH.SCAN_H = 300, T.SPACE.gap, T.SPACE.gap, 80
 AH.PANE_W, AH.TOOLBAR_H = 240, 24
--- A page's insets on the window: from its sides, under its title, above its money line.
-AH.PAGE_X, AH.PAGE_TOP, AH.PAGE_BOTTOM = 4, 30, 30
+-- A page's insets on the window: from its sides (T.SPACE.tight), under its title and above its money
+-- line (30 each: the room the game's own window leaves for them).
+AH.PAGE_X, AH.PAGE_TOP, AH.PAGE_BOTTOM = T.SPACE.tight, 30, 30
 -- The helper's two tabs, as the window's tab row and title name them: the Shopping page (your lists,
 -- Deals, Upgrades and the scan) and the Selling page (the Sell card, Up now and your auctions).
 AH.TAB_NAMES = { "Lists", "Posting" }
 -- Searches: seconds between two (at most 60 a minute), and how long one waits for its results.
 AH.SEND_GAP, AH.FALLBACK = 1, 2
--- A result row's height (the shop's rows and your auctions'), and the icon of an item the client doesn't know.
-AH.ROW_H, AH.UNKNOWN_ICON = 20, "Interface\\Icons\\INV_Misc_QuestionMark"
+-- A result row's height (the shop's rows and your auctions': as tall as an inline control, T.CONTROL_H,
+-- so a button in a row fits it), and the icon of an item the client doesn't know.
+AH.ROW_H, AH.UNKNOWN_ICON = T.CONTROL_H, "Interface\\Icons\\INV_Misc_QuestionMark"
 
 -- Helpers ------------------------------------------------------------------------------------
 
@@ -84,15 +87,14 @@ local function box(f, y, h)
 end
 
 -- A card on a column, in its box (h tall from y): what it holds sits AH.INSET in from the box's
--- border, its heading at the top left; the card (c.box its box) is what its parts hang on.
+-- border, its heading (a card's title, ns.WindowTitle kind "card", on the box at the same spot as the
+-- card's own top left); the card (c.box its box) is what its parts hang on.
 function AH.Card(f, title, y, h)
   local c = CreateFrame("Frame", nil, box(f, y, h))
   c.box = c:GetParent()
   c:SetPoint("TOPLEFT", AH.INSET, -AH.INSET)
   c:SetPoint("BOTTOMRIGHT", -AH.INSET, AH.INSET)
-  c.title = T.Text(c:CreateFontString(nil, "OVERLAY"), "heading")
-  c.title:SetPoint("TOPLEFT")
-  c.title:SetText(title)
+  c.title = ns.WindowTitle(c.box, title, { kind = "card" }).title
   return c
 end
 
@@ -114,19 +116,18 @@ function AH.RowParts(r)
   r.icon:SetSize(16, 16)
   r.icon:SetPoint("LEFT", 2, 0)
   r.name = T.Text(r:CreateFontString(nil, "OVERLAY"), "label")
-  r.name:SetPoint("LEFT", r.icon, "RIGHT", 4, 0)
+  r.name:SetPoint("LEFT", r.icon, "RIGHT", T.SPACE.tight, 0)
   r.name:SetPoint("RIGHT", r, "RIGHT", -124, 0)
   r.name:SetWordWrap(false)
   r.price, r.qty = rowText(r, "number", "gold", -2), rowText(r, "small", "text2", -78)
 end
 
--- Result row i of a card, AH.ROW_H tall from y, with a hover wash; it takes both mouse buttons.
+-- Result row i of a card, AH.ROW_H tall from y: a list row (W.Row: the hover wash, and row:SetSelected for
+-- the one selected look); it takes both mouse buttons.
 function AH.Row(c, i, y, onClick)
-  local r = CreateFrame("Button", nil, c)
-  r:SetHeight(AH.ROW_H)
+  local r = W.Row(c, AH.ROW_H)
   r:SetPoint("TOPLEFT", 0, y - (i - 1) * AH.ROW_H)
   r:SetPoint("TOPRIGHT", 0, y - (i - 1) * AH.ROW_H)
-  W.Flat(r, "HIGHLIGHT", "hover"):SetAllPoints()
   r:RegisterForClicks("LeftButtonUp", "RightButtonUp")
   r:SetScript("OnClick", ns.Guard("click auction row", onClick))
   return r
