@@ -327,3 +327,23 @@ it("the meter's title row has Report and Reset buttons; Report goes where the op
   press("report");
   expect(addon.eval("return __sent"), "then to the party").toEqual(["PARTY"]);
 });
+
+it("on the Deaths view a click puts the game's death recap link in chat", () => {
+  const addon = loggedIn(FULL_ENV, METER_ON);
+  const MT = "ns.GetModule('Meter')";
+  expect(addon.eval(`return ${MT}.RecapLink({ deathRecapID = 5 }) == nil`), "no recap call: nil").toBe(true);
+  addon.eval("C_DeathRecap = { GetRecapLink = function(id) if id == 7 then return '[recap7]' end if id == 8 then error('x') end return '' end }");
+  expect(addon.eval(`return ${MT}.RecapLink({ deathRecapID = 7 })`), "a plain ID gives the link").toBe("[recap7]");
+  const none = addon.eval(`return { ${MT}.RecapLink({ deathRecapID = 0 }) == nil, ${MT}.RecapLink({ deathRecapID = __wfgWorld.secret(7) }) == nil, ${MT}.RecapLink({ deathRecapID = 8 }) == nil, ${MT}.RecapLink({ deathRecapID = 9 }) == nil, ${MT}.RecapLink({}) == nil }`);
+  expect(none, "no ID, a hidden ID, a refusal, an empty link: nil").toEqual([true, true, true, true, true]);
+  setLines(addon, "{ { name = 'Tess', classFilename = 'WARRIOR', totalAmount = 1, deathRecapID = 7 } }");
+  addon.slash("meter deaths");
+  addon.advance(1);
+  addon.eval("Vanguard_Meter.rows[1]:GetScript('OnMouseUp')(Vanguard_Meter.rows[1])");
+  expect(chatHas(addon, /Death recap: \[recap7\]/), "Deaths view: the link is said").toBe(true);
+  addon.clearChat();
+  addon.eval("Vanguard_Meter.rows[1]:GetScript('OnMouseUp')(Vanguard_Meter.rows[1])");
+  addon.slash("meter dps");
+  addon.eval("Vanguard_Meter.rows[1]:GetScript('OnMouseUp')(Vanguard_Meter.rows[1])");
+  expect(chatHas(addon, /Death recap/), "closing the panel, or another view: nothing said").toBe(false);
+});
