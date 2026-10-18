@@ -417,6 +417,7 @@ it("quest tracker: a timed quest shows its countdown under its title, ticking on
   addon.eval("__wfgWorld.setQuestTimer(90090, nil)");
   addon.update(0);
   expect([tracker(addon).blocks[0][1], timerTicking(addon)], "the timer gone: the line and the ticking go").toEqual([["- 0/1 TEST-ONLY Parcel delivered"], false]);
+  addon.eval("ns.GetModule('QuestTracker').settings.autoTrack = false");
   addon.world.addQuest({ questID: 90091, title: "TEST-ONLY Dawdle", level: 10, watched: false, objectives: [{ text: "0/1 TEST-ONLY Note read", finished: false }] });
   addon.eval("__wfgWorld.setQuestTimer(90091, 500)");
   addon.update(0);
@@ -1091,4 +1092,38 @@ it("quest log: Ctrl-click marks quests, the Abandon button counts them, and one 
   expect(addon.eval("return __gone"), "nothing abandoned before the answer").toEqual({});
   addon.click("Vanguard_Question.confirm");
   expect([addon.eval("return __gone"), addon.eval("return Vanguard_QuestLog.buttons.abandon.text:GetText()")], "each marked quest abandoned; the marks are cleared").toEqual([[90051, 90053], "Abandon"]);
+});
+it("quest automation: a quest a player shares follows its own switch, and Shift skips it", () => {
+  // Makes the quest on offer come from a player.
+  const shared = (addon) => addon.eval("UnitIsPlayer = function(unit) return unit == 'npc' and __sharer == true end __sharer = true");
+  const addon = loggedIn(QUEST_ENV, { savedVariables: "VanguardDB.profiles = { Default = { QuestAuto = { accept = true } } }" });
+  shared(addon);
+  addon.fire("QUEST_DETAIL");
+  expect([dialog(addon).shown, calls(addon)], "Accept quests alone leaves a player's quest to you").toEqual([true, []]);
+  const on = loggedIn(QUEST_ENV, { savedVariables: "VanguardDB.profiles = { Default = { QuestAuto = { acceptShared = true } } }" });
+  shared(on);
+  on.fire("QUEST_DETAIL");
+  expect([dialog(on).shown, calls(on), chatHas(on, /Accepted: TEST-ONLY Wolves \(shared by TEST-ONLY Farmer\)/)], "a shared quest is accepted and chat says who shared it").toEqual([false, ["accept nil"], true]);
+  on.eval("__shift = true");
+  on.fire("QUEST_DETAIL");
+  expect([dialog(on).shown, calls(on)], "holding Shift: the dialog, as usual").toEqual([true, []]);
+  on.eval("__shift, __sharer = false, false");
+  on.fire("QUEST_DETAIL");
+  expect([dialog(on).shown, calls(on)], "a quest from an NPC is not covered by the shared switch").toEqual([true, []]);
+  on.eval("__sharer = { __secret = true } UnitIsPlayer = function() return __sharer end");
+  on.fire("QUEST_DETAIL");
+  expect(calls(on), "a hidden answer counts as an NPC").toEqual([]);
+});
+it("quest log: each line shows its quest's XP at the right, with thousands set apart, and the switch turns it off", () => {
+  const addon = loggedIn(TRACK_ENV + QLOG_ENV);
+  addon.eval("Vanguard_QuestLogToggle.__scripts.OnClick(Vanguard_QuestLogToggle)");
+  // The XP text on each quest log line.
+  const xps = () => addon.eval("local f, out = Vanguard_QuestLog, {} for i = 1, f.lines.used do out[i] = f.lines[i].xp:GetText() end return out");
+  expect(xps(), "450 XP on each of the three quests").toEqual(["450 XP", "450 XP", "450 XP"]);
+  expect(addon.eval("local QP = ns.QuestParts return { QP.XPText(1250), QP.XPText(1234567), QP.XPText(99.9) }"), "set apart by commas, whole numbers").toEqual(["1,250 XP", "1,234,567 XP", "99 XP"]);
+  expect(isTok(addon, addon.eval("return Vanguard_QuestLog.lines[1].xp.__textColor"), "text2"), "muted").toBe(true);
+  addon.eval("ns.GetModule('QuestLog').settings.xp = false ns.GetModule('QuestLog').Refresh()");
+  expect(xps(), "off: no XP on the lines").toEqual(["", "", ""]);
+  addon.eval("GetQuestLogRewardXP = function() return 0 end ns.GetModule('QuestLog').settings.xp = true ns.GetModule('QuestLog').Refresh()");
+  expect(xps(), "a quest worth nothing shows none").toEqual(["", "", ""]);
 });
