@@ -336,11 +336,70 @@ local function moduleRow(name)
     function(v) ns.SetModuleEnabled(name, v); O.NeedReload() end, nil, info[2] }
 end
 
--- Modules: one switch per module.
-local function moduleRows()
-  local rows = { { "header", "Modules" }, { "text", "A module that's off builds nothing and costs nothing." } }
-  for _, name in ipairs(ns.ModuleNames()) do rows[#rows + 1] = moduleRow(name) end
+-- The Modules page's groups, in the nav's order: a title and the modules under it (a module in none is under "More").
+O.MODULE_GROUPS = {
+  { "Unit frames", { "UnitFrames", "CastBars", "FrameAuras", "PlayerAuras", "ComboPoints", "ClassBars", "PowerTicks", "SwingTimer", "UnitExtras", "PartyExtras", "GroupThreat", "MainTanks", "ClickCast", "Situations" } },
+  { "Raid frames", { "RaidFrames", "RaidAuras", "RaidHealing", "RaidStatus", "RaidTools", "OfficerLoot" } },
+  { "Action bars", { "ActionBars", "SpecialBars" } },
+  { "Map and info", { "Minimap", "Waypoints", "BrokerStrip", "InfoStrip", "MenuStrip", "MinimapButtons", "DataBars" } },
+  { "Chat", { "Chat", "ChatExtras", "ChatWatch", "ChatFilter", "ChatBubbles", "ChatHistory", "ChatWindows" } },
+  { "Quests", { "QuestDialog", "QuestTracker", "QuestLog", "QuestAuto", "QuestArrow", "QuestGuide", "QuestMinimap", "QuestHistory" } },
+  { "Game windows", { "Windows", "Tooltips", "GameAlerts", "GameTools", "AfkScreen", "Coexist", "Quiet", "CharacterExtras" } },
+  { "Town and gear", { "Bags", "Merchant", "AutoAccept", "Errands", "Inventory", "Upgrades", "VendorMemory", "AuctionHelper", "CraftQueue", "PetStable", "MailTools", "SpellRanks", "TalentPlanner", "Legacy", "InstancePrep" } },
+  { "Combat tools", { "Nameplates", "Rolls", "GroupBoard", "BossDocks", "CooldownGaps", "CooldownGlow", "CooldownKeys", "FightHistory", "Meter" } },
+}
+
+-- Which modules the Modules page lists: all, the ones that are on, or the ones that are off.
+O.moduleFilter = "all"
+local MODULE_FILTERS = { { "all", "All" }, { "on", "On" }, { "off", "Off" } }
+
+-- Whether the Modules page lists a module under the filter in use.
+local function shownModule(name)
+  return O.moduleFilter == "all" or (O.moduleFilter == "on") == ns.ModuleEnabled(name)
+end
+
+-- The modules of a group that exist and pass the filter; `listed` is marked with each one.
+local function groupModules(names, listed)
+  local have, out = {}, {}
+  for _, name in ipairs(ns.ModuleNames()) do have[name] = true end
+  for _, name in ipairs(names) do
+    if have[name] and not listed[name] then listed[name] = true if shownModule(name) then out[#out + 1] = name end end
+  end
+  return out
+end
+
+-- A group's header and its modules' switches (nothing when none pass the filter).
+local function groupSection(title, names)
+  local rows = {}
+  if #names == 0 then return rows end
+  rows[1] = { "header", title }
+  for _, name in ipairs(names) do rows[#rows + 1] = moduleRow(name) end
   return rows
+end
+
+-- The modules in no group, in load order.
+local function otherModules(listed)
+  local out = {}
+  for _, name in ipairs(ns.ModuleNames()) do
+    if not listed[name] and shownModule(name) then out[#out + 1] = name end
+  end
+  return out
+end
+
+-- The top of the Modules page: its heading, what off means, and the filter.
+local function moduleTop()
+  return {
+    { "header", "Modules" },
+    { "text", "A module that's off builds nothing and costs nothing." },
+    { "cycle", "Show", MODULE_FILTERS, function() return O.moduleFilter end, function(v) O.moduleFilter = v O.RebuildPage("modules") end },
+  }
+end
+
+-- Modules: a filter, then one switch per module under the group (a nav page's name) it belongs to.
+local function moduleRows()
+  local rows, listed = moduleTop(), {}
+  for _, group in ipairs(O.MODULE_GROUPS) do rows = append(rows, groupSection(group[1], groupModules(group[2], listed))) end
+  return append(rows, groupSection("More", otherModules(listed)))
 end
 
 -- "Spec 2 uses Healer." or why there's no spec profile.

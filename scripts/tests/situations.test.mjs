@@ -390,7 +390,7 @@ it("situations: while recording, a setting an override can't hold is dimmed and 
     return out;
   };
   addon.slash("");
-  expect(point("Soft shadows under frames"), "not recording: no note").toEqual([false, false]);
+  expect(point("Soft shadows under frames"), "not recording: no note, only when it takes effect (the reload tag's line)").toEqual(["Takes effect after /reload.", false]);
   addon.slash("situation record raid");
   expect(point("Soft shadows under frames"), "recording: a theme setting changes the base profile").toEqual([NOT_RECORDED, true]);
   expect(tip(), "the note goes when the mouse leaves").toBe(false);
