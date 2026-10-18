@@ -69,7 +69,8 @@ end
 local function meterButtons()
   local MT = ns.GetModule("Meter")
   return {
-    { "button", "Put the meter's top lines in your chat", function() MT.Report("") end },
+    { "cycle", "Report the meter to", { { "chat", "Your chat" }, { "say", "Say" }, { "party", "Party" }, { "raid", "Raid" }, { "instance", "Instance" }, { "guild", "Guild" } }, liveSetting("Meter", "reportTo", paint) },
+    { "button", "Report the meter's top lines (also the Report button on the meter)", MT.ReportClick },
     { "button", "Reset the game's damage meter", MT.Reset },
   }
 end

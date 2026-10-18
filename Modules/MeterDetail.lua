@@ -131,6 +131,12 @@ function MT.ReportText(n)
   return MT.TitleText() .. ": " .. table.concat(parts, "  ")
 end
 
+-- The Report button: your chat, or the channel picked under Combat tools (say, party, raid, instance, guild).
+function MT.ReportClick()
+  local to = MT.settings.reportTo
+  MT.Report(MT.CHANNELS[to] and to or "")
+end
+
 -- /vg meter report [channel] [lines]: the top lines in your chat, or sent to say, party, raid, instance or guild.
 function MT.Report(arg)
   local word, count = (arg or ""):match("^(%a*)%s*(%d*)")

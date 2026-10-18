@@ -309,7 +309,21 @@ it("the options page has buttons for the report and the reset", () => {
   addon.eval("C_DamageMeter.ResetAllCombatSessions = function() __reset = true end");
   addon.slash("");
   addon.eval(CLICK_LUA + "__click(\"Combat tools\")");
-  addon.eval("__click(\"Put the meter's top lines\")");
+  addon.eval("__click(\"Report the meter's top lines\")");
   addon.eval("__click(\"Reset the game's damage meter\")");
   expect([chatHas(addon, /Damage per second: 1\. Tess 300/), addon.eval("return __reset")], "both buttons do what the commands do").toEqual([true, true]);
+});
+
+it("the meter's title row has Report and Reset buttons; Report goes where the options say", () => {
+  const addon = loggedIn(FULL_ENV, METER_ON);
+  setLines(addon, "{ { name = 'Tess', amountPerSecond = 300 } }");
+  addon.eval("C_DamageMeter.ResetAllCombatSessions = function() __reset = true end __sent = {} SendChatMessage = function(text, channel) __sent[#__sent + 1] = channel end");
+  // Presses a header button of the meter.
+  const press = (name) => addon.eval(`Vanguard_Meter.${name}:GetScript('OnClick')(Vanguard_Meter.${name})`);
+  press("report");
+  press("reset");
+  expect([chatHas(addon, /Damage per second: 1\. Tess 300/), addon.eval("return __reset"), addon.eval("return #__sent")], "to your chat by default").toEqual([true, true, 0]);
+  addon.eval("ns.GetModule('Meter').settings.reportTo = 'party'");
+  press("report");
+  expect(addon.eval("return __sent"), "then to the party").toEqual(["PARTY"]);
 });
