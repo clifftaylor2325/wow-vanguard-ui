@@ -14,6 +14,13 @@ const GFX_ENV = `
   __wfgWorld.cvars.graphicsQuality, __wfgWorld.cvars.renderScale = "6", "1"
   C_CVar.GetCVarDefault = function(name) return name == "graphicsQuality" and "8" or nil end
 `;
+// The last line of a report: how to apply it and undo it.
+const APPLY_LINE = "/vg graphics apply sets these for you; /vg graphics undo puts your settings back.";
+// TEST-ONLY quality table: each detail at the step asked for, spell density unknown to this client.
+const TABLE_ENV = `
+  GetGraphicsCVarValueForQualityLevel = function(name, q) if name == "graphicsSpellDensity" then error("TEST-ONLY") end return q == 1 and 0 or q end
+  __wfgWorld.cvars.graphicsShadowQuality, __wfgWorld.cvars.uiScale, __wfgWorld.cvars.useUiScale = "4", "0.9", "1"
+`;
 // The chat lines printed since the last clear, without the colored "Vanguard:" prefix.
 const lines = (addon) => Array.from(addon.chat()).map((line) => line.replace(/^.*Vanguard:\S*\s/, ""));
 // The chat lines printed by one /vg command.
@@ -40,10 +47,11 @@ it("/vg graphics: five readings, then the frame rate, the computer, the suggesti
     "Graphics card: TEST-ONLY GPU (dedicated). Graphics Quality 7 of 10 (the game recommends 9 for this computer), render scale 100%.",
     "Suggested: Graphics Quality 9 in Options → Graphics; this computer has room for it.",
     "Screen 1920 x 1080: setup suggests the 1080p sizes (UI scale 80%); /vg setup, then Screen, applies it.",
+    APPLY_LINE,
   ]);
   expect(addon.eval("return __wfgWorld.cvars.graphicsQuality"), "nothing is changed").toBe("6");
   addon.advance(5, 1);
-  expect(lines(addon).length, "and the check is over").toBe(4);
+  expect(lines(addon).length, "and the check is over").toBe(5);
 });
 it("/vg graphics: a slow 4K screen on a low-power chip: lower, the 4K sizes and the render scale tip", () => {
   const addon = loggedIn(GFX_ENV + "__fps = 20 C_VideoOptions.GetGxAdapterInfo = function() return { { name = 'TEST-ONLY iGPU', isLowPower = true } } end");
@@ -54,6 +62,7 @@ it("/vg graphics: a slow 4K screen on a low-power chip: lower, the 4K sizes and 
     "Suggested: lower Graphics Quality to 5 in Options → Graphics (the slider sets every detail for you).",
     "Screen 3840 x 2160: setup suggests the 4K sizes (UI scale 65%); /vg setup, then Screen, applies it.",
     "On a 4K screen, Render Scale 80% in Options → Graphics helps the frame rate most, with little change in sharpness.",
+    APPLY_LINE,
   ]);
 });
 it("/vg graphics: nothing the client can't say is guessed", () => {
@@ -105,4 +114,52 @@ it("/vg graphics: no readings in combat, the fight refused, no timers, and an ea
   expect(said(bare, "graphics"), "no timers").toEqual(["This client has no timers to measure with."]);
   const blind = loggedIn(GFX_ENV + "GetFramerate = nil");
   expect(check(blind), "no frame rate counter: no readings").toEqual(["Frame rate check: no readings (none are taken in combat). Try again out of combat."]);
+});
+
+// Some settings as the client holds them now.
+const cvars = (addon, names) => addon.eval(`return { ${names.map((n) => `__wfgWorld.cvars.${n} or "nil"`).join(", ")} }`);
+it("/vg graphics apply: sets the suggestion as the game's Options would, and undo puts it all back", () => {
+  const addon = loggedIn(GFX_ENV + TABLE_ENV);
+  check(addon);
+  expect(said(addon, "graphics apply").pop(), "what it set").toBe("Set Graphics Quality 9, your screen's sizes. /vg graphics undo puts your settings back.");
+  expect(cvars(addon, ["graphicsQuality", "graphicsShadowQuality", "graphicsParticleDensity", "graphicsSpellDensity", "uiScale", "renderScale"]), "every detail from the game's table, then the step; the 1080p UI scale; a detail the client lacks left alone").toEqual(["8", "8", "8", "nil", "0.8", "1"]);
+  addon.eval("__fps = 90");
+  check(addon);
+  said(addon, "graphics apply");
+  expect(cvars(addon, ["graphicsQuality"]), "applied again, one step higher").toEqual(["9"]);
+  expect(said(addon, "graphics undo"), "undo").toEqual(["Your graphics settings and UI scale are back as they were. If apply changed Vanguard's sizes, the backup profile it named in chat has the old ones."]);
+  expect(cvars(addon, ["graphicsQuality", "graphicsShadowQuality", "graphicsParticleDensity", "uiScale", "useUiScale"]), "back to before the first apply; a setting that had no value stays").toEqual(["6", "4", "9", "0.9", "1"]);
+  expect(said(addon, "graphics undo"), "and once only").toEqual(["Nothing to undo: /vg graphics apply hasn't changed anything."]);
+});
+it("/vg graphics apply: a slow 4K screen gets the render scale; low steps keep the game's lowest particle density", () => {
+  const addon = loggedIn(GFX_ENV + TABLE_ENV + "__fps = 10 __wfgWorld.cvars.graphicsQuality = '3'");
+  addon.eval("__wfgStub.setScreen(3840, 2160)");
+  check(addon);
+  expect(said(addon, "graphics apply").pop(), "the step, the render scale and the 4K sizes").toBe("Set Graphics Quality 2, Render Scale 80%, your screen's sizes. /vg graphics undo puts your settings back.");
+  expect(cvars(addon, ["graphicsQuality", "graphicsParticleDensity", "graphicsShadowQuality", "renderScale"]), "never under the slider's own lowest").toEqual(["1", "1", "0", "0.8"]);
+  said(addon, "graphics undo");
+  expect(cvars(addon, ["graphicsQuality", "renderScale"]), "undone").toEqual(["3", "1"]);
+});
+it("/vg graphics apply: what it can't do, it says", () => {
+  const addon = loggedIn(GFX_ENV + TABLE_ENV + "__fps = 45 __wfgWorld.cvars.graphicsQuality = '8'");
+  expect(said(addon, "graphics apply"), "no check yet").toEqual(["Run /vg graphics first: apply sets what the check suggests."]);
+  expect(said(addon, "graphics now"), "anything else: the usage").toEqual(["Usage: /vg graphics [apply | undo]"]);
+  addon.eval("__wfgStub.setScreen(1365, 768)");
+  check(addon);
+  expect(said(addon, "graphics apply").pop(), "already right, small screen: nothing but what it kept").toBe("Set Graphics Quality as it was. /vg graphics undo puts your settings back.");
+  addon.eval("__wfgStub.inCombat = true");
+  expect([said(addon, "graphics apply"), said(addon, "graphics undo")], "nothing in combat").toEqual([["Settings don't change in combat: try /vg graphics apply after the fight."], ["Settings don't change in combat: try /vg graphics undo after the fight."]]);
+  addon.eval("__wfgStub.inCombat = false C_CVar.SetCVar = nil SetCVar = nil");
+  expect([said(addon, "graphics apply"), said(addon, "graphics undo")], "no way to set").toEqual([["This client can't change its settings."], ["Nothing to undo: /vg graphics apply hasn't changed anything."]]);
+});
+it("/vg graphics apply: a refused Graphics Quality is named, and an unreadable setting is not put back", () => {
+  const addon = loggedIn(GFX_ENV + TABLE_ENV);
+  check(addon);
+  addon.eval("local set = SetCVar SetCVar = function(n, v) if n == 'graphicsQuality' then error('TEST-ONLY') end set(n, v) end C_CVar.SetCVar = SetCVar");
+  addon.eval("local get = GetCVar GetCVar = function(n) if n == 'uiScale' then error('TEST-ONLY') end return get(n) end C_CVar.GetCVar = GetCVar");
+  expect(said(addon, "graphics apply").pop(), "refused").toBe("Set not Graphics Quality (the client refused it), your screen's sizes. /vg graphics undo puts your settings back.");
+  addon.eval("C_CVar.GetCVar = nil GetCVar = nil");
+  expect(addon.eval("local u = ns.Settings('Graphics').undo return { u.uiScale, u.graphicsShadowQuality }"), "kept: false when unreadable").toEqual([false, "4"]);
+  said(addon, "graphics undo");
+  expect(cvars(addon, ["graphicsShadowQuality", "uiScale"]), "the readable one back, the other as apply left it").toEqual(["4", "0.8"]);
 });

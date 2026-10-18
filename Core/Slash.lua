@@ -79,6 +79,8 @@ local HELP = {
   "perf [cpu|watch|slow] Vanguard's CPU (ms a frame) and memory now; cpu turns the game's script profiling on or off (reload) for the busiest functions; watch prints them every minute; slow lists the slowest handlers (slow reset starts over)",
   "mem                  watches Vanguard's memory for a minute (out of combat), then says how much it grew and whether it kept any; again ends it early",
   "graphics             checks this computer (the graphics card the game sees and the Graphics Quality the game recommends for it), your screen and your frame rate for 5 s (out of combat), then suggests a Graphics Quality and the sizes for your screen; again ends it early",
+  "graphics apply       sets what the check suggested (Graphics Quality as the game's slider does, render scale, your screen's sizes), out of combat",
+  "graphics undo        puts your graphics settings and UI scale back as they were before apply",
 }
 
 -- Prints each line.
@@ -706,7 +708,7 @@ local COMMANDS = {
   feedback = feedbackCommand,
   perf = function(rest) ns.Perf.Command(rest) end,
   mem = function() ns.Perf.MemCommand() end,
-  graphics = function() ns.Graphics.Command() end,
+  graphics = function(rest) ns.Graphics.Command(rest) end,
 }
 
 -- /vg entry point: no arguments opens the options window. A command runs under
