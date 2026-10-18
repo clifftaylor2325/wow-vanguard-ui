@@ -40,6 +40,12 @@ Before you say a change is done: `npm run quality` and `npm run coverage` must b
 - **New files:** a file the game loads must be listed in `Vanguard.toc`. A new top-level file or folder that players don't need must be added to the `ignore` list in `.pkgmeta`, or `scripts/pkgmeta.test.mjs` fails.
 - **Lua 5.1 only.** No `goto`, no integer division, no `//`, no bit library from 5.3+.
 
+## UI first
+
+- Every action a player can take gets a control in the window it belongs to (a button, a menu row or a switch), built first. A `/vg` command is the extra for people who like typing, never the only way in.
+- A feature PR lists where its control is. A command with no control needs a reason in the PR body (a diagnostic such as `/vg probe` or `/vg perf` is one).
+- Controls use the existing primitives (`W.Dropdown`, `ns.DialogButton`, options rows) and the theme, and they work out of combat like the action does.
+
 ## Game rules
 
 - Nothing protected in combat. Guard with `ns.OutOfCombat`.

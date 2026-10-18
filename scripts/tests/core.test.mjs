@@ -341,20 +341,22 @@ const MEM_ENV = `
   UpdateAddOnMemoryUsage = function() __reads = __reads + 1 end
   GetAddOnMemoryUsage = function(name) return name == "Vanguard" and __mem[math.min(__reads, #__mem)] or 0 end
 `;
+// What /vg mem says besides the saved-data lines it starts with (SettingsGuard.SizeReport, tested in profileguard).
+const memSaid = (addon) => said(addon, "mem").filter((l) => !/^(Saved data|This character's file|Saved data sizes)/.test(l));
 it("/vg mem: says why it can't measure (no counter, no timers, in combat)", () => {
   const addon = loggedIn("GetAddOnMemoryUsage = nil");
-  expect(said(addon, "mem"), "no memory counter").toEqual(["Vanguard's memory can't be read on this client."]);
+  expect(memSaid(addon), "no memory counter").toEqual(["Vanguard's memory can't be read on this client."]);
   const noTimers = loggedIn(MEM_ENV + "C_Timer = nil");
-  expect(said(noTimers, "mem"), "no timers").toEqual(["This client has no timers to measure with."]);
+  expect(memSaid(noTimers), "no timers").toEqual(["This client has no timers to measure with."]);
   const fight = loggedIn(MEM_ENV);
   fight.eval("__wfgStub.inCombat = true");
-  expect(said(fight, "mem"), "in combat the game's counter is not read").toEqual(["Vanguard's memory can't be read in combat; try again out of combat."]);
+  expect(memSaid(fight), "in combat the game's counter is not read").toEqual(["Vanguard's memory can't be read in combat; try again out of combat."]);
   expect([said(fight, "perf")[0], fight.eval("return __reads")], "/vg perf leaves the counter alone in combat too").toEqual(["CPU off (/vg perf cpu turns the game's profiling on)  ·  memory: not read in combat", 0]);
 });
 it("/vg mem: a minute of readings; a rising low point means kept memory, a wobble is garbage", () => {
   const addon = loggedIn(MEM_ENV);
   addon.eval("__mem = { 1000, 1300, 1100, 1500, 1020, 1600, 1040, 1700, 1030, 1800, 1010, 1900, 1050 }");
-  expect(said(addon, "mem"), "it starts and says how long").toEqual(["Measuring Vanguard's memory for 60 s (a reading every 5 s). Stand still out of combat; /vg mem again ends it early."]);
+  expect(memSaid(addon), "it starts and says how long").toEqual(["Measuring Vanguard's memory for 60 s (a reading every 5 s). Stand still out of combat; /vg mem again ends it early."]);
   addon.clearChat();
   addon.advance(60, 5);
   expect(Array.from(addon.chat()).map((l) => l.replace(/^.*Vanguard:\S*\s/, "")), "after a minute: the readings, then the low point's verdict").toEqual([
@@ -467,6 +469,38 @@ it("WoW Forever client: interface, hidden auras, no specializations", () => {
   // The names are read once per login (or list change), so a paladin is a new login here.
   addon.eval('UnitClass = function() return "Paladin", "PALADIN" end ns.GetModule("RaidHealing").Forget()');
   expect(addon.eval('for _, n in ipairs(ns.GetModule("RaidHealing").BuffNames()) do if n == "Greater Blessing of Kings" then return true end end'), "any blessing counts for a paladin").toBeTruthy();
+});
+// TEST-ONLY restriction calls as Forever documents them: the six kinds and three states, each kind's state in __restricted by number.
+const RESTRICT_ENV = `
+  Enum.AddOnRestrictionType = { Combat = 0, Encounter = 1, ChallengeMode = 2, PvPMatch = 3, Map = 4, Chat = 5 }
+  Enum.AddOnRestrictionState = { Inactive = 0, Activating = 1, Active = 2 }
+  __restricted = {}
+  C_RestrictedActions = { GetAddOnRestrictionState = function(t) return __restricted[t] or 0 end }
+  C_ChatInfo = { InChatMessagingLockdown = function() return __lock == true end }
+`;
+it("add-on restrictions: ns.Restricted reads one kind, starting counts, chat adds its lockdown, and an unsure client is unrestricted", () => {
+  const addon = loggedIn(RESTRICT_ENV);
+  // The active restriction kinds as one comma-joined string.
+  const active = () => addon.eval("return table.concat(ns.ActiveRestrictions(), ',')");
+  expect([addon.eval("return ns.Restricted('Map')"), active()], "all inactive").toEqual([false, ""]);
+  addon.eval("__restricted[4] = 2 __restricted[1] = 1");
+  expect([addon.eval("return ns.Restricted('Map')"), active()], "active, and starting (Activating), in /vg status order").toEqual([true, "Encounter,Map"]);
+  addon.slash("status");
+  expect(chatHas(addon, /Game restrictions: Encounter, Map/), "/vg status lists them").toBe(true);
+  addon.eval("__restricted = {} __lock = true");
+  expect(active(), "the chat messaging lockdown counts as Chat").toEqual("Chat");
+  addon.eval("__lock = false C_ChatInfo.InChatMessagingLockdown = function() return __wfgWorld.secret(true) end");
+  expect(addon.eval("return ns.Restricted('Chat')"), "a hidden lockdown answer is not a restriction").toBe(false);
+  addon.eval("C_ChatInfo.InChatMessagingLockdown = function() error('TEST-ONLY') end C_RestrictedActions.GetAddOnRestrictionState = function() error('TEST-ONLY') end");
+  expect([addon.eval("return ns.Restricted('Chat')"), addon.eval("return ns.Restricted('Map')"), addon.eval("return #ns.errors")], "errors read as unrestricted, quietly").toEqual([false, false, 0]);
+  addon.eval("C_RestrictedActions.GetAddOnRestrictionState = function() return __wfgWorld.secret(2) end");
+  expect(addon.eval("return ns.Restricted('Map')"), "a hidden state too").toBe(false);
+  addon.eval("C_RestrictedActions = nil C_ChatInfo = nil");
+  expect([addon.eval("return ns.Restricted('Chat')"), active()], "a client without the calls").toEqual([false, ""]);
+  addon.slash("status");
+  expect(chatHas(addon, /Game restrictions: none/), "/vg status says none").toBe(true);
+  const kinds = loggedIn(RESTRICT_ENV);
+  expect(kinds.eval("return ns.Restricted('Nonsense')"), "a kind the client doesn't name").toBe(false);
 });
 it("a retail client is not WoW Forever and keeps its aura state readable", () => {
   const addon = loggedIn('GetBuildInfo = function() return "12.0.7", "TEST-ONLY", "Sep 1 2026", 120007 end');

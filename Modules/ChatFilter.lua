@@ -172,7 +172,7 @@ end
 -- The chat filter (ChatFrame_AddMessageEventFilter): true keeps the line out of the window it was asked for.
 -- A hidden (or missing) text or sender passes before anything reads it.
 function CF.Filter(_, _, text, sender, ...)
-  if not (CF.active and CF.settings.on) or ns.IsSecret(text) or ns.IsSecret(sender) or type(text) ~= "string" or type(sender) ~= "string" then return false end
+  if not (CF.active and CF.settings.on) or ns.Restricted("Chat") or ns.IsSecret(text) or ns.IsSecret(sender) or type(text) ~= "string" or type(sender) ~= "string" then return false end
   return CF.Judge(text, sender, ns.PlainNumber((select(9, ...)))) == true
 end
 

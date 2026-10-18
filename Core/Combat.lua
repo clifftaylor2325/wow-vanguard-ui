@@ -98,6 +98,50 @@ function ns.AurasSecret()
   return not ok or ns.IsSecret(secret) or secret == true
 end
 
+-- Add-on restrictions ------------------------------------------------------------------------
+
+-- The restriction kinds the client names (Enum.AddOnRestrictionType), in the order /vg status lists them.
+ns.RESTRICTIONS = { "Combat", "Encounter", "ChallengeMode", "PvPMatch", "Map", "Chat" }
+
+-- The client's state number for a restriction kind; nil when the client lacks the call, the kind, or answers plainly with nothing.
+local function restrictionState(kind)
+  local api, kinds = C_RestrictedActions, _G.Enum and _G.Enum.AddOnRestrictionType
+  if type(api) ~= "table" or type(api.GetAddOnRestrictionState) ~= "function" or type(kinds) ~= "table" or kinds[kind] == nil then return nil end
+  local ok, state = pcall(api.GetAddOnRestrictionState, kinds[kind])
+  return ok and ns.PlainNumber(state) or nil
+end
+
+-- Whether the chat lockdown flag is plainly on (the game hides chat text from add-ons while it is).
+local function chatLockdown()
+  local info = C_ChatInfo
+  if type(info) ~= "table" or type(info.InChatMessagingLockdown) ~= "function" then return false end
+  local ok, locked = pcall(info.InChatMessagingLockdown)
+  return ok and not ns.IsSecret(locked) and locked == true
+end
+
+-- True while the client restricts add-ons for this kind ("Combat", "Encounter", "ChallengeMode", "PvPMatch",
+-- "Map" or "Chat"), also while the restriction is starting. False when the client doesn't say: a client
+-- without these calls, or one that errors or hides its answer, is treated as unrestricted and each read
+-- still checks its own value. "Chat" also counts the chat messaging lockdown.
+---@param kind string
+---@return boolean
+function ns.Restricted(kind)
+  local state = restrictionState(kind)
+  local inactive = ((_G.Enum or {}).AddOnRestrictionState or {}).Inactive or 0
+  if state ~= nil and state ~= inactive then return true end
+  return kind == "Chat" and chatLockdown()
+end
+
+-- The restriction kinds active right now, in /vg status order.
+---@return string[]
+function ns.ActiveRestrictions()
+  local out = {}
+  for _, kind in ipairs(ns.RESTRICTIONS) do
+    if ns.Restricted(kind) then out[#out + 1] = kind end
+  end
+  return out
+end
+
 -- How many distinct pieces of work are waiting for combat to end.
 function ns.QueuedCount()
   return #queue
