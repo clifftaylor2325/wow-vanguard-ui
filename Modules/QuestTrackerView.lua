@@ -108,6 +108,7 @@ function QT.Build(spot)
   f:SetAllPoints()
   addHeader(f)
   addBody(f)
+  f.levelXp = T.Text(f.body:CreateFontString(nil, "OVERLAY"), "small", "text2")
   QT.frame = f
 end
 
@@ -129,7 +130,7 @@ function QT.LineSpecs(q)
   local out = (q.achievement or q.recipe) and {} or { ns.QuestGuide.StepLine(q.id) }
   if q.timer then out[#out + 1] = { "Time left " .. QT.Clock(q.timer), "text2" } end
   for _, line in ipairs(QT.StateLines(q)) do out[#out + 1] = line end
-  if (q.xp or 0) > 0 then out[#out + 1] = { q.xp .. " XP", "text2" } end
+  if (q.xp or 0) > 0 then out[#out + 1] = { QP.XPText(q.xp), "text2" } end
   return out
 end
 
@@ -179,10 +180,15 @@ function QT.PaintBlock(b, q)
   b:Show()
 end
 
+-- What the foot of the tracker keeps free under the quests: the "+N more" line, and the level XP line when it shows.
+local function reserved()
+  return QT.LINE * (QT.levelText and 2 or 1)
+end
+
 -- How tall the quests may stack: the spot's body, or most of the screen when expanded.
 local function roomFor(f)
   if QT.settings.expanded then return (UIParent:GetHeight() or 768) * 0.7 end
-  return f.body:GetHeight() - QT.LINE
+  return f.body:GetHeight() - reserved()
 end
 
 -- How many of the quests fit in a room.
@@ -230,7 +236,7 @@ end
 -- (with "· +N more" when even the expanded list stops at QT.MAX_SHOWN).
 local function showMore(f, quests, shown, y)
   local hidden = countRows(quests, #shown + 1)
-  local fewer = QT.settings.expanded and #quests > fitCount(quests, f.body:GetHeight() - QT.LINE)
+  local fewer = QT.settings.expanded and #quests > fitCount(quests, f.body:GetHeight() - reserved())
   local more = hidden > 0 and ("+" .. hidden .. " more") or nil
   f.moreBtn:SetShown(more ~= nil or fewer)
   f.more:SetShown(more ~= nil or fewer)
@@ -238,11 +244,22 @@ local function showMore(f, quests, shown, y)
   f.moreBtn:SetPoint("TOPLEFT", f.body, "TOPLEFT", 0, -y)
 end
 
--- Lays out the rows (none while collapsed): the blocks, then the "+N more" line.
+-- The level XP line under the last block ("Quests: 62% of the XP to level"), when its switch is on and
+-- the client has the numbers; returns where the next line starts.
+local function paintLevelXP(f, y)
+  f.levelXp:SetShown(QT.levelText ~= nil)
+  if not QT.levelText then return y end
+  f.levelXp:SetText(QT.levelText)
+  f.levelXp:SetPoint("TOPLEFT", f.body, "TOPLEFT", 0, -y)
+  return y + QT.LINE
+end
+
+-- Lays out the rows (none while collapsed): the blocks, the level XP line, then the "+N more" line.
 local function drawRows(f, rows)
+  QT.levelText = QT.settings.levelXp and #rows > 0 and QT.LevelLine() or nil
   local shown, y = layout(f, rows)
   QT.shown = shown
-  showMore(f, rows, shown, y)
+  showMore(f, rows, shown, paintLevelXP(f, y))
 end
 
 -- Redraws the tracker from the quests you watch and the challenges and recipes you track (also in combat, so

@@ -161,6 +161,8 @@ local function paintQuest(f, e, y, i)
   b:SetWidth(QL.LIST_W)
   QP.PaintLine(b, i, spec)
   b.text:SetText(spec.text)
+  local xp = QL.XP(e.id)
+  b.xp:SetText(xp > 0 and QP.XPText(xp) or "")
   b:SetScript("OnClick", ns.Guard("click quest log line", function(self) self.spec.select() end))
   return y + QP.LINE_H
 end
