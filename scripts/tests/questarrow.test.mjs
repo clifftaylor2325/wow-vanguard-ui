@@ -83,6 +83,18 @@ it("quest arrow: no direction when the client won't say, another zone, no spot, 
   expect(arrow(addon)[4], "no quests: nothing on screen").toBe(false);
 });
 
+it("quest arrow: while the map is restricted it has no spot for you and so no direction", () => {
+  const addon = loggedIn(ARROW_ENV + `Enum.AddOnRestrictionType = { Combat = 0, Encounter = 1, ChallengeMode = 2, PvPMatch = 3, Map = 4, Chat = 5 }
+  Enum.AddOnRestrictionState = { Inactive = 0, Activating = 1, Active = 2 }
+  __restricted = {}
+  C_RestrictedActions = { GetAddOnRestrictionState = function(t) return __restricted[t] or 0 end }
+`);
+  addon.update(0);
+  addon.eval("__restricted[4] = 2");
+  addon.advance(0.3);
+  expect(arrow(addon).slice(2, 4), "restricted: the distance and a faint arrow").toEqual(["100 yd, no direction", 0.35]);
+});
+
 it("quest arrow: a quest on another map is pointed at by the client's next waypoint on this one, when it has one", () => {
   const addon = loggedIn(ARROW_ENV + "__spots[90061] = { 11, 0.6, 0.5 }");
   addon.eval(`C_QuestLog.GetNextWaypointForMap = function(id, map) if id == 90061 and map == 10 then return 0.5, 0.1 end end`);

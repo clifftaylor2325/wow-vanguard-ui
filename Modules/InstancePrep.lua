@@ -375,6 +375,7 @@ function PR.Command(rest)
   if not PR.settings then return ns.Chat("Instance prep is off (/vg > Modules).") end
   if rest:match("^want") then return setWant(rest) end
   if rest:match("^setup") then return PR.Wizard.Open() end
+  if rest:match("^buffs") then return PR.BuffReport() end
   ns.OutOfCombat(function() PR.Show(true) end, "prep")
 end
 
