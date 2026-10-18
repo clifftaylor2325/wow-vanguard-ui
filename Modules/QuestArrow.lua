@@ -6,8 +6,9 @@
 --
 -- Everything comes from the client: the quest's next waypoint or its spot on the map you're on
 -- (QuestGuide.Target), the distance the client reports for the quest, your map position and facing.
--- A spot on another map, or a value the client won't give, shows "Not in this zone" or "No
--- direction" instead of a guess. Nothing here is protected, so it updates in combat too.
+-- A quest on another map is pointed at by the client's next waypoint on this one (the zone exit
+-- or boat), when the client has that call; without it, or a value the client won't give, the
+-- distance reads "no direction" instead of a guess. Nothing here is protected, so it updates in combat too.
 
 local ADDON, ns = ...
 
@@ -95,7 +96,7 @@ end
 -- Turning and distance -----------------------------------------------------------------------------
 
 -- Your spot on a map as x, y (0 to 1); nil when the client won't say.
-local function playerSpot(mapID)
+function QA.PlayerSpot(mapID)
   local pos = call(C_Map, "GetPlayerMapPosition", mapID, "player")
   if type(pos) ~= "table" or type(pos.GetXY) ~= "function" then return nil end
   local x, y = pos:GetXY()
@@ -103,20 +104,20 @@ local function playerSpot(mapID)
   if x and y then return x, y end
 end
 
--- The map's size in yards as width, height; 1, 1 when the client doesn't give it (the turn is then a little off on a wide map).
-local function worldSize(mapID)
+-- The map's size in yards as width, height and true; 1, 1 and false when the client doesn't give it (the turn is then a little off on a wide map).
+function QA.WorldSize(mapID)
   local w, h = call(C_Map, "GetMapWorldSize", mapID)
   w, h = ns.PlainNumber(w), ns.PlainNumber(h)
-  if w and h and w > 0 and h > 0 then return w, h end
-  return 1, 1
+  if w and h and w > 0 and h > 0 then return w, h, true end
+  return 1, 1, false
 end
 
 -- Radians to turn the arrow, from straight up (up means the spot is ahead of you); nil when the client won't say your spot or facing.
 function QA.Turn(mapID, x, y)
-  local px, py = playerSpot(mapID)
+  local px, py = QA.PlayerSpot(mapID)
   local facing = ns.PlainNumber(call(_G, "GetPlayerFacing"))
   if not (px and facing) then return nil end
-  local w, h = worldSize(mapID)
+  local w, h = QA.WorldSize(mapID)
   return math.atan2(-(x - px) * w, -(y - py) * h) - facing
 end
 
@@ -133,18 +134,38 @@ local function distanceText(id, turn)
   return turn and (d .. " yd") or (d .. " yd, no direction")
 end
 
--- The arrow's turn for the quest's spot: nil when the spot is on another map or the client won't say.
-local function turnFor(target)
+-- The game's next waypoint on a map toward its super-tracked target, as x, y (C_Navigation since 12.1, C_SuperTrack before).
+local function navWaypoint(mapID)
+  local x, y = call(C_Navigation, "GetNextWaypointForMap", mapID)
+  if not ns.IsSecret(x) and x == nil then x, y = call(C_SuperTrack, "GetNextWaypointForMap", mapID) end
+  return x, y
+end
+
+-- The next waypoint on this map toward a quest on another one (a zone exit, a boat), as x, y: the
+-- quest's own, else the game's for its super-tracked quest; nil when the client has neither call or won't say.
+function QA.Exit(id, mapID)
+  local x, y = call(C_QuestLog, "GetNextWaypointForMap", id, mapID)
+  if not ns.PlainNumber(x) and id == ns.PlainNumber(call(C_SuperTrack, "GetSuperTrackedQuestID")) then
+    x, y = navWaypoint(mapID)
+  end
+  x, y = ns.PlainNumber(x), ns.PlainNumber(y)
+  if x and y then return x, y end
+end
+
+-- The arrow's turn for the quest's spot, or for the way toward it when the spot is on another map; nil when the client won't say.
+local function turnFor(id, target)
   local here = ns.PlainNumber(call(C_Map, "GetBestMapForUnit", "player"))
-  if not (target and target[1] and here == target[1]) then return nil end
-  return QA.Turn(target[1], target[2], target[3])
+  if not (target and target[1] and here) then return nil end
+  if here == target[1] then return QA.Turn(here, target[2], target[3]) end
+  local x, y = QA.Exit(id, here)
+  return x and QA.Turn(here, x, y)
 end
 
 -- Redraws the arrow's turn, title and distance for the current quest; hides the frame with none.
 function QA.Draw()
   local f, id = QA.frame, QA.current
   if not (f and QA.settings.show and id) then return f and f:Hide() end
-  local turn = turnFor(QA.target)
+  local turn = turnFor(id, QA.target)
   f.title:SetText(titleOf(id))
   f.dist:SetText(QA.target and QA.target[1] and distanceText(id, turn) or "No spot from the game")
   f.arrow:SetRotation(turn or 0)
