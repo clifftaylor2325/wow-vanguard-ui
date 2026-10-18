@@ -187,6 +187,7 @@ Modules/Upgrades.lua
 Modules/UpgradeWizard.lua
 Modules/VendorMemory.lua
 Modules/SpellRanks.lua
+Modules/PetStable.lua
 Modules/Nameplates.lua
 Modules/Situations.lua
 Modules/SituationsBanner.lua
