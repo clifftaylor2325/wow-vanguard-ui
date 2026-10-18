@@ -53,16 +53,42 @@ local function fightRows()
   }
 end
 
+-- A cycle's choices ({ key, words } in order) from an order list and its words table.
+local function meterChoices(order, words)
+  local out = {}
+  for i, key in ipairs(order) do out[i] = { key, words[key] } end
+  return out
+end
+
+-- One of the meter's cycle rows: a setting that picks from an order list and its words.
+local function meterCycle(caption, key, order, words, paint)
+  return { "cycle", caption, meterChoices(order, words), liveSetting("Meter", key, paint) }
+end
+
+-- The meter's buttons: its chat report and the reset of the game's segments (also /vg meter report and reset).
+local function meterButtons()
+  local MT = ns.GetModule("Meter")
+  return {
+    { "button", "Put the meter's top lines in your chat", function() MT.Report("") end },
+    { "button", "Reset the game's damage meter", MT.Reset },
+  }
+end
+
+-- Draws the meter again, building it first when it was just switched on (when the module is on).
+local function paint()
+  local MT = ns.GetModule("Meter")
+  if MT.enabled then MT.Refresh() end
+end
+
 -- Vanguard's own damage and healing meter: its switches (applied at once) and its visibility.
 local function meterRows()
   local MT = ns.GetModule("Meter")
   local meterVisibility, meterWhen = O.VisibilityRows("Vanguard meter visibility", "Meter", "visibility", "showWhen")
-  -- Draws the panel again, building it first when it was just switched on (when the module is on).
-  local function paint() if MT.enabled then MT.Refresh() end end
   return {
     { "header", "Vanguard meter" },
     check("Vanguard's own damage and healing meter: the top lines of the game's meter (/vg meter)", liveSetting("Meter", "on", paint)),
-    { "cycle", "Meter shows", { { "Dps", "Damage per second" }, { "Hps", "Healing per second" } }, liveSetting("Meter", "kind", paint) },
+    meterCycle("Meter shows", "kind", MT.KIND_ORDER, MT.KINDS, paint),
+    meterCycle("Meter segment", "session", MT.SESSION_ORDER, MT.SESSIONS, paint),
     { "slider", "Lines in the meter", { min = 3, max = MT.MAXROWS, step = 1 }, liveSetting("Meter", "rows", paint) },
     meterVisibility, meterWhen,
   }
@@ -85,7 +111,7 @@ end
 -- The Combat tools page: the game's tools, boss mods and the fight panels.
 local function toolsPageRows()
   local rows = append(gameToolRows(), bossDockRows())
-  return append(append(append(rows, fightRows()), meterRows()), rollRows())
+  return append(append(append(append(rows, fightRows()), meterRows()), meterButtons()), rollRows())
 end
 
 O.AddPage({ key = "tools", title = "Combat tools", icon = "NavTools", order = 84, rows = toolsPageRows })

@@ -174,3 +174,142 @@ it("the title is a card's heading on the click-to-switch button, the room above 
   expect([title.rect.bottom >= bar.rect.top, panel.rect.top - bar.rect.top], "the heading ends above the first bar, which starts a head down").toEqual([true, head]);
   expect([empty.visible, empty.text, empty.font.size, isTok(addon, empty.textColor, "muted")], "the empty-state line: label muted").toEqual([true, "No damage yet this fight", labelSize, true]);
 });
+
+// TEST-ONLY: every kind and segment key the meter can ask the client for.
+const FULL_ENV = `Enum.DamageMeterSessionType = { Overall = 0, Current = 1, Expired = 2 }
+  Enum.DamageMeterType = { DamageDone = 0, Dps = 1, HealingDone = 2, Hps = 3, Interrupts = 5, Dispels = 6, DamageTaken = 7, Deaths = 9 }
+  RAID_CLASS_COLORS.WARRIOR = { r = 0.78, g = 0.61, b = 0.43 }\n`;
+
+it("the title steps through every kind, a right click through the segments, and totals show for the non-rate kinds", () => {
+  const addon = loggedIn(FULL_ENV, METER_ON);
+  addon.eval(`__asked = {}
+    C_DamageMeter.GetCombatSessionFromType = function(session, what)
+      __asked[#__asked + 1] = session .. ":" .. what
+      return { combatSources = { { name = 'Tess', classFilename = 'WARRIOR', amountPerSecond = 10, totalAmount = 4500, isLocalPlayer = true } } }
+    end`);
+  const titles = [];
+  for (let i = 0; i < 9; i++) { addon.advance(1); titles.push(heads(addon)[0]); addon.eval("Vanguard_Meter.title:GetParent():GetScript('OnClick')(nil, 'LeftButton')"); }
+  expect(titles, "left clicks walk the kinds and wrap").toEqual(["Damage per second", "Healing per second", "Damage done", "Healing done", "Damage taken", "Interrupts", "Dispels", "Deaths", "Damage per second"]);
+  addon.advance(1);
+  addon.eval("Vanguard_Meter.title:GetParent():GetScript('OnClick')(nil, 'RightButton')");
+  addon.slash("meter taken");
+  addon.advance(1);
+  expect([heads(addon)[0], rows(addon)[0][2], addon.eval("return __asked[#__asked]")], "overall segment, damage taken: the total, asked with both keys").toEqual(["Damage taken · Overall", "4.5K", "0:7"]);
+  addon.slash("meter previous");
+  addon.slash("meter nonsense");
+  expect(chatHas(addon, /showing damage taken · previous fight/), "words pick the segment; an unknown one only reports").toBe(true);
+  addon.slash("meter this");
+  addon.slash("meter overall");
+  addon.slash("meter current");
+  addon.eval("ns.GetModule('Meter').SetKind('Gone') ns.GetModule('Meter').SetSession('Gone')");
+  addon.eval("ns.GetModule('Meter').ToggleKind() ns.GetModule('Meter').ToggleSession()");
+  expect(addon.eval("return ns.GetModule('Meter').settings.kind"), "stepping from an unknown kind starts at the first").toBe("Dps");
+  addon.eval("ns.GetModule('Meter').SetKind('Gone') ns.GetModule('Meter').SetSession('Gone')");
+  addon.advance(1);
+  expect(heads(addon)[0], "an unknown kind or segment falls back to the default words").toBe("Damage per second");
+  expect(addon.eval("return ns.GetModule('Meter').EmptyText()"), "and an unnamed kind says Nothing yet").toBe("Nothing yet");
+});
+
+it("reset clears the game's segments out of combat only", () => {
+  const addon = loggedIn(FULL_ENV, METER_ON);
+  addon.eval("C_DamageMeter.ResetAllCombatSessions = function() __reset = true end");
+  addon.slash("meter reset");
+  expect([addon.eval("return __reset"), chatHas(addon, /meter was reset/)], "asks the client and says so").toEqual([true, true]);
+  addon.world.combat(true);
+  addon.clearChat();
+  addon.slash("meter reset");
+  expect(chatHas(addon, /can't be reset now/), "not in combat").toBe(true);
+  addon.world.combat(false);
+  addon.eval("C_DamageMeter.ResetAllCombatSessions = nil");
+  addon.clearChat();
+  addon.slash("meter reset");
+  expect(chatHas(addon, /can't be reset now/), "a client without the call").toBe(true);
+  addon.eval("C_DamageMeter.ResetAllCombatSessions = function() error('no') end");
+  addon.clearChat();
+  addon.slash("meter reset");
+  expect(chatHas(addon, /can't be reset now/), "a refusal is caught").toBe(true);
+});
+
+it("a click on a line opens that player's spells, in the game's order; again or the title closes it", () => {
+  const addon = loggedIn(FULL_ENV, METER_ON);
+  setLines(addon, "{ { name = 'Tess', classFilename = 'WARRIOR', amountPerSecond = 300, sourceGUID = 'g1' }, { name = 'Bo', amountPerSecond = 100, sourceGUID = 'g2' } }");
+  addon.eval(`C_Spell.GetSpellName = function(id) return 'Spell' .. id end
+    C_DamageMeter.GetCombatSessionSourceFromType = function(session, what, guid)
+      __guid = guid
+      return { combatSpells = { { spellID = 1, totalAmount = 900 }, { spellID = 2, totalAmount = 300 } } }
+    end`);
+  addon.advance(1);
+  // Clicks meter line i.
+  const click = (i) => addon.eval(`Vanguard_Meter.rows[${i}]:GetScript('OnMouseUp')(Vanguard_Meter.rows[${i}])`);
+  click(1);
+  // The spell panel's state.
+  const panel = () => addon.eval(`local d = Vanguard_MeterDetail
+    return { d:IsShown(), d.title.__text, d.rows[1].name.__text, d.rows[1].value.__text, d.rows[2].name.__text, d.rows[3]:IsShown(), d.empty:IsShown() }`);
+  expect([panel(), addon.eval("return __guid")], "Tess's spells, asked by her GUID").toEqual([[true, "Tess", "Spell1", "900", "Spell2", false, false], "g1"]);
+  click(2);
+  expect(panel()[1], "another line switches the panel").toBe("Bo");
+  click(2);
+  expect(panel()[0], "the same line again closes it").toBe(false);
+  click(1);
+  addon.eval("Vanguard_MeterDetail.title:GetParent():GetScript('OnClick')()");
+  expect(panel()[0], "the panel's title closes it").toBe(false);
+  addon.eval("ns.GetModule('Meter').CloseDetail()");
+  addon.eval("C_DamageMeter.GetCombatSessionSourceFromType = function() return nil end");
+  click(1);
+  addon.advance(1);
+  expect(panel()[6], "a list the client keeps back shows the empty note").toBe(true);
+  addon.eval("Vanguard_Meter.rows[1].src = nil");
+  addon.eval("Vanguard_Meter.rows[1]:GetScript('OnMouseUp')(Vanguard_Meter.rows[1])");
+  addon.eval("C_DamageMeter.GetCombatSessionSourceFromType = function() error('x') end");
+  addon.advance(1);
+  expect(addon.eval("return #ns.errors"), "no error from a refused call").toBe(0);
+});
+
+it("spell lists fall back safely: no call, hidden list, hidden spells, unknown names", () => {
+  const addon = loggedIn(FULL_ENV, METER_ON);
+  const MT = "ns.GetModule('Meter')";
+  expect(addon.eval(`${MT}.CloseDetail() return ${MT}.SpellList({}) == nil`), "no spell call: nil").toBe(true);
+  addon.eval("C_DamageMeter.GetCombatSessionSourceFromType = function() return __wfgWorld.secret({}) end");
+  expect(addon.eval(`return ${MT}.SpellList({}) == nil`), "a hidden answer: nil").toBe(true);
+  addon.eval("C_DamageMeter.GetCombatSessionSourceFromType = function() return { combatSpells = __wfgWorld.secret({}) } end");
+  expect(addon.eval(`return ${MT}.SpellList({}) == nil`), "hidden spells: nil").toBe(true);
+  addon.eval("Enum.DamageMeterType.Hps = nil ns.GetModule('Meter').settings.kind = 'Hps'");
+  expect(addon.eval(`return ${MT}.SpellList({}) == nil`), "a kind the client lacks: nil").toBe(true);
+  addon.eval("ns.GetModule('Meter').settings.kind = 'Dps' C_Spell.GetSpellName = nil");
+  addon.eval("C_DamageMeter.GetCombatSessionSourceFromType = function() return { combatSpells = { { spellID = 7, totalAmount = __wfgWorld.secret(5) } } } end");
+  addon.eval(`${MT}.OpenDetail({ name = 'Tess' })`);
+  expect(addon.eval("return Vanguard_MeterDetail.rows[1].name.__text"), "without a name call the ID stands in").toBe("7");
+  expect(addon.eval("return #ns.errors"), "hidden totals raise nothing").toBe(0);
+});
+
+it("a report holds plain names and figures only, out of combat, to chat or a channel", () => {
+  const addon = loggedIn(FULL_ENV, METER_ON);
+  setLines(addon, `{ { name = 'Tess', amountPerSecond = 12300 }, { name = __wfgWorld.secret('Hid'), amountPerSecond = 500 }, { name = 'Bo', amountPerSecond = __wfgWorld.secret(9) }, { name = 'Cy', amountPerSecond = 40 } }`);
+  addon.eval("__sent = {} SendChatMessage = function(text, channel) __sent[#__sent + 1] = channel .. ': ' .. text end");
+  addon.slash("meter report");
+  expect(chatHas(addon, /Damage per second: 1\. Tess 12\.3K {2}4\. Cy 40$/), "hidden lines are left out, plain ones keep their place").toBe(true);
+  addon.slash("meter report party 1");
+  addon.slash("meter report guild 99");
+  expect(addon.eval("return __sent"), "to a channel, at most ten lines").toEqual(["PARTY: Damage per second: 1. Tess 12.3K", "GUILD: Damage per second: 1. Tess 12.3K  4. Cy 40"]);
+  addon.clearChat();
+  addon.slash("meter report bogus");
+  addon.slash("meter report say 0");
+  expect([chatHas(addon, /Send the report to say/), chatHas(addon, /No report to show/)], "an unknown channel and zero lines").toEqual([true, true]);
+  setLines(addon, "{}");
+  addon.clearChat();
+  addon.slash("meter report");
+  addon.world.combat(true);
+  addon.slash("meter report");
+  expect([chatHas(addon, /No report to show/), chatHas(addon, /Not in combat/)], "an empty meter, and no report in combat").toEqual([true, true]);
+});
+
+it("the options page has buttons for the report and the reset", () => {
+  const addon = loggedIn(FULL_ENV, METER_ON);
+  setLines(addon, "{ { name = 'Tess', amountPerSecond = 300 } }");
+  addon.eval("C_DamageMeter.ResetAllCombatSessions = function() __reset = true end");
+  addon.slash("");
+  addon.eval(CLICK_LUA + "__click(\"Combat tools\")");
+  addon.eval("__click(\"Put the meter's top lines\")");
+  addon.eval("__click(\"Reset the game's damage meter\")");
+  expect([chatHas(addon, /Damage per second: 1\. Tess 300/), addon.eval("return __reset")], "both buttons do what the commands do").toEqual([true, true]);
+});
