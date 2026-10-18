@@ -443,6 +443,72 @@ it("faster auto-loot: every unlocked slot at once while the game auto-loots, off
   bare.fire("LOOT_READY", true);
   expect(bare.eval("return GetNumLootItems == nil"), "a client without the loot functions is left alone").toBe(true);
 });
+// TEST-ONLY invites and death: every answer is recorded; the world is a battleground, nobody is a friend.
+const INVITE_ENV = `
+  __answers = {}
+  local function log(text) return function(...) __answers[#__answers + 1] = text end end
+  DeclineGuild, DeclineGroup, BNDeclineFriendInvite, RepopMe = log("guild"), log("group"), log("friend"), log("release")
+  StaticPopup_Hide = function(which) __answers[#__answers + 1] = "close " .. which end
+  __pvp, __soul, __friends = "pvp", false, {}
+  IsInInstance = function() return true, __pvp end
+  HasSoulstone = function() return __soul end
+  C_FriendList = { IsFriend = function(guid) return __friends[guid] == "friend" end }
+  C_BattleNet = { GetAccountInfoByGUID = function(guid) return __friends[guid] == "bnet" and {} or nil end }
+  IsGuildMember = function(guid) return __friends[guid] == "guild" end
+`;
+const INVITES_ON = "VanguardDB.profiles = { Default = { AutoAccept = { guildInvites = true, strangerGroups = true, friendRequests = true, pvpRelease = true } } }";
+it("quiet the game: guild invites, stranger group invites, friend requests and battleground release, off until switched on", () => {
+  // Brings up all four prompts.
+  const fire = (addon) => { addon.fire("GUILD_INVITE_REQUEST", "<name>"); addon.fire("PARTY_INVITE_REQUEST", "<name>", false, false, false, false, false, false, "stranger"); addon.fire("BN_FRIEND_INVITE_ADDED", 7); addon.fire("PLAYER_DEAD"); };
+  const off = loggedIn(INVITE_ENV);
+  fire(off);
+  expect(off.eval("return #__answers"), "off by default: the game asks as usual").toBe(0);
+  const on = loggedIn(INVITE_ENV, { savedVariables: INVITES_ON });
+  fire(on);
+  expect(on.eval("return __answers"), "each answered, its prompt closed").toEqual(["guild", "close GUILD_INVITE", "group", "close PARTY_INVITE", "friend", "release"]);
+  expect(chatHas(on, /guild invite from <name>/) && chatHas(on, /group invite from <name>/) && chatHas(on, /Battle.net friend request/), "and said in chat").toBe(true);
+  on.eval("__answers = {}");
+  for (const who of ["friend", "bnet", "guild"]) { on.eval(`__friends.x = "${who}"`); on.fire("PARTY_INVITE_REQUEST", "<name>", false, false, false, false, false, false, "x"); }
+  on.fire("PARTY_INVITE_REQUEST", "<name>");
+  on.fire("PARTY_INVITE_REQUEST", "<name>", false, false, false, false, false, false, { __secret: true });
+  expect(on.eval("return #__answers"), "a friend, a Battle.net friend, a guildmate, or someone the game hides stay invitable").toBe(0);
+  on.eval("__pvp = 'arena'");
+  on.fire("PLAYER_DEAD");
+  on.eval("__pvp, __soul = 'pvp', true");
+  on.fire("PLAYER_DEAD");
+  expect(on.eval("return #__answers"), "no release in an arena, or with a soulstone").toBe(0);
+  const bare = loggedIn("", { savedVariables: INVITES_ON });
+  for (const e of ["GUILD_INVITE_REQUEST", "PARTY_INVITE_REQUEST", "BN_FRIEND_INVITE_ADDED", "PLAYER_DEAD"]) bare.fire(e, "<name>");
+  expect(bare.eval("return DeclineGuild == nil and RepopMe == nil"), "a client without the calls is left alone").toBe(true);
+  const noFriends = loggedIn(INVITE_ENV + "C_FriendList, C_BattleNet, IsGuildMember = nil, nil, nil", { savedVariables: INVITES_ON });
+  noFriends.fire("PARTY_INVITE_REQUEST", "<name>", false, false, false, false, false, false, "stranger");
+  expect(noFriends.eval("return __answers"), "with no way to tell who is a friend, a stranger is declined").toEqual(["group", "close PARTY_INVITE"]);
+});
+// TEST-ONLY game text: the error line and the zone names record what they were given.
+const QUIET_ENV = `
+  hooksecurefunc = function(t, name, fn) if type(t) == "string" then return end local orig = t[name] t[name] = function(...) local r = orig(...) fn(...) return r end end
+  UIErrorsFrame = CreateFrame("Frame", "UIErrorsFrame", UIParent) __lines = 0
+  function UIErrorsFrame:AddMessage() __lines = __lines + 1 end
+  function UIErrorsFrame:Clear() __lines = 0 end
+  ZoneTextFrame = CreateFrame("Frame", "ZoneTextFrame", UIParent) ZoneTextFrame:Hide()
+  SubZoneTextFrame = CreateFrame("Frame", "SubZoneTextFrame", UIParent) SubZoneTextFrame:Hide()
+`;
+it("quiet the game: the error line and the zone names, each off until switched on and applied at once; a further camera", () => {
+  const off = loggedIn(QUIET_ENV);
+  off.eval("UIErrorsFrame:AddMessage('x') ZoneTextFrame:Show() SubZoneTextFrame:Show()");
+  expect(off.eval("return { __lines, ZoneTextFrame:IsShown(), SubZoneTextFrame:IsShown(), tostring(GetCVar('cameraDistanceMaxZoomFactor')) }"), "off by default: the game's own").toEqual([1, true, true, "nil"]);
+  const on = loggedIn(QUIET_ENV, { savedVariables: "VanguardDB.profiles = { Default = { Quiet = { errors = true, zoneText = true, camera = 2.6 } } }" });
+  on.eval("UIErrorsFrame:AddMessage('x') ZoneTextFrame:Show() SubZoneTextFrame:Show()");
+  expect(on.eval("return { __lines, ZoneTextFrame:IsShown(), SubZoneTextFrame:IsShown(), tostring(GetCVar('cameraDistanceMaxZoomFactor')) }"), "the error line cleared, both names hidden, the camera set").toEqual([0, false, false, "2.6"]);
+  on.eval("ns.GetModule('Quiet').settings.errors = false ns.GetModule('Quiet').settings.zoneText = false UIErrorsFrame:AddMessage('x') ZoneTextFrame:Show()");
+  expect(on.eval("return { __lines, ZoneTextFrame:IsShown() }"), "switched off, they show again at once").toEqual([1, true]);
+  setCombat(on, true);
+  on.eval("ns.GetModule('Quiet').settings.camera = 1.5 ns.GetModule('Quiet').ApplyCamera()");
+  expect(on.eval("return GetCVar('cameraDistanceMaxZoomFactor')"), "not changed in combat").toBe("2.6");
+  const bare = loggedIn("", { savedVariables: "VanguardDB.profiles = { Default = { Quiet = { errors = true, zoneText = true } } }" });
+  expect(bare.eval("return ZoneTextFrame == nil and ns.GetModule('Quiet').settings.errors"), "a client without these frames is left alone").toBe(true);
+  expect(loggedIn(QUIET_ENV + "SetCVar, C_CVar = nil, nil", { savedVariables: "VanguardDB.profiles = { Default = { Quiet = { camera = 2 } } }" }).eval("return GetCVar('cameraDistanceMaxZoomFactor')"), "no CVar call, no change").toBe(null);
+});
 // TEST-ONLY extra windows: friends, a book (its page text records the colors it's given), and
 // the game's loss of control and talking head alerts with their parts.
 const ALERTS_ENV = `
