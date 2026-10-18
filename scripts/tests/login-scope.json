@@ -6,6 +6,7 @@
       "Edit Mode: a game frame Vanguard hides or replaces gets no handle, every other system keeps its own",
       "boss frames: five in a column at the top left, the game's put away",
       "boss frames: the game's holder is put away only out of combat",
+      "game alerts: loss of control and the talking head, styled and placed (or hidden)",
       "the game's tools: a switch shows the Cooldown Manager's essential row between the frames, timers in the theme font"
     ],
     "scripts/tests/auction.test.mjs": [],
@@ -71,6 +72,7 @@
     "scripts/tests/casts.test.mjs": [],
     "scripts/tests/chat-bubbles.test.mjs": [],
     "scripts/tests/chat.test.mjs": [],
+    "scripts/tests/chatfilter.test.mjs": [],
     "scripts/tests/chatwatch.test.mjs": [],
     "scripts/tests/chrome.test.mjs": [],
     "scripts/tests/clickcast.test.mjs": [
@@ -90,6 +92,7 @@
     ],
     "scripts/tests/cooldowngaps.test.mjs": [],
     "scripts/tests/cooldownglow.test.mjs": [],
+    "scripts/tests/cooldownspage.test.mjs": [],
     "scripts/tests/core.test.mjs": [
       "a damaged account file: a profile that isn't a table, or a name that isn't a name, is dropped at load"
     ],
@@ -190,6 +193,7 @@
       "Centered layout: compact raid grid, one-time migrations, a strip with nothing to show",
       "default sizes for a 1080p screen: 240 x 36 unit frames with 12 px names, 38 px buttons; a saved profile keeps its sizes",
       "setup layouts: Like the game's puts your frames at the top left; another layout puts them back",
+      "setup layouts: Versus deck is your role's centered layout with the deck on; another layout takes it off",
       "setup layouts: nothing overlaps or leaves the screen, solo to 40-man, at UI scale 1 and pixel-perfect",
       "setup screen: picking Pixel-perfect turns on Vanguard's pixel-perfect scale and leaves the game's UI scale alone (#225)",
       "setup screen: this screen's preset is picked; Keep changes nothing; a preset sets the UI scale, buttons, tiles and text",
@@ -211,6 +215,7 @@
     "scripts/tests/units.test.mjs": [
       "Calm HUD: frames dim out of combat, come back for a fight, a hostile target or the mouse, and stay clickable",
       "Calm HUD: setup's look step and the situations offer it",
+      "Versus deck: one shield panel behind the player and target, the crest at the seam, the target's bars mirrored",
       "a ?? (boss or far higher) level reads in the hardest difficulty color, not the easiest",
       "class bars: druid mana while a form shows rage or energy",
       "class bars: totems for shamans, mana in forms for druids",
