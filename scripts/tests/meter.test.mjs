@@ -347,3 +347,23 @@ it("on the Deaths view a click puts the game's death recap link in chat", () => 
   addon.eval("Vanguard_Meter.rows[1]:GetScript('OnMouseUp')(Vanguard_Meter.rows[1])");
   expect(chatHas(addon, /Death recap/), "closing the panel, or another view: nothing said").toBe(false);
 });
+
+it("a line shows its share of the total when the figures are plain, and not when hidden or switched off", () => {
+  const addon = loggedIn(FULL_ENV, METER_ON);
+  addon.eval(`C_DamageMeter.GetCombatSessionFromType = function()
+    return { totalAmount = 400, combatSources = { { name = 'Tess', amountPerSecond = 100, totalAmount = 300 }, { name = 'Bo', amountPerSecond = __wfgWorld.secret(50), totalAmount = __wfgWorld.secret(100) } } }
+  end
+  C_DamageMeter.GetCombatSessionSourceFromType = function()
+    return { totalAmount = 200, combatSpells = { { spellID = 1, totalAmount = 50 }, { spellID = 2, totalAmount = 0 } } }
+  end`);
+  addon.advance(1);
+  expect(rows(addon).slice(0, 2).map((r) => r[2]), "plain: 'figure  share'; hidden: the game's figure only").toEqual(["100  75%", addon.eval("return Vanguard_Meter.rows[2].value.__text")]);
+  addon.eval("Vanguard_Meter.rows[1]:GetScript('OnMouseUp')(Vanguard_Meter.rows[1])");
+  expect(addon.eval("return Vanguard_MeterDetail.rows[1].value.__text"), "the spell panel too").toBe("50  25%");
+  addon.eval("ns.GetModule('Meter').settings.percent = false");
+  addon.advance(1);
+  expect(rows(addon)[0][2], "switched off: just the figure").toBe("100");
+  addon.eval("ns.GetModule('Meter').settings.percent = true C_DamageMeter.GetCombatSessionFromType = function() return { totalAmount = 0, combatSources = { { name = 'Tess', amountPerSecond = 100, totalAmount = 0 } } } end");
+  addon.advance(1);
+  expect(rows(addon)[0][2], "a total of 0: just the figure").toBe("100");
+});

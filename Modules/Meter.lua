@@ -10,7 +10,7 @@ local ADDON, ns = ...
 
 local T, V, W = ns.Theme, ns.Visibility, ns.Widgets
 
-local MT = ns.Module("Meter", { defaults = { on = false, kind = "Dps", session = "Current", reportTo = "chat", rows = 8, visibility = "always", showWhen = {} } })
+local MT = ns.Module("Meter", { defaults = { on = false, kind = "Dps", session = "Current", reportTo = "chat", percent = true, rows = 8, visibility = "always", showWhen = {} } })
 
 -- The panel's width, a row's height (a bar, not a list row) and the title's (a card's heading line: T.SPACE.gap
 -- down and a control's height), the gap between rows (UI units) and the seconds between reads.
@@ -50,6 +50,7 @@ function MT.Sources()
   local ok, result = pcall(get, session, which)
   if not ok or ns.IsSecret(result) or type(result) ~= "table" then return nil end
   if ns.IsSecret(result.combatSources) or type(result.combatSources) ~= "table" then return nil end
+  MT.total = ns.PlainNumber(result.totalAmount)
   return result.combatSources
 end
 
@@ -108,6 +109,20 @@ local function short(v)
   return ok and text or ""
 end
 
+-- A part's share of a total as "45%": only for plain figures, with the Share switch on and a total above 0.
+function MT.Percent(part, total)
+  local n, t = ns.PlainNumber(part), ns.PlainNumber(total)
+  if not (MT.settings.percent and n and t and t > 0) then return nil end
+  return string.format("%d%%", math.floor(n / t * 100 + 0.5))
+end
+
+-- A figure as short text, with its part's share of the total after it ("12.3K  45%") when the share is known.
+function MT.WithShare(amount, part, total)
+  local pct = MT.Percent(part, total)
+  if not pct then return short(amount) end
+  return short(amount) .. "  " .. pct
+end
+
 -- True when a line is yours (a hidden answer counts as no).
 local function mine(src)
   return not ns.IsSecret(src.isLocalPlayer) and src.isLocalPlayer == true
@@ -120,7 +135,7 @@ local function fill(row, src, top)
   give(row, "SetValue", figure(src[MT.Field()]))
   give(row.name, "SetText", src.name)
   T.Color(row.name, mine(src) and "accent" or "text")
-  give(row.value, "SetText", short(src[MT.Field()]))
+  give(row.value, "SetText", MT.WithShare(src[MT.Field()], src.totalAmount, MT.total))
   row.src = src
 end
 

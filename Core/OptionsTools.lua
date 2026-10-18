@@ -65,10 +65,11 @@ local function meterCycle(caption, key, order, words, paint)
   return { "cycle", caption, meterChoices(order, words), liveSetting("Meter", key, paint) }
 end
 
--- The meter's buttons: its chat report and the reset of the game's segments (also /vg meter report and reset).
+-- The meter's share switch and buttons: its chat report and the reset of the game's segments (also /vg meter report and reset).
 local function meterButtons()
   local MT = ns.GetModule("Meter")
   return {
+    check("Show each line's share of the total (45%) when the game gives plain figures", liveSetting("Meter", "percent", paint)),
     { "cycle", "Report the meter to", { { "chat", "Your chat" }, { "say", "Say" }, { "party", "Party" }, { "raid", "Raid" }, { "instance", "Instance" }, { "guild", "Guild" } }, liveSetting("Meter", "reportTo", paint) },
     { "button", "Report the meter's top lines (also the Report button on the meter)", MT.ReportClick },
     { "button", "Reset the game's damage meter", MT.Reset },
