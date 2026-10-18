@@ -537,7 +537,7 @@ end
 -- close button and Escape (ns.WindowTitle), and your faction's crest (T.CREST.title) just right of the title.
 local function addTitle(f)
   local parts = ns.WindowTitle(f, "Set up Vanguard", { align = "center", count = "", escape = true,
-    onClose = function(frame) frame:Hide() end })
+    onClose = function(window) window:Hide() end })
   f.caption = parts.count
   f.crest = T.Crest(f, T.CREST.title)
   f.crest:SetPoint("LEFT", f.title, "RIGHT", T.SPACE.gap, 0)

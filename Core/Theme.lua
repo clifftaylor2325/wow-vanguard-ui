@@ -42,7 +42,7 @@ local CLIENT_FONT_LOCALES = { koKR = true, zhCN = true, zhTW = true }
 -- Latin only) don't cover keep Fira Sans for headings: Russian names and titles.
 local LATIN_HEADING_MISSING = { ruRU = true }
 
--- A texture from Media/Textures (Bar, Shadow, Glow, Stripes, LogoLeft, ...).
+-- A texture from Media/Textures (Bar, Shadow, Glow, Stripes, LogoLeft, ...); LogoLeft is the unit frames' classification diamond.
 function T.Texture(name) return T.MEDIA .. "Textures\\" .. name end
 -- The line and menu icons that are also baked at the pixel sizes in T.ICON_SIZES (#232): the same names
 -- and sizes scripts/lib/media-sources.mjs draws (a media test keeps them equal).
@@ -91,8 +91,9 @@ local TOKENS = {
   -- The spark on the power bar (the five-second rule, energy ticks) and the swing timer.
   spark = { "ffffff", 0.9 },
   -- Text
-  -- Text tiers, brightest first (#227): text, text2, muted; disabled only for disabled and placeholder text.
-  text = "e8eaee", text2 = "c8cdd6", muted = "a6adb9", disabled = "7c8390", white = "ffffff", gold = "ffd100",
+  -- Text tiers, brightest first (#227): text, text2, muted; disabled only for disabled and placeholder text
+  -- (at least 4.5:1 on panel, raised and inset in every variant, even over a bright world).
+  text = "e8eaee", text2 = "c8cdd6", muted = "a6adb9", disabled = "878e9b", white = "ffffff", gold = "ffd100",
   -- State (kept apart from the accent), off the red-green axis (#235, after Okabe-Ito): a bluish
   -- green, an amber and a vermilion, each with a glyph where it stands alone (T.STATE_GLYPHS).
   good = "3fbf9a", warn = "f0b43c", bad = "e8663f", info = "5aa2f0", unknown = "808080",
@@ -1743,8 +1744,8 @@ end
 -- Follows the game's state: SetChecked (its own calls), a click (the client flips the state before
 -- OnClick runs), enabling and disabling (pcall: a widget without those scripts can't have them hooked).
 local function watchState(button)
-  local repaint = ns.Guard("check state", repaintCheck)
-  for _, script in ipairs({ "OnClick", "OnEnable", "OnDisable" }) do pcall(button.HookScript, button, script, repaint) end
+  local onState = ns.Guard("check state", repaintCheck)
+  for _, script in ipairs({ "OnClick", "OnEnable", "OnDisable" }) do pcall(button.HookScript, button, script, onState) end
   if type(button.SetChecked) == "function" and type(hooksecurefunc) == "function" then
     hooksecurefunc(button, "SetChecked", ns.Guard("hook SetChecked", repaintCheck))
   end
@@ -2041,8 +2042,8 @@ local function sliderParts(slider, thumb)
   local s = { bar = bar, track = sliderPill(bar, axis, "BORDER", "Pill"), fill = sliderFill(bar, axis, thumb) }
   s.line = sliderPill(bar, axis, "OVERLAY", "SliderLine")
   s.knob, s.shade, s.knobLine = sliderKnob(bar, thumb)
-  local repaint = ns.Guard("slider state", function(f) paintSlider(f, sliderOf[f]) end)
-  for _, script in ipairs({ "OnEnable", "OnDisable" }) do pcall(slider.HookScript, slider, script, repaint) end
+  local onState = ns.Guard("slider state", function(f) paintSlider(f, sliderOf[f]) end)
+  for _, script in ipairs({ "OnEnable", "OnDisable" }) do pcall(slider.HookScript, slider, script, onState) end
   return s
 end
 
