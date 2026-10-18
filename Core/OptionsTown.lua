@@ -80,6 +80,15 @@ local function spellRankRows()
   }
 end
 
+-- Pet stable: the line at a stable master (/vg pets).
+local function petStableRows()
+  return {
+    { "header", "Pet stable" },
+    check("Say how many pets you have, and the next slot's price, at a stable master (/vg pets)", setting("PetStable", "announce")),
+    { "button", "List my pets in chat", function() ns.GetModule("PetStable").Command() end },
+  }
+end
+
 -- The Legacy perk planner: its switch (/vg legacy plan).
 local function legacyRows()
   return {
@@ -133,7 +142,7 @@ end
 -- The Town and gear page: the auction house, merchants, errands, crafting, mail, spells, Legacy, instance prep and gear upgrades.
 local function townPageRows()
   local rows = append(append(auctionRows(), merchantRows()), errandRows())
-  append(append(append(rows, craftRows()), mailRows()), spellRankRows())
+  append(append(append(append(rows, craftRows()), mailRows()), spellRankRows()), petStableRows())
   return append(append(append(rows, legacyRows()), prepRows()), upgradeRows())
 end
 

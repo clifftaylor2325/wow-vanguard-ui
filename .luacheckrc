@@ -92,6 +92,10 @@ read_globals = {
   "ItemLocation",
   -- D1 Auction prices, disenchant values: whether you know Enchanting (your professions' skill lines).
   "GetProfessions", "GetProfessionInfo", "C_TradeSkillUI", "C_SkillInfo",
+  -- Info strip ammo: whether your ranged weapon needs ammo.
+  "C_PaperDollInfo",
+  -- Pet stable: the stable master's pet lists and slot price.
+  "C_StableInfo",
   -- E5 Auction ledger: the inbox's auction mail (Blizzard_MailFrame/MailFrame.lua), and the game's
   -- "Auction expired" subject line.
   "TakeInboxMoney", "ReturnInboxItem", "TakeInboxItem", "MailFrame", "SendMailFrame", "SendMailNameEditBox",
