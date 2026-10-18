@@ -70,6 +70,17 @@ it("raid frames", () => {
   expect(addon.eval("local out = {} for _, m in ipairs(ns.MoverList()) do out[m.key] = true end return out.raid") === true, "the raid frames are movable").toBeTruthy();
 });
 
+it("raid role mark: a hidden role shows no mark, no role call or NONE shows none, a healer gets the cross", () => {
+  const addon = loggedIn(UNITS_ENV + RAID_ENV);
+  // The role mark RaidFrames gives raid1 after setup: [there is an icon, its color].
+  const mark = (setup) => addon.eval(`local RF = ns.GetModule("RaidFrames") ${setup} local icon, color = RF.RoleMark("raid1") return { icon ~= nil, color }`);
+  expect(mark('UnitGroupRolesAssigned = function() return __wfgWorld.secret() end'), "a hidden role: no mark").toEqual([false]);
+  expect(mark('UnitGroupRolesAssigned = nil'), "a client without the call: no mark").toEqual([false]);
+  expect(mark('UnitGroupRolesAssigned = function() return "NONE" end'), "no role: no mark").toEqual([false]);
+  expect(mark('UnitGroupRolesAssigned = function() return "HEALER" end'), "a healer: the cross, in the plain text color").toEqual([true, "text2"]);
+  expect(addon.eval("return #ns.errors"), "nothing errors").toBe(0);
+});
+
 it("raid frames: a dark style chosen before 'look' carries over", () => {
   const sv = 'VanguardDB = { profiles = { Default = { RaidFrames = { style = "dark" } } }, chars = {} }';
   const addon = loggedIn(UNITS_ENV + RAID_ENV, { savedVariables: sv });
@@ -376,4 +387,19 @@ it("raid preview: a real group or combat ends it; it won't start in a group, in 
   const off = loggedIn(UNITS_ENV, { savedVariables: "VanguardDB.profiles = { Default = { modules = { RaidFrames = false } } }" });
   off.slash("preview party");
   expect(chatHas(off, /Vanguard:\S*\sThe raid frames are off \(\/vg > Modules\), so there is nothing to preview\.$/), "with the raid frames off there is nothing to preview").toBe(true);
+});
+
+it("a softened bar is never brighter than the light name on it can be read against", () => {
+  const addon = loggedIn(UNITS_ENV + RAID_ENV);
+  // The relative luminance of an r, g, b list.
+  const luma = (c) => addon.eval(`local RF = ns.GetModule("RaidFrames") return RF.Luminance(${c.join(", ")})`);
+  // The softened r, g, b of an r, g, b list.
+  const soft = (c) => addon.eval(`return { ns.GetModule("RaidFrames").Soften(${c.join(", ")}) }`);
+  expect([luma([0, 0, 0]), luma([1, 1, 1])], "black is 0 and white is 1").toEqual([0, 1]);
+  expect(luma([0.04, 0.04, 0.04]), "the dark end of the curve is linear").toBeCloseTo(0.04 / 12.92, 6);
+  const priest = soft([1, 1, 1]);
+  expect(Math.abs(luma(priest) - 0.3) < 0.01, "a white Priest is dimmed to about the cap, still a light gray").toBe(true);
+  expect(priest[0] > 0.5 && Math.abs(priest[0] - priest[2]) < 0.02, "gray, not dark").toBe(true);
+  const warrior = soft([0.78, 0.61, 0.43]);
+  expect(luma(warrior) < 0.3, "a darker class is left as the plain mix").toBe(true);
 });

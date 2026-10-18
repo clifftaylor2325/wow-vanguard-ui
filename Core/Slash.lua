@@ -19,6 +19,7 @@ local HELP = {
   "nineslice [on|off]   shadows and glows as one nine-slice texture each, after a reload (a test; off by default)",
   "icons [on|off]       menu strip icons drawn at their on-screen size, after a /reload (off by default)",
   "cooldowns [setup]    the Cooldowns page (the game's Cooldown Manager, the gaps row, the buff glow); setup opens the step-by-step wizard",
+  "cdmkeys [on|off]  show the key for each Cooldown Manager spell on its icon (off by default)",
   "cdmglow [on|off|<percent>]  glow a Cooldown Manager buff icon in its last part, 10 to 60 percent (off by default)",
   "ornaments [on|off]   a brass rule or corner brackets on the options window, setup and quest log (off by default)",
   "variant [default|contrast|vellum|classic|midnight|obsidian|moss|ember]  surfaces and text: Slate and brass, High contrast, Vellum and ink, Classic look, Midnight, Obsidian, Moss, Ash and ember",
@@ -38,16 +39,20 @@ local HELP = {
   "situation [record <name>|stop|clear [name]|list]   Situations: record a layout and settings for solo, party, raid, pvp, instance or resting",
   "watch [add|remove <phrase>|list|clear]   Chat watch: phrases that ring a sound and show a toast when said in chat",
   "filter [on|off|tab|hide|add|remove <word>|clear]   Chat filter: gold selling, boosting, recruiting and repeat lines go to a Filtered tab (or are hidden)",
-  "quests               open or close Vanguard's quest log (the game's quest log key does too)",
+  "history [on|off|whispers|nowhispers|clear]   Chat history: your chat comes back after a reload or the next login (off until switched on)",
+  "quests [history [n]] open or close Vanguard's quest log (the game's quest log key does too); history lists the latest quests any of your characters turned in",
+  "probe [chat|fight|last]   one run out of combat asks the client the open questions (saved quest flag, threat secrecy, group listing, secure paging, realm format, secret predicates, restrictions, navigation) and opens a copy box; fight takes the secrecy reads in the next fight; last reopens the saved report",
   "guide probe         what this client returns for the reads a levelling guide would use (chat only; changes nothing)",
   "questdata [questID]  what the client says about a quest (or the quests an open NPC offers and those you track), and whether it flags quests new in WoW Forever",
   "lfg [probe]          open or close the group board: looking-for-more and looking-for-group posts from chat by dungeon, role and level; probe says what chat it has heard",
   "plates [enemies on|off] how many nameplates Vanguard drew and the game's enemy plate setting; enemies on|off sets it (out of combat)",
   "stock [<item> <n>]   items to keep in your bags; a merchant tops them up (0 removes, clear empties)",
   "junk [<item> | remove <item> | clear]   your sell list: items a merchant offers to buy from you with your grays (off until switched on under Merchants and errors)",
+  "bag [add <name> <item>|remove <item>|delete <name>|top <name>|deposit <name>]   your own bag categories: a name and its items, shown under their own header above the built-in sections (first in the list wins)",
   "sell <item>          at a merchant: sell every stack of an item in your bags, after a question",
   "craft [add [n]|next|stock|cd|top|done|clear]   the craft queue: queue the recipe on display, open the next one, raise Keep stocked to fit, show cooldowns, rank recipes (off until switched on)",
   "mail [words]|preset [add <name> <character> [words]|remove <name>]|send <name>|takeall|returnall   search the inbox; presets for sending items to your alts; take everything listed or return it (off until switched on)",
+  "pets                 your pets, out and stabled, with level, loyalty, happiness and progress to the next level",
   "rolls [clear]        the group's /roll results this session, newest first; clear forgets them",
   "loot [on|off|add|remove|list|clear|focus|roster]   officer loot tools (off until switched on): a soft-reserve list flagged in the roll tracker, and a group roster",
   "fights               your DPS, length and place in each fight this session, newest first",
@@ -56,10 +61,11 @@ local HELP = {
   "vendors [clear]      how many merchants Vanguard remembers (for tooltips and the stock list); clear forgets them",
   "ranks [swap]         spell ranks: bar buttons holding an older rank than you know; swap puts the newest rank there (out of combat). Off until Spell ranks is switched on",
   "trainers [next|clear]   what the trainers you've visited teach: how many services are remembered, what the next levels bring and where, or forget them (Trainer memory off until switched on)",
+  "gear                 your gear in chat: average item level, melee damage per second and the worn pieces missing an enchant (the character pane also shows item levels; see Game windows)",
   "alts [<name>]        every character's level, money, rested XP and time played; with a name, that character's bags and bank",
   "inventory [forget <name>|clear]   your characters remembered here and when their bags were read; forget drops one, clear forgets them all",
   "weights [wizard|set <stat> <n>|reset|export|import]   the stat weights gear upgrades use for your class and role; the wizard walks you through them, or change one, go back to the defaults, or share them",
-  "prep [want <kind> <n>|setup] the Instance prep card now: what you're short of (with Dungeon card on: the dungeon's level range, your quests for it and your keys); want sets how many food, bandages, potions, ammo or shards; setup opens the wanted-amounts window",
+  "prep [want <kind> <n>|setup|buffs] the Instance prep card now: what you're short of (with Dungeon card on: the dungeon's level range, your quests for it and your keys); want sets how many food, bandages, potions, ammo or shards; setup opens the wanted-amounts window; buffs lists your buffs and which buff check each counts for",
   "legacy [probe|plan ...]   Legacy system: probe lists what the client has for it; plan [add <points> <name>|remove <name>|clear] keeps a list of perks for the tree's 16 points (planner off until switched on)",
   "talents [plan|spend|clear|export|import]   Talent planner: the plan's summary; plan mode on or off, spend the planned points, clear the plan, share it as a string",
   "ah [list <name>|add <list> <item>|rename <name>|duplicate|delete|export|import|recent|scan|prices clear]  shopping lists (pick or make one, add an item: a link, an ID or a name; rename, copy, delete, export or import the list in use; recent: the last 20 items searched); scan the auction house (while it's open); forget the prices",
@@ -68,16 +74,16 @@ local HELP = {
   "preview [party|10|25|40|off]   the raid frames filled with sample players, to check them without a group (not saved)",
   "binds                this spec's click-casting and hover-key bindings (set them in /vg > Click casting)",
   "keybind              keybind mode: hover an action button and press a key, a side mouse button or the wheel to bind it; Backspace clears, Escape leaves",
-  "status               version, profile, modules, skins, work waiting on combat, what the client has",
+  "status               version, profile, modules, skins, work waiting on combat, what the client has, game restrictions",
   "factionart           which of the game's own faction pictures this client has",
-  "realm                your realm, ruleset and side as the client gives them, and the key your prices, sales and characters are kept under",
+  "realm                your realm, ruleset, game rules (preset, self-found, game mode) and side as the client gives them, and the key your prices, sales and characters are kept under",
   "frame <name> [deep]  what the client says about a frame now: shown, alpha, scale, size, its rect (or none), anchors and its parents; deep adds its textures and child frames (for a frame that draws empty)",
   "errors [clear]       opens the errors Vanguard caught this session, with stacks and counts, in the copy window (for a bug report); clear empties the list",
   "report               one block to copy for a bug report: what /vg status and /vg errors say, ready to paste at vanguardui.com/feedback",
   "feedback [bug|feature]   a bug report or feature request written here: the questions vanguardui.com/feedback asks, then one block to paste there (it fills the form)",
   "gaps [add <item>|remove <item>|spell add <spell>|spell remove <spell>|clear]   Cooldown gaps (switch it on under Cooldowns): choose items such as a Healthstone or potion, and spells, to show beside trinkets, pet abilities and totems; no verb lists them",
   "perf [cpu|watch|slow] Vanguard's CPU (ms a frame) and memory now; cpu turns the game's script profiling on or off (reload) for the busiest functions; watch prints them every minute; slow lists the slowest handlers (slow reset starts over)",
-  "mem                  watches Vanguard's memory for a minute (out of combat), then says how much it grew and whether it kept any; again ends it early",
+  "mem                  prints the size of the saved files, then watches Vanguard's memory for a minute (out of combat), then says how much it grew and whether it kept any; again ends it early",
   "graphics             checks this computer (the graphics card the game sees and the Graphics Quality the game recommends for it), your screen and your frame rate for 5 s (out of combat), then suggests a Graphics Quality and the sizes for your screen; again ends it early",
   "graphics apply       sets what the check suggested (Graphics Quality as the game's slider does, render scale, your screen's sizes), out of combat",
   "graphics undo        puts your graphics settings and UI scale back as they were before apply",
@@ -196,11 +202,21 @@ end
 -- /vg cdmglow [on|off|<percent>]: the Cooldown Manager refresh-window glow (#252), at once.
 local function cdmGlowCommand(rest)
   local CG = ns.GetModule("CooldownGlow")
+  if not CG.settings then return chat("Cooldown glow is off: turn the module on in the options first.") end
   local percent = tonumber(rest)
   if percent then CG.settings.percent = math.min(60, math.max(10, math.floor(percent))) end
   CG.settings.glow = percent ~= nil or rest == "on" or (rest == "" and not CG.settings.glow)
   CG.Apply()
   chat(CG.settings.glow and ("Cooldown Manager glow on: under " .. CG.settings.percent .. " percent left.") or "Cooldown Manager glow off.")
+end
+
+-- /vg cdmkeys [on|off]: key text on the Cooldown Manager's icons, at once.
+local function cdmKeysCommand(rest)
+  local CK = ns.GetModule("CooldownKeys")
+  if not CK.settings then return chat("The Cooldown Manager keys module is off. Turn it on under /vg > Modules, then /reload.") end
+  CK.settings.keys = rest == "on" or (rest == "" and not CK.settings.keys)
+  CK.Refresh()
+  chat(CK.settings.keys and "Cooldown Manager keys on." or "Cooldown Manager keys off.")
 end
 
 -- /vg cooldowns [setup]: the Cooldowns options page, or its setup wizard.
@@ -480,12 +496,19 @@ local function modulesOn()
   return enabled
 end
 
+-- The restrictions line: the add-on restrictions the client has on right now, or "none".
+local function restrictionLine()
+  local active = ns.ActiveRestrictions()
+  return "Game restrictions: " .. (#active > 0 and table.concat(active, ", ") or "none")
+end
+
 -- /vg status
 local function statusCommand()
   chat(string.format("Vanguard %s  ·  profile %s  ·  %d/%d modules on", version(), ns.ProfileName(), modulesOn(), #ns.ModuleNames()))
   chat(string.format("%d skinned addon(s)  ·  %d painted frame(s)  ·  %d change(s) waiting on combat", #ns.SkinList(), T.PaintedCount(), ns.QueuedCount()))
   chat(clientLine())
   chat(ns.Client.Line())
+  chat(restrictionLine())
   chat(textLine())
 end
 
@@ -565,7 +588,7 @@ end
 local function reportHead()
   return { "### Vanguard report v1 ###",
     string.format("Vanguard %s  ·  interface %s  ·  profile %s  ·  %d/%d modules on", version(), interfaceText(), ns.ProfileName(), modulesOn(), #ns.ModuleNames()),
-    clientLine(), ns.Client.Line(), textLine(), screenLine(), "Modules off: " .. modulesOff(), "Skins: " .. skinsText(),
+    clientLine(), ns.Client.Line(), restrictionLine(), textLine(), screenLine(), "Modules off: " .. modulesOff(), "Skins: " .. skinsText(),
     string.format("Errors: %d (%d in all)", #ns.errors, occurrences()) }
 end
 
@@ -624,6 +647,13 @@ local function merchantCommand(method)
   end
 end
 
+-- /vg quests [history [n]]: the quest log, or the latest turn-ins of all your characters (Modules/QuestHistory.lua).
+local function questsCommand(rest)
+  if rest:lower():match("^history") then return ns.GetModule("QuestHistory").Command(rest) end
+  local QL = ns.GetModule("QuestLog")
+  if QL.frame then QL.Toggle() else chat("Vanguard's quest log is off (/vg > Quests).") end
+end
+
 local COMMANDS = {
   -- /vg help
   help = function() printLines(HELP) end,
@@ -647,6 +677,7 @@ local COMMANDS = {
   texelsnap = texelSnapCommand,
   nineslice = nineSliceCommand,
   cdmglow = cdmGlowCommand,
+  cdmkeys = cdmKeysCommand,
   gradient = gradientCommand,
   ornaments = ornamentsCommand,
   icons = iconsCommand,
@@ -667,13 +698,15 @@ local COMMANDS = {
   preview = function(rest) ns.RaidPreview.Command(rest) end,
   keybind = function() ns.GetModule("ActionBars").ToggleKeybindMode() end,
   copy = function() ns.GetModule("ChatExtras").ShowCopy() end,
-  quests = function() local QL = ns.GetModule("QuestLog") if QL.frame then QL.Toggle() else ns.Chat("Vanguard's quest log is off (/vg > Quests).") end end,
+  quests = questsCommand,
   plates = function(rest) ns.GetModule("Nameplates").Command(rest) end,
   stock = stockCommand,
+  bag = function(rest) ns.GetModule("Bags").Command(rest) end,
   junk = merchantCommand("JunkCommand"),
   sell = merchantCommand("SellCommand"),
   craft = function(rest) ns.GetModule("CraftQueue").Command(rest) end,
   mail = function(rest) ns.GetModule("MailTools").Command(rest) end,
+  pets = function() ns.GetModule("PetStable").Command() end,
   rolls = function(rest) ns.GetModule("Rolls").Command(rest) end,
   loot = function(rest) ns.GetModule("OfficerLoot").Command(rest) end,
   fights = function() ns.GetModule("FightHistory").Command() end,
@@ -683,6 +716,7 @@ local COMMANDS = {
   ranks = function(rest) ns.GetModule("SpellRanks").RanksCommand(rest) end,
   trainers = function(rest) ns.GetModule("SpellRanks").TrainersCommand(rest) end,
   inventory = function(rest) ns.GetModule("Inventory").Command(rest) end,
+  gear = function() ns.GetModule("CharacterExtras").Command() end,
   alts = function(rest) ns.GetModule("Inventory").AltsCommand(rest) end,
   weights = function(rest) ns.GetModule("Upgrades").Command(rest) end,
   prep = function(rest) ns.GetModule("InstancePrep").Command(rest) end,
@@ -690,11 +724,13 @@ local COMMANDS = {
   legacy = function(rest) ns.GetModule("Legacy").Command(rest) end,
   watch = function(rest) ns.GetModule("ChatWatch").Command(rest) end,
   filter = function(rest) ns.GetModule("ChatFilter").Command(rest) end,
+  history = function(rest) ns.GetModule("ChatHistory").Command(rest) end,
   gaps = function(rest) ns.GetModule("CooldownGaps").Command(rest) end,
   cooldowns = cooldownsCommand,
   lfg = function(rest) ns.GetModule("GroupBoard").Command(rest) end,
   questdata = function(rest) ns.QuestGuide.Command(rest) end,
   guide = function(rest) ns.GuideData.Command(rest) end,
+  probe = function(rest) ns.Probe.Command(rest) end,
   situation = function(rest) ns.GetModule("Situations").Command(rest) end,
   ah = function(rest) ns.GetModule("AuctionHelper").Command(rest) end,
   way = function(rest) ns.GetModule("Waypoints").Command(rest) end,

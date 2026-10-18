@@ -128,9 +128,14 @@ for name, v in pairs(TOKENS) do
   T.TOKENS[name] = type(v) == "table" and fromHex(v[1], v[2]) or fromHex(v)
 end
 
--- Color assist (#235): with the colorAssist setting on, the reaction colors move off the red-green
--- axis, to a friendly blue, a neutral yellow and a hostile vermilion. Token name -> { r, g, b, a }.
-T.ASSIST = { friendly = fromHex("4a9be8"), neutral = fromHex("e8d25a"), hostile = fromHex("e0663a") }
+-- Color assist, shown as Safer colours (#235): with it on, the reaction colors move off the red-green
+-- axis, to a friendly blue, a neutral yellow and a hostile vermilion, and the four dispel types keep
+-- apart under protanopia, deuteranopia and tritanopia (dE 18 or more; the usual set has 6 for Magic and
+-- Curse under deuteranopia). Token name -> { r, g, b, a }.
+T.ASSIST = {
+  friendly = fromHex("4a9be8"), neutral = fromHex("e8d25a"), hostile = fromHex("e0663a"),
+  magic = fromHex("2f7fe0"), curse = fromHex("d86ac0"), disease = fromHex("e8b030"), poison = fromHex("7ad0b0"),
+}
 
 -- The glyph (under Media/Icons) that goes with a state color where it stands alone (#235).
 T.STATE_GLYPHS = { good = "Check", warn = "Warn", bad = "Close" }
@@ -170,7 +175,7 @@ T.VARIANTS = {
   -- Classic (#218): dark leather and bronze, gold-cream text, a bronze border, the window ornaments on.
   -- Own colours only; nothing from the game's art.
   classic = {
-    label = "Classic look", ornaments = true,
+    label = "Classic look", ornaments = true, minimapRound = true,
     tokens = {
       panel = { "1c1610", 0.96 }, inset = { "120d09", 0.96 }, raised = "2b2117", divider = "4a3a24", edge = "6b5230",
       sheen = { "ffd27a", 0.08 }, text = "f2e2b6", text2 = "d4bf8c", muted = "9c8a62",
@@ -259,6 +264,8 @@ local DEFAULTS = {
   hudShadow = false,
   -- Reaction colors off the red-green axis (#235, General -> Look; on reload).
   colorAssist = false,
+  -- Safer colours also come on while the game's own colour-blind mode is on (read once, so on a reload).
+  colorAssistGame = true,
   smoothBars = true,
   reduceMotion = false,
   sounds = true,
@@ -358,11 +365,26 @@ local function accentVariant(name)
   return variants[name].c
 end
 
+-- Whether the game's own colour-blind mode (the colorblindMode CVar) is on; read once, then kept.
+function T.GameColorBlind()
+  if T.gameColorBlind == nil then
+    local ok, v = pcall(GetCVar, "colorblindMode")
+    T.gameColorBlind = ok and (v == "1" or v == true) or false
+  end
+  return T.gameColorBlind
+end
+
+-- Whether Safer colours apply: the switch, the High contrast look, or the game's colour-blind mode.
+function T.ColorAssist()
+  local s, v = T.Settings(), T.Variant()
+  return s.colorAssist or (v and v.assist) or (s.colorAssistGame and T.GameColorBlind()) or false
+end
+
 -- r, g, b, a of a named color (see TOKENS; accent, panel, inset and edge follow the settings,
 -- accentText and accentDim follow the accent, and the reactions follow Color assist).
 function T.RGB(name)
   local key, v = SETTING_TOKENS[name], T.Variant()
-  local assist = T.Settings().colorAssist or v and v.assist
+  local assist = T.ColorAssist()
   local c = v and v.tokens[name] or T.ACCENT_VARIANTS[name] and accentVariant(name) or key and T.Settings()[key]
     or assist and T.ASSIST[name] or T.TOKENS[name]
   if not c then error("Vanguard: no color named " .. tostring(name), 2) end
@@ -1725,8 +1747,11 @@ function T.Capsule(frame, height, tier, opts)
   return capsule
 end
 
+-- Check button and radio painting: only checkOf and hookShown are used outside this block.
+local checkOf, hookShown
+do
 -- Each themed check button's parts (weak): { box = the inset panel, fill = its checked fill, mark = the glyph }.
-local checkOf = setmetatable({}, { __mode = "k" })
+checkOf = setmetatable({}, { __mode = "k" })
 
 -- A check button's themed parts, { box, fill, mark }, or nil for one T.CheckBox never painted.
 function T.CheckParts(button) return checkOf[button] end
@@ -1780,7 +1805,7 @@ local function hoverCheck(button, over)
 end
 
 -- Runs fn (guarded as `where`) after each of a region's show calls (Show, Hide, SetShown), as the game makes them.
-local function hookShown(region, where, fn)
+function hookShown(region, where, fn)
   if type(hooksecurefunc) ~= "function" then return end
   for _, method in ipairs({ "Show", "Hide", "SetShown" }) do hooksecurefunc(region, method, ns.Guard(where, fn)) end
 end
@@ -1880,6 +1905,7 @@ function T.Radio(button)
   T.FadeRegions(button)
   r.paint(button, r)
   return button
+end
 end
 
 -- A divider's look: one screen pixel of this colour, over the game's faded divider art.
@@ -2131,6 +2157,8 @@ T.TAB_ART = {
   "SquareBackground", "SquareBackgroundActive", "SquareBackgroundActiveGlow",
 }
 
+-- Tab, row and scroll bar painting: nothing in this block is used outside it (Lua allows 200 top-level locals).
+do
 -- Whether a game tab is the selected one: a tab system's flag, the checked state a
 -- side tab was last given, else disabled (the game selects a panel tab by disabling it).
 local function tabSelected(button)
@@ -2420,6 +2448,7 @@ function T.ScrollBar(bar)
   fadePart(thumb, { [thumbBar(thumb)] = true })
   for _, key in ipairs(SCROLL_ARROWS) do if type(bar[key]) == "table" then fadeArrow(bar[key]) end end
   return bar
+end
 end
 
 -- The game's font objects Vanguard sets: name -> { size before Text size, bold }.
@@ -2722,6 +2751,8 @@ end
 
 -- Motion and sound --------------------------------------------------------------------
 
+-- Motion: fades, rises and glides keep their state here (Lua allows 200 top-level locals).
+do
 -- A frame's (or texture's) alpha animation (made once, eased out: fast, then settling), or
 -- false when the client can't animate it.
 local function fader(frame)
@@ -2915,6 +2946,7 @@ function T.StopFade(frame)
   local f = vgFader[frame]
   if f then f.group:SetScript("OnFinished", nil) f.group:Stop() end
   frame:SetAlpha(1)
+end
 end
 
 -- Interface sounds by use -> the client's SOUNDKIT name.

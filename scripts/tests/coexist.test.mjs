@@ -18,6 +18,17 @@ const cardTexts = (addon) => addon.eval(`ns.Options.Show("modules")
   for _, row in ipairs(ns.GetModule("Coexist").Rows()) do out[#out + 1] = row[2] end
   return out`);
 
+it("coexist: EllesmereUI's unit frame, action bar, nameplate and raid frame addons are noticed", () => {
+  const addon = loggedIn(CLICK_LUA + loadedEnv("EllesmereUIUnitFrames", "EllesmereUIActionBars", "EllesmereUINameplates", "EllesmereUIRaidFrames"));
+  expect(cardTexts(addon), "one question per overlap, sorted by addon name").toEqual([
+    "Other addons",
+    "EllesmereUIActionBars is loaded and also does action bars.", "Turn off Action bars", "Keep both",
+    "EllesmereUINameplates is loaded and also does nameplates.", "Turn off Nameplates", "Keep both",
+    "EllesmereUIRaidFrames is loaded and also does raid frames.", "Turn off Raid frames", "Keep both",
+    "EllesmereUIUnitFrames is loaded and also does unit frames.", "Turn off Unit frames", "Keep both",
+  ]);
+});
+
 it("coexist: a loaded bag and nameplate addon are named once in chat, and the Modules page asks", () => {
   const addon = loggedIn(CLICK_LUA + loadedEnv("Bagnon", "Plater", "TEST-ONLY Unknown"));
   expect(chatHas(addon, /^.*Bagnon also does bags\. Choose which one does under \/vg > Modules \(nothing changes until you do\)\.$/), "Bagnon in chat").toBe(true);
@@ -58,4 +69,13 @@ it("coexist: the button names the module as the Modules page does, else by its o
   expect(cardTexts(addon)[2], "the Modules page's name").toBe("Turn off Click casting");
   addon.eval("ns.Options.MODULE_INFO.ClickCast = nil");
   expect(cardTexts(addon)[2], "the module's own name").toBe("Turn off ClickCast");
+});
+
+it("coexist: ElvUI and Tukui ask about the action bars, Auctionator and TradeSkillMaster about the Auction helper", () => {
+  const addon = loggedIn(CLICK_LUA + loadedEnv("ElvUI", "Tukui", "Auctionator", "TradeSkillMaster"));
+  addon.eval('ns.SetModuleEnabled("ActionBars", true)'); // the scoped login leaves the action bars off
+  const pending = addon.eval('local out = {} for i, o in ipairs(ns.GetModule("Coexist").Pending()) do out[i] = o.addon .. ">" .. o.module end return out');
+  expect(pending, "each by its folder name, sorted").toEqual(["Auctionator>AuctionHelper", "ElvUI>ActionBars", "TradeSkillMaster>AuctionHelper", "Tukui>ActionBars"]);
+  expect(cardTexts(addon).slice(1, 4), "the card says what both do and offers the module by its Modules page name").toEqual([
+    "Auctionator is loaded and also does auction house shopping and posting.", "Turn off " + addon.eval('return ns.Options.MODULE_INFO.AuctionHelper[1]'), "Keep both"]);
 });

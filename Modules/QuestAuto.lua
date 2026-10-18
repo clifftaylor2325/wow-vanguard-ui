@@ -1,6 +1,7 @@
 -- Quest automation, each switch off until you turn it on (hold Shift while
 -- talking to an NPC to skip all of it that time):
 --   * accept quests you're offered;
+--   * accept quests a party member shares with you (its own switch: the offer comes from a player, not an NPC);
 --   * turn in finished quests: Continue, then Complete when there's no reward
 --     to choose (it never chooses for you, unless the next switch is on);
 --   * with a choice of rewards, take the one that sells for the most;
@@ -10,7 +11,7 @@
 
 local ADDON, ns = ...
 
-local QA = ns.Module("QuestAuto", { defaults = { accept = false, turnIn = false, bestReward = false, skipGossip = false } })
+local QA = ns.Module("QuestAuto", { defaults = { accept = false, acceptShared = false, turnIn = false, bestReward = false, skipGossip = false } })
 
 -- Calls fn if it's a function; nil otherwise.
 local function call(fn, ...)
@@ -30,6 +31,12 @@ end
 -- Holding Shift skips the automation for this NPC.
 local function skipped()
   return call(IsShiftKeyDown) == true
+end
+
+-- Whether the quest on offer comes from a player (one shared in your group) rather than an NPC.
+local function fromPlayer()
+  local v = call(UnitIsPlayer, "npc")
+  return not ns.IsSecret(v) and v == true
 end
 
 -- The quest's title for the chat line.
@@ -85,8 +92,8 @@ end
 
 -- What each event's automation would do, or nil when it leaves the page to you.
 QA.ACTIONS = {
-  -- A quest offered: accept it.
-  QUEST_DETAIL = function() return QA.settings.accept and QA.Accept or nil end,
+  -- A quest offered: accept it (a quest shared by a player follows its own switch).
+  QUEST_DETAIL = function() return QA.settings[fromPlayer() and "acceptShared" or "accept"] and QA.Accept or nil end,
   -- A finished quest's hand-in: continue.
   QUEST_PROGRESS = function() return QA.settings.turnIn and call(IsQuestCompletable) == true and QA.Continue or nil end,
   -- The reward page: finish, when the reward is settled.
@@ -114,7 +121,7 @@ end
 -- Accepts the offered quest (or acknowledges one the game accepted already).
 function QA.Accept()
   if call(QuestGetAutoAccept) == true then call(AcknowledgeAutoAcceptQuest) else call(AcceptQuest) end
-  ns.Chat("Accepted: " .. title())
+  ns.Chat("Accepted: " .. title() .. (fromPlayer() and (" (shared by " .. ns.QuestParts.Plain(call(UnitName, "npc")) .. ")") or ""))
 end
 
 -- Hands in a finished quest's items (the reward page comes next).

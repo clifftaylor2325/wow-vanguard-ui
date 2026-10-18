@@ -2,12 +2,14 @@
 --   * accept summons (out of combat), and say who summoned you where;
 --   * accept resurrections, and say who brought you back;
 --   * decline duel requests, and say whose;
---   * faster auto-loot: when the game auto-loots, take every slot at once.
+--   * faster auto-loot: when the game auto-loots, take every slot at once;
+--   * decline guild invites, group invites from strangers and Battle.net friend requests, and say whose;
+--   * release your spirit at once when you die in a battleground.
 -- Each uses the game's own answer to its prompt and closes the prompt.
 
 local ADDON, ns = ...
 
-local AA = ns.Module("AutoAccept", { defaults = { summons = false, resurrect = false, duels = false, loot = false } })
+local AA = ns.Module("AutoAccept", { defaults = { summons = false, resurrect = false, duels = false, loot = false, guildInvites = false, strangerGroups = false, friendRequests = false, pvpRelease = false } })
 
 -- Calls a function from C_SummonInfo, else the global of that name; nil when neither exists.
 local function summon(name, ...)
@@ -69,6 +71,44 @@ function AA.OnLootReady(_, autoloot)
   for slot = GetNumLootItems(), 1, -1 do takeSlot(slot) end
 end
 
+-- Someone invites you to their guild: decline, and say who.
+function AA.OnGuildInvite(_, who)
+  if not AA.settings.guildInvites or type(DeclineGuild) ~= "function" then return end
+  DeclineGuild()
+  closePrompt("GUILD_INVITE")
+  ns.Chat("Declined a guild invite from " .. plain(who, "someone") .. ".")
+end
+
+-- True when the game can tell the inviter is a friend, a Battle.net friend or in your guild (or hides who).
+local function knownPlayer(guid)
+  if type(guid) ~= "string" or ns.IsSecret(guid) then return true end
+  if C_FriendList and C_FriendList.IsFriend and C_FriendList.IsFriend(guid) then return true end
+  if C_BattleNet and C_BattleNet.GetAccountInfoByGUID and C_BattleNet.GetAccountInfoByGUID(guid) then return true end
+  return type(IsGuildMember) == "function" and IsGuildMember(guid) and true or false
+end
+
+-- Someone invites you to a group: decline unless they are a friend or a guildmate.
+function AA.OnGroupInvite(_, who, _, _, _, _, _, _, guid)
+  if not AA.settings.strangerGroups or type(DeclineGroup) ~= "function" or knownPlayer(guid) then return end
+  DeclineGroup()
+  closePrompt("PARTY_INVITE")
+  ns.Chat("Declined a group invite from " .. plain(who, "someone") .. ".")
+end
+
+-- A Battle.net friend request arrives: decline it.
+function AA.OnFriendRequest(_, inviteID)
+  if not AA.settings.friendRequests or type(BNDeclineFriendInvite) ~= "function" then return end
+  BNDeclineFriendInvite(inviteID)
+  ns.Chat("Declined a Battle.net friend request.")
+end
+
+-- You die: in a battleground (not an arena, and not with a soulstone to use) release at once.
+function AA.OnDeath()
+  if not AA.settings.pvpRelease or type(RepopMe) ~= "function" or select(2, IsInInstance()) ~= "pvp" then return end
+  if type(HasSoulstone) == "function" and HasSoulstone() then return end
+  RepopMe()
+end
+
 -- Module entry point (Core/Modules.lua): each switch is read when its prompt comes.
 function AA.Enable(settings)
   AA.settings = settings
@@ -76,4 +116,8 @@ function AA.Enable(settings)
   ns.On("RESURRECT_REQUEST", AA.OnResurrect)
   ns.On("DUEL_REQUESTED", AA.OnDuel)
   ns.On("LOOT_READY", AA.OnLootReady)
+  ns.On("GUILD_INVITE_REQUEST", AA.OnGuildInvite)
+  ns.On("PARTY_INVITE_REQUEST", AA.OnGroupInvite)
+  ns.On("BN_FRIEND_INVITE_ADDED", AA.OnFriendRequest)
+  ns.On("PLAYER_DEAD", AA.OnDeath)
 end

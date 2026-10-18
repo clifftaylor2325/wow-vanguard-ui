@@ -96,7 +96,8 @@ end
 -- Turning and distance -----------------------------------------------------------------------------
 
 -- Your spot on a map as x, y (0 to 1); nil when the client won't say.
-local function playerSpot(mapID)
+function QA.PlayerSpot(mapID)
+  if ns.Restricted("Map") then return nil end
   local pos = call(C_Map, "GetPlayerMapPosition", mapID, "player")
   if type(pos) ~= "table" or type(pos.GetXY) ~= "function" then return nil end
   local x, y = pos:GetXY()
@@ -104,20 +105,20 @@ local function playerSpot(mapID)
   if x and y then return x, y end
 end
 
--- The map's size in yards as width, height; 1, 1 when the client doesn't give it (the turn is then a little off on a wide map).
-local function worldSize(mapID)
+-- The map's size in yards as width, height and true; 1, 1 and false when the client doesn't give it (the turn is then a little off on a wide map).
+function QA.WorldSize(mapID)
   local w, h = call(C_Map, "GetMapWorldSize", mapID)
   w, h = ns.PlainNumber(w), ns.PlainNumber(h)
-  if w and h and w > 0 and h > 0 then return w, h end
-  return 1, 1
+  if w and h and w > 0 and h > 0 then return w, h, true end
+  return 1, 1, false
 end
 
 -- Radians to turn the arrow, from straight up (up means the spot is ahead of you); nil when the client won't say your spot or facing.
 function QA.Turn(mapID, x, y)
-  local px, py = playerSpot(mapID)
+  local px, py = QA.PlayerSpot(mapID)
   local facing = ns.PlainNumber(call(_G, "GetPlayerFacing"))
   if not (px and facing) then return nil end
-  local w, h = worldSize(mapID)
+  local w, h = QA.WorldSize(mapID)
   return math.atan2(-(x - px) * w, -(y - py) * h) - facing
 end
 

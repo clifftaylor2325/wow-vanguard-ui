@@ -28,6 +28,7 @@ GD.PROBES = {
   { "C_Navigation.GetNextWaypointForMap", "map" },
   { "C_SuperTrack.GetNextWaypointForMap", "map" },
   { "C_Map.GetMapWorldSize", "map" },
+  { "C_Minimap.GetViewRadius" },
   { "C_Map.GetMapLevels", "map" },
   { "C_Map.GetPlayerMapPosition", "map", "player" },
   { "C_Map.GetBestMapForUnit", "player" },
@@ -35,6 +36,7 @@ GD.PROBES = {
   { "C_TaxiMap.GetTaxiNodesForMap", "map" },
   { "UnitOnTaxi", "player" },
   { "UnitIsDeadOrGhost", "player" },
+  { "C_TooltipInfo.GetUnit", "target" },
   { "UnitLevel", "player" },
   { "GetPlayerFacing" },
   { "UnitPosition", "player" },
@@ -72,8 +74,15 @@ local function currentMap()
   return get and ns.PlainNumber(get("player"))
 end
 
+-- "target" when you have one the client plainly says exists, else nil.
+local function currentTarget()
+  local exists = GD.Find("UnitExists")
+  local has = exists and exists("target")
+  if not ns.IsSecret(has) and has == true then return "target" end
+end
+
 -- What each argument word stands for.
-GD.ARGS = { quest = firstQuest, map = currentMap, player = function() return "player" end }
+GD.ARGS = { quest = firstQuest, map = currentMap, player = function() return "player" end, target = currentTarget }
 
 -- The arguments a probe wants, or nil and the word that could not be had.
 local function argsFor(words)
@@ -99,6 +108,7 @@ function GD.Describe(v)
   if kind == "number" or kind == "boolean" then return kind .. " " .. tostring(v) end
   if kind ~= "table" then return kind end
   if type(v.GetXY) == "function" then return positionNote(v) end
+  if type(v.lines) == "table" then return "tooltip data, " .. #v.lines .. " lines" end
   return "table of " .. #v
 end
 

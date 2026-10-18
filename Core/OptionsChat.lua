@@ -78,9 +78,35 @@ local function chatFilterRows()
   return rows
 end
 
+-- Chat windows: the game's lock, the movers for floating windows, then a width and a height for each window showing.
+local function chatWindowsRows()
+  local CW = ns.GetModule("ChatWindows")
+  local rows = { { "header", "Chat windows" }, { "text", "Size each chat window here instead of dragging its corner. Lock stops the game's drag." },
+    check("Lock chat windows", CW.LockSetting()), check("Move floating windows with /vg unlock (reload)", setting("ChatWindows", "movers", true)) }
+  for _, w in ipairs(CW.Windows()) do
+    local wGet, wSet = CW.SizeSetting(w[2], false)
+    local hGet, hSet = CW.SizeSetting(w[2], true)
+    append(rows, { { "slider", w[3] .. ": width", CW.WIDTH, wGet, wSet }, { "slider", w[3] .. ": height", CW.HEIGHT, hGet, hSet } })
+  end
+  return rows
+end
+
+-- Chat history: the switch, how much is kept, whispers and a Clear button.
+local function chatHistoryRows()
+  local CHH = ns.GetModule("ChatHistory")
+  return {
+    { "header", "Chat history" }, { "text", "Your chat comes back after a reload or the next login. Saved for this character only." },
+    check("Keep chat history", setting("ChatHistory", "on")),
+    { "cycle", "Lines kept per chat window", CHH.LINE_CHOICES, setting("ChatHistory", "lines") },
+    { "cycle", "Keep lines for", CHH.DAY_CHOICES, setting("ChatHistory", "days") },
+    check("Keep whispers", setting("ChatHistory", "whispers")),
+    { "button", "Clear saved chat", CHH.Clear },
+  }
+end
+
 -- The Chat page: the chat window, chat watch, the chat filter and the group board (Modules/GroupBoard.lua adds its card).
 local function chatPageRows()
-  return append(append(append(chatWindowRows(), chatRows()), chatWatchRows()), chatFilterRows())
+  return append(append(append(append(append(chatWindowRows(), chatWindowsRows()), chatRows()), chatHistoryRows()), chatWatchRows()), chatFilterRows())
 end
 
 O.AddPage({ key = "chat", title = "Chat", icon = "NavChat", order = 82, rows = chatPageRows })

@@ -141,6 +141,8 @@ Enum = {
   SpellBookSpellBank = { Player = 0, Pet = 1 },
   SpellBookItemType = { None = 0, Spell = 1, FutureSpell = 2, PetAction = 3, Flyout = 4 },
   StatusBarInterpolation = { Immediate = 0, Smooth = 1 },
+  -- A subset of Enum.TooltipDataLineType with the client's values (TooltipInfoSharedDocumentation.lua).
+  TooltipDataLineType = { None = 0, Blank = 1, UnitName = 2, UnitThreat = 7, QuestObjective = 8, QuestTitle = 17, QuestPlayer = 18 },
   TooltipDataType = { Item = 0, Spell = 1, Unit = 2 },
   WeaponSlot = { MainHand = 0, OffHand = 1 },
 }
@@ -1057,7 +1059,7 @@ function C_Item.GetItemInfo(key)
   local id, item = itemOf(key)
   if not item then return nil end
   local link = "|cffffffff|Hitem:" .. id .. "|h[" .. item.name .. "]|h|r"
-  return item.name, link, item.quality or 1, item.level or 1, 1, item.type or "Miscellaneous", item.subType or "Junk", item.stack or 20, item.equipLoc or "", item.icon, item.sellPrice or 0, 15, 0, 0, 0, 0, item.quality == 0
+  return item.name, link, item.quality or 1, item.level or 1, 1, item.type or "Miscellaneous", item.subType or "Junk", item.stack or 20, item.equipLoc or "", item.icon, item.sellPrice or 0, 15, 0, item.bind or 0, 0, 0, item.quality == 0
 end
 -- itemID, type, subType, equipLoc, icon, classID, subClassID of a known item (nothing for one the client doesn't know).
 function C_Item.GetItemInfoInstant(key)
@@ -1209,6 +1211,12 @@ C_QuestLog = {
   GetQuestRewardSpells = function() return {} end,
   GetQuestRewardSpellInfo = function() return nil end,
   GetMaxNumQuestsCanAccept = function() return 25 end,
+}
+-- A unit's tooltip data (TooltipInfoDocumentation.lua, GetUnit): its `tooltipLines`, each { type, leftText }
+-- with a type from Enum.TooltipDataLineType; nothing for a unit that does not exist.
+C_TooltipInfo = {
+  -- The unit's tooltip data, or nothing.
+  GetUnit = function(unit) local u = resolveUnit(unit) return u and { type = Enum.TooltipDataType.Unit, lines = u.tooltipLines or {} } or nil end,
 }
 C_QuestInfoSystem = {
   -- Reward spells: none.
@@ -1730,7 +1738,7 @@ function world.postFromBag(bag, slot)
 end
 
 -- The mailbox --------------------------------------------------------------------------------------
--- world.mail = { mail, ... }, the inbox in order: { sender, subject, money, daysLeft, itemCount,
+-- world.mail = { mail, ... }, the inbox in order: { sender, subject, money, cod (the pay-on-delivery amount, 0 if none), gm, daysLeft, itemCount,
 -- firstItemQuantity, firstItemLink, invoice = { type ("seller", "seller_temp_invoice", "buyer"),
 -- itemName, playerName, bid, buyout, deposit, consignment, count } }, read by the globals
 -- Blizzard_MailFrame/MailFrame.lua calls (GetInboxNumItems, GetInboxHeaderInfo, GetInboxInvoiceInfo);
@@ -1744,7 +1752,7 @@ function GetInboxNumItems() return #world.mail, #world.mail end
 function GetInboxHeaderInfo(i)
   local m = world.mail[i]
   if not m then return nil end
-  return nil, nil, m.sender, m.subject, m.money or 0, 0, m.daysLeft or 30, m.itemCount, false, false, false, true, false, m.firstItemQuantity, m.firstItemLink
+  return nil, nil, m.sender, m.subject, m.money or 0, m.cod or 0, m.daysLeft or 30, m.itemCount, false, false, false, true, m.gm == true, m.firstItemQuantity, m.firstItemLink
 end
 -- An invoice's invoiceType, itemName, playerName, bid, buyout, deposit, consignment, moneyDelay, etaHour,
 -- etaMin, count, commerceAuction (nothing for a mail that isn't one).
@@ -1822,6 +1830,17 @@ function C_TradeSkillUI.GetProfessionInfoBySkillLineID(skillLine)
     if p.skillLine == skillLine then return { profession = p.profession, professionID = skillLine, professionName = p.name, skillLevel = p.rank or 1, maxSkillLevel = p.maxRank or 75 } end
   end
   return { professionID = skillLine, professionName = "", skillLevel = 0, maxSkillLevel = 0 }
+end
+
+-- Skills ------------------------------------------------------------------------------------------
+-- world.skills[skillID] = { name, rank, maxRank }: the skills you know, as C_SkillInfo.GetSkillLineInfoByID
+-- gives them (SkillInfoDocumentation.lua, SkillLineAttributes); an unknown skill answers rank 0.
+world.skills = {}
+C_SkillInfo = C_SkillInfo or {}
+-- The SkillLineAttributes of a skill line (the fields Vanguard reads).
+function C_SkillInfo.GetSkillLineInfoByID(skillID)
+  local s = world.skills[skillID] or {}
+  return { skillID = skillID, name = s.name or "", isHeader = false, rank = s.rank or 0, maxRank = s.maxRank or 0 }
 end
 
 -- The profession window (Blizzard_Professions, which Forever loads on TRADE_SKILL_SHOW:

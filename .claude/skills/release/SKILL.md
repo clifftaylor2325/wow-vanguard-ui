@@ -19,7 +19,7 @@ A release is a version bump merged to `main`, then the `release` workflow. Nothi
 
 ## The release
 
-5. From the Actions tab on `main`, run **release** (`release.yml`): it refuses a tag that already exists or a run off `main`, runs the whole suite with the coverage floor (`lua-suite.yml`, checks on, preview off), builds `dist/Vanguard-<version>.zip` with `scripts/package.mjs` and publishes the GitHub release `v<version>` with generated notes. Pushing a tag `v<version>` that matches the TOC does the same. Never create the tag or the release by hand.
+5. From the Actions tab on `main`, run **release** (`release.yml`): it refuses a tag that already exists or a run off `main`, runs the whole suite with the coverage floor (`lua-suite.yml`, checks on, preview off), builds `dist/Vanguard-<version>.zip` with `scripts/package.mjs` and publishes the GitHub release `v<version>` with generated notes. Pushing a tag `v<version>` that matches the TOC does the same. Never create the tag or the release by hand. When Actions can't run (billing block) or time is short, Cliff's local route is `node scripts/release-local.mjs` (a rehearsal; `--publish=v<version>` ships), described in `docs/RELEASING.md`; it needs the tag made locally with `git tag` and never pushes one itself.
 6. When the run is green, read the release page once: the zip is attached and the tag is on the merge commit.
 
 ## After

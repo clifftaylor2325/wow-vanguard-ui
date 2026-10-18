@@ -28,6 +28,8 @@ local DETAIL_X = LIST_X + QL.LIST_W + 2 * T.SPACE.col
 local DETAIL_W = QL.PER_ROW * (QP.CARD_W + QP.GAP) - QP.GAP
 -- A zone header sits ZONE_X in from the list's edge (over the quests' icons) and ZONE_GAP under the quests above it.
 local ZONE_X, ZONE_GAP = T.SPACE.gap, T.SPACE.gap
+-- An objective row's check mark (square) and progress bar (height), in units.
+local OBJECTIVE_MARK, OBJECTIVE_BAR = 14, 3
 
 -- Building ----------------------------------------------------------------------------------------
 
@@ -55,14 +57,48 @@ local function detailText(child, role, color)
   return fs
 end
 
+-- One objective row's label (between the mark and the count, on one line) and its thin progress bar along the bottom.
+local function addObjectiveLabel(row)
+  row.label = T.Text(row:CreateFontString(nil, "OVERLAY"), "label", "text")
+  row.label:SetPoint("LEFT", row.mark, "RIGHT", T.SPACE.gap, 0)
+  row.label:SetPoint("RIGHT", row.count, "LEFT", -T.SPACE.gap, 0)
+  row.label:SetJustifyH("LEFT")
+  row.label:SetWordWrap(false)
+  row.bar = T.BarColor(T.StyleBar(CreateFrame("StatusBar", nil, row)), "accent")
+  row.bar:SetPoint("BOTTOMLEFT", row, "BOTTOMLEFT", 0, 0)
+  row.bar:SetSize(DETAIL_W, OBJECTIVE_BAR)
+  return row
+end
+
+-- An objective row made on demand: a check when done, the objective, its count at the right edge and a progress bar.
+local function makeObjective(parent)
+  local row = CreateFrame("Frame", nil, parent)
+  row:SetSize(DETAIL_W, QP.LINE_H)
+  row.mark = T.Tint(QP.Square(row:CreateTexture(nil, "ARTWORK"), OBJECTIVE_MARK), "good")
+  row.mark:SetTexture(T.Icon("Check"))
+  row.mark:SetPoint("LEFT", row, "LEFT", 0, 0)
+  row.count = T.Text(row:CreateFontString(nil, "OVERLAY"), "label", "text2")
+  row.count:SetPoint("RIGHT", row, "RIGHT", 0, 0)
+  return addObjectiveLabel(row)
+end
+
+-- The objectives under their header: a box the rows stack in, and the quest history line under it.
+local function addObjectives(f)
+  f.objectives, f.history = detailText(f.detail, "label", "text2"), detailText(f.detail, "label", "text2")
+  f.objectives:SetPoint("TOPLEFT", f.text, "BOTTOMLEFT", 0, -TEXT_GAP)
+  f.objectiveBox = CreateFrame("Frame", nil, f.detail)
+  f.objectiveBox:SetSize(DETAIL_W, 1)
+  f.objectiveRows = QP.Pool(f.objectiveBox, makeObjective)
+end
+
 -- The details side: the quest's title, text and objectives, then its reward cards.
 local function addDetails(f)
   f.detailScroll, f.detail = scrollArea(f, DETAIL_X, DETAIL_W, DETAIL_H)
   f.questTitle, f.text = detailText(f.detail, "heading", "gold"), detailText(f.detail, "label", "text")
-  f.objectives, f.money = detailText(f.detail, "label", "text2"), detailText(f.detail, "label", "gold")
+  f.money = detailText(f.detail, "label", "gold")
   f.questTitle:SetPoint("TOPLEFT", f.detail, "TOPLEFT", 0, 0)
   f.text:SetPoint("TOPLEFT", f.questTitle, "BOTTOMLEFT", 0, -TITLE_GAP)
-  f.objectives:SetPoint("TOPLEFT", f.text, "BOTTOMLEFT", 0, -TEXT_GAP)
+  addObjectives(f)
   f.rewards = CreateFrame("Frame", nil, f.detail)
   f.rewards:SetSize(DETAIL_W, 1)
   f.cards = QP.Pool(f.rewards, QP.Card)
@@ -161,6 +197,8 @@ local function paintQuest(f, e, y, i)
   b:SetWidth(QL.LIST_W)
   QP.PaintLine(b, i, spec)
   b.text:SetText(spec.text)
+  local xp = QL.XP(e.id)
+  b.xp:SetText(xp > 0 and QP.XPText(xp) or "")
   b:SetScript("OnClick", ns.Guard("click quest log line", function(self) self.spec.select() end))
   return y + QP.LINE_H
 end
@@ -194,7 +232,7 @@ end
 -- The reward cards under the objectives, two to a row, then the money line.
 local function renderRewards(f, d)
   f.cards.Reset()
-  f.rewards:SetPoint("TOPLEFT", f.objectives, "BOTTOMLEFT", 0, -REWARDS_GAP)
+  f.rewards:SetPoint("TOPLEFT", f.history, "BOTTOMLEFT", 0, -REWARDS_GAP)
   for n, item in ipairs(d.rewards) do
     local c, col, row = f.cards.Next(), (n - 1) % QL.PER_ROW, math.floor((n - 1) / QL.PER_ROW)
     c:SetPoint("TOPLEFT", f.rewards, "TOPLEFT", col * (QP.CARD_W + QP.GAP), -row * (QP.CARD_H + QP.GAP))
@@ -205,11 +243,54 @@ local function renderRewards(f, d)
   f.money:SetText(d.money)
 end
 
--- The objectives as lines: "- 3/8 Wolves slain", each marked done or not.
-local function objectivesText(d)
-  local lines = {}
-  for _, o in ipairs(d.objectives) do lines[#lines + 1] = (o.done and "+ " or "- ") .. o.text end
-  return #lines > 0 and ("Objectives\n" .. table.concat(lines, "\n")) or ""
+-- An objective's text split into its label and its count ("Wolves slain: 3/8" or "3/8 Wolves slain" give
+-- "Wolves slain", "3/8"); the count is nil when it has none.
+local function splitCount(text)
+  local label, count = text:match("^(.-):?%s*(%d+/%d+)$")
+  if not count then count, label = text:match("^(%d+/%d+)%s+(.+)$") end
+  return label and label ~= "" and label or text, count
+end
+
+-- Fills a row's progress bar from its count ("3/8"): shown while the objective is not done.
+local function paintProgress(row, count, done)
+  local have, need = (count or ""):match("^(%d+)/(%d+)$")
+  row.bar:SetMinMaxValues(0, math.max(tonumber(need) or 1, 1))
+  row.bar:SetValue(tonumber(have) or 0)
+  row.bar:SetShown(have ~= nil and not done)
+end
+
+-- Fills an objective row from { text, done }: a check and muted text when done, else the text, its count and a bar.
+local function paintObjective(row, o)
+  local label, count = splitCount(o.text)
+  row.label:SetText(label)
+  row.count:SetText(count or "")
+  T.Color(row.label, o.done and "text2" or "text")
+  row.mark:SetShown(o.done == true)
+  paintProgress(row, count, o.done)
+  row:Show()
+end
+
+-- Places the objectives box under its header and the history line under the box, each with its gap only when
+-- there is something to separate; returns the gaps added.
+local function placeObjectives(f, rows, history)
+  local boxGap, historyGap = rows > 0 and T.SPACE.tight or 0, history ~= "" and TITLE_GAP or 0
+  f.objectiveBox:SetPoint("TOPLEFT", f.objectives, "BOTTOMLEFT", 0, -boxGap)
+  f.history:SetPoint("TOPLEFT", f.objectiveBox, "BOTTOMLEFT", 0, -historyGap)
+  return boxGap + historyGap
+end
+
+-- The objectives as rows under their header, and the quest history line under them.
+local function renderObjectives(f, d)
+  f.objectiveRows.Reset()
+  for i, o in ipairs(d.objectives) do
+    local row = f.objectiveRows.Next()
+    row:SetPoint("TOPLEFT", f.objectiveBox, "TOPLEFT", 0, -(i - 1) * QP.LINE_H)
+    paintObjective(row, o)
+  end
+  f.objectiveBox:SetHeight(#d.objectives * QP.LINE_H)
+  f.objectives:SetText(#d.objectives > 0 and "Objectives" or "")
+  f.history:SetText(d.done or "")
+  f.objectiveGaps = placeObjectives(f, #d.objectives, d.done or "")
 end
 
 -- The details buttons: Track or Untrack, Share only when you can.
@@ -233,7 +314,7 @@ end
 -- How tall the details side's contents are: title, text, objectives, reward rows and the money line, with their gaps.
 local function detailHeight(f, d)
   local rows = math.ceil(#d.rewards / QL.PER_ROW)
-  local h = f.questTitle:GetStringHeight() + TITLE_GAP + f.text:GetStringHeight() + TEXT_GAP + f.objectives:GetStringHeight() + REWARDS_GAP
+  local h = f.questTitle:GetStringHeight() + TITLE_GAP + f.text:GetStringHeight() + TEXT_GAP + f.objectives:GetStringHeight() + f.objectiveBox:GetHeight() + f.objectiveGaps + f.history:GetStringHeight() + REWARDS_GAP
   return h + rows * (QP.CARD_H + QP.GAP) + MONEY_GAP + f.money:GetStringHeight() + MONEY_GAP
 end
 
@@ -241,7 +322,7 @@ end
 local function renderDetails(f, d)
   f.questTitle:SetText(QP.Titled(d.level, d.title, d.id))
   f.text:SetText(QP.Plain(d.text))
-  f.objectives:SetText(objectivesText(d))
+  renderObjectives(f, d)
   renderRewards(f, d)
   f.detailScroll:Fit(detailHeight(f, d))
 end

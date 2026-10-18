@@ -86,6 +86,14 @@ it("item tooltips show what the stack sells for, unless the client already does"
   expect(old.eval('return __showItem("item:90001", 2)[1].text'), "a client without the tooltip data API: the old script").toBe("Sells for 0s 50c");
 });
 
+it("a tooltip post-call that fails is reported and does not reach the game's tooltip code", () => {
+  const addon = loggedIn(UNITS_ENV + TOOLTIP_ENV + ITEM_TIP_ENV);
+  addon.eval("GameTooltip.GetItem = function() error('TEST-ONLY item', 0) end");
+  expect(() => addon.eval("__post[0](GameTooltip)"), "the post-call returns normally").not.toThrow();
+  expect(() => addon.eval("GameTooltip.GetUnit = function() error('TEST-ONLY unit', 0) end __post[2](GameTooltip)"), "so does the unit one").not.toThrow();
+  expectErrors("tooltip Item: TEST-ONLY item", "tooltip Unit: TEST-ONLY unit");
+});
+
 it("item tooltips: other modules' lines come after the tooltip's own, and one that fails doesn't stop the rest", () => {
   expectErrors(/^tooltip lines: eval:\d+: TEST-ONLY broken line$/);
   const addon = loggedIn(UNITS_ENV + TOOLTIP_ENV + ITEM_TIP_ENV);
@@ -97,6 +105,30 @@ it("item tooltips: other modules' lines come after the tooltip's own, and one th
   expect(lines, "the sell price, then each added line with the item's link, past the one that failed").toEqual(["Sells for 0s 50c", "TEST-ONLY first item:90001", "TEST-ONLY last"]);
   expect(addon.eval("return ns.errors[#ns.errors].text"), "the failure is caught for /vg errors").toMatch(/TEST-ONLY broken line/);
   expect(addon.eval("return #__showItem({ __secret = true }, 1)"), "a hidden link: no lines at all").toBe(0);
+});
+
+// TEST-ONLY: counts how many times the item tooltip hook is registered (a second one would double every line).
+const COUNT_HOOKS_ENV = `__itemHooks = 0
+  local add = TooltipDataProcessor.AddTooltipPostCall
+  TooltipDataProcessor.AddTooltipPostCall = function(kind, fn) if kind == 0 then __itemHooks = __itemHooks + 1 end return add(kind, fn) end`;
+
+it("item tooltips: other modules' lines still run with the Tooltips module off, which adds none of its own", () => {
+  const off = loggedIn(UNITS_ENV + TOOLTIP_ENV + ITEM_TIP_ENV + COUNT_HOOKS_ENV, { savedVariables: "VanguardDB.profiles = { Default = { modules = { Tooltips = false } } }" });
+  expect(off.eval("return { ns.ModuleEnabled('Tooltips'), __itemHooks, #ns.GetModule('Tooltips').itemLines > 0, __post[2] == nil }"), "the modules that add lines (prices, upgrades, vendor memory...) hooked item tooltips at login; the unit tooltip is not").toEqual([false, 1, true, true]);
+  off.eval(`local TT = ns.GetModule("Tooltips")
+    TT.AddItemLines(function(tt, link) tt:AddLine("TEST-ONLY from " .. link) end)
+    TT.AddItemLines(function(tt) tt:AddLine("TEST-ONLY second") end)`);
+  const lines = off.eval('local out = {} for i, l in ipairs(__showItem("item:90001", 2)) do out[i] = l.text end return out');
+  expect(lines.slice(-2), "each module's line shows, and no sell price, count or ID of the module's own").toEqual(["TEST-ONLY from item:90001", "TEST-ONLY second"]);
+  expect(lines.some((t) => /^(Sells for|You have|Item ID)/.test(t)), "the module's own lines stay off").toBe(false);
+  expect(off.eval("return { __itemHooks, #ns.errors }"), "still one hook for all the lines, and no error").toEqual([1, 0]);
+});
+
+it("item tooltips: with the Tooltips module on, the item hook is made once however many lines are added", () => {
+  const on = loggedIn(UNITS_ENV + TOOLTIP_ENV + ITEM_TIP_ENV + COUNT_HOOKS_ENV);
+  on.eval('local TT = ns.GetModule("Tooltips") TT.AddItemLines(function() end) TT.AddItemLines(function() end)');
+  expect(on.eval("return __itemHooks"), "Enable and the added lines share one hook").toBe(1);
+  expect(on.eval('return __showItem("item:90001", 2)[1].text'), "and the module's own price still shows").toBe("Sells for 0s 50c");
 });
 
 it("item tooltips: how many you have, and the item ID when asked", () => {
