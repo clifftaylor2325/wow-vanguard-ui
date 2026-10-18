@@ -2,7 +2,7 @@
 
 import { expect, it } from "vitest";
 import { createAddon } from "../lib/lua-harness.mjs";
-import { CLICK_LUA, FOREVER_ENV, NO_RAID, RETAIL, SETUP_DONE, SWING_ENV, TICKS_ENV, TOTEMS_ENV, UNITS_ENV, bars, button, isTok, key, later, loggedIn, marks, putAway, setCombat, spark, tok, totemCell, unitEvents } from "./helpers.mjs";
+import { CLICK_LUA, FOREVER_ENV, NO_RAID, RETAIL, SETUP_DONE, SWING_ENV, TICKS_ENV, TOTEMS_ENV, UNITS_ENV, bars, borderOf, button, isTok, key, later, loggedIn, marks, putAway, setCombat, spark, tok, totemCell, unitEvents } from "./helpers.mjs";
 
 // A frame's state for the unit-frame tests.
 const ufState = (addon, key) => addon.eval(`
@@ -519,6 +519,9 @@ it("Versus deck: one shield panel behind the player and target, the crest at the
   expect(addon.eval("return VanguardDB.profiles.Default.UnitFrames.deck"), "the switch saves it").toBe(true);
   expect(deck(addon), "on: the panel spans both frames, under everything (background strata), the crest on its top edge, the target fills from the right")
     .toEqual({ shown: true, left: true, right: true, crest: "TOP", strata: "BACKGROUND", fills: true });
+  expect(borderOf(addon, "ns.GetModule('UnitFrames').deck"), "an accent border round the panel").toEqual(tok(addon, "accent").slice(0, 3).concat(1));
+  expect(addon.eval("return { select(2, Vanguard_player.name:GetFont()), select(2, Vanguard_target.healthText:GetFont()) }"), "names and health in the title size")
+    .toEqual(addon.eval("return { select(2, ns.Theme.Text(UIParent:CreateFontString(), 'title'):GetFont()), select(2, ns.Theme.Text(UIParent:CreateFontString(), 'title'):GetFont()) }"));
   addon.eval('__click("Calm HUD")');
   expect(addon.eval("return ns.GetModule('UnitFrames').deck.vgStateString"), "the deck dims with the Calm HUD").toBe("[combat] show; [harm,nodead] show; dim");
   setCombat(addon, true);
@@ -526,4 +529,6 @@ it("Versus deck: one shield panel behind the player and target, the crest at the
   expect(deck(addon).shown, "switching it off in combat waits").toBe(true);
   setCombat(addon, false);
   expect(deck(addon), "and takes it away when the fight ends").toMatchObject({ shown: false, fills: false });
+  expect(addon.eval("return { select(2, Vanguard_player.name:GetFont()), select(2, Vanguard_target.healthText:GetFont()) }"), "the texts back in their own sizes")
+    .toEqual(addon.eval("return { select(2, ns.Theme.Text(UIParent:CreateFontString(), 'name'):GetFont()), select(2, ns.Theme.Text(UIParent:CreateFontString(), 'number'):GetFont()) }"));
 });
