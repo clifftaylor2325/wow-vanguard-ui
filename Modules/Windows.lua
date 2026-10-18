@@ -23,6 +23,7 @@ local vgLootRows = ns.FrameState("vgLootRows")
 local vgMenuSkinned = ns.FrameState("vgMenuSkinned")
 local vgMoneyBox = ns.FrameState("vgMoneyBox")
 local vgRowsWatched = ns.FrameState("vgRowsWatched")
+local vgRowsLater = ns.FrameState("vgRowsLater")
 local vgTimerHook = ns.FrameState("vgTimerHook")
 local vgWindow = ns.FrameState("vgWindow")
 
@@ -401,15 +402,24 @@ end
 -- ones (GW.DressBars in Modules/WindowsTabs.lua looks for each of them on a frame).
 GW.SCROLL_KEYS = { "ScrollBar", "DescriptionScrollBar", "NoRecruitsScrollBar", "ScrollingDescriptionScrollBar" }
 
+-- Tries GW.WatchRows again the next time a box with no view yet is shown (once per box).
+function GW.WatchRowsLater(box, skin)
+  if vgRowsLater[box] or type(box.HookScript) ~= "function" then return end
+  vgRowsLater[box] = true
+  box:HookScript("OnShow", ns.Guard("watch rows", function() GW.WatchRows(box, skin) end))
+end
+
 -- Owner of the callbacks GW.WatchRows leaves on the game's scroll boxes (ScrollUtil wants one).
 local rowOwner = {}
 
 -- Runs skin(row) on every row of a ScrollBox now and on each row the game acquires later (a pooled row comes back
 -- skinned), once per box. The game's own iterateExisting argument calls back with other arguments than the event
 -- does, so it is not used; a failing skin is reported (the box fires it inside its acquire lock) and does not stop the
--- others. A box without ForEachFrame, or already watched, is skipped.
+-- others. A box without ForEachFrame, or already watched, is skipped; one the game has not given a view yet (its
+-- ForEachFrame would index nil) is tried again when it is shown.
 function GW.WatchRows(box, skin)
   if type(box) ~= "table" or vgRowsWatched[box] or type(box.ForEachFrame) ~= "function" then return end
+  if type(box.GetView) == "function" and not box:GetView() then return GW.WatchRowsLater(box, skin) end
   vgRowsWatched[box] = true
   local run = ns.Guard("skin row", skin)
   box:ForEachFrame(function(row) run(row) end)
@@ -611,9 +621,11 @@ GW.MONEY_INPUTS = { "gold", "silver", "copper" }
 GW.LARGE_MONEY_INPUTS = { "GoldBox", "SilverBox", "CopperBox" }
 
 -- One money input box as a theme edit box, once, with its coin picture (the part under key `coin`) shown again (the
--- theme fades the box's art, which the coin is part of; the game dims the coin itself for a long figure).
+-- theme fades the box's art, which the coin is part of; the game dims the coin itself for a long figure). A forbidden
+-- box (the trade window's own) is left alone: code that touches it is tainted.
 local function skinMoneyBox(box, coin)
   if type(box) ~= "table" or not box.SetText or vgMoneyBox[box] then return end
+  if type(box.IsForbidden) == "function" and box:IsForbidden() then return end
   vgMoneyBox[box] = true
   T.EditBox(box)
   GW.ShowTexture(box[coin])
