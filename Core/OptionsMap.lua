@@ -11,6 +11,7 @@ local setting, liveSetting, check, append = O.Setting, O.LiveSetting, O.Check, O
 local function minimapRows()
   return {
     { "header", "Minimap and waypoints" },
+    { "cycle", "Minimap shape (reload)", { { "auto", "Follow the theme" }, { "square", "Square" }, { "round", "Round" } }, setting("Minimap", "shape", true) },
     check("Coordinates under the minimap", setting("Minimap", "coords", true)), check("Coordinates on the world map (reload)", setting("Waypoints", "mapCoords", true)),
     check("/way sets map waypoints, unless another addon has it (reload)", setting("Waypoints", "slash", true)),
     check("Vanguard's pin and font on the game's floating waypoint pin (reload)", setting("Waypoints", "pin", true)),
