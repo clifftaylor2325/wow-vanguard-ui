@@ -18,7 +18,7 @@ ns.WHATS_NEW = {
       { text = "The gold quest ! on a nameplate now also shows for units whose tooltip lists one of your quests, and follows your quest progress within a moment.", page = "nameplates", row = "A gold ! by units your quests need" },
     } },
     { module = "CooldownGaps", label = "Cooldown gaps", items = {
-      { text = "A new row of icons for what the game's Cooldown Manager misses: on-use trinkets, items and spells you choose with /vg gaps add and /vg gaps spell add, your pet's abilities and totems; a switch also draws the Cooldown Manager's essential and utility cooldowns there in the Vanguard look.", page = "cooldowns", row = "Gaps row (reload)", off = true },
+      { text = "A new row of icons for what the game's Cooldown Manager misses: on-use trinkets, items and spells you choose with /vg gaps add and /vg gaps spell add, your pet's abilities and totems; a switch also draws the Cooldown Manager's essential and utility cooldowns there in the Vanguard look.", page = "cooldowns", row = "Gaps row", off = true },
     } },
     { module = "SpellRanks", label = "Spell ranks", items = {
       { text = "Chat can say when a bar button holds an older rank of a spell you know better; /vg ranks lists them and /vg ranks swap puts the newest rank there, out of combat.", page = "town", row = "Notice older spell ranks on bar buttons (/vg ranks)", off = true },
@@ -81,7 +81,7 @@ ns.WHATS_NEW = {
       { text = "Buff checks add a flask, food buff, weapon oil and raid buff rows to the ready-check card. They start off.", page = "town", row = "Buff checks on the card: flask, food, oil or poison, raid buffs", off = true },
     } },
     { module = "GroupThreat", label = "Group threat", items = {
-      { text = "A panel lists who in your group has the most threat on your target. It starts off, and hides itself while the game hides threat values.", page = "unitframes", row = "Group threat panel: who has the most threat on your target (reload)", off = true },
+      { text = "A panel lists who in your group has the most threat on your target. It starts off, and hides itself while the game hides threat values.", page = "unitframes", row = "Group threat panel: who has the most threat on your target", off = true },
     } },
     { module = "Coexist", label = "Other addons", items = {
       { text = "When another addon does a job a Vanguard module also does, chat says so once and the Modules page lets you pick which one does it." },
@@ -93,7 +93,7 @@ ns.WHATS_NEW = {
       { text = "A damage and healing meter in the Vanguard look (/vg meter): the top lines of the game's own meter as class-colored bars, per second, in combat too. Off until you switch it on; the game's own meter stays until you turn it off in the game's settings.", page = "tools", row = "Vanguard's own damage and healing meter: the top lines of the game's meter (/vg meter)", off = true },
     } },
     { module = "Errands", label = "Errands", items = {
-      { text = "A boat and zeppelin timer, off until you switch it on, learns each ride's time and counts down the next one.", page = "town", row = "Boat and zeppelin timer (reload)", off = true },
+      { text = "A boat and zeppelin timer, off until you switch it on, learns each ride's time and counts down the next one.", page = "town", row = "Boat and zeppelin timer", off = true },
     } },
     { module = "Legacy", label = "Legacy system", items = {
       { text = "/vg legacy probe lists what the game has for the Legacy system, and a perk planner (off until you switch it on) keeps a list of perks within the tree's 16 points.", page = "town", row = "Legacy perk planner: a list of perks within the tree's 16 points (/vg legacy plan)", off = true },
@@ -106,7 +106,7 @@ ns.WHATS_NEW = {
       { text = "Three new looks: High contrast (opaque panels, white text, a thicker accent ring), Vellum and ink (a warm dark with cream text) and Classic look (dark leather and bronze with gold-cream text). Slate and brass stays the default.", page = "general", row = "Theme variant", off = true },
       { text = "Four more looks: Midnight (cold navy-black, ice-blue text), Obsidian (neutral charcoal, light grey text, a silver edge), Moss (dark forest green, pale sage text) and Ash and ember (smoky grey, a rust edge, warm grey text).", page = "general", row = "Theme variant", off = true },
       { text = "Rounded corners on every theme: General → Look → Corners (or /vg corners rounded) rounds the corners of windows, frames, tooltips and buttons by four pixels. Square stays the default.", page = "general", row = "Corners", off = true },
-      { text = "A round minimap: Map → Minimap shape (reload) sets Square, Round or Follow the theme; the Classic look variant makes it round on Follow the theme. The disc, its bronze outline and the buttons on its rim are drawn by Vanguard.", page = "map", row = "Minimap shape (reload)", off = true },
+      { text = "A round minimap: Map → Minimap shape (reload) sets Square, Round or Follow the theme; the Classic look variant makes it round on Follow the theme. The disc, its bronze outline and the buttons on its rim are drawn by Vanguard.", page = "map", row = "Minimap shape", off = true },
       { text = "A panel under each action bar: Action bars → Bar backing sets Follow the theme, Always or Never; Classic look puts a flat bronze-edged panel behind every bar, at once.", page = "actionbars", row = "Bar backing", off = true },
     } },
     { label = "Window ornaments", items = {

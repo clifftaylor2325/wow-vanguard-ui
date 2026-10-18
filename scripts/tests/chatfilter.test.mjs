@@ -3,7 +3,7 @@
 // (or is hidden), with a keyword list, a repeat catch and a click to let a sender through.
 
 import { expect, it } from "vitest";
-import { CLICK_LUA, chatHas, loggedIn } from "./helpers.mjs";
+import { CLICK_LUA, chatHas, expectErrors, loggedIn } from "./helpers.mjs";
 
 let nextLine = 1;
 // Runs a line through the chat filters the way the game does (once per chat window); true when the main chat is told to drop it.
@@ -77,6 +77,24 @@ it("chat filter: one line is judged once however many windows ask; your own line
   const secretSender = addon.eval(`local CF = ns.GetModule("ChatFilter") return CF.Filter(nil, "CHAT_MSG_CHANNEL", "${GOLD}", __wfgWorld.secret())`);
   const noText = addon.eval(`local CF = ns.GetModule("ChatFilter") return CF.Filter(nil, "CHAT_MSG_CHANNEL", nil, "Goldy")`);
   expect([secretText, secretSender, noText, tab(addon).length, addon.eval("return #ns.errors")], "hidden or missing text passes unread, no errors").toEqual([false, false, false, 1, 0]);
+});
+
+it("chat filter: the filter the game calls returns early for hidden text on every event, and a failure lets the line through", () => {
+  const addon = filtering();
+  addon.eval(`__judged = 0 local CF = ns.GetModule("ChatFilter") local real = CF.Judge CF.Judge = function(...) __judged = __judged + 1 return real(...) end`);
+  const hidden = addon.eval(`local out = {}
+    for _, event in ipairs(ns.GetModule("ChatFilter").EVENTS) do
+      for _, fn in ipairs(__wfgWorld.chatFilters[event]) do
+        out[#out + 1] = select("#", fn(nil, event, __wfgWorld.secret(), "Goldy")) .. tostring(fn(nil, event, __wfgWorld.secret(), "Goldy")) .. tostring(fn(nil, event, "${GOLD}", __wfgWorld.secret()))
+      end
+    end
+    return out`);
+  expect(hidden.length >= 3 && hidden.every((r) => r === "1falsefalse"), "hidden text or a hidden sender: a bare false from every registered filter").toBe(true);
+  expect(addon.eval("return __judged"), "and nothing was judged").toBe(0);
+  expect([deliver(addon, GOLD, "Goldy"), addon.eval("return __judged")], "while a plain line is judged (and caught)").toEqual([true, 1]);
+  addon.eval(`ns.GetModule("ChatFilter").Judge = function() error("TEST-ONLY judge", 0) end`);
+  expect(deliver(addon, GOLD, "Goldy2"), "a judge that fails lets the line through").toBe(false);
+  expectErrors("chat filter: TEST-ONLY judge");
 });
 
 it("chat filter: your own words, and the same line from one sender within a minute", () => {

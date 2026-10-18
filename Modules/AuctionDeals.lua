@@ -106,7 +106,7 @@ end
 -- judged, and closing the house forgets this visit's deals.
 function AH.ListenDeals(on)
   AP.OnSeen(AH.CheckDeal)
-  on("AUCTION_HOUSE_CLOSED", function() AH.deals = {} end)
+  ns.On("AUCTION_HOUSE_CLOSED", function() AH.deals = {} end) -- state only, so also in combat
 end
 
 -- The entry ------------------------------------------------------------------------------------

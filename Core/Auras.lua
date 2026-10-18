@@ -145,7 +145,7 @@ end
 -- Dispel type -> its badge glyph under Media/Icons (#235): a letter, so a type reads without its hue.
 A.DISPEL_GLYPHS = { Magic = "DispelMagic", Curse = "DispelCurse", Disease = "DispelDisease", Poison = "DispelPoison" }
 -- The badge's side: a share of the icon's, and the least it may be (UI units).
-A.BADGE, A.BADGE_MIN = 0.5, 8
+A.BADGE, A.BADGE_MIN = 0.6, 12
 
 -- One badge letter on the badge's backing, in its type's color, hidden until shown.
 local function letter(f, back, kind)

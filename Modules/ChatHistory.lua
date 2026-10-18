@@ -137,7 +137,8 @@ function CHH.Watch()
   for i = 1, NUM_CHAT_WINDOWS or 10 do watchWindow(i) end
   if CHH.watching then return end
   CHH.watching = true
-  for _, event in ipairs(CHH.WHISPERS) do ChatFrame_AddMessageEventFilter(event, CHH.NoteWhisper) end
+  local guarded = ns.GuardResult("chat history whisper", CHH.NoteWhisper, false)
+  for _, event in ipairs(CHH.WHISPERS) do ChatFrame_AddMessageEventFilter(event, guarded) end
 end
 
 -- Restoring -----------------------------------------------------------------------------------

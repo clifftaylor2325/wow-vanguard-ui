@@ -698,7 +698,7 @@ it("state colors and Color assist (#235): states off the red-green axis; the swi
   expect([["friendly", "neutral", "hostile"].map(hex), bar()], "off by default: the usual reactions").toEqual([["4db86a", "e0c24e", "cc4b45"], "cc4b45"]);
   addon.slash("");
   addon.eval('__click("General")');
-  expect(addon.eval('return __click("Safer colours (reload)")') !== false, "the switch is under General, Look").toBe(true);
+  expect(addon.eval('return __click("Safer colours")') !== false, "the switch is under General, Look").toBe(true);
   expect([addon.eval("return ns.Theme.Settings().colorAssist"), ["friendly", "neutral", "hostile"].map(hex), bar()], "on: friendly blue, neutral yellow, hostile vermilion, health bars too").toEqual([true, ["4a9be8", "e8d25a", "e0663a"], "e0663a"]);
   expect(hex("bad"), "other colors stay as they are").toBe("e8663f");
 });
