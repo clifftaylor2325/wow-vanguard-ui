@@ -58,7 +58,7 @@ read_globals = {
   -- P3.5 Shared media: the bundled libraries' loader (Libs/LibStub).
   "LibStub",
   -- P3.8 Chat: the game's time formatter and clock (chat timestamps), its chat windows list.
-  "TimeUtil", "time", "CHAT_FRAMES",
+  "TimeUtil", "time", "date", "CHAT_FRAMES",
   -- P3.9 GameAlerts: rare spawns from the minimap's vignettes.
   "C_VignetteInfo",
   -- P3.10 Click casting: the game's click bindings and its Click Casting window.
