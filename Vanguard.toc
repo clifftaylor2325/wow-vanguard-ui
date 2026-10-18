@@ -110,6 +110,7 @@ Modules/ChatFilter.lua
 Modules/ChatBubbles.lua
 Modules/Bags.lua
 Modules/BagSections.lua
+Modules/BagCategories.lua
 Modules/InfoStrip.lua
 Modules/BrokerStrip.lua
 Modules/MenuStrip.lua
@@ -132,6 +133,7 @@ Modules/QuestTracker.lua
 Modules/QuestTrackerView.lua
 Modules/QuestLog.lua
 Modules/QuestLogView.lua
+Modules/QuestHistory.lua
 Modules/QuestGuide.lua
 Modules/QuestGuideMap.lua
 Modules/QuestArrow.lua

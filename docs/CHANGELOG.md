@@ -34,6 +34,8 @@ Nothing here has been checked in the game by the people who wrote it down: see t
 
 - Quest-start pins on the world map and Shift-click a quest to point the arrow at it.
 - Quest tracker: click +N more to show up to 10 watched quests, and the choice is remembered; it starts below the info strip and sits under the game's windows.
+- Quest history: the quest dialog and quest log say which of your characters last turned a quest in ("Done on Thrall-Forever · 3 days ago"), and `/vg quests history [n]` lists the latest turn-ins.
+- Nameplates: the quest "!" now also shows when the unit's tooltip data lists one of your quests, using Vanguard's own mark, and repaints once a frame as your quests change.
 - Quest log: Track and Untrack update at once, Shift-click tracks, reward cards show the item tooltip.
 - World map: quest zone headers use a gold chevron.
 
