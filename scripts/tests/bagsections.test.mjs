@@ -395,3 +395,37 @@ it("the combined bag's money line takes the theme font and its gold coin box bec
   expect(addon.eval(`local m = ContainerFrameCombinedBags.MoneyFrame
     return { m.GoldButton.Text:GetFont() ~= "TEST-ONLY-GAME", m.CopperButton.Text:GetFont() ~= "TEST-ONLY-GAME", m.Border:GetRegions():GetAlpha(), select("#", m.Border:GetRegions()) > 1 }`), "figures in the theme font; the coin box's art faded and a panel of the theme's put in its place").toEqual([true, true, 0, true]);
 });
+
+it("bag categories: your own sections above the built-in ones, in list order, first in the list winning", () => {
+  const addon = openFilled([8, 4, 0, 0, 0], { quest: 1, equipment: 1, consumables: 2, junk: 1 });
+  // The chat so far, as one string.
+  const chat = () => Array.from(addon.chat()).join("\n");
+  addon.slash("bag add Potions |Hitem:159::|h[TEST-ONLY Water]|h");
+  addon.slash("bag add Tools 90001");
+  expect(addon.texts("POTIONS").length + addon.texts("TOOLS").length, "both headers show at once, without a reload").toBe(2);
+  expect(addon.eval(`local h = ns.GetModule("Bags").headers
+    return h["cat:potions"]:GetTop() >= h.quest:GetTop() and h["cat:potions"]:GetLeft() < h.quest:GetLeft()`), "categories sit before Quest items").toBe(true);
+  addon.slash("bag add Tools 159");
+  expect(addon.eval(`return ns.Settings("Bags").categories[2].items[159]`), "an item is in one category: the newer move wins").toBe(true);
+  expect(addon.eval(`return ns.Settings("Bags").categories[1].items[159]`)).toBeNull();
+  addon.slash("bag top Tools");
+  expect(addon.eval(`return ns.Settings("Bags").categories[1].name`), "top moves it first").toBe("Tools");
+  addon.slash("bag remove 159");
+  expect(addon.texts("POTIONS").length, "an emptied category shows no header").toBe(0);
+  addon.slash("bag delete tools");
+  expect(addon.texts("TOOLS").length, "a deleted category's header goes").toBe(0);
+  addon.slash("bag delete Potions");
+  addon.slash("bag");
+  addon.slash("bag delete Nope");
+  addon.slash("bag add Tools");
+  expect(chat(), "the list, a missing category and the usage line are answered").toMatch(/No bag categories[^]*No bag category called Nope[^]*Usage: \/vg bag/);
+  addon.slash("bag add Mix 6948");
+  addon.slash("bag");
+  expect(chat(), "the list names each category and its items").toMatch(/Mix: /);
+});
+
+it("bag categories ignore an item with no usable ID", () => {
+  const addon = openFilled([8, 0, 0, 0, 0], { equipment: 1 });
+  addon.slash("bag add Tools 90001");
+  expect(addon.eval(`local BG = ns.GetModule("Bags") return { BG.CategoryOf(nil) == nil, BG.CategoryOf(90001) }`)).toEqual([true, "cat:tools"]);
+});
