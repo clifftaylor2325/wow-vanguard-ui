@@ -70,7 +70,7 @@ read_globals = {
   -- P4.7 Options keys: the box that has the typing (the window leaves keys alone while you type).
   "GetCurrentKeyBoardFocus",
   -- Bug hunt, swing timer: your weapons' speeds, for a swing a weapon swap restarts.
-  "UnitAttackSpeed",
+  "UnitAttackSpeed", "UnitDamage",
   -- F2 Vendor memory: a merchant item's ID, and the zone and subzone you're in.
   "GetMerchantItemID", "GetZoneText", "GetSubZoneText",
   -- F4 Chat watch: the game's whisper call, and its older name.
