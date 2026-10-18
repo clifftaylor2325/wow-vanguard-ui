@@ -448,6 +448,7 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 
 - Do: fill the quest log (as many quests as it lets you take; the limit on Forever is not confirmed), then press the quest log key and type `/vg quests`.
 - Expect: Vanguard's log, titled `Quest log` with your quest count (`12 quests`) beside the title, with quests under their zones (each zone a small grey capitals header with a chevron, down while open and right while folded: click it to fold the zone), `[12] Title` lines in difficulty colours, the chosen quest marked by an accent bar along its left edge and a faint wash, a thin scroll thumb beside a list or quest text longer than its column, and Track or Untrack, Share and Map along the right, and Abandon (red label) alone at the far left, for the chosen quest. Click Track or Untrack, then Shift-click another quest: the button flips each time and the tracker follows; if the game refuses, chat says `The game didn't track ...` with the count tracked. Hover a reward card (a quest with an item reward): the item's tooltip shows beside it and goes when you leave. [Needs in game: the tooltip must show for both choices and fixed rewards.] Ctrl-click two quests: both look chosen and the red button reads `Abandon 2`; Ctrl-click one again to unmark it. Click Abandon: a question names the marked quests; No leaves them, Abandon removes them from the log. [Needs in game: that C_QuestLog.AbandonQuest exists and works after SetAbandonQuest, several in a row.] If it is off, `/vg quests` says `Vanguard's quest log is off (/vg > Quests).`
+- Also (objective rows): choose a quest with a counted objective (kill or collect) and one without a count (explore, talk to). Expect an `Objectives` header and one 28 px row each: a count at the right edge (`3/8`) with a thin accent bar under the row while it is open; a plain objective with no count and no bar; a done one with a check mark and muted text. Kill one more and the count and bar follow. [Needs in game: that objective text ends or starts with `x/y` on Forever; if it reads another way the row shows the whole text and no count.]
 - If it fails, paste: a screenshot and `/vg errors`.
 
 ### 8.3a Quest history
@@ -502,6 +503,12 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Do: open your bags, type `/vg bag add Potions ` and shift-click a potion, then another item into `/vg bag add Tools <item>`. Open the bags. Then `/vg bag top Tools`, `/vg bag remove <the potion>`, `/vg bag delete Tools`, and `/vg bag` on its own.
 - Expect: a POTIONS header over the potion and a TOOLS header over the tool, both above Quest items; after `top Tools` Tools comes first; the removed item falls back to its built-in section; the deleted category's header goes; `/vg bag` lists each category and its items. The bag lays out again each time without a reload.
 - If it fails, paste: a screenshot, the output of `/vg bag` and `/vg errors`.
+
+### 9.1b Bag search words and bank deposit
+
+- Do: with bags open, type `ilvl>20`, then `q:epic`, `type:armor bind:boe`, `cat:<a category of yours>` in the bag's search box, then clear it. At the bank, `/vg bag deposit <category>`; then once in a fight.
+- Expect: items that match every word stay lit and the rest dim as with a normal search; a plain word still works the game's way; the box clearing lights everything again. Deposit sends that category's stacks to the bank and says how many; in a fight, or with no bank open, it says to open the bank and moves nothing.
+- If it fails, paste: a screenshot, `/vg probe` (the SetItemSearch and UpdateSearchResults lines) and `/vg errors`.
 
 ### 9.2 Merchant repair and sell
 
