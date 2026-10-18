@@ -57,10 +57,17 @@ local function glowRows()
   }
 end
 
+-- The key text switch (Modules/CooldownKeys.lua), applied at once.
+local function keyRows()
+  return {
+    keys = tip(check("Key text on the manager's icons", liveSetting("CooldownKeys", "keys", function() ns.GetModule("CooldownKeys").Refresh() end)), "Shows the key you press for each spell in the manager's essential and utility rows, read from Vanguard's action bars. An icon whose spell isn't on a Vanguard bar shows none."),
+  }
+end
+
 -- Every row by name: the page and the wizard draw these.
 local function defs()
   local rows = managerRows()
-  for _, group in ipairs({ gapRows(), glowRows() }) do
+  for _, group in ipairs({ gapRows(), glowRows(), keyRows() }) do
     for key, row in pairs(group) do rows[key] = row end
   end
   return rows
@@ -75,6 +82,7 @@ local function pageRows()
     { "header", "Gaps row" }, d.gaps, d.tracked,
     { "text", "Choose items and spells for the row with /vg gaps add and /vg gaps spell add.", "note" },
     { "header", "Buff glow" }, d.glow, d.percent,
+    { "header", "Key text" }, d.keys,
   }
 end
 

@@ -307,6 +307,7 @@ O.MODULE_INFO = {
   GameTools = { "The game's tools", "The game's Cooldown Manager and damage meter, restyled and placed to fit the layout." },
   CooldownGaps = { "Cooldown gaps", "A small row of icons for what the game's Cooldown Manager misses: on-use trinkets, items and spells you choose, the manager's own cooldowns if you like, pet abilities and totems (off until switched on)." },
   CooldownGlow = { "Cooldown Manager glow", "A glow on a Cooldown Manager icon when its aura is in its last part (30 % by default), for spells without the game's own pandemic flag (off until switched on)." },
+  CooldownKeys = { "Cooldown Manager keys", "The key you press for each spell in the Cooldown Manager's essential and utility rows, as small text on its icon, read from Vanguard's action bars (off until switched on)." },
   CraftQueue = { "Craft queue", "A list of crafts to make, profession cooldowns across your characters and the recipes that pay best, from the auction prices (off until switched on; /vg craft)." },
   MailTools = { "Mail tools", "Search and filter the inbox beside the mail window, and presets that fill the Send Mail tab for your alts (off until switched on; /vg mail)." },
   Rolls = { "Roll tracker", "A small panel with the group's /roll results, highest first, and, when the game's loot history lists the drop, who rolled what on the items being rolled for." },
