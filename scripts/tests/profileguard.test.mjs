@@ -3,7 +3,7 @@
 import { expect, it } from "vitest";
 import { createAddon } from "../lib/lua-harness.mjs";
 import { luaValue } from "../lib/lua-emit.mjs";
-import { CLICK_LUA, chatHas, loggedIn } from "./helpers.mjs";
+import { CLICK_LUA, chatHas, loggedIn, setCombat } from "./helpers.mjs";
 
 // Settings-loss guard (Core/SettingsGuard.lua) -----------------------------------------------------
 
@@ -122,4 +122,89 @@ it("settings-loss guard: a first run, and files saved before the guard, fire not
   expect([question(old), chatHas(old, /didn't load/)], "files without stamps are trusted").toEqual([null, false]);
   const newChar = loggedIn(CLICK_LUA, { firstRun: true, savedVariables: "VanguardDB = { version = 2, setupDone = true, profiles = { Default = {} }, guard = { stamp = 5, chars = {} } }\n" });
   expect([chatHas(newChar, /didn't load/), setupShown(newChar)], "a new character the account file doesn't know gets setup").toEqual([false, true]);
+});
+
+// Saved data size (Core/SettingsGuard.lua) ------------------------------------------------------------
+
+// A logged-in addon whose account file holds three price homes (the one in use, an old one and an older
+// one), each with `n` priced items, under a budget of `budget` bytes.
+function crowded(budget, n = 30) {
+  const addon = loggedIn(CLICK_LUA);
+  addon.eval(`
+    local G, ah = ns.SettingsGuard, VanguardDB.ah
+    G.BUDGET = ${budget}
+    ah.houses = {}
+    local function home(key, t)
+      local prices = {}
+      for i = 1, ${n} do prices[i] = { min = i * 100, t = t, days = { [1] = i } } end
+      ah.houses[key] = { prices = prices, count = ${n} }
+    end
+    home(ns.Home.Key(), 3000) home("Old-Alliance", 2000) home("Older-Alliance", 1000)`);
+  return addon;
+}
+// Which price homes are left, sorted.
+const homes = (addon) => addon.eval("local k = {} for key in pairs(VanguardDB.ah.houses) do k[#k + 1] = key end table.sort(k) return k");
+
+it("saved data size: the estimate counts text, ends on a loop and ignores what isn't a table", () => {
+  const addon = loggedIn(CLICK_LUA);
+  expect(addon.eval('return { ns.SettingsGuard.Bytes("abc"), ns.SettingsGuard.Bytes(12345), ns.SettingsGuard.Bytes(true) }'), "a string counts its quotes, a number its digits").toEqual([5, 5, 4]);
+  expect(addon.eval("local t = {} t.me = t return ns.SettingsGuard.Bytes(t) > 0"), "a table that holds itself is walked once").toBe(true);
+  expect(addon.eval("local G = ns.SettingsGuard return G.Bytes({ a = { 'x' } }) < G.Bytes({ a = { 'x' }, b = { 'yyyyyyyy' } })"), "more data is more bytes").toBe(true);
+  expect(addon.eval("return #ns.SettingsGuard.Sizes('TEST-ONLY')"), "a damaged file has no keys").toBe(0);
+  expect(addon.eval("local s = ns.SettingsGuard.Sizes({ small = {}, big = { 'xxxxxxxxxxxxxxxx' } }) return { s[1].name, s[2].name }"), "keys come largest first").toEqual(["big", "small"]);
+});
+it("saved data size: over its budget, the oldest price homes go first and the one in use stays", () => {
+  const addon = crowded(1);
+  const one = addon.eval("return ns.SettingsGuard.Bytes(VanguardDB.ah.houses['Old-Alliance'], 1)");
+  addon.eval(`ns.SettingsGuard.BUDGET = ns.SettingsGuard.Bytes(VanguardDB) - ${one} / 2`);
+  addon.eval("ns.SettingsGuard.Audit()");
+  expect(homes(addon), "the oldest home is dropped, and that was enough").toEqual([addon.eval("return ns.Home.Key()"), "Old-Alliance"].sort());
+  expect(chatHas(addon, /saved data was too large: it dropped the auction prices of 1 realm and side\(s\), oldest first/), "chat says so").toBe(true);
+  expect(chatHas(addon, /still large/), "it fits now").toBe(false);
+  const full = crowded(1);
+  full.eval("ns.SettingsGuard.Audit()");
+  expect([homes(full).length, chatHas(full, /It is still large; \/vg mem lists what holds the most/)], "a budget nothing can meet keeps the home in use and says it is still large").toEqual([1, true]);
+});
+it("saved data size: within the budget nothing is dropped or said, and a file with only the home in use says so", () => {
+  const ok = crowded(10 * 1024 * 1024);
+  ok.eval("ns.SettingsGuard.Audit()");
+  expect([homes(ok).length, chatHas(ok, /too large|size budget/)], "nothing happens").toEqual([3, false]);
+  const lone = loggedIn(CLICK_LUA);
+  lone.eval("VanguardDB.ah = nil VanguardDB.profiles.Default.junk = string.rep('x', 400) ns.SettingsGuard.BUDGET = 100 ns.SettingsGuard.Audit()");
+  expect(chatHas(lone, /over its size budget; \/vg mem lists what holds the most/), "with no price home to drop it points at /vg mem").toBe(true);
+});
+it("saved data size: the check runs a while after login, out of combat, and a client without timers skips it", () => {
+  const addon = crowded(1);
+  addon.advance(14);
+  expect(homes(addon).length, "not yet").toBe(3);
+  setCombat(addon, true);
+  addon.advance(2);
+  expect(homes(addon).length, "not in combat").toBe(3);
+  setCombat(addon, false);
+  expect(homes(addon).length, "right after the fight").toBe(1);
+  const bare = loggedIn("C_Timer = nil");
+  expect(bare.eval("return ns.SettingsGuard.Bytes(VanguardDB) > 0"), "a client without timers still logs in").toBe(true);
+});
+it("saved data size: SAVED_VARIABLES_TOO_LARGE for Vanguard trims to half the budget; another addon's is ignored", () => {
+  const addon = crowded(1);
+  addon.eval("ns.SettingsGuard.BUDGET = ns.SettingsGuard.Bytes(VanguardDB)");
+  addon.fire("SAVED_VARIABLES_TOO_LARGE", "SomeOtherAddon");
+  expect(homes(addon).length, "another addon's file is not ours").toBe(3);
+  addon.fire("SAVED_VARIABLES_TOO_LARGE", "Vanguard");
+  expect(homes(addon).length, "two homes go, to reach half the budget").toBe(1);
+  expect(chatHas(addon, /The game says Vanguard's saved data is too large\. Vanguard's saved data was too large: it dropped the auction prices of 2 realm/), "and chat says what happened").toBe(true);
+  const none = loggedIn(CLICK_LUA);
+  none.eval("VanguardDB.ah = nil ns.SettingsGuard.BUDGET = 1")
+  none.fire("SAVED_VARIABLES_TOO_LARGE", "Vanguard");
+  expect(chatHas(none, /no price data left to drop/), "with nothing to drop it says so").toBe(true);
+});
+it("saved data size: /vg mem reports the saved files, and waits out of combat", () => {
+  const addon = loggedIn(CLICK_LUA);
+  addon.slash("mem");
+  expect(chatHas(addon, /Saved data \(estimate\): account file [\d.]+ [KM]B of a 6\.0 MB budget; largest: \w+ /), "the account file's estimate and its largest keys").toBe(true);
+  expect(chatHas(addon, /This character's file: [\d.]+ [KM]B \(/), "and this character's file").toBe(true);
+  const fight = loggedIn(CLICK_LUA);
+  setCombat(fight, true);
+  fight.eval("ns.SettingsGuard.SizeReport()");
+  expect(chatHas(fight, /Saved data sizes are read out of combat/), "in combat it waits").toBe(true);
 });

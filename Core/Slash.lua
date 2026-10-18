@@ -79,7 +79,7 @@ local HELP = {
   "feedback [bug|feature]   a bug report or feature request written here: the questions vanguardui.com/feedback asks, then one block to paste there (it fills the form)",
   "gaps [add <item>|remove <item>|spell add <spell>|spell remove <spell>|clear]   Cooldown gaps (switch it on under Cooldowns): choose items such as a Healthstone or potion, and spells, to show beside trinkets, pet abilities and totems; no verb lists them",
   "perf [cpu|watch|slow] Vanguard's CPU (ms a frame) and memory now; cpu turns the game's script profiling on or off (reload) for the busiest functions; watch prints them every minute; slow lists the slowest handlers (slow reset starts over)",
-  "mem                  watches Vanguard's memory for a minute (out of combat), then says how much it grew and whether it kept any; again ends it early",
+  "mem                  prints the size of the saved files, then watches Vanguard's memory for a minute (out of combat), then says how much it grew and whether it kept any; again ends it early",
   "graphics             checks this computer (the graphics card the game sees and the Graphics Quality the game recommends for it), your screen and your frame rate for 5 s (out of combat), then suggests a Graphics Quality and the sizes for your screen; again ends it early",
   "graphics apply       sets what the check suggested (Graphics Quality as the game's slider does, render scale, your screen's sizes), out of combat",
   "graphics undo        puts your graphics settings and UI scale back as they were before apply",
