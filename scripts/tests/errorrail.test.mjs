@@ -65,6 +65,16 @@ it("ns.Guard hands a non-function back, passes arguments through and returns not
   expect(addon.eval("return __guardSeen"), "the arguments reach the callback").toEqual(["a", "b"]);
 });
 
+it("ns.GuardResult keeps every result on success, gives the fallback and reports on failure, and hands a non-function back", () => {
+  const addon = loggedIn();
+  expect(addon.eval(`return ns.GuardResult("x", nil, false) == nil`), "nil comes back as nil").toBe(true);
+  expect(addon.eval(`return { select("#", ns.GuardResult("x", function(a, b) return false, a, b end, false)("p", "q")) }`), "all the results pass through, even a trailing nil").toEqual([3]);
+  expect(addon.eval(`return { ns.GuardResult("x", function(a, b) return false, a, b end, false)("p", "q") }`), "with the arguments the game gave").toEqual([false, "p", "q"]);
+  expect(addon.eval(`return { select("#", ns.GuardResult("guard result TEST-ONLY", function() error("TEST-ONLY result", 0) end, false)()) }`), "a failure gives one value").toEqual([1]);
+  expect(addon.eval(`return ns.GuardResult("guard result TEST-ONLY", function() error("TEST-ONLY result", 0) end, false)()`), "and it is the fallback").toBe(false);
+  expectErrors(/^guard result TEST-ONLY: TEST-ONLY result$/);
+});
+
 it("an entry ns.ClearErrors removed is still judged", () => {
   const addon = loggedIn();
   addon.eval(`ns.Report("TEST-ONLY rail", "x") ns.ClearErrors()`);

@@ -145,6 +145,7 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 
 - Do: drag a frame with `/vg unlock`, then open `/vg` → General → **Run setup**. Click Next three times, then Done.
 - Expect: `Step 1 of 4 · Layout` with six choices (Centered: damage, Centered: tanking, Centered: healing, Versus deck, Like the game's, Keep my current layout), Keep picked; the frame you dragged stays where it is at the end. Next goes to `Step 2 of 4 · Screen`, with a choice per screen size (1080p, 1440p, 4K, Ultrawide), the one for your screen marked `your screen`, `Pixel-perfect (sharpest)` and `Keep my current sizes` (picked); under them the hint names who sets your UI scale now (`the game's UI Scale slider` or `Vanguard's pixel-perfect scale`), in full and inside the window, and clicking a preset shows a two-line hint that it moves the game's UI Scale slider; Next goes to `Step 3 of 4 · Look` (the accent swatches, the raid frame style and the Calm HUD switch, off); Next goes to `Step 4 of 4 · Move things` with every frame's handle showing; the button then says Done, and Done hides the handles and the wizard and offers `Setup is done. Reload the UI now to apply it?`. No profile backup is mentioned in chat, since nothing changed. Escape and the close button close it too. After `/reload` the wizard does not come back by itself.
+- Also on the Look step: under Calm HUD, switches **Larger text (115%)** and **Colour vision: Safer colours**, both off and inside the window. Larger text makes the wizard's own text bigger at once and Off puts it back; Safer colours moves hostile and friendly bars apart after the reload. Each first change says where the backup profile went.
 - If it fails, paste: the step id, the caption you saw, and `/vg errors`.
 
 ### 2.2a The role layouts look different
@@ -216,6 +217,12 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Do: type `/vg import`, paste `garbage`, click Import. Then export (step 4.3), cut the string in half, and import that.
 - Expect: `Import failed: not a Vanguard profile string.` for the garbage, and `Import failed: the string is incomplete (was it cut off when pasting?).` for the cut string; no error popup either time.
 - If it fails, paste: the chat lines and `/vg errors`.
+
+### 4.2a A position that is not a sane number
+
+- Do: type `/run VanguardDB.profiles.Default.positions.uf_player.x = math.huge`, then `/reload`. (A profile string holding `1e999` is refused on import with an "Import failed" line.)
+- Expect: the player frame loads at most 5000 units from its anchor, with no error popup and nothing in `/vg errors`; `/vg reset` puts it back.
+- If it fails, paste: `/vg errors`.
 
 ### 4.3 Export
 
@@ -1237,6 +1244,18 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 - Expect: the window resizes live and keeps its size after the reload; locked windows do not drag; the floating window has a `Chat: <name>` handle and stays where you put it, also after a layout change. `/vg errors` is empty. [Needs in game: that FCF_SetLocked and FCF_SavePositionAndDimensions exist and keep the size, that GetChatWindowInfo returns locked and docked as 8th and 9th values, and that a docked tab is not offered as a handle.]
 - If it fails, paste: `/vg errors` and what the window did.
 
+### 15.6d Chat while the game hides it (instanced fights)
+
+- Do: with Chat extras links on (the default) and the Chat filter on, join a group in an encounter, a Mythic+ key or a rated battleground and let party or raid chat run during the fight. Type `/vg errors` after it.
+- Expect: every group chat line appears in its window for the whole fight, and no error popup appears. Lines the game hides from addons show as the game gives them (no link on a web address in them, not shortened, not in the Filtered tab). `/vg errors` has no `chat filter` or `chat filter links` line. [Needs in game: whether comparing a hidden chat line raised before this change; the early return makes the question moot, but the fight is the proof.]
+- If it fails, paste: `/vg errors` and which chat event went quiet.
+
+### 15.6e Chat tabs
+
+- Do: `/vg` → Chat → Chat tabs. Click New chat tab, type `Loot`, Make. With Loot picked, tick Show Loot and untick Show Say; loot something and say something. Click Rename this tab, type `Drops`. Pick General, try Close this tab. Pick Drops, Close this tab. Do the same in combat.
+- Expect: a new tab appears and is picked; it shows loot and not say; the rename shows on the tab; closing General does nothing and says so in chat; Drops closes; in combat the new tab or close waits until the fight ends. `/vg errors` is empty. [Needs in game: FCF_OpenNewWindow, FCF_SetWindowName, FCF_Close, ChatFrame_AddMessageGroup / RemoveMessageGroup / ContainsMessageGroup behave as used, and the group names (SAY, YELL, GUILD, PARTY, RAID, WHISPER, LOOT, SYSTEM) match.]
+- If it fails, paste: `/vg errors` and what the tab did.
+
 ## 16. Realm and ruleset
 
 ### 16.1 Realm, ruleset and names
@@ -1279,6 +1298,12 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 - Do: type `/way 45 61`, then open the world map and supertrack a quest (click its pin or its entry in the quest panel), then `/way clear`. In a group, let the game track a party member (the group finder's "track" on their frame, where offered); on a corpse run, look at the pin while you are a ghost. Then untick **Vanguard's pin and font on the game's floating waypoint pin** under `/vg` → Map, `/reload`, and `/way 45 61` again.
 - Expect: the floating marker in the world is Vanguard's teardrop pin in your accent colour, the distance under it (`12 yds`) in the theme's outlined font, and it still fades as you look away from it and when you reach the spot; a supertracked quest shows the same pin. A party member's portrait and the ghost's tombstone are the game's own, untinted. With the switch off, the game's own pin art and gold text come back. [Needs in game: the pin's size against the game's, its look after `/way` and on a supertracked quest, and that the game's `SuperTrackedFrame` is present on Forever.]
 - If it fails, paste: a screenshot of the pin, which step broke, and `/vg errors`.
+
+### 18.4a Ctrl-click waypoint, Clear button and recent waypoints
+
+- Do: open the world map, hold Ctrl and click a spot; then click another spot, then press **Clear waypoint** on the map's bottom edge. Open `/vg` → Map → Waypoints and Recent waypoints; press a "Go to ..." button. Type `/way recent` and `/way recent 2`. Untick "Point the arrow at a waypoint you Ctrl-click on the map" and Ctrl-click again.
+- Expect: with the switch on, the floating pin and its distance appear at once after each Ctrl-click; the Clear waypoint button shows only while a waypoint exists and removes it and the pin; the Map page lists up to eight spots, newest first, and each button puts that spot back with the pin; `/way recent` prints the same list; with the switch off the click only drops the map pin and the arrow stays off. [Needs in game: that the event is `USER_WAYPOINT_UPDATED`, that `C_Map.GetUserWaypoint` returns the position on Forever, and the Clear button's place on the map.]
+- If it fails, paste: which step broke and `/vg errors`.
 
 ### 18.5 Levelling guide probe (LG-0)
 
@@ -1436,6 +1461,12 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 - Do: turn on the game's Cooldown Manager and track a heal-over-time buff on yourself in its buff row. Type `/vg cdmglow on`, cast the buff on yourself, wait until under 30 percent is left, out of combat; then do the same in combat. Type `/vg cdmglow 50`, then `/vg cdmglow off`.
 - Expect: the buff's icon gets an accent glow ring once under the share is left, and loses it when the buff is renewed or ends. In combat the glow still follows the time left, or stays off with no error. `/vg cdmglow 50` says "under 50 percent left"; off puts the glows out. [Needs in game: whether the client hands the aura's duration object to a curve (C_CurveUtil.CreateCurve, EvaluateRemainingPercent) and whether SetAlpha takes the result in combat; the Cooldown Manager item fields auraInstanceID and auraDataUnit.]
 - If it fails, paste: `/vg errors`, and what `/run print(C_CurveUtil and C_CurveUtil.CreateCurve ~= nil)` prints.
+
+### 28.1a The command with the module switched off
+
+- Do: switch the Cooldown glow module off in `/vg`, then type `/vg cdmglow on`.
+- Expect: chat says "Cooldown glow is off: turn the module on in the options first." and `/vg errors` stays empty.
+- If it fails, paste: `/vg errors`.
 
 ### 28.2 Key text on the manager's icons
 

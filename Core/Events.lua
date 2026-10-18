@@ -220,6 +220,26 @@ function ns.Guard(where, fn)
   end
 end
 
+-- The results of a successful ns.Try (its first value), else `fallback`.
+local function resultsOr(fallback, ok, ...)
+  if ok then return ... end
+  return fallback
+end
+
+-- Wraps a callback whose results the game reads (a chat filter) so a failure is reported under
+-- `where` like ns.Guard, and the game gets `fallback` (false for a chat filter: the line goes through).
+-- A non-function comes back as it is.
+---@param where string
+---@param fn function|nil
+---@param fallback any  what the game gets when fn fails
+---@return function|nil wrapped  fn's results on success, `fallback` on failure
+function ns.GuardResult(where, fn, fallback)
+  if type(fn) ~= "function" then return fn end
+  return function(...)
+    return resultsOr(fallback, ns.Try(where, fn, ...))
+  end
+end
+
 -- Events ------------------------------------------------------------------------------------
 
 -- Event -> list of handlers. A list is never changed in place: ns.On and
