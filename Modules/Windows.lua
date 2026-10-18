@@ -1113,7 +1113,7 @@ local function watchBookPages(book)
   if type(paged) ~= "table" or not paged.HookScript then return end
   -- Dresses the entries and heads the pages hold now.
   local function dress() dressBookPages(paged, 4) end
-  paged:HookScript("OnShow", ns.Guard("book pages", dress))
+  GW.HookScriptOnce(paged, "OnShow", "book pages", dress)
   for _, name in ipairs(GW.BOOK_REFILLS) do
     GW.HookAfter(paged, name, dress)
     GW.HookAfter(book, name, dress)
@@ -1173,6 +1173,16 @@ function GW.HookAfter(frame, name, fn)
   if vgHooked[frame][name] then return end
   vgHooked[frame][name] = true
   hooksecurefunc(frame, name, ns.Guard("hook " .. name, fn))
+end
+
+-- Hooks fn into the frame's script `script` (under ns.Guard as `where`) once per frame and script, however often the
+-- skin that asks for it runs; a frame without HookScript is skipped. Hooks cannot be taken off, so a repeat would pile up.
+function GW.HookScriptOnce(frame, script, where, fn)
+  if type(frame) ~= "table" or type(frame.HookScript) ~= "function" then return end
+  vgHooked[frame] = vgHooked[frame] or {}
+  if vgHooked[frame]["script:" .. script] then return end
+  vgHooked[frame]["script:" .. script] = true
+  frame:HookScript(script, ns.Guard(where, fn))
 end
 
 -- A frame faded as a whole by its alpha (a nine-slice frame whose pieces the game lays out); skipped when it is no frame.
@@ -1616,9 +1626,9 @@ local function keepTextReadable()
   local box = gossipBox()
   if type(box) == "table" then after(box, "Update", GW.LightGossip) end
   for _, f in ipairs({ _G.QuestFrame, _G.GossipFrame }) do
-    if type(f) == "table" and f.HookScript then f:HookScript("OnShow", function() GW.LightQuestText() GW.LightGossip() end) end
+    GW.HookScriptOnce(f, "OnShow", "quest text", function() GW.LightQuestText() GW.LightGossip() end)
   end
-  if type(_G.ItemTextFrame) == "table" and _G.ItemTextFrame.HookScript then _G.ItemTextFrame:HookScript("OnEvent", GW.LightItemText) end
+  GW.HookScriptOnce(_G.ItemTextFrame, "OnEvent", "item text", function(...) GW.LightItemText(...) end)
 end
 
 -- The auction house's own panels --------------------------------------------------------------
@@ -1930,7 +1940,7 @@ end
 local function watchDurability()
   local pane = _G.CharacterFrame
   if type(pane) ~= "table" or type(GetInventoryItemDurability) ~= "function" then return end
-  pane:HookScript("OnShow", GW.PaintAllDurability)
+  GW.HookScriptOnce(pane, "OnShow", "durability", function() GW.PaintAllDurability() end)
   for _, e in ipairs({ "UPDATE_INVENTORY_DURABILITY", "UNIT_INVENTORY_CHANGED" }) do ns.On(e, GW.PaintAllDurability) end
 end
 

@@ -2,7 +2,7 @@
 
 import { readFileSync } from "node:fs";
 import { expect, it } from "vitest";
-import { CLICK_LUA, DATA_ENV, RETAIL, UI_ENV, UNITS_ENV, bars, borderOf, button, calls, chatHas, isTok, key, loggedIn, marks, px, setCombat, tok, tooltip } from "./helpers.mjs";
+import { CLICK_LUA, DATA_ENV, RETAIL, UI_ENV, UNITS_ENV, bars, borderOf, button, calls, chatHas, expectErrors, isTok, key, loggedIn, marks, px, setCombat, tok, tooltip } from "./helpers.mjs";
 
 it("options window", () => {
   const addon = loggedIn(RETAIL + CLICK_LUA + DATA_ENV + "GetSpecialization = function() return 1 end");
@@ -257,6 +257,46 @@ it("choice fallback, key capture and the mouse wheel", () => {
   expect(captured.wheel === "Wheel down (hover)", "the wheel is captured as a hover binding").toBeTruthy();
   expect(addon.eval('return __click("Also on your player, target and focus frames")') === true, "unit-frame click casting is a switch on the page").toBeTruthy();
   expect(addon.eval("return ns.Settings('ClickCast').unitFrames") === true, "the switch turns it on").toBeTruthy();
+});
+
+it("options: a slider drag and a key capture end when their window hides, and a failing drag step is caught under its name", () => {
+  const addon = loggedIn(CLICK_LUA);
+  addon.eval('ns.Options.Show("general")');
+  const out = addon.eval(`
+    local row
+    for _, w in ipairs(__wfgStub.frames) do
+      if w.track and w.min and w.label and w.label.__text == "Text size" then row = w end
+    end
+    row.set(row.min) row:Refresh()
+    row.track.__left, row.track.__width = 0, 100
+    GetCursorPosition = function() return 50 end
+    row.track:GetScript("OnMouseDown")()
+    local during = { row.dragging, row.track:GetScript("OnUpdate") ~= nil }
+    Vanguard_Options:Hide()
+    local hidden = { row.dragging, row.track:GetScript("OnUpdate") == nil }
+    local before = row.get()
+    GetCursorPosition = function() return 100 end
+    __wfgStub.update(0.05)
+    -- TEST-ONLY widget: a key capture, as a page would build it.
+    local cap = ns.Widgets.KeyCapture(UIParent, "Set key", function() end)
+    cap:GetScript("OnClick")(cap)
+    cap:Hide()
+    return { during = during, hidden = hidden, unchanged = row.get() == before, capturing = cap.capturing, caption = cap.text:GetText() }
+  `);
+  expect(out.during, "mouse down on the track follows the cursor").toEqual([true, true]);
+  expect([out.hidden, out.unchanged], "the window closing mid-drag stops the drag: no cursor following, the setting stays").toEqual([[false, true], true]);
+  expect([out.capturing, out.caption], "hiding a key capture cancels it and puts its caption back").toEqual([false, "Set key"]);
+  expectErrors("slider drag: eval:7: TEST-ONLY drag");
+  addon.eval(`local row
+    for _, w in ipairs(__wfgStub.frames) do
+      if w.track and w.min and w.label and w.label.__text == "Text size" then row = w end
+    end
+    row.track.__left, row.track.__width = 0, 100
+    GetCursorPosition = function() error("TEST-ONLY drag") end
+    ns.Options.Show("general")
+    row.track:GetScript("OnMouseDown")()
+    __wfgStub.update(0.05)`);
+  expect(addon.eval("return ns.errors[1].text"), "a drag step that fails is caught under its name").toMatch(/^slider drag: .*TEST-ONLY drag$/);
 });
 
 // The visible slider row whose caption starts with this text, as Lua.

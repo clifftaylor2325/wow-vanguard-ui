@@ -110,6 +110,7 @@ function W.KeyCapture(parent, caption, onKey)
   b:SetScript("OnMouseDown", onMouseDown)
   b:EnableMouseWheel(true)
   b:SetScript("OnMouseWheel", onWheel)
+  b:HookScript("OnHide", stopCapture)
   return b
 end
 

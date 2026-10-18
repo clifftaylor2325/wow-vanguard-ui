@@ -18,14 +18,20 @@ local PT = ns.Module("PowerTicks", { defaults = { mana = true, energy = true } }
 -- Power types (Enum.PowerType), and each one's sweep: seconds, and whether it repeats.
 PT.MANA, PT.ENERGY = 0, 3
 PT.SWEEPS = { mana = { 5, false }, energy = { 2, true } }
+-- How many repeating sweeps run with no tick seen before the spark gives up (full energy has none).
+PT.MISSED = 3
 
 -- Timing --------------------------------------------------------------------------------------
 
--- Where the spark is along the bar (0 to 1) at a time, or nil when it's hidden.
+-- Where the spark is along the bar (0 to 1) at a time, or nil when it's hidden. A repeating sweep (energy) runs
+-- on for PT.MISSED sweeps without a tick, then ends, so the timer is not left running at full energy.
 function PT.Fraction(now)
   if not PT.from then return nil end
   local gone, length = now - PT.from, PT.SWEEPS[PT.mode][1]
-  if PT.SWEEPS[PT.mode][2] then return (gone % length) / length end
+  if PT.SWEEPS[PT.mode][2] then
+    if gone >= length * PT.MISSED then return nil end
+    return (gone % length) / length
+  end
   if gone < length then return gone / length end
 end
 

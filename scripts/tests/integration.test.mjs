@@ -19,6 +19,9 @@ it("RegisterPreset checks its arguments", () => {
   expect(list.map((p) => p.builtIn), "built-in flags").toEqual([true, true, true, false]);
   addon.eval('Vanguard.RegisterPreset("Piped", "VG1:x", "a|cffff0000red")');
   expect(addon.eval("return Vanguard.GetPresets()[5].info"), "escape codes are dropped from info").toBe("acffff0000red");
+  addon.eval('Vanguard.RegisterPreset("|cffff0000Red|r", "VG1:x")');
+  expect(addon.eval("return Vanguard.GetPresets()[6].name"), "escape codes are dropped from the name, so a colour or link cannot reach the dialog or the button").toBe("cffff0000Redr");
+  expect(call('"||", "VG1:x"')[0], "a name of nothing but escape codes is no name").toBe(false);
   for (let i = 0; i < 30; i++) addon.eval(`Vanguard.RegisterPreset("P${i}", "VG1:x")`);
   expect(addon.eval("return Vanguard.GetPresets()").length, "at most 20 presets").toBe(20);
 });

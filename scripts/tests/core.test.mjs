@@ -625,6 +625,31 @@ it("the question dialog: Enter presses a Yes that is not a danger button, out of
   addon.click(`${name}.no`);
 });
 
+it("the question dialog does not keep swallowing keys: the pass-on flag is reset when it hides, and a question shown in a fight reads no keys until it ends", () => {
+  const addon = loggedIn();
+  const name = "Vanguard_Question";
+  addon.eval(`ns.Ask("Sure?", "Go", function() end, function() end)
+    __passed, __kb = {}, {}
+    ${name}.SetPropagateKeyboardInput = function(self, v) __passed[#__passed + 1] = v end
+    ${name}.EnableKeyboard = function(self, on) __kb[#__kb + 1] = on end
+    ${name}.__scripts.OnKeyDown(${name}, "TAB")`);
+  expect(addon.eval("return __passed"), "Tab is the dialog's: the flag goes to take it").toEqual([false]);
+  addon.eval(`${name}:Hide()`);
+  expect([addon.eval("return __passed"), addon.eval("return __kb")], "hiding resets the flag to pass keys on, and the keyboard goes off").toEqual([[false, true], [false]]);
+  addon.eval("__passed, __kb = {}, {}");
+  setCombat(addon, true);
+  addon.eval(`ns.Ask("In a fight?", "Go", function() end, function() end)`);
+  expect(addon.eval("return { #__passed, __kb[#__kb] == false, #__kb > 0, Vanguard_Question:IsShown() }"), "shown in a fight: the keyboard is let go and the barred call is not made").toEqual([0, true, true, true]);
+  setCombat(addon, false);
+  expect(addon.eval("return { __passed[#__passed], __kb[#__kb] }"), "after the fight it takes the keyboard back with the flag reset").toEqual([true, true]);
+  addon.eval(`${name}.EnableKeyboard = function(self, on) __kb[#__kb + 1] = on end ${name}:Hide()`);
+  addon.click(`${name}.no`);
+  setCombat(addon, true);
+  addon.eval(`ns.Ask("Again?", "Go", function() end, function() end) ${name}:Hide()`);
+  setCombat(addon, false);
+  expect(addon.eval(`return ${name}:IsShown()`), "a question hidden before the fight ends stays hidden").toBe(false);
+});
+
 it("the reload dialog: the reason is the title and the dialog grows to fit it; the X is Later and the covering overlay goes with it", () => {
   const addon = loggedIn();
   const name = "Vanguard_Reload";
