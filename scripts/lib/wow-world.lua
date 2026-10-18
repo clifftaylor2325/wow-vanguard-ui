@@ -1057,7 +1057,7 @@ function C_Item.GetItemInfo(key)
   local id, item = itemOf(key)
   if not item then return nil end
   local link = "|cffffffff|Hitem:" .. id .. "|h[" .. item.name .. "]|h|r"
-  return item.name, link, item.quality or 1, item.level or 1, 1, item.type or "Miscellaneous", item.subType or "Junk", item.stack or 20, item.equipLoc or "", item.icon, item.sellPrice or 0, 15, 0, 0, 0, 0, item.quality == 0
+  return item.name, link, item.quality or 1, item.level or 1, 1, item.type or "Miscellaneous", item.subType or "Junk", item.stack or 20, item.equipLoc or "", item.icon, item.sellPrice or 0, 15, 0, item.bind or 0, 0, 0, item.quality == 0
 end
 -- itemID, type, subType, equipLoc, icon, classID, subClassID of a known item (nothing for one the client doesn't know).
 function C_Item.GetItemInfoInstant(key)

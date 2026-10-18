@@ -68,7 +68,7 @@ P.CALLS = {
 -- Names only looked for, per section.
 P.HAVE = {
   group = { "C_LFGList.Search", "C_LFGList.GetSearchResultInfo", "C_LFGList.GetAvailableActivities", "C_LFGList.CreateListing" },
-  undocumented = { "C_SuperTrack.GetNextWaypointForMap", "C_Navigation.GetNextWaypointForMap" },
+  undocumented = { "SetItemSearch", "C_Container.SetItemSearch", "ContainerFrameCombinedBags.UpdateSearchResults", "C_Item.GetDetailedItemLevelInfo", "C_SuperTrack.GetNextWaypointForMap", "C_Navigation.GetNextWaypointForMap" },
 }
 
 -- The widget methods looked for: { kind of widget, method }.
