@@ -21,8 +21,8 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 
 export const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
-// The Interface values the TOC must list: WoW Forever, then the 12.1 client.
-export const EXPECTED_INTERFACE = ["16001", "120007"];
+// The Interface values the TOC must list: WoW Forever, the 12.1.5 client (the live number the wiki gives, so the release does not show as out of date), then the 12.0.7 build the harness models as Retail.
+export const EXPECTED_INTERFACE = ["16001", "120105", "120007"];
 const ORPHAN_SCOPE = ["Core", "Modules"];
 const LIBS = "Libs/";
 const SAVED_KEYS = ["SavedVariables", "SavedVariablesPerCharacter"];

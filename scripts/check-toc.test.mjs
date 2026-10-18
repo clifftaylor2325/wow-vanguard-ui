@@ -10,7 +10,7 @@ import { execFileSync } from "node:child_process";
 import { afterAll, expect, it } from "vitest";
 import { EXPECTED_INTERFACE, checkCheckout, luaFilesOnDisk, luacheckGlobals, parseToc, root, tocProblems } from "./check-toc.mjs";
 
-const HEAD = ["## Interface: 16001, 120007", "## Title: Vanguard", "## Version: 1.0.0", "## SavedVariables: VanguardDB", "## SavedVariablesPerCharacter: VanguardCharDB"];
+const HEAD = ["## Interface: 16001, 120105, 120007", "## Title: Vanguard", "## Version: 1.0.0", "## SavedVariables: VanguardDB", "## SavedVariablesPerCharacter: VanguardCharDB"];
 const FILES = ["Libs/LibStub/LibStub.lua", "Core/Events.lua", "Modules/Bars.lua"];
 const RC = 'globals = {\n  -- saved\n  "VanguardDB",\n  "VanguardCharDB",\n  SlashCmdList = { other_fields = true },\n}\nread_globals = { "GetTime" }\n';
 
@@ -35,9 +35,9 @@ it("a well-formed TOC passes, with CRLF endings and comment lines", () => {
   expect(check()).toEqual([]);
 });
 
-it("the expected Interface values are 16001 and 120007, kept in one constant", () => {
-  expect(EXPECTED_INTERFACE).toEqual(["16001", "120007"]);
-  expect(parseToc("## Interface: 16001, 120007\n").meta.Interface).toBe("16001, 120007");
+it("the expected Interface values are 16001, 120105 and 120007, kept in one constant", () => {
+  expect(EXPECTED_INTERFACE).toEqual(["16001", "120105", "120007"]);
+  expect(parseToc("## Interface: 16001, 120105, 120007\n").meta.Interface).toBe("16001, 120105, 120007");
 });
 
 it("an unlisted Modules/X.lua fails and names the fix", () => {
@@ -92,10 +92,10 @@ it("a commented-out global does not count, and keyed tables do", () => {
 it("a missing Interface value, Title or Version fails", () => {
   const head = ["## Interface: 16001", "## SavedVariables: VanguardDB"];
   const problems = check({ head });
-  expect(problems[0]).toMatch(/## Interface does not list 120007; it must list 16001, 120007/);
+  expect(problems[0]).toMatch(/## Interface does not list 120105; it must list 16001, 120105, 120007/);
   expect(problems).toContain('Vanguard.toc: ## Title is missing; add a "## Title: ..." line');
   expect(problems).toContain('Vanguard.toc: ## Version is missing; add a "## Version: ..." line');
-  expect(check({ head: [] }).filter((p) => p.includes("Interface"))).toHaveLength(2);
+  expect(check({ head: [] }).filter((p) => p.includes("Interface"))).toHaveLength(3);
 });
 
 it("a shared library listed after the addon's own files fails", () => {
