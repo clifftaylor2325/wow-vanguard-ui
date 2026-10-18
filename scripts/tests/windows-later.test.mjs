@@ -3,7 +3,7 @@
 // the Blizzard XML (Camelot over Mainline) with the parts its skin reaches.
 
 import { expect, it } from "vitest";
-import { INSIDES_LUA, loggedIn, WINDOWS_ENV, windowState } from "./helpers.mjs";
+import { expectErrors, INSIDES_LUA, loggedIn, WINDOWS_ENV, windowState } from "./helpers.mjs";
 
 // TEST-ONLY readers shared by the models below: __button(b) whether the theme painted a flat button on b, __arrow(b)
 // whether it is a theme arrow button, __plate(b) whether a control tile was put behind a button that has no art of
@@ -763,6 +763,23 @@ it("R3.5 the auction house panels: money bar, search bar, categories, lists, for
   expect(windowState(addon, "AuctionHouseFrame"), "and the window skin as ever").toMatchObject({ art: 0, panel: true, title: true });
   addon.eval("AuctionHouseFrame:Hide() AuctionHouseFrame:Show()");
   expect(addon.eval("return __ahParts(AuctionHouseFrame)").painted, "a second show paints nothing new").toBe(parts.painted);
+});
+it("R3.6 the auction house panels: one part that fails is named and the rest are still dressed; labels and the money line have room", () => {
+  expectErrors(/^auction house CommoditiesSellList: eval:\d+: TEST-ONLY layout$/);
+  const addon = loggedIn(`${AH_WINDOW}
+    local f = AuctionHouseFrame
+    f.CommoditiesSellList.HeaderContainer = { GetChildren = function() error("TEST-ONLY layout") end }
+    f.SearchBar.FilterButton.Text = __text(f.SearchBar.FilterButton, "Filter")
+    __tabLabel = __text(f.AuctionsFrame.AuctionsTab, "Auctions") __tabLabel:SetTextColor(1, 0.82, 0)
+    f.AuctionsFrame.AuctionsTab.GetFontString = function() return __tabLabel end`);
+  addon.fire("ADDON_LOADED", "Blizzard_AuctionHouseUI");
+  addon.eval("AuctionHouseFrame:Show()");
+  expect(addon.eval("return #ns.errors"), "the broken list is reported, under its own path").toBeGreaterThan(0);
+  expect(addon.eval("return { __ahTile(AuctionHouseFrame.ItemSellList), __ahTile(AuctionHouseFrame.AuctionsFrame.AllAuctionsList), __ahTile(AuctionHouseFrame.AuctionsFrame.SummaryList) }"), "lists after it are dressed").toEqual([true, true, true]);
+  expect(addon.eval("return __ahForms(AuctionHouseFrame)").every((form) => form.tile && form.buttons && form.check), "and so are the forms").toBe(true);
+  expect(addon.eval("local _, rel, rp, x, y = AuctionHouseFrame.SearchBar.FilterButton.Text:GetPoint() return { rp, x, y }"), "the Filter label sits above the bottom edge").toEqual(["CENTER", 0, 2]);
+  expect(addon.eval("local p, rel, rp, x = AuctionHouseFrame.MoneyFrameBorder.MoneyFrame:GetPoint() return { p, rel == AuctionHouseFrame.MoneyFrameBorder, x }"), "the money line is set in from the plate's edge").toEqual(["RIGHT", true, -8]);
+  expect(addon.eval("return __tabLabel.__textColor[1] ~= 1 and (__tabLabel.__textColor[1] == (ns.Theme.RGB('text')) or __tabLabel.__textColor[1] == (ns.Theme.RGB('text2')))"), "a tab's label is in the text colours, not gold").toBe(true);
 });
 it("R3.5 the auction house panels: the money lines take the theme font back after the game sets its own", () => {
   const addon = loggedIn(AH_WINDOW);
