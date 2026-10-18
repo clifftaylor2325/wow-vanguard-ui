@@ -125,6 +125,17 @@ it("the info strip: ammo, and clients that can't answer", () => {
   hunter.eval('__units.player.class = "WARRIOR"');
   hunter.fire("BAG_UPDATE_DELAYED");
   expect(block(hunter, "ammo").shown, "a warrior with none shows nothing").toBe(false);
+  hunter.eval("__needed = true C_PaperDollInfo = { AmmoNeeded = function() return __needed end }");
+  hunter.fire("BAG_UPDATE_DELAYED");
+  expect(block(hunter, "ammo").text, "a warrior whose gun needs ammo sees it, at 0").toBe("ammo 0");
+  hunter.eval('__needed = false __units.player.class = "HUNTER"');
+  hunter.fire("BAG_UPDATE_DELAYED");
+  expect(block(hunter, "ammo").shown, "a hunter whose weapon needs none shows nothing").toBe(false);
+  hunter.eval('__needed = "x"');
+  hunter.fire("BAG_UPDATE_DELAYED");
+  expect(block(hunter, "ammo").text, "an answer that isn't a yes or no falls back to the class").toBe("ammo 0");
+  hunter.eval('C_PaperDollInfo = nil __units.player.class = "WARRIOR"');
+  hunter.fire("BAG_UPDATE_DELAYED");
   hunter.eval('UnitClass = function() return "x", { __secret = true } end');
   hunter.fire("BAG_UPDATE_DELAYED");
   expect(block(hunter, "ammo").shown, "a hidden class shows nothing").toBe(false);

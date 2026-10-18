@@ -5,10 +5,10 @@
 -- chat messages; a line the client hides, or one that doesn't match, is skipped.
 -- With the officer loot tools on (Modules/OfficerLoot.lua), a roll by a player who reserved
 -- the item being rolled for is flagged "[SR]", and a loot item lists who reserved it.
--- Where the client has the loot history (C_LootHistory, not confirmed on every
--- client), the panel also lists the last few items the group rolled for, with
--- each member's choice and roll and who won; where it doesn't, that part stays
--- off with no error. Nothing rolls for you. /vg rolls lists the session's rolls,
+-- Where the client has the loot history (C_LootHistory's encounter drops, as on
+-- Forever), the panel also lists the last few items the group rolled for, with
+-- each member's choice and roll and who won; where it doesn't, or it holds
+-- nothing for a roll, that part stays off with no error. Nothing rolls for you. /vg rolls lists the session's rolls,
 -- /vg rolls clear forgets them. It forgets on logout.
 
 local ADDON, ns = ...
@@ -21,8 +21,8 @@ local R = ns.Module("Rolls", { defaults = { show = true, loot = true, visibility
 R.MAX, R.ROUND, R.ITEMS, R.LINES = 40, 30, 4, 14
 -- The panel's width, a line's height and the panel's padding (UI units; a HUD card's, T.SPACE.gap).
 R.WIDTH, R.LINE, R.PAD = 136, 14, T.SPACE.gap
--- A loot roll's choice, by the game's roll type.
-R.CHOICES = { [0] = "Pass", [1] = "Need", [2] = "Greed", [3] = "Disenchant" }
+-- A loot roll's choice, by the game's EncounterLootDropRollState.
+R.CHOICES = { [0] = "Need", [1] = "Offspec", [2] = "Transmog", [3] = "Greed", [4] = "No roll", [5] = "Pass" }
 -- This session's rolls, oldest first: { name, roll, low, high, at }; and the last loot items rolled for, oldest first.
 R.rolls, R.items = {}, {}
 
@@ -93,31 +93,70 @@ end
 
 -- Loot history ------------------------------------------------------------------------------
 
--- Whether this client has the loot history calls the tracker reads.
+-- Whether this client has the loot history calls the tracker reads (Forever's encounter loot history).
 function R.HasLoot()
   local L = C_LootHistory
-  return type(L) == "table" and type(L.GetNumItems) == "function" and type(L.GetItem) == "function" and type(L.GetPlayerInfo) == "function"
+  return type(L) == "table" and type(L.GetAllEncounterInfos) == "function" and type(L.GetSortedDropsForEncounter) == "function"
 end
 
--- One item's rolls from the loot history: { link, done, players = { { name, choice, roll, winner } } }.
-function R.ReadItem(index)
-  local _, link, count, done = C_LootHistory.GetItem(index)
+-- The table a loot history call returns; {} when it fails, hides its answer or answers with something else.
+local function ask(name, ...)
+  local ok, v = pcall(C_LootHistory[name], ...)
+  return (ok and type(v) == "table" and not ns.IsSecret(v)) and v or {}
+end
+
+-- A value that is plainly true: false for anything else, a hidden value included.
+local function isTrue(v)
+  return not ns.IsSecret(v) and v == true
+end
+
+-- One roll of a drop: { name, choice, roll, winner }; nil when the name is hidden.
+function R.ReadRoll(info)
+  local name = type(info) == "table" and info.playerName
+  if type(name) ~= "string" or ns.IsSecret(name) then return nil end
+  return { name = name, choice = R.CHOICES[ns.PlainNumber(info.state)] or "?", roll = ns.PlainNumber(info.roll), winner = isTrue(info.isWinner) }
+end
+
+-- One drop from the loot history: { link, done, players = { roll... }, at, key }; done once it has a winner or all passed.
+function R.ReadDrop(drop)
   local players = {}
-  for p = 1, ns.PlainNumber(count) or 0 do
-    local name, _, kind, roll, winner = C_LootHistory.GetPlayerInfo(index, p)
-    if not ns.IsSecret(name) and type(name) == "string" then
-      players[#players + 1] = { name = name, choice = R.CHOICES[kind] or "?", roll = ns.PlainNumber(roll), winner = winner == true }
-    end
-  end
-  return { link = ns.IsSecret(link) and "?" or tostring(link), done = done == true, players = players }
+  for _, info in ipairs(type(drop.rollInfos) == "table" and drop.rollInfos or {}) do players[#players + 1] = R.ReadRoll(info) end
+  local link = drop.itemHyperlink
+  return {
+    link = (type(link) == "string" and not ns.IsSecret(link)) and link or "?", players = players,
+    done = type(drop.winner) == "table" or isTrue(drop.allPassed), at = ns.PlainNumber(drop.startTime) or 0, key = ns.PlainNumber(drop.lootListKey) or 0,
+  }
 end
 
--- Reads the newest R.ITEMS items again (the loot history changed).
+-- The encounters the loot history holds as { id, at }, newest first.
+function R.Encounters()
+  local out = {}
+  for _, info in ipairs(ask("GetAllEncounterInfos")) do
+    local id = type(info) == "table" and ns.PlainNumber(info.encounterID)
+    if id then out[#out + 1] = { id = id, at = ns.PlainNumber(info.startTime) or 0 } end
+  end
+  table.sort(out, function(a, b) return a.at > b.at or (a.at == b.at and a.id > b.id) end)
+  return out
+end
+
+-- The drops of the newest encounters, enough of them to fill R.ITEMS, in no set order.
+function R.Drops()
+  local out = {}
+  for _, encounter in ipairs(R.Encounters()) do
+    for _, drop in ipairs(ask("GetSortedDropsForEncounter", encounter.id)) do
+      if type(drop) == "table" then out[#out + 1] = R.ReadDrop(drop) end
+    end
+    if #out >= R.ITEMS then break end
+  end
+  return out
+end
+
+-- Reads the newest R.ITEMS drops again, oldest first (the loot history changed).
 function R.ReadLoot()
   if not (R.settings.loot and R.HasLoot()) then return end
-  local items, total = {}, ns.PlainNumber(C_LootHistory.GetNumItems()) or 0
-  for i = math.max(1, total - R.ITEMS + 1), total do items[#items + 1] = R.ReadItem(i) end
-  R.items = items
+  local drops = R.Drops()
+  table.sort(drops, function(a, b) return a.at < b.at or (a.at == b.at and a.key < b.key) end)
+  R.items = { unpack(drops, math.max(1, #drops - R.ITEMS + 1)) }
   R.Paint()
 end
 
@@ -265,7 +304,7 @@ end
 
 -- Follows the loot history's events (only where the client has the loot history).
 function R.WatchLoot()
-  for _, event in ipairs({ "LOOT_HISTORY_FULL_UPDATE", "LOOT_HISTORY_ROLL_CHANGED", "LOOT_HISTORY_ROLL_COMPLETE" }) do
+  for _, event in ipairs({ "LOOT_HISTORY_UPDATE_DROP", "LOOT_HISTORY_UPDATE_ENCOUNTER", "LOOT_HISTORY_CLEAR_HISTORY" }) do
     ns.On(event, ns.Guard("loot history", R.ReadLoot))
   end
 end
