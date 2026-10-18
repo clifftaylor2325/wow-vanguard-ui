@@ -16,17 +16,21 @@ ns.WHATS_NEW = {
       { text = "Quest spots show on the minimap, quest mobs get a mark on their nameplate, and the quest log shows XP to your next level." },
       { text = "Quests can be tracked automatically, shared quests can be accepted from your group (off by default), and quest history is kept for your whole account." },
       { text = "In the quest log, Ctrl-click marks quests and Abandon takes all the marked ones." },
+      { text = "The map click can turn the arrow on, with a recent list and a Clear button; the quest log shows objectives as rows with a count and progress bar." },
     } },
     { module = "Chat", label = "Chat", items = {
       { text = "Chat windows keep their lines across reloads and logins." },
       { text = "Gold selling, boosting, recruiting and repeated lines go to a Filtered tab instead of your chat." },
       { text = "A choice of chat window size, a bigger default window, a softer backdrop and readable tabs." },
+      { text = "Chat has a Find button and Find in chat over the open windows and saved history, and the Chat page lets you pick, make, rename and close tabs and choose what each shows, plus window size, lock and floating windows." },
     } },
     { module = "Bags", label = "Bags and town", items = {
       { text = "You can make your own categories in the combined bag." },
       { text = "The merchant window has a sell list, Sell all of one item, and Stack and Max buying; mail has Take all and Return all." },
       { text = "/vg alts shows an overview of your characters, also on the Game windows page." },
       { text = "The auction house tabs and panels are in the Vanguard look, and a failing part no longer stops the rest." },
+      { text = "Bags get search words, deposit to the bank, and Filter and Groups buttons on the search row." },
+      { text = "The merchant sell list is safer (junk, stock), the mail Take button never takes pay-on-delivery mail, and mail runs re-check the whole mail." },
     } },
     { module = "UnitFrames", label = "Unit frames and HUD", items = {
       { text = "A Versus deck joins the player and target frames, with shield corners on unit frames and cast bars." },
@@ -41,17 +45,24 @@ ns.WHATS_NEW = {
     { module = "Rolls", label = "Rolls, gear and info", items = {
       { text = "The roll tracker reads the loot list from Forever's encounter loot history." },
       { text = "The info strip shows ammo when the game says your ranged weapon needs it." },
+      { text = "The character sheet shows item level and missing-enchant marks, and /vg gear lists them; /vg pets and the stable master line read the game's pet stable." },
+      { text = "The game rules show in /vg realm, with a note when a rules change moves your saved-data key; the TOC lists the 12.1.5 build and beta data can be cleared on request." },
     } },
     { module = "Windows", label = "Look and windows", items = {
       { text = "Many more game windows are in the Vanguard look: the spellbook, guild, social, map, group finder, Legacy, calendar, Edit Mode, keybindings and the Lua error window." },
       { text = "One selected look and one press state for rows, tabs, sliders, scroll bars and buttons across the options and game windows; buttons light only while the mouse is over them." },
       { text = "The game's remaining arrow art is skinned, and /vg errors opens a copy window." },
+      { text = "A Classic look: a flat panel under each action bar and a round minimap option." },
+      { text = "The options window reads better and scales: reload tags, a searchable settings list, a page reset and grouped Modules; the setup has Larger text and readability switches." },
+      { text = "Safer colours keep dispel types apart (on with the game's colour-blind mode), and dispel badges show a corner mark per type." },
     } },
     { module = "Other", label = "Safety and tools", items = {
       { text = "Saved data is size-checked: Vanguard trims the oldest price data if the game says the file is too large." },
       { text = "/vg perf reads the game's addon profiler, and /vg perf slow names Vanguard's slowest handlers; /vg mem reads memory after a garbage collection." },
       { text = "/vg probe runs a batch of checks and /vg prep buffs checks the buff names, for reporting back what Forever does." },
       { text = "When another addon (EllesmereUI's unit frame, action bar, nameplate and raid frame addons) does a job a Vanguard module does, chat says so once." },
+      { text = "Chat filters skip hidden text, saved-click-cast Import checks the whole string first, and a Quiet module can silence invite declines, battleground release, error and zone text and camera zoom." },
+      { text = "Vanguard asks about ElvUI, Tukui, Auctionator and TradeSkillMaster when they do the same job." },
     } },
   } },
   { version = "0.6.0", groups = {
