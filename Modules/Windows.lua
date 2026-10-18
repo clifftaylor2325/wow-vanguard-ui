@@ -379,20 +379,24 @@ function GW.CenterLabel(button)
   label:SetPoint("CENTER", button, "CENTER", 0, 0)
 end
 
--- The window's money well lined up under the category list above it (the same left and right edges, T.SPACE.tight clear of it, its bottom where it was) and
--- its money line centred in it, set in from the right edge by T.SPACE.gap, once (the game anchors the well to the
--- window corner and the line to a plate that sits low in it).
+-- The money well hung under the pane above it: the same left and right edges, T.SPACE.tight clear of it, its bottom
+-- where it was (its height less the gap).
+local function hangUnder(well, above)
+  local height = well:GetHeight()
+  well:ClearAllPoints()
+  well:SetPoint("TOPLEFT", above, "BOTTOMLEFT", 0, -T.SPACE.tight)
+  well:SetPoint("TOPRIGHT", above, "BOTTOMRIGHT", 0, -T.SPACE.tight)
+  well:SetHeight(height - T.SPACE.tight)
+end
+
+-- The window's money well lined up under the category list above it and its money line centred in it, set in from the
+-- right edge by T.SPACE.gap, once (the game anchors the well to the window corner and the line to a plate that sits
+-- low in it).
 function GW.PadMoneyLine(plate, well, above)
   local line = type(plate) == "table" and plate.MoneyFrame
   if type(line) ~= "table" or not line.SetPoint or type(well) ~= "table" or vgPadded[plate] then return end
   vgPadded[plate] = true
-  local height = well:GetHeight()
-  if type(above) == "table" and above.GetObjectType then
-    well:ClearAllPoints()
-    well:SetPoint("TOPLEFT", above, "BOTTOMLEFT", 0, -T.SPACE.tight)
-    well:SetPoint("TOPRIGHT", above, "BOTTOMRIGHT", 0, -T.SPACE.tight)
-    well:SetHeight(height - T.SPACE.tight)
-  end
+  if type(above) == "table" and above.GetObjectType then hangUnder(well, above) end
   line:ClearAllPoints()
   line:SetPoint("RIGHT", well, "RIGHT", -T.SPACE.gap, 0)
 end
