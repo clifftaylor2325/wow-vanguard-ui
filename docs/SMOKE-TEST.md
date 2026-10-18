@@ -388,6 +388,12 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Expect: plates coloured by reaction and threat with the level shown, your debuffs on them, and your target's plate with an accent border and diamond. A plate first drawn during the fight uses Vanguard's own icons and switches to the client's after the fight.
 - If it fails, paste: a screenshot taken during the pull and `/vg errors`.
 
+### 7.3a Quest marks on nameplates
+
+- Do: take a quest that wants kills or items from mobs (for example "Kill 8 Wolves"), stand where those mobs are with enemy nameplates on, and look at their plates. Kill one, finish the quest's count, then abandon the quest. Target one of the mobs and type `/vg guide probe`.
+- Expect: a small gold `!` right of the name on the plates of mobs the quest needs, and none on other mobs; it follows the count (within a moment of a kill's progress) and goes when the quest is done or abandoned. The probe's `C_TooltipInfo.GetUnit` line reads `present, tooltip data, N lines` with a target, `not called (no target)` without. Under `/vg` → Nameplates, "A gold ! by units your quests need" off hides the marks at once. [Needs in game: whether Forever returns quest title and objective lines in the unit's tooltip data (`C_TooltipInfo.GetUnit`) on nameplate units, in and out of combat, and whether a finished objective still carries its line (the mark would stay until the quest is handed in); the game's own `C_QuestLog.UnitIsRelatedToActiveQuest` answer is used first when it says yes.]
+- If it fails, paste: a screenshot with the mob's plate and its tooltip, the probe line, and `/vg errors`.
+
 ### 7.4 Nameplates in a crowd
 
 - Do: in a capital city with friendly player plates on, stand where several players' plates overlap. Click the bar or name of four or five plates in turn, and move the mouse slowly across them. Then turn on the game's option to show only names on friendly players' plates and click one again. Find a player with a defensive cooldown up, or buff a friend yourself.

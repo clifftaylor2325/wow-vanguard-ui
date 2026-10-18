@@ -983,11 +983,12 @@ it("nameplates: a gold ! by units your quests need", () => {
   // A plate's quest mark: shown, its icon, its color.
   const mark = (unit) => addon.eval(`local q = ns.FrameState('vgPlate')[__plates.${unit}].quest return { q:IsShown(), q.__texture, q.__vertexColor }`);
   const one = mark("nameplate1");
-  expect([one[0], /Icons\\Quests$/.test(one[1]), isTok(addon, one[2], "gold")], "a quest unit gets the gold !").toEqual([true, true, true]);
+  expect([one[0], /Icons\\QuestBang$/.test(one[1]), isTok(addon, one[2], "gold")], "a quest unit gets the gold !").toEqual([true, true, true]);
   expect(addon.eval("return ns.FrameState('vgPlate')[__plates.nameplate1].quest.__points.LEFT.rel == ns.FrameState('vgPlate')[__plates.nameplate1].name"), "just right of its name").toBe(true);
   expect(mark("nameplate2")[0], "a hidden answer counts as no").toBe(false);
   addon.eval("__related.nameplate1 = nil");
   addon.fire("QUEST_LOG_UPDATE");
+  addon.eval("__wfgStub.advance(1)");
   expect(mark("nameplate1")[0], "it goes when your quests no longer need the unit").toBe(false);
   addon.eval("__related.nameplate1 = true");
   addon.slash("");
@@ -997,6 +998,78 @@ it("nameplates: a gold ! by units your quests need", () => {
   const bare = loggedIn(UNITS_ENV + PLATE_ENV + "C_QuestLog = nil");
   bare.fire("NAME_PLATE_UNIT_ADDED", "nameplate1");
   expect(bare.eval("return ns.FrameState('vgPlate')[__plates.nameplate1].quest:IsShown()"), "a client that can't say shows none").toBe(false);
+});
+// TEST-ONLY unit tooltip data for plates: __tips[unit] is what C_TooltipInfo.GetUnit answers; __tipCalls counts the asks.
+const TIPS_ENV = `
+  __tips, __tipCalls, __related = {}, 0, {}
+  C_QuestLog = { UnitIsRelatedToActiveQuest = function(unit) return __related[unit] end }
+  C_TooltipInfo = { GetUnit = function(unit) __tipCalls = __tipCalls + 1 if __tipError then error("TEST-ONLY tooltip failure") end return __tips[unit] end }
+  __kinds = Enum.TooltipDataLineType
+`;
+// Gives nameplate1's tooltip data lines of the given Enum.TooltipDataLineType names (as Lua), and says whether its quest mark shows.
+const tipMark = (addon, lines) => {
+  addon.eval(`__tips.nameplate1 = { lines = { ${lines} } } ns.GetModule("Nameplates").RefreshAll()`);
+  return addon.eval("return ns.FrameState('vgPlate')[__plates.nameplate1].quest:IsShown()");
+};
+it("nameplates: the client's tooltip data marks units your quests need, with Vanguard's quest mark", () => {
+  const addon = loggedIn(UNITS_ENV + PLATE_ENV + CLICK_LUA + TIPS_ENV);
+  addon.fire("NAME_PLATE_UNIT_ADDED", "nameplate1");
+  expect(tipMark(addon, "{ type = __kinds.UnitName, leftText = 'TEST-ONLY Wolf' }"), "a tooltip with no quest line: no mark").toBe(false);
+  expect(tipMark(addon, "{ type = __kinds.UnitName }, { type = __kinds.QuestTitle, leftText = 'TEST-ONLY Wolves' }, { type = __kinds.QuestObjective }"), "a quest title and objective: the mark").toBe(true);
+  const q = addon.eval("local q = ns.FrameState('vgPlate')[__plates.nameplate1].quest return { q.__texture, q.__vertexColor }");
+  expect([/Icons\\QuestBang$/.test(q[0]), isTok(addon, q[1], "gold")], "the generated QuestBang icon, in the gold token").toEqual([true, true]);
+  expect(tipMark(addon, "{ type = __kinds.QuestObjective }"), "an objective alone is enough").toBe(true);
+  expect(tipMark(addon, "{ type = __kinds.QuestPlayer, leftText = 'TEST-ONLY Friend' }"), "a party member's name alone is not your quest").toBe(false);
+  addon.eval("__related.nameplate1 = true __tips.nameplate1 = nil ns.GetModule('Nameplates').RefreshAll()");
+  expect(addon.eval("return { ns.FrameState('vgPlate')[__plates.nameplate1].quest:IsShown(), __tipCalls > 0 }")[0], "the client's own answer still marks without asking the tooltip").toBe(true);
+  addon.eval("__related.nameplate1 = false");
+  expect(tipMark(addon, "{ type = __kinds.QuestObjective }"), "the client saying no does not hide a quest line in the tooltip").toBe(true);
+});
+it("nameplates: a hidden or missing tooltip answer means no quest mark, and nothing is compared", () => {
+  const addon = loggedIn(UNITS_ENV + PLATE_ENV + CLICK_LUA + TIPS_ENV);
+  addon.fire("NAME_PLATE_UNIT_ADDED", "nameplate1");
+  const secret = "{ __secret = true }";
+  expect(tipMark(addon, `{ type = ${secret} }`), "a line whose type is hidden").toBe(false);
+  expect(tipMark(addon, secret), "a hidden line").toBe(false);
+  expect(tipMark(addon, "'text'"), "a line that is not a table").toBe(false);
+  addon.eval("__tips.nameplate1 = { __secret = true } ns.GetModule('Nameplates').RefreshAll()");
+  expect(addon.eval("return ns.FrameState('vgPlate')[__plates.nameplate1].quest:IsShown()"), "hidden tooltip data").toBe(false);
+  addon.eval("__tips.nameplate1 = { lines = { __secret = true } } ns.GetModule('Nameplates').RefreshAll()");
+  expect(addon.eval("return ns.FrameState('vgPlate')[__plates.nameplate1].quest:IsShown()"), "hidden lines").toBe(false);
+  addon.eval("__tips.nameplate1 = { lines = 5 } ns.GetModule('Nameplates').RefreshAll()");
+  expect(addon.eval("return ns.FrameState('vgPlate')[__plates.nameplate1].quest:IsShown()"), "lines that are no list").toBe(false);
+  addon.eval("__tips.nameplate1 = 5 ns.GetModule('Nameplates').RefreshAll()");
+  expect(addon.eval("return ns.FrameState('vgPlate')[__plates.nameplate1].quest:IsShown()"), "data that is no table").toBe(false);
+  addon.eval("__tips.nameplate1 = { lines = { { type = __kinds.QuestObjective } } } __tipError = true ns.GetModule('Nameplates').RefreshAll()");
+  expect(addon.eval("return ns.FrameState('vgPlate')[__plates.nameplate1].quest:IsShown()"), "a call that errors").toBe(false);
+  addon.eval("__tipError = nil C_TooltipInfo.GetUnit = nil ns.GetModule('Nameplates').RefreshAll()");
+  expect(addon.eval("return ns.FrameState('vgPlate')[__plates.nameplate1].quest:IsShown()"), "a client without the call").toBe(false);
+  addon.eval("C_TooltipInfo = nil ns.GetModule('Nameplates').RefreshAll()");
+  expect(addon.eval("return ns.FrameState('vgPlate')[__plates.nameplate1].quest:IsShown()"), "a client without the namespace").toBe(false);
+  addon.eval("C_TooltipInfo = { GetUnit = function() return { lines = { { type = 8 } } } end } Enum.TooltipDataLineType = nil ns.GetModule('Nameplates').RefreshAll()");
+  expect(addon.eval("return ns.FrameState('vgPlate')[__plates.nameplate1].quest:IsShown()"), "a client without the line types").toBe(false);
+});
+it("nameplates: quest changes repaint the marks once a frame, from the quest log and from unit quest events", () => {
+  const addon = loggedIn(UNITS_ENV + PLATE_ENV + CLICK_LUA + TIPS_ENV);
+  addon.fire("NAME_PLATE_UNIT_ADDED", "nameplate1");
+  // Whether nameplate1's quest mark shows.
+  const shown = () => addon.eval("return ns.FrameState('vgPlate')[__plates.nameplate1].quest:IsShown()");
+  expect(shown(), "added with no quest line").toBe(false);
+  addon.eval("__tips.nameplate1 = { lines = { { type = __kinds.QuestObjective } } } __tipCalls = 0");
+  addon.fire("QUEST_LOG_UPDATE");
+  addon.fire("UNIT_QUEST_LOG_CHANGED", "player");
+  addon.fire("QUEST_LOG_UPDATE");
+  expect([shown(), addon.eval("return __tipCalls")], "nothing until the next frame").toEqual([false, 0]);
+  addon.eval("__wfgStub.advance(1)");
+  expect([shown(), addon.eval("return __tipCalls")], "then one repaint for the burst: each of the two plates asked once").toEqual([true, 2]);
+  addon.eval("__tips.nameplate1 = nil");
+  addon.fire("UNIT_QUEST_LOG_CHANGED", "player");
+  addon.eval("__wfgStub.advance(1)");
+  expect(shown(), "a unit quest event alone repaints").toBe(false);
+  addon.eval("__tips.nameplate1 = { lines = { { type = __kinds.QuestTitle } } }");
+  addon.fire("NAME_PLATE_UNIT_REMOVED", "nameplate1");
+  addon.fire("NAME_PLATE_UNIT_ADDED", "nameplate1");
+  expect(shown(), "a plate added later asks at once").toBe(true);
 });
 // TEST-ONLY quest and gossip windows that color their text for parchment (dark brown), as the game does.
 const PARCHMENT_ENV = `
