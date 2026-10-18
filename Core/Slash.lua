@@ -38,12 +38,8 @@ local HELP = {
   "situation [record <name>|stop|clear [name]|list]   Situations: record a layout and settings for solo, party, raid, pvp, instance or resting",
   "watch [add|remove <phrase>|list|clear]   Chat watch: phrases that ring a sound and show a toast when said in chat",
   "filter [on|off|tab|hide|add|remove <word>|clear]   Chat filter: gold selling, boosting, recruiting and repeat lines go to a Filtered tab (or are hidden)",
-<<<<<<< HEAD
   "history [on|off|whispers|nowhispers|clear]   Chat history: your chat comes back after a reload or the next login (off until switched on)",
-  "quests               open or close Vanguard's quest log (the game's quest log key does too)",
-=======
   "quests [history [n]] open or close Vanguard's quest log (the game's quest log key does too); history lists the latest quests any of your characters turned in",
->>>>>>> origin/main
   "probe [chat|fight|last]   one run out of combat asks the client the open questions (saved quest flag, threat secrecy, group listing, secure paging, realm format, secret predicates, restrictions, navigation) and opens a copy box; fight takes the secrecy reads in the next fight; last reopens the saved report",
   "guide probe         what this client returns for the reads a levelling guide would use (chat only; changes nothing)",
   "questdata [questID]  what the client says about a quest (or the quests an open NPC offers and those you track), and whether it flags quests new in WoW Forever",
