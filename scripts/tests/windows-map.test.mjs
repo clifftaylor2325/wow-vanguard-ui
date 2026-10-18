@@ -297,10 +297,10 @@ it("quest panel in the map: the zone headers lose the game's yellow bar for a ch
   expect(addon.eval("return { #ns.errors, ns.Theme.PaintedCount() > 0 }"), "and nothing failed").toEqual([0, true]);
 });
 
-it("quest panel in the map: left the game's while Vanguard's quest log is on, or the group is off", () => {
+it("quest panel in the map: dressed even while Vanguard's quest log is on (its Map button opens it); the pop-out is left, and the group off leaves both", () => {
   const own = loggedIn(QUEST_MAP_ENV);
   own.eval("QuestMapFrame:Show() QuestLogPopupDetailFrame:Show()");
-  expect([questPanel(own).bg, questPanel(own).list, windowState(own, "QuestLogPopupDetailFrame").panel], "Vanguard's log is the quest log: the game's panels are untouched").toEqual([1, 1, false]);
+  expect([questPanel(own).bg, questPanel(own).list, windowState(own, "QuestLogPopupDetailFrame").panel], "the map's quest panel is in the theme; the pop-out stays the game's").toEqual([0, 0, false]);
   const off = loggedIn(QUEST_MAP_ENV, { savedVariables: OWN_LOG_OFF.replace("QuestLog = { own = false }", "QuestLog = { own = false }, Windows = { map = false }") });
   off.eval("QuestMapFrame:Show() QuestLogPopupDetailFrame:Show()");
   expect([questPanel(off).bg, off.eval("return ns.FrameState('vgWindow')[QuestMapFrame] == nil and ns.FrameState('vgWindow')[QuestLogPopupDetailFrame] == nil")], "with the map group off they are not even hooked").toEqual([1, true]);
@@ -311,6 +311,33 @@ it("quest panel in the map: left the game's while Vanguard's quest log is on, or
   for (const addon of [sparse, partial]) expect(addon.eval("return #ns.errors"), "a client with fewer parts loads cleanly").toBe(0);
 });
 
+
+// TEST-ONLY reward tiles of the quest details (QuestInfoItem1-2 with a name plate and an icon, and the XP tile with a
+// ReputationBG plate), made by the game as QuestInfo_Display runs.
+const QUEST_REWARDS_ENV = QUEST_MAP_ENV + `
+  for i = 1, 2 do
+    local tile = CreateFrame("Button", "QuestInfoItem" .. i, UIParent) tile.NameFrame, tile.Icon = tile:CreateTexture(), tile:CreateTexture()
+    tile.NameFrame:SetAlpha(1)
+  end
+  QuestInfoXPFrame = CreateFrame("Frame", "QuestInfoXPFrame", UIParent) QuestInfoXPFrame.ReputationBG = QuestInfoXPFrame:CreateTexture()
+  for _, key in ipairs({ "AbandonButton", "TrackButton" }) do
+    local b = QuestMapFrame.QuestsFrame.DetailsFrame[key] local fs = b:CreateFontString(nil, "OVERLAY") fs:SetFont("TEST-ONLY-GAME", 12, "") b:SetFontString(fs)
+  end
+  __made = false
+  function QuestInfo_Display() if not __made then __made = true CreateFrame("Button", "QuestInfoItem3", UIParent).NameFrame = UIParent:CreateTexture() end end
+`;
+
+it("quest panel in the map: the reward tiles lose their plates and the buttons' labels are in the theme (Abandon in the danger colour)", () => {
+  const addon = loggedIn(QUEST_REWARDS_ENV);
+  addon.eval("QuestMapFrame:Show()");
+  expect(addon.eval("return { QuestInfoItem1.NameFrame:GetAlpha(), QuestInfoItem2.NameFrame:GetAlpha(), QuestInfoXPFrame.ReputationBG:GetAlpha() }"), "the name plates and the XP plate are faded").toEqual([0, 0, 0]);
+  addon.eval("QuestInfo_Display()");
+  expect(addon.eval("return QuestInfoItem3.NameFrame:GetAlpha()"), "a tile the game makes as a quest is shown is dressed after QuestInfo_Display").toBe(0);
+  const d = "QuestMapFrame.QuestsFrame.DetailsFrame";
+  expect(addon.eval(`return { __looks(${d}.AbandonButton:GetFontString(), 'label', 'bad'), __looks(${d}.TrackButton:GetFontString(), 'label', 'text') }`), "Abandon is the danger kind, the others light").toEqual([true, true]);
+  addon.eval("QuestMapFrame:Hide() QuestMapFrame:Show()");
+  expect(addon.eval("return #ns.errors"), "showing it again is clean").toBe(0);
+});
 
 // TEST-ONLY extras on the quest panel (QuestMapFrame.xml): the list's search box (with its magnifier), settings gear and
 // the quest count frame with its figure; the Rewards heading; the rule between groups; quest title rows (a button with a
