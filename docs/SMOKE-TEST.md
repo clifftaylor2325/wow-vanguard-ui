@@ -533,7 +533,13 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 ### 9.2a Sell list, sell all and bulk buy
 
 - Do: `/vg junk` with a shift-clicked cheap item you own, then Merchants and errors → "Offer to sell the items on your sell list"; open a merchant. Then `/vg sell` with a shift-clicked item of which you hold several stacks. Then shift-click an item for sale (a stackable one, with a few bag slots free) and press Stack, then Max.
-- Expect: a question listing the item(s) and what they fetch; answering Sell sells them within a few seconds and the Buyback tab holds them; an item in an equipment set is not offered; Stack and Max and a "Max N for <money>" line sit under the quantity window for a merchant's item and not for an item in your bags; Max above one stack asks first; the buys finish with `Bought N × <item> for <money>.` and no error; an item that costs tokens or honor shows no buttons.
+- Expect: a question listing the item(s) and what they fetch; answering Sell sells them within a few seconds and the Buyback tab holds them; pressing Enter while the question is up does not answer it (click Sell); an item in an equipment set is not offered; Stack and Max and a "Max N for <money>" line sit under the quantity window for a merchant's item and not for an item in your bags; Max above one stack asks first; the buys finish with `Bought N × <item> for <money>.` and no error; an item that costs tokens or honor shows no buttons.
+- If it fails, paste: the chat lines and `/vg errors`.
+
+### 9.2b Junk stops with the merchant; keep stocked buys for gold only
+
+- Do: with gray items that equip (grey armour or a weapon), click "Sell junk" or open a merchant and at once walk away (or close the window). Then `/vg stock <item a merchant sells for honor or tokens> 5` and open that merchant; then `/vg stock <an item for gold> 1000` with bags full and open a merchant who sells it.
+- Expect: once the merchant window is gone no gray item is equipped or used; nothing is bought for an item that costs honor, badges or other items; with full bags the run stops after one try with `Stopped buying <item>: the last purchase did not arrive in full ...` and no `Bought` line for what did not arrive. [Needs in game: that a right-click on a bag item with no merchant open equips or uses it; that GetMerchantItemCostInfo (or the item table's hasExtendedCost) is set for such items; and that C_Item.GetItemCount shows a purchase within the 0.2 s wait. If a run stops early on a slow server, say so.]
 - If it fails, paste: the chat lines and `/vg errors`.
 
 ### 9.2b Item tooltip lines with Tooltips off
