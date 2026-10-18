@@ -678,13 +678,16 @@ const QLOG_ENV = `
 `;
 // The quest log: shown, count, zone headers, list lines, and the chosen quest's details and buttons.
 const questLog = (addon) => addon.eval(`local f = Vanguard_QuestLog
-  local lines, zones, cards = {}, {}, {}
+  local lines, zones, cards, rows = {}, {}, {}, {}
+  for i = 1, f.objectiveRows.used do local r = f.objectiveRows[i]
+    local _, max = r.bar:GetMinMaxValues()
+    rows[i] = { r.label:GetText(), r.count:GetText(), r.mark:IsShown(), r.bar:IsShown(), r.bar:GetValue(), max } end
   for i = 1, f.zones.used do zones[i] = f.zones[i].text:GetText() end
   for i = 1, f.lines.used do lines[i] = f.lines[i].text:GetText() end
   for i = 1, f.cards.used do cards[i] = f.cards[i].name:GetText() end
   local b = f.buttons
   return { shown = f:IsShown(), count = f.count:GetText(), zones = zones, lines = lines, detail = f.detail:IsShown(),
-    title = f.questTitle:GetText(), text = f.text:GetText(), objectives = f.objectives:GetText(), cards = cards, money = f.money:GetText(),
+    title = f.questTitle:GetText(), text = f.text:GetText(), objectives = f.objectives:GetText(), rows = rows, history = f.history:GetText(), cards = cards, money = f.money:GetText(),
     track = b.track:IsShown() and b.track.text:GetText() or false, share = b.share:IsEnabled() }`);
 // Clicks a quest log line (a quest; zones are not lines), a zone header, or one of its buttons.
 const logLine = (addon, i) => addon.eval(`local b = Vanguard_QuestLog.lines[${i}] b.__scripts.OnClick(b)`);
@@ -697,8 +700,8 @@ it("quest log: zones, a quest's details, and its buttons", () => {
   addon.eval("Vanguard_QuestLogToggle.__scripts.OnClick(Vanguard_QuestLogToggle)");
   let q = questLog(addon);
   expect([q.shown, q.count, q.zones, q.lines], "your quests under their zones, which are headers in capitals (hidden ones left out)").toEqual([true, "3 quests", ["TEST-ONLY VALE", "TEST-ONLY HILLS"], ["[8] TEST-ONLY Wolves", "[12] TEST-ONLY Letter", "[3] TEST-ONLY Far"]]);
-  expect([q.title, q.text, q.objectives, q.cards, q.money, q.track, q.share], "the first quest, chosen: text, objectives, rewards; watched; nobody to share with").toEqual([
-    "[8] TEST-ONLY Wolves", "TEST-ONLY About 90051", "Objectives\n- 3/8 TEST-ONLY Wolves slain\n+ 1/1 TEST-ONLY Pelt", ["TEST-ONLY Boots", "TEST-ONLY Bread"], "+12s 0c  ·  450 XP", "Untrack", false]);
+  expect([q.title, q.text, q.objectives, q.rows, q.cards, q.money, q.track, q.share], "the first quest, chosen: text, objectives as rows (the count at the right, a bar while open, a check when done), rewards; watched; nobody to share with").toEqual([
+    "[8] TEST-ONLY Wolves", "TEST-ONLY About 90051", "Objectives", [["TEST-ONLY Wolves slain", "3/8", false, true, 3, 8], ["TEST-ONLY Pelt", "1/1", true, false, 1, 1]], ["TEST-ONLY Boots", "TEST-ONLY Bread"], "+12s 0c  ·  450 XP", "Untrack", false]);
   logButton(addon, "track");
   expect(questLog(addon).track, "Untrack flips the button to Track at once").toBe("Track");
   logLine(addon, 2);
@@ -747,11 +750,21 @@ const logThumbs = (addon) => addon.eval(`local f = Vanguard_QuestLog
   return { list = look(f.listScroll), detail = look(f.detailScroll) }`);
 // Turns one of the quest log's scroll areas ("listScroll" or "detailScroll") by one wheel step of this delta.
 const wheelLog = (addon, which, delta) => addon.eval(`local s = Vanguard_QuestLog.${which} s.__scripts.OnMouseWheel(s, ${delta})`);
+it("quest log: an objective's count is found at either end, a text without one has none, and a done one is muted with a check", () => {
+  const addon = loggedIn(TRACK_ENV + QLOG_ENV);
+  addon.eval(`__quests[90051].objectives = { { text = "TEST-ONLY Wolf slain: 3/8", finished = false }, { text = "TEST-ONLY Explore the vale", finished = false },
+    { text = "2/2", finished = false }, { text = "TEST-ONLY Pelt: 1/1", finished = true } }`);
+  addon.eval("Vanguard_QuestLogToggle.__scripts.OnClick(Vanguard_QuestLogToggle)");
+  expect(questLog(addon).rows, "label and count apart, no count and no bar for plain text, a lone count is its own label, done: check, no bar").toEqual([
+    ["TEST-ONLY Wolf slain", "3/8", false, true, 3, 8], ["TEST-ONLY Explore the vale", "", false, false, 0, 1],
+    ["2/2", "2/2", false, true, 2, 2], ["TEST-ONLY Pelt", "1/1", true, false, 1, 1]]);
+  expect(addon.eval("local f = Vanguard_QuestLog return { f.objectiveBox:GetHeight(), select(5, f.objectiveRows[2]:GetPoint(1)) }"), "rows are 28 px apart in a box as tall as they are").toEqual([112, -28]);
+});
 it("quest log: a long list and long quest text scroll, a short one does not", () => {
   const addon = loggedIn(TRACK_ENV + QLOG_ENV);
   addon.eval("ns.GetModule('QuestLog').Open()");
   expect(addon.eval("local c = ns.GetModule('QuestLog').frame.close return { c:GetWidth(), c:GetHeight(), c:IsVisible() }"), "the close button has a size (it was 0 by 0, so it never showed): 20, an even count of whole screen pixels").toEqual([px(addon, 20, true), px(addon, 20, true), true]);
-  expect(logScrolls(addon), "three quests under two zones (two 18 px headers, three 28 px rows, an 8 px gap) and a short text fit the 384 px and 350 px views: nothing to scroll").toEqual({ list: [128, 0, 0], detail: [172, 0, 0] });
+  expect(logScrolls(addon), "three quests under two zones (two 18 px headers, three 28 px rows, an 8 px gap) and a short text fit the 384 px and 350 px views: nothing to scroll").toEqual({ list: [128, 0, 0], detail: [204, 0, 0] });
   expect(logThumbs(addon), "so no thumb and no soft edge show on either side").toEqual({ list: [false, false, false], detail: [false, false, false] });
   addon.eval(`for i = 1, 20 do local id = 91000 + i
     __log[#__log + 1] = { questID = id }
@@ -759,7 +772,7 @@ it("quest log: a long list and long quest text scroll, a short one does not", ()
     GetQuestLogQuestText = function() return "TEST-ONLY " .. string.rep("word ", 300) end`);
   addon.fire("QUEST_LOG_UPDATE");
   addon.update(0);
-  expect(logScrolls(addon), "23 rows of 28 px and two zone headers make the list 688 px; the wolves' 1510 characters, objectives, a row of rewards and the money line make the details 536 px").toEqual({ list: [688, 304, 0], detail: [536, 186, 0] });
+  expect(logScrolls(addon), "23 rows of 28 px and two zone headers make the list 688 px; the wolves' 1510 characters, objectives, a row of rewards and the money line make the details 568 px").toEqual({ list: [688, 304, 0], detail: [568, 218, 0] });
   expect(logThumbs(addon), "both sides show the scroll thumb, and the list's bottom edge fades (there is more below)").toEqual({ list: [true, false, true], detail: [true, false, true] });
   expect(addon.eval("local f = Vanguard_QuestLog return { f.listScroll.thumb:GetRight() - f.listScroll:GetRight(), f.listScroll.thumb:GetHeight(), f.detailScroll.thumb:GetRight() - f.detailScroll:GetRight() }"), "T.SPACE.col right of each view, as tall as its share of the content (384 of 688, 350 of 530)").toEqual([12, 384 * 384 / 688, 12]);
   wheelLog(addon, "listScroll", -1);
@@ -773,7 +786,7 @@ it("quest log: a long list and long quest text scroll, a short one does not", ()
   wheelLog(addon, "detailScroll", -3);
   addon.fire("QUEST_LOG_UPDATE");
   addon.update(0);
-  expect(logScrolls(addon).detail, "the details scroll too (three steps of 40), and the same quest redrawn keeps its place").toEqual([536, 186, 120]);
+  expect(logScrolls(addon).detail, "the details scroll too (three steps of 40), and the same quest redrawn keeps its place").toEqual([568, 218, 120]);
   logLine(addon, 2);
   expect(logScrolls(addon).detail, "another quest starts at the top, with its own height (no objectives or rewards)").toEqual([454, 104, 0]);
   wheelLog(addon, "detailScroll", -100);
@@ -1206,15 +1219,15 @@ it("quest history: the quest log says which character did the quest, and the set
   const addon = loggedIn(TRACK_ENV + QLOG_ENV + HISTORY_ENV, { savedVariables: HISTORY_SAVED });
   const muted = addon.eval("return ns.Theme.Hex('muted')");
   addon.eval("Vanguard_QuestLogToggle.__scripts.OnClick(Vanguard_QuestLogToggle)");
-  expect(questLog(addon).objectives, "another character's turn-in, muted, under the objectives").toBe(`Objectives\n- 3/8 TEST-ONLY Wolves slain\n+ 1/1 TEST-ONLY Pelt\n\n|c${muted}Done on Thrall-Forever · 3 days ago|r`);
+  expect([questLog(addon).objectives, questLog(addon).history], "another character's turn-in, muted, under the objectives").toEqual(["Objectives", `|c${muted}Done on Thrall-Forever · 3 days ago|r`]);
   logLine(addon, 2);
-  expect(questLog(addon).objectives, "this character's own, for a quest with no objectives: today, on this character").toBe(`|c${muted}Done on this character · today|r`);
+  expect([questLog(addon).objectives, questLog(addon).history], "this character's own, for a quest with no objectives: today, on this character").toEqual(["", `|c${muted}Done on this character · today|r`]);
   logLine(addon, 3);
-  expect(questLog(addon).objectives.includes("Done on"), "a quest nobody finished has no line").toBe(false);
+  expect(questLog(addon).history.includes("Done on"), "a quest nobody finished has no line").toBe(false);
   const off = loggedIn(TRACK_ENV + QLOG_ENV + HISTORY_ENV, { savedVariables: HISTORY_SAVED + ` VanguardDB.profiles = { Default = { QuestHistory = { track = false } } }` });
   off.eval("Vanguard_QuestLogToggle.__scripts.OnClick(Vanguard_QuestLogToggle)");
   off.fire("QUEST_TURNED_IN", 90053);
-  expect([questLog(off).objectives.includes("Done on"), off.eval("return VanguardDB.questHistory.count")], "off: no line, nothing recorded").toEqual([false, 2]);
+  expect([questLog(off).history.includes("Done on"), off.eval("return VanguardDB.questHistory.count")], "off: no line, nothing recorded").toEqual([false, 2]);
 });
 it("quest history: the quest dialog's details say who did the quest, muted under the objectives, and a quest nobody did has none", () => {
   const addon = loggedIn(QUEST_ENV + HISTORY_ENV + `

@@ -5,8 +5,9 @@
 -- turn Vanguard's module off or keep both. Nothing changes without a click, and
 -- an answer is kept in the profile, so the card doesn't come back.
 -- The addon names are the folder names other addons use on other clients; each
--- still needs checking on the WoW Forever client (ElvUI, Tukui, Auctionator and
--- TradeSkillMaster, added last, are as unchecked as the rest). An addon names one
+-- still needs checking on the WoW Forever client (the EllesmereUI ones are the
+-- retail folder names, from memory; its listing was not readable; ElvUI, Tukui,
+-- Auctionator and TradeSkillMaster are as unchecked as the rest). An addon names one
 -- module, so the whole-UI addons ElvUI and Tukui ask about action bars only.
 
 local ADDON, ns = ...
@@ -23,6 +24,8 @@ CX.OVERLAPS = {
   ShadowedUnitFrames = { "UnitFrames", "unit frames" }, PitBull4 = { "UnitFrames", "unit frames" },
   Grid2 = { "RaidFrames", "raid frames" }, VuhDo = { "RaidFrames", "raid frames" }, Cell = { "RaidFrames", "raid frames" },
   Clique = { "ClickCast", "click casting" }, Quartz = { "CastBars", "cast bars" },
+  EllesmereUIUnitFrames = { "UnitFrames", "unit frames" }, EllesmereUIActionBars = { "ActionBars", "action bars" },
+  EllesmereUINameplates = { "Nameplates", "nameplates" }, EllesmereUIRaidFrames = { "RaidFrames", "raid frames" },
   SexyMap = { "Minimap", "the minimap" }, ["Prat-3.0"] = { "Chat", "chat" }, TipTac = { "Tooltips", "tooltips" },
   ElvUI = { "ActionBars", "action bars" }, Tukui = { "ActionBars", "action bars" },
   Auctionator = { "AuctionHelper", "auction house shopping and posting" },

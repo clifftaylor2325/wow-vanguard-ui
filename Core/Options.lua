@@ -186,11 +186,13 @@ local function lookTextRows()
   }
 end
 
--- General, part one: accent, color assist, font, text size, variant, ornaments, scale and theme reset.
+-- General, part one: accent, safer colours, font, text size, variant, ornaments, scale and theme reset.
 local function lookRows()
   local rows = { { "header", "Look" }, { "preview" }, { "swatches" },
-    check("Color assist (reload)", themeSetting("colorAssist")),
-    { "text", "Friendly blue, neutral yellow, hostile vermilion.", "note" } }
+    check("Safer colours (reload)", themeSetting("colorAssist")),
+    { "text", "Friendly blue, neutral yellow, hostile vermilion, and colours for Magic, Curse, Disease and Poison that stay apart.", "note" },
+    check("Follow the game's colour-blind mode (reload)", themeSetting("colorAssistGame")),
+    { "text", "Turns Safer colours on while the game's own colour-blind mode is on.", "note" } }
   for _, row in ipairs(lookTextRows()) do rows[#rows + 1] = row end
   rows[#rows + 1] = check("Pixel-perfect scale", function() return T.Settings().pixelScale end,
     function(v) T.SetPixelScale(v); if not v then O.NeedReload() end end)
@@ -268,7 +270,7 @@ O.MODULE_INFO = {
   SwingTimer = { "Swing timer", "A row per hand that swings, from WoW Forever's own swing events." },
   UnitExtras = { "Readouts", "Threat on your target, your pet's happiness, and a status chip for eating, drinking and missing buffs. Needs Unit frames." },
   RaidFrames = { "Raid frames", "Raid (and party) tiles sorted by group or role." },
-  RaidAuras = { "Raid debuffs and HoTs", "Debuffs you can dispel, and your heals over time, on the tiles. Needs Raid frames." },
+  RaidAuras = { "Raid debuffs and HoTs", "Debuffs you can dispel, your heals over time and three indicator icons on the tiles. Needs Raid frames." },
   RaidHealing = { "Raid heals and aggro", "Incoming heals, shields, aggro and missing raid buffs. Needs Raid frames." },
   RaidStatus = { "Raid marks", "Range fade, raid icons, ready check, resurrection, leader. Needs Raid frames." },
   MainTanks = { "Main tank frames", "In a raid, the main tanks and assists as small tiles at the top left, with what each is targeting." },
@@ -292,7 +294,8 @@ O.MODULE_INFO = {
   ChatFilter = { "Chat filter", "Gold selling, boosting, guild recruiting and repeated lines in Trade and the other channels go to a Filtered tab. Off until you switch it on (Chat)." },
   ChatBubbles = { "Chat bubbles", "Speech bubbles in the world on a flat panel, in the theme font (the game's own inside instances)." },
   MinimapButtons = { "Minimap drawer", "Other addons' minimap buttons gathered into a drawer beside the map." },
-  AutoAccept = { "Auto-accept", "Accept summons and resurrections, decline duels, loot faster (each off until you switch it on)." },
+  AutoAccept = { "Auto-accept", "Accept summons and resurrections, decline duels, guild invites, stranger group invites and friend requests, loot faster, release in battlegrounds (each off until you switch it on)." },
+  Quiet = { "Quiet the game", "Hide the red error line and the zone names that fade in, and zoom the camera further out (each off until you switch it on)." },
   QuestDialog = { "Quest dialog", "Talking to quest givers in Vanguard's own dialog: numbered lines, reward cards, keys 1-9 and Space." },
   QuestTracker = { "Quest tracker", "Your watched quests under the info strip: levels in difficulty colors, objectives, quest items, nearest first if you like." },
   QuestLog = { "Quest log", "Your quests by zone, each quest's text, objectives and rewards, with Track, Share, Abandon and Map." },
@@ -307,6 +310,7 @@ O.MODULE_INFO = {
   GameTools = { "The game's tools", "The game's Cooldown Manager and damage meter, restyled and placed to fit the layout." },
   CooldownGaps = { "Cooldown gaps", "A small row of icons for what the game's Cooldown Manager misses: on-use trinkets, items and spells you choose, the manager's own cooldowns if you like, pet abilities and totems (off until switched on)." },
   CooldownGlow = { "Cooldown Manager glow", "A glow on a Cooldown Manager icon when its aura is in its last part (30 % by default), for spells without the game's own pandemic flag (off until switched on)." },
+  CooldownKeys = { "Cooldown Manager keys", "The key you press for each spell in the Cooldown Manager's essential and utility rows, as small text on its icon, read from Vanguard's action bars (off until switched on)." },
   CraftQueue = { "Craft queue", "A list of crafts to make, profession cooldowns across your characters and the recipes that pay best, from the auction prices (off until switched on; /vg craft)." },
   MailTools = { "Mail tools", "Search and filter the inbox beside the mail window, and presets that fill the Send Mail tab for your alts (off until switched on; /vg mail)." },
   Rolls = { "Roll tracker", "A small panel with the group's /roll results, highest first, and, when the game's loot history lists the drop, who rolled what on the items being rolled for." },

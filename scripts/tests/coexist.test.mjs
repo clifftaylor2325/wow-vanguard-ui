@@ -18,6 +18,17 @@ const cardTexts = (addon) => addon.eval(`ns.Options.Show("modules")
   for _, row in ipairs(ns.GetModule("Coexist").Rows()) do out[#out + 1] = row[2] end
   return out`);
 
+it("coexist: EllesmereUI's unit frame, action bar, nameplate and raid frame addons are noticed", () => {
+  const addon = loggedIn(CLICK_LUA + loadedEnv("EllesmereUIUnitFrames", "EllesmereUIActionBars", "EllesmereUINameplates", "EllesmereUIRaidFrames"));
+  expect(cardTexts(addon), "one question per overlap, sorted by addon name").toEqual([
+    "Other addons",
+    "EllesmereUIActionBars is loaded and also does action bars.", "Turn off Action bars", "Keep both",
+    "EllesmereUINameplates is loaded and also does nameplates.", "Turn off Nameplates", "Keep both",
+    "EllesmereUIRaidFrames is loaded and also does raid frames.", "Turn off Raid frames", "Keep both",
+    "EllesmereUIUnitFrames is loaded and also does unit frames.", "Turn off Unit frames", "Keep both",
+  ]);
+});
+
 it("coexist: a loaded bag and nameplate addon are named once in chat, and the Modules page asks", () => {
   const addon = loggedIn(CLICK_LUA + loadedEnv("Bagnon", "Plater", "TEST-ONLY Unknown"));
   expect(chatHas(addon, /^.*Bagnon also does bags\. Choose which one does under \/vg > Modules \(nothing changes until you do\)\.$/), "Bagnon in chat").toBe(true);

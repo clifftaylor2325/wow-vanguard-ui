@@ -146,6 +146,7 @@ end
 
 -- A chat event (ns.On): skipped lines (channels you don't read, hidden or missing text, your own) are counted, not read.
 function GB.OnChat(event, text, sender)
+  if ns.Restricted("Chat") then return end
   local st, why = GB.stats, GB.Why(event, text, sender)
   st.events[event] = (st.events[event] or 0) + 1
   if why then st[why] = st[why] + 1 return end

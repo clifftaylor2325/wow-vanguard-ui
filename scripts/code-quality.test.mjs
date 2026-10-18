@@ -5,9 +5,10 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
+import fengari from "fengari";
 import { describe, expect, it } from "vitest";
-import { REPORT_RULES, SECURE_ALLOW, checkSource, compareToBaseline, reportSource, sourceFiles } from "./lib/code-quality.mjs";
+import { MAX_TOP_LOCALS, REPORT_RULES, SECURE_ALLOW, checkSource, compareToBaseline, reportSource, sourceFiles, topLevelLocals } from "./lib/code-quality.mjs";
 import { root } from "./check-zip.mjs";
 
 // n body lines of Lua, or of JS when js is true.
@@ -232,6 +233,46 @@ describe(
     it("timers: bare C_Timer calls fail, guarded ones pass", timerRule);
     it("timers: only ns.Soon's timer in Core/Combat.lua is excepted", soonException);
     it("hooks: comments, strings and other folders are ignored", bareIgnored);
+  },
+);
+
+// Lua 5.3 syntax in addon Lua fails: integer division, bit operators, goto and labels.
+function lua53Fails() {
+  const bad = { "//": "local x = 7 // 2", "&": "local x = 1 & 3", "|": "local x = 1 | 2", "~": "local x = ~5", "<<": "local x = 1 << 2", ">>": "local x = 8 >> 1", goto: "goto done", "::": "::done::" };
+  for (const [what, stmt] of Object.entries(bad)) {
+    expect(problems("Modules/t.lua", `${stmt}\n`), what).toContain(`Lua 5.3 syntax (${what})`);
+  }
+}
+
+// Lua 5.1's own spellings pass: ~=, .., comments, strings, a field named goto, a division.
+function lua53Passes() {
+  const ok = 'local a = x ~= y\nlocal b = "a // b & c" .. [[ | ~ ]]\n-- 1 // 2 & goto x\nlocal c = t.goto\nlocal d = 6 / 2 < 4\n';
+  expect(problems("Modules/t.lua", ok)).toBe("");
+}
+
+// The rule covers addon Lua only, and reports the line.
+function lua53Scope() {
+  expect(problems("scripts/lib/t.lua", "local x = 7 // 2\n")).toBe("");
+  expect(checkSource("Core/t.lua", "local a = 1\n\nlocal x = 7 // 2\n")[0].line).toBe(3);
+}
+
+// The rule agrees with the real Lua 5.1 compiler where it is installed.
+function lua53MatchesLuac() {
+  if (spawnSync("luac5.1", ["-v"]).error) return;
+  for (const src of ["local x = 7 // 2", "local x = 1 & 3", "goto done", "::done::", "local x = 1 << 2", "local x = ~1", "local a = 1 ~= 2"]) {
+    const compiles = spawnSync("luac5.1", ["-p", "-"], { input: src }).status === 0;
+    expect(problems("Core/t.lua", `${src}\n`) === "", src).toBe(compiles);
+  }
+}
+
+describe(
+  "code quality",
+  // Lua 5.1 only.
+  () => {
+    it("Lua 5.3 syntax fails", lua53Fails);
+    it("Lua 5.1 syntax passes", lua53Passes);
+    it("Lua 5.3 syntax is judged in addon Lua only", lua53Scope);
+    it("Lua 5.3 syntax agrees with luac5.1", lua53MatchesLuac);
   },
 );
 
@@ -482,4 +523,60 @@ it("the scan covers new files, not ignored or deleted ones", () => {
 // Padding constants off T.SPACE's scale.
 describe("code quality: spacing", () => {
   it("off-scale padding constants fail", spacingScale);
+});
+
+// Top-level locals (Lua allows 200 active in a file's main chunk) ------------------------------
+
+const { lauxlib, to_luastring } = fengari;
+
+// n lines `local vK = K`, or n names in one statement when `one` is true.
+const locals = (n, one = false) => (one ? `local ${Array.from({ length: n }, (_, i) => `v${i}`).join(", ")}\n` : Array.from({ length: n }, (_, i) => `local v${i} = ${i}\n`).join(""));
+
+// True when fengari (Lua's 200-local limit, like the game's) compiles the source.
+const compiles = (src) => lauxlib.luaL_loadstring(lauxlib.luaL_newstate(), to_luastring(src)) === 0;
+
+// How many locals the main chunk of src has active at its end: 200 minus the most `local` lines that still compile.
+function probedLocals(src) {
+  let extra = 0;
+  while (compiles(src + locals(extra + 1).replace(/v/g, "probe"))) extra++;
+  return 200 - extra;
+}
+
+// Counts names in every form of local statement, and skips functions, do blocks and loops.
+function topLocalsCounted() {
+  const src = [
+    "local a, b = 1, 2", "local function f() local inner = 1 end", "local c = function() local x end",
+    "do local hidden = 1 end", "if a then local x end", "for i = 1, 2 do local y end",
+    "while false do local z end", "repeat local w until true", "local d -- local ghost", 'local e = "local no"',
+  ].join("\n");
+  expect(topLevelLocals(src).map((l) => l.name)).toEqual(["a", "b", "f", "c", "d", "e"]);
+  expect(probedLocals(src)).toBe(6);
+}
+
+// The scan fails a file one local above the limit and passes one at the limit.
+function topLocalsRule() {
+  expect(problems("Core/T.lua", locals(MAX_TOP_LOCALS))).toBe("");
+  expect(problems("Core/T.lua", locals(MAX_TOP_LOCALS - 1) + "local a, b\n")).toMatch(/186 top-level locals/);
+  expect(checkSource("Core/T.lua", locals(MAX_TOP_LOCALS + 1))[0].line).toBe(MAX_TOP_LOCALS + 1);
+  expect(problems("scripts/lib/x.lua", locals(MAX_TOP_LOCALS + 5))).toBe("");
+}
+
+// A do ... end block frees its locals, so grouping them there brings a file back under the limit.
+function topLocalsBlock() {
+  expect(problems("Modules/M.lua", `do\n${locals(MAX_TOP_LOCALS + 20)}end\n${locals(MAX_TOP_LOCALS)}`)).toBe("");
+}
+
+// The counter agrees with the compiler on the real Core/Theme.lua, which keeps clear of the limit.
+function topLocalsTheme() {
+  const src = fs.readFileSync(path.join(root, "Core/Theme.lua"), "utf8");
+  const counted = topLevelLocals(src).length;
+  expect(probedLocals(src)).toBe(counted);
+  expect(counted).toBeLessThanOrEqual(170);
+}
+
+describe("code quality: top-level locals", () => {
+  it("counts every local form and skips nested scopes, as the compiler does", topLocalsCounted);
+  it("fails an addon file above the limit and passes one at it", topLocalsRule);
+  it("a do block frees its locals", topLocalsBlock);
+  it("agrees with the compiler on Core/Theme.lua, which stays at or below 170", topLocalsTheme);
 });
