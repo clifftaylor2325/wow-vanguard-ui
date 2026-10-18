@@ -15,6 +15,10 @@
 //   5. Addon Lua (Core/, Modules/) uses no syntax newer than Lua 5.1: no goto or
 //      ::label::, no // , << , >> , & , | or ~ operator. The test harness parses
 //      Lua 5.3 and accepts them; the game does not, and the addon would not load.
+//   6. Addon Lua (Core/, Modules/) keeps at most MAX_TOP_LOCALS locals active at the
+//      top level of the file. Lua allows 200 per function and the file is one function:
+//      the next `local` past 200 stops the whole addon loading (Core/Theme.lua got
+//      within 2 of it). Locals inside a do ... end block or a function don't count.
 // Test cases (the callback passed to it(...)) are exempt from rule 1.
 // Two more rules are report-only (#263, reportSource below): secure calls
 // outside a combat guard, and OnUpdate handlers neither throttled nor cleared.
@@ -26,6 +30,8 @@ import { execFileSync } from "node:child_process";
 import * as acorn from "acorn";
 
 export const MAX_BODY_LINES = 10;
+// Lua's limit is 200 active locals per function (LUAI_MAXVARS); the scan fails a file at more than this, leaving room to fix it.
+export const MAX_TOP_LOCALS = 185;
 
 const LUA_BLOCK_OPEN = new Set(["function", "if", "do", "repeat"]);
 const LUA_BLOCK_CLOSE = new Set(["end", "until"]);
@@ -129,6 +135,37 @@ function trackLuaBlock(stack, tokens, i, line) {
   if (!LUA_BLOCK_CLOSE.has(t.text)) return null;
   const fn = stack.pop();
   return fn ? { ...fn, end: line(t.start) } : null;
+}
+
+// The names a `local` statement declares, given the index of its `local` token in the code tokens.
+function localNames(tokens, i) {
+  if (tokens[i + 1]?.text === "function") return [tokens[i + 2]];
+  const names = [tokens[i + 1]];
+  for (let j = i + 1; tokens[j + 1]?.text === ","; j += 2) names.push(tokens[j + 2]);
+  return names;
+}
+
+// The `local` names declared at the top level of Lua source (not in a function, do, if, for, while or repeat),
+// each { name, start }: these are the locals still active at the end of the file's main chunk.
+export function topLevelLocals(src) {
+  const tokens = codeTokens(src);
+  const found = [];
+  let depth = 0;
+  tokens.forEach((t, i) => {
+    if (t.kind !== "word") return;
+    depth += LUA_BLOCK_OPEN.has(t.text) ? 1 : LUA_BLOCK_CLOSE.has(t.text) ? -1 : 0;
+    if (t.text === "local" && depth === 0) found.push(...localNames(tokens, i).map((n) => ({ name: n.text, start: n.start })));
+  });
+  return found;
+}
+
+// Files near Lua's 200-local limit: [{ line, message }] once the top-level locals pass MAX_TOP_LOCALS.
+function topLocalProblems(file, src) {
+  if (!COLOR_SCOPE.test(file)) return [];
+  const found = topLevelLocals(src);
+  if (found.length <= MAX_TOP_LOCALS) return [];
+  const message = `${found.length} top-level locals (limit ${MAX_TOP_LOCALS}; Lua stops at 200 and then the addon does not load): move a group into a do ... end block or onto a table`;
+  return [{ line: lineIndex(src)(found[MAX_TOP_LOCALS].start), message }];
 }
 
 // Every function in Lua source: { name, start, end } (1-based lines).
@@ -451,7 +488,7 @@ export function checkSource(file, src) {
   const fns = lua ? luaFunctions(src) : jsFunctions(src);
   const documented = documentedSet(fns, kinds);
   const out = fns.flatMap((fn) => functionProblems(fn, kinds, documented));
-  return lua ? out.concat(colorProblems(file, src), fontProblems(file, src), spacingProblems(file, src), bareCallbackProblems(file, src), lua51Problems(file, src)) : out;
+  return lua ? out.concat(colorProblems(file, src), fontProblems(file, src), spacingProblems(file, src), bareCallbackProblems(file, src), lua51Problems(file, src), topLocalProblems(file, src)) : out;
 }
 
 // Report-only rules (#263) -------------------------------------------------------------
