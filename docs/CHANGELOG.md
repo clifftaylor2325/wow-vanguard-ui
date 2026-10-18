@@ -4,7 +4,61 @@ What changed for players in each release, newest first. In game, the same notes 
 
 Nothing here has been checked in the game by the people who wrote it down: see the batch checklist (issue #284) and [SMOKE-TEST.md](SMOKE-TEST.md).
 
-## 0.6.0 (not released yet)
+## 0.7.0
+
+Nothing in this release has been checked in the game; see the batch checklist (issue #284).
+
+### Questing
+
+- An on-screen arrow points to the nearest quest objective, and on to a quest on another map.
+- Quest spots show on the minimap, quest mobs get a mark on their nameplate, and the quest log shows XP to your next level.
+- Quests can be tracked automatically, shared quests can be accepted from your group (off by default), and quest history is kept for your whole account.
+- In the quest log, Ctrl-click marks quests and Abandon takes all the marked ones.
+
+### Chat
+
+- Chat windows keep their lines across reloads and logins.
+- Gold selling, boosting, recruiting and repeated lines go to a Filtered tab instead of your chat.
+- A choice of chat window size, a bigger default window, a softer backdrop and readable tabs.
+
+### Bags and town
+
+- You can make your own categories in the combined bag.
+- The merchant window has a sell list, Sell all of one item, and Stack and Max buying; mail has Take all and Return all.
+- /vg alts shows an overview of your characters, also on the Game windows page.
+- The auction house tabs and panels are in the Vanguard look, and a failing part no longer stops the rest.
+
+### Unit frames and HUD
+
+- A Versus deck joins the player and target frames, with shield corners on unit frames and cast bars.
+- Calm HUD dims your frames out of combat, and a low-health screen-edge vignette warns you in a fight.
+- A cursor ring and an interrupt-ready mark on cast bars; an eating, drinking and missing-buff chip on your frame.
+- /vg graphics checks your computer, screen and frame rate and suggests settings; /vg graphics apply sets them and undo puts them back.
+- Raid frames show three indicator icons from the game's aura filters.
+
+### Cooldown Manager
+
+- The Cooldowns page has the Cooldown Manager's settings and a setup wizard, and key text shows on its icons.
+
+### Rolls, gear and info
+
+- The roll tracker reads the loot list from Forever's encounter loot history.
+- The info strip shows ammo when the game says your ranged weapon needs it.
+
+### Look and windows
+
+- Many more game windows are in the Vanguard look: the spellbook, guild, social, map, group finder, Legacy, calendar, Edit Mode, keybindings and the Lua error window.
+- One selected look and one press state for rows, tabs, sliders, scroll bars and buttons across the options and game windows; buttons light only while the mouse is over them.
+- The game's remaining arrow art is skinned, and /vg errors opens a copy window.
+
+### Safety and tools
+
+- Saved data is size-checked: Vanguard trims the oldest price data if the game says the file is too large.
+- /vg perf reads the game's addon profiler, and /vg perf slow names Vanguard's slowest handlers; /vg mem reads memory after a garbage collection.
+- /vg probe runs a batch of checks and /vg prep buffs checks the buff names, for reporting back what Forever does.
+- When another addon (EllesmereUI's unit frame, action bar, nameplate and raid frame addons) does a job a Vanguard module does, chat says so once.
+
+## 0.6.0
 
 ### New features
 
