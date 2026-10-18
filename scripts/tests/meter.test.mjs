@@ -367,3 +367,14 @@ it("a line shows its share of the total when the figures are plain, and not when
   addon.advance(1);
   expect(rows(addon)[0][2], "a total of 0: just the figure").toBe("100");
 });
+
+it("the panel's width can be set, and its lines follow", () => {
+  const addon = loggedIn(FULL_ENV, METER_ON);
+  setLines(addon, "{ { name = 'Tess', amountPerSecond = 300 } }");
+  addon.advance(1);
+  addon.eval("ns.SetMoverSize('meter', 'width', 450)");
+  expect(addon.eval("return { Vanguard_Meter:GetWidth(), Vanguard_Meter.rows[1]:GetWidth() }"), "the panel and its lines take the width").toEqual([450, 448]);
+  addon.eval("ns.SetMoverSize('meter', 'width', 50)");
+  expect(addon.eval("return Vanguard_Meter:GetWidth()"), "kept within the range").toBe(200);
+  addon.eval("ns.GetModule('Meter').Resized({})");
+});
