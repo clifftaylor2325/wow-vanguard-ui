@@ -419,6 +419,12 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Also expect (recipes): open a profession window and track a recipe (its track checkbox or Shift-click as the game offers). A `Recipes` heading sits after the quests and challenges with the recipe beneath it and a line per reagent, `- 2/4 Linen Cloth`, gray until you have enough, then green; buy or craft a reagent and the count follows. Left-click the recipe: the profession window opens on it. Right-click: it leaves the tracker, and the heading goes with the last one. [Needs in game: that a reagent the client hasn't cached joins the list a moment later.]
 - If it fails, paste: a screenshot.
 
+### 8.4a Quest arrow
+
+- Do: watch two or three quests with unfinished objectives in the zone you are in, stand still, and turn your character slowly round. Then walk toward the quest the arrow names, finish one quest's objectives, and Shift-click a different quest in the tracker. Type `/vg unlock`, drag the arrow, `/vg lock`.
+- Expect: a small panel right of the top centre with an accent arrow, the quest's title and `230 yd` under it. The arrow points at the quest's area on the ground and turns as you turn (up means straight ahead). The distance falls as you walk. When a quest is ready to turn in, the arrow moves to its turn-in unless another objective is much nearer, and chat says `Arrow: <title>.` when it moves on from a finished quest. A Shift-clicked quest holds the arrow until it leaves the log. On another map's quest it reads `yd, no direction` with a faint arrow. The panel moves with the other handles. [Needs in game: that the arrow points the right way (the sign of the turn), that distances match the game's own pin, and how it reads in an instance.]
+- If it fails, paste: a screenshot with the arrow and the quest on the map, and `/vg errors`.
+
 ### 8.5 Levelling helpers
 
 - Do: watch a quest worth XP, hover the XP bar, kill a few mobs that give XP, turn in nothing yet, then let your food fall under the wanted count (`/vg prep want food 20`) by using or selling some.

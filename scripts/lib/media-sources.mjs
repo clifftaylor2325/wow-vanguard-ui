@@ -243,6 +243,8 @@ const ICON_SHAPES = {
   // The floating waypoint pin (Modules/Waypoints.lua, on the game's SuperTrackedFrame): a teardrop outline, its
   // round head on (8, 6) meeting the tip at (8, 14), with a filled dot in the head; shown at the game's pin size.
   Pin: [path([[8, 14], ...arc(8, 6, 4, 4, -30, 210, 24)], STROKE, true), box(6.75, 4.75, 9.25, 7.25, 1.25)],
+  // The quest arrow (Modules/QuestArrow.lua): a filled arrowhead pointing up, a notch in its base; the module turns it.
+  QuestArrow: [poly([[8, 1], [14.5, 14.5], [8, 10.5], [1.5, 14.5]])],
 };
 
 // A filled five-point star centered at (cx, cy) with outer radius r.
