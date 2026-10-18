@@ -7,7 +7,7 @@
 
 local ADDON, ns = ...
 
-local CW = ns.Module("ChatWindows", { defaults = { movers = false } })
+local CW = ns.Module("ChatWindows", { defaults = { movers = false, find = true } })
 
 -- The sliders' ranges (width, height) in units.
 CW.WIDTH = { min = 250, max = 900, step = 10, format = function(v) return string.format("%d", math.floor(v + 0.5)) end }
@@ -172,9 +172,86 @@ function CW.Close()
   ns.OutOfCombat(function() FCF_Close(frame) CW.editing = nil ns.Options.RebuildPage("chat") end, "chat close tab")
 end
 
+-- Find ------------------------------------------------------------------------------------
+
+-- At most this many lines are listed (the newest).
+CW.MAX_FOUND = 200
+
+-- A line as plain lower-case text for matching (links and colors reduced to their words).
+local function plain(text)
+  return ns.GetModule("ChatExtras").Plain(text):lower()
+end
+
+-- Every readable line of a window as { text }: lines the game hides are left out.
+local function frameLines(frame)
+  local out, count = {}, type(frame.GetNumMessages) == "function" and ns.PlainNumber(frame:GetNumMessages()) or 0
+  for i = 1, count do
+    local text = frame:GetMessageInfo(i)
+    if type(text) == "string" and not ns.IsSecret(text) then out[#out + 1] = text end
+  end
+  return out
+end
+
+-- Lines saved for the next login (Modules/ChatHistory.lua) that no window shows any more, oldest first.
+local function savedLines(shown)
+  local out, CHH = {}, ns.GetModule("ChatHistory")
+  local store = CHH.Store()
+  for i = 1, windowCount() do
+    for _, line in ipairs(type(store[i]) == "table" and store[i] or {}) do
+      local text = select(5, CHH.Unpack(line))
+      if text and not shown[text] then out[#out + 1] = text end
+    end
+  end
+  return out
+end
+
+-- Every line to look through, oldest first: the saved ones no window shows, then each window's own.
+local function allLines()
+  local shown, all = {}, {}
+  for _, w in ipairs(CW.Windows()) do
+    for _, text in ipairs(frameLines(w[2])) do shown[text] = true all[#all + 1] = text end
+  end
+  local saved = savedLines(shown)
+  for _, text in ipairs(all) do saved[#saved + 1] = text end
+  return saved
+end
+
+-- The lines holding `needle` (lower-case), the newest CW.MAX_FOUND, as plain text.
+function CW.Search(needle)
+  local found = {}
+  for _, text in ipairs(allLines()) do
+    if plain(text):find(needle, 1, true) then found[#found + 1] = ns.GetModule("ChatExtras").Plain(text) end
+  end
+  return { unpack(found, math.max(1, #found - CW.MAX_FOUND + 1)) }
+end
+
+-- Finds a word in the chat and the saved history, and shows the lines in a box ready to copy.
+function CW.Find(query)
+  local needle = (type(query) == "string" and query or ""):match("^%s*(.-)%s*$"):lower()
+  if needle == "" then return ns.Chat("Type something to find.") end
+  local found = CW.Search(needle)
+  ns.ShowText(string.format("Chat: %d lines with \"%s\"", #found, needle), table.concat(found, "\n"))
+end
+
+-- Asks what to find.
+function CW.AskFind()
+  ns.AskText("Find in chat", CW.Find, "Find")
+end
+
+-- A small Find button in the main chat window's tab row, left of the Copy button.
+local function addFindButton()
+  local frame = _G.ChatFrame1
+  if type(frame) ~= "table" then return end
+  CW.findButton = ns.DialogButton(frame, "Find", 40)
+  CW.findButton:SetHeight(16)
+  CW.findButton:SetPoint("BOTTOMRIGHT", frame, "TOPRIGHT", -44, ns.Theme.SPACE.tight)
+  CW.findButton:SetScript("OnClick", ns.Guard("click find in chat", CW.AskFind))
+end
+
 -- Module entry point (Core/Modules.lua).
 function CW.Enable(settings)
   CW.settings = settings
+  if settings.find then addFindButton() end
   if not settings.movers then return end
   for _, window in ipairs(CW.Windows()) do
     if floating(window[1]) then floatingMover(window) end

@@ -1256,6 +1256,12 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 - Expect: a new tab appears and is picked; it shows loot and not say; the rename shows on the tab; closing General does nothing and says so in chat; Drops closes; in combat the new tab or close waits until the fight ends. `/vg errors` is empty. [Needs in game: FCF_OpenNewWindow, FCF_SetWindowName, FCF_Close, ChatFrame_AddMessageGroup / RemoveMessageGroup / ContainsMessageGroup behave as used, and the group names (SAY, YELL, GUILD, PARTY, RAID, WHISPER, LOOT, SYSTEM) match.]
 - If it fails, paste: `/vg errors` and what the tab did.
 
+### 15.6f Chat search
+
+- Do: say a few lines with the same word in /say and have a link or two appear in chat. Click Find over the chat (left of Copy), type the word, Find. Then `/vg` → Chat → Find in chat and search for a word that was only in the chat before your last `/reload` (with Chat history on).
+- Expect: a box opens with `Chat: N lines with "word"` and the matching lines as plain text (links show as their words), selected for Ctrl+C. An empty search says `Type something to find.` `/vg errors` is empty. [Needs in game: that the Find button sits clear of Copy in the tab row, and that GetNumMessages/GetMessageInfo return every line the window holds.]
+- If it fails, paste: `/vg errors` and a screenshot of the tab row.
+
 ## 16. Realm and ruleset
 
 ### 16.1 Realm, ruleset and names
