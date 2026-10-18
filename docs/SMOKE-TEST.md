@@ -419,6 +419,12 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Also expect (recipes): open a profession window and track a recipe (its track checkbox or Shift-click as the game offers). A `Recipes` heading sits after the quests and challenges with the recipe beneath it and a line per reagent, `- 2/4 Linen Cloth`, gray until you have enough, then green; buy or craft a reagent and the count follows. Left-click the recipe: the profession window opens on it. Right-click: it leaves the tracker, and the heading goes with the last one. [Needs in game: that a reagent the client hasn't cached joins the list a moment later.]
 - If it fails, paste: a screenshot.
 
+### 8.4b Questing conveniences
+
+- Do: with a quest or two in the log that give XP and a level below the cap, look at the foot of the tracker and open the quest log. Under `/vg > Quests` switch off the line under the quests, then each quest's XP in the quest log list, then tick them again. Accept a new quest from an NPC with Watch a quest when you accept it on, and again with it off. Then tick Accept quests a party member shares with you, have a party member share a quest (their Share button), and repeat it holding Shift.
+- Expect: a muted `Quests: 62% of the XP to level` line under the last quest (above `+N more` when that shows), which follows the quests you take and abandon and is gone at the level cap or when no quest gives XP; each quest line in the quest log shows `1,250 XP` in muted type at its right edge with the title cut short, not overlapped; the switches take effect at once. A newly accepted quest appears in the tracker without you watching it (off: it does not, unless the game's own auto-watch does). A shared quest is accepted for you with `Accepted: <title> (shared by <name>)` in chat and no dialog; with Shift held, or the switch off, the dialog opens as usual. [Needs in game: that the XP numbers match the quest dialog's, that QUEST_ACCEPTED arrives with the quest id in the log, that the game refuses a watch past its limit quietly, and that the quest dialog's `npc` unit is the sharing player for a shared quest.]
+- If it fails, paste: a screenshot and `/vg errors`.
+
 ### 8.4a Quest arrow
 
 - Do: watch two or three quests with unfinished objectives in the zone you are in, stand still, and turn your character slowly round. Then walk toward the quest the arrow names, finish one quest's objectives, and Shift-click a different quest in the tracker. Type `/vg unlock`, drag the arrow, `/vg lock`.

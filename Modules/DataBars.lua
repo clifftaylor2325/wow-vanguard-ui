@@ -68,6 +68,13 @@ function DB.XP()
   return { cur = number(UnitXP, "player"), max = max, rested = number(GetXPExhaustion), level = number(UnitLevel, "player") }
 end
 
+-- The XP this level still needs, or nil at the level cap or when the client hides a value.
+function DB.XPToLevel()
+  if atMaxLevel() then return nil end
+  local cur, max = ns.PlainNumber(UnitXP("player")), ns.PlainNumber(UnitXPMax("player"))
+  return cur and max and max > cur and max - cur or nil
+end
+
 -- { name, standing, cur, max } for the watched faction, or nil when none.
 function DB.Reputation()
   local get = C_Reputation and C_Reputation.GetWatchedFactionData
@@ -116,6 +123,21 @@ function DB.QuestXP()
   local log, total = C_QuestLog, 0
   if type(log) ~= "table" or type(log.GetNumQuestLogEntries) ~= "function" or type(log.IsComplete) ~= "function" then return 0 end
   for i = 1, ns.PlainNumber((log.GetNumQuestLogEntries())) or 0 do total = total + readyXP(log.GetInfo(i)) end
+  return total
+end
+
+-- The XP a log entry gives when it is a quest (a header or a hidden id gives 0).
+local function entryXP(info)
+  if type(info) ~= "table" or ns.IsSecret(info.isHeader) or info.isHeader == true then return 0 end
+  local id = ns.PlainNumber(info.questID)
+  return id and DB.RewardXP(id) or 0
+end
+
+-- The XP every quest in your log gives, added up (0 on a client without the log).
+function DB.LogXP()
+  local log, total = C_QuestLog, 0
+  if type(log) ~= "table" or type(log.GetNumQuestLogEntries) ~= "function" or type(log.GetInfo) ~= "function" then return 0 end
+  for i = 1, ns.PlainNumber((log.GetNumQuestLogEntries())) or 0 do total = total + entryXP(log.GetInfo(i)) end
   return total
 end
 
