@@ -224,17 +224,23 @@ local function altLine(name, r)
   return name .. ": " .. table.concat(parts, ", ")
 end
 
--- Every remembered character's overview line, and the money of all of them together.
-local function overview()
-  local total = 0
+-- Every remembered character's overview line, then the money of all of them together.
+function IV.AltLines()
+  local lines, total = {}, 0
   for _, name in ipairs(names()) do
     local r = IV.Characters()[name]
     if type(r) == "table" then
-      ns.Chat(altLine(name, r))
+      lines[#lines + 1] = altLine(name, r)
       total = total + (r.money or 0)
     end
   end
-  ns.Chat("All together: " .. ns.GetModule("InfoStrip").Money(total))
+  lines[#lines + 1] = "All together: " .. ns.GetModule("InfoStrip").Money(total)
+  return lines
+end
+
+-- Writes the overview lines to chat.
+local function overview()
+  for _, line in ipairs(IV.AltLines()) do ns.Chat(line) end
 end
 
 -- An item's name, "item 123" until the client has it.
