@@ -83,6 +83,21 @@ it("group board: hidden chat, your own lines and channels you don't read are ski
   expect(addon.eval("return #ns.errors"), "no errors").toBe(0);
 });
 
+it("group board: while chat is restricted a post is not read", () => {
+  const addon = board();
+  addon.eval(`Enum.AddOnRestrictionType = { Combat = 0, Encounter = 1, ChallengeMode = 2, PvPMatch = 3, Map = 4, Chat = 5 }
+  Enum.AddOnRestrictionState = { Inactive = 0, Activating = 1, Active = 2 }
+  __restricted = {}
+  C_RestrictedActions = { GetAddOnRestrictionState = function(t) return __restricted[t] or 0 end }
+`);
+  addon.eval("__restricted[5] = 2");
+  post(addon, "LFM SFK", "Lightmend");
+  expect(addon.eval("return #ns.GetModule('GroupBoard').entries"), "restricted: no entry").toBe(0);
+  addon.eval("__restricted[5] = 0");
+  post(addon, "LFM SFK", "Lightmend");
+  expect(addon.eval("return #ns.GetModule('GroupBoard').entries"), "unrestricted: listed").toBe(1);
+});
+
 it("group board: a click opens a whisper with the message filled in, never sends it", () => {
   const addon = board();
   post(addon, "LFM SFK need heals", "Lightmend-Ruleset");

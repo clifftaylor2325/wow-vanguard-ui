@@ -54,6 +54,20 @@ it("quest minimap: the marks turn with a rotating minimap", () => {
   expect(marks(addon)[0].slice(1, 3), "a hidden facing: drawn north-up").toEqual([Math.round(half / 2), 0]);
 });
 
+it("quest minimap: no marks while the map is restricted", () => {
+  const addon = loggedIn(MINIMAP_ENV + `Enum.AddOnRestrictionType = { Combat = 0, Encounter = 1, ChallengeMode = 2, PvPMatch = 3, Map = 4, Chat = 5 }
+  Enum.AddOnRestrictionState = { Inactive = 0, Activating = 1, Active = 2 }
+  __restricted = {}
+  C_RestrictedActions = { GetAddOnRestrictionState = function(t) return __restricted[t] or 0 end }
+`);
+  addon.advance(0.5);
+  expect(marks(addon).length, "unrestricted: marks").toBeGreaterThan(0);
+  addon.eval("__restricted[4] = 2");
+  addon.fire("QUEST_LOG_UPDATE");
+  addon.advance(1.5);
+  expect(marks(addon).length, "restricted: none").toBe(0);
+});
+
 it("quest minimap: no marks without the client's scale, a map, or with the switch off; the option row", () => {
   const addon = loggedIn(MINIMAP_ENV);
   addon.eval("C_Minimap = nil");

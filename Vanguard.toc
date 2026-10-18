@@ -113,6 +113,7 @@ Modules/ChatBubbles.lua
 Modules/Bags.lua
 Modules/BagSections.lua
 Modules/BagCategories.lua
+Modules/BagSearch.lua
 Modules/InfoStrip.lua
 Modules/BrokerStrip.lua
 Modules/MenuStrip.lua
@@ -127,6 +128,7 @@ Modules/DungeonCard.lua
 Modules/TalentPlanner.lua
 Modules/Legacy.lua
 Modules/AutoAccept.lua
+Modules/Quiet.lua
 Modules/QuestDialogParts.lua
 Modules/QuestDialog.lua
 Modules/QuestDialogView.lua

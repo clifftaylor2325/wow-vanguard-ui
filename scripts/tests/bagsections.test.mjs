@@ -429,3 +429,64 @@ it("bag categories ignore an item with no usable ID", () => {
   addon.slash("bag add Tools 90001");
   expect(addon.eval(`local BG = ns.GetModule("Bags") return { BG.CategoryOf(nil) == nil, BG.CategoryOf(90001) }`)).toEqual([true, "cat:tools"]);
 });
+
+// TEST-ONLY search: the game's search row marks each item button matching or not (SetMatchesSearch); UpdateSearchResults is its refresh.
+const SEARCH_ENV = `
+  local f = ContainerFrameCombinedBags
+  for _, b in ipairs(f.Items) do b.SetMatchesSearch = function(self, yes) self.matches = yes end end
+  function f:UpdateSearchResults() for _, b in ipairs(self.Items) do b:SetMatchesSearch(true) end end
+  local items = __wfgWorld.items
+  items[90001].level, items[90001].bind, items[90001].type, items[90001].subType = 30, 2, "Weapon", "Swords"
+  items[159].level = 5
+`;
+
+// Types a search and has the game refresh; returns the names of the items left lit.
+const lit = (addon, text) => Object.values(addon.eval(`BagItemSearchBox:SetText(${JSON.stringify(text)}) ContainerFrameCombinedBags:UpdateSearchResults()
+  local out = {}
+  for _, b in ipairs(ContainerFrameCombinedBags.Items) do if b.matches then out[#out + 1] = (C_Container.GetContainerItemInfo(b:GetBagID(), b:GetID()) or {}).itemID end end
+  table.sort(out) return out`));
+
+it("search operators: ilvl, quality, type, bind and category words combine with plain words; no operator leaves the game's search alone", () => {
+  const addon = loggedIn(ITEMS_ENV + fill([8, 4, 0, 0, 0], { quest: 1, equipment: 1, consumables: 2, junk: 1 }) + BAG_FRAME + SEARCH_ENV);
+  addon.eval("__openBag()");
+  expect(lit(addon, "sword"), "a plain word: the game's own result stands (every filled slot lit in this test)").toHaveLength(5);
+  expect(lit(addon, "ilvl>20"), "item level above 20").toEqual([90001]);
+  expect(lit(addon, "ilvl<=5"), "at most 5 (items with no level count as 1)").toEqual([159, 159, 90002, 90003]);
+  expect(lit(addon, "q:uncommon"), "a quality by name").toEqual([90001]);
+  expect(lit(addon, "q>=2"), "a quality by number").toEqual([90001]);
+  expect(lit(addon, "type:sword bind:boe"), "type and binding together").toEqual([90001]);
+  expect(lit(addon, "TYPE:Weapon test-only"), "case does not matter; a plain word must match as well").toEqual([90001]);
+  expect(lit(addon, "bind:bop"), "nothing binds on pickup here").toEqual([]);
+  expect(lit(addon, "ilvl>x"), "a key with no usable value is a plain word: no such name").toHaveLength(5);
+  addon.slash("bag add Water 159");
+  expect(lit(addon, "cat:water"), "a category by name").toEqual([159, 159]);
+  expect(lit(addon, "cat:nope"), "no such category").toEqual([]);
+  expect(addon.eval(`local BG = ns.GetModule("Bags") return BG.ItemMatches(BG.ParseSearch("ilvl>1"), 1, 4)`), "an empty slot never matches").toBe(false);
+});
+
+it("search operators wait for a client that has the search refresh, and skip buttons without a match call", () => {
+  const addon = openFilled([8, 4, 0, 0, 0], { equipment: 1 });
+  expect(addon.eval("return ContainerFrameCombinedBags.UpdateSearchResults"), "this client has none: nothing hooked, nothing broken").toBeNull();
+  const other = loggedIn(ITEMS_ENV + fill([8, 4, 0, 0, 0], { equipment: 1 }) + BAG_FRAME + "function ContainerFrameCombinedBags:UpdateSearchResults() end");
+  other.eval("__openBag() BagItemSearchBox:SetText('ilvl>1') ContainerFrameCombinedBags:UpdateSearchResults()");
+  expect(other.eval("return ContainerFrameCombinedBags.Items[1].matches"), "buttons without SetMatchesSearch are left alone").toBeNull();
+  expect(other.eval(`local BG = ns.GetModule("Bags") return BG.ParseSearch(nil) == nil`), "no text: no tests").toBe(true);
+});
+
+it("/vg bag deposit sends a category's stacks to the open bank, out of combat only", () => {
+  const addon = openFilled([8, 4, 0, 0, 0], { consumables: 2, equipment: 1 });
+  // The chat so far, as one string.
+  const chat = () => Array.from(addon.chat()).join("\n");
+  addon.slash("bag add Water 159");
+  addon.slash("bag deposit Water");
+  addon.slash("bag deposit Nope");
+  expect(chat(), "no bank open: told so; no such category: told so").toMatch(/Open the bank first[^]*No bag category called Nope/);
+  addon.eval("BankFrame = CreateFrame('Frame', 'BankFrame', UIParent) BankFrame:Show() __wfgWorld.usedItems = nil");
+  setCombat(addon, true);
+  addon.slash("bag deposit Water");
+  expect(addon.eval("return __wfgWorld.usedItems"), "nothing moves in a fight").toBeNull();
+  setCombat(addon, false);
+  addon.slash("bag deposit Water");
+  expect(addon.eval("return __wfgWorld.usedItems"), "both stacks of water go, the sword stays").toEqual([[0, 1], [0, 2]]);
+  expect(chat(), "it says how many").toMatch(/Sent 2 stack\(s\) of Water/);
+});

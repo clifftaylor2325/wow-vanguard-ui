@@ -186,11 +186,13 @@ local function lookTextRows()
   }
 end
 
--- General, part one: accent, color assist, font, text size, variant, ornaments, scale and theme reset.
+-- General, part one: accent, safer colours, font, text size, variant, ornaments, scale and theme reset.
 local function lookRows()
   local rows = { { "header", "Look" }, { "preview" }, { "swatches" },
-    check("Color assist (reload)", themeSetting("colorAssist")),
-    { "text", "Friendly blue, neutral yellow, hostile vermilion.", "note" } }
+    check("Safer colours (reload)", themeSetting("colorAssist")),
+    { "text", "Friendly blue, neutral yellow, hostile vermilion, and colours for Magic, Curse, Disease and Poison that stay apart.", "note" },
+    check("Follow the game's colour-blind mode (reload)", themeSetting("colorAssistGame")),
+    { "text", "Turns Safer colours on while the game's own colour-blind mode is on.", "note" } }
   for _, row in ipairs(lookTextRows()) do rows[#rows + 1] = row end
   rows[#rows + 1] = check("Pixel-perfect scale", function() return T.Settings().pixelScale end,
     function(v) T.SetPixelScale(v); if not v then O.NeedReload() end end)
@@ -292,7 +294,8 @@ O.MODULE_INFO = {
   ChatFilter = { "Chat filter", "Gold selling, boosting, guild recruiting and repeated lines in Trade and the other channels go to a Filtered tab. Off until you switch it on (Chat)." },
   ChatBubbles = { "Chat bubbles", "Speech bubbles in the world on a flat panel, in the theme font (the game's own inside instances)." },
   MinimapButtons = { "Minimap drawer", "Other addons' minimap buttons gathered into a drawer beside the map." },
-  AutoAccept = { "Auto-accept", "Accept summons and resurrections, decline duels, loot faster (each off until you switch it on)." },
+  AutoAccept = { "Auto-accept", "Accept summons and resurrections, decline duels, guild invites, stranger group invites and friend requests, loot faster, release in battlegrounds (each off until you switch it on)." },
+  Quiet = { "Quiet the game", "Hide the red error line and the zone names that fade in, and zoom the camera further out (each off until you switch it on)." },
   QuestDialog = { "Quest dialog", "Talking to quest givers in Vanguard's own dialog: numbered lines, reward cards, keys 1-9 and Space." },
   QuestTracker = { "Quest tracker", "Your watched quests under the info strip: levels in difficulty colors, objectives, quest items, nearest first if you like." },
   QuestLog = { "Quest log", "Your quests by zone, each quest's text, objectives and rewards, with Track, Share, Abandon and Map." },
