@@ -286,12 +286,23 @@ function IS.TEXT.gold()
   if copper then return IS.Money(copper), "gold" end
 end
 
--- Your ammo, for classes that carry it (hunters see 0, in red).
+-- Whether your ranged weapon needs ammo, as C_PaperDollInfo.AmmoNeeded says (Forever's
+-- PaperDollInfoDocumentation.lua); nil where the client can't say.
+function IS.AmmoNeeded()
+  local api = C_PaperDollInfo and C_PaperDollInfo.AmmoNeeded
+  local needed
+  if type(api) == "function" then needed = api() end
+  if type(needed) == "boolean" then return needed end
+end
+
+-- Your ammo: for any class whose ranged weapon needs it (0 in red), else for classes that carry it
+-- (hunters see 0, in red).
 function IS.TEXT.ammo()
   local _, class = UnitClass("player")
-  if ns.IsSecret(class) or not IS.AMMO_CLASSES[class] then return nil end
+  local needed = IS.AmmoNeeded()
+  if needed == false or ns.IsSecret(class) or (needed == nil and not IS.AMMO_CLASSES[class]) then return nil end
   local n = ns.PlainNumber(ask("GetInventoryItemCount", "player", IS.AMMO_SLOT)) or 0
-  if n > 0 or class == "HUNTER" then return "ammo " .. n, n == 0 and "bad" or "text" end
+  if n > 0 or needed or class == "HUNTER" then return "ammo " .. n, n == 0 and "bad" or "text" end
 end
 
 -- Your soul shards, for warlocks (none is red).

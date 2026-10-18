@@ -840,6 +840,12 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 - Expect: with the block off, the strip has no durability line and the game's armoured-man figure still does not appear beside the minimap (the character pane's gear slots still show each item's percent); with the module off, the game's armoured man is back in its own spot.
 - If it fails, paste: a screenshot of the minimap's corner and `/vg errors`.
 
+### 14.5.2a Info strip ammo follows your ranged weapon
+
+- Do: on a hunter, warrior or rogue, equip a bow or gun (ammo in the quiver slot), then a thrown weapon or none; watch the strip's ammo figure. Run `/vg errors`.
+- Expect: "ammo N" shows while the weapon needs ammo (red at 0) and is gone when it doesn't (Forever's `C_PaperDollInfo.AmmoNeeded`, unobserved so far); any class whose ranged weapon needs ammo gets it.
+- If it fails, paste: what you had equipped, the strip's corner and `/vg errors`.
+
 ### 14.5.3 World map, quest panel and queue status insides
 
 - Do: with Vanguard's quest log switched off (under `/vg` → Quests), press `M` for the world map and look at the nav bar above it, the dropdown at the map's top left (floors, in a dungeon or a multi-floor zone), the two small buttons at its top right (tracking filter and tracking pin) and the arrows of the quest panel's toggle; open the quest panel, look at the search box, the gear above it and the quest count box, hover and click quest rows, tick a quest's track box, and look at the lines between quest groups; open a quest's details (also with Vanguard's quest log on: its Map button) and look at the flat background, the Rewards heading, the reward and XP tiles, and the Abandon (red label), Share, Track and Back buttons; open a quest in the pop-out window (right-click its row, or the quest log's pop-out) and look at its text area and Show Map button; open the battlefield map's tab (in a battleground); queue for something and hover the group finder eye to open the queue panel.
