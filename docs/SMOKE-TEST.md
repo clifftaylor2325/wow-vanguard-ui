@@ -78,7 +78,6 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 
 ## 2. Options window and wizard
 
-
 ### 1.5a Frame rate check
 
 - Do: out of combat, where you usually play, type `/vg graphics` and wait five seconds. Open Options → Graphics and note which Graphics Quality is marked Recommended. Then do it once in a city. Then start it and pull a mob before it ends.
@@ -422,7 +421,7 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 ### 8.4a Quest arrow
 
 - Do: watch two or three quests with unfinished objectives in the zone you are in, stand still, and turn your character slowly round. Then walk toward the quest the arrow names, finish one quest's objectives, and Shift-click a different quest in the tracker. Type `/vg unlock`, drag the arrow, `/vg lock`.
-- Expect: a small panel right of the top centre with an accent arrow, the quest's title and `230 yd` under it. The arrow points at the quest's area on the ground and turns as you turn (up means straight ahead). The distance falls as you walk. When a quest is ready to turn in, the arrow moves to its turn-in unless another objective is much nearer, and chat says `Arrow: <title>.` when it moves on from a finished quest. A Shift-clicked quest holds the arrow until it leaves the log. On another map's quest it reads `yd, no direction` with a faint arrow. The panel moves with the other handles. [Needs in game: that the arrow points the right way (the sign of the turn), that distances match the game's own pin, and how it reads in an instance.]
+- Expect: a small panel right of the top centre with an accent arrow, the quest's title and `230 yd` under it. The arrow points at the quest's area on the ground and turns as you turn (up means straight ahead). The distance falls as you walk. When a quest is ready to turn in, the arrow moves to its turn-in unless another objective is much nearer, and chat says `Arrow: <title>.` when it moves on from a finished quest. A Shift-clicked quest holds the arrow until it leaves the log. Watch a quest in another zone and stand where the game's own pin points you toward it: the arrow points the same way (the zone exit or a boat), or, if the client gives no next waypoint, reads `yd, no direction` with a faint arrow; `/vg guide probe` lines `GetNextWaypointForMap` say which the client has. The panel moves with the other handles. [Needs in game: that the arrow points the right way (the sign of the turn), that distances match the game's own pin, and how it reads in an instance.]
 - If it fails, paste: a screenshot with the arrow and the quest on the map, and `/vg errors`.
 
 ### 8.5 Levelling helpers
@@ -1246,7 +1245,6 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 - If it fails, paste: the chat lines and `/vg errors`.
 
 ## 24. Dungeon card
-
 
 ### 24.1 The dungeon card on the Instance prep checklist
 
