@@ -5,7 +5,7 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
 import { describe, expect, it } from "vitest";
 import { REPORT_RULES, SECURE_ALLOW, checkSource, compareToBaseline, reportSource, sourceFiles } from "./lib/code-quality.mjs";
 import { root } from "./check-zip.mjs";
@@ -232,6 +232,46 @@ describe(
     it("timers: bare C_Timer calls fail, guarded ones pass", timerRule);
     it("timers: only ns.Soon's timer in Core/Combat.lua is excepted", soonException);
     it("hooks: comments, strings and other folders are ignored", bareIgnored);
+  },
+);
+
+// Lua 5.3 syntax in addon Lua fails: integer division, bit operators, goto and labels.
+function lua53Fails() {
+  const bad = { "//": "local x = 7 // 2", "&": "local x = 1 & 3", "|": "local x = 1 | 2", "~": "local x = ~5", "<<": "local x = 1 << 2", ">>": "local x = 8 >> 1", goto: "goto done", "::": "::done::" };
+  for (const [what, stmt] of Object.entries(bad)) {
+    expect(problems("Modules/t.lua", `${stmt}\n`), what).toContain(`Lua 5.3 syntax (${what})`);
+  }
+}
+
+// Lua 5.1's own spellings pass: ~=, .., comments, strings, a field named goto, a division.
+function lua53Passes() {
+  const ok = 'local a = x ~= y\nlocal b = "a // b & c" .. [[ | ~ ]]\n-- 1 // 2 & goto x\nlocal c = t.goto\nlocal d = 6 / 2 < 4\n';
+  expect(problems("Modules/t.lua", ok)).toBe("");
+}
+
+// The rule covers addon Lua only, and reports the line.
+function lua53Scope() {
+  expect(problems("scripts/lib/t.lua", "local x = 7 // 2\n")).toBe("");
+  expect(checkSource("Core/t.lua", "local a = 1\n\nlocal x = 7 // 2\n")[0].line).toBe(3);
+}
+
+// The rule agrees with the real Lua 5.1 compiler where it is installed.
+function lua53MatchesLuac() {
+  if (spawnSync("luac5.1", ["-v"]).error) return;
+  for (const src of ["local x = 7 // 2", "local x = 1 & 3", "goto done", "::done::", "local x = 1 << 2", "local x = ~1", "local a = 1 ~= 2"]) {
+    const compiles = spawnSync("luac5.1", ["-p", "-"], { input: src }).status === 0;
+    expect(problems("Core/t.lua", `${src}\n`) === "", src).toBe(compiles);
+  }
+}
+
+describe(
+  "code quality",
+  // Lua 5.1 only.
+  () => {
+    it("Lua 5.3 syntax fails", lua53Fails);
+    it("Lua 5.1 syntax passes", lua53Passes);
+    it("Lua 5.3 syntax is judged in addon Lua only", lua53Scope);
+    it("Lua 5.3 syntax agrees with luac5.1", lua53MatchesLuac);
   },
 );
 

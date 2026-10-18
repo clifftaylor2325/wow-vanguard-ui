@@ -150,6 +150,8 @@
     "scripts/tests/platepaint.test.mjs": [],
     "scripts/tests/plates.test.mjs": [],
     "scripts/tests/prep.test.mjs": [
+      "prep buffs: /vg prep buffs lists your buffs with the check each counts for, out of combat",
+      "prep buffs: a Forever variant of a classic name still counts, an unrelated buff does not",
       "prep buffs: a ready check lists the flask, food, enchants and raid buffs you lack",
       "prep buffs: nothing is guessed when the client hides auras or can't list them",
       "prep buffs: off until switched on",
