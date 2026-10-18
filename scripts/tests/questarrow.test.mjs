@@ -83,6 +83,28 @@ it("quest arrow: no direction when the client won't say, another zone, no spot, 
   expect(arrow(addon)[4], "no quests: nothing on screen").toBe(false);
 });
 
+it("quest arrow: a quest on another map is pointed at by the client's next waypoint on this one, when it has one", () => {
+  const addon = loggedIn(ARROW_ENV + "__spots[90061] = { 11, 0.6, 0.5 }");
+  addon.eval(`C_QuestLog.GetNextWaypointForMap = function(id, map) if id == 90061 and map == 10 then return 0.5, 0.1 end end`);
+  addon.eval("ns.QuestArrow.Pick()");
+  expect(arrow(addon).slice(2, 4), "the quest's own way out of this map: due north, full arrow").toEqual(["100 yd", 1]);
+  expect(arrow(addon)[0]).toBeCloseTo(0, 5);
+  addon.eval(`C_QuestLog.GetNextWaypointForMap = nil
+    C_SuperTrack = { GetSuperTrackedQuestID = function() return 90061 end }
+    C_Navigation = { GetNextWaypointForMap = function(map) return 0.6, 0.5 end }`);
+  addon.advance(0.2);
+  expect(arrow(addon)[0], "the game's waypoint for its tracked quest: due east").toBeCloseTo(-Math.PI / 2, 5);
+  addon.eval("C_Navigation = nil C_SuperTrack.GetNextWaypointForMap = function() return 0.4, 0.5 end");
+  addon.advance(0.2);
+  expect(arrow(addon)[0], "the older C_SuperTrack call: due west").toBeCloseTo(Math.PI / 2, 5);
+  addon.eval("C_SuperTrack.GetNextWaypointForMap = function() return __wfgWorld.secret(), 0.5 end");
+  addon.advance(0.2);
+  expect(arrow(addon).slice(2, 4), "a hidden waypoint: no direction").toEqual(["100 yd, no direction", 0.35]);
+  addon.eval("C_SuperTrack.GetSuperTrackedQuestID = function() return 90062 end C_SuperTrack.GetNextWaypointForMap = function() return 0.4, 0.5 end");
+  addon.advance(0.2);
+  expect(arrow(addon)[3], "the game tracks another quest: its waypoint is not used").toBe(0.35);
+});
+
 it("quest arrow: a Shift-click pin wins; with auto off only the pinned quest is followed; combat does not stop it", () => {
   const addon = loggedIn(ARROW_ENV + "C_SuperTrack = { SetSuperTrackedQuestID = function(id) __tracked = id end, GetSuperTrackedQuestID = function() return __tracked end }");
   addon.eval("ns.QuestGuide.Point(90062)");

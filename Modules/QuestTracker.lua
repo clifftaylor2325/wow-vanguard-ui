@@ -17,7 +17,7 @@
 
 local ADDON, ns = ...
 
-local QT = ns.Module("QuestTracker", { defaults = { own = true, order = "game", withQuestie = "questie", xp = true, expanded = false } })
+local QT = ns.Module("QuestTracker", { defaults = { own = true, order = "game", withQuestie = "questie", xp = true, levelXp = true, autoTrack = true, expanded = false } })
 
 QT.W, QT.H, QT.SORT_EVERY, QT.TICK_EVERY = 260, 174, 1, 1
 QT.EVENTS = { "QUEST_WATCH_LIST_CHANGED", "QUEST_LOG_UPDATE", "QUEST_ACCEPTED", "QUEST_REMOVED", "PLAYER_ENTERING_WORLD",
@@ -144,6 +144,26 @@ function QT.Quests()
     table.sort(out, function(a, b) return distance(a) < distance(b) end)
   end
   return out, timed
+end
+
+-- "Quests: 62% of the XP to level": the XP your quest log gives against what this level still needs.
+-- nil at the level cap, when no quest in the log gives XP, or when the client hides a value.
+function QT.LevelLine()
+  local DB = ns.GetModule("DataBars")
+  local need, total = DB.XPToLevel(), DB.LogXP()
+  if not need or total <= 0 then return nil end
+  return string.format("Quests: %d%% of the XP to level", math.floor(total / need * 100))
+end
+
+-- A quest was accepted: watch it unless it is watched already (the game may have; adding is safe either way,
+-- and the game itself refuses past its watch limit). Older clients send the log index before the id.
+function QT.AutoTrack(_, first, second)
+  local id = ns.PlainNumber(second or first)
+  if not (QT.settings.autoTrack and id) then return end
+  for _, watched in ipairs(QT.Watched()) do
+    if watched == id then return end
+  end
+  questLog("AddQuestWatch", id)
 end
 
 -- Calls a global achievement function by name, if this client has it (all its results).
@@ -321,5 +341,6 @@ function QT.Enable(settings)
   ns.OutOfCombat(build)
   for _, event in ipairs(QT.EVENTS) do ns.On(event, refreshSoon) end
   followRecipes()
+  ns.On("QUEST_ACCEPTED", QT.AutoTrack)
   ns.On("BAG_UPDATE_COOLDOWN", QT.UpdateCooldowns)
 end

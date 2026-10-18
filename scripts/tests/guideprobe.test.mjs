@@ -55,7 +55,7 @@ it("guide probe: a secret value prints hidden and is never read", () => {
   }
   expect(line(lines, "C_Map.GetPlayerMapPosition"), "a position the client hides whole").toMatch(/present, hidden$/);
   addon.eval("C_Map.GetPlayerMapPosition = function() return { GetXY = function() return __wfgWorld.secret(1), __wfgWorld.secret(2) end } end");
-  expect(line(probe(addon).slice(-21), "C_Map.GetPlayerMapPosition"), "a position whose numbers are hidden").toMatch(/present, position hidden$/);
+  expect(line(probe(addon).slice(-26), "C_Map.GetPlayerMapPosition"), "a position whose numbers are hidden").toMatch(/present, position hidden$/);
 });
 it("guide probe: QUEST_ACCEPTED and QUEST_TURNED_IN record only the types of their first arguments", () => {
   const addon = loggedIn(PROBE_ENV);
