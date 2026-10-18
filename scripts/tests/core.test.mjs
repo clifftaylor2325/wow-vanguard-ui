@@ -226,7 +226,7 @@ it("/vg perf: says what it can without the game's counters", () => {
   expect(said(addon, "perf"), "no profiling setting and no memory counter: it says so, and lists nothing").toEqual(["CPU off (/vg perf cpu turns the game's profiling on)  ·  memory: the client can't say"]);
   expect(said(addon, "perf cpu"), "no way to switch profiling").toEqual(["This client can't switch script profiling."]);
   expect(said(addon, "perf watch"), "no timers to print with").toEqual(["This client has no timers to print with."]);
-  expect(said(addon, "perf bogus"), "anything else: the usage").toEqual(["Usage: /vg perf [cpu | watch]"]);
+  expect(said(addon, "perf bogus"), "anything else: the usage").toEqual(["Usage: /vg perf [cpu | watch | slow [reset]]"]);
 });
 it("/vg frame: a frame's state, anchors and parents, and with deep its textures and child frames", () => {
   const addon = loggedIn();
@@ -308,6 +308,30 @@ it("/vg perf: the game's always-on profiler gives the CPU line without script pr
   expect(said(addon, "perf")[0], "profiler off: the script profiler's line").toBe("CPU off (/vg perf cpu turns the game's profiling on)  ·  memory 2.0 MB");
   addon.eval("C_AddOnProfiler = { GetAddOnMetric = function() return 1 end }");
   expect(said(addon, "perf")[0], "a profiler with no switch counts as on").toBe("CPU 1.00 ms a frame now (1.00 on average, peak 1.0 ms; 1 frames over 5 ms)  ·  memory 2.0 MB");
+});
+// TEST-ONLY fine clock: debugprofilestop answers __clock (ms), which a test moves.
+const CLOCK_ENV = "__clock = 0 debugprofilestop = function() return __clock end\n";
+it("/vg perf slow: each guarded handler's longest call, slow calls and time in all; reset; a cap on sites", () => {
+  const bare = loggedIn("");
+  expect(said(bare, "perf slow"), "no fine clock: nothing timed").toEqual(["No handler timings yet (the client has no fine clock, or nothing has run)."]);
+  const addon = loggedIn(CLOCK_ENV);
+  said(addon, "perf slow reset");
+  addon.eval(`local function took(ms) return function() __clock = __clock + ms end end
+    ns.Try("TEST-ONLY heavy", took(12)) ns.Try("TEST-ONLY heavy", took(3)) ns.Try("TEST-ONLY light", took(1))
+    ns.Try("TEST-ONLY tie", took(1)) ns.Try("TEST-ONLY outer", function() ns.Try("TEST-ONLY inner", took(7)) end)`);
+  const lines = said(addon, "perf slow");
+  expect(lines.slice(0, 5), "the slowest first: the outer call includes the inner").toEqual([
+    "Vanguard's slowest handlers since login or /vg perf slow reset (calls over 5 ms):",
+    "  1. TEST-ONLY heavy  longest 12.0 ms, 1 over 5 ms, 2 calls, 15 ms in all",
+    "  2. TEST-ONLY inner  longest 7.0 ms, 1 over 5 ms, 1 calls, 7 ms in all",
+    "  3. TEST-ONLY outer  longest 7.0 ms, 1 over 5 ms, 1 calls, 7 ms in all",
+    "  4. TEST-ONLY light  longest 1.0 ms, 0 over 5 ms, 1 calls, 1 ms in all",
+  ]);
+  expect(said(addon, "perf slow reset"), "reset").toEqual(["Vanguard's handler timings start over."]);
+  addon.eval(`ns.MAX_TIMINGS = 2 for i = 1, 5 do ns.Try("TEST-ONLY site " .. i, function() end) end`);
+  expect(addon.eval("local n = 0 for _ in pairs(ns.timings) do n = n + 1 end return { n, ns.timingCount }"), "past the cap new sites are not kept").toEqual([2, 2]);
+  addon.eval("ns.Try('TEST-ONLY site 1', function() end)");
+  expect(addon.eval("return ns.timings['TEST-ONLY site 1'].calls"), "a kept site still counts").toBe(2);
 });
 // TEST-ONLY memory counter: Vanguard's KB follow the list __mem, one reading each call of the game's Update;
 // a client that refuses a full garbage collection, so the run judges by its low point (LIVE_ENV allows it).
