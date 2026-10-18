@@ -307,6 +307,18 @@ local function methodLine(kind, method)
   return kind .. ":" .. method .. ": " .. (type(widget[method]) == "function" and "present (not called)" or "missing")
 end
 
+-- What FontString:SetTextToFit does to a 60-wide, 14-high label given a long text: the font height,
+-- string width and text before and after, so a run shows whether it shrinks the text or cuts it.
+local function textFitLine()
+  local label = widgetOf("FontString")
+  if type(label.SetTextToFit) ~= "function" then return "SetTextToFit read: method missing" end
+  label:SetSize(60, 14)
+  local before = describe(label:GetFontHeight()) .. "/" .. describe(label:GetStringWidth())
+  local ok, err = pcall(label.SetTextToFit, label, "A fairly long label")
+  if not ok then return "SetTextToFit read: error " .. errText(err) end
+  return "SetTextToFit read: height/width " .. before .. " -> " .. describe(label:GetFontHeight()) .. "/" .. describe(label:GetStringWidth()) .. ", text " .. describe(label:GetText())
+end
+
 -- The reads the guide probe holds, so one run carries them too.
 local function guideLines()
   local out = {}
@@ -318,6 +330,7 @@ end
 local function undocumentedLines()
   local out = sectionRows("undocumented")
   for _, m in ipairs(P.METHODS) do out[#out + 1] = select(2, pcall(methodLine, m[1], m[2])) end
+  out[#out + 1] = select(2, pcall(textFitLine))
   return out
 end
 

@@ -92,6 +92,17 @@ it("/vg probe: secure paging, the player's position and the widget methods repor
   expect(lineOf(text, "state driver"), "the paging value is read back").toMatch(/state-page number 1/);
   expect(lineOf(text, "C_Navigation.GetNextWaypointForMap("), "asked with the map and the spot").toMatch(/GetNextWaypointForMap\(\d+,0\.25,0\.75\)/);
   expect(lineOf(text, "FontString:SetTextToFit"), "a widget method this client lacks").toMatch(/missing/);
+  expect(lineOf(text, "SetTextToFit read:"), "and no read of it").toMatch(/method missing/);
+});
+it("/vg probe: reads what SetTextToFit does to a label, where the client has it", () => {
+  const addon = loggedIn(PROBE_ENV);
+  const fake = "ns.Probe.widgets = { FontString = { SetSize = function() end, GetFontHeight = function(s) return s.h or 12 end, GetStringWidth = function(s) return s.w or 90 end, GetText = function(s) return s.t end, SetTextToFit = function(s, t) s.h, s.w, s.t = 9, 58, t if t == 'boom' then error('TEST-ONLY fit') end end } }";
+  addon.eval(fake);
+  addon.slash("probe");
+  expect(lineOf(reportText(addon), "SetTextToFit read:"), "before and after").toMatch(/height\/width number 12\/number 90 -> number 9\/number 58, text 'A fairly long label'/);
+  addon.eval(fake.replace("'boom'", "'A fairly long label'"));
+  addon.slash("probe");
+  expect(lineOf(reportText(addon), "SetTextToFit read:"), "an error is a line").toMatch(/error .*TEST-ONLY fit/);
 });
 it("/vg probe: a paging frame that errors is a line", () => {
   const addon = loggedIn(PROBE_ENV);

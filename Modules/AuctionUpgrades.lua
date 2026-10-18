@@ -232,7 +232,7 @@ function AH.ListenUpgrades(on)
   on("ITEM_SEARCH_RESULTS_UPDATED", AH.OnGearResults)
   on("ITEM_SEARCH_RESULTS_ADDED", AH.OnGearResults)
   on("PLAYER_EQUIPMENT_CHANGED", onGearChanged)
-  on("AUCTION_HOUSE_CLOSED", function() AH.upgrades, AH.gearSeen, AH.gearKeys = {}, {}, {} AH.StopJudging() end)
+  ns.On("AUCTION_HOUSE_CLOSED", function() AH.upgrades, AH.gearSeen, AH.gearKeys = {}, {}, {} AH.StopJudging() end) -- state only, so also in combat
 end
 
 -- The entry ------------------------------------------------------------------------------------
