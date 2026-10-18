@@ -94,6 +94,21 @@ local function buildDetail()
   return d
 end
 
+-- The game's death recap link for a Deaths line (its deathRecapID), or nil without a plain ID, the call or a link.
+function MT.RecapLink(src)
+  local id, get = src.deathRecapID, C_DeathRecap and C_DeathRecap.GetRecapLink
+  if type(get) ~= "function" or ns.IsSecret(id) or type(id) ~= "number" or id <= 0 then return nil end
+  local ok, link = pcall(get, id)
+  if ok and type(link) == "string" and not ns.IsSecret(link) and link ~= "" then return link end
+  return nil
+end
+
+-- On the Deaths view, a click also puts the game's recap link for that death in your chat (click it to open the recap).
+function MT.SayRecap(src)
+  local link = MT.settings.kind == "Deaths" and MT.RecapLink(src)
+  if link then ns.Chat("Death recap: " .. link) end
+end
+
 -- Opens the panel for a meter line (a click on the same player's row again closes it).
 function MT.OpenDetail(src)
   local d = MT.detail or buildDetail()
@@ -102,6 +117,7 @@ function MT.OpenDetail(src)
   MT.Give(d.title, "SetText", src.name)
   d:Show()
   MT.PaintDetail()
+  MT.SayRecap(src)
 end
 
 local paint = MT.Paint
