@@ -78,6 +78,12 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 
 ## 2. Options window and wizard
 
+
+### 1.5a Frame rate check
+
+- Do: out of combat, where you usually play, type `/vg graphics` and wait five seconds. Open Options → Graphics and note which Graphics Quality is marked Recommended. Then do it once in a city. Then start it and pull a mob before it ends.
+- Expect: `Checking this computer and your frame rate for 5 s: ...`, then four lines: `Frame rate: N fps on average over 5 s.`, `Graphics card: <your card> (dedicated)` (or `(built-in, low power)` on a laptop chip) `. Graphics Quality Q of 10 (the game recommends R for this computer), render scale S%.` (Q is the number on Options → Graphics → Graphics Quality; R is the one the game marks Recommended there), a suggestion (`Suggested: lower Graphics Quality to ...`, `Suggested: Graphics Quality ... this computer has room for it.` or `Your Graphics Quality suits this computer and screen.`) and `Screen W x H: setup suggests the 1440p sizes (UI scale 70%); ...` for your screen; on a 4K screen under 30 fps a fifth line suggests Render Scale 80%. Nothing in the game's settings changes. In combat the readings stop, so a check ended in a fight reports only the seconds before it.
+- If it fails, paste: the lines it printed, your screen size and what the Graphics Quality slider shows.
 ### 2.1 Every options page
 
 - Do: type `/vg`, then click each page in the left list in turn: General, Modules, Unit frames, Raid frames, Healing, Click casting, Talents, Action bars, Nameplates, Quests, Bars and bags, Map, Chat, Game windows, Cooldowns, Combat tools, Town and gear, Situations, Profiles and Feedback (20 pages in all). After each, type `/vg errors`.
