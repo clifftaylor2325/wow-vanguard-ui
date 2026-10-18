@@ -319,6 +319,33 @@ local function textFitLine()
   return "SetTextToFit read: height/width " .. before .. " -> " .. describe(label:GetFontHeight()) .. "/" .. describe(label:GetStringWidth()) .. ", text " .. describe(label:GetText())
 end
 
+-- How many of the first sixty skill lines are headers, and how many of those are collapsed.
+local function headerCounts(api, total)
+  local headers, collapsed = 0, 0
+  for i = 1, math.min(total, 60) do
+    local info = api.GetSkillLineInfo(i)
+    if type(info) == "table" and info.isHeader then headers, collapsed = headers + 1, collapsed + (info.isCollapsed and 1 or 0) end
+  end
+  return headers, collapsed
+end
+
+-- A skill's rank/max by its ID, as text.
+local function skillById(api, id)
+  local info = api.GetSkillLineInfoByID(id)
+  return type(info) == "table" and describe(info.rank) .. "/" .. describe(info.maxRank) or "none"
+end
+
+-- C_SkillInfo, read only (nothing is expanded or collapsed): how many lines the list gives, how many are
+-- headers and how many headers are collapsed, and Enchanting (333) and Cooking (185) by ID. Fewer lines
+-- than the skills you know, with a header collapsed, says the list hides them.
+local function skillLine()
+  local api = C_SkillInfo
+  if type(api) ~= "table" or type(api.GetNumSkillLines) ~= "function" then return "C_SkillInfo read: missing" end
+  local total = ns.PlainNumber(api.GetNumSkillLines()) or 0
+  local headers, collapsed = headerCounts(api, total)
+  return "C_SkillInfo read: lines " .. total .. ", headers " .. headers .. ", collapsed " .. collapsed .. "; Enchanting " .. skillById(api, 333) .. ", Cooking " .. skillById(api, 185)
+end
+
 -- The reads the guide probe holds, so one run carries them too.
 local function guideLines()
   local out = {}
@@ -331,6 +358,7 @@ local function undocumentedLines()
   local out = sectionRows("undocumented")
   for _, m in ipairs(P.METHODS) do out[#out + 1] = select(2, pcall(methodLine, m[1], m[2])) end
   out[#out + 1] = select(2, pcall(textFitLine))
+  out[#out + 1] = select(2, pcall(skillLine))
   return out
 end
 

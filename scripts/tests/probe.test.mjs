@@ -104,6 +104,18 @@ it("/vg probe: reads what SetTextToFit does to a label, where the client has it"
   addon.slash("probe");
   expect(lineOf(reportText(addon), "SetTextToFit read:"), "an error is a line").toMatch(/error .*TEST-ONLY fit/);
 });
+it("/vg probe: reads the skill list's size, headers and two skills by ID without changing it", () => {
+  const addon = loggedIn(PROBE_ENV);
+  addon.eval("C_SkillInfo.GetNumSkillLines = function() return 0 end");
+  addon.slash("probe");
+  expect(lineOf(reportText(addon), "C_SkillInfo read:"), "a world with no skill list answers").toMatch(/lines 0, headers 0, collapsed 0; Enchanting number 0\/number 0, Cooking number 0\/number 0/);
+  addon.eval("__wfgWorld.skills[333] = { rank = 150, maxRank = 225 } C_SkillInfo.GetNumSkillLines = function() return 3 end C_SkillInfo.GetSkillLineInfo = function(i) return i == 1 and { isHeader = true, isCollapsed = true } or i == 2 and { isHeader = true, isCollapsed = false } or 5 end");
+  addon.slash("probe");
+  expect(lineOf(reportText(addon), "C_SkillInfo read:"), "two headers, one collapsed, Enchanting ranked").toMatch(/lines 3, headers 2, collapsed 1; Enchanting number 150\/number 225/);
+  addon.eval("C_SkillInfo = nil");
+  addon.slash("probe");
+  expect(lineOf(reportText(addon), "C_SkillInfo read:"), "no C_SkillInfo").toMatch(/missing/);
+});
 it("/vg probe: a paging frame that errors is a line", () => {
   const addon = loggedIn(PROBE_ENV);
   addon.eval("RegisterStateDriver = function() error('TEST-ONLY driver failure') end");
