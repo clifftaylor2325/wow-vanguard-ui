@@ -4,7 +4,7 @@
 -- a cast bar under it, an accent border and glow on your target, a faint wash on
 -- the plate under the mouse, a player's buffs right of the bar (defensives and
 -- important ones, and yours on friends), and a gold "!" by the name of units
--- your quests need (when the client says so plainly). The game's personal
+-- your quests need (when the client says so plainly, or the unit's tooltip data lists one of your quests). The game's personal
 -- resource display (its health and power bars under your character, with its
 -- nameplateShowSelf setting on) takes the same look: the theme's bar texture on
 -- flat panels, texts in the plate font; its colours, values and place stay the game's.
@@ -88,11 +88,37 @@ function NP.Color(unit)
   return ns.GetModule("UnitFrames").HealthColor(unit)
 end
 
--- True when one of your active quests needs the unit (a hidden answer counts as no).
+-- True when the line is a quest title or a quest objective of the unit's tooltip (a hidden line or type counts as no).
+local function questLine(line)
+  if ns.IsSecret(line) or type(line) ~= "table" or ns.IsSecret(line.type) then return false end
+  local kinds = Enum.TooltipDataLineType
+  return line.type == kinds.QuestObjective or line.type == kinds.QuestTitle
+end
+
+-- The lines of the unit's tooltip data from the client, or nil (no call, no data, a hidden answer).
+local function tooltipLines(unit)
+  local get = type(C_TooltipInfo) == "table" and C_TooltipInfo.GetUnit
+  if type(get) ~= "function" or type(Enum) ~= "table" or type(Enum.TooltipDataLineType) ~= "table" then return nil end
+  local ok, data = pcall(get, unit)
+  if not ok or ns.IsSecret(data) or type(data) ~= "table" or ns.IsSecret(data.lines) then return nil end
+  return type(data.lines) == "table" and data.lines or nil
+end
+
+-- True when the unit's tooltip carries a quest line of yours (its title or an objective).
+function NP.QuestTooltip(unit)
+  for _, line in ipairs(tooltipLines(unit) or {}) do
+    if questLine(line) then return true end
+  end
+  return false
+end
+
+-- True when one of your active quests needs the unit: the client's own answer when it says so plainly,
+-- else a quest title or objective line in the unit's tooltip (a hidden answer counts as no).
 function NP.QuestUnit(unit)
   local fn = C_QuestLog and C_QuestLog.UnitIsRelatedToActiveQuest
   local related = type(fn) == "function" and fn(unit)
-  return not ns.IsSecret(related) and related == true
+  if not ns.IsSecret(related) and related == true then return true end
+  return NP.QuestTooltip(unit)
 end
 
 -- True when the unit is `other` (your target, the mouseover; hidden counts as no).
@@ -122,10 +148,10 @@ local function addMarker(f)
   f.marker:Hide()
 end
 
--- A gold "!" just right of the name, shown on units your quests need.
+-- A gold quest "!" (Vanguard's QuestBang mark) just right of the name, shown on units your quests need.
 local function addQuestMark(f)
   f.quest = f:CreateTexture(nil, "OVERLAY")
-  f.quest:SetTexture(T.Icon("Quests"))
+  f.quest:SetTexture(T.Icon("QuestBang"))
   f.quest:SetSize(NP.QUEST, NP.QUEST)
   f.quest:SetPoint("LEFT", f.name, "RIGHT", 2, 0)
   T.Tint(f.quest, "gold")
@@ -569,6 +595,11 @@ function NP.WatchHover(on)
   ns.Every("nameplate hover", on and NP.HOVER_POLL or nil, pollHover)
 end
 
+-- Your quests changed (the log, or a unit's quest progress): repaint every plate's quest mark on the next frame.
+function NP.QuestsChanged()
+  ns.Soon("nameplate quest marks", function() each(NP.PaintQuest) end)
+end
+
 -- Event -> handler.
 local EVENTS = {
   PLAYER_ENTERING_WORLD = scan,
@@ -578,7 +609,7 @@ local EVENTS = {
   PLAYER_LEVEL_UP = function() each(NP.UpdateName) end,
   PLAYER_REGEN_ENABLED = upgradeRows, UPDATE_MOUSEOVER_UNIT = onMouseover,
   -- Your quests changed: which units they need may have too.
-  QUEST_LOG_UPDATE = function() each(NP.PaintQuest) end,
+  QUEST_LOG_UPDATE = NP.QuestsChanged, UNIT_QUEST_LOG_CHANGED = NP.QuestsChanged,
 }
 
 -- Module entry point (Core/Modules.lua): builds the plate frames ahead, out of combat, and

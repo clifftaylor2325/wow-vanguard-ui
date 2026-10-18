@@ -14,6 +14,9 @@ ns.WHATS_NEW = {
     { module = "Nameplates", label = "Nameplates", items = {
       { text = "Enemies get nameplates: the game ships its enemy plates off, so Vanguard turns them on once; the Nameplates page now has the game's Enemy, Friendly players' and Friendly NPCs' nameplate switches, and /vg plates says what the game's plate settings are.", page = "nameplates", row = "Enemy nameplates (the game's setting, the V key)" },
     } },
+    { module = "Nameplates", label = "Nameplates: quest marks", items = {
+      { text = "The gold quest ! on a nameplate now also shows for units whose tooltip lists one of your quests, and follows your quest progress within a moment.", page = "nameplates", row = "A gold ! by units your quests need" },
+    } },
     { module = "CooldownGaps", label = "Cooldown gaps", items = {
       { text = "A new row of icons for what the game's Cooldown Manager misses: on-use trinkets, items and spells you choose with /vg gaps add and /vg gaps spell add, your pet's abilities and totems; a switch also draws the Cooldown Manager's essential and utility cooldowns there in the Vanguard look.", page = "cooldowns", row = "Gaps row (reload)", off = true },
     } },
@@ -29,6 +32,9 @@ ns.WHATS_NEW = {
     } },
     { module = "CooldownGlow", label = "Cooldown Manager glow", items = {
       { text = "A Cooldown Manager buff icon can glow when its aura is in its last 30 % (you choose the share), for spells the game doesn't flag itself.", page = "cooldowns", row = "Glow a buff near its end", off = true },
+    } },
+    { module = "CooldownKeys", label = "Cooldown Manager keys", items = {
+      { text = "A Cooldown Manager icon can show the key you press for its spell, read from Vanguard's action bars.", page = "cooldowns", row = "Key text on the manager's icons", off = true },
     } },
     { module = "RaidFrames", label = "Raid frames", items = {
       { text = "A raid tile width the choices don't list shows its value on the Width row.", page = "raid", row = "Width" },

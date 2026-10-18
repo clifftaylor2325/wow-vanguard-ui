@@ -80,3 +80,13 @@ it("Errands flight poll: a hidden taxi state is left alone, no error", () => {
   addon.eval('__wfgWorld.secretReads.UnitOnTaxi = nil ns.GetModule("Errands").flight = nil ns.GetModule("Errands").PollFlight()');
   expect(addon.eval("return #ns.errors"), "and no error is left in the list").toBe(0);
 });
+it("guide probe: C_TooltipInfo.GetUnit is asked about your target only, and prints how many lines it gave", () => {
+  const addon = loggedIn(PROBE_ENV);
+  expect(line(probe(addon).slice(-26), "C_TooltipInfo.GetUnit"), "without a target it is not called").toMatch(/present, not called \(no target\)/);
+  addon.world.setUnit("target", { name: "TEST-ONLY Wolf", hp: 10, maxhp: 10, reaction: 2, tooltipLines: [{ type: 8, leftText: "TEST-ONLY 1/8" }, { type: 1 }] });
+  expect(line(probe(addon).slice(-26), "C_TooltipInfo.GetUnit"), "with one, its line count (never the text)").toMatch(/present, tooltip data, 2 lines/);
+  addon.eval("UnitExists = function() return __wfgWorld.secret(true) end");
+  expect(line(probe(addon).slice(-26), "C_TooltipInfo.GetUnit"), "a hidden answer about the target counts as none").toMatch(/not called \(no target\)/);
+  addon.eval("UnitExists = nil");
+  expect(line(probe(addon).slice(-26), "C_TooltipInfo.GetUnit"), "a client without UnitExists has none either").toMatch(/not called \(no target\)/);
+});

@@ -293,6 +293,7 @@ end
 -- under way early with what it has. Stay out of combat: the game's counter is not read in a fight.
 function P.MemCommand()
   if run then return memFinish() end
+  ns.SettingsGuard.SizeReport()
   if not (C_Timer and C_Timer.NewTicker) then return ns.Chat("This client has no timers to measure with.") end
   local live = P.LiveMemory()
   local kb = live or P.Memory()
