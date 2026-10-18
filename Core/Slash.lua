@@ -19,6 +19,7 @@ local HELP = {
   "nineslice [on|off]   shadows and glows as one nine-slice texture each, after a reload (a test; off by default)",
   "icons [on|off]       menu strip icons drawn at their on-screen size, after a /reload (off by default)",
   "cooldowns [setup]    the Cooldowns page (the game's Cooldown Manager, the gaps row, the buff glow); setup opens the step-by-step wizard",
+  "cdmkeys [on|off]  show the key for each Cooldown Manager spell on its icon (off by default)",
   "cdmglow [on|off|<percent>]  glow a Cooldown Manager buff icon in its last part, 10 to 60 percent (off by default)",
   "ornaments [on|off]   a brass rule or corner brackets on the options window, setup and quest log (off by default)",
   "variant [default|contrast|vellum|classic|midnight|obsidian|moss|ember]  surfaces and text: Slate and brass, High contrast, Vellum and ink, Classic look, Midnight, Obsidian, Moss, Ash and ember",
@@ -201,6 +202,15 @@ local function cdmGlowCommand(rest)
   CG.settings.glow = percent ~= nil or rest == "on" or (rest == "" and not CG.settings.glow)
   CG.Apply()
   chat(CG.settings.glow and ("Cooldown Manager glow on: under " .. CG.settings.percent .. " percent left.") or "Cooldown Manager glow off.")
+end
+
+-- /vg cdmkeys [on|off]: key text on the Cooldown Manager's icons, at once.
+local function cdmKeysCommand(rest)
+  local CK = ns.GetModule("CooldownKeys")
+  if not CK.settings then return chat("The Cooldown Manager keys module is off. Turn it on under /vg > Modules, then /reload.") end
+  CK.settings.keys = rest == "on" or (rest == "" and not CK.settings.keys)
+  CK.Refresh()
+  chat(CK.settings.keys and "Cooldown Manager keys on." or "Cooldown Manager keys off.")
 end
 
 -- /vg cooldowns [setup]: the Cooldowns options page, or its setup wizard.
@@ -647,6 +657,7 @@ local COMMANDS = {
   texelsnap = texelSnapCommand,
   nineslice = nineSliceCommand,
   cdmglow = cdmGlowCommand,
+  cdmkeys = cdmKeysCommand,
   gradient = gradientCommand,
   ornaments = ornamentsCommand,
   icons = iconsCommand,

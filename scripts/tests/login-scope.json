@@ -91,6 +91,11 @@
     ],
     "scripts/tests/cooldowngaps.test.mjs": [],
     "scripts/tests/cooldownglow.test.mjs": [],
+    "scripts/tests/cooldownkeys.test.mjs": [
+      "cooldown keys: the key of the bar button that holds the spell, or a macro that casts it, follows moves and bindings",
+      "cooldown keys: a hidden spell, hidden slot or missing call shows no label and no error",
+      "cooldown keys: /vg cdmkeys and the options switch it at once; the row's layout hook repaints"
+    ],
     "scripts/tests/cooldownspage.test.mjs": [],
     "scripts/tests/core.test.mjs": [
       "a damaged account file: a profile that isn't a table, or a name that isn't a name, is dropped at load"

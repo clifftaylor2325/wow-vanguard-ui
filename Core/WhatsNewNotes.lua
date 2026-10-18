@@ -30,6 +30,9 @@ ns.WHATS_NEW = {
     { module = "CooldownGlow", label = "Cooldown Manager glow", items = {
       { text = "A Cooldown Manager buff icon can glow when its aura is in its last 30 % (you choose the share), for spells the game doesn't flag itself.", page = "cooldowns", row = "Glow a buff near its end", off = true },
     } },
+    { module = "CooldownKeys", label = "Cooldown Manager keys", items = {
+      { text = "A Cooldown Manager icon can show the key you press for its spell, read from Vanguard's action bars.", page = "cooldowns", row = "Key text on the manager's icons", off = true },
+    } },
     { module = "RaidFrames", label = "Raid frames", items = {
       { text = "A raid tile width the choices don't list shows its value on the Width row.", page = "raid", row = "Width" },
       { text = "A raid of 25 or 40 now starts at the left of your character, its groups stacked as rows, where healers keep it; a party or a raid of 10 stays over your player frame. Frames you already moved stay where they are, and Stack big raids at the left turns it off.", page = "raid", row = "Stack big raids at the left (more than 10 players)" },
