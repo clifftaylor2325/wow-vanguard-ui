@@ -163,6 +163,19 @@ it("chat filter: the options page switches it on and adds and removes a word", (
 it("chat filter: the module off registers no filter", () => {
   const off = loggedIn("", { savedVariables: "VanguardDB.profiles.Default = { modules = { ChatFilter = false } }" });
   const on = loggedIn();
+  // How many filters the channel event has.
   const count = (addon) => addon.eval("return #(__wfgWorld.chatFilters.CHAT_MSG_CHANNEL or {})");
   expect(count(on) - count(off), "one filter when on").toBe(1);
+});
+
+it("chat filter: lines older than a minute are forgotten once 200 are held, so a busy channel never grows the list", () => {
+  const addon = filtering();
+  // The lines held: [entries in the list, the count kept].
+  const held = () => addon.eval("local n = 0 for _ in pairs(ns.GetModule('ChatFilter').recent) do n = n + 1 end return { n, ns.GetModule('ChatFilter').recentCount }");
+  for (let i = 1; i <= 200; i++) deliver(addon, "LFM run", `Sender${i}`);
+  expect(held(), "200 senders inside a minute: all held").toEqual([200, 200]);
+  addon.update(61);
+  deliver(addon, "LFM run", "Fresh1");
+  deliver(addon, "LFM run", "Fresh2");
+  expect(held(), "past 200, the stale ones are swept; the fresh ones stay").toEqual([2, 2]);
 });
