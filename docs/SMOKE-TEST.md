@@ -55,7 +55,7 @@ If the beta closes before you finish, do these first and stop after any step tha
 For every failed step, paste all of this (steps below say "If it fails, paste:" for anything extra):
 
 1. The step id (for example `3.3`).
-2. The whole output of `/vg status`. Today it is five lines: the version, profile and module count; the skinned, painted and waiting-on-combat counts; the client line (`Client WoW Forever`, the build, `auras on the engine` or `auras on the fallback`, `aura values readable` or `hidden right now`, and whether secure snippets work); a `Client has: ... lacks: ...` line; and the `UI scale ... text ... chat ...` line.
+2. The whole output of `/vg status`. Today it is six lines: the version, profile and module count; the skinned, painted and waiting-on-combat counts; the client line (`Client WoW Forever`, the build, `auras on the engine` or `auras on the fallback`, `aura values readable` or `hidden right now`, and whether secure snippets work); a `Client has: ... lacks: ...` line; a `Game restrictions: none` (or the kinds that are on) line; and the `UI scale ... text ... chat ...` line.
 3. The `/vg errors` result: either `No errors caught this session.` in chat, or a copy window (text selected, Ctrl+C works) with a header with the version, interface number and error count, the client line, and each error with `(xN)` and its stack lines.
 4. A screenshot (Print Screen; the files land in the game's Screenshots folder).
 
@@ -91,6 +91,7 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 
 - Do: type `/vg status`.
 - Expect: the lines described in the Report block. The client line says `Client WoW Forever` and `auras on the engine`. [After P0.3: `auras on the fallback` means the client refused the aura container and Vanguard fell back; `/vg errors` should say so.] [After P0.6 and P0.11: the `Client has:` line and a `secure snippets: yes` part are present; `secure snippets: no (hover keys off)` means the client could not run secure snippets.]
+- Do also: in a dungeon, a battleground and in the open world, type `/vg status` and read the `Game restrictions:` line. [Needs in game: that it is `none` in the open world and names Chat, Encounter or ChallengeMode only where the game restricts add-ons, and that chat watch and the group board go quiet then without errors. Compare with `/vg probe`, section Restrictions and lockdown.]
 - If it fails, paste: the whole `/vg status` output and `/vg errors`.
 
 ### 1.4 No errors yet
@@ -284,11 +285,18 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Expect: on the calendar the Filters button ends a small gap left of the close button's tile, level with it, not touching it. The character pane's arrow (beside its close button) and the group finder's gear sit on the same faint slate tile as the close button, their icons inside it.
 - If it fails, paste: a zoomed screenshot of the window's top-right corner and `/vg errors`.
 
-### 5.4 Color assist and state glyphs
+### 5.4 Safer colours and state glyphs
 
-- Do: target a hostile mob, then a neutral one, then a friendly NPC. Tick Color assist under `/vg` → General → Look and reload, then target the same three. On a hunter, look at the pet frame's top-right corner.
+- Do: target a hostile mob, then a neutral one, then a friendly NPC. Tick Safer colours under `/vg` → General → Look and reload, then target the same three. On a hunter, look at the pet frame's top-right corner.
 - Expect: before, red, yellow and green health bars; after, vermilion, yellow and blue. The pet's mood is a check (happy), a triangle (content) or a cross (unhappy), in green, amber or red.
+
 - If it fails, paste: screenshots and `/vg errors`.
+
+### 5.4a Safer colours and the colour-blind filters
+
+- Do: turn on the game's own colour-blind mode (Options → Accessibility) and reload with Safer colours unticked; target a hostile, a neutral and a friendly unit; in a group look at debuffs of each type; then pick Protanopia, Deuteranopia and Tritanopia in the game's filter list and look again; finally untick "Follow the game's colour-blind mode" and reload. If the game has no such switch, or nothing follows it, note what Accessibility offers: the CVar name `colorblindMode` is unchecked on Forever.
+- Expect: with the game's mode on, the bars are vermilion, yellow and blue and the Magic, Curse, Disease and Poison borders are blue, pink, amber and mint; under each filter the three bars and the four types can still be told apart; with the follow switch off the bars are red, yellow and green again.
+- If it fails, paste: screenshots under each filter and `/vg errors`.
 
 ## 6. Party and raid
 
@@ -490,6 +498,12 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Do: watch a quest worth XP, hover the XP bar, kill a few mobs that give XP, turn in nothing yet, then let your food fall under the wanted count (`/vg prep want food 20`) by using or selling some.
 - Expect: the quest's XP under its objectives in the tracker; the XP bar's tooltip lists what is left, how far through, rested, `Kills to level` (after your first kill, and not changed by a quest turn-in) and `XP in finished quests` (only quests ready to turn in); one `Running low: Food & drink n / 20.` line in chat when food drops under the count, nothing further until it has been back at 20 and drops again, and nothing during a fight (it appears after).
 - If it fails, paste: a screenshot, the chat line and `/vg errors`. Say which came first in chat: the XP message for a kill or the XP bar moving.
+
+### 8.6 Quiet the game
+
+- Do: `/vg` → Game windows → "Quiet the game". Switch on "Hide the red error line", then press a key that fails (jump into a wall of mobs' "Not enough mana", or use an ability on cooldown). Switch on "Hide the zone names that fade in", then walk into a new zone and subzone. Pick a "Furthest the camera zooms out" value and scroll out. Have a stranger (or an alt) invite you to a group and to a guild with "Decline group invites..." and "Decline guild invites" on, then once from a friend. Die in a battleground with "Release at once..." on.
+- Expect: no red error text; no zone or subzone name fades in (switching either off brings it back without a reload); the camera zooms out further than the game's default; a declined invite closes its prompt and says `Declined a ... from <name>.` in chat, a friend's or guildmate's group invite still shows; you release at once in a battleground and not in an arena or a dungeon.
+- If it fails, paste: which switch, what you did, and `/vg errors`.
 
 ## 9. Bags, merchant, trainer
 
@@ -1193,6 +1207,12 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 - Expect: after the reload each window shows a grey `Chat from your last session (N lines, until ...):` line, its earlier lines in the colours they had (say white, guild green, party blue), then `End of the earlier chat.`; your whisper is not among them the first time, and is the second time; a tab you had set up for another channel gets its own lines back, not the main window's. `/vg history` says it is on and how many lines are saved in how many windows. After clear and a reload nothing comes back and chat says `Saved chat history cleared.` `/vg errors` is empty. In a dungeon or raid boss fight, chat the game hides is not kept. [Needs in game: that a hook on each ChatFrame's AddMessage sees the finished line and its colour, that whispers carry `:WHISPER:` in their player link (the other way the addon tells), that `date` and `time` work as in the client, and that AddMessage keeps the colours.]
 - If it fails, paste: `/vg errors`, `/vg history`, a screenshot of the restored chat and which window it was in.
 
+### 15.6c Chat windows
+
+- Do: open `/vg` → Chat. Drag the Width and Height sliders under Chat windows for the General tab, then `/reload`. Tick Lock chat windows, try to drag the tab, untick it. Pull a tab out into its own window, tick Move floating windows with /vg unlock, `/reload`, then `/vg unlock` and drag its handle.
+- Expect: the window resizes live and keeps its size after the reload; locked windows do not drag; the floating window has a `Chat: <name>` handle and stays where you put it, also after a layout change. `/vg errors` is empty. [Needs in game: that FCF_SetLocked and FCF_SavePositionAndDimensions exist and keep the size, that GetChatWindowInfo returns locked and docked as 8th and 9th values, and that a docked tab is not offered as a handle.]
+- If it fails, paste: `/vg errors` and what the window did.
+
 ## 16. Realm and ruleset
 
 ### 16.1 Realm, ruleset and names
@@ -1496,7 +1516,7 @@ These steps check what the UI consistency pass changed (docs/THEME.md, Window ch
 ### 32.10 General captions
 
 - Do: open `/vg` → General and read the captions under Look.
-- Expect: `Color assist (reload)`, `Font`, `Text size`, `Faction look`, `Theme variant`, `Corners`, `Window ornaments` and `Pixel-perfect scale`, each a noun with nothing after it. Two small grey notes sit under their rows: `Friendly blue, neutral yellow, hostile vermilion.` under Color assist and `A brass rule or corners on large windows.` under Window ornaments. In `/vg whatsnew`, a line about Corners or Theme variant still opens General on its row.
+- Expect: `Safer colours (reload)`, `Font`, `Text size`, `Faction look`, `Theme variant`, `Corners`, `Window ornaments` and `Pixel-perfect scale`, each a noun with nothing after it. Two small grey notes sit under their rows: `Friendly blue, neutral yellow, hostile vermilion, and colours for Magic, Curse, Disease and Poison that stay apart.` under Safer colours and `A brass rule or corners on large windows.` under Window ornaments. In `/vg whatsnew`, a line about Corners or Theme variant still opens General on its row.
 - If it fails, paste: a screenshot of the Look card and `/vg errors`.
 
 ### 32.11 Quest line marks

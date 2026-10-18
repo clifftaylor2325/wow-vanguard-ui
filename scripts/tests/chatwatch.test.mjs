@@ -84,6 +84,21 @@ it("chat watch: hidden chat (dungeons, raids, encounters) is skipped without an 
   expect([rings(addon), toast(addon)[0], addon.eval("return #ns.errors")], "no sound, no toast, no errors").toEqual([0, false, 0]);
 });
 
+it("chat watch: while chat is restricted nothing is read", () => {
+  const addon = watching();
+  addon.eval(`Enum.AddOnRestrictionType = { Combat = 0, Encounter = 1, ChallengeMode = 2, PvPMatch = 3, Map = 4, Chat = 5 }
+  Enum.AddOnRestrictionState = { Inactive = 0, Activating = 1, Active = 2 }
+  __restricted = {}
+  C_RestrictedActions = { GetAddOnRestrictionState = function(t) return __restricted[t] or 0 end }
+`);
+  addon.eval("__restricted[5] = 2");
+  say(addon, "CHANNEL", "LFM Deadmines need a healer", "Lightmend");
+  expect(rings(addon), "restricted: no sound").toBe(0);
+  addon.eval("__restricted[5] = 0");
+  say(addon, "CHANNEL", "LFM Deadmines need a healer", "Lightmend");
+  expect(rings(addon), "unrestricted: the sound").toBe(1);
+});
+
 it("chat watch: one alert per line, and per sender and phrase every 30 s", () => {
   const addon = watching("wts");
   say(addon, "CHANNEL", "LFM UBRS", "Lightmend", 500);
