@@ -30,6 +30,8 @@ MT.SESSIONS = { Current = "This fight", Overall = "Overall", Expired = "Previous
 MT.EMPTY = { Dps = "No damage yet this fight", Hps = "No healing yet this fight" }
 -- The most rows the setting allows.
 MT.MAXROWS = 10
+-- The widths the panel may be set to (General → Layout → Its width, or the unlock popover).
+MT.WIDTHS = { 200, 600 }
 -- A header button's width.
 MT.BUTTON_W = 52
 
@@ -357,6 +359,11 @@ local function watchVisibility(f)
   MT.ApplyVisibility()
 end
 
+-- The panel was sized: each row takes the new width less the gaps.
+function MT.Resized(f)
+  for _, row in ipairs(f.rows or {}) do row:SetWidth(f:GetWidth() - 2 * MT.GAP) end
+end
+
 -- The panel's title, header buttons and empty-state note.
 local function addChrome(f)
   addTitle(f)
@@ -374,6 +381,7 @@ function build()
   addChrome(f)
   f.rows = {}
   for i = 1, MT.MAXROWS do f.rows[i] = clickable(addRow(f, i)) end
+  ns.MoverSizable("meter", { width = MT.WIDTHS }, MT.Resized)
   watchVisibility(f)
   ns.Every("meter", MT.EVERY, MT.Paint, f, true)
 end
