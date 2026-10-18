@@ -14,14 +14,26 @@ local ADDON, ns = ...
 local T = ns.Theme
 
 local CH = ns.Module("Chat", {
-  defaults = { background = true, backdrop = 0.7, textSize = 12, place = true, sized = false },
+  defaults = { background = true, backdrop = 0.75, textSize = 12, place = true, sized = false },
 })
 
 -- The main chat window's spot in the Centered layout: bottom-left, under the
 -- unit frames and left of the action bars, with room for its tabs above it
 -- (it fits at any UI scale). x, y, width, height. It is a mover (/vg unlock);
 -- the size is set once, and after that the game's layout and the player rule it.
-CH.SPOT = { 16, 20, 500, 168 }
+CH.SPOT = { 16, 20, 500, 154 }
+
+-- Its size on a screen under SMALL_WIDTH units wide, where the action bars and unit frames
+-- leave less room (the layout tests keep them apart at 1365 x 768).
+CH.SMALL = { 420, 154 }
+CH.SMALL_WIDTH = 1600
+
+-- The first-time size of the main chat window on a screen `width` units wide (UIParent's by
+-- default): the full size, or the small one on a narrow screen.
+function CH.DefaultSize(width)
+  if (width or ns.PlainNumber(UIParent:GetWidth()) or CH.SMALL_WIDTH) < CH.SMALL_WIDTH then return CH.SMALL[1], CH.SMALL[2] end
+  return CH.SPOT[3], CH.SPOT[4]
+end
 
 -- Chat text sizes before the Text size setting; "game" keeps each window's own size.
 CH.SIZES = { { 10, "Small" }, { 12, "Medium" }, { 14, "Large" }, { "game", "The game's chat setting" } }
@@ -269,7 +281,7 @@ function CH.Size()
   local frame = _G.ChatFrame1
   if CH.settings.sized or not CH.settings.place or type(frame) ~= "table" then return end
   CH.settings.sized = true
-  frame:SetSize(CH.SPOT[3], CH.SPOT[4])
+  frame:SetSize(CH.DefaultSize())
 end
 
 -- Hooks a client function by name, when this client has it.
