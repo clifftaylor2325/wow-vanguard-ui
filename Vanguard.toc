@@ -109,6 +109,7 @@ Modules/ChatFilter.lua
 Modules/ChatBubbles.lua
 Modules/Bags.lua
 Modules/BagSections.lua
+Modules/BagCategories.lua
 Modules/InfoStrip.lua
 Modules/BrokerStrip.lua
 Modules/MenuStrip.lua

@@ -438,6 +438,12 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Expect: the combined bag in the Vanguard look; items that do not match dim as the game dims them; the search box is themed; a Sort button is present if this client can sort bags.
 - If it fails, paste: a screenshot and `/vg errors`.
 
+### 9.1a Bag categories
+
+- Do: open your bags, type `/vg bag add Potions ` and shift-click a potion, then another item into `/vg bag add Tools <item>`. Open the bags. Then `/vg bag top Tools`, `/vg bag remove <the potion>`, `/vg bag delete Tools`, and `/vg bag` on its own.
+- Expect: a POTIONS header over the potion and a TOOLS header over the tool, both above Quest items; after `top Tools` Tools comes first; the removed item falls back to its built-in section; the deleted category's header goes; `/vg bag` lists each category and its items. The bag lays out again each time without a reload.
+- If it fails, paste: a screenshot, the output of `/vg bag` and `/vg errors`.
+
 ### 9.2 Merchant repair and sell
 
 - Do: with damaged gear and gray items, open a merchant who repairs.
