@@ -8,7 +8,7 @@
 
 local ADDON, ns = ...
 
-local QL = ns.Module("QuestLog", { defaults = { own = true } })
+local QL = ns.Module("QuestLog", { defaults = { own = true, xp = true } })
 
 QL.collapsed = {}
 -- Quests marked with Ctrl-click for Abandon (id -> true).
@@ -61,6 +61,11 @@ function QL.Count()
   return n
 end
 
+-- The XP a quest's list line shows: its reward, or 0 with the setting off.
+function QL.XP(id)
+  return QL.settings and QL.settings.xp and ns.GetModule("DataBars").RewardXP(id) or 0
+end
+
 -- Details ----------------------------------------------------------------------------------------
 
 -- A reward item for a card: its kind ("choice" or "reward"), slot and quest are what its tooltip is set from.
@@ -97,7 +102,7 @@ function QL.IsWatched(id)
   return false
 end
 
--- The chosen quest's details: { id, title, level, text, objectives, rewards, money, watched, shareable }.
+-- The chosen quest's details: { id, title, level, text, objectives, rewards, money, watched, shareable, done (the quest history line) }.
 function QL.Details(id)
   local index = ns.PlainNumber(questLog("GetLogIndexForQuestID", id))
   local info = index and questLog("GetInfo", index)
@@ -106,7 +111,7 @@ function QL.Details(id)
   local text = call(GetQuestLogQuestText)
   return { id = id, title = info.title, level = info.level, text = text, objectives = ns.GetModule("QuestTracker").Objectives(id),
     rewards = rewardItems(id), money = moneyLine(id), watched = QL.IsWatched(id),
-    shareable = yes(questLog("IsPushableQuest", id)) and yes(call(IsInGroup)) }
+    shareable = yes(questLog("IsPushableQuest", id)) and yes(call(IsInGroup)), done = ns.GetModule("QuestHistory").Muted(id) }
 end
 
 -- Actions ----------------------------------------------------------------------------------------
@@ -230,15 +235,20 @@ local function refreshSoon()
   if QL.frame:IsShown() then ns.Soon("questlog", refreshIfOpen) end
 end
 
+-- Binds the quest log key (and keeps it bound), on a client that can.
+local function bindKeys()
+  if type(SetOverrideBindingClick) ~= "function" or type(ClearOverrideBindings) ~= "function" then return end
+  QL.BindKeys()
+  ns.On("UPDATE_BINDINGS", QL.BindKeys)
+end
+
 -- Module entry point (Core/Modules.lua).
 function QL.Enable(settings)
+  QL.settings = settings
   if not settings.own then return end
   QL.Build()
   addToggle()
-  if type(SetOverrideBindingClick) == "function" and type(ClearOverrideBindings) == "function" then
-    QL.BindKeys()
-    ns.On("UPDATE_BINDINGS", QL.BindKeys)
-  end
+  bindKeys()
   hookGameToggle()
   ns.On("QUEST_LOG_UPDATE", refreshSoon)
   ns.On("QUEST_WATCH_LIST_CHANGED", refreshSoon)

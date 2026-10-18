@@ -12,6 +12,9 @@
 //      ns.Guard(...) call, so an error in it reaches /vg errors (D-03). The one
 //      exception is ns.Soon's timer in Core/Combat.lua, which runs each job
 //      under ns.Try.
+//   5. Addon Lua (Core/, Modules/) uses no syntax newer than Lua 5.1: no goto or
+//      ::label::, no // , << , >> , & , | or ~ operator. The test harness parses
+//      Lua 5.3 and accepts them; the game does not, and the addon would not load.
 // Test cases (the callback passed to it(...)) are exempt from rule 1.
 // Two more rules are report-only (#263, reportSource below): secure calls
 // outside a combat guard, and OnUpdate handlers neither throttled nor cleared.
@@ -403,6 +406,37 @@ function bareCallbackProblems(file, src) {
   });
 }
 
+// Lua 5.1 only ---------------------------------------------------------------------------
+
+// The operators Lua 5.3 added (integer division, bit operations, labels), by their characters.
+const LUA53_OPERATORS = new Set(["//", "<<", ">>", "::", "&", "|", "~"]);
+
+// The Lua 5.3 operator that starts at tokens[i] ("//", "&", ...), or null; "~=" is Lua 5.1's own.
+function lua53Operator(tokens, i) {
+  const t = tokens[i];
+  if (t.kind !== "punct") return null;
+  const next = tokens[i + 1];
+  const pair = next?.kind === "punct" && next.start === t.start + 1 ? t.text + next.text : null;
+  if (LUA53_OPERATORS.has(pair)) return pair;
+  return LUA53_OPERATORS.has(t.text) && pair !== "~=" ? t.text : null;
+}
+
+// True when tokens[i] is a goto statement (the word, then a label), not a field or method named goto.
+function isGoto(tokens, i) {
+  return tokens[i].text === "goto" && tokens[i + 1]?.kind === "word" && ![".", ":"].includes(tokens[i - 1]?.text);
+}
+
+// Lua 5.3 syntax in addon Lua: [{ line, message }]. Only the game's Lua 5.1 loads the addon.
+function lua51Problems(file, src) {
+  if (!COLOR_SCOPE.test(file)) return [];
+  const tokens = tokenizeLua(src).filter((t) => t.kind !== "comment");
+  const line = lineIndex(src);
+  return tokens.flatMap((t, i) => {
+    const what = isGoto(tokens, i) ? "goto" : lua53Operator(tokens, i);
+    return what ? [{ line: line(t.start), message: `Lua 5.3 syntax (${what}): the game runs Lua 5.1 and would not load this file` }] : [];
+  });
+}
+
 // The Lua and JS files in the repo at root: tracked ones and new ones git
 // would add (ignored files and deleted ones left out), each once, in order.
 export function sourceFiles(root) {
@@ -417,7 +451,7 @@ export function checkSource(file, src) {
   const fns = lua ? luaFunctions(src) : jsFunctions(src);
   const documented = documentedSet(fns, kinds);
   const out = fns.flatMap((fn) => functionProblems(fn, kinds, documented));
-  return lua ? out.concat(colorProblems(file, src), fontProblems(file, src), spacingProblems(file, src), bareCallbackProblems(file, src)) : out;
+  return lua ? out.concat(colorProblems(file, src), fontProblems(file, src), spacingProblems(file, src), bareCallbackProblems(file, src), lua51Problems(file, src)) : out;
 }
 
 // Report-only rules (#263) -------------------------------------------------------------
