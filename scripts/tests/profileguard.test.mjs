@@ -126,20 +126,22 @@ it("settings-loss guard: a first run, and files saved before the guard, fire not
 
 // Saved data size (Core/SettingsGuard.lua) ------------------------------------------------------------
 
-// A logged-in addon whose account file holds three price homes (the one in use, an old one and an older
-// one), each with `n` priced items, under a budget of `budget` bytes.
+// The Lua that gives the account file three price homes (the one in use, an old one and an older one),
+// each with `n` priced items, under a budget of `budget` bytes.
+const crowdedLua = (budget, n) => `
+  local G, ah = ns.SettingsGuard, VanguardDB.ah
+  G.BUDGET = ${budget}
+  ah.houses = {}
+  local function home(key, t)
+    local prices = {}
+    for i = 1, ${n} do prices[i] = { min = i * 100, t = t, days = { [1] = i } } end
+    ah.houses[key] = { prices = prices, count = ${n} }
+  end
+  home(ns.Home.Key(), 3000) home("Old-Alliance", 2000) home("Older-Alliance", 1000)`;
+// A logged-in addon with those three homes.
 function crowded(budget, n = 30) {
   const addon = loggedIn(CLICK_LUA);
-  addon.eval(`
-    local G, ah = ns.SettingsGuard, VanguardDB.ah
-    G.BUDGET = ${budget}
-    ah.houses = {}
-    local function home(key, t)
-      local prices = {}
-      for i = 1, ${n} do prices[i] = { min = i * 100, t = t, days = { [1] = i } } end
-      ah.houses[key] = { prices = prices, count = ${n} }
-    end
-    home(ns.Home.Key(), 3000) home("Old-Alliance", 2000) home("Older-Alliance", 1000)`);
+  addon.eval(crowdedLua(budget, n));
   return addon;
 }
 // Which price homes are left, sorted.
