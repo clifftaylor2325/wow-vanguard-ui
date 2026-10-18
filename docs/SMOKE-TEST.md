@@ -1264,6 +1264,12 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 
 ## 16. Realm and ruleset
 
+### 16.0 Data from the beta
+
+- Do: after launch, log in and read the chat line "Still saved from the beta: ..."; then open /vg > Town and gear, go to the bottom "Data from the beta" card and press "Clear data from before launch...", answer No, then press it again and answer Yes. `/vg launch` lists what is left.
+- Expect: the line appears once per account (not on later logins) and only when prices, sales or characters stamped before 4 November 2026 15:00 PST are saved. The button is greyed before launch. No clears first; Yes removes only the beta-era prices, sales and characters (what you saw after launch stays) and the Deals list no longer compares against beta prices. [Needs in game: that the beta and live game share the saved file at all, and which of them wrote the old entries.]
+- If it fails, paste: `/vg launch` and `/vg errors`.
+
 ### 16.1 Realm, ruleset and names
 
 - Do: type `/vg realm` on two characters, in two rulesets if you have them (one Hardcore, if you can), and again after switching the Classic or Modern experience preset if the game lets you (a chat line says when that moves the data key). [Needs in game: that the preset call answers, and whether switching it changes any other line.] On one of them, have a friend on another realm or ruleset say a Chat watch phrase in a channel.
@@ -1333,7 +1339,7 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 
 ### 19.2 Loot rolls (only where the client keeps a loot history for the drop)
 
-- Do: type `/run print(C_LootHistory ~= nil, C_LootHistory and C_LootHistory.GetAllEncounterInfos ~= nil, C_LootHistory and C_LootHistory.GetSortedDropsForEncounter ~= nil)` and paste what it prints. If it prints `true true true`, roll on an item in a group (Need, Greed or Pass) in a dungeon and also from a world drop, and watch the panel.
+- Do: type `/run print(C_LootHistory ~= nil, C_LootHistory and C_LootHistory.GetAllEncounterInfos ~= nil, C_LootHistory and C_LootHistory.GetSortedDropsForEncounter ~= nil)` and paste what it prints. If it prints `true true true`, roll on an item in a group (Need, Greed or Pass) in a dungeon (check a player from another realm shows as Name-Realm and one from yours as Name) and also from a world drop, and watch the panel.
 - Expect: nothing happens on a client without it (no error). With it, under the roll lines the panel shows the item, "rolling" until it has a winner or everyone passed, and each member's choice and roll, the winner in your accent color. [Needs in game: that the history holds a drop for a vanilla dungeon and for a world group roll (the Forever docs list C_LootHistory's encounter calls only; if a world roll leaves it empty, the loot half of the panel stays empty by design), what "winner" and "allPassed" look like while the roll runs, and the order of the drops.]
 - If it fails, paste: the `/run` line's output and `/vg errors`.
 
