@@ -1045,8 +1045,8 @@ it("appearances: the search box, dropdowns, page arrows and the sets tab's rows 
   // A dropdown's arrow alpha (shown again) and whether it is a flat button.
   const drop = (path) => addon.eval(`local d = ${path} return { d.Arrow:GetAlpha(), __panel(d) }`);
   const w = "WardrobeCollectionFrame";
-  expect([drop(`${w}.FilterButton`), drop(`${w}.ClassDropdown`), drop(`${w}.ItemsCollectionFrame.WeaponDropdown`), drop(`${w}.SetsCollectionFrame.DetailsFrame.VariantSetsDropdown`)], "the filter, class, weapon and variant dropdowns keep their arrows")
-    .toEqual([[1, true], [1, true], [1, true], [1, true]]);
+  expect([drop(`${w}.FilterButton`), drop(`${w}.ClassDropdown`), drop(`${w}.ItemsCollectionFrame.WeaponDropdown`), drop(`${w}.SetsCollectionFrame.DetailsFrame.VariantSetsDropdown`)], "the filter, class, weapon and variant dropdowns have theme arrows")
+    .toEqual([[0, true], [0, true], [0, true], [0, true]]);
   expect(addon.eval(`local p = ${w}.ItemsCollectionFrame.PagingFrame return { __panel(p.PrevPageButton), __panel(p.NextPageButton) }`), "the page arrows flat buttons").toEqual([true, true]);
   expect(addon.eval(`local d = ${w}.SetsCollectionFrame.DetailsFrame return { __a(d.IconRowBackground), __a(d.ModelFadeTexture) }`), "the icon row plate and the model fade gone").toEqual([0, 0]);
   // A sets row: its plate, hover and selected art alphas, the progress line and new glow alphas, whether it is a theme row,

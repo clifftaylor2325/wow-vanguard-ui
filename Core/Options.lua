@@ -5,7 +5,7 @@
 -- General, Modules, Profiles and Feedback pages, and the page list; the
 -- other pages' rows are in their own files (Core/OptionsFrames.lua,
 -- OptionsBars.lua, OptionsQuests.lua, OptionsBags.lua, OptionsMap.lua,
--- OptionsChat.lua, OptionsGameWindows.lua, OptionsTools.lua, OptionsTown.lua), which add them
+-- OptionsChat.lua, OptionsGameWindows.lua, OptionsCooldowns.lua, OptionsTools.lua, OptionsTown.lua), which add them
 -- with O.AddPage. A new setting goes in its area's file.
 
 local ADDON, ns = ...
@@ -180,7 +180,7 @@ local function lookTextRows()
     { "cycle", "Faction look", FACTION_LOOK, liveThemeSetting("faction") },
     { "cycle", "Theme variant", VARIANT_CHOICES, liveThemeSetting("variant") },
     { "cycle", "Corners", CORNER_CHOICES, liveThemeSetting("corners") },
-    check("Shield corners on unit frames and cast bars", liveThemeSetting("shield")),
+    check("Shield corners on unit frames", liveThemeSetting("shield")),
     check("Window ornaments", previewedSetting("ornaments")),
     { "text", "A brass rule or corners on large windows.", "note" },
   }
@@ -289,6 +289,7 @@ O.MODULE_INFO = {
   Merchant = { "Merchant helpers", "Repair, sell gray items, and a quieter error line." },
   ChatExtras = { "Chat extras", "Clickable web links in chat, and a Copy button for the recent chat." },
   ChatWatch = { "Chat watch", "A sound and a toast when a phrase you watch for is said in chat; click to whisper." },
+  ChatFilter = { "Chat filter", "Gold selling, boosting, guild recruiting and repeated lines in Trade and the other channels go to a Filtered tab. Off until you switch it on (Chat)." },
   ChatBubbles = { "Chat bubbles", "Speech bubbles in the world on a flat panel, in the theme font (the game's own inside instances)." },
   MinimapButtons = { "Minimap drawer", "Other addons' minimap buttons gathered into a drawer beside the map." },
   AutoAccept = { "Auto-accept", "Accept summons and resurrections, decline duels, loot faster (each off until you switch it on)." },
@@ -441,6 +442,7 @@ local PAGES = {
   { key = "map" },
   { key = "chat" },
   { key = "windows" },
+  { key = "cooldowns" },
   { key = "tools" },
   { key = "town" },
   { key = "profiles", title = "Profiles", icon = "NavProfiles", order = 90, rows = profileRows },

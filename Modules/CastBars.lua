@@ -8,6 +8,19 @@
 -- hidden values and all. Otherwise start/end times in milliseconds drive it,
 -- when they're plain numbers; if they're hidden, the bar shows full with
 -- the spell's name and icon.
+--
+-- The cursor ring (off by default): two thin rings at the mouse, the outer one
+-- sweeping the global cooldown and the inner one your own cast (filling as it goes,
+-- emptying for a channel). Both are cooldown sweeps handed the client's duration
+-- objects, so nothing is read or compared when the client hides the times. The ring
+-- follows the cursor only while it shows, takes no mouse input, and has no fade.
+
+-- The interrupt mark (on by default): beside the target's and the focus's cast bar, a
+-- small diamond while the cast can be interrupted and you know an interrupt: filled
+-- and bright when it is ready, hollow and dim while it recovers. The client's duration
+-- object for the spell goes straight to a cooldown sweep over the diamond's core, so
+-- nothing is compared when the client hides the cooldown or whether the cast can be
+-- interrupted (that goes to the mark's opacity as it is). No fade; the mark goes with the bar.
 
 local ADDON, ns = ...
 
@@ -17,7 +30,7 @@ local vgSkinned = ns.FrameState("vgSkinned")
 local T = ns.Theme
 
 local CB = ns.Module("CastBars", {
-  defaults = { player = true, target = true, focus = true, hideBlizzard = true },
+  defaults = { player = true, target = true, focus = true, hideBlizzard = true, interruptMark = true, ring = false },
 })
 
 -- Unit -> size and default point (the Centered layout; Modules/UnitFrames.lua).
@@ -166,6 +179,7 @@ function CB.Show(bar, unit)
   if not cast then return bar:SetScript("OnUpdate", nil) end
   paintCast(bar, name, icon, shielded, channel)
   startTiming(bar, unit, startMS, endMS, channel)
+  if bar.mark then CB.PaintMark(bar, shielded) end
 end
 
 -- A cast ended on a showing bar: flash it full (good: green; otherwise red
@@ -178,6 +192,7 @@ function CB.Finish(bar, reason)
   bar:SetValue(1)
   T.BarColor(bar, reason == "good" and "good" or "bad")
   if reason ~= "good" then bar.text:SetText(reason) end
+  if bar.mark then bar.mark:Hide() end
   T.FadeOut(bar, 0.35, function() bar.vgFinishing = nil end)
 end
 
@@ -212,15 +227,13 @@ local function addSpark(bar)
   bar.lag:Hide()
 end
 
--- Makes a status bar a themed cast bar (w x h), hidden until CB.Show finds a cast; with shield, its
--- corners (and its fill and lag) cut to the shield look while the shield setting is on.
-function CB.Build(bar, w, h, shield)
+-- Makes a status bar a themed cast bar (w x h), hidden until CB.Show finds a cast.
+function CB.Build(bar, w, h)
   bar:SetSize(w, h)
   T.StyleBar(bar)
-  T.HudPanel(bar, { inset = true, shield = shield })
+  T.HudPanel(bar, { inset = true })
   addParts(bar, h)
   addSpark(bar)
-  if shield then T.ShieldMask(bar, { bar:GetStatusBarTexture(), bar.lag }) end
   bar:Hide()
   return bar
 end
@@ -229,11 +242,112 @@ end
 -- General → Layout); its height stays its own, as its icon and text are sized to it.
 CB.WIDTHS = { 80, 600 }
 
+-- The interrupt mark ---------------------------------------------------------------------
+
+-- Vanilla interrupts by class: the families you may know (the one to use first first), each from its highest rank down.
+CB.INTERRUPTS = {
+  -- Kick.
+  ROGUE = { { 1769, 1768, 1767, 1766 } },
+  -- Pummel, then Shield Bash.
+  WARRIOR = { { 6554, 6552 }, { 1672, 1671, 72 } },
+  -- Counterspell.
+  MAGE = { { 2139 } },
+  -- Earth Shock.
+  SHAMAN = { { 10414, 10413, 10412, 8046, 8045, 8044, 8042 } },
+  -- Silence (a talent).
+  PRIEST = { { 15487 } },
+}
+
+-- The interrupt you know and would use (the best rank of the first family you have), or nil.
+function CB.InterruptSpell()
+  local _, class = UnitClass("player")
+  if type(IsPlayerSpell) ~= "function" then return nil end
+  for _, family in ipairs(CB.INTERRUPTS[class] or {}) do
+    for _, id in ipairs(family) do
+      if IsPlayerSpell(id) then return id end
+    end
+  end
+  return nil
+end
+
+-- Sweeps the mark from a spell's plain start and length when the client gives them; false when it hides them.
+local function plainMark(cd, spell)
+  local info = C_Spell and C_Spell.GetSpellCooldown and C_Spell.GetSpellCooldown(spell)
+  if type(info) ~= "table" or ns.IsSecret(info) then return false end
+  local start, length = ns.PlainNumber(info.startTime), ns.PlainNumber(info.duration)
+  if not (start and length) then return false end
+  if isTrue(info.isOnGCD) or length <= 0 then cd:Clear() else cd:SetCooldown(start, length) end
+  return true
+end
+
+-- Sweeps the mark with the spell's cooldown (the global cooldown left out): the client's duration object where it
+-- has one, else plain numbers; false when the client says neither.
+function CB.SweepMark(cd, spell)
+  local get = C_Spell and C_Spell.GetSpellCooldownDuration
+  if type(get) == "function" and ns.Client.Has("cooldownObject") then
+    local ok, object = pcall(get, spell, true)
+    if ok and object ~= nil then cd:SetCooldownFromDurationObject(object) return true end
+  end
+  return plainMark(cd, spell)
+end
+
+-- Shows or hides the mark beside a bar, and sets how lit it is: nothing without an interrupt you know (or with the
+-- switch off); gone while the cast can't be interrupted (a hidden answer goes to its opacity as it is).
+function CB.PaintMark(bar, shielded)
+  local mark, spell = bar.mark, CB.settings.interruptMark and CB.InterruptSpell()
+  bar.vgShielded = shielded
+  mark:SetShown(spell and CB.SweepMark(mark.cd, spell) or false)
+  if ns.IsSecret(shielded) and mark.SetAlphaFromBoolean then return mark:SetAlphaFromBoolean(shielded, 0, 1) end
+  mark:SetAlpha(isTrue(shielded) and 0 or 1)
+end
+
+-- Repaints the marks on the bars showing a cast (your interrupt's cooldown changed, or the switch did).
+function CB.RefreshMarks()
+  for _, bar in pairs(CB.bars) do
+    if bar.mark and bar:IsShown() then CB.PaintMark(bar, bar.vgShielded) end
+  end
+end
+
+-- One diamond of the mark, centred in its frame, size units across, in a colour.
+local function diamond(parent, size, token)
+  local d = T.Tint(parent:CreateTexture(nil, "ARTWORK"), token)
+  d:SetTexture(T.Texture("Diamond"))
+  d:SetSize(size, size)
+  d:SetPoint("CENTER")
+  return d
+end
+
+-- The sweep over the mark's core: dark, in the core's shape, plain and out of the mouse's way.
+local function markSweep(mark, core)
+  local cd = CreateFrame("Cooldown", nil, mark, "CooldownFrameTemplate")
+  cd:SetAllPoints(core)
+  cd:SetSwipeTexture(T.Texture("Diamond"))
+  cd:SetSwipeColor(T.RGB("inset"))
+  cd:SetDrawEdge(false)
+  cd:SetDrawBling(false)
+  cd:SetHideCountdownNumbers(true)
+  cd:EnableMouse(false)
+  return cd
+end
+
+-- The mark to the right of a cast bar h high: a muted diamond with an accent core, which the sweep darkens (hollow
+-- against filled) while your interrupt recovers. Hidden until a cast shows it.
+local function addMark(bar, h)
+  local mark = CreateFrame("Frame", nil, bar)
+  mark:SetSize(h, h)
+  mark:SetPoint("LEFT", bar, "RIGHT", 3, 0)
+  diamond(mark, h, "muted")
+  mark.cd = markSweep(mark, diamond(mark, h - 6, "accent"))
+  mark:Hide()
+  bar.mark = mark
+end
+
 -- A themed cast bar for a unit, hidden until it casts; movable, and Vanguard may set its width.
 local function createBar(unit)
   local def = LAYOUT[unit]
-  local bar = CB.Build(CreateFrame("StatusBar", "Vanguard_CastBar_" .. unit, UIParent), def.w, def.h, true)
+  local bar = CB.Build(CreateFrame("StatusBar", "Vanguard_CastBar_" .. unit, UIParent), def.w, def.h)
   bar.unit = unit
+  if unit ~= "player" and ns.Client.Has("cooldownObject") then addMark(bar, def.h) end
   ns.Mover(bar, "cast_" .. unit, unit:sub(1, 1):upper() .. unit:sub(2) .. " cast bar", def.point)
   ns.MoverSizable("cast_" .. unit, { width = CB.WIDTHS })
   return bar
@@ -295,6 +409,119 @@ local CAST_EVENTS = {
 }
 CB.EVENTS = CAST_EVENTS
 
+-- The cursor ring ---------------------------------------------------------------------
+
+-- The global cooldown's spell: the shared cooldown is reported on it.
+CB.GCD_SPELL = 61304
+-- The ring's two sizes in units: the outer (the global cooldown) and the inner (your cast).
+CB.RING = { outer = 38, inner = 28 }
+
+-- The client's duration object for the global cooldown, or nil where it has none to give.
+local function gcdObject()
+  local get = C_Spell and C_Spell.GetSpellCooldownDuration
+  if type(get) ~= "function" or not ns.Client.Has("cooldownObject") then return nil end
+  local ok, object = pcall(get, CB.GCD_SPELL)
+  return ok and object or nil
+end
+
+-- Sweeps a ring from a duration object, else from a plain start and length (seconds) when both are readable, else clears it.
+local function sweepRing(cd, object, start, length)
+  start, length = ns.PlainNumber(start), ns.PlainNumber(length)
+  if object ~= nil then return cd:SetCooldownFromDurationObject(object) end
+  if start and length and length > 0 then return cd:SetCooldown(start, length) end
+  cd:Clear()
+end
+
+-- Sweeps the outer ring with the global cooldown now.
+function CB.RingGlobal()
+  local info = C_Spell and C_Spell.GetSpellCooldown and C_Spell.GetSpellCooldown(CB.GCD_SPELL)
+  local plain = type(info) == "table" and not ns.IsSecret(info)
+  sweepRing(CB.ring.gcd, gcdObject(), plain and info.startTime, plain and info.duration)
+end
+
+-- Sweeps the inner ring with your cast or channel now, or clears it when you are not casting.
+function CB.RingCast()
+  local name, _, startMS, endMS, _, channel = CB.Cast("player")
+  local cd = CB.ring.cast
+  if type(name) == "nil" then return cd:Clear() end
+  cd:SetReverse(not channel)
+  local start, finish = ns.PlainNumber(startMS), ns.PlainNumber(endMS)
+  sweepRing(cd, castDuration("player", channel), start and start / 1000, start and finish and (finish - start) / 1000)
+end
+
+-- Puts the ring's centre on the cursor (the cursor is in screen pixels, the ring's anchor in UIParent units).
+local function followCursor()
+  local cx, cy = GetCursorPosition()
+  local x, y = ns.PlainNumber(cx), ns.PlainNumber(cy)
+  if x and y then CB.ring:SetPoint("CENTER", UIParent, "BOTTOMLEFT", x / UIParent:GetEffectiveScale(), y / UIParent:GetEffectiveScale()) end
+end
+
+-- One ring of the pair: a faint full circle, with the accent sweep over it in the same shape.
+local function ringPart(parent, size)
+  local back = T.Tint(parent:CreateTexture(nil, "BACKGROUND"), "text2", 0.35)
+  back:SetTexture(T.Texture("KnobLine"))
+  back:SetSize(size, size)
+  back:SetPoint("CENTER")
+  local cd = CreateFrame("Cooldown", nil, parent, "CooldownFrameTemplate")
+  cd:SetAllPoints(back)
+  cd:SetSwipeTexture(T.Texture("KnobLine"))
+  cd:SetSwipeColor(T.RGB("accent"))
+  return cd
+end
+
+-- Makes the sweep of a ring plain and out of the mouse's way: no edge line, no end flash, no numbers, no clicks.
+local function quietRing(cd)
+  cd:SetDrawEdge(false)
+  cd:SetDrawBling(false)
+  cd:SetHideCountdownNumbers(true)
+  cd:EnableMouse(false)
+end
+
+-- Makes the ring (once): a frame that takes no mouse input, with the two rings in it.
+local function buildRing()
+  if CB.ring then return CB.ring end
+  local ring = CreateFrame("Frame", "Vanguard_CursorRing", UIParent)
+  ring:SetSize(CB.RING.outer, CB.RING.outer)
+  ring:SetFrameStrata("FULLSCREEN_DIALOG")
+  ring:EnableMouse(false)
+  ring.gcd, ring.cast = ringPart(ring, CB.RING.outer), ringPart(ring, CB.RING.inner)
+  quietRing(ring.gcd)
+  quietRing(ring.cast)
+  CB.ring = ring
+  return ring
+end
+
+-- Whether the ring is showing (so its events have something to do).
+local function ringShown()
+  return CB.ring ~= nil and CB.ring:IsShown()
+end
+
+-- Your cast events refresh the inner ring; the global cooldown's refresh the outer one. Subscribed once, on first use.
+local function listenRing()
+  if CB.ringListening then return end
+  CB.ringListening = true
+  ns.OnUnit(CAST_EVENTS, function() if ringShown() then CB.RingCast() end end, "player")
+  ns.On("SPELL_UPDATE_COOLDOWN", function() if ringShown() then CB.RingGlobal() end end)
+end
+
+-- Puts the ring away and stops following the cursor.
+local function putRingAway()
+  ns.Every("cursor ring", nil)
+  if CB.ring then CB.ring:Hide() end
+end
+
+-- Turns the ring on or off to match the setting, at once: while on it follows the cursor, and shows the global cooldown
+-- and your cast as they are now.
+function CB.ApplyRing()
+  if not (CB.settings and CB.settings.ring and ns.Client.Has("cooldownObject")) then return putRingAway() end
+  buildRing():Show()
+  listenRing()
+  ns.Every("cursor ring", 0, followCursor, CB.ring)
+  followCursor()
+  CB.RingGlobal()
+  CB.RingCast()
+end
+
 -- Events that end a cast, and how the bar says so.
 local FINISH = {
   UNIT_SPELLCAST_STOP = "good", UNIT_SPELLCAST_CHANNEL_STOP = "good",
@@ -328,11 +555,14 @@ end
 -- Module entry point (Core/Modules.lua). Cast events come only for the units
 -- with a bar (the client sends every nameplate's casts to whoever asks for all).
 function CB.Enable(settings)
+  CB.settings = settings
   local units = createBars(settings)
   if settings.hideBlizzard then ns.OutOfCombat(function() for _, n in ipairs(BLIZZARD) do hideBlizzard(n) end end) end
   CB.SkinOverlay()
   ns.OnUnit(CAST_EVENTS, onCast, unpack(units))
   ns.On("PLAYER_TARGET_CHANGED", function() CB.Update("target") end)
   ns.On("PLAYER_FOCUS_CHANGED", function() CB.Update("focus") end)
+  ns.On("SPELL_UPDATE_COOLDOWN", CB.RefreshMarks)
   ns.On("PLAYER_ENTERING_WORLD", function() for unit in pairs(CB.bars) do CB.Update(unit) end end)
+  CB.ApplyRing()
 end

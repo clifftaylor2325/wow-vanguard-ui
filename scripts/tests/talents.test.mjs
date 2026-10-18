@@ -100,7 +100,7 @@ it("talent planner: buying order, rows' gates, prerequisites and unreachable ran
   expect([deep.order, deep.stuck, deep.planned], "a talent whose row and prerequisite the plan lacks can't be reached: nothing to buy, marked stuck").toEqual([{}, { 104: true }, 3]);
   const m = mark(addon, 104);
   expect([m.shown, isTok(addon, m.color, "bad"), m.ring], "its badge is red, no ring").toEqual([true, true, false]);
-  expect(summary(addon), "and the summary says so").toBe("3 planned, 2 bought, 1 to buy; 1 unreachable (a talent or row it needs is not in the plan); 3 points to spend");
+  expect(summary(addon), "and the summary says so").toBe("3 planned, 2 bought, 1 to buy; 1 unreachable; 3 points to spend");
   const full = plan("[101] = 5, [102] = 2, [103] = 3, [104] = 1");
   expect(full.order, "with the rows above planned, the order goes top row left to right, then down, the gate (5 then 10 in the tree) and the prerequisite (Silent Resolve full) met as it goes").toEqual([101, 101, 101, 101, 101, 102, 102, 103, 103, 103, 104]);
   expect(full.stuck, "nothing stuck").toEqual({});
@@ -255,14 +255,14 @@ const APPLY_ENV = `
 it("talent planner: the summary stops short of the game's Apply Changes button, the whole of it in a tooltip", () => {
   const addon = open(APPLY_ENV);
   addon.eval(`VanguardCharDB.talentPlans = { { ranks = { [101] = 1, [104] = 1 }, hash = "1-2-3" } } ${TP}.Refresh()`);
-  const full = "4 planned, 2 bought, 2 to buy; next: Unbreakable Will; 1 unreachable (a talent or row it needs is not in the plan); 3 points to spend";
+  const full = "4 planned, 2 bought, 2 to buy; next: Unbreakable Will; 1 unreachable; 3 points to spend";
   expect(summary(addon), "a long summary").toBe(full);
   const room = addon.eval(`local s, a = Vanguard_TalentPlan.summary, PlayerSpellsFrame.TalentsFrame.ApplyButton
     return { a:GetLeft() - s:GetRight(), s:GetLeft() - Vanguard_TalentPlan.spend:GetRight() }`);
   expect(room, "it ends 12 px short of Apply Changes, 10 px after Spend planned").toEqual([12, 10]);
   addon.eval("local t = Vanguard_TalentPlan.tip t:GetScript('OnEnter')(t)");
   const lines = addon.eval("local out = {} for i, l in ipairs(GameTooltip.__lines) do out[i] = l.text end return out");
-  expect([addon.eval("return GameTooltip:IsShown()"), Object.values(lines).slice(-2)], "hovering it shows the whole summary").toEqual([true, ["Talent plan", full]]);
+  expect([addon.eval("return GameTooltip:IsShown()"), Object.values(lines).slice(-2)], "hovering it shows the whole summary").toEqual([true, [full, "Unreachable: a talent or row it needs is not in the plan."]]);
   addon.eval("local t = Vanguard_TalentPlan.tip t:GetScript('OnLeave')(t)");
   expect(addon.eval("return GameTooltip:IsShown()"), "leaving puts it away").toBe(false);
   const plain = open();

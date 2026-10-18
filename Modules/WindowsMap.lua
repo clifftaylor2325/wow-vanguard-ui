@@ -12,6 +12,7 @@ local vgEmptyNote = ns.FrameState("vgEmptyNote")
 local vgEmptyWatched = ns.FrameState("vgEmptyWatched")
 local vgHeaderGlyph = ns.FrameState("vgHeaderGlyph")
 local vgHeadersWatched = ns.FrameState("vgHeadersWatched")
+local vgRewardsWatched = {}
 
 local T = ns.Theme
 local GW = ns.GetModule("Windows")
@@ -106,13 +107,13 @@ local function overflowGlyph(button)
 end
 
 -- One nav bar button (home, the overflow, a crumb): flat, its label in the text colour, and its dropdown arrow (the
--- MenuArrowButton, whose Art is the arrow) a theme button that keeps it.
+-- MenuArrowButton, whose Art is the arrow) a theme button with a theme arrow.
 local function skinCrumb(button)
   skinFlatButton(button)
   if not isFrame(button) then return end
   GW.SkinText(button.text, "label", "text")
   GW.SkinGlyph(button.MenuArrowButton)
-  GW.ShowTexture(GW.Part(button, "MenuArrowButton.Art"))
+  if type(button.MenuArrowButton) == "table" then GW.DropArrow(button.MenuArrowButton, GW.Part(button, "MenuArrowButton.Art")) end
 end
 
 -- The nav bar's buttons: home, overflow, and every crumb it holds now.
@@ -222,10 +223,44 @@ local function skinQuestList(list)
   skinQuestTools(list.ScrollFrame)
 end
 
--- The details panel's buttons (abandon, share, track, back) flat.
+-- One details button flat, its label in the label role: light text, or `bad` for the danger kind (Abandon).
+local function skinDetailButton(button, token)
+  if not isFrame(button) then return end
+  T.Button(button)
+  GW.SkinText(button.GetFontString and button:GetFontString(), "label", token)
+end
+
+-- The details panel's buttons (abandon, share, track, back) flat; Abandon is the danger kind.
 local function skinDetailButtons(details)
-  for _, key in ipairs(GW.QUEST_DETAIL_BUTTONS) do skinFlatButton(details[key]) end
-  if type(details.BackFrame) == "table" then skinFlatButton(details.BackFrame.BackButton) end
+  for _, key in ipairs(GW.QUEST_DETAIL_BUTTONS) do skinDetailButton(details[key], key == "AbandonButton" and "bad" or "text") end
+  if type(details.BackFrame) == "table" then skinDetailButton(details.BackFrame.BackButton, "text") end
+end
+
+-- The plates behind a reward tile's name and the XP tile's figure (the dark boxes with a gold edge): faded.
+GW.QUEST_REWARD_PLATES = { "NameFrame", "ReputationBG" }
+-- How many reward tiles (QuestInfoItem1-10) the quest panels can show.
+GW.QUEST_REWARD_TILES = 10
+
+-- One reward tile (an item the quest gives or lets you choose): its plate faded, the item look on its icon.
+local function skinRewardTile(tile)
+  if not isFrame(tile) then return end
+  GW.FadeParts(tile, GW.QUEST_REWARD_PLATES)
+  if tile.CreateTexture and tile.Icon then GW.SkinItem(tile) end
+end
+
+-- Every reward tile the game has made so far, and the XP tile (QuestInfoXPFrame), flat like the item slots (the game
+-- makes them as a quest is shown, so this runs after QuestInfo_Display).
+function GW.SkinQuestRewards()
+  for i = 1, GW.QUEST_REWARD_TILES do skinRewardTile(_G["QuestInfoItem" .. i]) end
+  skinRewardTile(_G.QuestInfoXPFrame)
+end
+
+-- Keeps the reward tiles dressed after each QuestInfo_Display, hooked once.
+local function watchQuestRewards()
+  GW.SkinQuestRewards()
+  if vgRewardsWatched.done or type(_G.QuestInfo_Display) ~= "function" then return end
+  vgRewardsWatched.done = true
+  hooksecurefunc("QuestInfo_Display", ns.Guard("hook QuestInfo_Display rewards", GW.SkinQuestRewards))
 end
 
 -- One quest's details: the art faded (the rewards' tile too), an inset panel, the buttons flat, the Rewards heading light.
@@ -236,6 +271,7 @@ local function skinQuestDetails(details)
   T.Panel(details, { inset = true, noSheen = true })
   skinDetailButtons(details)
   GW.SkinText(GW.Part(details, "RewardsFrameContainer.RewardsFrame.Label"), "heading", "text")
+  watchQuestRewards()
 end
 
 -- A zone header row of the game's quest list: a button with its title (ButtonText) and a CollapseButton.
@@ -310,10 +346,9 @@ local function watchQuestHeaders(scroll)
   hooksecurefunc("QuestLogQuests_Update", ns.Guard("hook QuestLogQuests_Update", function() GW.SkinQuestHeaders(contents) end))
 end
 
--- The quest panel in the world map, when Vanguard's own quest log is off (the tabs and scroll bars are
--- other streams'): the list and the details of one quest. Left alone while Vanguard's log is on.
+-- The quest panel in the world map (the tabs and scroll bars are other streams'): the list and the details of one
+-- quest. Dressed whether or not Vanguard's quest log is on, as its Map button opens the game's details here.
 function GW.SkinQuestMap(panel)
-  if ownQuestLog() then return end
   local list = panel.QuestsFrame
   skinQuestList(list)
   skinQuestDetails(panel.DetailsFrame or (type(list) == "table" and list.DetailsFrame))
@@ -607,27 +642,83 @@ local function challengeNote(pane)
   end
 end
 
+-- The Legacy cards' texts, by key, as { role, colour }: the game colours them for its dark plates (dim grey while
+-- locked or unfinished), the theme's text tiers clear 4.5:1 on a panel. A key a card lacks is skipped.
+GW.LEGACY_TEXTS = { Title = { "label", "text" }, Description = { "small", "text2" }, RewardName = { "label", "text" }, Level = { "small", "text2" } }
+-- The points crests (a bronze crown over a shield) by key, and the frame art round a card's icon.
+GW.LEGACY_CRESTS = { "Shield", "PointsIcon", "PointsBadge", "LegacyPointShield" }
+GW.LEGACY_ICON_ART = { "IconBorder", "IconFrame", "IconRing" }
+
+-- A card's texts in the theme's tiers, at full strength (the game dims locked ones by alpha as well as colour).
+local function lightTexts(card)
+  for key, look in pairs(GW.LEGACY_TEXTS) do
+    GW.SkinText(card[key], look[1], look[2])
+    if type(card[key]) == "table" and card[key].SetAlpha then card[key]:SetAlpha(1) end
+  end
+end
+
+-- One crest (a texture, or a frame holding them): the bronze taken out of it and tinted in the border colour, so the
+-- number on it stays the brightest thing.
+local function flattenCrest(part)
+  if type(part) ~= "table" then return end
+  if part.SetDesaturated then part:SetDesaturated(true) T.Tint(part, "borderHi") end
+  if not part.GetRegions then return end
+  for _, region in ipairs({ part:GetRegions() }) do
+    if region.SetDesaturated then flattenCrest(region) end
+  end
+end
+
+-- Every crest a frame holds under the keys of GW.LEGACY_CRESTS.
+local function flattenCrests(frame)
+  for _, key in ipairs(GW.LEGACY_CRESTS) do flattenCrest(frame[key]) end
+end
+
+-- A card's icon in the flat item-slot look: the frame art round it faded, the icon cropped (a button icon gets the
+-- spellbook's thin border too).
+local function flattenIcon(card)
+  GW.FadeParts(card, GW.LEGACY_ICON_ART)
+  local icon = card.Icon
+  if type(icon) ~= "table" then return end
+  if icon.GetRegions then GW.DressIcon(icon) elseif icon.SetTexCoord then T.Crop(icon) end
+end
+
+-- A progress bar of the window: the theme's inset track, its fill in the accent and the figures over it in the text colour.
+local function skinLegacyBar(bar)
+  GW.SkinProgress(bar)
+  if type(bar) ~= "table" or not bar.GetStatusBarTexture then return end
+  T.Tint(bar:GetStatusBarTexture(), "accent")
+  GW.SkinText(bar.Text or bar.Label, "label", "text")
+end
+
+-- The line between a page's list and content: one pixel of `divider` on a page without panes (the tree), faded on one
+-- whose two panes have edges of their own (the challenges), where it showed as a stray bar between them.
+local function dressDivider(page)
+  if isFrame(page.CategoryList) or isFrame(page.DetailPane) then return GW.FadeParts(page, { "VerticalDivider" }) end
+  T.Divider(page.VerticalDivider, { vertical = true })
+end
+
 -- One page's background art faded, the divider between its list and content one pixel of `divider`, an inset panel
 -- under each of its panes and the challenge list's empty note. The talent tree's node buttons are the game's.
 local function skinLegacyPage(page)
   if not isFrame(page) then return end
   GW.FadeParts(page, GW.LEGACY_PAGE_ART)
-  if isFrame(page.VerticalDivider) then T.Divider(page.VerticalDivider, { vertical = true }) end
+  flattenCrests(page)
+  if isFrame(page.VerticalDivider) then dressDivider(page) end
   for _, key in ipairs(GW.LEGACY_PANES) do
     if isFrame(page[key]) then T.Panel(page[key], { inset = true, noSheen = true }) end
   end
   if isFrame(page.DetailPane) then GW.WatchEmpty(page.DetailPane.ScrollBox, challengeNote(page.DetailPane)) end
 end
 
--- The art of a tree card the theme keeps: the icon (its normal, highlight and pushed textures) and the ring round it.
-GW.LEGACY_CARD_KEEP = { "NormalTexture", "HighlightTexture", "PushedTexture", "Ring" }
+-- The art of a tree card the theme keeps: the icon (its normal, highlight and pushed textures); the bronze ring round it is faded.
+GW.LEGACY_CARD_KEEP = { "NormalTexture", "HighlightTexture", "PushedTexture" }
 
 -- A tree card's selected look (the rail and fill of a selected row) while it is the picked tree (the game's checked state).
 local function markTreeCard(card)
   if type(card.GetChecked) == "function" then T.SelectRow(card, card:GetChecked() and true or false) end
 end
 
--- One tree card (a ringed icon button on a plate): the plate and glow faded, the icon and ring kept, on a raised tile
+-- One tree card (a ringed icon button on a plate): the plate, glow and ring faded, the icon kept, on a raised tile
 -- that shows the selected look while its tree is the picked one (the game refreshes that in RefreshSelectionVisuals).
 local function skinTreeCard(card)
   if not isFrame(card) then return end
@@ -670,11 +761,15 @@ local function skinTreePage(page)
   if not isFrame(summary) then return end
   GW.FadeParts(summary, { "Border" })
   T.Panel(summary, { inset = true, noSheen = true })
+  flattenCrests(summary)
 end
 
--- A category row's selected look, following the flag the game keeps on it (SetSelected).
+-- A category row's selected look, following the flag the game keeps on it (SetSelected), and its name in the text
+-- colour (the game's yellow is for content).
 local function followCategory(row)
   T.SelectRow(row, row.selected == true)
+  local fs = type(row.GetFontString) == "function" and row:GetFontString() or row.Text or row.Label
+  GW.SkinText(fs, "label", "text")
 end
 
 -- A category row's plus or minus in the text colour, the game's art on its button faded.
@@ -707,9 +802,11 @@ end
 -- The art of a challenge card that is replaced by the card's own panel: its plates, tiles, selection glow and ribbon.
 GW.CHALLENGE_ART = { "Background", "BackgroundTop", "BackgroundMiddle", "BackgroundBottom", "SelectedOverlay", "TitleBar" }
 
--- A challenge card's selected look (the rail and fill of a selected row) while the game has it selected (opened).
+-- A challenge card's selected look (the rail and fill of a selected row) while the game has it selected (opened), and
+-- its texts at full strength (the game greys an unfinished card when it refreshes).
 local function markChallenge(card)
   T.SelectRow(card, type(card.IsSelected) == "function" and card:IsSelected() == true)
+  lightTexts(card)
 end
 
 -- One challenge card: its plates faded, a card in the theme with the selected look while selected (the game refreshes
@@ -720,6 +817,8 @@ local function skinChallenge(card)
   T.Panel(card)
   T.Row(card)
   GW.SkinCheck(card.Tracked)
+  flattenIcon(card)
+  flattenCrests(card)
   markChallenge(card)
   GW.HookAfter(card, "RefreshStateArt", markChallenge)
 end
@@ -745,7 +844,8 @@ local function skinChallengesPage(page)
   local summary = page.LegacyChallengePointSummary
   if not isFrame(summary) then return end
   GW.FadeParts(summary, { "ProgressBarBackground" })
-  GW.SkinProgress(summary.PointsBar)
+  skinLegacyBar(summary.PointsBar)
+  flattenCrests(summary)
 end
 
 -- One reward card: the plate, level diamond and icon ring faded, the reward's icon and the earned tick kept, on a raised tile.
@@ -753,6 +853,8 @@ local function skinRewardCard(card)
   if not isFrame(card) then return end
   T.FadeRegions(card, GW.KeepKeys(card, { "Icon", "EarnedCheckmark" }))
   T.Panel(card, { raised = true, noSheen = true })
+  flattenIcon(card)
+  lightTexts(card)
 end
 
 -- The reward cards the track holds now (the game fills it in Init, from a pool).
@@ -765,7 +867,7 @@ end
 local function skinRewardPage(page)
   if not isFrame(page) then return end
   GW.FadeParts(page, { "ProgressBarBackground" })
-  GW.SkinProgress(page.LegacyRewardProgressBar)
+  skinLegacyBar(page.LegacyRewardProgressBar)
   local track = page.LegacyRewardProgressFrame
   if not isFrame(track) then return end
   skinRewardCards(track)
@@ -909,15 +1011,30 @@ local function skinCalendarTexts()
   GW.SkinText(_G.CalendarYearName, "small", "text2")
 end
 
+-- A month paging button as a theme arrow: previous points left, next points right.
+local function skinMonthArrow(button)
+  if not isFrame(button) then return end
+  T.ArrowButton(button, button == _G.CalendarPrevMonthButton and "left" or "right")
+end
+
+-- Today's cell: the game's ornate frame art faded and a one-pixel accent outline in its place (the game
+-- moves this frame onto the day, so the outline follows it).
+local function skinToday(today)
+  if not isFrame(today) then return end
+  T.FadeRegions(today)
+  T.Panel(today, { accent = true, noBg = true, noSheen = true })
+end
+
 -- The calendar window: every texture of its frame faded but the two it keeps (see GW.CALENDAR_KEEP), a panel with a
--- shadow, the close button with the filter button clear of it, the month buttons as theme buttons keeping their arrows,
+-- shadow, the close button with the filter button clear of it, the month buttons as theme arrows, today's cell as an accent outline,
 -- the filter and class buttons, the weekday and year texts, and the day grid as inset panels.
 function GW.SkinCalendar(frame)
   T.FadeRegions(frame, namedSet(GW.CALENDAR_KEEP))
   T.Panel(frame, { shadow = true })
   GW.DressClose(frame, _G.CalendarCloseButton)
   GW.BesideClose(_G.CalendarFilterButton or frame.FilterButton, _G.CalendarCloseButton)
-  for _, name in ipairs(GW.CALENDAR_MONTH_BUTTONS) do glyphButton(_G[name]) end
+  for _, name in ipairs(GW.CALENDAR_MONTH_BUTTONS) do skinMonthArrow(_G[name]) end
+  skinToday(_G.CalendarTodayFrame)
   skinCalendarStrip(frame)
   skinCalendarTexts()
   for i = 1, GW.CALENDAR_DAYS do skinDay(_G["CalendarDayButton" .. i]) end

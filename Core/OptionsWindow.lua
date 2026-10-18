@@ -190,10 +190,23 @@ local function addNote(w, row)
   w:Refresh()
 end
 
--- Gives a row its reset dot (a setting with a default) and its note (a tagged setting).
+-- Gives a row that carries a tip (row.tip) that tip as its tooltip on hover.
+local function addTip(w, row)
+  if not row.tip then return end
+  w:HookScript("OnEnter", ns.Guard("show row tip", function()
+    if not GameTooltip then return end
+    GameTooltip:SetOwner(w, "ANCHOR_RIGHT")
+    GameTooltip:SetText(row.tip, nil, nil, nil, nil, true)
+    GameTooltip:Show()
+  end))
+  w:HookScript("OnLeave", ns.Guard("hide row tip", hideNote))
+end
+
+-- Gives a row its reset dot (a setting with a default), its note (a tagged setting) and its tip.
 local function dressRow(w, row)
   markChanges(w, row)
   addNote(w, row)
+  addTip(w, row)
 end
 
 -- Cards --------------------------------------------------------------------------------------

@@ -915,6 +915,14 @@ function world.learn(id, fields)
   stub.fire("SPELLS_CHANGED")
 end
 
+-- Whether the player knows a spell (it is in the spellbook, rank or not).
+function IsPlayerSpell(id)
+  for _, item in ipairs(world.book) do
+    if item.id == id then return true end
+  end
+  return false
+end
+
 -- Forgets every learned spell (the spellbook is empty again).
 function world.forgetAll()
   world.book = {}
@@ -1893,7 +1901,23 @@ world.chatFilters = {}
 function ChatFrame_AddMessageEventFilter(event, fn) world.chatFilters[event] = world.chatFilters[event] or {} table.insert(world.chatFilters[event], fn) end
 function FCF_OpenTemporaryWindow(name) local f = stub.newWidget("ScrollingMessageFrame", "ChatFrameTemp" .. name, UIParent) return f end
 function FCF_Tab_OnClick() end
+-- Names of the chat windows made by FCF_OpenNewWindow, by index.
+world.chatWindows = {}
+-- GetChatWindowInfo(i): the window's name.
+function GetChatWindowInfo(i) return world.chatWindows[i] end
+-- FCF_OpenNewWindow(name): makes the next free window and its tab, returns the window.
+function FCF_OpenNewWindow(name)
+  local i = 3
+  while _G["ChatFrame" .. i] do i = i + 1 end
+  world.chatWindows[i] = name
+  NUM_CHAT_WINDOWS = math.max(NUM_CHAT_WINDOWS, i)
+  _G["ChatFrame" .. i .. "Tab"] = stub.newWidget("Button", "ChatFrame" .. i .. "Tab", UIParent)
+  _G["ChatFrame" .. i] = stub.newWidget("ScrollingMessageFrame", "ChatFrame" .. i, UIParent)
+  return _G["ChatFrame" .. i]
+end
+-- Position restore: nothing to do.
 function FCF_RestorePositionAndDimensions() end
+-- Sets a chat window's font size.
 function FCF_SetChatWindowFontSize(_, frame, size) frame:SetFont(STANDARD_TEXT_FONT, size, "") end
 
 -- Chat bubbles (Modules/ChatBubbles.lua): C_ChatBubbles.GetAllChatBubbles lists world.bubbles, each a bubble

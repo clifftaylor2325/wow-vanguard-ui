@@ -33,6 +33,7 @@ local LATER = "Setup opens again at your next login. /vg setup opens it now; Ski
 S.LAYOUTS = {
   { key = "damage", text = "Centered: damage and tanking", hint = "For damage dealers and tanks: your frames around your character, compact raid frames without power bars or heal overlays, threat colours and longer debuff rows on nameplates." },
   { key = "healing", text = "Centered: healing", hint = "Party and raid above your frames, a big raid stacked at the left of your character, raid frames sorted by role with power bars, raid debuffs, HoTs and incoming heals, short debuff rows on nameplates, click casting on." },
+  { key = "versus", text = "Versus deck", hint = "Centered for your role, with your frame and your target's joined by one shield panel under your character, the crest between them and your cast bar in the middle." },
   { key = "classic", text = "Like the game's", hint = "Your frames at the top left as the game has them, party and raid down the left side." },
   { key = "keep", text = "Keep my current layout", hint = "Moves nothing: your frames stay where they are." },
 }
@@ -109,13 +110,14 @@ local function place(key, p)
 end
 
 -- Puts everything a preset moves back at Vanguard's defaults, so picking
--- Damage and tanking undoes Healing and Like the game's.
+-- Damage and tanking undoes Healing, Versus deck and Like the game's (the deck goes off too).
 local function restoreDefaults()
   for key in pairs(S.CLASSIC) do
     ns.Settings("positions")[key] = nil
     ns.ResetMovers(key)
   end
   if ns.MoverPoint("raid") then ns.GetModule("RaidFrames").Fit() end
+  S.SetDeck(false)
 end
 
 -- The role preset each layout applies (Core/PresetStrings.lua).
@@ -163,6 +165,13 @@ local APPLY = {
   -- Keep: moves nothing.
   keep = function() end,
 }
+
+-- Versus deck: your role's centered layout (Healing for a healer, else Damage and tanking), with the
+-- deck on: its spots are the centered ones, so everything between your frames stays where it is.
+function APPLY.versus()
+  APPLY[S.GuessLayout()]()
+  S.SetDeck(true)
+end
 
 -- Applies a layout preset by key, backing the profile up first unless it is Keep.
 function S.ApplyLayout(key)
@@ -217,6 +226,13 @@ function S.SetCalm(on)
   if UF.settings then UF.ApplyCalm() end
 end
 
+-- Turns the Versus deck on or off (UnitFrames' deck setting), applying it at once when the unit frames are built.
+function S.SetDeck(on)
+  local UF = ns.GetModule("UnitFrames")
+  ns.Settings("UnitFrames", UF.defaults).deck = on == true
+  if UF.settings then UF.ApplyDeck() end
+end
+
 -- Screen ----------------------------------------------------------------------------------
 
 -- The screen's size in pixels, or 0, 0 when the client can't say.
@@ -248,7 +264,7 @@ end
 -- How many screen pixels one UI unit covers at pixel-perfect scale on a screen h pixels tall:
 -- 1 up to about 1600 pixels tall, 2 at 4K, so things never get smaller than 1080p's.
 function S.PixelMultiple(h)
-  return math.max(1, math.floor(h / 1080 + 0.25))
+  return T.AutoPixelMultiple(h)
 end
 
 -- A size grown by ratio, in whole units.
@@ -537,7 +553,7 @@ end
 -- close button and Escape (ns.WindowTitle), and your faction's crest (T.CREST.title) just right of the title.
 local function addTitle(f)
   local parts = ns.WindowTitle(f, "Set up Vanguard", { align = "center", count = "", escape = true,
-    onClose = function(frame) frame:Hide() end })
+    onClose = function(window) window:Hide() end })
   f.caption = parts.count
   f.crest = T.Crest(f, T.CREST.title)
   f.crest:SetPoint("LEFT", f.title, "RIGHT", T.SPACE.gap, 0)
