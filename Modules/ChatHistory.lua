@@ -46,10 +46,13 @@ local function now()
   return type(time) == "function" and ns.PlainNumber(time()) or 0
 end
 
+-- A colour part (0 to 1, plain or not) as 0 to 255.
+local function hex(v)
+  return math.floor(math.max(0, math.min(1, ns.PlainNumber(v) or 1)) * 255 + 0.5)
+end
+
 -- One line as it is saved: when, its colour and its text, "1760000000|ffd100|text".
 local function pack(text, r, g, b)
-  -- A colour part (0 to 1, plain or not) as 0 to 255.
-  local function hex(v) return math.floor(math.max(0, math.min(1, ns.PlainNumber(v) or 1)) * 255 + 0.5) end
   return string.format("%d|%02x%02x%02x|%s", now(), hex(r), hex(g), hex(b), text)
 end
 
@@ -90,7 +93,15 @@ end
 
 -- Whether this line is a whisper: the game just asked for one to be shown (this frame), or it carries a whisper link.
 local function isWhisper(text)
-  return CHH.whisperAt == GetTime() or whisperLine(text)
+  if CHH.whisperAt == GetTime() then CHH.whisperAt = nil return true end
+  return whisperLine(text)
+end
+
+-- Whether a window is left out: the combat log, and the chat filter's Filtered tab (it holds spam, and its window can move).
+function CHH.Skipped(index)
+  local frame, CF = _G["ChatFrame" .. index], ns.GetModule("ChatFilter")
+  if frame ~= nil and frame == _G.COMBATLOG then return true end
+  return type(GetChatWindowInfo) == "function" and GetChatWindowInfo(index) == CF.TAB
 end
 
 -- Whether a line may be saved: plain text of a sane length, and a whisper only when asked for.
@@ -101,10 +112,10 @@ end
 
 -- Saves a line a window just showed (nothing while history is off or while old lines are being put back).
 function CHH.Record(index, text, r, g, b)
-  if not (CHH.active and CHH.settings.on) or CHH.restoring or not keepable(text) then return end
+  if not (CHH.active and CHH.settings.on) or CHH.restoring or CHH.Skipped(index) or not keepable(text) then return end
   local list = listFor(index)
   list[#list + 1] = pack(text, r, g, b)
-  if #list > CHH.settings.lines + CHH.SLACK then CHH.Store()[index] = kept(list, 0, CHH.settings.lines) end
+  if #list > CHH.settings.lines + CHH.SLACK then CHH.Store()[index] = kept(list, now() - CHH.settings.days * 86400, CHH.settings.lines) end
 end
 
 -- The game is about to show a whisper: lines shown in this same frame are not kept.
@@ -124,6 +135,8 @@ end
 -- Follows every permanent chat window and the game's whisper events.
 function CHH.Watch()
   for i = 1, NUM_CHAT_WINDOWS or 10 do watchWindow(i) end
+  if CHH.watching then return end
+  CHH.watching = true
   for _, event in ipairs(CHH.WHISPERS) do ChatFrame_AddMessageEventFilter(event, CHH.NoteWhisper) end
 end
 
@@ -137,7 +150,7 @@ end
 -- Puts one window's saved lines back, between a header and a footer in the muted colour.
 local function restoreWindow(index, list)
   local frame = _G["ChatFrame" .. index]
-  if type(frame) ~= "table" or type(frame.AddMessage) ~= "function" or #list == 0 then return end
+  if type(frame) ~= "table" or type(frame.AddMessage) ~= "function" or #list == 0 or CHH.Skipped(index) then return end
   local newest = CHH.Unpack(list[#list])
   frame:AddMessage(T.Paint(string.format("Chat from your last session (%d lines, until %s):", #list, when(newest)), "muted"))
   for _, line in ipairs(list) do
@@ -206,5 +219,12 @@ end
 function CHH.Enable(settings)
   CHH.settings, CHH.active = settings, true
   CHH.Watch()
-  if settings.on then CHH.Restore() end
+  ns.On("PLAYER_ENTERING_WORLD", CHH.Arrived)
+end
+
+-- The first time the world is entered (the game has set its chat windows up by then): the saved lines come back.
+function CHH.Arrived()
+  if CHH.arrived then return end
+  CHH.arrived = true
+  if CHH.settings.on then CHH.Restore() end
 end

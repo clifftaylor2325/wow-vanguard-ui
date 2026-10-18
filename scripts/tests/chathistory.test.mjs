@@ -66,14 +66,14 @@ it("chat history: hidden text, other kinds of value and very long lines are neve
 it("chat history: whispers are not kept unless asked for (by the game's whisper event, or the sender link)", () => {
   const addon = session();
   addon.eval(`for _, fn in ipairs(__wfgWorld.chatFilters.CHAT_MSG_WHISPER) do fn() end
-    ChatFrame1:AddMessage("by event")`);
+    ChatFrame1:AddMessage("by event") ChatFrame1:AddMessage("same frame, after")`);
   addon.update(0.1);
   addon.eval(`ChatFrame1:AddMessage("|Hplayer:Bob:77:WHISPER:BOB|h[Bob]|h whispers: hi") ChatFrame1:AddMessage("|HBNplayer:Al:9:77:BN_WHISPER:Al|h[Al]|h whispers: yo") ChatFrame1:AddMessage("plain line")`);
-  expect(saved(addon)[0], "only the plain line, once the game frame has moved on").toEqual(["1790000000|ffffff|plain line"]);
+  expect(saved(addon)[0], "the whisper is not kept, the line after it is, once the game frame has moved on").toEqual(["1790000000|ffffff|same frame, after", "1790000000|ffffff|plain line"]);
   addon.slash("history whispers");
   expect(chatHas(addon, /Whispers are kept too\./), "says so").toBe(true);
   addon.eval(`ChatFrame1:AddMessage("|Hplayer:Bob:77:WHISPER:BOB|h[Bob]|h whispers: hi again")`);
-  expect(saved(addon)[0].length, "a whisper is kept now").toBe(2);
+  expect(saved(addon)[0].length, "a whisper is kept now").toBe(3);
   addon.slash("history nowhispers");
   expect(chatHas(addon, /Whispers are not kept\./), "and can be turned off again").toBe(true);
   expect(addon.eval("return #ns.errors"), "no errors").toBe(0);
@@ -91,11 +91,28 @@ it("chat history: lines older than the limit, surplus lines and broken entries a
   expect(lines(later).length, "nothing comes back").toBe(0);
 });
 
+it("chat history: the combat log and the Filtered tab are left out, saved and restored", () => {
+  const addon = session();
+  addon.eval(`COMBATLOG = ChatFrame2 ChatFrame1:AddMessage("chat") ChatFrame2:AddMessage("combat")`);
+  expect(saved(addon), "the combat log is not kept").toEqual([["1790000000|ffffff|chat"]]);
+  addon.eval(`COMBATLOG = nil __wfgWorld.chatWindows[2] = ns.GetModule("ChatFilter").TAB ChatFrame2:AddMessage("spam")`);
+  expect(saved(addon).length, "nor is the Filtered tab").toBe(1);
+  addon.eval(`VanguardCharDB.chatHistory[2] = { "1790000000|ffffff|old spam" }`);
+  const back = relog(addon, { extra: `__wfgWorld.chatWindows[2] = ns.GetModule("ChatFilter").TAB` });
+  expect(lines(back, 2).length, "and nothing is put back in it").toBe(0);
+});
+
 it("chat history: a window trims itself once it is well over its limit", () => {
   const addon = session();
   addon.eval(`ns.Settings("ChatHistory").lines = 100 for i = 1, 151 do ChatFrame1:AddMessage("line " .. i) end`);
   const list = saved(addon)[0];
   expect([list.length, list[0], list[99]], "151 lines is over 100 + 50: down to the newest 100").toEqual([100, "1790000000|ffffff|line 52", "1790000000|ffffff|line 151"]);
+});
+
+it("chat history: a trim while playing also drops lines past their age", () => {
+  const addon = session();
+  addon.eval(`ns.Settings("ChatHistory").lines = 100 for i = 1, 100 do ChatFrame1:AddMessage("old") end __now = __now + 4 * 86400 for i = 1, 51 do ChatFrame1:AddMessage("new") end`);
+  expect(saved(addon)[0].length, "only the 51 new lines are left").toBe(51);
 });
 
 it("chat history: /vg history says what is kept, clears it, and turns it on and off", () => {
