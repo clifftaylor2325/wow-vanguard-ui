@@ -23,7 +23,9 @@ local function timestampChoice(v) return v or "none" end
 local function chatWindowRows()
   return {
     { "header", "Chat" },
-    check("Chat background", setting("Chat", "background", true)), check("Keep chat in its bottom-left spot (reload)", setting("Chat", "place", true)),
+    check("Chat background", setting("Chat", "background", true)),
+    { "cycle", "Chat background strength", ns.GetModule("Chat").BACKDROPS, liveSetting("Chat", "backdrop", function() local CH = ns.GetModule("Chat") if CH.settings then CH.Refresh() end end) },
+    check("Keep chat in its bottom-left spot (reload)", setting("Chat", "place", true)),
     { "cycle", "Chat text size (follows Text size)", ns.GetModule("Chat").SIZES, chatSizeSetting() },
   }
 end

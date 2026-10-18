@@ -127,9 +127,9 @@ function knobShade() {
   });
 }
 
-// The in-game logo (T.Logo), on a 64-unit grid: two linked diamonds, the left one with a filled middle.
+// The unit frames' classification diamond (Modules/UnitFrames.lua, tinted by rank), on a 64-unit grid:
+// a diamond outline with a filled middle. It was the left half of the first logo; T.Logo now draws Icon.
 const LOGO_LEFT = [path([[22, 17], [37, 32], [22, 47], [7, 32]], 5, true), poly([[32, 27], [37, 32], [32, 37], [27, 32]])];
-const LOGO_RIGHT = [path([[42, 17], [57, 32], [42, 47], [27, 32]], 5, true)];
 
 // Name (under Media/Textures) -> the image it holds.
 export const TEXTURES = {
@@ -156,9 +156,8 @@ export const TEXTURES = {
   CornerLine: () => corner(32, 8, true),
   CornerFill: () => corner(32, 8, false),
   Fade: fade,
-  // The logo halves, white, for the addon to tint (accent left, text right).
+  // The classification diamond, white, for the addon to tint.
   LogoLeft: () => draw(image(64, 64), 64, LOGO_LEFT),
-  LogoRight: () => draw(image(64, 64), 64, LOGO_RIGHT),
   // The pre-colored addons-list icon: Vanguard's crest (scripts/lib/media-brand.mjs).
   Icon: () => crestIcon(64),
   // Shield corners (the cut corner of the crest, on the unit frames and cast bars): a 45-degree cut across the

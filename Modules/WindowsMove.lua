@@ -46,6 +46,9 @@ GW.MOVABLE_TOP = {
 GW.MOVE_GRAB = 30
 -- The part a window's title bar is, by window, when it isn't its TitleContainer (parentKey).
 GW.MOVE_BAR = { GameMenuFrame = "Header" }
+-- The pages that cover a window and carry its title (the group finder's), by window: each page's title
+-- bar is a drag area too, since the page takes the press before the window does.
+GW.MOVE_PAGES = { LFGParentFrame = { "LFGListingFrame", "LFGBrowseFrame", "LFGWhoListFrame" } }
 -- The drag area (units): `trim` is left off the title bar's right end (the close and minimize buttons sit
 -- there); a window without a title bar gets a strip `height` tall along its top, `left` in from its left
 -- edge (the portrait and its button) and `right` in from its right edge.
@@ -145,16 +148,27 @@ local function placeHandle(h, frame, bar)
   h:SetFrameLevel((bar or frame):GetFrameLevel() + 1)
 end
 
--- Lays an invisible drag area over a window's title bar.
-local function addHandle(frame, name)
-  local h = CreateFrame("Frame", nil, frame)
+-- Lays an invisible drag area over a title bar (or along a window's top); it moves `frame`, drawn on `parent`.
+local function newHandle(parent, frame, name, bar)
+  local h = CreateFrame("Frame", nil, parent)
   h.window, h.ignoreInLayout = frame, true
-  placeHandle(h, frame, titleBar(frame, name))
+  placeHandle(h, parent, bar)
   h:EnableMouse(true)
   h:RegisterForDrag("LeftButton")
   h:SetScript("OnDragStart", ns.Guard("drag " .. name, startDrag))
   h:SetScript("OnDragStop", ns.Guard("drop " .. name, stopDrag))
-  vgMoveHandle[frame] = h
+  return h
+end
+
+-- Lays an invisible drag area over a window's title bar, and over the title bar of each page that covers
+-- it (GW.MOVE_PAGES: the group finder's pages are windows of their own, with the title).
+local function addHandle(frame, name)
+  vgMoveHandle[frame] = newHandle(frame, frame, name, titleBar(frame, name))
+  for _, key in ipairs(GW.MOVE_PAGES[name] or {}) do
+    local page = _G[key]
+    local bar = type(page) == "table" and titleBar(page, key)
+    if bar then newHandle(page, frame, name, bar) end
+  end
 end
 
 -- Whether the mouse is over the top GW.MOVE_GRAB units of a window.
