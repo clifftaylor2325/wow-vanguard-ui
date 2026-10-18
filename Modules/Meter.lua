@@ -8,9 +8,9 @@
 
 local ADDON, ns = ...
 
-local T, V = ns.Theme, ns.Visibility
+local T, V, W = ns.Theme, ns.Visibility, ns.Widgets
 
-local MT = ns.Module("Meter", { defaults = { on = false, kind = "Dps", session = "Current", rows = 8, visibility = "always", showWhen = {} } })
+local MT = ns.Module("Meter", { defaults = { on = false, kind = "Dps", session = "Current", reportTo = "chat", rows = 8, visibility = "always", showWhen = {} } })
 
 -- The panel's width, a row's height (a bar, not a list row) and the title's (a card's heading line: T.SPACE.gap
 -- down and a control's height), the gap between rows (UI units) and the seconds between reads.
@@ -30,6 +30,8 @@ MT.SESSIONS = { Current = "This fight", Overall = "Overall", Expired = "Previous
 MT.EMPTY = { Dps = "No damage yet this fight", Hps = "No healing yet this fight" }
 -- The most rows the setting allows.
 MT.MAXROWS = 10
+-- A header button's width.
+MT.BUTTON_W = 52
 
 -- Reading ------------------------------------------------------------------------------------
 
@@ -314,6 +316,19 @@ local function addEmpty(f)
   f.empty:SetText(MT.EMPTY.Dps)
 end
 
+-- A small button at the right of the panel's title row, `slot` buttons in from the edge.
+local function headerButton(f, text, slot, onClick)
+  local b = W.Button(f, text, onClick, MT.BUTTON_W)
+  b:SetPoint("TOPRIGHT", f, "TOPRIGHT", -MT.GAP - (slot - 1) * (MT.BUTTON_W + MT.GAP), -MT.GAP)
+  return b
+end
+
+-- The title row's buttons: Report (to chat, or the channel picked in the options) and Reset (the game's meter).
+local function addHeaderButtons(f)
+  f.report = headerButton(f, "Report", 2, MT.ReportClick)
+  f.reset = headerButton(f, "Reset", 1, MT.Reset)
+end
+
 -- Applies the panel's visibility setting: now, or when combat ends.
 function MT.ApplyVisibility()
   ns.OutOfCombat(function() V.ApplyNow(MT.frame, MT.settings.visibility, MT.settings.showWhen) end, MT.frame)
@@ -327,6 +342,13 @@ local function watchVisibility(f)
   MT.ApplyVisibility()
 end
 
+-- The panel's title, header buttons and empty-state note.
+local function addChrome(f)
+  addTitle(f)
+  addHeaderButtons(f)
+  addEmpty(f)
+end
+
 -- The movable panel, left of the bags and menu bar (about 345 wide, 16 in from the edge) so the tooltip corner above them stays clear. Built when
 -- first needed, so an unused meter has no mover.
 function build()
@@ -334,8 +356,7 @@ function build()
   MT.frame = f
   f:SetSize(MT.WIDTH, MT.HEAD)
   ns.Mover(f, "meter", "Vanguard meter", { "BOTTOMRIGHT", "BOTTOMRIGHT", -372, 20 })
-  addTitle(f)
-  addEmpty(f)
+  addChrome(f)
   f.rows = {}
   for i = 1, MT.MAXROWS do f.rows[i] = clickable(addRow(f, i)) end
   watchVisibility(f)
