@@ -615,7 +615,7 @@ local EDGE_POINTS = {
 -- 8-pixel stroke, so drawn at this radius the arc is one pixel wide, like the edges.
 T.CORNER_RADIUS = 4
 -- Shield corners (the shield setting, on the frames that ask for them): a 45-degree cut this many screen
--- pixels across each corner (Media/Textures/CornerCutLine, CornerCutFill and CornerCutMask, one pixel wide at it).
+-- pixels across each corner (Media/Textures/CornerCutLine, CornerCutFill and the CornerCutMask images, one pixel wide at it).
 T.CORNER_CUT = 8
 -- The corner looks (rounded, cut): the art of the border's corner piece, of the fill's, and its size in screen pixels.
 T.CORNER_ART = { rounded = { "CornerLine", "CornerFill", T.CORNER_RADIUS }, cut = { "CornerCutLine", "CornerCutFill", T.CORNER_CUT } }
@@ -1131,14 +1131,17 @@ end
 -- texture is cut on one side only: two masks, its top corners or its bottom ones.
 corner.SIDES = { TOP = { "TOPLEFT", "TOPRIGHT" }, BOTTOM = { "BOTTOMLEFT", "BOTTOMRIGHT" } }
 
+-- Each corner's mask art: its own image, since the client ignores a mask texture's tex coords (a
+-- flipped mask cut the wrong corner in game).
+corner.MASK_ART = { TOPLEFT = "CornerCutMask", TOPRIGHT = "CornerCutMaskTR", BOTTOMLEFT = "CornerCutMaskBL", BOTTOMRIGHT = "CornerCutMaskBR" }
+
 -- Two masks on owner (the frame a masked texture belongs to), one at each of frame's corners on side,
--- its corner of CornerCutMask; clamped to white past their edges, so each one cuts only its corner.
+-- that corner's mask art; clamped to white past their edges, so each one cuts only its corner.
 function corner.maskSet(owner, frame, side)
   local set = {}
   for _, point in ipairs(corner.SIDES[side]) do
-    local tc, m = CORNERS[point], owner:CreateMaskTexture()
-    m:SetTexture(T.Texture("CornerCutMask"), "CLAMPTOWHITE", "CLAMPTOWHITE")
-    m:SetTexCoord(unpack(tc))
+    local m = owner:CreateMaskTexture()
+    m:SetTexture(T.Texture(corner.MASK_ART[point]), "CLAMPTOWHITE", "CLAMPTOWHITE")
     m:SetPoint(point, frame, point)
     set[point] = m
   end

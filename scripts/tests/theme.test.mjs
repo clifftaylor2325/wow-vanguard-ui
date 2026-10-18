@@ -875,13 +875,13 @@ it("shield corners: a shield frame's corners are cut on by default, its bars mas
 });
 
 // The corner each mask on a texture sits on (TEST-ONLY read).
-const maskCorners = (addon, region) => addon.eval(`local out = {} for i, m in ipairs(${region}.__masks or {}) do out[i] = next(m.__points) end table.sort(out) return out`);
+const maskCorners = (addon, region) => addon.eval(`local out = {} for i, m in ipairs(${region}.__masks or {}) do out[i] = next(m.__points) .. " " .. tostring(m.__texture):match("[^\\\\]+$") end table.sort(out) return out`);
 
 it("shield corners: unit frames are shield frames, their health cut at the top and power at the bottom; cast bars stay square", () => {
   const addon = loggedIn(UNITS_ENV + CLICK_LUA);
   expect([artCount(addon, "Vanguard_player", "CornerCutLine"), artCount(addon, "Vanguard_CastBar_player", "CornerCutLine")], "the player frame is cut, its cast bar is not").toEqual([4, 0]);
-  expect([maskCorners(addon, "Vanguard_player.health:GetStatusBarTexture()"), maskCorners(addon, "Vanguard_player.power.bg"), masks(addon, "Vanguard_CastBar_player:GetStatusBarTexture()").n], "health is cut at its top corners, power at its bottom ones, no more than two masks each")
-    .toEqual([["TOPLEFT", "TOPRIGHT"], ["BOTTOMLEFT", "BOTTOMRIGHT"], 0]);
+  expect([maskCorners(addon, "Vanguard_player.health:GetStatusBarTexture()"), maskCorners(addon, "Vanguard_player.power.bg"), masks(addon, "Vanguard_CastBar_player:GetStatusBarTexture()").n], "health is cut at its top corners, power at its bottom ones, each corner with its own mask image (the client ignores a mask's tex coords), no more than two masks each")
+    .toEqual([["TOPLEFT CornerCutMask", "TOPRIGHT CornerCutMaskTR"], ["BOTTOMLEFT CornerCutMaskBL", "BOTTOMRIGHT CornerCutMaskBR"], 0]);
   addon.eval("for _ = 1, 4 do ns.Theme.Refresh() end");
   expect(masks(addon, "Vanguard_player.health.bg").n, "repaints add none").toBe(2);
   addon.slash("");
