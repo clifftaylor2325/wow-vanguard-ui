@@ -616,7 +616,7 @@ local EDGE_POINTS = {
 T.CORNER_RADIUS = 4
 -- Shield corners (the shield setting, on the frames that ask for them): a 45-degree cut this many screen
 -- pixels across each corner (Media/Textures/CornerCutLine, CornerCutFill and CornerCutMask, one pixel wide at it).
-T.CORNER_CUT = 6
+T.CORNER_CUT = 8
 -- The corner looks (rounded, cut): the art of the border's corner piece, of the fill's, and its size in screen pixels.
 T.CORNER_ART = { rounded = { "CornerLine", "CornerFill", T.CORNER_RADIUS }, cut = { "CornerCutLine", "CornerCutFill", T.CORNER_CUT } }
 
