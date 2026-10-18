@@ -301,14 +301,22 @@ local function modulesCommand()
   end
 end
 
--- /vg enable|disable <module>
+-- The registered name that matches text, ignoring case, from a list of names (nil when none does).
+local function matchName(names, text)
+  for _, name in ipairs(names) do
+    if name:lower() == text:lower() then return name end
+  end
+end
+
+-- /vg enable|disable <module>: the module's name may be typed in any case.
 local function setModule(on)
   return function(rest)
-    if not ns.GetModule(rest) then
+    local name = matchName(ns.ModuleNames(), rest)
+    if not name then
       return chat("No module called " .. rest .. ". /vg modules lists them.")
     end
-    ns.SetModuleEnabled(rest, on)
-    chat(string.format("%s %s. /reload to apply.", rest, on and "enabled" or "disabled"))
+    ns.SetModuleEnabled(name, on)
+    chat(string.format("%s %s. /reload to apply.", name, on and "enabled" or "disabled"))
   end
 end
 
@@ -321,14 +329,24 @@ local function listSkins()
   end
 end
 
--- /vg skins [<addon> on|off]
+-- The names of the registered skins.
+local function skinNames()
+  local names = {}
+  for i, s in ipairs(ns.SkinList()) do names[i] = s.name end
+  return names
+end
+
+-- /vg skins [<addon> on|off]: only a registered skin, and only on or off, changes anything.
 local function skinsCommand(rest)
-  local name, state = rest:match("^(%S+)%s+(%S+)$")
-  if not name then
+  local typed, state = rest:match("^(%S+)%s+(%S+)$")
+  if not typed then
     return listSkins()
   end
-  ns.Settings("skins")[name] = state == "on"
-  chat(string.format("Skin for %s %s. /reload to apply.", name, state == "on" and "on" or "off"))
+  local name, on = matchName(skinNames(), typed), state:lower()
+  if not name then return chat("No skin called " .. typed .. ". /vg skins lists them.") end
+  if on ~= "on" and on ~= "off" then return chat("Usage: /vg skins " .. name .. " on|off") end
+  ns.Settings("skins")[name] = on == "on"
+  chat(string.format("Skin for %s %s. /reload to apply.", name, on))
 end
 
 -- /vg profile <name>: stage the switch, creating the profile if new, and offer the reload that applies it.
@@ -754,7 +772,7 @@ local COMMANDS = {
 local function handleSlash(msg)
   local cmd, rest = (msg or ""):match("^%s*(%S*)%s*(.-)%s*$")
   if cmd == "" then
-    return ns.Options.Toggle()
+    return ns.Try("slash options", ns.Options.Toggle)
   end
   local handler = COMMANDS[cmd:lower()] or function() chat("Unknown command. /vg help") end
   ns.Try("slash " .. cmd:lower(), handler, rest)

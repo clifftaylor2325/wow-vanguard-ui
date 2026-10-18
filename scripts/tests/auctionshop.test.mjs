@@ -368,6 +368,9 @@ it("filters travel: exact names export in quotes, import as exact, and copies ha
   expect([addon.eval("return #VanguardDB.ah.lists['TEST-ONLY Mats']"), addon.frame("Vanguard_AuctionFilters").visible], "its entry gone meanwhile: nothing saved").toEqual([2, false]);
   const prices = addon.eval(`local out = {} for i, t in ipairs({ "2.5", "75s 20c", " 3G 4s ", "12c", "0", "-1", "abc", "5x", "1g abc", "" }) do out[i] = ${HELPER}.ParseMoney(t) or false end return out`);
   expect(prices, "gold as a number, or g/s/c amounts").toEqual([25000, 7520, 30400, 12, false, false, false, false, false, false]);
+  const bad = addon.eval(`local out = {} for i, t in ipairs({ "1e5", "0x10", "1e999", "inf", "nan", "1.2.3", "5e", "1_0", ${JSON.stringify("9".repeat(400))}, "1000000g", "999999g 99s 99c", "999999g 99s 100c", "999999g 99s 99c 1c" }) do out[i] = ${HELPER}.ParseMoney(t) or false end return out`);
+  expect(bad, "exponent, hex, infinity and other number forms are not money; nothing above the game's highest price").toEqual([false, false, false, false, false, false, false, false, false, false, 9999999999, false, false]);
+  expect(addon.eval(`return { ${HELPER}.ParseMoney(".5"), ${HELPER}.ParseMoney("3."), ${HELPER}.ParseMoney("1G") }`), "a bare .5 and 3. still read as gold").toEqual([5000, 30000, 10000]);
 });
 // The text dialog: whether it shows, its title and its text.
 const textDialog = (addon) => addon.eval("local f = Vanguard_TextDialog return { f:IsShown(), f.title:GetText(), f.edit:GetText() }");

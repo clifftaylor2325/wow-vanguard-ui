@@ -70,6 +70,12 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Expect: a message ending `/reload in game.`, and `--status` reporting the link. If a real Vanguard folder is already there, the message is `... is an installed copy. Add --replace to move it aside and link this clone.`
 - If it fails, paste: the whole terminal output of both commands.
 
+### 1.1a Slash commands in any capitalisation
+
+- Do: type `/vg` with nothing after it, then `/vg disable actionbars` (then `/vg enable actionbars`), then `/vg skins SomeAddon maybe`.
+- Expect: `/vg` opens (or closes) the options window; the module is found whatever the case and the chat line names it as it is spelled in `/vg modules`; the skins line answers with its usage and changes nothing. [Needs in-game check: the bare `/vg` still opens the window now that it runs under the error guard.]
+- If it fails, paste: `/vg errors`.
+
 ### 1.2 First login opens the setup wizard
 
 - Do: at character select open AddOns and tick Vanguard, then log in on an account that has never run it (or delete both `WTF/Account/<account>/SavedVariables/Vanguard.lua` and the character's `WTF/Account/<account>/<realm>/<character>/SavedVariables/Vanguard.lua` first; deleting only the account's file is the settings-loss check in 4.7).
@@ -553,7 +559,7 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 ### 9.2b Item tooltip lines with Tooltips off
 
 - Do: turn the Tooltips module off under `/vg` > Modules (and reload if asked); keep Vendor memory and Auction helper on; hover an item you saw at a merchant, or one with an auction price from a scan.
-- Expect: the item tooltip still shows the "Sold by ..." line and the "AH: ..." line (and "Upgrade +N%" where it applies), in the game's own tooltip; there is no "Sells for ..." or "You have ..." line from Vanguard, and no unit-tooltip changes. Turn Tooltips back on: those two lines come back, with no line shown twice. [Needs in-game check: the lines on the client's tooltip, with the module off.]
+- Expect: the item tooltip still shows the "Sold by ..." line and the "AH: ..." line (and "Upgrade +N% (estimate)" where it applies), in the game's own tooltip; there is no "Sells for ..." or "You have ..." line from Vanguard, and no unit-tooltip changes. Turn Tooltips back on: those two lines come back, with no line shown twice. [Needs in-game check: the lines on the client's tooltip, with the module off.]
 - If it fails, paste: which line is missing or doubled, and `/vg errors`.
 
 ### 9.2c Character sheet extras
@@ -573,6 +579,12 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Do: talk to an auctioneer; click the Lists tab, then Posting, then the game's Buy; on Lists click a list in the Lists pane, then a row of it (its listings), then Back; click Scan the auction house, then the pane's Deals and Upgrades entries; on Posting drop an item on the sell slot, click Your history and Up now on the card at the top right, then click the same item in a bag.
 - Expect: two tabs, Lists and Posting, after the game's Buy, Sell and Auctions, in the same look as the game's; the window's title says Lists or Posting while one is open. Lists: the Lists pane on the left (your lists with their counts, Recent, Deals, Upgrades; six buttons under them; the scan button at the bottom), the list picked on the right as a table with headings (Item, Unit price, Up, Max) under a toolbar (+ Add, Search list, Restock), about twenty rows; a row's listings replace the table with Back and the item above sortable columns; after the scan, Deals shows its rows (Unit price, Under by, Judged against) and Upgrades its rows (Slot, Gain, Unit price) with the counts beside the entries, or a line saying none were found. Posting: the Sell card on the left with one field a row, Up now at the top right (the item's listings, yours flagged; Your history in its place on the toggle), Your auctions at the bottom right with Check undercuts and Cancel next undercut on its heading line; every card inside the window. A listing, deal or upgrade clicked switches to the game's Buy page with the item in its list, and Lists brings back the view where it was; the sell slot takes the dropped item; a bag click with Posting open keeps the window on Posting with the item on the Sell card (from the game's own tabs it shows the game's Sell page, and the item is on the Posting card too). If you know Enchanting, a green or better weapon or armour tooltip shows a "Disenchant: ~" line once its materials are priced (it follows Enchanting from your skills where the game has no profession list).
 - If it fails, paste: a screenshot of each tab and `/vg errors`.
+
+### 9.4a Typing a price on the Posting tab
+
+- Do: on the Posting tab drop an item on the Sell card. In the Price box type `1e5`, then `0x10`, then `99999999`, then `1g 50s`; switch the button beside it to per stack and type `55c` with a stack size of 10.
+- Expect: the first three are not taken as prices (the box goes back to the suggestion; nothing posts at 100,000 gold or 16 gold); `1g 50s` is the price. With per stack on, `55c` for a stack of 10 shows `60c` in the box (6c a unit, rounded up) and the stack posts at 60c, never under the 55c typed. [Needs in-game check: what the client does with a posted price near the highest it takes.]
+- If it fails, paste: a screenshot of the Sell card and `/vg errors`.
 
 ### 9.5 Sort clear of the backpack icon
 

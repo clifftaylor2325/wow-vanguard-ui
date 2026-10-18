@@ -36,11 +36,11 @@ const GEAR_ENV = `
 
 it("upgrades: tooltips compare gear with what you wear, by your class's weights", () => {
   const addon = loggedIn(GEAR_ENV);
-  expect([addon.eval("return __line(2)"), addon.eval("return __line(3)")], "better and worse bracers, against the pair you wear").toEqual(["Upgrade +20% vs TEST-ONLY Item 1", "Downgrade -50% vs TEST-ONLY Item 1"]);
-  expect(addon.eval("return __line(4)"), "a ring against the weaker ring you wear").toBe("Upgrade +50% vs TEST-ONLY Item 5");
-  expect(addon.eval("return __line(7)"), "a two-hander against both hands (3 DPS x 2.5 + 2 STR)").toBe("Upgrade +163% vs TEST-ONLY Item 8");
+  expect([addon.eval("return __line(2)"), addon.eval("return __line(3)")], "better and worse bracers, against the pair you wear").toEqual(["Upgrade +20% (estimate) vs TEST-ONLY Item 1", "Downgrade -50% (estimate) vs TEST-ONLY Item 1"]);
+  expect(addon.eval("return __line(4)"), "a ring against the weaker ring you wear").toBe("Upgrade +50% (estimate) vs TEST-ONLY Item 5");
+  expect(addon.eval("return __line(7)"), "a two-hander against both hands (3 DPS x 2.5 + 2 STR)").toBe("Upgrade +163% (estimate) vs TEST-ONLY Item 8");
   expect(addon.eval("return __line(10)"), "an empty slot").toBe("Upgrade: fills an empty slot");
-  expect(addon.eval("return __line(13)"), "against worn gear worth nothing to you").toBe("Upgrade +100% vs TEST-ONLY Item 14");
+  expect(addon.eval("return __line(13)"), "against worn gear worth nothing to you").toBe("Upgrade +100% (estimate) vs TEST-ONLY Item 14");
   expect(addon.eval("return { __line(11), __line(12), __line(17), __line(15) }"), "gear you can't use, can't wear, isn't equippable, or that's the same: no line").toEqual([false, false, false, false]);
   expect(addon.eval("local up, good = __tt, { ns.Theme.RGB('good') } __tt.AddLine = function(self, text, r) self.lines[1] = r == good[1] end return __line(2)"), "an upgrade in the good color").toBe(true);
   addon.eval("ns.GetModule('Upgrades').settings.tooltip = false");
