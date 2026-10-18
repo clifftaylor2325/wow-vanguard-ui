@@ -134,9 +134,27 @@ function TT.StackOf(tt)
   return count and count > 1 and count or 1
 end
 
+-- Whether a left-hand line of the tooltip carries `label` (plain text; a secret line never counts).
+local function hasLine(tt, label)
+  for i = 1, tt.NumLines and tt:NumLines() or 0 do
+    local line = _G[tt:GetName() .. "TextLeft" .. i]
+    local text = line and line.GetText and line:GetText()
+    if type(text) == "string" and not ns.IsSecret(text) and text:find(label, 1, true) then return true end
+  end
+  return false
+end
+
+-- Whether the client's own "Sell Price" is already on the tooltip: a money frame is up, or a line carries the
+-- game's label (the price can arrive through tooltip data, with no money frame counted).
+function TT.ShowsPrice(tt)
+  if (tonumber(tt.shownMoneyFrames) or 0) > 0 then return true end
+  local label = _G.ITEM_SELL_PRICE
+  return type(label) == "string" and tt.GetName ~= nil and tt:GetName() ~= nil and hasLine(tt, label)
+end
+
 -- What the stack sells for, unless the client already shows a price.
 local function addPrice(tt, link)
-  local price = (tonumber(tt.shownMoneyFrames) or 0) == 0 and TT.SellPrice(link)
+  local price = not TT.ShowsPrice(tt) and TT.SellPrice(link)
   if not price then return end
   local r, g, b = T.RGB("text2")
   tt:AddDoubleLine("Sells for", ns.GetModule("InfoStrip").Money(price * TT.StackOf(tt)), r, g, b, T.RGB("gold"))

@@ -72,6 +72,14 @@ it("item tooltips show what the stack sells for, unless the client already does"
   expect(line.text === "Sells for 5s 0c" && isTok(addon, line.left, "text2") && isTok(addon, line.right, "gold"), "a stack of 20 at 25c each, the price in gold").toBe(true);
   expect(addon.eval('return __showItem("item:90001", nil)[1].text'), "a single item").toBe("Sells for 0s 25c");
   expect(addon.eval('return { #__showItem("item:90002", 1), #__showItem("item:90003", 1), #__showItem({ __secret = true }, 1), #__showItem("item:90001", 1, 1) }'), "no value, not cached yet, hidden, or the client's own price: no line").toEqual([0, 0, 0, 0]);
+  addon.eval(`ITEM_SELL_PRICE = "Sell Price"
+    GameTooltip.GetName = function() return "GameTooltip" end
+    GameTooltip.NumLines = function() return 3 end
+    local texts = { "TEST-ONLY Item", { __secret = true }, "Sell Price: 6s 1c" }
+    for i = 1, 3 do _G["GameTooltipTextLeft" .. i] = { GetText = function() return texts[i] end } end`);
+  expect(addon.eval('return #__showItem("item:90001", 1)'), "the game's Sell Price line came through tooltip data (no money frame): no second price").toBe(0);
+  addon.eval('GameTooltipTextLeft3 = { GetText = function() return "TEST-ONLY other" end }');
+  expect(addon.eval('return #__showItem("item:90001", 1)'), "no price line from the game: ours shows").toBe(1);
   addon.eval("VanguardDB.profiles.Default.Tooltips.sellPrice = false");
   expect(addon.eval('return #__showItem("item:90001", 1)'), "the switch turns it off").toBe(0);
   const old = loggedIn(UNITS_ENV + TOOLTIP_ENV.replace("TooltipDataProcessor =", "__noProcessor =") + "GameTooltip.HasScript = function() return true end" + ITEM_TIP_ENV);
