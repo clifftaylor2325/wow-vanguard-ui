@@ -150,6 +150,7 @@ Modules/WindowsSystem.lua
 Modules/WindowsMap.lua
 Modules/WindowsMenus.lua
 Modules/WindowsTabs.lua
+Modules/CharacterExtras.lua
 Modules/WindowsPvP.lua
 Modules/WindowsMove.lua
 Modules/AuctionPrices.lua

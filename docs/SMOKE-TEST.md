@@ -542,6 +542,12 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Expect: the item tooltip still shows the "Sold by ..." line and the "AH: ..." line (and "Upgrade +N%" where it applies), in the game's own tooltip; there is no "Sells for ..." or "You have ..." line from Vanguard, and no unit-tooltip changes. Turn Tooltips back on: those two lines come back, with no line shown twice. [Needs in-game check: the lines on the client's tooltip, with the module off.]
 - If it fails, paste: which line is missing or doubled, and `/vg errors`.
 
+### 9.2c Character sheet extras
+
+- Do: open the character pane with gear worn. Then `/vg` → Game windows → Character sheet extras: tick "Mark worn pieces missing an enchant", and look at a chest, legs, boots, bracers, gloves, cloak or weapon of green quality or better without an enchant. Press "Show my gear summary in chat" (or run `/vg gear`).
+- Expect: each worn slot shows its item level along the top edge (durability stays along the bottom); an unenchanted piece of those slots shows a `!` in the top-right corner, and not a shield or a held item; unticking a switch removes its labels at once; `/vg gear` prints the average item level, a melee damage-per-second line (with the swing time) and the pieces missing an enchant.
+- If it fails, paste: a screenshot of the character pane, the `/vg gear` lines and `/vg errors`.
+
 ### 9.3 Trainer: Train all
 
 - Do: at a class trainer with skills you can afford, click Train all. Try it again in combat if you can.
