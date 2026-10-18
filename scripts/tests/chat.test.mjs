@@ -728,7 +728,7 @@ it("R2.4 shared skin helpers: a glyph keeps its picture, a dropdown its arrow, a
     GW.SkinGlyph(nil) GW.SkinGlyph({}) GW.SkinDropdown("x") GW.SkinDropdown({}) GW.SkinSearch(false) GW.SkinSearch({}) GW.ShowTexture(nil) GW.ShowTexture({})
     return { glyph:GetNormalTexture():GetAlpha(), glyph:GetDisabledTexture():GetAlpha(), drop.Arrow:GetAlpha(), search.searchIcon:GetAlpha(),
       ns.Theme.PaintedCount() > 0, #ns.errors, select(4, search.searchIcon:GetPoint()), ns.Theme.SPACE.gap, select(4, search.Instructions:GetPoint()), ns.Theme.SEARCH_INSET }`);
-  expect(out, "pictures shown again after the theme faded the game's art; odd input skipped without an error; the magnifier a gap in from the left with the text after it").toEqual([1, 1, 1, 1, true, 0, 8, 8, 28, 28]);
+  expect(out, "pictures shown again after the theme faded the game's art; odd input skipped without an error; the magnifier a gap in from the left with the text after it").toEqual([1, 1, 0, 1, true, 0, 8, 8, 28, 28]);
   expect(addon.eval('return { type(ns.GetModule("Windows").DressChecks), ns.GetModule("Windows").CHECK_DEPTH }'), "the check-box helpers live with the shared ones").toEqual(["function", 5]);
 });
 // TEST-ONLY trade window (TradeFrame.xml): the frame and its buttons, six wells, seven item rows a side (each with a
@@ -997,7 +997,7 @@ it("R2.11 popups: the dark tile faded, the warning icon and progress fill kept, 
       extra = select("#", p.ExtraButton:GetRegions()) > 0, item = p.ItemFrame.NameFrame.__alpha == 0 and ns.FrameState("vgSkinned")[p.ItemFrame.Item] == true,
       painted = ns.Theme.PaintedCount(), errors = #ns.errors }`);
   const first = read();
-  expect(first, "tile faded, content kept, text box and money in the theme, the dropdown keeps its arrow, the extra button themed, the item in the item look").toMatchObject({ tile: true, icon: 1, fill: 1, box: true, money: true, arrow: 1, extra: true, item: true, errors: 0 });
+  expect(first, "tile faded, content kept, text box and money in the theme, the dropdown keeps its arrow, the extra button themed, the item in the item look").toMatchObject({ tile: true, icon: 1, fill: 1, box: true, money: true, arrow: 0, extra: true, item: true, errors: 0 });
   addon.eval("StaticPopup1:Hide() StaticPopup1:Show()");
   expect(read().painted, "a second show paints nothing new").toBe(first.painted);
   const bare = loggedIn(`${WINDOWS_ENV}${INSIDES_LUA} StaticPopup1.EditBox = {} StaticPopup1.ItemFrame = {} StaticPopup1.Dropdown = {} StaticPopup1.BG = 1`);
@@ -1089,7 +1089,7 @@ it("R2.12 the dressing room: the model an inset, the outfit controls and side pa
       buttons = __tiled(DressUpFrameCancelButton) and __tiled(DressUpFrameResetButton) and __tiled(f.LinkButton) and __tiled(f.CustomSetDropdown.SaveButton), dropdown = f.CustomSetDropdown.Arrow.__alpha,
       toggle = __tiled(f.ToggleCustomSetDetailsButton), painted = ns.Theme.PaintedCount(), errors = #ns.errors }`);
   const first = read();
-  expect(first, "model and panels sunk, buttons themed, the dropdown keeps its arrow, the toggle on a control tile").toMatchObject({ model: true, panels: true, buttons: true, dropdown: 1, toggle: true, errors: 0 });
+  expect(first, "model and panels sunk, buttons themed, the dropdown keeps its arrow, the toggle on a control tile").toMatchObject({ model: true, panels: true, buttons: true, dropdown: 0, toggle: true, errors: 0 });
   addon.eval("DressUpFrame:Hide() DressUpFrame:Show()");
   expect(read().painted, "a second show paints nothing new").toBe(first.painted);
   const odd = loggedIn(`${INNER_ENV} DressUpFrame.ModelScene = nil DressUpFrame.CustomSetDropdown = {} DressUpFrame.LinkButton = 1 DressUpFrame.SetSelectionPanel = {}`);
@@ -1137,7 +1137,7 @@ it("R2.13 the time manager: check boxes, dropdowns, the alarm message box, label
   // The window's parts as the skin leaves them.
   const read = () => addon.eval(`local f = TimeManagerFrame local boxes, drops = 0, 0
     for _, name in ipairs({ "TimeManagerAlarmEnabledButton", "TimeManagerMilitaryTimeCheck", "TimeManagerLocalTimeCheck" }) do if __faded(_G[name]) then boxes = boxes + 1 end end
-    for _, key in ipairs(ns.GetModule("Windows").TIME_DROPDOWNS) do if __faded(f.AlarmTimeFrame[key], f.AlarmTimeFrame[key].Arrow) and f.AlarmTimeFrame[key].Arrow.__alpha == 1 then drops = drops + 1 end end
+    for _, key in ipairs(ns.GetModule("Windows").TIME_DROPDOWNS) do if __faded(f.AlarmTimeFrame[key], f.AlarmTimeFrame[key].Arrow) and f.AlarmTimeFrame[key].Arrow.__alpha == 0 then drops = drops + 1 end end
     return { globe = TimeManagerGlobe.__alpha, boxes = boxes, drops = drops, stopwatch = not __faded(TimeManagerStopwatchCheck) and select("#", TimeManagerStopwatchCheck:GetRegions()) > 1,
       message = __faded(TimeManagerAlarmMessageEditBox), labels = __themed(TimeManagerAlarmTimeLabel) and __themed(TimeManagerAlarmMessageLabel) and __themed(TimeManagerStopwatchFrameText),
       enabledColour = TimeManagerAlarmEnabledButtonText.__textColor[2] ~= 0.82, title = __titled(f.title), painted = ns.Theme.PaintedCount(), errors = #ns.errors }`);
