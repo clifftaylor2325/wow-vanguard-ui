@@ -217,6 +217,12 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Expect: `Import failed: not a Vanguard profile string.` for the garbage, and `Import failed: the string is incomplete (was it cut off when pasting?).` for the cut string; no error popup either time.
 - If it fails, paste: the chat lines and `/vg errors`.
 
+### 4.2a A position that is not a sane number
+
+- Do: type `/run VanguardDB.profiles.Default.positions.uf_player.x = math.huge`, then `/reload`. (A profile string holding `1e999` is refused on import with an "Import failed" line.)
+- Expect: the player frame loads at most 5000 units from its anchor, with no error popup and nothing in `/vg errors`; `/vg reset` puts it back.
+- If it fails, paste: `/vg errors`.
+
 ### 4.3 Export
 
 - Do: type `/vg export`.
@@ -1237,6 +1243,12 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 - Expect: the window resizes live and keeps its size after the reload; locked windows do not drag; the floating window has a `Chat: <name>` handle and stays where you put it, also after a layout change. `/vg errors` is empty. [Needs in game: that FCF_SetLocked and FCF_SavePositionAndDimensions exist and keep the size, that GetChatWindowInfo returns locked and docked as 8th and 9th values, and that a docked tab is not offered as a handle.]
 - If it fails, paste: `/vg errors` and what the window did.
 
+### 15.6d Chat while the game hides it (instanced fights)
+
+- Do: with Chat extras links on (the default) and the Chat filter on, join a group in an encounter, a Mythic+ key or a rated battleground and let party or raid chat run during the fight. Type `/vg errors` after it.
+- Expect: every group chat line appears in its window for the whole fight, and no error popup appears. Lines the game hides from addons show as the game gives them (no link on a web address in them, not shortened, not in the Filtered tab). `/vg errors` has no `chat filter` or `chat filter links` line. [Needs in game: whether comparing a hidden chat line raised before this change; the early return makes the question moot, but the fight is the proof.]
+- If it fails, paste: `/vg errors` and which chat event went quiet.
+
 ## 16. Realm and ruleset
 
 ### 16.1 Realm, ruleset and names
@@ -1436,6 +1448,12 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 - Do: turn on the game's Cooldown Manager and track a heal-over-time buff on yourself in its buff row. Type `/vg cdmglow on`, cast the buff on yourself, wait until under 30 percent is left, out of combat; then do the same in combat. Type `/vg cdmglow 50`, then `/vg cdmglow off`.
 - Expect: the buff's icon gets an accent glow ring once under the share is left, and loses it when the buff is renewed or ends. In combat the glow still follows the time left, or stays off with no error. `/vg cdmglow 50` says "under 50 percent left"; off puts the glows out. [Needs in game: whether the client hands the aura's duration object to a curve (C_CurveUtil.CreateCurve, EvaluateRemainingPercent) and whether SetAlpha takes the result in combat; the Cooldown Manager item fields auraInstanceID and auraDataUnit.]
 - If it fails, paste: `/vg errors`, and what `/run print(C_CurveUtil and C_CurveUtil.CreateCurve ~= nil)` prints.
+
+### 28.1a The command with the module switched off
+
+- Do: switch the Cooldown glow module off in `/vg`, then type `/vg cdmglow on`.
+- Expect: chat says "Cooldown glow is off: turn the module on in the options first." and `/vg errors` stays empty.
+- If it fails, paste: `/vg errors`.
 
 ### 28.2 Key text on the manager's icons
 

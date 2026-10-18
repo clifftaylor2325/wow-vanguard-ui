@@ -164,6 +164,14 @@ it("#201 a client without the windows or the layout calls loads cleanly; windows
   expect(errors(addon)).toBe("none");
 });
 
+it("a saved window place that is infinite or absurd is kept to ns.MAX_OFFSET when the window is put back", () => {
+  const addon = loggedIn("");
+  const W = "ns.GetModule('Windows')";
+  addon.eval(`local m = CreateFrame("Frame", "GameMenuFrame", UIParent) m:SetSize(200, 300) m:SetPoint("CENTER")
+    ${W}.Moved()["TEST-ONLY-FAR"] = { x = math.huge, y = -1e300 } ${W}.PutBack("TEST-ONLY-FAR", GameMenuFrame)`);
+  expect(addon.eval("local _, _, _, x, y = GameMenuFrame:GetPoint(1) return { x, y }"), "the far edge, not infinity").toEqual([5000, -5000]);
+});
+
 // Presses the left button with the mouse at x, y (screen pixels), the window following the mouse to
 // toX, toY when it was set moving, then lets go. Returns whether it was moving in between.
 const pressDrag = (addon, name, [x, y], [toX, toY]) => addon.eval(`__wfgStub.world.mouse.x, __wfgStub.world.mouse.y = ${x}, ${y}

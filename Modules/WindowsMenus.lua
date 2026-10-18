@@ -50,7 +50,7 @@ end
 function GW.WatchMenus()
   local registry = _G.EventRegistry
   if type(registry) ~= "table" or type(registry.RegisterCallback) ~= "function" then return end
-  registry:RegisterCallback("MenuProxy.OnShow", GW.SkinContextMenu, GW)
+  registry:RegisterCallback("MenuProxy.OnShow", ns.Guard("skin context menu", GW.SkinContextMenu), GW)
 end
 
 GW.WatchMenus()
