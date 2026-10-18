@@ -40,9 +40,10 @@ TP.LEVEL_ABOVE = 5
 -- The next pick's ring, units wide.
 TP.RING = 6
 -- The bar: its size, where it sits from the window's bottom left, the Plan switch's and Spend planned's widths.
-TP.BAR_WIDTH, TP.BAR_HEIGHT, TP.BAR_X, TP.BAR_Y, TP.SWITCH_WIDTH, TP.SPEND_WIDTH = 520, 24, 14, 10, 84, 110
+TP.BAR_WIDTH, TP.BAR_HEIGHT, TP.BAR_X, TP.BAR_Y, TP.SWITCH_WIDTH, TP.SPEND_WIDTH = 520, 24, 14, 10, 100, 110
 -- The summary's room: how far short of the game's Apply Changes button it ends, and its lines at most.
 TP.APPLY_GAP, TP.SUMMARY_LINES = 12, 2
+TP.UNREACHABLE_NOTE = "Unreachable: a talent or row it needs is not in the plan."
 -- How long after a level-up the points are read (the game fills the new point in a moment).
 TP.LEVEL_DELAY = 1
 
@@ -437,13 +438,14 @@ end
 
 -- The bar -----------------------------------------------------------------------------------------
 
--- The plan's summary: points planned, bought and still to buy, the next pick, and what can't be reached.
+-- The plan's summary: points planned, bought and still to buy, the next pick, and how many can't be reached
+-- (the tooltip says why).
 function TP.Summary(tree, result)
   local stuck = 0
   for _ in pairs(result.stuck) do stuck = stuck + 1 end
   local text = string.format("%d planned, %d bought, %d to buy", result.planned, result.spent, result.planned - result.spent)
   if result.order[1] then text = text .. "; next: " .. TP.NodeName(tree.nodes[result.order[1]]) end
-  if stuck > 0 then text = text .. string.format("; %d unreachable (a talent or row it needs is not in the plan)", stuck) end
+  if stuck > 0 then text = text .. string.format("; %d unreachable", stuck) end
   if tree.points > 0 then text = text .. string.format("; %d point%s to spend", tree.points, tree.points == 1 and "" or "s") end
   return text
 end
@@ -473,6 +475,7 @@ local function showSummaryTip(area)
   GameTooltip:SetText("Talent plan", T.RGB("text"))
   local r, g, b = T.RGB("text2")
   GameTooltip:AddLine(text, r, g, b, true)
+  if text:find("unreachable", 1, true) then GameTooltip:AddLine(TP.UNREACHABLE_NOTE, r, g, b, true) end
   GameTooltip:Show()
 end
 
