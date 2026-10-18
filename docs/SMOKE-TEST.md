@@ -536,6 +536,12 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Expect: a question listing the item(s) and what they fetch; answering Sell sells them within a few seconds and the Buyback tab holds them; an item in an equipment set is not offered; Stack and Max and a "Max N for <money>" line sit under the quantity window for a merchant's item and not for an item in your bags; Max above one stack asks first; the buys finish with `Bought N × <item> for <money>.` and no error; an item that costs tokens or honor shows no buttons.
 - If it fails, paste: the chat lines and `/vg errors`.
 
+### 9.2b Item tooltip lines with Tooltips off
+
+- Do: turn the Tooltips module off under `/vg` > Modules (and reload if asked); keep Vendor memory and Auction helper on; hover an item you saw at a merchant, or one with an auction price from a scan.
+- Expect: the item tooltip still shows the "Sold by ..." line and the "AH: ..." line (and "Upgrade +N%" where it applies), in the game's own tooltip; there is no "Sells for ..." or "You have ..." line from Vanguard, and no unit-tooltip changes. Turn Tooltips back on: those two lines come back, with no line shown twice. [Needs in-game check: the lines on the client's tooltip, with the module off.]
+- If it fails, paste: which line is missing or doubled, and `/vg errors`.
+
 ### 9.3 Trainer: Train all
 
 - Do: at a class trainer with skills you can afford, click Train all. Try it again in combat if you can.
@@ -1232,7 +1238,7 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 
 ### 18.1 Other addons
 
-- Do: install one bag addon you use (Bagnon, AdiBags, ArkInventory, BetterBags or Baganator) beside Vanguard and log in. Open `/vg` → Modules. Click **Keep both**, `/reload`, and open Modules again. Then type `/dump C_AddOns.GetAddOnInfo("<the addon>")` and note the folder name it prints.
+- Do: install one bag addon you use (Bagnon, AdiBags, ArkInventory, BetterBags or Baganator; or ElvUI or Tukui, which ask about the action bars, or Auctionator or TradeSkillMaster, which ask about the Auction helper) beside Vanguard and log in. Open `/vg` → Modules. Click **Keep both**, `/reload`, and open Modules again. Then type `/dump C_AddOns.GetAddOnInfo("<the addon>")` and note the folder name it prints.
 - Expect: one chat line at login, `<addon> also does bags. Choose which one does under /vg > Modules (nothing changes until you do).`; an **Other addons** card at the top of the Modules page with **Turn off Bags** and **Keep both**; after Keep both, no card and no chat line. The folder name matches the one Vanguard looks for (`Modules/Coexist.lua`, `CX.OVERLAPS`); a different name is a finding.
 - Also, if EllesmereUI is on Forever: run `/dump C_AddOns.GetNumAddOns()` and list its folders (`/dump C_AddOns.GetAddOnInfo(i)` for each) and paste the ones starting with Ellesmere. Vanguard looks for `EllesmereUIUnitFrames`, `EllesmereUIActionBars`, `EllesmereUINameplates` and `EllesmereUIRaidFrames` (retail names, unconfirmed on Forever); a different name is a finding.
 - If it fails, paste: the folder name, a screenshot of the Modules page and `/vg errors`.
