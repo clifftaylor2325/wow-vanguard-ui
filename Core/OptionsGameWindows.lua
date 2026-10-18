@@ -69,9 +69,17 @@ local function tooltipRows()
   }, vendorRows())
 end
 
--- The Game windows page: the game's windows, prompts and tooltips.
+-- Your characters: level, money, rested XP and time played of each one remembered here (Modules/Inventory.lua).
+local function altRows()
+  local rows = { { "header", "Your characters" } }
+  for _, line in ipairs(ns.GetModule("Inventory").AltLines()) do rows[#rows + 1] = { "text", line } end
+  rows[#rows + 1] = { "text", "Read when you log out or open your bags. /vg alts <name> lists one character's items.", "note" }
+  return rows
+end
+
+-- The Game windows page: the game's windows, prompts and tooltips, then your characters.
 local function windowsPageRows()
-  return append(append(windowRows(), promptRows()), tooltipRows())
+  return append(append(append(windowRows(), promptRows()), tooltipRows()), altRows())
 end
 
 O.AddPage({ key = "windows", title = "Game windows", icon = "NavWindows", order = 83, rows = windowsPageRows })

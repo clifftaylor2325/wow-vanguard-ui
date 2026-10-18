@@ -117,6 +117,15 @@ it("inventory: each record keeps level, money, rested XP and time played, and /v
   expect(chatHas(addon, /All together: /), "and the money of all of them").toBe(true);
 });
 
+it("inventory: the Game windows page lists every character's overview line", () => {
+  const addon = loggedIn(BAGS_ENV + "UnitLevel = function() return 12 end", { savedVariables: ALTS });
+  const lines = addon.eval("return ns.GetModule('Inventory').AltLines()");
+  expect(lines.some((l) => /^Alpha: level/.test(l)) && /^All together: /.test(lines[lines.length - 1]), "a line each, then the total").toBe(true);
+  addon.eval('ns.Options.Show("windows")');
+  const shown = addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.GetText and w:GetText() and tostring(w:GetText()):find("^Tester: level 12") then return true end end return false`);
+  expect(shown, "the page shows this character's line").toBe(true);
+});
+
 it("inventory: /vg alts <name> lists that character's items, biggest first, and says when nobody has the name", () => {
   const addon = loggedIn(BAGS_ENV, { savedVariables: ALTS });
   addon.slash("alts alpha");
