@@ -74,7 +74,7 @@ const SPELLS_ENV = `${READERS_ENV}
       count = __lit(paging.PageText, "small", "text2"), fx = fx, backdrop = backdrop, tree = __sunk(t),
       buttons = __button(t.ApplyButton) and __button(t.InspectCopyButton) and __button(t.ActiveSpec.ActivateButton),
       icons = __plate(t.ResetButton) and __plate(t.UndoButton), talentSearch = __box(t.SearchBox),
-      dropdowns = __button(t.SearchOptionsDropdown) and t.SearchOptionsDropdown.Arrow.__alpha == 1 and __button(t.LoadSystem.Dropdown) and t.LoadSystem.Dropdown.Arrow.__alpha == 1,
+      dropdowns = __button(t.SearchOptionsDropdown) and t.SearchOptionsDropdown.Arrow.__alpha == 0 and __button(t.LoadSystem.Dropdown) and t.LoadSystem.Dropdown.Arrow.__alpha == 0,
       currency = t.ClassCurrencyDisplay.Border.__alpha, painted = ns.Theme.PaintedCount(), errors = #ns.errors }
   end
 `;
@@ -175,7 +175,7 @@ const PROF_ENV = `${READERS_ENV}
     for _, key in ipairs(ns.GetModule("Windows").PROF_SLOTS) do if page[key].icon.__texCoord ~= nil then gear = gear + 1 end end
     local list = page.RecipeList
     return { page = __faded(page), list = __faded(list) and list.NineSlice.__alpha == 0 and list.BackgroundNineSlice:GetAlpha() == 0 and __sunk(list),
-      filter = __button(list.FilterDropdown) and list.FilterDropdown.Arrow.__alpha == 1, search = __box(list.SearchBox), none = __lit(list.NoResultsText, "label", "text"),
+      filter = __button(list.FilterDropdown) and list.FilterDropdown.Arrow.__alpha == 0, search = __box(list.SearchBox), none = __lit(list.NoResultsText, "label", "text"),
       rank = __faded(page.RankBar, page.RankBar.Fill) and page.RankBar.Fill.__alpha ~= 0 and __sunk(page.RankBar), box = __faded(page.CreateMultipleInputBox),
       small = __box(page.MinimizedSearchBox), buttons = __button(page.ViewGuildCraftersButton) and __button(page.CreateButton) and __button(page.CreateAllButton),
       link = __button(page.LinkButton) and page.LinkButton.Icon.__alpha == 1, gear = gear, divider = __faded(page.GearSlotDivider),
@@ -436,7 +436,7 @@ const JOURNAL_ENV = `${READERS_ENV}
     local function well(w) return __faded(w) and w.NineSlice.__alpha == 0 and __sunk(w) end
     local function plate(c) return well(c) and __lit(c.Label, "small", "text2") end
     local function track(b) return b.border.__alpha == 0 and __sunk(b) and b:GetStatusBarTexture().__alpha ~= 0 end
-    local function drop(d) return __button(d) and d.Arrow.__alpha == 1 end
+    local function drop(d) return __button(d) and d.Arrow.__alpha == 0 end
     return { mount = well(mount.LeftInset) and well(mount.RightInset) and well(mount.BottomLeftInset), pet = well(pet.LeftInset) and well(pet.RightInset),
       counts = plate(mount.MountCount) and plate(pet.PetCount) and plate(toys.ProgressTracker), bars = track(toys.progressBar) and track(heirlooms.progressBar),
       search = __box(mount.searchBox) and __box(pet.searchBox) and __box(toys.searchBox) and __box(heirlooms.SearchBox),
@@ -542,7 +542,7 @@ const ACHIEVEMENT_ENV = `${READERS_ENV}
     local details, box = f.HeaderDetails, f.HeaderDetails.Filters.SearchBox
     return { plate = __faded(f.Header, f.Header.Shield) and f.Header.Shield.__alpha ~= 0 and __titled(f.Header.Title), areas = areas, heads = heads,
       bars = bars and cats == 12 and track(c.Summary.Player.StatusBar) and track(c.Summary.Friend.StatusBar), cards = c.Summary.Player.NineSlice:GetAlpha() == 0,
-      streaks = __faded(details), back = __button(details.Back), filter = __button(details.Filters.FilterDropdown) and details.Filters.FilterDropdown.Arrow.__alpha == 1,
+      streaks = __faded(details), back = __button(details.Back), filter = __button(details.Filters.FilterDropdown) and details.Filters.FilterDropdown.Arrow.__alpha == 0,
       search = __box(box), preview = __faded(box.SearchPreviewContainer) and panelled(box.SearchPreviewContainer), progress = track(box.SearchProgressBar),
       stats = __faded(AchievementFrameStatsBG), results = __faded(f.SearchResults) and panelled(f.SearchResults) and __titled(f.SearchResults.TitleText) and __plate(f.SearchResults.CloseButton),
       painted = ns.Theme.PaintedCount(), errors = #ns.errors }
@@ -734,7 +734,7 @@ const AH_ENV = `${READERS_ENV}
     local function boxed(b) return __faded(b, b.texture) and b.texture.__alpha == 1 end
     return {
       money = __ahTile(f.MoneyFrameInset) and __faded(f.MoneyFrameBorder) and __ahThemed(f.MoneyFrameBorder.MoneyFrame),
-      search = __box(bar.SearchBox) and __button(bar.SearchButton) and __button(bar.FilterButton) and bar.FilterButton.Arrow.__alpha == 1
+      search = __box(bar.SearchBox) and __button(bar.SearchButton) and __button(bar.FilterButton) and bar.FilterButton.Arrow.__alpha == 0
         and __button(bar.FavoritesSearchButton) and bar.FavoritesSearchButton.Icon.__alpha == 1,
       categories = __ahTile(f.CategoriesList),
       buttons = __button(ib.BackButton) and __button(ib.BuyoutFrame.BuyoutButton) and __button(ib.BidFrame.BidButton) and __button(f.CommoditiesBuyFrame.BackButton)
@@ -817,7 +817,7 @@ it("R3.5 the auction house panels: result lines are theme rows lit with the game
   const list = "AuctionHouseFrame.BrowseResultsFrame.ItemList";
   expect(addon.eval(`return select("#", ${list}.HeaderContainer:GetChildren())`), "no header buttons before the game lays the columns out").toBe(0);
   addon.eval(`${list}:UpdateTableBuilderLayout() ${list}:UpdateTableBuilderLayout()`);
-  expect(addon.eval(`local h = ${list}.HeaderContainer:GetChildren() return { __button(h), h.Arrow.__alpha }`), "the header button is a theme button that keeps its sort arrow").toEqual([true, 1]);
+  expect(addon.eval(`local h = ${list}.HeaderContainer:GetChildren() return { __button(h), h.Arrow.__alpha }`), "the header button is a theme button that keeps its sort arrow").toEqual([true, 0]);
   expect(addon.eval("return #ns.errors"), "no errors").toBe(0);
 });
 it("R3.5 the auction house panels: category rows are theme rows, lit with the game's selection and put right after each set-up", () => {

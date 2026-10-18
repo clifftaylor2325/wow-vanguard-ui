@@ -19,6 +19,7 @@ local ADDON, ns = ...
 local vgCorner = ns.FrameState("vgCorner")
 local vgDurability = ns.FrameState("vgDurability")
 local vgHooked = ns.FrameState("vgHooked")
+local vgDropArrow = ns.FrameState("vgDropArrow")
 local vgLootRows = ns.FrameState("vgLootRows")
 local vgMenuSkinned = ns.FrameState("vgMenuSkinned")
 local vgMoneyBox = ns.FrameState("vgMoneyBox")
@@ -401,11 +402,24 @@ function GW.PadMoneyLine(plate, well, above)
   line:SetPoint("RIGHT", well, "RIGHT", -T.SPACE.gap, 0)
 end
 
--- A dropdown button (the game's DropdownButton) as a theme button that keeps its arrow.
+-- A theme down arrow (made once) over the game's yellow-square arrow `art` on `button`, which is faded.
+function GW.DropArrow(button, art)
+  if type(art) ~= "table" or not art.SetAlpha then return end
+  art:SetAlpha(0)
+  if not vgDropArrow[button] then
+    local glyph = T.Snap(button:CreateTexture(nil, "OVERLAY"))
+    glyph:SetTexture(T.Icon("Down"))
+    T.PixelSize(glyph, T.ARROW.glyph, T.ARROW.glyph, true)
+    glyph:SetPoint("CENTER", art, "CENTER")
+    vgDropArrow[button] = T.Tint(glyph, T.ARROW.color)
+  end
+end
+
+-- A dropdown button (the game's DropdownButton) as a theme button with a theme arrow in place of the game's.
 function GW.SkinDropdown(dropdown)
   if type(dropdown) ~= "table" or not dropdown.CreateTexture then return end
   T.Button(dropdown)
-  GW.ShowTexture(dropdown.Arrow)
+  GW.DropArrow(dropdown, dropdown.Arrow)
 end
 
 -- A dropdown button as a theme button with the game's gold arrow box faded and a theme chevron (made once) in its place.

@@ -107,13 +107,13 @@ local function overflowGlyph(button)
 end
 
 -- One nav bar button (home, the overflow, a crumb): flat, its label in the text colour, and its dropdown arrow (the
--- MenuArrowButton, whose Art is the arrow) a theme button that keeps it.
+-- MenuArrowButton, whose Art is the arrow) a theme button with a theme arrow.
 local function skinCrumb(button)
   skinFlatButton(button)
   if not isFrame(button) then return end
   GW.SkinText(button.text, "label", "text")
   GW.SkinGlyph(button.MenuArrowButton)
-  GW.ShowTexture(GW.Part(button, "MenuArrowButton.Art"))
+  if type(button.MenuArrowButton) == "table" then GW.DropArrow(button.MenuArrowButton, GW.Part(button, "MenuArrowButton.Art")) end
 end
 
 -- The nav bar's buttons: home, overflow, and every crumb it holds now.
@@ -1011,15 +1011,30 @@ local function skinCalendarTexts()
   GW.SkinText(_G.CalendarYearName, "small", "text2")
 end
 
+-- A month paging button as a theme arrow: previous points left, next points right.
+local function skinMonthArrow(button)
+  if not isFrame(button) then return end
+  T.ArrowButton(button, button == _G.CalendarPrevMonthButton and "left" or "right")
+end
+
+-- Today's cell: the game's ornate frame art faded and a one-pixel accent outline in its place (the game
+-- moves this frame onto the day, so the outline follows it).
+local function skinToday(today)
+  if not isFrame(today) then return end
+  T.FadeRegions(today)
+  T.Panel(today, { accent = true, noBg = true, noSheen = true })
+end
+
 -- The calendar window: every texture of its frame faded but the two it keeps (see GW.CALENDAR_KEEP), a panel with a
--- shadow, the close button with the filter button clear of it, the month buttons as theme buttons keeping their arrows,
+-- shadow, the close button with the filter button clear of it, the month buttons as theme arrows, today's cell as an accent outline,
 -- the filter and class buttons, the weekday and year texts, and the day grid as inset panels.
 function GW.SkinCalendar(frame)
   T.FadeRegions(frame, namedSet(GW.CALENDAR_KEEP))
   T.Panel(frame, { shadow = true })
   GW.DressClose(frame, _G.CalendarCloseButton)
   GW.BesideClose(_G.CalendarFilterButton or frame.FilterButton, _G.CalendarCloseButton)
-  for _, name in ipairs(GW.CALENDAR_MONTH_BUTTONS) do glyphButton(_G[name]) end
+  for _, name in ipairs(GW.CALENDAR_MONTH_BUTTONS) do skinMonthArrow(_G[name]) end
+  skinToday(_G.CalendarTodayFrame)
   skinCalendarStrip(frame)
   skinCalendarTexts()
   for i = 1, GW.CALENDAR_DAYS do skinDay(_G["CalendarDayButton" .. i]) end
