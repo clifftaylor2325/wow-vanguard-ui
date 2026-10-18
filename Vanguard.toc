@@ -133,6 +133,7 @@ Modules/QuestLog.lua
 Modules/QuestLogView.lua
 Modules/QuestGuide.lua
 Modules/QuestGuideMap.lua
+Modules/QuestArrow.lua
 Modules/Windows.lua
 Modules/WindowsSocial.lua
 Modules/WindowsTown.lua

@@ -119,9 +119,9 @@ function raidRect(addon, spot, n, sw, sh) {
 // hold a boss mod's bars only during boss fights, and are empty otherwise).
 const FLOATING = new Set(["questlog", "lossofcontrol", "talkinghead", "prepcard", "chatwatch", "bossbars", "bossbarssoon"]);
 // The quest dialog (at its greatest height) must clear the cluster around your character
-// in the centered layouts; it may cover the group frames above it while you talk to an NPC.
+// in the centered layouts; it may cover the group frames above it, and the quest arrow on a small screen, while you talk to an NPC.
 // Like the game's has no cluster there (your frames are at the top left), so it isn't checked there.
-const DIALOG_MAY_COVER = new Set(["raid", "maintanks", "partyextras"]);
+const DIALOG_MAY_COVER = new Set(["raid", "maintanks", "partyextras", "questarrow"]);
 // Whether a pair is the quest dialog over a group frame.
 const dialogMayCover = (a, c) => (a === "questdialog" && DIALOG_MAY_COVER.has(c)) || (c === "questdialog" && DIALOG_MAY_COVER.has(a));
 // Parts that show only with some group sizes [fewest, most]: main tanks in a raid, party pets and targets in a party.

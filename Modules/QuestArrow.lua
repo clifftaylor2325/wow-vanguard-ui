@@ -1,0 +1,213 @@
+-- The quest arrow: a small movable arrow on screen that turns toward the nearest unfinished
+-- objective among the quests you watch, with the quest's title and the distance under it. A finished
+-- quest counts as nearer than it is, so a turn-in wins over an objective close by. Shift-click on a
+-- quest in the tracker (Modules/QuestGuide.lua) pins the arrow to it instead; with "Follow the
+-- nearest quest" off, only that pinned quest (or the game's super-tracked one) is followed.
+--
+-- Everything comes from the client: the quest's next waypoint or its spot on the map you're on
+-- (QuestGuide.Target), the distance the client reports for the quest, your map position and facing.
+-- A spot on another map, or a value the client won't give, shows "Not in this zone" or "No
+-- direction" instead of a guess. Nothing here is protected, so it updates in combat too.
+
+local ADDON, ns = ...
+
+local T = ns.Theme
+
+local QA = ns.Module("QuestArrow", { defaults = { show = true, auto = true } })
+ns.QuestArrow = QA
+
+ns.Options.MODULE_INFO.QuestArrow = { "Quest arrow", "A movable arrow on screen that turns toward the nearest unfinished quest objective, with its distance." }
+
+-- The frame's size; seconds between redraws of the turn and distance; seconds between picks of the quest.
+QA.WIDTH, QA.HEIGHT, QA.DRAW, QA.PICK = 190, 44, 0.1, 1
+-- A finished quest's distance (squared) is multiplied by this, so a turn-in outranks a near objective.
+QA.READY_BIAS = 0.25
+-- A challenger replaces the current quest only when its distance (squared) is under this share of the current one's.
+QA.SWITCH = 0.5
+
+-- Calls t[name](...) if the client has it.
+local function call(t, name, ...)
+  local fn = type(t) == "table" and t[name]
+  if type(fn) == "function" then return fn(...) end
+end
+
+-- The text if it is a plain, non-empty string; nil otherwise.
+local function plainText(text)
+  if ns.IsSecret(text) or type(text) ~= "string" or text == "" then return nil end
+  return text
+end
+
+-- Choosing the quest ------------------------------------------------------------------------------
+
+-- How near a quest counts (distance squared, less for a finished one); nil when it isn't in the log or the client won't say.
+local function rank(id)
+  local q = ns.GetModule("QuestTracker").Quest(id)
+  local d = q and ns.PlainNumber(call(C_QuestLog, "GetDistanceSqToQuest", id))
+  if not d then return nil end
+  return q.ready and d * QA.READY_BIAS or d
+end
+
+-- The watched quest with the lowest rank, its rank, and the rank of `current` (nil when it has none).
+local function nearest(current)
+  local best, bestRank, currentRank
+  for _, id in ipairs(ns.GetModule("QuestTracker").Watched()) do
+    local r = rank(id)
+    if r and (not bestRank or r < bestRank) then best, bestRank = id, r end
+    if r and id == current then currentRank = r end
+  end
+  return best, bestRank, currentRank
+end
+
+-- The quest to follow: the current one unless another is clearly nearer (so the arrow doesn't flap between two).
+function QA.Choose(current)
+  local best, bestRank, currentRank = nearest(current)
+  if currentRank and bestRank > currentRank * QA.SWITCH then return current end
+  return best
+end
+
+-- The quest the player pinned (Shift-click) or the game super-tracks, when it is still in the log.
+local function pinned()
+  local id = ns.QuestGuide.Followed()
+  return id and ns.GetModule("QuestTracker").Quest(id) and id or nil
+end
+
+-- Whether a quest is finished or gone from the log (the arrow moving on from it is worth a word).
+local function finished(id)
+  local q = ns.GetModule("QuestTracker").Quest(id)
+  return not q or q.ready
+end
+
+-- The quest title for the arrow, or "Quest".
+local function titleOf(id)
+  return plainText(call(C_QuestLog, "GetTitleForQuestID", id)) or "Quest"
+end
+
+-- Picks the quest and its spot (map, x, y), says so when it moved on from a finished one, and redraws.
+function QA.Pick()
+  if not QA.frame then return end
+  local old = QA.current
+  QA.current = (QA.settings.auto and (ns.QuestGuide.pointed and pinned() or QA.Choose(old))) or pinned()
+  QA.target = QA.current and { ns.QuestGuide.Target(QA.current) } or nil
+  if old and QA.current and old ~= QA.current and finished(old) and not ns.InCombat() then ns.Chat("Arrow: " .. titleOf(QA.current) .. ".") end
+  QA.Draw()
+end
+
+-- Turning and distance -----------------------------------------------------------------------------
+
+-- Your spot on a map as x, y (0 to 1); nil when the client won't say.
+local function playerSpot(mapID)
+  local pos = call(C_Map, "GetPlayerMapPosition", mapID, "player")
+  if type(pos) ~= "table" or type(pos.GetXY) ~= "function" then return nil end
+  local x, y = pos:GetXY()
+  x, y = ns.PlainNumber(x), ns.PlainNumber(y)
+  if x and y then return x, y end
+end
+
+-- The map's size in yards as width, height; 1, 1 when the client doesn't give it (the turn is then a little off on a wide map).
+local function worldSize(mapID)
+  local w, h = call(C_Map, "GetMapWorldSize", mapID)
+  w, h = ns.PlainNumber(w), ns.PlainNumber(h)
+  if w and h and w > 0 and h > 0 then return w, h end
+  return 1, 1
+end
+
+-- Radians to turn the arrow, from straight up (up means the spot is ahead of you); nil when the client won't say your spot or facing.
+function QA.Turn(mapID, x, y)
+  local px, py = playerSpot(mapID)
+  local facing = ns.PlainNumber(call(_G, "GetPlayerFacing"))
+  if not (px and facing) then return nil end
+  local w, h = worldSize(mapID)
+  return math.atan2(-(x - px) * w, -(y - py) * h) - facing
+end
+
+-- Yards to the quest, from the distance the client reports; nil when it won't say.
+local function yards(id)
+  local sq = ns.PlainNumber(call(C_QuestLog, "GetDistanceSqToQuest", id))
+  return sq and math.floor(math.sqrt(sq) + 0.5)
+end
+
+-- The distance line: "230 yd", or why there is none.
+local function distanceText(id, turn)
+  local d = yards(id)
+  if not d then return "No direction" end
+  return turn and (d .. " yd") or (d .. " yd, no direction")
+end
+
+-- The arrow's turn for the quest's spot: nil when the spot is on another map or the client won't say.
+local function turnFor(target)
+  local here = ns.PlainNumber(call(C_Map, "GetBestMapForUnit", "player"))
+  if not (target and target[1] and here == target[1]) then return nil end
+  return QA.Turn(target[1], target[2], target[3])
+end
+
+-- Redraws the arrow's turn, title and distance for the current quest; hides the frame with none.
+function QA.Draw()
+  local f, id = QA.frame, QA.current
+  if not (f and QA.settings.show and id) then return f and f:Hide() end
+  local turn = turnFor(QA.target)
+  f.title:SetText(titleOf(id))
+  f.dist:SetText(QA.target and QA.target[1] and distanceText(id, turn) or "No spot from the game")
+  f.arrow:SetRotation(turn or 0)
+  f.arrow:SetAlpha(turn and 1 or 0.35)
+  f:Show()
+end
+
+-- The frame ---------------------------------------------------------------------------------------
+
+-- The arrow and its two lines of text on the frame.
+local function fill(f)
+  f.arrow = f:CreateTexture(nil, "ARTWORK")
+  f.arrow:SetSize(28, 28)
+  f.arrow:SetPoint("LEFT", f, "LEFT", 8, 0)
+  f.arrow:SetTexture(T.Icon("QuestArrow"))
+  T.Tint(f.arrow, "accent")
+  f.title = T.Text(f:CreateFontString(nil, "OVERLAY"), "small", "text")
+  f.title:SetPoint("TOPLEFT", f.arrow, "TOPRIGHT", 8, -2)
+  f.title:SetPoint("RIGHT", f, "RIGHT", -8, 0)
+  f.title:SetJustifyH("LEFT")
+end
+
+-- The movable frame (/vg unlock), hidden until there is a quest to point at.
+local function build()
+  local f = CreateFrame("Frame", "Vanguard_QuestArrow", UIParent)
+  T.Panel(f, { shadow = true })
+  f:SetSize(QA.WIDTH, QA.HEIGHT)
+  fill(f)
+  f.dist = T.Text(f:CreateFontString(nil, "OVERLAY"), "small", "text2")
+  f.dist:SetPoint("BOTTOMLEFT", f.arrow, "BOTTOMRIGHT", 8, 2)
+  f:Hide()
+  QA.frame = f
+  ns.Mover(f, "questarrow", "Quest arrow", { "TOP", "TOP", 300, -150 })
+end
+
+-- Options ----------------------------------------------------------------------------------------
+
+-- get/set for one of the module's settings (also while it is off), after() running on each change, and the default.
+local function setting(key, after)
+  return function() return ns.Settings("QuestArrow", QA.defaults)[key] end,
+    function(v) ns.Settings("QuestArrow", QA.defaults)[key] = v if QA.settings then after() end end, QA.defaults[key]
+end
+
+-- The arrow's card on the Quests page.
+function QA.Rows()
+  return {
+    { "header", "Quest arrow" },
+    { "text", "An arrow on screen that turns toward the nearest unfinished objective of the quests you watch. Move it with /vg unlock; Shift-click a quest in the tracker to pin the arrow to it." },
+    { "check", "Show the quest arrow", setting("show", QA.Draw) },
+    { "check", "Follow the nearest quest (off: only the one you pinned)", setting("auto", QA.Pick) },
+  }
+end
+ns.Options.AddRows("quests", QA.Rows)
+
+-- Module entry point (Core/Modules.lua): the frame, a pick whenever the log or the zone changes, a pick
+-- each second as you move, and the redraw of the turn a few times a second.
+function QA.Enable(settings)
+  QA.settings = settings
+  build()
+  for _, event in ipairs({ "QUEST_LOG_UPDATE", "QUEST_WATCH_LIST_CHANGED", "SUPER_TRACKING_CHANGED", "ZONE_CHANGED_NEW_AREA", "QUEST_POI_UPDATE" }) do
+    ns.On(event, function() ns.Soon("quest arrow", QA.Pick) end)
+  end
+  ns.Every("quest arrow pick", QA.PICK, QA.Pick)
+  ns.Every("quest arrow", QA.DRAW, QA.Draw)
+  QA.Pick()
+end
