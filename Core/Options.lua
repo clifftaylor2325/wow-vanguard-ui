@@ -186,11 +186,13 @@ local function lookTextRows()
   }
 end
 
--- General, part one: accent, color assist, font, text size, variant, ornaments, scale and theme reset.
+-- General, part one: accent, safer colours, font, text size, variant, ornaments, scale and theme reset.
 local function lookRows()
   local rows = { { "header", "Look" }, { "preview" }, { "swatches" },
-    check("Color assist (reload)", themeSetting("colorAssist")),
-    { "text", "Friendly blue, neutral yellow, hostile vermilion.", "note" } }
+    check("Safer colours (reload)", themeSetting("colorAssist")),
+    { "text", "Friendly blue, neutral yellow, hostile vermilion, and colours for Magic, Curse, Disease and Poison that stay apart.", "note" },
+    check("Follow the game's colour-blind mode (reload)", themeSetting("colorAssistGame")),
+    { "text", "Turns Safer colours on while the game's own colour-blind mode is on.", "note" } }
   for _, row in ipairs(lookTextRows()) do rows[#rows + 1] = row end
   rows[#rows + 1] = check("Pixel-perfect scale", function() return T.Settings().pixelScale end,
     function(v) T.SetPixelScale(v); if not v then O.NeedReload() end end)

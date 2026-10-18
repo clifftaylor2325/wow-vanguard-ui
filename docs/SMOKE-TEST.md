@@ -284,11 +284,18 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Expect: on the calendar the Filters button ends a small gap left of the close button's tile, level with it, not touching it. The character pane's arrow (beside its close button) and the group finder's gear sit on the same faint slate tile as the close button, their icons inside it.
 - If it fails, paste: a zoomed screenshot of the window's top-right corner and `/vg errors`.
 
-### 5.4 Color assist and state glyphs
+### 5.4 Safer colours and state glyphs
 
-- Do: target a hostile mob, then a neutral one, then a friendly NPC. Tick Color assist under `/vg` → General → Look and reload, then target the same three. On a hunter, look at the pet frame's top-right corner.
+- Do: target a hostile mob, then a neutral one, then a friendly NPC. Tick Safer colours under `/vg` → General → Look and reload, then target the same three. On a hunter, look at the pet frame's top-right corner.
 - Expect: before, red, yellow and green health bars; after, vermilion, yellow and blue. The pet's mood is a check (happy), a triangle (content) or a cross (unhappy), in green, amber or red.
+
 - If it fails, paste: screenshots and `/vg errors`.
+
+### 5.4a Safer colours and the colour-blind filters
+
+- Do: turn on the game's own colour-blind mode (Options → Accessibility) and reload with Safer colours unticked; target a hostile, a neutral and a friendly unit; in a group look at debuffs of each type; then pick Protanopia, Deuteranopia and Tritanopia in the game's filter list and look again; finally untick "Follow the game's colour-blind mode" and reload. If the game has no such switch, or nothing follows it, note what Accessibility offers: the CVar name `colorblindMode` is unchecked on Forever.
+- Expect: with the game's mode on, the bars are vermilion, yellow and blue and the Magic, Curse, Disease and Poison borders are blue, pink, amber and mint; under each filter the three bars and the four types can still be told apart; with the follow switch off the bars are red, yellow and green again.
+- If it fails, paste: screenshots under each filter and `/vg errors`.
 
 ## 6. Party and raid
 
@@ -1502,7 +1509,7 @@ These steps check what the UI consistency pass changed (docs/THEME.md, Window ch
 ### 32.10 General captions
 
 - Do: open `/vg` → General and read the captions under Look.
-- Expect: `Color assist (reload)`, `Font`, `Text size`, `Faction look`, `Theme variant`, `Corners`, `Window ornaments` and `Pixel-perfect scale`, each a noun with nothing after it. Two small grey notes sit under their rows: `Friendly blue, neutral yellow, hostile vermilion.` under Color assist and `A brass rule or corners on large windows.` under Window ornaments. In `/vg whatsnew`, a line about Corners or Theme variant still opens General on its row.
+- Expect: `Safer colours (reload)`, `Font`, `Text size`, `Faction look`, `Theme variant`, `Corners`, `Window ornaments` and `Pixel-perfect scale`, each a noun with nothing after it. Two small grey notes sit under their rows: `Friendly blue, neutral yellow, hostile vermilion, and colours for Magic, Curse, Disease and Poison that stay apart.` under Safer colours and `A brass rule or corners on large windows.` under Window ornaments. In `/vg whatsnew`, a line about Corners or Theme variant still opens General on its row.
 - If it fails, paste: a screenshot of the Look card and `/vg errors`.
 
 ### 32.11 Quest line marks
