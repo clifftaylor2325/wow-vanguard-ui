@@ -44,6 +44,8 @@ local HELP = {
   "lfg [probe]          open or close the group board: looking-for-more and looking-for-group posts from chat by dungeon, role and level; probe says what chat it has heard",
   "plates [enemies on|off] how many nameplates Vanguard drew and the game's enemy plate setting; enemies on|off sets it (out of combat)",
   "stock [<item> <n>]   items to keep in your bags; a merchant tops them up (0 removes, clear empties)",
+  "junk [<item> | remove <item> | clear]   your sell list: items a merchant offers to buy from you with your grays (off until switched on under Merchants and errors)",
+  "sell <item>          at a merchant: sell every stack of an item in your bags, after a question",
   "craft [add [n]|next|stock|cd|top|done|clear]   the craft queue: queue the recipe on display, open the next one, raise Keep stocked to fit, show cooldowns, rank recipes (off until switched on)",
   "mail [words]|preset [add <name> <character> [words]|remove <name>]|send <name>   search the inbox; presets for sending items to your alts (off until switched on)",
   "rolls [clear]        the group's /roll results this session, newest first; clear forgets them",
@@ -609,6 +611,15 @@ local function stockCommand(rest)
   ER.StockCommand(rest)
 end
 
+-- /vg junk and /vg sell: the Merchant module's sell list and sell-all, which exist only while it is on.
+local function merchantCommand(method)
+  return function(rest)
+    local MC = ns.GetModule("Merchant")
+    if not MC.settings then return chat("Vanguard's Merchant helpers are off (/vg > Modules).") end
+    MC[method](rest)
+  end
+end
+
 local COMMANDS = {
   -- /vg help
   help = function() printLines(HELP) end,
@@ -655,6 +666,8 @@ local COMMANDS = {
   quests = function() local QL = ns.GetModule("QuestLog") if QL.frame then QL.Toggle() else ns.Chat("Vanguard's quest log is off (/vg > Quests).") end end,
   plates = function(rest) ns.GetModule("Nameplates").Command(rest) end,
   stock = stockCommand,
+  junk = merchantCommand("JunkCommand"),
+  sell = merchantCommand("SellCommand"),
   craft = function(rest) ns.GetModule("CraftQueue").Command(rest) end,
   mail = function(rest) ns.GetModule("MailTools").Command(rest) end,
   rolls = function(rest) ns.GetModule("Rolls").Command(rest) end,

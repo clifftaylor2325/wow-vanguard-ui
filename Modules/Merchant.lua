@@ -2,6 +2,8 @@
 --   * repair everything with your own gold when you open a merchant who repairs;
 --   * sell your gray items (the server limits how fast items sell, so what's
 --     left is tried again a few times);
+--   * sell the items on your own sell list, ask first, and buy a stack or the most you can in one click
+--     (off until switched on; Modules/MerchantBulk.lua);
 --   * drop the error messages that only repeat what the action bar already
 --     shows (ability not ready, not enough rage or energy, no target...).
 --     Errors you can act on (out of range, not enough mana, bags full) stay,
@@ -13,7 +15,7 @@
 local ADDON, ns = ...
 
 local T = ns.Theme
-local MC = ns.Module("Merchant", { defaults = { repair = true, junk = true, errors = true } })
+local MC = ns.Module("Merchant", { defaults = { repair = true, junk = true, errors = true, listSell = false, junkList = {}, bulkBuy = true } })
 
 MC.RETRIES, MC.RETRY_AFTER = 3, 0.3
 -- The client's own names for the noisy errors (their text is in the player's language).
@@ -78,8 +80,15 @@ end
 
 -- A merchant opened: repair and sell, as switched on.
 local function onMerchant()
+  MC.SetOpen(true)
   if MC.settings.repair then MC.Repair() end
   if MC.settings.junk then MC.Sell() end
+  MC.OfferList()
+end
+
+-- The merchant closed.
+local function onMerchantClosed()
+  MC.SetOpen(false)
 end
 
 -- Errors ------------------------------------------------------------------------------------
@@ -168,6 +177,8 @@ ns.On("ADDON_LOADED", onLoaded)
 function MC.Enable(settings)
   MC.settings = settings
   ns.On("MERCHANT_SHOW", onMerchant)
+  ns.On("MERCHANT_CLOSED", onMerchantClosed)
+  MC.HookSplit()
   if settings.errors then filterErrors() end
   MC.ThemeFonts()
   MC.ThemeCombatText()

@@ -112,6 +112,7 @@ Modules/InfoStrip.lua
 Modules/BrokerStrip.lua
 Modules/MenuStrip.lua
 Modules/Merchant.lua
+Modules/MerchantBulk.lua
 Modules/Errands.lua
 Modules/ErrandsBoats.lua
 Modules/InstancePrep.lua
