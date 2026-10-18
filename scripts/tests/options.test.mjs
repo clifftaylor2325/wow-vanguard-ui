@@ -787,6 +787,19 @@ it("controls: inline controls are T.CONTROL_H tall and buttons T.BUTTON_H, 120 w
   expect(sizes.segment[2], "a segment's label is the label role (12), like every other button's").toBe(12);
 });
 
+it("controls: a segment row too narrow for its caption packs its segments tighter and keeps them clear of the caption; a wide row keeps the usual widths", () => {
+  const addon = loggedIn();
+  // The widest segment, and the room the segments take plus the caption, for a row of that width (units).
+  const measure = (width) => addon.eval(`local r = ns.Widgets.Choice(UIParent, "Undercut by", { { "c", "1c" }, { "s", "1s" }, { "p", "1%" }, { "m", "Match" } }, function() return "c" end, print, ${width})
+    local used = 8 for _, s in ipairs(r.segments) do used = used + s:GetWidth() + ns.Theme.SPACE.tight end
+    return { r.segments[1]:GetWidth(), used + r.label:GetStringWidth() + 8 }`);
+  const [wideSegment] = measure(400);
+  const [narrowSegment, narrowTotal] = measure(240);
+  expect(wideSegment, "room to spare: the usual 44 minimum").toBeGreaterThanOrEqual(44);
+  expect(narrowSegment, "cramped: below the minimum").toBeLessThan(44);
+  expect(narrowTotal, "and the caption and the segments fit the row").toBeLessThanOrEqual(240);
+});
+
 it("controls: a primary's accent fill and a selected segment's follow rounded corners, in seven parts; only the chosen segment shows one", () => {
   const addon = loggedIn();
   // How many of a fill's textures there are and how many show.
