@@ -106,6 +106,7 @@ Modules/Chat.lua
 Modules/ChatExtras.lua
 Modules/ChatWatch.lua
 Modules/ChatFilter.lua
+Modules/ChatHistory.lua
 Modules/ChatBubbles.lua
 Modules/Bags.lua
 Modules/BagSections.lua
