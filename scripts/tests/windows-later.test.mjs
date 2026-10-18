@@ -713,7 +713,7 @@ const AH_ENV = `${READERS_ENV}
       out[#out + 1] = { tile = __ahTile(form), item = __ahTile(form.ItemDisplay), head = form.CreateAuctionLabel:GetText() == "CREATE AUCTION" and form.CreateAuctionTabLeft.__alpha == 0,
         labels = __ahLit(form.QuantityInput.Label) and __ahLit(form.SecondaryPriceInput.LabelTitle) and __ahLit(form.Duration.Label),
         quantity = __faded(form.QuantityInput.InputBox) and __button(form.QuantityInput.MaxButton), boxes = boxes,
-        duration = __button(form.Duration.Dropdown) and form.Duration.Dropdown.Arrow.__alpha == 1,
+        duration = __button(form.Duration.Dropdown) and form.Duration.Dropdown.Arrow.__alpha == 0,
         money = __ahThemed(form.Deposit.MoneyDisplayFrame) and __ahThemed(form.TotalPrice.MoneyDisplayFrame) and __ahThemed(form.UnitPrice.MoneyDisplayFrame),
         buttons = __button(form.PostButton) and __button(form.BuyButton), check = ns.Theme.CheckParts(form.BuyoutModeCheckButton) ~= nil and __ahLit(form.BuyoutModeCheckButton.Text) }
     end
@@ -778,7 +778,8 @@ it("R3.6 the auction house panels: one part that fails is named and the rest are
   expect(addon.eval("return { __ahTile(AuctionHouseFrame.ItemSellList), __ahTile(AuctionHouseFrame.AuctionsFrame.AllAuctionsList), __ahTile(AuctionHouseFrame.AuctionsFrame.SummaryList) }"), "lists after it are dressed").toEqual([true, true, true]);
   expect(addon.eval("return __ahForms(AuctionHouseFrame)").every((form) => form.tile && form.buttons && form.check), "and so are the forms").toBe(true);
   expect(addon.eval("local _, rel, rp, x, y = AuctionHouseFrame.SearchBar.FilterButton.Text:GetPoint() return { rp, x, y }"), "the Filter label sits above the bottom edge").toEqual(["CENTER", 0, 2]);
-  expect(addon.eval("local p, rel, rp, x = AuctionHouseFrame.MoneyFrameBorder.MoneyFrame:GetPoint() return { p, rel == AuctionHouseFrame.MoneyFrameBorder, x }"), "the money line is set in from the plate's edge").toEqual(["RIGHT", true, -8]);
+  expect(addon.eval("local p, rel, rp, x = AuctionHouseFrame.SearchBar.FilterButton:GetPoint() return { p, rel == AuctionHouseFrame.SearchBar.SearchButton, rp, x }"), "the Filter button sits just left of Search").toEqual(["RIGHT", true, "LEFT", -4]);
+  expect(addon.eval("local p, rel, rp, x = AuctionHouseFrame.MoneyFrameBorder.MoneyFrame:GetPoint() return { p, rel == AuctionHouseFrame.MoneyFrameInset, x }"), "the money line is centred in the well, set in from its edge").toEqual(["RIGHT", true, -8]);
   expect(addon.eval("return __tabLabel.__textColor[1] ~= 1 and (__tabLabel.__textColor[1] == (ns.Theme.RGB('text')) or __tabLabel.__textColor[1] == (ns.Theme.RGB('text2')))"), "a tab's label is in the text colours, not gold").toBe(true);
 });
 it("R3.5 the auction house panels: the money lines take the theme font back after the game sets its own", () => {

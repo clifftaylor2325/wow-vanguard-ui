@@ -617,7 +617,7 @@ it("options: the pages, their nav order and each page's row count stay as they w
   // Adding or removing a row (or a module, which adds a row under Modules) changes these counts on purpose.
   expect(pages, "the page list and each page's row count (a new row is one more on its page)").toEqual([
     "general|General|10|37", "modules|Modules|20|68", "unitframes|Unit frames|30|25", "raid|Raid frames|40|22",
-    "actionbars|Action bars|60|73", "quests|Quests|70|19", "bars|Bars and bags|80|17", "map|Map|81|30", "chat|Chat|82|31", "windows|Game windows|83|30", "tools|Combat tools|84|38", "town|Town and gear|85|49", "profiles|Profiles|90|22",
+    "actionbars|Action bars|60|73", "quests|Quests|70|19", "bars|Bars and bags|80|17", "map|Map|81|30", "chat|Chat|82|32", "windows|Game windows|83|30", "tools|Combat tools|84|38", "town|Town and gear|85|49", "profiles|Profiles|90|22",
     "feedback|Feedback|100|7", "healing|Healing|45|44", "talents|Talents|47|7", "nameplates|Nameplates|65|15",
     "situations|Situations|86|17", "clickcast|Click casting|46|11",
   ]);
@@ -785,6 +785,19 @@ it("controls: inline controls are T.CONTROL_H tall and buttons T.BUTTON_H, 120 w
   expect(sizes.wide.slice(0, 2), "a width given wins").toEqual([buttonH, 60]);
   expect([sizes.input[1], sizes.search[1], sizes.dropdown[1]], "the inline controls keep their own default widths").toEqual([220, 200, 200]);
   expect(sizes.segment[2], "a segment's label is the label role (12), like every other button's").toBe(12);
+});
+
+it("controls: a segment row too narrow for its caption packs its segments tighter and keeps them clear of the caption; a wide row keeps the usual widths", () => {
+  const addon = loggedIn();
+  // The widest segment, and the room the segments take plus the caption, for a row of that width (units).
+  const measure = (width) => addon.eval(`local r = ns.Widgets.Choice(UIParent, "Undercut by", { { "c", "1c" }, { "s", "1s" }, { "p", "1%" }, { "m", "Match" } }, function() return "c" end, print, ${width})
+    local used = 8 for _, s in ipairs(r.segments) do used = used + s:GetWidth() + ns.Theme.SPACE.tight end
+    return { r.segments[1]:GetWidth(), used + r.label:GetStringWidth() + 8 }`);
+  const [wideSegment] = measure(400);
+  const [narrowSegment, narrowTotal] = measure(240);
+  expect(wideSegment, "room to spare: the usual 44 minimum").toBeGreaterThanOrEqual(44);
+  expect(narrowSegment, "cramped: below the minimum").toBeLessThan(44);
+  expect(narrowTotal, "and the caption and the segments fit the row").toBeLessThanOrEqual(240);
 });
 
 it("controls: a primary's accent fill and a selected segment's follow rounded corners, in seven parts; only the chosen segment shows one", () => {

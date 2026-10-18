@@ -23,6 +23,7 @@ local vgLootRows = ns.FrameState("vgLootRows")
 local vgMenuSkinned = ns.FrameState("vgMenuSkinned")
 local vgMoneyBox = ns.FrameState("vgMoneyBox")
 local vgPadded = ns.FrameState("vgPadded")
+local vgChevron = ns.FrameState("vgChevron")
 local vgRowsWatched = ns.FrameState("vgRowsWatched")
 local vgRowsLater = ns.FrameState("vgRowsLater")
 local vgTimerHook = ns.FrameState("vgTimerHook")
@@ -379,14 +380,14 @@ function GW.LiftLabel(button)
   label:SetPoint("CENTER", button, "CENTER", 0, T.SPACE.tight / 2)
 end
 
--- The window's money line set in from its plate's right edge by T.SPACE.gap (the game puts it 6 units in, where the
--- figures touch the edge), once, and centred on the plate.
-function GW.PadMoneyLine(plate)
+-- The window's money line centred in the dark well behind it and set in from the well's right edge by T.SPACE.gap,
+-- once (the game anchors it to its plate, which sits low in the well and puts the figures against its edge).
+function GW.PadMoneyLine(plate, well)
   local line = type(plate) == "table" and plate.MoneyFrame
   if type(line) ~= "table" or not line.SetPoint or vgPadded[plate] then return end
   vgPadded[plate] = true
   line:ClearAllPoints()
-  line:SetPoint("RIGHT", plate, "RIGHT", -T.SPACE.gap, 0)
+  line:SetPoint("RIGHT", type(well) == "table" and well or plate, "RIGHT", -T.SPACE.gap, 0)
 end
 
 -- A dropdown button (the game's DropdownButton) as a theme button that keeps its arrow.
@@ -394,6 +395,25 @@ function GW.SkinDropdown(dropdown)
   if type(dropdown) ~= "table" or not dropdown.CreateTexture then return end
   T.Button(dropdown)
   GW.ShowTexture(dropdown.Arrow)
+end
+
+-- A dropdown button as a theme button with the game's gold arrow box faded and a theme chevron (made once) in its place.
+function GW.SkinDropdownChevron(dropdown)
+  GW.SkinDropdown(dropdown)
+  if type(dropdown) ~= "table" or not dropdown.CreateTexture then return end
+  GW.FadeFrame(dropdown.Arrow)
+  if vgChevron[dropdown] then return end
+  vgChevron[dropdown] = ns.Widgets.IconTexture(dropdown, "Down", 12, "text2")
+  vgChevron[dropdown]:SetPoint("RIGHT", -T.SPACE.gap, 0)
+end
+
+-- A button lined up with another on the same row: its height the other's and its right edge T.SPACE.tight left of
+-- the other's left edge; anything that is not a pair of frames is skipped.
+function GW.AlignBeside(button, other)
+  if type(button) ~= "table" or type(other) ~= "table" or not button.SetHeight or not other.GetHeight then return end
+  button:SetHeight(other:GetHeight())
+  button:ClearAllPoints()
+  button:SetPoint("RIGHT", other, "LEFT", -T.SPACE.tight, 0)
 end
 
 -- A search box (SearchBoxNineSliceTemplate) as T.EditBox, its magnifier shown again, a gap in from the left edge
@@ -1689,16 +1709,17 @@ local function skinSearchBar(bar)
   GW.SkinSearch(bar.SearchBox)
   GW.SkinButton(bar.SearchButton)
   GW.SkinDropdown(bar.FilterButton)
+  GW.AlignBeside(bar.FilterButton, bar.SearchButton)
   GW.LiftLabel(bar.FilterButton)
   GW.SkinIconDropdown(bar.FavoritesSearchButton)
 end
 
--- The money line at the window's foot: the well behind it an inset, the gold-edged plate faded, the line set in from
--- the plate's edge and in the theme font.
+-- The money line at the window's foot: the well behind it an inset, the gold-edged plate faded, the line centred in the well
+-- and in the theme font.
 local function skinMoneyBar(frame)
   GW.InsetPanel(frame.MoneyFrameInset)
   GW.FadeArt(frame.MoneyFrameBorder)
-  GW.PadMoneyLine(frame.MoneyFrameBorder)
+  GW.PadMoneyLine(frame.MoneyFrameBorder, frame.MoneyFrameInset)
   GW.SkinMoneyDisplay(GW.Part(frame, "MoneyFrameBorder.MoneyFrame"))
 end
 
@@ -1711,7 +1732,7 @@ local function skinFormRow(row)
   GW.SkinEditBox(row.InputBox)
   GW.SkinButton(row.MaxButton)
   GW.SkinMoneyInput(row.MoneyInputFrame, GW.LARGE_MONEY_INPUTS, "Icon")
-  GW.SkinDropdown(row.Dropdown)
+  GW.SkinDropdownChevron(row.Dropdown)
   GW.SkinMoneyDisplay(row.MoneyDisplayFrame)
 end
 
