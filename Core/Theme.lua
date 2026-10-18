@@ -234,7 +234,8 @@ local DEFAULTS = {
   outline = "",
   pixelScale = false,
   -- Screen pixels per UI unit at pixel-perfect scale (a whole number; the Pixel-perfect screen preset sets it).
-  pixelMultiple = 1,
+  -- 0 picks one for the screen (T.AutoPixelMultiple), so the switch alone never makes a 4K screen tiny.
+  pixelMultiple = 0,
   -- Texel snapping for still textures (borders, fills, dividers, sheens); off until the in-game A/B test (#226).
   texelSnap = false,
   -- Shadows and glows as one nine-slice texture each; off until the in-game check (#236).
@@ -1549,7 +1550,7 @@ T.ALPHA = { opaque = 1, dialog = 0.98, overlay = 0.94, alert = 0.92, calm = 0.35
 T.ROW = { height = 28 }
 -- The chat backdrop (T.Backdrop): how far its edges fade out (units), and the strengths the Chat
 -- background setting offers.
-T.CHAT_BACKDROP = { feather = 14, levels = { { 0.45, "Light" }, { 0.7, "Medium" }, { 0.88, "Dark" } } }
+T.CHAT_BACKDROP = { feather = 20, levels = { { 0.55, "Light" }, { 0.75, "Medium" }, { 0.9, "Dark" } } }
 -- The one selected look (docs/THEME.md, "Materials and states"): an accent rail down a row's left edge,
 -- `rail` screen pixels wide, over a `fill` (a lighter fill, not an accent wash) that sits under the text.
 T.SELECT = { rail = 2, fill = "raisedHover" }
@@ -2915,10 +2916,17 @@ end
 
 -- Pixel-perfect scale ----------------------------------------------------------------
 
--- The pixel-perfect scale the settings pick: 768 / screen height times the whole
--- multiple (pixelMultiple, 1 unless set: 2 makes one UI unit two screen pixels).
+-- The whole multiple that keeps things no smaller than 1080p's: 1 up to about 1600 pixels tall, 2 at 4K.
+function T.AutoPixelMultiple(h)
+  return math.max(1, math.floor(h / 1080 + 0.25))
+end
+
+-- The pixel-perfect scale the settings pick: 768 / screen height times the whole multiple
+-- (pixelMultiple: 2 makes one UI unit two screen pixels; 0 or unset picks one for the screen).
 function T.PixelScale()
-  return T.PixelPerfectScale() * math.max(1, math.floor(T.Settings().pixelMultiple or 1))
+  local n = T.Settings().pixelMultiple or 0
+  if n == 0 then n = T.AutoPixelMultiple(screenHeight()) end
+  return T.PixelPerfectScale() * math.max(1, math.floor(n))
 end
 
 -- Sets UIParent to the pixel-perfect scale when that setting is on, out of
