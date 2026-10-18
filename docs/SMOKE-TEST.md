@@ -1215,6 +1215,12 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 - Expect: the money and items of the listed mails come in about three a second, with a chat line `Take all: N of N done.`; pay-on-delivery mail is left; Return all asks `Return N mail(s) to their senders?` and sends back only mail from players (the sale stays); closing the mailbox mid-run stops it with a count. [Needs in game: that TakeInboxItem for each attachment slot 1 to the item count empties a mail, and that ReturnInboxItem takes the inbox index.]
 - If it fails, paste: the chat lines and `/vg errors`.
 
+### 23.4 Alt overview
+
+- Do: log in on two characters of the same realm and side, type `/played` on one, then on either type `/vg alts` and `/vg alts <the other's name>`.
+- Expect: one line per character with its level, money, rested XP percent when it has some, and time played once `/played` was typed there; an `All together:` money line; the second command lists the other character's bags and bank, biggest stacks first, at most fifteen. [Needs in game: that TIME_PLAYED_MSG fires after /played and GetXPExhaustion answers.]
+- If it fails, paste: the chat lines and `/vg errors`.
+
 ## 24. Dungeon card
 
 

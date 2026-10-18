@@ -8,6 +8,9 @@
 -- is kept until the next visit. /vg inventory lists the characters and when
 -- each was last read; forget <name> and clear drop them.
 --
+-- Each record also keeps the character's level, money, rested XP and, after a /played, time played;
+-- /vg alts lists them for every character and, given a name, that character's items.
+--
 -- Written for WoW Forever: C_Container for bags (the key ring and reagent bag
 -- included), and C_Bank's bought tabs for the bank (Forever's bank holds bags).
 
@@ -78,9 +81,23 @@ function IV.BankBags()
   return out
 end
 
+-- Notes this character's level, money and rested XP (as a percent of a level) on its record.
+function IV.Vitals()
+  local mine = IV.Mine()
+  mine.level, mine.money = ns.PlainNumber(UnitLevel("player")), ns.PlainNumber(GetMoney())
+  local rested, max = ns.PlainNumber(GetXPExhaustion()), ns.PlainNumber(UnitXPMax("player"))
+  mine.rested = rested and max and max > 0 and math.floor(rested / max * 100) or nil
+end
+
+-- The game told the time played on this character (after /played): keep the total.
+function IV.OnPlayed(_, total)
+  IV.Mine().played = ns.PlainNumber(total)
+end
+
 -- Reads the bags now, and the bank too while it's open.
 function IV.Scan()
   IV.pending = false
+  IV.Vitals()
   local mine = IV.Mine()
   mine.bags, mine.updated = countIn(IV.BAGS), ns.AuctionPrices.Now()
   if IV.bankOpen then mine.bank = countIn(IV.BankBags()) end
@@ -190,11 +207,79 @@ function IV.Command(rest)
   for _, n in ipairs(list) do ns.Chat(readLine(n)) end
 end
 
+-- /vg alts -------------------------------------------------------------------------------------
+
+-- "3d 4h", or "5h" under a day, from seconds.
+local function span(seconds)
+  local days, hours = math.floor(seconds / 86400), math.floor(seconds % 86400 / 3600)
+  return days > 0 and string.format("%dd %dh", days, hours) or string.format("%dh", hours)
+end
+
+-- One character's overview line: "Alpha: level 12, 3g 4s 5c, 40% rested, played 3d 4h" (what is known).
+local function altLine(name, r)
+  local parts = { "level " .. (r.level or "?") }
+  if r.money then parts[#parts + 1] = ns.GetModule("InfoStrip").Money(r.money) end
+  if r.rested then parts[#parts + 1] = r.rested .. "% rested" end
+  if r.played then parts[#parts + 1] = "played " .. span(r.played) end
+  return name .. ": " .. table.concat(parts, ", ")
+end
+
+-- Every remembered character's overview line, and the money of all of them together.
+local function overview()
+  local total = 0
+  for _, name in ipairs(names()) do
+    local r = IV.Characters()[name]
+    if type(r) == "table" then
+      ns.Chat(altLine(name, r))
+      total = total + (r.money or 0)
+    end
+  end
+  ns.Chat("All together: " .. ns.GetModule("InfoStrip").Money(total))
+end
+
+-- An item's name, "item 123" until the client has it.
+local function itemName(id)
+  local name = C_Item and C_Item.GetItemInfo and C_Item.GetItemInfo(id)
+  return type(name) == "string" and name or ("item " .. id)
+end
+
+-- itemID -> count over a character's bags and bank together, and the item IDs biggest stack first.
+local function tally(r)
+  local totals, ids = {}, {}
+  for _, where in ipairs({ r.bags or {}, r.bank or {} }) do
+    for id, n in pairs(where) do
+      if not totals[id] then ids[#ids + 1] = id end
+      totals[id] = (totals[id] or 0) + n
+    end
+  end
+  table.sort(ids, function(a, b) return totals[a] ~= totals[b] and totals[a] > totals[b] or (totals[a] == totals[b] and a < b) end)
+  return totals, ids
+end
+
+-- One character's bags and bank, the biggest stacks first (at most 15 lines).
+local function contents(name, r)
+  local totals, ids = tally(r)
+  ns.Chat(string.format("%s carries %d kind(s) of item.", name, #ids))
+  for i = 1, math.min(#ids, 15) do ns.Chat(string.format("%d × %s", totals[ids[i]], itemName(ids[i]))) end
+end
+
+-- /vg alts [name]: every character's level, money, rested XP and time played, or one character's items.
+function IV.AltsCommand(rest)
+  rest = (rest or ""):match("^%s*(.-)%s*$")
+  if rest == "" then return overview() end
+  for name, r in pairs(IV.Characters()) do
+    if type(r) == "table" and name:lower() == rest:lower() then return contents(name, r) end
+  end
+  ns.Chat("No character called " .. rest .. " is remembered here.")
+end
+
 -- Module entry point (Core/Modules.lua): reads the bags at login, then as they change.
 function IV.Enable(settings)
   IV.settings = settings
   ns.GetModule("Tooltips").AddItemLines(IV.AddLines)
   ns.On("BAG_UPDATE_DELAYED", IV.OnChanged)
+  ns.On("TIME_PLAYED_MSG", IV.OnPlayed)
+  ns.On("PLAYER_LOGOUT", IV.Vitals)
   ns.On("PLAYERBANKSLOTS_CHANGED", IV.OnChanged)
   ns.On("BANKFRAME_OPENED", IV.OnBankOpened)
   ns.On("BANKFRAME_CLOSED", IV.OnBankClosed)
