@@ -777,8 +777,9 @@ it("R3.6 the auction house panels: one part that fails is named and the rest are
   expect(addon.eval("return #ns.errors"), "the broken list is reported, under its own path").toBeGreaterThan(0);
   expect(addon.eval("return { __ahTile(AuctionHouseFrame.ItemSellList), __ahTile(AuctionHouseFrame.AuctionsFrame.AllAuctionsList), __ahTile(AuctionHouseFrame.AuctionsFrame.SummaryList) }"), "lists after it are dressed").toEqual([true, true, true]);
   expect(addon.eval("return __ahForms(AuctionHouseFrame)").every((form) => form.tile && form.buttons && form.check), "and so are the forms").toBe(true);
-  expect(addon.eval("local _, rel, rp, x, y = AuctionHouseFrame.SearchBar.FilterButton.Text:GetPoint() return { rp, x, y }"), "the Filter label sits above the bottom edge").toEqual(["CENTER", 0, 2]);
+  expect(addon.eval("local _, rel, rp, x, y = AuctionHouseFrame.SearchBar.FilterButton.Text:GetPoint() return { rp, x, y }"), "the Filter label is centred in its button").toEqual(["CENTER", 0, 0]);
   expect(addon.eval("local p, rel, rp, x = AuctionHouseFrame.SearchBar.FilterButton:GetPoint() return { p, rel == AuctionHouseFrame.SearchBar.SearchButton, rp, x }"), "the Filter button sits just left of Search").toEqual(["RIGHT", true, "LEFT", -4]);
+  expect(addon.eval("local p, rel, rp, x, y = AuctionHouseFrame.MoneyFrameInset:GetPoint() return { p, rel == AuctionHouseFrame.CategoriesList, rp, x, y }"), "the money well hangs T.SPACE.tight under the category list, edge to edge").toEqual(["TOPLEFT", true, "BOTTOMLEFT", 0, -4]);
   expect(addon.eval("local p, rel, rp, x = AuctionHouseFrame.MoneyFrameBorder.MoneyFrame:GetPoint() return { p, rel == AuctionHouseFrame.MoneyFrameInset, x }"), "the money line is centred in the well, set in from its edge").toEqual(["RIGHT", true, -8]);
   expect(addon.eval("return __tabLabel.__textColor[1] ~= 1 and (__tabLabel.__textColor[1] == (ns.Theme.RGB('text')) or __tabLabel.__textColor[1] == (ns.Theme.RGB('text2')))"), "a tab's label is in the text colours, not gold").toBe(true);
 });
