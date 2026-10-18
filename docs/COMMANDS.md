@@ -65,6 +65,7 @@ Every `/vg` command (`/vanguard` works too), grouped by what it does. `/vg help`
 | `/vg craft ...`, `/vg mail ...` | Craft queue; mail tools (off until switched on) |
 | `/vg prep [want <kind> <n>\|setup]` | The Instance prep card and wanted amounts |
 | `/vg stock`, `/vg inventory`, `/vg vendors` | Items to keep, characters remembered, merchants remembered |
+| `/vg junk`, `/vg sell` | Your sell list; sell every stack of one item at a merchant |
 | `/vg ranks`, `/vg trainers`, `/vg legacy` | Spell ranks, what trainers teach, the Legacy system |
 | `/vg copy` | The recent chat as plain text |
 

@@ -37,6 +37,8 @@ local function merchantRows()
     { "header", "Merchants and errors" },
     check("Repair with your own gold at a merchant", setting("Merchant", "repair")),
     check("Sell gray items at a merchant", setting("Merchant", "junk")),
+    check("Offer to sell the items on your sell list (/vg junk)", setting("Merchant", "listSell")),
+    check("Stack and Max buttons on a merchant item's quantity window", setting("Merchant", "bulkBuy")),
     check("Hide errors the action bar already shows (reload)", setting("Merchant", "errors", true)),
   }
 end
