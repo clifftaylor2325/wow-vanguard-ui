@@ -140,7 +140,6 @@
     "scripts/tests/officerloot.test.mjs": [],
     "scripts/tests/options.test.mjs": [
       "options window",
-      "options: the pages, their nav order and each page's row count stay as they were when Options.lua was split into area files",
       "text that fits: chat size, tooltip fonts, the status line, name width"
     ],
     "scripts/tests/platebuffs.test.mjs": [],
@@ -204,10 +203,10 @@
     "scripts/tests/status.test.mjs": [],
     "scripts/tests/strips.test.mjs": [],
     "scripts/tests/talents.test.mjs": [],
-    "scripts/tests/theme.test.mjs": [],
-    "scripts/tests/themeparts.test.mjs": [
-      "the layout constants: T.SPACE, T.ALPHA, T.CREST, T.ROW, T.SCROLL and the control heights, with the two display roles unchanged"
+    "scripts/tests/theme.test.mjs": [
+      "shield corners: unit frames and cast bars are shield frames, with their fills cut"
     ],
+    "scripts/tests/themeparts.test.mjs": [],
     "scripts/tests/tooltip.test.mjs": [],
     "scripts/tests/units.test.mjs": [
       "Calm HUD: frames dim out of combat, come back for a fight, a hostile target or the mouse, and stay clickable",

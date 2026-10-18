@@ -219,6 +219,12 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Expect: the hint under the choices starts `Sharpest: every line on whole screen pixels.` Every border, button edge and gap between action buttons is a whole number of screen pixels, with no blurred or doubled line; the close button's cross sits centred on its faint slate tile (the tile turns red under the mouse; maximize and minimize turn accent). On a 4K screen each UI unit is two pixels. After the scale change, borders are still sharp.
 - If it fails, paste: the zoomed crops, your resolution, `/vg status` and `/vg errors`.
 
+### 5.2a Shield corners
+
+- Do: look at your player and target frames and your cast bar while casting, at your usual UI scale and at Pixel-perfect. Lose some health and mana. Then `/vg` → General → Look, switch off **Shield corners on unit frames and cast bars**, and switch it on again.
+- Expect: each frame's four corners are cut at 45 degrees, about six pixels across, with a one-pixel cut line the same colour and weight as the straight edges, joining them with no gap or overlap. The health, power and cast fills stop inside the cut line (no colour pokes past it), also while a bar is nearly empty or full. Switching it off makes them square at once, on again cuts them at once. No error.
+- If it fails, paste: a close screenshot of one corner (zoomed) and `/vg errors`.
+
 ### 5.3 Hover, press, focus and window motion
 
 - Do: open `/vg` and move the mouse slowly over a few buttons (Run setup, Move frames); hold the mouse button down on one, then let go away from it. Press Tab a few times. Close `/vg` and open it again. Then start a fight (a training dummy) and open `/vg` during it.

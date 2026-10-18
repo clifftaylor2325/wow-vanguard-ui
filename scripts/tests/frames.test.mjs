@@ -33,12 +33,12 @@ it("frames pass: bar texture, smoothing, raid style, shields, glows", () => {
   expect(glow.n === 8 && glow.hidden && glow.shown && /Glow$/.test(glow.tex) && isTok(addon, glow.color, "accent"), "a glow is eight hidden Glow pieces, shown in the accent").toBeTruthy();
 });
 
-// What Vanguard painted on a frame: soft shadow pieces, a sheen line, and the
-// layer (and sublevel) of its border.
+// What Vanguard painted on a frame: soft shadow pieces, a sheen line (across the top; a shield's
+// shortened side lines are not one), and the layer (and sublevel) of its border.
 const paintedOn = (addon, path) => addon.eval(`local f, out = ${path}, { shadow = 0, sheen = 0 }
   for _, w in ipairs(__wfgStub.frames) do
     if w.__parent == f and type(w.__texture) == "string" and w.__texture:find("Shadow$") then out.shadow = out.shadow + 1 end
-    if w.__parent == f and w.__layer == "BORDER" and w.__points.TOPLEFT and w.__points.TOPLEFT.y ~= 0 then out.sheen = out.sheen + 1 end
+    if w.__parent == f and w.__layer == "BORDER" and w.__points.TOPLEFT and w.__points.TOPRIGHT and w.__points.TOPLEFT.y ~= 0 then out.sheen = out.sheen + 1 end
     if w.__parent == f and w.__points.TOPLEFT and w.__points.TOPRIGHT and w.__height and not out.edge then out.edge = { w.__layer, w.__sublevel or 0 } end
   end
   return out`);

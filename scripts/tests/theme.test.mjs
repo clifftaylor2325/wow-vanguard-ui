@@ -1,7 +1,7 @@
 // theme: Vanguard's real Lua in the TEST-ONLY headless client (scripts/lib/lua-harness.mjs).
 
 import { expect, it } from "vitest";
-import { CLICK_LUA, borderOf, button, chatHas, isTok, loggedIn, px, setCombat, tok } from "./helpers.mjs";
+import { CLICK_LUA, borderOf, button, chatHas, isTok, loggedIn, px, setCombat, tok, UNITS_ENV } from "./helpers.mjs";
 
 it("theme", () => {
   const addon = loggedIn();
@@ -845,6 +845,34 @@ it("rounded corners: off by default; /vg corners rounded gives panels and button
   addon.slash("corners square");
   expect([artCount(addon, "__win", "CornerLine"), artCount(addon, "__win", "CornerFill"), addon.eval("local f = __win for _, t in ipairs({ f:GetRegions() }) do if t.__layer == 'BACKGROUND' and t.__texture == ns.Theme.WHITE and t.__points.BOTTOMRIGHT then return t.__points.TOPLEFT.x end end")], "square again: the art hidden and the fill back to the corners").toEqual([0, 0, 0]);
   expect(addon.eval("return VanguardDB.profiles.Default.theme.corners"), "kept in the profile").toBe("square");
+});
+
+// The masks on a texture: how many, and the first one's art, size, wrap and corner (TEST-ONLY reads).
+const masks = (addon, region) => addon.eval(`local t = ${region} local m = t.__masks and t.__masks[1]
+  return { n = t.__masks and #t.__masks or 0, art = m and tostring(m.__texture):match("[^\\\\/]+$") or "none", w = m and m:GetWidth() or 0, wrap = m and m.__wrap or {} }`);
+
+it("shield corners: a shield frame's corners are cut on by default, its bars masked to the cut, and the switch puts it all back square", () => {
+  const addon = loggedIn('__shield = ns.Theme.HudPanel(CreateFrame("Frame", nil, UIParent), { shield = true }) __shield:SetSize(200, 30) __plain = ns.Theme.HudPanel(CreateFrame("Frame", nil, UIParent)) __sb = CreateFrame("StatusBar", nil, __shield) __sb:SetStatusBarTexture(ns.Theme.WHITE) __sb:SetAllPoints() ns.Theme.ShieldMask(__shield, { __sb:GetStatusBarTexture() }) ns.Theme.ShieldMask(CreateFrame("Frame"), {})');
+  const cut = addon.eval("return ns.Theme.CORNER_CUT * ns.Theme.Pixel(__shield)");
+  expect([artCount(addon, "__shield", "CornerCutLine"), artCount(addon, "__shield", "CornerCutFill"), artCount(addon, "__plain", "CornerCutLine")], "four cut lines and fills on the shield frame, none on a plain HUD panel").toEqual([4, 4, 0]);
+  expect(masks(addon, "__sb:GetStatusBarTexture()"), "its bar is cut at all four corners, each mask clamped to white past it").toEqual({ n: 4, art: "CornerCutMask", w: cut, wrap: ["CLAMPTOWHITE", "CLAMPTOWHITE"] });
+  addon.eval("ns.Theme.Refresh()");
+  expect(masks(addon, "__sb:GetStatusBarTexture()").n, "a repaint puts no mask on twice").toBe(4);
+  addon.eval("ns.Theme.Settings().shield = false ns.Theme.Refresh()");
+  expect([artCount(addon, "__shield", "CornerCutLine"), masks(addon, "__sb:GetStatusBarTexture()").n], "the switch off: square corners and no masks").toEqual([0, 0]);
+  addon.eval('ns.Theme.Settings().shield = true ns.Theme.Settings().corners = "rounded" ns.Theme.Refresh()');
+  expect([artCount(addon, "__shield", "CornerCutLine"), artCount(addon, "__plain", "CornerLine")], "with rounded corners on, the shield frame stays cut and the rest round").toEqual([4, 4]);
+  addon.eval('ns.Theme.Settings().shield = false ns.Theme.Refresh()');
+  expect([artCount(addon, "__shield", "CornerLine"), artCount(addon, "__shield", "CornerCutLine")], "and with the switch off it rounds like the rest").toEqual([4, 0]);
+});
+
+it("shield corners: unit frames and cast bars are shield frames, with their fills cut", () => {
+  const addon = loggedIn(UNITS_ENV + CLICK_LUA);
+  expect([artCount(addon, "Vanguard_player", "CornerCutLine"), artCount(addon, "Vanguard_CastBar_player", "CornerCutLine")], "the player frame and its cast bar").toEqual([4, 4]);
+  expect([masks(addon, "Vanguard_player.health:GetStatusBarTexture()").n, masks(addon, "Vanguard_player.power.bg").n, masks(addon, "Vanguard_CastBar_player:GetStatusBarTexture()").n], "health, power and the cast fill are cut").toEqual([4, 4, 4]);
+  addon.slash("");
+  addon.eval('__click("Shield corners on unit frames and cast bars")');
+  expect([addon.eval("return VanguardDB.profiles.Default.theme.shield"), artCount(addon, "Vanguard_player", "CornerCutLine")], "the switch under Look turns them square at once").toEqual([false, 0]);
 });
 
 it("rounded corners: High contrast's 2 px ring rounds at twice the radius, and a reset returns to square", () => {

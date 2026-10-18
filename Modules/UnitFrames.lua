@@ -217,15 +217,17 @@ local function addTexts(f, settings)
   f.name:SetWordWrap(false)
 end
 
--- Creates one unit frame (a secure unit button) with its bars and texts.
+-- Creates one unit frame (a secure unit button) with its bars and texts, its corners cut to the
+-- shield look (the bars cut with it) while the shield setting is on.
 local function createUnitFrame(key, unit, w, h, settings)
   local f = CreateFrame("Button", "Vanguard_" .. key, UIParent, "SecureUnitButtonTemplate")
   f.unit, f.key = unit, key
   T.PixelSize(f, w, h)
   makeSecure(f, unit)
-  T.HudPanel(f)
+  T.HudPanel(f, { shield = true })
   f.health, f.power = createBar(f), createBar(f)
   layoutBars(f, settings.powerHeight)
+  T.ShieldMask(f, { f.health:GetStatusBarTexture(), f.health.bg, f.power:GetStatusBarTexture(), f.power.bg })
   addTexts(f, settings)
   return f
 end
