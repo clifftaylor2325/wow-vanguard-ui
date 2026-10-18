@@ -43,16 +43,16 @@ it("cooldowns page: a row's detail is its tooltip, and a client with no tooltip 
   const addon = loggedIn(UNITS_ENV + TOOLS_ENV + CDM_ENV + CLICK_LUA);
   addon.slash("cooldowns");
   expect(addon.eval("return Vanguard_Options:IsShown() and ns.Options.current"), "/vg cooldowns opens the page").toBe("cooldowns");
-  expect(hover(addon, "Gaps row (reload)"), "the gaps switch explains itself").toEqual([true, expect.stringContaining("A row of icons for what the game's manager misses")]);
+  expect(hover(addon, "Gaps row"), "the gaps switch explains itself").toEqual([true, expect.stringContaining("A row of icons for what the game's manager misses")]);
   addon.eval("GameTooltip = nil");
   expect(addon.eval(`for _, w in ipairs(__wfgStub.frames) do
-    if w.label and w.label.__text == "Gaps row (reload)" and w:IsVisible() then w.__scripts.OnEnter(w) w.__scripts.OnLeave(w) return true end end`), "without GameTooltip nothing shows and nothing errors").toBe(true);
+    if w.label and w.label.__text == "Gaps row" and w:IsVisible() then w.__scripts.OnEnter(w) w.__scripts.OnLeave(w) return true end end`), "without GameTooltip nothing shows and nothing errors").toBe(true);
 });
 
 it("cooldowns page: the buttons and switches change the same saved settings as before", () => {
   const addon = loggedIn(UNITS_ENV + TOOLS_ENV + CDM_ENV + CLICK_LUA);
   addon.eval('ns.Options.Show("cooldowns")');
-  for (const label of ["Show the game's manager", "Vanguard look", "Gaps row (reload)", "Add the manager's", "Glow a buff near its end"]) addon.eval(`__click("${label}")`);
+  for (const label of ["Show the game's manager", "Vanguard look", "Gaps row", "Add the manager's", "Glow a buff near its end"]) addon.eval(`__click("${label}")`);
   expect(saved(addon), "each switch flipped its own setting").toEqual([true, false, true, true, true, 30]);
   addon.eval('__click("Set up cooldowns")');
   expect(addon.frame("Vanguard_CooldownWizard").visible, "Set up cooldowns opens the wizard").toBe(true);

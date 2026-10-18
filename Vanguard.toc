@@ -58,6 +58,7 @@ Core/OptionsCooldowns.lua
 Core/OptionsTools.lua
 Core/OptionsTown.lua
 Core/OptionsWindow.lua
+Core/OptionsSearch.lua
 Core/OptionsPreview.lua
 Core/ErrorBadge.lua
 Core/OptionsProfiles.lua

@@ -21,9 +21,11 @@ local COLUMN_INSET = 8
 local TRACK_WIDTH = W.COLUMN - W.VALUE_SLOT - COLUMN_INSET
 
 -- Limits a caption to the room left of the control column (it wraps there), left-aligned.
+-- row.fixedLabel says its width was set (the options window narrows it to make room for a tag).
 local function fitCaption(r, width)
   r.label:SetWidth((width or 400) - W.COLUMN - 2 * COLUMN_INSET)
   r.label:SetJustifyH("LEFT")
+  r.fixedLabel = true
 end
 -- The switch track's size (a pill, twice as wide as it is tall) and its round knob's diameter; a caption stops short of the track.
 local SWITCH_WIDTH, SWITCH_HEIGHT, KNOB_SIZE = 36, 18, 14
@@ -149,6 +151,7 @@ function W.Check(parent, text, get, set, width)
   local r = row(parent, text, width)
   r.label:SetWidth((width or 400) - SWITCH_WIDTH - 24)
   r.label:SetJustifyH("LEFT")
+  r.fixedLabel = true
   r.get, r.Refresh = get, refreshSwitch
   addSwitch(r)
   trackMouse(r)
