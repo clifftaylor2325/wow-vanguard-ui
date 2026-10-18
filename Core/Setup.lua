@@ -530,7 +530,7 @@ end
 
 -- The screen step: a button per screen preset and Keep, then the chosen one's hint.
 local function screenPage(page)
-  choicePage(page, "Sizes for your screen. You can change them later in /vg.", screenChoices(), "screen")
+  choicePage(page, "Sizes for your screen (yours is marked). /vg graphics checks your frame rate.", screenChoices(), "screen")
 end
 
 -- A style tile's health bar, three quarters full, one pixel inside the border, with your name over it.

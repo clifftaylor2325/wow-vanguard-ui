@@ -73,6 +73,7 @@ Core/Inspect.lua
 Core/Slash.lua
 Core/Feedback.lua
 Core/Perf.lua
+Core/Graphics.lua
 Core/GameMenu.lua
 Core/Visibility.lua
 Modules/UnitFrames.lua

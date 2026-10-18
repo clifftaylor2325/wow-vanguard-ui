@@ -78,6 +78,7 @@ local HELP = {
   "gaps [add <item>|remove <item>|spell add <spell>|spell remove <spell>|clear]   Cooldown gaps (switch it on under Cooldowns): choose items such as a Healthstone or potion, and spells, to show beside trinkets, pet abilities and totems; no verb lists them",
   "perf [cpu|watch|slow] Vanguard's CPU (ms a frame) and memory now; cpu turns the game's script profiling on or off (reload) for the busiest functions; watch prints them every minute; slow lists the slowest handlers (slow reset starts over)",
   "mem                  watches Vanguard's memory for a minute (out of combat), then says how much it grew and whether it kept any; again ends it early",
+  "graphics             checks this computer (the graphics card the game sees and the Graphics Quality the game recommends for it), your screen and your frame rate for 5 s (out of combat), then suggests a Graphics Quality and the sizes for your screen; again ends it early",
 }
 
 -- Prints each line.
@@ -705,6 +706,7 @@ local COMMANDS = {
   feedback = feedbackCommand,
   perf = function(rest) ns.Perf.Command(rest) end,
   mem = function() ns.Perf.MemCommand() end,
+  graphics = function() ns.Graphics.Command() end,
 }
 
 -- /vg entry point: no arguments opens the options window. A command runs under

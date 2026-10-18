@@ -77,4 +77,5 @@ Every `/vg` command (`/vanguard` works too), grouped by what it does. `/vg help`
 | `/vg errors [clear]` | What Vanguard caught going wrong this session |
 | `/vg report`, `/vg feedback [bug\|feature]` | A block to paste at vanguardui.com/feedback |
 | `/vg perf [cpu\|watch]`, `/vg mem` | CPU time and memory |
+| `/vg graphics` | Checks your computer, screen and frame rate, then suggests a Graphics Quality and the sizes for your screen |
 | `/vg frame <name> [deep]`, `/vg realm`, `/vg factionart` | What the client says about a frame, your realm, the faction pictures |
