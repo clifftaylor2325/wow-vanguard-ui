@@ -36,6 +36,8 @@ RF.tileScale = 1
 local MAX_UNITS = 40
 -- The class color's share of a softened bar; the rest is the panel color.
 local SOFT = 0.7
+-- The brightest a softened bar gets (relative luminance): the light name on it keeps 3:1, so a Priest's near-white bar is a light gray.
+local SOFT_MAX_LUMA = 0.3
 -- Role marks: a shield for tanks and a cross for healers; damage dealers get none.
 RF.ROLE_MARKS = { TANK = T.Icon("RoleTank"), HEALER = T.Icon("RoleHealer") }
 local BLIZZARD_FRAMES = { "CompactRaidFrameManager", "CompactRaidFrameContainer", "CompactPartyFrame" }
@@ -116,10 +118,21 @@ local function isTarget(unit)
   return RF.Same(unit, "target")
 end
 
--- A class color mixed into the panel color (SOFT of the class color).
+-- Relative luminance (0 to 1, as WCAG defines it) of an r, g, b color.
+function RF.Luminance(r, g, b)
+  -- One sRGB channel as linear light.
+  local function linear(c) return c <= 0.03928 and c / 12.92 or ((c + 0.055) / 1.055) ^ 2.4 end
+  return 0.2126 * linear(r) + 0.7152 * linear(g) + 0.0722 * linear(b)
+end
+
+-- A class color mixed into the panel color (SOFT of the class color), dimmed
+-- where it is still brighter than SOFT_MAX_LUMA so the light name stays readable.
 function RF.Soften(r, g, b)
   local pr, pg, pb = T.RGB("panel")
-  return r * SOFT + pr * (1 - SOFT), g * SOFT + pg * (1 - SOFT), b * SOFT + pb * (1 - SOFT)
+  r, g, b = r * SOFT + pr * (1 - SOFT), g * SOFT + pg * (1 - SOFT), b * SOFT + pb * (1 - SOFT)
+  local luma = RF.Luminance(r, g, b)
+  local k = luma > SOFT_MAX_LUMA and (SOFT_MAX_LUMA / luma) ^ (1 / 2.2) or 1
+  return r * k, g * k, b * k
 end
 
 -- The status line's font size in tile units, for a tile h tall drawn at scale:
