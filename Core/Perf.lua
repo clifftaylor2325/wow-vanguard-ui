@@ -176,11 +176,45 @@ function P.Watch()
   ns.Chat(string.format("Printing Vanguard's CPU and memory every %d s; /vg perf watch again stops.", P.EVERY))
 end
 
--- /vg perf [cpu|watch]: the report now (with the busiest functions), profiling on or off, or the timed report.
+-- /vg perf slow -----------------------------------------------------------------------------
+
+-- Longest call first; equal ones by the most slow calls, then by name.
+local function slower(a, b)
+  if a.longest ~= b.longest then return a.longest > b.longest end
+  if a.slow ~= b.slow then return a.slow > b.slow end
+  return a.where < b.where
+end
+
+-- Every timed site (ns.timings) as { where, calls, total, longest, slow }, the slowest first.
+function P.Slowest()
+  local list = {}
+  for where, t in pairs(ns.timings) do
+    list[#list + 1] = { where = where, calls = t.calls, total = t.total, longest = t.longest, slow = t.slow }
+  end
+  table.sort(list, slower)
+  return list
+end
+
+-- /vg perf slow [reset]: Vanguard's slowest handlers since login (or the last reset), each with its
+-- longest call, how many calls took over ns.SLOW_MS, and its time in all; reset starts the count over.
+function P.SlowCommand(rest)
+  if rest == "reset" then ns.timings, ns.timingCount = {}, 0 return ns.Chat("Vanguard's handler timings start over.") end
+  local list = P.Slowest()
+  if #list == 0 then return ns.Chat("No handler timings yet (the client has no fine clock, or nothing has run).") end
+  ns.Chat(string.format("Vanguard's slowest handlers since login or /vg perf slow reset (calls over %d ms):", ns.SLOW_MS))
+  for i = 1, math.min(P.TOP, #list) do
+    local t = list[i]
+    ns.Chat(string.format("  %d. %s  longest %.1f ms, %d over %d ms, %d calls, %.0f ms in all", i, t.where, t.longest, t.slow, ns.SLOW_MS, t.calls, t.total))
+  end
+end
+
+-- /vg perf [cpu|watch|slow]: the report now (with the busiest functions), profiling on or off, the timed
+-- report, or the slowest handlers.
 function P.Command(rest)
   if rest == "cpu" then return P.ToggleProfiling() end
   if rest == "watch" then return P.Watch() end
-  if rest ~= "" then return ns.Chat("Usage: /vg perf [cpu | watch]") end
+  if rest == "slow" or rest == "slow reset" then return P.SlowCommand(rest:sub(6)) end
+  if rest ~= "" then return ns.Chat("Usage: /vg perf [cpu | watch | slow [reset]]") end
   P.Report(true)
 end
 

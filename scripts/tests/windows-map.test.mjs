@@ -156,7 +156,7 @@ it("world map: the nav bar, its crumbs and the quest log toggle are dressed, and
   const painted = windowState(addon, "TestOnlyMapBorder").painted;
   addon.eval("WorldMapFrame.NavBar:Refresh() WorldMapFrame:Hide() WorldMapFrame:Show()");
   expect(windowState(addon, "TestOnlyMapBorder").painted - painted, "one more crumb is one more painted frame, nothing painted twice").toBe(1);
-  expect(addon.eval("local b = WorldMapFrame.SidePanelToggle.OpenButton return { b.shadow:GetAlpha(), b.icon:GetAlpha() }"), "the toggle's corner shadow is faded, its arrow kept").toEqual([0, 1]);
+  expect(addon.eval("local b = WorldMapFrame.SidePanelToggle.OpenButton return { b.shadow:GetAlpha(), b.icon:GetAlpha() }"), "the toggle's corner shadow is faded, its theme arrow").toEqual([0, 1]);
   expect(addon.eval("local b = WorldMapFrame.SidePanelToggle.CloseButton return { b.shadow:GetAlpha(), b.icon:GetAlpha() }"), "both buttons").toEqual([0, 1]);
 });
 
@@ -192,12 +192,13 @@ const MAP_PARTS_ENV = WORLD_MAP_ENV + `
   end
 `;
 
-it("world map: the crumbs' labels are light and their dropdown arrows keep the arrow, the floor dropdown keeps its arrow, the tracking buttons sit on control tiles", () => {
+it("world map: the crumbs' labels are light and their dropdown arrows keep the arrow, the floor dropdown has a theme arrow, the tracking buttons sit on control tiles", () => {
   const addon = loggedIn(MAP_PARTS_ENV);
   addon.eval("WorldMapFrame:Show()");
   expect(addon.eval("local h = WorldMapFrame.NavBar.home return { h.text.__textColor[1] == ns.Theme.RGB('text'), __looks(h.text, 'label', 'text') }"), "the crumb's label is the label role in the text colour, not the game's gold").toEqual([true, true]);
-  expect(addon.eval("local a = WorldMapFrame.NavBar.home.MenuArrowButton return { a.back:GetAlpha(), a.Art:GetAlpha(), ns.Theme.HoverParts(a) ~= nil }"), "the arrow button is a theme button, its Art kept").toEqual([0, 1, true]);
-  expect(addon.eval("local f for _, c in ipairs({ WorldMapFrame:GetChildren() }) do if c.ShouldShowTrackingIconOnFloor then f = c end end return { f.Plate:GetAlpha(), f.Arrow:GetAlpha(), ns.Theme.HoverParts(f) ~= nil }"), "the floor dropdown found by its mixin: plate faded, arrow kept, a theme button").toEqual([0, 1, true]);
+  expect(addon.eval("local a = WorldMapFrame.NavBar.home.MenuArrowButton return { a.back:GetAlpha(), a.Art:GetAlpha(), ns.Theme.HoverParts(a) ~= nil }"), "the arrow button is a theme button, the game's yellow Art replaced by the theme arrow").toEqual([0, 0, true]);
+  expect(addon.eval("return ns.FrameState('vgDropArrow')[WorldMapFrame.NavBar.home.MenuArrowButton] ~= nil"), "and the theme arrow sits where it was").toBe(true);
+  expect(addon.eval("local f for _, c in ipairs({ WorldMapFrame:GetChildren() }) do if c.ShouldShowTrackingIconOnFloor then f = c end end return { f.Plate:GetAlpha(), f.Arrow:GetAlpha(), ns.Theme.HoverParts(f) ~= nil }"), "the floor dropdown found by its mixin: plate faded, arrow replaced, a theme button").toEqual([0, 0, true]);
   expect(addon.eval("local o, p = WorldMapFrame.WorldMapTrackingOptionsButton, WorldMapFrame.WorldMapTrackingPinButton return { o.Icon:GetAlpha(), p.Icon:GetAlpha(), p.Background:GetAlpha(), p.Border:GetAlpha() }"), "the tracking icons are kept, the pin's disc and gold ring faded").toEqual([1, 1, 0, 0]);
   expect(["WorldMapTrackingOptionsButton", "WorldMapTrackingPinButton"].map((k) => addon.eval(`local n = 0 for _, r in ipairs({ WorldMapFrame.${k}:GetRegions() }) do if r.__layer == "BACKGROUND" and r.__alpha ~= 0 then n = n + 1 end end return n`)), "each on the window controls' resting tile").toEqual([1, 1]);
   expect(addon.eval("local b = WorldMapFrame.SidePanelToggle.OpenButton return { b.shadow:GetAlpha(), b.icon:GetAlpha(), b.pushed:GetAlpha(), ns.Theme.HoverParts(b) ~= nil }"), "the quest toggle is a theme button keeping its normal and pushed arrows").toEqual([0, 1, 1, true]);
@@ -642,7 +643,7 @@ const FINDER_PARTS_ENV = FINDER_ENV + SCROLL_HELPERS + `
   end
 `;
 
-it("group finder listing: the role buttons keep their icons on raised tiles with theme check boxes, the dropdowns keep their arrows, the category pickers are dressed as the game makes them", () => {
+it("group finder listing: the role buttons keep their icons on raised tiles with theme check boxes, the dropdowns have theme arrows, the category pickers are dressed as the game makes them", () => {
   const addon = loggedIn(FINDER_PARTS_ENV);
   // One activity row and one category picker exist when the page is skinned; the game makes more afterwards.
   addon.eval("__finder() __finderParts() __acquire(LFGListingFrame.ActivityView.ScrollBox, __activityRow()) LFGListingCategorySelection_UpdateCategoryButtons(LFGListingFrame.CategoryView)");
@@ -653,9 +654,9 @@ it("group finder listing: the role buttons keep their icons on raised tiles with
   expect(role("LFGListingFrame.SoloRoleButtons.RoleButtons[1]"), "a solo role: the plate faded, the icon and the cover kept, its check box a theme check box").toEqual([0, 1, 1, true]);
   expect(role("LFGListingFrame.SoloRoleButtons.RoleButtons[2]"), "all of them").toEqual([0, 1, 1, true]);
   expect([fills(addon, "LFGListingFrame.SoloRoleButtons.RoleButtons[1]"), fills(addon, "LFGListingFrame.GroupRoleButtons.RoleIcon")], "each on a raised tile, the group's too").toEqual([1, 1]);
-  expect(addon.eval("local g = LFGListingFrame.GroupRoleButtons return { g.RoleIcon.Background:GetAlpha(), g.RoleDropdown.Plate:GetAlpha(), g.RoleDropdown.Arrow:GetAlpha() }"), "the group's role icon plate faded; the role dropdown's plate faded, its arrow kept").toEqual([0, 0, 1]);
+  expect(addon.eval("local g = LFGListingFrame.GroupRoleButtons return { g.RoleIcon.Background:GetAlpha(), g.RoleDropdown.Plate:GetAlpha(), g.RoleDropdown.Arrow:GetAlpha() }"), "the group's role icon plate faded; the role dropdown's plate faded, its arrow replaced").toEqual([0, 0, 0]);
   expect(addon.eval("return ns.Theme.CheckParts(LFGListingFrame.NewPlayerFriendlyButton.CheckButton) ~= nil"), "the newcomer box is a theme check box").toBe(true);
-  expect(addon.eval("local v = LFGListingFrame.ActivityView return { v.PlayStyleDropdown.Plate:GetAlpha(), v.PlayStyleDropdown.Arrow:GetAlpha(), v.VoiceChatDropdown.Arrow:GetAlpha(), __looks(v.VoiceChatLabel, 'small', 'text'), ns.Theme.CheckParts(v.LevelRangesCheckbox.Checkbox) ~= nil }"), "the activity view's dropdowns keep their arrows; the voice chat label is small and light; the level box a theme check box").toEqual([0, 1, 1, true, true]);
+  expect(addon.eval("local v = LFGListingFrame.ActivityView return { v.PlayStyleDropdown.Plate:GetAlpha(), v.PlayStyleDropdown.Arrow:GetAlpha(), v.VoiceChatDropdown.Arrow:GetAlpha(), __looks(v.VoiceChatLabel, 'small', 'text'), ns.Theme.CheckParts(v.LevelRangesCheckbox.Checkbox) ~= nil }"), "the activity view's dropdowns have theme arrows; the voice chat label is small and light; the level box a theme check box").toEqual([0, 0, 0, true, true]);
   expect(addon.eval("local items = LFGListingFrame.ActivityView.ScrollBox.items return { ns.Theme.CheckParts(items[1].CheckButton) ~= nil, ns.Theme.CheckParts(items[2].CheckButton) ~= nil }"), "each activity row's check box is a theme check box, the one the page had and the one it acquired").toEqual([true, true]);
   addon.eval("LFGListingCategorySelection_UpdateCategoryButtons(LFGListingFrame.CategoryView)");
   // Category picker n: its picture, cover and name.
@@ -673,7 +674,7 @@ it("group finder browse page: the dropdowns and refresh button keep their pictur
   addon.eval("__finder() __finderParts() __acquire(LFGBrowseFrame.ScrollBox, __browseRow(true))");
   addon.fire("ADDON_LOADED", "Blizzard_GroupFinder_VanillaStyle");
   addon.eval("LFGParentFrame:Show() LFGBrowseFrame:Show() __acquire(LFGBrowseFrame.ScrollBox, __browseRow(false))");
-  expect(addon.eval("local b = LFGBrowseFrame return { b.CategoryDropdown.Plate:GetAlpha(), b.CategoryDropdown.Arrow:GetAlpha(), b.ActivityDropdown.Arrow:GetAlpha(), b.RefreshButton.Plate:GetAlpha(), b.RefreshButton.Icon:GetAlpha() }"), "dropdown plates faded, arrows kept; the refresh button's plate faded, its picture kept").toEqual([0, 1, 1, 0, 1]);
+  expect(addon.eval("local b = LFGBrowseFrame return { b.CategoryDropdown.Plate:GetAlpha(), b.CategoryDropdown.Arrow:GetAlpha(), b.ActivityDropdown.Arrow:GetAlpha(), b.RefreshButton.Plate:GetAlpha(), b.RefreshButton.Icon:GetAlpha() }"), "dropdown plates faded, arrows kept; the refresh button's plate faded, its picture kept").toEqual([0, 0, 0, 0, 1]);
   // Browse row n: a theme row, the alphas of its plate, glows, leader mark and delist button, and whether its rail shows.
   const row = (n) => addon.eval(`local r = LFGBrowseFrame.ScrollBox.items[${n}] local d = r.DataDisplay.DelistButton
     return { ns.Theme.RowParts(r) ~= nil, r.ResultBG:GetAlpha(), r.Selected:GetAlpha(), r.Highlight:GetAlpha(), r.PartyIcon:GetAlpha(), d.Plate:GetAlpha(), d.Icon:GetAlpha(), ns.Theme.RowParts(r).rail:IsShown() }`);
@@ -872,7 +873,7 @@ it("legacy system challenges page: the filter, search box and category rows are 
   const addon = legacyParts();
   const list = "LegacySystemFrame.ChallengesPage.CategoryList";
   expect(addon.eval(`local l = ${list} return { l.FilterDropdown.Plate:GetAlpha(), l.FilterDropdown.Arrow:GetAlpha(), __looks(l.FilterDropdown.Text, 'label', 'text'), l.SearchBox.art:GetAlpha(), l.SearchBox.searchIcon:GetAlpha(), __looks(l.NoResultsText, 'label', 'text2') }`),
-    "the filter's plate faded, its arrow kept and its label light; the search box's art faded, its magnifier kept; the no-challenges line grey").toEqual([0, 1, true, 0, 1, true]);
+    "the filter's plate faded, its theme arrow and its label light; the search box's art faded, its magnifier kept; the no-challenges line grey").toEqual([0, 0, true, 0, 1, true]);
   // The list's row n: a theme row, the alphas of its bars, dot, chevron and the chevron button's other art, and whether its rail shows.
   const row = (n) => addon.eval(`local r = ${list}.ScrollBox.items[${n}] local c = r.CollapseButton
     return { ns.Theme.RowParts(r) ~= nil, r.NormalTexture:GetAlpha(), r.HighlightTexture:GetAlpha(), r.NotificationIcon:GetAlpha(), c.Icon:GetAlpha(), c.Glow:GetAlpha(), ns.Theme.RowParts(r).rail:IsShown() }`);
@@ -1029,6 +1030,7 @@ const CALENDAR_ENV = WINDOWS_ENV + SCROLL_HELPERS + `
       b.art, b.icon = b:CreateTexture(), b:CreateTexture()
       b.GetNormalTexture = function(self) return self.icon end
     end
+    local today = CreateFrame("Frame", "CalendarTodayFrame", f) today.art = today:CreateTexture()
     for i = 1, 42 do
       local b = CreateFrame("Button", "CalendarDayButton" .. i, f)
       b.parchment, b.event = b:CreateTexture(), b:CreateTexture()
@@ -1107,8 +1109,9 @@ it("calendar: the window's art is faded but the weekday glow and last-day shadow
   expect(addon.eval("return CalendarCloseButton:GetRegions():GetAlpha()"), "the close button's art is gone").toBe(0);
   expect(addon.eval("local p, rel, rp, x, y = CalendarFilterButton:GetPoint(1) return { CalendarFilterButton:GetNumPoints(), p, rel == CalendarCloseButton, rp, x, y }"),
     "the filter button sits level with the close button, its right edge where a maximize box's plate would end (clear of the close plate)").toEqual([1, "RIGHT", true, "CENTER", -addon.eval("return ns.Theme.PixelRound(CalendarCloseButton, 18)"), 0]);
-  expect(addon.eval("local p, n = CalendarPrevMonthButton, CalendarNextMonthButton return { p.art:GetAlpha(), p.icon:GetAlpha(), p.off:GetAlpha(), p.push:GetAlpha(), n.art:GetAlpha(), n.icon:GetAlpha() }"), "the month buttons keep their normal, disabled and pushed arrows and lose the template art").toEqual([0, 1, 1, 1, 0, 1]);
-  expect([fills(addon, "CalendarPrevMonthButton"), fills(addon, "CalendarNextMonthButton")], "and are theme buttons").toEqual([1, 1]);
+  expect(addon.eval("local p, n = CalendarPrevMonthButton, CalendarNextMonthButton return { p.art:GetAlpha(), p.icon:GetAlpha(), p.off:GetAlpha(), p.push:GetAlpha(), n.art:GetAlpha(), n.icon:GetAlpha() }"), "the month buttons lose the template art (the theme arrow replaces it)").toEqual([0, 0, 0, 0, 0, 0]);
+  expect(addon.eval("local p, n = ns.Theme.ArrowParts(CalendarPrevMonthButton), ns.Theme.ArrowParts(CalendarNextMonthButton) return { p ~= nil, n ~= nil, true }"), "and are theme arrows").toEqual([true, true, true]);
+  expect(addon.eval("return { CalendarTodayFrame.art:GetAlpha(), ns.Theme.PaintedCount() > 0 }")[0], "today's ornate frame art is faded").toBe(0);
   expect(addon.eval("local out = {} for i = 1, 7 do out[i] = __looks(_G['CalendarWeekday' .. i .. 'Name'], 'label', 'text') end return { out, __looks(CalendarYearName, 'small', 'text2'), __looks(CalendarFilterButton.Text, 'label', 'text') }"),
     "the weekday headings and the filter's label are light label text, the year small and grey").toEqual([[true, true, true, true, true, true, true], true, true]);
   expect(addon.eval("local t, c = CalendarClassTotalsButton, CalendarClassButton11 return { CalendarFilterButton.art:GetAlpha(), t.art:GetAlpha(), t.icon:GetAlpha(), c.art:GetAlpha(), c.icon:GetAlpha() }"), "the filter button and the class buttons lose the template art and keep the class icons").toEqual([0, 0, 1, 0, 1]);
@@ -1158,7 +1161,7 @@ it("calendar dialogs: the holiday and raid text areas are inset panels, the even
   expect(addon.eval(`local out = {} for _, key in ipairs({ "EventTypeDropdown", "HourDropdown", "MinuteDropdown", "AMPMDropdown", "DifficultyOptionDropdown", "CommunityDropdown" }) do
     local d = CalendarCreateEventFrame[key] out[#out + 1] = d.Plate:GetAlpha() * 10 + d.Arrow:GetAlpha() end
     for _, key in ipairs({ "CommunityDropdown", "RankDropdown" }) do local d = CalendarMassInviteFrame[key] out[#out + 1] = d.Plate:GetAlpha() * 10 + d.Arrow:GetAlpha() end return out`),
-    "the six create dropdowns and the two mass invite ones lose their plates and keep their arrows").toEqual([1, 1, 1, 1, 1, 1, 1, 1]);
+    "the six create dropdowns and the two mass invite ones lose their plates and swap their arrows for the theme arrow").toEqual([0, 0, 0, 0, 0, 0, 0, 0]);
   expect(addon.eval("return { ns.Theme.CheckParts(CalendarCreateEventAutoApproveCheck) ~= nil, ns.Theme.CheckParts(CalendarCreateEventLockEventCheck) ~= nil }"), "the auto approve and lock boxes are theme check boxes").toEqual([true, true]);
   // The two lists' sort buttons: the label of each that has one, in small grey cell text.
   expect(addon.eval("local out = {} for _, n in ipairs({ 'CalendarViewEventInviteList', 'CalendarCreateEventInviteList' }) do out[#out + 1] = __looks(_G[n .. 'NameSortButton'].fs, 'cell', 'text2') out[#out + 1] = __looks(_G[n .. 'ClassSortButton'].fs, 'cell', 'text2') end return out"),

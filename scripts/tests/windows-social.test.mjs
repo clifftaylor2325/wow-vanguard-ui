@@ -137,7 +137,7 @@ it("guild window: panes faded and panelled, portrait art faded, dropdown and max
   expect(windowState(addon, "CommunitiesFrame")).toMatchObject({ art: 0, nine: 0, panel: true, title: true });
   expect(addon.eval(`local f = CommunitiesFrame
     return { f.PortraitOverlay.Emblem.__alpha, f.CommunitiesList.Art.__alpha, f.CommunitiesList.InsetFrame.Bg.__alpha, f.MemberList.InsetFrame.NineSlice.Edge.__alpha,
-      f.Chat.InsetFrame.Bg.__alpha, f.GuildBenefitsFrame.Art.__alpha, f.GuildDetailsFrame.Art.__alpha, f.StreamDropdown.Arrow.__alpha }`), "the game's art faded, the dropdown's arrow kept").toEqual([0, 0, 0, 0, 0, 0, 0, 1]);
+      f.Chat.InsetFrame.Bg.__alpha, f.GuildBenefitsFrame.Art.__alpha, f.GuildDetailsFrame.Art.__alpha, f.StreamDropdown.Arrow.__alpha }`), "the game's art faded, the dropdown's arrow kept").toEqual([0, 0, 0, 0, 0, 0, 0, 0]);
   expect(addon.eval(`local f = CommunitiesFrame
     local function painted(x) for _, r in ipairs({ x:GetRegions() }) do if r.__alpha ~= 0 then return true end end return false end
     return { painted(f.CommunitiesList.InsetFrame), painted(f.MemberList.InsetFrame), painted(f.GuildBenefitsFrame), painted(f.StreamDropdown),
@@ -428,7 +428,7 @@ it("guild window: the chat box, jump button, dropdowns and bottom row of buttons
   expect(addon.eval(`local f = CommunitiesFrame ${PAINTED_ANY}
     local out = { f.ChatEditBox.Art:GetAlpha(), painted(f.ChatEditBox), JumpToUnreadButton.Art:GetAlpha(), painted(JumpToUnreadButton) }
     for _, k in ipairs({ "GuildMemberListDropdown", "CommunityMemberListDropdown", "CommunitiesListDropdown", "AddToChatButton" }) do out[#out + 1] = { f[k].Art:GetAlpha(), f[k].Arrow:GetAlpha(), painted(f[k]) } end
-    return out`), "the chat box themed, the jump button and four dropdowns flat with their arrows kept").toEqual([0, true, 0, true, [0, 1, true], [0, 1, true], [0, 1, true], [0, 1, true]]);
+    return out`), "the chat box themed, the jump button and four dropdowns flat with their theme arrows").toEqual([0, true, 0, true, [0, 0, true], [0, 0, true], [0, 0, true], [0, 0, true]]);
   expect(addon.eval(`local f = CommunitiesFrame ${PAINTED_ANY}
     return { f.InviteButton.Art:GetAlpha(), painted(f.InviteButton), f.GuildLogButton.Art:GetAlpha(), painted(f.GuildLogButton), f.CommunitiesControlFrame.CommunitiesSettingsButton.Art:GetAlpha(),
       painted(f.CommunitiesControlFrame.GuildControlButton), painted(f.CommunitiesControlFrame.GuildRecruitmentButton), f.CommunitiesCalendarButton.Icon:GetAlpha(), painted(f.CommunitiesCalendarButton) }`),
@@ -532,7 +532,7 @@ it("preferred play settings: the title, labels and dropdowns in the theme beside
   expect(addon.eval(`local p = CommunitiesFrame.GuildPreferredPlaySettingsFrame
     return { __headed(p.Title), p.LocaleLabel.__textColor[1] == ns.Theme.RGB("text"), p.DatacenterLabel.__textColor[1] == ns.Theme.RGB("text"),
       p.LocaleDropdown.Art:GetAlpha(), p.LocaleDropdown.Arrow:GetAlpha(), p.DatacenterDropdown.Art:GetAlpha(), ns.Theme.HoverParts(p.DatacenterDropdown) ~= nil, p.LocaleApplyButton.Art:GetAlpha() }`),
-  "title heading text, labels light, dropdowns flat with their arrows, Apply buttons still flat").toEqual([true, true, true, 0, 1, 0, true, 0]);
+  "title heading text, labels light, dropdowns flat with their arrows, Apply buttons still flat").toEqual([true, true, true, 0, 0, 0, true, 0]);
 });
 
 it("guild pages: with the group off they stay the game's; a window with the new parts missing or odd loads cleanly", () => {
@@ -1004,11 +1004,11 @@ it("social window: the window and its Battle.net bar, panes, side windows and ta
   expect(windowState(addon, "SocialUIFrame")).toMatchObject({ art: 0, nine: 0, portrait: 0, panel: true, title: true });
   expect(addon.eval(`local f, box = SocialUIFrame, SocialUIFrame.BattleNetBar.ControlsContainer ${PAINTED}
     return { f.BattleNetBar.Background.__alpha, box.BattleNetBackground.__alpha, painted(box.OnlineStatusDropdown), painted(box.BattleNetMenuButton), box.BattleNetMenuButton.Icon.__alpha, box.OnlineStatusDropdown.Arrow.__alpha }`),
-  "the Battle.net bar: plate and band faded, dropdown and menu button flat, the menu icon and the dropdown's arrow kept").toEqual([0, 0, true, true, 1, 1]);
+  "the Battle.net bar: plate and band faded, dropdown and menu button flat, the menu icon and the dropdown's arrow kept").toEqual([0, 0, true, true, 1, 0]);
   expect(addon.eval(`local p = SocialUIFrame.FriendsList ${PAINTED}
     return { p.TopDivider.__alpha, p.BottomDivider.__alpha, painted(p.FilterBar.SearchBar), p.FilterBar.SearchBar.Background.__alpha, p.FilterBar.SearchBar.searchIcon.__alpha,
       painted(p.FilterBar.SearchFilterDropdown), painted(p.ActionButton), painted(SocialUIFrame.RecentAlliesList.ActionButton), painted(SocialUIFrame.RaidFrame.RaidInfoButton), painted(SocialUIFrame.RaidFrame.ConvertToRaidButton), p.FilterBar.SearchFilterDropdown.Arrow.__alpha }`),
-  "a pane: dividers faded, the search box themed with its magnifier, the filter (arrow kept) and action buttons flat, the raid tab's buttons too").toEqual([0, 0, true, 0, 1, true, true, true, true, true, 1]);
+  "a pane: dividers faded, the search box themed with its magnifier, the filter (theme arrow) and action buttons flat, the raid tab's buttons too").toEqual([0, 0, true, 0, 1, true, true, true, true, true, 0]);
   expect(addon.eval(`local f = SocialUIFrame ${PAINTED}
     local function tab(i) local t = f.tabs[i] return { t.Background.__alpha, t.Icon.__alpha == ns.Theme.TAB_DIM, painted(t) } end
     local _, rel, _, x = f.tabs[1]:GetPoint(1)
@@ -1249,8 +1249,8 @@ it("social dialogs: the settings dialog's text areas, checks, dropdowns and labe
     return { __faded(s.MessageOfTheDay), s.MessageOfTheDay.EditBox.Art:GetAlpha(), __faded(s.Description), s.Description.EditBox.Art:GetAlpha(), s.MinIlvlOnly.EditBox.Art:GetAlpha(), n,
       s.ClubFocusDropdown.Art:GetAlpha(), s.ClubFocusDropdown.Arrow:GetAlpha(), s.LanguageDropdown.Arrow:GetAlpha(), __lit(s.NameLabel), __lit(s.ShortNameLabel), __lit(s.DescriptionLabel),
       __lit(s.MessageOfTheDayLabel), s.IconPreview:GetAlpha() }`),
-  "two text areas and the item level box in the theme, five check boxes, three dropdowns that keep their arrows, four light labels, the avatar kept")
-    .toEqual([true, 0, true, 0, 0, 5, 0, 1, 1, true, true, true, true, 1]);
+  "two text areas and the item level box in the theme, five check boxes, three dropdowns that have theme arrows, four light labels, the avatar kept")
+    .toEqual([true, 0, true, 0, 0, 5, 0, 0, 0, true, true, true, true, 1]);
   expect(addon.eval(`local p = CommunitiesAvatarPickerDialog return { __faded(p.Selector), p.Selector.OkayButton.Art:GetAlpha(), p.Selector.CancelButton.Art:GetAlpha() }`),
   "the selection frame faded, its two buttons flat").toEqual([true, 0, 0]);
   expect(addon.eval(`local t = CommunitiesTicketManagerDialog local m = t.InviteManager
@@ -1258,7 +1258,7 @@ it("social dialogs: the settings dialog's text areas, checks, dropdowns and labe
       __lit(t.ExpandLabel), __lit(t.ExpiresDropdownLabel), __lit(t.UsesDropdownLabel), __faded(m.ArtOverlay), m.ScrollBox.Background:GetAlpha(), m.ScrollBar.Background:GetAlpha(),
       __faded(m.ColumnDisplay), __sunk(m), ns.Theme.RowParts(__t1) ~= nil, __t1.Stripe:GetAlpha(), __t1.CopyLinkButton.Art:GetAlpha(), __t1.RevokeButton.Art:GetAlpha(), __t1.RevokeButton.Icon:GetAlpha() }`),
   "the invite manager: avatar kept, separator a line, dropdowns, labels light, marble and corners faded, an inset, headers flat, a row without its stripe, the revoke cross kept")
-    .toEqual([1, true, 1, 0, 1, true, true, true, true, true, 0, 0, true, true, true, 0, 0, 0, 1]);
+    .toEqual([1, true, 0, 0, 1, true, true, true, true, true, 0, 0, true, true, true, 0, 0, 0, 1]);
   addon.eval("__t2 = __acquire(CommunitiesTicketManagerDialog.InviteManager.ScrollBox, __ticket())");
   expect(addon.eval("return { ns.Theme.RowParts(__t2) ~= nil, __t2.Stripe:GetAlpha(), __t2.RevokeButton.Icon:GetAlpha() }"), "a row the game makes later is dressed too").toEqual([true, 0, 1]);
 });
@@ -1338,8 +1338,8 @@ it("guild window dialogs: the member detail, channel edit and notification dialo
   expect(addon.eval(`local d = CommunitiesFrame.GuildMemberDetailFrame
     return { d.Bg:GetAlpha(), __faded(d.Border), ns.Theme.PaintedCount and true, __lit(d.Name), __lit(d.ZoneLabel), __lit(d.RankLabel), __lit(d.OnlineLabel), __lit(d.NoteLabel), __lit(d.OfficerNoteLabel),
       d.RemoveButton.Art:GetAlpha(), d.GroupInviteButton.Art:GetAlpha(), d.RankDropdown.Art:GetAlpha(), d.RankDropdown.Arrow:GetAlpha(), __sunk(d.NoteBackground), __sunk(d.OfficerNoteBackground) }`),
-  "the member pop-up: border faded, labels and name light, buttons flat, the rank dropdown keeps its arrow, both note boxes sunk")
-    .toEqual([0, true, true, true, true, true, true, true, true, 0, 0, 0, 1, true, true]);
+  "the member pop-up: border faded, labels and name light, buttons flat, the rank dropdown has a theme arrow, both note boxes sunk")
+    .toEqual([0, true, true, true, true, true, true, true, true, 0, 0, 0, 0, true, true]);
   expect(addon.eval(`local e = CommunitiesFrame.EditStreamDialog
     return { __faded(e.BG), e.NameEdit.Art:GetAlpha(), __lit(e.NameLabel), __lit(e.DescriptionLabel), ns.Theme.CheckParts(e.TypeCheckbox) ~= nil, __faded(e.Description),
       e.Description.EditBox.Art:GetAlpha(), e.Accept.Art:GetAlpha(), e.Cancel.Art:GetAlpha(), e.Delete.Art:GetAlpha() }`),
@@ -1352,7 +1352,7 @@ it("guild window dialogs: the member detail, channel edit and notification dialo
   expect(addon.eval(`local n = CommunitiesFrame.NotificationSettingsDialog local c = n.ScrollFrame.Child
     return { n.BG:GetAlpha(), __faded(n.Selector), n.Selector.OkayButton.Art:GetAlpha(), n.Selector.CancelButton.Art:GetAlpha(), n.CommunitiesListDropdown.Arrow:GetAlpha(),
       ns.Theme.CheckParts(c.QuickJoinButton) ~= nil, c.NoneButton.Art:GetAlpha(), c.AllButton.Art:GetAlpha(), ns.Theme.DividerParts(c.Separator) ~= nil }`),
-  "the notification dialog: black plate and selection frame faded, its buttons, dropdown, check and divider themed").toEqual([0, true, 0, 0, 1, true, 0, 0, true]);
+  "the notification dialog: black plate and selection frame faded, its buttons, dropdown, check and divider themed").toEqual([0, true, 0, 0, 0, true, 0, 0, true]);
 });
 
 it("guild window dialogs: the invitation and ticket pages, the reported-name overlays and their alert in the theme", () => {
@@ -1648,7 +1648,7 @@ it("guild control: the window, its title, the bar under the header, the page dro
   addon.eval("GuildControlUI:Show()");
   expect(addon.eval(`local w = GuildControlUI
     return { __faded(w), w.NineSlice:GetAlpha(), __headed(GuildControlUITitle), ns.Theme.DividerParts(GuildControlUIHbar) ~= nil, __faded(GuildControlUIHbar), __faded(w.dropdown, w.dropdown.Arrow), w.dropdown.Arrow:GetAlpha() }`),
-  "art faded, a title in the heading role, the bar a one-pixel line, the dropdown a flat button with its arrow").toEqual([true, 0, true, true, true, true, 1]);
+  "art faded, a title in the heading role, the bar a one-pixel line, the dropdown a flat button with its arrow").toEqual([true, 0, true, true, true, true, 0]);
   addon.eval("GuildControlUIRankOrderFrame:Show()");
   expect(addon.eval(`local r = GuildControlUIRankOrderFrameRank1
     return { __sunk(r.nameBox), __faded(r.nameBox), __lit(r.rankLabel), __themed(r.rankLabel), ns.Theme.ArrowParts(r.upButton) ~= nil, ns.Theme.ArrowParts(r.downButton) ~= nil,

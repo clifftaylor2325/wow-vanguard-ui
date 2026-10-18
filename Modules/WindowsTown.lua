@@ -342,8 +342,8 @@ function GW.SkinStackSplit(frame)
   GW.Skin(frame)
   fadeWhole(frame, SPLIT_ART)
   keyButtons(frame, { "OkayButton", "CancelButton" })
-  GW.SkinGlyph(frame.LeftButton)
-  GW.SkinGlyph(frame.RightButton)
+  GW.SkinArrow(frame.LeftButton, "left")
+  GW.SkinArrow(frame.RightButton, "right")
   amountField(frame, frame.LeftButton, frame.RightButton)
   keyFonts(frame, { "StackSplitText" }, "number")
   if type(frame.StackItemCountText) == "table" and frame.StackItemCountText.SetFont then
@@ -454,17 +454,17 @@ local function skinMerchantTiles()
   end
 end
 
--- A page arrow as a theme button that keeps its arrow, its caption in the theme font.
-local function skinPageArrow(button)
+-- A page arrow as a theme arrow button pointing `direction`, its caption in the theme font.
+local function skinPageArrow(button, direction)
   if type(button) ~= "table" or not button.GetRegions then return end
-  GW.SkinGlyph(button)
+  GW.SkinArrow(button, direction)
   regionFonts(button, "label", "text")
 end
 
 -- The window's foot: the page arrows and page count, the money line in the theme font, the gold-edged plates
 -- faded and the insets under them dark panels.
 local function skinMerchantFooter()
-  for _, name in ipairs(MERCHANT_ARROWS) do skinPageArrow(_G[name]) end
+  for i, name in ipairs(MERCHANT_ARROWS) do skinPageArrow(_G[name], i == 1 and "left" or "right") end
   namedText("MerchantPageText", "label", "text")
   GW.SkinMoney(_G.MerchantMoneyFrame)
   GW.FadeNamed(MERCHANT_PLATES)

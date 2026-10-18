@@ -96,20 +96,13 @@ function CX.ShowCopy()
   ns.ShowText("Copy chat (Ctrl+C)", CX.RecentText(frame))
 end
 
--- How far above the chat window's top edge the Copy button sits: clear of the tab row.
-local function copyLift(frame)
-  local tab = _G[(frame:GetName() or "") .. "Tab"]
-  local height = type(tab) == "table" and ns.PlainNumber(tab:GetHeight()) or 24
-  return height + T.SPACE.tight
-end
-
--- A small Copy button over the main chat window's top-right corner.
+-- A small Copy button in the main chat window's tab row, at its right end.
 local function addCopyButton()
   local frame = _G.ChatFrame1
   if type(frame) ~= "table" or type(frame.GetNumMessages) ~= "function" then return end
   CX.copyButton = ns.DialogButton(frame, "Copy", 40)
   CX.copyButton:SetHeight(16)
-  CX.copyButton:SetPoint("BOTTOMRIGHT", frame, "TOPRIGHT", 0, copyLift(frame))
+  CX.copyButton:SetPoint("BOTTOMRIGHT", frame, "TOPRIGHT", 0, T.SPACE.tight)
   CX.copyButton:SetScript("OnClick", ns.Guard("click copy chat", CX.ShowCopy))
 end
 

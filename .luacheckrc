@@ -42,7 +42,7 @@ read_globals = {
   -- Target of target identity and the minimap's still-standing check (P1.13).
   "UnitGUID", "UnitPosition", "C_TaxiMap", "GetPlayerFacing",
   -- /vg perf: the game's CPU and memory counters (P1.14).
-  "GetCVar", "C_AddOnProfiler", "GetAddOnCPUUsage", "UpdateAddOnCPUUsage", "GetAddOnMemoryUsage", "UpdateAddOnMemoryUsage", "GetFunctionCPUUsage",
+  "GetCVar", "C_AddOnProfiler", "debugprofilestop", "GetAddOnCPUUsage", "UpdateAddOnCPUUsage", "GetAddOnMemoryUsage", "UpdateAddOnMemoryUsage", "GetFunctionCPUUsage",
   -- Action button tooltips: the client's default anchor (P2.3).
   "GameTooltip_SetDefaultAnchor",
   -- Quest tracker item buttons: the quest item's cooldown and range (P2.10).
