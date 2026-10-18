@@ -1738,7 +1738,7 @@ function world.postFromBag(bag, slot)
 end
 
 -- The mailbox --------------------------------------------------------------------------------------
--- world.mail = { mail, ... }, the inbox in order: { sender, subject, money, daysLeft, itemCount,
+-- world.mail = { mail, ... }, the inbox in order: { sender, subject, money, cod (the pay-on-delivery amount, 0 if none), gm, daysLeft, itemCount,
 -- firstItemQuantity, firstItemLink, invoice = { type ("seller", "seller_temp_invoice", "buyer"),
 -- itemName, playerName, bid, buyout, deposit, consignment, count } }, read by the globals
 -- Blizzard_MailFrame/MailFrame.lua calls (GetInboxNumItems, GetInboxHeaderInfo, GetInboxInvoiceInfo);
@@ -1752,7 +1752,7 @@ function GetInboxNumItems() return #world.mail, #world.mail end
 function GetInboxHeaderInfo(i)
   local m = world.mail[i]
   if not m then return nil end
-  return nil, nil, m.sender, m.subject, m.money or 0, 0, m.daysLeft or 30, m.itemCount, false, false, false, true, false, m.firstItemQuantity, m.firstItemLink
+  return nil, nil, m.sender, m.subject, m.money or 0, m.cod or 0, m.daysLeft or 30, m.itemCount, false, false, false, true, m.gm == true, m.firstItemQuantity, m.firstItemLink
 end
 -- An invoice's invoiceType, itemName, playerName, bid, buyout, deposit, consignment, moneyDelay, etaHour,
 -- etaMin, count, commerceAuction (nothing for a mail that isn't one).
