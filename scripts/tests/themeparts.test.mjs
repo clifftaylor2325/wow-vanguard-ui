@@ -72,7 +72,7 @@ it("fills: a button's hover fill and press overlay follow its rounded corners, a
   const hover = addon.eval("local h = ns.Theme.HoverParts(__b) return { #h.fill.textures, h[1].__vertexColor, h[1]:GetAlpha() }");
   expect([hover[0], isTok(addon, hover[1], "raisedHover"), hover[2]], "rounded: the hover fill has seven parts in raisedHover, still clear").toEqual([7, true, 0]);
   expect(fillAlphas(addon, "ns.Theme.HoverParts(__b).fill"), "every part clear").toEqual([0, 0, 0, 0, 0, 0, 0]);
-  addon.eval("for _, t in ipairs(ns.Theme.HoverParts(__b).fill.textures) do __fakeFader(t) end __fakeFader(ns.Theme.HoverParts(__b)[2]) __b:GetScript('OnEnter')(__b)");
+  addon.eval("for _, t in ipairs(ns.Theme.HoverParts(__b).fill.textures) do __fakeFader(t) end __fakeFader(ns.Theme.HoverParts(__b)[2]) __b.__mouseOver = true __b:GetScript('OnEnter')(__b)");
   expect(addon.eval("local n = 0 for _, g in ipairs(__fades) do if g.playing and g.to == 1 then n = n + 1 end end return n"), "the mouse comes over: eight fades, one per part and one for the line").toBe(8);
   addon.eval("__finishFades() ns.Theme.Settings().reduceMotion = true __b:GetScript('OnLeave')(__b)");
   expect(fillAlphas(addon, "ns.Theme.HoverParts(__b).fill"), "leaving with Reduce motion clears every part at once").toEqual([0, 0, 0, 0, 0, 0, 0]);
