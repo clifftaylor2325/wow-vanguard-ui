@@ -327,6 +327,7 @@ Vanguard moves little and quietly. Every fade goes through the theme (`T.FadeIn`
 | Chat watch toast (a phrase, or an auction price alert) shows, then goes after 8 s or a click | fade in / fade out | 0.12 s | 0.12 s | Reduce motion |
 | Cast bar ends | flash: the bar fills, green for a finished cast, red with the reason (Interrupted, Failed) | held while it fades | held while it fades | Reduce motion (the bar hides at once) |
 | Cast bar ends, then | fade out | 0.35 s | 0.15 s | Reduce motion |
+| Cursor ring (Ring at the cursor, Cast bars) | the global cooldown and cast sweeps run with the client's duration objects; the ring shows and hides at once, no fade | the sweep's own length | the sweep's own length | - (the sweeps are information, not decoration) |
 | Bars and strips on mouseover or conditions (action bars, the menu and bag strips, ...) | alpha 0 / 1 | instant | instant | - (no animation) |
 | Raid tiles out of range | alpha 40 % | instant | instant | Fade players out of range (Raid frames) |
 | Health and power bars | the client eases the value (`ExponentialEaseOut`) | the client's easing | the client's easing | Smooth health and power bars |

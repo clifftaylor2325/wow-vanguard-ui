@@ -306,6 +306,12 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Expect: with no fight and no hostile target your player, pet, target of target and focus frames are faint (about a third); under the mouse the hovered frame is at full strength at once; targeting a living hostile mob or entering combat brings them all up at once and they stay up through the fight; after the fight with no hostile target they go faint again. A friendly target's frame stays faint. Clicking a faint frame still targets, right-clicking opens the menu. Switching Calm HUD off brings every frame back to full at once. No error.
 - If it fails, paste: a screenshot and `/vg errors`.
 
+### 7.2b Cursor ring
+
+- Do: `/vg` → Unit frames, tick **Ring at the cursor: the global cooldown and your cast** (nothing needs a reload). Move the mouse around, then cast an instant spell, then a spell with a long cast time, then a channel, and click and hover things under the ring (a button, a unit frame, a world object). Untick the switch.
+- Expect: two thin rings with a faint full circle behind them centred on the mouse pointer at every UI scale, following it without lag; the outer ring sweeps away for the length of the global cooldown after the instant spell; the inner ring fills as the long cast goes and empties for the channel, and clears when the cast ends or is interrupted; the sweeps have no numbers, no edge line and no flash; the ring does not stop clicks or tooltips, also in combat; with the switch off it is gone and the pointer is plain. [Needs in-game check: that the global cooldown shows on the outer ring on WoW Forever, and which way each sweep turns.]
+- If it fails, paste: a screenshot with the ring in view, `/vg status` and `/vg errors`.
+
 ### 7.3 Nameplates in a pull
 
 - Do: pull three or more mobs.
