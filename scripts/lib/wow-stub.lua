@@ -321,6 +321,8 @@ function methods:GetAtlas() return self.__atlas end
 function methods:SetColorTexture(r, g, b, a) self.__color = { r, g, b, a or 1 } end
 -- A texture's colour; one colour for every corner replaces a gradient, as in the client.
 function methods:SetVertexColor(r, g, b, a) self.__vertexColor = { r, g, b, a or 1 } self.__gradient = nil end
+-- The vertex colour last set (white until one is), as the client gives it back.
+function methods:GetVertexColor() local c = self.__vertexColor or { 1, 1, 1, 1 } return c[1], c[2], c[3], c[4] end
 -- Records a texture's gradient: { orientation, min colour, max colour } (each { r, g, b, a }).
 function methods:SetGradient(o, lo, hi) self.__gradient = { o, { lo:GetRGBA() }, { hi:GetRGBA() } } end
 function methods:SetAlpha(a) self.__alpha = a end
@@ -493,6 +495,18 @@ function methods:GetMinMaxValues() return self.__min or 0, self.__max or 0 end
 function methods:SetValue(v, ease) self.__value, self.__ease = v, ease end
 function methods:GetValue() return self.__value or 0 end
 function methods:SetStatusBarColor(r, g, b, a) self.__barColor = { r, g, b, a or 1 } end
+
+-- Sliders: the orientation (HORIZONTAL unless set).
+function methods:SetOrientation(o) self.__orientation = o end
+function methods:GetOrientation() return self.__orientation or "HORIZONTAL" end
+
+-- Sliders: the thumb texture, made on first set.
+function methods:SetThumbTexture(t)
+  self.__thumbTexture = self.__thumbTexture or newWidget("Texture", nil, self, nil, "ARTWORK")
+  self.__thumbTexture:SetTexture(t)
+end
+-- The thumb texture, if set.
+function methods:GetThumbTexture() return self.__thumbTexture end
 
 -- Registers a unit event: delivered only when its first argument is one of the units.
 function methods:RegisterUnitEvent(event, ...)

@@ -19,8 +19,8 @@ local R = ns.Module("Rolls", { defaults = { show = true, loot = true, visibility
 
 -- Rolls kept, seconds a round of rolls stays on screen after its last roll, loot items kept, and lines drawn.
 R.MAX, R.ROUND, R.ITEMS, R.LINES = 40, 30, 4, 14
--- The panel's width, a line's height and the panel's padding (UI units).
-R.WIDTH, R.LINE, R.PAD = 136, 14, 6
+-- The panel's width, a line's height and the panel's padding (UI units; a HUD card's, T.SPACE.gap).
+R.WIDTH, R.LINE, R.PAD = 136, 14, T.SPACE.gap
 -- A loot roll's choice, by the game's roll type.
 R.CHOICES = { [0] = "Pass", [1] = "Need", [2] = "Greed", [3] = "Disenchant" }
 -- This session's rolls, oldest first: { name, roll, low, high, at }; and the last loot items rolled for, oldest first.

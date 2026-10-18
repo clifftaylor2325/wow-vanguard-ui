@@ -4,6 +4,7 @@
 
 import { expect, it } from "vitest";
 import { CLICK_LUA, loggedIn, setCombat, tok } from "./helpers.mjs";
+import { insets } from "./dialogs.mjs";
 
 const ON = { savedVariables: "VanguardDB.profiles = { Default = { GroupThreat = { show = true } } }" };
 
@@ -116,4 +117,14 @@ it("group threat: no group, no target, a friendly target or a client without the
 it("group threat: the panel is movable", () => {
   const addon = party();
   expect(addon.eval("return { ns.MoverPoint('groupthreat') }"), "a mover at the right").toEqual(["RIGHT", "RIGHT", -20, 120]);
+});
+
+it("group threat: T.SPACE.gap in from the panel's edge on every side (a HUD card's padding), and as tall as its padding and rows", () => {
+  const addon = party();
+  addon.fire("UNIT_THREAT_LIST_UPDATE", "target");
+  panel(addon);
+  const gap = addon.eval("return ns.Theme.SPACE.gap");
+  const [first, last] = [1, 3].map((i) => insets(addon, `ns.GetModule("GroupThreat").panel.rows[${i}]`, "ns.GetModule('GroupThreat').panel"));
+  expect([first[0], first[1], first[2], last[3]], "the first row a gap in from the left, top and right; the last row a gap above the bottom").toEqual([gap, gap, gap, gap]);
+  expect(addon.eval("local GT = ns.GetModule('GroupThreat') return GT.panel:GetHeight() - 3 * GT.panel.rows[1]:GetHeight()"), "two gaps and three rows").toBe(2 * gap);
 });

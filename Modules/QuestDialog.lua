@@ -157,15 +157,15 @@ end
 
 -- Pages ----------------------------------------------------------------------------------------
 
--- Goodbye, as the main button of a page with nothing else to do.
+-- Goodbye: the button that leaves, alone at the far left of the dialog.
 local GOODBYE = { "Goodbye", function() QD.Close() end }
 
 -- Each page: what it shows, from the game's current quest or gossip.
 QD.PAGES = {
   -- A gossip NPC: its greeting and lines.
-  gossip = function() return { text = gossip("GetText"), lines = QD.GossipLines(), primary = GOODBYE } end,
+  gossip = function() return { text = gossip("GetText"), lines = QD.GossipLines(), escape = GOODBYE } end,
   -- A quest giver without gossip: its greeting and quests.
-  greeting = function() return { text = call(GetGreetingText), lines = QD.GreetingLines(), primary = GOODBYE } end,
+  greeting = function() return { text = call(GetGreetingText), lines = QD.GreetingLines(), escape = GOODBYE } end,
   -- A quest's details.
   detail = function() return QD.DetailPage() end,
   -- A quest being handed in.
@@ -189,7 +189,7 @@ end
 function QD.ProgressPage()
   return {
     title = call(GetTitleText), text = call(GetProgressText), rewards = QD.Items("required", call(GetNumQuestItems)),
-    primary = { "Continue", function() call(CompleteQuest) end, call(IsQuestCompletable) == true }, secondary = GOODBYE,
+    primary = { "Continue", function() call(CompleteQuest) end, call(IsQuestCompletable) == true }, escape = GOODBYE,
   }
 end
 

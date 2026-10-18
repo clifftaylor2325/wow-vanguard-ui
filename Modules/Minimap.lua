@@ -1,5 +1,5 @@
 -- Minimap: square, in a themed frame you can move in unlock mode, with the
--- zone name in the heading font on a see-through band along its top edge
+-- zone name in the zone text role on a see-through band along its top edge
 -- (colored by PvP status; hover it for the zone's territory, click it for the
 -- world map), the coordinates on a band along its bottom between the tracking
 -- and addon slot buttons, accent rules inside both bands, and mouse-wheel zoom. The round
@@ -23,13 +23,13 @@ local MM = ns.Module("Minimap", {
 })
 
 -- The game's minimap buttons this map takes onto its corners: where to find
--- each (newer client path first) and which corner it sits in. The two you
+-- each (a path of keys from the global table) and which corner it sits in. The two you
 -- click for a menu (tracking, the addon compartment) become slot buttons on
 -- the bottom band with the theme's icon (slot); the others are indicators.
 MM.LEFTOVERS = {
-  { paths = { { "MinimapCluster", "Tracking" }, { "MiniMapTracking" } }, point = "BOTTOMLEFT", x = 3, y = 3, slot = "MinimapTracking" },
-  { paths = { { "MinimapCluster", "IndicatorFrame", "MailFrame" }, { "MiniMapMailFrame" } }, point = "TOPRIGHT", x = -2, y = -2 },
-  { paths = { { "MinimapCluster", "InstanceDifficulty" }, { "MiniMapInstanceDifficulty" } }, point = "TOPLEFT", x = 2, y = -2 },
+  { paths = { { "MinimapCluster", "Tracking" } }, point = "BOTTOMLEFT", x = 3, y = 3, slot = "MinimapTracking" },
+  { paths = { { "MinimapCluster", "IndicatorFrame", "MailFrame" } }, point = "TOPRIGHT", x = -2, y = -2 },
+  { paths = { { "MinimapCluster", "InstanceDifficulty" } }, point = "TOPLEFT", x = 2, y = -2 },
   { paths = { { "AddonCompartmentFrame" } }, point = "BOTTOMRIGHT", x = -3, y = 3, slot = "MinimapAddons" },
   -- The group finder eye (shown while you're queued), smaller, just above the compartment.
   { paths = { { "QueueStatusButton" } }, point = "BOTTOMRIGHT", x = -2, y = 42, scale = 0.6 },
@@ -365,13 +365,13 @@ local function addBands(overlay, settings)
   T.OnChanged(paintChrome)
 end
 
--- The zone name centered on the top band in the heading font (the faction
--- look's, as on window titles), kept to the room between the
+-- The zone name centered on the top band in the zone role (a bold 13 that keeps
+-- Fira Sans when the faction look sets the display font on window titles), kept to the room between the
 -- corner buttons (a long name is cut short rather than run under them), and
 -- the coordinates centered on the bottom band (inside the map, so a map in a
 -- screen corner never pushes them off screen).
 local function addTexts(overlay, size)
-  MM.zone = T.Text(overlay:CreateFontString(nil, "OVERLAY"), "heading", false)
+  MM.zone = T.Text(overlay:CreateFontString(nil, "OVERLAY"), "zone", false)
   MM.zone:SetPoint("CENTER", MM.top, "CENTER")
   MM.zone:SetWidth(size - 2 * MM.ZONE_INSET)
   MM.zone:SetWordWrap(false)

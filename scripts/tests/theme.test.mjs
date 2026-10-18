@@ -1,7 +1,7 @@
 // theme: Vanguard's real Lua in the TEST-ONLY headless client (scripts/lib/lua-harness.mjs).
 
 import { expect, it } from "vitest";
-import { CLICK_LUA, button, chatHas, isTok, loggedIn, px, setCombat, tok } from "./helpers.mjs";
+import { CLICK_LUA, borderOf, button, chatHas, isTok, loggedIn, px, setCombat, tok } from "./helpers.mjs";
 
 it("theme", () => {
   const addon = loggedIn();
@@ -69,7 +69,7 @@ it("window controls: sized when the caller gave no size, on a faint tile at rest
     "an unsized close button takes the 20-unit tile's size in whole, even screen pixels; at rest: a faint raised tile under a plain cross in text2 and nothing else").toEqual([px(addon, 20, true), true, true, 0, px(addon, 20, true), "CloseMark"]);
   expect(isTok(addon, out.quiet[6], "raised"), "the resting tile is the raised slate, the same behind every control").toBe(true);
   expect([out.lit[0], isTok(addon, out.lit[1], "bad"), isTok(addon, out.lit[2], "white"), isTok(addon, out.after, "raised")], "under the mouse: a red square tile, the cross white; hidden under the mouse (no OnLeave comes) the tile goes back to the resting slate").toEqual([true, true, true, true]);
-  expect([out.m[0], /Icons\\Maximize$/.test(out.m[1]), isTok(addon, out.m[2], "accent")], "a sized control keeps its size; a maximize control's glyph, on an accent tile").toEqual([30, true, true]);
+  expect([out.m[0], /Icons\\Maximize$/.test(out.m[1]), isTok(addon, out.m[2], "raisedHover")], "a sized control keeps its size; a maximize control's glyph, on the grey raisedHover tile (only close is coloured)").toEqual([30, true, true]);
 });
 
 it("panels with padding: the fill, border and shadow reach out past the frame, the frame itself stays put", () => {
@@ -259,11 +259,10 @@ it("shared media: the bundled LibSharedMedia-3.0 carries Vanguard's font and bar
     .toEqual([8020003, 8, FIRA + "Medium.ttf", FIRA + "SemiBold.ttf", "Interface\\AddOns\\Vanguard\\Media\\Textures\\Bar", "Interface\\AddOns\\Vanguard\\Media\\Textures\\BarSoft", "Interface\\Buttons\\WHITE8X8"]);
   addon.eval('ns.Options.Show("general") __dropdown("Font")');
   const fonts = addon.eval("return __menuTexts()");
-  expect([fonts.slice(0, 2), fonts.includes("TEST-ONLY Font"), fonts.includes("Friz Quadrata TT"), fonts.some((f) => /^Vanguard/.test(f))], "the Font picker: the built-ins first, then every shared font but Vanguard's own")
-    .toEqual([["Fira Sans Condensed", "the game's font"], true, true, false]);
-  addon.eval('__pick("TEST-ONLY Font")');
-  expect(addon.eval("return { (ns.Theme.Font()), (ns.Theme.Font(true)), (Vanguard_Options.title:GetFont()), Vanguard_Options.reload:IsShown() }"), "picking a shared font uses it for all text at once, no reload")
-    .toEqual(["Interface\\AddOns\\TestOnly\\Font.ttf", "Interface\\AddOns\\TestOnly\\Font.ttf", "Interface\\AddOns\\TestOnly\\Font.ttf", false]);
+  expect(fonts, "the Font picker: Vanguard's own two fonts only (other addons' fonts are not listed)").toEqual(["Fira Sans Condensed", "the game's font"]);
+  addon.eval('ns.Theme.Settings().font = "TEST-ONLY Font" ns.Theme.Refresh()');
+  expect(addon.eval("return { (ns.Theme.Font()), (ns.Theme.Font(true)), (Vanguard_Options.title:GetFont()) }"), "a font another addon shares, once in use, is used for all text at once")
+    .toEqual(["Interface\\AddOns\\TestOnly\\Font.ttf", "Interface\\AddOns\\TestOnly\\Font.ttf", "Interface\\AddOns\\TestOnly\\Font.ttf"]);
   addon.eval('__dropdown("Bar texture")');
   const bars = addon.eval("return __menuTexts()");
   expect([bars.slice(0, 3), bars.includes("TEST-ONLY Bar"), bars.includes("Blizzard"), bars.slice(3).some((b) => /^Vanguard/.test(b))], "the Bar texture picker: Vanguard, Soft, Flat, then every shared bar texture but Vanguard's own")
@@ -291,20 +290,34 @@ it("shared media: a name no longer shared, or no LibSharedMedia at all, falls ba
 
 it("a long dropdown shows 16 choices at once, scrolls with the wheel and opens at the current choice", () => {
   const addon = loggedIn(CLICK_LUA + DROPDOWN_LUA + `local lsm = LibStub("LibSharedMedia-3.0")
-    for i = 1, 40 do lsm:Register("font", string.format("TEST-ONLY Font %02d", i), [[Interface\\AddOns\\TestOnly\\Font.ttf]]) end`);
-  addon.eval('ns.Options.Show("general") __dropdown("Font")');
-  const total = addon.eval('return #ns.Theme.SharedChoices("font", { {}, {} })');
+    for i = 1, 40 do lsm:Register("statusbar", string.format("TEST-ONLY Bar %02d", i), [[Interface\\AddOns\\TestOnly\\Bar.tga]]) end`);
+  addon.eval('ns.Options.Show("general") __dropdown("Bar texture")');
+  const total = addon.eval('return #ns.Theme.SharedChoices("statusbar", { {}, {}, {} })');
   // The first choice the menu shows.
   const first = () => addon.eval("return __menuTexts()[1]");
-  expect([addon.eval("return #__menuTexts()"), addon.eval("return Vanguard_Menu:GetHeight()"), first()], "16 of the choices, from the top").toEqual([16, 16 * 22 + 2, "Fira Sans Condensed"]);
+  expect([addon.eval("return #__menuTexts()"), addon.eval("return Vanguard_Menu:GetHeight()"), first()], "16 of the choices, from the top, each an inline control tall").toEqual([16, 16 * addon.eval("return ns.Theme.CONTROL_H") + 2, "Vanguard"]);
   addon.wheel("Vanguard_Menu", -3);
-  expect(first(), "the wheel scrolls down a choice per step").toBe("2002 Bold");
+  expect(first(), "the wheel scrolls down a choice per step").toBe(addon.eval(`return ns.Theme.SharedChoices("statusbar", { {}, {}, {} })[4][2]`));
   addon.wheel("Vanguard_Menu", -100);
-  expect([first(), addon.eval("return __menuTexts()[16]")], "and stops at the end of the list").toEqual([addon.eval(`return ns.Theme.SharedChoices("font", { {}, {} })[${total - 15}][2]`), "TEST-ONLY Font 40"]);
+  expect([first(), addon.eval("return __menuTexts()[16]")], "and stops at the end of the list").toEqual([addon.eval(`return ns.Theme.SharedChoices("statusbar", { {}, {}, {} })[${total - 15}][2]`), "TEST-ONLY Bar 40"]);
   addon.wheel("Vanguard_Menu", 100);
-  expect(first(), "and at the top").toBe("Fira Sans Condensed");
-  addon.eval('ns.Theme.Settings().font = "TEST-ONLY Font 10" ns.Widgets.CloseMenu() __dropdown("Font")');
-  expect(addon.eval("local t = __menuTexts() return { t[16], Vanguard_Menu.items[16].check:IsShown() }"), "a menu opens scrolled to show the current choice, checked").toEqual(["TEST-ONLY Font 10", true]);
+  expect(first(), "and at the top").toBe("Vanguard");
+  addon.eval('ns.Theme.Settings().barTexture = "TEST-ONLY Bar 10" ns.Widgets.CloseMenu() __dropdown("Bar texture")');
+  expect(addon.eval("local t = __menuTexts() return { t[16], Vanguard_Menu.items[16].check:IsShown() }"), "a menu opens scrolled to show the current choice, checked").toEqual(["TEST-ONLY Bar 10", true]);
+});
+
+it("the font picker lists Vanguard's two fonts and the one in use, not every font another addon shares", () => {
+  const addon = loggedIn(CLICK_LUA + DROPDOWN_LUA + `local lsm = LibStub("LibSharedMedia-3.0")
+    lsm:Register("font", "TEST-ONLY Shared", [[Interface\\AddOns\\TestOnly\\Font.ttf]])`);
+  addon.eval('ns.Options.Show("general") __dropdown("Font")');
+  expect(addon.eval("return __menuTexts()"), "Vanguard's two fonts only").toEqual(["Fira Sans Condensed", "the game's font"]);
+  // A profile that uses the shared font loads before the window is built, so its list starts with it.
+  const used = loggedIn(CLICK_LUA + DROPDOWN_LUA + `LibStub("LibSharedMedia-3.0"):Register("font", "TEST-ONLY Shared", [[Interface\\AddOns\\TestOnly\\Font.ttf]])
+    ns.Theme.Settings().font = "TEST-ONLY Shared"`);
+  used.eval('ns.Options.Show("general") __dropdown("Font")');
+  expect(used.eval("return __menuTexts()"), "a font from another addon that is in use is listed after them").toEqual(["Fira Sans Condensed", "the game's font", "TEST-ONLY Shared"]);
+  used.eval('ns.Theme.Settings().font = "Fira Sans Condensed" ns.Theme.Refresh() __pick("TEST-ONLY Shared")');
+  expect(used.eval("return { (ns.Theme.Font()), Vanguard_Options.reload:IsShown() }"), "picking it from the row applies it at once, no reload").toEqual(["Interface\\AddOns\\TestOnly\\Font.ttf", false]);
 });
 
 it("the faction look on a Russian client keeps Fira Sans for headings (the faction fonts have no Cyrillic); the crest stays", () => {
@@ -321,8 +334,9 @@ it("the faction look on a Russian client keeps Fira Sans for headings (the facti
   expect(look(german)[0], "a German client gets Cinzel (it has the Latin accents)").toBe("Cinzel-SemiBold.ttf");
 });
 
-// TEST-ONLY game tab buttons shaped like the game's three tab templates, and a reader
-// for a tab's accent line (the only OVERLAY texture T.Tab adds) and its art's alpha.
+// TEST-ONLY game tab buttons shaped like the game's three tab templates, and readers for a
+// tab's art alpha and its fill: the selected tab is raised (the theme's raised colour), the
+// others inset. The fill is the last BACKGROUND texture T.Tab tints.
 const TABS_LUA = `
   function __tab(keys, kind)
     local b = CreateFrame(kind or "Button", nil, UIParent)
@@ -330,51 +344,57 @@ const TABS_LUA = `
     b.Icon = b:CreateTexture(nil, "ARTWORK")
     return b
   end
-  function __line(b)
-    for _, r in ipairs({ b:GetRegions() }) do if r.__layer == "OVERLAY" then return r end end
+  function __tabBg(b)
+    local bg
+    for _, r in ipairs({ b:GetRegions() }) do if r.__layer == "BACKGROUND" and r.__vertexColor then bg = r end end
+    return bg
+  end
+  function __raised(b)
+    local c = __tabBg(b).__vertexColor
+    local r, g, bl = ns.Theme.RGB("raised")
+    return c[1] == r and c[2] == g and c[3] == bl
   end
 `;
 
-it("game tabs: art faded, icon kept, a panel, and an accent line that follows the game's selection", () => {
+it("game tabs: art faded, icon kept, a panel, and the selected tab raised while the game has it selected", () => {
   const addon = loggedIn(TABS_LUA);
   const panelTab = addon.eval(`
     local tab = __tab({ "Left", "Middle", "Right", "LeftActive", "MiddleActive", "RightActive" })
     ns.Theme.Tab(tab) ns.Theme.Tab(tab) __panelTab = tab
-    local line = __line(tab)
-    local before = line:IsShown()
-    tab:Disable() local selected = line:IsShown()
-    tab:Enable() local after = line:IsShown()
+    local before = __raised(tab)
+    tab:Disable() local selected = __raised(tab)
+    tab:Enable() local after = __raised(tab)
     return { tab.Left.__alpha, tab.RightActive.__alpha, tab.Icon.__alpha == nil, before, selected, after }`);
-  expect(panelTab, "a panel tab: art faded, icon left, the line shows only while the game has it disabled (selected)").toEqual([0, 0, true, false, true, false]);
+  expect(panelTab, "a panel tab: art faded, icon left, raised only while the game has it disabled (selected)").toEqual([0, 0, true, false, true, false]);
   const sideTab = addon.eval(`
     local tab = __tab({ "Background", "SelectedTexture", "HighlightTexture" })
     function tab:SetChecked(on) self.SelectedTexture:SetShown(on) end
     ns.Theme.Tab(tab)
-    tab:SetChecked(true) local on = __line(tab):IsShown()
+    tab:SetChecked(true) local on = __raised(tab)
     tab:SetChecked(false)
-    return { tab.Background.__alpha, tab.SelectedTexture.__alpha, on, __line(tab):IsShown() }`);
+    return { tab.Background.__alpha, tab.SelectedTexture.__alpha, on, __raised(tab) }`);
   expect(sideTab, "a side tab follows SetChecked").toEqual([0, 0, true, false]);
   const systemTab = addon.eval(`
     local tab = __tab({ "Left", "Middle", "Right" })
     function tab:SetTabSelected(on) self.isSelected = on end
     ns.Theme.Tab(tab)
-    tab:SetTabSelected(true) local on = __line(tab):IsShown()
+    tab:SetTabSelected(true) local on = __raised(tab)
     tab:Disable()
     tab:SetTabSelected(false)
-    return { on, __line(tab):IsShown() }`);
+    return { on, __raised(tab) }`);
   expect(systemTab, "a tab-system tab follows SetTabSelected, not its enabled state").toEqual([true, false]);
   const frameTab = addon.eval(`
     local tab = __tab({ "Background", "SelectedTexture" }, "Frame")
     function tab:HookScript(name, fn) if name == "OnEnable" or name == "OnDisable" then error("Frame doesn't have a " .. name .. " script") end end
     function tab:SetChecked(on) end
     ns.Theme.Tab(tab) tab:SetChecked(true)
-    return __line(tab):IsShown()`);
+    return __raised(tab)`);
   expect(frameTab, "a side tab that is a Frame (no OnEnable script) still follows SetChecked").toBe(true);
   expect(addon.eval("return #ns.errors"), "and nothing is reported").toBe(0);
-  const bare = addon.eval("local b = CreateFrame('Button', nil, UIParent) ns.Theme.Tab(b) return __line(b) ~= nil");
+  const bare = addon.eval("local b = CreateFrame('Button', nil, UIParent) ns.Theme.Tab(b) return __tabBg(b) ~= nil");
   expect(bare, "a button with none of the parts is panelled, nothing errors").toBe(true);
-  addon.eval("__panelTab:Disable() ns.Theme.SetAccent(0.1, 0.2, 0.3)");
-  expect(addon.eval("return __line(__panelTab).__vertexColor[3]"), "the line follows the accent").toBeCloseTo(0.3);
+  addon.eval('__panelTab:Disable() ns.Theme.Settings().variant = "midnight" ns.Theme.Refresh()');
+  expect(addon.eval("return __raised(__panelTab)"), "a theme variant change repaints the selected tab in the variant's raised colour").toBe(true);
 });
 
 it("tooltip-like frames: a panel with a shadow and the game's NineSlice faded, once", () => {
@@ -406,22 +426,34 @@ const SCROLL_LUA = `
   end
 `;
 
-it("the game's scroll bars: track art faded, a raised thumb with an accent edge under the mouse, flat arrows", () => {
+it("the game's scroll bars: track art faded, the one T.SCROLL line on the thumb (lit under the mouse), the arrows faded away", () => {
   const addon = loggedIn(SCROLL_LUA);
   const minimal = addon.eval(`
     local bar = __bar() ns.Theme.ScrollBar(bar) ns.Theme.ScrollBar(bar)
     local thumb = bar.Track.Thumb
+    local line = ns.FrameState('vgThumb')[thumb].bar
+    local rest = line:GetAlpha()
     thumb.__scripts.OnEnter(thumb)
-    local accent = { ns.Theme.Accent() }
-    local edged
-    for _, r in ipairs({ thumb:GetRegions() }) do if r.__vertexColor and r.__vertexColor[1] == accent[1] and r.__vertexColor[3] == accent[3] then edged = true end end
+    local lit = line:GetAlpha()
     thumb.__scripts.OnLeave(thumb)
-    return { bar.Track.Begin.__alpha, thumb.Middle.__alpha, bar.Back.Texture.__alpha, edged == true,
-      ns.FrameState('vgArrow')[bar.Back].__texCoord[3], ns.FrameState('vgArrow')[bar.Forward].__texCoord == nil }`);
-  expect(minimal, "faded, accent under the mouse, the up arrow is the Down icon turned over").toEqual([0, 0, 0, true, 1, true]);
+    return { bar.Track.Begin.__alpha, thumb.Middle.__alpha, bar.Back:GetAlpha(), bar.Back.__mouse, line:GetWidth(), rest, lit, line:GetAlpha(),
+      ns.FrameState('vgArrow')[bar.Back] ~= nil, ns.FrameState('vgArrow')[bar.Forward] ~= nil }`);
+  expect(minimal, "faded; the line T.SCROLL.thumb wide at the rest alpha, lit under the mouse; the arrows at alpha 0 without the mouse, marked once").toEqual([0, 0, 0, false, 4, 0.5, 1, 0.5, true, true]);
   const trim = addon.eval("local bar = __bar(true) ns.Theme.ScrollBar(bar) return { bar.Background.__alpha, bar.Track.Thumb.Middle.__alpha }");
   expect(trim, "the trim bar's background goes too").toEqual([0, 0]);
   expect(addon.eval("local f = CreateFrame('Frame', nil, UIParent) f.Back = CreateFrame('Button', nil, f) ns.Theme.ScrollBar(f) return ns.FrameState('vgArrow')[f.Back] == nil"), "a frame without a thumb is left alone").toBe(true);
+});
+
+it("the game's old scroll bar (UIPanelScrollFrameTemplate): its art and thumb texture faded, the one T.SCROLL line on the slider along the thumb, the up and down buttons faded away", () => {
+  const addon = loggedIn(`
+    local bar = CreateFrame("Frame", "TEST_OldScroll", UIParent) bar.Top = bar:CreateTexture() bar.ThumbTexture = bar:CreateTexture()
+    bar.ScrollUpButton = CreateFrame("Button", nil, bar) CreateFrame("Button", "TEST_OldScrollScrollDownButton", bar)
+    ns.Theme.ScrollBar(bar) ns.Theme.ScrollBar(bar)`);
+  const out = addon.eval(`local bar = TEST_OldScroll local line = ns.FrameState('vgThumb')[bar].bar
+    local rest = line:GetAlpha() bar.__scripts.OnMouseDown(bar) local held = line:GetAlpha() bar.__scripts.OnMouseUp(bar)
+    return { bar.Top.__alpha, bar.ThumbTexture.__alpha, line:GetAlpha(), line.__points.TOP.rel == bar.ThumbTexture, line.__points.BOTTOM.rel == bar.ThumbTexture,
+      rest, held, line:GetAlpha(), bar.ScrollUpButton:GetAlpha(), TEST_OldScrollScrollDownButton:GetAlpha(), select("#", bar:GetRegions()) }`);
+  expect(out, "faded; the line along the thumb texture at the rest alpha, lit while held; the up button (by key) and down button (by name) at alpha 0; painted once").toEqual([0, 0, 0.5, true, true, 0.5, 1, 0.5, 0, 0, 3]);
 });
 
 it("the game's font objects: the theme font at Text size, kept after a theme change", () => {
@@ -526,7 +558,7 @@ const contrast = (addon, name) => {
 
 it("text tiers (#227): text, text2, muted, then disabled, each readable on a panel; a search box's hint is in the disabled tier", () => {
   const addon = loggedIn();
-  expect(["text", "text2", "muted", "disabled"].map((n) => contrast(addon, n)), "brightest first; every tier, disabled too, clears 4.5:1").toEqual([15, 11.4, 8, 4.7]);
+  expect(["text", "text2", "muted", "disabled"].map((n) => contrast(addon, n)), "brightest first; every tier, disabled too, clears 4.5:1").toEqual([15, 11.4, 8, 5.5]);
   const hint = addon.eval('local e = ns.Widgets.Search(UIParent, 200, "Search", function() end) return { e.hint.__textColor[1], e.hint.__textColor[2], e.hint.__textColor[3] }');
   expect(isTok(addon, hint, "disabled"), "the search hint is placeholder text").toBe(true);
 });
@@ -851,4 +883,224 @@ it("a variant switch recolours text drawn before it: with the options window ope
   addon.eval('__hand = UIParent:CreateFontString() ns.Theme.Color(__hand, 0.5, 0.5, 0.5)');
   addon.slash("variant default");
   expect([tok(addon, "text").slice(0, 3), addon.eval("return { __hand:GetTextColor() }").slice(0, 3)], "back to the default; text coloured by hand is left alone").toEqual([[232 / 255, 234 / 255, 238 / 255], [0.5, 0.5, 0.5]]);
+});
+
+// One of the game's check buttons: template art, a label, checked; returns nothing.
+const CHECK_BUTTON = `local b = CreateFrame("CheckButton", "TEST_Check", UIParent) b:SetSize(24, 24)
+  b.Art = b:CreateTexture() b:SetCheckedTexture(b:CreateTexture()) b:SetFontString(b:CreateFontString()) b.text = b:GetFontString() b.text:SetPoint("LEFT", b, "RIGHT", 2, 0) b:SetChecked(true) ns.Theme.CheckBox(b)`;
+
+it("theme: a game check button becomes a 16 px inset box with the Check glyph in accentText while checked, following the game's state and the mouse (DESIGN-PRINCIPLES 2.6)", () => {
+  const addon = loggedIn(CHECK_BUTTON);
+  // The check button's state: { art faded, box width, mark shown, mark colour, mark size, press shown, fill shown, box regions, label colour }.
+  const state = () => addon.eval(`local c = ns.Theme.CheckParts(TEST_Check)
+    return { TEST_Check.Art.__alpha, c.box:GetWidth(), c.mark:IsShown(), c.mark.__vertexColor, c.mark:GetWidth(), ns.Theme.PressOverlay(TEST_Check):IsShown(), c.fill:IsShown(), select("#", c.box:GetRegions()), TEST_Check:GetFontString().__textColor }`);
+  let s = state();
+  expect([s[0], s[1], s[2], isTok(addon, s[3], "accentText"), s[5], s[6]], "art faded; the box 16 px; the mark shown in accentText; no press, no fill").toEqual([0, addon.eval("return ns.Theme.PixelRound(UIParent, 16, true)"), true, true, false, false]);
+  expect([s[4], addon.eval("return ns.Theme.CheckParts(TEST_Check).mark.__texture")], "the Check glyph at 12 px").toEqual([addon.eval("return ns.Theme.PixelRound(UIParent, 12, true)"), addon.eval('return ns.Theme.Icon("Check")')]);
+  addon.eval("TEST_Check:SetChecked(false)");
+  expect(state()[2], "SetChecked(false): the mark goes").toBe(false);
+  addon.eval('TEST_Check:SetChecked(true) TEST_Check:GetScript("OnClick")(TEST_Check)');
+  expect(state()[2], "a click (the client flips the state first): the mark is back").toBe(true);
+  addon.eval('TEST_Check:GetScript("OnEnter")(TEST_Check)');
+  expect(isTok(addon, borderOf(addon, "ns.Theme.CheckParts(TEST_Check).box"), "borderHi"), "under the mouse the box's border is borderHi").toBe(true);
+  addon.eval('TEST_Check:GetScript("OnLeave")(TEST_Check)');
+  expect(isTok(addon, borderOf(addon, "ns.Theme.CheckParts(TEST_Check).box"), "edge"), "and back to edge").toBe(true);
+  addon.eval('TEST_Check:GetScript("OnMouseDown")(TEST_Check)');
+  expect([state()[5], addon.eval("return select(5, TEST_Check.text:GetPoint(1))"), addon.eval("return { ns.Theme.PressOverlay(TEST_Check):GetDrawLayer() }")], "held: the shade shows above the fill and under the border, the label stays put").toEqual([true, 0, ["BACKGROUND", 2]]);
+  addon.eval('TEST_Check:GetScript("OnMouseUp")(TEST_Check)');
+  expect(state()[5], "let go: it hides").toBe(false);
+  addon.eval('TEST_Check:GetScript("OnEnter")(TEST_Check) TEST_Check:Disable()');
+  s = state();
+  expect([isTok(addon, s[3], "disabled"), isTok(addon, s[8], "disabled"), isTok(addon, borderOf(addon, "ns.Theme.CheckParts(TEST_Check).box"), "edge")], "disabled under the mouse: the mark and the label in the disabled tier, the hover border let go").toEqual([true, true, true]);
+  addon.eval("TEST_Check:Enable()");
+  expect(isTok(addon, state()[3], "accentText"), "enabled: the mark's colour back").toBe(true);
+  addon.eval('TEST_Check:GetScript("OnEnter")(TEST_Check) TEST_Check:GetScript("OnHide")(TEST_Check)');
+  expect(isTok(addon, borderOf(addon, "ns.Theme.CheckParts(TEST_Check).box"), "edge"), "hidden under the mouse: the hover border let go").toBe(true);
+  const n = state()[7];
+  addon.eval("ns.Theme.CheckBox(TEST_Check)");
+  expect(state()[7], "painting again adds nothing").toBe(n);
+  addon.eval('ns.Theme.CHECK.fill = "accent" ns.Theme.CHECK.markColor = "void" ns.Theme.Refresh()');
+  s = state();
+  expect([s[6], isTok(addon, addon.eval("return ns.Theme.CheckParts(TEST_Check).fill.__vertexColor"), "accent"), isTok(addon, s[3], "void")], "the filled look ([DECIDE] 6.8) is two values in T.CHECK, reaching a painted box on refresh").toEqual([true, true, true]);
+  addon.eval('Vanguard.RegisterSkin("TEST-ONLY-check", function(S) __skinned = S.CheckBox(CreateFrame("CheckButton", nil, UIParent)) __plain = S.CheckBox(CreateFrame("Frame", nil, UIParent)) end)');
+  expect(addon.eval("return { ns.Theme.CheckParts(__skinned) ~= nil, ns.Theme.CheckParts(__plain) ~= nil }"), "other addons get it as S.CheckBox, on a plain frame without click scripts too").toEqual([true, true]);
+});
+
+it("theme: a plain frame whose check mark the game shows and hides (QuestLogTrackCheckboxTemplate) gets the check box look, following that mark", () => {
+  const addon = loggedIn(`local f = CreateFrame("Frame", "TEST_Track", UIParent) f:SetSize(16, 16) f.Bg = f:CreateTexture() f.CheckMark = f:CreateTexture() f.CheckMark:Hide()
+    ns.Theme.CheckBox(f) ns.Theme.CheckBox(f, { mark = f.CheckMark })`);
+  // The frame's state: { its art's alpha, the game mark's alpha, Vanguard's mark shown }.
+  const state = () => addon.eval("local c = ns.Theme.CheckParts(TEST_Track) return { TEST_Track.Bg.__alpha, TEST_Track.CheckMark.__alpha, c.mark:IsShown() }");
+  expect(state(), "painted plain first, then given its mark: the art and the game's mark faded; not tracked, no mark").toEqual([0, 0, false]);
+  addon.eval("TEST_Track.CheckMark:Show()");
+  expect(state()[2], "the game shows its mark: the Check glyph shows").toBe(true);
+  addon.eval("TEST_Track.CheckMark:SetShown(false)");
+  expect(state()[2], "and hides it again").toBe(false);
+});
+
+// One of the game's radio buttons: template art, a label, checked; returns nothing.
+const RADIO = `local b = CreateFrame("CheckButton", "TEST_Radio", UIParent) b:SetSize(16, 16)
+  b.Art = b:CreateTexture() b:SetCheckedTexture(b:CreateTexture()) b:SetFontString(b:CreateFontString()) b.text = b:GetFontString() b:SetChecked(true) ns.Theme.Radio(b)`;
+
+it("theme: a game radio button becomes a dark 16 px ring with an accentText dot while checked, following the game's state and the mouse", () => {
+  const addon = loggedIn(RADIO);
+  // The radio's state: { art faded, ring width, dot shown, dot colour, ring colour, press shown, holder regions, label colour, well width }.
+  const state = () => addon.eval(`local r = ns.Theme.CheckParts(TEST_Radio)
+    return { TEST_Radio.Art.__alpha, r.ring:GetWidth(), r.mark:IsShown(), r.mark.__vertexColor, r.ring.__vertexColor, ns.Theme.PressOverlay(TEST_Radio):IsShown(), select("#", r.holder:GetRegions()), TEST_Radio.text.__textColor or false, r.well:GetWidth() }`);
+  let s = state();
+  expect([s[0], s[1], s[8], s[2], isTok(addon, s[3], "accentText"), isTok(addon, s[4], "edge"), s[5]], "art faded; an edge ring 16 px round a 14 px well; the dot in accentText; no press").toEqual([0, px(addon, 16, true), px(addon, 14, true), true, true, true, false]);
+  expect(addon.eval('return ns.Theme.CheckParts(TEST_Radio).ring.__texture == ns.Theme.Texture("Knob")'), "the ring is the round Knob art").toBe(true);
+  addon.eval("TEST_Radio:SetChecked(false)");
+  expect(state()[2], "SetChecked(false): the dot goes").toBe(false);
+  addon.eval('TEST_Radio:GetScript("OnEnter")(TEST_Radio)');
+  expect(isTok(addon, state()[4], "borderHi"), "under the mouse the ring is borderHi").toBe(true);
+  addon.eval('TEST_Radio:GetScript("OnMouseDown")(TEST_Radio)');
+  expect(state()[5], "held: the shade shows").toBe(true);
+  addon.eval('TEST_Radio:GetScript("OnMouseUp")(TEST_Radio) TEST_Radio:SetChecked(true) TEST_Radio:Disable()');
+  s = state();
+  expect([s[5], isTok(addon, s[3], "disabled"), isTok(addon, s[7], "disabled"), isTok(addon, s[4], "edge")], "let go, then disabled under the mouse: the dot and label disabled, the ring back to edge").toEqual([false, true, true, true]);
+  const n = state()[6];
+  addon.eval("TEST_Radio:Enable()");
+  expect(isTok(addon, state()[4], "edge"), "enabled after the mouse left while it was disabled (no OnLeave): no stuck hover ring").toBe(true);
+  addon.eval("ns.Theme.Radio(TEST_Radio)");
+  s = state();
+  expect([s[6], isTok(addon, s[3], "accentText")], "painting again adds nothing; enabled, the dot's colour is back").toEqual([n, true]);
+  addon.eval('ns.Theme.RADIO.dotColor = "accent" ns.Theme.Refresh()');
+  expect(isTok(addon, state()[3], "accent"), "T.RADIO reaches a painted radio on refresh").toBe(true);
+  addon.eval('Vanguard.RegisterSkin("TEST-ONLY-radio", function(S) __radio = S.Radio(CreateFrame("CheckButton", nil, UIParent)) end)');
+  expect(addon.eval("return ns.Theme.CheckParts(__radio) ~= nil"), "other addons get it as S.Radio").toBe(true);
+});
+
+it("theme: a game divider becomes one pixel of divider along it, the game's art faded, following the game showing it", () => {
+  const addon = loggedIn(`local f = CreateFrame("Frame", "TEST_DivHost", UIParent) f:SetSize(200, 100)
+    f.Bar = f:CreateTexture() f.Bar:SetPoint("TOPLEFT") f.Bar:SetPoint("TOPRIGHT") f.Bar:SetHeight(4) ns.Theme.Divider(f.Bar)
+    f.Sep = CreateFrame("Frame", nil, f) f.Sep.Art = f.Sep:CreateTexture() ns.Theme.Divider(f.Sep, { vertical = true })`);
+  // A divider's state: { its art's alpha, the line's thickness, colour, shown, the holder's anchor }.
+  const state = (d, art, thick) => addon.eval(`local d = ns.Theme.DividerParts(${d}) local l = d.line
+    return { ${art}.__alpha, l:${thick}(), l.__vertexColor, d.holder:IsShown(), d.holder.__points.TOPLEFT.rel == ${d} }`);
+  let s = state("TEST_DivHost.Bar", "TEST_DivHost.Bar", "GetHeight");
+  expect([s[0], s[1], isTok(addon, s[2], "divider"), s[3], s[4]], "the texture faded; a line one screen pixel high in divider, over it").toEqual([0, addon.eval("return ns.Theme.Pixel(UIParent)"), true, true, true]);
+  addon.eval("TEST_DivHost.Bar:Hide()");
+  expect(state("TEST_DivHost.Bar", "TEST_DivHost.Bar", "GetHeight")[3], "the game hides the texture: the line goes").toBe(false);
+  addon.eval("TEST_DivHost.Bar:Show() ns.Theme.Divider(TEST_DivHost.Bar)");
+  expect([state("TEST_DivHost.Bar", "TEST_DivHost.Bar", "GetHeight")[3], addon.eval("return select('#', TEST_DivHost:GetChildren())")], "shown again; painting again adds no frame").toEqual([true, 2]);
+  expect(addon.eval("local l = ns.Theme.DividerParts(TEST_DivHost.Bar).line return { l.__points.TOPLEFT ~= nil, l.__points.TOPRIGHT ~= nil }"), "the line runs along the divider's top edge, on whole pixels").toEqual([true, true]);
+  addon.eval("UIParent:SetScale(0.8)");
+  addon.fire("UI_SCALE_CHANGED");
+  addon.update(0.1);
+  expect(state("TEST_DivHost.Bar", "TEST_DivHost.Bar", "GetHeight")[1], "after a UI scale change the line is one screen pixel again").toBe(addon.eval("return ns.Theme.Pixel(UIParent)"));
+  s = state("TEST_DivHost.Sep", "TEST_DivHost.Sep.Art", "GetWidth");
+  expect([s[0], s[1], s[4]], "a frame of divider art: its art faded, a vertical line one pixel wide over it").toEqual([0, addon.eval("return ns.Theme.Pixel(UIParent)"), true]);
+  addon.eval('ns.Theme.DIVIDER.color = "accent" ns.Theme.Refresh()');
+  expect(isTok(addon, state("TEST_DivHost.Sep", "TEST_DivHost.Sep.Art", "GetWidth")[2], "accent"), "T.DIVIDER reaches it on refresh").toBe(true);
+  addon.eval('Vanguard.RegisterSkin("TEST-ONLY-divider", function(S) __div = S.Divider(UIParent:CreateTexture()) end)');
+  expect(addon.eval("return ns.Theme.DividerParts(__div) ~= nil"), "other addons get it as S.Divider").toBe(true);
+});
+
+it("theme: a game arrow button shows the theme's arrow glyph turned its way, in text2, text under the mouse, disabled while disabled", () => {
+  const addon = loggedIn(`for _, n in ipairs({ "Up", "Left", "Flat" }) do local b = CreateFrame("Button", "TEST_Arrow" .. n, UIParent) b:SetSize(20, 20) b.Art = b:CreateTexture() end
+    ns.Theme.ArrowButton(TEST_ArrowUp, "up") ns.Theme.ArrowButton(TEST_ArrowLeft, "left") ns.Theme.ArrowButton(TEST_ArrowFlat, "sideways", { flat = true })`);
+  // An arrow's state: { glyph texture, texture coordinates, colour, art alpha, has a button panel }.
+  const state = (n) => addon.eval(`local g = ns.Theme.ArrowParts(TEST_Arrow${n}).glyph
+    return { g.__texture, g.__texCoord, g.__vertexColor, TEST_Arrow${n}.Art.__alpha, ns.Theme.PressOverlay(TEST_Arrow${n}) ~= nil }`);
+  // The path of a theme icon.
+  const icon = (n) => addon.eval(`return ns.Theme.Icon("${n}")`);
+  let s = state("Up");
+  expect([s[0], s[1], isTok(addon, s[2], "text2"), s[3], s[4]], "up: the Down glyph flipped, in text2, on a flat button panel").toEqual([icon("Down"), [0, 1, 1, 0], true, 0, true]);
+  s = state("Left");
+  expect([s[0], s[1]], "left: the Right glyph mirrored").toEqual([icon("Right"), [1, 0, 0, 1]]);
+  s = state("Flat");
+  expect([s[0], s[1], s[3], s[4]], "an unknown direction points down; flat: no panel, just the art faded").toEqual([icon("Down"), [0, 1, 0, 1], 0, false]);
+  addon.eval('TEST_ArrowUp:GetScript("OnEnter")(TEST_ArrowUp)');
+  expect(isTok(addon, state("Up")[2], "text"), "under the mouse: text").toBe(true);
+  addon.eval('TEST_ArrowUp:Disable()');
+  expect(isTok(addon, state("Up")[2], "disabled"), "disabled: the disabled tier").toBe(true);
+  addon.eval('TEST_ArrowUp:Enable()');
+  expect(isTok(addon, state("Up")[2], "text2"), "enabled after the mouse left while it was disabled (no OnLeave): text2, no stuck hover").toBe(true);
+  addon.eval('TEST_ArrowUp:GetScript("OnEnter")(TEST_ArrowUp) TEST_ArrowUp:GetScript("OnHide")(TEST_ArrowUp)');
+  expect(isTok(addon, state("Up")[2], "text2"), "hidden under the mouse: the hover ends").toBe(true);
+  addon.eval('ns.Theme.ArrowButton(TEST_ArrowFlat, "down")');
+  expect(state("Flat")[4], "flat is kept on a later call without it").toBe(false);
+  addon.eval('ns.Theme.ARROW.color = "accent" ns.Theme.Refresh()');
+  expect(isTok(addon, state("Up")[2], "accent"), "enabled and left: T.ARROW's resting colour, reaching it on refresh").toBe(true);
+  addon.eval('Vanguard.RegisterSkin("TEST-ONLY-arrow", function(S) __arrow = S.ArrowButton(CreateFrame("Button", nil, UIParent), "right") end)');
+  expect(addon.eval("return ns.Theme.ArrowParts(__arrow) ~= nil"), "other addons get it as S.ArrowButton").toBe(true);
+});
+
+// OKLCH lightness of an { r, g, b } colour (0-1 channels).
+const oklchL = ([r, g, b]) => {
+  const [lr, lg, lb] = [r, g, b].map((c) => (c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4));
+  const l = Math.cbrt(0.4122214708 * lr + 0.5363325363 * lg + 0.0514459929 * lb);
+  const m = Math.cbrt(0.2119034982 * lr + 0.6806995451 * lg + 0.1073969566 * lb);
+  const s = Math.cbrt(0.0883024619 * lr + 0.2817188376 * lg + 0.6299787005 * lb);
+  return 0.2104542553 * l + 0.793617785 * m - 0.0040720468 * s;
+};
+
+it("surfaces keep their order in every variant: inset < panel < raised < raisedHover < divider < borderHi in OKLCH lightness (8.1)", () => {
+  const addon = loggedIn();
+  const order = ["inset", "panel", "raised", "raisedHover", "divider", "borderHi"];
+  for (const name of addon.eval("return ns.Theme.VARIANT_ORDER")) {
+    addon.slash(`variant ${name}`);
+    const lightness = order.map((n) => oklchL(tok(addon, n)));
+    expect(lightness.every((v, i) => i === 0 || v > lightness[i - 1]), `${name}: ${lightness.map((v) => v.toFixed(3)).join(" < ")}`).toBe(true);
+  }
+});
+
+it("T.Capsule: a fill of the tier and a 1 px outline in three parts, round ends half the height wide, the middle between; the outline is optional (8.1)", () => {
+  const addon = loggedIn();
+  const out = addon.eval(`
+    local f = CreateFrame("Frame", nil, UIParent)
+    f:SetSize(60, 14)
+    local c = ns.Theme.Capsule(f, 14, "raised")
+    local bare = ns.Theme.Capsule(CreateFrame("Frame", nil, UIParent), 12, "inset", { line = false, layer = "ARTWORK" })
+    return { #c.fill, #c.line, c.fill[1]:GetWidth(), c.fill[3]:GetWidth(), c.fill[1].__layer, c.line[2].__layer, bare.line == nil, bare.fill[2].__layer,
+      c.fill[2].__texture, c.line[2].__texture }`);
+  expect(out.slice(0, 7), "three parts each, ends 7 wide at a height of 14, fill under outline, no outline when asked").toEqual([3, 3, 7, 7, "BORDER", "OVERLAY", true]);
+  expect([out[7], /Pill$/.test(out[8]), /PillLine$/.test(out[9])], "layer option and the textures").toEqual(["ARTWORK", true, true]);
+  addon.slash("variant midnight");
+  expect(isTok(addon, addon.eval("return ({ ns.Theme.Capsule(CreateFrame('Frame'), 8, 'inset').fill[1]:GetVertexColor() })"), "inset"), "a capsule's fill follows the variant").toBe(true);
+});
+
+it("T.SetText: a role with the upper flag (section) shows capitals, any other role shows the text as given", () => {
+  const addon = loggedIn();
+  const out = addon.eval(`
+    local T = ns.Theme
+    local head = T.Text(UIParent:CreateFontString(nil, "OVERLAY"), "section", "muted")
+    local plain = T.Text(UIParent:CreateFontString(nil, "OVERLAY"), "small", "muted")
+    T.SetText(head, "Quest items") T.SetText(plain, "Quest items")
+    return { head.__text, plain.__text, T.RoleSize("section") == T.RoleSize("small") }`);
+  expect(out, "capitals only for the section role, which is the small size").toEqual(["QUEST ITEMS", "Quest items", true]);
+});
+
+it("T.Slider: a game slider gets the pill look on its own geometry, a fill to the thumb, a knob on the thumb, a grey knob while disabled; vertical runs down; steppers become arrows", () => {
+  const addon = loggedIn(`
+    local function make(name, orientation)
+      local s = CreateFrame("Slider", name, UIParent)
+      s:SetSize(120, 16) s:SetOrientation(orientation) s:SetThumbTexture("Interface/Buttons/UI-SliderBar-Button-Horizontal")
+      s.Art = s:CreateTexture()
+      return s
+    end
+    make("TEST_SlH", "HORIZONTAL") make("TEST_SlV", "VERTICAL")
+    local m = CreateFrame("Frame", "TEST_SlMin", UIParent)
+    m.Slider, m.Back, m.Forward = make("TEST_SlMinS", "HORIZONTAL"), CreateFrame("Button", nil, m), CreateFrame("Button", nil, m)
+    ns.Theme.Slider(TEST_SlH) ns.Theme.Slider(TEST_SlH) ns.Theme.Slider(TEST_SlV) ns.Theme.Slider(m)`);
+  const out = addon.eval(`
+    local h, v = ns.Theme.SliderParts(TEST_SlH), ns.Theme.SliderParts(TEST_SlV)
+    local bare = CreateFrame("Slider", nil, UIParent)
+    return { #h.track, #h.fill, #h.line, h.bar:GetHeight(), v.bar:GetWidth(), TEST_SlH.Art.__alpha, TEST_SlH:GetThumbTexture().__alpha,
+      ns.Theme.SliderParts(TEST_SlMinS) ~= nil, ns.Theme.ArrowParts(TEST_SlMin.Back) ~= nil, ns.Theme.ArrowParts(TEST_SlMin.Forward) ~= nil,
+      ns.Theme.Slider(bare) == bare and ns.Theme.SliderParts(bare) == nil, ns.Theme.SliderParts(TEST_SlH) == h }`);
+  out[3] = Math.abs(out[3] - 8) < 1;
+  out[4] = Math.abs(out[4] - 8) < 1;
+  expect(out, "three slices a layer, the track about 8 thick (the width on a vertical one), the game's art and thumb faded, minimal frames dressed, a thumbless slider left alone, repeat calls keep the parts")
+    .toEqual([3, 2, 3, true, true, 0, 0, true, true, true, true, true]);
+  // The horizontal slider's knob colour.
+  const knob = () => addon.eval("return ns.Theme.SliderParts(TEST_SlH).knob.__vertexColor");
+  expect(isTok(addon, knob(), "white"), "the knob is white").toBe(true);
+  addon.eval("TEST_SlH:Disable()");
+  expect(isTok(addon, knob(), "disabled"), "disabled: the knob takes thumbOff").toBe(true);
+  addon.eval("TEST_SlH:Enable()");
+  expect(isTok(addon, knob(), "white"), "and white again when enabled").toBe(true);
+  addon.eval('Vanguard.RegisterSkin("TEST-ONLY-slider", function(S) __sl = S.Slider(CreateFrame("Slider", nil, UIParent)) end)');
+  expect(addon.eval("return __sl ~= nil"), "other addons get it as S.Slider").toBe(true);
 });

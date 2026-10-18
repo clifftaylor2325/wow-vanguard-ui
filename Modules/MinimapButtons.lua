@@ -13,7 +13,7 @@ local T = ns.Theme
 
 local MB = ns.Module("MinimapButtons", { defaults = { drawer = true } })
 
-MB.SIZE, MB.GAP, MB.PER_ROW, MB.PAD = 26, 2, 4, 4
+MB.SIZE, MB.GAP, MB.PER_ROW, MB.PAD = 26, 2, 4, T.SPACE.tight
 -- Addon minimap buttons are named after the library that makes them.
 MB.NAME = "^LibDBIcon10_"
 -- A second look shortly after login, for addons that make their buttons late.
@@ -63,7 +63,7 @@ end
 -- The drawer: a panel beside the minimap's left edge, shut until the toggle opens it.
 local function buildDrawer(map)
   MB.drawer = T.HudPanel(CreateFrame("Frame", "Vanguard_MinimapDrawer", map))
-  MB.drawer:SetPoint("TOPRIGHT", map, "TOPLEFT", -4, 0)
+  MB.drawer:SetPoint("TOPRIGHT", map, "TOPLEFT", -T.SPACE.tight, 0)
   MB.drawer:SetFrameStrata("MEDIUM")
   MB.drawer:Hide()
 end

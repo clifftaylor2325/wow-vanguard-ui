@@ -9,8 +9,8 @@ local ADDON, ns = ...
 local T = ns.Theme
 local OL = ns.GetModule("OfficerLoot")
 
--- The panel's width, a line's height and its padding (UI units), and the most members listed.
-OL.RWIDTH, OL.RLINE, OL.RPAD, OL.RMAX = 190, 14, 6, 40
+-- The panel's width, a line's height and its padding (UI units; a HUD card's, T.SPACE.gap), and the most members listed.
+OL.RWIDTH, OL.RLINE, OL.RPAD, OL.RMAX = 190, 14, T.SPACE.gap, 40
 -- A group role as the roster says it, and the order roles are listed in.
 OL.ROLES = { TANK = "Tank", HEALER = "Healer", DAMAGER = "DPS" }
 OL.ROLE_ORDER = { TANK = 1, HEALER = 2, DAMAGER = 3 }

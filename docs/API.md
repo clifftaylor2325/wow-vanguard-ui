@@ -62,4 +62,4 @@ if Vanguard and Vanguard.OpenOptions then Vanguard.OpenOptions("profiles") end
 
 A preset never applies by itself. The player picks it on the Profiles page (or types `/vg preset <name>`), answers a question, and it is imported like `/vg import`: a backup of their profile first, a partial string merged key by key (their layout, theme and everything the string leaves out are kept), a whole profile saved as a new profile. It waits until combat ends. Vanguard's own Healer, Damage and Tank presets are partial strings for the raid frames and nameplates.
 
-Widget builders: the skin API's `S` table (see the README) already carries the theme builders (Panel, Button, EditBox, Tab, ScrollBar, Tooltip, Text, Color and the rest); `W.*` builders stay private for now.
+Widget builders: the skin API's `S` table (see the README) already carries the theme builders (Panel, Button, EditBox, Tab, CheckBox, Radio, Divider, ArrowButton, Slider, ScrollBar, Tooltip, Text, Color and the rest); `W.*` builders stay private for now.

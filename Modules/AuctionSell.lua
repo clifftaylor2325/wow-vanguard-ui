@@ -21,11 +21,12 @@ local ADDON, ns = ...
 local T, W, AP = ns.Theme, ns.Widgets, ns.AuctionPrices
 local AH = ns.GetModule("AuctionHelper")
 
--- The sell card's lines.
+-- The sell card's lines, and the sell slot's size (an item's icon and its border).
 AH.SELL_LINES = { "Cheapest now", "7-day low", "Deposit", "Your price" }
--- The form: where its rows start (down from the card's top), how far apart they are, and the
--- width of the label column before its boxes.
-AH.FORM_Y, AH.FORM_ROW, AH.LABEL_W = -110, 26, 60
+local SLOT = 36
+-- The form: where its rows start (down from the card's top), how far apart they are (an inline control,
+-- T.CONTROL_H, and 6 of air), and the width of the label column before its boxes.
+AH.FORM_Y, AH.FORM_ROW, AH.LABEL_W = -110, T.CONTROL_H + 6, 60
 -- The Up now card (the listings up for the item on the sell card): its rows (how many, until
 -- AH.Build counts them) and its columns: the price each, how many, and the time left.
 AH.LIST_ROWS = 4
@@ -652,10 +653,10 @@ local function paintListing(r, l)
   r.flag:SetShown(l.mine)
 end
 
--- The Up now card's status line: what to do without a sale, "searching..." until its price
--- check answers, "none up" when it found nothing.
+-- The Up now card's status line: what to do without a sale (an empty-state line: the table's second
+-- return), "searching..." until its price check answers, "none up" when it found nothing.
 local function upStatus(s)
-  if not s then return "Put an item on the Sell card to see what's up now." end
+  if not s then return "Put an item on the Sell card to see what's up now.", true end
   if #(s.rows or {}) > 0 then return "" end
   return s.searched and "none up" or "searching..."
 end
@@ -698,12 +699,13 @@ function AH.PaintSell()
   AH.PaintHistory(AH.upCard, s)
 end
 
--- The sell card's lines: a label on the left of the space beside the slot, its value on the right.
+-- The sell card's lines: a label on the left of the space beside the slot (T.SPACE.gap right of it),
+-- its value on the right.
 local function sellLines(c)
   c.lines = {}
   for i, label in ipairs(AH.SELL_LINES) do
     local l = T.Text(c:CreateFontString(nil, "OVERLAY"), "small", "text2")
-    l:SetPoint("TOPLEFT", 44, -20 - (i - 1) * 14)
+    l:SetPoint("TOPLEFT", SLOT + T.SPACE.gap, -20 - (i - 1) * 14)
     l:SetText(label)
     l.value = T.Text(c:CreateFontString(nil, "OVERLAY"), i == #AH.SELL_LINES and "number" or "small", i == #AH.SELL_LINES and "accentText" or "text")
     l.value:SetPoint("TOPRIGHT", 0, -20 - (i - 1) * 14)
@@ -714,7 +716,7 @@ end
 -- The sell slot: drop an item on it (or click with one on the cursor).
 local function sellSlot(c)
   c.slot = T.Slot(CreateFrame("Button", nil, c))
-  c.slot:SetSize(36, 36)
+  c.slot:SetSize(SLOT, SLOT)
   c.slot:SetPoint("TOPLEFT", 0, -20)
   c.slot:SetScript("OnReceiveDrag", AH.TakeCursor)
   c.slot:SetScript("OnClick", ns.Guard("click sell slot", AH.TakeCursor))
@@ -734,20 +736,19 @@ end
 -- `row`; typing in it goes to AH.TypeForm.
 local function field(c, name, label, x, row, lw, width)
   local e = W.Input(c, width)
-  e:SetHeight(22)
   e:SetPoint("TOPLEFT", x + lw, AH.FORM_Y - (row - 1) * AH.FORM_ROW)
   e.label = T.Text(e:CreateFontString(nil, "OVERLAY"), "small", "text2")
-  e.label:SetPoint("RIGHT", e, "LEFT", -4, 0)
+  e.label:SetPoint("RIGHT", e, "LEFT", -T.SPACE.tight, 0)
   e.label:SetText(label)
   e:SetScript("OnTextChanged", function(self, user) if user then AH.TypeForm(name, self:GetText()) end end)
   c[name] = e
 end
 
--- A Max button after the form's box `name`.
+-- A Max button after the form's box `name`, as tall as the box (T.CONTROL_H).
 local function maxButton(c, name)
   local b = W.Button(c, "Max", function() AH.TypeForm(name, nil, true) end, 36)
-  b:SetHeight(22)
-  b:SetPoint("LEFT", c[name], "RIGHT", 2, 0)
+  b:SetHeight(T.CONTROL_H)
+  b:SetPoint("LEFT", c[name], "RIGHT", T.SPACE.tight, 0)
   c[name .. "Max"] = b
 end
 
@@ -763,8 +764,8 @@ local function sellForm(c)
   field(c, "bid", "Bid", 128, 3, 28, 100)
   field(c, "price", "Price", 0, 4, AH.LABEL_W, 110)
   c.perStack = W.Button(c, "per unit", function() AH.TogglePerStack() end, 70)
-  c.perStack:SetHeight(22)
-  c.perStack:SetPoint("LEFT", c.price, "RIGHT", 4, 0)
+  c.perStack:SetHeight(T.CONTROL_H)
+  c.perStack:SetPoint("LEFT", c.price, "RIGHT", T.SPACE.tight, 0)
 end
 
 -- The auction length: the game's three, as segments, under the form.
@@ -788,9 +789,9 @@ local function postRow(c)
   c.post = W.Primary(c, "Post", function() AH.Post() end, 60)
   c.post:SetPoint("TOPRIGHT", 0, y)
   c.stop = W.Button(c, "Stop", function() AH.StopSelling() end, 44)
-  c.stop:SetPoint("RIGHT", c.post, "LEFT", -4, 0)
+  c.stop:SetPoint("RIGHT", c.post, "LEFT", -T.SPACE.tight, 0)
   c.skip = W.Button(c, "Skip", function() AH.SkipStack() end, 44)
-  c.skip:SetPoint("RIGHT", c.stop, "LEFT", -4, 0)
+  c.skip:SetPoint("RIGHT", c.stop, "LEFT", -T.SPACE.tight, 0)
   c.status, c.historyLine = smallLine(c, y - 6), smallLine(c, y - 30)
 end
 

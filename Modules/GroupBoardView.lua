@@ -7,11 +7,22 @@
 
 local ADDON, ns = ...
 
-local T = ns.Theme
+local T, W = ns.Theme, ns.Widgets
 local QP = ns.QuestParts
 local GB = ns.GetModule("GroupBoard")
 
-GB.W, GB.H, GB.ROW_H, GB.ROWS, GB.AGE_EVERY = 460, 330, 20, 10, 10
+-- The board's inset from its edges (T.SPACE.pad, a floating window's), how far across a row its cells run (the
+-- kind's left edge to the age's right edge) and how far in the first cell sits, which the note lines up with.
+local PAD, SPAN, INDENT = T.SPACE.pad, 436, 2
+-- Where the filter row starts, down from the top (a column under the title's line), where the rows start (a gap
+-- under its buttons), and the room under the rows for the note's two lines of small text and the hint's one.
+local FILTER_TOP = T.CONTROL.inset + T.SPACE.col
+local BODY_TOP = FILTER_TOP + T.BUTTON_H + T.SPACE.gap
+local NOTE_H, HINT_H = 24, 12
+
+-- The board's width and height (the rows are T.ROW.height tall), the rows shown at most and the seconds between age updates.
+GB.W, GB.ROW_H, GB.ROWS, GB.AGE_EVERY = SPAN + 2 * PAD, T.ROW.height, 10, 10
+GB.H = BODY_TOP + GB.ROWS * GB.ROW_H + T.SPACE.tight + NOTE_H + T.SPACE.gap + HINT_H + PAD
 -- The filter button's choices in order, and its caption for each.
 GB.FILTERS = { all = { "LFM", "All posts" }, LFM = { "LFG", "Looking for more" }, LFG = { "all", "Looking for a group" } }
 
@@ -27,51 +38,46 @@ local function cell(row, x, w, role)
   return fs
 end
 
--- A post's row: kind, dungeon, roles, sender, age; a faint wash under the mouse.
+-- A post's row (W.Row: a faint wash under the mouse): kind, dungeon, roles, sender, age.
 local function makeRow(parent)
-  local b = CreateFrame("Button", nil, parent)
-  b:SetSize(GB.W - 24, GB.ROW_H)
-  b.kind, b.dungeon, b.roles = cell(b, 2, 34, "small"), cell(b, 40, 176), cell(b, 220, 92, "small")
+  local b = W.Row(parent, GB.ROW_H, { width = SPAN })
+  b.kind, b.dungeon, b.roles = cell(b, INDENT, 34, "small"), cell(b, 40, 176), cell(b, 220, 92, "small")
   b.sender, b.age = cell(b, 316, 88), cell(b, 406, 30, "small")
-  b.hover = T.Tint(b:CreateTexture(nil, "HIGHLIGHT"), "hover")
-  b.hover:SetAllPoints()
   b:SetScript("OnClick", ns.Guard("click group board row", function(self) GB.Whisper(self.entry) end))
   b:SetScript("OnEnter", GB.RowTooltip)
   b:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
   return b
 end
 
--- The title, the count and the close button along the top.
+-- The title, the count and the close button along the top (ns.WindowTitle: a window's title; Escape closes the board).
 local function addTop(f)
-  f.title = T.Text(f:CreateFontString(nil, "OVERLAY"), "title", "text")
-  f.title:SetPoint("LEFT", f, "TOPLEFT", 14, -T.CONTROL.inset)
-  f.title:SetText("Group board")
-  f.count = T.Text(f:CreateFontString(nil, "OVERLAY"), "small", "text2")
-  f.count:SetPoint("LEFT", f.title, "RIGHT", 10, 0)
-  f.close = T.PlaceClose(T.CloseButton(CreateFrame("Button", nil, f)), f)
-  f.close:SetScript("OnClick", ns.Guard("click close group board", function() f:Hide() end))
+  f.count = ns.WindowTitle(f, "Group board", { count = "", onClose = function() f:Hide() end, escape = true }).count
 end
 
 -- The filter button and the "only for my level" switch under the title.
 local function addFilters(f)
-  f.filter = ns.Widgets.Button(f, GB.FILTERS.all[2], function() GB.CycleFilter() end, 150)
-  f.filter:SetPoint("TOPLEFT", f, "TOPLEFT", 12, -36)
-  f.mine = ns.Widgets.Check(f, "Only dungeons for my level", function() return GB.settings.mine end,
+  f.filter = W.Button(f, GB.FILTERS.all[2], function() GB.CycleFilter() end, 150)
+  f.filter:SetPoint("TOPLEFT", f, "TOPLEFT", PAD, -FILTER_TOP)
+  f.mine = W.Check(f, "Only dungeons for my level", function() return GB.settings.mine end,
     function(v) GB.settings.mine = v GB.Refresh() end, 250)
-  f.mine:SetPoint("LEFT", f.filter, "RIGHT", 12, 0)
+  f.mine:SetPoint("LEFT", f.filter, "RIGHT", T.SPACE.gap, 0)
 end
 
--- The rows' area, the line under the last row, and the hint along the bottom.
+-- The rows' area and the line under the last row (a count or status: small text2).
 local function addBody(f)
   f.body = CreateFrame("Frame", nil, f)
-  f.body:SetPoint("TOPLEFT", f, "TOPLEFT", 12, -70)
-  f.body:SetSize(GB.W - 24, GB.ROWS * GB.ROW_H)
+  f.body:SetPoint("TOPLEFT", f, "TOPLEFT", PAD, -BODY_TOP)
+  f.body:SetSize(SPAN, GB.ROWS * GB.ROW_H)
   f.rows = QP.Pool(f.body, makeRow)
   f.note = T.Text(f:CreateFontString(nil, "OVERLAY"), "small", "text2")
-  f.note:SetPoint("TOPLEFT", f.body, "BOTTOMLEFT", 2, -6)
-  f.note:SetWidth(GB.W - 28)
+  f.note:SetPoint("TOPLEFT", f.body, "BOTTOMLEFT", INDENT, -T.SPACE.tight)
+  f.note:SetWidth(SPAN - INDENT)
+end
+
+-- The hint along the bottom: a note (small muted).
+local function addHint(f)
   f.hint = T.Text(f:CreateFontString(nil, "OVERLAY"), "small", "muted")
-  f.hint:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", 14, 12)
+  f.hint:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", PAD, PAD)
   f.hint:SetText("Click a post to open a whisper with a message filled in. Nothing is sent until you press Enter.")
 end
 
@@ -83,24 +89,24 @@ local function ageTick(f, dt)
   GB.Refresh()
 end
 
--- Builds the board (hidden), movable, closed by Escape.
+-- Builds the board (hidden), movable, closed by Escape; at a dialog's opacity (T.ALPHA.dialog), since a click hands you to the chat box.
 function GB.Build()
-  local f = T.Panel(CreateFrame("Frame", "Vanguard_GroupBoard", UIParent), { alpha = 0.97, shadow = true })
+  local f = T.Panel(CreateFrame("Frame", "Vanguard_GroupBoard", UIParent), { alpha = T.ALPHA.dialog, shadow = true })
   f:SetSize(GB.W, GB.H)
   f:SetFrameStrata("HIGH")
   ns.Mover(f, "groupboard", "Group board", { "CENTER", "CENTER", 220, 60 })
   addTop(f)
   addFilters(f)
   addBody(f)
+  addHint(f)
   GB.frame = f
   GB.Finish(f)
 end
 
--- The age tick while it shows; the board starts hidden, and Escape closes it.
+-- The age tick while it shows; the board starts hidden.
 function GB.Finish(f)
   f:SetScript("OnUpdate", ageTick)
   f:Hide()
-  if type(UISpecialFrames) == "table" then table.insert(UISpecialFrames, "Vanguard_GroupBoard") end
 end
 
 -- Rows -----------------------------------------------------------------------------------------

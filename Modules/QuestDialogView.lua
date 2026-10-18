@@ -1,8 +1,9 @@
 -- The quest dialog's panel (Modules/QuestDialog.lua decides what it shows):
 -- a header with the NPC's portrait, name and the quest title; a scrolling
--- body with the text, objectives and numbered lines; a row of reward cards;
--- the money and XP line, and the buttons. Keys: 1-9 pick, Space presses the
--- main button, Escape says goodbye.
+-- body (ns.ScrollView) with the text, objectives and numbered lines; a row of
+-- reward cards; the money and XP line, and the buttons. No close button:
+-- Goodbye (alone at the far left) closes it. Keys: 1-9 pick, Space and Enter
+-- press the main button, Escape says goodbye.
 
 local ADDON, ns = ...
 
@@ -10,12 +11,18 @@ local T = ns.Theme
 local QP = ns.QuestParts
 local QD = ns.GetModule("QuestDialog")
 
--- The body's gaps: around its content, above the objectives, above the numbered lines.
-local BODY_PAD, OBJECTIVES_GAP, LINES_GAP = 2, 8, 10
--- The panel's fixed parts: the header above the body, the gap above the reward
--- cards, the footer (money and buttons) under them; and where the text starts
--- across (the body's 12 plus the text's 4), which the cards and money line up with.
-local HEADER_H, CARDS_GAP, FOOTER_H, INSET = 60, 8, 44, 16
+-- The body's gaps: around its content (a nudge), above the objectives, above the numbered lines.
+local BODY_PAD, OBJECTIVES_GAP, LINES_GAP = 2, T.SPACE.gap, T.SPACE.col
+-- The portrait's size, the quest mark's size on the square when there is no portrait, and how far the NPC's
+-- name sits down from the portrait's top (a nudge that lines its capitals up with the portrait's edge).
+local PORTRAIT, PLACEHOLDER, NAME_DROP = 40, 24, 2
+-- The panel's fixed parts: the header above the body (a pad, the portrait and a gap under it), the gap above the
+-- reward cards, the footer (the buttons with a pad under them and a gap over them); and the body's width, the
+-- panel's inside less a room for its scroll thumb.
+local HEADER_H = T.SPACE.pad + PORTRAIT + T.SPACE.gap
+local CARDS_GAP = T.SPACE.gap
+local FOOTER_H = T.SPACE.pad + T.BUTTON_H + T.SPACE.gap
+local BODY_W = QD.W - 2 * T.SPACE.pad - T.SPACE.col
 
 -- Building -------------------------------------------------------------------------------------
 
@@ -23,70 +30,77 @@ local HEADER_H, CARDS_GAP, FOOTER_H, INSET = 60, 8, 44, 16
 -- the square instead when there is no portrait to draw (see paintPortrait).
 local function addPortrait(f)
   local box = T.Panel(CreateFrame("Frame", nil, f), { inset = true, noSheen = true })
-  box:SetSize(40, 40)
-  box:SetPoint("TOPLEFT", f, "TOPLEFT", 10, -10)
+  box:SetSize(PORTRAIT, PORTRAIT)
+  box:SetPoint("TOPLEFT", f, "TOPLEFT", T.SPACE.pad, -T.SPACE.pad)
   f.portrait = box:CreateTexture(nil, "ARTWORK")
   f.portrait:SetPoint("TOPLEFT", box, "TOPLEFT", 1, -1)
   f.portrait:SetPoint("BOTTOMRIGHT", box, "BOTTOMRIGHT", -1, 1)
-  f.placeholder = QP.Square(box:CreateTexture(nil, "ARTWORK"), 24)
+  f.placeholder = QP.Square(box:CreateTexture(nil, "ARTWORK"), PLACEHOLDER)
   f.placeholder:SetTexture(T.Icon("Quests"))
   f.placeholder:SetPoint("CENTER", box, "CENTER", 0, 0)
   f.portraitBox = box
 end
 
--- The NPC's portrait, name, and the quest title along the top.
+-- The NPC's portrait, name (the window title's role and color) and the quest title along the top, at the
+-- window's inset, with the faint crest behind the top-right corner.
 local function addHeader(f)
   addPortrait(f)
-  f.npc = T.Text(f:CreateFontString(nil, "OVERLAY"), "heading", "text")
-  f.npc:SetPoint("TOPLEFT", f.portraitBox, "TOPRIGHT", 10, -2)
+  f.npc = T.Text(f:CreateFontString(nil, "OVERLAY"), "title", "text")
+  f.npc:SetPoint("TOPLEFT", f.portraitBox, "TOPRIGHT", T.SPACE.col, -NAME_DROP)
   f.title = T.Text(f:CreateFontString(nil, "OVERLAY"), "label", "gold")
-  f.title:SetPoint("TOPLEFT", f.npc, "BOTTOMLEFT", 0, -4)
-  -- Your faction's crest, faint, behind the top-right corner.
-  f.crest = T.Crest(f, 96, "BORDER", 0.1)
-  f.crest:SetPoint("TOPRIGHT", f, "TOPRIGHT", -12, -6)
+  f.title:SetPoint("TOPLEFT", f.npc, "BOTTOMLEFT", 0, -T.SPACE.tight)
+  QP.Watermark(f)
 end
 
 -- A text in the body, the body's width, wrapping.
 local function bodyText(child, color)
   local fs = T.Text(child:CreateFontString(nil, "OVERLAY"), "label", color)
-  fs:SetWidth(QD.W - 40)
+  fs:SetWidth(BODY_W)
   fs:SetJustifyH("LEFT")
   return fs
 end
 
--- The scroll frame for the body (the wheel scrolls it) and the child its contents sit on.
+-- The scroll view for the body (the wheel, the thumb and the soft edges: ns.ScrollView) and the child its contents sit on.
 local function addScroll(f)
-  f.scroll = CreateFrame("ScrollFrame", nil, f)
-  f.scroll:SetPoint("TOPLEFT", f, "TOPLEFT", 12, -HEADER_H)
-  f.scroll:SetSize(QD.W - 24, QD.MAX_H - HEADER_H - FOOTER_H)
-  f.scroll:EnableMouseWheel(true)
-  f.scroll:SetScript("OnMouseWheel", QP.Wheel)
-  f.child = CreateFrame("Frame", nil, f.scroll)
-  f.child:SetSize(QD.W - 24, QD.MAX_H - HEADER_H - FOOTER_H)
-  f.scroll:SetScrollChild(f.child)
+  f.scroll = ns.ScrollView(f, { width = BODY_W })
+  f.scroll:SetPoint("TOPLEFT", f, "TOPLEFT", T.SPACE.pad, -HEADER_H)
+  f.scroll:SetSize(BODY_W, QD.MAX_H - HEADER_H - FOOTER_H)
+  f.child = f.scroll.child
 end
 
 -- The scrolling body: the text, the objectives under it, then the numbered lines.
 local function addBody(f)
   addScroll(f)
   f.text, f.objectives = bodyText(f.child, "text"), bodyText(f.child, "text2")
-  f.text:SetPoint("TOPLEFT", f.child, "TOPLEFT", 4, -2)
-  f.objectives:SetPoint("TOPLEFT", f.text, "BOTTOMLEFT", 0, -8)
+  f.text:SetPoint("TOPLEFT", f.child, "TOPLEFT", 0, -BODY_PAD)
+  f.objectives:SetPoint("TOPLEFT", f.text, "BOTTOMLEFT", 0, -OBJECTIVES_GAP)
+end
+
+-- Goodbye, alone at the far left of the buttons' row (a page without one hides it).
+local function addEscape(f)
+  f.escape = ns.DialogButton(f, "")
+  f.escape:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", T.SPACE.pad, T.SPACE.pad)
+end
+
+-- The primary button at the bottom right, the secondary left of it, and Goodbye or Abandon far left.
+local function addButtons(f)
+  f.primary = ns.DialogButton(f, "", nil, "primary")
+  f.primary:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -T.SPACE.pad, T.SPACE.pad)
+  f.secondary = ns.DialogButton(f, "")
+  f.secondary:SetPoint("RIGHT", f.primary, "LEFT", -T.SPACE.gap, 0)
+  addEscape(f)
 end
 
 -- The reward cards under the text (their left edge on the text's), the money
 -- and XP line, and the buttons along the bottom.
 local function addFooter(f)
   f.rewards = CreateFrame("Frame", nil, f)
-  f.rewards:SetPoint("TOPLEFT", f.scroll, "BOTTOMLEFT", INSET - 12, -CARDS_GAP)
+  f.rewards:SetPoint("TOPLEFT", f.scroll, "BOTTOMLEFT", 0, -CARDS_GAP)
   f.rewards:SetSize(QD.PER_ROW * (QP.CARD_W + QP.GAP) - QP.GAP, QP.CARD_H)
   f.lines, f.cards = QP.Pool(f.child, QP.Line), QP.Pool(f.rewards, QP.Card)
   f.money = T.Text(f:CreateFontString(nil, "OVERLAY"), "label", "gold")
-  f.money:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", INSET, 16)
-  f.primary = ns.DialogButton(f, "", 120)
-  f.primary:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -12, 10)
-  f.secondary = ns.DialogButton(f, "", 100)
-  f.secondary:SetPoint("RIGHT", f.primary, "LEFT", -8, 0)
+  f.money:SetPoint("LEFT", f, "BOTTOMLEFT", T.SPACE.pad, T.SPACE.pad + T.BUTTON_H / 2)
+  addButtons(f)
 end
 
 -- The dialog's default spot: centered, a little above the focus cast bar's
@@ -94,12 +108,12 @@ end
 -- grows upward clear of your frames, the cast bars and the action bars.
 function QD.DefaultPoint()
   local cast = ns.GetModule("CastBars").LAYOUT.focus
-  return { "BOTTOM", "BOTTOM", 0, cast.point[4] + cast.h + 8 }
+  return { "BOTTOM", "BOTTOM", 0, cast.point[4] + cast.h + T.SPACE.gap }
 end
 
 -- Builds the dialog (hidden, at its greatest height until a page sizes it), movable, closed by Escape.
 function QD.Build()
-  local f = T.Panel(CreateFrame("Frame", "Vanguard_QuestDialog", UIParent), { alpha = 0.96, shadow = true })
+  local f = T.Panel(CreateFrame("Frame", "Vanguard_QuestDialog", UIParent), { alpha = T.ALPHA.dialog, shadow = true })
   f:SetSize(QD.W, QD.MAX_H)
   f:SetFrameStrata("DIALOG")
   ns.Mover(f, "questdialog", "Quest dialog", QD.DefaultPoint())
@@ -117,6 +131,7 @@ function QD.Wire(f)
   f:SetScript("OnKeyDown", QD.OnKey)
   f.primary:SetScript("OnClick", ns.Guard("click quest dialog primary", QD.Press))
   f.secondary:SetScript("OnClick", ns.Guard("click quest dialog secondary", function() QD.page.secondary[2]() end))
+  f.escape:SetScript("OnClick", ns.Guard("click quest dialog escape", function() QD.page.escape[2]() end))
   if type(UISpecialFrames) == "table" then table.insert(UISpecialFrames, "Vanguard_QuestDialog") end
 end
 
@@ -128,8 +143,8 @@ local function renderLines(f, lines)
   local prev = f.objectives:IsShown() and f.objectives or f.text
   for i, spec in ipairs(lines or {}) do
     local b = f.lines.Next()
-    b:SetPoint("TOPLEFT", prev, "BOTTOMLEFT", 0, i == 1 and -10 or 0)
-    b:SetWidth(QD.W - 40)
+    b:SetPoint("TOPLEFT", prev, "BOTTOMLEFT", 0, i == 1 and -LINES_GAP or 0)
+    b:SetWidth(BODY_W)
     QP.PaintLine(b, i, spec)
     b:SetScript("OnClick", ns.Guard("click quest dialog line", function() QD.SelectLine(i) end))
     prev = b
@@ -150,7 +165,7 @@ local function renderBody(f, p)
   f.objectives:SetShown(p.objectives ~= nil)
   f.objectives:SetText(p.objectives and ("Objectives:  " .. QP.Plain(p.objectives)) or "")
   renderLines(f, p.lines)
-  f.scroll:SetVerticalScroll(0)
+  f.scroll:ScrollTo(0)
   return bodyHeight(f, #(p.lines or {}))
 end
 
@@ -196,7 +211,7 @@ local function fitPanel(f, content, cards)
   local fixed = HEADER_H + cards + FOOTER_H
   local view = math.max(QD.MIN_H - fixed, math.min(content, QD.MAX_H - fixed))
   f.scroll:SetHeight(view)
-  f.child:SetHeight(math.max(view, content))
+  f.scroll:Fit(content)
   f:SetHeight(fixed + view)
 end
 
@@ -229,6 +244,7 @@ function QD.Render(p)
   f.money:SetText(p.money or "")
   renderButton(f.primary, p.primary)
   renderButton(f.secondary, p.secondary)
+  renderButton(f.escape, p.escape)
 end
 
 -- Choosing -------------------------------------------------------------------------------------
@@ -262,22 +278,22 @@ function QD.SelectLine(n)
   return true
 end
 
--- Presses the main button, if it's enabled (Complete once a reward is picked).
+-- Presses the main button, if it's enabled (Complete once a reward is picked); on a page with only Goodbye, that.
 function QD.Press()
-  local spec = QD.page and QD.page.primary
+  local spec = QD.page and (QD.page.primary or QD.page.escape)
   local ready = spec and (spec[3] ~= false or (QD.page.pick and QD.choice ~= nil))
   if ready then spec[2]() end
 end
 
--- What a key does here: 1-9 pick a line (or a reward) that exists, Space
--- presses the main button. True when the key was used.
+-- What a key does here: 1-9 pick a line (or a reward) that exists, Space presses the main button, and so does
+-- Enter, but only out of combat (a key caught in combat could not be handed on again). True when the key was used.
 local function useKey(key)
   local n = tonumber(key)
   if n and n >= 1 and n <= 9 then
     if QD.page.pick then return QD.Pick(n) end
     return QD.SelectLine(n)
   end
-  if key == "SPACE" then QD.Press() return true end
+  if key == "SPACE" or ((key == "ENTER" or key == "NUMPADENTER") and not ns.InCombat()) then QD.Press() return true end
   return false
 end
 

@@ -3,7 +3,8 @@
 // chat on one board by dungeon, role and level; a click opens a whisper that the player sends.
 
 import { expect, it } from "vitest";
-import { CLICK_LUA, chatHas, loggedIn } from "./helpers.mjs";
+import { CLICK_LUA, chatHas, isTok, loggedIn } from "./helpers.mjs";
+import { alphaOf, closeOf, escapes, insets, pressEscape, titleOf } from "./dialogs.mjs";
 
 // TEST-ONLY whisper calls, recorded: the game's whisper-with-message call and the plain one.
 const WHISPER_ENV = `
@@ -180,4 +181,64 @@ it("group board: a Trade line naming a dungeon the list lacks still shows as 'An
   expect(rows(addon), "the LFG line is a post with no dungeon, the LFW line is not a post").toEqual([["LFG", "Any dungeon", "Tank, DPS", "Bon Figgy", "now"]]);
   addon.slash("lfg probe");
   expect(chatHas(addon, /Last line that was not a post: LFW/), "the probe quotes the last miss").toBe(true);
+});
+
+// The theme numbers the board is laid out with: pad, gap, row height, button height, dialog alpha, the close
+// button's inset, and the title and small role sizes.
+const tokens = (addon) => addon.eval(`local T = ns.Theme
+  return { T.SPACE.pad, T.SPACE.gap, T.ROW.height, T.BUTTON_H, T.ALPHA.dialog, T.CONTROL.inset, T.RoleSize("title"), T.RoleSize("small") }`);
+
+// A W.Row's look, from a Lua expression for it: its height, its hover wash (the vertex colour of its T.Row hover layer), and whether the selected look is there and hidden.
+const rowLook = (addon, row) => addon.eval(`local r = ${row}
+  local hover = ns.Theme.RowParts(r).hover.__vertexColor
+  return { r:GetHeight(), hover, r.rail ~= nil and r.wash ~= nil, r.rail:IsShown() or r.wash:IsShown() }`);
+
+it("group board: a window title with its count and X, a dialog's opacity, T.SPACE.pad in from every edge, Escape closes it", () => {
+  const addon = board();
+  post(addon, "LFM SFK need heals", "Lightmend-Ruleset");
+  addon.slash("lfg");
+  const [pad, , , , dialog, inset, titleSize, smallSize] = tokens(addon);
+  expect(titleOf(addon, "Vanguard_GroupBoard"), "the title role in text, T.SPACE.pad in, on the X's line").toEqual({ size: titleSize, text: true, left: pad, mid: -inset });
+  const count = addon.frame("Vanguard_GroupBoard.count");
+  expect([count.text, count.font.size, isTok(addon, count.textColor, "text2")], "the count beside it, small text2").toEqual(["1 posts", smallSize, true]);
+  const px = addon.eval("return ns.Theme.PixelRound(Vanguard_GroupBoard, ns.Theme.CONTROL.inset)");
+  expect(closeOf(addon, "Vanguard_GroupBoard", "close"), "the X where every window has it").toEqual([px, px, true]);
+  expect(alphaOf(addon, "Vanguard_GroupBoard"), "T.ALPHA.dialog (it was 0.97)").toBe(dialog);
+  const [filter, body, hint] = ["filter", "body", "hint"].map((part) => insets(addon, `Vanguard_GroupBoard.${part}`, "Vanguard_GroupBoard"));
+  expect([filter[0], body[0], body[2], hint[0], hint[3]], "buttons, rows and hint all T.SPACE.pad in from the edges").toEqual([pad, pad, pad, pad, pad]);
+  expect(escapes(addon, "Vanguard_GroupBoard"), "Escape is wired").toBe(true);
+  pressEscape(addon);
+  expect(addon.eval("return Vanguard_GroupBoard:IsShown()"), "and closes it").toBe(false);
+});
+
+it("group board: the rows are W.Rows T.ROW.height tall, the buttons T.BUTTON_H, and the hint is a note while the line under the rows is a status", () => {
+  const addon = board();
+  post(addon, "LFM SFK need heals", "Lightmend-Ruleset");
+  addon.slash("lfg");
+  const [pad, gap, rowH, buttonH, , , , smallSize] = tokens(addon);
+  const look = rowLook(addon, "Vanguard_GroupBoard.rows[1]");
+  expect([look[0], isTok(addon, look[1], "hover"), look[2], look[3]], "T.ROW.height, the hover wash, the selected look made and hidden").toEqual([rowH, true, true, false]);
+  addon.eval("Vanguard_GroupBoard.rows[1]:SetSelected(true)");
+  expect(rowLook(addon, "Vanguard_GroupBoard.rows[1]")[3], "W.Row's own selected look").toBe(true);
+  const [row, panel, body] = ["rows[1]", "", "body"].map((part) => addon.frame(`Vanguard_GroupBoard${part && "."}${part}`).rect);
+  expect(panel.width - row.width, "a row runs the board's width less the padding on both sides").toBe(2 * pad);
+  expect(addon.eval("return Vanguard_GroupBoard.filter:GetHeight()"), "the filter button is T.BUTTON_H").toBe(buttonH);
+  expect(addon.eval("return Vanguard_GroupBoard.mine:GetLeft() - Vanguard_GroupBoard.filter:GetRight()"), "T.SPACE.gap between the controls").toBe(gap);
+  const [hint, note] = ["hint", "note"].map((part) => addon.frame(`Vanguard_GroupBoard.${part}`));
+  expect([hint.font.size, isTok(addon, hint.textColor, "muted"), note.font.size, isTok(addon, note.textColor, "text2")], "the hint small muted, the note small text2").toEqual([smallSize, true, smallSize, true]);
+  expect(hint.rect.top < body.bottom, "the hint sits under the rows").toBe(true);
+});
+
+it("group board: the note's two lines and the hint's line fit the board's height, a gap between them and a tight gap under the rows", () => {
+  const addon = board();
+  addon.slash("lfg");
+  const [, gap, , , , , , smallSize] = tokens(addon);
+  const tight = addon.eval("return ns.Theme.SPACE.tight");
+  // The harness measures a line at 14; the game's small text is two units taller than its size, and the board reserves
+  // two lines for the note (an empty board says why, in two lines at most) and one for the hint.
+  const [note, hint] = ["note", "hint"].map((part) => addon.frame(`Vanguard_GroupBoard.${part}`).id);
+  addon.eval(`__wfgStub.stringHeights = { [${note}] = ${2 * (smallSize + 2)}, [${hint}] = ${smallSize + 2} } __wfgStub.layoutGen = __wfgStub.layoutGen + 1`);
+  const [n, h, body] = ["note", "hint", "body"].map((part) => addon.frame(`Vanguard_GroupBoard.${part}`).rect);
+  expect([body.bottom - n.top, n.bottom - h.top], "the note a tight gap under the rows; a gap between its second line and the hint, so the board is tall enough").toEqual([tight, gap]);
+  addon.eval("__wfgStub.stringHeights = nil");
 });

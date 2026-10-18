@@ -43,6 +43,7 @@ Core/Movers.lua
 Core/MoverLinks.lua
 Core/Widgets.lua
 Core/Controls.lua
+Core/Chrome.lua
 Core/MoverPopover.lua
 Core/UnlockBar.lua
 Core/Options.lua
@@ -97,10 +98,12 @@ Modules/ActionBarKeybinds.lua
 Modules/SpecialBars.lua
 Modules/Minimap.lua
 Modules/Waypoints.lua
+Modules/GuideData.lua
 Modules/MinimapButtons.lua
 Modules/Chat.lua
 Modules/ChatExtras.lua
 Modules/ChatWatch.lua
+Modules/ChatBubbles.lua
 Modules/Bags.lua
 Modules/BagSections.lua
 Modules/InfoStrip.lua

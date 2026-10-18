@@ -19,8 +19,8 @@ local BG = ns.Module("Bags", {
 })
 
 -- The combined bag's inner padding: its slots, section headers, Sort button and
--- money line sit this far inside the window's edges (on the theme's 4 px grid).
-BG.PAD = 12
+-- money line sit this far inside the window's edges (a panel's inset inside a window, T.SPACE.col).
+BG.PAD = T.SPACE.col
 -- The Sort button's width and the space between it and the search box.
 local SORT_W, SORT_GAP = 52, 6
 
@@ -131,9 +131,11 @@ end
 
 -- Skins the window and its item buttons, on every show: the game windows' skin (its art and portrait
 -- faded again in case the game restored them, a padded panel, the theme's close button set evenly in
--- its corner, the title font); slots already skinned are skipped.
+-- its corner, the title font); slots already skinned are skipped. The money line in its coin box
+-- (the combined bag's, and the backpack window's) goes in the theme font on a flat inset.
 function BG.SkinWindow(frame)
   ns.GetModule("Windows").Skin(frame)
+  ns.GetModule("Windows").SkinCoinBox(frame.MoneyFrame)
   skinItems(frame)
   skinSearch("BagItemSearchBox")
 end
@@ -251,7 +253,7 @@ function BG.AddSort(frame)
   local sort = C_Container and C_Container.SortBags
   if type(sort) ~= "function" or BG.sort then return end
   BG.sort = ns.DialogButton(frame, "Sort", SORT_W)
-  BG.sort:SetHeight(20)
+  BG.sort:SetHeight(T.CONTROL_H)
   placeSort(frame)
   BG.sort:SetScript("OnClick", ns.Guard("click sort bags", function() sort() end))
   hideGameSort()

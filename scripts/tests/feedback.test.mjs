@@ -3,7 +3,8 @@
 // read by the site's src/feedback/fill.js, so the shapes below are that parser's.
 
 import { expect, it } from "vitest";
-import { CLICK_LUA, expectErrors, loggedIn } from "./helpers.mjs";
+import { CLICK_LUA, expectErrors, isTok, loggedIn, px } from "./helpers.mjs";
+import { alphaOf, buttonOf, closeOf, escapes, insets, pressEscape, thumbOf, titleOf, titleSize } from "./dialogs.mjs";
 
 const BOX = "Vanguard_Feedback";
 // Opens the form by /vg feedback [kind]; the problem line; the copy box's state; a text's lines.
@@ -38,7 +39,14 @@ it("/vg feedback opens the form on a bug, with the summary focused and the bug f
   expect(open(addon, "feature").visible && addon.eval(`return ${BOX}.kind`), "/vg feedback feature opens it on a feature").toBe("feature");
   expect(addon.eval(`return { ${BOX}.bug:IsShown(), ${BOX}.feature:IsShown() }`)).toEqual([false, true]);
   addon.eval(`${BOX}.summary:GetScript("OnEscapePressed")()`);
-  expect(addon.frame(BOX).visible, "Escape closes it").toBe(false);
+  expect(addon.frame(BOX).visible, "Escape in a box closes it").toBe(false);
+  open(addon, "feature");
+  addon.click(`${BOX}.chrome.close`);
+  expect(addon.frame(BOX).visible, "the X closes it").toBe(false);
+  open(addon, "feature");
+  pressEscape(addon);
+  expect(addon.frame(BOX).visible, "and so does Escape anywhere").toBe(false);
+  open(addon, "feature");
   expect(open(addon, "nonsense").visible && addon.eval(`return ${BOX}.kind`), "an unknown word keeps the kind last picked").toBe("feature");
   addon.click(`${BOX}.kindRow.segments[1]`);
   expect(addon.eval(`return { ${BOX}.kind, ${BOX}.bug:IsShown(), ${BOX}.feature:IsShown() }`), "the kind row switches back").toEqual(["bug", true, false]);
@@ -160,4 +168,32 @@ it("the options window's last page, Feedback, opens the form on a bug or a featu
   addon.click(`${BOX}.cancel`);
   addon.slash("");
   expect(addon.eval('return __click("Copy a report")') && addon.eval("return Vanguard_TextDialog:IsShown() and Vanguard_TextDialog.title:GetText()"), "Copy a report shows /vg report's box").toBe("Vanguard report: Ctrl+C, then paste at vanguardui.com/feedback");
+});
+
+it("the feedback form: a window title with its X and Escape at the dialog alpha, T.SPACE.pad insets, one thumb on each text area that overflows", () => {
+  const addon = loggedIn("__view = function(edit) return __wfgStub.scrollOwners[edit] end");
+  open(addon);
+  expect(titleOf(addon, BOX), "a window title: the title role in the text colour, T.SPACE.pad in, on the close button's line").toEqual({ size: titleSize(addon), text: true, left: 16, mid: -24 });
+  expect([addon.eval(`return ${BOX}.title:GetText()`), closeOf(addon, BOX), escapes(addon, BOX), alphaOf(addon, BOX)], "Send feedback, the X where every window has it, Escape, the dialog alpha")
+    .toEqual(["Send feedback", [px(addon, 24), px(addon, 24), true], true, 0.98]);
+  expect(insets(addon, `${BOX}.kindRow`, BOX).slice(0, 2), "the kind row T.SPACE.pad in, under the head").toEqual([16, 40]);
+  expect([insets(addon, `${BOX}.summary`, BOX).slice(0, 3), addon.eval(`return { ${BOX}.summary:GetWidth(), ${BOX}.summary:GetHeight() }`)], "the summary a caption (16) and a row and a gap further down, as wide as the form less two pads, an inline control tall")
+    .toEqual([[16, 92, 16], [528, 20]]);
+  expect(insets(addon, `${BOX}.bug`, BOX).slice(0, 3), "the group under the summary, a gap (8) on, both pads in").toEqual([16, 120, 16]);
+  const did = "Vanguard_Feedback.bug.did", happened = "Vanguard_Feedback.bug.happened", expected = "Vanguard_Feedback.bug.expected";
+  expect(addon.eval(`return { __view(${did}):GetHeight(), __view(${expected}):GetHeight(), __view(${happened}):GetHeight(), ${did}:GetWidth() }`), "the text areas 70, 46 and 70 tall, their text a thumb's gutter (12) narrower than the form's field").toEqual([70, 46, 70, 516]);
+  expect(insets(addon, `__view(${did})`, `${BOX}.bug`), "the first area a caption (16) under the group's top, its right edge a gutter in").toEqual([0, 16, 12, 290 - 16 - 70]);
+  expect([did, expected, happened].map((e) => thumbOf(addon, `__view(${e})`, BOX)[0]), "text that fits shows no thumb").toEqual([false, false, false]);
+  addon.eval(`${did}:SetHeight(300) ${did}:GetScript("OnSizeChanged")(${did})`);
+  expect([thumbOf(addon, `__view(${did})`, BOX), thumbOf(addon, `__view(${expected})`, BOX)[0]], "an area whose text overflows shows the thumb, in the right pad; the others still none").toEqual([[true, true, 16], false]);
+  expect(addon.eval(`return __view(${did}).edit == ${did}`), "the view keeps its edit box").toBe(true);
+  const note = addon.frame(`${BOX}.bug.note`);
+  expect([note.font.size, isTok(addon, note.textColor, "muted"), addon.eval(`return ${BOX}.bug.note:GetWidth()`)], "the report note is small muted, as wide as the field").toEqual([addon.eval("return ns.Theme.RoleSize('small')"), true, 528]);
+  addon.click(`${BOX}.make`);
+  expect(addon.eval(`return ${BOX}.problem:GetText()`), "a problem shows").toBe("The short summary is required.");
+  expect(insets(addon, `${BOX}.problem`, BOX), "the problem line a pad in, over the foot (50), as wide as the field").toEqual([16, 490 - 50 - 14, 16, 50]);
+  expect([buttonOf(addon, `${BOX}.make`), buttonOf(addon, `${BOX}.cancel`), insets(addon, `${BOX}.make`, BOX).slice(2)], "Make report is the one accent button, Cancel plain; standalone, 120 wide, a pad from the corner")
+    .toEqual([[true, "Make report", 26, 120], [false, "Cancel", 26, 120], [16, 16]]);
+  open(addon, "feature");
+  expect([addon.eval(`return { ${BOX}.feature.area:GetWidth(), ${BOX}.feature.area:GetHeight() }`), insets(addon, `${BOX}.feature`, BOX).slice(0, 3)], "the Part of Vanguard dropdown an inline control tall; the feature group sits where the bug's did").toEqual([[300, 20], [16, 120, 16]]);
 });

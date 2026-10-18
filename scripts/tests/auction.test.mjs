@@ -262,6 +262,31 @@ it("two tabs join the window after the game's three; each shows its page over th
   expect([addon.frame("Vanguard_AuctionSelling").visible, addon.eval("return #AuctionHouseFrame.Tabs"), title(addon)], "open again on the game's Buy page: built once, five tabs still").toEqual([false, 5, "Browse Auctions"]);
   expect(lastLine(addon), "before any scan").toBe("no scan yet");
 });
+it("every card wears the card chrome (a heading title in its box's corner, the scan line a status), and its controls the control scale", () => {
+  const addon = atAuctionHouse();
+  pickTab(addon, 4);
+  const [heading, small, gap, tight, buttonH, controlH] = addon.eval("local T = ns.Theme return { T.RoleSize('heading'), T.RoleSize('small'), T.SPACE.gap, T.SPACE.tight, T.BUTTON_H, T.CONTROL_H }");
+  const cards = { pane: "Lists", scanCard: "Scan", shopCard: "Shopping", sellCard: "Sell", upCard: "Up now", ownedCard: "Your auctions" };
+  // A card's title: [its text, the heading role's size, the text colour, on the card's box, how far in from the box's left and down from its top].
+  const titleOf = (key) => {
+    const t = addon.frame(`${HELPER}.${key}.title`);
+    const at = addon.eval(`local c = ${HELPER}.${key} local t, b = c.title, c.box return { t:GetParent() == b, t:GetLeft() - b:GetLeft(), b:GetTop() - t:GetTop() }`);
+    return [t.text, t.font.size, isTok(addon, t.textColor, "text"), ...at];
+  };
+  expect(Object.keys(cards).map(titleOf), "ns.WindowTitle kind card: the heading role in the text colour, T.SPACE.gap in from the box's corner").toEqual(Object.values(cards).map((name) => [name, heading, true, true, gap, gap]));
+  expect(addon.eval(`return { ${HELPER}.PAD, ${HELPER}.INSET, ${HELPER}.PAGE_X }`), "the boxes' insets are the HUD card's gap; the page's, the tight one").toEqual([gap, gap, tight]);
+  const last = addon.frame(`${HELPER}.scanCard.last`);
+  expect([last.font.size, isTok(addon, last.textColor, "text2")], "the last-scan line is a status: small, text2").toEqual([small, true]);
+  const heights = addon.eval(`local AH = ${HELPER} local c, p, o = AH.sellCard, AH.pane, AH.ownedCard
+    return { { AH.scanCard.scan:GetHeight(), p.actions[1]:GetHeight(), p.actions[6]:GetHeight(), c.post:GetHeight(), c.skip:GetHeight(), c.stop:GetHeight() },
+      { AH.shopCard.add:GetHeight(), AH.shopCard.search:GetHeight(), AH.shopCard.restock:GetHeight(), o.check:GetHeight(), o.cancelNext:GetHeight(), o.table.rows[1].cancel:GetHeight(),
+        o.table.rows[1].relist:GetHeight(), AH.shopCard.view.back:GetHeight(), c.qty:GetHeight(), c.price:GetHeight(), c.qtyMax:GetHeight(), c.perStack:GetHeight() },
+      { AH.ROW_H, AH.shopCard.body.table.rows[1]:GetHeight() } }`);
+  expect(heights, "standalone buttons T.BUTTON_H, inline controls (toolbar and in-row buttons, the form's boxes and Max) T.CONTROL_H, a row as tall as one").toEqual([
+    Array(6).fill(buttonH), Array(12).fill(controlH), [controlH, controlH]]);
+  const gaps = addon.eval(`local a = ${HELPER}.pane.actions return { a[1]:GetBottom() - a[4]:GetTop(), a[2]:GetLeft() - a[1]:GetRight() }`);
+  expect(gaps, "the action buttons T.SPACE.tight apart across and down").toEqual([tight, tight]);
+});
 it("closing the auction house stops a scan", () => {
   const addon = atAuctionHouse();
   addon.eval("__rows = {} for i = 1, 1000 do __rows[i] = { itemID = 2589, count = 1, buyoutPrice = 50 } end __wfgWorld.ah.replicate = __rows");

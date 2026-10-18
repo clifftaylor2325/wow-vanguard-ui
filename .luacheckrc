@@ -23,6 +23,8 @@ globals = {
   "GetMinimapShape",
   -- Addon compartment click handler named in the TOC (Core/Options.lua)
   "Vanguard_OnAddonCompartmentClick",
+  -- The engine's floating damage font path, set to the theme font at load (Modules/Merchant.lua)
+  "DAMAGE_TEXT_FONT",
   SlashCmdList = { other_fields = true },
 }
 
@@ -38,7 +40,7 @@ read_globals = {
   "UnitIsDeadOrGhost", "UnitIsPlayer", "UnitName", "UnitPower", "UnitPowerMax",
   "UnitPowerType", "UnitReaction", "issecretvalue", "GetTotemInfo", "GetTotemDuration", "C_EventUtils", "C_LootHistory", "RANDOM_ROLL_RESULT", "C_Item", "GetInventoryItemTexture", "GameTooltip", "C_Container", "C_MerchantFrame", "CanMerchantRepair", "GetRepairAllCost", "RepairAllItems", "GetMoney", "UIErrorsFrame", "C_SwingTimer", "GetPetHappiness", "C_PetInfo", "C_PvP", "HideUIPanel", "C_Texture", "UnitFactionGroup", "C_CooldownViewer", "C_DamageMeter", "AcceptQuest", "AcknowledgeAutoAcceptQuest", "C_GossipInfo", "CloseQuest", "CompleteQuest", "DeclineQuest", "GetActiveLevel", "GetActiveTitle", "GetAvailableLevel", "GetAvailableTitle", "GetGreetingText", "GetNumActiveQuests", "GetNumAvailableQuests", "GetNumQuestChoices", "GetNumQuestItems", "GetNumQuestRewards", "GetObjectiveText", "GetProgressText", "GetQuestDifficultyColor", "GetQuestItemInfo", "GetQuestItemLink", "GetQuestReward", "GetQuestText", "GetRewardMoney", "GetRewardText", "GetRewardXP", "GetTitleText", "IsQuestCompletable", "QuestGetAutoAccept", "SelectActiveQuest", "SelectAvailableQuest", "SetPortraitTexture", "GetQuestID", "C_QuestInfoSystem", "C_QuestLog", "GetQuestLogSpecialItemInfo", "QuestMapFrame_OpenToQuestDetails", "QuestLogQuests_Update", "QuestScrollFrame", "GetNumQuestLogChoices", "GetQuestLogChoiceInfo", "GetNumQuestLogRewards", "GetQuestLogRewardInfo", "GetQuestLogRewardMoney", "GetQuestLogRewardXP", "GetQuestLogQuestText", "QuestLogPushQuest", "StaticPopup_Show", "IsInGroup", "ChatFrame_AddMessageEventFilter", "C_SummonInfo", "AcceptResurrect", "CancelDuel", "GetNumLootItems", "GetLootSlotInfo", "LootSlot", "StaticPopup_Hide", "EventRegistry", "GetInventoryItemDurability", "GetPartyAssignment", "PixelUtil", "C_PartyInfo", "SetRaidTarget", "CanBeRaidTarget", "GetNumGroupMembers",
   -- Target of target identity and the minimap's still-standing check (P1.13).
-  "UnitGUID", "UnitPosition",
+  "UnitGUID", "UnitPosition", "C_TaxiMap", "GetPlayerFacing",
   -- /vg perf: the game's CPU and memory counters (P1.14).
   "GetCVar", "GetAddOnCPUUsage", "UpdateAddOnCPUUsage", "GetAddOnMemoryUsage", "UpdateAddOnMemoryUsage", "GetFunctionCPUUsage",
   -- Action button tooltips: the client's default anchor (P2.3).
@@ -49,6 +51,8 @@ read_globals = {
   "CHAT_FRAME_TEXTURES",
   -- P3.3 Visibility conditions: In an instance, and what a state driver's string says now.
   "IsInInstance", "SecureCmdOptionParse", "SendChatMessage",
+  -- R1.6 Chat bubbles (Modules/ChatBubbles.lua): the engine's list of the bubbles it is showing.
+  "C_ChatBubbles",
   -- P3.4 Keybind mode: binding a key to a button's command and saving it in the binding set in use.
   "SetBinding", "SaveBindings", "GetCurrentBindingSet",
   -- P3.5 Shared media: the bundled libraries' loader (Libs/LibStub).
@@ -96,4 +100,6 @@ read_globals = {
   "ProfessionsFrame",
   -- Minimap: the game's world map toggle. Healing: the client's readable class names, for the buff list.
   "ToggleWorldMap", "ToggleCalendar", "LOCALIZED_CLASS_NAMES_MALE",
+  -- R1.4 Waypoints: the game's floating waypoint pin (Blizzard_QuestNavigation).
+  "SuperTrackedFrame",
 }

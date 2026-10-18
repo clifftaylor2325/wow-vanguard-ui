@@ -146,6 +146,8 @@ Enum = {
 }
 
 STANDARD_TEXT_FONT = "Fonts\\FRIZQT__.TTF"
+-- The engine's floating damage font path (Blizzard_Fonts_Shared/Shared/GameFonts.xml, the enUS value).
+DAMAGE_TEXT_FONT = "Fonts\\FRIZQT__.TTF"
 UISpecialFrames = {}
 
 -- securecallfunction: calls fn with the arguments (the bundled
@@ -1205,6 +1207,34 @@ function GetQuestLogRewardInfo(i) local _, q = questIndex(world.selectedQuest) l
 function GetQuestLogRewardMoney() local _, q = questIndex(world.selectedQuest) return q and q.money or 0 end
 function GetQuestLogRewardXP(id) local _, q = questIndex(id or world.selectedQuest) return q and q.xp or 0 end
 
+-- world.questTimers: the timed quests, { questID, endsAt } each (world.setQuestTimer); endsAt a secret for
+-- a timer the client hides.
+world.questTimers = {}
+
+-- Seconds left on one timed quest: as the clock stands, or the secret as it is.
+local function timerLeft(t)
+  if issecretvalue(t.endsAt) then return t.endsAt end
+  return math.max(0, t.endsAt - stub.now)
+end
+
+-- The timed quests' remaining seconds, as the game's timer frame reads them (Blizzard_QuestTimer.lua;
+-- QuestLogDocumentation.lua's QuestTimerInfo: questID, questTimer).
+function C_QuestLog.GetQuestTimers()
+  local out = {}
+  for _, t in ipairs(world.questTimers) do out[#out + 1] = { questID = t.questID, questTimer = timerLeft(t) } end
+  return out
+end
+
+-- Starts a quest's timer (seconds left; a secret for one the client hides) or clears it (nil), then
+-- fires QUEST_LOG_UPDATE as the log does.
+function world.setQuestTimer(questID, seconds)
+  local kept = {}
+  for _, t in ipairs(world.questTimers) do if t.questID ~= questID then kept[#kept + 1] = t end end
+  if seconds ~= nil then kept[#kept + 1] = { questID = questID, endsAt = issecretvalue(seconds) and seconds or stub.now + seconds } end
+  world.questTimers = kept
+  stub.fire("QUEST_LOG_UPDATE")
+end
+
 -- Adds a quest to the log and fires QUEST_LOG_UPDATE / QUEST_ACCEPTED.
 function world.addQuest(q)
   q.objectives = q.objectives or {}
@@ -1801,6 +1831,27 @@ function C_TradeSkillUI.GetRecipeCooldown(recipeID) return world.cooldowns[recip
 -- Opens a recipe in the profession window (only noted here).
 function C_TradeSkillUI.OpenRecipe(recipeID) world.openedRecipe = recipeID return true end
 
+-- world.trackedRecipes: the recipe IDs you track in the profession window, in order (world.trackRecipe).
+world.trackedRecipes = {}
+-- The tracked recipes (Blizzard_ProfessionsRecipeTracker.lua reads both lists; recrafts are none here).
+function C_TradeSkillUI.GetRecipesTracked(isRecraft)
+  local out = {}
+  if isRecraft then return out end
+  for i, id in ipairs(world.trackedRecipes) do out[i] = id end
+  return out
+end
+-- Tracks (tracked true or nil) or untracks (false) a recipe, firing TRACKED_RECIPE_UPDATE(recipeID, tracked)
+-- as the client does (TradeSkillUIDocumentation.lua).
+function world.trackRecipe(recipeID, tracked)
+  local kept, on = {}, tracked ~= false
+  for _, id in ipairs(world.trackedRecipes) do if id ~= recipeID then kept[#kept + 1] = id end end
+  if on then kept[#kept + 1] = recipeID end
+  world.trackedRecipes = kept
+  stub.fire("TRACKED_RECIPE_UPDATE", recipeID, on)
+end
+-- The game's own call to track or untrack a recipe (the tracker's right-click goes through it).
+function C_TradeSkillUI.SetRecipeTracked(recipeID, tracked) world.trackRecipe(recipeID, tracked) end
+
 -- The window, made the first time a profession opens, with its crafting page's recipe form.
 local function professionsFrame()
   if ProfessionsFrame then return ProfessionsFrame end
@@ -1844,6 +1895,50 @@ function FCF_OpenTemporaryWindow(name) local f = stub.newWidget("ScrollingMessag
 function FCF_Tab_OnClick() end
 function FCF_RestorePositionAndDimensions() end
 function FCF_SetChatWindowFontSize(_, frame, size) frame:SetFont(STANDARD_TEXT_FONT, size, "") end
+
+-- Chat bubbles (Modules/ChatBubbles.lua): C_ChatBubbles.GetAllChatBubbles lists world.bubbles, each a bubble
+-- frame with one child panel holding nine art textures and the text's font string (as
+-- Blizzard_ChatBubble/ChatBubbleTemplates.xml builds them). A forbidden bubble is listed too, with IsForbidden
+-- true, so an addon's own check is exercised. world.instance is whether the player is in an instance.
+world.bubbles, world.instance = {}, false
+-- Whether the player is in an instance (a party instance when world.instance is true), and its kind.
+function IsInInstance() if world.instance == true then return true, "party" end return false, "none" end
+C_ChatBubbles = {
+  -- Every bubble there is, in order.
+  GetAllChatBubbles = function() local out = {} for i, bubble in ipairs(world.bubbles) do out[i] = bubble end return out end,
+}
+
+-- A bubble's panel: its nine art textures and its text, keyed String as the game's template keys it (unkeyed
+-- leaves the text a bare region, as a client whose template lacks the key would).
+local function bubblePanel(bubble, text, unkeyed)
+  local panel = stub.newWidget("Frame", nil, bubble)
+  panel:SetAllPoints()
+  for _ = 1, 9 do panel:CreateTexture(nil, "BACKGROUND"):SetTexture("TEST-ONLY-ART") end
+  local fs = panel:CreateFontString(nil, "ARTWORK")
+  fs:SetFont(STANDARD_TEXT_FONT, 13, "")
+  fs:SetText(text)
+  if not unkeyed then panel.String = fs end
+  return panel
+end
+
+-- The IsForbidden of a bubble addons may not touch (an instance's).
+local function alwaysForbidden() return true end
+
+-- A chat bubble appears over a speaker's head saying `text`, and CHAT_MSG_SAY fires (the message the engine
+-- raised it for). opts.forbidden makes it a bubble addons may not touch (an instance's); opts.empty one with no
+-- panel yet; opts.unkeyed one whose text has no String key; opts.event the chat event the line came in on
+-- (CHAT_MSG_SAY unless given). Returns the bubble's index in world.bubbles.
+function world.addChatBubble(text, opts)
+  opts = opts or {}
+  local bubble = stub.newWidget("Frame", nil, UIParent)
+  bubble:SetSize(120, 40)
+  bubble:SetPoint("CENTER")
+  if not opts.empty then bubblePanel(bubble, text, opts.unkeyed) end
+  if opts.forbidden then bubble.IsForbidden = alwaysForbidden end
+  world.bubbles[#world.bubbles + 1] = bubble
+  stub.fire(opts.event or "CHAT_MSG_SAY", text, "TEST-ONLY Speaker")
+  return #world.bubbles
+end
 
 -- The game's chat windows: NUM_CHAT_WINDOWS frames with tabs and edit boxes.
 local function chatFrames()
@@ -1932,6 +2027,23 @@ blizzardFrames()
 -- The client's default tooltip anchor: owned by the frame, placed by the game.
 function GameTooltip_SetDefaultAnchor(tooltip, parent) tooltip:SetOwner(parent, "ANCHOR_NONE") end
 
+-- world.secretReads: names of client reads that answer with a secret while on, as the client does
+-- in instanced combat (a test sets world.secretReads.UnitOnTaxi = true). Off by default.
+world.secretReads = {}
+
+-- Wraps holder[key] so it answers world.secret(0) while world.secretReads[name] is on.
+local function secretRead(name, holder, key)
+  local real = holder[key]
+  holder[key] = function(...)
+    if world.secretReads[name] then return world.secret(0) end
+    return real(...)
+  end
+end
+
+for _, name in ipairs({ "UnitOnTaxi", "UnitLevel", "UnitXP", "UnitIsDeadOrGhost" }) do secretRead(name, _G, name) end
+secretRead("C_Map.GetPlayerMapPosition", C_Map, "GetPlayerMapPosition")
+secretRead("C_QuestLog.GetDistanceSqToQuest", C_QuestLog, "GetDistanceSqToQuest")
+
 -- Resets the world to its defaults (units, actions, bags, quests) without touching frames.
 function world.reset()
   world.units = { player = defaultPlayer() }
@@ -1939,6 +2051,8 @@ function world.reset()
   world.cursor, world.timers, world.book = nil, {}, {}
   world.ah = emptyAuctionHouse()
   world.professions, world.recipes, world.cooldowns, world.openedRecipe = {}, {}, {}, nil
+  world.questTimers, world.trackedRecipes = {}, {}
   world.mail, world.taken = {}, {}
+  world.bubbles, world.instance = {}, false
   refreshWatches()
 end

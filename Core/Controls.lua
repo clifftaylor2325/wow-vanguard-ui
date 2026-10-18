@@ -13,8 +13,22 @@ local T, W = ns.Theme, ns.Widgets
 
 local ROW_HEIGHT = 28
 W.ROW_HEIGHT = ROW_HEIGHT
--- The switch track's width; a caption stops short of it.
-local SWITCH_WIDTH = 36
+-- The control column of a row (a dropdown's width, a slider's track, gap and value together) and the slot a slider's value takes
+-- inside it; the column sits 8 in from the row's right edge.
+W.COLUMN, W.VALUE_SLOT = 200, 60
+local COLUMN_INSET = 8
+-- A slider's track: the column less the value slot and a gap.
+local TRACK_WIDTH = W.COLUMN - W.VALUE_SLOT - COLUMN_INSET
+
+-- Limits a caption to the room left of the control column (it wraps there), left-aligned.
+local function fitCaption(r, width)
+  r.label:SetWidth((width or 400) - W.COLUMN - 2 * COLUMN_INSET)
+  r.label:SetJustifyH("LEFT")
+end
+-- The switch track's size (a pill, twice as wide as it is tall) and its round knob's diameter; a caption stops short of the track.
+local SWITCH_WIDTH, SWITCH_HEIGHT, KNOB_SIZE = 36, 18, 14
+-- The slider track's height (a pill) and its round thumb's diameter.
+local SLIDER_HEIGHT, SLIDER_THUMB = T.SLIDER.height, T.SLIDER.thumb
 
 -- Shared parts -------------------------------------------------------------------------------
 
@@ -40,21 +54,13 @@ local function flat(parent, layer, color)
 end
 W.Flat = flat
 
--- Keeps a primary button's fill in the current accent.
-local function refreshPrimary(b)
-  T.Tint(b.fill, "accent")
-end
-
--- A primary push button: accent fill, dark label. For the one action a view is about.
+-- A primary push button (the kind of T.Button with an accent fill and a dark SemiBold label),
+-- T.BUTTON_H tall and 120 wide unless told otherwise. For the one action a view is about.
 function W.Primary(parent, text, onClick, width)
-  local b = ns.DialogButton(parent, text, width or 120)
-  b.fill = b:CreateTexture(nil, "BORDER", nil, -1)
-  b.fill:SetTexture(T.WHITE)
-  b.fill:SetAllPoints()
-  T.Color(b.text, "void")
-  b.Refresh = refreshPrimary
+  local b = ns.DialogButton(parent, text, width, "primary")
+  -- Puts the fill back in the current accent (the options window refreshes its widgets after a change).
+  b.Refresh = function(self) T.TintFill(self.fill, "accent") end
   b:SetScript("OnClick", ns.Guard(W.ClickLabel(text), onClick))
-  b:Refresh()
   return b
 end
 
@@ -69,13 +75,30 @@ W.IconTexture = icon
 
 -- Switch --------------------------------------------------------------------------------------
 
--- Shows the switch: on (accent fill, bright knob right) or off (dark track, dim knob left); the knob is bright under the mouse, the fill darker while pressed.
+-- Tints a track's pill and outline again in the track and line tokens: a theme variant recolours the tokens, and
+-- the options window refreshes every row after a theme change, so the tracks follow it like the panels around them.
+local function tintTrack(r, track, line)
+  for _, part in ipairs(r.trackArt) do T.Tint(part, track) end
+  for _, part in ipairs(r.outline) do T.Tint(part, line) end
+end
+
+-- Puts the knob and its shade x units in from the track's left end, a pixel lower (T.PRESS.drop) while pressed.
+local function placeKnob(r, x)
+  local drop = r.pressed and -T.PRESS.drop * T.Pixel(r.track) or 0
+  for _, part in ipairs({ r.knob, r.shade }) do
+    part:ClearAllPoints()
+    part:SetPoint("LEFT", r.track, "LEFT", x, drop)
+  end
+end
+
+-- Shows the switch: on (accent fill, bright knob right) or off (dark track, dim knob left); the knob glides between
+-- them (T.Glide), is bright under the mouse and drops a pixel while pressed; the track never changes colour for a press.
 local function refreshSwitch(r)
   local on = r.get() == true
+  tintTrack(r, "inset", "borderHi")
   r.fill:SetShown(on)
-  T.Tint(r.fill, r.pressed and "accentDim" or "accent")
-  r.knob:ClearAllPoints()
-  r.knob:SetPoint(on and "RIGHT" or "LEFT", r.track, on and "RIGHT" or "LEFT", on and -2 or 2, 0)
+  T.Tint(r.fill, "accent")
+  T.Glide(r, on and SWITCH_WIDTH - KNOB_SIZE - 2 or 2, function(x) placeKnob(r, x) end)
   T.Tint(r.knob, (on or r.hot) and "white" or "muted")
 end
 
@@ -86,28 +109,39 @@ local function trackMouse(r)
   end
 end
 
--- The knob's bevel: a light line along its top and a dark one along its bottom, each one pixel.
-local function addKnobBevel(r)
-  local top, bottom = flat(r.track, "OVERLAY", "sheen"), flat(r.track, "OVERLAY", "shade")
-  top:SetHeight(1)
-  bottom:SetHeight(1)
-  top:SetPoint("TOPLEFT", r.knob, "TOPLEFT")
-  top:SetPoint("TOPRIGHT", r.knob, "TOPRIGHT")
-  bottom:SetPoint("BOTTOMLEFT", r.knob, "BOTTOMLEFT")
-  bottom:SetPoint("BOTTOMRIGHT", r.knob, "BOTTOMRIGHT")
+-- A texture of Media/Textures in one theme color (the art is white or grayscale, so the color tints it), at a
+-- sublevel of its layer when parts of one layer must stack in a set order.
+local function art(parent, layer, name, color, sublevel)
+  local t = parent:CreateTexture(nil, layer, nil, sublevel)
+  t:SetTexture(T.Texture(name))
+  return T.Tint(t, color)
 end
 
--- The switch itself: a recessed track with an inner border, an accent fill when on, and a beveled square knob.
-local function addSwitch(r)
-  r.track = T.Panel(CreateFrame("Frame", nil, r), { inset = true, noSheen = true })
-  r.track:SetSize(SWITCH_WIDTH, 18)
-  r.track:SetPoint("RIGHT", -8, 0)
-  r.fill = flat(r.track, "ARTWORK", "accent")
+-- The switch's round knob, and the shade under its lit edge (refreshSwitch places both): the knob above the
+-- track's outline, the shade above the knob.
+local function addKnob(r)
+  r.knob = art(r.track, "OVERLAY", "Knob", "muted", 1)
+  r.knob:SetSize(KNOB_SIZE, KNOB_SIZE)
+  r.shade = art(r.track, "OVERLAY", "KnobShade", "shade", 2)
+  r.shade:SetSize(KNOB_SIZE, KNOB_SIZE)
+end
+
+-- The switch track's art: the pill in the inset color, the accent fill inside its outline (shown when on) and the outline.
+local function addSwitchArt(r)
+  local capsule = T.Capsule(r.track, SWITCH_HEIGHT, "inset")
+  r.trackArt, r.outline = capsule.fill, capsule.line
+  r.fill = art(r.track, "ARTWORK", "Pill", "accent")
   r.fill:SetPoint("TOPLEFT", 1, -1)
   r.fill:SetPoint("BOTTOMRIGHT", -1, 1)
-  r.knob = flat(r.track, "OVERLAY", "muted")
-  r.knob:SetSize(14, 14)
-  addKnobBevel(r)
+end
+
+-- The switch itself: a pill track in the inset color with its outline, an accent fill when on, and a round knob with its shade.
+local function addSwitch(r)
+  r.track = CreateFrame("Frame", nil, r)
+  r.track:SetSize(SWITCH_WIDTH, SWITCH_HEIGHT)
+  r.track:SetPoint("RIGHT", -8, 0)
+  addSwitchArt(r)
+  addKnob(r)
 end
 
 -- A switch row: set(on) runs on click, then the row re-reads get(). A long caption wraps left of the switch.
@@ -190,20 +224,20 @@ local function refreshSegments(r)
   local current = r.get()
   for _, s in ipairs(r.segments) do
     local on = s.value == current
-    s.fill:SetShown(on)
-    T.Tint(s.fill, "accent")
+    T.ShowFill(s.fill, on)
+    T.TintFill(s.fill, "accent")
     T.Color(s.text, on and "void" or "text2")
   end
 end
 
--- One segment button: its label, an accent fill when selected, set(value) on click.
+-- One segment button, T.CONTROL_H tall: its label, an accent fill when selected (T.FillParts, so it
+-- follows rounded corners), set(value) on click.
 local function segment(r, choice, set)
   local s = T.Button(CreateFrame("Button", nil, r))
-  s:SetSize(44, 20)
+  s:SetSize(44, T.CONTROL_H)
   s.value = choice[1]
-  s.fill = flat(s, "ARTWORK", "accent")
-  s.fill:SetAllPoints()
-  s.text = T.Text(s:CreateFontString(nil, "OVERLAY"), "small")
+  s.fill = T.FillParts(s, "ARTWORK", nil, "accent")
+  s.text = T.Text(s:CreateFontString(nil, "OVERLAY"), "label")
   s.text:SetPoint("CENTER")
   s.text:SetText(choice[2])
   s:SetScript("OnClick", ns.Guard("click segment", function() set(choice[1]); r:Refresh() end))
@@ -219,8 +253,8 @@ end
 
 -- A dropdown on the right of a choice row; its Refresh is the row's.
 local function addDropdown(r, choices, get, set)
-  r.dropdown = W.Dropdown(r, choices, get, function(v) set(v); r:Refresh() end, 180)
-  r.dropdown:SetPoint("RIGHT", -8, 0)
+  r.dropdown = W.Dropdown(r, choices, get, function(v) set(v); r:Refresh() end, W.COLUMN)
+  r.dropdown:SetPoint("RIGHT", -COLUMN_INSET, 0)
   -- The row shows its value through the dropdown.
   r.Refresh = function(self) self.dropdown:Refresh() end
 end
@@ -230,7 +264,7 @@ function W.Choice(parent, caption, choices, get, set, width)
   local r = row(parent, caption, width)
   choices = withValue(choices, get())
   r.caption, r.choices, r.get = caption, choices, get
-  if fitsSegments(choices) then addSegments(r, choices, set) else addDropdown(r, choices, get, set) end
+  if fitsSegments(choices) then addSegments(r, choices, set) else addDropdown(r, choices, get, set) fitCaption(r, width) end
   r.Refresh = r.Refresh or refreshSegments
   r:SetScript("OnClick", ns.Guard("click choice", function(self) set(W.NextChoice(self.choices, self.get())[1]); self:Refresh() end))
   r:Refresh()
@@ -241,20 +275,27 @@ end
 
 local menu
 -- The most items a dropdown menu shows at once; the mouse wheel scrolls a
--- longer list (every font other addons share, say).
+-- longer list (every bar texture other addons share, say).
 local MENU_ROWS = 16
+-- How tall a menu item is: an inline control's height.
+local MENU_ROW = T.CONTROL_H
 
 -- Hides the open dropdown menu.
 function W.CloseMenu()
   if menu then menu:Hide() end
 end
 
+-- True while a dropdown menu is open.
+function W.MenuOpen()
+  return menu ~= nil and menu:IsShown()
+end
+
 -- One item in the menu: its text, a check on the current choice.
 local function menuItem(i)
   local b = CreateFrame("Button", nil, menu)
-  b:SetHeight(22)
-  b:SetPoint("TOPLEFT", 1, -1 - (i - 1) * 22)
-  b:SetPoint("TOPRIGHT", -1, -1 - (i - 1) * 22)
+  b:SetHeight(MENU_ROW)
+  b:SetPoint("TOPLEFT", 1, -1 - (i - 1) * MENU_ROW)
+  b:SetPoint("TOPRIGHT", -1, -1 - (i - 1) * MENU_ROW)
   flat(b, "HIGHLIGHT", "hover"):SetAllPoints()
   b.text = T.Text(b:CreateFontString(nil, "OVERLAY"), "label")
   b.text:SetPoint("LEFT", 8, 0)
@@ -274,12 +315,25 @@ local function fillItem(i, choice, current, pick)
   b:Show()
 end
 
+-- Sizes and places the menu's scroll thumb (T.SCROLL): shown only when the list is longer than the menu, as tall as
+-- the menu's share of it, down its travel as far as the list is scrolled.
+local function placeMenuThumb(shown)
+  local total, h = #menu.choices, shown * MENU_ROW
+  menu.thumb:SetShown(total > MENU_ROWS)
+  if total <= MENU_ROWS then return end
+  local size = math.max(MENU_ROW, h * shown / total)
+  menu.thumb:SetHeight(size)
+  menu.thumb:ClearAllPoints()
+  menu.thumb:SetPoint("TOPRIGHT", menu, "TOPRIGHT", -2, -1 - menu.offset / (total - MENU_ROWS) * (h - size))
+end
+
 -- Fills the menu's items from its choices, from the one after menu.offset.
 local function fillMenu()
   local d, shown = menu.owner, math.min(#menu.choices, MENU_ROWS)
   for i = 1, shown do fillItem(i, menu.choices[menu.offset + i], d.get(), d.set) end
   for i = shown + 1, #menu.items do menu.items[i]:Hide() end
-  menu:SetSize(d:GetWidth(), shown * 22 + 2)
+  menu:SetSize(d:GetWidth(), shown * MENU_ROW + 2)
+  placeMenuThumb(shown)
 end
 
 -- Scrolls a long menu one item per wheel step, within its list.
@@ -288,7 +342,46 @@ local function scrollMenu(_, delta)
   fillMenu()
 end
 
--- The shared menu frame, built once: a raised panel above everything.
+-- The invisible full-screen catcher under the open menu: a click anywhere else closes the menu (and goes no further).
+local function addCatcher()
+  menu.catcher = CreateFrame("Button", nil, UIParent)
+  menu.catcher:SetAllPoints(UIParent)
+  menu.catcher:SetFrameStrata("FULLSCREEN_DIALOG")
+  menu.catcher:SetScript("OnMouseDown", ns.Guard("menu outside click", W.CloseMenu))
+  menu.catcher:Hide()
+end
+
+-- Lets Escape close the menu through the game's list of special frames (where the client has it), and a fight
+-- close it, so its click catcher is never up over the action bars.
+local function closeOnEscape()
+  if type(UISpecialFrames) == "table" then table.insert(UISpecialFrames, "Vanguard_Menu") end
+  ns.On("PLAYER_REGEN_DISABLED", W.CloseMenu)
+end
+
+-- The menu showed or hid: its catcher follows (just under it), and the dropdown that opened it keeps its hover
+-- look (T.HoldHover) only while it is open.
+local function wireMenuState()
+  menu:SetScript("OnShow", ns.Guard("menu show", function(m) m.catcher:Show() end))
+  menu:SetScript("OnHide", ns.Guard("menu hide", function(m)
+    m.catcher:Hide()
+    if m.owner then T.HoldHover(m.owner, false) end
+  end))
+end
+
+-- The menu's item list and its scroll thumb (T.SCROLL): a text2 line at the rest alpha, placed by fillMenu, on a
+-- frame over the items so a hovered row never covers it.
+local function addMenuThumb()
+  menu.items = {}
+  menu.thumbHost = CreateFrame("Frame", nil, menu)
+  menu.thumbHost:SetAllPoints(menu)
+  menu.thumbHost:SetFrameLevel(menu:GetFrameLevel() + MENU_ROWS + 2)
+  menu.thumb = T.Tint(menu.thumbHost:CreateTexture(nil, "OVERLAY"), "text2")
+  menu.thumb:SetTexture(T.WHITE)
+  menu.thumb:SetWidth(T.SCROLL.thumb)
+  menu.thumb:SetAlpha(T.SCROLL.rest)
+end
+
+-- The shared menu frame, built once: a raised panel above everything, closed by Escape, a click outside or a pick.
 local function menuFrame()
   if menu then return menu end
   menu = T.Panel(CreateFrame("Frame", "Vanguard_Menu", UIParent), { raised = true, shadow = true })
@@ -297,7 +390,7 @@ local function menuFrame()
   menu:SetClampedToScreen(true)
   menu:EnableMouseWheel(true)
   menu:SetScript("OnMouseWheel", scrollMenu)
-  menu.items = {}
+  for _, add in ipairs({ addMenuThumb, addCatcher, wireMenuState, closeOnEscape }) do add() end
   menu:Hide()
   return menu
 end
@@ -310,16 +403,30 @@ local function startOffset(choices, current)
   return 0
 end
 
--- Opens the menu under a dropdown with its choices (scrolled to the current one).
-local function openMenu(d)
-  menuFrame()
-  menu.owner = d
-  menu.choices = type(d.choices) == "function" and d.choices() or d.choices
-  menu.offset = startOffset(menu.choices, d.get())
-  fillMenu()
+-- Raises the menu over a dialog in the same strata (ns.Dialog's), whichever was made first, and its catcher to just under it.
+local function raiseMenu()
+  menu:Raise()
+  menu.catcher:SetFrameLevel(math.max(0, menu:GetFrameLevel() - 1))
+end
+
+-- Puts the menu under a dropdown and shows it, over everything.
+local function showMenuUnder(d)
   menu:ClearAllPoints()
   menu:SetPoint("TOPLEFT", d, "BOTTOMLEFT", 0, -2)
   menu:Show()
+  raiseMenu()
+end
+
+-- Opens the menu under a dropdown with its choices (scrolled to the current one).
+local function openMenu(d)
+  menuFrame()
+  if menu.owner and menu.owner ~= d then T.HoldHover(menu.owner, false) end
+  menu.owner = d
+  T.HoldHover(d, true)
+  menu.choices = type(d.choices) == "function" and d.choices() or d.choices
+  menu.offset = startOffset(menu.choices, d.get())
+  fillMenu()
+  showMenuUnder(d)
 end
 
 -- Shows the current choice's text.
@@ -340,11 +447,11 @@ local function addDropdownText(d)
   d.text:SetWordWrap(false)
 end
 
--- A dropdown: shows the current choice; click to pick from a menu. choices
+-- A dropdown, T.CONTROL_H tall: shows the current choice; click to pick from a menu. choices
 -- is a list of { value, text } or a function returning one.
 function W.Dropdown(parent, choices, get, set, width)
   local d = T.Button(CreateFrame("Button", nil, parent))
-  d:SetSize(width or 180, 22)
+  d:SetSize(width or W.COLUMN, T.CONTROL_H)
   d.choices, d.get, d.set, d.Refresh = choices, get, set, refreshDropdown
   addDropdownText(d)
   d:SetScript("OnClick", ns.Guard("click dropdown", function(self) if menu and menu:IsShown() and menu.owner == self then W.CloseMenu() else openMenu(self) end end))
@@ -354,16 +461,35 @@ end
 
 -- Slider -------------------------------------------------------------------------------------
 
--- Places the fill and thumb for the current value, and shows it as text; a
--- locked slider's fill and caption are muted.
+-- Runs the fill to w units from the track's left end: its right end moves and the middle stretches between
+-- the two round ends, which narrow when there is no room for both. Under one unit it hides (the thumb sits there).
+local function placeFill(r, w)
+  local p, cap = r.fillParts, math.min(SLIDER_HEIGHT / 2, math.max(w, 1) / 2)
+  for _, part in ipairs(p) do part:SetShown(w >= 1) end
+  p[1]:SetWidth(cap)
+  p[3]:SetWidth(cap)
+  p[3]:SetPoint("TOPLEFT", r.track, "TOPLEFT", w - cap, 0)
+  p[3]:SetPoint("BOTTOMLEFT", r.track, "BOTTOMLEFT", w - cap, 0)
+end
+
+-- Centres the thumb, its shade and its outline x units along the track.
+local function placeThumb(r, x)
+  for _, part in ipairs({ r.thumb, r.thumbShade, r.thumbLine }) do
+    part:ClearAllPoints()
+    part:SetPoint("CENTER", r.track, "LEFT", x, 0)
+  end
+end
+
+-- Places the fill and thumb for the current value, and shows it as text; a locked slider's
+-- thumb dims (T.SLIDER.thumbOff) and its caption is muted.
 local function refreshSlider(r)
   local v, locked = r.get(), r.locked and r.locked()
   local share = math.max(0, math.min(1, (v - r.min) / (r.max - r.min)))
-  T.Tint(r.fill, locked and "muted" or "accent")
+  tintTrack(r, T.SLIDER.track, T.SLIDER.line)
+  for _, part in ipairs(r.fillParts) do T.Tint(part, T.SLIDER.fill) end
+  T.Tint(r.thumb, locked and T.SLIDER.thumbOff or T.SLIDER.thumbColor)
   T.Color(r.label, locked and "muted" or "text")
-  r.fill:SetWidth(math.max(1, r.track:GetWidth() * share))
-  r.thumb:ClearAllPoints()
-  r.thumb:SetPoint("CENTER", r.track, "LEFT", r.track:GetWidth() * share, 0)
+  T.Glide(r, r.track:GetWidth() * share, function(x) placeFill(r, x) placeThumb(r, x) end, r.dragging)
   r.value:SetText(r.format(v))
 end
 
@@ -391,20 +517,41 @@ end
 
 -- Dragging along the track: follow the cursor from mouse down to mouse up.
 local function wireDrag(r)
-  r.track:SetScript("OnMouseDown", function() r.track:SetScript("OnUpdate", function() dragTo(r) end) end)
-  r.track:SetScript("OnMouseUp", function() r.track:SetScript("OnUpdate", nil) end)
+  r.track:SetScript("OnMouseDown", function() r.dragging = true r.track:SetScript("OnUpdate", function() dragTo(r) end) end)
+  r.track:SetScript("OnMouseUp", function() r.dragging = false r.track:SetScript("OnUpdate", nil) end)
 end
 
--- The track, fill and thumb.
+-- The fill (T.SLIDER.fill): a pill on the track itself (its ARTWORK, under the thumb and the outline) from the track's
+-- left end, its left end fixed, its middle between the ends; placeFill runs its right end to the thumb.
+local function addFill(r)
+  r.fillParts = T.CapsuleArt(r.track, "ARTWORK", "Pill", T.SLIDER.fill)
+  local p = r.fillParts
+  p[1]:SetPoint("TOPLEFT")
+  p[1]:SetPoint("BOTTOMLEFT")
+  p[2]:SetPoint("TOPLEFT", p[1], "TOPRIGHT")
+  p[2]:SetPoint("BOTTOMRIGHT", p[3], "BOTTOMLEFT")
+  placeFill(r, 0)
+end
+
+-- The round thumb, its shade and its dark outline (refreshSlider places them), stacked in that order above the
+-- track's outline, so the thumb reads as a solid disc with a defined edge over the fill.
+local function addThumb(r)
+  r.thumb = art(r.track, "OVERLAY", "Knob", T.SLIDER.thumbColor, 1)
+  r.thumbShade = art(r.track, "OVERLAY", "KnobShade", T.SLIDER.shade, 2)
+  r.thumbLine = art(r.track, "OVERLAY", "KnobLine", "edge", 3)
+  for _, part in ipairs({ r.thumb, r.thumbShade, r.thumbLine }) do part:SetSize(SLIDER_THUMB, SLIDER_THUMB) end
+end
+
+-- The track: an inset pill with its outline (SliderLine, one pixel at the track's height). The fill and thumb
+-- go on it, and dragging sets the value.
 local function addTrack(r)
-  r.track = T.Panel(CreateFrame("Button", nil, r), { inset = true, noSheen = true })
-  r.track:SetSize(140, 6)
-  r.track:SetPoint("RIGHT", -66, 0)
-  r.fill = flat(r.track, "ARTWORK", "accent")
-  r.fill:SetPoint("TOPLEFT")
-  r.fill:SetPoint("BOTTOMLEFT")
-  r.thumb = flat(r.track, "OVERLAY", "white")
-  r.thumb:SetSize(6, 14)
+  r.track = CreateFrame("Button", nil, r)
+  r.track:SetSize(TRACK_WIDTH, SLIDER_HEIGHT)
+  r.track:SetPoint("RIGHT", -(COLUMN_INSET + W.VALUE_SLOT + COLUMN_INSET), 0)
+  local capsule = T.Capsule(r.track, SLIDER_HEIGHT, T.SLIDER.track, { line = T.SLIDER.line, edge = "SliderLine" })
+  r.trackArt, r.outline = capsule.fill, capsule.line
+  addFill(r)
+  addThumb(r)
   wireDrag(r)
 end
 
@@ -451,8 +598,8 @@ end
 -- The value text, right-aligned in a fixed slot so a long number can't run over the track.
 local function addValueText(r)
   r.value = T.Text(r:CreateFontString(nil, "OVERLAY"), "number", "text2")
-  r.value:SetPoint("RIGHT", -8, 0)
-  r.value:SetWidth(52)
+  r.value:SetPoint("RIGHT", -COLUMN_INSET, 0)
+  r.value:SetWidth(W.VALUE_SLOT)
   r.value:SetJustifyH("RIGHT")
 end
 
@@ -463,7 +610,8 @@ end
 function W.Slider(parent, caption, opts, get, set, width)
   local r = row(parent, caption, width)
   r.min, r.max, r.step, r.format = opts.min, opts.max, opts.step, opts.format or roundedText(opts.step)
-  r.get, r.set, r.Refresh = get, set, refreshSlider
+  r.get, r.set, r.Refresh, r.Step = get, set, refreshSlider, stepBy
+  fitCaption(r, width)
   addTrack(r)
   if opts.locked then addLock(r, opts.locked) end
   addValueText(r)
@@ -476,18 +624,35 @@ end
 
 -- Shows the hint only while the box is empty.
 local function refreshHint(e)
-  e.hint:SetShown((e:GetText() or "") == "")
+  local empty = (e:GetText() or "") == ""
+  e.hint:SetShown(empty)
+  if e.clear then e.clear:SetShown(not empty) end
+end
+
+-- The clear glyph at a search box's right end: a small Close button, shown only while the box has text; a click
+-- empties the box (which runs onChange through OnTextChanged) and hands the typing back to it.
+local function addClear(e)
+  e.clear = CreateFrame("Button", nil, e)
+  e.clear:SetSize(T.CONTROL_H, T.CONTROL_H)
+  e.clear:SetPoint("RIGHT")
+  e.clear.glyph = W.IconTexture(e.clear, "Close", 10, "text2")
+  e.clear.glyph:SetPoint("CENTER")
+  e.clear:SetScript("OnClick", ns.Guard("clear search", function() e:SetText("") e:ClearFocus() end))
+  e.clear:SetScript("OnEnter", ns.Guard("hover clear", function(b) T.Tint(b.glyph, "text") end))
+  e.clear:SetScript("OnLeave", ns.Guard("hover clear", function(b) T.Tint(b.glyph, "text2") end))
+  e.clear:Hide()
 end
 
 -- A search box with a magnifier and a hint; onChange(text) runs as you type.
 function W.Search(parent, width, hint, onChange)
   local e = W.Input(parent, width)
-  e:SetTextInsets(24, 6, 0, 0)
+  e:SetTextInsets(24, T.CONTROL_H, 0, 0)
   e.glass = icon(e, "Search", 12, "text2")
   e.glass:SetPoint("LEFT", 7, 0)
   e.hint = T.Text(e:CreateFontString(nil, "OVERLAY"), "label", "disabled")
   e.hint:SetPoint("LEFT", 24, 0)
   e.hint:SetText(hint)
+  addClear(e)
   e:SetScript("OnTextChanged", function(self) refreshHint(self); onChange(self:GetText() or "") end)
   return e
 end

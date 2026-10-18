@@ -1,41 +1,40 @@
 -- The quest tracker's look (Modules/QuestTracker.lua gathers the quests): a
--- "Quests" header with the count, a brass line and a collapse arrow; a block
+-- "Quests" section header (W.SectionHeader) with the count and a fold chevron,
+-- and a brass line under it (the tracker has no panel to carry a divider); a block
 -- per quest; "+3 more" when they don't all fit; and the quest items as the
 -- game's secure item buttons beside their quests (placed out of combat), each with
 -- its cooldown, a red tint out of range and the game's tooltip.
 
 local ADDON, ns = ...
 
-local T = ns.Theme
+local T, W = ns.Theme, ns.Widgets
 local QP = ns.QuestParts
 local QT = ns.GetModule("QuestTracker")
 
+-- The tracker's measures (units): the header band, a block's title line and each line under it, the gap
+-- between blocks, a quest item's button, how many item buttons there are, and how often (seconds) their
+-- range is checked.
 QT.HEADER, QT.TITLE, QT.LINE, QT.GAP, QT.ITEM, QT.MAX_ITEMS, QT.RANGE_EVERY = 22, 16, 14, 6, 22, 8, 0.25
 QT.items, QT.shown = {}, {}
 
 -- Building -------------------------------------------------------------------------------------
 
--- The collapse arrow: down while open, right while collapsed.
-local function addToggle(f)
-  f.toggle = CreateFrame("Button", nil, f)
-  f.toggle:SetSize(14, 14)
-  f.toggle:SetPoint("TOPRIGHT", f, "TOPRIGHT", 0, -2)
-  f.toggle.icon = T.Tint(f.toggle:CreateTexture(nil, "OVERLAY"), "text2")
-  f.toggle.icon:SetAllPoints()
-  f.toggle:SetScript("OnClick", ns.Guard("click quest tracker collapse", function() QT.collapsed = not QT.collapsed QT.Refresh() end))
+-- Folds the tracker away to its header (or opens it again): what the header's chevron does.
+function QT.Fold(collapsed)
+  QT.collapsed = collapsed
+  QT.Refresh()
 end
 
--- "Quests", the count beside the arrow, and a brass line under them.
+-- "QUESTS", the quest count after it and a fold chevron (a W.SectionHeader), and a brass line under them.
 local function addHeader(f)
-  f.header = T.Text(f:CreateFontString(nil, "OVERLAY"), "heading", "text")
+  f.header = W.SectionHeader(f, "Quests", { collapsible = true, count = "", width = QT.W, onToggle = QT.Fold })
   f.header:SetPoint("TOPLEFT", f, "TOPLEFT", 0, 0)
-  f.header:SetText("Quests")
-  f.count = T.Text(f:CreateFontString(nil, "OVERLAY"), "small", "text2")
-  f.count:SetPoint("TOPRIGHT", f, "TOPRIGHT", -20, -3)
-  f.rule = T.Snap(f:CreateTexture(nil, "ARTWORK"), "divider")
+  f.count = f.header.count
+  f.rule = T.Tint(T.Snap(f:CreateTexture(nil, "ARTWORK"), "divider"), "accent")
+  f.rule:SetTexture(T.WHITE)
   f.rule:SetHeight(T.Pixel(f))
-  f.rule:SetPoint("TOPLEFT", f, "TOPLEFT", 0, -QT.HEADER + 4)
-  f.rule:SetPoint("TOPRIGHT", f, "TOPRIGHT", 0, -QT.HEADER + 4)
+  f.rule:SetPoint("TOPLEFT", f, "TOPLEFT", 0, -QT.HEADER + T.SPACE.tight)
+  f.rule:SetPoint("TOPRIGHT", f, "TOPRIGHT", 0, -QT.HEADER + T.SPACE.tight)
 end
 
 -- One objective line in a block.
@@ -47,9 +46,10 @@ local function objectiveLine(block)
   return fs
 end
 
--- A title click: a Legacy challenge untracks on right-click, a quest opens its details.
+-- A title click: a Legacy challenge untracks on right-click, a recipe opens (or untracks), a quest opens its details.
 local function onTitleClick(self, button)
   if self.achievement then return QT.OnAchievement(self.id, button) end
+  if self.recipe then return QT.OnRecipe(self.id, button) end
   if self.id then QT.OnTitle(self.id, button) end
 end
 
@@ -107,11 +107,8 @@ function QT.Build(spot)
   f:SetFrameStrata(QT.STRATA)
   f:SetAllPoints()
   addHeader(f)
-  addToggle(f)
   addBody(f)
   QT.frame = f
-  T.OnChanged(function() T.Tint(f.rule, "accent") end)
-  T.Tint(f.rule, "accent")
 end
 
 -- Blocks ---------------------------------------------------------------------------------------
@@ -125,10 +122,12 @@ function QT.StateLines(q)
 end
 
 -- A quest's lines under its title: the arrow's next step when it follows this quest (Quest
--- guidance), then { text, color } for each objective, or "Ready to turn in", then its XP.
--- An achievement has no guide step or XP: its criteria only.
+-- guidance), its countdown while it is timed ("Time left 4:32"), then { text, color } for each
+-- objective, or "Ready to turn in", then its XP. An achievement or a recipe has no guide step
+-- or XP: its criteria or reagents only.
 function QT.LineSpecs(q)
-  local out = q.achievement and {} or { ns.QuestGuide.StepLine(q.id) }
+  local out = (q.achievement or q.recipe) and {} or { ns.QuestGuide.StepLine(q.id) }
+  if q.timer then out[#out + 1] = { "Time left " .. QT.Clock(q.timer), "text2" } end
   for _, line in ipairs(QT.StateLines(q)) do out[#out + 1] = line end
   if (q.xp or 0) > 0 then out[#out + 1] = { q.xp .. " XP", "text2" } end
   return out
@@ -145,7 +144,7 @@ local function paintLines(b, q)
   b.lines.Reset()
   for i, spec in ipairs(QT.LineSpecs(q)) do
     local fs = b.lines.Next()
-    fs:SetPoint("TOPLEFT", b, "TOPLEFT", 8, -QT.TITLE - (i - 1) * QT.LINE)
+    fs:SetPoint("TOPLEFT", b, "TOPLEFT", T.SPACE.gap, -QT.TITLE - (i - 1) * QT.LINE)
     fs:SetText(spec[1])
     T.Color(fs, spec[2])
     fs:Show()
@@ -159,9 +158,9 @@ local function paintSection(b, q)
   b.lines.Reset()
 end
 
--- A quest's title in its difficulty color; a challenge's in the text color, by its name.
+-- A quest's title in its difficulty color; a challenge's or a recipe's in the text color, by its name.
 local function paintTitle(b, q)
-  if q.achievement then
+  if q.achievement or q.recipe then
     b.title:SetText(q.title)
     return T.Color(b.title, "text")
   end
@@ -171,7 +170,7 @@ end
 
 -- Fills a block: its title, then its lines (a section heading is its name alone).
 function QT.PaintBlock(b, q)
-  b.id, b.achievement = q.id, q.achievement
+  b.id, b.achievement, b.recipe = q.id, q.achievement, q.recipe
   if q.section then paintSection(b, q) else
     paintTitle(b, q)
     paintLines(b, q)
@@ -246,15 +245,16 @@ local function drawRows(f, rows)
   showMore(f, rows, shown, y)
 end
 
--- Redraws the tracker from the quests you watch and the achievements you track (also in combat, so counts keep
--- up with a fight), then places the quest items: those are secure buttons that
+-- Redraws the tracker from the quests you watch and the challenges and recipes you track (also in combat, so
+-- counts keep up with a fight), then places the quest items: those are secure buttons that
 -- can't be moved in combat, so they keep their places until combat ends and one
 -- keyed placement runs then, however many redraws asked for it.
 function QT.Refresh()
-  local f, quests = QT.frame, QT.Quests()
+  local f, quests, timed = QT.frame, QT.Quests()
   local all = QT.Rows(quests)
+  QT.TickTimers(timed)
   f.count:SetText(#quests > 0 and tostring(#quests) or "")
-  f.toggle.icon:SetTexture(T.Icon(QT.collapsed and "Right" or "Down"))
+  f.header:SetCollapsed(QT.collapsed)
   f.blocks.Reset()
   f.body:SetShown(not QT.collapsed)
   f:SetShown(#all > 0)
@@ -348,7 +348,7 @@ local function placeItem(b, shown)
   b:SetAttribute("item", shown.quest.item.link)
   b.icon:SetTexture(shown.quest.item.texture)
   b:ClearAllPoints()
-  b:SetPoint("TOPRIGHT", shown.block, "TOPLEFT", -4, 0)
+  b:SetPoint("TOPRIGHT", shown.block, "TOPLEFT", -T.SPACE.tight, 0)
   b:Show()
   QT.UpdateCooldown(b)
   QT.UpdateRange(b)

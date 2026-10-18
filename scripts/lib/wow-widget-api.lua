@@ -116,6 +116,14 @@ local STATUS_BAR = {
   "SetRotatesTexture", "SetStatusBarColor", "SetStatusBarTexture", "SetValue",
 }
 
+-- A slider (warcraft.wiki.gg UIOBJECT_Slider, 19 methods): range, step, orientation, thumb and enabled state.
+local SLIDER = {
+  "Disable", "Enable", "GetMinMaxValues", "GetObeyStepOnDrag", "GetOrientation",
+  "GetStepsPerPage", "GetThumbTexture", "GetValue", "GetValueStep", "IsDraggingThumb",
+  "IsEnabled", "SetEnabled", "SetMinMaxValues", "SetObeyStepOnDrag", "SetOrientation",
+  "SetStepsPerPage", "SetThumbTexture", "SetValue", "SetValueStep",
+}
+
 local CHECK_BUTTON = {
   "GetChecked", "GetCheckedTexture", "GetDisabledCheckedTexture",
   "SetChecked", "SetCheckedTexture", "SetDisabledCheckedTexture",
@@ -179,6 +187,7 @@ return {
     ScrollFrame = set(REGION, FRAME, SCROLL_FRAME),
     StatusBar = set(REGION, FRAME, STATUS_BAR),
     CheckButton = set(REGION, FRAME, BUTTON, CHECK_BUTTON),
+    Slider = set(REGION, FRAME, SLIDER),
     Minimap = set(REGION, FRAME, MINIMAP),
     ScrollingMessageFrame = set(REGION, FRAME, FONT, SCROLLING_MESSAGE_FRAME),
     Cooldown = set(REGION, FRAME, COOLDOWN),
@@ -194,6 +203,7 @@ return {
     StatusBar = set(FRAME_SCRIPTS, { "OnMinMaxChanged", "OnValueChanged" }),
     Minimap = set(FRAME_SCRIPTS),
     ScrollingMessageFrame = set(FRAME_SCRIPTS, { "OnHyperlinkClick", "OnHyperlinkEnter", "OnHyperlinkLeave", "OnMessageScrollChanged" }),
+    Slider = set(FRAME_SCRIPTS, { "OnMinMaxChanged", "OnValueChanged" }),
     CheckButton = set(FRAME_SCRIPTS, { "OnClick", "OnDoubleClick", "PostClick", "PreClick" }),
     Cooldown = set(FRAME_SCRIPTS, { "OnCooldownDone" }),
     AuraContainer = set(FRAME_SCRIPTS),

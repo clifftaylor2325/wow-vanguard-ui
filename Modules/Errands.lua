@@ -320,8 +320,10 @@ end
 -- Follows a picked flight: takeoff starts the bar, landing saves the time; a
 -- flight that never took off is forgotten. With no flight to follow, it stops.
 function ER.PollFlight()
-  local f, flying, now = ER.flight, ask("UnitOnTaxi", "player") == true, ask("GetTime") or 0
+  local f, taxi, now = ER.flight, ask("UnitOnTaxi", "player"), ask("GetTime") or 0
   if not f then return ns.Every("flight poll", nil) end
+  if ns.IsSecret(taxi) then return end
+  local flying = taxi == true
   if f.start and not flying then return land(f) end
   if flying then f.start = f.start or now return ER.PaintFlight(f) end
   if now - f.picked > ER.TAKEOFF_WAIT then ER.flight = nil end

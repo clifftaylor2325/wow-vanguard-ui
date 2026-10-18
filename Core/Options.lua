@@ -151,7 +151,7 @@ local function liveThemeSetting(key)
   end
 end
 
--- The built-in fonts and bar textures; the pickers add what LibSharedMedia shares.
+-- The built-in fonts and bar textures; the bar picker adds what LibSharedMedia shares (the font picker only the one in use).
 local FONT_CHOICES = { { "", "Fira Sans Condensed" }, { "client", "the game's font" } }
 -- The faction look: your faction's crest only (the default), the crest and heading font, or off.
 local FACTION_LOOK = { { "crest", "Crest only" }, { "auto", "Crest and heading font" }, { "off", "Off" } }
@@ -171,24 +171,27 @@ local MOVER_ALPHAS = { min = ns.MOVER_ALPHA.min, max = ns.MOVER_ALPHA.max, step 
 -- Text size: 70% to 130% in steps of 5.
 local TEXT_SIZES = { min = 0.7, max = 1.3, step = 0.05, format = function(v) return string.format("%d%%", math.floor(v * 100 + 0.5)) end }
 
--- Look, the font, text size, faction, variant, corners and ornament rows.
+-- Look, the font, text size, faction, variant, corners and ornament rows. A caption is a noun; what it needs
+-- saying beyond that is a note row under it.
 local function lookTextRows()
   return {
-    { "cycle", "Font", T.SharedChoices("font", FONT_CHOICES), liveThemeSetting("font") },
+    { "cycle", "Font", T.FontChoices(FONT_CHOICES), liveThemeSetting("font") },
     { "slider", "Text size", TEXT_SIZES, liveThemeSetting("textScale") },
     { "cycle", "Faction look", FACTION_LOOK, liveThemeSetting("faction") },
-    { "cycle", "Theme variant: surfaces and text", VARIANT_CHOICES, liveThemeSetting("variant") },
-    { "cycle", "Corners: square or rounded panels", CORNER_CHOICES, liveThemeSetting("corners") },
-    check("Window ornaments: a brass rule or corners on large windows", previewedSetting("ornaments")),
+    { "cycle", "Theme variant", VARIANT_CHOICES, liveThemeSetting("variant") },
+    { "cycle", "Corners", CORNER_CHOICES, liveThemeSetting("corners") },
+    check("Window ornaments", previewedSetting("ornaments")),
+    { "text", "A brass rule or corners on large windows.", "note" },
   }
 end
 
 -- General, part one: accent, color assist, font, text size, variant, ornaments, scale and theme reset.
 local function lookRows()
   local rows = { { "header", "Look" }, { "preview" }, { "swatches" },
-    check("Color assist: friendly blue, neutral yellow, hostile vermilion (reload)", themeSetting("colorAssist")) }
+    check("Color assist (reload)", themeSetting("colorAssist")),
+    { "text", "Friendly blue, neutral yellow, hostile vermilion.", "note" } }
   for _, row in ipairs(lookTextRows()) do rows[#rows + 1] = row end
-  rows[#rows + 1] = check("Pixel-perfect scale (crisp 1-pixel lines)", function() return T.Settings().pixelScale end,
+  rows[#rows + 1] = check("Pixel-perfect scale", function() return T.Settings().pixelScale end,
     function(v) T.SetPixelScale(v); if not v then O.NeedReload() end end)
   rows[#rows + 1] = { "button", "Reset theme", function() T.Reset() end }
   return rows
@@ -285,6 +288,7 @@ O.MODULE_INFO = {
   Merchant = { "Merchant helpers", "Repair, sell gray items, and a quieter error line." },
   ChatExtras = { "Chat extras", "Clickable web links in chat, and a Copy button for the recent chat." },
   ChatWatch = { "Chat watch", "A sound and a toast when a phrase you watch for is said in chat; click to whisper." },
+  ChatBubbles = { "Chat bubbles", "Speech bubbles in the world on a flat panel, in the theme font (the game's own inside instances)." },
   MinimapButtons = { "Minimap drawer", "Other addons' minimap buttons gathered into a drawer beside the map." },
   AutoAccept = { "Auto-accept", "Accept summons and resurrections, decline duels, loot faster (each off until you switch it on)." },
   QuestDialog = { "Quest dialog", "Talking to quest givers in Vanguard's own dialog: numbered lines, reward cards, keys 1-9 and Space." },
@@ -362,7 +366,7 @@ local function confirmReset(what, yes, after)
     ns.Chat(string.format("Profile %s as it was is saved as profile %s.", name, ns.BackupProfile()))
     ns.ResetProfile()
     after()
-  end, function() end)
+  end, function() end, "danger")
 end
 
 -- Reset profile: after asking, the profile back to defaults (backed up first), applied on reload.

@@ -55,7 +55,7 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 ### 1.2b What's new after an update
 
 - Do: on an account that has finished setup, install a build whose `## Version` has notes in `Core/WhatsNewNotes.lua` over an older one, and log in. Click the first line with a setting. Then `/reload`, and type `/vg whatsnew`.
-- Expect: after login the window `What's new in Vanguard <version>` shows once, its lines under module headings; a line for something off by default ends in `(off by default)`. The click closes it and opens `/vg` on that line's page with its row marked. After the reload it doesn't come back by itself; `/vg whatsnew` opens it again (so does **What's new** under General → Layout).
+- Expect: after login the window `What's new in Vanguard <version>` shows once, with its title centred, `Click a line to open its setting.` in small grey type under it and a close button at the top right, and its lines under module headings in small grey capitals; a line for something off by default ends in `(off by default)`. The click closes it and opens `/vg` on that line's page with its row marked. After the reload it doesn't come back by itself; `/vg whatsnew` opens it again (so does **What's new** under General → Layout).
 - If it fails, paste: the version from `/vg status`, a screenshot of the window, and `/vg errors`.
 
 ### 1.3 Status
@@ -82,6 +82,9 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 
 - Do: type `/vg`, then click each page in the left list in turn: General, Modules, Unit frames, Raid frames, Healing, Click casting, Talents, Action bars, Nameplates, Quests, Bars and bags, Map, Chat, Game windows, Combat tools, Town and gear, Situations, Profiles and Feedback (19 pages in all). After each, type `/vg errors`.
 - Expect: each page draws its rows with no Lua error popup, and `/vg errors` stays empty. All 19 entries fit in the list without running off the bottom, each with its own icon (the six that replaced Bars, map, chat have a laurel crown, a compass, a raven, a checked shield, a battle axe and a castle), and every icon and label starts at the same spot down the list, and a search for a setting that used to be on Bars, map, chat (say "Craft queue") lights the page that has it now.
+- Also expect (switches): on any page, a switch is a pill track in the theme's inset colour with a thin outline and a round knob with a shade under its edge; on is the accent fill with the knob at the right, off the knob at the left, and the knob brightens under the mouse. Try the Accent and Theme settings: the on fill follows the accent. [Needs in game: the pill and knob art at 1x and at a larger UI scale.]
+- Also expect (sliders): a slider's track is a pill in the inset colour with a thin outline, its fill runs in a quiet grey (not the accent) to a solid white round thumb with a dark outline and a shade under its lit edge (the thumb stays on top of the fill; the filled part reads as one solid grey bar, with the thin outline round the empty part), and the thumb moves as you drag. Under General → Layout, a size slider that is locked (Its width on a frame whose width matches another's) shows a grey thumb. Then switch the Theme setting: the switch and slider tracks take the new theme's colours with the panels around them. [Needs in game: the pill ends and the slider's outline at 1x and at a larger UI scale.]
+- Also expect (Font picker): the Font picker under General lists Fira Sans Condensed and the game's font (and a font from another addon only while you use it); the Bar texture picker still lists the bars other addons share.
 - If it fails, paste: the page name, a screenshot of it, and `/vg errors`.
 
 ### 2.1a Situations: Stop recording only while recording
@@ -157,7 +160,7 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 ### 4.1 Switch profile
 
 - Do: type `/vg profile Smoke`, click Reload in the dialog, then after the reload type `/vg profile`.
-- Expect: a dialog saying `This character now uses profile Smoke. Reload the UI now to apply it?` with Reload and Later; Reload reloads the UI; afterwards `Profile: Smoke   (all: Default, Smoke)`. [After P0.7: the Reload button is a secure macro button. If the click does nothing, type `/reload` yourself and say that the button was dead.]
+- Expect: a dialog saying `This character now uses profile Smoke. Reload the UI now to apply it?` with Reload (in the accent) and Later; the close button and Escape mean Later; Reload reloads the UI; afterwards `Profile: Smoke   (all: Default, Smoke)`. [After P0.7: the Reload button is a secure macro button. If the click does nothing, type `/reload` yourself and say that the button was dead.]
 - If it fails, paste: whether the button reloaded, and `/vg errors`.
 
 ### 4.2 Import garbage
@@ -169,7 +172,7 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 ### 4.3 Export
 
 - Do: type `/vg export`.
-- Expect: a text box titled `Vanguard export (profile Smoke)  Ctrl+C to copy` holding one long string.
+- Expect: a text box titled `Vanguard export (profile Smoke)  Ctrl+C to copy` holding one long string, with a close button at its top right, a thin scroll thumb in its right margin when the string is long, and a plain Close button at the bottom (an import box has Import in the accent and Cancel instead).
 - If it fails, paste: a screenshot.
 
 ### 4.4 Export only the layout
@@ -268,7 +271,7 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 ### 6.5b Wanted amounts window
 
 - Do: `/vg` → Town and gear → Instance prep → **Set wanted amounts...** (or `/vg prep setup`), out of combat. On step 1 drag the food slider, click **Use suggested**, then Next through to Done. Try `/vg prep want potions 7` afterwards, and `/vg prep`.
-- Expect: step 1 has Food & drink, Bandages and Potions sliders; hunters and warlocks get a second step with Ammo or Soul shards; the last step lists your amounts and whether anything is short; Esc and the close button close it; the amounts take effect at once, and `/vg prep` shows rows against them. No Lua error.
+- Expect: step 1 has Food & drink, Bandages and Potions sliders; hunters and warlocks get a second step with Ammo or Soul shards; the last step lists your amounts and whether anything is short; Esc, the close button and Done close it; the step caption is small grey type under the title; the amounts take effect at once, and `/vg prep` shows rows against them. No Lua error.
 - If it fails, paste: a screenshot and `/vg errors`.
 
 ### 6.6 Group threat panel (batch 2)
@@ -318,34 +321,42 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 ### 7.7 Vanguard meter (off until switched on: /vg > Combat tools > Vanguard meter)
 
 - Do: type `/vg meter on` and fight a mob for a few seconds (in a group if you can); click the panel's title; type `/vg meter hps`, then `/vg meter dps`. Then type `/run for _, k in ipairs({"Dps","Hps"}) do print(k, Enum.DamageMeterType[k]) end` and paste what it prints.
-- Expect: a flat panel at the bottom right, just left of the bags and menu bar, clear of the tooltip when you hover a player (move it with `/vg unlock`; turn the game's meter off in its settings to see only this one), "Damage per second", with up to eight bars in class colors, each with a number, a name and a figure, yours in the accent; the figures update during the fight and stay after it; the title switches to "Healing per second" and back. In an instance, if the game hides values, lines may be blank or "Nothing to show", never an error popup. [Needs in game: that the two Enum.DamageMeterType keys exist, that a session's combatSources lines carry name, classFilename, amountPerSecond and isLocalPlayer, that SetValue, SetMinMaxValues and SetText accept the hidden values in combat, that AbbreviateNumbers does too, and that the panel is wide and tall enough to read. `/vg errors` must stay empty.]
+- Expect: a flat panel at the bottom right, just left of the bags and menu bar, clear of the tooltip when you hover a player (move it with `/vg unlock`; turn the game's meter off in its settings to see only this one), "Damage per second", with up to eight bars in class colors, each with a number, a name and a figure, yours in the accent; the figures update during the fight and stay after it; the title switches to "Healing per second" and back. In an instance, if the game hides values, lines may be blank or "No damage yet this fight", never an error popup. [Needs in game: that the two Enum.DamageMeterType keys exist, that a session's combatSources lines carry name, classFilename, amountPerSecond and isLocalPlayer, that SetValue, SetMinMaxValues and SetText accept the hidden values in combat, that AbbreviateNumbers does too, and that the panel is wide and tall enough to read. `/vg errors` must stay empty.]
 - If it fails, paste: the `/run` line's output, what the panel shows in combat and `/vg errors`.
+
+### 7.8 Personal resource display
+
+- Do: turn on the game's personal resource display (Options → Combat → Personal Resource Display, or `/console nameplateShowSelf 1`), stand still and look under your character; take a hit and spend some mana, rage or energy. Then turn the Nameplates module off under `/vg` → Modules, reload and look again.
+- Expect: the health and power bars under your character are flat bars in the theme's bar texture on thin slate panels, with no grey rounded backdrop behind them; their colours (class or green health, the power's colour) and values are the game's, they fill and empty as the game's did, any numbers on them are in the plates' outlined font, and they sit where Edit Mode puts them. With the module off they are the game's own again. [Needs in game: that `PersonalResourceDisplayFrame` is the display on Forever (its addon is gated to mainline, which Forever matches) and that the client makes no nameplate for "player" there; if it does, Vanguard draws its own plate on it as on any other.]
+- If it fails, paste: a screenshot under your character and `/vg errors`.
 
 ## 8. Quests
 
 ### 8.1 Quest dialog
 
 - Do: under `/vg > Quests` tick Accept quests and Turn in finished quests (they are off by default). Talk to a quest giver who offers three or more quests. Press a number key, Space and Escape in turn. Then talk to a quest giver again without Shift (a quest is accepted for you), and once more holding Shift.
-- Expect: Vanguard's dialog at the bottom centre with numbered lines in difficulty colours; the number picks a line, Space presses the main button (Accept, Continue or Complete), Escape says goodbye; without Shift the ticked automation runs; with Shift held, no automation runs and the dialog stays open for you.
+- Expect: Vanguard's dialog at the bottom centre, the NPC's name at the top in the window-title type (there is no close button: Goodbye and Escape end the talk), with numbered lines in difficulty colours, each led by a gold `!` (a quest you can take), a gold `?` (ready to turn in) or a grey `?` (in progress); Goodbye sits alone at the far left of the buttons; the number picks a line, Space or Enter presses the main button (Accept, Continue or Complete; with only Goodbye on the page, that), Escape says goodbye; in combat Enter does nothing; without Shift the ticked automation runs; with Shift held, no automation runs and the dialog stays open for you.
 - If it fails, paste: a screenshot and `/vg errors`.
 
 ### 8.2 Long quest text
 
 - Do: open a quest with a very long description.
-- Expect: the text fits or scrolls inside the panel, with no overflow outside it.
+- Expect: the text fits or scrolls inside the panel, with no overflow outside it; when it scrolls, a thin grey thumb shows in the panel's right margin and soft edges fade the text at the top and bottom.
 - If it fails, paste: a screenshot and the quest name.
 
 ### 8.3 Quest log
 
 - Do: fill the quest log (as many quests as it lets you take; the limit on Forever is not confirmed), then press the quest log key and type `/vg quests`.
-- Expect: Vanguard's log with quests under their zones (click a zone to fold it), `[12] Title` lines in difficulty colours, and Track or Untrack, Share, Abandon and Map for the chosen quest. Click Track or Untrack, then Shift-click another quest: the button flips each time and the tracker follows; if the game refuses, chat says `The game didn't track ...` with the count tracked. Hover a reward card (a quest with an item reward): the item's tooltip shows beside it and goes when you leave. [Needs in game: the tooltip must show for both choices and fixed rewards.] If it is off, `/vg quests` says `Vanguard's quest log is off (/vg > Quests).`
+- Expect: Vanguard's log, titled `Quest log` with your quest count (`12 quests`) beside the title, with quests under their zones (each zone a small grey capitals header with a chevron, down while open and right while folded: click it to fold the zone), `[12] Title` lines in difficulty colours, the chosen quest marked by an accent bar along its left edge and a faint wash, a thin scroll thumb beside a list or quest text longer than its column, and Track or Untrack, Share and Map along the right, and Abandon (red label) alone at the far left, for the chosen quest. Click Track or Untrack, then Shift-click another quest: the button flips each time and the tracker follows; if the game refuses, chat says `The game didn't track ...` with the count tracked. Hover a reward card (a quest with an item reward): the item's tooltip shows beside it and goes when you leave. [Needs in game: the tooltip must show for both choices and fixed rewards.] If it is off, `/vg quests` says `Vanguard's quest log is off (/vg > Quests).`
 - If it fails, paste: a screenshot and `/vg errors`.
 
 ### 8.4 Quest tracker overflow
 
-- Do: watch more quests than fit under the info strip.
-- Expect: a `+N more` line at the bottom of the tracker. Click it: the tracker grows to at most 10 quests, ending in `Show fewer` (with `· +N more` past ten). `/reload`: it is still expanded. Click `Show fewer` to fold it.
+- Do: watch more quests than fit under the info strip, then click the QUESTS header at the top of the tracker, and again.
+- Expect: the tracker's header reads `QUESTS` in small grey capitals with the number of quests you watch after it and a chevron before it; clicking it folds the tracker down to that header (the brass line stays under it) and clicking again opens it. A `+N more` line at the bottom of the tracker. Click it: the tracker grows to at most 10 quests, ending in `Show fewer` (with `· +N more` past ten). `/reload`: it is still expanded. Click `Show fewer` to fold it.
 - Also expect (Legacy challenges): with a challenge tracked in the game (its Legacy window), a `Legacy challenges` heading sits under the quests with the challenge beneath it, its criteria as `- 2/3 …` lines and `Complete` once done. Right-click the challenge: it leaves the tracker. With none tracked, no heading. A heading never shows alone: when no challenge fits under it, it is left out and the `+N more` line counts the challenges. [Needs in game: how a Forever client tracks a challenge, and that its criteria text reads as above.]
+- Also expect (timed quests): take a timed quest (an escort, or one that says "Hurry!") and watch it. Under its title, above its objectives, a gray `Time left 4:32` line counts down once a second; it goes when the quest is done or abandoned, and no countdown shows anywhere else on the screen. [Needs in game: that the Forever client reports the timer to addons (`C_QuestLog.GetQuestTimers`); if the line never shows while the quest is timed, say so.]
+- Also expect (recipes): open a profession window and track a recipe (its track checkbox or Shift-click as the game offers). A `Recipes` heading sits after the quests and challenges with the recipe beneath it and a line per reagent, `- 2/4 Linen Cloth`, gray until you have enough, then green; buy or craft a reagent and the count follows. Left-click the recipe: the profession window opens on it. Right-click: it leaves the tracker, and the heading goes with the last one. [Needs in game: that a reagent the client hasn't cached joins the list a moment later.]
 - If it fails, paste: a screenshot.
 
 ### 8.5 Levelling helpers
@@ -409,7 +420,7 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 ### 10.1a Hover keys card on a fresh character
 
 - Do: on a character with no hover keys, type `/vg` and open Click casting. Scroll just far enough to see the "KEYS WHILE HOVERING A FRAME" card's title.
-- Expect: right under the title, an **Add key** button with "No hover keys yet. Add one, press the key, pick the spell." beside it (wrapped inside the card). If `/vg status` says `secure snippets: no`, the line "This client can't compile the secure code hover keys need; mouse bindings still work." sits there instead. Keys you add list under that line.
+- Expect: right under the title, an **Add key** button with "No hover keys yet. Add one, press the key, pick the spell." beside it in grey body-size text (wrapped inside the card); the card's title is a small grey capitals header. If `/vg status` says `secure snippets: no`, the line "This client can't compile the secure code hover keys need; mouse bindings still work." sits there instead. Keys you add list under that line.
 - If it fails, paste: a screenshot of the card, `/vg status` and `/vg errors`.
 
 ### 10.2 Use it
@@ -485,80 +496,104 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 ### 14.2.1 Open a letter
 
 - Do: at a mailbox, open a letter that has text and, if you can, one with an attachment or money (an auction invoice works).
-- Expect: the letter window is a flat panel with no parchment behind the text; the text is light and any headings gold; Reply, Delete, Cancel and Report Spam are flat buttons; the attachment and money buttons have a thin border in the item's quality color; open a second letter and the text is still light.
+- Expect: the letter window is a flat panel with no parchment behind the text; the text and any headings are light (not gold); Reply, Delete, Cancel and Report Spam are flat buttons; the page behind the text is a flat sunk box; the subject and sender are light, not gold; the attachment and money buttons have a thin border in the item's quality color; open a second letter and the text is still light. Open an auction invoice (a sold or won item): its labels (Item sold, Purchased by, Sale price, Deposit, Auction house cut, Amount received) are light on the dark page, the + and - beside the deposit and the cut are visible, the prices are in the Vanguard font with their coins, and the sum line is one thin line.
 - If it fails, paste: a screenshot of the open letter and `/vg errors`.
 
 ### 14.2.2 Guild window and its pages
 
 - Do: open the guild window (the Guild or Social menu button, or `J`), then click each page: Chat, Roster, Guild Info, the benefits page, Preferred Play Settings (if your guild window has it), then the maximize/minimize button. On Roster, tick Show Offline Members.
-- Expect: every page shows on flat dark panels (list, roster, chat, benefits, info, preferred play settings) with no marble or portrait art and nothing showing through behind the settings page's dropdowns; the stream dropdown is a flat button; the maximize and minimize buttons still show their symbol; switching pages keeps the look; the side tabs are still the game's. On Roster, rank names show in full (the Rank header lines up over them), online members' names, zones, ranks and notes are bright (no dark film over the rows), and offline members are a lighter grey you can read at a glance, still unlike online members. The same goes for the community list on the left and the Chat page. On Guild Info, the Guild Information box shows your guild's information, or "No guild information yet." if it has none. On Preferred Play Settings, unless you are the guild master the Apply buttons have the disabled look (greyed label, no hover) and do nothing.
+- Expect: every page shows on flat dark panels (list, roster, chat, benefits, info, preferred play settings) with no marble or portrait art and nothing showing through behind the settings page's dropdowns; the stream dropdown is a flat button that keeps its arrow; the maximize and minimize buttons still show their symbol; switching pages keeps the look; the side tabs are still the game's. On Roster, rank names show in full (the Rank header lines up over them), online members' names, zones, ranks and notes are bright (no dark film over the rows), and offline members are a lighter grey you can read at a glance, still unlike online members. The same goes for the community list on the left and the Chat page. The community list rows have no blue plates or gold rings (their avatars and a guild's banner stay), wash lighter under the mouse and the open community has a bright rail on its left; the roster's rows have no brown stripes (the class icons stay), the column headers (Level, Name, Zone, Rank, Note) are flat buttons that still sort, Show Offline Members is a flat check box with a light label, and a profession header bar (if your guild shows professions) is a plain row with its fold sign, icon and name in the light text colour; the Chat page's input is a dark box, the Jump to Unread button, the member-list and community dropdowns, Add to chat, Invite, Guild Log and the Settings, Guild Control and Recruitment buttons at the bottom are flat themed buttons, the calendar button keeps its icon on a small tile, and the guild emblem in the window's top-left corner is still there without its gold ring. On the benefits page, the Perks and Rewards lists have no bronze frames or plates, each perk and reward keeps its icon (and a lock on one you have not earned), a reward's name stays gold, its coins read in the number font, rows wash lighter under the mouse, and the guild reputation bar sits in a flat dark box with its coloured progress still showing. On Guild Info, the page title is light text, Challenges and Message of the Day are small grey capitals, the counts and the Edit links are light, and the Guild Information box shows your guild's information, or "No guild information yet." if it has none. On Guild News (the Guild Info page's news half), the title is light, the Guild News head is small grey capitals, Set filters is a light link, news lines wash lighter under the mouse with their icons kept, and clicking a boss kill (if your guild has one) opens a flat panel whose text sits in a dark box. On Preferred Play Settings, the title and the Locale and Datacenter labels are light, both dropdowns are flat buttons that keep their arrows, and unless you are the guild master the Apply buttons have the disabled look (greyed label, no hover) and do nothing.
 - If it fails, paste: a screenshot of the page that looks wrong and `/vg errors`.
 
 ### 14.2.3 Guild dialogs
 
-- Do: from the guild window open the guild log, the news filters, the settings dialog (as a guild leader) and the invite manager; have someone invite you to a guild if you can.
-- Expect: each is a flat panel; text buttons (Close, Accept, Cancel) keep their words and are not covered by an X; the settings dialog's name boxes are dark input boxes.
+- Do: from the guild window open the guild log, the news filters (Guild News, Set filters), the settings dialog (as a guild leader), the invite manager (the community's invite button), the notification settings (a community's channel menu), a channel's edit dialog and a member's detail pop-up (click a roster name); have someone invite you to a guild if you can, and open a community invitation if you have one.
+- Expect: each is a flat panel; text buttons (Close, Accept, Cancel) keep their words and are not covered by an X, and the log's and the text editor's X is the close cross in the corner; the log's and text editor's text sits in a sunk box under a light title; the news filters' seven boxes are flat check boxes; the guild invite keeps the guild's tabard and its Join and Decline buttons and guild name are themed; the settings dialog's name boxes, message and description areas and item level box are dark input boxes, its five options are flat check boxes, its three dropdowns flat buttons with their arrows, its labels light and the community's avatar still shows; the avatar picker and the notification settings have no nine-slice frame, only flat Okay and Cancel buttons, and the notification settings' None, All and quick join controls and each channel's hide and show choices are themed (the choices round rings with a dot on the chosen one, a thin line under each heading); the invite manager's list has no marble or bronze corners, flat column headers and rows with no stripe whose copy and revoke buttons still work (the red cross stays); the channel edit dialog's boxes, type check and description area are themed; the member pop-up has no dark frame, its labels and name are light, its two note boxes are sunk, and Remove, Group Invite and the rank dropdown are flat; a community invitation page has no wide backdrop, its text is light, its avatar stays and Accept and Decline are flat buttons; if your guild or community has had its name reported, the overlay over the window is a flat opaque panel with the close cross, a flat button and a dark name box (its red warning stays red) and the small alert button above it has no glowing frame.
 - If it fails, paste: a screenshot of the dialog and `/vg errors`.
 
 ### 14.2.4 Channels window and a channel dialog
 
-- Do: type `/join test`, then open the channels window (the chat channels button, or `O`) and click Create Channel.
-- Expect: the channels window and the create-channel dialog are flat panels with themed buttons and input boxes, and you are in the channel.
+- Do: type `/join test`, then open the channels window (the chat channels button, or `O`), click a channel, hover the others, and click Create Channel.
+- Expect: the channels window and the create-channel dialog are flat panels with themed buttons and input boxes, and you are in the channel; in the channels window Add and Settings are flat buttons, the channel list and the roster sit on sunk boxes without the marble, the channel rows and category headers have no plate (a header keeps its plus or minus sign), wash lighter under the mouse and the open channel is lit with the accent rail (and the rail moves when you pick another channel, even right after the game redraws the list), the roster's names wash lighter under the mouse with their rank icons and mute buttons kept, and its heading and member count are light text, not gold; the create-channel dialog's title, Channel Name and Password labels are light text (not gold) and its voice chat option, when shown, is a flat check box.
 - If it fails, paste: a screenshot and `/vg errors`.
 
 ### 14.2.5 Invite a friend
 
 - Do: open the friends list, click Add Friend, type a character name; then, if you can, send a Battle.net battletag request and open Friends of Friends.
-- Expect: the add-friend window is a flat panel; its name box and buttons are themed and still work; the Battle.net invite and Friends of Friends windows are flat panels.
+- Expect: the add-friend window is a flat panel; its name box and buttons (and the Okay button on its info page) are themed and still work, and its titles (Add a friend, Battle Tag, Character friend and the info page's two) are light text rather than gold; the Battle.net invite window is a flat panel with the invitee's name in light text; Friends of Friends is a flat panel whose list sits in a sunk box.
 - If it fails, paste: a screenshot and `/vg errors`.
 
 ### 14.2.6 Guild registrar and petition
 
 - Do: visit a guild registrar and read the greeting, click to buy a charter; open a charter you hold or are asked to sign, and open the tabard designer from the tabard vendor.
-- Expect: the registrar, petition and tabard windows are flat panels with no parchment; the registrar text, charter names and signatures are light, the headings gold; the tabard model and its colour choices look as the game draws them.
+- Expect: the registrar, petition and tabard windows are flat panels with no parchment; the registrar text, "Available services", the cost label, charter names, signatures and headings and the tabard vendor's name are light (not gold or black); the registrar's options (Purchase a guild charter, Register) are readable rows that wash lighter under the mouse and keep their little quest icon; the charter's price is in the Vanguard font; on the tabard window the five pickers (emblem, colours, border, background) are flat sunk boxes with a small arrow each side that still page through the choices, the cost box and the money strip at the bottom are flat sunk boxes with the price in the Vanguard font, and the tabard model and its rotate buttons look as the game draws them.
 - If it fails, paste: a screenshot and `/vg errors`.
 
 ### 14.2.7 Role check popup
 
 - Do: in a group, as leader, start a role check (the raid tools, or the group menu's Initiate Role Poll); also queue for a dungeon and let an invite popup show if you can.
-- Expect: the role poll popup is a flat panel with themed Accept and close buttons; the role buttons still show their icons and still check when clicked; the dungeon invite popup looks the same.
+- Expect: the role poll popup is a flat panel with themed Accept and close buttons; the role buttons still show their icons and still check when clicked, and the little round button under each icon is a dark ring with a brass dot on the chosen role (one role at a time); the dungeon invite popup looks the same, except that the small box under each role icon is Vanguard's check box (several roles can be ticked).
 - If it fails, paste: a screenshot and `/vg errors`. [Needs the game: tagged VERIFY IN GAME.]
 
 ### 14.2.8 Raid tab
 
 - Do: in a party, open the raid tab (the friends window's Raid tab), then convert to a raid and look again.
-- Expect: the eight group boxes are flat panels, the member buttons are flat and keep each name's class colour, Raid Info and Convert to Raid are themed buttons; nothing changes while you are in combat and it catches up after.
+- Expect: the eight group boxes are flat panels with their "Group n" captions in light text (not gold), the member buttons are flat and keep each name's class colour, the class count buttons along the tab's edge are small raised tiles that keep their class icon and count, Raid Info and Convert to Raid are themed buttons, the All assist box is Vanguard's check box (grey, with its label, when you are not the leader or an assistant); nothing changes while you are in combat and it catches up after. Click Raid Info (a pop-out listing saved instances): it is a flat panel with the close cross in its corner, flat column headers, a sunk list with the instance names in light text, and flat Extend and Close buttons.
 - If it fails, paste: a screenshot of the tab and `/vg errors`.
 
 ### 14.2.9 Social window (Forever's friends list)
 
 - Do: open the friends list (O); click each side tab (friends, recent allies, quick join, requests, raid); type in the search box and open Filter; open the Battle.net menu (the button right of your battletag) and choose Ignore list and Edit broadcast.
-- Expect: the window is a flat panel with the theme's close button and title; the Battle.net bar's blue band is gone (the status dropdown and menu button are flat, the menu button keeps its icon); the side tabs are flat with their icons, the selected one marked on its outer edge, the others greyed; the search box is a dark input box with its magnifier, Filter and Add New Friend are themed buttons, the list scrolls; the ignore list and broadcast windows beside it are flat panels with themed buttons.
+- Expect: the window is a flat panel with the theme's close button and title; the Battle.net bar's blue band is gone (the status dropdown and menu button are flat, the dropdown keeps its arrow and the menu button its icon); the side tabs are flat with their icons, the selected one raised, the others greyed; the search box is a dark input box with its magnifier, Filter and Add New Friend are themed buttons, the list scrolls; the ignore list and broadcast windows beside it are flat panels with themed buttons. Also on each tab: the list sits on a sunk dark box and its cards (friends, recent allies, quick join, requests, recruits) have no blue plates, wash lighter under the mouse and light with the accent rail when you click one (the presence dot, game icon, class or role icon stay); the little square invite-to-group and summon buttons on a card sit on grey tiles with their icon; Accept on a friend request is a flat button; quick join group names are light text, not gold; on the recruit tab the reward card above the list is a flat panel (its watermark stays) with the claim button flat and its month count and next reward name light; on the raid tab (in a raid) the All assist box is Vanguard's check box with its raid assist icon, the not-in-raid text is light, the eight group cards are sunk boxes and each member button is flat (they catch up after a fight); the Battle.net unavailable notice has a light heading, the saved instances window beside the raid tab has its list in a sunk box with light instance names, and the ignore list's names are light.
 - If it fails, paste: a screenshot and `/vg errors`.
+
+### 14.2.10 Battle.net and time-played toasts
+
+- Do: have a Battle.net friend log in or out (or send you an invite) so the toast slides in at the bottom-left, and if you can, a second friend right after, while the first toast is still up; hover it; then stay logged in long enough for the time-played alert, or `/played` where it is shown as a toast.
+- Expect: the toast is a flat, slightly see-through slate panel with a soft shadow instead of the game's framed box; the friend's name keeps its Battle.net blue, the grey detail line under it (and the grey single line of an invite toast) is in the theme's lighter secondary text, the Battle.net icon on the left is still there and the game's glow still flares as the toast arrives; the X in its top-right corner is the theme's cross on a red tile under the mouse and closes the toast; hovering the toast shows its tooltip as a flat panel; the time-played toast is the same panel with its one line of text.
+- If it fails, paste: a screenshot of the toast and `/vg errors`.
+
+### 14.2.11 Guild rename window
+
+- Do: if your guild has been flagged for a name change, talk to the guild registrar or open the rename window the game offers (the guild master's Rename option); otherwise skip.
+- Expect: the rename window is a flat panel; its two options (rename, refund) are plain rows that wash lighter under the mouse and keep their little icon; the descriptions and the cost label are light text (not black); the new-name box is a dark input box; the cost and your money are in the Vanguard number font; the button at the bottom is a themed button and still works.
+- If it fails, paste: a screenshot and `/vg errors`.
+
+### 14.2.12 Guild control window
+
+- Do: as a guild master (an officer sees only the Discord page), open the guild control window (the Guild Control button in the guild window, or `/script GuildControlUI_Show()`). On Guild Ranks add a rank, rename it, move it up and down and delete it; on Rank Permissions pick a rank in the dropdown and tick a few boxes and the gold-per-day box; on Bank Tab Permissions tick View and Deposit on a tab and type a withdrawal number; if the Discord page is offered, open it. Close it.
+- Expect: the window is a flat dark panel with a Vanguard close button and a title in the same size and light text as the other windows, with one thin line under the header (no rock texture, no carved bar) and the page dropdown a flat button with its arrow. The rank rows have a dark name box, a light "Rank n:" caption, flat up and down arrows that grey out when a rank cannot move, and a flat delete button with its cross; New rank is a flat button; a new rank's row is dressed the moment it appears. The permission boxes are Vanguard check boxes (a greyed Authenticator box with its label grey), the gold-per-day box is a dark edit box, the officer list is light text and the Bank heading small grey capitals. The bank tab list sits in a dark inset with each tab's name light, its two check boxes, its withdraw box and, on the tab you can still buy, the price in the Vanguard font and a flat Purchase button. Every change still saves as before.
+- If it fails, paste: a screenshot of the page that looks wrong, and `/vg errors`.
+
+### 14.2.13 Voice chat prompts
+
+- Do: with voice chat enabled in the game's options, join a party (or a raid) so the game offers to join its voice channel; then click Join.
+- Expect: the offer is the same flat slate panel as a Battle.net toast, its icon and text kept (the text light), its Join button a Vanguard button and its X the theme's cross; after you join, the short note that voice is on has the same panel, its second line keeping the game's colour on the channel's name; nothing else about voice chat changes.
+- If it fails, paste: a screenshot of the prompt and `/vg errors`. If you never get a prompt (voice chat off), mark this step skipped.
 
 ### 14.3.1 Stable (a hunter)
 
 - Do: with a hunter, talk to a stable master.
-- Expect: the stable window is a flat dark panel; the pet model sits on a dark box without the game's frame; the pet experience bar is a flat bar; the Purchase button and the pet slot captions are in the Vanguard font; clicking a stabled pet and Purchase still work.
+- Expect: the stable window is a flat dark panel; the pet model sits on a dark box without the game's frame and the pet's shadow still shows under it; the strip along the bottom (slots, Purchase, money) is a darker box; the three pet slots are flat tiles with no wooden rims, each keeps the pet's icon (a locked slot its lock), the current pet's glow and the mark on the pet shown, and a thin accent edge lights up on a slot while the mouse is over it; the zoom, rotate and reset buttons over the model are flat with their pictures; the two rules across the window are single thin lines, not the carved ones; the pet experience bar is a flat bar on a dark track with its numbers in the Vanguard font; the pet's level line, the slot captions and the Costs label are in the light text colour, not gold; your money at the bottom sits in a dark box with its coins, and the slot's price beside Costs is in the Vanguard font; the Purchase button is a Vanguard button; clicking a stabled pet and Purchase still work.
 - If it fails, paste: a screenshot and `/vg errors`.
 
 ### 14.3.2 Trainer
 
 - Do: talk to your class trainer; open the filter; click a skill; collapse and expand a category if the list has them; click Train.
-- Expect: flat panel, no parchment behind the list, each row has no plate but keeps its icon, name, requirements and cost; the selected row shows the game's highlight; the filter button works (note whether its arrow is visible); Train works and Vanguard's Train all sits beside it.
-- If it fails, paste: a screenshot with a row selected, and `/vg errors`.
+- Expect: flat panel, no parchment behind the list and a dark box under the Train button; each skill row has no plate or hover strip but keeps its icon (a lock or the grey shade over a skill you cannot learn stays), with its name, requirements and cost in the Vanguard font; the row you click shows the one selected look (a thin accent rail and tint along its left edge), which moves when you click another skill, and rows wash lightly under the mouse; a category heading (if the list has them) is small grey capitals with no plate and stays that way when the mouse is over it; the scroll bar is a thin line; your money at the bottom is in the Vanguard font; a profession trainer's rank bar is a flat bar on a dark track in the accent colour with its numbers in the Vanguard font (a hunter's pet trainer shows training points in the light text colour); the filter button works (note whether its arrow is visible); Train works and Vanguard's Train all sits beside it. The skill names keep the colour the game gives them (not changed on purpose).
+- If it fails, paste: a screenshot with a row selected and one with the mouse over a category heading, and `/vg errors`.
 
 ### 14.3.3 Shift-click a stack
 
 - Do: shift-click a stack of items in a bag, then use the arrows, type a number and press Okay; open the side dress-up window by control-clicking an item at a merchant or the auction house.
-- Expect: the stack split window is a small flat panel with the amount in the Vanguard font and visible arrows; Okay and Cancel are Vanguard buttons and work; the dress-up window is flat with a Reset button.
-- If it fails, paste: a screenshot and `/vg errors`.
+- Expect: the stack split window is a small flat panel with the amount in the Vanguard font and visible arrows, a thin border round the amount between the arrows and the "x / y" count line under it in the light text colour (not gold); Okay and Cancel are Vanguard buttons and work; the dress-up window is flat with a Reset button and its model on a dark box without the game's frame, the zoom and rotate buttons still over it.
+- If it fails, paste: a screenshot (note whether the amount is readable inside its border) and `/vg errors`.
 
 ### 14.3.4 Coins from the money frame
 
 - Do: click your gold in the backpack's money line (a plain click picks coins up and opens the amount window).
-- Expect: the coin amount window is a flat panel; its coin icon and arrows are visible; Okay and Cancel work.
-- If it fails, paste: a screenshot and `/vg errors`.
+- Expect: the coin amount window is a flat panel; its coin icon and arrows are visible; the typed figure and the letter beside it are in the Vanguard font with a thin border round the figure; Okay and Cancel work. Your money at the bottom of the backpack (or of the combined bag) sits in a flat dark box, not the gold-edged one, with its figures in the Vanguard font and its coins.
+- If it fails, paste: a screenshot of the window and of the bag's foot, and `/vg errors`.
 
 ### 14.3.5 Separate bags
 
@@ -569,14 +604,14 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 ### 14.3.6 Master loot (in a group)
 
 - Do: in a group set to master looter, kill something and right-click an item to assign it (the player list), then close it.
-- Expect: the candidate list is a flat panel with flat player buttons in class colors; selecting a name assigns the item; the loot history window (the group loot history button, if your client has it) is flat with a working close button.
-- If it fails, paste: a screenshot and `/vg errors`.
+- Expect: the candidate list is a flat panel with flat player buttons in class colors; selecting a name assigns the item; the loot history window (the group loot history button, if your client has it) is flat with a working close button, the encounter picker a flat button with its arrow, the countdown under it a flat bar on a dark track with its fill showing, a thin scroll bar, and each roll card without its parchment plate: the item is a square with a thin border in its quality colour, the item's name keeps its quality colour, the winner or current leader line is in the light text colour (the winner's name in the class colour), and the "Passed" heading is in the light text colour, not gold; the "no loot" message is light too; hover and click on a card still show the tooltip.
+- If it fails, paste: a screenshot of the history window with several rolls (blur names), and `/vg errors`.
 
 ### 14.3.7 Macros and icon pickers
 
 - Do: type `/macro`, click Change Name/Icon; open the equipment manager and make a new set (its icon picker); open the guild bank's tab icon picker if you have one.
-- Expect: the macro window and each icon picker are flat panels; the name box is a dark input box; the icon grid, the selected icon and Okay and Cancel work.
-- If it fails, paste: a screenshot of the picker and `/vg errors`.
+- Expect: the macro window and each icon picker are flat panels; the name box is a dark input box; the macro window's "Create macros" heading and the selected macro's name are light, not gold; the selected macro and every macro in the grid are flat tiles without the old slot art (each keeps its picture, and a thin accent edge shows under the mouse, the game's own selected mark still shows on the one you picked); the macro text sits on a dark flat box in the Vanguard font; both scroll bars are thin lines; in a picker the "Current icon" heading is light, the selected icon and every icon in the grid are the same flat tiles, the icon type dropdown is a flat button with its arrow; picking icons, Okay and Cancel work.
+- If it fails, paste: a screenshot of the macro window and a picker (hover one tile), and `/vg errors`.
 
 ### 14.3.8 Stopwatch
 
@@ -587,43 +622,81 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 ### 14.3.9 Small dialogs
 
 - Do: die and look at the return-to-graveyard button; open the addon list (`/addons` or the game menu) and change an addon that is out of date, if one is; trigger a message box (for example `/run BasicMessageDialog.Text:SetText("test") BasicMessageDialog:Show()`).
-- Expect: the graveyard button is a flat button with its icon and text (nothing changes while you are in combat); the addon confirmation and the message box are flat panels with flat buttons, not full-screen dimmers of a different shade.
+- Expect: the graveyard button is a flat button with its icon and its text in the light text colour, not gold (nothing changes while you are in combat); the addon confirmation and the message box are flat panels with flat buttons, the addon confirmation's message in the light text colour, not full-screen dimmers of a different shade.
 - If it fails, paste: a screenshot and `/vg errors`.
+
+### 14.3.10 Loot window rows
+
+- Do: with auto-loot off, kill something that drops several items (one of them a stack, one green if you can) and open the loot window; hover a row, take one item, then loot something else.
+- Expect: the loot window is a flat panel and its rows have no item card behind them: each row is a square slot with a thin border in the item's quality colour (none for white items), the stack count on it, the item's name and its rarity word in the Vanguard font in the game's quality colours; the row still lights up under the mouse and a quest item keeps its mark; clicking a row still loots it; the next corpse's rows look the same.
+- If it fails, paste: a screenshot of the open loot window and `/vg errors`.
+
+### 14.3.11 Merchant rows, buttons and money
+
+- Do: with damaged gear, open a merchant who repairs and sells more than ten items (a general goods vendor); turn the page with the arrows and the mouse wheel; open the Buyback tab after selling something; hover and click the repair, repair-all and sell-junk buttons; open the filter dropdown.
+- Expect: no dark-red plates behind the item names and no round slot art: each item is a square slot with a thin border in its quality colour, its name and price in the Vanguard font (a price you can't pay still red, the icon still greyed), the buyback slot and the Buyback tab's rows the same; the repair buttons and the sell-junk button are flat tiles that keep their icons (greyed when there is nothing to repair or sell), the page arrows keep their arrows with Prev and Next in the Vanguard font and the light text colour (not gold), the page count too; the gold bar at the bottom right is a dark box with your money in the Vanguard font beside its coins; every button still does what it did, and the second page looks like the first.
+- If it fails, paste: a screenshot of the merchant window and `/vg errors`.
+
+### 14.3.12 Currency transfer
+
+- Do: with a warband currency you can move between characters, open the currency tab, click a currency's transfer action, open the source dropdown, type an amount and press Max.
+- Expect: the transfer window is a flat panel; the source dropdown is a flat button with its arrow; the amount box is a dark edit box; Max, Confirm and Cancel are Vanguard buttons; a thin one-pixel line (no game ornament) runs above the transaction; the four captions (source, amount, and the two balance lines) are light, not gold; the transfer works as before.
+- If it fails, paste: a screenshot of the window and `/vg errors`.
+
+### 14.3.13 Auction house multi-stack sale progress
+
+- Do: at the auction house, post a sale of several stacks at once (a quantity of more than one stack on the Sell tab), and watch the bar that appears at the bottom of the screen; click its cross on a second sale to cancel.
+- Expect: the bar is on a flat panel with no brass end caps or parchment; its track is flat with the theme's bar fill, the item's icon beside it is square-cropped, the "Creating 1/5" text is light, and the cancel cross sits on a grey tile with its picture; it fades out when the sale finishes, and cancelling still stops the sale.
+- If it fails, paste: a screenshot of the bar and `/vg errors`.
+
 ### 14.4.1 Game options
 
 - Do: press Escape, click Options. Look at the window, click through Game and AddOns, type in the search box, change a setting, click Apply, then Close.
-- Expect: a flat slate panel with the theme's close button; the Game and AddOns tabs with an accent line under the one you are on; the category list and the settings list on darker panels; flat Apply and Close buttons and search box. Every settings page still draws and works, and the title is still readable.
+- Expect: a flat slate panel with the theme's close button; the Game and AddOns tabs with the one you are on raised (lighter than the other); the category list and the settings list on darker panels with the theme's thin scroll bars (scroll both); the group names in the category list small grey capitals and the entry you are on marked with the accent rail while the one under the mouse gets a light wash (no brass plates); a thin line under the page title; flat Defaults, Apply and Close buttons and search box; on a page with check boxes, sliders, dropdowns and buttons (Graphics, Sound) the check boxes are Vanguard's, the sliders a dark track with a round knob and small arrows, the dropdowns and the buttons flat (scroll a long page: rows that come into view are dressed too). Every settings page still draws and works, the sliders still move the value, and the title is still readable.
 - If it fails, paste: a screenshot of the window and `/vg errors`.
 
 ### 14.4.2 Edit Mode
 
 - Do: press Escape, click Edit Mode. Look, click a Blizzard frame (say the chat window) so its settings dialog opens, change a setting, click Revert on the dialog, click Save in the main window, then close Edit Mode.
-- Expect: Edit Mode's window and its settings dialog on flat panels with the theme's buttons and title; Vanguard's note (`The labeled handles are Vanguard's frames...`) still sits under the main window; the settings dialog still resizes to its settings; Save works and nothing reports a blocked action (`/vg errors` empty, no "Interface action failed because of an AddOn" popup). Open the layout menu and pick New layout, Import layout and close without saving: their dialogs match.
+- Expect: Edit Mode's window and its settings dialog on flat panels with the theme's buttons and title, the Layout dropdown a flat button that keeps its arrow, the Show Grid, Snap and Advanced options switches and every box in the options list Vanguard's check boxes, the grid spacing slider a dark track with a round knob and small arrows (and still moving the grid), the list of options on a darker well with the theme's scroll bar and no gold ring, its Frames, Combat and Misc headings small grey capitals, and a thin line over the expander (click Advanced options to see both); in the settings dialog the check boxes, dropdowns and sliders are the theme's (change a setting that has each: a checkbox, a dropdown, a slider such as Opacity or Icon Size; they must keep working and the dialog must still resize to fit), and the line between Revert and any extra buttons is one thin line. Vanguard's note (`The labeled handles are Vanguard's frames...`) still sits under the main window; the settings dialog still resizes to its settings; Save works and nothing reports a blocked action (`/vg errors` empty, no "Interface action failed because of an AddOn" popup). Open the layout menu and pick New layout, Import layout and close without saving: their dialogs match, with the Character specific box a Vanguard check box, the labels light (not gold), and in Import layout the paste box on a dark inset with the theme's scroll bar once you paste enough text to scroll.
 - If it fails, paste: a screenshot while Edit Mode is open and `/vg errors`.
 
 ### 14.4.3 Addon list and chat settings
 
 - Do: press Escape, click AddOns (or open the AddOns tab from the game menu), type in its search box, then close it. Right-click a chat tab and choose Settings, click through two categories, then Okay.
-- Expect: both windows on flat panels with themed buttons and search box; the addon rows keep the game's look; in the chat settings the category list and the settings area sit on darker boxes, and every check box and color swatch still works.
+- Expect: both windows on flat panels with themed buttons and search box; the addon list has the theme's scroll bar and a flat character dropdown that keeps its arrow, and its Performance heading is small grey capitals over a thin line; each addon row's box and the Load out of date box are Vanguard's 16 px check boxes with a check mark (rows that scroll into view too; Enable All and Disable All move the marks; a greyed row's box and label are grey, not faded); in the chat settings the category list and the settings area sit on darker boxes, every box on a page (Chat, Channels, Other, Combat) sits on a darker panel with no gold border and its heading (and the Color heading) in small grey capitals, every check box is Vanguard's (those in a category you open later too; a tab or category entry must not have turned into a box) and still works, no gold ring is left round a row, and the color swatches stay. Open Combat, then Colors: Color entire line by source or by target are round radios with a dot in the one chosen (clicking moves the dot). In Combat, the filter list has the theme's scroll bar, Add Filter, Copy Filter and Delete are flat buttons, the two move arrows are flat buttons with an up and a down arrow, and the filter name box is a dark edit box. The tabs along the top (one for each chat window) are flat with the current window's raised, and clicking one moves that.
 - If it fails, paste: a screenshot of each window and `/vg errors`.
 
 ### 14.4.4 Keybinding, Cooldown Manager settings and click bindings
 
-- Do: press Escape, click Options, Keybindings, then Quick Keybind Mode; press Escape to leave it. Open the Cooldown Manager settings from the game's Options (Gameplay Enhancements). Open the click-casting page in Vanguard's options and click its button that opens the game's click binding window (or open it from the spellbook).
-- Expect: the quick keybind banner on a flat panel with its three buttons themed (the text stays white); the Cooldown Manager settings window and the click binding window on flat panels with themed buttons, search box and list background; the keybind mode still binds keys.
+- Do: press Escape, click Options, Keybindings, then Quick Keybind Mode; press Escape to leave it. Open the Cooldown Manager settings from the game's Options (Gameplay Enhancements). In that window add or edit an alert on a cooldown (a sound alert) and on a group buff (a visual alert) to open the two alert dialogs. Open the click-casting page in Vanguard's options and click its button that opens the game's click binding window (or open it from the spellbook).
+- Expect: the quick keybind banner on a flat panel with its three buttons themed and its character-specific box a Vanguard check box (the text stays white); the Cooldown Manager settings window and the click binding window on flat panels with themed buttons, search box (magnifier kept) and list background; in the Cooldown Manager window the scroll bar, the layout dropdown, the gear button on a grey tile, the Revert changes button and each category's header bar are the theme's; the two alert dialogs have a flat panel, no dark border, a theme close button, title and Add button, the cooldown's name in light text, small grey capital heads over their dropdowns (themed) and the spell icon as drawn; in the click binding window the scroll bar, the mouseover cast check box and key dropdown (its label light) are the theme's, each binding row has no brass plate and lights a little under the mouse with the red delete cross on a grey tile, and the tutorial card on first open is a flat panel with its picture; the keybind mode still binds keys, and nothing reports a blocked action (open the banner both out of and just after combat).
 - If it fails, paste: a screenshot of the window and `/vg errors`.
 
 ### 14.4.5 Help, report and colour picker
 
 - Do: press Escape, click Support (or the help button), look, close it. Open a color swatch (Chat Settings, any color swatch), drag in the wheel, then click Cancel. Right-click a player in a group and open Report if you can.
-- Expect: the help window, the report window and the color picker on flat panels with themed buttons; the color wheel, the value and alpha bars and the swatches look exactly as the game draws them, and picking a color still works. If you have an open support ticket, its small status box keeps its icon.
+- Expect: the help window, the report window and the color picker on flat panels with themed buttons; the help page sits in a dark frame with no bronze ring; the report window's reason dropdown is a flat button with its arrow, its labels light (not gold), the comment box dark with the theme's scroll bar, and each reason under it is a plain row that lights a little under the mouse and shows the accent rail when ticked (ticking and unticking still works); the # beside the color picker's hex box is grey; open a window's opacity slider (a nameplate or raid frame color with transparency) and the vertical slider is a dark track with a round knob, its OPACITY label light; the color wheel, the value and alpha bars and the swatches look exactly as the game draws them, and picking a color still works. If you have an open support ticket, its small status box keeps its icon.
 - If it fails, paste: a screenshot and `/vg errors`.
 
 ### 14.4.6 Death recap and the combat log bar
 
 - Do: on a test character, die to a mob and click the Death Recap button on the release popup. Then open the Combat tab of your chat and click two of its filter buttons.
-- Expect: the death recap on a flat panel with a themed Close button and title and the damage rows as the game draws them; the combat log's filter bar on a darker strip with flat filter buttons, still switching filters when clicked.
+- Expect: the death recap on a flat panel with a themed Close button and title, the damage rows on a darker inset with the theme's scroll bar (as the game draws them), a thin line under the title; the combat log's filter bar on a darker strip with flat filter buttons and a flat arrow button on the right, still switching filters and opening the filter menu when clicked (the green progress bar that shows while a filter applies is the accent color).
 - If it fails, paste: a screenshot and `/vg errors`.
+
+### 14.4.7 Movement pad
+
+- Do: in the game's Options, Controls, tick "Enable Movement Pad"; click its forward arrow, then click it again; hold the pad's jump button; click the small gear on the pad; drag the pad by its edge (unlock it from the gear if it is locked).
+- Expect: the pad is a dark panel with no tooltip border; its seven buttons are flat with their arrows and jump picture showing, lighting under the mouse; a direction the game has on (forward after the first click) shows the accent selected look until you click it off, instead of the game's glow; the gear is on a grey tile; moving, jumping and locking work as before.
+- If it fails, paste: a screenshot of the pad and `/vg errors`. If you cannot enable the pad in this client, mark this step skipped.
+
+### 14.4.8 Lua error window
+
+- Do: turn on "Display Lua Errors" in the game's Options (Gameplay, Game Options), then cause an error (for example `/run error("test")`) and click the arrows, Reload and Close buttons.
+- Expect: the error window is a flat panel with a theme title, a theme close cross, flat Reload and Close buttons, flat previous and next arrows with the "1 / 2" count in light text and a themed scroll bar; the error text itself keeps the game's colours; the window stays in the middle of the screen and still pages, scrolls and closes.
+- If it fails, paste: a screenshot of the window and `/vg errors`.
+
 ### 14.5 World map, group finder, Legacy and calendar
 
 - Do: hover the zone name on the minimap's top band, click it, then click it again; press `M` for the world map, then use its minimise and maximise button, click a few zones, open the quest panel on its side and click a quest; hover the group finder eye by the minimap, then click it to open the group finder; open the Legacy window from its button on the menu bar; type `/calendar`, open a day with an event and the "Create event" dialog. Look at the info strip under the minimap, then click the small calendar button at the right end of its date row.
@@ -636,11 +709,36 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 - Do: open the group finder and go to its search page (the who list, with the player search box); look at it before searching, search for a name nobody has, then for a name that is online; go to the browse page and look at its top right corner. Then open the Legacy window's Challenges page and look at the right-hand pane before picking a category, after picking one, and on a category with no challenges.
 - Expect: the search page has the flat panel like the listing and browse pages, with no brass border, and its list sits on a flat inset panel. While the list is empty, a grey line in its middle says the game's "No groups found" line (the game's own words, so it says groups on a player search). The line also shows before the first search, and it goes away when the list has names. The settings gear sits in the title row just left of the close button, not on it. The Legacy challenge pane says "Select a category to view its challenges." until you pick one. On a category with nothing in it, it says the game's line, or "No challenges to show here.". No world or game art shows through any Legacy page.
 - If it fails, paste: a screenshot of the page that is wrong, the step that broke, and `/vg errors`.
+
+### 14.5.2 The game's durability figure stays away
+
+- Do: with damaged gear, under `/vg` → Map untick the info strip's Durability block and `/reload`; then switch the whole Info strip module off and `/reload` again (switch both back after).
+- Expect: with the block off, the strip has no durability line and the game's armoured-man figure still does not appear beside the minimap (the character pane's gear slots still show each item's percent); with the module off, the game's armoured man is back in its own spot.
+- If it fails, paste: a screenshot of the minimap's corner and `/vg errors`.
+
+### 14.5.3 World map, quest panel and queue status insides
+
+- Do: with Vanguard's quest log switched off (under `/vg` → Quests), press `M` for the world map and look at the nav bar above it, the dropdown at the map's top left (floors, in a dungeon or a multi-floor zone), the two small buttons at its top right (tracking filter and tracking pin) and the arrows of the quest panel's toggle; open the quest panel, look at the search box, the gear above it and the quest count box, hover and click quest rows, tick a quest's track box, and look at the lines between quest groups; open a quest's details and look at the Rewards heading; open a quest in the pop-out window (right-click its row, or the quest log's pop-out) and look at its text area and Show Map button; open the battlefield map's tab (in a battleground); queue for something and hover the group finder eye to open the queue panel.
+- Expect: the crumb labels are light, not gold, and each crumb's small dropdown arrow is still there on a flat button; the floor dropdown is a flat button with its arrow; the tracking filter and pin sit on the faint control tile, the pin without its gold ring and brown disc; the quest toggle's arrows sit on flat buttons that light under the mouse. The search box is flat and dark with its magnifier, the gear sits on the control tile with its icon, the count box is flat; a quest row shows a soft white wash under the mouse and no yellow glow, its track box is a flat square with a brass tick while tracked (the tick follows the game's own tracking), its quest-type, storyline and task pictures stay; the rules between groups are one thin line. The Rewards heading is light. The pop-out's text sits on a dark inset and Show Map keeps its map picture with a light label. The battlefield map's tab label is light. The queue panel's lines between entries are one thin line. [Needs in game: where exactly the one-pixel group rule and the queue rule sit against the game's ornate divider space; whether the floor dropdown is among the map's direct children as found; the tracking pin's look without its ring.]
+- If it fails, paste: a screenshot of the part, the step that broke, and `/vg errors`.
+
+### 14.5.4 Group finder pages
+
+- Do: open the group finder and look at the listing page (alone, then in a group), then pick a category and look at the activity list; tick a role and some activities; open the play style and voice chat dropdowns; go to the browse page, pick a category and activity, use the refresh button, hover and click a few groups; go to the search page, search for a name and hover and click a result.
+- Expect: the listing's role buttons are small tiles with their role icons and a flat check box each (ticking one fills it with a brass tick); the roles strip is separated from the list by one thin line; the category buttons are flat tiles with their pictures and a light name (no gold, no stone frame); the activity rows have flat check boxes and keep their plus and minus marks; the dropdowns on all three pages are flat buttons with their arrows. On the browse and search pages the rows have no plate or yellow, blue or brown glow: a soft white wash under the mouse and a brass edge on the selected one; the leader, class and newcomer marks and the plus and minus on group headers stay; the refresh, search, remove-from-list and invite buttons are flat with their pictures; the search page's filter label and total line are not gold. [Needs in game: the role tile's size against its 80-pixel plate; that the selected row's edge follows a click; the category tile's look behind its picture.]
+- If it fails, paste: a screenshot of the page, the step that broke, and `/vg errors`.
+
+### 14.5.5 Legacy window and calendar
+
+- Do: open the Legacy window (Adventure, Professions and Progression trees); click each tree card and look at the Apply, Reset and Undo buttons and the tree search box; go to the challenges page, type in its search box, open the filter, click a category (and a parent category to fold and unfold it), then click a challenge to open it and tick its Track box; go to the reward page and look at the bar and the cards. Open the calendar with `/calendar`, click the month arrows, click a day, open a holiday or raid event, an ordinary event and the new-event window (try each dropdown and the lock and auto-approve boxes), the mass invite window, the event picker and the picture picker; hover and click invites in an event's invite list and the rows in the pickers.
+- Expect: on the tree page each tree card is a small raised tile with its round icon and ring, and the tree you picked shows the selected look (a bright rail on its left and a lighter fill) that moves when you pick another, and a card washes lighter under the mouse; the points badge is a flat strip; Apply, Reset and Undo are flat with their pictures; the search box is flat with its magnifier; the line between the list and the page is one thin line, not gold. On the challenges page the filter and search box are flat, the category rows have no yellow bar, show a soft wash under the mouse and the selected look on the one picked, and their plus and minus are the light text colour (and the unseen-challenges dot stays); each challenge is a flat card (no parchment, ribbon or glow) with the selected look (the bright rail and lighter fill) while it is open, its objective rows and progress bars are flat tracks with the fill showing, and the Track box is a flat check box. The reward page's bar is a flat track and each reward card a raised tile with its icon and earned tick. In the calendar the month arrows and class buttons are flat buttons with their pictures, the weekday names, the year and the filter label are light (not gold or pale yellow), the day grid is unchanged from before; the holiday and raid text sits on a dark panel; an event's name is light and its lines under it grey; the new-event dropdowns are flat buttons with arrows; the lock and auto-approve boxes are flat check boxes; the invite list's Name, Class and Status headings are small grey text and keep their sort arrow; invite rows and picker rows show a soft wash under the mouse and the selected look on the picked one; the line under an event's buttons is one thin line. [Needs in game: that the reward cards' level number still reads where the game's diamond was; that the sort headings stay grey when you hover them; that a picked invite or picture stays lit after you click away and back; that a category row's text colour looks right on the selected row.]
+- If it fails, paste: a screenshot of the window, the step that broke, and `/vg errors`.
+
 ### 14.6 Menus and tooltips
 
 - Do: (1) in a party, right-click a party member's frame and use Whisper, then right-click it again for Set Focus (once out of combat, once in combat), then right-click yourself for Leave Party; (2) click the minimap's tracking button; (3) right-click a chat tab; (4) at the auction house, open a dropdown (the category or sort filter); (5) open the guild window's Preferred Play Settings and its language dropdown, if your guild window has it (the game's last old-style dropdown); (6) type `/w ` and the first letters of a friend's name in chat; (7) click an item link in chat and hold Shift over the tooltip that opens, to compare it with what you wear.
-- Expect: every menu and dropdown in (1)–(5) is a flat dark panel with a soft shadow and a thin border (no parchment or grey art behind it), its rows, checkmarks and hover highlight as the game draws them; every action in (1) does what it says, in and out of combat (an entry the game itself greys out in combat may stay grey), and no `Interface action failed because of an AddOn` message appears; the name suggestion box in (6) and the comparison tooltips in (7) are flat Vanguard tooltip panels. With "Right-click menus, dropdowns and more tooltips" unticked and a reload, all of them are the game's own again.
-- If it fails, paste: the step number, a screenshot of the menu or tooltip, the exact message text if one appeared, and `/vg errors`.
+- Expect: every menu and dropdown in (1)–(5) is a flat dark panel with a soft shadow and a thin border (no parchment or grey art behind it), its rows and hover highlight as the game draws them (the highlight is not tinted); in an old-style dropdown (5) a heading row, if there is one, is in the light text colour, not gold, a ticked row's tick is in the accent colour and an unticked row's empty box a quiet grey, a row with a coloured icon of its own keeps its colours; a menu long enough to scroll (the minimap tracking menu, or (4)'s filter on a small screen) shows a thin scroll bar, not the game's track and arrows; every action in (1) does what it says, in and out of combat (an entry the game itself greys out in combat may stay grey), and no `Interface action failed because of an AddOn` message appears; the name suggestion box in (6) and the comparison tooltips in (7) are flat Vanguard tooltip panels. With "Right-click menus, dropdowns and more tooltips" unticked and a reload, all of them are the game's own again.
+- If it fails, paste: the step number, a screenshot of the menu or tooltip (the scroll bar and a ticked dropdown row in particular), the exact message text if one appeared, and `/vg errors`.
 
 ### 14.7.1 The game's swing timer
 
@@ -671,29 +769,54 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 - Do: have another player cast a defensive spell on you (a paladin's Blessing of Protection or Blessing of Sacrifice, say).
 - Expect: it shows in Vanguard's buff row only; the game's external defensives frame (an extra icon near the buffs) never shows.
 - If it fails, paste: a screenshot and `/vg errors`.
+
+### 14.7.6 Chat side buttons
+
+- Do: look at the buttons beside the main chat window (the chat menu at the bottom of its column, the minimize box at the top, the voice channel, deafen and mute buttons, and text to speech and Quick Join if this client shows them); scroll the chat up a few lines; hover each button; click the chat menu, then the minimize box.
+- Expect: every one of those buttons sits on a small flat slate tile instead of the game's round art; the chat menu, minimize box and Quick Join show a quiet glyph that turns white on an accent tile under the mouse; the voice and text-to-speech buttons keep their own icon on the tile; scrolled up, a down-arrow glyph on a tile appears at the window's bottom-right and a click on it returns to the newest line; the chat menu still opens and the minimize box still collapses the window.
+- If it fails, paste: a screenshot of the chat column and `/vg errors`.
+
+### 14.7.7 Chat bubbles
+
+- Do: with chat bubbles on in the game's options (Options → Interface → Social → Chat Bubbles), say something in /say out in the world, then have a party or raid member or an NPC speak near you; then enter a dungeon and say something there.
+- Expect: in the world, each speech bubble is a flat, slightly see-through slate panel with a soft shadow instead of the game's rounded white bubble, its text in Vanguard's font, light on the dark panel; the bubble appears and goes as before; inside the dungeon the bubbles keep the game's own look (the engine does not let addons touch them there) and `/vg errors` stays empty.
+- If it fails, paste: a screenshot of a bubble and `/vg errors`.
+
+### 14.7.8 Combat text and floating damage numbers
+
+- Do: turn on the game's scrolling combat text (Options → Combat → Show Combat Text, or `/console enableFloatingCombatText 1`), fight a mob and take a hit, watching the text over your character and the damage numbers over the mob. Then set Font under `/vg` → General to the game's font, reload and fight again.
+- Expect: the text over your character (damage taken, heals, energy gains) is in Vanguard's font at the game's own sizes and colours, with a critical hit (the number that grows and shrinks) as sharp as the rest, and the damage numbers over the mob are in Vanguard's font too. After the reload with the game's font chosen, both are the game's own. [Needs in game: that the engine reads `DAMAGE_TEXT_FONT` after Vanguard's ADDON_LOADED, so the numbers over the mob change (if they stay the game's, the path must be set when the file loads instead), and that `enableFloatingCombatText` is the switch's CVar on Forever.]
+- If it fails, paste: a screenshot of each kind of number and `/vg errors`.
+
+### 14.7.9 Raid warning, screenshot and frame rate text
+
+- Do: in a group, have a leader or assistant send a raid warning (`/rw Pull in 5`), or type it yourself as the leader; press Print Screen; press Ctrl+R to show the frame rate and press it again to hide it. On a Hardcore realm, wait for a death notice if one comes.
+- Expect: the raid warning line at the top center is in Vanguard's font (bold), the same size and colour as before and still growing and fading as the game does it; the line that says a screenshot was taken in the middle of the screen is in Vanguard's font and still gold; the frame rate readout in the bottom-right corner (FPS and the number) is in Vanguard's font at the game's size. A Hardcore death notice is red in the title font. Changing the font or Text size in the options window changes all three at once.
+- If it fails, paste: a screenshot and `/vg errors`.
+
 ### 14.8.1 Character pane side tabs
 
 - Do: press C, then click each side tab in turn (Character, Reputation, Skills, Honor, Currency, Statistics).
-- Expect: each tab is a flat dark tile with its icon still showing (none blank), a thin accent line on the selected tab only that moves with every click, and a faint wash under the mouse. [Needs in game: the tab art is faded by T.Tab, including its icon mask; if an icon is missing, paste a screenshot.]
+- Expect: each tab is a flat dark tile with its icon still showing (none blank), the selected tab raised (lighter) and the others sunk, the raised one moving with every click, and a faint wash under the mouse. [Needs in game: the tab art is faded by T.Tab, including its icon mask; if an icon is missing, paste a screenshot.]
 - If it fails, paste: a screenshot of the pane with the tabs, the tab that is wrong and `/vg errors`.
 
 ### 14.8.2 Tabs on the other windows
 
 - Do: open the friends window (O) and click each tab; at a mailbox click Inbox and Send Mail; at a merchant click Merchant and Buyback; inspect another player and click each tab; open the spellbook (P) and click its tabs and its category tabs; open the guild window and click its side tabs; open the group finder and the Legacy window and click their tabs.
-- Expect: every tab is a flat dark tile with its text, the accent line is on the selected tab only and follows every click, tabs that the game shows later (a new profession, talents after learning them) look the same, and every tab still switches its page.
+- Expect: every tab is a flat dark tile with its text, the selected tab is the only raised one and follows every click, tabs that the game shows later (a new profession, talents after learning them) look the same, and every tab still switches its page.
 - If it fails, paste: which window and tab, a screenshot and `/vg errors`.
 
 ### 14.8.3 Inside the character pane
 
 - Do: on the Reputation tab look at the list and click a header; on Skills look at a skill and click it; on Currency click a header; on the Character tab scroll the stats; hover a gear slot's flyout arrow (the equipment flyout) and look at the Honor tab.
-- Expect: reputation and skill bars sit in a flat dark box with the game's colored fill unchanged, headers are flat buttons that keep their plus/minus icon and still open and close, the stat category titles sit in flat boxes, the flyout is a flat panel with item borders in quality colors, the honor tab's ring and badge show (only its decoration is dimmed), and each gear slot still shows its durability percent.
+- Expect: the reputation, skills and currency lists have a thin one-pixel line above and below them (no game ornament); reputation and skill bars sit in a flat dark box with the game's colored fill unchanged, headers are flat buttons that keep their plus/minus icon and still open and close, the stat category titles sit in flat boxes, the flyout is a flat panel with item borders in quality colors and thin theme arrows for its page buttons, the honor tab's ring and badge show (only its decoration is dimmed), and each gear slot still shows its durability percent.
 - Also expect: on the Character tab, each gear slot (shirt, tabard and ammo too) is a flat square around its icon with no bronze frame, its border in the item's quality color when it has one; the model stands on a flat panel under a plain strip with the level and race text, and the model still turns when you drag it. [VERIFY IN GAME]
 - If it fails, paste: a screenshot of the tab that is wrong and `/vg errors`.
 
 ### 14.8.4 Scroll bars
 
-- Do: on the Reputation tab drag the scroll bar's thumb, click its arrows and mouse over the thumb; then scroll the friends list and the quest or mail list if they have bars.
-- Expect: a flat track, a raised thumb that takes the accent edge under the mouse, flat arrows with the theme's arrow, and the list scrolls as before. [Windows whose scroll bars are not the game's newer ones keep their own.]
+- Do: on the Reputation tab drag the scroll bar's thumb, try to click where its arrows were and mouse over the thumb; then scroll the friends list and the quest or mail list if they have bars.
+- Expect: no track and no arrows: one thin grey line (4 units wide) runs down the middle of the thumb, half bright at rest and full bright while the mouse is over the thumb or you drag it; where an arrow was there is nothing to click, and the list scrolls as before. [Windows whose scroll bars are not the game's newer ones keep their own. Needs in game: that the line sits in the middle of the thumb and that the faded arrows take no clicks.]
 - If it fails, paste: a screenshot of the bar and `/vg errors`.
 
 ### 14.8.5 Switch
@@ -705,7 +828,7 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 ### 14.8.6 The small square tabs on the Character tab
 
 - Do: press C on a character that knows one title or none, and look at the small square tabs at the top of the stats half (stats, equipment manager, titles). Then do the same on a character with two or more titles and click the third tab.
-- Expect: with one title or none, the third tab (Titles) is dimmed and grey and does nothing. The game itself disables it, and Vanguard leaves these tabs as the game draws them. With two or more titles it shows its icon and opens the title list.
+- Expect: with one title or none, the third tab (Titles) is dimmed and grey and does nothing. The game itself disables it. The tabs are flat dark tiles with their icons, the selected one raised and the others' icons greyed, with no bronze plate behind them. With two or more titles it shows its icon and opens the title list. [Needs in game: that the unkeyed plate behind each icon is faded and the checked texture's glow with it.]
 - If it fails, paste: a screenshot of the tabs, how many titles the character knows, and `/vg errors`.
 
 ### 14.8.7 Character pane backdrops, currency and the arrow
@@ -720,16 +843,34 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 - Expect: no leather backdrop. The item grid, and the sets tab's list and preview, sit on flat dark inset panels with the models still showing. The empty slot says "No appearances to show for this slot." in grey; the line is gone on a slot that has appearances.
 - If it fails, paste: a screenshot of the empty slot, one of the Sets tab, and `/vg errors`.
 
+### 14.8.9 Side tabs on the professions, collections, guild bank and inspect windows
+
+- Do: open the professions window and click its tabs, then the collections window (Shift+P) and click each of its tabs, then the guild bank and click its tabs (as a guild member with tabs), then inspect a player and click Character, PvP and Guild, then open the cooldown settings window and click its three tabs, then open the Appearances page and click Items and Sets.
+- Expect: each side tab is a flat dark tile with its icon still showing, the selected one raised (lighter) and the others' icons greyed, a faint wash under the mouse, and it sits against the window's panel edge with no gap and no overlap; the guild bank's tabs keep their item icon (and the search's dark film while you search) and lose their bronze plate; Items and Sets are flat tabs with the one you are on raised. Every tab still switches its page. [Needs in game: the names the collections tabs have on Forever; whether the guild bank tabs line up with the panel's edge.]
+- If it fails, paste: which window and tab, a screenshot and `/vg errors`.
+
+### 14.8.10 The character pane's side panes and stat boxes
+
+- Do: open the character pane (C) and click the Reputation, Skills, Currency and Honor tabs in turn; expand and fold a header on each list, tick "Show as experience bar" or "Inactive" on a reputation, and hover a row. Then show the stats half and look at the stat boxes (and the item level line).
+- Expect: each pane's title is small text in the text colour, not gold, and its gold rule is gone; the list rows lose their wooden or stone plate and their labels read in the text colour (a row the game colours, such as a reputation standing, keeps its colour); each row's icon sits on a flat square slot; the check boxes are Vanguard's, the standing bar is a flat bar and the pane's buttons are flat; the game's own row highlight under the mouse is unchanged; the stat boxes sit on flat inset panels with a flat title box and no wooden art, and the honor texts read in the text colour. Scrolling a long list or folding a header never leaves a row with the game's plate. [Needs in game: the names of the side-pane and stat-box parts on Forever.]
+- If it fails, paste: which pane, a screenshot with a row or two on screen and `/vg errors`.
+
+### 14.8.11 The paper doll's lists, buttons and slots, and the appearances page
+
+- Do: open the character pane (C) on the Character tab. Click the Titles and Equipment Manager buttons under the model, hover and pick a title and a set, then click Equip, Save and New set. Look at each gear slot (the ammo slot too, as a hunter), and at your level line over the model (a hunter with a pet: the pet's page too). Click a gear slot with several items to open the flyout and its page arrows. Then open the collections window (Shift+P), go to Appearances, use the search box, the filter and class dropdowns (and the weapon dropdown on a weapon slot), turn the pages, and open the Sets tab, pick a set and its variant dropdown.
+- Expect: the titles and sets lists sit on flat dark inset panels with no bronze edge, stripe or card plate; titles and set names read in the same light text as the rest of the window; hover washes a row and the picked title or set shows the one selected look (a thin accent rail and a faint fill) instead of the game's own highlight or card art, and it moves when you pick another or scroll the list; a set with items missing keeps its red name; Equip, Save and New set are flat buttons with the plus beside New set; the pet's experience bar is a flat box with its green fill; the level line is small light text; the gear slots show a flat square with the item's quality border and no bronze frame. The appearances search box and dropdowns are flat with their arrow and magnifier, the page arrows (there and on the flyout) are flat buttons with their arrow pictures, and the sets list has no row plate (the set's name keeps its gold, green or grey), its picked set shows the same accent rail and its progress line stays, nor the plate behind the set's icons. Everything still works as before. [Needs in game: the real names of all these parts on Forever; whether a recycled title, set or sets-list row ever shows a stale rail, plate or name colour after scrolling, picking another row or after you gain or lose an item; whether the sets list's rail follows a variant pick.]
+- If it fails, paste: a screenshot of the character pane with each list open, one of the appearances page and Sets tab, and `/vg errors`.
+
 ### 14.9.1 Battleground queue dialogs
 
 - Do: queue for a battleground (alone, then in a group if you can) and wait for it to pop; on the role check pick a role and accept; if you can, get a war game or arena invite.
-- Expect: the role check, the group's ready popup, the "enter battle" dialog and the invite are flat panels with a soft shadow and no gold dialog border; Accept, Decline, Enter Battle and Leave Queue are flat buttons that still work; the battleground's picture on the enter dialog, the invite's icon and ring and the role icons still show; the close (or hide) button is the theme's. Enter Battle takes you in with no "Interface action failed because of an AddOn". [Needs in game: none of these was seen in the game.]
+- Expect: the role check, the group's ready popup, the "enter battle" dialog and the invite are flat panels with a soft shadow and no gold dialog border; Accept, Decline, Enter Battle and Leave Queue are flat buttons that still work; the battleground's picture on the enter dialog, the invite's icon and ring and the role icons still show; the close (or hide) button is the theme's, and on the enter dialog, the ready popup and the invite it carries the minimize glyph (a dash) on a grey tile that turns lighter, not red, under the mouse; the enter dialog has no painted rule under the battleground's name, and its name, the status line and your role's name are in the light text colour, not gold; the role check's three role boxes are flat check boxes with the accent tick, the role icons still show. Clicking the hide button hides the dialog and you stay in the queue. Enter Battle takes you in with no "Interface action failed because of an AddOn". [Needs in game: none of these was seen in the game.]
 - If it fails, paste: a screenshot of the dialog and `/vg errors`.
 
 ### 14.9.2 Scoreboard and match results
 
 - Do: in a battleground press H (or open the scoreboard), click its tabs (All, Alliance, Horde), scroll the table, then finish the match and look at the results window; click Leave (or Queue again).
-- Expect: both windows are a flat panel with the theme's close button, the table on a darker inset with the rows, column headings and team colour unchanged, a flat scroll bar, flat tabs, and flat Queue again and Leave buttons that work; the reward band under the table has no backdrop art but its burst of light still plays when rewards come in. [Needs in game: the faction border the game lays on at the start of a match must stay faded.]
+- Expect: both windows are a flat panel with the theme's close button, the table on a darker inset with the rows, column headings and team colour unchanged, a flat scroll bar, flat tabs, and flat Queue again and Leave buttons that work; the reward band under the table has no backdrop art but its burst of light still plays when rewards come in; the faction banner the game hangs over the top edge in a faction match is gone; the title (Victory or Defeat) is in the theme's heading font in the light text colour at its big size, the Rewards and Progress headings and the matchmaking line under the table (Matchmaking rating, in both windows) are light, not gold; each reward item is a square tile without its round shadow and spec ring that keeps its picture and quality ring, with a thin accent edge under the mouse. [Needs in game: the faction border the game lays on at the start of a match must stay faded.]
 - If it fails, paste: a screenshot of each window and `/vg errors`.
 
 ### 14.9.3 Objectives and the countdown
@@ -749,6 +890,102 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 - Do: open the character pane (C), drag it by its title bar to the middle of the screen and close it; open it again, then open the spellbook (P) beside it and close that. Open your bags (B) and drag the combined bag by its top edge; close and reopen them. Drag the game menu (Escape) by its header, the guild window, the group finder, the Legacy window and the auction house by their title bars. `/reload` and open the character pane and the bags again. Then start a fight, open the character pane, and leave combat. Then open the calendar and drag it by the empty strip along its top edge (not on the month arrows), and drag the friends window the same way; close and reopen both. Last, `/vg` → Game windows → Reset window positions, and open the character pane.
 - Expect: each window follows the mouse and stays where it is dropped; it opens there again, after opening another window beside it and after the reload too; the close and minimize buttons, the calendar's month arrows and the bag's portrait button still work (the drag area stops short of them, and the top-edge drag only starts on an empty spot). In the fight the pane may open where the game puts it and jumps to your spot when combat ends, never moving while you fight. `/vg` itself can be dragged by its header and reopens there. After Reset window positions the options window is in the middle and the character pane opens where the game puts it. [Needs in game: the drag itself, by the title bar and by the top edge; which windows have mouse enabled on their own frame (a window that doesn't can only be dragged by its title bar); that no window jumps back while you hold it; whether the game refuses any of them.]
 - If it fails, paste: the window's name, a screenshot after the drop and after reopening, and `/vg errors`.
+
+### 14.11 Breath and fatigue bars
+
+- Do: swim under water until the breath bar shows and stay down a few seconds; surface. Then swim out to sea until the fatigue bar shows, and swim back.
+- Expect: each bar at the top center is a flat bar in the theme's bar texture on a slate panel that hugs it, with no gold frame and no dark band behind its label; it runs down as the game's does and goes when you surface (or turn back). The second time it shows, it looks the same.
+- If it fails, paste: a screenshot while the bar shows and `/vg errors`.
+
+### 14.12 Window titles
+
+- Do: open the character pane (C), the game menu (Escape), the world map (M), the group finder, the calendar, the game's Options and a small dialog (the report-cheating one, or a guild dialog).
+- Expect: every window's and dialog's title is the same size and light text colour (not gold), still where the game centres it; the game menu's title sits inside its panel.
+- If it fails, paste: a screenshot of the window whose title differs and `/vg errors`.
+
+### 14.13 Window insets
+
+- Do: open the merchant, the class trainer, the macro window and the addon list (Escape → AddOns).
+- Expect: the list or content area of each is a darker flat panel with the thin edge, set into the window's panel; no bronze frame or dark tile of the game's around it.
+- If it fails, paste: a screenshot of the window and `/vg errors`.
+
+### 14.14.1 Trade window
+
+- Do: start a trade with another player (or a friend's alt). Put an item in a slot on each side, type a gold amount in your offer, and look at the Trade button when the other player has something in a slot.
+- Expect: the item columns and the two money lines sit on darker flat panels; each item slot is a square with a thin border in the item's quality colour and no gold or bronze slot plate or name plate (an enchant slot keeps its icon); your gold, silver and copper boxes are flat dark boxes that keep their coin pictures; the other player's money has no gold-edged plate; the two names over the columns are light text, not gold; the Trade button keeps its warning icon when the game shows it. Trade and Cancel still work. [Needs in game: all of it.]
+- If it fails, paste: a screenshot of the window and `/vg errors`.
+
+### 14.14.2 Mail window
+
+- Do: open a mailbox with some mail in it (some read, some with items, one cash on delivery if you have one). Look at the inbox, hover a row, then click the Send Mail tab, type a name and a subject, write a line in the letter, drag an item onto an attachment slot, and click Send money and C.O.D. in turn.
+- Expect: the inbox has no parchment and the rows have no brown plates; each row's item is a square with a thin border in the item's quality colour (read mail's border greyed); the sender and subject are in the theme font with the game's colours; the Previous and Next arrows are flat tiles with the theme's arrow and a light caption. On the Send Mail tab the letter sits on a darker flat panel and your text is light, not dark brown; To and Subject are flat dark boxes with light labels; the amount boxes are flat with their coins; the two choices are round radios that fill with the accent when picked; the money well at the bottom left is a flat panel; the two bronze bars are thin lines; the attachment slots are squares that show the item's picture. Cancel and Send are themed buttons. [Needs in game: all of it, most of all that the letter text is readable.]
+- If it fails, paste: a screenshot of each tab and `/vg errors`.
+
+### 14.14.3 Quest and gossip windows
+
+- Do: switch off the quest dialog (`/vg` → Quests → the quest dialog switch). Talk to a quest giver with a quest to accept, then one with a quest to turn in that needs an item and some money, and to someone who has only gossip lines (an innkeeper). Look at each page.
+- Expect: no brown parchment behind the text on any page; the text sits on the window's darker flat panel and stays readable (light text, light headings); on the turn-in page each required item is a square with a thin quality-coloured border and no gold name plate, the required money is in the theme font; Accept, Decline, Complete Quest, Continue, Cancel and Goodbye are themed buttons; the gossip window's list sits on the flat panel and its Goodbye button is a themed button. With the dialog switched on, the game's own windows are not used.
+- If it fails, paste: a screenshot of the page and `/vg errors`.
+
+### 14.14.4 Popups, ready check, loot close button and breath caption
+
+- Do: open a popup with a text box (rename a guild rank or the delete-an-item confirmation that asks you to type), one with a dropdown or money boxes if you can find one (inviting to a guild bank tab, a group-finder role check), and look at the warning icon on a popup that has one (leave a group while queued). In a group, start a ready check (or have a friend do it). Open a loot window on a corpse and look at its top corner. Swim under water and look at the breath bar's caption.
+- Expect: a popup is a flat slate panel with no dark game tile or ornate border behind it; its warning icon and a progress bar's fill still show; the text box and money boxes are flat dark boxes; buttons are the theme's. The ready check is a flat panel with a light title and prompt, themed Ready and Not Ready buttons, the caller's portrait still showing and no game border. The loot window's close button is the same square as other windows' (red under the mouse). The breath bar's caption is small, light, outlined text on the bar. [Needs in game: whether a popup keeps any game border or corner art; if it does, paste a screenshot.]
+- If it fails, paste: a screenshot of the popup or ready check and `/vg errors`.
+
+### 14.14.5 Roll windows, dressing room, books and the game menu header
+
+- Do: roll on an item in a group (or loot with a friend), and look at the roll window. Open the dressing room (Ctrl-click an item), open the outfit dropdown and the details toggle. Read a book or a letter and turn a page; read a timed book if you know one. Press Escape and look at the top of the game menu.
+- Expect: the roll window has Need, Greed, Pass (and Transmog when offered) on the same small tiles as the window controls elsewhere, with their dice and coin icons; its countdown is a flat bar on a dark track that runs down; the item icon is a square with a thin border and no game ring, the item name keeps its colour. The dressing room's model sits on a flat darker panel; Close, Reset and Link are themed buttons, the outfit dropdown keeps its arrow, and the side panels that open beside it are flat. The book's page area is a flat darker panel with the page arrows as flat tiles and the page count small; a timed book's bar is flat. The game menu has no gold plate behind its title; its title is still readable and inside the panel.
+- If it fails, paste: a screenshot of the window and `/vg errors`.
+
+### 14.14.6 Time manager
+
+- Do: click the clock on the minimap (or the info strip's clock) to open the time manager. Tick and untick Alarm enabled, 24-hour mode and Local time; open the hour, minute and AM/PM dropdowns; click in the alarm message box and type; tick the stopwatch switch to open the stopwatch.
+- Expect: the three check boxes are flat squares with an accent tick; the dropdowns are flat buttons that keep their arrows; the message box is a flat dark box; the captions (Alarm time, Alarm message, Show stopwatch) and the window's title are light, not gold; the stopwatch switch keeps its clock icon on a small tile; the globe at the window's top left still shows; the stopwatch's title is light text.
+- If it fails, paste: a screenshot and `/vg errors`.
+
+### 14.14.7 Spellbook and talents
+
+- Do: press P to open the spellbook; turn a page; type in the search box; open the settings button (top right) and the category tabs. Open the Talents tab, move the mouse over the search box, the options and loadout dropdowns, Apply, reset and undo; spend a point if you can, then apply it; watch the tree for a few seconds. Open the Specialization tab and a hero talent choice.
+- Expect: the spellbook has no parchment, top bar or bookmark: the pages are a flat dark panel; the page arrows are flat tiles with the theme's arrows and the page count is small grey text; the search box is a flat dark box with its magnifier; the settings button is a flat button with its picture. Spell names and headings are readable (if they are dark on the dark pages, paste a screenshot). The talent tree has no painted backdrop, bronze frame or gold dividers but still shows the clouds and, when you apply, the burst; its buttons and dropdowns are flat with their arrows; the points count has no bronze plate. Specialization cards and hero talents look as the game draws them.
+- If it fails, paste: a screenshot of the spellbook and of the talents, and `/vg errors`.
+
+### 14.14.8 Professions and the linked recipe
+
+- Do: open a profession (K, or the profession button); use the filter and the search box; click a recipe, then another; scroll the list; look at the skill bar, the quantity box, the Create and Create All buttons, the link button and the gear slots; tick Track recipe; open a recipe with reagents and an optional or finishing slot. Link a recipe in chat to yourself and click it to open the inspect window.
+- Expect: the recipe list and the recipe form are flat dark panels with no bronze frame or parchment; the filter is a flat button with its arrow, the search box a flat dark box with its magnifier; the recipe you click shows the selected look (a rail and fill, not the gold bar) and the one you leave loses it, and hovering a row washes it; the skill bar is a thin bar in a dark box with the game's fill; the quantity box and buttons are flat; the link button keeps its picture; the gear slots and each reagent slot are squares with a thin border in the item's quality colour; Track recipe has a flat check box with a small label; the gold notes (what it makes, the first-craft bonus, "not learned") read in the light text colour. The inspect window shows the same form. Category headers stay as the game draws them.
+- If it fails, paste: a screenshot of the window with a recipe selected, and `/vg errors`.
+
+### 14.14.9 Inspect window and flight map
+
+- Do: inspect another player (right-click their portrait, Inspect) while in range; look at the model, the gear slots, the View in Dressing Room button and the lines over the model; click the Guild and PvP tabs. Then talk to a flight master and open the flight map.
+- Expect: the model sits on a flat dark panel with no bronze corners or painted backdrop; the gear slots are squares with a thin border in the item's quality colour and no bronze slot frames; the View button is flat; the level line is light text and the title and guild lines (when shown) small grey text. The flight map has no bronze frame, portrait or dark underlay: a thin edge round the map, a themed title and a close button at the top right that works. [Needs in game: the close button's place on the flight map, and that the map stays fully visible.]
+- If it fails, paste: a screenshot of the inspect window and of the flight map, and `/vg errors`.
+
+### 14.14.10 Guild bank
+
+- Do: open the guild bank at its vault; look at the slots, the money line at the foot, the tab name over the grid; type in the item search box; open the Log, Money Log and Tab Info tabs (the last one as an officer if you can); if a tab can be bought, look at the purchase line.
+- Expect: no red marble, slot-grid art or gold-edged plate: the columns are flat dark panels with square item slots and a thin border in each item's quality colour; the money lines and the withdrawal limit are in the theme font and the plate behind them is flat; Deposit and Withdraw are flat buttons; the search box is a flat dark box with its magnifier and dims tabs that do not match; the log and the tab info text sit on flat dark panels; the tab name is light heading text and the limit and cost labels small grey text. The guild emblem beside the portrait looks as the game draws it.
+- If it fails, paste: a screenshot of the bank on the first tab and on the Log tab, and `/vg errors`.
+
+### 14.14.11 Collections journals
+
+- Do: open the collections window (Shift+P) and visit each tab the window shows (mounts, pets, toys, heirlooms, appearances); type in each search box, open each filter dropdown, turn the pages of the toy box, heirlooms and appearances; select a mount or pet and look at the Mount or Summon button.
+- Expect: no bronze frames round the lists and displays and no leather backdrop behind the toy and heirloom icons: they sit on flat dark panels; the "collected" count plates and bars are flat (the bar's fill keeps its green); search boxes and dropdowns are flat with their magnifier and arrows; Mount and Summon are flat buttons; the page arrows are flat tiles with the theme's arrows and the page count is small grey text. The mount and pet list rows look as the game draws them. [Needs in game: which of these tabs Forever shows.]
+- If it fails, paste: a screenshot of each tab that looks wrong, and `/vg errors`.
+
+### 14.14.12 Achievements
+
+- Do: open the achievements window (Y). [Needs in game: Forever may open the Legacy window instead; if so, this step only checks that nothing broke, and the window below never shows.] If it opens: click through the categories, the Guild and Statistics tabs, open an achievement card and tick Track, use the search box (a preview list drops down), press Enter for the full results, and compare with a player if you can.
+- Expect: no bronze header plate, wooden frame or parchment: the category list, the achievements, the statistics, the summary and the comparison each sit on a flat dark panel with no gold border; an achievement card has no parchment or border (its icon, shield and the +/- mark stay) and its description is light even when completed (if completed descriptions or criteria text are black, paste a screenshot); the category you pick shows the selected look; Track is a flat check box; Back, the filter and the search box are flat; the search preview is a small dark panel; the summary's two headings are small grey capitals over flat bars; the full results are a framed panel with a themed title and a close button.
+- If it fails, paste: a screenshot of the tab that looks wrong, and `/vg errors`.
+
+### 14.14.13 Auction house, the game's own pages
+
+- Do: open the auction house with Vanguard's Auction Helper page on, and again after turning it off (Auction helper, "Lists and Posting tabs on the auction house") and reloading. On the game's Buy tab, search for something (type in the box, click Search, open the filter dropdown, click the favourites star), pick a category and a sub-category, click a result and click Back; on Sell, drop an item in and look at the form (quantity, price, duration, the buyout check box); on Auctions, click the Auctions and Bids sub tabs and pick a line; start a purchase so the confirm dialog shows.
+- Expect: no bronze frames or dark tiles: the money line at the foot, the categories, the result lists, the sell form and the item headers sit on flat dark panels; the search box, Search, filter, favourites, column header, Post, Buy, Bid, Buyout, Back, Cancel and Max buttons are flat (the sort arrow, the star and the red clear cross keep their pictures); the price and bid boxes are dark edit boxes with their gold, silver and copper coins; the duration is a flat dropdown; the buyout check box is Vanguard's; the Auctions and Bids tabs are flat tabs, the one you are on raised; a category or result line you pick shows the accent rail and light fill (the same look as every other list) and a hover gives a light wash; no gold category names (they are light, and stay light after the mouse leaves); "Create Auction" is a small grey capital; the money figures are in the theme font; the confirm dialog is a flat panel with a shadow and three flat buttons. With the Helper page on, its Lists and Posting tabs look and work as before.
+- If it fails, paste: a screenshot of the page that looks wrong, which tab it was on, and `/vg errors`.
 
 ## 15. Talent planner
 
@@ -821,7 +1058,7 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 ### 18.2 Group board
 
 - Do: in a capital city, type `/vg lfg` and leave it open for a few minutes while people post in Trade and LookingForGroup. Hover a row, then click one. Do not press Enter unless you want to send it. Then click the filter button twice and switch **Only dungeons for my level** off and on. Finally post `LFM SFK need heals` yourself in a channel.
-- Expect: rows appear as people post, newest first, each with LFM or LFG, a dungeon and its range (or "Any dungeon"), the roles named, the sender's name without its realm or ruleset part and the age; the tooltip shows the whole line and the full name. The click opens the chat box with `/w <full name> Hi! ...` filled in and sends nothing. Your own post does not appear. The whisper reaches the player when you send it (a two-part name that fails is a finding). Inside a dungeon nothing new appears and `/vg errors` stays empty.
+- Expect: the board has a title with its count, a close button at the top right, and Escape closes it; rows appear as people post, newest first, each with a faint wash under the mouse and LFM or LFG, a dungeon and its range (or "Any dungeon"), the roles named, the sender's name without its realm or ruleset part and the age; the tooltip shows the whole line and the full name. The click opens the chat box with `/w <full name> Hi! ...` filled in and sends nothing. Your own post does not appear. The whisper reaches the player when you send it (a two-part name that fails is a finding). Inside a dungeon nothing new appears and `/vg errors` stays empty.
 - If it fails, paste: a screenshot of the board and the chat box, the line that was misread, and `/vg errors`.
 
 ### 18.3 Quest guidance
@@ -829,6 +1066,18 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 - Do: talk to a quest giver with a quest you don't have, then type `/vg questdata`. Type `/vg questdata <id>` for one quest you know is new in WoW Forever and one you know is from 2004. Open the world map on a zone with quests you haven't taken; hover a "!" pin and click it. Shift-click a quest in Vanguard's tracker. Under `/vg` → Quests → Quest guidance set The arrow to "A map waypoint on the next step" and Shift-click again.
 - Expect: the first chat line says `New-quest flag: none on this client (...)` or names one; the lines for the two quests differ in some field (that field is the flag to use; a New mark on the new quest means Vanguard found it). Pins sit on quest givers, or Vanguard draws none because the game's own map shows its quest offers there (either is fine; two "!" on one spot is a finding). The click puts a waypoint there and the game's arrow points at it. Shift-click says `Arrow: <quest>.` and the game's arrow follows the quest; with the waypoint setting the arrow points at its next waypoint or objective area. When the game gives a next step, the tracker shows it in the accent above the objectives.
 - If it fails, paste: the whole `/vg questdata` output for both quests, a screenshot of the map and the tracker, and `/vg errors`.
+
+### 18.4 /way and the floating waypoint pin
+
+- Do: type `/way 45 61`, then open the world map and supertrack a quest (click its pin or its entry in the quest panel), then `/way clear`. In a group, let the game track a party member (the group finder's "track" on their frame, where offered); on a corpse run, look at the pin while you are a ghost. Then untick **Vanguard's pin and font on the game's floating waypoint pin** under `/vg` → Map, `/reload`, and `/way 45 61` again.
+- Expect: the floating marker in the world is Vanguard's teardrop pin in your accent colour, the distance under it (`12 yds`) in the theme's outlined font, and it still fades as you look away from it and when you reach the spot; a supertracked quest shows the same pin. A party member's portrait and the ghost's tombstone are the game's own, untinted. With the switch off, the game's own pin art and gold text come back. [Needs in game: the pin's size against the game's, its look after `/way` and on a supertracked quest, and that the game's `SuperTrackedFrame` is present on Forever.]
+- If it fails, paste: a screenshot of the pin, which step broke, and `/vg errors`.
+
+### 18.5 Levelling guide probe (LG-0)
+
+- Do: with at least one quest in your log, stand in a town and type `/vg guide probe`. Type it again in combat, and once inside a dungeon if you can. Turn in one quest, then type it again.
+- Expect: a line per read: `present, <number or flag>`, `present, hidden` for a value the client hides, `present, not called (no quest)` with an empty log, or `missing`; a table reads `table of N` and a map position `position plain`. After the turn-in the `QUEST_TURNED_IN` line says `first arguments number, number` (or names the type it is); `QUEST_ACCEPTED` the same after you accept one. Nothing else on screen changes.
+- If it fails, paste: the whole `/vg guide probe` output from each place, which lines say `hidden` or `missing`, and `/vg errors`.
 
 ## 19. Roll tracker
 
@@ -897,7 +1146,7 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 ### 23.1 Search and Take (off until switched on: /vg > Town and gear > Mail tools)
 
 - Do: switch the mail tools on, open a mailbox with a few mails. Type part of a sender or subject in the panel's search box, click the filter button through its four values, click Take on a mail with money and on one with an item. Type `/vg mail <words>`.
-- Expect: a panel right of the mail window lists the matching mails (sender: subject, with money and item count); the filter button reads All, Money, Items, Sales; Take takes the money and the first item, one per click; the panel goes when the window closes; chat lists the same matches. With the switch off, `/vg mail` says so. [Needs in game: that TakeInboxMoney and TakeInboxItem(mail, 1) work from a click, that GetInboxInvoiceInfo marks sales, and the panel's place beside the window.]
+- Expect: a panel right of the mail window, headed `Find mail` (no X: it follows the mail window), lists the matching mails (sender: subject, with money and item count); the filter button reads All, Money, Items, Sales; Take takes the money and the first item, one per click; the panel goes when the window closes; chat lists the same matches. With the switch off, `/vg mail` says so. [Needs in game: that TakeInboxMoney and TakeInboxItem(mail, 1) work from a click, that GetInboxInvoiceInfo marks sales, and the panel's place beside the window.]
 - If it fails, paste: `/vg errors` and a screenshot of the mailbox.
 
 ### 23.2 Send-to-alt presets
@@ -996,8 +1245,338 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 ### 31.2 Stat weights wizard
 
 - Do: `/vg`, Town and gear, Gear upgrades, click Set up stat weights (or type `/vg weights wizard`). Scroll the list, drag a slider, type 4.25 in a box beside one and press Enter, click Defaults, drag one again, then Save. Open it again, drag a slider and click Cancel. Then `/vg weights`.
-- Expect: a dialog above everything with a line naming the kind and role, and a scrolling list with a slider and a number box for each of 21 stats (the ones your class and role value first); the box follows its slider, and a typed number sticks (past 3 the slider sits at its end); Defaults puts them back. Save closes it and prints a line in chat; `/vg weights` shows the weight you moved. Cancel closes it and changes nothing.
+- Expect: a dialog above everything with a close button at its top right, a line in small grey type naming the kind and role, and a scrolling list with a thin thumb in the dialog's right margin, a slider and a number box (a small gap right of the slider) for each of 21 stats (the ones your class and role value first); the box follows its slider, and a typed number sticks (past 3 the slider sits at its end); Defaults puts them back. Save closes it and prints a line in chat; `/vg weights` shows the weight you moved. Cancel closes it and changes nothing.
 - If it fails, paste: screenshots, your resolution and UI scale, and `/vg errors`.
+
+## 32. One look across windows
+
+These steps check what the UI consistency pass changed (docs/THEME.md, Window chrome). Like the rest of this file, each Expect is what the code intends; nobody has seen it in the game.
+
+### 32.1 Window titles, the X and Escape
+
+- Do: open each of these and look along its top edge: `/vg` (the options window), `/vg setup`, `/vg whatsnew`, `/vg quests`, `/vg lfg`, `/vg export pick`, `/vg weights wizard`, `/vg prep setup` and `/vg feedback`; then `/vg unlock` and right-click a frame's handle. For each, click the X, open it again and press Escape.
+- Expect: every title is the same bold type in the normal text colour (not gold, not the accent). It sits at the top left in the options window (right of the Vanguard shield, with your faction crest just right of it while Faction look is on), the quest log, the group board and the dialogs; it is centred in setup and What's new, with a small grey line under it (`Step 1 of 4 · Layout`, `Click a line to open its setting.`). The quest log shows its quest count in small grey type beside the title (`12 quests`). The unlock popover's title is a smaller line, `<frame>  ·  <where it is anchored>`, that ends short of its X. Each of these windows has the same X in its top-right corner; the X closes it, and so does Escape. [Needs in game: that every title sits on its X's line at 1080p and 1440p, and that Escape closes the popover while frames are unlocked.]
+- If it fails, paste: a screenshot of each window's top edge and `/vg errors`.
+
+### 32.2 Card titles
+
+- Do: at the auction house open the Posting tab and the Lists tab; type `/vg prep` (the Instance prep card) and `/vg meter on`; at a mailbox with the mail tools on, look at the panel beside the mail window; with a profession window open and the Auction helper on, look at the panel to its right.
+- Expect: each card's title is one line of the same smaller bold type in the normal text colour, 8 units in and 8 down from the card's top-left corner: `Sell`, `Up now`, `Your auctions`, `Lists`, `Shopping` and `Scan` on the auction cards, `Instance prep`, `Find mail` (no X: the panel follows the mail window) and `Crafting cost`. Instance prep has an X in its top-right corner with its Buy list button level with it, just left of it. The meter's heading (`Damage per second` or `Healing per second`) is such a title too, and a click anywhere along it still switches the meter.
+- If it fails, paste: a screenshot of the card and `/vg errors`.
+
+### 32.3 A long dialog title stays clear of the X
+
+- Do: type `/vg report` (a text box titled `Vanguard report: Ctrl+C, then paste at vanguardui.com/feedback`), close it, then type `/vg profile Smoke` (a reload dialog) and `/vg export` (a short title).
+- Expect: no title runs under the X. If the report box's title needs a second line it takes one (two at most), hung from the top so the first line stays level with the X and the second sits under it, never above the X or against the panel's top edge, and the text area starts below it; the reload dialog's sentence wraps the same way, short of the X, and the dialog grows tall enough for it with its buttons under it. The `Vanguard export (profile Smoke)  Ctrl+C to copy` title is one line and leaves the text area where it was.
+- If it fails, paste: a screenshot of each dialog and `/vg errors`.
+
+### 32.4 Question dialogs: the X and Escape answer No
+
+- Do: open `/vg` → Profiles and click **Reset profile**; when the question shows, press Escape. Do it again and click the X. Do it a third time and click No. Then, on a character that has never finished setup, click through `/vg setup` to Done and, when it asks `Keep a copy of these settings outside the game?`, click the X.
+- Expect: the question reads `Reset this profile? Every setting in profile <name> goes back to Vanguard's defaults, for every character that uses it. A copy is kept as profile <name> backup.` with Reset and No, both plain (neither in the accent). Escape, the X and No close it the same way: nothing is reset and chat says nothing about a reset. After the setup question's X, the reload offer (`Setup is done. Reload the UI now to apply it?`) comes up as it does after No. On a reload dialog, the X and Escape close it like Later, without reloading. [Needs in game: that Escape closes a dialog opened over the options window.]
+- If it fails, paste: which of Escape, the X or No did something different, and `/vg errors`.
+
+### 32.5 The accent button in the Core dialogs
+
+- Do: type `/vg import` (an empty import box), `/vg export` (the string box), `/vg export pick`, `/vg profile Smoke`, `/vg feedback` and `/vg weights wizard`, and open the question from 32.4.
+- Expect: the one button that does what the dialog is for is filled in the accent with dark text at the bottom right: Import, Export, Reload, Make report, Save. The buttons beside them are plain slate: Cancel (next to Import, Export, Save and Make report), Later, Defaults and, in a question, both the confirming button (Reset) and No. The string box from `/vg export` has only a plain Close. Buttons are 26 tall and 120 wide, except All and None in the export-pick dialog, which are 60 wide. [Needs in game: how the accent button reads at 1080p and 1440p.]
+- If it fails, paste: a screenshot of the dialog and `/vg errors`.
+
+### 32.6 The scroll thumb
+
+- Do: type `/vg export` on a profile with many modules, scroll it with the wheel, then drag the thumb; paste a short string into `/vg import`, then a long one. Open `/vg export pick` and `/vg weights wizard`, and in `/vg feedback bug` type enough lines into one answer to overflow it. Open `/vg quests` with many quests, and talk to a quest giver whose text is long.
+- Expect: where a text or list is taller than its box, one thin grey line (4 units wide, half bright) shows in the dialog's right margin, 12 units right of the text; it goes full bright under the mouse and while you drag it, and moves as you scroll or type. The text fades softly at the top once scrolled and at the bottom while there is more; the wheel moves it 40 units a step. There are no arrows and no game scroll bar. Where everything fits (a short import box, an export list with few modules) there is no thumb. The quest log's list and its details scroll the same way, and so does the quest dialog's body. In the feedback form each text area has its own thumb, shown only when that answer overflows.
+- If it fails, paste: a screenshot of the window and `/vg errors`.
+
+### 32.7 Section headers
+
+- Do: open `/vg` → General; open the bags with items of several kinds (combined bag on); open `/vg whatsnew`, `/vg quests` and `/vg` → Click casting, and click a grid cell to open the spell picker.
+- Expect: the same small grey capitals line heads each: the options cards (`LOOK`, and so on); the bag's sections (`QUEST ITEMS`, `EQUIPMENT`, `CONSUMABLES`, `TRADE GOODS`, `OTHER`, `JUNK`, `EMPTY`), no longer in the accent; What's new's module groups; the click-cast grid's columns (`PLAIN`, `SHIFT`, `CTRL`, `ALT`), centred over each column; and the picker's groups (`HEALS`, `PROTECT & CLEANSE`, `BUFFS`, `OTHER`). The quest log's zone names are such headers too, each with a chevron before it (down while open, right while folded); clicking one folds or opens its quests. The quest tracker's header reads `QUESTS` with the number of quests you watch after it and a chevron; clicking it folds the tracker to that header (a brass line stays under it) and clicking again opens it. A bag header takes no clicks.
+- If it fails, paste: a screenshot of the window and `/vg errors`.
+
+### 32.8 The chosen row
+
+- Do: open `/vg` and click three pages in the list on the left; open `/vg quests` and click two quests; at the auction house click a list in the Lists pane, click a row of it and press Down with the mouse over the listings. Then type `/vg accent jade`.
+- Expect: the chosen row in each (the page in the options list, the quest in the log, the list in the pane, the listing under Up and Down) has a thin bar in the accent along its left edge and a faint accent wash behind it, the same in all of them; a row under the mouse gets only a faint grey wash. After `/vg accent jade` the bar and the wash are jade at once, without a reload. The options list holds all 19 pages, each 25 tall. [Needs in game: that the 2-pixel bar stays crisp at 1080p and 1440p.]
+- If it fails, paste: a screenshot of the row and `/vg errors`.
+
+### 32.9 The options preview
+
+- Do: open `/vg` → General and look at the sample at the top; change the accent and the Bar texture.
+- Expect: the sample unit frame shows your character's own name (`You` if the game hides it) where `<name>` used to be, with `72%` on its right; the sample action button shows Vanguard's crest, a shield with crossed swords, instead of the game's question mark, with `1` and `5` in its corners. The bars and the button's glow follow the accent and the texture as you change them.
+- If it fails, paste: a screenshot of the sample and `/vg errors`.
+
+### 32.10 General captions
+
+- Do: open `/vg` → General and read the captions under Look.
+- Expect: `Color assist (reload)`, `Font`, `Text size`, `Faction look`, `Theme variant`, `Corners`, `Window ornaments` and `Pixel-perfect scale`, each a noun with nothing after it. Two small grey notes sit under their rows: `Friendly blue, neutral yellow, hostile vermilion.` under Color assist and `A brass rule or corners on large windows.` under Window ornaments. In `/vg whatsnew`, a line about Corners or Theme variant still opens General on its row.
+- If it fails, paste: a screenshot of the Look card and `/vg errors`.
+
+### 32.11 Quest line marks
+
+- Do: talk to a quest giver who offers a quest, then to one who has a quest of yours in progress and one that is ready to turn in; open `/vg quests` with a quest ready to turn in.
+- Expect: in the dialog each quest line has Vanguard's own thin mark before its number: a gold `!` for a quest you can take, a gold `?` for one ready to turn in, a grey `?` for one in progress. They are not the game's round gossip icons; a gossip line keeps whatever icon the game gives it. In the log a quest ready to turn in shows the check mark. On the world map the quest-start pins show the same `!`.
+- If it fails, paste: a screenshot of the dialog and `/vg errors`.
+
+### 32.12 Faction look and the fonts
+
+- Do: on an Alliance or Horde character set `/vg` → General → Look → Faction look to Crest and heading font. Look at the minimap's zone name along its top edge, at the options window's title and a card title, and at a quest giver's name in the quest dialog. Then set it back to Crest only.
+- Expect: with Crest and heading font, window titles, card titles and the quest dialog's NPC name are in the faction's font (Cinzel for Alliance, Metamorphous for Horde), while the minimap's zone name stays bold Fira Sans Condensed at the same size as a card title. With Crest only every one of them is Fira Sans Condensed. A neutral character and a Russian client see Fira Sans throughout.
+- If it fails, paste: a screenshot of the minimap's top edge and of the window title, and your faction.
+
+### 32.13 Rounded corners on an accent button and a segment
+
+- Do: type `/vg corners rounded`. Open `/vg` → Profiles and look at **Create**; type `/vg unlock`, right-click a handle and look at the popover's **Done**; in General look at the Corners row (the chosen segment); hover a plain button and hold the mouse down on it. Then `/vg corners square`.
+- Expect: the accent fill of Create and of Done, and the accent fill of the chosen segment (Rounded), end in the same four-pixel arcs as their borders, with no square corner of accent outside the arc; the lighter hover fill and the darker pressed fill of a plain button do the same. Square puts the corners back at once. [Needs in game: whether the arcs read on a 20 to 26 unit button at 1080p and 1440p.]
+- If it fails, paste: a zoomed screenshot of the button's corner with the UI scale, and `/vg errors`.
+
+### 32.14 Auction filters dialog
+
+- Do: at the auction house open the Lists tab, right-click a row of a list and choose **Filters...**; press Escape; open it again and click the X; open it once more, set a level range and click Save.
+- Expect: a dialog over the auction house titled `Filters: <item>` on one line that ends short of the X, with the X at its top right, Save in the accent and Cancel plain at the bottom right. Its fields (exact name only, a level range, a quality, a max price and the alert switch) sit in rows 28 apart. Escape, the X and Cancel close it without saving; Save saves and closes. [Needs in game: that it opens over the auction house window.]
+- If it fails, paste: a screenshot of the dialog and `/vg errors`.
+
+### 32.15 Feedback form
+
+- Do: type `/vg feedback bug`, leave the summary empty and click Make report.
+- Expect: the form is titled `Send feedback` with an X at its top right, and Escape closes it. Under the bug fields a small grey note, `Your /vg report (version, client and the errors caught this session) goes in the block with your answers.`, wraps inside the form. Make report with an empty summary puts `The short summary is required.` in the warning colour just above the Make report and Cancel buttons, not over them.
+- If it fails, paste: a screenshot of the form and `/vg errors`.
+
+## 33. In-game checklist: the UI coherence pass
+
+This is one session's worth of checks for everything merged from #395 to #415 (the UI coherence plan, phases 8.1 to 8.10, and the reskin coverage batches 1 to 3). **Nothing here has been seen in the game.** Each Expect is what the code intends. Section 32 already covers the Vanguard windows' titles, Escape, scroll thumbs, section headers, quest marks, the faction look and the feedback form, so those steps are not repeated here.
+
+The order is the order to play in: looks you can check quickly first, then the game's own windows Vanguard now skins, then the controls that take keys, and last the steps that need a fight. Steps tagged **[Combat]** need a fight (a dummy or a mob you can start one with) and go at the end.
+
+### 33.1 Sliders: grey fill, white thumb, a locked slider
+
+- Do: `/vg`, General, then drag a size slider. Under Layout, lock a frame's width to match another's, and look at its size slider.
+- Expect: the filled part is a quiet grey bar up to a solid white thumb with a dark outline. The empty track has a one-pixel outline at 1x and at a larger UI scale. The locked slider has a grey thumb and a muted caption.
+- If it fails, paste: a screenshot of the sliders and `/vg errors`.
+
+### 33.2 Switches: knob glide and tracks after a Theme change
+
+- Do: `/vg`, toggle a switch. Turn Reduce motion on and toggle it again. Then change the Theme and look at the switch and slider tracks.
+- Expect: the knob glides in about a tenth of a second, and jumps when Reduce motion is on. After a Theme change, the switch and slider tracks take the new colours with the panels.
+- If it fails, paste: a screenshot and `/vg errors`.
+
+### 33.3 Check boxes: AddOns list, chat settings, raid All assist
+
+- Do: open the game menu, Options, AddOns, and scroll the list; press Enable All and Disable All. Open the chat window's settings, the Combat and Text-to-speech categories, and Message Types. If you lead or assist a raid, toggle All assist on the Raid tab of the social window.
+- Expect: each check is a 16 px dark box with the check glyph in the accent when it is on. Hover shows a border, a held press shows a shade, and a disabled box shows its mark and label in the disabled colour with no border stuck. Enable All and Disable All update the marks. The All assist label is grey when you are neither leader nor assistant.
+- If it fails, paste: a screenshot and `/vg errors`.
+
+### 33.4 Radios, dividers, arrow buttons, the quest track box
+
+- Do: open the mail window's send page and choose Send Money, then COD. In the chat settings, move a line up and down. Look at a divider row on the options window. Open the quest log and tick a quest's track box.
+- Expect: the radio is a round dark ring with a brass dot, centred, and choosing one clears the other. Dividers are one pixel. The arrow buttons point the right way and grey out when disabled. The track box shows a check when the quest is tracked.
+- If it fails, paste: a screenshot of each and `/vg errors`.
+
+### 33.5 Scroll bars: the game's old-style bar
+
+- Do: `/vg lfg`, or the game's Group Finder, and open a listing with a comment box. Drag its scroll bar. Then drag a scroll bar on a game settings page.
+- Expect: the old bar's thumb has one thin line that follows the thumb and brightens while you drag it. Its up and down arrows are gone, and the faded arrows take no clicks.
+- If it fails, paste: a screenshot and `/vg errors`.
+
+### 33.6 Selected rows in the game's lists
+
+- Do: click rows in the Titles list, the Equipment Manager, the collections Sets list, the group finder's Browse list and a community list in the social window. Click a trainer skill and watch the list.
+- Expect: the picked row has a 2 px accent rail on its left edge over a lighter fill. The rail moves with each pick, and recycled rows carry no stale rail. The game's own selection is what the rail follows.
+- If it fails, paste: a screenshot and `/vg errors`.
+
+### 33.7 Chat side buttons and Quick Join
+
+- Do: hover the chat window's side buttons. Scroll up, then click the scroll-to-bottom glyph. Open the chat menu and minimize the chat. When Quick Join's toast appears, look at it.
+- Expect: the side buttons are tiles with their glyphs, and the scroll-to-bottom glyph shows. The chat menu and minimize still work. Quick Join's queue art is hidden.
+- If it fails, paste: a screenshot and `/vg errors`.
+
+### 33.8 Chat bubbles
+
+- Do: in the open world, say something near another character or a mob. Then enter an instance and say something there.
+- Expect: in the world, bubbles are flat slate panels with their text on them. Inside an instance the game's own bubbles show, and `/vg errors` is empty.
+- If it fails, paste: a screenshot and `/vg errors`.
+
+### 33.9 Toasts: Battle.net, time played, voice prompts
+
+- Do: wait for a friend to come online, or use `/played` for the time-played toast. If voice is on, look at a voice chat prompt. Skip the voice part if voice is unavailable.
+- Expect: the Battle.net online line sits in secondary text after the toast's own animation. The time-played toast is themed. Voice prompts take the toast look, with a themed Join button.
+- If it fails, paste: a screenshot and `/vg errors`.
+
+### 33.10 Fonts: raid warning, screenshot line, frame rate, floating damage
+
+- Do: take a screenshot and look at the line it prints. Turn on the frame rate readout in the video settings. Turn on floating combat text and hit a target dummy. If you can, see a raid warning in a raid.
+- Expect: the raid warning, the screenshot line and the frame rate text use the theme font at the game's size, and the raid warning follows a Theme change. Floating damage numbers use the theme font at the game's size. If the numbers over a mob keep the game's font, that is the open check (the font is set when the addon loads).
+- If it fails, paste: a screenshot and `/vg errors`.
+
+### 33.11 Breath and fatigue bars
+
+- Do: swim underwater until the breath bar shows.
+- Expect: the bar sits in the timers group with its caption in the theme. This path has never been seen in game, so the first look decides it.
+- If it fails, paste: a screenshot and `/vg errors`.
+
+### 33.12 Durability figure with the info strip
+
+- Do: turn the info strip on, then look at the durability figure on the character sheet or the bottom of the screen. Turn the strip off and look again.
+- Expect: the game's durability figure is hidden while the info strip is on, and returns when it is off.
+- If it fails, paste: a screenshot of the strip and `/vg errors`.
+
+### 33.13 Personal resource display
+
+- Do: with Edit Mode's personal resource display shown, look at it for your class's power bars (a Rogue's combo points or a Mage's mana, for example).
+- Expect: flat bars on slate panels where Edit Mode puts them, with no visible seam between the health and power panels.
+- If it fails, paste: a screenshot and `/vg errors`.
+
+### 33.14 Quest tracker: countdown and recipes
+
+- Do: track a timed quest and a profession recipe, and watch the tracker.
+- Expect: the timed quest shows a `Time left` countdown that ticks. Tracked recipes appear under a Recipes section with their reagent lines, and a reagent the client has not cached joins a moment later. Untimed quests show no countdown. Whether Forever reports quest timers and recipe tracking is the open check.
+- If it fails, paste: a screenshot of the tracker and `/vg errors`.
+
+### 33.15 Waypoints and the floating pin
+
+- Do: `/way` to a spot on the map. If you can, track a party member with no nearest token.
+- Expect: the pin is a teardrop in the accent colour with the distance text. If it looks stretched, paste a screenshot, since the icon is 32 by 32 and drawn at the atlas size. The party member's pin is the game's gold atlas, tinted.
+- If it fails, paste: a screenshot and `/vg errors`.
+
+### 33.16 Loot window, merchant rows, buyback, money
+
+- Do: loot a corpse with several items and scroll the list. Open a merchant and buy an item, buy one back, use the repair tiles and the page arrows.
+- Expect: loot rows show the item look on every row as the list scrolls. Merchant rows, buyback, the repair tiles, the page arrows and the coin lines all look right after paging and after a buy.
+- If it fails, paste: a screenshot and `/vg errors`.
+
+### 33.17 Auction house: multi-stack sale and its own pages
+
+- Do: on the Sell tab, start a multi-stack sale and watch its progress bar. Then look at the Buy search, the Sell page, the Auctions and Bids sub-tabs, and a purchase confirmation. Do this once with Vanguard's Auction Helper page on and once off.
+- Expect: the progress bar is flat, with its icon and cancel cross kept. The Buy search bar is flat, with the star and sort arrows kept. The picked category and result line use the selected look with no gold row art. Category names stay light after the mouse leaves (the least sure of these). The Sell coin boxes, duration dropdown, buyout check and grey Create Auction heading look right, and the confirmation is flat with three buttons. With the helper on, its Lists and Posting tabs are unchanged.
+- If it fails, paste: a screenshot of each page and `/vg errors`.
+
+### 33.18 Game windows: titles and insets
+
+- Do: open the trade window, the mail window, the spellbook, the talents, the professions window, the collections journal and, if it opens on Forever, the achievements window.
+- Expect: each window's title is centred where the game puts it, in the heading role and light text. Every window's inset is a sunk panel with no seams.
+- If it fails, paste: a screenshot of each window and `/vg errors`.
+
+### 33.19 Trade, mail, quests, gossip, popups, roll, time manager
+
+- Do: trade with another player. Open the mail inbox and send page. Accept a quest and open gossip. Open a ready check or another popup. Roll on loot if you can. Open the time manager and its stopwatch. In the stack split, type an amount and click coins.
+- Expect: the trade, mail and quest panels look flat with light text and no gold border. The stack split and coin pickup amount sit in a thin-bordered box between visible arrows, and still take input. Roll windows, popups and the time manager are themed.
+- If it fails, paste: a screenshot and `/vg errors`.
+
+### 33.20 Spellbook, talents, professions, inspect, flight map, guild bank
+
+- Do: open the spellbook and read a page. Open the talents, the professions window and a linked recipe. Inspect another player. Open the flight map. Open the guild bank.
+- Expect: each is themed with flat panels and light text. The spellbook text is readable (watch for a font colour that is too dark). The professions list follows the game's selection. The inspect window and the flight map have themed borders.
+- If it fails, paste: a screenshot of each and `/vg errors`.
+
+### 33.21 Town: stable, class trainer, small windows
+
+- Do: visit a pet stable, then a class trainer's skills list and its categories. Open the macro window and an icon picker. Open the loot history and the master loot candidates. Open the currency transfer window.
+- Expect: the stable has a flat panel with its pet model on a dark box. The trainer's skill rows have no plate, their icons are kept, and the selected skill's rail follows clicks (if the list does not redraw, it follows only when a row is acquired). The macro window and icon pickers are flat with a dark name box. The currency transfer has one thin line above the transaction.
+- If it fails, paste: a screenshot and `/vg errors`.
+
+### 33.22 Menus, role check, ready popup, match results
+
+- Do: open a dropdown from a unit frame or the game menu header. If you can, trigger a role check in a group, a ready check, a battleground enter dialog, and look at match results after a match.
+- Expect: menus and dropdowns are flat panels with a soft shadow and no gold border. The role check, ready popup, enter-battle dialog and match results are flat, with rows and team colours unchanged.
+- If it fails, paste: a screenshot and `/vg errors`.
+
+### 33.23 Social: guild window, guild control, open letter
+
+- Do: open the guild window and look at the roster, Guild Info, News, the benefits page and the Preferred Play dropdowns. Open the community list. Open the guild control window (ranks, permissions, bank tabs, Discord) if you have the rights, and switch its tabs. Open the guild log, the settings, the news filters and the invite manager. Open an open letter from the mail or an auction invoice.
+- Expect: roster rows, the community list's selection rail and the benefits page are themed. The guild control window keeps its skin when you switch tabs. The open letter and auction invoice have light text in a sunk box.
+- If it fails, paste: a screenshot and `/vg errors`.
+
+### 33.24 Social: channels, friends, registrar, charter, raid tab, cards
+
+- Do: open the channels window and its open channel, then rename a channel and create one. Open add friend and the Battle.net invite. Open the guild registrar, charter and tabard pickers. Open a role poll and the dungeon invite check boxes. Open the raid tab, including Raid Info. Select a social card, and look at the recruit reward card and Accept. Rename the guild.
+- Expect: the open channel is lit and its rail follows clicks after the game redraws. The create-channel title and labels are light. The registrar, charter and tabard pickers are themed. The raid tab's class buttons are raised panels. The single-line invite toast text is readable. The guild rename window is themed.
+- If it fails, paste: a screenshot and `/vg errors`.
+
+### 33.25 Map: world map, quest panel, group finder, Legacy
+
+- Do: open the world map and use its floor dropdown, tracking filter and pin tile. Open the quest panel and the queue status. Browse the group finder's listing and search pages. Open the Legacy window, pick a tree card and open a challenge, and look at its calendar and dialogs.
+- Expect: the map's dropdown and filters are themed, and the quest row's track tick follows the game's check. Browse and who rows keep the rail after a click. The picked tree card and open challenge use the selected look (rail and fill), and the rail moves with the pick. The objective and points bars show their fill, and the calendar's month arrows and class buttons show the pushed glyph.
+- If it fails, paste: a screenshot and `/vg errors`.
+
+### 33.26 Character pane: lists, flyout arrows, sets
+
+- Do: open the character pane's reputation, skills and currency lists. Hover an equipment slot to open its flyout and use its page arrows. Open the Titles list and the Equipment Manager.
+- Expect: the list rules are one-pixel dividers above and below. The flyout's page arrows point the right way and still page. Picked rows use the selected look, and the gear tick, icons, spec icon and lost-set red all stay.
+- If it fails, paste: a screenshot and `/vg errors`.
+
+### 33.27 Options, Edit Mode, chat settings in the game
+
+- Do: open the game's options window and a few pages, including the nav and the Performance head. Open Edit Mode, change the layout and size, use the grid slider and the layout dropdown, and open the system settings dialog and the import/save dialog. Open the addon list's bar and dropdowns.
+- Expect: section headings are small grey capitals. The setting rows' checks, sliders and dropdowns are themed and work. Edit Mode keeps its layout with the new checks and panel. The system settings dialog resizes and stays themed across systems.
+- If it fails, paste: a screenshot and `/vg errors`.
+
+### 33.28 Cooldown Manager, keybinding, click binding, help, report, colour picker
+
+- Do: open the Cooldown Manager settings and refresh its layout. Use its search, a bar and its dropdowns, then Undo. Open the keybinding window and the click binding window (hover, delete, marks, the tutorial card). Open the help window and the report window (its minor-category rows and comment box). Open the colour picker and use its Hash field and opacity slider.
+- Expect: the Cooldown Manager's headers stay grey after a layout refresh, and its dropdowns and Undo are themed. The keybinding and click binding windows are flat. The help window has its inset. The report's minor-category rows follow the select state. The colour picker's Hash field and opacity slider are themed.
+- If it fails, paste: a screenshot and `/vg errors`.
+
+### 33.29 Combat log, death recap, Cooldown alerts, movement pad, Lua error window
+
+- Do: open the combat log and use its filter arrow and progress bar. Open the death recap (or wait for a death). Trigger a Cooldown Manager sound alert and a group buff visual alert. Click the movement pad's arrows. Run `/run error("test")` to open the Lua error window, then page and scroll it, and close it.
+- Expect: the death recap box, its divider and its Unavailable line are themed. The combat log's filter arrow and progress bar are themed. The alert dialogs are themed. A clicked movement direction lights and unlights, and dragging and locking still work. The Lua error window pages, scrolls and closes.
+- If it fails, paste: a screenshot and `/vg errors`.
+
+### 33.30 Vanguard buttons and far-left actions
+
+- Do: in `/vg`, press Create, Save and Reload now, and hover and press one. Look at Delete and Copy here on a profile. Abandon a quest from the quest log and say Goodbye in a quest dialog. Open a question such as Delete profile or Clear recent. Change the Text size to 130% and look at a dropdown's caption.
+- Expect: primary buttons hover to a lighter accent and press a shade darker. Delete and Copy keep a plain look with a red label. Abandon and Goodbye sit alone at the far left. A question's Yes is the primary, and a destructive question shows a danger button. A long caption wraps left of its column.
+- If it fails, paste: a screenshot and `/vg errors`.
+
+### 33.31 Keys: Tab focus, Enter, sliders, menus, search
+
+- Do: run `/vg setup`, then Tab through the wizard to Skip setup, Back and Next, and press Enter on Next. Open a question such as Delete profile, press Tab and Space. Open the Font menu and press Escape, then open it again and click outside it. In `/vg`, Tab to a slider and press Left and Right. In the options search, type `vermilion` and press Enter, and clear the box with its glyph. Type in an edit box.
+- Expect: the focus ring moves through the choices, Skip, Back and Next. Space presses a focused button, and Enter on Next advances. On a danger question Enter does nothing unless a button has focus. Escape closes the Font menu and leaves the options window open, and a click outside closes it. Left and Right step a focused slider. The search jumps to the Color assist note without an error, and its clear glyph empties the box. An edit box border turns accent while you type. A menu with more than 16 rows (Bar texture with shared textures) shows a thumb.
+- If it fails, paste: a screenshot and `/vg errors`.
+
+### 33.32 Spacing in the Vanguard windows
+
+- Do: compare What's new, the quest log's text and rewards, the quest dialog, an export dialog with text, the options nav groups, the unlock popover's footer, the minimap button drawer and the raid tools bar. Look for even edges.
+- Expect: the gaps sit on the same scale everywhere. The unlock popover's Done and Reset sit 4 px further in than before. Nothing else shifts.
+- If it fails, paste: a screenshot of the window that looks wrong.
+
+### 33.33 Group board, Mail tools, dropdowns over dialogs
+
+- Do: open the group board and read its note and hint. Open Mail tools' card. Look at group threat, rolls and the officer roster with a 12-letter name. Open the feedback form's Part of Vanguard dropdown, and the auction filters' Quality dropdown.
+- Expect: the group board's note and hint do not overlap, and the hint fits one line. Mail tools' rows, Take button and preset hint fit the 270-wide card. A long name next to its figure still reads. Both dropdowns open over their dialog, not behind it.
+- If it fails, paste: a screenshot and `/vg errors`.
+
+### 33.34 [Combat] Menus and the keyboard focus
+
+- Do: open a dropdown menu, then start a fight. Separately, open the setup wizard or a question dialog, Tab to a button, start a fight, end it, and press Tab again.
+- Expect: the menu closes when the fight starts, and the first click after it is not swallowed. The window gives up the keyboard in combat and takes it back after the fight.
+- If it fails, paste: `/vg errors`, and the combat log if it shows an error.
+
+### 33.35 [Combat] Enter and movement with a question open
+
+- Do: open a question dialog, then start a fight with it open. Press Enter, then hold the movement keys.
+- Expect: Enter does nothing in combat, and the movement keys still work with the question open.
+- If it fails, paste: `/vg errors`.
+
+### 33.36 [Combat] Switch knobs and slider thumbs
+
+- Do: in combat, toggle a switch. Drag a slider in combat, then drag one out of combat.
+- Expect: in combat the knob moves at once with no glide, and dragging has no lag.
+- If it fails, paste: a screenshot and `/vg errors`.
+
+### 33.37 [Combat] Edit Mode, quick keybinding, Raid tab
+
+- Do: open Edit Mode and the quick keybind window out of combat, then close them. Open the Raid tab in a group, start a fight with it open, end the fight, and use the member buttons. If the game lets you open Edit Mode in a fight, do that too.
+- Expect: no taint error. The layouts and checks look as in 33.27 and 33.28. The member buttons work after the fight.
+- If it fails, paste: `/vg errors` and the exact error line.
+
+### 33.38 [Combat] Accent change with a hidden dispel debuff badge
+
+- Do: with a debuff badge coloured from a hidden dispel type on screen, change the accent colour.
+- Expect: no error in `/vg errors`. This is the probe that issue #284 still needs.
+- If it fails, paste: `/vg errors`.
+
+Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ## When you are done
 

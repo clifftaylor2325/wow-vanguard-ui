@@ -2,11 +2,11 @@
 // TEST-ONLY headless client. Cases follow docs/handoff/RESKIN-PLAN.md section 0 ("Writing a task's test").
 
 import { expect, it } from "vitest";
-import { isTok, loggedIn, px, WINDOWS_ENV } from "./helpers.mjs";
+import { expectErrors, isTok, loggedIn, px, WINDOWS_ENV } from "./helpers.mjs";
 
 // TEST-ONLY tab buttons shaped like the game's tab templates, and a reader for a tab's state:
-// art = the alpha of its Left texture (-1 while the game's own), line = whether its accent
-// line (the only OVERLAY texture T.Tab adds) shows, icon = whether its icon was left alone.
+// art = the alpha of its Left texture (-1 while the game's own), raised = whether it is the
+// selected tab's raised fill (the last BACKGROUND texture T.Tab tints), icon = whether its icon was left alone.
 const TABS_ENV = `
   function __tab(parent, name, keys, kind)
     local b = CreateFrame(kind or "Button", name, parent)
@@ -14,12 +14,20 @@ const TABS_ENV = `
     b.Icon = b:CreateTexture(nil, "ARTWORK")
     return b
   end
-  function __line(b)
-    for _, r in ipairs({ b:GetRegions() }) do if r.__layer == "OVERLAY" then return r end end
+  function __tabBg(b)
+    local bg
+    for _, r in ipairs({ b:GetRegions() }) do if r.__layer == "BACKGROUND" and r.__vertexColor then bg = r end end
+    return bg
+  end
+  function __raised(b)
+    local bg = __tabBg(b)
+    if not bg then return false end
+    local c = bg.__vertexColor
+    local r, g, bl = ns.Theme.RGB("raised")
+    return c[1] == r and c[2] == g and c[3] == bl
   end
   function __tabState(b)
-    local line = __line(b)
-    return { art = b.Left and b.Left.__alpha or -1, icon = b.Icon.__alpha == nil, line = line ~= nil and line:IsShown() }
+    return { art = b.Left and b.Left.__alpha or -1, icon = b.Icon.__alpha == nil, raised = __raised(b) }
   end
   -- A tab system as TabSystemMixin has it: tabs added one at a time, read back by GetTabButton.
   function __system(parent)
@@ -59,7 +67,7 @@ it("the tabs group loads cleanly on a client without its windows", () => {
   expect(addon.eval("for _, e in ipairs(ns.errors) do if e.text:find('Windows') then return e.text end end return 'none'")).toBe("none");
 });
 
-it("tab buttons on framed windows: named, array and tab-system tabs in the theme, the selected one lit", () => {
+it("tab buttons on framed windows: named, array and tab-system tabs in the theme, the selected one raised", () => {
   const addon = loggedIn(WINDOWS_ENV + WINDOW_TABS_ENV);
   addon.eval("MerchantFrame:Show() TestOnlyFriends:Show() TestOnlySpells:Show() TestOnlyHeader:Show()");
   const states = addon.eval(`return {
@@ -67,9 +75,9 @@ it("tab buttons on framed windows: named, array and tab-system tabs in the theme
     __tabState(TestOnlySpells.TabSystem:GetTabButton(2)), __tabState(TestOnlyHeader.FriendsTabHeader.TabSystem:GetTabButton(1)) }`);
   expect(states.map((s) => s.art), "every kind of tab has its game art faded").toEqual([0, 0, 0, 0, 0]);
   expect(states.map((s) => s.icon), "and its icon left alone").toEqual([true, true, true, true, true]);
-  expect(states.map((s) => s.line), "only the disabled (selected) Merchant tab shows the accent line").toEqual([false, true, false, false, false]);
+  expect(states.map((s) => s.raised), "only the disabled (selected) Merchant tab is raised").toEqual([false, true, false, false, false]);
   addon.eval("TestOnlySpells.TabSystem:GetTabButton(1):SetTabSelected(true)");
-  expect(addon.eval("return __tabState(TestOnlySpells.TabSystem:GetTabButton(1)).line"), "a tab system's selection lights its tab").toBe(true);
+  expect(addon.eval("return __tabState(TestOnlySpells.TabSystem:GetTabButton(1)).raised"), "a tab system's selection raises its tab").toBe(true);
   expect(addon.eval("return ns.errors[1] == nil"), "nothing failed, a window this client lacks included").toBe(true);
 });
 
@@ -82,7 +90,7 @@ it("tab buttons: a second show paints nothing more, and tabs a tab system adds l
   addon.eval("TestOnlySpells.TabSystem:AddTab()");
   expect(addon.eval("return __tabState(TestOnlySpells.TabSystem:GetTabButton(3)).art"), "a tab the game adds after the window was dressed").toBe(0);
   addon.eval("MerchantFrameTab2:Enable() MerchantFrameTab1:Disable()");
-  expect(addon.eval("return { __tabState(MerchantFrameTab1).line, __tabState(MerchantFrameTab2).line }"), "the line follows the game's selection").toEqual([true, false]);
+  expect(addon.eval("return { __tabState(MerchantFrameTab1).raised, __tabState(MerchantFrameTab2).raised }"), "the raised tab follows the game's selection").toEqual([true, false]);
 });
 
 it("tab buttons: windows that load later are dressed when their part of the game loads", () => {
@@ -111,7 +119,7 @@ it("tab buttons: the tabs switch off, or a window's own group off, leaves the ga
 
 // TEST-ONLY side tabs: a LargeSideTabButtonTemplate one (a Frame: art keys, SelectedTexture,
 // SetChecked from its mixin) and a RightSideTabTemplate one (a CheckButton with an unkeyed frame
-// texture, an icon and its overlay). __sideState reads the line, the faded art and the icon:
+// texture, an icon and its overlay). __sideState reads the raised state, the faded art and the icon:
 // icon = the icon still shows (never faded out) and its overlay is the game's; dim = greyed and faded.
 const SIDE_ENV = TABS_ENV + `
   function __side(parent, key)
@@ -132,14 +140,14 @@ const SIDE_ENV = TABS_ENV + `
     return t
   end
   function __sideState(t)
-    local line = __line(t)
+    local raised = __raised(t)
     return { art = t.Background and t.Background.__alpha or (t.frameArt and t.frameArt.__alpha) or -1,
       icon = (t.Icon.__alpha == nil or t.Icon.__alpha > 0) and (t.IconOverlay == nil or t.IconOverlay.__alpha == nil),
-      dim = t.Icon.__desaturated == true and t.Icon:GetAlpha() < 1, line = line ~= nil and line:IsShown() }
+      dim = t.Icon.__desaturated == true and t.Icon:GetAlpha() < 1, raised = raised }
   end
 `;
 
-it("side tabs: the character pane's mode tabs in the theme, the checked one lit from the start and as the game moves it", () => {
+it("side tabs: the character pane's mode tabs in the theme, the checked one raised from the start and as the game moves it", () => {
   const addon = loggedIn(WINDOWS_ENV + SIDE_ENV + `
     __window("CharacterFrame")
     CharacterFrame.ModeTabs = CreateFrame("Frame", nil, CharacterFrame)
@@ -156,10 +164,10 @@ it("side tabs: the character pane's mode tabs in the theme, the checked one lit 
   const first = addon.eval(`${tabs}`);
   expect(first.map((s) => s.art), "the side art is faded").toEqual([0, 0, 0]);
   expect(first.map((s) => s.icon), "the icons are the game's").toEqual([true, true, true]);
-  expect(first.map((s) => s.line), "the tab the game had checked before the skin hooked it is already lit").toEqual([true, false, false]);
-  expect(first.map((s) => s.dim), "the other tabs' icons are greyed, the lit one's in color").toEqual([false, true, true]);
+  expect(first.map((s) => s.raised), "the tab the game had checked before the skin hooked it is already raised").toEqual([true, false, false]);
+  expect(first.map((s) => s.dim), "the other tabs' icons are greyed, the raised one's in color").toEqual([false, true, true]);
   addon.eval("local m = CharacterFrame.ModeTabs m.CharacterTab:SetChecked(false) m.ReputationTab:SetChecked(true)");
-  expect(addon.eval(tabs).map((s) => s.line), "the line follows SetChecked, as the game's RefreshDisplay does").toEqual([false, true, false]);
+  expect(addon.eval(tabs).map((s) => s.raised), "the raised tab follows SetChecked, as the game's RefreshDisplay does").toEqual([false, true, false]);
   expect(addon.eval("return CharacterFrame.TabIndicators.Glyph.__alpha"), "the gamepad tab indicators' art is faded").toBe(0);
   addon.eval("CharacterFrame:Show()");
   const painted = addon.eval("return ns.Theme.PaintedCount()");
@@ -175,9 +183,9 @@ it("side tabs: the guild window's, whether or not another group registered it, u
   const state = addon.eval("return { __sideState(CommunitiesFrame.ChatTab), __sideState(CommunitiesFrame.RosterTab) }");
   expect(state.map((s) => s.art), "its frame texture (no key) is faded").toEqual([0, 0]);
   expect(state.map((s) => s.icon), "its icon and the icon's overlay are kept").toEqual([true, true]);
-  expect(state.map((s) => s.line), "the checked tab is lit").toEqual([true, false]);
+  expect(state.map((s) => s.raised), "the checked tab is raised").toEqual([true, false]);
   addon.eval("CommunitiesFrame.RosterTab:SetChecked(true) CommunitiesFrame.ChatTab:SetChecked(false)");
-  expect(addon.eval("return { __sideState(CommunitiesFrame.ChatTab).line, __sideState(CommunitiesFrame.RosterTab).line }"), "and it moves with SetChecked").toEqual([false, true]);
+  expect(addon.eval("return { __sideState(CommunitiesFrame.ChatTab).raised, __sideState(CommunitiesFrame.RosterTab).raised }"), "and it moves with SetChecked").toEqual([false, true]);
   expect(addon.eval("return { __sideState(CommunitiesFrame.ChatTab).dim, __sideState(CommunitiesFrame.RosterTab).dim }"), "the greyed icon moves with it").toEqual([true, false]);
   const registered = guild + `ns.GetModule("Windows").Add("social", "framed", { "CommunitiesFrame" })`;
   expect(loggedIn(registered).eval("return __sideState(CommunitiesFrame.ChatTab).art"), "registered by the social group, still dressed").toBe(0);
@@ -202,7 +210,7 @@ it("side tabs: Legacy, inspect and group finder windows are dressed when their p
     __tabState(LFGParentFrameTab3).art, __sideState(LFGParentFrame.BrowsingTab).art, __tabState(InspectFrameTab2).art }`);
   expect(out, "the Legacy side tabs, the group finder's tabs and side tabs and the inspect tabs").toEqual([0, 0, 0, 0, 0]);
   addon.eval("InspectFrameTab2:Disable()");
-  expect(addon.eval("return __tabState(InspectFrameTab2).line"), "the inspect tab the game selects (disables) is lit").toBe(true);
+  expect(addon.eval("return __tabState(InspectFrameTab2).raised"), "the inspect tab the game selects (disables) is raised").toBe(true);
   expect(addon.eval("return ns.errors[1] == nil")).toBe(true);
 });
 
@@ -358,6 +366,8 @@ it("equipment flyout: panels behind its grid and page bar, its buttons skinned l
     EquipmentFlyoutFrame.buttonFrame, EquipmentFlyoutFrame.NavigationFrame = CreateFrame("Frame", nil, EquipmentFlyoutFrame), CreateFrame("Frame", nil, EquipmentFlyoutFrame)
     __art(EquipmentFlyoutFrame.buttonFrame) __art(EquipmentFlyoutFrame.NavigationFrame)
     EquipmentFlyoutFrame.buttons = { CreateFrame("Button", nil, EquipmentFlyoutFrame.buttonFrame) }
+    EquipmentFlyoutFrame.NavigationFrame.PrevButton = CreateFrame("Button", nil, EquipmentFlyoutFrame.NavigationFrame)
+    EquipmentFlyoutFrame.NavigationFrame.NextButton = CreateFrame("Button", nil, EquipmentFlyoutFrame.NavigationFrame)
     EquipmentFlyoutFrame:Hide()
     EquipmentFlyout_UpdateItems = function() end
   `);
@@ -366,6 +376,7 @@ it("equipment flyout: panels behind its grid and page bar, its buttons skinned l
   const flyout = () => addon.eval(`local f = EquipmentFlyoutFrame
     return { __panel(f.buttonFrame), __panel(f.NavigationFrame), ns.FrameState('vgSkinned')[f.buttons[1]] == true, #f.buttons }`);
   expect(flyout(), "its grid and page bar panelled, its first button skinned").toEqual([true, true, true, 1]);
+  expect(addon.eval("local n = EquipmentFlyoutFrame.NavigationFrame return { ns.Theme.ArrowParts(n.PrevButton) ~= nil, ns.Theme.ArrowParts(n.NextButton) ~= nil }"), "its page arrows theme arrow buttons").toEqual([true, true]);
   addon.eval(`table.insert(EquipmentFlyoutFrame.buttons, CreateFrame("Button", nil, EquipmentFlyoutFrame.buttonFrame))`);
   expect(addon.eval("return ns.FrameState('vgSkinned')[EquipmentFlyoutFrame.buttons[2]]"), "a button the game adds waits for the next fill").toBe(null);
   addon.eval("EquipmentFlyout_UpdateItems()");
@@ -570,7 +581,7 @@ it("scroll bars: only on registered windows whose groups are on; a bar that isn'
   expect(groupOff.eval("CommunitiesFrame:Show() return __barState(CommunitiesFrame.ScrollBar)[1]"), "a window whose own group is off (the guild window, social) keeps the game's bars").toBe(-1);
 });
 
-it("tabs and the window's padding: a tab set outside the window moves out to the panel's edge, once, with its bar on its outer edge", () => {
+it("tabs and the window's padding: a tab set outside the window moves out to the panel's edge, once", () => {
   const addon = loggedIn(WINDOWS_ENV + SIDE_ENV + `
     __window("CommunitiesFrame") CommunitiesFrame:SetSize(400, 300) CommunitiesFrame:SetPoint("CENTER")
     local chat = __right(CommunitiesFrame, "ChatTab", true) chat:SetSize(32, 32) chat:SetPoint("TOPLEFT", CommunitiesFrame, "TOPRIGHT", 2, -40)
@@ -583,10 +594,6 @@ it("tabs and the window's padding: a tab set outside the window moves out to the
     local c, r, b = CommunitiesFrame.ChatTab.__points.TOPLEFT, CommunitiesFrame.RosterTab.__points.TOP, TestOnlyBottomTab1.__points.TOPLEFT
     return { math.abs(c.x - pad) < 1e-9, c.y, r.rel == CommunitiesFrame.ChatTab, r.y, b.x, math.abs(b.y + pad) < 1e-9, ns.Theme.Padding(CommunitiesFrame) }`);
   expect(out, "the guild window's first side tab sits on the panel's padded edge (shown twice: moved once), the next still follows it; the bottom tab drops below the padding").toEqual([true, -40, true, -8, 11, true, 12]);
-  const bars = addon.eval(`local function bar(t) for _, r in ipairs({ t:GetRegions() }) do if r.__layer == "OVERLAY" then return r end end end
-    local side, bottom = bar(CommunitiesFrame.ChatTab), bar(TestOnlyBottomTab1)
-    return { side.__points.TOPRIGHT ~= nil and side.__points.BOTTOMRIGHT ~= nil, bottom.__points.BOTTOMLEFT ~= nil and bottom.__points.BOTTOMRIGHT ~= nil }`);
-  expect(bars, "the accent bar runs along the edge away from the window: the side tab's right, the bottom tab's bottom").toEqual([true, true]);
   expect(addon.eval("return ns.errors[1] == nil")).toBe(true);
 });
 
@@ -620,4 +627,439 @@ it("flight map: its map art stays when the window's art is faded", () => {
     TaxiFrame.InsetBg = TaxiFrame:CreateTexture(nil, "BACKGROUND")`);
   addon.eval("TaxiFrame:Show() TaxiFrame:Hide() TaxiFrame:Show()");
   expect(addon.eval("return { TaxiMap:GetAlpha(), TaxiFrame.InsetBg:GetAlpha(), TaxiFrame.NineSlice.__alpha }"), "the map (either texture the client draws it on) shows, the frame art is faded").toEqual([1, 1, 0]);
+});
+
+// TEST-ONLY side tabs of windows the game builds with its own holders, shaped like the Camelot ones: a window's side tabs
+// by key (ProfessionsFrame, CooldownViewerSettings, the inspect window's ModeTabs), the collections window's TabContainer
+// (two anchors on the window, a Tabs array) and the paper doll's PaperDollSidebarTabs (CheckButtons with an Icon and an
+// unkeyed plate). __padOf says whether a tab's first anchor sits on the panel's padded edge, one pixel in.
+const HOLDERS_ENV = PANE_ENV + `
+  function __padOf(tab, point) return math.abs(tab.__points[point or "TOPLEFT"].x - (ns.GetModule("Windows").PAD - ns.Theme.Pixel(tab))) < 1e-9 end
+  function __sized(w) w:SetSize(400, 300) w:SetPoint("CENTER") return w end
+`;
+
+it("side tabs: the professions window's, the cooldown settings' and the inspect guild tab are side tabs, out past the padding", () => {
+  const addon = loggedIn(HOLDERS_ENV + `
+    local profs = __sized(__window("TestOnlyProfs"))
+    local first = __side(profs, "ProfessionsOverviewTab") first:SetSize(40, 40) first:SetPoint("TOPLEFT", profs, "TOPRIGHT", 0, -60)
+    local next = __side(profs, "Professions1Tab") next:SetSize(40, 40) next:SetPoint("TOPLEFT", first, "BOTTOMLEFT", 0, -2)
+    __side(profs, "Professions7Tab")
+    local cd = __window("TestOnlyCooldown") __side(cd, "SpellsTab") __side(cd, "AurasTab") __side(cd, "GroupBuffsTab")
+    ns.GetModule("Windows").Add("windows", "framed", { "TestOnlyProfs", "TestOnlyCooldown" })
+    __window("InspectFrame") InspectFrame.ModeTabs = CreateFrame("Frame", nil, InspectFrame) InspectFrame.ModeTabs.Tabs = {}
+    table.insert(InspectFrame.ModeTabs.Tabs, __side(InspectFrame.ModeTabs, "GuildTab"))
+  `);
+  const state = addon.eval(`return { __sideState(TestOnlyProfs.ProfessionsOverviewTab), __sideState(TestOnlyProfs.Professions1Tab), __sideState(TestOnlyProfs.Professions7Tab),
+    __sideState(TestOnlyCooldown.SpellsTab), __sideState(TestOnlyCooldown.GroupBuffsTab), __sideState(InspectFrame.ModeTabs.GuildTab) }`);
+  expect(state.map((s) => s.art), "each tab's plate faded").toEqual([0, 0, 0, 0, 0, 0]);
+  expect(state.map((s) => s.dim), "and its icon greyed while it is not the selected tab: they are side tabs").toEqual([true, true, true, true, true, true]);
+  expect(addon.eval("return { __padOf(TestOnlyProfs.ProfessionsOverviewTab), TestOnlyProfs.Professions1Tab.__points.TOPLEFT.rel == TestOnlyProfs.ProfessionsOverviewTab }"), "the first tab moved out to the panel's edge, the next still hangs from it").toEqual([true, true]);
+  expect(addon.eval("return #ns.errors"), "nothing reported").toBe(0);
+});
+
+it("side tabs: the collections window's TabContainer tabs are side tabs, the container moves out past the padding by both anchors", () => {
+  const addon = loggedIn(HOLDERS_ENV + `
+    __sized(__window("CollectionsJournal"))
+    local box = CreateFrame("Frame", nil, CollectionsJournal) CollectionsJournal.TabContainer = box box.Tabs = {}
+    box:SetPoint("TOPLEFT", CollectionsJournal, "TOPRIGHT") box:SetPoint("BOTTOMLEFT", CollectionsJournal, "BOTTOMRIGHT")
+    for _, key in ipairs({ "MountsTab", "PetsTab", "WardrobeTab" }) do table.insert(box.Tabs, __side(box, key)) end
+    box.MountsTab:SetChecked(true)
+  `);
+  addon.fire("ADDON_LOADED", "Blizzard_Collections");
+  const tabs = addon.eval("local b = CollectionsJournal.TabContainer return { __sideState(b.MountsTab), __sideState(b.PetsTab), __sideState(b.WardrobeTab) }");
+  expect(tabs.map((s) => s.art), "the five tabs' game art is faded").toEqual([0, 0, 0]);
+  expect(tabs.map((s) => [s.raised, s.dim]), "the checked tab is raised, the others' icons greyed").toEqual([[true, false], [false, true], [false, true]]);
+  expect(addon.eval("local p = CollectionsJournal.TabContainer.__points return { p.TOPLEFT.x == p.BOTTOMLEFT.x, __padOf(CollectionsJournal.TabContainer), p.BOTTOMLEFT.rel == CollectionsJournal }"), "both anchors of the container moved the same distance, still on the window").toEqual([true, true, true]);
+  addon.eval("CollectionsJournal:Show() CollectionsJournal:Hide() CollectionsJournal:Show()");
+  expect(addon.eval("return { __padOf(CollectionsJournal.TabContainer), #ns.errors }"), "moved once").toEqual([true, 0]);
+});
+
+it("side tabs: the paper doll's sidebar tabs are dressed on the character window only, the plate faded and the icon kept", () => {
+  const addon = loggedIn(HOLDERS_ENV + `
+    local holder = CreateFrame("Frame", "PaperDollSidebarTabs", CharacterFrame) holder.Tabs = {}
+    for i = 1, 3 do
+      local t = CreateFrame("CheckButton", "PaperDollSidebarTab" .. i, holder)
+      t.Icon = t:CreateTexture(nil, "BACKGROUND") __art(t, "BORDER") t:SetChecked(i == 1)
+      holder.Tabs[i] = t
+    end
+  `);
+  const tabs = addon.eval(`local t = PaperDollSidebarTabs.Tabs local out = {}
+    for i = 1, 3 do local plate for _, r in ipairs({ t[i]:GetRegions() }) do if r.__texture == "TEST-ONLY-ART" then plate = r.__alpha end end
+      out[i] = { plate, __sideState(t[i]) } end
+    return out`);
+  expect(tabs.map((t) => t[0]), "the unkeyed plate behind each icon is faded").toEqual([0, 0, 0]);
+  expect(tabs.map((t) => [t[1].icon, t[1].raised, t[1].dim]), "the icon stays, the checked tab is raised and the others' icons are greyed").toEqual([[true, true, false], [true, false, true], [true, false, true]]);
+  expect(addon.eval(`return { ns.GetModule("Windows").TabButtons(CharacterFrame).seen[PaperDollSidebarTab1] == true, ns.GetModule("Windows").TabButtons(MerchantFrame).seen[PaperDollSidebarTab1] == true }`), "the character window lists them, no other window does").toEqual([true, false]);
+});
+
+it("appearances: the Items and Sets tabs (top tabs on the page) are in the theme, the one the game disables raised", () => {
+  const addon = loggedIn(COLLECTIONS_ENV);
+  addon.eval(`__collections() local w = WardrobeCollectionFrame w.ItemsTab, w.SetsTab = __tab(w), __tab(w) w.SetsTab:Disable()`);
+  addon.fire("ADDON_LOADED", "Blizzard_Collections");
+  expect(addon.eval("local w = WardrobeCollectionFrame return { __tabState(w.ItemsTab), __tabState(w.SetsTab) }").map((s) => [s.art, s.raised]), "art faded; the disabled (selected) tab raised").toEqual([[0, false], [0, true]]);
+  addon.eval("WardrobeCollectionFrame.SetsTab:Enable() WardrobeCollectionFrame.ItemsTab:Disable()");
+  expect(addon.eval("local w = WardrobeCollectionFrame return { __tabState(w.ItemsTab).raised, __tabState(w.SetsTab).raised }"), "the raised tab follows the game's selection").toEqual([true, false]);
+  const odd = loggedIn(COLLECTIONS_ENV);
+  odd.eval(`__collections() WardrobeCollectionFrame.ItemsTab = true`);
+  odd.fire("ADDON_LOADED", "Blizzard_Collections");
+  expect(odd.eval("return #ns.errors"), "a page whose tab is not a frame is left alone").toBe(0);
+});
+
+it("guild bank side tabs: the plate faded, the icon button a tab with its icon and search dimmer kept, out past the padding", () => {
+  const addon = loggedIn(HOLDERS_ENV + `
+    local bank = __sized(__window("GuildBankFrame"))
+    for i = 1, 3 do
+      local tab = CreateFrame("Frame", "GuildBankTab" .. i, bank) tab:SetSize(42, 50)
+      tab:SetPoint("TOPLEFT", i == 1 and bank or _G["GuildBankTab" .. (i - 1)], i == 1 and "TOPRIGHT" or "BOTTOMLEFT", i == 1 and -1 or 0, i == 1 and -17 or 0)
+      __art(tab)
+      local b = CreateFrame("CheckButton", nil, tab) tab.Button = b
+      b.IconTexture, b.NormalTexture, b.SearchOverlay = __art(b, "BORDER"), __art(b, "ARTWORK"), __art(b, "ARTWORK")
+      b:SetChecked(i == 2)
+    end
+    GuildBankTab3.Button = nil
+    ns.GetModule("Windows").Add("windows", "framed", { "GuildBankFrame" })
+  `);
+  const out = addon.eval(`local b = GuildBankTab2.Button
+    return { __a((GuildBankTab1:GetRegions())), __a(b.NormalTexture), __a(b.IconTexture), __a(b.SearchOverlay), __raised(b), __raised(GuildBankTab1.Button),
+      math.abs(GuildBankTab1.__points.TOPLEFT.x - (ns.GetModule("Windows").PAD - ns.Theme.Pixel(GuildBankTab1))) < 1e-9, __a((GuildBankTab3:GetRegions())) }`);
+  expect(out.slice(0, 4), "the plate and the button's bronze frame faded; its icon and the search dimmer are the game's").toEqual([0, 0, -1, -1]);
+  expect(out.slice(4, 6), "the selected tab's button is raised, the other's not").toEqual([true, false]);
+  expect(out[6], "the first tab sits at the panel's edge").toBe(true);
+  expect(out[7], "a tab without its button still has its plate faded").toBe(0);
+  expect(addon.eval("return #ns.errors"), "nothing reported").toBe(0);
+});
+
+// TEST-ONLY side panes shaped like CharacterFrameSidePaneTemplate (Camelot CharacterFrame.lua): a Title and Subtitle, a
+// Divider, a Content holding pooled rows, and the methods that add rows (each row numbered by layoutIndex, shown on
+// acquire, hidden by ResetRows); the game paints a label gold unless the caller gives a colour. __text says whether a
+// font string is in the text colour, __gold whether it still has the game's gold.
+const SIDE_PANE_ENV = BARS_ENV + `
+  NORMAL_FONT_COLOR = { GetRGB = function() return 1, 0.82, 0 end }
+  GREEN_FONT_COLOR = { GetRGB = function() return 0.1, 1, 0.1 end }
+  function __text(fs) local c, t = fs.__textColor, { ns.Theme.RGB("text") } return c ~= nil and c[1] == t[1] and c[2] == t[2] and c[3] == t[3] end
+  function __gold(fs) local c = fs.__textColor return c ~= nil and c[1] == 1 and c[2] == 0.82 and c[3] == 0 end
+  function __sidePane(parent, key)
+    local p = CreateFrame("Frame", nil, parent)
+    p.Title, p.Subtitle, p.Divider = p:CreateFontString(), p:CreateFontString(), __art(p, "BORDER")
+    p.Content, p.pool, p.layoutIndex = CreateFrame("Frame", nil, p), {}, 0
+    function p:SetPaneTitle(title) self.Title:SetText(title) end
+    function p:SetPaneTitleColor(c) self.Title:SetTextColor(c:GetRGB()) end
+    function p:ResetRows() for _, r in ipairs(self.pool) do r:Hide() end self.layoutIndex = 0 end
+    function p:Acquire(kind, color)
+      local row
+      for _, r in ipairs(self.pool) do if not r:IsShown() and r.kind == kind then row = r end end
+      if not row then
+        row = CreateFrame("Frame", nil, self.Content) row.kind, row.Label = kind, row:CreateFontString()
+        if kind == "category" then row.Background = __art(row) end
+        if kind == "icon" then row.IconSlot, row.Icon = __art(row), row:CreateTexture(nil, "ARTWORK") end
+        table.insert(self.pool, row)
+      end
+      self.layoutIndex = self.layoutIndex + 1 row.layoutIndex = self.layoutIndex row:Show()
+      row.Label:SetTextColor((color or NORMAL_FONT_COLOR):GetRGB())
+      return row
+    end
+    function p:AddRow(label, value, labelColor) return self:Acquire("row", labelColor) end
+    function p:AddWrappedRow(text, color) return self:Acquire("wrapped", color) end
+    function p:AddIconRow(icon, text, color) if not icon then return self:AddWrappedRow(text, color) end return self:Acquire("icon", color) end
+    function p:AddCategory(text) return self:Acquire("category") end
+    if key then parent[key] = p end
+    return p
+  end
+  local rep = __sidePane(ReputationFrame, "ReputationDetailFrame")
+  for _, key in ipairs({ "AtWarCheckbox", "MakeInactiveCheckbox", "WatchFactionCheckbox" }) do
+    local box = CreateFrame("CheckButton", nil, rep) box.Label = box:CreateFontString() box.Label:SetTextColor(NORMAL_FONT_COLOR:GetRGB()) rep[key] = box
+  end
+  rep.AtWarCheckbox.Label:SetTextColor(1, 0, 0)
+  rep.StandingBar = CreateFrame("Frame", nil, rep) rep.StandingBar.backdrop, rep.StandingBar.Fill = __art(rep.StandingBar), __art(rep.StandingBar, "BORDER")
+  rep.ViewRenownButton = CreateFrame("Button", nil, rep)
+  __bar(rep, "DescriptionScrollBar")
+  __sidePane(SkillsFrame, "SkillDetailFrame")
+  local tok = __sidePane(TokenFrame, "DetailFrame")
+  for _, key in ipairs({ "InactiveCheckbox", "BackpackCheckbox" }) do
+    local box = CreateFrame("CheckButton", nil, tok) box.Label = box:CreateFontString() box.Label:SetTextColor(NORMAL_FONT_COLOR:GetRGB()) tok[key] = box
+  end
+  tok.CurrencyTransferToggleButton = CreateFrame("Button", nil, tok)
+  PVPRankFrame = CreateFrame("Frame", "PVPRankFrame", CharacterFrame)
+  __sidePane(PVPRankFrame, "DetailFrame")
+`;
+
+it("side panes: heading in the heading role and the text colour (again after the game recolours it), the rule faded", () => {
+  const addon = loggedIn(SIDE_PANE_ENV);
+  // Reads whether each pane's heading is in the heading role and the text colour.
+  const heads = () => addon.eval(`return { __headed(ReputationFrame.ReputationDetailFrame.Title), __headed(SkillsFrame.SkillDetailFrame.Title), __headed(TokenFrame.DetailFrame.Title), __headed(PVPRankFrame.DetailFrame.Title) }`);
+  expect(heads(), "all four panes' headings").toEqual([true, true, true, true]);
+  addon.eval(`local p = ReputationFrame.ReputationDetailFrame p:SetPaneTitle("Stormwind") p:SetPaneTitleColor(GREEN_FONT_COLOR) PVPRankFrame.DetailFrame:SetPaneTitleColor(GREEN_FONT_COLOR)`);
+  expect(heads(), "the game sets the pane's colour on every refresh: the text colour goes back on").toEqual([true, true, true, true]);
+  expect(addon.eval(`return { __a(ReputationFrame.ReputationDetailFrame.Divider), __a(PVPRankFrame.DetailFrame.Divider) }`), "the rule under the subtitle is faded").toEqual([0, 0]);
+  expect(addon.eval("return #ns.errors"), "nothing reported").toBe(0);
+});
+
+it("side panes: each row the game adds is dressed: gold labels to the text colour, a colour the game gave stays, plates faded", () => {
+  const addon = loggedIn(SIDE_PANE_ENV);
+  addon.eval(`rep = ReputationFrame.ReputationDetailFrame
+    rows = { rep:AddRow("Cap", "100"), rep:AddRow("Paid", "1", GREEN_FONT_COLOR), rep:AddWrappedRow("Hello", NORMAL_FONT_COLOR), rep:AddWrappedRow("Account", GREEN_FONT_COLOR),
+      rep:AddCategory("Next reward"), rep:AddIconRow(134, "Reward", NORMAL_FONT_COLOR), rep:AddIconRow(nil, "No icon") }`);
+  // Reads whether a row's label is in the text colour and the game's gold.
+  const row = (i) => addon.eval(`return { __text(rows[${i}].Label), __gold(rows[${i}].Label) }`);
+  expect([row(1), row(3), row(5), row(6), row(7)].map((r) => r[0]), "a label left gold, one given the game's gold, a category's, an icon row's and a wrapped row without an icon").toEqual([true, true, true, true, true]);
+  expect([row(2), row(4)].map((r) => r[0]), "a colour the game chose (green) is content").toEqual([false, false]);
+  expect(addon.eval("return { __a(rows[5].Background), __a(rows[6].IconSlot) }"), "the category's plate and the icon row's bronze plate are faded").toEqual([0, 0]);
+  expect(addon.eval("return { ns.FrameState('vgSideSlot')[rows[6]] ~= nil, ns.FrameState('vgSideSlot')[rows[1]] == nil }"), "only the icon row gets a slot tile").toEqual([true, true]);
+  const tile = addon.eval(`local slot = ns.FrameState('vgSideSlot')[rows[6]] local row = rows[6]
+    return { slot:GetParent() == row, slot:GetFrameLevel() < row:GetFrameLevel(), slot.__points.TOPLEFT.rel == row.Icon, __panel(slot) }`);
+  expect(tile, "a slot on a frame under the row, sized to the icon, painted").toEqual([true, true, true, true]);
+  addon.eval(`rep:ResetRows() rows2 = { rep:AddIconRow(134, "Again"), rep:AddCategory("Back") }`);
+  expect(addon.eval("return { rows2[1] == rows[6], select('#', rows2[1]:GetChildren()), __text(rows2[2].Label), __a(rows2[2].Background) }"), "a pooled row comes back dressed with its one slot").toEqual([true, 1, true, 0]);
+  expect(addon.eval("return #ns.errors"), "nothing reported").toBe(0);
+});
+
+it("side panes: rows a pane already has when it is dressed get their art done; a pane without the methods or parts is left alone", () => {
+  const addon = loggedIn(SIDE_PANE_ENV + `
+    early = PVPRankFrame.DetailFrame
+    earlyIcon, earlyCategory = early:AddIconRow(1, "Already"), early:AddCategory("Here")
+    early.AddRow, early.SetPaneTitleColor = nil, nil
+    SkillsFrame.SkillDetailFrame.Title = nil
+    TokenFrame.DetailFrame.Content = nil
+    ReputationFrame.ReputationDetailFrame.ViewRenownButton = true
+  `);
+  expect(addon.eval("return { __a(earlyIcon.IconSlot), __a(earlyCategory.Background), ns.FrameState('vgSideSlot')[earlyIcon] ~= nil }"), "faded and the slot made").toEqual([0, 0, true]);
+  addon.eval("early:SetPaneTitle('Rank') early:AddWrappedRow('Note', GREEN_FONT_COLOR)");
+  expect(addon.eval("return { __headed(early.Title), #ns.errors }"), "the pane's heading is dressed without the methods; no errors for a pane without Title, Content or a real button").toEqual([true, 0]);
+});
+
+it("side panes: the reputation and currency panes' check boxes, standing bar, push buttons and description scroll bar are in the theme", () => {
+  const addon = loggedIn(SIDE_PANE_ENV);
+  const parts = addon.eval(`local r, t = ReputationFrame.ReputationDetailFrame, TokenFrame.DetailFrame
+    local function box(b) return ns.Theme.CheckParts(b) ~= nil end
+    return { box(r.AtWarCheckbox), box(r.MakeInactiveCheckbox), box(r.WatchFactionCheckbox), box(t.InactiveCheckbox), box(t.BackpackCheckbox),
+      __text(r.AtWarCheckbox.Label), __text(r.MakeInactiveCheckbox.Label), __text(r.WatchFactionCheckbox.Label), __text(t.InactiveCheckbox.Label), __text(t.BackpackCheckbox.Label),
+      __a(r.StandingBar.backdrop), __a(r.StandingBar.Fill), __panel(r.StandingBar), __panel(r.ViewRenownButton), __panel(t.CurrencyTransferToggleButton) }`);
+  expect(parts.slice(0, 5), "five check boxes as the theme's").toEqual([true, true, true, true, true]);
+  expect(parts.slice(5, 10), "their labels go to the text colour, At war's red stays").toEqual([false, true, true, true, true]);
+  expect(parts.slice(10), "the standing bar's backdrop faded with its fill kept and a panel behind, and the push buttons painted").toEqual([0, -1, true, true, true]);
+  expect(addon.eval("return __barState(ReputationFrame.ReputationDetailFrame.DescriptionScrollBar)"), "the description's scroll bar is reached with the window's").toEqual([0, 0, true, true]);
+  const bare = loggedIn(SIDE_PANE_ENV + `ReputationFrame.ReputationDetailFrame.MakeInactiveCheckbox = CreateFrame("Frame", nil, UIParent) TokenFrame.DetailFrame.ViewRenownButton = true`);
+  expect(bare.eval("return #ns.errors"), "a part that is not a check button or a button is skipped").toBe(0);
+});
+
+it("pane lists: the rules over and under each list are one pixel of divider, a header's name goes to the text colour", () => {
+  const addon = loggedIn(PANE_ENV + `
+    function __ruled(f) local line = CreateFrame("Frame", nil, f.ScrollBox) line.rule = __art(line, "OVERLAY") f.rule = line.rule end
+    __ruled(ReputationFrame) __ruled(SkillsFrame) __ruled(TokenFrame)
+    __text = function(fs) local c, t = fs.__textColor, { ns.Theme.RGB("text") } return c ~= nil and c[1] == t[1] and c[2] == t[2] and c[3] == t[3] end
+    __repHeader.Name = __repHeader:CreateFontString() __repHeader.Name:SetTextColor(1, 0.82, 0)
+  `);
+  expect(addon.eval("return { __a(ReputationFrame.rule), __a(SkillsFrame.rule), __a(TokenFrame.rule) }"), "the rule lines of all three lists faded").toEqual([0, 0, 0]);
+  expect(addon.eval("return { ns.Theme.DividerParts(ReputationFrame.rule) ~= nil, ns.Theme.DividerParts(SkillsFrame.rule) ~= nil, ns.Theme.DividerParts(TokenFrame.rule) ~= nil, ns.Theme.DividerParts(__repHeader.banner) == nil }"), "each drawn as one pixel of divider; a row's art is not").toEqual([true, true, true, true]);
+  expect(addon.eval("return { __a(__repHeader.banner), __a(__repHeader.StateIcon) }"), "a header row's own art is not taken for a rule line").toEqual([0, 1]);
+  const later = addon.eval(`local h = __header(ReputationFrame.ScrollBox) h.Name = h:CreateFontString() h.Name:SetTextColor(1, 0.82, 0) ReputationFrame.ScrollBox:Acquire(h) return { __text(__repHeader.Name), __text(h.Name) }`);
+  expect(later, "the header's name in the text colour, a header acquired later too").toEqual([true, true]);
+});
+
+it("stat boxes: the bronze edge, class crest and rule are faded for an inset panel, stat lines lose their stripe and their names go to the text colour", () => {
+  const addon = loggedIn(PANE_ENV + `
+    __text = function(fs) local c, t = fs.__textColor, { ns.Theme.RGB("text") } return c ~= nil and c[1] == t[1] and c[2] == t[2] and c[3] == t[3] end
+    CharacterStatsPane = CreateFrame("Frame", "CharacterStatsPane", CharacterFrame)
+    CharacterStatsPane.ItemLevelFrame = CreateFrame("Frame", nil, CharacterStatsPane) CharacterStatsPane.ItemLevelFrame.Background = __art(CharacterStatsPane.ItemLevelFrame)
+    local function box(name) local b = CreateFrame("Frame", name, CharacterFrame) b.Border, b.ClassBackground, b.rule = __art(b, "BORDER"), __art(b), __art(b, "BORDER") b.ScrollBox = __box(b) return b end
+    box("CharacterStatsPaneScrollBox") box("CharacterStatsPanePetScrollBox")
+    local function line(parent, withIcon)
+      local r = CreateFrame("Frame", nil, parent) r.Background, r.Label = __art(r), r:CreateFontString() r.Label:SetTextColor(1, 0.82, 0)
+      r.Value = r:CreateFontString() r.Value:SetTextColor(1, 1, 1)
+      return parent:Acquire(r)
+    end
+    __line, __petLine = line(CharacterStatsPaneScrollBox.ScrollBox), line(CharacterStatsPanePetScrollBox.ScrollBox)
+  `);
+  // Reads whether a scroll box's parts are faded and its panel is there.
+  const box = (name) => addon.eval(`local b = ${name} return { __a(b.Border), __a(b.ClassBackground), __a(b.rule), __panel(b) }`);
+  expect([box("CharacterStatsPaneScrollBox"), box("CharacterStatsPanePetScrollBox")], "both boxes: edge, crest and rule faded, a panel in their place").toEqual([[0, 0, 0, true], [0, 0, 0, true]]);
+  expect(addon.eval("return { __a(__line.Background), __text(__line.Label), __a(__petLine.Background), __text(__petLine.Label), __text(__line.Value) }"), "a stat line: stripe faded, name in the text colour, value untouched").toEqual([0, true, 0, true, false]);
+  expect(addon.eval("local f = CharacterStatsPane.ItemLevelFrame return { __a(f.Background), __panel(f) }"), "the item level's plate faded with a panel behind the number").toEqual([0, true]);
+  const later = addon.eval("local r = CharacterStatsPaneScrollBox.ScrollBox:Acquire(CreateFrame('Frame')) return #ns.errors");
+  expect(later, "a row the game acquires without parts is left alone").toBe(0);
+});
+
+it("honor tab: the season timer, the season's name and the progress line go to the text colour", () => {
+  const addon = loggedIn(PANE_ENV + `
+    PVPRankFrame = CreateFrame("Frame", "PVPRankFrame", CharacterFrame)
+    PVPRankFrame.SeasonTimerField = PVPRankFrame:CreateFontString() PVPRankFrame.MainInfoFrame = CreateFrame("Frame", nil, PVPRankFrame)
+    PVPRankFrame.MainInfoFrame.CurrentSeasonField, PVPRankFrame.MainInfoFrame.CurrentRankProgressField = PVPRankFrame.MainInfoFrame:CreateFontString(), PVPRankFrame.MainInfoFrame:CreateFontString()
+    __text = function(fs) local c, t = fs.__textColor, { ns.Theme.RGB("text") } return c ~= nil and c[1] == t[1] and c[2] == t[2] and c[3] == t[3] end
+    PVPRankFrame.MainInfoFrame.CurrentRankField = PVPRankFrame.MainInfoFrame:CreateFontString()
+  `);
+  expect(addon.eval("local i = PVPRankFrame.MainInfoFrame return { __text(PVPRankFrame.SeasonTimerField), __text(i.CurrentSeasonField), __text(i.CurrentRankProgressField), i.CurrentRankField.__textColor == nil }"), "the three gold texts, not the rank name (white already)").toEqual([true, true, true, true]);
+  const bare = loggedIn(PANE_ENV + `PVPRankFrame = CreateFrame("Frame", "PVPRankFrame", CharacterFrame) PVPRankFrame.SeasonTimerField = PVPRankFrame:CreateFontString()`);
+  expect(bare.eval("return { __text and 1 or 0, #ns.errors }").slice(1), "a tab without its main frame").toEqual([0]);
+});
+
+it("GW.WatchRows: rows now and later, once per box, a failing skin reported and the others still done, boxes that are not lists skipped", () => {
+  expectErrors(/^skin row: eval:\d+: TEST-ONLY: bad row$/);
+  const addon = loggedIn(PANE_ENV + `
+    __seen = {}
+    __first = __box(UIParent) __first:Acquire(CreateFrame("Frame", nil, __first))
+    local GW = ns.GetModule("Windows")
+    GW.WatchRows(__first, function(row) table.insert(__seen, row) if #__seen == 2 then error("TEST-ONLY: bad row") end end)
+    GW.WatchRows(__first, function() error("TEST-ONLY: watched twice") end)
+    GW.WatchRows(nil, function() end) GW.WatchRows({}, function() end)
+  `);
+  expect(addon.eval("return #__seen"), "the row it had").toBe(1);
+  addon.eval("__first:Acquire(CreateFrame('Frame', nil, __first)) __first:Acquire(CreateFrame('Frame', nil, __first))");
+  expect(addon.eval("return { #__seen, #ns.errors }"), "rows acquired later, one failing is reported once and the next still done").toEqual([3, 1]);
+  const noUtil = loggedIn(PANE_ENV + `ScrollUtil = nil local b = __box(UIParent) ns.GetModule("Windows").WatchRows(b, function() end)`);
+  expect(noUtil.eval("return #ns.errors"), "a client without ScrollUtil").toBe(0);
+});
+
+// TEST-ONLY paper doll: the titles list and the equipment sets list (a pane each, with a ScrollBox of rows), the set
+// buttons, and a reader for a gear set's missing-items count.
+const PAPER_ENV = SIDE_PANE_ENV + `
+  PaperDollFrame = CreateFrame("Frame", "PaperDollFrame", CharacterFrame)
+  function __pane(key)
+    local p = CreateFrame("Frame", nil, PaperDollFrame)
+    p.Border, p.Line, p.ScrollBox = __art(p, "BORDER"), __art(p, "BORDER"), __box(p)
+    PaperDollFrame[key] = p
+    return p
+  end
+  __titles, __sets = __pane("TitleManagerPane"), __pane("EquipmentManagerPane")
+  function __titleRow(selected)
+    local r = CreateFrame("Button", nil, __titles.ScrollBox)
+    r.Stripe, r.Check, r.SelectedBar = __art(r), __art(r, "BORDER"), __art(r, "OVERLAY")
+    r.text = r:CreateFontString() r.text:SetTextColor(NORMAL_FONT_COLOR:GetRGB())
+    r.SelectedBar:SetShown(selected == true)
+    return __titles.ScrollBox:Acquire(r)
+  end
+  function __setRow(id, selected)
+    local r = CreateFrame("Button", nil, __sets.ScrollBox)
+    r.setID, r.plate, r.ring, r.SpecRing = id, __art(r), __art(r, "ARTWORK"), __art(r, "OVERLAY")
+    r.icon, r.Check, r.SpecIcon, r.HighlightBar, r.SelectedBar = __art(r, "ARTWORK"), __art(r, "BORDER"), __art(r, "OVERLAY"), __art(r), __art(r)
+    r.text = r:CreateFontString() r.text:SetTextColor(NORMAL_FONT_COLOR:GetRGB())
+    r.SelectedBar:SetShown(selected == true)
+    return __sets.ScrollBox:Acquire(r)
+  end
+  -- The game's selection functions, which its init and click run with the row and whether it is the selected one.
+  function PaperDollTitlesPane_SetButtonSelected(button, selected) button.SelectedBar:SetShown(selected) end
+  function PaperDollEquipmentManagerPane_SetButtonSelected(button, selected) button.SelectedBar:SetShown(selected) end
+  function __lit(r) return ns.Theme.RowParts(r).rail:IsShown() end
+  for _, key in ipairs({ "EquipSet", "SaveSet", "NewSet" }) do
+    local b = CreateFrame("Button", nil, __sets) b.StateTexture, b.plus = __art(b), __art(b, "ARTWORK") b.label = b:CreateFontString()
+    __sets[key] = b
+  end
+  C_EquipmentSet = { GetEquipmentSetInfo = function(id) return "Set", 1, id, false, 0, 0, 0, id == 2 and 3 or 0 end }
+`;
+
+it("paper doll lists: the titles and sets panes are flat insets, a title row loses its stripe, a set row its card plate and rings", () => {
+  const addon = loggedIn(PAPER_ENV + `__titleRow() __setRow(1) __setRow(2)`);
+  addon.eval("CharacterFrame:Show()");
+  expect(addon.eval("return { __a(__titles.Border), __panel(__titles), __a(__sets.Border), __a(__sets.Line), __panel(__sets) }"), "both panes: edge and rule faded, an inset panel").toEqual([0, true, 0, 0, true]);
+  // A title row's stripe alpha, its tick and selected bar alphas (-1: the game's), and whether its text is in the text colour.
+  const title = (i) => addon.eval(`local r = __titles.ScrollBox.rows[${i}] return { __a(r.Stripe), __a(r.Check), __a(r.SelectedBar), __text(r.text), __lit(r) }`);
+  expect(title(1), "stripe and selected bar faded, tick the game's, text in the text colour, not lit").toEqual([0, -1, 0, true, false]);
+  addon.eval("__titleRow()");
+  expect(title(2), "a title row acquired later too").toEqual([0, -1, 0, true, false]);
+  addon.eval("PaperDollTitlesPane_SetButtonSelected(__titles.ScrollBox.rows[2], true)");
+  expect([title(1)[4], title(2)[4]], "the selected rail follows the game marking a title selected").toEqual([false, true]);
+  addon.eval("PaperDollTitlesPane_SetButtonSelected(__titles.ScrollBox.rows[2], false) PaperDollTitlesPane_SetButtonSelected(__titles.ScrollBox.rows[1], true)");
+  expect([title(1)[4], title(2)[4]], "and moves with the selection").toEqual([true, false]);
+  // A set row's plate and rings, then what stays (icon, tick, spec icon, hover and selected card), then its name's colour.
+  const set = (i) => addon.eval(`local r = __sets.ScrollBox.rows[${i}] return { __a(r.plate), __a(r.ring), __a(r.SpecRing), __a(r.icon), __a(r.Check), __a(r.SpecIcon), __a(r.HighlightBar), __a(r.SelectedBar), __text(r.text), ns.Theme.RowParts(r) ~= nil, __lit(r) }`);
+  expect(set(1), "plate, rings and cards faded, icon, tick and spec icon the game's, name in the text colour, a theme row, not lit").toEqual([0, 0, 0, -1, -1, -1, 0, 0, true, true, false]);
+  addon.eval("PaperDollEquipmentManagerPane_SetButtonSelected(__sets.ScrollBox.rows[2], true)");
+  expect([set(1)[10], set(2)[10]], "the selected rail follows the game marking a set selected").toEqual([false, true]);
+  addon.eval("PaperDollEquipmentManagerPane_SetButtonSelected(__sets.ScrollBox.rows[2], false)");
+  expect(set(2)[10], "and clears with it").toBe(false);
+  expect(addon.eval("return __gold(__sets.ScrollBox.rows[2].text)"), "a set with items missing keeps the game's name colour").toBe(true);
+  addon.eval("__setRow(1, true) __titleRow(true)");
+  expect(addon.eval("return { __lit(__sets.ScrollBox.rows[1]), __lit(__sets.ScrollBox.rows[3]), __lit(__titles.ScrollBox.rows[3]) }"), "a row the game already marked selected when dressed is lit at once").toEqual([false, true, true]);
+  expect(set(3)[0], "a set row acquired later too").toBe(0);
+  expect(addon.eval("return #ns.errors"), "no errors").toBe(0);
+});
+
+it("paper doll lists: the set buttons are theme buttons, the New set button keeps its plus", () => {
+  const addon = loggedIn(PAPER_ENV);
+  addon.eval("CharacterFrame:Show()");
+  expect(addon.eval("return { __a(__sets.EquipSet.StateTexture), __panel(__sets.EquipSet), __a(__sets.SaveSet.StateTexture), __panel(__sets.SaveSet) }"), "Equip and Save flat").toEqual([0, true, 0, true]);
+  expect(addon.eval("return { __a(__sets.NewSet.StateTexture), __a(__sets.NewSet.plus), __panel(__sets.NewSet) }"), "New set: plate faded, plus kept, flat").toEqual([0, 1, true]);
+  const painted = addon.eval("return ns.Theme.PaintedCount()");
+  addon.eval("CharacterFrame:Hide() CharacterFrame:Show()");
+  expect(addon.eval("return { ns.Theme.PaintedCount(), #ns.errors }"), "a second show paints nothing more").toEqual([painted, 0]);
+});
+
+it("paper doll lists: a client without the equipment set API, or panes without parts, loads cleanly", () => {
+  const bare = loggedIn(PAPER_ENV + `C_EquipmentSet = nil PaperDollTitlesPane_SetButtonSelected, PaperDollEquipmentManagerPane_SetButtonSelected = nil, nil __setRow(2) __sets.NewSet = {} __sets.EquipSet = nil __titles.ScrollBox = nil`);
+  expect(bare.eval("CharacterFrame:Show() return { __text(__sets.ScrollBox.rows[1].text), #ns.errors }"), "no API: the name goes to the text colour").toEqual([true, 0]);
+  const hollow = loggedIn(PAPER_ENV + `PaperDollFrame.TitleManagerPane = {} PaperDollFrame.EquipmentManagerPane = {}`);
+  expect(hollow.eval("CharacterFrame:Show() return #ns.errors"), "panes that are not frames").toBe(0);
+});
+
+it("paper doll: each slot's BorderFrame and the ammo plate are faded, the pet bar and level lines are in the theme", () => {
+  const addon = loggedIn(PANE_ENV + `
+    PaperDollFrame = CreateFrame("Frame", "PaperDollFrame", CharacterFrame)
+    function __slot(name) local b = CreateFrame("Button", "Character" .. name .. "Slot", CharacterFrame) b.BorderFrame = CreateFrame("Frame", nil, b) return b end
+    __head = __slot("Head") __headFrame = __art(__head.BorderFrame)
+    __ammo = __slot("Ammo") __ammo.BorderFrame = nil
+    __plate, __icon, __ignore = __art(__ammo), __ammo:CreateTexture(nil, "BORDER"), __art(__ammo, "OVERLAY")
+    CharacterAmmoSlotIconTexture, __ammo.ignoreTexture = __icon, __ignore
+    PetPaperDollFrameExpBar = CreateFrame("Frame", "PetPaperDollFrameExpBar", PaperDollFrame)
+    PetPaperDollFrameExpBar.backdrop, PetPaperDollFrameExpBar.Fill = __art(PetPaperDollFrameExpBar), __art(PetPaperDollFrameExpBar, "BORDER")
+    CharacterLevelText, PetCharacterLevelText = PaperDollFrame:CreateFontString(), PaperDollFrame:CreateFontString()
+  `);
+  addon.eval("CharacterFrame:Show()");
+  expect(addon.eval("return __a(__headFrame)"), "a slot's bronze frame child faded").toBe(0);
+  expect(addon.eval("return { __a(__plate), __a(__icon), __a(__ignore) }"), "the ammo plate faded, its icon and ignored mark kept").toEqual([0, -1, -1]);
+  expect(addon.eval("local b = PetPaperDollFrameExpBar return { __a(b.backdrop), __a(b.Fill), __panel(b) }"), "the pet bar: backdrop faded, fill kept, panelled").toEqual([0, -1, true]);
+  expect(addon.eval("return { __headed(CharacterLevelText), __headed(PetCharacterLevelText), #ns.errors }"), "the level lines in the heading role and the text colour").toEqual([true, true, 0]);
+});
+
+// TEST-ONLY appearances page parts: search box, dropdowns, page arrows and the sets tab's list and details.
+const WARDROBE_ENV = COLLECTIONS_ENV + `
+  function __text(fs) local c, t = fs.__textColor, { ns.Theme.RGB("text") } return c ~= nil and c[1] == t[1] and c[2] == t[2] and c[3] == t[3] end
+  function __dropdown(parent) local d = CreateFrame("Button", nil, parent) d.Arrow = __art(d, "ARTWORK") d.Arrow:SetAlpha(0) return d end
+  function __wardrobe()
+    __collections()
+    local w = WardrobeCollectionFrame
+    w.SearchBox = CreateFrame("EditBox", nil, w) w.SearchBox.Left, w.SearchBox.searchIcon = __art(w.SearchBox), __art(w.SearchBox, "ARTWORK")
+    w.SearchBox.searchIcon:SetAlpha(0)
+    w.FilterButton, w.ClassDropdown = __dropdown(w), __dropdown(w)
+    local items, sets = w.ItemsCollectionFrame, w.SetsCollectionFrame
+    items.WeaponDropdown, items.PagingFrame = __dropdown(items), CreateFrame("Frame", nil, items)
+    items.PagingFrame.PrevPageButton, items.PagingFrame.NextPageButton = CreateFrame("Button", nil, items.PagingFrame), CreateFrame("Button", nil, items.PagingFrame)
+    sets.DetailsFrame = CreateFrame("Frame", nil, sets)
+    sets.DetailsFrame.IconRowBackground, sets.DetailsFrame.ModelFadeTexture = __art(sets.DetailsFrame), __art(sets.DetailsFrame)
+    sets.DetailsFrame.VariantSetsDropdown = __dropdown(sets.DetailsFrame)
+    sets.ListContainer = CreateFrame("Frame", nil, sets) sets.ListContainer.ScrollBox = __box(sets.ListContainer)
+    __setsRow = CreateFrame("Button", nil, sets.ListContainer.ScrollBox)
+    __setsRow.Background, __setsRow.HighlightTexture, __setsRow.SelectedTexture, __setsRow.Name = __art(__setsRow), __art(__setsRow), __art(__setsRow), __setsRow:CreateFontString()
+    __setsRow.ProgressBar, __setsRow.New = __art(__setsRow, "ARTWORK"), __art(__setsRow, "OVERLAY")
+    __setsRow.Name:SetTextColor(0.5, 0.5, 0.5)
+    __setsRow.SelectedTexture:Hide()
+    function __setsRow:SetSelected(on) self.SelectedTexture:SetShown(on) end
+    sets.ListContainer.ScrollBox:Acquire(__setsRow)
+  end
+`;
+
+it("appearances: the search box, dropdowns, page arrows and the sets tab's rows and details are in the theme", () => {
+  const addon = loggedIn(WARDROBE_ENV);
+  addon.eval("__wardrobe()");
+  addon.fire("ADDON_LOADED", "Blizzard_Collections");
+  addon.eval("CollectionsJournal:Show()");
+  expect(addon.eval("local b = WardrobeCollectionFrame.SearchBox return { __a(b.Left), b.searchIcon:GetAlpha(), __panel(b) }"), "the search box: art faded, its magnifier shown, flat").toEqual([0, 1, true]);
+  // A dropdown's arrow alpha (shown again) and whether it is a flat button.
+  const drop = (path) => addon.eval(`local d = ${path} return { d.Arrow:GetAlpha(), __panel(d) }`);
+  const w = "WardrobeCollectionFrame";
+  expect([drop(`${w}.FilterButton`), drop(`${w}.ClassDropdown`), drop(`${w}.ItemsCollectionFrame.WeaponDropdown`), drop(`${w}.SetsCollectionFrame.DetailsFrame.VariantSetsDropdown`)], "the filter, class, weapon and variant dropdowns keep their arrows")
+    .toEqual([[1, true], [1, true], [1, true], [1, true]]);
+  expect(addon.eval(`local p = ${w}.ItemsCollectionFrame.PagingFrame return { __panel(p.PrevPageButton), __panel(p.NextPageButton) }`), "the page arrows flat buttons").toEqual([true, true]);
+  expect(addon.eval(`local d = ${w}.SetsCollectionFrame.DetailsFrame return { __a(d.IconRowBackground), __a(d.ModelFadeTexture) }`), "the icon row plate and the model fade gone").toEqual([0, 0]);
+  // A sets row: its plate, hover and selected art alphas, the progress line and new glow alphas, whether it is a theme row,
+  // whether its name is still the game's colour, and whether the selected rail is lit.
+  const setsRow = (r) => addon.eval(`local r = ${r} return { __a(r.Background), __a(r.HighlightTexture), __a(r.SelectedTexture), __a(r.ProgressBar), __a(r.New), ns.Theme.RowParts(r) ~= nil, not __text(r.Name), ns.Theme.RowParts(r).rail:IsShown() }`);
+  expect(setsRow("__setsRow"), "a sets row: plate, hover and selected art faded, progress and glow kept, a theme row, name colour the game's, not lit").toEqual([0, 0, 0, -1, -1, true, true, false]);
+  addon.eval("__setsRow:SetSelected(true)");
+  expect(setsRow("__setsRow")[7], "the selected rail follows the game's SetSelected").toBe(true);
+  addon.eval("__setsRow:SetSelected(false)");
+  expect(setsRow("__setsRow")[7], "and clears with it").toBe(false);
+  addon.eval("local row = CreateFrame('Button', nil, __setsRow:GetParent()) row.Background, row.SelectedTexture = __art(row), __art(row) row.Name = row:CreateFontString() function row:SetSelected(on) self.SelectedTexture:SetShown(on) end __laterRow = WardrobeCollectionFrame.SetsCollectionFrame.ListContainer.ScrollBox:Acquire(row)");
+  expect(addon.eval("return { __a(__laterRow.Background), ns.Theme.RowParts(__laterRow).rail:IsShown(), #ns.errors }"), "a row acquired later too, lit as the game shows its mark").toEqual([0, true, 0]);
+  const painted = addon.eval("return ns.Theme.PaintedCount()");
+  addon.eval("CollectionsJournal:Hide() CollectionsJournal:Show()");
+  expect(addon.eval("return { ns.Theme.PaintedCount(), #ns.errors }"), "showing it again paints nothing new").toEqual([painted, 0]);
 });

@@ -26,8 +26,11 @@ local PR = ns.Module("InstancePrep", {
   },
 })
 
--- The card's width, row height, padding and where its rows start (under the title).
-PR.WIDTH, PR.ROW, PR.PAD, PR.TOP = 260, 18, 8, 40
+-- The card's width, a line's height (the card's rows are text lines, not list rows), its padding (a HUD
+-- card's, T.SPACE.gap) and where its rows start (under the title and the Buy list button beside it).
+PR.WIDTH, PR.ROW, PR.PAD, PR.TOP = 260, 18, T.SPACE.gap, 40
+-- A row's red mark: its size, which is also the gap before the label.
+local MARK = 6
 -- The instance types the door check covers (ns.Where): dungeons and raids.
 PR.DOORS = { party = true, raid = true }
 -- Consumables are item class 0 (Enum.ItemClass.Consumable); by subclass
@@ -190,7 +193,7 @@ end
 -- A row's red mark: a small square at its left.
 local function mark(r)
   local m = W.Flat(r, "ARTWORK", "bad")
-  m:SetSize(6, 6)
+  m:SetSize(MARK, MARK)
   m:SetPoint("LEFT", 0, 0)
   return m
 end
@@ -202,7 +205,7 @@ local function rowFrame(i)
   r:SetPoint("TOPLEFT", PR.PAD, -PR.TOP - (i - 1) * PR.ROW)
   r.mark = mark(r)
   r.label = T.Text(r:CreateFontString(nil, "OVERLAY"), "label")
-  r.label:SetPoint("LEFT", r.mark, "RIGHT", 6, 0)
+  r.label:SetPoint("LEFT", r.mark, "RIGHT", MARK, 0)
   r.value = T.Text(r:CreateFontString(nil, "OVERLAY"), "number", "bad")
   r.value:SetPoint("RIGHT", 0, 0)
   return r
@@ -263,24 +266,20 @@ function PR.Paint(rows, lines)
   card:SetHeight(top + paintInfo(lines or {}, top))
 end
 
--- The card's title, in line with its close button (fades it out), and the packed line.
+-- The card's title and its close button (ns.WindowTitle: a card's; the button fades the card out), and the packed line.
 local function cardParts(f)
-  f.title = T.Text(f:CreateFontString(nil, "OVERLAY"), "heading")
-  f.title:SetPoint("LEFT", f, "TOPLEFT", PR.PAD, -T.CONTROL.inset)
-  f.title:SetText("Instance prep")
-  f.close = T.PlaceClose(T.CloseButton(CreateFrame("Button", nil, f)), f)
-  f.close:SetScript("OnClick", ns.Guard("click close instance prep", function() T.FadeOut(f) end))
+  ns.WindowTitle(f, "Instance prep", { kind = "card", onClose = function() T.FadeOut(f) end })
   f.packed = T.Text(f:CreateFontString(nil, "OVERLAY"), "label", "good")
   f.packed:SetPoint("TOPLEFT", PR.PAD, -PR.TOP - 2)
   f.packed:SetText("Everything's packed.")
 end
 
--- The card's Buy list button, left of the close button: what's short that you can buy becomes the
--- Auction helper's Restock shopping list (Modules/AuctionRestock.lua). Hidden until PR.Paint shows it.
+-- The card's Buy list button (T.BUTTON_H tall), left of the close button and level with its top: what's short
+-- that you can buy becomes the Auction helper's Restock shopping list (Modules/AuctionRestock.lua). Hidden
+-- until PR.Paint shows it.
 local function buyButton(f)
   f.buy = W.Button(f, "Buy list", function() ns.GetModule("AuctionHelper").Restock() end, 64)
-  f.buy:SetHeight(20)
-  f.buy:SetPoint("RIGHT", f.close, "LEFT", -4, 0)
+  f.buy:SetPoint("TOPRIGHT", f.close, "TOPLEFT", -T.SPACE.tight, 0)
   f.buy:Hide()
 end
 

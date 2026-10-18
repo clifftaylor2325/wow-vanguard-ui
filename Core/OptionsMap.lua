@@ -13,6 +13,7 @@ local function minimapRows()
     { "header", "Minimap and waypoints" },
     check("Coordinates under the minimap", setting("Minimap", "coords", true)), check("Coordinates on the world map (reload)", setting("Waypoints", "mapCoords", true)),
     check("/way sets map waypoints, unless another addon has it (reload)", setting("Waypoints", "slash", true)),
+    check("Vanguard's pin and font on the game's floating waypoint pin (reload)", setting("Waypoints", "pin", true)),
     check("Tracking, mail and difficulty on the minimap's corners (reload)", setting("Minimap", "icons", true)),
     check("Gather addon minimap buttons into a drawer (reload)", setting("MinimapButtons", "drawer", true)),
   }

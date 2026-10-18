@@ -1,7 +1,7 @@
 // waypoints: Vanguard's real Lua in the TEST-ONLY headless client (scripts/lib/lua-harness.mjs).
 
 import { expect, it } from "vitest";
-import { chatHas, loggedIn } from "./helpers.mjs";
+import { chatHas, isTok, loggedIn } from "./helpers.mjs";
 
 // TEST-ONLY maps: a world (1) holding two zones and a city whose names share a
 // start, the player on zone 10 at 45.67, 12.3. Every waypoint set is recorded.
@@ -110,4 +110,67 @@ it("waypoints: the world map shows your coordinates and the cursor's, ten times 
   expect(late.eval("return Vanguard_MapCoords ~= nil and Vanguard_MapCoords:GetParent() == WorldMapFrame"), "it joins the map when the map loads, once").toBe(true);
   const off = loggedIn(MAP_ENV + WORLD_MAP_ENV, { savedVariables: "VanguardDB.profiles = { Default = { Waypoints = { mapCoords = false } } }" });
   expect(off.eval("return Vanguard_MapCoords == nil"), "switched off: no line").toBe(true);
+});
+
+// TEST-ONLY SuperTrackedFrame, the game's floating waypoint pin: its Icon, DistanceText and the UpdateIcon the game
+// runs when the tracking changes (an atlas for a quest or waypoint, a portrait for a party member). __pinKind is what
+// the game tracks (Enum.SuperTrackingType); setting a user waypoint makes it the waypoint and redraws the icon. The
+// atlas sets the icon's coordinates to its sub-rectangle (ATLAS_RECT), as the real client's SetAtlas does.
+const PIN_ENV = `
+  SuperTrackedFrame = CreateFrame("Frame", "SuperTrackedFrame", UIParent)
+  SuperTrackedFrame.Icon = SuperTrackedFrame:CreateTexture(nil, "BACKGROUND")
+  SuperTrackedFrame.DistanceText = SuperTrackedFrame:CreateFontString(nil, "BACKGROUND")
+  Enum.SuperTrackingType = { Quest = 0, UserWaypoint = 1, Corpse = 2, PartyMember = 5 }
+  __pinKind = 0
+  C_SuperTrack.GetHighestPrioritySuperTrackingType = function() return __pinKind end
+  function SuperTrackedFrame:UpdateIcon()
+    if __pinKind == 5 then self.Icon:SetTexture("TEST-ONLY-portrait") return end
+    self.Icon:SetAtlas("TEST-ONLY-Navigation-Tracked-Icon", true) self.Icon:SetTexCoord(0.25, 0.5, 0.25, 0.5)
+  end
+  SuperTrackedFrame:UpdateIcon()
+  local track = C_SuperTrack.SetSuperTrackedUserWaypoint
+  C_SuperTrack.SetSuperTrackedUserWaypoint = function(on) track(on) __pinKind = 1 SuperTrackedFrame:UpdateIcon() end
+`;
+// The sub-rectangle the TEST-ONLY atlas sets and the whole texture, as SetTexCoord's left, right, top, bottom.
+const ATLAS_RECT = [0.25, 0.5, 0.25, 0.5];
+const WHOLE = [0, 1, 0, 1];
+// The pin as the player sees it: the icon's texture, atlas and coordinates, its tint, and whether the distance text has the theme's bold font and its flags.
+const pin = (addon) => addon.eval(`local f = SuperTrackedFrame local path, _, flags = f.DistanceText:GetFont()
+  return { icon = f.Icon.__texture or false, atlas = f.Icon.__atlas or false, coords = f.Icon.__texCoord or false, tint = f.Icon.__vertexColor or false, font = path == (ns.Theme.Font(true)), flags = flags or false }`);
+// Whether the pin is Vanguard's: its icon, its tint in the accent, and the coordinates it is drawn with (the whole pin, not the atlas's slice).
+const vanguardPin = (addon) => { const p = pin(addon); return [/Icons\\Pin$/.test(p.icon), isTok(addon, p.tint, "accent"), p.coords]; };
+
+it("waypoints: the game's floating pin takes Vanguard's pin and font, and keeps them when the game redraws it", () => {
+  const addon = loggedIn(MAP_ENV + PIN_ENV);
+  expect([...vanguardPin(addon), pin(addon).font, pin(addon).flags], "at login: Vanguard's whole pin in the accent, the distance in the theme's outlined font").toEqual([true, true, WHOLE, true, "OUTLINE"]);
+  way(addon, "45 61");
+  expect(vanguardPin(addon), "after /way the game redraws its icon: still Vanguard's whole pin, not a slice of it").toEqual([true, true, WHOLE]);
+  addon.eval("SuperTrackedFrame:UpdateIcon()");
+  expect(vanguardPin(addon), "and again on any later redraw").toEqual([true, true, WHOLE]);
+  addon.eval("ns.Theme.SetAccent(0.2, 0.7, 0.4)");
+  expect([...vanguardPin(addon), pin(addon).tint.slice(0, 3)], "the accent changes: the pin follows").toEqual([true, true, WHOLE, [0.2, 0.7, 0.4]]);
+  addon.eval("__pinKind = 5 SuperTrackedFrame:UpdateIcon()");
+  expect([pin(addon).icon, pin(addon).tint], "tracking a party member: the game's portrait, untinted").toEqual(["TEST-ONLY-portrait", [1, 1, 1, 1]]);
+  addon.eval("__pinKind = 2 SuperTrackedFrame:UpdateIcon()");
+  expect([pin(addon).atlas, pin(addon).coords, isTok(addon, pin(addon).tint, "white")], "the corpse run: the game's tombstone as its atlas draws it, untinted").toEqual(["TEST-ONLY-Navigation-Tracked-Icon", ATLAS_RECT, true]);
+  addon.eval("__pinKind = __wfgWorld.secret(5) SuperTrackedFrame:UpdateIcon()");
+  expect(vanguardPin(addon), "a kind the client hides: Vanguard's pin, no error").toEqual([true, true, WHOLE]);
+  addon.eval("__pinKind = 0 SuperTrackedFrame:UpdateIcon()");
+  expect(vanguardPin(addon), "a quest again: Vanguard's pin").toEqual([true, true, WHOLE]);
+});
+
+it("waypoints: the pin is the game's own with its switch off or the module off, and nothing happens without the frame", () => {
+  // The pin's icon, atlas, coordinates, tint and font as a list, to read against the game's own.
+  const untouched = (addon) => { const p = pin(addon); return [p.icon, p.atlas, p.coords, p.tint, p.font]; };
+  const off = loggedIn(MAP_ENV + PIN_ENV, { savedVariables: "VanguardDB.profiles = { Default = { Waypoints = { pin = false } } }" });
+  way(off, "45 61");
+  expect(untouched(off), "switch off: the game's atlas and its slice, no tint, the game's font").toEqual([false, "TEST-ONLY-Navigation-Tracked-Icon", ATLAS_RECT, false, false]);
+  const noModule = loggedIn(MAP_ENV + PIN_ENV, { savedVariables: "VanguardDB.profiles = { Default = { modules = { Waypoints = false } } }" });
+  expect(untouched(noModule), "module off: untouched").toEqual([false, "TEST-ONLY-Navigation-Tracked-Icon", ATLAS_RECT, false, false]);
+  const bare = loggedIn(MAP_ENV + 'SuperTrackedFrame = CreateFrame("Frame", "SuperTrackedFrame", UIParent)');
+  bare.eval("ns.GetModule('Waypoints').PaintPin()");
+  expect(bare.eval("return SuperTrackedFrame.Icon == nil"), "a frame without the parts: left alone, no error").toBe(true);
+  const none = loggedIn(MAP_ENV);
+  way(none, "45 61");
+  expect(none.eval("return SuperTrackedFrame == nil"), "no frame at all: nothing made, no error").toBe(true);
 });

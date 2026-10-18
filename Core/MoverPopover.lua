@@ -19,6 +19,13 @@ local SIDES = { { "LEFT", "Left" }, { "RIGHT", "Right" }, { "TOP", "Top" }, { "B
 
 local popover
 
+-- The popover's size, and the width of its right column: the dropdowns and the number boxes alike, so the column
+-- has one edge.
+local WIDTH, HEIGHT, FIELD_W = 280, 372, 150
+-- Where the first row's middle is (down from the top, past the title line), and how far apart the rows are:
+-- a row (T.ROW.height) and a gap between.
+local ROWS_TOP, ROW_STEP = 56, T.ROW.height + T.SPACE.tight
+
 -- A number rounded to a whole one, as text.
 local function whole(v)
   return tostring(math.floor(v + 0.5))
@@ -104,26 +111,31 @@ local function others(first)
   end
 end
 
--- A caption on the left of a popover row at y.
+-- The middle of the popover's i-th row, down from its top.
+local function rowY(i)
+  return ROWS_TOP + (i - 1) * ROW_STEP
+end
+
+-- A caption on the left of a popover row (its middle y down from the top).
 local function caption(text, y)
   local fs = T.Text(popover:CreateFontString(nil, "OVERLAY"), "label", "text2")
-  fs:SetPoint("TOPLEFT", 12, -y)
+  fs:SetPoint("LEFT", popover, "TOPLEFT", T.SPACE.col, -y)
   fs:SetText(text)
   return fs
 end
 
--- A dropdown on the right of a row at y.
+-- A dropdown on the right of a row, FIELD_W wide.
 local function dropdown(choices, get, set, y)
-  local d = W.Dropdown(popover, choices, get, set, 150)
-  d:SetPoint("TOPRIGHT", -12, -y + 4)
+  local d = W.Dropdown(popover, choices, get, set, FIELD_W)
+  d:SetPoint("RIGHT", popover, "TOPRIGHT", -T.SPACE.col, -y)
   popover.dropdowns[#popover.dropdowns + 1] = d
   return d
 end
 
--- A number box on the right of a row at y; Enter saves it (with onEnter).
+-- A number box on the right of a row, as wide as a dropdown; Enter saves it (with onEnter).
 local function numberBox(y, onEnter)
-  local box = W.Input(popover, 80)
-  box:SetPoint("TOPRIGHT", -12, -y + 4)
+  local box = W.Input(popover, FIELD_W)
+  box:SetPoint("RIGHT", popover, "TOPRIGHT", -T.SPACE.col, -y)
   box:SetScript("OnEnterPressed", onEnter)
   return box
 end
@@ -138,15 +150,15 @@ end
 
 -- The rows that place the frame: what it's anchored to, the point or side, and X and Y offsets.
 local function addPlaceRows()
-  caption("Anchor to", 42)
-  popover.target = dropdown(others({ "", "Screen" }), function() return ns.MoverAnchor(popover.key) or "" end, applyTarget, 42)
-  popover.pointCaption = caption("Anchor", 74)
-  popover.anchor = dropdown(POINTS, function() return (ns.MoverPoint(popover.key)) end, applyPoint, 74)
-  popover.side = dropdown(SIDES, function() return select(2, ns.MoverAnchor(popover.key)) end, applySide, 74)
-  caption("X offset", 106)
-  popover.x = numberBox(106, applyOffset)
-  caption("Y offset", 136)
-  popover.y = numberBox(136, applyOffset)
+  caption("Anchor to", rowY(1))
+  popover.target = dropdown(others({ "", "Screen" }), function() return ns.MoverAnchor(popover.key) or "" end, applyTarget, rowY(1))
+  popover.pointCaption = caption("Anchor", rowY(2))
+  popover.anchor = dropdown(POINTS, function() return (ns.MoverPoint(popover.key)) end, applyPoint, rowY(2))
+  popover.side = dropdown(SIDES, function() return select(2, ns.MoverAnchor(popover.key)) end, applySide, rowY(2))
+  caption("X offset", rowY(3))
+  popover.x = numberBox(rowY(3), applyOffset)
+  caption("Y offset", rowY(4))
+  popover.y = numberBox(rowY(4), applyOffset)
 end
 
 -- A Match width or Match height row at y: None, or another frame whose size it takes.
@@ -160,32 +172,42 @@ end
 local function addRows()
   popover.dropdowns = {}
   addPlaceRows()
-  popover.scale = percentBox("Scale %", 166, ns.SetMoverScale)
-  popover.alpha = percentBox("Opacity %", 196, ns.SetMoverAlpha)
-  popover.matchWidth = matchRow("width", "Match width", 228)
-  popover.matchHeight = matchRow("height", "Match height", 260)
+  popover.scale = percentBox("Scale %", rowY(5), ns.SetMoverScale)
+  popover.alpha = percentBox("Opacity %", rowY(6), ns.SetMoverAlpha)
+  popover.matchWidth = matchRow("width", "Match width", rowY(7))
+  popover.matchHeight = matchRow("height", "Match height", rowY(8))
   popover.why = T.Text(popover:CreateFontString(nil, "OVERLAY"), "small", "warn")
-  popover.why:SetPoint("TOPLEFT", 12, -290)
-  popover.why:SetWidth(256)
+  popover.why:SetPoint("TOPLEFT", T.SPACE.col, -(rowY(8) + T.ROW.height / 2 + T.SPACE.tight))
+  popover.why:SetWidth(WIDTH - 2 * T.SPACE.col)
 end
 
--- Reset (to the frame's default place, scale, opacity and size, unlinked) and Done.
+-- Reset (to the frame's default place, scale, opacity and size, unlinked) and Done (the popover is a form that
+-- applies as you go, so it ends in Done, which closes it as its X does).
 local function addButtons()
-  popover.done = W.Primary(popover, "Done", function() ns.CloseMoverPopover() end, 80)
-  popover.done:SetPoint("BOTTOMRIGHT", -12, 12)
-  popover.reset = W.Button(popover, "Reset", function() ns.ResetMovers(popover.key) answer(true) end, 80)
-  popover.reset:SetPoint("RIGHT", popover.done, "LEFT", -8, 0)
+  popover.done = W.Primary(popover, "Done", function() ns.CloseMoverPopover() end)
+  popover.done:SetPoint("BOTTOMRIGHT", -T.SPACE.pad, T.SPACE.pad)
+  popover.reset = W.Button(popover, "Reset", function() ns.ResetMovers(popover.key) answer(true) end)
+  popover.reset:SetPoint("RIGHT", popover.done, "LEFT", -T.SPACE.gap, 0)
 end
 
--- The popover, built once: a raised panel over everything, kept on screen.
+-- The popover's title, a card's (the heading role, in the text colour) with its X: a name and where the frame is
+-- anchored (refresh sets it), on one line short of the X. The X closes it as Done does; so does Escape, which
+-- also puts an open dropdown away.
+local function addChrome()
+  local parts = ns.WindowTitle(popover, "Position", { kind = "card", onClose = ns.CloseMoverPopover, escape = true })
+  parts.title:SetWidth(WIDTH - 3 * T.SPACE.gap - T.CONTROL.tile)
+  parts.title:SetWordWrap(false)
+  popover:HookScript("OnHide", ns.Guard("close mover menu", W.CloseMenu))
+end
+
+-- The popover, built once: a panel at the dialog alpha (it has edit boxes) over everything, kept on screen.
 local function build()
-  popover = T.Panel(CreateFrame("Frame", "Vanguard_MoverPopover", UIParent), { raised = true, shadow = true })
-  popover:SetSize(280, 364)
+  popover = T.Panel(CreateFrame("Frame", "Vanguard_MoverPopover", UIParent), { raised = true, alpha = T.ALPHA.dialog, shadow = true })
+  popover:SetSize(WIDTH, HEIGHT)
   popover:SetFrameStrata("FULLSCREEN_DIALOG")
   popover:SetClampedToScreen(true)
   popover:EnableMouse(true)
-  popover.title = T.Text(popover:CreateFontString(nil, "OVERLAY"), "heading")
-  popover.title:SetPoint("TOPLEFT", 12, -12)
+  addChrome()
   addRows()
   addButtons()
 end
@@ -195,7 +217,7 @@ function ns.MoverPopover(m)
   if not popover then build() end
   popover.key, popover.label = m.key, m.label
   popover:ClearAllPoints()
-  popover:SetPoint("TOPLEFT", m.handle or UIParent, "TOPRIGHT", 8, 0)
+  popover:SetPoint("TOPLEFT", m.handle or UIParent, "TOPRIGHT", T.SPACE.gap, 0)
   answer(true)
   T.FadeIn(popover)
 end

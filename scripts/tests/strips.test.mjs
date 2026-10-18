@@ -296,7 +296,7 @@ const MENU_POOL_ENV = `
   header.Text = header:CreateFontString()
   GameMenuFrame.Header = header
 `;
-it("game menu: buttons made after the skin ran are skinned once, Vanguard's matches, the header plate is gone", () => {
+it("game menu: buttons made after the skin ran are skinned once, Vanguard's matches, the header plate is faded", () => {
   const addon = loggedIn(FOREVER_MENU_ENV + MENU_POOL_ENV);
   addon.eval("__spy = 0 local real = ns.Theme.Button ns.Theme.Button = function(...) __spy = __spy + 1 return real(...) end");
   addon.eval("GameMenuFrame:Show()");
@@ -309,11 +309,12 @@ it("game menu: buttons made after the skin ran are skinned once, Vanguard's matc
   expect(addon.eval("return __spy"), "the next open makes two new buttons: only those are skinned").toBe(5);
   addon.eval("GameMenuFrame:Hide() GameMenuFrame.buttonPool.__active = {} GameMenuFrame:Show()");
   expect(addon.eval("local n = 0 for b in GameMenuFrame.buttonPool:EnumerateActive() do if ns.FrameState('vgMenuSkinned')[b] then n = n + 1 end end return n"), "every active button carries the skin").toBe(2);
-  const head = addon.eval("local h = GameMenuFrame.Header local p = h.__points.TOP return { h.LeftBG:IsShown(), h.RightBG:IsShown(), h.CenterBG:IsShown(), h.Text.__font ~= nil, p.rel == GameMenuFrame, p.y }");
-  expect(head, "the header plate is hidden, its title in the theme font, inside the panel").toEqual([false, false, false, true, true, -8]);
+  const head = addon.eval("local h = GameMenuFrame.Header local p = h.__points.TOP return { h.LeftBG.__alpha, h.RightBG.__alpha, h.CenterBG.__alpha, select(2, h.Text:GetFont()) == ns.Theme.RoleSize('heading'), h.Text.__textColor[1] == (ns.Theme.RGB('text')), p.rel == GameMenuFrame, p.y }");
+  expect(head, "the header plate is faded, its title in the heading role (a game window's title) and the text colour, inside the panel").toEqual([0, 0, 0, true, true, true, -8]);
+  expect(addon.eval("local h = GameMenuFrame.Header return h.LeftBG:IsShown() and h.RightBG:IsShown() and h.CenterBG:IsShown()"), "the plate is faded, not hidden: it stays shown as the game left it").toBe(true);
   const off = loggedIn(FOREVER_MENU_ENV + MENU_POOL_ENV, { savedVariables: "VanguardDB.profiles = { Default = { Windows = { windows = false } } }" });
   off.eval("GameMenuFrame:Show()");
-  expect([borderOf(off, "ns.gameMenuButton") == null, off.eval("return GameMenuFrame.Header.LeftBG:IsShown()")], "with the windows switched off the menu stays the game's").toEqual([true, true]);
+  expect([borderOf(off, "ns.gameMenuButton") == null, off.eval("return GameMenuFrame.Header.LeftBG:IsShown() and GameMenuFrame.Header.LeftBG.__alpha ~= 0")], "with the windows switched off the menu stays the game's").toEqual([true, true]);
 });
 it("game menu button: falls back, or goes without what the menu lacks", () => {
   expectErrors(/^GameMenu: wow-world\.lua:\d+: CreateFrame: unknown template NoSuchTemplate$/);
@@ -450,7 +451,10 @@ it("the game's extras: a protected frame is hidden once, out of combat, with no 
 it("the game's extras: each switch off leaves the game's frame alone, and missing frames are fine", () => {
   const off = loggedIn(UI_ENV + TIDY_ENV, { savedVariables: `VanguardDB.profiles = { Default = { DataBars = { xp = false, reputation = false },
     InfoStrip = { durability = false, clock = false }, Minimap = { icons = false }, MenuStrip = { menu = "always", tracker = false }, QuestTracker = { own = false } } }` });
-  expect(["StatusTrackingBarManager", "DurabilityFrame", "TimeManagerClockButton"].map((n) => putAway(off, n)), "replacements off: the game's own stay").toEqual([false, false, false]);
+  expect(["StatusTrackingBarManager", "TimeManagerClockButton"].map((n) => putAway(off, n)), "replacements off: the game's own stay").toEqual([false, false]);
+  expect(putAway(off, "DurabilityFrame"), "the durability block off: the game's armoured man is still put away while the strip is on (R1.9)").toBe(true);
+  const noStrip = loggedIn(UI_ENV + TIDY_ENV, { savedVariables: "VanguardDB.profiles = { Default = { modules = { InfoStrip = false } } }" });
+  expect([putAway(noStrip, "DurabilityFrame"), noStrip.eval("return DurabilityFrame:IsShown() and DurabilityFrame:GetParent() == UIParent")], "the info strip module off: the game's durability figure is left where it was").toEqual([false, true]);
   expect(off.eval("return MinimapCluster.Tracking:GetParent() == MinimapCluster"), "minimap buttons off: tracking stays where the game put it").toBe(true);
   expect(off.eval("return { Vanguard_MenuStrip:GetAlpha(), Vanguard_MenuStrip.__scripts.OnUpdate == nil }"), "menu strip set to Always: always shown, nothing polling").toEqual([1, true]);
   expect(off.eval("return next(ObjectiveTrackerFrame.__points) == nil and Vanguard_QuestTracker == nil"), "tracker off: the game's tracker is left alone").toBe(true);
@@ -783,4 +787,17 @@ it("bag and menu bar: each bag's slot shows how full it is, the backpack how man
   expect([bag("MainMenuBarBackpackButton")[1], bag("CharacterBag0Slot").slice(0, 1), bag("CharacterBag0Slot")[3], count()[0]], "the bags change: the backpack's fill is full, a new empty bag shows in color with no fill, 12 free").toEqual([18, [false], 1, "12"]);
   const bare = loggedIn(UI_ENV + TIDY_ENV + MICRO_ENV + STRIPS_ENV + "C_Container = nil");
   expect(bare.eval("return { ns.GetModule('MenuStrip').free:GetText(), ns.FrameState('vgFill')[MainMenuBarBackpackButton]:IsShown() }"), "a client that can't count bag slots shows no count and no fill").toEqual(["", false]);
+});
+
+it("the minimap's zone name is the zone role: a bold 13 in Fira Sans that the faction look's display font does not reach", () => {
+  const addon = loggedIn(UI_ENV + 'UnitFactionGroup = function() return "Alliance" end GetLocale = function() return "enUS" end');
+  addon.eval('ns.Theme.Settings().faction = "auto" ns.Theme.Refresh() __heading = ns.Theme.Text(UIParent:CreateFontString(), "heading")');
+  // A font string's file name and size.
+  const font = (ref) => {
+    const f = addon.frame(ref).font;
+    return [f.path.match(/[^\\]+$/)[0], f.size];
+  };
+  expect(font("__heading"), "the faction look is on: a heading takes Cinzel").toEqual(["Cinzel-SemiBold.ttf", 13]);
+  expect(font("ns.GetModule('Minimap').zone"), "the zone name keeps Fira Sans SemiBold at the zone role's 13").toEqual(["FiraSansCondensed-SemiBold.ttf", addon.eval("return ns.Theme.RoleSize('zone')")]);
+  expect(isTok(addon, addon.eval("return ns.GetModule('Minimap').zone.__textColor"), "zoneContested"), "and the PvP colour is still its colour").toBe(true);
 });

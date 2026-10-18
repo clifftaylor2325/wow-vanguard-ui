@@ -31,9 +31,9 @@ AH.SHOP_ROWS = 6
 AH.LIST_COLUMNS = { { key = "price", title = "Unit price", width = 100, side = "RIGHT", role = "number", color = "gold" },
   { key = "qty", title = "Up", width = 60, side = "RIGHT", role = "small", color = "text2" },
   { key = "max", title = "Max", width = 80, side = "RIGHT", role = "small", color = "text2" }, name = "Item" }
--- The Lists pane: its rows (how many, from where), the height its action buttons take, their
--- width (three to a row), and the actions in order.
-AH.PANE_ROWS, AH.PANE_ROWS_Y, AH.ACTIONS_H, AH.ACTION_W = 6, -20, 52, 66
+-- The Lists pane: its rows (how many, from where), the height its action buttons take (two rows of
+-- standalone buttons and the gap between), their width (three to a row), and the actions in order.
+AH.PANE_ROWS, AH.PANE_ROWS_Y, AH.ACTIONS_H, AH.ACTION_W = 6, -20, 2 * T.BUTTON_H + T.SPACE.tight, 66
 -- Shopping lists: how many, entries per list, the list "+ Add" starts, the New action's value.
 AH.MAX_LISTS, AH.MAX_ENTRIES, AH.DEFAULT_LIST, AH.NEW = 20, 50, "Shopping", "\1new"
 -- The other actions on the list in use (values no list name can have).
@@ -204,7 +204,7 @@ end
 local function askClearRecent()
   local recent = AH.Recent()
   local question = string.format("Clear the %d recent searches?", #recent)
-  ns.Ask(question, "Clear", function() AP.Store().recent = {} AH.PaintShop() end, function() end)
+  ns.Ask(question, "Clear", function() AP.Store().recent = {} AH.PaintShop() end, function() end, "danger")
 end
 
 -- Asks before deleting the list in use (Delete or No); on Recent, before clearing it.
@@ -213,7 +213,7 @@ function AH.AskDelete()
   local name = listInUse()
   if not name then return ns.Chat(AH.NO_LIST) end
   local question = string.format("Delete the shopping list %s (%d items)?", name, #AP.Store().lists[name])
-  ns.Ask(question, "Delete", function() AH.DeleteList(name) end, function() end)
+  ns.Ask(question, "Delete", function() AH.DeleteList(name) end, function() end, "danger")
 end
 
 -- A name no list has yet: "<name> copy", then "<name> copy 2" and on.
@@ -681,12 +681,12 @@ local function paintToolbar(c, s, items)
 end
 
 -- The source's list on the card: its columns when they change, its rows from the scroll offset,
--- and its status line.
+-- and its status line (every source's is an empty-state line: how to start, or what is missing).
 local function paintSource(t, s, items)
   if t.columns ~= s.columns then t:SetColumns(s.columns) end
   t.paintRow = s.paint
   t:SetItems(items)
-  t:SetStatus(s.status(items))
+  t:SetStatus(s.status(items), true)
 end
 
 -- The card: the pane, then the source's list, its toolbar, and the results view when one is open.
@@ -729,17 +729,14 @@ function AH.PickEntry(key)
   AH.PaintShop()
 end
 
--- A pane row: the entry's name and count, marked (accent edge and wash) when it's the one shown.
+-- A pane row: the entry's name and count, with the row's selected look (W.Row) when it's the one shown.
 local function paintPaneRow(r, e)
   r:SetShown(e ~= nil)
   r.entry = e
   if not e then return end
-  local on = e.key == AH.ListKey()
   r.name:SetText(e.name)
   r.count:SetText(e.count > 0 and tostring(e.count) or "")
-  T.Color(r.name, on and "accentText" or "text")
-  r.mark:SetShown(on)
-  r.wash:SetShown(on)
+  r:SetSelected(e.key == AH.ListKey())
 end
 
 -- Which actions work now: on a list all six; on Recent new, import, copy, export and delete (as
@@ -776,26 +773,26 @@ local function scrollPane(p, delta)
   AH.PaintPane()
 end
 
--- Pane row i: a click shows its entry; its name on the left, its count on the right, and the mark.
+-- Pane row i: a click shows its entry; its name on the left, its count on the right.
 local function paneRow(p, i)
   local r = AH.Row(p, i, AH.PANE_ROWS_Y, function(self) if self.entry then AH.PickEntry(self.entry.key) end end)
-  AH.KeyMarks(r)
   r.name = T.Text(r:CreateFontString(nil, "OVERLAY"), "label")
-  r.name:SetPoint("LEFT", 6, 0)
+  r.name:SetPoint("LEFT", T.SPACE.gap, 0)
   r.name:SetPoint("RIGHT", -40, 0)
   r.name:SetJustifyH("LEFT")
   r.name:SetWordWrap(false)
   r.count = T.Text(r:CreateFontString(nil, "OVERLAY"), "small", "text2")
-  r.count:SetPoint("RIGHT", -4, 0)
+  r.count:SetPoint("RIGHT", -T.SPACE.tight, 0)
   return r
 end
 
--- Action button i at the pane's bottom, three to a row: its action (AH.LIST_ACTIONS) on a click.
+-- Action button i at the pane's bottom, three to a row, T.SPACE.tight between them: its action
+-- (AH.LIST_ACTIONS) on a click.
 local function actionButton(p, i, choice)
   local b = W.Button(p, choice[2], function() AH.LIST_ACTIONS[choice[1]]() end, AH.ACTION_W)
   b.action = choice[1]
   local col, row = (i - 1) % 3, math.floor((i - 1) / 3)
-  b:SetPoint("BOTTOMLEFT", p, "BOTTOMLEFT", col * (AH.ACTION_W + 4), (1 - row) * 26)
+  b:SetPoint("BOTTOMLEFT", p, "BOTTOMLEFT", col * (AH.ACTION_W + T.SPACE.tight), (1 - row) * (T.BUTTON_H + T.SPACE.tight))
   return b
 end
 
@@ -860,57 +857,87 @@ function AH.SaveFilters()
   AH.PaintShop()
 end
 
--- A caption on the left of the filter dialog at y.
-local function filterCaption(d, text, y)
+-- The filter dialog's layout: rows T.ROW.height tall from ns.DIALOG.head down (a switch row, a choice row, or a
+-- caption with its boxes), T.SPACE.pad in from the dialog's sides, as wide as the dialog less both; a caption or
+-- a box sits T.SPACE.gap inside a row's edge, level with the labels and the switch of the rows' own. How many
+-- rows, the level boxes' and the price box's widths, and a foot button's width.
+local FILTER_ROWS, LEVEL_W, PRICE_W, FOOT_BUTTON_W = 5, 44, 120, 80
+local ROW_W = AH.FILTER_W - 2 * T.SPACE.pad
+
+-- Row n's top, down from the filter dialog's top.
+local function rowTop(n)
+  return ns.DIALOG.head + (n - 1) * T.ROW.height
+end
+
+-- A row's widget (the switch, the choice) placed at row n.
+local function placeRow(widget, n)
+  widget:ClearAllPoints()
+  widget:SetPoint("TOPLEFT", T.SPACE.pad, -rowTop(n))
+  widget:SetWidth(ROW_W)
+end
+
+-- A caption on the left of row n of the filter dialog, level with the row's middle.
+local function filterCaption(d, text, n)
   local fs = T.Text(d:CreateFontString(nil, "OVERLAY"), "label")
-  fs:SetPoint("TOPLEFT", 20, y)
+  fs:SetPoint("LEFT", d, "TOPLEFT", T.SPACE.pad + T.SPACE.gap, -(rowTop(n) + T.ROW.height / 2))
   fs:SetText(text)
   return fs
 end
 
--- A box on the filter dialog, its right edge x from the dialog's right, at y.
-local function filterBox(d, width, x, y)
+-- A box on the filter dialog, its right edge level with the rows' switch and menu, in row n.
+local function filterBox(d, width, n)
   local box = W.Input(d, width)
-  box:SetPoint("TOPRIGHT", x, y)
+  box:SetPoint("RIGHT", d, "TOPRIGHT", -(T.SPACE.pad + T.SPACE.gap), -(rowTop(n) + T.ROW.height / 2))
   return box
 end
 
--- The filter dialog's rows: exact name, level from and to, quality, max price and the price alert
--- at it (Modules/AuctionAlerts.lua).
-local function filterRows(d)
-  d.exact = W.Check(d, "Exact name only", function() return d.draft.exact end, function(v) d.draft.exact = v end, AH.FILTER_W - 24)
-  d.exact:SetPoint("TOPLEFT", 12, -36)
-  filterCaption(d, "Level", -74)
-  d.minLevel, d.maxLevel = filterBox(d, 44, -90, -70), filterBox(d, 44, -20, -70)
-  filterCaption(d, "to", -74):SetPoint("TOPLEFT", AH.FILTER_W - 80, -74)
-  d.quality = W.Choice(d, "Quality", AH.QUALITIES, function() return d.draft.quality end, function(v) d.draft.quality = v end, AH.FILTER_W - 24)
-  d.quality:SetPoint("TOPLEFT", 12, -96)
-  filterCaption(d, "Max price", -134)
-  d.price = filterBox(d, 120, -20, -130)
-  AH.AlertRow(d)
+-- Level: its caption, then the two boxes with "to" between them, from the right edge in.
+local function levelRow(d)
+  filterCaption(d, "Level", 2)
+  d.maxLevel = filterBox(d, LEVEL_W, 2)
+  local to = filterCaption(d, "to", 2)
+  to:ClearAllPoints()
+  to:SetPoint("RIGHT", d.maxLevel, "LEFT", -T.SPACE.gap, 0)
+  d.minLevel = W.Input(d, LEVEL_W)
+  d.minLevel:SetPoint("RIGHT", to, "LEFT", -T.SPACE.gap, 0)
 end
 
--- The filter dialog's draft (what its switch and choice show), title, and Save and Cancel at the bottom right.
+-- Exact name (row 1) and Quality (row 3): the draft's switch and choice.
+local function exactAndQuality(d)
+  d.exact = W.Check(d, "Exact name only", function() return d.draft.exact end, function(v) d.draft.exact = v end, ROW_W)
+  placeRow(d.exact, 1)
+  d.quality = W.Choice(d, "Quality", AH.QUALITIES, function() return d.draft.quality end, function(v) d.draft.quality = v end, ROW_W)
+  placeRow(d.quality, 3)
+end
+
+-- The filter dialog's rows: exact name, level from and to, quality, max price and the price alert
+-- at it (Modules/AuctionAlerts.lua, which builds its row; it goes to row 5 here).
+local function filterRows(d)
+  exactAndQuality(d)
+  levelRow(d)
+  filterCaption(d, "Max price", 4)
+  d.price = filterBox(d, PRICE_W, 4)
+  AH.AlertRow(d)
+  placeRow(d.alert, 5)
+end
+
+-- The filter dialog's draft (what its switch and choice show), and Save and Cancel along its foot.
 local function filterFrame(d)
   d.draft = { exact = false, quality = AH.ANY }
-  d.title = T.Text(d:CreateFontString(nil, "OVERLAY"), "heading")
-  d.title:SetPoint("TOPLEFT", 12, -12)
-  d.save = W.Primary(d, "Save", function() AH.SaveFilters() end, 80)
-  d.save:SetPoint("BOTTOMRIGHT", -12, 12)
-  d.cancel = W.Button(d, "Cancel", function() d:Hide() end, 80)
-  d.cancel:SetPoint("RIGHT", d.save, "LEFT", -8, 0)
+  d.save = W.Primary(d, "Save", function() AH.SaveFilters() end, FOOT_BUTTON_W)
+  d.save:SetPoint("BOTTOMRIGHT", -T.SPACE.pad, T.SPACE.pad)
+  d.cancel = W.Button(d, "Cancel", function() d:Hide() end, FOOT_BUTTON_W)
+  d.cancel:SetPoint("RIGHT", d.save, "LEFT", -T.SPACE.gap, 0)
 end
 
--- The filter dialog, built once: a raised panel over the auction house, with Save and Cancel.
+-- The filter dialog, built once: a dialog (ns.Dialog: the dialog alpha, its title, X and Escape) over the
+-- auction house, its title (kept short of the X by ns.Dialog) on one line, with Save and Cancel.
 local function buildFilters()
-  local d = T.Panel(CreateFrame("Frame", "Vanguard_AuctionFilters", UIParent), { raised = true, shadow = true })
-  d:SetSize(AH.FILTER_W, 228)
-  d:SetFrameStrata("DIALOG")
+  local d = ns.Dialog("Vanguard_AuctionFilters", AH.FILTER_W, ns.DIALOG.head + FILTER_ROWS * T.ROW.height + ns.DIALOG.foot, "Filters")
   d:SetClampedToScreen(true)
-  d:EnableMouse(true)
+  d.title:SetMaxLines(1)
   filterFrame(d)
   filterRows(d)
-  d:Hide()
   AH.filterDialog = d
   return d
 end
@@ -965,11 +992,11 @@ function AH.TableUnder(t, parent)
   t:SetPoint("TOPRIGHT", parent, "TOPRIGHT", 0, -AH.TOOLBAR_H)
 end
 
--- A toolbar button, 18 high, right of the last one (or at the card's top right).
+-- A toolbar button, T.CONTROL_H high (level with the heading), right of the last one (or at the card's top right).
 function AH.ToolButton(c, text, onClick, width, after)
   local b = W.Button(c.body, text, onClick, width)
-  b:SetHeight(18)
-  if after then b:SetPoint("RIGHT", after, "LEFT", -4, 0) else b:SetPoint("TOPRIGHT", 0, 2) end
+  b:SetHeight(T.CONTROL_H)
+  if after then b:SetPoint("RIGHT", after, "LEFT", -T.SPACE.tight, 0) else b:SetPoint("TOPRIGHT", 0, 2) end
   return b
 end
 
@@ -977,7 +1004,7 @@ end
 -- + Add, Search list and Restock (Modules/AuctionRestock.lua).
 local function toolbar(c)
   c.progress = T.Text(c.body:CreateFontString(nil, "OVERLAY"), "small", "text2")
-  c.progress:SetPoint("LEFT", c.title, "RIGHT", 8, 0)
+  c.progress:SetPoint("LEFT", c.title, "RIGHT", T.SPACE.gap, 0)
   c.add = AH.ToolButton(c, "+ Add", function() ns.AskText("Add to list", function(text) AH.AddEntry(text) end, "Add") end, 70)
   c.search = AH.ToolButton(c, "Search list", function() AH.SearchList() end, 100, c.add)
   AH.BuildRestock(c)
@@ -1002,13 +1029,13 @@ end
 -- The view's top line: Back, then the item's icon and name.
 local function viewHead(f)
   f.back = W.Button(f, "Back", function() AH.CloseListings() end, 60)
-  f.back:SetHeight(18)
+  f.back:SetHeight(T.CONTROL_H)
   f.back:SetPoint("TOPLEFT", 0, 2)
   f.icon = T.Crop(f:CreateTexture(nil, "ARTWORK"))
   f.icon:SetSize(16, 16)
-  f.icon:SetPoint("LEFT", f.back, "RIGHT", 8, 0)
+  f.icon:SetPoint("LEFT", f.back, "RIGHT", T.SPACE.gap, 0)
   f.name = T.Text(f:CreateFontString(nil, "OVERLAY"), "heading")
-  f.name:SetPoint("LEFT", f.icon, "RIGHT", 4, 0)
+  f.name:SetPoint("LEFT", f.icon, "RIGHT", T.SPACE.tight, 0)
   f.name:SetPoint("RIGHT", f, "RIGHT", 0, 0)
   f.name:SetWordWrap(false)
 end

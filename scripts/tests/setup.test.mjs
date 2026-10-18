@@ -18,6 +18,28 @@ it("the setup wizard's title and step caption are centred across the window", ()
   const addon = loggedIn("UISpecialFrames = {}", { firstRun: true });
   expect(addon.eval("local w, t, c = Vanguard_Setup, Vanguard_Setup.title, Vanguard_Setup.caption return { math.abs(select(1, t:GetCenter()) - select(1, w:GetCenter())) < 1, math.abs(select(1, c:GetCenter()) - select(1, w:GetCenter())) < 1 }"), "the title and the caption sit on the window's centre line").toEqual([true, true]);
 });
+it("the setup wizard's title block: the title sits on the window's 24 line (the X's) in the title role and text colour, the faction crest (T.CREST.title) sits just right of it, the step caption is small text2 under it", () => {
+  const addon = loggedIn("UISpecialFrames = {}", { firstRun: true });
+  const [inset, pad, gap, tight, crest, small, title] = addon.eval("local T = ns.Theme return { T.CONTROL.inset, T.SPACE.pad, T.SPACE.gap, T.SPACE.tight, T.CREST.title, T.RoleSize('small'), T.RoleSize('title') }");
+  const block = addon.eval(`local f = Vanguard_Setup local t, c, k = f.title.__points.CENTER, f.caption.__points.TOP, f.crest.__points.LEFT
+    return { t.rel == f, t.relPoint, t.x, t.y, select(2, f.title:GetFont()), f.crest:GetWidth(), k.rel == f.title, k.relPoint, k.x, c.rel == f.title, c.relPoint, c.y, (select(2, f.caption:GetFont())) }`);
+  expect(block, "the title's middle is T.CONTROL.inset down the window's top centre, on the X's line; the crest a gap right of the title; the caption a tight gap under it").toEqual([true, "TOP", 0, -inset, title, crest, true, "RIGHT", gap, true, "BOTTOM", -tight, small]);
+  const colors = addon.eval("local f = Vanguard_Setup return { f.title.__textColor, f.caption.__textColor }");
+  expect([colors[0], colors[1]], "the title in the text colour, the caption in text2").toEqual([tok(addon, "text").slice(0, 3).concat(1), tok(addon, "text2").slice(0, 3).concat(1)]);
+  expect(addon.eval("local f = Vanguard_Setup return f.crest:GetLeft() >= f.title:GetRight() and math.abs((f.crest:GetTop() + f.crest:GetBottom()) / 2 - (f.title:GetTop() + f.title:GetBottom()) / 2) < 1"), "the crest sits right of the title, centred on its line").toBe(true);
+  const foot = addon.eval("local f = Vanguard_Setup return { f.next.__points.BOTTOMRIGHT.x, f.next.__points.BOTTOMRIGHT.y, f.back:GetWidth(), f.skip:GetWidth(), f.skip.__points.BOTTOMLEFT.x }");
+  expect(foot, "Next sits T.SPACE.pad from the corner; Back and Skip are the usual 120 wide, Skip a pad in").toEqual([-pad, pad, 120, 120, pad]);
+});
+it("the setup wizard is a dialog: the dialog alpha, the shared X at the window offset closes it, and Escape is wired", () => {
+  const addon = loggedIn("UISpecialFrames = {}", { firstRun: true });
+  const alpha = addon.eval(`for _, t in ipairs(__wfgStub.frames) do if t.__kind == "Texture" and t.__parent == Vanguard_Setup and t.__layer == "BACKGROUND" and t.__vertexColor then return t.__vertexColor[4] end end`);
+  expect(alpha, "the window is T.ALPHA.dialog").toBe(addon.eval("return ns.Theme.ALPHA.dialog"));
+  const close = addon.eval(`local b = CreateFrame("Button", nil, UIParent) ns.Theme.PlaceClose(b, Vanguard_Setup) local p, c = b.__points.CENTER, Vanguard_Setup.close.__points.CENTER return { p.x == c.x and p.y == c.y, c.relPoint }`);
+  expect(close, "the X is where T.PlaceClose puts every window's").toEqual([true, "TOPRIGHT"]);
+  expect(addon.eval("local n = 0 for _, name in ipairs(UISpecialFrames) do if name == 'Vanguard_Setup' then n = n + 1 end end return n"), "Escape closes it, wired once").toBe(1);
+  setupClick(addon, "close");
+  expect(setupState(addon).step, "the X closes setup").toBe(0);
+});
 it("first-run setup: once per account, four clicks with the defaults", () => {
   const addon = loggedIn("UISpecialFrames = {}", { firstRun: true });
   expect(setupState(addon), "a new account opens setup at step 1").toEqual({ step: 1, done: false, unlocked: false });
@@ -138,7 +160,7 @@ it("setup again: Keep and Keep change nothing; Run setup in the options; Start o
   expect(addon.eval('return __click("Start over")'), "Profiles has Start over").toBe(true);
   expect(addon.eval("return Vanguard_Question.title:GetText()"), "it asks first, saying what is lost and where the copy goes")
     .toBe("Start over? Every setting in profile Default goes back to Vanguard's defaults, for every character that uses it. A copy is kept as profile Default backup.");
-  addon.eval('Vanguard_Question.yes:GetScript("OnClick")(Vanguard_Question.yes)');
+  addon.eval('Vanguard_Question.confirm:GetScript("OnClick")(Vanguard_Question.confirm)');
   expect(addon.eval("return { VanguardCharDB.setupDone, VanguardDB.profiles.Default.positions == nil, VanguardDB.profiles['Default backup'].positions.raid.y }"), "it backs the profile up, resets it and owes setup").toEqual([false, true, -300]);
   expect(chatHas(addon, /Profile Default as it was is saved as profile Default backup\./), "and says where the copy went").toBe(true);
   const after = loggedIn("", { firstRun: true, savedVariables: "VanguardDB = { version = 2, setupDone = true, profiles = { Default = {} } }\nVanguardCharDB = { setupDone = false }" });
@@ -197,4 +219,27 @@ it("first-run setup: Done suggests exporting a profile string; Skip and a rerun 
   skipped.slash("setup");
   for (let i = 0; i < 4; i += 1) setupClick(skipped, "next");
   expect(skipped.eval("return Vanguard_Question == nil"), "nor does finishing setup again").toBe(true);
+});
+
+it("the setup wizard takes Tab focus over the showing page's choices, then Skip and Next, and Enter presses the focused one", () => {
+  const addon = loggedIn("UISpecialFrames = {}", { firstRun: true });
+  // Which of the wizard's buttons wears the ring: its index in choices (c1, c2...) or its name.
+  const where = () => addon.eval(`local f = Vanguard_Setup
+    local function on(b) local p = ns.Theme.FocusParts(b) return p ~= nil and p.ring.top:IsShown() end
+    for _, page in pairs(f.pages) do for i, b in ipairs(page.choices or {}) do if on(b) then return "c" .. i end end end
+    for _, name in ipairs({ "skip", "back", "next" }) do if on(f[name]) then return name end end
+    return "none"`);
+  const choices = addon.eval("local n = 0 for _, page in pairs(Vanguard_Setup.pages) do if page:IsShown() then n = #(page.choices or {}) end end return n");
+  expect(where(), "no ring until Tab").toBe("none");
+  addon.key("Vanguard_Setup", "TAB");
+  expect(where(), "Tab starts at the page's first choice").toBe("c1");
+  for (let i = 1; i < choices; i++) addon.key("Vanguard_Setup", "TAB");
+  addon.key("Vanguard_Setup", "TAB");
+  expect(where(), "after the last choice comes Skip setup (first step), then Next (Back is hidden)").toBe("skip");
+  addon.key("Vanguard_Setup", "TAB");
+  expect(where(), "then Next").toBe("next");
+  addon.key("Vanguard_Setup", "ENTER");
+  expect(addon.eval("return ns.Setup.Step()"), "Enter on the focused Next goes to step 2").toBe(2);
+  addon.eval("Vanguard_Setup:Hide()");
+  expect(where(), "closing the wizard clears the ring").toBe("none");
 });

@@ -13,7 +13,10 @@ local PR = ns.GetModule("InstancePrep")
 local WZ = {}
 PR.Wizard = WZ
 
-WZ.WIDTH, WZ.HEIGHT, WZ.PAD, WZ.ROW = 400, 300, 14, 30
+WZ.WIDTH, WZ.HEIGHT, WZ.PAD, WZ.ROW = 400, 300, T.SPACE.pad, T.ROW.height
+-- Where the sliders (and the review text) start, down from the top: the head of a dialog and the step caption's line.
+local CAPTION_H = 16
+WZ.TOP = ns.DIALOG.head + CAPTION_H
 -- Each amount's label and slider range: { label, min, max, step }.
 WZ.AMOUNTS = {
   food = { "Food & drink", 0, 100, 5 }, bandages = { "Bandages", 0, 60, 5 }, potions = { "Potions", 0, 20, 1 },
@@ -85,7 +88,7 @@ function WZ.Place(page)
   for i, k in ipairs(keys) do
     local s = WZ.frame.sliders[k]
     s:ClearAllPoints()
-    s:SetPoint("TOPLEFT", WZ.PAD, -56 - (i - 1) * WZ.ROW)
+    s:SetPoint("TOPLEFT", WZ.PAD, -WZ.TOP - (i - 1) * WZ.ROW)
     s:Show()
   end
 end
@@ -119,25 +122,23 @@ local function amountSlider(f, key)
   f.sliders[key] = s
 end
 
--- The footer: Use suggested (first page), Back and Next or Done.
+-- The footer: Use suggested (first page), Back and Next or Done (the window applies as you go, so it ends in Done).
 local function footer(f)
-  f.suggest = W.Button(f, "Use suggested", WZ.UseSuggested, 130)
+  f.suggest = W.Button(f, "Use suggested", WZ.UseSuggested)
   f.suggest:SetPoint("BOTTOMLEFT", WZ.PAD, WZ.PAD)
   f.next = W.Primary(f, "Next", function() WZ.Next() end)
   f.next:SetPoint("BOTTOMRIGHT", -WZ.PAD, WZ.PAD)
-  f.back = W.Button(f, "Back", function() WZ.Show(WZ.step - 1) end, 100)
-  f.back:SetPoint("RIGHT", f.next, "LEFT", -6, 0)
+  f.back = W.Button(f, "Back", function() WZ.Show(WZ.step - 1) end)
+  f.back:SetPoint("RIGHT", f.next, "LEFT", -T.SPACE.gap, 0)
 end
 
--- The title, the step caption, the close button and the review text.
+-- The title, the step caption (a note) and the review text; the window's close button comes with ns.Dialog.
 local function labels(f)
   f.title:SetText("Instance prep: wanted amounts")
-  f.caption = T.Text(f:CreateFontString(nil, "OVERLAY"), "label", "text2")
-  f.caption:SetPoint("TOPLEFT", WZ.PAD, -34)
-  f.close = T.PlaceClose(T.CloseButton(CreateFrame("Button", nil, f)), f)
-  f.close:SetScript("OnClick", ns.Guard("click close prep wizard", function() f:Hide() end))
+  f.caption = T.Text(f:CreateFontString(nil, "OVERLAY"), "small", "muted")
+  f.caption:SetPoint("TOPLEFT", WZ.PAD, -ns.DIALOG.head)
   f.review = T.Text(f:CreateFontString(nil, "OVERLAY"), "label")
-  f.review:SetPoint("TOPLEFT", WZ.PAD, -56)
+  f.review:SetPoint("TOPLEFT", WZ.PAD, -WZ.TOP)
   f.review:SetWidth(WZ.WIDTH - 2 * WZ.PAD)
   f.review:SetJustifyH("LEFT")
 end
@@ -148,14 +149,13 @@ function WZ.Next()
   WZ.Show(WZ.step + 1)
 end
 
--- Builds the window once: a dialog with a slider per amount; Escape closes it.
+-- Builds the window once: a dialog (its X and Escape close it) with a slider per amount.
 local function build()
   local f = ns.Dialog("Vanguard_PrepWizard", WZ.WIDTH, WZ.HEIGHT)
   f.sliders = {}
   labels(f)
   for key in pairs(WZ.AMOUNTS) do amountSlider(f, key) end
   footer(f)
-  if type(UISpecialFrames) == "table" then table.insert(UISpecialFrames, "Vanguard_PrepWizard") end
   return f
 end
 

@@ -77,6 +77,44 @@ function stripes() {
   return fill(image(8, 8), (x, y) => [1, 1, 1, (x + y) % 8 < 3 ? 0.55 : 0.12]);
 }
 
+// A clamp to 0..1, for coverage.
+const clamp01 = (v) => Math.max(0, Math.min(1, v));
+
+// A capsule (a pill) on a 64 x 32 canvas: its round ends have radius 16, its middle runs flat between them. With
+// `ring` set (texels) it is only the outline, that wide: 2 is about one pixel on a switch's 18-unit track, 4 one
+// pixel on a slider's 8-unit track.
+function capsule(ring) {
+  return fill(image(64, 32), (x, y) => {
+    const px = x + 0.5;
+    const py = y + 0.5;
+    const d = Math.hypot(px - Math.max(16, Math.min(48, px)), py - 16);
+    const outer = clamp01(16 - d + 0.5);
+    const inner = ring ? clamp01(16 - ring - d + 0.5) : 0;
+    return [1, 1, 1, outer - inner];
+  });
+}
+
+// A switch's knob: a white round disc on a 32 px canvas (radius 15, so a clear pixel stays inside the edge, as the
+// other stand-alone shapes keep), for the theme to tint. With `ring` set (texels) it is only the disc's outline,
+// that wide: 3 is about one pixel on a slider's 12-unit thumb.
+function knob(ring) {
+  return fill(image(32, 32), (x, y) => {
+    const d = Math.hypot(x + 0.5 - 16, y + 0.5 - 16);
+    const inner = ring ? clamp01(15 - ring - d + 0.5) : 0;
+    return [1, 1, 1, clamp01(15 - d + 0.5) - inner];
+  });
+}
+
+// The knob's shade: the crescent under its lit top-left edge, a white disc less one shifted up and left, so the
+// theme's shade color darkens the lower right of the knob.
+function knobShade() {
+  return fill(image(32, 32), (x, y) => {
+    const disc = clamp01(15 - Math.hypot(x + 0.5 - 16, y + 0.5 - 16) + 0.5);
+    const lit = clamp01(15 - Math.hypot(x + 0.5 - 13, y + 0.5 - 13) + 0.5);
+    return [1, 1, 1, disc * (1 - lit)];
+  });
+}
+
 // The unit frames' classification diamond (Modules/UnitFrames.lua, tinted by rank), on a 64-unit grid:
 // a diamond outline with a filled middle. It was the left half of the first logo; T.Logo now draws Icon.
 const LOGO_LEFT = [path([[22, 17], [37, 32], [22, 47], [7, 32]], 5, true), poly([[32, 27], [37, 32], [32, 37], [27, 32]])];
@@ -86,6 +124,14 @@ export const TEXTURES = {
   Bar: bar,
   BarSoft: barSoft,
   Spark: spark,
+  // A switch's or slider's track (the pill, tinted the inset color), the switch's outline, the slider's (thicker, for its
+  // lower track), the round knob with its shade, and the slider thumb's outline (Core/Controls.lua).
+  Pill: () => capsule(0),
+  PillLine: () => capsule(2),
+  SliderLine: () => capsule(4),
+  Knob: () => knob(0),
+  KnobLine: () => knob(3),
+  KnobShade: knobShade,
   // A small filled diamond (minimap corners, the assist mark), on a 16-unit grid.
   Diamond: () => draw(image(16, 16), 16, [poly([[8, 1], [15, 8], [8, 15], [1, 8]])]),
   // Shadow (filled) and glow (hollow) share the soft falloff.
@@ -138,6 +184,7 @@ const ICON_SHAPES = {
   Close: [line(3.5, 4, 11.5, 12, STROKE), line(12.5, 4, 4.5, 12, STROKE)],
   Check: [path([[3, 8.5], [6.5, 12], [13, 5.5]], STROKE)],
   Down: [path([[4, 6.5], [8, 10.5], [12, 6.5]], STROKE)],
+  Up: [path([[4, 9.5], [8, 5.5], [12, 9.5]], STROKE)],
   Right: [path([[6.5, 4], [10.5, 8], [6.5, 12]], STROKE)],
   Search: [ring(7, 7, 4, STROKE), line(10.5, 10.5, 14, 14, STROKE)],
   // Raid marks, filled so they read at 10 px: a tank's shield, a healer's cross,
@@ -153,6 +200,14 @@ const ICON_SHAPES = {
   DispelCurse: [...path(arc(8.5, 8, 5.5, 5.5, 45, 315, 14), LETTER)],
   DispelDisease: [...path([[3.5, 2.5], [3.5, 13.5]], LETTER), ...path([[3.5, 2.5], ...arc(7.5, 8, 5.5, 5.5, 90, -90, 12), [3.5, 13.5]], LETTER)],
   DispelPoison: [...path([[4, 13.5], [4, 2.5]], LETTER), ...path([[4, 2.5], ...arc(8.5, 5.5, 4, 3, 90, -90, 10), [4, 8.5]], LETTER)],
+  // The quest marks for the quest dialog and quest log lines (F17), in place of the game's gossip
+  // icons: an exclamation mark (a stem from the top, two units of air, a 2 x 2 dot) and a question
+  // mark (a round hook that curls under on the left, a short stem, the same dot), tops and dots level.
+  QuestBang: [crisp([[8, 2], [8, 9]]), box(7, 12, 9, 14)],
+  QuestQuery: [path(arc(8, 5, 3.5, 3, 200, -90, 14), STROKE), crisp([[8, 8], [8, 9]]), box(7, 12, 9, 14)],
+  // The floating waypoint pin (Modules/Waypoints.lua, on the game's SuperTrackedFrame): a teardrop outline, its
+  // round head on (8, 6) meeting the tip at (8, 14), with a filled dot in the head; shown at the game's pin size.
+  Pin: [path([[8, 14], ...arc(8, 6, 4, 4, -30, 210, 24)], STROKE, true), box(6.75, 4.75, 9.25, 7.25, 1.25)],
 };
 
 // A filled five-point star centered at (cx, cy) with outer radius r.

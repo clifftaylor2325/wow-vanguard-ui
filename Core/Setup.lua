@@ -15,7 +15,12 @@ local T, W = ns.Theme, ns.Widgets
 local S = {}
 ns.Setup = S
 
-local WIDTH, HEIGHT, PAD = 440, 350, 16
+-- The window's size and its inner margin (a dialog's: T.SPACE.pad).
+local WIDTH, HEIGHT, PAD = 440, 362, T.SPACE.pad
+-- Where the pages start: the title line (T.CONTROL.inset), the title and the step caption under it (about 36
+-- units), and a column gap. And where they stop: the footer's pad, button and the gap over it.
+local TOP = T.CONTROL.inset + 36 + T.SPACE.col
+local FOOT = T.SPACE.pad + T.BUTTON_H + T.SPACE.gap
 -- The pages in order, each with its caption name; a wizard shows STEPS, or PROFILE_STEPS for a new character.
 local NAMES = { profile = "Profile", layout = "Layout", screen = "Screen", look = "Look", move = "Move things" }
 local STEPS = { "layout", "screen", "look", "move" }
@@ -367,7 +372,6 @@ local function refresh()
   markChoice(frame.pages.screen, state.screen)
   for _, s in ipairs(look.swatches) do mark(s, isAccent(s.rgb)) end
   for _, b in ipairs(look.styles) do mark(b, b.value == raidSettings().look) paintTile(b) end
-  T.Color(frame.caption, "accentText")
 end
 
 -- Building ------------------------------------------------------------------------------
@@ -380,12 +384,17 @@ local function text(parent, role, color, value)
   return fs
 end
 
--- A full-width choice button at row i below y; value is what it picks.
+-- A full-width choice button at y (a negative offset down the page); value is what it picks.
 local function choice(page, label, value, y, onClick)
   local b = W.Button(page, label, onClick, WIDTH - 2 * PAD)
   b:SetPoint("TOPLEFT", 0, y)
   b.value = value
   return b
+end
+
+-- How far down a page the i-th choice sits: under the question, a button and a tight gap apart.
+local function choiceY(i)
+  return -(T.SPACE.section + (i - 1) * (T.BUTTON_H + T.SPACE.tight))
 end
 
 -- A page of choices under a question: a button per { key, text, hint }; picking one
@@ -394,11 +403,11 @@ local function choicePage(page, question, list, field)
   text(page, "label", "text2", question):SetPoint("TOPLEFT")
   page.choices = {}
   for i, l in ipairs(list) do
-    page.choices[i] = choice(page, l.text, l.key, -24 - (i - 1) * 30, function() state[field] = l.key; refresh() end)
+    page.choices[i] = choice(page, l.text, l.key, choiceY(i), function() state[field] = l.key; refresh() end)
     page.choices[i].hint = l.hint or ""
   end
   page.hint = text(page, "small", "text2", "")
-  page.hint:SetPoint("TOPLEFT", 0, -24 - #list * 30)
+  page.hint:SetPoint("TOPLEFT", 0, choiceY(#list + 1))
   page.hint:SetWidth(WIDTH - 2 * PAD)
 end
 
@@ -467,7 +476,7 @@ local function styleTile(page, i, s)
   b.value = s[1]
   tileBar(b)
   b.text = text(page, "small", "text", s[3])
-  b.text:SetPoint("TOP", b, "BOTTOM", 0, -4)
+  b.text:SetPoint("TOP", b, "BOTTOM", 0, -T.SPACE.tight)
   b:SetScript("OnClick", ns.Guard("click setup style", function() S.SetStyle(s[1]); refresh() end))
   return b
 end
@@ -508,22 +517,19 @@ local function movePage(page)
   end
 end
 
--- The title and the step caption under it, centred across the window (as the game's own titles are),
--- and your faction's crest left of the close button.
+-- The title and the step caption under it, centred across the window (as the game's own titles are), with the
+-- close button and Escape (ns.WindowTitle), and your faction's crest (T.CREST.title) just right of the title.
 local function addTitle(f)
-  f.title = text(f, "title", "text", "Set up Vanguard")
-  f.title:SetPoint("TOP", f, "TOP", 0, -14)
-  f.title:SetJustifyH("CENTER")
-  f.caption = text(f, "small", "accentText", "")
-  f.caption:SetPoint("TOP", f.title, "BOTTOM", 0, -4)
-  f.caption:SetJustifyH("CENTER")
-  f.crest = T.Crest(f, 28)
-  f.crest:SetPoint("TOPRIGHT", -PAD - 32, -12)
+  local parts = ns.WindowTitle(f, "Set up Vanguard", { align = "center", count = "", escape = true,
+    onClose = function(frame) frame:Hide() end })
+  f.caption = parts.count
+  f.crest = T.Crest(f, T.CREST.title)
+  f.crest:SetPoint("LEFT", f.title, "RIGHT", T.SPACE.gap, 0)
 end
 
--- The window: a floating panel with a title and the step caption.
+-- The window: a floating panel at the dialog alpha with a title and the step caption.
 local function window()
-  local f = T.Panel(CreateFrame("Frame", "Vanguard_Setup", UIParent), { alpha = 0.98, shadow = true })
+  local f = T.Panel(CreateFrame("Frame", "Vanguard_Setup", UIParent), { alpha = T.ALPHA.dialog, shadow = true })
   T.PixelSize(f, WIDTH, HEIGHT, true)
   f:SetPoint("CENTER")
   -- Above the unlock handles (DIALOG), so their labels and grid never draw over the steps.
@@ -540,15 +546,13 @@ local function complete(done)
   frame:Hide()
 end
 
--- The close button (top right) and the footer: Skip setup (first step only), then Back, then Next or Done.
+-- The footer: Skip setup (first step only), then Back, then Next or Done, all the usual button width.
 local function controls(f)
-  f.close = T.PlaceClose(T.CloseButton(CreateFrame("Button", nil, f)), f)
-  f.close:SetScript("OnClick", ns.Guard("click close setup", function() f:Hide() end))
   f.next = W.Primary(f, "Next", function() S.Next() end)
   f.next:SetPoint("BOTTOMRIGHT", -PAD, PAD)
-  f.back = W.Button(f, "Back", function() S.Back() end, 100)
-  f.back:SetPoint("RIGHT", f.next, "LEFT", -8, 0)
-  f.skip = W.Button(f, "Skip setup", function() complete(false) end, 110)
+  f.back = W.Button(f, "Back", function() S.Back() end)
+  f.back:SetPoint("RIGHT", f.next, "LEFT", -T.SPACE.gap, 0)
+  f.skip = W.Button(f, "Skip setup", function() complete(false) end)
   f.skip:SetPoint("BOTTOMLEFT", PAD, PAD)
 end
 
@@ -606,19 +610,28 @@ local function addPages(f)
   f.pages = {}
   for key, builder in pairs(BUILDERS) do
     f.pages[key] = CreateFrame("Frame", nil, f)
-    f.pages[key]:SetPoint("TOPLEFT", PAD, -62)
-    f.pages[key]:SetPoint("BOTTOMRIGHT", -PAD, 48)
+    f.pages[key]:SetPoint("TOPLEFT", PAD, -TOP)
+    f.pages[key]:SetPoint("BOTTOMRIGHT", -PAD, FOOT)
     builder(f.pages[key])
   end
 end
 
--- Builds the wizard once: the window, its controls and pages; Escape closes it.
+-- What Tab reaches in the wizard: the showing page's choices, then Skip, Back and Next.
+local function focusList()
+  local out = {}
+  local page = frame.pages[state.order[state.step]]
+  for _, b in ipairs(page and page.choices or {}) do out[#out + 1] = b end
+  for _, b in ipairs({ frame.skip, frame.back, frame.next }) do out[#out + 1] = b end
+  return out
+end
+
+-- Builds the wizard once: the window (whose title line closes it on Escape), its controls and pages.
 local function build()
   local f = window()
   controls(f)
   addPages(f)
   f:SetScript("OnHide", finished)
-  if type(UISpecialFrames) == "table" then table.insert(UISpecialFrames, "Vanguard_Setup") end
+  ns.TabFocus(f, focusList)
   return f
 end
 
@@ -628,6 +641,7 @@ end
 local function showStep(n)
   local key, last = state.order[n], #state.order
   state.step = n
+  ns.FocusClear(frame)
   for k, page in pairs(frame.pages) do page:SetShown(k == key) end
   frame.caption:SetText(string.format("Step %d of %d · %s", n, last, NAMES[key]))
   frame.back:SetShown(n > state.floor)

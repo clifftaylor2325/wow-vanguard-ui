@@ -70,10 +70,20 @@ function oflLicense() {
   expect(text, "Media/Fonts/OFL.txt must hold the font license").toMatch(/SIL Open Font License/);
 }
 
-// Media files one Lua or TOC source names, as repo paths: T.Texture/T.Icon calls, an options page's
-// icon or a minimap slot's, Media paths, fonts and crests.
+// The Media/Textures a control's art() or pillParts() call names (Core/Controls.lua: the switch and slider parts).
+function controlArt(src) {
+  return [...src.matchAll(/\b(?:art|pillParts)\([\w.]+, "\w+", "(\w+)"/g)].map((m) => `Media/Textures/${m[1]}.tga`);
+}
+
+// The capsule textures a source names (T.CapsuleArt's third argument, the edge option).
+function capsuleArt(src) {
+  return [...src.matchAll(/\b(?:CapsuleArt\([^,]+, [^,]+, |edge = |opts\.edge or )"(\w*(?:Pill|Line))"/g)].map((m) => `Media/Textures/${m[1]}.tga`);
+}
+
+// Media files one Lua or TOC source names, as repo paths: T.Texture/T.Icon calls, capsule art (T.CapsuleArt and the edge option), control art, an options
+// page's icon or a minimap slot's, Media paths, fonts and crests.
 function mediaIn(src) {
-  const files = [];
+  const files = [...controlArt(src), ...capsuleArt(src)];
   for (const m of src.matchAll(/T\.(Texture|Icon)\("(\w+)"\)/g)) files.push(`Media/${m[1] === "Icon" ? "Icons" : "Textures"}/${m[2]}.tga`);
   for (const m of src.matchAll(/T\.Icon\(\w+ and "(\w+)" or "(\w+)"\)/g)) files.push(`Media/Icons/${m[1]}.tga`, `Media/Icons/${m[2]}.tga`);
   for (const m of src.matchAll(/\b(?:icon|IconTexture|WindowControl)\(\w+, "(\w+)"/g)) files.push(`Media/Icons/${m[1]}.tga`);
@@ -99,11 +109,12 @@ function scanFindsMedia() {
 // Media images the addon builds a name for at run time, so the scan can't see them: the shadow and glow rings (ring(frame, { texture = ... })), the
 // rounded-corner arcs and discs (cornerPieces(frame, "CornerLine" or "CornerFill")) and
 // the window controls' glyphs (Modules/Windows.lua maxMinButton), the dispel badge letters
-// (Core/Auras.lua A.DISPEL_GLYPHS) and the warn state's glyph (Core/Theme.lua T.STATE_GLYPHS).
+// (Core/Auras.lua A.DISPEL_GLYPHS), the warn state's glyph (Core/Theme.lua T.STATE_GLYPHS) and the
+// quest marks for the quest dialog and quest log lines (F17; QuestBang, QuestQuery, Modules/QuestDialogParts.lua QP.ICONS).
 // The sized copies of the line and menu icons (#232), named by T.Icon(name, size) in the Lua.
 const SIZED_NAMES = SIZED_ICONS.flatMap((n) => ICON_SIZES.map((s) => `Media/Icons/${n}${s}.tga`));
 const BUILT_NAMES = ["Media/Textures/Shadow.tga", "Media/Textures/Glow.tga", "Media/Textures/CornerLine.tga", "Media/Textures/CornerFill.tga", "Media/Icons/Maximize.tga", "Media/Icons/Minimize.tga",
-  ...["Magic", "Curse", "Disease", "Poison"].map((t) => `Media/Icons/Dispel${t}.tga`), "Media/Icons/Warn.tga"];
+  ...["Magic", "Curse", "Disease", "Poison"].map((t) => `Media/Icons/Dispel${t}.tga`), "Media/Icons/Warn.tga", "Media/Icons/QuestBang.tga", "Media/Icons/QuestQuery.tga", "Media/Icons/Pin.tga"];
 
 // The images in Media/ (not the fonts and license texts), as repo paths.
 function mediaImages() {
@@ -171,7 +182,7 @@ function iconsCredited() {
 
 // Line icons made only of level and upright strokes: at 16 px every pixel
 // they touch must be fully covered, none half (P4.2).
-const SQUARE_ICONS = ["Spellbook", "Professions", "Quests", "Collections"];
+const SQUARE_ICONS = ["Spellbook", "Professions", "Quests", "Collections", "QuestBang"];
 
 // An icon's alpha at 16 px: the 32 px image averaged over 2 x 2 blocks, as the GPU draws it at half size.
 function at16(name) {
@@ -193,6 +204,22 @@ function squareIconsCrisp() {
 function strokeIsTwoPixels() {
   const a = at16("Quests");
   expect([6, 7, 8, 9].map((col) => Math.round(a[4 * 16 + col] * 100) / 100)).toEqual([0, 1, 1, 0]);
+}
+
+// A 16 px row's alpha, rounded to two places, for the columns given.
+function rowAt16(a, row, cols) {
+  return cols.map((col) => Math.round(a[row * 16 + col] * 100) / 100);
+}
+
+// The quest marks (F17) at 16 px: the bang's stem is columns 7 and 8 from row 1 down to row 9, two
+// clear rows sit above its dot (rows 12 and 13), and the query's hook is round (soft pixels on its
+// curve, a clear hole inside it) with its stem and dot on the same columns and rows as the bang's.
+function questMarksDrawn() {
+  const bang = at16("QuestBang"), query = at16("QuestQuery");
+  expect([1, 9, 12, 13].map((row) => rowAt16(bang, row, [6, 7, 8, 9]))).toEqual([[0, 1, 1, 0], [0, 1, 1, 0], [0, 1, 1, 0], [0, 1, 1, 0]]);
+  expect([10, 11].map((row) => rowAt16(bang, row, [7, 8]))).toEqual([[0, 0], [0, 0]]);
+  expect(query.filter((v) => v > 0.02 && v < 0.98).length, "the query's hook has curved edges").toBeGreaterThan(8);
+  expect([rowAt16(query, 4, [7, 8]), rowAt16(query, 9, [6, 7, 8, 9]), rowAt16(query, 13, [6, 7, 8, 9])]).toEqual([[0, 0], [0, 1, 1, 0], [0, 1, 1, 0]]);
 }
 
 // Generated files that are not tinted white shapes: the pre-colored addons-list icon, the black
@@ -240,10 +267,10 @@ function edgePixels(img) {
   return n;
 }
 
-// Icons and the stand-alone shapes (diamond, classification diamond, crest) keep a clear pixel inside their canvas
-// edge, so clamped sampling never smears an edge (#228). Tiled and stretched textures are exempt.
+// Icons and the stand-alone shapes (diamond, classification diamond, crest, the knob and its shade and outline) keep a clear pixel
+// inside their canvas edge, so clamped sampling never smears an edge (#228). Tiled and stretched textures are exempt.
 function shapesPadded() {
-  const shapes = Object.keys(MEDIA).filter((f) => f.startsWith("Icons/") || /^Textures\/(Diamond|LogoLeft|Icon)\.tga$/.test(f));
+  const shapes = Object.keys(MEDIA).filter((f) => f.startsWith("Icons/") || /^Textures\/(Diamond|LogoLeft|Icon|Knob|KnobLine|KnobShade)\.tga$/.test(f));
   expect(shapes.map((f) => [f, edgePixels(MEDIA[f]())]).filter(([, n]) => n > 0)).toEqual([]);
 }
 
@@ -262,14 +289,29 @@ describe(
   },
 );
 
+// The pill outlines land on one screen pixel at the heights capsules are drawn at (18 a switch, 14 the error badge, 12 a thumb):
+// a ring of r texels on the 32-texel canvas is r * height / 32 pixels.
+function capsuleOutlinesOnePixel() {
+  // The outline's thickness in texels: the alpha down the middle column, half of it (top and bottom).
+  const ring = (img) => {
+    let sum = 0;
+    for (let y = 0; y < img.h; y++) sum += img.px[(y * img.w + 32) * 4 + 3];
+    return sum / 2;
+  };
+  const px = ring(MEDIA["Textures/PillLine.tga"]());
+  for (const h of [18, 14, 12]) expect(Math.abs((px * h) / 32 - 1) <= 0.3, `PillLine at ${h}: ${((px * h) / 32).toFixed(2)} px`).toBe(true);
+}
+
 describe(
   "media icons",
   // How icons and tinted shapes sit on the pixel grid and under their clear pixels.
   () => {
     it("icons of straight strokes are crisp at 16 px", squareIconsCrisp);
     it("icon strokes are two pixels wide at 16 px", strokeIsTwoPixels);
+    it("the quest marks (F17) are a crisp bang and a round query", questMarksDrawn);
     it("tinted art is white under its clear pixels", clearPixelsWhite);
     it("icons and shapes keep a clear pixel inside their edge", shapesPadded);
+    it("the pill outline is about one screen pixel at 18, 14 and 12 high", capsuleOutlinesOnePixel);
     it("the addons-list icon is the pre-coloured crest", iconIsCrest);
   },
 );

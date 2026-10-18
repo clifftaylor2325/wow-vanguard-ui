@@ -31,9 +31,10 @@ function W.ClickLabel(text)
   return "click " .. (type(text) == "string" and text or "button")
 end
 
--- A themed push button that runs onClick (a failure in it is reported under the button's caption).
+-- A themed push button (T.BUTTON_H tall, 120 wide unless told otherwise) that runs onClick (a failure
+-- in it is reported under the button's caption).
 function W.Button(parent, text, onClick, width)
-  local b = ns.DialogButton(parent, text, width or 160)
+  local b = ns.DialogButton(parent, text, width)
   b:SetScript("OnClick", ns.Guard(W.ClickLabel(text), onClick))
   return b
 end
@@ -114,10 +115,10 @@ end
 
 -- Text input -------------------------------------------------------------------------------
 
--- A one-line themed text input.
+-- A one-line themed text input, T.CONTROL_H tall.
 function W.Input(parent, width)
   local e = T.EditBox(CreateFrame("EditBox", nil, parent))
-  e:SetSize(width or 220, 24)
+  e:SetSize(width or 220, T.CONTROL_H)
   e:SetAutoFocus(false)
   e:SetTextInsets(6, 6, 0, 0)
   T.Text(e, "label")
