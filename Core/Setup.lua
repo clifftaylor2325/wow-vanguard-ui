@@ -282,12 +282,12 @@ function S.SetLarger(on)
   T.Refresh()
 end
 
--- Whether Color assist (hostile, neutral and friendly colors apart for color blindness) is on.
+-- Whether Safer colours (the colorAssist setting: hostile, neutral and friendly colors kept apart) is on.
 function S.Assist()
   return T.Settings().colorAssist == true
 end
 
--- Turns Color assist on or off; the colors it changes settle at the reload Done offers.
+-- Turns Safer colours on or off; the colors it changes settle at the reload Done offers.
 function S.SetAssist(on)
   S.Backup()
   T.Settings().colorAssist = on == true
@@ -605,13 +605,13 @@ local function swatch(page, i, rgb)
   return s
 end
 
--- The Calm HUD switch and the two readability switches (larger text, color assist) under the style tiles.
+-- The Calm HUD switch and the two readability switches (larger text, safer colours) under the style tiles.
 local function lookSwitches(page)
   page.calm = W.Check(page, "Calm HUD: dim your frames out of combat", S.Calm, S.SetCalm, WIDTH - 2 * PAD)
   page.calm:SetPoint("TOPLEFT", 0, -154)
   page.larger = W.Check(page, "Larger text (115%)", S.Larger, S.SetLarger, WIDTH - 2 * PAD)
   page.larger:SetPoint("TOPLEFT", 0, -182)
-  page.assist = W.Check(page, "Color assist: easier colors for color blindness", S.Assist, S.SetAssist, WIDTH - 2 * PAD)
+  page.assist = W.Check(page, "Colour vision: Safer colours (colour blindness)", S.Assist, S.SetAssist, WIDTH - 2 * PAD)
   page.assist:SetPoint("TOPLEFT", 0, -210)
 end
 

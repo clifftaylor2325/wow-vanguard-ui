@@ -189,16 +189,16 @@ const styleTiles = (addon) => addon.eval(`local out = {}
     out[i] = { b:GetWidth(), b:GetHeight(), { c[1], c[2], c[3] }, b.bar:GetValue(), b.name:GetText(), { t[1], t[2], t[3] } }
   end
   return out`);
-it("setup look: Larger text and Color assist apply at once, back up the profile first, and fit the page", () => {
+it("setup look: Larger text and Safer colours apply at once, back up the profile first, and fit the page", () => {
   const addon = loggedIn(UNITS_ENV + RAID_ENV, { firstRun: true });
   setupClick(addon, "next");
   setupClick(addon, "next");
-  // Text size, Color assist and the two switches' states.
+  // Text size, Safer colours and the two switches' states.
   const state = () => addon.eval("local p = Vanguard_Setup.pages.look return { ns.Theme.Settings().textScale, ns.Theme.Settings().colorAssist == true, p.larger.get(), p.assist.get() }");
   expect(state(), "both off to begin with").toEqual([1, false, false, false]);
   addon.eval("local b = Vanguard_Setup.pages.look.larger b:GetScript('OnClick')(b)");
   addon.eval("local b = Vanguard_Setup.pages.look.assist b:GetScript('OnClick')(b)");
-  expect(state(), "larger text is 115% and color assist is on").toEqual([1.15, true, true, true]);
+  expect(state(), "larger text is 115% and Safer colours is on").toEqual([1.15, true, true, true]);
   expect(chatHas(addon, /as it was before setup is saved as profile/), "the profile was backed up before the first change").toBe(true);
   addon.eval("local b = Vanguard_Setup.pages.look.larger b:GetScript('OnClick')(b)");
   expect(state().slice(0, 1), "switching it off goes back to 100%").toEqual([1]);
