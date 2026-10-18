@@ -19,6 +19,7 @@ local ADDON, ns = ...
 local vgCorner = ns.FrameState("vgCorner")
 local vgDurability = ns.FrameState("vgDurability")
 local vgHooked = ns.FrameState("vgHooked")
+local vgDropArrow = ns.FrameState("vgDropArrow")
 local vgLootRows = ns.FrameState("vgLootRows")
 local vgMenuSkinned = ns.FrameState("vgMenuSkinned")
 local vgMoneyBox = ns.FrameState("vgMoneyBox")
@@ -371,30 +372,54 @@ function GW.SkinGlyph(button)
   GW.ShowTexture(button.GetDisabledTexture and button:GetDisabledTexture())
 end
 
--- A button's label moved up by T.SPACE.tight / 2 from the centre, so it clears the bottom edge (the game anchors a
--- dropdown's text low); a button without a label is skipped.
-function GW.LiftLabel(button)
+-- A button's label centred in the button (the game anchors a dropdown's text low); a button without a label is skipped.
+function GW.CenterLabel(button)
   local label = type(button) == "table" and button.Text
   if type(label) ~= "table" or not label.SetPoint then return end
   label:ClearAllPoints()
-  label:SetPoint("CENTER", button, "CENTER", 0, T.SPACE.tight / 2)
+  label:SetPoint("CENTER", button, "CENTER", 0, 0)
 end
 
--- The window's money line centred in the dark well behind it and set in from the well's right edge by T.SPACE.gap,
--- once (the game anchors it to its plate, which sits low in the well and puts the figures against its edge).
-function GW.PadMoneyLine(plate, well)
+-- The money well hung under the pane above it: the same left and right edges, T.SPACE.tight clear of it, its bottom
+-- where it was (its height less the gap).
+local function hangUnder(well, above)
+  local height = well:GetHeight()
+  well:ClearAllPoints()
+  well:SetPoint("TOPLEFT", above, "BOTTOMLEFT", 0, -T.SPACE.tight)
+  well:SetPoint("TOPRIGHT", above, "BOTTOMRIGHT", 0, -T.SPACE.tight)
+  well:SetHeight(height - T.SPACE.tight)
+end
+
+-- The window's money well lined up under the category list above it and its money line centred in it, set in from the
+-- right edge by T.SPACE.gap, once (the game anchors the well to the window corner and the line to a plate that sits
+-- low in it).
+function GW.PadMoneyLine(plate, well, above)
   local line = type(plate) == "table" and plate.MoneyFrame
-  if type(line) ~= "table" or not line.SetPoint or vgPadded[plate] then return end
+  if type(line) ~= "table" or not line.SetPoint or type(well) ~= "table" or vgPadded[plate] then return end
   vgPadded[plate] = true
+  if type(above) == "table" and above.GetObjectType then hangUnder(well, above) end
   line:ClearAllPoints()
-  line:SetPoint("RIGHT", type(well) == "table" and well or plate, "RIGHT", -T.SPACE.gap, 0)
+  line:SetPoint("RIGHT", well, "RIGHT", -T.SPACE.gap, 0)
 end
 
--- A dropdown button (the game's DropdownButton) as a theme button that keeps its arrow.
+-- A theme down arrow (made once) over the game's yellow-square arrow `art` on `button`, which is faded.
+function GW.DropArrow(button, art)
+  if type(art) ~= "table" or not art.SetAlpha then return end
+  art:SetAlpha(0)
+  if not vgDropArrow[button] then
+    local glyph = T.Snap(button:CreateTexture(nil, "OVERLAY"))
+    glyph:SetTexture(T.Icon("Down"))
+    T.PixelSize(glyph, T.ARROW.glyph, T.ARROW.glyph, true)
+    glyph:SetPoint("CENTER", art, "CENTER")
+    vgDropArrow[button] = T.Tint(glyph, T.ARROW.color)
+  end
+end
+
+-- A dropdown button (the game's DropdownButton) as a theme button with a theme arrow in place of the game's.
 function GW.SkinDropdown(dropdown)
   if type(dropdown) ~= "table" or not dropdown.CreateTexture then return end
   T.Button(dropdown)
-  GW.ShowTexture(dropdown.Arrow)
+  GW.DropArrow(dropdown, dropdown.Arrow)
 end
 
 -- A dropdown button as a theme button with the game's gold arrow box faded and a theme chevron (made once) in its place.
@@ -1716,7 +1741,7 @@ local function skinSearchBar(bar)
   GW.SkinButton(bar.SearchButton)
   GW.SkinDropdown(bar.FilterButton)
   GW.AlignBeside(bar.FilterButton, bar.SearchButton)
-  GW.LiftLabel(bar.FilterButton)
+  GW.CenterLabel(bar.FilterButton)
   GW.SkinIconDropdown(bar.FavoritesSearchButton)
 end
 
@@ -1725,7 +1750,7 @@ end
 local function skinMoneyBar(frame)
   GW.InsetPanel(frame.MoneyFrameInset)
   GW.FadeArt(frame.MoneyFrameBorder)
-  GW.PadMoneyLine(frame.MoneyFrameBorder, frame.MoneyFrameInset)
+  GW.PadMoneyLine(frame.MoneyFrameBorder, frame.MoneyFrameInset, frame.CategoriesList)
   GW.SkinMoneyDisplay(GW.Part(frame, "MoneyFrameBorder.MoneyFrame"))
 end
 

@@ -26,6 +26,7 @@ local function chatWindowRows()
     check("Chat background", setting("Chat", "background", true)),
     { "cycle", "Chat background strength", ns.GetModule("Chat").BACKDROPS, liveSetting("Chat", "backdrop", function() local CH = ns.GetModule("Chat") if CH.settings then CH.Refresh() end end) },
     check("Keep chat in its bottom-left spot (reload)", setting("Chat", "place", true)),
+    { "cycle", "Chat window size", ns.GetModule("Chat").WINDOW_SCALES, liveSetting("Chat", "windowScale", function() local CH = ns.GetModule("Chat") if CH.settings then CH.ApplySize() end end) },
     { "cycle", "Chat text size (follows Text size)", ns.GetModule("Chat").SIZES, chatSizeSetting() },
   }
 end
