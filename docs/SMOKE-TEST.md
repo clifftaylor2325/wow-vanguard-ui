@@ -410,6 +410,12 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Expect: `Repaired for <money>.` (or `Not enough gold to repair (<money>).`) and `Selling N junk item(s).` in chat; the gray items vanish over a few seconds.
 - If it fails, paste: the chat lines and `/vg errors`.
 
+### 9.2a Sell list, sell all and bulk buy
+
+- Do: `/vg junk` with a shift-clicked cheap item you own, then Merchants and errors → "Offer to sell the items on your sell list"; open a merchant. Then `/vg sell` with a shift-clicked item of which you hold several stacks. Then shift-click an item for sale (a stackable one, with a few bag slots free) and press Stack, then Max.
+- Expect: a question listing the item(s) and what they fetch; answering Sell sells them within a few seconds and the Buyback tab holds them; an item in an equipment set is not offered; Stack and Max and a "Max N for <money>" line sit under the quantity window for a merchant's item and not for an item in your bags; Max above one stack asks first; the buys finish with `Bought N × <item> for <money>.` and no error; an item that costs tokens or honor shows no buttons.
+- If it fails, paste: the chat lines and `/vg errors`.
+
 ### 9.3 Trainer: Train all
 
 - Do: at a class trainer with skills you can afford, click Train all. Try it again in combat if you can.
