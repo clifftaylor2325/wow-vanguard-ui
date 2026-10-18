@@ -915,6 +915,14 @@ function world.learn(id, fields)
   stub.fire("SPELLS_CHANGED")
 end
 
+-- Whether the player knows a spell (it is in the spellbook, rank or not).
+function IsPlayerSpell(id)
+  for _, item in ipairs(world.book) do
+    if item.id == id then return true end
+  end
+  return false
+end
+
 -- Forgets every learned spell (the spellbook is empty again).
 function world.forgetAll()
   world.book = {}

@@ -312,6 +312,19 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Do: `/vg` → Unit frames, switch on **Versus deck**. Target a mob, cast something, then switch Calm HUD on and stand out of combat. Then run `/vg setup`, pick **Versus deck**, and click through to Done.
 - Expect: one dark panel with cut corners runs from your player frame's left end to your target frame's right end, behind the cast bar, swing timer and cooldown icons between them (all still visible over it); the Vanguard crest sits centred on the panel's top edge; your target's health and power bars fill from the right. With Calm HUD on, the panel dims with the frames. Switching it off removes the panel and the target's bars fill from the left again, at once. In setup, Versus deck turns it on with your role's layout (a healer gets the healing layout and click casting); picking another layout turns it off. No error.
 - If it fails, paste: a screenshot of the bottom centre and `/vg errors`.
+
+### 7.2c Cursor ring
+
+- Do: `/vg` → Unit frames, tick **Ring at the cursor: the global cooldown and your cast** (nothing needs a reload). Move the mouse around, then cast an instant spell, then a spell with a long cast time, then a channel, and click and hover things under the ring (a button, a unit frame, a world object). Untick the switch.
+- Expect: two thin rings with a faint full circle behind them centred on the mouse pointer at every UI scale, following it without lag; the outer ring sweeps away for the length of the global cooldown after the instant spell; the inner ring fills as the long cast goes and empties for the channel, and clears when the cast ends or is interrupted; the sweeps have no numbers, no edge line and no flash; the ring does not stop clicks or tooltips, also in combat; with the switch off it is gone and the pointer is plain. [Needs in-game check: that the global cooldown shows on the outer ring on WoW Forever, and which way each sweep turns.]
+- If it fails, paste: a screenshot with the ring in view, `/vg status` and `/vg errors`.
+
+### 7.2d Interrupt mark
+
+- Do: on a class with an interrupt (Rogue Kick, Warrior Pummel or Shield Bash, Mage Counterspell, Shaman Earth Shock, Priest Silence), target a mob that casts and watch the target cast bar. Cast on a mob that can't be interrupted if you can find one, press your interrupt on a cast, then watch the next cast while the interrupt recovers. Do the same with `/focus`. In `/vg` → Unit frames untick **Interrupt mark beside the target and focus cast bars**.
+- Expect: a small diamond to the right of the target's bar and the focus's bar during a cast you can interrupt: filled and bright (accent) while your interrupt is ready, hollow and dim (darkened like a cooldown sweep that clears clockwise) while it recovers, ignoring the global cooldown; no mark on a cast with the gray edge, on your own bar, when you know no interrupt, or when the switch is off (gone from a cast on screen at once); it goes with the bar when the cast ends. [Needs in-game check: the spell IDs per class on WoW Forever, that the global cooldown is left out, and which way the sweep turns.]
+- If it fails, paste: a screenshot of the bar during a cast, your class and spec, `/vg status` and `/vg errors`.
+
 ### 7.3 Nameplates in a pull
 
 - Do: pull three or more mobs.
