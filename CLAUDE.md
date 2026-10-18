@@ -30,6 +30,7 @@ Before you say a change is done: `npm run quality` and `npm run coverage` must b
 ## Hard rules (CI enforces these)
 
 - **Functions:** every function has a comment on the line directly above it, and its body is at most 10 lines of code. Nested functions count toward the parent. Checked by `scripts/lib/code-quality.mjs`.
+- **Top-level locals:** a Lua file's main chunk holds at most 200 active locals, and past that the whole addon fails to load. The scanner fails a Core/ or Modules/ file above 185. Group the locals of one feature in a `do ... end` block (predeclare the few the rest of the file uses) or keep them on a table.
 - **Colours and font sizes:** only in `Core/Theme.lua`. Elsewhere use `T.RGB`, `T.Color`, `T.Text` or theme tokens.
 - **WoW globals:** every new global the addon reads goes in `read_globals` in `.luacheckrc`. Addon globals go in `globals`.
 - **Widget methods:** add a method to `scripts/lib/wow-widget-api.lua` only after confirming it exists in the 12.1 client (Blizzard's wow-ui-source or the API docs). Unlisted methods are nil in tests on purpose.
