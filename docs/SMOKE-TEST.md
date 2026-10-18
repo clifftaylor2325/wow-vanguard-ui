@@ -504,6 +504,12 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Expect: a POTIONS header over the potion and a TOOLS header over the tool, both above Quest items; after `top Tools` Tools comes first; the removed item falls back to its built-in section; the deleted category's header goes; `/vg bag` lists each category and its items. The bag lays out again each time without a reload.
 - If it fails, paste: a screenshot, the output of `/vg bag` and `/vg errors`.
 
+### 9.1b Bag search words and bank deposit
+
+- Do: with bags open, type `ilvl>20`, then `q:epic`, `type:armor bind:boe`, `cat:<a category of yours>` in the bag's search box, then clear it. At the bank, `/vg bag deposit <category>`; then once in a fight.
+- Expect: items that match every word stay lit and the rest dim as with a normal search; a plain word still works the game's way; the box clearing lights everything again. Deposit sends that category's stacks to the bank and says how many; in a fight, or with no bank open, it says to open the bank and moves nothing.
+- If it fails, paste: a screenshot, `/vg probe` (the SetItemSearch and UpdateSearchResults lines) and `/vg errors`.
+
 ### 9.2 Merchant repair and sell
 
 - Do: with damaged gear and gray items, open a merchant who repairs.
@@ -1179,6 +1185,12 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 - Do: `/vg filter on`, then wait for (or say in a test channel) a Trade line that sells gold with a web address, one that sells a boost, a guild recruiting line, and the same line twice in a minute. Type `/vg filter add test word` and say a line holding it. Open the Filtered tab and click a sender's name in it. Type `/vg filter hide`, then `/vg filter tab`, then `/vg errors`. Walk into a dungeon and read Trade.
 - Expect: a Filtered chat tab appears, and the caught lines are in it, each starting with why ("Gold selling", "Boosting", "Recruiting", "Your word", "Repeat"), none in the main chat; the tab's name counts them, "Filtered (4)". Clicking a sender's name says their lines show in chat again, and their next line stays in the main chat. With hide, caught lines show nowhere. Normal Trade lines, your own lines, whispers and guild chat are never caught. `/vg errors` is empty; in the dungeon nothing errors and chat passes through. The tab looks like the other chat tabs on both rounded and square corners, and is still there, with its count starting over, after `/reload`. [Needs in game: that the client lets an addon open a chat window (`FCF_OpenNewWindow`) and name it, that a click on the sender's link reaches Vanguard, and that the tab text keeps the count.]
 - If it fails, paste: `/vg errors`, one line it caught or missed, and what the Filtered tab shows.
+
+### 15.6b Chat history (off until switched on)
+
+- Do: `/vg history on`, say a few lines in /say and have a group or guild line arrive, let someone whisper you (or whisper an alt), then type `/reload`. Type `/vg history`, then `/vg history whispers`, whisper again, `/reload`. Then `/vg history clear` and `/reload`. Last, with it on, log out and in; open `/vg` → Chat and set Lines kept to 100.
+- Expect: after the reload each window shows a grey `Chat from your last session (N lines, until ...):` line, its earlier lines in the colours they had (say white, guild green, party blue), then `End of the earlier chat.`; your whisper is not among them the first time, and is the second time; a tab you had set up for another channel gets its own lines back, not the main window's. `/vg history` says it is on and how many lines are saved in how many windows. After clear and a reload nothing comes back and chat says `Saved chat history cleared.` `/vg errors` is empty. In a dungeon or raid boss fight, chat the game hides is not kept. [Needs in game: that a hook on each ChatFrame's AddMessage sees the finished line and its colour, that whispers carry `:WHISPER:` in their player link (the other way the addon tells), that `date` and `time` work as in the client, and that AddMessage keeps the colours.]
+- If it fails, paste: `/vg errors`, `/vg history`, a screenshot of the restored chat and which window it was in.
 
 ## 16. Realm and ruleset
 

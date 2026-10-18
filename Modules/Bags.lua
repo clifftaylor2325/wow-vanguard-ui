@@ -261,6 +261,12 @@ function BG.AddSort(frame)
   watchSearchRow(frame)
 end
 
+-- The combined bag's sections and its search words (Modules/BagSections.lua, Modules/BagSearch.lua).
+local function watchLayout(frame)
+  BG.WatchSections(frame)
+  BG.WatchSearch(frame)
+end
+
 -- Module entry point (Core/Modules.lua): the combined setting applied to the
 -- client when it changes, the window skinned on every show, slots the game
 -- adds (a bag swapped in) when it fills them, and its slots in sections.
@@ -274,5 +280,5 @@ function BG.Enable(settings)
   if type(frame.UpdateItems) == "function" and type(hooksecurefunc) == "function" then
     hooksecurefunc(frame, "UpdateItems", ns.Guard("hook UpdateItems", skinItems))
   end
-  BG.WatchSections(frame)
+  watchLayout(frame)
 end
