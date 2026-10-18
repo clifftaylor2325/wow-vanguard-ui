@@ -117,3 +117,42 @@ it("chat tabs: a client without the calls says so and changes nothing", () => {
   expect(addon.eval("return __wfgWorld.chatWindows[1]"), "nothing renamed").toBe("General");
   expect(addon.eval("return #ns.errors"), "no errors").toBe(0);
 });
+
+// TEST-ONLY lines in the windows: a coloured one, a hidden one, and a line holding a link.
+const LINES = `
+  __lines1 = { "|cffff8000[General]|r Hello Sword world", { __secret = true }, "nothing here", "two Sword lines |Hitem:1|h[Big Sword]|h" }
+  ChatFrame1.GetNumMessages = function() return #__lines1 end
+  ChatFrame1.GetMessageInfo = function(_, i) return __lines1[i] end
+`;
+
+it("chat find: the Find button asks what to find; matching lines of the windows show as plain text, hidden lines left out", () => {
+  const addon = loggedIn(ENV + LINES);
+  addon.eval("ns.ShowText = function(title, text) __shown = { title, text } end");
+  addon.eval("local b = ns.GetModule('ChatWindows').findButton b.__scripts.OnClick(b)");
+  expect(addon.eval("return Vanguard_TextDialog:IsShown()"), "the Find button opens the question").toBe(true);
+  addon.eval("ns.GetModule('ChatWindows').Find('  SWORD ')");
+  expect(addon.eval("return __shown"), "case does not matter; colours and links reduced to words").toEqual(['Chat: 2 lines with "sword"', "[General] Hello Sword world\ntwo Sword lines [Big Sword]"]);
+  addon.eval("ns.GetModule('ChatWindows').Find('')");
+  expect(addon.eval("return __shown[1]"), "an empty word asks again and shows nothing new").toBe('Chat: 2 lines with "sword"');
+  expect(addon.eval("return #ns.errors"), "no errors").toBe(0);
+});
+
+it("chat find: saved history that no window shows is searched too, and only the newest lines are listed", () => {
+  const addon = loggedIn(ENV + LINES, { savedVariables: 'VanguardCharDB = { chatHistory = { [1] = { "5|ffffff|old Sword talk", "6|ffffff|two Sword lines |Hitem:1|h[Big Sword]|h", "bad" }, [7] = "nope" } }' });
+  addon.eval("ns.ShowText = function(title, text) __shown = { title, text } end ns.GetModule('ChatWindows').Find('sword')");
+  expect(addon.eval("return __shown[2]"), "the old saved line first, the duplicate of a showing line once").toBe("old Sword talk\n[General] Hello Sword world\ntwo Sword lines [Big Sword]");
+  addon.eval("ns.GetModule('ChatWindows').MAX_FOUND = 1 ns.GetModule('ChatWindows').Find('sword')");
+  expect(addon.eval("return __shown[1]"), "capped to the newest").toBe('Chat: 1 lines with "sword"');
+});
+
+it("chat find: the Chat page has the button and the switch; off, no button; a window without line reads is fine", () => {
+  const off = loggedIn(ENV, { savedVariables: 'VanguardDB.profiles = { Default = { ChatWindows = { find = false } } }' });
+  expect(off.eval("return ns.GetModule('ChatWindows').findButton == nil"), "switched off: no button").toBe(true);
+  const addon = loggedIn(ENV);
+  addon.eval(`${PAGE} for _, r in ipairs(page.rows()) do if r[2] == "Find in chat" then r[3]() end end`);
+  expect(addon.eval("return Vanguard_TextDialog:IsShown()"), "the Chat page's Find in chat asks the same question").toBe(true);
+  addon.eval("ChatFrame1.GetNumMessages = nil ns.ShowText = function(title) __shown = title end ns.GetModule('ChatWindows').Find('x')");
+  expect(addon.eval("return __shown"), "a window that can't be read has no lines").toBe('Chat: 0 lines with "x"');
+  const bare = loggedIn("ChatFrame1 = nil");
+  expect(bare.eval("return ns.GetModule('ChatWindows').findButton == nil"), "no main window, no button").toBe(true);
+});

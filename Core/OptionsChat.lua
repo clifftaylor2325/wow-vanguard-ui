@@ -82,6 +82,7 @@ end
 local function chatWindowsRows()
   local CW = ns.GetModule("ChatWindows")
   local rows = { { "header", "Chat windows" }, { "text", "Size each chat window here instead of dragging its corner. Lock stops the game's drag." },
+    { "button", "Find in chat", CW.AskFind }, check("Find button over the chat (reload)", setting("ChatWindows", "find", true)),
     check("Lock chat windows", CW.LockSetting()), check("Move floating windows with /vg unlock (reload)", setting("ChatWindows", "movers", true)) }
   for _, w in ipairs(CW.Windows()) do
     local wGet, wSet = CW.SizeSetting(w[2], false)

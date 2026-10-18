@@ -685,3 +685,18 @@ it("bar 1 pages like the game's main bar: a Shift+number page wins over a stance
   expect([driverValue(driver, ["bonusbar:1", "bar:2"]), driverValue(driver, ["bonusbar:3", "bar:6"])], "in a stance or form, Shift+2 and Shift+6 show pages 2 and 6, as the game's main bar does").toEqual(["2", "6"]);
   expect([driverValue(driver, ["vehicleui", "bar:2"]), driverValue(driver, ["overridebar", "bar:3"]), driverValue(driver, ["shapeshift", "bar:4", "bonusbar:1"])], "a vehicle, override or temporary shapeshift bar still wins").toEqual(["12", "14", "13"]);
 });
+
+it("bar backing: a flat panel under each bar's buttons on Classic look or when asked for, live with the setting and the theme", () => {
+  // Bar 1's backing as [shown, child of the bar, left offset, bottom offset], or false when it was never made.
+  const backing = (addon) => addon.eval("local f = Vanguard_Bar1.vgBacking return f and { f:IsShown(), f:GetParent() == Vanguard_Bar1, f.__points.TOPLEFT.x, f.__points.BOTTOMRIGHT.y } or false");
+  const plain = loggedIn(ACTIONS_ENV);
+  expect(backing(plain), "the default theme has no backing").toBe(false);
+  plain.eval('ns.Theme.Settings().variant = "classic" ns.Theme.Refresh()');
+  expect(backing(plain), "switching to Classic look puts one under the bar, a unit and a half out past the buttons' edge, no reload").toEqual([true, true, -4, -4]);
+  plain.eval('ns.GetModule("ActionBars").settings.backing = "off" ns.GetModule("ActionBars").UpdateBackings()');
+  expect(backing(plain)[0], "Never hides it even on Classic look").toBe(false);
+  plain.eval('ns.GetModule("ActionBars").settings.backing = "auto" ns.Theme.Settings().variant = "default" ns.Theme.Refresh()');
+  expect(backing(plain)[0], "Follow the theme hides it again on the default theme").toBe(false);
+  const on = loggedIn(ACTIONS_ENV, { savedVariables: 'VanguardDB = { profiles = { Default = { ActionBars = { backing = "on" } } } }' });
+  expect(backing(on)[0], "Always shows it on the default theme").toBe(true);
+});
