@@ -56,6 +56,9 @@ ns.WHATS_NEW = {
     { label = "Moving frames", items = {
       { text = "A frame can be anchored to another frame, and a bar can match another frame's width or height. Exit without saving puts everything back as it was." },
     } },
+    { module = "QuestHistory", label = "Quest history", items = {
+      { text = "Your quest windows remember, for the whole account, which character turned in each quest: \"Done on Thrall-Forever · 3 days ago\" under the quest in the dialog and the log, and /vg quests history lists the latest turn-ins.", page = "quests", row = "Remember which character finished each quest (\"Done on Thrall-Realm\")" },
+    } },
     { module = "QuestGuide", label = "Quest guidance", items = {
       { text = "Quest-start pins on the world map, from the game's own quest data. Shift-click a quest in the tracker to point the arrow at its next step.", page = "quests", row = "Quest-start pins on the world map" },
     } },
@@ -111,6 +114,9 @@ ns.WHATS_NEW = {
       { text = "Two switches for side-by-side tests: /vg slug draws world text with the game's smooth-scaling font flag, and /vg framebuffer stops inner borders showing through a window as it fades.", off = true },
     } },
     { module = "QuestTracker", label = "Quest tracker and log", items = {
+      { text = "The quest tracker ends with a line saying how much of the XP to level your quest log gives (\"Quests: 62% of the XP to level\"), and a quest you accept is watched at once.", page = "quests", row = "Under the quests, how much of the XP to level they give" },
+      { text = "Each quest in Vanguard's quest log list shows the XP it gives at the right.", page = "quests", row = "Each quest's XP in the quest log list" },
+      { text = "Quest automation can accept quests a party member shares with you.", page = "quests", row = "Accept quests a party member shares with you", off = true },
       { text = "Click +N more on the quest tracker to show your watched quests (up to 10) and Show fewer to fold it back; Vanguard remembers the choice across a reload; the tracker starts below the info strip and sits under the game's windows. Each quest shows the XP it gives." },
       { text = "In Vanguard's quest log, Track and Untrack redraw the button at once, Shift-click a quest to track it, and a reward card shows the item's tooltip when you hover it." },
       { text = "On the world map, a quest zone header loses the game's yellow bar for a gold chevron." },

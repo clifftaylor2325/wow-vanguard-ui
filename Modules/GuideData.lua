@@ -28,6 +28,7 @@ GD.PROBES = {
   { "C_Navigation.GetNextWaypointForMap", "map" },
   { "C_SuperTrack.GetNextWaypointForMap", "map" },
   { "C_Map.GetMapWorldSize", "map" },
+  { "C_Minimap.GetViewRadius" },
   { "C_Map.GetMapLevels", "map" },
   { "C_Map.GetPlayerMapPosition", "map", "player" },
   { "C_Map.GetBestMapForUnit", "player" },

@@ -296,6 +296,7 @@ O.MODULE_INFO = {
   QuestDialog = { "Quest dialog", "Talking to quest givers in Vanguard's own dialog: numbered lines, reward cards, keys 1-9 and Space." },
   QuestTracker = { "Quest tracker", "Your watched quests under the info strip: levels in difficulty colors, objectives, quest items, nearest first if you like." },
   QuestLog = { "Quest log", "Your quests by zone, each quest's text, objectives and rewards, with Track, Share, Abandon and Map." },
+  QuestHistory = { "Quest history", "Remembers which of your characters turned in each quest; the quest dialog and quest log say so, and /vg quests history lists the latest." },
   QuestAuto = { "Quest automation", "Accept, turn in, pick the best-selling reward, skip chatter; each off until switched on." },
   GameAlerts = { "Game alerts", "Loss of control and the talking head in the Vanguard look, each in a spot you can move; Hardcore death notices restyled; a rare nearby announced and a soft tint round the screen edge at low health if you like." },
   Errands = { "Errands", "Train all at a trainer, keep items stocked from merchants, and time your flights." },

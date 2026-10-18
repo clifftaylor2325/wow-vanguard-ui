@@ -393,7 +393,15 @@ it("disenchant values: the switch is on for enchanters until set, in the Auction
   expect(tipOf(addon, 9101), "unticked: off even for an enchanter").toEqual([]);
   addon.eval("ns.Settings('AuctionHelper').disenchant = nil");
   expect([tipOf(addon, 9101), addon.eval("return select(3, ns.AuctionPrices.DisenchantSetting())")], "not set: follows Enchanting again").toEqual([["Disenchant: ~4s 87c"], true]);
-  addon.eval("C_TradeSkillUI = nil");
+  addon.eval("__wfgWorld.professions = {}");
+  expect(addon.eval("return ns.AuctionPrices.HasEnchanting()"), "no profession: not an enchanter").toBe(false);
+  addon.eval("__wfgWorld.skills[333] = { name = 'Enchanting', rank = 1, maxRank = 75 }");
+  expect(addon.eval("return ns.AuctionPrices.HasEnchanting()"), "a skill line with a rank: an enchanter").toBe(true);
+  addon.eval("GetProfessions, C_TradeSkillUI = nil, nil __wfgWorld.skills[333].rank = 0");
+  expect(addon.eval("return ns.AuctionPrices.HasEnchanting()"), "no professions API and rank 0: not an enchanter").toBe(false);
+  addon.eval("__wfgWorld.skills[333].rank = 75");
+  expect(addon.eval("return ns.AuctionPrices.HasEnchanting()"), "no professions API, ranked skill: an enchanter").toBe(true);
+  addon.eval("C_SkillInfo = nil");
   expect(addon.eval("return ns.AuctionPrices.HasEnchanting()"), "a client that can't say: not an enchanter").toBe(false);
 });
 // Deals ----------------------------------------------------------------------------------------

@@ -161,6 +161,8 @@ local function paintQuest(f, e, y, i)
   b:SetWidth(QL.LIST_W)
   QP.PaintLine(b, i, spec)
   b.text:SetText(spec.text)
+  local xp = QL.XP(e.id)
+  b.xp:SetText(xp > 0 and QP.XPText(xp) or "")
   b:SetScript("OnClick", ns.Guard("click quest log line", function(self) self.spec.select() end))
   return y + QP.LINE_H
 end
@@ -205,11 +207,13 @@ local function renderRewards(f, d)
   f.money:SetText(d.money)
 end
 
--- The objectives as lines: "- 3/8 Wolves slain", each marked done or not.
+-- The objectives as lines: "- 3/8 Wolves slain", each marked done or not, and the quest history line under them.
 local function objectivesText(d)
   local lines = {}
   for _, o in ipairs(d.objectives) do lines[#lines + 1] = (o.done and "+ " or "- ") .. o.text end
-  return #lines > 0 and ("Objectives\n" .. table.concat(lines, "\n")) or ""
+  local text = #lines > 0 and ("Objectives\n" .. table.concat(lines, "\n")) or ""
+  if d.done then text = text .. (text ~= "" and "\n\n" or "") .. d.done end
+  return text
 end
 
 -- The details buttons: Track or Untrack, Share only when you can.

@@ -38,13 +38,15 @@ local HELP = {
   "situation [record <name>|stop|clear [name]|list]   Situations: record a layout and settings for solo, party, raid, pvp, instance or resting",
   "watch [add|remove <phrase>|list|clear]   Chat watch: phrases that ring a sound and show a toast when said in chat",
   "filter [on|off|tab|hide|add|remove <word>|clear]   Chat filter: gold selling, boosting, recruiting and repeat lines go to a Filtered tab (or are hidden)",
-  "quests               open or close Vanguard's quest log (the game's quest log key does too)",
+  "quests [history [n]] open or close Vanguard's quest log (the game's quest log key does too); history lists the latest quests any of your characters turned in",
+  "probe [chat|fight|last]   one run out of combat asks the client the open questions (saved quest flag, threat secrecy, group listing, secure paging, realm format, secret predicates, restrictions, navigation) and opens a copy box; fight takes the secrecy reads in the next fight; last reopens the saved report",
   "guide probe         what this client returns for the reads a levelling guide would use (chat only; changes nothing)",
   "questdata [questID]  what the client says about a quest (or the quests an open NPC offers and those you track), and whether it flags quests new in WoW Forever",
   "lfg [probe]          open or close the group board: looking-for-more and looking-for-group posts from chat by dungeon, role and level; probe says what chat it has heard",
   "plates [enemies on|off] how many nameplates Vanguard drew and the game's enemy plate setting; enemies on|off sets it (out of combat)",
   "stock [<item> <n>]   items to keep in your bags; a merchant tops them up (0 removes, clear empties)",
   "junk [<item> | remove <item> | clear]   your sell list: items a merchant offers to buy from you with your grays (off until switched on under Merchants and errors)",
+  "bag [add <name> <item>|remove <item>|delete <name>|top <name>]   your own bag categories: a name and its items, shown under their own header above the built-in sections (first in the list wins)",
   "sell <item>          at a merchant: sell every stack of an item in your bags, after a question",
   "craft [add [n]|next|stock|cd|top|done|clear]   the craft queue: queue the recipe on display, open the next one, raise Keep stocked to fit, show cooldowns, rank recipes (off until switched on)",
   "mail [words]|preset [add <name> <character> [words]|remove <name>]|send <name>|takeall|returnall   search the inbox; presets for sending items to your alts; take everything listed or return it (off until switched on)",
@@ -624,6 +626,13 @@ local function merchantCommand(method)
   end
 end
 
+-- /vg quests [history [n]]: the quest log, or the latest turn-ins of all your characters (Modules/QuestHistory.lua).
+local function questsCommand(rest)
+  if rest:lower():match("^history") then return ns.GetModule("QuestHistory").Command(rest) end
+  local QL = ns.GetModule("QuestLog")
+  if QL.frame then QL.Toggle() else chat("Vanguard's quest log is off (/vg > Quests).") end
+end
+
 local COMMANDS = {
   -- /vg help
   help = function() printLines(HELP) end,
@@ -667,9 +676,10 @@ local COMMANDS = {
   preview = function(rest) ns.RaidPreview.Command(rest) end,
   keybind = function() ns.GetModule("ActionBars").ToggleKeybindMode() end,
   copy = function() ns.GetModule("ChatExtras").ShowCopy() end,
-  quests = function() local QL = ns.GetModule("QuestLog") if QL.frame then QL.Toggle() else ns.Chat("Vanguard's quest log is off (/vg > Quests).") end end,
+  quests = questsCommand,
   plates = function(rest) ns.GetModule("Nameplates").Command(rest) end,
   stock = stockCommand,
+  bag = function(rest) ns.GetModule("Bags").Command(rest) end,
   junk = merchantCommand("JunkCommand"),
   sell = merchantCommand("SellCommand"),
   craft = function(rest) ns.GetModule("CraftQueue").Command(rest) end,
@@ -695,6 +705,7 @@ local COMMANDS = {
   lfg = function(rest) ns.GetModule("GroupBoard").Command(rest) end,
   questdata = function(rest) ns.QuestGuide.Command(rest) end,
   guide = function(rest) ns.GuideData.Command(rest) end,
+  probe = function(rest) ns.Probe.Command(rest) end,
   situation = function(rest) ns.GetModule("Situations").Command(rest) end,
   ah = function(rest) ns.GetModule("AuctionHelper").Command(rest) end,
   way = function(rest) ns.GetModule("Waypoints").Command(rest) end,
