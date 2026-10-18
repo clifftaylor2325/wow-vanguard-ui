@@ -341,7 +341,8 @@ const COMMUNITIES_ENV = PAGES_ENV + INSIDES_LUA + `
   function __clubRow(id)
     local row = CreateFrame("Button", nil, cl)
     for _, k in ipairs({ "Background", "IconRing", "GuildTabardBorder", "Selection", "Icon", "GuildTabardBackground", "GuildTabardEmblem", "FavoriteIcon", "UnreadNotificationIcon", "InvitationIcon" }) do row[k] = __art(row) end
-    row.Selection:Hide()
+    row.Selection:Hide() row.Name = __text(row, "Club")
+    if id == 2 then row.Icon:SetAtlas("communities-icon-addgroupplus") end
     function row:Init(club) self.Selection:SetShown(club == __selected) end
     row:Init(id)
     return row
@@ -366,7 +367,7 @@ const COMMUNITIES_ENV = PAGES_ENV + INSIDES_LUA + `
     local d = CreateFrame("Button", nil, f) d.Arrow, d.Art = __art(d), __art(d) f[k] = d
   end
   f.AddToChatButton.Label = __text(f.AddToChatButton, "Add to chat")
-  for _, k in ipairs({ "InviteButton", "GuildLogButton" }) do f[k] = CreateFrame("Button", nil, f) f[k].Art = __art(f[k]) end
+  for _, k in ipairs({ "InviteButton", "GuildLogButton" }) do f[k] = CreateFrame("Button", nil, f) f[k].Art = __art(f[k]) f[k]:SetFontString(__text(f[k], "Log")) end
   f.CommunitiesControlFrame = CreateFrame("Frame", nil, f)
   for _, k in ipairs({ "CommunitiesSettingsButton", "GuildControlButton", "GuildRecruitmentButton" }) do
     local b = CreateFrame("Button", nil, f.CommunitiesControlFrame) b.Art = __art(b) f.CommunitiesControlFrame[k] = b
@@ -394,6 +395,7 @@ it("guild window: the communities list rows are theme rows, art faded but their 
     r.Icon:GetAlpha(), r.GuildTabardBackground:GetAlpha(), r.GuildTabardEmblem:GetAlpha(), r.FavoriteIcon:GetAlpha(), r.UnreadNotificationIcon:GetAlpha(), r.InvitationIcon:GetAlpha(), ns.Theme.RowParts(r).rail:IsShown() }`);
   expect(look("__a"), "a row present at login, the first club selected").toEqual([true, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, true]);
   expect(look("__b"), "a row acquired later, not selected").toEqual([true, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, false]);
+  expect([isText(addon, "__a.Name"), isText(addon, "__b.Name"), addon.eval("return { __a.Icon.__desaturated == true, __b.Icon.__desaturated == true }")], "names in the text colour, the add row's plus grey and an avatar left alone").toEqual([true, true, [false, true]]);
   addon.eval("__selected = 2 __a:Init(1) __b:Init(2)");
   expect(addon.eval("return { ns.Theme.RowParts(__a).rail:IsShown(), ns.Theme.RowParts(__b).rail:IsShown() }"), "the rail follows the game's selection on the next Init").toEqual([false, true]);
   addon.hover("__a");
@@ -431,6 +433,7 @@ it("guild window: the chat box, jump button, dropdowns and bottom row of buttons
     return { f.InviteButton.Art:GetAlpha(), painted(f.InviteButton), f.GuildLogButton.Art:GetAlpha(), painted(f.GuildLogButton), f.CommunitiesControlFrame.CommunitiesSettingsButton.Art:GetAlpha(),
       painted(f.CommunitiesControlFrame.GuildControlButton), painted(f.CommunitiesControlFrame.GuildRecruitmentButton), f.CommunitiesCalendarButton.Icon:GetAlpha(), painted(f.CommunitiesCalendarButton) }`),
   "the bottom row flat, the calendar icon kept on a tile").toEqual([0, true, 0, true, 0, true, true, 1, true]);
+  expect([isText(addon, "CommunitiesFrame.GuildLogButton:GetFontString()"), isText(addon, "CommunitiesFrame.InviteButton:GetFontString()")], "the bottom buttons' labels in the text colour, not the game's gold").toEqual([true, true]);
   expect([isText(addon, "CommunitiesFrame.AddToChatButton.Label"), windowErrors(addon), addon.eval("return #ns.errors")], "the Add to chat label in the text colour").toEqual([true, "none", 0]);
 });
 
@@ -562,6 +565,7 @@ const DIALOG_ENV = WINDOWS_ENV + `
   end
   local log = __dialog("CommunitiesGuildLogFrame")
   local text = CreateFrame("Button", "CommunitiesGuildLogFrameCloseButton", log) text:SetText("Close")
+  CreateFrame("Frame", "CommunitiesFrame", UIParent)
   local news = __dialog("CommunitiesGuildNewsFiltersFrame") news.CloseButton = CreateFrame("Button", nil, news)
   __dialog("CommunitiesGuildTextEditFrame") CreateFrame("Button", "CommunitiesGuildTextEditFrameAcceptButton", CommunitiesGuildTextEditFrame)
   __dialog("GuildInviteFrame")
@@ -1226,6 +1230,11 @@ it("social dialogs: the guild log's and text edit's boxes, titles and X buttons,
   "log and text edit: boxes sunk, the log's title a title, the X the close glyph, the text buttons not").toEqual([true, true, true, false, true, true, true, false]);
   expect(addon.eval(`local n = 0 for _, c in ipairs(CommunitiesGuildNewsFiltersFrame.GuildNewsFilterButtons) do if type(c.GetChecked) == "function" and ns.Theme.CheckParts(c) then n = n + 1 end end
     return { n, #CommunitiesGuildNewsFiltersFrame.GuildNewsFilterButtons }`), "seven news filter checks (the odd entry left alone)").toEqual([7, 8]);
+  expect(addon.eval(`local f = CommunitiesGuildNewsFiltersFrame
+    local function at() local p, rel, rp, x = f:GetPoint() return { p, rel == CommunitiesFrame, rp, x } end
+    f:ClearAllPoints() f:Hide() f:Show()
+    local shown = at() CommunitiesFrame:Show() CommunitiesFrame:Hide()
+    return { shown, f:IsShown() }`), "the news filters flyout is attached to the guild window's right edge and closes with the window").toEqual([["TOPLEFT", true, "TOPRIGHT", -1], false]);
   expect(addon.eval(`return { GuildInviteFrameTabardBackground:GetAlpha(), GuildInviteFrameTabardEmblem:GetAlpha(), GuildInviteFrameTabardBorder:GetAlpha(),
       GuildInviteFrameJoinButton.Art:GetAlpha(), GuildInviteFrameDeclineButton.Art:GetAlpha(), __lit(GuildInviteFrameGuildName) }`),
   "the inviting guild's tabard kept, its border faded, Join and Decline flat, the guild name light").toEqual([1, 1, 0, 0, 0, true]);

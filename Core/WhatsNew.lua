@@ -80,7 +80,7 @@ end
 -- fill() puts the version in the title.
 local function addTitle(f)
   local parts = ns.WindowTitle(f, "What's new", { align = "center", count = "Click a line to open its setting.",
-    onClose = function(frame) frame:Hide() end, escape = true })
+    onClose = function(window) window:Hide() end, escape = true })
   f.hint = parts.count
 end
 

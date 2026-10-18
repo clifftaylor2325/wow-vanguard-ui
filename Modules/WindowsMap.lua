@@ -12,6 +12,7 @@ local vgEmptyNote = ns.FrameState("vgEmptyNote")
 local vgEmptyWatched = ns.FrameState("vgEmptyWatched")
 local vgHeaderGlyph = ns.FrameState("vgHeaderGlyph")
 local vgHeadersWatched = ns.FrameState("vgHeadersWatched")
+local vgRewardsWatched = {}
 
 local T = ns.Theme
 local GW = ns.GetModule("Windows")
@@ -222,10 +223,44 @@ local function skinQuestList(list)
   skinQuestTools(list.ScrollFrame)
 end
 
--- The details panel's buttons (abandon, share, track, back) flat.
+-- One details button flat, its label in the label role: light text, or `bad` for the danger kind (Abandon).
+local function skinDetailButton(button, token)
+  if not isFrame(button) then return end
+  T.Button(button)
+  GW.SkinText(button.GetFontString and button:GetFontString(), "label", token)
+end
+
+-- The details panel's buttons (abandon, share, track, back) flat; Abandon is the danger kind.
 local function skinDetailButtons(details)
-  for _, key in ipairs(GW.QUEST_DETAIL_BUTTONS) do skinFlatButton(details[key]) end
-  if type(details.BackFrame) == "table" then skinFlatButton(details.BackFrame.BackButton) end
+  for _, key in ipairs(GW.QUEST_DETAIL_BUTTONS) do skinDetailButton(details[key], key == "AbandonButton" and "bad" or "text") end
+  if type(details.BackFrame) == "table" then skinDetailButton(details.BackFrame.BackButton, "text") end
+end
+
+-- The plates behind a reward tile's name and the XP tile's figure (the dark boxes with a gold edge): faded.
+GW.QUEST_REWARD_PLATES = { "NameFrame", "ReputationBG" }
+-- How many reward tiles (QuestInfoItem1-10) the quest panels can show.
+GW.QUEST_REWARD_TILES = 10
+
+-- One reward tile (an item the quest gives or lets you choose): its plate faded, the item look on its icon.
+local function skinRewardTile(tile)
+  if not isFrame(tile) then return end
+  GW.FadeParts(tile, GW.QUEST_REWARD_PLATES)
+  if tile.CreateTexture and tile.Icon then GW.SkinItem(tile) end
+end
+
+-- Every reward tile the game has made so far, and the XP tile (QuestInfoXPFrame), flat like the item slots (the game
+-- makes them as a quest is shown, so this runs after QuestInfo_Display).
+function GW.SkinQuestRewards()
+  for i = 1, GW.QUEST_REWARD_TILES do skinRewardTile(_G["QuestInfoItem" .. i]) end
+  skinRewardTile(_G.QuestInfoXPFrame)
+end
+
+-- Keeps the reward tiles dressed after each QuestInfo_Display, hooked once.
+local function watchQuestRewards()
+  GW.SkinQuestRewards()
+  if vgRewardsWatched.done or type(_G.QuestInfo_Display) ~= "function" then return end
+  vgRewardsWatched.done = true
+  hooksecurefunc("QuestInfo_Display", ns.Guard("hook QuestInfo_Display rewards", GW.SkinQuestRewards))
 end
 
 -- One quest's details: the art faded (the rewards' tile too), an inset panel, the buttons flat, the Rewards heading light.
@@ -236,6 +271,7 @@ local function skinQuestDetails(details)
   T.Panel(details, { inset = true, noSheen = true })
   skinDetailButtons(details)
   GW.SkinText(GW.Part(details, "RewardsFrameContainer.RewardsFrame.Label"), "heading", "text")
+  watchQuestRewards()
 end
 
 -- A zone header row of the game's quest list: a button with its title (ButtonText) and a CollapseButton.
@@ -310,10 +346,9 @@ local function watchQuestHeaders(scroll)
   hooksecurefunc("QuestLogQuests_Update", ns.Guard("hook QuestLogQuests_Update", function() GW.SkinQuestHeaders(contents) end))
 end
 
--- The quest panel in the world map, when Vanguard's own quest log is off (the tabs and scroll bars are
--- other streams'): the list and the details of one quest. Left alone while Vanguard's log is on.
+-- The quest panel in the world map (the tabs and scroll bars are other streams'): the list and the details of one
+-- quest. Dressed whether or not Vanguard's quest log is on, as its Map button opens the game's details here.
 function GW.SkinQuestMap(panel)
-  if ownQuestLog() then return end
   local list = panel.QuestsFrame
   skinQuestList(list)
   skinQuestDetails(panel.DetailsFrame or (type(list) == "table" and list.DetailsFrame))

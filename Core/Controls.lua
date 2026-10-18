@@ -206,7 +206,7 @@ local function segmentWidth(s)
   return math.max(44, math.ceil(s.text:GetStringWidth()) + 16)
 end
 
--- Sizes the segments to their labels and lays them right to left along the row's right edge.
+-- Sizes the segments to their labels and lays them right to left along the row's right edge, T.SPACE.tight apart.
 local function layoutSegments(r)
   local x = -8
   for i = #r.segments, 1, -1 do
@@ -214,7 +214,7 @@ local function layoutSegments(r)
     s:SetWidth(segmentWidth(s))
     s:ClearAllPoints()
     s:SetPoint("RIGHT", x, 0)
-    x = x - s:GetWidth() + 1
+    x = x - s:GetWidth() - T.SPACE.tight
   end
 end
 
@@ -646,11 +646,11 @@ end
 -- A search box with a magnifier and a hint; onChange(text) runs as you type.
 function W.Search(parent, width, hint, onChange)
   local e = W.Input(parent, width)
-  e:SetTextInsets(24, T.CONTROL_H, 0, 0)
-  e.glass = icon(e, "Search", 12, "text2")
-  e.glass:SetPoint("LEFT", 7, 0)
+  e:SetTextInsets(T.SEARCH_INSET, T.CONTROL_H, 0, 0)
+  e.glass = icon(e, "Search", T.SEARCH_ICON, "text2")
+  e.glass:SetPoint("LEFT", T.SPACE.gap, 0)
   e.hint = T.Text(e:CreateFontString(nil, "OVERLAY"), "label", "disabled")
-  e.hint:SetPoint("LEFT", 24, 0)
+  e.hint:SetPoint("LEFT", T.SEARCH_INSET, 0)
   e.hint:SetText(hint)
   addClear(e)
   e:SetScript("OnTextChanged", function(self) refreshHint(self); onChange(self:GetText() or "") end)

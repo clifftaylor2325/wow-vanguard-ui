@@ -99,6 +99,29 @@ it("#201 nothing moves in combat: a drag doesn't start, putting back waits until
   expect(errors(addon)).toBe("none");
 });
 
+it("the group finder: its pages cover the window and carry the title, so each page's title bar drags the whole window", () => {
+  const addon = loggedIn(MOVE_ENV);
+  addon.eval(`local w = __window("LFGParentFrame") w:SetSize(440, 520) w:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 100, -100)
+    for _, k in ipairs({ "LFGListingFrame", "LFGBrowseFrame", "LFGWhoListFrame" }) do
+      local p = CreateFrame("Frame", k, w) p:SetAllPoints(w)
+      p.TitleContainer = CreateFrame("Frame", nil, p) p.TitleContainer:SetPoint("TOPLEFT", p, "TOPLEFT", 60, -4) p.TitleContainer:SetSize(300, 20)
+    end`);
+  addon.fire("ADDON_LOADED", "Blizzard_GroupFinder_VanillaStyle");
+  for (const page of ["LFGListingFrame", "LFGBrowseFrame", "LFGWhoListFrame"]) {
+    const moved = addon.eval(`local bar = ${page}.TitleContainer local h
+      for _, c in ipairs({ ${page}:GetChildren() }) do if c.window == LFGParentFrame and c ~= bar then h = c end end
+      if not h then return false end
+      h:GetScript("OnDragStart")(h, "LeftButton")
+      local moving = LFGParentFrame.__moving == true
+      LFGParentFrame:ClearAllPoints() LFGParentFrame:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", 300, 600)
+      h:GetScript("OnDragStop")(h)
+      return moving`);
+    expect(moved, `${page}'s title bar has a drag area that moves the finder`).toBe(true);
+    expect(saved(addon).LFGParentFrame, "and its place is saved").toEqual({ x: 300, y: 600 });
+  }
+  expect(errors(addon)).toBe("none");
+});
+
 it("#201 the switch off leaves the game's windows alone, saved places and all", () => {
   const addon = loggedIn(MOVE_ENV, { savedVariables: "VanguardDB.profiles = { Default = { Windows = { movable = false, moved = { CharacterFrame = { x = 500, y = 700 } } } } }" });
   addon.eval("__open(CharacterFrame) UpdateUIPanelPositions()");
