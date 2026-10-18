@@ -1307,17 +1307,17 @@ const COMMUNITY_DIALOGS_ENV = PAGES_PARTS_ENV + PART_HELPERS_LUA + `
   __gold(es, "NameLabel") __gold(es, "DescriptionLabel") __check(es, "TypeCheckbox")
   es.Description = CreateFrame("Frame", nil, es) __art(es.Description) es.Description.EditBox = CreateFrame("EditBox", nil, es.Description) es.Description.EditBox.Art = __art(es.Description.EditBox)
   for _, k in ipairs({ "Accept", "Cancel", "Delete" }) do __btn(es, k, k) end
-  local nd = sub("NotificationSettingsDialog") nd.BG = __art(nd) nd.Selector = __well(nil, nd) nd.CloseButton = nil
-  __btn(nd.Selector, "Okay", "OkayButton") __btn(nd.Selector, "Cancel", "CancelButton") __drop(nd, "CommunitiesListDropdown")
-  nd.ScrollFrame = CreateFrame("Frame", nil, nd) nd.ScrollFrame.Child = CreateFrame("Frame", nil, nd.ScrollFrame)
-  local child = nd.ScrollFrame.Child __check(child, "QuickJoinButton") __btn(child, "None", "NoneButton") __btn(child, "All", "AllButton") child.Separator = __art(child)
+  local notifDialog = sub("NotificationSettingsDialog") notifDialog.BG = __art(notifDialog) notifDialog.Selector = __well(nil, notifDialog) notifDialog.CloseButton = nil
+  __btn(notifDialog.Selector, "Okay", "OkayButton") __btn(notifDialog.Selector, "Cancel", "CancelButton") __drop(notifDialog, "CommunitiesListDropdown")
+  notifDialog.ScrollFrame = CreateFrame("Frame", nil, notifDialog) notifDialog.ScrollFrame.Child = CreateFrame("Frame", nil, notifDialog.ScrollFrame)
+  local child = notifDialog.ScrollFrame.Child __check(child, "QuickJoinButton") __btn(child, "None", "NoneButton") __btn(child, "All", "AllButton") child.Separator = __art(child)
   function __stream()
     local e = CreateFrame("Button", nil, child) e.StreamName, e.Separator = __gold(e, nil, "TEST-ONLY stream"), __art(e)
     for _, k in ipairs({ "HideNotificationsButton", "ShowNotificationsButton" }) do e[k] = CreateFrame("CheckButton", nil, e) e[k].Art = __art(e[k]) end
     return e
   end
-  nd.active = { __stream() } nd.buttonPool = __pool(nd.active)
-  function nd:Refresh() end
+  notifDialog.active = { __stream() } notifDialog.buttonPool = __pool(notifDialog.active)
+  function notifDialog:Refresh() end
   for _, k in ipairs({ "InvitationFrame", "TicketFrame" }) do
     local p = CreateFrame("Frame", nil, f) f[k] = p p.Backdrop, p.Icon, p.IconRing, p.InsetFrame = __art(p), __art(p), __art(p), __well(nil, p)
     __btn(p, "Accept", "AcceptButton") __btn(p, "Decline", "DeclineButton") p.Name = __text(p, "TEST-ONLY community")
@@ -1347,7 +1347,7 @@ it("guild window dialogs: the member detail, channel edit and notification dialo
   // Reads what a notification stream row looks like.
   const stream = (e) => addon.eval(`local e = ${e} return { __lit(e.StreamName), ns.Theme.DividerParts(e.Separator) ~= nil, ns.Theme.CheckParts(e.HideNotificationsButton).ring ~= nil, ns.Theme.CheckParts(e.ShowNotificationsButton).ring ~= nil }`);
   expect(stream("CommunitiesFrame.NotificationSettingsDialog.active[1]"), "a stream row there from the start: name light, divider a line, two theme radios").toEqual([true, true, true, true]);
-  addon.eval("local nd = CommunitiesFrame.NotificationSettingsDialog table.insert(nd.active, __stream()) nd:Refresh()");
+  addon.eval("local notifDialog = CommunitiesFrame.NotificationSettingsDialog table.insert(notifDialog.active, __stream()) notifDialog:Refresh()");
   expect(stream("CommunitiesFrame.NotificationSettingsDialog.active[2]"), "a row the game adds in a refresh").toEqual([true, true, true, true]);
   expect(addon.eval(`local n = CommunitiesFrame.NotificationSettingsDialog local c = n.ScrollFrame.Child
     return { n.BG:GetAlpha(), __faded(n.Selector), n.Selector.OkayButton.Art:GetAlpha(), n.Selector.CancelButton.Art:GetAlpha(), n.CommunitiesListDropdown.Arrow:GetAlpha(),

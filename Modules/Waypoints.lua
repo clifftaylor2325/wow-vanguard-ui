@@ -124,10 +124,11 @@ WP.RECENT = 8
 -- The game's waypoint as mapID, x and y (0 to 1); nil when there is none or the client won't say.
 function WP.Current()
   if not (C_Map.HasUserWaypoint and C_Map.HasUserWaypoint() and C_Map.GetUserWaypoint) then return nil end
-  local point, mapID = C_Map.GetUserWaypoint(), nil
+  local point = C_Map.GetUserWaypoint()
   if type(point) ~= "table" or type(point.position) ~= "table" then return nil end
   local x, y = point.position:GetXY()
-  x, y, mapID = ns.PlainNumber(x), ns.PlainNumber(y), ns.PlainNumber(point.uiMapID)
+  local mapID = ns.PlainNumber(point.uiMapID)
+  x, y = ns.PlainNumber(x), ns.PlainNumber(y)
   if mapID and x and y then return mapID, x, y end
 end
 

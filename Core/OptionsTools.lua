@@ -5,7 +5,7 @@
 local ADDON, ns = ...
 
 local O = ns.Options
-local moduleSettings, setting, liveSetting, check, append = O.ModuleSettings, O.Setting, O.LiveSetting, O.Check, O.Append
+local setting, liveSetting, check, append = O.Setting, O.LiveSetting, O.Check, O.Append
 
 -- Puts the low-health vignette (Modules/GameAlerts.lua) right after a change of its switch.
 local function applyVignette()
@@ -65,6 +65,12 @@ local function meterCycle(caption, key, order, words, paint)
   return { "cycle", caption, meterChoices(order, words), liveSetting("Meter", key, paint) }
 end
 
+-- Draws the meter again, building it first when it was just switched on (when the module is on).
+local function paint()
+  local MT = ns.GetModule("Meter")
+  if MT.enabled then MT.Refresh() end
+end
+
 -- The meter's share switch and buttons: its chat report and the reset of the game's segments (also /vg meter report and reset).
 local function meterButtons()
   local MT = ns.GetModule("Meter")
@@ -74,12 +80,6 @@ local function meterButtons()
     { "button", "Report the meter's top lines (also the Report button on the meter)", MT.ReportClick },
     { "button", "Reset the game's damage meter", MT.Reset },
   }
-end
-
--- Draws the meter again, building it first when it was just switched on (when the module is on).
-local function paint()
-  local MT = ns.GetModule("Meter")
-  if MT.enabled then MT.Refresh() end
 end
 
 -- Vanguard's own damage and healing meter: its switches (applied at once) and its visibility.
@@ -101,10 +101,10 @@ local function rollRows()
   local R = ns.GetModule("Rolls")
   local rollVisibility, rollWhen = O.VisibilityRows("Roll tracker visibility", "Rolls", "visibility", "showWhen")
   -- Draws the panel again (when the module is on).
-  local function paint() if R.enabled then R.Paint() end end
+  local function repaint() if R.enabled then R.Paint() end end
   return {
     { "header", "Roll tracker" },
-    check("Show the group's /roll results in a small panel", liveSetting("Rolls", "show", paint)),
+    check("Show the group's /roll results in a small panel", liveSetting("Rolls", "show", repaint)),
     check("Show loot rolls (who rolled what) where the client has them", liveSetting("Rolls", "loot", function() if R.enabled then R.ReadLoot() end end)),
     rollVisibility, rollWhen,
   }
