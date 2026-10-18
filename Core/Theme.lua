@@ -128,9 +128,14 @@ for name, v in pairs(TOKENS) do
   T.TOKENS[name] = type(v) == "table" and fromHex(v[1], v[2]) or fromHex(v)
 end
 
--- Color assist (#235): with the colorAssist setting on, the reaction colors move off the red-green
--- axis, to a friendly blue, a neutral yellow and a hostile vermilion. Token name -> { r, g, b, a }.
-T.ASSIST = { friendly = fromHex("4a9be8"), neutral = fromHex("e8d25a"), hostile = fromHex("e0663a") }
+-- Color assist, shown as Safer colours (#235): with it on, the reaction colors move off the red-green
+-- axis, to a friendly blue, a neutral yellow and a hostile vermilion, and the four dispel types keep
+-- apart under protanopia, deuteranopia and tritanopia (dE 18 or more; the usual set has 6 for Magic and
+-- Curse under deuteranopia). Token name -> { r, g, b, a }.
+T.ASSIST = {
+  friendly = fromHex("4a9be8"), neutral = fromHex("e8d25a"), hostile = fromHex("e0663a"),
+  magic = fromHex("2f7fe0"), curse = fromHex("d86ac0"), disease = fromHex("e8b030"), poison = fromHex("7ad0b0"),
+}
 
 -- The glyph (under Media/Icons) that goes with a state color where it stands alone (#235).
 T.STATE_GLYPHS = { good = "Check", warn = "Warn", bad = "Close" }
@@ -259,6 +264,8 @@ local DEFAULTS = {
   hudShadow = false,
   -- Reaction colors off the red-green axis (#235, General -> Look; on reload).
   colorAssist = false,
+  -- Safer colours also come on while the game's own colour-blind mode is on (read once, so on a reload).
+  colorAssistGame = true,
   smoothBars = true,
   reduceMotion = false,
   sounds = true,
@@ -358,11 +365,26 @@ local function accentVariant(name)
   return variants[name].c
 end
 
+-- Whether the game's own colour-blind mode (the colorblindMode CVar) is on; read once, then kept.
+function T.GameColorBlind()
+  if T.gameColorBlind == nil then
+    local ok, v = pcall(GetCVar, "colorblindMode")
+    T.gameColorBlind = ok and (v == "1" or v == true) or false
+  end
+  return T.gameColorBlind
+end
+
+-- Whether Safer colours apply: the switch, the High contrast look, or the game's colour-blind mode.
+function T.ColorAssist()
+  local s, v = T.Settings(), T.Variant()
+  return s.colorAssist or (v and v.assist) or (s.colorAssistGame and T.GameColorBlind()) or false
+end
+
 -- r, g, b, a of a named color (see TOKENS; accent, panel, inset and edge follow the settings,
 -- accentText and accentDim follow the accent, and the reactions follow Color assist).
 function T.RGB(name)
   local key, v = SETTING_TOKENS[name], T.Variant()
-  local assist = T.Settings().colorAssist or v and v.assist
+  local assist = T.ColorAssist()
   local c = v and v.tokens[name] or T.ACCENT_VARIANTS[name] and accentVariant(name) or key and T.Settings()[key]
     or assist and T.ASSIST[name] or T.TOKENS[name]
   if not c then error("Vanguard: no color named " .. tostring(name), 2) end
