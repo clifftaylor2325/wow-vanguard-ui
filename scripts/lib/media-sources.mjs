@@ -66,13 +66,14 @@ function corner(size, w, line) {
 }
 
 // A cut corner, drawn for a panel's top-left corner: the cut runs from the canvas's bottom-left to its top-right.
-// `s` is how far a pixel's centre lies inside the cut, across; "line" is the stroke `w` wide along the cut, "fill"
-// everything inside it, "mask" everything inside the stroke.
+// `s` counts the pixel diagonals inside the cut; drawn one texel to a screen pixel, so every texel is fully on or off
+// (a hard 45-degree staircase, no blur): "line" is the `w` diagonals along the cut, "fill" everything inside it,
+// "mask" everything inside the line.
 function cut(size, w, kind) {
   return fill(image(size, size), (x, y) => {
     const s = x + y + 1 - size;
-    const inside = clamp01(s + 0.5);
-    const past = clamp01(s - w + 0.5);
+    const inside = clamp01(s + 1);
+    const past = clamp01(s - w + 1);
     return [1, 1, 1, kind === "line" ? inside - past : kind === "fill" ? inside : past];
   });
 }
@@ -160,12 +161,12 @@ export const TEXTURES = {
   LogoLeft: () => draw(image(64, 64), 64, LOGO_LEFT),
   // The pre-colored addons-list icon: Vanguard's crest (scripts/lib/media-brand.mjs).
   Icon: () => crestIcon(64),
-  // Shield corners (the cut corner of the crest, on the unit frames and cast bars): a 45-degree cut across the
-  // top-left corner, drawn at T.CORNER_CUT (6) screen pixels. The border's cut line is one pixel wide across (32 / 6 of
-  // the canvas), the fill sits under it, and the mask is the fill less the line, so a bar under it stops inside the line.
-  CornerCutLine: () => cut(32, 32 / 6, "line"),
-  CornerCutFill: () => cut(32, 32 / 6, "fill"),
-  CornerCutMask: () => cut(32, 32 / 6, "mask"),
+  // Shield corners (the cut corner of the crest, on the unit frames): a 45-degree cut across the top-left corner, 8 x 8,
+  // drawn at T.CORNER_CUT (8) screen pixels so each texel is one pixel. The border's cut line is one pixel diagonal, the
+  // fill sits under it, and the mask is the fill less the line, so a bar under it stops inside the line.
+  CornerCutLine: () => cut(8, 1, "line"),
+  CornerCutFill: () => cut(8, 1, "fill"),
+  CornerCutMask: () => cut(8, 1, "mask"),
 };
 
 // Icons -------------------------------------------------------------------------------------
