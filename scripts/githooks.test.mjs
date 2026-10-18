@@ -74,6 +74,14 @@ it.skipIf(!posix)("without luacheck and luac, the hook skips them, says so and s
   expect(out).toContain("pre-push: skipped: luacheck (not installed) luac5.1 (not installed); CI runs them");
 });
 
+it.skipIf(!posix)("git's GIT_DIR and friends are cleared before any check runs (#319: a worktree push re-initialised the real repo)", () => {
+  const bin = fakeBin("gitenv", { ...LINUX, npm: 'echo "GIT_DIR=[$GIT_DIR] COMMON=[$GIT_COMMON_DIR] WORK=[$GIT_WORK_TREE]" >&2' });
+  const env = { PATH: bin, GIT_DIR: "/elsewhere/.git", GIT_COMMON_DIR: "/elsewhere/common", GIT_WORK_TREE: "/elsewhere" };
+  const r = spawnSync("/bin/sh", [HOOK], { cwd: root, encoding: "utf8", env });
+  expect(r.stderr).toContain("GIT_DIR=[] COMMON=[] WORK=[]");
+  expect(r.stderr).not.toContain("/elsewhere");
+});
+
 it.skipIf(!posix)("on Windows (Git Bash) the syntax pass is skipped even with luac installed", () => {
   const { status, out } = runHook(fakeBin("windows", { ...LINUX, uname: "echo MINGW64_NT-10.0", luacheck: PASS, "luac5.1": PASS }));
   expect(status).toBe(0);
