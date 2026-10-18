@@ -317,13 +317,28 @@ end
 -- the unread dot and the invitation mail.
 GW.COMMUNITY_ROW_KEEP = { "Icon", "GuildTabardBackground", "GuildTabardEmblem", "FavoriteIcon", "UnreadNotificationIcon", "InvitationIcon" }
 
+-- The atlas of the Join or Create Community row's plus, drawn green by the game.
+GW.ADD_COMMUNITY_ATLAS = "communities-icon-addgroupplus"
+
+-- A community row's name in the text colour (the game colours it green), the add row's plus grey instead of green, and its
+-- selected look following the game's Selection plate (shown by Init, which the game runs again on every update).
+local function paintCommunityRow(row)
+  paintText(row.Name, "text")
+  local icon = row.Icon
+  if type(icon) == "table" and icon.GetAtlas and icon:GetAtlas() == GW.ADD_COMMUNITY_ATLAS then
+    icon:SetDesaturated(true)
+    icon:SetVertexColor(T.RGB("text"))
+  end
+  GW.FollowMark(row, row.Selection)
+end
+
 -- One communities list row as the game acquires it: its plates and gold ring faded under the row primitive, its icons kept, its
 -- selected look following the game's Selection plate (shown by Init, which the game runs again on every update).
 local function dressCommunityRow(row)
   if type(row) ~= "table" then return end
   GW.DressRow(row, GW.COMMUNITY_ROW_KEEP)
-  GW.FollowMark(row, row.Selection)
-  GW.HookAfter(row, "Init", function() GW.FollowMark(row, row.Selection) end)
+  paintCommunityRow(row)
+  GW.HookAfter(row, "Init", function() paintCommunityRow(row) end)
 end
 
 -- The communities list: its corner filigree faded and its rows dressed as the game acquires them.
@@ -475,6 +490,13 @@ GW.GUILD_DROPDOWNS = { "StreamDropdown", "GuildMemberListDropdown", "CommunityMe
 GW.GUILD_BUTTONS = { "InviteButton", "GuildLogButton" }
 GW.GUILD_CONTROLS = { "CommunitiesSettingsButton", "GuildControlButton", "GuildRecruitmentButton" }
 
+-- A bottom button of the window: its label in the text colour (gold in the game; painted first, as the button skin keeps a
+-- disabled label's colour from before), then the theme button.
+local function dressGuildButton(button)
+  paintLink(button, "text")
+  GW.SkinButton(button)
+end
+
 -- The window's dropdowns, the chat box, the jump button over the chat and the bottom row of buttons; the calendar button
 -- keeps its icon on a tile.
 local function dressGuildControls(frame)
@@ -482,7 +504,7 @@ local function dressGuildControls(frame)
   paintText(GW.Part(frame, "AddToChatButton.Label"), "text")
   GW.SkinEditBox(frame.ChatEditBox)
   GW.SkinButton(_G.JumpToUnreadButton)
-  GW.EachKey(frame, GW.GUILD_BUTTONS, GW.SkinButton)
+  GW.EachKey(frame, GW.GUILD_BUTTONS, dressGuildButton)
   GW.EachKey(frame.CommunitiesControlFrame, GW.GUILD_CONTROLS, GW.SkinButton)
   GW.SkinPlate(frame.CommunitiesCalendarButton)
 end
@@ -620,10 +642,31 @@ local function dressTextEdit(frame)
   GW.DressClose(frame, findCross(frame))
 end
 
--- The news filters dialog: its seven check boxes (frame.GuildNewsFilterButtons) as theme check boxes.
+-- The news filters dialog as a flyout on the guild window's right edge (a pixel under it, so the shared border hides), out of combat.
+local function attachNewsFilters(frame)
+  local window = _G.CommunitiesFrame
+  if type(window) ~= "table" or not frame.SetPoint then return end
+  ns.OutOfCombat(function()
+    frame:ClearAllPoints()
+    frame:SetPoint("TOPLEFT", window, "TOPRIGHT", -1, -T.SPACE.section)
+  end, frame)
+end
+
+-- The news filters flyout follows the guild window: attached on each show, and hidden with the window.
+local function watchNewsFilters(frame)
+  local window = _G.CommunitiesFrame
+  if type(window) ~= "table" or not window.HookScript or vgSocialSide[frame] then return end
+  vgSocialSide[frame] = true
+  frame:HookScript("OnShow", ns.Guard("news filters attach", attachNewsFilters))
+  window:HookScript("OnHide", ns.Guard("news filters close", function() frame:Hide() end))
+end
+
+-- The news filters dialog: its seven check boxes (frame.GuildNewsFilterButtons) as theme check boxes, attached to the window's side.
 local function dressNewsFilters(frame)
   local checks = type(frame.GuildNewsFilterButtons) == "table" and frame.GuildNewsFilterButtons or {}
   for _, check in ipairs(checks) do GW.SkinCheck(check) end
+  attachNewsFilters(frame)
+  watchNewsFilters(frame)
 end
 
 -- The guild invite dialog's tabard (the inviting guild's, content) and its two named buttons and guild name.

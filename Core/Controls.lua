@@ -201,20 +201,30 @@ local function fitsSegments(choices)
   return #choices <= 4 and chars <= 32
 end
 
--- A segment's width for its label as drawn (so it follows the font and the text size), 8 of air each side.
-local function segmentWidth(s)
-  return math.max(44, math.ceil(s.text:GetStringWidth()) + 16)
+-- A segment's width for its label as drawn (so it follows the font and the text size): 8 of air each side and at least
+-- 44 wide, or, in a row too narrow for its caption and the segments at that size, 4 of air each side and no minimum.
+local function segmentWidth(s, tight)
+  local text = math.ceil(s.text:GetStringWidth())
+  return tight and text + 8 or math.max(44, text + 16)
 end
 
--- Sizes the segments to their labels and lays them right to left along the row's right edge.
+-- Whether the row's segments at their usual widths would run under its caption (8 of air before the caption, a gap after).
+local function cramped(r)
+  local need = 0
+  for _, s in ipairs(r.segments) do need = need + segmentWidth(s) + T.SPACE.tight end
+  return need + r.label:GetStringWidth() + 16 + T.SPACE.gap > r:GetWidth()
+end
+
+-- Sizes the segments to their labels and lays them right to left along the row's right edge, T.SPACE.tight apart,
+-- tighter when the row is too narrow to keep them clear of its caption.
 local function layoutSegments(r)
-  local x = -8
+  local x, tight = -8, cramped(r)
   for i = #r.segments, 1, -1 do
     local s = r.segments[i]
-    s:SetWidth(segmentWidth(s))
+    s:SetWidth(segmentWidth(s, tight))
     s:ClearAllPoints()
     s:SetPoint("RIGHT", x, 0)
-    x = x - s:GetWidth() + 1
+    x = x - s:GetWidth() - T.SPACE.tight
   end
 end
 
@@ -646,11 +656,11 @@ end
 -- A search box with a magnifier and a hint; onChange(text) runs as you type.
 function W.Search(parent, width, hint, onChange)
   local e = W.Input(parent, width)
-  e:SetTextInsets(24, T.CONTROL_H, 0, 0)
-  e.glass = icon(e, "Search", 12, "text2")
-  e.glass:SetPoint("LEFT", 7, 0)
+  e:SetTextInsets(T.SEARCH_INSET, T.CONTROL_H, 0, 0)
+  e.glass = icon(e, "Search", T.SEARCH_ICON, "text2")
+  e.glass:SetPoint("LEFT", T.SPACE.gap, 0)
   e.hint = T.Text(e:CreateFontString(nil, "OVERLAY"), "label", "disabled")
-  e.hint:SetPoint("LEFT", 24, 0)
+  e.hint:SetPoint("LEFT", T.SEARCH_INSET, 0)
   e.hint:SetText(hint)
   addClear(e)
   e:SetScript("OnTextChanged", function(self) refreshHint(self); onChange(self:GetText() or "") end)

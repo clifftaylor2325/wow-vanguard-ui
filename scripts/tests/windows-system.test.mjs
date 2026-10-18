@@ -401,7 +401,7 @@ it("Cooldown Manager settings and its layout dialogs: the window skin, search bo
   expect(addon.eval(`local cd = CooldownViewerSettings
     return { __barred(cd.CooldownScroll.ScrollBar), __panelled(cd.LayoutDropdown), cd.LayoutDropdown.Arrow.__alpha, __panelled(cd.SettingsDropdown), cd.SettingsDropdown.Icon.__alpha ~= 0,
       __panelled(cd.UndoButton), __panelled(({ cd.CooldownScroll.Content:GetChildren() })[1].Header) }`),
-    "scroll bar, layout dropdown (arrow kept), the gear dropdown on a control tile with its icon, Revert, and the category header that was there").toEqual([true, true, 1, true, true, true, true]);
+    "scroll bar, layout dropdown (theme arrow), the gear dropdown on a control tile with its icon, Revert, and the category header that was there").toEqual([true, true, 0, true, true, true, true]);
   addon.eval("CooldownViewerSettings:RefreshLayout()");
   expect(addon.eval("return { CooldownViewerSettings.refreshes, __panelled(({ CooldownViewerSettings.CooldownScroll.Content:GetChildren() })[3].Header) }"),
     "a category the game makes in RefreshLayout gets its header themed, the game's function still run").toEqual([2, true]);
@@ -542,7 +542,7 @@ it("click bindings: skinned when their addon loads, with the three buttons and t
   expect(addon.eval(`local f = ClickBindingFrame local card = f.TutorialFrame
     return { __barred(f.ScrollBar), ns.Theme.CheckParts(f.EnableMouseoverCastCheckbox) ~= nil, __panelled(f.MouseoverCastKeyDropdown), f.MouseoverCastKeyDropdown.Arrow.__alpha,
       __looks(f.MouseoverCastKeyDropdown.Label, "label", "text"), __panelled(card), __faded(card), card.Tutorial.__alpha, card.NineSlice.__alpha, card.CloseButton.__piece.__alpha }`),
-    "scroll bar, the mouseover check box, key dropdown (arrow kept) and its light label; the tutorial card a panel with its art faded and its picture kept").toEqual([true, true, true, 1, true, true, 0, 1, 0, 0]);
+    "scroll bar, the mouseover check box, key dropdown (theme arrow) and its light label; the tutorial card a panel with its art faded and its picture kept").toEqual([true, true, true, 0, true, true, 0, 1, 0, 0]);
   addon.eval("local box = ClickBindingFrame.ScrollBox box:Take(__bindingRow())");
   expect(addon.eval(`local row = ClickBindingFrame.ScrollBox.rows[1]
     return { ns.Theme.RowParts(row) ~= nil, row.Background.__alpha, row.FrameHighlight.__alpha, row.Icon.__alpha ~= 0, row.NewOutline.__alpha ~= 0, #({ row.DeleteButton:GetRegions() }), row.DeleteButton.Icon.__alpha ~= 0 }`),
@@ -601,7 +601,7 @@ it("help window, report window and ticket status in the theme, the ticket icon k
     return { __panelled(r.ReportingMajorCategoryDropdown), r.ReportingMajorCategoryDropdown.Arrow.__alpha, __looks(r.ReportingMajorCategoryDropdown.Label, "label", "text"), __looks(r.MinorReportDescription, "label", "text"),
       __looks(r.ScreenshotReportingFrame.ScreenshotDescription, "label", "text"), __looks(r.ScreenshotReportingFrame.ScreenshotEmptyText, "label", "text"),
       __panelled(r.Comment), __faded(r.Comment), __barred(r.Comment.ScrollBar) }`),
-    "report: the reason dropdown (arrow kept), the four labels light, the comment box faded under an inset panel with its scroll bar themed").toEqual([true, 1, true, true, true, true, true, 0, true]);
+    "report: the reason dropdown (theme arrow), the four labels light, the comment box faded under an inset panel with its scroll bar themed").toEqual([true, 0, true, true, true, true, true, 0, true]);
   // The state of the report window's minor-category button i: dressed as a row, its plate faded, the rail shown.
   const minor = (i) => addon.eval(`local b = ({ ReportFrame:GetChildren() })[1] local live = {}
     for _, c in ipairs({ ReportFrame:GetChildren() }) do if c.Normal then live[#live + 1] = c end end
@@ -837,7 +837,7 @@ it("game options: scroll bars, defaults button, header divider, and the nav and 
     "both scroll bars themed, Defaults a theme button, the header's divider texture one pixel of divider (another texture and a font string left alone)").toEqual([true, true, true, true, true, 0]);
   expect(addon.eval(`local list, row = SettingsPanel.Container.SettingsList, SettingsPanel.Container.SettingsList.ScrollBox.rows[1]
     return { ns.Theme.CheckParts(row.Checkbox) ~= nil, __stepper(row.SliderWithSteppers), __panelled(row.Control.Dropdown), row.Control.Dropdown.Arrow.__alpha, __panelled(row.Button) }`),
-    "a row that was already there: its check box, slider with steppers, dropdown (arrow shown) and button themed").toEqual([true, true, true, 1, true]);
+    "a row that was already there: its check box, slider with steppers, dropdown (arrow shown) and button themed").toEqual([true, true, true, 0, true]);
   addon.eval("SettingsPanel.Container.SettingsList.ScrollBox:Take(__settingRow())");
   expect(addon.eval(`local row = SettingsPanel.Container.SettingsList.ScrollBox.rows[2]
     return { ns.Theme.CheckParts(row.Checkbox) ~= nil, __stepper(row.SliderWithSteppers), __panelled(row.Control.Dropdown), __panelled(row.Button) }`),
@@ -882,7 +882,7 @@ it("addon list: scroll bar, character dropdown, force-load box, and the performa
     return { __barred(f.ScrollBar), __panelled(f.Dropdown), f.Dropdown.Arrow.__alpha, ns.Theme.CheckParts(f.ForceLoad) ~= nil,
       ns.Theme.RoleSize("section") == select(2, f.Performance.Header:GetFont()), f.Performance.Header:GetText(),
       ns.Theme.DividerParts(f.Performance.Divider) ~= nil, f.Performance.Divider.__alpha }`),
-    "scroll bar and dropdown (arrow kept) themed, the force-load box a check box, the header small capitals, the divider one pixel of divider").toEqual([true, true, 1, true, true, "PERFORMANCE", true, 0]);
+    "scroll bar and dropdown (theme arrow) themed, the force-load box a check box, the header small capitals, the divider one pixel of divider").toEqual([true, true, 0, true, true, "PERFORMANCE", true, 0]);
   sameOnReshow(addon, "AddonList");
   const off = loggedIn(ADDON_PARTS_ENV, SWITCH_OFF);
   off.eval("AddonList:Show()");
@@ -963,7 +963,7 @@ it("Edit Mode window: layout dropdown, the grid slider, the switches and the acc
   expect(addon.eval(`local m = EditModeManagerFrame
     return { __panelled(m.LayoutDropdown), m.LayoutDropdown.Arrow.__alpha, __stepper(m.GridSpacingSlider.Slider),
       ns.Theme.CheckParts(m.ShowGridCheckButton.Button) ~= nil, ns.Theme.CheckParts(m.EnableSnapCheckButton.Button) ~= nil, ns.Theme.CheckParts(m.EnableAdvancedOptionsCheckButton.Button) ~= nil }`),
-    "the dropdown (arrow kept), the slider with its steppers, and the three switches").toEqual([true, 1, true, true, true, true]);
+    "the dropdown (theme arrow), the slider with its steppers, and the three switches").toEqual([true, 0, true, true, true, true]);
   expect(addon.eval(`local well = EditModeManagerFrame.AccountSettings.SettingsContainer
     local rows = ({ well.ScrollChild.AdvancedOptionsContainer:GetChildren() })[4]
     local row = ({ rows:GetChildren() })[1]
@@ -990,9 +990,9 @@ it("Edit Mode system settings: the check boxes, dropdowns and sliders the game t
   // The settings made by the last UpdateSettings: { check box, dropdown, dropdown arrow, slider with steppers, the plain frame untouched }.
   const made = () => addon.eval(`local c, dd, sl = table.unpack(${d}.made)
     return { ns.Theme.CheckParts(c.Button) ~= nil, __panelled(dd.Dropdown), dd.Dropdown.Arrow.__alpha, __stepper(sl.Slider) }`);
-  expect(made(), "each setting is dressed as the game takes it").toEqual([true, true, 1, true]);
+  expect(made(), "each setting is dressed as the game takes it").toEqual([true, true, 0, true]);
   addon.eval(`${d}:Hide() ${d}:Show() ${d}:UpdateSettings()`);
-  expect([made(), addon.eval(`return ${d}.updates`)], "and again after the next one, the hook made once and the game's function still run").toEqual([[true, true, 1, true], 2]);
+  expect([made(), addon.eval(`return ${d}.updates`)], "and again after the next one, the hook made once and the game's function still run").toEqual([[true, true, 0, true], 2]);
   expect(addon.eval("return __errors('Windows')"), "no errors").toBe("none");
 });
 

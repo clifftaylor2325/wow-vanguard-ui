@@ -1,5 +1,4 @@
--- The Combat tools page (/vg): the game's Cooldown Manager and damage
--- meter, Vanguard's cooldown row and glow, boss mods, fight history, the
+-- The Combat tools page (/vg): the game's damage meter and alerts, boss mods, fight history, the
 -- Vanguard meter and the roll tracker. Core/Options.lua has the helpers and
 -- the page list.
 
@@ -8,39 +7,18 @@ local ADDON, ns = ...
 local O = ns.Options
 local moduleSettings, setting, liveSetting, check, append = O.ModuleSettings, O.Setting, O.LiveSetting, O.Check, O.Append
 
--- get/set for showing the game's Cooldown Manager, which turns it on or off at once.
-local function cooldownManagerSetting()
-  return liveSetting("GameTools", "essential", function() ns.GetModule("GameTools").SetCooldownManager(moduleSettings("GameTools").essential) end)
-end
-
--- The share of an aura's time left under which the Cooldown Manager's icon glows.
-local GLOW_PERCENT = { min = 10, max = 60, step = 5, format = function(v) return string.format("%d%%", v) end }
-
--- Puts the Cooldown Manager glows right after a change of their switch or share.
-local function applyGlow()
-  ns.GetModule("CooldownGlow").Apply()
-end
-
--- The Cooldown Manager glow's switch and share (Modules/CooldownGlow.lua), applied at once.
-local function glowRows()
-  return {
-    check("Glow a Cooldown Manager buff in its last part, where the game's own flag is missing", liveSetting("CooldownGlow", "glow", applyGlow)),
-    { "slider", "Glow when this much is left", GLOW_PERCENT, liveSetting("CooldownGlow", "percent", applyGlow) },
-  }
-end
-
--- The game's own tools: the Cooldown Manager and the damage meter (after a reload).
+-- The game's own tools: the damage meter and the alerts (the Cooldown Manager is on the Cooldowns page).
 local function gameToolRows()
-  return append({
+  return {
     { "header", "The game's tools" },
-    check("Show the game's Cooldown Manager: its essential row between your frames", cooldownManagerSetting()), check("Cooldown Manager in the Vanguard look (reload)", setting("GameTools", "cooldowns", true)),
-    check("Cooldown gaps: a row of icons for trinkets, items and spells you choose (/vg gaps add, /vg gaps spell add), pet abilities and totems (reload)", setting("CooldownGaps", "on", true)), check("Cooldown gaps row also draws the Cooldown Manager's essential and utility cooldowns (reload)", setting("CooldownGaps", "tracked", true)), check("Damage meter in the Vanguard look (reload)", setting("GameTools", "meter", true)),
+    { "text", "The Cooldown Manager, the gaps row and the buff glow are on the Cooldowns page.", "note" },
+    check("Damage meter in the Vanguard look (reload)", setting("GameTools", "meter", true)),
     check("Place them to fit the layout; off leaves them to Edit Mode (reload)", setting("GameTools", "place", true)),
     check("Loss of control in the Vanguard look, above your character (reload)", setting("GameAlerts", "lossOfControl", true)),
     { "cycle", "Talking head (reload)", { { "move", "Vanguard look, top center" }, { "hide", "Hidden" }, { "game", "The game's" } }, setting("GameAlerts", "talkingHead", true) },
     check("Hardcore death notices in the Vanguard look (reload)", setting("GameAlerts", "hardcore", true)),
     check("A rare nearby: a sound and a chat line, out of combat", setting("GameAlerts", "rares")),
-  }, glowRows())
+  }
 end
 
 -- Boss mods: a button to line their bars up with Vanguard's spots, only while one is loaded.
