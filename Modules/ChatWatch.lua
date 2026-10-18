@@ -89,7 +89,7 @@ end
 -- before any string is read; a channel you don't watch is skipped too.
 function CW.OnChat(event, text, sender, ...)
   local key = CW.EVENTS[event]
-  if not (key and CW.settings.channels[key]) then return end
+  if not (key and CW.settings.channels[key]) or ns.Restricted("Chat") then return end
   if ns.IsSecret(text) or ns.IsSecret(sender) or type(text) ~= "string" or type(sender) ~= "string" then return end
   if seenLine(ns.PlainNumber((select(9, ...)))) or ns.Home.IsMe(sender) then return end
   local phrase = CW.Match(text)

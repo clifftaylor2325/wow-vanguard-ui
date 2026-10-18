@@ -301,6 +301,9 @@ it("chat extras: web links you can copy, and a Copy button for the recent chat",
   expect(linked[0] === false && linked[2] === "<name>", "the message passes on, with the rest of its details").toBe(true);
   expect(linked[1].includes("|Haddon:Vanguard:url:https://example.test/a?b=1|h[https://example.test/a?b=1]|h") && linked[1].includes("|h[www.example.test]|h"), "both addresses become links").toBe(true);
   expect(addon.eval('return { select("#", __filters.CHAT_MSG_GUILD(nil, "CHAT_MSG_GUILD", "no address here")), select("#", __filters.CHAT_MSG_GUILD(nil, "x", { __secret = true })) }'), "nothing to link, or hidden text: the message is left as it is").toEqual([1, 1]);
+  addon.eval("Enum.AddOnRestrictionType = { Chat = 5 } Enum.AddOnRestrictionState = { Inactive = 0 } C_RestrictedActions = { GetAddOnRestrictionState = function() return 2 end }");
+  expect(addon.eval('return { select("#", __filters.CHAT_MSG_SAY(nil, "CHAT_MSG_SAY", "see www.example.test", "<name>")) }'), "while chat is restricted: left as it is").toEqual([1]);
+  addon.eval("C_RestrictedActions = nil");
   addon.eval('__linkCallback(nil, "addon:Vanguard:url:https://example.test/a") __linkCallback(nil, "addon:OtherAddon:thing")');
   expect(addon.eval("return __shown"), "clicking one opens it ready to copy; other addons' links are left to them").toEqual(["Copy the address (Ctrl+C)", "https://example.test/a"]);
   addon.eval('__lines = { "|cffff8000[TEST-ONLY General]|r hi |Hitem:90001|h[TEST-ONLY Sword]|h", { __secret = true }, "two |TTEST-ONLY-ICON:0|tlines" }');
