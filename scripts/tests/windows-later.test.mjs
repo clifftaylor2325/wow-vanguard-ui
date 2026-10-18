@@ -99,6 +99,33 @@ it("R2.14 the spellbook and the talents: parchment faded to an inset, controls a
   addon.eval("PlayerSpellsFrame:Hide() PlayerSpellsFrame:Show()");
   expect(spellsState(addon).painted, "a second show paints nothing new").toBe(first.painted);
 });
+it("the spellbook's page hook is added once however often the book opens", () => {
+  const addon = loggedIn(`${SPELLS_ENV}
+    __shows = 0
+    local paged = PlayerSpellsFrame.SpellBookFrame.PagedSpellsFrame
+    local hook = paged.HookScript
+    -- TEST-ONLY spy: how many OnShow hooks the page area gets.
+    paged.HookScript = function(self, script, fn) if script == "OnShow" then __shows = __shows + 1 end return hook(self, script, fn) end`);
+  addon.fire("ADDON_LOADED", "Blizzard_PlayerSpells");
+  for (let i = 0; i < 5; i++) addon.eval("PlayerSpellsFrame:Show() PlayerSpellsFrame:Hide()");
+  expect(addon.eval("return __shows"), "five opens: still one OnShow hook on the pages").toBe(1);
+  expect(spellsState(addon).pages, "and the pages are dressed").toEqual({ head: true, entry: true, late: true });
+});
+it("the quest, item text and durability hooks into the game's windows are guarded: a failure is caught under a name, not raised in the game's code", () => {
+  const addon = loggedIn(`${WINDOWS_ENV}
+    CharacterFrame = CreateFrame("Frame", "CharacterFrame", UIParent) CharacterFrame:Hide()
+    ItemTextFrame = CreateFrame("Frame", "ItemTextFrame", UIParent) ItemTextFrame:Hide()
+    QuestFrame = CreateFrame("Frame", "QuestFrame", UIParent) QuestFrame:Hide()
+    GetInventoryItemDurability = function() end
+    local GW = ns.GetModule("Windows")
+    GW.PaintAllDurability = function() error("TEST-ONLY durability", 0) end
+    GW.LightItemText = function() error("TEST-ONLY item text", 0) end
+    GW.LightQuestText = function() error("TEST-ONLY quest text", 0) end`);
+  expectErrors("durability: TEST-ONLY durability", "item text: TEST-ONLY item text", "quest text: TEST-ONLY quest text");
+  addon.eval("CharacterFrame:Show() ItemTextFrame:GetScript('OnEvent')(ItemTextFrame, 'ITEM_TEXT_READY') QuestFrame:Show()");
+  expect(addon.eval("local out = {} for _, e in ipairs(ns.errors) do out[#out + 1] = e.text end table.sort(out) return out"), "each failure is recorded once under its own name")
+    .toEqual(["durability: TEST-ONLY durability", "item text: TEST-ONLY item text", "quest text: TEST-ONLY quest text"]);
+});
 it("R2.14 the spellbook and the talents: the windows group off leaves them the game's; a bare or odd window loads cleanly", () => {
   const off = loggedIn(SPELLS_ENV, { savedVariables: "VanguardDB.profiles = { Default = { Windows = { windows = false } } }" });
   off.fire("ADDON_LOADED", "Blizzard_PlayerSpells");

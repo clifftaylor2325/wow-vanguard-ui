@@ -241,6 +241,7 @@
       "class bars: totems for shamans, mana in forms for druids",
       "combo points for rogues and druids",
       "power ticks: energy every two seconds, and forms switch",
+      "power ticks: the energy spark stops its timer when no tick comes (full energy)",
       "power ticks: the five-second rule after a mana spell",
       "power ticks: the spark moves on one anchor, as tall as the bar, with no anchors cleared per frame",
       "target of target: health and power on every look, its name only when it's someone else",

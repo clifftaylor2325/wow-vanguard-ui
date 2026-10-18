@@ -281,6 +281,21 @@ it("power ticks: energy every two seconds, and forms switch", () => {
   expect([addon.eval("return ns.GetModule('PowerTicks').mode"), ...spark(addon)], "rage (bear form) has no spark").toEqual([null, false, 50, false]);
 });
 
+it("power ticks: the energy spark stops its timer when no tick comes (full energy)", () => {
+  const addon = loggedIn(UNITS_ENV + TICKS_ENV + "__ptype = 3");
+  addon.eval("ns.GetModule('PowerTicks').bar:SetWidth(200)");
+  addon.fire("UNIT_POWER_FREQUENT", "player", "ENERGY");
+  addon.eval("__units.player.power = 70");
+  addon.fire("UNIT_POWER_FREQUENT", "player", "ENERGY");
+  addon.eval("__wfgStub.advance(5.5)");
+  expect(spark(addon), "two missed sweeps on, the spark still crosses").toEqual([true, 150, true]);
+  addon.eval("__wfgStub.advance(1)");
+  expect([spark(addon)[0], spark(addon)[2]], "after three sweeps with no tick it hides and its timer stops").toEqual([false, false]);
+  addon.eval("__units.player.power = 90");
+  addon.fire("UNIT_POWER_FREQUENT", "player", "ENERGY");
+  expect(spark(addon), "the next tick starts it again").toEqual([true, 0, true]);
+});
+
 it("power ticks: switches, and no player frame", () => {
   const addon = loggedIn(UNITS_ENV + TICKS_ENV + CLICK_LUA);
   addon.slash("");

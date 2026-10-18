@@ -200,6 +200,18 @@ local function releaseTop(frame)
   if left and top and (math.abs(left - from[1]) >= 1 or math.abs(top - from[2]) >= 1) then GW.SavePlace(frame:GetName(), frame) end
 end
 
+-- The window hid mid-drag (Escape, out of range): a press-move ends as it does on release; a title-bar drag ends
+-- where the window is and its place is saved, so the flag never outlives the drag (the drag area, hidden with the
+-- window, may not get its drop) and the saved place goes on being put back.
+local function dropHidden(frame)
+  if vgPress[frame] then return releaseTop(frame) end
+  if not vgDragging[frame] then return end
+  vgDragging[frame] = nil
+  frame:StopMovingOrSizing()
+  frame:SetUserPlaced(false)
+  GW.SavePlace(frame:GetName(), frame)
+end
+
 -- Makes a window movable and kept on the screen, dragged by its top edge, and by an invisible drag area over
 -- its title bar too when it is one of GW.MOVABLE.
 local function makeMovable(frame, name, withHandle)
@@ -208,7 +220,7 @@ local function makeMovable(frame, name, withHandle)
   if withHandle then addHandle(frame, name) end
   frame:HookScript("OnMouseDown", ns.Guard("press " .. name, pressTop))
   frame:HookScript("OnMouseUp", ns.Guard("release " .. name, releaseTop))
-  frame:HookScript("OnHide", ns.Guard("release " .. name, releaseTop))
+  frame:HookScript("OnHide", ns.Guard("release " .. name, dropHidden))
 end
 
 -- Sets a window up once, when the client has it: made movable out of combat, and put back each time it shows.

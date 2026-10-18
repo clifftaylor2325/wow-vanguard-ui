@@ -31,8 +31,9 @@ local function problem(name, text, info)
   if not find(name) and #presets >= MAX_PRESETS then return "too many presets" end
 end
 
--- Adds or replaces a preset by name; returns the same results as Vanguard.RegisterPreset.
+-- Adds or replaces a preset by name (its escape codes dropped, as the info's are); returns the same results as Vanguard.RegisterPreset.
 local function add(name, text, info, source)
+  if type(name) == "string" then name = (name:gsub("|", "")) end
   local why = problem(name, text, info)
   if why then return false, why end
   local old, at = find(name)
