@@ -289,8 +289,10 @@ it("/vg perf: CPU and memory with the change since the last report, the busiest 
   said(addon, "perf cpu");
   expect(addon.eval("return { GetCVar('scriptProfile'), __reload }"), "perf cpu again turns it off").toEqual(["0", "CPU profiling stops after a reload."]);
 });
-// TEST-ONLY memory counter: Vanguard's KB follow the list __mem, one reading each call of the game's Update.
+// TEST-ONLY memory counter: Vanguard's KB follow the list __mem, one reading each call of the game's Update;
+// a client that refuses a full garbage collection, so the run judges by its low point (LIVE_ENV allows it).
 const MEM_ENV = `
+  collectgarbage = function() error("TEST-ONLY: collection refused") end
   __mem, __reads = { 1000 }, 0
   UpdateAddOnMemoryUsage = function() __reads = __reads + 1 end
   GetAddOnMemoryUsage = function(name) return name == "Vanguard" and __mem[math.min(__reads, #__mem)] or 0 end
@@ -322,6 +324,30 @@ it("/vg mem: a minute of readings; a rising low point means kept memory, a wobbl
   addon.clearChat();
   addon.advance(60, 5);
   expect(Array.from(addon.chat()).pop().replace(/^.*Vanguard:\S*\s/, ""), "a low point that keeps rising is memory kept").toMatch(/^The low point rose 500 KB: Vanguard is keeping memory/);
+});
+// MEM_ENV on a client that allows a full collection, each counted in __collects.
+const LIVE_ENV = MEM_ENV + "__collects = 0 collectgarbage = function(opt) if opt == 'collect' then __collects = __collects + 1 end return 0 end\n";
+it("/vg mem: a garbage collection before the first reading and after the last gives live memory and what was kept", () => {
+  const addon = loggedIn(LIVE_ENV);
+  addon.eval("__mem = { 1000, 1300, 1100, 1500, 1020, 1600, 1040, 1700, 1030, 1800, 1010, 1900, 1050, 1200 }");
+  said(addon, "mem");
+  expect(addon.eval("return __collects"), "one collection as it starts").toBe(1);
+  addon.clearChat();
+  addon.advance(60, 5);
+  expect(Array.from(addon.chat()).map((l) => l.replace(/^.*Vanguard:\S*\s/, "")), "the readings, then the clean start and end and what was kept").toEqual([
+    "Vanguard's memory over 60 s: 0.98 MB to 1.03 MB (+50 KB, +0.8 KB/s), low 0.98, high 1.86 MB.",
+    "After a garbage collection: 0.98 MB at the start, 1.17 MB at the end (+200 KB); Vanguard kept memory it hasn't let go.",
+  ]);
+  expect(addon.eval("return __collects"), "and one as it ends").toBe(2);
+  addon.eval("__reads = 0 __mem = { 1000, 1300, 1020 }");
+  said(addon, "mem");
+  addon.advance(5, 5);
+  expect(said(addon, "mem").pop(), "asked again early: a clean end that held").toBe("After a garbage collection: 0.98 MB at the start, 1.00 MB at the end (+20 KB); nothing kept: the rest was garbage.");
+  addon.eval("__reads = 0 __mem = { 1000, 1100, 1200 }");
+  said(addon, "mem");
+  addon.advance(5, 5);
+  addon.eval("__wfgStub.inCombat = true");
+  expect([said(addon, "mem").pop(), addon.eval("return __collects")], "ended in combat: no collection, the low point judges").toEqual(["Too few readings to tell garbage from kept memory (readings are skipped in combat).", 5]);
 });
 it("/vg mem: asked again it ends early; readings missed in combat leave too few to judge", () => {
   const addon = loggedIn(MEM_ENV);
