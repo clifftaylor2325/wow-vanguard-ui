@@ -1446,6 +1446,12 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 - Expect: Round shows the map as a disc with an outline on its edge, the top and bottom bands cut to the disc, no corner diamonds, and the game's buttons on the rim at the corners' angles, not cut off or over the coordinates; a long zone name is cut short (hover shows it whole) and other addons' minimap icons sit round the rim. Square is the old square map. Follow the theme is round only on Classic look. No `/vg errors`. [Needs in game: that the disc mask, the outline and the rim buttons line up at 1080p and 1440p.]
 - If it fails, paste: a screenshot of the minimap with its setting and variant, and `/vg errors`.
 
+### 26.1b Bar backing
+
+- Do: open `/vg` → Action bars and set **Theme variant** (General → Look) to Classic look, then look at the action bars; set **Bar backing** to Never, then Always, then Follow the theme with Slate and brass. Drag a spell onto an empty slot, and enter combat.
+- Expect: Classic look (Follow the theme) puts a flat panel with a bronze edge a few pixels outside each bar, under the buttons, at once; Never removes it, Always shows it on any theme; the backing fades and hides with its bar (mouseover bars, hidden bars) and never takes a click away from a button. No `/vg errors`. [Needs in game: the backing's size and level against the buttons on every bar, including in combat.]
+- If it fails, paste: a screenshot of the bars with the setting and variant, and `/vg errors`.
+
 ### 26.2 Rounded corners
 
 - Do: open `/vg` → General → Look and set **Corners** to Rounded (or `/vg corners rounded`); open the options window, bags, the quest log, a unit frame, a tooltip and a few buttons; hover a button; try it on Slate and brass, High contrast and Midnight; then set it back to Square.
@@ -1867,6 +1873,12 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Do: with a fresh profile, look at the main chat window over a bright area (snow, desert) and over a dark one. Open `/vg` → Chat and cycle Chat background strength through Light, Medium and Dark, then untick Chat background. Look at the tabs and the Copy button.
 - Expect: the window is about 500 wide and 154 tall (420 wide on a small screen) (a profile that already sized chat keeps its size). A soft dark patch sits behind the text and the tab row with edges that fade out (no hard border), the text reads over bright ground at Medium, and the strength follows the setting at once. Tab names show in full (General, not Gene…) the Copy button sits at the right end of the tab row, and the scroll bar on the right is a slim thumb on the backdrop with no boxed arrows (the scroll-to-bottom glyph still shows when scrolled up). Tab names are readable. Cycle Chat window size through Larger and Largest: the window resizes at once. On a 4K screen, switching Pixel-perfect scale on (General → Look, no setup) keeps the UI and chat about 1080p's size, not half of it.
 - If it fails, paste: a screenshot over bright ground and `/vg errors`.
+
+### 33.40 Options window: reload tags, search list, page reset, Modules groups
+
+- Do: open `/vg` → General. Look at Color assist and Pixel-perfect scale, and point at Color assist. Type "colour blind" in the search box, then "font size", then "changed". Click a result. Open Chat, untick "Copy button over the chat", press Reset this page and answer Reset. Open Modules and cycle Show through On and Off. At Text size 70 % and 130 % (General), check the search list and the tags.
+- Expect: Color assist has a small grey "reload" tag after its caption and no "(reload)" in the caption; Pixel-perfect scale has none; pointing at Color assist says "Takes effect after /reload." The search list opens under the box, right-aligned with it, over the page: "colour blind" lists Color assist (General), "font size" lists Text size, "changed" lists what you changed; a click opens that page with the row marked and the list closes; a search with no match says "No setting matches." Reset this page is greyed until something on the page differs from its default, asks, and puts the box back. Modules shows headings named like the list on the left; Show: Off lists only the modules you turned off. No caption or tag overlaps a switch, slider or dropdown at either text size.
+- If it fails, paste: a screenshot of the row, the list or the page and `/vg errors`.
 
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
