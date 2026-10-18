@@ -132,7 +132,7 @@ it("the layout constants: T.SPACE, T.ALPHA, T.CREST, T.ROW, T.SCROLL and the con
   const addon = loggedIn();
   expect(addon.eval("return { ns.Theme.SPACE, ns.Theme.ALPHA, ns.Theme.CREST, ns.Theme.ROW, ns.Theme.SCROLL, { ns.Theme.CONTROL_H, ns.Theme.BUTTON_H }, ns.Theme.HEADING_ROLES }")).toEqual([
     { tight: 4, gap: 8, col: 12, pad: 16, section: 24 },
-    { opaque: 1, dialog: 0.98, overlay: 0.94, alert: 0.92 },
+    { opaque: 1, dialog: 0.98, overlay: 0.94, alert: 0.92, calm: 0.35 },
     { title: 20, card: 44, watermark: 96, wash: 0.1 },
     { height: 28 },
     { thumb: 4, rest: 0.5, lit: 1 },

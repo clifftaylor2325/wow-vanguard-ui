@@ -466,3 +466,40 @@ it("threat and happiness only where the client and settings allow", () => {
   expect(built(EXTRAS_ENV, "VanguardDB.profiles = { Default = { modules = { UnitFrames = false } } }"), "no unit frames, nothing to add to").toEqual([false, false]);
   expect(loggedIn(UNITS_ENV + EXTRAS_ENV).eval("return ns.GetModule('UnitExtras').Threat ~= nil"), "the module loads").toBe(true);
 });
+
+// The player frame's Calm HUD state: its state driver, the state now and its alpha (to the hundredth).
+const calm = (addon, key = "player") => addon.eval(`local f = Vanguard_${key}
+  return { driver = f.__states and f.__states.vgvis or "none", now = f.vgState or "none", alpha = math.floor(f:GetAlpha() * 100 + 0.5) / 100 }`);
+
+it("Calm HUD: frames dim out of combat, come back for a fight, a hostile target or the mouse, and stay clickable", () => {
+  const addon = loggedIn(UNITS_ENV + CLICK_LUA, NO_RAID);
+  expect(calm(addon), "off by default: no state driver, full strength").toEqual({ driver: "none", now: "none", alpha: 1 });
+  addon.slash("");
+  addon.eval('__click("Unit frames") __click("Calm HUD")');
+  expect(addon.eval("return VanguardDB.profiles.Default.UnitFrames.calm"), "the switch saves it").toBe(true);
+  expect(calm(addon), "on: the client's state dims the frame").toEqual({ driver: "[combat] show; [harm,nodead] show; dim", now: "dim", alpha: 0.35 });
+  expect(calm(addon, "focus").driver, "the focus frame dims too").toBe("[combat] show; [harm,nodead] show; dim");
+  expect(addon.eval("return Vanguard_player:GetAttribute('*type1')"), "still a clickable unit button").toBe("target");
+  addon.eval("local f = Vanguard_player f:GetScript('OnEnter')(f)");
+  expect(calm(addon).alpha, "under the mouse it is at full strength").toBe(1);
+  addon.eval("local f = Vanguard_player f:GetScript('OnLeave')(f)");
+  expect(calm(addon).alpha, "and dims again when the mouse leaves").toBe(0.35);
+  addon.eval('Vanguard_player:SetAttribute("state-vgvis", "show")');
+  expect(calm(addon).alpha, "a fight or a hostile target: the client says show").toBe(1);
+  addon.eval('Vanguard_player:SetAttribute("state-vgvis", "dim")');
+  setCombat(addon, true);
+  addon.eval('__click("Calm HUD")');
+  expect(calm(addon).driver, "switching it off in combat waits").toBe("[combat] show; [harm,nodead] show; dim");
+  setCombat(addon, false);
+  expect(calm(addon), "and brings the frame back when the fight ends").toEqual({ driver: "show", now: "show", alpha: 1 });
+});
+
+it("Calm HUD: setup's look step and the situations offer it", () => {
+  const addon = loggedIn(UNITS_ENV, NO_RAID);
+  addon.eval("ns.Setup.Open()");
+  expect(addon.eval("return Vanguard_Setup.pages.look.calm ~= nil and ns.Setup.Calm()"), "the look step has the switch, off").toBe(false);
+  addon.eval("local r = Vanguard_Setup.pages.look.calm r:GetScript('OnClick')(r)");
+  expect(addon.eval("return ns.Setup.Calm()") && calm(addon).alpha === 0.35, "turning it on there dims the frames at once").toBe(true);
+  expect(addon.eval('return VanguardDB.profiles["Default backup"] ~= nil'), "after the usual backup").toBe(true);
+  expect(addon.eval('return ns.GetModule("Situations").Holds("UnitFrames", "calm")'), "a situation can hold it").toBe(true);
+});

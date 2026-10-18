@@ -106,14 +106,15 @@ function scanFindsMedia() {
   expect(namedMedia().length, "found no Media paths in the addon (the scan is broken)").toBeGreaterThan(0);
 }
 
-// Media images the addon builds a name for at run time, so the scan can't see them: the shadow and glow rings (ring(frame, { texture = ... })), the
-// rounded-corner arcs and discs (cornerPieces(frame, "CornerLine" or "CornerFill")) and
+// Media images the addon builds a name for at run time, so the scan can't see them: the shadow and glow
+// rings (ring(frame, { texture = ... })), the rounded-corner arcs and discs and the shield's cut lines
+// and fills (T.CORNER_ART, by corner look) and
 // the window controls' glyphs (Modules/Windows.lua maxMinButton), the dispel badge letters
 // (Core/Auras.lua A.DISPEL_GLYPHS), the warn state's glyph (Core/Theme.lua T.STATE_GLYPHS) and the
 // quest marks for the quest dialog and quest log lines (F17; QuestBang, QuestQuery, Modules/QuestDialogParts.lua QP.ICONS).
 // The sized copies of the line and menu icons (#232), named by T.Icon(name, size) in the Lua.
 const SIZED_NAMES = SIZED_ICONS.flatMap((n) => ICON_SIZES.map((s) => `Media/Icons/${n}${s}.tga`));
-const BUILT_NAMES = ["Media/Textures/Shadow.tga", "Media/Textures/Glow.tga", "Media/Textures/CornerLine.tga", "Media/Textures/CornerFill.tga", "Media/Icons/Maximize.tga", "Media/Icons/Minimize.tga",
+const BUILT_NAMES = ["Media/Textures/Shadow.tga", "Media/Textures/Glow.tga", "Media/Textures/CornerLine.tga", "Media/Textures/CornerFill.tga", "Media/Textures/CornerCutLine.tga", "Media/Textures/CornerCutFill.tga", "Media/Icons/Maximize.tga", "Media/Icons/Minimize.tga",
   ...["Magic", "Curse", "Disease", "Poison"].map((t) => `Media/Icons/Dispel${t}.tga`), "Media/Icons/Warn.tga", "Media/Icons/QuestBang.tga", "Media/Icons/QuestQuery.tga", "Media/Icons/Pin.tga"];
 
 // The images in Media/ (not the fonts and license texts), as repo paths.

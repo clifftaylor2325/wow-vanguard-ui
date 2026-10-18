@@ -204,6 +204,19 @@ function S.SetStyle(look)
   if RF.settings then RF.UpdateAll() end
 end
 
+-- Whether the Calm HUD is on (Modules/UnitFrames.lua).
+function S.Calm()
+  return ns.Settings("UnitFrames", ns.GetModule("UnitFrames").defaults).calm == true
+end
+
+-- Turns the Calm HUD on or off, applying it at once when the unit frames are built.
+function S.SetCalm(on)
+  S.Backup()
+  ns.Settings("UnitFrames", ns.GetModule("UnitFrames").defaults).calm = on == true
+  local UF = ns.GetModule("UnitFrames")
+  if UF.settings then UF.ApplyCalm() end
+end
+
 -- Screen ----------------------------------------------------------------------------------
 
 -- The screen's size in pixels, or 0, 0 when the client can't say.
@@ -372,6 +385,7 @@ local function refresh()
   markChoice(frame.pages.screen, state.screen)
   for _, s in ipairs(look.swatches) do mark(s, isAccent(s.rgb)) end
   for _, b in ipairs(look.styles) do mark(b, b.value == raidSettings().look) paintTile(b) end
+  look.calm:Refresh()
 end
 
 -- Building ------------------------------------------------------------------------------
@@ -506,6 +520,8 @@ local function lookPage(page)
     page.swatches[i] = swatch(page, i, T.PRESETS[name])
   end
   stylePicker(page)
+  page.calm = W.Check(page, "Calm HUD: dim your frames out of combat", S.Calm, S.SetCalm, WIDTH - 2 * PAD)
+  page.calm:SetPoint("TOPLEFT", 0, -168)
 end
 
 -- The last step: how to move frames (they are unlocked while this step shows).

@@ -9,10 +9,10 @@
 
 local ADDON, ns = ...
 
-local T = ns.Theme
+local T, V = ns.Theme, ns.Visibility
 
 local UF = ns.Module("UnitFrames", {
-  defaults = { hideBlizzard = true, healthText = true, powerHeight = 6, boss = true },
+  defaults = { hideBlizzard = true, healthText = true, powerHeight = 6, boss = true, calm = false },
 })
 
 -- Target classification -> the color of its diamond (none for normal units).
@@ -217,15 +217,17 @@ local function addTexts(f, settings)
   f.name:SetWordWrap(false)
 end
 
--- Creates one unit frame (a secure unit button) with its bars and texts.
+-- Creates one unit frame (a secure unit button) with its bars and texts, its corners cut to the
+-- shield look (the bars cut with it) while the shield setting is on.
 local function createUnitFrame(key, unit, w, h, settings)
   local f = CreateFrame("Button", "Vanguard_" .. key, UIParent, "SecureUnitButtonTemplate")
   f.unit, f.key = unit, key
   T.PixelSize(f, w, h)
   makeSecure(f, unit)
-  T.HudPanel(f)
+  T.HudPanel(f, { shield = true })
   f.health, f.power = createBar(f), createBar(f)
   layoutBars(f, settings.powerHeight)
+  T.ShieldMask(f, { f.health:GetStatusBarTexture(), f.health.bg, f.power:GetStatusBarTexture(), f.power.bg })
   addTexts(f, settings)
   return f
 end
@@ -465,6 +467,33 @@ local function build(settings)
   pollTargetOfTarget(UF.frames.targettarget)
   if settings.hideBlizzard then hideReplaced(settings) end
   UF.Refresh()
+  UF.ApplyCalm()
+end
+
+-- Calm HUD ---------------------------------------------------------------------------------
+
+-- The Calm HUD (off unless switched on): your frames dim out of combat and come back in a
+-- fight, on a living hostile target or under the mouse. The client runs the state (macro
+-- conditions, in combat too) and only alpha changes, so the secure buttons stay clickable.
+UF.CALM_STATE = "[combat] show; [harm,nodead] show; dim"
+UF.CALM_KEYS = { "player", "pet", "target", "targettarget", "focus" }
+
+-- Gives each calm frame its state now (out of combat only): dimmed, or shown again when off.
+local function calmNow()
+  local state = UF.settings.calm and UF.CALM_STATE or "show"
+  for _, key in ipairs(UF.CALM_KEYS) do
+    local f = UF.frames[key]
+    if f and (UF.settings.calm or f.vgStateString) then
+      if not f.vgHoverRoot then V.WatchHover(f) end
+      V.ApplyState(f, state)
+      V.Refresh(f)
+    end
+  end
+end
+
+-- Applies the Calm HUD setting: now, or when combat ends.
+function UF.ApplyCalm()
+  if UF.settings then ns.OutOfCombat(calmNow) end
 end
 
 -- WoW Forever players read levels and health percent on every frame (as its

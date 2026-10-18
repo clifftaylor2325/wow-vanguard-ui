@@ -180,6 +180,7 @@ local function lookTextRows()
     { "cycle", "Faction look", FACTION_LOOK, liveThemeSetting("faction") },
     { "cycle", "Theme variant", VARIANT_CHOICES, liveThemeSetting("variant") },
     { "cycle", "Corners", CORNER_CHOICES, liveThemeSetting("corners") },
+    check("Shield corners on unit frames and cast bars", liveThemeSetting("shield")),
     check("Window ornaments", previewedSetting("ornaments")),
     { "text", "A brass rule or corners on large windows.", "note" },
   }

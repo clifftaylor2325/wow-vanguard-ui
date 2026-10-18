@@ -212,13 +212,15 @@ local function addSpark(bar)
   bar.lag:Hide()
 end
 
--- Makes a status bar a themed cast bar (w x h), hidden until CB.Show finds a cast.
-function CB.Build(bar, w, h)
+-- Makes a status bar a themed cast bar (w x h), hidden until CB.Show finds a cast; with shield, its
+-- corners (and its fill and lag) cut to the shield look while the shield setting is on.
+function CB.Build(bar, w, h, shield)
   bar:SetSize(w, h)
   T.StyleBar(bar)
-  T.HudPanel(bar, { inset = true })
+  T.HudPanel(bar, { inset = true, shield = shield })
   addParts(bar, h)
   addSpark(bar)
+  if shield then T.ShieldMask(bar, { bar:GetStatusBarTexture(), bar.lag }) end
   bar:Hide()
   return bar
 end
@@ -230,7 +232,7 @@ CB.WIDTHS = { 80, 600 }
 -- A themed cast bar for a unit, hidden until it casts; movable, and Vanguard may set its width.
 local function createBar(unit)
   local def = LAYOUT[unit]
-  local bar = CB.Build(CreateFrame("StatusBar", "Vanguard_CastBar_" .. unit, UIParent), def.w, def.h)
+  local bar = CB.Build(CreateFrame("StatusBar", "Vanguard_CastBar_" .. unit, UIParent), def.w, def.h, true)
   bar.unit = unit
   ns.Mover(bar, "cast_" .. unit, unit:sub(1, 1):upper() .. unit:sub(2) .. " cast bar", def.point)
   ns.MoverSizable("cast_" .. unit, { width = CB.WIDTHS })

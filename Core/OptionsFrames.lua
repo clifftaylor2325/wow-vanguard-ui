@@ -23,11 +23,17 @@ local function unitFrameSetting(key)
   return liveSetting("UnitFrames", key, function() ns.GetModule("UnitFrames").Refresh() end)
 end
 
+-- The Calm HUD switch: your frames dim out of combat (applied at once, also from a situation).
+local function calmRow()
+  return check("Calm HUD: dim your frames out of combat until a fight, a hostile target or the mouse",
+    liveSetting("UnitFrames", "calm", function() ns.GetModule("UnitFrames").ApplyCalm() end))
+end
+
 -- Unit frames, and the class bars under the player frame.
 local function unitFrameRows()
   return {
     { "header", "Unit frames" },
-    check("Replace the default unit frames", setting("UnitFrames", "hideBlizzard", true)),
+    check("Replace the default unit frames", setting("UnitFrames", "hideBlizzard", true)), calmRow(),
     check("Show health numbers", unitFrameSetting("healthText")),
     { "cycle", "Health as", { { "value", "Value (42.8K)" }, { "percent", "Percent (84%)" } }, unitFrameSetting("healthFormat") },
     check("Show levels (reload)", setting("UnitFrames", "showLevel", true)),

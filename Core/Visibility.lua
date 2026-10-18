@@ -86,9 +86,9 @@ function V.State(mode, when)
   return compile(set, set.mouseover and "fade" or "hide")
 end
 
--- The secure visibility driver for a state: a fading frame is always shown (it fades by alpha).
+-- The secure visibility driver for a state: a fading or dimmed frame is always shown (by alpha).
 function V.Driver(state)
-  return state:find("fade") and "show" or state
+  return (state:find("fade") or state:find("dim")) and "show" or state
 end
 
 -- Whether a driver depends on conditions (rather than always showing or hiding).
@@ -104,11 +104,13 @@ end
 
 -- Applying -------------------------------------------------------------------------------------
 
--- 1 unless the frame fades and the mouse isn't over it (nor is it revealed, as
--- action bars are while you drag a spell, nor lingering after Auto-hide), else 0.
+-- 1 unless the frame fades or dims and the mouse isn't over it (nor is it revealed, as
+-- action bars are while you drag a spell, nor lingering after Auto-hide); then 0, or
+-- the calm alpha for a dimmed frame (the Calm HUD's unit frames, which stay clickable).
 function V.Alpha(frame)
-  if frame.vgState ~= "fade" or vgHover[frame] or frame.vgReveal or frame.vgLingering then return 1 end
-  return 0
+  local state = frame.vgState
+  if (state ~= "fade" and state ~= "dim") or vgHover[frame] or frame.vgReveal or frame.vgLingering then return 1 end
+  return state == "dim" and T.ALPHA.calm or 0
 end
 
 -- Keeps an Auto-hide frame shown for V.LINGER seconds from now (a later call
@@ -181,16 +183,21 @@ end
 -- Registers a frame's state driver for a setting now (out of combat only), and
 -- with secure, its visibility driver too; onState(frame) runs on every change.
 function V.ApplyNow(frame, mode, when, secure)
-  local state = V.State(mode, when)
-  if not frame.vgStateString then frame:HookScript("OnAttributeChanged", onAttribute) end
-  frame.vgStateString, frame.vgState = state, V.Parse(state)
   frame.vgInstance = V.Mode(mode) ~= "hidden" and V.Checked(mode, when).instance == true
   frame.vgAutoHide = V.Mode(mode) == "autohide"
+  V.ApplyState(frame, V.State(mode, when), secure)
+  if frame.vgAutoHide then return V.Linger(frame) end
+  V.Refresh(frame)
+end
+
+-- Registers a state string as the frame's "vgvis" driver (out of combat only), and with
+-- secure its visibility driver too; the caller repaints (V.Refresh).
+function V.ApplyState(frame, state, secure)
+  if not frame.vgStateString then frame:HookScript("OnAttributeChanged", onAttribute) end
+  frame.vgStateString, frame.vgState = state, V.Parse(state)
   if secure then RegisterStateDriver(frame, "visibility", V.Driver(state)) end
   RegisterStateDriver(frame, "vgvis", state)
   if frame.vgHoverRoot then motion(frame) end
-  if frame.vgAutoHide then return V.Linger(frame) end
-  V.Refresh(frame)
 end
 
 -- Registers the frame's drivers again with reapply() on every zone change while
