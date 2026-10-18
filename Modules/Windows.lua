@@ -22,6 +22,7 @@ local vgHooked = ns.FrameState("vgHooked")
 local vgLootRows = ns.FrameState("vgLootRows")
 local vgMenuSkinned = ns.FrameState("vgMenuSkinned")
 local vgMoneyBox = ns.FrameState("vgMoneyBox")
+local vgPadded = ns.FrameState("vgPadded")
 local vgRowsWatched = ns.FrameState("vgRowsWatched")
 local vgTimerHook = ns.FrameState("vgTimerHook")
 local vgWindow = ns.FrameState("vgWindow")
@@ -368,6 +369,25 @@ function GW.SkinGlyph(button)
   GW.ShowTexture(button.GetDisabledTexture and button:GetDisabledTexture())
 end
 
+-- A button's label moved up by T.SPACE.tight / 2 from the centre, so it clears the bottom edge (the game anchors a
+-- dropdown's text low); a button without a label is skipped.
+function GW.LiftLabel(button)
+  local label = type(button) == "table" and button.Text
+  if type(label) ~= "table" or not label.SetPoint then return end
+  label:ClearAllPoints()
+  label:SetPoint("CENTER", button, "CENTER", 0, T.SPACE.tight / 2)
+end
+
+-- The window's money line set in from its plate's right edge by T.SPACE.gap (the game puts it 6 units in, where the
+-- figures touch the edge), once, and centred on the plate.
+function GW.PadMoneyLine(plate)
+  local line = type(plate) == "table" and plate.MoneyFrame
+  if type(line) ~= "table" or not line.SetPoint or vgPadded[plate] then return end
+  vgPadded[plate] = true
+  line:ClearAllPoints()
+  line:SetPoint("RIGHT", plate, "RIGHT", -T.SPACE.gap, 0)
+end
+
 -- A dropdown button (the game's DropdownButton) as a theme button that keeps its arrow.
 function GW.SkinDropdown(dropdown)
   if type(dropdown) ~= "table" or not dropdown.CreateTexture then return end
@@ -560,12 +580,6 @@ end
 function GW.EachKey(frame, keys, fn)
   if type(frame) ~= "table" then return end
   for _, key in ipairs(keys) do fn(frame[key]) end
-end
-
--- Runs fn on the part reached from frame by each dotted path (GW.Part); fn skips what is not a frame.
-function GW.EachPart(frame, paths, fn)
-  if type(frame) ~= "table" then return end
-  for _, path in ipairs(paths) do fn(GW.Part(frame, path)) end
 end
 
 -- The parts of frame under those keys as a set, for T.FadeRegions' keep argument (art the game animates or the
@@ -1657,13 +1671,16 @@ local function skinSearchBar(bar)
   GW.SkinSearch(bar.SearchBox)
   GW.SkinButton(bar.SearchButton)
   GW.SkinDropdown(bar.FilterButton)
+  GW.LiftLabel(bar.FilterButton)
   GW.SkinIconDropdown(bar.FavoritesSearchButton)
 end
 
--- The money line at the window's foot: the well behind it an inset, the gold-edged plate faded, the line in the theme font.
+-- The money line at the window's foot: the well behind it an inset, the gold-edged plate faded, the line set in from
+-- the plate's edge and in the theme font.
 local function skinMoneyBar(frame)
   GW.InsetPanel(frame.MoneyFrameInset)
   GW.FadeArt(frame.MoneyFrameBorder)
+  GW.PadMoneyLine(frame.MoneyFrameBorder)
   GW.SkinMoneyDisplay(GW.Part(frame, "MoneyFrameBorder.MoneyFrame"))
 end
 
@@ -1685,9 +1702,9 @@ end
 -- box with its label, and the item display on an inset.
 local function skinAuctionForm(form)
   if type(form) ~= "table" or not form.GetRegions then return end
-  GW.InsetPanel(form)
-  GW.SkinSection(form.CreateAuctionLabel)
-  GW.EachKey(form, GW.AH_ROWS, skinFormRow)
+  ns.Try("auction house form tile", GW.InsetPanel, form)
+  ns.Try("auction house form head", GW.SkinSection, form.CreateAuctionLabel)
+  for _, key in ipairs(GW.AH_ROWS) do ns.Try("auction house row " .. key, skinFormRow, form[key]) end
   GW.EachKey(form, GW.AH_FORM_BUTTONS, GW.SkinButton)
   GW.SkinCheck(form.BuyoutModeCheckButton)
   GW.SkinText(GW.Part(form, "BuyoutModeCheckButton.Text"), "label", "text")
@@ -1708,24 +1725,30 @@ local function skinBuyDialog(dialog)
   GW.SkinMoneyDisplay(dialog.PriceFrame)
 end
 
+-- Runs fn on the part of frame at each dotted path, each under ns.Try named for the path: a part that fails (a
+-- list laid out differently in this client) is reported by name and leaves every other part dressed.
+local function tryParts(frame, paths, fn)
+  for _, path in ipairs(paths) do ns.Try("auction house " .. path, fn, GW.Part(frame, path)) end
+end
+
 -- The window's browsing side: the money line, the search bar, the categories, every list and the summary list.
 local function skinAuctionBrowse(frame)
-  skinMoneyBar(frame)
-  skinSearchBar(frame.SearchBar)
-  skinCategories(frame.CategoriesList)
-  GW.EachPart(frame, GW.AH_LISTS, skinItemList)
-  skinSummaryList(GW.Part(frame, "AuctionsFrame.SummaryList"))
+  ns.Try("auction house money", skinMoneyBar, frame)
+  ns.Try("auction house search", skinSearchBar, frame.SearchBar)
+  ns.Try("auction house categories", skinCategories, frame.CategoriesList)
+  tryParts(frame, GW.AH_LISTS, skinItemList)
+  tryParts(frame, { "AuctionsFrame.SummaryList" }, skinSummaryList)
 end
 
 -- The window's forms and buttons: the sell and buy forms, the item headers, the push buttons, the bid boxes, the sub
 -- tabs and the buy dialog.
 local function skinAuctionForms(frame)
-  GW.EachPart(frame, GW.AH_FORMS, skinAuctionForm)
-  GW.EachPart(frame, GW.AH_DISPLAYS, GW.InsetPanel)
-  GW.EachPart(frame, GW.AH_BUTTONS, GW.SkinButton)
-  GW.EachPart(frame, GW.AH_BID_BOXES, GW.SkinMoneyInput)
-  GW.EachPart(frame, GW.AH_TABS, skinSubTab)
-  skinBuyDialog(frame.BuyDialog)
+  tryParts(frame, GW.AH_FORMS, skinAuctionForm)
+  tryParts(frame, GW.AH_DISPLAYS, GW.InsetPanel)
+  tryParts(frame, GW.AH_BUTTONS, GW.SkinButton)
+  tryParts(frame, GW.AH_BID_BOXES, GW.SkinMoneyInput)
+  tryParts(frame, GW.AH_TABS, skinSubTab)
+  ns.Try("auction house buy dialog", skinBuyDialog, frame.BuyDialog)
 end
 
 -- The auction house window's insides (its main tabs are dressed with the tab row, GW.DressTabsOf).
