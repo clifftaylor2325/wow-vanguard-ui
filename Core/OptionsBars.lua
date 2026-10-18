@@ -5,7 +5,7 @@
 local ADDON, ns = ...
 
 local O = ns.Options
-local moduleSettings, setting, check, append = O.ModuleSettings, O.Setting, O.Check, O.Append
+local moduleSettings, setting, liveSetting, check, append = O.ModuleSettings, O.Setting, O.LiveSetting, O.Check, O.Append
 
 -- get/set for whether action bar n is shown (applies on reload).
 local function barSetting(n)
@@ -47,12 +47,17 @@ local function keybindMode()
   ns.GetModule("ActionBars").KeybindMode(true)
 end
 
+-- get/set for the bar backing, which shows or hides at once (out of combat).
+local function backingSetting()
+  return liveSetting("ActionBars", "backing", function() ns.OutOfCombat(ns.GetModule("ActionBars").UpdateBackings) end)
+end
+
 -- Action bars, shared: locking, range tint, the default bars, the client's special buttons, keybind mode.
 local function actionBarRows()
   return {
     { "header", "Action bars" },
-    check("Lock buttons (Shift-drag to move actions)", setting("ActionBars", "lockButtons")),
-    check("Red when out of range", setting("ActionBars", "rangeTint")),
+    check("Lock buttons (Shift-drag to move actions)", setting("ActionBars", "lockButtons")), check("Red when out of range", setting("ActionBars", "rangeTint")),
+    { "cycle", "Bar backing", { { "auto", "Follow the theme" }, { "on", "Always" }, { "off", "Never" } }, backingSetting() },
     check("Hide the default bars", setting("ActionBars", "hideBlizzard", true)),
     check("Restyle the pet, stance, possess and extra action buttons (reload)", skinSpecial()),
     check("Pet and stance bars in their own movable spots (reload)", setting("SpecialBars", "place", true)),

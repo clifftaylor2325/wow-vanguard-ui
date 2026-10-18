@@ -587,10 +587,12 @@ local function describe(key)
   return keyName(b.key) .. " -> " .. CC.ActionText(b) .. " on " .. playerName()
 end
 
--- A key on the tile (lone modifiers wait), as the binding it would be.
+-- A key on the tile, as the binding it would be. A key the tile reads is kept from the game (so testing 1 casts
+-- nothing); Escape, which still closes the window, and a lone modifier, which waits, go on to the game.
 local function tileKey(tile, k)
-  if W.MODIFIER_KEYS[k] then return end
-  tile.result:SetText(describe(W.Modifiers() .. k))
+  local keep = k ~= "ESCAPE" and not W.MODIFIER_KEYS[k]
+  if not ns.InCombat() and ns.Client.Has("keyPropagate") then tile:SetPropagateKeyboardInput(not keep) end
+  if keep then tile.result:SetText(describe(W.Modifiers() .. k)) end
 end
 
 -- A click on the tile, as the mouse binding it would be.
@@ -598,15 +600,31 @@ local function tileClick(tile, button)
   tile.result:SetText(describe(W.Modifiers():lower() .. "BUTTON" .. (W.MOUSE_BUTTONS[button] or 1)))
 end
 
+-- The pointer is over the tile: it reads keys until the pointer leaves.
+local function tileEnter(tile)
+  tile:EnableKeyboard(true)
+  tile.result:SetText("Press a key or click...")
+end
+
+-- The pointer left the tile: it stops reading keys, so the game has them all again.
+local function tileLeave(tile)
+  tile:EnableKeyboard(false)
+end
+
+-- The wheel over the tile, as the wheel binding it would be.
+local function tileWheel(tile, delta)
+  tile.result:SetText(describe(W.Modifiers() .. (delta > 0 and "MOUSEWHEELUP" or "MOUSEWHEELDOWN")))
+end
+
 -- The tile's scripts: keyboard while hovered; keys, clicks and the wheel resolve against the bindings.
 local function wireTile(tile)
   tile:RegisterForClicks("AnyUp")
   tile:EnableMouseWheel(true)
-  tile:SetScript("OnEnter", function(self) self:EnableKeyboard(true) self.result:SetText("Press a key or click...") end)
-  tile:SetScript("OnLeave", function(self) self:EnableKeyboard(false) end)
-  tile:SetScript("OnKeyDown", tileKey)
+  tile:SetScript("OnEnter", ns.Guard("enter click-cast test tile", tileEnter))
+  tile:SetScript("OnLeave", ns.Guard("leave click-cast test tile", tileLeave))
+  tile:SetScript("OnKeyDown", ns.Guard("key click-cast test tile", tileKey))
   tile:SetScript("OnClick", ns.Guard("click click-cast test tile", tileClick))
-  tile:SetScript("OnMouseWheel", function(self, d) self.result:SetText(describe(W.Modifiers() .. (d > 0 and "MOUSEWHEELUP" or "MOUSEWHEELDOWN"))) end)
+  tile:SetScript("OnMouseWheel", ns.Guard("wheel click-cast test tile", tileWheel))
 end
 
 -- The tile's health bar, mostly full, with the name over it.

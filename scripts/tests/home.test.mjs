@@ -74,3 +74,111 @@ it("home: /vg realm prints the realm, ruleset, side, data key and how your name 
   addon.slash("realm");
   expect([chatHas(addon, /Ruleset: none named by the client/), chatHas(addon, /Your name in chat: \?-ForeverTest/)], "none named; a hidden name").toEqual([true, true]);
 });
+
+// TEST-ONLY game rules as Forever documents them: the Classic or Modern preset enum, self-found and the game mode record.
+const FOREVER_RULES = `
+  Enum.ForeverExperiencePreset = { Classic = 0, Modern = 1 }
+  __preset, __self = 1, true
+  C_GameRules = {
+    IsHardcoreActive = function() return false end,
+    GetForeverExperiencePreset = function() return __preset end,
+    IsSelfFoundAllowed = function() return __self end,
+    GetCurrentGameModeRecordID = function() return 3 end,
+  }
+`;
+
+it("home: /vg realm names the Forever preset, self-found and game mode, none of which join the key", () => {
+  const addon = loggedIn(FOREVER_RULES);
+  addon.slash("realm");
+  expect(chatHas(addon, /Rules: preset Modern {2}· {2}self-found allowed {2}· {2}game mode 3/), "the three rules").toBe(true);
+  expect(home(addon)[4], "the key stays realm and side").toBe("ForeverTest-Alliance");
+  addon.eval("__preset, __self = 7, false Enum.ForeverExperiencePreset = nil");
+  addon.slash("realm");
+  expect(chatHas(addon, /Rules: preset 7 {2}· {2}self-found not allowed/), "a preset the enum lacks prints its number").toBe(true);
+  addon.eval("C_GameRules.GetForeverExperiencePreset = function() return __wfgWorld.secret(1) end C_GameRules.IsSelfFoundAllowed = function() return 'x' end C_GameRules.GetCurrentGameModeRecordID = nil");
+  addon.slash("realm");
+  expect(chatHas(addon, /Rules: none named by the client/), "hidden, odd or missing answers name nothing").toBe(true);
+});
+
+it("home: a rules change that moves the data key says so once; one that does not is silent", () => {
+  const addon = loggedIn(rules({ season: 2 }));
+  addon.fire("GAME_RULES_CHANGED");
+  expect(chatHas(addon, /rules changed/), "the first look has nothing to compare").toBe(false);
+  home(addon);
+  addon.eval("C_Seasons = nil");
+  addon.fire("GAME_RULES_CHANGED");
+  expect(chatHas(addon, /The game's rules changed: Vanguard now keeps prices and characters under ForeverTest-Alliance\./), "the key moved").toBe(true);
+  addon.fire("GAME_RULES_CHANGED");
+  expect(addon.eval("return #ns.errors"), "and no errors").toBe(0);
+});
+
+// Seconds: the beta's last day, and the live game's first (launch is 1793833200).
+const BETA_DAY = 1793000000;
+const LIVE_DAY = 1793900000;
+// TEST-ONLY saved data: prices, sales, an open auction and characters, each stamped on the beta's or the live game's side.
+const SAVED = `
+  VanguardDB.ah = { houses = { ["ForeverTest-Alliance"] = { count = 3, lastScan = 5, prices = {
+      [1] = { min = 5, t = ${BETA_DAY}, days = {} }, [2] = { min = 6, t = ${LIVE_DAY}, days = {} }, [3] = { min = 7, t = ${BETA_DAY}, days = {} } } } },
+    ledgers = { ["ForeverTest-Alliance"] = { records = {
+      { kind = "sold", qty = 1, amount = 7, t = ${BETA_DAY} }, { kind = "sold", qty = 1, amount = 9, t = ${LIVE_DAY} }, { kind = "sold", qty = 1, amount = 4, t = ${BETA_DAY} }, "junk", { kind = "sold", qty = 1, amount = 2 } },
+      open = { [11] = { id = 1, t = ${BETA_DAY} }, [12] = { id = 2, t = ${LIVE_DAY} } } }, junk = 1 } }
+  VanguardDB.inventory = { ["ForeverTest-Alliance"] = { Old = { bags = {}, updated = ${BETA_DAY} }, New = { bags = {}, updated = ${LIVE_DAY} }, Unstamped = { bags = {} } }, junk = 1 }
+`;
+// Dates the logged-in character's own record on the live side (the harness clock is not the date).
+const liveMe = (addon) => addon.eval(`local chars = VanguardDB.inventory["ForeverTest-Alliance"] chars.Tester = chars.Tester or {} chars.Tester.updated = ${LIVE_DAY}`);
+// The saved figures after a look or a clear: prices left, sales left, open left, characters left.
+const left = (addon) => addon.eval(`local h = VanguardDB.ah.houses["ForeverTest-Alliance"]
+  local n = 0 for _ in pairs(h.prices) do n = n + 1 end
+  local o = 0 for _ in pairs(VanguardDB.ah.ledgers["ForeverTest-Alliance"].open) do o = o + 1 end
+  local c = 0 for _ in pairs(VanguardDB.inventory["ForeverTest-Alliance"]) do c = c + 1 end
+  return { n, #VanguardDB.ah.ledgers["ForeverTest-Alliance"].records, o, c, h.count }`);
+
+it("home: /vg launch counts what the beta left, and clears only data stamped before launch, once launch has passed", () => {
+  const addon = loggedIn("", { savedVariables: SAVED });
+  liveMe(addon);
+  addon.eval("__now = " + (BETA_DAY + 10) + " time = function() return __now end");
+  addon.slash("launch");
+  expect(chatHas(addon, /Saved from before launch \(the beta\): 2 prices, 3 sales, 1 characters\. \/vg launch clear removes them\./), "sales count the open auction; unstamped and junk entries are not counted").toBe(true);
+  addon.slash("launch clear");
+  expect([chatHas(addon, /Launch is on 4 November 2026/), left(addon)], "before launch nothing goes").toEqual([true, [3, 4, 2, 4, 3]]);
+  addon.eval("__now = " + LIVE_DAY);
+  addon.slash("launch clear");
+  expect(chatHas(addon, /Cleared what was saved from before launch: 2 prices, 3 sales, 1 characters\./), "cleared").toBe(true);
+  expect(left(addon), "the live prices, sales, auctions and characters stay in order; the price count is redone").toEqual([1, 2, 1, 3, 1]);
+  expect(addon.eval("return VanguardDB.ah.ledgers['ForeverTest-Alliance'].records[1].amount"), "the live sale kept").toBe(9);
+  addon.slash("launch");
+  expect(chatHas(addon, /No prices, sales or characters saved from before launch\./), "nothing left").toBe(true);
+  expect(addon.eval("return #ns.errors"), "no errors").toBe(0);
+});
+
+it("home: the first login after launch says once that beta data is saved; the Town and gear button asks before clearing", () => {
+  const addon = loggedIn("", { savedVariables: SAVED + "time = function() return " + LIVE_DAY + " end" });
+  addon.fire("PLAYER_LOGIN");
+  expect(chatHas(addon, /Still saved from the beta: 2 prices, 3 sales, 1 characters\./), "told").toBe(true);
+  addon.eval("__said = 0");
+  addon.fire("PLAYER_LOGIN");
+  expect(addon.eval("return VanguardDB.launchNoticed"), "and marked, so not again").toBe(true);
+  addon.eval("time = function() return " + BETA_DAY + " end VanguardDB.launchNoticed = nil");
+  addon.fire("PLAYER_LOGIN");
+  expect(addon.eval("return VanguardDB.launchNoticed"), "before launch: not marked").toBe(null);
+});
+
+it("home: the Town and gear page has a button that asks first, naming what would go; Yes clears, No keeps", () => {
+  const addon = loggedIn("", { savedVariables: SAVED + "time = function() return " + LIVE_DAY + " end" });
+  liveMe(addon);
+  addon.slash("");
+  // Presses the page's button for the beta data, whether it is enabled, and the question shown.
+  const press = () => addon.eval(`local page for _, p in ipairs(ns.Options.PAGES) do if p.key == "town" then page = p end end
+    for _, row in ipairs(page.rows()) do if row[2] == "Clear data from before launch..." then local on = row[4]() row[3]() return on end end`);
+  expect(press(), "enabled once launch has passed").toBe(true);
+  expect(addon.eval("return Vanguard_Question.title:GetText()"), "the question names what goes").toMatch(/Clear what was saved before launch \(2 prices, 2 sales, 1 characters\)\?/);
+  addon.eval("Vanguard_Question.no:GetScript('OnClick')(Vanguard_Question.no)");
+  expect(left(addon)[0], "No: kept").toBe(3);
+  press();
+  addon.eval("Vanguard_Question.yes:GetScript('OnClick')(Vanguard_Question.yes)");
+  expect(left(addon)[0], "Yes: cleared").toBe(1);
+  press();
+  expect(chatHas(addon, /No prices, sales or characters saved from before launch\./), "with nothing saved it only says so").toBe(true);
+  addon.eval("time = function() return " + BETA_DAY + " end");
+  expect(press(), "before launch the button is off").toBe(false);
+});

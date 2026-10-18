@@ -67,6 +67,7 @@ Every `/vg` command (`/vanguard` works too), grouped by what it does. `/vg help`
 | `/vg weights [wizard\|...]` | Stat weights for gear upgrades |
 | `/vg craft ...`, `/vg mail ...` | Craft queue; mail tools (off until switched on) |
 | `/vg prep [want <kind> <n>\|setup\|buffs]` | The Instance prep card, wanted amounts, and your buffs against the buff checks |
+| `/vg gear` | Average item level, melee damage per second, pieces missing an enchant |
 | `/vg alts`, `/vg stock`, `/vg inventory`, `/vg vendors` | Alt overview, items to keep, characters remembered, merchants remembered |
 | `/vg junk`, `/vg sell` | Your sell list; sell every stack of one item at a merchant |
 | `/vg ranks`, `/vg trainers`, `/vg legacy` | Spell ranks, what trainers teach, the Legacy system |
@@ -83,4 +84,5 @@ Every `/vg` command (`/vanguard` works too), grouped by what it does. `/vg help`
 | `/vg graphics` | Checks your computer, screen and frame rate, then suggests a Graphics Quality and the sizes for your screen |
 | `/vg graphics apply` | Sets what the check suggested: Graphics Quality, render scale on a slow 4K screen, and the sizes for your screen |
 | `/vg graphics undo` | Puts your graphics settings and UI scale back as they were before apply |
+| `/vg launch [clear]` | Prices, sales and characters saved from before launch (the beta); clear removes them after launch |
 | `/vg frame <name> [deep]`, `/vg realm`, `/vg factionart` | What the client says about a frame, your realm, the faction pictures |

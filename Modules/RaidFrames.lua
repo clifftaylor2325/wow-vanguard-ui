@@ -87,8 +87,9 @@ end
 function RF.RoleMark(unit)
   local assigned = assignment(unit)
   if assigned then return RF.ROLE_MARKS.TANK, assigned end
-  local role = type(UnitGroupRolesAssigned) == "function" and UnitGroupRolesAssigned(unit) or "NONE"
+  local role = type(UnitGroupRolesAssigned) == "function" and UnitGroupRolesAssigned(unit)
   if ns.IsSecret(role) then return nil end
+  role = role or "NONE"
   return RF.ROLE_MARKS[role], RF.ROLE_MARKS[role] and "text2"
 end
 

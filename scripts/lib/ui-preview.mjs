@@ -36,6 +36,9 @@ for i, w in ipairs(__wfgStub.frames) do
     checkedTexture = w.__parent ~= nil and w.__parent.__checkedTexture == w or nil,
     barFill = w.__parent ~= nil and w.__parent.__barTexture == w or nil,
     noWrap = w.__noWrap,
+    -- Mask textures (a region marked isMask draws nothing itself), the ones on this texture, and a map's own mask image.
+    isMask = w.__mask, mapMask = w.__maskTexture,
+    masks = (function() local ids = {} for i, m in ipairs(w.__masks or {}) do ids[i] = ref(m) end return #ids > 0 and ids or nil end)(),
     -- How large it is drawn against the screen (a frame drawn at SetScale 0.6 is 0.6).
     escale = (tonumber(w:GetEffectiveScale()) or 1) / UIParent:GetEffectiveScale(),
   }

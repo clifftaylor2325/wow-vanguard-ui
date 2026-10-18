@@ -56,7 +56,7 @@ it("party pets and targets: small tiles above the party, only in a party, when s
   expect(addon.eval("return { Vanguard_partypet1.name:GetText(), Vanguard_partypet1.target == nil }"), "the pet's name on its tile, no target line").toEqual(["TEST-ONLY Wolf", true]);
   addon.slash("");
   addon.eval('__click("Unit frames")');
-  expect(addon.eval('return __click("Party pets and targets, above the party (reload)") and VanguardDB.profiles.Default.PartyExtras.show'), "the switch is under Unit frames").toBe(false);
+  expect(addon.eval('return __click("Party pets and targets, above the party") and VanguardDB.profiles.Default.PartyExtras.show'), "the switch is under Unit frames").toBe(false);
 });
 it("/vg factionart: which of the game's own faction pictures the client has", () => {
   const addon = loggedIn(`C_Texture = { GetAtlasInfo = function(name) if name:find("MountJournal") then return { width = 64 } end end }
@@ -232,6 +232,45 @@ it("keep stocked: an item sold in stacks (ammo) is bought in whole stacks", () =
   expect(addon.eval("return __buys"), "450 wanted: two full stacks and the last 50 rounded up to a whole stack of 200").toEqual([[90014, 200], [90014, 200], [90014, 200]]);
   expect(chatHas(addon, /Bought 600 × item 90014 for 3s 0c\./), "and it says what it really bought").toBe(true);
 });
+// TEST-ONLY stock list wanting item 90011 (5 of it).
+const WANT_5 = { savedVariables: "VanguardDB.profiles = { Default = { Errands = { stockList = { [90011] = 5 } } } }" };
+// Stock environment with item 90011 sold for 20 marks of honor: the copper price reads 0 (the table says it has an extended cost).
+const MARKS_ENV = STOCK_ENV + "__have = {} __goods[1].price = 0 __goods[1].ext = true C_MerchantFrame.GetItemInfo = function(i) local g = __goods[i] return { price = g.price, stackCount = g.stack, numAvailable = g.left, hasExtendedCost = g.ext == true } end ";
+it("keep stocked never buys an item that costs honor, badges or other items as if it were free", () => {
+  const marks = loggedIn(MARKS_ENV, WANT_5);
+  marks.fire("MERCHANT_SHOW");
+  expect(marks.eval("return __buys"), "the table says it has an extended cost").toEqual({});
+  const costInfo = loggedIn(MARKS_ENV + "__goods[1].price = 5 __goods[1].ext = nil GetMerchantItemCostInfo = function(i) return 1 end", WANT_5);
+  costInfo.fire("MERCHANT_SHOW");
+  expect(costInfo.eval("return __buys"), "the cost call says so").toEqual({});
+  const old = loggedIn(MARKS_ENV + "C_MerchantFrame = nil GetMerchantItemInfo = function(i) return 'x', '', 0, 1, -1 end", WANT_5);
+  old.fire("MERCHANT_SHOW");
+  expect(old.eval("return __buys"), "a copper price of 0 buys nothing").toEqual({});
+  const gold = loggedIn(MARKS_ENV + "__goods[1].price = 5 __goods[1].ext = nil", WANT_5);
+  gold.fire("MERCHANT_SHOW");
+  expect(gold.eval("return __buys"), "the same item for gold is bought").toEqual([[90011, 5]]);
+});
+it("keep stocked notes only what arrived: a purchase that fails ends the run and is not reported as bought", () => {
+  const none = loggedIn(STOCK_ENV + "__have = {} BuyMerchantItem = function(i, n) __buys[#__buys + 1] = { __goods[i].id, n } end", WANT_5);
+  none.fire("MERCHANT_SHOW");
+  expect(none.eval("return __buys"), "one try, then it stops").toEqual([[90011, 5]]);
+  expect([chatHas(none, /Bought /), chatHas(none, /Stopped buying TEST-ONLY Bread: the last purchase did not arrive in full/)], "nothing reported bought; says why it stopped").toEqual([false, true]);
+  const part = loggedIn(STOCK_ENV + "__have = {} __goods[1].max = 4 BuyMerchantItem = function(i, n) __buys[#__buys + 1] = { __goods[i].id, n } __have[90011] = 2 end", WANT_5);
+  part.fire("MERCHANT_SHOW");
+  expect([part.eval("return #__buys"), chatHas(part, /Bought 2 × TEST-ONLY Bread for 0s 10c\./), chatHas(part, /Stopped buying/)], "half arrived: that half is reported, the run ends").toEqual([1, true, true]);
+});
+it("keep stocked waits for each purchase to arrive before the next, and trusts a client that cannot count items", () => {
+  const wait = loggedIn(STOCK_ENV + "__have = {} __goods[1].max = 2 __later = {} C_Timer = { After = function(s, fn) if s == 0.2 then __later[#__later + 1] = fn end end }", WANT_5);
+  wait.fire("MERCHANT_SHOW");
+  expect(wait.eval("return #__buys"), "one chunk, then the wait").toBe(1);
+  wait.eval("__later[1]()");
+  wait.eval("__later[2]()");
+  wait.eval("__later[3]()");
+  expect([wait.eval("return #__buys"), chatHas(wait, /Bought 5 × TEST-ONLY Bread for 0s 25c\./)], "each next chunk after the last arrived (2, 2, 1)").toEqual([3, true]);
+  const blind = loggedIn(STOCK_ENV + "__have = {} C_Item.GetItemCount = nil BuyMerchantItem = function(i, n) __buys[#__buys + 1] = { __goods[i].id, n } end", WANT_5);
+  blind.fire("MERCHANT_SHOW");
+  expect([blind.eval("return #__buys"), chatHas(blind, /Bought 5 × TEST-ONLY Bread for 0s 25c\./)], "no item count: the purchase is taken as made").toEqual([1, true]);
+});
 // TEST-ONLY group: you lead a party; every raid tool call is recorded.
 const TOOLS_GROUP_ENV = `
   __leader, __assist, __inGroup, __inRaid, __markable, __calls = true, false, true, false, true, {}
@@ -330,6 +369,22 @@ it("at a merchant: repair with your own gold, sell junk", () => {
   const bare = loggedIn("CanMerchantRepair = nil");
   bare.fire("MERCHANT_SHOW");
   expect(bare.eval("return ns.GetModule('Merchant').Noisy('x')"), "a client without these calls does nothing").toBe(false);
+});
+it("junk selling stops when the merchant closes or a fight starts: no retry uses a bag item with no merchant open", () => {
+  const addon = loggedIn(MERCHANT_ENV + "__sticky = 5 __later = {} C_Timer = { After = function(s, fn) if s == 0.3 then __later[#__later + 1] = fn end end }");
+  const MC = "ns.GetModule('Merchant')";
+  addon.fire("MERCHANT_SHOW");
+  expect(addon.eval("return __used"), "the first pass sells at once").toEqual([1]);
+  addon.fire("MERCHANT_CLOSED");
+  addon.eval("local t = __later __later = {} for _, f in ipairs(t) do f() end");
+  expect(addon.eval("return __used"), "the retry after the merchant closed uses nothing").toEqual([1]);
+  addon.eval(`${MC}.SellJunk(3)`);
+  expect(addon.eval("return __used"), "nor does a call with no merchant open").toEqual([1]);
+  addon.fire("MERCHANT_SHOW");
+  addon.eval("__used = {}");
+  setCombat(addon, true);
+  addon.eval(`${MC}.SellJunk(3)`);
+  expect(addon.eval("return __used"), "nor one in combat").toEqual({});
 });
 it("the error line drops what the action bar already shows, and the rest takes the game's own path", () => {
   const addon = loggedIn(MERCHANT_ENV);

@@ -78,11 +78,26 @@ local function describe(m)
   local what = {}
   if m.money > 0 then what[#what + 1] = ns.AuctionPrices.Money(m.money) end
   if m.items > 0 then what[#what + 1] = m.items .. (m.items == 1 and " item" or " items") end
+  if m.cod > 0 then what[#what + 1] = "pay " .. ns.AuctionPrices.Money(m.cod) .. " on delivery" end
   return string.format("%s: %s%s", m.sender ~= "" and m.sender or "?", m.subject, #what > 0 and (" (" .. table.concat(what, ", ") .. ")") or "")
 end
 
--- Takes a mail's money and its first item (one click each; the game needs a moment between items).
+-- Whether the mail at its place is the one that was read: its place, sender, subject, money, item count,
+-- pay-on-delivery amount and first item all match (a shifted inbox puts another mail there).
+local function unchanged(m)
+  local now = MT.Read(m.index)
+  if not now then return false end
+  for _, key in ipairs({ "sender", "subject", "money", "items", "cod", "link" }) do
+    if now[key] ~= m[key] then return false end
+  end
+  return true
+end
+
+-- Takes a mail's money and its first item (one click each; the game needs a moment between items). A mail that
+-- asks for payment on delivery is never taken here, and neither is one that is no longer what the row showed.
 function MT.Take(m)
+  if m.cod > 0 then return ns.Chat("Mail: that one asks for payment on delivery. Open it in the mail window, where the game asks you first.") end
+  if not unchanged(m) then return ns.Chat("Mail: that mail has moved. Look at the list again.") end
   if m.money > 0 and type(TakeInboxMoney) == "function" then TakeInboxMoney(m.index) end
   if m.items > 0 and type(TakeInboxItem) == "function" then TakeInboxItem(m.index, 1) end
 end
@@ -112,12 +127,6 @@ function MT.ReturnSteps(mails)
   return out
 end
 
--- Whether the step's mail is still where it was (same sender and subject at its place).
-local function unchanged(step)
-  local now = MT.Read(step.mail.index)
-  return now ~= nil and now.sender == step.mail.sender and now.subject == step.mail.subject
-end
-
 -- Runs the steps one at a time (the game needs a moment between them), stopping when the mailbox
 -- closes or combat starts; says how many went through.
 function MT.Run(steps, i, label)
@@ -126,7 +135,7 @@ function MT.Run(steps, i, label)
     MT.running = nil
     return ns.Chat(string.format("%s: %d of %d done.", label, math.min(i - 1, #steps), #steps))
   end
-  if type(s.take) == "function" and unchanged(s) then s.take(s.mail.index, s.n) end
+  if type(s.take) == "function" and unchanged(s.mail) then s.take(s.mail.index, s.n) end
   if C_Timer and C_Timer.After then return C_Timer.After(MT.STEP, ns.Guard("mail run", function() MT.Run(steps, i + 1, label) end)) end
   MT.Run(steps, i + 1, label)
 end
@@ -213,7 +222,7 @@ local function paintRow(row, m)
   row.mail = m
   if not m then return end
   row.text:SetText(describe(m))
-  row.take:SetShown(m.money > 0 or m.items > 0)
+  row.take:SetShown(m.cod == 0 and (m.money > 0 or m.items > 0))
 end
 
 -- Draws the panel: shown while the mailbox is open and the tools are on; the matches in its rows.

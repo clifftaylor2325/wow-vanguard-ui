@@ -136,9 +136,19 @@ local function rowChanged(row)
   return initial ~= nil and row[at - 1]() ~= initial
 end
 
--- A row changed or was reset: its page's nav dot follows (unless every row is being refreshed).
+-- Whether any of the rows differs from its default.
+local function anyChanged(rows)
+  for _, row in ipairs(rows) do
+    if rowChanged(row) then return true end
+  end
+  return false
+end
+
+-- A row changed or was reset: its page's nav dot and reset button follow (unless every row is being refreshed).
 local function rowRefreshed(w)
-  if not quiet and w.card then O.MarkChanged(w.card.child.pageKey) end
+  if quiet or not w.card then return end
+  O.MarkChanged(w.card.child.pageKey)
+  if w.card.child.resetButton then w.card.child.resetButton:Refresh() end
 end
 
 -- Gives a row with a default its reset dot, shown while the setting differs from the default.
@@ -202,11 +212,29 @@ local function addTip(w, row)
   w:HookScript("OnLeave", ns.Guard("hide row tip", hideNote))
 end
 
--- Gives a row its reset dot (a setting with a default), its note (a tagged setting) and its tip.
+-- The tag a row whose setting applies on reload wears after its caption, and the line its tip gains.
+local RELOAD_TAG, RELOAD_TIP = "reload", "Takes effect after /reload."
+
+-- Gives a row whose setting applies on reload a small muted tag just after its caption (a wrapping caption gives up the
+-- tag's room), and a line in its tip.
+local function addReloadTag(w, row)
+  if not (row.reload and w.label) then return end
+  w.tag = T.Text(w:CreateFontString(nil, "OVERLAY"), "small", "muted")
+  w.tag:SetText(RELOAD_TAG)
+  local room = w.tag:GetStringWidth() + T.SPACE.gap
+  if w.fixedLabel then w.label:SetWidth(w.label:GetWidth() - room) end
+  w.tag:SetPoint("LEFT", w.label, "LEFT", math.min(w.label:GetStringWidth(), w.label:GetWidth()) + T.SPACE.gap, 0)
+  row.tip = row.tip and (row.tip .. "\n" .. RELOAD_TIP) or RELOAD_TIP
+end
+
+-- Gives a row its reset dot (a setting with a default), its reload tag, its tip and its note (a tagged setting; last,
+-- so it is the tooltip that shows).
 local function dressRow(w, row)
+  if row.isReset then w.card.child.resetButton = w end
   markChanges(w, row)
-  addNote(w, row)
+  addReloadTag(w, row)
   addTip(w, row)
+  addNote(w, row)
 end
 
 -- Cards --------------------------------------------------------------------------------------
@@ -242,7 +270,7 @@ local function placeRows(card, rows, y, cardY)
   for _, row in ipairs(rows) do
     local full = FULL_WIDTH[row[1]]
     local w = BUILDERS[row[1]](card, row, CARD_WIDTH - 2 * T.SPACE.tight)
-    w.card, w.caption, w.pageY = card, row[2], cardY + y
+    w.card, w.caption, w.pageY, w.source = card, row[2], cardY + y, row
     dressRow(w, row)
     w:SetPoint("TOPLEFT", card, "TOPLEFT", full and T.SPACE.tight or PAD, -y)
     widgets[#widgets + 1] = w
@@ -274,12 +302,64 @@ local function placeCards(view, rows)
   view:Fit(y - PAD)
 end
 
+-- A caption's trailing " (reload)": the window shows it as a tag beside the caption instead.
+local RELOAD_SUFFIX = " (reload)"
+
+-- Moves a setting row's " (reload)" from its caption to row.reload (the tag).
+local function moveReload(row)
+  local caption = row[2]
+  if SETTER_AT[row[1]] and type(caption) == "string" and caption:sub(-#RELOAD_SUFFIX) == RELOAD_SUFFIX then
+    row[2], row.reload = caption:sub(1, -#RELOAD_SUFFIX - 1), true
+  end
+end
+
+-- Whether a row has a default to go back to.
+local function hasDefault(row)
+  local at = SETTER_AT[row[1]]
+  return at ~= nil and row[at + 1] ~= nil
+end
+
+-- Puts back the default of every changed row in the list, then refreshes the window.
+local function resetRows(rows)
+  for _, row in ipairs(rows) do
+    local at = SETTER_AT[row[1]]
+    if hasDefault(row) and rowChanged(row) then row[at](row[at + 1]) end
+  end
+  O.Refresh()
+end
+
+-- The "Reset this page" button row: after asking, every changed setting on the page goes back to its default.
+local function resetPageRow(page, rows)
+  local ask = "Put the settings on the %s page back to their defaults?"
+  return { "button", "Reset this page", function()
+    ns.Ask(string.format(ask, page.title), "Reset", function() resetRows(rows) end, function() end)
+  end, function() return anyChanged(rows) end, isReset = true }
+end
+
+-- A page's rows as the window uses them: "(reload)" moved off the captions, and a reset button at the foot of a page
+-- that has settings with defaults (a card of its own).
+local function preparedRows(page)
+  local rows, defaults = page.rows(), false
+  for _, row in ipairs(rows) do
+    moveReload(row)
+    defaults = defaults or hasDefault(row)
+  end
+  if defaults then
+    rows[#rows + 1] = { "header", "This page" }
+    rows[#rows + 1] = resetPageRow(page, rows)
+  end
+  return rows
+end
+
 -- A page's rows, read once per opening of the window (for its nav dot, the
 -- search and building it) rather than per search keystroke.
 local function rowsOf(page)
-  rowCache[page.key] = rowCache[page.key] or page.rows()
+  rowCache[page.key] = rowCache[page.key] or preparedRows(page)
   return rowCache[page.key]
 end
+
+-- A page's rows for the search (Core/OptionsSearch.lua), and whether one differs from its default.
+O.RowsOf, O.RowChanged = rowsOf, rowChanged
 
 -- A page: the shared scroll view (ns.ScrollView: the T.SCROLL thumb, soft edges, the wheel) right of the nav, holding its cards.
 local function buildPage(page)
@@ -320,6 +400,7 @@ end
 -- Enter in the search box: opens the first page that matches and jumps to the row.
 local function searchEnter(self)
   self:ClearFocus()
+  if O.hits and O.hits[1] then O.HideHits() O.OpenHit(O.hits[1]) return end
   if not (O.matches and O.matches[1]) then return end
   O.Show(O.matches[1])
   O.JumpTo(self:GetText())
@@ -404,6 +485,7 @@ local function navOrder()
   table.sort(list, function(a, b) return (a.order or 70) < (b.order or 70) end)
   return list
 end
+O.NavOrder = navOrder
 
 -- A thin divider across the nav at y.
 local function divider(nav, y)
@@ -532,7 +614,7 @@ end
 -- a fight lets it go, and the combat queue takes it back when the fight ends.
 local function wireKeys(f)
   f:SetScript("OnKeyDown", onKey)
-  f:SetScript("OnHide", function(self) self:EnableKeyboard(false) setFocus(nil) end)
+  f:SetScript("OnHide", function(self) self:EnableKeyboard(false) setFocus(nil) O.HideHits() end)
   ns.On("PLAYER_REGEN_DISABLED", function()
     f:EnableKeyboard(false)
     ns.AfterCombat(function() f:EnableKeyboard(f:IsShown()) end, "options keyboard")
@@ -663,10 +745,7 @@ end
 
 -- Whether any of a page's settings differs from its default.
 local function pageChanged(page)
-  for _, row in ipairs(rowsOf(page)) do
-    if rowChanged(row) then return true end
-  end
-  return false
+  return anyChanged(rowsOf(page))
 end
 
 -- Shows the "Changed" dot on the nav entry of the page with this key (every page without one)
@@ -678,11 +757,11 @@ function O.MarkChanged(key)
   end
 end
 
--- Whether a page's title or any row's caption contains the (lower-case) text.
+-- Whether a page's title or any row's caption (a card title is no row's) contains the (lower-case) text.
 local function pageMatches(page, text)
   if page.title:lower():find(text, 1, true) then return true end
   for _, row in ipairs(rowsOf(page)) do
-    if type(row[2]) == "string" and row[2]:lower():find(text, 1, true) then return true end
+    if row[1] ~= "header" and type(row[2]) == "string" and row[2]:lower():find(text, 1, true) then return true end
   end
   return false
 end
@@ -725,26 +804,41 @@ function O.MarkRow(w)
   window.found = w.found
 end
 
--- Scrolls the current page to the first row with the text in its caption, and marks it.
+-- Scrolls the current page to the first row with the text in its caption (a trailing " (reload)" is ignored), and marks it.
 function O.JumpTo(text)
   local view = pages[O.current]
-  local w = view and firstRow(view, (text or ""):lower())
+  local w = view and firstRow(view, ((text or ""):gsub(" %(reload%)$", "")):lower())
   if not w then return end
   view:ScrollTo(w.pageY - JUMP_ABOVE)
   O.MarkRow(w)
 end
 
--- Filters the nav by search text: pages that don't match fade; Enter opens the first match.
+-- Opens a search hit: its page, scrolled to its row, which is marked.
+function O.OpenHit(hit)
+  O.Show(hit.page)
+  local view = pages[O.current]
+  for _, w in ipairs(widgets) do
+    if view and w.source == hit.row and w:IsVisible() then view:ScrollTo(w.pageY - JUMP_ABOVE) O.MarkRow(w) return end
+  end
+end
+
+-- The pages (and which) that match the (lower-case) text, for the nav to dim the others.
+local function matchPages(text)
+  O.matches, O.matched = nil, nil
+  if text == "" then return end
+  O.matches, O.matched = {}, {}
+  for _, page in ipairs(navOrder()) do
+    if pageMatches(page, text) then table.insert(O.matches, page.key) O.matched[page.key] = true end
+  end
+end
+
+-- Filters the nav by search text: pages that don't match fade; the settings that match are listed under the box
+-- (Core/OptionsSearch.lua); Enter opens the first.
 function O.Search(text)
   text = (text or ""):lower()
   if window and window.found then window.found:Hide() end
-  O.matches, O.matched = nil, nil
-  if text ~= "" then
-    O.matches, O.matched = {}, {}
-    for _, page in ipairs(navOrder()) do
-      if pageMatches(page, text) then table.insert(O.matches, page.key) O.matched[page.key] = true end
-    end
-  end
+  matchPages(text)
+  O.ShowHits(text)
   if window then markNav(O.current) end
 end
 

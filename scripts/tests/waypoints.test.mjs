@@ -174,3 +174,88 @@ it("waypoints: the pin is the game's own with its switch off or the module off, 
   way(none, "45 61");
   expect(none.eval("return SuperTrackedFrame == nil"), "no frame at all: nothing made, no error").toBe(true);
 });
+
+// TEST-ONLY game waypoint: __point is what the game holds (map, x, y) or nil; clearing drops it and untracks.
+const POINT_ENV = `
+  __point = nil
+  C_Map.HasUserWaypoint = function() return __point ~= nil end
+  C_Map.GetUserWaypoint = function() return __point and { uiMapID = __point[1], position = { GetXY = function() return __point[2], __point[3] end } } end
+  C_Map.ClearUserWaypoint = function() __point = nil end
+  C_Map.SetUserWaypoint = function(p) __point = p end
+`;
+
+// The game puts a waypoint down (a Ctrl-click on the map) and fires its event.
+const click = (addon, map, x, y) => {
+  addon.eval(`__point = { ${map}, ${x}, ${y} } __tracked = false`);
+  addon.fire("USER_WAYPOINT_UPDATED");
+};
+
+it("waypoints: a map click turns the arrow on, remembers the spot, and the list keeps eight", () => {
+  const addon = loggedIn(MAP_ENV + POINT_ENV);
+  click(addon, 10, 0.2, 0.3);
+  expect(addon.eval("return __tracked"), "the game leaves the arrow off; Vanguard turns it on").toBe(true);
+  for (let i = 1; i <= 9; i++) click(addon, 12, 0.1 * (i % 9) + 0.05, 0.5);
+  click(addon, 12, 0.15, 0.5);
+  expect(addon.eval("return #ns.Settings('Waypoints', ns.GetModule('Waypoints').defaults).recent"), "eight at most, the repeated spot moved up and not doubled").toBe(8);
+  expect(addon.eval("return ns.Settings('Waypoints', ns.GetModule('Waypoints').defaults).recent[1].x"), "newest first").toBe(0.15);
+  addon.eval("__point = nil");
+  addon.fire("USER_WAYPOINT_UPDATED");
+  expect(addon.eval("return #ns.Settings('Waypoints', ns.GetModule('Waypoints').defaults).recent"), "clearing adds nothing").toBe(8);
+});
+
+it("waypoints: with the switch off a map click only remembers; a hidden position is not remembered", () => {
+  const addon = loggedIn(MAP_ENV + POINT_ENV, { savedVariables: "VanguardDB.profiles = { Default = { Waypoints = { follow = false } } }" });
+  click(addon, 10, 0.2, 0.3);
+  expect([addon.eval("return __tracked"), addon.eval("return #ns.Settings('Waypoints', ns.GetModule('Waypoints').defaults).recent")]).toEqual([false, 1]);
+  addon.eval("__point = { 10, __wfgWorld.secret(0.5), 0.5 }");
+  addon.fire("USER_WAYPOINT_UPDATED");
+  expect(addon.eval("return #ns.Settings('Waypoints', ns.GetModule('Waypoints').defaults).recent"), "a secret coordinate is skipped").toBe(1);
+});
+
+it("waypoints: /way recent lists the spots and /way recent <n> goes back to one", () => {
+  const addon = loggedIn(MAP_ENV + POINT_ENV);
+  way(addon, "recent");
+  expect(chatHas(addon, /No recent waypoints yet/), "none yet").toBe(true);
+  click(addon, 10, 0.2, 0.3);
+  click(addon, 12, 0.5, 0.25);
+  way(addon, "recent");
+  expect([chatHas(addon, /1\. TEST-ONLY Dun Morogh 50\.0, 25\.0/), chatHas(addon, /2\. TEST-ONLY Elwynn Forest 20\.0, 30\.0/)], "newest first").toEqual([true, true]);
+  way(addon, "recent 2");
+  expect(addon.eval("return { __point[1], __point[2], __point[3] }"), "back to the second").toEqual([10, 0.2, 0.3]);
+  expect(chatHas(addon, /Waypoint: TEST-ONLY Elwynn Forest 20\.0, 30\.0/), "and says so").toBe(true);
+  way(addon, "recent 7");
+  expect(chatHas(addon, /No recent waypoint 7/), "a number past the list").toBe(true);
+  addon.eval("ns.Settings('Waypoints', ns.GetModule('Waypoints').defaults).recent[1].map = 11");
+  way(addon, "recent 1");
+  expect(chatHas(addon, /Can't put a waypoint on TEST-ONLY Duskwood/), "a map that can't hold one now").toBe(true);
+});
+
+it("waypoints: the options list the spots as buttons, and Clear waypoint takes it and the arrow away", () => {
+  const addon = loggedIn(MAP_ENV + POINT_ENV);
+  // Each row as "type|label".
+  const rows = () => addon.eval("local out = {} for i, r in ipairs(ns.GetModule('Waypoints').Rows()) do out[i] = r[1] .. '|' .. r[2] end return out");
+  expect(rows().slice(-1)[0], "no spots yet: a line saying so").toMatch(/^text\|No recent waypoints/);
+  click(addon, 10, 0.2, 0.3);
+  click(addon, 12, 0.5, 0.25);
+  expect(rows().slice(-2), "a button for each, newest first").toEqual(["button|Go to TEST-ONLY Dun Morogh 50.0, 25.0", "button|Go to TEST-ONLY Elwynn Forest 20.0, 30.0"]);
+  addon.eval("ns.GetModule('Waypoints').Rows()[6][3]()");
+  expect(addon.eval("return __point[1]"), "its button goes back to that spot").toBe(10);
+  addon.eval("__tracked = true ns.GetModule('Waypoints').Rows()[3][3]()");
+  expect([addon.eval("return __point"), addon.eval("return __tracked")], "Clear waypoint").toEqual([null, false]);
+  addon.eval("local r = ns.GetModule('Waypoints').Rows()[2] r[4](false)");
+  expect(addon.eval("return ns.Settings('Waypoints', ns.GetModule('Waypoints').defaults).follow"), "the switch").toBe(false);
+});
+
+it("waypoints: the world map has a Clear waypoint button, shown only while there is a waypoint", () => {
+  const addon = loggedIn(MAP_ENV + POINT_ENV + WORLD_MAP_ENV);
+  // Whether the map's Clear waypoint button shows.
+  const shown = () => addon.eval("return ns.GetModule('Waypoints').clearButton:IsShown()");
+  addon.update(0.2);
+  expect(shown(), "no waypoint, no button").toBe(false);
+  click(addon, 10, 0.2, 0.3);
+  addon.update(0.2);
+  expect(shown(), "a waypoint, a button").toBe(true);
+  addon.eval("ns.GetModule('Waypoints').clearButton:GetScript('OnClick')()");
+  addon.update(0.2);
+  expect([shown(), addon.eval("return __point")], "the click clears it").toEqual([false, null]);
+});

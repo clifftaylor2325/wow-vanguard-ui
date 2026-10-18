@@ -54,6 +54,7 @@
       "bag, equipment, form, macro and charge events refresh the buttons they change",
       "bar 1 pages without secure snippets: the driver sets the bar's own actionpage, the buttons read it",
       "bar 1 with secure snippets keeps the snippet paging",
+      "bar backing: a flat panel under each bar's buttons on Classic look or when asked for, live with the setting and the theme",
       "counts show on a client without the deprecated GetActionCount (C_ActionBar.GetActionUseCount)",
       "empty slots take no mouse, so blank bar space passes clicks through; a drag turns it back on",
       "in combat an empty slot's mouse waits for the fight to end, one entry per button, the last state winning",
@@ -152,6 +153,7 @@
       "options window",
       "text that fits: chat size, tooltip fonts, the status line, name width"
     ],
+    "scripts/tests/petstable.test.mjs": [],
     "scripts/tests/platebuffs.test.mjs": [],
     "scripts/tests/platepaint.test.mjs": [],
     "scripts/tests/plates.test.mjs": [],
@@ -248,7 +250,8 @@
       "unit frame events",
       "unit frame health text settings apply at once",
       "unit frames",
-      "unit frames on WoW Forever: levels, health percent, classification"
+      "unit frames on WoW Forever: levels, health percent, classification",
+      "unit frames: a hidden percent text is handed on as it is, Dead wins over it, a plain percent still shows"
     ],
     "scripts/tests/unlock.test.mjs": [],
     "scripts/tests/upgrades.test.mjs": [],

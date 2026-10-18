@@ -340,10 +340,25 @@ function clipTo(ctx, el, r, clip) {
 // Its alpha times every ancestor's, as the client fades a frame's children with it.
 const alphaOf = (ctx, f) => [f, ...ancestors(ctx, f)].reduce((a, w) => a * (w.alpha ?? 1), 1);
 
+// Cuts a node to the first mask texture on it (the mask's image, at the mask region's rect), as the game does for a
+// texture with AddMaskTexture; a map frame whose own mask image is a disc (SetMaskTexture) is cut to an ellipse.
+function applyMasks(ctx, el, f, r) {
+  const mask = f.masks && ctx.byId.get(f.masks[0]);
+  const art = mask && mediaUrl(mask.texture);
+  if (art) {
+    const m = rectOf(ctx, mask);
+    Object.assign(el.style, { webkitMaskImage: `url(${art.url})`, maskImage: `url(${art.url})`, maskRepeat: "no-repeat", webkitMaskRepeat: "no-repeat",
+      maskSize: `${m.width}px ${m.height}px`, webkitMaskSize: `${m.width}px ${m.height}px`,
+      maskPosition: `${m.left - r.left}px ${m.top - r.top}px`, webkitMaskPosition: `${m.left - r.left}px ${m.top - r.top}px` });
+  }
+  if (/RoundDisc/.test(f.mapMask || "")) el.style.borderRadius = "50%";
+}
+
 // Draws one widget at its rect.
 function draw(ctx, f) {
   const r = rectOf(ctx, f);
   const el = nodeFor(f, r);
+  applyMasks(ctx, el, f, r);
   Object.assign(el.style, { position: "absolute", left: `${r.left}px`, top: `${r.top}px`, width: `${r.width}px`, height: `${r.height}px` });
   el.style.opacity = alphaOf(ctx, f);
   el.style.zIndex = zIndexOf(ctx, f);
@@ -355,7 +370,7 @@ function draw(ctx, f) {
 // Whether a widget is drawn: shown, not UIParent, and font strings only with text.
 // Hover highlights and unchecked "checked" textures only show in game on interaction.
 const drawable = (ctx, f) =>
-  f.name !== "UIParent" && shown(ctx, f) && !(f.kind === "FontString" && !f.text) &&
+  f.name !== "UIParent" && !f.isMask && shown(ctx, f) && !(f.kind === "FontString" && !f.text) &&
   f.layer !== "HIGHLIGHT" && !(f.checkedTexture && !ctx.byId.get(f.parent)?.checked) && !f.barFill;
 
 // Measures every font string, then draws every drawable widget. Returns the measured heights.

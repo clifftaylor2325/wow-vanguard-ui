@@ -16,6 +16,7 @@ it("options window", () => {
   expect(addon.eval('return __click("Show bar 6")') && addon.eval("return VanguardDB.profiles.Default.ActionBars.bars[6].enabled") === true, "check boxes change settings").toBeTruthy();
   expect(addon.eval("return Vanguard_Options.reload:IsShown()") === true, "a change that needs a reload shows the Reload button").toBeTruthy();
   expect(addon.eval('return __click("Visibility")') && addon.eval("return VanguardDB.profiles.Default.ActionBars.bars[1].visibility") === "mouseover", "cycle buttons step through choices").toBeTruthy();
+  expect(addon.eval('return __click("Bar backing") and VanguardDB.profiles.Default.ActionBars.backing'), "the Bar backing cycle steps from Follow the theme to Always").toBe("on");
   expect(addon.eval('return __click("Button size")') && addon.eval("return VanguardDB.profiles.Default.ActionBars.bars[1].size") === 40, "a bar's size slider starts at the shared size and steps by 2").toBeTruthy();
   addon.eval('__click("Modules")');
   // The Modules page's row for unit frames: its description, and clicking it.
@@ -111,7 +112,7 @@ it("options slider, search, scroll, special bars and profile switch", () => {
     return { wrapped = wrapped, dragged = dragged, hint = hint }
   `);
   expect(scale.wrapped === 0.7 && Math.abs(scale.dragged - 1) < 1e-9 && scale.hint === true, "a slider wraps at the max, drags with the cursor, and the search hint shows while empty").toBeTruthy();
-  expect(addon.eval('ns.Options.Show("actionbars") return __click("Restyle the pet, stance, possess and extra action buttons (reload)")') === true, "the special-bars switch is on the action bar page").toBeTruthy();
+  expect(addon.eval('ns.Options.Show("actionbars") return __click("Restyle the pet, stance, possess and extra action buttons")') === true, "the special-bars switch is on the action bar page").toBeTruthy();
   expect(addon.eval("return VanguardDB.profiles.Default.SpecialBars.skinPet") === false, "it turns pet, stance and extra bars off together").toBeTruthy();
 });
 
@@ -254,7 +255,7 @@ it("choice fallback, key capture and the mouse wheel", () => {
   `);
   expect(captured.key === "F (hover)" && captured.cancelled === true, "a key is captured, and Escape cancels").toBeTruthy();
   expect(captured.wheel === "Wheel down (hover)", "the wheel is captured as a hover binding").toBeTruthy();
-  expect(addon.eval('return __click("Also on your player, target and focus frames (reload)")') === true, "unit-frame click casting is a switch on the page").toBeTruthy();
+  expect(addon.eval('return __click("Also on your player, target and focus frames")') === true, "unit-frame click casting is a switch on the page").toBeTruthy();
   expect(addon.eval("return ns.Settings('ClickCast').unitFrames") === true, "the switch turns it on").toBeTruthy();
 });
 
@@ -406,9 +407,9 @@ it("options: Up and Down walk the pages, Tab the rows, Enter presses one; other 
   expect(press(addon, "W"), "a key it doesn't use goes on to the game: you can still walk").toEqual(["general", true]);
   expect(press(addon, "SPACE")[1], "so do Space and Enter until a row has the keyboard").toBe(true);
   press(addon, "TAB");
-  expect(keyRow(addon), "Tab marks the first row that does something (the sample and the swatches are skipped)").toEqual(["Safer colours (reload)", true, true]);
+  expect(keyRow(addon), "Tab marks the first row that does something (the sample and the swatches are skipped)").toEqual(["Safer colours", true, true]);
   press(addon, "TAB");
-  expect(keyRow(addon)[0], "Tab again: the next").toBe("Follow the game's colour-blind mode (reload)");
+  expect(keyRow(addon)[0], "Tab again: the next").toBe("Follow the game's colour-blind mode");
   press(addon, "TAB");
   expect(keyRow(addon)[0], "and the next after it").toBe("Font");
   addon.keys({ shift: true });
@@ -419,7 +420,7 @@ it("options: Up and Down walk the pages, Tab the rows, Enter presses one; other 
   const last = keyRow(addon);
   expect([last[0], last[2], addon.eval("return Vanguard_Options.found:IsShown()")], "Shift-Tab goes back, and past the first wraps to the last row, scrolled into view").toEqual([addon.eval("local rows = {} for _, w in ipairs(__wfgStub.frames) do if w.card and w:IsVisible() and w:GetObjectType() == 'Button' then rows[#rows + 1] = w end end table.sort(rows, function(a, b) return a.pageY < b.pageY end) return rows[#rows].caption"), true, true]);
   press(addon, "TAB");
-  expect(keyRow(addon), "and Tab from the last wraps to the first, scrolled back up").toEqual(["Safer colours (reload)", true, true]);
+  expect(keyRow(addon), "and Tab from the last wraps to the first, scrolled back up").toEqual(["Safer colours", true, true]);
   press(addon, "TAB");
   press(addon, "TAB");
   const font = addon.eval("return ns.Theme.Settings().font");
@@ -551,9 +552,9 @@ it("options: a switch for each group of game windows, under Game windows", () =>
   const addon = loggedIn(UI_ENV + CLICK_LUA);
   addon.slash("");
   addon.eval('ns.Options.Show("windows")');
-  const groups = { social: "Mail, guild, channels, friends and guild-creation windows (reload)", town: "Stable, trainer, merchant, bags, loot and item dialogs (reload)",
-    system: "Game options, Edit Mode, keybinding and help windows (reload)", map: "World map, group finder, calendar and Legacy windows (reload)",
-    menus: "Right-click menus, dropdowns and more tooltips (reload)", tabs: "Tab buttons and the inside of the character pane (reload)", pvp: "Battleground windows (reload)" };
+  const groups = { social: "Mail, guild, channels, friends and guild-creation windows", town: "Stable, trainer, merchant, bags, loot and item dialogs",
+    system: "Game options, Edit Mode, keybinding and help windows", map: "World map, group finder, calendar and Legacy windows",
+    menus: "Right-click menus, dropdowns and more tooltips", tabs: "Tab buttons and the inside of the character pane", pvp: "Battleground windows" };
   for (const [key, label] of Object.entries(groups)) {
     addon.eval(`__click(${JSON.stringify(label)})`);
     expect(addon.eval(`return VanguardDB.profiles.Default.Windows.${key}`), `${key} switches off from its row`).toBe(false);
@@ -620,8 +621,8 @@ it("options: the pages, their nav order and each page's row count stay as they w
   const pages = addon.eval("local out = {} for i, p in ipairs(ns.Options.PAGES) do out[i] = p.key .. '|' .. p.title .. '|' .. p.order .. '|' .. #p.rows() end return out");
   // Adding or removing a row (or a module, which adds a row under Modules) changes these counts on purpose.
   expect(pages, "the page list and each page's row count (a new row is one more on its page)").toEqual([
-    "general|General|10|39", "modules|Modules|20|75", "unitframes|Unit frames|30|29", "raid|Raid frames|40|25",
-    "actionbars|Action bars|60|73", "quests|Quests|70|30", "bars|Bars and bags|80|17", "map|Map|81|30", "chat|Chat|82|49", "windows|Game windows|83|42", "cooldowns|Cooldowns|83.5|13", "tools|Combat tools|84|37", "town|Town and gear|85|51", "profiles|Profiles|90|22",
+    "general|General|10|39", "modules|Modules|20|88", "unitframes|Unit frames|30|29", "raid|Raid frames|40|25",
+    "actionbars|Action bars|60|74", "quests|Quests|70|30", "bars|Bars and bags|80|17", "map|Map|81|36", "chat|Chat|82|69", "windows|Game windows|83|46", "cooldowns|Cooldowns|83.5|13", "tools|Combat tools|84|37", "town|Town and gear|85|57", "profiles|Profiles|90|22",
     "feedback|Feedback|100|7", "healing|Healing|45|44", "talents|Talents|47|7", "nameplates|Nameplates|65|15",
     "situations|Situations|86|17", "clickcast|Click casting|46|11",
   ]);
@@ -925,9 +926,9 @@ it("options: the General page's captions are nouns, with a note under the two th
   addon.eval('ns.Options.Show("general")');
   // A caption's top and bottom edges on screen, or null when it isn't shown.
   const at = (text) => (addon.texts(text)[0] || {}).rect || null;
-  for (const caption of ["Safer colours (reload)", "Faction look", "Theme variant", "Corners", "Window ornaments", "Pixel-perfect scale"]) expect(at(caption), caption + " is a caption on the page").not.toBeNull();
-  for (const old of ["Color assist: friendly blue, neutral yellow, hostile vermilion (reload)", "Theme variant: surfaces and text", "Corners: square or rounded panels", "Window ornaments: a brass rule or corners on large windows", "Pixel perfect scale"]) expect(at(old), old + " is gone").toBeNull();
-  const notes = [["Safer colours (reload)", "Friendly blue, neutral yellow, hostile vermilion, and colours for Magic, Curse, Disease and Poison that stay apart."], ["Window ornaments", "A brass rule or corners on large windows."]];
+  for (const caption of ["Safer colours", "Faction look", "Theme variant", "Corners", "Window ornaments", "Pixel-perfect scale"]) expect(at(caption), caption + " is a caption on the page").not.toBeNull();
+  for (const old of ["Color assist: friendly blue, neutral yellow, hostile vermilion", "Theme variant: surfaces and text", "Corners: square or rounded panels", "Window ornaments: a brass rule or corners on large windows", "Pixel perfect scale"]) expect(at(old), old + " is gone").toBeNull();
+  const notes = [["Safer colours", "Friendly blue, neutral yellow, hostile vermilion, and colours for Magic, Curse, Disease and Poison that stay apart."], ["Window ornaments", "A brass rule or corners on large windows."]];
   for (const [caption, note] of notes) {
     const row = at(caption), under = at(note);
     expect(under.top < row.bottom && row.bottom - under.top <= 8, "the note sits right under " + caption).toBe(true);
