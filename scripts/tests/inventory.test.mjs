@@ -101,3 +101,30 @@ it("inventory: a client that can't say your name or read bags stores nothing and
     return { kept = before, bags = record.bags }`);
   expect(nameless, "no name: a record kept nowhere").toEqual({ kept: 1, bags: {} });
 });
+
+it("inventory: each record keeps level, money, rested XP and time played, and /vg alts lists them", () => {
+  const addon = loggedIn(BAGS_ENV + "GetMoney = function() return 34567 end GetXPExhaustion = function() return 500 end UnitXPMax = function() return 2000 end UnitLevel = function() return 12 end", { savedVariables: ALTS });
+  expect([mine(addon).level, mine(addon).money, mine(addon).rested], "read at login").toEqual([12, 34567, 25]);
+  addon.fire("TIME_PLAYED_MSG", 90000 + 4 * 3600, 100);
+  addon.eval("GetXPExhaustion = function() return nil end");
+  addon.fire("PLAYER_LOGOUT");
+  expect([mine(addon).played, mine(addon).rested], "the played total is kept; no rested XP clears it").toEqual([90000 + 4 * 3600, undefined]);
+  addon.eval("VanguardDB.inventory['ForeverTest-Alliance'].Alpha.money = 1000 VanguardDB.inventory['ForeverTest-Alliance'].Alpha.level = 5 VanguardDB.inventory['ForeverTest-Alliance'].Alpha.rested = 40 VanguardDB.inventory['ForeverTest-Alliance'].Alpha.played = 7200");
+  addon.slash("alts");
+  expect(chatHas(addon, /Alpha: level 5, .*, 40% rested, played 2h$/), "a known character's whole line").toBe(true);
+  expect(chatHas(addon, /Bravo: level \?$/), "one with nothing known").toBe(true);
+  expect(chatHas(addon, /Tester: level 12, .*, played 1d 5h$/), "this character, with a day and hours played").toBe(true);
+  expect(chatHas(addon, /All together: /), "and the money of all of them").toBe(true);
+});
+
+it("inventory: /vg alts <name> lists that character's items, biggest first, and says when nobody has the name", () => {
+  const addon = loggedIn(BAGS_ENV, { savedVariables: ALTS });
+  addon.slash("alts alpha");
+  expect(chatHas(addon, /Alpha carries 1 kind\(s\) of item\.$/), "bags and bank together").toBe(true);
+  expect(chatHas(addon, /8 × /), "5 in the bags and 3 in the bank").toBe(true);
+  addon.eval("local r = VanguardDB.inventory['ForeverTest-Alliance'].Charlie for i = 1, 20 do r.bags[1000 + i] = i end r.bags[118] = 1 r.bags[119] = 1 r.bank[119] = 5")
+  addon.slash("alts Charlie");
+  expect(chatHas(addon, /20 × item 1020$/) && chatHas(addon, /6 × item 119$/), "the biggest stacks first").toBe(true);
+  addon.slash("alts nobody");
+  expect(chatHas(addon, /No character called nobody is remembered here/), "an unknown name").toBe(true);
+});
