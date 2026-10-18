@@ -93,6 +93,85 @@ local function floatingMover(window)
   pinTo(frame, key)
 end
 
+-- Tabs ------------------------------------------------------------------------------------
+
+-- The message groups a tab can show or hide, as the game names them.
+CW.GROUPS = {
+  { "SAY", "Say" }, { "YELL", "Yell" }, { "GUILD", "Guild" }, { "PARTY", "Party" }, { "RAID", "Raid" },
+  { "WHISPER", "Whispers" }, { "LOOT", "Loot" }, { "SYSTEM", "System messages" },
+}
+-- The longest tab name.
+CW.MAX_NAME = 16
+
+-- The window being edited on the Chat page (a chat window number; the main window when unset or gone).
+function CW.Editing()
+  for _, w in ipairs(CW.Windows()) do
+    if w[1] == CW.editing then return w[1], w[2], w[3] end
+  end
+  local main = CW.Windows()[1]
+  return main and main[1], main and main[2], main and main[3]
+end
+
+-- get/set for the tab picker: the choices are the windows showing; a pick rebuilds the page.
+function CW.TabSetting()
+  return function() return (CW.Editing()) end,
+    function(v) CW.editing = v ns.Options.RebuildPage("chat") end
+end
+
+-- The windows showing as choices { index, name }.
+function CW.TabChoices()
+  local out = {}
+  for _, w in ipairs(CW.Windows()) do out[#out + 1] = { w[1], w[3] } end
+  return out
+end
+
+-- get/set for whether the edited tab shows a message group.
+function CW.GroupSetting(group)
+  return function()
+    local _, frame = CW.Editing()
+    return frame ~= nil and type(ChatFrame_ContainsMessageGroup) == "function" and ChatFrame_ContainsMessageGroup(frame, group) == true
+  end, function(v)
+    local _, frame = CW.Editing()
+    local call = v and ChatFrame_AddMessageGroup or ChatFrame_RemoveMessageGroup
+    if frame and type(call) == "function" then call(frame, group) end
+  end
+end
+
+-- A tab name as typed: trimmed, with no escape codes, at most CW.MAX_NAME characters (or nil).
+function CW.CleanName(text)
+  local name = (type(text) == "string" and text or ""):gsub("|", ""):match("^%s*(.-)%s*$"):sub(1, CW.MAX_NAME)
+  return name ~= "" and name or nil
+end
+
+-- Makes a new chat tab, out of combat, and selects it for editing.
+function CW.New(text)
+  local name = CW.CleanName(text)
+  if not name then return ns.Chat("Type a name for the new tab.") end
+  if type(FCF_OpenNewWindow) ~= "function" then return ns.Chat("This client can't make a chat tab.") end
+  ns.OutOfCombat(function()
+    local frame = FCF_OpenNewWindow(name)
+    CW.editing = frame and tonumber((frame:GetName() or ""):match("(%d+)$")) or CW.editing
+    ns.Options.RebuildPage("chat")
+  end, "chat new tab")
+  ns.HideText()
+end
+
+-- Renames the edited tab.
+function CW.Rename(text)
+  local name, _, frame = CW.CleanName(text), CW.Editing()
+  if not (name and frame and type(FCF_SetWindowName) == "function") then return ns.Chat("Type a name for the tab.") end
+  FCF_SetWindowName(frame, name)
+  ns.HideText()
+  ns.Options.RebuildPage("chat")
+end
+
+-- Closes the edited tab (never the main one), out of combat.
+function CW.Close()
+  local index, frame = CW.Editing()
+  if not frame or index == 1 or type(FCF_Close) ~= "function" then return ns.Chat("The main chat tab can't be closed.") end
+  ns.OutOfCombat(function() FCF_Close(frame) CW.editing = nil ns.Options.RebuildPage("chat") end, "chat close tab")
+end
+
 -- Module entry point (Core/Modules.lua).
 function CW.Enable(settings)
   CW.settings = settings

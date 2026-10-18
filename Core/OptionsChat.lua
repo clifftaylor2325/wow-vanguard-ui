@@ -91,6 +91,18 @@ local function chatWindowsRows()
   return rows
 end
 
+-- Chat tabs: pick a tab, make, rename or close one, and choose what it shows.
+local function chatTabRows()
+  local CW = ns.GetModule("ChatWindows")
+  local rows = { { "header", "Chat tabs" }, { "text", "Pick a tab, then rename or close it, or choose what it shows." },
+    { "cycle", "Tab", CW.TabChoices(), CW.TabSetting() },
+    { "button", "New chat tab", function() ns.AskText("Name the new tab", CW.New, "Make") end },
+    { "button", "Rename this tab", function() ns.AskText("New name for this tab", CW.Rename, "Rename") end },
+    { "button", "Close this tab", CW.Close } }
+  for _, g in ipairs(CW.GROUPS) do rows[#rows + 1] = check("Show " .. g[2], CW.GroupSetting(g[1])) end
+  return rows
+end
+
 -- Chat history: the switch, how much is kept, whispers and a Clear button.
 local function chatHistoryRows()
   local CHH = ns.GetModule("ChatHistory")
@@ -106,7 +118,7 @@ end
 
 -- The Chat page: the chat window, chat watch, the chat filter and the group board (Modules/GroupBoard.lua adds its card).
 local function chatPageRows()
-  return append(append(append(append(append(chatWindowRows(), chatWindowsRows()), chatRows()), chatHistoryRows()), chatWatchRows()), chatFilterRows())
+  return append(append(append(append(append(append(chatWindowRows(), chatWindowsRows()), chatTabRows()), chatRows()), chatHistoryRows()), chatWatchRows()), chatFilterRows())
 end
 
 O.AddPage({ key = "chat", title = "Chat", icon = "NavChat", order = 82, rows = chatPageRows })

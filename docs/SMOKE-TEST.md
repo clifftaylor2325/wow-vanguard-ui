@@ -1249,6 +1249,12 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 - Expect: every group chat line appears in its window for the whole fight, and no error popup appears. Lines the game hides from addons show as the game gives them (no link on a web address in them, not shortened, not in the Filtered tab). `/vg errors` has no `chat filter` or `chat filter links` line. [Needs in game: whether comparing a hidden chat line raised before this change; the early return makes the question moot, but the fight is the proof.]
 - If it fails, paste: `/vg errors` and which chat event went quiet.
 
+### 15.6e Chat tabs
+
+- Do: `/vg` → Chat → Chat tabs. Click New chat tab, type `Loot`, Make. With Loot picked, tick Show Loot and untick Show Say; loot something and say something. Click Rename this tab, type `Drops`. Pick General, try Close this tab. Pick Drops, Close this tab. Do the same in combat.
+- Expect: a new tab appears and is picked; it shows loot and not say; the rename shows on the tab; closing General does nothing and says so in chat; Drops closes; in combat the new tab or close waits until the fight ends. `/vg errors` is empty. [Needs in game: FCF_OpenNewWindow, FCF_SetWindowName, FCF_Close, ChatFrame_AddMessageGroup / RemoveMessageGroup / ContainsMessageGroup behave as used, and the group names (SAY, YELL, GUILD, PARTY, RAID, WHISPER, LOOT, SYSTEM) match.]
+- If it fails, paste: `/vg errors` and what the tab did.
+
 ## 16. Realm and ruleset
 
 ### 16.1 Realm, ruleset and names
