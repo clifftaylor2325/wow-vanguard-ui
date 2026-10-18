@@ -46,6 +46,18 @@ it("chat filter: off until switched on; on makes the Filtered tab and catches go
   expect(addon.eval("return #ns.errors"), "no errors").toBe(0);
 });
 
+it("chat filter: while chat is restricted a line is left alone, then caught again when it ends", () => {
+  const addon = filtering(`Enum.AddOnRestrictionType = { Combat = 0, Encounter = 1, ChallengeMode = 2, PvPMatch = 3, Map = 4, Chat = 5 }
+  Enum.AddOnRestrictionState = { Inactive = 0, Activating = 1, Active = 2 }
+  __restricted = {}
+  C_RestrictedActions = { GetAddOnRestrictionState = function(t) return __restricted[t] or 0 end }
+  C_ChatInfo = { InChatMessagingLockdown = function() return false end }`);
+  addon.eval("__restricted[5] = 2");
+  expect(deliver(addon, GOLD, "Goldy"), "restricted: not read").toBe(false);
+  addon.eval("__restricted[5] = 0");
+  expect(deliver(addon, GOLD, "Goldy2"), "unrestricted: caught").toBe(true);
+});
+
 it("chat filter: the same window is found again, not made twice; say and yell are filtered, whispers and guild are not", () => {
   const addon = filtering();
   addon.fire("PLAYER_ENTERING_WORLD");

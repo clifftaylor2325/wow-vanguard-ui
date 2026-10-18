@@ -1,7 +1,7 @@
 -- Small helpers at a merchant, and a quieter error line:
 --   * repair everything with your own gold when you open a merchant who repairs;
 --   * sell your gray items (the server limits how fast items sell, so what's
---     left is tried again a few times);
+--     left is tried again a few times, only while the merchant stays open);
 --   * sell the items on your own sell list, ask first, and buy a stack or the most you can in one click
 --     (off until switched on; Modules/MerchantBulk.lua);
 --   * drop the error messages that only repeat what the action bar already
@@ -62,8 +62,10 @@ function MC.Junk()
   return out
 end
 
--- Sells what junk is left, then tries again shortly while some remains and tries are left.
+-- Sells what junk is left, then tries again shortly while some remains and tries are left; only while a
+-- merchant is open (using a bag item with none open would use or equip it), before every try.
 function MC.SellJunk(tries)
+  if not MC.Trading() then return end
   local junk = MC.Junk()
   if #junk == 0 then return end
   for _, spot in ipairs(junk) do C_Container.UseContainerItem(spot[1], spot[2]) end

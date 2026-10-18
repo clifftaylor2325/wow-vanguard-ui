@@ -186,11 +186,13 @@ local function lookTextRows()
   }
 end
 
--- General, part one: accent, color assist, font, text size, variant, ornaments, scale and theme reset.
+-- General, part one: accent, safer colours, font, text size, variant, ornaments, scale and theme reset.
 local function lookRows()
   local rows = { { "header", "Look" }, { "preview" }, { "swatches" },
-    check("Color assist (reload)", themeSetting("colorAssist")),
-    { "text", "Friendly blue, neutral yellow, hostile vermilion.", "note" } }
+    check("Safer colours (reload)", themeSetting("colorAssist")),
+    { "text", "Friendly blue, neutral yellow, hostile vermilion, and colours for Magic, Curse, Disease and Poison that stay apart.", "note" },
+    check("Follow the game's colour-blind mode (reload)", themeSetting("colorAssistGame")),
+    { "text", "Turns Safer colours on while the game's own colour-blind mode is on.", "note" } }
   for _, row in ipairs(lookTextRows()) do rows[#rows + 1] = row end
   rows[#rows + 1] = check("Pixel-perfect scale", function() return T.Settings().pixelScale end,
     function(v) T.SetPixelScale(v); if not v then O.NeedReload() end end)
@@ -319,6 +321,7 @@ O.MODULE_INFO = {
   Tooltips = { "Tooltips", "Themed tooltips in a movable corner." },
   Inventory = { "Inventory", "Remembers your characters' bags and bank; item tooltips say who else has the item." },
   Upgrades = { "Gear upgrades", "Compares gear with what you wear by stat weights for your class and role: a tooltip line, arrows in the bag and on quest rewards, and the auction house's Upgrades list." },
+  PetStable = { "Pet stable", "/vg pets lists your pets with level, loyalty, happiness and progress, and a stable master's window says how many you have and what the next slot costs." },
   SpellRanks = { "Spell ranks", "Notices older spell ranks on your bars and swaps them when you ask; remembers what trainers teach and at what level (both off until switched on)." },
   VendorMemory = { "Vendor memory", "Remembers what each merchant sells; tooltips and the stock list say where to buy." },
   AuctionHelper = { "Auction helper", "Shopping lists with Deals and Upgrades, a sell card that suggests an undercut and posts, prices in tooltips from your scans, and an undercut check on your auctions." },

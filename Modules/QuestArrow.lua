@@ -97,6 +97,7 @@ end
 
 -- Your spot on a map as x, y (0 to 1); nil when the client won't say.
 function QA.PlayerSpot(mapID)
+  if ns.Restricted("Map") then return nil end
   local pos = call(C_Map, "GetPlayerMapPosition", mapID, "player")
   if type(pos) ~= "table" or type(pos.GetXY) ~= "function" then return nil end
   local x, y = pos:GetXY()

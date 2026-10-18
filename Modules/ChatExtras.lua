@@ -52,6 +52,7 @@ end
 -- Chat filter: hands the game the message with its addresses linked (or unchanged).
 -- Hidden or missing text passes before anything reads it (comparing it could raise inside the game's chat handler).
 function CX.Filter(_, _, text, ...)
+  if ns.Restricted("Chat") then return false end
   if ns.IsSecret(text) or type(text) ~= "string" then return false end
   local linked = CX.LinkURLs(text)
   if linked ~= text then return false, linked, ... end

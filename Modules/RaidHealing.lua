@@ -101,6 +101,15 @@ local function calculator()
   return calc
 end
 
+-- A number a client call gives for a unit, or a hidden value untouched (it goes straight to a bar,
+-- never tested or compared); nil on a client without the call, or for anything else.
+local function ask(fn, unit)
+  if type(fn) ~= "function" then return nil end
+  local value = fn(unit)
+  if ns.IsSecret(value) or type(value) == "number" then return value end
+  return nil
+end
+
 -- max health, incoming heals and shields for a unit (any may be hidden or nil).
 function RH.Prediction(unit)
   local c = calculator()
@@ -108,14 +117,12 @@ function RH.Prediction(unit)
     UnitGetDetailedHealPrediction(unit, "player", c)
     return c:GetMaximumHealth(), c:GetIncomingHeals(), c:GetTotalDamageAbsorbs()
   end
-  local incoming = type(UnitGetIncomingHeals) == "function" and UnitGetIncomingHeals(unit) or nil
-  local shields = type(UnitGetTotalAbsorbs) == "function" and UnitGetTotalAbsorbs(unit) or nil
-  return UnitHealthMax(unit), incoming, shields
+  return UnitHealthMax(unit), ask(UnitGetIncomingHeals, unit), ask(UnitGetTotalAbsorbs, unit)
 end
 
 -- The threat strip color for a unit, or nil when it has no aggro (or its threat is hidden).
 function RH.ThreatColor(unit)
-  local status = type(UnitThreatSituation) == "function" and UnitThreatSituation(unit) or nil
+  local status = ask(UnitThreatSituation, unit)
   if ns.IsSecret(status) or type(status) ~= "number" or status < 1 then return nil end
   return T.TOKENS["threat" .. math.min(status, 3)]
 end

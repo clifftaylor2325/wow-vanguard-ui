@@ -342,7 +342,7 @@ local function fillMenu()
   local d, shown = menu.owner, math.min(#menu.choices, MENU_ROWS)
   for i = 1, shown do fillItem(i, menu.choices[menu.offset + i], d.get(), d.set) end
   for i = shown + 1, #menu.items do menu.items[i]:Hide() end
-  menu:SetSize(d:GetWidth(), shown * MENU_ROW + 2)
+  menu:SetSize(d.menuWidth or d:GetWidth(), shown * MENU_ROW + 2)
   placeMenuThumb(shown)
 end
 

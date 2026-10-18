@@ -78,6 +78,16 @@ it("the question says 'and N more' past five items; a sale retries what is left 
   expect(used(addon), "in combat: nothing is used").toEqual({});
 });
 
+it("the sell offer is a danger question (Enter never answers it) and sells only the rows it showed, still holding what was shown", () => {
+  const addon = loggedIn(BULK_ENV);
+  set(addon, "s.listSell = true s.junkList[159] = true s.junkList[1001] = true");
+  addon.fire("MERCHANT_SHOW");
+  expect(addon.eval("return { Vanguard_Question.confirm == Vanguard_Question.sure, Vanguard_Question.confirm.kind }"), "a danger button: Enter never presses it").toEqual([true, "danger"]);
+  addon.eval("__bag[8] = { itemID = 159, stackCount = 3 } __bag[6].stackCount = 9 __bag[7] = { itemID = 4540 }");
+  addon.click("Vanguard_Question.confirm");
+  expect(used(addon), "the new stack, the stack that grew and the slot that holds something else are not sold; the shown stack is").toEqual([1]);
+});
+
 it("/vg sell sells every stack of one item after a question, only at a merchant", () => {
   const addon = loggedIn(BULK_ENV);
   addon.slash("sell");

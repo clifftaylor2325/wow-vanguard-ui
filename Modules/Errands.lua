@@ -198,15 +198,22 @@ end
 
 -- Keep stocked: buying -----------------------------------------------------------------------
 
--- A merchant item's price, how many that price buys, and how many are left (modern table, else the old call).
+-- A merchant item's price, how many that price buys, how many are left (modern table, else the old call),
+-- and whether it costs more than gold (the table says so; else the cost call).
 local function merchantInfo(i)
   local api = C_MerchantFrame and C_MerchantFrame.GetItemInfo
   if type(api) == "function" then
     local info = api(i)
-    if type(info) == "table" then return info.price, info.stackCount, info.numAvailable end
+    if type(info) == "table" then return info.price, info.stackCount, info.numAvailable, info.hasExtendedCost == true end
   end
   local _, _, price, stack, left = ask("GetMerchantItemInfo", i)
-  return price, stack, left
+  return price, stack, left, false
+end
+
+-- How many of an item you carry (nil when the client can't say).
+local function owned(id)
+  local count = C_Item and C_Item.GetItemCount
+  return type(count) == "function" and ns.PlainNumber(count(id)) or nil
 end
 
 -- How many of merchant item i your list wants (0 for none), and its item ID.
@@ -214,19 +221,24 @@ local function wanted(i)
   local id = ER.ItemID(ask("GetMerchantItemLink", i))
   local goal = id and ER.settings.stockList[id]
   if not goal then return 0, id end
-  local count = C_Item and C_Item.GetItemCount
-  local have = type(count) == "function" and ns.PlainNumber(count(id)) or 0
-  return math.max(0, goal - have), id
+  return math.max(0, goal - (owned(id) or 0)), id
+end
+
+-- The order for merchant item i, or nil: an item your list wants, in stock, bought for gold alone
+-- (an item priced in honor, badges or other items reads 0 copper and would be "bought" for nothing).
+local function orderFor(i)
+  local need, id = wanted(i)
+  local price, stack, left, extended = merchantInfo(i)
+  price, stack = ns.PlainNumber(price), math.max(ns.PlainNumber(stack) or 1, 1)
+  if need <= 0 or not price or price <= 0 or extended or ns.GetModule("Merchant").ExtendedCost(i) or ns.PlainNumber(left) == 0 then return nil end
+  return { index = i, id = id, need = need, unit = price / stack, stack = stack }
 end
 
 -- What this merchant can sell toward your list: { index, id, need, unit price, stack } per item.
 function ER.Orders()
   local out = {}
   for i = 1, ns.PlainNumber(ask("GetMerchantNumItems")) or 0 do
-    local need, id = wanted(i)
-    local price, stack, left = merchantInfo(i)
-    price, stack = ns.PlainNumber(price), math.max(ns.PlainNumber(stack) or 1, 1)
-    if need > 0 and price and ns.PlainNumber(left) ~= 0 then out[#out + 1] = { index = i, id = id, need = need, unit = price / stack, stack = stack } end
+    out[#out + 1] = orderFor(i)
   end
   return out
 end
@@ -245,25 +257,47 @@ local function wholeStacks(count, stack)
 end
 
 -- Buys the next chunk (a stack at most, in whole merchant stacks) of the first order if you can pay; false when done.
+-- The game answers a buy later and says nothing when it fails, so the chunk is only noted as pending here
+-- (with how many you carried): settle notes what really arrived.
 local function buyChunk(run)
   local order = run.orders[1]
   if not order then return false end
   local count = wholeStacks(math.min(order.need, math.max(ns.PlainNumber(ask("GetMerchantItemMaxStack", order.index)) or 1, 1)), order.stack)
-  local cost = math.ceil(order.unit * count)
-  if cost > cash() then return false end
+  if math.ceil(order.unit * count) > cash() then return false end
+  run.pending = { order = order, count = count, before = owned(order.id) }
   ask("BuyMerchantItem", order.index, count)
-  record(run, order, count, cost)
   return true
 end
 
--- Buys a chunk, then the next shortly after; says what it bought once done
--- (or out of money, or the merchant closed, or combat started).
+-- Notes what the last purchase brought (how many more of the item you carry now, up to what was bought); false
+-- when it fell short (bags full, a stock limit, not enough money), which ends the run. A client that can't
+-- count items is trusted. Running it twice notes nothing the second time.
+local function settle(run)
+  local p = run.pending
+  if not p then return true end
+  run.pending = nil
+  local now, got = owned(p.order.id), p.count
+  if now and p.before then got = math.max(0, math.min(now - p.before, p.count)) end
+  if got > 0 then record(run, p.order, got, math.ceil(p.order.unit * got)) end
+  if got < p.count then run.short = p.order.id end
+  return got == p.count
+end
+
+-- Says what a run bought, and which item stopped it short.
+local function report(run)
+  for id, n in pairs(run.bought) do ns.Chat(string.format("Bought %d × %s for %s.", n, itemName(id), money(run.spent[id]))) end
+  if run.short then ns.Chat(string.format("Stopped buying %s: the last purchase did not arrive in full (bags full, a stock limit or not enough money?).", itemName(run.short))) end
+end
+
+-- Notes the last purchase, then buys a chunk and checks again shortly after; says what it bought once done
+-- (or a purchase fell short, or out of money, or the merchant closed, or combat started).
 function ER.StockNext()
   local run = ER.stocking
   if not run then return end
-  if ER.merchantOpen and not ns.InCombat() and buyChunk(run) then return later(ER.BUY_EVERY, ER.StockNext) end
+  local arrived = settle(run)
+  if arrived and ER.merchantOpen and not ns.InCombat() and buyChunk(run) then return later(ER.BUY_EVERY, ER.StockNext) end
   ER.stocking = nil
-  for id, n in pairs(run.bought) do ns.Chat(string.format("Bought %d × %s for %s.", n, itemName(id), money(run.spent[id]))) end
+  report(run)
 end
 
 -- A merchant opened: top up your stock list (not in combat).

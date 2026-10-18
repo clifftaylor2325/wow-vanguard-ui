@@ -62,10 +62,10 @@ The surfaces (`inset`, `panel`, `raised`, `raisedHover`, `divider`, `borderHi`) 
 | | `unknown` | `808080` | A value the client will not tell (reserved; no module uses it yet). |
 | Reaction | `hostile` | `cc4b45` | Hostile units (nameplates, unit frames). |
 | | `neutral` | `e0c24e` | Neutral units. |
-| | `friendly` | `4db86a` | Friendly units. With Color assist on (`colorAssist`, #235) the three reactions are `T.ASSIST`'s instead: friendly `4a9be8` (blue), neutral `e8d25a`, hostile `e0663a` (vermilion). |
+| | `friendly` | `4db86a` | Friendly units. With Safer colours on (`colorAssist`, #235; also on while the game's colour-blind mode is, `colorAssistGame`) the three reactions are `T.ASSIST`'s instead: friendly `4a9be8` (blue), neutral `e8d25a`, hostile `e0663a` (vermilion). |
 | Resources | `mana` / `rage` / `energy` / `focus` | `3e7be0` / `cf4a3e` / `e6c24a` / `e0893c` | Power bars. |
 | Threat | `threat1` / `threat2` / `threat3` | `e0c24e` / `ee8b3a` / `e0565b` | Yellow, orange, red threat. |
-| Dispel | `magic` / `curse` / `disease` / `poison` | `3c8cf0` / `9a55e0` / `b08a3a` / `3fa34d` | Debuff borders and the raid tile dispel wash. Every debuff icon also carries a type badge (#235): its letter (`Media/Icons/DispelMagic`, `DispelCurse`, `DispelDisease`, `DispelPoison`) in the type's colour on an `edge` backing at 0.8, half the icon (at least 8 units) in its top-left corner; on the client's aura engine each letter is mapped clear for every type but its own, so hidden types keep theirs. |
+| Dispel | `magic` / `curse` / `disease` / `poison` | `3c8cf0` / `9a55e0` / `b08a3a` / `3fa34d` | Debuff borders and the raid tile dispel wash. With Safer colours on they are `2f7fe0` / `d86ac0` / `e8b030` / `7ad0b0` (`T.ASSIST`), at least dE 18 apart under all three colour-vision filters. Every debuff icon also carries a type badge (#235): its letter (`Media/Icons/DispelMagic`, `DispelCurse`, `DispelDisease`, `DispelPoison`) with a corner mark (diamond, circle, square, triangle) drawn in the same glyph, in the type's colour on an `edge` backing at 0.8, 0.6 of the icon (at least 12 units) in its top-left corner; on the client's aura engine each letter is mapped clear for every type but its own, so hidden types keep theirs. |
 | | `dispel` | `cc4dff` | The dispel highlight when the client hides the debuff's type. |
 | Casts | `cast` | `e6a93a` | A cast. |
 | | `channel` | `4fc27a` | A channel. |
@@ -301,7 +301,8 @@ All in the profile's `theme` table (`T.Settings()`), exported with the profile; 
 | `barTexture` | `"vanguard"` | General → Bars → Bar texture | on reload; one material for every bar (#234): unit frames, raid tiles, cast bars, XP and reputation, the damage meter all fill with `T.BarTexture()`, and a test checks the whole HUD |
 | `smoothBars` | on | General → Bars → Smooth health and power bars | at once |
 | `hudShadow` | off | General → Bars → Soft shadows under frames | on reload |
-| `colorAssist` | off | General → Look → Color assist | on reload |
+| `colorAssist` | off | General → Look → Safer colours | on reload |
+| `colorAssistGame` | on | General → Look → Follow the game's colour-blind mode | on reload; Safer colours apply while the `colorblindMode` CVar is on |
 | `reduceMotion` | off | General → Motion and sound → Reduce motion | at once |
 | `sounds` | on | General → Motion and sound → Interface sounds | at once |
 

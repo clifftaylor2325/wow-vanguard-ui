@@ -170,6 +170,19 @@ it("unit frames on WoW Forever: levels, health percent, classification", () => {
   expect(retail.eval("return Vanguard_player.level == nil") === true && retail.eval("return Vanguard_player.healthText:GetText()") === "900", "elsewhere: no level, health as a value").toBeTruthy();
 });
 
+it("unit frames: a hidden percent text is handed on as it is, Dead wins over it, a plain percent still shows", () => {
+  const addon = loggedIn(UNITS_ENV + FOREVER_ENV + "CurveConstants = { ScaleTo100 = { __curve = true } } UnitHealthPercent = function() return 84 end", NO_RAID);
+  // HealthText with the percent format on, and string.format answering the percent's "%d%%" with `format` (a Lua value) when given.
+  const text = (setup, format) => addon.eval(`local UF = ns.GetModule("UnitFrames") UF.settings.healthFormat = "percent" ${setup}
+    __s = __wfgWorld.secret() local real = string.format
+    string.format = function(f, ...) if f == "%d%%" and ${format ? "true" : "false"} then return ${format || "nil"} end return real(f, ...) end
+    local ok, t = pcall(UF.HealthText, "player") string.format = real
+    return { ok, t == __s, tostring(t) }`);
+  expect(text("", "__s"), "a percent the client hides comes back as it is, with no error").toEqual([true, true, expect.any(String)]);
+  expect(text("", ""), "a plain percent").toEqual([true, false, "84%"]);
+  expect(text("UnitIsDeadOrGhost = function() return true end", "__s"), "Dead wins over the percent").toEqual([true, false, "Dead"]);
+});
+
 it("a ?? (boss or far higher) level reads in the hardest difficulty color, not the easiest", () => {
   const addon = loggedIn(FOREVER_ENV, NO_RAID);
   addon.world.setUnit("target", { name: "TEST-ONLY Skull", hp: 1, maxhp: 1, reaction: 2, level: -1 });

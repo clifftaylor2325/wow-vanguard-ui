@@ -187,8 +187,19 @@ TT.itemLines = {}
 
 -- Adds fn(tt, link) to every item tooltip, after Vanguard's own lines: the shared
 -- extension point (Vendor memory's "Sold by", auction prices). link is a plain item link.
+-- It works with the Tooltips module off too: the first line added installs the item hook.
 function TT.AddItemLines(fn)
   TT.itemLines[#TT.itemLines + 1] = fn
+  TT.HookItems()
+end
+
+-- The module's own item lines (sell price, count, ID), as switched on; none while the module is off.
+local function ownItemLines(tt, link)
+  local on = TT.settings
+  if not on then return end
+  if on.sellPrice then addPrice(tt, link) end
+  if on.itemCount then addCount(tt, link) end
+  if on.itemID then addID(tt, link) end
 end
 
 -- An item tooltip was filled in: add the switched-on lines, then other modules' (one
@@ -197,9 +208,7 @@ function TT.OnItem(tt)
   if not tt.GetItem then return end
   local _, link = tt:GetItem()
   if ns.IsSecret(link) or type(link) ~= "string" then return end
-  if TT.settings.sellPrice then addPrice(tt, link) end
-  if TT.settings.itemCount then addCount(tt, link) end
-  if TT.settings.itemID then addID(tt, link) end
+  ownItemLines(tt, link)
   for _, fn in ipairs(TT.itemLines) do ns.Try("tooltip lines", fn, tt, link) end
 end
 
@@ -216,10 +225,21 @@ local function hookFilled(kind, script, fn)
   if tt and tt.HasScript and tt:HasScript(script) then tt:HookScript(script, fn) end
 end
 
+-- Whether the item tooltip hook is in place: it is made once, by the first item line added
+-- (other modules') or by Enable, whichever comes first, and does not depend on this module being on.
+local itemsHooked = false
+
+-- Hooks item tooltips once (the module's own lines when it is on, and every module's added lines).
+function TT.HookItems()
+  if itemsHooked then return end
+  itemsHooked = true
+  hookFilled("Item", "OnTooltipSetItem", TT.OnItem)
+end
+
 -- Decorates unit tooltips and adds sell prices to item tooltips as the client fills them.
 local function hookTooltips()
   hookFilled("Unit", "OnTooltipSetUnit", TT.OnUnit)
-  hookFilled("Item", "OnTooltipSetItem", TT.OnItem)
+  TT.HookItems()
 end
 
 -- Anchoring --------------------------------------------------------------------------------

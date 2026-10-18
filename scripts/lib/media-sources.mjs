@@ -130,6 +130,16 @@ function knob(ring) {
   });
 }
 
+// A round minimap's disc on a 256 px canvas (radius 127, so a clear pixel stays inside the edge): the map's mask, its
+// backing and the mask on the bands that cross it. With `ring` set (texels) it is only the outline, that wide.
+function disc(ring) {
+  return fill(image(256, 256), (x, y) => {
+    const d = Math.hypot(x + 0.5 - 128, y + 0.5 - 128);
+    const inner = ring ? clamp01(127 - ring - d + 0.5) : 0;
+    return [1, 1, 1, clamp01(127 - d + 0.5) - inner];
+  });
+}
+
 // The knob's shade: the crescent under its lit top-left edge, a white disc less one shifted up and left, so the
 // theme's shade color darkens the lower right of the knob.
 function knobShade() {
@@ -157,6 +167,10 @@ export const TEXTURES = {
   Knob: () => knob(0),
   KnobLine: () => knob(3),
   KnobShade: knobShade,
+  // A round minimap (the Minimap shape setting): the disc, which masks and backs the map, and its outline (3 texels is
+  // about two pixels on a 180-unit map).
+  RoundDisc: () => disc(0),
+  RoundRing: () => disc(3),
   // A small filled diamond (minimap corners, the assist mark), on a 16-unit grid.
   Diamond: () => draw(image(16, 16), 16, [poly([[8, 1], [15, 8], [8, 15], [1, 8]])]),
   // Shadow (filled) and glow (hollow) share the soft falloff.
@@ -189,8 +203,11 @@ export const TEXTURES = {
 
 // An icon's stroke, in grid units: two pixels where icons are shown (16 px).
 const STROKE = 2;
-// The dispel badge letters' stroke: bolder, since they're shown at about 8 px.
-const LETTER = 2.5;
+// The dispel badge letters' stroke, bolder than STROKE since they're shown at about 12 px, with the
+// top-right corner left to the type's mark.
+const LETTER_SMALL = 2;
+// A dispel letter's points shrunk to 0.7 and moved to the lower left of the 16-unit cell.
+const dispelLetter = (points) => points.map(([x, y]) => [0.5 + x * 0.7, 4.6 + y * 0.7]);
 
 // Straight strokes through points, STROKE wide (or w). A level or upright
 // segment is a box with square ends, so with its points on whole grid units
@@ -230,11 +247,13 @@ const ICON_SHAPES = {
   Waiting: [box(1.5, 6.5, 4.5, 9.5, 1.5), box(6.5, 6.5, 9.5, 9.5, 1.5), box(11.5, 6.5, 14.5, 9.5, 1.5)],
   // The warn state's glyph (#235), filled so it reads at 10 px beside the check and the cross.
   Warn: [poly([[8, 1.5], [15, 14], [1, 14]])],
-  // Dispel type badges (#235): a bold letter each (Magic, Curse, Disease, Poison), read at 8 px.
-  DispelMagic: [...path([[3, 13.5], [3, 2.5], [8, 9], [13, 2.5], [13, 13.5]], LETTER)],
-  DispelCurse: [...path(arc(8.5, 8, 5.5, 5.5, 45, 315, 14), LETTER)],
-  DispelDisease: [...path([[3.5, 2.5], [3.5, 13.5]], LETTER), ...path([[3.5, 2.5], ...arc(7.5, 8, 5.5, 5.5, 90, -90, 12), [3.5, 13.5]], LETTER)],
-  DispelPoison: [...path([[4, 13.5], [4, 2.5]], LETTER), ...path([[4, 2.5], ...arc(8.5, 5.5, 4, 3, 90, -90, 10), [4, 8.5]], LETTER)],
+  // Dispel type badges (#235): a bold letter each (Magic, Curse, Disease, Poison) shrunk to the lower left, and a
+  // corner mark in the top right that differs per type (diamond, circle, square, triangle), so the type reads
+  // without the letter or its hue (shown at about 12 px).
+  DispelMagic: [...path(dispelLetter([[3, 13.5], [3, 2.5], [8, 9], [13, 2.5], [13, 13.5]]), LETTER_SMALL), poly([[13, 0.5], [15.5, 3], [13, 5.5], [10.5, 3]])],
+  DispelCurse: [...path(dispelLetter(arc(8.5, 8, 5.5, 5.5, 45, 315, 14)), LETTER_SMALL), poly(arc(13, 3, 2.5, 2.5, 0, 360, 14))],
+  DispelDisease: [...path(dispelLetter([[3.5, 2.5], [3.5, 13.5]]), LETTER_SMALL), ...path(dispelLetter([[3.5, 2.5], ...arc(7.5, 8, 5.5, 5.5, 90, -90, 12), [3.5, 13.5]]), LETTER_SMALL), box(10.5, 0.5, 15.5, 5.5)],
+  DispelPoison: [...path(dispelLetter([[4, 13.5], [4, 2.5]]), LETTER_SMALL), ...path(dispelLetter([[4, 2.5], ...arc(8.5, 5.5, 4, 3, 90, -90, 10), [4, 8.5]]), LETTER_SMALL), poly([[13, 0.5], [15.5, 5.5], [10.5, 5.5]])],
   // The quest marks for the quest dialog and quest log lines (F17), in place of the game's gossip
   // icons: an exclamation mark (a stem from the top, two units of air, a 2 x 2 dot) and a question
   // mark (a round hook that curls under on the left, a short stem, the same dot), tops and dots level.
