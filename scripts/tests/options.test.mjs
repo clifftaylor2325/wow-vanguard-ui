@@ -406,17 +406,21 @@ it("options: Up and Down walk the pages, Tab the rows, Enter presses one; other 
   expect(press(addon, "W"), "a key it doesn't use goes on to the game: you can still walk").toEqual(["general", true]);
   expect(press(addon, "SPACE")[1], "so do Space and Enter until a row has the keyboard").toBe(true);
   press(addon, "TAB");
-  expect(keyRow(addon), "Tab marks the first row that does something (the sample and the swatches are skipped)").toEqual(["Color assist (reload)", true, true]);
+  expect(keyRow(addon), "Tab marks the first row that does something (the sample and the swatches are skipped)").toEqual(["Safer colours (reload)", true, true]);
   press(addon, "TAB");
-  expect(keyRow(addon)[0], "Tab again: the next").toBe("Font");
+  expect(keyRow(addon)[0], "Tab again: the next").toBe("Follow the game's colour-blind mode (reload)");
+  press(addon, "TAB");
+  expect(keyRow(addon)[0], "and the next after it").toBe("Font");
   addon.keys({ shift: true });
+  press(addon, "TAB");
   press(addon, "TAB");
   press(addon, "TAB");
   addon.keys({ shift: false });
   const last = keyRow(addon);
   expect([last[0], last[2], addon.eval("return Vanguard_Options.found:IsShown()")], "Shift-Tab goes back, and past the first wraps to the last row, scrolled into view").toEqual([addon.eval("local rows = {} for _, w in ipairs(__wfgStub.frames) do if w.card and w:IsVisible() and w:GetObjectType() == 'Button' then rows[#rows + 1] = w end end table.sort(rows, function(a, b) return a.pageY < b.pageY end) return rows[#rows].caption"), true, true]);
   press(addon, "TAB");
-  expect(keyRow(addon), "and Tab from the last wraps to the first, scrolled back up").toEqual(["Color assist (reload)", true, true]);
+  expect(keyRow(addon), "and Tab from the last wraps to the first, scrolled back up").toEqual(["Safer colours (reload)", true, true]);
+  press(addon, "TAB");
   press(addon, "TAB");
   const font = addon.eval("return ns.Theme.Settings().font");
   expect([press(addon, "ENTER")[1], addon.eval("return ns.Theme.Settings().font") !== font], "Enter presses the row (it steps the font), and stops there").toEqual([false, true]);
@@ -616,7 +620,7 @@ it("options: the pages, their nav order and each page's row count stay as they w
   const pages = addon.eval("local out = {} for i, p in ipairs(ns.Options.PAGES) do out[i] = p.key .. '|' .. p.title .. '|' .. p.order .. '|' .. #p.rows() end return out");
   // Adding or removing a row (or a module, which adds a row under Modules) changes these counts on purpose.
   expect(pages, "the page list and each page's row count (a new row is one more on its page)").toEqual([
-    "general|General|10|37", "modules|Modules|20|75", "unitframes|Unit frames|30|29", "raid|Raid frames|40|25",
+    "general|General|10|39", "modules|Modules|20|75", "unitframes|Unit frames|30|29", "raid|Raid frames|40|25",
     "actionbars|Action bars|60|73", "quests|Quests|70|30", "bars|Bars and bags|80|17", "map|Map|81|30", "chat|Chat|82|49", "windows|Game windows|83|42", "cooldowns|Cooldowns|83.5|13", "tools|Combat tools|84|34", "town|Town and gear|85|51", "profiles|Profiles|90|22",
     "feedback|Feedback|100|7", "healing|Healing|45|44", "talents|Talents|47|7", "nameplates|Nameplates|65|15",
     "situations|Situations|86|17", "clickcast|Click casting|46|11",
@@ -921,9 +925,9 @@ it("options: the General page's captions are nouns, with a note under the two th
   addon.eval('ns.Options.Show("general")');
   // A caption's top and bottom edges on screen, or null when it isn't shown.
   const at = (text) => (addon.texts(text)[0] || {}).rect || null;
-  for (const caption of ["Color assist (reload)", "Faction look", "Theme variant", "Corners", "Window ornaments", "Pixel-perfect scale"]) expect(at(caption), caption + " is a caption on the page").not.toBeNull();
+  for (const caption of ["Safer colours (reload)", "Faction look", "Theme variant", "Corners", "Window ornaments", "Pixel-perfect scale"]) expect(at(caption), caption + " is a caption on the page").not.toBeNull();
   for (const old of ["Color assist: friendly blue, neutral yellow, hostile vermilion (reload)", "Theme variant: surfaces and text", "Corners: square or rounded panels", "Window ornaments: a brass rule or corners on large windows", "Pixel perfect scale"]) expect(at(old), old + " is gone").toBeNull();
-  const notes = [["Color assist (reload)", "Friendly blue, neutral yellow, hostile vermilion."], ["Window ornaments", "A brass rule or corners on large windows."]];
+  const notes = [["Safer colours (reload)", "Friendly blue, neutral yellow, hostile vermilion, and colours for Magic, Curse, Disease and Poison that stay apart."], ["Window ornaments", "A brass rule or corners on large windows."]];
   for (const [caption, note] of notes) {
     const row = at(caption), under = at(note);
     expect(under.top < row.bottom && row.bottom - under.top <= 8, "the note sits right under " + caption).toBe(true);
@@ -936,7 +940,7 @@ it("options: the General page's captions are nouns, with a note under the two th
   addon.eval('ns.Options.JumpTo("Window ornaments")');
   expect(addon.eval("return Vanguard_Options.found ~= nil and Vanguard_Options.found:IsShown()"), "a jump to the new caption marks its row").toBe(true);
   addon.eval('ns.Options.JumpTo("hostile vermilion")');
-  expect(addon.eval(`local f, n = Vanguard_Options.found, __fontString("Friendly blue, neutral yellow, hostile vermilion.")
+  expect(addon.eval(`local f, n = Vanguard_Options.found, __fontString("Friendly blue, neutral yellow, hostile vermilion, and colours for Magic, Curse, Disease and Poison that stay apart.")
     return { f:IsShown(), f:GetParent() == n:GetParent(), f:GetTop() == n:GetTop(), f:GetBottom() == n:GetBottom() }`), "a jump to a note marks it through its card (a font string holds no texture), over the note's text").toEqual([true, true, true, true]);
 });
 
