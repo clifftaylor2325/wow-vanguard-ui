@@ -431,3 +431,70 @@ it("the hover keys card: its key rows are list rows; the empty line is label tex
   expect([off[0], isTok(addon, off[1], "muted")], "the no-snippets note: small, muted").toEqual([small, true]);
   addon.eval("ns.Client.ProbeSnippets = nil");
 });
+
+// A click-casting string for a list of Lua binding tables (as written in Lua source).
+const encoded = (addon, list) => addon.eval(`return ns.Serialize.Encode("clickcast", { bindings = ${list} })`);
+
+// How many times the bindings were applied to the frames while fn ran (the module's ApplyAll, counted).
+function applies(addon, fn) {
+  addon.eval(`__applies, __realApply = 0, ${CC}.ApplyAll ${CC}.ApplyAll = function(...) __applies = __applies + 1 return __realApply(...) end`);
+  const result = fn();
+  addon.eval(`${CC}.ApplyAll = __realApply`);
+  return [result, addon.eval("return __applies")];
+}
+
+it("import: a good string replaces the bindings and applies them once, however many it holds", () => {
+  const addon = priest("", { savedVariables: WITH_FRAMES });
+  addon.eval(`${CC}.Add("BUTTON4", "target")`);
+  const list = Array.from({ length: 60 }, (_, i) => `{ key = "F${i}", action = "macro", value = "/cast Renew ${i}" }`).join(", ");
+  const text = encoded(addon, `{ ${list}, { key = "BUTTON2", action = "spell", value = "Renew", spellID = 139, rank = 1 }, { key = "F0", action = "target" }, { key = 1 } }`);
+  const [n, count] = applies(addon, () => addon.eval(`return ${CC}.Import(${JSON.stringify(text)})`));
+  expect(n, "60 macros and a spell (the second F0 replaced the first; the malformed entry was skipped)").toBe(61);
+  expect(count, "one pass over the frames, not two per binding").toBe(1);
+  expect(Object.keys(bindings(addon)).includes("BUTTON4"), "the old bindings are replaced").toBe(false);
+  expect([bindings(addon).F0, bindings(addon).BUTTON2], "the last of two for one key wins; the spell keeps its id and rank").toEqual(["target:nil:nil:nil", "spell:Renew:139:1"]);
+});
+
+it("import: a string that cannot be imported changes nothing (empty, too many, a text too long, no usable binding)", () => {
+  const addon = priest("", { savedVariables: WITH_FRAMES });
+  addon.eval(`${CC}.Add("BUTTON4", "target") ${CC}.Add("SHIFT-Q", "macro", "/say keep me")`);
+  const before = JSON.stringify(bindings(addon));
+  // A Lua list of n well-formed target bindings.
+  const many = (n) => `{ ${Array.from({ length: n }, (_, i) => `{ key = "F${i}", action = "target" }`).join(", ")} }`;
+  const tries = {
+    empty: [encoded(addon, "{}"), "no usable bindings in it"],
+    "all malformed": [encoded(addon, '{ { key = 1 }, { key = "BUTTON1", action = "teleport" }, { key = "", action = "target" }, { key = "A", action = "macro" } }'), "no usable bindings in it"],
+    "201 bindings": [encoded(addon, many(201)), "more than 200 bindings"],
+    "256 characters": [encoded(addon, `{ { key = "BUTTON1", action = "target" }, { key = "A", action = "macro", value = "${"x".repeat(256)}" } }`), "a text is longer than 255 characters"],
+  };
+  for (const [name, [text, why]] of Object.entries(tries)) {
+    const [result, count] = applies(addon, () => addon.eval(`local n, err = ${CC}.Import(${JSON.stringify(text)}) return { n or false, err }`));
+    expect([name, result, count], "refused with its reason, and nothing applied").toEqual([name, [false, why], 0]);
+    expect(JSON.stringify(bindings(addon)), `${name}: the old bindings are still there`).toBe(before);
+  }
+  expect(addon.eval(`return #${CC}.Bindings()`)).toBe(2);
+});
+
+it("import: the limits themselves are fine (200 bindings, a 255 character macro), and odd numbers are dropped", () => {
+  const addon = priest("", { savedVariables: WITH_FRAMES });
+  const list = Array.from({ length: 199 }, (_, i) => `{ key = "F${i}", action = "target" }`).join(", ");
+  const text = encoded(addon, `{ ${list}, { key = "A", action = "macro", value = "${"x".repeat(255)}" } }`);
+  expect(addon.eval(`return ${CC}.Import(${JSON.stringify(text)})`), "200 bindings, one with 255 characters").toBe(200);
+  const odd = encoded(addon, '{ { key = "BUTTON4", action = "spell", value = "Renew", spellID = 1.5, rank = "x" }, { key = "BUTTON5", action = "spell", value = "Renew", spellID = "139", rank = 2 } }');
+  addon.eval(`${CC}.Import(${JSON.stringify(odd)})`);
+  expect([bindings(addon).BUTTON4, bindings(addon).BUTTON5], "a fraction and text are no spell id or rank; a number in text is one").toEqual(["spell:Renew:139:nil", "spell:Renew:139:2"]);
+});
+
+it("import: the options window says why a string was refused, and the layout applies in one pass", () => {
+  const addon = priest("", { savedVariables: WITH_FRAMES });
+  addon.eval(`${CC}.Add("BUTTON4", "target")`);
+  addon.eval('ns.Options.Show("clickcast")');
+  addon.clearChat();
+  addon.eval('__click("Import")');
+  addon.type("Vanguard_TextEdit", encoded(addon, "{}"));
+  confirm(addon);
+  expect([chatHas(addon, /Can't import: no usable bindings in it\./), bindings(addon).BUTTON4], "empty string: told, and BUTTON4 is still bound").toEqual([true, "target:nil:nil:nil"]);
+  const [, count] = applies(addon, () => addon.eval(`${CC}.ApplyLayout(${CS}.Layout())`));
+  expect(count, "a layout of many keys applies once").toBe(1);
+  expect(bindings(addon).BUTTON3, "and still binds them").toBe("menu:nil:nil:nil");
+});
