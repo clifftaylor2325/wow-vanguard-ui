@@ -201,13 +201,6 @@ it("the panel's two plain lines: the empty-state line is label muted, the preset
 // TEST-ONLY inbox for Take all and Return all: a sale (money), a letter with two items from Bobalt, a plain letter, a
 // pay-on-delivery parcel from Carl, and a game master mail with money. The returned mails are noted in __returned.
 const BULK = `
-  local header = GetInboxHeaderInfo
-  GetInboxHeaderInfo = function(i)
-    local a, b, c, d, e, f, g, h, i2, j, k, l, m, n, o = header(i)
-    local x = __wfgWorld.mail[i]
-    if x then f, m = x.cod or 0, x.gm == true end
-    return a, b, c, d, e, f, g, h, i2, j, k, l, m, n, o
-  end
   __returned = {}
   ReturnInboxItem = function(i) __returned[#__returned + 1] = i end
   __wfgWorld.mail[2].itemCount = 2
@@ -266,4 +259,58 @@ it("Return all asks, then sends back the shown mail a player can have returned, 
   addon.eval("__wfgWorld.mail = { { sender = 'Mum', subject = 'Hello', itemCount = 0 } }");
   addon.slash("mail returnall");
   expect(chatHas(addon, /Return all: nothing to return/), "nothing to return").toBe(true);
+});
+
+it("a pay-on-delivery mail shows what it asks in its row, has no Take button, and Take never takes it", () => {
+  const addon = mailer(BULK);
+  addon.world.openMailWindow();
+  expect(rows(addon)[3], "Carl's row says the amount due").toBe("Carl: Pay me (1 item, pay 1s 0c on delivery)");
+  expect(addon.eval("local r = Vanguard_MailTools.rows return { r[2].take:IsShown(), r[4].take:IsShown() }"), "no Take button on the parcel").toEqual([true, false]);
+  addon.eval("Vanguard_MailTools.rows[4].take:Click()");
+  addon.eval(`${MT}.Take(${MT}.Read(4))`);
+  expect(taken(addon), "neither the click nor a direct call took it").toEqual({});
+  expect(chatHas(addon, /that one asks for payment on delivery/), "and chat says why").toBe(true);
+  addon.eval("__wfgWorld.mail[4].money = 50");
+  expect(say(addon, "mail carl", /4\. Carl: Pay me \(50c, 1 item, pay 1s 0c on delivery\)/), "/vg mail shows it too").toBe(true);
+  expect(addon.eval("return #ns.errors"), "no errors").toBe(0);
+});
+
+it("Take refuses a row whose mail is no longer at its place, even when the sender and subject match", () => {
+  const addon = mailer(BULK);
+  addon.world.openMailWindow();
+  addon.eval("__wfgWorld.mail[2] = { sender = 'Bobalt', subject = 'Some ore', itemCount = 1, cod = 500 }");
+  addon.eval("Vanguard_MailTools.rows[2].take:Click()");
+  expect(taken(addon), "a pay-on-delivery mail now stands where the row's free one was").toEqual({});
+  expect(chatHas(addon, /that mail has moved/), "chat says so").toBe(true);
+  addon.eval("__wfgWorld.mail[2] = nil");
+  addon.eval("Vanguard_MailTools.rows[2].take:Click()");
+  expect(taken(addon), "an index with nothing at it takes nothing").toEqual({});
+});
+
+// What Take all took after the mail at place 2 (two items from Bobalt) was swapped for the mail given, once the first step had gone.
+function afterSwap(replacement) {
+  const addon = mailer(BULK);
+  addon.world.openMailWindow();
+  addon.slash("mail takeall");
+  addon.eval(`__wfgWorld.mail[2] = ${replacement}`);
+  addon.advance(2);
+  return taken(addon).filter((t) => t[1] === 2);
+}
+
+it("Take all and Return all compare more than the sender and subject before they act on a mail", () => {
+  const link = "firstItemLink = '|cffffffff|Hitem:901::::::::60|h[TEST-ONLY Iron Ore]|h|r'";
+  const same = `sender = 'Bobalt', subject = 'Some ore', ${link}`;
+  expect(afterSwap(`{ ${same}, itemCount = 2 }`), "the same mail rebuilt: taken as before").toEqual([["item", 2, 1], ["item", 2, 2]]);
+  expect(afterSwap(`{ ${same}, itemCount = 2, cod = 500 }`), "a pay-on-delivery mail with the same header").toEqual([]);
+  expect(afterSwap(`{ ${same}, itemCount = 1 }`), "a different item count").toEqual([]);
+  expect(afterSwap(`{ ${same}, itemCount = 2, money = 9 }`), "different money").toEqual([]);
+  expect(afterSwap("{ sender = 'Bobalt', subject = 'Some ore', itemCount = 2, firstItemLink = '|cffffffff|Hitem:902::::::::60|h[TEST-ONLY Herb]|h|r' }"), "a different first item").toEqual([]);
+  const addon = mailer(BULK);
+  addon.world.openMailWindow();
+  addon.click("Vanguard_MailTools.returnAll");
+  addon.eval("__wfgWorld.mail[4].money = 1");
+  addon.click("Vanguard_Question.confirm");
+  addon.advance(2);
+  expect(returned(addon), "Return all skips the parcel that changed and returns the other").toEqual([2]);
+  expect(chatHas(addon, /Return all: 2 of 2 done/), "and still counts the steps").toBe(true);
 });

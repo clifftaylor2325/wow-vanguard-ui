@@ -1352,7 +1352,7 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 ### 23.1 Search and Take (off until switched on: /vg > Town and gear > Mail tools)
 
 - Do: switch the mail tools on, open a mailbox with a few mails. Type part of a sender or subject in the panel's search box, click the filter button through its four values, click Take on a mail with money and on one with an item. Type `/vg mail <words>`.
-- Expect: a panel right of the mail window, headed `Find mail` (no X: it follows the mail window), lists the matching mails (sender: subject, with money and item count); the filter button reads All, Money, Items, Sales; Take takes the money and the first item, one per click; the panel goes when the window closes; chat lists the same matches. With the switch off, `/vg mail` says so. [Needs in game: that TakeInboxMoney and TakeInboxItem(mail, 1) work from a click, that GetInboxInvoiceInfo marks sales, and the panel's place beside the window.]
+- Expect: a panel right of the mail window, headed `Find mail` (no X: it follows the mail window), lists the matching mails (sender: subject, with money and item count); the filter button reads All, Money, Items, Sales; Take takes the money and the first item, one per click; a pay-on-delivery mail's row says `pay <amount> on delivery` and has no Take button; the panel goes when the window closes; chat lists the same matches. With the switch off, `/vg mail` says so. [Needs in game: that TakeInboxMoney and TakeInboxItem(mail, 1) work from a click, that GetInboxInvoiceInfo marks sales, and the panel's place beside the window.]
 - If it fails, paste: `/vg errors` and a screenshot of the mailbox.
 
 ### 23.2 Send-to-alt presets
@@ -1366,6 +1366,12 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 - Do: with the mail tools on, open a mailbox holding a few mails with money and items (one from another player, one auction sale, ideally one pay-on-delivery). Click Take all; later, with other mail, click Return all and answer the question.
 - Expect: the money and items of the listed mails come in about three a second, with a chat line `Take all: N of N done.`; pay-on-delivery mail is left; Return all asks `Return N mail(s) to their senders?` and sends back only mail from players (the sale stays); closing the mailbox mid-run stops it with a count. [Needs in game: that TakeInboxItem for each attachment slot 1 to the item count empties a mail, and that ReturnInboxItem takes the inbox index.]
 - If it fails, paste: the chat lines and `/vg errors`.
+
+### 23.3a Pay-on-delivery mail stays untaken
+
+- Do: with the mail tools on, open a mailbox holding a pay-on-delivery mail (cash on delivery) and a free one, and look at their rows; click Take all.
+- Expect: the pay-on-delivery row reads `pay <amount> on delivery` and has no Take button; Take all leaves it; the free mail comes in. [Needs in game: that GetInboxHeaderInfo's sixth return is the amount due, and that a mail whose place shifts mid-run is skipped rather than taken.]
+- If it fails, paste: a screenshot of the rows and `/vg errors`.
 
 ### 23.4 Alt overview
 
