@@ -72,7 +72,7 @@ local HELP = {
   "report               one block to copy for a bug report: what /vg status and /vg errors say, ready to paste at vanguardui.com/feedback",
   "feedback [bug|feature]   a bug report or feature request written here: the questions vanguardui.com/feedback asks, then one block to paste there (it fills the form)",
   "gaps [add <item>|remove <item>|spell add <spell>|spell remove <spell>|clear]   Cooldown gaps (switch it on under Cooldowns): choose items such as a Healthstone or potion, and spells, to show beside trinkets, pet abilities and totems; no verb lists them",
-  "perf [cpu|watch]     Vanguard's CPU and memory now; cpu turns the game's CPU profiling on or off (reload); watch prints them every minute",
+  "perf [cpu|watch]     Vanguard's CPU (ms a frame) and memory now; cpu turns the game's script profiling on or off (reload) for the busiest functions; watch prints them every minute",
   "mem                  watches Vanguard's memory for a minute (out of combat), then says how much it grew and whether it kept any; again ends it early",
 }
 

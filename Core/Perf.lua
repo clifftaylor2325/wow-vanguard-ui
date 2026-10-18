@@ -107,11 +107,49 @@ function P.Top()
   return list
 end
 
--- Prints Vanguard's CPU and memory now; with top, also its busiest functions.
-function P.Report(top)
+-- The always-on profiler's metrics (AddOnProfilerConstantsDocumentation.lua's AddOnProfilerMetric):
+-- the average over the last 60 frames, since login, the highest, and how many frames took over 5 ms.
+P.METRICS = { RecentAverageTime = 1, SessionAverageTime = 0, PeakTime = 4, CountTimeOver5Ms = 6 }
+
+-- The game's always-on addon profiler (C_AddOnProfiler, on WoW Forever and Retail; no script
+-- profiling needed), or nil where the client has none or has it off.
+function P.Profiler()
+  local p = C_AddOnProfiler
+  if type(p) ~= "table" or type(p.GetAddOnMetric) ~= "function" then return nil end
+  if type(p.IsEnabled) == "function" and not p.IsEnabled() then return nil end
+  return p
+end
+
+-- One profiler metric by name (the client's Enum value, else the documented one), 0 when hidden.
+local function metric(get, name)
+  local enum = Enum and Enum.AddOnProfilerMetric
+  return ns.PlainNumber(get((enum and enum[name]) or P.METRICS[name])) or 0
+end
+
+-- The profiler's CPU part: ms a frame now, on average and at most, its share of all addons' time now
+-- (when the client gives the total) and how many frames took over 5 ms; nil without the profiler.
+function P.ProfilerText()
+  local p = P.Profiler()
+  if not p then return nil end
+  -- Vanguard's own value of metric m.
+  local function mine(m) return p.GetAddOnMetric(ADDON, m) end
+  local recent, all = metric(mine, "RecentAverageTime"), type(p.GetOverallMetric) == "function" and metric(p.GetOverallMetric, "RecentAverageTime") or 0
+  local share = all > 0 and string.format(", %.0f %% of all addons", recent / all * 100) or ""
+  return string.format("CPU %.2f ms a frame now (%.2f on average, peak %.1f ms%s; %d frames over 5 ms)",
+    recent, metric(mine, "SessionAverageTime"), metric(mine, "PeakTime"), share, metric(mine, "CountTimeOver5Ms"))
+end
+
+-- The report's CPU part: the always-on profiler's, else the script profiler's total, else why there's none.
+local function cpuPart()
+  local text = P.ProfilerText()
+  if text then return text end
   local cpu, now = P.CPU(), api("GetTime") and GetTime() or 0
-  local cpuPart = (cpu and cpu > 0) and cpuText(cpu, now) or noCpuText(cpu)
-  ns.Chat(cpuPart .. "  ·  " .. memoryText())
+  return (cpu and cpu > 0) and cpuText(cpu, now) or noCpuText(cpu)
+end
+
+-- Prints Vanguard's CPU and memory now; with top, also its busiest functions (those need script profiling).
+function P.Report(top)
+  ns.Chat(cpuPart() .. "  ·  " .. memoryText())
   if not top then return end
   for i, f in ipairs(P.Top()) do ns.Chat(string.format("  %d. %s  %.1f ms", i, f[1], f[2])) end
 end

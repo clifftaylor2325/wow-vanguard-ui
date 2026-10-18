@@ -289,6 +289,26 @@ it("/vg perf: CPU and memory with the change since the last report, the busiest 
   said(addon, "perf cpu");
   expect(addon.eval("return { GetCVar('scriptProfile'), __reload }"), "perf cpu again turns it off").toEqual(["0", "CPU profiling stops after a reload."]);
 });
+// TEST-ONLY always-on profiler: Vanguard's and all addons' metrics by the documented metric numbers, and whether it's on.
+const PROFILER_ENV = PERF_ENV + `
+  __mine = { [0] = 0.25, [1] = 0.4, [4] = 12.5, [6] = 3 }
+  __on = true
+  C_AddOnProfiler = { IsEnabled = function() return __on end,
+    GetAddOnMetric = function(name, m) if name ~= "Vanguard" then return 99 end return __mine[m] end,
+    GetOverallMetric = function(m) return m == 1 and 1.6 or 0 end }
+`;
+it("/vg perf: the game's always-on profiler gives the CPU line without script profiling, else the old counter", () => {
+  const addon = loggedIn(PROFILER_ENV);
+  expect(said(addon, "perf"), "ms a frame now, on average, the peak, the share of all addons and the slow frames").toEqual(["CPU 0.40 ms a frame now (0.25 on average, peak 12.5 ms, 25 % of all addons; 3 frames over 5 ms)  ·  memory 2.0 MB"]);
+  addon.eval("Enum.AddOnProfilerMetric = { RecentAverageTime = 6, SessionAverageTime = 0, PeakTime = 4, CountTimeOver5Ms = 1 } C_AddOnProfiler.GetOverallMetric = nil");
+  expect(said(addon, "perf")[0], "the client's own metric numbers win; no total, no share").toBe("CPU 3.00 ms a frame now (0.25 on average, peak 12.5 ms; 0 frames over 5 ms)  ·  memory 2.0 MB");
+  addon.eval("Enum.AddOnProfilerMetric = nil __mine[1] = nil");
+  expect(said(addon, "perf")[0], "a hidden value reads 0").toBe("CPU 0.00 ms a frame now (0.25 on average, peak 12.5 ms; 3 frames over 5 ms)  ·  memory 2.0 MB");
+  addon.eval("__on = false");
+  expect(said(addon, "perf")[0], "profiler off: the script profiler's line").toBe("CPU off (/vg perf cpu turns the game's profiling on)  ·  memory 2.0 MB");
+  addon.eval("C_AddOnProfiler = { GetAddOnMetric = function() return 1 end }");
+  expect(said(addon, "perf")[0], "a profiler with no switch counts as on").toBe("CPU 1.00 ms a frame now (1.00 on average, peak 1.0 ms; 1 frames over 5 ms)  ·  memory 2.0 MB");
+});
 // TEST-ONLY memory counter: Vanguard's KB follow the list __mem, one reading each call of the game's Update;
 // a client that refuses a full garbage collection, so the run judges by its low point (LIVE_ENV allows it).
 const MEM_ENV = `
