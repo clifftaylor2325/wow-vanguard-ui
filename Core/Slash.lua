@@ -18,6 +18,7 @@ local HELP = {
   "framebuffer [on|off] windows drawn through a frame buffer while they open and close (a test; off by default)",
   "nineslice [on|off]   shadows and glows as one nine-slice texture each, after a reload (a test; off by default)",
   "icons [on|off]       menu strip icons drawn at their on-screen size, after a /reload (off by default)",
+  "cooldowns [setup]    the Cooldowns page (the game's Cooldown Manager, the gaps row, the buff glow); setup opens the step-by-step wizard",
   "cdmglow [on|off|<percent>]  glow a Cooldown Manager buff icon in its last part, 10 to 60 percent (off by default)",
   "ornaments [on|off]   a brass rule or corner brackets on the options window, setup and quest log (off by default)",
   "variant [default|contrast|vellum|classic|midnight|obsidian|moss|ember]  surfaces and text: Slate and brass, High contrast, Vellum and ink, Classic look, Midnight, Obsidian, Moss, Ash and ember",
@@ -36,12 +37,15 @@ local HELP = {
   "copy                 the recent chat as plain text, ready to copy",
   "situation [record <name>|stop|clear [name]|list]   Situations: record a layout and settings for solo, party, raid, pvp, instance or resting",
   "watch [add|remove <phrase>|list|clear]   Chat watch: phrases that ring a sound and show a toast when said in chat",
+  "filter [on|off|tab|hide|add|remove <word>|clear]   Chat filter: gold selling, boosting, recruiting and repeat lines go to a Filtered tab (or are hidden)",
   "quests               open or close Vanguard's quest log (the game's quest log key does too)",
   "guide probe         what this client returns for the reads a levelling guide would use (chat only; changes nothing)",
   "questdata [questID]  what the client says about a quest (or the quests an open NPC offers and those you track), and whether it flags quests new in WoW Forever",
   "lfg [probe]          open or close the group board: looking-for-more and looking-for-group posts from chat by dungeon, role and level; probe says what chat it has heard",
   "plates [enemies on|off] how many nameplates Vanguard drew and the game's enemy plate setting; enemies on|off sets it (out of combat)",
   "stock [<item> <n>]   items to keep in your bags; a merchant tops them up (0 removes, clear empties)",
+  "junk [<item> | remove <item> | clear]   your sell list: items a merchant offers to buy from you with your grays (off until switched on under Merchants and errors)",
+  "sell <item>          at a merchant: sell every stack of an item in your bags, after a question",
   "craft [add [n]|next|stock|cd|top|done|clear]   the craft queue: queue the recipe on display, open the next one, raise Keep stocked to fit, show cooldowns, rank recipes (off until switched on)",
   "mail [words]|preset [add <name> <character> [words]|remove <name>]|send <name>   search the inbox; presets for sending items to your alts (off until switched on)",
   "rolls [clear]        the group's /roll results this session, newest first; clear forgets them",
@@ -67,11 +71,11 @@ local HELP = {
   "factionart           which of the game's own faction pictures this client has",
   "realm                your realm, ruleset and side as the client gives them, and the key your prices, sales and characters are kept under",
   "frame <name> [deep]  what the client says about a frame now: shown, alpha, scale, size, its rect (or none), anchors and its parents; deep adds its textures and child frames (for a frame that draws empty)",
-  "errors [clear]       the errors Vanguard caught this session, with stacks and counts (for a bug report); clear empties the list",
+  "errors [clear]       opens the errors Vanguard caught this session, with stacks and counts, in the copy window (for a bug report); clear empties the list",
   "report               one block to copy for a bug report: what /vg status and /vg errors say, ready to paste at vanguardui.com/feedback",
   "feedback [bug|feature]   a bug report or feature request written here: the questions vanguardui.com/feedback asks, then one block to paste there (it fills the form)",
-  "gaps [add <item>|remove <item>|spell add <spell>|spell remove <spell>|clear]   Cooldown gaps (switch it on under Combat tools): choose items such as a Healthstone or potion, and spells, to show beside trinkets, pet abilities and totems; no verb lists them",
-  "perf [cpu|watch]     Vanguard's CPU and memory now; cpu turns the game's CPU profiling on or off (reload); watch prints them every minute",
+  "gaps [add <item>|remove <item>|spell add <spell>|spell remove <spell>|clear]   Cooldown gaps (switch it on under Cooldowns): choose items such as a Healthstone or potion, and spells, to show beside trinkets, pet abilities and totems; no verb lists them",
+  "perf [cpu|watch|slow] Vanguard's CPU (ms a frame) and memory now; cpu turns the game's script profiling on or off (reload) for the busiest functions; watch prints them every minute; slow lists the slowest handlers (slow reset starts over)",
   "mem                  watches Vanguard's memory for a minute (out of combat), then says how much it grew and whether it kept any; again ends it early",
 }
 
@@ -193,6 +197,12 @@ local function cdmGlowCommand(rest)
   CG.settings.glow = percent ~= nil or rest == "on" or (rest == "" and not CG.settings.glow)
   CG.Apply()
   chat(CG.settings.glow and ("Cooldown Manager glow on: under " .. CG.settings.percent .. " percent left.") or "Cooldown Manager glow off.")
+end
+
+-- /vg cooldowns [setup]: the Cooldowns options page, or its setup wizard.
+local function cooldownsCommand(rest)
+  if rest == "setup" then return ns.Options.CooldownWizard.Open() end
+  ns.Options.Show("cooldowns")
 end
 
 -- /vg gradient [on|off]: floating windows' fills a shade lighter toward the top, at once (#259).
@@ -488,20 +498,32 @@ local function occurrences()
   return n
 end
 
--- One caught error: its text and count, then each line of its stack, indented.
-local function printError(e)
-  chat(string.format("%s  (x%d)", e.text, e.count))
-  for line in e.stack:gmatch("[^\n]+") do chat("    " .. line) end
+-- Text without the game's color codes (|cAARRGGBB and |r), which a pasted report can't use.
+local function plain(text)
+  return (tostring(text):gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", ""))
 end
 
--- /vg errors [clear]: the errors Vanguard caught this session, newest last, with
--- the version, client and aura backend a bug report needs; clear empties the list.
+-- One caught error: its text and count, then each line of its stack, indented.
+local function errorBlock(e)
+  local out = { string.format("%s  (x%d)", e.text, e.count) }
+  for line in tostring(e.stack):gmatch("[^\n]+") do out[#out + 1] = "    " .. line end
+  return table.concat(out, "\n")
+end
+
+-- The /vg errors text: the version line, the client line, then each caught error with its stack.
+local function errorsText()
+  local lines = { string.format("Vanguard %s  ·  interface %s  ·  %d error(s) caught this session (%d in all), newest last:", version(), interfaceText(), #ns.errors, occurrences()), clientLine() }
+  for _, e in ipairs(ns.errors) do lines[#lines + 1] = errorBlock(e) end
+  return plain(table.concat(lines, "\n"))
+end
+
+-- /vg errors [clear]: the errors Vanguard caught this session, newest last, in the
+-- copy window with the version, client and aura backend a bug report needs; clear empties the list.
 local function errorsCommand(rest)
   if rest == "clear" then ns.ClearErrors() return chat("Cleared.") end
   if #ns.errors == 0 then return chat("No errors caught this session.") end
-  chat(string.format("Vanguard %s  ·  interface %s  ·  %d error(s) caught this session (%d in all), newest last:", version(), interfaceText(), #ns.errors, occurrences()))
-  chat(clientLine())
-  for _, e in ipairs(ns.errors) do printError(e) end
+  chat(string.format("%d error(s), opened in the copy window.", #ns.errors))
+  ns.ShowText("Vanguard errors: Ctrl+C to copy", errorsText())
 end
 
 -- /vg report ----------------------------------------------------------------------------
@@ -510,11 +532,6 @@ end
 local REPORT_MAX = 8000
 -- The most stack lines a report keeps for one error.
 local REPORT_STACK = 8
-
--- Text without the game's color codes (|cAARRGGBB and |r), which a pasted report can't use.
-local function plain(text)
-  return (tostring(text):gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", ""))
-end
 
 -- The modules turned off, by name ("none" when every one is on).
 local function modulesOff()
@@ -594,6 +611,15 @@ local function stockCommand(rest)
   ER.StockCommand(rest)
 end
 
+-- /vg junk and /vg sell: the Merchant module's sell list and sell-all, which exist only while it is on.
+local function merchantCommand(method)
+  return function(rest)
+    local MC = ns.GetModule("Merchant")
+    if not MC.settings then return chat("Vanguard's Merchant helpers are off (/vg > Modules).") end
+    MC[method](rest)
+  end
+end
+
 local COMMANDS = {
   -- /vg help
   help = function() printLines(HELP) end,
@@ -640,6 +666,8 @@ local COMMANDS = {
   quests = function() local QL = ns.GetModule("QuestLog") if QL.frame then QL.Toggle() else ns.Chat("Vanguard's quest log is off (/vg > Quests).") end end,
   plates = function(rest) ns.GetModule("Nameplates").Command(rest) end,
   stock = stockCommand,
+  junk = merchantCommand("JunkCommand"),
+  sell = merchantCommand("SellCommand"),
   craft = function(rest) ns.GetModule("CraftQueue").Command(rest) end,
   mail = function(rest) ns.GetModule("MailTools").Command(rest) end,
   rolls = function(rest) ns.GetModule("Rolls").Command(rest) end,
@@ -656,7 +684,9 @@ local COMMANDS = {
   talents = function(rest) ns.GetModule("TalentPlanner").Command(rest) end,
   legacy = function(rest) ns.GetModule("Legacy").Command(rest) end,
   watch = function(rest) ns.GetModule("ChatWatch").Command(rest) end,
+  filter = function(rest) ns.GetModule("ChatFilter").Command(rest) end,
   gaps = function(rest) ns.GetModule("CooldownGaps").Command(rest) end,
+  cooldowns = cooldownsCommand,
   lfg = function(rest) ns.GetModule("GroupBoard").Command(rest) end,
   questdata = function(rest) ns.QuestGuide.Command(rest) end,
   guide = function(rest) ns.GuideData.Command(rest) end,

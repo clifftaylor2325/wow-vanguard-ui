@@ -63,7 +63,7 @@ it("motion: a button's hover eases in (0.1 s) and out (0.13 s) to raisedHover wi
   expect([isTok(addon, fill, "raisedHover"), isTok(addon, line, "borderHi")], "the fill in raisedHover, the line in borderHi").toEqual([true, true]);
   expect(addon.eval("local p = ns.Theme.HoverParts(TEST_Hover)[2] return { p:GetHeight(), p.__points.TOPLEFT ~= nil }"), "the line is one screen pixel, along the top").toEqual([px(addon, 1), true]);
   expect(hoverState(addon), "clear at rest").toEqual([[0, 0], [false, false]]);
-  addon.eval('TEST_Hover:GetScript("OnEnter")(TEST_Hover)');
+  addon.eval('TEST_Hover.__mouseOver = true TEST_Hover:GetScript("OnEnter")(TEST_Hover)');
   expect(hoverState(addon)[1], "the mouse comes over: both ease in from 0 to 1 in 0.1 s, eased out").toEqual([[0, 1, 0.1, "OUT"], [0, 1, 0.1, "OUT"]]);
   addon.eval('__finishFades() TEST_Hover:GetScript("OnLeave")(TEST_Hover)');
   expect(hoverState(addon), "and leaves: they ease out from 1 in 0.13 s").toEqual([[1, 1], [[1, 0, 0.13, "OUT"], [1, 0, 0.13, "OUT"]]]);

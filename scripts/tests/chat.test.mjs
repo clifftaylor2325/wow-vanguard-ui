@@ -48,7 +48,7 @@ it("chat", () => {
   const c = addon.eval(`return { font = { ChatFrame1:GetFont() }, box = ns.Theme.PaintedCount(),
     tab1 = ChatFrame1Tab.Text.__textColor, tab2 = ChatFrame2Tab.Text.__textColor }`);
   expect(c.font[0] === "Interface\\AddOns\\Vanguard\\Media\\Fonts\\FiraSansCondensed-Medium.ttf" && c.font[1] === 12, `chat windows get the theme font at Medium, 12 (got ${JSON.stringify(c.font)})`).toBeTruthy();
-  expect(isTok(addon, c.tab2, "accentText") && isTok(addon, c.tab1, "text2"), "the selected window's tab is in the accent's text colour, others gray").toBeTruthy();
+  expect(isTok(addon, c.tab2, "accentText") && isTok(addon, c.tab1, "text"), "the selected window's tab is in the accent's text colour, others in the plain text colour").toBeTruthy();
   addon.slash("accent ember");
   expect(isTok(addon, addon.eval("return ChatFrame2Tab.Text.__textColor"), "accentText"), "tabs follow accent changes").toBeTruthy();
 });
@@ -150,12 +150,44 @@ it("chat side buttons: module off leaves the game's art; a client without text t
   const bare = loggedIn(UI_ENV + CHAT_BUTTONS_ENV + "TextToSpeechButtonFrame = nil TextToSpeechButton = nil QuickJoinToastButton = nil ChatFrame1.ScrollToBottomButton = nil");
   expect(bare.eval("return __buttonLook(ChatFrameMenuButton, ns.Theme.WHITE)[5]"), "the buttons this client has are still skinned").toBe("NavChat");
 });
+it("chat backdrop: a soft patch behind text and tabs, three strengths, tabs fit their labels, Copy sits in the tab row", () => {
+  const addon = loggedIn(UI_ENV);
+  // The main window's backdrop: fill alpha, ring piece count, first piece's alpha.
+  const look = () => addon.eval("local b = ns.GetModule('Chat').backgrounds[ChatFrame1] return { b.look.fill.alpha, #b.look.ring, b.look.ring[1]:GetAlpha() }");
+  expect(look().slice(0, 1), "Medium by default").toEqual([0.75]);
+  expect(look()[2], "the soft edge follows the strength").toBe(0.75);
+  addon.eval("ns.GetModule('Chat').settings.backdrop = 0.55 ns.GetModule('Chat').Refresh()");
+  expect(look()[0], "Light").toBe(0.55);
+  addon.eval("ns.GetModule('Chat').settings.backdrop = 0.123 ns.GetModule('Chat').Refresh()");
+  expect(look()[0], "an unknown saved value falls back to Medium").toBe(0.75);
+  expect(addon.eval("return ChatFrame1Tab.Text:GetStringWidth() + 24 == ChatFrame1Tab:GetWidth()"), "a tab is as wide as its label plus padding").toBe(true);
+  expect(addon.eval("local _, _, _, _, y = ns.GetModule('ChatExtras').copyButton:GetPoint() return y == 4"), "the Copy button sits in the tab row, at its right end").toBe(true);
+  addon.eval("ChatFrame1.ScrollBar = CreateFrame('Frame', nil, ChatFrame1) ns.GetModule('Chat').SkinAll()");
+  expect(addon.eval("return #ns.errors"), "a window with a scroll bar is skinned without errors").toBe(0);
+  expect(addon.eval("return ns.GetModule('Chat').backgrounds[ChatFrame1].back.__points.BOTTOMRIGHT.x"), "the backdrop reaches over the side column").toBe(28);
+  const off = loggedIn(UI_ENV, { savedVariables: "VanguardDB.profiles = { Default = { Chat = { background = false } } }" });
+  expect(off.eval("return next(ns.GetModule('Chat').backgrounds)"), "background off paints no backdrop").toBe(null);
+});
+it("chat window size: a window left at the old 420 x 140 grows once, Larger and Largest scale the default, a size the player set is kept", () => {
+  const addon = loggedIn(UI_ENV + TIDY_ENV, { savedVariables: "VanguardDB.profiles = { Default = { Chat = { sized = true } } }" });
+  // The chat window's width and height.
+  const size = () => addon.eval("return { ChatFrame1:GetWidth(), ChatFrame1:GetHeight() }");
+  addon.eval("ChatFrame1:SetSize(420, 140) ns.GetModule('Chat').settings.grown = false");
+  addon.fire("PLAYER_ENTERING_WORLD");
+  expect(size(), "the old first size becomes the new default").toEqual([500, 154]);
+  addon.eval("ChatFrame1:SetSize(600, 300)");
+  addon.fire("PLAYER_ENTERING_WORLD");
+  expect(size(), "a size the player set stays").toEqual([600, 300]);
+  addon.eval("ns.GetModule('Chat').settings.windowScale = 1.5 ns.GetModule('Chat').ApplySize()");
+  expect(size(), "Larger is one and a half times the default").toEqual([750, 231]);
+  addon.eval("ns.GetModule('Chat').settings.windowScale = 'x' ns.GetModule('Chat').ApplySize() ChatFrame1 = nil ns.GetModule('Chat').ApplySize()");
+});
 it("chat is a mover: placed once, sized once, kept where the player put it", () => {
   const addon = loggedIn(UI_ENV + TIDY_ENV);
   // Chat's anchor point, offsets and size.
   const spot = () => addon.eval("local p = ChatFrame1.__points local k, v = next(p) return { k, v.x, v.y, ChatFrame1:GetWidth(), ChatFrame1:GetHeight() }");
   expect(addon.eval("local out = {} for _, m in ipairs(ns.MoverList()) do out[#out + 1] = m.key .. '=' .. m.label end return out").includes("chat=Chat"), "chat is in the unlock list").toBe(true);
-  expect(spot(), "first login: bottom-left, 420 x 140").toEqual(["BOTTOMLEFT", 16, 20, 420, 140]);
+  expect(spot(), "first login: bottom-left, 500 x 154").toEqual(["BOTTOMLEFT", 16, 20, 500, 154]);
   addon.eval('ns.SetMoverPoint("chat", "TOPLEFT", "TOPLEFT", 100, -50)');
   expect(spot().slice(0, 3), "dragging it in /vg unlock moves the window").toEqual(["TOPLEFT", 100, -50]);
   addon.eval('ChatFrame1:ClearAllPoints() ChatFrame1:SetPoint("CENTER")');
@@ -257,8 +289,8 @@ it("character pane durability, the mail's Open All button", () => {
 // TEST-ONLY chat hooks: the game's message filters and link callback, and the lines the main window holds.
 const CHAT_EXTRAS_ENV = `
   __filters, __lines = {}, {}
-  ChatFrame_AddMessageEventFilter = function(event, fn) __filters[event] = fn end
-  EventRegistry = { RegisterCallback = function(self, event, fn) __linkCallback = fn end }
+  ChatFrame_AddMessageEventFilter = function(event, fn) if fn ~= ns.GetModule("ChatFilter").Filter then __filters[event] = fn end end
+  EventRegistry = { RegisterCallback = function(self, event, fn) if fn ~= ns.GetModule("ChatFilter").OnLink then __linkCallback = fn end end }
   ChatFrame1.GetNumMessages = function() return #__lines end
   ChatFrame1.GetMessageInfo = function(_, i) return __lines[i] end
 `;
@@ -691,12 +723,12 @@ it("R2.4 shared skin helpers: a glyph keeps its picture, a dropdown its arrow, a
     local glyph = CreateFrame("Button", nil, UIParent) glyph.up, glyph.off = art(glyph), art(glyph)
     glyph.GetNormalTexture, glyph.GetDisabledTexture = function() return glyph.up end, function() return glyph.off end
     local drop = CreateFrame("Button", nil, UIParent) drop.Arrow = art(drop)
-    local search = CreateFrame("EditBox", nil, UIParent) search.searchIcon = art(search)
+    local search = CreateFrame("EditBox", nil, UIParent) search.searchIcon = art(search) search.Instructions = search:CreateFontString()
     GW.SkinGlyph(glyph) GW.SkinDropdown(drop) GW.SkinSearch(search)
     GW.SkinGlyph(nil) GW.SkinGlyph({}) GW.SkinDropdown("x") GW.SkinDropdown({}) GW.SkinSearch(false) GW.SkinSearch({}) GW.ShowTexture(nil) GW.ShowTexture({})
     return { glyph:GetNormalTexture():GetAlpha(), glyph:GetDisabledTexture():GetAlpha(), drop.Arrow:GetAlpha(), search.searchIcon:GetAlpha(),
-      ns.Theme.PaintedCount() > 0, #ns.errors }`);
-  expect(out, "pictures shown again after the theme faded the game's art; odd input skipped without an error").toEqual([1, 1, 1, 1, true, 0]);
+      ns.Theme.PaintedCount() > 0, #ns.errors, select(4, search.searchIcon:GetPoint()), ns.Theme.SPACE.gap, select(4, search.Instructions:GetPoint()), ns.Theme.SEARCH_INSET }`);
+  expect(out, "pictures shown again after the theme faded the game's art; odd input skipped without an error; the magnifier a gap in from the left with the text after it").toEqual([1, 1, 0, 1, true, 0, 8, 8, 28, 28]);
   expect(addon.eval('return { type(ns.GetModule("Windows").DressChecks), ns.GetModule("Windows").CHECK_DEPTH }'), "the check-box helpers live with the shared ones").toEqual(["function", 5]);
 });
 // TEST-ONLY trade window (TradeFrame.xml): the frame and its buttons, six wells, seven item rows a side (each with a
@@ -965,7 +997,7 @@ it("R2.11 popups: the dark tile faded, the warning icon and progress fill kept, 
       extra = select("#", p.ExtraButton:GetRegions()) > 0, item = p.ItemFrame.NameFrame.__alpha == 0 and ns.FrameState("vgSkinned")[p.ItemFrame.Item] == true,
       painted = ns.Theme.PaintedCount(), errors = #ns.errors }`);
   const first = read();
-  expect(first, "tile faded, content kept, text box and money in the theme, the dropdown keeps its arrow, the extra button themed, the item in the item look").toMatchObject({ tile: true, icon: 1, fill: 1, box: true, money: true, arrow: 1, extra: true, item: true, errors: 0 });
+  expect(first, "tile faded, content kept, text box and money in the theme, the dropdown keeps its arrow, the extra button themed, the item in the item look").toMatchObject({ tile: true, icon: 1, fill: 1, box: true, money: true, arrow: 0, extra: true, item: true, errors: 0 });
   addon.eval("StaticPopup1:Hide() StaticPopup1:Show()");
   expect(read().painted, "a second show paints nothing new").toBe(first.painted);
   const bare = loggedIn(`${WINDOWS_ENV}${INSIDES_LUA} StaticPopup1.EditBox = {} StaticPopup1.ItemFrame = {} StaticPopup1.Dropdown = {} StaticPopup1.BG = 1`);
@@ -1057,7 +1089,7 @@ it("R2.12 the dressing room: the model an inset, the outfit controls and side pa
       buttons = __tiled(DressUpFrameCancelButton) and __tiled(DressUpFrameResetButton) and __tiled(f.LinkButton) and __tiled(f.CustomSetDropdown.SaveButton), dropdown = f.CustomSetDropdown.Arrow.__alpha,
       toggle = __tiled(f.ToggleCustomSetDetailsButton), painted = ns.Theme.PaintedCount(), errors = #ns.errors }`);
   const first = read();
-  expect(first, "model and panels sunk, buttons themed, the dropdown keeps its arrow, the toggle on a control tile").toMatchObject({ model: true, panels: true, buttons: true, dropdown: 1, toggle: true, errors: 0 });
+  expect(first, "model and panels sunk, buttons themed, the dropdown keeps its arrow, the toggle on a control tile").toMatchObject({ model: true, panels: true, buttons: true, dropdown: 0, toggle: true, errors: 0 });
   addon.eval("DressUpFrame:Hide() DressUpFrame:Show()");
   expect(read().painted, "a second show paints nothing new").toBe(first.painted);
   const odd = loggedIn(`${INNER_ENV} DressUpFrame.ModelScene = nil DressUpFrame.CustomSetDropdown = {} DressUpFrame.LinkButton = 1 DressUpFrame.SetSelectionPanel = {}`);
@@ -1105,7 +1137,7 @@ it("R2.13 the time manager: check boxes, dropdowns, the alarm message box, label
   // The window's parts as the skin leaves them.
   const read = () => addon.eval(`local f = TimeManagerFrame local boxes, drops = 0, 0
     for _, name in ipairs({ "TimeManagerAlarmEnabledButton", "TimeManagerMilitaryTimeCheck", "TimeManagerLocalTimeCheck" }) do if __faded(_G[name]) then boxes = boxes + 1 end end
-    for _, key in ipairs(ns.GetModule("Windows").TIME_DROPDOWNS) do if __faded(f.AlarmTimeFrame[key], f.AlarmTimeFrame[key].Arrow) and f.AlarmTimeFrame[key].Arrow.__alpha == 1 then drops = drops + 1 end end
+    for _, key in ipairs(ns.GetModule("Windows").TIME_DROPDOWNS) do if __faded(f.AlarmTimeFrame[key], f.AlarmTimeFrame[key].Arrow) and f.AlarmTimeFrame[key].Arrow.__alpha == 0 then drops = drops + 1 end end
     return { globe = TimeManagerGlobe.__alpha, boxes = boxes, drops = drops, stopwatch = not __faded(TimeManagerStopwatchCheck) and select("#", TimeManagerStopwatchCheck:GetRegions()) > 1,
       message = __faded(TimeManagerAlarmMessageEditBox), labels = __themed(TimeManagerAlarmTimeLabel) and __themed(TimeManagerAlarmMessageLabel) and __themed(TimeManagerStopwatchFrameText),
       enabledColour = TimeManagerAlarmEnabledButtonText.__textColor[2] ~= 0.82, title = __titled(f.title), painted = ns.Theme.PaintedCount(), errors = #ns.errors }`);

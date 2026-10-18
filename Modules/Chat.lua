@@ -1,6 +1,7 @@
 -- Chat: every chat window, tab and edit box in the Vanguard look. The
 -- windows get a flat panel and the theme font, tabs lose their art and show
 -- the accent on the selected one, and the edit box becomes a themed input.
+-- The background is a soft dark patch behind the text and tab row, fading out at its edges, in Light, Medium or Dark.
 -- Chat text is Small, Medium or Large, scaled by the Text size setting (so
 -- one slider shrinks everything), or the size the game's own chat menu set.
 -- The side buttons (chat menu, voice, text to speech, Quick Join, each
@@ -13,14 +14,26 @@ local ADDON, ns = ...
 local T = ns.Theme
 
 local CH = ns.Module("Chat", {
-  defaults = { background = true, textSize = 12, place = true, sized = false },
+  defaults = { background = true, backdrop = 0.75, windowScale = 1, grown = false, textSize = 12, place = true, sized = false },
 })
 
 -- The main chat window's spot in the Centered layout: bottom-left, under the
 -- unit frames and left of the action bars, with room for its tabs above it
 -- (it fits at any UI scale). x, y, width, height. It is a mover (/vg unlock);
 -- the size is set once, and after that the game's layout and the player rule it.
-CH.SPOT = { 16, 20, 420, 140 }
+CH.SPOT = { 16, 20, 500, 154 }
+
+-- Its size on a screen under SMALL_WIDTH units wide, where the action bars and unit frames
+-- leave less room (the layout tests keep them apart at 1365 x 768).
+CH.SMALL = { 420, 154 }
+CH.SMALL_WIDTH = 1600
+
+-- The first-time size of the main chat window on a screen `width` units wide (UIParent's by
+-- default): the full size, or the small one on a narrow screen.
+function CH.DefaultSize(width)
+  if (width or ns.PlainNumber(UIParent:GetWidth()) or CH.SMALL_WIDTH) < CH.SMALL_WIDTH then return CH.SMALL[1], CH.SMALL[2] end
+  return CH.SPOT[3], CH.SPOT[4]
+end
 
 -- Chat text sizes before the Text size setting; "game" keeps each window's own size.
 CH.SIZES = { { 10, "Small" }, { 12, "Medium" }, { 14, "Large" }, { "game", "The game's chat setting" } }
@@ -59,31 +72,68 @@ local function hideArt(frame)
   end
 end
 
--- A chat window: theme font, hidden art and (if on) a flat background.
+-- The tab row's height above a chat window (its tab's, or the game's usual 24).
+local function tabRow(frame)
+  local tab = _G[(frame:GetName() or "") .. "Tab"]
+  return type(tab) == "table" and ns.PlainNumber(tab:GetHeight()) or 24
+end
+
+-- The width (units) of the strip of scroll bar and buttons right of a chat window, which the backdrop reaches over.
+CH.SIDE_COLUMN = 24
+
+-- The backdrop frame behind a chat window: its text and its tab row, edges fading out.
+local function backdropFrame(frame)
+  local back = CreateFrame("Frame", nil, frame)
+  back:SetPoint("TOPLEFT", -T.SPACE.tight, T.SPACE.tight + tabRow(frame))
+  back:SetPoint("BOTTOMRIGHT", T.SPACE.tight + CH.SIDE_COLUMN, -T.SPACE.tight)
+  back:SetFrameLevel(math.max(0, (frame:GetFrameLevel() or 1) - 1))
+  return { back = back, look = T.Backdrop(back, T.CHAT_BACKDROP.feather) }
+end
+
+-- The chat background strength: the saved one when it is a known level, else the Medium one.
+function CH.Strength()
+  local saved = CH.settings.backdrop
+  for _, level in ipairs(T.CHAT_BACKDROP.levels) do
+    if level[1] == saved then return saved end
+  end
+  return T.CHAT_BACKDROP.levels[2][1]
+end
+
+-- A chat window: theme font, hidden art and (if on) a soft backdrop behind the text.
 local function skinWindow(frame, settings)
   CH.FontWindow(frame)
   T.FadeRegions(frame)
   hideArt(frame)
-  if settings.background then
-    CH.backgrounds[frame] = CH.backgrounds[frame] or T.Panel(CreateFrame("Frame", nil, frame), { alpha = 0.55 })
-    CH.backgrounds[frame]:SetPoint("TOPLEFT", -4, 4)
-    CH.backgrounds[frame]:SetPoint("BOTTOMRIGHT", 4, -4)
-    CH.backgrounds[frame]:SetFrameLevel(math.max(0, (frame:GetFrameLevel() or 1) - 1))
-  end
+  if not settings.background then return end
+  CH.backgrounds[frame] = CH.backgrounds[frame] or backdropFrame(frame)
+  T.SetBackdrop(CH.backgrounds[frame].look, CH.Strength())
 end
 
--- Tab text: accent when selected, gray otherwise.
+-- Backdrop strengths for the options cycle.
+CH.BACKDROPS = T.CHAT_BACKDROP.levels
+
+-- Tab text: accent when selected, the plain text colour otherwise (it sits on the backdrop).
 local function colorTab(tab, selected)
   local text = tab.Text or (tab.GetFontString and tab:GetFontString())
   if text then
-    T.Text(text, "label", selected and "accentText" or "text2")
+    T.Text(text, "label", selected and "accentText" or "text")
   end
+end
+
+-- A tab wide enough for its label at the theme font: the game sized it for its own font, which
+-- cut a name to "Gene...".
+local function fitTab(tab)
+  local text = tab.Text or (tab.GetFontString and tab:GetFontString())
+  if not (text and text.GetStringWidth and tab.SetWidth) then return end
+  text:SetWidth(0)
+  tab:SetWidth(ns.PlainNumber(text:GetStringWidth()) + T.SPACE.col * 2)
 end
 
 -- A tab without its art.
 local function skinTab(tab)
   T.FadeRegions(tab, { [tab.Text or false] = true })
   colorTab(tab, false)
+  fitTab(tab)
 end
 
 -- The edit box as a themed input.
@@ -170,6 +220,15 @@ local function skinIndex(i, settings)
   if tab then skinTab(tab) end
   if box then skinEditBox(box) end
   skinWindowButtons(frame, "ChatFrame" .. i)
+  if type(frame.ScrollBar) == "table" then T.ScrollBar(frame.ScrollBar) end
+end
+
+-- Re-fits every tab to its label (after a font change).
+function CH.RefitTabs()
+  for i = 1, windowCount() do
+    local tab = _G["ChatFrame" .. i .. "Tab"]
+    if tab then fitTab(tab) end
+  end
 end
 
 -- Re-colors the tabs so the selected window's tab carries the accent.
@@ -195,7 +254,9 @@ function CH.Refresh()
   for i = 1, windowCount() do
     local frame = _G["ChatFrame" .. i]
     if frame then CH.FontWindow(frame) end
+    if CH.backgrounds[frame] then T.SetBackdrop(CH.backgrounds[frame].look, CH.Strength()) end
   end
+  CH.RefitTabs()
   CH.UpdateTabs()
 end
 
@@ -218,13 +279,32 @@ function CH.Place()
   pinChat(frame)
 end
 
--- Sizes the main chat window the first time only (when entering the world, after
--- the game's layout has been applied); a resize after that is the player's.
+-- The Chat window size choices: the default size times 1, 1.5 or 2.
+CH.WINDOW_SCALES = { { 1, "Default" }, { 1.5, "Larger" }, { 2, "Largest" } }
+
+-- Sets the main chat window to the default size times the Chat window size choice.
+function CH.ApplySize()
+  local frame = _G.ChatFrame1
+  if type(frame) ~= "table" then return end
+  local w, h = CH.DefaultSize()
+  local scale = tonumber(CH.settings.windowScale) or 1
+  frame:SetSize(w * scale, h * scale)
+end
+
+-- Whether the window still has the 420 x 140 first size that earlier versions gave it.
+local function isOldDefault(frame)
+  return ns.PlainNumber(frame:GetWidth()) == 420 and ns.PlainNumber(frame:GetHeight()) == 140
+end
+
+-- Sizes the main chat window the first time only (when entering the world, after the game's
+-- layout has been applied); a resize after that is the player's, except that a window still at
+-- the old 420 x 140 first size grows to the new one once.
 function CH.Size()
   local frame = _G.ChatFrame1
-  if CH.settings.sized or not CH.settings.place or type(frame) ~= "table" then return end
-  CH.settings.sized = true
-  frame:SetSize(CH.SPOT[3], CH.SPOT[4])
+  if not CH.settings.place or type(frame) ~= "table" then return end
+  local first, old = not CH.settings.sized, not CH.settings.grown and isOldDefault(frame)
+  CH.settings.sized, CH.settings.grown = true, true
+  if first or old then CH.ApplySize() end
 end
 
 -- Hooks a client function by name, when this client has it.

@@ -42,7 +42,7 @@ local CLIENT_FONT_LOCALES = { koKR = true, zhCN = true, zhTW = true }
 -- Latin only) don't cover keep Fira Sans for headings: Russian names and titles.
 local LATIN_HEADING_MISSING = { ruRU = true }
 
--- A texture from Media/Textures (Bar, Shadow, Glow, Stripes, LogoLeft, ...).
+-- A texture from Media/Textures (Bar, Shadow, Glow, Stripes, LogoLeft, ...); LogoLeft is the unit frames' classification diamond.
 function T.Texture(name) return T.MEDIA .. "Textures\\" .. name end
 -- The line and menu icons that are also baked at the pixel sizes in T.ICON_SIZES (#232): the same names
 -- and sizes scripts/lib/media-sources.mjs draws (a media test keeps them equal).
@@ -91,8 +91,9 @@ local TOKENS = {
   -- The spark on the power bar (the five-second rule, energy ticks) and the swing timer.
   spark = { "ffffff", 0.9 },
   -- Text
-  -- Text tiers, brightest first (#227): text, text2, muted; disabled only for disabled and placeholder text.
-  text = "e8eaee", text2 = "c8cdd6", muted = "a6adb9", disabled = "7c8390", white = "ffffff", gold = "ffd100",
+  -- Text tiers, brightest first (#227): text, text2, muted; disabled only for disabled and placeholder text
+  -- (at least 4.5:1 on panel, raised and inset in every variant, even over a bright world).
+  text = "e8eaee", text2 = "c8cdd6", muted = "a6adb9", disabled = "878e9b", white = "ffffff", gold = "ffd100",
   -- State (kept apart from the accent), off the red-green axis (#235, after Okabe-Ito): a bluish
   -- green, an amber and a vermilion, each with a glyph where it stands alone (T.STATE_GLYPHS).
   good = "3fbf9a", warn = "f0b43c", bad = "e8663f", info = "5aa2f0", unknown = "808080",
@@ -225,7 +226,7 @@ local DEFAULTS = {
   variant = "default",
   -- Panel corners: "square" (one border language, as always) or "rounded" (T.CORNER_RADIUS arcs).
   corners = "square",
-  -- Shield corners: the frames that ask for them (unit frames, cast bars) get T.CORNER_CUT cuts.
+  -- Shield corners: the frames that ask for them (the unit frames) get T.CORNER_CUT cuts.
   shield = true,
   accent = T.PRESETS.brass,
   panel = T.TOKENS.panel,
@@ -235,7 +236,8 @@ local DEFAULTS = {
   outline = "",
   pixelScale = false,
   -- Screen pixels per UI unit at pixel-perfect scale (a whole number; the Pixel-perfect screen preset sets it).
-  pixelMultiple = 1,
+  -- 0 picks one for the screen (T.AutoPixelMultiple), so the switch alone never makes a 4K screen tiny.
+  pixelMultiple = 0,
   -- Texel snapping for still textures (borders, fills, dividers, sheens); off until the in-game A/B test (#226).
   texelSnap = false,
   -- Shadows and glows as one nine-slice texture each; off until the in-game check (#236).
@@ -615,8 +617,8 @@ local EDGE_POINTS = {
 -- 8-pixel stroke, so drawn at this radius the arc is one pixel wide, like the edges.
 T.CORNER_RADIUS = 4
 -- Shield corners (the shield setting, on the frames that ask for them): a 45-degree cut this many screen
--- pixels across each corner (Media/Textures/CornerCutLine, CornerCutFill and CornerCutMask, one pixel wide at it).
-T.CORNER_CUT = 6
+-- pixels across each corner (Media/Textures/CornerCutLine, CornerCutFill and the CornerCutMask images, one pixel wide at it).
+T.CORNER_CUT = 8
 -- The corner looks (rounded, cut): the art of the border's corner piece, of the fill's, and its size in screen pixels.
 T.CORNER_ART = { rounded = { "CornerLine", "CornerFill", T.CORNER_RADIUS }, cut = { "CornerCutLine", "CornerCutFill", T.CORNER_CUT } }
 
@@ -1112,16 +1114,36 @@ function T.FillParts(frame, layer, sublevel, token, alpha)
   return fill
 end
 
+-- A text backdrop (chat): a panel-coloured fill whose edges fade out in a soft ring `feather` units
+-- wide, so text sits on a calm dark patch with no box edge. Returns { fill, ring }.
+function T.Backdrop(frame, feather)
+  local ring = ring(frame, { texture = "Shadow", size = feather, layer = "BACKGROUND", sublevel = -8 })
+  return { fill = T.FillParts(frame, "BACKGROUND", -7, "panel", 0), ring = ring }
+end
+
+-- Sets a backdrop's strength (0-1): the fill's opacity, and the ring's with it so the fade stays seamless.
+function T.SetBackdrop(backdrop, strength)
+  T.TintFill(backdrop.fill, "panel", strength)
+  for _, t in ipairs(backdrop.ring) do t:SetAlpha(strength) end
+end
+
 -- Shield masks -------------------------------------------------------------------------------
 
--- Four masks on owner (the frame a masked texture belongs to), one at each corner of frame, its
--- corner of CornerCutMask; clamped to white past their edges, so each one cuts only its corner.
-function corner.maskSet(owner, frame)
+-- The corners a side's masks cut. A texture takes at most three masks in the client, so a masked
+-- texture is cut on one side only: two masks, its top corners or its bottom ones.
+corner.SIDES = { TOP = { "TOPLEFT", "TOPRIGHT" }, BOTTOM = { "BOTTOMLEFT", "BOTTOMRIGHT" } }
+
+-- Each corner's mask art: its own image, since the client ignores a mask texture's tex coords (a
+-- flipped mask cut the wrong corner in game).
+corner.MASK_ART = { TOPLEFT = "CornerCutMask", TOPRIGHT = "CornerCutMaskTR", BOTTOMLEFT = "CornerCutMaskBL", BOTTOMRIGHT = "CornerCutMaskBR" }
+
+-- Two masks on owner (the frame a masked texture belongs to), one at each of frame's corners on side,
+-- that corner's mask art; clamped to white past their edges, so each one cuts only its corner.
+function corner.maskSet(owner, frame, side)
   local set = {}
-  for point, tc in pairs(CORNERS) do
+  for _, point in ipairs(corner.SIDES[side]) do
     local m = owner:CreateMaskTexture()
-    m:SetTexture(T.Texture("CornerCutMask"), "CLAMPTOWHITE", "CLAMPTOWHITE")
-    m:SetTexCoord(unpack(tc))
+    m:SetTexture(T.Texture(corner.MASK_ART[point]), "CLAMPTOWHITE", "CLAMPTOWHITE")
     m:SetPoint(point, frame, point)
     set[point] = m
   end
@@ -1146,20 +1168,28 @@ function corner.paintMasks(frame, entry)
   for _, item in ipairs(entry.masked) do corner.maskTexture(item, entry.look == "cut") end
 end
 
--- Cuts textures inside a shield frame (a status bar's fill and background) to its cut corners, so
--- nothing pokes past the cut line; they follow the shield setting on every repaint.
+-- Cuts textures inside a shield frame (a status bar's fill and background) to its cut corners on one
+-- side, so nothing pokes past the cut line; they follow the shield setting on every repaint. Each
+-- texture is masked once (two masks, under the client's limit of three), however often it is asked.
 ---@param frame table a frame painted with opts.shield
 ---@param regions table the textures to cut
-function T.ShieldMask(frame, regions)
+---@param side string "TOP" or "BOTTOM": the frame's corners these textures reach
+function T.ShieldMask(frame, regions, side)
   local entry = painted[frame]
   if not entry then return end
-  entry.masked, entry.maskSets = entry.masked or {}, entry.maskSets or {}
+  entry.masked, entry.maskSets, entry.maskedBy = entry.masked or {}, entry.maskSets or {}, entry.maskedBy or {}
   for _, region in ipairs(regions) do
-    local owner = region:GetParent()
-    entry.maskSets[owner] = entry.maskSets[owner] or corner.maskSet(owner, frame)
-    entry.masked[#entry.masked + 1] = { region = region, set = entry.maskSets[owner] }
+    local key = tostring(region:GetParent()) .. side
+    entry.maskSets[key] = entry.maskSets[key] or corner.maskSet(region:GetParent(), frame, side)
+    if not entry.maskedBy[region] then corner.addMasked(entry, region, entry.maskSets[key]) end
   end
   corner.paintMasks(frame, entry)
+end
+
+-- Lists a texture to mask with a set of masks (once per texture).
+function corner.addMasked(entry, region, set)
+  entry.maskedBy[region] = true
+  entry.masked[#entry.masked + 1] = { region = region, set = set }
 end
 
 -- Paints a frame's corners for radius r in a look: the rounded or cut parts, their art, and its shield masks.
@@ -1263,6 +1293,12 @@ local hoverOf = setmetatable({}, { __mode = "k" })
 -- button T.Button never painted.
 function T.HoverParts(button) return hoverOf[button] end
 
+-- True unless the client says the mouse is not over the frame: the game can call a button's OnEnter itself
+-- (the game menu's buttons all did when it first opened), which must not light the hover.
+function T.MouseIsOver(frame)
+  return not frame.IsMouseOver or frame:IsMouseOver() == true
+end
+
 -- A button's hover look (#257): a raisedHover fill (T.FillParts, so it follows rounded corners) over its
 -- inset fill and a one-pixel borderHi line along its top, both clear until the mouse comes over it
 -- (T.EaseHover eases them).
@@ -1272,9 +1308,10 @@ local function hoverParts(button, entry)
   entry.parts.hoverLine, entry.paint = solid(button, "BORDER", 2, "border"), paintHoverLine
   entry.parts.hoverLine:SetAlpha(0)
   hoverOf[button] = { fill.bg, entry.parts.hoverLine, fill = fill }
-  button:HookScript("OnEnter", ns.Guard("button hover", function(b) T.EaseHover(b, true) end))
+  button:HookScript("OnEnter", ns.Guard("button hover", function(b) T.EaseHover(b, T.MouseIsOver(b)) end))
   button:HookScript("OnLeave", ns.Guard("button hover", function(b) T.EaseHover(b, false) end))
   button:HookScript("OnHide", ns.Guard("button hover", function(b) T.EaseHover(b, false, true) T.PressButton(b, false) end))
+  button:HookScript("OnShow", ns.Guard("button hover", function(b) T.EaseHover(b, T.MouseIsOver(b), true) end))
 end
 
 -- Each frame's keyboard focus ring (weak): { gap = edges, ring = edges }.
@@ -1519,12 +1556,18 @@ T.CONTROL_H, T.BUTTON_H = 20, 26
 -- window; gap a HUD card's inset and the gap between controls; tight the gap between cells; section the
 -- gap between one section and the next.
 T.SPACE = { tight = 4, gap = 8, col = 12, pad = 16, section = 24 }
+-- A search box's magnifier: its size, and how far the text starts from the box's left edge (a gap either side).
+T.SEARCH_ICON = 12
+T.SEARCH_INSET = T.SPACE.gap * 2 + T.SEARCH_ICON
 -- Panel opacity by tier: opaque for the options window, the quest log and a skinned game window; dialog
 -- for a dialog, setup, What's new and anything with an edit box; overlay for tooltips and cards (the panel
 -- token's own alpha); alert for an alert; calm for the Calm HUD's unit frames out of combat.
 T.ALPHA = { opaque = 1, dialog = 0.98, overlay = 0.94, alert = 0.92, calm = 0.35 }
 -- A list row (W.Row, T.Row): how tall (units).
 T.ROW = { height = 28 }
+-- The chat backdrop (T.Backdrop): how far its edges fade out (units), and the strengths the Chat
+-- background setting offers.
+T.CHAT_BACKDROP = { feather = 20, levels = { { 0.55, "Light" }, { 0.75, "Medium" }, { 0.9, "Dark" } } }
 -- The one selected look (docs/THEME.md, "Materials and states"): an accent rail down a row's left edge,
 -- `rail` screen pixels wide, over a `fill` (a lighter fill, not an accent wash) that sits under the text.
 T.SELECT = { rail = 2, fill = "raisedHover" }
@@ -1745,8 +1788,8 @@ end
 -- Follows the game's state: SetChecked (its own calls), a click (the client flips the state before
 -- OnClick runs), enabling and disabling (pcall: a widget without those scripts can't have them hooked).
 local function watchState(button)
-  local repaint = ns.Guard("check state", repaintCheck)
-  for _, script in ipairs({ "OnClick", "OnEnable", "OnDisable" }) do pcall(button.HookScript, button, script, repaint) end
+  local onState = ns.Guard("check state", repaintCheck)
+  for _, script in ipairs({ "OnClick", "OnEnable", "OnDisable" }) do pcall(button.HookScript, button, script, onState) end
   if type(button.SetChecked) == "function" and type(hooksecurefunc) == "function" then
     hooksecurefunc(button, "SetChecked", ns.Guard("hook SetChecked", repaintCheck))
   end
@@ -2043,8 +2086,8 @@ local function sliderParts(slider, thumb)
   local s = { bar = bar, track = sliderPill(bar, axis, "BORDER", "Pill"), fill = sliderFill(bar, axis, thumb) }
   s.line = sliderPill(bar, axis, "OVERLAY", "SliderLine")
   s.knob, s.shade, s.knobLine = sliderKnob(bar, thumb)
-  local repaint = ns.Guard("slider state", function(f) paintSlider(f, sliderOf[f]) end)
-  for _, script in ipairs({ "OnEnable", "OnDisable" }) do pcall(slider.HookScript, slider, script, repaint) end
+  local onState = ns.Guard("slider state", function(f) paintSlider(f, sliderOf[f]) end)
+  for _, script in ipairs({ "OnEnable", "OnDisable" }) do pcall(slider.HookScript, slider, script, onState) end
   return s
 end
 
@@ -2107,12 +2150,20 @@ local function dimIcon(button, dim)
   icon:SetAlpha(dim and T.TAB_DIM or 1)
 end
 
+-- A tab's label in the text colour while it is selected and text2 while it is not (the game paints it gold, and its
+-- font objects put the gold back as the tab's state changes); a tab with no label is skipped.
+local function paintTabLabel(frame, on)
+  local label = type(frame.GetFontString) == "function" and frame:GetFontString() or nil
+  if type(label) == "table" and label.SetTextColor then T.Color(label, on and "text" or "text2") end
+end
+
 -- Paints a tab for its state: the selected one raised and its icon in color; the others
--- inset, their icon greyed when opts.dimIcon asks.
+-- inset, their icon greyed when opts.dimIcon asks; its label in the text colours.
 local function paintTab(entry, frame)
   local on, p = tabSelected(frame), entry.parts
   entry.opts.inset, entry.opts.raised = not on, on
   paintBg(p, entry.opts, entry.round > 0)
+  paintTabLabel(frame, on)
   if entry.opts.dimIcon then dimIcon(frame, not on) end
 end
 
@@ -2882,10 +2933,17 @@ end
 
 -- Pixel-perfect scale ----------------------------------------------------------------
 
--- The pixel-perfect scale the settings pick: 768 / screen height times the whole
--- multiple (pixelMultiple, 1 unless set: 2 makes one UI unit two screen pixels).
+-- The whole multiple that keeps things no smaller than 1080p's: 1 up to about 1600 pixels tall, 2 at 4K.
+function T.AutoPixelMultiple(h)
+  return math.max(1, math.floor(h / 1080 + 0.25))
+end
+
+-- The pixel-perfect scale the settings pick: 768 / screen height times the whole multiple
+-- (pixelMultiple: 2 makes one UI unit two screen pixels; 0 or unset picks one for the screen).
 function T.PixelScale()
-  return T.PixelPerfectScale() * math.max(1, math.floor(T.Settings().pixelMultiple or 1))
+  local n = T.Settings().pixelMultiple or 0
+  if n == 0 then n = T.AutoPixelMultiple(screenHeight()) end
+  return T.PixelPerfectScale() * math.max(1, math.floor(n))
 end
 
 -- Sets UIParent to the pixel-perfect scale when that setting is on, out of

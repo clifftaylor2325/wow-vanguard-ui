@@ -167,22 +167,43 @@ local function traced(err)
   return err
 end
 
--- Puts the outer ns.Try's site back and clears a handler failure; passes xpcall's results through.
-local function finished(outer, ...)
+-- How long each ns.Try site took (/vg perf slow): where -> { calls, total (ms), longest (ms), slow (calls
+-- over ns.SLOW_MS) }, timed with the game's debugprofilestop (ms, fine-grained). At most ns.MAX_TIMINGS sites
+-- are kept, so sites named from typed text can't grow it without end. ns.timingCount counts them.
+ns.timings, ns.timingCount, ns.SLOW_MS, ns.MAX_TIMINGS = {}, 0, 5, 400
+
+-- Notes one call of `where` that took ms milliseconds.
+local function note(where, ms)
+  local t = ns.timings[where]
+  if not t then
+    if ns.timingCount >= ns.MAX_TIMINGS then return end
+    t, ns.timingCount = { calls = 0, total = 0, longest = 0, slow = 0 }, ns.timingCount + 1
+    ns.timings[where] = t
+  end
+  t.calls, t.total, t.longest = t.calls + 1, t.total + ms, math.max(t.longest, ms)
+  if ms > ns.SLOW_MS then t.slow = t.slow + 1 end
+end
+
+-- Puts the outer ns.Try's site back, clears a handler failure and notes the time taken since
+-- start (when the client has the clock); passes xpcall's results through.
+local function finished(outer, where, start, ...)
   current, forwarding = outer, false
+  if start then note(where, debugprofilestop() - start) end
   return ...
 end
 
 -- Calls fn(...) with any error reported under `where` (see ns.Report) and
 -- returns what pcall would: true and fn's results, or false and the error.
+-- The time it took is noted under `where` (ns.timings).
 ---@param where string
 ---@param fn function
 ---@param ... any  arguments for fn
 ---@return boolean ok, ...  as pcall
 function ns.Try(where, fn, ...)
-  local outer = current
+  local outer, clock = current, debugprofilestop
   current = where
-  return finished(outer, xpcall(fn, traced, ...))
+  local start = type(clock) == "function" and clock() or nil
+  return finished(outer, where, start, xpcall(fn, traced, ...))
 end
 
 -- Wraps a hook, OnClick or timer callback so a failure is reported under

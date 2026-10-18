@@ -316,6 +316,19 @@ it("game menu: buttons made after the skin ran are skinned once, Vanguard's matc
   off.eval("GameMenuFrame:Show()");
   expect([borderOf(off, "ns.gameMenuButton") == null, off.eval("return GameMenuFrame.Header.LeftBG:IsShown() and GameMenuFrame.Header.LeftBG.__alpha ~= 0")], "with the windows switched off the menu stays the game's").toEqual([true, true]);
 });
+it("game menu: no button is lit on the first open, only the one under the mouse", () => {
+  const addon = loggedIn(FOREVER_MENU_ENV + MENU_POOL_ENV);
+  addon.eval("GameMenuFrame:Show()");
+  // A button's hover look: its fill's alpha and its top line's alpha.
+  const lit = (path) => addon.eval(`local h = ns.Theme.HoverParts(${path}) return { h.fill.bg:GetAlpha(), h[2]:GetAlpha() }`);
+  const first = "next(GameMenuFrame.buttonPool.__active)";
+  addon.eval(`local b = ${first} b:GetScript("OnEnter")(b) b:GetScript("OnShow")(b)`);
+  expect(lit(first), "the game calling OnEnter with the mouse elsewhere lights nothing").toEqual([0, 0]);
+  addon.eval(`local b = ${first} b.__mouseOver = true b:GetScript("OnEnter")(b)`);
+  expect(lit(first), "the mouse really over the button lights it").toEqual([1, 1]);
+  addon.eval(`local b = ${first} b.__mouseOver = false b:GetScript("OnShow")(b)`);
+  expect(lit(first), "shown again with the mouse gone, it is clear at once").toEqual([0, 0]);
+});
 it("game menu button: falls back, or goes without what the menu lacks", () => {
   expectErrors(/^GameMenu: wow-world\.lua:\d+: CreateFrame: unknown template NoSuchTemplate$/);
   const broken = loggedIn(FOREVER_MENU_ENV + 'GameMenuFrame.buttonTemplate = "NoSuchTemplate"');

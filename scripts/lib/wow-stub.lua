@@ -721,9 +721,11 @@ function methods:CreateMaskTexture(name, layer, _, sublevel)
 end
 
 -- Puts a mask on a texture (once, as the client does); the masks are listed in __masks, in order.
+-- Like the client, a texture holds at most three masks and a fourth is an error.
 function methods:AddMaskTexture(mask)
   self.__masks = self.__masks or {}
   for _, m in ipairs(self.__masks) do if m == mask then return end end
+  if #self.__masks >= 3 then error("Texture:AddMaskTexture(): Texture already has the maximum number of mask textures (3)", 2) end
   self.__masks[#self.__masks + 1] = mask
 end
 
