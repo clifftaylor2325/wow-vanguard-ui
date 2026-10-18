@@ -8,7 +8,11 @@
 --     title font and its red; the centre-screen status line (screenshots) and
 --     the frame rate readout in the theme font too (font only, at the game's size);
 --   * a rare nearby (off until switched on): a sound and one chat line when a
---     rare's mark comes onto the minimap, out of combat, once per rare.
+--     rare's mark comes onto the minimap, out of combat, once per rare;
+--   * a low-health vignette (off until switched on): a soft tint round the screen
+--     edge that strengthens as your health drops. The client works out its strength
+--     from your health through a curve, so it is never compared in Lua (health is
+--     hidden in some fights); it is static, with no pulse and no fade.
 -- Both stay the game's own frames: Vanguard restyles them and gives each a
 -- spot you can move with /vg unlock (Edit Mode still wins while it's open).
 
@@ -19,7 +23,7 @@ local vgDeath = ns.FrameState("vgDeath")
 
 local T = ns.Theme
 
-local GA = ns.Module("GameAlerts", { defaults = { lossOfControl = true, talkingHead = "move", hardcore = true, rares = false } })
+local GA = ns.Module("GameAlerts", { defaults = { lossOfControl = true, talkingHead = "move", hardcore = true, rares = false, vignette = false } })
 
 -- Each alert's mover: key, label, default point, and the spot's size.
 GA.SPOTS = {
@@ -174,16 +178,89 @@ function GA.OnVignette(_, guid, onMinimap)
   ns.Chat("Rare nearby: " .. name)
 end
 
+-- Low-health vignette ----------------------------------------------------------------------------
+
+-- Health (0 = empty, 1 = full) and the vignette's strength there: full at 0, gone from half health up.
+GA.VIGNETTE_CURVE = { { 0, 0.6 }, { 0.2, 0.4 }, { 0.5, 0 }, { 1, 0 } }
+
+-- The events other than your health's own that move it: death, release, rising, and a new zone.
+GA.VIGNETTE_EVENTS = { "PLAYER_DEAD", "PLAYER_ALIVE", "PLAYER_UNGHOST", "PLAYER_ENTERING_WORLD" }
+
+-- The color curve that turns health into the vignette's color and opacity, or nil where the client has none.
+function GA.VignetteCurve()
+  local util = C_CurveUtil
+  if type(util) ~= "table" or type(util.CreateColorCurve) ~= "function" or type(CreateColor) ~= "function" then return nil end
+  local r, g, b = T.RGB("vignette")
+  local curve = util.CreateColorCurve()
+  for _, p in ipairs(GA.VIGNETTE_CURVE) do curve:AddPoint(p[1], CreateColor(r, g, b, p[2])) end
+  return curve
+end
+
+-- The color object for your health now (its numbers may be hidden, which a texture takes as they are), or nil where the client can't say.
+function GA.VignetteColor()
+  local get = _G.UnitHealthPercent
+  if type(get) ~= "function" or not GA.curve then return nil end
+  local ok, color = pcall(get, "player", false, GA.curve)
+  if ok and type(color) == "table" and type(color.GetRGBA) == "function" then return color end
+end
+
+-- The vignette's frame and its edge texture over the whole screen, made once and under the interface.
+local function vignetteFrame()
+  if GA.vignette then return GA.vignette end
+  local f = CreateFrame("Frame", "Vanguard_LowHealthVignette", UIParent)
+  f:SetAllPoints(UIParent)
+  f:SetFrameStrata("BACKGROUND")
+  f:EnableMouse(false)
+  f.edge = f:CreateTexture(nil, "BACKGROUND")
+  f.edge:SetAllPoints()
+  f.edge:SetTexture(T.Texture("Vignette"))
+  GA.vignette = f
+  return f
+end
+
+-- Tints the screen edge for your health now; hidden when it is off, you are dead or the client can't say.
+function GA.UpdateVignette()
+  local dead = type(UnitIsDeadOrGhost) == "function" and UnitIsDeadOrGhost("player")
+  local color = GA.VignetteColor()
+  if not GA.settings.vignette or not color or (not ns.IsSecret(dead) and dead) then
+    if GA.vignette then GA.vignette:Hide() end
+    return
+  end
+  local f = vignetteFrame()
+  f.edge:SetVertexColor(color:GetRGBA())
+  f:Show()
+end
+
+-- Starts or stops the vignette after a change of its switch or of the accent colors; applied at once.
+function GA.ApplyVignette()
+  if GA.settings.vignette then GA.WatchHealth() end
+  GA.curve = GA.settings.vignette and GA.VignetteCurve() or nil
+  GA.UpdateVignette()
+end
+
+-- Looks at the vignette again whenever your health or your being alive changes; once, the first time it is switched on.
+function GA.WatchHealth()
+  if GA.watching then return end
+  GA.watching = true
+  ns.OnUnit({ "UNIT_HEALTH", "UNIT_MAXHEALTH" }, GA.UpdateVignette, "player")
+  for _, event in ipairs(GA.VIGNETTE_EVENTS) do ns.On(event, GA.UpdateVignette) end
+end
+
+-- Loss of control in the theme and on its spot, when the setting is on and the game has it.
+local function lossOfControl(on)
+  local loc = _G.LossOfControlFrame
+  if not (on and type(loc) == "table") then return end
+  GA.SkinLossOfControl(loc)
+  ns.OutOfCombat(function() place("LossOfControlFrame") end)
+end
+
 -- Module entry point (Core/Modules.lua).
 function GA.Enable(settings)
   GA.settings = settings
+  GA.ApplyVignette()
   if type(C_VignetteInfo) == "table" then ns.On("VIGNETTE_MINIMAP_UPDATED", GA.OnVignette) end
   watchWarnings(settings.hardcore)
   GA.ThemeStatusText()
-  local loc = _G.LossOfControlFrame
-  if settings.lossOfControl and type(loc) == "table" then
-    GA.SkinLossOfControl(loc)
-    ns.OutOfCombat(function() place("LossOfControlFrame") end)
-  end
+  lossOfControl(settings.lossOfControl)
   talkingHead(settings.talkingHead)
 end

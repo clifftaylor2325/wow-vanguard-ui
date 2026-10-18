@@ -306,6 +306,12 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Expect: with no fight and no hostile target your player, pet, target of target and focus frames are faint (about a third); under the mouse the hovered frame is at full strength at once; targeting a living hostile mob or entering combat brings them all up at once and they stay up through the fight; after the fight with no hostile target they go faint again. A friendly target's frame stays faint. Clicking a faint frame still targets, right-clicking opens the menu. Switching Calm HUD off brings every frame back to full at once. No error.
 - If it fails, paste: a screenshot and `/vg errors`.
 
+### 7.2b Low-health vignette
+
+- Do: `/vg` → Combat tools, switch on **Low health: a soft tint round the screen edge**. At full health look at the screen edge, then let a mob (or a fall) take you under half health, then under a fifth, then heal up. Also try it with Reduce motion on, and die once.
+- Expect: at full health nothing shows; under half health a soft vermilion tint appears round the edge and grows stronger as health drops, with no pulse and no flicker, in a fight too (including an instance fight, where health is hidden); healing clears it; while dead or a ghost it is gone; it never blocks a click. Switching it off clears it at once. No error.
+- If it fails, paste: a screenshot and `/vg errors`.
+
 ### 7.3 Nameplates in a pull
 
 - Do: pull three or more mobs.
