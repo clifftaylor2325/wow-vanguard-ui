@@ -221,8 +221,8 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 
 ### 5.2a Shield corners
 
-- Do: look at your player and target frames and your cast bar while casting, at your usual UI scale and at Pixel-perfect. Lose some health and mana. Then `/vg` → General → Look, switch off **Shield corners on unit frames and cast bars**, and switch it on again.
-- Expect: each frame's four corners are cut at 45 degrees, about six pixels across, with a one-pixel cut line the same colour and weight as the straight edges, joining them with no gap or overlap. The health, power and cast fills stop inside the cut line (no colour pokes past it), also while a bar is nearly empty or full. Switching it off makes them square at once, on again cuts them at once. No error.
+- Do: look at your player and target frames, at your usual UI scale and at Pixel-perfect. Lose some health and mana. Then `/vg` → General → Look, switch off **Shield corners on unit frames**, and switch it on again, several times. Then `/vg errors`.
+- Expect: each frame's four corners are cut at 45 degrees, about six pixels across, with a one-pixel cut line the same colour and weight as the straight edges, joining them with no gap or overlap. The health and power fills stop inside the cut line (no colour pokes past it), also while a bar is nearly empty or full. Switching it off makes them square at once, on again cuts them at once. No error, and `/vg errors` has no `AddMaskTexture` line (#421 put four masks on a bar and the game allows three).
 - If it fails, paste: a close screenshot of one corner (zoomed) and `/vg errors`.
 
 ### 5.3 Hover, press, focus and window motion
