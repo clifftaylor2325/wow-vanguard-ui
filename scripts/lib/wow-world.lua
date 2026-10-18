@@ -1824,6 +1824,17 @@ function C_TradeSkillUI.GetProfessionInfoBySkillLineID(skillLine)
   return { professionID = skillLine, professionName = "", skillLevel = 0, maxSkillLevel = 0 }
 end
 
+-- Skills ------------------------------------------------------------------------------------------
+-- world.skills[skillID] = { name, rank, maxRank }: the skills you know, as C_SkillInfo.GetSkillLineInfoByID
+-- gives them (SkillInfoDocumentation.lua, SkillLineAttributes); an unknown skill answers rank 0.
+world.skills = {}
+C_SkillInfo = C_SkillInfo or {}
+-- The SkillLineAttributes of a skill line (the fields Vanguard reads).
+function C_SkillInfo.GetSkillLineInfoByID(skillID)
+  local s = world.skills[skillID] or {}
+  return { skillID = skillID, name = s.name or "", isHeader = false, rank = s.rank or 0, maxRank = s.maxRank or 0 }
+end
+
 -- The profession window (Blizzard_Professions, which Forever loads on TRADE_SKILL_SHOW:
 -- Blizzard_Game/Mainline/EventImplementation.lua's HandleTradeSkillShow calls ShowProfessionsFrame,
 -- Blizzard_Professions/Blizzard_Professions_Bootstrap.lua). ProfessionsFrame (673 x 594,
