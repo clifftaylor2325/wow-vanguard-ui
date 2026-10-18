@@ -2132,12 +2132,20 @@ local function dimIcon(button, dim)
   icon:SetAlpha(dim and T.TAB_DIM or 1)
 end
 
+-- A tab's label in the text colour while it is selected and text2 while it is not (the game paints it gold, and its
+-- font objects put the gold back as the tab's state changes); a tab with no label is skipped.
+local function paintTabLabel(frame, on)
+  local label = type(frame.GetFontString) == "function" and frame:GetFontString() or nil
+  if type(label) == "table" and label.SetTextColor then T.Color(label, on and "text" or "text2") end
+end
+
 -- Paints a tab for its state: the selected one raised and its icon in color; the others
--- inset, their icon greyed when opts.dimIcon asks.
+-- inset, their icon greyed when opts.dimIcon asks; its label in the text colours.
 local function paintTab(entry, frame)
   local on, p = tabSelected(frame), entry.parts
   entry.opts.inset, entry.opts.raised = not on, on
   paintBg(p, entry.opts, entry.round > 0)
+  paintTabLabel(frame, on)
   if entry.opts.dimIcon then dimIcon(frame, not on) end
 end
 
