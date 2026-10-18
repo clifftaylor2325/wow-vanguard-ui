@@ -87,6 +87,7 @@
       "client capability probe: what this client has, and /vg status says so"
     ],
     "scripts/tests/coexist.test.mjs": [
+      "coexist: EllesmereUI's unit frame, action bar, nameplate and raid frame addons are noticed",
       "coexist: the next login says nothing new; a module already off, or a client without the call, asks nothing"
     ],
     "scripts/tests/cooldowngaps.test.mjs": [],
