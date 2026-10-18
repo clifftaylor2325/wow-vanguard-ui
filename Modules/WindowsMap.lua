@@ -642,27 +642,83 @@ local function challengeNote(pane)
   end
 end
 
+-- The Legacy cards' texts, by key, as { role, colour }: the game colours them for its dark plates (dim grey while
+-- locked or unfinished), the theme's text tiers clear 4.5:1 on a panel. A key a card lacks is skipped.
+GW.LEGACY_TEXTS = { Title = { "label", "text" }, Description = { "small", "text2" }, RewardName = { "label", "text" }, Level = { "small", "text2" } }
+-- The points crests (a bronze crown over a shield) by key, and the frame art round a card's icon.
+GW.LEGACY_CRESTS = { "Shield", "PointsIcon", "PointsBadge", "LegacyPointShield" }
+GW.LEGACY_ICON_ART = { "IconBorder", "IconFrame", "IconRing" }
+
+-- A card's texts in the theme's tiers, at full strength (the game dims locked ones by alpha as well as colour).
+local function lightTexts(card)
+  for key, look in pairs(GW.LEGACY_TEXTS) do
+    GW.SkinText(card[key], look[1], look[2])
+    if type(card[key]) == "table" and card[key].SetAlpha then card[key]:SetAlpha(1) end
+  end
+end
+
+-- One crest (a texture, or a frame holding them): the bronze taken out of it and tinted in the border colour, so the
+-- number on it stays the brightest thing.
+local function flattenCrest(part)
+  if type(part) ~= "table" then return end
+  if part.SetDesaturated then part:SetDesaturated(true) T.Tint(part, "borderHi") end
+  if not part.GetRegions then return end
+  for _, region in ipairs({ part:GetRegions() }) do
+    if region.SetDesaturated then flattenCrest(region) end
+  end
+end
+
+-- Every crest a frame holds under the keys of GW.LEGACY_CRESTS.
+local function flattenCrests(frame)
+  for _, key in ipairs(GW.LEGACY_CRESTS) do flattenCrest(frame[key]) end
+end
+
+-- A card's icon in the flat item-slot look: the frame art round it faded, the icon cropped (a button icon gets the
+-- spellbook's thin border too).
+local function flattenIcon(card)
+  GW.FadeParts(card, GW.LEGACY_ICON_ART)
+  local icon = card.Icon
+  if type(icon) ~= "table" then return end
+  if icon.GetRegions then GW.DressIcon(icon) elseif icon.SetTexCoord then T.Crop(icon) end
+end
+
+-- A progress bar of the window: the theme's inset track, its fill in the accent and the figures over it in the text colour.
+local function skinLegacyBar(bar)
+  GW.SkinProgress(bar)
+  if type(bar) ~= "table" or not bar.GetStatusBarTexture then return end
+  T.Tint(bar:GetStatusBarTexture(), "accent")
+  GW.SkinText(bar.Text or bar.Label, "label", "text")
+end
+
+-- The line between a page's list and content: one pixel of `divider` on a page without panes (the tree), faded on one
+-- whose two panes have edges of their own (the challenges), where it showed as a stray bar between them.
+local function dressDivider(page)
+  if isFrame(page.CategoryList) or isFrame(page.DetailPane) then return GW.FadeParts(page, { "VerticalDivider" }) end
+  T.Divider(page.VerticalDivider, { vertical = true })
+end
+
 -- One page's background art faded, the divider between its list and content one pixel of `divider`, an inset panel
 -- under each of its panes and the challenge list's empty note. The talent tree's node buttons are the game's.
 local function skinLegacyPage(page)
   if not isFrame(page) then return end
   GW.FadeParts(page, GW.LEGACY_PAGE_ART)
-  if isFrame(page.VerticalDivider) then T.Divider(page.VerticalDivider, { vertical = true }) end
+  flattenCrests(page)
+  if isFrame(page.VerticalDivider) then dressDivider(page) end
   for _, key in ipairs(GW.LEGACY_PANES) do
     if isFrame(page[key]) then T.Panel(page[key], { inset = true, noSheen = true }) end
   end
   if isFrame(page.DetailPane) then GW.WatchEmpty(page.DetailPane.ScrollBox, challengeNote(page.DetailPane)) end
 end
 
--- The art of a tree card the theme keeps: the icon (its normal, highlight and pushed textures) and the ring round it.
-GW.LEGACY_CARD_KEEP = { "NormalTexture", "HighlightTexture", "PushedTexture", "Ring" }
+-- The art of a tree card the theme keeps: the icon (its normal, highlight and pushed textures); the bronze ring round it is faded.
+GW.LEGACY_CARD_KEEP = { "NormalTexture", "HighlightTexture", "PushedTexture" }
 
 -- A tree card's selected look (the rail and fill of a selected row) while it is the picked tree (the game's checked state).
 local function markTreeCard(card)
   if type(card.GetChecked) == "function" then T.SelectRow(card, card:GetChecked() and true or false) end
 end
 
--- One tree card (a ringed icon button on a plate): the plate and glow faded, the icon and ring kept, on a raised tile
+-- One tree card (a ringed icon button on a plate): the plate, glow and ring faded, the icon kept, on a raised tile
 -- that shows the selected look while its tree is the picked one (the game refreshes that in RefreshSelectionVisuals).
 local function skinTreeCard(card)
   if not isFrame(card) then return end
@@ -705,11 +761,15 @@ local function skinTreePage(page)
   if not isFrame(summary) then return end
   GW.FadeParts(summary, { "Border" })
   T.Panel(summary, { inset = true, noSheen = true })
+  flattenCrests(summary)
 end
 
--- A category row's selected look, following the flag the game keeps on it (SetSelected).
+-- A category row's selected look, following the flag the game keeps on it (SetSelected), and its name in the text
+-- colour (the game's yellow is for content).
 local function followCategory(row)
   T.SelectRow(row, row.selected == true)
+  local fs = type(row.GetFontString) == "function" and row:GetFontString() or row.Text or row.Label
+  GW.SkinText(fs, "label", "text")
 end
 
 -- A category row's plus or minus in the text colour, the game's art on its button faded.
@@ -742,9 +802,11 @@ end
 -- The art of a challenge card that is replaced by the card's own panel: its plates, tiles, selection glow and ribbon.
 GW.CHALLENGE_ART = { "Background", "BackgroundTop", "BackgroundMiddle", "BackgroundBottom", "SelectedOverlay", "TitleBar" }
 
--- A challenge card's selected look (the rail and fill of a selected row) while the game has it selected (opened).
+-- A challenge card's selected look (the rail and fill of a selected row) while the game has it selected (opened), and
+-- its texts at full strength (the game greys an unfinished card when it refreshes).
 local function markChallenge(card)
   T.SelectRow(card, type(card.IsSelected) == "function" and card:IsSelected() == true)
+  lightTexts(card)
 end
 
 -- One challenge card: its plates faded, a card in the theme with the selected look while selected (the game refreshes
@@ -755,6 +817,8 @@ local function skinChallenge(card)
   T.Panel(card)
   T.Row(card)
   GW.SkinCheck(card.Tracked)
+  flattenIcon(card)
+  flattenCrests(card)
   markChallenge(card)
   GW.HookAfter(card, "RefreshStateArt", markChallenge)
 end
@@ -780,7 +844,8 @@ local function skinChallengesPage(page)
   local summary = page.LegacyChallengePointSummary
   if not isFrame(summary) then return end
   GW.FadeParts(summary, { "ProgressBarBackground" })
-  GW.SkinProgress(summary.PointsBar)
+  skinLegacyBar(summary.PointsBar)
+  flattenCrests(summary)
 end
 
 -- One reward card: the plate, level diamond and icon ring faded, the reward's icon and the earned tick kept, on a raised tile.
@@ -788,6 +853,8 @@ local function skinRewardCard(card)
   if not isFrame(card) then return end
   T.FadeRegions(card, GW.KeepKeys(card, { "Icon", "EarnedCheckmark" }))
   T.Panel(card, { raised = true, noSheen = true })
+  flattenIcon(card)
+  lightTexts(card)
 end
 
 -- The reward cards the track holds now (the game fills it in Init, from a pool).
@@ -800,7 +867,7 @@ end
 local function skinRewardPage(page)
   if not isFrame(page) then return end
   GW.FadeParts(page, { "ProgressBarBackground" })
-  GW.SkinProgress(page.LegacyRewardProgressBar)
+  skinLegacyBar(page.LegacyRewardProgressBar)
   local track = page.LegacyRewardProgressFrame
   if not isFrame(track) then return end
   skinRewardCards(track)
