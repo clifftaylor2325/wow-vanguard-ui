@@ -1298,6 +1298,12 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 - Expect: a box opens with `Chat: N lines with "word"` and the matching lines as plain text (links show as their words), selected for Ctrl+C. An empty search says `Type something to find.` `/vg errors` is empty. [Needs in game: that the Find button sits clear of Copy in the tab row, and that GetNumMessages/GetMessageInfo return every line the window holds.]
 - If it fails, paste: `/vg errors` and a screenshot of the tab row.
 
+### 15.6g Chat tab look
+
+- Do: with two chat tabs, click between them; have a friend whisper or say something into the tab you are not looking at, then `/vg accent` another colour.
+- Expect: the shown tab is raised and the other sunk, with a soft hover; a tab with new lines flashes in the accent colour (at the game's own pace), and the flash follows the accent. [Needs in game: that the glow tint holds while the game animates it, and that tab sizes did not change.]
+- If it fails, paste: `/vg errors` and a screenshot of the tab row.
+
 ## 16. Realm and ruleset
 
 ### 16.0 Data from the beta

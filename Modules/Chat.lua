@@ -1,6 +1,7 @@
 -- Chat: every chat window, tab and edit box in the Vanguard look. The
--- windows get a flat panel and the theme font, tabs lose their art and show
--- the accent on the selected one, and the edit box becomes a themed input.
+-- windows get a flat panel and the theme font, tabs become the theme's tabs
+-- (the selected one raised, the others inset, an accent alert glow), and the
+-- edit box becomes a themed input.
 -- The background is a soft dark patch behind the text and tab row, fading out at its edges, in Light, Medium or Dark.
 -- Chat text is Small, Medium or Large, scaled by the Text size setting (so
 -- one slider shrinks everything), or the size the game's own chat menu set.
@@ -112,14 +113,6 @@ end
 -- Backdrop strengths for the options cycle.
 CH.BACKDROPS = T.CHAT_BACKDROP.levels
 
--- Tab text: accent when selected, the plain text colour otherwise (it sits on the backdrop).
-local function colorTab(tab, selected)
-  local text = tab.Text or (tab.GetFontString and tab:GetFontString())
-  if text then
-    T.Text(text, "label", selected and "accentText" or "text")
-  end
-end
-
 -- A tab wide enough for its label at the theme font: the game sized it for its own font, which
 -- cut a name to "Gene...".
 local function fitTab(tab)
@@ -129,10 +122,20 @@ local function fitTab(tab)
   tab:SetWidth(ns.PlainNumber(text:GetStringWidth()) + T.SPACE.col * 2)
 end
 
--- A tab without its art.
+-- A tab's alert glow (the game flashes it when a line arrives in an unseen window), or nil.
+local function tabGlow(tab)
+  local name = type(tab.GetName) == "function" and tab:GetName() or nil
+  local glow = tab.glow or tab.Glow or (name and _G[name .. "Glow"])
+  return type(glow) == "table" and type(glow.SetVertexColor) == "function" and glow or nil
+end
+
+-- A tab as the theme's tab (raised when selected, inset otherwise, a faint hover) with its own art
+-- gone and its alert glow in the accent colour; the game's flash animation still drives the glow's alpha.
 local function skinTab(tab)
-  T.FadeRegions(tab, { [tab.Text or false] = true })
-  colorTab(tab, false)
+  T.Tab(tab)
+  T.FadeRegions(tab, { [tab.Text or false] = true, [tabGlow(tab) or false] = true })
+  local glow = tabGlow(tab)
+  if glow then T.Tint(glow, "accent") end
   fitTab(tab)
 end
 
@@ -231,12 +234,12 @@ function CH.RefitTabs()
   end
 end
 
--- Re-colors the tabs so the selected window's tab carries the accent.
+-- Paints the tabs again so the selected window's tab is the raised one (the theme's tab follows the
+-- game's own selection; this catches a selection made while the hooks were not watching).
 function CH.UpdateTabs()
-  local selected = SELECTED_CHAT_FRAME
   for i = 1, windowCount() do
     local tab = _G["ChatFrame" .. i .. "Tab"]
-    if tab then colorTab(tab, _G["ChatFrame" .. i] == selected) end
+    if tab then T.Tab(tab) end
   end
 end
 

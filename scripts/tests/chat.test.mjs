@@ -61,12 +61,22 @@ it("a minimap that has the game's own wheel handler keeps it, and Vanguard adds 
 });
 it("chat", () => {
   const addon = loggedIn(UI_ENV);
-  const c = addon.eval(`return { font = { ChatFrame1:GetFont() }, box = ns.Theme.PaintedCount(),
-    tab1 = ChatFrame1Tab.Text.__textColor, tab2 = ChatFrame2Tab.Text.__textColor }`);
+  const c = addon.eval(`return { font = { ChatFrame1:GetFont() }, box = ns.Theme.PaintedCount() }`);
   expect(c.font[0] === "Interface\\AddOns\\Vanguard\\Media\\Fonts\\FiraSansCondensed-Medium.ttf" && c.font[1] === 12, `chat windows get the theme font at Medium, 12 (got ${JSON.stringify(c.font)})`).toBeTruthy();
-  expect(isTok(addon, c.tab2, "accentText") && isTok(addon, c.tab1, "text"), "the selected window's tab is in the accent's text colour, others in the plain text colour").toBeTruthy();
+  addon.eval("ChatFrame2Tab:Disable() ChatFrame1Tab:Enable()");
+  // Whether chat tab n is painted in the raised (selected) fill.
+  const raised = (n) => addon.eval(`local bg for _, r in ipairs({ ChatFrame${n}Tab:GetRegions() }) do if r.__layer == "BACKGROUND" and r.__vertexColor then bg = r end end
+    local c, r, g, b = bg and bg.__vertexColor, ns.Theme.RGB("raised") return c ~= nil and c[1] == r and c[2] == g and c[3] == b`);
+  expect([raised(2), raised(1)], "the game selects a tab by disabling it: the selected tab is raised, the others inset").toEqual([true, false]);
+  expect(addon.eval("local p = ns.Theme.PaintedCount() return p > 0"), "tabs are the theme's tabs").toBe(true);
+});
+it("chat tabs: the alert glow is the accent colour and keeps the game's own alpha; a tab without a glow is fine", () => {
+  const addon = loggedIn(UI_ENV + "ChatFrame1Tab.glow = ChatFrame1Tab:CreateTexture() ChatFrame1Tab.glow:SetAlpha(0.5) ChatFrame2Tab.Glow = nil");
+  addon.eval("ns.GetModule('Chat').SkinAll()");
+  expect(isTok(addon, addon.eval("local g = ChatFrame1Tab.glow return g.__vertexColor or { g:GetVertexColor() }"), "accent"), "the glow takes the accent").toBe(true);
+  expect(addon.eval("return ChatFrame1Tab.glow:GetAlpha()"), "its alpha is the game's to animate").toBe(0.5);
   addon.slash("accent ember");
-  expect(isTok(addon, addon.eval("return ChatFrame2Tab.Text.__textColor"), "accentText"), "tabs follow accent changes").toBeTruthy();
+  expect(isTok(addon, addon.eval("local g = ChatFrame1Tab.glow return g.__vertexColor or { g:GetVertexColor() }"), "accent"), "and follows accent changes").toBe(true);
 });
 // TEST-ONLY chat window art as the game names it (ChatFrame<i><part>), with the game's own mouseover fade.
 const CHAT_ART_ENV = `
