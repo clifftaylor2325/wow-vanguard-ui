@@ -135,11 +135,11 @@ it("first-run setup: a profile of its own copies the shared one without a reload
   addon.eval('__click("A profile of its own")');
   setupClick(addon, "next");
   expect(addon.eval("return { ns.ProfileName(), VanguardCharDB.editModeProfile, Vanguard_Setup.back:IsShown() }"), "the character uses its new profile at once, and Back can't undo it").toEqual(["name", "name", false]);
-  expect(addon.eval("return { Vanguard_Setup.pages.layout.hint:GetText(), Vanguard_Setup.pages.layout.choices[2].text:GetText() }"), "a healer's new profile starts on Keep, with Healing marked")
+  expect(addon.eval("return { Vanguard_Setup.pages.layout.hint:GetText(), Vanguard_Setup.pages.layout.choices[3].text:GetText() }"), "a healer's new profile starts on Keep, with Healing marked")
     .toEqual(["Moves nothing: your frames stay where they are.", "Centered: healing  ·  your role"]);
   addon.eval('__click("Centered: healing")');
   setupClick(addon, "next");
-  expect(addon.eval("return { VanguardDB.profiles.name.positions.raid == nil, VanguardDB.profiles.Default.positions.raid.y }"), "Healing leaves the new profile's raid grid at its default; Default keeps its own").toEqual([true, -300]);
+  expect(addon.eval("return { VanguardDB.profiles.name.positions.raid.point == nil, VanguardDB.profiles.Default.positions.raid.y }"), "Healing leaves the new profile's raid grid at its default spot (only larger); Default keeps its own").toEqual([true, -300]);
   expect(addon.eval("return ns.Settings('positions') == VanguardDB.profiles.name.positions"), "the running settings are the new profile's").toBe(true);
   setupClick(addon, "back");
   expect(setupState(addon).step, "Back stops at the layout step").toBe(2);

@@ -12,7 +12,7 @@ local ADDON, ns = ...
 local T, V = ns.Theme, ns.Visibility
 
 local UF = ns.Module("UnitFrames", {
-  defaults = { hideBlizzard = true, healthText = true, powerHeight = 6, boss = true, calm = false, deck = false },
+  defaults = { hideBlizzard = true, healthText = true, powerHeight = 6, boss = true, calm = false, deck = false, targetHeight = 36 },
 })
 
 -- Target classification -> the color of its diamond (none for normal units).
@@ -483,16 +483,18 @@ end
 -- filling from the right, so the pair reads as a duel. The panel is a plain frame anchored to the two
 -- secure buttons (it never moves them), on the background strata so it stays under everything between
 -- them (cast bar, swing timer, cooldowns), and the crest with it.
-UF.DECK = { crest = 20, pad = 3 }
+-- The panel reaches UF.DECK.pad past the two frames with an accent border, and their names and health
+-- read in UF.DECK.text, so the pair reads from across the screen.
+UF.DECK = { crest = 28, pad = 6, text = "title" }
 
 -- Makes the deck's panel from the player frame to the target frame, reaching UF.DECK.pad past them,
--- with the crest centred on its top edge.
+-- with an accent border and the crest centred on its top edge.
 local function deckPanel(player, target)
   local d, pad = CreateFrame("Frame", nil, UIParent), UF.DECK.pad
   d:SetFrameStrata("BACKGROUND")
   d:SetPoint("TOPLEFT", player, "TOPLEFT", -pad, pad)
   d:SetPoint("BOTTOMRIGHT", target, "BOTTOMRIGHT", pad, -pad)
-  T.HudPanel(d, { shield = true })
+  T.HudPanel(d, { shield = true, accent = true })
   d.crest = T.Logo(d, UF.DECK.crest)
   d.crest:SetPoint("CENTER", d, "TOP")
   return d
@@ -504,8 +506,29 @@ local function deckNow()
   if not (player and target) then return end
   if on and not UF.deck then UF.deck = deckPanel(player, target) end
   if UF.deck then UF.deck:SetShown(on) end
+  UF.ApplySizes()
+  for _, f in ipairs({ player, target }) do UF.DeckText(f, on) end
   target.health:SetReverseFill(on)
   target.power:SetReverseFill(on)
+end
+
+-- Gives a deck frame's name and health text the deck's larger role while it is on, their own otherwise.
+function UF.DeckText(f, on)
+  T.Text(f.name, on and UF.DECK.text or "name")
+  T.Text(f.healthText, on and UF.DECK.text or "number")
+end
+
+-- How tall the target frame stands: its targetHeight setting (setup's role layouts raise it, a taller
+-- target for damage dealers and tanks), else its layout's height. It grows up from its bottom edge.
+function UF.TargetHeight()
+  return tonumber(UF.settings.targetHeight) or LAYOUT[2].h
+end
+
+-- Sizes the target frame to UF.TargetHeight (out of combat: it is a secure button).
+function UF.ApplySizes()
+  local target = UF.frames.target
+  if not target then return end
+  ns.OutOfCombat(function() T.PixelSize(target, LAYOUT[2].w, UF.TargetHeight()) end)
 end
 
 -- Applies the Versus deck setting: now, or when combat ends (a new deck joins the Calm HUD).

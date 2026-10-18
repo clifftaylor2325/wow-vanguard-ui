@@ -8,20 +8,20 @@ const setupClick = (addon, which) => addon.eval(`local b = Vanguard_Setup.${whic
 it("setup layouts: your specialization's role, else your group role, marks your layout", () => {
   // The layout setup marks as your role's, with this Lua run before login.
   const guess = (lua) => loggedIn(lua, { firstRun: true }).eval("return ns.Setup.GuessLayout()");
-  expect(guess(""), "no role: damage and tanking").toBe("damage");
-  expect(guess("__wfgWorld.units.player.role = 'TANK'"), "a tank: damage and tanking").toBe("damage");
+  expect(guess(""), "no role: damage").toBe("damage");
+  expect(guess("__wfgWorld.units.player.role = 'TANK'"), "a tank: tanking").toBe("tank");
   expect(guess("__wfgWorld.spec = 2 GetSpecializationRole = function(i) return i == 2 and 'HEALER' or 'DAMAGER' end"), "a healing spec: healing").toBe("healing");
   expect(guess("__wfgWorld.spec = 1 __wfgWorld.units.player.role = 'HEALER' GetSpecializationRole = function() return 'DAMAGER' end"), "the spec wins over the group role").toBe("damage");
   const healer = loggedIn("__wfgWorld.units.player.role = 'HEALER'", { firstRun: true });
-  expect(healer.eval("return { Vanguard_Setup.pages.layout.hint:GetText(), Vanguard_Setup.pages.layout.choices[2].text:GetText() }"), "a new account's healer starts on Keep too, Healing marked as theirs")
+  expect(healer.eval("return { Vanguard_Setup.pages.layout.hint:GetText(), Vanguard_Setup.pages.layout.choices[3].text:GetText() }"), "a new account's healer starts on Keep too, Healing marked as theirs")
     .toEqual(["Moves nothing: your frames stay where they are.", "Centered: healing  ·  your role"]);
 });
 it("setup layouts: Healing puts the raid frames under the character and turns click casting on", () => {
   const addon = loggedIn(CLICK_LUA + UNITS_ENV + RAID_ENV, { firstRun: true });
   const layouts = addon.eval("local out = {} for i, b in ipairs(Vanguard_Setup.pages.layout.choices) do out[i] = b.text:GetText() end return out");
-  expect(layouts, "four layouts, damage and tanking first (marked as your role's: no role says healer), then Keep").toEqual(["Centered: damage and tanking  ·  your role", "Centered: healing", "Versus deck", "Like the game's", "Keep my current layout"]);
+  expect(layouts, "five layouts, damage first (marked as your role's: no role says healer or tank), then Keep").toEqual(["Centered: damage  ·  your role", "Centered: tanking", "Centered: healing", "Versus deck", "Like the game's", "Keep my current layout"]);
   expect(addon.eval('return __click("Centered: healing")') && addon.eval("return Vanguard_Setup.pages.layout.hint:GetText()"), "picking Healing shows what it does").toMatch(/click casting on/);
-  expect(borderOf(addon, "Vanguard_Setup.pages.layout.choices[2]"), "the chosen layout is outlined in the accent").toEqual(tok(addon, "accent").slice(0, 3).concat(1));
+  expect(borderOf(addon, "Vanguard_Setup.pages.layout.choices[3]"), "the chosen layout is outlined in the accent").toEqual(tok(addon, "accent").slice(0, 3).concat(1));
   setupClick(addon, "next");
   expect(addon.eval("return { ns.MoverPoint('raid') }"), "Healing leaves the raid frames at their default spot, over your player frame").toEqual(["BOTTOM", "BOTTOM", -240, 344]);
   expect(addon.eval("return ns.ModuleEnabled('ClickCast') and ns.ModuleEnabled('RaidFrames')"), "click casting and the raid frames are on").toBe(true);
@@ -34,7 +34,7 @@ it("setup layouts: Healing puts the raid frames under the character and turns cl
   const off = loggedIn(CLICK_LUA, { firstRun: true, savedVariables: "VanguardDB = { profiles = { Default = { modules = { ClickCast = false, RaidFrames = false } } } }" });
   off.eval('__click("Centered: healing")');
   setupClick(off, "next");
-  expect(off.eval("return VanguardDB.profiles.Default.positions.raid == nil"), "without raid frames built, no spot is saved: the default (by group size) applies").toBe(true);
+  expect(off.eval("return VanguardDB.profiles.Default.positions.raid.point == nil and VanguardDB.profiles.Default.positions.raid.scale"), "without raid frames built, no spot is saved (the default by group size applies), only the larger size").toBe(1.15);
   expect(off.eval("return ns.ModuleEnabled('ClickCast') and ns.ModuleEnabled('RaidFrames')"), "Healing turns click casting and the raid frames on").toBe(true);
   expect(off.eval(role), "with the raid frames off, Healing still saves their settings for when they load").toEqual([true, true, true, true, 2, false]);
   for (let i = 0; i < 3; i += 1) setupClick(off, "next");
@@ -42,7 +42,7 @@ it("setup layouts: Healing puts the raid frames under the character and turns cl
   off.eval('Vanguard_Question.no:GetScript("OnClick")(Vanguard_Question.no)');
   expect(off.eval("return Vanguard_Reload:IsShown() and Vanguard_Reload.title:GetText()"), "a module that was off offers a reload at the end").toMatch(/Setup turned on a module that was off/);
 });
-it("setup layouts: Damage and tanking restores Vanguard's defaults, undoing Healing", () => {
+it("setup layouts: Damage restores Vanguard's defaults, undoing Healing", () => {
   const addon = loggedIn(CLICK_LUA + UNITS_ENV + RAID_ENV, { firstRun: true });
   const home = addon.eval("return { ns.MoverPoint('raid') }");
   addon.eval('__click("Centered: healing")');
@@ -53,13 +53,13 @@ it("setup layouts: Damage and tanking restores Vanguard's defaults, undoing Heal
   setupClick(addon, "next");
   expect(addon.eval("return { ns.MoverPoint('raid') }"), "and Keep leaves the raid frames where they are").toEqual(home);
   setupClick(addon, "back");
-  addon.eval('__click("Centered: damage and tanking")');
+  addon.eval('__click("Centered: damage")');
   setupClick(addon, "next");
-  expect(addon.eval("return { ns.MoverPoint('raid') }"), "picking Damage and tanking puts the raid frames back").toEqual(home);
+  expect(addon.eval("return { ns.MoverPoint('raid') }"), "picking Damage puts the raid frames back").toEqual(home);
   expect(addon.eval("return VanguardDB.profiles.Default.positions.raid == nil"), "and forgets the saved spot").toBe(true);
-  expect(addon.eval("return { ns.Settings('RaidFrames').showPower, ns.Settings('RaidFrames').sortByRole, ns.Settings('RaidAuras').hots, ns.Settings('RaidHealing').healPrediction, ns.Settings('Nameplates').debuffs, ns.Settings('Nameplates').threat }"), "Damage and tanking takes the power bars, role sort, HoTs and incoming heals off the raid frames, longer debuff rows and threat colours on nameplates").toEqual([false, false, false, false, 6, true]);
+  expect(addon.eval("return { ns.Settings('RaidFrames').showPower, ns.Settings('RaidFrames').sortByRole, ns.Settings('RaidAuras').hots, ns.Settings('RaidHealing').healPrediction, ns.Settings('Nameplates').debuffs, ns.Settings('Nameplates').threat }"), "Damage takes the power bars, role sort, HoTs and incoming heals off the raid frames, longer debuff rows and threat colours on nameplates").toEqual([false, false, false, false, 6, true]);
   const off = loggedIn(CLICK_LUA, { firstRun: true, savedVariables: 'VanguardDB = { profiles = { Default = { modules = { RaidFrames = false }, positions = { raid = { point = "TOP", relPoint = "CENTER", x = 0, y = -200 } } } } }' });
-  off.eval('__click("Centered: damage and tanking")');
+  off.eval('__click("Centered: damage")');
   setupClick(off, "next");
   expect(off.eval("return VanguardDB.profiles.Default.positions.raid == nil"), "without raid frames built, the saved spot is cleared for next time").toBe(true);
 });
@@ -77,7 +77,7 @@ it("setup layouts: Like the game's puts your frames at the top left; another lay
   addon.eval('__click("Centered: healing")');
   setupClick(addon, "next");
   expect(spots().slice(0, 2).concat([spots()[3]]), "Healing puts the frames back first").toEqual([home[0], home[1], home[3]]);
-  expect([addon.eval("return VanguardDB.profiles.Default.positions.uf_player == nil"), spots()[2]], "and then places nothing: the raid frames keep their default spot").toEqual([true, home[2]]);
+  expect([addon.eval("return VanguardDB.profiles.Default.positions.uf_player.point == nil"), spots()[2]], "and then places nothing: the raid frames keep their default spot").toEqual([true, home[2]]);
 });
 // Where a point name sits across and up a rect (0 = left or bottom, 1 = right or top).
 const ACROSS = (point) => (/LEFT/.test(point) ? 0 : /RIGHT/.test(point) ? 1 : 0.5);
@@ -184,7 +184,7 @@ it("setup layouts: nothing overlaps or leaves the screen, solo to 40-man, at UI 
   expect(moverSpots(addon).menustrip.slice(4, 6).map((n) => Math.round(n * 10) / 10), "the bag and menu bar hugs its 14 menu slots").toEqual([412, 82]);
   expect(["bar1", "bar2", "bar3", "cast_player", "cast_target", "cast_focus", "uf_player", "uf_target", "uf_focus", "uf_pet", "swing", "raid", "xpbar", "cdm_essential", "cdm_utility", "cdm_buffs", "damagemeter", "fighthistory", "tooltip", "infostrip", "questtracker", "flighttimer", "uf_boss1", "raidtools", "maintanks", "partyextras", "petbar", "stancebar", "chat", "questdialog"].filter((k) => !moverSpots(addon)[k]), "every part of the cluster is a mover").toEqual([]);
   expect(moverSpots(addon).questdialog.slice(3, 6), "the quest dialog is checked at its greatest size, 8 px over the focus cast bar").toEqual([346, 560, 360]);
-  for (const layout of ["damage", "healing", "versus", "classic"]) {
+  for (const layout of ["damage", "tank", "healing", "versus", "classic"]) {
     addon.eval(`ns.Setup.ApplyLayout("${layout}")`);
     // The bags ride over the menu in one bar, so it is no wider than the menu row and clears the bars at 1365.
     for (const [sw, sh] of [[1365, 768], [1920, 1080]]) expect(problemsAt(addon, layout, sw, sh, `${layout}, ${sw}x${sh}`)).toEqual([]);
@@ -197,7 +197,7 @@ it("setup screens: with each screen preset, nothing overlaps or leaves its own s
   for (const [key, w, h, ui] of presets) {
     // The screen in UI units at the preset's UI scale: 768 tall at scale 1.
     const sw = (768 * w) / h / ui, sh = 768 / ui;
-    for (const layout of ["damage", "healing", "versus", "classic"]) {
+    for (const layout of ["damage", "tank", "healing", "versus", "classic"]) {
       addon.eval(`ns.Setup.ApplyLayout("${layout}") ns.Setup.ApplyScreen("${key}")`);
       expect(problemsAt(addon, layout, sw, sh, `${key} (${Math.round(sw)}x${Math.round(sh)}), ${layout}`)).toEqual([]);
     }
@@ -256,7 +256,7 @@ it("setup screen: with Pixel-perfect, nothing overlaps or leaves the screen, in 
   for (const [w, h] of [[1920, 1080], [2560, 1440], [3840, 2160], [3440, 1440]]) {
     addon.eval(`__wfgStub.setScreen(${w}, ${h})`);
     const n = addon.eval(`return ns.Setup.PixelMultiple(${h})`);
-    for (const layout of ["damage", "healing", "versus", "classic"]) {
+    for (const layout of ["damage", "tank", "healing", "versus", "classic"]) {
       addon.eval(`ns.Setup.ApplyLayout("${layout}") ns.Setup.ApplyScreen("pixel")`);
       expect(problemsAt(addon, layout, w / n, h / n, `pixel-perfect ${w}x${h}, ${layout}`)).toEqual([]);
     }
@@ -366,6 +366,33 @@ it("one bar material (#234): every Vanguard bar on the whole HUD uses the theme'
   expect(Object.keys(soft.eval(BAR_MATERIALS)), "the Soft material on all of them").toEqual([soft.eval('return ns.Theme.Texture("BarSoft")')]);
 });
 
+it("setup layouts: each role sizes the frames its own way: a taller target for damage and more for tanking, a larger raid and smaller own frames for healing", () => {
+  const addon = loggedIn(CLICK_LUA + UNITS_ENV + RAID_ENV, { firstRun: true });
+  // The target frame's height (to the whole unit; it snaps to screen pixels), the player, target and raid scales, and the nameplates' buff row.
+  const sizes = () => addon.eval("local f = ns.GetModule('UnitFrames').frames return { math.floor(f.target:GetHeight() + 0.5), f.player:GetScale(), f.target:GetScale(), Vanguard_RaidHolder:GetScale(), ns.Settings('Nameplates').buffs }");
+  expect(sizes().slice(0, 4), "Vanguard's defaults").toEqual([36, 1, 1, 1]);
+  addon.eval("ns.Setup.ApplyLayout('damage')");
+  expect(sizes(), "damage: a taller target").toEqual([40, 1, 1, 1, 0]);
+  addon.eval("ns.Setup.ApplyLayout('tank')");
+  expect(sizes(), "tanking: the tallest target and the Tank preset (buff rows on nameplates)").toEqual([44, 1, 1, 1, 3]);
+  addon.eval("ns.Setup.ApplyLayout('healing')");
+  expect(sizes().slice(0, 4), "healing: the target back to 36, your frames smaller, the raid larger").toEqual([36, 0.9, 0.9, 1.15]);
+  addon.eval("ns.Setup.ApplyLayout('versus')");
+  expect(sizes().slice(0, 4), "Versus deck after Healing (no role says healer): your frame and your target's one size and height again").toEqual([36, 1, 1, 1]);
+  addon.eval("ns.Setup.ApplyLayout('classic')");
+  expect(sizes().slice(0, 4), "Like the game's puts every size back").toEqual([36, 1, 1, 1]);
+  setCombat(addon, true);
+  addon.eval("ns.Setup.ApplyLayout('tank')");
+  expect(sizes()[0], "in a fight the target frame waits").toBe(36);
+  setCombat(addon, false);
+  expect(sizes()[0], "and grows when it ends").toBe(44);
+  const healer = loggedIn(CLICK_LUA + UNITS_ENV + RAID_ENV + "__wfgWorld.spec = 2 GetSpecializationRole = function() return 'HEALER' end", { firstRun: true });
+  healer.eval("ns.Setup.ApplyLayout('versus')");
+  expect(healer.eval("local f = ns.GetModule('UnitFrames').frames return { f.player:GetScale(), f.target:GetScale(), Vanguard_RaidHolder:GetScale(), VanguardDB.profiles.Default.positions.uf_player.scale == nil }"), "a healer's Versus deck: the raid larger, the duel frames one size").toEqual([1, 1, 1.15, true]);
+  const bare = loggedIn(CLICK_LUA, { firstRun: true, savedVariables: "VanguardDB = { profiles = { Default = { modules = { UnitFrames = false } } } }" });
+  bare.eval("ns.Setup.ApplyLayout('tank')");
+  expect(bare.eval("return { VanguardDB.profiles.Default.UnitFrames.targetHeight, #ns.errors }"), "without unit frames built, the height is saved for later").toEqual([44, 0]);
+});
 it("setup layouts: Versus deck is your role's centered layout with the deck on; another layout takes it off", () => {
   const addon = loggedIn(CLICK_LUA + UNITS_ENV + RAID_ENV, { firstRun: true });
   expect(addon.eval('return __click("Versus deck")') && addon.eval("return Vanguard_Setup.pages.layout.hint:GetText()"), "picking it says what it does").toMatch(/crest between them/);

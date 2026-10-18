@@ -31,8 +31,9 @@ local LATER = "Setup opens again at your next login. /vg setup opens it now; Ski
 
 -- Layout presets, in display order; Keep (the last) moves nothing and is picked when setup opens.
 S.LAYOUTS = {
-  { key = "damage", text = "Centered: damage and tanking", hint = "For damage dealers and tanks: your frames around your character, compact raid frames without power bars or heal overlays, threat colours and longer debuff rows on nameplates." },
-  { key = "healing", text = "Centered: healing", hint = "Party and raid above your frames, a big raid stacked at the left of your character, raid frames sorted by role with power bars, raid debuffs, HoTs and incoming heals, short debuff rows on nameplates, click casting on." },
+  { key = "damage", text = "Centered: damage", hint = "For damage dealers: your frames around your character, a taller target frame, compact raid frames without power bars or heal overlays, threat colours and longer debuff rows on nameplates." },
+  { key = "tank", text = "Centered: tanking", hint = "For tanks: the tallest target frame, raid frames sorted by role with the aggro strip, threat colours, the target border and buff rows on nameplates." },
+  { key = "healing", text = "Centered: healing", hint = "Party and raid above your frames, drawn larger (a big raid stacked at the left of your character), your own and your target's frames a little smaller, raid frames sorted by role with power bars, raid debuffs, HoTs and incoming heals, short debuff rows on nameplates, click casting on." },
   { key = "versus", text = "Versus deck", hint = "Centered for your role, with your frame and your target's joined by one shield panel under your character, the crest between them and your cast bar in the middle." },
   { key = "classic", text = "Like the game's", hint = "Your frames at the top left as the game has them, party and raid down the left side." },
   { key = "keep", text = "Keep my current layout", hint = "Moves nothing: your frames stay where they are." },
@@ -53,6 +54,17 @@ S.CLASSIC = {
   raidtools = { "TOP", "TOP", 100, -120 }, maintanks = { "TOP", "TOP", 100, -196 },
   rolls = { "TOPLEFT", "TOPLEFT", 20, -8 },
 }
+-- What each centered layout sizes on top of Vanguard's defaults: a mover's scale (it keeps its default
+-- spot, so a big raid still moves to the left), and how tall the target frame stands (UnitFrames'
+-- targetHeight; it grows up from its bottom edge, so nothing beside it moves). Damage raises the target
+-- frame, Tanking raises it more, Healing draws the raid frames larger and your own and your target's
+-- frames smaller.
+S.ROLE_SPOTS = {
+  damage = {},
+  tank = {},
+  healing = { uf_player = { scale = 0.9 }, uf_target = { scale = 0.9 }, raid = { scale = 1.15 } },
+}
+S.TARGET_HEIGHT = { damage = 40, tank = 44, healing = 36 }
 -- Screen presets, in display order, for the screen each is made for (w x h pixels): the UI
 -- scale (the game's own UI scale, whose slider runs 0.65 to 1.15; it sizes the unit frames,
 -- whose layouts are drawn in UI units), the action button size, the raid tile size and the text size.
@@ -103,25 +115,37 @@ end
 -- Saves a frame's spot, moving it now (or after combat) when it is built; the
 -- raid grid is pinned to its new spot's side.
 local function place(key, p)
-  ns.Settings("positions")[key] = { point = p[1], relPoint = p[2], x = p[3], y = p[4] }
+  ns.Settings("positions")[key] = { point = p[1], relPoint = p[2], x = p[3], y = p[4], scale = p.scale }
   if not ns.MoverPoint(key) then return end
-  ns.SetMoverPoint(key, p[1], p[2], p[3], p[4])
+  if p[1] then ns.SetMoverPoint(key, p[1], p[2], p[3], p[4]) end
+  if p.scale then ns.SetMoverScale(key, p.scale) end
   if key == "raid" then ns.GetModule("RaidFrames").Fit() end
 end
 
--- Puts everything a preset moves back at Vanguard's defaults, so picking
--- Damage and tanking undoes Healing, Versus deck and Like the game's (the deck goes off too).
+-- Every mover a preset moves or sizes: Like the game's spots and the role layouts' ones.
+local function presetKeys()
+  local keys = {}
+  for key in pairs(S.CLASSIC) do keys[key] = true end
+  for _, spots in pairs(S.ROLE_SPOTS) do
+    for key in pairs(spots) do keys[key] = true end
+  end
+  return keys
+end
+
+-- Puts everything a preset moves or sizes back at Vanguard's defaults, so picking one
+-- layout undoes the others, Versus deck and Like the game's (the deck goes off too).
 local function restoreDefaults()
-  for key in pairs(S.CLASSIC) do
+  for key in pairs(presetKeys()) do
     ns.Settings("positions")[key] = nil
     ns.ResetMovers(key)
   end
   if ns.MoverPoint("raid") then ns.GetModule("RaidFrames").Fit() end
+  S.SetTargetHeight(nil)
   S.SetDeck(false)
 end
 
 -- The role preset each layout applies (Core/PresetStrings.lua).
-local ROLE = { damage = "Damage", healing = "Healer" }
+local ROLE = { damage = "Damage", tank = "Tank", healing = "Healer" }
 
 -- One module's saved settings, whether or not it is on.
 local function moduleSettings(name)
@@ -129,9 +153,11 @@ local function moduleSettings(name)
   return ns.Settings(name, m and m.defaults or {})
 end
 
--- Sets a role layout's raid frame, raid aura, raid healing and nameplate settings (its
--- preset's); the frames on screen repaint now, the rest shows after the reload Done offers.
+-- Sets a role layout's spots and sizes, and its raid frame, raid aura, raid healing and nameplate settings
+-- (its preset's); the frames on screen repaint now, the rest shows after the reload Done offers.
 local function applyRole(key)
+  for mover, p in pairs(S.ROLE_SPOTS[key]) do place(mover, p) end
+  S.SetTargetHeight(S.TARGET_HEIGHT[key])
   for name, values in pairs(ns.ROLE_SETTINGS[ROLE[key]]) do
     local saved = moduleSettings(name)
     for k, v in pairs(values) do saved[k] = v end
@@ -144,13 +170,18 @@ end
 
 -- What each layout changes.
 local APPLY = {
-  -- Damage and tanking: Vanguard's defaults with the Damage preset's settings.
+  -- Damage: Vanguard's defaults, its spots and sizes and the Damage preset's settings.
   damage = function()
     restoreDefaults()
     applyRole("damage")
   end,
-  -- Healing: Vanguard's defaults (a big raid sits at the left of your character), click casting on,
-  -- the Healer preset's settings.
+  -- Tanking: Vanguard's defaults, its spots and sizes and the Tank preset's settings.
+  tank = function()
+    restoreDefaults()
+    applyRole("tank")
+  end,
+  -- Healing: Vanguard's defaults (a big raid sits at the left of your character), its sizes, click
+  -- casting on, the Healer preset's settings.
   healing = function()
     restoreDefaults()
     applyRole("healing")
@@ -166,10 +197,16 @@ local APPLY = {
   keep = function() end,
 }
 
--- Versus deck: your role's centered layout (Healing for a healer, else Damage and tanking), with the
--- deck on: its spots are the centered ones, so everything between your frames stays where it is.
+-- Versus deck: your role's centered layout with the deck on: its spots are the centered ones, so
+-- everything between your frames stays where it is, and your frame and your target's stay one size and height.
 function APPLY.versus()
   APPLY[S.GuessLayout()]()
+  for _, key in ipairs({ "uf_player", "uf_target" }) do
+    local p = ns.Settings("positions")[key]
+    if p then p.scale = nil end
+    ns.SetMoverScale(key, 1)
+  end
+  S.SetTargetHeight(nil)
   S.SetDeck(true)
 end
 
@@ -187,9 +224,13 @@ local function playerRole()
   return ns.GetModule("Upgrades").ROLES[role or "NONE"]
 end
 
--- The layout for your role (marked on the layout step): Centered: healing for a healer, else Centered: damage and tanking.
+-- Each role's centered layout (anyone else gets Centered: damage).
+S.ROLE_LAYOUT = { healer = "healing", tank = "tank" }
+
+-- The layout for your role (marked on the layout step): Centered: healing for a healer, Centered: tanking
+-- for a tank, else Centered: damage.
 function S.GuessLayout()
-  return playerRole() == "healer" and "healing" or "damage"
+  return S.ROLE_LAYOUT[playerRole()] or "damage"
 end
 
 -- Applies the profile step: "new" gives this character a profile of its own and keeps Back
@@ -231,6 +272,13 @@ function S.SetDeck(on)
   local UF = ns.GetModule("UnitFrames")
   ns.Settings("UnitFrames", UF.defaults).deck = on == true
   if UF.settings then UF.ApplyDeck() end
+end
+
+-- Sets how tall the target frame stands (UnitFrames' targetHeight), sizing it at once when the unit frames are built.
+function S.SetTargetHeight(h)
+  local UF = ns.GetModule("UnitFrames")
+  ns.Settings("UnitFrames", UF.defaults).targetHeight = h
+  if UF.settings then UF.ApplySizes() end
 end
 
 -- Screen ----------------------------------------------------------------------------------
