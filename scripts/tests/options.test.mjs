@@ -621,7 +621,7 @@ it("options: the pages, their nav order and each page's row count stay as they w
   // Adding or removing a row (or a module, which adds a row under Modules) changes these counts on purpose.
   expect(pages, "the page list and each page's row count (a new row is one more on its page)").toEqual([
     "general|General|10|39", "modules|Modules|20|78", "unitframes|Unit frames|30|29", "raid|Raid frames|40|25",
-    "actionbars|Action bars|60|73", "quests|Quests|70|30", "bars|Bars and bags|80|17", "map|Map|81|31", "chat|Chat|82|67", "windows|Game windows|83|46", "cooldowns|Cooldowns|83.5|13", "tools|Combat tools|84|34", "town|Town and gear|85|54", "profiles|Profiles|90|22",
+    "actionbars|Action bars|60|73", "quests|Quests|70|30", "bars|Bars and bags|80|17", "map|Map|81|36", "chat|Chat|82|67", "windows|Game windows|83|46", "cooldowns|Cooldowns|83.5|13", "tools|Combat tools|84|34", "town|Town and gear|85|54", "profiles|Profiles|90|22",
     "feedback|Feedback|100|7", "healing|Healing|45|44", "talents|Talents|47|7", "nameplates|Nameplates|65|15",
     "situations|Situations|86|17", "clickcast|Click casting|46|11",
   ]);
