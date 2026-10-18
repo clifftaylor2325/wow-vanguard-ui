@@ -69,6 +69,21 @@ it("#201 the character pane: dragged by its title bar, its place is saved and pu
   expect(errors(addon)).toBe("none");
 });
 
+it("a window hidden mid-drag ends the drag: it is not stuck dragging, and its saved place is put back again", () => {
+  const addon = loggedIn(MOVE_ENV);
+  addon.eval("__open(CharacterFrame)");
+  drag(addon, "CharacterFrame", 500, 700);
+  addon.eval(`local h = ns.FrameState('vgMoveHandle')[CharacterFrame] h:GetScript("OnDragStart")(h, "LeftButton")
+    CharacterFrame:ClearAllPoints() CharacterFrame:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", 320, 640) CharacterFrame:Hide()`);
+  expect(addon.eval("return { ns.FrameState('vgDragging')[CharacterFrame] == true, CharacterFrame.__moving, CharacterFrame.__testUserPlaced }"), "hidden mid-drag: the drag is over").toEqual([false, false, false]);
+  expect(saved(addon).CharacterFrame, "and the window is saved where it was let go").toEqual({ x: 320, y: 640 });
+  addon.eval("__open(CharacterFrame)");
+  expect(corner(addon, "CharacterFrame"), "the saved place is put back on the next show").toEqual([320, 640]);
+  addon.eval('local h = ns.FrameState("vgMoveHandle")[CharacterFrame] h:GetScript("OnDragStop")(h)');
+  addon.eval("CharacterFrame:Hide()");
+  expect([saved(addon).CharacterFrame, errors(addon)], "a late drop after the hide, and a hide with no drag, change nothing").toEqual([{ x: 320, y: 640 }, "none"]);
+});
+
 it("#201 the combined bag: a drag strip along its top, and its place kept when the game scales and stacks the bags again", () => {
   const addon = loggedIn(MOVE_ENV);
   addon.eval("__open(ContainerFrameCombinedBags)");

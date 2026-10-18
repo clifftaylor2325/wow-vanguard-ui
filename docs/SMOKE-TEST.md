@@ -147,6 +147,12 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Expect: no world shows through any of these windows, including the empty space under a short options page. Tooltips and menus may still be very slightly see-through (that is the theme's panel opacity, not a window).
 - If it fails, paste: a screenshot of the window over the bright ground and `/vg errors`.
 
+### 2.1c Options and questions let go of the mouse and keyboard when they close
+
+- Do: `/vg`, press and hold the mouse on any slider's track, and while holding press Escape; open the window again and move the mouse over the track without clicking. Then click a key button (Click casting, or a bar button's key), and while it says "Press a key..." close the window with Escape; reopen it and press a movement key. Finally start a fight, and during it open a question (`/vg` > Profiles > Reset profile; answer No afterwards) and try to move and use your action bar keys; end the fight.
+- Expect: the slider does not follow the mouse or change its value after the window closes; the key button shows its normal caption again and the movement key moves you instead of binding; during the fight the question shows but your movement and action bar keys still work, and after the fight, with a question up, Enter presses its confirm button again. `/vg errors` is empty. [Needs in-game check: whether the client delivers the mouse-up to a slider hidden mid-drag, and that a question opened in combat passes keys on.]
+- If it fails, paste: which control, what it did, and `/vg errors`.
+
 ### 2.2 The wizard, start to finish
 
 - Do: drag a frame with `/vg unlock`, then open `/vg` → General → **Run setup**. Click Next three times, then Done.
@@ -179,6 +185,12 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Do: drag the Minimap and Info strip handles somewhere new, type `/vg lock`, then `/reload`.
 - Expect: `Locked.` and, after the reload, both frames where you left them.
 - If it fails, paste: which frame moved back and `/vg errors`.
+
+### 3.2a A window closed while you drag it
+
+- Do: out of combat, open the merchant (or your character pane), start dragging it by its title bar, and without letting go press Escape (or walk out of range). Let go, open it again, drag it somewhere else, then close it and open it again.
+- Expect: the window is gone while you drag, nothing sticks to the mouse, and the next time it opens it is where it was let go; after the second drag it comes back at the new spot every time, also after another window opens and shuffles the panels. `/vg errors` is empty. [Needs in-game check: whether the client sends the drag's end to a drag area that is hidden mid-drag; Vanguard now ends the drag itself when the window hides.]
+- If it fails, paste: which window, where it came back, and `/vg errors`.
 
 ### 3.3 Combat while unlocked
 
@@ -409,6 +421,12 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Do: tick **Status chip above your frame** under Unit frames, reload. Out of combat eat some food, then drink, then eat a food that gives Well Fed; wait until each buff ends. Then tick Instance prep's buff checks (`/vg` > Town and gear) and look at the chip with no flask or raid buffs. Start a fight with the chip showing.
 - Expect: above the player frame's top-left corner a small panel with the buff's own icon and Eating, Drinking or Well Fed while that buff is on you (Well Fed in the good color), going when the buff does; with the buff checks on and nothing of those, a warning triangle and Missing: and the first missing buff and how many more, in the warning color, matching `/vg prep`'s buff rows. It is gone the moment a fight starts and back after it, and gone while you are dead. If the buff names are wrong for this client (the chip stays hidden while you eat), paste the aura names from `/dump C_UnitAuras.GetAuraDataByIndex("player", 1, "HELPFUL")`. No error.
 - If it fails, paste: a screenshot and `/vg errors`.
+
+### 7.2g Energy spark stops when no tick comes
+
+- Do: on a rogue or a cat-form druid with the spark on (`/vg` > Unit frames), stand still at full energy for ten seconds, then spend some energy and watch the spark.
+- Expect: at full energy the spark is gone after about six seconds and stays gone (no spark crossing a bar that is not regenerating); after you spend energy the next tick starts it again and it crosses the power bar every two seconds. [Needs in-game check: that energy ticks keep it going, and whether abilities that give energy nudge its timing (not changed here).]
+- If it fails, paste: the class, form and what the spark did.
 
 ### 7.3 Nameplates in a pull
 

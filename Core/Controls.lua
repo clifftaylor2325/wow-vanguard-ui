@@ -528,10 +528,19 @@ local function stepBy(r, n)
   r:Refresh()
 end
 
--- Dragging along the track: follow the cursor from mouse down to mouse up.
+-- Ends a drag along the track: the cursor is no longer followed.
+local function endDrag(r)
+  r.dragging = false
+  r.track:SetScript("OnUpdate", nil)
+end
+
+-- Dragging along the track: follow the cursor from mouse down to mouse up, or until the slider hides (its window
+-- closed mid-drag, so no mouse up comes); a failing step is caught once under its name, not raised every frame.
 local function wireDrag(r)
-  r.track:SetScript("OnMouseDown", function() r.dragging = true r.track:SetScript("OnUpdate", function() dragTo(r) end) end)
-  r.track:SetScript("OnMouseUp", function() r.dragging = false r.track:SetScript("OnUpdate", nil) end)
+  local follow = ns.Guard("slider drag", function() dragTo(r) end)
+  r.track:SetScript("OnMouseDown", function() r.dragging = true r.track:SetScript("OnUpdate", follow) end)
+  r.track:SetScript("OnMouseUp", function() endDrag(r) end)
+  r.track:HookScript("OnHide", function() endDrag(r) end)
 end
 
 -- The fill (T.SLIDER.fill): a pill on the track itself (its ARTWORK, under the thumb and the outline) from the track's
