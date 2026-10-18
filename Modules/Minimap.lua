@@ -1,4 +1,4 @@
--- Minimap: square, in a themed frame you can move in unlock mode, with the
+-- Minimap: square (or round: Minimap shape), in a themed frame you can move in unlock mode, with the
 -- zone name in the zone text role on a see-through band along its top edge
 -- (colored by PvP status; hover it for the zone's territory, click it for the
 -- world map), the coordinates on a band along its bottom between the tracking
@@ -7,7 +7,8 @@
 -- emptied cluster frame stops taking the mouse and loses its zone button.
 -- Nothing is unregistered. The game's small minimap buttons (tracking, mail,
 -- dungeon difficulty, the addon compartment) move from the old minimap spot
--- onto this map's corners.
+-- onto this map's corners. A round map is masked to a disc with an outline over its edge; the bands are
+-- masked to it, the corner diamonds are left off and the buttons sit on the rim.
 
 local ADDON, ns = ...
 
@@ -19,20 +20,21 @@ local vgSlot = ns.FrameState("vgSlot")
 local T = ns.Theme
 
 local MM = ns.Module("Minimap", {
-  defaults = { size = 180, coords = true, icons = true },
+  defaults = { size = 180, coords = true, icons = true, shape = "auto" },
 })
 
 -- The game's minimap buttons this map takes onto its corners: where to find
 -- each (a path of keys from the global table) and which corner it sits in. The two you
 -- click for a menu (tracking, the addon compartment) become slot buttons on
 -- the bottom band with the theme's icon (slot); the others are indicators.
+-- On a round map `angle` (degrees, anticlockwise from three o'clock) puts it on the rim instead.
 MM.LEFTOVERS = {
-  { paths = { { "MinimapCluster", "Tracking" } }, point = "BOTTOMLEFT", x = 3, y = 3, slot = "MinimapTracking" },
-  { paths = { { "MinimapCluster", "IndicatorFrame", "MailFrame" } }, point = "TOPRIGHT", x = -2, y = -2 },
-  { paths = { { "MinimapCluster", "InstanceDifficulty" } }, point = "TOPLEFT", x = 2, y = -2 },
-  { paths = { { "AddonCompartmentFrame" } }, point = "BOTTOMRIGHT", x = -3, y = 3, slot = "MinimapAddons" },
+  { paths = { { "MinimapCluster", "Tracking" } }, point = "BOTTOMLEFT", x = 3, y = 3, slot = "MinimapTracking", angle = 225 },
+  { paths = { { "MinimapCluster", "IndicatorFrame", "MailFrame" } }, point = "TOPRIGHT", x = -2, y = -2, angle = 45 },
+  { paths = { { "MinimapCluster", "InstanceDifficulty" } }, point = "TOPLEFT", x = 2, y = -2, angle = 135 },
+  { paths = { { "AddonCompartmentFrame" } }, point = "BOTTOMRIGHT", x = -3, y = 3, slot = "MinimapAddons", angle = 315 },
   -- The group finder eye (shown while you're queued), smaller, just above the compartment.
-  { paths = { { "QueueStatusButton" } }, point = "BOTTOMRIGHT", x = -2, y = 42, scale = 0.6 },
+  { paths = { { "QueueStatusButton" } }, point = "BOTTOMRIGHT", x = -2, y = 42, scale = 0.6, angle = 345 },
 }
 -- A slot button on the map (UI units square), and its icon.
 MM.BUTTON, MM.GLYPH = 18, 12
@@ -70,9 +72,16 @@ local FADE = {
 }
 
 -- Addons that place icons around the minimap (LibDBIcon and others) ask
--- this global for its shape; Vanguard's minimap is square.
+-- this global for its shape; Vanguard's minimap is square unless it is built round.
 function GetMinimapShape()
-  return "SQUARE"
+  return MM.round and "ROUND" or "SQUARE"
+end
+
+-- Whether the map is built round: the Minimap shape setting says "round", or says "auto" (the
+-- default) and the theme variant asks for it (Classic look).
+function MM.IsRound(settings)
+  if settings.shape == "round" then return true end
+  return settings.shape ~= "square" and (T.Variant() or {}).minimapRound == true
 end
 
 -- The object at a path under the global table, or nil.
@@ -169,6 +178,13 @@ function MM.SlotButton(obj, icon, side, glyph)
   slotStates(obj, b)
 end
 
+-- SetPoint arguments for a leftover button: its corner of the map, or on a round map the rim at its angle.
+function MM.Spot(spec)
+  if not MM.round then return spec.point, MM.overlay, spec.point, spec.x, spec.y end
+  local a = math.rad(spec.angle)
+  return "CENTER", MM.overlay, "CENTER", math.cos(a) * MM.rim, math.sin(a) * MM.rim
+end
+
 -- Pins one of the game's minimap buttons to a corner of the map (it stays
 -- there when the game lays out its old minimap spot again).
 local function placeLeftover(spec)
@@ -178,7 +194,7 @@ local function placeLeftover(spec)
     f:SetParent(MM.overlay)
     f:SetScale(spec.slot and 1 or spec.scale or MM.ICON_SCALE)
     f:ClearAllPoints()
-    f:SetPoint(spec.point, MM.overlay, spec.point, spec.x, spec.y)
+    f:SetPoint(MM.Spot(spec))
     if spec.slot then MM.SlotButton(f, spec.slot) end
   end)
 end
@@ -289,11 +305,19 @@ end
 
 -- Building -------------------------------------------------------------------------------
 
+-- A round map's backing: a disc in the panel color (it follows the theme).
+local function roundBacking(holder)
+  local disc = holder:CreateTexture(nil, "BACKGROUND")
+  disc:SetTexture(T.Texture("RoundDisc"))
+  disc:SetAllPoints()
+  T.Tint(disc, "panel")
+end
+
 -- The themed holder the minimap moves into.
 local function createHolder(size)
   local holder = CreateFrame("Frame", "Vanguard_Minimap", UIParent)
   holder:SetSize(size + 2, size + 2)
-  T.HudPanel(holder)
+  if MM.round then roundBacking(holder) else T.HudPanel(holder) end
   ns.Mover(holder, "minimap", "Minimap", { "TOPRIGHT", "TOPRIGHT", -12, -12 })
   return holder
 end
@@ -304,8 +328,19 @@ local function adoptMinimap(holder, size)
   Minimap:ClearAllPoints()
   Minimap:SetPoint("CENTER", holder, "CENTER")
   Minimap:SetSize(size, size)
-  Minimap:SetMaskTexture(T.WHITE)
+  Minimap:SetMaskTexture(MM.round and T.Texture("RoundDisc") or T.WHITE)
   wheelZoom()
+end
+
+-- On a round map: the disc mask the bands wear (so they stop at the edge) and the outline over the map's rim.
+local function roundTrim(overlay)
+  MM.mask = overlay:CreateMaskTexture()
+  MM.mask:SetTexture(T.Texture("RoundDisc"), "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
+  MM.mask:SetAllPoints(overlay)
+  local ring = overlay:CreateTexture(nil, "OVERLAY")
+  ring:SetTexture(T.Texture("RoundRing"))
+  ring:SetAllPoints(overlay)
+  T.Tint(ring, "edge")
 end
 
 -- The overlay frame above the map that holds the bands, the texts, the
@@ -313,6 +348,7 @@ end
 local function createOverlay(holder)
   local overlay = CreateFrame("Frame", nil, holder)
   MM.overlay = overlay
+  if MM.round then roundTrim(overlay) end
   overlay.Layout = MM.NoLayout
   overlay:SetAllPoints()
   overlay:SetFrameLevel((Minimap:GetFrameLevel() or 1) + 2)
@@ -326,6 +362,7 @@ local function band(overlay, point, height)
   t:SetPoint(point .. "LEFT", overlay, point .. "LEFT")
   t:SetPoint(point .. "RIGHT", overlay, point .. "RIGHT")
   t:SetHeight(height)
+  if MM.mask then t:AddMaskTexture(MM.mask) end
   MM.bands[#MM.bands + 1] = t
   return t
 end
@@ -342,6 +379,7 @@ local function rule(overlay, bandTexture, side)
   t:SetPoint(side .. "LEFT", bandTexture, side .. "LEFT")
   t:SetPoint(side .. "RIGHT", bandTexture, side .. "RIGHT")
   t:SetHeight(T.Pixel(overlay))
+  if MM.mask then t:AddMaskTexture(MM.mask) end
   return t
 end
 
@@ -365,6 +403,14 @@ local function addBands(overlay, settings)
   T.OnChanged(paintChrome)
 end
 
+-- How wide the zone name may run: the room between the top corner buttons, or on a round map the
+-- chord across the middle of the top band.
+function MM.ZoneWidth(size)
+  if not MM.round then return size - 2 * MM.ZONE_INSET end
+  local r = size / 2
+  return 2 * math.sqrt(r * r - (r - MM.BAND.top / 2) ^ 2) - 8
+end
+
 -- The zone name centered on the top band in the zone role (a bold 13 that keeps
 -- Fira Sans when the faction look sets the display font on window titles), kept to the room between the
 -- corner buttons (a long name is cut short rather than run under them), and
@@ -373,7 +419,7 @@ end
 local function addTexts(overlay, size)
   MM.zone = T.Text(overlay:CreateFontString(nil, "OVERLAY"), "zone", false)
   MM.zone:SetPoint("CENTER", MM.top, "CENTER")
-  MM.zone:SetWidth(size - 2 * MM.ZONE_INSET)
+  MM.zone:SetWidth(MM.ZoneWidth(size))
   MM.zone:SetWordWrap(false)
   MM.coords = T.Text(overlay:CreateFontString(nil, "OVERLAY"), "small")
   MM.coords:SetPoint("CENTER", MM.bottom, "CENTER")
@@ -383,16 +429,16 @@ end
 -- The zone name takes the mouse: a click opens (or closes) the world map,
 -- hovering names the zone and its territory, and the wheel still zooms. It
 -- stops short of the top corners, so the buttons there keep their clicks.
-local function zoneButton(overlay)
+local function zoneButton(overlay, size)
   local b = CreateFrame("Button", "Vanguard_MinimapZone", overlay)
-  b:SetPoint("TOPLEFT", overlay, "TOPLEFT", MM.ZONE_INSET, 0)
-  b:SetPoint("TOPRIGHT", overlay, "TOPRIGHT", -MM.ZONE_INSET, 0)
+  local inset = (size - MM.ZoneWidth(size)) / 2
+  b:SetPoint("TOPLEFT", overlay, "TOPLEFT", inset, 0)
+  b:SetPoint("TOPRIGHT", overlay, "TOPRIGHT", -inset, 0)
   b:SetHeight(MM.BAND.top)
   b:SetScript("OnClick", ns.Guard("click minimap world map", function() if type(ToggleWorldMap) == "function" then ToggleWorldMap() end end))
   b:SetScript("OnEnter", zoneTooltip)
   b:SetScript("OnLeave", function() GameTooltip:Hide() end)
-  b:EnableMouseWheel(true)
-  b:SetScript("OnMouseWheel", onWheel)
+  b:EnableMouseWheel(true) b:SetScript("OnMouseWheel", onWheel)
   MM.zoneButton = b
 end
 
@@ -411,9 +457,10 @@ local function cornerMark(overlay, point)
   return d
 end
 
--- The four corner diamonds; they follow the accent live.
+-- The four corner diamonds (none on a round map); they follow the accent live.
 local function addCorners(overlay)
   MM.corners = {}
+  if MM.round then return end
   for _, point in ipairs({ "TOPLEFT", "TOPRIGHT", "BOTTOMLEFT", "BOTTOMRIGHT" }) do MM.corners[#MM.corners + 1] = cornerMark(overlay, point) end
   paintCorners()
   T.OnChanged(paintCorners)
@@ -423,12 +470,13 @@ end
 local function dress(overlay, settings)
   addBands(overlay, settings)
   addTexts(overlay, settings.size)
-  zoneButton(overlay)
+  zoneButton(overlay, settings.size)
   addCorners(overlay)
 end
 
 -- Builds the minimap frame. Out of combat, since it moves Blizzard frames.
 local function build(settings)
+  MM.round, MM.rim = MM.IsRound(settings), settings.size / 2 - 4
   local holder = createHolder(settings.size)
   adoptMinimap(holder, settings.size)
   dress(createOverlay(holder), settings)

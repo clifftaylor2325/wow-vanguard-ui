@@ -33,7 +33,7 @@ read_globals = {
   "UiMapPoint", "C_SuperTrack", "C_Navigation", "C_Minimap", "hash_SlashCmdList", "IsPlayerSpell",
   "C_Bank", "C_ContentTracking", "InputUtil",
   "GetInventoryItemLink", "C_PlayerInfo",
-  "AbbreviateNumbers", "GetTime", "UnitCastingInfo", "UnitChannelInfo", "AuraUtil", "CreateUnitHealPredictionCalculator", "UnitGetDetailedHealPrediction", "UnitGetIncomingHeals", "UnitGetTotalAbsorbs", "UnitThreatSituation", "C_ActionBar", "C_AddOns", "C_CVar", "C_VideoOptions", "GetGraphicsCVarValueForQualityLevel", "C_Reputation", "C_Spell", "C_UnitAuras", "C_Timer", "C_EquipmentSet", "GetMerchantItemCostInfo", "GetLocale", "GetCursorPosition", "Enum", "GetActionInfo", "GetMacroSpell", "SOUNDKIT", "PlaySound", "ClearCursor", "GetCursorInfo", "GetSpellInfo", "C_SpecializationInfo", "GetSpecialization", "ReloadUI", "GetXPExhaustion", "IsPlayerAtEffectiveMaxLevel", "IsXPUserDisabled", "UnitLevel", "UnitXP", "UnitXPMax", "C_Map", "FCF_OpenTemporaryWindow", "FCF_OpenNewWindow", "GetChatWindowInfo", "ChatFrame_RemoveAllMessageGroups", "ChatFrame_RemoveAllChannels", "FCF_Tab_OnClick", "GetMinimapZoneText", "GetZonePVPInfo", "Minimap", "NUM_CHAT_WINDOWS", "SELECTED_CHAT_FRAME", "SecureHandlerExecute", "SecureHandlerUnwrapScript", "SecureHandlerWrapScript", "SetCVar", "DeclineGuild", "DeclineGroup", "BNDeclineFriendInvite", "RepopMe", "HasSoulstone", "IsGuildMember", "C_FriendList", "C_BattleNet", "ZoneTextFrame", "SubZoneTextFrame", "UISpecialFrames", "hooksecurefunc", "ClearOverrideBindings", "GetBindingKey", "CreateFrame", "DEFAULT_CHAT_FRAME", "debugstack", "geterrorhandler", "CallErrorHandler",
+  "AbbreviateNumbers", "GetTime", "UnitCastingInfo", "UnitChannelInfo", "AuraUtil", "CreateUnitHealPredictionCalculator", "UnitGetDetailedHealPrediction", "UnitGetIncomingHeals", "UnitGetTotalAbsorbs", "UnitThreatSituation", "C_ActionBar", "C_AddOns", "C_CVar", "C_VideoOptions", "GetGraphicsCVarValueForQualityLevel", "C_Reputation", "C_Spell", "C_UnitAuras", "C_Timer", "C_EquipmentSet", "GetMerchantItemCostInfo", "GetLocale", "GetCursorPosition", "Enum", "GetActionInfo", "GetMacroSpell", "SOUNDKIT", "PlaySound", "ClearCursor", "GetCursorInfo", "GetSpellInfo", "C_SpecializationInfo", "GetSpecialization", "ReloadUI", "GetXPExhaustion", "IsPlayerAtEffectiveMaxLevel", "IsXPUserDisabled", "UnitLevel", "UnitXP", "UnitXPMax", "C_Map", "FCF_OpenTemporaryWindow", "FCF_OpenNewWindow", "GetChatWindowInfo", "FCF_SetLocked", "FCF_SavePositionAndDimensions", "ChatFrame_RemoveAllMessageGroups", "ChatFrame_RemoveAllChannels", "FCF_Tab_OnClick", "GetMinimapZoneText", "GetZonePVPInfo", "Minimap", "NUM_CHAT_WINDOWS", "SELECTED_CHAT_FRAME", "SecureHandlerExecute", "SecureHandlerUnwrapScript", "SecureHandlerWrapScript", "SetCVar", "DeclineGuild", "DeclineGroup", "BNDeclineFriendInvite", "RepopMe", "HasSoulstone", "IsGuildMember", "C_FriendList", "C_BattleNet", "ZoneTextFrame", "SubZoneTextFrame", "UISpecialFrames", "hooksecurefunc", "ClearOverrideBindings", "GetBindingKey", "CreateFrame", "DEFAULT_CHAT_FRAME", "debugstack", "geterrorhandler", "CallErrorHandler",
   "GetAddOnMetadata", "GetBuildInfo", "GetNetStats", "UnitClassification", "C_SpellBook", "GetBindingAction", "GetNumSpecializations", "GetCreatureDifficultyColor", "GetComboPoints", "C_Secrets", "CreateColor", "AnchorUtil", "AuraContainerSortMethod", "C_CurveUtil", "C_StringUtil", "InCombatLockdown", "IsAltKeyDown", "IsControlKeyDown", "IsShiftKeyDown", "PowerBarColor", "RAID_CLASS_COLORS",
   "RegisterAttributeDriver", "RegisterStateDriver", "UnregisterStateDriver", "UnitGroupRolesAssigned", "UnitIsUnit", "RegisterUnitWatch", "SetOverrideBindingClick", "STANDARD_TEXT_FONT", "UIParent", "UnitClass",
   "GetInventoryItemID", "GetPetActionInfo", "GetPetActionCooldown", "UnitExists", "UnitHealth", "UnitHealthMax", "UnitIsConnected",
@@ -70,7 +70,7 @@ read_globals = {
   -- P4.7 Options keys: the box that has the typing (the window leaves keys alone while you type).
   "GetCurrentKeyBoardFocus",
   -- Bug hunt, swing timer: your weapons' speeds, for a swing a weapon swap restarts.
-  "UnitAttackSpeed",
+  "UnitAttackSpeed", "UnitDamage",
   -- F2 Vendor memory: a merchant item's ID, and the zone and subzone you're in.
   "GetMerchantItemID", "GetZoneText", "GetSubZoneText",
   -- F4 Chat watch: the game's whisper call, and its older name.
@@ -92,6 +92,10 @@ read_globals = {
   "ItemLocation",
   -- D1 Auction prices, disenchant values: whether you know Enchanting (your professions' skill lines).
   "GetProfessions", "GetProfessionInfo", "C_TradeSkillUI", "C_SkillInfo",
+  -- Info strip ammo: whether your ranged weapon needs ammo.
+  "C_PaperDollInfo",
+  -- Pet stable: the stable master's pet lists and slot price.
+  "C_StableInfo",
   -- E5 Auction ledger: the inbox's auction mail (Blizzard_MailFrame/MailFrame.lua), and the game's
   -- "Auction expired" subject line.
   "TakeInboxMoney", "ReturnInboxItem", "TakeInboxItem", "MailFrame", "SendMailFrame", "SendMailNameEditBox",
