@@ -52,6 +52,7 @@ Every `/vg` command (`/vanguard` works too), grouped by what it does. `/vg help`
 | `/vg lfg [probe]` | The group board |
 | `/vg plates [enemies on\|off]` | Nameplates drawn and the game's plate settings |
 | `/vg situation ...`, `/vg watch ...` | Situation overrides; Chat watch phrases |
+| `/vg filter [on\|off\|tab\|hide\|add\|remove <word>\|clear]` | Chat filter: spam to a Filtered tab |
 
 ## Town, quests and gear
 

@@ -272,8 +272,8 @@ it("character pane durability, the mail's Open All button", () => {
 // TEST-ONLY chat hooks: the game's message filters and link callback, and the lines the main window holds.
 const CHAT_EXTRAS_ENV = `
   __filters, __lines = {}, {}
-  ChatFrame_AddMessageEventFilter = function(event, fn) __filters[event] = fn end
-  EventRegistry = { RegisterCallback = function(self, event, fn) __linkCallback = fn end }
+  ChatFrame_AddMessageEventFilter = function(event, fn) if fn ~= ns.GetModule("ChatFilter").Filter then __filters[event] = fn end end
+  EventRegistry = { RegisterCallback = function(self, event, fn) if fn ~= ns.GetModule("ChatFilter").OnLink then __linkCallback = fn end end }
   ChatFrame1.GetNumMessages = function() return #__lines end
   ChatFrame1.GetMessageInfo = function(_, i) return __lines[i] end
 `;

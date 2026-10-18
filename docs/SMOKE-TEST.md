@@ -1043,6 +1043,12 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 - Expect: the first probe says LegacySystemFrame is not loaded; the second lists TreePage, ChallengesPage and RewardTrackPage with their keys, a "perk panel" line with ids and a node count (or "not found on TreePage"), and the globals with Legacy in the name. The plan lines say "Planned.", then that 17 points is over the tree's 16, then list "3  Test perk" and "3 of 16 points planned.", then "Perk dropped." and "Legacy plan cleared." [Needs in game: everything the probe prints; it is the data source the challenge tracker waits on.]
 - If it fails, paste: the probe's output and `/vg errors`.
 
+### 15.6a Chat filter (off until switched on)
+
+- Do: `/vg filter on`, then wait for (or say in a test channel) a Trade line that sells gold with a web address, one that sells a boost, a guild recruiting line, and the same line twice in a minute. Type `/vg filter add test word` and say a line holding it. Open the Filtered tab and click a sender's name in it. Type `/vg filter hide`, then `/vg filter tab`, then `/vg errors`. Walk into a dungeon and read Trade.
+- Expect: a Filtered chat tab appears, and the caught lines are in it, each starting with why ("Gold selling", "Boosting", "Recruiting", "Your word", "Repeat"), none in the main chat; the tab's name counts them, "Filtered (4)". Clicking a sender's name says their lines show in chat again, and their next line stays in the main chat. With hide, caught lines show nowhere. Normal Trade lines, your own lines, whispers and guild chat are never caught. `/vg errors` is empty; in the dungeon nothing errors and chat passes through. The tab looks like the other chat tabs on both rounded and square corners, and is still there, with its count starting over, after `/reload`. [Needs in game: that the client lets an addon open a chat window (`FCF_OpenNewWindow`) and name it, that a click on the sender's link reaches Vanguard, and that the tab text keeps the count.]
+- If it fails, paste: `/vg errors`, one line it caught or missed, and what the Filtered tab shows.
+
 ## 16. Realm and ruleset
 
 ### 16.1 Realm, ruleset and names
