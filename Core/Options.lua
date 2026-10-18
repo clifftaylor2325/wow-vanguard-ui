@@ -342,11 +342,11 @@ O.MODULE_GROUPS = {
   { "Raid frames", { "RaidFrames", "RaidAuras", "RaidHealing", "RaidStatus", "RaidTools", "OfficerLoot" } },
   { "Action bars", { "ActionBars", "SpecialBars" } },
   { "Map and info", { "Minimap", "Waypoints", "BrokerStrip", "InfoStrip", "MenuStrip", "MinimapButtons", "DataBars" } },
-  { "Chat", { "Chat", "ChatExtras", "ChatWatch", "ChatFilter", "ChatBubbles" } },
-  { "Quests", { "QuestDialog", "QuestTracker", "QuestLog", "QuestAuto", "QuestArrow", "QuestGuide", "QuestMinimap" } },
+  { "Chat", { "Chat", "ChatExtras", "ChatWatch", "ChatFilter", "ChatBubbles", "ChatHistory" } },
+  { "Quests", { "QuestDialog", "QuestTracker", "QuestLog", "QuestAuto", "QuestArrow", "QuestGuide", "QuestMinimap", "QuestHistory" } },
   { "Game windows", { "Windows", "Tooltips", "GameAlerts", "GameTools", "AfkScreen", "Coexist" } },
   { "Town and gear", { "Bags", "Merchant", "AutoAccept", "Errands", "Inventory", "Upgrades", "VendorMemory", "AuctionHelper", "CraftQueue", "MailTools", "SpellRanks", "TalentPlanner", "Legacy", "InstancePrep" } },
-  { "Combat tools", { "Nameplates", "Rolls", "GroupBoard", "BossDocks", "CooldownGaps", "CooldownGlow", "FightHistory", "Meter" } },
+  { "Combat tools", { "Nameplates", "Rolls", "GroupBoard", "BossDocks", "CooldownGaps", "CooldownGlow", "CooldownKeys", "FightHistory", "Meter" } },
 }
 
 -- Which modules the Modules page lists: all, the ones that are on, or the ones that are off.
