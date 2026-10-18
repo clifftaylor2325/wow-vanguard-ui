@@ -27,6 +27,7 @@ function MT.SpellList(src)
   local ok, result = pcall(get, session, which, src.sourceGUID, src.sourceCreatureID)
   if not ok or ns.IsSecret(result) or type(result) ~= "table" then return nil end
   if ns.IsSecret(result.combatSpells) or type(result.combatSpells) ~= "table" then return nil end
+  MT.spellTotal = ns.PlainNumber(result.totalAmount)
   return result.combatSpells
 end
 
@@ -43,7 +44,7 @@ local function fillSpell(row, spell, top)
   MT.Give(row, "SetMinMaxValues", 0, MT.Figure(top and top.totalAmount))
   MT.Give(row, "SetValue", MT.Figure(spell.totalAmount))
   MT.Give(row.name, "SetText", spellName(spell))
-  MT.Give(row.value, "SetText", MT.Short(spell.totalAmount))
+  MT.Give(row.value, "SetText", MT.WithShare(spell.totalAmount, spell.totalAmount, MT.spellTotal))
 end
 
 -- Repaints the spell panel from the game's list for its line; hidden rows past the list.
