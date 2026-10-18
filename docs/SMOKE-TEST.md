@@ -330,6 +330,12 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Expect: at full health nothing shows; under half health a soft vermilion tint appears round the edge and grows stronger as health drops, with no pulse and no flicker, in a fight too (including an instance fight, where health is hidden); healing clears it; while dead or a ghost it is gone; it never blocks a click. Switching it off clears it at once. No error.
 - If it fails, paste: a screenshot and `/vg errors`.
 
+### 7.2f Status chip (off until switched on: /vg > Unit frames > Readouts)
+
+- Do: tick **Status chip above your frame** under Unit frames, reload. Out of combat eat some food, then drink, then eat a food that gives Well Fed; wait until each buff ends. Then tick Instance prep's buff checks (`/vg` > Town and gear) and look at the chip with no flask or raid buffs. Start a fight with the chip showing.
+- Expect: above the player frame's top-left corner a small panel with the buff's own icon and Eating, Drinking or Well Fed while that buff is on you (Well Fed in the good color), going when the buff does; with the buff checks on and nothing of those, a warning triangle and Missing: and the first missing buff and how many more, in the warning color, matching `/vg prep`'s buff rows. It is gone the moment a fight starts and back after it, and gone while you are dead. If the buff names are wrong for this client (the chip stays hidden while you eat), paste the aura names from `/dump C_UnitAuras.GetAuraDataByIndex("player", 1, "HELPFUL")`. No error.
+- If it fails, paste: a screenshot and `/vg errors`.
+
 ### 7.3 Nameplates in a pull
 
 - Do: pull three or more mobs.

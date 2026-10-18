@@ -256,7 +256,11 @@ it("prep buffs: a ready check lists the flask, food, enchants and raid buffs you
   addon.fire("READY_CHECK", "TEST-ONLY Leader", 30);
   expect(rows(addon).map((r) => r[0]), "everything missing").toEqual(["Flask", "Food buff", "Fortitude", "Mark of the Wild", "Arcane Intellect", "Weapon oil or poison", "Off-hand oil or poison"]);
   expect(rows(addon)[0][1], "said in red as missing").toBe("missing");
-  ["Flask of the Titans", "Well Fed", "Prayer of Fortitude", "Gift of the Wild", "Arcane Brilliance"].forEach((n) => buff(addon, n));
+  // The labels of the aura rows now.
+  const labels = () => addon.eval("local out = {} for i, r in ipairs(ns.GetModule('InstancePrep').AuraRows()) do out[i] = r.label end return out");
+  ["Flask of the Titans", "Prayer of Fortitude"].forEach((n) => buff(addon, n));
+  expect(labels(), "a buff you have leaves no gap: the food, Mark of the Wild and Arcane Intellect still show").toEqual(["Food buff", "Mark of the Wild", "Arcane Intellect"]);
+  ["Well Fed", "Gift of the Wild", "Arcane Brilliance"].forEach((n) => buff(addon, n));
   addon.eval("__enchants[0] = { { hasEnchant = true, timeLeft = 900000 } } __enchants[1] = { { hasEnchant = true, timeLeft = 900000 } }");
   addon.advance(21);
   addon.slash("prep");

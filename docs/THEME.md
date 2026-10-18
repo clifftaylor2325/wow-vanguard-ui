@@ -346,6 +346,8 @@ Sparks (cast bars, power ticks, the swing timer) move with what they show; they 
 
 The low-health vignette (`Modules/GameAlerts.lua`, `Media/Textures/Vignette` tinted with the `vignette` token) has no fade, pulse or sound: the client works out its opacity from your health through a curve and the texture takes it as it is, so Reduce motion changes nothing and a fight adds no animation.
 
+The status chip (`Modules/UnitExtras.lua`) has no fade or sound: it shows and hides at once, including the moment a fight starts. Its text is `text` (Eating, Drinking), `good` (Well Fed) or `warn` (a missing buff, with the `Warn` glyph in `warn`), on the HUD panel, so a state never rests on color alone.
+
 ### Sounds
 
 All are the client's own interface sounds (`SOUNDKIT`), played with `T.Sound` unless noted.

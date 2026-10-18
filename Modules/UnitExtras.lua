@@ -1,10 +1,15 @@
--- Two small vanilla readouts on the unit frames:
+-- Small vanilla readouts on the unit frames:
 --   * your threat on your target, as a percent above the target frame, in
 --     the threat colors once you have aggro (a tank watches it climb, a DPS
 --     watches it stay under 100);
 --   * your pet's happiness as a glyph on the pet frame: a check happy, a
 --     triangle content, a cross unhappy, each in its state color (an unhappy
---     hunter pet deals less damage).
+--     hunter pet deals less damage);
+--   * a status chip above the player frame (off until switched on): an icon and
+--     "Eating", "Drinking" or "Well Fed" while that buff is on you, and, with
+--     nothing of those, "Missing: Flask" and so on from the buff checks Instance
+--     prep already makes (its Buff checks switch must be on). Out of combat only:
+--     in a fight, or while the client hides aura values, it is hidden.
 -- Each one shows only where the client answers, and a hidden answer shows
 -- nothing.
 
@@ -13,7 +18,7 @@ local ADDON, ns = ...
 local T = ns.Theme
 local UF = ns.GetModule("UnitFrames")
 
-local UX = ns.Module("UnitExtras", { defaults = { threat = true, happiness = true } })
+local UX = ns.Module("UnitExtras", { defaults = { threat = true, happiness = true, chip = false } })
 
 -- Pet happiness (GetPetHappiness: 1 unhappy, 2 content, 3 happy) -> color token.
 UX.HAPPINESS = { "bad", "warn", "good" }
@@ -64,6 +69,73 @@ function UX.UpdateHappiness()
   T.Tint(UX.happy, token)
 end
 
+-- Status chip ------------------------------------------------------------------------------------
+
+-- The chip's icon size and its padding, and the gap between its icon and its text (units).
+UX.CHIP_ICON, UX.CHIP_PAD, UX.CHIP_GAP, UX.CHIP_HEIGHT = 14, 4, 4, 20
+-- The buffs eating and drinking give (the classic names; UNVERIFIED on a Forever client: check with the chip in game).
+UX.EATING, UX.DRINKING = { "Food" }, { "Drink" }
+-- The events that can change what the chip says besides your auras and your gear: the fight ending, a new zone, death and rising.
+UX.CHIP_EVENTS = { "PLAYER_REGEN_ENABLED", "PLAYER_ENTERING_WORLD", "PLAYER_DEAD", "PLAYER_ALIVE", "PLAYER_UNGHOST" }
+
+-- The states the chip names, in the order they win: text, the buff names that mean it, and its text color token.
+function UX.States()
+  return { { "Eating", UX.EATING, "text" }, { "Drinking", UX.DRINKING, "text" }, { "Well Fed", ns.GetModule("InstancePrep").FOOD, "good" } }
+end
+
+-- The first of your buffs among these names, as the client's aura data, or nil (none, or the client can't say).
+function UX.Aura(names)
+  local get = C_UnitAuras and C_UnitAuras.GetAuraDataBySpellName
+  if type(get) ~= "function" then return nil end
+  for _, name in ipairs(names) do
+    local aura = get("player", name, "HELPFUL")
+    if type(aura) == "table" then return aura end
+  end
+end
+
+-- "Missing: Flask" (and " +2" for two more) from Instance prep's buff rows, or nil when it has none or its checks are off.
+function UX.Missing()
+  local PR = ns.GetModule("InstancePrep")
+  local rows = PR.settings and PR.BuffRows and PR.BuffRows() or {}
+  if #rows == 0 then return nil end
+  return "Missing: " .. rows[1].label .. (#rows > 1 and " +" .. (#rows - 1) or "")
+end
+
+-- The chip's text, color token and icon (nil for the warning glyph): what you are doing or have, else what is missing.
+-- Nothing in a fight, while aura values are hidden or while you are dead.
+function UX.Status()
+  local dead = type(UnitIsDeadOrGhost) == "function" and UnitIsDeadOrGhost("player")
+  if ns.InCombat() or ns.AurasSecret() or ns.IsSecret(dead) or dead then return nil end
+  for _, state in ipairs(UX.States()) do
+    local aura = UX.Aura(state[2])
+    if aura then return state[1], state[3], not ns.IsSecret(aura.icon) and aura.icon or nil end
+  end
+  local missing = UX.Missing()
+  return missing, "warn", nil
+end
+
+-- Shows the chip with its icon and text, sized to them, or hides it for no text.
+function UX.PaintChip(text, token, icon)
+  local f = UX.chip
+  f:SetShown(text ~= nil)
+  if not text then return end
+  f.text:SetText(text)
+  T.Color(f.text, token)
+  f.icon:SetTexture(icon or T.Icon(T.STATE_GLYPHS.warn))
+  T.Tint(f.icon, icon and "white" or "warn")
+  T.PixelSize(f, 2 * UX.CHIP_PAD + UX.CHIP_ICON + UX.CHIP_GAP + math.ceil(f.text:GetStringWidth()), UX.CHIP_HEIGHT)
+end
+
+-- Says what the chip should say now.
+function UX.UpdateChip()
+  UX.PaintChip(UX.Status())
+end
+
+-- A fight is starting: the chip goes at once (the lockdown has not begun, so the status would still read as out of combat).
+function UX.HideChip()
+  UX.chip:Hide()
+end
+
 -- Building ---------------------------------------------------------------------------------------
 
 -- The threat text above the target frame, clear of its corner diamond,
@@ -87,11 +159,39 @@ local function addHappiness(pet)
   UX.UpdateHappiness()
 end
 
+-- The status chip above the player frame's top-left corner, following your auras, your gear and the fight.
+local function addChip(player)
+  local f = CreateFrame("Frame", "Vanguard_StatusChip", UIParent)
+  T.HudPanel(f, { alpha = 0.9 })
+  f.icon = T.Snap(f:CreateTexture(nil, "ARTWORK"), "icon")
+  f.icon:SetSize(UX.CHIP_ICON, UX.CHIP_ICON)
+  f.icon:SetPoint("LEFT", f, "LEFT", UX.CHIP_PAD, 0)
+  f.text = T.Text(f:CreateFontString(nil, "OVERLAY"), "small", "text")
+  f.text:SetPoint("LEFT", f.icon, "RIGHT", UX.CHIP_GAP, 0)
+  f:SetPoint("BOTTOMLEFT", player, "TOPLEFT", 12, 3)
+  UX.chip = f
+  UX.WatchChip()
+end
+
+-- Says what the chip should say once a frame, however often your auras or gear change.
+function UX.SoonChip()
+  ns.Soon("status chip", UX.UpdateChip)
+end
+
+-- Follows what changes the chip: your auras and gear, the fight and the life events.
+function UX.WatchChip()
+  ns.OnUnit({ "UNIT_AURA", "UNIT_INVENTORY_CHANGED" }, UX.SoonChip, "player")
+  for _, e in ipairs(UX.CHIP_EVENTS) do ns.On(e, UX.UpdateChip) end
+  ns.On("PLAYER_REGEN_DISABLED", UX.HideChip)
+  UX.UpdateChip()
+end
+
 -- Adds what's switched on and what the client can answer, to the frames that exist.
 local function attach()
   local s, frames = UX.settings, UF.frames
   if s.threat and frames.target and type(_G.UnitDetailedThreatSituation) == "function" then addThreat(frames.target) end
   if s.happiness and frames.pet and UX.HappinessCall() then addHappiness(frames.pet) end
+  if s.chip and frames.player then addChip(frames.player) end
 end
 
 -- Module entry point (Core/Modules.lua): out of combat, once the unit frames are built.

@@ -69,6 +69,7 @@ local function readoutRows()
     { "header", "Readouts" },
     check("Your threat on your target, above its frame (reload)", setting("UnitExtras", "threat", true)),
     check("Your pet's happiness, a dot on the pet frame (reload)", setting("UnitExtras", "happiness", true)),
+    check("Status chip above your frame: Eating, Drinking, Well Fed, or a missing buff from Instance prep's checks, out of combat (reload)", setting("UnitExtras", "chip", true)),
   }
 end
 
