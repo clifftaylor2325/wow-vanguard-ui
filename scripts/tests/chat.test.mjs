@@ -38,6 +38,22 @@ it("minimap", () => {
   const bare = loggedIn(UI_ENV, { savedVariables: "VanguardDB.profiles = { Default = { Minimap = { coords = false } } }" });
   expect(bare.eval(`return ${M}.bottom:IsShown()`), "coordinates off: no bottom band").toBe(false);
 });
+it("a round minimap: masked to a disc, an outline on its rim, bands cut to the disc, buttons on the rim, no corner diamonds", () => {
+  const M = "ns.GetModule('Minimap')";
+  // A client logged in with this profile (a Lua table literal) saved.
+  const shapeOf = (savedVariables) => loggedIn(UI_ENV + TIDY_ENV, { savedVariables: `VanguardDB.profiles = { Default = ${savedVariables} }` });
+  expect(shapeOf("{}").eval("return GetMinimapShape()"), "by default the map stays square").toBe("SQUARE");
+  expect(shapeOf('{ theme = { variant = "classic" }, Minimap = { shape = "square" } }').eval("return GetMinimapShape()"), "square says square even under Classic look").toBe("SQUARE");
+  expect(shapeOf('{ theme = { variant = "classic" } }').eval("return GetMinimapShape()"), "following the theme, Classic look makes it round").toBe("ROUND");
+  const addon = shapeOf('{ Minimap = { shape = "round" } }');
+  const round = addon.eval(`local M = ${M} return { GetMinimapShape(), Minimap.__maskTexture, #M.corners, #M.bands, M.top.__masks and #M.top.__masks, M.rules[1].__masks and #M.rules[1].__masks,
+    M.zone.__width, Vanguard_MinimapZone.__points.TOPLEFT.x }`);
+  expect(round.slice(0, 6), "ROUND to other addons, the disc as the map's mask, no corner diamonds, the bands and rules masked to it, a zone name that fits the top chord").toEqual(["ROUND", expect.stringContaining("RoundDisc"), 0, 2, 1, 1]);
+  expect(round[6] < 124 && round[7] === (180 - round[6]) / 2, "the zone name and its button are narrower than on a square map").toBe(true);
+  const rim = addon.eval("return { MinimapCluster.Tracking.__points.CENTER.x, MinimapCluster.Tracking.__points.CENTER.y, MinimapCluster.Tracking.__points.CENTER.rel == ns.GetModule('Minimap').overlay }");
+  expect(rim[0] < -50 && rim[1] < -50 && rim[2], "the tracking button sits on the rim at the lower left, in the map's overlay").toBe(true);
+  expect(addon.eval("local ok = pcall(ns.Theme.Refresh) return ok"), "a theme refresh repaints the disc and ring").toBe(true);
+});
 it("a minimap that has the game's own wheel handler keeps it, and Vanguard adds none", () => {
   const addon = loggedIn("Minimap:SetScript('OnMouseWheel', function(self, d) self.__gameWheel = (self.__gameWheel or 0) + d end)");
   addon.eval("Minimap:GetScript('OnMouseWheel')(Minimap, 1)");
@@ -289,8 +305,8 @@ it("character pane durability, the mail's Open All button", () => {
 // TEST-ONLY chat hooks: the game's message filters and link callback, and the lines the main window holds.
 const CHAT_EXTRAS_ENV = `
   __filters, __lines = {}, {}
-  ChatFrame_AddMessageEventFilter = function(event, fn) if fn ~= ns.GetModule("ChatFilter").Filter and fn ~= ns.GetModule("ChatHistory").NoteWhisper then __filters[event] = fn end end
-  EventRegistry = { RegisterCallback = function(self, event, fn) if fn ~= ns.GetModule("ChatFilter").OnLink then __linkCallback = fn end end }
+  ChatFrame_AddMessageEventFilter = function(event, fn) if not ns.GetModule("ChatFilter").registered then __filters[event] = fn end end
+  EventRegistry = { RegisterCallback = function(self, event, fn) if not ns.GetModule("ChatFilter").registered then __linkCallback = fn end end }
   ChatFrame1.GetNumMessages = function() return #__lines end
   ChatFrame1.GetMessageInfo = function(_, i) return __lines[i] end
 `;
@@ -301,6 +317,9 @@ it("chat extras: web links you can copy, and a Copy button for the recent chat",
   expect(linked[0] === false && linked[2] === "<name>", "the message passes on, with the rest of its details").toBe(true);
   expect(linked[1].includes("|Haddon:Vanguard:url:https://example.test/a?b=1|h[https://example.test/a?b=1]|h") && linked[1].includes("|h[www.example.test]|h"), "both addresses become links").toBe(true);
   expect(addon.eval('return { select("#", __filters.CHAT_MSG_GUILD(nil, "CHAT_MSG_GUILD", "no address here")), select("#", __filters.CHAT_MSG_GUILD(nil, "x", { __secret = true })) }'), "nothing to link, or hidden text: the message is left as it is").toEqual([1, 1]);
+  addon.eval("Enum.AddOnRestrictionType = { Chat = 5 } Enum.AddOnRestrictionState = { Inactive = 0 } C_RestrictedActions = { GetAddOnRestrictionState = function() return 2 end }");
+  expect(addon.eval('return { select("#", __filters.CHAT_MSG_SAY(nil, "CHAT_MSG_SAY", "see www.example.test", "<name>")) }'), "while chat is restricted: left as it is").toEqual([1]);
+  addon.eval("C_RestrictedActions = nil");
   addon.eval('__linkCallback(nil, "addon:Vanguard:url:https://example.test/a") __linkCallback(nil, "addon:OtherAddon:thing")');
   expect(addon.eval("return __shown"), "clicking one opens it ready to copy; other addons' links are left to them").toEqual(["Copy the address (Ctrl+C)", "https://example.test/a"]);
   addon.eval('__lines = { "|cffff8000[TEST-ONLY General]|r hi |Hitem:90001|h[TEST-ONLY Sword]|h", { __secret = true }, "two |TTEST-ONLY-ICON:0|tlines" }');
@@ -316,6 +335,19 @@ it("chat extras: web links you can copy, and a Copy button for the recent chat",
   const off = loggedIn(UI_ENV + CHAT_EXTRAS_ENV, { savedVariables: "VanguardDB.profiles = { Default = { ChatExtras = { links = false } } }" });
   expect(off.eval("return next(__filters) == nil"), "links switched off: no filters").toBe(true);
 });
+it("chat extras: a hidden line never reaches the link filter's comparison, and a failing filter or click lets the line through", () => {
+  const addon = loggedIn(UI_ENV + CHAT_EXTRAS_ENV);
+  // The harness's secrets can't raise on ==, so prove the early return: LinkURLs is never reached for hidden or non-string text.
+  addon.eval('__reached = 0 local CX = ns.GetModule("ChatExtras") local real = CX.LinkURLs CX.LinkURLs = function(...) __reached = __reached + 1 return real(...) end');
+  const secret = addon.eval('local out = {} for _, event in ipairs(ns.GetModule("ChatExtras").EVENTS) do out[#out + 1] = select("#", __filters[event](nil, event, { __secret = true }, "<name>")) .. ":" .. tostring((__filters[event](nil, event, { __secret = true }, "<name>"))) end return out');
+  expect(secret.every((r) => r === "1:false") && secret.length === 15, "every registered chat event: a hidden line returns a bare false").toBe(true);
+  expect(addon.eval('return { select("#", __filters.CHAT_MSG_SAY(nil, "CHAT_MSG_SAY", nil)), select("#", __filters.CHAT_MSG_SAY(nil, "CHAT_MSG_SAY", 42)), __reached }'), "missing or non-string text: bare false, and the text is never read").toEqual([1, 1, 0]);
+  addon.eval('ns.GetModule("ChatExtras").LinkURLs = function() error("TEST-ONLY link filter", 0) end');
+  expect(addon.eval('return { select("#", __filters.CHAT_MSG_SAY(nil, "CHAT_MSG_SAY", "plain text")), (__filters.CHAT_MSG_SAY(nil, "CHAT_MSG_SAY", "plain text")) }'), "a filter that fails hands the game false: the line is not dropped").toEqual([1, false]);
+  expect(() => addon.eval('ns.ShowText = function() error("TEST-ONLY click", 0) end __linkCallback(nil, "addon:Vanguard:url:https://example.test/a")'), "a failing link click does not reach the game's code").not.toThrow();
+  expectErrors("chat filter links: TEST-ONLY link filter", "chat link click: TEST-ONLY click");
+});
+
 // TEST-ONLY chat windows as the game has them: TransformMessages rewrites the
 // lines a window holds, the wheel can jump, temporary windows join CHAT_FRAMES.
 const CHAT_LINES_ENV = `
@@ -443,6 +475,72 @@ it("faster auto-loot: every unlocked slot at once while the game auto-loots, off
   bare.fire("LOOT_READY", true);
   expect(bare.eval("return GetNumLootItems == nil"), "a client without the loot functions is left alone").toBe(true);
 });
+// TEST-ONLY invites and death: every answer is recorded; the world is a battleground, nobody is a friend.
+const INVITE_ENV = `
+  __answers = {}
+  local function log(text) return function(...) __answers[#__answers + 1] = text end end
+  DeclineGuild, DeclineGroup, BNDeclineFriendInvite, RepopMe = log("guild"), log("group"), log("friend"), log("release")
+  StaticPopup_Hide = function(which) __answers[#__answers + 1] = "close " .. which end
+  __pvp, __soul, __friends = "pvp", false, {}
+  IsInInstance = function() return true, __pvp end
+  HasSoulstone = function() return __soul end
+  C_FriendList = { IsFriend = function(guid) return __friends[guid] == "friend" end }
+  C_BattleNet = { GetAccountInfoByGUID = function(guid) return __friends[guid] == "bnet" and {} or nil end }
+  IsGuildMember = function(guid) return __friends[guid] == "guild" end
+`;
+const INVITES_ON = "VanguardDB.profiles = { Default = { AutoAccept = { guildInvites = true, strangerGroups = true, friendRequests = true, pvpRelease = true } } }";
+it("quiet the game: guild invites, stranger group invites, friend requests and battleground release, off until switched on", () => {
+  // Brings up all four prompts.
+  const fire = (addon) => { addon.fire("GUILD_INVITE_REQUEST", "<name>"); addon.fire("PARTY_INVITE_REQUEST", "<name>", false, false, false, false, false, false, "stranger"); addon.fire("BN_FRIEND_INVITE_ADDED", 7); addon.fire("PLAYER_DEAD"); };
+  const off = loggedIn(INVITE_ENV);
+  fire(off);
+  expect(off.eval("return #__answers"), "off by default: the game asks as usual").toBe(0);
+  const on = loggedIn(INVITE_ENV, { savedVariables: INVITES_ON });
+  fire(on);
+  expect(on.eval("return __answers"), "each answered, its prompt closed").toEqual(["guild", "close GUILD_INVITE", "group", "close PARTY_INVITE", "friend", "release"]);
+  expect(chatHas(on, /guild invite from <name>/) && chatHas(on, /group invite from <name>/) && chatHas(on, /Battle.net friend request/), "and said in chat").toBe(true);
+  on.eval("__answers = {}");
+  for (const who of ["friend", "bnet", "guild"]) { on.eval(`__friends.x = "${who}"`); on.fire("PARTY_INVITE_REQUEST", "<name>", false, false, false, false, false, false, "x"); }
+  on.fire("PARTY_INVITE_REQUEST", "<name>");
+  on.fire("PARTY_INVITE_REQUEST", "<name>", false, false, false, false, false, false, { __secret: true });
+  expect(on.eval("return #__answers"), "a friend, a Battle.net friend, a guildmate, or someone the game hides stay invitable").toBe(0);
+  on.eval("__pvp = 'arena'");
+  on.fire("PLAYER_DEAD");
+  on.eval("__pvp, __soul = 'pvp', true");
+  on.fire("PLAYER_DEAD");
+  expect(on.eval("return #__answers"), "no release in an arena, or with a soulstone").toBe(0);
+  const bare = loggedIn("", { savedVariables: INVITES_ON });
+  for (const e of ["GUILD_INVITE_REQUEST", "PARTY_INVITE_REQUEST", "BN_FRIEND_INVITE_ADDED", "PLAYER_DEAD"]) bare.fire(e, "<name>");
+  expect(bare.eval("return DeclineGuild == nil and RepopMe == nil"), "a client without the calls is left alone").toBe(true);
+  const noFriends = loggedIn(INVITE_ENV + "C_FriendList, C_BattleNet, IsGuildMember = nil, nil, nil", { savedVariables: INVITES_ON });
+  noFriends.fire("PARTY_INVITE_REQUEST", "<name>", false, false, false, false, false, false, "stranger");
+  expect(noFriends.eval("return __answers"), "with no way to tell who is a friend, a stranger is declined").toEqual(["group", "close PARTY_INVITE"]);
+});
+// TEST-ONLY game text: the error line and the zone names record what they were given.
+const QUIET_ENV = `
+  hooksecurefunc = function(t, name, fn) if type(t) == "string" then return end local orig = t[name] t[name] = function(...) local r = orig(...) fn(...) return r end end
+  UIErrorsFrame = CreateFrame("Frame", "UIErrorsFrame", UIParent) __lines = 0
+  function UIErrorsFrame:AddMessage() __lines = __lines + 1 end
+  function UIErrorsFrame:Clear() __lines = 0 end
+  ZoneTextFrame = CreateFrame("Frame", "ZoneTextFrame", UIParent) ZoneTextFrame:Hide()
+  SubZoneTextFrame = CreateFrame("Frame", "SubZoneTextFrame", UIParent) SubZoneTextFrame:Hide()
+`;
+it("quiet the game: the error line and the zone names, each off until switched on and applied at once; a further camera", () => {
+  const off = loggedIn(QUIET_ENV);
+  off.eval("UIErrorsFrame:AddMessage('x') ZoneTextFrame:Show() SubZoneTextFrame:Show()");
+  expect(off.eval("return { __lines, ZoneTextFrame:IsShown(), SubZoneTextFrame:IsShown(), tostring(GetCVar('cameraDistanceMaxZoomFactor')) }"), "off by default: the game's own").toEqual([1, true, true, "nil"]);
+  const on = loggedIn(QUIET_ENV, { savedVariables: "VanguardDB.profiles = { Default = { Quiet = { errors = true, zoneText = true, camera = 2.6 } } }" });
+  on.eval("UIErrorsFrame:AddMessage('x') ZoneTextFrame:Show() SubZoneTextFrame:Show()");
+  expect(on.eval("return { __lines, ZoneTextFrame:IsShown(), SubZoneTextFrame:IsShown(), tostring(GetCVar('cameraDistanceMaxZoomFactor')) }"), "the error line cleared, both names hidden, the camera set").toEqual([0, false, false, "2.6"]);
+  on.eval("ns.GetModule('Quiet').settings.errors = false ns.GetModule('Quiet').settings.zoneText = false UIErrorsFrame:AddMessage('x') ZoneTextFrame:Show()");
+  expect(on.eval("return { __lines, ZoneTextFrame:IsShown() }"), "switched off, they show again at once").toEqual([1, true]);
+  setCombat(on, true);
+  on.eval("ns.GetModule('Quiet').settings.camera = 1.5 ns.GetModule('Quiet').ApplyCamera()");
+  expect(on.eval("return GetCVar('cameraDistanceMaxZoomFactor')"), "not changed in combat").toBe("2.6");
+  const bare = loggedIn("", { savedVariables: "VanguardDB.profiles = { Default = { Quiet = { errors = true, zoneText = true } } }" });
+  expect(bare.eval("return ZoneTextFrame == nil and ns.GetModule('Quiet').settings.errors"), "a client without these frames is left alone").toBe(true);
+  expect(loggedIn(QUIET_ENV + "SetCVar, C_CVar = nil, nil", { savedVariables: "VanguardDB.profiles = { Default = { Quiet = { camera = 2 } } }" }).eval("return GetCVar('cameraDistanceMaxZoomFactor')"), "no CVar call, no change").toBe(null);
+});
 // TEST-ONLY extra windows: friends, a book (its page text records the colors it's given), and
 // the game's loss of control and talking head alerts with their parts.
 const ALERTS_ENV = `
@@ -491,8 +589,8 @@ const SORT_ROW_ENV = `
 `;
 it("the bag's Sort button sits beside the search box and the game's own sort button stays hidden", () => {
   const addon = loggedIn(UI_ENV + SORT_ROW_ENV);
-  const sort = addon.eval('local p = ns.GetModule("Bags").sort.__points.LEFT return { p.rel == BagItemSearchBox, p.relPoint, p.x }');
-  expect(sort, "right of the search box, 6 px off it").toEqual([true, "RIGHT", 6]);
+  const sort = addon.eval('local p = ns.GetModule("Bags").sort.__points.LEFT return { p.rel == ns.GetModule("Bags").tools.groups, p.relPoint, p.x }');
+  expect(sort, "right of the Filter and Groups buttons, which sit right of the search box, 6 px off it").toEqual([true, "RIGHT", 6]);
   expect(addon.eval("return BagItemAutoSortButton:IsShown()"), "the game's own button is hidden at login").toBe(false);
   addon.eval("BagItemAutoSortButton:Show()");
   expect(addon.eval("return BagItemAutoSortButton:IsShown()"), "and the game showing it again (each search row update) hides it again").toBe(false);

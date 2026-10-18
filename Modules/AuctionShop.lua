@@ -452,7 +452,7 @@ end
 -- search results to AH.OnListings).
 function AH.ListenShop(on)
   on("ITEM_KEY_ITEM_INFO_RECEIVED", function() AH.OnItemInfo() end)
-  on("AUCTION_HOUSE_CLOSED", function() AH.view = nil end)
+  ns.On("AUCTION_HOUSE_CLOSED", function() AH.view = nil end) -- state only, so also in combat
 end
 
 -- Listings ------------------------------------------------------------------------------------

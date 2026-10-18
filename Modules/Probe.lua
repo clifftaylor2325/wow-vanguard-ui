@@ -57,6 +57,8 @@ P.CALLS = {
     { "C_GameRules.GetForeverExperiencePreset" },
     { "C_Seasons.HasActiveSeason" }, { "C_Seasons.GetActiveSeason" },
   },
+  -- The CVar Safer colours follows (Core/Theme.lua); a wrong name here means the follow switch does nothing.
+  access = { { "GetCVar", "colorblindMode" }, { "GetCVar", "colorblindSimulator" } },
   undocumented = {
     { "C_LootHistory.GetNumItems" }, { "C_LootHistory.GetItem", 1 },
     { "C_LootHistory.GetPlayerInfo", 1, 1 }, { "C_LootHistory.GetAllEncounterInfos" },
@@ -69,7 +71,7 @@ P.CALLS = {
 -- Names only looked for, per section.
 P.HAVE = {
   group = { "C_LFGList.Search", "C_LFGList.GetSearchResultInfo", "C_LFGList.GetAvailableActivities", "C_LFGList.CreateListing" },
-  undocumented = { "C_SuperTrack.GetNextWaypointForMap", "C_Navigation.GetNextWaypointForMap" },
+  undocumented = { "SetItemSearch", "C_Container.SetItemSearch", "ContainerFrameCombinedBags.UpdateSearchResults", "C_Item.GetDetailedItemLevelInfo", "C_SuperTrack.GetNextWaypointForMap", "C_Navigation.GetNextWaypointForMap" },
 }
 
 -- The widget methods looked for: { kind of widget, method }.
@@ -307,6 +309,45 @@ local function methodLine(kind, method)
   return kind .. ":" .. method .. ": " .. (type(widget[method]) == "function" and "present (not called)" or "missing")
 end
 
+-- What FontString:SetTextToFit does to a 60-wide, 14-high label given a long text: the font height,
+-- string width and text before and after, so a run shows whether it shrinks the text or cuts it.
+local function textFitLine()
+  local label = widgetOf("FontString")
+  if type(label.SetTextToFit) ~= "function" then return "SetTextToFit read: method missing" end
+  label:SetSize(60, 14)
+  local before = describe(label:GetFontHeight()) .. "/" .. describe(label:GetStringWidth())
+  local ok, err = pcall(label.SetTextToFit, label, "A fairly long label")
+  if not ok then return "SetTextToFit read: error " .. errText(err) end
+  return "SetTextToFit read: height/width " .. before .. " -> " .. describe(label:GetFontHeight()) .. "/" .. describe(label:GetStringWidth()) .. ", text " .. describe(label:GetText())
+end
+
+-- How many of the first sixty skill lines are headers, and how many of those are collapsed.
+local function headerCounts(api, total)
+  local headers, collapsed = 0, 0
+  for i = 1, math.min(total, 60) do
+    local info = api.GetSkillLineInfo(i)
+    if type(info) == "table" and info.isHeader then headers, collapsed = headers + 1, collapsed + (info.isCollapsed and 1 or 0) end
+  end
+  return headers, collapsed
+end
+
+-- A skill's rank/max by its ID, as text.
+local function skillById(api, id)
+  local info = api.GetSkillLineInfoByID(id)
+  return type(info) == "table" and describe(info.rank) .. "/" .. describe(info.maxRank) or "none"
+end
+
+-- C_SkillInfo, read only (nothing is expanded or collapsed): how many lines the list gives, how many are
+-- headers and how many headers are collapsed, and Enchanting (333) and Cooking (185) by ID. Fewer lines
+-- than the skills you know, with a header collapsed, says the list hides them.
+local function skillLine()
+  local api = C_SkillInfo
+  if type(api) ~= "table" or type(api.GetNumSkillLines) ~= "function" then return "C_SkillInfo read: missing" end
+  local total = ns.PlainNumber(api.GetNumSkillLines()) or 0
+  local headers, collapsed = headerCounts(api, total)
+  return "C_SkillInfo read: lines " .. total .. ", headers " .. headers .. ", collapsed " .. collapsed .. "; Enchanting " .. skillById(api, 333) .. ", Cooking " .. skillById(api, 185)
+end
+
 -- The reads the guide probe holds, so one run carries them too.
 local function guideLines()
   local out = {}
@@ -318,6 +359,8 @@ end
 local function undocumentedLines()
   local out = sectionRows("undocumented")
   for _, m in ipairs(P.METHODS) do out[#out + 1] = select(2, pcall(methodLine, m[1], m[2])) end
+  out[#out + 1] = select(2, pcall(textFitLine))
+  out[#out + 1] = select(2, pcall(skillLine))
   return out
 end
 
@@ -328,6 +371,7 @@ P.SECTIONS = {
   { "Group listing", function() return sectionRows("group") end },
   { "Secure paging", pagingLines }, { "Realm and name format", realmLines },
   { "Game rules and seasons", function() return sectionRows("rules") end },
+  { "Colour-blind mode CVars", function() return sectionRows("access") end },
   { "C_Secrets predicates", secretLines }, { "Restrictions and lockdown", restrictionLines },
   { "Navigation", navigationLines }, { "Undocumented on Forever", undocumentedLines },
   { "Guide reads", guideLines },

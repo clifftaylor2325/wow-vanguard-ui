@@ -102,6 +102,6 @@ it("options: one switch restyles the pet, stance, possess and extra buttons", ()
   const addon = loggedIn(UI_ENV + CLICK_LUA);
   addon.slash("");
   addon.eval('__click("Action bars")');
-  addon.eval('__click("Restyle the pet, stance, possess and extra action buttons (reload)")');
+  addon.eval('__click("Restyle the pet, stance, possess and extra action buttons")');
   expect(addon.eval("local s = VanguardDB.profiles.Default.SpecialBars return { s.skinPet, s.skinStance, s.skinPossess, s.skinExtra }"), "all four off together").toEqual([false, false, false, false]);
 });

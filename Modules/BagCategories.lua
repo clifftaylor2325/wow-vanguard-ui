@@ -77,8 +77,66 @@ local function change(verb, name)
   ns.Chat(cat.name .. (verb == "top" and " is first." or " is gone."))
 end
 
+-- Whether the bank window is open.
+local function bankOpen()
+  return type(_G.BankFrame) == "table" and _G.BankFrame:IsShown()
+end
+
+-- The { bag, slot } of every stack in your bags that is in the category.
+local function stacksIn(cat)
+  local out = {}
+  for bag = 0, 4 do
+    for slot = 1, ns.PlainNumber(C_Container.GetContainerNumSlots(bag)) or 0 do
+      local info = C_Container.GetContainerItemInfo(bag, slot)
+      local id = info and ns.PlainNumber(info.itemID)
+      if id and cat.items[id] then out[#out + 1] = { bag, slot } end
+    end
+  end
+  return out
+end
+
+-- /vg bag deposit <name>: sends every stack of the category to the open bank, out of combat.
+local function deposit(name)
+  local at = find(name)
+  if not at then return ns.Chat("No bag category called " .. name .. ".") end
+  if ns.InCombat() or not bankOpen() then return ns.Chat("Open the bank first (not in a fight).") end
+  local stacks = stacksIn(list()[at])
+  for _, spot in ipairs(stacks) do C_Container.UseContainerItem(spot[1], spot[2]) end
+  ns.Chat("Sent " .. #stacks .. " stack(s) of " .. list()[at].name .. " to the bank.")
+end
+
+-- A group name from typed text: one word (spaces become dashes), or nil for none.
+local function cleanName(text)
+  local name = (text or ""):match("^%s*(.-)%s*$"):gsub("%s+", "-")
+  return name ~= "" and name or nil
+end
+
+-- Makes an empty group (the bag buttons' "New group").
+function BG.NewGroup(text)
+  local name = cleanName(text)
+  if not name then return end
+  if find(name) then return ns.Chat(name .. " already exists.") end
+  table.insert(list(), { name = name, items = {} })
+  ns.Chat("Group " .. name .. " made. Pick an item up, then choose it under Groups.")
+end
+
+-- Puts the item on the cursor in the group (the bag buttons' "Put held item in").
+function BG.AddHeld(name)
+  local kind, id = GetCursorInfo()
+  if kind ~= "item" or not ns.PlainNumber(id) then return ns.Chat("Pick an item up first, then choose the group.") end
+  add(name, id)
+  ClearCursor()
+  BG.SectionsChanged()
+end
+
+-- A bag button's group action: "delete", "top" or "deposit" on a group; the bag lays out again.
+function BG.GroupAction(verb, name)
+  if verb == "deposit" then deposit(name) else change(verb, name) end
+  BG.SectionsChanged()
+end
+
 -- The usage line.
-local USAGE = "Usage: /vg bag [add <name> <item> | remove <item> | delete <name> | top <name>]"
+local USAGE = "Usage: /vg bag [add <name> <item> | remove <item> | delete <name> | top <name> | deposit <name>]"
 
 -- Takes the item out of its category, and says so.
 local function drop(id)
@@ -101,10 +159,11 @@ local function run(verb, arg, name, id)
   if verb == "add" and name and id then add(name, id) return true end
   if verb == "remove" and id then drop(id) return true end
   if (verb == "delete" or verb == "top") and arg ~= "" then change(verb, arg) return true end
+  if verb == "deposit" and arg ~= "" then deposit(arg) return true end
   return false
 end
 
--- /vg bag [add <name> <item> | remove <item> | delete <name> | top <name>]: your bag categories.
+-- /vg bag [add <name> <item> | remove <item> | delete <name> | top <name> | deposit <name>]: your bag categories.
 function BG.Command(rest)
   if not run(parse(rest)) then return ns.Chat(USAGE) end
   BG.SectionsChanged()

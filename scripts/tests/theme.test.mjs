@@ -698,7 +698,7 @@ it("state colors and Color assist (#235): states off the red-green axis; the swi
   expect([["friendly", "neutral", "hostile"].map(hex), bar()], "off by default: the usual reactions").toEqual([["4db86a", "e0c24e", "cc4b45"], "cc4b45"]);
   addon.slash("");
   addon.eval('__click("General")');
-  expect(addon.eval('return __click("Color assist")') !== false, "the switch is under General, Look").toBe(true);
+  expect(addon.eval('return __click("Safer colours")') !== false, "the switch is under General, Look").toBe(true);
   expect([addon.eval("return ns.Theme.Settings().colorAssist"), ["friendly", "neutral", "hostile"].map(hex), bar()], "on: friendly blue, neutral yellow, hostile vermilion, health bars too").toEqual([true, ["4a9be8", "e8d25a", "e0663a"], "e0663a"]);
   expect(hex("bad"), "other colors stay as they are").toBe("e8663f");
 });
@@ -733,6 +733,27 @@ const edgeThickness = (addon, name) => addon.eval(`local f = ${name} local least
     if t and t > 0 and t < 10 and (not least or t > least) then least = t end
   end
   return least and least / ns.Theme.Pixel(f)`);
+
+it("Safer colours (#235): dispel colours stay apart, and the game's colour-blind mode turns them on unless the follow switch is off", () => {
+  const addon = loggedIn("");
+  // A token's colour as rrggbb.
+  const hex = (name) => addon.eval(`return ns.Theme.Hex("${name}")`).slice(2);
+  // The state of the game's colour-blind CVar, forgetting what was read before.
+  const gameMode = (v) => addon.eval(`SetCVar("colorblindMode", "${v}") ns.Theme.gameColorBlind = nil`);
+  const types = ["magic", "curse", "disease", "poison"];
+  expect([types.map(hex), hex("hostile")], "off: the usual dispel colours and reactions").toEqual([["3c8cf0", "9a55e0", "b08a3a", "3fa34d"], "cc4b45"]);
+  gameMode("1");
+  expect([addon.eval("return ns.Theme.ColorAssist()"), types.map(hex), hex("hostile")], "game mode on: Safer colours, dispel types included").toEqual([true, ["2f7fe0", "d86ac0", "e8b030", "7ad0b0"], "e0663a"]);
+  addon.eval("ns.Theme.Settings().colorAssistGame = false");
+  expect([addon.eval("return ns.Theme.ColorAssist()"), hex("hostile")], "the follow switch off: the game's mode is ignored").toEqual([false, "cc4b45"]);
+  addon.eval("ns.Theme.Settings().colorAssist = true");
+  expect(addon.eval("return ns.Theme.ColorAssist()"), "the switch on: Safer colours whatever the game says").toBe(true);
+  addon.eval("ns.Theme.Settings().colorAssist = false ns.Theme.Settings().colorAssistGame = true");
+  gameMode("0");
+  expect(addon.eval("return ns.Theme.ColorAssist()"), "game mode off: nothing changes").toBe(false);
+  addon.eval("GetCVar = function() error('no such CVar') end ns.Theme.gameColorBlind = nil");
+  expect(addon.eval("return ns.Theme.ColorAssist()"), "a client without that CVar: off").toBe(false);
+});
 
 it("theme variants (#237): default unchanged; High contrast and Vellum and ink swap surface and text tokens, repaint at once and ride the profile", () => {
   const addon = loggedIn('__win = ns.Theme.Panel(CreateFrame("Frame", nil, UIParent), { shadow = true }) __ring = ns.Theme.Panel(CreateFrame("Frame", nil, UIParent), { accent = true })');

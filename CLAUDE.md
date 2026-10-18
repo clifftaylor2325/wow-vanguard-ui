@@ -4,7 +4,7 @@ Read this before touching anything. README.md is the spec for behaviour; this fi
 
 ## What this is
 
-- Vanguard is a from-scratch UI suite (Lua 5.1) for WoW Forever, the 12.1 engine with vanilla content. TOC declares Interface 16001 (Forever) and 120007.
+- Vanguard is a from-scratch UI suite (Lua 5.1) for WoW Forever, the 12.1 engine with vanilla content. TOC declares Interface 16001 (Forever), 120105 and 120007.
 - Formerly ForeverUI, renamed in 0.4.0. Use "Vanguard" in code, docs and player-facing text. "ForeverUI" and "/fui" appear only in migration notes. Slash commands are `/vg` and `/vanguard`.
 - Version lives in `Vanguard.toc` (`## Version`). Bump it only as part of a release.
 - Copyright Clifton Taylor, all rights reserved (LICENSE). Don't add third-party code or art without a license note in the right CREDITS file.
@@ -30,6 +30,7 @@ Before you say a change is done: `npm run quality` and `npm run coverage` must b
 ## Hard rules (CI enforces these)
 
 - **Functions:** every function has a comment on the line directly above it, and its body is at most 10 lines of code. Nested functions count toward the parent. Checked by `scripts/lib/code-quality.mjs`.
+- **Top-level locals:** a Lua file's main chunk holds at most 200 active locals, and past that the whole addon fails to load. The scanner fails a Core/ or Modules/ file above 185. Group the locals of one feature in a `do ... end` block (predeclare the few the rest of the file uses) or keep them on a table.
 - **Colours and font sizes:** only in `Core/Theme.lua`. Elsewhere use `T.RGB`, `T.Color`, `T.Text` or theme tokens.
 - **WoW globals:** every new global the addon reads goes in `read_globals` in `.luacheckrc`. Addon globals go in `globals`.
 - **Widget methods:** add a method to `scripts/lib/wow-widget-api.lua` only after confirming it exists in the 12.1 client (Blizzard's wow-ui-source or the API docs). Unlisted methods are nil in tests on purpose.
@@ -38,6 +39,12 @@ Before you say a change is done: `npm run quality` and `npm run coverage` must b
 - **Fonts:** made from upstream Fira Sans Condensed by `scripts/fonts/make-fonts.py`.
 - **New files:** a file the game loads must be listed in `Vanguard.toc`. A new top-level file or folder that players don't need must be added to the `ignore` list in `.pkgmeta`, or `scripts/pkgmeta.test.mjs` fails.
 - **Lua 5.1 only.** No `goto`, no integer division, no `//`, no bit library from 5.3+.
+
+## UI first
+
+- Every action a player can take gets a control in the window it belongs to (a button, a menu row or a switch), built first. A `/vg` command is the extra for people who like typing, never the only way in.
+- A feature PR lists where its control is. A command with no control needs a reason in the PR body (a diagnostic such as `/vg probe` or `/vg perf` is one).
+- Controls use the existing primitives (`W.Dropdown`, `ns.DialogButton`, options rows) and the theme, and they work out of combat like the action does.
 
 ## Game rules
 

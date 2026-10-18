@@ -120,6 +120,12 @@ it("cooldown glow: /vg cdmglow and the options switch it at once, and the share 
   expect(addon.eval("return ns.GetModule('CooldownGlow').settings.glow"), "the options switch turns it off again").toBe(false);
 });
 
+it("cooldown glow: /vg cdmglow with the module switched off says so and does not error", () => {
+  const addon = loggedIn(UNITS_ENV + TOOLS_ENV + ITEM + CLICK_LUA, { savedVariables: "VanguardDB.profiles = { Default = { modules = { CooldownGlow = false } } }" });
+  for (const rest of ["on", "off", "40", ""]) addon.slash(`cdmglow ${rest}`.trim());
+  expect([chatHas(addon, /Cooldown glow is off: turn the module on in the options first\./), addon.eval("return #ns.errors")], "the player is told, nothing is recorded").toEqual([true, 0]);
+});
+
 it("cooldown glow: a client without timers or without the Cooldown Manager loads cleanly", () => {
   const plain = loggedIn(ITEM.replace(/.*/, "") + "C_Timer = nil", { savedVariables: ON });
   expect(plain.eval("return ns.GetModule('CooldownGlow').ticker == nil"), "no timer, no ticker, no error").toBe(true);

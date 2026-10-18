@@ -80,6 +80,15 @@ local function spellRankRows()
   }
 end
 
+-- Pet stable: the line at a stable master (/vg pets).
+local function petStableRows()
+  return {
+    { "header", "Pet stable" },
+    check("Say how many pets you have, and the next slot's price, at a stable master (/vg pets)", setting("PetStable", "announce")),
+    { "button", "List my pets in chat", function() ns.GetModule("PetStable").Command() end },
+  }
+end
+
 -- The Legacy perk planner: its switch (/vg legacy plan).
 local function legacyRows()
   return {
@@ -130,11 +139,20 @@ local function upgradeRows()
   }
 end
 
+-- Saved prices, sales and characters from the beta, and the button that clears them (Core/Home.lua).
+local function betaRows()
+  return {
+    { "header", "Data from the beta" },
+    { "text", "Prices, sales and characters saved before launch (4 November 2026) stay until you clear them. Vendors are the same in both and stay." },
+    { "button", "Clear data from before launch...", function() ns.Home.AskClear() end, function() return ns.Home.Launched() end },
+  }
+end
+
 -- The Town and gear page: the auction house, merchants, errands, crafting, mail, spells, Legacy, instance prep and gear upgrades.
 local function townPageRows()
   local rows = append(append(auctionRows(), merchantRows()), errandRows())
-  append(append(append(rows, craftRows()), mailRows()), spellRankRows())
-  return append(append(append(rows, legacyRows()), prepRows()), upgradeRows())
+  append(append(append(append(rows, craftRows()), mailRows()), spellRankRows()), petStableRows())
+  return append(append(append(append(rows, legacyRows()), prepRows()), upgradeRows()), betaRows())
 end
 
 O.AddPage({ key = "town", title = "Town and gear", icon = "NavTown", order = 85, rows = townPageRows })

@@ -11,6 +11,13 @@
 -- take Vanguard's pin in the accent and the theme font; a party member's portrait
 -- and the corpse's tombstone stay the game's.
 --
+-- Ctrl-click on the world map puts a waypoint down (the game's own); the game leaves its arrow off for it,
+-- so with "Point the arrow at map clicks" on (the default) Vanguard turns the arrow on whenever a waypoint
+-- appears. The last eight waypoints are kept (account-wide in this profile): the Game map options list them
+-- as buttons, /way recent lists them and /way recent <n> goes back to one. A Clear waypoint button sits on
+-- the world map's bottom edge while there is a waypoint, and in the options. The arrow is the game's floating
+-- pin, so there is no second arrow; the quest arrow (Modules/QuestArrow.lua) stays for quests.
+--
 -- Written for WoW Forever: C_Map's user waypoint, UiMapPoint and
 -- C_SuperTrack's arrow are in its UI source (1.60.1). Coordinates are map
 -- percent, as the game's map shows them.
@@ -19,7 +26,7 @@ local ADDON, ns = ...
 
 local T = ns.Theme
 
-local WP = ns.Module("Waypoints", { defaults = { slash = true, mapCoords = true, pin = true } })
+local WP = ns.Module("Waypoints", { defaults = { slash = true, mapCoords = true, pin = true, follow = true } })
 
 -- Seconds between updates of the world map's coordinates line.
 WP.MAP_INTERVAL = 0.1
@@ -109,6 +116,67 @@ function WP.Set(mapID, x, y)
   return true
 end
 
+-- How many recent waypoints are kept.
+WP.RECENT = 8
+
+-- Remembering waypoints ------------------------------------------------------------------------
+
+-- The game's waypoint as mapID, x and y (0 to 1); nil when there is none or the client won't say.
+function WP.Current()
+  if not (C_Map.HasUserWaypoint and C_Map.HasUserWaypoint() and C_Map.GetUserWaypoint) then return nil end
+  local point, mapID = C_Map.GetUserWaypoint(), nil
+  if type(point) ~= "table" or type(point.position) ~= "table" then return nil end
+  local x, y = point.position:GetXY()
+  x, y, mapID = ns.PlainNumber(x), ns.PlainNumber(y), ns.PlainNumber(point.uiMapID)
+  if mapID and x and y then return mapID, x, y end
+end
+
+-- Puts a waypoint first among the recent ones (the same spot moves up instead of repeating), keeping WP.RECENT.
+function WP.Remember(mapID, x, y)
+  local list = WP.settings.recent or {}
+  WP.settings.recent = list
+  for i = #list, 1, -1 do
+    if list[i].map == mapID and math.abs(list[i].x - x) < 0.001 and math.abs(list[i].y - y) < 0.001 then table.remove(list, i) end
+  end
+  table.insert(list, 1, { map = mapID, x = x, y = y })
+  while #list > WP.RECENT do table.remove(list) end
+end
+
+-- The game's waypoint changed (a Ctrl-click on the map, /way): remember it and, with the switch on, point the arrow at it.
+function WP.OnWaypoint()
+  local mapID, x, y = WP.Current()
+  if not mapID then return end
+  WP.Remember(mapID, x, y)
+  if WP.settings.follow and C_SuperTrack and C_SuperTrack.SetSuperTrackedUserWaypoint then C_SuperTrack.SetSuperTrackedUserWaypoint(true) end
+end
+
+-- "Elwynn Forest 45.2, 61.8" for a remembered waypoint.
+function WP.Describe(w)
+  return string.format("%s %.1f, %.1f", mapName(w.map), w.x * 100, w.y * 100)
+end
+
+-- Goes back to the nth recent waypoint; says why when there is none or the map can't hold one.
+function WP.Recall(n)
+  local w = (WP.settings.recent or {})[n]
+  if not w then return ns.Chat("No recent waypoint " .. n .. ".") end
+  if not WP.Set(w.map, w.x, w.y) then return ns.Chat("Can't put a waypoint on " .. mapName(w.map) .. ".") end
+  ns.Chat("Waypoint: " .. WP.Describe(w) .. ".")
+end
+
+-- Takes the waypoint away and the arrow with it.
+function WP.Clear()
+  if type(C_Map) == "table" and C_Map.ClearUserWaypoint then C_Map.ClearUserWaypoint() end
+  if C_SuperTrack and C_SuperTrack.SetSuperTrackedUserWaypoint then C_SuperTrack.SetSuperTrackedUserWaypoint(false) end
+end
+
+-- /way recent: the list, or with a number, back to that one.
+function WP.RecentCommand(n)
+  local list = WP.settings.recent or {}
+  if n ~= "" then return WP.Recall(tonumber(n)) end
+  if #list == 0 then return ns.Chat("No recent waypoints yet.") end
+  for i, w in ipairs(list) do ns.Chat(i .. ". " .. WP.Describe(w)) end
+end
+
 -- Whether this client has map waypoints at all.
 local function canWaypoint()
   return type(C_Map) == "table" and type(C_Map.SetUserWaypoint) == "function" and type(UiMapPoint) == "table"
@@ -118,7 +186,9 @@ end
 function WP.Command(rest)
   rest = rest or ""
   if not canWaypoint() then return ns.Chat("This client has no map waypoints.") end
-  if rest:lower():match("^%s*clear%s*$") then C_Map.ClearUserWaypoint() return ns.Chat("Waypoint cleared.") end
+  if rest:lower():match("^%s*clear%s*$") then WP.Clear() return ns.Chat("Waypoint cleared.") end
+  local recent = rest:lower():match("^%s*recent%s*(%d*)%s*$")
+  if recent then return WP.RecentCommand(recent) end
   local mapID, x, y, title = WP.Parse(rest)
   if not mapID then return ns.Chat("Can't set that waypoint: " .. x .. ".") end
   if not WP.Set(mapID, x, y) then return ns.Chat("Can't put a waypoint on " .. mapName(mapID) .. ".") end
@@ -160,6 +230,7 @@ end
 -- The line under the open world map, from where you and the cursor are.
 function WP.PaintMapLine()
   WP.mapLine:SetText(WP.MapText(_G.WorldMapFrame))
+  WP.clearButton:SetShown(WP.Current() ~= nil)
 end
 
 -- Adds the coordinates line along the bottom of the world map.
@@ -168,6 +239,9 @@ local function buildMapLine(map)
   holder:SetAllPoints(map.ScrollContainer or map)
   WP.mapLine = T.Text(holder:CreateFontString(nil, "OVERLAY"), "small", "text2")
   WP.mapLine:SetPoint("BOTTOM", holder, "BOTTOM", 0, 6)
+  WP.clearButton = ns.DialogButton(holder, "Clear waypoint", 110)
+  WP.clearButton:SetPoint("BOTTOMRIGHT", holder, "BOTTOMRIGHT", -8, 6)
+  WP.clearButton:SetScript("OnClick", ns.Guard("clear waypoint", WP.Clear))
   ns.Every("world map coords", WP.MAP_INTERVAL, WP.PaintMapLine, holder, true)
 end
 
@@ -221,9 +295,37 @@ local function skinPin()
   WP.PaintPin()
 end
 
+-- Options -------------------------------------------------------------------------------------------
+
+-- get/set for the "follow" switch (also while the module is off) and its default.
+local function followSetting()
+  return function() return ns.Settings("Waypoints", WP.defaults).follow end,
+    function(v) ns.Settings("Waypoints", WP.defaults).follow = v end, WP.defaults.follow
+end
+
+-- The recent waypoints as one button each ("Go to ..."), or a line saying there are none.
+local function recentRows()
+  local rows = {}
+  for i, w in ipairs(ns.Settings("Waypoints", WP.defaults).recent or {}) do
+    rows[#rows + 1] = { "button", "Go to " .. WP.Describe(w), function() WP.settings = ns.Settings("Waypoints", WP.defaults) WP.Recall(i) end }
+  end
+  if #rows == 0 then rows[1] = { "text", "No recent waypoints yet. Ctrl-click the world map or use /way to make one." } end
+  return rows
+end
+
+-- The waypoint card on the Map page.
+function WP.Rows()
+  local rows = { { "header", "Waypoints" }, { "check", "Point the arrow at a waypoint you Ctrl-click on the map", followSetting() },
+    { "button", "Clear waypoint", WP.Clear }, { "header", "Recent waypoints" } }
+  for _, row in ipairs(recentRows()) do rows[#rows + 1] = row end
+  return rows
+end
+ns.Options.AddRows("map", WP.Rows)
+
 -- Module entry point (Core/Modules.lua).
 function WP.Enable(settings)
   WP.settings = settings
+  ns.On("USER_WAYPOINT_UPDATED", WP.OnWaypoint)
   if settings.slash then WP.claimed = claimWay() end
   if settings.pin then skinPin() end
   if not settings.mapCoords then return end

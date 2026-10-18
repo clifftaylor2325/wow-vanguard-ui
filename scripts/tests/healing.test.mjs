@@ -58,6 +58,19 @@ it("buff watch: one aura pass per aura change, nothing on health, the names and 
   expect(healing(addon, 1).missing, "a fight that hides auras takes the marker away").toBe(false);
 });
 
+it("healing reads: a hidden number goes through untouched, a missing call or a non-number is nil, never tested for truth", () => {
+  const addon = loggedIn(UNITS_ENV + RAID_ENV + CLICK_LUA + HEALING_ENV + "CreateUnitHealPredictionCalculator = nil");
+  // Runs setup, then reads the fallback prediction and threat color: [incoming is the secret, shields is, incoming, shields, strip colored].
+  const read = (setup) => addon.eval(`local RH = ns.GetModule("RaidHealing") ${setup}
+    local _, incoming, shields = RH.Prediction("raid1")
+    return { incoming == __s, shields == __s, tostring(incoming), tostring(shields), tostring(RH.ThreatColor("raid1") ~= nil) }`);
+  expect(read("__s = __wfgWorld.secret() UnitGetIncomingHeals = function() return __s end UnitGetTotalAbsorbs = function() return __s end UnitThreatSituation = function() return __s end"), "hidden heals and shields are handed on as they are; hidden threat shows no strip")
+    .toEqual([true, true, expect.any(String), expect.any(String), "false"]);
+  expect(read("UnitGetIncomingHeals = nil UnitGetTotalAbsorbs = nil UnitThreatSituation = nil"), "a client without the calls: nothing").toEqual([false, false, "nil", "nil", "false"]);
+  expect(read("UnitGetIncomingHeals = function() return false end UnitGetTotalAbsorbs = function() return 'x' end UnitThreatSituation = function() return 2 end"), "a value that is not a number is nothing; plain threat still colors the strip").toEqual([false, false, "nil", "nil", "true"]);
+  expect(read("UnitGetIncomingHeals = function() return 45 end UnitGetTotalAbsorbs = function() return 0 end UnitThreatSituation = function() return 0 end"), "plain numbers pass, zero too; no aggro, no strip").toEqual([false, false, "45", "0", "false"]);
+});
+
 it("healing fallbacks and options", () => {
   const addon = loggedIn(UNITS_ENV + RAID_ENV + CLICK_LUA + HEALING_ENV + `CreateUnitHealPredictionCalculator = nil UnitGetTotalAbsorbs = nil
     UnitGetIncomingHeals = function() return 120 end`);

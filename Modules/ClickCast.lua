@@ -92,24 +92,32 @@ local function problem(key, action, value)
   return nil
 end
 
--- Adds (or replaces) the binding for a key in the current spec, then applies.
+-- Drops the binding for a key from a spec's list (nothing is applied).
+local function drop(list, key)
+  for i = #list, 1, -1 do
+    if list[i].key == key then table.remove(list, i) end
+  end
+end
+
+-- Puts a checked binding in a spec's list, replacing the key's old one (nothing is applied).
+local function put(list, key, action, value, id, rank)
+  drop(list, key)
+  list[#list + 1] = { key = key, action = action, value = value, spellID = id, rank = rank }
+end
+
+-- Adds (or replaces) the binding for a key in the current spec, then applies once.
 -- A spell binding may carry its spell id and, for a specific rank, the rank number.
 function CC.Add(key, action, value, id, rank)
   local err = problem(key, action, value)
   if err then return false, err end
-  CC.Remove(key)
-  local list = CC.Bindings()
-  list[#list + 1] = { key = key, action = action, value = value, spellID = id, rank = rank }
+  put(CC.Bindings(), key, action, value, id, rank)
   ns.OutOfCombat(CC.ApplyAll, "clickcast")
   return true
 end
 
 -- Removes the binding for a key in the current spec, then applies.
 function CC.Remove(key)
-  local list = CC.Bindings()
-  for i = #list, 1, -1 do
-    if list[i].key == key then table.remove(list, i) end
-  end
+  drop(CC.Bindings(), key)
   ns.OutOfCombat(CC.ApplyAll, "clickcast")
 end
 
@@ -126,9 +134,11 @@ end
 -- bindings: its keys are replaced, other keys are kept. A spell binds by name, so one the
 -- character hasn't learned yet starts working when it is.
 function CC.ApplyLayout(layout)
+  local list = CC.Bindings()
   for key, b in pairs(layout) do
-    CC.Add(key, b.action, b.value, b.action == "spell" and spellID(b.value) or nil)
+    if not problem(key, b.action, b.value) then put(list, key, b.action, b.value, b.action == "spell" and spellID(b.value) or nil) end
   end
+  ns.OutOfCombat(CC.ApplyAll, "clickcast")
 end
 
 -- Copies the current spec's bindings over another spec's.
@@ -149,20 +159,53 @@ function CC.Export()
   return ns.Serialize.Encode("clickcast", { bindings = list })
 end
 
+-- The most bindings a string may carry, and the longest text (a macro's, or a spell's name) in one: the game's macro limit.
+CC.MAX_IMPORT, CC.MAX_TEXT = 200, 255
+
 -- Whether a decoded binding has the shape CC.Add accepts.
 local function wellFormed(b)
   return type(b) == "table" and type(b.key) == "string" and ACTIONS[b.action] and (b.value == nil or type(b.value) == "string")
+    and not problem(b.key, b.action, b.value)
 end
 
--- Replaces the current spec's bindings with the ones in a string; nil and a reason when it can't.
+-- A decoded spell id or rank as a whole number the client could hold, else nil (so inf, NaN and text are dropped).
+local function wholeNumber(v)
+  local n = tonumber(v)
+  return n and n == math.floor(n) and n >= 0 and n < 1e7 and n or nil
+end
+
+-- The usable bindings of a decoded string, in order, or nil and why the string can't be imported.
+-- Nothing is changed here: a string that is too big, holds an over-long text or no usable binding is
+-- refused as a whole, and an entry of the wrong shape is skipped.
+local function importable(list)
+  local out = {}
+  for i, b in ipairs(list) do
+    if i > CC.MAX_IMPORT then return nil, "more than " .. CC.MAX_IMPORT .. " bindings" end
+    if type(b) == "table" and type(b.value) == "string" and #b.value > CC.MAX_TEXT then return nil, "a text is longer than " .. CC.MAX_TEXT .. " characters" end
+    if wellFormed(b) then out[#out + 1] = b end
+  end
+  if #out == 0 then return nil, "no usable bindings in it" end
+  return out
+end
+
+-- Swaps the current spec's bindings for a checked list (the last of two for one key wins) and applies once.
+local function replaceAll(list)
+  local mine = CC.Bindings()
+  for i = #mine, 1, -1 do mine[i] = nil end
+  for _, b in ipairs(list) do put(mine, b.key, b.action, b.value, wholeNumber(b.spellID), wholeNumber(b.rank)) end
+  ns.OutOfCombat(CC.ApplyAll, "clickcast")
+end
+
+-- Replaces the current spec's bindings with the ones in a string: the whole string is checked first,
+-- then the old bindings are swapped for the new ones and applied once. A string that can't be imported
+-- changes nothing. Returns the number of bindings now, else nil and a reason.
 function CC.Import(text)
   local scope, data = ns.Serialize.Decode(text)
   if not scope then return nil, data end
   if scope ~= "clickcast" or type(data.bindings) ~= "table" then return nil, "not a click-casting string" end
-  CC.Clear()
-  for _, b in ipairs(data.bindings) do
-    if wellFormed(b) then CC.Add(b.key, b.action, b.value, tonumber(b.spellID), tonumber(b.rank)) end
-  end
+  local list, why = importable(data.bindings)
+  if not list then return nil, why end
+  replaceAll(list)
   return #CC.Bindings()
 end
 

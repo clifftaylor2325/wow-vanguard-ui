@@ -50,7 +50,10 @@ function CX.LinkURLs(text)
 end
 
 -- Chat filter: hands the game the message with its addresses linked (or unchanged).
-local function filter(_, _, text, ...)
+-- Hidden or missing text passes before anything reads it (comparing it could raise inside the game's chat handler).
+function CX.Filter(_, _, text, ...)
+  if ns.Restricted("Chat") then return false end
+  if ns.IsSecret(text) or type(text) ~= "string" then return false end
   local linked = CX.LinkURLs(text)
   if linked ~= text then return false, linked, ... end
   return false
@@ -66,8 +69,9 @@ end
 local function watchLinks()
   local registry = _G.EventRegistry
   if type(ChatFrame_AddMessageEventFilter) ~= "function" or type(registry) ~= "table" or type(registry.RegisterCallback) ~= "function" then return end
-  for _, event in ipairs(CX.EVENTS) do ChatFrame_AddMessageEventFilter(event, filter) end
-  registry:RegisterCallback("SetItemRef", CX.OnLink, CX)
+  local guarded = ns.GuardResult("chat filter links", CX.Filter, false)
+  for _, event in ipairs(CX.EVENTS) do ChatFrame_AddMessageEventFilter(event, guarded) end
+  registry:RegisterCallback("SetItemRef", ns.Guard("chat link click", CX.OnLink), CX)
 end
 
 -- Copy ------------------------------------------------------------------------------------

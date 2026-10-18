@@ -49,10 +49,11 @@ local function itemName(id)
   return type(name) == "string" and name or ("item " .. id)
 end
 
--- True while you can sell or buy: a merchant is open and you are not in a fight.
+-- True while you can sell or buy: a merchant is open and you are not in a fight (also used by Merchant.lua's junk sale).
 local function trading()
   return MC.open == true and not ns.InCombat()
 end
+MC.Trading = trading
 
 -- What one of an item fetches at a vendor (0 when the client doesn't know).
 local function sellPrice(id)
@@ -138,15 +139,29 @@ function MC.SellQuestion(rows)
   return string.format("Sell for %s?\n%s", money(MC.Worth(rows)), table.concat(shortList(itemLines(rows)), "\n"))
 end
 
--- Asks, then sells the slots find() gives; says what the Buyback tab can undo.
+-- A finder of the shown rows that still hold what was shown (the same item, the same count): a stack
+-- picked up or unlocked since the question opened is never sold, nor is a slot that now holds another item.
+local function stillShown(rows)
+  return function()
+    local out = {}
+    for _, r in ipairs(rows) do
+      local id, count = slotItem(r.bag, r.slot)
+      if id == r.id and count == r.count then out[#out + 1] = r end
+    end
+    return out
+  end
+end
+
+-- Asks (a "danger" question, so Enter alone never answers it), then sells the rows that were shown and
+-- no others; says what the Buyback tab can undo.
 function MC.OfferSale(find)
   local rows = find()
   if #rows == 0 then return false end
   ns.Ask(MC.SellQuestion(rows), "Sell", function()
     if not trading() then return ns.Chat("Nothing sold: the merchant is closed.") end
-    MC.SellRows(find, MC.RETRIES)
+    MC.SellRows(stillShown(rows), MC.RETRIES)
     ns.Chat(string.format("Selling %d stack(s) for %s. The merchant's Buyback tab gets them back.", #rows, money(MC.Worth(rows))))
-  end)
+  end, nil, "danger")
   return true
 end
 
@@ -194,13 +209,19 @@ end
 
 -- Buying ---------------------------------------------------------------------------------------
 
+-- True when merchant item index costs more than gold (honor, badges, other items): such an item is never bought
+-- here or by Errands' stock list, whatever its copper price reads. A client that doesn't say counts as gold only.
+function MC.ExtendedCost(index)
+  local count = ns.PlainNumber(ask("GetMerchantItemCostInfo", index))
+  return count ~= nil and count > 0
+end
+
 -- A merchant item's price per pack, pack size and stock left (-1 for no limit), or nil for one that
 -- can't be bought for gold alone.
 local function wares(index)
   local _, _, price, quantity, left = ask("GetMerchantItemInfo", index)
-  local extended = ns.PlainNumber(ask("GetMerchantItemCostInfo", index)) or 0
   price, quantity, left = ns.PlainNumber(price), ns.PlainNumber(quantity) or 1, ns.PlainNumber(left) or -1
-  if price and price > 0 and extended == 0 then return price, math.max(quantity, 1), left end
+  if price and price > 0 and not MC.ExtendedCost(index) then return price, math.max(quantity, 1), left end
 end
 
 -- Room for items in your bags: free slots, times how many of the item stack.
