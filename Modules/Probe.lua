@@ -57,6 +57,8 @@ P.CALLS = {
     { "C_GameRules.GetForeverExperiencePreset" },
     { "C_Seasons.HasActiveSeason" }, { "C_Seasons.GetActiveSeason" },
   },
+  -- The CVar Safer colours follows (Core/Theme.lua); a wrong name here means the follow switch does nothing.
+  access = { { "GetCVar", "colorblindMode" }, { "GetCVar", "colorblindSimulator" } },
   undocumented = {
     { "C_LootHistory.GetNumItems" }, { "C_LootHistory.GetItem", 1 },
     { "C_LootHistory.GetPlayerInfo", 1, 1 }, { "C_LootHistory.GetAllEncounterInfos" },
@@ -341,6 +343,7 @@ P.SECTIONS = {
   { "Group listing", function() return sectionRows("group") end },
   { "Secure paging", pagingLines }, { "Realm and name format", realmLines },
   { "Game rules and seasons", function() return sectionRows("rules") end },
+  { "Colour-blind mode CVars", function() return sectionRows("access") end },
   { "C_Secrets predicates", secretLines }, { "Restrictions and lockdown", restrictionLines },
   { "Navigation", navigationLines }, { "Undocumented on Forever", undocumentedLines },
   { "Guide reads", guideLines },
