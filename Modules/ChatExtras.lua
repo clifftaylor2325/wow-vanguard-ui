@@ -51,6 +51,7 @@ end
 
 -- Chat filter: hands the game the message with its addresses linked (or unchanged).
 local function filter(_, _, text, ...)
+  if ns.Restricted("Chat") then return false end
   local linked = CX.LinkURLs(text)
   if linked ~= text then return false, linked, ... end
   return false

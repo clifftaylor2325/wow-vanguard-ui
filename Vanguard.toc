@@ -108,6 +108,7 @@ Modules/ChatExtras.lua
 Modules/ChatWatch.lua
 Modules/ChatFilter.lua
 Modules/ChatHistory.lua
+Modules/ChatWindows.lua
 Modules/ChatBubbles.lua
 Modules/Bags.lua
 Modules/BagSections.lua
@@ -128,6 +129,7 @@ Modules/DungeonCard.lua
 Modules/TalentPlanner.lua
 Modules/Legacy.lua
 Modules/AutoAccept.lua
+Modules/Quiet.lua
 Modules/QuestDialogParts.lua
 Modules/QuestDialog.lua
 Modules/QuestDialogView.lua
@@ -186,6 +188,7 @@ Modules/Upgrades.lua
 Modules/UpgradeWizard.lua
 Modules/VendorMemory.lua
 Modules/SpellRanks.lua
+Modules/PetStable.lua
 Modules/Nameplates.lua
 Modules/Situations.lua
 Modules/SituationsBanner.lua
