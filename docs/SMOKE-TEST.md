@@ -1360,8 +1360,8 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 ### 20.2 Cooldowns and ranking
 
 - Do: with the queue on, open a profession that has a cooldown (a transmute, say), then `/vg craft cd`. Visit the auction house, open a profession again and type `/vg craft top`.
-- Expect: `cd` lists the cooldown with its time left, for each character that noted one; `top` lists up to five recipes that pay best, per craft and per hour at the pace set under Craft queue. [Needs in game: that C_TradeSkillUI.GetAllRecipeIDs and GetRecipeCooldown exist and give the open profession's recipes and seconds left, and that reading a few hundred recipes causes no stutter.]
-- If it fails, paste: `/vg errors` and what `/run print(C_TradeSkillUI.GetAllRecipeIDs ~= nil, C_TradeSkillUI.GetRecipeCooldown ~= nil)` prints.
+- Expect: `cd` lists the cooldown with its time left, for each character that noted one; `top` lists up to five recipes that pay best, per craft and per hour at the pace set under Craft queue. [Needs in game: whether C_TradeSkillUI.GetAllRecipeIDs and GetRecipeCooldown exist on Forever (the docs list neither). If not, `cd` only knows the recipe you selected, queued or already noted, with the time from C_Spell.GetSpellCooldown on the recipe's spell; select a transmute (or any recipe with a cooldown) in its profession window, then `/vg craft cd`. Also: that a recipe's spell cooldown is what the profession window shows, and that reading a few hundred recipes causes no stutter.]
+- If it fails, paste: `/vg errors` what `/run print(C_TradeSkillUI.GetAllRecipeIDs ~= nil, C_TradeSkillUI.GetRecipeCooldown ~= nil)` prints, and `/run print(C_Spell.GetSpellCooldown(<a recipe's spell ID>))`.
 
 ## 21. Presets (batch 2)
 

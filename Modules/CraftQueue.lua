@@ -8,6 +8,9 @@
 --   * /vg craft cd        profession cooldowns of your characters, and when each is ready;
 --   * /vg craft top       the recipes you know that pay best per craft and per hour, from the prices;
 --   * /vg craft done|clear  takes the first craft off, or empties the queue.
+-- Forever documents neither a recipe list nor a recipe cooldown call: where the client lacks them, the
+-- recipes met (on display, queued, or with a cooldown noted) are read, and a cooldown is the recipe
+-- spell's own (C_Spell). That part is unverified in the game.
 -- Nothing is bought, posted or crafted for you: each step is prepared and the click stays yours. A
 -- craft you finish (your own cast of the recipe's spell, out of combat) comes off the queue.
 
@@ -33,11 +36,29 @@ local function now()
   return ns.PlainNumber(time()) or 0
 end
 
--- The profession window's recipe IDs, as many as the scan reads (none where the client lacks the call).
-local function recipeIDs()
+-- The recipes Vanguard knows of without the profession window's list: the one on display, the queue's, and those with a cooldown noted.
+local function knownIDs()
+  local mine, out, seen = CQ.Mine(), {}, {}
+  -- Adds the recipe to the list once.
+  local function add(id) if id and not seen[id] then seen[id], out[#out + 1] = true, id end end
+  add(CR.recipe)
+  for _, e in ipairs(mine.queue) do add(e.id) end
+  for id in pairs(mine.cooldowns) do add(id) end
+  return out
+end
+
+-- The profession window's recipe list call, or nil where the client lacks it (Forever documents none).
+local function listCall()
   local get = type(C_TradeSkillUI) == "table" and C_TradeSkillUI.GetAllRecipeIDs
-  local ids = type(get) == "function" and get() or {}
-  return { unpack(ids, 1, CQ.SCAN) }
+  return type(get) == "function" and get or nil
+end
+
+-- The profession window's recipe IDs, as many as the scan reads. Where the client has no list call,
+-- the recipes Vanguard has met (knownIDs) stand in.
+local function recipeIDs()
+  local get = listCall()
+  local ids = get and get()
+  return { unpack(type(ids) == "table" and ids or knownIDs(), 1, CQ.SCAN) }
 end
 
 -- The queue ----------------------------------------------------------------------------------
@@ -126,10 +147,22 @@ end
 
 -- Cooldowns ----------------------------------------------------------------------------------
 
--- A recipe's cooldown in seconds (0 for none or where the client can't say), from the game's recipe cooldown.
+-- Seconds left on a recipe's spell cooldown (C_Spell, which Forever documents); 0 for none, the global cooldown, or values the client hides.
+local function spellCooldownOf(id)
+  local get = type(C_Spell) == "table" and C_Spell.GetSpellCooldown
+  local info = type(get) == "function" and get(id)
+  if type(info) ~= "table" or ns.IsSecret(info) or (not ns.IsSecret(info.isOnGCD) and info.isOnGCD == true) then return 0 end
+  local start, length = ns.PlainNumber(info.startTime), ns.PlainNumber(info.duration)
+  if not (start and length) or length <= 3 then return 0 end
+  return math.max(0, start + length - GetTime())
+end
+
+-- A recipe's cooldown in seconds (0 for none or where the client can't say): the game's recipe cooldown where it has
+-- one, else the cooldown of the recipe's spell.
 local function cooldownOf(id)
   local get = type(C_TradeSkillUI) == "table" and C_TradeSkillUI.GetRecipeCooldown
-  return type(get) == "function" and ns.PlainNumber((get(id))) or 0
+  if type(get) == "function" then return ns.PlainNumber((get(id))) or 0 end
+  return spellCooldownOf(id)
 end
 
 -- Notes the recipe's cooldown for this character (cleared when it has none).
@@ -157,13 +190,14 @@ end
 -- /vg craft cd: every character's noted cooldowns and when each is ready.
 function CQ.Cooldowns()
   local any = false
+  if not listCall() then CQ.Scan() end
   for char, c in pairs(CQ.settings.chars) do
     for _, cd in pairs(c.cooldowns) do
       any = true
       ns.Chat(string.format("%s: %s, %s", char, cd.name, remaining(cd.ready - now())))
     end
   end
-  if not any then ns.Chat("No profession cooldowns noted yet. Open a profession that has one.") end
+  if not any then ns.Chat("No profession cooldowns noted yet. Open a profession that has one and select its recipe.") end
 end
 
 -- Ranking ------------------------------------------------------------------------------------

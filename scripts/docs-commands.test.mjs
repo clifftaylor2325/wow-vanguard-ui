@@ -17,3 +17,15 @@ it("docs/COMMANDS.md only lists commands the README documents", () => {
   const unknown = [...commandWords(read("docs/COMMANDS.md"))].filter((w) => !known.has(w));
   expect(unknown, "commands missing from the README").toEqual([]);
 });
+
+// The command words /vg help lists (the first word of each HELP line in Core/Slash.lua).
+const helpWords = () => {
+  const block = read("Core/Slash.lua").split(/\nlocal HELP = \{\n/)[1].split(/\n\}\n/)[0];
+  return [...block.matchAll(/^ {2}"([a-z]+)[ ",]/gm)].map((m) => m[1]);
+};
+
+it("docs/COMMANDS.md lists every command /vg help lists", () => {
+  const listed = commandWords(read("docs/COMMANDS.md"));
+  const missing = helpWords().filter((w) => !listed.has(w));
+  expect(missing, "commands missing from docs/COMMANDS.md").toEqual([]);
+});
