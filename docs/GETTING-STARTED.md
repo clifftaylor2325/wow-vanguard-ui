@@ -19,11 +19,21 @@ The first login opens the setup wizard: pick a layout (Damage, Tanking or Healin
 - `/vg modules` lists the parts. Turn off anything you would rather another addon does: `/vg disable <module>`, then `/reload`.
 - `/vg whatsnew` lists what changed in this version; click a line to open its setting.
 
+## What Vanguard does on its own
+
+- At a merchant it repairs with your own gold and sells your gray items. Both have a switch in the options (`/vg`).
+- On a character's first login it turns the game's enemy nameplates on, and the combined bags and Cooldown Manager switches follow Vanguard's Bags and Game tools pages.
+- Setup can change the game's UI scale, and `/vg graphics apply` changes graphics settings (`/vg graphics undo` puts them back).
+
+These are settings of the game itself, so they stay when you disable Vanguard. To go back, change them in the game's own options (turning Vanguard's Bags module off puts your bag layout back). Key bindings that Vanguard's action bars set are saved with the game's bindings too, and the "Filtered" chat tab the chat filter makes can be closed from its tab menu.
+
 ## If something goes wrong
 
 - `/vg errors` lists anything Vanguard caught going wrong this session.
 - `/vg report` prints one block to copy; paste it at vanguardui.com/feedback, or write the report in game with `/vg feedback`.
 - `/vg status` says the version, profile, modules and what the client has.
+
+Much of what this page and the README describe has not been checked in the game yet: CHANGELOG.md and SMOKE-TEST.md say what has. If something looks wrong, tell us (`/vg report`).
 
 Several newer parts start switched off (the Vanguard meter, craft queue, mail tools, boat timer and others). The What's new window and the options pages say which; turn them on under `/vg`.
 
