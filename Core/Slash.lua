@@ -39,6 +39,7 @@ local HELP = {
   "situation [record <name>|stop|clear [name]|list]   Situations: record a layout and settings for solo, party, raid, pvp, instance or resting",
   "watch [add|remove <phrase>|list|clear]   Chat watch: phrases that ring a sound and show a toast when said in chat",
   "filter [on|off|tab|hide|add|remove <word>|clear]   Chat filter: gold selling, boosting, recruiting and repeat lines go to a Filtered tab (or are hidden)",
+  "history [on|off|whispers|nowhispers|clear]   Chat history: your chat comes back after a reload or the next login (off until switched on)",
   "quests [history [n]] open or close Vanguard's quest log (the game's quest log key does too); history lists the latest quests any of your characters turned in",
   "probe [chat|fight|last]   one run out of combat asks the client the open questions (saved quest flag, threat secrecy, group listing, secure paging, realm format, secret predicates, restrictions, navigation) and opens a copy box; fight takes the secrecy reads in the next fight; last reopens the saved report",
   "guide probe         what this client returns for the reads a levelling guide would use (chat only; changes nothing)",
@@ -47,7 +48,7 @@ local HELP = {
   "plates [enemies on|off] how many nameplates Vanguard drew and the game's enemy plate setting; enemies on|off sets it (out of combat)",
   "stock [<item> <n>]   items to keep in your bags; a merchant tops them up (0 removes, clear empties)",
   "junk [<item> | remove <item> | clear]   your sell list: items a merchant offers to buy from you with your grays (off until switched on under Merchants and errors)",
-  "bag [add <name> <item>|remove <item>|delete <name>|top <name>]   your own bag categories: a name and its items, shown under their own header above the built-in sections (first in the list wins)",
+  "bag [add <name> <item>|remove <item>|delete <name>|top <name>|deposit <name>]   your own bag categories: a name and its items, shown under their own header above the built-in sections (first in the list wins)",
   "sell <item>          at a merchant: sell every stack of an item in your bags, after a question",
   "craft [add [n]|next|stock|cd|top|done|clear]   the craft queue: queue the recipe on display, open the next one, raise Keep stocked to fit, show cooldowns, rank recipes (off until switched on)",
   "mail [words]|preset [add <name> <character> [words]|remove <name>]|send <name>|takeall|returnall   search the inbox; presets for sending items to your alts; take everything listed or return it (off until switched on)",
@@ -71,7 +72,7 @@ local HELP = {
   "preview [party|10|25|40|off]   the raid frames filled with sample players, to check them without a group (not saved)",
   "binds                this spec's click-casting and hover-key bindings (set them in /vg > Click casting)",
   "keybind              keybind mode: hover an action button and press a key, a side mouse button or the wheel to bind it; Backspace clears, Escape leaves",
-  "status               version, profile, modules, skins, work waiting on combat, what the client has",
+  "status               version, profile, modules, skins, work waiting on combat, what the client has, game restrictions",
   "factionart           which of the game's own faction pictures this client has",
   "realm                your realm, ruleset and side as the client gives them, and the key your prices, sales and characters are kept under",
   "frame <name> [deep]  what the client says about a frame now: shown, alpha, scale, size, its rect (or none), anchors and its parents; deep adds its textures and child frames (for a frame that draws empty)",
@@ -492,12 +493,19 @@ local function modulesOn()
   return enabled
 end
 
+-- The restrictions line: the add-on restrictions the client has on right now, or "none".
+local function restrictionLine()
+  local active = ns.ActiveRestrictions()
+  return "Game restrictions: " .. (#active > 0 and table.concat(active, ", ") or "none")
+end
+
 -- /vg status
 local function statusCommand()
   chat(string.format("Vanguard %s  ·  profile %s  ·  %d/%d modules on", version(), ns.ProfileName(), modulesOn(), #ns.ModuleNames()))
   chat(string.format("%d skinned addon(s)  ·  %d painted frame(s)  ·  %d change(s) waiting on combat", #ns.SkinList(), T.PaintedCount(), ns.QueuedCount()))
   chat(clientLine())
   chat(ns.Client.Line())
+  chat(restrictionLine())
   chat(textLine())
 end
 
@@ -577,7 +585,7 @@ end
 local function reportHead()
   return { "### Vanguard report v1 ###",
     string.format("Vanguard %s  ·  interface %s  ·  profile %s  ·  %d/%d modules on", version(), interfaceText(), ns.ProfileName(), modulesOn(), #ns.ModuleNames()),
-    clientLine(), ns.Client.Line(), textLine(), screenLine(), "Modules off: " .. modulesOff(), "Skins: " .. skinsText(),
+    clientLine(), ns.Client.Line(), restrictionLine(), textLine(), screenLine(), "Modules off: " .. modulesOff(), "Skins: " .. skinsText(),
     string.format("Errors: %d (%d in all)", #ns.errors, occurrences()) }
 end
 
@@ -711,6 +719,7 @@ local COMMANDS = {
   legacy = function(rest) ns.GetModule("Legacy").Command(rest) end,
   watch = function(rest) ns.GetModule("ChatWatch").Command(rest) end,
   filter = function(rest) ns.GetModule("ChatFilter").Command(rest) end,
+  history = function(rest) ns.GetModule("ChatHistory").Command(rest) end,
   gaps = function(rest) ns.GetModule("CooldownGaps").Command(rest) end,
   cooldowns = cooldownsCommand,
   lfg = function(rest) ns.GetModule("GroupBoard").Command(rest) end,

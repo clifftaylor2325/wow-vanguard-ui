@@ -47,6 +47,20 @@ local function promptRows()
   }
 end
 
+-- Quiet the game: declined invites, hidden HUD text, a further camera, release in battlegrounds.
+local function quietRows()
+  local zoom = O.LiveSetting("Quiet", "camera", function() ns.GetModule("Quiet").ApplyCamera() end)
+  return {
+    { "header", "Quiet the game" },
+    check("Decline guild invites", setting("AutoAccept", "guildInvites")),
+    check("Decline group invites from people who aren't friends or guildmates", setting("AutoAccept", "strangerGroups")),
+    check("Decline Battle.net friend requests", setting("AutoAccept", "friendRequests")),
+    check("Release at once when you die in a battleground", setting("AutoAccept", "pvpRelease")),
+    check("Hide the red error line", setting("Quiet", "errors")), check("Hide the zone names that fade in", setting("Quiet", "zoneText")),
+    { "cycle", "Furthest the camera zooms out", ns.GetModule("Quiet").CAMERA, zoom },
+  }
+end
+
 -- Vendor memory: where items are sold, in their tooltips.
 local function vendorRows()
   return {
@@ -79,7 +93,7 @@ end
 
 -- The Game windows page: the game's windows, prompts and tooltips, then your characters.
 local function windowsPageRows()
-  return append(append(append(windowRows(), promptRows()), tooltipRows()), altRows())
+  return append(append(append(append(windowRows(), promptRows()), quietRows()), tooltipRows()), altRows())
 end
 
 O.AddPage({ key = "windows", title = "Game windows", icon = "NavWindows", order = 83, rows = windowsPageRows })

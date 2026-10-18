@@ -11,7 +11,7 @@ Every `/vg` command (`/vanguard` works too), grouped by what it does. `/vg help`
 | `/vg whatsnew` | What changed in this version |
 | `/vg modules`, `/vg enable <module>`, `/vg disable <module>` | List the parts; switch one, then `/reload` |
 | `/vg skins` | Addons skinned through the API; `skins <addon> on\|off` |
-| `/vg status` | Version, profile, modules, skins, work waiting on combat |
+| `/vg status` | Version, profile, modules, skins, work waiting on combat, game restrictions |
 
 ## Layout
 
@@ -53,6 +53,7 @@ Every `/vg` command (`/vanguard` works too), grouped by what it does. `/vg help`
 | `/vg plates [enemies on\|off]` | Nameplates drawn and the game's plate settings |
 | `/vg situation ...`, `/vg watch ...` | Situation overrides; Chat watch phrases |
 | `/vg filter [on\|off\|tab\|hide\|add\|remove <word>\|clear]` | Chat filter: spam to a Filtered tab |
+| `/vg history [on\|off\|whispers\|nowhispers\|clear]` | Chat history: your chat comes back after a reload or login |
 
 ## Town, quests and gear
 
