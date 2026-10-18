@@ -104,6 +104,7 @@ Modules/MinimapButtons.lua
 Modules/Chat.lua
 Modules/ChatExtras.lua
 Modules/ChatWatch.lua
+Modules/ChatFilter.lua
 Modules/ChatBubbles.lua
 Modules/Bags.lua
 Modules/BagSections.lua

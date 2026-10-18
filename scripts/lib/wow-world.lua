@@ -1893,6 +1893,18 @@ world.chatFilters = {}
 function ChatFrame_AddMessageEventFilter(event, fn) world.chatFilters[event] = world.chatFilters[event] or {} table.insert(world.chatFilters[event], fn) end
 function FCF_OpenTemporaryWindow(name) local f = stub.newWidget("ScrollingMessageFrame", "ChatFrameTemp" .. name, UIParent) return f end
 function FCF_Tab_OnClick() end
+-- Chat windows by name (GetChatWindowInfo(i) -> name) and FCF_OpenNewWindow(name) making the next free one, with its tab.
+world.chatWindows = {}
+function GetChatWindowInfo(i) return world.chatWindows[i] end
+function FCF_OpenNewWindow(name)
+  local i = 3
+  while _G["ChatFrame" .. i] do i = i + 1 end
+  world.chatWindows[i] = name
+  NUM_CHAT_WINDOWS = math.max(NUM_CHAT_WINDOWS, i)
+  _G["ChatFrame" .. i .. "Tab"] = stub.newWidget("Button", "ChatFrame" .. i .. "Tab", UIParent)
+  _G["ChatFrame" .. i] = stub.newWidget("ScrollingMessageFrame", "ChatFrame" .. i, UIParent)
+  return _G["ChatFrame" .. i]
+end
 function FCF_RestorePositionAndDimensions() end
 function FCF_SetChatWindowFontSize(_, frame, size) frame:SetFont(STANDARD_TEXT_FONT, size, "") end
 
