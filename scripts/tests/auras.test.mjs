@@ -619,14 +619,14 @@ it("dispel badges (#235): a debuff icon carries its type's letter on a dark back
   expect(["DispelCurse", "DispelDisease", "DispelPoison"].map((g) => magic[g][1]), "the other letters are mapped clear").toEqual([0, 0, 0]);
   const curse = badgeOf(addon, "__g.buttons[2]");
   expect([curse.DispelCurse[1], curse.DispelMagic[1], isTok(addon, curse.DispelCurse.slice(2), "curse")], "a Curse debuff shows its C").toEqual([1, 0, true]);
-  expect(addon.eval("local b = __g.buttons[1].__dispel[5].texture return { b:GetWidth(), b.__points.TOPLEFT ~= nil }"), "half the icon, in its top-left corner").toEqual([addon.eval("return __spec.groups[1].size") / 2, true]);
+  expect(addon.eval("local b = __g.buttons[1].__dispel[5].texture return { b:GetWidth(), b.__points.TOPLEFT ~= nil }"), "0.6 of the icon (12 at the least), in its top-left corner").toEqual([Math.max(12, addon.eval("return __spec.groups[1].size") * 0.6), true]);
 });
 
 it("dispel badges on Vanguard's own icons: shown for a type it can read, never for none or a hidden one (#235)", () => {
   const addon = loggedIn('__f = ns.Auras.Icon(UIParent, 12, { size = 12, debuff = true })');
   // The badge parts shown on __f: { back, the letters shown }.
   const shown = () => addon.eval(`local b, out = __f.badge, {} for k, t in pairs(__f.badge.letters) do if t:IsShown() then out[#out + 1] = k end end return { b.back:IsShown(), out[1] or false, #out }`);
-  expect(addon.eval("return __f.badge.back:GetWidth()"), "never smaller than 8 units").toBe(8);
+  expect(addon.eval("return __f.badge.back:GetWidth()"), "never smaller than 12 units").toBe(12);
   addon.eval('ns.Auras.Show(__f, "player", { icon = "P", dispelName = "Poison" })');
   expect(shown(), "a Poison debuff: the backing and its P").toEqual([true, "Poison", 1]);
   for (const kind of ["nil", "{ __secret = true }", '"Enrage"']) {

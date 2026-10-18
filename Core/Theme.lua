@@ -175,7 +175,7 @@ T.VARIANTS = {
   -- Classic (#218): dark leather and bronze, gold-cream text, a bronze border, the window ornaments on.
   -- Own colours only; nothing from the game's art.
   classic = {
-    label = "Classic look", ornaments = true,
+    label = "Classic look", ornaments = true, minimapRound = true,
     tokens = {
       panel = { "1c1610", 0.96 }, inset = { "120d09", 0.96 }, raised = "2b2117", divider = "4a3a24", edge = "6b5230",
       sheen = { "ffd27a", 0.08 }, text = "f2e2b6", text2 = "d4bf8c", muted = "9c8a62",

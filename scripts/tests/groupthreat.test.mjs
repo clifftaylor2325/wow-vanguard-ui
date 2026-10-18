@@ -88,6 +88,22 @@ it("group threat: hides while threat is hidden, and with no group, no target or 
   expect(shown(), "values that are not numbers: nothing to show").toBe(false);
 });
 
+it("group threat: a hidden 'exists' or 'is you' answer counts as no, without an error", () => {
+  const addon = party();
+  addon.eval("realExists, realIs = UnitExists, UnitIsUnit");
+  addon.fire("UNIT_THREAT_LIST_UPDATE", "target");
+  expect(panel(addon)[1].length, "all three listed").toBe(3);
+  addon.eval("UnitExists = function(u) if u == 'party2' then return __wfgWorld.secret() end return realExists(u) end");
+  addon.fire("UNIT_THREAT_LIST_UPDATE", "target");
+  expect(panel(addon)[1].map((r) => r[0]), "a member the client won't confirm is left out").toEqual(["TEST-ONLY Tank", "TEST-ONLY You"]);
+  addon.eval("UnitExists = realExists UnitIsUnit = function() return __wfgWorld.secret() end");
+  addon.fire("UNIT_THREAT_LIST_UPDATE", "target");
+  expect(panel(addon)[1].length, "a hidden 'is you' counts as no: everyone is listed").toBe(3);
+  addon.eval("UnitIsUnit = realIs UnitExists = function(u) if u == 'target' then return __wfgWorld.secret() end return realExists(u) end");
+  addon.fire("PLAYER_TARGET_CHANGED");
+  expect([panel(addon)[0], addon.eval("return #ns.errors")], "a target the client won't confirm: no panel, no error").toEqual([false, 0]);
+});
+
 it("group threat: no group, no target, a friendly target or a client without the calls show nothing", () => {
   const addon = party();
   // Whether the panel shows now.

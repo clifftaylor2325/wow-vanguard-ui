@@ -125,6 +125,8 @@ const openFilled = (sizes, counts, extra = "") => {
 
 // The padding Vanguard keeps inside the bag window.
 const PAD = 12;
+// The room the Filter and Groups buttons take on the search row: two 58 px buttons and a 6 px gap after each.
+const TOOLS = 2 * (58 + 6);
 // How far inside the bag window each shown slot, section header, the search
 // box, Sort and the money line lie, at the least: { left, right, top, bottom } in px.
 const insets = (addon) => addon.eval(`local f, BG = ContainerFrameCombinedBags, ns.GetModule("Bags")
@@ -302,7 +304,7 @@ it("the bag's slots, headers, search row and money line sit the padding inside t
   }
   const wide = openFilled(...OWNER_BAG, "__cols = 12");
   expect([insets(wide), slotsRight(wide), wide.eval("return ContainerFrameCombinedBags:GetWidth()")], "a client with 12 columns: 12 slots a row, the window as wide as its grid and the padding").toEqual([inside, PAD, 12 * 37 + 11 * 5 + 2 * PAD]);
-  expect(wide.eval("return BagItemSearchBox:GetWidth()"), "the search box starts the padding in and narrows so Sort fits beside it").toBe(523 - PAD - 52 - 6 - PAD);
+  expect(wide.eval("return BagItemSearchBox:GetWidth()"), "the search box starts the padding in and narrows so Sort fits beside it").toBe(523 - PAD - 52 - 6 - TOOLS - PAD);
 });
 
 it("a clear gap above each section header, its band reaching down to its slots; sections side by side keep theirs", () => {
@@ -339,7 +341,7 @@ it("with sections off the game's plain grid is as it was, and Sort fits beside t
   const money = addon.eval("local f = ContainerFrameCombinedBags return { f.MoneyFrame:GetLeft() - f:GetLeft(), f:GetWidth(), f:GetHeight() }");
   expect([headers(addon), spot(addon, "b0s1"), money], "the game's grid, money line, width and height").toEqual([[], [343, 75], [8, 430, 186]]);
   const sort = addon.eval(`local f, s = ContainerFrameCombinedBags, ns.GetModule("Bags").sort return { f:GetRight() - s:GetRight(), BagItemSearchBox:GetWidth() }`);
-  expect(sort, "Sort ends 12 px inside the right edge; the search box gives it room").toEqual([PAD, 430 - PAD - 52 - 6 - PAD]);
+  expect(sort, "Sort ends 12 px inside the right edge; the search box gives it room").toEqual([PAD, 430 - PAD - 52 - 6 - TOOLS - PAD]);
 });
 
 // TEST-ONLY gamepad bag bar, as Blizzard_MainMenuBarBagButtons builds it on Forever (Camelot
@@ -356,7 +358,7 @@ const BACKPACK_ENV = `
 // The search row from left to right: the search box's left inset, the gap to Sort, Sort's width, the gap
 // from Sort to the backpack button, and Sort's inset from the window's right edge (px).
 const searchRow = (addon) => addon.eval(`local f, s, b = ContainerFrameCombinedBags, ns.GetModule("Bags").sort, GamepadBackpackButton
-  return { BagItemSearchBox:GetLeft() - f:GetLeft(), s:GetLeft() - BagItemSearchBox:GetRight(), s:GetWidth(), b:GetLeft() - s:GetRight(), f:GetRight() - s:GetRight() }`);
+  return { BagItemSearchBox:GetLeft() - f:GetLeft(), s:GetLeft() - ns.GetModule("Bags").tools.groups:GetRight(), s:GetWidth(), b:GetLeft() - s:GetRight(), f:GetRight() - s:GetRight() }`);
 
 // TEST-ONLY gamepad interface switched on (InputUtil, as the client has it).
 const GAMEPAD_ENV = "InputUtil = { IsGamepadUIEnabled = function() return true end }";
@@ -489,4 +491,62 @@ it("/vg bag deposit sends a category's stacks to the open bank, out of combat on
   addon.slash("bag deposit Water");
   expect(addon.eval("return __wfgWorld.usedItems"), "both stacks of water go, the sword stays").toEqual([[0, 1], [0, 2]]);
   expect(chat(), "it says how many").toMatch(/Sent 2 stack\(s\) of Water/);
+});
+
+// The text of the shown rows of the dropdown menu now open.
+const menuRows = (addon) => Object.values(addon.eval("local out = {} for i, b in ipairs(Vanguard_Menu.items) do if b:IsShown() then out[#out + 1] = b.text:GetText() end end return out"));
+// Opens one of the bag's tool buttons ("filter" or "groups").
+const openTool = (addon, key) => addon.eval(`ns.GetModule("Bags").tools.${key}:Click()`);
+
+it("the bag's Filter button fills the search box with a ready-made search and refreshes the lit items", () => {
+  const addon = loggedIn(ITEMS_ENV + fill([8, 4, 0, 0, 0], { equipment: 1, consumables: 2 }) + BAG_FRAME + SEARCH_ENV);
+  addon.eval("__openBag()");
+  addon.slash("bag add Water 159");
+  openTool(addon, "filter");
+  expect(menuRows(addon), "the ready-made searches, then each group").toEqual(["Show everything", "Rare or better", "Epic or better", "Bind on equip", "Armor", "Weapons", "Group: Water"]);
+  addon.click("Vanguard_Menu.items[4]");
+  expect(addon.eval("return BagItemSearchBox:GetText()"), "bind on equip typed in").toBe("bind:boe");
+  expect(Object.values(addon.eval("local out = {} for _, b in ipairs(ContainerFrameCombinedBags.Items) do if b.matches then out[#out + 1] = (C_Container.GetContainerItemInfo(b:GetBagID(), b:GetID()) or {}).itemID end end return out")), "and the sword lit alone").toEqual([90001]);
+  openTool(addon, "filter");
+  addon.click("Vanguard_Menu.items[7]");
+  expect(addon.eval("return BagItemSearchBox:GetText()"), "a group is a cat: search").toBe("cat:water");
+  addon.eval("ContainerFrameCombinedBags.UpdateSearchResults = nil BagItemSearchBox:SetText('x')");
+  openTool(addon, "filter");
+  addon.click("Vanguard_Menu.items[1]");
+  expect(addon.eval("return BagItemSearchBox:GetText()"), "show everything empties the box, with no refresh call to make").toBe("");
+});
+
+it("the bag's Groups button makes groups, files the held item, sends to the bank, orders and deletes", () => {
+  const addon = openFilled([8, 4, 0, 0, 0], { equipment: 1, consumables: 2 });
+  // The chat so far, as one string.
+  const chat = () => Array.from(addon.chat()).join("\n");
+  openTool(addon, "groups");
+  expect(menuRows(addon), "only New group before any exists").toEqual(["New group..."]);
+  addon.click("Vanguard_Menu.items[1]");
+  addon.eval("Vanguard_TextEdit:SetText('Food items') Vanguard_TextDialog.primary:Click()");
+  expect(addon.eval("return ns.Settings('Bags').categories[1].name"), "the typed name becomes one word").toBe("Food-items");
+  addon.eval("ns.GetModule('Bags').NewGroup('food-ITEMS') ns.GetModule('Bags').NewGroup('   ')");
+  expect(chat(), "the same name twice is refused").toMatch(/food-ITEMS already exists/);
+  openTool(addon, "groups");
+  expect(menuRows(addon), "four actions per group").toEqual(["New group...", "Put held item in Food-items", "Send Food-items to the bank", "Make Food-items first", "Delete Food-items"]);
+  addon.click("Vanguard_Menu.items[2]");
+  expect(chat(), "nothing in hand").toMatch(/Pick an item up first/);
+  addon.eval("__wfgWorld.cursor = { type = 'item', id = 159 }");
+  openTool(addon, "groups");
+  addon.click("Vanguard_Menu.items[2]");
+  expect([addon.eval("return ns.Settings('Bags').categories[1].items[159]"), addon.eval("return __wfgWorld.cursor")], "the held water is in the group and the cursor is clear").toEqual([true, null]);
+  expect(addon.texts("FOOD-ITEMS").length, "its header shows at once").toBe(1);
+  addon.eval("ns.GetModule('Bags').NewGroup('Other') __wfgWorld.cursor = { type = 'spell', id = 5 }");
+  openTool(addon, "groups");
+  addon.click("Vanguard_Menu.items[6]");
+  expect(chat(), "something that is not an item is not filed").toMatch(/Pick an item up first[^]*Pick an item up first/);
+  openTool(addon, "groups");
+  addon.click("Vanguard_Menu.items[8]");
+  expect(addon.eval("return ns.Settings('Bags').categories[1].name"), "Make first moves it up").toBe("Other");
+  openTool(addon, "groups");
+  addon.click("Vanguard_Menu.items[3]");
+  expect(chat(), "Send to the bank answers (no bank open)").toMatch(/Open the bank first/);
+  openTool(addon, "groups");
+  addon.click("Vanguard_Menu.items[5]");
+  expect(addon.eval("return #ns.Settings('Bags').categories"), "Delete removes one group").toBe(1);
 });

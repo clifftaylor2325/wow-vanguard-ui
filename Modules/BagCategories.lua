@@ -105,6 +105,36 @@ local function deposit(name)
   ns.Chat("Sent " .. #stacks .. " stack(s) of " .. list()[at].name .. " to the bank.")
 end
 
+-- A group name from typed text: one word (spaces become dashes), or nil for none.
+local function cleanName(text)
+  local name = (text or ""):match("^%s*(.-)%s*$"):gsub("%s+", "-")
+  return name ~= "" and name or nil
+end
+
+-- Makes an empty group (the bag buttons' "New group").
+function BG.NewGroup(text)
+  local name = cleanName(text)
+  if not name then return end
+  if find(name) then return ns.Chat(name .. " already exists.") end
+  table.insert(list(), { name = name, items = {} })
+  ns.Chat("Group " .. name .. " made. Pick an item up, then choose it under Groups.")
+end
+
+-- Puts the item on the cursor in the group (the bag buttons' "Put held item in").
+function BG.AddHeld(name)
+  local kind, id = GetCursorInfo()
+  if kind ~= "item" or not ns.PlainNumber(id) then return ns.Chat("Pick an item up first, then choose the group.") end
+  add(name, id)
+  ClearCursor()
+  BG.SectionsChanged()
+end
+
+-- A bag button's group action: "delete", "top" or "deposit" on a group; the bag lays out again.
+function BG.GroupAction(verb, name)
+  if verb == "deposit" then deposit(name) else change(verb, name) end
+  BG.SectionsChanged()
+end
+
 -- The usage line.
 local USAGE = "Usage: /vg bag [add <name> <item> | remove <item> | delete <name> | top <name> | deposit <name>]"
 

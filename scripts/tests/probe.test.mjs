@@ -33,9 +33,10 @@ it("/vg probe: one run opens a report with a section per question and reads each
   addon.world.setUnit("target", { name: "TEST-ONLY Wolf", hp: 100, maxhp: 100, reaction: 2 });
   addon.slash("probe");
   const text = reportText(addon);
-  for (const title of ["== Client", "== SavedVariables round trip", "== New-quest flag", "== Group listing", "== Secure paging", "== Realm and name format", "== C_Secrets predicates", "== Restrictions and lockdown", "== Navigation", "== Undocumented on Forever", "== Guide reads"]) {
+  for (const title of ["== Client", "== SavedVariables round trip", "== New-quest flag", "== Group listing", "== Secure paging", "== Realm and name format", "== Colour-blind mode CVars", "== C_Secrets predicates", "== Restrictions and lockdown", "== Navigation", "== Undocumented on Forever", "== Guide reads"]) {
     expect(text, title).toContain(title);
   }
+  expect(lineOf(text, "GetCVar(colorblindMode)"), "the colour-blind CVar is read and printed").toMatch(/present, /);
   expect(lineOf(text, "C_Secrets.ShouldUnitThreatValuesBeSecret(player,target)"), "a predicate prints its answer").toMatch(/present, boolean true/);
   expect(lineOf(text, "C_Secrets.ShouldUnitComparisonBeSecret"), "a predicate that errors says so and the run goes on").toMatch(/present, error .*TEST-ONLY predicate failure/);
   expect(lineOf(text, "C_Secrets.ShouldSpellAuraBeSecret"), "a predicate the client lacks is missing").toMatch(/missing/);
@@ -92,6 +93,17 @@ it("/vg probe: secure paging, the player's position and the widget methods repor
   expect(lineOf(text, "state driver"), "the paging value is read back").toMatch(/state-page number 1/);
   expect(lineOf(text, "C_Navigation.GetNextWaypointForMap("), "asked with the map and the spot").toMatch(/GetNextWaypointForMap\(\d+,0\.25,0\.75\)/);
   expect(lineOf(text, "FontString:SetTextToFit"), "a widget method this client lacks").toMatch(/missing/);
+  expect(lineOf(text, "SetTextToFit read:"), "and no read of it").toMatch(/method missing/);
+});
+it("/vg probe: reads what SetTextToFit does to a label, where the client has it", () => {
+  const addon = loggedIn(PROBE_ENV);
+  const fake = "ns.Probe.widgets = { FontString = { SetSize = function() end, GetFontHeight = function(s) return s.h or 12 end, GetStringWidth = function(s) return s.w or 90 end, GetText = function(s) return s.t end, SetTextToFit = function(s, t) s.h, s.w, s.t = 9, 58, t if t == 'boom' then error('TEST-ONLY fit') end end } }";
+  addon.eval(fake);
+  addon.slash("probe");
+  expect(lineOf(reportText(addon), "SetTextToFit read:"), "before and after").toMatch(/height\/width number 12\/number 90 -> number 9\/number 58, text 'A fairly long label'/);
+  addon.eval(fake.replace("'boom'", "'A fairly long label'"));
+  addon.slash("probe");
+  expect(lineOf(reportText(addon), "SetTextToFit read:"), "an error is a line").toMatch(/error .*TEST-ONLY fit/);
 });
 it("/vg probe: a paging frame that errors is a line", () => {
   const addon = loggedIn(PROBE_ENV);

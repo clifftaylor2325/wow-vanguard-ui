@@ -252,6 +252,8 @@ const SECRET = `
 // Scenes: the default layout (party on the raid frames), a 20-player raid, setup, then the options window.
 export const SCENES = [
   { name: "vanguard-default", caption: "Vanguard defaults (brass accent)", lua: '__group({ "player", "party1", "party2" })' },
+  { name: "vanguard-classic-look", caption: "Classic look variant with the round minimap (Minimap shape: follow the theme): dark leather and bronze, a bronze outline on the map's rim, buttons on the rim (the map's picture is approximated square)", lua: '__group({ "player", "party1", "party2" }) if Vanguard_Setup then Vanguard_Setup:Hide() end',
+    before: 'VanguardDB.profiles.Default.theme = { variant = "classic" }' },
   { name: "vanguard-scale1", caption: "The same defaults at the game's UI scale 1.0 (1365 x 768 units, zoomed to 1080p): the cluster keeps its shape", lua: '__group({ "player", "party1", "party2" })',
     screen: { width: 1365, height: 768 }, before: "UIParent:SetSize(1365, 768)" },
   { name: "vanguard-raid", caption: "Raid frames, 20 players: heals, shields, aggro, missing buffs, dispel borders, HoTs, raid icons, ready check, leader, range fade (TEST-ONLY raid)", lua: RAID },
