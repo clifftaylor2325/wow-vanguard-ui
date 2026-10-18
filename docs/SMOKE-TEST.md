@@ -11,6 +11,35 @@ Things to know before you start:
 - Where an Expect depends on an earlier fix, a bracketed note says which. If that fix did not land, the note says what you will see instead.
 - Quote chat lines as they appear; a missing or different line is a finding.
 
+## Run this before the beta closes (one page, about ten minutes)
+
+One command asks the client every open question the research left and writes the answers down. Nothing in it changes a setting or the game, and nothing in it has been seen in the game yet. Do it before anything else in this file: after the beta closes there is no Forever client until launch.
+
+1. Get ready, out of combat: stand in a town, have a quest in your log and super-track it (click its tracker), and target a mob or a critter (a training dummy is fine).
+2. Type `/vg probe`. A copy box opens; press Ctrl+C and paste it whole. Chat says `Probe done: N present, N missing, N errors`. If the box is empty or a Lua error shows, paste `/vg errors` too. `/vg probe chat` also prints every line to chat.
+3. Round trip, in two goes. Type `/reload`, then `/vg probe` again: the `earlier run:` line under SavedVariables says `from an earlier session` with `#1`. Then quit the game to the desktop (not just the character screen), start it, and run `/vg probe` once more: the same line says `#2` or higher. If it says `none saved`, SavedVariables did not survive; say which of the two goes failed.
+4. In a fight: type `/vg probe fight`, pull any mob, and let it finish (a boss pull or a dungeon is best; if you can, do one in the open world, one in a dungeon and one in a battleground). Chat says `Probe: the fight report is ready`. Type `/vg probe last` and paste the box: it holds the last out-of-combat report and the fight reads taken as the fight starts and three seconds in.
+5. In an instance if you can: stand at the entrance, out of combat, and run `/vg probe` once more, so the restriction states and `C_Secrets` lines are on record for a dungeon.
+6. If you have a minute: set a map waypoint (`/way`) or super-track a quest on another zone's map and run `/vg probe` again, so the navigation lines show a distance and a next waypoint.
+
+What each part of the report answers (read the section title in the box):
+
+| Section | Question |
+| --- | --- |
+| SavedVariables round trip | Do saved settings survive a reload and a full exit on this build? |
+| New-quest flag | Does the client flag quests new in Forever (the New mark and pins depend on it)? |
+| Threat secrecy | Are threat values hidden, in the open world and in a pull (issue #215)? |
+| Group listing | Does `C_LFGList` exist and answer, and is the group finder or raid list switched on? |
+| Secure paging | Do secure snippets and a bar-paging state driver work on this build? |
+| Realm and name format | What do the realm, ruleset and `Name-Realm` forms look like (`/vg realm`'s key)? |
+| Game rules and seasons | What do `C_GameRules` and `C_Seasons` say? |
+| C_Secrets predicates | Which of the 27 predicates exist, and what they say out of combat and in the fight |
+| Restrictions and lockdown | The six add-on restriction states and the chat lockdown flags |
+| Navigation | Does `C_Navigation` give a distance and a next waypoint for the quest arrow? |
+| Undocumented on Forever | The roll tracker's `C_LootHistory`, the craft queue's recipe and cooldown reads, and three new widget methods |
+
+The report is also saved in `WTF\Account\<account>\SavedVariables\Vanguard.lua` under `probe`, so it can be read from the file if the chat is lost.
+
 ## Run order by crash risk
 
 If the beta closes before you finish, do these first and stop after any step that throws a Lua error (paste the report block):
@@ -423,6 +452,18 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Do: watch two or three quests with unfinished objectives in the zone you are in, stand still, and turn your character slowly round. Then walk toward the quest the arrow names, finish one quest's objectives, and Shift-click a different quest in the tracker. Type `/vg unlock`, drag the arrow, `/vg lock`.
 - Expect: a small panel right of the top centre with an accent arrow, the quest's title and `230 yd` under it. The arrow points at the quest's area on the ground and turns as you turn (up means straight ahead). The distance falls as you walk. When a quest is ready to turn in, the arrow moves to its turn-in unless another objective is much nearer, and chat says `Arrow: <title>.` when it moves on from a finished quest. A Shift-clicked quest holds the arrow until it leaves the log. Watch a quest in another zone and stand where the game's own pin points you toward it: the arrow points the same way (the zone exit or a boat), or, if the client gives no next waypoint, reads `yd, no direction` with a faint arrow; `/vg guide probe` lines `GetNextWaypointForMap` say which the client has. The panel moves with the other handles. [Needs in game: that the arrow points the right way (the sign of the turn), that distances match the game's own pin, and how it reads in an instance.]
 - If it fails, paste: a screenshot with the arrow and the quest on the map, and `/vg errors`.
+
+### 8.4b Questing conveniences
+
+- Do: with a quest or two in the log that give XP and a level below the cap, look at the foot of the tracker and open the quest log. Under `/vg > Quests` switch off the line under the quests, then each quest's XP in the quest log list, then tick them again. Accept a new quest from an NPC with Watch a quest when you accept it on, and again with it off. Then tick Accept quests a party member shares with you, have a party member share a quest (their Share button), and repeat it holding Shift.
+- Expect: a muted `Quests: 62% of the XP to level` line under the last quest (above `+N more` when that shows), which follows the quests you take and abandon and is gone at the level cap or when no quest gives XP; each quest line in the quest log shows `1,250 XP` in muted type at its right edge with the title cut short, not overlapped; the switches take effect at once. A newly accepted quest appears in the tracker without you watching it (off: it does not, unless the game's own auto-watch does). A shared quest is accepted for you with `Accepted: <title> (shared by <name>)` in chat and no dialog; with Shift held, or the switch off, the dialog opens as usual. [Needs in game: that the XP numbers match the quest dialog's, that QUEST_ACCEPTED arrives with the quest id in the log, that the game refuses a watch past its limit quietly, and that the quest dialog's `npc` unit is the sharing player for a shared quest.]
+- If it fails, paste: a screenshot and `/vg errors`.
+
+### 8.4d Quest spots on the minimap
+
+- Do: with quests in your log in the zone you are in, look at the minimap, walk toward one quest's area and away from another, then turn on the game's Rotate Minimap option and turn round.
+- Expect: a small gold `!` on the minimap over each quest's area (the same spots as the world map's quest blobs), a gold `?` for a quest ready to turn in; a quest farther than the minimap shows sits faint on its edge in its direction and slides in as you approach. With Rotate Minimap on, the marks turn with the map. `/vg guide probe` shows `C_Minimap.GetViewRadius: present`. [Needs in game: that the marks sit on the right spots at every zoom.]
+- If it fails, paste: a screenshot of the minimap and the world map, and `/vg errors`.
 
 ### 8.5 Levelling helpers
 

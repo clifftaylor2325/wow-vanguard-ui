@@ -101,6 +101,7 @@ Modules/SpecialBars.lua
 Modules/Minimap.lua
 Modules/Waypoints.lua
 Modules/GuideData.lua
+Modules/Probe.lua
 Modules/MinimapButtons.lua
 Modules/Chat.lua
 Modules/ChatExtras.lua
@@ -135,6 +136,7 @@ Modules/QuestLogView.lua
 Modules/QuestGuide.lua
 Modules/QuestGuideMap.lua
 Modules/QuestArrow.lua
+Modules/QuestMinimap.lua
 Modules/Windows.lua
 Modules/WindowsSocial.lua
 Modules/WindowsTown.lua
