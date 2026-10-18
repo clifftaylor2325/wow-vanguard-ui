@@ -59,12 +59,9 @@ local function classOf(itemID)
   return ns.PlainNumber((select(6, C_Item.GetItemInfoInstant(itemID))))
 end
 
--- The section of what a slot holds: empty, junk (gray), quest, or by the
--- item's class; an item not loaded yet goes to Other until it is.
-function BG.Classify(button)
-  local bag, slot = button:GetBagID(), button:GetID()
-  local info = C_Container.GetContainerItemInfo(bag, slot)
-  if not info then return "empty" end
+-- The section of an item that is not in a category of yours: junk (gray), quest, or by the item's class;
+-- an item not loaded yet goes to Other until it is.
+local function builtIn(info, bag, slot)
   local quality = ns.PlainNumber(info.quality)
   if quality == 0 then return "junk" end
   if isQuestItem(bag, slot) then return "quest" end
@@ -72,6 +69,14 @@ function BG.Classify(button)
   if quality and class then return CLASS_SECTION[class] or "other" end
   BG.pending[info.itemID] = true
   return "other"
+end
+
+-- The section of what a slot holds: empty, one of your categories, or a built-in section.
+function BG.Classify(button)
+  local bag, slot = button:GetBagID(), button:GetID()
+  local info = C_Container.GetContainerItemInfo(bag, slot)
+  if not info then return "empty" end
+  return BG.CategoryOf and BG.CategoryOf(info.itemID) or builtIn(info, bag, slot)
 end
 
 -- Reading order: by bag, then slot, as the game's own grid reads.
@@ -92,7 +97,9 @@ end
 -- The sections that have buttons, in order: { key, label, buttons }.
 local function ordered(bySection)
   local list = {}
-  for _, s in ipairs(BG.SECTIONS) do
+  local all = BG.CategorySections and BG.CategorySections() or {}
+  for _, s in ipairs(BG.SECTIONS) do all[#all + 1] = s end
+  for _, s in ipairs(all) do
     if bySection[s.key] then list[#list + 1] = { key = s.key, label = s.label, buttons = bySection[s.key] } end
   end
   return list

@@ -15,7 +15,7 @@ local vgBorder = ns.FrameState("vgBorder")
 local T = ns.Theme
 
 local BG = ns.Module("Bags", {
-  defaults = { combined = true, bank = true, sections = true },
+  defaults = { combined = true, bank = true, sections = true, categories = {} },
 })
 
 -- The combined bag's inner padding: its slots, section headers, Sort button and

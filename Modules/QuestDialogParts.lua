@@ -48,12 +48,28 @@ function QP.Titled(level, title, questID)
   return QP.WithMark(title, questID)
 end
 
+-- "1,250 XP" for a quest's XP reward (a whole number, thousands set apart).
+function QP.XPText(xp)
+  local s, n = tostring(math.floor(xp)), 1
+  while n > 0 do s, n = s:gsub("^(-?%d+)(%d%d%d)", "%1,%2") end
+  return s .. " XP"
+end
+
 -- Lines ----------------------------------------------------------------------------------------
 
 -- A texture sized square; returns it.
 function QP.Square(t, size)
   t:SetSize(size, size)
   return t
+end
+
+-- Gives a line its XP text, muted at the right edge (empty unless a window fills it); the line's text stops short of it.
+local function addXP(b)
+  b.xp = T.Text(b:CreateFontString(nil, "OVERLAY"), "small", "text2")
+  b.xp:SetPoint("RIGHT", b, "RIGHT", -T.SPACE.gap, 0)
+  b.text:SetPoint("RIGHT", b.xp, "LEFT", -T.SPACE.tight, 0)
+  b.text:SetWordWrap(false)
+  return b
 end
 
 -- A clickable line: a W.Row (a faint wash under the mouse, the rail and wash of a chosen line) holding an
@@ -65,7 +81,7 @@ function QP.Line(parent)
   b.text = T.Text(b:CreateFontString(nil, "OVERLAY"), "label", "text")
   b.text:SetPoint("LEFT", b.icon, "RIGHT", T.SPACE.gap, 0)
   b.text:SetJustifyH("LEFT")
-  return b
+  return addXP(b)
 end
 
 -- Marks a line as the chosen one (the row's accent rail and wash), or clears it.

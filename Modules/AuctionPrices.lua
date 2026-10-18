@@ -352,11 +352,25 @@ local function isEnchanting(index)
   return type(info) == "table" and info.profession == (Enum.Profession or {}).Enchanting
 end
 
--- True when one of your two professions is Enchanting; false where the client can't say.
+-- Enchanting's skill line, for C_SkillInfo.
+AP.ENCHANTING_SKILL = 333
+
+-- True when your skills list Enchanting with a rank (C_SkillInfo.GetSkillLineInfoByID; Forever's
+-- SkillInfoDocumentation.lua), for a client with no GetProfessions.
+local function knowsEnchanting()
+  if type(C_SkillInfo) ~= "table" or type(C_SkillInfo.GetSkillLineInfoByID) ~= "function" then return false end
+  local info = C_SkillInfo.GetSkillLineInfoByID(AP.ENCHANTING_SKILL)
+  return type(info) == "table" and (ns.PlainNumber(info.rank) or 0) > 0
+end
+
+-- True when one of your two professions is Enchanting, or your skills list it; false where the
+-- client can't say.
 function AP.HasEnchanting()
-  if type(GetProfessions) ~= "function" or type(C_TradeSkillUI) ~= "table" then return false end
-  local first, second = GetProfessions()
-  return isEnchanting(first) or isEnchanting(second)
+  if type(GetProfessions) == "function" and type(C_TradeSkillUI) == "table" then
+    local first, second = GetProfessions()
+    if isEnchanting(first) or isEnchanting(second) then return true end
+  end
+  return knowsEnchanting()
 end
 
 -- Whether tooltips show disenchant values: the Auction house switch, which until you set it
