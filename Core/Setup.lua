@@ -267,6 +267,33 @@ function S.SetCalm(on)
   if UF.settings then UF.ApplyCalm() end
 end
 
+-- The Text size setup's "Larger text" switch sets: 115%, against the normal 100%.
+local LARGER = 1.15
+
+-- Whether Text size is the larger one or more.
+function S.Larger()
+  return (T.Settings().textScale or 1) >= LARGER
+end
+
+-- Turns larger text on (115%) or off (100%); every styled text is re-fonted at once.
+function S.SetLarger(on)
+  S.Backup()
+  T.Settings().textScale = on and LARGER or 1
+  T.Refresh()
+end
+
+-- Whether Color assist (hostile, neutral and friendly colors apart for color blindness) is on.
+function S.Assist()
+  return T.Settings().colorAssist == true
+end
+
+-- Turns Color assist on or off; the colors it changes settle at the reload Done offers.
+function S.SetAssist(on)
+  S.Backup()
+  T.Settings().colorAssist = on == true
+  T.Refresh()
+end
+
 -- Turns the Versus deck on or off (UnitFrames' deck setting), applying it at once when the unit frames are built.
 function S.SetDeck(on)
   local UF = ns.GetModule("UnitFrames")
@@ -450,6 +477,8 @@ local function refresh()
   for _, s in ipairs(look.swatches) do mark(s, isAccent(s.rgb)) end
   for _, b in ipairs(look.styles) do mark(b, b.value == raidSettings().look) paintTile(b) end
   look.calm:Refresh()
+  look.larger:Refresh()
+  look.assist:Refresh()
 end
 
 -- Building ------------------------------------------------------------------------------
@@ -576,7 +605,17 @@ local function swatch(page, i, rgb)
   return s
 end
 
--- The look step: the accent presets, then the raid frame style.
+-- The Calm HUD switch and the two readability switches (larger text, color assist) under the style tiles.
+local function lookSwitches(page)
+  page.calm = W.Check(page, "Calm HUD: dim your frames out of combat", S.Calm, S.SetCalm, WIDTH - 2 * PAD)
+  page.calm:SetPoint("TOPLEFT", 0, -154)
+  page.larger = W.Check(page, "Larger text (115%)", S.Larger, S.SetLarger, WIDTH - 2 * PAD)
+  page.larger:SetPoint("TOPLEFT", 0, -182)
+  page.assist = W.Check(page, "Color assist: easier colors for color blindness", S.Assist, S.SetAssist, WIDTH - 2 * PAD)
+  page.assist:SetPoint("TOPLEFT", 0, -210)
+end
+
+-- The look step: the accent presets, the raid frame style, then Calm HUD and the readability switches.
 local function lookPage(page)
   text(page, "label", "text", "Accent"):SetPoint("TOPLEFT")
   page.swatches = {}
@@ -584,8 +623,7 @@ local function lookPage(page)
     page.swatches[i] = swatch(page, i, T.PRESETS[name])
   end
   stylePicker(page)
-  page.calm = W.Check(page, "Calm HUD: dim your frames out of combat", S.Calm, S.SetCalm, WIDTH - 2 * PAD)
-  page.calm:SetPoint("TOPLEFT", 0, -168)
+  lookSwitches(page)
 end
 
 -- The last step: how to move frames (they are unlocked while this step shows).
