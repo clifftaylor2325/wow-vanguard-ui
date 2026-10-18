@@ -128,3 +128,61 @@ it("levelling: Warn in chat off keeps quiet", () => {
   food(addon, 3);
   expect(chatHas(addon, /Running low/)).toBe(false);
 });
+
+// Quests in the log: 6925 XP each, one header; the second is not watched.
+const addLogQuests = (addon) => {
+  addon.world.addQuest({ questID: 7, title: "Wolves", level: 8, watched: true, xp: 6925, objectives: [] });
+  addon.world.addQuest({ questID: 8, title: "Boars", level: 8, xp: 6925, objectives: [] });
+  addon.world.addQuest({ isHeader: true, title: "A zone" });
+  addon.update(0);
+};
+const LEVEL_LINE = "Quests: 50% of the XP to level";
+const noTrack = { savedVariables: "VanguardDB.profiles = { Default = { QuestTracker = { autoTrack = false } } }" };
+
+it("levelling: the tracker's foot adds up every quest in the log against the XP this level needs", () => {
+  const addon = loggedIn(DATA_ENV, noTrack);
+  addLogQuests(addon);
+  expect(addon.texts(LEVEL_LINE).length, "13850 of the 27700 still needed, the unwatched quest counted too").toBe(1);
+  expect(addon.eval("return Vanguard_QuestTrackerFrame.levelXp:GetTop() < Vanguard_QuestTrackerFrame.blocks[1]:GetTop()"), "under the quests").toBe(true);
+  addon.eval("ns.GetModule('QuestTracker').settings.levelXp = false ns.GetModule('QuestTracker').Refresh()");
+  expect(addon.texts(LEVEL_LINE).length, "off: no line").toBe(0);
+  addon.eval("ns.GetModule('QuestTracker').settings.levelXp = true __maxLevel = true ns.GetModule('QuestTracker').Refresh()");
+  expect(addon.texts(LEVEL_LINE).length, "no line at the level cap").toBe(0);
+  addon.eval("__maxLevel = false UnitXP = function() return __wfgWorld.secret() end ns.GetModule('QuestTracker').Refresh()");
+  expect(addon.texts(LEVEL_LINE).length, "no line while the client hides your XP").toBe(0);
+  addon.eval("UnitXP = function() return 12300 end GetQuestLogRewardXP = function() return 0 end ns.GetModule('QuestTracker').Refresh()");
+  expect(addon.texts(LEVEL_LINE).length, "no line when no quest gives XP").toBe(0);
+  addon.eval("UnitXP = function() return 40000 end GetQuestLogRewardXP = function() return 5 end ns.GetModule('QuestTracker').Refresh()");
+  expect(addon.texts(LEVEL_LINE).length, "no line when the level needs nothing more").toBe(0);
+});
+
+it("levelling: the log's XP sum skips headers, hidden ids and a client without the log", () => {
+  const addon = loggedIn(DATA_ENV, noTrack);
+  addLogQuests(addon);
+  expect(addon.eval("return ns.GetModule('DataBars').LogXP()"), "both quests, not the header").toBe(13850);
+  addon.eval("C_QuestLog.GetInfo = function() return { questID = __wfgWorld.secret() } end");
+  expect(addon.eval("return ns.GetModule('DataBars').LogXP()"), "a hidden quest id gives nothing").toBe(0);
+  addon.eval("C_QuestLog.GetInfo = nil");
+  expect(addon.eval("return ns.GetModule('DataBars').LogXP()"), "no call: nothing").toBe(0);
+  addon.eval("C_QuestLog = nil");
+  expect(addon.eval("return ns.GetModule('DataBars').LogXP()"), "no log: nothing").toBe(0);
+});
+
+it("levelling: a quest you accept is watched, unless it is watched already or the switch is off", () => {
+  const addon = loggedIn();
+  addon.eval("__adds = 0 local add = C_QuestLog.AddQuestWatch C_QuestLog.AddQuestWatch = function(id) __adds = __adds + 1 return add(id) end");
+  addon.world.addQuest({ questID: 21, title: "New", level: 5, objectives: [] });
+  expect(addon.eval("return { C_QuestLog.GetNumQuestWatches(), __adds }"), "the new quest is watched").toEqual([1, 1]);
+  addon.fire("QUEST_ACCEPTED", 21);
+  expect(addon.eval("return __adds"), "a quest already watched is left alone").toBe(1);
+  addon.world.addQuest({ questID: 22, title: "Older client", level: 5, objectives: [], watched: true });
+  addon.eval("__adds = 0 C_QuestLog.RemoveQuestWatch(22)");
+  addon.fire("QUEST_ACCEPTED", 3, 22);
+  expect(addon.eval("return { C_QuestLog.GetNumQuestWatches(), __adds }"), "an older client sends the log index first, then the id").toEqual([2, 1]);
+  addon.eval("__adds = 0");
+  addon.fire("QUEST_ACCEPTED", addon.eval("return __wfgWorld.secret()"));
+  expect(addon.eval("return __adds"), "a hidden id is ignored").toBe(0);
+  addon.eval("ns.GetModule('QuestTracker').settings.autoTrack = false");
+  addon.world.addQuest({ questID: 23, title: "Not watched", level: 5, objectives: [] });
+  expect(addon.eval("return __adds"), "switched off: not watched").toBe(0);
+});

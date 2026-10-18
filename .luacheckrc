@@ -30,7 +30,7 @@ globals = {
 
 -- WoW API the addon reads. Add a name only when the addon starts using it.
 read_globals = {
-  "UiMapPoint", "C_SuperTrack", "C_Navigation", "hash_SlashCmdList", "IsPlayerSpell",
+  "UiMapPoint", "C_SuperTrack", "C_Navigation", "C_Minimap", "hash_SlashCmdList", "IsPlayerSpell",
   "C_Bank", "C_ContentTracking", "InputUtil",
   "GetInventoryItemLink", "C_PlayerInfo",
   "AbbreviateNumbers", "GetTime", "UnitCastingInfo", "UnitChannelInfo", "AuraUtil", "CreateUnitHealPredictionCalculator", "UnitGetDetailedHealPrediction", "UnitGetIncomingHeals", "UnitGetTotalAbsorbs", "UnitThreatSituation", "C_ActionBar", "C_AddOns", "C_CVar", "C_VideoOptions", "GetGraphicsCVarValueForQualityLevel", "C_Reputation", "C_Spell", "C_UnitAuras", "C_Timer", "C_EquipmentSet", "GetMerchantItemCostInfo", "GetLocale", "GetCursorPosition", "Enum", "GetActionInfo", "GetMacroSpell", "SOUNDKIT", "PlaySound", "ClearCursor", "GetCursorInfo", "GetSpellInfo", "C_SpecializationInfo", "GetSpecialization", "ReloadUI", "GetXPExhaustion", "IsPlayerAtEffectiveMaxLevel", "IsXPUserDisabled", "UnitLevel", "UnitXP", "UnitXPMax", "C_Map", "FCF_OpenTemporaryWindow", "FCF_OpenNewWindow", "GetChatWindowInfo", "ChatFrame_RemoveAllMessageGroups", "ChatFrame_RemoveAllChannels", "FCF_Tab_OnClick", "GetMinimapZoneText", "GetZonePVPInfo", "Minimap", "NUM_CHAT_WINDOWS", "SELECTED_CHAT_FRAME", "SecureHandlerExecute", "SecureHandlerUnwrapScript", "SecureHandlerWrapScript", "SetCVar", "UISpecialFrames", "hooksecurefunc", "ClearOverrideBindings", "GetBindingKey", "CreateFrame", "DEFAULT_CHAT_FRAME", "debugstack", "geterrorhandler", "CallErrorHandler",
@@ -91,7 +91,7 @@ read_globals = {
   -- A1 Auction helper, sell form: a bag slot's item location, for the next stack.
   "ItemLocation",
   -- D1 Auction prices, disenchant values: whether you know Enchanting (your professions' skill lines).
-  "GetProfessions", "GetProfessionInfo", "C_TradeSkillUI",
+  "GetProfessions", "GetProfessionInfo", "C_TradeSkillUI", "C_SkillInfo",
   -- E5 Auction ledger: the inbox's auction mail (Blizzard_MailFrame/MailFrame.lua), and the game's
   -- "Auction expired" subject line.
   "TakeInboxMoney", "ReturnInboxItem", "TakeInboxItem", "MailFrame", "SendMailFrame", "SendMailNameEditBox",
