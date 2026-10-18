@@ -86,7 +86,7 @@ read_globals = {
   -- F6 Auction helper, sell card: the item on the cursor.
   "C_Cursor",
   -- C1 Auction prices: the realm you're on, so each realm and faction keeps its own prices.
-  "GetRealmName", "GetNormalizedRealmName", "C_Seasons", "C_GameRules",
+  "GetRealmName", "GetNormalizedRealmName", "C_Seasons", "C_GameRules", "C_RestrictedActions", "C_ChatInfo",
   -- A5 Auction helper, your auctions: an expired auction's item found in the bags, for Relist.
   -- A1 Auction helper, sell form: a bag slot's item location, for the next stack.
   "ItemLocation",

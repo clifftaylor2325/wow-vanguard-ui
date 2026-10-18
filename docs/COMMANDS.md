@@ -11,7 +11,7 @@ Every `/vg` command (`/vanguard` works too), grouped by what it does. `/vg help`
 | `/vg whatsnew` | What changed in this version |
 | `/vg modules`, `/vg enable <module>`, `/vg disable <module>` | List the parts; switch one, then `/reload` |
 | `/vg skins` | Addons skinned through the API; `skins <addon> on\|off` |
-| `/vg status` | Version, profile, modules, skins, work waiting on combat |
+| `/vg status` | Version, profile, modules, skins, work waiting on combat, game restrictions |
 
 ## Layout
 
