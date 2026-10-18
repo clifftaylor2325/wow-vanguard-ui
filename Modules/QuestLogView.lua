@@ -122,8 +122,10 @@ end
 
 -- The list ----------------------------------------------------------------------------------------
 
--- A quest line was clicked: show the quest; Shift-click also tracks or untracks it.
+-- A quest line was clicked: Ctrl-click marks or unmarks it for Abandon; else show the quest, and
+-- Shift-click also tracks or untracks it.
 local function pickQuest(id)
+  if IsControlKeyDown() then QL.marked[id] = not QL.marked[id] or nil return QL.Select(QL.selected) end
   QL.Select(id)
   if IsShiftKeyDown() and QL.details then QL.ToggleTrack(QL.details) end
 end
@@ -215,6 +217,8 @@ local function renderButtons(f, d)
   for _, b in pairs(f.buttons) do b:SetShown(d ~= nil) end
   if not d then return end
   f.buttons.track.text:SetText(d.watched and "Untrack" or "Track")
+  local marked = QL.MarkedCount()
+  f.buttons.abandon.text:SetText(marked > 0 and ("Abandon " .. marked) or "Abandon")
   if d.shareable then f.buttons.share:Enable() else f.buttons.share:Disable() end
 end
 
@@ -222,7 +226,7 @@ end
 local function markChosen(f)
   for i = 1, f.lines.used do
     local b = f.lines[i]
-    QP.Mark(b, b.spec.id ~= nil and b.spec.id == QL.selected)
+    QP.Mark(b, b.spec.id ~= nil and (b.spec.id == QL.selected or QL.marked[b.spec.id] == true))
   end
 end
 

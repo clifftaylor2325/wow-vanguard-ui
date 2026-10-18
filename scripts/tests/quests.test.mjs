@@ -1074,3 +1074,21 @@ it("the quest tracker in the Vanguard look: flat headers, brass lines, theme arr
   expect(off.eval("return { ns.FrameState('vgHeader')[ObjectiveTrackerFrame.Header] == nil, ObjectiveTrackerLineFont.font == nil }"), "switched off, the tracker stays the game's").toEqual([true, true]);
   expect(loggedIn(UI_ENV).eval("return ns.GetModule('MenuStrip').rules ~= nil"), "a client without the tracker loads cleanly").toBe(true);
 });
+
+it("quest log: Ctrl-click marks quests, the Abandon button counts them, and one question abandons them all", () => {
+  const addon = loggedIn(TRACK_ENV + QLOG_ENV + "__gone = {} C_QuestLog.AbandonQuest = function() __gone[#__gone + 1] = __selected end");
+  addon.eval("Vanguard_QuestLogToggle.__scripts.OnClick(Vanguard_QuestLogToggle)");
+  addon.eval("ns.GetModule('QuestLog').AbandonMarked()");
+  expect(addon.eval("return Vanguard_Question"), "nothing marked: no question").toBe(null);
+  addon.eval("__wfgWorld.keys.ctrl = true");
+  logLine(addon, 1); logLine(addon, 2); logLine(addon, 2);
+  expect(addon.eval("return Vanguard_QuestLog.buttons.abandon.text:GetText()"), "two marked, one unmarked again: Abandon 1").toBe("Abandon 1");
+  logLine(addon, 3);
+  expect([addon.eval("local l = Vanguard_QuestLog.lines return { l[1].selected, l[2].selected, l[3].selected }"), addon.eval("return Vanguard_QuestLog.buttons.abandon.text:GetText()")], "marked lines look chosen; Abandon 2").toEqual([[true, false, true], "Abandon 2"]);
+  addon.eval("__wfgWorld.keys.ctrl = false");
+  logButton(addon, "abandon");
+  expect(addon.eval("return Vanguard_Question.title:GetText()"), "one question naming the quests, in log order").toBe("Abandon 2 quest(s)?\nTEST-ONLY Wolves\nTEST-ONLY Far");
+  expect(addon.eval("return __gone"), "nothing abandoned before the answer").toEqual({});
+  addon.click("Vanguard_Question.confirm");
+  expect([addon.eval("return __gone"), addon.eval("return Vanguard_QuestLog.buttons.abandon.text:GetText()")], "each marked quest abandoned; the marks are cleared").toEqual([[90051, 90053], "Abandon"]);
+});
