@@ -7,6 +7,10 @@
 --     /vg mail preset add <name> <character> [words], remove <name>, list. With the Send Mail tab
 --     open, a preset's button (or /vg mail send <name>) types the character in and attaches the
 --     matching items from your bags, up to 12; you press Send.
+--   * Take all and Return all: the money and items of every mail the panel shows (its filter and words
+--     applied), one step at a time, or those mails sent back to their senders after a question;
+--     /vg mail takeall and returnall do the same. Pay-on-delivery mail is never taken, and a sale,
+--     system or game master mail is never returned.
 -- Nothing is taken, attached or sent without your click, and nothing here runs in combat.
 
 local ADDON, ns = ...
@@ -20,7 +24,9 @@ local MT = ns.Module("MailTools", { defaults = { on = false, presets = {} } })
 MT.WIDTH, MT.PAD, MT.ROW, MT.ROWS, MT.BUTTONS, MT.BAGS, MT.ATTACH, MT.SCAN, MT.GAP = 270, T.SPACE.gap, T.ROW.height, 8, 4, 4, 12, 60, T.SPACE.gap
 -- Where the search line (the box, with the filter button on its middle) and the first row start, down from the top:
 -- under the heading; the room along the bottom for the preset buttons; and a preset button's width.
-local SEARCH_TOP, ROWS_TOP, FOOT, PRESET_W = 30, 64, T.SPACE.gap + T.BUTTON_H + T.SPACE.gap, 60
+local SEARCH_TOP, ROWS_TOP, PRESET_W = 30, 64, 60
+-- The room along the bottom: the preset buttons, and above them the Take all and Return all buttons.
+local FOOT = 2 * (T.SPACE.gap + T.BUTTON_H) + T.SPACE.gap
 -- The filters in the order the button cycles them; the one in use and the words typed.
 MT.FILTERS, MT.filter, MT.query = { "All", "Money", "Items", "Sales" }, "All", ""
 
@@ -31,12 +37,13 @@ local function plain(value)
   return type(value) == "string" and not ns.IsSecret(value) and value or ""
 end
 
--- Mail i as { index, sender, subject, money, items, link, sale }; nil when there is none.
+-- Mail i as { index, sender, subject, money, items, link, cod, returnable, sale }; nil when there is none.
 function MT.Read(i)
-  local _, _, sender, subject, money, _, _, count, _, _, _, _, _, _, link = GetInboxHeaderInfo(i)
+  local _, _, sender, subject, money, cod, _, count, _, _, _, reply, gm, _, link = GetInboxHeaderInfo(i)
   if sender == nil and subject == nil then return nil end
   return { index = i, sender = plain(sender), subject = plain(subject), money = ns.PlainNumber(money) or 0,
-    items = ns.PlainNumber(count) or 0, link = plain(link), sale = type(GetInboxInvoiceInfo) == "function" and GetInboxInvoiceInfo(i) ~= nil }
+    items = ns.PlainNumber(count) or 0, link = plain(link), cod = ns.PlainNumber(cod) or 0,
+    returnable = not ns.IsSecret(reply) and reply == true and not ns.IsSecret(gm) and gm ~= true, sale = type(GetInboxInvoiceInfo) == "function" and GetInboxInvoiceInfo(i) ~= nil }
 end
 
 -- Whether a mail passes the named filter (All keeps everything).
@@ -78,6 +85,70 @@ end
 function MT.Take(m)
   if m.money > 0 and type(TakeInboxMoney) == "function" then TakeInboxMoney(m.index) end
   if m.items > 0 and type(TakeInboxItem) == "function" then TakeInboxItem(m.index, 1) end
+end
+
+-- Take all and Return all ---------------------------------------------------------------------
+
+MT.STEP = 0.3
+
+-- The steps that empty the mails: each one's money, then its attachments, in order (a mail that asks
+-- for payment on delivery is left alone; so is one with nothing in it).
+function MT.TakeSteps(mails)
+  local out = {}
+  for _, m in ipairs(mails) do
+    if m.cod == 0 and m.money > 0 then out[#out + 1] = { mail = m, take = TakeInboxMoney } end
+    for n = 1, m.cod == 0 and math.min(m.items, MT.ATTACH) or 0 do out[#out + 1] = { mail = m, take = TakeInboxItem, n = n } end
+  end
+  return out
+end
+
+-- The steps that send the mails back, the last in the inbox first so the others keep their places. Only
+-- mail from a player that holds something and is not a sale.
+function MT.ReturnSteps(mails)
+  local out = {}
+  for _, m in ipairs(mails) do
+    if m.returnable and not m.sale and (m.money > 0 or m.items > 0) then table.insert(out, 1, { mail = m, take = ReturnInboxItem }) end
+  end
+  return out
+end
+
+-- Whether the step's mail is still where it was (same sender and subject at its place).
+local function unchanged(step)
+  local now = MT.Read(step.mail.index)
+  return now ~= nil and now.sender == step.mail.sender and now.subject == step.mail.subject
+end
+
+-- Runs the steps one at a time (the game needs a moment between them), stopping when the mailbox
+-- closes or combat starts; says how many went through.
+function MT.Run(steps, i, label)
+  local s = steps[i]
+  if not s or not MT.mailOpen or ns.InCombat() then
+    MT.running = nil
+    return ns.Chat(string.format("%s: %d of %d done.", label, math.min(i - 1, #steps), #steps))
+  end
+  if type(s.take) == "function" and unchanged(s) then s.take(s.mail.index, s.n) end
+  if C_Timer and C_Timer.After then return C_Timer.After(MT.STEP, ns.Guard("mail run", function() MT.Run(steps, i + 1, label) end)) end
+  MT.Run(steps, i + 1, label)
+end
+
+-- Starts a run of steps unless one is going or there are none.
+local function start(steps, label)
+  if MT.running then return ns.Chat("Mail: a run is already going.") end
+  if #steps == 0 then return ns.Chat(label .. ": nothing to do.") end
+  MT.running = true
+  MT.Run(steps, 1, label)
+end
+
+-- Take all: the money and items of every mail the panel shows (its filter and words), COD mail excepted.
+function MT.TakeAll()
+  start(MT.TakeSteps(MT.Find(MT.query)), "Take all")
+end
+
+-- Return all: after a question, sends the shown mails that can go back to their senders.
+function MT.ReturnAll()
+  local steps = MT.ReturnSteps(MT.Find(MT.query))
+  if #steps == 0 then return ns.Chat("Return all: nothing to return.") end
+  ns.Ask(string.format("Return %d mail(s) to their senders?", #steps), "Return", function() start(steps, "Return all") end, nil, "danger")
 end
 
 -- Presets ------------------------------------------------------------------------------------
@@ -209,6 +280,14 @@ local function buildSearch(f)
   f.filterButton:SetPoint("LEFT", f.search, "RIGHT", T.SPACE.gap, 0)
 end
 
+-- Take all and Return all above the preset buttons.
+local function buildBulk(f)
+  f.takeAll = W.Button(f, "Take all", function() MT.TakeAll() end, 100)
+  f.takeAll:SetPoint("BOTTOMLEFT", MT.PAD, MT.PAD + T.BUTTON_H + T.SPACE.gap)
+  f.returnAll = W.Button(f, "Return all", function() MT.ReturnAll() end, 100)
+  f.returnAll:SetPoint("LEFT", f.takeAll, "RIGHT", T.SPACE.gap, 0)
+end
+
 -- The preset buttons along the bottom (the first few presets), each sending its preset.
 local function buildPresets(f)
   f.presets = {}
@@ -240,6 +319,7 @@ function MT.Build()
   f.rows = {}
   for i = 1, MT.ROWS do f.rows[i] = buildRow(f, i) end
   buildSearch(f)
+  buildBulk(f)
   buildPresets(f)
   MT.frame = f
   return f
@@ -298,20 +378,22 @@ function MT.Search(words)
   if #found > MT.ROWS then ns.Chat(string.format("+%d more.", #found - MT.ROWS)) end
 end
 
--- /vg mail [words]|preset ...|send <name>.
+-- /vg mail [words]|preset ...|send <name>|takeall|returnall.
 function MT.Command(rest)
   rest = rest or ""
   if not MT.settings or not MT.settings.on then return ns.Chat("The mail tools are off (/vg > Town and gear > Mail tools).") end
   local word, arg = rest:match("^(%S*)%s*(.-)$")
   if word == "preset" then return MT.PresetCommand(arg) end
   if word == "send" then return MT.Send(arg) end
+  if word == "takeall" then return MT.TakeAll() end
+  if word == "returnall" then return MT.ReturnAll() end
   MT.Search(rest)
 end
 
 -- Module entry point (Core/Modules.lua): the panel follows the mailbox.
 function MT.Enable(settings)
   MT.settings = settings
-  ns.On("MAIL_SHOW", ns.Guard("mail tools", function() MT.Paint() MT.PaintPresets() end))
+  ns.On("MAIL_SHOW", ns.Guard("mail tools", function() MT.mailOpen = true MT.Paint() MT.PaintPresets() end))
   ns.On("MAIL_INBOX_UPDATE", ns.Guard("mail tools", MT.Paint))
-  ns.On("MAIL_CLOSED", ns.Guard("mail tools", function() if MT.frame then MT.frame:Hide() end end))
+  ns.On("MAIL_CLOSED", ns.Guard("mail tools", function() MT.mailOpen = false if MT.frame then MT.frame:Hide() end end))
 end

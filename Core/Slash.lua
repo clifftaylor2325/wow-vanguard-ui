@@ -47,7 +47,7 @@ local HELP = {
   "junk [<item> | remove <item> | clear]   your sell list: items a merchant offers to buy from you with your grays (off until switched on under Merchants and errors)",
   "sell <item>          at a merchant: sell every stack of an item in your bags, after a question",
   "craft [add [n]|next|stock|cd|top|done|clear]   the craft queue: queue the recipe on display, open the next one, raise Keep stocked to fit, show cooldowns, rank recipes (off until switched on)",
-  "mail [words]|preset [add <name> <character> [words]|remove <name>]|send <name>   search the inbox; presets for sending items to your alts (off until switched on)",
+  "mail [words]|preset [add <name> <character> [words]|remove <name>]|send <name>|takeall|returnall   search the inbox; presets for sending items to your alts; take everything listed or return it (off until switched on)",
   "rolls [clear]        the group's /roll results this session, newest first; clear forgets them",
   "loot [on|off|add|remove|list|clear|focus|roster]   officer loot tools (off until switched on): a soft-reserve list flagged in the roll tracker, and a group roster",
   "fights               your DPS, length and place in each fight this session, newest first",
