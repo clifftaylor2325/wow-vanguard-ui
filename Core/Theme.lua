@@ -1518,6 +1518,9 @@ T.CONTROL_H, T.BUTTON_H = 20, 26
 -- window; gap a HUD card's inset and the gap between controls; tight the gap between cells; section the
 -- gap between one section and the next.
 T.SPACE = { tight = 4, gap = 8, col = 12, pad = 16, section = 24 }
+-- A search box's magnifier: its size, and how far the text starts from the box's left edge (a gap either side).
+T.SEARCH_ICON = 12
+T.SEARCH_INSET = T.SPACE.gap * 2 + T.SEARCH_ICON
 -- Panel opacity by tier: opaque for the options window, the quest log and a skinned game window; dialog
 -- for a dialog, setup, What's new and anything with an edit box; overlay for tooltips and cards (the panel
 -- token's own alpha); alert for an alert; calm for the Calm HUD's unit frames out of combat.

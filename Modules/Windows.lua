@@ -376,11 +376,17 @@ function GW.SkinDropdown(dropdown)
   GW.ShowTexture(dropdown.Arrow)
 end
 
--- A search box (SearchBoxNineSliceTemplate) as T.EditBox, its magnifier shown again.
+-- A search box (SearchBoxNineSliceTemplate) as T.EditBox, its magnifier shown again, a gap in from the left edge
+-- with the text (and the game's hint) starting after it.
 function GW.SkinSearch(box)
   if type(box) ~= "table" or not box.SetText then return end
   T.EditBox(box)
   GW.ShowTexture(box.searchIcon)
+  if box.SetTextInsets then box:SetTextInsets(T.SEARCH_INSET, T.SPACE.gap, 0, 0) end
+  if box.searchIcon and box.searchIcon.SetPoint then
+    box.searchIcon:ClearAllPoints()
+    box.searchIcon:SetPoint("LEFT", box, "LEFT", T.SPACE.gap, 0)
+  end
 end
 
 -- How many frames deep inside a window its check buttons are looked for: the addon list's rows keep theirs
