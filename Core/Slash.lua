@@ -74,7 +74,7 @@ local HELP = {
   "keybind              keybind mode: hover an action button and press a key, a side mouse button or the wheel to bind it; Backspace clears, Escape leaves",
   "status               version, profile, modules, skins, work waiting on combat, what the client has, game restrictions",
   "factionart           which of the game's own faction pictures this client has",
-  "realm                your realm, ruleset and side as the client gives them, and the key your prices, sales and characters are kept under",
+  "realm                your realm, ruleset, game rules (preset, self-found, game mode) and side as the client gives them, and the key your prices, sales and characters are kept under",
   "frame <name> [deep]  what the client says about a frame now: shown, alpha, scale, size, its rect (or none), anchors and its parents; deep adds its textures and child frames (for a frame that draws empty)",
   "errors [clear]       opens the errors Vanguard caught this session, with stacks and counts, in the copy window (for a bug report); clear empties the list",
   "report               one block to copy for a bug report: what /vg status and /vg errors say, ready to paste at vanguardui.com/feedback",
