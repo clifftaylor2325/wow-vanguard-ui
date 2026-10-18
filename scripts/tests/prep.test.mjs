@@ -3,7 +3,7 @@
 // raid's door, on a ready check, or with /vg prep.
 
 import { expect, it } from "vitest";
-import { CLICK_LUA, isTok, loggedIn, setCombat } from "./helpers.mjs";
+import { CLICK_LUA, chatHas, isTok, loggedIn, setCombat } from "./helpers.mjs";
 import { alphaOf, closeOf, insets } from "./dialogs.mjs";
 
 // TEST-ONLY instance, ammo and items: an apple (food), a bandage, a potion and
@@ -280,6 +280,32 @@ it("prep buffs: world buffs only when asked for, an off hand only when it holds 
   addon.advance(21);
   addon.slash("prep");
   expect(addon.texts("Everything's packed.").length, "one is enough").toBe(1);
+});
+
+it("prep buffs: a Forever variant of a classic name still counts, an unrelated buff does not", () => {
+  const addon = buffed();
+  // The labels of the aura rows now.
+  const labels = () => addon.eval("local out = {} for i, r in ipairs(ns.GetModule('InstancePrep').AuraRows()) do out[i] = r.label end return out");
+  ["Haste of the Camp", "Flask of Forever Fortitude"].forEach((n) => buff(addon, n));
+  expect(labels(), "a flask under a new name and the fortitude inside it count; the unrelated buff counts for nothing").toEqual(["Food buff", "Mark of the Wild", "Arcane Intellect"]);
+  buff(addon, "Camp Well Fed Feast");
+  buff(addon, "Gift of the Wild (camp)");
+  expect(labels(), "a camp food and a camp class buff count too").toEqual(["Arcane Intellect"]);
+  addon.eval("C_UnitAuras.GetAuraDataByIndex = nil");
+  expect(labels(), "without the index read only the exact names count: back to missing").toEqual(["Flask", "Food buff", "Fortitude", "Mark of the Wild", "Arcane Intellect"]);
+});
+
+it("prep buffs: /vg prep buffs lists your buffs with the check each counts for, out of combat", () => {
+  const addon = buffed();
+  ["Flask of the Titans", "Haste of the Camp"].forEach((n) => buff(addon, n));
+  addon.slash("prep buffs");
+  expect(chatHas(addon, /Your 2 buff\(s\), and the Instance prep check each counts for:/), "the count").toBe(true);
+  expect(chatHas(addon, /Flask of the Titans -> Flask/), "a flask counts for the Flask row").toBe(true);
+  expect(chatHas(addon, /Haste of the Camp -> no check/), "another buff counts for none").toBe(true);
+  expect(chatHas(addon, /The checks look for: Flask Flask of the Titans, .*; Food buff Well Fed; or any buff with Flask of, Well Fed/), "and what the checks expect").toBe(true);
+  setCombat(addon, true);
+  addon.slash("prep buffs");
+  expect(chatHas(addon, /Buffs are listed out of combat, and not while the game hides aura values\./), "in combat it waits").toBe(true);
 });
 
 it("prep buffs: nothing is guessed when the client hides auras or can't list them", () => {

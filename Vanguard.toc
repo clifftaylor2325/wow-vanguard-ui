@@ -107,6 +107,7 @@ Modules/Chat.lua
 Modules/ChatExtras.lua
 Modules/ChatWatch.lua
 Modules/ChatFilter.lua
+Modules/ChatHistory.lua
 Modules/ChatBubbles.lua
 Modules/Bags.lua
 Modules/BagSections.lua
@@ -163,6 +164,7 @@ Modules/AuctionLedger.lua
 Modules/GameTools.lua
 Modules/CooldownGaps.lua
 Modules/CooldownGlow.lua
+Modules/CooldownKeys.lua
 Modules/BossDocks.lua
 Modules/FightHistory.lua
 Modules/FightRecap.lua

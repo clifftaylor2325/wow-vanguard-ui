@@ -10,6 +10,7 @@ Nothing here has been checked in the game by the people who wrote it down: see t
 
 - **Cooldown gaps** *(off)*: a row for on-use trinkets, items, spells you choose, your pet's abilities and totems (`/vg gaps add`, `/vg gaps spell add`), and the Cooldown Manager's cooldowns in the Vanguard look.
 - **Vanguard meter** *(off)*: a damage and healing meter in the Vanguard look (`/vg meter`), per second, in combat too. `/vg fights` lists your DPS per fight, and `/vg recap` summarises the last fight (interrupts, dispels, damage taken, deaths).
+- **Raid indicators**: up to three small icons down each raid tile's right edge for an external defensive, big defensive, important buff, one of your buffs, crowd control or a debuff you can dispel (Indicator 1 to 3 under Raid frames, after a reload).
 - **Roll tracker**: the group's `/roll` results and loot rolls in one list (`/vg rolls`).
 - **Levelling helpers**: the XP a quest gives on the tracker, an XP bar tooltip and a warning when supplies run low.
 - **Group board**: looking-for-group posts from chat by dungeon, role and level (`/vg lfg`).
@@ -34,6 +35,7 @@ Nothing here has been checked in the game by the people who wrote it down: see t
 - Quest-start pins on the world map and Shift-click a quest to point the arrow at it.
 - Quest tracker: click +N more to show up to 10 watched quests, and the choice is remembered; it starts below the info strip and sits under the game's windows.
 - Quest history: the quest dialog and quest log say which of your characters last turned a quest in ("Done on Thrall-Forever · 3 days ago"), and `/vg quests history [n]` lists the latest turn-ins.
+- Nameplates: the quest "!" now also shows when the unit's tooltip data lists one of your quests, using Vanguard's own mark, and repaints once a frame as your quests change.
 - Quest log: Track and Untrack update at once, Shift-click tracks, reward cards show the item tooltip.
 - World map: quest zone headers use a gold chevron.
 

@@ -230,3 +230,126 @@ function G.Rows()
   rows[#rows + 1] = { "button", "Start fresh: run setup", G.StartFresh }
   return rows
 end
+
+-- Saved data size -------------------------------------------------------------------------------
+-- The game refuses an addon's SavedVariables file past a size it doesn't publish; its signal is the
+-- event SAVED_VARIABLES_TOO_LARGE. Prices are the part that grows (a full price home is up to about
+-- 3.5 MB of text), so a size estimate is kept under G.BUDGET by dropping the oldest price homes,
+-- never the one in use. The numbers are estimates of the text the game writes, not readings.
+
+-- The account file's budget in bytes (a guess well under any limit worth fearing), and the delay
+-- after login before the size is checked, so the walk stays out of the login itself.
+G.BUDGET, G.AUDIT_AFTER = 6 * 1024 * 1024, 15
+
+-- Estimated bytes of a table as the game writes it: each key and value's text, plus indent and punctuation.
+local function tableBytes(t, depth, seen)
+  local n = 2
+  for k, v in pairs(t) do
+    n = n + G.Bytes(k, depth, seen) + G.Bytes(v, depth + 1, seen) + depth + 6
+  end
+  return n
+end
+
+-- Estimated bytes of any saved value (a table is walked once, so a loop in a damaged file ends).
+---@param v any
+---@return number
+function G.Bytes(v, depth, seen)
+  if type(v) == "string" then return #v + 2 end
+  if type(v) ~= "table" then return #tostring(v) end
+  seen = seen or {}
+  if seen[v] then return 0 end
+  seen[v] = true
+  return tableBytes(v, depth or 0, seen)
+end
+
+-- Each top-level key of a saved table as { name, bytes }, largest first.
+function G.Sizes(t)
+  local list = {}
+  for k, v in pairs(tbl(t) or {}) do list[#list + 1] = { name = tostring(k), bytes = G.Bytes(v, 1) + #tostring(k) } end
+  table.sort(list, function(a, b) return a.bytes > b.bytes end)
+  return list
+end
+
+-- The newest price time in a price home (0 for none, or for a damaged home).
+local function newestPrice(house)
+  local newest = 0
+  for _, p in pairs(tbl(house) and tbl(house.prices) or {}) do
+    if type(p) == "table" and (tonumber(p.t) or 0) > newest then newest = tonumber(p.t) end
+  end
+  return newest
+end
+
+-- The keys of the price homes other than `keep`, the one with the oldest prices first.
+local function oldestHomes(houses, keep)
+  local keys = {}
+  for key, house in pairs(houses) do
+    if key ~= keep then keys[#keys + 1] = { key = key, newest = newestPrice(house) } end
+  end
+  table.sort(keys, function(a, b) return a.newest < b.newest end)
+  return keys
+end
+
+-- Drops price homes, oldest first and never this one, until `free` bytes are gone; returns how many it dropped.
+function G.Trim(free)
+  local ah = tbl(VanguardDB.ah)
+  local houses, dropped = ah and tbl(ah.houses) or {}, 0
+  for _, home in ipairs(oldestHomes(houses, ns.Home.Key())) do
+    if free <= 0 then break end
+    free = free - G.Bytes(houses[home.key], 1)
+    houses[home.key] = nil
+    dropped = dropped + 1
+  end
+  return dropped
+end
+
+-- "1.2 MB" or "340 KB" for a byte count.
+local function sizeText(bytes)
+  if bytes >= 1024 * 1024 then return string.format("%.1f MB", bytes / 1024 / 1024) end
+  return string.format("%.0f KB", bytes / 1024)
+end
+
+-- The largest three keys of a saved table as "ah 1.1 MB, inventory 90 KB, profiles 40 KB".
+local function largest(sizes)
+  local parts = {}
+  for i = 1, math.min(3, #sizes) do parts[i] = sizes[i].name .. " " .. sizeText(sizes[i].bytes) end
+  return table.concat(parts, ", ")
+end
+
+-- What /vg mem says about the saved files: the account file's estimate against the budget and
+-- what holds the most, then this character's file. One walk, out of combat (it can take a moment).
+function G.SizeReport()
+  if ns.InCombat() then return ns.Chat("Saved data sizes are read out of combat; try /vg mem again after the fight.") end
+  local account, char = G.Sizes(VanguardDB), G.Sizes(VanguardCharDB)
+  local total = G.Bytes(VanguardDB)
+  ns.Chat(string.format("Saved data (estimate): account file %s of a %s budget; largest: %s.", sizeText(total), sizeText(G.BUDGET), largest(account)))
+  ns.Chat(string.format("This character's file: %s (%s).", sizeText(G.Bytes(VanguardCharDB)), largest(char)))
+end
+
+-- What chat says after price homes were dropped for size (`still` when the file is still over).
+local function trimmedLine(dropped, still)
+  local text = string.format("Vanguard's saved data was too large: it dropped the auction prices of %d realm and side(s), oldest first (they fill again as you scan).", dropped)
+  return still and (text .. " It is still large; /vg mem lists what holds the most.") or text
+end
+
+-- Over the budget: drops the oldest price homes and says so. Nothing happens within it.
+function G.Audit()
+  local over = G.Bytes(VanguardDB) - G.BUDGET
+  if over <= 0 then return end
+  local dropped = G.Trim(over)
+  ns.Chat(dropped > 0 and trimmedLine(dropped, G.Bytes(VanguardDB) > G.BUDGET) or "Vanguard's saved data is over its size budget; /vg mem lists what holds the most.")
+end
+
+-- A while after login, out of combat, the file's size is checked.
+local function scheduleAudit()
+  if C_Timer and C_Timer.After then C_Timer.After(G.AUDIT_AFTER, ns.Guard("saved data size", function() ns.OutOfCombat(G.Audit, "saved data size") end)) end
+end
+ns.On("PLAYER_LOGIN", scheduleAudit)
+
+-- The client says an addon's saved file was too large: Vanguard trims to half its budget, so the next
+-- save fits, and says what happened (the settings guard then reports a file that came back blank).
+function G.OnTooLarge(_, name)
+  if name ~= ADDON or type(VanguardDB) ~= "table" then return end
+  local dropped = G.Trim(G.Bytes(VanguardDB) - G.BUDGET / 2)
+  ns.Chat("The game says Vanguard's saved data is too large. " .. (dropped > 0 and trimmedLine(dropped) or "Vanguard has no price data left to drop; /vg mem lists what holds the most."))
+end
+ns.On("SAVED_VARIABLES_TOO_LARGE", G.OnTooLarge)

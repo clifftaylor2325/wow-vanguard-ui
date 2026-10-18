@@ -6,7 +6,10 @@
 -- your own auras and your weapons, out of combat only; while the client hides
 -- aura values nothing is checked and no row is made, never a guess.
 -- UNVERIFIED: the buff names are from the classic game; none is checked against
--- a Forever client. Check each with /vg prep in game.
+-- a Forever client. So a row also counts as met when any buff on you has one of a few
+-- key words in its name (PR.WORDS): a Forever variant of a classic name, or a camp buff
+-- that stands in for a class buff, must not make the card cry wolf. /vg prep buffs lists
+-- your buffs against what each check counts, to check the names in game.
 
 local ADDON, ns = ...
 
@@ -25,6 +28,42 @@ PR.WORLD_BUFFS = { "Rallying Cry of the Dragonslayer", "Spirit of Zandalar", "So
 PR.WEAPON = 2
 PR.ENCHANT_SLOTS = { { 16, "Weapon oil or poison" }, { 17, "Off-hand oil or poison" } }
 
+-- Key words by row label: a buff whose name holds one of them counts for that row (plain text, case matters).
+PR.WORDS = {
+  Flask = { "Flask of" }, ["Food buff"] = { "Well Fed" }, Fortitude = { "Fortitude" },
+  ["Mark of the Wild"] = { "Mark of the Wild", "Gift of the Wild" }, ["Arcane Intellect"] = { "Arcane Intellect", "Arcane Brilliance" },
+}
+-- How many of your buffs are read for the key words (the game shows 32 at most).
+PR.SCAN = 40
+
+-- Whether a buff's name is plain text holding one of the words.
+local function nameHas(name, words)
+  if type(name) ~= "string" or ns.IsSecret(name) then return false end
+  for _, w in ipairs(words) do
+    if name:find(w, 1, true) then return true end
+  end
+  return false
+end
+
+-- The names of your helpful buffs the client lists (hidden or missing names left out).
+function PR.BuffNames()
+  local names = {}
+  for i = 1, PR.SCAN do
+    local aura = ns.Auras.Get("player", i, "HELPFUL")
+    if not aura then break end
+    if type(aura.name) == "string" and not ns.IsSecret(aura.name) then names[#names + 1] = aura.name end
+  end
+  return names
+end
+
+-- Whether any buff on you has one of the words in its name.
+local function hasWord(words)
+  for _, name in ipairs(PR.BuffNames()) do
+    if nameHas(name, words) then return true end
+  end
+  return false
+end
+
 -- Whether you have one of the buffs (by name); nil when the client can't be asked.
 local function hasAny(names)
   local get = C_UnitAuras and C_UnitAuras.GetAuraDataBySpellName
@@ -37,7 +76,7 @@ end
 
 -- A "missing" row for a buff group you lack, or nil.
 local function missing(label, names)
-  if hasAny(names) == false then return { label = label, value = "missing" } end
+  if hasAny(names) == false and not hasWord(PR.WORDS[label] or {}) then return { label = label, value = "missing" } end
 end
 
 -- Whether the item in a slot is a weapon (item class Weapon).
@@ -92,4 +131,21 @@ function PR.BuffRows()
   local rows = PR.AuraRows()
   for _, r in ipairs(PR.EnchantRows()) do rows[#rows + 1] = r end
   return rows
+end
+
+-- The row each of your buffs counts for, by name or key word (nil for none).
+local function countsFor(name)
+  for label, words in pairs(PR.WORDS) do
+    if nameHas(name, words) then return label end
+  end
+end
+
+-- /vg prep buffs: your buffs one per line with the check each counts for, then what each check expects,
+-- so the names can be checked against the real client (out of combat; none while the client hides auras).
+function PR.BuffReport()
+  if ns.InCombat() or ns.AurasSecret() then return ns.Chat("Buffs are listed out of combat, and not while the game hides aura values.") end
+  local names = PR.BuffNames()
+  ns.Chat(string.format("Your %d buff(s), and the Instance prep check each counts for:", #names))
+  for _, name in ipairs(names) do ns.Chat(string.format("  %s -> %s", name, countsFor(name) or "no check")) end
+  ns.Chat("The checks look for: Flask " .. table.concat(PR.FLASKS, ", ") .. "; Food buff " .. table.concat(PR.FOOD, ", ") .. "; or any buff with " .. "Flask of, Well Fed, Fortitude, Mark of the Wild, Gift of the Wild, Arcane Intellect or Arcane Brilliance in its name.")
 end
