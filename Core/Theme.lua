@@ -1139,8 +1139,8 @@ end
 -- A text backdrop (chat): a panel-coloured fill whose edges fade out in a soft ring `feather` units
 -- wide, so text sits on a calm dark patch with no box edge. Returns { fill, ring }.
 function T.Backdrop(frame, feather)
-  local ring = ring(frame, { texture = "Shadow", size = feather, layer = "BACKGROUND", sublevel = -8 })
-  return { fill = T.FillParts(frame, "BACKGROUND", -7, "panel", 0), ring = ring }
+  local soft = ring(frame, { texture = "Shadow", size = feather, layer = "BACKGROUND", sublevel = -8 })
+  return { fill = T.FillParts(frame, "BACKGROUND", -7, "panel", 0), ring = soft }
 end
 
 -- Sets a backdrop's strength (0-1): the fill's opacity, and the ring's with it so the fade stays seamless.

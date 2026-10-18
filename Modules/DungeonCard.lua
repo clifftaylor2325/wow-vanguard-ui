@@ -121,8 +121,8 @@ local function onMap(mapID)
 end
 
 -- Whether a log entry belongs on the card: on this dungeon's map when inside one that lists quests, else tagged as a dungeon quest.
-local function wanted(info, here, tags)
-  if here then return here[info.questID] == true end
+local function wanted(info, onThisMap, tags)
+  if onThisMap then return onThisMap[info.questID] == true end
   local tag = call(C_QuestLog, "GetQuestTagInfo", info.questID)
   return type(tag) == "table" and tags[ns.PlainNumber(tag.tagID) or 0] == true
 end
@@ -143,10 +143,10 @@ end
 
 -- Your log's quests for the card, lowest level first.
 function DC.Quests(inside)
-  local out, here, tags = {}, inside and onMap(mapNow()), tagSet()
+  local out, onThisMap, tags = {}, inside and onMap(mapNow()), tagSet()
   for i = 1, ns.PlainNumber((call(C_QuestLog, "GetNumQuestLogEntries"))) or 0 do
     local e = entry(call(C_QuestLog, "GetInfo", i))
-    if e and wanted(e, here, tags) then out[#out + 1] = e end
+    if e and wanted(e, onThisMap, tags) then out[#out + 1] = e end
   end
   table.sort(out, byLevel)
   return out

@@ -58,10 +58,10 @@ end
 
 -- A saved line's time, colour (r, g, b) and text, or nil for anything that isn't one.
 function CHH.Unpack(line)
-  local at, hex, text = (type(line) == "string" and line or ""):match("^(%d+)|(%x%x%x%x%x%x)|(.*)$")
+  local at, hexText, text = (type(line) == "string" and line or ""):match("^(%d+)|(%x%x%x%x%x%x)|(.*)$")
   if not at then return nil end
   -- The colour part starting at character i of the hex text, 0 to 1.
-  local function part(i) return tonumber(hex:sub(i, i + 1), 16) / 255 end
+  local function part(i) return tonumber(hexText:sub(i, i + 1), 16) / 255 end
   return tonumber(at), part(1), part(3), part(5), text
 end
 

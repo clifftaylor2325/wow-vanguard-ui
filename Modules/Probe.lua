@@ -189,10 +189,10 @@ end
 
 -- SavedVariables: the earlier run's marker, then the write and its read back, account and character.
 local function savedLines()
-  local prev, now = stampSaved(VanguardDB)
+  local prev, stamp = stampSaved(VanguardDB)
   local cprev = stampSaved(VanguardCharDB)
   return {
-    previousLine(prev), "this run: #" .. tostring(now.runs) .. ", written to VanguardDB.probe, read back " .. tostring(VanguardDB.probe == now),
+    previousLine(prev), "this run: #" .. tostring(stamp.runs) .. ", written to VanguardDB.probe, read back " .. tostring(VanguardDB.probe == stamp),
     "character file: " .. (type(cprev) == "table" and ("earlier run #" .. tostring(cprev.runs) .. " found") or "no earlier run found"),
     "profiles in the account file: " .. countKeys(VanguardDB.profiles),
   }

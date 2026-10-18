@@ -102,9 +102,9 @@ function AH.SortedDeals()
   return out
 end
 
--- The Deals entry's events (on: the helper's, which ignores them in combat): each price recorded is
+-- The Deals entry's events (the helper passes its switch, which this one has no use for): each price recorded is
 -- judged, and closing the house forgets this visit's deals.
-function AH.ListenDeals(on)
+function AH.ListenDeals()
   AP.OnSeen(AH.CheckDeal)
   ns.On("AUCTION_HOUSE_CLOSED", function() AH.deals = {} end) -- state only, so also in combat
 end
