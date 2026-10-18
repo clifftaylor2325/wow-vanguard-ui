@@ -11,6 +11,35 @@ Things to know before you start:
 - Where an Expect depends on an earlier fix, a bracketed note says which. If that fix did not land, the note says what you will see instead.
 - Quote chat lines as they appear; a missing or different line is a finding.
 
+## Run this before the beta closes (one page, about ten minutes)
+
+One command asks the client every open question the research left and writes the answers down. Nothing in it changes a setting or the game, and nothing in it has been seen in the game yet. Do it before anything else in this file: after the beta closes there is no Forever client until launch.
+
+1. Get ready, out of combat: stand in a town, have a quest in your log and super-track it (click its tracker), and target a mob or a critter (a training dummy is fine).
+2. Type `/vg probe`. A copy box opens; press Ctrl+C and paste it whole. Chat says `Probe done: N present, N missing, N errors`. If the box is empty or a Lua error shows, paste `/vg errors` too. `/vg probe chat` also prints every line to chat.
+3. Round trip, in two goes. Type `/reload`, then `/vg probe` again: the `earlier run:` line under SavedVariables says `from an earlier session` with `#1`. Then quit the game to the desktop (not just the character screen), start it, and run `/vg probe` once more: the same line says `#2` or higher. If it says `none saved`, SavedVariables did not survive; say which of the two goes failed.
+4. In a fight: type `/vg probe fight`, pull any mob, and let it finish (a boss pull or a dungeon is best; if you can, do one in the open world, one in a dungeon and one in a battleground). Chat says `Probe: the fight report is ready`. Type `/vg probe last` and paste the box: it holds the last out-of-combat report and the fight reads taken as the fight starts and three seconds in.
+5. In an instance if you can: stand at the entrance, out of combat, and run `/vg probe` once more, so the restriction states and `C_Secrets` lines are on record for a dungeon.
+6. If you have a minute: set a map waypoint (`/way`) or super-track a quest on another zone's map and run `/vg probe` again, so the navigation lines show a distance and a next waypoint.
+
+What each part of the report answers (read the section title in the box):
+
+| Section | Question |
+| --- | --- |
+| SavedVariables round trip | Do saved settings survive a reload and a full exit on this build? |
+| New-quest flag | Does the client flag quests new in Forever (the New mark and pins depend on it)? |
+| Threat secrecy | Are threat values hidden, in the open world and in a pull (issue #215)? |
+| Group listing | Does `C_LFGList` exist and answer, and is the group finder or raid list switched on? |
+| Secure paging | Do secure snippets and a bar-paging state driver work on this build? |
+| Realm and name format | What do the realm, ruleset and `Name-Realm` forms look like (`/vg realm`'s key)? |
+| Game rules and seasons | What do `C_GameRules` and `C_Seasons` say? |
+| C_Secrets predicates | Which of the 27 predicates exist, and what they say out of combat and in the fight |
+| Restrictions and lockdown | The six add-on restriction states and the chat lockdown flags |
+| Navigation | Does `C_Navigation` give a distance and a next waypoint for the quest arrow? |
+| Undocumented on Forever | The roll tracker's `C_LootHistory`, the craft queue's recipe and cooldown reads, and three new widget methods |
+
+The report is also saved in `WTF\Account\<account>\SavedVariables\Vanguard.lua` under `probe`, so it can be read from the file if the chat is lost.
+
 ## Run order by crash risk
 
 If the beta closes before you finish, do these first and stop after any step that throws a Lua error (paste the report block):
