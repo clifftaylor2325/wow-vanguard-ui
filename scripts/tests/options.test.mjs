@@ -16,6 +16,7 @@ it("options window", () => {
   expect(addon.eval('return __click("Show bar 6")') && addon.eval("return VanguardDB.profiles.Default.ActionBars.bars[6].enabled") === true, "check boxes change settings").toBeTruthy();
   expect(addon.eval("return Vanguard_Options.reload:IsShown()") === true, "a change that needs a reload shows the Reload button").toBeTruthy();
   expect(addon.eval('return __click("Visibility")') && addon.eval("return VanguardDB.profiles.Default.ActionBars.bars[1].visibility") === "mouseover", "cycle buttons step through choices").toBeTruthy();
+  expect(addon.eval('return __click("Bar backing") and VanguardDB.profiles.Default.ActionBars.backing'), "the Bar backing cycle steps from Follow the theme to Always").toBe("on");
   expect(addon.eval('return __click("Button size")') && addon.eval("return VanguardDB.profiles.Default.ActionBars.bars[1].size") === 40, "a bar's size slider starts at the shared size and steps by 2").toBeTruthy();
   addon.eval('__click("Modules")');
   // The Modules page's row for unit frames: its description, and clicking it.
@@ -621,7 +622,7 @@ it("options: the pages, their nav order and each page's row count stay as they w
   // Adding or removing a row (or a module, which adds a row under Modules) changes these counts on purpose.
   expect(pages, "the page list and each page's row count (a new row is one more on its page)").toEqual([
     "general|General|10|39", "modules|Modules|20|78", "unitframes|Unit frames|30|29", "raid|Raid frames|40|25",
-    "actionbars|Action bars|60|73", "quests|Quests|70|30", "bars|Bars and bags|80|17", "map|Map|81|31", "chat|Chat|82|53", "windows|Game windows|83|46", "cooldowns|Cooldowns|83.5|13", "tools|Combat tools|84|34", "town|Town and gear|85|54", "profiles|Profiles|90|22",
+    "actionbars|Action bars|60|74", "quests|Quests|70|30", "bars|Bars and bags|80|17", "map|Map|81|31", "chat|Chat|82|53", "windows|Game windows|83|46", "cooldowns|Cooldowns|83.5|13", "tools|Combat tools|84|34", "town|Town and gear|85|54", "profiles|Profiles|90|22",
     "feedback|Feedback|100|7", "healing|Healing|45|44", "talents|Talents|47|7", "nameplates|Nameplates|65|15",
     "situations|Situations|86|17", "clickcast|Click casting|46|11",
   ]);

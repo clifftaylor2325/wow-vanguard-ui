@@ -107,6 +107,7 @@ ns.WHATS_NEW = {
       { text = "Four more looks: Midnight (cold navy-black, ice-blue text), Obsidian (neutral charcoal, light grey text, a silver edge), Moss (dark forest green, pale sage text) and Ash and ember (smoky grey, a rust edge, warm grey text).", page = "general", row = "Theme variant", off = true },
       { text = "Rounded corners on every theme: General → Look → Corners (or /vg corners rounded) rounds the corners of windows, frames, tooltips and buttons by four pixels. Square stays the default.", page = "general", row = "Corners", off = true },
       { text = "A round minimap: Map → Minimap shape (reload) sets Square, Round or Follow the theme; the Classic look variant makes it round on Follow the theme. The disc, its bronze outline and the buttons on its rim are drawn by Vanguard.", page = "map", row = "Minimap shape (reload)", off = true },
+      { text = "A panel under each action bar: Action bars → Bar backing sets Follow the theme, Always or Never; Classic look puts a flat bronze-edged panel behind every bar, at once.", page = "actionbars", row = "Bar backing", off = true },
     } },
     { label = "Window ornaments", items = {
       { text = "A thin brass rule under the options window's header and corner brackets on setup and the quest log.", page = "general", row = "Window ornaments", off = true },
