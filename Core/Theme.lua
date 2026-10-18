@@ -1261,6 +1261,12 @@ local hoverOf = setmetatable({}, { __mode = "k" })
 -- button T.Button never painted.
 function T.HoverParts(button) return hoverOf[button] end
 
+-- True unless the client says the mouse is not over the frame: the game can call a button's OnEnter itself
+-- (the game menu's buttons all did when it first opened), which must not light the hover.
+function T.MouseIsOver(frame)
+  return not frame.IsMouseOver or frame:IsMouseOver() == true
+end
+
 -- A button's hover look (#257): a raisedHover fill (T.FillParts, so it follows rounded corners) over its
 -- inset fill and a one-pixel borderHi line along its top, both clear until the mouse comes over it
 -- (T.EaseHover eases them).
@@ -1270,9 +1276,10 @@ local function hoverParts(button, entry)
   entry.parts.hoverLine, entry.paint = solid(button, "BORDER", 2, "border"), paintHoverLine
   entry.parts.hoverLine:SetAlpha(0)
   hoverOf[button] = { fill.bg, entry.parts.hoverLine, fill = fill }
-  button:HookScript("OnEnter", ns.Guard("button hover", function(b) T.EaseHover(b, true) end))
+  button:HookScript("OnEnter", ns.Guard("button hover", function(b) T.EaseHover(b, T.MouseIsOver(b)) end))
   button:HookScript("OnLeave", ns.Guard("button hover", function(b) T.EaseHover(b, false) end))
   button:HookScript("OnHide", ns.Guard("button hover", function(b) T.EaseHover(b, false, true) T.PressButton(b, false) end))
+  button:HookScript("OnShow", ns.Guard("button hover", function(b) T.EaseHover(b, T.MouseIsOver(b), true) end))
 end
 
 -- Each frame's keyboard focus ring (weak): { gap = edges, ring = edges }.
