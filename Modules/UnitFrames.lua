@@ -227,7 +227,8 @@ local function createUnitFrame(key, unit, w, h, settings)
   T.HudPanel(f, { shield = true })
   f.health, f.power = createBar(f), createBar(f)
   layoutBars(f, settings.powerHeight)
-  T.ShieldMask(f, { f.health:GetStatusBarTexture(), f.health.bg, f.power:GetStatusBarTexture(), f.power.bg })
+  T.ShieldMask(f, { f.health:GetStatusBarTexture(), f.health.bg }, "TOP")
+  T.ShieldMask(f, { f.power:GetStatusBarTexture(), f.power.bg }, "BOTTOM")
   addTexts(f, settings)
   return f
 end

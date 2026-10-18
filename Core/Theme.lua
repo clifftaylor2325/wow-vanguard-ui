@@ -224,7 +224,7 @@ local DEFAULTS = {
   variant = "default",
   -- Panel corners: "square" (one border language, as always) or "rounded" (T.CORNER_RADIUS arcs).
   corners = "square",
-  -- Shield corners: the frames that ask for them (unit frames, cast bars) get T.CORNER_CUT cuts.
+  -- Shield corners: the frames that ask for them (the unit frames) get T.CORNER_CUT cuts.
   shield = true,
   accent = T.PRESETS.brass,
   panel = T.TOKENS.panel,
@@ -1127,12 +1127,16 @@ end
 
 -- Shield masks -------------------------------------------------------------------------------
 
--- Four masks on owner (the frame a masked texture belongs to), one at each corner of frame, its
--- corner of CornerCutMask; clamped to white past their edges, so each one cuts only its corner.
-function corner.maskSet(owner, frame)
+-- The corners a side's masks cut. A texture takes at most three masks in the client, so a masked
+-- texture is cut on one side only: two masks, its top corners or its bottom ones.
+corner.SIDES = { TOP = { "TOPLEFT", "TOPRIGHT" }, BOTTOM = { "BOTTOMLEFT", "BOTTOMRIGHT" } }
+
+-- Two masks on owner (the frame a masked texture belongs to), one at each of frame's corners on side,
+-- its corner of CornerCutMask; clamped to white past their edges, so each one cuts only its corner.
+function corner.maskSet(owner, frame, side)
   local set = {}
-  for point, tc in pairs(CORNERS) do
-    local m = owner:CreateMaskTexture()
+  for _, point in ipairs(corner.SIDES[side]) do
+    local tc, m = CORNERS[point], owner:CreateMaskTexture()
     m:SetTexture(T.Texture("CornerCutMask"), "CLAMPTOWHITE", "CLAMPTOWHITE")
     m:SetTexCoord(unpack(tc))
     m:SetPoint(point, frame, point)
@@ -1159,20 +1163,28 @@ function corner.paintMasks(frame, entry)
   for _, item in ipairs(entry.masked) do corner.maskTexture(item, entry.look == "cut") end
 end
 
--- Cuts textures inside a shield frame (a status bar's fill and background) to its cut corners, so
--- nothing pokes past the cut line; they follow the shield setting on every repaint.
+-- Cuts textures inside a shield frame (a status bar's fill and background) to its cut corners on one
+-- side, so nothing pokes past the cut line; they follow the shield setting on every repaint. Each
+-- texture is masked once (two masks, under the client's limit of three), however often it is asked.
 ---@param frame table a frame painted with opts.shield
 ---@param regions table the textures to cut
-function T.ShieldMask(frame, regions)
+---@param side string "TOP" or "BOTTOM": the frame's corners these textures reach
+function T.ShieldMask(frame, regions, side)
   local entry = painted[frame]
   if not entry then return end
-  entry.masked, entry.maskSets = entry.masked or {}, entry.maskSets or {}
+  entry.masked, entry.maskSets, entry.maskedBy = entry.masked or {}, entry.maskSets or {}, entry.maskedBy or {}
   for _, region in ipairs(regions) do
-    local owner = region:GetParent()
-    entry.maskSets[owner] = entry.maskSets[owner] or corner.maskSet(owner, frame)
-    entry.masked[#entry.masked + 1] = { region = region, set = entry.maskSets[owner] }
+    local key = tostring(region:GetParent()) .. side
+    entry.maskSets[key] = entry.maskSets[key] or corner.maskSet(region:GetParent(), frame, side)
+    if not entry.maskedBy[region] then corner.addMasked(entry, region, entry.maskSets[key]) end
   end
   corner.paintMasks(frame, entry)
+end
+
+-- Lists a texture to mask with a set of masks (once per texture).
+function corner.addMasked(entry, region, set)
+  entry.maskedBy[region] = true
+  entry.masked[#entry.masked + 1] = { region = region, set = set }
 end
 
 -- Paints a frame's corners for radius r in a look: the rounded or cut parts, their art, and its shield masks.
