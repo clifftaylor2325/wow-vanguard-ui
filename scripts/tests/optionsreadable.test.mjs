@@ -9,13 +9,13 @@ const FIND = (caption) => `local w for _, x in ipairs(__wfgStub.frames) do if x.
 it("options: a setting that applies on reload wears a tag, not (reload) in its caption", () => {
   const addon = loggedIn(CLICK_LUA);
   addon.eval('ns.Options.Show("general")');
-  const tagged = addon.eval(`${FIND("Color assist")} return { w ~= nil, w.tag and w.tag.__text, w.tag and w.tag:IsShown() }`);
-  expect(tagged, "Color assist has its tag and no suffix").toEqual([true, "reload", true]);
+  const tagged = addon.eval(`${FIND("Safer colours")} return { w ~= nil, w.tag and w.tag.__text, w.tag and w.tag:IsShown() }`);
+  expect(tagged, "Safer colours has its tag and no suffix").toEqual([true, "reload", true]);
   const plain = addon.eval(`${FIND("Pixel-perfect scale")} return { w ~= nil, w.tag ~= nil }`);
   expect(plain, "a setting that applies at once has no tag").toEqual([true, false]);
-  const tip = addon.eval(`${FIND("Color assist")} w.__scripts.OnEnter(w) local t = GameTooltip.__lines[1] and GameTooltip.__lines[1].text w.__scripts.OnLeave(w) return t`);
+  const tip = addon.eval(`${FIND("Safer colours")} w.__scripts.OnEnter(w) local t = GameTooltip.__lines[1] and GameTooltip.__lines[1].text w.__scripts.OnLeave(w) return t`);
   expect(tip, "hovering the row says when it takes effect").toMatch(/Takes effect after \/reload\./);
-  addon.eval('ns.Options.JumpTo("Color assist (reload)")');
+  addon.eval('ns.Options.JumpTo("Safer colours (reload)")');
   expect(addon.eval("return Vanguard_Options.found:IsShown()"), "a link written with the old caption still finds the row").toBe(true);
 });
 
@@ -66,7 +66,7 @@ it("options: search lists the settings that match under the box, opens one, and 
   const list = () => addon.eval(`local r = Vanguard_Options.results if not r or not r:IsShown() then return false end
     local out = {} for _, l in ipairs(r.lines) do if l:IsShown() then out[#out + 1] = l.caption.__text .. "|" .. l.page.__text end end return { out, r.none:IsShown() }`);
   search("colour blind");
-  expect(list()[0][0], "a word the caption doesn't say finds the setting, with its page").toBe("Color assist|General");
+  expect(list()[0][0], "a word the caption doesn't say finds the setting, with its page").toBe("Safer colours|General");
   search("font size");
   expect(list()[0].some((l) => l.startsWith("Text size|")), "and so does font size").toBe(true);
   search("TEST-ONLY nothing");

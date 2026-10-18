@@ -342,10 +342,10 @@ O.MODULE_GROUPS = {
   { "Raid frames", { "RaidFrames", "RaidAuras", "RaidHealing", "RaidStatus", "RaidTools", "OfficerLoot" } },
   { "Action bars", { "ActionBars", "SpecialBars" } },
   { "Map and info", { "Minimap", "Waypoints", "BrokerStrip", "InfoStrip", "MenuStrip", "MinimapButtons", "DataBars" } },
-  { "Chat", { "Chat", "ChatExtras", "ChatWatch", "ChatFilter", "ChatBubbles", "ChatHistory" } },
+  { "Chat", { "Chat", "ChatExtras", "ChatWatch", "ChatFilter", "ChatBubbles", "ChatHistory", "ChatWindows" } },
   { "Quests", { "QuestDialog", "QuestTracker", "QuestLog", "QuestAuto", "QuestArrow", "QuestGuide", "QuestMinimap", "QuestHistory" } },
   { "Game windows", { "Windows", "Tooltips", "GameAlerts", "GameTools", "AfkScreen", "Coexist", "Quiet" } },
-  { "Town and gear", { "Bags", "Merchant", "AutoAccept", "Errands", "Inventory", "Upgrades", "VendorMemory", "AuctionHelper", "CraftQueue", "MailTools", "SpellRanks", "TalentPlanner", "Legacy", "InstancePrep" } },
+  { "Town and gear", { "Bags", "Merchant", "AutoAccept", "Errands", "Inventory", "Upgrades", "VendorMemory", "AuctionHelper", "CraftQueue", "PetStable", "MailTools", "SpellRanks", "TalentPlanner", "Legacy", "InstancePrep" } },
   { "Combat tools", { "Nameplates", "Rolls", "GroupBoard", "BossDocks", "CooldownGaps", "CooldownGlow", "CooldownKeys", "FightHistory", "Meter" } },
 }
 

@@ -8,7 +8,7 @@ local T, W, O = ns.Theme, ns.Widgets, ns.Options
 
 -- Words a player may type for a setting that its caption doesn't say, by the caption in lower case.
 O.KEYWORDS = {
-  ["color assist"] = "colour blind colorblind color blind colour vision deuteranopia protanopia tritanopia accessibility",
+  ["safer colours"] = "colour blind colorblind color blind colour vision deuteranopia protanopia tritanopia accessibility",
   ["text size"] = "font size bigger smaller larger readable zoom",
   ["font"] = "typeface lettering text",
   ["reduce motion (no fades or flashes)"] = "animation animations fades flashes accessibility",
