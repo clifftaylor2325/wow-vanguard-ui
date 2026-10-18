@@ -996,6 +996,7 @@ local function dressBookIcon(button)
   if type(icon) == "table" and icon.SetTexCoord then T.Crop(icon) end
   T.Panel(button, { inset = true, noBg = true })
 end
+GW.DressIcon = dressBookIcon
 
 -- One spell entry of the book (a name, a rank line and an icon button on a smudged plate): the plate faded, the
 -- icon in the item-slot look, the name and rank in the theme's text roles (the game colours them for parchment,
