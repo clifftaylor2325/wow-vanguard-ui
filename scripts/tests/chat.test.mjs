@@ -48,7 +48,7 @@ it("chat", () => {
   const c = addon.eval(`return { font = { ChatFrame1:GetFont() }, box = ns.Theme.PaintedCount(),
     tab1 = ChatFrame1Tab.Text.__textColor, tab2 = ChatFrame2Tab.Text.__textColor }`);
   expect(c.font[0] === "Interface\\AddOns\\Vanguard\\Media\\Fonts\\FiraSansCondensed-Medium.ttf" && c.font[1] === 12, `chat windows get the theme font at Medium, 12 (got ${JSON.stringify(c.font)})`).toBeTruthy();
-  expect(isTok(addon, c.tab2, "accentText") && isTok(addon, c.tab1, "text2"), "the selected window's tab is in the accent's text colour, others gray").toBeTruthy();
+  expect(isTok(addon, c.tab2, "accentText") && isTok(addon, c.tab1, "text"), "the selected window's tab is in the accent's text colour, others in the plain text colour").toBeTruthy();
   addon.slash("accent ember");
   expect(isTok(addon, addon.eval("return ChatFrame2Tab.Text.__textColor"), "accentText"), "tabs follow accent changes").toBeTruthy();
 });
@@ -150,7 +150,7 @@ it("chat side buttons: module off leaves the game's art; a client without text t
   const bare = loggedIn(UI_ENV + CHAT_BUTTONS_ENV + "TextToSpeechButtonFrame = nil TextToSpeechButton = nil QuickJoinToastButton = nil ChatFrame1.ScrollToBottomButton = nil");
   expect(bare.eval("return __buttonLook(ChatFrameMenuButton, ns.Theme.WHITE)[5]"), "the buttons this client has are still skinned").toBe("NavChat");
 });
-it("chat backdrop: a soft patch behind text and tabs, three strengths, tabs fit their labels, Copy clears the tab row", () => {
+it("chat backdrop: a soft patch behind text and tabs, three strengths, tabs fit their labels, Copy sits in the tab row", () => {
   const addon = loggedIn(UI_ENV);
   // The main window's backdrop: fill alpha, ring piece count, first piece's alpha.
   const look = () => addon.eval("local b = ns.GetModule('Chat').backgrounds[ChatFrame1] return { b.look.fill.alpha, #b.look.ring, b.look.ring[1]:GetAlpha() }");
@@ -161,9 +161,26 @@ it("chat backdrop: a soft patch behind text and tabs, three strengths, tabs fit 
   addon.eval("ns.GetModule('Chat').settings.backdrop = 0.123 ns.GetModule('Chat').Refresh()");
   expect(look()[0], "an unknown saved value falls back to Medium").toBe(0.75);
   expect(addon.eval("return ChatFrame1Tab.Text:GetStringWidth() + 24 == ChatFrame1Tab:GetWidth()"), "a tab is as wide as its label plus padding").toBe(true);
-  expect(addon.eval("local _, _, _, _, y = ns.GetModule('ChatExtras').copyButton:GetPoint() return y == ChatFrame1Tab:GetHeight() + 4"), "the Copy button sits above the tab row").toBe(true);
+  expect(addon.eval("local _, _, _, _, y = ns.GetModule('ChatExtras').copyButton:GetPoint() return y == 4"), "the Copy button sits in the tab row, at its right end").toBe(true);
+  addon.eval("ChatFrame1.ScrollBar = CreateFrame('Frame', nil, ChatFrame1) ns.GetModule('Chat').SkinAll()");
+  expect(addon.eval("return #ns.errors"), "a window with a scroll bar is skinned without errors").toBe(0);
+  expect(addon.eval("return ns.GetModule('Chat').backgrounds[ChatFrame1].back.__points.BOTTOMRIGHT.x"), "the backdrop reaches over the side column").toBe(28);
   const off = loggedIn(UI_ENV, { savedVariables: "VanguardDB.profiles = { Default = { Chat = { background = false } } }" });
   expect(off.eval("return next(ns.GetModule('Chat').backgrounds)"), "background off paints no backdrop").toBe(null);
+});
+it("chat window size: a window left at the old 420 x 140 grows once, Larger and Largest scale the default, a size the player set is kept", () => {
+  const addon = loggedIn(UI_ENV + TIDY_ENV, { savedVariables: "VanguardDB.profiles = { Default = { Chat = { sized = true } } }" });
+  // The chat window's width and height.
+  const size = () => addon.eval("return { ChatFrame1:GetWidth(), ChatFrame1:GetHeight() }");
+  addon.eval("ChatFrame1:SetSize(420, 140) ns.GetModule('Chat').settings.grown = false");
+  addon.fire("PLAYER_ENTERING_WORLD");
+  expect(size(), "the old first size becomes the new default").toEqual([500, 154]);
+  addon.eval("ChatFrame1:SetSize(600, 300)");
+  addon.fire("PLAYER_ENTERING_WORLD");
+  expect(size(), "a size the player set stays").toEqual([600, 300]);
+  addon.eval("ns.GetModule('Chat').settings.windowScale = 1.5 ns.GetModule('Chat').ApplySize()");
+  expect(size(), "Larger is one and a half times the default").toEqual([750, 231]);
+  addon.eval("ns.GetModule('Chat').settings.windowScale = 'x' ns.GetModule('Chat').ApplySize() ChatFrame1 = nil ns.GetModule('Chat').ApplySize()");
 });
 it("chat is a mover: placed once, sized once, kept where the player put it", () => {
   const addon = loggedIn(UI_ENV + TIDY_ENV);
