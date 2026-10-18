@@ -69,9 +69,11 @@ function corner(size, w, line) {
 // `s` counts the pixel diagonals inside the cut; drawn one texel to a screen pixel, so every texel is fully on or off
 // (a hard 45-degree staircase, no blur): "line" is the `w` diagonals along the cut, "fill" everything inside it,
 // "mask" everything inside the line.
-function cut(size, w, kind) {
+// `flipX` and `flipY` draw it for another corner (the client ignores a mask texture's tex coords, so each mask
+// corner is its own image).
+function cut(size, w, kind, flipX, flipY) {
   return fill(image(size, size), (x, y) => {
-    const s = x + y + 1 - size;
+    const s = (flipX ? size - 1 - x : x) + (flipY ? size - 1 - y : y) + 1 - size;
     const inside = clamp01(s + 1);
     const past = clamp01(s - w + 1);
     return [1, 1, 1, kind === "line" ? inside - past : kind === "fill" ? inside : past];
@@ -167,6 +169,9 @@ export const TEXTURES = {
   CornerCutLine: () => cut(8, 1, "line"),
   CornerCutFill: () => cut(8, 1, "fill"),
   CornerCutMask: () => cut(8, 1, "mask"),
+  CornerCutMaskTR: () => cut(8, 1, "mask", true, false),
+  CornerCutMaskBL: () => cut(8, 1, "mask", false, true),
+  CornerCutMaskBR: () => cut(8, 1, "mask", true, true),
 };
 
 // Icons -------------------------------------------------------------------------------------
