@@ -163,6 +163,7 @@ Modules/BossDocks.lua
 Modules/FightHistory.lua
 Modules/FightRecap.lua
 Modules/Meter.lua
+Modules/MeterDetail.lua
 Modules/Rolls.lua
 Modules/CraftQueue.lua
 Modules/MailTools.lua

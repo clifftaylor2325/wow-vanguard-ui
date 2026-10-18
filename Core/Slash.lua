@@ -51,7 +51,7 @@ local HELP = {
   "rolls [clear]        the group's /roll results this session, newest first; clear forgets them",
   "loot [on|off|add|remove|list|clear|focus|roster]   officer loot tools (off until switched on): a soft-reserve list flagged in the roll tracker, and a group roster",
   "fights               your DPS, length and place in each fight this session, newest first",
-  "meter [on|off|dps|hps]   Vanguard's own damage or healing meter: the top lines of the game's damage meter in a Vanguard panel (off until switched on)",
+  "meter [on|off|<kind>|<segment>|reset|report [channel] [lines]]   Vanguard's own meter: the top lines of the game's damage meter in a Vanguard panel (off until switched on); kinds dps hps damage healing taken interrupts dispels deaths, segments this overall previous",
   "recap [say|party|raid|instance|guild]   the last fight's interrupts, dispels, damage taken and deaths from the game's damage meter, in your chat or sent to that channel",
   "vendors [clear]      how many merchants Vanguard remembers (for tooltips and the stock list); clear forgets them",
   "ranks [swap]         spell ranks: bar buttons holding an older rank than you know; swap puts the newest rank there (out of combat). Off until Spell ranks is switched on",
