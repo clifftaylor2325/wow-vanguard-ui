@@ -60,6 +60,7 @@ P.CALLS = {
   undocumented = {
     { "C_LootHistory.GetNumItems" }, { "C_LootHistory.GetItem", 1 },
     { "C_LootHistory.GetPlayerInfo", 1, 1 }, { "C_LootHistory.GetAllEncounterInfos" },
+    { "C_LootHistory.GetLootHistoryTime" },
     { "C_TradeSkillUI.GetAllRecipeIDs" }, { "C_TradeSkillUI.GetRecipeCooldown", 1 },
     { "C_DamageMeter.IsDamageMeterAvailable" },
   },

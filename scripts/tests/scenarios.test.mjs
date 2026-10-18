@@ -4,7 +4,7 @@
 // as the player would, inspect the frames.
 
 import { expect, it } from "vitest";
-import { loggedIn } from "./helpers.mjs";
+import { PLATE_ENV, RAID_ENV, UNITS_ENV, loggedIn } from "./helpers.mjs";
 
 it("targeting a hostile shows the target frame with its health and name, and losing it hides the frame", () => {
   const addon = loggedIn();
@@ -83,4 +83,71 @@ it("every top-level frame of the default layout sits inside a 1920x1080 screen w
     if (a.name < b.name && a.rect.left < b.rect.right && b.rect.left < a.rect.right && a.rect.bottom < b.rect.top && b.rect.bottom < a.rect.top) overlaps.push(`${a.name} x ${b.name}`);
   }
   expect(overlaps, "frames of the default layout do not cover each other").toEqual([]);
+});
+
+// What a leak or a doubled hook would grow: the frames the client holds, the frames running an
+// OnUpdate, the errors Vanguard caught, and the chat lines it said.
+const footprint = (addon) => [...addon.eval("local n = 0 for _ in pairs(__wfgStub.updaters) do n = n + 1 end return { #__wfgStub.frames, n, #ns.errors }"), addon.chat().length];
+
+it("churn: repeated PLAYER_ENTERING_WORLD (queue pops, reloads, zoning) adds no frames, updaters, errors or chat lines", () => {
+  const addon = loggedIn();
+  addon.world.setUnit("target", { name: "Defias Pillager", hp: 640, maxhp: 800, reaction: 2, level: 12 });
+  for (let i = 0; i < 2; i++) addon.fire("PLAYER_ENTERING_WORLD", false, false);
+  addon.advance(5);
+  const before = footprint(addon);
+  for (let i = 0; i < 25; i++) {
+    addon.fire("PLAYER_ENTERING_WORLD", i % 2 === 0, i % 3 === 0);
+    if (i % 5 === 0) addon.advance(2);
+  }
+  expect(footprint(addon), "the same frames, updaters, errors and chat lines after 25 more").toEqual(before);
+  expect(addon.frame("Vanguard_target").visible, "and the frames still answer: the target frame is up").toBe(true);
+});
+
+// TEST-ONLY: raid4..raid40 and nameplate4..nameplate43 come and go together, as a layer change or a boss
+// pull brings and clears them: the units and the plates exist, the client's events say so (a roster update, a
+// health change for each member, a plate added and later removed), then everything is cleared and the roster
+// update fires again.
+const CHURN_LUA = `
+  function __crowd(on)
+    for i = 4, 43 do
+      local unit = "nameplate" .. i
+      __plates[unit] = on and __plateFor(i) or nil
+      __units[unit] = on and __units.target or nil
+      __wfgStub.fire(on and "NAME_PLATE_UNIT_ADDED" or "NAME_PLATE_UNIT_REMOVED", unit)
+    end
+    for i = 4, 40 do __units["raid" .. i] = on and { name = "TEST-ONLY Raider" .. i, hp = 900, maxhp = 1000, power = 0, maxpower = 0, ptype = "RAGE", player = true, class = "WARRIOR" } or nil end
+    __wfgStub.fire("GROUP_ROSTER_UPDATE")
+    for i = 4, 40 do __wfgStub.fire("UNIT_HEALTH", "raid" .. i) end
+  end
+  -- The client keeps its nameplate frames and hands the same one to the next unit, so a plate is made once.
+  __pool = {}
+  function __plateFor(i)
+    if not __pool[i] then
+      local p = CreateFrame("Frame", nil, UIParent)
+      p:SetSize(110, 45)
+      p:SetPoint("CENTER")
+      p.UnitFrame, p.IsForbidden = CreateFrame("Frame", nil, p), function() return false end
+      __pool[i] = p
+    end
+    return __pool[i]
+  end`;
+
+it("churn: 37 raid members and 40 nameplates arriving and vanishing together, again and again, leave no errors or growth", () => {
+  const addon = loggedIn(UNITS_ENV + PLATE_ENV + RAID_ENV + CHURN_LUA);
+  for (let i = 0; i < 2; i++) {
+    addon.eval("__crowd(true)");
+    addon.advance(2);
+    addon.eval("__crowd(false)");
+    addon.advance(2);
+  }
+  const before = footprint(addon);
+  const poolBefore = addon.eval("return #ns.GetModule('Nameplates').pool");
+  for (let round = 0; round < 5; round++) {
+    addon.eval("__crowd(true)");
+    addon.advance(1);
+    addon.eval("__crowd(false)");
+    addon.advance(1);
+  }
+  expect(footprint(addon), "the third and later rounds build no frame or updater, say nothing and catch no error").toEqual(before);
+  expect(addon.eval("return #ns.GetModule('Nameplates').pool"), "plates that come back take their own frame again: the pool stays as it was").toBe(poolBefore);
 });

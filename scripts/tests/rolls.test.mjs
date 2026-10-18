@@ -16,12 +16,15 @@ const panel = (addon) => addon.eval(`local f, lines = Vanguard_Rolls, {}
   end
   return { f:IsShown(), f:GetHeight(), lines }`);
 
-// TEST-ONLY loot history: one item (a link, done or not) with players as { name, rollType, roll, winner } Lua tables.
+// TEST-ONLY loot history as Forever documents it: one encounter with one drop (a link, done or not) and its players as { name, state, roll, winner } Lua tables.
 const lootEnv = (done, players) => `
   C_LootHistory = {
-    GetNumItems = function() return 1 end,
-    GetItem = function() return 1, "|cff0070dd[Boots]|r", ${players.length}, ${done}, 1 end,
-    GetPlayerInfo = function(_, p) local x = ({ ${players.join(", ")} })[p] return x[1], "WARRIOR", x[2], x[3], x[4] end,
+    GetAllEncounterInfos = function() return { { encounterID = 7, startTime = 100 } } end,
+    GetSortedDropsForEncounter = function() return { {
+      lootListKey = 1, itemHyperlink = "|cff0070dd[Boots]|r", startTime = 100, allPassed = false,
+      winner = ${done} and {} or nil,
+      rollInfos = (function() local out = {} for i, x in ipairs({ ${players.join(", ")} }) do out[i] = { playerName = x[1], state = x[2], roll = x[3], isWinner = x[4] } end return out end)(),
+    } } end,
   }`;
 
 it("a roll in chat shows the panel, highest first, with the top roll in the accent", () => {
@@ -101,39 +104,58 @@ it("the panel is off with its switch, and shows again when it is turned back on"
 });
 
 it("loot rolls: each member's choice and roll, the winner in the accent, 'rolling' until it is done", () => {
-  const players = ['{ "Thrall", 1, 88, true }', '{ "Jaina", 2, 40, false }', '{ "Sylvanas", 0, nil, false }'];
+  const players = ['{ "Thrall", 0, 88, true }', '{ "Jaina", 3, 40, false }', '{ "Sylvanas", 5, nil, false }'];
   const addon = loggedIn(ROLL_ENV + lootEnv(false, players));
-  addon.fire("LOOT_HISTORY_FULL_UPDATE");
+  addon.fire("LOOT_HISTORY_UPDATE_DROP", 7, 1);
   const [shown, , lines] = panel(addon);
   expect([shown, lines.map((l) => l.slice(0, 2))], "the item, then each player").toEqual([true, [["|cff0070dd[Boots]|r", "rolling"], ["Thrall", "Need 88"], ["Jaina", "Greed 40"], ["Sylvanas", "Pass"]]]);
   expect([isTok(addon, lines[1][2], "accent"), isTok(addon, lines[2][2], "text2")], "the winner in the accent").toEqual([true, true]);
-  addon.eval("C_LootHistory.GetItem = function() return 1, '|cff0070dd[Boots]|r', 1, true, 1 end");
-  addon.fire("LOOT_HISTORY_ROLL_COMPLETE");
+  addon.eval(lootEnv(true, players));
+  addon.fire("LOOT_HISTORY_UPDATE_ENCOUNTER", 7);
   expect(panel(addon)[2][0].slice(0, 2), "done: no 'rolling'").toEqual(["|cff0070dd[Boots]|r", ""]);
+  addon.fire("LOOT_HISTORY_CLEAR_HISTORY");
+  addon.eval("C_LootHistory.GetAllEncounterInfos = function() return {} end");
+  addon.fire("LOOT_HISTORY_CLEAR_HISTORY");
+  expect(panel(addon)[0], "history cleared: the item is gone").toBe(false);
   expect(addon.eval("return #ns.errors"), "no errors").toBe(0);
 });
 
-it("loot rolls keep the newest 4 items, skip hidden names and links, and sit under the /roll round", () => {
-  const addon = loggedIn(ROLL_ENV + lootEnv(true, ['{ __wfgWorld.secret("Hidden"), 1, 5, false }', '{ "Thrall", 3, 9, true }']));
-  addon.eval(`C_LootHistory.GetNumItems = function() return 6 end
-    local item = C_LootHistory.GetItem
-    C_LootHistory.GetItem = function(i) if i == 6 then return 1, __wfgWorld.secret("link"), 2, true, 1 end return item() end`);
+it("loot rolls keep the newest 4 drops across encounters, skip hidden names and links, and sit under the /roll round", () => {
+  const addon = loggedIn(ROLL_ENV + lootEnv(true, ['{ __wfgWorld.secret("Hidden"), 0, 5, false }', '{ "Thrall", 3, 9, true }']));
+  addon.eval(`local one = C_LootHistory.GetSortedDropsForEncounter
+    local function drops(startTime, link)
+      local list = one()
+      for _, d in ipairs(list) do d.startTime, d.itemHyperlink = startTime, link end
+      return list
+    end
+    C_LootHistory.GetAllEncounterInfos = function() return { { encounterID = 1, startTime = 10 }, { encounterID = 2, startTime = 20 }, "junk" } end
+    C_LootHistory.GetSortedDropsForEncounter = function(id)
+      if id == 1 then return { drops(10, "|cff0070dd[Old]|r")[1], drops(11, "|cff0070dd[Older]|r")[1], drops(12, "|cff0070dd[Oldest]|r")[1], "junk" } end
+      return { drops(20, __wfgWorld.secret("link"))[1], drops(21, "|cff0070dd[Boots]|r")[1] }
+    end`);
   roll(addon, "Jaina", 20);
-  addon.fire("LOOT_HISTORY_ROLL_CHANGED", 6, 1);
-  expect(addon.eval("return #ns.GetModule('Rolls').items"), "4 of the 6").toBe(4);
+  addon.fire("LOOT_HISTORY_UPDATE_ENCOUNTER", 2);
+  expect(addon.eval("return #ns.GetModule('Rolls').items"), "4 of the 5").toBe(4);
   const lines = panel(addon)[2];
-  expect([lines[0][0], lines[1][0], lines[4][0], lines[4][1], lines[5][0]], "the round first, then the items; the hidden link is '?'").toEqual(["Rolls 1-100", "Jaina", "|cff0070dd[Boots]|r", "", "Thrall"]);
+  expect([lines[0][0], lines[1][0], lines[2][0], lines[3][0]], "the round first, then the oldest kept item").toEqual(["Rolls 1-100", "Jaina", "|cff0070dd[Older]|r", "Thrall"]);
+  expect(lines.some((l) => l[0] === "|cff0070dd[Old]|r"), "the fifth newest is dropped").toBe(false);
   expect(lines.some((l) => l[0] === "Hidden"), "a hidden name is skipped").toBe(false);
-  expect(lines.some((l) => l[0] === "?"), "the newest item's hidden link reads '?'").toBe(true);
+  expect(lines.some((l) => l[0] === "?"), "a hidden link reads '?'").toBe(true);
 });
 
-it("a client without the loot history, or with the switch off, leaves loot rolls off with no error", () => {
+it("a client without the loot history, one that errors or hides it, or with the switch off, leaves loot rolls off with no error", () => {
   const without = loggedIn(ROLL_ENV);
-  without.fire("LOOT_HISTORY_FULL_UPDATE");
+  without.fire("LOOT_HISTORY_UPDATE_DROP", 7, 1);
   expect([without.eval("local R = ns.GetModule('Rolls') return { R.HasLoot(), #R.items, #ns.errors }")], "no calls, nothing read").toEqual([[false, 0, 0]]);
-  expect(without.eval("C_LootHistory = { GetNumItems = function() end } return ns.GetModule('Rolls').HasLoot()"), "half an API is none").toBe(false);
-  const off = loggedIn(ROLL_ENV + lootEnv(true, ['{ "Thrall", 1, 9, true }']), { savedVariables: "VanguardDB.profiles = { Default = { Rolls = { loot = false } } }" });
-  off.fire("LOOT_HISTORY_FULL_UPDATE");
+  expect(without.eval("C_LootHistory = { GetAllEncounterInfos = function() end } return ns.GetModule('Rolls').HasLoot()"), "half an API is none").toBe(false);
+  const odd = loggedIn(ROLL_ENV + lootEnv(true, ['{ "Thrall", 0, 9, true }']));
+  odd.eval("C_LootHistory.GetSortedDropsForEncounter = function() error('TEST-ONLY') end");
+  odd.fire("LOOT_HISTORY_UPDATE_DROP", 7, 1);
+  odd.eval("C_LootHistory.GetAllEncounterInfos = function() return __wfgWorld.secret({}) end");
+  odd.fire("LOOT_HISTORY_UPDATE_DROP", 7, 1);
+  expect(odd.eval("return { #ns.GetModule('Rolls').items, #ns.errors }"), "a failing or hidden read is quiet").toEqual([0, 0]);
+  const off = loggedIn(ROLL_ENV + lootEnv(true, ['{ "Thrall", 0, 9, true }']), { savedVariables: "VanguardDB.profiles = { Default = { Rolls = { loot = false } } }" });
+  off.fire("LOOT_HISTORY_UPDATE_DROP", 7, 1);
   expect(off.eval("return #ns.GetModule('Rolls').items"), "loot switched off: not read").toBe(0);
 });
 
