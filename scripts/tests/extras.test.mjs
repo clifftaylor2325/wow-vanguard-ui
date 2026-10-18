@@ -56,7 +56,7 @@ it("party pets and targets: small tiles above the party, only in a party, when s
   expect(addon.eval("return { Vanguard_partypet1.name:GetText(), Vanguard_partypet1.target == nil }"), "the pet's name on its tile, no target line").toEqual(["TEST-ONLY Wolf", true]);
   addon.slash("");
   addon.eval('__click("Unit frames")');
-  expect(addon.eval('return __click("Party pets and targets, above the party (reload)") and VanguardDB.profiles.Default.PartyExtras.show'), "the switch is under Unit frames").toBe(false);
+  expect(addon.eval('return __click("Party pets and targets, above the party") and VanguardDB.profiles.Default.PartyExtras.show'), "the switch is under Unit frames").toBe(false);
 });
 it("/vg factionart: which of the game's own faction pictures the client has", () => {
   const addon = loggedIn(`C_Texture = { GetAtlasInfo = function(name) if name:find("MountJournal") then return { width = 64 } end end }

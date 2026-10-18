@@ -30,7 +30,7 @@ it("group threat: off until switched on", () => {
   const addon = loggedIn(CLICK_LUA);
   expect(addon.eval("return { Vanguard_GroupThreat == nil, ns.GetModule('GroupThreat').panel == nil }"), "nothing is built").toEqual([true, true]);
   addon.eval('ns.Options.Show("unitframes")');
-  addon.eval('__click("Group threat panel: who has the most threat on your target (reload)")');
+  addon.eval('__click("Group threat panel: who has the most threat on your target")');
   expect(addon.eval("return ns.Settings('GroupThreat').show"), "the switch is under Unit frames").toBe(true);
 });
 

@@ -466,6 +466,8 @@ export const SCENES = [
     before: 'UnitFactionGroup = function() return "Horde" end GetRealZoneText = function() return "TEST-ONLY Barrens" end date = function() return "21:04" end UnitXP = function() return 3400 end UnitXPMax = function() return 9800 end UnitLevel = function() return 18 end GetMaxPlayerLevel = function() return 60 end' },
   { name: "vanguard-bars-drag", caption: "Action bars while you drag a spell or item: the empty slots show so there is somewhere to drop it; otherwise they stay hidden (TEST-ONLY icons)", lua: '__wfgStub.fire("ACTIONBAR_SHOWGRID")' },
   { name: "vanguard-options-modules", caption: "Options window: Modules, each with what it does and what it needs", lua: 'ns.Options.Show("modules")' },
+  { name: "vanguard-options-search", caption: "Options window: typing \"scale\" in the search box lists the settings that match, with their pages",
+    lua: 'ns.Options.Show("general") local s = Vanguard_Options.search s:SetText("scale") s:GetScript("OnTextChanged")(s)' },
   { name: "vanguard-options-changed", caption: "Options window: Unit frames with two settings changed; the dot left of each puts its default back", lua: 'ns.Settings("UnitFrames").healthText = false ns.Settings("PowerTicks").energy = false ns.Options.Show("unitframes")' },
   { name: "vanguard-options-profiles", caption: "Options window: Profiles, each with Use, Copy here and Delete (which ask first), and a box for a new one (TEST-ONLY profiles)",
     lua: 'ns.NewProfile("TEST-ONLY Healer") ns.NewProfile("TEST-ONLY Leveling") ns.Options.Show("profiles")' },
