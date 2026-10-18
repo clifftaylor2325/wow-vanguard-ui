@@ -5,7 +5,7 @@
 -- General, Modules, Profiles and Feedback pages, and the page list; the
 -- other pages' rows are in their own files (Core/OptionsFrames.lua,
 -- OptionsBars.lua, OptionsQuests.lua, OptionsBags.lua, OptionsMap.lua,
--- OptionsChat.lua, OptionsGameWindows.lua, OptionsTools.lua, OptionsTown.lua), which add them
+-- OptionsChat.lua, OptionsGameWindows.lua, OptionsCooldowns.lua, OptionsTools.lua, OptionsTown.lua), which add them
 -- with O.AddPage. A new setting goes in its area's file.
 
 local ADDON, ns = ...
@@ -441,6 +441,7 @@ local PAGES = {
   { key = "map" },
   { key = "chat" },
   { key = "windows" },
+  { key = "cooldowns" },
   { key = "tools" },
   { key = "town" },
   { key = "profiles", title = "Profiles", icon = "NavProfiles", order = 90, rows = profileRows },

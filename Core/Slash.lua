@@ -18,6 +18,7 @@ local HELP = {
   "framebuffer [on|off] windows drawn through a frame buffer while they open and close (a test; off by default)",
   "nineslice [on|off]   shadows and glows as one nine-slice texture each, after a reload (a test; off by default)",
   "icons [on|off]       menu strip icons drawn at their on-screen size, after a /reload (off by default)",
+  "cooldowns [setup]    the Cooldowns page (the game's Cooldown Manager, the gaps row, the buff glow); setup opens the step-by-step wizard",
   "cdmglow [on|off|<percent>]  glow a Cooldown Manager buff icon in its last part, 10 to 60 percent (off by default)",
   "ornaments [on|off]   a brass rule or corner brackets on the options window, setup and quest log (off by default)",
   "variant [default|contrast|vellum|classic|midnight|obsidian|moss|ember]  surfaces and text: Slate and brass, High contrast, Vellum and ink, Classic look, Midnight, Obsidian, Moss, Ash and ember",
@@ -70,7 +71,7 @@ local HELP = {
   "errors [clear]       opens the errors Vanguard caught this session, with stacks and counts, in the copy window (for a bug report); clear empties the list",
   "report               one block to copy for a bug report: what /vg status and /vg errors say, ready to paste at vanguardui.com/feedback",
   "feedback [bug|feature]   a bug report or feature request written here: the questions vanguardui.com/feedback asks, then one block to paste there (it fills the form)",
-  "gaps [add <item>|remove <item>|spell add <spell>|spell remove <spell>|clear]   Cooldown gaps (switch it on under Combat tools): choose items such as a Healthstone or potion, and spells, to show beside trinkets, pet abilities and totems; no verb lists them",
+  "gaps [add <item>|remove <item>|spell add <spell>|spell remove <spell>|clear]   Cooldown gaps (switch it on under Cooldowns): choose items such as a Healthstone or potion, and spells, to show beside trinkets, pet abilities and totems; no verb lists them",
   "perf [cpu|watch]     Vanguard's CPU and memory now; cpu turns the game's CPU profiling on or off (reload); watch prints them every minute",
   "mem                  watches Vanguard's memory for a minute (out of combat), then says how much it grew and whether it kept any; again ends it early",
 }
@@ -193,6 +194,12 @@ local function cdmGlowCommand(rest)
   CG.settings.glow = percent ~= nil or rest == "on" or (rest == "" and not CG.settings.glow)
   CG.Apply()
   chat(CG.settings.glow and ("Cooldown Manager glow on: under " .. CG.settings.percent .. " percent left.") or "Cooldown Manager glow off.")
+end
+
+-- /vg cooldowns [setup]: the Cooldowns options page, or its setup wizard.
+local function cooldownsCommand(rest)
+  if rest == "setup" then return ns.Options.CooldownWizard.Open() end
+  ns.Options.Show("cooldowns")
 end
 
 -- /vg gradient [on|off]: floating windows' fills a shade lighter toward the top, at once (#259).
@@ -664,6 +671,7 @@ local COMMANDS = {
   legacy = function(rest) ns.GetModule("Legacy").Command(rest) end,
   watch = function(rest) ns.GetModule("ChatWatch").Command(rest) end,
   gaps = function(rest) ns.GetModule("CooldownGaps").Command(rest) end,
+  cooldowns = cooldownsCommand,
   lfg = function(rest) ns.GetModule("GroupBoard").Command(rest) end,
   questdata = function(rest) ns.QuestGuide.Command(rest) end,
   guide = function(rest) ns.GuideData.Command(rest) end,
