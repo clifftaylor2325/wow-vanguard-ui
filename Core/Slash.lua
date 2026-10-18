@@ -73,7 +73,7 @@ local HELP = {
   "preview [party|10|25|40|off]   the raid frames filled with sample players, to check them without a group (not saved)",
   "binds                this spec's click-casting and hover-key bindings (set them in /vg > Click casting)",
   "keybind              keybind mode: hover an action button and press a key, a side mouse button or the wheel to bind it; Backspace clears, Escape leaves",
-  "status               version, profile, modules, skins, work waiting on combat, what the client has",
+  "status               version, profile, modules, skins, work waiting on combat, what the client has, game restrictions",
   "factionart           which of the game's own faction pictures this client has",
   "realm                your realm, ruleset and side as the client gives them, and the key your prices, sales and characters are kept under",
   "frame <name> [deep]  what the client says about a frame now: shown, alpha, scale, size, its rect (or none), anchors and its parents; deep adds its textures and child frames (for a frame that draws empty)",
@@ -494,12 +494,19 @@ local function modulesOn()
   return enabled
 end
 
+-- The restrictions line: the add-on restrictions the client has on right now, or "none".
+local function restrictionLine()
+  local active = ns.ActiveRestrictions()
+  return "Game restrictions: " .. (#active > 0 and table.concat(active, ", ") or "none")
+end
+
 -- /vg status
 local function statusCommand()
   chat(string.format("Vanguard %s  ·  profile %s  ·  %d/%d modules on", version(), ns.ProfileName(), modulesOn(), #ns.ModuleNames()))
   chat(string.format("%d skinned addon(s)  ·  %d painted frame(s)  ·  %d change(s) waiting on combat", #ns.SkinList(), T.PaintedCount(), ns.QueuedCount()))
   chat(clientLine())
   chat(ns.Client.Line())
+  chat(restrictionLine())
   chat(textLine())
 end
 
@@ -579,7 +586,7 @@ end
 local function reportHead()
   return { "### Vanguard report v1 ###",
     string.format("Vanguard %s  ·  interface %s  ·  profile %s  ·  %d/%d modules on", version(), interfaceText(), ns.ProfileName(), modulesOn(), #ns.ModuleNames()),
-    clientLine(), ns.Client.Line(), textLine(), screenLine(), "Modules off: " .. modulesOff(), "Skins: " .. skinsText(),
+    clientLine(), ns.Client.Line(), restrictionLine(), textLine(), screenLine(), "Modules off: " .. modulesOff(), "Skins: " .. skinsText(),
     string.format("Errors: %d (%d in all)", #ns.errors, occurrences()) }
 end
 
