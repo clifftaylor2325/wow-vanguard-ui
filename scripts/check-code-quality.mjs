@@ -18,6 +18,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { spawnSync } from "node:child_process";
 import { REPORT_RULES, checkSource, compareToBaseline, reportSource, sourceFiles as listSources } from "./lib/code-quality.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -69,7 +70,26 @@ function ratchet(counts, baseline) {
   return rows.filter((r) => r.status === "above");
 }
 
+// The files Vanguard.toc loads (Lua only), as repo-relative paths.
+function tocLuaFiles() {
+  const lines = fs.readFileSync(path.join(root, "Vanguard.toc"), "utf8").split(/\r?\n/);
+  return lines.map((l) => l.trim()).filter((l) => l.endsWith(".lua"));
+}
+
+// Compiles each TOC file with the real Lua 5.1 compiler when it is installed (the harness parses
+// Lua 5.3, so only luac5.1 sees every error); prints what failed, or a note when luac5.1 is missing.
+function luacProblems() {
+  if (spawnSync("luac5.1", ["-v"]).error) {
+    console.log("luac5.1 not installed: only the token rule judges Lua 5.1 syntax (apt-get install lua5.1)");
+    return 0;
+  }
+  const bad = tocLuaFiles().filter((f) => spawnSync("luac5.1", ["-p", f], { cwd: root, stdio: "inherit" }).status !== 0);
+  console.log(bad.length ? `\n${bad.length} file(s) do not compile under Lua 5.1.` : "OK  every file the TOC loads compiles under luac5.1");
+  return bad.length;
+}
+
 const total = report(process.argv.includes("--summary"));
 console.log(total ? `\n${total} code-quality problem(s).` : "OK  every function is documented and at most 10 lines; colors and text sizes come from the theme; hooks, clicks and timers run under ns.Guard");
 const risen = ratchet(reportOnlyCounts(process.argv.includes("--report")), JSON.parse(fs.readFileSync(path.join(root, BASELINE), "utf8")));
-process.exit(total || risen.length ? 1 : 0);
+const luac = luacProblems();
+process.exit(total || luac || risen.length ? 1 : 0);
