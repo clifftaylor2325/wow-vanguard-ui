@@ -40,7 +40,7 @@ it("chat filter: off until switched on; on makes the Filtered tab and catches go
   expect(deliver(addon, "anyone selling linen cloth?", "Buyer"), "gold words alone do not trip it").toBe(false);
   const lines = tab(addon);
   expect(lines.length, "three lines in the tab").toBe(3);
-  expect(lines[0], "why, the sender as a link, the text").toBe(`(Gold selling) |Haddon:Vanguard:allow:Goldy|h[Goldy]|h: ${GOLD}`);
+  expect(lines[0], "why, the sender as a link, the text").toBe(`(Gold selling) |Haddon:Vanguard:allow:Goldy|h[Goldy]|h: ${GOLD}|r`);
   addon.update(0.1);
   expect(tabName(addon), "the tab counts them").toBe("Filtered (3)");
   expect(addon.eval("return #ns.errors"), "no errors").toBe(0);
@@ -73,11 +73,12 @@ it("chat filter: your own words, and the same line from one sender within a minu
   expect(addon.eval("return ns.Settings('ChatFilter').keywords"), "stored lower-case").toEqual(["chuck norris"]);
   expect(deliver(addon, "Chuck NORRIS facts in /2", "Joker"), "any case").toBe(true);
   expect(tab(addon)[0].startsWith("(Your word)"), "named as your word").toBe(true);
-  expect([deliver(addon, "LFM ZF", "Lightmend"), deliver(addon, "LFM ZF", "Lightmend"), deliver(addon, "LFM ZF", "Other")], "the first passes, the repeat is caught, another sender passes").toEqual([false, true, false]);
+  expect([deliver(addon, "LFM Zul'Farrak need a healer", "Lightmend"), deliver(addon, "LFM Zul'Farrak need a healer", "Lightmend"), deliver(addon, "LFM Zul'Farrak need a healer", "Other")], "the first passes, the repeat is caught, another sender passes").toEqual([false, true, false]);
   addon.advance(61);
-  expect(deliver(addon, "LFM ZF", "Lightmend"), "a minute later it passes again").toBe(false);
+  expect(deliver(addon, "LFM Zul'Farrak need a healer", "Lightmend"), "a minute later it passes again").toBe(false);
   addon.eval("ns.Settings('ChatFilter').repeats = false");
-  expect([deliver(addon, "LFM BRD", "A"), deliver(addon, "LFM BRD", "A")], "repeats switched off").toEqual([false, false]);
+  expect([deliver(addon, "LFM Blackrock Depths now", "A"), deliver(addon, "LFM Blackrock Depths now", "A")], "repeats switched off").toEqual([false, false]);
+  expect([deliver(addon, "inv", "Short"), deliver(addon, "inv", "Short")], "a very short line is never a repeat").toEqual([false, false]);
   addon.eval("ns.Settings('ChatFilter').gold = false");
   expect(deliver(addon, GOLD, "Goldy"), "a category switched off").toBe(false);
 });
@@ -172,10 +173,37 @@ it("chat filter: lines older than a minute are forgotten once 200 are held, so a
   const addon = filtering();
   // The lines held: [entries in the list, the count kept].
   const held = () => addon.eval("local n = 0 for _ in pairs(ns.GetModule('ChatFilter').recent) do n = n + 1 end return { n, ns.GetModule('ChatFilter').recentCount }");
-  for (let i = 1; i <= 200; i++) deliver(addon, "LFM run", `Sender${i}`);
+  for (let i = 1; i <= 200; i++) deliver(addon, "LFM Stratholme live run", `Sender${i}`);
   expect(held(), "200 senders inside a minute: all held").toEqual([200, 200]);
+  deliver(addon, "LFM Stratholme live run", "Over200");
+  expect(held(), "a full list that has nothing stale starts over").toEqual([1, 1]);
+  for (let i = 1; i <= 199; i++) deliver(addon, "LFM Stratholme live run", `More${i}`);
   addon.update(61);
-  deliver(addon, "LFM run", "Fresh1");
-  deliver(addon, "LFM run", "Fresh2");
+  deliver(addon, "LFM Stratholme live run", "Fresh1");
+  deliver(addon, "LFM Stratholme live run", "Fresh2");
   expect(held(), "past 200, the stale ones are swept; the fresh ones stay").toEqual([2, 2]);
+});
+
+it("chat filter: a line without an ID is judged once across windows, hide mode counts, a closed tab is made again, the module off lets all through", () => {
+  const addon = filtering();
+  // Asks the filter twice for one line with no line ID, as two chat windows would.
+  const twice = (text) => addon.eval(`local CF = ns.GetModule("ChatFilter") return { CF.Filter(nil, "e", "${text}", "Same Sender"), CF.Filter(nil, "e", "${text}", "Same Sender") }`);
+  expect(twice("LFM Scholomance tonight"), "no repeat verdict from the second window").toEqual([false, false]);
+  expect(twice(GOLD), "the same verdict for both").toEqual([true, true]);
+  expect(tab(addon).length, "one line in the tab").toBe(1);
+  expect(deliver(addon, "|Haddon:Vanguard:allow:Victim|h[Victim]|h www.gold.com gold |cffff0000red", "Evil"), "caught").toBe(true);
+  expect(tab(addon)[1].includes("|Haddon:Vanguard:allow:Victim") || !tab(addon)[1].endsWith("|r"), "a spammer's own addon link is neutralised and the colour closed").toBe(false);
+  addon.eval("__wfgWorld.chatWindows[3] = nil");
+  deliver(addon, GOLD, "Goldy2");
+  addon.eval("__wfgStub.inCombat = false");
+  expect(addon.eval("return ns.GetModule('ChatFilter').window:GetName()"), "the closed tab is made again").toBe("ChatFrame4");
+  addon.slash("filter hide");
+  deliver(addon, GOLD, "Goldy3");
+  expect(addon.eval("return ns.GetModule('ChatFilter').count"), "a hidden line is counted").toBe(4);
+  addon.slash("filter add [Bo|ost]");
+  expect(addon.eval("return ns.Settings('ChatFilter').keywords"), "brackets and bars are not kept in a word").toEqual(["boost"]);
+  addon.eval("ns.GetModule('ChatFilter').Disable()");
+  expect(deliver(addon, GOLD, "Goldy4"), "module off: everything passes").toBe(false);
+  addon.eval("ns.GetModule('ChatFilter').Enable(ns.Settings('ChatFilter'))");
+  expect(deliver(addon, GOLD, "Goldy5"), "and on again, with one filter registered").toBe(true);
 });

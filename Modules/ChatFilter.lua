@@ -16,8 +16,9 @@ local CF = ns.Module("ChatFilter", {
 
 -- At most this many keywords, each at most this many characters.
 CF.MAX_KEYWORDS, CF.MAX_LENGTH = 30, 40
--- How long (seconds) an exact repeat from one sender is filtered, and how many lines are remembered.
-CF.REPEAT, CF.MAX_RECENT = 60, 200
+-- How long (seconds) an exact repeat from one sender is filtered, how many lines are remembered,
+-- and the least length of a line (as plain text) that counts as a repeat ("inv", "+1" never do).
+CF.REPEAT, CF.MAX_RECENT, CF.MIN_REPEAT = 60, 200, 12
 -- The tab's name in the game's chat settings.
 CF.TAB = "Filtered"
 -- The chat events that are filtered.
@@ -31,11 +32,11 @@ CF.CATEGORIES = {
     { "gold", "coins" },
     { "www.", ".com", ".net", ".gg", "http", "paypal", "usd", "discord", "$" } } },
   { key = "boosting", label = "Boosting", groups = {
-    { "boost", "carry service", "power level", "powerlevel" },
+    { "boost", "power level", "powerlevel" },
     { "wts", "selling", "service", "cheap", "price", "discount", "gold", "usd", "$", "pm me", "whisper me" } } },
   { key = "recruiting", label = "Recruiting", groups = {
-    { "recruiting", "looking for new members", "accepting applications", "join our guild", "join us" },
-    { "guild", "raid team", "<", "casual", "social", "community" } } },
+    { "recruiting", "looking for new members", "accepting applications", "join our guild" },
+    { "guild", "raid team", "casual", "social", "community" } } },
 }
 
 -- This session's state: the senders let through, the last line judged, who said what lately.
@@ -79,6 +80,7 @@ local function sweepRecent(now)
   for key, at in pairs(CF.recent) do
     if now - at >= CF.REPEAT then CF.recent[key] = nil else CF.recentCount = CF.recentCount + 1 end
   end
+  if CF.recentCount >= CF.MAX_RECENT then CF.recent, CF.recentCount = {}, 0 end
 end
 
 -- True when this sender said this line in the last CF.REPEAT seconds (noted either way).
@@ -96,7 +98,7 @@ function CF.Reason(text, sender, now)
   local line = plain(text)
   local why = CF.Category(line)
   if not why and holdsAny(line, CF.settings.keywords) then why = "Your word" end
-  if not why and CF.settings.repeats and repeated(sender, line, now) then why = "Repeat" end
+  if not why and CF.settings.repeats and #line >= CF.MIN_REPEAT and repeated(sender, line, now) then why = "Repeat" end
   return why
 end
 
@@ -137,29 +139,40 @@ end
 function CF.Send(why, sender, text)
   CF.count = CF.count + 1
   ns.Soon("chatfilter tab", CF.UpdateTab)
-  CF.window:AddMessage(string.format("(%s) |H%s%s|h[%s]|h: %s", why, PREFIX, sender, ns.Home.Display(sender), text))
+  text = text:gsub("|Haddon:", "|H")
+  CF.window:AddMessage(string.format("(%s) |H%s%s|h[%s]|h: %s|r", why, PREFIX, sender, ns.Home.Display(sender), text))
 end
 
 -- The game's filter ---------------------------------------------------------------------------
 
--- Whether a caught line can go anywhere: hidden, or to a Filtered tab that exists.
+-- Whether a caught line can go anywhere: hidden, or to a Filtered tab that is still there (a closed
+-- one is let go and made again when the fight is over).
 local function canCatch()
+  if CF.window and CF.FindWindow() ~= CF.window then CF.window = nil CF.Prepare() end
   return CF.settings.mode == "hide" or CF.window ~= nil
 end
 
--- Judges one line (once per line ID: the game asks once per chat window). True to keep it out of the chat.
+-- Catches a line: sent to the Filtered tab, or just counted when hidden.
+local function catch(why, sender, text)
+  if CF.settings.mode == "tab" then return CF.Send(why, sender, text) end
+  CF.count = CF.count + 1
+end
+
+-- Judges one line (once per line ID, or per sender and text without one: the game asks once per chat
+-- window). True to keep it out of the chat.
 function CF.Judge(text, sender, lineID)
-  if lineID and lineID == CF.lastID then return CF.lastVerdict end
+  local id = lineID or (sender .. "\1" .. text)
+  if id == CF.lastID then return CF.lastVerdict end
   local why = not (CF.allowed[sender] or ns.Home.IsMe(sender)) and canCatch() and CF.Reason(text, sender, GetTime()) or nil
-  if why and CF.settings.mode == "tab" then CF.Send(why, sender, text) end
-  CF.lastID, CF.lastVerdict = lineID, why ~= nil
+  if why then catch(why, sender, text) end
+  CF.lastID, CF.lastVerdict = id, why ~= nil
   return CF.lastVerdict
 end
 
 -- The chat filter (ChatFrame_AddMessageEventFilter): true keeps the line out of the window it was asked for.
 -- A hidden (or missing) text or sender passes before anything reads it.
 function CF.Filter(_, _, text, sender, ...)
-  if not CF.settings.on or ns.IsSecret(text) or ns.IsSecret(sender) or type(text) ~= "string" or type(sender) ~= "string" then return false end
+  if not (CF.active and CF.settings.on) or ns.IsSecret(text) or ns.IsSecret(sender) or type(text) ~= "string" or type(sender) ~= "string" then return false end
   return CF.Judge(text, sender, ns.PlainNumber((select(9, ...)))) == true
 end
 
@@ -190,7 +203,7 @@ end
 
 -- A keyword as typed: trimmed and lower-cased.
 local function clean(text)
-  return (type(text) == "string" and text or ""):match("^%s*(.-)%s*$"):lower()
+  return ((type(text) == "string" and text or ""):gsub("[%[%]|]", ""):match("^%s*(.-)%s*$")):lower()
 end
 
 -- Adds a keyword; says in chat what happened. True when added.
@@ -262,9 +275,16 @@ function CF.Changed()
   if CF.settings then CF.Prepare() end
 end
 
+-- Module switched off: the filter lets everything through (it stays registered with the game until a reload).
+function CF.Disable()
+  CF.active = false
+end
+
 -- Module entry point (Core/Modules.lua).
 function CF.Enable(settings)
-  CF.settings = settings
+  CF.settings, CF.active = settings, true
+  if CF.registered then return CF.Prepare() end
+  CF.registered = true
   for _, event in ipairs(CF.EVENTS) do ChatFrame_AddMessageEventFilter(event, CF.Filter) end
   local registry = _G.EventRegistry
   if type(registry) == "table" and type(registry.RegisterCallback) == "function" then registry:RegisterCallback("SetItemRef", CF.OnLink, CF) end
