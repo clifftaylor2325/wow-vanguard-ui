@@ -59,7 +59,7 @@ end
 -- The page keys the options had before they were split, and where their rows went first.
 local OLD_PAGES = { more = "bars" }
 
--- Opens the options window on a page (its key, as /vg search shows them: general, modules, raid,
+-- Opens the options window on a page (its key, as the options window's page list names them: general, modules, raid,
 -- profiles, ...; the old "more" opens "bars"), scrolled to the first row whose caption holds `setting` (optional). Returns true,
 -- or false for a page that doesn't exist.
 function Vanguard.OpenOptions(page, setting)

@@ -4,6 +4,8 @@
 
 > **Formerly ForeverUI.** Renamed in 0.4.0 because another, unrelated addon called ForeverUI is published on CurseForge and Wago, and two addons with the same folder name overwrite each other. The slash commands are now `/vg` and `/vanguard`. Settings don't carry over by themselves (the saved-settings file is named after the addon): before updating, type `/fui export` in game and keep the string; after updating, `/vg import` it (old ForeverUI strings import fine). Then delete the old `Interface/AddOns/ForeverUI` folder.
 
+> **Not yet checked in the game.** Most of what follows is written from the code and the headless test harness; [docs/CHANGELOG.md](docs/CHANGELOG.md) and [docs/SMOKE-TEST.md](docs/SMOKE-TEST.md) say what has been seen working in the client.
+
 A from-scratch UI suite for WoW Forever (the 12.1 engine with vanilla content; the TOC declares Interface 16001 for Forever, 120105 for the 12.1.5 client and 120007).
 Written from scratch. It contains no code, art or fonts from other UI addons. It bundles three small shared libraries, unmodified, in `Libs/`: LibStub, CallbackHandler-1.0 and LibSharedMedia-3.0, which addons use to share fonts and bar textures (see Credits).
 

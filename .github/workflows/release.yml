@@ -11,7 +11,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   version:
@@ -48,6 +48,10 @@ jobs:
     name: Publish
     needs: [version, suite]
     runs-on: ubuntu-latest
+    # Only this job creates the GitHub release; the others (including the store upload that holds
+    # the CurseForge and Wago keys) stay read-only.
+    permissions:
+      contents: write
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
