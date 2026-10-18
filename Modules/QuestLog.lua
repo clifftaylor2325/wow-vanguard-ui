@@ -1,7 +1,8 @@
 -- Vanguard's quest log: a window with your quests by zone on the left
 -- ("[12] Title" in its difficulty color, a check when ready to turn in) and
 -- the chosen quest on the right: its text, objectives and rewards, with
--- Track, Share, Abandon (through the game's own confirmation) and Map.
+-- Track, Share, Abandon (through the game's own confirmation; Ctrl-click marks
+-- several quests to abandon at once after one question) and Map.
 -- The game's quest log key and micro button open it (and /vg quests); the
 -- tracker's titles open it on that quest.
 
@@ -10,6 +11,8 @@ local ADDON, ns = ...
 local QL = ns.Module("QuestLog", { defaults = { own = true } })
 
 QL.collapsed = {}
+-- Quests marked with Ctrl-click for Abandon (id -> true).
+QL.marked = {}
 
 -- Calls a C_QuestLog function by name, if this client has it.
 local function questLog(name, ...)
@@ -124,11 +127,47 @@ function QL.Share(d)
   call(QuestLogPushQuest)
 end
 
--- Abandons the chosen quest, through the game's own confirmation.
+-- Abandons the chosen quest, through the game's own confirmation; with quests marked (Ctrl-click a
+-- quest in the list), abandons the marked ones after one question of Vanguard's.
 function QL.Abandon(d)
+  if QL.MarkedCount() > 0 then return QL.AbandonMarked() end
   questLog("SetSelectedQuest", d.id)
   questLog("SetAbandonQuest")
   call(StaticPopup_Show, "ABANDON_QUEST", ns.QuestParts.Plain(d.title))
+end
+
+-- The marked quests still in your log, as { id, title } in log order.
+function QL.MarkedQuests()
+  local out = {}
+  for _, e in ipairs(QL.Entries()) do
+    if e.id and QL.marked[e.id] then out[#out + 1] = e end
+  end
+  return out
+end
+
+-- How many quests are marked.
+function QL.MarkedCount()
+  return #QL.MarkedQuests()
+end
+
+-- Abandons each quest of the list (the question was the confirmation), then clears the marks.
+local function abandonAll(list)
+  for _, e in ipairs(list) do
+    questLog("SetSelectedQuest", e.id)
+    questLog("SetAbandonQuest")
+    questLog("AbandonQuest")
+  end
+  QL.marked = {}
+  ns.Chat(string.format("Abandoned %d quest(s).", #list))
+  QL.Refresh()
+end
+
+-- Asks, naming the marked quests, then abandons them all.
+function QL.AbandonMarked()
+  local list, names = QL.MarkedQuests(), {}
+  for i, e in ipairs(list) do names[i] = ns.QuestParts.Plain(e.title) end
+  if #list == 0 then return end
+  ns.Ask(string.format("Abandon %d quest(s)?\n%s", #list, table.concat(names, "\n")), "Abandon", function() abandonAll(list) end, nil, "danger")
 end
 
 -- Shows the chosen quest on the game's map.
