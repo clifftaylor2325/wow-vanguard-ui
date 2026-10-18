@@ -70,6 +70,17 @@ it("raid frames", () => {
   expect(addon.eval("local out = {} for _, m in ipairs(ns.MoverList()) do out[m.key] = true end return out.raid") === true, "the raid frames are movable").toBeTruthy();
 });
 
+it("raid role mark: a hidden role shows no mark, no role call or NONE shows none, a healer gets the cross", () => {
+  const addon = loggedIn(UNITS_ENV + RAID_ENV);
+  // The role mark RaidFrames gives raid1 after setup: [there is an icon, its color].
+  const mark = (setup) => addon.eval(`local RF = ns.GetModule("RaidFrames") ${setup} local icon, color = RF.RoleMark("raid1") return { icon ~= nil, color }`);
+  expect(mark('UnitGroupRolesAssigned = function() return __wfgWorld.secret() end'), "a hidden role: no mark").toEqual([false]);
+  expect(mark('UnitGroupRolesAssigned = nil'), "a client without the call: no mark").toEqual([false]);
+  expect(mark('UnitGroupRolesAssigned = function() return "NONE" end'), "no role: no mark").toEqual([false]);
+  expect(mark('UnitGroupRolesAssigned = function() return "HEALER" end'), "a healer: the cross, in the plain text color").toEqual([true, "text2"]);
+  expect(addon.eval("return #ns.errors"), "nothing errors").toBe(0);
+});
+
 it("raid frames: a dark style chosen before 'look' carries over", () => {
   const sv = 'VanguardDB = { profiles = { Default = { RaidFrames = { style = "dark" } } }, chars = {} }';
   const addon = loggedIn(UNITS_ENV + RAID_ENV, { savedVariables: sv });
