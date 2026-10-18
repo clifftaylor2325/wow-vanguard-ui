@@ -212,6 +212,18 @@ it("a table's status line is small text2 while it reports (searching, none up), 
   addon.fire("COMMODITY_SEARCH_RESULTS_UPDATED", 10940);
   expect(statusOf(addon, `${VIEW}.table`), "and its answer: none up, a status").toEqual(["none up", small, "text2"]);
 });
+it("the house closing in a fight still clears the scan, the sell card and this visit's lists (state only, no protected work)", () => {
+  const addon = atAuctionHouse("__wfgWorld.ah.replicate = { { itemID = 2589, count = 5, buyoutPrice = 500 } }");
+  addon.eval(`${HELPER}.StartScan()`);
+  addon.fire("REPLICATE_ITEM_LIST_UPDATE");
+  addon.eval(`${HELPER}.deals, ${HELPER}.view, ${HELPER}.upgrades, ${HELPER}.sell = { 1 }, {}, { 1 }, {}`);
+  expect(addon.eval(`return { ${HELPER}.open, ${HELPER}.scan ~= nil, ${HELPER}.walker:IsShown() }`), "scanning, house open").toEqual([true, true, true]);
+  setCombat(addon, true);
+  addon.fire("AUCTION_HOUSE_CLOSED");
+  expect(addon.eval(`return { ${HELPER}.open, ${HELPER}.scan == nil, ${HELPER}.walker:IsShown(), ${HELPER}.sell == nil, #${HELPER}.deals, ${HELPER}.view == nil, #${HELPER}.upgrades }`),
+    "closed in combat: the state is gone, the walker stopped").toEqual([false, true, false, true, 0, true, 0]);
+  expect(addon.eval("return #ns.errors"), "no errors").toBe(0);
+});
 it("Search list needs entries; closing the auction house drops the searches waiting", () => {
   const addon = atAuctionHouse();
   addon.click(`${HELPER}.shopCard.search`);
