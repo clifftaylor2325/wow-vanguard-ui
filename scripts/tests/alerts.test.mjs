@@ -299,3 +299,65 @@ it("the game's tools: one hint when the Cooldown Manager is off", () => {
     hints(env("false"), "VanguardDB.profiles = { Default = { GameTools = { cooldowns = false } } }")],
   "not when it's on, not available yet, the client can't say, or Vanguard leaves it alone").toEqual([false, false, false, false, false]);
 });
+// The low-health vignette: whether it is shown, its texture and the color the client gave it (alpha last).
+const vignette = (addon) => addon.eval(`local f = Vanguard_LowHealthVignette
+  if not f then return nil end
+  local r, g, b, a = f.edge:GetVertexColor()
+  return { shown = f:IsShown(), texture = f.edge.__texture, a = a, r = r, g = g, b = b }`);
+const VIGNETTE_ON = { savedVariables: "VanguardDB.profiles = { Default = { GameAlerts = { vignette = true } } }" };
+// The player at hp of 100 health.
+const health = (addon, hp) => addon.world.setUnit("player", { hp, maxhp: 100 });
+it("low-health vignette: off until switched on, then it tints the screen edge more as health drops", () => {
+  const off = loggedIn("");
+  health(off, 10);
+  expect(vignette(off), "off by default: nothing is made").toBeNull();
+  const addon = loggedIn("", VIGNETTE_ON);
+  health(addon, 100);
+  const full = vignette(addon);
+  expect([full.shown, full.a, /Media\\Textures\\Vignette$/.test(full.texture)], "full health: shown but clear, the edge texture").toEqual([true, 0, true]);
+  expect([full.r, full.g, full.b], "in the theme's vignette color").toEqual(addon.eval('return { ns.Theme.RGB("vignette") }').slice(0, 3));
+  const alphas = [80, 40, 10].map((hp) => { health(addon, hp); return vignette(addon).a; });
+  expect(alphas[0], "above half health: none").toBe(0);
+  expect(alphas[1] > 0 && alphas[1] < alphas[2], "it strengthens as health drops").toBe(true);
+  health(addon, 100);
+  expect(vignette(addon).a, "and goes when you are healed").toBe(0);
+});
+it("low-health vignette: hidden while dead, gone with the switch, and the switch is on the Combat tools page", () => {
+  const addon = loggedIn(CLICK_LUA, VIGNETTE_ON);
+  health(addon, 10);
+  expect(vignette(addon).shown, "shown at low health").toBe(true);
+  addon.eval("__wfgWorld.units.player.dead = true");
+  addon.fire("PLAYER_DEAD");
+  expect(vignette(addon).shown, "not over the release screen").toBe(false);
+  addon.eval("__wfgWorld.units.player.dead = false");
+  addon.fire("PLAYER_ALIVE");
+  expect(vignette(addon).shown, "back when you rise").toBe(true);
+  addon.slash("");
+  addon.eval('ns.Options.Show("tools")');
+  expect(addon.eval('return __click("Low health: a soft tint")'), "the switch is under Combat tools").toBe(true);
+  expect(vignette(addon).shown, "switched off at once").toBe(false);
+  expect(addon.eval('return __click("Low health: a soft tint")') && vignette(addon).shown, "and on again at once").toBe(true);
+});
+it("low-health vignette: in a fight with hidden health the client's curve gets it; no error, and no animation", () => {
+  const addon = loggedIn("", VIGNETTE_ON);
+  setCombat(addon, true);
+  addon.eval("__wfgWorld.units.player.hp = __wfgWorld.secret(10)");
+  addon.fire("UNIT_HEALTH", "player");
+  expect(addon.eval(`local f = Vanguard_LowHealthVignette
+    local _, _, _, a = f.edge:GetVertexColor()
+    return { f:IsShown(), issecretvalue(a), f.__animations == nil }`), "shown with a hidden strength, handed to the texture as it is, no animation group").toEqual([true, true, true]);
+  setCombat(addon, false);
+});
+it("low-health vignette: a client without curves or the health percent shows nothing, without an error", () => {
+  const noCurves = loggedIn("C_CurveUtil = nil", VIGNETTE_ON);
+  health(noCurves, 10);
+  expect(vignette(noCurves), "no curves: nothing made").toBeNull();
+  const noPercent = loggedIn("UnitHealthPercent = nil", VIGNETTE_ON);
+  health(noPercent, 10);
+  expect(vignette(noPercent), "no health percent: nothing made").toBeNull();
+  const failing = loggedIn("", VIGNETTE_ON);
+  health(failing, 10);
+  failing.eval("UnitHealthPercent = function() error('TEST-ONLY') end");
+  failing.fire("UNIT_HEALTH", "player");
+  expect(vignette(failing).shown, "a call that errors counts as nothing to show").toBe(false);
+});

@@ -97,6 +97,8 @@ local TOKENS = {
   -- State (kept apart from the accent), off the red-green axis (#235, after Okabe-Ito): a bluish
   -- green, an amber and a vermilion, each with a glyph where it stands alone (T.STATE_GLYPHS).
   good = "3fbf9a", warn = "f0b43c", bad = "e8663f", info = "5aa2f0", unknown = "808080",
+  -- The low-health screen-edge vignette (its strength comes from the health curve): a vermilion, off the red-green axis.
+  vignette = "d8472a",
   -- Reaction to you
   hostile = "cc4b45", neutral = "e0c24e", friendly = "4db86a",
   -- Resources

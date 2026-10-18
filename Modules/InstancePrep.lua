@@ -7,7 +7,7 @@
 -- Buy list button turns what's short that you can buy (PR.BuyRows) into the
 -- Auction helper's Restock shopping list (Modules/AuctionRestock.lua).
 -- With Dungeon card on (off until switched on), the card also carries the
--- dungeon's level range, your quests for it and the keys you carry
+-- dungeon's level range, when you last came, your quests for it and the keys you carry
 -- (Modules/DungeonCard.lua), and shows at the door even with nothing short.
 -- Every count the client hides skips its row, never compared; nothing is
 -- checked in combat, and /vg prep in combat waits for the fight to end.
@@ -317,6 +317,7 @@ function PR.OnEnter()
   local where = ns.Where()
   if not PR.DOORS[where] then PR.lastInstance = nil return end
   local id = ns.PlainNumber((select(8, ask("GetInstanceInfo"))))
+  if PR.settings.dungeonCard then ns.DungeonCard.Record() end
   if not PR.settings.onEnter or ns.InCombat() or (id and id == PR.lastInstance) then return end
   PR.lastInstance = id
   PR.Show(false)

@@ -324,6 +324,12 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Expect: a small diamond to the right of the target's bar and the focus's bar during a cast you can interrupt: filled and bright (accent) while your interrupt is ready, hollow and dim (darkened like a cooldown sweep that clears clockwise) while it recovers, ignoring the global cooldown; no mark on a cast with the gray edge, on your own bar, when you know no interrupt, or when the switch is off (gone from a cast on screen at once); it goes with the bar when the cast ends. [Needs in-game check: the spell IDs per class on WoW Forever, that the global cooldown is left out, and which way the sweep turns.]
 - If it fails, paste: a screenshot of the bar during a cast, your class and spec, `/vg status` and `/vg errors`.
 
+### 7.2e Low-health vignette
+
+- Do: `/vg` → Combat tools, switch on **Low health: a soft tint round the screen edge**. At full health look at the screen edge, then let a mob (or a fall) take you under half health, then under a fifth, then heal up. Also try it with Reduce motion on, and die once.
+- Expect: at full health nothing shows; under half health a soft vermilion tint appears round the edge and grows stronger as health drops, with no pulse and no flicker, in a fight too (including an instance fight, where health is hidden); healing clears it; while dead or a ghost it is gone; it never blocks a click. Switching it off clears it at once. No error.
+- If it fails, paste: a screenshot and `/vg errors`.
+
 ### 7.2f Status chip (off until switched on: /vg > Unit frames > Readouts)
 
 - Do: tick **Status chip above your frame** under Unit frames, reload. Out of combat eat some food, then drink, then eat a food that gives Well Fed; wait until each buff ends. Then tick Instance prep's buff checks (`/vg` > Town and gear) and look at the chip with no flask or raid buffs. Start a fight with the chip showing.
@@ -1208,7 +1214,7 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 ### 24.1 The dungeon card on the Instance prep checklist
 
 - Do: in `/vg` open Town and gear and switch on "Dungeon card: level range, your dungeon quests and keys on the checklist". With a quest for a dungeon in your log, walk into that dungeon (a character that carries nothing short, if you can). Then leave and type `/vg prep`.
-- Expect: at the door the checklist shows even though nothing is short, with a heading "Dungeon name · levels A-B · 5-player Normal", "Your quests here" and your quests for this dungeon as "[level] Title" (done ones with "· done"), and "Keys: ..." when you carry a key. Outside, `/vg prep` shows "Dungeon quests in your log" (your dungeon and raid quests) and any keys. With the switch off none of these lines show. [Needs in game: that GetInstanceInfo gives the name, size and difficulty, that C_Map.GetMapLevels answers for a dungeon map, that C_QuestLog.GetQuestsOnMap lists your quests inside a dungeon, that C_QuestLog.GetQuestTagInfo tags dungeon quests with Enum.QuestTag Dungeon, Raid or Group, and that keys are item class 13.]
+- Expect: at the door the checklist shows even though nothing is short, with a heading "Dungeon name · levels A-B · 5-player Normal", "Last run: N days ago" (once you have been there before; "today" within a day), "Your quests here" and your quests for this dungeon as "[level] Title" (done ones with "· done"), and "Keys: ..." when you carry a key. Outside, `/vg prep` shows "Dungeon quests in your log" (your dungeon and raid quests) and any keys. With the switch off none of these lines show. [Needs in game: that GetInstanceInfo gives the name, size and difficulty, that C_Map.GetMapLevels answers for a dungeon map, that C_QuestLog.GetQuestsOnMap lists your quests inside a dungeon, that C_QuestLog.GetQuestTagInfo tags dungeon quests with Enum.QuestTag Dungeon, Raid or Group, and that keys are item class 13.]
 - If it fails, paste: what the card shows, `/run print(C_Map.GetMapLevels(C_Map.GetBestMapForUnit("player")))` and `/vg errors`.
 
 ## 25. Theme experiments (#239)
