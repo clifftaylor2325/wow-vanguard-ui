@@ -16,12 +16,14 @@ const say = (addon, cmd) => { addon.chat(); addon.slash(cmd); return Array.from(
 const lines = (addon) => addon.eval(`local f, out = Vanguard_Rolls, {}
   for i, row in ipairs(f.rows) do if row.left:IsShown() then out[#out + 1] = { row.left:GetText(), row.right:GetText() } end end
   return out`);
-// TEST-ONLY loot history: one item with two players, rolling or done.
+// TEST-ONLY loot history: one drop with two players, rolling or done.
 const LOOT = (done) => `
   C_LootHistory = {
-    GetNumItems = function() return 1 end,
-    GetItem = function() return 1, "|cff0070dd|Hitem:1234:0|h[TEST-ONLY Boots]|h|r", 2, ${done}, 1 end,
-    GetPlayerInfo = function(_, p) if p == 1 then return "Thrall", "WARRIOR", 1, 40, false end return "Jaina", "MAGE", 2, 70, true end,
+    GetAllEncounterInfos = function() return { { encounterID = 7, startTime = 100 } } end,
+    GetSortedDropsForEncounter = function() return { {
+      lootListKey = 1, itemHyperlink = "|cff0070dd|Hitem:1234:0|h[TEST-ONLY Boots]|h|r", startTime = 100, winner = ${done} and {} or nil,
+      rollInfos = { { playerName = "Thrall", state = 0, roll = 40, isWinner = false }, { playerName = "Jaina", state = 3, roll = 70, isWinner = true } },
+    } } end,
   }`;
 // The options card's rows as [kind, label].
 const rows = (addon) => addon.eval(`local out = {} for i, r in ipairs(ns.GetModule("OfficerLoot").Rows()) do out[i] = { r[1], r[2] } end return out`);
@@ -62,7 +64,7 @@ it("a roll on a reserved item is flagged [SR], by the item the loot history says
   const addon = loggedIn(ROLL_ENV + LOOT("false"), ON);
   say(addon, "loot add Thrall TEST-ONLY Boots");
   say(addon, "loot add Realmguy-Stormrage |cff0070dd|Hitem:1234:0|h[Other name]|h|r");
-  addon.fire("LOOT_HISTORY_FULL_UPDATE");
+  addon.fire("LOOT_HISTORY_UPDATE_DROP", 7, 1);
   roll(addon, "Thrall", 50);
   roll(addon, "Realmguy", 20);
   roll(addon, "Jaina", 10);
@@ -79,7 +81,7 @@ it("a roll on a reserved item is flagged [SR], by the item the loot history says
 it("a finished item is not the one rolls are flagged for, and a hidden item text is skipped", () => {
   const addon = loggedIn(ROLL_ENV + LOOT("true"), ON);
   say(addon, "loot add Thrall TEST-ONLY Boots");
-  addon.fire("LOOT_HISTORY_FULL_UPDATE");
+  addon.fire("LOOT_HISTORY_UPDATE_DROP", 7, 1);
   roll(addon, "Thrall", 50);
   expect(lines(addon)[1][0], "no item rolling: no flag").toBe("Thrall");
   expect(addon.eval("return ns.GetModule('OfficerLoot').Item(__wfgWorld.secret('x')) == nil"), "secret").toBe(true);
