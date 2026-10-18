@@ -620,10 +620,31 @@ local function dressTextEdit(frame)
   GW.DressClose(frame, findCross(frame))
 end
 
--- The news filters dialog: its seven check boxes (frame.GuildNewsFilterButtons) as theme check boxes.
+-- The news filters dialog as a flyout on the guild window's right edge (a pixel under it, so the shared border hides), out of combat.
+local function attachNewsFilters(frame)
+  local window = _G.CommunitiesFrame
+  if type(window) ~= "table" or not frame.SetPoint then return end
+  ns.OutOfCombat(function()
+    frame:ClearAllPoints()
+    frame:SetPoint("TOPLEFT", window, "TOPRIGHT", -1, -T.SPACE.section)
+  end, frame)
+end
+
+-- The news filters flyout follows the guild window: attached on each show, and hidden with the window.
+local function watchNewsFilters(frame)
+  local window = _G.CommunitiesFrame
+  if type(window) ~= "table" or not window.HookScript or vgSocialSide[frame] then return end
+  vgSocialSide[frame] = true
+  frame:HookScript("OnShow", ns.Guard("news filters attach", attachNewsFilters))
+  window:HookScript("OnHide", ns.Guard("news filters close", function() frame:Hide() end))
+end
+
+-- The news filters dialog: its seven check boxes (frame.GuildNewsFilterButtons) as theme check boxes, attached to the window's side.
 local function dressNewsFilters(frame)
   local checks = type(frame.GuildNewsFilterButtons) == "table" and frame.GuildNewsFilterButtons or {}
   for _, check in ipairs(checks) do GW.SkinCheck(check) end
+  attachNewsFilters(frame)
+  watchNewsFilters(frame)
 end
 
 -- The guild invite dialog's tabard (the inviting guild's, content) and its two named buttons and guild name.
