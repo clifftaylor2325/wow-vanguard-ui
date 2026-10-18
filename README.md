@@ -171,6 +171,7 @@ Download `Vanguard-<version>.zip` from the [latest release](https://github.com/c
 /vg lfg [probe]                 open or close the group board: looking-for-more and looking-for-group posts from chat; `probe` says what chat it has heard and which channels you are in
 /vg questdata [questID]         what the client says about a quest (or the quests an open NPC offers and those you track), and whether it flags quests new in WoW Forever
 /vg guide probe                 what this client returns for the quest, map, taxi and unit reads a levelling guide would use (chat only; nothing changes)
+/vg probe [chat|fight|last]    one run out of combat asks the client the open questions (SavedVariables round trip, new-quest flag, threat secrecy, group listing, secure paging, realm and name format, C_Secrets predicates, restriction states, navigation, reads Forever's API docs lack) and opens the report in a copy box; chat prints it too; fight takes the secrecy reads in the next fight; last reopens the saved report
 /vg junk [<item>|remove <item>|clear]   your sell list: items a merchant offers to buy from you with your grays (off until switched on)
 /vg sell <item>                 at a merchant: sell every stack of an item in your bags, after a question
 /vg stock [<item> <n>]          items to keep in your bags; a merchant tops them up (0 removes, clear empties)
