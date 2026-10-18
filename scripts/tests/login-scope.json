@@ -27,7 +27,6 @@
     "scripts/tests/auctionupgrades.test.mjs": [],
     "scripts/tests/auras.test.mjs": [
       "a client that rejects every aura filter word keeps the filter and shows no auras",
-      "raid tiles built after the engine retires get the fallback highlight",
       "target and focus auras",
       "your buffs and debuffs replace the game's, with weapon enchants in front",
       "your buffs: the enchant switch, and clients without enchant info",
@@ -70,8 +69,10 @@
     ],
     "scripts/tests/broker.test.mjs": [],
     "scripts/tests/casts.test.mjs": [],
+    "scripts/tests/chat-bubbles.test.mjs": [],
     "scripts/tests/chat.test.mjs": [],
     "scripts/tests/chatwatch.test.mjs": [],
+    "scripts/tests/chrome.test.mjs": [],
     "scripts/tests/clickcast.test.mjs": [
       "bindings carry spell ids and ranks, move, copy, export and import",
       "sharing: export, import, copy to another spec, and the combat notice",
@@ -84,13 +85,24 @@
       "client capability probe: every flag off, every module still enables",
       "client capability probe: what this client has, and /vg status says so"
     ],
+    "scripts/tests/coexist.test.mjs": [
+      "coexist: the next login says nothing new; a module already off, or a client without the call, asks nothing"
+    ],
+    "scripts/tests/cooldowngaps.test.mjs": [],
+    "scripts/tests/cooldownglow.test.mjs": [],
     "scripts/tests/core.test.mjs": [
-      "a damaged account file: a profile that isn't a table, or a name that isn't a name, is dropped at load",
-      "the account file's version is read and upgraded"
+      "a damaged account file: a profile that isn't a table, or a name that isn't a name, is dropped at load"
     ],
     "scripts/tests/craftqueue.test.mjs": [],
     "scripts/tests/data.test.mjs": [],
     "scripts/tests/docks.test.mjs": [],
+    "scripts/tests/dungeoncard.test.mjs": [
+      "an item the client has not cached shows by its number; without a map listing, a dungeon shows its tagged quests",
+      "at the door the card shows the dungeon, your quests on its map and your keys, even with nothing short",
+      "elsewhere /vg prep lists the dungeon and raid quests in your log, with a more line past six",
+      "the card is off until switched on, and says nothing in combat or on a client without the calls",
+      "the level range, size and difficulty drop what the client does not give"
+    ],
     "scripts/tests/errorrail.test.mjs": [],
     "scripts/tests/errors.test.mjs": [
       "Forever fixes: the newer calls for zone color, pet moods, breath bars, the minimap eye, the house icon and the build line"
@@ -106,16 +118,29 @@
       "frames pass: bar texture, smoothing, raid style, shields, glows",
       "proc glow on action buttons"
     ],
+    "scripts/tests/groupboard.test.mjs": [],
+    "scripts/tests/groupthreat.test.mjs": [],
+    "scripts/tests/guideprobe.test.mjs": [],
     "scripts/tests/healing.test.mjs": [],
+    "scripts/tests/home.test.mjs": [],
+    "scripts/tests/integration.test.mjs": [],
     "scripts/tests/inventory.test.mjs": [],
+    "scripts/tests/legacy.test.mjs": [],
+    "scripts/tests/levelling.test.mjs": [
+      "levelling: a supply running low is said once, and again only after it recovered",
+      "levelling: supplies already low at login are not warned of, and a fight waits"
+    ],
     "scripts/tests/mailtools.test.mjs": [],
     "scripts/tests/masque.test.mjs": [
       "with Masque loaded, action, pet and stance buttons and aura icons go to Masque groups, without Vanguard's skin",
       "without Masque (or without LibStub) nothing changes"
     ],
+    "scripts/tests/meter.test.mjs": [],
     "scripts/tests/motion.test.mjs": [],
+    "scripts/tests/officerloot.test.mjs": [],
     "scripts/tests/options.test.mjs": [
       "options window",
+      "options: the pages, their nav order and each page's row count stay as they were when Options.lua was split into area files",
       "text that fits: chat size, tooltip fonts, the status line, name width"
     ],
     "scripts/tests/platebuffs.test.mjs": [],
@@ -125,7 +150,6 @@
       "prep buffs: a ready check lists the flask, food, enchants and raid buffs you lack",
       "prep buffs: nothing is guessed when the client hides auras or can't list them",
       "prep buffs: off until switched on",
-      "prep buffs: the options page has the switches",
       "prep buffs: world buffs only when asked for, an off hand only when it holds a weapon",
       "prep: /vg prep want sets the wanted amounts; the options page has the section",
       "prep: Keep-stocked items under their count, and worn gear, are on the card",
@@ -139,8 +163,15 @@
       "prep: nothing short keeps the card away at the door; /vg prep says everything's packed",
       "prep: once per visit at the door, gone after Hide after or the close button"
     ],
+    "scripts/tests/prepwizard.test.mjs": [
+      "prepwizard: a slider sets the wanted amount and the slash command still works",
+      "prepwizard: a warrior has two steps, supplies then review, and Use suggested follows the level",
+      "prepwizard: hunters and warlocks get a class step with their own amount",
+      "prepwizard: waits for combat, and says when Instance prep is off"
+    ],
     "scripts/tests/profileguard.test.mjs": [],
     "scripts/tests/profiles.test.mjs": [],
+    "scripts/tests/questguide.test.mjs": [],
     "scripts/tests/quests.test.mjs": [],
     "scripts/tests/raid.test.mjs": [
       "raid tools: a burst of roster events in combat queues one update of the bar, not one per event"
@@ -159,7 +190,6 @@
     "scripts/tests/setuplayouts.test.mjs": [
       "Centered layout: compact raid grid, one-time migrations, a strip with nothing to show",
       "default sizes for a 1080p screen: 240 x 36 unit frames with 12 px names, 38 px buttons; a saved profile keeps its sizes",
-      "one bar material (#234): every Vanguard bar on the whole HUD uses the theme's bar texture, and a new pick reaches them all",
       "setup layouts: Like the game's puts your frames at the top left; another layout puts them back",
       "setup layouts: nothing overlaps or leaves the screen, solo to 40-man, at UI scale 1 and pixel-perfect",
       "setup screen: picking Pixel-perfect turns on Vanguard's pixel-perfect scale and leaves the game's UI scale alone (#225)",
@@ -170,12 +200,18 @@
     "scripts/tests/skins.test.mjs": [],
     "scripts/tests/special.test.mjs": [],
     "scripts/tests/spellbook.test.mjs": [],
+    "scripts/tests/spellranks.test.mjs": [],
     "scripts/tests/status.test.mjs": [],
     "scripts/tests/strips.test.mjs": [],
     "scripts/tests/talents.test.mjs": [],
     "scripts/tests/theme.test.mjs": [],
+    "scripts/tests/themeparts.test.mjs": [
+      "the layout constants: T.SPACE, T.ALPHA, T.CREST, T.ROW, T.SCROLL and the control heights, with the two display roles unchanged"
+    ],
     "scripts/tests/tooltip.test.mjs": [],
     "scripts/tests/units.test.mjs": [
+      "Calm HUD: frames dim out of combat, come back for a fight, a hostile target or the mouse, and stay clickable",
+      "Calm HUD: setup's look step and the situations offer it",
       "a ?? (boss or far higher) level reads in the hardest difficulty color, not the easiest",
       "class bars: druid mana while a form shows rage or energy",
       "class bars: totems for shamans, mana in forms for druids",
@@ -201,8 +237,12 @@
       "the state the client reports at registration comes from its own parser when it has one"
     ],
     "scripts/tests/waypoints.test.mjs": [],
+    "scripts/tests/whatsnew.test.mjs": [],
+    "scripts/tests/windows-all.test.mjs": [],
+    "scripts/tests/windows-later.test.mjs": [],
     "scripts/tests/windows-map.test.mjs": [],
     "scripts/tests/windows-menus.test.mjs": [],
+    "scripts/tests/windows-move.test.mjs": [],
     "scripts/tests/windows-pvp.test.mjs": [],
     "scripts/tests/windows-social.test.mjs": [],
     "scripts/tests/windows-system.test.mjs": [],
