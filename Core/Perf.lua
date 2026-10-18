@@ -151,7 +151,8 @@ end
 -- A memory run samples every P.MEM_EVERY seconds for P.MEM_TICKS samples (a minute).
 P.MEM_EVERY, P.MEM_TICKS = 5, 12
 
--- The run under way: { kb = samples in KB, ticks = timer calls so far, at = start time, ticker }; nil when none.
+-- The run under way: { kb = samples in KB, live = the first after a garbage collection (nil when the client
+-- refused it), ticks = timer calls so far, at = start time, ticker }; nil when none.
 local run
 
 -- The smallest of the samples from i to j.
@@ -176,22 +177,36 @@ local function floorText(change)
   return "The low point held: the rise and fall is garbage the game collects, not memory kept."
 end
 
--- The memory run's result, as two chat lines: the readings, then what the low point says.
-local function memReport(r, now)
+-- What the run's two clean readings say: live memory at the start and the end, and what was kept.
+local function liveText(from, to)
+  local kept = to - from
+  local verdict = kept > P.KEPT and "Vanguard kept memory it hasn't let go." or "nothing kept: the rest was garbage."
+  return string.format("After a garbage collection: %.2f MB at the start, %.2f MB at the end (%+.0f KB); %s", from / 1024, to / 1024, kept, verdict)
+end
+
+-- The memory run's result, as two chat lines: the readings, then what the clean readings (else the low point) say.
+local function memReport(r, now, liveEnd)
   local kb, secs = r.kb, math.max(1, now - r.at)
   if #kb < 2 then return ns.Chat("Vanguard's memory: too few readings (the game's counter is not read in combat).") end
   local grew = kb[#kb] - kb[1]
   ns.Chat(string.format("Vanguard's memory over %d s: %.2f MB to %.2f MB (%+.0f KB, %+.1f KB/s), low %.2f, high %.2f MB.",
     secs, kb[1] / 1024, kb[#kb] / 1024, grew, grew / secs, lowest(kb, 1, #kb) / 1024, math.max(unpack(kb)) / 1024))
-  ns.Chat(floorText(floorChange(kb)))
+  ns.Chat((r.live and liveEnd) and liveText(r.live, liveEnd) or floorText(floorChange(kb)))
 end
 
--- Ends the run: the timer stops and the result prints.
+-- Lua's own memory in KB after a full garbage collection (a short hitch), or nil: never in combat, nor
+-- where the client refuses the collection. Without it the game's counter holds garbage not yet freed.
+function P.LiveMemory()
+  if ns.InCombat() or not pcall(collectgarbage, "collect") then return nil end
+  return P.Memory()
+end
+
+-- Ends the run: the timer stops, a clean reading is taken (out of combat) and the result prints.
 local function memFinish()
   local r = run
   run = nil
   r.ticker:Cancel()
-  memReport(r, GetTime())
+  memReport(r, GetTime(), r.live and P.LiveMemory())
 end
 
 -- One timer call: a reading (none in combat), and the end of the run after its last.
@@ -207,9 +222,10 @@ end
 function P.MemCommand()
   if run then return memFinish() end
   if not (C_Timer and C_Timer.NewTicker) then return ns.Chat("This client has no timers to measure with.") end
-  local kb = P.Memory()
+  local live = P.LiveMemory()
+  local kb = live or P.Memory()
   if not kb then return ns.Chat("Vanguard's memory can't be read " .. (ns.InCombat() and "in combat; try again out of combat." or "on this client.")) end
-  run = { kb = { kb }, ticks = 0, at = GetTime() }
+  run = { kb = { kb }, live = live, ticks = 0, at = GetTime() }
   run.ticker = C_Timer.NewTicker(P.MEM_EVERY, ns.Guard("timer memory run", memTick))
   ns.Chat(string.format("Measuring Vanguard's memory for %d s (a reading every %d s). Stand still out of combat; /vg mem again ends it early.", P.MEM_EVERY * P.MEM_TICKS, P.MEM_EVERY))
 end

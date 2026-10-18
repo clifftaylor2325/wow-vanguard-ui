@@ -73,7 +73,7 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 ### 1.5 Memory over a minute
 
 - Do: stand still in a city out of combat, type `/vg mem`, and wait a minute without opening windows. Then repeat it once.
-- Expect: the first line says `Measuring Vanguard's memory for 60 s`; after a minute two lines: `Vanguard's memory over 60 s: A MB to B MB (+N KB, +R KB/s), low L, high H MB.` and a verdict (`The low point held: ...garbage the game collects` or `The low point rose N KB: Vanguard is keeping memory`). Growth of a few hundred KB that falls back is normal; a low point that rises on every run is not. In combat `/vg mem` says it can't read, and `/vg perf` says `memory: not read in combat`.
+- Expect: the first line says `Measuring Vanguard's memory for 60 s`; after a minute two lines: `Vanguard's memory over 60 s: A MB to B MB (+N KB, +R KB/s), low L, high H MB.` and `After a garbage collection: A MB at the start, B MB at the end (+N KB); ...` (the game may hitch briefly as it starts and ends). If the line is instead a low-point verdict (`The low point held` or `The low point rose`), note it: the client refused the collection. A clean rise of a few hundred KB once is normal; one that rises on every run is not. Note the two clean figures for the report. In combat `/vg mem` says it can't read, and `/vg perf` says `memory: not read in combat`.
 - If it fails, paste: both result lines of each run, what you did during the minute, and `/vg errors`.
 
 ## 2. Options window and wizard
