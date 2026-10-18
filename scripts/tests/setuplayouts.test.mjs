@@ -374,7 +374,7 @@ it("setup layouts: Versus deck is your role's centered layout with the deck on; 
   expect(addon.eval(deck), "the deck on and shown, with the damage settings (no role says healer)").toEqual([true, true, false]);
   addon.eval("ns.Setup.ApplyLayout('classic')");
   expect(addon.eval(deck).slice(0, 2), "another layout takes the deck off").toEqual([false, false]);
-  const healer = loggedIn(CLICK_LUA + UNITS_ENV + RAID_ENV + "__wfgWorld.units.player.role = 'HEALER'", { firstRun: true });
+  const healer = loggedIn(CLICK_LUA + UNITS_ENV + RAID_ENV + "__wfgWorld.spec = 2 GetSpecializationRole = function() return 'HEALER' end", { firstRun: true });
   healer.eval("ns.Setup.ApplyLayout('versus')");
   expect(healer.eval("return { ns.Settings('UnitFrames').deck, ns.Settings('RaidFrames').showPower, ns.ModuleEnabled('ClickCast') }"), "a healer: the deck with the Healing layout (its settings, click casting on)").toEqual([true, true, true]);
 });

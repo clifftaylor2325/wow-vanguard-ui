@@ -509,7 +509,7 @@ const deck = (addon) => addon.eval(`local d, t = ns.GetModule("UnitFrames").deck
   local fills = t.health:GetReverseFill() and t.power:GetReverseFill()
   if not d then return { shown = false, fills = fills } end
   return { shown = d:IsShown(), left = d.__points.TOPLEFT.rel == Vanguard_player, right = d.__points.BOTTOMRIGHT.rel == Vanguard_target,
-    crest = d.crest.__points.CENTER.relPoint, strata = d:GetFrameStrata(), fills = fills }`);
+    crest = d.crest.__points.CENTER.relPoint, strata = d.__strata, fills = fills }`);
 
 it("Versus deck: one shield panel behind the player and target, the crest at the seam, the target's bars mirrored", () => {
   const addon = loggedIn(UNITS_ENV + CLICK_LUA, NO_RAID);
