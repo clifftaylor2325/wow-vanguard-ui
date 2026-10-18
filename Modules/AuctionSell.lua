@@ -326,8 +326,9 @@ AH.FORM = {
   stack = function(s, text) s.stack = typedCount(text, 1, s.max) or s.stack end,
   -- How many stacks: the quantity becomes that many stacks (at most what can go up).
   stacks = function(s, text) local n = typedCount(text, 1, s.max) if n then s.qty = math.min(s.max, n * s.stack) end end,
-  -- The price, per unit or per (full) stack by the toggle; nothing readable goes back to the suggestion.
-  price = function(s, text) local p = AH.ParseMoney(text) s.unit = p and (AH.perStack and math.floor(p / s.stack) or p) end,
+  -- The price, per unit or per (full) stack by the toggle (a stack price is shared out rounding up, so
+  -- the stack never posts for less than was typed); nothing readable goes back to the suggestion.
+  price = function(s, text) local p = AH.ParseMoney(text) s.unit = p and (AH.perStack and math.ceil(p / s.stack) or p) end,
   -- A bid per item (items only); nothing for none.
   bid = function(s, text) s.bid = AH.ParseMoney(text) end,
 }

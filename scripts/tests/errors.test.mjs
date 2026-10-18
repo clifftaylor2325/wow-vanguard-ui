@@ -314,10 +314,27 @@ it("slash commands for frames, accent, grid, theme, modules, skins, profile and 
   expect(chatHas(addon, /No module called NoSuch/), "an unknown module is refused").toBeTruthy();
   addon.slash("skins TESTONLY on");
   expect(chatHas(addon, /Skin for TESTONLY on/), "/vg skins on stores the choice").toBeTruthy();
+  addon.slash("skins testonly OFF");
+  expect([chatHas(addon, /Skin for TESTONLY off/), addon.eval("return ns.Settings('skins').TESTONLY")], "the skin's name and on|off are read in any case").toEqual([true, false]);
+  addon.slash("skins TESTONLY maybe");
+  expect([chatHas(addon, /Usage: \/vg skins TESTONLY on\|off/), addon.eval("return ns.Settings('skins').TESTONLY")], "a word that isn't on or off changes nothing").toEqual([true, false]);
+  addon.slash("skins NoSuchSkin on");
+  expect([chatHas(addon, /No skin called NoSuchSkin/), addon.eval("return ns.Settings('skins').NoSuchSkin")], "a skin nobody registered is refused and not stored").toEqual([true, null]);
+  addon.slash("disable unitframes");
+  expect([chatHas(addon, /UnitFrames disabled/), addon.eval("return ns.ModuleEnabled('UnitFrames')")], "a module's name is read in any case").toEqual([true, false]);
+  addon.slash("enable UNITFRAMES");
+  expect(addon.eval("return ns.ModuleEnabled('UnitFrames')"), "and enabled again the same way").toBe(true);
   addon.slash("profile");
   expect(chatHas(addon, /Profile: Default/), "/vg profile with no name shows the current profile").toBeTruthy();
   addon.slash("spec");
   expect(chatHas(addon, /Spec 2 uses the character's profile/), "/vg spec with no name shows that no spec profile is set").toBeTruthy();
+});
+it("a bare /vg that fails is caught and kept for /vg errors, like any other command", () => {
+  expectErrors("slash options: eval:2: TEST-ONLY toggle broke");
+  const addon = loggedIn();
+  addon.eval('ns.Options.Toggle = function() error("TEST-ONLY toggle broke") end');
+  addon.slash("");
+  expect(addon.eval("return ns.errors[#ns.errors].text"), "the error is reported under slash options").toMatch(/^slash options: .*TEST-ONLY toggle broke/);
 });
 // TEST-ONLY WoW Forever calls: only the newer C_ functions and frames, none of the older globals.
 const NEWER_ENV = `

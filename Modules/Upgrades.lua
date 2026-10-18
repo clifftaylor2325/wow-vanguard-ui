@@ -1,6 +1,6 @@
 -- Gear upgrades: how an item compares with what you wear, by stat weights for
 -- your class and role (Modules/UpgradeWeights.lua). An item's tooltip says
--- "Upgrade +12% vs <worn item>" (or a drop), an arrow marks upgrades in the
+-- "Upgrade +12% (estimate) vs <worn item>" (or a drop), an arrow marks upgrades in the
 -- combined bag, and on quest reward cards. Rings, trinkets compare with the
 -- weaker of the two you wear; a two-hander with both hands; an empty slot is
 -- always an upgrade. Gear you can't wear is left alone.
@@ -145,14 +145,15 @@ end
 
 -- Tooltip --------------------------------------------------------------------------------
 
--- The item tooltip's line (Tooltips' AddItemLines): "Upgrade +12% vs <worn>" in the good color, a drop in the bad one.
+-- The item tooltip's line (Tooltips' AddItemLines): "Upgrade +12% (estimate) vs <worn>" in the good color, a drop in the
+-- bad one. "(estimate)" because the weights behind it are defaults for the class and role, not simulated values.
 function UP.AddLine(tt, link)
   if not UP.settings.tooltip then return end
   local pct, empty, worn = UP.Compare(link)
   if empty then return tt:AddLine("Upgrade: fills an empty slot", T.RGB("good")) end
   if not pct or math.abs(pct) < UP.MIN_PCT then return end
   local vs = worn and worn:match("%[(.-)%]")
-  local text = string.format("%s %+.0f%%", pct > 0 and "Upgrade" or "Downgrade", pct) .. (vs and (" vs " .. vs) or "")
+  local text = string.format("%s %+.0f%% (estimate)", pct > 0 and "Upgrade" or "Downgrade", pct) .. (vs and (" vs " .. vs) or "")
   tt:AddLine(text, T.RGB(pct > 0 and "good" or "bad"))
 end
 
