@@ -306,7 +306,6 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Expect: with no fight and no hostile target your player, pet, target of target and focus frames are faint (about a third); under the mouse the hovered frame is at full strength at once; targeting a living hostile mob or entering combat brings them all up at once and they stay up through the fight; after the fight with no hostile target they go faint again. A friendly target's frame stays faint. Clicking a faint frame still targets, right-clicking opens the menu. Switching Calm HUD off brings every frame back to full at once. No error.
 - If it fails, paste: a screenshot and `/vg errors`.
 
-
 ### 7.2b Versus deck
 
 - Do: `/vg` → Unit frames, switch on **Versus deck**. Target a mob, cast something, then switch Calm HUD on and stand out of combat. Then run `/vg setup`, pick **Versus deck**, and click through to Done.
@@ -324,6 +323,12 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Do: on a class with an interrupt (Rogue Kick, Warrior Pummel or Shield Bash, Mage Counterspell, Shaman Earth Shock, Priest Silence), target a mob that casts and watch the target cast bar. Cast on a mob that can't be interrupted if you can find one, press your interrupt on a cast, then watch the next cast while the interrupt recovers. Do the same with `/focus`. In `/vg` → Unit frames untick **Interrupt mark beside the target and focus cast bars**.
 - Expect: a small diamond to the right of the target's bar and the focus's bar during a cast you can interrupt: filled and bright (accent) while your interrupt is ready, hollow and dim (darkened like a cooldown sweep that clears clockwise) while it recovers, ignoring the global cooldown; no mark on a cast with the gray edge, on your own bar, when you know no interrupt, or when the switch is off (gone from a cast on screen at once); it goes with the bar when the cast ends. [Needs in-game check: the spell IDs per class on WoW Forever, that the global cooldown is left out, and which way the sweep turns.]
 - If it fails, paste: a screenshot of the bar during a cast, your class and spec, `/vg status` and `/vg errors`.
+
+### 7.2e Low-health vignette
+
+- Do: `/vg` → Combat tools, switch on **Low health: a soft tint round the screen edge**. At full health look at the screen edge, then let a mob (or a fall) take you under half health, then under a fifth, then heal up. Also try it with Reduce motion on, and die once.
+- Expect: at full health nothing shows; under half health a soft vermilion tint appears round the edge and grows stronger as health drops, with no pulse and no flicker, in a fight too (including an instance fight, where health is hidden); healing clears it; while dead or a ghost it is gone; it never blocks a click. Switching it off clears it at once. No error.
+- If it fails, paste: a screenshot and `/vg errors`.
 
 ### 7.3 Nameplates in a pull
 

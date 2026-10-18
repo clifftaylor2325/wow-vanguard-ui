@@ -478,7 +478,20 @@ function UnitName(unit) local u = resolveUnit(unit) return u and u.name, u and u
 function UnitGUID(unit) local u = resolveUnit(unit) return u and (u.guid or ("TEST-ONLY-GUID-" .. tostring(u.name))) end
 function UnitHealth(unit) return uf(unit, "hp") or 0 end
 function UnitHealthMax(unit) return uf(unit, "maxhp") or 0 end
-function UnitHealthPercent(unit) local u = resolveUnit(unit) return u and u.maxhp > 0 and u.hp / u.maxhp * 100 or 0 end
+-- The number inside a value that may be secret (the harness looks; the addon never does).
+local function inside(v) return issecretvalue(v) and rawget(v, "n") or v end
+
+-- A unit's health as a percent (0 to 100); with a curve, what the curve gives at the fraction (0 to 1), as the client
+-- evaluates it. With hidden health, a color comes back with hidden components.
+function UnitHealthPercent(unit, _, curve)
+  local u = resolveUnit(unit)
+  local hp, max = u and inside(u.hp), u and inside(u.maxhp)
+  local fraction = max and max > 0 and hp / max or 0
+  if type(curve) ~= "table" or not curve.Evaluate then return fraction * 100 end
+  local c = curve:Evaluate(fraction)
+  if not (u and (issecretvalue(u.hp) or issecretvalue(u.maxhp))) then return c end
+  return CreateColor(world.secret(c.r), world.secret(c.g), world.secret(c.b), world.secret(c.a))
+end
 -- A unit's power: its main power, combo points, or another type from unit.powers.
 function UnitPower(unit, kind)
   local u = resolveUnit(unit)

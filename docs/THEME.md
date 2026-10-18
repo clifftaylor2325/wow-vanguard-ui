@@ -344,6 +344,8 @@ Vanguard moves little and quietly. Every fade goes through the theme (`T.FadeIn`
 
 Sparks (cast bars, power ticks, the swing timer) move with what they show; they are not fades and Reduce motion leaves them.
 
+The low-health vignette (`Modules/GameAlerts.lua`, `Media/Textures/Vignette` tinted with the `vignette` token) has no fade, pulse or sound: the client works out its opacity from your health through a curve and the texture takes it as it is, so Reduce motion changes nothing and a fight adds no animation.
+
 ### Sounds
 
 All are the client's own interface sounds (`SOUNDKIT`), played with `T.Sound` unless noted.

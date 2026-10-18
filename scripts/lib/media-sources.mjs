@@ -80,6 +80,16 @@ function cut(size, w, kind, flipX, flipY) {
   });
 }
 
+// The low-health vignette (Modules/GameAlerts.lua), stretched over the screen: clear in the middle, rising to full
+// white toward the edges and corners, so the theme's vignette color tints it and the curve sets its strength.
+function vignette() {
+  return fill(image(128, 128), (x, y) => {
+    const r = Math.hypot((x + 0.5) / 64 - 1, (y + 0.5) / 64 - 1);
+    const t = clamp01((r - 0.55) / 0.6);
+    return [1, 1, 1, t * t * (3 - 2 * t)];
+  });
+}
+
 // A white wash fading in from the top to the bottom: the dispel highlight
 // rises from a raid tile's bottom edge, clear of the name.
 function fade() {
@@ -159,6 +169,7 @@ export const TEXTURES = {
   CornerLine: () => corner(32, 8, true),
   CornerFill: () => corner(32, 8, false),
   Fade: fade,
+  Vignette: vignette,
   // The classification diamond, white, for the addon to tint.
   LogoLeft: () => draw(image(64, 64), 64, LOGO_LEFT),
   // The pre-colored addons-list icon: Vanguard's crest (scripts/lib/media-brand.mjs).
