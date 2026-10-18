@@ -498,3 +498,23 @@ it("import: the options window says why a string was refused, and the layout app
   expect(count, "a layout of many keys applies once").toBe(1);
   expect(bindings(addon).BUTTON3, "and still binds them").toBe("menu:nil:nil:nil");
 });
+
+it("the test tile keeps the keys it reads from the game, and passes Escape and modifiers on", () => {
+  const addon = priest();
+  addon.eval('ns.Options.Show("clickcast")');
+  const tile = widget(addon, "w.result ~= nil and w.bar ~= nil");
+  addon.eval(`local t = __wfgStub.frames[${tile}] t.SetPropagateKeyboardInput = function(self, v) self.__passed = v end t.EnableKeyboard = function(self, on) self.__kb = on end`);
+  // Whether the tile let the key go on to the game (nil when it never said).
+  const passed = (key) => { addon.eval(`__wfgStub.frames[${tile}].__passed = nil`); addon.hover(tile); addon.key(tile, key); return addon.eval(`return __wfgStub.frames[${tile}].__passed`); };
+  expect([passed("F1"), passed("1")], "a key it tests is kept from the game: pressing it casts nothing").toEqual([false, false]);
+  expect([passed("ESCAPE"), passed("LSHIFT")], "Escape and a lone modifier go on").toEqual([true, true]);
+  addon.world.combat(true);
+  expect(passed("F1"), "in a fight the call is left alone").toBe(null);
+  expect(addon.eval(`return __wfgStub.frames[${tile}].result:GetText()`), "though the key still reads").toBe("F1 -> nothing bound");
+  addon.world.combat(false);
+  addon.eval("ns.Client.has.keyPropagate = false");
+  expect(passed("F1"), "a client that cannot pass keys on is left alone").toBe(null);
+  expect(addon.eval(`return __wfgStub.frames[${tile}].__kb`), "the tile reads keys while the pointer is on it").toBe(true);
+  addon.hover(null);
+  expect(addon.eval(`return __wfgStub.frames[${tile}].__kb`), "and gives the keyboard back when it leaves").toBe(false);
+});
