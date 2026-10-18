@@ -47,6 +47,7 @@ Every `/vg` command (`/vanguard` works too), grouped by what it does. `/vg help`
 | Command | What it does |
 | --- | --- |
 | `/vg binds`, `/vg keybind` | Click-casting and hover keys; keybind mode |
+| `/vg cooldowns [setup]`, `/vg cdmglow [on\|off\|<percent>]`, `/vg gaps ...` | The Cooldowns page and its setup wizard; the Cooldown Manager buff glow (off by default); the Cooldown gaps row |
 | `/vg meter [on\|off\|dps\|hps]`, `/vg fights`, `/vg recap` | Vanguard's meter, DPS per fight, last fight's recap |
 | `/vg rolls`, `/vg loot` | Roll results; officer soft-reserve list and roster |
 | `/vg lfg [probe]` | The group board |
@@ -68,6 +69,7 @@ Every `/vg` command (`/vanguard` works too), grouped by what it does. `/vg help`
 | `/vg junk`, `/vg sell` | Your sell list; sell every stack of one item at a merchant |
 | `/vg ranks`, `/vg trainers`, `/vg legacy` | Spell ranks, what trainers teach, the Legacy system |
 | `/vg copy` | The recent chat as plain text |
+| `/vg talents [plan\|spend\|clear\|export\|import]` | The talent planner on the game's talents window |
 
 ## Help and diagnostics
 
