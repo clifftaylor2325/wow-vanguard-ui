@@ -341,6 +341,8 @@ Vanguard moves little and quietly. Every fade goes through the theme (`T.FadeIn`
 
 Sparks (cast bars, power ticks, the swing timer) move with what they show; they are not fades and Reduce motion leaves them.
 
+The status chip (`Modules/UnitExtras.lua`) has no fade or sound: it shows and hides at once, including the moment a fight starts. Its text is `text` (Eating, Drinking), `good` (Well Fed) or `warn` (a missing buff, with the `Warn` glyph in `warn`), on the HUD panel, so a state never rests on color alone.
+
 ### Sounds
 
 All are the client's own interface sounds (`SOUNDKIT`), played with `T.Sound` unless noted.

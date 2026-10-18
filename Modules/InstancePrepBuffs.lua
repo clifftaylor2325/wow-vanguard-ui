@@ -70,11 +70,18 @@ function PR.EnchantRows()
   return rows
 end
 
+-- Appends a row to the list, unless there is none (a buff you have makes no row, and a hole would hide the rows after it).
+local function push(rows, row)
+  if row then rows[#rows + 1] = row end
+end
+
 -- The aura rows: flask, food and the raid buffs you lack, then "World buffs" when you ask for them and have none.
 function PR.AuraRows()
-  local rows = { missing("Flask", PR.FLASKS), missing("Food buff", PR.FOOD) }
-  for _, b in ipairs(PR.RAID_BUFFS) do rows[#rows + 1] = missing(b[1], b[2]) end
-  if PR.settings.worldBuffs then rows[#rows + 1] = missing("World buffs", PR.WORLD_BUFFS) end
+  local rows = {}
+  push(rows, missing("Flask", PR.FLASKS))
+  push(rows, missing("Food buff", PR.FOOD))
+  for _, b in ipairs(PR.RAID_BUFFS) do push(rows, missing(b[1], b[2])) end
+  if PR.settings.worldBuffs then push(rows, missing("World buffs", PR.WORLD_BUFFS)) end
   return rows
 end
 
