@@ -20,6 +20,7 @@ local AB = ns.Module("ActionBars", {
   defaults = {
     hideBlizzard = true,
     lockButtons = true,
+    backing = "auto",
     rangeTint = true,
     size = 38,
     spacing = 2,
@@ -677,6 +678,7 @@ local function build(settings)
   if settings.hideBlizzard then hideBlizzardBars() end
   AB.ApplyBindings()
   each(AB.UpdateButton)
+  AB.UpdateBackings()
 end
 
 -- Module entry point (Core/Modules.lua): build out of combat, then listen.
@@ -688,4 +690,5 @@ function AB.Enable(settings)
   end
   if settings.rangeTint and not rangeEvents() then pollRange() end
   ns.OnUnit("UNIT_INVENTORY_CHANGED", refreshCarried, "player")
+  T.OnChanged(function() ns.OutOfCombat(AB.UpdateBackings) end)
 end

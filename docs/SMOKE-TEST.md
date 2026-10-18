@@ -1440,6 +1440,12 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 - Expect: Round shows the map as a disc with an outline on its edge, the top and bottom bands cut to the disc, no corner diamonds, and the game's buttons on the rim at the corners' angles, not cut off or over the coordinates; a long zone name is cut short (hover shows it whole) and other addons' minimap icons sit round the rim. Square is the old square map. Follow the theme is round only on Classic look. No `/vg errors`. [Needs in game: that the disc mask, the outline and the rim buttons line up at 1080p and 1440p.]
 - If it fails, paste: a screenshot of the minimap with its setting and variant, and `/vg errors`.
 
+### 26.1b Bar backing
+
+- Do: open `/vg` → Action bars and set **Theme variant** (General → Look) to Classic look, then look at the action bars; set **Bar backing** to Never, then Always, then Follow the theme with Slate and brass. Drag a spell onto an empty slot, and enter combat.
+- Expect: Classic look (Follow the theme) puts a flat panel with a bronze edge a few pixels outside each bar, under the buttons, at once; Never removes it, Always shows it on any theme; the backing fades and hides with its bar (mouseover bars, hidden bars) and never takes a click away from a button. No `/vg errors`. [Needs in game: the backing's size and level against the buttons on every bar, including in combat.]
+- If it fails, paste: a screenshot of the bars with the setting and variant, and `/vg errors`.
+
 ### 26.2 Rounded corners
 
 - Do: open `/vg` → General → Look and set **Corners** to Rounded (or `/vg corners rounded`); open the options window, bags, the quest log, a unit frame, a tooltip and a few buttons; hover a button; try it on Slate and brass, High contrast and Midnight; then set it back to Square.
