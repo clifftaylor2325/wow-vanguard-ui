@@ -7,7 +7,7 @@
 
 local ADDON, ns = ...
 
-local CW = ns.Module("ChatWindows", { defaults = { movers = false } })
+local CW = ns.Module("ChatWindows", { defaults = { movers = false, find = true } })
 
 -- The sliders' ranges (width, height) in units.
 CW.WIDTH = { min = 250, max = 900, step = 10, format = function(v) return string.format("%d", math.floor(v + 0.5)) end }
@@ -93,9 +93,165 @@ local function floatingMover(window)
   pinTo(frame, key)
 end
 
+-- Tabs ------------------------------------------------------------------------------------
+
+-- The message groups a tab can show or hide, as the game names them.
+CW.GROUPS = {
+  { "SAY", "Say" }, { "YELL", "Yell" }, { "GUILD", "Guild" }, { "PARTY", "Party" }, { "RAID", "Raid" },
+  { "WHISPER", "Whispers" }, { "LOOT", "Loot" }, { "SYSTEM", "System messages" },
+}
+-- The longest tab name.
+CW.MAX_NAME = 16
+
+-- The window being edited on the Chat page (a chat window number; the main window when unset or gone).
+function CW.Editing()
+  for _, w in ipairs(CW.Windows()) do
+    if w[1] == CW.editing then return w[1], w[2], w[3] end
+  end
+  local main = CW.Windows()[1]
+  return main and main[1], main and main[2], main and main[3]
+end
+
+-- get/set for the tab picker: the choices are the windows showing; a pick rebuilds the page.
+function CW.TabSetting()
+  return function() return (CW.Editing()) end,
+    function(v) CW.editing = v ns.Options.RebuildPage("chat") end
+end
+
+-- The windows showing as choices { index, name }.
+function CW.TabChoices()
+  local out = {}
+  for _, w in ipairs(CW.Windows()) do out[#out + 1] = { w[1], w[3] } end
+  return out
+end
+
+-- get/set for whether the edited tab shows a message group.
+function CW.GroupSetting(group)
+  return function()
+    local _, frame = CW.Editing()
+    return frame ~= nil and type(ChatFrame_ContainsMessageGroup) == "function" and ChatFrame_ContainsMessageGroup(frame, group) == true
+  end, function(v)
+    local _, frame = CW.Editing()
+    local call = v and ChatFrame_AddMessageGroup or ChatFrame_RemoveMessageGroup
+    if frame and type(call) == "function" then call(frame, group) end
+  end
+end
+
+-- A tab name as typed: trimmed, with no escape codes, at most CW.MAX_NAME characters (or nil).
+function CW.CleanName(text)
+  local name = (type(text) == "string" and text or ""):gsub("|", ""):match("^%s*(.-)%s*$"):sub(1, CW.MAX_NAME)
+  return name ~= "" and name or nil
+end
+
+-- Makes a new chat tab, out of combat, and selects it for editing.
+function CW.New(text)
+  local name = CW.CleanName(text)
+  if not name then return ns.Chat("Type a name for the new tab.") end
+  if type(FCF_OpenNewWindow) ~= "function" then return ns.Chat("This client can't make a chat tab.") end
+  ns.OutOfCombat(function()
+    local frame = FCF_OpenNewWindow(name)
+    CW.editing = frame and tonumber((frame:GetName() or ""):match("(%d+)$")) or CW.editing
+    ns.Options.RebuildPage("chat")
+  end, "chat new tab")
+  ns.HideText()
+end
+
+-- Renames the edited tab.
+function CW.Rename(text)
+  local name, _, frame = CW.CleanName(text), CW.Editing()
+  if not (name and frame and type(FCF_SetWindowName) == "function") then return ns.Chat("Type a name for the tab.") end
+  FCF_SetWindowName(frame, name)
+  ns.HideText()
+  ns.Options.RebuildPage("chat")
+end
+
+-- Closes the edited tab (never the main one), out of combat.
+function CW.Close()
+  local index, frame = CW.Editing()
+  if not frame or index == 1 or type(FCF_Close) ~= "function" then return ns.Chat("The main chat tab can't be closed.") end
+  ns.OutOfCombat(function() FCF_Close(frame) CW.editing = nil ns.Options.RebuildPage("chat") end, "chat close tab")
+end
+
+-- Find ------------------------------------------------------------------------------------
+
+-- At most this many lines are listed (the newest).
+CW.MAX_FOUND = 200
+
+-- A line as plain lower-case text for matching (links and colors reduced to their words).
+local function plain(text)
+  return ns.GetModule("ChatExtras").Plain(text):lower()
+end
+
+-- Every readable line of a window as { text }: lines the game hides are left out.
+local function frameLines(frame)
+  local out, count = {}, type(frame.GetNumMessages) == "function" and ns.PlainNumber(frame:GetNumMessages()) or 0
+  for i = 1, count do
+    local text = frame:GetMessageInfo(i)
+    if type(text) == "string" and not ns.IsSecret(text) then out[#out + 1] = text end
+  end
+  return out
+end
+
+-- Lines saved for the next login (Modules/ChatHistory.lua) that no window shows any more, oldest first.
+local function savedLines(shown)
+  local out, CHH = {}, ns.GetModule("ChatHistory")
+  local store = CHH.Store()
+  for i = 1, windowCount() do
+    for _, line in ipairs(type(store[i]) == "table" and store[i] or {}) do
+      local text = select(5, CHH.Unpack(line))
+      if text and not shown[text] then out[#out + 1] = text end
+    end
+  end
+  return out
+end
+
+-- Every line to look through, oldest first: the saved ones no window shows, then each window's own.
+local function allLines()
+  local shown, all = {}, {}
+  for _, w in ipairs(CW.Windows()) do
+    for _, text in ipairs(frameLines(w[2])) do shown[text] = true all[#all + 1] = text end
+  end
+  local saved = savedLines(shown)
+  for _, text in ipairs(all) do saved[#saved + 1] = text end
+  return saved
+end
+
+-- The lines holding `needle` (lower-case), the newest CW.MAX_FOUND, as plain text.
+function CW.Search(needle)
+  local found = {}
+  for _, text in ipairs(allLines()) do
+    if plain(text):find(needle, 1, true) then found[#found + 1] = ns.GetModule("ChatExtras").Plain(text) end
+  end
+  return { unpack(found, math.max(1, #found - CW.MAX_FOUND + 1)) }
+end
+
+-- Finds a word in the chat and the saved history, and shows the lines in a box ready to copy.
+function CW.Find(query)
+  local needle = (type(query) == "string" and query or ""):match("^%s*(.-)%s*$"):lower()
+  if needle == "" then return ns.Chat("Type something to find.") end
+  local found = CW.Search(needle)
+  ns.ShowText(string.format("Chat: %d lines with \"%s\"", #found, needle), table.concat(found, "\n"))
+end
+
+-- Asks what to find.
+function CW.AskFind()
+  ns.AskText("Find in chat", CW.Find, "Find")
+end
+
+-- A small Find button in the main chat window's tab row, left of the Copy button.
+local function addFindButton()
+  local frame = _G.ChatFrame1
+  if type(frame) ~= "table" then return end
+  CW.findButton = ns.DialogButton(frame, "Find", 40)
+  CW.findButton:SetHeight(16)
+  CW.findButton:SetPoint("BOTTOMRIGHT", frame, "TOPRIGHT", -44, ns.Theme.SPACE.tight)
+  CW.findButton:SetScript("OnClick", ns.Guard("click find in chat", CW.AskFind))
+end
+
 -- Module entry point (Core/Modules.lua).
 function CW.Enable(settings)
   CW.settings = settings
+  if settings.find then addFindButton() end
   if not settings.movers then return end
   for _, window in ipairs(CW.Windows()) do
     if floating(window[1]) then floatingMover(window) end

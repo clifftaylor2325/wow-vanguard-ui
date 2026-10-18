@@ -145,6 +145,7 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 
 - Do: drag a frame with `/vg unlock`, then open `/vg` → General → **Run setup**. Click Next three times, then Done.
 - Expect: `Step 1 of 4 · Layout` with six choices (Centered: damage, Centered: tanking, Centered: healing, Versus deck, Like the game's, Keep my current layout), Keep picked; the frame you dragged stays where it is at the end. Next goes to `Step 2 of 4 · Screen`, with a choice per screen size (1080p, 1440p, 4K, Ultrawide), the one for your screen marked `your screen`, `Pixel-perfect (sharpest)` and `Keep my current sizes` (picked); under them the hint names who sets your UI scale now (`the game's UI Scale slider` or `Vanguard's pixel-perfect scale`), in full and inside the window, and clicking a preset shows a two-line hint that it moves the game's UI Scale slider; Next goes to `Step 3 of 4 · Look` (the accent swatches, the raid frame style and the Calm HUD switch, off); Next goes to `Step 4 of 4 · Move things` with every frame's handle showing; the button then says Done, and Done hides the handles and the wizard and offers `Setup is done. Reload the UI now to apply it?`. No profile backup is mentioned in chat, since nothing changed. Escape and the close button close it too. After `/reload` the wizard does not come back by itself.
+- Also on the Look step: under Calm HUD, switches **Larger text (115%)** and **Colour vision: Safer colours**, both off and inside the window. Larger text makes the wizard's own text bigger at once and Off puts it back; Safer colours moves hostile and friendly bars apart after the reload. Each first change says where the backup profile went.
 - If it fails, paste: the step id, the caption you saw, and `/vg errors`.
 
 ### 2.2a The role layouts look different
@@ -1249,7 +1250,25 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 - Expect: every group chat line appears in its window for the whole fight, and no error popup appears. Lines the game hides from addons show as the game gives them (no link on a web address in them, not shortened, not in the Filtered tab). `/vg errors` has no `chat filter` or `chat filter links` line. [Needs in game: whether comparing a hidden chat line raised before this change; the early return makes the question moot, but the fight is the proof.]
 - If it fails, paste: `/vg errors` and which chat event went quiet.
 
+### 15.6e Chat tabs
+
+- Do: `/vg` → Chat → Chat tabs. Click New chat tab, type `Loot`, Make. With Loot picked, tick Show Loot and untick Show Say; loot something and say something. Click Rename this tab, type `Drops`. Pick General, try Close this tab. Pick Drops, Close this tab. Do the same in combat.
+- Expect: a new tab appears and is picked; it shows loot and not say; the rename shows on the tab; closing General does nothing and says so in chat; Drops closes; in combat the new tab or close waits until the fight ends. `/vg errors` is empty. [Needs in game: FCF_OpenNewWindow, FCF_SetWindowName, FCF_Close, ChatFrame_AddMessageGroup / RemoveMessageGroup / ContainsMessageGroup behave as used, and the group names (SAY, YELL, GUILD, PARTY, RAID, WHISPER, LOOT, SYSTEM) match.]
+- If it fails, paste: `/vg errors` and what the tab did.
+
+### 15.6f Chat search
+
+- Do: say a few lines with the same word in /say and have a link or two appear in chat. Click Find over the chat (left of Copy), type the word, Find. Then `/vg` → Chat → Find in chat and search for a word that was only in the chat before your last `/reload` (with Chat history on).
+- Expect: a box opens with `Chat: N lines with "word"` and the matching lines as plain text (links show as their words), selected for Ctrl+C. An empty search says `Type something to find.` `/vg errors` is empty. [Needs in game: that the Find button sits clear of Copy in the tab row, and that GetNumMessages/GetMessageInfo return every line the window holds.]
+- If it fails, paste: `/vg errors` and a screenshot of the tab row.
+
 ## 16. Realm and ruleset
+
+### 16.0 Data from the beta
+
+- Do: after launch, log in and read the chat line "Still saved from the beta: ..."; then open /vg > Town and gear, go to the bottom "Data from the beta" card and press "Clear data from before launch...", answer No, then press it again and answer Yes. `/vg launch` lists what is left.
+- Expect: the line appears once per account (not on later logins) and only when prices, sales or characters stamped before 4 November 2026 15:00 PST are saved. The button is greyed before launch. No clears first; Yes removes only the beta-era prices, sales and characters (what you saw after launch stays) and the Deals list no longer compares against beta prices. [Needs in game: that the beta and live game share the saved file at all, and which of them wrote the old entries.]
+- If it fails, paste: `/vg launch` and `/vg errors`.
 
 ### 16.1 Realm, ruleset and names
 
@@ -1292,6 +1311,12 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 - Expect: the floating marker in the world is Vanguard's teardrop pin in your accent colour, the distance under it (`12 yds`) in the theme's outlined font, and it still fades as you look away from it and when you reach the spot; a supertracked quest shows the same pin. A party member's portrait and the ghost's tombstone are the game's own, untinted. With the switch off, the game's own pin art and gold text come back. [Needs in game: the pin's size against the game's, its look after `/way` and on a supertracked quest, and that the game's `SuperTrackedFrame` is present on Forever.]
 - If it fails, paste: a screenshot of the pin, which step broke, and `/vg errors`.
 
+### 18.4a Ctrl-click waypoint, Clear button and recent waypoints
+
+- Do: open the world map, hold Ctrl and click a spot; then click another spot, then press **Clear waypoint** on the map's bottom edge. Open `/vg` → Map → Waypoints and Recent waypoints; press a "Go to ..." button. Type `/way recent` and `/way recent 2`. Untick "Point the arrow at a waypoint you Ctrl-click on the map" and Ctrl-click again.
+- Expect: with the switch on, the floating pin and its distance appear at once after each Ctrl-click; the Clear waypoint button shows only while a waypoint exists and removes it and the pin; the Map page lists up to eight spots, newest first, and each button puts that spot back with the pin; `/way recent` prints the same list; with the switch off the click only drops the map pin and the arrow stays off. [Needs in game: that the event is `USER_WAYPOINT_UPDATED`, that `C_Map.GetUserWaypoint` returns the position on Forever, and the Clear button's place on the map.]
+- If it fails, paste: which step broke and `/vg errors`.
+
 ### 18.5 Levelling guide probe (LG-0)
 
 - Do: with at least one quest in your log, stand in a town and type `/vg guide probe`. Type it again in combat, and once inside a dungeon if you can. Turn in one quest, then type it again.
@@ -1314,7 +1339,7 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 
 ### 19.2 Loot rolls (only where the client keeps a loot history for the drop)
 
-- Do: type `/run print(C_LootHistory ~= nil, C_LootHistory and C_LootHistory.GetAllEncounterInfos ~= nil, C_LootHistory and C_LootHistory.GetSortedDropsForEncounter ~= nil)` and paste what it prints. If it prints `true true true`, roll on an item in a group (Need, Greed or Pass) in a dungeon and also from a world drop, and watch the panel.
+- Do: type `/run print(C_LootHistory ~= nil, C_LootHistory and C_LootHistory.GetAllEncounterInfos ~= nil, C_LootHistory and C_LootHistory.GetSortedDropsForEncounter ~= nil)` and paste what it prints. If it prints `true true true`, roll on an item in a group (Need, Greed or Pass) in a dungeon (check a player from another realm shows as Name-Realm and one from yours as Name) and also from a world drop, and watch the panel.
 - Expect: nothing happens on a client without it (no error). With it, under the roll lines the panel shows the item, "rolling" until it has a winner or everyone passed, and each member's choice and roll, the winner in your accent color. [Needs in game: that the history holds a drop for a vanilla dungeon and for a world group roll (the Forever docs list C_LootHistory's encounter calls only; if a world roll leaves it empty, the loot half of the panel stays empty by design), what "winner" and "allPassed" look like while the roll runs, and the order of the drops.]
 - If it fails, paste: the `/run` line's output and `/vg errors`.
 
@@ -1329,8 +1354,8 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 ### 20.2 Cooldowns and ranking
 
 - Do: with the queue on, open a profession that has a cooldown (a transmute, say), then `/vg craft cd`. Visit the auction house, open a profession again and type `/vg craft top`.
-- Expect: `cd` lists the cooldown with its time left, for each character that noted one; `top` lists up to five recipes that pay best, per craft and per hour at the pace set under Craft queue. [Needs in game: that C_TradeSkillUI.GetAllRecipeIDs and GetRecipeCooldown exist and give the open profession's recipes and seconds left, and that reading a few hundred recipes causes no stutter.]
-- If it fails, paste: `/vg errors` and what `/run print(C_TradeSkillUI.GetAllRecipeIDs ~= nil, C_TradeSkillUI.GetRecipeCooldown ~= nil)` prints.
+- Expect: `cd` lists the cooldown with its time left, for each character that noted one; `top` lists up to five recipes that pay best, per craft and per hour at the pace set under Craft queue. [Needs in game: whether C_TradeSkillUI.GetAllRecipeIDs and GetRecipeCooldown exist on Forever (the docs list neither). If not, `cd` only knows the recipe you selected, queued or already noted, with the time from C_Spell.GetSpellCooldown on the recipe's spell; select a transmute (or any recipe with a cooldown) in its profession window, then `/vg craft cd`. Also: that a recipe's spell cooldown is what the profession window shows, and that reading a few hundred recipes causes no stutter.]
+- If it fails, paste: `/vg errors` what `/run print(C_TradeSkillUI.GetAllRecipeIDs ~= nil, C_TradeSkillUI.GetRecipeCooldown ~= nil)` prints, and `/run print(C_Spell.GetSpellCooldown(<a recipe's spell ID>))`.
 
 ## 21. Presets (batch 2)
 
@@ -1426,6 +1451,12 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 - Do: open `/vg` → Map → Minimap and waypoints and set **Minimap shape (reload)** to Round, then `/reload`. Look at the minimap: the zone name, the coordinates, the tracking, mail, difficulty, group finder and addon buttons, zoom with the wheel, click the zone name, drag it with `/vg unlock`. Then set Square and Follow the theme with Theme variant on Classic look, `/reload` each time.
 - Expect: Round shows the map as a disc with an outline on its edge, the top and bottom bands cut to the disc, no corner diamonds, and the game's buttons on the rim at the corners' angles, not cut off or over the coordinates; a long zone name is cut short (hover shows it whole) and other addons' minimap icons sit round the rim. Square is the old square map. Follow the theme is round only on Classic look. No `/vg errors`. [Needs in game: that the disc mask, the outline and the rim buttons line up at 1080p and 1440p.]
 - If it fails, paste: a screenshot of the minimap with its setting and variant, and `/vg errors`.
+
+### 26.1b Bar backing
+
+- Do: open `/vg` → Action bars and set **Theme variant** (General → Look) to Classic look, then look at the action bars; set **Bar backing** to Never, then Always, then Follow the theme with Slate and brass. Drag a spell onto an empty slot, and enter combat.
+- Expect: Classic look (Follow the theme) puts a flat panel with a bronze edge a few pixels outside each bar, under the buttons, at once; Never removes it, Always shows it on any theme; the backing fades and hides with its bar (mouseover bars, hidden bars) and never takes a click away from a button. No `/vg errors`. [Needs in game: the backing's size and level against the buttons on every bar, including in combat.]
+- If it fails, paste: a screenshot of the bars with the setting and variant, and `/vg errors`.
 
 ### 26.2 Rounded corners
 
@@ -1848,6 +1879,12 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Do: with a fresh profile, look at the main chat window over a bright area (snow, desert) and over a dark one. Open `/vg` → Chat and cycle Chat background strength through Light, Medium and Dark, then untick Chat background. Look at the tabs and the Copy button.
 - Expect: the window is about 500 wide and 154 tall (420 wide on a small screen) (a profile that already sized chat keeps its size). A soft dark patch sits behind the text and the tab row with edges that fade out (no hard border), the text reads over bright ground at Medium, and the strength follows the setting at once. Tab names show in full (General, not Gene…) the Copy button sits at the right end of the tab row, and the scroll bar on the right is a slim thumb on the backdrop with no boxed arrows (the scroll-to-bottom glyph still shows when scrolled up). Tab names are readable. Cycle Chat window size through Larger and Largest: the window resizes at once. On a 4K screen, switching Pixel-perfect scale on (General → Look, no setup) keeps the UI and chat about 1080p's size, not half of it.
 - If it fails, paste: a screenshot over bright ground and `/vg errors`.
+
+### 33.40 Options window: reload tags, search list, page reset, Modules groups
+
+- Do: open `/vg` → General. Look at Color assist and Pixel-perfect scale, and point at Color assist. Type "colour blind" in the search box, then "font size", then "changed". Click a result. Open Chat, untick "Copy button over the chat", press Reset this page and answer Reset. Open Modules and cycle Show through On and Off. At Text size 70 % and 130 % (General), check the search list and the tags.
+- Expect: Color assist has a small grey "reload" tag after its caption and no "(reload)" in the caption; Pixel-perfect scale has none; pointing at Color assist says "Takes effect after /reload." The search list opens under the box, right-aligned with it, over the page: "colour blind" lists Color assist (General), "font size" lists Text size, "changed" lists what you changed; a click opens that page with the row marked and the list closes; a search with no match says "No setting matches." Reset this page is greyed until something on the page differs from its default, asks, and puts the box back. Modules shows headings named like the list on the left; Show: Off lists only the modules you turned off. No caption or tag overlaps a switch, slider or dropdown at either text size.
+- If it fails, paste: a screenshot of the row, the list or the page and `/vg errors`.
 
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 

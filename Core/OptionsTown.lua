@@ -139,11 +139,20 @@ local function upgradeRows()
   }
 end
 
+-- Saved prices, sales and characters from the beta, and the button that clears them (Core/Home.lua).
+local function betaRows()
+  return {
+    { "header", "Data from the beta" },
+    { "text", "Prices, sales and characters saved before launch (4 November 2026) stay until you clear them. Vendors are the same in both and stay." },
+    { "button", "Clear data from before launch...", function() ns.Home.AskClear() end, function() return ns.Home.Launched() end },
+  }
+end
+
 -- The Town and gear page: the auction house, merchants, errands, crafting, mail, spells, Legacy, instance prep and gear upgrades.
 local function townPageRows()
   local rows = append(append(auctionRows(), merchantRows()), errandRows())
   append(append(append(append(rows, craftRows()), mailRows()), spellRankRows()), petStableRows())
-  return append(append(append(rows, legacyRows()), prepRows()), upgradeRows())
+  return append(append(append(append(rows, legacyRows()), prepRows()), upgradeRows()), betaRows())
 end
 
 O.AddPage({ key = "town", title = "Town and gear", icon = "NavTown", order = 85, rows = townPageRows })

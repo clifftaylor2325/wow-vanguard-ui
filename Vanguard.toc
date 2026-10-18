@@ -1,4 +1,4 @@
-## Interface: 16001, 120007
+## Interface: 16001, 120105, 120007
 ## Title: Vanguard
 ## Notes: A from-scratch UI suite for WoW Forever: theme, movers, unit frames, action bars, minimap, chat, bags.
 ## Author: clifftaylor2325
@@ -58,6 +58,7 @@ Core/OptionsCooldowns.lua
 Core/OptionsTools.lua
 Core/OptionsTown.lua
 Core/OptionsWindow.lua
+Core/OptionsSearch.lua
 Core/OptionsPreview.lua
 Core/ErrorBadge.lua
 Core/OptionsProfiles.lua

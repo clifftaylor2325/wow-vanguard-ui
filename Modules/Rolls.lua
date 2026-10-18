@@ -5,6 +5,7 @@
 -- chat messages; a line the client hides, or one that doesn't match, is skipped.
 -- With the officer loot tools on (Modules/OfficerLoot.lua), a roll by a player who reserved
 -- the item being rolled for is flagged "[SR]", and a loot item lists who reserved it.
+-- A player's name from another realm or ruleset keeps its "-Realm" on the panel; yours is left off.
 -- Where the client has the loot history (C_LootHistory's encounter drops, as on
 -- Forever), the panel also lists the last few items the group rolled for, with
 -- each member's choice and roll and who won; where it doesn't, or it holds
@@ -207,7 +208,7 @@ function R.RollLines()
   if #R.rolls == 0 then return {} end
   local round, item = R.Round(), R.RoundItem()
   local out = { { "Rolls " .. round[1].low .. "-" .. round[1].high, "", "head" } }
-  for _, r in ipairs(round) do out[#out + 1] = { r.name .. R.Flag(r.name, item), figures(r), r.roll == round[1].roll and "win" or "row" } end
+  for _, r in ipairs(round) do out[#out + 1] = { ns.Home.Display(r.name) .. R.Flag(r.name, item), figures(r), r.roll == round[1].roll and "win" or "row" } end
   return out
 end
 
@@ -216,7 +217,7 @@ function R.ItemLines(item)
   local out = { { item.link, item.done and "" or "rolling", "head" } }
   out[2] = R.ReservedLine(item.link)
   for _, p in ipairs(item.players) do
-    out[#out + 1] = { p.name .. R.Flag(p.name, item.link), p.choice .. (p.roll and (" " .. p.roll) or ""), p.winner and "win" or "row" }
+    out[#out + 1] = { ns.Home.Display(p.name) .. R.Flag(p.name, item.link), p.choice .. (p.roll and (" " .. p.roll) or ""), p.winner and "win" or "row" }
   end
   return out
 end

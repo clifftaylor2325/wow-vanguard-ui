@@ -39,6 +39,14 @@ it("a roll in chat shows the panel, highest first, with the top roll in the acce
   expect(addon.eval("return #ns.errors"), "no errors").toBe(0);
 });
 
+it("two-part names: your realm's players show by name, other realms' keep their realm; the loot players too", () => {
+  const addon = loggedIn(ROLL_ENV + lootEnv(true, ['{ "Jaina-ForeverTest", 0, 5, false }', '{ "Thrall-Elsewhere", 3, 9, true }']));
+  roll(addon, "Ally-ForeverTest", 50);
+  roll(addon, "Ally-Elsewhere", 40);
+  addon.fire("LOOT_HISTORY_UPDATE_DROP", 7, 1);
+  expect(panel(addon)[2].map((l) => l[0]), "a name with your realm loses it; another realm's stays").toEqual(["Rolls 1-100", "Ally", "Ally-Elsewhere", "|cff0070dd[Boots]|r", "Jaina", "Thrall-Elsewhere"]);
+});
+
 it("a tie marks both, a roll in another range starts a new round, and a different range shows its figures", () => {
   const addon = loggedIn(ROLL_ENV);
   roll(addon, "Thrall", 50);

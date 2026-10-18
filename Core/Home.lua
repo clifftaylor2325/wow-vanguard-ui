@@ -143,3 +143,108 @@ function H.Report()
   ns.Chat(string.format("Side: %s   Data key: %s", H.Side(), H.Key()))
   ns.Chat(string.format("Your name in chat: %s-%s (shown as %s)", me, H.Realm(), me))
 end
+
+-- Data from the beta ----------------------------------------------------------------------------
+-- The beta's prices, sales and remembered characters stay in the saved file and could sit under the
+-- same key as the live game's. They are told apart by their time stamps: launch was 4 November 2026,
+-- 15:00 PST (UTC seconds). Nothing is removed unasked; /vg launch clear and the Town and gear page do it.
+
+H.LAUNCH = 1793833200
+
+-- Whether a time stamp is a plain number from before launch (no stamp, or a hidden one, is kept).
+local function early(t)
+  return type(t) == "number" and not ns.IsSecret(t) and t < H.LAUNCH
+end
+
+-- Whether the clock says launch has passed.
+function H.Launched()
+  local clock = _G.time
+  return (type(clock) == "function" and ns.PlainNumber(clock()) or 0) >= H.LAUNCH
+end
+
+-- The keys of a map's entries stamped before launch under `field`; with drop, the entries are removed. Returns how many.
+local function sweepMap(map, field, drop)
+  local old = {}
+  for key, entry in pairs(type(map) == "table" and map or {}) do
+    if type(entry) == "table" and early(entry[field]) then old[#old + 1] = key end
+  end
+  for _, key in ipairs(drop and old or {}) do map[key] = nil end
+  return #old
+end
+
+-- A list's records stamped before launch (field t); with drop, they are removed and the rest keep their order. Returns how many.
+local function sweepList(list, drop)
+  local kept = {}
+  for _, r in ipairs(type(list) == "table" and list or {}) do
+    if not (type(r) == "table" and early(r.t)) then kept[#kept + 1] = r end
+  end
+  local gone = type(list) == "table" and #list - #kept or 0
+  for i = 1, drop and gone > 0 and #list or 0 do list[i] = kept[i] end
+  return gone
+end
+
+-- The beta-era prices of every home's house (recounted when dropped).
+local function sweepPrices(houses, drop)
+  local n = 0
+  for _, house in pairs(type(houses) == "table" and houses or {}) do
+    n = n + sweepMap(type(house) == "table" and house.prices, "t", drop)
+    if drop and type(house) == "table" then house.count = 0 for _ in pairs(house.prices) do house.count = house.count + 1 end end
+  end
+  return n
+end
+
+-- The beta-era sales of every home's ledger, and its auctions still open from then.
+local function sweepSales(books, drop)
+  local n = 0
+  for _, book in pairs(type(books) == "table" and books or {}) do
+    n = n + sweepList(type(book) == "table" and book.records, drop) + sweepMap(type(book) == "table" and book.open, "t", drop)
+  end
+  return n
+end
+
+-- The beta-era characters of every home.
+local function sweepCharacters(homes, drop)
+  local n = 0
+  for _, chars in pairs(type(homes) == "table" and homes or {}) do n = n + sweepMap(chars, "updated", drop) end
+  return n
+end
+
+-- How many prices, sales and characters were last noted before launch: { prices, sales, characters }; with drop, they are removed.
+function H.Beta(drop)
+  local db = type(VanguardDB) == "table" and VanguardDB or {}
+  local ah = type(db.ah) == "table" and db.ah or {}
+  return { prices = sweepPrices(ah.houses, drop), sales = sweepSales(ah.ledgers, drop), characters = sweepCharacters(db.inventory, drop) }
+end
+
+-- "12 prices, 3 sales, 2 characters" (the ones there are), or nil when there are none.
+local function betaText(n)
+  local parts = {}
+  for _, kind in ipairs({ "prices", "sales", "characters" }) do
+    if n[kind] > 0 then parts[#parts + 1] = n[kind] .. " " .. kind end
+  end
+  return #parts > 0 and table.concat(parts, ", ") or nil
+end
+
+-- /vg launch [clear]: what is saved from before launch, or (clear, once launch has passed) removes it.
+function H.Launch(arg)
+  if arg == "clear" and not H.Launched() then return ns.Chat("Launch is on 4 November 2026; nothing is cleared before then.") end
+  local text = betaText(H.Beta(arg == "clear"))
+  if not text then return ns.Chat("No prices, sales or characters saved from before launch.") end
+  ns.Chat(arg == "clear" and ("Cleared what was saved from before launch: " .. text .. ".") or ("Saved from before launch (the beta): " .. text .. ". /vg launch clear removes them."))
+end
+
+-- The Clear button on the Town and gear page: asks first, naming what would go.
+function H.AskClear()
+  local text = betaText(H.Beta(false))
+  if not text then return ns.Chat("No prices, sales or characters saved from before launch.") end
+  ns.Ask("Clear what was saved before launch (" .. text .. ")? Prices, sales and characters you saw after launch stay.", "Clear", function() H.Launch("clear") end, function() end)
+end
+
+-- Once per account, after launch: says when beta data is still saved and where to clear it.
+function H.LaunchNotice()
+  if not H.Launched() or type(VanguardDB) ~= "table" or VanguardDB.launchNoticed then return end
+  VanguardDB.launchNoticed = true
+  local text = betaText(H.Beta(false))
+  if text then ns.Chat("Still saved from the beta: " .. text .. ". Clear them under /vg > Town and gear if the live game starts fresh.") end
+end
+ns.On("PLAYER_LOGIN", ns.Guard("launch notice", H.LaunchNotice))

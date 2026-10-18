@@ -231,3 +231,35 @@ function AB.SettingChanged(n, key)
     AB.ApplyVisibility(n)
   end
 end
+
+-- Bar backing ---------------------------------------------------------------------------------
+
+-- How far (units) a bar's backing reaches out past its buttons.
+AB.BACKING_PAD = T.SPACE.tight
+
+-- Whether the bars wear a backing: the setting says "on", or says "auto" (the default) and the
+-- theme variant asks for it (Classic look).
+function AB.WantsBacking()
+  local mode = AB.settings.backing
+  return mode == "on" or (mode ~= "off" and (T.Variant() or {}).barBacking == true)
+end
+
+-- Makes a bar's backing: a flat panel in the HUD look a level under the buttons, taking no mouse.
+local function makeBacking(bar)
+  local f = CreateFrame("Frame", nil, bar)
+  f:SetFrameLevel(math.max(0, bar:GetFrameLevel() - 1))
+  f:SetPoint("TOPLEFT", bar, "TOPLEFT", -AB.BACKING_PAD, AB.BACKING_PAD)
+  f:SetPoint("BOTTOMRIGHT", bar, "BOTTOMRIGHT", AB.BACKING_PAD, -AB.BACKING_PAD)
+  T.HudPanel(f)
+  bar.vgBacking = f
+  return f
+end
+
+-- Shows or hides every bar's backing (made when first wanted) to match the setting and the theme.
+-- Out of combat, since the bars are secure frames.
+function AB.UpdateBackings()
+  local on = AB.WantsBacking()
+  for _, bar in pairs(AB.bars) do
+    if on or bar.vgBacking then (bar.vgBacking or makeBacking(bar)):SetShown(on) end
+  end
+end

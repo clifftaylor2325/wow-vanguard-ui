@@ -4,7 +4,7 @@ Read this before touching anything. README.md is the spec for behaviour; this fi
 
 ## What this is
 
-- Vanguard is a from-scratch UI suite (Lua 5.1) for WoW Forever, the 12.1 engine with vanilla content. TOC declares Interface 16001 (Forever) and 120007.
+- Vanguard is a from-scratch UI suite (Lua 5.1) for WoW Forever, the 12.1 engine with vanilla content. TOC declares Interface 16001 (Forever), 120105 and 120007.
 - Formerly ForeverUI, renamed in 0.4.0. Use "Vanguard" in code, docs and player-facing text. "ForeverUI" and "/fui" appear only in migration notes. Slash commands are `/vg` and `/vanguard`.
 - Version lives in `Vanguard.toc` (`## Version`). Bump it only as part of a release.
 - Copyright Clifton Taylor, all rights reserved (LICENSE). Don't add third-party code or art without a license note in the right CREDITS file.

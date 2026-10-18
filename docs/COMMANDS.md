@@ -89,4 +89,5 @@ Every `/vg` command (`/vanguard` works too), grouped by what it does. `/vg help`
 | `/vg graphics` | Checks your computer, screen and frame rate, then suggests a Graphics Quality and the sizes for your screen |
 | `/vg graphics apply` | Sets what the check suggested: Graphics Quality, render scale on a slow 4K screen, and the sizes for your screen |
 | `/vg graphics undo` | Puts your graphics settings and UI scale back as they were before apply |
+| `/vg launch [clear]` | Prices, sales and characters saved from before launch (the beta); clear removes them after launch |
 | `/vg frame <name> [deep]`, `/vg realm`, `/vg factionart` | What the client says about a frame, your realm, the faction pictures |
