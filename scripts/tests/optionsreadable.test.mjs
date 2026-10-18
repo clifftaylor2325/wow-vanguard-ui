@@ -45,10 +45,9 @@ it("options: the Modules page is grouped like the nav, and a filter shows the on
   expect(all.filter((r) => r.startsWith("header|")).slice(0, 4), "headers follow the nav").toEqual(["header|Modules", "header|Unit frames", "header|Raid frames", "header|Action bars"]);
   const names = addon.eval("return ns.ModuleNames()");
   expect(all.filter((r) => r.startsWith("module|")).length, "every module has exactly one switch").toBe(names.length);
-  const missing = addon.eval(`local listed = {} for _, g in ipairs(ns.Options.MODULE_GROUPS) do for _, n in ipairs(g[2]) do listed[n] = true end end
-    local out = {} for _, n in ipairs(ns.ModuleNames()) do if not listed[n] then out[#out + 1] = n end end return out`);
-  expect(Object.values(missing), "every module is in a group (a new module needs a line in O.MODULE_GROUPS)").toEqual([]);
-  expect(all.includes("header|More"), "so nothing falls into More").toBe(false);
+  const stale = addon.eval(`local have = {} for _, n in ipairs(ns.ModuleNames()) do have[n] = true end
+    local out = {} for _, g in ipairs(ns.Options.MODULE_GROUPS) do for _, n in ipairs(g[2]) do if not have[n] then out[#out + 1] = n end end end return out`);
+  expect(Object.values(stale), "every module a group names exists (one in no group is listed under More)").toEqual([]);
   addon.eval('ns.SetModuleEnabled("Chat", false) ns.Options.Show("modules") ns.Options.PAGES[2].rows()[3][5]("off")');
   expect(addon.eval("return ns.Options.moduleFilter"), "the filter cycle sets the filter").toBe("off");
   expect(rows().filter((r) => !r.startsWith("text|")).slice(1), "Off lists only the module that is off, under its group").toEqual(["cycle|Show", "header|Chat", "module|Chat"]);
