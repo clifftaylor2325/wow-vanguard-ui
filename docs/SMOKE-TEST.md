@@ -448,6 +448,7 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 
 - Do: fill the quest log (as many quests as it lets you take; the limit on Forever is not confirmed), then press the quest log key and type `/vg quests`.
 - Expect: Vanguard's log, titled `Quest log` with your quest count (`12 quests`) beside the title, with quests under their zones (each zone a small grey capitals header with a chevron, down while open and right while folded: click it to fold the zone), `[12] Title` lines in difficulty colours, the chosen quest marked by an accent bar along its left edge and a faint wash, a thin scroll thumb beside a list or quest text longer than its column, and Track or Untrack, Share and Map along the right, and Abandon (red label) alone at the far left, for the chosen quest. Click Track or Untrack, then Shift-click another quest: the button flips each time and the tracker follows; if the game refuses, chat says `The game didn't track ...` with the count tracked. Hover a reward card (a quest with an item reward): the item's tooltip shows beside it and goes when you leave. [Needs in game: the tooltip must show for both choices and fixed rewards.] Ctrl-click two quests: both look chosen and the red button reads `Abandon 2`; Ctrl-click one again to unmark it. Click Abandon: a question names the marked quests; No leaves them, Abandon removes them from the log. [Needs in game: that C_QuestLog.AbandonQuest exists and works after SetAbandonQuest, several in a row.] If it is off, `/vg quests` says `Vanguard's quest log is off (/vg > Quests).`
+- Also (objective rows): choose a quest with a counted objective (kill or collect) and one without a count (explore, talk to). Expect an `Objectives` header and one 28 px row each: a count at the right edge (`3/8`) with a thin accent bar under the row while it is open; a plain objective with no count and no bar; a done one with a check mark and muted text. Kill one more and the count and bar follow. [Needs in game: that objective text ends or starts with `x/y` on Forever; if it reads another way the row shows the whole text and no count.]
 - If it fails, paste: a screenshot and `/vg errors`.
 
 ### 8.3a Quest history
@@ -489,6 +490,12 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Expect: the quest's XP under its objectives in the tracker; the XP bar's tooltip lists what is left, how far through, rested, `Kills to level` (after your first kill, and not changed by a quest turn-in) and `XP in finished quests` (only quests ready to turn in); one `Running low: Food & drink n / 20.` line in chat when food drops under the count, nothing further until it has been back at 20 and drops again, and nothing during a fight (it appears after).
 - If it fails, paste: a screenshot, the chat line and `/vg errors`. Say which came first in chat: the XP message for a kill or the XP bar moving.
 
+### 8.6 Quiet the game
+
+- Do: `/vg` → Game windows → "Quiet the game". Switch on "Hide the red error line", then press a key that fails (jump into a wall of mobs' "Not enough mana", or use an ability on cooldown). Switch on "Hide the zone names that fade in", then walk into a new zone and subzone. Pick a "Furthest the camera zooms out" value and scroll out. Have a stranger (or an alt) invite you to a group and to a guild with "Decline group invites..." and "Decline guild invites" on, then once from a friend. Die in a battleground with "Release at once..." on.
+- Expect: no red error text; no zone or subzone name fades in (switching either off brings it back without a reload); the camera zooms out further than the game's default; a declined invite closes its prompt and says `Declined a ... from <name>.` in chat, a friend's or guildmate's group invite still shows; you release at once in a battleground and not in an arena or a dungeon.
+- If it fails, paste: which switch, what you did, and `/vg errors`.
+
 ## 9. Bags, merchant, trainer
 
 ### 9.1 Bag search
@@ -502,6 +509,12 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Do: open your bags, type `/vg bag add Potions ` and shift-click a potion, then another item into `/vg bag add Tools <item>`. Open the bags. Then `/vg bag top Tools`, `/vg bag remove <the potion>`, `/vg bag delete Tools`, and `/vg bag` on its own.
 - Expect: a POTIONS header over the potion and a TOOLS header over the tool, both above Quest items; after `top Tools` Tools comes first; the removed item falls back to its built-in section; the deleted category's header goes; `/vg bag` lists each category and its items. The bag lays out again each time without a reload.
 - If it fails, paste: a screenshot, the output of `/vg bag` and `/vg errors`.
+
+### 9.1b Bag search words and bank deposit
+
+- Do: with bags open, type `ilvl>20`, then `q:epic`, `type:armor bind:boe`, `cat:<a category of yours>` in the bag's search box, then clear it. At the bank, `/vg bag deposit <category>`; then once in a fight.
+- Expect: items that match every word stay lit and the rest dim as with a normal search; a plain word still works the game's way; the box clearing lights everything again. Deposit sends that category's stacks to the bank and says how many; in a fight, or with no bank open, it says to open the bank and moves nothing.
+- If it fails, paste: a screenshot, `/vg probe` (the SetItemSearch and UpdateSearchResults lines) and `/vg errors`.
 
 ### 9.2 Merchant repair and sell
 
@@ -1238,7 +1251,7 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 
 ### 19.0a Pet stable
 
-- Do: on a hunter with a pet out and one stabled, type `/vg pets`; then talk to a stable master. Run `/vg errors`.
+- Do: on a hunter with a pet out and one stabled, open `/vg` → Town and gear → Pet stable and click List my pets in chat (or type `/vg pets`); then talk to a stable master. Run `/vg errors`.
 - Expect: `/vg pets` prints "Your pets:" and a line per pet, such as "Rex, level 12 Cat · Loyal · happy · 35% to next level (out)", the pet that is out first; at the stable master one chat line says "Stable: 2 pets (/vg pets lists them)." and the next slot's price (unobserved: the field meanings come from the API docs). On a character with no pets, `/vg pets` says there are none. Turn the line off under Town and gear → Pet stable.
 - If it fails, paste: the `/vg pets` output, the stable master's window and `/vg errors`.
 

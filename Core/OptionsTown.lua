@@ -85,6 +85,7 @@ local function petStableRows()
   return {
     { "header", "Pet stable" },
     check("Say how many pets you have, and the next slot's price, at a stable master (/vg pets)", setting("PetStable", "announce")),
+    { "button", "List my pets in chat", function() ns.GetModule("PetStable").Command() end },
   }
 end
 

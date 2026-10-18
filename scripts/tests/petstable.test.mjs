@@ -1,7 +1,7 @@
 // petstable: Pet stable (Modules/PetStable.lua), /vg pets and the stable master's line, in the TEST-ONLY headless client.
 
 import { expect, it } from "vitest";
-import { loggedIn } from "./helpers.mjs";
+import { CLICK_LUA, loggedIn } from "./helpers.mjs";
 
 // The addon's chat prefix.
 const P = "|cffe6b45bVanguard:|r ";
@@ -37,4 +37,12 @@ it("a stable master's window says how many pets and the next slot's price, unles
   addon.eval("C_StableInfo = nil");
   addon.slash("pets");
   expect([Array.from(addon.chat()).pop(), addon.eval("return #ns.errors")], "no C_StableInfo: the same line, no error").toEqual([P + "No pets to list (or the game doesn't list them here).", 0]);
+});
+it("the Town and gear page has the switch and a button that lists the pets", () => {
+  const addon = loggedIn(STABLE + CLICK_LUA);
+  addon.eval('ns.Options.Show("town")');
+  addon.eval('__click("List my pets in chat")');
+  expect(Array.from(addon.chat()).slice(-3, -2), "the button prints the same list as /vg pets").toEqual([P + "Your pets:"]);
+  addon.eval('__click("Say how many pets you have, and the next slot\'s price, at a stable master (/vg pets)")');
+  expect(addon.eval("return ns.Settings('PetStable').announce"), "the switch turns the line off").toBe(false);
 });
