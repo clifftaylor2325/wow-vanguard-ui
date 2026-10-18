@@ -36,7 +36,7 @@ What each part of the report answers (read the section title in the box):
 | C_Secrets predicates | Which of the 27 predicates exist, and what they say out of combat and in the fight |
 | Restrictions and lockdown | The six add-on restriction states and the chat lockdown flags |
 | Navigation | Does `C_Navigation` give a distance and a next waypoint for the quest arrow? |
-| Undocumented on Forever | The roll tracker's `C_LootHistory`, the craft queue's recipe and cooldown reads, and three new widget methods |
+| Undocumented on Forever | The roll tracker's old `C_LootHistory` reads (now replaced by the documented encounter calls), the craft queue's recipe and cooldown reads, and three new widget methods |
 
 The report is also saved in `WTF\Account\<account>\SavedVariables\Vanguard.lua` under `probe`, so it can be read from the file if the chat is lost.
 
@@ -102,7 +102,7 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 ### 1.5 Memory over a minute
 
 - Do: stand still in a city out of combat, type `/vg mem`, and wait a minute without opening windows. Then repeat it once.
-- Expect: the first line says `Measuring Vanguard's memory for 60 s`; after a minute two lines: `Vanguard's memory over 60 s: A MB to B MB (+N KB, +R KB/s), low L, high H MB.` and `After a garbage collection: A MB at the start, B MB at the end (+N KB); ...` (the game may hitch briefly as it starts and ends). If the line is instead a low-point verdict (`The low point held` or `The low point rose`), note it: the client refused the collection. A clean rise of a few hundred KB once is normal; one that rises on every run is not. Note the two clean figures for the report. In combat `/vg mem` says it can't read, and `/vg perf` says `memory: not read in combat`. Without `/vg perf cpu` set, `/vg perf` starts `CPU 0.xx ms a frame now (... on average, peak ... ms, N % of all addons; N frames over 5 ms)`; note the line. If it says `CPU off` instead, the client has no always-on profiler. Then type `/vg perf slow`: expect `Vanguard's slowest handlers since login...` and up to ten lines such as `1. event PLAYER_LOGIN  longest N ms, ...`; paste them into the report, they say what to make faster.
+- Expect: first `Saved data (estimate): account file X of a 6.0 MB budget; largest: ...` and `This character's file: ...` (note both, and the real size of `WTF\Account\<name>\SavedVariables\Vanguard.lua` on disk, so the estimate can be checked); then the line `Measuring Vanguard's memory for 60 s`; after a minute two lines: `Vanguard's memory over 60 s: A MB to B MB (+N KB, +R KB/s), low L, high H MB.` and `After a garbage collection: A MB at the start, B MB at the end (+N KB); ...` (the game may hitch briefly as it starts and ends). If the line is instead a low-point verdict (`The low point held` or `The low point rose`), note it: the client refused the collection. A clean rise of a few hundred KB once is normal; one that rises on every run is not. Note the two clean figures for the report. In combat `/vg mem` says it can't read, and `/vg perf` says `memory: not read in combat`. Without `/vg perf cpu` set, `/vg perf` starts `CPU 0.xx ms a frame now (... on average, peak ... ms, N % of all addons; N frames over 5 ms)`; note the line. If it says `CPU off` instead, the client has no always-on profiler. Then type `/vg perf slow`: expect `Vanguard's slowest handlers since login...` and up to ten lines such as `1. event PLAYER_LOGIN  longest N ms, ...`; paste them into the report, they say what to make faster.
 - If it fails, paste: both result lines of each run, what you did during the minute, and `/vg errors`.
 
 ## 2. Options window and wizard
@@ -300,8 +300,14 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 ### 6.2 Raid frames (if you can)
 
 - Do: as leader or assistant, press the Raid button on the raid tools bar (top left) to convert to a raid, then press Ready on the same bar.
-- Expect: raid frames in groups, 100x48 tiles at 10 members or fewer and smaller above that; the ready check starts. A debuff you can dispel shows its type's letter (M, C, D or P) in the icon's top-left corner, in combat in an instance too.
+- Expect: raid frames in groups, 100x48 tiles at 10 members or fewer and smaller above that; the ready check starts. A debuff you can dispel shows its type's letter (M, C, D or P) in the icon's top-left corner, in combat in an instance too. With a Priest in the group, the Priest's bar is a light gray (not white) and its white name reads clearly on it, full health or hurt.
 - If it fails, paste: a screenshot and `/vg errors`. In an instance during combat `/vg status` should say `aura values hidden right now` while the bars still fill; paste that line if the bars do not fill.
+
+### 6.2a Raid indicators (if you can)
+
+- Do: in a group, open `/vg` → Raid frames, set Indicator 1 to "your buffs" and Indicator 2 to "crowd control", reload, then buff a member and let a mob crowd-control another.
+- Expect: a small icon of the buff on the right edge of that member's tile, under the missing-buff mark, and the crowd control's icon below it (or beside it on a short tile). Empty slots show nothing, and offline or dead members show none. Nothing errors in combat.
+- If it fails, paste: a screenshot and `/vg errors`. A filter word the game rejects is reported once in `/vg errors` as `aura filter ...`.
 
 ### 6.3 Main tank tiles (if you can)
 
@@ -317,9 +323,9 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 
 ### 6.5 Raid readiness on the ready-check card (batch 2)
 
-- Do: `/vg` → Town and gear → Instance prep, switch on "Buff checks on the card" (and "World buffs among them"). Out of combat, without a flask, food buff, weapon oil or poison, or your class's raid buffs, type `/vg prep`. Then get each one and type `/vg prep` again; then start a ready check in a group, and finally type `/vg errors`.
-- Expect: the card lists Flask, Food buff, Fortitude, Mark of the Wild, Arcane Intellect, a weapon row and (with a weapon in the off hand) an off-hand row, each "missing" in red; each row goes when you have the buff. World buffs shows only while you have none. In an instance during combat no buff row appears; `/vg status` saying `aura values hidden right now` also means none. No Lua error.
-- If it fails, paste: a screenshot, `/vg errors`, and the names of the buffs you have (the names in the code are from the classic game and unchecked on Forever).
+- Do: `/vg` → Town and gear → Instance prep, switch on "Buff checks on the card" (and "World buffs among them"). Out of combat, without a flask, food buff, weapon oil or poison, or your class's raid buffs, type `/vg prep`. Then get each one and type `/vg prep` again; then start a ready check in a group, type `/vg prep buffs` (with a flask, a food buff and a raid buff on, and one unrelated buff), and finally type `/vg errors`.
+- Expect: the card lists Flask, Food buff, Fortitude, Mark of the Wild, Arcane Intellect, a weapon row and (with a weapon in the off hand) an off-hand row, each "missing" in red; each row goes when you have the buff. World buffs shows only while you have none. In an instance during combat no buff row appears; `/vg status` saying `aura values hidden right now` also means none. `/vg prep buffs` prints each of your buffs as `name -> Flask` (or Food buff, Fortitude, ...) or `-> no check`, then what the checks look for; note any buff that should count and says `no check`: those are the Forever names to add. No Lua error.
+- If it fails, paste: a screenshot, `/vg errors`, the `/vg prep buffs` lines, and the names of the buffs you have (the names in the code are from the classic game and unchecked on Forever).
 ### 6.5b Wanted amounts window
 
 - Do: `/vg` → Town and gear → Instance prep → **Set wanted amounts...** (or `/vg prep setup`), out of combat. On step 1 drag the food slider, click **Use suggested**, then Next through to Done. Try `/vg prep want potions 7` afterwards, and `/vg prep`.
@@ -388,6 +394,12 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Expect: plates coloured by reaction and threat with the level shown, your debuffs on them, and your target's plate with an accent border and diamond. A plate first drawn during the fight uses Vanguard's own icons and switches to the client's after the fight.
 - If it fails, paste: a screenshot taken during the pull and `/vg errors`.
 
+### 7.3a Quest marks on nameplates
+
+- Do: take a quest that wants kills or items from mobs (for example "Kill 8 Wolves"), stand where those mobs are with enemy nameplates on, and look at their plates. Kill one, finish the quest's count, then abandon the quest. Target one of the mobs and type `/vg guide probe`.
+- Expect: a small gold `!` right of the name on the plates of mobs the quest needs, and none on other mobs; it follows the count (within a moment of a kill's progress) and goes when the quest is done or abandoned. The probe's `C_TooltipInfo.GetUnit` line reads `present, tooltip data, N lines` with a target, `not called (no target)` without. Under `/vg` → Nameplates, "A gold ! by units your quests need" off hides the marks at once. [Needs in game: whether Forever returns quest title and objective lines in the unit's tooltip data (`C_TooltipInfo.GetUnit`) on nameplate units, in and out of combat, and whether a finished objective still carries its line (the mark would stay until the quest is handed in); the game's own `C_QuestLog.UnitIsRelatedToActiveQuest` answer is used first when it says yes.]
+- If it fails, paste: a screenshot with the mob's plate and its tooltip, the probe line, and `/vg errors`.
+
 ### 7.4 Nameplates in a crowd
 
 - Do: in a capital city with friendly player plates on, stand where several players' plates overlap. Click the bar or name of four or five plates in turn, and move the mouse slowly across them. Then turn on the game's option to show only names on friendly players' plates and click one again. Find a player with a defensive cooldown up, or buff a friend yourself.
@@ -436,6 +448,12 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 
 - Do: fill the quest log (as many quests as it lets you take; the limit on Forever is not confirmed), then press the quest log key and type `/vg quests`.
 - Expect: Vanguard's log, titled `Quest log` with your quest count (`12 quests`) beside the title, with quests under their zones (each zone a small grey capitals header with a chevron, down while open and right while folded: click it to fold the zone), `[12] Title` lines in difficulty colours, the chosen quest marked by an accent bar along its left edge and a faint wash, a thin scroll thumb beside a list or quest text longer than its column, and Track or Untrack, Share and Map along the right, and Abandon (red label) alone at the far left, for the chosen quest. Click Track or Untrack, then Shift-click another quest: the button flips each time and the tracker follows; if the game refuses, chat says `The game didn't track ...` with the count tracked. Hover a reward card (a quest with an item reward): the item's tooltip shows beside it and goes when you leave. [Needs in game: the tooltip must show for both choices and fixed rewards.] Ctrl-click two quests: both look chosen and the red button reads `Abandon 2`; Ctrl-click one again to unmark it. Click Abandon: a question names the marked quests; No leaves them, Abandon removes them from the log. [Needs in game: that C_QuestLog.AbandonQuest exists and works after SetAbandonQuest, several in a row.] If it is off, `/vg quests` says `Vanguard's quest log is off (/vg > Quests).`
+- If it fails, paste: a screenshot and `/vg errors`.
+
+### 8.3a Quest history
+
+- Do: turn in a quest on one character, then log in on another character on the same account and talk to a quest giver offering that quest (or open it in the quest log if you have it). Type `/vg quests history` and `/vg quests history 3`. Under `/vg` → Quests, switch off "Remember which character finished each quest" and turn in another quest.
+- Expect: in Vanguard's quest dialog on the quest's details page, a muted line under the text and objectives, `Done on Name-Realm · today` (then `yesterday`, `3 days ago`); the same line under the objectives in the quest log. For a repeatable quest turned in on the same character, `Done on this character`. `/vg quests history` prints `Latest N quest turn-in(s), of M remembered:` and a line per quest, `Title · Name-Realm · today`, newest first, at most the number you gave (25 at most). Switched off, the lines are gone, nothing new is remembered and the command says `Quest history is off (/vg > Quests).` [Needs in game: that `QUEST_TURNED_IN` fires on Forever with the quest's id first, that a quest's title is still known to `C_QuestLog.GetTitleForQuestID` after it is turned in (else the list reads `Quest 12345`), and how the muted line reads under a long quest text.]
 - If it fails, paste: a screenshot and `/vg errors`.
 
 ### 8.4 Quest tracker overflow
@@ -840,6 +858,12 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 - Expect: with the block off, the strip has no durability line and the game's armoured-man figure still does not appear beside the minimap (the character pane's gear slots still show each item's percent); with the module off, the game's armoured man is back in its own spot.
 - If it fails, paste: a screenshot of the minimap's corner and `/vg errors`.
 
+### 14.5.2a Info strip ammo follows your ranged weapon
+
+- Do: on a hunter, warrior or rogue, equip a bow or gun (ammo in the quiver slot), then a thrown weapon or none; watch the strip's ammo figure. Run `/vg errors`.
+- Expect: "ammo N" shows while the weapon needs ammo (red at 0) and is gone when it doesn't (Forever's `C_PaperDollInfo.AmmoNeeded`, unobserved so far); any class whose ranged weapon needs ammo gets it.
+- If it fails, paste: what you had equipped, the strip's corner and `/vg errors`.
+
 ### 14.5.3 World map, quest panel and queue status insides
 
 - Do: with Vanguard's quest log switched off (under `/vg` → Quests), press `M` for the world map and look at the nav bar above it, the dropdown at the map's top left (floors, in a dungeon or a multi-floor zone), the two small buttons at its top right (tracking filter and tracking pin) and the arrows of the quest panel's toggle; open the quest panel, look at the search box, the gear above it and the quest count box, hover and click quest rows, tick a quest's track box, and look at the lines between quest groups; open a quest's details (also with Vanguard's quest log on: its Map button) and look at the flat background, the Rewards heading, the reward and XP tiles, and the Abandon (red label), Share, Track and Back buttons; open a quest in the pop-out window (right-click its row, or the quest log's pop-out) and look at its text area and Show Map button; open the battlefield map's tab (in a battleground); queue for something and hover the group finder eye to open the queue panel.
@@ -1161,6 +1185,12 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 - Expect: a Filtered chat tab appears, and the caught lines are in it, each starting with why ("Gold selling", "Boosting", "Recruiting", "Your word", "Repeat"), none in the main chat; the tab's name counts them, "Filtered (4)". Clicking a sender's name says their lines show in chat again, and their next line stays in the main chat. With hide, caught lines show nowhere. Normal Trade lines, your own lines, whispers and guild chat are never caught. `/vg errors` is empty; in the dungeon nothing errors and chat passes through. The tab looks like the other chat tabs on both rounded and square corners, and is still there, with its count starting over, after `/reload`. [Needs in game: that the client lets an addon open a chat window (`FCF_OpenNewWindow`) and name it, that a click on the sender's link reaches Vanguard, and that the tab text keeps the count.]
 - If it fails, paste: `/vg errors`, one line it caught or missed, and what the Filtered tab shows.
 
+### 15.6b Chat history (off until switched on)
+
+- Do: `/vg history on`, say a few lines in /say and have a group or guild line arrive, let someone whisper you (or whisper an alt), then type `/reload`. Type `/vg history`, then `/vg history whispers`, whisper again, `/reload`. Then `/vg history clear` and `/reload`. Last, with it on, log out and in; open `/vg` → Chat and set Lines kept to 100.
+- Expect: after the reload each window shows a grey `Chat from your last session (N lines, until ...):` line, its earlier lines in the colours they had (say white, guild green, party blue), then `End of the earlier chat.`; your whisper is not among them the first time, and is the second time; a tab you had set up for another channel gets its own lines back, not the main window's. `/vg history` says it is on and how many lines are saved in how many windows. After clear and a reload nothing comes back and chat says `Saved chat history cleared.` `/vg errors` is empty. In a dungeon or raid boss fight, chat the game hides is not kept. [Needs in game: that a hook on each ChatFrame's AddMessage sees the finished line and its colour, that whispers carry `:WHISPER:` in their player link (the other way the addon tells), that `date` and `time` work as in the client, and that AddMessage keeps the colours.]
+- If it fails, paste: `/vg errors`, `/vg history`, a screenshot of the restored chat and which window it was in.
+
 ## 16. Realm and ruleset
 
 ### 16.1 Realm, ruleset and names
@@ -1183,6 +1213,7 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 
 - Do: install one bag addon you use (Bagnon, AdiBags, ArkInventory, BetterBags or Baganator) beside Vanguard and log in. Open `/vg` → Modules. Click **Keep both**, `/reload`, and open Modules again. Then type `/dump C_AddOns.GetAddOnInfo("<the addon>")` and note the folder name it prints.
 - Expect: one chat line at login, `<addon> also does bags. Choose which one does under /vg > Modules (nothing changes until you do).`; an **Other addons** card at the top of the Modules page with **Turn off Bags** and **Keep both**; after Keep both, no card and no chat line. The folder name matches the one Vanguard looks for (`Modules/Coexist.lua`, `CX.OVERLAPS`); a different name is a finding.
+- Also, if EllesmereUI is on Forever: run `/dump C_AddOns.GetNumAddOns()` and list its folders (`/dump C_AddOns.GetAddOnInfo(i)` for each) and paste the ones starting with Ellesmere. Vanguard looks for `EllesmereUIUnitFrames`, `EllesmereUIActionBars`, `EllesmereUINameplates` and `EllesmereUIRaidFrames` (retail names, unconfirmed on Forever); a different name is a finding.
 - If it fails, paste: the folder name, a screenshot of the Modules page and `/vg errors`.
 
 ### 18.2 Group board
@@ -1217,10 +1248,10 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 - Expect: a small panel appears at the left of the screen headed "Rolls 1-100" with each roll, highest first and the top one in your accent color; `/roll 1-6` starts a new round headed "Rolls 1-6" with its figures; 30 seconds after the last roll the panel goes. `/vg rolls` lists the session's rolls, newest first; clear says "Rolls forgotten." Move the panel with `/vg unlock`. [Needs in game: that the game's roll line (RANDOM_ROLL_RESULT) reaches the addon as a plain, readable system message in your language, also inside an instance.]
 - If it fails, paste: the roll line as it shows in chat, and `/vg errors`.
 
-### 19.2 Loot rolls (only where the client has the loot history)
+### 19.2 Loot rolls (only where the client keeps a loot history for the drop)
 
-- Do: type `/run print(C_LootHistory ~= nil, C_LootHistory and C_LootHistory.GetNumItems ~= nil)` and paste what it prints. If it prints `true true`, roll on an item in a group (Need, Greed or Pass) and watch the panel.
-- Expect: nothing happens on a client without it (no error). With it, under the roll lines the panel shows the item, "rolling" until it is done, and each member's choice and roll, the winner in your accent color. [Needs in game: whether Forever has C_LootHistory with GetNumItems, GetItem and GetPlayerInfo and the LOOT_HISTORY_* events, and the order of the values GetItem and GetPlayerInfo return.]
+- Do: type `/run print(C_LootHistory ~= nil, C_LootHistory and C_LootHistory.GetAllEncounterInfos ~= nil, C_LootHistory and C_LootHistory.GetSortedDropsForEncounter ~= nil)` and paste what it prints. If it prints `true true true`, roll on an item in a group (Need, Greed or Pass) in a dungeon and also from a world drop, and watch the panel.
+- Expect: nothing happens on a client without it (no error). With it, under the roll lines the panel shows the item, "rolling" until it has a winner or everyone passed, and each member's choice and roll, the winner in your accent color. [Needs in game: that the history holds a drop for a vanilla dungeon and for a world group roll (the Forever docs list C_LootHistory's encounter calls only; if a world roll leaves it empty, the loot half of the panel stays empty by design), what "winner" and "allPassed" look like while the roll runs, and the order of the drops.]
 - If it fails, paste: the `/run` line's output and `/vg errors`.
 
 ## 20. Craft queue
@@ -1341,6 +1372,12 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 - Do: turn on the game's Cooldown Manager and track a heal-over-time buff on yourself in its buff row. Type `/vg cdmglow on`, cast the buff on yourself, wait until under 30 percent is left, out of combat; then do the same in combat. Type `/vg cdmglow 50`, then `/vg cdmglow off`.
 - Expect: the buff's icon gets an accent glow ring once under the share is left, and loses it when the buff is renewed or ends. In combat the glow still follows the time left, or stays off with no error. `/vg cdmglow 50` says "under 50 percent left"; off puts the glows out. [Needs in game: whether the client hands the aura's duration object to a curve (C_CurveUtil.CreateCurve, EvaluateRemainingPercent) and whether SetAlpha takes the result in combat; the Cooldown Manager item fields auraInstanceID and auraDataUnit.]
 - If it fails, paste: `/vg errors`, and what `/run print(C_CurveUtil and C_CurveUtil.CreateCurve ~= nil)` prints.
+
+### 28.2 Key text on the manager's icons
+
+- Do: with the game's Cooldown Manager on and Vanguard's action bars on, put a spell that is in the manager's essential row on a Vanguard bar button with a key (say Shift-3). Type `/vg cdmkeys on`. Then move the spell to another button, change its key, and take it off the bars. Repeat once with the spell inside a macro.
+- Expect: the spell's icon shows "S3" in its top-right corner, over the cooldown sweep and clear of the charge count; it follows the move and the new key and goes blank once the spell is off the bars. A spell on no Vanguard bar shows nothing. `/vg cdmkeys off` clears the labels. In combat, nothing breaks and the labels stay put.
+- If it fails, paste: `/vg errors`, and what `/run local i=EssentialCooldownViewer:GetItemFrames()[1] print(i and i.GetSpellID and i:GetSpellID())` prints.
 
 ## 29. Cooldown gaps
 

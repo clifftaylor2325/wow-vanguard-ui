@@ -12,6 +12,13 @@
 -- what YOU can dispel, "HELPFUL|PLAYER|RAID_IN_COMBAT" your buffs worth
 -- showing on raid frames. The groups are fixed once built, so the settings
 -- apply after a reload.
+--
+-- Indicators: up to three small icons down the tile's right edge, under the
+-- missing-buff mark, each showing the first aura the client's filter for the
+-- chosen source finds (an external defensive, a big defensive, a crowd
+-- control, a debuff you can dispel, an important buff, any of your buffs).
+-- Only the client's own filters decide what shows; nothing about an aura is
+-- read here, so hidden values are fine. A short tile fills a second column.
 
 local ADDON, ns = ...
 
@@ -19,11 +26,23 @@ local T = ns.Theme
 local RF = ns.GetModule("RaidFrames")
 
 local RA = ns.Module("RaidAuras", {
-  defaults = { dispel = true, debuffs = 3, hots = true, maxHots = 3 },
+  defaults = { dispel = true, debuffs = 3, hots = true, maxHots = 3, indicator1 = "external", indicator2 = "cc", indicator3 = "none" },
 })
 
 -- The client's filter for debuffs you can dispel.
 RA.DISPELLABLE = "HARMFUL|RAID"
+
+-- Indicator source -> the client's filter for it, with the words for the options page.
+RA.SOURCES = {
+  external = "HELPFUL|EXTERNAL_DEFENSIVE", defensive = "HELPFUL|BIG_DEFENSIVE", important = "HELPFUL|IMPORTANT",
+  mine = "HELPFUL|PLAYER", cc = "HARMFUL|CROWD_CONTROL", dispel = RA.DISPELLABLE,
+}
+RA.SOURCE_CHOICES = {
+  { "none", "none" }, { "external", "external defensive" }, { "defensive", "big defensive" }, { "important", "important buff" },
+  { "mine", "your buffs" }, { "cc", "crowd control" }, { "dispel", "dispellable debuff" },
+}
+-- An indicator icon's side, and how many slots there are.
+RA.IND_SIZE, RA.IND_SLOTS = 9, 3
 
 -- The dispel edge's sides: two anchor points and a width (vertical) or height (horizontal).
 local SIDES = {
@@ -139,6 +158,52 @@ local function setup(b)
   if legacy then legacyDispel(b) end
 end
 
+-- Indicators ------------------------------------------------------------------------------
+
+-- Where slot n sits: the tile's right edge under the missing-buff mark, filling down as far as the
+-- icon strip allows, then a column to the left. Nil when not even one fits.
+local function indicatorSlot(z, n)
+  local step, y0 = RA.IND_SIZE + 1, z.missing[2] + z.missing[4] + 1
+  local rows = math.floor((z.debuffs[2] - y0) / step)
+  if rows < 1 then return nil end
+  return 2 + math.floor((n - 1) / rows) * step, y0 + ((n - 1) % rows) * step
+end
+
+-- Slot n's container spec on tile b, or nil when the slot is off or doesn't fit.
+function RA.IndicatorSpec(b, z, n)
+  local filter = RA.SOURCES[RA.settings["indicator" .. n]]
+  local x, y = indicatorSlot(z, n)
+  if not filter or not x then return nil end
+  return { point = { "TOPRIGHT", b, "TOPRIGHT", -x, -y }, grow = "LEFT", growY = "DOWN", lineSize = RA.IND_SIZE + 1, gap = 1, mouse = false,
+    level = b:GetFrameLevel() + 10, groups = { { filter = filter, max = 1, size = RA.IND_SIZE } } }
+end
+
+-- Builds the tile's indicator icons (RF setup hook).
+local function indicatorSetup(b)
+  local z = RF.TileZones()
+  b.indRows = {}
+  for n = 1, RA.IND_SLOTS do
+    local spec = RA.IndicatorSpec(b, z, n)
+    if spec then b.indRows[#b.indRows + 1] = ns.Auras.Container(b, spec, nil) end
+  end
+end
+
+-- Points the indicators at the tile's unit, hidden on the dead and offline (RF update hook).
+local function indicatorUpdate(b, unit)
+  for _, row in ipairs(b.indRows) do
+    if b.indUnit ~= unit then row:SetUnit(unit) end
+    row.frame:SetShown(not b.down)
+  end
+  b.indUnit = unit
+end
+
+-- Lets go of an emptied tile's unit (RF empty hook).
+local function indicatorEmptied(b)
+  if b.indUnit == nil then return end
+  b.indUnit = nil
+  for _, row in ipairs(b.indRows) do row:SetUnit(nil) end
+end
+
 -- Updating ------------------------------------------------------------------------------
 
 -- Points the rows at the button's unit, hides them on the dead and offline,
@@ -166,8 +231,11 @@ end
 -- Module entry point (Core/Modules.lua): hook into raid buttons (existing and new).
 function RA.Enable(settings)
   RA.settings = settings
-  for _, b in ipairs(RF.buttons) do setup(b) end
+  for _, b in ipairs(RF.buttons) do setup(b); indicatorSetup(b) end
   table.insert(RF.setupHooks, setup)
+  table.insert(RF.setupHooks, indicatorSetup)
   table.insert(RF.updateHooks, update)
+  table.insert(RF.updateHooks, indicatorUpdate)
   table.insert(RF.emptyHooks, emptied)
+  table.insert(RF.emptyHooks, indicatorEmptied)
 end
