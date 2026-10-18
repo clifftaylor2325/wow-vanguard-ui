@@ -96,3 +96,23 @@ it("an item the client has not cached shows by its number; without a map listing
   expect(text(addon).slice(-1), "keys by number").toEqual(["Keys: item 7146, item 7147"]);
   expect(text(addon)[1], "the tagged quests stand in for the map's").toBe("Your quests here");
 });
+
+// The wall clock moved to `t` seconds, then a walk through the door (a new world) with the card on.
+const visit = (addon, t) => { addon.eval(`__t = ${t} time = function() return __t end`); addon.fire("PLAYER_ENTERING_WORLD"); addon.advance(0.25); };
+
+it("the card says when you last came: nothing the first time, then days ago; a quick way back in is the same visit", () => {
+  const addon = character(ON, "__t = 1000 time = function() return __t end");
+  expect(text(addon)[1], "the first visit has no earlier one").not.toMatch(/^Last run/);
+  addon.eval("ns.GetModule('InstancePrep').lastInstance = nil");
+  visit(addon, 1000 + 600);
+  addon.slash("prep");
+  expect(text(addon).some((l) => /^Last run/.test(l)), "ten minutes later is the same visit").toBe(false);
+  addon.eval("ns.GetModule('InstancePrep').lastInstance = nil");
+  visit(addon, 1000 + 86400 * 3 + 10);
+  addon.slash("prep");
+  expect(text(addon)[1], "three days on, the first visit is the earlier one").toBe("Last run: 3 days ago");
+  addon.eval("ns.GetModule('InstancePrep').lastInstance = nil");
+  visit(addon, 1000 + 86400 * 5);
+  addon.slash("prep");
+  expect(text(addon)[1], "a little under two days after the second visit is yesterday").toBe("Last run: yesterday");
+});
