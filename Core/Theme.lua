@@ -1660,8 +1660,8 @@ end
 -- Follows the game's state: SetChecked (its own calls), a click (the client flips the state before
 -- OnClick runs), enabling and disabling (pcall: a widget without those scripts can't have them hooked).
 local function watchState(button)
-  local repaint = ns.Guard("check state", repaintCheck)
-  for _, script in ipairs({ "OnClick", "OnEnable", "OnDisable" }) do pcall(button.HookScript, button, script, repaint) end
+  local onState = ns.Guard("check state", repaintCheck)
+  for _, script in ipairs({ "OnClick", "OnEnable", "OnDisable" }) do pcall(button.HookScript, button, script, onState) end
   if type(button.SetChecked) == "function" and type(hooksecurefunc) == "function" then
     hooksecurefunc(button, "SetChecked", ns.Guard("hook SetChecked", repaintCheck))
   end
@@ -1958,8 +1958,8 @@ local function sliderParts(slider, thumb)
   local s = { bar = bar, track = sliderPill(bar, axis, "BORDER", "Pill"), fill = sliderFill(bar, axis, thumb) }
   s.line = sliderPill(bar, axis, "OVERLAY", "SliderLine")
   s.knob, s.shade, s.knobLine = sliderKnob(bar, thumb)
-  local repaint = ns.Guard("slider state", function(f) paintSlider(f, sliderOf[f]) end)
-  for _, script in ipairs({ "OnEnable", "OnDisable" }) do pcall(slider.HookScript, slider, script, repaint) end
+  local onState = ns.Guard("slider state", function(f) paintSlider(f, sliderOf[f]) end)
+  for _, script in ipairs({ "OnEnable", "OnDisable" }) do pcall(slider.HookScript, slider, script, onState) end
   return s
 end
 
