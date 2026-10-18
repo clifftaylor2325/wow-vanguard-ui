@@ -634,3 +634,19 @@ it("dispel badges on Vanguard's own icons: shown for a type it can read, never f
     expect(shown(), `no badge for ${kind}`).toEqual([false, false, 0]);
   }
 });
+
+it("raid indicators: small icons down the tile's right edge, from the client's own filters", () => {
+  const sv = 'VanguardDB = { profiles = { Default = { RaidAuras = { indicator1 = "defensive", indicator2 = "dispel", indicator3 = "bogus" } } }, chars = {} }';
+  const addon = loggedIn(UNITS_ENV + RAID_ENV + AURA_ENV + ENGINE_ENV, { savedVariables: sv });
+  addon.eval('__spawn(1, "raid1"); __spawn(3, "raid3")');
+  const rows = addon.eval(`local b = Vanguard_RaidUnitButton1 local out = { n = #b.indRows }
+    for i, row in ipairs(b.indRows) do local g = row.frame.__groups[1] out[i] = { g.filter, g.opts.maxFrameCount, row.frame.__unit, row.frame.__points.TOPRIGHT.x, row.frame.__points.TOPRIGHT.y } end
+    return out`);
+  expect(rows.n, "an unknown source gets no slot").toBe(2);
+  expect([rows[1][0], rows[1][1], rows[1][2], rows[2][0]], "one icon per slot, on the chosen filters, following the tile's unit").toEqual(["HELPFUL|BIG_DEFENSIVE", 1, "raid1", "HARMFUL|RAID"]);
+  expect([rows[1][3], rows[1][4], rows[2][3] < rows[1][3]], "the first slot is on the right edge under the missing-buff mark; a short tile fills a second column").toEqual([-2, -14, true]);
+  expect(addon.eval("return Vanguard_RaidUnitButton3.indRows[1].frame.__shown"), "the offline show no indicators").toBe(false);
+  addon.eval('Vanguard_RaidUnitButton1:SetAttribute("unit", nil)');
+  expect(addon.eval("local b = Vanguard_RaidUnitButton1 return { tostring(b.indRows[1].frame.__unit), b.indUnit == nil }"), "an emptied tile lets go of its unit").toEqual(["none", true]);
+  expect(addon.eval("local RA = ns.GetModule('RaidAuras') return RA.IndicatorSpec(Vanguard_RaidUnitButton1, { missing = { 0, 3, 10, 10 }, debuffs = { 2, 20 } }, 1)"), "a tile too short for any slot leaves them out").toBeNull();
+});
