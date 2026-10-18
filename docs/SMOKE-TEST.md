@@ -503,6 +503,12 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Expect: a POTIONS header over the potion and a TOOLS header over the tool, both above Quest items; after `top Tools` Tools comes first; the removed item falls back to its built-in section; the deleted category's header goes; `/vg bag` lists each category and its items. The bag lays out again each time without a reload.
 - If it fails, paste: a screenshot, the output of `/vg bag` and `/vg errors`.
 
+### 9.1b Bag search words and bank deposit
+
+- Do: with bags open, type `ilvl>20`, then `q:epic`, `type:armor bind:boe`, `cat:<a category of yours>` in the bag's search box, then clear it. At the bank, `/vg bag deposit <category>`; then once in a fight.
+- Expect: items that match every word stay lit and the rest dim as with a normal search; a plain word still works the game's way; the box clearing lights everything again. Deposit sends that category's stacks to the bank and says how many; in a fight, or with no bank open, it says to open the bank and moves nothing.
+- If it fails, paste: a screenshot, `/vg probe` (the SetItemSearch and UpdateSearchResults lines) and `/vg errors`.
+
 ### 9.2 Merchant repair and sell
 
 - Do: with damaged gear and gray items, open a merchant who repairs.
