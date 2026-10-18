@@ -12,7 +12,7 @@ local ADDON, ns = ...
 local T, V = ns.Theme, ns.Visibility
 
 local UF = ns.Module("UnitFrames", {
-  defaults = { hideBlizzard = true, healthText = true, powerHeight = 6, boss = true, calm = false },
+  defaults = { hideBlizzard = true, healthText = true, powerHeight = 6, boss = true, calm = false, deck = false },
 })
 
 -- Target classification -> the color of its diamond (none for normal units).
@@ -467,6 +467,45 @@ local function build(settings)
   pollTargetOfTarget(UF.frames.targettarget)
   if settings.hideBlizzard then hideReplaced(settings) end
   UF.Refresh()
+  UF.ApplyDeck()
+end
+
+-- Versus deck -------------------------------------------------------------------------------
+
+-- The Versus deck (off unless switched on, or picked in setup): one shield panel joining the player
+-- and target frames across the middle, the Vanguard crest at its top centre, and the target's bars
+-- filling from the right, so the pair reads as a duel. The panel is a plain frame anchored to the two
+-- secure buttons (it never moves them), on the background strata so it stays under everything between
+-- them (cast bar, swing timer, cooldowns), and the crest with it.
+UF.DECK = { crest = 20, pad = 3 }
+
+-- Makes the deck's panel from the player frame to the target frame, reaching UF.DECK.pad past them,
+-- with the crest centred on its top edge.
+local function deckPanel(player, target)
+  local d, pad = CreateFrame("Frame", nil, UIParent), UF.DECK.pad
+  d:SetFrameStrata("BACKGROUND")
+  d:SetPoint("TOPLEFT", player, "TOPLEFT", -pad, pad)
+  d:SetPoint("BOTTOMRIGHT", target, "BOTTOMRIGHT", pad, -pad)
+  T.HudPanel(d, { shield = true })
+  d.crest = T.Logo(d, UF.DECK.crest)
+  d.crest:SetPoint("CENTER", d, "TOP")
+  return d
+end
+
+-- Shows or hides the deck (made the first time it shows) and mirrors the target's bars with it.
+local function deckNow()
+  local on, player, target = UF.settings.deck == true, UF.frames.player, UF.frames.target
+  if not (player and target) then return end
+  if on and not UF.deck then UF.deck = deckPanel(player, target) end
+  if UF.deck then UF.deck:SetShown(on) end
+  target.health:SetReverseFill(on)
+  target.power:SetReverseFill(on)
+end
+
+-- Applies the Versus deck setting: now, or when combat ends (a new deck joins the Calm HUD).
+function UF.ApplyDeck()
+  if not UF.settings then return end
+  ns.OutOfCombat(deckNow)
   UF.ApplyCalm()
 end
 
@@ -478,17 +517,19 @@ end
 UF.CALM_STATE = "[combat] show; [harm,nodead] show; dim"
 UF.CALM_KEYS = { "player", "pet", "target", "targettarget", "focus" }
 
--- Gives each calm frame its state now (out of combat only): dimmed, or shown again when off.
+-- Gives one calm frame its state (a frame never made calm is left alone while it is off).
+local function calmOne(f, state)
+  if not f or not (UF.settings.calm or f.vgStateString) then return end
+  if not f.vgHoverRoot then V.WatchHover(f) end
+  V.ApplyState(f, state)
+  V.Refresh(f)
+end
+
+-- Gives each calm frame (and the Versus deck) its state now (out of combat only): dimmed, or shown again when off.
 local function calmNow()
   local state = UF.settings.calm and UF.CALM_STATE or "show"
-  for _, key in ipairs(UF.CALM_KEYS) do
-    local f = UF.frames[key]
-    if f and (UF.settings.calm or f.vgStateString) then
-      if not f.vgHoverRoot then V.WatchHover(f) end
-      V.ApplyState(f, state)
-      V.Refresh(f)
-    end
-  end
+  for _, key in ipairs(UF.CALM_KEYS) do calmOne(UF.frames[key], state) end
+  calmOne(UF.deck, state)
 end
 
 -- Applies the Calm HUD setting: now, or when combat ends.

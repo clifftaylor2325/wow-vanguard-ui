@@ -503,3 +503,27 @@ it("Calm HUD: setup's look step and the situations offer it", () => {
   expect(addon.eval('return VanguardDB.profiles["Default backup"] ~= nil'), "after the usual backup").toBe(true);
   expect(addon.eval('return ns.GetModule("Situations").Holds("UnitFrames", "calm")'), "a situation can hold it").toBe(true);
 });
+
+// The Versus deck as drawn: shown, its two anchors, the crest's anchor, and whether the target's bars fill from the right.
+const deck = (addon) => addon.eval(`local d, t = ns.GetModule("UnitFrames").deck, Vanguard_target
+  local fills = t.health:GetReverseFill() and t.power:GetReverseFill()
+  if not d then return { shown = false, fills = fills } end
+  return { shown = d:IsShown(), left = d.__points.TOPLEFT.rel == Vanguard_player, right = d.__points.BOTTOMRIGHT.rel == Vanguard_target,
+    crest = d.crest.__points.CENTER.relPoint, strata = d:GetFrameStrata(), fills = fills }`);
+
+it("Versus deck: one shield panel behind the player and target, the crest at the seam, the target's bars mirrored", () => {
+  const addon = loggedIn(UNITS_ENV + CLICK_LUA, NO_RAID);
+  expect(deck(addon), "off by default: no panel, bars fill from the left").toEqual({ shown: false, fills: false });
+  addon.slash("");
+  addon.eval('__click("Unit frames") __click("Versus deck: your")');
+  expect(addon.eval("return VanguardDB.profiles.Default.UnitFrames.deck"), "the switch saves it").toBe(true);
+  expect(deck(addon), "on: the panel spans both frames, under everything (background strata), the crest on its top edge, the target fills from the right")
+    .toEqual({ shown: true, left: true, right: true, crest: "TOP", strata: "BACKGROUND", fills: true });
+  addon.eval('__click("Calm HUD")');
+  expect(addon.eval("return ns.GetModule('UnitFrames').deck.vgStateString"), "the deck dims with the Calm HUD").toBe("[combat] show; [harm,nodead] show; dim");
+  setCombat(addon, true);
+  addon.eval('__click("Versus deck: your")');
+  expect(deck(addon).shown, "switching it off in combat waits").toBe(true);
+  setCombat(addon, false);
+  expect(deck(addon), "and takes it away when the fight ends").toMatchObject({ shown: false, fills: false });
+});

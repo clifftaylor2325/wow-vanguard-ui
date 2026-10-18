@@ -19,7 +19,7 @@ it("setup layouts: your specialization's role, else your group role, marks your 
 it("setup layouts: Healing puts the raid frames under the character and turns click casting on", () => {
   const addon = loggedIn(CLICK_LUA + UNITS_ENV + RAID_ENV, { firstRun: true });
   const layouts = addon.eval("local out = {} for i, b in ipairs(Vanguard_Setup.pages.layout.choices) do out[i] = b.text:GetText() end return out");
-  expect(layouts, "three layouts, damage and tanking first (marked as your role's: no role says healer), then Keep").toEqual(["Centered: damage and tanking  ·  your role", "Centered: healing", "Like the game's", "Keep my current layout"]);
+  expect(layouts, "four layouts, damage and tanking first (marked as your role's: no role says healer), then Keep").toEqual(["Centered: damage and tanking  ·  your role", "Centered: healing", "Versus deck", "Like the game's", "Keep my current layout"]);
   expect(addon.eval('return __click("Centered: healing")') && addon.eval("return Vanguard_Setup.pages.layout.hint:GetText()"), "picking Healing shows what it does").toMatch(/click casting on/);
   expect(borderOf(addon, "Vanguard_Setup.pages.layout.choices[2]"), "the chosen layout is outlined in the accent").toEqual(tok(addon, "accent").slice(0, 3).concat(1));
   setupClick(addon, "next");
@@ -179,7 +179,7 @@ it("setup layouts: nothing overlaps or leaves the screen, solo to 40-man, at UI 
   expect(moverSpots(addon).menustrip.slice(4, 6).map((n) => Math.round(n * 10) / 10), "the bag and menu bar hugs its 14 menu slots").toEqual([412, 82]);
   expect(["bar1", "bar2", "bar3", "cast_player", "cast_target", "cast_focus", "uf_player", "uf_target", "uf_focus", "uf_pet", "swing", "raid", "xpbar", "cdm_essential", "cdm_utility", "cdm_buffs", "damagemeter", "fighthistory", "tooltip", "infostrip", "questtracker", "flighttimer", "uf_boss1", "raidtools", "maintanks", "partyextras", "petbar", "stancebar", "chat", "questdialog"].filter((k) => !moverSpots(addon)[k]), "every part of the cluster is a mover").toEqual([]);
   expect(moverSpots(addon).questdialog.slice(3, 6), "the quest dialog is checked at its greatest size, 8 px over the focus cast bar").toEqual([346, 560, 360]);
-  for (const layout of ["damage", "healing", "classic"]) {
+  for (const layout of ["damage", "healing", "versus", "classic"]) {
     addon.eval(`ns.Setup.ApplyLayout("${layout}")`);
     // The bags ride over the menu in one bar, so it is no wider than the menu row and clears the bars at 1365.
     for (const [sw, sh] of [[1365, 768], [1920, 1080]]) expect(problemsAt(addon, layout, sw, sh, `${layout}, ${sw}x${sh}`)).toEqual([]);
@@ -192,7 +192,7 @@ it("setup screens: with each screen preset, nothing overlaps or leaves its own s
   for (const [key, w, h, ui] of presets) {
     // The screen in UI units at the preset's UI scale: 768 tall at scale 1.
     const sw = (768 * w) / h / ui, sh = 768 / ui;
-    for (const layout of ["damage", "healing", "classic"]) {
+    for (const layout of ["damage", "healing", "versus", "classic"]) {
       addon.eval(`ns.Setup.ApplyLayout("${layout}") ns.Setup.ApplyScreen("${key}")`);
       expect(problemsAt(addon, layout, sw, sh, `${key} (${Math.round(sw)}x${Math.round(sh)}), ${layout}`)).toEqual([]);
     }
@@ -251,7 +251,7 @@ it("setup screen: with Pixel-perfect, nothing overlaps or leaves the screen, in 
   for (const [w, h] of [[1920, 1080], [2560, 1440], [3840, 2160], [3440, 1440]]) {
     addon.eval(`__wfgStub.setScreen(${w}, ${h})`);
     const n = addon.eval(`return ns.Setup.PixelMultiple(${h})`);
-    for (const layout of ["damage", "healing", "classic"]) {
+    for (const layout of ["damage", "healing", "versus", "classic"]) {
       addon.eval(`ns.Setup.ApplyLayout("${layout}") ns.Setup.ApplyScreen("pixel")`);
       expect(problemsAt(addon, layout, w / n, h / n, `pixel-perfect ${w}x${h}, ${layout}`)).toEqual([]);
     }
@@ -359,4 +359,17 @@ it("one bar material (#234): every Vanguard bar on the whole HUD uses the theme'
   expect([Object.keys(used), Object.values(used).reduce((a, b) => a + b, 0) > 20], "one texture, on every bar on screen (unit frames, raid tiles, cast bars, XP, ...)").toEqual([[addon.eval("return ns.Theme.BarTexture()")], true]);
   const soft = loggedIn(UI_ENV + ACTIONS_ENV + UNITS_ENV + RAID_ENV + SWING_ENV + TOOLS_ENV, { savedVariables: 'VanguardDB = { profiles = { Default = { theme = { barTexture = "soft" } } } }' });
   expect(Object.keys(soft.eval(BAR_MATERIALS)), "the Soft material on all of them").toEqual([soft.eval('return ns.Theme.Texture("BarSoft")')]);
+});
+
+it("setup layouts: Versus deck is your role's centered layout with the deck on; another layout takes it off", () => {
+  const addon = loggedIn(CLICK_LUA + UNITS_ENV + RAID_ENV, { firstRun: true });
+  expect(addon.eval('return __click("Versus deck")') && addon.eval("return Vanguard_Setup.pages.layout.hint:GetText()"), "picking it says what it does").toMatch(/crest between them/);
+  setupClick(addon, "next");
+  const deck = "return { ns.Settings('UnitFrames').deck, ns.GetModule('UnitFrames').deck:IsShown(), ns.Settings('RaidFrames').showPower }";
+  expect(addon.eval(deck), "the deck on and shown, with the damage settings (no role says healer)").toEqual([true, true, false]);
+  addon.eval("ns.Setup.ApplyLayout('classic')");
+  expect(addon.eval(deck).slice(0, 2), "another layout takes the deck off").toEqual([false, false]);
+  const healer = loggedIn(CLICK_LUA + UNITS_ENV + RAID_ENV + "__wfgWorld.units.player.role = 'HEALER'", { firstRun: true });
+  healer.eval("ns.Setup.ApplyLayout('versus')");
+  expect(healer.eval("return { ns.Settings('UnitFrames').deck, ns.Settings('RaidFrames').showPower, ns.ModuleEnabled('ClickCast') }"), "a healer: the deck with the Healing layout (its settings, click casting on)").toEqual([true, true, true]);
 });
