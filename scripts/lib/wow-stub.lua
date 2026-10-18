@@ -311,7 +311,8 @@ function methods:SetFontObject(font) self.__template = type(font) == "string" an
 function methods:SetBackdrop(b) self.__backdrop = b end
 function methods:SetBackdropColor(r, g, b, a) self.__backdropColor = { r, g, b, a or 1 } end
 function methods:SetBackdropBorderColor(r, g, b, a) self.__borderColor = { r, g, b, a or 1 } end
-function methods:SetTexture(t) self.__texture = t end
+-- A texture's file, and the wrap modes given with it (a mask clamped to white, say).
+function methods:SetTexture(t, wrapH, wrapV) self.__texture = t self.__wrap = wrapH and { wrapH, wrapV } or nil end
 function methods:GetTexture() return self.__texture end
 -- A region's draw layer and sublevel, as it was created (or moved) with.
 function methods:SetDrawLayer(layer, sublevel) self.__layer = layer self.__sublevel = sublevel end
@@ -709,6 +710,26 @@ function methods:CreateTexture(name, layer, _, sublevel)
   local t = newWidget("Texture", name, self, nil, layer)
   t.__sublevel = sublevel
   return t
+end
+
+-- A mask texture on the frame (Frame:CreateMaskTexture): a texture region marked __mask, which
+-- Texture:AddMaskTexture puts on a texture.
+function methods:CreateMaskTexture(name, layer, _, sublevel)
+  local t = newWidget("Texture", name, self, nil, layer or "ARTWORK")
+  t.__sublevel, t.__mask = sublevel, true
+  return t
+end
+
+-- Puts a mask on a texture (once, as the client does); the masks are listed in __masks, in order.
+function methods:AddMaskTexture(mask)
+  self.__masks = self.__masks or {}
+  for _, m in ipairs(self.__masks) do if m == mask then return end end
+  self.__masks[#self.__masks + 1] = mask
+end
+
+-- Takes a mask off a texture.
+function methods:RemoveMaskTexture(mask)
+  for i, m in ipairs(self.__masks or {}) do if m == mask then return table.remove(self.__masks, i) end end
 end
 
 -- Font strings record their draw layer and template.
