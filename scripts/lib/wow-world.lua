@@ -141,6 +141,8 @@ Enum = {
   SpellBookSpellBank = { Player = 0, Pet = 1 },
   SpellBookItemType = { None = 0, Spell = 1, FutureSpell = 2, PetAction = 3, Flyout = 4 },
   StatusBarInterpolation = { Immediate = 0, Smooth = 1 },
+  -- A subset of Enum.TooltipDataLineType with the client's values (TooltipInfoSharedDocumentation.lua).
+  TooltipDataLineType = { None = 0, Blank = 1, UnitName = 2, UnitThreat = 7, QuestObjective = 8, QuestTitle = 17, QuestPlayer = 18 },
   TooltipDataType = { Item = 0, Spell = 1, Unit = 2 },
   WeaponSlot = { MainHand = 0, OffHand = 1 },
 }
@@ -1209,6 +1211,12 @@ C_QuestLog = {
   GetQuestRewardSpells = function() return {} end,
   GetQuestRewardSpellInfo = function() return nil end,
   GetMaxNumQuestsCanAccept = function() return 25 end,
+}
+-- A unit's tooltip data (TooltipInfoDocumentation.lua, GetUnit): its `tooltipLines`, each { type, leftText }
+-- with a type from Enum.TooltipDataLineType; nothing for a unit that does not exist.
+C_TooltipInfo = {
+  -- The unit's tooltip data, or nothing.
+  GetUnit = function(unit) local u = resolveUnit(unit) return u and { type = Enum.TooltipDataType.Unit, lines = u.tooltipLines or {} } or nil end,
 }
 C_QuestInfoSystem = {
   -- Reward spells: none.

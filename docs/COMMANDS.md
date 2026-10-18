@@ -65,7 +65,7 @@ Every `/vg` command (`/vanguard` works too), grouped by what it does. `/vg help`
 | `/vg ah ...` | Auction prices, shopping lists, scans |
 | `/vg weights [wizard\|...]` | Stat weights for gear upgrades |
 | `/vg craft ...`, `/vg mail ...` | Craft queue; mail tools (off until switched on) |
-| `/vg prep [want <kind> <n>\|setup]` | The Instance prep card and wanted amounts |
+| `/vg prep [want <kind> <n>\|setup\|buffs]` | The Instance prep card, wanted amounts, and your buffs against the buff checks |
 | `/vg alts`, `/vg stock`, `/vg inventory`, `/vg vendors` | Alt overview, items to keep, characters remembered, merchants remembered |
 | `/vg junk`, `/vg sell` | Your sell list; sell every stack of one item at a merchant |
 | `/vg ranks`, `/vg trainers`, `/vg legacy` | Spell ranks, what trainers teach, the Legacy system |

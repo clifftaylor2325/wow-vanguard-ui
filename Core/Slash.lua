@@ -19,6 +19,7 @@ local HELP = {
   "nineslice [on|off]   shadows and glows as one nine-slice texture each, after a reload (a test; off by default)",
   "icons [on|off]       menu strip icons drawn at their on-screen size, after a /reload (off by default)",
   "cooldowns [setup]    the Cooldowns page (the game's Cooldown Manager, the gaps row, the buff glow); setup opens the step-by-step wizard",
+  "cdmkeys [on|off]  show the key for each Cooldown Manager spell on its icon (off by default)",
   "cdmglow [on|off|<percent>]  glow a Cooldown Manager buff icon in its last part, 10 to 60 percent (off by default)",
   "ornaments [on|off]   a brass rule or corner brackets on the options window, setup and quest log (off by default)",
   "variant [default|contrast|vellum|classic|midnight|obsidian|moss|ember]  surfaces and text: Slate and brass, High contrast, Vellum and ink, Classic look, Midnight, Obsidian, Moss, Ash and ember",
@@ -61,7 +62,7 @@ local HELP = {
   "alts [<name>]        every character's level, money, rested XP and time played; with a name, that character's bags and bank",
   "inventory [forget <name>|clear]   your characters remembered here and when their bags were read; forget drops one, clear forgets them all",
   "weights [wizard|set <stat> <n>|reset|export|import]   the stat weights gear upgrades use for your class and role; the wizard walks you through them, or change one, go back to the defaults, or share them",
-  "prep [want <kind> <n>|setup] the Instance prep card now: what you're short of (with Dungeon card on: the dungeon's level range, your quests for it and your keys); want sets how many food, bandages, potions, ammo or shards; setup opens the wanted-amounts window",
+  "prep [want <kind> <n>|setup|buffs] the Instance prep card now: what you're short of (with Dungeon card on: the dungeon's level range, your quests for it and your keys); want sets how many food, bandages, potions, ammo or shards; setup opens the wanted-amounts window; buffs lists your buffs and which buff check each counts for",
   "legacy [probe|plan ...]   Legacy system: probe lists what the client has for it; plan [add <points> <name>|remove <name>|clear] keeps a list of perks for the tree's 16 points (planner off until switched on)",
   "talents [plan|spend|clear|export|import]   Talent planner: the plan's summary; plan mode on or off, spend the planned points, clear the plan, share it as a string",
   "ah [list <name>|add <list> <item>|rename <name>|duplicate|delete|export|import|recent|scan|prices clear]  shopping lists (pick or make one, add an item: a link, an ID or a name; rename, copy, delete, export or import the list in use; recent: the last 20 items searched); scan the auction house (while it's open); forget the prices",
@@ -79,7 +80,7 @@ local HELP = {
   "feedback [bug|feature]   a bug report or feature request written here: the questions vanguardui.com/feedback asks, then one block to paste there (it fills the form)",
   "gaps [add <item>|remove <item>|spell add <spell>|spell remove <spell>|clear]   Cooldown gaps (switch it on under Cooldowns): choose items such as a Healthstone or potion, and spells, to show beside trinkets, pet abilities and totems; no verb lists them",
   "perf [cpu|watch|slow] Vanguard's CPU (ms a frame) and memory now; cpu turns the game's script profiling on or off (reload) for the busiest functions; watch prints them every minute; slow lists the slowest handlers (slow reset starts over)",
-  "mem                  watches Vanguard's memory for a minute (out of combat), then says how much it grew and whether it kept any; again ends it early",
+  "mem                  prints the size of the saved files, then watches Vanguard's memory for a minute (out of combat), then says how much it grew and whether it kept any; again ends it early",
   "graphics             checks this computer (the graphics card the game sees and the Graphics Quality the game recommends for it), your screen and your frame rate for 5 s (out of combat), then suggests a Graphics Quality and the sizes for your screen; again ends it early",
   "graphics apply       sets what the check suggested (Graphics Quality as the game's slider does, render scale, your screen's sizes), out of combat",
   "graphics undo        puts your graphics settings and UI scale back as they were before apply",
@@ -203,6 +204,15 @@ local function cdmGlowCommand(rest)
   CG.settings.glow = percent ~= nil or rest == "on" or (rest == "" and not CG.settings.glow)
   CG.Apply()
   chat(CG.settings.glow and ("Cooldown Manager glow on: under " .. CG.settings.percent .. " percent left.") or "Cooldown Manager glow off.")
+end
+
+-- /vg cdmkeys [on|off]: key text on the Cooldown Manager's icons, at once.
+local function cdmKeysCommand(rest)
+  local CK = ns.GetModule("CooldownKeys")
+  if not CK.settings then return chat("The Cooldown Manager keys module is off. Turn it on under /vg > Modules, then /reload.") end
+  CK.settings.keys = rest == "on" or (rest == "" and not CK.settings.keys)
+  CK.Refresh()
+  chat(CK.settings.keys and "Cooldown Manager keys on." or "Cooldown Manager keys off.")
 end
 
 -- /vg cooldowns [setup]: the Cooldowns options page, or its setup wizard.
@@ -663,6 +673,7 @@ local COMMANDS = {
   texelsnap = texelSnapCommand,
   nineslice = nineSliceCommand,
   cdmglow = cdmGlowCommand,
+  cdmkeys = cdmKeysCommand,
   gradient = gradientCommand,
   ornaments = ornamentsCommand,
   icons = iconsCommand,
