@@ -502,6 +502,12 @@ it("add-on restrictions: ns.Restricted reads one kind, starting counts, chat add
   const kinds = loggedIn(RESTRICT_ENV);
   expect(kinds.eval("return ns.Restricted('Nonsense')"), "a kind the client doesn't name").toBe(false);
 });
+it("a 12.x build with the Forever ruleset call still reads as WoW Forever", () => {
+  const addon = loggedIn('GetBuildInfo = function() return "12.1.5", "TEST-ONLY", "Nov 4 2026", 120105 end C_GameRules = { GetForeverExperiencePreset = function() return 1 end }');
+  expect(addon.eval("return ns.IsForever()"), "120105 plus the ruleset call is Forever").toBe(true);
+  addon.eval("C_GameRules = {}");
+  expect(addon.eval("return ns.IsForever()"), "120105 without the call is Retail").toBe(false);
+});
 it("a retail client is not WoW Forever and keeps its aura state readable", () => {
   const addon = loggedIn('GetBuildInfo = function() return "12.0.7", "TEST-ONLY", "Sep 1 2026", 120007 end');
   expect(addon.eval("return ns.IsForever()") === false && addon.eval("return ns.AurasSecret()") === false, "120007 is retail; no C_Secrets means readable").toBeTruthy();
