@@ -114,6 +114,7 @@ Modules/Bags.lua
 Modules/BagSections.lua
 Modules/BagCategories.lua
 Modules/BagSearch.lua
+Modules/BagTools.lua
 Modules/InfoStrip.lua
 Modules/BrokerStrip.lua
 Modules/MenuStrip.lua
@@ -149,6 +150,7 @@ Modules/WindowsSystem.lua
 Modules/WindowsMap.lua
 Modules/WindowsMenus.lua
 Modules/WindowsTabs.lua
+Modules/CharacterExtras.lua
 Modules/WindowsPvP.lua
 Modules/WindowsMove.lua
 Modules/AuctionPrices.lua

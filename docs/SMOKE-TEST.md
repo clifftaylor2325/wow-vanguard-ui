@@ -512,16 +512,16 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Expect: the combined bag in the Vanguard look; items that do not match dim as the game dims them; the search box is themed; a Sort button is present if this client can sort bags.
 - If it fails, paste: a screenshot and `/vg errors`.
 
-### 9.1a Bag categories
+### 9.1a Bag groups (buttons on the search row)
 
-- Do: open your bags, type `/vg bag add Potions ` and shift-click a potion, then another item into `/vg bag add Tools <item>`. Open the bags. Then `/vg bag top Tools`, `/vg bag remove <the potion>`, `/vg bag delete Tools`, and `/vg bag` on its own.
-- Expect: a POTIONS header over the potion and a TOOLS header over the tool, both above Quest items; after `top Tools` Tools comes first; the removed item falls back to its built-in section; the deleted category's header goes; `/vg bag` lists each category and its items. The bag lays out again each time without a reload.
+- Do: open your bags. Click **Groups** → New group..., type `Potions`, Create. Pick a potion up (it stays on the cursor), click **Groups** → Put held item in Potions. Make a second group and file another item. Then **Groups** → Make <group> first, Delete <group>. Click **Filter** → Epic or better, then Group: Potions, then Show everything.
+- Expect: Filter and Groups sit between the search box and Sort, the box narrower, nothing overlapping at the window's edges. A POTIONS header over the potion, above Quest items; Make first reorders; Delete drops the header and the item falls back to its built-in section; Filter lights the matching items and dims the rest and Show everything clears it. The bag lays out again each time without a reload. The menus are readable (not cut off) and `/vg bag` lists the same groups.
 - If it fails, paste: a screenshot, the output of `/vg bag` and `/vg errors`.
 
 ### 9.1b Bag search words and bank deposit
 
-- Do: with bags open, type `ilvl>20`, then `q:epic`, `type:armor bind:boe`, `cat:<a category of yours>` in the bag's search box, then clear it. At the bank, `/vg bag deposit <category>`; then once in a fight.
-- Expect: items that match every word stay lit and the rest dim as with a normal search; a plain word still works the game's way; the box clearing lights everything again. Deposit sends that category's stacks to the bank and says how many; in a fight, or with no bank open, it says to open the bank and moves nothing.
+- Do: with bags open, type `ilvl>20`, then `q:epic`, `type:armor bind:boe`, `cat:<a group of yours>` in the bag's search box, then clear it. At the bank, click **Groups** → Send <group> to the bank; then once in a fight.
+- Expect: items that match every word stay lit and the rest dim as with a normal search; a plain word still works the game's way; clearing the box lights everything again. Send moves that group's stacks to the bank and says how many; in a fight, or with no bank open, it says to open the bank and moves nothing.
 - If it fails, paste: a screenshot, `/vg probe` (the SetItemSearch and UpdateSearchResults lines) and `/vg errors`.
 
 ### 9.2 Merchant repair and sell
@@ -541,6 +541,12 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Do: turn the Tooltips module off under `/vg` > Modules (and reload if asked); keep Vendor memory and Auction helper on; hover an item you saw at a merchant, or one with an auction price from a scan.
 - Expect: the item tooltip still shows the "Sold by ..." line and the "AH: ..." line (and "Upgrade +N%" where it applies), in the game's own tooltip; there is no "Sells for ..." or "You have ..." line from Vanguard, and no unit-tooltip changes. Turn Tooltips back on: those two lines come back, with no line shown twice. [Needs in-game check: the lines on the client's tooltip, with the module off.]
 - If it fails, paste: which line is missing or doubled, and `/vg errors`.
+
+### 9.2c Character sheet extras
+
+- Do: open the character pane with gear worn. Then `/vg` → Game windows → Character sheet extras: tick "Mark worn pieces missing an enchant", and look at a chest, legs, boots, bracers, gloves, cloak or weapon of green quality or better without an enchant. Press "Show my gear summary in chat" (or run `/vg gear`).
+- Expect: each worn slot shows its item level along the top edge (durability stays along the bottom); an unenchanted piece of those slots shows a `!` in the top-right corner, and not a shield or a held item; unticking a switch removes its labels at once; `/vg gear` prints the average item level, a melee damage-per-second line (with the swing time) and the pieces missing an enchant.
+- If it fails, paste: a screenshot of the character pane, the `/vg gear` lines and `/vg errors`.
 
 ### 9.3 Trainer: Train all
 
