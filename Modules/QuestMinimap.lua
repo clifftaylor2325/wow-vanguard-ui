@@ -49,7 +49,7 @@ end
 
 -- Reads the spots on the map you're on (each second and when the log or the zone changes).
 function QM.Read()
-  QM.mapID = ns.PlainNumber(call(C_Map, "GetBestMapForUnit", "player"))
+  QM.mapID = not ns.Restricted("Map") and ns.PlainNumber(call(C_Map, "GetBestMapForUnit", "player")) or nil
   QM.spots = QM.mapID and QM.Spots(QM.mapID) or {}
 end
 

@@ -238,7 +238,7 @@ function BG.FitSearch(frame)
   if not BG.sort or type(box) ~= "table" or box:GetParent() ~= frame then return end
   alignSearch(frame, box)
   local _, _, _, left = box:GetPoint(1)
-  box:SetWidth(frame:GetWidth() - rightRoom(frame) - SORT_W - SORT_GAP - (left or 0))
+  box:SetWidth(frame:GetWidth() - rightRoom(frame) - SORT_W - SORT_GAP - BG.ToolsWidth() - (left or 0))
 end
 
 -- The search box fitted each time the game sets up the bag's search row (it
@@ -259,6 +259,13 @@ function BG.AddSort(frame)
   hideGameSort()
   hideGamepadBackpack()
   watchSearchRow(frame)
+  BG.AddTools(frame)
+end
+
+-- The combined bag's sections and its search words (Modules/BagSections.lua, Modules/BagSearch.lua).
+local function watchLayout(frame)
+  BG.WatchSections(frame)
+  BG.WatchSearch(frame)
 end
 
 -- Module entry point (Core/Modules.lua): the combined setting applied to the
@@ -274,5 +281,5 @@ function BG.Enable(settings)
   if type(frame.UpdateItems) == "function" and type(hooksecurefunc) == "function" then
     hooksecurefunc(frame, "UpdateItems", ns.Guard("hook UpdateItems", skinItems))
   end
-  BG.WatchSections(frame)
+  watchLayout(frame)
 end

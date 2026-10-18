@@ -470,6 +470,38 @@ it("WoW Forever client: interface, hidden auras, no specializations", () => {
   addon.eval('UnitClass = function() return "Paladin", "PALADIN" end ns.GetModule("RaidHealing").Forget()');
   expect(addon.eval('for _, n in ipairs(ns.GetModule("RaidHealing").BuffNames()) do if n == "Greater Blessing of Kings" then return true end end'), "any blessing counts for a paladin").toBeTruthy();
 });
+// TEST-ONLY restriction calls as Forever documents them: the six kinds and three states, each kind's state in __restricted by number.
+const RESTRICT_ENV = `
+  Enum.AddOnRestrictionType = { Combat = 0, Encounter = 1, ChallengeMode = 2, PvPMatch = 3, Map = 4, Chat = 5 }
+  Enum.AddOnRestrictionState = { Inactive = 0, Activating = 1, Active = 2 }
+  __restricted = {}
+  C_RestrictedActions = { GetAddOnRestrictionState = function(t) return __restricted[t] or 0 end }
+  C_ChatInfo = { InChatMessagingLockdown = function() return __lock == true end }
+`;
+it("add-on restrictions: ns.Restricted reads one kind, starting counts, chat adds its lockdown, and an unsure client is unrestricted", () => {
+  const addon = loggedIn(RESTRICT_ENV);
+  // The active restriction kinds as one comma-joined string.
+  const active = () => addon.eval("return table.concat(ns.ActiveRestrictions(), ',')");
+  expect([addon.eval("return ns.Restricted('Map')"), active()], "all inactive").toEqual([false, ""]);
+  addon.eval("__restricted[4] = 2 __restricted[1] = 1");
+  expect([addon.eval("return ns.Restricted('Map')"), active()], "active, and starting (Activating), in /vg status order").toEqual([true, "Encounter,Map"]);
+  addon.slash("status");
+  expect(chatHas(addon, /Game restrictions: Encounter, Map/), "/vg status lists them").toBe(true);
+  addon.eval("__restricted = {} __lock = true");
+  expect(active(), "the chat messaging lockdown counts as Chat").toEqual("Chat");
+  addon.eval("__lock = false C_ChatInfo.InChatMessagingLockdown = function() return __wfgWorld.secret(true) end");
+  expect(addon.eval("return ns.Restricted('Chat')"), "a hidden lockdown answer is not a restriction").toBe(false);
+  addon.eval("C_ChatInfo.InChatMessagingLockdown = function() error('TEST-ONLY') end C_RestrictedActions.GetAddOnRestrictionState = function() error('TEST-ONLY') end");
+  expect([addon.eval("return ns.Restricted('Chat')"), addon.eval("return ns.Restricted('Map')"), addon.eval("return #ns.errors")], "errors read as unrestricted, quietly").toEqual([false, false, 0]);
+  addon.eval("C_RestrictedActions.GetAddOnRestrictionState = function() return __wfgWorld.secret(2) end");
+  expect(addon.eval("return ns.Restricted('Map')"), "a hidden state too").toBe(false);
+  addon.eval("C_RestrictedActions = nil C_ChatInfo = nil");
+  expect([addon.eval("return ns.Restricted('Chat')"), active()], "a client without the calls").toEqual([false, ""]);
+  addon.slash("status");
+  expect(chatHas(addon, /Game restrictions: none/), "/vg status says none").toBe(true);
+  const kinds = loggedIn(RESTRICT_ENV);
+  expect(kinds.eval("return ns.Restricted('Nonsense')"), "a kind the client doesn't name").toBe(false);
+});
 it("a retail client is not WoW Forever and keeps its aura state readable", () => {
   const addon = loggedIn('GetBuildInfo = function() return "12.0.7", "TEST-ONLY", "Sep 1 2026", 120007 end');
   expect(addon.eval("return ns.IsForever()") === false && addon.eval("return ns.AurasSecret()") === false, "120007 is retail; no C_Secrets means readable").toBeTruthy();

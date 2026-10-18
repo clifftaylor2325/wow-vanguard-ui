@@ -99,6 +99,30 @@ it("item tooltips: other modules' lines come after the tooltip's own, and one th
   expect(addon.eval("return #__showItem({ __secret = true }, 1)"), "a hidden link: no lines at all").toBe(0);
 });
 
+// TEST-ONLY: counts how many times the item tooltip hook is registered (a second one would double every line).
+const COUNT_HOOKS_ENV = `__itemHooks = 0
+  local add = TooltipDataProcessor.AddTooltipPostCall
+  TooltipDataProcessor.AddTooltipPostCall = function(kind, fn) if kind == 0 then __itemHooks = __itemHooks + 1 end return add(kind, fn) end`;
+
+it("item tooltips: other modules' lines still run with the Tooltips module off, which adds none of its own", () => {
+  const off = loggedIn(UNITS_ENV + TOOLTIP_ENV + ITEM_TIP_ENV + COUNT_HOOKS_ENV, { savedVariables: "VanguardDB.profiles = { Default = { modules = { Tooltips = false } } }" });
+  expect(off.eval("return { ns.ModuleEnabled('Tooltips'), __itemHooks, #ns.GetModule('Tooltips').itemLines > 0, __post[2] == nil }"), "the modules that add lines (prices, upgrades, vendor memory...) hooked item tooltips at login; the unit tooltip is not").toEqual([false, 1, true, true]);
+  off.eval(`local TT = ns.GetModule("Tooltips")
+    TT.AddItemLines(function(tt, link) tt:AddLine("TEST-ONLY from " .. link) end)
+    TT.AddItemLines(function(tt) tt:AddLine("TEST-ONLY second") end)`);
+  const lines = off.eval('local out = {} for i, l in ipairs(__showItem("item:90001", 2)) do out[i] = l.text end return out');
+  expect(lines.slice(-2), "each module's line shows, and no sell price, count or ID of the module's own").toEqual(["TEST-ONLY from item:90001", "TEST-ONLY second"]);
+  expect(lines.some((t) => /^(Sells for|You have|Item ID)/.test(t)), "the module's own lines stay off").toBe(false);
+  expect(off.eval("return { __itemHooks, #ns.errors }"), "still one hook for all the lines, and no error").toEqual([1, 0]);
+});
+
+it("item tooltips: with the Tooltips module on, the item hook is made once however many lines are added", () => {
+  const on = loggedIn(UNITS_ENV + TOOLTIP_ENV + ITEM_TIP_ENV + COUNT_HOOKS_ENV);
+  on.eval('local TT = ns.GetModule("Tooltips") TT.AddItemLines(function() end) TT.AddItemLines(function() end)');
+  expect(on.eval("return __itemHooks"), "Enable and the added lines share one hook").toBe(1);
+  expect(on.eval('return __showItem("item:90001", 2)[1].text'), "and the module's own price still shows").toBe("Sells for 0s 50c");
+});
+
 it("item tooltips: how many you have, and the item ID when asked", () => {
   const addon = loggedIn(UNITS_ENV + TOOLTIP_ENV + ITEM_TIP_ENV + "C_Item.GetItemCount = function(link, bank) if link == 'item:90002' then return 3, 3 end return bank and 12 or 7 end");
   expect(addon.eval('local l = __showItem("item:90002", 1) return l[1].text'), "all in your bags").toBe("You have 3");
