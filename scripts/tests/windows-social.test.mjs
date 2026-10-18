@@ -562,6 +562,7 @@ const DIALOG_ENV = WINDOWS_ENV + `
   end
   local log = __dialog("CommunitiesGuildLogFrame")
   local text = CreateFrame("Button", "CommunitiesGuildLogFrameCloseButton", log) text:SetText("Close")
+  CreateFrame("Frame", "CommunitiesFrame", UIParent)
   local news = __dialog("CommunitiesGuildNewsFiltersFrame") news.CloseButton = CreateFrame("Button", nil, news)
   __dialog("CommunitiesGuildTextEditFrame") CreateFrame("Button", "CommunitiesGuildTextEditFrameAcceptButton", CommunitiesGuildTextEditFrame)
   __dialog("GuildInviteFrame")
@@ -1226,6 +1227,11 @@ it("social dialogs: the guild log's and text edit's boxes, titles and X buttons,
   "log and text edit: boxes sunk, the log's title a title, the X the close glyph, the text buttons not").toEqual([true, true, true, false, true, true, true, false]);
   expect(addon.eval(`local n = 0 for _, c in ipairs(CommunitiesGuildNewsFiltersFrame.GuildNewsFilterButtons) do if type(c.GetChecked) == "function" and ns.Theme.CheckParts(c) then n = n + 1 end end
     return { n, #CommunitiesGuildNewsFiltersFrame.GuildNewsFilterButtons }`), "seven news filter checks (the odd entry left alone)").toEqual([7, 8]);
+  expect(addon.eval(`local f = CommunitiesGuildNewsFiltersFrame
+    local function at() local p, rel, rp, x = f:GetPoint() return { p, rel == CommunitiesFrame, rp, x } end
+    f:ClearAllPoints() f:Hide() f:Show()
+    local shown = at() CommunitiesFrame:Show() CommunitiesFrame:Hide()
+    return { shown, f:IsShown() }`), "the news filters flyout is attached to the guild window's right edge and closes with the window").toEqual([["TOPLEFT", true, "TOPRIGHT", -1], false]);
   expect(addon.eval(`return { GuildInviteFrameTabardBackground:GetAlpha(), GuildInviteFrameTabardEmblem:GetAlpha(), GuildInviteFrameTabardBorder:GetAlpha(),
       GuildInviteFrameJoinButton.Art:GetAlpha(), GuildInviteFrameDeclineButton.Art:GetAlpha(), __lit(GuildInviteFrameGuildName) }`),
   "the inviting guild's tabard kept, its border faded, Join and Decline flat, the guild name light").toEqual([1, 1, 0, 0, 0, true]);
