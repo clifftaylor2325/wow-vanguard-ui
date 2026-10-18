@@ -655,13 +655,20 @@ local function skinLegacyBar(bar)
   GW.SkinText(bar.Text or bar.Label, "label", "text")
 end
 
+-- The line between a page's list and content: one pixel of `divider` on a page without panes (the tree), faded on one
+-- whose two panes have edges of their own (the challenges), where it showed as a stray bar between them.
+local function dressDivider(page)
+  if isFrame(page.CategoryList) or isFrame(page.DetailPane) then return GW.FadeParts(page, { "VerticalDivider" }) end
+  T.Divider(page.VerticalDivider, { vertical = true })
+end
+
 -- One page's background art faded, the divider between its list and content one pixel of `divider`, an inset panel
 -- under each of its panes and the challenge list's empty note. The talent tree's node buttons are the game's.
 local function skinLegacyPage(page)
   if not isFrame(page) then return end
   GW.FadeParts(page, GW.LEGACY_PAGE_ART)
   flattenCrests(page)
-  if isFrame(page.VerticalDivider) then T.Divider(page.VerticalDivider, { vertical = true }) end
+  if isFrame(page.VerticalDivider) then dressDivider(page) end
   for _, key in ipairs(GW.LEGACY_PANES) do
     if isFrame(page[key]) then T.Panel(page[key], { inset = true, noSheen = true }) end
   end
