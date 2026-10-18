@@ -30,6 +30,8 @@ button:SetScript("OnClick", ns.Guard("click sell", MC.Sell))
 frame:HookScript("OnShow", ns.Guard("show window", GW.Light))
 ```
 
+A callback the game reads a result from (a chat filter) uses `ns.GuardResult(where, fn, fallback)` instead: it hands back `fn`'s results, or `fallback` (`false` for a chat filter, so the line goes through) when `fn` fails. Callbacks the game calls from its own code (`ChatFrame_AddMessageEventFilter`, `TooltipDataProcessor.AddTooltipPostCall`, `EventRegistry:RegisterCallback`) are guarded the same way as hooks.
+
 `ns.Guard(where, fn)` runs `fn` under `ns.Try`, so a failure is kept for `/vg errors`, printed once, and handed to the game's error handler, and the other callbacks still run. The `where` text is the site name a tester will paste. Event handlers through `ns.On` are guarded already.
 
 ## State for a game frame
@@ -65,6 +67,8 @@ end
 ```
 
 `ns.PlainNumber` returns the number or nil, never a secret; compare only after it. For a boolean or a string, `ns.IsSecret` first. A secret may be handed to a widget (`bar:SetValue(v)`), not computed with. Unknown is never "readable": a call that errors counts as hidden.
+
+Truthiness is a test too: `if v then`, `not v`, `a or b` and `a and b or nil` all test `v`, so none of them is safe on a value that may be secret. Read the call into a local, check `ns.IsSecret` (or `isTrue`, `flag`) first, and only then test or default it; `type(fn) == "function" and fn(unit)` is fine because the test is on `type(...)`, not on the result. Pass the raw value to a widget. The harness cannot catch this (a harness secret is a table, always truthy, and Lua has no `__bool`), so review for it by eye: grep for `or nil`, `or "` and `and ... or` on the direct result of a `Unit*` call.
 
 ## Work that must wait for combat to end
 

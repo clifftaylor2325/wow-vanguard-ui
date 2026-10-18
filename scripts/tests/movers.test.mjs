@@ -125,6 +125,21 @@ it("a damaged saved position (a hand-edited profile string) falls back to the de
   expect(addon.eval("return { ns.MoverPoint('box') }"), "a good point keeps; a bad relative point is the point; offsets that aren't numbers read as numbers or 0").toEqual(["TOPLEFT", "TOPLEFT", 12, 0]);
 });
 
+it("a saved offset that is infinite, NaN or absurd is kept to ns.MAX_OFFSET before it reaches SetPoint", () => {
+  const addon = loggedIn(BOX);
+  addon.eval('ns.Profile().positions.box = { point = "TOPLEFT", relPoint = "TOPLEFT", x = math.huge, y = -math.huge }');
+  expect(addon.eval("return { ns.MoverPoint('box') }"), "infinity is the far edge of the range").toEqual(["TOPLEFT", "TOPLEFT", 5000, -5000]);
+  addon.eval('ns.Profile().positions.box.x, ns.Profile().positions.box.y = 0/0, 1e300');
+  expect(addon.eval("return { ns.MoverPoint('box') }"), "NaN reads as 0, a huge number as the edge").toEqual(["TOPLEFT", "TOPLEFT", 0, 5000]);
+  expect(addon.eval("return { ns.SaneOffset(nil), ns.SaneOffset('12'), ns.SaneOffset(-7.5), ns.SaneOffset({}) }"), "plain offsets and strings of numbers are kept").toEqual([0, 12, -7.5, 0]);
+});
+
+it("an anchored frame whose link offset is infinite stays within ns.MAX_OFFSET of the screen", () => {
+  const addon = loggedIn(BOX + DEP);
+  addon.eval("ns.SetMoverAnchor('dep', 'box', 'RIGHT', 4, 0) ns.Profile().positions.dep.rel.x = 1e300 ns.MoverChanged('dep')");
+  expect(addon.eval("local _, _, x, y = ns.MoverPoint('dep') return { math.abs(x) <= ns.MAX_OFFSET, math.abs(y) <= ns.MAX_OFFSET }"), "the computed offsets are kept in range").toEqual([true, true]);
+});
+
 // Links between frames (Core/MoverLinks.lua) ------------------------------------------------
 
 // TEST-ONLY second box: 100 x 20, at the screen's center until it's anchored.

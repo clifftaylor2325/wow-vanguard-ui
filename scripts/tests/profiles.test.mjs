@@ -28,6 +28,14 @@ it("profile strings", () => {
   const code = addon.eval(`local S = ns.Serialize local body = S.Base64("os.exit()") return "VG1:profile:" .. S.Checksum(body) .. ":" .. body`);
   expect(/can't be read/.test(decode(JSON.stringify(code)).err), "text that isn't settings (e.g. code) is refused, never run").toBeTruthy();
 });
+it("profile strings with a number that is not finite are refused, never decoded to infinity", () => {
+  const addon = loggedIn();
+  // Decodes a profile string around body (a checksum made to match): { scope, err }.
+  const err = (body) => addon.eval(`local S = ns.Serialize local body = S.Base64(${JSON.stringify(body)}) local scope, err = S.Decode("VG1:profile:" .. S.Checksum(body) .. ":" .. body) return { scope = scope, err = err }`);
+  expect(err('{["x"]=1e999}').err, "1e999 would be infinity").toMatch(/can't be read|unexpected/);
+  expect(err('{["x"]=-1e999}').err, "so would -1e999").toMatch(/can't be read|unexpected/);
+  expect(err('{["x"]=1e3}').scope, "an ordinary exponent still reads").toBe("profile");
+});
 it("profile strings keep big whole numbers", () => {
   const r = loggedIn().eval(`local S = ns.Serialize
     local realFormat = string.format

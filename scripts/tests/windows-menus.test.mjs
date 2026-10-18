@@ -2,7 +2,7 @@
 // TEST-ONLY headless client. Cases follow docs/handoff/RESKIN-PLAN.md section 0 ("Writing a task's test").
 
 import { expect, it } from "vitest";
-import { loggedIn } from "./helpers.mjs";
+import { expectErrors, loggedIn } from "./helpers.mjs";
 
 it("the menus group loads cleanly on a client without its windows", () => {
   const addon = loggedIn("");
@@ -62,6 +62,13 @@ it("12.x menus: each open fades the game's background and glow, the panel behind
     ns.GetModule("Windows").SkinContextMenu(nil, nil) ns.GetModule("Windows").SkinContextMenu(nil, {}) return bg.__alpha`);
   expect(plain, "a menu without the glow (the mainline template) is skinned; other arguments are ignored").toBe(0);
   expect(addon.eval("return #ns.errors"), "nothing errors").toBe(0);
+});
+
+it("12.x menus: a skin that fails is reported and does not reach the game's menu code", () => {
+  const addon = loggedIn(MENU_ENV);
+  addon.eval("ns.Theme.FadeRegions = function() error('TEST-ONLY skin', 0) end");
+  expect(() => addon.eval("EventRegistry:TriggerEvent('MenuProxy.OnShow', __menu)"), "the menu opens").not.toThrow();
+  expectErrors("skin context menu: TEST-ONLY skin");
 });
 
 it("12.x menus: with the menus group off they stay the game's; a client without the hook loads cleanly", () => {

@@ -130,14 +130,18 @@ local function percentText(unit)
   local get, curve = _G.UnitHealthPercent, _G.CurveConstants and _G.CurveConstants.ScaleTo100
   if type(get) ~= "function" or not curve then return nil end
   local ok, text = pcall(function() return string.format("%d%%", get(unit, true, curve)) end)
-  return ok and text or nil
+  if not ok then return nil end
+  return text
 end
 
 -- The health text: Dead, Offline, else the percent (if chosen) or current
 -- health shortened. Either may itself be secret: show it, never compare it.
 function UF.HealthText(unit)
+  local down = UF.DownState(unit)
+  if down then return down end
   local percent = UF.settings and UF.settings.healthFormat == "percent" and percentText(unit)
-  return UF.DownState(unit) or percent or shortNumber(UnitHealth(unit))
+  if isSecret(percent) or type(percent) == "string" then return percent end
+  return shortNumber(UnitHealth(unit))
 end
 
 -- The unit's level as text ("??" for a boss or a level too far above you), or "".
