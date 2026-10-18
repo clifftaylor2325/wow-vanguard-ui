@@ -91,7 +91,7 @@ read_globals = {
   -- A1 Auction helper, sell form: a bag slot's item location, for the next stack.
   "ItemLocation",
   -- D1 Auction prices, disenchant values: whether you know Enchanting (your professions' skill lines).
-  "GetProfessions", "GetProfessionInfo", "C_TradeSkillUI",
+  "GetProfessions", "GetProfessionInfo", "C_TradeSkillUI", "C_SkillInfo",
   -- E5 Auction ledger: the inbox's auction mail (Blizzard_MailFrame/MailFrame.lua), and the game's
   -- "Auction expired" subject line.
   "TakeInboxMoney", "ReturnInboxItem", "TakeInboxItem", "MailFrame", "SendMailFrame", "SendMailNameEditBox",

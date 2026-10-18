@@ -60,6 +60,7 @@ Every `/vg` command (`/vanguard` works too), grouped by what it does. `/vg help`
 | Command | What it does |
 | --- | --- |
 | `/vg quests`, `/vg way`, `/vg questdata` | Quest log, waypoints, what the client says about a quest |
+| `/vg quests history [n]` | The latest quests any of your characters turned in, and who did each |
 | `/vg guide probe` | What this client returns for the reads a levelling guide would use (chat only) |
 | `/vg probe [chat\|fight\|last]` | One out-of-combat run that asks the client the open questions and opens the answers in a copy box (saved in SavedVariables); `fight` takes the secrecy reads in the next fight; `last` reopens the saved report |
 | `/vg ah ...` | Auction prices, shopping lists, scans |

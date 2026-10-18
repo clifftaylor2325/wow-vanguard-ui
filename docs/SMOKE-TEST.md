@@ -36,7 +36,7 @@ What each part of the report answers (read the section title in the box):
 | C_Secrets predicates | Which of the 27 predicates exist, and what they say out of combat and in the fight |
 | Restrictions and lockdown | The six add-on restriction states and the chat lockdown flags |
 | Navigation | Does `C_Navigation` give a distance and a next waypoint for the quest arrow? |
-| Undocumented on Forever | The roll tracker's `C_LootHistory`, the craft queue's recipe and cooldown reads, and three new widget methods |
+| Undocumented on Forever | The roll tracker's old `C_LootHistory` reads (now replaced by the documented encounter calls), the craft queue's recipe and cooldown reads, and three new widget methods |
 
 The report is also saved in `WTF\Account\<account>\SavedVariables\Vanguard.lua` under `probe`, so it can be read from the file if the chat is lost.
 
@@ -438,6 +438,12 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Expect: Vanguard's log, titled `Quest log` with your quest count (`12 quests`) beside the title, with quests under their zones (each zone a small grey capitals header with a chevron, down while open and right while folded: click it to fold the zone), `[12] Title` lines in difficulty colours, the chosen quest marked by an accent bar along its left edge and a faint wash, a thin scroll thumb beside a list or quest text longer than its column, and Track or Untrack, Share and Map along the right, and Abandon (red label) alone at the far left, for the chosen quest. Click Track or Untrack, then Shift-click another quest: the button flips each time and the tracker follows; if the game refuses, chat says `The game didn't track ...` with the count tracked. Hover a reward card (a quest with an item reward): the item's tooltip shows beside it and goes when you leave. [Needs in game: the tooltip must show for both choices and fixed rewards.] Ctrl-click two quests: both look chosen and the red button reads `Abandon 2`; Ctrl-click one again to unmark it. Click Abandon: a question names the marked quests; No leaves them, Abandon removes them from the log. [Needs in game: that C_QuestLog.AbandonQuest exists and works after SetAbandonQuest, several in a row.] If it is off, `/vg quests` says `Vanguard's quest log is off (/vg > Quests).`
 - If it fails, paste: a screenshot and `/vg errors`.
 
+### 8.3a Quest history
+
+- Do: turn in a quest on one character, then log in on another character on the same account and talk to a quest giver offering that quest (or open it in the quest log if you have it). Type `/vg quests history` and `/vg quests history 3`. Under `/vg` → Quests, switch off "Remember which character finished each quest" and turn in another quest.
+- Expect: in Vanguard's quest dialog on the quest's details page, a muted line under the text and objectives, `Done on Name-Realm · today` (then `yesterday`, `3 days ago`); the same line under the objectives in the quest log. For a repeatable quest turned in on the same character, `Done on this character`. `/vg quests history` prints `Latest N quest turn-in(s), of M remembered:` and a line per quest, `Title · Name-Realm · today`, newest first, at most the number you gave (25 at most). Switched off, the lines are gone, nothing new is remembered and the command says `Quest history is off (/vg > Quests).` [Needs in game: that `QUEST_TURNED_IN` fires on Forever with the quest's id first, that a quest's title is still known to `C_QuestLog.GetTitleForQuestID` after it is turned in (else the list reads `Quest 12345`), and how the muted line reads under a long quest text.]
+- If it fails, paste: a screenshot and `/vg errors`.
+
 ### 8.4 Quest tracker overflow
 
 - Do: watch more quests than fit under the info strip, then click the QUESTS header at the top of the tracker, and again.
@@ -479,6 +485,12 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Expect: the combined bag in the Vanguard look; items that do not match dim as the game dims them; the search box is themed; a Sort button is present if this client can sort bags.
 - If it fails, paste: a screenshot and `/vg errors`.
 
+### 9.1a Bag categories
+
+- Do: open your bags, type `/vg bag add Potions ` and shift-click a potion, then another item into `/vg bag add Tools <item>`. Open the bags. Then `/vg bag top Tools`, `/vg bag remove <the potion>`, `/vg bag delete Tools`, and `/vg bag` on its own.
+- Expect: a POTIONS header over the potion and a TOOLS header over the tool, both above Quest items; after `top Tools` Tools comes first; the removed item falls back to its built-in section; the deleted category's header goes; `/vg bag` lists each category and its items. The bag lays out again each time without a reload.
+- If it fails, paste: a screenshot, the output of `/vg bag` and `/vg errors`.
+
 ### 9.2 Merchant repair and sell
 
 - Do: with damaged gear and gray items, open a merchant who repairs.
@@ -500,7 +512,7 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 ### 9.4 Lists and Posting tabs at the auction house
 
 - Do: talk to an auctioneer; click the Lists tab, then Posting, then the game's Buy; on Lists click a list in the Lists pane, then a row of it (its listings), then Back; click Scan the auction house, then the pane's Deals and Upgrades entries; on Posting drop an item on the sell slot, click Your history and Up now on the card at the top right, then click the same item in a bag.
-- Expect: two tabs, Lists and Posting, after the game's Buy, Sell and Auctions, in the same look as the game's; the window's title says Lists or Posting while one is open. Lists: the Lists pane on the left (your lists with their counts, Recent, Deals, Upgrades; six buttons under them; the scan button at the bottom), the list picked on the right as a table with headings (Item, Unit price, Up, Max) under a toolbar (+ Add, Search list, Restock), about twenty rows; a row's listings replace the table with Back and the item above sortable columns; after the scan, Deals shows its rows (Unit price, Under by, Judged against) and Upgrades its rows (Slot, Gain, Unit price) with the counts beside the entries, or a line saying none were found. Posting: the Sell card on the left with one field a row, Up now at the top right (the item's listings, yours flagged; Your history in its place on the toggle), Your auctions at the bottom right with Check undercuts and Cancel next undercut on its heading line; every card inside the window. A listing, deal or upgrade clicked switches to the game's Buy page with the item in its list, and Lists brings back the view where it was; the sell slot takes the dropped item; a bag click with Posting open keeps the window on Posting with the item on the Sell card (from the game's own tabs it shows the game's Sell page, and the item is on the Posting card too).
+- Expect: two tabs, Lists and Posting, after the game's Buy, Sell and Auctions, in the same look as the game's; the window's title says Lists or Posting while one is open. Lists: the Lists pane on the left (your lists with their counts, Recent, Deals, Upgrades; six buttons under them; the scan button at the bottom), the list picked on the right as a table with headings (Item, Unit price, Up, Max) under a toolbar (+ Add, Search list, Restock), about twenty rows; a row's listings replace the table with Back and the item above sortable columns; after the scan, Deals shows its rows (Unit price, Under by, Judged against) and Upgrades its rows (Slot, Gain, Unit price) with the counts beside the entries, or a line saying none were found. Posting: the Sell card on the left with one field a row, Up now at the top right (the item's listings, yours flagged; Your history in its place on the toggle), Your auctions at the bottom right with Check undercuts and Cancel next undercut on its heading line; every card inside the window. A listing, deal or upgrade clicked switches to the game's Buy page with the item in its list, and Lists brings back the view where it was; the sell slot takes the dropped item; a bag click with Posting open keeps the window on Posting with the item on the Sell card (from the game's own tabs it shows the game's Sell page, and the item is on the Posting card too). If you know Enchanting, a green or better weapon or armour tooltip shows a "Disenchant: ~" line once its materials are priced (it follows Enchanting from your skills where the game has no profession list).
 - If it fails, paste: a screenshot of each tab and `/vg errors`.
 
 ### 9.5 Sort clear of the backpack icon
@@ -1211,10 +1223,10 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 - Expect: a small panel appears at the left of the screen headed "Rolls 1-100" with each roll, highest first and the top one in your accent color; `/roll 1-6` starts a new round headed "Rolls 1-6" with its figures; 30 seconds after the last roll the panel goes. `/vg rolls` lists the session's rolls, newest first; clear says "Rolls forgotten." Move the panel with `/vg unlock`. [Needs in game: that the game's roll line (RANDOM_ROLL_RESULT) reaches the addon as a plain, readable system message in your language, also inside an instance.]
 - If it fails, paste: the roll line as it shows in chat, and `/vg errors`.
 
-### 19.2 Loot rolls (only where the client has the loot history)
+### 19.2 Loot rolls (only where the client keeps a loot history for the drop)
 
-- Do: type `/run print(C_LootHistory ~= nil, C_LootHistory and C_LootHistory.GetNumItems ~= nil)` and paste what it prints. If it prints `true true`, roll on an item in a group (Need, Greed or Pass) and watch the panel.
-- Expect: nothing happens on a client without it (no error). With it, under the roll lines the panel shows the item, "rolling" until it is done, and each member's choice and roll, the winner in your accent color. [Needs in game: whether Forever has C_LootHistory with GetNumItems, GetItem and GetPlayerInfo and the LOOT_HISTORY_* events, and the order of the values GetItem and GetPlayerInfo return.]
+- Do: type `/run print(C_LootHistory ~= nil, C_LootHistory and C_LootHistory.GetAllEncounterInfos ~= nil, C_LootHistory and C_LootHistory.GetSortedDropsForEncounter ~= nil)` and paste what it prints. If it prints `true true true`, roll on an item in a group (Need, Greed or Pass) in a dungeon and also from a world drop, and watch the panel.
+- Expect: nothing happens on a client without it (no error). With it, under the roll lines the panel shows the item, "rolling" until it has a winner or everyone passed, and each member's choice and roll, the winner in your accent color. [Needs in game: that the history holds a drop for a vanilla dungeon and for a world group roll (the Forever docs list C_LootHistory's encounter calls only; if a world roll leaves it empty, the loot half of the panel stays empty by design), what "winner" and "allPassed" look like while the roll runs, and the order of the drops.]
 - If it fails, paste: the `/run` line's output and `/vg errors`.
 
 ## 20. Craft queue
