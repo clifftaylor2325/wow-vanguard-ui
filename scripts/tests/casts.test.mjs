@@ -1,7 +1,7 @@
 // casts: Vanguard's real Lua in the TEST-ONLY headless client (scripts/lib/lua-harness.mjs).
 
 import { expect, it } from "vitest";
-import { FAKE_FADES, bars, isTok, loggedIn, setCombat, spark, unitEvents } from "./helpers.mjs";
+import { CLICK_LUA, FAKE_FADES, bars, isTok, loggedIn, setCombat, spark, unitEvents } from "./helpers.mjs";
 
 // TEST-ONLY casts: __casts[unit] = { kind = "cast"|"channel", start, finish, shielded }.
 const CAST_ENV = `
@@ -243,4 +243,129 @@ it("the game's crafting cast bar stays, drawn in the theme, through every cast",
   expect([overlay(off).fill, overlay(off).art[0]], "with cast bars off it is the game's own").toEqual(["TEST-ONLY-ATLAS", undefined]);
   const bare = loggedIn('CreateFrame("StatusBar", "OverlayPlayerCastingBarFrame", UIParent)');
   expect([bare.eval("return ns.FrameState('vgSkinned')[OverlayPlayerCastingBarFrame]"), bare.eval("return #ns.errors"), loggedIn().eval("return #ns.errors")], "a bar without its parts, or a client without the bar, loads cleanly").toEqual([true, 0, 0]);
+});
+
+// TEST-ONLY a mage who knows Counterspell, and the client's duration object for its cooldown (tagged with the call it answered).
+const MARK_ENV = `
+  __asked = {}
+  C_Spell.GetSpellCooldownDuration = function(id, ignoreGCD) __asked[#__asked + 1] = { id, ignoreGCD } return { __duration = "tag" .. id } end
+`;
+// Lua that puts a spell in the spellbook, so IsPlayerSpell knows it.
+const KNOWS = (id) => `__wfgWorld.learn(${id}, { name = "TEST-ONLY Interrupt" })`;
+
+// A cast bar's interrupt mark: shown, opacity (or the hidden flag it follows), what its sweep was given.
+const mark = (addon, unit) => addon.eval(`local m = Vanguard_CastBar_${unit}.mark
+  local cd = m.cd
+  return { shown = m:IsShown(), alpha = m:GetAlpha(), follows = m.__alphaFromBoolean ~= nil, object = cd.__durationObject and cd.__durationObject.__duration or false,
+    plain = cd.__cooldown or false, parts = select("#", m:GetRegions()) }`);
+
+it("the interrupt mark: a diamond beside the target's and focus's cast bar while the cast can be interrupted and you know an interrupt", () => {
+  const addon = loggedIn(CAST_ENV + MARK_ENV);
+  addon.eval(KNOWS(2139));
+  expect(addon.eval("return { Vanguard_CastBar_player.mark == nil, Vanguard_CastBar_target.mark ~= nil, Vanguard_CastBar_focus.mark ~= nil }"), "the target and the focus have one, you do not").toEqual([true, true, true]);
+  expect(mark(addon, "target").shown, "no cast, nothing shown").toBe(false);
+  addon.eval('__casts.target = { kind = "cast", start = 1000, finish = 3000, shielded = false }');
+  addon.fire("UNIT_SPELLCAST_START", "target");
+  const ready = mark(addon, "target");
+  expect([ready.shown, ready.alpha, ready.object, ready.parts], "an interruptible cast: the mark, lit, with Counterspell's duration object on its sweep, two diamonds").toEqual([true, 1, "tag2139", 2]);
+  expect(addon.eval("return __asked[1]"), "asked for Counterspell with the global cooldown left out").toEqual([2139, true]);
+  addon.eval('__casts.focus = { kind = "channel", start = 1000, finish = 5000, shielded = false }');
+  addon.fire("UNIT_SPELLCAST_CHANNEL_START", "focus");
+  expect(mark(addon, "focus").shown, "a channel on the focus too").toBe(true);
+  addon.eval('__casts.target = { kind = "cast", start = 1000, finish = 3000, shielded = true }');
+  addon.fire("UNIT_SPELLCAST_NOT_INTERRUPTIBLE", "target");
+  expect([mark(addon, "target").shown, mark(addon, "target").alpha], "a cast that cannot be interrupted: no mark").toEqual([true, 0]);
+  addon.eval('__casts.target = { kind = "cast", start = 1000, finish = 3000, shielded = { __secret = true } }');
+  addon.fire("UNIT_SPELLCAST_START", "target");
+  expect([mark(addon, "target").follows, addon.eval("return issecretvalue(Vanguard_CastBar_target.mark.__alphaFromBoolean)")], "a hidden answer goes to the mark's opacity as it is").toEqual([true, true]);
+});
+
+it("the interrupt mark follows your interrupt's cooldown, only while a cast shows", () => {
+  const addon = loggedIn(CAST_ENV + MARK_ENV);
+  addon.eval(KNOWS(2139));
+  addon.eval("__asked = {}");
+  addon.fire("SPELL_UPDATE_COOLDOWN");
+  expect(addon.eval("return #__asked"), "no cast showing, nothing asked").toBe(0);
+  addon.eval('__casts.target = { kind = "cast", start = 1000, finish = 3000, shielded = false }');
+  addon.fire("UNIT_SPELLCAST_START", "target");
+  addon.eval('C_Spell.GetSpellCooldownDuration = function(id) return { __duration = "recovering" } end');
+  addon.fire("SPELL_UPDATE_COOLDOWN");
+  expect(mark(addon, "target").object, "a cooldown update gives the sweep the new object").toBe("recovering");
+  addon.eval("__casts.target = nil");
+  addon.fire("UNIT_SPELLCAST_STOP", "target");
+  expect(mark(addon, "target").shown, "the flash at a cast's end takes the mark away at once").toBe(false);
+});
+
+it("the interrupt mark: which interrupt, by class and rank", () => {
+  const addon = loggedIn(CAST_ENV + MARK_ENV);
+  // The interrupt a class that has learned these spells would use (false for none).
+  const pick = (class_, learn) => {
+    addon.eval(`__wfgWorld.book = {} UnitClass = function() return "X", "${class_}", 1 end ${learn.map(KNOWS).join(" ")}`);
+    return addon.eval('return ns.GetModule("CastBars").InterruptSpell() or false');
+  };
+  expect(pick("ROGUE", [1766, 1767]), "a rogue's best Kick rank").toBe(1767);
+  expect(pick("WARRIOR", [72]), "a warrior with only Shield Bash").toBe(72);
+  expect(pick("WARRIOR", [72, 6552]), "Pummel before Shield Bash").toBe(6552);
+  expect(pick("SHAMAN", [8042, 8044, 10412]), "a shaman's best Earth Shock").toBe(10412);
+  expect(pick("PRIEST", [15487]), "a priest's Silence").toBe(15487);
+  expect(pick("MAGE", [2139]), "a mage's Counterspell").toBe(2139);
+  expect(pick("MAGE", []), "an interrupt you have not learned").toBe(false);
+  expect(pick("DRUID", [2139]), "a class with none").toBe(false);
+  addon.eval("IsPlayerSpell = nil");
+  expect(addon.eval('return ns.GetModule("CastBars").InterruptSpell() or false'), "a client that cannot say what you know").toBe(false);
+});
+
+it("the interrupt mark is not shown without an interrupt, with the switch off, or when the client hides the cooldown", () => {
+  const none = loggedIn(CAST_ENV + MARK_ENV);
+  none.eval('__casts.target = { kind = "cast", start = 1000, finish = 3000, shielded = false }');
+  none.fire("UNIT_SPELLCAST_START", "target");
+  expect(mark(none, "target").shown, "you know no interrupt").toBe(false);
+  const off = loggedIn(CAST_ENV + MARK_ENV + KNOWS(2139), { savedVariables: "VanguardDB.profiles = { Default = { CastBars = { interruptMark = false } } }" });
+  off.eval('__casts.target = { kind = "cast", start = 1000, finish = 3000, shielded = false }');
+  off.fire("UNIT_SPELLCAST_START", "target");
+  expect(mark(off, "target").shown, "the switch is off").toBe(false);
+  const noApi = loggedIn(CAST_ENV + MARK_ENV + KNOWS(2139) + "C_Spell.GetSpellCooldownDuration = nil");
+  noApi.eval('__casts.target = { kind = "cast", start = 1000, finish = 3000, shielded = false }');
+  noApi.fire("UNIT_SPELLCAST_START", "target");
+  expect([mark(noApi, "target").shown, noApi.eval("return #ns.errors")], "no duration object and no plain numbers: no mark, no error").toEqual([false, 0]);
+});
+
+it("a client that cannot make cooldown frames still gets its cast bars, without the mark", () => {
+  const addon = loggedIn(CAST_ENV + MARK_ENV + KNOWS(2139) + "ns.Client.Has('cooldownObject') ns.Client.has.cooldownObject = false");
+  addon.eval('__casts.target = { kind = "cast", start = 1000, finish = 3000, shielded = false }');
+  addon.fire("UNIT_SPELLCAST_START", "target");
+  expect(addon.eval("return { Vanguard_CastBar_target:IsShown(), Vanguard_CastBar_target.mark == nil, #ns.errors }"), "the bar shows, there is no mark and nothing failed").toEqual([true, true, 0]);
+});
+
+it("the interrupt mark's plain fallback reads the cooldown only when it is readable", () => {
+  const cast = '__casts.target = { kind = "cast", start = 1000, finish = 3000, shielded = false }';
+  // The mark for a target cast when the client answers a spell's cooldown with this Lua value.
+  const run = (cooldown) => {
+    const addon = loggedIn(CAST_ENV + MARK_ENV + KNOWS(2139) + `C_Spell.GetSpellCooldownDuration = nil C_Spell.GetSpellCooldown = function() return ${cooldown} end`);
+    addon.eval(cast);
+    addon.fire("UNIT_SPELLCAST_START", "target");
+    return mark(addon, "target");
+  };
+  const recovering = run("{ startTime = 5, duration = 8 }");
+  expect([recovering.shown, recovering.plain], "a readable cooldown goes to the sweep").toEqual([true, [5, 8]]);
+  expect([run("{ startTime = 5, duration = 8, isOnGCD = true }").shown, run("{ startTime = 5, duration = 8, isOnGCD = true }").plain], "the global cooldown is not your interrupt's").toEqual([true, false]);
+  expect([run("{ startTime = 0, duration = 0 }").shown, run("{ startTime = 0, duration = 0 }").plain], "ready: lit, no sweep").toEqual([true, false]);
+  expect(run("{ startTime = { __secret = true }, duration = { __secret = true } }").shown, "hidden numbers: no mark").toBe(false);
+  expect(run("{ __secret = true }").shown, "a hidden answer: no mark").toBe(false);
+  expect(run("nil").shown, "no answer: no mark").toBe(false);
+  const thrown = loggedIn(CAST_ENV + MARK_ENV + KNOWS(2139) + "C_Spell.GetSpellCooldownDuration = function() error('TEST-ONLY') end C_Spell.GetSpellCooldown = function() return { startTime = 7, duration = 4 } end");
+  thrown.eval(cast);
+  thrown.fire("UNIT_SPELLCAST_START", "target");
+  expect([mark(thrown, "target").shown, mark(thrown, "target").plain], "a duration call that errors falls back to the plain numbers").toEqual([true, [7, 4]]);
+});
+
+it("the interrupt mark's switch under Unit frames applies at once", () => {
+  const addon = loggedIn(CAST_ENV + MARK_ENV + CLICK_LUA + KNOWS(2139));
+  addon.eval('__casts.target = { kind = "cast", start = 1000, finish = 3000, shielded = false }');
+  addon.fire("UNIT_SPELLCAST_START", "target");
+  expect(mark(addon, "target").shown, "on by default").toBe(true);
+  addon.eval('ns.Options.Show("unitframes") __click("Interrupt mark beside the target and focus cast bars")');
+  expect([addon.eval("return VanguardDB.profiles.Default.CastBars.interruptMark"), mark(addon, "target").shown], "unticked: gone from the cast on screen").toEqual([false, false]);
+  addon.eval('__click("Interrupt mark beside the target and focus cast bars")');
+  expect(mark(addon, "target").shown, "ticked: back").toBe(true);
 });

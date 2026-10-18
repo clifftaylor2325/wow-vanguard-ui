@@ -50,6 +50,7 @@ local function castRows()
     check("Your cast bar", setting("CastBars", "player", true)),
     check("Target cast bar", setting("CastBars", "target", true)),
     check("Focus cast bar", setting("CastBars", "focus", true)),
+    check("Interrupt mark beside the target and focus cast bars", liveSetting("CastBars", "interruptMark", function() ns.GetModule("CastBars").RefreshMarks() end)),
     { "header", "Target and focus auras" },
     check("Only your debuffs (reload)", setting("FrameAuras", "onlyMine", true)),
     check("Timer numbers on the icons (reload)", setting("FrameAuras", "timers", true)),
