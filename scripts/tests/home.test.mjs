@@ -74,3 +74,40 @@ it("home: /vg realm prints the realm, ruleset, side, data key and how your name 
   addon.slash("realm");
   expect([chatHas(addon, /Ruleset: none named by the client/), chatHas(addon, /Your name in chat: \?-ForeverTest/)], "none named; a hidden name").toEqual([true, true]);
 });
+
+// TEST-ONLY game rules as Forever documents them: the Classic or Modern preset enum, self-found and the game mode record.
+const FOREVER_RULES = `
+  Enum.ForeverExperiencePreset = { Classic = 0, Modern = 1 }
+  __preset, __self = 1, true
+  C_GameRules = {
+    IsHardcoreActive = function() return false end,
+    GetForeverExperiencePreset = function() return __preset end,
+    IsSelfFoundAllowed = function() return __self end,
+    GetCurrentGameModeRecordID = function() return 3 end,
+  }
+`;
+
+it("home: /vg realm names the Forever preset, self-found and game mode, none of which join the key", () => {
+  const addon = loggedIn(FOREVER_RULES);
+  addon.slash("realm");
+  expect(chatHas(addon, /Rules: preset Modern {2}· {2}self-found allowed {2}· {2}game mode 3/), "the three rules").toBe(true);
+  expect(home(addon)[4], "the key stays realm and side").toBe("ForeverTest-Alliance");
+  addon.eval("__preset, __self = 7, false Enum.ForeverExperiencePreset = nil");
+  addon.slash("realm");
+  expect(chatHas(addon, /Rules: preset 7 {2}· {2}self-found not allowed/), "a preset the enum lacks prints its number").toBe(true);
+  addon.eval("C_GameRules.GetForeverExperiencePreset = function() return __wfgWorld.secret(1) end C_GameRules.IsSelfFoundAllowed = function() return 'x' end C_GameRules.GetCurrentGameModeRecordID = nil");
+  addon.slash("realm");
+  expect(chatHas(addon, /Rules: none named by the client/), "hidden, odd or missing answers name nothing").toBe(true);
+});
+
+it("home: a rules change that moves the data key says so once; one that does not is silent", () => {
+  const addon = loggedIn(rules({ season: 2 }));
+  addon.fire("GAME_RULES_CHANGED");
+  expect(chatHas(addon, /rules changed/), "the first look has nothing to compare").toBe(false);
+  home(addon);
+  addon.eval("C_Seasons = nil");
+  addon.fire("GAME_RULES_CHANGED");
+  expect(chatHas(addon, /The game's rules changed: Vanguard now keeps prices and characters under ForeverTest-Alliance\./), "the key moved").toBe(true);
+  addon.fire("GAME_RULES_CHANGED");
+  expect(addon.eval("return #ns.errors"), "and no errors").toBe(0);
+});

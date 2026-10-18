@@ -44,7 +44,9 @@ function H.Realm()
 end
 
 -- The ruleset the client names, else nil: "season<N>" while a season is on (C_Seasons), else
--- "hardcore" on Hardcore rules (C_GameRules). Neither is confirmed on Forever yet (/vg realm).
+-- "hardcore" on Hardcore rules (C_GameRules). Forever documents C_GameRules but has no C_Seasons, which
+-- is asked only where a client has it. The Classic or Modern preset is shown by /vg realm, not part of the
+-- key: a key that gains a part orphans the data kept under the old one, so it waits on a probe paste.
 function H.Ruleset()
   if ask("C_Seasons", "HasActiveSeason") == true then
     local id = plain(ask("C_Seasons", "GetActiveSeason"))
@@ -61,8 +63,18 @@ end
 -- This home's key: "Realm-Faction", or "Realm-ruleset-Faction" when the client names a ruleset.
 function H.Key()
   local ruleset = H.Ruleset()
-  return H.Realm() .. "-" .. (ruleset and (ruleset .. "-") or "") .. H.Side()
+  H.last = H.Realm() .. "-" .. (ruleset and (ruleset .. "-") or "") .. H.Side()
+  return H.last
 end
+
+-- The game's rules changed (GAME_RULES_CHANGED): says so once when that moves the data key.
+-- Every reader asks for the key as it needs it, so they follow without a reload.
+function H.OnRules()
+  local before = H.last
+  local now = H.Key()
+  if before and before ~= now then ns.Chat("The game's rules changed: Vanguard now keeps prices and characters under " .. now .. ".") end
+end
+ns.On("GAME_RULES_CHANGED", ns.Guard("game rules", H.OnRules))
 
 -- The keys older versions used for this home: "Realm-Faction" (prices and the sales ledger) and
 -- "Realm Name - Faction" with the faction as the client gives it (other characters' items).
@@ -97,11 +109,37 @@ function H.IsMe(sender)
   return me ~= nil and (sender == me or sender == me .. "-" .. H.Realm())
 end
 
+-- The name of an Enum[space] value ("Classic" for the preset 0), its number as text when the enum lacks it; nil when the answer is hidden or missing.
+local function enumName(space, value)
+  local n = ns.PlainNumber(value)
+  for key, v in pairs(n and type(_G.Enum) == "table" and type(_G.Enum[space]) == "table" and _G.Enum[space] or {}) do
+    if v == n then return key end
+  end
+  return n and tostring(n) or nil
+end
+
+-- "allowed" or "not allowed" for a plain yes or no, else nil.
+local function allowed(v)
+  if type(v) == "boolean" then return v and "allowed" or "not allowed" end
+end
+
+-- The rules the client names, as "preset Classic · self-found allowed · game mode 3"; nil when it names none.
+function H.Rules()
+  local parts = {}
+  -- Adds "label value" to the parts when there is a value.
+  local function add(label, value) if value then parts[#parts + 1] = label .. " " .. value end end
+  add("preset", enumName("ForeverExperiencePreset", ask("C_GameRules", "GetForeverExperiencePreset")))
+  add("self-found", allowed(ask("C_GameRules", "IsSelfFoundAllowed")))
+  add("game mode", plain(ask("C_GameRules", "GetCurrentGameModeRecordID")))
+  return #parts > 0 and table.concat(parts, "  ·  ") or nil
+end
+
 -- /vg realm: what the client says about where you are, and the key Vanguard keeps data under.
 function H.Report()
   local me = call("UnitName", "player") or "?"
   ns.Chat(string.format("Realm: %s (as in names: %s)", H.RealmName(), H.Realm()))
   ns.Chat("Ruleset: " .. (H.Ruleset() or "none named by the client"))
+  ns.Chat("Rules: " .. (H.Rules() or "none named by the client"))
   ns.Chat(string.format("Side: %s   Data key: %s", H.Side(), H.Key()))
   ns.Chat(string.format("Your name in chat: %s-%s (shown as %s)", me, H.Realm(), me))
 end

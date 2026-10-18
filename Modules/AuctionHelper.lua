@@ -567,10 +567,11 @@ function AH.OnSearchEvent(event, arg)
   AH.OnCostResults(event, id, s)
 end
 
--- The auction house's events the helper follows (none in combat), then each file's own.
+-- The auction house's events the helper follows (none in combat, but its closing: that only clears
+-- Vanguard's own state, which must happen however the house closed), then each file's own.
 local function listen()
   on("AUCTION_HOUSE_SHOW", function() ns.Soon("auctionhelper", AH.OnShow) end)
-  on("AUCTION_HOUSE_CLOSED", AH.OnClosed)
+  ns.On("AUCTION_HOUSE_CLOSED", AH.OnClosed) -- not through on(): the house closes in combat, and this only clears state
   on("REPLICATE_ITEM_LIST_UPDATE", onReplicate)
   on("AUCTION_HOUSE_BROWSE_RESULTS_UPDATED", AH.OnBrowse)
   for _, e in ipairs(AH.SEARCH_EVENTS) do on(e, AH.OnSearchEvent) end

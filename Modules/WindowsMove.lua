@@ -76,7 +76,7 @@ function GW.PutBack(key, frame)
   local at, scale = GW.Moved()[key], frame:GetScale()
   if type(at) ~= "table" or type(at.x) ~= "number" or type(at.y) ~= "number" then return end
   frame:ClearAllPoints()
-  frame:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", at.x / scale, at.y / scale)
+  frame:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", ns.SaneOffset(at.x) / scale, ns.SaneOffset(at.y) / scale)
 end
 
 -- Forgets every saved place: each window goes back where the game puts it the next time it opens.

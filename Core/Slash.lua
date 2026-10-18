@@ -52,6 +52,7 @@ local HELP = {
   "sell <item>          at a merchant: sell every stack of an item in your bags, after a question",
   "craft [add [n]|next|stock|cd|top|done|clear]   the craft queue: queue the recipe on display, open the next one, raise Keep stocked to fit, show cooldowns, rank recipes (off until switched on)",
   "mail [words]|preset [add <name> <character> [words]|remove <name>]|send <name>|takeall|returnall   search the inbox; presets for sending items to your alts; take everything listed or return it (off until switched on)",
+  "pets                 your pets, out and stabled, with level, loyalty, happiness and progress to the next level",
   "rolls [clear]        the group's /roll results this session, newest first; clear forgets them",
   "loot [on|off|add|remove|list|clear|focus|roster]   officer loot tools (off until switched on): a soft-reserve list flagged in the roll tracker, and a group roster",
   "fights               your DPS, length and place in each fight this session, newest first",
@@ -60,6 +61,7 @@ local HELP = {
   "vendors [clear]      how many merchants Vanguard remembers (for tooltips and the stock list); clear forgets them",
   "ranks [swap]         spell ranks: bar buttons holding an older rank than you know; swap puts the newest rank there (out of combat). Off until Spell ranks is switched on",
   "trainers [next|clear]   what the trainers you've visited teach: how many services are remembered, what the next levels bring and where, or forget them (Trainer memory off until switched on)",
+  "gear                 your gear in chat: average item level, melee damage per second and the worn pieces missing an enchant (the character pane also shows item levels; see Game windows)",
   "alts [<name>]        every character's level, money, rested XP and time played; with a name, that character's bags and bank",
   "inventory [forget <name>|clear]   your characters remembered here and when their bags were read; forget drops one, clear forgets them all",
   "weights [wizard|set <stat> <n>|reset|export|import]   the stat weights gear upgrades use for your class and role; the wizard walks you through them, or change one, go back to the defaults, or share them",
@@ -74,7 +76,7 @@ local HELP = {
   "keybind              keybind mode: hover an action button and press a key, a side mouse button or the wheel to bind it; Backspace clears, Escape leaves",
   "status               version, profile, modules, skins, work waiting on combat, what the client has, game restrictions",
   "factionart           which of the game's own faction pictures this client has",
-  "realm                your realm, ruleset and side as the client gives them, and the key your prices, sales and characters are kept under",
+  "realm                your realm, ruleset, game rules (preset, self-found, game mode) and side as the client gives them, and the key your prices, sales and characters are kept under",
   "frame <name> [deep]  what the client says about a frame now: shown, alpha, scale, size, its rect (or none), anchors and its parents; deep adds its textures and child frames (for a frame that draws empty)",
   "errors [clear]       opens the errors Vanguard caught this session, with stacks and counts, in the copy window (for a bug report); clear empties the list",
   "report               one block to copy for a bug report: what /vg status and /vg errors say, ready to paste at vanguardui.com/feedback",
@@ -200,6 +202,7 @@ end
 -- /vg cdmglow [on|off|<percent>]: the Cooldown Manager refresh-window glow (#252), at once.
 local function cdmGlowCommand(rest)
   local CG = ns.GetModule("CooldownGlow")
+  if not CG.settings then return chat("Cooldown glow is off: turn the module on in the options first.") end
   local percent = tonumber(rest)
   if percent then CG.settings.percent = math.min(60, math.max(10, math.floor(percent))) end
   CG.settings.glow = percent ~= nil or rest == "on" or (rest == "" and not CG.settings.glow)
@@ -703,6 +706,7 @@ local COMMANDS = {
   sell = merchantCommand("SellCommand"),
   craft = function(rest) ns.GetModule("CraftQueue").Command(rest) end,
   mail = function(rest) ns.GetModule("MailTools").Command(rest) end,
+  pets = function() ns.GetModule("PetStable").Command() end,
   rolls = function(rest) ns.GetModule("Rolls").Command(rest) end,
   loot = function(rest) ns.GetModule("OfficerLoot").Command(rest) end,
   fights = function() ns.GetModule("FightHistory").Command() end,
@@ -712,6 +716,7 @@ local COMMANDS = {
   ranks = function(rest) ns.GetModule("SpellRanks").RanksCommand(rest) end,
   trainers = function(rest) ns.GetModule("SpellRanks").TrainersCommand(rest) end,
   inventory = function(rest) ns.GetModule("Inventory").Command(rest) end,
+  gear = function() ns.GetModule("CharacterExtras").Command() end,
   alts = function(rest) ns.GetModule("Inventory").AltsCommand(rest) end,
   weights = function(rest) ns.GetModule("Upgrades").Command(rest) end,
   prep = function(rest) ns.GetModule("InstancePrep").Command(rest) end,

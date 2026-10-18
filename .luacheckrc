@@ -70,7 +70,7 @@ read_globals = {
   -- P4.7 Options keys: the box that has the typing (the window leaves keys alone while you type).
   "GetCurrentKeyBoardFocus",
   -- Bug hunt, swing timer: your weapons' speeds, for a swing a weapon swap restarts.
-  "UnitAttackSpeed",
+  "UnitAttackSpeed", "UnitDamage",
   -- F2 Vendor memory: a merchant item's ID, and the zone and subzone you're in.
   "GetMerchantItemID", "GetZoneText", "GetSubZoneText",
   -- F4 Chat watch: the game's whisper call, and its older name.
@@ -92,6 +92,10 @@ read_globals = {
   "ItemLocation",
   -- D1 Auction prices, disenchant values: whether you know Enchanting (your professions' skill lines).
   "GetProfessions", "GetProfessionInfo", "C_TradeSkillUI", "C_SkillInfo",
+  -- Info strip ammo: whether your ranged weapon needs ammo.
+  "C_PaperDollInfo",
+  -- Pet stable: the stable master's pet lists and slot price.
+  "C_StableInfo",
   -- E5 Auction ledger: the inbox's auction mail (Blizzard_MailFrame/MailFrame.lua), and the game's
   -- "Auction expired" subject line.
   "TakeInboxMoney", "ReturnInboxItem", "TakeInboxItem", "MailFrame", "SendMailFrame", "SendMailNameEditBox",

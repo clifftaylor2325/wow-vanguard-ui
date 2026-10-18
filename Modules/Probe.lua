@@ -57,6 +57,8 @@ P.CALLS = {
     { "C_GameRules.GetForeverExperiencePreset" },
     { "C_Seasons.HasActiveSeason" }, { "C_Seasons.GetActiveSeason" },
   },
+  -- The CVar Safer colours follows (Core/Theme.lua); a wrong name here means the follow switch does nothing.
+  access = { { "GetCVar", "colorblindMode" }, { "GetCVar", "colorblindSimulator" } },
   undocumented = {
     { "C_LootHistory.GetNumItems" }, { "C_LootHistory.GetItem", 1 },
     { "C_LootHistory.GetPlayerInfo", 1, 1 }, { "C_LootHistory.GetAllEncounterInfos" },
@@ -307,6 +309,18 @@ local function methodLine(kind, method)
   return kind .. ":" .. method .. ": " .. (type(widget[method]) == "function" and "present (not called)" or "missing")
 end
 
+-- What FontString:SetTextToFit does to a 60-wide, 14-high label given a long text: the font height,
+-- string width and text before and after, so a run shows whether it shrinks the text or cuts it.
+local function textFitLine()
+  local label = widgetOf("FontString")
+  if type(label.SetTextToFit) ~= "function" then return "SetTextToFit read: method missing" end
+  label:SetSize(60, 14)
+  local before = describe(label:GetFontHeight()) .. "/" .. describe(label:GetStringWidth())
+  local ok, err = pcall(label.SetTextToFit, label, "A fairly long label")
+  if not ok then return "SetTextToFit read: error " .. errText(err) end
+  return "SetTextToFit read: height/width " .. before .. " -> " .. describe(label:GetFontHeight()) .. "/" .. describe(label:GetStringWidth()) .. ", text " .. describe(label:GetText())
+end
+
 -- The reads the guide probe holds, so one run carries them too.
 local function guideLines()
   local out = {}
@@ -318,6 +332,7 @@ end
 local function undocumentedLines()
   local out = sectionRows("undocumented")
   for _, m in ipairs(P.METHODS) do out[#out + 1] = select(2, pcall(methodLine, m[1], m[2])) end
+  out[#out + 1] = select(2, pcall(textFitLine))
   return out
 end
 
@@ -328,6 +343,7 @@ P.SECTIONS = {
   { "Group listing", function() return sectionRows("group") end },
   { "Secure paging", pagingLines }, { "Realm and name format", realmLines },
   { "Game rules and seasons", function() return sectionRows("rules") end },
+  { "Colour-blind mode CVars", function() return sectionRows("access") end },
   { "C_Secrets predicates", secretLines }, { "Restrictions and lockdown", restrictionLines },
   { "Navigation", navigationLines }, { "Undocumented on Forever", undocumentedLines },
   { "Guide reads", guideLines },

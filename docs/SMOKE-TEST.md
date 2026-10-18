@@ -33,6 +33,7 @@ What each part of the report answers (read the section title in the box):
 | Secure paging | Do secure snippets and a bar-paging state driver work on this build? |
 | Realm and name format | What do the realm, ruleset and `Name-Realm` forms look like (`/vg realm`'s key)? |
 | Game rules and seasons | What do `C_GameRules` and `C_Seasons` say? |
+| Colour-blind mode CVars | Do the `colorblindMode` and `colorblindSimulator` CVars exist on Forever, and what do they read with the game's colour-blind mode off and on? (Safer colours follows `colorblindMode`; run once with the mode on, in the game's accessibility options.) |
 | C_Secrets predicates | Which of the 27 predicates exist, and what they say out of combat and in the fight |
 | Restrictions and lockdown | The six add-on restriction states and the chat lockdown flags |
 | Navigation | Does `C_Navigation` give a distance and a next waypoint for the quest arrow? |
@@ -217,6 +218,12 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Expect: `Import failed: not a Vanguard profile string.` for the garbage, and `Import failed: the string is incomplete (was it cut off when pasting?).` for the cut string; no error popup either time.
 - If it fails, paste: the chat lines and `/vg errors`.
 
+### 4.2a A position that is not a sane number
+
+- Do: type `/run VanguardDB.profiles.Default.positions.uf_player.x = math.huge`, then `/reload`. (A profile string holding `1e999` is refused on import with an "Import failed" line.)
+- Expect: the player frame loads at most 5000 units from its anchor, with no error popup and nothing in `/vg errors`; `/vg reset` puts it back.
+- If it fails, paste: `/vg errors`.
+
 ### 4.3 Export
 
 - Do: type `/vg export`.
@@ -309,7 +316,7 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 ### 6.2 Raid frames (if you can)
 
 - Do: as leader or assistant, press the Raid button on the raid tools bar (top left) to convert to a raid, then press Ready on the same bar.
-- Expect: raid frames in groups, 100x48 tiles at 10 members or fewer and smaller above that; the ready check starts. A debuff you can dispel shows its type's letter (M, C, D or P) in the icon's top-left corner, in combat in an instance too. With a Priest in the group, the Priest's bar is a light gray (not white) and its white name reads clearly on it, full health or hurt.
+- Expect: raid frames in groups, 100x48 tiles at 10 members or fewer and smaller above that; the ready check starts. A debuff you can dispel shows its type's letter (M, C, D or P) and a small mark beside it (diamond, circle, square or triangle) in the icon's top-left corner, 12 units wide at the least, in combat in an instance too. With a Priest in the group, the Priest's bar is a light gray (not white) and its white name reads clearly on it, full health or hurt.
 - If it fails, paste: a screenshot and `/vg errors`. In an instance during combat `/vg status` should say `aura values hidden right now` while the bars still fill; paste that line if the bars do not fill.
 
 ### 6.2a Raid indicators (if you can)
@@ -513,16 +520,16 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Expect: the combined bag in the Vanguard look; items that do not match dim as the game dims them; the search box is themed; a Sort button is present if this client can sort bags.
 - If it fails, paste: a screenshot and `/vg errors`.
 
-### 9.1a Bag categories
+### 9.1a Bag groups (buttons on the search row)
 
-- Do: open your bags, type `/vg bag add Potions ` and shift-click a potion, then another item into `/vg bag add Tools <item>`. Open the bags. Then `/vg bag top Tools`, `/vg bag remove <the potion>`, `/vg bag delete Tools`, and `/vg bag` on its own.
-- Expect: a POTIONS header over the potion and a TOOLS header over the tool, both above Quest items; after `top Tools` Tools comes first; the removed item falls back to its built-in section; the deleted category's header goes; `/vg bag` lists each category and its items. The bag lays out again each time without a reload.
+- Do: open your bags. Click **Groups** → New group..., type `Potions`, Create. Pick a potion up (it stays on the cursor), click **Groups** → Put held item in Potions. Make a second group and file another item. Then **Groups** → Make <group> first, Delete <group>. Click **Filter** → Epic or better, then Group: Potions, then Show everything.
+- Expect: Filter and Groups sit between the search box and Sort, the box narrower, nothing overlapping at the window's edges. A POTIONS header over the potion, above Quest items; Make first reorders; Delete drops the header and the item falls back to its built-in section; Filter lights the matching items and dims the rest and Show everything clears it. The bag lays out again each time without a reload. The menus are readable (not cut off) and `/vg bag` lists the same groups.
 - If it fails, paste: a screenshot, the output of `/vg bag` and `/vg errors`.
 
 ### 9.1b Bag search words and bank deposit
 
-- Do: with bags open, type `ilvl>20`, then `q:epic`, `type:armor bind:boe`, `cat:<a category of yours>` in the bag's search box, then clear it. At the bank, `/vg bag deposit <category>`; then once in a fight.
-- Expect: items that match every word stay lit and the rest dim as with a normal search; a plain word still works the game's way; the box clearing lights everything again. Deposit sends that category's stacks to the bank and says how many; in a fight, or with no bank open, it says to open the bank and moves nothing.
+- Do: with bags open, type `ilvl>20`, then `q:epic`, `type:armor bind:boe`, `cat:<a group of yours>` in the bag's search box, then clear it. At the bank, click **Groups** → Send <group> to the bank; then once in a fight.
+- Expect: items that match every word stay lit and the rest dim as with a normal search; a plain word still works the game's way; clearing the box lights everything again. Send moves that group's stacks to the bank and says how many; in a fight, or with no bank open, it says to open the bank and moves nothing.
 - If it fails, paste: a screenshot, `/vg probe` (the SetItemSearch and UpdateSearchResults lines) and `/vg errors`.
 
 ### 9.2 Merchant repair and sell
@@ -534,8 +541,26 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 ### 9.2a Sell list, sell all and bulk buy
 
 - Do: `/vg junk` with a shift-clicked cheap item you own, then Merchants and errors → "Offer to sell the items on your sell list"; open a merchant. Then `/vg sell` with a shift-clicked item of which you hold several stacks. Then shift-click an item for sale (a stackable one, with a few bag slots free) and press Stack, then Max.
-- Expect: a question listing the item(s) and what they fetch; answering Sell sells them within a few seconds and the Buyback tab holds them; an item in an equipment set is not offered; Stack and Max and a "Max N for <money>" line sit under the quantity window for a merchant's item and not for an item in your bags; Max above one stack asks first; the buys finish with `Bought N × <item> for <money>.` and no error; an item that costs tokens or honor shows no buttons.
+- Expect: a question listing the item(s) and what they fetch; answering Sell sells them within a few seconds and the Buyback tab holds them; pressing Enter while the question is up does not answer it (click Sell); an item in an equipment set is not offered; Stack and Max and a "Max N for <money>" line sit under the quantity window for a merchant's item and not for an item in your bags; Max above one stack asks first; the buys finish with `Bought N × <item> for <money>.` and no error; an item that costs tokens or honor shows no buttons.
 - If it fails, paste: the chat lines and `/vg errors`.
+
+### 9.2b Junk stops with the merchant; keep stocked buys for gold only
+
+- Do: with gray items that equip (grey armour or a weapon), click "Sell junk" or open a merchant and at once walk away (or close the window). Then `/vg stock <item a merchant sells for honor or tokens> 5` and open that merchant; then `/vg stock <an item for gold> 1000` with bags full and open a merchant who sells it.
+- Expect: once the merchant window is gone no gray item is equipped or used; nothing is bought for an item that costs honor, badges or other items; with full bags the run stops after one try with `Stopped buying <item>: the last purchase did not arrive in full ...` and no `Bought` line for what did not arrive. [Needs in game: that a right-click on a bag item with no merchant open equips or uses it; that GetMerchantItemCostInfo (or the item table's hasExtendedCost) is set for such items; and that C_Item.GetItemCount shows a purchase within the 0.2 s wait. If a run stops early on a slow server, say so.]
+- If it fails, paste: the chat lines and `/vg errors`.
+
+### 9.2b Item tooltip lines with Tooltips off
+
+- Do: turn the Tooltips module off under `/vg` > Modules (and reload if asked); keep Vendor memory and Auction helper on; hover an item you saw at a merchant, or one with an auction price from a scan.
+- Expect: the item tooltip still shows the "Sold by ..." line and the "AH: ..." line (and "Upgrade +N%" where it applies), in the game's own tooltip; there is no "Sells for ..." or "You have ..." line from Vanguard, and no unit-tooltip changes. Turn Tooltips back on: those two lines come back, with no line shown twice. [Needs in-game check: the lines on the client's tooltip, with the module off.]
+- If it fails, paste: which line is missing or doubled, and `/vg errors`.
+
+### 9.2c Character sheet extras
+
+- Do: open the character pane with gear worn. Then `/vg` → Game windows → Character sheet extras: tick "Mark worn pieces missing an enchant", and look at a chest, legs, boots, bracers, gloves, cloak or weapon of green quality or better without an enchant. Press "Show my gear summary in chat" (or run `/vg gear`).
+- Expect: each worn slot shows its item level along the top edge (durability stays along the bottom); an unenchanted piece of those slots shows a `!` in the top-right corner, and not a shield or a held item; unticking a switch removes its labels at once; `/vg gear` prints the average item level, a melee damage-per-second line (with the swing time) and the pieces missing an enchant.
+- If it fails, paste: a screenshot of the character pane, the `/vg gear` lines and `/vg errors`.
 
 ### 9.3 Trainer: Train all
 
@@ -580,6 +605,12 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Do: on a character with no hover keys, type `/vg` and open Click casting. Scroll just far enough to see the "KEYS WHILE HOVERING A FRAME" card's title.
 - Expect: right under the title, an **Add key** button with "No hover keys yet. Add one, press the key, pick the spell." beside it in grey body-size text (wrapped inside the card); the card's title is a small grey capitals header. If `/vg status` says `secure snippets: no`, the line "This client can't compile the secure code hover keys need; mouse bindings still work." sits there instead. Keys you add list under that line.
 - If it fails, paste: a screenshot of the card, `/vg status` and `/vg errors`.
+
+### 10.1b Import is checked first, and the test tile lets Escape through
+
+- Do: with a few bindings set, `/vg` > Click casting > Export, copy the string. Click Import and paste "VG1:clickcast:" followed by junk, then paste a string from another character, then the string you exported. Then hover the sample tile, press a number key that is on your action bar, press Shift alone, then Escape.
+- Expect: the junk is refused in chat ("Can't import: ...") and your bindings stay; the other character's string replaces them in one go, with no stall; the exported string brings your own back. On the tile, the number key shows "<key> -> ..." and does not trigger the action bar button; Escape closes the options window. [Needs in-game check: that the number key is kept from the game while the pointer is on the tile, and that Escape still closes the window.]
+- If it fails, paste: the chat lines, what the key did, and `/vg errors`.
 
 ### 10.2 Use it
 
@@ -1213,13 +1244,19 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 - Expect: the window resizes live and keeps its size after the reload; locked windows do not drag; the floating window has a `Chat: <name>` handle and stays where you put it, also after a layout change. `/vg errors` is empty. [Needs in game: that FCF_SetLocked and FCF_SavePositionAndDimensions exist and keep the size, that GetChatWindowInfo returns locked and docked as 8th and 9th values, and that a docked tab is not offered as a handle.]
 - If it fails, paste: `/vg errors` and what the window did.
 
+### 15.6d Chat while the game hides it (instanced fights)
+
+- Do: with Chat extras links on (the default) and the Chat filter on, join a group in an encounter, a Mythic+ key or a rated battleground and let party or raid chat run during the fight. Type `/vg errors` after it.
+- Expect: every group chat line appears in its window for the whole fight, and no error popup appears. Lines the game hides from addons show as the game gives them (no link on a web address in them, not shortened, not in the Filtered tab). `/vg errors` has no `chat filter` or `chat filter links` line. [Needs in game: whether comparing a hidden chat line raised before this change; the early return makes the question moot, but the fight is the proof.]
+- If it fails, paste: `/vg errors` and which chat event went quiet.
+
 ## 16. Realm and ruleset
 
 ### 16.1 Realm, ruleset and names
 
-- Do: type `/vg realm` on two characters, in two rulesets if you have them (one Hardcore, if you can). On one of them, have a friend on another realm or ruleset say a Chat watch phrase in a channel.
-- Expect: four lines: `Realm: <name> (as in names: <name without spaces>)`, `Ruleset: ...` (a season or `hardcore` where the game names one, else `none named by the client`), `Side: ... Data key: ...`, and `Your name in chat: ...`. The toast shows your friend's name with their realm, and a click whispers them. Characters and auction prices from before still show on tooltips.
-- If it fails, paste: all four lines from both characters, and how your friend's name appeared in chat.
+- Do: type `/vg realm` on two characters, in two rulesets if you have them (one Hardcore, if you can), and again after switching the Classic or Modern experience preset if the game lets you (a chat line says when that moves the data key). [Needs in game: that the preset call answers, and whether switching it changes any other line.] On one of them, have a friend on another realm or ruleset say a Chat watch phrase in a channel.
+- Expect: five lines: `Realm: <name> (as in names: <name without spaces>)`, `Ruleset: ...` (a season or `hardcore` where the game names one, else `none named by the client`), `Rules: preset Classic or Modern · self-found ... · game mode N` (what the game's `C_GameRules` says; the preset does not join the data key until you have pasted this on the beta and launch builds), `Side: ... Data key: ...`, and `Your name in chat: ...`. The toast shows your friend's name with their realm, and a click whispers them. Characters and auction prices from before still show on tooltips.
+- If it fails, paste: all five lines from both characters, and how your friend's name appeared in chat.
 
 ## 17. Situations
 
@@ -1233,7 +1270,7 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 
 ### 18.1 Other addons
 
-- Do: install one bag addon you use (Bagnon, AdiBags, ArkInventory, BetterBags or Baganator) beside Vanguard and log in. Open `/vg` → Modules. Click **Keep both**, `/reload`, and open Modules again. Then type `/dump C_AddOns.GetAddOnInfo("<the addon>")` and note the folder name it prints.
+- Do: install one bag addon you use (Bagnon, AdiBags, ArkInventory, BetterBags or Baganator; or ElvUI or Tukui, which ask about the action bars, or Auctionator or TradeSkillMaster, which ask about the Auction helper) beside Vanguard and log in. Open `/vg` → Modules. Click **Keep both**, `/reload`, and open Modules again. Then type `/dump C_AddOns.GetAddOnInfo("<the addon>")` and note the folder name it prints.
 - Expect: one chat line at login, `<addon> also does bags. Choose which one does under /vg > Modules (nothing changes until you do).`; an **Other addons** card at the top of the Modules page with **Turn off Bags** and **Keep both**; after Keep both, no card and no chat line. The folder name matches the one Vanguard looks for (`Modules/Coexist.lua`, `CX.OVERLAPS`); a different name is a finding.
 - Also, if EllesmereUI is on Forever: run `/dump C_AddOns.GetNumAddOns()` and list its folders (`/dump C_AddOns.GetAddOnInfo(i)` for each) and paste the ones starting with Ellesmere. Vanguard looks for `EllesmereUIUnitFrames`, `EllesmereUIActionBars`, `EllesmereUINameplates` and `EllesmereUIRaidFrames` (retail names, unconfirmed on Forever); a different name is a finding.
 - If it fails, paste: the folder name, a screenshot of the Modules page and `/vg errors`.
@@ -1263,6 +1300,12 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 - If it fails, paste: the whole `/vg guide probe` output from each place, which lines say `hidden` or `missing`, and `/vg errors`.
 
 ## 19. Roll tracker
+
+### 19.0a Pet stable
+
+- Do: on a hunter with a pet out and one stabled, open `/vg` → Town and gear → Pet stable and click List my pets in chat (or type `/vg pets`); then talk to a stable master. Run `/vg errors`.
+- Expect: `/vg pets` prints "Your pets:" and a line per pet, such as "Rex, level 12 Cat · Loyal · happy · 35% to next level (out)", the pet that is out first; at the stable master one chat line says "Stable: 2 pets (/vg pets lists them)." and the next slot's price (unobserved: the field meanings come from the API docs). On a character with no pets, `/vg pets` says there are none. Turn the line off under Town and gear → Pet stable.
+- If it fails, paste: the `/vg pets` output, the stable master's window and `/vg errors`.
 
 ### 19.1 /roll results
 
@@ -1329,7 +1372,7 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 ### 23.1 Search and Take (off until switched on: /vg > Town and gear > Mail tools)
 
 - Do: switch the mail tools on, open a mailbox with a few mails. Type part of a sender or subject in the panel's search box, click the filter button through its four values, click Take on a mail with money and on one with an item. Type `/vg mail <words>`.
-- Expect: a panel right of the mail window, headed `Find mail` (no X: it follows the mail window), lists the matching mails (sender: subject, with money and item count); the filter button reads All, Money, Items, Sales; Take takes the money and the first item, one per click; the panel goes when the window closes; chat lists the same matches. With the switch off, `/vg mail` says so. [Needs in game: that TakeInboxMoney and TakeInboxItem(mail, 1) work from a click, that GetInboxInvoiceInfo marks sales, and the panel's place beside the window.]
+- Expect: a panel right of the mail window, headed `Find mail` (no X: it follows the mail window), lists the matching mails (sender: subject, with money and item count); the filter button reads All, Money, Items, Sales; Take takes the money and the first item, one per click; a pay-on-delivery mail's row says `pay <amount> on delivery` and has no Take button; the panel goes when the window closes; chat lists the same matches. With the switch off, `/vg mail` says so. [Needs in game: that TakeInboxMoney and TakeInboxItem(mail, 1) work from a click, that GetInboxInvoiceInfo marks sales, and the panel's place beside the window.]
 - If it fails, paste: `/vg errors` and a screenshot of the mailbox.
 
 ### 23.2 Send-to-alt presets
@@ -1343,6 +1386,12 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 - Do: with the mail tools on, open a mailbox holding a few mails with money and items (one from another player, one auction sale, ideally one pay-on-delivery). Click Take all; later, with other mail, click Return all and answer the question.
 - Expect: the money and items of the listed mails come in about three a second, with a chat line `Take all: N of N done.`; pay-on-delivery mail is left; Return all asks `Return N mail(s) to their senders?` and sends back only mail from players (the sale stays); closing the mailbox mid-run stops it with a count. [Needs in game: that TakeInboxItem for each attachment slot 1 to the item count empties a mail, and that ReturnInboxItem takes the inbox index.]
 - If it fails, paste: the chat lines and `/vg errors`.
+
+### 23.3a Pay-on-delivery mail stays untaken
+
+- Do: with the mail tools on, open a mailbox holding a pay-on-delivery mail (cash on delivery) and a free one, and look at their rows; click Take all.
+- Expect: the pay-on-delivery row reads `pay <amount> on delivery` and has no Take button; Take all leaves it; the free mail comes in. [Needs in game: that GetInboxHeaderInfo's sixth return is the amount due, and that a mail whose place shifts mid-run is skipped rather than taken.]
+- If it fails, paste: a screenshot of the rows and `/vg errors`.
 
 ### 23.4 Alt overview
 
@@ -1373,6 +1422,12 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 - Expect: High contrast shows opaque near-black windows, white text, no light line under window tops, brighter green, orange and red states, blue/yellow/vermilion reactions, and a 2-pixel accent edge on inputs and accent-bordered frames. Vellum and ink shows warm dark windows with cream text and your accent unchanged. Classic look shows dark leather windows with a bronze border, gold-cream text and the brass rule and corner brackets without `/vg ornaments`. Midnight is navy-black with ice-blue text, Obsidian neutral charcoal with a grey border, Moss dark green with sage text, Ash and ember smoky grey with a rust border. On every look, the dark text on a selected (accent-filled) choice segment is crisp with no shadow behind it, and every segment is wide enough for its label. Everything repaints without a reload; text stays readable on every window; `/vg errors` stays empty. [Needs in game: that windows the game draws (not Vanguard's) look right; a saved panel colour is overridden while a variant is on.]
 - If it fails, paste: a screenshot of the window that looks wrong with the variant name, and `/vg errors`.
 
+### 26.1a Round minimap
+
+- Do: open `/vg` → Map → Minimap and waypoints and set **Minimap shape (reload)** to Round, then `/reload`. Look at the minimap: the zone name, the coordinates, the tracking, mail, difficulty, group finder and addon buttons, zoom with the wheel, click the zone name, drag it with `/vg unlock`. Then set Square and Follow the theme with Theme variant on Classic look, `/reload` each time.
+- Expect: Round shows the map as a disc with an outline on its edge, the top and bottom bands cut to the disc, no corner diamonds, and the game's buttons on the rim at the corners' angles, not cut off or over the coordinates; a long zone name is cut short (hover shows it whole) and other addons' minimap icons sit round the rim. Square is the old square map. Follow the theme is round only on Classic look. No `/vg errors`. [Needs in game: that the disc mask, the outline and the rim buttons line up at 1080p and 1440p.]
+- If it fails, paste: a screenshot of the minimap with its setting and variant, and `/vg errors`.
+
 ### 26.2 Rounded corners
 
 - Do: open `/vg` → General → Look and set **Corners** to Rounded (or `/vg corners rounded`); open the options window, bags, the quest log, a unit frame, a tooltip and a few buttons; hover a button; try it on Slate and brass, High contrast and Midnight; then set it back to Square.
@@ -1394,6 +1449,12 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 - Do: turn on the game's Cooldown Manager and track a heal-over-time buff on yourself in its buff row. Type `/vg cdmglow on`, cast the buff on yourself, wait until under 30 percent is left, out of combat; then do the same in combat. Type `/vg cdmglow 50`, then `/vg cdmglow off`.
 - Expect: the buff's icon gets an accent glow ring once under the share is left, and loses it when the buff is renewed or ends. In combat the glow still follows the time left, or stays off with no error. `/vg cdmglow 50` says "under 50 percent left"; off puts the glows out. [Needs in game: whether the client hands the aura's duration object to a curve (C_CurveUtil.CreateCurve, EvaluateRemainingPercent) and whether SetAlpha takes the result in combat; the Cooldown Manager item fields auraInstanceID and auraDataUnit.]
 - If it fails, paste: `/vg errors`, and what `/run print(C_CurveUtil and C_CurveUtil.CreateCurve ~= nil)` prints.
+
+### 28.1a The command with the module switched off
+
+- Do: switch the Cooldown glow module off in `/vg`, then type `/vg cdmglow on`.
+- Expect: chat says "Cooldown glow is off: turn the module on in the options first." and `/vg errors` stays empty.
+- If it fails, paste: `/vg errors`.
 
 ### 28.2 Key text on the manager's icons
 

@@ -38,6 +38,22 @@ it("minimap", () => {
   const bare = loggedIn(UI_ENV, { savedVariables: "VanguardDB.profiles = { Default = { Minimap = { coords = false } } }" });
   expect(bare.eval(`return ${M}.bottom:IsShown()`), "coordinates off: no bottom band").toBe(false);
 });
+it("a round minimap: masked to a disc, an outline on its rim, bands cut to the disc, buttons on the rim, no corner diamonds", () => {
+  const M = "ns.GetModule('Minimap')";
+  // A client logged in with this profile (a Lua table literal) saved.
+  const shapeOf = (savedVariables) => loggedIn(UI_ENV + TIDY_ENV, { savedVariables: `VanguardDB.profiles = { Default = ${savedVariables} }` });
+  expect(shapeOf("{}").eval("return GetMinimapShape()"), "by default the map stays square").toBe("SQUARE");
+  expect(shapeOf('{ theme = { variant = "classic" }, Minimap = { shape = "square" } }').eval("return GetMinimapShape()"), "square says square even under Classic look").toBe("SQUARE");
+  expect(shapeOf('{ theme = { variant = "classic" } }').eval("return GetMinimapShape()"), "following the theme, Classic look makes it round").toBe("ROUND");
+  const addon = shapeOf('{ Minimap = { shape = "round" } }');
+  const round = addon.eval(`local M = ${M} return { GetMinimapShape(), Minimap.__maskTexture, #M.corners, #M.bands, M.top.__masks and #M.top.__masks, M.rules[1].__masks and #M.rules[1].__masks,
+    M.zone.__width, Vanguard_MinimapZone.__points.TOPLEFT.x }`);
+  expect(round.slice(0, 6), "ROUND to other addons, the disc as the map's mask, no corner diamonds, the bands and rules masked to it, a zone name that fits the top chord").toEqual(["ROUND", expect.stringContaining("RoundDisc"), 0, 2, 1, 1]);
+  expect(round[6] < 124 && round[7] === (180 - round[6]) / 2, "the zone name and its button are narrower than on a square map").toBe(true);
+  const rim = addon.eval("return { MinimapCluster.Tracking.__points.CENTER.x, MinimapCluster.Tracking.__points.CENTER.y, MinimapCluster.Tracking.__points.CENTER.rel == ns.GetModule('Minimap').overlay }");
+  expect(rim[0] < -50 && rim[1] < -50 && rim[2], "the tracking button sits on the rim at the lower left, in the map's overlay").toBe(true);
+  expect(addon.eval("local ok = pcall(ns.Theme.Refresh) return ok"), "a theme refresh repaints the disc and ring").toBe(true);
+});
 it("a minimap that has the game's own wheel handler keeps it, and Vanguard adds none", () => {
   const addon = loggedIn("Minimap:SetScript('OnMouseWheel', function(self, d) self.__gameWheel = (self.__gameWheel or 0) + d end)");
   addon.eval("Minimap:GetScript('OnMouseWheel')(Minimap, 1)");
@@ -289,8 +305,8 @@ it("character pane durability, the mail's Open All button", () => {
 // TEST-ONLY chat hooks: the game's message filters and link callback, and the lines the main window holds.
 const CHAT_EXTRAS_ENV = `
   __filters, __lines = {}, {}
-  ChatFrame_AddMessageEventFilter = function(event, fn) if fn ~= ns.GetModule("ChatFilter").Filter and fn ~= ns.GetModule("ChatHistory").NoteWhisper then __filters[event] = fn end end
-  EventRegistry = { RegisterCallback = function(self, event, fn) if fn ~= ns.GetModule("ChatFilter").OnLink then __linkCallback = fn end end }
+  ChatFrame_AddMessageEventFilter = function(event, fn) if not ns.GetModule("ChatFilter").registered then __filters[event] = fn end end
+  EventRegistry = { RegisterCallback = function(self, event, fn) if not ns.GetModule("ChatFilter").registered then __linkCallback = fn end end }
   ChatFrame1.GetNumMessages = function() return #__lines end
   ChatFrame1.GetMessageInfo = function(_, i) return __lines[i] end
 `;
@@ -319,6 +335,19 @@ it("chat extras: web links you can copy, and a Copy button for the recent chat",
   const off = loggedIn(UI_ENV + CHAT_EXTRAS_ENV, { savedVariables: "VanguardDB.profiles = { Default = { ChatExtras = { links = false } } }" });
   expect(off.eval("return next(__filters) == nil"), "links switched off: no filters").toBe(true);
 });
+it("chat extras: a hidden line never reaches the link filter's comparison, and a failing filter or click lets the line through", () => {
+  const addon = loggedIn(UI_ENV + CHAT_EXTRAS_ENV);
+  // The harness's secrets can't raise on ==, so prove the early return: LinkURLs is never reached for hidden or non-string text.
+  addon.eval('__reached = 0 local CX = ns.GetModule("ChatExtras") local real = CX.LinkURLs CX.LinkURLs = function(...) __reached = __reached + 1 return real(...) end');
+  const secret = addon.eval('local out = {} for _, event in ipairs(ns.GetModule("ChatExtras").EVENTS) do out[#out + 1] = select("#", __filters[event](nil, event, { __secret = true }, "<name>")) .. ":" .. tostring((__filters[event](nil, event, { __secret = true }, "<name>"))) end return out');
+  expect(secret.every((r) => r === "1:false") && secret.length === 15, "every registered chat event: a hidden line returns a bare false").toBe(true);
+  expect(addon.eval('return { select("#", __filters.CHAT_MSG_SAY(nil, "CHAT_MSG_SAY", nil)), select("#", __filters.CHAT_MSG_SAY(nil, "CHAT_MSG_SAY", 42)), __reached }'), "missing or non-string text: bare false, and the text is never read").toEqual([1, 1, 0]);
+  addon.eval('ns.GetModule("ChatExtras").LinkURLs = function() error("TEST-ONLY link filter", 0) end');
+  expect(addon.eval('return { select("#", __filters.CHAT_MSG_SAY(nil, "CHAT_MSG_SAY", "plain text")), (__filters.CHAT_MSG_SAY(nil, "CHAT_MSG_SAY", "plain text")) }'), "a filter that fails hands the game false: the line is not dropped").toEqual([1, false]);
+  expect(() => addon.eval('ns.ShowText = function() error("TEST-ONLY click", 0) end __linkCallback(nil, "addon:Vanguard:url:https://example.test/a")'), "a failing link click does not reach the game's code").not.toThrow();
+  expectErrors("chat filter links: TEST-ONLY link filter", "chat link click: TEST-ONLY click");
+});
+
 // TEST-ONLY chat windows as the game has them: TransformMessages rewrites the
 // lines a window holds, the wheel can jump, temporary windows join CHAT_FRAMES.
 const CHAT_LINES_ENV = `
@@ -560,8 +589,8 @@ const SORT_ROW_ENV = `
 `;
 it("the bag's Sort button sits beside the search box and the game's own sort button stays hidden", () => {
   const addon = loggedIn(UI_ENV + SORT_ROW_ENV);
-  const sort = addon.eval('local p = ns.GetModule("Bags").sort.__points.LEFT return { p.rel == BagItemSearchBox, p.relPoint, p.x }');
-  expect(sort, "right of the search box, 6 px off it").toEqual([true, "RIGHT", 6]);
+  const sort = addon.eval('local p = ns.GetModule("Bags").sort.__points.LEFT return { p.rel == ns.GetModule("Bags").tools.groups, p.relPoint, p.x }');
+  expect(sort, "right of the Filter and Groups buttons, which sit right of the search box, 6 px off it").toEqual([true, "RIGHT", 6]);
   expect(addon.eval("return BagItemAutoSortButton:IsShown()"), "the game's own button is hidden at login").toBe(false);
   addon.eval("BagItemAutoSortButton:Show()");
   expect(addon.eval("return BagItemAutoSortButton:IsShown()"), "and the game showing it again (each search row update) hides it again").toBe(false);
