@@ -23,7 +23,9 @@ local function timestampChoice(v) return v or "none" end
 local function chatWindowRows()
   return {
     { "header", "Chat" },
-    check("Chat background", setting("Chat", "background", true)), check("Keep chat in its bottom-left spot (reload)", setting("Chat", "place", true)),
+    check("Chat background", setting("Chat", "background", true)),
+    { "cycle", "Chat background strength", ns.GetModule("Chat").BACKDROPS, liveSetting("Chat", "backdrop", function() local CH = ns.GetModule("Chat") if CH.settings then CH.Refresh() end end) },
+    check("Keep chat in its bottom-left spot (reload)", setting("Chat", "place", true)),
     { "cycle", "Chat text size (follows Text size)", ns.GetModule("Chat").SIZES, chatSizeSetting() },
   }
 end
@@ -61,9 +63,23 @@ local function chatWatchRows()
   return append(rows, chatWatchSwitches(CW))
 end
 
--- The Chat page: the chat window, chat watch and the group board (Modules/GroupBoard.lua adds its card).
+-- Chat filter: the switches, where caught lines go, then a Remove button per word of your own.
+local function chatFilterRows()
+  local CF = ns.GetModule("ChatFilter")
+  local changed = CF.Changed
+  local rows = { { "header", "Chat filter" }, { "text", "Spam in Trade and the other channels goes to a Filtered tab (click a sender there to let them through)." },
+    check("Filter chat", liveSetting("ChatFilter", "on", changed)),
+    { "cycle", "Caught lines", { { "tab", "Go to the Filtered tab" }, { "hide", "Are hidden" } }, liveSetting("ChatFilter", "mode", changed) },
+    check("Gold selling", setting("ChatFilter", "gold")), check("Boosting", setting("ChatFilter", "boosting")),
+    check("Guild recruiting", setting("ChatFilter", "recruiting")), check("Same line again within a minute", setting("ChatFilter", "repeats")),
+    { "button", "Add a word", function() ns.AskText("Filter lines with", CF.AddFromDialog, "Add") end } }
+  for _, w in ipairs(moduleSettings("ChatFilter").keywords) do rows[#rows + 1] = { "button", "Remove: " .. w, function() CF.Remove(w) end } end
+  return rows
+end
+
+-- The Chat page: the chat window, chat watch, the chat filter and the group board (Modules/GroupBoard.lua adds its card).
 local function chatPageRows()
-  return append(append(chatWindowRows(), chatRows()), chatWatchRows())
+  return append(append(append(chatWindowRows(), chatRows()), chatWatchRows()), chatFilterRows())
 end
 
 O.AddPage({ key = "chat", title = "Chat", icon = "NavChat", order = 82, rows = chatPageRows })

@@ -217,6 +217,12 @@ local function addTexts(f, settings)
   f.name:SetWordWrap(false)
 end
 
+-- Cuts the bars to the shield corners: the health bar at the frame's top corners, the power bar at its bottom ones.
+local function shieldBars(f)
+  T.ShieldMask(f, { f.health:GetStatusBarTexture(), f.health.bg }, "TOP")
+  T.ShieldMask(f, { f.power:GetStatusBarTexture(), f.power.bg }, "BOTTOM")
+end
+
 -- Creates one unit frame (a secure unit button) with its bars and texts, its corners cut to the
 -- shield look (the bars cut with it) while the shield setting is on.
 local function createUnitFrame(key, unit, w, h, settings)
@@ -227,7 +233,7 @@ local function createUnitFrame(key, unit, w, h, settings)
   T.HudPanel(f, { shield = true })
   f.health, f.power = createBar(f), createBar(f)
   layoutBars(f, settings.powerHeight)
-  T.ShieldMask(f, { f.health:GetStatusBarTexture(), f.health.bg, f.power:GetStatusBarTexture(), f.power.bg })
+  shieldBars(f)
   addTexts(f, settings)
   return f
 end

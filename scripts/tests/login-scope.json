@@ -204,7 +204,7 @@
     "scripts/tests/strips.test.mjs": [],
     "scripts/tests/talents.test.mjs": [],
     "scripts/tests/theme.test.mjs": [
-      "shield corners: unit frames and cast bars are shield frames, with their fills cut"
+      "shield corners: unit frames are shield frames, their health cut at the top and power at the bottom; cast bars stay square"
     ],
     "scripts/tests/themeparts.test.mjs": [],
     "scripts/tests/tooltip.test.mjs": [],

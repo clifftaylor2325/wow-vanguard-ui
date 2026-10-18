@@ -74,3 +74,12 @@ it("healing fallbacks and options", () => {
   expect(addon.eval('return __click("TEST-ONLY Aura")') && addon.eval("return VanguardDB.profiles.Default.RaidHealing.buffs"), "a buff's switch takes it off the list").toBe("Arcane Brilliance");
   expect(addon.eval('return __click("Aggro strip")') && addon.eval("return VanguardDB.profiles.Default.RaidHealing.aggro") === false, "the page's switches work").toBeTruthy();
 });
+
+it("every healing buff has a static icon, so none shows a question mark", () => {
+  const addon = loggedIn(UNITS_ENV + RAID_ENV + CLICK_LUA + HEALING_ENV);
+  expect(addon.eval(`local RH = ns.GetModule("RaidHealing") for _, c in ipairs(RH.ALL_BUFFS) do for _, b in ipairs(c[2]) do
+    if not RH.FALLBACK_ICONS[b[1]] then return b[1] end end end return "ok"`), "each listed buff has a fallback icon").toBe("ok");
+  addon.eval("C_Spell.GetSpellTexture = function() return nil end");
+  addon.eval('ns.Options.Show("healing")');
+  expect(addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.icon and w.label and w.label:GetText() == "Blessing of Sanctuary" then return w.icon:GetTexture() end end`), "an unknown spell falls back to its static icon").toBe("Interface\\Icons\\Spell_Nature_LightningShield");
+});

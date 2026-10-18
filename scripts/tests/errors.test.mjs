@@ -15,8 +15,10 @@ it("/vg errors: what Vanguard caught this session", () => {
   expect(chatHas(addon, /No errors caught this session/), "with nothing caught, it says so").toBe(true);
   const broken = loggedIn(`__wfgStub.noAuraContainer = true
     local M = ns.Module("TEST-ONLY Broken", {}) function M.Enable() error("TEST-ONLY boom") end`);
+  broken.eval("ns.ShowText = function(title, text) __shown = { title, text } end");
   broken.slash("errors");
-  expect(chatHas(broken, /\d+ error\(s\) caught this session \(\d+ in all\), newest last/) && chatHas(broken, /aura containers \(using Vanguard's own icons\)/) && chatHas(broken, /module TEST-ONLY Broken: .*TEST-ONLY boom  \(x1\)/), "a module that failed and a missing aura container are both listed").toBe(true);
+  const text = broken.eval("return __shown[2]");
+  expect(chatHas(broken, /\d+ error\(s\), opened in the copy window\./) && /\d+ error\(s\) caught this session \(\d+ in all\), newest last/.test(text) && /aura containers \(using Vanguard's own icons\)/.test(text) && /module TEST-ONLY Broken: .*TEST-ONLY boom  \(x1\)/.test(text), "a module that failed and a missing aura container are both listed").toBe(true);
   broken.eval('for i = 1, 25 do ns.Report("TEST-ONLY", i) end');
   expect(broken.eval("return { #ns.errors, ns.errors[1].text }"), "only the last 20 distinct errors are kept").toEqual([20, "TEST-ONLY: 6"]);
   broken.eval('ns.Report("TEST-ONLY", 1)');
@@ -74,12 +76,13 @@ it("caught errors: without debugstack or an error handler (this stub), and a hid
   const addon = loggedIn("GetBuildInfo = nil debugstack = nil geterrorhandler = nil CallErrorHandler = nil");
   addon.eval('ns.ClearErrors() ns.Report("TEST-ONLY bare", "x")');
   expect(addon.eval("return { ns.errors[1].text, ns.errors[1].stack, ns.errors[1].count }"), "the error is kept without a stack").toEqual(["TEST-ONLY bare: x", "", 1]);
+  addon.eval("ns.ShowText = function(title, text) __shown = { title, text } end");
   addon.clearChat();
   addon.slash("errors");
-  const lines = addon.chat();
-  expect(lines[0], "the header names the version, an unknown interface version and the counts").toMatch(/ Vanguard \S+  ·  interface \?  ·  1 error\(s\) caught this session \(1 in all\), newest last:$/);
-  expect(lines[1], "then the client line").toMatch(/ Client Retail  ·  auras on the/);
-  expect(lines.slice(2), "then the error with its count and no stack lines").toEqual([expect.stringMatching(/TEST-ONLY bare: x  \(x1\)$/)]);
+  const lines = addon.eval("return __shown[2]").split("\n");
+  expect(lines[0], "the header names the version, an unknown interface version and the counts").toMatch(/^Vanguard \S+  ·  interface \?  ·  1 error\(s\) caught this session \(1 in all\), newest last:$/);
+  expect(lines[1], "then the client line").toMatch(/^Client Retail  ·  auras on the/);
+  expect(lines.slice(2), "then the error with its count and no stack lines").toEqual([expect.stringMatching(/^TEST-ONLY bare: x  \(x1\)$/)]);
   const secret = loggedIn('issecretvalue = function(v) return type(v) == "table" and v.__secret == true end');
   expect(secret.eval('ns.Report("TEST-ONLY", { __secret = true }) return ns.errors[#ns.errors].text'), "a hidden error value is named, never read").toBe("TEST-ONLY: (a hidden error message)");
 });
@@ -104,13 +107,17 @@ it("/vg errors: counts, build, interface version and the aura backend, then clea
   expectErrors("TEST-ONLY twice: x", "TEST-ONLY once: y");
   const addon = loggedIn(FOREVER_ENV + ERRORS_ENV);
   addon.eval('ns.ClearErrors() ns.Report("TEST-ONLY twice", "x") ns.Report("TEST-ONLY twice", "x") ns.Report("TEST-ONLY once", "y")');
+  addon.eval("ns.ShowText = function(title, text) __shown = { title, text } end");
   addon.clearChat();
   addon.slash("errors");
-  expect(chatHas(addon, /interface 16001  ·  2 error\(s\) caught this session \(3 in all\), newest last:/), "the header has the interface version and both counts").toBe(true);
-  expect(chatHas(addon, /Client WoW Forever  ·  build 1\.16\.0 \(TEST-ONLY\)  ·  auras on the (engine|fallback)/), "the client line names the build and the aura backend").toBe(true);
-  expect(addon.chat().slice(2), "each error with its count, then its stack lines indented").toEqual([
-    expect.stringMatching(/TEST-ONLY twice: x  \(x2\)$/), expect.stringMatching(/ {4}TEST-ONLY stack level 4$/), expect.stringMatching(/ {4}TEST-ONLY frame 2$/),
-    expect.stringMatching(/TEST-ONLY once: y  \(x1\)$/), expect.stringMatching(/ {4}TEST-ONLY stack level 4$/), expect.stringMatching(/ {4}TEST-ONLY frame 2$/),
+  expect(chatHas(addon, /2 error\(s\), opened in the copy window\./), "chat gets a one-line note").toBe(true);
+  expect(addon.eval("return __shown[1]"), "the copy window is titled").toMatch(/^Vanguard errors/);
+  const shown = addon.eval("return __shown[2]").split("\n");
+  expect(shown[0], "the first line has the interface version and both counts").toMatch(/interface 16001  ·  2 error\(s\) caught this session \(3 in all\), newest last:/);
+  expect(shown[1], "the client line names the build and the aura backend").toMatch(/Client WoW Forever  ·  build 1\.16\.0 \(TEST-ONLY\)  ·  auras on the (engine|fallback)/);
+  expect(shown.slice(2), "each error with its count, then its stack lines indented").toEqual([
+    expect.stringMatching(/^TEST-ONLY twice: x  \(x2\)$/), expect.stringMatching(/^ {4}TEST-ONLY stack level 4$/), expect.stringMatching(/^ {4}TEST-ONLY frame 2$/),
+    expect.stringMatching(/^TEST-ONLY once: y  \(x1\)$/), expect.stringMatching(/^ {4}TEST-ONLY stack level 4$/), expect.stringMatching(/^ {4}TEST-ONLY frame 2$/),
   ]);
   addon.slash("errors clear");
   expect(chatHas(addon, /Cleared\./) && addon.eval("return #ns.errors"), "clear empties the list").toBe(0);
@@ -369,7 +376,7 @@ it("the error badge: a count on the addons button and in the options footer, gon
   expect(badges(), "the same error again counts once; a new one makes 2, in the footer too").toEqual([true, "2", true, "2 errors caught this session: click to list them"]);
   addon.clearChat();
   addon.click("Vanguard_OptionsErrors");
-  expect(chatHas(addon, /2 error\(s\) caught this session/), "clicking the footer line lists them (/vg errors)").toBe(true);
+  expect(chatHas(addon, /2 error\(s\), opened in the copy window/), "clicking the footer line opens them (/vg errors)").toBe(true);
   addon.slash("errors clear");
   addon.advance(0.5);
   expect(badges(), "/vg errors clear: both badges go").toEqual([false, "0", false, "0 errors caught this session: click to list them"]);

@@ -15,7 +15,7 @@ ns.WHATS_NEW = {
       { text = "Enemies get nameplates: the game ships its enemy plates off, so Vanguard turns them on once; the Nameplates page now has the game's Enemy, Friendly players' and Friendly NPCs' nameplate switches, and /vg plates says what the game's plate settings are.", page = "nameplates", row = "Enemy nameplates (the game's setting, the V key)" },
     } },
     { module = "CooldownGaps", label = "Cooldown gaps", items = {
-      { text = "A new row of icons for what the game's Cooldown Manager misses: on-use trinkets, items and spells you choose with /vg gaps add and /vg gaps spell add, your pet's abilities and totems; a switch also draws the Cooldown Manager's essential and utility cooldowns there in the Vanguard look.", page = "tools", row = "Cooldown gaps", off = true },
+      { text = "A new row of icons for what the game's Cooldown Manager misses: on-use trinkets, items and spells you choose with /vg gaps add and /vg gaps spell add, your pet's abilities and totems; a switch also draws the Cooldown Manager's essential and utility cooldowns there in the Vanguard look.", page = "cooldowns", row = "Gaps row (reload)", off = true },
     } },
     { module = "SpellRanks", label = "Spell ranks", items = {
       { text = "Chat can say when a bar button holds an older rank of a spell you know better; /vg ranks lists them and /vg ranks swap puts the newest rank there, out of combat.", page = "town", row = "Notice older spell ranks on bar buttons (/vg ranks)", off = true },
@@ -28,7 +28,7 @@ ns.WHATS_NEW = {
       { text = "The spellbook gets the flat Vanguard panel, like the other game windows.", page = "windows", row = "Character, merchant, quest, loot and other windows" },
     } },
     { module = "CooldownGlow", label = "Cooldown Manager glow", items = {
-      { text = "A Cooldown Manager buff icon can glow when its aura is in its last 30 % (you choose the share), for spells the game doesn't flag itself.", page = "tools", row = "Glow a Cooldown Manager buff in its last part, where the game's own flag is missing", off = true },
+      { text = "A Cooldown Manager buff icon can glow when its aura is in its last 30 % (you choose the share), for spells the game doesn't flag itself.", page = "cooldowns", row = "Glow a buff near its end", off = true },
     } },
     { module = "RaidFrames", label = "Raid frames", items = {
       { text = "A raid tile width the choices don't list shows its value on the Width row.", page = "raid", row = "Width" },

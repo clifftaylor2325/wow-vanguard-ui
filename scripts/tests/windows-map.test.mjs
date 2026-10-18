@@ -297,10 +297,10 @@ it("quest panel in the map: the zone headers lose the game's yellow bar for a ch
   expect(addon.eval("return { #ns.errors, ns.Theme.PaintedCount() > 0 }"), "and nothing failed").toEqual([0, true]);
 });
 
-it("quest panel in the map: left the game's while Vanguard's quest log is on, or the group is off", () => {
+it("quest panel in the map: dressed even while Vanguard's quest log is on (its Map button opens it); the pop-out is left, and the group off leaves both", () => {
   const own = loggedIn(QUEST_MAP_ENV);
   own.eval("QuestMapFrame:Show() QuestLogPopupDetailFrame:Show()");
-  expect([questPanel(own).bg, questPanel(own).list, windowState(own, "QuestLogPopupDetailFrame").panel], "Vanguard's log is the quest log: the game's panels are untouched").toEqual([1, 1, false]);
+  expect([questPanel(own).bg, questPanel(own).list, windowState(own, "QuestLogPopupDetailFrame").panel], "the map's quest panel is in the theme; the pop-out stays the game's").toEqual([0, 0, false]);
   const off = loggedIn(QUEST_MAP_ENV, { savedVariables: OWN_LOG_OFF.replace("QuestLog = { own = false }", "QuestLog = { own = false }, Windows = { map = false }") });
   off.eval("QuestMapFrame:Show() QuestLogPopupDetailFrame:Show()");
   expect([questPanel(off).bg, off.eval("return ns.FrameState('vgWindow')[QuestMapFrame] == nil and ns.FrameState('vgWindow')[QuestLogPopupDetailFrame] == nil")], "with the map group off they are not even hooked").toEqual([1, true]);
@@ -311,6 +311,33 @@ it("quest panel in the map: left the game's while Vanguard's quest log is on, or
   for (const addon of [sparse, partial]) expect(addon.eval("return #ns.errors"), "a client with fewer parts loads cleanly").toBe(0);
 });
 
+
+// TEST-ONLY reward tiles of the quest details (QuestInfoItem1-2 with a name plate and an icon, and the XP tile with a
+// ReputationBG plate), made by the game as QuestInfo_Display runs.
+const QUEST_REWARDS_ENV = QUEST_MAP_ENV + `
+  for i = 1, 2 do
+    local tile = CreateFrame("Button", "QuestInfoItem" .. i, UIParent) tile.NameFrame, tile.Icon = tile:CreateTexture(), tile:CreateTexture()
+    tile.NameFrame:SetAlpha(1)
+  end
+  QuestInfoXPFrame = CreateFrame("Frame", "QuestInfoXPFrame", UIParent) QuestInfoXPFrame.ReputationBG = QuestInfoXPFrame:CreateTexture()
+  for _, key in ipairs({ "AbandonButton", "TrackButton" }) do
+    local b = QuestMapFrame.QuestsFrame.DetailsFrame[key] local fs = b:CreateFontString(nil, "OVERLAY") fs:SetFont("TEST-ONLY-GAME", 12, "") b:SetFontString(fs)
+  end
+  __made = false
+  function QuestInfo_Display() if not __made then __made = true CreateFrame("Button", "QuestInfoItem3", UIParent).NameFrame = UIParent:CreateTexture() end end
+`;
+
+it("quest panel in the map: the reward tiles lose their plates and the buttons' labels are in the theme (Abandon in the danger colour)", () => {
+  const addon = loggedIn(QUEST_REWARDS_ENV);
+  addon.eval("QuestMapFrame:Show()");
+  expect(addon.eval("return { QuestInfoItem1.NameFrame:GetAlpha(), QuestInfoItem2.NameFrame:GetAlpha(), QuestInfoXPFrame.ReputationBG:GetAlpha() }"), "the name plates and the XP plate are faded").toEqual([0, 0, 0]);
+  addon.eval("QuestInfo_Display()");
+  expect(addon.eval("return QuestInfoItem3.NameFrame:GetAlpha()"), "a tile the game makes as a quest is shown is dressed after QuestInfo_Display").toBe(0);
+  const d = "QuestMapFrame.QuestsFrame.DetailsFrame";
+  expect(addon.eval(`return { __looks(${d}.AbandonButton:GetFontString(), 'label', 'bad'), __looks(${d}.TrackButton:GetFontString(), 'label', 'text') }`), "Abandon is the danger kind, the others light").toEqual([true, true]);
+  addon.eval("QuestMapFrame:Hide() QuestMapFrame:Show()");
+  expect(addon.eval("return #ns.errors"), "showing it again is clean").toBe(0);
+});
 
 // TEST-ONLY extras on the quest panel (QuestMapFrame.xml): the list's search box (with its magnifier), settings gear and
 // the quest count frame with its figure; the Rewards heading; the rule between groups; quest title rows (a button with a
@@ -707,7 +734,8 @@ const LEGACY_ENV = WINDOWS_ENV + `
 // a Track box, IsSelected and RefreshStateArt) and the shared objectives frame with its pooled criteria; the points bar; the reward
 // bar and track, which holds no cards until Init.
 const LEGACY_PARTS_ENV = LEGACY_ENV + SCROLL_HELPERS + INSIDES_LUA + `
-  function __bar(parent) local b = CreateFrame("StatusBar", nil, parent) b.Frame = b:CreateTexture() b:SetStatusBarTexture("TEST-ONLY-ART") return b end
+  function __bar(parent) local b = CreateFrame("StatusBar", nil, parent) b.Frame = b:CreateTexture() b:SetStatusBarTexture("TEST-ONLY-ART") b.Text = b:CreateFontString(nil, "OVERLAY") b.Text:SetFont("TEST-ONLY-GAME", 12, "") return b end
+  function __fs(parent) local f = parent:CreateFontString(nil, "OVERLAY") f:SetFont("TEST-ONLY-GAME", 12, "") f:SetAlpha(0.4) return f end
   function __search(parent) local s = CreateFrame("EditBox", nil, parent) s.art, s.searchIcon = s:CreateTexture(), s:CreateTexture() return s end
   function __treeCard(picker)
     local c = CreateFrame("CheckButton", nil, picker.TreeSelections)
@@ -719,6 +747,7 @@ const LEGACY_PARTS_ENV = LEGACY_ENV + SCROLL_HELPERS + INSIDES_LUA + `
     local r = CreateFrame("Button", nil, LegacySystemFrame.ChallengesPage.CategoryList)
     r.NormalTexture, r.HighlightTexture, r.NotificationIcon = r:CreateTexture(), r:CreateTexture(), r:CreateTexture()
     r.CollapseButton = CreateFrame("Button", nil, r) r.CollapseButton.Icon, r.CollapseButton.Glow = r.CollapseButton:CreateTexture(), r.CollapseButton:CreateTexture()
+    r.Text = __fs(r)
     r.selected = selected
     function r:SetSelected(on) self.selected = on end
     return r
@@ -727,6 +756,7 @@ const LEGACY_PARTS_ENV = LEGACY_ENV + SCROLL_HELPERS + INSIDES_LUA + `
     local c = CreateFrame("Button", nil, LegacySystemFrame.ChallengesPage.DetailPane)
     for _, key in ipairs({ "Background", "BackgroundTop", "BackgroundMiddle", "BackgroundBottom", "SelectedOverlay", "TitleBar", "PlusMinus" }) do c[key] = c:CreateTexture() end
     c.Tracked, c.selected = __check(c), selected
+    c.Title, c.Description, c.Icon, c.IconBorder, c.Shield = __fs(c), __fs(c), c:CreateTexture(), c:CreateTexture(), c:CreateTexture()
     function c:IsSelected() return self.selected end
     function c:RefreshStateArt() end
     return c
@@ -739,6 +769,7 @@ const LEGACY_PARTS_ENV = LEGACY_ENV + SCROLL_HELPERS + INSIDES_LUA + `
   function __rewardCard(track)
     local c = CreateFrame("Frame", nil, track)
     for _, key in ipairs({ "RewardCardBG", "LevelSquare", "IconBorder", "Icon", "EarnedCheckmark" }) do c[key] = c:CreateTexture() end
+    c.RewardName, c.Level = __fs(c), __fs(c)
     return c
   end
   function __legacyParts()
@@ -748,7 +779,7 @@ const LEGACY_PARTS_ENV = LEGACY_ENV + SCROLL_HELPERS + INSIDES_LUA + `
     picker.cards = { __treeCard(picker), __treeCard(picker) }
     picker.cards[2]:SetChecked(true)
     function picker:RefreshTreeButtons() self.cards[#self.cards + 1] = __treeCard(self) end
-    tree.LegacyTreePointSummary = CreateFrame("Frame", nil, tree) tree.LegacyTreePointSummary.Border = tree.LegacyTreePointSummary:CreateTexture()
+    tree.LegacyTreePointSummary = CreateFrame("Frame", nil, tree) tree.LegacyTreePointSummary.Border, tree.LegacyTreePointSummary.Shield = tree.LegacyTreePointSummary:CreateTexture(), tree.LegacyTreePointSummary:CreateTexture()
     local trait = tree.LegacyTreeTraitPanel
     trait.ApplyButton = CreateFrame("Button", nil, trait) trait.ApplyButton.art = trait.ApplyButton:CreateTexture()
     trait.ResetButton, trait.UndoButton, trait.SearchBox = __iconButton(trait), __iconButton(trait), __search(trait)
@@ -782,7 +813,7 @@ it("legacy system: the window in the theme, its page backgrounds faded and its p
   const first = windowState(addon, "LegacySystemFrame");
   expect(first, "the window's art is faded, a panel painted, the title in the theme font").toMatchObject({ art: 0, nine: 0, portrait: 0, insetNine: 0, panel: true, title: true });
   expect(addon.eval("local f = LegacySystemFrame return { f.TreePage.Background:GetAlpha(), f.ChallengesPage.Background:GetAlpha(), f.RewardTrackPage.Background:GetAlpha(), (f.TreePage.VerticalDivider:GetRegions()):GetAlpha(), (f.ChallengesPage.VerticalDivider:GetRegions()):GetAlpha() }"), "the three page backgrounds and both dividers are faded").toEqual([0, 0, 0, 0, 0]);
-  expect(addon.eval("local f = LegacySystemFrame return { ns.Theme.DividerParts(f.TreePage.VerticalDivider) ~= nil, ns.Theme.DividerParts(f.ChallengesPage.VerticalDivider) ~= nil }"), "and each is one pixel of divider in their place").toEqual([true, true]);
+  expect(addon.eval("local f = LegacySystemFrame return { ns.Theme.DividerParts(f.TreePage.VerticalDivider) ~= nil, ns.Theme.DividerParts(f.ChallengesPage.VerticalDivider) ~= nil }"), "the tree's is one pixel of divider in its place, the challenges' (its panes have edges) is faded with none").toEqual([true, false]);
   expect([fills(addon, "LegacySystemFrame.ChallengesPage.CategoryList"), fills(addon, "LegacySystemFrame.ChallengesPage.DetailPane")], "the challenge panes are inset panels").toEqual([1, 1]);
   expect(addon.eval("local f = LegacySystemFrame return { (f.LegacyTreeTab:GetRegions()):GetAlpha(), (f.TabIndicators:GetRegions()):GetAlpha(), (f.TreePage.Node:GetRegions()):GetAlpha(), tostring(ns.FrameState('vgWindow')[f.TreePage.Node]) }"), "the tabs, their indicators and the tree's node buttons are left to the game").toEqual([1, 1, 1, "nil"]);
   expect(fills(addon, "LegacySystemFrame.TreePage.LegacyTreeTraitPanel"), "the tree's panel is not covered, so it does not hide the close button's corner").toBe(0);
@@ -815,19 +846,19 @@ const legacyParts = () => {
   return addon;
 };
 
-it("legacy system tree page: the cards are raised tiles keeping their icons and rings, the picked tree shows the selected look, the badge and controls are in the theme", () => {
+it("legacy system tree page: the cards are raised tiles keeping their icons and losing the bronze ring, the picked tree shows the selected look, the badge and controls are in the theme", () => {
   const addon = legacyParts();
   // Tree card n: the alphas of its plate, glow, icon, highlight, pushed picture and ring, and whether its selected rail shows.
   const card = (n) => addon.eval(`local c = LegacySystemFrame.TreePage.LegacyTreeSelectionPanel.cards[${n}]
     return { c.Background:GetAlpha(), c.SelectedGlow:GetAlpha(), c.NormalTexture:GetAlpha(), c.HighlightTexture:GetAlpha(), c.PushedTexture:GetAlpha(), c.Ring:GetAlpha(),
       ns.Theme.RowParts(c).rail:IsShown() }`);
-  expect(card(1), "a card: the plate and glow faded, the icon, highlight, pushed picture and ring kept; not picked, no rail").toEqual([0, 0, 1, 1, 1, 1, false]);
-  expect(card(2), "the picked tree's card shows the selected rail").toEqual([0, 0, 1, 1, 1, 1, true]);
+  expect(card(1), "a card: the plate and glow faded, the icon, highlight and pushed picture kept, the ring faded; not picked, no rail").toEqual([0, 0, 1, 1, 1, 0, false]);
+  expect(card(2), "the picked tree's card shows the selected rail").toEqual([0, 0, 1, 1, 1, 0, true]);
   expect([fills(addon, "LegacySystemFrame.TreePage.LegacyTreeSelectionPanel.cards[1]"), fills(addon, "LegacySystemFrame.TreePage.LegacyTreeSelectionPanel.cards[2]")], "each a tile").toEqual([1, 1]);
   addon.eval("local p = LegacySystemFrame.TreePage.LegacyTreeSelectionPanel p.cards[1]:SetChecked(true) p.cards[2]:SetChecked(false) p.cards[1]:RefreshSelectionVisuals() p.cards[2]:RefreshSelectionVisuals()");
   expect([card(1)[6], card(2)[6]], "the selected look follows the game's selection").toEqual([true, false]);
   addon.eval("LegacySystemFrame.TreePage.LegacyTreeSelectionPanel:RefreshTreeButtons()");
-  expect([card(3), addon.eval("return #LegacySystemFrame.TreePage.LegacyTreeSelectionPanel.cards")], "a card the game makes when it rebuilds the picker is dressed at once").toEqual([[0, 0, 1, 1, 1, 1, false], 3]);
+  expect([card(3), addon.eval("return #LegacySystemFrame.TreePage.LegacyTreeSelectionPanel.cards")], "a card the game makes when it rebuilds the picker is dressed at once").toEqual([[0, 0, 1, 1, 1, 0, false], 3]);
   expect(addon.eval("local s = LegacySystemFrame.TreePage.LegacyTreePointSummary return { s.Border:GetAlpha() }"), "the points badge's plate is faded").toEqual([0]);
   expect(fills(addon, "LegacySystemFrame.TreePage.LegacyTreePointSummary"), "and the badge is an inset panel").toBe(1);
   expect(addon.eval("local t = LegacySystemFrame.TreePage.LegacyTreeTraitPanel return { t.ApplyButton.art:GetAlpha(), t.ResetButton.Plate:GetAlpha(), t.ResetButton.Icon:GetAlpha(), t.UndoButton.Plate:GetAlpha(), t.UndoButton.Icon:GetAlpha(), t.SearchBox.art:GetAlpha(), t.SearchBox.searchIcon:GetAlpha() }"),
@@ -884,6 +915,27 @@ it("legacy system reward page: the progress bar is a theme track and the cards t
   const card = (n) => addon.eval(`local c = ${page}.LegacyRewardProgressFrame.Elements[${n}] return { c.RewardCardBG:GetAlpha(), c.LevelSquare:GetAlpha(), c.IconBorder:GetAlpha(), c.Icon:GetAlpha(), c.EarnedCheckmark:GetAlpha() }`);
   expect([card(1), card(2)], "each card the track made: plate, diamond and ring faded, the icon and tick kept").toEqual([[0, 0, 0, 1, 1], [0, 0, 0, 1, 1]]);
   expect([fills(addon, `${page}.LegacyRewardProgressFrame.Elements[1]`), fills(addon, `${page}.LegacyRewardProgressFrame.Elements[2]`)], "each a raised tile").toEqual([1, 1]);
+  expect(addon.eval("return #ns.errors"), "and nothing failed").toBe(0);
+});
+
+it("legacy system: crests lose the bronze, card icons are cropped flat and the cards' texts and bars read clearly", () => {
+  const addon = legacyParts();
+  const list = "LegacySystemFrame.ChallengesPage.CategoryList";
+  const cards = "LegacySystemFrame.ChallengesPage.DetailPane.ScrollBox";
+  addon.eval(`__acquire(${list}.ScrollBox, __categoryRow(false)) __acquire(${cards}, __challenge(false))`);
+  // A crest's desaturated flag and whether it was tinted.
+  const tint = (expr) => addon.eval(`local r = ${expr} return { r.__desaturated, r.__vertexColor ~= nil }`);
+  expect(addon.eval(`return __looks(${list}.ScrollBox.items[1].Text, 'label', 'text')`), "a category's name is in the text colour, not the game's yellow").toBe(true);
+  expect(addon.eval(`local c = ${cards}.items[1] return { __looks(c.Title, 'label', 'text'), __looks(c.Description, 'small', 'text2'), c.Title:GetAlpha(), c.Description:GetAlpha(), c.IconBorder:GetAlpha() }`), "a challenge card's title and description in the text tiers at full strength, the icon frame faded").toEqual([true, true, 1, 1, 0]);
+  expect(addon.eval(`return ${cards}.items[1].Icon.__texCoord ~= nil`), "its icon is cropped").toBe(true);
+  // A card whose icon is a button and whose crest is a frame holding a texture (and a font string, which is left alone).
+  addon.eval(`local c = __challenge(false) c.Icon = CreateFrame("Button", nil, c) c.Icon.Icon = c.Icon:CreateTexture() c.PointsBadge = CreateFrame("Frame", nil, c)
+    c.PointsBadge.tex = c.PointsBadge:CreateTexture() c.PointsBadge.num = __fs(c.PointsBadge) __acquire(${cards}, c)`);
+  expect(addon.eval(`local c = ${cards}.items[2] return { c.Icon.Icon.__texCoord ~= nil, c.PointsBadge.tex.__desaturated }`), "a button icon is dressed like the spellbook's, a crest frame's textures are flattened").toEqual([true, true]);
+  expect([tint(`${cards}.items[1].Shield`), tint("LegacySystemFrame.TreePage.LegacyTreePointSummary.Shield")], "the crests are desaturated and tinted").toEqual([[true, true], [true, true]]);
+  expect(addon.eval("local b = LegacySystemFrame.ChallengesPage.LegacyChallengePointSummary.PointsBar return { __looks(b.Text, 'label', 'text'), b:GetStatusBarTexture().__vertexColor ~= nil }"), "the points bar's figures are in the text colour over an accent fill").toEqual([true, true]);
+  addon.eval("LegacySystemFrame.RewardTrackPage.LegacyRewardProgressFrame:Init()");
+  expect(addon.eval("local c = LegacySystemFrame.RewardTrackPage.LegacyRewardProgressFrame.Elements[1] return { __looks(c.RewardName, 'label', 'text'), __looks(c.Level, 'small', 'text2'), c.RewardName:GetAlpha(), c.Icon.__texCoord ~= nil }"), "a locked reward's name and level are in the text tiers at full strength, its icon cropped").toEqual([true, true, 1, true]);
   expect(addon.eval("return #ns.errors"), "and nothing failed").toBe(0);
 });
 
