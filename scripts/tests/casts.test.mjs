@@ -360,6 +360,7 @@ it("the cursor ring's switch under Unit frames turns it on and off at once", () 
   expect([ring(addon).shown, ring(addon).gcd.object, ring(addon).cast.object, addon.eval("return ns.ticker.vgJobs['cursor ring']")], "off: hidden, not following, deaf to events").toEqual([false, null, null, null]);
   addon.eval('__click("Ring at the cursor: the global cooldown and your cast")');
   expect([ring(addon).shown, ring(addon).cast.object, addon.eval("return #ns.errors")], "on again, with the cast in progress, using the same ring").toEqual([true, "cast", 0]);
+});
 
 // TEST-ONLY a mage who knows Counterspell, and the client's duration object for its cooldown (tagged with the call it answered).
 const MARK_ENV = `
