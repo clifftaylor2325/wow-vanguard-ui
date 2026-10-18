@@ -29,11 +29,17 @@ local function calmRow()
     liveSetting("UnitFrames", "calm", function() ns.GetModule("UnitFrames").ApplyCalm() end))
 end
 
+-- The Versus deck switch: one shield panel behind your frame and your target's, the crest between (at once).
+local function deckRow()
+  return check("Versus deck: your frame and your target's joined in one panel, the crest between",
+    liveSetting("UnitFrames", "deck", function() ns.GetModule("UnitFrames").ApplyDeck() end))
+end
+
 -- Unit frames, and the class bars under the player frame.
 local function unitFrameRows()
   return {
     { "header", "Unit frames" },
-    check("Replace the default unit frames", setting("UnitFrames", "hideBlizzard", true)), calmRow(),
+    check("Replace the default unit frames", setting("UnitFrames", "hideBlizzard", true)), calmRow(), deckRow(),
     check("Show health numbers", unitFrameSetting("healthText")),
     { "cycle", "Health as", { { "value", "Value (42.8K)" }, { "percent", "Percent (84%)" } }, unitFrameSetting("healthFormat") },
     check("Show levels (reload)", setting("UnitFrames", "showLevel", true)),
@@ -48,8 +54,8 @@ local function castRows()
   return {
     { "header", "Cast bars" },
     check("Your cast bar", setting("CastBars", "player", true)),
-    check("Target cast bar", setting("CastBars", "target", true)),
-    check("Focus cast bar", setting("CastBars", "focus", true)),
+    check("Target cast bar", setting("CastBars", "target", true)), check("Focus cast bar", setting("CastBars", "focus", true)),
+    check("Ring at the cursor: the global cooldown and your cast", liveSetting("CastBars", "ring", function() ns.GetModule("CastBars").ApplyRing() end)),
     check("Interrupt mark beside the target and focus cast bars", liveSetting("CastBars", "interruptMark", function() ns.GetModule("CastBars").RefreshMarks() end)),
     { "header", "Target and focus auras" },
     check("Only your debuffs (reload)", setting("FrameAuras", "onlyMine", true)),

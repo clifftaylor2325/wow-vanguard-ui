@@ -245,6 +245,122 @@ it("the game's crafting cast bar stays, drawn in the theme, through every cast",
   expect([bare.eval("return ns.FrameState('vgSkinned')[OverlayPlayerCastingBarFrame]"), bare.eval("return #ns.errors"), loggedIn().eval("return #ns.errors")], "a bar without its parts, or a client without the bar, loads cleanly").toEqual([true, 0, 0]);
 });
 
+// TEST-ONLY the client's duration objects for the global cooldown and your cast, and a global cooldown spell the call records.
+const RING_ENV = `
+  UnitCastingDuration = function() return { __duration = "cast" } end
+  UnitChannelDuration = function() return { __duration = "channel" } end
+  __gcdAsked = {}
+  C_Spell.GetSpellCooldownDuration = function(id) __gcdAsked[#__gcdAsked + 1] = id return { __duration = "gcd" } end
+`;
+const RING_ON = { savedVariables: "VanguardDB.profiles = { Default = { CastBars = { ring = true } } }" };
+
+// A table out of Lua with the keys Lua left out (nil) set to null, one level down.
+const nulls = (t) => { for (const k of ["gcd", "cast"]) for (const f of ["object", "plain", "reverse"]) t[k][f] ??= null; return t; };
+
+// The cursor ring's two sweeps: what each was given (a duration object's tag, plain start and length) and whether it runs backwards.
+const ring = (addon) => nulls(addon.eval(`local r = Vanguard_CursorRing
+  local function sweep(cd) return { object = cd.__durationObject and cd.__durationObject.__duration, plain = cd.__cooldown, reverse = cd.__reverse } end
+  return { shown = r:IsShown(), gcd = sweep(r.gcd), cast = sweep(r.cast), x = r:GetCenter(), y = select(2, r:GetCenter()) }`));
+
+it("the cursor ring is off by default: nothing is made and nothing follows the mouse", () => {
+  const addon = loggedIn(CAST_ENV + RING_ENV);
+  expect(addon.eval("return { Vanguard_CursorRing ~= nil, ns.ticker.vgJobs['cursor ring'] ~= nil, ns.GetModule('CastBars').defaults.ring }"), "no ring, no job, default false").toEqual([false, false, false]);
+  addon.fire("SPELL_UPDATE_COOLDOWN");
+  expect(addon.eval("return #__gcdAsked"), "and the global cooldown is not asked about").toBe(0);
+});
+
+it("the cursor ring follows the mouse at any UI scale, takes no mouse, and stops following when hidden", () => {
+  const addon = loggedIn(CAST_ENV + RING_ENV, RING_ON);
+  expect([ring(addon).shown, ring(addon).x, ring(addon).y], "on, centred on the cursor").toEqual([true, 960, 540]);
+  expect(addon.eval("local r = Vanguard_CursorRing return { r.__mouse, r.gcd.__mouse, r.cast.__mouse }"), "the ring and its sweeps let every click through").toEqual([false, false, false]);
+  addon.eval("__wfgWorld.mouse.x, __wfgWorld.mouse.y = 200, 300");
+  addon.update(0.016);
+  expect([ring(addon).x, ring(addon).y], "it follows on the next frame").toEqual([200, 300]);
+  addon.eval("UIParent:SetScale(0.5) __wfgWorld.mouse.x, __wfgWorld.mouse.y = 100, 150");
+  addon.update(0.016);
+  expect([ring(addon).x, ring(addon).y], "the cursor is in screen pixels: half-size units at half scale").toEqual([200, 300]);
+  addon.eval("__wfgWorld.mouse.x = { __secret = true }");
+  addon.update(0.016);
+  expect([ring(addon).x, ring(addon).y, addon.eval("return #ns.errors")], "a hidden cursor position leaves it where it was").toEqual([200, 300, 0]);
+  addon.eval("Vanguard_CursorRing:Hide() __wfgWorld.mouse.x, __wfgWorld.mouse.y = 400, 400");
+  addon.update(0.016);
+  expect([ring(addon).x, ring(addon).y], "a hidden ring is not updated").toEqual([200, 300]);
+});
+
+it("the cursor ring's outer sweep is the global cooldown, from the client's duration object", () => {
+  const addon = loggedIn(CAST_ENV + RING_ENV, RING_ON);
+  expect([ring(addon).gcd.object, addon.eval("return __gcdAsked[1]")], "shown at once from the global cooldown spell").toEqual(["gcd", 61304]);
+  addon.eval("Vanguard_CursorRing.gcd:Clear()");
+  addon.fire("SPELL_UPDATE_COOLDOWN");
+  expect(ring(addon).gcd.object, "and again at each cooldown update").toBe("gcd");
+  expect(addon.eval("return { Vanguard_CursorRing.gcd.__hideNumbers, Vanguard_CursorRing.gcd.__swipeColor ~= nil }"), "without numbers, in the accent").toEqual([true, true]);
+});
+
+it("the cursor ring's global cooldown falls back to plain numbers, and to nothing when they are hidden", () => {
+  const plain = loggedIn(CAST_ENV + RING_ENV + "C_Spell.GetSpellCooldownDuration = nil C_Spell.GetSpellCooldown = function() return { startTime = 5, duration = 1.5 } end", RING_ON);
+  expect(ring(plain).gcd.plain, "no duration object: the plain start and length").toEqual([5, 1.5]);
+  plain.eval("C_Spell.GetSpellCooldown = function() return { startTime = 5, duration = 0 } end");
+  plain.fire("SPELL_UPDATE_COOLDOWN");
+  expect(ring(plain).gcd.plain, "a zero length clears it").toBe(null);
+  const thrown = loggedIn(CAST_ENV + RING_ENV + "C_Spell.GetSpellCooldownDuration = function() error('TEST-ONLY') end C_Spell.GetSpellCooldown = function() return { startTime = 7, duration = 1.5 } end", RING_ON);
+  expect(ring(thrown).gcd.plain, "a duration call that errors falls back too").toEqual([7, 1.5]);
+  const hidden = loggedIn(CAST_ENV + RING_ENV + "C_Spell.GetSpellCooldownDuration = nil C_Spell.GetSpellCooldown = function() return { startTime = { __secret = true }, duration = { __secret = true } } end", RING_ON);
+  expect([ring(hidden).gcd.plain, ring(hidden).gcd.object], "hidden numbers draw nothing").toEqual([null, null]);
+  const none = loggedIn(CAST_ENV + RING_ENV + "C_Spell.GetSpellCooldownDuration = nil C_Spell.GetSpellCooldown = nil", RING_ON);
+  expect([ring(none).gcd.plain, none.eval("return #ns.errors")], "a client with neither draws nothing and raises nothing").toEqual([null, 0]);
+  const secretInfo = loggedIn(CAST_ENV + RING_ENV + "C_Spell.GetSpellCooldownDuration = nil C_Spell.GetSpellCooldown = function() return { __secret = true } end", RING_ON);
+  expect(ring(secretInfo).gcd.plain, "a hidden answer draws nothing").toBe(null);
+});
+
+it("the cursor ring's inner sweep is your cast, filling for a cast and emptying for a channel, even with your cast bar off", () => {
+  const addon = loggedIn(CAST_ENV + RING_ENV, { savedVariables: "VanguardDB.profiles = { Default = { CastBars = { ring = true, player = false } } }" });
+  expect(ring(addon).cast.object, "no cast, no sweep").toBe(null);
+  addon.eval('__casts.player = { kind = "cast", start = 1000, finish = 3000 }');
+  addon.fire("UNIT_SPELLCAST_START", "player");
+  expect([ring(addon).cast.object, ring(addon).cast.reverse], "a cast: the client's cast duration, filling").toEqual(["cast", true]);
+  addon.eval('__casts.player = { kind = "channel", start = 1000, finish = 3000 }');
+  addon.fire("UNIT_SPELLCAST_CHANNEL_START", "player");
+  expect([ring(addon).cast.object, ring(addon).cast.reverse], "a channel: the channel duration, emptying").toEqual(["channel", false]);
+  addon.eval("__casts.player = nil");
+  addon.fire("UNIT_SPELLCAST_STOP", "player");
+  expect(ring(addon).cast.object, "it clears when the cast ends").toBe(null);
+  addon.eval('__casts.target = { kind = "cast", start = 1000, finish = 3000 }');
+  addon.fire("UNIT_SPELLCAST_START", "target");
+  expect(ring(addon).cast.object, "someone else's cast is not yours").toBe(null);
+});
+
+it("the cursor ring's cast falls back to plain times, and to nothing when they are hidden", () => {
+  const plain = loggedIn(CAST_ENV + RING_ENV + "UnitCastingDuration = nil", RING_ON);
+  plain.eval('__casts.player = { kind = "cast", start = 1000 * 1000, finish = 1000 * 1000 + 3000 }');
+  plain.fire("UNIT_SPELLCAST_START", "player");
+  expect(ring(plain).cast.plain, "no duration object: start and length in seconds").toEqual([1000, 3]);
+  plain.eval('__casts.player = { kind = "cast", start = { __secret = true }, finish = { __secret = true } }');
+  plain.fire("UNIT_SPELLCAST_DELAYED", "player");
+  expect(ring(plain).cast.plain, "hidden times draw nothing").toBe(null);
+  plain.eval('__casts.player = { kind = "cast", start = 1000 * 1000, finish = { __secret = true } }');
+  plain.fire("UNIT_SPELLCAST_DELAYED", "player");
+  expect(ring(plain).cast.plain, "a hidden end draws nothing either").toBe(null);
+});
+
+it("a client that cannot make cooldown frames gets no ring, and no error when the switch is on", () => {
+  const addon = loggedIn(CAST_ENV + RING_ENV + "ns.Client.Has('cooldownObject') ns.Client.has.cooldownObject = false", RING_ON);
+  expect(addon.eval("return { Vanguard_CursorRing == nil, ns.ticker.vgJobs['cursor ring'] == nil, #ns.errors }"), "no ring, nothing following the mouse, nothing failed").toEqual([true, true, 0]);
+});
+
+it("the cursor ring's switch under Unit frames turns it on and off at once", () => {
+  const addon = loggedIn(CAST_ENV + RING_ENV + CLICK_LUA);
+  addon.eval('ns.Options.Show("unitframes")');
+  addon.eval('__click("Ring at the cursor: the global cooldown and your cast")');
+  expect([addon.eval("return VanguardDB.profiles.Default.CastBars.ring"), ring(addon).shown, ring(addon).gcd.object, addon.eval("return ns.ticker.vgJobs['cursor ring'] ~= nil")], "on: shown, sweeping, following").toEqual([true, true, "gcd", true]);
+  addon.eval('__click("Ring at the cursor: the global cooldown and your cast")');
+  addon.eval("Vanguard_CursorRing.gcd:Clear()");
+  addon.fire("SPELL_UPDATE_COOLDOWN");
+  addon.eval('__casts.player = { kind = "cast", start = 1000, finish = 3000 }');
+  addon.fire("UNIT_SPELLCAST_START", "player");
+  expect([ring(addon).shown, ring(addon).gcd.object, ring(addon).cast.object, addon.eval("return ns.ticker.vgJobs['cursor ring']")], "off: hidden, not following, deaf to events").toEqual([false, null, null, null]);
+  addon.eval('__click("Ring at the cursor: the global cooldown and your cast")');
+  expect([ring(addon).shown, ring(addon).cast.object, addon.eval("return #ns.errors")], "on again, with the cast in progress, using the same ring").toEqual([true, "cast", 0]);
+
 // TEST-ONLY a mage who knows Counterspell, and the client's duration object for its cooldown (tagged with the call it answered).
 const MARK_ENV = `
   __asked = {}

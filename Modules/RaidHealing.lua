@@ -49,6 +49,39 @@ RH.ALL_BUFFS = {
   { "WARLOCK", { { "Unending Breath", 5697 }, { "Detect Invisibility", 2970 } } },
 }
 
+-- Static icons by buff name, used when the client has none for the name or spell id (never a question mark).
+RH.FALLBACK_ICONS = {
+  ["Power Word: Fortitude"] = "Interface\\Icons\\Spell_Holy_WordFortitude",
+  ["Prayer of Fortitude"] = "Interface\\Icons\\Spell_Holy_PrayerOfFortitude",
+  ["Divine Spirit"] = "Interface\\Icons\\Spell_Holy_DivineSpirit",
+  ["Prayer of Spirit"] = "Interface\\Icons\\Spell_Holy_PrayerofSpirit",
+  ["Shadow Protection"] = "Interface\\Icons\\Spell_Shadow_AntiShadow",
+  ["Prayer of Shadow Protection"] = "Interface\\Icons\\Spell_Holy_PrayerofShadowProtection",
+  ["Arcane Intellect"] = "Interface\\Icons\\Spell_Holy_MagicalSentry",
+  ["Arcane Brilliance"] = "Interface\\Icons\\Spell_Holy_ArcaneIntellect",
+  ["Amplify Magic"] = "Interface\\Icons\\Spell_Holy_FlashHeal",
+  ["Dampen Magic"] = "Interface\\Icons\\Spell_Nature_AbolishMagic",
+  ["Mark of the Wild"] = "Interface\\Icons\\Spell_Nature_Regeneration",
+  ["Gift of the Wild"] = "Interface\\Icons\\Spell_Nature_Regeneration",
+  ["Thorns"] = "Interface\\Icons\\Spell_Nature_Thorns",
+  ["Blessing of Might"] = "Interface\\Icons\\Spell_Holy_FistOfJustice",
+  ["Blessing of Wisdom"] = "Interface\\Icons\\Spell_Holy_SealOfWisdom",
+  ["Blessing of Kings"] = "Interface\\Icons\\Spell_Magic_MageArmor",
+  ["Blessing of Salvation"] = "Interface\\Icons\\Spell_Holy_SealOfSalvation",
+  ["Blessing of Light"] = "Interface\\Icons\\Spell_Holy_PrayerOfHealing02",
+  ["Blessing of Sanctuary"] = "Interface\\Icons\\Spell_Nature_LightningShield",
+  ["Greater Blessing of Might"] = "Interface\\Icons\\Spell_Holy_GreaterBlessingofKings",
+  ["Greater Blessing of Wisdom"] = "Interface\\Icons\\Spell_Holy_GreaterBlessingofWisdom",
+  ["Greater Blessing of Kings"] = "Interface\\Icons\\Spell_Holy_GreaterBlessingofKings",
+  ["Greater Blessing of Salvation"] = "Interface\\Icons\\Spell_Holy_GreaterBlessingofSalvation",
+  ["Greater Blessing of Light"] = "Interface\\Icons\\Spell_Holy_GreaterBlessingofLight",
+  ["Greater Blessing of Sanctuary"] = "Interface\\Icons\\Spell_Holy_GreaterBlessingofSanctuary",
+  ["Battle Shout"] = "Interface\\Icons\\Ability_Warrior_BattleShout",
+  ["Trueshot Aura"] = "Interface\\Icons\\Ability_TrueShot",
+  ["Unending Breath"] = "Interface\\Icons\\Spell_Shadow_DemonBreath",
+  ["Detect Invisibility"] = "Interface\\Icons\\Spell_Shadow_DetectInvisibility",
+}
+
 -- Values -----------------------------------------------------------------------------------
 
 -- A value that isn't there (nil). Written with type() so a hidden value never gets compared.
@@ -362,7 +395,7 @@ end
 
 -- Appends a class's name and a row per buff it gives, marking each name seen.
 local function addClass(rows, seen, c)
-  rows[#rows + 1] = { "text", className(c[1]) }
+  rows[#rows + 1] = { "header", className(c[1]) }
   for _, b in ipairs(c[2]) do
     seen[b[1]] = true
     rows[#rows + 1] = { "buffpick", b[1], b[2] }
@@ -374,7 +407,7 @@ local function addOthers(rows, seen)
   local names = {}
   addNames(names, seen, bookBuffs())
   addNames(names, seen, RH.BuffNames())
-  if #names > 0 then rows[#rows + 1] = { "text", "Other" } end
+  if #names > 0 then rows[#rows + 1] = { "header", "Other" } end
   for _, name in ipairs(names) do rows[#rows + 1] = { "buffpick", name } end
 end
 
@@ -404,12 +437,13 @@ local function setWatched(name, on)
   ns.Options.Refresh()
 end
 
--- A buff's icon: the spellbook's, else the client's by name, then by spell id, else a question mark.
+-- A buff's icon: the spellbook's, else the client's by name, then by spell id, else the static fallback.
 local function buffIcon(name, id)
   local s = ns.ClickCastSpells and ns.ClickCastSpells.Spell(name)
   if s and s.icon then return s.icon end
   local get = C_Spell and type(C_Spell.GetSpellTexture) == "function" and C_Spell.GetSpellTexture
-  return get and (get(name) or (id and get(id))) or 134400
+  local live = get and (get(name) or (id and get(id)))
+  return live or RH.FALLBACK_ICONS[name] or 134400
 end
 
 -- One buff's row: its icon and name, and a switch that watches it. Inset like the

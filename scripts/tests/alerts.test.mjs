@@ -266,10 +266,10 @@ it("the game's tools: a switch shows the Cooldown Manager's essential row betwee
   expect(timer, "the cooldown timer in the theme's timer font").toEqual([addon.eval('return ns.Theme.RoleSize("cooldown")'), "OUTLINE"]);
   expect(addon.eval('return GetCVar("cooldownViewerEnabled") == nil'), "off by default: the game's setting is left alone").toBe(true);
   addon.slash("");
-  addon.eval('ns.Options.Show("tools")');
-  addon.eval(`__click("Show the game's Cooldown Manager")`);
+  addon.eval('ns.Options.Show("cooldowns")');
+  addon.eval(`__click("Show the game's manager")`);
   expect(addon.eval('return GetCVar("cooldownViewerEnabled")'), "ticked: the game's Cooldown Manager is on").toBe("1");
-  addon.eval(`__click("Show the game's Cooldown Manager")`);
+  addon.eval(`__click("Show the game's manager")`);
   expect(addon.eval('return GetCVar("cooldownViewerEnabled")'), "unticked: off again").toBe("0");
   const on = loggedIn(UNITS_ENV + TOOLS_ENV + CDM_ENV, { savedVariables: "VanguardDB.profiles = { Default = { GameTools = { essential = true } } }" });
   expect([on.eval('return GetCVar("cooldownViewerEnabled")'), chatHas(on, /Cooldown Manager is off/), on.eval("return EssentialCooldownViewer.__points.CENTER.rel == Vanguard_EssentialCooldownViewerSpot")],
