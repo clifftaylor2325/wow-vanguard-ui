@@ -491,8 +491,8 @@ const SORT_ROW_ENV = `
 `;
 it("the bag's Sort button sits beside the search box and the game's own sort button stays hidden", () => {
   const addon = loggedIn(UI_ENV + SORT_ROW_ENV);
-  const sort = addon.eval('local p = ns.GetModule("Bags").sort.__points.LEFT return { p.rel == BagItemSearchBox, p.relPoint, p.x }');
-  expect(sort, "right of the search box, 6 px off it").toEqual([true, "RIGHT", 6]);
+  const sort = addon.eval('local p = ns.GetModule("Bags").sort.__points.LEFT return { p.rel == ns.GetModule("Bags").tools.groups, p.relPoint, p.x }');
+  expect(sort, "right of the Filter and Groups buttons, which sit right of the search box, 6 px off it").toEqual([true, "RIGHT", 6]);
   expect(addon.eval("return BagItemAutoSortButton:IsShown()"), "the game's own button is hidden at login").toBe(false);
   addon.eval("BagItemAutoSortButton:Show()");
   expect(addon.eval("return BagItemAutoSortButton:IsShown()"), "and the game showing it again (each search row update) hides it again").toBe(false);
