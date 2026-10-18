@@ -706,12 +706,12 @@ it("R2.4 shared skin helpers: a glyph keeps its picture, a dropdown its arrow, a
     local glyph = CreateFrame("Button", nil, UIParent) glyph.up, glyph.off = art(glyph), art(glyph)
     glyph.GetNormalTexture, glyph.GetDisabledTexture = function() return glyph.up end, function() return glyph.off end
     local drop = CreateFrame("Button", nil, UIParent) drop.Arrow = art(drop)
-    local search = CreateFrame("EditBox", nil, UIParent) search.searchIcon = art(search)
+    local search = CreateFrame("EditBox", nil, UIParent) search.searchIcon = art(search) search.Instructions = search:CreateFontString()
     GW.SkinGlyph(glyph) GW.SkinDropdown(drop) GW.SkinSearch(search)
     GW.SkinGlyph(nil) GW.SkinGlyph({}) GW.SkinDropdown("x") GW.SkinDropdown({}) GW.SkinSearch(false) GW.SkinSearch({}) GW.ShowTexture(nil) GW.ShowTexture({})
     return { glyph:GetNormalTexture():GetAlpha(), glyph:GetDisabledTexture():GetAlpha(), drop.Arrow:GetAlpha(), search.searchIcon:GetAlpha(),
-      ns.Theme.PaintedCount() > 0, #ns.errors, select(4, search.searchIcon:GetPoint()), ns.Theme.SPACE.gap }`);
-  expect(out, "pictures shown again after the theme faded the game's art; odd input skipped without an error; the magnifier a gap in from the left with the text after it").toEqual([1, 1, 1, 1, true, 0, 8, 8]);
+      ns.Theme.PaintedCount() > 0, #ns.errors, select(4, search.searchIcon:GetPoint()), ns.Theme.SPACE.gap, select(4, search.Instructions:GetPoint()), ns.Theme.SEARCH_INSET }`);
+  expect(out, "pictures shown again after the theme faded the game's art; odd input skipped without an error; the magnifier a gap in from the left with the text after it").toEqual([1, 1, 1, 1, true, 0, 8, 8, 28, 28]);
   expect(addon.eval('return { type(ns.GetModule("Windows").DressChecks), ns.GetModule("Windows").CHECK_DEPTH }'), "the check-box helpers live with the shared ones").toEqual(["function", 5]);
 });
 // TEST-ONLY trade window (TradeFrame.xml): the frame and its buttons, six wells, seven item rows a side (each with a
