@@ -1588,6 +1588,12 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: no error in `/vg errors`. This is the probe that issue #284 still needs.
 - If it fails, paste: `/vg errors`.
 
+### 33.39 Chat size and background
+
+- Do: with a fresh profile, look at the main chat window over a bright area (snow, desert) and over a dark one. Open `/vg` → Chat and cycle Chat background strength through Light, Medium and Dark, then untick Chat background. Look at the tabs and the Copy button.
+- Expect: the window is about 500 wide and 168 tall (a profile that already sized chat keeps its size). A soft dark patch sits behind the text and the tab row with edges that fade out (no hard border), the text reads over bright ground at Medium, and the strength follows the setting at once. Tab names show in full (General, not Gene…) and the Copy button sits above the tabs, not on them.
+- If it fails, paste: a screenshot over bright ground and `/vg errors`.
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ## When you are done
