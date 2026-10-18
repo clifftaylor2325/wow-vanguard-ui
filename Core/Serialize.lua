@@ -108,8 +108,9 @@ local function readAtom(text, pos)
     if text:sub(pos, pos + #word - 1) == word then return value, pos + #word end
   end
   local num = text:match("^-?%d+%.?%d*[eE]?[-+]?%d*", pos)
-  if not num or not tonumber(num) then error("unexpected input at " .. pos) end
-  return tonumber(num), pos + #num
+  local n = tonumber(num)
+  if not n or n ~= n or n == math.huge or n == -math.huge then error("unexpected input at " .. pos) end
+  return n, pos + #num
 end
 
 -- A key, or a value that isn't a table, at pos: value, next position.

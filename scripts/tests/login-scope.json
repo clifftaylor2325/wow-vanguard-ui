@@ -249,7 +249,8 @@
       "unit frame events",
       "unit frame health text settings apply at once",
       "unit frames",
-      "unit frames on WoW Forever: levels, health percent, classification"
+      "unit frames on WoW Forever: levels, health percent, classification",
+      "unit frames: a hidden percent text is handed on as it is, Dead wins over it, a plain percent still shows"
     ],
     "scripts/tests/unlock.test.mjs": [],
     "scripts/tests/upgrades.test.mjs": [],

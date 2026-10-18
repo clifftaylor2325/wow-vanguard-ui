@@ -33,9 +33,10 @@ it("/vg probe: one run opens a report with a section per question and reads each
   addon.world.setUnit("target", { name: "TEST-ONLY Wolf", hp: 100, maxhp: 100, reaction: 2 });
   addon.slash("probe");
   const text = reportText(addon);
-  for (const title of ["== Client", "== SavedVariables round trip", "== New-quest flag", "== Group listing", "== Secure paging", "== Realm and name format", "== C_Secrets predicates", "== Restrictions and lockdown", "== Navigation", "== Undocumented on Forever", "== Guide reads"]) {
+  for (const title of ["== Client", "== SavedVariables round trip", "== New-quest flag", "== Group listing", "== Secure paging", "== Realm and name format", "== Colour-blind mode CVars", "== C_Secrets predicates", "== Restrictions and lockdown", "== Navigation", "== Undocumented on Forever", "== Guide reads"]) {
     expect(text, title).toContain(title);
   }
+  expect(lineOf(text, "GetCVar(colorblindMode)"), "the colour-blind CVar is read and printed").toMatch(/present, /);
   expect(lineOf(text, "C_Secrets.ShouldUnitThreatValuesBeSecret(player,target)"), "a predicate prints its answer").toMatch(/present, boolean true/);
   expect(lineOf(text, "C_Secrets.ShouldUnitComparisonBeSecret"), "a predicate that errors says so and the run goes on").toMatch(/present, error .*TEST-ONLY predicate failure/);
   expect(lineOf(text, "C_Secrets.ShouldSpellAuraBeSecret"), "a predicate the client lacks is missing").toMatch(/missing/);

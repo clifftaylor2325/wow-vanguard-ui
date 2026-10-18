@@ -68,17 +68,29 @@ end
 -- The nine anchor points a saved position may name.
 local POINTS = { TOPLEFT = true, TOP = true, TOPRIGHT = true, LEFT = true, CENTER = true, RIGHT = true, BOTTOMLEFT = true, BOTTOM = true, BOTTOMRIGHT = true }
 
+-- The farthest a saved offset may put a frame from its anchor (UIParent units).
+ns.MAX_OFFSET = 5000
+
+-- An offset kept to a sane range: not a number (or NaN) reads as 0, anything else within +-ns.MAX_OFFSET.
+---@param v any
+---@return number
+function ns.SaneOffset(v)
+  v = tonumber(v)
+  if not v or v ~= v then return 0 end
+  return math.max(-ns.MAX_OFFSET, math.min(ns.MAX_OFFSET, v))
+end
+
 -- The point to use for a mover: where its link puts it (anchored to a frame
 -- that is there), saved (when it names a real point; offsets that aren't
--- numbers read as 0), else its default.
+-- numbers read as 0, and none is more than ns.MAX_OFFSET away), else its default.
 local function pointFor(m)
   local p = saved()[m.key]
   if type(p) == "table" and p.rel ~= nil then
     local point, relPoint, x, y = ns.MoverLinks.Point(m.key, p)
-    if point then return point, relPoint, x, y end
+    if point then return point, relPoint, ns.SaneOffset(x), ns.SaneOffset(y) end
   end
   if type(p) == "table" and POINTS[p.point] then
-    return p.point, POINTS[p.relPoint] and p.relPoint or p.point, tonumber(p.x) or 0, tonumber(p.y) or 0
+    return p.point, POINTS[p.relPoint] and p.relPoint or p.point, ns.SaneOffset(p.x), ns.SaneOffset(p.y)
   end
   return m.default[1], m.default[2], m.default[3], m.default[4]
 end
