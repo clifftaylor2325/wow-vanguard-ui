@@ -176,6 +176,7 @@
     "scripts/tests/profiles.test.mjs": [],
     "scripts/tests/questarrow.test.mjs": [],
     "scripts/tests/questguide.test.mjs": [],
+    "scripts/tests/questminimap.test.mjs": [],
     "scripts/tests/quests.test.mjs": [],
     "scripts/tests/raid.test.mjs": [
       "raid tools: a burst of roster events in combat queues one update of the bar, not one per event"
