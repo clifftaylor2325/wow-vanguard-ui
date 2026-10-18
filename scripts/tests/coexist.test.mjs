@@ -59,3 +59,12 @@ it("coexist: the button names the module as the Modules page does, else by its o
   addon.eval("ns.Options.MODULE_INFO.ClickCast = nil");
   expect(cardTexts(addon)[2], "the module's own name").toBe("Turn off ClickCast");
 });
+
+it("coexist: ElvUI and Tukui ask about the action bars, Auctionator and TradeSkillMaster about the Auction helper", () => {
+  const addon = loggedIn(CLICK_LUA + loadedEnv("ElvUI", "Tukui", "Auctionator", "TradeSkillMaster"));
+  addon.eval('ns.SetModuleEnabled("ActionBars", true)'); // the scoped login leaves the action bars off
+  const pending = addon.eval('local out = {} for i, o in ipairs(ns.GetModule("Coexist").Pending()) do out[i] = o.addon .. ">" .. o.module end return out');
+  expect(pending, "each by its folder name, sorted").toEqual(["Auctionator>AuctionHelper", "ElvUI>ActionBars", "TradeSkillMaster>AuctionHelper", "Tukui>ActionBars"]);
+  expect(cardTexts(addon).slice(1, 4), "the card says what both do and offers the module by its Modules page name").toEqual([
+    "Auctionator is loaded and also does auction house shopping and posting.", "Turn off " + addon.eval('return ns.Options.MODULE_INFO.AuctionHelper[1]'), "Keep both"]);
+});
