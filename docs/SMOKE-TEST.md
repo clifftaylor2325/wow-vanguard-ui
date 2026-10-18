@@ -36,7 +36,7 @@ What each part of the report answers (read the section title in the box):
 | C_Secrets predicates | Which of the 27 predicates exist, and what they say out of combat and in the fight |
 | Restrictions and lockdown | The six add-on restriction states and the chat lockdown flags |
 | Navigation | Does `C_Navigation` give a distance and a next waypoint for the quest arrow? |
-| Undocumented on Forever | The roll tracker's `C_LootHistory`, the craft queue's recipe and cooldown reads, and three new widget methods |
+| Undocumented on Forever | The roll tracker's old `C_LootHistory` reads (now replaced by the documented encounter calls), the craft queue's recipe and cooldown reads, and three new widget methods |
 
 The report is also saved in `WTF\Account\<account>\SavedVariables\Vanguard.lua` under `probe`, so it can be read from the file if the chat is lost.
 
@@ -1223,10 +1223,10 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 - Expect: a small panel appears at the left of the screen headed "Rolls 1-100" with each roll, highest first and the top one in your accent color; `/roll 1-6` starts a new round headed "Rolls 1-6" with its figures; 30 seconds after the last roll the panel goes. `/vg rolls` lists the session's rolls, newest first; clear says "Rolls forgotten." Move the panel with `/vg unlock`. [Needs in game: that the game's roll line (RANDOM_ROLL_RESULT) reaches the addon as a plain, readable system message in your language, also inside an instance.]
 - If it fails, paste: the roll line as it shows in chat, and `/vg errors`.
 
-### 19.2 Loot rolls (only where the client has the loot history)
+### 19.2 Loot rolls (only where the client keeps a loot history for the drop)
 
-- Do: type `/run print(C_LootHistory ~= nil, C_LootHistory and C_LootHistory.GetNumItems ~= nil)` and paste what it prints. If it prints `true true`, roll on an item in a group (Need, Greed or Pass) and watch the panel.
-- Expect: nothing happens on a client without it (no error). With it, under the roll lines the panel shows the item, "rolling" until it is done, and each member's choice and roll, the winner in your accent color. [Needs in game: whether Forever has C_LootHistory with GetNumItems, GetItem and GetPlayerInfo and the LOOT_HISTORY_* events, and the order of the values GetItem and GetPlayerInfo return.]
+- Do: type `/run print(C_LootHistory ~= nil, C_LootHistory and C_LootHistory.GetAllEncounterInfos ~= nil, C_LootHistory and C_LootHistory.GetSortedDropsForEncounter ~= nil)` and paste what it prints. If it prints `true true true`, roll on an item in a group (Need, Greed or Pass) in a dungeon and also from a world drop, and watch the panel.
+- Expect: nothing happens on a client without it (no error). With it, under the roll lines the panel shows the item, "rolling" until it has a winner or everyone passed, and each member's choice and roll, the winner in your accent color. [Needs in game: that the history holds a drop for a vanilla dungeon and for a world group roll (the Forever docs list C_LootHistory's encounter calls only; if a world roll leaves it empty, the loot half of the panel stays empty by design), what "winner" and "allPassed" look like while the roll runs, and the order of the drops.]
 - If it fails, paste: the `/run` line's output and `/vg errors`.
 
 ## 20. Craft queue
