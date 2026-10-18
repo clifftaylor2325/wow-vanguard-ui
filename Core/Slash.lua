@@ -67,7 +67,7 @@ local HELP = {
   "factionart           which of the game's own faction pictures this client has",
   "realm                your realm, ruleset and side as the client gives them, and the key your prices, sales and characters are kept under",
   "frame <name> [deep]  what the client says about a frame now: shown, alpha, scale, size, its rect (or none), anchors and its parents; deep adds its textures and child frames (for a frame that draws empty)",
-  "errors [clear]       the errors Vanguard caught this session, with stacks and counts (for a bug report); clear empties the list",
+  "errors [clear]       opens the errors Vanguard caught this session, with stacks and counts, in the copy window (for a bug report); clear empties the list",
   "report               one block to copy for a bug report: what /vg status and /vg errors say, ready to paste at vanguardui.com/feedback",
   "feedback [bug|feature]   a bug report or feature request written here: the questions vanguardui.com/feedback asks, then one block to paste there (it fills the form)",
   "gaps [add <item>|remove <item>|spell add <spell>|spell remove <spell>|clear]   Cooldown gaps (switch it on under Combat tools): choose items such as a Healthstone or potion, and spells, to show beside trinkets, pet abilities and totems; no verb lists them",
@@ -488,20 +488,32 @@ local function occurrences()
   return n
 end
 
--- One caught error: its text and count, then each line of its stack, indented.
-local function printError(e)
-  chat(string.format("%s  (x%d)", e.text, e.count))
-  for line in e.stack:gmatch("[^\n]+") do chat("    " .. line) end
+-- Text without the game's color codes (|cAARRGGBB and |r), which a pasted report can't use.
+local function plain(text)
+  return (tostring(text):gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", ""))
 end
 
--- /vg errors [clear]: the errors Vanguard caught this session, newest last, with
--- the version, client and aura backend a bug report needs; clear empties the list.
+-- One caught error: its text and count, then each line of its stack, indented.
+local function errorBlock(e)
+  local out = { string.format("%s  (x%d)", e.text, e.count) }
+  for line in tostring(e.stack):gmatch("[^\n]+") do out[#out + 1] = "    " .. line end
+  return table.concat(out, "\n")
+end
+
+-- The /vg errors text: the version line, the client line, then each caught error with its stack.
+local function errorsText()
+  local lines = { string.format("Vanguard %s  ·  interface %s  ·  %d error(s) caught this session (%d in all), newest last:", version(), interfaceText(), #ns.errors, occurrences()), clientLine() }
+  for _, e in ipairs(ns.errors) do lines[#lines + 1] = errorBlock(e) end
+  return plain(table.concat(lines, "\n"))
+end
+
+-- /vg errors [clear]: the errors Vanguard caught this session, newest last, in the
+-- copy window with the version, client and aura backend a bug report needs; clear empties the list.
 local function errorsCommand(rest)
   if rest == "clear" then ns.ClearErrors() return chat("Cleared.") end
   if #ns.errors == 0 then return chat("No errors caught this session.") end
-  chat(string.format("Vanguard %s  ·  interface %s  ·  %d error(s) caught this session (%d in all), newest last:", version(), interfaceText(), #ns.errors, occurrences()))
-  chat(clientLine())
-  for _, e in ipairs(ns.errors) do printError(e) end
+  chat(string.format("%d error(s), opened in the copy window.", #ns.errors))
+  ns.ShowText("Vanguard errors: Ctrl+C to copy", errorsText())
 end
 
 -- /vg report ----------------------------------------------------------------------------
@@ -510,11 +522,6 @@ end
 local REPORT_MAX = 8000
 -- The most stack lines a report keeps for one error.
 local REPORT_STACK = 8
-
--- Text without the game's color codes (|cAARRGGBB and |r), which a pasted report can't use.
-local function plain(text)
-  return (tostring(text):gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", ""))
-end
 
 -- The modules turned off, by name ("none" when every one is on).
 local function modulesOff()
