@@ -30,6 +30,8 @@ button:SetScript("OnClick", ns.Guard("click sell", MC.Sell))
 frame:HookScript("OnShow", ns.Guard("show window", GW.Light))
 ```
 
+A callback the game reads a result from (a chat filter) uses `ns.GuardResult(where, fn, fallback)` instead: it hands back `fn`'s results, or `fallback` (`false` for a chat filter, so the line goes through) when `fn` fails. Callbacks the game calls from its own code (`ChatFrame_AddMessageEventFilter`, `TooltipDataProcessor.AddTooltipPostCall`, `EventRegistry:RegisterCallback`) are guarded the same way as hooks.
+
 `ns.Guard(where, fn)` runs `fn` under `ns.Try`, so a failure is kept for `/vg errors`, printed once, and handed to the game's error handler, and the other callbacks still run. The `where` text is the site name a tester will paste. Event handlers through `ns.On` are guarded already.
 
 ## State for a game frame

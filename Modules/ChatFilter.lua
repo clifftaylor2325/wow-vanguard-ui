@@ -285,8 +285,9 @@ function CF.Enable(settings)
   CF.settings, CF.active = settings, true
   if CF.registered then return CF.Prepare() end
   CF.registered = true
-  for _, event in ipairs(CF.EVENTS) do ChatFrame_AddMessageEventFilter(event, CF.Filter) end
+  local guarded = ns.GuardResult("chat filter", CF.Filter, false)
+  for _, event in ipairs(CF.EVENTS) do ChatFrame_AddMessageEventFilter(event, guarded) end
   local registry = _G.EventRegistry
-  if type(registry) == "table" and type(registry.RegisterCallback) == "function" then registry:RegisterCallback("SetItemRef", CF.OnLink, CF) end
+  if type(registry) == "table" and type(registry.RegisterCallback) == "function" then registry:RegisterCallback("SetItemRef", ns.Guard("chat filter link click", CF.OnLink), CF) end
   ns.On("PLAYER_ENTERING_WORLD", CF.Prepare)
 end

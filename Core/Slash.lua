@@ -200,6 +200,7 @@ end
 -- /vg cdmglow [on|off|<percent>]: the Cooldown Manager refresh-window glow (#252), at once.
 local function cdmGlowCommand(rest)
   local CG = ns.GetModule("CooldownGlow")
+  if not CG.settings then return chat("Cooldown glow is off: turn the module on in the options first.") end
   local percent = tonumber(rest)
   if percent then CG.settings.percent = math.min(60, math.max(10, math.floor(percent))) end
   CG.settings.glow = percent ~= nil or rest == "on" or (rest == "" and not CG.settings.glow)

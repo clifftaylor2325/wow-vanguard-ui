@@ -86,6 +86,14 @@ it("item tooltips show what the stack sells for, unless the client already does"
   expect(old.eval('return __showItem("item:90001", 2)[1].text'), "a client without the tooltip data API: the old script").toBe("Sells for 0s 50c");
 });
 
+it("a tooltip post-call that fails is reported and does not reach the game's tooltip code", () => {
+  const addon = loggedIn(UNITS_ENV + TOOLTIP_ENV + ITEM_TIP_ENV);
+  addon.eval("GameTooltip.GetItem = function() error('TEST-ONLY item', 0) end");
+  expect(() => addon.eval("__post[0](GameTooltip)"), "the post-call returns normally").not.toThrow();
+  expect(() => addon.eval("GameTooltip.GetUnit = function() error('TEST-ONLY unit', 0) end __post[2](GameTooltip)"), "so does the unit one").not.toThrow();
+  expectErrors("tooltip Item: TEST-ONLY item", "tooltip Unit: TEST-ONLY unit");
+});
+
 it("item tooltips: other modules' lines come after the tooltip's own, and one that fails doesn't stop the rest", () => {
   expectErrors(/^tooltip lines: eval:\d+: TEST-ONLY broken line$/);
   const addon = loggedIn(UNITS_ENV + TOOLTIP_ENV + ITEM_TIP_ENV);

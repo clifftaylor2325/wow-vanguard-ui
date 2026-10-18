@@ -207,6 +207,7 @@ end
 
 -- Calls fn after the client fills a tooltip of one kind (new data API, else the old script).
 local function hookFilled(kind, script, fn)
+  fn = ns.Guard("tooltip " .. kind, fn)
   local processor, kinds = _G.TooltipDataProcessor, _G.Enum and _G.Enum.TooltipDataType
   if type(processor) == "table" and processor.AddTooltipPostCall and kinds and kinds[kind] then
     return processor.AddTooltipPostCall(kinds[kind], fn)
