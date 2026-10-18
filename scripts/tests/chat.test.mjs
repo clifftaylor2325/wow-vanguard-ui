@@ -150,12 +150,27 @@ it("chat side buttons: module off leaves the game's art; a client without text t
   const bare = loggedIn(UI_ENV + CHAT_BUTTONS_ENV + "TextToSpeechButtonFrame = nil TextToSpeechButton = nil QuickJoinToastButton = nil ChatFrame1.ScrollToBottomButton = nil");
   expect(bare.eval("return __buttonLook(ChatFrameMenuButton, ns.Theme.WHITE)[5]"), "the buttons this client has are still skinned").toBe("NavChat");
 });
+it("chat backdrop: a soft patch behind text and tabs, three strengths, tabs fit their labels, Copy clears the tab row", () => {
+  const addon = loggedIn(UI_ENV);
+  // The main window's backdrop: fill alpha, ring piece count, first piece's alpha.
+  const look = () => addon.eval("local b = ns.GetModule('Chat').backgrounds[ChatFrame1] return { b.look.fill.alpha, #b.look.ring, b.look.ring[1]:GetAlpha() }");
+  expect(look().slice(0, 1), "Medium by default").toEqual([0.7]);
+  expect(look()[2], "the soft edge follows the strength").toBe(0.7);
+  addon.eval("ns.GetModule('Chat').settings.backdrop = 0.45 ns.GetModule('Chat').Refresh()");
+  expect(look()[0], "Light").toBe(0.45);
+  addon.eval("ns.GetModule('Chat').settings.backdrop = 0.123 ns.GetModule('Chat').Refresh()");
+  expect(look()[0], "an unknown saved value falls back to Medium").toBe(0.7);
+  expect(addon.eval("return ChatFrame1Tab.Text:GetStringWidth() + 24 == ChatFrame1Tab:GetWidth()"), "a tab is as wide as its label plus padding").toBe(true);
+  expect(addon.eval("local _, _, _, _, y = ns.GetModule('ChatExtras').copyButton:GetPoint() return y == ChatFrame1Tab:GetHeight() + 4"), "the Copy button sits above the tab row").toBe(true);
+  const off = loggedIn(UI_ENV, { savedVariables: "VanguardDB.profiles = { Default = { Chat = { background = false } } }" });
+  expect(off.eval("return next(ns.GetModule('Chat').backgrounds)"), "background off paints no backdrop").toBe(null);
+});
 it("chat is a mover: placed once, sized once, kept where the player put it", () => {
   const addon = loggedIn(UI_ENV + TIDY_ENV);
   // Chat's anchor point, offsets and size.
   const spot = () => addon.eval("local p = ChatFrame1.__points local k, v = next(p) return { k, v.x, v.y, ChatFrame1:GetWidth(), ChatFrame1:GetHeight() }");
   expect(addon.eval("local out = {} for _, m in ipairs(ns.MoverList()) do out[#out + 1] = m.key .. '=' .. m.label end return out").includes("chat=Chat"), "chat is in the unlock list").toBe(true);
-  expect(spot(), "first login: bottom-left, 420 x 140").toEqual(["BOTTOMLEFT", 16, 20, 420, 140]);
+  expect(spot(), "first login: bottom-left, 500 x 168").toEqual(["BOTTOMLEFT", 16, 20, 500, 168]);
   addon.eval('ns.SetMoverPoint("chat", "TOPLEFT", "TOPLEFT", 100, -50)');
   expect(spot().slice(0, 3), "dragging it in /vg unlock moves the window").toEqual(["TOPLEFT", 100, -50]);
   addon.eval('ChatFrame1:ClearAllPoints() ChatFrame1:SetPoint("CENTER")');
