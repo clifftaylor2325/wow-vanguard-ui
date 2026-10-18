@@ -1308,6 +1308,12 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 - Expect: High contrast shows opaque near-black windows, white text, no light line under window tops, brighter green, orange and red states, blue/yellow/vermilion reactions, and a 2-pixel accent edge on inputs and accent-bordered frames. Vellum and ink shows warm dark windows with cream text and your accent unchanged. Classic look shows dark leather windows with a bronze border, gold-cream text and the brass rule and corner brackets without `/vg ornaments`. Midnight is navy-black with ice-blue text, Obsidian neutral charcoal with a grey border, Moss dark green with sage text, Ash and ember smoky grey with a rust border. On every look, the dark text on a selected (accent-filled) choice segment is crisp with no shadow behind it, and every segment is wide enough for its label. Everything repaints without a reload; text stays readable on every window; `/vg errors` stays empty. [Needs in game: that windows the game draws (not Vanguard's) look right; a saved panel colour is overridden while a variant is on.]
 - If it fails, paste: a screenshot of the window that looks wrong with the variant name, and `/vg errors`.
 
+### 26.1a Round minimap
+
+- Do: open `/vg` → Map → Minimap and waypoints and set **Minimap shape (reload)** to Round, then `/reload`. Look at the minimap: the zone name, the coordinates, the tracking, mail, difficulty, group finder and addon buttons, zoom with the wheel, click the zone name, drag it with `/vg unlock`. Then set Square and Follow the theme with Theme variant on Classic look, `/reload` each time.
+- Expect: Round shows the map as a disc with an outline on its edge, the top and bottom bands cut to the disc, no corner diamonds, and the game's buttons on the rim at the corners' angles, not cut off or over the coordinates; a long zone name is cut short (hover shows it whole) and other addons' minimap icons sit round the rim. Square is the old square map. Follow the theme is round only on Classic look. No `/vg errors`. [Needs in game: that the disc mask, the outline and the rim buttons line up at 1080p and 1440p.]
+- If it fails, paste: a screenshot of the minimap with its setting and variant, and `/vg errors`.
+
 ### 26.2 Rounded corners
 
 - Do: open `/vg` → General → Look and set **Corners** to Rounded (or `/vg corners rounded`); open the options window, bags, the quest log, a unit frame, a tooltip and a few buttons; hover a button; try it on Slate and brass, High contrast and Midnight; then set it back to Square.

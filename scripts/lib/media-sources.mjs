@@ -130,6 +130,16 @@ function knob(ring) {
   });
 }
 
+// A round minimap's disc on a 256 px canvas (radius 127, so a clear pixel stays inside the edge): the map's mask, its
+// backing and the mask on the bands that cross it. With `ring` set (texels) it is only the outline, that wide.
+function disc(ring) {
+  return fill(image(256, 256), (x, y) => {
+    const d = Math.hypot(x + 0.5 - 128, y + 0.5 - 128);
+    const inner = ring ? clamp01(127 - ring - d + 0.5) : 0;
+    return [1, 1, 1, clamp01(127 - d + 0.5) - inner];
+  });
+}
+
 // The knob's shade: the crescent under its lit top-left edge, a white disc less one shifted up and left, so the
 // theme's shade color darkens the lower right of the knob.
 function knobShade() {
@@ -157,6 +167,10 @@ export const TEXTURES = {
   Knob: () => knob(0),
   KnobLine: () => knob(3),
   KnobShade: knobShade,
+  // A round minimap (the Minimap shape setting): the disc, which masks and backs the map, and its outline (3 texels is
+  // about two pixels on a 180-unit map).
+  RoundDisc: () => disc(0),
+  RoundRing: () => disc(3),
   // A small filled diamond (minimap corners, the assist mark), on a 16-unit grid.
   Diamond: () => draw(image(16, 16), 16, [poly([[8, 1], [15, 8], [8, 15], [1, 8]])]),
   // Shadow (filled) and glow (hollow) share the soft falloff.
