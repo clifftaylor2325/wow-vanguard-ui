@@ -1747,8 +1747,11 @@ function T.Capsule(frame, height, tier, opts)
   return capsule
 end
 
+-- Check button and radio painting: only checkOf and hookShown are used outside this block.
+local checkOf, hookShown
+do
 -- Each themed check button's parts (weak): { box = the inset panel, fill = its checked fill, mark = the glyph }.
-local checkOf = setmetatable({}, { __mode = "k" })
+checkOf = setmetatable({}, { __mode = "k" })
 
 -- A check button's themed parts, { box, fill, mark }, or nil for one T.CheckBox never painted.
 function T.CheckParts(button) return checkOf[button] end
@@ -1802,7 +1805,7 @@ local function hoverCheck(button, over)
 end
 
 -- Runs fn (guarded as `where`) after each of a region's show calls (Show, Hide, SetShown), as the game makes them.
-local function hookShown(region, where, fn)
+function hookShown(region, where, fn)
   if type(hooksecurefunc) ~= "function" then return end
   for _, method in ipairs({ "Show", "Hide", "SetShown" }) do hooksecurefunc(region, method, ns.Guard(where, fn)) end
 end
@@ -1902,6 +1905,7 @@ function T.Radio(button)
   T.FadeRegions(button)
   r.paint(button, r)
   return button
+end
 end
 
 -- A divider's look: one screen pixel of this colour, over the game's faded divider art.
@@ -2153,6 +2157,8 @@ T.TAB_ART = {
   "SquareBackground", "SquareBackgroundActive", "SquareBackgroundActiveGlow",
 }
 
+-- Tab, row and scroll bar painting: nothing in this block is used outside it (Lua allows 200 top-level locals).
+do
 -- Whether a game tab is the selected one: a tab system's flag, the checked state a
 -- side tab was last given, else disabled (the game selects a panel tab by disabling it).
 local function tabSelected(button)
@@ -2442,6 +2448,7 @@ function T.ScrollBar(bar)
   fadePart(thumb, { [thumbBar(thumb)] = true })
   for _, key in ipairs(SCROLL_ARROWS) do if type(bar[key]) == "table" then fadeArrow(bar[key]) end end
   return bar
+end
 end
 
 -- The game's font objects Vanguard sets: name -> { size before Text size, bold }.
@@ -2744,6 +2751,8 @@ end
 
 -- Motion and sound --------------------------------------------------------------------
 
+-- Motion: fades, rises and glides keep their state here (Lua allows 200 top-level locals).
+do
 -- A frame's (or texture's) alpha animation (made once, eased out: fast, then settling), or
 -- false when the client can't animate it.
 local function fader(frame)
@@ -2937,6 +2946,7 @@ function T.StopFade(frame)
   local f = vgFader[frame]
   if f then f.group:SetScript("OnFinished", nil) f.group:Stop() end
   frame:SetAlpha(1)
+end
 end
 
 -- Interface sounds by use -> the client's SOUNDKIT name.
