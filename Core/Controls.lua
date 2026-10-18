@@ -206,7 +206,7 @@ local function segmentWidth(s)
   return math.max(44, math.ceil(s.text:GetStringWidth()) + 16)
 end
 
--- Sizes the segments to their labels and lays them right to left along the row's right edge.
+-- Sizes the segments to their labels and lays them right to left along the row's right edge, T.SPACE.tight apart.
 local function layoutSegments(r)
   local x = -8
   for i = #r.segments, 1, -1 do
@@ -214,7 +214,7 @@ local function layoutSegments(r)
     s:SetWidth(segmentWidth(s))
     s:ClearAllPoints()
     s:SetPoint("RIGHT", x, 0)
-    x = x - s:GetWidth() + 1
+    x = x - s:GetWidth() - T.SPACE.tight
   end
 end
 
