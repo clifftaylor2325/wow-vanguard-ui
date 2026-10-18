@@ -1435,8 +1435,8 @@ T.CONTROL_H, T.BUTTON_H = 20, 26
 T.SPACE = { tight = 4, gap = 8, col = 12, pad = 16, section = 24 }
 -- Panel opacity by tier: opaque for the options window, the quest log and a skinned game window; dialog
 -- for a dialog, setup, What's new and anything with an edit box; overlay for tooltips and cards (the panel
--- token's own alpha); alert for an alert.
-T.ALPHA = { opaque = 1, dialog = 0.98, overlay = 0.94, alert = 0.92 }
+-- token's own alpha); alert for an alert; calm for the Calm HUD's unit frames out of combat.
+T.ALPHA = { opaque = 1, dialog = 0.98, overlay = 0.94, alert = 0.92, calm = 0.35 }
 -- A list row (W.Row, T.Row): how tall (units).
 T.ROW = { height = 28 }
 -- The one selected look (docs/THEME.md, "Materials and states"): an accent rail down a row's left edge,

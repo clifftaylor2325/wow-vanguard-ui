@@ -35,10 +35,11 @@ SI.LIVE = {
   MenuStrip = { keys = { "menu", "menuWhen" }, apply = { "ApplyVisibility" } },
   DataBars = { keys = { "visibility", "showWhen" }, apply = { "ApplyVisibility" } },
   Nameplates = { keys = { "level", "threat", "targetBorder", "questMarks" }, apply = { "RefreshAll" } },
+  UnitFrames = { keys = { "calm" }, apply = { "ApplyCalm" } },
 }
 -- The live modules in the order the status line names them, and the names it uses.
-SI.ORDER = { "InfoStrip", "MenuStrip", "DataBars", "Nameplates" }
-SI.MODULE_LABELS = { InfoStrip = "info strip", MenuStrip = "menu bar", DataBars = "XP bars", Nameplates = "nameplates" }
+SI.ORDER = { "InfoStrip", "MenuStrip", "DataBars", "Nameplates", "UnitFrames" }
+SI.MODULE_LABELS = { InfoStrip = "info strip", MenuStrip = "menu bar", DataBars = "XP bars", Nameplates = "nameplates", UnitFrames = "unit frames" }
 -- The events after which you may be somewhere else.
 SI.EVENTS = { "GROUP_ROSTER_UPDATE", "PLAYER_ENTERING_WORLD", "ZONE_CHANGED_NEW_AREA", "PLAYER_UPDATE_RESTING" }
 
@@ -468,6 +469,7 @@ SI.HOLDS = {
   MenuStrip = "Menu bar: when it shows.",
   DataBars = "XP bars: when they show.",
   Nameplates = "Nameplates: levels, threat colors, target border and quest marks.",
+  UnitFrames = "Unit frames: the Calm HUD.",
 }
 -- What the page says about every other setting.
 SI.ELSEWHERE = "Everything else, including any setting that needs a reload, changes your base profile even while recording. While recording, most of them are dimmed and say so when you point at them."
