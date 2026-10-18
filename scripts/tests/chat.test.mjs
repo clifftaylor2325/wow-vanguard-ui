@@ -695,8 +695,8 @@ it("R2.4 shared skin helpers: a glyph keeps its picture, a dropdown its arrow, a
     GW.SkinGlyph(glyph) GW.SkinDropdown(drop) GW.SkinSearch(search)
     GW.SkinGlyph(nil) GW.SkinGlyph({}) GW.SkinDropdown("x") GW.SkinDropdown({}) GW.SkinSearch(false) GW.SkinSearch({}) GW.ShowTexture(nil) GW.ShowTexture({})
     return { glyph:GetNormalTexture():GetAlpha(), glyph:GetDisabledTexture():GetAlpha(), drop.Arrow:GetAlpha(), search.searchIcon:GetAlpha(),
-      ns.Theme.PaintedCount() > 0, #ns.errors }`);
-  expect(out, "pictures shown again after the theme faded the game's art; odd input skipped without an error").toEqual([1, 1, 1, 1, true, 0]);
+      ns.Theme.PaintedCount() > 0, #ns.errors, select(4, search.searchIcon:GetPoint()), ns.Theme.SPACE.gap }`);
+  expect(out, "pictures shown again after the theme faded the game's art; odd input skipped without an error; the magnifier a gap in from the left with the text after it").toEqual([1, 1, 1, 1, true, 0, 8, 8]);
   expect(addon.eval('return { type(ns.GetModule("Windows").DressChecks), ns.GetModule("Windows").CHECK_DEPTH }'), "the check-box helpers live with the shared ones").toEqual(["function", 5]);
 });
 // TEST-ONLY trade window (TradeFrame.xml): the frame and its buttons, six wells, seven item rows a side (each with a
