@@ -317,6 +317,7 @@ O.MODULE_INFO = {
   Tooltips = { "Tooltips", "Themed tooltips in a movable corner." },
   Inventory = { "Inventory", "Remembers your characters' bags and bank; item tooltips say who else has the item." },
   Upgrades = { "Gear upgrades", "Compares gear with what you wear by stat weights for your class and role: a tooltip line, arrows in the bag and on quest rewards, and the auction house's Upgrades list." },
+  PetStable = { "Pet stable", "/vg pets lists your pets with level, loyalty, happiness and progress, and a stable master's window says how many you have and what the next slot costs." },
   SpellRanks = { "Spell ranks", "Notices older spell ranks on your bars and swaps them when you ask; remembers what trainers teach and at what level (both off until switched on)." },
   VendorMemory = { "Vendor memory", "Remembers what each merchant sells; tooltips and the stock list say where to buy." },
   AuctionHelper = { "Auction helper", "Shopping lists with Deals and Upgrades, a sell card that suggests an undercut and posts, prices in tooltips from your scans, and an undercut check on your auctions." },

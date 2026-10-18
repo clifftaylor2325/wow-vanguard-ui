@@ -146,6 +146,7 @@
       "options window",
       "text that fits: chat size, tooltip fonts, the status line, name width"
     ],
+    "scripts/tests/petstable.test.mjs": [],
     "scripts/tests/platebuffs.test.mjs": [],
     "scripts/tests/platepaint.test.mjs": [],
     "scripts/tests/plates.test.mjs": [],

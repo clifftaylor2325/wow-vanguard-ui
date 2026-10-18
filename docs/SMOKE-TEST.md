@@ -1217,6 +1217,12 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 
 ## 19. Roll tracker
 
+### 19.0a Pet stable
+
+- Do: on a hunter with a pet out and one stabled, type `/vg pets`; then talk to a stable master. Run `/vg errors`.
+- Expect: `/vg pets` prints "Your pets:" and a line per pet, such as "Rex, level 12 Cat · Loyal · happy · 35% to next level (out)", the pet that is out first; at the stable master one chat line says "Stable: 2 pets (/vg pets lists them)." and the next slot's price (unobserved: the field meanings come from the API docs). On a character with no pets, `/vg pets` says there are none. Turn the line off under Town and gear → Pet stable.
+- If it fails, paste: the `/vg pets` output, the stable master's window and `/vg errors`.
+
 ### 19.1 /roll results
 
 - Do: in a group (or alone), type `/roll`, then `/roll 1-6`. Ask a group member to `/roll` too. Wait 35 seconds. Type `/vg rolls`, then `/vg rolls clear`.
