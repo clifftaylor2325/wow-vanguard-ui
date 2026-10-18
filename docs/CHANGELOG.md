@@ -22,6 +22,7 @@ Nothing in this release has been checked in the game; see the batch checklist (i
 - Gold selling, boosting, recruiting and repeated lines go to a Filtered tab instead of your chat.
 - A choice of chat window size, a bigger default window, a softer backdrop and readable tabs.
 - Chat has a Find button and Find in chat over the open windows and saved history, and the Chat page lets you pick, make, rename and close tabs and choose what each shows, plus window size, lock and floating windows.
+- Chat tabs wear the theme's tab look and the alert glow takes the accent colour.
 
 ### Bags and town
 
@@ -68,6 +69,8 @@ Nothing in this release has been checked in the game; see the batch checklist (i
 - When another addon (EllesmereUI's unit frame, action bar, nameplate and raid frame addons) does a job a Vanguard module does, chat says so once.
 - Chat filters skip hidden text, saved-click-cast Import checks the whole string first, and a Quiet module can silence invite declines, battleground release, error and zone text and camera zoom.
 - Vanguard asks about ElvUI, Tukui, Auctionator and TradeSkillMaster when they do the same job.
+- The Vanguard meter gains each line's share of the total, kinds and segments, a spell panel, a chat report, a death recap link on the Deaths view, Report and Reset buttons and a width setting.
+- Slash and auction input is parsed more strictly, a stuck window drag ends cleanly, and a Forever build is recognised through the game's ruleset call.
 
 ## 0.6.0
 
