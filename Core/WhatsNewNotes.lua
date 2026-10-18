@@ -53,6 +53,9 @@ ns.WHATS_NEW = {
     { label = "Moving frames", items = {
       { text = "A frame can be anchored to another frame, and a bar can match another frame's width or height. Exit without saving puts everything back as it was." },
     } },
+    { module = "QuestHistory", label = "Quest history", items = {
+      { text = "Your quest windows remember, for the whole account, which character turned in each quest: \"Done on Thrall-Forever · 3 days ago\" under the quest in the dialog and the log, and /vg quests history lists the latest turn-ins.", page = "quests", row = "Remember which character finished each quest (\"Done on Thrall-Realm\")" },
+    } },
     { module = "QuestGuide", label = "Quest guidance", items = {
       { text = "Quest-start pins on the world map, from the game's own quest data. Shift-click a quest in the tracker to point the arrow at its next step.", page = "quests", row = "Quest-start pins on the world map" },
     } },

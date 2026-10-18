@@ -131,6 +131,7 @@ Modules/QuestTracker.lua
 Modules/QuestTrackerView.lua
 Modules/QuestLog.lua
 Modules/QuestLogView.lua
+Modules/QuestHistory.lua
 Modules/QuestGuide.lua
 Modules/QuestGuideMap.lua
 Modules/QuestArrow.lua

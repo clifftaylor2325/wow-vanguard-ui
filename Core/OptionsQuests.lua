@@ -20,6 +20,14 @@ local function questRows()
   }
 end
 
+-- Quest history: which character finished each quest.
+local function questHistoryRows()
+  return {
+    { "header", "Quest history" },
+    check("Remember which character finished each quest (\"Done on Thrall-Realm\")", setting("QuestHistory", "track")),
+  }
+end
+
 -- Quest automation (each off until switched on).
 local function questAutoRows()
   return {
@@ -29,4 +37,4 @@ local function questAutoRows()
   }
 end
 
-O.AddPage({ key = "quests", title = "Quests", icon = "NavQuests", order = 70, rows = function() return append(questRows(), questAutoRows()) end })
+O.AddPage({ key = "quests", title = "Quests", icon = "NavQuests", order = 70, rows = function() return append(append(questRows(), questHistoryRows()), questAutoRows()) end })

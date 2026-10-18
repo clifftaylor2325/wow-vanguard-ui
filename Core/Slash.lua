@@ -38,7 +38,7 @@ local HELP = {
   "situation [record <name>|stop|clear [name]|list]   Situations: record a layout and settings for solo, party, raid, pvp, instance or resting",
   "watch [add|remove <phrase>|list|clear]   Chat watch: phrases that ring a sound and show a toast when said in chat",
   "filter [on|off|tab|hide|add|remove <word>|clear]   Chat filter: gold selling, boosting, recruiting and repeat lines go to a Filtered tab (or are hidden)",
-  "quests               open or close Vanguard's quest log (the game's quest log key does too)",
+  "quests [history [n]] open or close Vanguard's quest log (the game's quest log key does too); history lists the latest quests any of your characters turned in",
   "guide probe         what this client returns for the reads a levelling guide would use (chat only; changes nothing)",
   "questdata [questID]  what the client says about a quest (or the quests an open NPC offers and those you track), and whether it flags quests new in WoW Forever",
   "lfg [probe]          open or close the group board: looking-for-more and looking-for-group posts from chat by dungeon, role and level; probe says what chat it has heard",
@@ -624,6 +624,13 @@ local function merchantCommand(method)
   end
 end
 
+-- /vg quests [history [n]]: the quest log, or the latest turn-ins of all your characters (Modules/QuestHistory.lua).
+local function questsCommand(rest)
+  if rest:lower():match("^history") then return ns.GetModule("QuestHistory").Command(rest) end
+  local QL = ns.GetModule("QuestLog")
+  if QL.frame then QL.Toggle() else chat("Vanguard's quest log is off (/vg > Quests).") end
+end
+
 local COMMANDS = {
   -- /vg help
   help = function() printLines(HELP) end,
@@ -667,7 +674,7 @@ local COMMANDS = {
   preview = function(rest) ns.RaidPreview.Command(rest) end,
   keybind = function() ns.GetModule("ActionBars").ToggleKeybindMode() end,
   copy = function() ns.GetModule("ChatExtras").ShowCopy() end,
-  quests = function() local QL = ns.GetModule("QuestLog") if QL.frame then QL.Toggle() else ns.Chat("Vanguard's quest log is off (/vg > Quests).") end end,
+  quests = questsCommand,
   plates = function(rest) ns.GetModule("Nameplates").Command(rest) end,
   stock = stockCommand,
   junk = merchantCommand("JunkCommand"),

@@ -1,0 +1,143 @@
+-- Quest history: which of your characters turned in each quest, remembered for the
+-- whole account from the client's own QUEST_TURNED_IN, so a quest's text can say
+-- "Done on Thrall-Forever · 3 days ago" in Vanguard's quest dialog and quest log,
+-- and /vg quests history [n] lists the latest turn-ins. Only the latest turn-in
+-- of each quest is kept (a repeatable quest overwrites its own entry), up to
+-- QH.MAX_QUESTS quests. Nothing is read in combat that could be hidden: an id or
+-- a name the client hides is skipped.
+
+local ADDON, ns = ...
+
+local T = ns.Theme
+
+local QH = ns.Module("QuestHistory", { defaults = { track = true } })
+
+-- Quests kept, and the share of them a prune keeps (1000 -> 900); seconds in a day.
+QH.MAX_QUESTS, QH.KEEP, QH.DAY = 1000, 0.9, 86400
+-- How many turn-ins /vg quests history lists by default, and at most.
+QH.LIST, QH.LIST_MAX = 10, 25
+
+-- The store ----------------------------------------------------------------------------------
+
+-- The account-wide store: VanguardDB.questHistory = { quests = { [questID] = { who, class, t, title } }, count = quests }.
+function QH.Store()
+  VanguardDB.questHistory = ns.Fill(type(VanguardDB.questHistory) == "table" and VanguardDB.questHistory or {}, { quests = {}, count = 0 })
+  return VanguardDB.questHistory
+end
+
+-- Whether history is on (Quests page); false before the module is enabled.
+function QH.On()
+  return QH.settings ~= nil and QH.settings.track == true
+end
+
+-- The text if it is a plain, non-empty string; nil otherwise.
+local function plainText(text)
+  if ns.IsSecret(text) or type(text) ~= "string" or text == "" then return nil end
+  return text
+end
+
+-- This character as "Name-Realm" and its class file, or nil when the client hides the name.
+function QH.Me()
+  local name = plainText(UnitName("player"))
+  if not name then return nil end
+  local _, class = UnitClass("player")
+  return name .. "-" .. ns.Home.Realm(), plainText(class)
+end
+
+-- The quest's title if the client knows it now, else nil.
+local function titleOf(id)
+  local api = type(C_QuestLog) == "table" and C_QuestLog.GetTitleForQuestID
+  return type(api) == "function" and plainText(api(id)) or nil
+end
+
+-- The wall clock in seconds (0 when the client can't say).
+local function now()
+  return type(_G.time) == "function" and ns.PlainNumber(_G.time()) or 0
+end
+
+-- Recording -----------------------------------------------------------------------------------
+
+-- Forgets the quests turned in longest ago, down to QH.KEEP of QH.MAX_QUESTS.
+function QH.Prune()
+  local store, ids = QH.Store(), {}
+  for id, rec in pairs(store.quests) do ids[#ids + 1] = { id, rec.t or 0 } end
+  table.sort(ids, function(a, b) return a[2] > b[2] end)
+  local keep = math.floor(QH.MAX_QUESTS * QH.KEEP)
+  for k = keep + 1, #ids do store.quests[ids[k][1]] = nil end
+  store.count = math.min(#ids, keep)
+end
+
+-- Notes that this character turned questID in now (replacing the quest's older entry).
+function QH.Record(questID)
+  local store, who, class = QH.Store(), QH.Me()
+  if not who then return end
+  if not store.quests[questID] then store.count = store.count + 1 end
+  store.quests[questID] = { who = who, class = class, t = now(), title = titleOf(questID) }
+  if store.count > QH.MAX_QUESTS then QH.Prune() end
+end
+
+-- QUEST_TURNED_IN: the first argument after the event is the quest's id; anything but a plain number is ignored.
+function QH.OnTurnedIn(_, questID)
+  local id = ns.PlainNumber(questID)
+  if id and QH.On() then QH.Record(id) end
+end
+
+-- Showing -------------------------------------------------------------------------------------
+
+-- How long ago a time was: "today", "yesterday", "3 days ago".
+function QH.Ago(t)
+  local days = math.floor(now() / QH.DAY) - math.floor((t or 0) / QH.DAY)
+  if days < 1 then return "today" end
+  return days == 1 and "yesterday" or days .. " days ago"
+end
+
+-- The quest's entry, or nil (none, or history is off).
+function QH.Get(questID)
+  local rec = QH.On() and questID and QH.Store().quests[questID]
+  if type(rec) == "table" and rec.who then return rec end
+end
+
+-- "Done on Thrall-Forever · 3 days ago" (on this character's own name: "Done on this character"), or nil for a quest not done.
+function QH.Line(questID)
+  local rec = QH.Get(questID)
+  if not rec then return nil end
+  local me = QH.Me()
+  return string.format("Done on %s · %s", rec.who == me and "this character" or rec.who, QH.Ago(rec.t))
+end
+
+-- The same line in the muted color, for a text that holds more (nil for none).
+function QH.Muted(questID)
+  local line = QH.Line(questID)
+  return line and T.Paint(line, "muted") or nil
+end
+
+-- The latest turn-ins, newest first: { id, rec } pairs.
+function QH.Latest(n)
+  local list = {}
+  for id, rec in pairs(QH.Store().quests) do list[#list + 1] = { id, rec } end
+  table.sort(list, function(a, b) return a[2].t ~= b[2].t and a[2].t > b[2].t or a[1] < b[1] end)
+  for i = #list, n + 1, -1 do list[i] = nil end
+  return list
+end
+
+-- One chat line: "Wolves · Thrall-Forever · 3 days ago".
+local function listLine(id, rec)
+  return string.format("%s · %s · %s", rec.title or titleOf(id) or ("Quest " .. id), rec.who, QH.Ago(rec.t))
+end
+
+-- /vg quests history [n]: the latest turn-ins from every character.
+function QH.Command(rest)
+  if not QH.On() then return ns.Chat("Quest history is off (/vg > Quests).") end
+  local n = math.min(tonumber(rest:match("(%d+)")) or QH.LIST, QH.LIST_MAX)
+  local list = QH.Latest(n)
+  if #list == 0 then return ns.Chat("No turn-ins remembered yet.") end
+  ns.Chat(string.format("Latest %d quest turn-in(s), of %d remembered:", #list, QH.Store().count))
+  for _, e in ipairs(list) do ns.Chat(listLine(e[1], e[2])) end
+end
+
+-- Module entry point (Core/Modules.lua).
+function QH.Enable(settings)
+  QH.settings = settings
+  QH.Store()
+  ns.On("QUEST_TURNED_IN", QH.OnTurnedIn)
+end

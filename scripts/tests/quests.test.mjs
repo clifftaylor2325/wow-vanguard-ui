@@ -821,6 +821,7 @@ it("quest log: the faction crest is a watermark behind the top-right corner, as 
 it("quest log: the watermark follows the faction look, in both reading windows", () => {
   const addon = loggedIn(TRACK_ENV + QLOG_ENV + QUEST_ENV);
   // Whether the log's crest and the dialog's crest show.
+  // The history line: shown, text.
   const shown = () => addon.eval("return { Vanguard_QuestLog.crest:IsShown(), Vanguard_QuestDialog.crest:IsShown() }");
   expect(shown(), "shown by default (Crest only)").toEqual([true, true]);
   addon.eval('ns.Theme.Settings().faction = "off" ns.Theme.Refresh()');
@@ -1091,4 +1092,94 @@ it("quest log: Ctrl-click marks quests, the Abandon button counts them, and one 
   expect(addon.eval("return __gone"), "nothing abandoned before the answer").toEqual({});
   addon.click("Vanguard_Question.confirm");
   expect([addon.eval("return __gone"), addon.eval("return Vanguard_QuestLog.buttons.abandon.text:GetText()")], "each marked quest abandoned; the marks are cleared").toEqual([[90051, 90053], "Abandon"]);
+});
+// TEST-ONLY quest history: the clock at three days past the seeded turn-ins, and a store another character wrote.
+const HISTORY_ENV = `
+  time = function() return 1000000 + 3 * 86400 end
+`;
+const HISTORY_SAVED = `VanguardDB.questHistory = { count = 2, quests = {
+  [90051] = { who = "Thrall-Forever", class = "SHAMAN", t = 1000000, title = "TEST-ONLY Wolves" },
+  [90052] = { who = "Tester-ForeverTest", class = "MAGE", t = 1000000 + 3 * 86400 } } }`;
+// The quest history store: { count, entries as "id|who|class|time|title" }.
+const historyStore = (addon) => addon.eval("local s = VanguardDB.questHistory local out = {} for id, r in pairs(s.quests) do out[#out + 1] = id .. '|' .. r.who .. '|' .. tostring(r.class) .. '|' .. r.t .. '|' .. tostring(r.title) end table.sort(out) return { s.count, out }");
+it("quest history: a turn-in is recorded for the account, one entry per quest, ignoring ids the client hides", () => {
+  const addon = loggedIn(TRACK_ENV + QLOG_ENV + HISTORY_ENV + `
+  C_QuestLog.GetTitleForQuestID = function(id) return id == 90051 and "TEST-ONLY Wolves" or nil end`);
+  addon.fire("QUEST_TURNED_IN", 90051, 250, 100);
+  expect(historyStore(addon), "the quest, who turned it in (name-realm), their class file, when, and its title").toEqual([1, ["90051|Tester-ForeverTest|MAGE|1259200|TEST-ONLY Wolves"]]);
+  addon.fire("QUEST_TURNED_IN", 90051, 250, 100);
+  addon.fire("QUEST_TURNED_IN", "90052");
+  addon.fire("QUEST_TURNED_IN", addon.world.secret(90053));
+  addon.fire("QUEST_TURNED_IN");
+  expect(historyStore(addon)[0], "a repeat turn-in replaces the entry; a text, a hidden or a missing id is ignored").toBe(1);
+  addon.eval("ns.GetModule('QuestHistory').MAX_QUESTS = 3 time = function() return 2000000 end");
+  for (const id of [90061, 90062, 90063, 90064]) {
+    addon.eval(`time = function() return ${2000000 + id} end`);
+    addon.fire("QUEST_TURNED_IN", id);
+  }
+  expect(historyStore(addon), "past the cap (90063 was the fourth) the oldest turn-ins go, down to 90 %, then it grows again").toEqual([3, [90062, 90063, 90064].map((id) => `${id}|Tester-ForeverTest|MAGE|${2000000 + id}|nil`)]);
+});
+it("quest history: a client that hides your name, or has no clock, does not fail", () => {
+  const addon = loggedIn(TRACK_ENV + QLOG_ENV + `
+  UnitName = function() return nil end C_QuestLog.GetTitleForQuestID = nil`);
+  addon.fire("QUEST_TURNED_IN", 90051);
+  expect(historyStore(addon)[0], "no name, no entry").toBe(0);
+  addon.eval("UnitName = function() return 'Tester' end time = nil");
+  addon.fire("QUEST_TURNED_IN", 90051);
+  expect(addon.eval("local r = VanguardDB.questHistory.quests[90051] return { r.t, r.title or false }"), "no clock: time 0; no title lookup: none").toEqual([0, false]);
+});
+it("quest history: the quest log says which character did the quest, and the setting turns it all off", () => {
+  const addon = loggedIn(TRACK_ENV + QLOG_ENV + HISTORY_ENV, { savedVariables: HISTORY_SAVED });
+  const muted = addon.eval("return ns.Theme.Hex('muted')");
+  addon.eval("Vanguard_QuestLogToggle.__scripts.OnClick(Vanguard_QuestLogToggle)");
+  expect(questLog(addon).objectives, "another character's turn-in, muted, under the objectives").toBe(`Objectives\n- 3/8 TEST-ONLY Wolves slain\n+ 1/1 TEST-ONLY Pelt\n\n|c${muted}Done on Thrall-Forever · 3 days ago|r`);
+  logLine(addon, 2);
+  expect(questLog(addon).objectives, "this character's own, for a quest with no objectives: today, on this character").toBe(`|c${muted}Done on this character · today|r`);
+  logLine(addon, 3);
+  expect(questLog(addon).objectives.includes("Done on"), "a quest nobody finished has no line").toBe(false);
+  const off = loggedIn(TRACK_ENV + QLOG_ENV + HISTORY_ENV, { savedVariables: HISTORY_SAVED + ` VanguardDB.profiles = { Default = { QuestHistory = { track = false } } }` });
+  off.eval("Vanguard_QuestLogToggle.__scripts.OnClick(Vanguard_QuestLogToggle)");
+  off.fire("QUEST_TURNED_IN", 90053);
+  expect([questLog(off).objectives.includes("Done on"), off.eval("return VanguardDB.questHistory.count")], "off: no line, nothing recorded").toEqual([false, 2]);
+});
+it("quest history: the quest dialog's details say who did the quest, muted under the objectives, and a quest nobody did has none", () => {
+  const addon = loggedIn(QUEST_ENV + HISTORY_ENV + `
+  __id = 90051 GetQuestID = function() return __id end`, { savedVariables: HISTORY_SAVED });
+  addon.fire("QUEST_DETAIL");
+  // The history line: shown, text.
+  const shown = () => addon.eval("local h = Vanguard_QuestDialog.history return { h:IsShown(), h:GetText() }");
+  expect(shown(), "Done on Thrall-Forever, 3 days ago").toEqual([true, "Done on Thrall-Forever · 3 days ago"]);
+  expect(isTok(addon, addon.eval("return Vanguard_QuestDialog.history.__textColor"), "muted"), "in the muted color").toBe(true);
+  addon.eval("__id = 90099");
+  addon.fire("QUEST_DETAIL");
+  expect(shown(), "a quest nobody did: no line").toEqual([false, ""]);
+  addon.eval("__id = 90052 GetObjectiveText = function() return nil end VanguardDB.questHistory.quests[90052].who = '<name>-ForeverTest'");
+  addon.fire("QUEST_DETAIL");
+  expect(shown(), "with no objectives the line sits under the text").toEqual([true, "Done on this character · today"]);
+  const off = loggedIn(QUEST_ENV + HISTORY_ENV + `
+  __id = 90051 GetQuestID = function() return __id end`, { savedVariables: HISTORY_SAVED + ` VanguardDB.profiles = { Default = { QuestHistory = { track = false } } }` });
+  off.fire("QUEST_DETAIL");
+  expect(off.eval("return Vanguard_QuestDialog.history:IsShown()"), "history off: the dialog draws no line").toBe(false);
+});
+it("quest history: /vg quests history [n] lists the latest turn-ins, newest first, and /vg quests still opens the log", () => {
+  const addon = loggedIn(TRACK_ENV + QLOG_ENV + HISTORY_ENV + `
+  C_QuestLog.GetTitleForQuestID = function(id) return id == 90052 and "TEST-ONLY Letter" or nil end`, { savedVariables: HISTORY_SAVED });
+  addon.slash("quests history");
+  // The last n chat lines without the Vanguard prefix color.
+  const said = (n) => addon.chat().slice(-n).map((l) => l.replace(/^\|c\w{8}Vanguard:\|r /, "Vanguard: "));
+  expect(said(3), "a heading with the count, then each quest with who and when; a title the store lacks is asked of the client").toEqual([
+    "Vanguard: Latest 2 quest turn-in(s), of 2 remembered:", "Vanguard: TEST-ONLY Letter · Tester-ForeverTest · today", "Vanguard: TEST-ONLY Wolves · Thrall-Forever · 3 days ago"]);
+  addon.eval("VanguardDB.questHistory.quests[90053] = { who = 'Jaina-Forever', t = 1 } VanguardDB.questHistory.count = 3");
+  addon.slash("quests history 1");
+  expect(said(2), "a number limits the list").toEqual(["Vanguard: Latest 1 quest turn-in(s), of 3 remembered:", "Vanguard: TEST-ONLY Letter · Tester-ForeverTest · today"]);
+  addon.slash("quests history 99");
+  expect(said(1), "a title nobody knows reads Quest <id>").toEqual(["Vanguard: Quest 90053 · Jaina-Forever · 14 days ago"]);
+  addon.slash("quests");
+  expect(addon.eval("return Vanguard_QuestLog:IsShown()"), "without history, the quest log toggles").toBe(true);
+  addon.eval("VanguardDB.questHistory.quests = {}");
+  addon.slash("quests history");
+  expect(said(1), "nothing remembered").toEqual(["Vanguard: No turn-ins remembered yet."]);
+  const off = loggedIn(TRACK_ENV + QLOG_ENV, { savedVariables: `VanguardDB.profiles = { Default = { QuestHistory = { track = false } } }` });
+  off.slash("quests history");
+  expect(chatHas(off, /Quest history is off/), "switched off").toBe(true);
 });
