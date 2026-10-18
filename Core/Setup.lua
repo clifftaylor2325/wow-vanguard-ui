@@ -248,7 +248,7 @@ end
 -- How many screen pixels one UI unit covers at pixel-perfect scale on a screen h pixels tall:
 -- 1 up to about 1600 pixels tall, 2 at 4K, so things never get smaller than 1080p's.
 function S.PixelMultiple(h)
-  return math.max(1, math.floor(h / 1080 + 0.25))
+  return T.AutoPixelMultiple(h)
 end
 
 -- A size grown by ratio, in whole units.

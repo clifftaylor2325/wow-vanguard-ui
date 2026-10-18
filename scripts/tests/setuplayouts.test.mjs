@@ -139,7 +139,12 @@ function layoutRects(addon, n, sw, sh) {
   for (const [key, row] of Object.entries(ATTACHED)) if (out[row[0]]) out[key] = attachedRect(out[row[0]], spots[row[0]][6], row);
   if (n > 0) out.raid = raidRect(addon, spots.raid, n, sw, sh);
   // Chat is a mover: its tabs (22 tall) ride above the window.
-  if (out.chat) out.chat.t += 22;
+  // Its first-time size depends on the screen's width.
+  if (out.chat) {
+    const [w, h] = addon.eval(`return { ns.GetModule("Chat").DefaultSize(${sw}) }`);
+    out.chat.r = out.chat.l + w;
+    out.chat.t = out.chat.b + h + 22;
+  }
   return out;
 }
 // Problems on one screen: pairs that overlap and parts off screen.

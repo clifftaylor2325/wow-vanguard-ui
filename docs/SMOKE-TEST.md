@@ -80,7 +80,7 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 
 ### 2.1 Every options page
 
-- Do: type `/vg`, then click each page in the left list in turn: General, Modules, Unit frames, Raid frames, Healing, Click casting, Talents, Action bars, Nameplates, Quests, Bars and bags, Map, Chat, Game windows, Combat tools, Town and gear, Situations, Profiles and Feedback (19 pages in all). After each, type `/vg errors`.
+- Do: type `/vg`, then click each page in the left list in turn: General, Modules, Unit frames, Raid frames, Healing, Click casting, Talents, Action bars, Nameplates, Quests, Bars and bags, Map, Chat, Game windows, Cooldowns, Combat tools, Town and gear, Situations, Profiles and Feedback (20 pages in all). After each, type `/vg errors`.
 - Expect: each page draws its rows with no Lua error popup, and `/vg errors` stays empty. All 19 entries fit in the list without running off the bottom, each with its own icon (the six that replaced Bars, map, chat have a laurel crown, a compass, a raven, a checked shield, a battle axe and a castle), and every icon and label starts at the same spot down the list, and a search for a setting that used to be on Bars, map, chat (say "Craft queue") lights the page that has it now.
 - Also expect (switches): on any page, a switch is a pill track in the theme's inset colour with a thin outline and a round knob with a shade under its edge; on is the accent fill with the knob at the right, off the knob at the left, and the knob brightens under the mouse. Try the Accent and Theme settings: the on fill follows the accent. [Needs in game: the pill and knob art at 1x and at a larger UI scale.]
 - Also expect (sliders): a slider's track is a pill in the inset colour with a thin outline, its fill runs in a quiet grey (not the accent) to a solid white round thumb with a dark outline and a shade under its lit edge (the thumb stays on top of the fill; the filled part reads as one solid grey bar, with the thin outline round the empty part), and the thumb moves as you drag. Under General → Layout, a size slider that is locked (Its width on a frame whose width matches another's) shows a grey thumb. Then switch the Theme setting: the switch and slider tracks take the new theme's colours with the panels around them. [Needs in game: the pill ends and the slider's outline at 1x and at a larger UI scale.]
@@ -221,8 +221,8 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 
 ### 5.2a Shield corners
 
-- Do: look at your player and target frames and your cast bar while casting, at your usual UI scale and at Pixel-perfect. Lose some health and mana. Then `/vg` → General → Look, switch off **Shield corners on unit frames and cast bars**, and switch it on again.
-- Expect: each frame's four corners are cut at 45 degrees, about six pixels across, with a one-pixel cut line the same colour and weight as the straight edges, joining them with no gap or overlap. The health, power and cast fills stop inside the cut line (no colour pokes past it), also while a bar is nearly empty or full. Switching it off makes them square at once, on again cuts them at once. No error.
+- Do: look at your player and target frames, at your usual UI scale and at Pixel-perfect. Lose some health and mana. Then `/vg` → General → Look, switch off **Shield corners on unit frames**, and switch it on again, several times. Then `/vg errors`.
+- Expect: each frame's four corners are cut at 45 degrees, about six pixels across, with a one-pixel cut line the same colour and weight as the straight edges, joining them with no gap or overlap. The health and power fills stop inside the cut line (no colour pokes past it), also while a bar is nearly empty or full. Switching it off makes them square at once, on again cuts them at once. No error, and `/vg errors` has no `AddMaskTexture` line (#421 put four masks on a bar and the game allows three).
 - If it fails, paste: a close screenshot of one corner (zoomed) and `/vg errors`.
 
 ### 5.3 Hover, press, focus and window motion
@@ -1214,9 +1214,15 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 
 ## 29. Cooldown gaps
 
+### 29.0 The Cooldowns page and its wizard
+
+- Do: type `/vg cooldowns`. Hover each switch. Click **Set up cooldowns**, go through the three steps with Next and Back, ticking nothing, then Done. Type `/vg cooldowns setup`, tick **Show the game's manager** in the first step and untick it again. Start a fight with the window open, then type `/vg cooldowns setup` in the fight.
+- Expect: the page has three cards (the game's manager, Gaps row, Buff glow), a tooltip on each switch and the slider, and Combat tools has a one-line note pointing here. The wizard shows Step 1 of 3 to Step 3 of 3, Back stops at the first step, Done closes it, and clicking through changes no setting. In a fight the window waits and opens when it ends. `/vg errors` stays empty. [Needs in game: how the wizard and the page look and read; whether the manager's switch behaves in the wizard as it does on the page.]
+- If it fails, paste: `/vg status` and `/vg errors`.
+
 ### 29.1 The gap row
 
-- Do: under `/vg` > Combat tools tick **Cooldown gaps**, reload. Wear an on-use trinket, type `/vg gaps add Healthstone` (or an item ID) with one in your bags, use the trinket and the item. With a pet out, use one of its abilities. As a shaman with the class bars off, drop a totem. Then repeat inside an instance in combat.
+- Do: under `/vg` > Cooldowns tick **Gaps row**, reload. Wear an on-use trinket, type `/vg gaps add Healthstone` (or an item ID) with one in your bags, use the trinket and the item. With a pet out, use one of its abilities. As a shaman with the class bars off, drop a totem. Then repeat inside an instance in combat.
 - Expect: a row of square icons in thin borders appears above the game's Cooldown Manager, each with a sweep and numbers in the theme font while its cooldown runs; `/vg unlock` lets you move it. Where the client hides cooldown values in combat, that icon is simply missing or sweeps from the client's own timer; never a wrong number. `/vg gaps` lists the chosen items, `/vg gaps remove <item>` takes one off. The row is never clickable and `/vg errors` stays empty. [Needs in game: whether the client has C_Item.GetItemCooldown (or C_Container.GetItemCooldown), C_Item.GetItemSpell, C_Spell.GetSpellCooldownDuration and GetPetActionInfo, and what each returns in instanced combat.]
 - If it fails, paste: `/vg gaps`, `/vg status` and `/vg errors`.
 
@@ -1591,7 +1597,7 @@ The order is the order to play in: looks you can check quickly first, then the g
 ### 33.39 Chat size and background
 
 - Do: with a fresh profile, look at the main chat window over a bright area (snow, desert) and over a dark one. Open `/vg` → Chat and cycle Chat background strength through Light, Medium and Dark, then untick Chat background. Look at the tabs and the Copy button.
-- Expect: the window is about 500 wide and 168 tall (a profile that already sized chat keeps its size). A soft dark patch sits behind the text and the tab row with edges that fade out (no hard border), the text reads over bright ground at Medium, and the strength follows the setting at once. Tab names show in full (General, not Gene…) and the Copy button sits above the tabs, not on them.
+- Expect: the window is about 500 wide and 154 tall (420 wide on a small screen) (a profile that already sized chat keeps its size). A soft dark patch sits behind the text and the tab row with edges that fade out (no hard border), the text reads over bright ground at Medium, and the strength follows the setting at once. Tab names show in full (General, not Gene…) and the Copy button sits above the tabs, not on them. On a 4K screen, switching Pixel-perfect scale on (General → Look, no setup) keeps the UI and chat about 1080p's size, not half of it.
 - If it fails, paste: a screenshot over bright ground and `/vg errors`.
 
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.

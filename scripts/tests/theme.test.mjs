@@ -510,6 +510,14 @@ it("pixel-perfect scale takes a whole multiple: 2 makes one UI unit two screen p
   expect(addon.eval("return ns.Theme.PixelScale()"), "never less than one pixel per unit").toBeCloseTo(768 / 2160, 9);
 });
 
+it("pixel-perfect scale with no multiple set picks one for the screen: 2 at 4K, 1 at 1080p", () => {
+  const big = loggedIn("GetPhysicalScreenSize = function() return 3840, 2160 end");
+  big.eval("ns.Theme.SetPixelScale(true)");
+  expect(big.eval("return UIParent:GetScale()"), "4K turned on by the switch alone is two pixels per unit").toBeCloseTo((2 * 768) / 2160, 9);
+  const small = loggedIn("GetPhysicalScreenSize = function() return 1920, 1080 end");
+  expect(small.eval("return ns.Theme.PixelScale()"), "1080p stays one pixel per unit").toBeCloseTo(768 / 1080, 9);
+});
+
 // Snapping of one texture of each class on a panel, a bar and a button: { class: [snaps, bias] }.
 const snapping = (addon) => addon.eval(`local T = ns.Theme
   __snapPanel = __snapPanel or T.Panel(CreateFrame("Frame", nil, UIParent))
@@ -852,12 +860,12 @@ const masks = (addon, region) => addon.eval(`local t = ${region} local m = t.__m
   return { n = t.__masks and #t.__masks or 0, art = m and tostring(m.__texture):match("[^\\\\/]+$") or "none", w = m and m:GetWidth() or 0, wrap = m and m.__wrap or {} }`);
 
 it("shield corners: a shield frame's corners are cut on by default, its bars masked to the cut, and the switch puts it all back square", () => {
-  const addon = loggedIn('__shield = ns.Theme.HudPanel(CreateFrame("Frame", nil, UIParent), { shield = true }) __shield:SetSize(200, 30) __plain = ns.Theme.HudPanel(CreateFrame("Frame", nil, UIParent)) __sb = CreateFrame("StatusBar", nil, __shield) __sb:SetStatusBarTexture(ns.Theme.WHITE) __sb:SetAllPoints() ns.Theme.ShieldMask(__shield, { __sb:GetStatusBarTexture() }) ns.Theme.ShieldMask(CreateFrame("Frame"), {})');
+  const addon = loggedIn('__shield = ns.Theme.HudPanel(CreateFrame("Frame", nil, UIParent), { shield = true }) __shield:SetSize(200, 30) __plain = ns.Theme.HudPanel(CreateFrame("Frame", nil, UIParent)) __sb = CreateFrame("StatusBar", nil, __shield) __sb:SetStatusBarTexture(ns.Theme.WHITE) __sb:SetAllPoints() ns.Theme.ShieldMask(__shield, { __sb:GetStatusBarTexture() }, "TOP") ns.Theme.ShieldMask(__shield, { __sb:GetStatusBarTexture() }, "TOP") ns.Theme.ShieldMask(CreateFrame("Frame"), {}, "TOP")');
   const cut = addon.eval("return ns.Theme.CORNER_CUT * ns.Theme.Pixel(__shield)");
   expect([artCount(addon, "__shield", "CornerCutLine"), artCount(addon, "__shield", "CornerCutFill"), artCount(addon, "__plain", "CornerCutLine")], "four cut lines and fills on the shield frame, none on a plain HUD panel").toEqual([4, 4, 0]);
-  expect(masks(addon, "__sb:GetStatusBarTexture()"), "its bar is cut at all four corners, each mask clamped to white past it").toEqual({ n: 4, art: "CornerCutMask", w: cut, wrap: ["CLAMPTOWHITE", "CLAMPTOWHITE"] });
-  addon.eval("ns.Theme.Refresh()");
-  expect(masks(addon, "__sb:GetStatusBarTexture()").n, "a repaint puts no mask on twice").toBe(4);
+  expect(masks(addon, "__sb:GetStatusBarTexture()"), "its bar is cut at its two top corners (asked twice, masked once), each mask clamped to white past it").toEqual({ n: 2, art: "CornerCutMask", w: cut, wrap: ["CLAMPTOWHITE", "CLAMPTOWHITE"] });
+  addon.eval("for i = 1, 5 do ns.Theme.Refresh() ns.Theme.Settings().shield = i % 2 == 0 end ns.Theme.Settings().shield = true ns.Theme.Refresh()");
+  expect(masks(addon, "__sb:GetStatusBarTexture()").n, "repaints and switching it off and on again never put a mask on twice (the client allows three)").toBe(2);
   addon.eval("ns.Theme.Settings().shield = false ns.Theme.Refresh()");
   expect([artCount(addon, "__shield", "CornerCutLine"), masks(addon, "__sb:GetStatusBarTexture()").n], "the switch off: square corners and no masks").toEqual([0, 0]);
   addon.eval('ns.Theme.Settings().shield = true ns.Theme.Settings().corners = "rounded" ns.Theme.Refresh()');
@@ -866,12 +874,18 @@ it("shield corners: a shield frame's corners are cut on by default, its bars mas
   expect([artCount(addon, "__shield", "CornerLine"), artCount(addon, "__shield", "CornerCutLine")], "and with the switch off it rounds like the rest").toEqual([4, 0]);
 });
 
-it("shield corners: unit frames and cast bars are shield frames, with their fills cut", () => {
+// The corner each mask on a texture sits on (TEST-ONLY read).
+const maskCorners = (addon, region) => addon.eval(`local out = {} for i, m in ipairs(${region}.__masks or {}) do out[i] = next(m.__points) end table.sort(out) return out`);
+
+it("shield corners: unit frames are shield frames, their health cut at the top and power at the bottom; cast bars stay square", () => {
   const addon = loggedIn(UNITS_ENV + CLICK_LUA);
-  expect([artCount(addon, "Vanguard_player", "CornerCutLine"), artCount(addon, "Vanguard_CastBar_player", "CornerCutLine")], "the player frame and its cast bar").toEqual([4, 4]);
-  expect([masks(addon, "Vanguard_player.health:GetStatusBarTexture()").n, masks(addon, "Vanguard_player.power.bg").n, masks(addon, "Vanguard_CastBar_player:GetStatusBarTexture()").n], "health, power and the cast fill are cut").toEqual([4, 4, 4]);
+  expect([artCount(addon, "Vanguard_player", "CornerCutLine"), artCount(addon, "Vanguard_CastBar_player", "CornerCutLine")], "the player frame is cut, its cast bar is not").toEqual([4, 0]);
+  expect([maskCorners(addon, "Vanguard_player.health:GetStatusBarTexture()"), maskCorners(addon, "Vanguard_player.power.bg"), masks(addon, "Vanguard_CastBar_player:GetStatusBarTexture()").n], "health is cut at its top corners, power at its bottom ones, no more than two masks each")
+    .toEqual([["TOPLEFT", "TOPRIGHT"], ["BOTTOMLEFT", "BOTTOMRIGHT"], 0]);
+  addon.eval("for _ = 1, 4 do ns.Theme.Refresh() end");
+  expect(masks(addon, "Vanguard_player.health.bg").n, "repaints add none").toBe(2);
   addon.slash("");
-  addon.eval('__click("Shield corners on unit frames and cast bars")');
+  addon.eval('__click("Shield corners on unit frames")');
   expect([addon.eval("return VanguardDB.profiles.Default.theme.shield"), artCount(addon, "Vanguard_player", "CornerCutLine")], "the switch under Look turns them square at once").toEqual([false, 0]);
 });
 

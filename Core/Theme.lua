@@ -224,7 +224,7 @@ local DEFAULTS = {
   variant = "default",
   -- Panel corners: "square" (one border language, as always) or "rounded" (T.CORNER_RADIUS arcs).
   corners = "square",
-  -- Shield corners: the frames that ask for them (unit frames, cast bars) get T.CORNER_CUT cuts.
+  -- Shield corners: the frames that ask for them (the unit frames) get T.CORNER_CUT cuts.
   shield = true,
   accent = T.PRESETS.brass,
   panel = T.TOKENS.panel,
@@ -234,7 +234,8 @@ local DEFAULTS = {
   outline = "",
   pixelScale = false,
   -- Screen pixels per UI unit at pixel-perfect scale (a whole number; the Pixel-perfect screen preset sets it).
-  pixelMultiple = 1,
+  -- 0 picks one for the screen (T.AutoPixelMultiple), so the switch alone never makes a 4K screen tiny.
+  pixelMultiple = 0,
   -- Texel snapping for still textures (borders, fills, dividers, sheens); off until the in-game A/B test (#226).
   texelSnap = false,
   -- Shadows and glows as one nine-slice texture each; off until the in-game check (#236).
@@ -1126,12 +1127,16 @@ end
 
 -- Shield masks -------------------------------------------------------------------------------
 
--- Four masks on owner (the frame a masked texture belongs to), one at each corner of frame, its
--- corner of CornerCutMask; clamped to white past their edges, so each one cuts only its corner.
-function corner.maskSet(owner, frame)
+-- The corners a side's masks cut. A texture takes at most three masks in the client, so a masked
+-- texture is cut on one side only: two masks, its top corners or its bottom ones.
+corner.SIDES = { TOP = { "TOPLEFT", "TOPRIGHT" }, BOTTOM = { "BOTTOMLEFT", "BOTTOMRIGHT" } }
+
+-- Two masks on owner (the frame a masked texture belongs to), one at each of frame's corners on side,
+-- its corner of CornerCutMask; clamped to white past their edges, so each one cuts only its corner.
+function corner.maskSet(owner, frame, side)
   local set = {}
-  for point, tc in pairs(CORNERS) do
-    local m = owner:CreateMaskTexture()
+  for _, point in ipairs(corner.SIDES[side]) do
+    local tc, m = CORNERS[point], owner:CreateMaskTexture()
     m:SetTexture(T.Texture("CornerCutMask"), "CLAMPTOWHITE", "CLAMPTOWHITE")
     m:SetTexCoord(unpack(tc))
     m:SetPoint(point, frame, point)
@@ -1158,20 +1163,28 @@ function corner.paintMasks(frame, entry)
   for _, item in ipairs(entry.masked) do corner.maskTexture(item, entry.look == "cut") end
 end
 
--- Cuts textures inside a shield frame (a status bar's fill and background) to its cut corners, so
--- nothing pokes past the cut line; they follow the shield setting on every repaint.
+-- Cuts textures inside a shield frame (a status bar's fill and background) to its cut corners on one
+-- side, so nothing pokes past the cut line; they follow the shield setting on every repaint. Each
+-- texture is masked once (two masks, under the client's limit of three), however often it is asked.
 ---@param frame table a frame painted with opts.shield
 ---@param regions table the textures to cut
-function T.ShieldMask(frame, regions)
+---@param side string "TOP" or "BOTTOM": the frame's corners these textures reach
+function T.ShieldMask(frame, regions, side)
   local entry = painted[frame]
   if not entry then return end
-  entry.masked, entry.maskSets = entry.masked or {}, entry.maskSets or {}
+  entry.masked, entry.maskSets, entry.maskedBy = entry.masked or {}, entry.maskSets or {}, entry.maskedBy or {}
   for _, region in ipairs(regions) do
-    local owner = region:GetParent()
-    entry.maskSets[owner] = entry.maskSets[owner] or corner.maskSet(owner, frame)
-    entry.masked[#entry.masked + 1] = { region = region, set = entry.maskSets[owner] }
+    local key = tostring(region:GetParent()) .. side
+    entry.maskSets[key] = entry.maskSets[key] or corner.maskSet(region:GetParent(), frame, side)
+    if not entry.maskedBy[region] then corner.addMasked(entry, region, entry.maskSets[key]) end
   end
   corner.paintMasks(frame, entry)
+end
+
+-- Lists a texture to mask with a set of masks (once per texture).
+function corner.addMasked(entry, region, set)
+  entry.maskedBy[region] = true
+  entry.masked[#entry.masked + 1] = { region = region, set = set }
 end
 
 -- Paints a frame's corners for radius r in a look: the rounded or cut parts, their art, and its shield masks.
@@ -1549,7 +1562,7 @@ T.ALPHA = { opaque = 1, dialog = 0.98, overlay = 0.94, alert = 0.92, calm = 0.35
 T.ROW = { height = 28 }
 -- The chat backdrop (T.Backdrop): how far its edges fade out (units), and the strengths the Chat
 -- background setting offers.
-T.CHAT_BACKDROP = { feather = 14, levels = { { 0.45, "Light" }, { 0.7, "Medium" }, { 0.88, "Dark" } } }
+T.CHAT_BACKDROP = { feather = 20, levels = { { 0.55, "Light" }, { 0.75, "Medium" }, { 0.9, "Dark" } } }
 -- The one selected look (docs/THEME.md, "Materials and states"): an accent rail down a row's left edge,
 -- `rail` screen pixels wide, over a `fill` (a lighter fill, not an accent wash) that sits under the text.
 T.SELECT = { rail = 2, fill = "raisedHover" }
@@ -2915,10 +2928,17 @@ end
 
 -- Pixel-perfect scale ----------------------------------------------------------------
 
--- The pixel-perfect scale the settings pick: 768 / screen height times the whole
--- multiple (pixelMultiple, 1 unless set: 2 makes one UI unit two screen pixels).
+-- The whole multiple that keeps things no smaller than 1080p's: 1 up to about 1600 pixels tall, 2 at 4K.
+function T.AutoPixelMultiple(h)
+  return math.max(1, math.floor(h / 1080 + 0.25))
+end
+
+-- The pixel-perfect scale the settings pick: 768 / screen height times the whole multiple
+-- (pixelMultiple: 2 makes one UI unit two screen pixels; 0 or unset picks one for the screen).
 function T.PixelScale()
-  return T.PixelPerfectScale() * math.max(1, math.floor(T.Settings().pixelMultiple or 1))
+  local n = T.Settings().pixelMultiple or 0
+  if n == 0 then n = T.AutoPixelMultiple(screenHeight()) end
+  return T.PixelPerfectScale() * math.max(1, math.floor(n))
 end
 
 -- Sets UIParent to the pixel-perfect scale when that setting is on, out of
