@@ -820,15 +820,24 @@ AH.LIST_ACTIONS = {
 
 -- Filters -----------------------------------------------------------------------------------
 
+-- The dearest price a typed amount may be, in copper: the game's highest price, 999999g 99s 99c.
+AH.MAX_PRICE = 9999999999
+
 -- Copper from a typed price: "1g 50s", "75s 20c", "12c" or a bare number of gold ("2.5"); nil for
--- nothing, nothing above zero, or text that isn't money. Every price box reads it (the shop's max
--- price, the sell card's price and bid), so a bare number is gold in all of them.
+-- nothing, nothing above zero, more than the game's highest price, or text that isn't money (an
+-- exponent such as "1e5", hex such as "0x10" or "inf" is not a number here). Every price box reads
+-- it (the shop's max price, the sell card's price and bid), so a bare number is gold in all of them.
+-- (The sums are in floating point so a long number can't wrap around as a whole-number sum might.)
 function AH.ParseMoney(text)
   text = trim(text):lower()
-  local gold, copper = tonumber(text), 0
-  if gold then return gold > 0 and math.floor(gold * 10000 + 0.5) or nil end
-  local rest = text:gsub("(%d+)%s*([gsc])", function(n, unit) copper = copper + tonumber(n) * AH.MONEY_UNITS[unit] return "" end)
-  if copper > 0 and trim(rest) == "" then return copper end
+  local copper = 0
+  if text:match("^%d+%.?%d*$") or text:match("^%.%d+$") then
+    copper = tonumber(text) * 10000.0
+  else
+    local rest = text:gsub("(%d+)%s*([gsc])", function(n, unit) copper = copper + (tonumber(n) + 0.0) * AH.MONEY_UNITS[unit] return "" end)
+    if trim(rest) ~= "" then return nil end
+  end
+  if copper > 0 and copper <= AH.MAX_PRICE then return math.floor(copper + 0.5) end
 end
 
 -- A level typed into a box: a whole number from 1, else nil.

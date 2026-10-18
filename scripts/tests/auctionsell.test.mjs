@@ -254,6 +254,8 @@ it("the sell form: typed counts and prices, per unit or per stack, Skip and Stop
   expect([form(addon)[3], form(addon)[6]], "per stack: the box shows a stack's price").toEqual(["10g 20s 30c", "per stack"]);
   addon.type(`${CARD}.price`, "5s");
   expect(card(addon)[0][3], "5s for a stack of 10 is 50c a unit").toBe("50c");
+  addon.type(`${CARD}.price`, "55c");
+  expect([card(addon)[0][3], form(addon)[3]], "a stack price that doesn't divide is rounded up, never under what was typed (6c a unit, 60c a stack)").toEqual(["6c", "60c"]);
   addon.click(`${CARD}.perStack`);
   addon.type(`${CARD}.price`, "1.5");
   expect(card(addon)[0][3], "a bare number is gold, as in the shop's max price").toBe("1g 50s 0c");
