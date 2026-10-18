@@ -66,6 +66,8 @@ end
 
 `ns.PlainNumber` returns the number or nil, never a secret; compare only after it. For a boolean or a string, `ns.IsSecret` first. A secret may be handed to a widget (`bar:SetValue(v)`), not computed with. Unknown is never "readable": a call that errors counts as hidden.
 
+Truthiness is a test too: `if v then`, `not v`, `a or b` and `a and b or nil` all test `v`, so none of them is safe on a value that may be secret. Read the call into a local, check `ns.IsSecret` (or `isTrue`, `flag`) first, and only then test or default it; `type(fn) == "function" and fn(unit)` is fine because the test is on `type(...)`, not on the result. Pass the raw value to a widget. The harness cannot catch this (a harness secret is a table, always truthy, and Lua has no `__bool`), so review for it by eye: grep for `or nil`, `or "` and `and ... or` on the direct result of a `Unit*` call.
+
 ## Work that must wait for combat to end
 
 ```lua
