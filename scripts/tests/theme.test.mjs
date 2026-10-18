@@ -510,6 +510,14 @@ it("pixel-perfect scale takes a whole multiple: 2 makes one UI unit two screen p
   expect(addon.eval("return ns.Theme.PixelScale()"), "never less than one pixel per unit").toBeCloseTo(768 / 2160, 9);
 });
 
+it("pixel-perfect scale with no multiple set picks one for the screen: 2 at 4K, 1 at 1080p", () => {
+  const big = loggedIn("GetPhysicalScreenSize = function() return 3840, 2160 end");
+  big.eval("ns.Theme.SetPixelScale(true)");
+  expect(big.eval("return UIParent:GetScale()"), "4K turned on by the switch alone is two pixels per unit").toBeCloseTo((2 * 768) / 2160, 9);
+  const small = loggedIn("GetPhysicalScreenSize = function() return 1920, 1080 end");
+  expect(small.eval("return ns.Theme.PixelScale()"), "1080p stays one pixel per unit").toBeCloseTo(768 / 1080, 9);
+});
+
 // Snapping of one texture of each class on a panel, a bar and a button: { class: [snaps, bias] }.
 const snapping = (addon) => addon.eval(`local T = ns.Theme
   __snapPanel = __snapPanel or T.Panel(CreateFrame("Frame", nil, UIParent))
