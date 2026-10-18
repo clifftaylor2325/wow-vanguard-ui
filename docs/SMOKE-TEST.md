@@ -303,6 +303,12 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Expect: raid frames in groups, 100x48 tiles at 10 members or fewer and smaller above that; the ready check starts. A debuff you can dispel shows its type's letter (M, C, D or P) in the icon's top-left corner, in combat in an instance too. With a Priest in the group, the Priest's bar is a light gray (not white) and its white name reads clearly on it, full health or hurt.
 - If it fails, paste: a screenshot and `/vg errors`. In an instance during combat `/vg status` should say `aura values hidden right now` while the bars still fill; paste that line if the bars do not fill.
 
+### 6.2a Raid indicators (if you can)
+
+- Do: in a group, open `/vg` → Raid frames, set Indicator 1 to "your buffs" and Indicator 2 to "crowd control", reload, then buff a member and let a mob crowd-control another.
+- Expect: a small icon of the buff on the right edge of that member's tile, under the missing-buff mark, and the crowd control's icon below it (or beside it on a short tile). Empty slots show nothing, and offline or dead members show none. Nothing errors in combat.
+- If it fails, paste: a screenshot and `/vg errors`. A filter word the game rejects is reported once in `/vg errors` as `aura filter ...`.
+
 ### 6.3 Main tank tiles (if you can)
 
 - Do: in a raid, mark a main tank.
@@ -1173,6 +1179,12 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 - Expect: a Filtered chat tab appears, and the caught lines are in it, each starting with why ("Gold selling", "Boosting", "Recruiting", "Your word", "Repeat"), none in the main chat; the tab's name counts them, "Filtered (4)". Clicking a sender's name says their lines show in chat again, and their next line stays in the main chat. With hide, caught lines show nowhere. Normal Trade lines, your own lines, whispers and guild chat are never caught. `/vg errors` is empty; in the dungeon nothing errors and chat passes through. The tab looks like the other chat tabs on both rounded and square corners, and is still there, with its count starting over, after `/reload`. [Needs in game: that the client lets an addon open a chat window (`FCF_OpenNewWindow`) and name it, that a click on the sender's link reaches Vanguard, and that the tab text keeps the count.]
 - If it fails, paste: `/vg errors`, one line it caught or missed, and what the Filtered tab shows.
 
+### 15.6b Chat history (off until switched on)
+
+- Do: `/vg history on`, say a few lines in /say and have a group or guild line arrive, let someone whisper you (or whisper an alt), then type `/reload`. Type `/vg history`, then `/vg history whispers`, whisper again, `/reload`. Then `/vg history clear` and `/reload`. Last, with it on, log out and in; open `/vg` → Chat and set Lines kept to 100.
+- Expect: after the reload each window shows a grey `Chat from your last session (N lines, until ...):` line, its earlier lines in the colours they had (say white, guild green, party blue), then `End of the earlier chat.`; your whisper is not among them the first time, and is the second time; a tab you had set up for another channel gets its own lines back, not the main window's. `/vg history` says it is on and how many lines are saved in how many windows. After clear and a reload nothing comes back and chat says `Saved chat history cleared.` `/vg errors` is empty. In a dungeon or raid boss fight, chat the game hides is not kept. [Needs in game: that a hook on each ChatFrame's AddMessage sees the finished line and its colour, that whispers carry `:WHISPER:` in their player link (the other way the addon tells), that `date` and `time` work as in the client, and that AddMessage keeps the colours.]
+- If it fails, paste: `/vg errors`, `/vg history`, a screenshot of the restored chat and which window it was in.
+
 ## 16. Realm and ruleset
 
 ### 16.1 Realm, ruleset and names
@@ -1195,6 +1207,7 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 
 - Do: install one bag addon you use (Bagnon, AdiBags, ArkInventory, BetterBags or Baganator) beside Vanguard and log in. Open `/vg` → Modules. Click **Keep both**, `/reload`, and open Modules again. Then type `/dump C_AddOns.GetAddOnInfo("<the addon>")` and note the folder name it prints.
 - Expect: one chat line at login, `<addon> also does bags. Choose which one does under /vg > Modules (nothing changes until you do).`; an **Other addons** card at the top of the Modules page with **Turn off Bags** and **Keep both**; after Keep both, no card and no chat line. The folder name matches the one Vanguard looks for (`Modules/Coexist.lua`, `CX.OVERLAPS`); a different name is a finding.
+- Also, if EllesmereUI is on Forever: run `/dump C_AddOns.GetNumAddOns()` and list its folders (`/dump C_AddOns.GetAddOnInfo(i)` for each) and paste the ones starting with Ellesmere. Vanguard looks for `EllesmereUIUnitFrames`, `EllesmereUIActionBars`, `EllesmereUINameplates` and `EllesmereUIRaidFrames` (retail names, unconfirmed on Forever); a different name is a finding.
 - If it fails, paste: the folder name, a screenshot of the Modules page and `/vg errors`.
 
 ### 18.2 Group board
