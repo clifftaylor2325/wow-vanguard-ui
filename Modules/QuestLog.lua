@@ -102,7 +102,7 @@ function QL.IsWatched(id)
   return false
 end
 
--- The chosen quest's details: { id, title, level, text, objectives, rewards, money, watched, shareable }.
+-- The chosen quest's details: { id, title, level, text, objectives, rewards, money, watched, shareable, done (the quest history line) }.
 function QL.Details(id)
   local index = ns.PlainNumber(questLog("GetLogIndexForQuestID", id))
   local info = index and questLog("GetInfo", index)
@@ -111,7 +111,7 @@ function QL.Details(id)
   local text = call(GetQuestLogQuestText)
   return { id = id, title = info.title, level = info.level, text = text, objectives = ns.GetModule("QuestTracker").Objectives(id),
     rewards = rewardItems(id), money = moneyLine(id), watched = QL.IsWatched(id),
-    shareable = yes(questLog("IsPushableQuest", id)) and yes(call(IsInGroup)) }
+    shareable = yes(questLog("IsPushableQuest", id)) and yes(call(IsInGroup)), done = ns.GetModule("QuestHistory").Muted(id) }
 end
 
 -- Actions ----------------------------------------------------------------------------------------

@@ -822,6 +822,7 @@ it("quest log: the faction crest is a watermark behind the top-right corner, as 
 it("quest log: the watermark follows the faction look, in both reading windows", () => {
   const addon = loggedIn(TRACK_ENV + QLOG_ENV + QUEST_ENV);
   // Whether the log's crest and the dialog's crest show.
+  // The history line: shown, text.
   const shown = () => addon.eval("return { Vanguard_QuestLog.crest:IsShown(), Vanguard_QuestDialog.crest:IsShown() }");
   expect(shown(), "shown by default (Crest only)").toEqual([true, true]);
   addon.eval('ns.Theme.Settings().faction = "off" ns.Theme.Refresh()');
@@ -982,11 +983,12 @@ it("nameplates: a gold ! by units your quests need", () => {
   // A plate's quest mark: shown, its icon, its color.
   const mark = (unit) => addon.eval(`local q = ns.FrameState('vgPlate')[__plates.${unit}].quest return { q:IsShown(), q.__texture, q.__vertexColor }`);
   const one = mark("nameplate1");
-  expect([one[0], /Icons\\Quests$/.test(one[1]), isTok(addon, one[2], "gold")], "a quest unit gets the gold !").toEqual([true, true, true]);
+  expect([one[0], /Icons\\QuestBang$/.test(one[1]), isTok(addon, one[2], "gold")], "a quest unit gets the gold !").toEqual([true, true, true]);
   expect(addon.eval("return ns.FrameState('vgPlate')[__plates.nameplate1].quest.__points.LEFT.rel == ns.FrameState('vgPlate')[__plates.nameplate1].name"), "just right of its name").toBe(true);
   expect(mark("nameplate2")[0], "a hidden answer counts as no").toBe(false);
   addon.eval("__related.nameplate1 = nil");
   addon.fire("QUEST_LOG_UPDATE");
+  addon.eval("__wfgStub.advance(1)");
   expect(mark("nameplate1")[0], "it goes when your quests no longer need the unit").toBe(false);
   addon.eval("__related.nameplate1 = true");
   addon.slash("");
@@ -996,6 +998,78 @@ it("nameplates: a gold ! by units your quests need", () => {
   const bare = loggedIn(UNITS_ENV + PLATE_ENV + "C_QuestLog = nil");
   bare.fire("NAME_PLATE_UNIT_ADDED", "nameplate1");
   expect(bare.eval("return ns.FrameState('vgPlate')[__plates.nameplate1].quest:IsShown()"), "a client that can't say shows none").toBe(false);
+});
+// TEST-ONLY unit tooltip data for plates: __tips[unit] is what C_TooltipInfo.GetUnit answers; __tipCalls counts the asks.
+const TIPS_ENV = `
+  __tips, __tipCalls, __related = {}, 0, {}
+  C_QuestLog = { UnitIsRelatedToActiveQuest = function(unit) return __related[unit] end }
+  C_TooltipInfo = { GetUnit = function(unit) __tipCalls = __tipCalls + 1 if __tipError then error("TEST-ONLY tooltip failure") end return __tips[unit] end }
+  __kinds = Enum.TooltipDataLineType
+`;
+// Gives nameplate1's tooltip data lines of the given Enum.TooltipDataLineType names (as Lua), and says whether its quest mark shows.
+const tipMark = (addon, lines) => {
+  addon.eval(`__tips.nameplate1 = { lines = { ${lines} } } ns.GetModule("Nameplates").RefreshAll()`);
+  return addon.eval("return ns.FrameState('vgPlate')[__plates.nameplate1].quest:IsShown()");
+};
+it("nameplates: the client's tooltip data marks units your quests need, with Vanguard's quest mark", () => {
+  const addon = loggedIn(UNITS_ENV + PLATE_ENV + CLICK_LUA + TIPS_ENV);
+  addon.fire("NAME_PLATE_UNIT_ADDED", "nameplate1");
+  expect(tipMark(addon, "{ type = __kinds.UnitName, leftText = 'TEST-ONLY Wolf' }"), "a tooltip with no quest line: no mark").toBe(false);
+  expect(tipMark(addon, "{ type = __kinds.UnitName }, { type = __kinds.QuestTitle, leftText = 'TEST-ONLY Wolves' }, { type = __kinds.QuestObjective }"), "a quest title and objective: the mark").toBe(true);
+  const q = addon.eval("local q = ns.FrameState('vgPlate')[__plates.nameplate1].quest return { q.__texture, q.__vertexColor }");
+  expect([/Icons\\QuestBang$/.test(q[0]), isTok(addon, q[1], "gold")], "the generated QuestBang icon, in the gold token").toEqual([true, true]);
+  expect(tipMark(addon, "{ type = __kinds.QuestObjective }"), "an objective alone is enough").toBe(true);
+  expect(tipMark(addon, "{ type = __kinds.QuestPlayer, leftText = 'TEST-ONLY Friend' }"), "a party member's name alone is not your quest").toBe(false);
+  addon.eval("__related.nameplate1 = true __tips.nameplate1 = nil ns.GetModule('Nameplates').RefreshAll()");
+  expect(addon.eval("return { ns.FrameState('vgPlate')[__plates.nameplate1].quest:IsShown(), __tipCalls > 0 }")[0], "the client's own answer still marks without asking the tooltip").toBe(true);
+  addon.eval("__related.nameplate1 = false");
+  expect(tipMark(addon, "{ type = __kinds.QuestObjective }"), "the client saying no does not hide a quest line in the tooltip").toBe(true);
+});
+it("nameplates: a hidden or missing tooltip answer means no quest mark, and nothing is compared", () => {
+  const addon = loggedIn(UNITS_ENV + PLATE_ENV + CLICK_LUA + TIPS_ENV);
+  addon.fire("NAME_PLATE_UNIT_ADDED", "nameplate1");
+  const secret = "{ __secret = true }";
+  expect(tipMark(addon, `{ type = ${secret} }`), "a line whose type is hidden").toBe(false);
+  expect(tipMark(addon, secret), "a hidden line").toBe(false);
+  expect(tipMark(addon, "'text'"), "a line that is not a table").toBe(false);
+  addon.eval("__tips.nameplate1 = { __secret = true } ns.GetModule('Nameplates').RefreshAll()");
+  expect(addon.eval("return ns.FrameState('vgPlate')[__plates.nameplate1].quest:IsShown()"), "hidden tooltip data").toBe(false);
+  addon.eval("__tips.nameplate1 = { lines = { __secret = true } } ns.GetModule('Nameplates').RefreshAll()");
+  expect(addon.eval("return ns.FrameState('vgPlate')[__plates.nameplate1].quest:IsShown()"), "hidden lines").toBe(false);
+  addon.eval("__tips.nameplate1 = { lines = 5 } ns.GetModule('Nameplates').RefreshAll()");
+  expect(addon.eval("return ns.FrameState('vgPlate')[__plates.nameplate1].quest:IsShown()"), "lines that are no list").toBe(false);
+  addon.eval("__tips.nameplate1 = 5 ns.GetModule('Nameplates').RefreshAll()");
+  expect(addon.eval("return ns.FrameState('vgPlate')[__plates.nameplate1].quest:IsShown()"), "data that is no table").toBe(false);
+  addon.eval("__tips.nameplate1 = { lines = { { type = __kinds.QuestObjective } } } __tipError = true ns.GetModule('Nameplates').RefreshAll()");
+  expect(addon.eval("return ns.FrameState('vgPlate')[__plates.nameplate1].quest:IsShown()"), "a call that errors").toBe(false);
+  addon.eval("__tipError = nil C_TooltipInfo.GetUnit = nil ns.GetModule('Nameplates').RefreshAll()");
+  expect(addon.eval("return ns.FrameState('vgPlate')[__plates.nameplate1].quest:IsShown()"), "a client without the call").toBe(false);
+  addon.eval("C_TooltipInfo = nil ns.GetModule('Nameplates').RefreshAll()");
+  expect(addon.eval("return ns.FrameState('vgPlate')[__plates.nameplate1].quest:IsShown()"), "a client without the namespace").toBe(false);
+  addon.eval("C_TooltipInfo = { GetUnit = function() return { lines = { { type = 8 } } } end } Enum.TooltipDataLineType = nil ns.GetModule('Nameplates').RefreshAll()");
+  expect(addon.eval("return ns.FrameState('vgPlate')[__plates.nameplate1].quest:IsShown()"), "a client without the line types").toBe(false);
+});
+it("nameplates: quest changes repaint the marks once a frame, from the quest log and from unit quest events", () => {
+  const addon = loggedIn(UNITS_ENV + PLATE_ENV + CLICK_LUA + TIPS_ENV);
+  addon.fire("NAME_PLATE_UNIT_ADDED", "nameplate1");
+  // Whether nameplate1's quest mark shows.
+  const shown = () => addon.eval("return ns.FrameState('vgPlate')[__plates.nameplate1].quest:IsShown()");
+  expect(shown(), "added with no quest line").toBe(false);
+  addon.eval("__tips.nameplate1 = { lines = { { type = __kinds.QuestObjective } } } __tipCalls = 0");
+  addon.fire("QUEST_LOG_UPDATE");
+  addon.fire("UNIT_QUEST_LOG_CHANGED", "player");
+  addon.fire("QUEST_LOG_UPDATE");
+  expect([shown(), addon.eval("return __tipCalls")], "nothing until the next frame").toEqual([false, 0]);
+  addon.eval("__wfgStub.advance(1)");
+  expect([shown(), addon.eval("return __tipCalls")], "then one repaint for the burst: each of the two plates asked once").toEqual([true, 2]);
+  addon.eval("__tips.nameplate1 = nil");
+  addon.fire("UNIT_QUEST_LOG_CHANGED", "player");
+  addon.eval("__wfgStub.advance(1)");
+  expect(shown(), "a unit quest event alone repaints").toBe(false);
+  addon.eval("__tips.nameplate1 = { lines = { { type = __kinds.QuestTitle } } }");
+  addon.fire("NAME_PLATE_UNIT_REMOVED", "nameplate1");
+  addon.fire("NAME_PLATE_UNIT_ADDED", "nameplate1");
+  expect(shown(), "a plate added later asks at once").toBe(true);
 });
 // TEST-ONLY quest and gossip windows that color their text for parchment (dark brown), as the game does.
 const PARCHMENT_ENV = `
@@ -1092,6 +1166,96 @@ it("quest log: Ctrl-click marks quests, the Abandon button counts them, and one 
   expect(addon.eval("return __gone"), "nothing abandoned before the answer").toEqual({});
   addon.click("Vanguard_Question.confirm");
   expect([addon.eval("return __gone"), addon.eval("return Vanguard_QuestLog.buttons.abandon.text:GetText()")], "each marked quest abandoned; the marks are cleared").toEqual([[90051, 90053], "Abandon"]);
+});
+// TEST-ONLY quest history: the clock at three days past the seeded turn-ins, and a store another character wrote.
+const HISTORY_ENV = `
+  time = function() return 1000000 + 3 * 86400 end
+`;
+const HISTORY_SAVED = `VanguardDB.questHistory = { count = 2, quests = {
+  [90051] = { who = "Thrall-Forever", class = "SHAMAN", t = 1000000, title = "TEST-ONLY Wolves" },
+  [90052] = { who = "Tester-ForeverTest", class = "MAGE", t = 1000000 + 3 * 86400 } } }`;
+// The quest history store: { count, entries as "id|who|class|time|title" }.
+const historyStore = (addon) => addon.eval("local s = VanguardDB.questHistory local out = {} for id, r in pairs(s.quests) do out[#out + 1] = id .. '|' .. r.who .. '|' .. tostring(r.class) .. '|' .. r.t .. '|' .. tostring(r.title) end table.sort(out) return { s.count, out }");
+it("quest history: a turn-in is recorded for the account, one entry per quest, ignoring ids the client hides", () => {
+  const addon = loggedIn(TRACK_ENV + QLOG_ENV + HISTORY_ENV + `
+  C_QuestLog.GetTitleForQuestID = function(id) return id == 90051 and "TEST-ONLY Wolves" or nil end`);
+  addon.fire("QUEST_TURNED_IN", 90051, 250, 100);
+  expect(historyStore(addon), "the quest, who turned it in (name-realm), their class file, when, and its title").toEqual([1, ["90051|Tester-ForeverTest|MAGE|1259200|TEST-ONLY Wolves"]]);
+  addon.fire("QUEST_TURNED_IN", 90051, 250, 100);
+  addon.fire("QUEST_TURNED_IN", "90052");
+  addon.fire("QUEST_TURNED_IN", addon.world.secret(90053));
+  addon.fire("QUEST_TURNED_IN");
+  expect(historyStore(addon)[0], "a repeat turn-in replaces the entry; a text, a hidden or a missing id is ignored").toBe(1);
+  addon.eval("ns.GetModule('QuestHistory').MAX_QUESTS = 3 time = function() return 2000000 end");
+  for (const id of [90061, 90062, 90063, 90064]) {
+    addon.eval(`time = function() return ${2000000 + id} end`);
+    addon.fire("QUEST_TURNED_IN", id);
+  }
+  expect(historyStore(addon), "past the cap (90063 was the fourth) the oldest turn-ins go, down to 90 %, then it grows again").toEqual([3, [90062, 90063, 90064].map((id) => `${id}|Tester-ForeverTest|MAGE|${2000000 + id}|nil`)]);
+});
+it("quest history: a client that hides your name, or has no clock, does not fail", () => {
+  const addon = loggedIn(TRACK_ENV + QLOG_ENV + `
+  UnitName = function() return nil end C_QuestLog.GetTitleForQuestID = nil`);
+  addon.fire("QUEST_TURNED_IN", 90051);
+  expect(historyStore(addon)[0], "no name, no entry").toBe(0);
+  addon.eval("UnitName = function() return 'Tester' end time = nil");
+  addon.fire("QUEST_TURNED_IN", 90051);
+  expect(addon.eval("local r = VanguardDB.questHistory.quests[90051] return { r.t, r.title or false }"), "no clock: time 0; no title lookup: none").toEqual([0, false]);
+});
+it("quest history: the quest log says which character did the quest, and the setting turns it all off", () => {
+  const addon = loggedIn(TRACK_ENV + QLOG_ENV + HISTORY_ENV, { savedVariables: HISTORY_SAVED });
+  const muted = addon.eval("return ns.Theme.Hex('muted')");
+  addon.eval("Vanguard_QuestLogToggle.__scripts.OnClick(Vanguard_QuestLogToggle)");
+  expect(questLog(addon).objectives, "another character's turn-in, muted, under the objectives").toBe(`Objectives\n- 3/8 TEST-ONLY Wolves slain\n+ 1/1 TEST-ONLY Pelt\n\n|c${muted}Done on Thrall-Forever · 3 days ago|r`);
+  logLine(addon, 2);
+  expect(questLog(addon).objectives, "this character's own, for a quest with no objectives: today, on this character").toBe(`|c${muted}Done on this character · today|r`);
+  logLine(addon, 3);
+  expect(questLog(addon).objectives.includes("Done on"), "a quest nobody finished has no line").toBe(false);
+  const off = loggedIn(TRACK_ENV + QLOG_ENV + HISTORY_ENV, { savedVariables: HISTORY_SAVED + ` VanguardDB.profiles = { Default = { QuestHistory = { track = false } } }` });
+  off.eval("Vanguard_QuestLogToggle.__scripts.OnClick(Vanguard_QuestLogToggle)");
+  off.fire("QUEST_TURNED_IN", 90053);
+  expect([questLog(off).objectives.includes("Done on"), off.eval("return VanguardDB.questHistory.count")], "off: no line, nothing recorded").toEqual([false, 2]);
+});
+it("quest history: the quest dialog's details say who did the quest, muted under the objectives, and a quest nobody did has none", () => {
+  const addon = loggedIn(QUEST_ENV + HISTORY_ENV + `
+  __id = 90051 GetQuestID = function() return __id end`, { savedVariables: HISTORY_SAVED });
+  addon.fire("QUEST_DETAIL");
+  // The history line: shown, text.
+  const shown = () => addon.eval("local h = Vanguard_QuestDialog.history return { h:IsShown(), h:GetText() }");
+  expect(shown(), "Done on Thrall-Forever, 3 days ago").toEqual([true, "Done on Thrall-Forever · 3 days ago"]);
+  expect(isTok(addon, addon.eval("return Vanguard_QuestDialog.history.__textColor"), "muted"), "in the muted color").toBe(true);
+  addon.eval("__id = 90099");
+  addon.fire("QUEST_DETAIL");
+  expect(shown(), "a quest nobody did: no line").toEqual([false, ""]);
+  addon.eval("__id = 90052 GetObjectiveText = function() return nil end VanguardDB.questHistory.quests[90052].who = '<name>-ForeverTest'");
+  addon.fire("QUEST_DETAIL");
+  expect(shown(), "with no objectives the line sits under the text").toEqual([true, "Done on this character · today"]);
+  const off = loggedIn(QUEST_ENV + HISTORY_ENV + `
+  __id = 90051 GetQuestID = function() return __id end`, { savedVariables: HISTORY_SAVED + ` VanguardDB.profiles = { Default = { QuestHistory = { track = false } } }` });
+  off.fire("QUEST_DETAIL");
+  expect(off.eval("return Vanguard_QuestDialog.history:IsShown()"), "history off: the dialog draws no line").toBe(false);
+});
+it("quest history: /vg quests history [n] lists the latest turn-ins, newest first, and /vg quests still opens the log", () => {
+  const addon = loggedIn(TRACK_ENV + QLOG_ENV + HISTORY_ENV + `
+  C_QuestLog.GetTitleForQuestID = function(id) return id == 90052 and "TEST-ONLY Letter" or nil end`, { savedVariables: HISTORY_SAVED });
+  addon.slash("quests history");
+  // The last n chat lines without the Vanguard prefix color.
+  const said = (n) => addon.chat().slice(-n).map((l) => l.replace(/^\|c\w{8}Vanguard:\|r /, "Vanguard: "));
+  expect(said(3), "a heading with the count, then each quest with who and when; a title the store lacks is asked of the client").toEqual([
+    "Vanguard: Latest 2 quest turn-in(s), of 2 remembered:", "Vanguard: TEST-ONLY Letter · Tester-ForeverTest · today", "Vanguard: TEST-ONLY Wolves · Thrall-Forever · 3 days ago"]);
+  addon.eval("VanguardDB.questHistory.quests[90053] = { who = 'Jaina-Forever', t = 1 } VanguardDB.questHistory.count = 3");
+  addon.slash("quests history 1");
+  expect(said(2), "a number limits the list").toEqual(["Vanguard: Latest 1 quest turn-in(s), of 3 remembered:", "Vanguard: TEST-ONLY Letter · Tester-ForeverTest · today"]);
+  addon.slash("quests history 99");
+  expect(said(1), "a title nobody knows reads Quest <id>").toEqual(["Vanguard: Quest 90053 · Jaina-Forever · 14 days ago"]);
+  addon.slash("quests");
+  expect(addon.eval("return Vanguard_QuestLog:IsShown()"), "without history, the quest log toggles").toBe(true);
+  addon.eval("VanguardDB.questHistory.quests = {}");
+  addon.slash("quests history");
+  expect(said(1), "nothing remembered").toEqual(["Vanguard: No turn-ins remembered yet."]);
+  const off = loggedIn(TRACK_ENV + QLOG_ENV, { savedVariables: `VanguardDB.profiles = { Default = { QuestHistory = { track = false } } }` });
+  off.slash("quests history");
+  expect(chatHas(off, /Quest history is off/), "switched off").toBe(true);
 });
 it("quest automation: a quest a player shares follows its own switch, and Shift skips it", () => {
   // Makes the quest on offer come from a player.

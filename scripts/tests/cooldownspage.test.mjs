@@ -35,7 +35,7 @@ it("cooldowns page: the settings moved off Combat tools, which points here; the 
   expect(labels(index("cooldowns")), "the page: setup, the manager, the gaps row, the glow").toEqual([
     "Set up cooldowns", "The game's manager", "Show the game's manager", "Vanguard look (reload)", "Gaps row", "Gaps row (reload)",
     "Add the manager's cooldowns (reload)", "Choose items and spells for the row with /vg gaps add and /vg gaps spell add.", "Buff glow",
-    "Glow a buff near its end", "Glow when this much is left"]);
+    "Glow a buff near its end", "Glow when this much is left", "Key text", "Key text on the manager's icons"]);
   expect(saved(addon), "nothing is saved until you change it").toEqual([false, true, false, false, false, 30]);
 });
 
