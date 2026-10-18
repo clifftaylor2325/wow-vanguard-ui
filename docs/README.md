@@ -19,6 +19,7 @@ Pick by who you are. The behaviour spec for the whole addon is the root [README.
 ## Developers
 
 - Start with [../CLAUDE.md](../CLAUDE.md) (how to work in the repo) and [PATTERNS.md](PATTERNS.md) (the canonical shape of a module, a guarded callback, frame state, combat-deferred work, a migration and a scenario).
+- [RELEASING.md](RELEASING.md): the local release route and the launch-day hotfix steps.
 - [THEME.md](THEME.md): colours, text roles, spacing, every fade and sound. Update it when you add one.
 - [../scripts/tests/README.md](../scripts/tests/README.md): how to write a headless-client test.
 - `research/`: spikes that explain why the checks and tools are what they are ([code-quality-checks.md](research/code-quality-checks.md), [engineering-review.md](research/engineering-review.md)).

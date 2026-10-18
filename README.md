@@ -270,7 +270,7 @@ npm run preview   # preview/*.png: the default layout and the options window (ne
 
 **Pre-push hook:** `npm install` points git at `.githooks/`, whose pre-push hook runs `npm run test:quick`, `npm run quality` and the TOC check, then luacheck and the Lua 5.1 syntax check when they are installed (it names what it skipped; on Windows it always skips the syntax check). CI stays the gate; `git push --no-verify` skips the hook once.
 
-**Release:** bump `## Version` in `Vanguard.toc` and merge, then run the `release` workflow from the Actions tab on `main` (it tags `v<version>`), or push a matching tag. It runs the whole suite with the coverage floor first, then publishes a GitHub release with the zip.
+**Release:** bump `## Version` in `Vanguard.toc` and merge, then run the `release` workflow from the Actions tab on `main` (it tags `v<version>`), or push a matching tag. It runs the whole suite with the coverage floor first, then publishes a GitHub release with the zip. When Actions can't run, or a fix has to go out fast, `node scripts/release-local.mjs` does the same from your machine (a rehearsal by default, `--publish=v<version>` to ship to CurseForge, Wago and GitHub); see `docs/RELEASING.md`.
 
 **Art and fonts:** every texture and icon under `Media/` is made by code in `scripts/lib/media-sources.mjs`: most drawn in plain math (no image editor), the options nav's and minimap's icons and the faction crests rasterized from game-icons.net SVGs in `art/game-icons` (credited in `art/CREDITS.md`); `npm run verify` fails if a committed file doesn't match its source. The fonts are made from upstream Fira Sans Condensed by `scripts/fonts/make-fonts.py` (see that file).
 
