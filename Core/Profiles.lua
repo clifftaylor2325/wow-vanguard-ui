@@ -24,6 +24,13 @@ function ns.NewProfile(name)
   return true
 end
 
+-- A copy of a profile's own values: an active Situations override is taken out of the profile in use
+-- for the copy (ns.OwnValues, Modules/Situations.lua), as for an export.
+local function ownCopy(profile)
+  if ns.OwnValues then return ns.OwnValues(ns.Copy, profile) end
+  return ns.Copy(profile)
+end
+
 -- Copies another profile's settings over the one this character uses after the next reload: the
 -- active one, or the one staged while a switch waits (so the profile running until then is never
 -- overwritten). Returns the name copied into, or false.
@@ -32,7 +39,7 @@ function ns.CopyProfile(from)
   if not source or from == into then
     return false
   end
-  VanguardDB.profiles[into] = ns.Copy(source)
+  VanguardDB.profiles[into] = ownCopy(source)
   if into == ns.ProfileName() then ns.ProfileChanged() end
   return into
 end
@@ -119,10 +126,11 @@ end
 
 -- Gives this character a profile of its own named after `name`, without a reload: the running
 -- profile's tables move to the new name (the modules and the settings cache keep using them), and
--- the old name keeps a copy, so the characters sharing it see what they had. Returns the new name.
+-- the old name keeps a copy of its own values (no Situations override), so the characters sharing it
+-- see what they had. Returns the new name.
 function ns.ForkProfile(name)
   local new, live = ns.ForkName(name), ns.Profile()
-  VanguardDB.profiles[ns.ProfileName()] = ns.Copy(live)
+  VanguardDB.profiles[ns.ProfileName()] = ownCopy(live)
   VanguardDB.profiles[new] = live
   VanguardCharDB.profile, VanguardCharDB.editModeProfile = new, new
   return new
@@ -167,7 +175,7 @@ end
 -- backup. Runs before every import. Returns the backup's name.
 function ns.BackupProfile()
   local name = ns.BackupName(ns.ProfileName())
-  VanguardDB.profiles[name] = ns.OwnValues and ns.OwnValues(ns.Copy, ns.Profile()) or ns.Copy(ns.Profile())
+  VanguardDB.profiles[name] = ownCopy(ns.Profile())
   return name
 end
 

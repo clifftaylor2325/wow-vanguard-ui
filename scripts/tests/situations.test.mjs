@@ -90,6 +90,22 @@ it("situations: an export made while an override is on carries the profile's own
   expect(exported("'positions'")[0], "without Situations the tables are exported as they are").toBe("TOP");
 });
 
+it("situations: forking or copying the profile while an override is on gives the other profile its own values", () => {
+  const addon = situated(saved());
+  raid(addon);
+  // A profile's info strip spot (or false) and DPS setting.
+  const own = (name) => addon.eval(`local p = VanguardDB.profiles[${JSON.stringify(name)}] return { p.positions ~= nil and p.positions.infostrip ~= nil, p.InfoStrip ~= nil and p.InfoStrip.dps == true }`);
+  addon.eval('VanguardDB.profiles["TEST-ONLY Next"] = {} ns.UseProfile("TEST-ONLY Next") ns.CopyProfile("Default")');
+  expect(own("TEST-ONLY Next"), "a copy of the profile in use holds its own values, not the raid's").toEqual([false, false]);
+  addon.eval('ns.UseProfile("Default") ns.ForkProfile("TEST-ONLY Alt")');
+  expect(own("Default"), "after a fork the shared profile keeps its own values").toEqual([false, false]);
+  expect([spot(addon), dps(addon)], "and the override is still on, now in this character's profile").toEqual([["TOP", "TOP", 0, -60], true]);
+  addon.fire("PLAYER_LOGOUT");
+  expect(own("TEST-ONLY Alt"), "which gets its own values back at logout").toEqual([false, false]);
+  addon.eval('ns.OwnValues = nil VanguardDB.profiles["TEST-ONLY Next"] = {} ns.UseProfile("TEST-ONLY Next") ns.CopyProfile("Default")');
+  expect(addon.eval('return VanguardDB.profiles["TEST-ONLY Next"].Situations ~= nil'), "without Situations a copy is the profile as it is").toBe(true);
+});
+
 it("situations: which situation holds, the first of pvp, instance, raid, party, resting, solo", () => {
   const addon = situated();
   // SI.Where() after setting the instance type and resting.
