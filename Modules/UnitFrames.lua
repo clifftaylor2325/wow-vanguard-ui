@@ -12,7 +12,7 @@ local ADDON, ns = ...
 local T, V = ns.Theme, ns.Visibility
 
 local UF = ns.Module("UnitFrames", {
-  defaults = { hideBlizzard = true, healthText = true, powerHeight = 6, boss = true, calm = false, deck = false, targetHeight = 36 },
+  defaults = { hideBlizzard = true, healthText = true, powerHeight = 6, boss = true, calm = false, deck = false, targetHeight = 36, tagMark = true },
 })
 
 -- Target classification -> the color of its diamond (none for normal units).
@@ -151,6 +151,23 @@ function UF.LevelText(unit)
   return level < 1 and "??" or tostring(level)
 end
 
+-- A client answer about a unit, or nil when the client lacks the call or hides the answer.
+local function asked(name, ...)
+  local fn = _G[name]
+  if type(fn) ~= "function" then return nil end
+  local answer = fn(...)
+  if isSecret(answer) then return nil end
+  return answer
+end
+
+-- True when the unit looks tagged by you or your group: a creature you can attack that is in combat and
+-- that the client does not call tap denied (UnitIsTapDenied is true for a mob someone else tagged). The
+-- client has no call that says "yours" outright, so a mob in combat with you (or only with your pet) reads the same.
+function UF.TaggedByYou(unit)
+  return asked("UnitCanAttack", "player", unit) == true and asked("UnitIsPlayer", unit) ~= true
+    and asked("UnitIsTapDenied", unit) == false and asked("UnitAffectingCombat", unit) == true
+end
+
 -- The color token of a unit's classification diamond, or nil for a normal unit.
 function UF.ClassToken(unit)
   local kind = type(UnitClassification) == "function" and UnitClassification(unit) or nil
@@ -209,6 +226,16 @@ local function addClassMark(f)
   f.class:SetSize(14, 14)
   f.class:SetPoint("CENTER", f, "TOPRIGHT", -2, -2)
   f.class:Hide()
+end
+
+-- A small check mark left of the classification diamond, shown on a target you have tagged.
+local function addTagMark(f)
+  f.tag = T.Snap(f.health:CreateTexture(nil, "OVERLAY"))
+  f.tag:SetTexture(T.Icon("Check"))
+  f.tag:SetSize(12, 12)
+  f.tag:SetPoint("CENTER", f, "TOPRIGHT", -18, -2)
+  T.Tint(f.tag, "good")
+  f.tag:Hide()
 end
 
 -- The name (with the level left of it, where shown) and the health text. The
@@ -301,6 +328,11 @@ function UF.UpdateName(f)
   if f.class then updateClass(f) end
 end
 
+-- The target frame's tag mark: shown while the target looks tagged by you (and the switch is on).
+function UF.UpdateTag(f)
+  if f.tag then f.tag:SetShown(UF.settings.tagMark == true and UF.TaggedByYou(f.unit)) end
+end
+
 -- Everything on a frame, if its unit exists.
 function UF.UpdateFrame(f)
   if not flag(UnitExists(f.unit)) then
@@ -309,6 +341,7 @@ function UF.UpdateFrame(f)
   UF.UpdateHealth(f)
   UF.UpdatePower(f)
   UF.UpdateName(f)
+  UF.UpdateTag(f)
 end
 
 -- Unit event -> what it updates.
@@ -325,14 +358,18 @@ local UNIT_EVENTS = {
   UNIT_LEVEL = UF.UpdateName,
 }
 
+-- What the target frame's tag mark also hears: a mob was tagged or let go (its flags), or its threat list changed.
+local TAG_EVENTS = { "UNIT_FLAGS", "UNIT_THREAT_LIST_UPDATE" }
+
 -- The unit events, as a list for ns.OnUnit.
 local UNIT_EVENT_LIST = {}
 for event in pairs(UNIT_EVENTS) do UNIT_EVENT_LIST[#UNIT_EVENT_LIST + 1] = event end
 
 -- Listens for its own unit's events through ns.OnUnit (the client sends that
--- unit's only); the subscription is its own frame, not the secure unit button.
+-- unit's only, and the target its tag mark's too); the subscription is its own frame, not the secure unit button.
 local function listen(f)
   f.vgUnitEvents = ns.OnUnit(UNIT_EVENT_LIST, function(event) UNIT_EVENTS[event](f) end, f.unit)
+  if f.tag then f.vgTagEvents = ns.OnUnit(TAG_EVENTS, function() UF.UpdateTag(f) end, f.unit) end
 end
 
 -- Whether the frame's unit is someone else, or shows another name or level,
@@ -402,6 +439,7 @@ end
 local function addFrame(key, unit, w, h, label, point)
   local f = createUnitFrame(key, unit, w, h, UF.settings)
   if key == "target" or key == "focus" then addClassMark(f) end
+  if key == "target" then addTagMark(f) end
   UF.frames[key] = f
   listen(f)
   watch(f)

@@ -475,7 +475,7 @@ it("unit events: combo points, the druid's mana, power ticks and threat ask the 
   expect(heard("UNIT_MAXPOWER")).toEqual({ subs: withFrames("player", "player"), plain: 0 });
   expect(heard("UNIT_DISPLAYPOWER"), "a form's power type: the mana bar and the spark").toEqual({ subs: withFrames("player", "player"), plain: 0 });
   expect(heard("UNIT_SPELLCAST_SUCCEEDED"), "the five-second rule and the craft queue: your casts").toEqual({ subs: "player player", plain: 0 });
-  expect([heard("UNIT_THREAT_LIST_UPDATE").subs, heard("UNIT_THREAT_SITUATION_UPDATE").subs], "threat: your target's list, and your own situation").toEqual(["target", "player"]);
+  expect([heard("UNIT_THREAT_LIST_UPDATE").subs, heard("UNIT_THREAT_SITUATION_UPDATE").subs], "threat: your target's list (the threat panel, and the target frame's tag mark), and your own situation").toEqual(["target target", "player"]);
   // How many combo-point pips are lit.
   const lit = () => addon.eval('local n = 0 for _, p in ipairs(ns.GetModule("ComboPoints").pips) do if p.fill:IsShown() then n = n + 1 end end return n');
   addon.eval("__cp = 4");

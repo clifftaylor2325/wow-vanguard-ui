@@ -521,6 +521,8 @@ function UnitIsConnected(unit) local u = resolveUnit(unit) return u ~= nil and u
 function UnitIsAFK(unit) return uf(unit, "afk") == true end
 function UnitOnTaxi(unit) return uf(unit, "taxi") == true end
 function UnitInRange(unit) local u = resolveUnit(unit) return u ~= nil and u.inRange ~= false, u ~= nil end
+function UnitIsTapDenied(unit) return uf(unit, "tapDenied") == true end
+function UnitAffectingCombat(unit) return uf(unit, "inCombat") == true end
 function UnitClassification(unit) return uf(unit, "classification") or "normal" end
 function UnitFactionGroup(unit) local u = resolveUnit(unit) return u and u.faction, u and u.faction end
 function UnitGroupRolesAssigned(unit) return uf(unit, "role") or "NONE" end

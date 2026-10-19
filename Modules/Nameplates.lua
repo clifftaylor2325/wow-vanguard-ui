@@ -34,7 +34,7 @@ local CB = ns.GetModule("CastBars")
 local RS = ns.GetModule("RaidStatus")
 
 local NP = ns.Module("Nameplates", {
-  defaults = { width = 130, height = 10, level = true, threat = true, castBar = true, debuffs = 4, buffs = 3, targetBorder = true, timers = true, questMarks = true },
+  defaults = { width = 130, height = 10, level = true, threat = true, castBar = true, debuffs = 4, buffs = 3, targetBorder = true, timers = true, questMarks = true, tagMarks = true },
 })
 
 local ICON = 18
@@ -158,6 +158,16 @@ local function addQuestMark(f)
   f.quest:Hide()
 end
 
+-- A green check mark just left of the level, shown on mobs you have tagged.
+local function addTagMark(f)
+  f.tag = f:CreateTexture(nil, "OVERLAY")
+  f.tag:SetTexture(T.Icon("Check"))
+  f.tag:SetSize(NP.QUEST, NP.QUEST)
+  f.tag:SetPoint("RIGHT", f.level, "LEFT", -2, 0)
+  T.Tint(f.tag, "good")
+  f.tag:Hide()
+end
+
 -- The name above the bar (its level just left of it, the quest mark just
 -- right), the raid icon to its left and the target marker to its right.
 local function addTexts(f)
@@ -251,9 +261,10 @@ local function addRow(f, key)
   f[key .. "OnEngine"] = ns.Auras.Backend() == ns.AuraEngine
 end
 
--- A plate's texts, click area and mouseover wash.
+-- A plate's texts, tag mark, click area and mouseover wash.
 local function addOverlays(f, s)
   addTexts(f)
+  addTagMark(f)
   addHitArea(f, s)
   addHover(f)
 end
@@ -481,6 +492,11 @@ function NP.PaintQuest(f, unit)
   f.quest:SetShown(NP.settings.questMarks == true and NP.QuestUnit(unit))
 end
 
+-- Shows a plate's tag mark while the unit looks tagged by you (and the marks are on).
+function NP.PaintTag(f, unit)
+  f.tag:SetShown(NP.settings.tagMarks == true and ns.GetModule("UnitFrames").TaggedByYou(unit))
+end
+
 -- Points the debuff row at the plate's unit (the client reuses plates for
 -- other units), and the buff row at it while it is a player; the buff row is
 -- hidden otherwise. A nil unit empties both.
@@ -503,6 +519,7 @@ end
 local function refresh(f, unit)
   NP.Update(f, unit)
   NP.PaintQuest(f, unit)
+  NP.PaintTag(f, unit)
   NP.UpdateAuras(f, unit)
   if NP.UpdateHover(f, unit) then NP.WatchHover(true) end
   if f.cast then CB.Show(f.cast, unit) end
@@ -561,7 +578,8 @@ end
 -- Health moves the fill only; threat and faction recolor the bar only.
 local UNIT_HANDLERS = {
   UNIT_HEALTH = NP.UpdateHealth, UNIT_MAXHEALTH = NP.UpdateHealth, UNIT_NAME_UPDATE = NP.UpdateName,
-  UNIT_FACTION = NP.UpdateColor, UNIT_THREAT_LIST_UPDATE = NP.UpdateColor, UNIT_LEVEL = NP.UpdateName,
+  UNIT_FACTION = NP.UpdateColor, UNIT_THREAT_LIST_UPDATE = function(f, unit) NP.UpdateColor(f, unit) NP.PaintTag(f, unit) end,
+  UNIT_FLAGS = NP.PaintTag, UNIT_LEVEL = NP.UpdateName,
 }
 for _, event in ipairs(CB.EVENTS) do UNIT_HANDLERS[event] = showCast end
 NP.UNIT_EVENTS = {}
@@ -700,7 +718,7 @@ function NP.OptionRows()
     { "check", "Levels, colored by how hard the unit is for you", setting("level") },
     { "check", "Threat colors while you have aggro", setting("threat") },
     { "check", "Accent border, glow and marker on your target", setting("targetBorder") }, { "check", "Cast bar", setting("castBar", true) },
-    { "check", "A gold ! by units your quests need", setting("questMarks") },
+    { "check", "A gold ! by units your quests need", setting("questMarks") }, { "check", "A green check by mobs you have tagged", setting("tagMarks") },
     { "cycle", "Your debuffs shown", { { 0, "none" }, { 4, "4" }, { 6, "6" } }, setting("debuffs", true) }, { "cycle", "Buffs on players (defensives, and yours on friends)", { { 0, "none" }, { 3, "3" }, { 5, "5" } }, setting("buffs", true) },
     { "check", "Timer numbers on your debuffs (reload)", setting("timers", true) },
     { "cycle", "Width", { { 110, "110" }, { 130, "130" }, { 160, "160" } }, setting("width", true) }, { "cycle", "Height", { { 8, "8" }, { 10, "10" }, { 14, "14" } }, setting("height", true) } }
