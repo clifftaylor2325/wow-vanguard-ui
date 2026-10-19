@@ -7,6 +7,8 @@
 
 local ADDON, ns = ...
 
+local T = ns.Theme
+
 local CW = ns.Module("ChatWindows", { defaults = { movers = false, find = true } })
 
 -- The sliders' ranges (width, height) in units.
@@ -225,17 +227,35 @@ function CW.Search(needle)
   return { unpack(found, math.max(1, #found - CW.MAX_FOUND + 1)) }
 end
 
--- Finds a word in the chat and the saved history, and shows the lines in a box ready to copy.
-function CW.Find(query)
-  local needle = (type(query) == "string" and query or ""):match("^%s*(.-)%s*$"):lower()
-  if needle == "" then return ns.Chat("Type something to find.") end
-  local found = CW.Search(needle)
-  ns.ShowText(string.format("Chat: %d lines with \"%s\"", #found, needle), table.concat(found, "\n"))
+-- A plain line (CX.Plain's: no codes left in it) with each match of `needle` (lower-case) in the
+-- accent's text colour, the find box's one accent. Only lines read as plain text get here: a hidden
+-- (secret) line was left out before any search.
+local function marked(text, needle)
+  local out, lower, from = {}, text:lower(), 1
+  while true do
+    local s, e = lower:find(needle, from, true)
+    if not s then break end
+    out[#out + 1] = text:sub(from, s - 1) .. T.Paint(text:sub(s, e), "accentText")
+    from = e + 1
+  end
+  out[#out + 1] = text:sub(from)
+  return table.concat(out)
 end
 
--- Asks what to find.
+-- Finds a word in the chat and the saved history, for the find box: the line that says how many,
+-- and the lines with each match in the accent's text colour. An empty word says so in chat and
+-- gives nothing (the box keeps its last lines).
+function CW.Find(query)
+  local needle = (type(query) == "string" and query or ""):match("^%s*(.-)%s*$"):lower()
+  if needle == "" then ns.Chat("Type something to find.") return end
+  local found = CW.Search(needle)
+  for i, line in ipairs(found) do found[i] = marked(line, needle) end
+  return string.format("Chat: %d lines with \"%s\"", #found, needle), table.concat(found, "\n")
+end
+
+-- Opens the find box (Core/Dialog.lua): the word goes in the field at its top, the lines found under it.
 function CW.AskFind()
-  ns.AskText("Find in chat", CW.Find, "Find")
+  ns.ShowFind("Find in chat", CW.Find)
 end
 
 -- A small Find button in the main chat window's tab bar, left of the Copy button.
@@ -245,10 +265,16 @@ local function addFindButton()
   CW.findButton = ns.GetModule("Chat").AddBarButton(frame, "Find", "click find in chat", CW.AskFind)
 end
 
+-- Shows or hides the Find button as its switch is set (made now when it was off at login), at once.
+function CW.ApplyFind()
+  if CW.settings.find and not CW.findButton then addFindButton() end
+  if CW.findButton then CW.findButton:SetShown(CW.settings.find == true) end
+end
+
 -- Module entry point (Core/Modules.lua).
 function CW.Enable(settings)
   CW.settings = settings
-  if settings.find then addFindButton() end
+  CW.ApplyFind()
   if not settings.movers then return end
   for _, window in ipairs(CW.Windows()) do
     if floating(window[1]) then floatingMover(window) end

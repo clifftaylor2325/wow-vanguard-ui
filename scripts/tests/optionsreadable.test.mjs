@@ -25,7 +25,7 @@ it("options: Reset this page asks, then puts back what changed on that page only
   // Whether the Reset this page button is on.
   const enabled = () => addon.eval(`local on for _, x in ipairs(__wfgStub.frames) do if x.caption == "Reset this page" and x:IsVisible() then on = x:IsEnabled() end end return on`);
   expect(enabled(), "nothing changed: the button is off").toBe(false);
-  addon.eval('__click("Copy button over the chat")');
+  addon.eval(`__click("Copy button in the chat's tab bar")`);
   expect(enabled(), "a changed setting turns it on").toBe(true);
   addon.eval('__click("Reset this page")');
   expect(addon.eval("return Vanguard_Question.title:GetText()"), "it names the page").toMatch(/Chat page/);
@@ -72,9 +72,9 @@ it("options: search lists the settings that match under the box, opens one, and 
   expect(list(), "no match says so").toEqual([{}, true]);
   search("");
   expect(list(), "an empty box hides the list").toBe(false);
-  addon.eval('ns.Options.Show("chat") __click("Copy button over the chat")');
+  addon.eval(`ns.Options.Show("chat") __click("Copy button in the chat's tab bar")`);
   search("changed");
-  expect(list()[0].some((l) => l.startsWith("Copy button over the chat|")), "changed lists what differs from the default").toBe(true);
+  expect(list()[0].some((l) => l.startsWith("Copy button in the chat's tab bar|")), "changed lists what differs from the default").toBe(true);
   addon.eval('Vanguard_Options.results.lines[1]:GetScript("OnClick")(Vanguard_Options.results.lines[1])');
   expect([addon.eval("return ns.Options.current"), addon.eval("return Vanguard_Options.found:IsShown()"), list()], "clicking a line opens its page, marks the row and hides the list").toEqual(["chat", true, false]);
   search("town and gear");

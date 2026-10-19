@@ -1,10 +1,12 @@
 -- Chat extras:
 --   * web addresses in chat become links in the accent color; clicking one
 --     opens a box with the address selected, ready to copy (Ctrl+C);
---   * a small Copy button over the main chat window (and /vg copy) opens the
---     recent chat as plain text, ready to copy;
---   * short channel names: "[2. Trade - City]" shows as "[T]", "[Guild]" as "[G]";
---   * Ctrl + mouse wheel jumps to the top or the bottom of a chat window;
+--   * a small Copy button in the main chat window's tab bar (and /vg copy) opens
+--     the recent chat as plain text, ready to copy;
+--   * short channel names (on by default): "[2. Trade - City]" shows as "[T]", "[Guild]" as
+--     "[G]", a letter beside the channel's colour; a profile that turned it off keeps that;
+--   * the mouse wheel moves four lines a tick (the game's one and three more), and
+--     Ctrl + wheel jumps to the top or the bottom of a chat window;
 --   * the game's own timestamp and class-colored name settings, offered in /vg.
 -- Chat text the game hides from addons (in instances) is never read or
 -- changed: those lines pass through as they are and are left out of the copy.
@@ -16,7 +18,7 @@ local vgWatched = ns.FrameState("vgWatched")
 
 local T = ns.Theme
 
-local CX = ns.Module("ChatExtras", { defaults = { links = true, copy = true, shortChannels = false, ctrlScroll = true } })
+local CX = ns.Module("ChatExtras", { defaults = { links = true, copy = true, shortChannels = true, ctrlScroll = true } })
 
 -- The chat message events whose text may hold a web address.
 CX.EVENTS = {
@@ -49,10 +51,11 @@ function CX.LinkURLs(text)
   return text
 end
 
--- Chat filter: hands the game the message with its addresses linked (or unchanged).
+-- Chat filter: hands the game the message with its addresses linked (or unchanged; links off
+-- leaves every line as it is, so the switch applies at once).
 -- Hidden or missing text passes before anything reads it (comparing it could raise inside the game's chat handler).
 function CX.Filter(_, _, text, ...)
-  if ns.Restricted("Chat") then return false end
+  if not CX.settings.links or ns.Restricted("Chat") then return false end
   if ns.IsSecret(text) or type(text) ~= "string" then return false end
   local linked = CX.LinkURLs(text)
   if linked ~= text then return false, linked, ... end
@@ -107,6 +110,12 @@ local function addCopyButton()
   CX.copyButton = ns.GetModule("Chat").AddBarButton(frame, "Copy", "click copy chat", CX.ShowCopy)
 end
 
+-- Shows or hides the Copy button as its switch is set (made now when it was off at login), at once.
+function CX.ApplyCopy()
+  if CX.settings.copy and not CX.copyButton then addCopyButton() end
+  if CX.copyButton then CX.copyButton:SetShown(CX.settings.copy == true) end
+end
+
 -- Short channel names ---------------------------------------------------------------------
 
 -- A channel's short name: the capitals of its name, without the number and the
@@ -135,10 +144,23 @@ local function shortenAdded(frame, text)
   frame:TransformMessages(function(message) return not ns.IsSecret(message) and message == text end, function(_, ...) return short, ... end)
 end
 
--- Ctrl + wheel: the top of the window (wheel up) or the bottom (wheel down), after the game's own scroll.
+-- How many lines a plain wheel tick moves in all: the game's one and the rest here.
+CX.WHEEL_LINES = 4
+
+-- Ctrl + wheel (switched on): the top of the window (wheel up) or the bottom (wheel down).
 local function jump(frame, delta)
-  if not CX.settings.ctrlScroll or not IsControlKeyDown() then return end
+  if not CX.settings.ctrlScroll then return end
   if delta > 0 then frame:ScrollToTop() else frame:ScrollToBottom() end
+end
+
+-- The wheel, after the game's own scroll (it reads the modifiers first: a line, Ctrl a page, Shift
+-- the end): Ctrl then jumps to the end, Shift is left as the game's, and a plain tick gets the
+-- lines that make it CX.WHEEL_LINES in all.
+local function wheel(frame, delta)
+  if IsControlKeyDown() then return jump(frame, delta) end
+  if IsShiftKeyDown() then return end
+  local step = delta > 0 and frame.ScrollUp or frame.ScrollDown
+  for _ = 2, CX.WHEEL_LINES do step(frame) end
 end
 
 -- Follows a chat window's new lines and wheel, once per window.
@@ -146,7 +168,7 @@ local function watchWindow(frame)
   if type(frame) ~= "table" or vgWatched[frame] then return end
   vgWatched[frame] = true
   if type(frame.TransformMessages) == "function" and type(hooksecurefunc) == "function" then hooksecurefunc(frame, "AddMessage", ns.Guard("hook AddMessage", shortenAdded)) end
-  frame:HookScript("OnMouseWheel", jump)
+  frame:HookScript("OnMouseWheel", wheel)
 end
 
 -- Follows every chat window, the temporary ones (whispers) too.
@@ -195,8 +217,8 @@ end
 -- Module entry point (Core/Modules.lua).
 function CX.Enable(settings)
   CX.settings = settings
-  if settings.links then watchLinks() end
-  if settings.copy then addCopyButton() end
+  watchLinks()
+  CX.ApplyCopy()
   CX.WatchWindows()
   if type(hooksecurefunc) == "function" and type(FCF_OpenTemporaryWindow) == "function" then hooksecurefunc("FCF_OpenTemporaryWindow", ns.Guard("hook FCF_OpenTemporaryWindow", CX.WatchWindows)) end
 end

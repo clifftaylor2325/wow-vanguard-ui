@@ -432,8 +432,15 @@ it("chat extras: web links you can copy, and a Copy button for the recent chat",
   const bare = loggedIn("ChatFrame1 = nil");
   bare.slash("copy");
   expect(chatHas(bare, /can't read the chat back/) && bare.eval("return ns.GetModule('ChatExtras').copyButton == nil"), "a client that can't read chat back says so").toBe(true);
-  const off = loggedIn(UI_ENV + CHAT_EXTRAS_ENV, { savedVariables: "VanguardDB.profiles = { Default = { ChatExtras = { links = false } } }" });
-  expect(off.eval("return next(__filters) == nil"), "links switched off: no filters").toBe(true);
+  const off = loggedIn(UI_ENV + CHAT_EXTRAS_ENV + CLICK_LUA, { savedVariables: "VanguardDB.profiles = { Default = { ChatExtras = { links = false, copy = false } } }" });
+  // How many values the say filter hands back for a line with an address: 1 (left as it is) or 3 (linked).
+  const handed = () => off.eval('return select("#", __filters.CHAT_MSG_SAY(nil, "CHAT_MSG_SAY", "see www.example.test", "<name>"))');
+  expect([handed(), off.eval("return ns.GetModule('ChatExtras').copyButton == nil")], "links and the Copy button switched off: the line is left as it is, and there is no button").toEqual([1, true]);
+  off.eval('ns.Options.Show("chat") __click("Clickable web links in chat") __click("Copy button in the chat\'s tab bar")');
+  expect([handed(), off.eval("return ns.GetModule('ChatExtras').copyButton:IsShown()")], "both switches apply at once: the next line is linked, and the button is made and shown").toEqual([3, true]);
+  off.eval('__click("Copy button in the chat\'s tab bar")');
+  expect(off.eval("return ns.GetModule('ChatExtras').copyButton:IsShown()"), "off again hides it").toBe(false);
+  expect(off.eval("return #ns.errors"), "no errors").toBe(0);
 });
 it("chat extras: a hidden line never reaches the link filter's comparison, and a failing filter or click lets the line through", () => {
   const addon = loggedIn(UI_ENV + CHAT_EXTRAS_ENV);
@@ -459,21 +466,27 @@ const CHAT_LINES_ENV = `
     end
     f.ScrollToTop = function() __scrolled = "top" end
     f.ScrollToBottom = function() __scrolled = "bottom" end
+    f.ScrollUp = function() __lines = (__lines or 0) + 1 end
+    f.ScrollDown = function() __lines = (__lines or 0) - 1 end
   end
   local open = FCF_OpenTemporaryWindow
   FCF_OpenTemporaryWindow = function(name) local f = open(name) CHAT_FRAMES[#CHAT_FRAMES + 1] = f:GetName() return f end
 `;
 // The last line chat window i holds.
 const lastLine = (addon, i = 1) => addon.eval(`local m = ChatFrame${i}.__messages return m[#m]`);
-it("chat: short channel names, live, never reading hidden lines", () => {
+it("chat: short channel names by default, off live and in a profile that turned them off, never reading hidden lines", () => {
   const addon = loggedIn(UI_ENV + CHAT_LINES_ENV);
   const trade = "|Hchannel:channel:2|h[2. Trade - City]|h [TEST-ONLY Name]: wts";
-  addon.eval(`ChatFrame1:AddMessage("${trade}")`);
-  expect(lastLine(addon), "off by default: the game's channel names").toBe(trade);
-  addon.eval("ns.GetModule('ChatExtras').settings.shortChannels = true");
   addon.eval(`ChatFrame1:AddMessage({ __secret = true }) ChatFrame1:AddMessage("${trade}")`);
-  expect([lastLine(addon), addon.eval("return issecretvalue(ChatFrame1.__messages[#ChatFrame1.__messages - 1])")], "switched on: [2. Trade - City] becomes [T], the link kept; a hidden line stays as it was")
+  expect([lastLine(addon), addon.eval("return issecretvalue(ChatFrame1.__messages[#ChatFrame1.__messages - 1])")], "on by default: [2. Trade - City] becomes [T], the link kept; a hidden line stays as it was")
     .toEqual(["|Hchannel:channel:2|h[T]|h [TEST-ONLY Name]: wts", true]);
+  addon.eval("ns.GetModule('ChatExtras').settings.shortChannels = false");
+  addon.eval(`ChatFrame1:AddMessage("${trade}")`);
+  expect(lastLine(addon), "switched off: the game's channel names").toBe(trade);
+  const kept = loggedIn(UI_ENV + CHAT_LINES_ENV, { savedVariables: "VanguardDB.profiles = { Default = { ChatExtras = { shortChannels = false } } }" });
+  kept.eval(`ChatFrame1:AddMessage("${trade}")`);
+  expect(lastLine(kept), "a profile that turned it off before the default changed keeps the game's names").toBe(trade);
+  addon.eval("ns.GetModule('ChatExtras').settings.shortChannels = true");
   // A line with one channel tag, as the shortener leaves it.
   const short = (label) => addon.eval(`return ns.GetModule('ChatExtras').ShortChannels("|Hchannel:X|h[${label}]|h hi")`);
   expect(["Guild", "Raid Leader", "5. LookingForGroup", "1. General - TEST-ONLY Vale", "6. testonly"].map(short), "the capitals of the name, or its first letter")
@@ -482,15 +495,19 @@ it("chat: short channel names, live, never reading hidden lines", () => {
   addon.eval('FCF_OpenTemporaryWindow("TestOnly")');
   expect(addon.eval("return ns.FrameState('vgWatched')[ChatFrameTempTestOnly]"), "a whisper window that opens later is followed too").toBe(true);
 });
-it("chat: Ctrl + mouse wheel jumps to the top or bottom", () => {
+it("chat: the wheel adds three lines to the game's one, Shift is left to the game, Ctrl + wheel jumps to the top or bottom", () => {
   const addon = loggedIn(UI_ENV + CHAT_LINES_ENV);
-  // The wheel over the main chat window, then where it jumped (or "none").
-  const wheel = (delta) => { addon.eval("__scrolled = nil"); addon.wheel("ChatFrame1", delta); return addon.eval('return __scrolled or "none"'); };
-  expect(wheel(1), "without Ctrl the wheel is the game's").toBe("none");
-  addon.keys({ ctrl: true });
-  expect([wheel(1), wheel(-1)], "with Ctrl: up to the top, down to the bottom").toEqual(["top", "bottom"]);
+  // The wheel over the main chat window, then where it jumped (or "none") and the lines it scrolled on top of the game's.
+  const wheel = (delta) => { addon.eval("__scrolled, __lines = nil, 0"); addon.wheel("ChatFrame1", delta); return [addon.eval('return __scrolled or "none"'), addon.eval("return __lines")]; };
+  expect([wheel(1), wheel(-1)], "no modifier: no jump, three lines up or down after the game's one (four in all)").toEqual([["none", 3], ["none", -3]]);
+  addon.keys({ shift: true });
+  expect(wheel(1), "Shift: the game's own jump to the end stands, nothing added").toEqual(["none", 0]);
+  addon.keys({ shift: false, ctrl: true });
+  expect([wheel(1), wheel(-1)], "with Ctrl: up to the top, down to the bottom, no lines").toEqual([["top", 0], ["bottom", 0]]);
   addon.eval("ns.GetModule('ChatExtras').settings.ctrlScroll = false");
-  expect(wheel(1), "switched off, nothing jumps").toBe("none");
+  expect(wheel(1), "switched off, nothing jumps").toEqual(["none", 0]);
+  addon.keys({ ctrl: false });
+  expect(wheel(1)[1], "and the plain tick still adds its lines").toBe(3);
 });
 it("chat: the game's timestamps and class-colored names, from /vg", () => {
   const addon = loggedIn(UI_ENV + CLICK_LUA + `C_CVar = nil

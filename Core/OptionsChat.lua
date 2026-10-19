@@ -32,12 +32,14 @@ local function chatWindowRows()
   }
 end
 
--- Chat: the extras, and the game's own timestamp and class-color settings.
+-- Chat extras: links, the Copy button, short channel names, the wheel, and the game's own timestamp
+-- and class-color settings. Links and the button apply at once.
 local function chatRows()
   local CX = ns.GetModule("ChatExtras")
   return {
-    check("Clickable web links in chat (reload)", setting("ChatExtras", "links", true)),
-    check("Copy button over the chat (reload)", setting("ChatExtras", "copy", true)),
+    { "header", "Chat extras" },
+    check("Clickable web links in chat", setting("ChatExtras", "links")),
+    check("Copy button in the chat's tab bar", liveSetting("ChatExtras", "copy", CX.ApplyCopy)),
     check("Short channel names: [2. Trade] shows as [T]", setting("ChatExtras", "shortChannels")),
     check("Ctrl + mouse wheel jumps to the top or bottom of chat", setting("ChatExtras", "ctrlScroll")),
     { "cycle", "Chat timestamps (the game's setting)", CX.TimestampChoices(), CX.CVarSetting("showTimestamps", timestampChoice) },
@@ -83,7 +85,7 @@ end
 local function chatWindowsRows()
   local CW = ns.GetModule("ChatWindows")
   local rows = { { "header", "Chat windows" }, { "text", "Size each chat window here instead of dragging its corner. Lock stops the game's drag." },
-    { "button", "Find in chat", CW.AskFind }, check("Find button over the chat (reload)", setting("ChatWindows", "find", true)),
+    { "button", "Find in chat", CW.AskFind }, check("Find button in the chat's tab bar", liveSetting("ChatWindows", "find", CW.ApplyFind)),
     check("Lock chat windows", CW.LockSetting()), check("Move floating windows with /vg unlock (reload)", setting("ChatWindows", "movers", true)) }
   for _, w in ipairs(CW.Windows()) do
     local wGet, wSet = CW.SizeSetting(w[2], false)

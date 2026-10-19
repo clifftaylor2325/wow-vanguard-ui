@@ -1,5 +1,6 @@
--- Three themed dialogs: a text box for export/import strings (chat can't hold
--- them), a yes/no question, and a reload prompt. One of each is built on first use and reused.
+-- Four themed dialogs: a text box for export/import strings (chat can't hold
+-- them), a find box (a query field over the lines found), a yes/no question, and a reload
+-- prompt. One of each is built on first use and reused.
 -- Also the reload button itself: the WoW Forever client blocks ReloadUI()
 -- from addon code, even inside a click, so a reload button carries a secure
 -- action button overlay that runs a /reload macro (see ns.ReloadButton).
@@ -8,7 +9,7 @@ local ADDON, ns = ...
 
 local T = ns.Theme
 
-local box, reload, question
+local box, find, reload, question
 
 -- Where a dialog's contents start (units down): the title line (the close button's line) and a pad under it.
 local HEAD = T.CONTROL.inset + T.SPACE.pad
@@ -95,17 +96,18 @@ ns.TextView = textView
 
 -- Text box ------------------------------------------------------------------------
 
--- The scrolling multi-line edit box inside the text dialog, under the title line and over the buttons. It needs
--- a font before any text: the game's SetText on an edit box without one is an error ("Font not set").
-local function addEditBox(f)
-  f.edit = T.Text(CreateFrame("EditBox", "Vanguard_TextEdit", f), "label")
+-- The scrolling multi-line edit box inside a text-sized dialog (named `name`), `top` units down (the title
+-- line, unless given) and over the buttons. It needs a font before any text: the game's SetText on an edit
+-- box without one is an error ("Font not set").
+local function addEditBox(f, name, top)
+  f.edit = T.Text(CreateFrame("EditBox", name or "Vanguard_TextEdit", f), "label")
   f.edit:SetMultiLine(true)
   f.edit:SetAutoFocus(false)
   f.edit:SetWidth(TEXT_W - 2 * T.SPACE.pad - T.SPACE.col)
   f.edit:SetTextInsets(TEXT_INSET, TEXT_INSET, T.SPACE.tight, T.SPACE.tight)
   f.edit:SetScript("OnEscapePressed", function() f:Hide() end)
   f.view = textView(f, f.edit)
-  f.view:SetPoint("TOPLEFT", T.SPACE.pad, -HEAD)
+  f.view:SetPoint("TOPLEFT", T.SPACE.pad, -(top or HEAD))
   f.view:SetPoint("BOTTOMRIGHT", -(T.SPACE.pad + T.SPACE.col), FOOT)
 end
 
@@ -196,6 +198,60 @@ end
 -- Hides the text dialog.
 function ns.HideText()
   if box then box:Hide() end
+end
+
+-- Find box ------------------------------------------------------------------------
+
+-- Where the find dialog's lines start (units down): the query line and a gap under it.
+local FIND_TOP = HEAD + T.BUTTON_H + T.SPACE.gap
+
+-- Runs the find dialog's search on what is typed: onFind(query) gives the line that says what was found
+-- and the lines themselves (nothing when there was nothing to look for), which go in the title and the box.
+local function runFind(f)
+  local summary, text = f.onFind(f.query:GetText())
+  if not summary then return end
+  f.title:SetText(summary)
+  boxText(f, text)
+end
+
+-- The find dialog's query line across the top: a themed input with the Find button (the primary) at its
+-- right end; Enter in the field finds too, Escape closes the dialog.
+local function addQuery(f)
+  f.go = ns.Widgets.Primary(f, "Find", function() runFind(f) end)
+  f.go:SetPoint("TOPRIGHT", -T.SPACE.pad, -HEAD)
+  f.query = ns.Widgets.Input(f, TEXT_W - 2 * T.SPACE.pad - BUTTON_W - T.SPACE.gap)
+  f.query:SetPoint("RIGHT", f.go, "LEFT", -T.SPACE.gap, 0)
+  f.query:SetScript("OnEnterPressed", ns.Guard("find box enter", function() runFind(f) end))
+  f.query:SetScript("OnEscapePressed", ns.Guard("find box escape", function() f:Hide() end))
+end
+
+-- Builds the find dialog once: the query line at the top, the lines found under it (a text area like the
+-- text dialog's, read for copying) and Close at the foot.
+local function findBox()
+  if find then return find end
+  find = dialog("Vanguard_FindDialog", TEXT_W, TEXT_H)
+  hangTitle(find)
+  addQuery(find)
+  addEditBox(find, "Vanguard_FindEdit", FIND_TOP)
+  find.close = button(find, "Close")
+  find.close:SetPoint("BOTTOMRIGHT", -T.SPACE.pad, T.SPACE.pad)
+  find.close:SetScript("OnClick", ns.Guard("click close find box", function() find:Hide() end))
+  ns.TabFocus(find, function() return { find.go, find.close } end)
+  return find
+end
+
+-- Shows the find dialog with its title and the query field focused (its last query selected, so typing
+-- replaces it). onFind(query) runs on Enter or Find and returns the line that says what was found and the
+-- lines to show, or nothing to leave the box as it is. The last lines found stay until the next search.
+---@param title string
+---@param onFind fun(query: string): string|nil, string|nil
+function ns.ShowFind(title, onFind)
+  local f = findBox()
+  f.onFind = onFind
+  f.title:SetText(title)
+  f:Show()
+  f.query:SetFocus()
+  f.query:HighlightText()
 end
 
 -- Question ----------------------------------------------------------------------------

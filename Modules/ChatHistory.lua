@@ -148,17 +148,26 @@ local function when(at)
   return type(date) == "function" and date("%a %H:%M", at) or "then"
 end
 
--- Puts one window's saved lines back, between a header and a footer in the muted colour.
+-- A run of em dashes (U+2014, in the addon's font): the rule that brackets the earlier chat, since
+-- no texture can go in a chat window.
+CHH.RULE = string.rep("\226\128\148", 8)
+
+-- A bracket line: its words between two rules, in the muted colour, so it reads as a divider.
+local function rule(text)
+  return T.Paint(CHH.RULE .. " " .. text .. " " .. CHH.RULE, "muted")
+end
+
+-- Puts one window's saved lines back, between a rule that says when they are from and a closing rule.
 local function restoreWindow(index, list)
   local frame = _G["ChatFrame" .. index]
   if type(frame) ~= "table" or type(frame.AddMessage) ~= "function" or #list == 0 or CHH.Skipped(index) then return end
   local newest = CHH.Unpack(list[#list])
-  frame:AddMessage(T.Paint(string.format("Chat from your last session (%d lines, until %s):", #list, when(newest)), "muted"))
+  frame:AddMessage(rule(string.format("Chat from your last session (%d lines, until %s)", #list, when(newest))))
   for _, line in ipairs(list) do
     local _, r, g, b, text = CHH.Unpack(line)
     frame:AddMessage(text, r, g, b)
   end
-  frame:AddMessage(T.Paint("End of the earlier chat.", "muted"))
+  frame:AddMessage(rule("End of the earlier chat"))
 end
 
 -- Puts every window's saved lines back (old ones are dropped first).
