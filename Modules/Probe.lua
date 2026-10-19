@@ -48,7 +48,7 @@ P.CALLS = {
   navigation = {
     { "C_Navigation.GetDistance" }, { "C_Navigation.GetTargetState" },
     { "C_Navigation.HasValidScreenPosition" }, { "C_Navigation.WasClampedToScreen" },
-    { "C_Navigation.GetFrame" }, { "C_Navigation.GetNearestPartyMemberToken" },
+    { "C_Navigation.GetFrame" },
     { "C_SuperTrack.GetSuperTrackedQuestID" }, { "C_SuperTrack.IsSuperTrackingAnything" },
   },
   rules = {
@@ -68,8 +68,11 @@ P.CALLS = {
   },
 }
 
--- Names only looked for, per section.
+-- Names only looked for, per section. A function Blizzard's API docs mark HasRestrictions is only ever
+-- looked for: called from addon code it is blocked and the game shows its "reserved for the Blizzard UI"
+-- message (GetNearestPartyMemberToken did that on the beta, 2026-10-19).
 P.HAVE = {
+  navigation = { "C_Navigation.GetNearestPartyMemberToken" },
   group = { "C_LFGList.Search", "C_LFGList.GetSearchResultInfo", "C_LFGList.GetAvailableActivities", "C_LFGList.CreateListing" },
   undocumented = { "SetItemSearch", "C_Container.SetItemSearch", "ContainerFrameCombinedBags.UpdateSearchResults", "C_Item.GetDetailedItemLevelInfo", "C_SuperTrack.GetNextWaypointForMap", "C_Navigation.GetNextWaypointForMap" },
 }
@@ -86,7 +89,7 @@ end
 
 -- A short error text.
 local function errText(v)
-  return type(v) == "string" and v:sub(1, 80) or "?"
+  return type(v) == "string" and (v:gsub("%s*\n%s*", " | ")):sub(1, 100) or "?"
 end
 
 -- A value as report text: a secret as "hidden", a string quoted, the rest as the guide probe says.
@@ -298,7 +301,7 @@ local function widgetOf(kind)
   P.widgets = P.widgets or {}
   if not P.widgets[kind] then
     local frame = CreateFrame(kind == "Cooldown" and "Cooldown" or "Frame")
-    P.widgets[kind] = kind == "FontString" and frame:CreateFontString() or frame
+    P.widgets[kind] = kind == "FontString" and ns.Theme.Text(frame:CreateFontString(), "label") or frame
   end
   return P.widgets[kind]
 end
