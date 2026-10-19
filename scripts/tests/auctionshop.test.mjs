@@ -353,6 +353,14 @@ it("a name matches only itself or a name containing it, never an unrelated resul
   const best = (entry) => addon.eval(`local r = ${HELPER}.BestResult(${entry}, { { itemKey = { itemID = 4306 }, minPrice = 700, totalQuantity = 2 } }) return r and r.price or r`);
   expect([best('{ term = "Silk", quality = 3 }'), best('{ term = "Silk", quality = 1 }'), best('{ term = "Silk", exact = true }')], "another quality, or not the exact name, doesn't match").toEqual([false, 700, false]);
 });
+it("Save in the filter dialog changes the entry it opened on, even after a row above it was removed", () => {
+  const addon = atAuctionHouse();
+  makeList(addon, "TEST-ONLY Mats", '{ "Alpha", "Bravo", "Charlie" }');
+  addon.eval(`local AH = ${HELPER} AH.EditFilters("TEST-ONLY Mats", 2) AH.RemoveEntry("TEST-ONLY Mats", 1)`);
+  addon.eval(`${HELPER}.filterDialog.price:SetText("5s") ${HELPER}.SaveFilters()`);
+  const list = addon.eval(`local out = {} for i, e in ipairs(VanguardDB.ah.lists['TEST-ONLY Mats']) do out[i] = type(e) == "table" and (e.term .. "@" .. tostring(e.maxPrice)) or e end return out`);
+  expect(list, "Bravo takes the max price where it now sits; Charlie is untouched").toEqual(["Bravo@500", "Charlie"]);
+});
 it("filters travel: exact names export in quotes, import as exact, and copies have their own", () => {
   const addon = atAuctionHouse(DUSTS);
   makeList(addon, "TEST-ONLY Mats", '{ "Soul Dust" }');
