@@ -953,7 +953,7 @@ GW.CALENDAR_EDITS = {
   CalendarCreateEventFrame = { "CalendarCreateEventTitleEdit", "CalendarCreateEventInviteEdit" },
   CalendarMassInviteFrame = { "CalendarMassInviteMinLevelEdit", "CalendarMassInviteMaxLevelEdit" },
 }
--- The pictures a dialog keeps: the holiday's art (key Texture of its frame) and the icon on the create dialog.
+-- The pictures a dialog keeps: the icon on the create dialog (the border and the holiday dialog's backdrop art are faded).
 GW.CALENDAR_PICTURES = { "CalendarCreateEventIcon" }
 -- The event dialogs' tooltip-style boxes (the description, the invite list), which the window skin leaves as the game
 -- draws them, and their ornamental dividers.
@@ -990,6 +990,7 @@ local function skinDay(button)
   if not isFrame(button) then return end
   local back = type(button.GetNormalTexture) == "function" and button:GetNormalTexture()
   if type(back) == "table" then back:SetAlpha(0) end
+  GW.FadeFrame(_G[(button:GetName() or "") .. "OverlayFrame"])
   T.Panel(button, { inset = true, noSheen = true })
 end
 
@@ -1024,12 +1025,25 @@ local function skinMonthArrow(button)
   T.ArrowButton(button, button == _G.CalendarPrevMonthButton and "left" or "right")
 end
 
+-- Sizes the today marker to its day cell (the game makes it 145x140 and centres it on the 91x91 cell, so its outline
+-- spilled out of the grid); skipped when the cell is no day button.
+function GW.FitToday(today, day)
+  if type(day) ~= "table" or not day.GetWidth or day == _G.CalendarFrame or day == _G.UIParent then return end
+  local w, h = day:GetWidth(), day:GetHeight()
+  if (w or 0) > 0 and (h or 0) > 0 then today:SetSize(w, h) end
+end
+
 -- Today's cell: the game's ornate frame art faded and a one-pixel accent outline in its place (the game
 -- moves this frame onto the day, so the outline follows it).
 local function skinToday(today)
   if not isFrame(today) then return end
   T.FadeRegions(today)
   T.Panel(today, { accent = true, noBg = true, noSheen = true })
+  GW.FitToday(today, today:GetParent())
+  if type(hooksecurefunc) == "function" and type(_G.CalendarFrame_SetToday) == "function" and not GW.todayHooked then
+    GW.todayHooked = true
+    hooksecurefunc("CalendarFrame_SetToday", ns.Guard("hook CalendarFrame_SetToday", function(day) GW.FitToday(today, day) end))
+  end
 end
 
 -- The calendar window: every texture of its frame faded but the two it keeps (see GW.CALENDAR_KEEP), a panel with a
@@ -1146,6 +1160,8 @@ function GW.SkinCalendarDialog(frame)
   GW.DressClose(frame, _G[GW.CALENDAR_CLOSE[name] or ""])
   skinDialogBoxes(name)
   skinDialogControls(frame, name)
+  GW.FadeFrame(frame.Border)
+  if name == "CalendarViewHolidayFrame" then GW.FadeFrame(frame.Texture) end
 end
 
 GW.Add("map", "onDemand", "Blizzard_Calendar", { "CalendarFrame" }, GW.SkinCalendar)
