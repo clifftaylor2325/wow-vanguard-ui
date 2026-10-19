@@ -70,6 +70,13 @@ it("chat", () => {
   const raised = (n) => addon.eval(`local bg for _, r in ipairs({ ChatFrame${n}Tab:GetRegions() }) do if r.__layer == "BACKGROUND" and r.__vertexColor then bg = r end end
     local c, r, g, b = bg and bg.__vertexColor, ns.Theme.RGB("raised") return c ~= nil and c[1] == r and c[2] == g and c[3] == b`);
   expect([raised(2), raised(1)], "the game selects a tab by disabling it: the selected tab is raised, the others inset").toEqual([true, false]);
+  // A flat chat tab's look: its fill's alpha, and whether its lit top line shows (and is borderHi).
+  const flat = (n) => addon.eval(`local bg, lit for _, r in ipairs({ ChatFrame${n}Tab:GetRegions() }) do
+    if r.__layer == "BACKGROUND" and r.__vertexColor then bg = r end
+    if r.__layer == "BORDER" and r.__vertexColor and r:GetHeight() == ns.Theme.Pixel(ChatFrame${n}Tab) and r.__points.TOPLEFT and r.__points.TOPLEFT.y < 0 then lit = r end
+  end return { bg:GetAlpha(), lit ~= nil and lit:IsShown(), lit and lit.__vertexColor }`);
+  const [sel, other] = [flat(2), flat(1)];
+  expect([sel[0], sel[1], isTok(addon, sel[2], "borderHi"), other[0], other[1]], "the selected tab keeps its fill and a one-pixel borderHi line along its top; the other has no fill or border, just its name on the bar").toEqual([1, true, true, 0, false]);
   expect(addon.eval("local p = ns.Theme.PaintedCount() return p > 0"), "tabs are the theme's tabs").toBe(true);
 });
 it("chat tabs: the alert glow is the accent colour and keeps the game's own alpha; a tab without a glow is fine", () => {
@@ -262,7 +269,7 @@ it("chat tabs stay visible: the game's six tab alphas are 1 while the switch is 
   const alphas = () => addon.eval("local out = {} for _, name in ipairs(ns.GetModule('Chat').TAB_ALPHAS) do out[#out + 1] = _G[name] end return { out, ChatFrame2Tab:GetAlpha(), __alphaCalls }");
   expect(alphas(), "on by default: all six are 1, each window's tab was updated").toEqual([[1, 1, 1, 1, 1, 1], 1, 2]);
   addon.eval("ns.GetModule('Chat').settings.tabsVisible = false ns.GetModule('Chat').ApplyTabAlpha()");
-  expect(alphas(), "off: the game's own values and fade come back").toEqual([[1, 0.4, 1, 1, 0.6, 0.2], 0.2, 4]);
+  expect(alphas(), "off: the game's own values and fade come back, floored at 0.6 (the bar is visible at rest, so 0.2 is too faint)").toEqual([[1, 0.6, 1, 1, 0.6, 0.6], 0.6, 4]);
   addon.eval('ns.Options.Show("chat") __click("Keep chat tabs visible")');
   expect([addon.eval("return VanguardDB.profiles.Default.Chat.tabsVisible"), alphas()[0][5]], "the Chat page's switch turns it back on at once").toEqual([true, 1]);
   const bare = loggedIn(UI_ENV);

@@ -1609,6 +1609,11 @@ T.ROW = { height = 28 }
 T.CHAT_BACKDROP = { levels = { { 0.55, "Light" }, { 0.75, "Medium" }, { 0.9, "Dark" } } }
 -- Chat text (Modules/Chat.lua CH.FontWindow): the air between lines (units), on top of the font's own.
 T.CHAT_TEXT = { spacing = 2 }
+-- The chat tabs' alpha floor: the game fades an unselected docked tab to 0.2 with the mouse away
+-- (CHAT_FRAME_TAB_NORMAL_NOMOUSE_ALPHA), which is too faint on a bar that is itself visible at rest;
+-- Modules/Chat.lua floors the game's six tab alphas here while Keep chat tabs visible is off, so the
+-- game's own ladder (and its fade) still drives the state. Hover lifts a tab to the game's 1.
+T.CHAT_TAB_FLOOR = 0.6
 -- The chat panel's soft shadow (units) while Soft shadows under frames is on: smaller than a window's
 -- (SHADOW_SIZE), as an action button's is, so the panel sits on the world without a halo.
 T.CHAT_SHADOW = 6
@@ -2207,6 +2212,20 @@ local function paintTabLabel(frame, on)
   if type(label) == "table" and label.SetTextColor then T.Color(label, on and "text" or "text2") end
 end
 
+-- A flat tab (opts.flat, the chat tab bar): no fill or border until it is selected, then its raised
+-- fill with a one-pixel borderHi line lit along its top edge (T.BEVEL's light line, at full strength),
+-- so the bar reads as one surface with one raised tab; the hover wash and the label stay as they are.
+local function paintFlat(entry, frame, on)
+  local p, a = entry.parts, on and 1 or 0
+  p.bg:SetAlpha(a)
+  for _, key in ipairs({ "roundSides", "roundFill", "roundLine" }) do
+    for _, t in pairs(p[key] or NO_PARTS) do t:SetAlpha(a) end
+  end
+  for _, t in pairs(p.edges) do t:SetAlpha(a) end
+  placeSheen(p.lit, frame, entry.opts.pad, T.BEVEL.top[1], 1, entry.round)
+  p.lit:SetShown(on)
+end
+
 -- Paints a tab for its state: the selected one raised and its icon in color; the others
 -- inset, their icon greyed when opts.dimIcon asks; its label in the text colours.
 local function paintTab(entry, frame)
@@ -2215,6 +2234,7 @@ local function paintTab(entry, frame)
   paintBg(p, entry.opts, entry.round > 0)
   paintTabLabel(frame, on)
   if entry.opts.dimIcon then dimIcon(frame, not on) end
+  if entry.opts.flat then paintFlat(entry, frame, on) end
 end
 
 -- Repaints a tab after the game changes its state.
@@ -2248,17 +2268,20 @@ local function fadeKeys(frame, keys)
   end
 end
 
--- A tab's own parts (made once): the hover wash.
+-- A tab's own parts (made once): the hover wash, and the lit top line a flat tab shows when selected.
 local function tabParts(button, entry)
   entry.parts.hover = solid(button, "HIGHLIGHT", nil, "fill")
   entry.parts.hover:SetAllPoints()
   T.Tint(entry.parts.hover, "hover")
+  entry.parts.lit = solid(button, "BORDER", 1, "border")
+  entry.parts.lit:Hide()
   entry.paint = paintTab
 end
 
 -- One of the game's tab buttons in the theme: its template art faded (its icon and text
 -- kept), an inset panel and the faint hover; the selected tab is raised. opts (each call may
--- change them): dimIcon, to grey the icon of a tab that isn't selected. Safe to run again;
+-- change them): dimIcon, to grey the icon of a tab that isn't selected; flat, for a tab with no
+-- fill or border until selected, then a lit top edge (paintFlat). Safe to run again;
 -- follows the game's selection.
 function T.Tab(button, opts)
   local entry = painted[button]

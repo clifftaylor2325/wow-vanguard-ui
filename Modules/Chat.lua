@@ -227,10 +227,11 @@ local function sizeTab(tab)
   text:SetPoint("CENTER")
 end
 
--- A tab as the theme's tab (raised when selected, inset otherwise, a faint hover, rounded) with its
--- own art gone and its alert glow in the accent colour; the game's flash animation still drives the glow's alpha.
+-- A tab as the theme's flat tab (raised with a lit top edge when selected, just its label on the bar
+-- otherwise, a faint hover, rounded) with its own art gone and its alert glow in the accent colour;
+-- the game's flash animation still drives the glow's alpha.
 local function skinTab(tab)
-  T.Tab(tab)
+  T.Tab(tab, { flat = true })
   T.SetRound(tab, true)
   T.FadeRegions(tab, { [tab.Text or false] = true, [tabGlow(tab) or false] = true })
   local glow = tabGlow(tab)
@@ -260,11 +261,19 @@ local function rememberAlphas()
   return gameAlphas
 end
 
+-- One of the game's tab alphas floored at T.CHAT_TAB_FLOOR (a value this client lacks stays nil).
+local function flooredAlpha(value)
+  if type(value) ~= "number" then return value end
+  return math.max(value, T.CHAT_TAB_FLOOR)
+end
+
 -- Keeps every chat tab fully visible (Keep chat tabs visible on), or gives the game's fading back
--- (off), and has the game apply the alphas to each window's tab now, where this client can.
+-- floored at T.CHAT_TAB_FLOOR (off; the game's FCFTab_UpdateAlpha and its fades read these six
+-- values, so the floor holds through both), and has the game apply the alphas to each window's
+-- tab now, where this client can.
 function CH.ApplyTabAlpha()
   local game = rememberAlphas()
-  for _, name in ipairs(CH.TAB_ALPHAS) do _G[name] = CH.settings.tabsVisible and 1 or game[name] end
+  for _, name in ipairs(CH.TAB_ALPHAS) do _G[name] = CH.settings.tabsVisible and 1 or flooredAlpha(game[name]) end
   if type(FCFTab_UpdateAlpha) ~= "function" then return end
   for i = 1, windowCount() do
     local frame = _G["ChatFrame" .. i]
