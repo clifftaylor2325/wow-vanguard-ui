@@ -21,7 +21,7 @@ it("setup layouts: Healing puts the raid frames under the character and turns cl
   const layouts = addon.eval("local out = {} for i, b in ipairs(Vanguard_Setup.pages.layout.choices) do out[i] = b.text:GetText() end return out");
   expect(layouts, "five layouts, damage first (marked as your role's: no role says healer or tank), then Keep").toEqual(["Centered: damage  ·  your role", "Centered: tanking", "Centered: healing", "Versus deck", "Like the game's", "Keep my current layout"]);
   expect(addon.eval('return __click("Centered: healing")') && addon.eval("return Vanguard_Setup.pages.layout.hint:GetText()"), "picking Healing shows what it does").toMatch(/click casting on/);
-  expect(borderOf(addon, "Vanguard_Setup.pages.layout.choices[3]"), "the chosen layout is outlined in the accent").toEqual(tok(addon, "accent").slice(0, 3).concat(1));
+  expect(addon.eval("local c = Vanguard_Setup.pages.layout.choices return { c[3].selected, c[3 == 1 and 2 or 1].selected, c[3].rail:IsShown(), c[3 == 1 and 2 or 1].rail:IsShown() }"), "the chosen layout wears the selected rail; the others rest flat").toEqual([true, false, true, false]);
   setupClick(addon, "next");
   expect(addon.eval("return { ns.MoverPoint('raid') }"), "Healing leaves the raid frames at their default spot, over your player frame").toEqual(["BOTTOM", "BOTTOM", -240, 344]);
   expect(addon.eval("return ns.ModuleEnabled('ClickCast') and ns.ModuleEnabled('RaidFrames')"), "click casting and the raid frames are on").toBe(true);
@@ -217,7 +217,7 @@ it("setup screen: this screen's preset is picked; Keep changes nothing; a preset
   setupClick(addon, "next");
   const [labels, hint] = screenPage(addon);
   expect(labels, "four presets, this screen's marked, then Pixel-perfect and Keep").toEqual(["1080p (1920 x 1080)", "1440p (2560 x 1440)  ·  your screen", "4K (3840 x 2160)", "Ultrawide (3440 x 1440)", "Pixel-perfect (sharpest)", "Keep my current sizes"]);
-  expect(borderOf(addon, "Vanguard_Setup.pages.screen.choices[6]"), "Keep is picked, outlined in the accent").toEqual(tok(addon, "accent").slice(0, 3).concat(1));
+  expect(addon.eval("local c = Vanguard_Setup.pages.screen.choices return { c[6].selected, c[6 == 1 and 2 or 1].selected, c[6].rail:IsShown(), c[6 == 1 and 2 or 1].rail:IsShown() }"), "Keep is picked: it wears the selected rail; the others rest flat").toEqual([true, false, true, false]);
   expect(hint, "Keep says it changes nothing, and who sets the UI scale now").toBe("Changes nothing: your UI scale stays with Vanguard's pixel-perfect scale (General, Look), your sizes as they are.");
   addon.eval('__click("1440p")');
   expect(screenPage(addon)[1], "a preset says what it sets, and that it moves the game's own slider").toBe("Moves the game's UI Scale slider to 70% (Vanguard's pixel-perfect scale goes off); action buttons 38 px, raid tiles 110 x 48, text 105%.");
