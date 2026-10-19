@@ -188,10 +188,17 @@ local function indicatorSetup(b)
   end
 end
 
+-- Points an aura row at a tile's unit; when the row already shows that token (shownUnit) it reads it
+-- again instead: a roster change can give the token to someone else, and the client's container only
+-- refreshes when the token changes.
+local function pointRow(row, unit, shownUnit)
+  if shownUnit == unit then row:Refresh() else row:SetUnit(unit) end
+end
+
 -- Points the indicators at the tile's unit, hidden on the dead and offline (RF update hook).
 local function indicatorUpdate(b, unit)
   for _, row in ipairs(b.indRows) do
-    if b.indUnit ~= unit then row:SetUnit(unit) end
+    pointRow(row, unit, b.indUnit)
     row.frame:SetShown(not b.down)
   end
   b.indUnit = unit
@@ -209,11 +216,9 @@ end
 -- Points the rows at the button's unit, hides them on the dead and offline,
 -- and paints the fallback highlight (RF update hook).
 local function update(b, unit)
-  if b.auraUnit ~= unit then
-    b.auraUnit = unit
-    b.debuffRow:SetUnit(unit)
-    b.hotRow:SetUnit(unit)
-  end
+  pointRow(b.debuffRow, unit, b.auraUnit)
+  pointRow(b.hotRow, unit, b.auraUnit)
+  b.auraUnit = unit
   b.debuffRow.frame:SetShown(not b.down)
   b.hotRow.frame:SetShown(not b.down)
   if b.dispel then paintDispel(b, unit) end

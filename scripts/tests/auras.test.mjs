@@ -37,6 +37,20 @@ const indicators = (addon) => addon.eval(`local b = Vanguard_RaidUnitButton1
     dPoint = { d.__points.BOTTOMLEFT.x, d.__points.BOTTOMLEFT.y }, hPoint = { h.__points.BOTTOMRIGHT.x, h.__points.BOTTOMRIGHT.y } }
   return out`);
 
+it("raid auras: a roster change that gives a tile's token to someone else clears the last member's icons", () => {
+  const addon = loggedIn(UNITS_ENV + RAID_ENV + AURA_ENV + ENGINE_ENV + `
+    __auras.raid1["HARMFUL|CROWD_CONTROL"] = { { icon = "TEST-ONLY-SHEEP", auraInstanceID = 23 } }`);
+  addon.eval('__spawn(1, "raid1")');
+  // The icons tile 1 shows now, in its debuff, HoT and indicator rows.
+  const shown = () => addon.eval(`local b, n = Vanguard_RaidUnitButton1, 0
+    local rows = { b.debuffRow, b.hotRow, unpack(b.indRows) }
+    for _, row in ipairs(rows) do for _, g in ipairs(row.frame.__groups) do for _, x in ipairs(g.buttons) do if x.__shown then n = n + 1 end end end end
+    return n`);
+  expect(shown(), "the last member's two debuffs, two HoTs and crowd control show").toBe(5);
+  addon.eval('__auras.raid1 = {} Vanguard_RaidUnitButton1:SetAttribute("unit", "raid1")');
+  expect(shown(), "raid1 now names a member with no auras: nothing of the last one stays").toBe(0);
+});
+
 it("raid indicators", () => {
   const addon = loggedIn(UNITS_ENV + RAID_ENV + AURA_ENV + ENGINE_ENV);
   addon.eval('__spawn(1, "raid1"); __spawn(3, "raid3")');
