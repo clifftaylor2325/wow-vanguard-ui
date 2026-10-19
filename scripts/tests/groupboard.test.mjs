@@ -167,6 +167,13 @@ it("group board: the tooltip, closing, the module off, and its options card", ()
   expect(chatHas(off, /The group board is off \(\/vg > Modules\)\./), "module off: says so").toBe(true);
 });
 
+it("group board: /vg lfg probe with the module off says the board is off instead of raising", () => {
+  const off = loggedIn(WHISPER_ENV, { savedVariables: "VanguardDB.profiles = { Default = { modules = { GroupBoard = false } } }" });
+  off.clearChat();
+  off.slash("lfg probe");
+  expect(chatHas(off, /The group board is off \(\/vg > Modules\)\./), "module off: says so").toBe(true);
+});
+
 it("group board: the empty board and /vg lfg probe say what chat was heard and why lines were skipped", () => {
   const addon = board();
   addon.eval("GetChannelList = function() return 1, 'General', false, 2, 'Trade', false end");
