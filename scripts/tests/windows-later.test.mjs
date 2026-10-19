@@ -180,7 +180,7 @@ const PROF_ENV = `${READERS_ENV}
   list.FilterDropdown, list.SearchBox, list.NoResultsText, list.ScrollBox = __mkbutton(list, "Arrow"), __mkbox(list), __text(list, "None"), __list(list)
   __recipe, __category = __recipeRow(list.ScrollBox), __recipeRow(list.ScrollBox, true)
   page.SchematicForm = __form(page)
-  page.RankBar = CreateFrame("Frame", nil, page) page.RankBar.Fill, page.RankBar.Border = __art(page.RankBar), __art(page.RankBar)
+  page.RankBar = CreateFrame("Frame", nil, page) page.RankBar.Fill, page.RankBar.Border, page.RankBar.Spark = __art(page.RankBar), __art(page.RankBar), __art(page.RankBar)
   page.CreateMultipleInputBox, page.MinimizedSearchBox, page.LinkButton = __mkbox(page), __mkbox(page), __mkbutton(page, "Icon")
   for _, key in ipairs(ns.GetModule("Windows").PROF_BUTTONS) do page[key] = __mkbutton(page) end
   for _, key in ipairs(ns.GetModule("Windows").PROF_SLOTS) do page[key] = __itemButton(nil, page) end
@@ -203,7 +203,7 @@ const PROF_ENV = `${READERS_ENV}
     local list = page.RecipeList
     return { page = __faded(page), list = __faded(list) and list.NineSlice.__alpha == 0 and list.BackgroundNineSlice:GetAlpha() == 0 and __sunk(list),
       filter = __button(list.FilterDropdown) and list.FilterDropdown.Arrow.__alpha == 0, search = __box(list.SearchBox), none = __lit(list.NoResultsText, "label", "text"),
-      rank = __faded(page.RankBar, page.RankBar.Fill) and page.RankBar.Fill.__alpha ~= 0 and __sunk(page.RankBar), box = __faded(page.CreateMultipleInputBox),
+      rank = __faded(page.RankBar, page.RankBar.Fill) and page.RankBar.Fill.__alpha ~= 0 and __sunk(page.RankBar) and page.RankBar.Spark.__alpha == 0 and page.RankBar.__clips == true, box = __faded(page.CreateMultipleInputBox),
       small = __box(page.MinimizedSearchBox), buttons = __button(page.ViewGuildCraftersButton) and __button(page.CreateButton) and __button(page.CreateAllButton),
       link = __button(page.LinkButton) and page.LinkButton.Icon.__alpha == 1, gear = gear, divider = __faded(page.GearSlotDivider),
       recipe = ns.Theme.RowParts(__recipe) ~= nil and __faded(__recipe), category = ns.Theme.RowParts(__category) == nil,
@@ -231,6 +231,13 @@ it("R2.15 the professions window: list, form, rank bar, controls and gear slots 
   addon.eval("ProfessionsFrame:Hide() ProfessionsFrame:Show()");
   expect(profState(addon).painted, "a second show paints nothing new").toBe(first.painted);
 });
+it("R2.15 the professions rank bar: a StatusBar gets the flat theme bar, a Fill-less frame and a non-table are left alone", () => {
+  const addon = loggedIn(PROF_ENV);
+  expect(addon.eval(`local W = ns.GetModule("Windows") local bar = CreateFrame("StatusBar", nil, UIParent) W.SkinRankBar(bar) return __sunk(bar) and bar.__barTexture ~= nil`)).toBe(true);
+  expect(addon.eval(`local W = ns.GetModule("Windows") local f = CreateFrame("Frame", nil, UIParent) W.SkinRankBar(f) W.SkinRankBar(nil) return { __sunk(f), f.__clips == true }`)).toEqual([false, false]);
+  expect(addon.eval(`local W = ns.GetModule("Windows") local f = CreateFrame("Frame", nil, UIParent) f.Fill = __art(f) f.Spark = 1 W.SkinRankBar(f) return f.__clips == true`), "no Spark texture is fine").toBe(true);
+});
+
 it("R2.15 the professions window: reagent slots the form fills in when it shows a recipe, and the selected recipe", () => {
   const addon = loggedIn(PROF_ENV);
   addon.fire("ADDON_LOADED", "Blizzard_Professions");

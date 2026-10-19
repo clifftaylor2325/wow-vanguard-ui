@@ -251,6 +251,20 @@ function GW.SkinBar(bar)
   end
 end
 
+-- The profession rank bar: a real StatusBar is the theme's flat bar. A frame with a Fill (the game's leafy art, sized by the
+-- game and wider than its border) gets the same flat track, its overflow clipped so the fill sits inside the box, and its
+-- spark and glow hidden. Anything else is skipped.
+function GW.SkinRankBar(bar)
+  if type(bar) ~= "table" then return end
+  if type(bar.SetStatusBarTexture) == "function" then return GW.SkinProgress(bar) end
+  if type(bar.Fill) ~= "table" then return end
+  GW.SkinBar(bar)
+  if bar.SetClipsChildren then bar:SetClipsChildren(true) end
+  for _, key in ipairs({ "Spark", "Glow" }) do
+    if type(bar[key]) == "table" and bar[key].SetAlpha then bar[key]:SetAlpha(0) end
+  end
+end
+
 -- A font string coloured by token (text) when it is one; anything else is skipped.
 local function colorText(fs, token)
   if type(fs) == "table" and fs.SetTextColor then T.Color(fs, token) end
