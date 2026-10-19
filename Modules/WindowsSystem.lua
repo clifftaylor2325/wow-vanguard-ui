@@ -326,7 +326,7 @@ local vgCheckMakers = {}
 -- initialiser its scroll box runs on each row it takes into view, the chat settings' box makers), by the
 -- window's global name.
 GW.CHECK_MAKERS = {
-  AddonList = { "AddonList_Update", "AddonList_InitButton" },
+  AddonList = { "AddonList_Update", "AddonList_InitAddon" },
   ChatConfigFrame = { "ChatConfig_CreateCheckboxes", "ChatConfig_CreateTieredCheckboxes", "ChatConfig_CreateColorSwatches" },
 }
 

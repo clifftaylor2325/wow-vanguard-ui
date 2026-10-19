@@ -766,8 +766,8 @@ it("combat log bar: a panel, its filter buttons themed as the game makes them", 
 const ADDON_ROWS_ENV = BUTTON_FRAME_ENV + `__buttonFrame("AddonList", { "CancelButton", "OkayButton" })
   local box = CreateFrame("Frame", nil, AddonList) AddonList.ScrollBox = box box.ScrollTarget = CreateFrame("Frame", nil, box)
   __rows = 0
-  function AddonList_InitButton(r) r.Enabled = CreateFrame("CheckButton", nil, r) r.Enabled.Art = r.Enabled:CreateTexture() r.Enabled:SetChecked(__rows == 1) end
-  function AddonList_Update() __rows = __rows + 1 AddonList_InitButton(CreateFrame("Button", "TestOnlyAddonRow" .. __rows, box.ScrollTarget)) end
+  function AddonList_InitAddon(r) r.Enabled = CreateFrame("CheckButton", nil, r) r.Enabled.Art = r.Enabled:CreateTexture() r.Enabled:SetChecked(__rows == 1) end
+  function AddonList_Update() __rows = __rows + 1 AddonList_InitAddon(CreateFrame("Button", "TestOnlyAddonRow" .. __rows, box.ScrollTarget)) end
   AddonList_Update()`;
 
 it("addon list: each row's check button is a themed check box, the rows the game makes while drawing too; never with the group off", () => {
@@ -778,8 +778,8 @@ it("addon list: each row's check button is a themed check box, the rows the game
   expect(row(addon, 1), "the row made before the window showed: dressed on show, checked").toEqual([0, true, true]);
   addon.eval("AddonList_Update()");
   expect(row(addon, 2), "a row made as the list draws: dressed after AddonList_Update, unchecked").toEqual([0, true, false]);
-  addon.eval('__rows = 9 AddonList_InitButton(CreateFrame("Button", "TestOnlyAddonRow9", AddonList.ScrollBox.ScrollTarget))');
-  expect(row(addon, 9), "a row the scroll box takes into view: dressed after AddonList_InitButton alone").toEqual([0, true, false]);
+  addon.eval('__rows = 9 AddonList_InitAddon(CreateFrame("Button", "TestOnlyAddonRow9", AddonList.ScrollBox.ScrollTarget))');
+  expect(row(addon, 9), "a row the scroll box takes into view: dressed after AddonList_InitAddon alone").toEqual([0, true, false]);
   sameOnReshow(addon, "AddonList");
   const off = loggedIn(ADDON_ROWS_ENV, SWITCH_OFF);
   off.eval("AddonList:Show() AddonList_Update()");
