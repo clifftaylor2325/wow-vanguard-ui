@@ -254,6 +254,14 @@ it("options: a live row of a module that is off saves its value without an error
   addon.eval('__click("Bar backing")');
   expect(addon.eval("return { #ns.errors, ns.Settings('CooldownGlow').glow }"), "no error, and the switch is saved").toEqual([0, true]);
 });
+it("controls: clicking a choice row's caption with an empty list does nothing and raises no error", () => {
+  const addon = loggedIn();
+  const r = addon.eval(`__set = "unset"
+    local row = ns.Widgets.Choice(UIParent, "TEST-ONLY Frame to size", {}, function() return nil end, function(v) __set = v end)
+    row:GetScript("OnClick")(row)
+    return { __set, #ns.errors }`);
+  expect(r, "nothing is set").toEqual(["unset", 0]);
+});
 it("choice fallback, key capture and the mouse wheel", () => {
   const addon = loggedIn(CLICK_LUA + `
     -- TEST-ONLY spec index so the click-cast page builds for spec 1.
