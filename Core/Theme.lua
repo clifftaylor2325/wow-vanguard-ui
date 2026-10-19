@@ -1609,6 +1609,10 @@ T.ROW = { height = 28 }
 T.CHAT_BACKDROP = { levels = { { 0.55, "Light" }, { 0.75, "Medium" }, { 0.9, "Dark" } } }
 -- Chat text (Modules/Chat.lua CH.FontWindow): the air between lines (units), on top of the font's own.
 T.CHAT_TEXT = { spacing = 2 }
+-- The chat edit box (Modules/Chat.lua skinEditBox): its alpha at rest (the game's own, which
+-- ChatFrameEditBoxMixin:Deactivate sets), and how long it takes to come to full when it gains the
+-- typing and to drop back when it loses it (seconds; docs/THEME.md, Fades and flashes).
+T.CHAT_EDIT = { rest = 0.35, focusIn = 0.2, focusOut = 0.05 }
 -- The chat tabs' alpha floor: the game fades an unselected docked tab to 0.2 with the mouse away
 -- (CHAT_FRAME_TAB_NORMAL_NOMOUSE_ALPHA), which is too faint on a bar that is itself visible at rest;
 -- Modules/Chat.lua floors the game's six tab alphas here while Keep chat tabs visible is off, so the

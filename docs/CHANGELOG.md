@@ -15,6 +15,7 @@ Nothing in this release has been checked in the game; see the batch checklist (i
 - Soft shadows under frames gives the chat panel a small soft shadow too.
 - Only the shown chat tab has a box, with a lit top edge; the others are their names on the bar, and never fade below 60 %.
 - Find and Copy are glyph tiles at the chat bar's right end, like the side buttons; hover names them.
+- The typing box sits under the chat panel with a rail in the channel's colour, faint until you type.
 
 ### HUD and Edit Mode
 

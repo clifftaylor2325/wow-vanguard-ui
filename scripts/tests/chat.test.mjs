@@ -118,6 +118,45 @@ it("chat frame: one rounded panel round the text, the scroll column and a 24-tal
   expect(panel()[0], "background off: no panel, the buttons still have their bar").toBe(false);
   expect(addon.eval("return #ns.errors"), "no errors").toBe(0);
 });
+// TEST-ONLY chat edit boxes as the game has them: the main window's with a header the game colours from
+// ChatTypeInfo in UpdateHeader (ChatFrameEditBoxMixin), the second window's with neither.
+const CHAT_EDIT_ENV = `
+  ChatTypeInfo = { SAY = { r = 1, g = 1, b = 1 }, GUILD = { r = 0.25, g = 1, b = 0.25 } }
+  ChatFrame1EditBoxHeader = ChatFrame1EditBox:CreateFontString(nil, "ARTWORK")
+  ChatFrame1EditBox:SetAttribute("chatType", "SAY")
+  function ChatFrame1EditBox:UpdateHeader() local info = ChatTypeInfo[self:GetAttribute("chatType")] ChatFrame1EditBoxHeader:SetTextColor(info.r, info.g, info.b) end
+  ChatFrame1EditBox:UpdateHeader()
+`;
+it("chat edit box: under the panel in the chat role, a rail in the channel's colour that follows the game's header, fading to full as it gains the typing and back as it loses it", () => {
+  const addon = loggedIn(UI_ENV + CHAT_EDIT_ENV);
+  const F = "ns.GetModule('Chat').frames[ChatFrame1]";
+  expect(addon.eval(`local b = ChatFrame1EditBox local p = b.__points return { p.TOPLEFT.rel == ${F}.outline, p.TOPLEFT.relPoint, p.TOPLEFT.y, p.TOPRIGHT.relPoint, b:GetHeight(), (select(2, b:GetFont())) }`),
+    "a gap under the panel, as tall as the tab bar, the panel's width, in the chat role (12)").toEqual([true, "BOTTOMLEFT", -4, "BOTTOMRIGHT", 24, 12]);
+  // A window's edit box rail: its colour and width.
+  const rail = (i) => addon.eval(`local r = ns.FrameState("vgRail")[ChatFrame${i}EditBox] return { r.__vertexColor, r:GetWidth() == 2 * ns.Theme.Pixel(ChatFrame${i}EditBox) }`);
+  expect(rail(1), "the rail is two pixels wide in the header's colour (Say, white)").toEqual([[1, 1, 1, 1], true]);
+  addon.eval('ChatFrame1EditBox:SetAttribute("chatType", "GUILD") ChatFrame1EditBox:UpdateHeader()');
+  expect(rail(1)[0], "the game recolouring the header for /g recolours the rail").toEqual([0.25, 1, 0.25, 1]);
+  expect(isTok(addon, rail(2)[0], "accent"), "a box with no header and no chat type: the accent").toBe(true);
+  addon.eval('ChatFrame2EditBox:SetAttribute("chatType", "GUILD") ns.GetModule("Chat").SkinAll()');
+  expect(rail(2)[0], "no header but a chat type: ChatTypeInfo's colour").toEqual([0.25, 1, 0.25, 1]);
+  // The main edit box's alpha after the clock moves on by seconds.
+  const alphaAfter = (seconds) => { addon.update(seconds); return Math.round(addon.eval("return ChatFrame1EditBox:GetAlpha()") * 100) / 100; };
+  addon.eval("ChatFrame1EditBox:SetAlpha(1) ChatFrame1EditBox:GetScript('OnEditFocusGained')(ChatFrame1EditBox)");
+  expect([alphaAfter(0), alphaAfter(0.1), alphaAfter(0.1)], "gaining the typing: from the game's 0.35 to 1 over 0.2 s").toEqual([0.35, 0.68, 1]);
+  expect(addon.eval("return ns.ticker.vgJobs[ChatFrame1EditBox] == nil"), "the fade's job stops at the end").toBe(true);
+  addon.eval("ChatFrame1EditBox:GetScript('OnEditFocusLost')(ChatFrame1EditBox)");
+  expect([alphaAfter(0), alphaAfter(0.05)], "losing it: back to 0.35 over 0.05 s").toEqual([1, 0.35]);
+  addon.world.combat(true);
+  addon.eval("ChatFrame1EditBox:GetScript('OnEditFocusGained')(ChatFrame1EditBox)");
+  expect([alphaAfter(0), alphaAfter(0.15)], "in a fight the fade in is capped at 0.15 s").toEqual([0.35, 1]);
+  addon.world.combat(false);
+  addon.eval("ns.Theme.Settings().reduceMotion = true ChatFrame1EditBox:GetScript('OnEditFocusLost')(ChatFrame1EditBox)");
+  expect(alphaAfter(0), "Reduce motion: at once").toBe(0.35);
+  addon.eval("ns.Theme.Settings().reduceMotion = false __wfgStub.setScreen(2560, 1440) ns.GetModule('Chat').Refresh()");
+  expect(rail(1)[1], "after a scale change the rail is two pixels again").toBe(true);
+  expect(addon.eval("return #ns.errors"), "no errors").toBe(0);
+});
 it("chat frame: with Chat switched off the Copy button keeps its old place over the window's top right", () => {
   const off = loggedIn(UI_ENV, { savedVariables: "VanguardDB.profiles = { Default = { modules = { Chat = false } } }" });
   expect(off.eval("local p, rel, rp, x, y = ns.GetModule('ChatExtras').copyButton:GetPoint() return { p, rel == ChatFrame1, rp, x, y }"), "over the window's top right edge").toEqual(["BOTTOMRIGHT", true, "TOPRIGHT", 0, 4]);

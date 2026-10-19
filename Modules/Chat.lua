@@ -262,11 +262,98 @@ local function skinTab(tab)
   fitTab(tab)
 end
 
--- The edit box as a themed, rounded input.
-local function skinEditBox(box)
+-- Each edit box's rail (box -> texture) and its focus fade (box -> { from, to, start, seconds }),
+-- kept off the game's frames (ns.FrameState).
+local vgRail, vgBoxFade = ns.FrameState("vgRail"), ns.FrameState("vgBoxFade")
+
+-- How often a focus fade steps (seconds): once a frame at 60 Hz; the time gone is read from the clock.
+CH.FADE_STEP = 1 / 60
+
+-- The edit box under the panel: a gap below it, as tall as the tab bar, the panel's full width.
+local function placeEditBox(box, outline)
+  box:ClearAllPoints()
+  box:SetPoint("TOPLEFT", outline, "BOTTOMLEFT", 0, -T.SPACE.tight)
+  box:SetPoint("TOPRIGHT", outline, "BOTTOMRIGHT", 0, -T.SPACE.tight)
+  box:SetHeight(CH.BAR)
+end
+
+-- The channel colour for an edit box's rail: the colour the game gave its header (ChatTypeInfo's for
+-- the chat type, which the game looks up in UpdateHeader, numbered channels included), else
+-- ChatTypeInfo's for the box's chat type, else the accent.
+local function railColor(box)
+  local header = _G[(box:GetName() or "") .. "Header"]
+  if type(header) == "table" and type(header.GetTextColor) == "function" then return header:GetTextColor() end
+  local info = type(ChatTypeInfo) == "table" and ChatTypeInfo[box:GetAttribute("chatType")] or nil
+  if type(info) == "table" and ns.PlainNumber(info.r) then return info.r, info.g, info.b end
+  return T.Accent()
+end
+
+-- Tints an edit box's rail in its channel's colour (after the game's UpdateHeader recolours the header).
+local function tintRail(box)
+  local rail = vgRail[box]
+  if rail then rail:SetVertexColor(railColor(box)) end
+end
+
+-- Sizes an edit box's rail to T.SELECT.rail screen pixels down its left edge (again after a scale change).
+local function placeRail(rail, box)
+  rail:ClearAllPoints()
+  rail:SetPoint("TOPLEFT")
+  rail:SetPoint("BOTTOMLEFT")
+  rail:SetWidth(T.SELECT.rail * T.Pixel(box))
+end
+
+-- One step of an edit box's focus fade: its alpha toward the target by the share of the time gone; at
+-- the end the job stops.
+local function stepBoxFade(box)
+  local f = vgBoxFade[box]
+  local p = f.seconds > 0 and math.min(1, (GetTime() - f.start) / f.seconds) or 1
+  box:SetAlpha(f.from + (f.to - f.from) * p)
+  if p >= 1 then ns.Every(box, nil) end
+end
+
+-- Fades an edit box's alpha from `from` to `to` over `seconds` (a straight run, at most T.COMBAT_FADE
+-- in a fight), stepped by the shared ticker (ns.Every; the client lets no addon animate its frames);
+-- at once under Reduce motion.
+local function fadeBox(box, from, to, seconds)
+  if T.Settings().reduceMotion then return box:SetAlpha(to) end
+  vgBoxFade[box] = { from = from, to = to, start = GetTime(), seconds = T.FadeTime(seconds) }
+  ns.Every(box, CH.FADE_STEP, stepBoxFade, nil, true)
+end
+
+-- Follows the typing into and out of an edit box: it comes to full as it gains the focus and drops
+-- back to the game's rest alpha as it loses it (the game sets each at once first; the fade runs from
+-- the other end). Its rail follows the game's header colouring.
+local function watchEditBox(box)
+  box:HookScript("OnEditFocusGained", ns.Guard("chat edit focus", function(b) fadeBox(b, T.CHAT_EDIT.rest, 1, T.CHAT_EDIT.focusIn) end))
+  box:HookScript("OnEditFocusLost", ns.Guard("chat edit blur", function(b) fadeBox(b, 1, T.CHAT_EDIT.rest, T.CHAT_EDIT.focusOut) end))
+  if type(hooksecurefunc) == "function" and type(box.UpdateHeader) == "function" then hooksecurefunc(box, "UpdateHeader", ns.Guard("hook chat header", tintRail)) end
+end
+
+-- An edit box's rail (made once, with the hooks that keep it coloured and fade the box): a texture
+-- down the box's left edge over the panel's edge, in the channel colour.
+local function editRail(box)
+  if vgRail[box] then return vgRail[box] end
+  local rail = T.Snap(box:CreateTexture(nil, "ARTWORK"), "fill")
+  rail:SetTexture(T.WHITE)
+  vgRail[box] = rail
+  watchEditBox(box)
+  return rail
+end
+
+-- The edit box as part of the frame: a themed, rounded input under the panel in the chat text role,
+-- with a channel-coloured rail down its left edge; the game's header ("Say:") keeps its colour.
+local function skinEditBox(box, outline)
   T.EditBox(box)
   T.SetRound(box, true)
-  T.Text(box, "label")
+  T.Text(box, "chat")
+  placeEditBox(box, outline)
+  placeRail(editRail(box), box)
+  tintRail(box)
+end
+
+-- Sizes a window's edit box rail again (after a scale change), where the box has one.
+local function refreshRail(box)
+  if type(box) == "table" and vgRail[box] then placeRail(vgRail[box], box) end
 end
 
 -- The game's six tab alphas: how faint a tab is until the mouse comes near, by its state. Keep chat
@@ -443,7 +530,7 @@ local function skinIndex(i, settings)
   skinWindow(frame, settings)
   local tab, box = _G["ChatFrame" .. i .. "Tab"], _G["ChatFrame" .. i .. "EditBox"]
   if tab then skinTab(tab) end
-  if box then skinEditBox(box) end
+  if box then skinEditBox(box, CH.frames[frame].outline) end
   skinWindowButtons(frame, "ChatFrame" .. i)
   if type(frame.ScrollBar) == "table" then T.ScrollBar(frame.ScrollBar) end
 end
@@ -476,13 +563,15 @@ function CH.SkinAll()
 end
 
 -- Re-fonts every chat window (after a text size or font change), re-colors the tabs, and sets
--- every panel's fill to the strength setting and its rule to a pixel again (after a scale change).
+-- every panel's fill to the strength setting, and its rule and edit box rail to their pixels again
+-- (after a scale change).
 function CH.Refresh()
   for i = 1, windowCount() do
     local frame = _G["ChatFrame" .. i]
     if frame then CH.FontWindow(frame) end
     local parts = frame and CH.frames and CH.frames[frame]
     if parts then T.TintFill(parts.fill, "panel", CH.Strength()) placeRule(parts.rule, parts.bar) end
+    refreshRail(_G["ChatFrame" .. i .. "EditBox"])
   end
   CH.RefitTabs()
   CH.UpdateTabs()
