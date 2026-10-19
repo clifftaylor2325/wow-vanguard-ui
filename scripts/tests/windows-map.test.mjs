@@ -693,6 +693,8 @@ it("group finder who page: the search box, search button, filter and total line 
   addon.eval("LFGParentFrame:Show() LFGWhoListFrame:Show() __acquire(LFGWhoListFrame.ScrollBox, __whoRow())");
   expect(addon.eval("local w = LFGWhoListFrame return { w.EditBox.art:GetAlpha(), w.EditBox.searchIcon:GetAlpha(), w.WhoSearch.Plate:GetAlpha(), w.WhoSearch.Icon:GetAlpha(), w.FilterDropdown.Plate:GetAlpha(), __looks(w.FilterDropdown.Text, 'label', 'text'), __looks(w.WhoFrameTotals, 'small', 'text2') }"),
     "the search box's art faded, its magnifier kept; the search button's picture kept; the filter's plate faded and its label light; the total line small and grey").toEqual([0, 1, 0, 1, 0, true, true]);
+  expect(addon.eval("local w = LFGWhoListFrame local ok = false for i = 1, w.EditBox:GetNumPoints() do local p, rel, rp, x = w.EditBox:GetPoint(i) if p == 'RIGHT' and rel == w.WhoSearch and rp == 'LEFT' and x == -ns.Theme.SPACE.tight then ok = true end end return ok"),
+    "the who search box ends a gap before the search button").toBe(true);
   // Who row n: a theme row, the alphas of its plate, glow, invite plate and picture, and whether its rail shows.
   const row = (n) => addon.eval(`local r = LFGWhoListFrame.ScrollBox.items[${n}] return { ns.Theme.RowParts(r) ~= nil, r.Background:GetAlpha(), r.Selected:GetAlpha(), r.InviteButton.Plate:GetAlpha(), r.InviteButton.Icon:GetAlpha(), ns.Theme.RowParts(r).rail:IsShown() }`);
   expect([row(1), row(2)], "rows, those the page had and those it acquired: plates faded, the invite picture kept, not selected").toEqual([[true, 0, 0, 0, 1, false], [true, 0, 0, 0, 1, false]]);
@@ -933,6 +935,9 @@ it("legacy system: crests lose the bronze, card icons are cropped flat and the c
   addon.eval(`local c = __challenge(false) c.Icon = CreateFrame("Button", nil, c) c.Icon.Icon = c.Icon:CreateTexture() c.PointsBadge = CreateFrame("Frame", nil, c)
     c.PointsBadge.tex = c.PointsBadge:CreateTexture() c.PointsBadge.num = __fs(c.PointsBadge) __acquire(${cards}, c)`);
   expect(addon.eval(`local c = ${cards}.items[2] return { c.Icon.Icon.__texCoord ~= nil, c.PointsBadge.tex.__desaturated }`), "a button icon is dressed like the spellbook's, a crest frame's textures are flattened").toEqual([true, true]);
+  // The game's challenge icon is a frame holding its picture as texture and a ring as frame: the picture stays.
+  addon.eval(`local c = __challenge(false) c.Icon = CreateFrame("Frame", nil, c) c.Icon.texture, c.Icon.frame = c.Icon:CreateTexture(), c.Icon:CreateTexture() __acquire(${cards}, c)`);
+  expect(addon.eval(`local i = ${cards}.items[3].Icon return { i.texture:GetAlpha(), i.texture.__texCoord ~= nil, i.frame:GetAlpha() }`), "a frame icon keeps and crops its picture, its ring is faded").toEqual([1, true, 0]);
   expect([tint(`${cards}.items[1].Shield`), tint("LegacySystemFrame.TreePage.LegacyTreePointSummary.Shield")], "the crests are desaturated and tinted").toEqual([[true, true], [true, true]]);
   expect(addon.eval("local b = LegacySystemFrame.ChallengesPage.LegacyChallengePointSummary.PointsBar return { __looks(b.Text, 'label', 'text'), b:GetStatusBarTexture().__vertexColor ~= nil }"), "the points bar's figures are in the text colour over an accent fill").toEqual([true, true]);
   addon.eval("LegacySystemFrame.RewardTrackPage.LegacyRewardProgressFrame:Init()");

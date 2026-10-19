@@ -570,11 +570,18 @@ local function skinWhoRow(row)
   keepArt(row.InviteButton, "Icon")
 end
 
--- The who page's own parts: the search box (magnifier kept), the search button (picture kept), the filter dropdown with a
--- light label, the total line and the rows.
+-- Ends a search box T.SPACE.tight before its search button, keeping its left anchor (the game's fixed width ran under the button).
+local function endBeforeButton(box, button)
+  if type(box) ~= "table" or type(button) ~= "table" or not box.SetPoint or not button.GetObjectType then return end
+  box:SetPoint("RIGHT", button, "LEFT", -T.SPACE.tight, 0)
+end
+
+-- The who page's own parts: the search box (magnifier kept) ending before the search button (picture kept), the filter
+-- dropdown with a light label, the total line and the rows.
 local function skinWho(page)
   GW.SkinSearch(page.EditBox)
   keepArt(page.WhoSearch, "Icon")
+  endBeforeButton(page.EditBox, page.WhoSearch)
   skinFlatButton(page.FilterDropdown)
   GW.SkinText(GW.Part(page, "FilterDropdown.Text"), "label", "text")
   GW.SkinText(page.WhoFrameTotals, "small", "text2")

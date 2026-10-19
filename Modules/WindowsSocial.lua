@@ -332,11 +332,21 @@ local function paintCommunityRow(row)
   GW.FollowMark(row, row.Selection)
 end
 
+-- A guild's banner (plate, then emblem) drawn above the row's selected fill: the game draws them on its background layers, under
+-- the fill the row primitive lays on the artwork layer, so the selected guild's banner showed blank.
+local function liftBanner(row)
+  for sublevel, key in ipairs({ "GuildTabardBackground", "GuildTabardEmblem" }) do
+    local part = row[key]
+    if type(part) == "table" and part.SetDrawLayer then part:SetDrawLayer("ARTWORK", 3 + sublevel) end
+  end
+end
+
 -- One communities list row as the game acquires it: its plates and gold ring faded under the row primitive, its icons kept, its
 -- selected look following the game's Selection plate (shown by Init, which the game runs again on every update).
 local function dressCommunityRow(row)
   if type(row) ~= "table" then return end
   GW.DressRow(row, GW.COMMUNITY_ROW_KEEP)
+  liftBanner(row)
   paintCommunityRow(row)
   GW.HookAfter(row, "Init", function() paintCommunityRow(row) end)
 end
