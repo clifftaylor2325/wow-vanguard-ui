@@ -222,7 +222,7 @@ local function addQuery(f)
   f.query = ns.Widgets.Input(f, TEXT_W - 2 * T.SPACE.pad - BUTTON_W - T.SPACE.gap)
   f.query:SetPoint("RIGHT", f.go, "LEFT", -T.SPACE.gap, 0)
   f.query:SetScript("OnEnterPressed", ns.Guard("find box enter", function() runFind(f) end))
-  f.query:SetScript("OnEscapePressed", function() f:Hide() end)
+  f.query:SetScript("OnEscapePressed", ns.Guard("find box escape", function() f:Hide() end))
 end
 
 -- Builds the find dialog once: the query line at the top, the lines found under it (a text area like the
