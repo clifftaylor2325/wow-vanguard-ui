@@ -70,7 +70,7 @@ const SPELLS_ENV = `${READERS_ENV}
     local pages = { head = __faded(head) and __lit(head.Text, "heading", "text"), entry = entry.Backplate.__alpha == 0 and entry.Button.Border.__alpha == 0 and entry.Button.Icon.__alpha ~= 0 and entry.Button.Icon.__texCoord ~= nil and ns.Theme.PaintedCount() > 0 and __lit(entry.Name, "label", "text") and __lit(entry.SubName, "small", "muted"),
       late = book.late == nil or (book.late.Backplate.__alpha == 0 and __lit(book.late.Name, "label", "text")) }
     return { pages = pages, parchment = __faded(book), paged = __faded(paged) and paged.NineSlice.__alpha == 0 and __sunk(paged), search = __box(book.SearchBox),
-      settings = __button(book.SettingsDropdown) and book.SettingsDropdown.Icon.__alpha == 1, arrows = __arrow(paging.PrevPageButton) and __arrow(paging.NextPageButton),
+      settings = __button(book.SettingsDropdown) and book.SettingsDropdown.Icon.__alpha == 0, arrows = __arrow(paging.PrevPageButton) and __arrow(paging.NextPageButton),
       count = __lit(paging.PageText, "small", "text2"), fx = fx, backdrop = backdrop, tree = __sunk(t),
       buttons = __button(t.ApplyButton) and __button(t.InspectCopyButton) and __button(t.ActiveSpec.ActivateButton),
       icons = __plate(t.ResetButton) and __plate(t.UndoButton), talentSearch = __box(t.SearchBox),
@@ -85,7 +85,7 @@ it("R2.14 the spellbook and the talents: parchment faded to an inset, controls a
   addon.fire("ADDON_LOADED", "Blizzard_PlayerSpells");
   addon.eval("PlayerSpellsFrame:Show()");
   const first = spellsState(addon);
-  expect(first, "book art faded, pages an inset, search box with its magnifier, settings picture kept, arrows and count themed").toMatchObject({
+  expect(first, "book art faded, pages an inset, search box with its magnifier, settings arrow replaced, arrows and count themed").toMatchObject({
     parchment: true, paged: true, search: true, settings: true, arrows: true, count: true, errors: 0,
   });
   expect(first.pages, "the section head's plate and rule are faded and its name a light heading; an entry's plate is faded and its name and rank light").toEqual({ head: true, entry: true, late: true });

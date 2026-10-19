@@ -822,6 +822,7 @@ const SETTINGS_LISTS_ENV = SETTINGS_ENV + `
     row.SliderWithSteppers = __stepped(row)
     row.Control = CreateFrame("Frame", nil, row) row.Control.Dropdown = CreateFrame("Button", nil, row.Control)
     row.Control.Dropdown.Arrow = row.Control.Dropdown:CreateTexture() row.Control.Dropdown.Arrow:SetAlpha(0)
+    row.Control.DecrementButton, row.Control.IncrementButton = CreateFrame("Button", nil, row.Control), CreateFrame("Button", nil, row.Control)
     row.Button = CreateFrame("Button", nil, row) row.Button.Art = row.Button:CreateTexture()
     return row
   end
@@ -836,8 +837,8 @@ it("game options: scroll bars, defaults button, header divider, and the nav and 
       ns.Theme.DividerParts(list.Header.Rule) ~= nil, ns.Theme.DividerParts(list.Header.Other) == nil, list.Header.Rule.__alpha }`),
     "both scroll bars themed, Defaults a theme button, the header's divider texture one pixel of divider (another texture and a font string left alone)").toEqual([true, true, true, true, true, 0]);
   expect(addon.eval(`local list, row = SettingsPanel.Container.SettingsList, SettingsPanel.Container.SettingsList.ScrollBox.rows[1]
-    return { ns.Theme.CheckParts(row.Checkbox) ~= nil, __stepper(row.SliderWithSteppers), __panelled(row.Control.Dropdown), row.Control.Dropdown.Arrow.__alpha, __panelled(row.Button) }`),
-    "a row that was already there: its check box, slider with steppers, dropdown (arrow shown) and button themed").toEqual([true, true, true, 0, true]);
+    return { ns.Theme.CheckParts(row.Checkbox) ~= nil, __stepper(row.SliderWithSteppers), __panelled(row.Control.Dropdown), row.Control.Dropdown.Arrow.__alpha, __panelled(row.Button), ns.Theme.ArrowParts(row.Control.DecrementButton) ~= nil and ns.Theme.ArrowParts(row.Control.IncrementButton) ~= nil }`),
+    "a row that was already there: its check box, slider with steppers, dropdown (arrow shown) and button themed").toEqual([true, true, true, 0, true, true]);
   addon.eval("SettingsPanel.Container.SettingsList.ScrollBox:Take(__settingRow())");
   expect(addon.eval(`local row = SettingsPanel.Container.SettingsList.ScrollBox.rows[2]
     return { ns.Theme.CheckParts(row.Checkbox) ~= nil, __stepper(row.SliderWithSteppers), __panelled(row.Control.Dropdown), __panelled(row.Button) }`),
