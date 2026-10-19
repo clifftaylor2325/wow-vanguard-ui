@@ -11,6 +11,7 @@ local ADDON, ns = ...
 -- Per-frame state kept off the game's frames (Core/Events.lua, ns.FrameState).
 local vgPadded = ns.FrameState("vgPadded")
 local vgSeeded = ns.FrameState("vgSeeded")
+local vgUnmasked = ns.FrameState("vgUnmasked")
 
 local T = ns.Theme
 
@@ -172,11 +173,37 @@ function GW.ClearPadding(tab, window)
   for _, anchor in ipairs(moved) do if anchor[1] then tab:SetPoint(unpack(anchor)) end end
 end
 
+-- Takes the game's rounded mask off an icon tab's icon, once (the mask sits a little off the icon's centre, so its
+-- art showed off-centre with round corners; the pool reuses the tab, and the mask stays off).
+local function unmaskIcon(button)
+  if vgUnmasked[button] or type(button.IconMask) ~= "table" then return end
+  vgUnmasked[button] = true
+  button.Icon:RemoveMaskTexture(button.IconMask)
+end
+
+-- An icon tab of a tab system (TabSystemButtonTemplate given an icon: the spellbook's categories) made a square as
+-- tall as the tab, its icon filling it one pixel inside the border like an action button's, bevel cropped. The game
+-- anchors the icon at the tab's bottom and centre (which stretches it to the tab's height), so it is anchored at the
+-- centre alone, the point the game sets again on each selection. The game sizes the tab from its icon as it adds
+-- it, so this runs after every AddTab; the spellbook re-adds its tabs and lays them out each time it opens.
+local function fitIconTab(button)
+  local icon, side = button.Icon, button:GetHeight()
+  if not button.tabIcon or type(icon) ~= "table" or not icon.SetTexCoord or side <= 0 then return end
+  unmaskIcon(button)
+  local inner = T.PixelRound(button, side - 2 * T.Pixel(button))
+  button:SetWidth(side)
+  icon:ClearAllPoints()
+  icon:SetPoint("CENTER", button, "CENTER")
+  icon:SetSize(inner, inner)
+  T.Crop(icon)
+end
+
 -- One tab button of a window in the theme, whichever template it came from: out past the window's padding,
--- and a side tab's icon greyed while another is selected.
+-- and a side tab's or icon tab's icon greyed while another is selected.
 local function dressTab(button, window, side)
   GW.ClearPadding(button, window)
-  T.Tab(button, { dimIcon = side == true })
+  fitIconTab(button)
+  T.Tab(button, { dimIcon = side == true or button.tabIcon ~= nil })
   seedChecked(button)
   fadeSideArt(button)
 end

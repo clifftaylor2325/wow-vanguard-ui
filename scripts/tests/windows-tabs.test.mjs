@@ -93,6 +93,60 @@ it("tab buttons: a second show paints nothing more, and tabs a tab system adds l
   expect(addon.eval("return { __tabState(MerchantFrameTab1).raised, __tabState(MerchantFrameTab2).raised }"), "the raised tab follows the game's selection").toEqual([true, false]);
 });
 
+// TEST-ONLY icon tabs as the spellbook's category tab system adds them (TabSystemButtonTemplate's Init with an icon):
+// a 44 x 32 tab, a 36 x 35 icon anchored at the tab's bottom and centre under the game's SquareMask, tabIcon set.
+// __iconTab reads the tab's width, the icon's size, crop, masks and anchors, and whether it is greyed.
+const ICON_TABS_ENV = TABS_ENV + `
+  function __iconSystem(parent)
+    local s = __system(parent)
+    local addTab = s.AddTab
+    function s:AddTab(_, icon)
+      local b = self:GetTabButton(addTab(self))
+      b.IconMask = b:CreateMaskTexture()
+      b.Icon:AddMaskTexture(b.IconMask)
+      b.Icon:SetSize(36, 35)
+      b.Icon:SetPoint("BOTTOM") b.Icon:SetPoint("CENTER", b, "CENTER", 0, 0)
+      b:SetSize(44, 32)
+      b.tabIcon = icon
+      return #self.tabs
+    end
+    return s
+  end
+  function __iconTab(b)
+    local w, h = b.Icon:GetSize()
+    return { width = b:GetWidth(), icon = { w, h }, crop = b.Icon.__texCoord, masks = #(b.Icon.__masks or {}),
+      dim = b.Icon.__desaturated == true, anchor = b.Icon:GetNumPoints() .. " " .. b.Icon:GetPoint(1) }
+  end
+  __window("TestOnlyBook")
+  TestOnlyBook.CategoryTabSystem = __iconSystem(TestOnlyBook)
+  TestOnlyBook.CategoryTabSystem:AddTab(nil, 136243) TestOnlyBook.CategoryTabSystem:AddTab(nil, 135812)
+  TestOnlyBook.CategoryTabSystem:GetTabButton(1):SetTabSelected(true)
+  ns.GetModule("Windows").Add("windows", "framed", { "TestOnlyBook" })
+`;
+
+it("icon tabs: the spellbook's category tabs are squares with the icon filling them one pixel inside the border", () => {
+  const addon = loggedIn(WINDOWS_ENV + ICON_TABS_ENV);
+  addon.eval("TestOnlyBook:Show()");
+  const inner = addon.eval("return 32 - 2 * ns.Theme.Pixel(TestOnlyBook.CategoryTabSystem:GetTabButton(1))");
+  const tabs = addon.eval("local s = TestOnlyBook.CategoryTabSystem return { __iconTab(s:GetTabButton(1)), __iconTab(s:GetTabButton(2)) }");
+  expect(tabs.map((t) => t.width), "each tab is as wide as it is tall").toEqual([32, 32]);
+  expect(tabs.map((t) => t.icon), "its icon fills it one pixel in").toEqual([[inner, inner], [inner, inner]]);
+  expect(tabs.map((t) => t.crop), "with the baked-in bevel cropped").toEqual([[0.08, 0.92, 0.08, 0.92], [0.08, 0.92, 0.08, 0.92]]);
+  expect(tabs.map((t) => t.masks), "and the game's rounded mask off").toEqual([0, 0]);
+  expect(tabs.map((t) => t.dim), "the unselected tab's icon is greyed").toEqual([false, true]);
+  expect(tabs.map((t) => t.anchor), "anchored at the centre alone, so the bottom anchor no longer stretches it").toEqual(["1 CENTER", "1 CENTER"]);
+  addon.eval("TestOnlyBook.CategoryTabSystem:AddTab(nil, 132089)");
+  expect(addon.eval("return __iconTab(TestOnlyBook.CategoryTabSystem:GetTabButton(3)).width"), "a tab the game adds later is squared too").toBe(32);
+  addon.eval("TestOnlyBook:Hide() TestOnlyBook:Show()");
+  expect(addon.eval("return __iconTab(TestOnlyBook.CategoryTabSystem:GetTabButton(1)).masks"), "dressing again takes nothing more off").toBe(0);
+  expect(addon.eval("return ns.errors[1] == nil")).toBe(true);
+});
+
+it("icon tabs: a tab with no height yet keeps the game's size and mask", () => {
+  const addon = loggedIn(WINDOWS_ENV + ICON_TABS_ENV + "TestOnlyBook.CategoryTabSystem:GetTabButton(2):SetHeight(0)");
+  expect(addon.eval("local t = __iconTab(TestOnlyBook.CategoryTabSystem:GetTabButton(2)) return { t.width, t.masks }")).toEqual([44, 1]);
+});
+
 it("tab buttons: windows that load later are dressed when their part of the game loads", () => {
   const addon = loggedIn(WINDOWS_ENV + TABS_ENV + `ns.GetModule("Windows").Add("windows", "onDemand", "TestOnly_Later", { "TestOnlyLater" })`);
   addon.eval(`__window("TestOnlyLater") TestOnlyLater.Tabs = { __tab(TestOnlyLater) }`);
