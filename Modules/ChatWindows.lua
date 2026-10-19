@@ -168,11 +168,11 @@ function CW.Rename(text)
   ns.Options.RebuildPage("chat")
 end
 
--- Closes the edited tab (never the main one), out of combat.
+-- Closes the edited tab (never the main one), out of combat (each tab closed in a fight is closed after it).
 function CW.Close()
   local index, frame = CW.Editing()
   if not frame or index == 1 or type(FCF_Close) ~= "function" then return ns.Chat("The main chat tab can't be closed.") end
-  ns.OutOfCombat(function() FCF_Close(frame) CW.editing = nil ns.Options.RebuildPage("chat") end, "chat close tab")
+  ns.OutOfCombat(function() FCF_Close(frame) CW.editing = nil ns.Options.RebuildPage("chat") end, "chat close tab " .. index)
 end
 
 -- Find ------------------------------------------------------------------------------------

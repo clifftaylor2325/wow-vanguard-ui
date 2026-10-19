@@ -120,6 +120,15 @@ it("chat tabs: two new tabs asked for in one fight are both made when it ends", 
   expect(addon.eval("return { __wfgWorld.chatWindows[3], __wfgWorld.chatWindows[4] }"), "both tabs after it").toEqual(["Trade", "Barter"]);
 });
 
+it("chat tabs: two tabs closed in one fight are both closed when it ends", () => {
+  const addon = loggedIn(ENV + TABS + "local close = FCF_Close __allClosed = {} FCF_Close = function(f) close(f) table.insert(__allClosed, f:GetName()) end");
+  addon.eval(`ns.GetModule("ChatWindows").New("Trade")`);
+  addon.world.combat(true);
+  addon.eval(`local CW = ns.GetModule("ChatWindows") CW.editing = 2 CW.Close() CW.editing = 3 CW.Close()`);
+  addon.world.combat(false);
+  expect(addon.eval("return __allClosed"), "both closed after the fight").toEqual(["ChatFrame2", "ChatFrame3"]);
+});
+
 it("chat tabs: a client without the calls says so and changes nothing", () => {
   const addon = loggedIn(ENV + "FCF_OpenNewWindow = nil");
   addon.eval(`local CW = ns.GetModule("ChatWindows") CW.New("Trade") CW.Rename("Barter") CW.Close()`);
