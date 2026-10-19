@@ -70,12 +70,14 @@ local function probe(get, filter)
 end
 
 -- The filter the client accepts for `filter`, probed once per session (see probe);
--- a nil filter, or a client without the read, passes through unchanged.
+-- a nil filter, or a client without the read, passes through unchanged. While the
+-- client hides auras it may refuse the probe's read, which would take every word for
+-- an unknown one: the filter passes through unprobed until auras can be read again.
 function A.Filter(filter)
   local get = C_UnitAuras and C_UnitAuras.GetAuraDataByIndex
   if type(filter) ~= "string" or type(get) ~= "function" then return filter end
-  if knownFilters[filter] == nil then knownFilters[filter] = probe(get, filter) end
-  return knownFilters[filter]
+  if knownFilters[filter] == nil and not ns.AurasSecret() then knownFilters[filter] = probe(get, filter) end
+  return knownFilters[filter] or filter
 end
 
 -- The i-th aura on a unit through a client filter (with the words this client

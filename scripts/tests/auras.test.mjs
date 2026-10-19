@@ -466,6 +466,21 @@ it("a client that rejects every aura filter word keeps the filter and shows no a
     .toEqual([1, "aura filter HARMFUL|CROWD_CONTROL: no part of it is known to this client"]);
 });
 
+it("an aura filter first asked for while the client hides auras is probed once they can be read, with no false report", () => {
+  expectErrors("aura filter HARMFUL|CROWD_CONTROL: this client rejects it; reading HARMFUL");
+  const addon = loggedIn(UNITS_ENV + REJECTING_AURAS + `
+    local read = C_UnitAuras.GetAuraDataByIndex
+    C_UnitAuras.GetAuraDataByIndex = function(...)
+      if __wfgWorld.aurasSecret then error("TEST-ONLY: Auras cannot be accessed when secret while tainted") end
+      return read(...)
+    end`);
+  addon.eval("__wfgWorld.aurasSecret = true");
+  expect(addon.eval('return { ns.Auras.Filter("HARMFUL|RAID"), ns.Auras.Filter("HARMFUL|CROWD_CONTROL") }'), "auras hidden: both pass through as they are").toEqual(["HARMFUL|RAID", "HARMFUL|CROWD_CONTROL"]);
+  expect(addon.eval('return __errs("aura filter")'), "and nothing is reported").toBe(0);
+  addon.eval("__wfgWorld.aurasSecret = false");
+  expect(addon.eval('return { ns.Auras.Filter("HARMFUL|RAID"), ns.Auras.Filter("HARMFUL|CROWD_CONTROL") }'), "readable again: probed then, the unknown word alone dropped").toEqual(["HARMFUL|RAID", "HARMFUL"]);
+});
+
 it("aura filters pass through on a client without the aura read", () => {
   const bare = loggedIn();
   expect(bare.eval('return ns.Auras.Filter("HARMFUL")'), "no C_UnitAuras: unchanged").toBe("HARMFUL");
