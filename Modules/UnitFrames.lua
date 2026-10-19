@@ -161,12 +161,28 @@ local function asked(name, ...)
   return answer
 end
 
--- True when the unit looks tagged by you or your group: a creature you can attack that is in combat and
--- that the client does not call tap denied (UnitIsTapDenied is true for a mob someone else tagged). The
--- client has no call that says "yours" outright, so a mob in combat with you (or only with your pet) reads the same.
-function UF.TaggedByYou(unit)
-  return asked("UnitCanAttack", "player", unit) == true and asked("UnitIsPlayer", unit) ~= true
-    and asked("UnitIsTapDenied", unit) == false and asked("UnitAffectingCombat", unit) == true
+-- Who has tagged a creature you can attack: "theirs" when the client calls it tap denied (another player
+-- or group tagged it), "yours" when it is in combat and not tap denied, nil for anything else (an untouched
+-- mob, a player, a friend, a hidden or missing answer). The client has no call that says "yours" outright,
+-- so a mob in combat with you (or only with your pet) reads the same.
+function UF.TagState(unit)
+  if asked("UnitCanAttack", "player", unit) ~= true or asked("UnitIsPlayer", unit) == true then return nil end
+  local denied = asked("UnitIsTapDenied", unit)
+  if denied == true then return "theirs" end
+  if denied == false and asked("UnitAffectingCombat", unit) == true then return "yours" end
+  return nil
+end
+
+-- Tag state -> the mark's icon and colour: a green check on yours, a grey X on another player's.
+UF.TAG_LOOK = { yours = { "Check", "good" }, theirs = { "Close", "tapped" } }
+
+-- Shows a tag mark in the look of `state`, or hides it (nil state).
+function UF.PaintTagMark(tex, state)
+  local look = UF.TAG_LOOK[state]
+  tex:SetShown(look ~= nil)
+  if not look then return end
+  tex:SetTexture(T.Icon(look[1]))
+  T.Tint(tex, look[2])
 end
 
 -- The color token of a unit's classification diamond, or nil for a normal unit.
@@ -229,13 +245,11 @@ local function addClassMark(f)
   f.class:Hide()
 end
 
--- A small check mark left of the classification diamond, shown on a target you have tagged.
+-- A small tag mark left of the classification diamond (UF.TAG_LOOK: whose tag the target carries).
 local function addTagMark(f)
   f.tag = T.Snap(f.health:CreateTexture(nil, "OVERLAY"))
-  f.tag:SetTexture(T.Icon("Check"))
   f.tag:SetSize(12, 12)
   f.tag:SetPoint("CENTER", f, "TOPRIGHT", -18, -2)
-  T.Tint(f.tag, "good")
   f.tag:Hide()
 end
 
@@ -329,9 +343,10 @@ function UF.UpdateName(f)
   if f.class then updateClass(f) end
 end
 
--- The target frame's tag mark: shown while the target looks tagged by you (and the switch is on).
+-- The target frame's tag mark: a green check while the target looks tagged by you, a grey X while
+-- another player has it (and the switch is on).
 function UF.UpdateTag(f)
-  if f.tag then f.tag:SetShown(UF.settings.tagMark == true and UF.TaggedByYou(f.unit)) end
+  if f.tag then UF.PaintTagMark(f.tag, UF.settings.tagMark == true and UF.TagState(f.unit) or nil) end
 end
 
 -- Everything on a frame, if its unit exists.

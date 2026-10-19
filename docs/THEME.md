@@ -60,6 +60,7 @@ The surfaces (`inset`, `panel`, `raised`, `raisedHover`, `divider`, `borderHi`) 
 | | `bad` | `e8663f` | Errors, not ready, broken items. |
 | | `info` | `5aa2f0` | Informational state (reserved; no module uses it yet). |
 | | `unknown` | `808080` | A value the client will not tell (reserved; no module uses it yet). |
+| | `tapped` | `8c8c8c` | A mob another player has tagged: its grey X tag mark (nameplate and target frame) and its nameplate bar. A plain grey, apart from the bluish text greys. |
 | Reaction | `hostile` | `cc4b45` | Hostile units (nameplates, unit frames). |
 | | `neutral` | `e0c24e` | Neutral units. |
 | | `friendly` | `4db86a` | Friendly units. With Safer colours on (`colorAssist`, #235; also on while the game's colour-blind mode is, `colorAssistGame`) the three reactions are `T.ASSIST`'s instead: friendly `4a9be8` (blue), neutral `e8d25a`, hostile `e0663a` (vermilion). |

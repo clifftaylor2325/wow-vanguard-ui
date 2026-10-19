@@ -81,8 +81,10 @@ function NP.ThreatColor(unit)
   return T.TOKENS["threat" .. math.min(status, 3)]
 end
 
--- The bar color: threat while you have aggro (if on), else class or reaction.
+-- The bar color: grey on a mob another player has tagged (while the tag marks are on), else threat
+-- while you have aggro (if on), else class or reaction.
 function NP.Color(unit)
+  if NP.settings.tagMarks == true and ns.GetModule("UnitFrames").TagState(unit) == "theirs" then return T.RGB("tapped") end
   local threat = NP.settings.threat and NP.ThreatColor(unit)
   if threat then return threat[1], threat[2], threat[3] end
   return ns.GetModule("UnitFrames").HealthColor(unit)
@@ -158,13 +160,11 @@ local function addQuestMark(f)
   f.quest:Hide()
 end
 
--- A green check mark just left of the level, shown on mobs you have tagged.
+-- The tag mark just left of the level: a green check on mobs you have tagged, a grey X on another player's.
 local function addTagMark(f)
   f.tag = f:CreateTexture(nil, "OVERLAY")
-  f.tag:SetTexture(T.Icon("Check"))
   f.tag:SetSize(NP.QUEST, NP.QUEST)
   f.tag:SetPoint("RIGHT", f.level, "LEFT", -2, 0)
-  T.Tint(f.tag, "good")
   f.tag:Hide()
 end
 
@@ -443,7 +443,7 @@ function NP.UpdateHealth(f, unit)
   T.SetBarValue(f, UnitHealth(unit))
 end
 
--- The bar's color: threat, class or reaction (see NP.Color).
+-- The bar's color: tapped grey, threat, class or reaction (see NP.Color).
 function NP.UpdateColor(f, unit)
   f:SetStatusBarColor(NP.Color(unit))
 end
@@ -492,9 +492,12 @@ function NP.PaintQuest(f, unit)
   f.quest:SetShown(NP.settings.questMarks == true and NP.QuestUnit(unit))
 end
 
--- Shows a plate's tag mark while the unit looks tagged by you (and the marks are on).
+-- Paints a plate's tag mark for whoever tagged its unit (none while the marks are off), and its bar,
+-- which goes grey on another player's mob.
 function NP.PaintTag(f, unit)
-  f.tag:SetShown(NP.settings.tagMarks == true and ns.GetModule("UnitFrames").TaggedByYou(unit))
+  local UF = ns.GetModule("UnitFrames")
+  UF.PaintTagMark(f.tag, NP.settings.tagMarks == true and UF.TagState(unit) or nil)
+  NP.UpdateColor(f, unit)
 end
 
 -- Points the debuff row at the plate's unit (the client reuses plates for
@@ -578,7 +581,7 @@ end
 -- Health moves the fill only; threat and faction recolor the bar only.
 local UNIT_HANDLERS = {
   UNIT_HEALTH = NP.UpdateHealth, UNIT_MAXHEALTH = NP.UpdateHealth, UNIT_NAME_UPDATE = NP.UpdateName,
-  UNIT_FACTION = NP.UpdateColor, UNIT_THREAT_LIST_UPDATE = function(f, unit) NP.UpdateColor(f, unit) NP.PaintTag(f, unit) end,
+  UNIT_FACTION = NP.UpdateColor, UNIT_THREAT_LIST_UPDATE = NP.PaintTag,
   UNIT_FLAGS = NP.PaintTag, UNIT_LEVEL = NP.UpdateName,
 }
 for _, event in ipairs(CB.EVENTS) do UNIT_HANDLERS[event] = showCast end
@@ -718,7 +721,7 @@ function NP.OptionRows()
     { "check", "Levels, colored by how hard the unit is for you", setting("level") },
     { "check", "Threat colors while you have aggro", setting("threat") },
     { "check", "Accent border, glow and marker on your target", setting("targetBorder") }, { "check", "Cast bar", setting("castBar", true) },
-    { "check", "A gold ! by units your quests need", setting("questMarks") }, { "check", "A green check by mobs you have tagged", setting("tagMarks") },
+    { "check", "A gold ! by units your quests need", setting("questMarks") }, { "check", "Tag marks: a green check on mobs you tagged, a grey X and grey bar on another player's", setting("tagMarks") },
     { "cycle", "Your debuffs shown", { { 0, "none" }, { 4, "4" }, { 6, "6" } }, setting("debuffs", true) }, { "cycle", "Buffs on players (defensives, and yours on friends)", { { 0, "none" }, { 3, "3" }, { 5, "5" } }, setting("buffs", true) },
     { "check", "Timer numbers on your debuffs (reload)", setting("timers", true) },
     { "cycle", "Width", { { 110, "110" }, { 130, "130" }, { 160, "160" } }, setting("width", true) }, { "cycle", "Height", { { 8, "8" }, { 10, "10" }, { 14, "14" } }, setting("height", true) } }
