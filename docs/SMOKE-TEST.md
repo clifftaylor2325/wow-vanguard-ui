@@ -550,6 +550,12 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Expect: no red error text; no zone or subzone name fades in (switching either off brings it back without a reload); the camera zooms out further than the game's default; a declined invite closes its prompt and says `Declined a ... from <name>.` in chat, a friend's or guildmate's group invite still shows; you release at once in a battleground and not in an arena or a dungeon.
 - If it fails, paste: which switch, what you did, and `/vg errors`.
 
+### 8.6a The error line keeps quest progress
+
+- Do: with "Hide the red error line" on, kill a mob for a quest objective (or loot a quest item) and, while its yellow progress line is still up, cast at a target out of range. Then try to open the keyring or loot with full bags (a red line the game adds outside the error event).
+- Expect: the yellow progress line (`<mob> slain: 3/10`) stays on screen for its usual time, the red line never shows, and the error voice and sound play as they do without Vanguard. With the switch off, both lines show.
+- If it fails, paste: a screenshot of the top of the screen and `/vg errors`.
+
 ## 9. Bags, merchant, trainer
 
 ### 9.1 Bag search
