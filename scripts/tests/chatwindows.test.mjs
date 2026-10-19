@@ -3,7 +3,7 @@
 // floating windows as /vg unlock handles.
 
 import { expect, it } from "vitest";
-import { loggedIn } from "./helpers.mjs";
+import { chatHas, loggedIn } from "./helpers.mjs";
 
 // TEST-ONLY game chat layout calls, two windows in use (the second one pulled out of the dock).
 const ENV = `
@@ -125,34 +125,55 @@ const LINES = `
   ChatFrame1.GetMessageInfo = function(_, i) return __lines1[i] end
 `;
 
-it("chat find: the Find button asks what to find; matching lines of the windows show as plain text, hidden lines left out", () => {
+// The find box as the player sees it: shown, its title, the query field's text and focus, the lines in its box.
+const FIND = "local f = Vanguard_FindDialog return { f:IsShown(), f.title:GetText(), f.query:GetText() or '', f.query:GetParent() == f, Vanguard_FindEdit:GetText() or '' }";
+// A word in the accent's text colour, as the find box marks a match.
+const lit = (addon, word) => addon.eval(`return ns.Theme.Paint("${word}", "accentText")`);
+
+it("chat find: the Find button opens the find box with the word field at the top; Enter or Find lists the matching lines with each match in the accent colour, hidden lines left out", () => {
   const addon = loggedIn(ENV + LINES);
-  addon.eval("ns.ShowText = function(title, text) __shown = { title, text } end");
   addon.eval("local b = ns.GetModule('ChatWindows').findButton b.__scripts.OnClick(b)");
-  expect(addon.eval("return Vanguard_TextDialog:IsShown()"), "the Find button opens the question").toBe(true);
-  addon.eval("ns.GetModule('ChatWindows').Find('  SWORD ')");
-  expect(addon.eval("return __shown"), "case does not matter; colours and links reduced to words").toEqual(['Chat: 2 lines with "sword"', "[General] Hello Sword world\ntwo Sword lines [Big Sword]"]);
-  addon.eval("ns.GetModule('ChatWindows').Find('')");
-  expect(addon.eval("return __shown[1]"), "an empty word asks again and shows nothing new").toBe('Chat: 2 lines with "sword"');
+  expect(addon.eval(FIND), "the box opens titled Find in chat, its own empty field at the top, nothing listed yet").toEqual([true, "Find in chat", "", true, ""]);
+  expect(addon.eval("local f = Vanguard_FindDialog local p = f.query.__points.RIGHT local g = f.go.__points.TOPRIGHT return { p.rel == f.go, p.relPoint, p.x, g.x, g.y, f.view.__points.TOPLEFT.y < g.y - f.go:GetHeight() }"), "the field ends a gap left of the Find button at the top right, and the lines start under them").toEqual([true, "LEFT", -8, -16, -40, true]);
+  addon.type("Vanguard_FindDialog.query", "  SWORD ");
+  addon.enter("Vanguard_FindDialog.query");
+  const sword = lit(addon, "Sword");
+  expect(addon.eval(FIND).slice(1), "Enter finds: the title says how many, the field keeps the word, and the lines show as words with each match lit (case does not matter)")
+    .toEqual(['Chat: 2 lines with "sword"', "  SWORD ", true, `[General] Hello ${sword} world\ntwo ${sword} lines [Big ${sword}]`]);
+  addon.eval("Vanguard_FindDialog.query:SetText('WORLD') local b = Vanguard_FindDialog.go b.__scripts.OnClick(b)");
+  expect(addon.eval(FIND).slice(1, 2).concat(addon.eval(FIND).slice(4)), "a second search from the same box, by the Find button").toEqual(['Chat: 1 lines with "world"', `[General] Hello Sword ${lit(addon, "world")}`]);
+  addon.eval("Vanguard_FindDialog.query:SetText('  ') local b = Vanguard_FindDialog.go b.__scripts.OnClick(b)");
+  expect([addon.eval(FIND)[1], chatHas(addon, /Type something to find\./)], "an empty word says so in chat and leaves the last lines").toEqual(['Chat: 1 lines with "world"', true]);
+  addon.eval("local b = Vanguard_FindDialog.close b.__scripts.OnClick(b)");
+  expect(addon.eval(FIND)[0], "Close shuts it").toBe(false);
+  addon.eval("ns.GetModule('ChatWindows').AskFind()");
+  expect(addon.eval(FIND).slice(0, 3), "opened again it keeps the last word, selected to type over").toEqual([true, "Find in chat", "  "]);
+  addon.eval("Vanguard_FindDialog.query:GetScript('OnEscapePressed')(Vanguard_FindDialog.query)");
+  expect(addon.eval(FIND)[0], "Escape in the field shuts it").toBe(false);
   expect(addon.eval("return #ns.errors"), "no errors").toBe(0);
 });
 
 it("chat find: saved history that no window shows is searched too, and only the newest lines are listed", () => {
   const addon = loggedIn(ENV + LINES, { savedVariables: 'VanguardCharDB = { chatHistory = { [1] = { "5|ffffff|old Sword talk", "6|ffffff|two Sword lines |Hitem:1|h[Big Sword]|h", "bad" }, [7] = "nope" } }' });
-  addon.eval("ns.ShowText = function(title, text) __shown = { title, text } end ns.GetModule('ChatWindows').Find('sword')");
-  expect(addon.eval("return __shown[2]"), "the old saved line first, the duplicate of a showing line once").toBe("old Sword talk\n[General] Hello Sword world\ntwo Sword lines [Big Sword]");
-  addon.eval("ns.GetModule('ChatWindows').MAX_FOUND = 1 ns.GetModule('ChatWindows').Find('sword')");
-  expect(addon.eval("return __shown[1]"), "capped to the newest").toBe('Chat: 1 lines with "sword"');
+  const sword = lit(addon, "Sword");
+  expect(addon.eval("return select(2, ns.GetModule('ChatWindows').Find('sword'))"), "the old saved line first, the duplicate of a showing line once").toBe(`old ${sword} talk\n[General] Hello ${sword} world\ntwo ${sword} lines [Big ${sword}]`);
+  addon.eval("ns.GetModule('ChatWindows').MAX_FOUND = 1");
+  expect(addon.eval("return (ns.GetModule('ChatWindows').Find('sword'))"), "capped to the newest").toBe('Chat: 1 lines with "sword"');
 });
 
-it("chat find: the Chat page has the button and the switch; off, no button; a window without line reads is fine", () => {
+it("chat find: the Chat page has the button and the switch; off, no button, and the switch shows and hides it at once; a window without line reads is fine", () => {
   const off = loggedIn(ENV, { savedVariables: 'VanguardDB.profiles = { Default = { ChatWindows = { find = false } } }' });
   expect(off.eval("return ns.GetModule('ChatWindows').findButton == nil"), "switched off: no button").toBe(true);
+  off.eval(`${chatRow("Find button in the chat's tab bar")} r[4](true)`);
+  expect(off.eval("return ns.GetModule('ChatWindows').findButton:IsShown()"), "the switch makes and shows the button at once").toBe(true);
+  off.eval(`${chatRow("Find button in the chat's tab bar")} r[4](false)`);
+  expect(off.eval("return { ns.GetModule('ChatWindows').findButton:IsShown(), ns.GetModule('ChatWindows').settings.find }"), "and hides it again, no reload").toEqual([false, false]);
+  expect(off.eval(`${PAGE} local out = {} for _, r in ipairs(page.rows()) do if r[1] == "header" then out[#out + 1] = r[2] end end return out`), "the page's groups, the extras under a header of their own").toEqual(["Chat", "Chat windows", "Chat tabs", "Chat extras", "Chat history", "Chat watch", "Chat filter", "Group board"]);
   const addon = loggedIn(ENV);
   addon.eval(`${PAGE} for _, r in ipairs(page.rows()) do if r[2] == "Find in chat" then r[3]() end end`);
-  expect(addon.eval("return Vanguard_TextDialog:IsShown()"), "the Chat page's Find in chat asks the same question").toBe(true);
-  addon.eval("ChatFrame1.GetNumMessages = nil ns.ShowText = function(title) __shown = title end ns.GetModule('ChatWindows').Find('x')");
-  expect(addon.eval("return __shown"), "a window that can't be read has no lines").toBe('Chat: 0 lines with "x"');
+  expect(addon.eval("return Vanguard_FindDialog:IsShown()"), "the Chat page's Find in chat opens the same find box").toBe(true);
+  addon.eval("ChatFrame1.GetNumMessages = nil");
+  expect(addon.eval("return { ns.GetModule('ChatWindows').Find('x') }"), "a window that can't be read has no lines").toEqual(['Chat: 0 lines with "x"', ""]);
   const bare = loggedIn("ChatFrame1 = nil");
   expect(bare.eval("return ns.GetModule('ChatWindows').findButton == nil"), "no main window, no button").toBe(true);
 });

@@ -53,6 +53,8 @@ read_globals = {
   "GetQuestLogSpecialItemCooldown", "IsQuestLogSpecialItemInRange",
   -- P2.8 Chat: the game's list of chat window art names.
   "CHAT_FRAME_TEXTURES",
+  -- Chat: the game's chat type table (its colours come from the client's settings), for the edit box's rail.
+  "ChatTypeInfo",
   -- P3.3 Visibility conditions: In an instance, and what a state driver's string says now.
   "IsInInstance", "SecureCmdOptionParse", "SendChatMessage",
   -- R1.6 Chat bubbles (Modules/ChatBubbles.lua): the engine's list of the bubbles it is showing.

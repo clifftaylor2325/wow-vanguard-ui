@@ -47,8 +47,9 @@ it("chat history: lines come back after a relog, in their own window and colour,
   expect(saved(addon)[0], "packed with time, colour and text").toEqual(["1790000000|ff8000|hello main", "1790000000|ffffff|no colour"]);
   const back = relog(addon, { now: 60 });
   const main = back.eval("return { ChatFrame1.__messages, ChatFrame1.__lastColor }");
-  expect(lines(back, 1), "main window: header, its lines, footer").toEqual([
-    "|cffa6adb9Chat from your last session (2 lines, until Mon 1790000000):|r", "hello main", "no colour", "|cffa6adb9End of the earlier chat.|r"]);
+  const dashes = "—".repeat(8);
+  expect(lines(back, 1), "main window: a muted rule saying when they are from, its lines, a closing rule").toEqual([
+    `|cffa6adb9${dashes} Chat from your last session (2 lines, until Mon 1790000000) ${dashes}|r`, "hello main", "no colour", `|cffa6adb9${dashes} End of the earlier chat ${dashes}|r`]);
   expect(lines(back, 2)[1], "the second window got its own line").toBe("hello second");
   expect(back.eval("return #VanguardCharDB.chatHistory[1]"), "putting lines back does not save them again").toBe(2);
   expect(back.eval("return #ns.errors"), "no errors").toBe(0);

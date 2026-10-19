@@ -6,7 +6,7 @@
   "description": "Vanguard: a from-scratch UI suite for WoW Forever.",
   "scripts": {
     "test": "vitest run",
-    "test:quick": "vitest run --project quick",
+    "test:quick": "vitest run --project quick --project hooks",
     "verify": "npm test && npm run quality",
     "coverage": "node scripts/coverage-lua.mjs",
     "timing": "node scripts/suite-timing.mjs",

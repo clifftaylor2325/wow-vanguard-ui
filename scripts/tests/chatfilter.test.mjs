@@ -43,6 +43,7 @@ it("chat filter: off until switched on; on makes the Filtered tab and catches go
   expect(lines[0], "why, the sender as a link, the text").toBe(`(Gold selling) |Haddon:Vanguard:allow:Goldy|h[Goldy]|h: ${GOLD}|r`);
   addon.update(0.1);
   expect(tabName(addon), "the tab counts them").toBe("Filtered (3)");
+  expect(addon.eval('local f = ns.GetModule("ChatFilter").window local t = _G[f:GetName() .. "Tab"] return t.Text:GetStringWidth() + 24 == t:GetWidth()'), "the tab is refit to the longer label").toBe(true);
   expect(addon.eval("return #ns.errors"), "no errors").toBe(0);
 });
 

@@ -128,11 +128,15 @@ function CF.Prepare()
   ns.OutOfCombat(function() CF.window = CF.FindWindow() or openWindow() end, "chatfilter window")
 end
 
--- The tab's text with the count of lines caught, "Filtered (12)".
+-- The tab's text with the count of lines caught, "Filtered (12)", and the tab refit to it (the
+-- Chat module sizes every tab to its label; a longer count would otherwise be cut).
 function CF.UpdateTab()
   local frame = CF.window
   local tab = frame and _G[frame:GetName() .. "Tab"]
-  if tab and type(tab.SetText) == "function" then tab:SetText(string.format("%s (%d)", CF.TAB, CF.count)) end
+  if not (tab and type(tab.SetText) == "function") then return end
+  tab:SetText(string.format("%s (%d)", CF.TAB, CF.count))
+  local CH = ns.GetModule("Chat")
+  if CH and CH.RefitTabs then CH.RefitTabs() end
 end
 
 -- Puts a caught line in the Filtered tab: why, the sender (a link that un-filters them), the text.

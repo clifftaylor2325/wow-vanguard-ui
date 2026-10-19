@@ -160,9 +160,11 @@ local MINIMAP = {
   "SetArchBlobInsideTexture", "SetBlipTexture", "SetMaskTexture", "SetZoom",
 }
 
+-- ScrollingMessageFrameMixin (Blizzard_SharedXML/ScrollingMessageFrame.lua): the line fade's three
+-- settings are SetFading, SetTimeVisible and SetFadeDuration, each with a getter.
 local SCROLLING_MESSAGE_FRAME = {
-  "AddMessage", "Clear", "GetFading", "GetMaxLines", "GetNumMessages",
-  "ScrollDown", "ScrollToBottom", "ScrollToTop", "ScrollUp", "SetFading", "SetMaxLines",
+  "AddMessage", "Clear", "GetFadeDuration", "GetFading", "GetMaxLines", "GetNumMessages", "GetTimeVisible",
+  "ScrollDown", "ScrollToBottom", "ScrollToTop", "ScrollUp", "SetFadeDuration", "SetFading", "SetMaxLines",
   "SetTimeVisible", "TransformMessages",
 }
 
