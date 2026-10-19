@@ -854,7 +854,17 @@ it("game options: scroll bars, defaults button, header divider, and the nav and 
 const GRAPHICS_ROW = `
   local row = CreateFrame("Frame", nil, SettingsPanel.Container.SettingsList)
   row.NineSlice = CreateFrame("Frame", nil, row) row.NineSlice.Art = row.NineSlice:CreateTexture() row.NineSlice:SetFrameLevel(500)
+  row.NineSlice:SetPoint("TOPLEFT", row, "TOPLEFT", -12, -14) row.NineSlice:SetPoint("BOTTOMRIGHT", row, "BOTTOMRIGHT", -6, -16)
+  -- The tabs as MinimalTabTemplate makes them: 37 tall, the Raid tab 30 in and 10 up from the section's top-right corner, the Base
+  -- tab on its left, each label anchored to the tab's bottom and anchored there again (lower when unselected) by OnSelected.
   row.BaseTab, row.RaidTab = CreateFrame("Button", nil, row), CreateFrame("Button", nil, row)
+  for _, tab in ipairs({ row.BaseTab, row.RaidTab }) do
+    tab:SetHeight(37) tab.Text = tab:CreateFontString() tab.Text:SetPoint("BOTTOM", 0, 4)
+    function tab:OnSelected(on) self.selected = on self.Text:SetPoint("BOTTOM", 0, on and 6 or 4) end
+    function tab:IsSelected() return self.selected == true end
+  end
+  row.RaidTab.selected = true
+  row.RaidTab:SetPoint("TOPRIGHT", row, "TOPRIGHT", -30, 10) row.BaseTab:SetPoint("TOPRIGHT", row.RaidTab, "TOPLEFT")
   local function stepped(set)
     local c = CreateFrame("Frame", nil, set) c.Control = CreateFrame("Frame", nil, c)
     c.Control.Dropdown = CreateFrame("Button", nil, c.Control) c.Control.Dropdown.Arrow = c.Control.Dropdown:CreateTexture()
@@ -888,9 +898,29 @@ it("game options: the graphics quality section's box, Base and Raid tabs, qualit
     return { __insetPainted(r.NineSlice), r.NineSlice:GetFrameLevel() == r:GetFrameLevel(), __panelled(r.BaseTab), __panelled(r.RaidTab), __stepper(b[1].SliderWithSteppers), stepper(b[2]),
       __stepper(raid[1].SliderWithSteppers), ns.Theme.CheckParts(raid[1].Checkbox) ~= nil, stepper(raid[2]) }`),
     "the box an inset brought down from level 500 to the row's, both tabs theme tabs, each set's slider and stepped dropdown themed, the raid check box too").toEqual([true, true, true, true, true, true, true, true, true]);
+  expect(addon.eval(`local r = __graphics local b, raid = r.NineSlice.__points, r.RaidTab.__points
+    return { b.TOPLEFT.rel == r, b.TOPLEFT.x, b.TOPLEFT.y, b.BOTTOMRIGHT.x, b.BOTTOMRIGHT.y, r.RaidTab:GetNumPoints(), raid.BOTTOMRIGHT.rel == r.NineSlice,
+      raid.BOTTOMRIGHT.relPoint, raid.BOTTOMRIGHT.x, raid.BOTTOMRIGHT.y, r.BaseTab.__points.TOPRIGHT.rel == r.RaidTab }`),
+    "the box from the section's left edge, 27 down (the tabs' 37 less their 10 rise), its bottom-right corner the game's; the Raid tab on the box's top-right corner, the Base tab still beside it")
+    .toEqual([true, 0, -27, -6, -16, 1, true, "TOPRIGHT", 0, 0, true]);
+  // A graphics tab's label: how many anchors it has, whether one is CENTER, and which theme colour it shows.
+  const label = (tab) => addon.eval(`local t = __graphics.${tab}.Text local r, g, b = t:GetTextColor() local c2 = { ns.Theme.RGB("text2") } local c1 = { ns.Theme.RGB("text") }
+    return { t:GetNumPoints(), t.__points.CENTER ~= nil, (r == c2[1] and g == c2[2] and b == c2[3]) and "text2" or (r == c1[1] and g == c1[2] and b == c1[3]) and "text" or "other" }`);
+  expect([label("BaseTab"), label("RaidTab")], "each label centred in its tab (the game's bottom anchor gone); the Raid tab the game had selected before the skin in text, the Base tab in text2").toEqual([[1, true, "text2"], [1, true, "text"]]);
+  addon.eval("__graphics.RaidTab:OnSelected(false) __graphics.BaseTab:OnSelected(true)");
+  expect([label("BaseTab"), label("RaidTab")], "the selection moves: the game anchors each label to the bottom again and they are centred again, the colours swapped").toEqual([[1, true, "text"], [1, true, "text2"]]);
+  addon.eval("__graphics.BaseTab:OnSelected(false) __graphics.RaidTab:OnSelected(true)");
+  expect(label("RaidTab"), "and back").toEqual([1, true, "text"]);
+  addon.eval("__graphics.RaidTab.Text:SetTextColor(1, 0, 0) __graphics.RaidTab:GetScript('OnEnter')(__graphics.RaidTab)");
+  expect(label("RaidTab"), "after the mouse enters (the game recolours by font object) the label is coloured again").toEqual([1, true, "text"]);
+  addon.eval("__graphics.RaidTab:OnSelected(false) __graphics.RaidTab.Text:SetTextColor(1, 0, 0) __graphics.RaidTab:GetScript('OnLeave')(__graphics.RaidTab)");
+  expect(label("RaidTab"), "unselected again and the mouse gone: centred, text2").toEqual([1, true, "text2"]);
   const bare = loggedIn(SETTINGS_LISTS_ENV + GRAPHICS_ROW + "__graphics.NineSlice = nil __graphics.RaidTab = 1 __graphics.RaidQualityControls.Controls = nil");
   bare.eval("SettingsPanel:Show() SettingsPanel.Container.SettingsList.ScrollBox:Take(__graphics)");
   expect([bare.eval("return __panelled(__graphics.BaseTab)"), bare.eval("return __errors('Windows')")], "a section missing its box, a tab or a set's controls is fine").toEqual([true, "none"]);
+  const noTab = loggedIn(SETTINGS_LISTS_ENV + GRAPHICS_ROW + "__graphics.RaidTab = nil");
+  noTab.eval("SettingsPanel:Show() SettingsPanel.Container.SettingsList.ScrollBox:Take(__graphics)");
+  expect([noTab.eval("local b = __graphics.NineSlice.__points return { b.TOPLEFT.x, b.TOPLEFT.y }"), noTab.eval("return __errors('Windows')")], "without the Raid tab the box keeps the game's anchors").toEqual([[-12, -14], "none"]);
 });
 
 it("game options: a language dropdown keeps its language picture; the microphone test's play button, meter box and meter are themed", () => {
