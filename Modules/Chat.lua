@@ -19,7 +19,7 @@ local ADDON, ns = ...
 local T = ns.Theme
 
 local CH = ns.Module("Chat", {
-  defaults = { background = true, backdrop = 0.75, windowScale = 1, widened = false, textSize = 12, place = true, sized = false, tabsVisible = true },
+  defaults = { background = true, backdrop = 0.75, windowScale = 1, widened = false, textSize = 12, place = true, sized = false, tabsVisible = true, lineFade = 60 },
 })
 
 -- The tab bar's height above a chat window: a control-high tab with a tight gap round it.
@@ -99,6 +99,33 @@ function CH.FontWindow(frame)
   frame:SetShadowOffset(1, -1)
   frame:SetShadowColor(T.RGB("textShadow"))
   frame:SetSpacing(T.CHAT_TEXT.spacing)
+end
+
+-- The Chat text fades choices: how long a line stays before it fades (seconds; 0 never fades).
+CH.LINE_FADES = { { 0, "Never" }, { 60, "After 60 seconds" }, { 10, "After 10 seconds" } }
+
+-- How long a line takes to fade once its time is up: the theme's, at most T.COMBAT_FADE in a fight,
+-- none under Reduce motion (the line goes at once).
+local function lineFadeSeconds()
+  if T.Settings().reduceMotion then return 0 end
+  return T.FadeTime(T.CHAT_LINE_FADE)
+end
+
+-- A window's line fade from the Chat text fades choice: lines stay that long, then fade (Never: no fade).
+local function fadeWindow(frame)
+  local seconds = tonumber(CH.settings.lineFade) or 0
+  frame:SetFading(seconds > 0)
+  if seconds > 0 then frame:SetTimeVisible(seconds) end
+  frame:SetFadeDuration(lineFadeSeconds())
+end
+
+-- Sets every window's line fade again (after the Chat text fades choice, Reduce motion, or a fight's
+-- start or end, which caps the fade).
+function CH.ApplyFades()
+  for i = 1, windowCount() do
+    local frame = _G["ChatFrame" .. i]
+    if frame then fadeWindow(frame) end
+  end
 end
 
 -- Hides the game's window art. It is hidden, not faded: the game's mouseover
@@ -212,9 +239,10 @@ local function showFrame(frame, on)
   CH.frames[frame].outline:SetShown(on)
 end
 
--- A chat window: theme font, hidden art, and (if on) the rounded panel with the chat background.
+-- A chat window: theme font, its line fade, hidden art, and (if on) the rounded panel with the chat background.
 local function skinWindow(frame, settings)
   CH.FontWindow(frame)
+  fadeWindow(frame)
   T.FadeRegions(frame)
   hideArt(frame)
   showFrame(frame, settings.background)
@@ -607,13 +635,13 @@ function CH.SkinAll()
   CH.PlaceDock()
 end
 
--- Re-fonts every chat window (after a text size or font change), re-colors the tabs, and sets
--- every panel's fill to the strength setting, and its rule and edit box rail to their pixels again
--- (after a scale change).
+-- Re-fonts every chat window (after a text size or font change) and sets its line fade again (after
+-- Reduce motion), re-colors the tabs, and sets every panel's fill to the strength setting, and its
+-- rule and edit box rail to their pixels again (after a scale change).
 function CH.Refresh()
   for i = 1, windowCount() do
     local frame = _G["ChatFrame" .. i]
-    if frame then CH.FontWindow(frame) end
+    if frame then CH.FontWindow(frame) fadeWindow(frame) end
     local parts = frame and CH.frames and CH.frames[frame]
     if parts then T.TintFill(parts.fill, "panel", CH.Strength()) placeRule(parts.rule, parts.bar) end
     refreshRail(_G["ChatFrame" .. i .. "EditBox"])
@@ -720,5 +748,22 @@ function CH.Enable(settings)
   T.OnChanged(CH.Refresh)
   CH.Place()
   ns.On("PLAYER_ENTERING_WORLD", CH.Size)
+  ns.On("PLAYER_REGEN_DISABLED", CH.ApplyFades)
+  ns.On("PLAYER_REGEN_ENABLED", CH.ApplyFades)
   hookGame()
 end
+
+-- get/set for one of this module's settings (and its default), applied at once through `apply` while the module runs.
+local function liveSetting(key, apply)
+  return function() return ns.Settings("Chat", CH.defaults)[key] end,
+    function(v) ns.Settings("Chat", CH.defaults)[key] = v if CH.settings then apply() end end, CH.defaults[key]
+end
+
+-- This module's rows on the Chat page (Core/OptionsChat.lua holds the page; these follow its own rows).
+function CH.Rows()
+  return {
+    { "header", "Chat text and bar" },
+    { "cycle", "Chat text fades", CH.LINE_FADES, liveSetting("lineFade", CH.ApplyFades) },
+  }
+end
+ns.Options.AddRows("chat", CH.Rows)

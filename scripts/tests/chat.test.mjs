@@ -118,6 +118,35 @@ it("chat frame: one rounded panel round the text, the scroll column and a 24-tal
   expect(panel()[0], "background off: no panel, the buttons still have their bar").toBe(false);
   expect(addon.eval("return #ns.errors"), "no errors").toBe(0);
 });
+// TEST-ONLY spies on the main window's line fade setters (ScrollingMessageFrameMixin), which the stub does not model.
+const CHAT_FADE_ENV = `
+  __fade = {}
+  function ChatFrame1:SetFading(on) __fade.on = on end
+  function ChatFrame1:SetTimeVisible(s) __fade.visible = s end
+  function ChatFrame1:SetFadeDuration(s) __fade.duration = s end
+`;
+it("chat text fades: lines stay 60 s then fade over 0.6 s by default, Never and 10 s from the Chat page's row, 0.15 s in a fight, at once under Reduce motion", () => {
+  const addon = loggedIn(UI_ENV + CHAT_FADE_ENV);
+  // The main window's fade: on, seconds visible, fade seconds.
+  const fade = () => addon.eval("return { __fade.on, __fade.visible, __fade.duration }");
+  expect(fade(), "by default a line stays 60 s, then fades over 0.6 s").toEqual([true, 60, 0.6]);
+  addon.eval("ns.Options.Show('chat')");
+  expect(addon.texts("Chat text fades").length, "the Chat page has the row").toBe(1);
+  // The row's getter and setter (its get/set pair), from the module's own rows.
+  const row = (lua) => addon.eval(`local r = ns.GetModule("Chat").Rows()[2] return ${lua}`);
+  expect(row("r[4]()"), "the row reads the setting").toBe(60);
+  row("r[5](0)");
+  expect([fade()[0], addon.eval("return VanguardDB.profiles.Default.Chat.lineFade")], "Never: no fade, saved").toEqual([false, 0]);
+  row("r[5](10)");
+  expect(fade(), "After 10 seconds").toEqual([true, 10, 0.6]);
+  addon.world.combat(true);
+  expect(fade()[2], "a fight starts: the fade is capped at 0.15 s").toBe(0.15);
+  addon.world.combat(false);
+  expect(fade()[2], "and goes back to 0.6 s after it").toBe(0.6);
+  addon.eval("ns.Theme.Settings().reduceMotion = true ns.Theme.Refresh()");
+  expect(fade()[2], "Reduce motion: a line goes at once").toBe(0);
+  expect(addon.eval("return #ns.errors"), "no errors").toBe(0);
+});
 // TEST-ONLY chat edit boxes as the game has them: the main window's with a header the game colours from
 // ChatTypeInfo in UpdateHeader (ChatFrameEditBoxMixin), the second window's with neither.
 const CHAT_EDIT_ENV = `

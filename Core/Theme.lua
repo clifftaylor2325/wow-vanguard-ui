@@ -1613,6 +1613,9 @@ T.CHAT_TEXT = { spacing = 2 }
 -- ChatFrameEditBoxMixin:Deactivate sets), and how long it takes to come to full when it gains the
 -- typing and to drop back when it loses it (seconds; docs/THEME.md, Fades and flashes).
 T.CHAT_EDIT = { rest = 0.35, focusIn = 0.2, focusOut = 0.05 }
+-- How long a chat line takes to fade out once its time on screen is up (seconds; the Chat text fades
+-- choice in Modules/Chat.lua sets the time; docs/THEME.md, Fades and flashes).
+T.CHAT_LINE_FADE = 0.6
 -- The chat tabs' alpha floor: the game fades an unselected docked tab to 0.2 with the mouse away
 -- (CHAT_FRAME_TAB_NORMAL_NOMOUSE_ALPHA), which is too faint on a bar that is itself visible at rest;
 -- Modules/Chat.lua floors the game's six tab alphas here while Keep chat tabs visible is off, so the
