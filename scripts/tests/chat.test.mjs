@@ -1,7 +1,7 @@
 // chat: Vanguard's real Lua in the TEST-ONLY headless client (scripts/lib/lua-harness.mjs).
 
 import { expect, it } from "vitest";
-import { CLICK_LUA, expectErrors, STRIP_ENV, TIDY_ENV, UI_ENV, UNITS_ENV, INSIDES_LUA, borderOf, chatHas, isTok, later, loggedIn, setCombat, WINDOWS_ENV, windowState } from "./helpers.mjs";
+import { CLICK_LUA, expectErrors, STRIP_ENV, TIDY_ENV, UI_ENV, UNITS_ENV, INSIDES_LUA, borderOf, chatHas, isTok, later, loggedIn, setCombat, tok, WINDOWS_ENV, windowState } from "./helpers.mjs";
 
 it("minimap", () => {
   const addon = loggedIn(UI_ENV);
@@ -237,10 +237,30 @@ it("chat background: the panel's fill in the panel colour, three strengths, tabs
   expect(off.eval("return ns.GetModule('Chat').frames[ChatFrame1].outline:IsShown()"), "background off hides the panel").toBe(false);
 });
 // TEST-ONLY chat dock, tab fade and floating-tab code as the game has it: the dock anchored to the main
-// window's art, the six tab alphas, FCFTab_UpdateAlpha setting a tab's alpha from them, and the game
-// re-anchoring a floating tab and the side buttons.
+// window's art, its layout colouring each docked tab's label gold and sizing it, the six tab alphas,
+// FCFTab_UpdateAlpha setting a tab's alpha from them, and the game re-anchoring a floating tab and
+// the side buttons.
 const CHAT_DOCK_ENV = `
   GENERAL_CHAT_DOCK = CreateFrame("Frame", "GENERAL_CHAT_DOCK", UIParent)
+  GENERAL_CHAT_DOCK.scrollFrame = CreateFrame("ScrollFrame", nil, GENERAL_CHAT_DOCK)
+  GENERAL_CHAT_DOCK.scrollFrame:SetScrollChild(CreateFrame("Frame", nil, GENERAL_CHAT_DOCK.scrollFrame))
+  GENERAL_CHAT_DOCK.scrollFrame:GetScrollChild():SetPoint("LEFT")
+  GENERAL_CHAT_DOCK.DOCKED_CHAT_FRAMES = { ChatFrame1, ChatFrame2 }
+  ChatFrame1.isStaticDocked, ChatFrame1.isDocked, ChatFrame2.isDocked = true, 1, 1
+  __dockUpdates = 0
+  -- TEST-ONLY: the game colouring a tab: its label gold.
+  function FCFTab_UpdateColors(tab, selected) tab:GetFontString():SetTextColor(1, 0.82, 0) end
+  -- TEST-ONLY: the game's dock layout: each docked tab coloured and sized for its label (70 wide here), a fixed tab on the dock's bottom-left, the rest a unit under the scroll child's centre.
+  function FCFDock_UpdateTabs(dock, force)
+    __dockUpdates = __dockUpdates + 1
+    local child = dock.scrollFrame:GetScrollChild()
+    for _, frame in ipairs(dock.DOCKED_CHAT_FRAMES) do
+      local tab = _G[frame:GetName() .. "Tab"]
+      tab:ClearAllPoints() FCFTab_UpdateColors(tab, frame == SELECTED_CHAT_FRAME) tab:SetWidth(70)
+      if frame.isStaticDocked then tab:SetParent(dock) tab:SetPoint("BOTTOMLEFT", dock, "BOTTOMLEFT", 0, 0)
+      else tab:SetParent(child) tab:SetPoint("LEFT", child, "LEFT", 0, -1) end
+    end
+  end
   function FCFDock_SetPrimary(dock, frame) dock:ClearAllPoints() dock:SetPoint("BOTTOMLEFT", frame, "TOPLEFT") end
   function FCF_SetTabPosition(frame, x) local tab = _G[frame:GetName() .. "Tab"] if tab then tab:ClearAllPoints() tab:SetPoint("BOTTOMLEFT", frame, "TOPLEFT", x + 2, 0) end end
   function FCF_SetButtonSide(frame, side) frame.buttonSide = side end
@@ -264,18 +284,41 @@ it("chat tabs stay visible: the game's six tab alphas are 1 while the switch is 
   bare.eval("ns.GetModule('Chat').settings.tabsVisible = false ns.GetModule('Chat').ApplyTabAlpha()");
   expect(bare.eval("return CHAT_FRAME_TAB_NORMAL_NOMOUSE_ALPHA"), "and off leaves it as it was (unset)").toBe(null);
 });
-it("chat dock: the docked tabs sit centred in the main window's bar and end before Find and Copy, after the game anchors the dock; a floating tab sits on its own window's bar", () => {
+it("chat dock: the docked tabs sit centred in the main window's bar, over the panel, and end before Find and Copy, after the game anchors the dock and lays its tabs out; a floating tab sits on its own window's bar", () => {
   const addon = loggedIn(UI_ENV + CHAT_DOCK_ENV);
-  // The dock's anchors: bottom-left on the bar, right end at a button.
-  const dock = () => addon.eval("local d, F = GENERAL_CHAT_DOCK.__points, ns.GetModule('Chat').frames[ChatFrame1] return { d.BOTTOMLEFT.rel == F.bar, d.BOTTOMLEFT.x, d.BOTTOMLEFT.y, d.RIGHT.rel == ns.GetModule('ChatWindows').findButton, d.RIGHT.relPoint, d.RIGHT.x }");
-  expect(dock(), "two units in and up from the bar's corner (tabs 20 tall in a 24 bar), ending a gap left of Find").toEqual([true, 2, 2, true, "LEFT", -4]);
+  // The dock's anchors: the bar's top-left and bottom-left corners, right end at a button; the scroll child a tab high, a unit up.
+  const dock = () => addon.eval("local d, F, child = GENERAL_CHAT_DOCK.__points, ns.GetModule('Chat').frames[ChatFrame1], GENERAL_CHAT_DOCK.scrollFrame:GetScrollChild() return { d.TOPLEFT.rel == F.bar, d.TOPLEFT.x, d.TOPLEFT.y, d.BOTTOMLEFT.rel == F.bar, d.BOTTOMLEFT.x, d.BOTTOMLEFT.y, d.RIGHT.rel == ns.GetModule('ChatWindows').findButton, d.RIGHT.relPoint, d.RIGHT.x, child.__points.LEFT.y, child:GetHeight() }");
+  expect(dock(), "a tab high, two units inside the bar (tabs 20 tall in a 24 bar), ending a gap left of Find; the scroll child a tab high and a unit up").toEqual([true, 2, -2, true, 2, 2, true, "LEFT", -4, 1, 20]);
   addon.eval("FCFDock_SetPrimary(GENERAL_CHAT_DOCK, ChatFrame1)");
-  expect(dock(), "the game anchoring it to the window's art again is put right").toEqual([true, 2, 2, true, "LEFT", -4]);
-  addon.eval("FCF_SetTabPosition(ChatFrame2, 30)");
-  expect(addon.eval("local t = ChatFrame2Tab.__points.BOTTOMLEFT return { t.rel == ns.GetModule('Chat').frames[ChatFrame2].bar, t.x, t.y }"), "a floating tab: on its window's bar at the x the player dragged it to").toEqual([true, 32, 2]);
-  addon.eval("ChatFrame2.isDocked = 1 FCF_SetTabPosition(ChatFrame2, 0)");
-  expect(addon.eval("local t = ChatFrame2Tab.__points.BOTTOMLEFT return { t.rel == ChatFrame2, t.x }"), "a docked window's tab is the dock's: the game's anchor stands").toEqual([true, 2]);
+  expect(dock(), "the game anchoring it to the window's art again is put right").toEqual([true, 2, -2, true, 2, 2, true, "LEFT", -4, 1, 20]);
+  expect(addon.eval("return ns.GetModule('Chat').frames[ChatFrame1].outline:GetFrameStrata()"), "the panel sits in the BACKGROUND strata, under the dock's tabs (low in LOW, where a frame a level under the window still covers them)").toBe("BACKGROUND");
+  expect(addon.eval("return __dockUpdates"), "skinning asks the game to lay the dock out again, for the theme's font, on the next frame").toBe(0);
+  addon.update(0);
+  expect(addon.eval("return __dockUpdates"), "once").toBe(1);
+  // Each docked tab after the game's layout: height, width, where its label is anchored, its parent, its label colour.
+  const tabs = () => addon.eval("local out = {} for i = 1, 2 do local t = _G['ChatFrame' .. i .. 'Tab'] local p = t.__points.LEFT or t.__points.BOTTOMLEFT out[i] = { t:GetHeight(), t:GetWidth(), t.Text.__points.CENTER ~= nil, t:GetParent() == (i == 1 and GENERAL_CHAT_DOCK or GENERAL_CHAT_DOCK.scrollFrame:GetScrollChild()), p.y, { t.Text:GetTextColor() } } end return out");
+  const textColours = [tok(addon, "text"), tok(addon, "text2")];
+  expect(tabs().map((t) => t.slice(0, 5)), "the game's layout keeps the skin: a control high, the game's width (the label in the theme's font), the label centred, the fixed tab on the dock and the other in the scroll child a unit under its centre (level with the fixed one)").toEqual([[20, 70, true, true, 0], [20, 70, true, true, -1]]);
+  expect(textColours, "the labels are back in the theme's text colours, not the gold the game's colouring paints").toEqual(expect.arrayContaining(tabs().map((t) => t[5])));
+  const painted = addon.eval("return ns.Theme.PaintedCount()");
+  addon.eval("FCF_SetTabPosition(ChatFrame1, 0) FCF_SetTabPosition(ChatFrame2, 0)");
+  expect(addon.eval("local t = ChatFrame2Tab.__points.BOTTOMLEFT return { __dockUpdates, t and t.rel == ChatFrame2 }"), "the game anchoring docked windows' tabs to the windows' art (a chat windows update) leaves them there for the frame").toEqual([1, true]);
+  addon.update(0);
+  expect(addon.eval("local t = ChatFrame2Tab.__points.LEFT return { __dockUpdates, t and t.rel == GENERAL_CHAT_DOCK.scrollFrame:GetScrollChild(), ns.Theme.PaintedCount() }"), "then the dock lays its tabs out once for both, so the tabs go back, painting nothing new").toEqual([2, true, painted]);
+  addon.eval("ChatFrame2.isDocked = nil table.remove(GENERAL_CHAT_DOCK.DOCKED_CHAT_FRAMES, 2) FCF_SetTabPosition(ChatFrame2, 30)");
+  addon.update(0);
+  expect(addon.eval("local t = ChatFrame2Tab.__points.BOTTOMLEFT return { t.rel == ns.GetModule('Chat').frames[ChatFrame2].bar, t.x, t.y, __dockUpdates }"), "a floating tab: on its window's bar at the x the player dragged it to, no dock layout").toEqual([true, 32, 2, 2]);
+  addon.eval("ns.GetModule('Chat').RefitTabs()");
+  addon.update(0);
+  expect(addon.eval("return { ChatFrame1Tab:GetWidth(), ChatFrame2Tab:GetWidth() ~= 70, __dockUpdates }"), "a refit (a font change) fits the floating tab to its label, leaves the docked one to the dock and has the dock lay out once").toEqual([70, true, 3]);
   expect(addon.eval("FCF_SetTabPosition({ GetName = function() return 'ChatFrame9' end }, 0) return #ns.errors"), "a window Vanguard hasn't dressed is left alone").toBe(0);
+  addon.eval("FCF_OpenNewWindow('TEST-ONLY')");
+  expect(addon.eval("return { ns.GetModule('Chat').frames[ChatFrame3] ~= nil, ns.FrameState('vgChatTab')[ChatFrame3Tab] == true, ChatFrame3Tab:GetHeight(), #ns.errors }"), "a window made from the game's menu gets the panel and the tab the skin").toEqual([true, true, 20, 0]);
+  const skinned = addon.eval("return ns.Theme.PaintedCount()");
+  addon.eval("ns.GetModule('Chat').SkinAll()");
+  expect(addon.eval("return ns.Theme.PaintedCount()"), "skinning again paints nothing new").toBe(skinned);
+  addon.eval("local t = CreateFrame('Button', 'TestOnlyChatTab', UIParent) t.Text = t:CreateFontString(nil, 'OVERLAY') t:SetFontString(t.Text) FCFTab_UpdateColors(t, true)");
+  expect(addon.eval("return { ns.FrameState('vgChatTab')[TestOnlyChatTab] == true, TestOnlyChatTab:GetHeight(), #ns.errors }"), "the game colouring a tab Vanguard hasn't dressed gives it the skin").toEqual([true, 20, 0]);
   const plain = loggedIn(UI_ENV + CHAT_DOCK_ENV, { savedVariables: "VanguardDB.profiles = { Default = { ChatExtras = { copy = false }, ChatWindows = { find = false } } }" });
   expect(plain.eval("local d = GENERAL_CHAT_DOCK.__points return { d.RIGHT.rel == ns.GetModule('Chat').frames[ChatFrame1].bar, d.RIGHT.relPoint, d.RIGHT.x }"), "without Find and Copy the dock runs to the bar's right end").toEqual([true, "RIGHT", -4]);
 });
