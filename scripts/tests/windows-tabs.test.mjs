@@ -272,7 +272,7 @@ const PANE_ENV = WINDOWS_ENV + SIDE_ENV + `
   __tokenHeader = __header(TokenFrame.ScrollBox)
 `;
 
-it("character pane lists: bars panelled with their fill kept, headers flat with their icon kept, rows the game acquires later too", () => {
+it("character pane lists: bars panelled with their fill kept, headers flat with a chevron for their plus/minus, rows the game acquires later too", () => {
   const addon = loggedIn(PANE_ENV);
   // The character pane lists' bars and headers: alphas and whether each is panelled.
   const state = () => addon.eval(`return {
@@ -285,8 +285,8 @@ it("character pane lists: bars panelled with their fill kept, headers flat with 
   expect(first.repBar, "reputation bar: backdrop faded, Fill the game's (its colour is the standing), a panel behind").toEqual([0, -1, true]);
   expect(first.skillBar, "skill bar (a StatusBar with a Fill) the same").toEqual([0, -1, true]);
   expect(first.rank, "the skill detail's rank bar").toEqual([-1, true]);
-  expect(first.header, "header: banner faded, the plus/minus icon kept visible, a flat button").toEqual([0, 1, true]);
-  expect(first.token, "currency headers too").toEqual([0, 1]);
+  expect(first.header, "header: banner faded, the plus/minus icon hidden (a chevron stands for it), a flat button").toEqual([0, 0, true]);
+  expect(first.token, "currency headers too").toEqual([0, 0]);
   const later = addon.eval(`local e = __entry(ReputationFrame.ScrollBox, "ReputationBar") local h = __header(TokenFrame.ScrollBox)
     return { __a(e.bar.backdrop), __panel(e.bar), __a(h.banner) }`);
   expect(later, "rows acquired after the pane was dressed").toEqual([0, true, 0]);
@@ -407,6 +407,10 @@ const HOSTS_ENV = PANE_ENV + `
   __divider = __art(CreateFrame("Frame", nil, CharacterFrame.RightPaneHost), "OVERLAY")
   CharacterFrame.RightPaneToggleButton = CreateFrame("Button", "CharacterFrameRightPaneToggleButton", CharacterFrame)
   CharacterFrame.RightPaneToggleButton:SetPoint("TOPRIGHT", CharacterFrame.LeftPaneHost, "TOPRIGHT", -6, -6)
+  CharacterFrame.RightPaneToggleButton.art = __art(CharacterFrame.RightPaneToggleButton, "ARTWORK")
+  __hidden = false
+  function CharacterFrame:IsRightPaneCollapsed() return __hidden end
+  function CharacterFrame:UpdateRightPaneToggleButton() end
   TokenFrame.ScrollBox.size = 0
   function TokenFrame.ScrollBox:GetDataProviderSize() return self.size end
   function TokenFrame.ScrollBox:SetDataProvider(n) self.size = n end
@@ -422,22 +426,24 @@ it("character pane: the wooden and stone backdrops faded, each list on a flat in
   expect(bare.eval("return #ns.errors"), "a host that is not a frame, and a currency list that cannot count its rows").toBe(0);
 });
 
-it("character pane: the right-pane toggle (the gold arrow) sits in the title row, beside the close button", () => {
+it("character pane: the right-pane toggle sits in the title row, beside the close button, a window control with the theme's chevron", () => {
   const addon = loggedIn(HOSTS_ENV);
   const toggle = addon.eval(`local b = CharacterFrame.RightPaneToggleButton local p = b.__points.CENTER
     return { p.rel == CharacterFrame.CloseButton, p.x, p.y, b.__points.TOPRIGHT == nil }`);
   expect(toggle, "CENTER on the close button, one control step left, its old corner anchor cleared").toEqual([true, -28, 0, true]);
-  const tile = addon.eval(`local b = CharacterFrame.RightPaneToggleButton local tiles = {}
-    for _, r in ipairs({ b:GetRegions() }) do if r.__layer == "BACKGROUND" then tiles[#tiles + 1] = r end end
-    ns.Theme.ControlPlate(b) local again = 0
-    for _, r in ipairs({ b:GetRegions() }) do if r.__layer == "BACKGROUND" then again = again + 1 end end
-    return { #tiles, again, tiles[1]:GetWidth(), tiles[1]:IsShown(), tiles[1].__vertexColor }`);
-  expect([tile[0], tile[1], tile[2], tile[3], isTok(addon, tile[4], "raised"), tile[4][3]],
-    "on the window controls' resting tile (raised slate at 0.9, the tile's size) like the close button, made once").toEqual([1, 1, px(addon, 20, true), true, true, 0.9]);
+  const look = addon.eval(`local b = CharacterFrame.RightPaneToggleButton local g = ns.Theme.ControlGlyph(b)
+    return { __a(b.art), g.__texture == ns.Theme.Icon("Right"), g.__texCoord, ns.Theme.ControlGlyph(CharacterFrame) == nil, ns.Theme.ControlGlyph(UIParent) == nil }`);
+  expect(look, "the gold page arrow faded, the theme's chevron pointing left while the stats half shows; a panel or a bare frame has no control glyph").toEqual([0, true, [1, 0, 0, 1], true, true]);
+  // The chevron's texture coordinates after the game hides (or shows) the stats half and updates the button.
+  const turned = (hidden) => addon.eval(`__hidden = ${hidden} CharacterFrame:UpdateRightPaneToggleButton() return ns.Theme.ControlGlyph(CharacterFrame.RightPaneToggleButton).__texCoord`);
+  expect(turned(true), "stats half hidden: the chevron points right").toEqual([0, 1, 0, 1]);
+  expect(turned(false), "shown again: left").toEqual([1, 0, 0, 1]);
   const off = loggedIn(HOSTS_ENV, { savedVariables: "VanguardDB.profiles = { Default = { Windows = { tabs = false } } }" });
   expect(off.eval("return CharacterFrame.RightPaneToggleButton.__points.CENTER == nil"), "tabs off: where the game put it").toBe(true);
   const bare = loggedIn(HOSTS_ENV + "CharacterFrame.CloseButton = nil");
   expect(bare.eval("return { CharacterFrame.RightPaneToggleButton.__points.CENTER == nil, #ns.errors }"), "no close button to sit by: left alone").toEqual([true, 0]);
+  const plain = loggedIn(HOSTS_ENV + "CharacterFrame.RightPaneToggleButton.CreateTexture = nil CharacterFrame.IsRightPaneCollapsed = nil");
+  expect(plain.eval("return { CharacterFrame.RightPaneToggleButton.__points.CENTER ~= nil, #ns.errors }"), "a toggle that can't take textures is only moved").toEqual([true, 0]);
 });
 
 it("currency: an empty list says so, and the note follows the list the game sets", () => {
@@ -851,9 +857,81 @@ it("pane lists: the rules over and under each list are one pixel of divider, a h
   `);
   expect(addon.eval("return { __a(ReputationFrame.rule), __a(SkillsFrame.rule), __a(TokenFrame.rule) }"), "the rule lines of all three lists faded").toEqual([0, 0, 0]);
   expect(addon.eval("return { ns.Theme.DividerParts(ReputationFrame.rule) ~= nil, ns.Theme.DividerParts(SkillsFrame.rule) ~= nil, ns.Theme.DividerParts(TokenFrame.rule) ~= nil, ns.Theme.DividerParts(__repHeader.banner) == nil }"), "each drawn as one pixel of divider; a row's art is not").toEqual([true, true, true, true]);
-  expect(addon.eval("return { __a(__repHeader.banner), __a(__repHeader.StateIcon) }"), "a header row's own art is not taken for a rule line").toEqual([0, 1]);
+  expect(addon.eval("return { __a(__repHeader.banner), ns.Theme.DividerParts(__repHeader.StateIcon) == nil }"), "a header row's own art is not taken for a rule line").toEqual([0, true]);
   const later = addon.eval(`local h = __header(ReputationFrame.ScrollBox) h.Name = h:CreateFontString() h.Name:SetTextColor(1, 0.82, 0) ReputationFrame.ScrollBox:Acquire(h) return { __text(__repHeader.Name), __text(h.Name) }`);
   expect(later, "the header's name in the text colour, a header acquired later too").toEqual([true, true]);
+});
+
+// TEST-ONLY list rows shaped like Camelot ReputationFrame.xml and StatisticsFrame.xml: a header whose StateIcon the
+// game sets a plus or minus atlas on, entries whose Content holds the rounded BackgroundHighlight (three atlas pieces
+// in TextureRegions) the game refreshes, and a sub-header with a ToggleCollapseButton whose normal texture shows the
+// red plus or minus square. The statistics list loads with its own part of the game.
+const FOLD_ENV = PANE_ENV + `
+  function __glowEntry(box)
+    local e = __entry(box, "ReputationBar")
+    local glow = CreateFrame("Frame", nil, e.Content)
+    glow.TextureRegions = { __art(glow), __art(glow), __art(glow) }
+    e.Content.BackgroundHighlight, e.selected, e.atWar = glow, false, false
+    function e:IsSelected() return self.selected end
+    function e:IsAtWar() return self.atWar end
+    function e:RefreshBackgroundHighlight() self.Content.BackgroundHighlight:SetAlpha((self.atWar and 0.5) or (self.selected and 0.2) or 0.1) end
+    return e
+  end
+  function __subHeader(box)
+    local e = __glowEntry(box)
+    local b = CreateFrame("Button", nil, e)
+    b.normal, b.pushed = __art(b, "ARTWORK"), __art(b, "ARTWORK")
+    b.GetNormalTexture = function(self) return self.normal end
+    b.normal:SetAtlas("campaign_headericon_closed")
+    e.ToggleCollapseButton = b
+    return e
+  end
+  __repHeader.StateIcon:SetAtlas("common-button-list-minus")
+  __faction, __sub = __glowEntry(ReputationFrame.ScrollBox), __subHeader(ReputationFrame.ScrollBox)
+  __statsEarly = CreateFrame("Frame", nil, CharacterFrame) __statsEarly.ScrollBox = __box(__statsEarly)
+  __statHeader, __statLine = __header(__statsEarly.ScrollBox), __glowEntry(__statsEarly.ScrollBox)
+  __statLine.IsSelected, __statLine.IsAtWar = nil, nil
+  function __fold(mark) return ns.FrameState("vgFold")[mark] end
+  function __pointing(mark) return __fold(mark).__texture == ns.Theme.Icon("Right") and "right" or __fold(mark).__texture == ns.Theme.Icon("Down") and "down" or "?" end
+`;
+
+it("pane lists: a header's plus/minus and a sub-header's red square are the theme's chevron, following the game's fold", () => {
+  const addon = loggedIn(FOLD_ENV);
+  // The header and sub-header marks' alphas, and the way each chevron points.
+  const marks = () => addon.eval(`return { __a(__repHeader.StateIcon), __pointing(__repHeader.StateIcon), __a(__sub.ToggleCollapseButton.normal), __a(__sub.ToggleCollapseButton.pushed), __pointing(__sub.ToggleCollapseButton.normal) }`);
+  expect(marks(), "the game's marks hidden; the header open (Down), the sub-header folded (Right)").toEqual([0, "down", 0, 0, "right"]);
+  addon.eval(`__repHeader.StateIcon:SetAtlas("common-button-list-plus") __sub.ToggleCollapseButton.normal:SetAtlas("campaign_headericon_open")`);
+  expect(marks(), "each chevron turns as the game folds and opens its group").toEqual([0, "right", 0, 0, "down"]);
+  addon.eval(`__sub.ToggleCollapseButton.normal:SetAtlas("campaign_headericon_openpressed") ReputationFrame.ScrollBox:Acquire(__repHeader)`);
+  expect(addon.eval(`return { __pointing(__sub.ToggleCollapseButton.normal), __a(__repHeader.StateIcon), __fold(__repHeader.StateIcon):GetAlpha() ~= 0 }`), "a pressed atlas leaves it; a pooled header comes back with its chevron, not faded").toEqual(["down", 0, true]);
+  expect(addon.eval(`local b = __fold(__repHeader.StateIcon) return { b:GetWidth(), b.__vertexColor ~= nil, #ns.errors }`)[0], "the section header's chevron size").toBe(addon.eval("return ns.Theme.PixelRound(UIParent, 12, true)"));
+});
+
+it("pane lists: an entry's rounded highlight gives way to the theme's row look, kept flat for a faction at war", () => {
+  const addon = loggedIn(FOLD_ENV);
+  // An entry's highlight frame alpha, whether its three pieces are flat, and its selected look.
+  const row = (e) => addon.eval(`local g = ${e}.Content.BackgroundHighlight local s = ns.Theme.RowParts(${e})
+    return { g:GetAlpha(), g.TextureRegions[1].__texture == ns.Theme.WHITE and g.TextureRegions[3].__texture == ns.Theme.WHITE, s.selected == true }`);
+  addon.eval("__faction:RefreshBackgroundHighlight()");
+  expect(row("__faction"), "hidden under the mouse, its pieces flat, a theme row").toEqual([0, true, false]);
+  addon.eval("__faction.selected = true __faction:RefreshBackgroundHighlight()");
+  expect(row("__faction"), "the selected faction shows the one selected look instead of the game's wash").toEqual([0, true, true]);
+  addon.eval("__faction.atWar, __faction.selected = true, false __faction:RefreshBackgroundHighlight()");
+  expect(row("__faction"), "at war: the game's red band stays, flat").toEqual([0.5, true, false]);
+  expect(row("__sub"), "a sub-header is an entry too").toEqual([0, true, false]);
+  const bare = loggedIn(FOLD_ENV + "__plain = __entry(SkillsFrame.ScrollBox, 'SkillsBar') __noToggle = __glowEntry(SkillsFrame.ScrollBox) __noToggle.ToggleCollapseButton = true");
+  expect(bare.eval("return { ns.Theme.RowParts(__plain) == nil, ns.Theme.RowParts(__noToggle) ~= nil, #ns.errors }"), "an entry without the game's highlight is left alone; a toggle that is not a button is skipped").toEqual([true, true, 0]);
+});
+
+it("statistics: the list that loads with its own part of the game gets the panel, flat headers and theme rows", () => {
+  const addon = loggedIn(FOLD_ENV);
+  expect(addon.eval("return __a(__statHeader.banner)"), "not before the statistics load").toBe(-1);
+  addon.eval("StatisticsFrame = __statsEarly");
+  addon.fire("ADDON_LOADED", "Blizzard_Statistics");
+  addon.eval("__statLine:RefreshBackgroundHighlight()");
+  const stats = addon.eval(`return { __panel(StatisticsFrame.ScrollBox), __a(__statHeader.banner), __a(__statHeader.StateIcon), __pointing(__statHeader.StateIcon),
+    __statLine.Content.BackgroundHighlight:GetAlpha(), ns.Theme.RowParts(__statLine) ~= nil, #ns.errors }`);
+  expect(stats, "an inset panel behind the list, a flat header with a chevron (open until the game sets an atlas), a statistic a theme row with the game's hover wash hidden").toEqual([true, 0, 0, "down", 0, true, 0]);
 });
 
 it("stat boxes: the bronze edge, class crest and rule are faded for an inset panel, stat lines lose their stripe and their names go to the text colour", () => {

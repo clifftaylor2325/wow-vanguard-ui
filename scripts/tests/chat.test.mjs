@@ -1058,6 +1058,7 @@ const MAIL_ENV = `${WINDOWS_ENV}${INSIDES_LUA}
   for _, key in ipairs({ "PrevPageButton", "NextPageButton" }) do
     inbox[key] = CreateFrame("Button", nil, inbox) __art(inbox[key])
     __text(inbox[key], key == "PrevPageButton" and PREV or NEXT)
+    __text(inbox[key], "TEST-ONLY not a caption")
   end
   for i = 1, 7 do
     local row = CreateFrame("Frame", "MailItem" .. i, inbox) __art(row) __art(row)
@@ -1103,7 +1104,11 @@ const MAIL_ENV = `${WINDOWS_ENV}${INSIDES_LUA}
     local pagers = 0
     for _, key in ipairs({ "PrevPageButton", "NextPageButton" }) do
       local b = InboxFrame[key]
-      if ns.Theme.ArrowParts(b) and __faded(b) and __themed(select(2, b:GetRegions())) then pagers = pagers + 1 end
+      local caption, left = select(2, b:GetRegions()), key == "PrevPageButton"
+      local point, to, toPoint, x = caption:GetPoint(1)
+      local spaced = point == (left and "LEFT" or "RIGHT") and to == b and toPoint == (left and "RIGHT" or "LEFT") and x == (left and 8 or -8)
+        and select(2, select(3, b:GetRegions()):GetPoint(1)) ~= b
+      if ns.Theme.ArrowParts(b) and __faded(b) and __themed(caption) and spaced then pagers = pagers + 1 end
     end
     local bars = 0
     for _, r in ipairs({ SendMailFrame:GetRegions() }) do if ns.Theme.DividerParts(r) then bars = bars + 1 end end
