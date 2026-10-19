@@ -90,6 +90,49 @@ it("cooldown glow: where the client has curves, the duration object goes to the 
   expect(lit(addon), "a hidden item has no ring lit").toBe(false);
 });
 
+it("cooldown glow: a hidden aura id or unit is never handed to the client (it refuses one from addons), so the ring stays dark with no error", () => {
+  const ASKED = `__secretAsks = 0
+    local duration = C_UnitAuras.GetAuraDuration
+    C_UnitAuras.GetAuraDuration = function(unit, id)
+      if issecretvalue(id) or issecretvalue(unit) then __secretAsks = __secretAsks + 1 end
+      return duration(unit, id)
+    end
+  `;
+  const addon = loggedIn(UNITS_ENV + TOOLS_ENV + CURVE_ENV + ASKED + ITEM, { savedVariables: ON });
+  buff(addon, 5);
+  addon.advance(1);
+  expect(lit(addon), "a plain id under the share: lit").toBe(true);
+  addon.eval("BuffIconCooldownViewer.items[1].auraInstanceID = __wfgWorld.secret(77)");
+  addon.advance(1);
+  expect([lit(addon), addon.eval("return __secretAsks")], "a hidden id: dark, and never passed on").toEqual([false, 0]);
+  addon.eval("BuffIconCooldownViewer.items[1].auraInstanceID = 77 BuffIconCooldownViewer.items[1].auraDataUnit = __wfgWorld.secret('player')");
+  addon.advance(1);
+  expect([lit(addon), addon.eval("return __secretAsks")], "a hidden unit: the same").toEqual([false, 0]);
+});
+
+it("cooldown glow: plain numbers are read only when the client says the aura's values are not hidden", () => {
+  const addon = loggedIn(UNITS_ENV + TOOLS_ENV + ITEM + "C_CurveUtil = nil", { savedVariables: ON });
+  buff(addon, 5);
+  addon.advance(1);
+  expect(lit(addon), "readable: lit").toBe(true);
+  addon.eval("__readAura = C_UnitAuras.GetAuraDataByAuraInstanceID C_Secrets.ShouldUnitAuraInstanceBeSecret = function() return true end");
+  addon.eval("C_UnitAuras.GetAuraDataByAuraInstanceID = function() error('TEST-ONLY: a hidden aura was read') end");
+  addon.advance(1);
+  expect(lit(addon), "the client says hidden: dark, and the data is not asked for").toBe(false);
+  addon.eval("C_Secrets.ShouldUnitAuraInstanceBeSecret = function() error('TEST-ONLY') end");
+  addon.advance(1);
+  expect(lit(addon), "an error counts as hidden").toBe(false);
+  addon.eval("C_Secrets.ShouldUnitAuraInstanceBeSecret = function() return __wfgWorld.secret(false) end");
+  addon.advance(1);
+  expect(lit(addon), "so does a hidden answer").toBe(false);
+  addon.eval("C_Secrets.ShouldUnitAuraInstanceBeSecret = nil C_UnitAuras.GetAuraDataByAuraInstanceID = __readAura");
+  addon.advance(1);
+  expect(lit(addon), "a client without the question: read while auras are readable").toBe(true);
+  addon.eval("__wfgWorld.aurasSecret = true");
+  addon.advance(1);
+  expect(lit(addon), "and not while they are hidden").toBe(false);
+});
+
 it("cooldown glow: a curve the client can't evaluate falls back to plain numbers", () => {
   const addon = loggedIn(UNITS_ENV + TOOLS_ENV + CURVE_ENV + ITEM + "Enum.LuaCurveType = nil\nC_UnitAuras.GetAuraDuration = nil", { savedVariables: ON });
   buff(addon, 5);

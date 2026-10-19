@@ -46,6 +46,11 @@ world.aurasSecret = false
 C_Secrets = {
   -- Whether the client hides aura values right now.
   ShouldAurasBeSecret = function() return world.aurasSecret end,
+  -- Whether one aura's values are hidden: every aura's while auras are, else this one's when its times are secrets.
+  ShouldUnitAuraInstanceBeSecret = function(unit, id)
+    local aura = C_UnitAuras.GetAuraDataByAuraInstanceID(unit, id)
+    return world.aurasSecret or (aura ~= nil and (issecretvalue(aura.duration) or issecretvalue(aura.expirationTime)))
+  end,
 }
 
 -- Client ---------------------------------------------------------------------------------

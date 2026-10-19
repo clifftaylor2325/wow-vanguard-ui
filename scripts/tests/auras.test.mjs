@@ -605,6 +605,20 @@ it("aura colors and stacks when the client hides the values", () => {
   expect(noCurve.eval('return ns.Auras.DispelToken("Magic")') === "magic" && isTok(noCurve, noCurve.eval('return { ns.Auras.DispelColor("target", { dispelName = { __secret = true } }) }'), "bad"), "no curve support: a hidden type shows as 'bad'").toBeTruthy();
 });
 
+it("a hidden aura id is never handed to the client's color, stack or duration calls (it refuses one from addons); the plain fallbacks show", () => {
+  const addon = loggedIn(UNITS_ENV + ENGINE_ENV + `__asked = 0
+    C_UnitAuras = { GetAuraDispelTypeColor = function() __asked = __asked + 1 return CreateColor(0.1, 0.2, 0.3) end,
+      GetAuraApplicationDisplayCount = function() __asked = __asked + 1 return "9" end,
+      GetAuraDuration = function() __asked = __asked + 1 end }`);
+  const out = addon.eval(`local A, id = ns.Auras, { __secret = true }
+    local cd = CreateFrame("Cooldown")
+    A.Sweep(cd, "target", { auraInstanceID = id, duration = 10, expirationTime = 20 })
+    return { stacks = A.StackText("target", { auraInstanceID = id, applications = 3 }), color = { A.DispelColor("target", { auraInstanceID = id, dispelName = { __secret = true } }) },
+      swept = cd.__durationObject == nil, asked = __asked }`);
+  expect([out.stacks, out.swept, out.asked], "plain stacks, the numbers' sweep, and the client never asked").toEqual(["3", true, 0]);
+  expect(isTok(addon, out.color, "bad"), "a hidden type with a hidden id shows as 'bad'").toBe(true);
+});
+
 // A debuff button's badge as the client drew it: { glyph (or "back") -> [shown, alpha, r, g, b] }.
 const badgeOf = (addon, lua) => addon.eval(`local out = {}
   for _, d in ipairs((${lua}).__dispel) do local t = d.texture local name = (t.__texture or ""):match("(Dispel%a+)$") or (t.__layer == "OVERLAY" and t.__sublevel == 6 and "back")
