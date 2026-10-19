@@ -611,18 +611,20 @@ local function skinWhoRow(row)
   keepArt(row.InviteButton, "Icon")
 end
 
--- Ends a search box T.SPACE.tight before its search button, keeping its left anchor (the game's fixed width ran under the button).
-local function endBeforeButton(box, button)
-  if type(box) ~= "table" or type(button) ~= "table" or not box.SetPoint or not button.GetObjectType then return end
-  box:SetPoint("RIGHT", button, "LEFT", -T.SPACE.tight, 0)
+-- Puts a search button T.SPACE.tight after its search box. The game anchors the button to the box 6 units inside its
+-- right edge, so the button overlapped it; the box is never anchored to the button, which would close an anchor loop.
+local function placeAfterBox(button, box)
+  if type(box) ~= "table" or type(button) ~= "table" or not button.SetPoint then return end
+  button:ClearAllPoints()
+  button:SetPoint("LEFT", box, "RIGHT", T.SPACE.tight, 0)
 end
 
--- The who page's own parts: the search box (magnifier kept) ending before the search button (picture kept), the filter
+-- The who page's own parts: the search box (magnifier kept), the search button (picture kept) a gap after it, the filter
 -- dropdown with a light label, the total line and the rows.
 local function skinWho(page)
   GW.SkinSearch(page.EditBox)
   keepArt(page.WhoSearch, "Icon")
-  endBeforeButton(page.EditBox, page.WhoSearch)
+  placeAfterBox(page.WhoSearch, page.EditBox)
   skinFlatButton(page.FilterDropdown)
   GW.SkinText(GW.Part(page, "FilterDropdown.Text"), "label", "text")
   GW.SkinText(page.WhoFrameTotals, "small", "text2")

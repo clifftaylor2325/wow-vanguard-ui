@@ -269,9 +269,28 @@ local function pointArgs(self, point, a, b, c, d)
   return widgetRef(a, self.__parent), b or point, c, d
 end
 
+-- Whether region's anchors lead, through any chain of anchors, to target (seen guards against revisits).
+local function anchoredTo(region, target, seen)
+  if region == target then return true end
+  if type(region) ~= "table" or type(region.__points) ~= "table" or seen[region] then return false end
+  seen[region] = true
+  for _, p in pairs(region.__points) do
+    if anchoredTo(p.rel, target, seen) then return true end
+  end
+  return false
+end
+
+-- Fails the way the client does when an anchor would close a loop (rel already depends on self).
+local function refuseLoop(self, rel)
+  if rel ~= nil and anchoredTo(rel, self, {}) then
+    error("Action[SetPoint] failed because[Cannot anchor to a region dependent on it]", 3)
+  end
+end
+
 -- Records one anchor point.
 function methods:SetPoint(point, ...)
   local rel, relPoint, x, y = pointArgs(self, point, ...)
+  refuseLoop(self, rel)
   self.__points[point] = { point = point, rel = rel, relPoint = relPoint, x = x or 0, y = y or 0 }
 end
 
@@ -293,6 +312,7 @@ function methods:ClearAllPoints() self.__points = {} end
 -- Anchors TOPLEFT and BOTTOMRIGHT to the relative widget's corners.
 function methods:SetAllPoints(rel)
   rel = widgetRef(rel, self.__parent)
+  refuseLoop(self, rel)
   self.__points.TOPLEFT = { point = "TOPLEFT", rel = rel, relPoint = "TOPLEFT", x = 0, y = 0 }
   self.__points.BOTTOMRIGHT = { point = "BOTTOMRIGHT", rel = rel, relPoint = "BOTTOMRIGHT", x = 0, y = 0 }
 end

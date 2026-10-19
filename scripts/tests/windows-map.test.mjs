@@ -644,6 +644,8 @@ const FINDER_PARTS_ENV = FINDER_ENV + SCROLL_HELPERS + `
     b.ScrollBox = __box(b)
     w.EditBox = CreateFrame("EditBox", nil, w) w.EditBox.art, w.EditBox.searchIcon = w.EditBox:CreateTexture(), w.EditBox:CreateTexture()
     w.WhoSearch, w.FilterDropdown = __iconButton(w), __dropdown(w, true)
+    w.EditBox:SetPoint("TOPLEFT", 56, -40) w.WhoSearch:SetPoint("LEFT", w.EditBox, "RIGHT", -6, -1)
+    w.FilterDropdown:SetPoint("LEFT", w.WhoSearch, "RIGHT", 5, 0)
     w.WhoFrameTotals = w:CreateFontString(nil, "OVERLAY") w.WhoFrameTotals:SetFont("TEST-ONLY-GAME", 12, "")
     w.ScrollBox.items, w.ScrollBox.callbacks = {}, {}
     function w.ScrollBox:ForEachFrame(fn) for _, r in ipairs(self.items) do fn(r) end end
@@ -700,8 +702,8 @@ it("group finder who page: the search box, search button, filter and total line 
   addon.eval("LFGParentFrame:Show() LFGWhoListFrame:Show() __acquire(LFGWhoListFrame.ScrollBox, __whoRow())");
   expect(addon.eval("local w = LFGWhoListFrame return { w.EditBox.art:GetAlpha(), w.EditBox.searchIcon:GetAlpha(), w.WhoSearch.Plate:GetAlpha(), w.WhoSearch.Icon:GetAlpha(), w.FilterDropdown.Plate:GetAlpha(), __looks(w.FilterDropdown.Text, 'label', 'text'), __looks(w.WhoFrameTotals, 'small', 'text2') }"),
     "the search box's art faded, its magnifier kept; the search button's picture kept; the filter's plate faded and its label light; the total line small and grey").toEqual([0, 1, 0, 1, 0, true, true]);
-  expect(addon.eval("local w = LFGWhoListFrame local ok = false for i = 1, w.EditBox:GetNumPoints() do local p, rel, rp, x = w.EditBox:GetPoint(i) if p == 'RIGHT' and rel == w.WhoSearch and rp == 'LEFT' and x == -ns.Theme.SPACE.tight then ok = true end end return ok"),
-    "the who search box ends a gap before the search button").toBe(true);
+  expect(addon.eval("local w = LFGWhoListFrame return { w.WhoSearch:GetNumPoints(), w.WhoSearch:GetPoint(1) == 'LEFT', select(2, w.WhoSearch:GetPoint(1)) == w.EditBox, select(3, w.WhoSearch:GetPoint(1)), select(4, w.WhoSearch:GetPoint(1)) == ns.Theme.SPACE.tight, select(5, w.WhoSearch:GetPoint(1)), w.EditBox:GetNumPoints() }"),
+    "the search button sits a gap after the search box (the game's -6 overlapped it), and the box keeps its one anchor, so no anchor loop").toEqual([1, true, true, "RIGHT", true, 0, 1]);
   // Who row n: a theme row, the alphas of its plate, glow, invite plate and picture, and whether its rail shows.
   const row = (n) => addon.eval(`local r = LFGWhoListFrame.ScrollBox.items[${n}] return { ns.Theme.RowParts(r) ~= nil, r.Background:GetAlpha(), r.Selected:GetAlpha(), r.InviteButton.Plate:GetAlpha(), r.InviteButton.Icon:GetAlpha(), ns.Theme.RowParts(r).rail:IsShown() }`);
   expect([row(1), row(2)], "rows, those the page had and those it acquired: plates faded, the invite picture kept, not selected").toEqual([[true, 0, 0, 0, 1, false], [true, 0, 0, 0, 1, false]]);
