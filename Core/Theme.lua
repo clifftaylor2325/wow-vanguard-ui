@@ -97,6 +97,8 @@ local TOKENS = {
   -- State (kept apart from the accent), off the red-green axis (#235, after Okabe-Ito): a bluish
   -- green, an amber and a vermilion, each with a glyph where it stands alone (T.STATE_GLYPHS).
   good = "3fbf9a", warn = "f0b43c", bad = "e8663f", info = "5aa2f0", unknown = "808080",
+  -- A mob another player has tagged: its grey X and its nameplate bar (a plain grey, apart from the bluish text greys).
+  tapped = "8c8c8c",
   -- The low-health screen-edge vignette (its strength comes from the health curve): a vermilion, off the red-green axis.
   vignette = "d8472a",
   -- Reaction to you

@@ -192,44 +192,52 @@ const TAGGED = `UnitCanAttack = function() return true end
   UnitIsTapDenied = function(unit) return __units[unit].tapDenied end
   UnitAffectingCombat = function(unit) return __units[unit].inCombat end
   __units.target.inCombat, __units.target.tapDenied = true, false`;
-it("a plate and the target frame show a green check on a mob you have tagged, and not on one someone else has", () => {
-  const addon = loggedIn(UNITS_ENV + PLATE_ENV + TAGGED);
-  // Whether the plate's and the target frame's tag marks show.
-  const marks = () => addon.eval("return { ns.FrameState('vgPlate')[__plates.nameplate1].tag:IsShown(), Vanguard_target.tag:IsShown() }");
+// TEST-ONLY: what a tag mark shows, as "<icon> <colour token>" or "hidden"; `bar` names the plate bar's colour too.
+const LOOK_LUA = `
+  function __is(r, g, b, token) local tr, tg, tb = ns.Theme.RGB(token) return r == tr and g == tg and b == tb end
+  function __colour(r, g, b) for _, t in ipairs({ "good", "tapped", "threat3", "hostile" }) do if __is(r, g, b, t) then return t end end return "other" end
+  function __mark(tex) if not tex:IsShown() then return "hidden" end
+    local icon = tex:GetTexture() == ns.Theme.Icon("Check") and "check" or tex:GetTexture() == ns.Theme.Icon("Close") and "x" or "other"
+    return icon .. " " .. __colour(tex:GetVertexColor()) end
+  function __look() local f = ns.FrameState('vgPlate')[__plates.nameplate1]
+    return { __mark(f.tag), __colour(unpack(f.__barColor)), __mark(Vanguard_target.tag) } end`;
+it("tag marks: a green check on a mob you tagged, a grey X and a grey plate bar on another player's, none on an untouched one", () => {
+  const addon = loggedIn(UNITS_ENV + PLATE_ENV + TAGGED + LOOK_LUA);
   addon.fire("NAME_PLATE_UNIT_ADDED", "nameplate1");
   addon.fire("PLAYER_TARGET_CHANGED");
-  expect(marks(), "tapped by you or your group, in combat: both show it").toEqual([true, true]);
+  // The plate's mark, the plate's bar colour and the target frame's mark, after the client says the unit changed.
+  const look = (event) => { addon.fire(event, "nameplate1"); addon.fire(event, "target"); return addon.eval("return __look()"); };
+  addon.eval("__threat.nameplate1 = 3");
+  expect(look("UNIT_THREAT_LIST_UPDATE"), "yours, in combat: a green check on both, the bar keeps its threat colour").toEqual(["check good", "threat3", "check good"]);
   addon.eval("__units.target.tapDenied = true");
-  addon.fire("UNIT_FLAGS", "nameplate1");
-  addon.fire("UNIT_FLAGS", "target");
-  expect(marks(), "tap denied (someone else's): neither").toEqual([false, false]);
-  addon.eval("__units.target.tapDenied, __units.target.inCombat = false, false");
-  addon.fire("UNIT_THREAT_LIST_UPDATE", "nameplate1");
-  addon.fire("UNIT_THREAT_LIST_UPDATE", "target");
-  expect(marks(), "not in combat (nobody has tagged it): neither").toEqual([false, false]);
+  expect(look("UNIT_FLAGS"), "another player's: a grey X on both and a grey bar, over the threat colour").toEqual(["x tapped", "tapped", "x tapped"]);
+  addon.eval("__units.target.tapDenied, __units.target.inCombat, __threat.nameplate1 = false, false, nil");
+  expect(look("UNIT_FLAGS"), "untouched: no mark, the reaction colour").toEqual(["hidden", "hostile", "hidden"]);
 });
-it("the tag mark skips players, units you cannot attack, and answers that are missing or hidden", () => {
+it("the tag state skips players, units you cannot attack, and answers that are missing or hidden", () => {
   const addon = loggedIn(UNITS_ENV + TAGGED);
-  // Whether the addon calls the target tagged by you.
-  const tagged = () => addon.eval("return ns.GetModule('UnitFrames').TaggedByYou('target')");
-  expect(tagged(), "a tagged creature").toBe(true);
+  // Whose tag the addon says the target carries ("yours", "theirs" or none).
+  const state = () => addon.eval("return ns.GetModule('UnitFrames').TagState('target') or 'none'");
+  expect(state(), "a creature in combat that is not tap denied").toBe("yours");
+  addon.eval("__units.target.tapDenied = true");
+  expect(state(), "tap denied").toBe("theirs");
   addon.eval("__units.target.player = true");
-  expect(tagged(), "a player").toBe(false);
+  expect(state(), "a player").toBe("none");
   addon.eval("__units.target.player = nil UnitCanAttack = function() return false end");
-  expect(tagged(), "a friendly").toBe(false);
+  expect(state(), "a friendly").toBe("none");
   addon.eval("UnitCanAttack = function() return true end UnitIsTapDenied = function() return { __secret = true } end");
-  expect(tagged(), "a hidden tap answer counts as not tagged").toBe(false);
+  expect(state(), "a hidden tap answer").toBe("none");
   addon.eval("UnitIsTapDenied = nil");
-  expect(tagged(), "a client without the call counts as not tagged").toBe(false);
+  expect(state(), "a client without the call").toBe("none");
 });
-it("the Nameplates and Unit frames pages switch the tag marks", () => {
-  const addon = loggedIn(UNITS_ENV + UI_ENV + CLICK_LUA + PLATE_ENV + TAGGED);
+it("the Nameplates and Unit frames pages switch the tag marks and the grey bar", () => {
+  const addon = loggedIn(UI_ENV + CLICK_LUA + UNITS_ENV + PLATE_ENV + TAGGED + LOOK_LUA + " __units.target.tapDenied = true");
   addon.fire("NAME_PLATE_UNIT_ADDED", "nameplate1");
   addon.fire("PLAYER_TARGET_CHANGED");
+  expect(addon.eval("return __look()"), "another player's mob, switches on").toEqual(["x tapped", "tapped", "x tapped"]);
   addon.eval('ns.Options.Show("nameplates")');
-  addon.eval('__click("A green check by mobs you have tagged")');
-  expect(addon.eval("return ns.FrameState('vgPlate')[__plates.nameplate1].tag:IsShown()"), "off hides the plate's mark at once").toBe(false);
+  addon.eval('__click("Tag marks: a green check on mobs you tagged, a grey X and grey bar on another player\'s")');
   addon.eval('ns.Options.Show("unitframes")');
-  addon.eval('__click("Green check on a target you have tagged")');
-  expect(addon.eval("return Vanguard_target.tag:IsShown()"), "off hides the target's mark at once").toBe(false);
+  addon.eval('__click("Tag mark on your target: a green check if you tagged it, a grey X if another player did")');
+  expect(addon.eval("return __look()"), "both off, at once: no marks, the plate back to its reaction colour").toEqual(["hidden", "hostile", "hidden"]);
 });
