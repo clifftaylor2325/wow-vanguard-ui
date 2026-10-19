@@ -273,8 +273,8 @@ it("Edit Mode window: skinned, its panel kept out of the game's layout, and Vang
     for _, piece in ipairs({ m.Border, m.SaveChangesButton, m.CloseButton }) do if piece.ignoreInLayout then own = own + 1 end end
     for _, r in ipairs({ m:GetRegions() }) do if r.ignoreInLayout then marked = marked + 1 end end
     return { marked > 0, own }`), "the panel's pieces are marked ignoreInLayout; the game's own parts are not").toEqual([true, 0]);
-  expect(addon.eval("return { Vanguard_EditModeNote ~= nil and Vanguard_EditModeNote:IsShown(), Vanguard_EditModeNote.text:GetText() == ns.EDIT_NOTE, Vanguard_EditModeNote.__points.TOP.rel == EditModeManagerFrame, Vanguard_EditModeNote.ignoreInLayout == nil }"),
-    "Vanguard's Edit Mode note still shows under the window, with its text, and is left alone").toEqual([true, true, true, true]);
+  expect(addon.eval("return { Vanguard_EditModeNote ~= nil and Vanguard_EditModeNote:IsShown(), Vanguard_EditModeNote.text:GetText() == ns.EDIT_NOTE, Vanguard_EditModeNote.__points.TOP.rel == EditModeManagerFrame, Vanguard_EditModeNote.ignoreInLayout == true }"),
+    "Vanguard's Edit Mode note still shows under the window, with its text, and stays out of the window's layout").toEqual([true, true, true, true]);
   addon.eval("EditModeManagerFrame:Hide() EditModeManagerFrame:Show()");
   expect(editState(addon, "EditModeManagerFrame").painted, "showing it again paints nothing new").toBe(first.painted);
   addon.eval("EditModeManagerFrame:Hide()");
