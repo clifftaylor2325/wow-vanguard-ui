@@ -3,7 +3,8 @@
 --     opens a box with the address selected, ready to copy (Ctrl+C);
 --   * a small Copy button in the main chat window's tab bar (and /vg copy) opens
 --     the recent chat as plain text, ready to copy;
---   * short channel names: "[2. Trade - City]" shows as "[T]", "[Guild]" as "[G]";
+--   * short channel names (on by default): "[2. Trade - City]" shows as "[T]", "[Guild]" as
+--     "[G]", a letter beside the channel's colour; a profile that turned it off keeps that;
 --   * Ctrl + mouse wheel jumps to the top or the bottom of a chat window;
 --   * the game's own timestamp and class-colored name settings, offered in /vg.
 -- Chat text the game hides from addons (in instances) is never read or
@@ -16,7 +17,7 @@ local vgWatched = ns.FrameState("vgWatched")
 
 local T = ns.Theme
 
-local CX = ns.Module("ChatExtras", { defaults = { links = true, copy = true, shortChannels = false, ctrlScroll = true } })
+local CX = ns.Module("ChatExtras", { defaults = { links = true, copy = true, shortChannels = true, ctrlScroll = true } })
 
 -- The chat message events whose text may hold a web address.
 CX.EVENTS = {

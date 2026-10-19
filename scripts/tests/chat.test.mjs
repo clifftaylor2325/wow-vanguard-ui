@@ -472,15 +472,19 @@ const CHAT_LINES_ENV = `
 `;
 // The last line chat window i holds.
 const lastLine = (addon, i = 1) => addon.eval(`local m = ChatFrame${i}.__messages return m[#m]`);
-it("chat: short channel names, live, never reading hidden lines", () => {
+it("chat: short channel names by default, off live and in a profile that turned them off, never reading hidden lines", () => {
   const addon = loggedIn(UI_ENV + CHAT_LINES_ENV);
   const trade = "|Hchannel:channel:2|h[2. Trade - City]|h [TEST-ONLY Name]: wts";
-  addon.eval(`ChatFrame1:AddMessage("${trade}")`);
-  expect(lastLine(addon), "off by default: the game's channel names").toBe(trade);
-  addon.eval("ns.GetModule('ChatExtras').settings.shortChannels = true");
   addon.eval(`ChatFrame1:AddMessage({ __secret = true }) ChatFrame1:AddMessage("${trade}")`);
-  expect([lastLine(addon), addon.eval("return issecretvalue(ChatFrame1.__messages[#ChatFrame1.__messages - 1])")], "switched on: [2. Trade - City] becomes [T], the link kept; a hidden line stays as it was")
+  expect([lastLine(addon), addon.eval("return issecretvalue(ChatFrame1.__messages[#ChatFrame1.__messages - 1])")], "on by default: [2. Trade - City] becomes [T], the link kept; a hidden line stays as it was")
     .toEqual(["|Hchannel:channel:2|h[T]|h [TEST-ONLY Name]: wts", true]);
+  addon.eval("ns.GetModule('ChatExtras').settings.shortChannels = false");
+  addon.eval(`ChatFrame1:AddMessage("${trade}")`);
+  expect(lastLine(addon), "switched off: the game's channel names").toBe(trade);
+  const kept = loggedIn(UI_ENV + CHAT_LINES_ENV, { savedVariables: "VanguardDB.profiles = { Default = { ChatExtras = { shortChannels = false } } }" });
+  kept.eval(`ChatFrame1:AddMessage("${trade}")`);
+  expect(lastLine(kept), "a profile that turned it off before the default changed keeps the game's names").toBe(trade);
+  addon.eval("ns.GetModule('ChatExtras').settings.shortChannels = true");
   // A line with one channel tag, as the shortener leaves it.
   const short = (label) => addon.eval(`return ns.GetModule('ChatExtras').ShortChannels("|Hchannel:X|h[${label}]|h hi")`);
   expect(["Guild", "Raid Leader", "5. LookingForGroup", "1. General - TEST-ONLY Vale", "6. testonly"].map(short), "the capitals of the name, or its first letter")
