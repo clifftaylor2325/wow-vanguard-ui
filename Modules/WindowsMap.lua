@@ -6,6 +6,7 @@ local ADDON, ns = ...
 
 -- Per-frame state kept off the game's frames (Core/Events.lua, ns.FrameState).
 local vgGlyph = ns.FrameState("vgGlyph")
+local vgMapGlyph = ns.FrameState("vgMapGlyph")
 local vgMapWatched = ns.FrameState("vgMapWatched")
 local vgQueueHooked = ns.FrameState("vgQueueHooked")
 local vgEmptyNote = ns.FrameState("vgEmptyNote")
@@ -106,13 +107,24 @@ local function overflowGlyph(button)
   vgGlyph[button]:SetText("...")
 end
 
+-- A crumb's dropdown arrow button as a theme button: the game's gold-edged square (its normal and pushed textures, which
+-- the game shows on every mouse-over and leaves up after its menu closes) emptied, not kept like a glyph's picture.
+local function skinCrumbArrow(button)
+  if not isFrame(button) then return end
+  T.Button(button)
+  for _, getter in ipairs({ "GetNormalTexture", "GetPushedTexture" }) do
+    local square = type(button[getter]) == "function" and button[getter](button)
+    if type(square) == "table" and square.SetTexture then square:SetTexture(nil) end
+  end
+end
+
 -- One nav bar button (home, the overflow, a crumb): flat, its label in the text colour, and its dropdown arrow (the
 -- MenuArrowButton, whose Art is the arrow) a theme button with a theme arrow.
 local function skinCrumb(button)
   skinFlatButton(button)
   if not isFrame(button) then return end
   GW.SkinText(button.text, "label", "text")
-  GW.SkinGlyph(button.MenuArrowButton)
+  skinCrumbArrow(button.MenuArrowButton)
   if type(button.MenuArrowButton) == "table" then GW.DropArrow(button.MenuArrowButton, GW.Part(button, "MenuArrowButton.Art")) end
 end
 
@@ -133,11 +145,37 @@ function GW.SkinNavBar(nav)
   skinNavButtons(nav)
 end
 
--- The map's quest log toggle (open and close buttons) as theme buttons keeping their arrows.
+-- How big (px) a theme glyph is on a map button.
+GW.MAP_GLYPH = 16
+
+-- A theme icon (made once, centred on the button) in place of the game's yellow pictures `arts` on a map button, which are
+-- faded: the game swaps their atlas on a click, so they are hidden by alpha and not replaced.
+local function mapGlyph(button, name, arts)
+  if not isFrame(button) then return end
+  for _, art in ipairs(arts) do
+    if type(art) == "table" and art.SetAlpha then art:SetAlpha(0) end
+  end
+  if vgMapGlyph[button] then return end
+  vgMapGlyph[button] = T.Tint(T.Snap(button:CreateTexture(nil, "OVERLAY")), "text2")
+  vgMapGlyph[button]:SetTexture(T.Icon(name))
+  T.PixelSize(vgMapGlyph[button], GW.MAP_GLYPH, GW.MAP_GLYPH, true)
+  vgMapGlyph[button]:SetPoint("CENTER")
+end
+
+-- One quest log toggle button as a theme button: its yellow normal and pushed pictures faded, a theme icon in their place.
+local function toggleButton(button, name)
+  if not isFrame(button) then return end
+  T.Button(button)
+  local normal = type(button.GetNormalTexture) == "function" and button:GetNormalTexture()
+  local pushed = type(button.GetPushedTexture) == "function" and button:GetPushedTexture()
+  mapGlyph(button, name, { normal or false, pushed or false })
+end
+
+-- The map's quest log toggle (open and close buttons) as theme buttons: the quests icon to open, a chevron to fold away.
 function GW.SkinSideToggle(toggle)
   if type(toggle) ~= "table" then return end
-  glyphButton(toggle.OpenButton)
-  glyphButton(toggle.CloseButton)
+  toggleButton(toggle.OpenButton, "Quests")
+  toggleButton(toggle.CloseButton, "Right")
 end
 
 -- A map's border (world map, battlefield map): the window skin with only its edge and
@@ -168,12 +206,15 @@ local function floorDropdown(map)
 end
 
 -- The map's overlay buttons: the floor dropdown (its arrow kept), the tracking filter and the tracking pin (its disc
--- and ring faded, its pin kept), the last two on a control tile each.
+-- and ring faded), the last two on a control tile each, their yellow icons swapped for theme ones (a filter, a pin).
 local function skinMapButtons(map)
   GW.SkinDropdown(floorDropdown(map))
-  GW.SkinPlate(map.WorldMapTrackingOptionsButton)
-  if type(map.WorldMapTrackingPinButton) == "table" then GW.FadeParts(map.WorldMapTrackingPinButton, { "Background", "Border" }) end
-  GW.SkinPlate(map.WorldMapTrackingPinButton)
+  local filter, pin = map.WorldMapTrackingOptionsButton, map.WorldMapTrackingPinButton
+  if type(pin) == "table" then GW.FadeParts(pin, { "Background", "Border" }) end
+  GW.SkinPlate(filter)
+  GW.SkinPlate(pin)
+  mapGlyph(filter, "MinimapTracking", { type(filter) == "table" and filter.Icon or false })
+  mapGlyph(pin, "Pin", { type(pin) == "table" and pin.Icon or false })
 end
 
 -- The world map: its border, the fill behind the canvas, the overscroll art, nav bar, overlay buttons and quest toggle.
@@ -218,7 +259,7 @@ end
 local function skinQuestList(list)
   if not isFrame(list) then return end
   GW.FadeParts(list, { "BorderFrame" })
-  if type(list.ScrollFrame) == "table" then GW.FadeParts(list.ScrollFrame, { "Background", "Edge" }) end
+  if type(list.ScrollFrame) == "table" then GW.FadeParts(list.ScrollFrame, { "Background", "Edge", "BorderFrame" }) end
   T.Panel(list, { inset = true, noSheen = true })
   skinQuestTools(list.ScrollFrame)
 end
