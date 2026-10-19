@@ -304,9 +304,10 @@ it("chat side buttons are window controls: a glyph on the menu, minimize, scroll
     expect(look(name), `${name}: round art faded, its own icon with no tile at rest`).toEqual([0, 0, 0, false, false, 1]);
   }
   expect(addon.eval("return { ChatFrameChannelButton.Flash:GetAlpha(), ChatFrame1.ScrollToBottomButton.Flash:GetAlpha() }"), "the game's alert flashes are faded, never hidden or shown (their animation drives the alpha)").toEqual([0, 0]);
+  addon.eval("FCF_OpenTemporaryWindow('WHISPER', 'TEST-ONLY Name')");
   const painted = addon.eval("return ns.Theme.PaintedCount()");
-  addon.eval("FCF_OpenTemporaryWindow('TEST-ONLY')");
-  expect(addon.eval("return ns.Theme.PaintedCount()"), "a new window re-skins the buttons without piling up").toBe(painted);
+  addon.eval("ns.GetModule('Chat').SkinAll()");
+  expect(addon.eval("return ns.Theme.PaintedCount()"), "a new window re-skins the buttons, and skinning again piles nothing up").toBe(painted);
 });
 // TEST-ONLY stand-in for the game's flash animation on the scroll-to-bottom button (Flash.FlashAnim).
 const CHAT_FLASH_ENV = `
@@ -376,6 +377,12 @@ it("chat buttons with the Chat module off: Find sits left of Copy over the windo
   const find = place("ns.GetModule('ChatWindows').findButton");
   expect([find[0], find[1]], "both hang from the window's top right").toEqual([copy[0], copy[1]]);
   expect(find[2] <= copy[2] - copy[3], "Find's right edge is left of Copy's left edge").toBe(true);
+});
+it("chat: a whisper window, ChatFrame11 as the game names it, is skinned when it opens", () => {
+  const addon = loggedIn(UI_ENV);
+  addon.eval("FCF_OpenTemporaryWindow('WHISPER', 'TEST-ONLY Name')");
+  const parts = addon.eval("local CH = ns.GetModule('Chat') local p = CH.frames[ChatFrame11] return p and { p.outline:IsShown(), CH.frames[ChatFrame1].outline:IsShown() } or false");
+  expect(parts, "its panel, shown like the main window's").toEqual([true, true]);
 });
 it("chat background: the panel's fill in the panel colour, three strengths, tabs fit their labels and are rounded and 20 tall, Copy sits in the bar", () => {
   const addon = loggedIn(UI_ENV);
@@ -745,7 +752,7 @@ it("chat extras: a hidden line never reaches the link filter's comparison, and a
 });
 
 // TEST-ONLY chat windows as the game has them: TransformMessages rewrites the
-// lines a window holds, the wheel can jump, temporary windows join CHAT_FRAMES.
+// lines a window holds, the wheel can jump.
 const CHAT_LINES_ENV = `
   CHAT_FRAMES = { "ChatFrame1", "ChatFrame2" }
   for i = 1, 2 do
@@ -758,8 +765,6 @@ const CHAT_LINES_ENV = `
     f.ScrollUp = function() __lines = (__lines or 0) + 1 end
     f.ScrollDown = function() __lines = (__lines or 0) - 1 end
   end
-  local open = FCF_OpenTemporaryWindow
-  FCF_OpenTemporaryWindow = function(name) local f = open(name) CHAT_FRAMES[#CHAT_FRAMES + 1] = f:GetName() return f end
 `;
 // The last line chat window i holds.
 const lastLine = (addon, i = 1) => addon.eval(`local m = ChatFrame${i}.__messages return m[#m]`);
@@ -781,8 +786,8 @@ it("chat: short channel names by default, off live and in a profile that turned 
   expect(["Guild", "Raid Leader", "5. LookingForGroup", "1. General - TEST-ONLY Vale", "6. testonly"].map(short), "the capitals of the name, or its first letter")
     .toEqual(["|Hchannel:X|h[G]|h hi", "|Hchannel:X|h[RL]|h hi", "|Hchannel:X|h[LFG]|h hi", "|Hchannel:X|h[G]|h hi", "|Hchannel:X|h[t]|h hi"]);
   expect(addon.eval('ChatFrame2:AddMessage("plain TEST-ONLY line") local m = ChatFrame2.__messages return m[#m]'), "a line without a channel tag is left alone").toBe("plain TEST-ONLY line");
-  addon.eval('FCF_OpenTemporaryWindow("TestOnly")');
-  expect(addon.eval("return ns.FrameState('vgWatched')[ChatFrameTempTestOnly]"), "a whisper window that opens later is followed too").toBe(true);
+  addon.eval('FCF_OpenTemporaryWindow("WHISPER", "TestOnly")');
+  expect(addon.eval("return ns.FrameState('vgWatched')[ChatFrame11]"), "a whisper window that opens later is followed too").toBe(true);
 });
 it("chat: the wheel adds three lines to the game's one, Shift is left to the game, Ctrl + wheel jumps to the top or bottom", () => {
   const addon = loggedIn(UI_ENV + CHAT_LINES_ENV);
