@@ -111,6 +111,15 @@ it("chat tabs: New makes a tab and picks it; Rename renames the picked tab; name
   expect(addon.eval("return #ns.errors"), "no errors").toBe(0);
 });
 
+it("chat tabs: two new tabs asked for in one fight are both made when it ends", () => {
+  const addon = loggedIn(ENV + TABS);
+  addon.world.combat(true);
+  addon.eval(`local CW = ns.GetModule("ChatWindows") CW.New("Trade") CW.New("Barter")`);
+  expect(addon.eval("return __wfgWorld.chatWindows[3] == nil"), "nothing made in the fight").toBe(true);
+  addon.world.combat(false);
+  expect(addon.eval("return { __wfgWorld.chatWindows[3], __wfgWorld.chatWindows[4] }"), "both tabs after it").toEqual(["Trade", "Barter"]);
+});
+
 it("chat tabs: a client without the calls says so and changes nothing", () => {
   const addon = loggedIn(ENV + "FCF_OpenNewWindow = nil");
   addon.eval(`local CW = ns.GetModule("ChatWindows") CW.New("Trade") CW.Rename("Barter") CW.Close()`);

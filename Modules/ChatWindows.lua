@@ -145,7 +145,8 @@ function CW.CleanName(text)
   return name ~= "" and name or nil
 end
 
--- Makes a new chat tab, out of combat, and selects it for editing.
+-- Makes a new chat tab, out of combat (each name asked for in a fight is made after it), and selects it
+-- for editing.
 function CW.New(text)
   local name = CW.CleanName(text)
   if not name then return ns.Chat("Type a name for the new tab.") end
@@ -154,7 +155,7 @@ function CW.New(text)
     local frame = FCF_OpenNewWindow(name)
     CW.editing = frame and tonumber((frame:GetName() or ""):match("(%d+)$")) or CW.editing
     ns.Options.RebuildPage("chat")
-  end, "chat new tab")
+  end, "chat new tab " .. name)
   ns.HideText()
 end
 
