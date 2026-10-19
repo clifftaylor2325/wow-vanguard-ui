@@ -887,7 +887,7 @@ const INVITE_ENV = `
   StaticPopup_Hide = function(which) __answers[#__answers + 1] = "close " .. which end
   __pvp, __soul, __friends = "pvp", false, {}
   IsInInstance = function() return true, __pvp end
-  HasSoulstone = function() return __soul end
+  C_DeathInfo = { GetSelfResurrectOptions = function() return { { name = "TEST-ONLY Soulstone", optionType = 0, id = 1, canUse = __soul, isLimited = false, priority = 1 } } end }
   C_FriendList = { IsFriend = function(guid) return __friends[guid] == "friend" end }
   C_BattleNet = { GetAccountInfoByGUID = function(guid) return __friends[guid] == "bnet" and {} or nil end }
   IsGuildMember = function(guid) return __friends[guid] == "guild" end
@@ -916,6 +916,14 @@ it("quiet the game: guild invites, stranger group invites, friend requests and b
   on.eval("__pvp, __soul = 'pvp', true");
   on.fire("PLAYER_DEAD");
   expect(on.eval("return #__answers"), "no release in an arena, or with a soulstone").toBe(0);
+  on.eval("__soul = false");
+  on.fire("PLAYER_DEAD");
+  on.eval("C_DeathInfo.GetSelfResurrectOptions = function() return {} end");
+  on.fire("PLAYER_DEAD");
+  expect(on.eval("return __answers"), "a soulstone that can't be used yet, or none, still releases").toEqual(["release", "release"]);
+  on.eval("__answers = {} C_DeathInfo, HasSoulstone = nil, function() return true end");
+  on.fire("PLAYER_DEAD");
+  expect(on.eval("return #__answers"), "an older client without C_DeathInfo asks HasSoulstone").toBe(0);
   const bare = loggedIn("", { savedVariables: INVITES_ON });
   for (const e of ["GUILD_INVITE_REQUEST", "PARTY_INVITE_REQUEST", "BN_FRIEND_INVITE_ADDED", "PLAYER_DEAD"]) bare.fire(e, "<name>");
   expect(bare.eval("return DeclineGuild == nil and RepopMe == nil"), "a client without the calls is left alone").toBe(true);
