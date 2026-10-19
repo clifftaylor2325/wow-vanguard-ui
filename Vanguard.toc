@@ -2,7 +2,7 @@
 ## Title: Vanguard
 ## Notes: A from-scratch UI suite for WoW Forever: theme, movers, unit frames, action bars, minimap, chat, bags.
 ## Author: clifftaylor2325
-## Version: 0.7.0
+## Version: 0.7.1
 ## SavedVariables: VanguardDB
 ## SavedVariablesPerCharacter: VanguardCharDB
 ## DefaultState: enabled
