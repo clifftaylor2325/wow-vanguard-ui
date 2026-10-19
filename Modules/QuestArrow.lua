@@ -199,7 +199,7 @@ local function build()
   f.dist:SetPoint("BOTTOMLEFT", f.arrow, "BOTTOMRIGHT", 8, 2)
   f:Hide()
   QA.frame = f
-  ns.Mover(f, "questarrow", "Quest arrow", { "TOP", "TOP", 300, -150 })
+  ns.Mover(f, "questarrow", "Quest arrow", { "TOP", "TOP", 0, -150 })
 end
 
 -- Options ----------------------------------------------------------------------------------------
