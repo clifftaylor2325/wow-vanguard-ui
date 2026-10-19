@@ -120,6 +120,39 @@ it("presets: add, list, replace and remove; Send types the name and attaches the
   expect(addon.eval("return #ns.errors"), "no errors").toBe(0);
 });
 
+it("+ Add on the panel makes a preset, a right-click on its button asks and removes it, and pointing says what it sends", () => {
+  const addon = mailer();
+  addon.world.openMailWindow();
+  // + Add shown, its caption, and the hint shown.
+  const slots = () => addon.eval("local f = Vanguard_MailTools return { f.addPreset:IsShown(), f.addPreset.text:GetText(), f.hint:IsShown() }");
+  expect(slots(addon), "+ Add in the first place, the hint beside it").toEqual([true, "+ Add", true]);
+  addon.click("Vanguard_MailTools.addPreset");
+  addon.type("Vanguard_TextEdit", "Smith");
+  addon.click("Vanguard_TextDialog.primary");
+  expect([addon.frame("Vanguard_TextDialog").visible, chatHas(addon, /A preset needs a name and a character/)], "a name alone: the box stays and chat says what it needs").toEqual([true, true]);
+  addon.type("Vanguard_TextEdit", "  Smith Bobalt iron bar ");
+  addon.click("Vanguard_TextDialog.primary");
+  expect([addon.frame("Vanguard_TextDialog").visible, addon.eval(`local p = ${MT}.settings.presets[1] return { p.name, p.to, p.words }`)], "added; the box closes").toEqual([false, ["Smith", "Bobalt", "iron bar"]]);
+  const [first, add] = [addon.frame("Vanguard_MailTools.presets[1]").rect, addon.frame("Vanguard_MailTools.addPreset").rect];
+  expect([addon.eval("return Vanguard_MailTools.presets[1].text:GetText()"), add.left - first.right, slots(addon)[2]], "its button, then + Add a tight step on; no hint").toEqual(["Smith", 4, false]);
+  addon.hover("Vanguard_MailTools.presets[1]");
+  expect(addon.eval("local out = {} for _, l in ipairs(GameTooltip.__lines) do out[#out + 1] = l.text end return out"), "the tooltip").toEqual(["Smith", "Sends items named iron bar to Bobalt.", "Right-click to remove."]);
+  addon.hover(null);
+  addon.slash("mail preset add All Bobalt");
+  addon.hover("Vanguard_MailTools.presets[2]");
+  expect(addon.eval("return GameTooltip.__lines[2].text"), "no words: every item").toBe("Sends every item to Bobalt.");
+  addon.eval(`${MT}.settings.presets[2].name = 'Gone' ${MT}.PresetTip(Vanguard_MailTools.presets[2])`);
+  addon.slash("mail preset add C Bobalt");
+  addon.slash("mail preset add D Bobalt");
+  expect(slots(addon)[0], "every place holds a preset: no + Add").toBe(false);
+  addon.eval("Vanguard_MailTools.presets[1]:Click('RightButton')");
+  expect([addon.eval("return Vanguard_Question.title:GetText()"), addon.eval(`return #${MT}.settings.presets`)], "a right-click asks first").toEqual(["Remove the preset Smith?", 4]);
+  addon.click("Vanguard_Question.confirm");
+  expect([addon.eval(`return ${MT}.settings.presets[1].name`), slots(addon)[0], chatHas(addon, /Preset Smith removed\./)], "removed; + Add is back").toEqual(["Gone", true, true]);
+  addon.eval(`${MT}.PresetClick(nil, 'RightButton')`);
+  expect(addon.eval("return #ns.errors"), "no errors").toBe(0);
+});
+
 it("attaches at most 12, and a preset button before the panel exists is quiet", () => {
   const addon = mailer("__wfgWorld.bagSizes[0] = 20 for s = 1, 20 do __wfgWorld.bags[0][s] = { itemID = 900 } end");
   addon.slash("mail preset add All Bobalt");
@@ -209,7 +242,8 @@ it("the panel's two plain lines: the empty-state line is label muted, the preset
   expect([empty.visible, empty.text, empty.font.size, isTok(addon, empty.textColor, "muted")], "the empty-state tier").toEqual([true, "Your inbox is empty.", labelSize, true]);
   expect([hint.visible, hint.font.size, isTok(addon, hint.textColor, "muted")], "the note tier").toEqual([true, smallSize, true]);
   const inside = insets(addon, "Vanguard_MailTools.hint", "Vanguard_MailTools");
-  expect([inside[0] >= gap, inside[2] >= gap, inside[3]], "T.SPACE.gap clear of the sides (it wraps rather than run past them) and of the bottom").toEqual([true, true, gap]);
+  const [add, note] = [addon.frame("Vanguard_MailTools.addPreset").rect, hint.rect];
+  expect([inside[2] >= gap, inside[3] > gap, note.left - add.right, hint.text], "beside + Add, on one line, T.SPACE.gap clear of the side and the button").toEqual([true, true, gap, "No presets yet."]);
 });
 
 // TEST-ONLY inbox for Take all and Return all: a sale (money), a letter with two items from Bobalt, a plain letter, a
