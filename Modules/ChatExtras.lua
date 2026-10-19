@@ -1,8 +1,8 @@
 -- Chat extras:
 --   * web addresses in chat become links in the accent color; clicking one
 --     opens a box with the address selected, ready to copy (Ctrl+C);
---   * a small Copy button over the main chat window (and /vg copy) opens the
---     recent chat as plain text, ready to copy;
+--   * a small Copy button in the main chat window's tab bar (and /vg copy) opens
+--     the recent chat as plain text, ready to copy;
 --   * short channel names: "[2. Trade - City]" shows as "[T]", "[Guild]" as "[G]";
 --   * Ctrl + mouse wheel jumps to the top or the bottom of a chat window;
 --   * the game's own timestamp and class-colored name settings, offered in /vg.
@@ -49,10 +49,11 @@ function CX.LinkURLs(text)
   return text
 end
 
--- Chat filter: hands the game the message with its addresses linked (or unchanged).
+-- Chat filter: hands the game the message with its addresses linked (or unchanged; links off
+-- leaves every line as it is, so the switch applies at once).
 -- Hidden or missing text passes before anything reads it (comparing it could raise inside the game's chat handler).
 function CX.Filter(_, _, text, ...)
-  if ns.Restricted("Chat") then return false end
+  if not CX.settings.links or ns.Restricted("Chat") then return false end
   if ns.IsSecret(text) or type(text) ~= "string" then return false end
   local linked = CX.LinkURLs(text)
   if linked ~= text then return false, linked, ... end
@@ -105,6 +106,12 @@ local function addCopyButton()
   local frame = _G.ChatFrame1
   if type(frame) ~= "table" or type(frame.GetNumMessages) ~= "function" then return end
   CX.copyButton = ns.GetModule("Chat").AddBarButton(frame, "Copy", "click copy chat", CX.ShowCopy)
+end
+
+-- Shows or hides the Copy button as its switch is set (made now when it was off at login), at once.
+function CX.ApplyCopy()
+  if CX.settings.copy and not CX.copyButton then addCopyButton() end
+  if CX.copyButton then CX.copyButton:SetShown(CX.settings.copy == true) end
 end
 
 -- Short channel names ---------------------------------------------------------------------
@@ -195,8 +202,8 @@ end
 -- Module entry point (Core/Modules.lua).
 function CX.Enable(settings)
   CX.settings = settings
-  if settings.links then watchLinks() end
-  if settings.copy then addCopyButton() end
+  watchLinks()
+  CX.ApplyCopy()
   CX.WatchWindows()
   if type(hooksecurefunc) == "function" and type(FCF_OpenTemporaryWindow) == "function" then hooksecurefunc("FCF_OpenTemporaryWindow", ns.Guard("hook FCF_OpenTemporaryWindow", CX.WatchWindows)) end
 end

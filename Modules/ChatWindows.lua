@@ -245,10 +245,16 @@ local function addFindButton()
   CW.findButton = ns.GetModule("Chat").AddBarButton(frame, "Find", "click find in chat", CW.AskFind)
 end
 
+-- Shows or hides the Find button as its switch is set (made now when it was off at login), at once.
+function CW.ApplyFind()
+  if CW.settings.find and not CW.findButton then addFindButton() end
+  if CW.findButton then CW.findButton:SetShown(CW.settings.find == true) end
+end
+
 -- Module entry point (Core/Modules.lua).
 function CW.Enable(settings)
   CW.settings = settings
-  if settings.find then addFindButton() end
+  CW.ApplyFind()
   if not settings.movers then return end
   for _, window in ipairs(CW.Windows()) do
     if floating(window[1]) then floatingMover(window) end

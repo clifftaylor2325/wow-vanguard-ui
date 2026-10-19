@@ -1303,8 +1303,8 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 
 ### 15.6f Chat search
 
-- Do: say a few lines with the same word in /say and have a link or two appear in chat. Click Find over the chat (left of Copy), type the word, Find. Then `/vg` → Chat → Find in chat and search for a word that was only in the chat before your last `/reload` (with Chat history on).
-- Expect: a box opens with `Chat: N lines with "word"` and the matching lines as plain text (links show as their words), selected for Ctrl+C. An empty search says `Type something to find.` `/vg errors` is empty. [Needs in game: that the Find button sits clear of Copy in the tab row, and that GetNumMessages/GetMessageInfo return every line the window holds.]
+- Do: say a few lines with the same word in /say and have a link or two appear in chat. Click Find over the chat (left of Copy), type the word, Find. Then `/vg` → Chat → Find in chat and search for a word that was only in the chat before your last `/reload` (with Chat history on). On the same page untick Find button in the chat's tab bar, look at the tab bar, tick it again; under Chat extras do the same with Copy button in the chat's tab bar.
+- Expect: a box opens with `Chat: N lines with "word"` and the matching lines as plain text (links show as their words), selected for Ctrl+C. An empty search says `Type something to find.` Each button goes from the tab bar as its switch is unticked and comes back when ticked, with no reload. `/vg errors` is empty. [Needs in game: that the Find button sits clear of Copy in the tab row, that GetNumMessages/GetMessageInfo return every line the window holds, and that hiding Copy leaves Find and the tab dock where they are (they anchor to it) rather than a gap worth closing.]
 - If it fails, paste: `/vg errors` and a screenshot of the tab row.
 
 ### 15.6g Chat tab look and frame
@@ -1933,7 +1933,7 @@ The order is the order to play in: looks you can check quickly first, then the g
 
 ### 33.40 Options window: reload tags, search list, page reset, Modules groups
 
-- Do: open `/vg` → General. Look at Color assist and Pixel-perfect scale, and point at Color assist. Type "colour blind" in the search box, then "font size", then "changed". Click a result. Open Chat, untick "Copy button over the chat", press Reset this page and answer Reset. Open Modules and cycle Show through On and Off. At Text size 70 % and 130 % (General), check the search list and the tags.
+- Do: open `/vg` → General. Look at Color assist and Pixel-perfect scale, and point at Color assist. Type "colour blind" in the search box, then "font size", then "changed". Click a result. Open Chat, untick "Copy button in the chat's tab bar", press Reset this page and answer Reset. Open Modules and cycle Show through On and Off. At Text size 70 % and 130 % (General), check the search list and the tags.
 - Expect: Color assist has a small grey "reload" tag after its caption and no "(reload)" in the caption; Pixel-perfect scale has none; pointing at Color assist says "Takes effect after /reload." The search list opens under the box, right-aligned with it, over the page: "colour blind" lists Color assist (General), "font size" lists Text size, "changed" lists what you changed; a click opens that page with the row marked and the list closes; a search with no match says "No setting matches." Reset this page is greyed until something on the page differs from its default, asks, and puts the box back. Modules shows headings named like the list on the left; Show: Off lists only the modules you turned off. No caption or tag overlaps a switch, slider or dropdown at either text size.
 - If it fails, paste: a screenshot of the row, the list or the page and `/vg errors`.
 

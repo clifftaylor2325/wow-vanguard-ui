@@ -432,8 +432,15 @@ it("chat extras: web links you can copy, and a Copy button for the recent chat",
   const bare = loggedIn("ChatFrame1 = nil");
   bare.slash("copy");
   expect(chatHas(bare, /can't read the chat back/) && bare.eval("return ns.GetModule('ChatExtras').copyButton == nil"), "a client that can't read chat back says so").toBe(true);
-  const off = loggedIn(UI_ENV + CHAT_EXTRAS_ENV, { savedVariables: "VanguardDB.profiles = { Default = { ChatExtras = { links = false } } }" });
-  expect(off.eval("return next(__filters) == nil"), "links switched off: no filters").toBe(true);
+  const off = loggedIn(UI_ENV + CHAT_EXTRAS_ENV + CLICK_LUA, { savedVariables: "VanguardDB.profiles = { Default = { ChatExtras = { links = false, copy = false } } }" });
+  // How many values the say filter hands back for a line with an address: 1 (left as it is) or 3 (linked).
+  const handed = () => off.eval('return select("#", __filters.CHAT_MSG_SAY(nil, "CHAT_MSG_SAY", "see www.example.test", "<name>"))');
+  expect([handed(), off.eval("return ns.GetModule('ChatExtras').copyButton == nil")], "links and the Copy button switched off: the line is left as it is, and there is no button").toEqual([1, true]);
+  off.eval('ns.Options.Show("chat") __click("Clickable web links in chat") __click("Copy button in the chat\'s tab bar")');
+  expect([handed(), off.eval("return ns.GetModule('ChatExtras').copyButton:IsShown()")], "both switches apply at once: the next line is linked, and the button is made and shown").toEqual([3, true]);
+  off.eval('__click("Copy button in the chat\'s tab bar")');
+  expect(off.eval("return ns.GetModule('ChatExtras').copyButton:IsShown()"), "off again hides it").toBe(false);
+  expect(off.eval("return #ns.errors"), "no errors").toBe(0);
 });
 it("chat extras: a hidden line never reaches the link filter's comparison, and a failing filter or click lets the line through", () => {
   const addon = loggedIn(UI_ENV + CHAT_EXTRAS_ENV);

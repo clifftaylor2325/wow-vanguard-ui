@@ -145,9 +145,14 @@ it("chat find: saved history that no window shows is searched too, and only the 
   expect(addon.eval("return __shown[1]"), "capped to the newest").toBe('Chat: 1 lines with "sword"');
 });
 
-it("chat find: the Chat page has the button and the switch; off, no button; a window without line reads is fine", () => {
+it("chat find: the Chat page has the button and the switch; off, no button, and the switch shows and hides it at once; a window without line reads is fine", () => {
   const off = loggedIn(ENV, { savedVariables: 'VanguardDB.profiles = { Default = { ChatWindows = { find = false } } }' });
   expect(off.eval("return ns.GetModule('ChatWindows').findButton == nil"), "switched off: no button").toBe(true);
+  off.eval(`${chatRow("Find button in the chat's tab bar")} r[4](true)`);
+  expect(off.eval("return ns.GetModule('ChatWindows').findButton:IsShown()"), "the switch makes and shows the button at once").toBe(true);
+  off.eval(`${chatRow("Find button in the chat's tab bar")} r[4](false)`);
+  expect(off.eval("return { ns.GetModule('ChatWindows').findButton:IsShown(), ns.GetModule('ChatWindows').settings.find }"), "and hides it again, no reload").toEqual([false, false]);
+  expect(off.eval(`${PAGE} local out = {} for _, r in ipairs(page.rows()) do if r[1] == "header" then out[#out + 1] = r[2] end end return out`), "the page's groups, the extras under a header of their own").toEqual(["Chat", "Chat windows", "Chat tabs", "Chat extras", "Chat history", "Chat watch", "Chat filter", "Group board"]);
   const addon = loggedIn(ENV);
   addon.eval(`${PAGE} for _, r in ipairs(page.rows()) do if r[2] == "Find in chat" then r[3]() end end`);
   expect(addon.eval("return Vanguard_TextDialog:IsShown()"), "the Chat page's Find in chat asks the same question").toBe(true);
