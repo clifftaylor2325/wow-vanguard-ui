@@ -1609,6 +1609,9 @@ T.ROW = { height = 28 }
 T.CHAT_BACKDROP = { levels = { { 0.55, "Light" }, { 0.75, "Medium" }, { 0.9, "Dark" } } }
 -- Chat text (Modules/Chat.lua CH.FontWindow): the air between lines (units), on top of the font's own.
 T.CHAT_TEXT = { spacing = 2 }
+-- The chat panel's soft shadow (units) while Soft shadows under frames is on: smaller than a window's
+-- (SHADOW_SIZE), as an action button's is, so the panel sits on the world without a halo.
+T.CHAT_SHADOW = 6
 -- The one selected look (docs/THEME.md, "Materials and states"): an accent rail down a row's left edge,
 -- `rail` screen pixels wide, over a `fill` (a lighter fill, not an accent wash) that sits under the text.
 T.SELECT = { rail = 2, fill = "raisedHover" }

@@ -89,6 +89,10 @@ it("chat frame: one rounded panel round the text, the scroll column and a 24-tal
   const panel = () => addon.eval(`local f = ${F} return { f.outline:IsShown(), f.outline.__points.TOPLEFT.x, f.outline.__points.TOPLEFT.y, f.outline.__points.BOTTOMRIGHT.x, f.outline.__points.BOTTOMRIGHT.y }`);
   expect(panel(), "a gap round the window, the bar's height above it and the scroll column to its right").toEqual([true, -4, 24, 28, -4]);
   expect(arcs(addon, F + ".outline"), "the panel's border is rounded, whatever the Corners setting").toBe(4);
+  expect(arcs(addon, F + ".outline", "Shadow"), "no shadow under the panel by default").toBe(0);
+  const soft = loggedIn(UI_ENV, { savedVariables: "VanguardDB.profiles = { Default = { theme = { hudShadow = true } } }" });
+  expect(soft.eval(`local n, h = 0, 99 for _, r in ipairs({ ${F}.outline:GetRegions() }) do if tostring(r.__texture):find("Shadow") then n, h = n + 1, math.min(h, r:GetHeight()) end end
+    local px = ns.Theme.Pixel(${F}.outline) return { n, h == math.floor(6 / px + 0.5) * px }`), "Soft shadows under frames on: the eight-piece shadow ring, its corners 6 units in whole pixels").toEqual([8, true]);
   expect(addon.eval(`local f = ${F} local b = f.bar.__points.BOTTOMRIGHT return { f.bar:GetHeight(), f.bar:GetParent() == f.outline, b.rel == f.outline, b.relPoint, b.y }`), "the bar is the panel's top band, 24 tall").toEqual([24, true, true, "TOPRIGHT", -24]);
   expect(addon.eval(`local f = ${F} return { f.rule:GetHeight() == ns.Theme.Pixel(f.bar), f.rule.__points.BOTTOMLEFT.rel == f.bar }`), "a one-pixel rule along the bar's bottom").toEqual([true, true]);
   expect(isTok(addon, addon.eval(`return ${F}.rule.__vertexColor`), "divider"), "in the divider colour").toBe(true);

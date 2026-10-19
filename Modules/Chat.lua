@@ -139,7 +139,8 @@ local function barRule(bar)
 end
 
 -- The chat window's frame: one rounded panel round the text, the scroll column right of it and the
--- tab bar above it (the panel's fill is the chat background, at the strength setting), with the bar
+-- tab bar above it (the panel's fill is the chat background, at the strength setting; a small soft
+-- shadow under it while Soft shadows under frames is on, as the HUD's panels have), with the bar
 -- as a frame on the panel's top band (the tabs, the dock and the Find and Copy buttons anchor to it).
 local function frameParts(frame)
   local gap, level = T.SPACE.tight, math.max(0, (frame:GetFrameLevel() or 1) - 1)
@@ -150,7 +151,7 @@ local function frameParts(frame)
   local bar = CreateFrame("Frame", nil, outline)
   bar:SetPoint("TOPLEFT")
   bar:SetPoint("BOTTOMRIGHT", outline, "TOPRIGHT", 0, -CH.BAR)
-  T.Panel(outline, { noBg = true, noSheen = true, round = true })
+  T.Panel(outline, { noBg = true, noSheen = true, round = true, shadow = T.Settings().hudShadow == true and T.CHAT_SHADOW or nil })
   return { outline = outline, bar = bar, fill = T.FillParts(outline, "BACKGROUND", -7, "panel", CH.Strength()), rule = barRule(bar) }
 end
 
