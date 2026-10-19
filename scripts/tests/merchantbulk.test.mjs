@@ -231,3 +231,11 @@ it("a Buy question answered after the merchant closed, or at another merchant, b
   addon.click("Vanguard_Question.confirm");
   expect(bought(addon), "the next merchant's item at that place is never bought").toEqual({});
 });
+
+it("the tenth item on a merchant page gets Stack and Max too", () => {
+  const water = `{ itemID = 159, name = "TEST-ONLY Water", price = 10, stack = 5, maxStack = 20 }`;
+  const addon = loggedIn(BUY_ENV + `__wfgWorld.merchant = { items = { ${Array(10).fill(water).join(", ")} } } __owner("MerchantItem10ItemButton", 10)`);
+  addon.fire("MERCHANT_SHOW");
+  addon.eval("StackSplitFrame:Show()");
+  expect([addon.eval("return ns.GetModule('Merchant').SplitIndex(StackSplitFrame)"), split(addon)], "MerchantItem10ItemButton is item 10").toEqual([10, [true, true, true, "Max 40 for 0s 80c"]]);
+});

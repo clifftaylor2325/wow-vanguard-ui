@@ -303,7 +303,7 @@ function MC.SplitIndex(frame)
   local owner = type(frame) == "table" and frame.owner
   if type(owner) ~= "table" or not owner.GetName or not owner.GetID then return nil end
   local name = owner:GetName()
-  if type(name) == "string" and name:match("^MerchantItem%dItemButton$") then return ns.PlainNumber(owner:GetID()) end
+  if type(name) == "string" and name:match("^MerchantItem%d+ItemButton$") then return ns.PlainNumber(owner:GetID()) end
 end
 
 -- Writes what Max would buy under the quantity window's amount.
