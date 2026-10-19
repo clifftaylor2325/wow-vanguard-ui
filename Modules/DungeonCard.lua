@@ -82,12 +82,14 @@ local function visits()
   return VanguardCharDB.dungeonRuns
 end
 
--- Notes a visit to the dungeon you stand at: the latest visit becomes the prior one, unless this is the same visit.
+-- Notes a visit to the dungeon you stand at: the latest visit becomes the prior one, unless this is
+-- the same visit, which only moves its time on (so the hour counts from the last way in, not the first).
 function DC.Record()
   local id, now = here()
   if not id or not now or ns.InCombat() then return end
   local seen = visits()[id]
-  if type(seen) == "table" and type(seen.at) == "number" and now - seen.at < DC.SAME_VISIT then return end
+  local sameVisit = type(seen) == "table" and type(seen.at) == "number" and now - seen.at < DC.SAME_VISIT
+  if sameVisit then seen.at = now return end
   visits()[id] = { at = now, prior = type(seen) == "table" and seen.at or nil }
 end
 

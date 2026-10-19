@@ -113,6 +113,7 @@
     "scripts/tests/data.test.mjs": [],
     "scripts/tests/docks.test.mjs": [],
     "scripts/tests/dungeoncard.test.mjs": [
+      "a long run with a way back in every 40 minutes stays one visit: the last run is still the one before",
       "an item the client has not cached shows by its number; without a map listing, a dungeon shows its tagged quests",
       "at the door the card shows the dungeon, your quests on its map and your keys, even with nothing short",
       "elsewhere /vg prep lists the dungeon and raid quests in your log, with a more line past six",
