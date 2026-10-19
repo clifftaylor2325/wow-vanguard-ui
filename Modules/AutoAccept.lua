@@ -87,8 +87,9 @@ local function knownPlayer(guid)
   return type(IsGuildMember) == "function" and IsGuildMember(guid) and true or false
 end
 
--- Someone invites you to a group: decline unless they are a friend or a guildmate.
-function AA.OnGroupInvite(_, who, _, _, _, _, _, _, guid)
+-- Someone invites you to a group: decline unless they are a friend or a guildmate. The payload is name,
+-- isTank, isHealer, isDamage, isNativeRealm, allowMultipleRoles, inviterGUID, questSessionActive.
+function AA.OnGroupInvite(_, who, _, _, _, _, _, guid)
   if not AA.settings.strangerGroups or type(DeclineGroup) ~= "function" or knownPlayer(guid) then return end
   DeclineGroup()
   closePrompt("PARTY_INVITE")

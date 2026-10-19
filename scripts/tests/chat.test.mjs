@@ -892,10 +892,13 @@ const INVITE_ENV = `
   C_BattleNet = { GetAccountInfoByGUID = function(guid) return __friends[guid] == "bnet" and {} or nil end }
   IsGuildMember = function(guid) return __friends[guid] == "guild" end
 `;
+// PARTY_INVITE_REQUEST with the client's payload (PartyInfoDocumentation): name, isTank, isHealer, isDamage,
+// isNativeRealm, allowMultipleRoles, inviterGUID, questSessionActive.
+const invite = (addon, guid) => addon.fire("PARTY_INVITE_REQUEST", "<name>", false, false, false, false, false, guid, false);
 const INVITES_ON = "VanguardDB.profiles = { Default = { AutoAccept = { guildInvites = true, strangerGroups = true, friendRequests = true, pvpRelease = true } } }";
 it("quiet the game: guild invites, stranger group invites, friend requests and battleground release, off until switched on", () => {
   // Brings up all four prompts.
-  const fire = (addon) => { addon.fire("GUILD_INVITE_REQUEST", "<name>"); addon.fire("PARTY_INVITE_REQUEST", "<name>", false, false, false, false, false, false, "stranger"); addon.fire("BN_FRIEND_INVITE_ADDED", 7); addon.fire("PLAYER_DEAD"); };
+  const fire = (addon) => { addon.fire("GUILD_INVITE_REQUEST", "<name>"); invite(addon, "stranger"); addon.fire("BN_FRIEND_INVITE_ADDED", 7); addon.fire("PLAYER_DEAD"); };
   const off = loggedIn(INVITE_ENV);
   fire(off);
   expect(off.eval("return #__answers"), "off by default: the game asks as usual").toBe(0);
@@ -904,9 +907,9 @@ it("quiet the game: guild invites, stranger group invites, friend requests and b
   expect(on.eval("return __answers"), "each answered, its prompt closed").toEqual(["guild", "close GUILD_INVITE", "group", "close PARTY_INVITE", "friend", "release"]);
   expect(chatHas(on, /guild invite from <name>/) && chatHas(on, /group invite from <name>/) && chatHas(on, /Battle.net friend request/), "and said in chat").toBe(true);
   on.eval("__answers = {}");
-  for (const who of ["friend", "bnet", "guild"]) { on.eval(`__friends.x = "${who}"`); on.fire("PARTY_INVITE_REQUEST", "<name>", false, false, false, false, false, false, "x"); }
+  for (const who of ["friend", "bnet", "guild"]) { on.eval(`__friends.x = "${who}"`); invite(on, "x"); }
   on.fire("PARTY_INVITE_REQUEST", "<name>");
-  on.fire("PARTY_INVITE_REQUEST", "<name>", false, false, false, false, false, false, { __secret: true });
+  invite(on, { __secret: true });
   expect(on.eval("return #__answers"), "a friend, a Battle.net friend, a guildmate, or someone the game hides stay invitable").toBe(0);
   on.eval("__pvp = 'arena'");
   on.fire("PLAYER_DEAD");
@@ -917,7 +920,7 @@ it("quiet the game: guild invites, stranger group invites, friend requests and b
   for (const e of ["GUILD_INVITE_REQUEST", "PARTY_INVITE_REQUEST", "BN_FRIEND_INVITE_ADDED", "PLAYER_DEAD"]) bare.fire(e, "<name>");
   expect(bare.eval("return DeclineGuild == nil and RepopMe == nil"), "a client without the calls is left alone").toBe(true);
   const noFriends = loggedIn(INVITE_ENV + "C_FriendList, C_BattleNet, IsGuildMember = nil, nil, nil", { savedVariables: INVITES_ON });
-  noFriends.fire("PARTY_INVITE_REQUEST", "<name>", false, false, false, false, false, false, "stranger");
+  invite(noFriends, "stranger");
   expect(noFriends.eval("return __answers"), "with no way to tell who is a friend, a stranger is declined").toEqual(["group", "close PARTY_INVITE"]);
 });
 // TEST-ONLY game text: the error line and the zone names record what they were given. The error line
