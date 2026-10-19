@@ -101,6 +101,24 @@ it("settings-loss guard: a backup that can't be read says so; a damaged guard an
   broken.eval('VanguardDB.guard = { chars = "TEST-ONLY" } ns.SettingsGuard.lost = nil ns.SettingsGuard.Save()');
   expect(broken.eval("return type(VanguardDB.guard.chars['Tester-ForeverTest'])"), "logout repairs a damaged list of characters").toBe("table");
 });
+it("settings-loss guard: a restore reads the backup like an import: no string keys in the profile, and a newer format is refused", () => {
+  const addon = loggedIn(CLICK_LUA);
+  const restored = addon.eval(`local str = ns.ExportProfile()
+    VanguardCharDB.guard = { stamp = 1, profile = "Saved", backup = str }
+    ns.SettingsGuard.Restore()
+    local p = VanguardDB.profiles.Saved
+    ns.Theme.Settings().reduceMotion = not ns.Theme.Settings().reduceMotion
+    return { format = p.format, version = p.addonVersion, display = p.display, match = ns.MatchingProfile(ns.StripPayload(select(2, ns.Serialize.Decode(str)))) }`);
+  expect(restored, "the string's own keys stay out, so the same string matches the restored profile").toEqual({ match: "Saved" });
+  addon.clearChat();
+  addon.eval(`VanguardDB.profiles.Saved = nil
+    VanguardCharDB.guard.backup = ns.Serialize.Encode("profile", { format = ns.PROFILE_FORMAT + 1, theme = {} })
+    ns.SettingsGuard.Restore()`);
+  expect(chatHas(addon, /The backup can't be restored: it was made by a newer version of Vanguard: update Vanguard, then import it again\.$/), "a backup from a newer Vanguard says why").toBe(true);
+  expect(addon.eval("return VanguardDB.profiles.Saved == nil"), "and restores nothing").toBe(true);
+  addon.eval('VanguardCharDB.guard.backup = ns.ExportProfile("theme") ns.SettingsGuard.Restore()');
+  expect(chatHas(addon, /The backup can't be restored: it isn't a whole profile\.$/), "nor does a partial string").toBe(true);
+});
 it("settings-loss guard: this character's file came back blank, so it uses its profile again and setup stays shut", () => {
   const first = loggedIn(CLICK_LUA, { savedVariables: "VanguardDB.profiles.Alt = {}\n" });
   first.slash("profile Alt");

@@ -132,12 +132,19 @@ local function putRestored(name, data)
   if name == ns.ProfileName() then ns.ProfileChanged() end
 end
 
+-- The backup string's profile, read as an import reads one (an older format upgraded, a newer one
+-- refused) and without the string's own keys; else nil and why not.
+local function readBackup(text)
+  local kind, payload = ns.ReadPayload(ns.Serialize.Decode(text))
+  if kind ~= "profile" then return nil, kind and "it isn't a whole profile" or payload end
+  return ns.StripPayload(payload)
+end
+
 -- Restores the profile from this character's backup and offers the reload that applies it; says why when it can't.
 function G.Restore()
   local backup = G.Backup()
-  local scope, data = ns.Serialize.Decode(backup and backup.backup or "")
-  if scope ~= "profile" then return ns.Chat("The backup can't be restored: " .. tostring(data) .. ".") end
-  data.display = nil
+  local data, why = readBackup(backup and backup.backup or "")
+  if not data then return ns.Chat("The backup can't be restored: " .. tostring(why) .. ".") end
   local name = restoreName(backup)
   putRestored(name, data)
   G.Resolve()
