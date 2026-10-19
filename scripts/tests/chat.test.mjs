@@ -466,6 +466,8 @@ const CHAT_LINES_ENV = `
     end
     f.ScrollToTop = function() __scrolled = "top" end
     f.ScrollToBottom = function() __scrolled = "bottom" end
+    f.ScrollUp = function() __lines = (__lines or 0) + 1 end
+    f.ScrollDown = function() __lines = (__lines or 0) - 1 end
   end
   local open = FCF_OpenTemporaryWindow
   FCF_OpenTemporaryWindow = function(name) local f = open(name) CHAT_FRAMES[#CHAT_FRAMES + 1] = f:GetName() return f end
@@ -493,15 +495,19 @@ it("chat: short channel names by default, off live and in a profile that turned 
   addon.eval('FCF_OpenTemporaryWindow("TestOnly")');
   expect(addon.eval("return ns.FrameState('vgWatched')[ChatFrameTempTestOnly]"), "a whisper window that opens later is followed too").toBe(true);
 });
-it("chat: Ctrl + mouse wheel jumps to the top or bottom", () => {
+it("chat: the wheel adds three lines to the game's one, Shift is left to the game, Ctrl + wheel jumps to the top or bottom", () => {
   const addon = loggedIn(UI_ENV + CHAT_LINES_ENV);
-  // The wheel over the main chat window, then where it jumped (or "none").
-  const wheel = (delta) => { addon.eval("__scrolled = nil"); addon.wheel("ChatFrame1", delta); return addon.eval('return __scrolled or "none"'); };
-  expect(wheel(1), "without Ctrl the wheel is the game's").toBe("none");
-  addon.keys({ ctrl: true });
-  expect([wheel(1), wheel(-1)], "with Ctrl: up to the top, down to the bottom").toEqual(["top", "bottom"]);
+  // The wheel over the main chat window, then where it jumped (or "none") and the lines it scrolled on top of the game's.
+  const wheel = (delta) => { addon.eval("__scrolled, __lines = nil, 0"); addon.wheel("ChatFrame1", delta); return [addon.eval('return __scrolled or "none"'), addon.eval("return __lines")]; };
+  expect([wheel(1), wheel(-1)], "no modifier: no jump, three lines up or down after the game's one (four in all)").toEqual([["none", 3], ["none", -3]]);
+  addon.keys({ shift: true });
+  expect(wheel(1), "Shift: the game's own jump to the end stands, nothing added").toEqual(["none", 0]);
+  addon.keys({ shift: false, ctrl: true });
+  expect([wheel(1), wheel(-1)], "with Ctrl: up to the top, down to the bottom, no lines").toEqual([["top", 0], ["bottom", 0]]);
   addon.eval("ns.GetModule('ChatExtras').settings.ctrlScroll = false");
-  expect(wheel(1), "switched off, nothing jumps").toBe("none");
+  expect(wheel(1), "switched off, nothing jumps").toEqual(["none", 0]);
+  addon.keys({ ctrl: false });
+  expect(wheel(1)[1], "and the plain tick still adds its lines").toBe(3);
 });
 it("chat: the game's timestamps and class-colored names, from /vg", () => {
   const addon = loggedIn(UI_ENV + CLICK_LUA + `C_CVar = nil

@@ -1313,11 +1313,11 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 - Expect: one rounded panel round the text, the scroll bar and the tab bar on its top band, with a one-pixel rule under the bar: the tabs are 20 tall, rounded and centred in the bar, their names centred, and they read at full strength with the mouse away (no fade), and Find and Copy sit at the bar's right end, not over any tab. The shown tab is raised and the other sunk, with a soft hover; a tab with new lines flashes in the accent colour (at the game's own pace), and the flash follows the accent. [Needs in game: that the glow tint holds while the game animates it, that the docked tabs sit centred in the bar with their names centred and spare tabs go to the game's overflow menu rather than under Find and Copy, that a window dragged out of the dock gets its tab on its own bar, and that the panel's arcs meet the rule and the border cleanly at every UI scale.]
 - If it fails, paste: `/vg errors` and a screenshot of the tab row.
 
-### 15.6h Chat extras: short channel names
+### 15.6h Chat extras: short channel names and the wheel
 
-- Do: with a fresh profile (or Reset this page on Chat), have lines arrive in Trade, General and guild chat, and click a short channel tag. Untick Short channel names under Chat extras and let another line arrive.
-- Expect: `[2. Trade - City]` shows as `[T]`, `[1. General - Elwynn Forest]` as `[G]` and `[Guild]` as `[G]`, each in the channel's own colour with the rest of the line untouched; clicking the short tag still opens the channel. Unticked, the next line shows the game's full channel name. `/vg errors` is empty. [Needs in game: that the window's TransformMessages rewrites the line the AddMessage hook just saw, on the Forever client too.]
-- If it fails, paste: `/vg errors` and one line as it shows.
+- Do: with a fresh profile (or Reset this page on Chat), have lines arrive in Trade, General and guild chat, and click a short channel tag. Untick Short channel names under Chat extras and let another line arrive. With forty or more lines in the window, roll the wheel up one tick, then with Shift held, then with Ctrl held, then down the same way.
+- Expect: `[2. Trade - City]` shows as `[T]`, `[1. General - Elwynn Forest]` as `[G]` and `[Guild]` as `[G]`, each in the channel's own colour with the rest of the line untouched; clicking the short tag still opens the channel. Unticked, the next line shows the game's full channel name. One plain tick moves four lines (count them against a fixed line), Shift goes to the oldest line as the game has it, Ctrl goes to the oldest line too, and each the other way down. `/vg errors` is empty. [Needs in game: that the window's TransformMessages rewrites the line the AddMessage hook just saw, on the Forever client too; that the game's wheel handler still moves one line and reads the modifiers first, so a plain tick is four lines and not more.]
+- If it fails, paste: `/vg errors` and one line as it shows, or how many lines a tick moved.
 
 ## 16. Realm and ruleset
 
