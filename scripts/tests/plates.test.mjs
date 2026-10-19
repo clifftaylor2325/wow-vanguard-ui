@@ -187,3 +187,49 @@ it("the game's personal resource display takes the plate look, and keeps its col
   bare.eval("PersonalResourceDisplayFrame:Show()");
   expect(bare.eval("return #ns.errors"), "a display without those bars: nothing to dress, no error").toBe(0);
 });
+// TEST-ONLY: the target, a hostile creature in combat with you that nobody else has tagged.
+const TAGGED = `UnitCanAttack = function() return true end
+  UnitIsTapDenied = function(unit) return __units[unit].tapDenied end
+  UnitAffectingCombat = function(unit) return __units[unit].inCombat end
+  __units.target.inCombat, __units.target.tapDenied = true, false`;
+it("a plate and the target frame show a green check on a mob you have tagged, and not on one someone else has", () => {
+  const addon = loggedIn(UNITS_ENV + PLATE_ENV + TAGGED);
+  // Whether the plate's and the target frame's tag marks show.
+  const marks = () => addon.eval("return { ns.FrameState('vgPlate')[__plates.nameplate1].tag:IsShown(), Vanguard_target.tag:IsShown() }");
+  addon.fire("NAME_PLATE_UNIT_ADDED", "nameplate1");
+  addon.fire("PLAYER_TARGET_CHANGED");
+  expect(marks(), "tapped by you or your group, in combat: both show it").toEqual([true, true]);
+  addon.eval("__units.target.tapDenied = true");
+  addon.fire("UNIT_FLAGS", "nameplate1");
+  addon.fire("UNIT_FLAGS", "target");
+  expect(marks(), "tap denied (someone else's): neither").toEqual([false, false]);
+  addon.eval("__units.target.tapDenied, __units.target.inCombat = false, false");
+  addon.fire("UNIT_THREAT_LIST_UPDATE", "nameplate1");
+  addon.fire("UNIT_THREAT_LIST_UPDATE", "target");
+  expect(marks(), "not in combat (nobody has tagged it): neither").toEqual([false, false]);
+});
+it("the tag mark skips players, units you cannot attack, and answers that are missing or hidden", () => {
+  const addon = loggedIn(UNITS_ENV + TAGGED);
+  // Whether the addon calls the target tagged by you.
+  const tagged = () => addon.eval("return ns.GetModule('UnitFrames').TaggedByYou('target')");
+  expect(tagged(), "a tagged creature").toBe(true);
+  addon.eval("__units.target.player = true");
+  expect(tagged(), "a player").toBe(false);
+  addon.eval("__units.target.player = nil UnitCanAttack = function() return false end");
+  expect(tagged(), "a friendly").toBe(false);
+  addon.eval("UnitCanAttack = function() return true end UnitIsTapDenied = function() return { __secret = true } end");
+  expect(tagged(), "a hidden tap answer counts as not tagged").toBe(false);
+  addon.eval("UnitIsTapDenied = nil");
+  expect(tagged(), "a client without the call counts as not tagged").toBe(false);
+});
+it("the Nameplates and Unit frames pages switch the tag marks", () => {
+  const addon = loggedIn(UNITS_ENV + UI_ENV + CLICK_LUA + PLATE_ENV + TAGGED);
+  addon.fire("NAME_PLATE_UNIT_ADDED", "nameplate1");
+  addon.fire("PLAYER_TARGET_CHANGED");
+  addon.eval('ns.Options.Show("nameplates")');
+  addon.eval('__click("A green check by mobs you have tagged")');
+  expect(addon.eval("return ns.FrameState('vgPlate')[__plates.nameplate1].tag:IsShown()"), "off hides the plate's mark at once").toBe(false);
+  addon.eval('ns.Options.Show("unitframes")');
+  addon.eval('__click("Green check on a target you have tagged")');
+  expect(addon.eval("return Vanguard_target.tag:IsShown()"), "off hides the target's mark at once").toBe(false);
+});

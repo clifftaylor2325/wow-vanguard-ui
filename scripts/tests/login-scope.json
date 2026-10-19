@@ -158,7 +158,10 @@
     "scripts/tests/petstable.test.mjs": [],
     "scripts/tests/platebuffs.test.mjs": [],
     "scripts/tests/platepaint.test.mjs": [],
-    "scripts/tests/plates.test.mjs": [],
+    "scripts/tests/plates.test.mjs": [
+      "a plate and the target frame show a green check on a mob you have tagged, and not on one someone else has",
+      "the Nameplates and Unit frames pages switch the tag marks"
+    ],
     "scripts/tests/prep.test.mjs": [
       "prep buffs: /vg prep buffs lists your buffs with the check each counts for, out of combat",
       "prep buffs: a Forever variant of a classic name still counts, an unrelated buff does not",

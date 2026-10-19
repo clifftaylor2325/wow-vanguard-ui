@@ -1937,6 +1937,12 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: Color assist has a small grey "reload" tag after its caption and no "(reload)" in the caption; Pixel-perfect scale has none; pointing at Color assist says "Takes effect after /reload." The search list opens under the box, right-aligned with it, over the page: "colour blind" lists Color assist (General), "font size" lists Text size, "changed" lists what you changed; a click opens that page with the row marked and the list closes; a search with no match says "No setting matches." Reset this page is greyed until something on the page differs from its default, asks, and puts the box back. Modules shows headings named like the list on the left; Show: Off lists only the modules you turned off. No caption or tag overlaps a switch, slider or dropdown at either text size.
 - If it fails, paste: a screenshot of the row, the list or the page and `/vg errors`.
 
+### 33.41 Tagged mob check
+
+- Do: stand near an untouched hostile mob and target it. Pull it (or hit it with a ranged attack). Then target a mob another player is fighting that you have not touched, and one that is fighting you and a party member together. Open `/vg` → Nameplates and untick "A green check by mobs you have tagged", then `/vg` → Unit frames and untick "Green check on a target you have tagged".
+- Expect: no green check on the untouched mob; a small green check left of the level on its nameplate and next to the classification diamond on the target frame once it is fighting you (within a moment of the first hit); none on the mob someone else tagged (it is tapped for you, so the game's grey look applies if you have it on); a check on the shared one if the game counts it as yours. Both switches hide the marks at once. [Needs in game: whether `UnitIsTapDenied` answers true for a mob another group tagged, whether `UNIT_FLAGS` fires when it changes so the mark follows within a moment, and what a mob that only fights your pet shows.]
+- If it fails, paste: a screenshot of the target frame and plate, and `/vg errors`.
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ## When you are done
