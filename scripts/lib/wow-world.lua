@@ -1937,6 +1937,12 @@ end
 -- Chat and the game's frames ----------------------------------------------------------------------
 
 world.chatFilters = {}
+-- What was sent to chat channels, { text, chatType } each, in order.
+world.sentChat = {}
+C_ChatInfo = C_ChatInfo or {}
+-- C_ChatInfo.SendChatMessage (ChatInfoDocumentation.lua) adds to world.sentChat. The SendChatMessage
+-- global is only a deprecation fallback on Forever (Blizzard_DeprecatedChatInfo), so it is not modelled.
+C_ChatInfo.SendChatMessage = function(text, chatType) table.insert(world.sentChat, { text, chatType }) end
 -- Chat filters, temporary windows and the FCF helpers the addon calls.
 function ChatFrame_AddMessageEventFilter(event, fn) world.chatFilters[event] = world.chatFilters[event] or {} table.insert(world.chatFilters[event], fn) end
 function FCF_OpenTemporaryWindow(name) local f = stub.newWidget("ScrollingMessageFrame", "ChatFrameTemp" .. name, UIParent) return f end

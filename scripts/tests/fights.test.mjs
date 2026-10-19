@@ -149,12 +149,10 @@ it("a client without timers reads the fight as combat ends", () => {
   expect(fights(addon)).toEqual([[30, 100, 1, 1]]);
 });
 
-// TEST-ONLY: the meter kinds the recap reads, a session for each kind, and a SendChatMessage that keeps what it is given.
+// TEST-ONLY: the meter kinds the recap reads, and a session for each kind.
 const RECAP_ENV = METER_ENV + `Enum.DamageMeterType = { Dps = 1, Interrupts = 5, Dispels = 6, DamageTaken = 7, Deaths = 9 }
   __meters = {}
   C_DamageMeter.GetCombatSessionFromType = function(kind, what) if what == 1 then return __wfgWorld.damageSession end return __meters[what] end
-  __sent = {}
-  SendChatMessage = function(text, channel) __sent[#__sent + 1] = { text, channel } end
 `;
 const RECAP_ON = { savedVariables: "VanguardDB.profiles = { Default = { FightHistory = { recap = true } } }" };
 
@@ -165,8 +163,8 @@ function setMeter(addon, what, amount, others = 0) {
     __meters[${what}] = { combatSources = src }`);
 }
 
-// What the module would send, and what SendChatMessage was given.
-const sent = (addon) => addon.eval("return __sent");
+// What was sent to chat channels (C_ChatInfo.SendChatMessage), { text, channel } each.
+const sent = (addon) => addon.eval("return __wfgWorld.sentChat");
 
 it("the recap line names interrupts, dispels, damage taken and deaths, and /vg recap prints it", () => {
   const addon = loggedIn(RECAP_ENV);

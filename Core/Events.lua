@@ -17,6 +17,17 @@ function ns.Chat(msg)
   end
 end
 
+-- Sends a message to a chat channel ("PARTY", "RAID", ...) for other players to read, through
+-- C_ChatInfo.SendChatMessage; the old SendChatMessage global is only a deprecation fallback on
+-- Forever (Blizzard_DeprecatedChatInfo, gone when the game drops its fallbacks), so it is used
+-- only on a client without the C_ChatInfo call.
+---@param text string
+---@param chatType string
+function ns.SendChat(text, chatType)
+  local send = C_ChatInfo and C_ChatInfo.SendChatMessage or SendChatMessage
+  send(text, chatType)
+end
+
 -- State kept for the game's frames ---------------------------------------------------------
 -- A field stored on a frame the game owns plants taint, and taint errors in the
 -- game's own code then get blamed on Vanguard. So whatever Vanguard remembers

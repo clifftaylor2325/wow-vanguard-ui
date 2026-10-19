@@ -179,5 +179,5 @@ function MT.Report(arg)
   if not text then return ns.Chat("No report to show: the meter has no plain figures yet.") end
   if word == "" then return ns.Chat(text) end
   if not MT.CHANNELS[word] then return ns.Chat("Send the report to say, party, raid, instance or guild.") end
-  SendChatMessage(text, MT.CHANNELS[word])
+  ns.SendChat(text, MT.CHANNELS[word])
 end
