@@ -310,6 +310,20 @@ it("your buffs and debuffs replace the game's, with weapon enchants in front", (
   expect(addon.eval("return GameTooltip:IsShown()"), "and leaving hides it; an empty cell shows nothing").toBe(false);
 });
 
+it("your buffs: an enchant's sweep keeps its full length when it moves to another cell", () => {
+  const addon = loggedIn(UNITS_ENV + ENGINE_ENV + WEAPONS_ENV + `GetTime = function() return 1000 end
+    __enchants[1] = { { hasEnchant = true, timeLeft = 1800000, enchantIconID = "TEST-ONLY-ICON-Oil" } }`);
+  addon.eval("__enchants[0][1].timeLeft = 300000 __enchants[1][1].timeLeft = 1200000");
+  addon.fire("UNIT_INVENTORY_CHANGED", "player");
+  expect(playerAuras(addon).cells[1], "the off hand, second: 1200 of 1800 seconds left").toMatchObject({ inv: 17, sweep: [400, 1800] });
+  addon.eval("__enchants[0] = nil");
+  addon.fire("UNIT_INVENTORY_CHANGED", "player");
+  expect(playerAuras(addon).cells[0], "the main hand's ends: the off hand moves to the first cell and keeps its 1800 s length").toMatchObject({ inv: 17, sweep: [400, 1800] });
+  addon.eval("__enchants[1][1].timeLeft = 1800000");
+  addon.fire("UNIT_INVENTORY_CHANGED", "player");
+  expect(playerAuras(addon).cells[0].sweep, "put on again: the sweep starts full").toEqual([1000, 1800]);
+});
+
 it("your buffs: the game's external defensives and deadly debuff frames go with its buff frames", () => {
   // TEST-ONLY the newer companions of the buff frames (Blizzard_BuffFrame on camelot and retail clients).
   const addon = loggedIn(UNITS_ENV + ENGINE_ENV + WEAPONS_ENV + `

@@ -103,19 +103,28 @@ local function enchantCell(holder, i, size)
   return c
 end
 
--- The sweep's full length for an enchant: kept from when it was put on, so
--- it empties as the enchant runs out; a fresh or longer one starts again.
-local function sweepLength(c, e)
-  if c.inv ~= e.inv or e.left > (c.left or 0) + 1 then c.total = e.left end
-  return c.total
+-- Each shown enchant's sweep, by the weapon's inventory slot: { total, left }, its full
+-- length from when it was put on and the seconds left when last seen.
+PA.sweeps = {}
+
+-- Keeps each enchant's sweep length by weapon, not by cell (the cells shift when an enchant
+-- ends), so it empties as the enchant runs out; a fresh or longer one starts again.
+local function keepSweeps(list)
+  local kept = {}
+  for _, e in ipairs(list) do
+    local seen = PA.sweeps[e.inv]
+    local fresh = not seen or e.left > seen.left + 1
+    kept[e.inv] = { total = fresh and e.left or seen.total, left = e.left }
+  end
+  PA.sweeps = kept
 end
 
 -- Fills a cell from an enchant, or hides it.
 local function paintCell(c, e)
   c:SetShown(e ~= nil)
-  if not e then c.inv, c.left = nil, nil return end
-  local total = sweepLength(c, e)
-  c.inv, c.left = e.inv, e.left
+  if not e then c.inv = nil return end
+  local total = PA.sweeps[e.inv].total
+  c.inv = e.inv
   c.icon:SetTexture(e.icon)
   c.cooldown:SetCooldown(GetTime() - (total - e.left), total)
 end
@@ -124,6 +133,7 @@ end
 function PA.UpdateEnchants()
   if not PA.cells then return end
   local list = PA.settings.enchants and PA.Enchants() or {}
+  keepSweeps(list)
   for i, c in ipairs(PA.cells) do paintCell(c, list[i]) end
   PA.PlaceAuras(#list)
 end

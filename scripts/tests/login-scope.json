@@ -29,6 +29,7 @@
       "a client that rejects every aura filter word keeps the filter and shows no auras",
       "target and focus auras",
       "your buffs and debuffs replace the game's, with weapon enchants in front",
+      "your buffs: an enchant's sweep keeps its full length when it moves to another cell",
       "your buffs: the enchant switch, and clients without enchant info",
       "your buffs: the game's external defensives and deadly debuff frames go with its buff frames"
     ],

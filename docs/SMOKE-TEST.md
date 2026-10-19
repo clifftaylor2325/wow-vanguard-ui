@@ -394,6 +394,12 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Expect: debuffs under the target and focus frames, buffs above them, wrapping at the frame width, with timers off by default.
 - If it fails, paste: a screenshot, `/vg status` and `/vg errors`. [After P0.3 and P0.12: a rejected aura filter word is listed in `/vg errors`.]
 
+### 7.1a Weapon enchant sweeps when one runs out
+
+- Do: as a rogue or shaman, put a poison or imbue (or a sharpening stone or oil) on both weapons, the main hand's a few minutes before the off hand's. Watch the two enchant cells left of your buffs as the main hand's runs out.
+- Expect: when the main hand's enchant ends, the off hand's cell moves into the first place and its dark sweep keeps the share of time it showed before (it does not jump back to full). Putting an enchant on again starts its sweep full. `/vg errors` stays empty.
+- If it fails, paste: a screenshot before and after the main hand's enchant ends.
+
 ### 7.2 Cast bars
 
 - Do: cast a spell with a long cast time, and have a mob cast at you.
