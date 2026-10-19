@@ -36,6 +36,9 @@ const stackY = (addon) => addon.eval(`local out = {}
     out[n] = point == "BOTTOM" and y or false
   end
   return out`);
+// The stack tests' client on a 768-tall screen, where one UI unit is one screen pixel, so the bars' heights
+// (rounded to whole pixels) and the stack's offsets are the whole numbers below.
+const STACK_ENV = ACTIONS_ENV + " __wfgStub.setScreen(1366, 768)";
 
 it("reagent and item counts show even at 0 and 1", () => {
   const addon = loggedIn(ACTIONS_ENV + `
@@ -59,29 +62,29 @@ it("counts show on a client without the deprecated GetActionCount (C_ActionBar.G
 });
 
 it("action bars stack with bar 1 on top", () => {
-  const addon = loggedIn(ACTIONS_ENV);
+  const addon = loggedIn(STACK_ENV);
   expect(JSON.stringify(stackY(addon)) === JSON.stringify([100, 62, 24, false, false, false, false, false]), `bar 3 at the bottom, bar 1 on top, no gap between the rows (got ${JSON.stringify(stackY(addon))})`).toBeTruthy();
-  const six = loggedIn(ACTIONS_ENV, { savedVariables: "VanguardDB = { profiles = { Default = { ActionBars = { bars = { [6] = { enabled = true } } } } } }" });
+  const six = loggedIn(STACK_ENV, { savedVariables: "VanguardDB = { profiles = { Default = { ActionBars = { bars = { [6] = { enabled = true } } } } } }" });
   const y6 = stackY(six);
   expect(y6[5] === 24 && y6[2] === 62 && y6[0] === 138, `turning on bar 6 puts it underneath; bar 1 stays on top (got ${JSON.stringify(y6)})`).toBeTruthy();
 });
 
 it("action bar stack follows button size and rows", () => {
-  const big = loggedIn(ACTIONS_ENV, { savedVariables: "VanguardDB = { profiles = { Default = { ActionBars = { size = 44 } } } }" });
+  const big = loggedIn(STACK_ENV, { savedVariables: "VanguardDB = { profiles = { Default = { ActionBars = { size = 44 } } } }" });
   expect(JSON.stringify(stackY(big).slice(0, 3)) === JSON.stringify([112, 68, 24]), "bigger buttons stack without overlapping").toBeTruthy();
-  const two = loggedIn(ACTIONS_ENV, { savedVariables: "VanguardDB = { profiles = { Default = { ActionBars = { bars = { [3] = { perRow = 6 } } } } } }" });
+  const two = loggedIn(STACK_ENV, { savedVariables: "VanguardDB = { profiles = { Default = { ActionBars = { bars = { [3] = { perRow = 6 } } } } } }" });
   expect(JSON.stringify(stackY(two).slice(0, 3)) === JSON.stringify([140, 102, 24]), "a two-row bar pushes the bars above it up by its height").toBeTruthy();
 });
 
 it("a moved action bar keeps its spot until reset", () => {
-  const moved = loggedIn(ACTIONS_ENV, { savedVariables: 'VanguardDB = { profiles = { Default = { positions = { bar1 = { point = "BOTTOM", relPoint = "BOTTOM", x = 0, y = 40 } } } } }' });
+  const moved = loggedIn(STACK_ENV, { savedVariables: 'VanguardDB = { profiles = { Default = { positions = { bar1 = { point = "BOTTOM", relPoint = "BOTTOM", x = 0, y = 40 } } } } }' });
   expect(stackY(moved)[0] === 40, "a position you saved wins").toBeTruthy();
   moved.slash("reset all");
   expect(stackY(moved)[0] === 100, "/vg reset all puts bar 1 back on top").toBeTruthy();
 });
 
 it("the bottom stack follows per-bar size and rows, live", () => {
-  const addon = loggedIn(ACTIONS_ENV, { savedVariables: "VanguardDB = { profiles = { Default = { ActionBars = { bars = { [2] = { size = 48 } } } } } }" });
+  const addon = loggedIn(STACK_ENV, { savedVariables: "VanguardDB = { profiles = { Default = { ActionBars = { bars = { [2] = { size = 48 } } } } } }" });
   expect(JSON.stringify(stackY(addon).slice(0, 3)) === JSON.stringify([110, 62, 24]), `a bar's own button size sets its row height (got ${JSON.stringify(stackY(addon))})`).toBeTruthy();
   // Bar n's frame: its bottom offset on screen.
   const frameY = (n) => addon.eval(`return Vanguard_Bar${n}.__points.BOTTOM.y`);
@@ -95,6 +98,22 @@ it("the bottom stack follows per-bar size and rows, live", () => {
   addon.eval('ns.SetMoverPoint("bar1", "BOTTOM", "BOTTOM", 0, 300) ns.Unlock() local AB = ns.GetModule("ActionBars") AB.settings.bars[3].perRow = 12 AB.SettingChanged(3, "perRow") ns.SetMoverDefault("TEST-ONLY missing", { "CENTER", "CENTER", 0, 0 })');
   expect(frameY(1) === 300 && frameY(2) === 72, "a bar you dragged keeps its spot; the others re-stack (with unlock mode on)").toBeTruthy();
   addon.eval("ns.Lock()");
+});
+
+it("the bars touch at a UI scale where a button rounds up to a whole pixel (the 1440p preset), and re-stack when the scale changes", () => {
+  const addon = loggedIn(ACTIONS_ENV + " __wfgStub.setScreen(2560, 1440) UIParent:SetScale(0.7)");
+  // Bar n's bottom and top edges in UIParent's units (TEST-ONLY reads), and the seam between bar n and the bar under it.
+  const edges = (n) => addon.eval(`local b = Vanguard_Bar${n} return { b:GetBottom(), b:GetTop() }`);
+  const seam = (n) => edges(n)[0] - edges(n + 1)[1];
+  const pixel = 768 / 1440 / 0.7;
+  expect(addon.eval("return UIParent:GetScale()"), "the preset's scale holds").toBe(0.7);
+  expect(edges(3)[1] - edges(3)[0], "bar 3 is 50 whole pixels tall: 38 units rounds up at this scale").toBeCloseTo(50 * pixel, 9);
+  expect([seam(2), seam(1)], "bars 2 and 1 start exactly where the bar under each ends: no overlap, no gap").toEqual([expect.closeTo(0, 9), expect.closeTo(0, 9)]);
+  addon.eval("UIParent:SetScale(1)");
+  addon.fire("UI_SCALE_CHANGED");
+  addon.update(0.1);
+  expect(edges(3)[1] - edges(3)[0], "at scale 1 a bar is 71 pixels tall: 38 units rounds down").toBeCloseTo(71 * (768 / 1440), 9);
+  expect([seam(2), seam(1)], "the stack follows the bars' new heights").toEqual([expect.closeTo(0, 9), expect.closeTo(0, 9)]);
 });
 
 it("action bar paging and events", () => {

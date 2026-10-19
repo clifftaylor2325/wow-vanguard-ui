@@ -547,6 +547,8 @@ end
 
 -- Strata and scroll child.
 function methods:SetFrameStrata(s) self.__strata = s end
+-- The strata set (or taken from the parent), MEDIUM when none was, as the client answers.
+function methods:GetFrameStrata() return self.__strata or "MEDIUM" end
 -- Keeps a frame's strata when it is reparented.
 function methods:SetFixedFrameStrata(on) self.__fixedStrata = on and true or nil end
 -- Records whether a frame is drawn into its own buffer.

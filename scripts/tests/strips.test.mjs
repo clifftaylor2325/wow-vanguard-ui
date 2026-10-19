@@ -222,7 +222,7 @@ it("boat timer: the first ride is timed, the next from that dock counts down", (
   wait(addon, "__pos = false", 25);
   wait(addon, "__pos = true __sub = ''", 1);
   expect(addon.eval('return VanguardDB.profiles.Default.Errands.boats["TEST-ONLY Dock > Elwynn Forest"]'), "a place with no sub-zone is named by its zone").toBe(25);
-  expect(addon.eval("return { ns.MoverPoint('boattimer') }"), "the bar is movable, right of your target's cast bar under the boss timers").toEqual(["BOTTOM", "BOTTOM", 240, 284]);
+  expect(addon.eval("return { ns.MoverPoint('boattimer') }"), "the bar is movable, just above your target's cast bar under the boss timers").toEqual(["BOTTOM", "BOTTOM", 240, 284]);
 });
 it("boat timer: off by default, and quiet where a ride can't be judged", () => {
   const off = loggedIn(BOAT_ENV);

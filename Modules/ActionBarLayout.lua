@@ -68,9 +68,11 @@ function AB.LayoutBar(n)
   sizeBar(bar, s.buttons, s.perRow, size, gap)
 end
 
--- Lays every built bar out again after a scale change (T.OnScale runs it out of combat).
+-- Lays every built bar out again after a scale change, then re-stacks what their heights, rounded to
+-- the new pixel size, moved (T.OnScale runs it out of combat).
 local function relayoutAll()
   for n in pairs(AB.bars) do AB.LayoutBar(n) end
+  AB.RestackMoved()
 end
 T.OnScale(relayoutAll)
 
