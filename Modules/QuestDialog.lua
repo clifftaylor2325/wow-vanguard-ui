@@ -210,6 +210,12 @@ end
 
 -- Showing --------------------------------------------------------------------------------------
 
+-- Gives the dialog the keyboard while it shows. Run out of combat: a key caught in a fight could not be
+-- handed on to the game, so the dialog has no keys then.
+local function takeKeys()
+  QD.frame:EnableKeyboard(QD.frame:IsShown())
+end
+
 -- Shows a page (unless automation is about to answer it for you).
 function QD.Show(key, event)
   local auto = ns.GetModule("QuestAuto")
@@ -217,7 +223,7 @@ function QD.Show(key, event)
   QD.key, QD.page, QD.choice = key, QD.PAGES[key](), nil
   QD.Render(QD.page)
   QD.frame:Show()
-  QD.frame:EnableKeyboard(not ns.InCombat())
+  ns.OutOfCombat(takeKeys, "quest dialog keys")
 end
 
 -- The game finished loading an item's details: redraw the page (keeping a reward already picked).
@@ -242,6 +248,12 @@ local function takeOver()
   end
 end
 
+-- A fight starts: the dialog lets go of the keyboard, and takes it back when the fight ends if it still shows.
+local function releaseKeys()
+  QD.frame:EnableKeyboard(false)
+  ns.AfterCombat(takeKeys, "quest dialog keys")
+end
+
 -- Module entry point (Core/Modules.lua).
 function QD.Enable(settings)
   if not settings.dialog then return end
@@ -249,6 +261,6 @@ function QD.Enable(settings)
   takeOver()
   for event, key in pairs(QD.EVENTS) do ns.On(event, function() QD.Show(key, event) end) end
   for _, event in ipairs({ "GOSSIP_CLOSED", "QUEST_FINISHED" }) do ns.On(event, QD.Quiet) end
-  ns.On("PLAYER_REGEN_DISABLED", function() QD.frame:EnableKeyboard(false) end)
+  ns.On("PLAYER_REGEN_DISABLED", releaseKeys)
   ns.On("QUEST_ITEM_UPDATE", QD.Redraw)
 end

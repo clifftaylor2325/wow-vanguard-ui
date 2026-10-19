@@ -1317,3 +1317,19 @@ it("quest tracker: the XP switches save while Vanguard's tracker isn't built", (
     if row[2] == "Each quest's XP under it" or row[2] == "Under the quests, how much of the XP to level they give" then row[4](false) end end end end`);
   expect(addon.eval("local s = ns.Settings('QuestTracker') return { s.xp, s.levelXp, Vanguard_QuestTrackerFrame == nil }"), "both saved, no tracker drawn").toEqual([false, false, true]);
 });
+it("quest dialog: a fight lets go of the keys, and they come back when it ends with the dialog still open", () => {
+  const addon = loggedIn(QUEST_ENV);
+  addon.eval("Vanguard_QuestDialog.EnableKeyboard = function(self, on) self.__kb = on end");
+  addon.fire("GOSSIP_SHOW");
+  // Whether the dialog has the keyboard now.
+  const keys = () => addon.eval("return Vanguard_QuestDialog.__kb");
+  expect(keys(), "shown out of combat: it takes the keys").toBe(true);
+  addon.world.combat(true);
+  expect(keys(), "in a fight: no keys").toBe(false);
+  addon.world.combat(false);
+  expect([addon.eval("return Vanguard_QuestDialog:IsShown()"), keys()], "after the fight, still open: the keys are back").toEqual([true, true]);
+  addon.world.combat(true);
+  addon.fire("GOSSIP_CLOSED");
+  addon.world.combat(false);
+  expect(keys(), "closed during the fight: it stays without keys").toBe(false);
+});
