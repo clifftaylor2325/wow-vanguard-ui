@@ -384,3 +384,13 @@ it("the panel's width can be set, and its lines follow", () => {
   expect(addon.eval("return Vanguard_Meter:GetWidth()"), "kept within the range").toBe(200);
   addon.eval("ns.GetModule('Meter').Resized({})");
 });
+
+it("with the meter module off, the Combat tools Report button is greyed out", () => {
+  const addon = loggedIn(CLICK_LUA, { savedVariables: "VanguardDB.profiles = { Default = { modules = { Meter = false } } }" });
+  addon.eval('ns.Options.Show("tools")');
+  const enabled = addon.eval(`for _, w in ipairs(__wfgStub.frames) do
+      local fs = w.label or w.text
+      if w.IsEnabled and type(fs) == "table" and fs.__text == "Report the meter's top lines (also the Report button on the meter)" then return w:IsEnabled() end
+    end`);
+  expect(enabled, "nothing to report from: the button can't be pressed").toBe(false);
+});

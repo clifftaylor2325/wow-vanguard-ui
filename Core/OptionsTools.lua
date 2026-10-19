@@ -71,13 +71,13 @@ local function paint()
   if MT.enabled then MT.Refresh() end
 end
 
--- The meter's share switch and buttons: its chat report and the reset of the game's segments (also /vg meter report and reset).
+-- The meter's share switch and buttons: its chat report (greyed out while the module is off) and the reset of the game's segments (also /vg meter report and reset).
 local function meterButtons()
   local MT = ns.GetModule("Meter")
   return {
     check("Show each line's share of the total (45%) when the game gives plain figures", liveSetting("Meter", "percent", paint)),
     { "cycle", "Report the meter to", { { "chat", "Your chat" }, { "say", "Say" }, { "party", "Party" }, { "raid", "Raid" }, { "instance", "Instance" }, { "guild", "Guild" } }, liveSetting("Meter", "reportTo", paint) },
-    { "button", "Report the meter's top lines (also the Report button on the meter)", MT.ReportClick },
+    { "button", "Report the meter's top lines (also the Report button on the meter)", MT.ReportClick, function() return MT.settings ~= nil end },
     { "button", "Reset the game's damage meter", MT.Reset },
   }
 end
