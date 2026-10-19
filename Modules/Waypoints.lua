@@ -156,9 +156,14 @@ function WP.Describe(w)
   return string.format("%s %.1f, %.1f", mapName(w.map), w.x * 100, w.y * 100)
 end
 
+-- The recent waypoints, newest first, from the profile: /vg way and the options read them while the module is off too.
+local function recentList()
+  return ns.Settings("Waypoints", WP.defaults).recent or {}
+end
+
 -- Goes back to the nth recent waypoint; says why when there is none or the map can't hold one.
 function WP.Recall(n)
-  local w = (WP.settings.recent or {})[n]
+  local w = recentList()[n]
   if not w then return ns.Chat("No recent waypoint " .. n .. ".") end
   if not WP.Set(w.map, w.x, w.y) then return ns.Chat("Can't put a waypoint on " .. mapName(w.map) .. ".") end
   ns.Chat("Waypoint: " .. WP.Describe(w) .. ".")
@@ -172,7 +177,7 @@ end
 
 -- /way recent: the list, or with a number, back to that one.
 function WP.RecentCommand(n)
-  local list = WP.settings.recent or {}
+  local list = recentList()
   if n ~= "" then return WP.Recall(tonumber(n)) end
   if #list == 0 then return ns.Chat("No recent waypoints yet.") end
   for i, w in ipairs(list) do ns.Chat(i .. ". " .. WP.Describe(w)) end
@@ -319,8 +324,8 @@ end
 -- The recent waypoints as one button each ("Go to ..."), or a line saying there are none.
 local function recentRows()
   local rows = {}
-  for i, w in ipairs(ns.Settings("Waypoints", WP.defaults).recent or {}) do
-    rows[#rows + 1] = { "button", "Go to " .. WP.Describe(w), function() WP.settings = ns.Settings("Waypoints", WP.defaults) WP.Recall(i) end }
+  for i, w in ipairs(recentList()) do
+    rows[#rows + 1] = { "button", "Go to " .. WP.Describe(w), function() WP.Recall(i) end }
   end
   if #rows == 0 then rows[1] = { "text", "No recent waypoints yet. Ctrl-click the world map or use /way to make one." } end
   return rows
