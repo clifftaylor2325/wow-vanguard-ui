@@ -10,10 +10,11 @@ const METER_ENV = `Enum.DamageMeterSessionType = { Current = 1 } Enum.DamageMete
 const METER_ON = { savedVariables: "VanguardDB.profiles = { Default = { Meter = { on = true } } }" };
 
 // Sets the meter's session to TEST-ONLY lines given as a Lua list expression, for the kind asked (any kind by default).
+// Like the client, every read hands out new tables.
 function setLines(addon, lines, kind = "nil") {
-  addon.eval(`local list = ${lines}
+  addon.eval(`local function list() return ${lines} end
     C_DamageMeter.GetCombatSessionFromType = function(session, what)
-      if ${kind} == nil or what == ${kind} then return { combatSources = list } end
+      if ${kind} == nil or what == ${kind} then return { combatSources = list() } end
       return nil
     end`);
 }
@@ -248,8 +249,9 @@ it("a click on a line opens that player's spells, in the game's order; again or 
   expect([panel(), addon.eval("return __guid")], "Tess's spells, asked by her GUID").toEqual([[true, "Tess", "Spell1", "900", "Spell2", false, false], "g1"]);
   click(2);
   expect(panel()[1], "another line switches the panel").toBe("Bo");
+  addon.advance(1);
   click(2);
-  expect(panel()[0], "the same line again closes it").toBe(false);
+  expect(panel()[0], "the same line again, after the meter has repainted, closes it").toBe(false);
   click(1);
   addon.eval("Vanguard_MeterDetail.title:GetParent():GetScript('OnClick')()");
   expect(panel()[0], "the panel's title closes it").toBe(false);

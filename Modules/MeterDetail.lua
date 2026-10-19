@@ -111,10 +111,25 @@ function MT.SayRecap(src)
   if link then ns.Chat("Death recap: " .. link) end
 end
 
+-- A meter line's source as a plain key ("GUID:creature ID"), or nil when the client hides either.
+local function sourceKey(src)
+  local guid, creature = src.sourceGUID, src.sourceCreatureID
+  if ns.IsSecret(guid) or ns.IsSecret(creature) or type(guid) ~= "string" then return nil end
+  return guid .. ":" .. tostring(creature)
+end
+
+-- Whether the open panel shows this line's source. The meter repaints from a new read every
+-- half second and the client hands out new tables each time, so the source is matched by key.
+local function showing(d, src)
+  if d.src == src then return true end
+  local key = d.src and sourceKey(src)
+  return key ~= nil and key == sourceKey(d.src)
+end
+
 -- Opens the panel for a meter line (a click on the same player's row again closes it).
 function MT.OpenDetail(src)
   local d = MT.detail or buildDetail()
-  if d:IsShown() and d.src == src then return d:Hide() end
+  if d:IsShown() and showing(d, src) then return d:Hide() end
   d.src = src
   MT.Give(d.title, "SetText", src.name)
   d:Show()
