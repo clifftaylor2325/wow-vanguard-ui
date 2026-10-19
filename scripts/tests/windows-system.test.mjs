@@ -849,6 +849,50 @@ it("game options: scroll bars, defaults button, header divider, and the nav and 
   expect(addon.eval("return __errors('Windows')"), "a row with none of the controls is fine").toBe("none");
 });
 
+// TEST-ONLY graphics quality section (Blizzard_SettingsDefinitions_Shared/Graphics.xml SettingsAdvancedQualitySectionTemplate):
+// a framed box, Base and Raid tabs, and two control sets whose Controls hold stepped dropdowns, a slider and a check box slider.
+const GRAPHICS_ROW = `
+  local row = CreateFrame("Frame", nil, SettingsPanel.Container.SettingsList)
+  row.NineSlice = CreateFrame("Frame", nil, row) row.NineSlice.Art = row.NineSlice:CreateTexture()
+  row.BaseTab, row.RaidTab = CreateFrame("Button", nil, row), CreateFrame("Button", nil, row)
+  local function stepped(set)
+    local c = CreateFrame("Frame", nil, set) c.Control = CreateFrame("Frame", nil, c)
+    c.Control.Dropdown = CreateFrame("Button", nil, c.Control) c.Control.Dropdown.Arrow = c.Control.Dropdown:CreateTexture()
+    c.Control.DecrementButton, c.Control.IncrementButton = CreateFrame("Button", nil, c.Control), CreateFrame("Button", nil, c.Control)
+    return c
+  end
+  for _, key in ipairs({ "BaseQualityControls", "RaidQualityControls" }) do
+    local set = CreateFrame("Frame", nil, row) row[key] = set
+    local wide = CreateFrame("Frame", nil, set) wide.SliderWithSteppers = __stepped(wide)
+    if key == "RaidQualityControls" then wide.Checkbox = CreateFrame("CheckButton", nil, wide) wide.Checkbox.Art = wide.Checkbox:CreateTexture() end
+    set.Controls = { wide, stepped(set) }
+  end
+  __graphics = row
+  -- Whether a frame carries the inset panel colour (T.Panel inset).
+  function __insetPainted(f)
+    local c = { ns.Theme.PanelColor(true) }
+    for _, r in ipairs({ f:GetRegions() }) do
+      local v = r.__vertexColor
+      if v and v[1] == c[1] and v[2] == c[2] and v[3] == c[3] then return true end
+    end
+    return false
+  end
+`;
+
+it("game options: the graphics quality section's box, Base and Raid tabs, quality steppers, sliders and raid check box in the theme", () => {
+  const addon = loggedIn(SETTINGS_LISTS_ENV + GRAPHICS_ROW);
+  addon.eval("SettingsPanel:Show() SettingsPanel.Container.SettingsList.ScrollBox:Take(__graphics)");
+  expect(addon.eval(`local r = __graphics
+    local function stepper(c) return __panelled(c.Control.Dropdown) and c.Control.Dropdown.Arrow.__alpha == 0 and ns.Theme.ArrowParts(c.Control.DecrementButton) ~= nil and ns.Theme.ArrowParts(c.Control.IncrementButton) ~= nil end
+    local b, raid = r.BaseQualityControls.Controls, r.RaidQualityControls.Controls
+    return { __insetPainted(r.NineSlice), __panelled(r.BaseTab), __panelled(r.RaidTab), __stepper(b[1].SliderWithSteppers), stepper(b[2]),
+      __stepper(raid[1].SliderWithSteppers), ns.Theme.CheckParts(raid[1].Checkbox) ~= nil, stepper(raid[2]) }`),
+    "the box an inset, both tabs theme tabs, each set's slider and stepped dropdown themed, the raid check box too").toEqual([true, true, true, true, true, true, true, true]);
+  const bare = loggedIn(SETTINGS_LISTS_ENV + GRAPHICS_ROW + "__graphics.NineSlice = nil __graphics.RaidTab = 1 __graphics.RaidQualityControls.Controls = nil");
+  bare.eval("SettingsPanel:Show() SettingsPanel.Container.SettingsList.ScrollBox:Take(__graphics)");
+  expect([bare.eval("return __panelled(__graphics.BaseTab)"), bare.eval("return __errors('Windows')")], "a section missing its box, a tab or a set's controls is fine").toEqual([true, "none"]);
+});
+
 it("game options: the nav entries get the row washes and follow the game's selection, the group headers become section heads", () => {
   const addon = loggedIn(SETTINGS_LISTS_ENV);
   addon.eval("local box = SettingsPanel.CategoryList.ScrollBox box:Take(__navEntry(true)) box:Take(__navEntry(false)) box:Take(__navHeader())");
