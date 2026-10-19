@@ -326,6 +326,26 @@ it("taint: a hook in front of a protected method doesn't hide the addon code tha
   expect(addon.eval("return __secure:IsShown()"), "still shown").toBe(true);
 });
 
+it("taint: addon code that hands an aura call a secret gets the client's error, through pcall too; plain ids, game and test code don't", () => {
+  const addon = createAddon();
+  addon.world.addAura("player", { name: "TEST-ONLY Buff", duration: 10, auraInstanceID: 7 });
+  addon.eval("__id = __wfgWorld.secret(7)");
+  expect(asAddon(addon, "return { pcall(C_UnitAuras.GetAuraDuration, 'player', __id) }"), "refused, with the client's words")
+    .toEqual([false, "bad argument #2 to '?' (Usage: C_UnitAuras.GetAuraDuration(). Secret values are only allowed during untainted execution for this argument.)"]);
+  expect(asAddon(addon, "return C_UnitAuras.GetAuraDataByAuraInstanceID('player', 7).name"), "a plain id is answered").toBe("TEST-ONLY Buff");
+  expect(addon.eval("return { C_UnitAuras.GetAuraDataByAuraInstanceID('player', __id) == nil, C_Secrets.ShouldUnitAuraInstanceBeSecret('player', 7) }"),
+    "the game's (and the tests') own code may pass it; the aura's times are plain").toEqual([true, false]);
+  addon.world.addAura("player", { name: "TEST-ONLY Hidden", duration: addon.world.secret(10), expirationTime: addon.world.secret(20), auraInstanceID: 8 });
+  addon.eval("__wfgWorld.aurasSecret = true");
+  expect(addon.eval("return { C_Secrets.ShouldUnitAuraInstanceBeSecret('player', 8), C_Secrets.ShouldUnitAuraInstanceBeSecret('player', 7) }"),
+    "secret times, or every aura while auras are hidden").toEqual([true, true]);
+  expect(asAddon(addon, "return { pcall(C_UnitAuras.GetAuraDataByAuraInstanceID, 'player', 8) }"), "a hidden aura's data, asked for by a plain id: refused")
+    .toEqual([false, "GetAuraDataByAuraInstanceID(): Auras cannot be accessed when secret while tainted by 'Vanguard'"]);
+  expect(addon.eval("return C_UnitAuras.GetAuraDataByAuraInstanceID('player', 8).name"), "the game's own code still reads it").toBe("TEST-ONLY Hidden");
+  addon.eval("C_Secrets = {}");
+  expect(asAddon(addon, "return C_UnitAuras.GetAuraDataByAuraInstanceID('player', 8).name"), "a client that can't say lets it through").toBe("TEST-ONLY Hidden");
+});
+
 it("taint: secret geometry, derived: a secret fill, secret text and what anchors to them read as secrets", () => {
   const addon = createAddon();
   addon.eval(`__bar = CreateFrame("StatusBar", nil, UIParent) __bar:SetSize(100, 10) __bar:SetPoint("CENTER")

@@ -8,7 +8,7 @@
 -- (the auction house, the profession window...), and what test code makes to
 -- stand in for the game's frames.
 --
--- Three rules, always on:
+-- Four rules, always on:
 --  * Field writes: addon code that stores a new field on a game widget plants
 --    taint in game (frame.vgSkinned = true). Keep such state in a weak-keyed
 --    side table instead. Replacing a game widget's script (SetScript) is
@@ -19,6 +19,9 @@
 --    and ADDON_ACTION_BLOCKED fires. A frame is protected when it is made from
 --    a Secure template, is one of the game's protected frames, is marked with
 --    __wfgStub.protect(frame), or holds a protected frame.
+--  * Secret arguments: addon code that passes a secret to an aura call the
+--    client only lets secure code give one to, or asks for a hidden aura's
+--    data by its id, raises the client's error.
 --  * Secret geometry (a mode, off unless a test asks): see world.secretGeometry.
 --
 -- Breaking a rule is recorded in stub.violations (one entry per text, counted),
@@ -235,6 +238,42 @@ local function lockable(name)
   end
 end
 for _, name in ipairs(PROTECTED_CALLS) do rewrap(name, lockable(name)) end
+
+-- Secret arguments --------------------------------------------------------------------------
+-- The aura calls Blizzard documents with SecretArguments = "AllowedWhenUntainted" take a
+-- secret argument (a hidden aura instance id) only from the game's own code, and the
+-- client won't hand addon code a hidden aura's data by its id. Addon code that tries
+-- gets the client's error (both texts as 0.7.0 caught them in game), which a pcall
+-- around the call only hides.
+
+-- The C_UnitAuras calls that refuse a secret argument from addon code.
+local UNTAINTED_ONLY = { "GetAuraDataByIndex", "GetAuraDataBySpellName", "GetAuraDataByAuraInstanceID", "GetAuraApplicationDisplayCount", "GetAuraDispelTypeColor", "GetAuraDuration" }
+
+-- The position of the first secret argument, or nil.
+local function firstSecret(...)
+  for i = 1, select("#", ...) do
+    if issecretvalue((select(i, ...))) then return i end
+  end
+end
+
+-- Raises the client's error when addon code hands a call a secret, or asks for a hidden aura's data by its id.
+local function refuseSecrets(name, ...)
+  local i = firstSecret(...)
+  if i then error(string.format("bad argument #%d to '?' (Usage: C_UnitAuras.%s(). Secret values are only allowed during untainted execution for this argument.)", i, name), 0) end
+  local hidden = C_Secrets and C_Secrets.ShouldUnitAuraInstanceBeSecret
+  if name == "GetAuraDataByAuraInstanceID" and type(hidden) == "function" and hidden(...) == true then
+    error(name .. "(): Auras cannot be accessed when secret while tainted by 'Vanguard'", 0)
+  end
+end
+
+-- A call that refuses secrets from addon code (refuseSecrets); the game's and the tests' code pass.
+local function untaintedOnly(name, call)
+  return function(...)
+    if byAddon(callerOf(1)) then refuseSecrets(name, ...) end
+    return call(...)
+  end
+end
+for _, name in ipairs(UNTAINTED_ONLY) do C_UnitAuras[name] = untaintedOnly(name, C_UnitAuras[name]) end
 
 -- Secret geometry ---------------------------------------------------------------------------
 -- The client hides a region's position and size from addons when they come from a

@@ -7,6 +7,8 @@
 -- client can evaluate the aura's duration object against a curve, the result
 -- goes straight to the glow's opacity; otherwise plain numbers are used out of
 -- combat, and with neither the glow stays off (no error). Static: no fade.
+-- An item whose aura id is itself secret gets no glow: the client takes a
+-- hidden id only from its own code and raises an error for an addon's.
 
 local ADDON, ns = ...
 
@@ -36,11 +38,12 @@ function CG.Curve(percent)
   return curve
 end
 
--- The aura a Cooldown Manager item tracks (its id and unit), or nil when it tracks none right now.
+-- The aura a Cooldown Manager item tracks (its id and unit), or nil when it tracks none
+-- the addon may ask about: none right now, or a hidden id or unit (see the top of the file).
 function CG.Aura(item)
-  local id = item.auraInstanceID
-  if not (ns.IsSecret(id) or type(id) == "number") then return nil end
-  return id, type(item.auraDataUnit) == "string" and item.auraDataUnit or "player"
+  local id, unit = ns.PlainNumber(item.auraInstanceID), item.auraDataUnit
+  if not id or ns.IsSecret(unit) then return nil end
+  return id, type(unit) == "string" and unit or "player"
 end
 
 -- The glow's strength from the aura's duration object, handed to the game's curve; nil when the client can't do that.
@@ -58,7 +61,7 @@ end
 -- The glow's strength from plain numbers (1 or 0); nil when the aura's times are hidden or it has none.
 function CG.FromNumbers(id, unit, percent)
   local get = C_UnitAuras and C_UnitAuras.GetAuraDataByAuraInstanceID
-  local aura = type(get) == "function" and get(unit, id)
+  local aura = type(get) == "function" and not ns.AuraInstanceSecret(unit, id) and get(unit, id)
   local expires, length = aura and ns.PlainNumber(aura.expirationTime), aura and ns.PlainNumber(aura.duration)
   if not (expires and length and length > 0) then return nil end
   return (expires - GetTime()) / length < percent / 100 and 1 or 0

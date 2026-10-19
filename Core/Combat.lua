@@ -101,6 +101,18 @@ function ns.AurasSecret()
   return not ok or ns.IsSecret(secret) or secret == true
 end
 
+-- True when one aura's values are hidden from addons, or the client can't say
+-- (as ns.AurasSecret). `id` must be a plain aura instance id.
+---@param unit string
+---@param id number
+---@return boolean
+function ns.AuraInstanceSecret(unit, id)
+  local ask = C_Secrets and C_Secrets.ShouldUnitAuraInstanceBeSecret
+  if type(ask) ~= "function" then return ns.AurasSecret() end
+  local ok, secret = pcall(ask, unit, id)
+  return not ok or ns.IsSecret(secret) or secret == true or ns.AurasSecret()
+end
+
 -- Add-on restrictions ------------------------------------------------------------------------
 
 -- The restriction kinds the client names (Enum.AddOnRestrictionType), in the order /vg status lists them.

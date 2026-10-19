@@ -35,12 +35,12 @@ function A.Icon(parent, size, style)
   return f
 end
 
--- The timer sweep: a duration object where the client offers one, plain
--- numbers otherwise, no sweep when the values are hidden.
+-- The timer sweep: a duration object where the client offers one (asked by a
+-- plain aura id only), plain numbers otherwise, no sweep when the values are hidden.
 function A.Sweep(cd, unit, aura)
-  local getDuration = C_UnitAuras and C_UnitAuras.GetAuraDuration
-  if type(getDuration) == "function" and cd.SetCooldownFromDurationObject and aura.auraInstanceID then
-    local ok, duration = pcall(getDuration, unit, aura.auraInstanceID)
+  local getDuration, id = C_UnitAuras and C_UnitAuras.GetAuraDuration, ns.PlainNumber(aura.auraInstanceID)
+  if type(getDuration) == "function" and cd.SetCooldownFromDurationObject and id then
+    local ok, duration = pcall(getDuration, unit, id)
     if ok and duration then return pcall(cd.SetCooldownFromDurationObject, cd, duration) end
   end
   local exp, dur = ns.PlainNumber(aura.expirationTime), ns.PlainNumber(aura.duration)

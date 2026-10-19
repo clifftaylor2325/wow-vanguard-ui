@@ -25,7 +25,7 @@ Everything here is TEST-ONLY: nothing in `scripts/lib/wow-*.lua` ships in game.
 | `scripts/lib/wow-stub.lua` | Frames, regions, scripts, events, the clock, Lua 5.1 shims, and the input drivers. |
 | `scripts/lib/wow-layout.lua` | Anchors, sizes and scale resolved to screen rects (1920x1080, origin bottom-left). |
 | `scripts/lib/wow-world.lua` | The world: units, auras, actions, spells, quests, bags, the map, timers, Blizzard frames. |
-| `scripts/lib/wow-taint.lua` | Taint and combat rules: who owns each frame, field writes on the game's frames, protected calls blocked in combat, secret geometry. |
+| `scripts/lib/wow-taint.lua` | Taint and combat rules: who owns each frame, field writes on the game's frames, protected calls blocked in combat, secret arguments to aura calls, secret geometry. |
 | `scripts/lib/wow-inspect.lua` | A widget as a plain snapshot: what it draws, where, and its children. |
 | `scripts/lua-engine.test.mjs` | The client's own tests (5.1 printing, layout, events, timers, input, inspectors). |
 | `scripts/tests/smoke.test.mjs` | The harness cases a pull request's CI runs (`npm run test:quick`): load, login, unlock, lock and no errors, once as WoW Forever and once as Retail, then a fight with secret geometry on. |
@@ -223,6 +223,15 @@ error: the test fails unless `expectErrors` names it.
   call is recorded. Secure templates, `PlayerFrame` and the other unit frames, and
   anything marked with `__wfgStub.protect(frame)` are protected, and so is a
   frame holding one.
+- **Secret arguments.** Addon code that passes a secret (a hidden aura instance
+  id) to a `C_UnitAuras` call Blizzard documents as `SecretArguments =
+  "AllowedWhenUntainted"` gets the client's error (`bad argument #2 to '?' (...
+  Secret values are only allowed during untainted execution for this
+  argument.)`), and so does asking `GetAuraDataByAuraInstanceID` for an aura
+  `C_Secrets.ShouldUnitAuraInstanceBeSecret` calls hidden (`... Auras cannot be
+  accessed when secret while tainted by 'Vanguard'`). A `pcall` only hides
+  them. Pass a plain id (`ns.PlainNumber`) and ask `ns.AuraInstanceSecret`
+  first. Game and test code may do either.
 - **Secret geometry** is off unless a test calls `world.secretGeometry`.
 - A test that wraps `CreateFrame` in its own Lua marks the wrapper with
   `__wfgStub.transparent[CreateFrame] = true` after defining it, so ownership is

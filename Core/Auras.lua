@@ -106,20 +106,21 @@ end
 
 -- r, g, b for a debuff's edge: its type's color. A hidden type is colored by
 -- the client through the curve (the result may itself be hidden: widgets take it).
+-- The client asks by the aura's id, which an addon may pass only when it is plain.
 function A.DispelColor(unit, aura)
-  local get = C_UnitAuras and C_UnitAuras.GetAuraDispelTypeColor
-  if ns.IsSecret(aura.dispelName) and type(get) == "function" and curve() then
-    local ok, color = pcall(get, unit, aura.auraInstanceID, curve())
+  local get, id = C_UnitAuras and C_UnitAuras.GetAuraDispelTypeColor, ns.PlainNumber(aura.auraInstanceID)
+  if ns.IsSecret(aura.dispelName) and id and type(get) == "function" and curve() then
+    local ok, color = pcall(get, unit, id, curve())
     if ok and color then return color:GetRGB() end
   end
   return T.RGB(A.DispelToken(aura.dispelName))
 end
 
--- The stack text: the client's own (it formats hidden counts), else plain counts above 1.
+-- The stack text: the client's own (it formats hidden counts; asked by a plain id only), else plain counts above 1.
 function A.StackText(unit, aura)
-  local get = C_UnitAuras and C_UnitAuras.GetAuraApplicationDisplayCount
-  if type(get) == "function" and aura.auraInstanceID then
-    local ok, text = pcall(get, unit, aura.auraInstanceID, 2, 99)
+  local get, id = C_UnitAuras and C_UnitAuras.GetAuraApplicationDisplayCount, ns.PlainNumber(aura.auraInstanceID)
+  if type(get) == "function" and id then
+    local ok, text = pcall(get, unit, id, 2, 99)
     if ok then return text end
   end
   local stacks = ns.PlainNumber(aura.applications)
