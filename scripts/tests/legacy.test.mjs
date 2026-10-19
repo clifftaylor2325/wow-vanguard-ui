@@ -19,6 +19,15 @@ it("the planner is off until switched on, and says so", () => {
   expect(chatHas(addon, /\/vg legacy probe lists what the client has/), "bare /vg legacy says what there is").toBe(true);
 });
 
+it("with the module off from login, /vg legacy plan still reads the planner switch", () => {
+  const addon = loggedIn("", { savedVariables: "VanguardDB.profiles = { Default = { modules = { Legacy = false }, Legacy = { planner = true } } }" });
+  addon.slash("legacy plan add 2 Swift Travel");
+  expect(plan(addon), "the plan is kept").toEqual([[2, "Swift Travel"]]);
+  const off = loggedIn("", { savedVariables: "VanguardDB.profiles = { Default = { modules = { Legacy = false } } }" });
+  off.slash("legacy plan");
+  expect(chatHas(off, /The Legacy perk planner is off/), "a planner switched off says so").toBe(true);
+});
+
 it("plans perks within the 16 points: add, change, refuse, remove, clear", () => {
   const addon = loggedIn("", PLANNER_ON);
   addon.slash("legacy plan add 3 Swift Travel");

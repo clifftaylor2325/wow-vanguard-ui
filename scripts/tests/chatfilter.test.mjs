@@ -200,6 +200,14 @@ it("chat filter: the module off registers no filter", () => {
   expect(count(on) - count(off), "one filter when on").toBe(1);
 });
 
+it("chat filter: with the module off from login, /vg filter on, off, tab and hide still answer", () => {
+  const addon = loggedIn("", { savedVariables: "VanguardDB.profiles.Default = { modules = { ChatFilter = false } }" });
+  for (const verb of ["on", "tab", "hide", "off"]) addon.slash(`filter ${verb}`);
+  const said = [/Chat filter on\./, /go to the Filtered tab\./, /Caught lines are hidden\./, /Chat filter off\./].map((line) => chatHas(addon, line));
+  expect(said, "each says what it set").toEqual([true, true, true, true]);
+  expect(addon.eval("return ns.GetModule('ChatFilter').window == nil"), "no Filtered tab while the module is off").toBe(true);
+});
+
 it("chat filter: lines older than a minute are forgotten once 200 are held, so a busy channel never grows the list", () => {
   const addon = filtering();
   // The lines held: [entries in the list, the count kept].
