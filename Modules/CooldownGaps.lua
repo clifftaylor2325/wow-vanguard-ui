@@ -176,7 +176,7 @@ function CG.TotemEntries()
   if type(GetTotemInfo) ~= "function" or (bars and bars.cells) then return out end
   for slot = 1, CG.TOTEM_SLOTS do
     local have, _, start, duration, icon = GetTotemInfo(slot)
-    if have == true then out[#out + 1] = { icon = icon, sweep = function(cd) return totemSweep(cd, slot, start, duration) end } end
+    if not ns.IsSecret(have) and have == true then out[#out + 1] = { icon = icon, sweep = function(cd) return totemSweep(cd, slot, start, duration) end } end
   end
   return out
 end
