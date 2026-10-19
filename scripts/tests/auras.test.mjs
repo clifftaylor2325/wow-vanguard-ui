@@ -416,6 +416,28 @@ it("fallback containers skip a UNIT_AURA that changes nothing they show, and re-
   expect(aura("{ updatedAuraInstanceIDs = { 99 } }")[0] > 0, "while it shows an aura whose id is hidden, every update reads again").toBe(true);
 });
 
+it("a fallback row steps over an aura the client refuses to read and still shows the ones after it", () => {
+  expectErrors(AURA_FALLBACK);
+  // TEST-ONLY: on the target, index 1 names an aura the client hides (its read raises, as the client's does) and index 2 a plain one.
+  const addon = loggedIn(UNITS_ENV + `__wfgStub.noAuraContainer = true
+    __ca = { ["HARMFUL|PLAYER"] = { { icon = "SECRET-DOT", auraInstanceID = 1 }, { icon = "MY-CURSE", auraInstanceID = 2 } } }
+    __reads = 0
+    C_UnitAuras = { GetAuraDataByIndex = function(unit, i, filter)
+      local a = (__ca[filter] or {})[i]
+      if unit ~= "player" then __reads = __reads + 1 end
+      if unit ~= "player" and ((a and a.icon == "SECRET-DOT") or __refuseAll) then error("TEST-ONLY: Auras cannot be accessed when secret while tainted") end
+      return a
+    end }`);
+  // The row's first two icons: shown and texture.
+  const row = () => addon.eval(`local g = ns.Auras.Container(UIParent, { point = { "TOPLEFT", UIParent, "BOTTOMLEFT", 0, -3 }, grow = "RIGHT", growY = "DOWN", lineSize = 60,
+      groups = { { filter = "HARMFUL|PLAYER", max = 3, size = 20, debuff = true } } }, "target").groups[1]
+    return { g.icons[1]:IsShown() and g.icons[1].icon.__texture, g.icons[2]:IsShown() }`);
+  expect(row(), "the plain aura at index 2 takes the first icon").toEqual(["MY-CURSE", false]);
+  const errors = addon.eval("__refuseAll = true __reads = 0 return #ns.errors");
+  expect([row(), addon.eval("return #ns.errors")], "every read refused: no icons, no error").toEqual([[false, false], errors]);
+  expect(addon.eval("return __reads"), "and the pass gives up after 16 refusals").toBe(17);
+});
+
 // TEST-ONLY client whose aura read errors on the words CROWD_CONTROL and RAID_IN_COMBAT, as a client that doesn't know them would.
 const REJECTING_AURAS = `__wfgStub.noAuraContainer = true
   __reads = {}

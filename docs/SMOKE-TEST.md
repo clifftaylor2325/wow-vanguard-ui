@@ -454,6 +454,12 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Expect: a small gold `!` right of the name on the plates of mobs the quest needs, and none on other mobs; it follows the count (within a moment of a kill's progress) and goes when the quest is done or abandoned. The probe's `C_TooltipInfo.GetUnit` line reads `present, tooltip data, N lines` with a target, `not called (no target)` without. Under `/vg` → Nameplates, "A gold ! by units your quests need" off hides the marks at once. [Needs in game: whether Forever returns quest title and objective lines in the unit's tooltip data (`C_TooltipInfo.GetUnit`) on nameplate units, in and out of combat, and whether a finished objective still carries its line (the mark would stay until the quest is handed in); the game's own `C_QuestLog.UnitIsRelatedToActiveQuest` answer is used first when it says yes.]
 - If it fails, paste: a screenshot with the mob's plate and its tooltip, the probe line, and `/vg errors`.
 
+### 7.3b Your debuffs on a plate drawn mid-fight
+
+- Do: in a dungeon, pull a big pack so that more than 40 plates have been drawn (or come back to a pull after a long run), and put your damage-over-time debuff on a mob whose plate appeared during the fight and that already carries another player's or the mob's own debuffs.
+- Expect: your debuff shows on that plate (Vanguard's own icons) even when the game hides the debuffs before it, and `/vg errors` stays empty. [Needs in game: whether the client refuses a hidden aura's read one aura at a time (then later auras still show) or for the whole unit (then the plate shows none until the fight ends, as before).]
+- If it fails, paste: a screenshot of the plate and `/vg errors`.
+
 ### 7.4 Nameplates in a crowd
 
 - Do: in a capital city with friendly player plates on, stand where several players' plates overlap. Click the bar or name of four or five plates in turn, and move the mouse slowly across them. Then turn on the game's option to show only names on friendly players' plates and click one again. Find a player with a defensive cooldown up, or buff a friend yourself.
