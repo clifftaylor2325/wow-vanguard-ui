@@ -1560,6 +1560,12 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 - Expect: at the door the checklist shows even though nothing is short, with a heading "Dungeon name · levels A-B · 5-player Normal", "Last run: N days ago" (once you have been there before; "today" within a day), "Your quests here" and your quests for this dungeon as "[level] Title" (done ones with "· done"), and "Keys: ..." when you carry a key. Outside, `/vg prep` shows "Dungeon quests in your log" (your dungeon and raid quests) and any keys. With the switch off none of these lines show. [Needs in game: that GetInstanceInfo gives the name, size and difficulty, that C_Map.GetMapLevels answers for a dungeon map, that C_QuestLog.GetQuestsOnMap lists your quests inside a dungeon, that C_QuestLog.GetQuestTagInfo tags dungeon quests with Enum.QuestTag Dungeon, Raid or Group, and that keys are item class 13.]
 - If it fails, paste: what the card shows, `/run print(C_Map.GetMapLevels(C_Map.GetBestMapForUnit("player")))` and `/vg errors`.
 
+### 24.1a A finished dungeon quest reads "done"
+
+- Do: with the dungeon card on, finish every objective of a quest for a dungeon (do not hand it in yet), then type `/vg prep` inside or near that dungeon.
+- Expect: its line reads "[level] Title · done", the same quest the game's quest log shows as ready to turn in; an unfinished quest has no "· done". [Needs in game: that C_QuestLog.IsComplete or C_QuestLog.ReadyForTurnIn answers true for a finished dungeon quest on Forever.]
+- If it fails, paste: what the card shows, `/run print(C_QuestLog.IsComplete(<questID>), C_QuestLog.ReadyForTurnIn(<questID>))` (the quest ID from Wowhead) and `/vg errors`.
+
 ## 25. Theme experiments (#239)
 
 ### 25.1 SLUG text and frame buffers
