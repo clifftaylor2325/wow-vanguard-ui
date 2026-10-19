@@ -8,8 +8,9 @@ local ADDON, ns = ...
 local T, W = ns.Theme, ns.Widgets
 local BG = ns.GetModule("Bags")
 
--- A tool button's width, the space between buttons, and how wide their menus are (room for a whole line).
-local TOOL_W, GAP, MENU_W = 58, 6, 210
+-- The space between buttons, how wide their menus are (room for a whole line), and the room a button's
+-- label has besides its text: the text's inset, its gap to the arrow, the arrow and its inset, and a little slack.
+local GAP, MENU_W, CHROME = 6, 210, 34
 
 -- The ready-made searches: { search text, label }.
 local SEARCHES = {
@@ -59,18 +60,20 @@ end
 
 -- A tool button: a dropdown that always reads its own label, not the choice made.
 local function toolButton(frame, label, choices, act)
-  local d = W.Dropdown(frame, choices, function() return nil end, act, TOOL_W)
+  local d = W.Dropdown(frame, choices, function() return nil end, act)
   d.menuWidth = MENU_W
   d:SetHeight(T.CONTROL_H)
   -- Shows the button's label, whatever was picked last.
   d.Refresh = function(self) self.text:SetText(label) end
   d:Refresh()
+  d:SetWidth(math.ceil(d.text:GetStringWidth()) + CHROME)
   return d
 end
 
 -- How much of the search row the two buttons take (zero before they exist).
 function BG.ToolsWidth()
-  return BG.tools and 2 * (TOOL_W + GAP) or 0
+  local tools = BG.tools
+  return tools and tools.filter:GetWidth() + tools.groups:GetWidth() + 2 * GAP or 0
 end
 
 -- Adds Filter and Groups between the search box and Sort, which moves right of them.

@@ -159,30 +159,14 @@ local function atCorner(part, frame)
 end
 
 -- Windows whose title row sits higher than the usual one, by global name (or the parent's): how far down (units)
--- the middle of their window controls goes (the map's and the spellbook's are 13 or 14 down, the others' about 24).
-GW.CONTROL_DROP = { WorldMapFrame = 14, PlayerSpellsFrame = 13 }
--- Windows whose title the game sets lower than the slate band above their content (the spellbook's sits across
--- the line to its parchment): how far up (units) its title container goes, to the band's middle.
-GW.TITLE_RAISE = { PlayerSpellsFrame = 10 }
--- The title containers already raised (a window is skinned again as the game redraws it).
-local vgRaised = ns.FrameState("vgRaised")
+-- the middle of their window controls goes (the map's is 14 down, the others' about 24).
+GW.CONTROL_DROP = { WorldMapFrame = 14 }
 
 -- The window's control drop (GW.CONTROL_DROP), looked up by its own name or its parent's (a border frame has
 -- none of its own); nil for most.
 local function controlDrop(frame)
   local parent = frame:GetParent()
   return GW.CONTROL_DROP[frame:GetName() or ""] or GW.CONTROL_DROP[(parent and parent:GetName()) or ""]
-end
-
--- A window's title container moved up GW.TITLE_RAISE (every anchor, once), so the title sits in the band.
-local function raiseTitle(frame, name)
-  local bar, up = frame.TitleContainer, GW.TITLE_RAISE[name or ""]
-  if not up or type(bar) ~= "table" or vgRaised[bar] or not bar.GetPoint then return end
-  vgRaised[bar] = true
-  local points = {}
-  for i = 1, bar:GetNumPoints() do points[i] = { bar:GetPoint(i) } end
-  bar:ClearAllPoints()
-  for _, p in ipairs(points) do bar:SetPoint(p[1], p[2], p[3], p[4], p[5] + up) end
 end
 
 -- Puts a window's corner close button where every window has it (T.PlaceClose: T.CONTROL.inset in
@@ -228,7 +212,6 @@ end
 local function dressParts(frame, name)
   GW.DressClose(frame, frame.CloseButton or (name and _G[name .. "CloseButton"]), GW.HIDE_BUTTONS[name or ""])
   GW.DressMaxMin(frame)
-  raiseTitle(frame, name)
   GW.SkinTitle((type(frame.TitleContainer) == "table" and frame.TitleContainer.TitleText) or frame.TitleText)
   for _, b in ipairs(buttons(frame, name)) do T.Button(b) end
   for _, extra in ipairs(GW.EXTRA_BUTTONS[name] or {}) do
@@ -422,14 +405,19 @@ function GW.SkinDropdown(dropdown)
   GW.DropArrow(dropdown, dropdown.Arrow)
 end
 
--- A dropdown button as a theme button with the game's gold arrow box faded and a theme chevron (made once) in its place.
-function GW.SkinDropdownChevron(dropdown)
-  GW.SkinDropdown(dropdown)
+-- A dropdown button's gold arrow box faded and a theme chevron (made once) in its place at the right edge.
+function GW.Chevron(dropdown)
   if type(dropdown) ~= "table" or not dropdown.CreateTexture then return end
   GW.FadeFrame(dropdown.Arrow)
   if vgChevron[dropdown] then return end
   vgChevron[dropdown] = ns.Widgets.IconTexture(dropdown, "Down", 12, "text2")
   vgChevron[dropdown]:SetPoint("RIGHT", -T.SPACE.gap, 0)
+end
+
+-- A dropdown button as a theme button with the game's gold arrow box faded and a theme chevron in its place.
+function GW.SkinDropdownChevron(dropdown)
+  GW.SkinDropdown(dropdown)
+  GW.Chevron(dropdown)
 end
 
 -- A button lined up with another on the same row: its height the other's and its right edge T.SPACE.tight left of
@@ -683,6 +671,14 @@ function GW.SkinIconDropdown(dropdown)
   if type(dropdown) ~= "table" or not dropdown.CreateTexture then return end
   T.Button(dropdown)
   GW.ShowTexture(dropdown.Icon)
+end
+
+-- A dropdown whose picture is the game's yellow arrow box (UIPanelArrowDropdownButtonTemplate's Icon, the spellbook's
+-- settings) as a theme button with the theme's arrow in its place.
+function GW.SkinArrowDropdown(dropdown)
+  if type(dropdown) ~= "table" or not dropdown.CreateTexture then return end
+  T.Button(dropdown)
+  GW.DropArrow(dropdown, dropdown.Icon)
 end
 
 -- The three denominations of a money input line (MoneyInputFrameTemplate: edit boxes under these keys, each with its
@@ -1123,7 +1119,7 @@ local function watchBookPages(book)
 end
 
 -- The spellbook: its parchment (top bar, pages, bookmark, corner) faded, the page area an inset, the search box,
--- the settings dropdown (a picture), the page arrows with their count and the entries and section heads on the
+-- the settings dropdown (the theme's arrow), the page arrows with their count and the entries and section heads on the
 -- pages in the theme.
 local function skinSpellBook(book)
   if type(book) ~= "table" or not book.GetRegions then return end
@@ -1131,7 +1127,7 @@ local function skinSpellBook(book)
   T.FadeRegions(book)
   GW.InsetPanel(book.PagedSpellsFrame)
   GW.SkinSearch(book.SearchBox)
-  GW.SkinIconDropdown(book.SettingsDropdown)
+  GW.SkinArrowDropdown(book.SettingsDropdown)
   GW.SkinPaging(GW.Part(book, "PagedSpellsFrame.PagingControls"))
 end
 
