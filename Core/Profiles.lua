@@ -248,11 +248,32 @@ function ns.DisplayQuestion(display)
     math.floor(display.uiScale * 100 + 0.5), screen, math.floor(mine.uiScale * 100 + 0.5))
 end
 
+-- A staged profile's theme table (made when it has none yet): the settings cache only holds the
+-- profile on screen until the reload.
+local function stagedTheme(name)
+  local profile = VanguardDB.profiles[name]
+  profile.theme = type(profile.theme) == "table" and profile.theme or {}
+  return profile.theme
+end
+
+-- Turns Vanguard's pixel-perfect scale off in the profile this character uses after the reload
+-- (an import is only staged, so the profile on screen keeps its own), since it would replace the game's UI scale.
+local function pixelScaleOffAfterReload()
+  local name = ns.SelectedProfileName()
+  local theme = name == ns.ProfileName() and ns.Theme.Settings() or stagedTheme(name)
+  theme.pixelScale = false
+end
+
+-- Sets an imported profile's UI scale (the game's, out of combat) for the profile it was imported into.
+local function useDisplayScale(display)
+  if ns.SetGameUIScale(display.uiScale) then pixelScaleOffAfterReload() end
+end
+
 -- After a whole-profile import that carries its UI scale: asks whether to apply that
--- scale (ns.SetUIScale, out of combat), then runs after() either way.
+-- scale (useDisplayScale), then runs after() either way.
 function ns.OfferDisplay(display, after)
   if not display then return after() end
-  ns.Ask(ns.DisplayQuestion(display), "Use it", function() ns.SetUIScale(display.uiScale) after() end, after)
+  ns.Ask(ns.DisplayQuestion(display), "Use it", function() useDisplayScale(display) after() end, after)
 end
 
 -- Specialization -------------------------------------------------------------------------

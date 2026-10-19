@@ -361,17 +361,25 @@ function S.PixelPreset()
 end
 
 -- Sets the game's UI scale (clamped to its own slider's range), out of combat: the client's
--- uiScale and useUiScale settings, as its Graphics options set them. Vanguard's
--- pixel-perfect scale is switched off, since it would replace this one.
-function ns.SetUIScale(scale)
+-- uiScale and useUiScale settings, as its Graphics options set them. Returns true when it can.
+-- The caller turns Vanguard's pixel-perfect scale off where this scale is meant to run.
+---@param scale number
+---@return boolean
+function ns.SetGameUIScale(scale)
   local set = (C_CVar and C_CVar.SetCVar) or _G.SetCVar
-  if type(set) ~= "function" or type(scale) ~= "number" then return end
+  if type(set) ~= "function" or type(scale) ~= "number" then return false end
   scale = math.max(S.UI_SCALE.min, math.min(S.UI_SCALE.max, scale))
-  T.Settings().pixelScale = false
   ns.OutOfCombat(function()
     set("useUiScale", "1")
     set("uiScale", tostring(scale))
   end)
+  return true
+end
+
+-- Sets the game's UI scale (ns.SetGameUIScale) and switches the profile in use's pixel-perfect
+-- scale off, since it would replace this one.
+function ns.SetUIScale(scale)
+  if ns.SetGameUIScale(scale) then T.Settings().pixelScale = false end
 end
 
 -- Sets a screen preset's scale: Pixel-perfect's whole multiple with Vanguard's pixel-perfect scale,

@@ -226,6 +226,21 @@ it("profile strings carry the UI scale and screen; importing one asks whether to
   expect(dst.eval("return { Vanguard_Question:IsShown(), Vanguard_Reload:IsShown(), VanguardDB.profiles['Imported 2'].display == nil }"), "a string with no usable UI scale goes straight to the reload").toEqual([false, true, true]);
   expect(dst.eval("return ns.DisplayQuestion({ uiScale = 0.8 })"), "a block with no screen size leaves it out").toBe("This profile was made at UI scale 80% (yours: 100%). Use its UI scale?");
 });
+it("Use it after an import turns Pixel-perfect off in the imported profile, not in the one being left", () => {
+  const addon = loggedIn("", { savedVariables: "VanguardDB.profiles.Default = { theme = { pixelScale = true } }\n" });
+  // TEST-ONLY whole profile made with Pixel-perfect on, at UI scale 90%.
+  const text = addon.eval('return ns.Serialize.Encode("profile", ns.StampPayload({ theme = { accent = "jade", pixelScale = true }, display = { uiScale = 0.9 } }))');
+  importText(addon, text);
+  addon.eval('Vanguard_Question.yes:GetScript("OnClick")(Vanguard_Question.yes)');
+  expect(addon.eval("return { VanguardCharDB.pendingProfile, GetCVar('uiScale') }"), "the import is staged and the game's UI scale set").toEqual(["Imported", "0.9"]);
+  expect(addon.eval("return { VanguardDB.profiles.Imported.theme.pixelScale, ns.Theme.Settings().pixelScale }"), "Pixel-perfect goes off where the chosen scale will run, and the profile on screen keeps its own").toEqual([false, true]);
+  addon.eval("ns.UseProfile('Default') VanguardDB.profiles.Bare = {} ns.UseProfile('Bare') ns.OfferDisplay({ uiScale = 0.8 }, function() end)");
+  addon.eval('Vanguard_Question.yes:GetScript("OnClick")(Vanguard_Question.yes)');
+  expect(addon.eval("return VanguardDB.profiles.Bare.theme.pixelScale"), "a staged profile with no theme yet gets one").toBe(false);
+  addon.eval("ns.UseProfile('Default') ns.OfferDisplay({ uiScale = 0.8 }, function() end)");
+  addon.eval('Vanguard_Question.yes:GetScript("OnClick")(Vanguard_Question.yes)');
+  expect(addon.eval("return { ns.Theme.Settings().pixelScale, GetCVar('uiScale') }"), "with no switch staged it goes off in the profile in use").toEqual([false, "0.8"]);
+});
 // TEST-ONLY Edit Mode: its manager lists the presets, then the account's layouts; the
 // layouts load when UpdateLayoutInfo first runs; C_EditMode switches and reloads them.
 const EDIT_MODE_ENV = `
