@@ -21,15 +21,16 @@ local CLASSIFICATION = { elite = "gold", rareelite = "accent", rare = "text2", w
 -- key, unit, size, label and default point (on UIParent) for each frame. The
 -- Centered layout: everything anchored to the bottom center, so it keeps its
 -- shape at any UI scale. Player and target mirror each other either side of
--- your character, the pet and target of target sit outside them on the same
--- line, and the focus sits above the player (its debuffs under it, its cast
--- bar over it; Modules/CastBars.lua).
+-- your character, the target of target sits outside the target on the same
+-- line, the pet sits over the player frame's right end (combo points take its
+-- left end, and the chat reaches up beside the frame), and the focus sits
+-- above the player (its debuffs under it, its cast bar over it; Modules/CastBars.lua).
 local LAYOUT = {
   { key = "player", unit = "player", w = 240, h = 36, label = "Player", point = { "BOTTOM", "BOTTOM", -240, 196 } },
   { key = "target", unit = "target", w = 240, h = 36, label = "Target", point = { "BOTTOM", "BOTTOM", 240, 196 } },
   { key = "targettarget", unit = "targettarget", w = 120, h = 24, label = "Target of target", point = { "BOTTOM", "BOTTOM", 426, 196 } },
   { key = "focus", unit = "focus", w = 160, h = 30, label = "Focus", point = { "BOTTOM", "BOTTOM", -270, 290 } },
-  { key = "pet", unit = "pet", w = 120, h = 24, label = "Pet", point = { "BOTTOM", "BOTTOM", -426, 196 } },
+  { key = "pet", unit = "pet", w = 120, h = 24, label = "Pet", point = { "BOTTOM", "BOTTOM", -184, 240 } },
 }
 UF.LAYOUT = LAYOUT
 local PARTY_SIZE = 4

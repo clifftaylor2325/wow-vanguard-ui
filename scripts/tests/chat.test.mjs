@@ -78,15 +78,23 @@ it("chat tabs: the alert glow is the accent colour and keeps the game's own alph
   addon.slash("accent ember");
   expect(isTok(addon, addon.eval("local g = ChatFrame1Tab.glow return g.__vertexColor or { g:GetVertexColor() }"), "accent"), "and follows accent changes").toBe(true);
 });
-it("chat frame: an outline round the text and a tab strip flush on its top edge, shown with the background; Copy and Find sit in the strip", () => {
+// How many shown pieces of corner art `art` a frame carries (four arcs on a rounded border).
+const arcs = (addon, name, art = "CornerLine") => addon.eval(`local n = 0 for _, r in ipairs({ ${name}:GetRegions() }) do if tostring(r.__texture):find("${art}") and r:IsShown() then n = n + 1 end end return n`);
+it("chat frame: one rounded panel round the text, the scroll column and a 24-tall tab bar, shown with the background; Copy and Find sit rounded at the bar's right end, 20 tall", () => {
   const addon = loggedIn(UI_ENV);
-  // Whether the outline and the strip are shown, and whether the strip is as tall as the tabs.
-  const parts = () => addon.eval("local f = ns.GetModule('Chat').frames[ChatFrame1] return { f.outline:IsShown(), f.strip:IsShown(), f.strip:GetHeight() == ChatFrame1Tab:GetHeight() }");
-  expect(parts(), "both drawn, the strip as tall as the tabs").toEqual([true, true, true]);
-  expect(addon.eval("local f = ns.GetModule('Chat').frames[ChatFrame1] local p, rel, rp = f.strip:GetPoint() return { p, rel == ChatFrame1, rp }"), "the strip's bottom meets the window's top edge").toEqual(["BOTTOMLEFT", true, "TOPLEFT"]);
-  expect(addon.eval("local c, f = ns.GetModule('ChatExtras').copyButton, ns.GetModule('ChatWindows').findButton local p, rel, rp = f:GetPoint() return { p, rel == c, rp }"), "Find sits left of Copy").toEqual(["RIGHT", true, "LEFT"]);
+  const F = "ns.GetModule('Chat').frames[ChatFrame1]";
+  // The panel's reach past the window: top (the bar), right (the scroll column), bottom.
+  const panel = () => addon.eval(`local f = ${F} return { f.outline:IsShown(), f.outline.__points.TOPLEFT.x, f.outline.__points.TOPLEFT.y, f.outline.__points.BOTTOMRIGHT.x, f.outline.__points.BOTTOMRIGHT.y }`);
+  expect(panel(), "a gap round the window, the bar's height above it and the scroll column to its right").toEqual([true, -4, 24, 28, -4]);
+  expect(arcs(addon, F + ".outline"), "the panel's border is rounded, whatever the Corners setting").toBe(4);
+  expect(addon.eval(`local f = ${F} local b = f.bar.__points.BOTTOMRIGHT return { f.bar:GetHeight(), f.bar:GetParent() == f.outline, b.rel == f.outline, b.relPoint, b.y }`), "the bar is the panel's top band, 24 tall").toEqual([24, true, true, "TOPRIGHT", -24]);
+  expect(addon.eval(`local f = ${F} return { f.rule:GetHeight() == ns.Theme.Pixel(f.bar), f.rule.__points.BOTTOMLEFT.rel == f.bar }`), "a one-pixel rule along the bar's bottom").toEqual([true, true]);
+  expect(isTok(addon, addon.eval(`return ${F}.rule.__vertexColor`), "divider"), "in the divider colour").toBe(true);
+  const buttons = addon.eval("local c, f = ns.GetModule('ChatExtras').copyButton, ns.GetModule('ChatWindows').findButton local p, rel, rp, x = f:GetPoint() local cp, crel, crp, cx = c:GetPoint() return { p, rel == c, rp, x, cp, crel == ns.GetModule('Chat').frames[ChatFrame1].bar, crp, cx, c:GetHeight(), f:GetHeight() }");
+  expect(buttons, "Find sits a gap left of Copy, Copy a gap in from the bar's right end, both a control high").toEqual(["RIGHT", true, "LEFT", -4, "RIGHT", true, "RIGHT", -4, 20, 20]);
+  expect(arcs(addon, "ns.GetModule('ChatExtras').copyButton"), "the buttons are rounded like the panel").toBe(4);
   addon.eval("ns.GetModule('Chat').settings.background = false ns.GetModule('Chat').SkinAll()");
-  expect(parts().slice(0, 2), "background off: no frame, the buttons still have their strip").toEqual([false, false]);
+  expect(panel()[0], "background off: no panel, the buttons still have their bar").toBe(false);
   expect(addon.eval("return #ns.errors"), "no errors").toBe(0);
 });
 it("chat frame: with Chat switched off the Copy button keeps its old place over the window's top right", () => {
@@ -183,6 +191,25 @@ it("chat side buttons sit on themed tiles: a glyph on the menu, minimize, scroll
   addon.eval("FCF_OpenTemporaryWindow('TEST-ONLY')");
   expect(addon.eval("return ns.Theme.PaintedCount()"), "a new window re-skins the buttons without piling up").toBe(painted);
 });
+it("chat side buttons stack down from the bar's top, a step apart, closing up over a hidden one; they follow the game re-siding and re-anchoring them", () => {
+  const addon = loggedIn(UI_ENV + CHAT_BUTTONS_ENV + CHAT_DOCK_ENV + "ChatAlertFrame = { UpdateAnchors = function() QuickJoinToastButton:ClearAllPoints() QuickJoinToastButton:SetPoint('CENTER', UIParent) end }");
+  // Each stacked button's centre: [relative point on the bar, x, y], in stacking order.
+  const stack = () => addon.eval("local out = {} for _, name in ipairs(ns.GetModule('Chat').STACK) do local p = _G[name].__points.CENTER out[#out + 1] = p and { p.rel == ns.GetModule('Chat').frames[ChatFrame1].bar and p.relPoint or '?', p.x, p.y } or false end return out");
+  const column = (xs, ys, side = "TOPLEFT") => ys.map((y, i) => [side, xs, y]);
+  expect(stack(), "menu, Quick Join, voice channel, deafen, mute, text to speech: 18 left of the bar's corner, the first flush with its top, 28 apart").toEqual(column(-18, [-10, -38, -66, -94, -122, -150]));
+  addon.eval("ChatFrameChannelButton:Hide()");
+  expect(stack().slice(3), "a button the game hides leaves no gap").toEqual(column(-18, [-66, -94, -122]));
+  addon.eval("ChatFrameChannelButton:Show()");
+  expect(stack()[3], "and takes its place back when shown").toEqual(["TOPLEFT", -18, -94]);
+  addon.eval("ChatAlertFrame:UpdateAnchors()");
+  expect(stack()[1], "the game's alert container re-anchoring Quick Join is put right").toEqual(["TOPLEFT", -18, -38]);
+  addon.eval("TextToSpeechButtonFrame:Hide() ChatFrameChannelButton:Hide() TextToSpeechButtonFrame:Show()");
+  expect(stack()[5], "text to speech is stacked by the frame the game shows and hides (its button fills it): shown again with the voice channel gone, it closes up").toEqual(["TOPLEFT", -18, -122]);
+  addon.eval("ChatFrameChannelButton:Show()");
+  addon.eval("FCF_SetButtonSide(ChatFrame1, 'right')");
+  expect(stack().slice(0, 2), "buttons on the right: mirrored to the panel's right edge").toEqual(column(18, [-10, -38], "TOPRIGHT"));
+  expect(addon.eval("return #ns.errors"), "no errors").toBe(0);
+});
 it("chat side buttons: module off leaves the game's art; a client without text to speech, Quick Join or a scroll arrow is fine", () => {
   const off = loggedIn(UI_ENV + CHAT_BUTTONS_ENV, { savedVariables: "VanguardDB.profiles = { Default = { modules = { Chat = false } } }" });
   expect(off.eval("return __buttonLook(ChatFrameMenuButton, ns.Theme.WHITE)"), "the chat menu keeps its round art, no tile, no glyph").toEqual([1, 1, 1, false, false, false]);
@@ -191,36 +218,84 @@ it("chat side buttons: module off leaves the game's art; a client without text t
   const bare = loggedIn(UI_ENV + CHAT_BUTTONS_ENV + "TextToSpeechButtonFrame = nil TextToSpeechButton = nil QuickJoinToastButton = nil ChatFrame1.ScrollToBottomButton = nil");
   expect(bare.eval("return __buttonLook(ChatFrameMenuButton, ns.Theme.WHITE)[5]"), "the buttons this client has are still skinned").toBe("NavChat");
 });
-it("chat backdrop: a soft patch behind text and tabs, three strengths, tabs fit their labels, Copy sits in the tab row", () => {
+it("chat background: the panel's fill in the panel colour, three strengths, tabs fit their labels and are rounded and 20 tall, Copy sits in the bar", () => {
   const addon = loggedIn(UI_ENV);
-  // The main window's backdrop: fill alpha, ring piece count, first piece's alpha.
-  const look = () => addon.eval("local b = ns.GetModule('Chat').backgrounds[ChatFrame1] return { b.look.fill.alpha, #b.look.ring, b.look.ring[1]:GetAlpha() }");
-  expect(look().slice(0, 1), "Medium by default").toEqual([0.75]);
-  expect(look()[2], "the soft edge follows the strength").toBe(0.75);
+  // The main window's fill: its alpha and colour token.
+  const look = () => addon.eval("local f = ns.GetModule('Chat').frames[ChatFrame1] return { f.fill.alpha, f.fill.token, f.fill.round > 0 }");
+  expect(look(), "Medium by default, the panel colour, rounded with the panel").toEqual([0.75, "panel", true]);
   addon.eval("ns.GetModule('Chat').settings.backdrop = 0.55 ns.GetModule('Chat').Refresh()");
   expect(look()[0], "Light").toBe(0.55);
   addon.eval("ns.GetModule('Chat').settings.backdrop = 0.123 ns.GetModule('Chat').Refresh()");
   expect(look()[0], "an unknown saved value falls back to Medium").toBe(0.75);
   expect(addon.eval("return ChatFrame1Tab.Text:GetStringWidth() + 24 == ChatFrame1Tab:GetWidth()"), "a tab is as wide as its label plus padding").toBe(true);
-  expect(addon.eval("local p, rel = ns.GetModule('ChatExtras').copyButton:GetPoint() return p == 'RIGHT' and rel == ns.GetModule('Chat').frames[ChatFrame1].strip"), "the Copy button sits in the tab strip, at its right end").toBe(true);
+  expect(addon.eval("return { ChatFrame1Tab:GetHeight(), ChatFrame1Tab.Text.__points.CENTER ~= nil }"), "a tab is a control high, its label centred in it").toEqual([20, true]);
+  expect([arcs(addon, "ChatFrame1Tab"), arcs(addon, "ChatFrame1EditBox")], "the tabs and the edit box are rounded like the panel").toEqual([4, 4]);
+  expect(addon.eval("local p, rel = ns.GetModule('ChatExtras').copyButton:GetPoint() return p == 'RIGHT' and rel == ns.GetModule('Chat').frames[ChatFrame1].bar"), "the Copy button sits in the tab bar, at its right end").toBe(true);
   addon.eval("ChatFrame1.ScrollBar = CreateFrame('Frame', nil, ChatFrame1) ns.GetModule('Chat').SkinAll()");
   expect(addon.eval("return #ns.errors"), "a window with a scroll bar is skinned without errors").toBe(0);
-  expect(addon.eval("return ns.GetModule('Chat').backgrounds[ChatFrame1].back.__points.BOTTOMRIGHT.x"), "the backdrop reaches over the side column").toBe(28);
   const off = loggedIn(UI_ENV, { savedVariables: "VanguardDB.profiles = { Default = { Chat = { background = false } } }" });
-  expect(off.eval("return next(ns.GetModule('Chat').backgrounds)"), "background off paints no backdrop").toBe(null);
+  expect(off.eval("return ns.GetModule('Chat').frames[ChatFrame1].outline:IsShown()"), "background off hides the panel").toBe(false);
 });
-it("chat window size: a window left at the old 420 x 140 grows once, Larger and Largest scale the default, a size the player set is kept", () => {
-  const addon = loggedIn(UI_ENV + TIDY_ENV, { savedVariables: "VanguardDB.profiles = { Default = { Chat = { sized = true } } }" });
+// TEST-ONLY chat dock, tab fade and floating-tab code as the game has it: the dock anchored to the main
+// window's art, the six tab alphas, FCFTab_UpdateAlpha setting a tab's alpha from them, and the game
+// re-anchoring a floating tab and the side buttons.
+const CHAT_DOCK_ENV = `
+  GENERAL_CHAT_DOCK = CreateFrame("Frame", "GENERAL_CHAT_DOCK", UIParent)
+  function FCFDock_SetPrimary(dock, frame) dock:ClearAllPoints() dock:SetPoint("BOTTOMLEFT", frame, "TOPLEFT") end
+  function FCF_SetTabPosition(frame, x) local tab = _G[frame:GetName() .. "Tab"] if tab then tab:ClearAllPoints() tab:SetPoint("BOTTOMLEFT", frame, "TOPLEFT", x + 2, 0) end end
+  function FCF_SetButtonSide(frame, side) frame.buttonSide = side end
+  CHAT_FRAME_TAB_SELECTED_MOUSEOVER_ALPHA, CHAT_FRAME_TAB_SELECTED_NOMOUSE_ALPHA = 1.0, 0.4
+  CHAT_FRAME_TAB_ALERTING_MOUSEOVER_ALPHA, CHAT_FRAME_TAB_ALERTING_NOMOUSE_ALPHA = 1.0, 1.0
+  CHAT_FRAME_TAB_NORMAL_MOUSEOVER_ALPHA, CHAT_FRAME_TAB_NORMAL_NOMOUSE_ALPHA = 0.6, 0.2
+  __alphaCalls = 0
+  function FCFTab_UpdateAlpha(frame) __alphaCalls = __alphaCalls + 1 _G[frame:GetName() .. "Tab"]:SetAlpha(CHAT_FRAME_TAB_NORMAL_NOMOUSE_ALPHA) end
+`;
+it("chat tabs stay visible: the game's six tab alphas are 1 while the switch is on and applied to every tab; off gives the game's own back; the Chat page has the switch", () => {
+  const addon = loggedIn(UI_ENV + CLICK_LUA + CHAT_DOCK_ENV);
+  // The six alphas, the second tab's alpha and how often the game's updater ran.
+  const alphas = () => addon.eval("local out = {} for _, name in ipairs(ns.GetModule('Chat').TAB_ALPHAS) do out[#out + 1] = _G[name] end return { out, ChatFrame2Tab:GetAlpha(), __alphaCalls }");
+  expect(alphas(), "on by default: all six are 1, each window's tab was updated").toEqual([[1, 1, 1, 1, 1, 1], 1, 2]);
+  addon.eval("ns.GetModule('Chat').settings.tabsVisible = false ns.GetModule('Chat').ApplyTabAlpha()");
+  expect(alphas(), "off: the game's own values and fade come back").toEqual([[1, 0.4, 1, 1, 0.6, 0.2], 0.2, 4]);
+  addon.eval('ns.Options.Show("chat") __click("Keep chat tabs visible")');
+  expect([addon.eval("return VanguardDB.profiles.Default.Chat.tabsVisible"), alphas()[0][5]], "the Chat page's switch turns it back on at once").toEqual([true, 1]);
+  const bare = loggedIn(UI_ENV);
+  expect([bare.eval("return CHAT_FRAME_TAB_NORMAL_NOMOUSE_ALPHA"), bare.eval("return #ns.errors")], "a client without the fade code: the alphas are still set, nothing else runs").toEqual([1, 0]);
+  bare.eval("ns.GetModule('Chat').settings.tabsVisible = false ns.GetModule('Chat').ApplyTabAlpha()");
+  expect(bare.eval("return CHAT_FRAME_TAB_NORMAL_NOMOUSE_ALPHA"), "and off leaves it as it was (unset)").toBe(null);
+});
+it("chat dock: the docked tabs sit centred in the main window's bar and end before Find and Copy, after the game anchors the dock; a floating tab sits on its own window's bar", () => {
+  const addon = loggedIn(UI_ENV + CHAT_DOCK_ENV);
+  // The dock's anchors: bottom-left on the bar, right end at a button.
+  const dock = () => addon.eval("local d, F = GENERAL_CHAT_DOCK.__points, ns.GetModule('Chat').frames[ChatFrame1] return { d.BOTTOMLEFT.rel == F.bar, d.BOTTOMLEFT.x, d.BOTTOMLEFT.y, d.RIGHT.rel == ns.GetModule('ChatWindows').findButton, d.RIGHT.relPoint, d.RIGHT.x }");
+  expect(dock(), "two units in and up from the bar's corner (tabs 20 tall in a 24 bar), ending a gap left of Find").toEqual([true, 2, 2, true, "LEFT", -4]);
+  addon.eval("FCFDock_SetPrimary(GENERAL_CHAT_DOCK, ChatFrame1)");
+  expect(dock(), "the game anchoring it to the window's art again is put right").toEqual([true, 2, 2, true, "LEFT", -4]);
+  addon.eval("FCF_SetTabPosition(ChatFrame2, 30)");
+  expect(addon.eval("local t = ChatFrame2Tab.__points.BOTTOMLEFT return { t.rel == ns.GetModule('Chat').frames[ChatFrame2].bar, t.x, t.y }"), "a floating tab: on its window's bar at the x the player dragged it to").toEqual([true, 32, 2]);
+  addon.eval("ChatFrame2.isDocked = 1 FCF_SetTabPosition(ChatFrame2, 0)");
+  expect(addon.eval("local t = ChatFrame2Tab.__points.BOTTOMLEFT return { t.rel == ChatFrame2, t.x }"), "a docked window's tab is the dock's: the game's anchor stands").toEqual([true, 2]);
+  expect(addon.eval("FCF_SetTabPosition({ GetName = function() return 'ChatFrame9' end }, 0) return #ns.errors"), "a window Vanguard hasn't dressed is left alone").toBe(0);
+  const plain = loggedIn(UI_ENV + CHAT_DOCK_ENV, { savedVariables: "VanguardDB.profiles = { Default = { ChatExtras = { copy = false }, ChatWindows = { find = false } } }" });
+  expect(plain.eval("local d = GENERAL_CHAT_DOCK.__points return { d.RIGHT.rel == ns.GetModule('Chat').frames[ChatFrame1].bar, d.RIGHT.relPoint, d.RIGHT.x }"), "without Find and Copy the dock runs to the bar's right end").toEqual([true, "RIGHT", -4]);
+});
+it("chat window size: a window left at an earlier first size is set to the new one once, Larger and Largest scale the default, a size the player set is kept, and the first size follows the screen", () => {
+  const addon = loggedIn(UI_ENV + TIDY_ENV, { savedVariables: "VanguardDB.profiles = { Default = { Chat = { sized = true, grown = true } } }" });
   // The chat window's width and height.
   const size = () => addon.eval("return { ChatFrame1:GetWidth(), ChatFrame1:GetHeight() }");
-  addon.eval("ChatFrame1:SetSize(420, 140) ns.GetModule('Chat').settings.grown = false");
+  addon.eval("ChatFrame1:SetSize(500, 154) ns.GetModule('Chat').settings.widened = false");
   addon.fire("PLAYER_ENTERING_WORLD");
-  expect(size(), "the old first size becomes the new default").toEqual([500, 154]);
+  expect(size(), "0.7.0's first size becomes the new default (524 x 200 on a 1920-unit screen)").toEqual([524, 200]);
+  expect(addon.eval("local s = VanguardDB.profiles.Default.Chat return { s.grown == nil, s.widened }"), "0.7.0's grown flag is dropped from the profile (ns.Migrate); widened is set in its place").toEqual([true, true]);
+  addon.eval("ChatFrame1:SetSize(420, 140) ns.GetModule('Chat').settings.widened = false");
+  addon.fire("PLAYER_ENTERING_WORLD");
+  expect(size(), "so is 0.6's first size, once").toEqual([524, 200]);
   addon.eval("ChatFrame1:SetSize(600, 300)");
   addon.fire("PLAYER_ENTERING_WORLD");
   expect(size(), "a size the player set stays").toEqual([600, 300]);
   addon.eval("ns.GetModule('Chat').settings.windowScale = 1.5 ns.GetModule('Chat').ApplySize()");
-  expect(size(), "Larger is one and a half times the default").toEqual([750, 231]);
+  expect(size(), "Larger is one and a half times the default").toEqual([786, 300]);
+  expect(addon.eval("local CH = ns.GetModule('Chat') return { { CH.DefaultSize(1707) }, { CH.DefaultSize(1365) }, { CH.DefaultSize(2560) }, { CH.DefaultSize(1600) } }"), "the first size fills the room left of the player frame, up to 524: 416 on a 1080p screen at setup's 80 % scale; under 1600 units it tucks under the frame at 372 x 144").toEqual([[416, 200], [372, 144], [524, 200], [372, 200]]);
   addon.eval("ns.GetModule('Chat').settings.windowScale = 'x' ns.GetModule('Chat').ApplySize() ChatFrame1 = nil ns.GetModule('Chat').ApplySize()");
 });
 it("chat is a mover: placed once, sized once, kept where the player put it", () => {
@@ -228,7 +303,7 @@ it("chat is a mover: placed once, sized once, kept where the player put it", () 
   // Chat's anchor point, offsets and size.
   const spot = () => addon.eval("local p = ChatFrame1.__points local k, v = next(p) return { k, v.x, v.y, ChatFrame1:GetWidth(), ChatFrame1:GetHeight() }");
   expect(addon.eval("local out = {} for _, m in ipairs(ns.MoverList()) do out[#out + 1] = m.key .. '=' .. m.label end return out").includes("chat=Chat"), "chat is in the unlock list").toBe(true);
-  expect(spot(), "first login: bottom-left, 500 x 154").toEqual(["BOTTOMLEFT", 16, 20, 500, 154]);
+  expect(spot(), "first login: bottom-left, 40 in (room for the side buttons), 524 x 200").toEqual(["BOTTOMLEFT", 40, 20, 524, 200]);
   addon.eval('ns.SetMoverPoint("chat", "TOPLEFT", "TOPLEFT", 100, -50)');
   expect(spot().slice(0, 3), "dragging it in /vg unlock moves the window").toEqual(["TOPLEFT", 100, -50]);
   addon.eval('ChatFrame1:ClearAllPoints() ChatFrame1:SetPoint("CENTER")');
@@ -238,7 +313,7 @@ it("chat is a mover: placed once, sized once, kept where the player put it", () 
   expect(spot().slice(3), "entering the world again keeps the player's size").toEqual([600, 300]);
   expect(addon.eval("return VanguardDB.profiles.Default.Chat.sized"), "the size is only set once ever").toBe(true);
   expect(addon.eval('return ns.ResetMovers("chat")'), "/vg reset chat puts it back").toBe(1);
-  expect(spot().slice(0, 3), "at the bottom-left").toEqual(["BOTTOMLEFT", 16, 20]);
+  expect(spot().slice(0, 3), "at the bottom-left").toEqual(["BOTTOMLEFT", 40, 20]);
 });
 it("bags", () => {
   const addon = loggedIn(UI_ENV);

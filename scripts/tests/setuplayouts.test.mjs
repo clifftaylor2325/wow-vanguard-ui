@@ -138,12 +138,12 @@ function layoutRects(addon, n, sw, sh) {
   for (const [key, spot] of Object.entries(spots)) if (onScreen(key, n)) out[key] = rectAt(spot.slice(0, 4), spot[4], spot[5], sw, sh);
   for (const [key, row] of Object.entries(ATTACHED)) if (out[row[0]]) out[key] = attachedRect(out[row[0]], spots[row[0]][6], row);
   if (n > 0) out.raid = raidRect(addon, spots.raid, n, sw, sh);
-  // Chat is a mover: its tabs (22 tall) ride above the window.
-  // Its first-time size depends on the screen's width.
+  // Chat is a mover: its panel reaches a gap past the window's left, right and bottom (over the
+  // scroll column on the right) and the tab bar's height above its top, and its side buttons
+  // stack left of the panel. Its first-time size depends on the screen's width.
   if (out.chat) {
-    const [w, h] = addon.eval(`return { ns.GetModule("Chat").DefaultSize(${sw}) }`);
-    out.chat.r = out.chat.l + w;
-    out.chat.t = out.chat.b + h + 22;
+    const [w, h, bar, column, gap, stack] = addon.eval(`local CH = ns.GetModule("Chat") local w, h = CH.DefaultSize(${sw}) return { w, h, CH.BAR, CH.SIDE_COLUMN, ns.Theme.SPACE.tight, CH.STACK_ROOM }`);
+    out.chat = { l: out.chat.l - gap - stack, b: out.chat.b - gap, r: out.chat.l + w + column + gap, t: out.chat.b + h + bar };
   }
   return out;
 }
