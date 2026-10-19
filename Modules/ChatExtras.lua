@@ -100,14 +100,11 @@ function CX.ShowCopy()
   ns.ShowText("Copy chat (Ctrl+C)", CX.RecentText(frame))
 end
 
--- A small Copy button in the main chat window's tab row, at its right end.
+-- A small Copy button in the main chat window's tab strip, at its right end.
 local function addCopyButton()
   local frame = _G.ChatFrame1
   if type(frame) ~= "table" or type(frame.GetNumMessages) ~= "function" then return end
-  CX.copyButton = ns.DialogButton(frame, "Copy", 40)
-  CX.copyButton:SetHeight(16)
-  CX.copyButton:SetPoint("BOTTOMRIGHT", frame, "TOPRIGHT", 0, T.SPACE.tight)
-  CX.copyButton:SetScript("OnClick", ns.Guard("click copy chat", CX.ShowCopy))
+  CX.copyButton = ns.GetModule("Chat").AddStripButton(frame, "Copy", "click copy chat", CX.ShowCopy)
 end
 
 -- Short channel names ---------------------------------------------------------------------

@@ -1,7 +1,8 @@
 -- Chat: every chat window, tab and edit box in the Vanguard look. The
 -- windows get a flat panel and the theme font, tabs become the theme's tabs
 -- (the selected one raised, the others inset, an accent alert glow), and the
--- edit box becomes a themed input.
+-- edit box becomes a themed input. A thin frame outlines the text and a tab
+-- strip sits flush on its top edge, holding the tabs and the Find and Copy buttons.
 -- The background is a soft dark patch behind the text and tab row, fading out at its edges, in Light, Medium or Dark.
 -- Chat text is Small, Medium or Large, scaled by the Text size setting (so
 -- one slider shrinks everything), or the size the game's own chat menu set.
@@ -100,11 +101,62 @@ function CH.Strength()
   return T.CHAT_BACKDROP.levels[2][1]
 end
 
--- A chat window: theme font, hidden art and (if on) a soft backdrop behind the text.
+-- The chat window's frame: a thin outline round the text, and the tab strip above it that the tabs
+-- sit on and the Find and Copy buttons sit in (the strip reaches the window's top edge, flush with it).
+local function frameParts(frame)
+  local gap, level = T.SPACE.tight, math.max(0, (frame:GetFrameLevel() or 1) - 1)
+  local outline, strip = CreateFrame("Frame", nil, frame), CreateFrame("Frame", nil, frame)
+  outline:SetPoint("TOPLEFT", -gap, 0)
+  outline:SetPoint("BOTTOMRIGHT", gap, -gap)
+  strip:SetPoint("BOTTOMLEFT", frame, "TOPLEFT", -gap, 0)
+  strip:SetPoint("BOTTOMRIGHT", frame, "TOPRIGHT", gap, 0)
+  strip:SetHeight(tabRow(frame))
+  outline:SetFrameLevel(level)
+  strip:SetFrameLevel(level)
+  return { outline = T.Panel(outline, { noBg = true, noSheen = true }), strip = T.Panel(strip, { inset = true, noSheen = true }) }
+end
+
+-- The tab strip above a chat window, made on first use (the window's Find and Copy buttons anchor to it).
+function CH.Strip(frame)
+  CH.frames = CH.frames or {}
+  CH.frames[frame] = CH.frames[frame] or frameParts(frame)
+  return CH.frames[frame].strip
+end
+
+-- Places a strip button: left of the one before it, else at the strip's right end (the old spot
+-- over the window's top right when there is no strip).
+local function placeStripButton(button, frame, strip)
+  local gap = T.SPACE.tight
+  if not strip then return button:SetPoint("BOTTOMRIGHT", frame, "TOPRIGHT", 0, gap) end
+  if CH.lastButton then return button:SetPoint("RIGHT", CH.lastButton, "LEFT", -gap, 0) end
+  button:SetPoint("RIGHT", strip, "RIGHT", -gap, 0)
+end
+
+-- A small button in the tab strip's right end, left of the ones added before it (Copy, then Find);
+-- with Chat switched off the strip isn't drawn, so it sits over the window's top right instead.
+function CH.AddStripButton(frame, label, where, onClick)
+  local button = ns.DialogButton(frame, label, 40)
+  local strip = ns.ModuleEnabled("Chat") and CH.Strip(frame) or nil
+  button:SetHeight(strip and tabRow(frame) - T.SPACE.tight or 16)
+  placeStripButton(button, frame, strip)
+  if strip then CH.lastButton = button end
+  button:SetScript("OnClick", ns.Guard(where, onClick))
+  return button
+end
+
+-- Shows the frame round a chat window (its outline and tab strip) when the background is on, else hides it.
+local function showFrame(frame, on)
+  CH.Strip(frame)
+  CH.frames[frame].outline:SetShown(on)
+  CH.frames[frame].strip:SetShown(on)
+end
+
+-- A chat window: theme font, hidden art, and (if on) a soft backdrop behind the text with a defined frame.
 local function skinWindow(frame, settings)
   CH.FontWindow(frame)
   T.FadeRegions(frame)
   hideArt(frame)
+  showFrame(frame, settings.background)
   if not settings.background then return end
   CH.backgrounds[frame] = CH.backgrounds[frame] or backdropFrame(frame)
   T.SetBackdrop(CH.backgrounds[frame].look, CH.Strength())
@@ -324,7 +376,7 @@ end
 -- this runs at once; temporary windows (whispers) are skinned as they open.
 function CH.Enable(settings)
   CH.settings = settings
-  CH.backgrounds = {}
+  CH.backgrounds, CH.frames, CH.lastButton = {}, {}, nil
   CH.SkinAll()
   T.OnChanged(CH.Refresh)
   CH.Place()

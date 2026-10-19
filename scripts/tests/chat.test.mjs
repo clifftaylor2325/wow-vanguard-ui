@@ -78,6 +78,21 @@ it("chat tabs: the alert glow is the accent colour and keeps the game's own alph
   addon.slash("accent ember");
   expect(isTok(addon, addon.eval("local g = ChatFrame1Tab.glow return g.__vertexColor or { g:GetVertexColor() }"), "accent"), "and follows accent changes").toBe(true);
 });
+it("chat frame: an outline round the text and a tab strip flush on its top edge, shown with the background; Copy and Find sit in the strip", () => {
+  const addon = loggedIn(UI_ENV);
+  // Whether the outline and the strip are shown, and whether the strip is as tall as the tabs.
+  const parts = () => addon.eval("local f = ns.GetModule('Chat').frames[ChatFrame1] return { f.outline:IsShown(), f.strip:IsShown(), f.strip:GetHeight() == ChatFrame1Tab:GetHeight() }");
+  expect(parts(), "both drawn, the strip as tall as the tabs").toEqual([true, true, true]);
+  expect(addon.eval("local f = ns.GetModule('Chat').frames[ChatFrame1] local p, rel, rp = f.strip:GetPoint() return { p, rel == ChatFrame1, rp }"), "the strip's bottom meets the window's top edge").toEqual(["BOTTOMLEFT", true, "TOPLEFT"]);
+  expect(addon.eval("local c, f = ns.GetModule('ChatExtras').copyButton, ns.GetModule('ChatWindows').findButton local p, rel, rp = f:GetPoint() return { p, rel == c, rp }"), "Find sits left of Copy").toEqual(["RIGHT", true, "LEFT"]);
+  addon.eval("ns.GetModule('Chat').settings.background = false ns.GetModule('Chat').SkinAll()");
+  expect(parts().slice(0, 2), "background off: no frame, the buttons still have their strip").toEqual([false, false]);
+  expect(addon.eval("return #ns.errors"), "no errors").toBe(0);
+});
+it("chat frame: with Chat switched off the Copy button keeps its old place over the window's top right", () => {
+  const off = loggedIn(UI_ENV, { savedVariables: "VanguardDB.profiles = { Default = { modules = { Chat = false } } }" });
+  expect(off.eval("local p, rel, rp, x, y = ns.GetModule('ChatExtras').copyButton:GetPoint() return { p, rel == ChatFrame1, rp, x, y }"), "over the window's top right edge").toEqual(["BOTTOMRIGHT", true, "TOPRIGHT", 0, 4]);
+});
 // TEST-ONLY chat window art as the game names it (ChatFrame<i><part>), with the game's own mouseover fade.
 const CHAT_ART_ENV = `
   CHAT_FRAME_TEXTURES = { "Background", "ButtonFrameBackground" }
@@ -187,7 +202,7 @@ it("chat backdrop: a soft patch behind text and tabs, three strengths, tabs fit 
   addon.eval("ns.GetModule('Chat').settings.backdrop = 0.123 ns.GetModule('Chat').Refresh()");
   expect(look()[0], "an unknown saved value falls back to Medium").toBe(0.75);
   expect(addon.eval("return ChatFrame1Tab.Text:GetStringWidth() + 24 == ChatFrame1Tab:GetWidth()"), "a tab is as wide as its label plus padding").toBe(true);
-  expect(addon.eval("local _, _, _, _, y = ns.GetModule('ChatExtras').copyButton:GetPoint() return y == 4"), "the Copy button sits in the tab row, at its right end").toBe(true);
+  expect(addon.eval("local p, rel = ns.GetModule('ChatExtras').copyButton:GetPoint() return p == 'RIGHT' and rel == ns.GetModule('Chat').frames[ChatFrame1].strip"), "the Copy button sits in the tab strip, at its right end").toBe(true);
   addon.eval("ChatFrame1.ScrollBar = CreateFrame('Frame', nil, ChatFrame1) ns.GetModule('Chat').SkinAll()");
   expect(addon.eval("return #ns.errors"), "a window with a scroll bar is skinned without errors").toBe(0);
   expect(addon.eval("return ns.GetModule('Chat').backgrounds[ChatFrame1].back.__points.BOTTOMRIGHT.x"), "the backdrop reaches over the side column").toBe(28);
