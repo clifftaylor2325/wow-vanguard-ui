@@ -16,9 +16,10 @@ local CLASSES = { ROGUE = true, DRUID = true }
 
 -- Your combo points on your target (0 when none, hidden, or the client can't say).
 function CP.Count()
-  local n = type(GetComboPoints) == "function" and GetComboPoints("player", "target") or nil
+  local n = type(GetComboPoints) == "function" and GetComboPoints("player", "target")
+  if ns.IsSecret(n) then return 0 end
   local power = Enum and Enum.PowerType and Enum.PowerType.ComboPoints
-  if n == nil and power and type(UnitPower) == "function" then n = UnitPower("player", power) end
+  if type(n) ~= "number" and power and type(UnitPower) == "function" then n = UnitPower("player", power) end
   return ns.PlainNumber(n) or 0
 end
 

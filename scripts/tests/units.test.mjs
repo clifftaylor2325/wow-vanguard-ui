@@ -220,6 +220,7 @@ it("combo points for rogues and druids", () => {
   addon.eval("__cp = { __secret = true }");
   addon.fire("PLAYER_TARGET_CHANGED");
   expect(pips().shown === false, "a hidden count shows nothing").toBeTruthy();
+  expect(addon.eval('Enum = Enum or {} Enum.PowerType = { ComboPoints = 4 } UnitPower = function() return 2 end return ns.GetModule("ComboPoints").Count()'), "a hidden count is never tested or swapped for your power: 0").toBe(0);
   const druid = loggedIn(UNITS_ENV + `__units.player.class = "DRUID"
     GetComboPoints = nil Enum = Enum or {} Enum.PowerType = { ComboPoints = 4 } UnitPower = function(unit, kind) return kind == 4 and 2 or 0 end`, NO_RAID);
   expect(druid.eval('local CP = ns.GetModule("ComboPoints") return CP.bar:IsShown() and CP.Count()') === 2, "without the older call, your combo-point power is read").toBeTruthy();
