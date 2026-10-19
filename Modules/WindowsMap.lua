@@ -7,6 +7,7 @@ local ADDON, ns = ...
 -- Per-frame state kept off the game's frames (Core/Events.lua, ns.FrameState).
 local vgGlyph = ns.FrameState("vgGlyph")
 local vgMapGlyph = ns.FrameState("vgMapGlyph")
+local vgCrumbArrow = ns.FrameState("vgCrumbArrow")
 local vgMapWatched = ns.FrameState("vgMapWatched")
 local vgQueueHooked = ns.FrameState("vgQueueHooked")
 local vgEmptyNote = ns.FrameState("vgEmptyNote")
@@ -107,24 +108,35 @@ local function overflowGlyph(button)
   vgGlyph[button]:SetText("...")
 end
 
--- A crumb's dropdown arrow button as a theme button: the game's gold-edged square (its normal and pushed textures, which
--- the game shows on every mouse-over and leaves up after its menu closes) emptied, not kept like a glyph's picture.
-local function skinCrumbArrow(button)
-  if not isFrame(button) then return end
-  T.Button(button)
+-- Empties a crumb arrow's gold-edged square (its normal and pushed textures, which the game shows on every mouse-over
+-- and leaves up after its menu closes): emptied, as alpha would not hold.
+local function emptySquares(arrow)
   for _, getter in ipairs({ "GetNormalTexture", "GetPushedTexture" }) do
-    local square = type(button[getter]) == "function" and button[getter](button)
+    local square = type(arrow[getter]) == "function" and arrow[getter](arrow)
     if type(square) == "table" and square.SetTexture then square:SetTexture(nil) end
   end
 end
 
+-- A crumb's dropdown arrow drawn as part of its crumb, so label and arrow read as one control: no box of its own (its
+-- art faded once, before the theme arrow is laid on it), the gold squares emptied, and the crumb lit while the mouse is
+-- over the arrow (the game sends the crumb OnLeave as the mouse moves onto its arrow).
+local function skinCrumbArrow(crumb, arrow)
+  if not isFrame(arrow) then return end
+  emptySquares(arrow)
+  if vgCrumbArrow[arrow] then return end
+  vgCrumbArrow[arrow] = true
+  T.FadeRegions(arrow)
+  arrow:HookScript("OnEnter", ns.Guard("crumb arrow hover", function() T.EaseHover(crumb, true) end))
+  arrow:HookScript("OnLeave", ns.Guard("crumb arrow hover", function() T.EaseHover(crumb, T.MouseIsOver(crumb)) end))
+end
+
 -- One nav bar button (home, the overflow, a crumb): flat, its label in the text colour, and its dropdown arrow (the
--- MenuArrowButton, whose Art is the arrow) a theme button with a theme arrow.
+-- MenuArrowButton, whose Art is the arrow) part of the crumb, with a theme arrow.
 local function skinCrumb(button)
   skinFlatButton(button)
   if not isFrame(button) then return end
   GW.SkinText(button.text, "label", "text")
-  skinCrumbArrow(button.MenuArrowButton)
+  skinCrumbArrow(button, button.MenuArrowButton)
   if type(button.MenuArrowButton) == "table" then GW.DropArrow(button.MenuArrowButton, GW.Part(button, "MenuArrowButton.Art")) end
 end
 
