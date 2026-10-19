@@ -162,6 +162,7 @@ export const UI_ENV = `
     f:SetFont("TEST-ONLY-FONT", 15, "")
     local tab = CreateFrame("Button", "ChatFrame" .. i .. "Tab", UIParent)
     tab.Text = tab:CreateFontString(nil, "OVERLAY")
+    tab:SetFontString(tab.Text)
     CreateFrame("EditBox", "ChatFrame" .. i .. "EditBox", UIParent)
   end
   SELECTED_CHAT_FRAME = ChatFrame2
