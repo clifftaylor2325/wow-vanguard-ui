@@ -322,13 +322,16 @@ GW.COMMUNITY_ROW_KEEP = { "Icon", "GuildTabardBackground", "GuildTabardEmblem", 
 GW.ADD_COMMUNITY_ATLAS = "communities-icon-addgroupplus"
 
 -- A community row's name in the text colour (the game colours it green), the add row's plus grey instead of green, and its
--- selected look following the game's Selection plate (shown by Init, which the game runs again on every update).
+-- selected look following the game's Selection plate (shown by Init, which the game runs again on every update). The game
+-- draws every row from one pool and never tints the icon itself, so any other icon is untinted: the plus's frame may come
+-- back as a club's (its desaturation the game resets).
 local function paintCommunityRow(row)
   paintText(row.Name, "text")
   local icon = row.Icon
-  if type(icon) == "table" and icon.GetAtlas and icon:GetAtlas() == GW.ADD_COMMUNITY_ATLAS then
-    icon:SetDesaturated(true)
-    icon:SetVertexColor(T.RGB("text"))
+  if type(icon) == "table" and icon.GetAtlas then
+    local plus = icon:GetAtlas() == GW.ADD_COMMUNITY_ATLAS
+    if plus then icon:SetDesaturated(true) end
+    icon:SetVertexColor(T.RGB(plus and "text" or "white"))
   end
   GW.FollowMark(row, row.Selection)
 end

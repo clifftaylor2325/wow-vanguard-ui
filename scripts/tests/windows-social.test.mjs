@@ -404,6 +404,8 @@ it("guild window: the communities list rows are theme rows, art faded but their 
   addon.hover(null);
   addon.eval("CommunitiesFrame:SetDisplayMode(2)");
   expect(addon.eval("return { ns.Theme.RowParts(__b).rail:IsShown(), #CommunitiesFrame.CommunitiesList.ScrollBox.callbacks }"), "a page switch dresses nothing twice").toEqual([true, 1]);
+  addon.eval('__b.Icon:SetDesaturated(false) __b.Icon:SetAtlas(nil) __b.Icon:SetTexture("TEST-ONLY-avatar") __b:Init(3)');
+  expect(addon.eval("local r, g, b = __b.Icon:GetVertexColor() return { r, g, b }"), "the add row's frame reused for a club: its avatar keeps no tint").toEqual([1, 1, 1]);
 });
 
 it("guild roster: the Show Offline box, count, column strip and headers, rows and profession headers in the theme", () => {
