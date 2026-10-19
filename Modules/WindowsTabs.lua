@@ -591,7 +591,7 @@ local function watchFlyout()
   local flyout = _G.EquipmentFlyoutFrame
   if type(flyout) ~= "table" or not flyout.HookScript or watched[flyout] then return end
   watched[flyout] = true
-  flyout:HookScript("OnShow", skinFlyout)
+  flyout:HookScript("OnShow", ns.Guard("show equipment flyout", skinFlyout))
   if type(_G.EquipmentFlyout_UpdateItems) == "function" then hooksecurefunc("EquipmentFlyout_UpdateItems", ns.Guard("hook EquipmentFlyout_UpdateItems", skinFlyout)) end
 end
 
@@ -1001,7 +1001,7 @@ local function dress(frame)
   if type(frame) ~= "table" or not frame.HookScript or dressed[frame] then return end
   dressed[frame] = true
   GW.DressWindow(frame)
-  frame:HookScript("OnShow", GW.DressWindow)
+  frame:HookScript("OnShow", ns.Guard("show window tabs", GW.DressWindow))
   watchSystems(frame)
   dressInside(frame)
 end
