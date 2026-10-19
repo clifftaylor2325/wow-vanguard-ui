@@ -1018,8 +1018,8 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 
 ### 14.7.7 Chat bubbles
 
-- Do: with chat bubbles on in the game's options (Options → Interface → Social → Chat Bubbles), say something in /say out in the world, then have a party or raid member or an NPC speak near you; then enter a dungeon and say something there.
-- Expect: in the world, each speech bubble is a flat, slightly see-through slate panel with a soft shadow instead of the game's rounded white bubble, its text in Vanguard's font, light on the dark panel; the bubble appears and goes as before; inside the dungeon the bubbles keep the game's own look (the engine does not let addons touch them there) and `/vg errors` stays empty.
+- Do: with chat bubbles on in the game's options (Options → Interface → Social → Chat Bubbles), say something in /say out in the world, then have a party or raid member or an NPC speak near you; then enter a dungeon and say something there. Afterwards tick Text-only bubbles (`/vg` → Chat) and say something in the world again.
+- Expect: in the world, each speech bubble is a flat, slightly see-through slate panel with no sheen line and no soft shadow (the same flat material as the chat window) instead of the game's rounded white bubble, its text in Vanguard's font, light on the dark panel, and the bubble's tail (the pointer toward the speaker) is gone with the rest of the game's art; with Text-only bubbles on, no panel at all: the text alone floats over the speaker; the bubble appears and goes as before; inside the dungeon the bubbles keep the game's own look (the engine does not let addons touch them there) and `/vg errors` stays empty.
 - If it fails, paste: a screenshot of a bubble and `/vg errors`.
 
 ### 14.7.8 Combat text and floating damage numbers
@@ -1742,7 +1742,7 @@ The order is the order to play in: looks you can check quickly first, then the g
 ### 33.8 Chat bubbles
 
 - Do: in the open world, say something near another character or a mob. Then enter an instance and say something there.
-- Expect: in the world, bubbles are flat slate panels with their text on them. Inside an instance the game's own bubbles show, and `/vg errors` is empty.
+- Expect: in the world, bubbles are flat slate panels (no sheen, no shadow) with their text on them, or the text alone with Text-only bubbles on. Inside an instance the game's own bubbles show, and `/vg errors` is empty.
 - If it fails, paste: a screenshot and `/vg errors`.
 
 ### 33.9 Toasts: Battle.net, time played, voice prompts

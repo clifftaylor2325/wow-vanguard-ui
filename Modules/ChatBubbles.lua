@@ -1,15 +1,19 @@
 -- Chat bubbles (the speech bubbles over heads in the world) in the Vanguard
--- look: each bubble's rounded art is faded and a flat tooltip-style panel is
--- drawn behind its text, which takes the theme font. The engine makes the
--- bubbles; this module only skins them, a moment after each chat message
--- that can raise one, and never inside an instance, where the engine keeps
--- them from addons.
+-- look: each bubble's rounded art is faded and a flat panel (the chat's own
+-- material: no sheen, no shadow) is drawn behind its text, which takes the
+-- theme font; with Text-only bubbles on, no panel at all, the text floating
+-- over the speaker. The engine makes the bubbles; this module only skins
+-- them, a moment after each chat message that can raise one, and never
+-- inside an instance, where the engine keeps them from addons.
 
 local ADDON, ns = ...
 
 local T = ns.Theme
 
-local CB = ns.Module("ChatBubbles", { defaults = {} })
+local CB = ns.Module("ChatBubbles", { defaults = { textOnly = false } })
+
+-- The bubble panel's fill opacity: the flat panel behind the text.
+CB.ALPHA = 0.94
 
 -- Bubbles already dressed (Core/Events.lua, ns.FrameState): the engine reuses its bubble frames.
 local vgBubble = ns.FrameState("vgBubble")
@@ -38,10 +42,11 @@ local function bubbleText(panel)
   end
 end
 
--- The bubble's panel (the one child frame holding its art and text): art faded, a tooltip panel behind, the text in the chat role.
+-- The bubble's panel (the one child frame holding its art and text): art faded, a flat panel behind
+-- (none with Text-only bubbles on), the text in the chat role.
 local function dressBubble(panel)
   T.FadeRegions(panel)
-  T.Tooltip(panel)
+  if not CB.settings.textOnly then T.Panel(panel, { alpha = CB.ALPHA, noSheen = true }) end
   local text = bubbleText(panel)
   if text then T.Text(text, "chat") end
 end
@@ -75,7 +80,8 @@ local function onMessage()
 end
 
 -- Module entry point (Core/Modules.lua): on a client that lists its bubbles, watches the chat events.
-function CB.Enable()
+function CB.Enable(settings)
+  CB.settings = settings
   if type(C_ChatBubbles) ~= "table" then return end
   for _, event in ipairs(CB.EVENTS) do ns.On(event, onMessage) end
 end

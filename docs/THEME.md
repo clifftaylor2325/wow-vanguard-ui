@@ -341,7 +341,7 @@ Vanguard moves little and quietly. Every fade goes through the theme (`T.FadeIn`
 | Chat tabs with the mouse away | the game's own fade to faint (`FCF_FadeOutChatFrame`, 2 s) | the game's | the game's | off while Keep chat tabs visible is on (Modules/Chat.lua sets the game's six tab alphas to 1, so its fade has nowhere to go); unticked, the game's own |
 | Chat side buttons (voice channel, scroll to bottom, Quick Join) | the game's own alert flash and toast animations (kept over the tile; the round art under them is at alpha 0, and Quick Join's queue art, which its toast animation would raise back to full alpha, is hidden) | the game's | the game's | - (the game's) |
 | Battle.net and time-played toasts | the game's slide-in, glow flare and fade-out (kept; the backdrop under them is at alpha 0) | the game's | the game's | - (the game's) |
-| Chat bubbles (Modules/ChatBubbles.lua) | the engine's own appearance and fade of a bubble (kept; the bubble art under the panel is at alpha 0, the panel itself has no animation) | the engine's | the engine's | - (the engine's) |
+| Chat bubbles (Modules/ChatBubbles.lua) | the engine's own appearance and fade of a bubble (kept; the bubble art under the panel is at alpha 0, the panel itself, a flat one with no sheen or shadow, has no animation; with Text-only bubbles there is no panel) | the engine's | the engine's | - (the engine's) |
 
 Sparks (cast bars, power ticks, the swing timer) move with what they show; they are not fades and Reduce motion leaves them.
 
