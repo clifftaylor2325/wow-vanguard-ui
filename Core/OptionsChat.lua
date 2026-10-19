@@ -29,6 +29,7 @@ local function chatWindowRows()
     check("Keep chat in its bottom-left spot (reload)", setting("Chat", "place", true)),
     { "cycle", "Chat window size", ns.GetModule("Chat").WINDOW_SCALES, liveSetting("Chat", "windowScale", function() local CH = ns.GetModule("Chat") if CH.settings then CH.ApplySize() end end) },
     { "cycle", "Chat text size (follows Text size)", ns.GetModule("Chat").SIZES, chatSizeSetting() },
+    check("Text-only bubbles: no panel behind the words over heads", setting("ChatBubbles", "textOnly")),
   }
 end
 

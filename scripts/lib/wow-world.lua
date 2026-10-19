@@ -1950,7 +1950,9 @@ function FCF_OpenNewWindow(name)
   while _G["ChatFrame" .. i] do i = i + 1 end
   world.chatWindows[i] = name
   NUM_CHAT_WINDOWS = math.max(NUM_CHAT_WINDOWS, i)
-  _G["ChatFrame" .. i .. "Tab"] = stub.newWidget("Button", "ChatFrame" .. i .. "Tab", UIParent)
+  local tab = stub.newWidget("Button", "ChatFrame" .. i .. "Tab", UIParent)
+  tab.Text = tab:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+  _G["ChatFrame" .. i .. "Tab"] = tab
   _G["ChatFrame" .. i] = stub.newWidget("ScrollingMessageFrame", "ChatFrame" .. i, UIParent)
   return _G["ChatFrame" .. i]
 end
