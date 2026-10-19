@@ -1311,3 +1311,9 @@ it("quest history: /vg quests history sorts a long history newest first, by turn
   const titles = addon.chat().slice(-25).map((l) => l.match(/TEST-ONLY T(\d+)/)?.[1]);
   expect(titles, "the 25 latest, each older than the one before").toEqual(Array.from({ length: 25 }, (_, i) => String(39 - i)));
 });
+it("quest tracker: the XP switches save while Vanguard's tracker isn't built", () => {
+  const addon = loggedIn(TRACK_ENV, { savedVariables: "VanguardDB.profiles = { Default = { QuestTracker = { own = false } } }" });
+  addon.eval(`for _, page in ipairs(ns.Options.PAGES) do if page.key == "quests" then for _, row in ipairs(page.rows()) do
+    if row[2] == "Each quest's XP under it" or row[2] == "Under the quests, how much of the XP to level they give" then row[4](false) end end end end`);
+  expect(addon.eval("local s = ns.Settings('QuestTracker') return { s.xp, s.levelXp, Vanguard_QuestTrackerFrame == nil }"), "both saved, no tracker drawn").toEqual([false, false, true]);
+});
