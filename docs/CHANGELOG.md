@@ -14,6 +14,7 @@ Nothing in this release has been checked in the game; see the batch checklist (i
 - Chat lines carry Vanguard's drop shadow and a little more air between lines.
 - Soft shadows under frames gives the chat panel a small soft shadow too.
 - Only the shown chat tab has a box, with a lit top edge; the others are their names on the bar, and never fade below 60 %.
+- Find and Copy are glyph tiles at the chat bar's right end, like the side buttons; hover names them.
 
 ### HUD and Edit Mode
 

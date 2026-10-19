@@ -89,7 +89,7 @@ it("chat tabs: the alert glow is the accent colour and keeps the game's own alph
 });
 // How many shown pieces of corner art `art` a frame carries (four arcs on a rounded border).
 const arcs = (addon, name, art = "CornerLine") => addon.eval(`local n = 0 for _, r in ipairs({ ${name}:GetRegions() }) do if tostring(r.__texture):find("${art}") and r:IsShown() then n = n + 1 end end return n`);
-it("chat frame: one rounded panel round the text, the scroll column and a 24-tall tab bar, shown with the background; Copy and Find sit rounded at the bar's right end, 20 tall", () => {
+it("chat frame: one rounded panel round the text, the scroll column and a 24-tall tab bar, shown with the background; Copy and Find are glyph tiles at the bar's right end, in a fixed order", () => {
   const addon = loggedIn(UI_ENV);
   const F = "ns.GetModule('Chat').frames[ChatFrame1]";
   // The panel's reach past the window: top (the bar), right (the scroll column), bottom.
@@ -103,9 +103,17 @@ it("chat frame: one rounded panel round the text, the scroll column and a 24-tal
   expect(addon.eval(`local f = ${F} local b = f.bar.__points.BOTTOMRIGHT return { f.bar:GetHeight(), f.bar:GetParent() == f.outline, b.rel == f.outline, b.relPoint, b.y }`), "the bar is the panel's top band, 24 tall").toEqual([24, true, true, "TOPRIGHT", -24]);
   expect(addon.eval(`local f = ${F} return { f.rule:GetHeight() == ns.Theme.Pixel(f.bar), f.rule.__points.BOTTOMLEFT.rel == f.bar }`), "a one-pixel rule along the bar's bottom").toEqual([true, true]);
   expect(isTok(addon, addon.eval(`return ${F}.rule.__vertexColor`), "divider"), "in the divider colour").toBe(true);
-  const buttons = addon.eval("local c, f = ns.GetModule('ChatExtras').copyButton, ns.GetModule('ChatWindows').findButton local p, rel, rp, x = f:GetPoint() local cp, crel, crp, cx = c:GetPoint() return { p, rel == c, rp, x, cp, crel == ns.GetModule('Chat').frames[ChatFrame1].bar, crp, cx, c:GetHeight(), f:GetHeight() }");
-  expect(buttons, "Find sits a gap left of Copy, Copy a gap in from the bar's right end, both a control high").toEqual(["RIGHT", true, "LEFT", -4, "RIGHT", true, "RIGHT", -4, 20, 20]);
-  expect(arcs(addon, "ns.GetModule('ChatExtras').copyButton"), "the buttons are rounded like the panel").toBe(4);
+  // A bar button's place and look: its anchor on the bar and x, whether it is a 20 x 20 tile, and its glyph.
+  const tile = (ref) => addon.eval(`local b = ${ref} local p, rel, rp, x = b:GetPoint() local glyph
+    for _, r in ipairs({ b:GetRegions() }) do if r.__layer == "OVERLAY" and type(r.__texture) == "string" then glyph = r.__texture:match("Icons\\\\(%w+)$") end end
+    return { p, rel == ns.GetModule('Chat').frames[ChatFrame1].bar, rp, x, math.abs(b:GetWidth() - 20) < 1 and math.abs(b:GetHeight() - 20) < 1, glyph }`);
+  expect(tile("ns.GetModule('ChatExtras').copyButton"), "Copy: a 20 x 20 glyph tile (the side buttons' control) a gap in from the bar's right end, two sheets on it").toEqual(["RIGHT", true, "RIGHT", -4, true, "Copy"]);
+  expect(tile("ns.GetModule('ChatWindows').findButton"), "Find: the magnifier tile a tile and a gap left of Copy (the two take 48 units), whichever module asked first").toEqual(["RIGHT", true, "RIGHT", -28, true, "Search"]);
+  addon.hover("ns.GetModule('ChatWindows').findButton");
+  expect(addon.eval("return { GameTooltip:IsShown(), GameTooltip.__lines[1].text }"), "the mouse over a tile names it").toEqual([true, "Find"]);
+  addon.hover(null);
+  expect(addon.eval("return GameTooltip:IsShown()"), "and the name goes with the mouse").toBe(false);
+  expect(addon.eval("local b = ns.GetModule('Chat').AddBarButton(ChatFrame1, 'TEST-ONLY', 'click test', function() end) local _, _, _, x = b:GetPoint() return x"), "a button no slot is listed for takes the slot after Find").toBe(-52);
   addon.eval("ns.GetModule('Chat').settings.background = false ns.GetModule('Chat').SkinAll()");
   expect(panel()[0], "background off: no panel, the buttons still have their bar").toBe(false);
   expect(addon.eval("return #ns.errors"), "no errors").toBe(0);

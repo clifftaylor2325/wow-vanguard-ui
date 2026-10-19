@@ -183,7 +183,7 @@ function iconsCredited() {
 
 // Line icons made only of level and upright strokes: at 16 px every pixel
 // they touch must be fully covered, none half (P4.2).
-const SQUARE_ICONS = ["Spellbook", "Professions", "Quests", "Collections", "QuestBang"];
+const SQUARE_ICONS = ["Spellbook", "Professions", "Quests", "Collections", "QuestBang", "Copy"];
 
 // An icon's alpha at 16 px: the 32 px image averaged over 2 x 2 blocks, as the GPU draws it at half size.
 function at16(name) {

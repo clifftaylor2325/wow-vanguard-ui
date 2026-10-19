@@ -3,7 +3,7 @@
 -- Light, Medium or Dark) that holds the text, the scroll bar and a tab bar
 -- along its top: the tabs are the theme's tabs (the selected one raised, the
 -- others inset, an accent alert glow), 20 tall and centred in the bar, with
--- the Find and Copy buttons at the bar's right end. Tabs stay fully visible
+-- the Find and Copy glyph tiles at the bar's right end. Tabs stay fully visible
 -- (the game fades them until the mouse comes near) while Keep chat tabs
 -- visible is on. The main window's side buttons (chat menu, Quick Join,
 -- voice, text to speech) lose their round art, sit on the theme's control
@@ -162,24 +162,46 @@ function CH.Bar(frame)
   return CH.frames[frame].bar
 end
 
--- Places a bar button: left of the one before it, else at the bar's right end (the old spot
--- over the window's top right when there is no bar).
-local function placeBarButton(button, frame, bar)
-  local gap = T.SPACE.tight
-  if not bar then return button:SetPoint("BOTTOMRIGHT", frame, "TOPRIGHT", 0, gap) end
-  if CH.lastButton then return button:SetPoint("RIGHT", CH.lastButton, "LEFT", -gap, 0) end
-  button:SetPoint("RIGHT", bar, "RIGHT", -gap, 0)
+-- The bar's buttons by label: the glyph on each one's tile and its slot from the bar's right end
+-- (Copy at the end, Find left of it), so their order is fixed here and not by which module asks
+-- first. A label not listed takes the slot after them.
+CH.BAR_BUTTONS = { Copy = { icon = "Copy", slot = 1 }, Find = { icon = "Search", slot = 2 } }
+
+-- How far a bar button's slot sits in from the bar's right end: a gap, then a tile and a gap per slot before it.
+local function slotInset(slot)
+  return T.SPACE.tight + (slot - 1) * (T.CONTROL.tile + T.SPACE.tight)
 end
 
--- A small rounded button at the tab bar's right end, left of the ones added before it (Copy, then
--- Find), a control high like the tabs; the tab dock ends before it. With Chat switched off the bar
--- isn't drawn, so it sits over the window's top right instead.
+-- Places a bar button in its slot at the bar's right end, or (no bar: Chat is off) over the window's
+-- top right, where the buttons sat before the bar.
+local function placeBarButton(button, frame, bar, slot)
+  if bar then return button:SetPoint("RIGHT", bar, "RIGHT", -slotInset(slot), 0) end
+  button:SetPoint("BOTTOMRIGHT", frame, "TOPRIGHT", -(slot - 1) * (T.CONTROL.tile + T.SPACE.tight), T.SPACE.tight)
+end
+
+-- Names a glyph tile in a tooltip while the mouse is over it (a tile has no label of its own).
+local function tipButton(button, label)
+  button:HookScript("OnEnter", function(b) GameTooltip:SetOwner(b, "ANCHOR_TOP") GameTooltip:SetText(label) GameTooltip:Show() end)
+  button:HookScript("OnLeave", function() GameTooltip:Hide() end)
+end
+
+-- Remembers the button furthest from the bar's right end (the tab dock ends before it).
+local function barEnd(button, slot)
+  if CH.barEndSlot and CH.barEndSlot >= slot then return end
+  CH.barEnd, CH.barEndSlot = button, slot
+end
+
+-- A glyph tile (the side buttons' window control, 20 x 20) in the tab bar's right end, in the slot
+-- CH.BAR_BUTTONS gives its label (Copy at the end, Find left of it); the tab dock ends before the
+-- furthest one. Its label is its tooltip. With Chat switched off the bar isn't drawn, so it sits
+-- over the window's top right instead. Called by Modules/ChatExtras.lua and Modules/ChatWindows.lua.
 function CH.AddBarButton(frame, label, where, onClick)
-  local button = ns.DialogButton(frame, label, 40)
   local bar = ns.ModuleEnabled("Chat") and CH.Bar(frame) or nil
-  button:SetHeight(bar and T.CONTROL_H or 16)
-  placeBarButton(button, frame, bar)
-  if bar then CH.lastButton = button T.SetRound(button, true) CH.PlaceDock() end
+  local look = CH.BAR_BUTTONS[label] or { icon = "Right", slot = 3 }
+  local button = T.WindowControl(CreateFrame("Button", nil, bar or frame), look.icon)
+  placeBarButton(button, frame, bar, look.slot)
+  tipButton(button, label)
+  if bar then barEnd(button, look.slot) CH.PlaceDock() end
   button:SetScript("OnClick", ns.Guard(where, onClick))
   return button
 end
@@ -290,7 +312,7 @@ function CH.PlaceDock()
   local bar, gap = CH.frames[frame].bar, T.SPACE.tight
   dock:ClearAllPoints()
   dock:SetPoint("BOTTOMLEFT", bar, "BOTTOMLEFT", gap / 2, gap / 2)
-  if CH.lastButton then return dock:SetPoint("RIGHT", CH.lastButton, "LEFT", -gap, 0) end
+  if CH.barEnd then return dock:SetPoint("RIGHT", CH.barEnd, "LEFT", -gap, 0) end
   dock:SetPoint("RIGHT", bar, "RIGHT", -gap, 0)
 end
 
@@ -558,7 +580,7 @@ end
 -- this runs at once; temporary windows (whispers) are skinned as they open.
 function CH.Enable(settings)
   CH.settings = settings
-  CH.frames, CH.lastButton = {}, nil
+  CH.frames, CH.barEnd, CH.barEndSlot = {}, nil, nil
   CH.SkinAll()
   CH.ApplyTabAlpha()
   T.OnChanged(CH.Refresh)

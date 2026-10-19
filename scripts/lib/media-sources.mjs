@@ -254,6 +254,8 @@ const ICON_SHAPES = {
   Up: [path([[4, 9.5], [8, 5.5], [12, 9.5]], STROKE)],
   Right: [path([[6.5, 4], [10.5, 8], [6.5, 12]], STROKE)],
   Search: [ring(7, 7, 4, STROKE), line(10.5, 10.5, 14, 14, STROKE)],
+  // Copy (the chat bar's Copy tile): two sheets, the front one whole over the back one's corner, all on whole units.
+  Copy: [rect(2, 5, 11, 14), crisp([[5, 5], [5, 2], [14, 2], [14, 11], [11, 11]])],
   // Raid marks, filled so they read at 10 px: a tank's shield, a healer's cross,
   // the leader's crown and three dots for a ready check still waiting.
   RoleTank: [poly([[2.5, 2], [13.5, 2], [13.5, 7.5], [12.3, 10.6], [8, 14.5], [3.7, 10.6], [2.5, 7.5]])],
