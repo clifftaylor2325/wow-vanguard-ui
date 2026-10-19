@@ -612,11 +612,33 @@ function GW.SkinPictureSlot(button)
 end
 
 -- A paging arrow with a caption (the inbox's Previous and Next): a theme arrow button pointing `direction`,
--- the caption beside it in small text.
+-- the caption beside it in small text, T.SPACE.gap clear of the arrow (the theme arrow fills the button, where
+-- the game's art left room).
 function GW.SkinPager(button, direction)
   if type(button) ~= "table" or not button.CreateTexture then return end
   T.ArrowButton(button, direction)
   GW.TextRegions(button, GW.PAGER_CAPTIONS, "small", "text2")
+  GW.SpaceCaption(button, direction)
+end
+
+-- Sets a pager's caption (a region whose text is the game's PREV or NEXT) T.SPACE.gap past the arrow: right of a
+-- left arrow, left of a right one.
+function GW.SpaceCaption(button, direction)
+  local left = direction == "left"
+  for _, region in ipairs({ button:GetRegions() }) do
+    if region.GetText and GW.IsPagerCaption(region:GetText()) then
+      region:ClearAllPoints()
+      region:SetPoint(left and "LEFT" or "RIGHT", button, left and "RIGHT" or "LEFT", left and T.SPACE.gap or -T.SPACE.gap, 0)
+    end
+  end
+end
+
+-- Whether text is one of the game's pager captions (PREV, NEXT).
+function GW.IsPagerCaption(text)
+  for _, name in ipairs(GW.PAGER_CAPTIONS) do
+    if text ~= nil and _G[name] == text then return true end
+  end
+  return false
 end
 
 -- The part reached from frame by a dotted path of parentKeys ("PagedSpellsFrame.PagingControls"); nil when a step
