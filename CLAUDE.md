@@ -56,6 +56,23 @@ Before you say a change is done: `npm run quality` and `npm run coverage` must b
 - Detect Forever by interface version with `ns.IsForever`, not by the presence of a global.
 - Fades never run longer than 0.15 s in combat. Motion and sounds respect the Reduce motion and Interface sounds switches. Every fade and sound is listed in `docs/THEME.md`; update it when you add one.
 
+## Clean code
+
+Adapted from wojteklu's [summary of *Clean Code* by Robert C. Martin](https://gist.github.com/wojteklu/73c6914cc446146b8b533c0988cf8d29), in our own words for Lua and the WoW client.
+
+- **General:** follow the conventions already in the repo (`docs/PATTERNS.md`). Keep it simple. Leave the code you touch cleaner than you found it. Fix the root cause, not the symptom.
+- **Design:** keep configuration at the top (module defaults and the options window), and don't add a setting nobody asked for. Talk to the frame or table you were given, not to its children's children. Prefer a lookup table over a long `if`/`elseif` chain.
+- **Understandability:** be consistent: one way to do one thing. Name intermediate values. Handle edge cases (nil, zero, secret) in one place, near the input. Write conditions positively (`if shown`, not `if not hidden`). Don't hide one function's need for another to have run first.
+- **Names:** descriptive, unambiguous, pronounceable and searchable. Make real distinctions (no `data2`). Replace magic numbers with named constants on a table, not new top-level locals. No type tags in names.
+- **Functions:** small, doing one thing, named for what they do. Few arguments, no boolean flag arguments (split the function instead), no hidden side effects.
+- **Comments:** make the code say it first. A comment explains intent, clarifies, or warns of a consequence (a secret value, a combat lockdown, a taint path). No noise, no restating the code, no commented-out code.
+- **Layout:** keep related code together: a helper sits just above its first caller (a Lua local must be defined before the code that uses it), a variable declared next to where it is used. Short lines, blank lines between ideas, no column alignment.
+- **Tables and modules:** keep a module's internals local and expose a small surface on `ns`. Keep tables small and of one kind: either behaviour or plain data, not both.
+- **Tests:** one behaviour per test, readable, fast, independent and repeatable.
+- **Smells to fix:** rigidity (one change forces many), fragility (a change breaks something far away), immobility (code can't be reused), needless complexity, needless repetition, and opacity.
+
+Precedence: where this section and any other rule in this file disagree, the other rule wins. So every function keeps its comment line above it even when the name says it all, functions stay at 10 lines or fewer, and colours and font sizes stay in `Core/Theme.lua`.
+
 ## Where things are
 
 - `Core/`: the framework. Events, DB, Profiles, Options and OptionsWindow, Theme, Movers, Slash, Feedback, Setup, and so on.
