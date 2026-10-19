@@ -69,7 +69,9 @@
       "the right-edge bars start off and show on mouseover when turned on"
     ],
     "scripts/tests/broker.test.mjs": [],
-    "scripts/tests/casts.test.mjs": [],
+    "scripts/tests/casts.test.mjs": [
+      "your cast bar sits above the action bars and moves up when they grow, so they never hide it"
+    ],
     "scripts/tests/chat-bubbles.test.mjs": [],
     "scripts/tests/chat.test.mjs": [],
     "scripts/tests/chatfilter.test.mjs": [],
@@ -235,7 +237,7 @@
     "scripts/tests/units.test.mjs": [
       "Calm HUD: frames dim out of combat, come back for a fight, a hostile target or the mouse, and stay clickable",
       "Calm HUD: setup's look step and the situations offer it",
-      "Versus deck: one shield panel behind the player and target, the crest at the seam, the target's bars mirrored",
+      "Versus deck: one rounded panel behind the player and target, the crest at the seam, the target's bars mirrored",
       "a ?? (boss or far higher) level reads in the hardest difficulty color, not the easiest",
       "class bars: druid mana while a form shows rage or energy",
       "class bars: totems for shamans, mana in forms for druids",

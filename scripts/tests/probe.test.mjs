@@ -105,6 +105,17 @@ it("/vg probe: reads what SetTextToFit does to a label, where the client has it"
   addon.slash("probe");
   expect(lineOf(reportText(addon), "SetTextToFit read:"), "an error is a line").toMatch(/error .*TEST-ONLY fit/);
 });
+it("/vg probe: a restricted read is only looked for, and an error's taint line stays on its line", () => {
+  const addon = loggedIn(PROBE_ENV);
+  addon.eval("__nearestCalled = false C_Navigation.GetNearestPartyMemberToken = function() __nearestCalled = true return 'party1' end");
+  addon.eval("C_LootHistory.GetAllEncounterInfos = function() error('TEST-ONLY blocked\\nLua Taint: Vanguard') end");
+  addon.slash("probe");
+  const text = reportText(addon);
+  expect(lineOf(text, "C_Navigation.GetNearestPartyMemberToken"), "looked for, never called (the docs mark it HasRestrictions)").toMatch(/present \(not called\)$/);
+  expect(addon.eval("return __nearestCalled"), "so the game's blocked-action message can't come from it").toBe(false);
+  expect(lineOf(text, "C_LootHistory.GetAllEncounterInfos"), "the client's second error line joins the first").toMatch(/error .*TEST-ONLY blocked \| Lua Taint: Vanguard$/);
+  expect(text.split("\n").some((l) => /^Lua Taint/.test(l)), "and never starts a line of its own").toBe(false);
+});
 it("/vg probe: reads the skill list's size, headers and two skills by ID without changing it", () => {
   const addon = loggedIn(PROBE_ENV);
   addon.eval("C_SkillInfo.GetNumSkillLines = function() return 0 end");
