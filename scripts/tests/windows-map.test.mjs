@@ -200,9 +200,17 @@ it("world map: the crumbs' labels are light and their dropdown arrows keep the a
   const addon = loggedIn(MAP_PARTS_ENV);
   addon.eval("WorldMapFrame:Show()");
   expect(addon.eval("local h = WorldMapFrame.NavBar.home return { h.text.__textColor[1] == ns.Theme.RGB('text'), __looks(h.text, 'label', 'text') }"), "the crumb's label is the label role in the text colour, not the game's gold").toEqual([true, true]);
-  expect(addon.eval("local a = WorldMapFrame.NavBar.home.MenuArrowButton return { a.back:GetAlpha(), a.Art:GetAlpha(), ns.Theme.HoverParts(a) ~= nil }"), "the arrow button is a theme button, the game's yellow Art replaced by the theme arrow").toEqual([0, 0, true]);
+  expect(addon.eval("local a = WorldMapFrame.NavBar.home.MenuArrowButton return { a.back:GetAlpha(), a.Art:GetAlpha(), ns.Theme.HoverParts(a) == nil, ns.Theme.PressOverlay(a) == nil }"), "the arrow is part of its crumb: its art faded, no box, hover or press look of its own").toEqual([0, 0, true, true]);
   expect(addon.eval("local a = WorldMapFrame.NavBar.home.MenuArrowButton return { a.box:GetTexture() == nil, a.boxDown:GetTexture() == nil }"), "the gold-edged square the game shows on mouse-over is emptied, not shown as a picture").toEqual([true, true]);
   expect(addon.eval("return ns.FrameState('vgDropArrow')[WorldMapFrame.NavBar.home.MenuArrowButton] ~= nil"), "and the theme arrow sits where it was").toBe(true);
+  addon.eval("WorldMapFrame.NavBar:Refresh()");
+  expect(addon.eval("return ns.FrameState('vgDropArrow')[WorldMapFrame.NavBar.home.MenuArrowButton]:GetAlpha()"), "a redraw of the bar leaves the theme arrow shown").toBe(1);
+  // The home crumb's hover fill alpha after the mouse moves (Reduce motion, so at once) as the step says.
+  const crumbHover = (step) => addon.eval(`local h, a = WorldMapFrame.NavBar.home, WorldMapFrame.NavBar.home.MenuArrowButton ${step} return ns.Theme.HoverParts(h)[1]:GetAlpha()`);
+  addon.eval("ns.Theme.Settings().reduceMotion = true");
+  expect(crumbHover("h.__mouseOver = true a:GetScript('OnEnter')(a)"), "the mouse over the arrow lights its whole crumb").toBe(1);
+  expect(crumbHover("a:GetScript('OnLeave')(a)"), "leaving the arrow but still over the crumb keeps it lit").toBe(1);
+  expect(crumbHover("h.__mouseOver = false a:GetScript('OnEnter')(a) a:GetScript('OnLeave')(a)"), "leaving the arrow and the crumb clears it").toBe(0);
   expect(addon.eval("local f for _, c in ipairs({ WorldMapFrame:GetChildren() }) do if c.ShouldShowTrackingIconOnFloor then f = c end end return { f.Plate:GetAlpha(), f.Arrow:GetAlpha(), ns.Theme.HoverParts(f) ~= nil }"), "the floor dropdown found by its mixin: plate faded, arrow replaced, a theme button").toEqual([0, 0, true]);
   expect(addon.eval("local o, p = WorldMapFrame.WorldMapTrackingOptionsButton, WorldMapFrame.WorldMapTrackingPinButton return { o.Icon:GetAlpha(), p.Icon:GetAlpha(), p.Background:GetAlpha(), p.Border:GetAlpha() }"), "the game's yellow tracking icons, the pin's disc and gold ring are faded").toEqual([0, 0, 0, 0]);
   expect(["WorldMapTrackingOptionsButton", "WorldMapTrackingPinButton"].map((k) => addon.eval(`return ns.FrameState('vgMapGlyph')[WorldMapFrame.${k}]:GetTexture()`)), "each with a theme icon, a filter and a pin").toEqual([expect.stringContaining("MinimapTracking"), expect.stringContaining("Pin")]);
