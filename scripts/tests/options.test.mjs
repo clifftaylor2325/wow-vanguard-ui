@@ -227,7 +227,21 @@ it("options: search reads each page's rows once per opening; a rebuilt page leav
   addon.eval('ns.Options.Search("tan")');
   expect(reads(), "the next keystroke reads nothing").toEqual([0, 0]);
   addon.eval('ns.Options.Hide() Vanguard_Options:Hide() ns.Options.Show() ns.Options.Search("tan")');
-  expect(reads(), "opening the window again reads the rows afresh").toEqual([1, 1]);
+  expect(reads(), "opening the window again reads afresh the pages not built yet; a built page keeps the rows it shows").toEqual([1, 0]);
+});
+
+it("options: a search hit scrolls to its row and marks it after the window was closed and opened again", () => {
+  const addon = loggedIn(CLICK_LUA);
+  // Searches, opens the first hit and says which row is marked: its caption, or false.
+  const openHit = (text) => addon.eval(`ns.Options.Search(${JSON.stringify(text)})
+    local hit = ns.Options.hits[1]
+    ns.Options.OpenHit(hit)
+    for _, w in ipairs(__wfgStub.frames) do if w.found and w.found == Vanguard_Options.found and w.found:IsShown() and w.source == hit.row then return w.caption end end
+    return false`);
+  addon.eval('ns.Options.Show("general")');
+  expect(openHit("interface sounds"), "the first opening marks the row").toBe("Interface sounds");
+  addon.eval("ns.Options.Hide() Vanguard_Options:Hide() ns.Options.Show()");
+  expect(openHit("reduce motion"), "after a reopen a row on a page built before is marked too").toMatch(/^Reduce motion/);
 });
 
 it("choice fallback, key capture and the mouse wheel", () => {

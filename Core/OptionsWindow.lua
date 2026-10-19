@@ -729,11 +729,19 @@ local function showReloadNotice()
   window.notice:SetShown(needsReload)
 end
 
+-- Forgets the rows of the pages not built yet, so a new opening reads them afresh. A built page keeps
+-- the rows it shows: its widgets point at them, and a search hit finds its widget by them.
+local function forgetUnbuiltRows()
+  for key in pairs(rowCache) do
+    if not pages[key] then rowCache[key] = nil end
+  end
+end
+
 -- Opens the window on a page (default: the last one shown, or General).
 function O.Show(key)
   if not window then build() end
   local previous = window:IsShown() and O.current
-  if not previous then rowCache = {} end
+  if not previous then forgetUnbuiltRows() end
   O.current = key or O.current or "general"
   takeKeys(previous)
   showPage()
