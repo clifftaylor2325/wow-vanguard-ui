@@ -10,6 +10,35 @@
 local ADDON, ns = ...
 
 ns.WHATS_NEW = {
+  { version = "0.7.1", groups = {
+    { module = "Chat", label = "Chat", items = {
+      { text = "The chat window is one rounded panel with a tab bar, tabs you can always see and its side buttons stacked." },
+    } },
+    { module = "UnitFrames", label = "Unit frames and HUD", items = {
+      { text = "Your cast bar moves up with the action bars instead of sitting under them." },
+      { text = "The Versus deck rounds its corners instead of cutting them." },
+      { text = "A green check marks mobs you have tagged, on nameplates and unit frames." },
+      { text = "In Edit Mode the window sits over the handles, bars line up with no gap and the default spots are tidier." },
+    } },
+    { module = "Quests", label = "Questing", items = {
+      { text = "The quest arrow sits centred at the top of the screen by default." },
+    } },
+    { module = "Windows", label = "Look and windows", items = {
+      { text = "More of the game's art is in the Vanguard look: the world map and its quest panel, the Settings window's Graphics section and its language and microphone rows, and the arrows on dropdowns and steppers." },
+      { text = "The calendar's today marker fits its cell, the guild list shows the selected guild's banner, Legacy keeps its challenge icons, and the professions skill bar stays inside its box." },
+      { text = "The group finder's search box no longer overlaps its button, and the setup wizard's choices rest flat with the picked one on the selected rail." },
+    } },
+    { module = "Bags", label = "Bags and town", items = {
+      { text = "The Find mail panel closes with the mailbox, and you can add and remove presets from it." },
+      { text = "The bags' Filter and Groups buttons fit their labels." },
+    } },
+    { module = "Other", label = "Safety and tools", items = {
+      { text = "Escape closes the meter's spell panel and the Instance prep card." },
+      { text = "The Cooldown Manager glow never reads an aura the game hides." },
+      { text = "Your own name counts as you when it carries a realm other than the realm's name, in chat watch, the chat filter and the roll tracker." },
+      { text = "/vg probe never makes a call the game restricts." },
+    } },
+  } },
   { version = "0.7.0", groups = {
     { module = "Quests", label = "Questing", items = {
       { text = "An on-screen arrow points to the nearest quest objective, and on to a quest on another map." },
