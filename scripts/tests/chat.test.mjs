@@ -1,6 +1,7 @@
 // chat: Vanguard's real Lua in the TEST-ONLY headless client (scripts/lib/lua-harness.mjs).
 
 import { expect, it } from "vitest";
+import { luaValue } from "../lib/lua-emit.mjs";
 import { CLICK_LUA, expectErrors, STRIP_ENV, TIDY_ENV, UI_ENV, UNITS_ENV, INSIDES_LUA, borderOf, chatHas, isTok, later, loggedIn, setCombat, tok, WINDOWS_ENV, windowState } from "./helpers.mjs";
 
 it("minimap", () => {
@@ -1044,7 +1045,20 @@ it("bags: the combined CVar is set once per change of the setting, and given bac
   const blind = loggedIn(UI_ENV);
   blind.eval("ns.SetModuleEnabled('Bags', false)");
   expect(blind.eval("return { __cvars.combinedBags, ns.Settings('Bags').applied == nil }"), "a client that can't read the CVar has nothing to give back").toEqual(["1", true]);
+});it("bags: an imported profile turns combined bags on, since what Vanguard set on one computer never travels in a string", () => {
+  const me = loggedIn(UI_ENV + CVAR_ENV);
+  expect(me.eval(`local _, data = ns.Serialize.Decode(ns.ExportProfile()) local s = ns.Settings("Bags") return { data.Bags.combined, data.Bags.applied == nil, data.Bags.prior == nil, s.applied }`), "the string has the setting, not the flags this computer keeps").toEqual([true, true, true, true]);
+  // TEST-ONLY string from an older Vanguard that exported the flags of a computer on separate bags.
+  me.eval('ns.ImportProfile(ns.Serialize.Encode("profile", ns.StampPayload({ Bags = { combined = true, applied = true, prior = "0" } })))');
+  expect(me.eval("local b = VanguardDB.profiles.Imported.Bags return { b.combined, b.applied == nil, b.prior == nil }"), "the import keeps the setting and drops the flags").toEqual([true, true, true]);
+  me.fire("PLAYER_LOGOUT");
+  const sv = me.savedVariables();
+  // The next session on another computer (its own CVars: separate bags) with the imported profile.
+  const next = loggedIn(UI_ENV + CVAR_ENV, { savedVariables: `VanguardDB = ${luaValue(sv.account)}\nVanguardCharDB = ${luaValue(sv.char)}\n` });
+  expect(next.eval("return { ns.ProfileName(), __cvars.combinedBags, ns.Settings('Bags').prior }"), "the imported profile sets combined bags once, keeping this computer's value").toEqual(["Imported", "1", "0"]);
 });
+
+
 it("minimap coordinates: asked again only after the player moves", () => {
   // TEST-ONLY world position, and a counter of map position lookups.
   const addon = loggedIn(UI_ENV + `__pos = { 100, 200, 0, 1 } UnitPosition = function() return __pos[1], __pos[2], __pos[3], __pos[4] end

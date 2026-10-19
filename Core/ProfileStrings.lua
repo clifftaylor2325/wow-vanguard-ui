@@ -22,7 +22,8 @@ local META = { format = true, addonVersion = true, parts = true, display = true 
 -- Settings that record this computer's own state rather than a choice, by table: they never go in a
 -- string, and a string's are dropped as it is read, so they never reach another client.
 -- Graphics.undo: the game settings /vg graphics apply changed here, which its undo puts back.
-local CLIENT_STATE = { Graphics = { undo = true } }
+-- Bags.applied and Bags.prior: what Vanguard set the game's combined bags to here, and the player's value before.
+local CLIENT_STATE = { Graphics = { undo = true }, Bags = { applied = true, prior = true } }
 
 -- The group parts, in the export panel's order, and what it calls them. Every other
 -- table is a module's own part (its name), or global when no module goes by its name.
