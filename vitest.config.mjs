@@ -56,8 +56,12 @@ export default defineConfig({
     // needs: its first run timed out the first case of several files at
     // 30 s while every worker started at once on a shared machine.
     testTimeout: process.env.CI ? 120_000 : 30_000,
+    // The edit-time hook's test plants a rule-breaking Lua file under Modules/ for a moment; the scanners in
+    // "quick" (code quality, the TOC check, unit events) read that folder, so it runs after them ("hooks", a
+    // later group), never beside them.
     projects: [
-      { extends: true, test: { name: "quick", include: ["scripts/*.test.mjs", "scripts/tests/smoke.test.mjs"], exclude: [...configDefaults.exclude, "scripts/lua-engine.test.mjs"] } },
+      { extends: true, test: { name: "quick", include: ["scripts/*.test.mjs", "scripts/tests/smoke.test.mjs"], exclude: [...configDefaults.exclude, "scripts/lua-engine.test.mjs", "scripts/agent-check.test.mjs"] } },
+      { extends: true, test: { name: "hooks", include: ["scripts/agent-check.test.mjs"], sequence: { groupOrder: 1 } } },
       { extends: true, test: { name: "lua", isolate: false, include: ["scripts/tests/*.test.mjs", "scripts/lua-engine.test.mjs"], exclude: [...configDefaults.exclude, "scripts/tests/smoke.test.mjs"] } },
     ],
   },
