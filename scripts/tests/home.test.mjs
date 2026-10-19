@@ -64,6 +64,21 @@ it("home: two-part names: your realm is left off for show; you are your name, al
   expect(me("Tester"), "a hidden name is never you").toBe(false);
 });
 
+it("home: on Forever your name can carry a realm other than the realm's own name (beta probe, 2026-10-19)", () => {
+  const addon = loggedIn("UnitFullName = function() return 'Tester', 'Hearthvale' end");
+  // A name as ns.Home.Display shows it.
+  const shown = (n) => addon.eval(`return ns.Home.Display(${JSON.stringify(n)})`);
+  // Whether ns.Home.IsMe takes the name for you.
+  const me = (n) => addon.eval(`return ns.Home.IsMe(${JSON.stringify(n)})`);
+  expect([shown("Ally-Hearthvale"), shown("Ally-ForeverTest"), shown("Ally-Elsewhere")], "either of your realms is left off").toEqual(["Ally", "Ally", "Ally-Elsewhere"]);
+  expect([me("Tester-Hearthvale"), me("Tester-ForeverTest"), me("Tester-Elsewhere"), me("Ally-Hearthvale")], "you, with either realm").toEqual([true, true, false, false]);
+  expect([addon.eval("return ns.Home.IsMe(nil)"), addon.eval("return ns.Home.IsMe(__wfgWorld.secret('Tester'))")], "no name, or a hidden one, is not you").toEqual([false, false]);
+  addon.slash("realm");
+  expect(chatHas(addon, /Your name in chat: Tester-Hearthvale \(shown as Tester\)/), "/vg realm shows the realm your name carries").toBe(true);
+  addon.eval("UnitFullName = function() error('TEST-ONLY') end");
+  expect(addon.eval("return ns.Home.NameRealm()"), "an error gives none").toBeNull();
+});
+
 it("home: /vg realm prints the realm, ruleset, side, data key and how your name reads", () => {
   const addon = loggedIn(rules({ season: 2 }));
   addon.slash("realm");

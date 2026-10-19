@@ -49,11 +49,16 @@ local function addClose(frame, text, kind, onClose)
   return close
 end
 
--- Lets Escape close a named frame, through the game's list of special frames (where the client has it).
-local function closeOnEscape(frame)
+-- Lets Escape close a named frame, through the game's list of special frames (where the client has it),
+-- the way the game's own windows close: the game hides it, nothing reads keys. A frame already listed is
+-- not listed twice.
+---@param frame table  a named frame Vanguard made
+function ns.CloseOnEscape(frame)
   local name = frame:GetName()
-  if not name then error("Vanguard: WindowTitle: escape needs a named frame", 3) end
-  if type(UISpecialFrames) == "table" then table.insert(UISpecialFrames, name) end
+  if not name then error("Vanguard: escape needs a named frame", 2) end
+  if type(UISpecialFrames) ~= "table" then return end
+  for _, listed in ipairs(UISpecialFrames) do if listed == name then return end end
+  table.insert(UISpecialFrames, name)
 end
 
 -- A window's or card's title line. opts.kind: "window" (the default; the title role) or "card" (the heading
@@ -71,7 +76,7 @@ function ns.WindowTitle(frame, text, opts)
   local parts = { title = addTitle(frame, text, kind, align) }
   if opts.count then parts.count = addCount(frame, parts.title, opts.count, align) end
   if opts.onClose then parts.close = addClose(frame, text, kind, opts.onClose) end
-  if opts.escape then closeOnEscape(frame) end
+  if opts.escape then ns.CloseOnEscape(frame) end
   frame.title, frame.close = parts.title, parts.close
   return parts
 end

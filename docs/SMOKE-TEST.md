@@ -22,6 +22,8 @@ One command asks the client every open question the research left and writes the
 5. In an instance if you can: stand at the entrance, out of combat, and run `/vg probe` once more, so the restriction states and `C_Secrets` lines are on record for a dungeon.
 6. If you have a minute: set a map waypoint (`/way`) or super-track a quest on another zone's map and run `/vg probe` again, so the navigation lines show a distance and a next waypoint.
 
+After the first run (2026-10-19, results in the project's `research/probe/probe-2026-10-19.md`), these are still open, in this order: step 3 (the round trip), step 4 (a fight with a mob targeted, for threat), step 5 (a dungeon), step 6 with a quest in another zone, and one run with a profession window open (the craft queue's recipe list was empty with it closed).
+
 What each part of the report answers (read the section title in the box):
 
 | Section | Question |
@@ -152,6 +154,12 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Do: `/vg`, press and hold the mouse on any slider's track, and while holding press Escape; open the window again and move the mouse over the track without clicking. Then click a key button (Click casting, or a bar button's key), and while it says "Press a key..." close the window with Escape; reopen it and press a movement key. Finally start a fight, and during it open a question (`/vg` > Profiles > Reset profile; answer No afterwards) and try to move and use your action bar keys; end the fight.
 - Expect: the slider does not follow the mouse or change its value after the window closes; the key button shows its normal caption again and the movement key moves you instead of binding; during the fight the question shows but your movement and action bar keys still work, and after the fight, with a question up, Enter presses its confirm button again. `/vg errors` is empty. [Needs in-game check: whether the client delivers the mouse-up to a slider hidden mid-drag, and that a question opened in combat passes keys on.]
 - If it fails, paste: which control, what it did, and `/vg errors`.
+
+### 2.1d Escape closes Vanguard's panels
+
+- Do: with the meter on, click a meter line so its spell panel opens, then press Escape. Type `/vg prep`, press Escape. Open `/vg`, press Escape. Open the quest log (L) and the group board, press Escape once. Start a fight, click a meter line, press Escape, then press Escape again and use a movement key and an action bar key; end the fight. Finally open a mailbox and the Find mail panel, press Escape.
+- Expect: each press closes the panel that is open (the spell panel, the Instance prep card, the options window; one press closes the quest log and the group board together, like the game's windows). In the fight the first Escape closes the spell panel, the second does what Escape does with nothing open (the game's own), and movement and the action bar keep working. The bars, unit frames, meter, trackers and strips stay up. The mailbox and its Find mail panel close together. `/vg errors` is empty. [Needs in-game check: all of it.]
+- If it fails, paste: which panel stayed open (or what key stopped working) and `/vg errors`.
 
 ### 2.2 The wizard, start to finish
 
@@ -383,7 +391,7 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 ### 7.2 Cast bars
 
 - Do: cast a spell with a long cast time, and have a mob cast at you.
-- Expect: your cast bar between the player and target frames with a spark and the seconds left, and a latency segment at the end of your own cast; a gray edge on a cast that cannot be interrupted.
+- Expect: your cast bar between the player and target frames with a spark and the seconds left, and a latency segment at the end of your own cast; a gray edge on a cast that cannot be interrupted. Then in `/vg` → Action bars set bar 1 to 6 buttons per row (or turn on bar 6) and cast again: the cast bar now sits just above the taller bar stack, fully visible, never under the buttons.
 - If it fails, paste: a screenshot during a cast and `/vg errors`.
 
 ### 7.2a Calm HUD

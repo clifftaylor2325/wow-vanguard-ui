@@ -95,18 +95,34 @@ function H.Adopt(store)
   return key
 end
 
+-- The realm your own name carries (UnitFullName's second answer), else nil. On the Forever beta
+-- (probe, 2026-10-19) it differs from the realm's own name: "Hearthvale" on "ClassicBetaPvE2".
+function H.NameRealm()
+  local fn = _G.UnitFullName
+  if type(fn) ~= "function" then return nil end
+  local ok, _, realm = pcall(fn, "player")
+  return ok and plain(realm) or nil
+end
+
+-- Whether a "-Realm" ending is yours: the realm in names, or the one your own name carries.
+local function isMyRealm(realm)
+  return realm == H.Realm() or realm == H.NameRealm()
+end
+
 -- A player's name to show: "Name" for someone on your realm, else as the client gave it
 -- ("Name-Realm"). Whispers and comparisons keep the full name.
 function H.Display(name)
   local base, realm = name:match("^([^%-]+)%-(.+)$")
-  if base and realm == H.Realm() then return base end
+  if base and isMyRealm(realm) then return base end
   return name
 end
 
 -- True when a sender's name ("Name" or "Name-Realm") is you: your name, alone or with your realm.
 function H.IsMe(sender)
   local me = call("UnitName", "player")
-  return me ~= nil and (sender == me or sender == me .. "-" .. H.Realm())
+  if me == nil or type(sender) ~= "string" or ns.IsSecret(sender) then return false end
+  local base, realm = sender:match("^([^%-]+)%-(.+)$")
+  return sender == me or (base == me and isMyRealm(realm))
 end
 
 -- The name of an Enum[space] value ("Classic" for the preset 0), its number as text when the enum lacks it; nil when the answer is hidden or missing.
@@ -141,7 +157,7 @@ function H.Report()
   ns.Chat("Ruleset: " .. (H.Ruleset() or "none named by the client"))
   ns.Chat("Rules: " .. (H.Rules() or "none named by the client"))
   ns.Chat(string.format("Side: %s   Data key: %s", H.Side(), H.Key()))
-  ns.Chat(string.format("Your name in chat: %s-%s (shown as %s)", me, H.Realm(), me))
+  ns.Chat(string.format("Your name in chat: %s-%s (shown as %s)", me, H.NameRealm() or H.Realm(), me))
 end
 
 -- Data from the beta ----------------------------------------------------------------------------

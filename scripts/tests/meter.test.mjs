@@ -253,6 +253,10 @@ it("a click on a line opens that player's spells, in the game's order; again or 
   click(1);
   addon.eval("Vanguard_MeterDetail.title:GetParent():GetScript('OnClick')()");
   expect(panel()[0], "the panel's title closes it").toBe(false);
+  click(1);
+  addon.eval("for _, name in ipairs(UISpecialFrames) do if _G[name] and _G[name]:IsShown() then _G[name]:Hide() end end");
+  expect(panel()[0], "Escape closes it (the game hides every listed special frame)").toBe(false);
+  expect(addon.eval("local n = 0 for _, name in ipairs(UISpecialFrames) do if name == 'Vanguard_MeterDetail' then n = n + 1 end end return n"), "listed once").toBe(1);
   addon.eval("ns.GetModule('Meter').CloseDetail()");
   addon.eval("C_DamageMeter.GetCombatSessionSourceFromType = function() return nil end");
   click(1);

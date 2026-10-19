@@ -266,9 +266,10 @@ function PR.Paint(rows, lines)
   card:SetHeight(top + paintInfo(lines or {}, top))
 end
 
--- The card's title and its close button (ns.WindowTitle: a card's; the button fades the card out), and the packed line.
+-- The card's title and its close button (ns.WindowTitle: a card's; the button fades the card out; Escape
+-- closes it too), and the packed line.
 local function cardParts(f)
-  ns.WindowTitle(f, "Instance prep", { kind = "card", onClose = function() T.FadeOut(f) end })
+  ns.WindowTitle(f, "Instance prep", { kind = "card", onClose = function() T.FadeOut(f) end, escape = true })
   f.packed = T.Text(f:CreateFontString(nil, "OVERLAY"), "label", "good")
   f.packed:SetPoint("TOPLEFT", PR.PAD, -PR.TOP - 2)
   f.packed:SetText("Everything's packed.")

@@ -245,8 +245,10 @@ function MT.PaintRows(f)
   MT.PaintEmpty(#found)
 end
 
--- Sits the panel right of the mail window's own panel (which reaches past the window), on its layer.
+-- Sits the panel right of the mail window's own panel (which reaches past the window), on its layer, as
+-- its child: however the mailbox closes (X, Escape, walking away), the panel goes with it.
 function MT.Place(f)
+  f:SetParent(MailFrame)
   f:ClearAllPoints()
   f:SetPoint("TOPLEFT", MailFrame, "TOPRIGHT", MT.GAP + (T.Padding(MailFrame) or 0), 0)
   f:SetFrameStrata(MailFrame:GetFrameStrata())

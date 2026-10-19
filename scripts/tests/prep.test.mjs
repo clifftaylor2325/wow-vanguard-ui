@@ -170,6 +170,10 @@ it("prep: once per visit at the door, gone after Hide after or the close button"
   expect(shown(addon), "a raid after leaving: again").toBe(true);
   addon.click("ns.GetModule('InstancePrep').card.close");
   expect(shown(addon), "the close button puts it away").toBe(false);
+  addon.slash("prep");
+  expect(shown(addon), "/vg prep brings it back").toBe(true);
+  addon.eval("for _, name in ipairs(UISpecialFrames) do if _G[name] and _G[name]:IsShown() then _G[name]:Hide() end end");
+  expect(shown(addon), "Escape puts it away (the game hides every listed special frame)").toBe(false);
   enter(addon, true, "pvp", 30);
   expect(shown(addon), "a battleground is no door").toBe(false);
   addon.eval("ns.GetModule('InstancePrep').settings.onEnter = false");
