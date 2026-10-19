@@ -206,7 +206,8 @@
       "raid tools: a burst of roster events in combat queues one update of the bar, not one per event"
     ],
     "scripts/tests/range.test.mjs": [
-      "range tint"
+      "range tint",
+      "range tint: a page change turns the old slot's watch off and does not keep its red"
     ],
     "scripts/tests/report.test.mjs": [
       "/vg report names the modules turned off and the skinned addons, with any that are off or failed"

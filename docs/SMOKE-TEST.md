@@ -680,6 +680,12 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Expect: bar 1's icons change with each stance, form or stealth and with Shift+number, in and out of combat, and the button casts what it shows. This holds whether `/vg status` says `secure snippets: yes` or `no` (with `no`, bar 1 pages through the game's own page attribute).
 - If it fails, paste: your class, what you changed, what the bar showed, `/vg status` and `/vg errors`.
 
+### 10.3a The range tint after a page change
+
+- Do: with a ranged attack or spell on bar 1 button 1 on both pages, stand out of its range of a target so the icon is red, then change stance, form or stealth (or press Shift+2) so bar 1 shows another page, walk into range on the new page's spell, and change back.
+- Expect: each page's icon is red only while its own action is out of range, right after the page changes; coming back does not keep the other page's red. `/vg errors` stays empty. [Needs in game: that IsActionInRange answers for the new page's slot at once, in combat too.]
+- If it fails, paste: your class, the spells, what the icon showed, and `/vg errors`.
+
 ### 10.4 Keybind mode on the action bars
 
 - Do: out of combat, type `/vg keybind`. Hover an empty slot on bar 1 and press Shift+Q; then, still over it, press mouse button 4, roll the wheel down, and press Backspace. Hover a button that has a key and press W. Hover a button and left-click it. Press Escape.

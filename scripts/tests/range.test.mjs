@@ -1,7 +1,7 @@
 // range: Vanguard's real Lua in the TEST-ONLY headless client (scripts/lib/lua-harness.mjs).
 
 import { expect, it } from "vitest";
-import { ACTIONS_ENV, button, isTok, loggedIn } from "./helpers.mjs";
+import { ACTIONS_ENV, button, isTok, loggedIn, pageBar1 } from "./helpers.mjs";
 
 it("range tint", () => {
   const polled = loggedIn(ACTIONS_ENV + "C_ActionBar = nil IsActionInRange = function(slot) if slot == 1 then return false end if slot == 3 then return { __secret = true } end return true end");
@@ -15,4 +15,20 @@ it("range tint", () => {
   expect(button(evented, 1, 1).color[0] === 1, "back in range, back to normal").toBeTruthy();
   evented.fire("ACTION_RANGE_CHECK_UPDATE", 1, false, false);
   expect(button(evented, 1, 1).color[0] === 1, "an action without a range is never red").toBeTruthy();
+});
+
+it("range tint: a page change turns the old slot's watch off and does not keep its red", () => {
+  const addon = loggedIn(ACTIONS_ENV + `__watching = {}
+    C_ActionBar = { EnableActionRangeCheck = function(slot, on) __watching[slot] = (__watching[slot] or 0) + (on and 1 or -1) end }
+    IsActionInRange = function(slot) return slot ~= 73 end`);
+  // How many watches the client holds on bar 1 button 1's slots, page 1's and page 7's.
+  const watching = () => addon.eval("return { __watching[1] or 0, __watching[73] or 0 }");
+  // Whether bar 1 button 1's icon is tinted out of range.
+  const red = () => isTok(addon, button(addon, 1, 1).color, "outOfRange");
+  pageBar1(addon, 7);
+  expect([red(), watching()], "page 7: slot 73 is out of range, red at once; slot 1 no longer watched").toEqual([true, [0, 1]]);
+  pageBar1(addon, 1);
+  expect(red(), "back on slot 1, in range: not red, with no range event").toBe(false);
+  addon.fire("PLAYER_ENTERING_WORLD");
+  expect(watching(), "one watch per button, however often the buttons refresh").toEqual([1, 0]);
 });
