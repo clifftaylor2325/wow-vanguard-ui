@@ -244,6 +244,16 @@ it("options: a search hit scrolls to its row and marks it after the window was c
   expect(openHit("reduce motion"), "after a reopen a row on a page built before is marked too").toMatch(/^Reduce motion/);
 });
 
+it("options: a live row of a module that is off saves its value without an error", () => {
+  const addon = loggedIn(RETAIL + CLICK_LUA + DATA_ENV, { savedVariables: "VanguardDB.profiles.Default = { modules = { CooldownGlow = false, GameAlerts = false, ActionBars = false } }\n" });
+  addon.eval('ns.Options.Show("cooldowns")');
+  addon.eval('__click("Glow a buff near its end")');
+  addon.eval('ns.Options.Show("tools")');
+  addon.eval('__click("Low health: a soft tint")');
+  addon.eval('ns.Options.Show("actionbars")');
+  addon.eval('__click("Bar backing")');
+  expect(addon.eval("return { #ns.errors, ns.Settings('CooldownGlow').glow }"), "no error, and the switch is saved").toEqual([0, true]);
+});
 it("choice fallback, key capture and the mouse wheel", () => {
   const addon = loggedIn(CLICK_LUA + `
     -- TEST-ONLY spec index so the click-cast page builds for spec 1.
