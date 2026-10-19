@@ -4,6 +4,7 @@
 --     item) and a filter (All, Money, Items, Sales) list up to 8 matching mails; Take takes the
 --     mail's money and its first item, one click each. /vg mail <words> prints the same in chat.
 --   * Presets: a name, the character it goes to and the words an item's name must contain,
+--     made with the panel's + Add button (a right-click on a preset's button removes it), or
 --     /vg mail preset add <name> <character> [words], remove <name>, list. With the Send Mail tab
 --     open, a preset's button (or /vg mail send <name>) types the character in and attaches the
 --     matching items from your bags, up to 12; you press Send.
@@ -255,12 +256,11 @@ function MT.Place(f)
   f:SetFrameLevel(MailFrame:GetFrameLevel())
 end
 
--- The line shown instead of rows: an empty inbox, no matches, or nothing (rows shown); and the preset hint.
+-- The line shown instead of rows: an empty inbox, no matches, or nothing (rows shown).
 function MT.PaintEmpty(found)
   local total = type(GetInboxNumItems) == "function" and ns.PlainNumber((GetInboxNumItems())) or 0
   MT.frame.empty:SetShown(found == 0)
   MT.frame.empty:SetText(total == 0 and "Your inbox is empty." or "No mail matches.")
-  MT.frame.hint:SetShown(#MT.settings.presets == 0)
 end
 
 -- A row's line of text, left of its Take button.
@@ -299,15 +299,29 @@ local function buildBulk(f)
   f.returnAll:SetPoint("LEFT", f.takeAll, "RIGHT", T.SPACE.gap, 0)
 end
 
--- The preset buttons along the bottom (the first few presets), each sending its preset.
+-- How far in from the left the i-th place along the bottom (a preset button, or + Add) sits.
+local function slot(i)
+  return MT.PAD + (i - 1) * (PRESET_W + T.SPACE.tight)
+end
+
+-- Preset button i: a click sends its preset, a right-click asks to remove it; pointing at it says what it sends.
+local function presetButton(f, i)
+  local b
+  b = W.Button(f, "Preset", function(_, button) MT.PresetClick(b.preset, button) end, PRESET_W)
+  b:RegisterForClicks("LeftButtonUp", "RightButtonUp")
+  b:SetPoint("BOTTOMLEFT", slot(i), MT.PAD)
+  b:HookScript("OnEnter", ns.Guard("mail preset tip", function(self) MT.PresetTip(self) end))
+  b:HookScript("OnLeave", ns.Guard("mail preset tip", function() GameTooltip:Hide() end))
+  return b
+end
+
+-- The preset buttons along the bottom (the first few presets), + Add in the first free place, and the hint
+-- beside it while there are no presets.
 local function buildPresets(f)
   f.presets = {}
-  for i = 1, MT.BUTTONS do
-    local b
-    b = W.Button(f, "Preset", function() if b.preset then MT.Send(b.preset) end end, PRESET_W)
-    b:SetPoint("BOTTOMLEFT", MT.PAD + (i - 1) * (PRESET_W + T.SPACE.tight), MT.PAD)
-    f.presets[i] = b
-  end
+  for i = 1, MT.BUTTONS do f.presets[i] = presetButton(f, i) end
+  f.addPreset = W.Button(f, "+ Add", function() MT.AskPreset() end, PRESET_W)
+  f.hint:SetPoint("LEFT", f.addPreset, "RIGHT", T.SPACE.gap, 0)
 end
 
 -- The panel's heading (ns.WindowTitle: a card's; the panel follows the mail window, so it has no close button),
@@ -317,9 +331,9 @@ local function heading(f)
   f.empty = T.Text(f:CreateFontString(nil, "OVERLAY"), "label", "muted")
   f.empty:SetPoint("TOP", 0, -ROWS_TOP - MT.ROW)
   f.hint = T.Text(f:CreateFontString(nil, "OVERLAY"), "small", "muted")
-  f.hint:SetWidth(MT.WIDTH - 2 * MT.PAD)
-  f.hint:SetPoint("BOTTOM", 0, MT.PAD)
-  f.hint:SetText("No presets: /vg mail preset add <name> <character> [words]")
+  f.hint:SetWidth(MT.WIDTH - 2 * MT.PAD - PRESET_W - T.SPACE.gap)
+  f.hint:SetJustifyH("LEFT")
+  f.hint:SetText("No presets yet.")
 end
 
 -- The panel, built when the mailbox first opens with the tools on: right of the mail window.
@@ -344,7 +358,7 @@ function MT.CycleFilter()
   MT.Paint()
 end
 
--- Labels the preset buttons with the presets (the rest hide).
+-- Labels the preset buttons with the presets (the rest hide), and puts + Add after them.
 function MT.PaintPresets()
   if not MT.frame then return end
   for i, b in ipairs(MT.frame.presets) do
@@ -353,6 +367,17 @@ function MT.PaintPresets()
     b:SetShown(p ~= nil)
     if p then b.text:SetText(p.name) end
   end
+  MT.PaintAdd()
+end
+
+-- + Add in the first free place along the bottom (hidden once every place holds a preset), and the hint
+-- beside it while there are none.
+function MT.PaintAdd()
+  local add, n = MT.frame.addPreset, #MT.settings.presets
+  MT.frame.hint:SetShown(n == 0)
+  add:SetShown(n < MT.BUTTONS)
+  add:ClearAllPoints()
+  add:SetPoint("BOTTOMLEFT", slot(math.min(n, MT.BUTTONS - 1) + 1), MT.PAD)
 end
 
 -- The command ---------------------------------------------------------------------------------
@@ -364,6 +389,48 @@ local function removePreset(name)
   ns.Chat(at and ("Preset " .. name .. " removed.") or ("No preset called " .. name .. "."))
 end
 
+-- A preset button's click: the left button sends its preset, the right one asks to remove it.
+function MT.PresetClick(name, button)
+  if not name then return end
+  if button == "RightButton" then return MT.AskRemove(name) end
+  MT.Send(name)
+end
+
+-- Asks, then removes a preset and its button.
+function MT.AskRemove(name)
+  ns.Ask(string.format("Remove the preset %s?", name), "Remove", function() removePreset(name) MT.PaintPresets() end, nil, "danger")
+end
+
+-- The tooltip on a preset button: what it sends to whom, and how to remove it.
+function MT.PresetTip(b)
+  local p = preset(b.preset)
+  if not p then return end
+  GameTooltip:SetOwner(b, "ANCHOR_TOP")
+  GameTooltip:SetText(p.name, T.RGB("text"))
+  GameTooltip:AddLine(string.format("Sends %s to %s.", p.words ~= "" and ("items named " .. p.words) or "every item", p.to), T.RGB("muted"))
+  GameTooltip:AddLine("Right-click to remove.", T.RGB("muted"))
+  GameTooltip:Show()
+end
+
+-- A preset typed as "<name> <character> [words]": its name, character and words; nil without the first two.
+local function parsePreset(text)
+  return (text or ""):match("^%s*(%S+)%s+(%S+)%s*(.-)%s*$")
+end
+
+-- + Add: asks for the preset's name, character and words in the text box.
+function MT.AskPreset()
+  ns.AskText("New preset: a name, the character, then words in the items' names (none: every item)", MT.AddTyped, "Add")
+end
+
+-- Adds the preset typed in the text box and closes it; without a name and a character, says what it needs.
+function MT.AddTyped(text)
+  local name, to, words = parsePreset(text)
+  if not name then return ns.Chat("A preset needs a name and a character, such as: Smith Bobalt iron") end
+  MT.AddPreset(name, to, words)
+  MT.PaintPresets()
+  ns.HideText()
+end
+
 -- Lists the presets.
 local function listPresets()
   for _, p in ipairs(MT.settings.presets) do ns.Chat(string.format("%s: to %s, %s", p.name, p.to, p.words ~= "" and p.words or "every item")) end
@@ -373,7 +440,7 @@ end
 -- /vg mail preset [add <name> <character> [words]|remove <name>]: lists, adds or removes.
 function MT.PresetCommand(arg)
   local verb, rest = arg:match("^(%S*)%s*(.-)$")
-  local name, to, words = rest:match("^(%S+)%s+(%S+)%s*(.-)$")
+  local name, to, words = parsePreset(rest)
   if verb == "add" and not name then ns.Chat("/vg mail preset add <name> <character> [words the item's name holds]")
   elseif verb == "add" then MT.AddPreset(name, to, words)
   elseif verb == "remove" then removePreset(rest)
