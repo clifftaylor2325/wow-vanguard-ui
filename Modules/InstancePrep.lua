@@ -313,12 +313,14 @@ function PR.Show(force)
 end
 
 -- You came into a world: at a dungeon or raid's door, once per visit (a reload
--- inside doesn't count again), the card shows if something is low. Not in combat.
-function PR.OnEnter()
+-- inside doesn't count again: the event says so, as the memory of the visit is gone),
+-- the card shows if something is low. Not in combat.
+function PR.OnEnter(_, _, isReloadingUi)
   local where = ns.Where()
   if not PR.DOORS[where] then PR.lastInstance = nil return end
   local id = ns.PlainNumber((select(8, ask("GetInstanceInfo"))))
   if PR.settings.dungeonCard then ns.DungeonCard.Record() end
+  if isReloadingUi == true then PR.lastInstance = id return end
   if not PR.settings.onEnter or ns.InCombat() or (id and id == PR.lastInstance) then return end
   PR.lastInstance = id
   PR.Show(false)

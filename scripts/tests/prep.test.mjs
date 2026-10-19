@@ -182,6 +182,18 @@ it("prep: once per visit at the door, gone after Hide after or the close button"
   expect(shown(addon), "the door check can be switched off").toBe(false);
 });
 
+it("prep: a /reload inside the dungeon does not bring the door card back", () => {
+  const addon = character("MAGE", 60);
+  addon.eval(`__inside, __kind, __instanceID = true, "party", 389`);
+  addon.fire("PLAYER_ENTERING_WORLD", false, true);
+  expect(shown(addon), "after a reload inside (a fresh UI that has not seen this visit): not again").toBe(false);
+  enter(addon);
+  expect(shown(addon), "nor at the next loading screen inside").toBe(false);
+  enter(addon, false, "none");
+  enter(addon);
+  expect(shown(addon), "back through the door after leaving: again").toBe(true);
+});
+
 it("prep: a ready check shows the card, packed or not, unless switched off", () => {
   const addon = character("WARRIOR", 60);
   addon.fire("READY_CHECK", "TEST-ONLY Leader", 30);

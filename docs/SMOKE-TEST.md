@@ -380,6 +380,12 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Expect: step 1 has Food & drink, Bandages and Potions sliders; hunters and warlocks get a second step with Ammo or Soul shards; the last step lists your amounts and whether anything is short; Esc, the close button and Done close it; the step caption is small grey type under the title; the amounts take effect at once, and `/vg prep` shows rows against them. No Lua error.
 - If it fails, paste: a screenshot and `/vg errors`.
 
+### 6.5c The door card once per visit, a /reload inside included
+
+- Do: with something short (no bandages, say), walk into a dungeon and let the card fade. Type `/reload` inside. Then leave and walk back in.
+- Expect: the card shows at the first entry, not after the `/reload`, and again after you leave and walk back in. [Needs in game: that PLAYER_ENTERING_WORLD on Forever reports a `/reload` as one (its second argument true).]
+- If it fails, paste: whether it showed after the reload and `/vg errors`.
+
 ### 6.6 Group threat panel (batch 2)
 
 - Do: `/vg` → Unit frames, switch on "Group threat panel" and `/reload`. In a party with a tank, target a hostile mob out of combat, then pull it. In the open world, then a dungeon, then on a boss, watch the panel; at the same moment type `/run print(C_Secrets.ShouldUnitThreatValuesBeSecret())` and `/vg errors` (this is the threat test of issue #223).
