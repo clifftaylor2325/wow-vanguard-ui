@@ -504,9 +504,20 @@ local function askConfirm(s, kind, args)
   AH.PaintSell()
 end
 
+-- The post the game asked to confirm, while it is still what the card would send (the same length,
+-- quantity, bid and price); nil once anything on the card changed it, so Post checks and posts anew.
+function AH.Pending(s)
+  local p = s and s.pending
+  if not p then return nil end
+  local _, now = postCall(s, p.args[1], AH.SellPrice(s))
+  for i = 2, p.args.n do
+    if now[i] ~= p.args[i] then return nil end
+  end
+  return p
+end
+
 -- Confirm (Post's click while the game asks): the post it held, confirmed, and on to the next.
-local function confirmPost(s)
-  local p = s.pending
+local function confirmPost(s, p)
   C_AuctionHouse["ConfirmPost" .. p.kind](unpack(p.args, 1, p.args.n))
   posted(s, p.args[3])
 end
@@ -516,7 +527,8 @@ end
 -- next click (Confirm) confirms it.
 function AH.Post()
   local s = AH.sell
-  if s and s.pending then return confirmPost(s) end
+  local p = AH.Pending(s)
+  if p then return confirmPost(s, p) end
   local why, price, loc = AH.PostCheck(s)
   if why then return refused(why) end
   local kind, args = postCall(s, loc, price)
@@ -618,7 +630,7 @@ AH.GUIDE = {
 -- values its line shows.
 function AH.GuideState(s, why)
   if not s then return AH.sellStatus and "done" or "empty", AH.sellStatus end
-  if s.pending then return "confirm" end
+  if AH.Pending(s) then return "confirm" end
   if s.answer then return "answer", (s.answer:gsub("^%l", string.upper)) end
   if why == "price" and not s.searched then return "checking" end
   if why == "busy" and s.posted > 0 then return "sent", s.posted end
@@ -679,7 +691,7 @@ end
 
 -- Post: on when the next stack can go up (why nil), or as Confirm while the game asks to confirm one.
 local function paintPost(c, s, why)
-  local asking = s ~= nil and s.pending ~= nil
+  local asking = AH.Pending(s) ~= nil
   c.post.text:SetText(asking and "Confirm" or "Post")
   enable(c.post, why == nil or asking)
 end

@@ -151,6 +151,25 @@ it("a true return asks for a confirm, and the next click on Post (Confirm) confi
   expect(restrictedLog(addon).map((c) => c.slice(0, 7)), "the click confirms the same post").toEqual([["PostItem", true, "0:2", 1, 1, "nil", 4900], ["ConfirmPostItem", true, "0:2", 1, 1, "nil", 4900]]);
   expect([card(addon)[1], form(addon)[7], asking()[0]], "the blade is listed: the card empties, Post again").toEqual([false, "posted 1 of 1", "Post"]);
 });
+it("a price typed after the game asks to confirm turns Confirm back into Post, and the next click posts the new price", () => {
+  const addon = atAuctionHouse(BAGS + "__wfgWorld.ah.needsConfirm = true __wfgWorld.ah.items[9999] = { { buyoutAmount = 5000, quantity = 1 } }");
+  dropAndAnswer(addon, 2, "ITEM_SEARCH_RESULTS_UPDATED", { itemID: 9999 });
+  addon.type(`${CARD}.price`, "15s");
+  addon.click(`${CARD}.post`);
+  addon.type(`${CARD}.price`, "15g");
+  const label = addon.eval(`return ${CARD}.post.text:GetText()`);
+  addon.click(`${CARD}.post`);
+  const calls = restrictedLog(addon).map((c) => [c[0], c[6]]);
+  expect([label, calls], "Post again, and the 15g price goes through PostItem, never a stale confirm").toEqual(["Post", [["PostItem", 1500], ["PostItem", 150000]]]);
+});
+it("a new undercut rule after the game asks to confirm turns Confirm back into Post", () => {
+  const addon = atAuctionHouse(BAGS + "__wfgWorld.ah.needsConfirm = true __wfgWorld.ah.items[9999] = { { buyoutAmount = 5000, quantity = 1 } }");
+  dropAndAnswer(addon, 2, "ITEM_SEARCH_RESULTS_UPDATED", { itemID: 9999 });
+  addon.click(`${CARD}.post`);
+  addon.eval(`local AH = ${HELPER} AH.settings.undercut = "match" AH.PaintSell()`);
+  const asking = addon.eval(`local c = ${CARD} return { c.post.text:GetText(), c.guide:GetText() }`);
+  expect(asking, "the suggestion moved to 50s, so the held 49s confirm no longer applies").toEqual(["Post", "Click Post to list stack 1 of 1."]);
+});
 it("the addon never writes into the game's auction window", () => {
   const addon = atAuctionHouse(BAGS + DUST_UP);
   // The window's own fields (not the stub's), sorted.
