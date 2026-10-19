@@ -1031,10 +1031,11 @@ end
 -- and buttons. Slots and tabs stay square (an icon fills a slot; a tab meets its panel).
 local ROUNDED_KINDS = { panel = true, button = true }
 
--- A painted frame's corner look: "cut" for a shield frame (opts.shield) while the shield setting is on,
--- else "rounded" with the corners setting on it, for a kind that rounds (never a status bar: its fill
--- is square), else nil (square).
+-- A painted frame's corner look: "rounded" for a frame that always rounds (opts.round, the Versus deck),
+-- "cut" for a shield frame (opts.shield) while the shield setting is on, else "rounded" with the corners
+-- setting on it, for a kind that rounds (never a status bar: its fill is square), else nil (square).
 function corner.look(frame, entry)
+  if entry.opts.round then return "rounded" end
   if entry.opts.shield and T.Settings().shield then return "cut" end
   if T.Settings().corners ~= "rounded" or not ROUNDED_KINDS[entry.kind] or edgeLayer(frame) == "OVERLAY" then return nil end
   return "rounded"
@@ -1157,19 +1158,34 @@ corner.SIDES = { TOP = { "TOPLEFT", "TOPRIGHT" }, BOTTOM = { "BOTTOMLEFT", "BOTT
 
 -- Each corner's mask art: its own image, since the client ignores a mask texture's tex coords (a
 -- flipped mask cut the wrong corner in game).
-corner.MASK_ART = { TOPLEFT = "CornerCutMask", TOPRIGHT = "CornerCutMaskTR", BOTTOMLEFT = "CornerCutMaskBL", BOTTOMRIGHT = "CornerCutMaskBR" }
+corner.MASK_ART = {
+  cut = { TOPLEFT = "CornerCutMask", TOPRIGHT = "CornerCutMaskTR", BOTTOMLEFT = "CornerCutMaskBL", BOTTOMRIGHT = "CornerCutMaskBR" },
+  rounded = { TOPLEFT = "CornerRoundMask", TOPRIGHT = "CornerRoundMaskTR", BOTTOMLEFT = "CornerRoundMaskBL", BOTTOMRIGHT = "CornerRoundMaskBR" },
+}
 
--- Two masks on owner (the frame a masked texture belongs to), one at each of frame's corners on side,
--- that corner's mask art; clamped to white past their edges, so each one cuts only its corner.
+-- Two masks on owner (the frame a masked texture belongs to), one at each of frame's corners on side;
+-- their art follows the frame's corner look (corner.maskArt).
 function corner.maskSet(owner, frame, side)
   local set = {}
   for _, point in ipairs(corner.SIDES[side]) do
     local m = owner:CreateMaskTexture()
-    m:SetTexture(T.Texture(corner.MASK_ART[point]), "CLAMPTOWHITE", "CLAMPTOWHITE")
     m:SetPoint(point, frame, point)
     set[point] = m
   end
   return set
+end
+
+-- The corner look each set of masks has art for (set -> look).
+corner.setLook = setmetatable({}, { __mode = "k" })
+
+-- Gives a set of masks the art of a corner look (cut or rounded) when it changes, each corner's own
+-- image, clamped to white past its edges so each one masks only its corner.
+function corner.maskArt(set, look)
+  if corner.setLook[set] == look then return end
+  for point, m in pairs(set) do
+    m:SetTexture(T.Texture(corner.MASK_ART[look][point]), "CLAMPTOWHITE", "CLAMPTOWHITE")
+  end
+  corner.setLook[set] = look
 end
 
 -- Puts a masked texture's masks on while its frame's corners are cut, and takes them off otherwise.
@@ -1181,13 +1197,15 @@ function corner.maskTexture(item, on)
   end
 end
 
--- Sizes a painted frame's masks to its cut and puts them on its masked textures while it is cut.
+-- Sizes a painted frame's masks to its corners, gives them its look's art, and puts them on its masked
+-- textures while its corners are cut or rounded.
 function corner.paintMasks(frame, entry)
   local size = math.max(entry.round, T.Pixel(frame))
   for _, set in pairs(entry.maskSets) do
+    if entry.look then corner.maskArt(set, entry.look) end
     for _, m in pairs(set) do m:SetSize(size, size) end
   end
-  for _, item in ipairs(entry.masked) do corner.maskTexture(item, entry.look == "cut") end
+  for _, item in ipairs(entry.masked) do corner.maskTexture(item, entry.look ~= nil) end
 end
 
 -- Cuts textures inside a shield frame (a status bar's fill and background) to its cut corners on one
@@ -1287,6 +1305,17 @@ function T.HudPanel(frame, opts)
   for k, v in pairs(opts or {}) do o[k] = v end
   o.noSheen, o.shadow = true, T.Settings().hudShadow == true
   return T.Panel(frame, o)
+end
+
+-- Rounds a painted frame's corners whatever the corners and shield settings (on), or gives them back to
+-- those settings (off); its masked bars follow. The Versus deck rounds the unit frames it joins.
+---@param frame table a painted frame
+---@param on boolean
+function T.SetRound(frame, on)
+  local entry = painted[frame]
+  if not entry or entry.opts.round == (on or nil) then return end
+  entry.opts.round = on or nil
+  repaint(frame, entry)
 end
 
 -- Sets a painted frame's border to { r, g, b }, or back to the theme's with nil.
