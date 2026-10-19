@@ -69,7 +69,9 @@
       "the right-edge bars start off and show on mouseover when turned on"
     ],
     "scripts/tests/broker.test.mjs": [],
-    "scripts/tests/casts.test.mjs": [],
+    "scripts/tests/casts.test.mjs": [
+      "your cast bar sits above the action bars and moves up when they grow, so they never hide it"
+    ],
     "scripts/tests/chat-bubbles.test.mjs": [],
     "scripts/tests/chat.test.mjs": [],
     "scripts/tests/chatfilter.test.mjs": [],

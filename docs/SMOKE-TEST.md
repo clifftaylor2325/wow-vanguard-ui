@@ -383,7 +383,7 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 ### 7.2 Cast bars
 
 - Do: cast a spell with a long cast time, and have a mob cast at you.
-- Expect: your cast bar between the player and target frames with a spark and the seconds left, and a latency segment at the end of your own cast; a gray edge on a cast that cannot be interrupted.
+- Expect: your cast bar between the player and target frames with a spark and the seconds left, and a latency segment at the end of your own cast; a gray edge on a cast that cannot be interrupted. Then in `/vg` → Action bars set bar 1 to 6 buttons per row (or turn on bar 6) and cast again: the cast bar now sits just above the taller bar stack, fully visible, never under the buttons.
 - If it fails, paste: a screenshot during a cast and `/vg errors`.
 
 ### 7.2a Calm HUD
