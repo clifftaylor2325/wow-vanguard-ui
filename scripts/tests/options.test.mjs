@@ -923,6 +923,15 @@ it("dialogs: Import and Reload are the primary buttons, Yes and No stay plain; t
   expect(addon.eval("return { Vanguard_Reload:IsShown(), Vanguard_Reload.accept.reloadOverlay:IsShown() }"), "Later hides the dialog and the overlay with it").toEqual([false, false]);
 });
 
+it("profiles: an armed Delete asks again after the window was closed, so one later click deletes nothing", () => {
+  const addon = loggedIn(CLICK_LUA + 'VanguardDB.profiles["TEST-ONLY Spare"] = {}');
+  addon.eval('ns.Options.Show("profiles")');
+  expect(addon.eval('return __click("Delete")'), "the first click arms Delete").toBe(true);
+  addon.eval("ns.Options.Hide() Vanguard_Options:Hide()");
+  addon.eval('ns.Options.Show("general") ns.Options.Hide() Vanguard_Options:Hide() ns.Options.Show("profiles")');
+  expect(addon.eval('return { __click("Sure?"), VanguardDB.profiles["TEST-ONLY Spare"] ~= nil }'), "no button still says Sure?, and the profile is still there").toEqual([false, true]);
+  expect([addon.eval('return __click("Delete")'), addon.eval('return __click("Sure?")'), addon.eval('return VanguardDB.profiles["TEST-ONLY Spare"] == nil')], "two clicks still delete it").toEqual([true, true, true]);
+});
 it("profiles: Use is a plain button, so Create is the page's one accent button", () => {
   const addon = loggedIn(CLICK_LUA + 'VanguardDB.profiles["TEST-ONLY Healer"] = {}');
   addon.eval('ns.Options.Show("profiles")');

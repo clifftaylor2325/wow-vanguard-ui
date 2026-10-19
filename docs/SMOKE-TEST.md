@@ -286,6 +286,12 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Expect: the tooltips say what each loses (`Deletes profile Spare for every character on this account. It can't be undone.`, `Replaces every setting in profile <yours> with profile Spare's. It can't be undone.`). Reset asks `Reset this profile? Every setting in profile <yours> goes back to Vanguard's defaults, for every character that uses it. A copy is kept as profile <yours> backup.`; No changes nothing; Reset says `Profile <yours> as it was is saved as profile <yours> backup.` and the list shows that backup. After the reload the accent is brass again, and **Copy here** on the backup brings fel back.
 - If it fails, paste: the question's text, the chat lines and `/vg errors`.
 
+### 4.8a Sure? doesn't wait for later
+
+- Do: `/vg` → Profiles, click **Delete** once on a spare profile's row (it says `Sure?`), close the window, open it again on Profiles.
+- Expect: the button reads `Delete` again; one click only asks `Sure?` again and deletes nothing, and a second click deletes the profile.
+- If it fails, paste: a screenshot of the row and `/vg errors`.
+
 ## 5. Pixel borders
 
 ### 5.1 Border width at 1440p
