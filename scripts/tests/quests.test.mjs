@@ -1304,3 +1304,10 @@ it("quest log: each line shows its quest's XP at the right, with thousands set a
   addon.eval("GetQuestLogRewardXP = function() return 0 end ns.GetModule('QuestLog').settings.xp = true ns.GetModule('QuestLog').Refresh()");
   expect(xps(), "a quest worth nothing shows none").toEqual(["", "", ""]);
 });
+it("quest history: /vg quests history sorts a long history newest first, by turn-in time", () => {
+  const seed = Array.from({ length: 40 }, (_, i) => `[${90100 + i}] = { who = "Thrall-Forever", t = 1000000 + ${(i * 17) % 40} * 60, title = "TEST-ONLY T${(i * 17) % 40}" }`).join(", ");
+  const addon = loggedIn(TRACK_ENV + QLOG_ENV + HISTORY_ENV, { savedVariables: `VanguardDB.questHistory = { count = 40, quests = { ${seed} } }` });
+  addon.slash("quests history 25");
+  const titles = addon.chat().slice(-25).map((l) => l.match(/TEST-ONLY T(\d+)/)?.[1]);
+  expect(titles, "the 25 latest, each older than the one before").toEqual(Array.from({ length: 25 }, (_, i) => String(39 - i)));
+});
