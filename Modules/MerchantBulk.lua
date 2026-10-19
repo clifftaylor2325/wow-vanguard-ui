@@ -278,13 +278,22 @@ function MC.StackPacks(index)
   return math.min(per, MC.MaxPacks(index))
 end
 
+-- The answer to a Buy question: buys the packs when the merchant is still open and still sells, at index,
+-- the item asked about (id) at the same pack price; a question left open past its merchant buys nothing.
+local function buyAsked(index, packs, id, price)
+  local same = trading() and MC.ItemID(ask("GetMerchantItemLink", index)) == id and wares(index) == price
+  if not same then return ns.Chat("Nothing bought: the merchant closed or changed what it sells.") end
+  MC.Buy(index, packs)
+end
+
 -- Buys packs after a question when it is more than one merchant stack; hides the quantity window.
 function MC.Order(index, packs, frame)
   if packs <= 0 then return end
   local price, quantity = wares(index)
+  local id = MC.ItemID(ask("GetMerchantItemLink", index))
   if frame and frame.Hide then frame:Hide() end
   if packs <= MC.StackPacks(index) then return MC.Buy(index, packs) end
-  ns.Ask(string.format("Buy %d × %s for %s?", packs * quantity, itemName(MC.ItemID(ask("GetMerchantItemLink", index)) or 0), money(packs * price)), "Buy", function() MC.Buy(index, packs) end)
+  ns.Ask(string.format("Buy %d × %s for %s?", packs * quantity, itemName(id or 0), money(packs * price)), "Buy", function() buyAsked(index, packs, id, price) end)
 end
 
 -- The quantity window ----------------------------------------------------------------------------

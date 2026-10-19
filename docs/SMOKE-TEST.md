@@ -624,6 +624,12 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Expect: the item tooltip still shows the "Sold by ..." line and the "AH: ..." line (and "Upgrade +N% (estimate)" where it applies), in the game's own tooltip; there is no "Sells for ..." or "You have ..." line from Vanguard, and no unit-tooltip changes. Turn Tooltips back on: those two lines come back, with no line shown twice. [Needs in-game check: the lines on the client's tooltip, with the module off.]
 - If it fails, paste: which line is missing or doubled, and `/vg errors`.
 
+### 9.2d A Buy question left open past its merchant
+
+- Do: at a merchant selling a cheap stackable item, open its quantity window (Shift-click it) and click Max so it asks "Buy N × <item> for <money>?". Leave the question up, walk away until the merchant window closes, then click Buy.
+- Expect: nothing is bought, and chat says `Nothing bought: the merchant closed or changed what it sells.` Asking again at the merchant and answering Buy at once still buys as before.
+- If it fails, paste: the chat lines and `/vg errors`.
+
 ### 9.2c Character sheet extras
 
 - Do: open the character pane with gear worn. Then `/vg` → Game windows → Character sheet extras: tick "Mark worn pieces missing an enchant", and look at a chest, legs, boots, bracers, gloves, cloak or weapon of green quality or better without an enchant. Press "Show my gear summary in chat" (or run `/vg gear`).
