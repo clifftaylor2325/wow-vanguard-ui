@@ -147,6 +147,20 @@ it("a panel first built by the inbox update (the window shows after MAIL_SHOW) h
   expect(addon.eval("return #ns.errors"), "no errors").toBe(0);
 });
 
+it("the panel goes with the mail window however it closes: hidden with no MAIL_CLOSED, or an inbox update after it", () => {
+  const addon = mailer();
+  addon.world.openMailWindow();
+  expect(addon.eval("return Vanguard_MailTools:GetParent() == MailFrame"), "a child of the window").toBe(true);
+  addon.eval("MailFrame:Hide()");
+  expect(addon.frame("Vanguard_MailTools").visible, "the window hidden (walked away, Escape): the panel too").toBe(false);
+  addon.world.openMailWindow();
+  expect(addon.frame("Vanguard_MailTools").visible, "back with the mailbox").toBe(true);
+  addon.world.closeMailWindow();
+  addon.fire("MAIL_INBOX_UPDATE");
+  expect(addon.frame("Vanguard_MailTools").visible, "a late inbox update leaves it closed").toBe(false);
+  expect(addon.eval("return #ns.errors"), "no errors").toBe(0);
+});
+
 it("the options have the switch", () => {
   const addon = mailer();
   addon.eval('ns.Options.Show("town")');
