@@ -853,7 +853,7 @@ it("game options: scroll bars, defaults button, header divider, and the nav and 
 // a framed box, Base and Raid tabs, and two control sets whose Controls hold stepped dropdowns, a slider and a check box slider.
 const GRAPHICS_ROW = `
   local row = CreateFrame("Frame", nil, SettingsPanel.Container.SettingsList)
-  row.NineSlice = CreateFrame("Frame", nil, row) row.NineSlice.Art = row.NineSlice:CreateTexture()
+  row.NineSlice = CreateFrame("Frame", nil, row) row.NineSlice.Art = row.NineSlice:CreateTexture() row.NineSlice:SetFrameLevel(500)
   row.BaseTab, row.RaidTab = CreateFrame("Button", nil, row), CreateFrame("Button", nil, row)
   local function stepped(set)
     local c = CreateFrame("Frame", nil, set) c.Control = CreateFrame("Frame", nil, c)
@@ -885,12 +885,28 @@ it("game options: the graphics quality section's box, Base and Raid tabs, qualit
   expect(addon.eval(`local r = __graphics
     local function stepper(c) return __panelled(c.Control.Dropdown) and c.Control.Dropdown.Arrow.__alpha == 0 and ns.Theme.ArrowParts(c.Control.DecrementButton) ~= nil and ns.Theme.ArrowParts(c.Control.IncrementButton) ~= nil end
     local b, raid = r.BaseQualityControls.Controls, r.RaidQualityControls.Controls
-    return { __insetPainted(r.NineSlice), __panelled(r.BaseTab), __panelled(r.RaidTab), __stepper(b[1].SliderWithSteppers), stepper(b[2]),
+    return { __insetPainted(r.NineSlice), r.NineSlice:GetFrameLevel() == r:GetFrameLevel(), __panelled(r.BaseTab), __panelled(r.RaidTab), __stepper(b[1].SliderWithSteppers), stepper(b[2]),
       __stepper(raid[1].SliderWithSteppers), ns.Theme.CheckParts(raid[1].Checkbox) ~= nil, stepper(raid[2]) }`),
-    "the box an inset, both tabs theme tabs, each set's slider and stepped dropdown themed, the raid check box too").toEqual([true, true, true, true, true, true, true, true]);
+    "the box an inset brought down from level 500 to the row's, both tabs theme tabs, each set's slider and stepped dropdown themed, the raid check box too").toEqual([true, true, true, true, true, true, true, true, true]);
   const bare = loggedIn(SETTINGS_LISTS_ENV + GRAPHICS_ROW + "__graphics.NineSlice = nil __graphics.RaidTab = 1 __graphics.RaidQualityControls.Controls = nil");
   bare.eval("SettingsPanel:Show() SettingsPanel.Container.SettingsList.ScrollBox:Take(__graphics)");
   expect([bare.eval("return __panelled(__graphics.BaseTab)"), bare.eval("return __errors('Windows')")], "a section missing its box, a tab or a set's controls is fine").toEqual([true, "none"]);
+});
+
+it("game options: a language dropdown keeps its language picture; the microphone test's play button, meter box and meter are themed", () => {
+  const addon = loggedIn(SETTINGS_LISTS_ENV + `
+    __lang = CreateFrame("Frame", nil, SettingsPanel.Container.SettingsList) __lang.Control = CreateFrame("Frame", nil, __lang)
+    local d = CreateFrame("Button", nil, __lang.Control) __lang.Control.Dropdown = d d.Arrow = d:CreateTexture() d.Language = d:CreateTexture()
+    __mic = CreateFrame("Frame", nil, SettingsPanel.Container.SettingsList)
+    __mic.ToggleTest = CreateFrame("Button", nil, __mic) __mic.ToggleTest.Texture = __mic.ToggleTest:CreateTexture()
+    __mic.VUMeter = CreateFrame("Frame", nil, __mic) __mic.VUMeter.Border = __mic.VUMeter:CreateTexture()
+    __mic.VUMeter.Status = CreateFrame("StatusBar", nil, __mic.VUMeter) __mic.VUMeter.Status:SetStatusBarTexture("TEST-ONLY-BAR")`);
+  addon.eval("SettingsPanel:Show() SettingsPanel.Container.SettingsList.ScrollBox:Take(__lang) SettingsPanel.Container.SettingsList.ScrollBox:Take(__mic)");
+  expect(addon.eval(`local d, m = __lang.Control.Dropdown, __mic
+    return { __panelled(d), d.Language:GetAlpha(), d.Arrow:GetAlpha(), __panelled(m.ToggleTest), m.ToggleTest.Texture:GetAlpha(), m.VUMeter.Border:GetAlpha(),
+      __panelled(m.VUMeter), __panelled(m.VUMeter.Status), m.VUMeter.Status:GetStatusBarTexture():GetAlpha(), __errors('Windows') }`),
+    "the dropdown a theme button with its language picture shown, the play button themed with its picture, the meter box an inset, the meter a theme bar")
+    .toEqual([true, 1, 0, true, 1, 0, true, true, 1, "none"]);
 });
 
 it("game options: the nav entries get the row washes and follow the game's selection, the group headers become section heads", () => {
