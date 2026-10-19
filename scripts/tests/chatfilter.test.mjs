@@ -6,14 +6,18 @@ import { expect, it } from "vitest";
 import { CLICK_LUA, chatHas, expectErrors, loggedIn } from "./helpers.mjs";
 
 let nextLine = 1;
-// Runs a line through the chat filters the way the game does (once per chat window); true when the main chat is told to drop it.
+// Runs a line through the chat filters the way the game does for one chat window (ChatFrameUtil's ProcessFilters,
+// Blizzard_ChatFrameBase/Shared/ChatFrameFilters.lua): in the order they were added, each handed what the one before
+// returned after its first value, and the first true drops the line. True when the main chat is told to drop it.
 const deliver = (addon, text, sender = "Spammer", { event = "CHAT_MSG_CHANNEL", id = nextLine++ } = {}) =>
   addon.eval(`
-    local dropped = false
+    local args = { ${JSON.stringify(text)}, ${JSON.stringify(sender)}, "Common", "2. Trade", "", "", 2, 2, "Trade", 7, ${id}, "g" }
     for _, fn in ipairs(__wfgWorld.chatFilters["${event}"] or {}) do
-      if fn(ChatFrame1, "${event}", ${JSON.stringify(text)}, ${JSON.stringify(sender)}, "Common", "2. Trade", "", "", 2, 2, "Trade", 7, ${id}, "g") == true then dropped = true end
+      local results = { fn(ChatFrame1, "${event}", unpack(args)) }
+      if results[1] == true then return true end
+      if results[2] then args = { select(2, unpack(results)) } end
     end
-    return dropped`);
+    return false`);
 
 // The Filtered tab's lines and the tab's own text.
 const tab = (addon) => addon.eval("local f = ns.GetModule('ChatFilter').window return f and f.__messages or {}");
@@ -40,7 +44,8 @@ it("chat filter: off until switched on; on makes the Filtered tab and catches go
   expect(deliver(addon, "anyone selling linen cloth?", "Buyer"), "gold words alone do not trip it").toBe(false);
   const lines = tab(addon);
   expect(lines.length, "three lines in the tab").toBe(3);
-  expect(lines[0], "why, the sender as a link, the text").toBe(`(Gold selling) |Haddon:Vanguard:allow:Goldy|h[Goldy]|h: ${GOLD}|r`);
+  expect(lines[0].startsWith("(Gold selling) |Haddon:Vanguard:allow:Goldy|h[Goldy]|h: WTS gold cheap 100g for $5 at "), "why, the sender as a link, the text").toBe(true);
+  expect(lines[0], "the web address Chat extras linked still opens the copy box").toContain("|Haddon:Vanguard:url:www.goldsite.com|h[www.goldsite.com]|h|r delivery fast|r");
   addon.update(0.1);
   expect(tabName(addon), "the tab counts them").toBe("Filtered (3)");
   expect(addon.eval('local f = ns.GetModule("ChatFilter").window local t = _G[f:GetName() .. "Tab"] return t.Text:GetStringWidth() + 24 == t:GetWidth()'), "the tab is refit to the longer label").toBe(true);

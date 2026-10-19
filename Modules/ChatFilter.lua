@@ -141,11 +141,17 @@ function CF.UpdateTab()
   if CH and CH.RefitTabs then CH.RefitTabs() end
 end
 
+-- A caught line's addon links made inert (a spammer's could pose as the tab's own sender links), except the
+-- web addresses Chat extras linked before this filter ran, which still open the copy box.
+local function inertLinks(text)
+  return (text:gsub("|Haddon:", "|H"):gsub("|HVanguard:url:", "|Haddon:Vanguard:url:"))
+end
+
 -- Puts a caught line in the Filtered tab: why, the sender (a link that un-filters them), the text.
 function CF.Send(why, sender, text)
   CF.count = CF.count + 1
   ns.Soon("chatfilter tab", CF.UpdateTab)
-  text = text:gsub("|Haddon:", "|H")
+  text = inertLinks(text)
   CF.window:AddMessage(string.format("(%s) |H%s%s|h[%s]|h: %s|r", why, PREFIX, sender, ns.Home.Display(sender), text))
 end
 
