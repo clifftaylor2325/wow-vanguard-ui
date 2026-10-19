@@ -166,6 +166,14 @@ it("ranks the recipes whose prices are all known, by profit, per craft and per h
   expect(chatHas(addon, /TEST-ONLY Linen Bag: 4s 50c a craft, 4g 50s 0c an hour at 36s a craft/), "the pace is the setting").toBe(true);
 });
 
+it("/vg craft top shows a losing recipe's loss with a minus, never as a profit", () => {
+  const addon = crafter();
+  addon.eval("__price(2589, 10) __price(2320, 20) __price(4238, 500) __price(1251, 2)");
+  addon.slash("craft top");
+  expect(chatHas(addon, /2\. TEST-ONLY Bandage: -6c a craft, -36s 0c an hour at 6s a craft/), "bandages: 2 x 2 - 10 = -6c").toBe(true);
+  expect(addon.eval("local AP = ns.AuctionPrices return { AP.Money(-500), AP.Money(-15000), AP.Money(-25), AP.Money(0) }"), "every size of loss").toEqual(["-5s 0c", "-1g 50s 0c", "-25c", "0c"]);
+});
+
 it("the options have the switch and the pace", () => {
   const addon = crafter();
   addon.eval('ns.Options.Show("town")');

@@ -107,7 +107,7 @@ local function totalText(data, key)
   if key == "worth" then return data.worth and AP.Money(data.worth) or (data.output and "no price" or "nothing to sell"), data.worth and "gold" or "muted" end
   if not data.worth or unpriced then return "needs every price", "muted" end
   local profit = data.worth - data.cost
-  return (profit < 0 and "-" or "") .. AP.Money(math.abs(profit)), profit < 0 and "bad" or "good"
+  return AP.Money(profit), profit < 0 and "bad" or "good"
 end
 
 -- The total lines under the reagent rows (n of them shown), and the panel's height to fit.
