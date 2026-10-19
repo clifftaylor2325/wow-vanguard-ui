@@ -8,33 +8,33 @@ Nothing here has been checked in the game by the people who wrote it down: see t
 
 Nothing in this release has been checked in the game; see the batch checklist (issue #284).
 
-### Chat
+### Chat panel
 
 - The chat window is one rounded panel with a tab bar, tabs you can always see and its side buttons stacked.
 
-### Unit frames and HUD
+### HUD and Edit Mode
 
 - Your cast bar moves up with the action bars instead of sitting under them.
 - The Versus deck rounds its corners instead of cutting them.
 - A green check marks mobs you have tagged, on nameplates and unit frames.
 - In Edit Mode the window sits over the handles, bars line up with no gap and the default spots are tidier.
 
-### Questing
+### Quest arrow
 
 - The quest arrow sits centred at the top of the screen by default.
 
-### Look and windows
+### Window skins
 
 - More of the game's art is in the Vanguard look: the world map and its quest panel, the Settings window's Graphics section and its language and microphone rows, and the arrows on dropdowns and steppers.
 - The calendar's today marker fits its cell, the guild list shows the selected guild's banner, Legacy keeps its challenge icons, and the professions skill bar stays inside its box.
 - The group finder's search box no longer overlaps its button, and the setup wizard's choices rest flat with the picked one on the selected rail.
 
-### Bags and town
+### Mail and bags
 
 - The Find mail panel closes with the mailbox, and you can add and remove presets from it.
 - The bags' Filter and Groups buttons fit their labels.
 
-### Safety and tools
+### Fixes and safety
 
 - Escape closes the meter's spell panel and the Instance prep card.
 - The Cooldown Manager glow never reads an aura the game hides.
