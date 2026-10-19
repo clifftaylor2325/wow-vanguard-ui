@@ -67,6 +67,8 @@ it("action bars stack with bar 1 on top", () => {
   const six = loggedIn(STACK_ENV, { savedVariables: "VanguardDB = { profiles = { Default = { ActionBars = { bars = { [6] = { enabled = true } } } } } }" });
   const y6 = stackY(six);
   expect(y6[5] === 24 && y6[2] === 62 && y6[0] === 138, `turning on bar 6 puts it underneath; bar 1 stays on top (got ${JSON.stringify(y6)})`).toBeTruthy();
+  const half = loggedIn(STACK_ENV, { savedVariables: "VanguardDB = { profiles = { Default = { positions = { bar2 = { scale = 0.5 } } } } }" });
+  expect([stackY(half).slice(0, 3), half.eval("return Vanguard_Bar2:GetScale()")], "a bar you scaled to half takes half a row of the stack: bar 1 comes down onto it").toEqual([[81, 62, 24], 0.5]);
 });
 
 it("action bar stack follows button size and rows", () => {
@@ -98,6 +100,9 @@ it("the bottom stack follows per-bar size and rows, live", () => {
   addon.eval('ns.SetMoverPoint("bar1", "BOTTOM", "BOTTOM", 0, 300) ns.Unlock() local AB = ns.GetModule("ActionBars") AB.settings.bars[3].perRow = 12 AB.SettingChanged(3, "perRow") ns.SetMoverDefault("TEST-ONLY missing", { "CENTER", "CENTER", 0, 0 })');
   expect(frameY(1) === 300 && frameY(2) === 72, "a bar you dragged keeps its spot; the others re-stack (with unlock mode on)").toBeTruthy();
   addon.eval("ns.Lock()");
+  addon.eval('ns.SetMoverScale("bar3", 0.5)');
+  addon.update(0.1);
+  expect([frameY(2), frameY(1)], "scaling bar 3 to half pulls bar 2 down onto it once the pixel sizes are rounded again; the dragged bar 1 stays").toEqual([48, 300]);
 });
 
 it("the bars touch at a UI scale where a button rounds up to a whole pixel (the 1440p preset), and re-stack when the scale changes", () => {
