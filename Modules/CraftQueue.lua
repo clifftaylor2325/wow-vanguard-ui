@@ -136,12 +136,14 @@ function CQ.Next()
   ns.Chat(string.format("Next: %d x %s. Press Create in the profession window.", e.n, e.name or "recipe " .. e.id))
 end
 
--- /vg craft stock: Keep stocked raised to what the queue needs, then the Restock list.
+-- /vg craft stock: Keep stocked raised to what the queue needs, then the Restock list (a shopping list of the
+-- Auction helper's, so only while that is on, as /vg ah restock and Instance prep's Buy list check too).
 function CQ.Stock()
   local ER = ns.GetModule("Errands")
   if not ER.settings then return ns.Chat("Keep stocked is part of Errands, which is off (/vg > Modules).") end
   for id, qty in pairs(needs()) do ER.settings.stockList[id] = math.max(ER.settings.stockList[id] or 0, qty) end
   ns.Chat("Keep stocked now covers the queue.")
+  if not AH.settings then return ns.Chat("The auction helper is off (/vg > Modules).") end
   AH.Restock()
 end
 
