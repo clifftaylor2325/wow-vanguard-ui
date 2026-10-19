@@ -183,6 +183,18 @@ it("unit frames: a hidden percent text is handed on as it is, Dead wins over it,
   expect(text("UnitIsDeadOrGhost = function() return true end", "__s"), "Dead wins over the percent").toEqual([true, false, "Dead"]);
 });
 
+it("unit frames: a hidden health text goes to the text as it is, and with health numbers off it is never asked for", () => {
+  const addon = loggedIn(UNITS_ENV, NO_RAID);
+  // The target's health text after a health event with HealthText answering `answer`: [the text is that answer, HealthText calls].
+  const shown = (setup) => addon.eval(`local UF = ns.GetModule("UnitFrames") ${setup}
+    __asked = 0 __s = __wfgWorld.secret() local real = UF.HealthText
+    UF.HealthText = function() __asked = __asked + 1 return __s end
+    __wfgStub.fire("UNIT_HEALTH", "target") UF.HealthText = real
+    return { Vanguard_target.healthText:GetText() == __s, __asked, Vanguard_target.healthText:GetText() == "" }`);
+  expect(shown(""), "health numbers on: the hidden text is shown untouched").toEqual([true, 1, false]);
+  expect(shown("UF.settings.healthText = false"), "off: empty, and the text is never read").toEqual([false, 0, true]);
+});
+
 it("a ?? (boss or far higher) level reads in the hardest difficulty color, not the easiest", () => {
   const addon = loggedIn(FOREVER_ENV, NO_RAID);
   addon.world.setUnit("target", { name: "TEST-ONLY Skull", hp: 1, maxhp: 1, reaction: 2, level: -1 });
