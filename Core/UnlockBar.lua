@@ -12,12 +12,14 @@ local bar
 -- Every saved spot as it was when unlock started (a copy), until the frames lock.
 local before
 
--- Puts every saved spot back as it was when unlock started, places every frame again and locks.
+-- Puts every saved spot back as it was when unlock started, places every frame again, tells what
+-- follows each one (ns.MoverChanged: linked frames, the raid grid's growth) once all are back, and locks.
 function ns.ExitWithoutSaving()
-  local positions = ns.Settings("positions")
+  local positions, movers = ns.Settings("positions"), ns.MoverList()
   for key in pairs(positions) do positions[key] = nil end
   for key, spot in pairs(before or {}) do positions[key] = type(spot) == "table" and ns.Copy(spot) or spot end
-  for _, m in ipairs(ns.MoverList()) do ns.PlaceMover(m.key) end
+  for _, m in ipairs(movers) do ns.PlaceMover(m.key) end
+  for _, m in ipairs(movers) do ns.MoverChanged(m.key) end
   ns.Lock()
   ns.Chat("Every frame is back where it was when you unlocked.")
 end

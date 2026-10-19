@@ -196,6 +196,17 @@ it("unlock mode's bar: Exit without saving puts every frame back as it was; Save
   expect([addon.eval("return ns.Settings('positions').a.y"), addon.eval("return ns.Unlocked()")], "closing it locks and keeps the change").toEqual([-292, false]);
 });
 
+it("Exit without saving tells what follows a frame that it moved back: the raid grid grows from its anchor again", () => {
+  const addon = loggedIn();
+  // The raid header's anchor point, and the raid mover's (BOTTOM until one is saved).
+  const points = () => addon.eval('local RF = ns.GetModule("RaidFrames") return { header = (RF.header:GetPoint(1)), mover = (ns.MoverPoint("raid")) or "BOTTOM" }');
+  const before = points();
+  addon.slash("unlock");
+  addon.eval('ns.SetMoverPoint("raid", "BOTTOMRIGHT", "BOTTOMRIGHT", -40, 200)');
+  expect(points().header, "a drag to the corner grows the grid from its right").toBe("BOTTOMRIGHT");
+  addon.eval("ns.ExitWithoutSaving()");
+  expect([before, points()], "back as it was, the grid grows from the anchor it had").toEqual([{ header: "BOTTOM", mover: "BOTTOM" }, { header: "BOTTOM", mover: "BOTTOM" }]);
+});
 it("a grid size from a hand-edited profile string is kept to 8-256 px, so unlocking can't freeze the game", () => {
   const addon = loggedIn("UIParent:SetSize(1920, 1080)", { savedVariables: "VanguardDB.profiles = { Default = { movers = { gridSize = 1 } } }" });
   addon.slash("unlock");
