@@ -299,17 +299,32 @@ end
 
 -- Showing ---------------------------------------------------------------------------------------
 
--- Shows the card with what's short, fading it out after Hide after seconds.
--- Nothing short: forced (a ready check, /vg prep) it says "Everything's
--- packed."; otherwise (at the door) it stays away.
-function PR.Show(force)
-  local rows = PR.Rows()
-  for _, r in ipairs(PR.BuffRows and PR.BuffRows() or {}) do rows[#rows + 1] = r end
-  local lines = PR.settings.dungeonCard and ns.DungeonCard.Lines() or {}
-  if #rows == 0 and #lines == 0 and not force then return end
+-- Paints the card with these rows and dungeon lines and shows it, fading it out after Hide after seconds.
+local function present(rows, lines)
   PR.Paint(rows, lines)
   T.FadeIn(PR.card)
   ns.AutoHide(PR.card, PR.settings.hideAfter)
+end
+
+-- The dungeon card's lines while its switch is on.
+local function dungeonLines()
+  return PR.settings.dungeonCard and ns.DungeonCard.Lines() or {}
+end
+
+-- At the door: the supplies that are short and the dungeon card; with nothing
+-- to say it stays away. Buff checks belong only to the card you call up.
+function PR.ShowAtDoor()
+  local rows, lines = PR.Rows(), dungeonLines()
+  if #rows == 0 and #lines == 0 then return end
+  present(rows, lines)
+end
+
+-- Called up (a ready check, /vg prep): supplies, buff checks and the dungeon
+-- card; with nothing short it says "Everything's packed."
+function PR.ShowOnDemand()
+  local rows = PR.Rows()
+  for _, r in ipairs(PR.BuffRows and PR.BuffRows() or {}) do rows[#rows + 1] = r end
+  present(rows, dungeonLines())
 end
 
 -- You came into a world: at a dungeon or raid's door, once per visit (a reload
@@ -323,13 +338,13 @@ function PR.OnEnter(_, _, isReloadingUi)
   if isReloadingUi == true then PR.lastInstance = id return end
   if not PR.settings.onEnter or ns.InCombat() or (id and id == PR.lastInstance) then return end
   PR.lastInstance = id
-  PR.Show(false)
+  PR.ShowAtDoor()
 end
 
 -- A ready check started: the card, packed or not (not in combat). The
 -- initiator's name, secret in chat lockdown, is never read.
 function PR.OnReadyCheck()
-  if PR.settings.onReadyCheck and not ns.InCombat() then PR.Show(true) end
+  if PR.settings.onReadyCheck and not ns.InCombat() then PR.ShowOnDemand() end
 end
 
 -- Low-supply warning ------------------------------------------------------------------------
@@ -379,7 +394,7 @@ function PR.Command(rest)
   if rest:match("^want") then return setWant(rest) end
   if rest:match("^setup") then return PR.Wizard.Open() end
   if rest:match("^buffs") then return PR.BuffReport() end
-  ns.OutOfCombat(function() PR.Show(true) end, "prep")
+  ns.OutOfCombat(PR.ShowOnDemand, "prep")
 end
 
 -- Module entry point (Core/Modules.lua).

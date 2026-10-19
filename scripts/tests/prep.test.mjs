@@ -267,6 +267,12 @@ it("prep buffs: off until switched on", () => {
   expect(addon.texts("Everything's packed.").length, "no buff rows by default").toBe(1);
 });
 
+it("prep buffs: a packed character with buffs missing walks into a dungeon and the door card stays away", () => {
+  const addon = buffed();
+  enter(addon);
+  expect(shown(addon), "buff checks belong to a ready check and /vg prep, not the door").toBe(false);
+});
+
 it("prep buffs: a ready check lists the flask, food, enchants and raid buffs you lack", () => {
   const addon = buffed();
   addon.fire("READY_CHECK", "TEST-ONLY Leader", 30);
