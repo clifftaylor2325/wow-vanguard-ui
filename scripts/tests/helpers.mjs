@@ -38,6 +38,12 @@ export function setCombat(addon, on) {
   if (!on) addon.fire("PLAYER_REGEN_ENABLED");
 }
 
+// Lets any eased alpha (T.EaseAlpha: a mouseover bar, the Calm HUD) finish, then gives the addon back.
+export const settled = (addon) => {
+  addon.advance(0.5);
+  return addon;
+};
+
 // A retail-like client (the world's default is WoW Forever): the newer interface number.
 export const RETAIL = "__wfgWorld.build.interface = 120007\n";
 

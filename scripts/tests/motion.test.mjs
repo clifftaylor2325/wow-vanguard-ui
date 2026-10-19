@@ -161,3 +161,25 @@ it("motion: a disabled button's label goes to the disabled tier with no hover, a
   addon.eval("ns.Theme.DisabledLook(TEST_Press, false)");
   expect(isTok(addon, label(), "text"), "enabling one that wasn't disabled changes nothing").toBe(true);
 });
+
+it("motion: a frame shown or faded by its visibility eases its alpha (0.12 s in, 0.3 s out), at once the first time and with Reduce motion", () => {
+  const addon = loggedIn();
+  // Eases TEST_Ease to `to`, moves the clock `seconds` in 0.05 s frames, and returns its alpha (to the hundredth).
+  const ease = (to, seconds = 0) => addon.eval(`ns.Theme.EaseAlpha(TEST_Ease, ${to}) __wfgStub.advance(${seconds}, 0.05)
+    return math.floor(TEST_Ease:GetAlpha() * 100 + 0.5) / 100`);
+  addon.eval('CreateFrame("Frame", "TEST_Ease", UIParent)');
+  expect(ease(0.4), "the first alpha a frame is given is painted at once").toBe(0.4);
+  expect(ease(0, 0.15), "fading out is eased: halfway through T.HIDE_EASE it is on its way").toBeGreaterThan(0);
+  expect(ease(0, 0.2), "and done by the end").toBe(0);
+  expect(ease(1, 0.05), "fading in starts from where it is, eased out").toBeLessThan(1);
+  expect(ease(1, 0.1), "and is done within T.SHOW_EASE").toBe(1);
+  setCombat(addon, true);
+  expect(ease(0, 0.15), "in combat the fade out is cut to 0.15 s").toBe(0);
+  setCombat(addon, false);
+  ease(1, 0.2);
+  expect(ease(0, 0.05), "a fade out started before a fight").toBeGreaterThan(0);
+  setCombat(addon, true);
+  expect(ease(0, 0.15), "is cut to 0.15 s from the fight's first repaint").toBe(0);
+  addon.eval("ns.Theme.Settings().reduceMotion = true");
+  expect(ease(1), "Reduce motion: at once").toBe(1);
+});

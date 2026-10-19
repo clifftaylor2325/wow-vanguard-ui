@@ -159,9 +159,9 @@ end
 function V.Shows(frame) return frame.vgState ~= "hide" end
 function V.Fades(frame) return frame.vgStateString ~= nil and frame.vgStateString:find("fade") ~= nil end
 
--- Paints the frame's alpha and tells its owner the state (to show or hide it).
+-- Eases the frame to its alpha (T.EaseAlpha) and tells its owner the state (to show or hide it).
 function V.Refresh(frame)
-  frame:SetAlpha(V.Alpha(frame))
+  T.EaseAlpha(frame, V.Alpha(frame))
   if frame.vgOnState then frame.vgOnState(frame) end
 end
 

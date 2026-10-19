@@ -2,7 +2,7 @@
 
 import { expect, it } from "vitest";
 import { createAddon } from "../lib/lua-harness.mjs";
-import { ACTIONS_ENV, SETUP_DONE, UNITS_ENV, bars, button, chatHas, key, loggedIn, overlaps, px, setCombat } from "./helpers.mjs";
+import { ACTIONS_ENV, SETUP_DONE, UNITS_ENV, bars, button, chatHas, key, loggedIn, overlaps, px, setCombat, settled } from "./helpers.mjs";
 
 it("action bars", () => {
   const addon = loggedIn(ACTIONS_ENV);
@@ -177,8 +177,8 @@ const getBarOption = (addon, n, label) => addon.eval(`
     if card and card:match("^Bar ${n}") and row[2] == ${JSON.stringify(label)} then return row[#row - 1]() end
   end`);
 
-// Bar 2's secure visibility driver, alpha, and whether it takes the mouse.
-const barVis = (addon, n = 2) => addon.eval(`local bar = Vanguard_Bar${n}
+// Bar 2's secure visibility driver, alpha (once any fade has eased out), and whether it takes the mouse.
+const barVis = (addon, n = 2) => settled(addon).eval(`local bar = Vanguard_Bar${n}
   return { driver = bar.__states.visibility, alpha = bar:GetAlpha(), mouse = bar.__mouse }`);
 
 it("action bar visibility: each mode's state driver and mouseover alpha", () => {
@@ -297,6 +297,8 @@ it("In combat bars show during a drag out of combat; a drag that starts in comba
 it("mouseover bars are revealed during a drag and restored after", () => {
   const addon = loggedIn(ACTIONS_ENV);
   setBarOption(addon, 2, "Visibility", '"mouseover"');
+  // Lets the login's own timers run before the fight, so the combat queue holds only what the drag adds.
+  settled(addon);
   // TEST-ONLY: count every Show, Hide and SetShown on bar 2 from here on.
   addon.eval("__shows = 0 local bar = Vanguard_Bar2 bar.Show = function() __shows = __shows + 1 end bar.Hide = bar.Show bar.SetShown = bar.Show");
   setCombat(addon, true);
@@ -492,9 +494,9 @@ it("the mouseover fade still follows hovering an action button", () => {
   const addon = loggedIn();
   addon.world.setAction(61, { id: 133 });
   addon.eval("local AB = ns.GetModule('ActionBars') ns.Settings('ActionBars').bars[2].visibility = 'mouseover' AB.ApplyVisibility(2)");
-  expect(addon.eval("return Vanguard_Bar2:GetAlpha()"), "bar 2 starts faded out").toBe(0);
+  expect(settled(addon).eval("return Vanguard_Bar2:GetAlpha()"), "bar 2 starts faded out").toBe(0);
   addon.hover("Vanguard_Bar2Button1");
-  expect([addon.eval("return Vanguard_Bar2:GetAlpha()"), tip(addon).owner], "hovering one of its buttons shows the bar and a tooltip").toEqual([1, "Vanguard_Bar2Button1"]);
+  expect([settled(addon).eval("return Vanguard_Bar2:GetAlpha()"), tip(addon).owner], "hovering one of its buttons shows the bar and a tooltip").toEqual([1, "Vanguard_Bar2Button1"]);
 });
 
 it("action buttons cast on yourself, your focus or the mouseover with the game's modifiers", () => {

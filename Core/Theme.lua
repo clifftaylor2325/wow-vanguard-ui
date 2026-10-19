@@ -2937,15 +2937,19 @@ end
 
 -- How long a switch knob or slider thumb glides to its new spot, in seconds (docs/THEME.md, Fades and flashes).
 T.KNOB_EASE = 0.1
--- Per owner (weak): { x = where it is now, from, to, t, frame = the ticker }.
+-- Per owner (weak): { x = where it is now, from, to, t, seconds, apply, frame = the ticker, tick = its OnUpdate }.
 local glides = setmetatable({}, { __mode = "k" })
+-- The same for frames easing their alpha (T.EaseAlpha), kept apart so an owner can do both. Not weak:
+-- each entry's apply holds its frame, and these frames (bars, strips, unit frames) live for the session.
+local alphaGlides = {}
 
--- One tick of a glide: eased out, applying the position; the ticker stops at the end.
-local function glideStep(g, dt, apply)
+-- One tick of a glide: eased out over its seconds, applying the position; it lands exactly on its
+-- target and the ticker stops at the end.
+local function glideStep(g, dt)
   g.t = g.t + dt
-  local p = math.min(1, g.t / T.KNOB_EASE)
-  g.x = g.from + (g.to - g.from) * (1 - (1 - p) * (1 - p))
-  apply(g.x)
+  local p = math.min(1, g.t / g.seconds)
+  g.x = p >= 1 and g.to or g.from + (g.to - g.from) * (1 - (1 - p) * (1 - p))
+  g.apply(g.x)
   if p >= 1 then g.frame:SetScript("OnUpdate", nil) end
 end
 
@@ -2954,16 +2958,42 @@ local function glideOff()
   return T.Settings().reduceMotion or fighting or ns.InCombat()
 end
 
+-- Moves glide g (its x is where it is now) to `to` over seconds, calling g.apply(x) on each tick;
+-- with no seconds, or nowhere to go, one call at once. A new glide replaces the one under way, unless
+-- that one is going to `to` already and ends no later (a repaint asking again doesn't restart it; a
+-- fight's shorter cap does).
+local function glide(g, to, seconds)
+  local left = g.seconds and g.t < g.seconds and g.seconds - g.t
+  if seconds and left and g.to == to and left <= seconds then return end
+  if g.frame then g.frame:SetScript("OnUpdate", nil) end
+  if not seconds or g.x == to then g.x, g.seconds = to, nil return g.apply(to) end
+  g.from, g.to, g.t, g.seconds = g.x, to, 0, seconds
+  g.frame = g.frame or CreateFrame("Frame")
+  g.tick = g.tick or function(_, dt) glideStep(g, dt) end
+  g.frame:SetScript("OnUpdate", g.tick)
+end
+
 -- Moves something (a knob, a thumb) to `to`, calling apply(x) with each position on the way: a 0.1 s ease out, or
--- one call at once on the first placement, with `now`, with Reduce motion, and in combat. `key` (the owner) remembers where it is.
+-- one call at once on the first placement, with `now`, with Reduce motion, and in combat. `key` (the owner) remembers where
+-- it is; the latest apply is the one used.
 function T.Glide(key, to, apply, now)
   local g = glides[key] or { x = to }
-  glides[key] = g
-  if g.frame then g.frame:SetScript("OnUpdate", nil) end
-  if now or g.x == to or glideOff() then g.x = to return apply(to) end
-  g.from, g.to, g.t = g.x, to, 0
-  g.frame = g.frame or CreateFrame("Frame")
-  g.frame:SetScript("OnUpdate", function(_, dt) glideStep(g, dt, apply) end)
+  glides[key], g.apply = g, apply
+  glide(g, to, not (now or glideOff()) and T.KNOB_EASE or nil)
+end
+
+-- How long a frame shown or faded by its visibility (a mouseover bar, the Calm HUD) takes to ease in and
+-- out, in seconds; capped at T.COMBAT_FADE in combat like any fade (docs/THEME.md, Fades and flashes).
+T.SHOW_EASE, T.HIDE_EASE = 0.12, 0.3
+
+-- Eases a frame's alpha from the last one asked for to `to` (T.SHOW_EASE up, T.HIDE_EASE down); at once
+-- the first time and with Reduce motion. Plain SetAlpha steps, never an animation, so a secure frame
+-- eases too, in combat as well (alpha is not protected). Where it is now is our own last alpha, not
+-- GetAlpha, which an opacity set in unlock mode multiplies (Core/Movers.lua).
+function T.EaseAlpha(frame, to)
+  local g = alphaGlides[frame] or { x = to, apply = function(a) frame:SetAlpha(a) end }
+  alphaGlides[frame] = g
+  glide(g, to, not T.Settings().reduceMotion and T.FadeTime(to > g.x and T.SHOW_EASE or T.HIDE_EASE) or nil)
 end
 
 -- Stops a fade in progress and leaves the frame fully visible.

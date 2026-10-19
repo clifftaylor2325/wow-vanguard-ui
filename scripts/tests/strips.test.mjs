@@ -1,7 +1,7 @@
 // strips: Vanguard's real Lua in the TEST-ONLY headless client (scripts/lib/lua-harness.mjs).
 
 import { expect, it } from "vitest";
-import { CLICK_LUA, expectErrors, HEALING_ENV, MICRO_ENV, PLATE_ENV, RAID_ENV, STRIPS_ENV, STRIP_ENV, TIDY_ENV, UI_ENV, UNITS_ENV, block, borderOf, button, isTok, later, loggedIn, pinned, putAway, setCombat, strips } from "./helpers.mjs";
+import { CLICK_LUA, expectErrors, HEALING_ENV, MICRO_ENV, PLATE_ENV, RAID_ENV, STRIPS_ENV, STRIP_ENV, TIDY_ENV, UI_ENV, UNITS_ENV, block, borderOf, button, isTok, later, loggedIn, pinned, putAway, setCombat, settled, strips } from "./helpers.mjs";
 
 // TEST-ONLY damage meter: someone else's line, then yours at 1234.5 per second.
 const DPS_ENV = `
@@ -550,8 +550,8 @@ it("Round Four leftovers: menu glyphs, a target diamond, raid names above incomi
 });
 it("menu strip: set to mouseover, shown by the mouse entering and leaving it and its buttons, with nothing polling", () => {
   const addon = loggedIn(UI_ENV + TIDY_ENV + MICRO_ENV + STRIPS_ENV, { savedVariables: 'VanguardDB.profiles.Default = { MenuStrip = { menu = "mouseover" } }' });
-  // The menu strip's alpha.
-  const alpha = () => addon.eval("return Vanguard_MenuStrip:GetAlpha()");
+  // The menu strip's alpha, once any fade has eased out.
+  const alpha = () => settled(addon).eval("return Vanguard_MenuStrip:GetAlpha()");
   expect(addon.eval("local s = Vanguard_MenuStrip return { s:GetScript('OnUpdate') == nil, s.__mouseMotion, s.__mouseClick }"), "no OnUpdate; the strip feels the mouse but lets clicks through").toEqual([true, true, false]);
   addon.hover("CharacterMicroButton");
   expect(alpha(), "straight onto a button: the strip shows").toBe(1);

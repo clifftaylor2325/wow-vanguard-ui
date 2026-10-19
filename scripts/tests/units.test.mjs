@@ -2,7 +2,7 @@
 
 import { expect, it } from "vitest";
 import { createAddon } from "../lib/lua-harness.mjs";
-import { CLICK_LUA, FOREVER_ENV, NO_RAID, RETAIL, SETUP_DONE, SWING_ENV, TICKS_ENV, TOTEMS_ENV, UNITS_ENV, bars, borderOf, button, isTok, key, later, loggedIn, marks, putAway, setCombat, spark, tok, totemCell, unitEvents } from "./helpers.mjs";
+import { CLICK_LUA, FOREVER_ENV, NO_RAID, RETAIL, SETUP_DONE, SWING_ENV, TICKS_ENV, TOTEMS_ENV, UNITS_ENV, bars, borderOf, button, isTok, key, later, loggedIn, marks, putAway, setCombat, settled, spark, tok, totemCell, unitEvents } from "./helpers.mjs";
 
 // A frame's state for the unit-frame tests.
 const ufState = (addon, key) => addon.eval(`
@@ -495,8 +495,8 @@ it("threat and happiness only where the client and settings allow", () => {
   expect(loggedIn(UNITS_ENV + EXTRAS_ENV).eval("return ns.GetModule('UnitExtras').Threat ~= nil"), "the module loads").toBe(true);
 });
 
-// The player frame's Calm HUD state: its state driver, the state now and its alpha (to the hundredth).
-const calm = (addon, key = "player") => addon.eval(`local f = Vanguard_${key}
+// The player frame's Calm HUD state: its state driver, the state now and its alpha (to the hundredth, once any fade has eased out).
+const calm = (addon, key = "player") => settled(addon).eval(`local f = Vanguard_${key}
   return { driver = f.__states and f.__states.vgvis or "none", now = f.vgState or "none", alpha = math.floor(f:GetAlpha() * 100 + 0.5) / 100 }`);
 
 it("Calm HUD: frames dim out of combat, come back for a fight, a hostile target or the mouse, and stay clickable", () => {

@@ -100,12 +100,12 @@ function AB.OwnDriver(n)
 end
 
 -- Alpha 0 for a bar that fades on mouseover while the mouse isn't over it
--- (unless you are dragging a spell or item), else 1. Alpha only, so it is safe in combat.
+-- (unless you are dragging a spell or item), else 1, eased (T.EaseAlpha). Alpha only, so it is safe in combat.
 function AB.UpdateAlpha(n)
   local bar = AB.bars[n]
   if not bar then return end
   bar.vgReveal = AB.grid
-  bar:SetAlpha(V.Alpha(bar))
+  T.EaseAlpha(bar, V.Alpha(bar))
 end
 
 -- Bar n's state driver: its own, or "show" for a bar shown on conditions
