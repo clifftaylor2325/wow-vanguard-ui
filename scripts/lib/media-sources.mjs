@@ -65,6 +65,16 @@ function corner(size, w, line) {
   });
 }
 
+// A rounded corner's mask, for a bar inside a rounded panel: the quarter disc inside the border's arc (`w` texels on
+// a `size` canvas, as `corner` draws it), for the top-left corner or flipped to another (the client ignores a mask
+// texture's tex coords, so each corner is its own image).
+function roundMask(size, w, flipX, flipY) {
+  return fill(image(size, size), (x, y) => {
+    const d = Math.hypot(size - ((flipX ? size - 1 - x : x) + 0.5), size - ((flipY ? size - 1 - y : y) + 0.5));
+    return [1, 1, 1, clamp01(size - w - d + 0.5)];
+  });
+}
+
 // A cut corner, drawn for a panel's top-left corner: the cut runs from the canvas's bottom-left to its top-right.
 // `s` counts the pixel diagonals inside the cut; drawn one texel to a screen pixel, so every texel is fully on or off
 // (a hard 45-degree staircase, no blur): "line" is the `w` diagonals along the cut, "fill" everything inside it,
@@ -182,6 +192,11 @@ export const TEXTURES = {
   // Rounded corners (the corners setting): the border's arc, 8 of 32 wide (one pixel at T.CORNER_RADIUS 4 px), and the fill under it.
   CornerLine: () => corner(32, 8, true),
   CornerFill: () => corner(32, 8, false),
+  // Its masks, which round a bar inside a rounded frame (the Versus deck's unit frames) inside the arc.
+  CornerRoundMask: () => roundMask(32, 8),
+  CornerRoundMaskTR: () => roundMask(32, 8, true, false),
+  CornerRoundMaskBL: () => roundMask(32, 8, false, true),
+  CornerRoundMaskBR: () => roundMask(32, 8, true, true),
   Fade: fade,
   Vignette: vignette,
   // The classification diamond, white, for the addon to tint.

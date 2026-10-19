@@ -114,7 +114,7 @@ function scanFindsMedia() {
 // quest marks for the quest dialog and quest log lines (F17; QuestBang, QuestQuery, Modules/QuestDialogParts.lua QP.ICONS).
 // The sized copies of the line and menu icons (#232), named by T.Icon(name, size) in the Lua.
 const SIZED_NAMES = SIZED_ICONS.flatMap((n) => ICON_SIZES.map((s) => `Media/Icons/${n}${s}.tga`));
-const BUILT_NAMES = ["Media/Textures/Shadow.tga", "Media/Textures/Glow.tga", "Media/Textures/CornerLine.tga", "Media/Textures/CornerFill.tga", "Media/Textures/CornerCutLine.tga", "Media/Textures/CornerCutFill.tga", "Media/Textures/CornerCutMask.tga", "Media/Textures/CornerCutMaskTR.tga", "Media/Textures/CornerCutMaskBL.tga", "Media/Textures/CornerCutMaskBR.tga", "Media/Icons/Maximize.tga", "Media/Icons/Minimize.tga",
+const BUILT_NAMES = ["Media/Textures/Shadow.tga", "Media/Textures/Glow.tga", "Media/Textures/CornerLine.tga", "Media/Textures/CornerFill.tga", "Media/Textures/CornerCutLine.tga", "Media/Textures/CornerCutFill.tga", "Media/Textures/CornerCutMask.tga", "Media/Textures/CornerCutMaskTR.tga", "Media/Textures/CornerCutMaskBL.tga", "Media/Textures/CornerCutMaskBR.tga", "Media/Textures/CornerRoundMask.tga", "Media/Textures/CornerRoundMaskTR.tga", "Media/Textures/CornerRoundMaskBL.tga", "Media/Textures/CornerRoundMaskBR.tga", "Media/Icons/Maximize.tga", "Media/Icons/Minimize.tga",
   ...["Magic", "Curse", "Disease", "Poison"].map((t) => `Media/Icons/Dispel${t}.tga`), "Media/Icons/Warn.tga", "Media/Icons/QuestBang.tga", "Media/Icons/QuestQuery.tga", "Media/Icons/Pin.tga"];
 
 // The images in Media/ (not the fonts and license texts), as repo paths.

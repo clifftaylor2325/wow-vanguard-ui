@@ -539,7 +539,11 @@ const deck = (addon) => addon.eval(`local d, t = ns.GetModule("UnitFrames").deck
   return { shown = d:IsShown(), left = d.__points.TOPLEFT.rel == Vanguard_player, right = d.__points.BOTTOMRIGHT.rel == Vanguard_target,
     crest = d.crest.__points.CENTER.relPoint, strata = d.__strata, fills = fills }`);
 
-it("Versus deck: one shield panel behind the player and target, the crest at the seam, the target's bars mirrored", () => {
+// How many shown corner pieces of an art a frame has, and the art of each mask on a texture by corner (TEST-ONLY reads).
+const corners = (addon, name, art) => addon.eval(`local n = 0 for _, r in ipairs({ ${name}:GetRegions() }) do if tostring(r.__texture):find("${art}") and r:IsShown() then n = n + 1 end end return n`);
+const maskArt = (addon, region) => addon.eval(`local out = {} for i, m in ipairs(${region}.__masks or {}) do out[i] = next(m.__points) .. " " .. tostring(m.__texture):match("[^\\\\]+$") end table.sort(out) return out`);
+
+it("Versus deck: one rounded panel behind the player and target, the crest at the seam, the target's bars mirrored", () => {
   const addon = loggedIn(UNITS_ENV + CLICK_LUA, NO_RAID);
   expect(deck(addon), "off by default: no panel, bars fill from the left").toEqual({ shown: false, fills: false });
   addon.slash("");
@@ -548,6 +552,10 @@ it("Versus deck: one shield panel behind the player and target, the crest at the
   expect(deck(addon), "on: the panel spans both frames, under everything (background strata), the crest on its top edge, the target fills from the right")
     .toEqual({ shown: true, left: true, right: true, crest: "TOP", strata: "BACKGROUND", fills: true });
   expect(borderOf(addon, "ns.GetModule('UnitFrames').deck"), "an accent border round the panel").toEqual(tok(addon, "accent").slice(0, 3).concat(1));
+  expect(["ns.GetModule('UnitFrames').deck", "Vanguard_player", "Vanguard_target"].map((f) => [corners(addon, f, "CornerLine"), corners(addon, f, "CornerCut")]), "the panel and both frames round their corners, none cut").toEqual([[4, 0], [4, 0], [4, 0]]);
+  expect([maskArt(addon, "Vanguard_target.health:GetStatusBarTexture()"), maskArt(addon, "Vanguard_player.power.bg")], "their bars are rounded inside the arcs, still two masks each")
+    .toEqual([["TOPLEFT CornerRoundMask", "TOPRIGHT CornerRoundMaskTR"], ["BOTTOMLEFT CornerRoundMaskBL", "BOTTOMRIGHT CornerRoundMaskBR"]]);
+  expect(corners(addon, "Vanguard_focus", "CornerCutLine"), "frames outside the deck keep their shield corners").toBe(4);
   expect(addon.eval("return { select(2, Vanguard_player.name:GetFont()), select(2, Vanguard_target.healthText:GetFont()) }"), "names and health in the title size")
     .toEqual(addon.eval("return { select(2, ns.Theme.Text(UIParent:CreateFontString(), 'title'):GetFont()), select(2, ns.Theme.Text(UIParent:CreateFontString(), 'title'):GetFont()) }"));
   addon.eval('__click("Calm HUD")');
@@ -557,6 +565,7 @@ it("Versus deck: one shield panel behind the player and target, the crest at the
   expect(deck(addon).shown, "switching it off in combat waits").toBe(true);
   setCombat(addon, false);
   expect(deck(addon), "and takes it away when the fight ends").toMatchObject({ shown: false, fills: false });
+  expect([corners(addon, "Vanguard_player", "CornerCutLine"), maskArt(addon, "Vanguard_target.health.bg")], "the two frames get their shield corners back, bars too").toEqual([4, ["TOPLEFT CornerCutMask", "TOPRIGHT CornerCutMaskTR"]]);
   expect(addon.eval("return { select(2, Vanguard_player.name:GetFont()), select(2, Vanguard_target.healthText:GetFont()) }"), "the texts back in their own sizes")
     .toEqual(addon.eval("return { select(2, ns.Theme.Text(UIParent:CreateFontString(), 'name'):GetFont()), select(2, ns.Theme.Text(UIParent:CreateFontString(), 'number'):GetFont()) }"));
 });
