@@ -253,8 +253,8 @@ end
 
 -- Names a glyph tile in a tooltip while the mouse is over it (a tile has no label of its own).
 local function tipButton(button, label)
-  button:HookScript("OnEnter", function(b) GameTooltip:SetOwner(b, "ANCHOR_TOP") GameTooltip:SetText(label) GameTooltip:Show() end)
-  button:HookScript("OnLeave", function() GameTooltip:Hide() end)
+  button:HookScript("OnEnter", ns.Guard("chat tile tip", function(b) GameTooltip:SetOwner(b, "ANCHOR_TOP") GameTooltip:SetText(label) GameTooltip:Show() end))
+  button:HookScript("OnLeave", ns.Guard("chat tile tip", function() GameTooltip:Hide() end))
 end
 
 -- Remembers the button furthest from the bar's right end (the tab dock ends before it).
@@ -628,9 +628,9 @@ local function watchFlash(button, ring)
   local anim = type(button.Flash) == "table" and button.Flash.FlashAnim or nil
   if type(anim) ~= "table" or type(anim.HookScript) ~= "function" then return end
   ring:SetShown(type(anim.IsPlaying) == "function" and anim:IsPlaying() == true)
-  anim:HookScript("OnPlay", function() ring:Show() end)
-  anim:HookScript("OnStop", function() ring:Hide() end)
-  anim:HookScript("OnFinished", function() ring:Hide() end)
+  anim:HookScript("OnPlay", ns.Guard("chat scroll flash", function() ring:Show() end))
+  anim:HookScript("OnStop", ns.Guard("chat scroll flash", function() ring:Hide() end))
+  anim:HookScript("OnFinished", ns.Guard("chat scroll flash", function() ring:Hide() end))
 end
 
 -- Each scroll-to-bottom button's ring (button -> frame), made once (ns.FrameState).
