@@ -273,8 +273,8 @@ it("Edit Mode window: skinned, its panel kept out of the game's layout, and Vang
     for _, piece in ipairs({ m.Border, m.SaveChangesButton, m.CloseButton }) do if piece.ignoreInLayout then own = own + 1 end end
     for _, r in ipairs({ m:GetRegions() }) do if r.ignoreInLayout then marked = marked + 1 end end
     return { marked > 0, own }`), "the panel's pieces are marked ignoreInLayout; the game's own parts are not").toEqual([true, 0]);
-  expect(addon.eval("return { Vanguard_EditModeNote ~= nil and Vanguard_EditModeNote:IsShown(), Vanguard_EditModeNote.text:GetText() == ns.EDIT_NOTE, Vanguard_EditModeNote.__points.TOP.rel == EditModeManagerFrame, Vanguard_EditModeNote.ignoreInLayout == nil }"),
-    "Vanguard's Edit Mode note still shows under the window, with its text, and is left alone").toEqual([true, true, true, true]);
+  expect(addon.eval("return { Vanguard_EditModeNote ~= nil and Vanguard_EditModeNote:IsShown(), Vanguard_EditModeNote.text:GetText() == ns.EDIT_NOTE, Vanguard_EditModeNote.__points.TOP.rel == EditModeManagerFrame, Vanguard_EditModeNote.ignoreInLayout == true }"),
+    "Vanguard's Edit Mode note still shows under the window, with its text, and stays out of the window's layout").toEqual([true, true, true, true]);
   addon.eval("EditModeManagerFrame:Hide() EditModeManagerFrame:Show()");
   expect(editState(addon, "EditModeManagerFrame").painted, "showing it again paints nothing new").toBe(first.painted);
   addon.eval("EditModeManagerFrame:Hide()");
@@ -597,6 +597,8 @@ it("help window, report window and ticket status in the theme, the ticket icon k
     "ticket status: art faded, the ticket icon kept, a panel, its button's backdrop faded, its title light").toEqual([0, true, true, 0, true]);
   expect(addon.eval(`local well = HelpFrame.Browser.BrowserInset
     return { __panelled(well), well.NineSlice.__alpha, __faded(well) }`), "help: the ring round the browser a faded well under an inset panel").toEqual([true, 0, 0]);
+  expect(addon.eval(`local _, rel, _, x, y = HelpFrame.Browser:GetPoint(HelpFrame.Browser:GetNumPoints())
+    return { rel == HelpFrame, y > 4 }`), "help: the browser's bottom edge lifted off the window's").toEqual([true, true]);
   expect(addon.eval(`local r = ReportFrame
     return { __panelled(r.ReportingMajorCategoryDropdown), r.ReportingMajorCategoryDropdown.Arrow.__alpha, __looks(r.ReportingMajorCategoryDropdown.Label, "label", "text"), __looks(r.MinorReportDescription, "label", "text"),
       __looks(r.ScreenshotReportingFrame.ScreenshotDescription, "label", "text"), __looks(r.ScreenshotReportingFrame.ScreenshotEmptyText, "label", "text"),
@@ -822,6 +824,7 @@ const SETTINGS_LISTS_ENV = SETTINGS_ENV + `
     row.SliderWithSteppers = __stepped(row)
     row.Control = CreateFrame("Frame", nil, row) row.Control.Dropdown = CreateFrame("Button", nil, row.Control)
     row.Control.Dropdown.Arrow = row.Control.Dropdown:CreateTexture() row.Control.Dropdown.Arrow:SetAlpha(0)
+    row.Control.DecrementButton, row.Control.IncrementButton = CreateFrame("Button", nil, row.Control), CreateFrame("Button", nil, row.Control)
     row.Button = CreateFrame("Button", nil, row) row.Button.Art = row.Button:CreateTexture()
     return row
   end
@@ -836,8 +839,8 @@ it("game options: scroll bars, defaults button, header divider, and the nav and 
       ns.Theme.DividerParts(list.Header.Rule) ~= nil, ns.Theme.DividerParts(list.Header.Other) == nil, list.Header.Rule.__alpha }`),
     "both scroll bars themed, Defaults a theme button, the header's divider texture one pixel of divider (another texture and a font string left alone)").toEqual([true, true, true, true, true, 0]);
   expect(addon.eval(`local list, row = SettingsPanel.Container.SettingsList, SettingsPanel.Container.SettingsList.ScrollBox.rows[1]
-    return { ns.Theme.CheckParts(row.Checkbox) ~= nil, __stepper(row.SliderWithSteppers), __panelled(row.Control.Dropdown), row.Control.Dropdown.Arrow.__alpha, __panelled(row.Button) }`),
-    "a row that was already there: its check box, slider with steppers, dropdown (arrow shown) and button themed").toEqual([true, true, true, 0, true]);
+    return { ns.Theme.CheckParts(row.Checkbox) ~= nil, __stepper(row.SliderWithSteppers), __panelled(row.Control.Dropdown), row.Control.Dropdown.Arrow.__alpha, __panelled(row.Button), ns.Theme.ArrowParts(row.Control.DecrementButton) ~= nil and ns.Theme.ArrowParts(row.Control.IncrementButton) ~= nil }`),
+    "a row that was already there: its check box, slider with steppers, dropdown (arrow shown) and button themed").toEqual([true, true, true, 0, true, true]);
   addon.eval("SettingsPanel.Container.SettingsList.ScrollBox:Take(__settingRow())");
   expect(addon.eval(`local row = SettingsPanel.Container.SettingsList.ScrollBox.rows[2]
     return { ns.Theme.CheckParts(row.Checkbox) ~= nil, __stepper(row.SliderWithSteppers), __panelled(row.Control.Dropdown), __panelled(row.Button) }`),
