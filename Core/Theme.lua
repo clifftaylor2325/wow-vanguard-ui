@@ -1607,6 +1607,10 @@ T.ROW = { height = 28 }
 -- The chat background (Modules/Chat.lua, the panel's fill): the strengths the Chat background
 -- strength setting offers, as the fill's opacity.
 T.CHAT_BACKDROP = { levels = { { 0.55, "Light" }, { 0.75, "Medium" }, { 0.9, "Dark" } } }
+-- The scrim behind chat with the background off (Modules/Chat.lua): a panel-coloured band at the
+-- Light strength, clear to full over `left` units at the left edge, full across the middle, full to
+-- clear over `right` units at the right (the glass chat look: solid behind the lines, soft at their ends).
+T.CHAT_SCRIM = { left = 12, right = 96, alpha = T.CHAT_BACKDROP.levels[1][1] }
 -- Chat text (Modules/Chat.lua CH.FontWindow): the air between lines (units), on top of the font's own.
 T.CHAT_TEXT = { spacing = 2 }
 -- The chat edit box (Modules/Chat.lua skinEditBox): its alpha at rest (the game's own, which

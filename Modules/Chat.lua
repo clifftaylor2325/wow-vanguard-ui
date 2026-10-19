@@ -165,21 +165,64 @@ local function barRule(bar)
   return T.Tint(line, T.DIVIDER.color)
 end
 
+-- The scrim's three textures on a frame: a left ramp, a solid middle and a long right ramp (T.CHAT_SCRIM).
+local function scrimParts(scrim)
+  local s = {}
+  for _, key in ipairs({ "left", "mid", "right" }) do
+    s[key] = scrim:CreateTexture(nil, "BACKGROUND", nil, -7)
+    s[key]:SetTexture(T.WHITE)
+  end
+  s.left:SetPoint("TOPLEFT") s.left:SetPoint("BOTTOMLEFT") s.left:SetWidth(T.CHAT_SCRIM.left)
+  s.right:SetPoint("TOPRIGHT") s.right:SetPoint("BOTTOMRIGHT") s.right:SetWidth(T.CHAT_SCRIM.right)
+  s.mid:SetPoint("TOPLEFT", s.left, "TOPRIGHT") s.mid:SetPoint("BOTTOMRIGHT", s.right, "BOTTOMLEFT")
+  return s
+end
+
+-- Colours a scrim in the panel colour at the Light strength: clear to full over the left ramp, full
+-- across the middle, full to clear over the right ramp (SetGradient takes the client's colour objects).
+local function tintScrim(s)
+  local r, g, b = T.RGB("panel")
+  local full, clear = CreateColor(r, g, b, T.CHAT_SCRIM.alpha), CreateColor(r, g, b, 0)
+  s.left:SetGradient("HORIZONTAL", clear, full)
+  s.mid:SetVertexColor(r, g, b, T.CHAT_SCRIM.alpha)
+  s.right:SetGradient("HORIZONTAL", full, clear)
+end
+
+-- Anchors a frame to the panel's footprint round a chat window: a gap out, the bar's height above,
+-- the scroll column to the right.
+local function pinFootprint(f, frame)
+  f:SetPoint("TOPLEFT", frame, "TOPLEFT", -T.SPACE.tight, CH.BAR)
+  f:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", T.SPACE.tight + CH.SIDE_COLUMN, -T.SPACE.tight)
+end
+
+-- The scrim behind a window while the chat background is off: a frame on the panel's footprint
+-- (hidden while the panel shows) holding the three textures; its parts, with the frame as `frame`.
+local function scrimFrame(frame, level)
+  local scrim = CreateFrame("Frame", nil, frame)
+  pinFootprint(scrim, frame)
+  scrim:SetFrameLevel(level)
+  scrim:Hide()
+  local s = scrimParts(scrim)
+  tintScrim(s)
+  s.frame = scrim
+  return s
+end
+
 -- The chat window's frame: one rounded panel round the text, the scroll column right of it and the
 -- tab bar above it (the panel's fill is the chat background, at the strength setting; a small soft
--- shadow under it while Soft shadows under frames is on, as the HUD's panels have), with the bar
--- as a frame on the panel's top band (the tabs, the dock and the Find and Copy buttons anchor to it).
+-- shadow under it while Soft shadows under frames is on, as the HUD's panels have), with the bar as
+-- a frame on the panel's top band (the tabs, the dock and the Find and Copy tiles anchor to it; it
+-- stays when the panel goes), and the scrim that stands in for the panel with the background off.
 local function frameParts(frame)
   local gap, level = T.SPACE.tight, math.max(0, (frame:GetFrameLevel() or 1) - 1)
   local outline = CreateFrame("Frame", nil, frame)
-  outline:SetPoint("TOPLEFT", -gap, CH.BAR)
-  outline:SetPoint("BOTTOMRIGHT", gap + CH.SIDE_COLUMN, -gap)
+  pinFootprint(outline, frame)
   outline:SetFrameLevel(level)
-  local bar = CreateFrame("Frame", nil, outline)
-  bar:SetPoint("TOPLEFT")
-  bar:SetPoint("BOTTOMRIGHT", outline, "TOPRIGHT", 0, -CH.BAR)
+  local bar = CreateFrame("Frame", nil, frame)
+  bar:SetPoint("TOPLEFT", frame, "TOPLEFT", -gap, CH.BAR)
+  bar:SetPoint("BOTTOMRIGHT", frame, "TOPRIGHT", gap + CH.SIDE_COLUMN, 0)
   T.Panel(outline, { noBg = true, noSheen = true, round = true, shadow = T.Settings().hudShadow == true and T.CHAT_SHADOW or nil })
-  return { outline = outline, bar = bar, fill = T.FillParts(outline, "BACKGROUND", -7, "panel", CH.Strength()), rule = barRule(bar) }
+  return { outline = outline, bar = bar, fill = T.FillParts(outline, "BACKGROUND", -7, "panel", CH.Strength()), rule = barRule(bar), scrim = scrimFrame(frame, level) }
 end
 
 -- The tab bar above a chat window, made on first use (the window's Find and Copy buttons anchor to it).
@@ -233,10 +276,12 @@ function CH.AddBarButton(frame, label, where, onClick)
   return button
 end
 
--- Shows the panel round a chat window (its bar with it) when the background is on, else hides it.
+-- Shows the panel round a chat window when the background is on, else the scrim in its place (the
+-- bar stays either way).
 local function showFrame(frame, on)
   CH.Bar(frame)
   CH.frames[frame].outline:SetShown(on)
+  CH.frames[frame].scrim.frame:SetShown(not on)
 end
 
 -- A chat window: theme font, its line fade, hidden art, and (if on) the rounded panel with the chat background.
@@ -636,14 +681,14 @@ function CH.SkinAll()
 end
 
 -- Re-fonts every chat window (after a text size or font change) and sets its line fade again (after
--- Reduce motion), re-colors the tabs, and sets every panel's fill to the strength setting, and its
--- rule and edit box rail to their pixels again (after a scale change).
+-- Reduce motion), re-colors the tabs, and sets every panel's fill to the strength setting and its
+-- scrim to the panel colour, and its rule and edit box rail to their pixels again (after a scale change).
 function CH.Refresh()
   for i = 1, windowCount() do
     local frame = _G["ChatFrame" .. i]
     if frame then CH.FontWindow(frame) fadeWindow(frame) end
     local parts = frame and CH.frames and CH.frames[frame]
-    if parts then T.TintFill(parts.fill, "panel", CH.Strength()) placeRule(parts.rule, parts.bar) end
+    if parts then T.TintFill(parts.fill, "panel", CH.Strength()) placeRule(parts.rule, parts.bar) tintScrim(parts.scrim) end
     refreshRail(_G["ChatFrame" .. i .. "EditBox"])
   end
   CH.RefitTabs()

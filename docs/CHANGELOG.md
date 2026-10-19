@@ -18,6 +18,7 @@ Nothing in this release has been checked in the game; see the batch checklist (i
 - The typing box sits under the chat panel with a rail in the channel's colour, faint until you type.
 - The scroll-to-bottom tile takes a thin accent edge while the game flashes it for new lines.
 - Chat text fades (Never, after 60 s, after 10 s) under Chat sets how long lines stay before they fade.
+- With Chat background off, a soft band fading out to the right sits behind the text instead of nothing.
 
 ### HUD and Edit Mode
 

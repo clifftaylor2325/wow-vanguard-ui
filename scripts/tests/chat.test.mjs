@@ -100,7 +100,7 @@ it("chat frame: one rounded panel round the text, the scroll column and a 24-tal
   const soft = loggedIn(UI_ENV, { savedVariables: "VanguardDB.profiles = { Default = { theme = { hudShadow = true } } }" });
   expect(soft.eval(`local n, h = 0, 99 for _, r in ipairs({ ${F}.outline:GetRegions() }) do if tostring(r.__texture):find("Shadow") then n, h = n + 1, math.min(h, r:GetHeight()) end end
     local px = ns.Theme.Pixel(${F}.outline) return { n, h == math.floor(6 / px + 0.5) * px }`), "Soft shadows under frames on: the eight-piece shadow ring, its corners 6 units in whole pixels").toEqual([8, true]);
-  expect(addon.eval(`local f = ${F} local b = f.bar.__points.BOTTOMRIGHT return { f.bar:GetHeight(), f.bar:GetParent() == f.outline, b.rel == f.outline, b.relPoint, b.y }`), "the bar is the panel's top band, 24 tall").toEqual([24, true, true, "TOPRIGHT", -24]);
+  expect(addon.eval(`local f = ${F} local b = f.bar.__points.BOTTOMRIGHT return { f.bar:GetHeight(), f.bar:GetParent() == ChatFrame1, b.rel == ChatFrame1, b.relPoint, b.x, b.y }`), "the bar is the panel's top band, 24 tall, on the window itself so it stays when the panel goes").toEqual([24, true, true, "TOPRIGHT", 28, 0]);
   expect(addon.eval(`local f = ${F} return { f.rule:GetHeight() == ns.Theme.Pixel(f.bar), f.rule.__points.BOTTOMLEFT.rel == f.bar }`), "a one-pixel rule along the bar's bottom").toEqual([true, true]);
   expect(isTok(addon, addon.eval(`return ${F}.rule.__vertexColor`), "divider"), "in the divider colour").toBe(true);
   // A bar button's place and look: its anchor on the bar and x, whether it is a 20 x 20 tile, and its glyph.
@@ -115,8 +115,25 @@ it("chat frame: one rounded panel round the text, the scroll column and a 24-tal
   expect(addon.eval("return GameTooltip:IsShown()"), "and the name goes with the mouse").toBe(false);
   expect(addon.eval("local b = ns.GetModule('Chat').AddBarButton(ChatFrame1, 'TEST-ONLY', 'click test', function() end) local _, _, _, x = b:GetPoint() return x"), "a button no slot is listed for takes the slot after Find").toBe(-52);
   addon.eval("ns.GetModule('Chat').settings.background = false ns.GetModule('Chat').SkinAll()");
-  expect(panel()[0], "background off: no panel, the buttons still have their bar").toBe(false);
+  expect([panel()[0], addon.eval(`return { ${F}.bar:IsVisible(), ns.GetModule('ChatExtras').copyButton:IsVisible() }`)], "background off: no panel; the bar and its tiles stay").toEqual([false, [true, true]]);
   expect(addon.eval("return #ns.errors"), "no errors").toBe(0);
+});
+it("chat background off: a scrim on the panel's footprint, clear at the left edge, solid behind the lines, fading out over the right 96 units, in the panel colour at the Light strength", () => {
+  const addon = loggedIn(UI_ENV, { savedVariables: "VanguardDB.profiles = { Default = { Chat = { background = false } } }" });
+  const S = "ns.GetModule('Chat').frames[ChatFrame1].scrim";
+  // The scrim: shown, on the panel's footprint, and its three textures' widths, gradients and colour.
+  const scrim = () => addon.eval(`local s = ${S} local p = s.frame.__points return { s.frame:IsShown(), p.TOPLEFT.x, p.TOPLEFT.y, p.BOTTOMRIGHT.x, p.BOTTOMRIGHT.y,
+    s.left:GetWidth(), s.left.__gradient, s.mid.__vertexColor, s.mid.__points.TOPLEFT.rel == s.left and s.mid.__points.BOTTOMRIGHT.rel == s.right, s.right:GetWidth(), s.right.__gradient }`);
+  const [shown, x0, y0, x1, y1, leftW, leftG, mid, midBetween, rightW, rightG] = scrim();
+  const panel = addon.eval("return { ns.Theme.RGB('panel') }").slice(0, 3);
+  expect([shown, x0, y0, x1, y1], "shown with the background off, on the panel's footprint").toEqual([true, -4, 24, 28, -4]);
+  expect([leftW, leftG], "the left ramp: 12 units, clear to the panel colour at 0.55").toEqual([12, ["HORIZONTAL", [...panel, 0], [...panel, 0.55]]]);
+  expect([mid, midBetween], "the middle: the panel colour at 0.55 between the ramps").toEqual([[...panel, 0.55], true]);
+  expect([rightW, rightG], "the right ramp: 96 units, the panel colour at 0.55 to clear").toEqual([96, ["HORIZONTAL", [...panel, 0.55], [...panel, 0]]]);
+  addon.eval("ns.Theme.Settings().panel = { 0.1, 0.2, 0.3, 1 } ns.Theme.Refresh()");
+  expect(scrim()[7], "the scrim follows the panel colour live").toEqual([0.1, 0.2, 0.3, 0.55]);
+  addon.eval("ns.GetModule('Chat').settings.background = true ns.GetModule('Chat').SkinAll()");
+  expect(addon.eval(`return { ${S}.frame:IsShown(), ns.GetModule('Chat').frames[ChatFrame1].outline:IsShown() }`), "background on: the panel is back and the scrim gone").toEqual([false, true]);
 });
 // TEST-ONLY spies on the main window's line fade setters (ScrollingMessageFrameMixin), which the stub does not model.
 const CHAT_FADE_ENV = `
@@ -353,7 +370,7 @@ it("chat background: the panel's fill in the panel colour, three strengths, tabs
   addon.eval("ChatFrame1.ScrollBar = CreateFrame('Frame', nil, ChatFrame1) ns.GetModule('Chat').SkinAll()");
   expect(addon.eval("return #ns.errors"), "a window with a scroll bar is skinned without errors").toBe(0);
   const off = loggedIn(UI_ENV, { savedVariables: "VanguardDB.profiles = { Default = { Chat = { background = false } } }" });
-  expect(off.eval("return ns.GetModule('Chat').frames[ChatFrame1].outline:IsShown()"), "background off hides the panel").toBe(false);
+  expect(off.eval("local f = ns.GetModule('Chat').frames[ChatFrame1] return { f.outline:IsShown(), f.scrim.frame:IsShown() }"), "background off hides the panel and shows the scrim").toEqual([false, true]);
 });
 // TEST-ONLY chat dock, tab fade and floating-tab code as the game has it: the dock anchored to the main
 // window's art, the six tab alphas, FCFTab_UpdateAlpha setting a tab's alpha from them, and the game
