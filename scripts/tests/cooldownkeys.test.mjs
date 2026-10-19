@@ -1,7 +1,7 @@
 // cooldownkeys: key text on the Cooldown Manager's icons (Modules/CooldownKeys.lua) in the TEST-ONLY headless client.
 
 import { expect, it } from "vitest";
-import { CLICK_LUA, TOOLS_ENV, UNITS_ENV, chatHas, loggedIn } from "./helpers.mjs";
+import { CLICK_LUA, TOOLS_ENV, UNITS_ENV, chatHas, loggedIn, pageBar1 } from "./helpers.mjs";
 
 const ON = "VanguardDB.profiles = { Default = { CooldownKeys = { keys = true } } }";
 
@@ -33,6 +33,27 @@ it("cooldown keys: the key of the bar button that holds the spell, or a macro th
   expect(key(addon, "EssentialCooldownViewer"), "off the bars: blank").toBe("");
   addon.world.setAction(4, { type: "item", id: 1234 });
   expect(key(addon, "EssentialCooldownViewer"), "an item with the same number is not the spell").toBe("");
+});
+
+it("cooldown keys: the labels follow bar 1 to its new page after a stance change or Shift+number", () => {
+  const addon = loggedIn(UNITS_ENV + TOOLS_ENV + ITEMS, { savedVariables: ON });
+  addon.world.setAction(3, { type: "spell", id: 1234 });
+  addon.world.setAction(75, { type: "spell", id: 5678 });
+  addon.world.setAction(15, { type: "spell", id: 5678 });
+  // The labels on the essential and utility rows' first icons.
+  const keys = () => [key(addon, "EssentialCooldownViewer"), key(addon, "UtilityCooldownViewer")];
+  expect(keys(), "page 1: key 3 casts 1234").toEqual(["3", false]);
+  addon.fire("UPDATE_BONUS_ACTIONBAR");
+  addon.fire("ACTIONBAR_PAGE_CHANGED");
+  pageBar1(addon, 7);
+  addon.update(0);
+  expect(keys(), "a stance pages bar 1 to 7: key 3 casts 5678").toEqual(["", "3"]);
+  pageBar1(addon, 2);
+  addon.update(0);
+  expect(keys(), "Shift+2: key 3 casts slot 15's 5678").toEqual(["", "3"]);
+  pageBar1(addon, 1);
+  addon.update(0);
+  expect(keys(), "back to page 1").toEqual(["3", ""]);
 });
 
 it("cooldown keys: a hidden spell, hidden slot or missing call shows no label and no error", () => {

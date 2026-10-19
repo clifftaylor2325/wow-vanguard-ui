@@ -101,7 +101,8 @@
     "scripts/tests/cooldownglow.test.mjs": [],
     "scripts/tests/cooldownkeys.test.mjs": [
       "cooldown keys: /vg cdmkeys and the options switch it at once; the row's layout hook repaints",
-      "cooldown keys: the key of the bar button that holds the spell, or a macro that casts it, follows moves and bindings"
+      "cooldown keys: the key of the bar button that holds the spell, or a macro that casts it, follows moves and bindings",
+      "cooldown keys: the labels follow bar 1 to its new page after a stance change or Shift+number"
     ],
     "scripts/tests/cooldownspage.test.mjs": [],
     "scripts/tests/core.test.mjs": [

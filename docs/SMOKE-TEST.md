@@ -1609,6 +1609,12 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 - Expect: the spell's icon shows "S3" in its top-right corner, over the cooldown sweep and clear of the charge count; it follows the move and the new key and goes blank once the spell is off the bars. A spell on no Vanguard bar shows nothing. `/vg cdmkeys off` clears the labels. In combat, nothing breaks and the labels stay put.
 - If it fails, paste: `/vg errors`, and what `/run local i=EssentialCooldownViewer:GetItemFrames()[1] print(i and i.GetSpellID and i:GetSpellID())` prints.
 
+### 28.2a Key text after a stance, form or page change
+
+- Do: with `/vg cdmkeys on`, put a spell from the manager's essential row on a bar 1 button with a key, and a different spell from the manager on the same button of another page (a warrior's other stance, a druid's form, a rogue's stealth bar, or Shift+2's page). Change stance, form or page, out of combat and then in combat, and back.
+- Expect: the label moves to whichever spell bar 1's button holds on the page now showing, within a frame of the change, and back when you return. `/vg errors` stays empty.
+- If it fails, paste: `/vg errors`, and which page and button you used.
+
 ## 29. Cooldown gaps
 
 ### 29.0 The Cooldowns page and its wizard
