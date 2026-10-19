@@ -7,9 +7,10 @@ local ADDON, ns = ...
 local O = ns.Options
 local moduleSettings, setting, liveSetting, check, append = O.ModuleSettings, O.Setting, O.LiveSetting, O.Check, O.Append
 
--- get/set for the chat text size, which chat windows take at once.
-local function chatSizeSetting()
-  return liveSetting("Chat", "textSize", function() local CH = ns.GetModule("Chat") if CH.settings then CH.Refresh() end end)
+-- get/set for one of the Chat module's settings, which it applies at once through its `method` (by
+-- name: Refresh, ApplySize, ApplyFades...) while it runs.
+local function chatLive(key, method)
+  return liveSetting("Chat", key, function() local CH = ns.GetModule("Chat") if CH.settings then CH[method]() end end)
 end
 
 -- The game's class-colored names in chat: always, never, or as each chat type is set.
@@ -19,18 +20,29 @@ local function classNameChoice(v) return (v == "0" or v == "1") and v or "2" end
 -- showTimestamps: "none" (or unset) is off, anything else a time format.
 local function timestampChoice(v) return v or "none" end
 
--- Chat's window: its background, its spot and its text size.
-local function chatWindowRows()
+-- Chat's text and bar, under the Chat header: the text size, how long lines stay, the tabs, the
+-- hidden-until-hover bar and the bubbles over heads.
+local function chatTextRows()
+  local CH = ns.GetModule("Chat")
   return {
-    { "header", "Chat" },
-    check("Chat background", setting("Chat", "background", true)),
-    { "cycle", "Chat background strength", ns.GetModule("Chat").BACKDROPS, liveSetting("Chat", "backdrop", function() local CH = ns.GetModule("Chat") if CH.settings then CH.Refresh() end end) },
-    check("Keep chat tabs visible (the game fades them until the mouse comes near)", liveSetting("Chat", "tabsVisible", function() local CH = ns.GetModule("Chat") if CH.settings then CH.ApplyTabAlpha() end end)),
-    check("Keep chat in its bottom-left spot (reload)", setting("Chat", "place", true)),
-    { "cycle", "Chat window size", ns.GetModule("Chat").WINDOW_SCALES, liveSetting("Chat", "windowScale", function() local CH = ns.GetModule("Chat") if CH.settings then CH.ApplySize() end end) },
-    { "cycle", "Chat text size (follows Text size)", ns.GetModule("Chat").SIZES, chatSizeSetting() },
+    { "cycle", "Chat text size (follows Text size)", CH.SIZES, chatLive("textSize", "Refresh") },
+    { "cycle", "Chat text fades", CH.LINE_FADES, chatLive("lineFade", "ApplyFades") },
+    check("Keep chat tabs visible (the game fades them until the mouse comes near)", chatLive("tabsVisible", "ApplyTabAlpha")),
+    check("Hide the tab bar until the mouse is over the chat", chatLive("barHover", "ApplyBarHover")),
     check("Text-only bubbles: no panel behind the words over heads", setting("ChatBubbles", "textOnly")),
   }
+end
+
+-- Chat's window: its background, its spot and its size, then its text and bar (chatTextRows).
+local function chatWindowRows()
+  local CH = ns.GetModule("Chat")
+  return append({
+    { "header", "Chat" },
+    check("Chat background", setting("Chat", "background", true)),
+    { "cycle", "Chat background strength", CH.BACKDROPS, chatLive("backdrop", "Refresh") },
+    check("Keep chat in its bottom-left spot (reload)", setting("Chat", "place", true)),
+    { "cycle", "Chat window size", CH.WINDOW_SCALES, chatLive("windowScale", "ApplySize") },
+  }, chatTextRows())
 end
 
 -- Chat extras: links, the Copy button, short channel names, the wheel, and the game's own timestamp

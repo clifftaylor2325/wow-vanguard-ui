@@ -12,9 +12,6 @@ local T = ns.Theme
 
 local CB = ns.Module("ChatBubbles", { defaults = { textOnly = false } })
 
--- The bubble panel's fill opacity: the flat panel behind the text.
-CB.ALPHA = 0.94
-
 -- Bubbles already dressed (Core/Events.lua, ns.FrameState): the engine reuses its bubble frames.
 local vgBubble = ns.FrameState("vgBubble")
 
@@ -43,10 +40,10 @@ local function bubbleText(panel)
 end
 
 -- The bubble's panel (the one child frame holding its art and text): art faded, a flat panel behind
--- (none with Text-only bubbles on), the text in the chat role.
+-- at T.CHAT_BUBBLE's opacity (none with Text-only bubbles on), the text in the chat role.
 local function dressBubble(panel)
   T.FadeRegions(panel)
-  if not CB.settings.textOnly then T.Panel(panel, { alpha = CB.ALPHA, noSheen = true }) end
+  if not CB.settings.textOnly then T.Panel(panel, { alpha = T.CHAT_BUBBLE.alpha, noSheen = true }) end
   local text = bubbleText(panel)
   if text then T.Text(text, "chat") end
 end

@@ -1631,6 +1631,9 @@ T.CHAT_LINE_FADE = 0.6
 -- Modules/Chat.lua floors the game's six tab alphas here while Keep chat tabs visible is off, so the
 -- game's own ladder (and its fade) still drives the state. Hover lifts a tab to the game's 1.
 T.CHAT_TAB_FLOOR = 0.6
+-- A chat bubble's panel (Modules/ChatBubbles.lua): the opacity of the flat panel behind the words over
+-- a head (the overlay alpha, kept on its own so bubbles can diverge from tooltips).
+T.CHAT_BUBBLE = { alpha = 0.94 }
 -- The chat panel's soft shadow (units) while Soft shadows under frames is on: smaller than a window's
 -- (SHADOW_SIZE), as an action button's is, so the panel sits on the world without a halo.
 T.CHAT_SHADOW = 6
@@ -2238,8 +2241,10 @@ end
 -- A flat tab (opts.flat, the chat tab bar): no fill or border until it is selected, then its raised
 -- fill with a one-pixel borderHi line lit along its top edge (T.BEVEL's light line, at full strength),
 -- so the bar reads as one surface with one raised tab; the hover wash and the label stay as they are.
+-- The lit line is made on the first flat paint (a tab that is never flat has none).
 local function paintFlat(entry, frame, on)
   local p, a = entry.parts, on and 1 or 0
+  p.lit = p.lit or solid(frame, "BORDER", 1, "border")
   p.bg:SetAlpha(a)
   for _, key in ipairs({ "roundSides", "roundFill", "roundLine" }) do
     for _, t in pairs(p[key] or NO_PARTS) do t:SetAlpha(a) end
@@ -2291,13 +2296,11 @@ local function fadeKeys(frame, keys)
   end
 end
 
--- A tab's own parts (made once): the hover wash, and the lit top line a flat tab shows when selected.
+-- A tab's own parts (made once): the hover wash (a flat tab's lit top line comes with its first paint, paintFlat).
 local function tabParts(button, entry)
   entry.parts.hover = solid(button, "HIGHLIGHT", nil, "fill")
   entry.parts.hover:SetAllPoints()
   T.Tint(entry.parts.hover, "hover")
-  entry.parts.lit = solid(button, "BORDER", 1, "border")
-  entry.parts.lit:Hide()
   entry.paint = paintTab
 end
 

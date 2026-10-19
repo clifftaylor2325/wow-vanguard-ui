@@ -265,10 +265,13 @@ local function addFindButton()
   CW.findButton = ns.GetModule("Chat").AddBarButton(frame, "Find", "click find in chat", CW.AskFind)
 end
 
--- Shows or hides the Find button as its switch is set (made now when it was off at login), at once.
+-- Shows or hides the Find button as its switch is set (made now when it was off at login), at once;
+-- the bar's other tiles and the dock close up over it (Modules/Chat.lua CH.PlaceBarButtons).
 function CW.ApplyFind()
   if CW.settings.find and not CW.findButton then addFindButton() end
-  if CW.findButton then CW.findButton:SetShown(CW.settings.find == true) end
+  if not CW.findButton then return end
+  CW.findButton:SetShown(CW.settings.find == true)
+  ns.GetModule("Chat").PlaceBarButtons(_G.ChatFrame1)
 end
 
 -- Module entry point (Core/Modules.lua).

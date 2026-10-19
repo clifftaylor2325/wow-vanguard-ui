@@ -168,7 +168,7 @@ it("chat find: the Chat page has the button and the switch; off, no button, and 
   expect(off.eval("return ns.GetModule('ChatWindows').findButton:IsShown()"), "the switch makes and shows the button at once").toBe(true);
   off.eval(`${chatRow("Find button in the chat's tab bar")} r[4](false)`);
   expect(off.eval("return { ns.GetModule('ChatWindows').findButton:IsShown(), ns.GetModule('ChatWindows').settings.find }"), "and hides it again, no reload").toEqual([false, false]);
-  expect(off.eval(`${PAGE} local out = {} for _, r in ipairs(page.rows()) do if r[1] == "header" then out[#out + 1] = r[2] end end return out`), "the page's groups, the extras under a header of their own").toEqual(["Chat", "Chat windows", "Chat tabs", "Chat extras", "Chat history", "Chat watch", "Chat filter", "Chat text and bar", "Group board"]);
+  expect(off.eval(`${PAGE} local out = {} for _, r in ipairs(page.rows()) do if r[1] == "header" then out[#out + 1] = r[2] end end return out`), "the page's groups, the extras under a header of their own").toEqual(["Chat", "Chat windows", "Chat tabs", "Chat extras", "Chat history", "Chat watch", "Chat filter", "Group board"]);
   const addon = loggedIn(ENV);
   addon.eval(`${PAGE} for _, r in ipairs(page.rows()) do if r[2] == "Find in chat" then r[3]() end end`);
   expect(addon.eval("return Vanguard_FindDialog:IsShown()"), "the Chat page's Find in chat opens the same find box").toBe(true);

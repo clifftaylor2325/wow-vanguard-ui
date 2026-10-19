@@ -110,10 +110,13 @@ local function addCopyButton()
   CX.copyButton = ns.GetModule("Chat").AddBarButton(frame, "Copy", "click copy chat", CX.ShowCopy)
 end
 
--- Shows or hides the Copy button as its switch is set (made now when it was off at login), at once.
+-- Shows or hides the Copy button as its switch is set (made now when it was off at login), at once;
+-- the bar's other tiles and the dock close up over it (Modules/Chat.lua CH.PlaceBarButtons).
 function CX.ApplyCopy()
   if CX.settings.copy and not CX.copyButton then addCopyButton() end
-  if CX.copyButton then CX.copyButton:SetShown(CX.settings.copy == true) end
+  if not CX.copyButton then return end
+  CX.copyButton:SetShown(CX.settings.copy == true)
+  ns.GetModule("Chat").PlaceBarButtons(_G.ChatFrame1)
 end
 
 -- Short channel names ---------------------------------------------------------------------

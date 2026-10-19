@@ -103,7 +103,8 @@ function CH.FontWindow(frame)
   frame:SetSpacing(T.CHAT_TEXT.spacing)
 end
 
--- The Chat text fades choices: how long a line stays before it fades (seconds; 0 never fades).
+-- The Chat text fades choices (the Chat page's row, Core/OptionsChat.lua): how long a line stays
+-- before it fades (seconds; 0 never fades).
 CH.LINE_FADES = { { 0, "Never" }, { 60, "After 60 seconds" }, { 10, "After 10 seconds" } }
 
 -- How long a line takes to fade once its time is up: the theme's, at most T.COMBAT_FADE in a fight,
@@ -259,11 +260,34 @@ local function slotInset(slot)
   return T.SPACE.tight + (slot - 1) * (T.CONTROL.tile + T.SPACE.tight)
 end
 
--- Places a bar button in its slot at the bar's right end, or (no bar: Chat is off) over the window's
--- top right, where the buttons sat before the bar.
-local function placeBarButton(button, frame, bar, slot)
-  if bar then return button:SetPoint("RIGHT", bar, "RIGHT", -slotInset(slot), 0) end
+-- Places a bar button over the window's top right (no bar: Chat is off), where the buttons sat before the bar.
+local function placeLooseButton(button, frame, slot)
   button:SetPoint("BOTTOMRIGHT", frame, "TOPRIGHT", -(slot - 1) * (T.CONTROL.tile + T.SPACE.tight), T.SPACE.tight)
+end
+
+-- Each window's bar tiles by slot (window -> { [slot] = button }), kept off the game's frames (ns.FrameState).
+local vgBarTiles = ns.FrameState("vgBarTiles")
+
+-- A window's bar tiles' slots, lowest (nearest the bar's right end) first.
+local function tileSlots(tiles)
+  local slots = {}
+  for slot in pairs(tiles) do slots[#slots + 1] = slot end
+  table.sort(slots)
+  return slots
+end
+
+-- Lays a window's shown bar tiles out from the bar's right end in slot order with no gaps (a hidden
+-- tile leaves none), remembers the furthest shown one as the bar's end (CH.barEnd and its place,
+-- CH.barEndSlot; nil with none shown) and puts the dock's right end before it (CH.PlaceDock).
+function CH.PlaceBarButtons(frame)
+  local parts, tiles, n = CH.frames and CH.frames[frame], vgBarTiles[frame] or {}, 0
+  if not parts then return end
+  CH.barEnd, CH.barEndSlot = nil, nil
+  for _, slot in ipairs(tileSlots(tiles)) do
+    local button = tiles[slot]
+    if button:IsShown() then n = n + 1 button:ClearAllPoints() button:SetPoint("RIGHT", parts.bar, "RIGHT", -slotInset(n), 0) CH.barEnd, CH.barEndSlot = button, n end
+  end
+  CH.PlaceDock()
 end
 
 -- Names a glyph tile in a tooltip while the mouse is over it (a tile has no label of its own).
@@ -272,24 +296,21 @@ local function tipButton(button, label)
   button:HookScript("OnLeave", ns.Guard("chat tile tip", function() GameTooltip:Hide() end))
 end
 
--- Remembers the button furthest from the bar's right end (the tab dock ends before it).
-local function barEnd(button, slot)
-  if CH.barEndSlot and CH.barEndSlot >= slot then return end
-  CH.barEnd, CH.barEndSlot = button, slot
-end
-
 -- A glyph tile (the side buttons' window control, 20 x 20) in the tab bar's right end, in the slot
--- CH.BAR_BUTTONS gives its label (Copy at the end, Find left of it); the tab dock ends before the
--- furthest one. Its label is its tooltip. With Chat switched off the bar isn't drawn, so it sits
--- over the window's top right instead. Called by Modules/ChatExtras.lua and Modules/ChatWindows.lua.
+-- CH.BAR_BUTTONS gives its label (Copy at the end, Find left of it; the shown ones close up, and the
+-- tab dock ends before the furthest). Its label is its tooltip. With Chat switched off the bar isn't
+-- drawn, so it sits over the window's top right instead. Called by Modules/ChatExtras.lua and
+-- Modules/ChatWindows.lua, which call CH.PlaceBarButtons after showing or hiding theirs.
 function CH.AddBarButton(frame, label, where, onClick)
   local bar = ns.ModuleEnabled("Chat") and CH.Bar(frame) or nil
   local look = CH.BAR_BUTTONS[label] or { icon = "Right", slot = 3 }
   local button = T.WindowControl(CreateFrame("Button", nil, bar or frame), look.icon)
-  placeBarButton(button, frame, bar, look.slot)
   tipButton(button, label)
-  if bar then barEnd(button, look.slot) CH.PlaceDock() end
   button:SetScript("OnClick", ns.Guard(where, onClick))
+  if not bar then placeLooseButton(button, frame, look.slot) return button end
+  vgBarTiles[frame] = vgBarTiles[frame] or {}
+  vgBarTiles[frame][look.slot] = button
+  CH.PlaceBarButtons(frame)
   return button
 end
 
@@ -459,9 +480,13 @@ local function skinEditBox(box, outline)
   tintRail(box)
 end
 
--- Sizes a window's edit box rail again (after a scale change), where the box has one.
-local function refreshRail(box)
-  if type(box) == "table" and vgRail[box] then placeRail(vgRail[box], box) end
+-- Puts every skinned edit box back under its window's panel (the game anchors it to the window's
+-- art again when it lays the dock out) and sizes its rail to its pixels again (after a scale change).
+function CH.PlaceEditBoxes()
+  for i = 1, windowCount() do
+    local box, parts = _G["ChatFrame" .. i .. "EditBox"], CH.frames and CH.frames[_G["ChatFrame" .. i] or false]
+    if type(box) == "table" and parts and vgRail[box] then placeEditBox(box, parts.outline) placeRail(vgRail[box], box) end
+  end
 end
 
 -- The game's six tab alphas: how faint a tab is until the mouse comes near, by its state. Keep chat
@@ -513,10 +538,19 @@ end
 -- How often the hidden-until-hover bar looks for the mouse (seconds).
 CH.HOVER_POLL = 0.1
 
+-- Whether the mouse rests on a window's edit box, or the typing is in it (HasFocus, where this client has it).
+local function inEditBox(frame)
+  local box = _G[(frame:GetName() or "") .. "EditBox"]
+  if type(box) ~= "table" then return false end
+  if box:IsMouseOver() == true then return true end
+  return type(box.HasFocus) == "function" and box:HasFocus() == true
+end
+
 -- Whether a window wants its bar: the mouse is over its chat (the text, the bar's band above it and
--- the columns either side), or the game is flashing one of its tabs (the bar stays while a tab alerts).
+-- the columns either side) or on its edit box, the typing is in the box, or the game is flashing one
+-- of its tabs (the bar stays while a tab alerts).
 local function wantsBar(frame)
-  if CH.alerting[frame] then return true end
+  if CH.alerting[frame] or inEditBox(frame) then return true end
   return frame:IsMouseOver(CH.BAR + T.SPACE.tight, -T.SPACE.tight, -CH.STACK_ROOM, CH.SIDE_COLUMN + T.SPACE.tight) == true
 end
 
@@ -656,24 +690,15 @@ local function glyphButton(button, icon)
   raiseCounts(button)
 end
 
--- A one-pixel line in accentText along one side of frame ("TOP", "BOTTOM", "LEFT" or "RIGHT").
-local function edgeLine(frame, side)
-  local t = T.Tint(T.Snap(frame:CreateTexture(nil, "OVERLAY"), "border"), "accentText")
-  local px, upright = T.Pixel(frame), side == "LEFT" or side == "RIGHT"
-  t:SetTexture(T.WHITE)
-  t:SetPoint(upright and "TOP" .. side or side .. "LEFT")
-  t:SetPoint(upright and "BOTTOM" .. side or side .. "RIGHT")
-  if upright then t:SetWidth(px) else t:SetHeight(px) end
-  return t
-end
-
 -- A one-pixel accentText ring the size of a control's tile, centred on its button and hidden: the
--- suite's selected-edge mark, for the scroll-to-bottom tile while the game flashes it (new lines below).
+-- theme's own border (a panel with no fill or sheen, its border set to accentText), the suite's
+-- selected-edge mark, for the scroll-to-bottom tile while the game flashes it (new lines below).
 local function tileRing(button)
   local ring = CreateFrame("Frame", nil, button)
   ring:SetPoint("CENTER")
   T.PixelSize(ring, T.CONTROL.tile, T.CONTROL.tile, true)
-  for _, side in ipairs({ "TOP", "BOTTOM", "LEFT", "RIGHT" }) do edgeLine(ring, side) end
+  T.Panel(ring, { noBg = true, noSheen = true })
+  T.SetBorder(ring, { T.RGB("accentText") })
   ring:Hide()
   return ring
 end
@@ -802,15 +827,16 @@ end
 
 -- Re-fonts every chat window (after a text size or font change) and sets its line fade again (after
 -- Reduce motion), re-colors the tabs, and sets every panel's fill to the strength setting and its
--- scrim to the panel colour, and its rule and edit box rail to their pixels again (after a scale change).
+-- scrim to the panel colour, its rule and edit box rail to their pixels again (after a scale change),
+-- and its edit box back under the panel.
 function CH.Refresh()
   for i = 1, windowCount() do
     local frame = _G["ChatFrame" .. i]
     if frame then CH.FontWindow(frame) fadeWindow(frame) end
     local parts = frame and CH.frames and CH.frames[frame]
     if parts then T.TintFill(parts.fill, "panel", CH.Strength()) placeRule(parts.rule, parts.bar) tintScrim(parts.scrim) end
-    refreshRail(_G["ChatFrame" .. i .. "EditBox"])
   end
+  CH.PlaceEditBoxes()
   CH.RefitTabs()
   CH.UpdateTabs()
 end
@@ -898,18 +924,25 @@ local function hookAlertFlash()
   after("FCF_StopAlertFlash", function(frame) setAlerting(frame, false) end)
 end
 
+-- Follows the game's anchoring of the dock, the edit boxes (its dock layout), a tab and the side
+-- buttons, and its colouring of a tab: each is put right after it.
+local function hookLayout()
+  after("FCFDock_SetPrimary", CH.PlaceDock)
+  after("FCFDock_UpdateTabs", CH.PlaceEditBoxes)
+  after("FCFTab_UpdateColors", restyleTab)
+  after("FCF_SetTabPosition", placeFloatingTab)
+  after("FCF_SetButtonSide", CH.StackButtons)
+end
+
 -- Follows the game's chat code: new windows are skinned, a tab click repaints the tabs, its size menu
--- re-fonts, and its anchoring of the dock, a tab and the side buttons, and its colouring of a tab,
--- are put right after it; its alert flashes are watched for the hidden-until-hover bar.
+-- re-fonts, its layout is put right (hookLayout), and its alert flashes are watched for the
+-- hidden-until-hover bar.
 local function hookGame()
   after("FCF_OpenTemporaryWindow", CH.SkinAll)
   after("FCF_OpenNewWindow", CH.SkinAll)
   after("FCF_Tab_OnClick", CH.UpdateTabs)
   after("FCF_SetChatWindowFontSize", onGameSize)
-  after("FCFDock_SetPrimary", CH.PlaceDock)
-  after("FCFTab_UpdateColors", restyleTab)
-  after("FCF_SetTabPosition", placeFloatingTab)
-  after("FCF_SetButtonSide", CH.StackButtons)
+  hookLayout()
   hookAlertFlash()
   watchAlerts()
 end
@@ -928,19 +961,3 @@ function CH.Enable(settings)
   ns.On("PLAYER_REGEN_ENABLED", CH.ApplyFades)
   hookGame()
 end
-
--- get/set for one of this module's settings (and its default), applied at once through `apply` while the module runs.
-local function liveSetting(key, apply)
-  return function() return ns.Settings("Chat", CH.defaults)[key] end,
-    function(v) ns.Settings("Chat", CH.defaults)[key] = v if CH.settings then apply() end end, CH.defaults[key]
-end
-
--- This module's rows on the Chat page (Core/OptionsChat.lua holds the page; these follow its own rows).
-function CH.Rows()
-  return {
-    { "header", "Chat text and bar" },
-    { "cycle", "Chat text fades", CH.LINE_FADES, liveSetting("lineFade", CH.ApplyFades) },
-    { "check", "Hide the tab bar until the mouse is over the chat", liveSetting("barHover", CH.ApplyBarHover) },
-  }
-end
-ns.Options.AddRows("chat", CH.Rows)
