@@ -1346,3 +1346,18 @@ it("quest log: Ctrl-click marks inside a folded zone still count, and Abandon ab
   addon.click("Vanguard_Question.confirm");
   expect(addon.eval("return __gone"), "all three abandoned").toEqual([90051, 90052, 90053]);
 });
+it("quest dialog: an NPC whose one option the game goes to directly (a flight master) opens it without the dialog", () => {
+  const addon = loggedIn();
+  const FLY = { name: "TEST-ONLY Show me where I can fly.", gossipOptionID: 90077, orderIndex: 0, selectOptionWhenOnlyOption: true };
+  // Talks to an NPC, then says whether the dialog shows, how many lines it has, and which option index the game was asked for.
+  const talk = (npc) => {
+    addon.eval("__wfgWorld.gossipChosenIndex = nil Vanguard_QuestDialog:Hide()");
+    addon.world.openNpc(npc);
+    return addon.eval("return { Vanguard_QuestDialog:IsShown(), Vanguard_QuestDialog.lines.used, __wfgWorld.gossipChosenIndex or false }");
+  };
+  expect(talk({ options: [FLY] }), "one flagged option, no quests: the game's pick, no dialog").toEqual([false, 0, 0]);
+  expect(talk({ options: [FLY], forceGossip: true }), "an NPC that forces its gossip: the dialog").toEqual([true, 1, false]);
+  expect(talk({ options: [{ ...FLY, selectOptionWhenOnlyOption: false }] }), "an option not flagged: the dialog").toEqual([true, 1, false]);
+  expect(talk({ options: [FLY], available: [{ title: "TEST-ONLY Rats", questLevel: 5, questID: 90078 }] }), "a quest to show as well: the dialog").toEqual([true, 2, false]);
+  expect(talk({ options: [FLY, { ...FLY, gossipOptionID: 90079, orderIndex: 1 }] }), "two options: the dialog").toEqual([true, 2, false]);
+});
