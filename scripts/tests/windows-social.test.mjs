@@ -395,6 +395,7 @@ it("guild window: the communities list rows are theme rows, art faded but their 
     r.Icon:GetAlpha(), r.GuildTabardBackground:GetAlpha(), r.GuildTabardEmblem:GetAlpha(), r.FavoriteIcon:GetAlpha(), r.UnreadNotificationIcon:GetAlpha(), r.InvitationIcon:GetAlpha(), ns.Theme.RowParts(r).rail:IsShown() }`);
   expect(look("__a"), "a row present at login, the first club selected").toEqual([true, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, true]);
   expect(look("__b"), "a row acquired later, not selected").toEqual([true, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, false]);
+  expect(addon.eval("local l1, s1 = __a.GuildTabardBackground:GetDrawLayer() local l2, s2 = __a.GuildTabardEmblem:GetDrawLayer() return { l1, s1, l2, s2 }"), "the banner drawn above the selected fill").toEqual(["ARTWORK", 4, "ARTWORK", 5]);
   expect([isText(addon, "__a.Name"), isText(addon, "__b.Name"), addon.eval("return { __a.Icon.__desaturated == true, __b.Icon.__desaturated == true }")], "names in the text colour, the add row's plus grey and an avatar left alone").toEqual([true, true, [false, true]]);
   addon.eval("__selected = 2 __a:Init(1) __b:Init(2)");
   expect(addon.eval("return { ns.Theme.RowParts(__a).rail:IsShown(), ns.Theme.RowParts(__b).rail:IsShown() }"), "the rail follows the game's selection on the next Init").toEqual([false, true]);
