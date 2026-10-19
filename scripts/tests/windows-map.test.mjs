@@ -1042,9 +1042,11 @@ const CALENDAR_ENV = WINDOWS_ENV + SCROLL_HELPERS + `
       b.art, b.icon = b:CreateTexture(), b:CreateTexture()
       b.GetNormalTexture = function(self) return self.icon end
     end
-    local today = CreateFrame("Frame", "CalendarTodayFrame", f) today.art = today:CreateTexture()
+    local today = CreateFrame("Frame", "CalendarTodayFrame", f) today.art = today:CreateTexture() today:SetSize(145, 140)
+    function CalendarFrame_SetToday(day) today:SetParent(day) today:ClearAllPoints() today:SetPoint("CENTER", day, "CENTER") end
     for i = 1, 42 do
-      local b = CreateFrame("Button", "CalendarDayButton" .. i, f)
+      local b = CreateFrame("Button", "CalendarDayButton" .. i, f) b:SetSize(91, 91)
+      b.overlay = CreateFrame("Frame", "CalendarDayButton" .. i .. "OverlayFrame", b)
       b.parchment, b.event = b:CreateTexture(), b:CreateTexture()
       b.GetNormalTexture = function(self) return self.parchment end
     end
@@ -1124,6 +1126,10 @@ it("calendar: the window's art is faded but the weekday glow and last-day shadow
   expect(addon.eval("local p, n = CalendarPrevMonthButton, CalendarNextMonthButton return { p.art:GetAlpha(), p.icon:GetAlpha(), p.off:GetAlpha(), p.push:GetAlpha(), n.art:GetAlpha(), n.icon:GetAlpha() }"), "the month buttons lose the template art (the theme arrow replaces it)").toEqual([0, 0, 0, 0, 0, 0]);
   expect(addon.eval("local p, n = ns.Theme.ArrowParts(CalendarPrevMonthButton), ns.Theme.ArrowParts(CalendarNextMonthButton) return { p ~= nil, n ~= nil, true }"), "and are theme arrows").toEqual([true, true, true]);
   expect(addon.eval("return { CalendarTodayFrame.art:GetAlpha(), ns.Theme.PaintedCount() > 0 }")[0], "today's ornate frame art is faded").toBe(0);
+  expect(addon.eval("return { CalendarTodayFrame:GetWidth(), CalendarTodayFrame:GetHeight() }"), "a today marker still on the window keeps the game's size").toEqual([145, 140]);
+  expect(addon.eval("CalendarFrame_SetToday(CalendarDayButton19) return { CalendarTodayFrame:GetWidth(), CalendarTodayFrame:GetHeight(), CalendarTodayFrame:GetParent() == CalendarDayButton19 }"), "the marker is sized to the day cell the game puts it on").toEqual([91, 91, true]);
+  expect(addon.eval("CalendarFrame_SetToday(CalendarDayButton3) return { CalendarTodayFrame:GetWidth(), CalendarTodayFrame:GetHeight() }"), "and follows it to another cell").toEqual([91, 91]);
+  expect(addon.eval("local o = CalendarDayButton1OverlayFrame return o:GetAlpha()"), "a day's holiday overlay art is faded").toBe(0);
   expect(addon.eval("local out = {} for i = 1, 7 do out[i] = __looks(_G['CalendarWeekday' .. i .. 'Name'], 'label', 'text') end return { out, __looks(CalendarYearName, 'small', 'text2'), __looks(CalendarFilterButton.Text, 'label', 'text') }"),
     "the weekday headings and the filter's label are light label text, the year small and grey").toEqual([[true, true, true, true, true, true, true], true, true]);
   expect(addon.eval("local t, c = CalendarClassTotalsButton, CalendarClassButton11 return { CalendarFilterButton.art:GetAlpha(), t.art:GetAlpha(), t.icon:GetAlpha(), c.art:GetAlpha(), c.icon:GetAlpha() }"), "the filter button and the class buttons lose the template art and keep the class icons").toEqual([0, 0, 1, 0, 1]);
@@ -1145,7 +1151,8 @@ it("calendar: the seven dialogs are skinned, with their headers, buttons and tex
     expect(windowState(addon, name), `${name}: art faded, a panel painted`).toMatchObject({ art: 0, nine: 0, portrait: 0, panel: true, title: true });
     expect(addon.eval(`local d = ${name} return { d.Border:GetAlpha(), (d.Border:GetRegions()):GetAlpha(), d.Header.LeftBG:GetAlpha(), d.Header.RightBG:GetAlpha(), d.Header.CenterBG:GetAlpha(), __titled(d.Header.Text) }`), `${name}: the border and the header plate are faded, the title in the theme font`).toEqual([0, 0, 0, 0, 0, true]);
   }
-  expect([calAlpha(addon, "CalendarViewHolidayFrame.Texture"), calAlpha(addon, "CalendarCreateEventIcon")], "the holiday's art and the create dialog's icon are left as the game has them").toEqual([0.4, 1]);
+  expect([calAlpha(addon, "CalendarViewHolidayFrame.Texture"), calAlpha(addon, "CalendarCreateEventIcon")], "the holiday's backdrop art is faded and the create dialog's icon is left as the game has it").toEqual([0, 1]);
+  expect(addon.eval("return CalendarViewHolidayFrame.Border:GetAlpha()"), "the dialog's border art is faded").toBe(0);
   expect(["CalendarViewHolidayCloseButton", "CalendarViewEventCloseButton", "CalendarCreateEventCloseButton", "CalendarMassInviteCloseButton"].map(n => closeSeal(addon, n)), "the close buttons are the theme's close seal").toEqual([true, true, true, true]);
   expect(["CalendarViewEventAcceptButton", "CalendarCreateEventCreateButton", "CalendarEventPickerCloseButton", "CalendarTexturePickerAcceptButton"].map(n => fills(addon, n)), "the push buttons are flat buttons (one fill; the hover clear at rest)").toEqual([1, 1, 1, 1]);
   expect(["CalendarCreateEventTitleEdit", "CalendarMassInviteMinLevelEdit"].map(n => calAlpha(addon, `(_G.${n}:GetRegions())`)), "the text boxes' template art is faded").toEqual([0, 0]);
@@ -1154,7 +1161,7 @@ it("calendar: the seven dialogs are skinned, with their headers, buttons and tex
   expect(["CalendarViewEventDivider", "CalendarCreateEventDivider"].map(n => [calAlpha(addon, `_G.${n}`), addon.eval(`return ns.Theme.DividerParts(_G.${n}) ~= nil`)]), "and their dividers are one pixel of divider in place of the faded art").toEqual([[0, true], [0, true]]);
   const painted = addon.eval("return ns.Theme.PaintedCount()");
   addon.eval("CalendarCreateEventFrame:Hide() CalendarCreateEventFrame:Show() CalendarViewHolidayFrame:Hide() CalendarViewHolidayFrame:Show()");
-  expect([addon.eval("return ns.Theme.PaintedCount()"), calAlpha(addon, "CalendarViewHolidayFrame.Texture"), calAlpha(addon, "CalendarCreateEventIcon")], "a second show paints nothing new and keeps the pictures").toEqual([painted, 0.4, 1]);
+  expect([addon.eval("return ns.Theme.PaintedCount()"), calAlpha(addon, "CalendarViewHolidayFrame.Texture"), calAlpha(addon, "CalendarCreateEventIcon")], "a second show paints nothing new and keeps the pictures").toEqual([painted, 0, 1]);
 });
 
 it("calendar dialogs: the holiday and raid text areas are inset panels, the event dialogs' texts, dropdowns, check boxes and invite lists are in the theme, the pickers' rows follow the game's highlight", () => {
