@@ -493,7 +493,8 @@ const castSpot = (addon) => addon.eval(`local b, top = Vanguard_CastBar_player, 
   return { bottom = b:GetBottom(), top = top, strata = b.__strata }`);
 
 it("your cast bar sits above the action bars and moves up when they grow, so they never hide it", () => {
-  const addon = loggedIn();
+  // On a 768-tall screen one UI unit is one screen pixel, so the bars' rounded heights give the whole numbers below.
+  const addon = loggedIn("__wfgStub.setScreen(1366, 768)");
   const start = castSpot(addon);
   expect([Math.round(start.bottom), start.strata], "over the default three bars (no gap between them): 4 over bar 1, drawn over the bars").toEqual([142, "HIGH"]);
   expect(Math.round(start.bottom - start.top), "about 4 above the top bar (the bars snap to whole pixels)").toBe(4);

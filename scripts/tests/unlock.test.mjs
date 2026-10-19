@@ -16,7 +16,7 @@ it("unlock mode", () => {
   expect(gridLines(addon) === 94, "unlock shows a 32 px grid (61 + 33 lines on 1920x1080)").toBeTruthy();
   addon.eval('for _, w in ipairs(__wfgStub.frames) do if w.mover and w.mover.key == "a" then __h = w end end');
   expect(addon.eval("return { __h.__strata, __h:GetFrameLevel() - __a:GetFrameLevel() }"),
-    "a handle sits on the HIGH strata, over its frame and under Edit Mode's DIALOG window").toEqual(["HIGH", 10]);
+    "a handle sits on the HIGH strata, well over its frame (and a window's scroll parts) and under Edit Mode's DIALOG window").toEqual(["HIGH", 50]);
   // Drops handle `key` with its bottom-left at (left, bottom).
   const drop = (key, left, bottom) =>
     addon.eval(`local h = ns.MoverHandleForTest("${key}"); h.__left, h.__bottom = ${left}, ${bottom}; h:GetScript("OnDragStop")(h)`);
@@ -211,4 +211,18 @@ it("a grid size from a hand-edited profile string is kept to 8-256 px, so unlock
 it("accent presets (#231): a profile that picked ember keeps its colour", () => {
   const addon = loggedIn("", { savedVariables: "VanguardDB = { profiles = { Default = { theme = { accent = { 0xe0 / 255, 0x66 / 255, 0x4b / 255 } } } } }" });
   expect(addon.eval('return ns.Theme.Hex("accent")').slice(2), "the old ember stays, as its own hex").toBe("e0664b");
+});
+
+it("unlock handles: a frame above HIGH (the quest dialog, on DIALOG) keeps its handle on its own strata, so the frame never covers it", () => {
+  const addon = loggedIn(`
+    __d = CreateFrame("Frame", nil, UIParent); __d:SetSize(100, 20); __d:SetFrameStrata("DIALOG")
+    __e = CreateFrame("Frame", nil, UIParent); __e:SetSize(100, 20); __e:SetFrameStrata("LOW")
+    ns.Mover(__d, "d", "D", { "CENTER", "CENTER", 0, 0 })
+    ns.Mover(__e, "e", "E", { "CENTER", "CENTER", 0, -100 })
+  `);
+  addon.slash("unlock");
+  // The strata of the handle for mover `key` (TEST-ONLY read).
+  const handleStrata = (key) => addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.mover and w.mover.key == "${key}" then return w.__strata end end`);
+  expect([handleStrata("d"), handleStrata("e")], "a DIALOG frame's handle rides on DIALOG with it; a LOW frame's handle on HIGH, under Edit Mode's window").toEqual(["DIALOG", "HIGH"]);
+  addon.eval("ns.Lock()");
 });

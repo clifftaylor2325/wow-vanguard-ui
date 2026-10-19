@@ -98,6 +98,9 @@ local KEY_SHORT = {
 
 AB.buttons = {}
 AB.bars = {}
+-- Where each stacked bar was last stacked (bar number -> its default y) and the stack's top then, so a
+-- re-stack after a scale change moves only what the bars' new rounded heights moved (AB.RestackMoved).
+AB.stacked, AB.stackedTop = {}, nil
 -- The Masque group the action buttons are in, when Masque is loaded.
 AB.MASQUE = "Action bars"
 
@@ -456,11 +459,13 @@ local function createButton(bar, n, index, def)
   return b
 end
 
--- Height of a bar's button grid: its rows of its own button size (else the
--- shared size), as AB.ButtonSize and AB.LayoutBar lay it out.
-local function barHeight(settings, bar)
-  local step = (bar.size or settings.size) + settings.spacing
-  return math.ceil(bar.buttons / bar.perRow) * step - settings.spacing
+-- Height of bar k's button grid: its rows of its own button size (else the shared size), the size and
+-- the gap rounded to whole screen pixels as AB.LayoutBar sizes the bar (against the built bar, or
+-- UIParent before it is built), so the bar stacked above it starts on its top edge at any UI scale.
+local function barHeight(settings, bar, k)
+  local f = AB.bars[k] or UIParent
+  local size, gap = T.PixelRound(f, bar.size or settings.size), T.PixelRound(f, settings.spacing)
+  return math.ceil(bar.buttons / bar.perRow) * (size + gap) - gap
 end
 
 -- Default point for stacked bar n: every enabled stacked bar with a higher
@@ -469,7 +474,7 @@ function AB.StackPoint(n, settings)
   local y = STACK_BASE
   for k = #BARS, n + 1, -1 do
     local bar = settings.bars[k]
-    if BARS[k].stack and bar and bar.enabled then y = y + barHeight(settings, bar) + BAR_GAP end
+    if BARS[k].stack and bar and bar.enabled then y = y + barHeight(settings, bar, k) + BAR_GAP end
   end
   return { "BOTTOM", "BOTTOM", 0, y }
 end
@@ -482,13 +487,34 @@ function AB.StackTop(settings)
   return AB.StackPoint(0, settings)[4] - BAR_GAP
 end
 
--- Re-stacks the bottom bars after a bar's buttons, rows or size changed:
--- each stacked bar gets its new default point, and moves there unless you
--- dragged it somewhere (a saved position wins). Only call out of combat.
+-- Gives stacked bar n its default point now, unless that is where it was last stacked; says whether it
+-- moved. The bar moves there unless you dragged it somewhere (a saved position wins).
+local function restackBar(n)
+  local point = BARS[n].stack and AB.StackPoint(n, AB.settings)
+  if not point or point[4] == AB.stacked[n] then return false end
+  AB.stacked[n] = point[4]
+  ns.SetMoverDefault("bar" .. n, point)
+  return true
+end
+
+-- Re-stacks the bottom bars after a bar's buttons, rows or size changed: each stacked bar whose
+-- default point moved gets it, and the cast bar follows the stack's top. Only call out of combat.
 function AB.Restack()
-  for n in pairs(AB.bars) do
-    if BARS[n].stack then ns.SetMoverDefault("bar" .. n, AB.StackPoint(n, AB.settings)) end
-  end
+  for n in pairs(AB.bars) do restackBar(n) end
+  AB.stackedTop = AB.StackTop(AB.settings)
+  ns.GetModule("CastBars").FitPlayer()
+end
+
+-- Re-stacks after a scale change only what the bars' new rounded heights moved, the cast bar following
+-- only when the stack's top did. Placing a frame (ns.SetMoverDefault) rounds every pixel-sized frame
+-- again (T.Rescale), which runs T.OnScale's listeners, so a re-stack that placed something every time
+-- would run this without end. Nothing to do while the module is off (no settings, no bars).
+function AB.RestackMoved()
+  if not AB.settings then return end
+  for n in pairs(AB.bars) do restackBar(n) end
+  local top = AB.StackTop(AB.settings)
+  if top == AB.stackedTop then return end
+  AB.stackedTop = top
   ns.GetModule("CastBars").FitPlayer()
 end
 

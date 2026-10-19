@@ -443,14 +443,26 @@ local function wire(h)
   h:SetScript("OnKeyDown", onKeyDown)
 end
 
--- Builds the handle for a mover: accent-bordered panel with its label, on the HIGH strata a few levels over
--- its frame, so it sits over that frame and the game's own Edit Mode selections (MEDIUM) but under Edit
--- Mode's window and dialogs (DIALOG), which stay on top while they are open.
+-- The strata from lowest to highest, to rank a mover's frame's own against HIGH.
+local STRATA_RANK = { BACKGROUND = 1, LOW = 2, MEDIUM = 3, HIGH = 4, DIALOG = 5, FULLSCREEN = 6, FULLSCREEN_DIALOG = 7, TOOLTIP = 8 }
+
+-- The strata a mover's handle goes on: HIGH, so it sits over the frame it moves and the game's own Edit Mode
+-- selections (MEDIUM) but under Edit Mode's window and dialogs (DIALOG), which stay on top while they are
+-- open. A frame that itself sits above HIGH (the quest dialog, on DIALOG) would cover a HIGH handle, so its
+-- handle rides on its own strata instead.
+local function handleStrata(frame)
+  local own = frame.GetFrameStrata and frame:GetFrameStrata()
+  return (STRATA_RANK[own] or 0) > STRATA_RANK.HIGH and own or "HIGH"
+end
+
+-- Builds the handle for a mover: accent-bordered panel with its label, on its strata (handleStrata) well over
+-- its frame's level, so a window's scroll views and their thumbs and fade edges (a dozen levels up) stay under
+-- it too.
 local function createHandle(m)
   local h = T.Panel(CreateFrame("Frame", nil, UIParent), { accent = true })
   h.mover = m
-  h:SetFrameStrata("HIGH")
-  h:SetFrameLevel((m.frame:GetFrameLevel() or 0) + 10)
+  h:SetFrameStrata(handleStrata(m.frame))
+  h:SetFrameLevel((m.frame:GetFrameLevel() or 0) + 50)
   wire(h)
   h.label = h:CreateFontString(nil, "OVERLAY")
   h.label:SetPoint("CENTER")

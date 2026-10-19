@@ -63,6 +63,7 @@
       "keybind mode: the mouse's side buttons and wheel bind too; Backspace clears; a taken key says whose it was",
       "mouseover bars are revealed during a drag and restored after",
       "reagent and item counts show even at 0 and 1",
+      "the bars touch at a UI scale where a button rounds up to a whole pixel (the 1440p preset), and re-stack when the scale changes",
       "the bottom stack follows per-bar size and rows, live",
       "the game's hidden action buttons are silenced, and one cooldown event refreshes the sweeps",
       "the mouseover fade still follows hovering an action button",
@@ -72,10 +73,13 @@
     "scripts/tests/casts.test.mjs": [
       "your cast bar sits above the action bars and moves up when they grow, so they never hide it"
     ],
+    "scripts/tests/characterextras.test.mjs": [],
     "scripts/tests/chat-bubbles.test.mjs": [],
     "scripts/tests/chat.test.mjs": [],
     "scripts/tests/chatfilter.test.mjs": [],
+    "scripts/tests/chathistory.test.mjs": [],
     "scripts/tests/chatwatch.test.mjs": [],
+    "scripts/tests/chatwindows.test.mjs": [],
     "scripts/tests/chrome.test.mjs": [],
     "scripts/tests/clickcast.test.mjs": [
       "bindings carry spell ids and ranks, move, copy, export and import",
@@ -96,9 +100,8 @@
     "scripts/tests/cooldowngaps.test.mjs": [],
     "scripts/tests/cooldownglow.test.mjs": [],
     "scripts/tests/cooldownkeys.test.mjs": [
-      "cooldown keys: the key of the bar button that holds the spell, or a macro that casts it, follows moves and bindings",
-      "cooldown keys: a hidden spell, hidden slot or missing call shows no label and no error",
-      "cooldown keys: /vg cdmkeys and the options switch it at once; the row's layout hook repaints"
+      "cooldown keys: /vg cdmkeys and the options switch it at once; the row's layout hook repaints",
+      "cooldown keys: the key of the bar button that holds the spell, or a macro that casts it, follows moves and bindings"
     ],
     "scripts/tests/cooldownspage.test.mjs": [],
     "scripts/tests/core.test.mjs": [
@@ -130,6 +133,7 @@
       "frames pass: bar texture, smoothing, raid style, shields, glows",
       "proc glow on action buttons"
     ],
+    "scripts/tests/graphics.test.mjs": [],
     "scripts/tests/groupboard.test.mjs": [],
     "scripts/tests/groupthreat.test.mjs": [],
     "scripts/tests/guideprobe.test.mjs": [],
@@ -154,6 +158,9 @@
     "scripts/tests/options.test.mjs": [
       "options window",
       "text that fits: chat size, tooltip fonts, the status line, name width"
+    ],
+    "scripts/tests/optionsreadable.test.mjs": [
+      "options: the Modules page is grouped like the nav, and a filter shows the ones on or off"
     ],
     "scripts/tests/petstable.test.mjs": [],
     "scripts/tests/platebuffs.test.mjs": [],
@@ -187,6 +194,7 @@
       "prepwizard: hunters and warlocks get a class step with their own amount",
       "prepwizard: waits for combat, and says when Instance prep is off"
     ],
+    "scripts/tests/probe.test.mjs": [],
     "scripts/tests/profileguard.test.mjs": [],
     "scripts/tests/profiles.test.mjs": [],
     "scripts/tests/questarrow.test.mjs": [],
