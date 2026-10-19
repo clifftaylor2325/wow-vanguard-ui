@@ -1607,6 +1607,8 @@ T.ROW = { height = 28 }
 -- The chat background (Modules/Chat.lua, the panel's fill): the strengths the Chat background
 -- strength setting offers, as the fill's opacity.
 T.CHAT_BACKDROP = { levels = { { 0.55, "Light" }, { 0.75, "Medium" }, { 0.9, "Dark" } } }
+-- Chat text (Modules/Chat.lua CH.FontWindow): the air between lines (units), on top of the font's own.
+T.CHAT_TEXT = { spacing = 2 }
 -- The one selected look (docs/THEME.md, "Materials and states"): an accent rail down a row's left edge,
 -- `rail` screen pixels wide, over a `fill` (a lighter fill, not an accent wash) that sits under the text.
 T.SELECT = { rail = 2, fill = "raisedHover" }

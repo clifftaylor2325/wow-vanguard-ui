@@ -91,10 +91,14 @@ function CH.TextSize(frame)
   return T.ScaledSize(size)
 end
 
--- Theme font on a chat window, at the chat text size.
+-- Theme font on a chat window, at the chat text size, with the theme's drop shadow under every line
+-- (the outline stays the global switch, as on every text role) and a little air between lines.
 function CH.FontWindow(frame)
   local path, outline = T.Font()
   frame:SetFont(path, CH.TextSize(frame), outline)
+  frame:SetShadowOffset(1, -1)
+  frame:SetShadowColor(T.RGB("textShadow"))
+  frame:SetSpacing(T.CHAT_TEXT.spacing)
 end
 
 -- Hides the game's window art. It is hidden, not faded: the game's mouseover

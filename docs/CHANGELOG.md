@@ -11,6 +11,7 @@ Nothing in this release has been checked in the game; see the batch checklist (i
 ### Chat panel
 
 - The chat window is one rounded panel with a tab bar, tabs you can always see and its side buttons stacked.
+- Chat lines carry Vanguard's drop shadow and a little more air between lines.
 
 ### HUD and Edit Mode
 

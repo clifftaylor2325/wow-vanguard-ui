@@ -60,9 +60,11 @@ it("a minimap that has the game's own wheel handler keeps it, and Vanguard adds 
   expect(addon.eval("return { Minimap.__gameWheel, Minimap:GetZoom(), Minimap:IsMouseWheelEnabled() }"), "the game's handler runs once and Vanguard's doesn't zoom as well").toEqual([1, 0, true]);
 });
 it("chat", () => {
-  const addon = loggedIn(UI_ENV);
+  const addon = loggedIn(UI_ENV + "ChatFrame1.SetSpacing = function(_, s) __spacing = s end");
   const c = addon.eval(`return { font = { ChatFrame1:GetFont() }, box = ns.Theme.PaintedCount() }`);
   expect(c.font[0] === "Interface\\AddOns\\Vanguard\\Media\\Fonts\\FiraSansCondensed-Medium.ttf" && c.font[1] === 12, `chat windows get the theme font at Medium, 12 (got ${JSON.stringify(c.font)})`).toBeTruthy();
+  const shadow = addon.eval("return { ChatFrame1.__shadowOffset, ChatFrame1.__shadowColor, __spacing }");
+  expect([shadow[0], isTok(addon, shadow[1], "textShadow"), shadow[2]], "chat lines carry the theme's (1, -1) drop shadow in textShadow and two units between lines").toEqual([[1, -1], true, 2]);
   addon.eval("ChatFrame2Tab:Disable() ChatFrame1Tab:Enable()");
   // Whether chat tab n is painted in the raised (selected) fill.
   const raised = (n) => addon.eval(`local bg for _, r in ipairs({ ChatFrame${n}Tab:GetRegions() }) do if r.__layer == "BACKGROUND" and r.__vertexColor then bg = r end end
