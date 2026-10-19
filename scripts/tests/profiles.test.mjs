@@ -188,6 +188,20 @@ it("the spec change events stage the spec's profile, whatever they pass", () => 
   addon.fire("ACTIVE_TALENT_GROUP_CHANGED", 2, 1);
   expect(addon.eval("return VanguardCharDB.pendingProfile"), "changing back to the running profile's spec takes the switch back").toBe(null);
 });
+it("swapping back to a spec with no profile of its own takes back the switch another spec staged", () => {
+  const addon = createAddon({ savedVariables: 'VanguardDB = { version = 1, setupDone = true, profiles = { Default = {}, Heal = {}, Picked = {} } }\nVanguardCharDB = { profile = "Default", setupDone = true, specProfiles = { [2] = "Heal" } }' });
+  addon.eval("GetSpecialization = function() return __spec end __spec = 1");
+  addon.login();
+  addon.eval("__spec = 2");
+  addon.fire("PLAYER_SPECIALIZATION_CHANGED", "player");
+  expect(addon.eval("return VanguardCharDB.pendingProfile"), "spec 2 stages its profile").toBe("Heal");
+  addon.eval("__spec = 1");
+  addon.fire("PLAYER_SPECIALIZATION_CHANGED", "player");
+  expect(addon.eval("return VanguardCharDB.pendingProfile"), "spec 1 uses the character's profile again").toBe(null);
+  addon.eval("ns.UseProfile('Picked')");
+  addon.fire("PLAYER_SPECIALIZATION_CHANGED", "player");
+  expect(addon.eval("return VanguardCharDB.pendingProfile"), "a profile the player picked stays staged").toBe("Picked");
+});
 it("a frame's scale and opacity travel with the profile: export, import and a staged switch", () => {
   const src = loggedIn(UI_ENV);
   src.eval('ns.SetMoverScale("minimap", 1.25) ns.SetMoverAlpha("minimap", 0.75)');

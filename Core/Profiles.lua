@@ -316,10 +316,21 @@ function ns.SpecProfile(spec)
   return name and VanguardDB.profiles[name] and name or nil
 end
 
+-- True when the staged profile is one a spec uses, so a spec change staged it (not the player's own pick).
+local function specStaged()
+  local pending = ns.PendingProfileName()
+  for _, name in pairs(specMap()) do
+    if name == pending then return true end
+  end
+  return false
+end
+
 -- Stages the current spec's profile (and applies it now when `now`, which is only safe before modules
--- read their settings). Returns true if it changed.
+-- read their settings); a spec with no profile of its own uses the character's, so it takes back a
+-- switch another spec staged. Returns true if a switch was staged.
 local function followSpec(now)
   local name = ns.SpecProfile()
+  if not name and specStaged() then ns.UseProfile(ns.ProfileName()) end
   if not name or name == ns.SelectedProfileName() then
     return false
   end
