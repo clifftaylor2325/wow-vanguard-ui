@@ -1333,3 +1333,16 @@ it("quest dialog: a fight lets go of the keys, and they come back when it ends w
   addon.world.combat(false);
   expect(keys(), "closed during the fight: it stays without keys").toBe(false);
 });
+it("quest log: Ctrl-click marks inside a folded zone still count, and Abandon abandons them all", () => {
+  const addon = loggedIn(TRACK_ENV + QLOG_ENV + "__gone = {} C_QuestLog.AbandonQuest = function() __gone[#__gone + 1] = __selected end");
+  addon.eval("Vanguard_QuestLogToggle.__scripts.OnClick(Vanguard_QuestLogToggle)");
+  addon.eval("__wfgWorld.keys.ctrl = true");
+  for (const i of [1, 2, 3]) logLine(addon, i);
+  addon.eval("__wfgWorld.keys.ctrl = false");
+  logZone(addon, 1);
+  expect(addon.eval("return Vanguard_QuestLog.buttons.abandon.text:GetText()"), "the folded zone's two marks still count").toBe("Abandon 3");
+  logButton(addon, "abandon");
+  expect(addon.eval("return Vanguard_Question.title:GetText()"), "the question names all three").toBe("Abandon 3 quest(s)?\nTEST-ONLY Wolves\nTEST-ONLY Letter\nTEST-ONLY Far");
+  addon.click("Vanguard_Question.confirm");
+  expect(addon.eval("return __gone"), "all three abandoned").toEqual([90051, 90052, 90053]);
+});
