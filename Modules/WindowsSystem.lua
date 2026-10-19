@@ -165,10 +165,20 @@ GW.SETTINGS_SPEC = {
 }
 local skinSettings = skinner(GW.SETTINGS_SPEC)
 
+-- A settings dropdown row's control (a dropdown with a stepper button each side, the loot key's): the dropdown a
+-- theme button with a theme chevron, the steppers flat theme arrows.
+local function steppedDropdown(control)
+  local dropdown = part(control, "Dropdown")
+  if dropdown then T.Button(dropdown) GW.Chevron(dropdown) end
+  GW.EachKey(control, { "DecrementButton", "IncrementButton" }, function(b)
+    if type(b) == "table" and b.CreateTexture then T.ArrowButton(b, b == control.DecrementButton and "left" or "right", { flat = true }) end
+  end)
+end
+
 -- What a settings row can hold, by key path, and how each part is dressed (a row holds one or two): its check
 -- box, its slider with steppers, its dropdown, its push button (an expandable section's bar is one too).
 local SETTING_PARTS = {
-  { "Checkbox", GW.SkinCheck }, { "SliderWithSteppers", T.Slider }, { "Control.Dropdown", GW.SkinDropdown }, { "Button", GW.SkinButton },
+  { "Checkbox", GW.SkinCheck }, { "SliderWithSteppers", T.Slider }, { "Control", steppedDropdown }, { "Button", GW.SkinButton },
 }
 
 -- One row of the settings page (pooled: the game makes a row's controls once, then reuses the row) in the theme.
