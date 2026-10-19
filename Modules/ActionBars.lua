@@ -459,13 +459,15 @@ local function createButton(bar, n, index, def)
   return b
 end
 
--- Height of bar k's button grid: its rows of its own button size (else the shared size), the size and
--- the gap rounded to whole screen pixels as AB.LayoutBar sizes the bar (against the built bar, or
--- UIParent before it is built), so the bar stacked above it starts on its top edge at any UI scale.
+-- Height of bar k's button grid in UIParent's units: its rows of its own button size (else the shared
+-- size), the size and the gap rounded to whole screen pixels as AB.LayoutBar sizes the bar (against
+-- the built bar, or UIParent before it is built), times the scale you gave the bar (ns.MoverLook), so
+-- the bar stacked above it starts on its top edge at any UI scale and at any scale of its own.
 local function barHeight(settings, bar, k)
   local f = AB.bars[k] or UIParent
   local size, gap = T.PixelRound(f, bar.size or settings.size), T.PixelRound(f, settings.spacing)
-  return math.ceil(bar.buttons / bar.perRow) * (size + gap) - gap
+  local scale = ns.MoverLook("bar" .. k)
+  return (math.ceil(bar.buttons / bar.perRow) * (size + gap) - gap) * scale
 end
 
 -- Default point for stacked bar n: every enabled stacked bar with a higher
@@ -705,12 +707,23 @@ local EVENTS = {
 
 -- Setup ---------------------------------------------------------------------------------
 
--- Builds every enabled bar and takes over the default bindings.
+-- The point bar n is built at: its place in the bottom stack (remembered, so the re-stack after the
+-- build moves only what the built bars' own rounding changed) or its own default spot.
+local function buildPoint(n, def, settings)
+  if not def.stack then return def.point end
+  local point = AB.StackPoint(n, settings)
+  AB.stacked[n] = point[4]
+  return point
+end
+
+-- Builds every enabled bar and takes over the default bindings. The stack is placed again once the
+-- bars exist, since a scaled bar's height rounds to its own pixels only then.
 local function build(settings)
   for n, def in ipairs(BARS) do
     local bar = settings.bars[n]
-    if bar and bar.enabled then createBar(n, def, def.stack and AB.StackPoint(n, settings) or def.point) end
+    if bar and bar.enabled then createBar(n, def, buildPoint(n, def, settings)) end
   end
+  AB.RestackMoved()
   if settings.hideBlizzard then hideBlizzardBars() end
   AB.ApplyBindings()
   each(AB.UpdateButton)
