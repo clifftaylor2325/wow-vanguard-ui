@@ -1137,19 +1137,6 @@ function T.FillParts(frame, layer, sublevel, token, alpha)
   return fill
 end
 
--- A text backdrop (chat): a panel-coloured fill whose edges fade out in a soft ring `feather` units
--- wide, so text sits on a calm dark patch with no box edge. Returns { fill, ring }.
-function T.Backdrop(frame, feather)
-  local soft = ring(frame, { texture = "Shadow", size = feather, layer = "BACKGROUND", sublevel = -8 })
-  return { fill = T.FillParts(frame, "BACKGROUND", -7, "panel", 0), ring = soft }
-end
-
--- Sets a backdrop's strength (0-1): the fill's opacity, and the ring's with it so the fade stays seamless.
-function T.SetBackdrop(backdrop, strength)
-  T.TintFill(backdrop.fill, "panel", strength)
-  for _, t in ipairs(backdrop.ring) do t:SetAlpha(strength) end
-end
-
 -- Shield masks -------------------------------------------------------------------------------
 
 -- The corners a side's masks cut. A texture takes at most three masks in the client, so a masked
@@ -1277,7 +1264,8 @@ end
 local function base(frame, kind, opts)
   local entry = painted[frame]
   if not entry then
-    entry = { kind = kind, opts = opts or {} }
+    entry = { kind = kind, opts = {} }
+    for k, v in pairs(opts or {}) do entry.opts[k] = v end -- its own copy: T.SetRound and T.SetBorder change it, and T.Button's kinds are shared tables
     entry.parts = makeParts(frame, entry.opts)
     painted[frame] = entry
   end
@@ -1616,9 +1604,9 @@ T.SEARCH_INSET = T.SPACE.gap * 2 + T.SEARCH_ICON
 T.ALPHA = { opaque = 1, dialog = 0.98, overlay = 0.94, alert = 0.92, calm = 0.35 }
 -- A list row (W.Row, T.Row): how tall (units).
 T.ROW = { height = 28 }
--- The chat backdrop (T.Backdrop): how far its edges fade out (units), and the strengths the Chat
--- background setting offers.
-T.CHAT_BACKDROP = { feather = 20, levels = { { 0.55, "Light" }, { 0.75, "Medium" }, { 0.9, "Dark" } } }
+-- The chat background (Modules/Chat.lua, the panel's fill): the strengths the Chat background
+-- strength setting offers, as the fill's opacity.
+T.CHAT_BACKDROP = { levels = { { 0.55, "Light" }, { 0.75, "Medium" }, { 0.9, "Dark" } } }
 -- The one selected look (docs/THEME.md, "Materials and states"): an accent rail down a row's left edge,
 -- `rail` screen pixels wide, over a `fill` (a lighter fill, not an accent wash) that sits under the text.
 T.SELECT = { rail = 2, fill = "raisedHover" }
