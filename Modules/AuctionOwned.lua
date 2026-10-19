@@ -159,11 +159,20 @@ local function checking()
   return false
 end
 
+-- Seconds a cancel sent by Cancel next undercut counts as on its way. Past them with the auction still
+-- listed, the game dropped or refused it, and the auction is offered again.
+AH.CANCEL_WAIT = 5
+
+-- Whether Cancel next undercut's cancel of auction a may still be on its way (sent under AH.CANCEL_WAIT ago).
+local function onItsWay(a)
+  return a.cancelling ~= nil and GetTime() - a.cancelling < AH.CANCEL_WAIT
+end
+
 -- The undercut auctions left to cancel (none already on its way), in the list's order.
 local function undercuts()
   local out = {}
   for _, a in ipairs(AH.owned) do
-    if a.undercut and not a.cancelling and up(a) then out[#out + 1] = a end
+    if a.undercut and not onItsWay(a) and up(a) then out[#out + 1] = a end
   end
   return out
 end
@@ -181,11 +190,11 @@ function AH.Cancel(id)
 end
 
 -- Cancel next undercut (the button's click, never a timer or an event): cancels one auction, the
--- next undercut one, marked as on its way so the next click takes the one after.
+-- next undercut one, marked as on its way (for AH.CANCEL_WAIT) so the next click takes the one after.
 function AH.CancelNext()
   local a = AH.NextUndercut()
   if not a then return end
-  a.cancelling = true
+  a.cancelling = GetTime()
   C_AuctionHouse.CancelAuction(a.id)
   AH.PaintOwned()
 end
