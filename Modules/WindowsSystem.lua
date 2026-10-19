@@ -47,18 +47,34 @@ local function hint(p)
   GW.SkinText(p, "label", "text2")
 end
 
+-- A settings tab's label (MinimalTabTemplate's Text, which the game anchors to the tab's bottom and recolours by font
+-- object on every select, enter and leave) centred in the tab, in the text colour while the tab is selected and text2
+-- otherwise. A tab without the game's OnSelected (the chat settings' window tabs) keeps its label as T.Tab leaves it.
+local function tabLabel(tab)
+  if type(tab.OnSelected) ~= "function" or type(tab.Text) ~= "table" or not tab.Text.SetTextColor then return end
+  GW.CenterLabel(tab)
+  T.Color(tab.Text, vgChecked[tab] and "text" or "text2")
+end
+
 -- A game tab's selected state: the tab's raised look follows the game's SelectableButton calls.
 local function tabSelected(tab, selected)
   vgChecked[tab] = selected == true
   T.Tab(tab)
+  tabLabel(tab)
 end
 
--- A panel tab (MinimalTabTemplate) in the theme; its selection comes through OnSelected.
+-- A panel tab (MinimalTabTemplate) in the theme, its label centred; the first time, its selected state is read from the
+-- game (which may have picked it before the skin ran), later selections come through OnSelected, and the label is set
+-- again after the game restyles it for the mouse.
 local function skinTab(tab)
+  if vgChecked[tab] == nil and type(tab.IsSelected) == "function" then vgChecked[tab] = tab:IsSelected() == true end
   T.Tab(tab)
-  if vgTabWatched[tab] or type(tab.OnSelected) ~= "function" or type(hooksecurefunc) ~= "function" then return end
+  tabLabel(tab)
+  if vgTabWatched[tab] or type(tab.OnSelected) ~= "function" then return end
   vgTabWatched[tab] = true
-  hooksecurefunc(tab, "OnSelected", ns.Guard("hook OnSelected", tabSelected))
+  tab:HookScript("OnEnter", ns.Guard("tab label", tabLabel))
+  tab:HookScript("OnLeave", ns.Guard("tab label", tabLabel))
+  if type(hooksecurefunc) == "function" then hooksecurefunc(tab, "OnSelected", ns.Guard("hook OnSelected", tabSelected)) end
 end
 
 -- An inset panel behind a list or canvas.
@@ -201,12 +217,29 @@ end
 -- The graphics quality section's two control sets (Base, Raid and Battleground), each a Controls array of rows.
 GW.GRAPHICS_QUALITY_SETS = { "BaseQualityControls", "RaidQualityControls" }
 
+-- The graphics quality section's tabs as the game sizes and anchors them (MinimalTabTemplate: 37 tall; 10 up from the
+-- section's top), so the box's top can meet their bottom without measuring a game frame.
+GW.QUALITY_TAB = { height = 37, rise = 10 }
+
+-- The graphics quality section's box and tabs lined up: the box from the section's left edge (the game draws it 12 out,
+-- past the section's title) down from the tabs' bottom (the game's tabs hang 13 into it), its bottom-right corner as the
+-- game anchors it; the Raid tab on the box's top-right corner (the game sets it 30 in, over its border art) and the Base
+-- tab beside it, as the game anchors it.
+local function placeQualityBox(row, box, raid)
+  if type(raid) ~= "table" or not raid.SetPoint then return end
+  box:SetPoint("TOPLEFT", row, "TOPLEFT", 0, GW.QUALITY_TAB.rise - GW.QUALITY_TAB.height)
+  raid:ClearAllPoints()
+  raid:SetPoint("BOTTOMRIGHT", box, "TOPRIGHT")
+end
+
 -- The graphics quality section's framed box (a NineSlicePanelTemplate, which the game raises to frame level 500, over
--- the section's tabs and controls) brought down to the row's own level, under them, and painted as an inset.
+-- the section's tabs and controls) brought down to the row's own level, under them, lined up with the tabs
+-- (placeQualityBox) and painted as an inset.
 local function qualityBox(row)
   local box = part(row, "NineSlice")
   if not box or type(box.SetFrameLevel) ~= "function" then return end
   box:SetFrameLevel(row:GetFrameLevel())
+  placeQualityBox(row, box, row.RaidTab)
   GW.InsetPanel(box)
 end
 
