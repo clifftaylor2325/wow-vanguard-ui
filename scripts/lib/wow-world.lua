@@ -1944,15 +1944,22 @@ function FCF_Tab_OnClick() end
 world.chatWindows = {}
 -- GetChatWindowInfo(i): the window's name.
 function GetChatWindowInfo(i) return world.chatWindows[i] end
+-- Chat window i's tab: a button whose Text is its font string (ChatTabTemplate's ButtonText),
+-- which the game recolours by GetFontString.
+local function chatTab(i)
+  local tab = stub.newWidget("Button", "ChatFrame" .. i .. "Tab", UIParent)
+  tab.Text = tab:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+  tab:SetFontString(tab.Text)
+  return tab
+end
+
 -- FCF_OpenNewWindow(name): makes the next free window and its tab, returns the window.
 function FCF_OpenNewWindow(name)
   local i = 3
   while _G["ChatFrame" .. i] do i = i + 1 end
   world.chatWindows[i] = name
   NUM_CHAT_WINDOWS = math.max(NUM_CHAT_WINDOWS, i)
-  local tab = stub.newWidget("Button", "ChatFrame" .. i .. "Tab", UIParent)
-  tab.Text = tab:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-  _G["ChatFrame" .. i .. "Tab"] = tab
+  _G["ChatFrame" .. i .. "Tab"] = chatTab(i)
   _G["ChatFrame" .. i] = stub.newWidget("ScrollingMessageFrame", "ChatFrame" .. i, UIParent)
   return _G["ChatFrame" .. i]
 end
@@ -2012,8 +2019,7 @@ local function chatFrames()
   for i = 1, NUM_CHAT_WINDOWS do
     local f = new("ScrollingMessageFrame", "ChatFrame" .. i, UIParent)
     f:SetFont(STANDARD_TEXT_FONT, 14, "")
-    local tab = new("Button", "ChatFrame" .. i .. "Tab", UIParent)
-    tab.Text = tab:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    chatTab(i)
     new("EditBox", "ChatFrame" .. i .. "EditBox", UIParent)
   end
   SELECTED_CHAT_FRAME = ChatFrame1

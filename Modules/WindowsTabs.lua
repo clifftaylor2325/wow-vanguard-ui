@@ -11,6 +11,7 @@ local ADDON, ns = ...
 -- Per-frame state kept off the game's frames (Core/Events.lua, ns.FrameState).
 local vgPadded = ns.FrameState("vgPadded")
 local vgSeeded = ns.FrameState("vgSeeded")
+local vgUnmasked = ns.FrameState("vgUnmasked")
 
 local T = ns.Theme
 
@@ -172,11 +173,37 @@ function GW.ClearPadding(tab, window)
   for _, anchor in ipairs(moved) do if anchor[1] then tab:SetPoint(unpack(anchor)) end end
 end
 
+-- Takes the game's rounded mask off an icon tab's icon, once (the mask sits a little off the icon's centre, so its
+-- art showed off-centre with round corners; the pool reuses the tab, and the mask stays off).
+local function unmaskIcon(button)
+  if vgUnmasked[button] or type(button.IconMask) ~= "table" then return end
+  vgUnmasked[button] = true
+  button.Icon:RemoveMaskTexture(button.IconMask)
+end
+
+-- An icon tab of a tab system (TabSystemButtonTemplate given an icon: the spellbook's categories) made a square as
+-- tall as the tab, its icon filling it one pixel inside the border like an action button's, bevel cropped. The game
+-- anchors the icon at the tab's bottom and centre (which stretches it to the tab's height), so it is anchored at the
+-- centre alone, the point the game sets again on each selection. The game sizes the tab from its icon as it adds
+-- it, so this runs after every AddTab; the spellbook re-adds its tabs and lays them out each time it opens.
+local function fitIconTab(button)
+  local icon, side = button.Icon, button:GetHeight()
+  if not button.tabIcon or type(icon) ~= "table" or not icon.SetTexCoord or side <= 0 then return end
+  unmaskIcon(button)
+  local inner = T.PixelRound(button, side - 2 * T.Pixel(button))
+  button:SetWidth(side)
+  icon:ClearAllPoints()
+  icon:SetPoint("CENTER", button, "CENTER")
+  icon:SetSize(inner, inner)
+  T.Crop(icon)
+end
+
 -- One tab button of a window in the theme, whichever template it came from: out past the window's padding,
--- and a side tab's icon greyed while another is selected.
+-- and a side tab's or icon tab's icon greyed while another is selected.
 local function dressTab(button, window, side)
   GW.ClearPadding(button, window)
-  T.Tab(button, { dimIcon = side == true })
+  fitIconTab(button)
+  T.Tab(button, { dimIcon = side == true or button.tabIcon ~= nil })
   seedChecked(button)
   fadeSideArt(button)
 end
@@ -229,8 +256,9 @@ end
 
 -- Inside the character pane -----------------------------------------------------------------
 
--- The character pane's lists (the Camelot pane's sub-frames): each has a ScrollBox whose rows are made as they scroll in.
-GW.PANE_LISTS = { "ReputationFrame", "SkillsFrame", "TokenFrame" }
+-- The character pane's lists (the Camelot pane's sub-frames; statistics loads with Blizzard_Statistics): each has a
+-- ScrollBox whose rows are made as they scroll in.
+GW.PANE_LISTS = { "ReputationFrame", "SkillsFrame", "TokenFrame", "StatisticsFrame" }
 -- The stat boxes (player and pet): scroll boxes of stat category headers and stat lines.
 GW.STAT_BOXES = { "CharacterStatsPaneScrollBox", "CharacterStatsPanePetScrollBox" }
 -- The parts of a list entry's Content that are a ColoredProgressBar (a reputation bar, a skill bar).
@@ -270,20 +298,83 @@ local function colorText(fs, token)
   if type(fs) == "table" and fs.SetTextColor then T.Color(fs, token) end
 end
 
--- A list's header row (a banner texture, a name and the plus/minus StateIcon) as a flat button, its icon kept and
--- its name (the game's gold) in the text colour.
+-- The atlases the game sets on a list's fold marks (a header's StateIcon, a sub-header's toggle; Camelot
+-- ReputationFrame and StatisticsFrame), each -> whether it says the group is folded. Pressed states are not listed.
+GW.FOLD_ATLASES = {
+  ["common-button-list-plus"] = true, ["common-button-list-minus"] = false,
+  campaign_headericon_closed = true, campaign_headericon_open = false,
+}
+-- How big the theme chevron drawn in place of a fold mark is (units), as a section header's.
+GW.FOLD_GLYPH = 12
+-- The chevron drawn for each fold mark (the game's texture -> Vanguard's).
+local vgFold = ns.FrameState("vgFold")
+
+-- Points a fold mark's chevron for the atlas the game just set on the mark: Right while folded, Down while open.
+local function pointFold(mark, atlas)
+  local folded = GW.FOLD_ATLASES[atlas]
+  if folded ~= nil then vgFold[mark]:SetTexture(T.Icon(folded and "Right" or "Down")) end
+end
+
+-- Hides a game fold mark (the plus and minus) and draws the theme's chevron in text2 over it, on a frame of its own
+-- on host (so fading host's art never fades it), following each atlas the game sets on the mark; open (Down) until an
+-- atlas says otherwise, so a mark never goes blank. Made once.
+local function foldChevron(host, mark)
+  if type(mark) ~= "table" or not mark.SetAtlas then return end
+  mark:SetAlpha(0)
+  if vgFold[mark] then return end
+  local holder = CreateFrame("Frame", nil, host)
+  holder:SetAllPoints(mark)
+  vgFold[mark] = T.Tint(T.Snap(holder:CreateTexture(nil, "OVERLAY")), "text2")
+  T.PixelSize(vgFold[mark], GW.FOLD_GLYPH, GW.FOLD_GLYPH, true)
+  vgFold[mark]:SetPoint("CENTER")
+  pointFold(mark, mark:GetAtlas() or "common-button-list-minus")
+  GW.HookAfter(mark, "SetAtlas", pointFold)
+end
+
+-- A list's header row (a banner texture, a name and the plus/minus StateIcon) as a flat button with the theme's
+-- fold chevron for its plus/minus, its name (the game's gold) in the text colour.
 local function skinHeader(row)
   T.Button(row)
-  row.StateIcon:SetAlpha(1)
+  foldChevron(row, row.StateIcon)
   colorText(row.Name, "text")
 end
 
--- One row of a pane list: a header as a flat button, an entry's progress bar in the theme.
+-- A sub-header's fold button (ToggleCollapseButton: the game's red plus and minus squares) faded, the theme's
+-- chevron in its place following the atlas the game sets on its normal texture.
+local function skinFoldButton(button)
+  if type(button) ~= "table" or not button.GetNormalTexture then return end
+  T.FadeRegions(button)
+  foldChevron(button, button:GetNormalTexture())
+end
+
+-- An entry's rounded highlight (Content.BackgroundHighlight, which the game shows at a low alpha under the mouse and
+-- on the selected row) hidden for the row's theme look; kept for a faction at war, whose red says so, as a flat band.
+local function followHighlight(row)
+  local atWar = type(row.IsAtWar) == "function" and row:IsAtWar()
+  if not atWar then row.Content.BackgroundHighlight:SetAlpha(0) end
+  if type(row.IsSelected) == "function" then T.SelectRow(row, row:IsSelected() == true) end
+end
+
+-- A list entry (a faction, a statistic, a sub-header) as a theme row: the game's rounded highlight pieces made flat
+-- and shown only for a faction at war, the one selected look on the row the game selects, after each refresh.
+local function dressEntryRow(row)
+  local glow = row.Content.BackgroundHighlight
+  if type(glow) ~= "table" or not row.CreateTexture then return end
+  T.Row(row)
+  for _, piece in ipairs(glow.TextureRegions or {}) do piece:SetTexture(T.WHITE) end
+  followHighlight(row)
+  GW.HookAfter(row, "RefreshBackgroundHighlight", followHighlight)
+end
+
+-- One row of a pane list: a header as a flat button; an entry as a theme row with its progress bar in the theme and
+-- its fold button (a sub-header's) as a chevron.
 local function skinRow(row)
   if type(row) ~= "table" then return end
   if type(row.StateIcon) == "table" then return skinHeader(row) end
   if type(row.Content) ~= "table" then return end
   for _, key in ipairs(GW.ROW_BARS) do GW.SkinBar(row.Content[key]) end
+  dressEntryRow(row)
+  skinFoldButton(row.ToggleCollapseButton)
 end
 
 -- A stat box's plate (its Background) faded and a flat inset panel behind its title or number.
@@ -553,15 +644,27 @@ local function flattenPane()
   if boxOf("TokenFrame") then GW.WatchEmpty(boxOf("TokenFrame"), GW.CURRENCY_EMPTY) end
 end
 
+-- Points the right-pane toggle's chevron the way a click moves the pane's edge: left while the right half shows (a
+-- click hides it), right while it is hidden. The game swaps its page-arrow art on every change (UpdateRightPaneToggleButton).
+local function pointPaneToggle(frame)
+  local glyph = T.ControlGlyph(frame.RightPaneToggleButton)
+  local hidden = type(frame.IsRightPaneCollapsed) == "function" and frame:IsRightPaneCollapsed() == true
+  if glyph then glyph:SetTexCoord(hidden and 0 or 1, hidden and 1 or 0, 0, 1) end
+end
+
 -- The button that shows and hides the pane's right half (CharacterFrame.RightPaneToggleButton: a plain Button, not
 -- protected, that the game never moves; it sat below the title row on the left pane's corner) put in the title row,
--- T.CONTROL.step left of the close button, as a window's maximize box is (GW.PlaceControls), on a control's plate.
+-- T.CONTROL.step left of the close button, as a window's maximize box is (GW.PlaceControls): a window control with the
+-- theme's chevron in place of the game's gold page arrow, following the pane.
 local function placePaneToggle(frame)
   local toggle = type(frame) == "table" and frame.RightPaneToggleButton
   if type(toggle) ~= "table" or not toggle.SetPoint or type(frame.CloseButton) ~= "table" then return end
   toggle:ClearAllPoints()
   toggle:SetPoint("CENTER", frame.CloseButton, "CENTER", -T.CONTROL.step, 0)
-  if toggle.CreateTexture then T.ControlPlate(toggle) end
+  if not toggle.CreateTexture then return end
+  T.WindowControl(toggle, "Right")
+  pointPaneToggle(frame)
+  GW.HookAfter(frame, "UpdateRightPaneToggleButton", pointPaneToggle)
 end
 
 -- Every gear slot the pane shows, by the name of its item button (Camelot PaperDollFrame.xml). The shirt, tabard and

@@ -197,12 +197,12 @@ local function pinFootprint(f, frame)
   f:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", T.SPACE.tight + CH.SIDE_COLUMN, -T.SPACE.tight)
 end
 
--- The scrim behind a window while the chat background is off: a frame on the panel's footprint
--- (hidden while the panel shows) holding the three textures; its parts, with the frame as `frame`.
-local function scrimFrame(frame, level)
-  local scrim = CreateFrame("Frame", nil, frame)
+-- The scrim behind a window while the chat background is off: a frame under the outline, on the
+-- panel's footprint (hidden while the panel shows), holding the three textures; its parts, with the
+-- frame as `frame`.
+local function scrimFrame(outline, frame)
+  local scrim = CreateFrame("Frame", nil, outline)
   pinFootprint(scrim, frame)
-  scrim:SetFrameLevel(level)
   scrim:Hide()
   local s = scrimParts(scrim)
   tintScrim(s)
@@ -210,21 +210,36 @@ local function scrimFrame(frame, level)
   return s
 end
 
--- The chat window's frame: one rounded panel round the text, the scroll column right of it and the
--- tab bar above it (the panel's fill is the chat background, at the strength setting; a small soft
--- shadow under it while Soft shadows under frames is on, as the HUD's panels have), with the bar as
--- a frame on the panel's top band (the tabs, the dock and the Find and Copy tiles anchor to it; it
--- stays when the panel goes), and the scrim that stands in for the panel with the background off.
+-- The painted panel under the outline, on the panel's footprint: the rounded border (a small soft
+-- shadow under it while Soft shadows under frames is on, as the HUD's panels have) that the fill
+-- goes on; it goes with the Chat background switch, the outline and its bar staying.
+local function panelPlate(outline, frame)
+  local panel = CreateFrame("Frame", nil, outline)
+  pinFootprint(panel, frame)
+  T.Panel(panel, { noBg = true, noSheen = true, round = true, shadow = T.Settings().hudShadow == true and T.CHAT_SHADOW or nil })
+  return panel
+end
+
+-- The bar frame on a panel's top band (the tabs, the dock and the Find and Copy tiles anchor to it).
+local function barFrame(outline)
+  local bar = CreateFrame("Frame", nil, outline)
+  bar:SetPoint("TOPLEFT")
+  bar:SetPoint("BOTTOMRIGHT", outline, "TOPRIGHT", 0, -CH.BAR)
+  return bar
+end
+
+-- The chat window's frame: an outline on the panel's footprint (the text, the scroll column right of
+-- it and the tab bar above it) holding the painted panel (its fill is the chat background, at the
+-- strength setting), the bar on its top band and the scrim that stands in for the panel with the
+-- background off. It sits in the BACKGROUND strata, under the dock and its tabs: those are low in
+-- the LOW strata (the dock is UIParent's child, the window a level-5 frame), so a panel a level under
+-- the window would still cover them, and the window's text, above the panel in LOW, reads over the fill either way.
 local function frameParts(frame)
-  local gap, level = T.SPACE.tight, math.max(0, (frame:GetFrameLevel() or 1) - 1)
   local outline = CreateFrame("Frame", nil, frame)
   pinFootprint(outline, frame)
-  outline:SetFrameLevel(level)
-  local bar = CreateFrame("Frame", nil, frame)
-  bar:SetPoint("TOPLEFT", frame, "TOPLEFT", -gap, CH.BAR)
-  bar:SetPoint("BOTTOMRIGHT", frame, "TOPRIGHT", gap + CH.SIDE_COLUMN, 0)
-  T.Panel(outline, { noBg = true, noSheen = true, round = true, shadow = T.Settings().hudShadow == true and T.CHAT_SHADOW or nil })
-  return { outline = outline, bar = bar, fill = T.FillParts(outline, "BACKGROUND", -7, "panel", CH.Strength()), rule = barRule(bar), scrim = scrimFrame(frame, level) }
+  outline:SetFrameStrata("BACKGROUND")
+  local panel, bar = panelPlate(outline, frame), barFrame(outline)
+  return { outline = outline, panel = panel, bar = bar, fill = T.FillParts(panel, "BACKGROUND", -7, "panel", CH.Strength()), rule = barRule(bar), scrim = scrimFrame(outline, frame) }
 end
 
 -- The tab bar above a chat window, made on first use (the window's Find and Copy buttons anchor to it).
@@ -278,11 +293,11 @@ function CH.AddBarButton(frame, label, where, onClick)
   return button
 end
 
--- Shows the panel round a chat window when the background is on, else the scrim in its place (the
--- bar stays either way).
+-- Shows the painted panel round a chat window when the background is on, else the scrim in its
+-- place (the outline with its bar stays either way).
 local function showFrame(frame, on)
   CH.Bar(frame)
-  CH.frames[frame].outline:SetShown(on)
+  CH.frames[frame].panel:SetShown(on)
   CH.frames[frame].scrim.frame:SetShown(not on)
 end
 
@@ -307,6 +322,12 @@ local function fitTab(tab)
   tab:SetWidth(ns.PlainNumber(text:GetStringWidth()) + T.SPACE.col * 2)
 end
 
+-- A floating window's tab fitted to its label; a docked window's keeps the width the game gave it
+-- (sized for the label in the theme's font when the dock is laid out).
+local function fitWindowTab(frame, tab)
+  if not frame.isDocked then fitTab(tab) end
+end
+
 -- A tab's alert glow (the game flashes it when a line arrives in an unseen window), or nil.
 local function tabGlow(tab)
   local name = type(tab.GetName) == "function" and tab:GetName() or nil
@@ -324,6 +345,10 @@ local function sizeTab(tab)
   text:SetPoint("CENTER")
 end
 
+-- Whether a chat tab has the skin already (ns.FrameState), so the game colouring it again needs
+-- only a repaint.
+local vgChatTab = ns.FrameState("vgChatTab")
+
 -- A tab as the theme's flat tab (raised with a lit top edge when selected, just its label on the bar
 -- otherwise, a faint hover, rounded) with its own art gone and its alert glow in the accent colour;
 -- the game's flash animation still drives the glow's alpha.
@@ -334,7 +359,15 @@ local function skinTab(tab)
   local glow = tabGlow(tab)
   if glow then T.Tint(glow, "accent") end
   sizeTab(tab)
-  fitTab(tab)
+  vgChatTab[tab] = true
+end
+
+-- A tab after the game colours it (FCFTab_UpdateColors: the dock's layout, a tab click, a new
+-- window): its label is gold again, so the theme's tab is painted again, which puts the label back
+-- in the theme's colours; a tab Vanguard hasn't dressed yet gets the skin.
+local function restyleTab(tab)
+  if type(tab) ~= "table" then return end
+  if vgChatTab[tab] then T.Tab(tab) else skinTab(tab) end
 end
 
 -- Each edit box's rail (box -> texture) and its focus fade (box -> { from, to, start, seconds }),
@@ -523,25 +556,48 @@ function CH.ApplyBarHover()
   for _, parts in pairs(CH.frames or {}) do T.StopFade(parts.bar) parts.bar:Show() end
 end
 
+-- The dock's scroll child (the tabs past its fixed ones ride in it), or nil on a client without one.
+local function dockScrollChild(dock)
+  local scroll = dock.scrollFrame
+  return type(scroll) == "table" and type(scroll.GetScrollChild) == "function" and scroll:GetScrollChild() or nil
+end
+
 -- The main window's tab dock (the docked windows' tabs) on its bar, after the game anchors it to the
--- window's art (FCFDock_SetPrimary): its tabs centred in the bar, two units in from the panel's edge,
--- and its right end before the Find and Copy buttons, so spare tabs go to the overflow menu, not under them.
+-- window's art (FCFDock_SetPrimary): a tab high, two units inside the bar, its right end before the
+-- Find and Copy buttons, so spare tabs go to the overflow menu, not under them. The game hangs its
+-- fixed tabs from the dock's bottom and the rest a unit under its scroll child's centre
+-- (FCFDock_UpdateTabs), so the child is a tab high and rides a unit up: every tab lands centred in
+-- the bar, whether the client holds the child by its left edge or by its top.
 function CH.PlaceDock()
   local dock, frame = _G.GENERAL_CHAT_DOCK, _G.ChatFrame1
   if type(dock) ~= "table" or type(frame) ~= "table" or not (CH.frames and CH.frames[frame]) then return end
-  local bar, gap = CH.frames[frame].bar, T.SPACE.tight
+  local bar, gap, child = CH.frames[frame].bar, T.SPACE.tight, dockScrollChild(dock)
   dock:ClearAllPoints()
+  dock:SetPoint("TOPLEFT", bar, "TOPLEFT", gap / 2, -gap / 2)
   dock:SetPoint("BOTTOMLEFT", bar, "BOTTOMLEFT", gap / 2, gap / 2)
-  if CH.barEnd then return dock:SetPoint("RIGHT", CH.barEnd, "LEFT", -gap, 0) end
-  dock:SetPoint("RIGHT", bar, "RIGHT", -gap, 0)
+  dock:SetPoint("RIGHT", CH.barEnd or bar, CH.barEnd and "LEFT" or "RIGHT", -gap, 0)
+  if child then child:SetHeight(T.CONTROL_H) child:SetPoint("LEFT", 0, 1) end
 end
 
--- A floating window's tab, which the game anchors to the window's art (FCF_SetTabPosition), on
--- the window's bar instead: centred in it, at the x the player dragged it to. A docked window's
--- tab is the dock's (the game places it there in the same breath) and is left alone.
+-- The dock laid out by the game again on the next frame, once for a burst of asks (a chat windows
+-- update anchors every window's tab in one go), where this client has the dock's layout function:
+-- it puts each docked tab back in the row, sized for its label in the theme's font, and colours
+-- it, which restyleTab follows.
+local function relayoutDock(dock)
+  if type(dock) ~= "table" then dock = _G.GENERAL_CHAT_DOCK end
+  if type(dock) ~= "table" or type(FCFDock_UpdateTabs) ~= "function" then return end
+  ns.Soon("chat dock", function() FCFDock_UpdateTabs(dock, true) end)
+end
+
+-- A window's tab after the game anchors it to the window's art (FCF_SetTabPosition, which a chat
+-- windows update does to a docked window too, and the dock, not dirty, would leave it there): a
+-- docked window's goes back to the dock; a floating window's sits on its own bar, centred in it,
+-- at the x the player dragged it to.
 local function placeFloatingTab(frame, x)
-  local tab = type(frame) == "table" and not frame.isDocked and _G[(frame:GetName() or "") .. "Tab"] or nil
-  if type(tab) ~= "table" or not (CH.frames and CH.frames[frame]) then return end
+  if type(frame) ~= "table" or not (CH.frames and CH.frames[frame]) then return end
+  if frame.isDocked then return relayoutDock(frame.dock) end
+  local tab = _G[(frame:GetName() or "") .. "Tab"]
+  if type(tab) ~= "table" then return end
   local gap = T.SPACE.tight
   tab:ClearAllPoints()
   tab:SetPoint("BOTTOMLEFT", CH.frames[frame].bar, "BOTTOMLEFT", (ns.PlainNumber(x) or 0) + gap / 2, gap / 2)
@@ -707,18 +763,20 @@ local function skinIndex(i, settings)
   end
   skinWindow(frame, settings)
   local tab, box = _G["ChatFrame" .. i .. "Tab"], _G["ChatFrame" .. i .. "EditBox"]
-  if tab then skinTab(tab) end
+  if tab then skinTab(tab) fitWindowTab(frame, tab) end
   if box then skinEditBox(box, CH.frames[frame].outline) end
   skinWindowButtons(frame, "ChatFrame" .. i)
   if type(frame.ScrollBar) == "table" then T.ScrollBar(frame.ScrollBar) end
 end
 
--- Re-fits every tab to its label (after a font change).
+-- Re-fits every floating window's tab to its label, and has the dock lay its tabs out again for
+-- the font (after a font change).
 function CH.RefitTabs()
   for i = 1, windowCount() do
-    local tab = _G["ChatFrame" .. i .. "Tab"]
-    if tab then fitTab(tab) end
+    local frame, tab = _G["ChatFrame" .. i], _G["ChatFrame" .. i .. "Tab"]
+    if frame and tab then fitWindowTab(frame, tab) end
   end
+  relayoutDock()
 end
 
 -- Paints the tabs again so the selected window's tab is the raised one (the theme's tab follows the
@@ -730,7 +788,8 @@ function CH.UpdateTabs()
   end
 end
 
--- Skins every chat window this client has, and the chat frame's side buttons.
+-- Skins every chat window this client has, and the chat frame's side buttons, and has the dock lay
+-- its tabs out again for the theme's font.
 function CH.SkinAll()
   for i = 1, windowCount() do
     skinIndex(i, CH.settings)
@@ -738,6 +797,7 @@ function CH.SkinAll()
   CH.SkinButtons()
   CH.UpdateTabs()
   CH.PlaceDock()
+  relayoutDock()
 end
 
 -- Re-fonts every chat window (after a text size or font change) and sets its line fade again (after
@@ -831,17 +891,26 @@ local function onGameSize()
   if type(CH.settings.textSize) == "number" then CH.Refresh() end
 end
 
+-- Follows the game's tab alert flash (FCF_StartAlertFlash and FCF_StopAlertFlash), which keeps a
+-- hidden-until-hover bar while a tab alerts.
+local function hookAlertFlash()
+  after("FCF_StartAlertFlash", function(frame) setAlerting(frame, true) end)
+  after("FCF_StopAlertFlash", function(frame) setAlerting(frame, false) end)
+end
+
 -- Follows the game's chat code: new windows are skinned, a tab click repaints the tabs, its size menu
--- re-fonts, and its anchoring of the dock, a floating tab and the side buttons is put right after it.
+-- re-fonts, and its anchoring of the dock, a tab and the side buttons, and its colouring of a tab,
+-- are put right after it; its alert flashes are watched for the hidden-until-hover bar.
 local function hookGame()
   after("FCF_OpenTemporaryWindow", CH.SkinAll)
+  after("FCF_OpenNewWindow", CH.SkinAll)
   after("FCF_Tab_OnClick", CH.UpdateTabs)
   after("FCF_SetChatWindowFontSize", onGameSize)
   after("FCFDock_SetPrimary", CH.PlaceDock)
+  after("FCFTab_UpdateColors", restyleTab)
   after("FCF_SetTabPosition", placeFloatingTab)
   after("FCF_SetButtonSide", CH.StackButtons)
-  after("FCF_StartAlertFlash", function(frame) setAlerting(frame, true) end)
-  after("FCF_StopAlertFlash", function(frame) setAlerting(frame, false) end)
+  hookAlertFlash()
   watchAlerts()
 end
 

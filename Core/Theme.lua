@@ -97,6 +97,8 @@ local TOKENS = {
   -- State (kept apart from the accent), off the red-green axis (#235, after Okabe-Ito): a bluish
   -- green, an amber and a vermilion, each with a glyph where it stands alone (T.STATE_GLYPHS).
   good = "3fbf9a", warn = "f0b43c", bad = "e8663f", info = "5aa2f0", unknown = "808080",
+  -- A mob another player has tagged: its grey X and its nameplate bar (a plain grey, apart from the bluish text greys).
+  tapped = "8c8c8c",
   -- The low-health screen-edge vignette (its strength comes from the health curve): a vermilion, off the red-green axis.
   vignette = "d8472a",
   -- Reaction to you
@@ -1696,13 +1698,19 @@ function T.WindowControl(button, icon, opts)
   return button
 end
 
+-- A window control's glyph (the texture T.WindowControl drew), to turn or flip it; nil for a button that is not one.
+function T.ControlGlyph(button)
+  local entry = painted[button]
+  return entry and entry.kind == "control" and entry.parts.glyph or nil
+end
+
 -- Paints a resting-tile-only control (T.ControlPlate): its tile in T.CONTROL_TILES.rest.
 local function paintRestTile(entry)
   T.Tint(entry.parts.tile, T.CONTROL_TILES.rest[1], T.CONTROL_TILES.rest[2])
 end
 
--- Puts a window control's resting tile behind a button of a window's control row that keeps its own icon (the
--- character pane's arrow, the group finder's gear), so the row reads as one set of buttons. Safe to run again.
+-- Puts a window control's resting tile behind a button of a window's control row that keeps its own icon (the group
+-- finder's gear), so the row reads as one set of buttons. Safe to run again.
 function T.ControlPlate(button)
   local entry = painted[button]
   if not entry then

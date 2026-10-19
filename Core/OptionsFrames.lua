@@ -40,7 +40,7 @@ local function unitFrameRows()
   return {
     { "header", "Unit frames" },
     check("Replace the default unit frames", setting("UnitFrames", "hideBlizzard", true)), calmRow(), deckRow(),
-    check("Show health numbers", unitFrameSetting("healthText")), check("Green check on a target you have tagged", unitFrameSetting("tagMark")),
+    check("Show health numbers", unitFrameSetting("healthText")), check("Tag mark on your target: a green check if you tagged it, a grey X if another player did", unitFrameSetting("tagMark")),
     { "cycle", "Health as", { { "value", "Value (42.8K)" }, { "percent", "Percent (84%)" } }, unitFrameSetting("healthFormat") },
     check("Show levels (reload)", setting("UnitFrames", "showLevel", true)),
     check("Boss frames, top left (reload)", setting("UnitFrames", "boss", true)), check("Party pets and targets, above the party (reload)", setting("PartyExtras", "show", true)),

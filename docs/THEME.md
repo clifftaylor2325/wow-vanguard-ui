@@ -60,6 +60,7 @@ The surfaces (`inset`, `panel`, `raised`, `raisedHover`, `divider`, `borderHi`) 
 | | `bad` | `e8663f` | Errors, not ready, broken items. |
 | | `info` | `5aa2f0` | Informational state (reserved; no module uses it yet). |
 | | `unknown` | `808080` | A value the client will not tell (reserved; no module uses it yet). |
+| | `tapped` | `8c8c8c` | A mob another player has tagged: its grey X tag mark (nameplate and target frame) and its nameplate bar. A plain grey, apart from the bluish text greys. |
 | Reaction | `hostile` | `cc4b45` | Hostile units (nameplates, unit frames). |
 | | `neutral` | `e0c24e` | Neutral units. |
 | | `friendly` | `4db86a` | Friendly units. With Safer colours on (`colorAssist`, #235; also on while the game's colour-blind mode is, `colorAssistGame`) the three reactions are `T.ASSIST`'s instead: friendly `4a9be8` (blue), neutral `e8d25a`, hostile `e0663a` (vermilion). |
@@ -174,7 +175,8 @@ The rest of the scale:
 | `T.FocusRing(frame, on)` | The keyboard focus ring (#257): a one-pixel `accentText` ring two screen pixels outside the frame, with a one-pixel `edge` (black) gap between, placed at the frame's pixel size, never animated. The options window puts it on the row Tab marks and takes it off on a new page or when it closes. |
 | `T.EditBox(box)` | An `inset` panel, the template's art faded out. |
 | `T.WindowControl(button, icon, opts)` | A window control (close, maximize, minimize): the template's art faded, the glyph (`T.CONTROL`: drawn on a 20-unit grid, its mark in the middle 9 to 11 units; maximize and minimize are diagonal arrows pointing out and in) in `text2` on a faint 20 x 20 `raised` tile at 0.9; under the mouse that tile turns (`bad` at 0.9 with `opts.tile = "close"`, else the `accent` at 0.35) and the glyph `white`. An unsized button takes the tile's size. |
-| `T.ControlPlate(button)` | Only a window control's resting tile (`T.CONTROL_TILES.rest`, the tile's size, centered), behind a button in a window's control row that keeps its own icon (the character pane's right-half arrow, the group finder's gear). |
+| `T.ControlPlate(button)` | Only a window control's resting tile (`T.CONTROL_TILES.rest`, the tile's size, centered), behind a button in a window's control row that keeps its own icon (the group finder's gear). |
+| `T.ControlGlyph(button)` | The glyph texture `T.WindowControl` drew on a button (nil for any other), to turn or flip it: the character pane's right-half toggle is a window control with the `Right` chevron, flipped to point left while the stats half shows. |
 | `T.CloseButton(button)` | `T.WindowControl` with the plain cross (`CloseMark`) and the red tile. |
 | `T.PlaceClose(close, panel)` | Puts a close button where every window has it: its middle `T.CONTROL.inset` (24) in from the panel's top-right corner on both axes, counting the panel's padding; the game's windows go through `GW.DressClose` (Modules/Windows.lua), which also puts a maximize/minimize box `T.CONTROL.step` (28) left of it; a window whose close button only hides it (`GW.HIDE_BUTTONS`: the ready dialog and ready popup, which keep you in the queue) gets the Minimize glyph on the grey tile instead of the red cross. |
 | `T.Glow(frame, size)` / `T.ShowGlow(glow, on, color)` | A soft ring around a frame (default 8 units; action buttons use 6), hidden until shown, in the accent unless a token is given. Action buttons glow for a spell the game highlights. `T.SizeGlow(glow, frame, pixels)` sizes a ring to whole screen pixels at the frame's scale (the nameplate target glow is 2 px). |
