@@ -1043,7 +1043,7 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 ### 14.8.2 Tabs on the other windows
 
 - Do: open the friends window (O) and click each tab; at a mailbox click Inbox and Send Mail; at a merchant click Merchant and Buyback; inspect another player and click each tab; open the spellbook (P) and click its tabs and its category tabs; open the guild window and click its side tabs; open the group finder and the Legacy window and click their tabs.
-- Expect: every tab is a flat dark tile with its text, the selected tab is the only raised one and follows every click, tabs that the game shows later (a new profession, talents after learning them) look the same, and every tab still switches its page.
+- Expect: every tab is a flat dark tile with its text, the selected tab is the only raised one and follows every click, the spellbook's category tabs (the row of icons at its top) are squares whose icons fill them right up to a thin border with no rounded corners, gaps or overhang, the unselected ones greyed, tabs that the game shows later (a new profession, talents after learning them) look the same, and every tab still switches its page.
 - If it fails, paste: which window and tab, a screenshot and `/vg errors`.
 
 ### 14.8.3 Inside the character pane
