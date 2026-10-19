@@ -199,6 +199,21 @@ local function accountGuard()
   return VanguardDB.guard
 end
 
+-- A profile string of these settings: a top-level copy is stamped, so the profile itself isn't.
+local function encodeOwn(profile)
+  local data = {}
+  for k, v in pairs(profile) do data[k] = v end
+  return ns.Serialize.Encode("profile", ns.StampPayload(data))
+end
+
+-- The backup string of the profile in use: its own values (no Situations override, ns.OwnValues) with
+-- this computer's own state kept (the combined bags flags, the graphics undo record), which an export
+-- for another client leaves out, since the backup only ever comes back here.
+local function backupString()
+  if ns.OwnValues then return ns.OwnValues(encodeOwn, ns.Profile()) end
+  return encodeOwn(ns.Profile())
+end
+
 -- Leaves the stamp in both files, the profile each character uses in the account file and
 -- the backup in this character's; not while a loss is unanswered and nothing was imported or picked.
 function G.Save()
@@ -206,7 +221,7 @@ function G.Save()
   local t, key, acct = now(), G.CharKey(), accountGuard()
   acct.stamp = t
   if key then acct.chars[key] = { profile = ns.SelectedProfileName(), stamp = t } end
-  VanguardCharDB.guard = { stamp = t, profile = ns.ProfileName(), backup = ns.ExportProfile() }
+  VanguardCharDB.guard = { stamp = t, profile = ns.ProfileName(), backup = backupString() }
 end
 ns.On("PLAYER_LOGOUT", G.Save)
 

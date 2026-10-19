@@ -71,12 +71,13 @@ function ns.DisplayBlock()
   return { uiScale = math.floor(scale * 100 + 0.5) / 100, width = tonumber(w) or 0, height = tonumber(h) or 0 }
 end
 
--- The whole profile for export: its settings, plus the display block, format and version beside them.
+-- The whole profile for export: its settings (without this computer's own state), plus the display
+-- block, format and version beside them.
 local function withDisplay(profile)
   local data = {}
   for k, v in pairs(profile) do data[k] = v end
   data.display = ns.DisplayBlock()
-  return ns.StampPayload(data)
+  return ns.StampPayload(ns.WithoutClientState(data))
 end
 
 -- The export string for scope, from the profile's tables as they are now: the whole profile,
@@ -223,13 +224,15 @@ local function importNotes(payload, backup)
 end
 
 -- Applies a decoded string (scope and settings, or nil and why not; Core/Serialize.lua): an
--- older string is upgraded first, and the profile in use is backed up (ns.BackupProfile). A
+-- older string is upgraded first, the other computer's own state is left out (ns.WithoutClientState),
+-- and the profile in use is backed up (ns.BackupProfile). A
 -- whole profile becomes a new profile this character switches to (or the one it matches); a
 -- partial string merges into the active profile. Returns what happened and the result
 -- { display (a whole profile's UI scale block, or nil), reload, notes, backup }, or nil and why not.
 function ns.ApplyImport(scope, data)
   local kind, payload = ns.ReadPayload(scope, data)
   if not kind then return nil, payload end
+  ns.WithoutClientState(payload)
   local backup = ns.BackupProfile()
   local result = { notes = importNotes(payload, backup), backup = backup, reload = true }
   local text = kind == "profile" and importWhole(payload, result) or importParts(payload)

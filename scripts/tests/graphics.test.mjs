@@ -131,6 +131,26 @@ it("/vg graphics apply: sets the suggestion as the game's Options would, and und
   expect(cvars(addon, ["graphicsQuality", "graphicsShadowQuality", "graphicsParticleDensity", "uiScale", "useUiScale"]), "back to before the first apply; a setting that had no value stays").toEqual(["6", "4", "9", "0.9", "1"]);
   expect(said(addon, "graphics undo"), "and once only").toEqual(["Nothing to undo: /vg graphics apply hasn't changed anything."]);
 });
+it("/vg graphics undo: what apply kept stays on this computer: a profile string neither carries nor brings one", () => {
+  const friend = loggedIn(GFX_ENV + TABLE_ENV);
+  check(friend);
+  said(friend, "graphics apply");
+  const exported = friend.eval(`local out = {}
+    for _, scope in ipairs({ "profile", "Graphics" }) do local _, data = ns.Serialize.Decode(ns.ExportProfile(scope)) out[scope] = data.Graphics ~= nil and data.Graphics.undo ~= nil end
+    return { out.profile, out.Graphics, ns.Settings("Graphics").undo.graphicsQuality }`);
+  expect(exported, "neither a whole nor a partial string holds the undo record, which stays in the profile").toEqual([false, false, "6"]);
+  // TEST-ONLY strings from an older Vanguard that exported another computer's undo record (quality 9 there).
+  const strings = friend.eval(`local undo = { graphicsQuality = "9", renderScale = "1" }
+    return { ns.Serialize.Encode("profile", ns.StampPayload({ theme = { accent = "jade" }, Graphics = { undo = undo } })),
+      ns.Serialize.Encode("parts", ns.StampPayload({ parts = { "Graphics" }, Graphics = { undo = undo } })) }`);
+  const me = loggedIn(GFX_ENV + TABLE_ENV + "__wfgWorld.cvars.graphicsQuality = '2'");
+  me.eval(`ns.ImportProfile(${JSON.stringify(strings[0])}) ns.ImportProfile(${JSON.stringify(strings[1])})`);
+  expect(me.eval("return { VanguardDB.profiles.Imported.Graphics == nil or VanguardDB.profiles.Imported.Graphics.undo == nil, ns.Settings('Graphics').undo == nil }"), "the record is dropped as either string is read").toEqual([true, true]);
+  check(me);
+  said(me, "graphics apply");
+  said(me, "graphics undo");
+  expect(cvars(me, ["graphicsQuality"]), "so undo puts this computer's own quality back").toEqual(["2"]);
+});
 it("/vg graphics apply: a slow 4K screen gets the render scale; low steps keep the game's lowest particle density", () => {
   const addon = loggedIn(GFX_ENV + TABLE_ENV + "__fps = 10 __wfgWorld.cvars.graphicsQuality = '3'");
   addon.eval("__wfgStub.setScreen(3840, 2160)");

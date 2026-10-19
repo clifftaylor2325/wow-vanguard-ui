@@ -19,6 +19,11 @@ ns.PROFILE_FORMAT = 2
 -- Keys a payload carries beside the settings tables: never saved into a profile.
 local META = { format = true, addonVersion = true, parts = true, display = true }
 
+-- Settings that record this computer's own state rather than a choice, by table: they never go in a
+-- string, and a string's are dropped as it is read, so they never reach another client.
+-- Graphics.undo: the game settings /vg graphics apply changed here, which its undo puts back.
+local CLIENT_STATE = { Graphics = { undo = true } }
+
 -- The group parts, in the export panel's order, and what it calls them. Every other
 -- table is a module's own part (its name), or global when no module goes by its name.
 local GROUPS = { "layout", "situations", "global" }
@@ -121,7 +126,25 @@ function ns.PartsPayload(profile, parts)
   for key, t in pairs(profile) do
     if want[key] or want[partOf(key)] then data[key] = t end
   end
-  return ns.StampPayload(data)
+  return ns.StampPayload(ns.WithoutClientState(data))
+end
+
+-- A copy of t without the keys in leave.
+local function without(t, leave)
+  local out = {}
+  for k, v in pairs(t) do
+    if not leave[k] then out[k] = v end
+  end
+  return out
+end
+
+-- Leaves this computer's own state (CLIENT_STATE) out of a payload or a top-level copy of a profile:
+-- each table holding some is replaced by a copy without it, so the profile's tables are untouched. Returns data.
+function ns.WithoutClientState(data)
+  for key, leave in pairs(CLIENT_STATE) do
+    if type(data[key]) == "table" then data[key] = without(data[key], leave) end
+  end
+  return data
 end
 
 -- Takes the payload's own keys (format, version, parts, display) out; returns it.
@@ -160,7 +183,8 @@ end
 
 -- A decoded string (scope and settings, or nil and why not) as this version's payload:
 -- "profile" (a whole profile) or "parts" (a partial string), and the payload, its tables
--- upgraded; or nil and why not (a newer format, or not a profile string).
+-- upgraded; or nil and why not (a newer format, or not a profile string). An import from another
+-- computer also leaves out that computer's own state (ns.WithoutClientState, Core/Profiles.lua).
 function ns.ReadPayload(scope, data)
   if not scope then return nil, data end
   local kind, payload = scope, data
@@ -248,13 +272,20 @@ local function same(a, b)
   return true
 end
 
+-- True when a profile's settings equal a payload's, as a string carries them (this computer's own state left out).
+local function sameAsCarried(data, profile)
+  local carried = {}
+  for k, v in pairs(profile) do carried[k] = v end
+  return same(data, ns.WithoutClientState(carried))
+end
+
 -- The profile a whole imported profile's settings equal (its display block and format left
 -- out), or nil: the active one first, compared with its own values (no Situations override).
 function ns.MatchingProfile(data)
   local own = ns.OwnValues or function(fn, ...) return fn(...) end
-  if own(same, data, ns.Profile()) then return ns.ProfileName() end
+  if own(sameAsCarried, data, ns.Profile()) then return ns.ProfileName() end
   for _, name in ipairs(ns.ProfileNames()) do
-    if same(data, VanguardDB.profiles[name]) then return name end
+    if sameAsCarried(data, VanguardDB.profiles[name]) then return name end
   end
 end
 

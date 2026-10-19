@@ -119,6 +119,15 @@ it("settings-loss guard: a restore reads the backup like an import: no string ke
   addon.eval('VanguardCharDB.guard.backup = ns.ExportProfile("theme") ns.SettingsGuard.Restore()');
   expect(chatHas(addon, /The backup can't be restored: it isn't a whole profile\.$/), "nor does a partial string").toBe(true);
 });
+it("settings-loss guard: the backup keeps this computer's own state (combined bags, graphics undo), which a restore brings back", () => {
+  const first = loggedIn(CLICK_LUA);
+  first.eval('local p = ns.Profile() p.Bags = { combined = true, applied = true, prior = "0" } p.Graphics = { undo = { graphicsQuality = "6" } }');
+  const lost = relog(first, { account: "nil" });
+  answer(lost, true);
+  expect(lost.eval("local p = VanguardDB.profiles.Default return { p.Bags.applied, p.Bags.prior, p.Graphics.undo.graphicsQuality }"), "the restored profile has them").toEqual([true, "0", "6"]);
+  lost.eval("ns.OwnValues = nil ns.SettingsGuard.lost = nil ns.SettingsGuard.Save()");
+  expect(lost.eval("local _, data = ns.Serialize.Decode(VanguardCharDB.guard.backup) return data.Bags.prior"), "without Situations the backup is the profile as it is").toBe("0");
+});
 it("settings-loss guard: this character's file came back blank, so it uses its profile again and setup stays shut", () => {
   const first = loggedIn(CLICK_LUA, { savedVariables: "VanguardDB.profiles.Alt = {}\n" });
   first.slash("profile Alt");
