@@ -169,16 +169,25 @@ local skinSettings = skinner(GW.SETTINGS_SPEC)
 -- theme button with a theme chevron, the steppers flat theme arrows.
 local function steppedDropdown(control)
   local dropdown = part(control, "Dropdown")
-  if dropdown then T.Button(dropdown) GW.Chevron(dropdown) end
+  if dropdown then T.Button(dropdown) GW.Chevron(dropdown) GW.ShowTexture(dropdown.Language) end
   GW.EachKey(control, { "DecrementButton", "IncrementButton" }, function(b)
     if type(b) == "table" and b.CreateTexture then T.ArrowButton(b, b == control.DecrementButton and "left" or "right", { flat = true }) end
   end)
 end
 
+-- The voice chat microphone test's play button (VoiceTestMicrophoneTemplate.ToggleTest) as a theme button that keeps
+-- its play picture.
+local function playButton(button)
+  T.Button(button)
+  GW.ShowTexture(button.Texture)
+end
+
 -- What a settings row can hold, by key path, and how each part is dressed (a row holds one or two): its check
--- box, its slider with steppers, its dropdown, its push button (an expandable section's bar is one too).
+-- box, its slider with steppers, its dropdown, its push button (an expandable section's bar is one too), and the
+-- microphone test's play button, level meter box (an inset) and meter (a theme bar).
 local SETTING_PARTS = {
   { "Checkbox", GW.SkinCheck }, { "SliderWithSteppers", T.Slider }, { "Control", steppedDropdown }, { "Button", GW.SkinButton },
+  { "ToggleTest", playButton }, { "VUMeter", GW.InsetPanel }, { "VUMeter.Status", GW.SkinProgress },
 }
 
 -- The parts of one settings control (a row, or one control inside the graphics quality section) in the theme.
@@ -192,10 +201,19 @@ end
 -- The graphics quality section's two control sets (Base, Raid and Battleground), each a Controls array of rows.
 GW.GRAPHICS_QUALITY_SETS = { "BaseQualityControls", "RaidQualityControls" }
 
--- The graphics quality section (SettingsAdvancedQualitySectionTemplate, one settings row): its box an inset, its
--- Base and Raid tabs theme tabs, and every control in both sets (quality steppers, sliders, the raid check box).
+-- The graphics quality section's framed box (a NineSlicePanelTemplate, which the game raises to frame level 500, over
+-- the section's tabs and controls) brought down to the row's own level, under them, and painted as an inset.
+local function qualityBox(row)
+  local box = part(row, "NineSlice")
+  if not box or type(box.SetFrameLevel) ~= "function" then return end
+  box:SetFrameLevel(row:GetFrameLevel())
+  GW.InsetPanel(box)
+end
+
+-- The graphics quality section (SettingsAdvancedQualitySectionTemplate, one settings row): its box an inset under
+-- its Base and Raid tabs (theme tabs) and every control in both sets (quality steppers, sliders, the raid check box).
 local function graphicsSection(row)
-  GW.InsetPanel(part(row, "NineSlice"))
+  qualityBox(row)
   GW.EachKey(row, { "BaseTab", "RaidTab" }, function(tab) if type(tab) == "table" and tab.CreateTexture then skinTab(tab) end end)
   for _, key in ipairs(GW.GRAPHICS_QUALITY_SETS) do
     local set = part(row, key)
