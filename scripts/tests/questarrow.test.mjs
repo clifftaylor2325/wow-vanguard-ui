@@ -140,3 +140,9 @@ it("quest arrow: its options sit on the Quests page and change the settings", ()
   addon.eval("local rows = ns.QuestArrow.Rows() local _, set = rows[3][3]() rows[3][4](false) rows[4][4](false)");
   expect(addon.eval("local s = ns.Settings('QuestArrow') return { s.show, s.auto }"), "both switched off").toEqual([false, false]);
 });
+
+it("quest arrow: points at a watched quest with Vanguard's quest tracker module off", () => {
+  const addon = loggedIn(ARROW_ENV, { savedVariables: "VanguardDB.profiles = { Default = { modules = { QuestTracker = false } } }" });
+  addon.advance(2.5);
+  expect(arrow(addon).slice(1), "the nearer quest, as with the tracker on").toEqual(["TEST-ONLY Near", "100 yd", 1, true]);
+});

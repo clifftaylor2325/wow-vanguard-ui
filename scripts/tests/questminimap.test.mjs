@@ -109,3 +109,9 @@ it("quest minimap: no marks without the client's scale, a map, or with the switc
   addon.eval("ns.QuestMinimap.Rows()[1][4](false)");
   expect(marks(addon).length, "switched off").toBe(0);
 });
+
+it("quest minimap: marks show with Vanguard's quest tracker module off", () => {
+  const addon = loggedIn(MINIMAP_ENV, { savedVariables: "VanguardDB.profiles = { Default = { modules = { QuestTracker = false } } }" });
+  addon.advance(2.5);
+  expect(marks(addon).length, "east, north and west, as with the tracker on").toBe(3);
+});
