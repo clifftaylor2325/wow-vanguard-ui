@@ -935,6 +935,9 @@ it("legacy system: crests lose the bronze, card icons are cropped flat and the c
   addon.eval(`local c = __challenge(false) c.Icon = CreateFrame("Button", nil, c) c.Icon.Icon = c.Icon:CreateTexture() c.PointsBadge = CreateFrame("Frame", nil, c)
     c.PointsBadge.tex = c.PointsBadge:CreateTexture() c.PointsBadge.num = __fs(c.PointsBadge) __acquire(${cards}, c)`);
   expect(addon.eval(`local c = ${cards}.items[2] return { c.Icon.Icon.__texCoord ~= nil, c.PointsBadge.tex.__desaturated }`), "a button icon is dressed like the spellbook's, a crest frame's textures are flattened").toEqual([true, true]);
+  // The game's challenge icon is a frame holding its picture as texture and a ring as frame: the picture stays.
+  addon.eval(`local c = __challenge(false) c.Icon = CreateFrame("Frame", nil, c) c.Icon.texture, c.Icon.frame = c.Icon:CreateTexture(), c.Icon:CreateTexture() __acquire(${cards}, c)`);
+  expect(addon.eval(`local i = ${cards}.items[3].Icon return { i.texture:GetAlpha(), i.texture.__texCoord ~= nil, i.frame:GetAlpha() }`), "a frame icon keeps and crops its picture, its ring is faded").toEqual([1, true, 0]);
   expect([tint(`${cards}.items[1].Shield`), tint("LegacySystemFrame.TreePage.LegacyTreePointSummary.Shield")], "the crests are desaturated and tinted").toEqual([[true, true], [true, true]]);
   expect(addon.eval("local b = LegacySystemFrame.ChallengesPage.LegacyChallengePointSummary.PointsBar return { __looks(b.Text, 'label', 'text'), b:GetStatusBarTexture().__vertexColor ~= nil }"), "the points bar's figures are in the text colour over an accent fill").toEqual([true, true]);
   addon.eval("LegacySystemFrame.RewardTrackPage.LegacyRewardProgressFrame:Init()");

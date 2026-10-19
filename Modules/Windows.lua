@@ -1070,11 +1070,12 @@ GW.TALENT_ICONS = { "ResetButton", "UndoButton" }
 GW.BOOK_REFILLS = { "SetDataProvider", "SetCurrentPage", "UpdateFrames", "UpdateDisplay" }
 
 -- The icon button of a book entry: its bronze laurel frame and other art faded (the icon and the game's hover
--- highlight kept), the icon cropped and a thin inset border round it, like an item slot.
+-- highlight kept; a Legacy challenge's icon frame holds its picture as texture), the icon cropped and a thin inset
+-- border round it, like an item slot.
 local function dressBookIcon(button)
   if type(button) ~= "table" or not button.GetRegions or not button.CreateTexture then return end
-  T.FadeRegions(button, GW.KeepKeys(button, { "Icon", "icon", "IconHighlight", "Highlight" }))
-  local icon = button.Icon or button.icon
+  T.FadeRegions(button, GW.KeepKeys(button, { "Icon", "icon", "texture", "IconHighlight", "Highlight" }))
+  local icon = button.Icon or button.icon or button.texture
   if type(icon) == "table" and icon.SetTexCoord then T.Crop(icon) end
   T.Panel(button, { inset = true, noBg = true })
 end
