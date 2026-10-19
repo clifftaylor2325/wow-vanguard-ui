@@ -451,6 +451,15 @@ it("every import backs up the profile in use first, into one rolling backup prof
   expect(backupOf(`TEST-ONLY ${"x".repeat(22)}`), "a long name is cut to fit 32 characters").toBe(`TEST-ONLY ${"x".repeat(15)} backup`);
   expect(backupOf(`TEST-ONLY ${"x".repeat(15)} backup`), "and the backup is never the profile in use").toBe(`TEST-ONLY ${"x".repeat(13)} backup 2`);
 });
+it("an import's backup never overwrites a profile another character or a spec uses", () => {
+  // TEST-ONLY: another character runs on "Default backup", and this character's spec 2 uses "Default backup 2".
+  const sv = 'VanguardDB.profiles = { Default = {}, ["Default backup"] = { marker = "other" }, ["Default backup 2"] = { marker = "spec" } }\nVanguardDB.guard = { chars = { ["TEST-ONLY Other-Realm"] = { profile = "Default backup", stamp = 1 }, broken = "x" } }\nVanguardCharDB.specProfiles = { [2] = "Default backup 2" }';
+  const addon = loggedIn("", { savedVariables: sv });
+  const backup = addon.eval('return (select(2, ns.ImportProfile(ns.Serialize.Encode("profile", ns.StampPayload({ theme = { accent = "copper" } }))))).backup');
+  expect(backup, "the backup takes the next free name").toBe("Default backup 3");
+  expect(addon.eval('return { VanguardDB.profiles["Default backup"].marker, VanguardDB.profiles["Default backup 2"].marker }'), "the profiles in use keep their settings").toEqual(["other", "spec"]);
+  expect(addon.eval('VanguardDB.profiles["Default backup 3"] = nil VanguardDB.guard = nil VanguardCharDB.specProfiles = nil return ns.BackupProfile()'), "a file without a guard or spec map backs up as before").toBe("Default backup");
+});
 it("importing a string that matches a profile here uses that profile instead of making a copy", () => {
   const addon = loggedIn();
   const own = addon.eval("return ns.ExportProfile()");

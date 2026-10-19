@@ -128,15 +128,38 @@ function ns.ForkProfile(name)
   return new
 end
 
--- The rolling backup's name for a profile: "<name> backup", the name cut to fit 32 characters;
--- never the profile in use nor the one this character switches to at the reload (then
--- "<name> backup 2", or 3).
-function ns.BackupName(name)
-  for n = 1, 3 do
-    local suffix = n == 1 and " backup" or (" backup " .. n)
-    local backup = name:sub(1, 32 - #suffix) .. suffix
-    if backup ~= ns.ProfileName() and backup ~= ns.SelectedProfileName() then return backup end
+-- True when another character runs on the profile called name, as the account file's guard notes
+-- each character's profile at logout (Core/SettingsGuard.lua; a damaged note is skipped).
+local function characterUses(name)
+  local guard = type(VanguardDB.guard) == "table" and VanguardDB.guard
+  for _, char in pairs(guard and type(guard.chars) == "table" and guard.chars or {}) do
+    if type(char) == "table" and char.profile == name then return true end
   end
+  return false
+end
+
+-- True when a backup must not replace the profile called name: this character uses it now, after
+-- the reload or for a spec, or another character uses it.
+local function profileInUse(name)
+  if name == ns.ProfileName() or name == ns.SelectedProfileName() then return true end
+  for _, profile in pairs(type(VanguardCharDB.specProfiles) == "table" and VanguardCharDB.specProfiles or {}) do
+    if profile == name then return true end
+  end
+  return characterUses(name)
+end
+
+-- "<name> backup" (n 1) or "<name> backup <n>", the name cut to fit 32 characters.
+local function backupName(name, n)
+  local suffix = n == 1 and " backup" or (" backup " .. n)
+  return name:sub(1, 32 - #suffix) .. suffix
+end
+
+-- The rolling backup's name for a profile: "<name> backup"; never a profile in use (by this
+-- character, now, after the reload or for a spec, or by another character): then "<name> backup 2", 3 and on.
+function ns.BackupName(name)
+  local n = 1
+  while profileInUse(backupName(name, n)) do n = n + 1 end
+  return backupName(name, n)
 end
 
 -- Copies the profile this character uses (its own values: an active Situations override is
