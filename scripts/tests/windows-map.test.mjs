@@ -156,8 +156,10 @@ it("world map: the nav bar, its crumbs and the quest log toggle are dressed, and
   const painted = windowState(addon, "TestOnlyMapBorder").painted;
   addon.eval("WorldMapFrame.NavBar:Refresh() WorldMapFrame:Hide() WorldMapFrame:Show()");
   expect(windowState(addon, "TestOnlyMapBorder").painted - painted, "one more crumb is one more painted frame, nothing painted twice").toBe(1);
-  expect(addon.eval("local b = WorldMapFrame.SidePanelToggle.OpenButton return { b.shadow:GetAlpha(), b.icon:GetAlpha() }"), "the toggle's corner shadow is faded, its theme arrow").toEqual([0, 1]);
-  expect(addon.eval("local b = WorldMapFrame.SidePanelToggle.CloseButton return { b.shadow:GetAlpha(), b.icon:GetAlpha() }"), "both buttons").toEqual([0, 1]);
+  // One toggle button's shadow and icon alphas and its theme glyph's texture.
+  const toggle = (key) => addon.eval(`local b = WorldMapFrame.SidePanelToggle.${key} local g = ns.FrameState('vgMapGlyph')[b] return { b.shadow:GetAlpha(), b.icon:GetAlpha(), g:GetTexture() }`);
+  expect(toggle("OpenButton"), "the toggle's corner shadow and yellow icon are faded, a theme quests icon in their place").toEqual([0, 0, expect.stringContaining("Quests")]);
+  expect(toggle("CloseButton"), "the close button gets a theme chevron").toEqual([0, 0, expect.stringContaining("Right")]);
 });
 
 it("world map: switched off it stays the game's; a client missing parts or the map loads cleanly", () => {
@@ -179,8 +181,10 @@ const MAP_PARTS_ENV = WORLD_MAP_ENV + `
   local map, nav = WorldMapFrame, WorldMapFrame.NavBar
   nav.home.text = nav.home:CreateFontString(nil, "OVERLAY") nav.home.text:SetFont("TEST-ONLY-GAME", 12, "")
   local arrow = CreateFrame("Button", nil, nav.home) nav.home.MenuArrowButton = arrow
-  arrow.back, arrow.Art = arrow:CreateTexture(), arrow:CreateTexture()
-  arrow.GetNormalTexture = function(self) return self.Art end
+  arrow.back, arrow.Art, arrow.box, arrow.boxDown = arrow:CreateTexture(), arrow:CreateTexture(), arrow:CreateTexture(), arrow:CreateTexture()
+  arrow.box:SetTexture("TEST-ONLY-GOLD-SQUARE") arrow.boxDown:SetTexture("TEST-ONLY-GOLD-SQUARE-DOWN")
+  arrow.GetNormalTexture = function(self) return self.box end
+  arrow.GetPushedTexture = function(self) return self.boxDown end
   CreateFrame("Frame", nil, map)
   local floor = CreateFrame("Button", nil, map) floor.ShouldShowTrackingIconOnFloor = function() end
   floor.Plate, floor.Arrow = floor:CreateTexture(), floor:CreateTexture()
@@ -197,11 +201,13 @@ it("world map: the crumbs' labels are light and their dropdown arrows keep the a
   addon.eval("WorldMapFrame:Show()");
   expect(addon.eval("local h = WorldMapFrame.NavBar.home return { h.text.__textColor[1] == ns.Theme.RGB('text'), __looks(h.text, 'label', 'text') }"), "the crumb's label is the label role in the text colour, not the game's gold").toEqual([true, true]);
   expect(addon.eval("local a = WorldMapFrame.NavBar.home.MenuArrowButton return { a.back:GetAlpha(), a.Art:GetAlpha(), ns.Theme.HoverParts(a) ~= nil }"), "the arrow button is a theme button, the game's yellow Art replaced by the theme arrow").toEqual([0, 0, true]);
+  expect(addon.eval("local a = WorldMapFrame.NavBar.home.MenuArrowButton return { a.box:GetTexture() == nil, a.boxDown:GetTexture() == nil }"), "the gold-edged square the game shows on mouse-over is emptied, not shown as a picture").toEqual([true, true]);
   expect(addon.eval("return ns.FrameState('vgDropArrow')[WorldMapFrame.NavBar.home.MenuArrowButton] ~= nil"), "and the theme arrow sits where it was").toBe(true);
   expect(addon.eval("local f for _, c in ipairs({ WorldMapFrame:GetChildren() }) do if c.ShouldShowTrackingIconOnFloor then f = c end end return { f.Plate:GetAlpha(), f.Arrow:GetAlpha(), ns.Theme.HoverParts(f) ~= nil }"), "the floor dropdown found by its mixin: plate faded, arrow replaced, a theme button").toEqual([0, 0, true]);
-  expect(addon.eval("local o, p = WorldMapFrame.WorldMapTrackingOptionsButton, WorldMapFrame.WorldMapTrackingPinButton return { o.Icon:GetAlpha(), p.Icon:GetAlpha(), p.Background:GetAlpha(), p.Border:GetAlpha() }"), "the tracking icons are kept, the pin's disc and gold ring faded").toEqual([1, 1, 0, 0]);
+  expect(addon.eval("local o, p = WorldMapFrame.WorldMapTrackingOptionsButton, WorldMapFrame.WorldMapTrackingPinButton return { o.Icon:GetAlpha(), p.Icon:GetAlpha(), p.Background:GetAlpha(), p.Border:GetAlpha() }"), "the game's yellow tracking icons, the pin's disc and gold ring are faded").toEqual([0, 0, 0, 0]);
+  expect(["WorldMapTrackingOptionsButton", "WorldMapTrackingPinButton"].map((k) => addon.eval(`return ns.FrameState('vgMapGlyph')[WorldMapFrame.${k}]:GetTexture()`)), "each with a theme icon, a filter and a pin").toEqual([expect.stringContaining("MinimapTracking"), expect.stringContaining("Pin")]);
   expect(["WorldMapTrackingOptionsButton", "WorldMapTrackingPinButton"].map((k) => addon.eval(`local n = 0 for _, r in ipairs({ WorldMapFrame.${k}:GetRegions() }) do if r.__layer == "BACKGROUND" and r.__alpha ~= 0 then n = n + 1 end end return n`)), "each on the window controls' resting tile").toEqual([1, 1]);
-  expect(addon.eval("local b = WorldMapFrame.SidePanelToggle.OpenButton return { b.shadow:GetAlpha(), b.icon:GetAlpha(), b.pushed:GetAlpha(), ns.Theme.HoverParts(b) ~= nil }"), "the quest toggle is a theme button keeping its normal and pushed arrows").toEqual([0, 1, 1, true]);
+  expect(addon.eval("local b = WorldMapFrame.SidePanelToggle.OpenButton return { b.shadow:GetAlpha(), b.icon:GetAlpha(), b.pushed:GetAlpha(), ns.Theme.HoverParts(b) ~= nil }"), "the quest toggle is a theme button with its normal and pushed pictures faded").toEqual([0, 0, 0, true]);
   const painted = addon.eval("return ns.Theme.PaintedCount()");
   addon.eval("WorldMapFrame:SynchronizeDisplayState() WorldMapFrame.NavBar:Refresh()");
   expect(addon.eval("return { #ns.errors, ns.Theme.PaintedCount() - " + painted + " }"), "the game's redraws add only the new crumb").toEqual([0, 1]);
@@ -225,6 +231,7 @@ const QUEST_MAP_ENV = WINDOWS_ENV + `
   list.BorderFrame = CreateFrame("Frame", nil, list) list.BorderFrame:CreateTexture()
   list.ScrollFrame = CreateFrame("ScrollFrame", nil, list)
   list.ScrollFrame.Background, list.ScrollFrame.Edge = list.ScrollFrame:CreateTexture(), list.ScrollFrame:CreateTexture()
+  list.ScrollFrame.BorderFrame = CreateFrame("Frame", nil, list.ScrollFrame) list.ScrollFrame.BorderFrame:CreateTexture()
   local details = CreateFrame("Frame", nil, list) list.DetailsFrame = details
   details.Bg, details.SealMaterialBG = details:CreateTexture(), details:CreateTexture()
   details.BorderFrame = CreateFrame("Frame", nil, details) details.BorderFrame:CreateTexture()
@@ -241,7 +248,7 @@ const QUEST_MAP_ENV = WINDOWS_ENV + `
 // The quest panel's parts' alphas, in a fixed order, and its painted count.
 const questPanel = (addon) => addon.eval(`local p, d = QuestMapFrame, QuestMapFrame.QuestsFrame.DetailsFrame
   local function a(f) return (select(1, f:GetRegions())):GetAlpha() end
-  return { list = p.QuestsFrame.BorderFrame:GetRegions():GetAlpha(), scroll = p.QuestsFrame.ScrollFrame.Background:GetAlpha(), edge = p.QuestsFrame.ScrollFrame.Edge:GetAlpha(),
+  return { list = p.QuestsFrame.BorderFrame:GetRegions():GetAlpha(), scroll = p.QuestsFrame.ScrollFrame.Background:GetAlpha(), edge = p.QuestsFrame.ScrollFrame.Edge:GetAlpha(), ornate = p.QuestsFrame.ScrollFrame.BorderFrame:GetRegions():GetAlpha(),
     bg = d.Bg:GetAlpha(), seal = d.SealMaterialBG:GetAlpha(), border = a(d.BorderFrame), strip = a(d.BackFrame), rewards = a(d.RewardsFrameContainer.RewardsFrame),
     buttons = { a(d.AbandonButton), a(d.ShareButton), a(d.TrackButton), a(d.BackFrame.BackButton) }, painted = ns.Theme.PaintedCount() }`);
 
@@ -249,8 +256,8 @@ it("quest panel in the map: with Vanguard's quest log off, the list, the details
   const addon = loggedIn(QUEST_MAP_ENV, { savedVariables: OWN_LOG_OFF });
   addon.eval("QuestMapFrame:Show() QuestLogPopupDetailFrame:Show()");
   const first = questPanel(addon);
-  expect(first, "the ornate borders, backgrounds, rewards tile and the buttons' art are faded").toMatchObject({
-    list: 0, scroll: 0, edge: 0, bg: 0, seal: 0, border: 0, strip: 0, rewards: 0, buttons: [0, 0, 0, 0] });
+  expect(first, "the ornate borders (the list's is a child of its scroll frame), backgrounds, rewards tile and the buttons' art are faded").toMatchObject({
+    list: 0, scroll: 0, edge: 0, ornate: 0, bg: 0, seal: 0, border: 0, strip: 0, rewards: 0, buttons: [0, 0, 0, 0] });
   expect([fills(addon, "QuestMapFrame.QuestsFrame"), fills(addon, "QuestMapFrame.QuestsFrame.DetailsFrame")], "the list and the details each get an inset panel").toEqual([1, 1]);
   expect(windowState(addon, "QuestLogPopupDetailFrame"), "the pop-out is a window in the theme").toMatchObject({ art: 0, nine: 0, panel: true, title: true });
   expect(["Abandon", "Share", "Track"].map((b) => fills(addon, `QuestLogPopupDetailFrame${b}Button`)), "its three buttons are themed (one fill each; the hover fill stays clear until the mouse comes over)").toEqual([1, 1, 1]);
@@ -1035,9 +1042,11 @@ const CALENDAR_ENV = WINDOWS_ENV + SCROLL_HELPERS + `
       b.art, b.icon = b:CreateTexture(), b:CreateTexture()
       b.GetNormalTexture = function(self) return self.icon end
     end
-    local today = CreateFrame("Frame", "CalendarTodayFrame", f) today.art = today:CreateTexture()
+    local today = CreateFrame("Frame", "CalendarTodayFrame", f) today.art = today:CreateTexture() today:SetSize(145, 140)
+    function CalendarFrame_SetToday(day) today:SetParent(day) today:ClearAllPoints() today:SetPoint("CENTER", day, "CENTER") end
     for i = 1, 42 do
-      local b = CreateFrame("Button", "CalendarDayButton" .. i, f)
+      local b = CreateFrame("Button", "CalendarDayButton" .. i, f) b:SetSize(91, 91)
+      b.overlay = CreateFrame("Frame", "CalendarDayButton" .. i .. "OverlayFrame", b)
       b.parchment, b.event = b:CreateTexture(), b:CreateTexture()
       b.GetNormalTexture = function(self) return self.parchment end
     end
@@ -1117,6 +1126,10 @@ it("calendar: the window's art is faded but the weekday glow and last-day shadow
   expect(addon.eval("local p, n = CalendarPrevMonthButton, CalendarNextMonthButton return { p.art:GetAlpha(), p.icon:GetAlpha(), p.off:GetAlpha(), p.push:GetAlpha(), n.art:GetAlpha(), n.icon:GetAlpha() }"), "the month buttons lose the template art (the theme arrow replaces it)").toEqual([0, 0, 0, 0, 0, 0]);
   expect(addon.eval("local p, n = ns.Theme.ArrowParts(CalendarPrevMonthButton), ns.Theme.ArrowParts(CalendarNextMonthButton) return { p ~= nil, n ~= nil, true }"), "and are theme arrows").toEqual([true, true, true]);
   expect(addon.eval("return { CalendarTodayFrame.art:GetAlpha(), ns.Theme.PaintedCount() > 0 }")[0], "today's ornate frame art is faded").toBe(0);
+  expect(addon.eval("return { CalendarTodayFrame:GetWidth(), CalendarTodayFrame:GetHeight() }"), "a today marker still on the window keeps the game's size").toEqual([145, 140]);
+  expect(addon.eval("CalendarFrame_SetToday(CalendarDayButton19) return { CalendarTodayFrame:GetWidth(), CalendarTodayFrame:GetHeight(), CalendarTodayFrame:GetParent() == CalendarDayButton19 }"), "the marker is sized to the day cell the game puts it on").toEqual([91, 91, true]);
+  expect(addon.eval("CalendarFrame_SetToday(CalendarDayButton3) return { CalendarTodayFrame:GetWidth(), CalendarTodayFrame:GetHeight() }"), "and follows it to another cell").toEqual([91, 91]);
+  expect(addon.eval("local o = CalendarDayButton1OverlayFrame return o:GetAlpha()"), "a day's holiday overlay art is faded").toBe(0);
   expect(addon.eval("local out = {} for i = 1, 7 do out[i] = __looks(_G['CalendarWeekday' .. i .. 'Name'], 'label', 'text') end return { out, __looks(CalendarYearName, 'small', 'text2'), __looks(CalendarFilterButton.Text, 'label', 'text') }"),
     "the weekday headings and the filter's label are light label text, the year small and grey").toEqual([[true, true, true, true, true, true, true], true, true]);
   expect(addon.eval("local t, c = CalendarClassTotalsButton, CalendarClassButton11 return { CalendarFilterButton.art:GetAlpha(), t.art:GetAlpha(), t.icon:GetAlpha(), c.art:GetAlpha(), c.icon:GetAlpha() }"), "the filter button and the class buttons lose the template art and keep the class icons").toEqual([0, 0, 1, 0, 1]);
@@ -1138,7 +1151,8 @@ it("calendar: the seven dialogs are skinned, with their headers, buttons and tex
     expect(windowState(addon, name), `${name}: art faded, a panel painted`).toMatchObject({ art: 0, nine: 0, portrait: 0, panel: true, title: true });
     expect(addon.eval(`local d = ${name} return { d.Border:GetAlpha(), (d.Border:GetRegions()):GetAlpha(), d.Header.LeftBG:GetAlpha(), d.Header.RightBG:GetAlpha(), d.Header.CenterBG:GetAlpha(), __titled(d.Header.Text) }`), `${name}: the border and the header plate are faded, the title in the theme font`).toEqual([0, 0, 0, 0, 0, true]);
   }
-  expect([calAlpha(addon, "CalendarViewHolidayFrame.Texture"), calAlpha(addon, "CalendarCreateEventIcon")], "the holiday's art and the create dialog's icon are left as the game has them").toEqual([0.4, 1]);
+  expect([calAlpha(addon, "CalendarViewHolidayFrame.Texture"), calAlpha(addon, "CalendarCreateEventIcon")], "the holiday's backdrop art is faded and the create dialog's icon is left as the game has it").toEqual([0, 1]);
+  expect(addon.eval("return CalendarViewHolidayFrame.Border:GetAlpha()"), "the dialog's border art is faded").toBe(0);
   expect(["CalendarViewHolidayCloseButton", "CalendarViewEventCloseButton", "CalendarCreateEventCloseButton", "CalendarMassInviteCloseButton"].map(n => closeSeal(addon, n)), "the close buttons are the theme's close seal").toEqual([true, true, true, true]);
   expect(["CalendarViewEventAcceptButton", "CalendarCreateEventCreateButton", "CalendarEventPickerCloseButton", "CalendarTexturePickerAcceptButton"].map(n => fills(addon, n)), "the push buttons are flat buttons (one fill; the hover clear at rest)").toEqual([1, 1, 1, 1]);
   expect(["CalendarCreateEventTitleEdit", "CalendarMassInviteMinLevelEdit"].map(n => calAlpha(addon, `(_G.${n}:GetRegions())`)), "the text boxes' template art is faded").toEqual([0, 0]);
@@ -1147,7 +1161,7 @@ it("calendar: the seven dialogs are skinned, with their headers, buttons and tex
   expect(["CalendarViewEventDivider", "CalendarCreateEventDivider"].map(n => [calAlpha(addon, `_G.${n}`), addon.eval(`return ns.Theme.DividerParts(_G.${n}) ~= nil`)]), "and their dividers are one pixel of divider in place of the faded art").toEqual([[0, true], [0, true]]);
   const painted = addon.eval("return ns.Theme.PaintedCount()");
   addon.eval("CalendarCreateEventFrame:Hide() CalendarCreateEventFrame:Show() CalendarViewHolidayFrame:Hide() CalendarViewHolidayFrame:Show()");
-  expect([addon.eval("return ns.Theme.PaintedCount()"), calAlpha(addon, "CalendarViewHolidayFrame.Texture"), calAlpha(addon, "CalendarCreateEventIcon")], "a second show paints nothing new and keeps the pictures").toEqual([painted, 0.4, 1]);
+  expect([addon.eval("return ns.Theme.PaintedCount()"), calAlpha(addon, "CalendarViewHolidayFrame.Texture"), calAlpha(addon, "CalendarCreateEventIcon")], "a second show paints nothing new and keeps the pictures").toEqual([painted, 0, 1]);
 });
 
 it("calendar dialogs: the holiday and raid text areas are inset panels, the event dialogs' texts, dropdowns, check boxes and invite lists are in the theme, the pickers' rows follow the game's highlight", () => {
