@@ -238,14 +238,11 @@ function CW.AskFind()
   ns.AskText("Find in chat", CW.Find, "Find")
 end
 
--- A small Find button in the main chat window's tab row, left of the Copy button.
+-- A small Find button in the main chat window's tab strip, left of the Copy button.
 local function addFindButton()
   local frame = _G.ChatFrame1
   if type(frame) ~= "table" then return end
-  CW.findButton = ns.DialogButton(frame, "Find", 40)
-  CW.findButton:SetHeight(16)
-  CW.findButton:SetPoint("BOTTOMRIGHT", frame, "TOPRIGHT", -44, ns.Theme.SPACE.tight)
-  CW.findButton:SetScript("OnClick", ns.Guard("click find in chat", CW.AskFind))
+  CW.findButton = ns.GetModule("Chat").AddStripButton(frame, "Find", "click find in chat", CW.AskFind)
 end
 
 -- Module entry point (Core/Modules.lua).

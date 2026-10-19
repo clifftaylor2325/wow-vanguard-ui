@@ -1298,10 +1298,10 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 - Expect: a box opens with `Chat: N lines with "word"` and the matching lines as plain text (links show as their words), selected for Ctrl+C. An empty search says `Type something to find.` `/vg errors` is empty. [Needs in game: that the Find button sits clear of Copy in the tab row, and that GetNumMessages/GetMessageInfo return every line the window holds.]
 - If it fails, paste: `/vg errors` and a screenshot of the tab row.
 
-### 15.6g Chat tab look
+### 15.6g Chat tab look and frame
 
-- Do: with two chat tabs, click between them; have a friend whisper or say something into the tab you are not looking at, then `/vg accent` another colour.
-- Expect: the shown tab is raised and the other sunk, with a soft hover; a tab with new lines flashes in the accent colour (at the game's own pace), and the flash follows the accent. [Needs in game: that the glow tint holds while the game animates it, and that tab sizes did not change.]
+- Do: look at the chat window's frame; then with two chat tabs, click between them; have a friend whisper or say something into the tab you are not looking at, then `/vg accent` another colour.
+- Expect: a thin outline round the text with a dark tab strip flush on its top edge: the tabs line up with the strip and the box edge, read clearly (not faded), and Find and Copy sit at the strip's right end, not over any tab. The shown tab is raised and the other sunk, with a soft hover; a tab with new lines flashes in the accent colour (at the game's own pace), and the flash follows the accent. [Needs in game: that the glow tint holds while the game animates it, and that tab sizes did not change, that the strip meets the box edge with no gap or overlap, and that the buttons stay clear of the tabs with several tabs open.]
 - If it fails, paste: `/vg errors` and a screenshot of the tab row.
 
 ## 16. Realm and ruleset
@@ -1919,7 +1919,7 @@ The order is the order to play in: looks you can check quickly first, then the g
 ### 33.39 Chat size and background
 
 - Do: with a fresh profile, look at the main chat window over a bright area (snow, desert) and over a dark one. Open `/vg` → Chat and cycle Chat background strength through Light, Medium and Dark, then untick Chat background. Look at the tabs and the Copy button.
-- Expect: the window is about 500 wide and 154 tall (420 wide on a small screen) (a profile that already sized chat keeps its size). A soft dark patch sits behind the text and the tab row with edges that fade out (no hard border), the text reads over bright ground at Medium, and the strength follows the setting at once. Tab names show in full (General, not Gene…) the Copy button sits at the right end of the tab row, and the scroll bar on the right is a slim thumb on the backdrop with no boxed arrows (the scroll-to-bottom glyph still shows when scrolled up). Tab names are readable. Cycle Chat window size through Larger and Largest: the window resizes at once. On a 4K screen, switching Pixel-perfect scale on (General → Look, no setup) keeps the UI and chat about 1080p's size, not half of it.
+- Expect: the window is about 500 wide and 154 tall (420 wide on a small screen) (a profile that already sized chat keeps its size). A soft dark patch sits behind the text and the tab row with edges that fade out (no hard border), the text reads over bright ground at Medium, and the strength follows the setting at once. Tab names show in full (General, not Gene…) the Copy button sits at the right end of the tab strip with Find left of it, and the scroll bar on the right is a slim thumb on the backdrop with no boxed arrows (the scroll-to-bottom glyph still shows when scrolled up). Tab names are readable. Cycle Chat window size through Larger and Largest: the window resizes at once. On a 4K screen, switching Pixel-perfect scale on (General → Look, no setup) keeps the UI and chat about 1080p's size, not half of it.
 - If it fails, paste: a screenshot over bright ground and `/vg errors`.
 
 ### 33.40 Options window: reload tags, search list, page reset, Modules groups
