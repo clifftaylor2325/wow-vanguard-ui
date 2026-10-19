@@ -251,6 +251,36 @@ it("chat side buttons sit on themed tiles: a glyph on the menu, minimize, scroll
   addon.eval("FCF_OpenTemporaryWindow('TEST-ONLY')");
   expect(addon.eval("return ns.Theme.PaintedCount()"), "a new window re-skins the buttons without piling up").toBe(painted);
 });
+// TEST-ONLY stand-in for the game's flash animation on the scroll-to-bottom button (Flash.FlashAnim).
+const CHAT_FLASH_ENV = `
+  local anim = { playing = false, scripts = {} }
+  function anim:HookScript(name, fn) self.scripts[name] = fn end
+  function anim:IsPlaying() return self.playing end
+  function anim:Play() self.playing = true self.scripts.OnPlay() end
+  function anim:Stop(finished) self.playing = false self.scripts[finished and "OnFinished" or "OnStop"]() end
+  ChatFrame1.ScrollToBottomButton.Flash.FlashAnim = anim
+`;
+it("chat scroll-to-bottom tile: a one-pixel accentText ring round it while the game flashes it, gone when the flash stops or finishes; a client without the animation gets no ring", () => {
+  const addon = loggedIn(UI_ENV + CHAT_BUTTONS_ENV + CHAT_FLASH_ENV);
+  // The ring: shown, its size, and its four lines' colour and thickness.
+  const ring = () => addon.eval(`local b = ChatFrame1.ScrollToBottomButton local r = ns.FrameState("vgRing")[b] local lines, px = {}, ns.Theme.Pixel(r)
+    for _, t in ipairs({ r:GetRegions() }) do lines[#lines + 1] = { t.__vertexColor, t:GetHeight() == px or t:GetWidth() == px } end
+    return { r:IsShown(), r:GetParent() == b, math.abs(r:GetWidth() - 20) < 1, #lines, lines[1][1], lines[1][2] and lines[2][2] and lines[3][2] and lines[4][2] }`);
+  const rest = ring();
+  expect([rest[0], rest[1], rest[2], rest[3], isTok(addon, rest[4], "accentText"), rest[5]], "at rest the ring is hidden: a tile-sized frame on the button with four one-pixel accentText lines").toEqual([false, true, true, 4, true, true]);
+  addon.eval("ChatFrame1.ScrollToBottomButton.Flash.FlashAnim:Play()");
+  expect(ring()[0], "the game's flash starting shows it").toBe(true);
+  addon.eval("ChatFrame1.ScrollToBottomButton.Flash.FlashAnim:Stop()");
+  expect(ring()[0], "stopped: hidden").toBe(false);
+  addon.eval("ChatFrame1.ScrollToBottomButton.Flash.FlashAnim:Play() ChatFrame1.ScrollToBottomButton.Flash.FlashAnim:Stop(true)");
+  expect(ring()[0], "finished: hidden").toBe(false);
+  addon.eval("ns.GetModule('Chat').SkinAll()");
+  expect(addon.eval("return #ChatFrame1.ScrollToBottomButton.Flash.FlashAnim.scripts"), "skinned again, the hooks are not piled on").toBe(0);
+  const playing = loggedIn(UI_ENV + CHAT_BUTTONS_ENV + CHAT_FLASH_ENV + "ChatFrame1.ScrollToBottomButton.Flash.FlashAnim.playing = true");
+  expect(playing.eval("return ns.FrameState('vgRing')[ChatFrame1.ScrollToBottomButton]:IsShown()"), "a flash already playing when the tile is skinned shows the ring at once").toBe(true);
+  const plain = loggedIn(UI_ENV + CHAT_BUTTONS_ENV);
+  expect(plain.eval("return { ns.FrameState('vgRing')[ChatFrame1.ScrollToBottomButton]:IsShown(), #ns.errors }"), "no animation on this client: the ring stays hidden, no errors").toEqual([false, 0]);
+});
 it("chat side buttons stack down from the bar's top, a step apart, closing up over a hidden one; they follow the game re-siding and re-anchoring them", () => {
   const addon = loggedIn(UI_ENV + CHAT_BUTTONS_ENV + CHAT_DOCK_ENV + "ChatAlertFrame = { UpdateAnchors = function() QuickJoinToastButton:ClearAllPoints() QuickJoinToastButton:SetPoint('CENTER', UIParent) end }");
   // Each stacked button's centre: [relative point on the bar, x, y], in stacking order.

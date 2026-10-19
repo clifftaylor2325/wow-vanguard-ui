@@ -467,12 +467,57 @@ local function glyphButton(button, icon)
   raiseCounts(button)
 end
 
--- A window's own side buttons: the minimize box on its button column and the
--- scroll-to-bottom arrow (the game shows that one only when scrolled up).
+-- A one-pixel line in accentText along one side of frame ("TOP", "BOTTOM", "LEFT" or "RIGHT").
+local function edgeLine(frame, side)
+  local t = T.Tint(T.Snap(frame:CreateTexture(nil, "OVERLAY"), "border"), "accentText")
+  local px, upright = T.Pixel(frame), side == "LEFT" or side == "RIGHT"
+  t:SetTexture(T.WHITE)
+  t:SetPoint(upright and "TOP" .. side or side .. "LEFT")
+  t:SetPoint(upright and "BOTTOM" .. side or side .. "RIGHT")
+  if upright then t:SetWidth(px) else t:SetHeight(px) end
+  return t
+end
+
+-- A one-pixel accentText ring the size of a control's tile, centred on its button and hidden: the
+-- suite's selected-edge mark, for the scroll-to-bottom tile while the game flashes it (new lines below).
+local function tileRing(button)
+  local ring = CreateFrame("Frame", nil, button)
+  ring:SetPoint("CENTER")
+  T.PixelSize(ring, T.CONTROL.tile, T.CONTROL.tile, true)
+  for _, side in ipairs({ "TOP", "BOTTOM", "LEFT", "RIGHT" }) do edgeLine(ring, side) end
+  ring:Hide()
+  return ring
+end
+
+-- Shows the ring while the game's flash on the button plays: hooks on the flash's animation
+-- (Flash.FlashAnim, whose IsPlaying the game's own scrollbar fade reads), where this client has it.
+local function watchFlash(button, ring)
+  local anim = type(button.Flash) == "table" and button.Flash.FlashAnim or nil
+  if type(anim) ~= "table" or type(anim.HookScript) ~= "function" then return end
+  ring:SetShown(type(anim.IsPlaying) == "function" and anim:IsPlaying() == true)
+  anim:HookScript("OnPlay", function() ring:Show() end)
+  anim:HookScript("OnStop", function() ring:Hide() end)
+  anim:HookScript("OnFinished", function() ring:Hide() end)
+end
+
+-- Each scroll-to-bottom button's ring (button -> frame), made once (ns.FrameState).
+local vgRing = ns.FrameState("vgRing")
+
+-- The scroll-to-bottom arrow as a glyph control with its flash ring (the game shows the button only
+-- when scrolled up, and flashes it while new lines arrive below).
+local function scrollButton(button)
+  if not isButton(button) then return end
+  glyphButton(button, "Down")
+  if vgRing[button] then return end
+  vgRing[button] = tileRing(button)
+  watchFlash(button, vgRing[button])
+end
+
+-- A window's own side buttons: the minimize box on its button column and the scroll-to-bottom arrow.
 local function skinWindowButtons(frame, name)
   local column = frame.buttonFrame or _G[name .. "ButtonFrame"]
   if type(column) == "table" then glyphButton(column.minimizeButton or _G[name .. "ButtonFrameMinimizeButton"], "Minimize") end
-  glyphButton(frame.ScrollToBottomButton, "Down")
+  scrollButton(frame.ScrollToBottomButton)
 end
 
 -- The main window's side buttons in stacking order, top to bottom: the chat menu, Quick Join,

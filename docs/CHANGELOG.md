@@ -16,6 +16,7 @@ Nothing in this release has been checked in the game; see the batch checklist (i
 - Only the shown chat tab has a box, with a lit top edge; the others are their names on the bar, and never fade below 60 %.
 - Find and Copy are glyph tiles at the chat bar's right end, like the side buttons; hover names them.
 - The typing box sits under the chat panel with a rail in the channel's colour, faint until you type.
+- The scroll-to-bottom tile takes a thin accent edge while the game flashes it for new lines.
 
 ### HUD and Edit Mode
 
