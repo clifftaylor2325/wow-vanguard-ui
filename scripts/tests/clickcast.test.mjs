@@ -150,6 +150,11 @@ it("the grid picks spells from the spellbook, with ranks, drops and clears", () 
   addon.eval("Vanguard_SpellPicker.SetPropagateKeyboardInput = function(self, v) self.__passed = v end");
   addon.eval('Vanguard_SpellPicker.__scripts.OnKeyDown(Vanguard_SpellPicker, "A")');
   expect(addon.frame("Vanguard_SpellPicker").visible && addon.eval("return Vanguard_SpellPicker.__passed"), "other keys pass through").toBe(true);
+  addon.eval("Vanguard_SpellPicker.__passed = nil");
+  addon.world.combat(true);
+  addon.eval('Vanguard_SpellPicker.__scripts.OnKeyDown(Vanguard_SpellPicker, "A")');
+  expect(addon.eval("return Vanguard_SpellPicker.__passed"), "in combat the picker never calls the protected key pass-through").toBe(null);
+  addon.world.combat(false);
   addon.eval('Vanguard_SpellPicker.__scripts.OnKeyDown(Vanguard_SpellPicker, "ESCAPE")');
   expect(addon.frame("Vanguard_SpellPicker").visible, "Escape closes the picker").toBe(false);
   expect(addon.eval("return Vanguard_SpellPicker.catcher:IsShown()"), "and its click catcher").toBe(false);

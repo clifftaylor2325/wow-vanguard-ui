@@ -292,7 +292,7 @@ end
 local function pickerDismissals()
   picker:EnableKeyboard(true)
   picker:SetScript("OnKeyDown", function(self, k)
-    self:SetPropagateKeyboardInput(k ~= "ESCAPE")
+    if not ns.InCombat() and ns.Client.Has("keyPropagate") then self:SetPropagateKeyboardInput(k ~= "ESCAPE") end
     if k == "ESCAPE" then closePicker() end
   end)
   picker.catcher = CreateFrame("Button", nil, UIParent)
