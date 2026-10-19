@@ -5,7 +5,9 @@
 -- others inset, an accent alert glow), 20 tall and centred in the bar, with
 -- the Find and Copy glyph tiles at the bar's right end. Tabs stay fully visible
 -- (the game fades them until the mouse comes near) while Keep chat tabs
--- visible is on. The main window's side buttons (chat menu, Quick Join,
+-- visible is on; with Hide the tab bar until the mouse is over the chat on,
+-- the bar and the tabs come only while the mouse is there or a tab alerts.
+-- The main window's side buttons (chat menu, Quick Join,
 -- voice, text to speech) lose their round art, sit on the theme's control
 -- tiles and stack down from the bar's top, a step apart, hidden ones leaving
 -- no gap; each window's minimize box and scroll-to-bottom arrow get tiles
@@ -19,7 +21,7 @@ local ADDON, ns = ...
 local T = ns.Theme
 
 local CH = ns.Module("Chat", {
-  defaults = { background = true, backdrop = 0.75, windowScale = 1, widened = false, textSize = 12, place = true, sized = false, tabsVisible = true, lineFade = 60 },
+  defaults = { background = true, backdrop = 0.75, windowScale = 1, widened = false, textSize = 12, place = true, sized = false, tabsVisible = true, lineFade = 60, barHover = false },
 })
 
 -- The tab bar's height above a chat window: a control-high tab with a tight gap round it.
@@ -449,18 +451,76 @@ local function flooredAlpha(value)
   return math.max(value, T.CHAT_TAB_FLOOR)
 end
 
+-- The game's tab alphas while the bar hides until hover: a tab shows only with the mouse near (the
+-- game's own hover fade brings it, at its own pace) or while it alerts (the game's 1 either way).
+CH.HOVER_TAB_ALPHAS = { CHAT_FRAME_TAB_SELECTED_MOUSEOVER_ALPHA = 1, CHAT_FRAME_TAB_SELECTED_NOMOUSE_ALPHA = 0, CHAT_FRAME_TAB_ALERTING_MOUSEOVER_ALPHA = 1,
+  CHAT_FRAME_TAB_ALERTING_NOMOUSE_ALPHA = 1, CHAT_FRAME_TAB_NORMAL_MOUSEOVER_ALPHA = 1, CHAT_FRAME_TAB_NORMAL_NOMOUSE_ALPHA = 0 }
+
+-- The value for one of the game's tab alphas: the hover ladder while the bar hides until hover, 1
+-- while Keep chat tabs visible is on, else the game's own floored at T.CHAT_TAB_FLOOR.
+local function tabAlpha(name, game)
+  if CH.settings.barHover then return CH.HOVER_TAB_ALPHAS[name] end
+  return CH.settings.tabsVisible and 1 or flooredAlpha(game[name])
+end
+
 -- Keeps every chat tab fully visible (Keep chat tabs visible on), or gives the game's fading back
 -- floored at T.CHAT_TAB_FLOOR (off; the game's FCFTab_UpdateAlpha and its fades read these six
--- values, so the floor holds through both), and has the game apply the alphas to each window's
--- tab now, where this client can.
+-- values, so the floor holds through both), or the hover ladder (Hide the tab bar until the mouse
+-- is over the chat), and has the game apply the alphas to each window's tab now, where this client can.
 function CH.ApplyTabAlpha()
   local game = rememberAlphas()
-  for _, name in ipairs(CH.TAB_ALPHAS) do _G[name] = CH.settings.tabsVisible and 1 or flooredAlpha(game[name]) end
+  for _, name in ipairs(CH.TAB_ALPHAS) do _G[name] = tabAlpha(name, game) end
   if type(FCFTab_UpdateAlpha) ~= "function" then return end
   for i = 1, windowCount() do
     local frame = _G["ChatFrame" .. i]
     if frame then FCFTab_UpdateAlpha(frame) end
   end
+end
+
+-- How often the hidden-until-hover bar looks for the mouse (seconds).
+CH.HOVER_POLL = 0.1
+
+-- Whether a window wants its bar: the mouse is over its chat (the text, the bar's band above it and
+-- the columns either side), or the game is flashing one of its tabs (the bar stays while a tab alerts).
+local function wantsBar(frame)
+  if CH.alerting[frame] then return true end
+  return frame:IsMouseOver(CH.BAR + T.SPACE.tight, -T.SPACE.tight, -CH.STACK_ROOM, CH.SIDE_COLUMN + T.SPACE.tight) == true
+end
+
+-- One look at a window's bar: wanted, it comes in (T.CHAT_BAR_HOVER.showIn) and the idle count
+-- starts again; unwanted for hideAfter seconds, it goes (hideOver). Both fades are the theme's, so a
+-- fight caps them at T.COMBAT_FADE and Reduce motion makes them instant.
+local function pollBar(frame, parts)
+  local h = CH.hover[frame] or { idle = 0, shown = true }
+  CH.hover[frame] = h
+  if wantsBar(frame) then
+    h.idle = 0
+    if not h.shown then h.shown = true T.FadeIn(parts.bar, T.CHAT_BAR_HOVER.showIn) end
+    return
+  end
+  h.idle = h.idle + CH.HOVER_POLL
+  if h.shown and h.idle >= T.CHAT_BAR_HOVER.hideAfter then h.shown = false T.FadeOut(parts.bar, T.CHAT_BAR_HOVER.hideOver) end
+end
+
+-- Looks at every window's bar (the shared ticker's job while the switch is on).
+local function pollBars()
+  for frame, parts in pairs(CH.frames or {}) do pollBar(frame, parts) end
+end
+
+-- Remembers which windows' tabs the game is flashing (FCF_StartAlertFlash and FCF_StopAlertFlash).
+local function setAlerting(frame, on)
+  if type(frame) == "table" then CH.alerting[frame] = on or nil end
+end
+
+-- Hide the tab bar until the mouse is over the chat (off by default), at enable and from the Chat
+-- page: on, each bar goes after the idle time unless the mouse is there or a tab alerts; off, every
+-- bar is back at once. The tabs' alphas follow the switch too (CH.ApplyTabAlpha).
+function CH.ApplyBarHover()
+  CH.hover, CH.alerting = {}, CH.alerting or {}
+  CH.ApplyTabAlpha()
+  if CH.settings.barHover then return ns.Every("chat bar hover", CH.HOVER_POLL, pollBars) end
+  ns.Every("chat bar hover", nil)
+  for _, parts in pairs(CH.frames or {}) do T.StopFade(parts.bar) parts.bar:Show() end
 end
 
 -- The main window's tab dock (the docked windows' tabs) on its bar, after the game anchors it to the
@@ -780,6 +840,8 @@ local function hookGame()
   after("FCFDock_SetPrimary", CH.PlaceDock)
   after("FCF_SetTabPosition", placeFloatingTab)
   after("FCF_SetButtonSide", CH.StackButtons)
+  after("FCF_StartAlertFlash", function(frame) setAlerting(frame, true) end)
+  after("FCF_StopAlertFlash", function(frame) setAlerting(frame, false) end)
   watchAlerts()
 end
 
@@ -789,7 +851,7 @@ function CH.Enable(settings)
   CH.settings = settings
   CH.frames, CH.barEnd, CH.barEndSlot = {}, nil, nil
   CH.SkinAll()
-  CH.ApplyTabAlpha()
+  CH.ApplyBarHover()
   T.OnChanged(CH.Refresh)
   CH.Place()
   ns.On("PLAYER_ENTERING_WORLD", CH.Size)
@@ -809,6 +871,7 @@ function CH.Rows()
   return {
     { "header", "Chat text and bar" },
     { "cycle", "Chat text fades", CH.LINE_FADES, liveSetting("lineFade", CH.ApplyFades) },
+    { "check", "Hide the tab bar until the mouse is over the chat", liveSetting("barHover", CH.ApplyBarHover) },
   }
 end
 ns.Options.AddRows("chat", CH.Rows)

@@ -1617,6 +1617,10 @@ T.CHAT_TEXT = { spacing = 2 }
 -- ChatFrameEditBoxMixin:Deactivate sets), and how long it takes to come to full when it gains the
 -- typing and to drop back when it loses it (seconds; docs/THEME.md, Fades and flashes).
 T.CHAT_EDIT = { rest = 0.35, focusIn = 0.2, focusOut = 0.05 }
+-- The chat tab bar while Hide the tab bar until the mouse is over the chat is on (Modules/Chat.lua):
+-- how long it takes to come in when the mouse arrives, how long the mouse has to be away before it
+-- goes, and how long it takes to go (seconds; docs/THEME.md, Fades and flashes).
+T.CHAT_BAR_HOVER = { showIn = 0.1, hideAfter = 4, hideOver = 0.6 }
 -- How long a chat line takes to fade out once its time on screen is up (seconds; the Chat text fades
 -- choice in Modules/Chat.lua sets the time; docs/THEME.md, Fades and flashes).
 T.CHAT_LINE_FADE = 0.6

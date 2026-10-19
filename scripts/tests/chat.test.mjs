@@ -400,6 +400,31 @@ it("chat tabs stay visible: the game's six tab alphas are 1 while the switch is 
   bare.eval("ns.GetModule('Chat').settings.tabsVisible = false ns.GetModule('Chat').ApplyTabAlpha()");
   expect(bare.eval("return CHAT_FRAME_TAB_NORMAL_NOMOUSE_ALPHA"), "and off leaves it as it was (unset)").toBe(null);
 });
+it("chat bar hidden until hover (off by default): the bar goes after 4 s away, comes back with the mouse over the chat, stays while a tab alerts; the tabs follow through the game's alphas; off brings every bar back", () => {
+  const addon = loggedIn(UI_ENV + CHAT_DOCK_ENV + "function FCF_StartAlertFlash() end function FCF_StopAlertFlash() end");
+  const B = "ns.GetModule('Chat').frames[ChatFrame1].bar";
+  // The bar: visible; the hover job: running; the six tab alphas.
+  const state = () => addon.eval(`local out = {} for _, name in ipairs(ns.GetModule('Chat').TAB_ALPHAS) do out[#out + 1] = _G[name] end return { ${B}:IsVisible(), ns.ticker.vgJobs["chat bar hover"] ~= nil, out }`);
+  expect(state(), "off by default: the bar stays, no job, the tabs at 1").toEqual([true, false, [1, 1, 1, 1, 1, 1]]);
+  addon.eval("local r = ns.GetModule('Chat').Rows()[3] r[4](true)");
+  expect(state(), "on: the job runs and the tabs show only under the mouse or alerting").toEqual([true, true, [1, 0, 1, 1, 1, 0]]);
+  addon.advance(3.9, 0.1);
+  expect(state()[0], "3.9 s away: still there").toBe(true);
+  addon.advance(0.3, 0.1);
+  expect(state()[0], "4 s away: gone").toBe(false);
+  addon.eval("ChatFrame1.__mouseOver = true");
+  addon.advance(0.1, 0.1);
+  expect(state()[0], "the mouse over the chat brings it back").toBe(true);
+  addon.eval("ChatFrame1.__mouseOver = false FCF_StartAlertFlash(ChatFrame1)");
+  addon.advance(4.5, 0.1);
+  expect(state()[0], "a tab alerting keeps it, mouse or not").toBe(true);
+  addon.eval("FCF_StopAlertFlash(ChatFrame1) FCF_StartAlertFlash(nil)");
+  addon.advance(4.5, 0.1);
+  expect(state()[0], "the alert over, it goes after the idle time again").toBe(false);
+  addon.eval("local r = ns.GetModule('Chat').Rows()[3] r[4](false)");
+  expect(state(), "off again: the bar is back at once, the job gone, the tabs at 1").toEqual([true, false, [1, 1, 1, 1, 1, 1]]);
+  expect(addon.eval("return { VanguardDB.profiles.Default.Chat.barHover, #ns.errors }"), "saved, no errors").toEqual([false, 0]);
+});
 it("chat dock: the docked tabs sit centred in the main window's bar and end before Find and Copy, after the game anchors the dock; a floating tab sits on its own window's bar", () => {
   const addon = loggedIn(UI_ENV + CHAT_DOCK_ENV);
   // The dock's anchors: bottom-left on the bar, right end at a button.

@@ -19,6 +19,7 @@ Nothing in this release has been checked in the game; see the batch checklist (i
 - The scroll-to-bottom tile takes a thin accent edge while the game flashes it for new lines.
 - Chat text fades (Never, after 60 s, after 10 s) under Chat sets how long lines stay before they fade.
 - With Chat background off, a soft band fading out to the right sits behind the text instead of nothing.
+- Hide the tab bar until the mouse is over the chat *(off)*: the bar and tabs come only while the mouse is there or a tab flashes.
 
 ### HUD and Edit Mode
 
