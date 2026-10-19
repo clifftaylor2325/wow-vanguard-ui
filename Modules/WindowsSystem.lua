@@ -181,12 +181,32 @@ local SETTING_PARTS = {
   { "Checkbox", GW.SkinCheck }, { "SliderWithSteppers", T.Slider }, { "Control", steppedDropdown }, { "Button", GW.SkinButton },
 }
 
--- One row of the settings page (pooled: the game makes a row's controls once, then reuses the row) in the theme.
-local function settingRow(row)
+-- The parts of one settings control (a row, or one control inside the graphics quality section) in the theme.
+local function settingParts(row)
   for _, spec in ipairs(SETTING_PARTS) do
     local control = part(row, spec[1])
     if control then spec[2](control) end
   end
+end
+
+-- The graphics quality section's two control sets (Base, Raid and Battleground), each a Controls array of rows.
+GW.GRAPHICS_QUALITY_SETS = { "BaseQualityControls", "RaidQualityControls" }
+
+-- The graphics quality section (SettingsAdvancedQualitySectionTemplate, one settings row): its box an inset, its
+-- Base and Raid tabs theme tabs, and every control in both sets (quality steppers, sliders, the raid check box).
+local function graphicsSection(row)
+  GW.InsetPanel(part(row, "NineSlice"))
+  GW.EachKey(row, { "BaseTab", "RaidTab" }, function(tab) if type(tab) == "table" and tab.CreateTexture then skinTab(tab) end end)
+  for _, key in ipairs(GW.GRAPHICS_QUALITY_SETS) do
+    local set = part(row, key)
+    for _, control in ipairs(set and type(set.Controls) == "table" and set.Controls or {}) do settingParts(control) end
+  end
+end
+
+-- One row of the settings page (pooled: the game makes a row's controls once, then reuses the row) in the theme.
+local function settingRow(row)
+  settingParts(row)
+  if part(row, "BaseQualityControls") then graphicsSection(row) end
 end
 
 -- Whether a nav entry's plate is the game's selected one (it shows the active atlas).
