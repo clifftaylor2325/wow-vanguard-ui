@@ -1107,3 +1107,49 @@ it("Edit Mode import dialog: the character-specific check, the field labels, the
   addon.eval(`EditModeLayoutDialog:Show()`);
   expect(addon.eval("return __errors('Windows')"), "a dialog without those parts is fine").toBe("none");
 });
+
+// TEST-ONLY popups shaped like the game's StaticPopupTemplate (a ResizeLayoutFrame, heightPadding 16): a BG frame on the
+// popup's points, a 16-unit spacer kept out of the layout, the text, the button row 8 below it and a close button in the
+// corner kept out too; StaticPopup1 is skinned, its twin is the game's. __layout(f) is ResizeLayoutMixin:Layout
+// (Blizzard_SharedXML/LayoutFrame.lua) ported: size 1x1, then the extents of every shown child and region not marked
+// ignoreInLayout, plus the padding. It returns the height and the distance from the top to the buttons' bottom.
+const LAYOUT_POPUP_ENV = `${TITLE_LUA}
+  function __popup(name)
+    local p = CreateFrame("Frame", name, UIParent) p:SetSize(320, 72) p:SetPoint("TOP", UIParent, "TOP", 0, -135)
+    p.BG = CreateFrame("Frame", nil, p) p.BG:SetAllPoints(p)
+    p.TopSpacer = p:CreateFontString(nil, "ARTWORK") p.TopSpacer:SetSize(1, 16) p.TopSpacer:SetPoint("TOP") p.TopSpacer.ignoreInLayout = true
+    p.Text = p:CreateFontString(name .. "Text", "ARTWORK") p.Text:SetSize(260, 20) p.Text:SetPoint("TOP", p.TopSpacer, "BOTTOM", 0, 0)
+    p.ButtonContainer = CreateFrame("Frame", nil, p) p.ButtonContainer:SetSize(260, 21) p.ButtonContainer:SetPoint("TOP", p.Text, "BOTTOM", 0, -8)
+    p.CloseButton = CreateFrame("Button", name .. "CloseButton", p) p.CloseButton.ignoreInLayout = true p.CloseButton:SetSize(20, 20) p.CloseButton:SetPoint("TOPRIGHT", -3, -3)
+    p:Hide()
+    return p
+  end
+  __popup("StaticPopup1") __popup("TestOnlyPopupTwin")
+  local function extents(box, ...)
+    for i = 1, select("#", ...) do
+      local c = select(i, ...)
+      local x, y, w, h = c:GetRect()
+      if c:IsShown() and not c.ignoreInLayout and x then
+        box.l, box.r = math.min(box.l or x, x), math.max(box.r or x + w, x + w)
+        box.t, box.b = math.max(box.t or y + h, y + h), math.min(box.b or y, y)
+      end
+    end
+  end
+  function __layout(f)
+    f:SetSize(1, 1)
+    local box = {}
+    extents(box, f:GetChildren()) extents(box, f:GetRegions())
+    f:SetSize(box.r - box.l, (box.t - box.b) + 16)
+    return { math.floor(f:GetHeight() + 0.5), math.floor(f:GetTop() - f.ButtonContainer:GetBottom() + 0.5) }
+  end
+`;
+
+it("popups: the panel and shadow stay out of the popup's own layout, so a skinned popup is as tall as the game's", () => {
+  const addon = loggedIn(LAYOUT_POPUP_ENV);
+  addon.eval("StaticPopup1:Show() TestOnlyPopupTwin:Show()");
+  expect(addon.eval("return ns.Theme.Padding(StaticPopup1)"), "the popup has the window panel, out past its edges").toBe(12);
+  const twin = addon.eval("return __layout(TestOnlyPopupTwin)");
+  expect(twin, "the game's popup: its height, and its top to the buttons' bottom").toEqual([81, 65]);
+  expect(addon.eval("return __layout(StaticPopup1)"), "the skinned popup lays out the same").toEqual(twin);
+  expect(addon.eval("return { StaticPopup1.BG.ignoreInLayout == nil, StaticPopup1.Text.ignoreInLayout == nil }"), "the game's own parts are left in it").toEqual([true, true]);
+});
