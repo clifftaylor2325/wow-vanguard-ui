@@ -1269,7 +1269,7 @@ end
 -- The crafting page's controls: the skill bar, the quantity box, the push buttons, the link dropdown (a picture),
 -- the eleven gear slots and the divider between them and the rest.
 local function skinCraftingControls(page)
-  GW.SkinBar(page.RankBar)
+  GW.SkinRankBar(page.RankBar)
   GW.SkinEditBox(page.CreateMultipleInputBox)
   GW.SkinSearch(page.MinimizedSearchBox)
   GW.EachKey(page, GW.PROF_BUTTONS, GW.SkinButton)
