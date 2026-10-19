@@ -82,9 +82,10 @@ local function addDetailEmpty(d)
   d.empty:SetText("No spell detail yet")
 end
 
--- Built the first time a line is clicked: a panel left of the meter, its rows the meter's own look.
+-- Built the first time a line is clicked: a panel left of the meter, its rows the meter's own look; Escape closes it.
 local function buildDetail()
   local d = T.HudPanel(CreateFrame("Frame", "Vanguard_MeterDetail", UIParent))
+  ns.CloseOnEscape(d)
   d:SetSize(MT.WIDTH, MT.HEAD + MT.DETAIL_ROWS * (MT.ROW + MT.GAP) + MT.GAP)
   d:SetPoint("BOTTOMRIGHT", MT.frame, "BOTTOMLEFT", -4, 0)
   addDetailTitle(d)

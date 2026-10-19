@@ -68,6 +68,13 @@ it("a window title centred, a card heading left or centred, and the parts that a
   expect(cardCentred, "a centred card heading hangs T.SPACE.gap down").toEqual([-8, 0]);
 });
 
+it("ns.CloseOnEscape lists a named frame once, however often it is asked", () => {
+  const addon = loggedIn(PANEL_LUA);
+  expect(addon.eval(`local f = __panel("TestOnlyTwice")
+    ns.CloseOnEscape(f) ns.CloseOnEscape(f)
+    local n = 0 for _, name in ipairs(UISpecialFrames) do if name == "TestOnlyTwice" then n = n + 1 end end return n`)).toBe(1);
+});
+
 it("Escape needs a named frame, and a client without UISpecialFrames is fine", () => {
   const addon = loggedIn(PANEL_LUA);
   const unnamed = addon.eval(`local ok, err = pcall(ns.WindowTitle, CreateFrame("Frame", nil, UIParent), "Nameless", { escape = true }) return { ok, err }`);

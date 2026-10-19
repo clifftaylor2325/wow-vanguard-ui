@@ -155,6 +155,12 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Expect: the slider does not follow the mouse or change its value after the window closes; the key button shows its normal caption again and the movement key moves you instead of binding; during the fight the question shows but your movement and action bar keys still work, and after the fight, with a question up, Enter presses its confirm button again. `/vg errors` is empty. [Needs in-game check: whether the client delivers the mouse-up to a slider hidden mid-drag, and that a question opened in combat passes keys on.]
 - If it fails, paste: which control, what it did, and `/vg errors`.
 
+### 2.1d Escape closes Vanguard's panels
+
+- Do: with the meter on, click a meter line so its spell panel opens, then press Escape. Type `/vg prep`, press Escape. Open `/vg`, press Escape. Open the quest log (L) and the group board, press Escape once. Start a fight, click a meter line, press Escape, then press Escape again and use a movement key and an action bar key; end the fight. Finally open a mailbox and the Find mail panel, press Escape.
+- Expect: each press closes the panel that is open (the spell panel, the Instance prep card, the options window; one press closes the quest log and the group board together, like the game's windows). In the fight the first Escape closes the spell panel, the second does what Escape does with nothing open (the game's own), and movement and the action bar keep working. The bars, unit frames, meter, trackers and strips stay up. The mailbox and its Find mail panel close together. `/vg errors` is empty. [Needs in-game check: all of it.]
+- If it fails, paste: which panel stayed open (or what key stopped working) and `/vg errors`.
+
 ### 2.2 The wizard, start to finish
 
 - Do: drag a frame with `/vg unlock`, then open `/vg` → General → **Run setup**. Click Next three times, then Done.
