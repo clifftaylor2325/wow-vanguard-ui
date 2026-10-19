@@ -829,6 +829,13 @@ it("minimap drawer: addon buttons gathered beside the map", () => {
   const off = loggedIn(UI_ENV + DRAWER_ENV, { savedVariables: "VanguardDB.profiles = { Default = { MinimapButtons = { drawer = false } } }" });
   expect(off.eval("return { LibDBIcon10_TestOnlyOne:GetParent():GetName(), Vanguard_MinimapDrawer == nil }"), "switched off, they stay on the map").toEqual(["Minimap", true]);
 });
+it("minimap drawer: its Modules row says it needs the Minimap module, which it gathers nothing without", () => {
+  const addon = loggedIn(UI_ENV + DRAWER_ENV, { savedVariables: "VanguardDB.profiles = { Default = { modules = { Minimap = false } } }" });
+  expect(addon.eval("return Vanguard_MinimapDrawer == nil and LibDBIcon10_TestOnlyOne:GetParent():GetName()"), "Minimap off: no drawer, the button stays on the map").toBe("Minimap");
+  const row = addon.eval(`for _, page in ipairs(ns.Options.PAGES) do if page.key == "modules" then
+    for _, r in ipairs(page.rows()) do if r[1] == "module" and r[2] == "Minimap drawer" then return r[6] end end end end`);
+  expect(row, "the row names what it needs, as the other dependent modules do").toMatch(/ Needs Minimap\.$/);
+});
 // TEST-ONLY prompts: every answer is recorded.
 const PROMPT_ENV = `
   __answers = {}
