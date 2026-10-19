@@ -686,6 +686,12 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Expect: the junk is refused in chat ("Can't import: ...") and your bindings stay; the other character's string replaces them in one go, with no stall; the exported string brings your own back. On the tile, the number key shows "<key> -> ..." and does not trigger the action bar button; Escape closes the options window. [Needs in-game check: that the number key is kept from the game while the pointer is on the tile, and that Escape still closes the window.]
 - If it fails, paste: the chat lines, what the key did, and `/vg errors`.
 
+### 10.1c A fight closes the spell picker
+
+- Do: `/vg` > Click casting, click a grid cell to open the spell picker, leave it open and start a fight (attack a training dummy). Press a movement key and an action bar key.
+- Expect: the picker closes as the fight starts, and you move and cast as usual without pressing Escape. [Needs in game: that no key is swallowed while the options window stays open in the fight.]
+- If it fails, paste: whether the picker stayed open, what the keys did, and `/vg errors`.
+
 ### 10.2 Use it
 
 - Do: out of combat, hover a party or raid tile (or your own frame) and press the key or click.

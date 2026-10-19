@@ -140,6 +140,16 @@ it("bindings carry spell ids and ranks, move, copy, export and import", () => {
   expect(addon.eval(`local ok, err = ${CC}.Add("BUTTON4", "spell", "") return err`)).toBe("pick a spell");
 });
 
+it("a fight closes the spell picker, so it can't hold the keyboard through combat", () => {
+  const addon = priest();
+  addon.eval('ns.Options.Show("clickcast")');
+  addon.click(cell(addon, "ctrl-BUTTON2"));
+  expect(addon.frame("Vanguard_SpellPicker").visible, "open before the fight").toBe(true);
+  addon.world.combat(true);
+  expect(addon.frame("Vanguard_SpellPicker").visible, "closed as the fight starts").toBe(false);
+  expect(addon.eval("return Vanguard_SpellPicker.catcher:IsShown()"), "and its click catcher").toBe(false);
+});
+
 it("the grid picks spells from the spellbook, with ranks, drops and clears", () => {
   const addon = priest();
   addon.eval('ns.Options.Show("clickcast")');

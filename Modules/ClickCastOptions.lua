@@ -302,6 +302,11 @@ local function pickerDismissals()
   picker:SetScript("OnHide", function(self) self.catcher:Hide() state.pickKey = nil end)
 end
 
+-- A fight closes the picker: it can't pass keys on in combat, so open it would swallow every key until Escape.
+local function closeOnCombat()
+  ns.On("PLAYER_REGEN_DISABLED", function() if picker:IsShown() then closePicker() end end)
+end
+
 -- The picker's frame settings: above every window, kept on screen, takes the mouse.
 local function pickerSettings()
   picker:SetFrameStrata("FULLSCREEN_DIALOG")
@@ -316,6 +321,7 @@ local function pickerFrame()
   picker:SetSize(PICKER_W, PICKER_TOP + PICKER_ROWS * ROW_H + T.SPACE.section)
   pickerSettings()
   pickerDismissals()
+  closeOnCombat()
   picker.open, picker.offset, picker.rows, picker.Refresh = {}, 0, {}, refreshPicker
   pickerParts()
   for i = 1, PICKER_ROWS do picker.rows[i] = pickerRow(i) wireRow(picker.rows[i]) end
