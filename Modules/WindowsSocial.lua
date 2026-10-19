@@ -1204,14 +1204,35 @@ local sideSkins = {
   BattleNetUnavailableNoticeFrame = dialogWith(dressNotice), BattleNetBroadcastFrame = GW.SkinSocialDialog, RaidInfoFrame = dialogWith(dressSocialRaidInfo),
 }
 
--- A side window: skinned now, and again on each of its own shows (it opens while the window is
--- already open, and the game lays it out then); the hook goes on once.
-local function watchSide(frame, skin)
+-- How far a side window moves out (units): by what GW.ClearPadding moved the side tabs out (to the window's padded
+-- edge, while the tabs group dresses them) and by the side window's own panel padding, so the game's gap between the
+-- tab column and the side window (SocialUIFrameMixin:GetTabColumnWidth, 7 past the tab) holds.
+local function sideShift(window, side)
+  local tabs = GW.settings and GW.settings.tabs and T.Padding(window) - T.Pixel(window) or 0
+  return math.max(tabs, 0) + T.Padding(side)
+end
+
+-- Moves a side window out by sideShift from the one anchor the game gave it (TOPLEFT on the window's TOPRIGHT, set
+-- once at load), its column offset kept; one with other anchors, or a hidden offset, stays where it is.
+local function pushSide(side, window)
+  if side:GetNumPoints() ~= 1 then return end
+  local point, rel, relPoint, x, y = side:GetPoint(1)
+  x, y = ns.PlainNumber(x), ns.PlainNumber(y)
+  if not (x and y) then return end
+  side:ClearAllPoints()
+  side:SetPoint(point, rel, relPoint, x + sideShift(window, side), y)
+end
+
+-- A side window of `window`: skinned now, and again on each of its own shows (it opens while the window is
+-- already open, and the game lays it out then); the hook goes on, and it moves out past the tabs, once (out of
+-- combat: the social window is a UI panel).
+local function watchSide(window, frame, skin)
   if type(frame) ~= "table" or not frame.HookScript then return end
   skin(frame)
   if vgSocialSide[frame] then return end
   vgSocialSide[frame] = true
   frame:HookScript("OnShow", function(f) ns.Try("window SocialUIFrame side", skin, f) end)
+  ns.OutOfCombat(function() pushSide(frame, window) end, frame)
 end
 
 -- The side tabs the window takes from its pool (anchored again on every RefreshTabs): each in the theme
@@ -1234,8 +1255,8 @@ function GW.SkinSocial(frame)
   for _, key in ipairs(GW.SOCIAL_PANES) do dressSocialPane(frame[key]) end
   dressSocialRaid(frame.RaidFrame)
   dressRewardClaiming(GW.Part(frame, "RecruitAFriendFrame.RewardClaiming"))
-  for _, key in ipairs(GW.SOCIAL_SIDE) do watchSide(frame[key], sideSkins[key]) end
-  for _, key in ipairs(GW.SOCIAL_SIDE_FRAMED) do watchSide(frame[key], skinIgnoreList) end
+  for _, key in ipairs(GW.SOCIAL_SIDE) do watchSide(frame, frame[key], sideSkins[key]) end
+  for _, key in ipairs(GW.SOCIAL_SIDE_FRAMED) do watchSide(frame, frame[key], skinIgnoreList) end
   dressSocialTabs(frame)
   after(frame, "RefreshTabs", dressSocialTabs)
 end
