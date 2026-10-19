@@ -495,11 +495,11 @@ const castSpot = (addon) => addon.eval(`local b, top = Vanguard_CastBar_player, 
 it("your cast bar sits above the action bars and moves up when they grow, so they never hide it", () => {
   const addon = loggedIn();
   const start = castSpot(addon);
-  expect([Math.round(start.bottom), start.strata], "over the default three bars: its old spot, drawn over the bars").toEqual([146, "HIGH"]);
+  expect([Math.round(start.bottom), start.strata], "over the default three bars (no gap between them): 4 over bar 1, drawn over the bars").toEqual([142, "HIGH"]);
   expect(Math.round(start.bottom - start.top), "about 4 above the top bar (the bars snap to whole pixels)").toBe(4);
   addon.eval('local AB = ns.GetModule("ActionBars") AB.settings.bars[1].perRow = 6 AB.Layout(1)');
   const grown = castSpot(addon);
-  expect([Math.round(grown.bottom - grown.top), Math.round(grown.bottom)], "a second row on bar 1: it moves up with the stack").toEqual([4, 186]);
+  expect([Math.round(grown.bottom - grown.top), Math.round(grown.bottom)], "a second row on bar 1: it moves up with the stack").toEqual([4, 182]);
   addon.eval('ns.Settings("positions").cast_player = { point = "BOTTOM", relPoint = "BOTTOM", x = 0, y = 400 } local AB = ns.GetModule("ActionBars") AB.settings.bars[1].perRow = 12 AB.Layout(1)');
   expect(Math.round(castSpot(addon).bottom), "a spot you dragged it to wins").toBe(400);
   const off = loggedIn("", { savedVariables: "VanguardDB.profiles = { Default = { modules = { ActionBars = false } } }" });

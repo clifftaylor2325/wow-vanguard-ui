@@ -12,7 +12,7 @@ it("the setup wizard sits above the unlock handles on the last step, so their la
   for (let i = 0; i < 3; i++) setupClick(addon, "next");
   expect(setupState(addon), "step 4 unlocks the frames").toEqual({ step: 4, done: false, unlocked: true });
   expect(addon.eval("return Vanguard_Setup.__strata"), "the wizard is on the full-screen dialog strata").toBe("FULLSCREEN_DIALOG");
-  expect(addon.frames('w.__strata == "DIALOG" and w:IsVisible()').length, "the unlock handles are up, on the dialog strata under the wizard").toBeGreaterThan(0);
+  expect(addon.frames('w.__strata == "HIGH" and w.mover ~= nil and w:IsVisible()').length, "the unlock handles are up, on the HIGH strata under the wizard").toBeGreaterThan(0);
 });
 it("the setup wizard's title and step caption are centred across the window", () => {
   const addon = loggedIn("UISpecialFrames = {}", { firstRun: true });

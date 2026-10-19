@@ -14,6 +14,9 @@ it("unlock mode", () => {
   `);
   addon.slash("unlock");
   expect(gridLines(addon) === 94, "unlock shows a 32 px grid (61 + 33 lines on 1920x1080)").toBeTruthy();
+  addon.eval('for _, w in ipairs(__wfgStub.frames) do if w.mover and w.mover.key == "a" then __h = w end end');
+  expect(addon.eval("return { __h.__strata, __h:GetFrameLevel() - __a:GetFrameLevel() }"),
+    "a handle sits on the HIGH strata, over its frame and under Edit Mode's DIALOG window").toEqual(["HIGH", 10]);
   // Drops handle `key` with its bottom-left at (left, bottom).
   const drop = (key, left, bottom) =>
     addon.eval(`local h = ns.MoverHandleForTest("${key}"); h.__left, h.__bottom = ${left}, ${bottom}; h:GetScript("OnDragStop")(h)`);

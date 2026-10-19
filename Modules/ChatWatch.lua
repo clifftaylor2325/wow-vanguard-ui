@@ -192,7 +192,7 @@ local function buildToast()
   toastPrice(f)
   f:Hide()
   CW.toast = f
-  ns.Mover(f, "chatwatch", "Chat alert", { "TOP", "TOP", 0, -160 })
+  ns.Mover(f, "chatwatch", "Chat alert", { "TOP", "TOP", 0, -216 })
 end
 
 -- Another module's alert (Auction helper's price alerts) with the alert sound, on the same toast,

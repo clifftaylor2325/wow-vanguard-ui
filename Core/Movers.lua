@@ -443,11 +443,14 @@ local function wire(h)
   h:SetScript("OnKeyDown", onKeyDown)
 end
 
--- Builds the handle for a mover: accent-bordered panel with its label.
+-- Builds the handle for a mover: accent-bordered panel with its label, on the HIGH strata a few levels over
+-- its frame, so it sits over that frame and the game's own Edit Mode selections (MEDIUM) but under Edit
+-- Mode's window and dialogs (DIALOG), which stay on top while they are open.
 local function createHandle(m)
   local h = T.Panel(CreateFrame("Frame", nil, UIParent), { accent = true })
   h.mover = m
-  h:SetFrameStrata("DIALOG")
+  h:SetFrameStrata("HIGH")
+  h:SetFrameLevel((m.frame:GetFrameLevel() or 0) + 10)
   wire(h)
   h.label = h:CreateFontString(nil, "OVERLAY")
   h.label:SetPoint("CENTER")
@@ -462,12 +465,13 @@ function ns.SetMoverSuffix(text)
   for _, m in pairs(movers) do ns.ShowCoords(m) end
 end
 
--- The handle for a mover, created on first use; sized and placed over its frame.
+-- The handle for a mover, created on first use; sized and placed over its frame (at least 40 x 14, so a thin bar
+-- can still be grabbed without its handle spilling onto the frame above it).
 local function handleFor(m)
   m.handle = m.handle or createHandle(m)
   local f = m.frame
   m.handle:SetScale(f:GetScale() or 1)
-  m.handle:SetSize(math.max(f:GetWidth() or 0, 40), math.max(f:GetHeight() or 0, 20))
+  m.handle:SetSize(math.max(f:GetWidth() or 0, 40), math.max(f:GetHeight() or 0, 14))
   anchor(m.handle, m)
   return m.handle
 end

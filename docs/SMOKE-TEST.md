@@ -209,13 +209,13 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 ### 3.4 Edit Mode
 
 - Do: make sure the frames are locked (`/vg lock`), press Escape, click Edit Mode, look, close Edit Mode. (If `/vg unlock` had the handles up already, closing Edit Mode leaves them up; that is intended.)
-- Expect: Vanguard's labelled handles appear too, with a note under the Edit Mode window reading `The labeled handles are Vanguard's frames: drag them here too (right-click one for more).` On closing, the handles hide and the Blizzard frames Vanguard pins (minimap, strips, tracker) return to their Vanguard spots.
+- Expect: Vanguard's labelled handles appear too, with a note under the Edit Mode window reading `The labeled handles are Vanguard's frames: drag them here too (right-click one for more).` Edit Mode's window and its settings dialog stay on top of every handle: drag the window over a handle and it covers the handle, never the other way round. On closing, the handles hide and the Blizzard frames Vanguard pins (minimap, strips, tracker) return to their Vanguard spots.
 - If it fails, paste: a screenshot while Edit Mode is open and `/vg errors`.
 
 ### 3.5 Reset
 
 - Do: type `/vg reset all`.
-- Expect: `Reset N frame(s).` with N above zero, and the frames back at their default spots.
+- Expect: `Reset N frame(s).` with N above zero, and the frames back at their default spots. Then `/vg unlock` and look: no two handles overlap at the defaults. Action bars 1, 2 and 3 touch with no gap between the rows; the quest arrow, flight timer, chat alert and the big boss timers stack down the top centre; the talking head sits at the top left under the raid tools and main tanks; group threat under the boss frames; the boat timer right of your target's cast bar; at the bottom right the fight history, damage meter and tooltip stack clear of each other under the quest tracker; loss of control under the Instance prep card above your character.
 - If it fails, paste: the chat line.
 
 ### 3.6 Anchor the cast bar under the player frame

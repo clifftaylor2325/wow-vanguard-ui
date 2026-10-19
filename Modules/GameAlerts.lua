@@ -25,10 +25,12 @@ local T = ns.Theme
 
 local GA = ns.Module("GameAlerts", { defaults = { lossOfControl = true, talkingHead = "move", hardcore = true, rares = false, vignette = false } })
 
--- Each alert's mover: key, label, default point, and the spot's size.
+-- Each alert's mover: key, label, default point, and the spot's size. Loss of control sits a little above your
+-- character, under the Instance prep card; the talking head at the top left under the raid tools and main tanks,
+-- clear of the quest arrow, chat alert and boss timers in the top centre.
 GA.SPOTS = {
-  LossOfControlFrame = { "lossofcontrol", "Loss of control", { "CENTER", "CENTER", 0, 140 }, 256, 58 },
-  TalkingHeadFrame = { "talkinghead", "Talking head", { "TOP", "TOP", 0, -90 }, 570, 155 },
+  LossOfControlFrame = { "lossofcontrol", "Loss of control", { "CENTER", "CENTER", 0, 96 }, 256, 58 },
+  TalkingHeadFrame = { "talkinghead", "Talking head", { "TOPLEFT", "TOPLEFT", 186, -126 }, 570, 155 },
 }
 -- Loss of control's art that's hidden (the black band and its red lines).
 GA.LOC_ART = { "blackBg", "RedLineTop", "RedLineBottom" }

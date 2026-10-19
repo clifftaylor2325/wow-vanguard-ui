@@ -29,9 +29,9 @@ it("game alerts: loss of control and the talking head, styled and placed (or hid
   const loc = addon.eval(`local f = LossOfControlFrame
     return { f.blackBg:IsShown(), f.Icon.__texCoord ~= nil, f.AbilityName.__font ~= nil, f.TimeLeft.NumberText.__font ~= nil, f.__points.CENTER.rel == Vanguard_LossOfControlFrameSpot }`);
   expect(loc, "loss of control: its black band hidden, icon cropped, theme text, centered on its spot").toEqual([false, true, true, true, true]);
-  expect(addon.eval("return { ns.MoverPoint('lossofcontrol') }"), "a little above your character").toEqual(["CENTER", "CENTER", 0, 140]);
+  expect(addon.eval("return { ns.MoverPoint('lossofcontrol') }"), "a little above your character, under the Instance prep card").toEqual(["CENTER", "CENTER", 0, 96]);
   const head = addon.eval("local f = TalkingHeadFrame return { f.BackgroundFrame.__alpha, f.MainFrame.Name.__font ~= nil, f.__points.CENTER.rel == Vanguard_TalkingHeadFrameSpot }");
-  expect([head, addon.eval("return (ns.MoverPoint('talkinghead'))")], "the talking head: parchment faded, theme text, at the top center").toEqual([[0, true, true], "TOP"]);
+  expect([head, addon.eval("return (ns.MoverPoint('talkinghead'))")], "the talking head: parchment faded, theme text, at the top left").toEqual([[0, true, true], "TOPLEFT"]);
   const hide = loggedIn(ALERTS_ENV, { savedVariables: "VanguardDB.profiles = { Default = { GameAlerts = { talkingHead = 'hide', lossOfControl = false } } }" });
   hide.eval("TalkingHeadFrame:Show()");
   expect(hide.eval("return { TalkingHeadFrame:IsShown(), Vanguard_TalkingHeadFrameSpot == nil, LossOfControlFrame.blackBg.__alpha == nil }"), "hidden, if you'd rather; loss of control off stays the game's").toEqual([false, true, true]);

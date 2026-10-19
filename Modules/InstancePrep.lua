@@ -294,7 +294,7 @@ local function buildCard()
   buyButton(f)
   f:Hide()
   PR.card = f
-  ns.Mover(f, "prepcard", "Instance prep", { "CENTER", "CENTER", 0, 180 })
+  ns.Mover(f, "prepcard", "Instance prep", { "CENTER", "CENTER", 0, 164 })
 end
 
 -- Showing ---------------------------------------------------------------------------------------

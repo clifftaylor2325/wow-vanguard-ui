@@ -377,7 +377,7 @@ function build()
   local f = T.HudPanel(CreateFrame("Frame", "Vanguard_Meter", UIParent))
   MT.frame = f
   f:SetSize(MT.WIDTH, MT.HEAD)
-  ns.Mover(f, "meter", "Vanguard meter", { "BOTTOMRIGHT", "BOTTOMRIGHT", -372, 20 })
+  ns.Mover(f, "meter", "Vanguard meter", { "BOTTOMRIGHT", "BOTTOMRIGHT", -372, 14 })
   addChrome(f)
   f.rows = {}
   for i = 1, MT.MAXROWS do f.rows[i] = clickable(addRow(f, i)) end
