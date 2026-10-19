@@ -655,10 +655,19 @@ function GW.SkinReport(frame)
   GW.HookAfter(frame, "AnchorMinorCategory", minorButtons)
 end
 
--- The help window: the window skin and the ring round its browser (a well faded for an inset; the page is content).
+-- Lifts the help browser's bottom edge off the window's, so the page has the same breathing room below as beside it.
+local function padHelpBrowser(frame)
+  local browser = part(frame, "Browser")
+  if type(browser) ~= "table" or not browser.SetPoint then return end
+  browser:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -T.SPACE.tight, T.SPACE.pad)
+end
+
+-- The help window: the window skin and the ring round its browser (a well faded for an inset; the page is content),
+-- and the browser's bottom edge lifted (out of combat) so the page does not run to the window's edge.
 function GW.SkinHelp(frame)
   GW.Skin(frame)
   GW.InsetPanel(part(frame, "Browser.BrowserInset"))
+  ns.OutOfCombat(function() padHelpBrowser(frame) end, "WindowsSystem.HelpBrowserPad")
 end
 
 -- The help ticket status: the frame's art faded except the ticket icon, a panel, and its button's backdrop faded.

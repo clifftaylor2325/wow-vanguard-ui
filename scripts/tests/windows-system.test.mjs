@@ -597,6 +597,8 @@ it("help window, report window and ticket status in the theme, the ticket icon k
     "ticket status: art faded, the ticket icon kept, a panel, its button's backdrop faded, its title light").toEqual([0, true, true, 0, true]);
   expect(addon.eval(`local well = HelpFrame.Browser.BrowserInset
     return { __panelled(well), well.NineSlice.__alpha, __faded(well) }`), "help: the ring round the browser a faded well under an inset panel").toEqual([true, 0, 0]);
+  expect(addon.eval(`local _, rel, _, x, y = HelpFrame.Browser:GetPoint(HelpFrame.Browser:GetNumPoints())
+    return { rel == HelpFrame, y > 4 }`), "help: the browser's bottom edge lifted off the window's").toEqual([true, true]);
   expect(addon.eval(`local r = ReportFrame
     return { __panelled(r.ReportingMajorCategoryDropdown), r.ReportingMajorCategoryDropdown.Arrow.__alpha, __looks(r.ReportingMajorCategoryDropdown.Label, "label", "text"), __looks(r.MinorReportDescription, "label", "text"),
       __looks(r.ScreenshotReportingFrame.ScreenshotDescription, "label", "text"), __looks(r.ScreenshotReportingFrame.ScreenshotEmptyText, "label", "text"),
