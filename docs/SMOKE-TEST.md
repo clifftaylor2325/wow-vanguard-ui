@@ -1597,6 +1597,12 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 - Expect: chat says "Cooldown glow is off: turn the module on in the options first." and `/vg errors` stays empty.
 - If it fails, paste: `/vg errors`.
 
+### 28.1b The glow in a dungeon fight
+
+- Do: with `/vg cdmglow on` and a heal-over-time buff tracked in the manager's buff row, enter a dungeon, pull a pack and cast the buff on yourself; let it run under 30 percent left while still fighting.
+- Expect: the glow ring lights under the share in the fight too (where the game hides the aura's times from addons, the game's own curve answers), and goes out when the buff is renewed or ends. `/vg errors` stays empty. [Needs in game: that `/run local d = C_UnitAuras.GetAuraDuration("player", <id>) print(type(d))` prints `userdata`, and that the ring lights in instanced combat.]
+- If it fails, paste: `/vg errors`.
+
 ### 28.2 Key text on the manager's icons
 
 - Do: with the game's Cooldown Manager on and Vanguard's action bars on, put a spell that is in the manager's essential row on a Vanguard bar button with a key (say Shift-3). Type `/vg cdmkeys on`. Then move the spell to another button, change its key, and take it off the bars. Repeat once with the spell inside a macro.

@@ -46,16 +46,22 @@ function CG.Aura(item)
   return id, type(unit) == "string" and unit or "player"
 end
 
--- The glow's strength from the aura's duration object, handed to the game's curve; nil when the client can't do that.
+-- A number or a hidden one: what the glow can take. Tests the type only, never the value.
+local function isStrength(value)
+  return ns.IsSecret(value) or type(value) == "number"
+end
+
+-- The glow's strength from the aura's duration object (a userdata in the client), handed to the
+-- game's curve; nil when the client can't do that. The answer may be secret, so it is never tested.
 function CG.FromCurve(id, unit, percent)
   local get = C_UnitAuras and C_UnitAuras.GetAuraDuration
   local curve = type(get) == "function" and CG.Curve(percent)
   if not curve then return nil end
   local ok, duration = pcall(get, unit, id)
-  if not (ok and type(duration) == "table" and duration.EvaluateRemainingPercent) then return nil end
-  local done, value = pcall(duration.EvaluateRemainingPercent, duration, curve)
-  local usable = done and (ns.IsSecret(value) or type(value) == "number")
-  return usable and value or nil
+  if not ok or duration == nil then return nil end
+  local done, value = pcall(function() return duration:EvaluateRemainingPercent(curve) end)
+  if done and isStrength(value) then return value end
+  return nil
 end
 
 -- The glow's strength from plain numbers (1 or 0); nil when the aura's times are hidden or it has none.
@@ -71,19 +77,22 @@ end
 function CG.Strength(item, percent)
   local id, unit = CG.Aura(item)
   if id == nil then return nil end
-  return CG.FromCurve(id, unit, percent) or CG.FromNumbers(id, unit, percent)
+  local fromCurve = CG.FromCurve(id, unit, percent)
+  if isStrength(fromCurve) then return fromCurve end
+  return CG.FromNumbers(id, unit, percent)
 end
 
 -- Showing -----------------------------------------------------------------------------------
 
 -- Lights an item's glow to a strength, or turns it off (nil, 0 or a hidden item).
+-- The strength may be secret, so only its type is tested.
 function CG.Light(item, strength)
-  local glow = vgGlow[item]
-  if not glow and strength == nil then return end
+  local glow, given = vgGlow[item], type(strength) ~= "nil"
+  if not glow and not given then return end
   glow = glow or T.Glow(item, 6)
   vgGlow[item] = glow
-  T.ShowGlow(glow, strength ~= nil and ns.PlainNumber(strength) ~= 0 and item:IsShown())
-  for _, piece in ipairs(glow) do if strength ~= nil then piece:SetAlpha(strength) end end
+  T.ShowGlow(glow, given and ns.PlainNumber(strength) ~= 0 and item:IsShown())
+  for _, piece in ipairs(glow) do if given then piece:SetAlpha(strength) end end
 end
 
 -- Every item the Cooldown Manager's rows hold right now.
