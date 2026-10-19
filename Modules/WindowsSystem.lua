@@ -165,10 +165,20 @@ GW.SETTINGS_SPEC = {
 }
 local skinSettings = skinner(GW.SETTINGS_SPEC)
 
+-- A settings dropdown row's control (a dropdown with a stepper button each side, the loot key's): the dropdown a
+-- theme button with a theme chevron, the steppers flat theme arrows.
+local function steppedDropdown(control)
+  local dropdown = part(control, "Dropdown")
+  if dropdown then T.Button(dropdown) GW.Chevron(dropdown) end
+  GW.EachKey(control, { "DecrementButton", "IncrementButton" }, function(b)
+    if type(b) == "table" and b.CreateTexture then T.ArrowButton(b, b == control.DecrementButton and "left" or "right", { flat = true }) end
+  end)
+end
+
 -- What a settings row can hold, by key path, and how each part is dressed (a row holds one or two): its check
 -- box, its slider with steppers, its dropdown, its push button (an expandable section's bar is one too).
 local SETTING_PARTS = {
-  { "Checkbox", GW.SkinCheck }, { "SliderWithSteppers", T.Slider }, { "Control.Dropdown", GW.SkinDropdown }, { "Button", GW.SkinButton },
+  { "Checkbox", GW.SkinCheck }, { "SliderWithSteppers", T.Slider }, { "Control", steppedDropdown }, { "Button", GW.SkinButton },
 }
 
 -- One row of the settings page (pooled: the game makes a row's controls once, then reuses the row) in the theme.
@@ -645,10 +655,19 @@ function GW.SkinReport(frame)
   GW.HookAfter(frame, "AnchorMinorCategory", minorButtons)
 end
 
--- The help window: the window skin and the ring round its browser (a well faded for an inset; the page is content).
+-- Lifts the help browser's bottom edge off the window's, so the page has the same breathing room below as beside it.
+local function padHelpBrowser(frame)
+  local browser = part(frame, "Browser")
+  if type(browser) ~= "table" or not browser.SetPoint then return end
+  browser:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -T.SPACE.tight, T.SPACE.pad)
+end
+
+-- The help window: the window skin and the ring round its browser (a well faded for an inset; the page is content),
+-- and the browser's bottom edge lifted (out of combat) so the page does not run to the window's edge.
 function GW.SkinHelp(frame)
   GW.Skin(frame)
   GW.InsetPanel(part(frame, "Browser.BrowserInset"))
+  ns.OutOfCombat(function() padHelpBrowser(frame) end, "WindowsSystem.HelpBrowserPad")
 end
 
 -- The help ticket status: the frame's art faded except the ticket icon, a panel, and its button's backdrop faded.

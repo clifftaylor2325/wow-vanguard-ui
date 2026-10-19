@@ -125,8 +125,8 @@ const openFilled = (sizes, counts, extra = "") => {
 
 // The padding Vanguard keeps inside the bag window.
 const PAD = 12;
-// The room the Filter and Groups buttons take on the search row: two 58 px buttons and a 6 px gap after each.
-const TOOLS = 2 * (58 + 6);
+// The room the Filter and Groups buttons take on the search row: their widths (each fits its label) and a 6 px gap after each.
+const tools = (addon) => addon.eval(`local t = ns.GetModule("Bags").tools return t.filter:GetWidth() + t.groups:GetWidth() + 12`);
 // How far inside the bag window each shown slot, section header, the search
 // box, Sort and the money line lie, at the least: { left, right, top, bottom } in px.
 const insets = (addon) => addon.eval(`local f, BG = ContainerFrameCombinedBags, ns.GetModule("Bags")
@@ -304,7 +304,7 @@ it("the bag's slots, headers, search row and money line sit the padding inside t
   }
   const wide = openFilled(...OWNER_BAG, "__cols = 12");
   expect([insets(wide), slotsRight(wide), wide.eval("return ContainerFrameCombinedBags:GetWidth()")], "a client with 12 columns: 12 slots a row, the window as wide as its grid and the padding").toEqual([inside, PAD, 12 * 37 + 11 * 5 + 2 * PAD]);
-  expect(wide.eval("return BagItemSearchBox:GetWidth()"), "the search box starts the padding in and narrows so Sort fits beside it").toBe(523 - PAD - 52 - 6 - TOOLS - PAD);
+  expect(wide.eval("return BagItemSearchBox:GetWidth()"), "the search box starts the padding in and narrows so Sort fits beside it").toBe(523 - PAD - 52 - 6 - tools(wide) - PAD);
 });
 
 it("a clear gap above each section header, its band reaching down to its slots; sections side by side keep theirs", () => {
@@ -341,7 +341,7 @@ it("with sections off the game's plain grid is as it was, and Sort fits beside t
   const money = addon.eval("local f = ContainerFrameCombinedBags return { f.MoneyFrame:GetLeft() - f:GetLeft(), f:GetWidth(), f:GetHeight() }");
   expect([headers(addon), spot(addon, "b0s1"), money], "the game's grid, money line, width and height").toEqual([[], [343, 75], [8, 430, 186]]);
   const sort = addon.eval(`local f, s = ContainerFrameCombinedBags, ns.GetModule("Bags").sort return { f:GetRight() - s:GetRight(), BagItemSearchBox:GetWidth() }`);
-  expect(sort, "Sort ends 12 px inside the right edge; the search box gives it room").toEqual([PAD, 430 - PAD - 52 - 6 - TOOLS - PAD]);
+  expect(sort, "Sort ends 12 px inside the right edge; the search box gives it room").toEqual([PAD, 430 - PAD - 52 - 6 - tools(addon) - PAD]);
 });
 
 // TEST-ONLY gamepad bag bar, as Blizzard_MainMenuBarBagButtons builds it on Forever (Camelot
@@ -549,4 +549,14 @@ it("the bag's Groups button makes groups, files the held item, sends to the bank
   openTool(addon, "groups");
   addon.click("Vanguard_Menu.items[5]");
   expect(addon.eval("return #ns.Settings('Bags').categories"), "Delete removes one group").toBe(1);
+});
+
+it("the Filter and Groups buttons are as wide as their labels need, so neither is cut off", () => {
+  const addon = openFilled([8, 4, 0, 0, 0], { equipment: 1 });
+  const rows = Object.values(addon.eval(`local out = {} for _, key in ipairs({ "filter", "groups" }) do
+    local b = ns.GetModule("Bags").tools[key]
+    out[#out + 1] = { b.text:GetText(), b.text:GetStringWidth() <= b.text:GetWidth(), b.text:GetWidth() > 0 }
+  end return out`)).map((r) => Object.values(r));
+  expect(rows, "each label in full, with room to spare between its left inset and the arrow").toEqual([["Filter", true, true], ["Groups", true, true]]);
+  expect(addon.eval("return BagItemSearchBox:GetWidth() > 100"), "and the search box keeps a usable width").toBe(true);
 });

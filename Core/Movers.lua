@@ -268,10 +268,13 @@ end
 -- Vanguard's frames move with their own handles, so Edit Mode shows those too.
 ns.EDIT_NOTE = "The labeled handles are Vanguard's frames: drag them here too (right-click one for more)."
 
--- The note under Edit Mode's window, made on first use (it shows and hides with that window).
+-- The note under Edit Mode's window, made on first use (it shows and hides with that window). Edit Mode's window
+-- resizes itself from every child frame, so the note is marked ignoreInLayout: hung below the window, it would
+-- otherwise count as part of the window and stretch it each time the game lays it out.
 local function editNote(edit)
   if ns.editNote then return ns.editNote end
   local note = T.Panel(CreateFrame("Frame", "Vanguard_EditModeNote", edit), { accent = true })
+  note.ignoreInLayout = true
   note:SetSize(320, 36)
   note:SetPoint("TOP", edit, "BOTTOM", 0, -6)
   note.text = T.Text(note:CreateFontString(nil, "OVERLAY"), "small")

@@ -433,8 +433,10 @@ end
 
 -- Marks -----------------------------------------------------------------------------------
 
--- Outlines a choice (and colors its label) in the accent when it is the chosen one.
+-- Marks a choice when it is the chosen one: a row takes the selected look (rail and lighter fill, label
+-- unchanged); a swatch or tile is outlined in the accent (its label too).
 local function mark(b, on)
+  if b.SetSelected then return b:SetSelected(on) end
   T.SetBorder(b, on and { T.Accent() } or nil)
   if b.text then T.Color(b.text, on and "accentText" or "text") end
   if b.check then b.check:SetShown(on) end
@@ -491,9 +493,13 @@ local function text(parent, role, color, value)
   return fs
 end
 
--- A full-width choice button at y (a negative offset down the page); value is what it picks.
+-- A full-width choice row at y (a negative offset down the page); value is what it picks. It rests flat
+-- and lifts under the mouse; the chosen one wears the selected look.
 local function choice(page, label, value, y, onClick)
-  local b = W.Button(page, label, onClick, WIDTH - 2 * PAD)
+  local b = W.Row(page, T.BUTTON_H, { width = WIDTH - 2 * PAD })
+  b.text = text(b, "label", "text", label)
+  b.text:SetPoint("LEFT", T.SPACE.section, 0)
+  b:SetScript("OnClick", ns.Guard(W.ClickLabel(label), onClick))
   b:SetPoint("TOPLEFT", 0, y)
   b.value = value
   return b
