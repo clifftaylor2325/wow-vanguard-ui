@@ -235,7 +235,7 @@
     "scripts/tests/units.test.mjs": [
       "Calm HUD: frames dim out of combat, come back for a fight, a hostile target or the mouse, and stay clickable",
       "Calm HUD: setup's look step and the situations offer it",
-      "Versus deck: one shield panel behind the player and target, the crest at the seam, the target's bars mirrored",
+      "Versus deck: one rounded panel behind the player and target, the crest at the seam, the target's bars mirrored",
       "a ?? (boss or far higher) level reads in the hardest difficulty color, not the easiest",
       "class bars: druid mana while a form shows rage or energy",
       "class bars: totems for shamans, mana in forms for druids",

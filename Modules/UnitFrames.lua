@@ -482,13 +482,14 @@ end
 
 -- Versus deck -------------------------------------------------------------------------------
 
--- The Versus deck (off unless switched on, or picked in setup): one shield panel joining the player
+-- The Versus deck (off unless switched on, or picked in setup): one rounded panel joining the player
 -- and target frames across the middle, the Vanguard crest at its top centre, and the target's bars
 -- filling from the right, so the pair reads as a duel. The panel is a plain frame anchored to the two
 -- secure buttons (it never moves them), on the background strata so it stays under everything between
 -- them (cast bar, swing timer, cooldowns), and the crest with it.
 -- The panel reaches UF.DECK.pad past the two frames with an accent border, and their names and health
--- read in UF.DECK.text, so the pair reads from across the screen.
+-- read in UF.DECK.text, so the pair reads from across the screen. The panel and the two frames round
+-- their corners while it is on (Cliff, 2026-10-19: no cut corners on the deck), their bars with them.
 UF.DECK = { crest = 28, pad = 6, text = "title" }
 
 -- Makes the deck's panel from the player frame to the target frame, reaching UF.DECK.pad past them,
@@ -498,7 +499,7 @@ local function deckPanel(player, target)
   d:SetFrameStrata("BACKGROUND")
   d:SetPoint("TOPLEFT", player, "TOPLEFT", -pad, pad)
   d:SetPoint("BOTTOMRIGHT", target, "BOTTOMRIGHT", pad, -pad)
-  T.HudPanel(d, { shield = true, accent = true })
+  T.HudPanel(d, { round = true, accent = true })
   d.crest = T.Logo(d, UF.DECK.crest)
   d.crest:SetPoint("CENTER", d, "TOP")
   return d
@@ -511,7 +512,7 @@ local function deckNow()
   if on and not UF.deck then UF.deck = deckPanel(player, target) end
   if UF.deck then UF.deck:SetShown(on) end
   UF.ApplySizes()
-  for _, f in ipairs({ player, target }) do UF.DeckText(f, on) end
+  for _, f in ipairs({ player, target }) do UF.DeckText(f, on) T.SetRound(f, on) end
   target.health:SetReverseFill(on)
   target.power:SetReverseFill(on)
 end
