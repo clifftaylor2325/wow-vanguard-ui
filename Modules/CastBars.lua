@@ -35,7 +35,8 @@ local CB = ns.Module("CastBars", {
 
 -- Unit -> size and default point (the Centered layout; Modules/UnitFrames.lua).
 local LAYOUT = {
-  -- Yours: centered just above the action bars, between the player and target frames.
+  -- Yours: centered just above the action bars, between the player and target frames (CB.PlayerPoint
+  -- moves it up with the bars' stack; this is its spot over the default three bars).
   player = { w = 220, h = 18, point = { "BOTTOM", "BOTTOM", 0, 146 } },
   -- The target's sits over its buff row (Modules/FrameAuras.lua), the focus's over the focus frame.
   target = { w = 240, h = 16, point = { "BOTTOM", "BOTTOM", 240, 262 } },
@@ -342,13 +343,31 @@ local function addMark(bar, h)
   bar.mark = mark
 end
 
--- A themed cast bar for a unit, hidden until it casts; movable, and Vanguard may set its width.
+-- How far above the action bars' bottom stack your cast bar sits.
+CB.ABOVE_BARS = 4
+
+-- Your cast bar's default point: CB.ABOVE_BARS over the top of Vanguard's bottom action bar stack, which
+-- grows with more bars or rows, so the bars never cover it; its layout point while those bars are off.
+function CB.PlayerPoint()
+  local p, AB = LAYOUT.player.point, ns.GetModule("ActionBars")
+  if not ns.ModuleEnabled("ActionBars") then return p end
+  return { p[1], p[2], p[3], AB.StackTop(ns.Settings("ActionBars", AB.defaults)) + CB.ABOVE_BARS }
+end
+
+-- Moves your cast bar's default point with the action bars' stack (a position you dragged it to still wins).
+function CB.FitPlayer()
+  ns.SetMoverDefault("cast_player", CB.PlayerPoint())
+end
+
+-- A themed cast bar for a unit, hidden until it casts; movable, and Vanguard may set its width. It
+-- draws over the action bars (high strata), so a bar dragged over it never hides a cast.
 local function createBar(unit)
   local def = LAYOUT[unit]
   local bar = CB.Build(CreateFrame("StatusBar", "Vanguard_CastBar_" .. unit, UIParent), def.w, def.h)
   bar.unit = unit
+  bar:SetFrameStrata("HIGH")
   if unit ~= "player" and ns.Client.Has("cooldownObject") then addMark(bar, def.h) end
-  ns.Mover(bar, "cast_" .. unit, unit:sub(1, 1):upper() .. unit:sub(2) .. " cast bar", def.point)
+  ns.Mover(bar, "cast_" .. unit, unit:sub(1, 1):upper() .. unit:sub(2) .. " cast bar", unit == "player" and CB.PlayerPoint() or def.point)
   ns.MoverSizable("cast_" .. unit, { width = CB.WIDTHS })
   return bar
 end

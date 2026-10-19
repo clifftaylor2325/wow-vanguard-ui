@@ -473,6 +473,14 @@ function AB.StackPoint(n, settings)
   return { "BOTTOM", "BOTTOM", 0, y }
 end
 
+-- Where the bottom stack ends: the top edge of its highest bar (bar 1 while it is on), in units
+-- up from the screen's bottom, or the stack's base with no stacked bar on.
+---@param settings table the ActionBars settings
+---@return number
+function AB.StackTop(settings)
+  return AB.StackPoint(0, settings)[4] - BAR_GAP
+end
+
 -- Re-stacks the bottom bars after a bar's buttons, rows or size changed:
 -- each stacked bar gets its new default point, and moves there unless you
 -- dragged it somewhere (a saved position wins). Only call out of combat.
@@ -480,6 +488,7 @@ function AB.Restack()
   for n in pairs(AB.bars) do
     if BARS[n].stack then ns.SetMoverDefault("bar" .. n, AB.StackPoint(n, AB.settings)) end
   end
+  ns.GetModule("CastBars").FitPlayer()
 end
 
 -- The bar's actionpage changed (bar 1 without snippets): its buttons show that page's slots.
