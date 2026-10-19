@@ -51,7 +51,7 @@ S.CLASSIC = {
   cast_focus = { "TOPLEFT", "TOPLEFT", 520, -76 }, uf_focus = { "TOPLEFT", "TOPLEFT", 520, -94 },
   raid = { "BOTTOMLEFT", "BOTTOMLEFT", 20, 330 }, uf_party1 = { "TOPLEFT", "TOPLEFT", 20, -310 },
   partyextras = { "TOPLEFT", "TOPLEFT", 190, -310 }, uf_boss1 = { "TOPRIGHT", "TOPRIGHT", -290, -200 },
-  raidtools = { "TOP", "TOP", 100, -120 }, maintanks = { "TOP", "TOP", 100, -196 },
+  raidtools = { "TOP", "TOP", 200, -120 }, maintanks = { "TOP", "TOP", 100, -196 },
   rolls = { "TOPLEFT", "TOPLEFT", 20, -8 },
 }
 -- What each centered layout sizes on top of Vanguard's defaults: a mover's scale (it keeps its default

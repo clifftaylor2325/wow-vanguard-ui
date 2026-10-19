@@ -169,12 +169,15 @@ function presetRects(addon, layout, n, sw, sh) {
   if (layout === "classic") delete rects.questdialog;
   return rects;
 }
+// The quest arrow sits at the top centre (Cliff's spot, 2026-10-19); on a screen under 1400 wide the top
+// of a full 40-player raid grid reaches it, so there it may cover the grid (either moves with /vg unlock).
+const arrowMayCover = (p, n, sw) => p === "questarrow / raid" && n === 40 && sw < 1400;
 // Overlaps and parts off an sw x sh screen in a layout preset, for each raid growth and group size (solo, 5, 25, 40).
 function problemsAt(addon, layout, sw, sh, label) {
   const bad = [];
   for (const grow of ["columns", "rows"]) {
     addon.eval(`ns.GetModule("RaidFrames").settings.layout = "${grow}"`);
-    for (const n of [0, 5, 25, 40]) for (const p of layoutProblems(presetRects(addon, layout, n, sw, sh), sw, sh)) bad.push(`${label}, groups as ${grow}, ${n} players: ${p}`);
+    for (const n of [0, 5, 25, 40]) for (const p of layoutProblems(presetRects(addon, layout, n, sw, sh), sw, sh)) if (!arrowMayCover(p, n, sw)) bad.push(`${label}, groups as ${grow}, ${n} players: ${p}`);
   }
   return bad;
 }
