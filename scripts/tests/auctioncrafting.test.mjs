@@ -108,7 +108,7 @@ it("Add reagents keeps the reagents for the crafts typed in stock and makes the 
   addon.world.openProfession(100);
   addon.type("Vanguard_CraftingPanel.crafts", "5");
   addon.click("Vanguard_CraftingPanel.add");
-  expect(addon.eval("local s = ns.Settings('Errands').stockList return { s[2589], s[2320], s[9999] or false }"), "the larger count stays; optional reagents aren't added").toEqual([40, 5, false]);
+  expect(addon.eval("local s = VanguardCharDB.stockList return { s[2589], s[2320], s[9999] or false }"), "the larger count stays; optional reagents aren't added").toEqual([40, 5, false]);
   expect(chatHas(addon, /Keep stocked for 5 x TEST-ONLY Linen Bag: Linen Cloth x40, TEST-ONLY Coarse Thread x5\./), "chat says so").toBe(true);
   expect(addon.eval("local out = {} for i, e in ipairs(VanguardDB.ah.lists.Restock) do out[i] = { e.term, e.want } end return out"), "what's short is on the Restock list").toEqual([[2320, 5], [2589, 40]]);
   addon.type("Vanguard_CraftingPanel.crafts", "lots");
