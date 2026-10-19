@@ -120,7 +120,7 @@ local function build()
   f.rows = {}
   f:Hide()
   GT.panel = f
-  ns.Mover(f, "groupthreat", "Group threat", { "RIGHT", "RIGHT", -20, 120 })
+  ns.Mover(f, "groupthreat", "Group threat", { "TOPLEFT", "TOPLEFT", 20, -186 })
 end
 
 -- Module entry point (Core/Modules.lua): built, and listening, only when switched on.

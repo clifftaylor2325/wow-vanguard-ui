@@ -14,7 +14,7 @@ local BD = ns.Module("BossDocks", { defaults = {} })
 -- The spots: mover key and label, default point, size, DBM's option prefix and BigWigs' bar kind.
 BD.SPOTS = {
   { key = "bossbars", label = "Boss timers", default = { "BOTTOM", "BOTTOM", 360, 300 }, w = 200, h = 120, dbm = "Timer", bigwigs = "normal" },
-  { key = "bossbarssoon", label = "Boss timers, soon", default = { "TOP", "TOP", 0, -260 }, w = 240, h = 80, dbm = "HugeTimer", bigwigs = "emphasized" },
+  { key = "bossbarssoon", label = "Boss timers, soon", default = { "TOP", "TOP", 0, -264 }, w = 240, h = 80, dbm = "HugeTimer", bigwigs = "emphasized" },
 }
 
 -- Whether Deadly Boss Mods' bars (DBM-StatusBarTimers' DBT) are loaded.

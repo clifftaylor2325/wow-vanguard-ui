@@ -189,7 +189,7 @@ it("flight timer: the first flight is timed, the next counts down", () => {
   expect(addon.eval('return ns.GetModule("Errands").flight'), "a flight that never takes off is forgotten").toBe(null);
   addon.eval('TaxiNodeGetType = function() return { __secret = true } end TakeTaxiNode(2)');
   expect(addon.eval('return ns.GetModule("Errands").flight'), "no route when the start is hidden").toBe(null);
-  expect(addon.eval("return { ns.MoverPoint('flighttimer') }"), "the bar is movable, above the cluster").toEqual(["BOTTOM", "BOTTOM", 0, 312]);
+  expect(addon.eval("return { ns.MoverPoint('flighttimer') }"), "the bar is movable, at the top centre under the quest arrow, clear of the cluster").toEqual(["TOP", "TOP", 0, -198]);
   const bare = loggedIn("");
   expect(bare.eval("return Vanguard_FlightTimer == nil and ns.GetModule('Errands').settings ~= nil"), "a client without taxi calls loads cleanly").toBe(true);
 });
@@ -222,7 +222,7 @@ it("boat timer: the first ride is timed, the next from that dock counts down", (
   wait(addon, "__pos = false", 25);
   wait(addon, "__pos = true __sub = ''", 1);
   expect(addon.eval('return VanguardDB.profiles.Default.Errands.boats["TEST-ONLY Dock > Elwynn Forest"]'), "a place with no sub-zone is named by its zone").toBe(25);
-  expect(addon.eval("return { ns.MoverPoint('boattimer') }"), "the bar is movable").toEqual(["BOTTOM", "BOTTOM", 0, 334]);
+  expect(addon.eval("return { ns.MoverPoint('boattimer') }"), "the bar is movable, right of your target's cast bar under the boss timers").toEqual(["BOTTOM", "BOTTOM", 240, 284]);
 });
 it("boat timer: off by default, and quiet where a ride can't be judged", () => {
   const off = loggedIn(BOAT_ENV);

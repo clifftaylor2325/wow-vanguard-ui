@@ -132,7 +132,7 @@ it("group threat: no group, no target, a friendly target or a client without the
 
 it("group threat: the panel is movable", () => {
   const addon = party();
-  expect(addon.eval("return { ns.MoverPoint('groupthreat') }"), "a mover at the right").toEqual(["RIGHT", "RIGHT", -20, 120]);
+  expect(addon.eval("return { ns.MoverPoint('groupthreat') }"), "a mover at the top left, under the boss frames").toEqual(["TOPLEFT", "TOPLEFT", 20, -186]);
 });
 
 it("group threat: T.SPACE.gap in from the panel's edge on every side (a HUD card's padding), and as tall as its padding and rows", () => {

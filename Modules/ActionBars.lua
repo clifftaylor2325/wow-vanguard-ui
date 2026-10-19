@@ -55,8 +55,9 @@ local BARS = {
   { slot = 169, bind = "MULTIACTIONBAR7BUTTON", stack = true },
 }
 
--- The bottom stack starts this far up (over the data bars); the bars sit BAR_GAP apart.
-local STACK_BASE, BAR_GAP = 24, 2
+-- The bottom stack starts this far up (over the data bars); the bars touch (BAR_GAP is 0, kept as the one
+-- place to space the stack again).
+local STACK_BASE, BAR_GAP = 24, 0
 
 -- Bar 1's page for each state: vehicle/possess, override, shapeshift, then
 -- Shift+number pages, then (on page 1 only, as the game's main bar does)

@@ -60,40 +60,40 @@ it("counts show on a client without the deprecated GetActionCount (C_ActionBar.G
 
 it("action bars stack with bar 1 on top", () => {
   const addon = loggedIn(ACTIONS_ENV);
-  expect(JSON.stringify(stackY(addon)) === JSON.stringify([104, 64, 24, false, false, false, false, false]), `bar 3 at the bottom, bar 1 on top (got ${JSON.stringify(stackY(addon))})`).toBeTruthy();
+  expect(JSON.stringify(stackY(addon)) === JSON.stringify([100, 62, 24, false, false, false, false, false]), `bar 3 at the bottom, bar 1 on top, no gap between the rows (got ${JSON.stringify(stackY(addon))})`).toBeTruthy();
   const six = loggedIn(ACTIONS_ENV, { savedVariables: "VanguardDB = { profiles = { Default = { ActionBars = { bars = { [6] = { enabled = true } } } } } }" });
   const y6 = stackY(six);
-  expect(y6[5] === 24 && y6[2] === 64 && y6[0] === 144, `turning on bar 6 puts it underneath; bar 1 stays on top (got ${JSON.stringify(y6)})`).toBeTruthy();
+  expect(y6[5] === 24 && y6[2] === 62 && y6[0] === 138, `turning on bar 6 puts it underneath; bar 1 stays on top (got ${JSON.stringify(y6)})`).toBeTruthy();
 });
 
 it("action bar stack follows button size and rows", () => {
   const big = loggedIn(ACTIONS_ENV, { savedVariables: "VanguardDB = { profiles = { Default = { ActionBars = { size = 44 } } } }" });
-  expect(JSON.stringify(stackY(big).slice(0, 3)) === JSON.stringify([116, 70, 24]), "bigger buttons stack without overlapping").toBeTruthy();
+  expect(JSON.stringify(stackY(big).slice(0, 3)) === JSON.stringify([112, 68, 24]), "bigger buttons stack without overlapping").toBeTruthy();
   const two = loggedIn(ACTIONS_ENV, { savedVariables: "VanguardDB = { profiles = { Default = { ActionBars = { bars = { [3] = { perRow = 6 } } } } } }" });
-  expect(JSON.stringify(stackY(two).slice(0, 3)) === JSON.stringify([144, 104, 24]), "a two-row bar pushes the bars above it up by its height").toBeTruthy();
+  expect(JSON.stringify(stackY(two).slice(0, 3)) === JSON.stringify([140, 102, 24]), "a two-row bar pushes the bars above it up by its height").toBeTruthy();
 });
 
 it("a moved action bar keeps its spot until reset", () => {
   const moved = loggedIn(ACTIONS_ENV, { savedVariables: 'VanguardDB = { profiles = { Default = { positions = { bar1 = { point = "BOTTOM", relPoint = "BOTTOM", x = 0, y = 40 } } } } }' });
   expect(stackY(moved)[0] === 40, "a position you saved wins").toBeTruthy();
   moved.slash("reset all");
-  expect(stackY(moved)[0] === 104, "/vg reset all puts bar 1 back on top").toBeTruthy();
+  expect(stackY(moved)[0] === 100, "/vg reset all puts bar 1 back on top").toBeTruthy();
 });
 
 it("the bottom stack follows per-bar size and rows, live", () => {
   const addon = loggedIn(ACTIONS_ENV, { savedVariables: "VanguardDB = { profiles = { Default = { ActionBars = { bars = { [2] = { size = 48 } } } } } }" });
-  expect(JSON.stringify(stackY(addon).slice(0, 3)) === JSON.stringify([114, 64, 24]), `a bar's own button size sets its row height (got ${JSON.stringify(stackY(addon))})`).toBeTruthy();
+  expect(JSON.stringify(stackY(addon).slice(0, 3)) === JSON.stringify([110, 62, 24]), `a bar's own button size sets its row height (got ${JSON.stringify(stackY(addon))})`).toBeTruthy();
   // Bar n's frame: its bottom offset on screen.
   const frameY = (n) => addon.eval(`return Vanguard_Bar${n}.__points.BOTTOM.y`);
   addon.eval('local AB = ns.GetModule("ActionBars") AB.settings.bars[3].perRow = 6 AB.SettingChanged(3, "perRow")');
-  expect(JSON.stringify(stackY(addon).slice(0, 3)) === JSON.stringify([154, 104, 24]) && frameY(1) === 154 && frameY(2) === 104, "changing a bar's buttons per row re-stacks at once: bar 1 stays on top, nothing overlaps").toBeTruthy();
+  expect(JSON.stringify(stackY(addon).slice(0, 3)) === JSON.stringify([150, 102, 24]) && frameY(1) === 150 && frameY(2) === 102, "changing a bar's buttons per row re-stacks at once: bar 1 stays on top, nothing overlaps").toBeTruthy();
   setCombat(addon, true);
   addon.eval('local AB = ns.GetModule("ActionBars") AB.settings.bars[3].size = 48 AB.SettingChanged(3, "size")');
-  expect(frameY(1) === 154, "in combat the stack waits (secure frames don't move)").toBeTruthy();
+  expect(frameY(1) === 150, "in combat the stack waits (secure frames don't move)").toBeTruthy();
   setCombat(addon, false);
-  expect(frameY(2) === 124 && frameY(1) === 174, "and re-stacks when combat ends").toBeTruthy();
+  expect(frameY(2) === 122 && frameY(1) === 170, "and re-stacks when combat ends").toBeTruthy();
   addon.eval('ns.SetMoverPoint("bar1", "BOTTOM", "BOTTOM", 0, 300) ns.Unlock() local AB = ns.GetModule("ActionBars") AB.settings.bars[3].perRow = 12 AB.SettingChanged(3, "perRow") ns.SetMoverDefault("TEST-ONLY missing", { "CENTER", "CENTER", 0, 0 })');
-  expect(frameY(1) === 300 && frameY(2) === 74, "a bar you dragged keeps its spot; the others re-stack (with unlock mode on)").toBeTruthy();
+  expect(frameY(1) === 300 && frameY(2) === 72, "a bar you dragged keeps its spot; the others re-stack (with unlock mode on)").toBeTruthy();
   addon.eval("ns.Lock()");
 });
 
