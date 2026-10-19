@@ -439,3 +439,16 @@ it("situations: the page lists what an override can hold and says everything els
   for (const line of holds) expect(addon.texts(line).length, line).toBe(1);
   expect(addon.find("^Everything else, including any setting that needs a reload, changes your base profile") !== null, "and everything else changes the base profile").toBe(true);
 });
+
+it("situations: Stop and save pressed in a fight still stops after a roster change in the fight", () => {
+  const addon = situated();
+  addon.slash("situation record raid");
+  addon.slash("");
+  addon.world.combat(true);
+  addon.click(OPTIONS_STRIP + ".button");
+  addon.world.setUnit("party1", { name: "TEST-ONLY Ally" });
+  addon.advance(0.5);
+  addon.world.combat(false);
+  addon.advance(0.5);
+  expect([addon.eval("return ns.GetModule('Situations').recording"), stripShown(addon, OPTIONS_STRIP)], "stopped and saved when the fight ends; the banner gone").toEqual([null, false]);
+});

@@ -32,9 +32,10 @@ function O.SettingNote(module, key)
   return "Not recorded for " .. SI.LABELS[SI.recording] .. ": this setting changes your base profile."
 end
 
--- The button: stops recording and saves it (the chat says what was kept), out of combat.
+-- The button: stops recording and saves it (the chat says what was kept), out of combat. Its own queue key:
+-- under SI.Apply's, a roster or zone change later in the fight would replace the stop with an apply.
 local function stopAndSave()
-  ns.OutOfCombat(function() SI.SetRecording("off") end, "situations")
+  ns.OutOfCombat(function() SI.SetRecording("off") end, "situations stop")
 end
 
 -- One strip: a raised panel with an accent border, the text on the left and the button on the right; hidden.
