@@ -1986,8 +1986,13 @@ C_ChatInfo = C_ChatInfo or {}
 -- C_ChatInfo.SendChatMessage (ChatInfoDocumentation.lua) adds to world.sentChat. The SendChatMessage
 -- global is only a deprecation fallback on Forever (Blizzard_DeprecatedChatInfo), so it is not modelled.
 C_ChatInfo.SendChatMessage = function(text, chatType) table.insert(world.sentChat, { text, chatType }) end
--- Chat filters, temporary windows and the FCF helpers the addon calls.
-function ChatFrame_AddMessageEventFilter(event, fn) world.chatFilters[event] = world.chatFilters[event] or {} table.insert(world.chatFilters[event], fn) end
+ChatFrameUtil = {}
+-- Chat filters: 12.x keeps them in ChatFrameUtil (Blizzard_ChatFrameBase/Shared/ChatFrameFilters.lua).
+function ChatFrameUtil.AddMessageEventFilter(event, fn) world.chatFilters[event] = world.chatFilters[event] or {} table.insert(world.chatFilters[event], fn) end
+-- The old global is only an alias of it, set while the client loads its deprecation fallbacks
+-- (Blizzard_DeprecatedChatInfo/Deprecated_ChatFrame.lua).
+ChatFrame_AddMessageEventFilter = ChatFrameUtil.AddMessageEventFilter
+-- Temporary windows and the FCF helpers the addon calls.
 function FCF_OpenTemporaryWindow(name) local f = stub.newWidget("ScrollingMessageFrame", "ChatFrameTemp" .. name, UIParent) return f end
 function FCF_Tab_OnClick() end
 -- Names of the chat windows made by FCF_OpenNewWindow, by index.

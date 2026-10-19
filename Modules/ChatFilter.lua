@@ -181,7 +181,7 @@ function CF.Judge(text, sender, lineID)
   return CF.lastVerdict
 end
 
--- The chat filter (ChatFrame_AddMessageEventFilter): true keeps the line out of the window it was asked for.
+-- The chat filter (ns.AddChatFilters): true keeps the line out of the window it was asked for.
 -- A hidden (or missing) text or sender passes before anything reads it.
 function CF.Filter(_, _, text, sender, ...)
   if not (CF.active and CF.settings.on) or ns.Restricted("Chat") or ns.IsSecret(text) or ns.IsSecret(sender) or type(text) ~= "string" or type(sender) ~= "string" then return false end
@@ -298,7 +298,7 @@ function CF.Enable(settings)
   if CF.registered then return CF.Prepare() end
   CF.registered = true
   local guarded = ns.GuardResult("chat filter", CF.Filter, false)
-  for _, event in ipairs(CF.EVENTS) do ChatFrame_AddMessageEventFilter(event, guarded) end
+  ns.AddChatFilters(CF.EVENTS, guarded)
   local registry = _G.EventRegistry
   if type(registry) == "table" and type(registry.RegisterCallback) == "function" then registry:RegisterCallback("SetItemRef", ns.Guard("chat filter link click", CF.OnLink), CF) end
   ns.On("PLAYER_ENTERING_WORLD", CF.Prepare)

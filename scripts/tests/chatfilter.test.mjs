@@ -213,6 +213,18 @@ it("chat filter: with the module off from login, /vg filter on, off, tab and hid
   expect(addon.eval("return ns.GetModule('ChatFilter').window == nil"), "no Filtered tab while the module is off").toBe(true);
 });
 
+it("chat filter: a client without the old ChatFrame_AddMessageEventFilter still filters, through ChatFrameUtil", () => {
+  const addon = loggedIn("ChatFrame_AddMessageEventFilter = nil");
+  addon.slash("filter on");
+  expect(deliver(addon, GOLD, "Goldy"), "gold selling is caught").toBe(true);
+});
+
+it("chat filter: a client with neither filter call loads without an error and lets every line through", () => {
+  const addon = loggedIn("ChatFrame_AddMessageEventFilter, ChatFrameUtil = nil, nil");
+  addon.slash("filter on");
+  expect(deliver(addon, GOLD, "Goldy"), "nothing is caught").toBe(false);
+});
+
 it("chat filter: lines older than a minute are forgotten once 200 are held, so a busy channel never grows the list", () => {
   const addon = filtering();
   // The lines held: [entries in the list, the count kept].

@@ -80,6 +80,15 @@ it("chat history: whispers are not kept unless asked for (by the game's whisper 
   expect(addon.eval("return #ns.errors"), "no errors").toBe(0);
 });
 
+it("chat history: a client without the old ChatFrame_AddMessageEventFilter still leaves whispers out, through ChatFrameUtil", () => {
+  const addon = loggedIn(`${CLOCK} ChatFrame_AddMessageEventFilter = nil`);
+  addon.slash("history on");
+  addon.eval(`for _, fn in ipairs(__wfgWorld.chatFilters.CHAT_MSG_WHISPER) do fn() end ChatFrame1:AddMessage("by event")`);
+  addon.update(0.1);
+  addon.eval(`ChatFrame1:AddMessage("plain line")`);
+  expect(saved(addon)[0], "the whisper is not kept").toEqual(["1790000000|ffffff|plain line"]);
+});
+
 it("chat history: lines older than the limit, surplus lines and broken entries are dropped at login and logout", () => {
   const addon = session();
   addon.eval(`ns.Settings("ChatHistory").lines = 3 ChatFrame1:AddMessage("old one") __now = __now + 2 * 86400 ChatFrame1:AddMessage("n1") ChatFrame1:AddMessage("n2") ChatFrame1:AddMessage("n3") ChatFrame1:AddMessage("n4")`);

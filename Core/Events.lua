@@ -28,6 +28,20 @@ function ns.SendChat(text, chatType)
   send(text, chatType)
 end
 
+-- Adds fn as the game's chat message filter for each event. The old global is only an alias of
+-- ChatFrameUtil.AddMessageEventFilter, there while the client loads its deprecation fallbacks
+-- (Deprecated_ChatFrame.lua); false, with nothing added, on a client with neither.
+---@param events string[]
+---@param fn function
+---@return boolean added
+function ns.AddChatFilters(events, fn)
+  local util = type(ChatFrameUtil) == "table" and ChatFrameUtil.AddMessageEventFilter
+  local add = type(ChatFrame_AddMessageEventFilter) == "function" and ChatFrame_AddMessageEventFilter or util
+  if type(add) ~= "function" then return false end
+  for _, event in ipairs(events) do add(event, fn) end
+  return true
+end
+
 -- State kept for the game's frames ---------------------------------------------------------
 -- A field stored on a frame the game owns plants taint, and taint errors in the
 -- game's own code then get blamed on Vanguard. So whatever Vanguard remembers
