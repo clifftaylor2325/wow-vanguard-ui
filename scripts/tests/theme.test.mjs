@@ -1207,8 +1207,8 @@ it("switch commands: on and off in any case set the switch, a mistyped word chan
     addon.slash(`${cmd} ON`);
     addon.slash(`${cmd} On`);
     if (addon.eval(`return ns.Theme.Settings().${key}`) !== true) wrong.push(`${cmd} ON twice is not on`);
-    addon.slash(`${cmd} onn`);
-    if (addon.eval(`return ns.Theme.Settings().${key}`) !== true || !chatHas(addon, new RegExp(`Usage: /vg ${cmd} \\[on\\|off\\]`))) wrong.push(`${cmd} onn is not refused`);
+    addon.slash(`${cmd} yes`);
+    if (addon.eval(`return ns.Theme.Settings().${key}`) !== true || !chatHas(addon, new RegExp(`Usage: /vg ${cmd} \\[on\\|off\\]`))) wrong.push(`${cmd} yes is not refused`);
     addon.slash(`${cmd} OFF`);
     if (addon.eval(`return ns.Theme.Settings().${key}`) !== false) wrong.push(`${cmd} OFF is not off`);
   }
