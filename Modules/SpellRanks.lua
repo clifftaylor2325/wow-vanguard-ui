@@ -22,11 +22,7 @@ SR.SLOTS, SR.MAX_SERVICES, SR.AHEAD, SR.LINES = 180, 400, 5, 8
 -- Helpers ------------------------------------------------------------------------------------
 
 -- Calls a client function by name; nil when this client doesn't have it.
-local function ask(name, ...)
-  local fn = _G[name]
-  if type(fn) ~= "function" then return nil end
-  return fn(...)
-end
+local ask = ns.CallGlobal
 
 -- The text if it's a plain, non-empty string; nil otherwise (hidden, missing, empty).
 local function plainText(text)

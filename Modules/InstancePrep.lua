@@ -66,11 +66,7 @@ PR.REAGENTS = {
 -- Counting ------------------------------------------------------------------------------------
 
 -- Calls a client function by name; nil when this client doesn't have it.
-local function ask(name, ...)
-  local fn = _G[name]
-  if type(fn) ~= "function" then return nil end
-  return fn(...)
-end
+local ask = ns.CallGlobal
 
 -- How many of an item you carry, or nil when the client can't (or won't) say.
 local function count(id)
@@ -141,12 +137,7 @@ function PR.ReagentRows()
 end
 
 -- An item's name when the client has it cached, else "item 123".
-local function itemName(id)
-  local info = C_Item and C_Item.GetItemInfo
-  local name = type(info) == "function" and info(id)
-  if type(name) == "string" then return name end
-  return "item " .. id
-end
+local itemName = ns.ItemName
 
 -- The Keep-stocked items (Errands, /vg stock) you carry fewer of than the list says, by item ID.
 function PR.StockRows()

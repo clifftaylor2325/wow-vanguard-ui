@@ -252,10 +252,7 @@ local function overview()
 end
 
 -- An item's name, "item 123" until the client has it.
-local function itemName(id)
-  local name = C_Item and C_Item.GetItemInfo and C_Item.GetItemInfo(id)
-  return type(name) == "string" and name or ("item " .. id)
-end
+local itemName = ns.ItemName
 
 -- itemID -> count over a character's bags and bank together, and the item IDs biggest stack first.
 local function tally(r)

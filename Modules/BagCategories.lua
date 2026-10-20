@@ -38,10 +38,7 @@ function BG.CategoryOf(itemID)
 end
 
 -- The item's name once the client has it, else "item 123".
-local function itemName(id)
-  local name = C_Item and C_Item.GetItemInfo and C_Item.GetItemInfo(id)
-  return type(name) == "string" and name or ("item " .. id)
-end
+local itemName = ns.ItemName
 
 -- Prints each category and its items.
 local function show()
