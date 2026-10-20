@@ -21,12 +21,8 @@ DC.TAGS = { "Dungeon", "Raid", "Group" }
 
 -- Helpers ------------------------------------------------------------------------------------
 
--- Calls a client function by name; nil when this client doesn't have it.
-local function ask(name, ...)
-  local fn = _G[name]
-  if type(fn) ~= "function" then return nil end
-  return fn(...)
-end
+-- Calls a client function by name (ns.Client.Call); nil when this client doesn't have it.
+local ask = ns.Client.Call
 
 -- Calls tbl[name] when the client has it; nil otherwise.
 local function call(tbl, name, ...)

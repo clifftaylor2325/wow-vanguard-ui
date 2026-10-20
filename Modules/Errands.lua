@@ -28,12 +28,8 @@ ER.TRAVEL_SPOT = { "TOP", "TOP", 0, -198 }
 
 -- Helpers ------------------------------------------------------------------------------------
 
--- Calls a client function by name; nil when this client doesn't have it.
-local function ask(name, ...)
-  local fn = _G[name]
-  if type(fn) ~= "function" then return nil end
-  return fn(...)
-end
+-- Calls a client function by name (ns.Client.Call); nil when this client doesn't have it.
+local ask = ns.Client.Call
 
 -- Exposed for Modules/ErrandsBoats.lua.
 ER.ask = ask

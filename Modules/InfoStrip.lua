@@ -63,12 +63,8 @@ IS.SHARD_ITEMS, IS.LAST_BAG = { [6265] = true }, 5
 
 -- Values -------------------------------------------------------------------------------------
 
--- Calls a client function by name; nil when this client doesn't have it.
-local function ask(name, ...)
-  local fn = _G[name]
-  if type(fn) ~= "function" then return nil end
-  return fn(...)
-end
+-- Calls a client function by name (ns.Client.Call); nil when this client doesn't have it.
+local ask = ns.Client.Call
 
 -- One slot's durability as a share (current, max), or nil for a slot without durability.
 local function slotShare(slot)

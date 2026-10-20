@@ -89,6 +89,15 @@ function C.Has(key)
   return C.has[key] == true
 end
 
+-- Calls a client function by its global name; nil when this client doesn't have it.
+---@param name string
+---@return any
+function C.Call(name, ...)
+  local fn = _G[name]
+  if type(fn) ~= "function" then return nil end
+  return fn(...)
+end
+
 -- Names of the keys whose answer is `want` (a still-waiting key counts as lacking, marked with "?").
 local function names(want)
   local out = {}
