@@ -245,6 +245,15 @@ it("minimap: a free-for-all zone (arena) is named in the hostile colour, with a 
   expect([isTok(addon, addon.eval("return ns.GetModule('Minimap').zone.__textColor"), "zoneHostile"), tip[tip.length - 1].text, isTok(addon, [tip[tip.length - 1].r, tip[tip.length - 1].g, tip[tip.length - 1].b], "zoneHostile")],
     "as the game's own minimap colours and names it").toEqual([true, "Free-for-all territory", true]);
 });
+it("minimap: Rotate Minimap's config update puts Vanguard's mask back, square or round", () => {
+  const ROTATE = `MinimapCluster.UpdateMinimapConfig = function() Minimap:SetMaskTexture("ui-hud-minimap-frame-generic-mask") end`;
+  const square = loggedIn(UI_ENV + TIDY_ENV + ROTATE);
+  square.eval("MinimapCluster:UpdateMinimapConfig()");
+  const round = loggedIn(UI_ENV + TIDY_ENV + ROTATE, { savedVariables: 'VanguardDB.profiles = { Default = { Minimap = { shape = "round" } } }' });
+  round.eval("MinimapCluster:UpdateMinimapConfig()");
+  expect([square.eval("return Minimap.__maskTexture"), round.eval("return Minimap.__maskTexture")], "the square stays square, the round map keeps Vanguard's disc")
+    .toEqual([square.eval("return ns.Theme.WHITE"), expect.stringContaining("RoundDisc")]);
+});
 it("chat art is hidden so the game's mouseover fade cannot bring it back", () => {
   const addon = loggedIn(UI_ENV + CHAT_ART_ENV);
   // Whether each window's art is showing.

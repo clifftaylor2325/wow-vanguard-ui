@@ -334,13 +334,27 @@ local function createHolder(size)
   return holder
 end
 
+-- The map's mask: Vanguard's disc on a round map, else the square.
+local function applyMask()
+  Minimap:SetMaskTexture(MM.round and T.Texture("RoundDisc") or T.WHITE)
+end
+
+-- Rotate Minimap (Edit Mode, or the rotateMinimap CVar) runs the cluster's UpdateMinimapConfig, which
+-- puts the game's round mask back on the map; Vanguard's goes on again after it.
+local function keepMask()
+  local cluster = _G.MinimapCluster
+  if type(cluster) ~= "table" or type(cluster.UpdateMinimapConfig) ~= "function" then return end
+  hooksecurefunc(cluster, "UpdateMinimapConfig", ns.Guard("hook UpdateMinimapConfig", applyMask))
+end
+
 -- Moves the minimap into the holder, square and sized, a pixel in from its bottom edge.
 local function adoptMinimap(holder, size)
   Minimap:SetParent(holder)
   Minimap:ClearAllPoints()
   Minimap:SetPoint("BOTTOM", holder, "BOTTOM", 0, 1)
   Minimap:SetSize(size, size)
-  Minimap:SetMaskTexture(MM.round and T.Texture("RoundDisc") or T.WHITE)
+  applyMask()
+  keepMask()
   wheelZoom()
 end
 
