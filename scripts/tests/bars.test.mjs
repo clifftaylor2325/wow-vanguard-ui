@@ -601,6 +601,11 @@ const BIND_ENV = `
 const binder = (addon) => addon.eval(`local f, AB = Vanguard_KeybindMode, ns.GetModule("ActionBars")
   return { shown = f:IsShown(), passed = f.__passed == true, mark = AB.bindHover ~= nil and AB.bindHover.vgCatcher.wash:IsShown() }`);
 
+// The banner's result line: its text, and whether it shows in the given theme colour.
+const resultLine = (addon, token) => addon.eval(`local r, T = Vanguard_KeybindMode.result, ns.Theme
+  local a, b, c = r:GetTextColor() local x, y, z = T.RGB("${token}")
+  return { r:GetText(), a == x and b == y and c == z }`);
+
 // The tooltip's lines while it shows (its text only), or null when hidden.
 const tipLines = (addon) => addon.eval(`if not GameTooltip:IsShown() then return nil end
   local out = {} for _, l in ipairs(GameTooltip.__lines) do out[#out + 1] = l.text end return out`);
@@ -613,6 +618,7 @@ it("keybind mode: hover a button and press a key to bind it; a modifier alone wa
   addon.slash("keybind");
   addon.eval("Vanguard_KeybindMode.SetPropagateKeyboardInput = function(self, v) self.__passed = v end");
   expect(binder(addon), "/vg keybind shows the banner").toMatchObject({ shown: true, mark: false });
+  expect(resultLine(addon, "text2"), "its result line starts empty-handed").toEqual(["Nothing bound yet.", true]);
   expect(addon.eval("return Vanguard_Bar1Button4:GetAlpha()"), "empty slots show, so they can be bound").toBe(1);
   addon.key("Vanguard_KeybindMode", "Q");
   expect([binder(addon).passed, boundTo(addon, "ACTIONBUTTON4")], "a key with no button under the mouse goes on to the game").toEqual([true, ""]);
@@ -628,6 +634,7 @@ it("keybind mode: hover a button and press a key to bind it; a modifier alone wa
   expect([boundTo(addon, "ACTIONBUTTON4"), addon.eval("return __savedSet")], "Shift-Q is bound to the button's command and saved in the set in use").toEqual(["SHIFT-Q", 2]);
   expect([addon.eval("return Vanguard_Bar1Button4.hotkey:GetText()"), addon.eval("return __wfgWorld.overrides['SHIFT-Q'].target")], "the hotkey shows it, and the key clicks the button").toEqual(["SQ", "Vanguard_Bar1Button4:LeftButton"]);
   expect([chatHas(addon, /SHIFT-Q bound to Bar 1 button 4\.$/), tipLines(addon)[1]], "chat says so (the key was free), and the tooltip follows").toEqual([true, "Keys: SHIFT-Q"]);
+  expect(resultLine(addon, "text2"), "and so does the banner, in its quiet colour").toEqual(["SHIFT-Q bound to Bar 1 button 4.", true]);
   addon.hover("Vanguard_Bar1Button1.vgCatcher");
   addon.keys({ alt: true, ctrl: true });
   addon.key("Vanguard_KeybindMode", "F");
@@ -667,8 +674,10 @@ it("keybind mode: the mouse's side buttons and wheel bind too; Backspace clears;
   expect(chatHas(addon, /Bar 1 button 4 unbound \(was MOUSEWHEELDOWN\)\.$/), "and says what it had").toBe(true);
   addon.key("Vanguard_KeybindMode", "DELETE");
   expect(chatHas(addon, /Bar 1 button 4 has no key\.$/), "Delete clears too; with no key it only says so").toBe(true);
+  expect(resultLine(addon, "text2"), "the banner shows the last result").toEqual(["Bar 1 button 4 has no key.", true]);
   addon.key("Vanguard_KeybindMode", "W");
   expect([boundTo(addon, "ACTIONBUTTON4"), boundTo(addon, "MOVEFORWARD"), chatHas(addon, /W bound to Bar 1 button 4, taken from Move Forward\.$/)], "a key the game used is taken, and chat says from what").toEqual(["W", "", true]);
+  expect(resultLine(addon, "warn"), "the banner says it too, in the warning colour").toEqual(["W bound to Bar 1 button 4, taken from Move Forward.", true]);
   addon.key("Vanguard_KeybindMode", "SPACE");
   expect(chatHas(addon, /SPACE bound to Bar 1 button 4, taken from JUMP\.$/), "a command with no name is named as is").toBe(true);
   addon.key("Vanguard_KeybindMode", "1");
@@ -698,6 +707,8 @@ it("keybind mode: out of combat only, ends when a fight starts; from the options
   setCombat(addon, false);
   addon.eval('for _, p in ipairs(ns.Options.PAGES) do if p.key == "actionbars" then for _, r in ipairs(p.rows()) do if r[2] == "Keybind mode" then r[3]() end end end end');
   expect(addon.eval("return Vanguard_KeybindMode:IsShown()"), "the Keybind mode button on the Action bars page starts it").toBe(true);
+  addon.click("Vanguard_KeybindMode.done");
+  expect([addon.eval("return Vanguard_KeybindMode:IsShown()"), resultLine(addon, "text2")[0]], "the banner's Done button leaves, and clears the result line").toEqual([false, ""]);
   const off = loggedIn(BIND_ENV, { savedVariables: "VanguardDB = { profiles = { Default = { modules = { ActionBars = false } } } }" });
   off.slash("keybind");
   expect([off.eval("return Vanguard_KeybindMode == nil"), chatHas(off, /Keybind mode needs Vanguard.s action bars/)], "without the bars it says why").toEqual([true, true]);
