@@ -202,3 +202,9 @@ it("quest arrow: with Follow the nearest quest off, the Pin button lets the arro
   addon.eval("ns.QuestArrow.Unpin()");
   expect([arrow(addon)[4], chatHas(addon, /Arrow: off until you Shift-click a quest in the tracker\./)]).toEqual([false, true]);
 });
+
+it("quest arrow: a failed quest is not pointed at, and the arrow moves on from it", () => {
+  const addon = loggedIn(ARROW_ENV);
+  addon.eval("ns.QuestArrow.Pick() __wfgWorld.quests[1].failed = true ns.QuestArrow.Pick()");
+  expect([addon.eval("return ns.QuestArrow.current"), chatHas(addon, /Arrow: TEST-ONLY Far\./)]).toEqual([90062, true]);
+});

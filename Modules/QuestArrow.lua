@@ -42,11 +42,12 @@ end
 
 -- Choosing the quest ------------------------------------------------------------------------------
 
--- How near a quest counts (distance squared, less for a finished one); nil when it isn't in the log or the client won't say.
+-- How near a quest counts (distance squared, less for a finished one); nil when it isn't in the log, it failed
+-- (nothing is left to do there), or the client won't say.
 local function rank(id)
   local q = ns.GetModule("QuestTracker").Quest(id)
   local d = q and ns.PlainNumber(call(C_QuestLog, "GetDistanceSqToQuest", id))
-  if not d then return nil end
+  if not d or q.failed then return nil end
   return q.ready and d * QA.READY_BIAS or d
 end
 
@@ -74,10 +75,16 @@ local function pinned()
   return id and ns.GetModule("QuestTracker").Quest(id) and id or nil
 end
 
--- Whether a quest is finished or gone from the log (the arrow moving on from it is worth a word).
+-- Whether a quest is finished, failed or gone from the log (the arrow moving on from it is worth a word).
 local function finished(id)
   local q = ns.GetModule("QuestTracker").Quest(id)
-  return not q or q.ready
+  return not q or q.ready or q.failed
+end
+
+-- Whether a quest is ready to turn in.
+local function readyToTurnIn(id)
+  local q = ns.GetModule("QuestTracker").Quest(id)
+  return q ~= nil and q.ready
 end
 
 -- The quest title for the arrow, or "Quest".
@@ -99,7 +106,7 @@ function QA.Pick()
   if not QA.frame then return end
   local old = QA.current
   QA.current, QA.held = follow(old)
-  QA.ready = QA.current ~= nil and finished(QA.current)
+  QA.ready = QA.current ~= nil and readyToTurnIn(QA.current)
   QA.target = QA.current and { ns.QuestGuide.Target(QA.current) } or nil
   if old and QA.current and old ~= QA.current and finished(old) and not ns.InCombat() then ns.Chat("Arrow: " .. titleOf(QA.current) .. ".") end
   QA.Draw()
