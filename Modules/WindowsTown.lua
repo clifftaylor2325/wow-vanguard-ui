@@ -31,14 +31,6 @@ local function keyFonts(frame, keys, role)
   end
 end
 
--- The same for font strings named in names.
-local function namedFonts(names, role)
-  for _, name in ipairs(names) do
-    local fs = _G[name]
-    if type(fs) == "table" and fs.SetFont then T.Text(fs, role, false) end
-  end
-end
-
 -- Fades each part of a frame named in keys, whole (a frame with all it holds, or a texture), by alpha.
 local function fadeWhole(frame, keys)
   for _, key in ipairs(keys) do
@@ -354,7 +346,7 @@ function GW.SkinCoinPickup(frame)
   GW.SkinGlyph(_G.CoinPickupLeftButton)
   GW.SkinGlyph(_G.CoinPickupRightButton)
   amountField(frame, _G.CoinPickupLeftButton, _G.CoinPickupRightButton)
-  namedFonts({ "CoinPickupText", "CoinPickupLabel" }, "number")
+  GW.TextNamed({ "CoinPickupText", "CoinPickupLabel" }, "number", false)
 end
 
 GW.Add("town", { "SideDressUpFrame" }, GW.SkinSideDressUp)
@@ -408,12 +400,6 @@ local function regionFonts(frame, role, color)
   end
 end
 
--- A global font string in a role and a colour token (one this client lacks is skipped).
-local function namedText(name, role, color)
-  local fs = _G[name]
-  if type(fs) == "table" and fs.SetFont then T.Text(fs, role, color) end
-end
-
 -- A row's token price (named frame .. Item1-3): each denomination's figure in the theme font, its icon kept.
 local function skinAltCurrency(name)
   for i = 1, ALT_CURRENCIES do
@@ -457,7 +443,7 @@ end
 -- faded and the insets under them dark panels.
 local function skinMerchantFooter()
   for i, name in ipairs(MERCHANT_ARROWS) do skinPageArrow(_G[name], i == 1 and "left" or "right") end
-  namedText("MerchantPageText", "label", "text")
+  GW.SkinText(_G.MerchantPageText, "label", "text")
   GW.SkinMoney(_G.MerchantMoneyFrame)
   GW.FadeNamed(MERCHANT_PLATES)
   for _, name in ipairs(MERCHANT_INSETS) do insetPanel(_G[name]) end
@@ -640,7 +626,7 @@ GW.AddButtons("BasicMessageDialog", { "BasicMessageDialogButton" })
 -- The ghost button as a theme button with its text in the theme font (textures and font strings only).
 local function dressGhost(frame)
   T.Button(frame)
-  namedText("GhostFrameContentsFrameText", "label", "text")
+  GW.SkinText(_G.GhostFrameContentsFrameText, "label", "text")
 end
 
 -- The button a dead player gets to return to the graveyard: dressed out of combat (it is shown from the game's
@@ -655,7 +641,7 @@ function GW.SkinAddonDialog()
   local box = _G.AddonDialogBackground
   if type(box) ~= "table" then return end
   GW.Skin(box)
-  namedText("AddonDialogText", "label", "text")
+  GW.SkinText(_G.AddonDialogText, "label", "text")
   namedButtons(ADDON_DIALOG_BUTTONS)
 end
 
