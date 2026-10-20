@@ -185,9 +185,15 @@ function AH.Next()
   C_Timer.After(AH.FALLBACK, ns.Guard("timer search fallback", function() if AH.pending == s then AH.Done() end end))
 end
 
--- Queues a search (first in line when asked) and sends it if nothing is in flight.
-function AH.Queue(search, first)
-  table.insert(AH.queue, first and 1 or #AH.queue + 1, search)
+-- Queues a search at the back of the line and sends it if nothing is in flight.
+function AH.Queue(search)
+  table.insert(AH.queue, search)
+  AH.Next()
+end
+
+-- Queues a search first in line (ahead of the rest) and sends it if nothing is in flight.
+function AH.QueueFirst(search)
+  table.insert(AH.queue, 1, search)
   AH.Next()
 end
 

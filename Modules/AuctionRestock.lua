@@ -90,7 +90,7 @@ function AH.QueueCost(entry, found)
   if not (found and want and want > 0) or found.costQueued then return end
   found.costQueued = true
   if AH.progress then AH.progress.total = AH.progress.total + 1 end
-  AH.Queue({ cost = found, want = want, maxPrice = f.maxPrice }, true)
+  AH.QueueFirst({ cost = found, want = want, maxPrice = f.maxPrice })
 end
 
 -- A commodity listing as { unit price, units you can buy } (your own units left out); nil for a

@@ -292,7 +292,7 @@ function AH.TakeItem(loc)
   if status ~= AH.ITEM and status ~= AH.COMMODITY then return end
   AH.sell, AH.sellStatus = newSale(loc, api.GetItemKeyFromItem(loc), status == AH.COMMODITY), nil
   AH.upCard.table.offset = 0
-  AH.Queue({ sell = AH.sell.search, card = true }, true)
+  AH.QueueFirst({ sell = AH.sell.search, card = true })
   AH.PaintSell()
   return true
 end

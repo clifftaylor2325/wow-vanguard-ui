@@ -182,7 +182,7 @@ end
 
 -- A deal clicked: its item in the game's own list (first in line), on its Buy tab, to buy there.
 function AH.OpenDeal(r)
-  if r.item then AH.Queue({ open = r.item.key }, true) AH.ShowInGame() end
+  if r.item then AH.QueueFirst({ open = r.item.key }) AH.ShowInGame() end
 end
 
 -- A deal's tooltip: the item, what it was judged against, and what a click does.

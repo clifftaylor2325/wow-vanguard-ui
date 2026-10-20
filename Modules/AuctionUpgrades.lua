@@ -266,7 +266,7 @@ end
 
 -- An upgrade clicked: its item in the game's own list (first in line), on its Buy tab, to buy there.
 function AH.OpenUpgrade(r)
-  if r.item then AH.Queue({ open = r.item.key }, true) AH.ShowInGame() end
+  if r.item then AH.QueueFirst({ open = r.item.key }) AH.ShowInGame() end
 end
 
 -- An upgrade's tooltip: the item's own (Gear upgrades adds its Upgrade line), and what a click does.

@@ -553,7 +553,7 @@ function AH.OpenListings(key, f)
   viewTop()
   AH.DropQueued("listings")
   AH.DropQueued("page")
-  AH.Queue({ listings = key }, true)
+  AH.QueueFirst({ listings = key })
   AH.PaintShop()
 end
 
@@ -580,7 +580,7 @@ function AH.OpenListing(i)
   local v = AH.view
   if not v.rows[i] then return end
   AH.shopCard.view.table.mark = i
-  AH.Queue({ open = v.key }, true)
+  AH.QueueFirst({ open = v.key })
   AH.ShowInGame()
   AH.PaintShop()
 end
