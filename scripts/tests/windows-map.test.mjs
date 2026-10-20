@@ -1213,6 +1213,16 @@ it("calendar dialogs: the holiday and raid text areas are inset panels, the even
   expect(addon.eval("return #ns.errors"), "and nothing failed").toBe(0);
 });
 
+it("world map: the tracking pin's glyph turns the disabled colour while the game disables the pin, and back", () => {
+  const addon = loggedIn(MAP_PARTS_ENV);
+  addon.eval("WorldMapFrame:Show()");
+  // The pin glyph's vertex colour.
+  const glyph = () => addon.eval("return ns.FrameState('vgMapGlyph')[WorldMapFrame.WorldMapTrackingPinButton].__vertexColor");
+  addon.eval("WorldMapFrame.WorldMapTrackingPinButton:Disable()");
+  const off = isTok(addon, glyph(), "disabled");
+  addon.eval("WorldMapFrame.WorldMapTrackingPinButton:Enable()");
+  expect([off, isTok(addon, glyph(), "text2")], "disabled, then the second text colour again").toEqual([true, true]);
+});
 it("calendar: today's ornate glow stays hidden while the game's OnUpdate pulses its alpha", () => {
   const addon = loggedIn(CALENDAR_ENV);
   // TEST-ONLY: the game's CalendarTodayFrame_OnUpdate, which sets the glow's alpha every frame (Blizzard_Calendar.lua).
