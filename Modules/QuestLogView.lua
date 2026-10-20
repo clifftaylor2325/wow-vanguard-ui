@@ -101,7 +101,8 @@ local function addDetails(f)
   addObjectives(f)
   f.rewards = CreateFrame("Frame", nil, f.detail)
   f.rewards:SetSize(DETAIL_W, 1)
-  f.cards = QP.Pool(f.rewards, QP.Card)
+  f.cards, f.captions = QP.Pool(f.rewards, QP.Card), QP.Pool(f.rewards, QP.Caption)
+  f.lay = { holder = f.rewards, cards = f.cards, captions = f.captions, perRow = QL.PER_ROW }
 end
 
 -- The buttons along the bottom of the details side.
@@ -229,17 +230,19 @@ end
 
 -- Details -----------------------------------------------------------------------------------------
 
--- The reward cards under the objectives, two to a row, then the money line.
+-- A quest's reward items split into its choices and what it gives anyway, in their order.
+local function splitRewards(rewards)
+  local choices, fixed = {}, {}
+  for _, item in ipairs(rewards) do table.insert(item.kind == "choice" and choices or fixed, item) end
+  return choices, fixed
+end
+
+-- The reward sections under the objectives, each caption over its cards two to a row, then the money line.
 local function renderRewards(f, d)
-  f.cards.Reset()
   f.rewards:SetPoint("TOPLEFT", f.history, "BOTTOMLEFT", 0, -REWARDS_GAP)
-  for n, item in ipairs(d.rewards) do
-    local c, col, row = f.cards.Next(), (n - 1) % QL.PER_ROW, math.floor((n - 1) / QL.PER_ROW)
-    c:SetPoint("TOPLEFT", f.rewards, "TOPLEFT", col * (QP.CARD_W + QP.GAP), -row * (QP.CARD_H + QP.GAP))
-    QP.PaintCard(c, item)
-  end
-  local rows = math.ceil(#d.rewards / QL.PER_ROW)
-  f.money:SetPoint("TOPLEFT", f.rewards, "TOPLEFT", 0, -rows * (QP.CARD_H + QP.GAP) - MONEY_GAP)
+  local choices, fixed = splitRewards(d.rewards)
+  f.rewardsH = QP.LayoutRewards(f.lay, QP.RewardSections(choices, fixed, false))
+  f.money:SetPoint("TOPLEFT", f.rewards, "TOPLEFT", 0, -f.rewardsH - (f.rewardsH > 0 and QP.GAP or 0) - MONEY_GAP)
   f.money:SetText(d.money)
 end
 
@@ -304,10 +307,9 @@ local function markChosen(f)
 end
 
 -- How tall the details side's contents are: title, text, objectives, reward rows and the money line, with their gaps.
-local function detailHeight(f, d)
-  local rows = math.ceil(#d.rewards / QL.PER_ROW)
+local function detailHeight(f)
   local h = f.questTitle:GetStringHeight() + TITLE_GAP + f.text:GetStringHeight() + TEXT_GAP + f.objectives:GetStringHeight() + f.objectiveBox:GetHeight() + f.objectiveGaps + f.history:GetStringHeight() + REWARDS_GAP
-  return h + rows * (QP.CARD_H + QP.GAP) + MONEY_GAP + f.money:GetStringHeight() + MONEY_GAP
+  return h + f.rewardsH + (f.rewardsH > 0 and QP.GAP or 0) + MONEY_GAP + f.money:GetStringHeight() + MONEY_GAP
 end
 
 -- Fills the details side with a quest and sizes its scroll to fit.
@@ -316,7 +318,7 @@ local function renderDetails(f, d)
   f.text:SetText(QP.Plain(d.text))
   renderObjectives(f, d)
   renderRewards(f, d)
-  f.detailScroll:Fit(detailHeight(f, d))
+  f.detailScroll:Fit(detailHeight(f))
 end
 
 -- Shows a quest on the details side (or nothing, when it's gone from the log).

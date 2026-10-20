@@ -185,6 +185,77 @@ function QP.PaintCard(c, item)
   c:Show()
 end
 
+-- Reward sections --------------------------------------------------------------------------------
+
+-- A section caption's line height, and the gap between two sections.
+QP.CAPTION_H, QP.SECTION_GAP = 16, T.SPACE.gap
+
+-- The client's own caption text by its global name, or nil when this client lacks it.
+local function caption(name)
+  local text = _G[name]
+  return type(text) == "string" and text or nil
+end
+
+-- The choices' caption, worded as the game's quest frame words it (Mainline/QuestInfo.lua): one choice is
+-- just received; two or more are chosen from now (choosing) or later.
+local function choiceCaption(n, choosing)
+  if n == 1 then return caption("REWARD_ITEMS_ONLY") end
+  return caption(choosing and "REWARD_CHOOSE" or "REWARD_CHOICES")
+end
+
+-- A page's reward sections, { caption, items } each: the choices, then what you get anyway ("You will also
+-- receive:" after choices, else "You will receive:"). choosing is true where you pick one now.
+function QP.RewardSections(choices, rewards, choosing)
+  local out = {}
+  if #choices > 0 then out[1] = { caption = choiceCaption(#choices, choosing), items = choices } end
+  if #rewards > 0 then out[#out + 1] = { caption = caption(#choices > 0 and "REWARD_ITEMS" or "REWARD_ITEMS_ONLY"), items = rewards } end
+  return out
+end
+
+-- The required items' one section, captioned as the game's progress page is ("Required items:").
+function QP.RequiredSection(items)
+  return #items > 0 and { { caption = caption("TURN_IN_ITEMS"), items = items } } or {}
+end
+
+-- A section's caption at y down the holder's left edge (none when the client has no words for it); returns the y under it.
+local function placeCaption(lay, text, y)
+  if not text then return y end
+  local fs = lay.captions.Next()
+  fs:SetPoint("TOPLEFT", lay.holder, "TOPLEFT", 0, -y)
+  fs:SetText(text)
+  fs:Show()
+  return y + QP.CAPTION_H
+end
+
+-- A section's cards, lay.perRow to a row from y down, each painted, then lay.onCard(card, item); returns the y under them.
+local function placeCards(lay, items, y)
+  for n, item in ipairs(items) do
+    local c, col, row = lay.cards.Next(), (n - 1) % lay.perRow, math.floor((n - 1) / lay.perRow)
+    c:SetPoint("TOPLEFT", lay.holder, "TOPLEFT", col * (QP.CARD_W + QP.GAP), -y - row * (QP.CARD_H + QP.GAP))
+    QP.PaintCard(c, item)
+    if lay.onCard then lay.onCard(c, item) end
+  end
+  return y + math.ceil(#items / lay.perRow) * (QP.CARD_H + QP.GAP) - QP.GAP
+end
+
+-- A reward caption: small muted text over a section's cards.
+function QP.Caption(parent)
+  return T.Text(parent:CreateFontString(nil, "OVERLAY"), "small", "text2")
+end
+
+-- Lays reward sections out from the holder's top, each caption over its cards. lay is { holder, cards and
+-- captions (QP.Pool), perRow, onCard (optional) }. Returns how tall they are (0 for none).
+function QP.LayoutRewards(lay, sections)
+  lay.cards.Reset()
+  lay.captions.Reset()
+  local y = 0
+  for i, sec in ipairs(sections) do
+    y = placeCaption(lay, sec.caption, y + (i > 1 and QP.SECTION_GAP or 0))
+    y = placeCards(lay, sec.items, y)
+  end
+  return y
+end
+
 -- Your faction's crest, faint (T.CREST.watermark at T.CREST.wash), behind a reading window's top-right corner:
 -- the quest dialog's and the quest log's. Hidden while the faction look is off.
 function QP.Watermark(f)
