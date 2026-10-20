@@ -327,15 +327,13 @@ local function tileSlots(tiles)
 end
 
 -- Lays a window's shown bar tiles out from the bar's right end in slot order with no gaps (a hidden
--- tile leaves none), remembers the furthest shown one as the bar's end (CH.barEnd and its place,
--- CH.barEndSlot; nil with none shown) and puts the dock's right end before it (CH.PlaceDock).
+-- tile leaves none), and puts the dock's right end before the furthest one (CH.PlaceDock).
 function CH.PlaceBarButtons(frame)
   local parts, tiles, n = CH.frames and CH.frames[frame], vgBarTiles[frame] or {}, 0
   if not parts then return end
-  CH.barEnd, CH.barEndSlot = nil, nil
   for _, slot in ipairs(tileSlots(tiles)) do
     local button = tiles[slot]
-    if button:IsShown() then n = n + 1 button:ClearAllPoints() button:SetPoint("RIGHT", parts.bar, "RIGHT", -slotInset(n), 0) CH.barEnd, CH.barEndSlot = button, n end
+    if button:IsShown() then n = n + 1 button:ClearAllPoints() button:SetPoint("RIGHT", parts.bar, "RIGHT", -slotInset(n), 0) end
   end
   CH.PlaceDock()
 end
@@ -670,6 +668,15 @@ function CH.ApplyBarHover()
   for _, parts in pairs(CH.frames or {}) do T.StopFade(parts.bar) parts.bar:Show() end
 end
 
+-- The window's shown bar tile furthest from the bar's right end, or nil with none shown.
+local function endTile(frame)
+  local tiles, edge = vgBarTiles[frame] or {}, nil
+  for _, slot in ipairs(tileSlots(tiles)) do
+    if tiles[slot]:IsShown() then edge = tiles[slot] end
+  end
+  return edge
+end
+
 -- The dock's scroll child (the tabs past its fixed ones ride in it), or nil on a client without one.
 local function dockScrollChild(dock)
   local scroll = dock.scrollFrame
@@ -686,10 +693,12 @@ function CH.PlaceDock()
   local dock, frame = _G.GENERAL_CHAT_DOCK, _G.ChatFrame1
   if type(dock) ~= "table" or type(frame) ~= "table" or not (CH.frames and CH.frames[frame]) then return end
   local bar, gap, child = CH.frames[frame].bar, T.SPACE.tight, dockScrollChild(dock)
+  local edge = endTile(frame)
+  local anchor, side = edge or bar, edge and "LEFT" or "RIGHT"
   dock:ClearAllPoints()
   dock:SetPoint("TOPLEFT", bar, "TOPLEFT", gap / 2, -gap / 2)
   dock:SetPoint("BOTTOMLEFT", bar, "BOTTOMLEFT", gap / 2, gap / 2)
-  dock:SetPoint("RIGHT", CH.barEnd or bar, CH.barEnd and "LEFT" or "RIGHT", -gap, 0)
+  dock:SetPoint("RIGHT", anchor, side, -gap, 0)
   if child then child:SetHeight(T.CONTROL_H) child:SetPoint("LEFT", 0, 1) end
 end
 
@@ -1046,7 +1055,7 @@ end
 -- this runs at once; temporary windows (whispers) are skinned as they open.
 function CH.Enable(settings)
   CH.settings = settings
-  CH.frames, CH.barEnd, CH.barEndSlot = {}, nil, nil
+  CH.frames = {}
   CH.SkinAll()
   CH.ApplyBarHover()
   T.OnChanged(CH.Refresh)
