@@ -223,7 +223,11 @@ error: the test fails unless `expectErrors` names it.
   protected frame is blocked: nothing happens, ADDON_ACTION_BLOCKED fires and the
   call is recorded. Secure templates, `PlayerFrame` and the other unit frames, and
   anything marked with `__wfgStub.protect(frame)` are protected, and so is a
-  frame holding one.
+  frame holding one. `ShowUIPanel` and `HideUIPanel` refuse any run with the
+  addon's code on the stack, for every frame (the panel manager's
+  CheckProtectedFunctionsAllowed), so a button that calls `ToggleWorldMap` or
+  the like in a fight fails its test; `PANEL_OPENERS` in helpers.mjs gives the
+  game's openers that reach them.
 - **Secret arguments.** Addon code that passes a secret (a hidden aura instance
   id) to a `C_UnitAuras` call Blizzard documents as `SecretArguments =
   "AllowedWhenUntainted"` gets the client's error (`bad argument #2 to '?' (...

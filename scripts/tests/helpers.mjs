@@ -750,3 +750,15 @@ export const windowState = (addon, name) => addon.eval(`local f = ${name}
   end
   return { art = art, nine = f.NineSlice.__alpha, portrait = f.PortraitContainer.__alpha, insetNine = f.Inset.NineSlice.__alpha,
     inset = inset, panel = panel > 0, title = __titled(f.TitleContainer.TitleText), painted = ns.Theme.PaintedCount() }`);
+
+// TEST-ONLY game openers that reach the panel manager as the client's do (ToggleWorldMap ->
+// SetDisplayState -> ShowUIPanel, ToggleCalendar -> Calendar_Show, QuestMapFrame_OpenToQuestDetails ->
+// OpenQuestLog, ToggleClickBindingFrame -> SetUIPanelShown). In combat the harness's ShowUIPanel refuses a run
+// with the addon's code in it, as the client does, so a button that calls one there fails its test.
+export const PANEL_OPENERS = `
+  __panel = function(name) local f = _G[name] if not f then f = CreateFrame("Frame", name, UIParent) f:Hide() end if f:IsShown() then HideUIPanel(f) else ShowUIPanel(f) end end
+  ToggleWorldMap = function() __panel("WorldMapFrame") end
+  ToggleCalendar = function() __panel("CalendarFrame") end
+  QuestMapFrame_OpenToQuestDetails = function(id) __opened = id __panel("WorldMapFrame") end
+  ToggleClickBindingFrame = function() __panel("ClickBindingFrame") end
+`;

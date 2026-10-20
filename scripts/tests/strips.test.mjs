@@ -1,7 +1,7 @@
 // strips: Vanguard's real Lua in the TEST-ONLY headless client (scripts/lib/lua-harness.mjs).
 
 import { expect, it } from "vitest";
-import { CLICK_LUA, expectErrors, HEALING_ENV, MICRO_ENV, PLATE_ENV, RAID_ENV, STRIPS_ENV, STRIP_ENV, TIDY_ENV, UI_ENV, UNITS_ENV, block, borderOf, button, isTok, later, loggedIn, pinned, putAway, setCombat, strips } from "./helpers.mjs";
+import { CLICK_LUA, chatHas, expectErrors, HEALING_ENV, MICRO_ENV, PANEL_OPENERS, PLATE_ENV, RAID_ENV, STRIPS_ENV, STRIP_ENV, TIDY_ENV, UI_ENV, UNITS_ENV, block, borderOf, button, isTok, later, loggedIn, pinned, putAway, setCombat, strips } from "./helpers.mjs";
 
 // TEST-ONLY damage meter: someone else's line, then yours at 1234.5 per second.
 const DPS_ENV = `
@@ -115,6 +115,21 @@ it("the info strip: the day and date with a calendar button", () => {
   expect([block(addon, "date").shown, addon.eval(`return ${button}:IsShown()`)], "turned off, the date and its button go").toEqual([false, false]);
   addon.eval('ns.Settings("InfoStrip").date = true __wfgStub.advance(60)');
   expect(block(addon, "date").shown, "and come back on the next minute's tick").toBe(true);
+});
+it("in a fight the info strip's calendar button says the calendar waits, and asks the game for nothing", () => {
+  const addon = loggedIn(UNITS_ENV + STRIP_ENV + PANEL_OPENERS);
+  setCombat(addon, true);
+  addon.eval("Vanguard_InfoStripCalendar.__scripts.OnClick(Vanguard_InfoStripCalendar)");
+  expect([chatHas(addon, /The calendar doesn't open from Vanguard in a fight/), addon.eval("return CalendarFrame == nil")], "a chat line, and no refused panel call").toEqual([true, true]);
+});
+it("in a fight the minimap's zone name says the world map waits, and asks the game for nothing", () => {
+  const addon = loggedIn(UNITS_ENV + PANEL_OPENERS);
+  setCombat(addon, true);
+  addon.eval("Vanguard_MinimapZone.__scripts.OnClick(Vanguard_MinimapZone)");
+  expect([chatHas(addon, /The world map doesn't open from Vanguard in a fight/), addon.eval("return WorldMapFrame == nil or not WorldMapFrame:IsShown()")], "a chat line, and the map stays shut").toEqual([true, true]);
+  setCombat(addon, false);
+  addon.eval("Vanguard_MinimapZone.__scripts.OnClick(Vanguard_MinimapZone)");
+  expect(addon.eval("return WorldMapFrame:IsShown()"), "after the fight the click opens it").toBe(true);
 });
 it("the info strip: ammo, and clients that can't answer", () => {
   const hunter = loggedIn(UNITS_ENV + STRIP_ENV + '__units.player.class = "HUNTER"');

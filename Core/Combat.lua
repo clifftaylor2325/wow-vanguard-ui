@@ -47,6 +47,17 @@ function ns.AfterCombat(fn, key)
   enqueue(fn, key)
 end
 
+-- True, after a chat line, while a fight is on: the game's panel manager (ShowUIPanel and HideUIPanel,
+-- behind ToggleWorldMap, ToggleCalendar and the like) refuses addon code in combat, so a Vanguard
+-- button that opens a game window says so and asks for nothing instead of setting off the block.
+---@param window string  the window, as a sentence starts it ("The world map")
+---@return boolean
+function ns.WindowWaitsForCombat(window)
+  if not ns.InCombat() then return false end
+  ns.Chat(window .. " doesn't open from Vanguard in a fight. Try again after it.")
+  return true
+end
+
 -- The client's check for a hidden value, or one that says no on a client
 -- without it. It never throws, so it is called bare, not under pcall.
 local isSecret

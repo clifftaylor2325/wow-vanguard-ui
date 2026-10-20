@@ -182,6 +182,7 @@ end
 
 -- Shows the chosen quest on the game's map.
 function QL.ShowOnMap(d)
+  if ns.WindowWaitsForCombat("The world map") then return end
   call(QuestMapFrame_OpenToQuestDetails, d.id)
 end
 

@@ -1,7 +1,7 @@
 // quests: Vanguard's real Lua in the TEST-ONLY headless client (scripts/lib/lua-harness.mjs).
 
 import { expect, it } from "vitest";
-import { CLICK_LUA, PLATE_ENV, QUEST_ENV, TIDY_ENV, UI_ENV, UNITS_ENV, borderOf, calls, chatHas, isTok, key, loggedIn, px, setCombat, WINDOWS_ENV } from "./helpers.mjs";
+import { CLICK_LUA, PANEL_OPENERS, PLATE_ENV, QUEST_ENV, TIDY_ENV, UI_ENV, UNITS_ENV, borderOf, calls, chatHas, isTok, key, loggedIn, px, setCombat, WINDOWS_ENV } from "./helpers.mjs";
 
 // The theme's layout numbers the quest windows are built on: { inset, pad, col, gap, tight, buttonH, rowH, watermark, wash }.
 const layout = (addon) => addon.eval(`local T = ns.Theme
@@ -1360,4 +1360,18 @@ it("quest dialog: an NPC whose one option the game goes to directly (a flight ma
   expect(talk({ options: [{ ...FLY, selectOptionWhenOnlyOption: false }] }), "an option not flagged: the dialog").toEqual([true, 1, false]);
   expect(talk({ options: [FLY], available: [{ title: "TEST-ONLY Rats", questLevel: 5, questID: 90078 }] }), "a quest to show as well: the dialog").toEqual([true, 2, false]);
   expect(talk({ options: [FLY, { ...FLY, gossipOptionID: 90079, orderIndex: 1 }] }), "two options: the dialog").toEqual([true, 2, false]);
+});
+it("in a fight the quest log's Map button and a tracker title say the map waits, and ask the game for nothing", () => {
+  const addon = loggedIn(TRACK_ENV + QLOG_ENV + PANEL_OPENERS);
+  addon.eval("Vanguard_QuestLogToggle.__scripts.OnClick(Vanguard_QuestLogToggle)");
+  setCombat(addon, true);
+  logButton(addon, "map");
+  expect([chatHas(addon, /The world map doesn't open from Vanguard in a fight/), addon.eval("return __opened == nil")], "a chat line, and no refused panel call").toEqual([true, true]);
+  setCombat(addon, false);
+  logButton(addon, "map");
+  expect(addon.eval("return { __opened, WorldMapFrame:IsShown() }"), "after the fight it opens the map on the quest").toEqual([90051, true]);
+  const noLog = loggedIn(TRACK_ENV + PANEL_OPENERS, { savedVariables: "VanguardDB.profiles = { Default = { QuestLog = { own = false } } }" });
+  setCombat(noLog, true);
+  noLog.eval("local b = Vanguard_QuestTrackerFrame.blocks[1] b.__scripts.OnClick(b, 'LeftButton')");
+  expect([chatHas(noLog, /The world map doesn't open from Vanguard in a fight/), noLog.eval("return __opened == nil")], "with the game's log, a title clicked in a fight says so too").toEqual([true, true]);
 });

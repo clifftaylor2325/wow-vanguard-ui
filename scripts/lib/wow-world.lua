@@ -193,9 +193,11 @@ end
 
 -- Static popups: which are shown, by name.
 world.popups = {}
--- Shows a popup by name (its arguments kept), hides one, or hides a UI panel.
+-- Shows a popup by name (its arguments kept), hides one, or shows or hides a UI panel
+-- (wow-taint.lua adds the panel manager's combat refusal).
 function StaticPopup_Show(name, ...) world.popups[name] = { ... } return world.popups[name] end
 function StaticPopup_Hide(name) world.popups[name] = nil end
+function ShowUIPanel(frame) if frame and frame.Show and not frame:IsShown() then frame:Show() end end
 function HideUIPanel(frame) if frame and frame.Hide then frame:Hide() end end
 
 -- EventRegistry: callbacks by event name, which world.trigger(event, ...) runs.

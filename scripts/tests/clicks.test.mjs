@@ -80,6 +80,11 @@ it("the game's click bindings: Vanguard's own step aside out of combat, and come
   expect(addon.texts("The game's click bindings are in use (below): these are kept for when you switch back.").length, "the page says Vanguard's bindings rest").toBe(1);
   addon.slash("binds");
   expect(chatHas(addon, /The game's click bindings are in use/) && chatHas(addon, /Shift \+ 1 \(hover\)  ->  TEST-ONLY Flash Heal/), "/vg binds says so, and still lists Vanguard's").toBe(true);
+  addon.eval("__wfgStub.inCombat = true");
+  addon.eval('__click("Open the game\'s click bindings")');
+  expect([addon.eval("return { __gameWindow or 0, Vanguard_Options:IsShown() }"), chatHas(addon, /The game's click bindings window doesn't open from Vanguard in a fight/)],
+    "in a fight the button says the window waits, and the options stay open").toEqual([[0, true], true]);
+  addon.eval("__wfgStub.inCombat = false");
   addon.eval('__click("Open the game\'s click bindings")');
   expect(addon.eval("return { __gameWindow, Vanguard_Options:IsShown() }"), "the button opens the game's Click Casting window").toEqual([1, false]);
   addon.eval('ToggleClickBindingFrame = nil ns.Options.Show("clickcast")');

@@ -439,6 +439,12 @@ local function addTexts(overlay, size)
   T.Color(MM.coords, "text")
 end
 
+-- Opens or closes the world map, unless a fight is on (the game refuses Vanguard there).
+local function toggleWorldMap()
+  if ns.WindowWaitsForCombat("The world map") then return end
+  if type(ToggleWorldMap) == "function" then ToggleWorldMap() end
+end
+
 -- The zone name takes the mouse: a click opens (or closes) the world map,
 -- hovering names the zone and its territory, and the wheel still zooms. It
 -- stops short of the top corners, so the buttons there keep their clicks. It runs along the holder's
@@ -449,7 +455,7 @@ local function zoneButton(overlay, size)
   b:SetPoint("TOPLEFT", MM.holder, "TOPLEFT", inset, 0)
   b:SetPoint("TOPRIGHT", MM.holder, "TOPRIGHT", -inset, 0)
   b:SetHeight(MM.BAND.top)
-  b:SetScript("OnClick", ns.Guard("click minimap world map", function() if type(ToggleWorldMap) == "function" then ToggleWorldMap() end end))
+  b:SetScript("OnClick", ns.Guard("click minimap world map", toggleWorldMap))
   b:SetScript("OnEnter", zoneTooltip)
   b:SetScript("OnLeave", function() GameTooltip:Hide() end)
   b:EnableMouseWheel(true) b:SetScript("OnMouseWheel", onWheel)

@@ -19,6 +19,7 @@
 --    and ADDON_ACTION_BLOCKED fires. A frame is protected when it is made from
 --    a Secure template, is one of the game's protected frames, is marked with
 --    __wfgStub.protect(frame), or holds a protected frame.
+--    ShowUIPanel and HideUIPanel refuse any run with addon code in it, in combat.
 --  * Secret arguments: addon code that passes a secret to an aura call the
 --    client only lets secure code give one to, or asks for a hidden aura's
 --    data by its id, raises the client's error.
@@ -238,6 +239,34 @@ local function lockable(name)
   end
 end
 for _, name in ipairs(PROTECTED_CALLS) do rewrap(name, lockable(name)) end
+
+-- The addon's code nearest the top of the stack, or nil: a run with any of it is tainted,
+-- whatever game or test code it called on the way.
+local function addonOnStack()
+  local level = 3
+  local info = debug.getinfo(level, "Sl")
+  while info and not byAddon(info) do
+    level = level + 1
+    info = debug.getinfo(level, "Sl")
+  end
+  return info
+end
+
+-- ShowUIPanel and HideUIPanel refuse a tainted run in combat, for every frame
+-- (UIParentPanelManager.lua CheckProtectedFunctionsAllowed: "We no longer allow addons to
+-- show or hide UI panels in combat"). Nothing opens or closes, and the client prints
+-- INTERFACE_ACTION_BLOCKED. A test that redefines either replaces the rule too.
+local function panelCall(name, call)
+  return function(frame, ...)
+    local at = stub.inCombat and type(frame) == "table" and addonOnStack()
+    if at then
+      violate(string.format("blocked in combat: %s reached %s(%s), which refuses addon code in a fight", where(at), name, label(frame)))
+      return
+    end
+    return call(frame, ...)
+  end
+end
+for _, name in ipairs({ "ShowUIPanel", "HideUIPanel" }) do _G[name] = panelCall(name, _G[name]) end
 
 -- Secret arguments --------------------------------------------------------------------------
 -- The aura calls Blizzard documents with SecretArguments = "AllowedWhenUntainted" take a
