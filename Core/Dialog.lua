@@ -190,6 +190,8 @@ end
 function ns.ShowTextAtEnd(title, text)
   local f = textBox()
   ns.ShowText(title, text)
+  -- SetText may already leave the cursor at the end: move it away and back so the client reports the move.
+  f.edit:SetCursorPosition(0)
   f.edit:SetCursorPosition(#text)
   f.edit:HighlightText()
 end
