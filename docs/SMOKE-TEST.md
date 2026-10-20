@@ -380,6 +380,12 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Expect: step 1 has Food & drink, Bandages and Potions sliders; hunters and warlocks get a second step with Ammo or Soul shards; the last step lists your amounts and whether anything is short; Esc, the close button and Done close it; the step caption is small grey type under the title; the amounts take effect at once, and `/vg prep` shows rows against them. No Lua error.
 - If it fails, paste: a screenshot and `/vg errors`.
 
+### 6.5c The door card once per visit, a /reload inside included
+
+- Do: with something short (no bandages, say), walk into a dungeon and let the card fade. Type `/reload` inside. Then leave and walk back in.
+- Expect: the card shows at the first entry, not after the `/reload`, and again after you leave and walk back in. [Needs in game: that PLAYER_ENTERING_WORLD on Forever reports a `/reload` as one (its second argument true).]
+- If it fails, paste: whether it showed after the reload and `/vg errors`.
+
 ### 6.6 Group threat panel (batch 2)
 
 - Do: `/vg` → Unit frames, switch on "Group threat panel" and `/reload`. In a party with a tank, target a hostile mob out of combat, then pull it. In the open world, then a dungeon, then on a boss, watch the panel; at the same moment type `/run print(C_Secrets.ShouldUnitThreatValuesBeSecret())` and `/vg errors` (this is the threat test of issue #223).
@@ -679,6 +685,18 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Do: with a few bindings set, `/vg` > Click casting > Export, copy the string. Click Import and paste "VG1:clickcast:" followed by junk, then paste a string from another character, then the string you exported. Then hover the sample tile, press a number key that is on your action bar, press Shift alone, then Escape.
 - Expect: the junk is refused in chat ("Can't import: ...") and your bindings stay; the other character's string replaces them in one go, with no stall; the exported string brings your own back. On the tile, the number key shows "<key> -> ..." and does not trigger the action bar button; Escape closes the options window. [Needs in-game check: that the number key is kept from the game while the pointer is on the tile, and that Escape still closes the window.]
 - If it fails, paste: the chat lines, what the key did, and `/vg errors`.
+
+### 10.1c A fight closes the spell picker
+
+- Do: `/vg` > Click casting, click a grid cell to open the spell picker, leave it open and start a fight (attack a training dummy). Press a movement key and an action bar key.
+- Expect: the picker closes as the fight starts, and you move and cast as usual without pressing Escape. [Needs in game: that no key is swallowed while the options window stays open in the fight.]
+- If it fails, paste: whether the picker stayed open, what the keys did, and `/vg errors`.
+
+### 10.1d A Target or Unit menu binding the game won't run says so
+
+- Do: with "Use the game's click bindings" off (the switch exists only where the game has click bindings of its own), `/vg` > Click casting, click your class's healing layout, then add Unit menu to a hover key (Add key, Shift+Q, Unit menu). Hover the Middle / Plain cell. Type `/vg binds`. Then middle-click a party or raid tile and hover a tile and press Shift+Q.
+- Expect: the Middle / Plain cell's "Unit menu" is in the warning colour and its tooltip says "Does nothing: the game runs it only on a click its own Click Casting window binds."; the Shift + Q row says "does nothing: the game won't run it from a key"; `/vg binds` adds "(does nothing: ...)" with the same reasons to those two lines, and not to Left click (Target) or Right click. Middle click and Shift+Q open no menu (the warning is right). [Needs in game: that the game's default profile binds only plain Left and Right, and that a Target or Unit menu click it covers still works.]
+- If it fails, paste: the `/vg binds` output, what the clicks did, and `/vg errors`.
 
 ### 10.2 Use it
 
@@ -1559,6 +1577,12 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 - Do: in `/vg` open Town and gear and switch on "Dungeon card: level range, your dungeon quests and keys on the checklist". With a quest for a dungeon in your log, walk into that dungeon (a character that carries nothing short, if you can). Then leave and type `/vg prep`.
 - Expect: at the door the checklist shows even though nothing is short, with a heading "Dungeon name · levels A-B · 5-player Normal", "Last run: N days ago" (once you have been there before; "today" within a day), "Your quests here" and your quests for this dungeon as "[level] Title" (done ones with "· done"), and "Keys: ..." when you carry a key. Outside, `/vg prep` shows "Dungeon quests in your log" (your dungeon and raid quests) and any keys. With the switch off none of these lines show. [Needs in game: that GetInstanceInfo gives the name, size and difficulty, that C_Map.GetMapLevels answers for a dungeon map, that C_QuestLog.GetQuestsOnMap lists your quests inside a dungeon, that C_QuestLog.GetQuestTagInfo tags dungeon quests with Enum.QuestTag Dungeon, Raid or Group, and that keys are item class 13.]
 - If it fails, paste: what the card shows, `/run print(C_Map.GetMapLevels(C_Map.GetBestMapForUnit("player")))` and `/vg errors`.
+
+### 24.1a A finished dungeon quest reads "done"
+
+- Do: with the dungeon card on, finish every objective of a quest for a dungeon (do not hand it in yet), then type `/vg prep` inside or near that dungeon.
+- Expect: its line reads "[level] Title · done", the same quest the game's quest log shows as ready to turn in; an unfinished quest has no "· done". [Needs in game: that C_QuestLog.IsComplete or C_QuestLog.ReadyForTurnIn answers true for a finished dungeon quest on Forever.]
+- If it fails, paste: what the card shows, `/run print(C_QuestLog.IsComplete(<questID>), C_QuestLog.ReadyForTurnIn(<questID>))` (the quest ID from Wowhead) and `/vg errors`.
 
 ## 25. Theme experiments (#239)
 

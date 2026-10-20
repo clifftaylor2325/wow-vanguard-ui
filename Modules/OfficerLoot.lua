@@ -135,12 +135,32 @@ end
 
 -- Sharing -----------------------------------------------------------------------------------------
 
+-- A shared line's head: "Item: " on an item's first line, "Item (cont.): " on the lines after it.
+local function lineHead(item, n)
+  return (n == 1 and item or item .. " (cont.)") .. ": "
+end
+
+-- One item's reserves as lines of at most OL.CHUNK bytes, cut between names (many reserves on one
+-- item would not fit the chat box's 255 bytes on one line).
+local function groupLines(g)
+  local out, names = {}, {}
+  for _, name in ipairs(g.names) do
+    local now = lineHead(g.item, #out + 1) .. table.concat(names, ", ")
+    if #names > 0 and #now + 2 + #name > OL.CHUNK then out[#out + 1] = now names = {} end
+    names[#names + 1] = name
+  end
+  out[#out + 1] = lineHead(g.item, #out + 1) .. table.concat(names, ", ")
+  return out
+end
+
 -- The list cut into parts that each fit one chat line, the first starting "Soft reserves: ".
 function OL.Chunks()
   local parts, now = {}, ""
-  for _, line in ipairs(OL.Lines()) do
-    if now ~= "" and #now + #line + 3 > OL.CHUNK then parts[#parts + 1] = now now = "" end
-    now = now == "" and (#parts == 0 and "Soft reserves: " or "") .. line or now .. " | " .. line
+  for _, g in ipairs(OL.Groups()) do
+    for _, line in ipairs(groupLines(g)) do
+      if now ~= "" and #now + #line + 3 > OL.CHUNK then parts[#parts + 1] = now now = "" end
+      now = now == "" and (#parts == 0 and "Soft reserves: " or "") .. line or now .. " | " .. line
+    end
   end
   if now ~= "" then parts[#parts + 1] = now end
   return parts

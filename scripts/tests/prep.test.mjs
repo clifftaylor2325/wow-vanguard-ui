@@ -182,6 +182,18 @@ it("prep: once per visit at the door, gone after Hide after or the close button"
   expect(shown(addon), "the door check can be switched off").toBe(false);
 });
 
+it("prep: a /reload inside the dungeon does not bring the door card back", () => {
+  const addon = character("MAGE", 60);
+  addon.eval(`__inside, __kind, __instanceID = true, "party", 389`);
+  addon.fire("PLAYER_ENTERING_WORLD", false, true);
+  expect(shown(addon), "after a reload inside (a fresh UI that has not seen this visit): not again").toBe(false);
+  enter(addon);
+  expect(shown(addon), "nor at the next loading screen inside").toBe(false);
+  enter(addon, false, "none");
+  enter(addon);
+  expect(shown(addon), "back through the door after leaving: again").toBe(true);
+});
+
 it("prep: a ready check shows the card, packed or not, unless switched off", () => {
   const addon = character("WARRIOR", 60);
   addon.fire("READY_CHECK", "TEST-ONLY Leader", 30);
@@ -253,6 +265,12 @@ it("prep buffs: off until switched on", () => {
   const addon = character("WARRIOR", 60, { extra: BUFF_ENV });
   addon.slash("prep");
   expect(addon.texts("Everything's packed.").length, "no buff rows by default").toBe(1);
+});
+
+it("prep buffs: a packed character with buffs missing walks into a dungeon and the door card stays away", () => {
+  const addon = buffed();
+  enter(addon);
+  expect(shown(addon), "buff checks belong to a ready check and /vg prep, not the door").toBe(false);
 });
 
 it("prep buffs: a ready check lists the flask, food, enchants and raid buffs you lack", () => {

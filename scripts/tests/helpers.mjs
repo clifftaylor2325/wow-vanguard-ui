@@ -240,6 +240,14 @@ export const CLICK_LUA = `
   end
 `;
 
+// TEST-ONLY game click bindings (C_ClickBindings, as the forever ClickBindingsDocumentation has them): the
+// game's default profile, plain Left = Target and plain Right = Open menu; __gameClicks can be swapped.
+export const GAME_CLICKS_LUA = `
+  Enum.ClickBindingType = { None = 0, Spell = 1, Macro = 2, Interaction = 3, PetAction = 4 }
+  __gameClicks = { { type = 3, actionID = 1, button = "LeftButton", modifiers = 0 }, { type = 3, actionID = 2, button = "RightButton", modifiers = 0 } }
+  C_ClickBindings = { GetProfileInfo = function() return __gameClicks end }
+`;
+
 // TEST-ONLY raid: three members; raid2 is you. The stub has no secure
 // header, so tests create buttons the way the header would and call its setup.
 export const RAID_ENV = `

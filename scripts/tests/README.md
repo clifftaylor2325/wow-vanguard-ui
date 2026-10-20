@@ -142,6 +142,7 @@ change fires the events the client would.
 | `get(field)` / `set(field, value)` | Any world field by path: `set("money", 12345)`, `set("build.interface", 120007)`. |
 | `without(...names)` | Removes global APIs, as an older client would lack them. |
 | `addChatBubble(text, opts)` | A chat bubble over a speaker's head saying `text`: a frame in `world.bubbles` with one child panel holding nine `TEST-ONLY-ART` textures and the text (`panel.String`), listed by `C_ChatBubbles.GetAllChatBubbles`; CHAT_MSG_SAY fires. `opts.forbidden` makes its `IsForbidden` true (an instance's bubble), `opts.empty` leaves it without a panel, `opts.unkeyed` leaves its text without the `String` key, `opts.event` is the chat event that fires instead of CHAT_MSG_SAY (`"CHAT_MSG_RAID"`). Returns its index. |
+| `world.sentChat` (Lua, through `addon.eval`) | What the addon sent to chat channels through `C_ChatInfo.SendChatMessage`, `{ text, chatType }` each, in order. The old `SendChatMessage` global is not modelled (on Forever it is only a deprecation fallback); a test that needs it defines it. |
 | `set("instance", true)` | The player is in an instance: `IsInInstance()` answers `true, "party"` (default `false, "none"`). |
 
 The world's tables are open: `addon.eval("__wfgWorld.units.player.level = 10")`

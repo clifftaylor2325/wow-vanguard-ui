@@ -185,9 +185,10 @@ function GB.Probe()
   ns.Chat("Posts kept: " .. #GB.entries .. ", shown: " .. #GB.Shown() .. " (filter " .. GB.filter .. ", only my level " .. tostring(GB.settings.mine) .. ").")
 end
 
--- /vg lfg [probe]: the board, or its probe.
+-- /vg lfg [probe]: the board, or its probe; with the module off, Toggle says the board is off.
 function GB.Command(rest)
-  if (rest or ""):lower():match("^%s*probe") then return GB.Probe() end
+  local wantsProbe = (rest or ""):lower():match("^%s*probe") ~= nil
+  if wantsProbe and GB.settings then return GB.Probe() end
   GB.Toggle()
 end
 

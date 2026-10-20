@@ -2,7 +2,7 @@
 // in the TEST-ONLY headless client (scripts/lib/lua-harness.mjs).
 
 import { expect, it } from "vitest";
-import { CLICK_LUA, chatHas, isTok, loggedIn } from "./helpers.mjs";
+import { CLICK_LUA, GAME_CLICKS_LUA, chatHas, isTok, loggedIn } from "./helpers.mjs";
 
 const CS = "ns.ClickCastSpells";
 const CC = 'ns.GetModule("ClickCast")';
@@ -138,6 +138,16 @@ it("bindings carry spell ids and ranks, move, copy, export and import", () => {
   addon.eval(`${CC}.Add("BUTTON4", "spell", "Renew")`);
   expect(bindings(addon).BUTTON4, "the old GetSpellInfo global also answers ids").toBe("spell:Renew:139:nil");
   expect(addon.eval(`local ok, err = ${CC}.Add("BUTTON4", "spell", "") return err`)).toBe("pick a spell");
+});
+
+it("a fight closes the spell picker, so it can't hold the keyboard through combat", () => {
+  const addon = priest();
+  addon.eval('ns.Options.Show("clickcast")');
+  addon.click(cell(addon, "ctrl-BUTTON2"));
+  expect(addon.frame("Vanguard_SpellPicker").visible, "open before the fight").toBe(true);
+  addon.world.combat(true);
+  expect(addon.frame("Vanguard_SpellPicker").visible, "closed as the fight starts").toBe(false);
+  expect(addon.eval("return Vanguard_SpellPicker.catcher:IsShown()"), "and its click catcher").toBe(false);
 });
 
 it("the grid picks spells from the spellbook, with ranks, drops and clears", () => {
@@ -435,6 +445,28 @@ it("the hover keys card: its key rows are list rows; the empty line is label tex
   const off = fontOf(addon, "This client can't compile the secure code hover keys need; mouse bindings still work.");
   expect([off[0], isTok(addon, off[1], "muted")], "the no-snippets note: small, muted").toEqual([small, true]);
   addon.eval("ns.Client.ProbeSnippets = nil");
+});
+
+it("with the game's own click bindings, the page marks a Target or Unit menu binding the game won't run, and says why", () => {
+  const addon = priest(GAME_CLICKS_LUA);
+  addon.eval('ns.Options.Show("clickcast")');
+  addon.eval(`${CC}.ApplyLayout(ns.ClickCastSpells.Layout()) ${CC}.Add("SHIFT-Q", "menu") ${CC}.Add("SHIFT-E", "spell", "Renew", 139) ns.Options.Refresh()`);
+  // A cell's name: its text and whether it is drawn in a colour token.
+  const name = (key, token) => addon.eval(`local c = __wfgStub.frames[${cell(addon, key)}] return { c.name:GetText(), c.name.__textColor }`)
+    .map((v, i) => (i === 1 ? isTok(addon, v, token) : v));
+  expect([name("BUTTON3", "warn"), name("BUTTON1", "text")], "the middle-click menu is in the warning colour; the game's own Left click isn't").toEqual([["Unit menu", true], ["Target", true]]);
+  addon.hover(cell(addon, "BUTTON3"));
+  expect(addon.eval("local out = {} for i, l in ipairs(GameTooltip.__lines) do out[i] = l.text end return out"), "hovering it says why").toEqual(
+    ["Unit menu", "Does nothing: the game runs it only on a click its own Click Casting window binds."]);
+  addon.hover(null);
+  // A hover-key row's note: its text and whether it is drawn in a colour token.
+  const note = (key, token) => addon.eval(`local r = __wfgStub.frames[${widget(addon, `w.key == "${key}" and w.remove ~= nil and w.keyText ~= nil`)}] return { r.note:GetText(), r.note.__textColor }`)
+    .map((v, i) => (i === 1 ? isTok(addon, v, token) : v));
+  expect([note("SHIFT-Q", "warn"), note("SHIFT-E", "muted")], "a Unit menu hover key says why it does nothing; a spell key keeps its plain note").toEqual(
+    [["does nothing: the game won't run it from a key", true], ["", true]]);
+  addon.eval("GameTooltip = nil");
+  addon.hover(cell(addon, "BUTTON3"));
+  addon.hover(null);
 });
 
 // A click-casting string for a list of Lua binding tables (as written in Lua source).

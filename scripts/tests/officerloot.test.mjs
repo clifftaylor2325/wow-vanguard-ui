@@ -113,6 +113,16 @@ it("the list goes in the chat box for the party or raid on a click, in parts, an
   expect(chatHas(bare, /Forgot 1/)).toBe(true);
 });
 
+it("many reserves on one item are cut between names, so every shared part fits the chat box with /raid in front", () => {
+  const addon = loggedIn("", ON);
+  for (let i = 0; i < 24; i++) say(addon, `loot add Raider${String(i).padStart(2, "0")}abcd Ashkandi`);
+  const parts = addon.eval("local out = {} for i, p in ipairs(ns.GetModule('OfficerLoot').Chunks()) do out[i] = '/raid ' .. p end return out");
+  expect(Math.max(...parts.map((p) => p.length)), "the chat box holds 255 bytes").toBeLessThanOrEqual(255);
+  expect(parts[0].startsWith("/raid Soft reserves: Ashkandi: Raider00abcd, "), "the first part names the item").toBe(true);
+  expect(parts[1].startsWith("/raid Ashkandi (cont.): "), "the next carries the item on").toBe(true);
+  expect(parts.join(" ").match(/Raider\d\dabcd/g).length, "every name once").toBe(24);
+});
+
 it("the options card has the switch, and Add a reserve asks for player and item", () => {
   const addon = loggedIn("", ON);
   expect(rows(addon).map((r) => r[1])).toContain("Turn on the soft-reserve list and the roster");

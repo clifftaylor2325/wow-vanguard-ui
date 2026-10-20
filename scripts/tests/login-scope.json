@@ -113,6 +113,7 @@
     "scripts/tests/data.test.mjs": [],
     "scripts/tests/docks.test.mjs": [],
     "scripts/tests/dungeoncard.test.mjs": [
+      "a long run with a way back in every 40 minutes stays one visit: the last run is still the one before",
       "an item the client has not cached shows by its number; without a map listing, a dungeon shows its tagged quests",
       "at the door the card shows the dungeon, your quests on its map and your keys, even with nothing short",
       "elsewhere /vg prep lists the dungeon and raid quests in your log, with a more line past six",
@@ -174,12 +175,14 @@
     "scripts/tests/prep.test.mjs": [
       "prep buffs: /vg prep buffs lists your buffs with the check each counts for, out of combat",
       "prep buffs: a Forever variant of a classic name still counts, an unrelated buff does not",
+      "prep buffs: a packed character with buffs missing walks into a dungeon and the door card stays away",
       "prep buffs: a ready check lists the flask, food, enchants and raid buffs you lack",
       "prep buffs: nothing is guessed when the client hides auras or can't list them",
       "prep buffs: off until switched on",
       "prep buffs: world buffs only when asked for, an off hand only when it holds a weapon",
       "prep: /vg prep want sets the wanted amounts; the options page has the section",
       "prep: Keep-stocked items under their count, and worn gear, are on the card",
+      "prep: a /reload inside the dungeon does not bring the door card back",
       "prep: a client without the bag, item or instance calls checks what it can",
       "prep: a hidden count skips its row without an error",
       "prep: a ready check shows the card, packed or not, unless switched off",

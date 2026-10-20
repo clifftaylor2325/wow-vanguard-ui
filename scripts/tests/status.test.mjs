@@ -52,6 +52,43 @@ it("raid status marks", () => {
   expect(marks(addon, 1).leader === false, "each mark can be turned off").toBeTruthy();
 });
 
+// TEST-ONLY: GUIDs by unit (UnitGUID), and an encounter that hides UnitIsUnit's answer.
+const GUIDS = `UnitGUID = function(unit) local u = __units[unit] return u and "TEST-ONLY-GUID-" .. u.name end
+  __status.range.raid2 = __wfgWorld.secret(false)`;
+const HIDE_COMPARE = "UnitIsUnit = function() return __wfgWorld.secret(true) end";
+// Tile 2's alpha, and whether it follows a hidden range.
+const tile2 = (addon) => addon.eval("local b = Vanguard_RaidUnitButton2 return { alpha = b:GetAlpha(), follows = b.__alphaFromBoolean ~= nil }");
+// A roster refresh in a fight: GROUP_ROSTER_UPDATE, then the queued update of every tile.
+const rosterInFight = (addon) => { addon.world.combat(true); addon.fire("GROUP_ROSTER_UPDATE"); addon.eval("__wfgStub.advance(0.3)"); };
+
+it("your own tile stays opaque when an encounter hides UnitIsUnit's answer on a roster refresh", () => {
+  const addon = loggedIn("C_Timer = nil " + UNITS_ENV + RAID_ENV + STATUS_ENV + GUIDS);
+  addon.eval('__spawn(1, "raid1"); __spawn(2, "raid2")');
+  expect(tile2(addon).alpha, "you never fade").toBe(1);
+  addon.eval(HIDE_COMPARE);
+  rosterInFight(addon);
+  expect(tile2(addon), "your GUID still says it is you: no fade from a hidden range").toEqual({ alpha: 1, follows: false });
+  addon.world.combat(false);
+});
+
+it("a tile whose token now names someone else fades by range again, even while UnitIsUnit is hidden", () => {
+  const addon = loggedIn("C_Timer = nil " + UNITS_ENV + RAID_ENV + STATUS_ENV + GUIDS);
+  addon.eval('__spawn(1, "raid1"); __spawn(2, "raid2")');
+  addon.eval(HIDE_COMPARE + ' __units.raid2 = { name = "TEST-ONLY Moved Up", hp = 500, maxhp = 1000, power = 0, maxpower = 0, ptype = "MANA", player = true, class = "MAGE" }');
+  rosterInFight(addon);
+  expect(tile2(addon).follows, "raid2 is another member now: its tile follows the hidden range").toBe(true);
+  addon.world.combat(false);
+});
+
+it("with UnitIsUnit and the GUIDs both hidden, a tile is not taken for you", () => {
+  const addon = loggedIn("C_Timer = nil " + UNITS_ENV + RAID_ENV + STATUS_ENV + GUIDS);
+  addon.eval('__spawn(1, "raid1"); __spawn(2, "raid2")');
+  addon.eval(HIDE_COMPARE + " UnitGUID = function() return __wfgWorld.secret('g') end");
+  rosterInFight(addon);
+  expect(tile2(addon).follows, "nothing plain says who it is: no remembered answer").toBe(true);
+  addon.world.combat(false);
+});
+
 // TEST-ONLY counters for the range ticker: UnitInRange and UnitIsUnit calls, and each tile's SetAlpha calls.
 const RANGE_COUNT = `__rangeCalls, __isUnitCalls, __alphaCalls = 0, 0, 0
   local inRange, isUnit = UnitInRange, UnitIsUnit

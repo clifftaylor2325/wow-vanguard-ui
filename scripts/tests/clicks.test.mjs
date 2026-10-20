@@ -1,7 +1,7 @@
 // clicks: Vanguard's real Lua in the TEST-ONLY headless client (scripts/lib/lua-harness.mjs).
 
 import { expect, it } from "vitest";
-import { CLICK_LUA, RAID_ENV, UNITS_ENV, chatHas, loggedIn } from "./helpers.mjs";
+import { CLICK_LUA, GAME_CLICKS_LUA, RAID_ENV, UNITS_ENV, chatHas, loggedIn } from "./helpers.mjs";
 
 it("click casting", () => {
   const addon = loggedIn(UNITS_ENV + RAID_ENV + CLICK_LUA + "GetSpecialization = function() return __spec end __spec = 1");
@@ -91,4 +91,40 @@ it("the game's click bindings: Vanguard's own step aside out of combat, and come
   const old = loggedIn(UNITS_ENV + RAID_ENV + CLICK_LUA + "C_ClickBindings = nil ToggleClickBindingFrame = nil", { savedVariables: "VanguardDB.profiles = { Default = { ClickCast = { useGame = true } } }" });
   old.eval('ns.GetModule("ClickCast").Add("ctrl-BUTTON2", "spell", "TEST-ONLY Renew") __spawn(1, "raid1") ns.Options.Show("clickcast")');
   expect([old.eval('return Vanguard_RaidUnitButton1:GetAttribute("ctrl-type2")'), old.texts("THE GAME'S CLICK BINDINGS").length], "a client without the game's click bindings keeps Vanguard's, and the page doesn't offer them").toEqual(["spell", 0]);
+});
+
+it("/vg binds says which Target and Unit menu bindings the game's own click bindings won't run, and why", () => {
+  const addon = loggedIn(GAME_CLICKS_LUA);
+  const CC = 'ns.GetModule("ClickCast")';
+  addon.eval(`${CC}.ApplyLayout(ns.ClickCastSpells.Layout()) ${CC}.Add("BUTTON2", "menu") ${CC}.Add("ctrl-BUTTON1", "target")
+    ${CC}.Add("SHIFT-Q", "menu") ${CC}.Add("BUTTON4", "focus") ${CC}.Add("alt-BUTTON3", "spell", "TEST-ONLY Renew")`);
+  const warn = addon.eval('return "|c" .. ns.Theme.Hex("warn")');
+  const click = `  ${warn}(does nothing: the game runs it only on a click its own Click Casting window binds)|r`;
+  const key = `  ${warn}(does nothing: the game won't run it from a key)|r`;
+  // The /vg binds lines for the bindings above (the mage layout adds Arcane Intellect), without the chat prefix, sorted.
+  const lines = () => {
+    addon.clearChat();
+    addon.slash("binds");
+    return Array.from(addon.chat()).filter((l) => l.includes("  ->  ")).map((l) => l.replace(/^.*?Vanguard:\|r /, "")).sort();
+  };
+  expect(lines(), "with the game's default clicks (Left = Target, Right = menu), middle, Ctrl + Left and a hover key do nothing").toEqual([
+    "  Alt + Middle click  ->  TEST-ONLY Renew",
+    "  Button 4  ->  Focus",
+    `  Ctrl + Left click  ->  Target${click}`,
+    "  Left click  ->  Target",
+    `  Middle click  ->  Unit menu${click}`,
+    "  Right click  ->  Unit menu",
+    "  Shift + Left click  ->  Arcane Intellect",
+    `  Shift + Q (hover)  ->  Unit menu${key}`,
+  ]);
+  addon.eval('table.insert(__gameClicks, { type = 3, actionID = 1, button = "Button1", modifiers = 4 }) table.insert(__gameClicks, { type = 1, actionID = 139, button = "MiddleButton", modifiers = 0 })');
+  const covered = lines();
+  expect([covered.includes("  Ctrl + Left click  ->  Target"), covered.includes(`  Middle click  ->  Unit menu${click}`)],
+    "a modified Target click in the game's profile covers Ctrl + Left; a spell there doesn't cover the middle click").toEqual([true, true]);
+  addon.eval(`${CC}.settings.useGame = true`);
+  expect(lines().some((l) => l.includes("does nothing")), "while the game's bindings are in use, Vanguard's rest and nothing is flagged").toBe(false);
+  addon.eval(`${CC}.settings.useGame = false Enum.ClickBindingType = nil`);
+  expect(lines().some((l) => l.includes("does nothing")), "a client that can't say what the game binds flags nothing").toBe(false);
+  addon.eval("C_ClickBindings = {}");
+  expect(lines().some((l) => l.includes("does nothing")), "nor one without the profile call").toBe(false);
 });

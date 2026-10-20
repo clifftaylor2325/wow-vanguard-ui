@@ -1189,10 +1189,10 @@ end
 C_QuestLog = {
   -- Entries in the log, and how many are quests (not headers).
   GetNumQuestLogEntries = function() local n = 0 for _, q in ipairs(world.quests) do if not q.isHeader then n = n + 1 end end return #world.quests, n end,
-  -- The log entry as the client's info table.
+  -- The log entry as the client's QuestInfo (no completion field: IsComplete answers that).
   GetInfo = function(i)
     local q = questAt(i)
-    return q and { questID = q.questID, title = q.title, level = q.level or 1, isHeader = q.isHeader == true, isComplete = q.isComplete == true, isOnMap = true, hasLocalPOI = true, questLogIndex = i, isCollapsed = false, isHidden = false, isTask = false }
+    return q and { questID = q.questID, title = q.title, level = q.level or 1, isHeader = q.isHeader == true, isOnMap = true, hasLocalPOI = true, questLogIndex = i, isCollapsed = false, isHidden = false, isTask = false }
   end,
   GetLogIndexForQuestID = function(id) return (questIndex(id)) end,
   GetQuestObjectives = function(id) local _, q = questIndex(id) return q and q.objectives or {} end,
@@ -1937,6 +1937,12 @@ end
 -- Chat and the game's frames ----------------------------------------------------------------------
 
 world.chatFilters = {}
+-- What was sent to chat channels, { text, chatType } each, in order.
+world.sentChat = {}
+C_ChatInfo = C_ChatInfo or {}
+-- C_ChatInfo.SendChatMessage (ChatInfoDocumentation.lua) adds to world.sentChat. The SendChatMessage
+-- global is only a deprecation fallback on Forever (Blizzard_DeprecatedChatInfo), so it is not modelled.
+C_ChatInfo.SendChatMessage = function(text, chatType) table.insert(world.sentChat, { text, chatType }) end
 -- Chat filters, temporary windows and the FCF helpers the addon calls.
 function ChatFrame_AddMessageEventFilter(event, fn) world.chatFilters[event] = world.chatFilters[event] or {} table.insert(world.chatFilters[event], fn) end
 function FCF_OpenTemporaryWindow(name) local f = stub.newWidget("ScrollingMessageFrame", "ChatFrameTemp" .. name, UIParent) return f end

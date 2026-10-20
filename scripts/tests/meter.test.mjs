@@ -10,10 +10,11 @@ const METER_ENV = `Enum.DamageMeterSessionType = { Current = 1 } Enum.DamageMete
 const METER_ON = { savedVariables: "VanguardDB.profiles = { Default = { Meter = { on = true } } }" };
 
 // Sets the meter's session to TEST-ONLY lines given as a Lua list expression, for the kind asked (any kind by default).
+// Like the client, every read hands out new tables.
 function setLines(addon, lines, kind = "nil") {
-  addon.eval(`local list = ${lines}
+  addon.eval(`local function list() return ${lines} end
     C_DamageMeter.GetCombatSessionFromType = function(session, what)
-      if ${kind} == nil or what == ${kind} then return { combatSources = list } end
+      if ${kind} == nil or what == ${kind} then return { combatSources = list() } end
       return nil
     end`);
 }
@@ -248,8 +249,9 @@ it("a click on a line opens that player's spells, in the game's order; again or 
   expect([panel(), addon.eval("return __guid")], "Tess's spells, asked by her GUID").toEqual([[true, "Tess", "Spell1", "900", "Spell2", false, false], "g1"]);
   click(2);
   expect(panel()[1], "another line switches the panel").toBe("Bo");
+  addon.advance(1);
   click(2);
-  expect(panel()[0], "the same line again closes it").toBe(false);
+  expect(panel()[0], "the same line again, after the meter has repainted, closes it").toBe(false);
   click(1);
   addon.eval("Vanguard_MeterDetail.title:GetParent():GetScript('OnClick')()");
   expect(panel()[0], "the panel's title closes it").toBe(false);
@@ -289,12 +291,11 @@ it("spell lists fall back safely: no call, hidden list, hidden spells, unknown n
 it("a report holds plain names and figures only, out of combat, to chat or a channel", () => {
   const addon = loggedIn(FULL_ENV, METER_ON);
   setLines(addon, `{ { name = 'Tess', amountPerSecond = 12300 }, { name = __wfgWorld.secret('Hid'), amountPerSecond = 500 }, { name = 'Bo', amountPerSecond = __wfgWorld.secret(9) }, { name = 'Cy', amountPerSecond = 40 } }`);
-  addon.eval("__sent = {} SendChatMessage = function(text, channel) __sent[#__sent + 1] = channel .. ': ' .. text end");
   addon.slash("meter report");
   expect(chatHas(addon, /Damage per second: 1\. Tess 12\.3K {2}4\. Cy 40$/), "hidden lines are left out, plain ones keep their place").toBe(true);
   addon.slash("meter report party 1");
   addon.slash("meter report guild 99");
-  expect(addon.eval("return __sent"), "to a channel, at most ten lines").toEqual(["PARTY: Damage per second: 1. Tess 12.3K", "GUILD: Damage per second: 1. Tess 12.3K  4. Cy 40"]);
+  expect(addon.eval("local out = {} for i, m in ipairs(__wfgWorld.sentChat) do out[i] = m[2] .. ': ' .. m[1] end return out"), "to a channel, at most ten lines").toEqual(["PARTY: Damage per second: 1. Tess 12.3K", "GUILD: Damage per second: 1. Tess 12.3K  4. Cy 40"]);
   addon.clearChat();
   addon.slash("meter report bogus");
   addon.slash("meter report say 0");
@@ -321,15 +322,15 @@ it("the options page has buttons for the report and the reset", () => {
 it("the meter's title row has Report and Reset buttons; Report goes where the options say", () => {
   const addon = loggedIn(FULL_ENV, METER_ON);
   setLines(addon, "{ { name = 'Tess', amountPerSecond = 300 } }");
-  addon.eval("C_DamageMeter.ResetAllCombatSessions = function() __reset = true end __sent = {} SendChatMessage = function(text, channel) __sent[#__sent + 1] = channel end");
+  addon.eval("C_DamageMeter.ResetAllCombatSessions = function() __reset = true end");
   // Presses a header button of the meter.
   const press = (name) => addon.eval(`Vanguard_Meter.${name}:GetScript('OnClick')(Vanguard_Meter.${name})`);
   press("report");
   press("reset");
-  expect([chatHas(addon, /Damage per second: 1\. Tess 300/), addon.eval("return __reset"), addon.eval("return #__sent")], "to your chat by default").toEqual([true, true, 0]);
+  expect([chatHas(addon, /Damage per second: 1\. Tess 300/), addon.eval("return __reset"), addon.eval("return #__wfgWorld.sentChat")], "to your chat by default").toEqual([true, true, 0]);
   addon.eval("ns.GetModule('Meter').settings.reportTo = 'party'");
   press("report");
-  expect(addon.eval("return __sent"), "then to the party").toEqual(["PARTY"]);
+  expect(addon.eval("local out = {} for i, m in ipairs(__wfgWorld.sentChat) do out[i] = m[2] end return out"), "then to the party").toEqual(["PARTY"]);
 });
 
 it("on the Deaths view a click puts the game's death recap link in chat", () => {
@@ -381,4 +382,22 @@ it("the panel's width can be set, and its lines follow", () => {
   addon.eval("ns.SetMoverSize('meter', 'width', 50)");
   expect(addon.eval("return Vanguard_Meter:GetWidth()"), "kept within the range").toBe(200);
   addon.eval("ns.GetModule('Meter').Resized({})");
+});
+
+it("with the meter module off, the Combat tools Report button is greyed out", () => {
+  const addon = loggedIn(CLICK_LUA, { savedVariables: "VanguardDB.profiles = { Default = { modules = { Meter = false } } }" });
+  addon.eval('ns.Options.Show("tools")');
+  const enabled = addon.eval(`for _, w in ipairs(__wfgStub.frames) do
+      local fs = w.label or w.text
+      if w.IsEnabled and type(fs) == "table" and fs.__text == "Report the meter's top lines (also the Report button on the meter)" then return w:IsEnabled() end
+    end`);
+  expect(enabled, "nothing to report from: the button can't be pressed").toBe(false);
+});
+
+it("a client without C_ChatInfo.SendChatMessage sends the report through the old SendChatMessage global", () => {
+  const addon = loggedIn(FULL_ENV + "C_ChatInfo.SendChatMessage = nil SendChatMessage = function(text, channel) __sent = channel .. ': ' .. text end", METER_ON);
+  setLines(addon, "{ { name = 'Tess', amountPerSecond = 300 } }");
+  addon.advance(1);
+  addon.slash("meter report raid 1");
+  expect(addon.eval("return __sent"), "sent to the raid").toBe("RAID: Damage per second: 1. Tess 300");
 });

@@ -108,11 +108,20 @@ it("the card says when you last came: nothing the first time, then days ago; a q
   addon.slash("prep");
   expect(text(addon).some((l) => /^Last run/.test(l)), "ten minutes later is the same visit").toBe(false);
   addon.eval("ns.GetModule('InstancePrep').lastInstance = nil");
-  visit(addon, 1000 + 86400 * 3 + 10);
+  visit(addon, 1000 + 600 + 86400 * 3 + 10);
   addon.slash("prep");
-  expect(text(addon)[1], "three days on, the first visit is the earlier one").toBe("Last run: 3 days ago");
+  expect(text(addon)[1], "three days after its last way in, the first visit is the earlier one").toBe("Last run: 3 days ago");
   addon.eval("ns.GetModule('InstancePrep').lastInstance = nil");
   visit(addon, 1000 + 86400 * 5);
   addon.slash("prep");
   expect(text(addon)[1], "a little under two days after the second visit is yesterday").toBe("Last run: yesterday");
+});
+
+it("a long run with a way back in every 40 minutes stays one visit: the last run is still the one before", () => {
+  const runs = `VanguardCharDB = { profile = "Default", setupDone = true, dungeonRuns = { [389] = { at = 1000 - 5 * 86400 } } }`;
+  const addon = character(ON + "\n" + runs, "__t = 1000 time = function() return __t end");
+  visit(addon, 1000 + 40 * 60);
+  visit(addon, 1000 + 80 * 60);
+  addon.slash("prep");
+  expect(text(addon)[1], "80 minutes in, 40 after the last way in: the same run").toBe("Last run: 5 days ago");
 });

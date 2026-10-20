@@ -76,9 +76,16 @@ end
 
 -- Range ------------------------------------------------------------------------------------
 
--- You are always in your own range; UnitInRange doesn't check it.
+-- You are always in your own range; UnitInRange doesn't check it. An encounter can hide UnitIsUnit's
+-- answer (a comparison): then the unit's GUID, while the client still gives it plainly, is compared with
+-- yours. With both hidden the unit counts as not you; nothing is kept per tile, since a roster change
+-- can give the tile's token to someone else.
 local function isPlayer(unit)
-  return unit == "player" or plain(call("UnitIsUnit", unit, "player")) == true
+  if unit == "player" then return true end
+  local same = call("UnitIsUnit", unit, "player")
+  if not ns.IsSecret(same) then return same == true end
+  local guid, mine = call("UnitGUID", unit), call("UnitGUID", "player")
+  return not ns.IsSecret(guid) and not ns.IsSecret(mine) and guid ~= nil and guid == mine
 end
 
 -- Sets a button's alpha, only when it changes (b.rangeAlpha remembers it).

@@ -80,5 +80,5 @@ function FH.RecapCommand(rest)
   if not text then return ns.Chat("No recap to show: no fight yet, or the game's damage meter has nothing for it.") end
   if word == "" then return ns.Chat("Fight recap: " .. text) end
   if not FH.CHANNELS[word] then return ns.Chat("Send the recap to say, party, raid, instance or guild.") end
-  SendChatMessage(text, FH.CHANNELS[word])
+  ns.SendChat(text, FH.CHANNELS[word])
 end
