@@ -104,12 +104,16 @@ end
 
 -- Applying -------------------------------------------------------------------------------------
 
+-- The states that fade a frame by alpha ("fade") or dim it ("dim"); the others show or hide it.
+V.FADING = { fade = true, dim = true }
+
 -- 1 unless the frame fades or dims and the mouse isn't over it (nor is it revealed, as
 -- action bars are while you drag a spell, nor lingering after Auto-hide); then 0, or
 -- the calm alpha for a dimmed frame (the Calm HUD's unit frames, which stay clickable).
 function V.Alpha(frame)
   local state = frame.vgState
-  if (state ~= "fade" and state ~= "dim") or vgHover[frame] or frame.vgReveal or frame.vgLingering then return 1 end
+  local fading = V.FADING[state]
+  if not fading or vgHover[frame] or frame.vgReveal or frame.vgLingering then return 1 end
   return state == "dim" and T.ALPHA.calm or 0
 end
 
