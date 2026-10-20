@@ -1,6 +1,6 @@
 // chat: Vanguard's real Lua in the TEST-ONLY headless client (scripts/lib/lua-harness.mjs).
 
-import { describe, expect, it } from "vitest";
+import { expect, it } from "vitest";
 import { luaValue } from "../lib/lua-emit.mjs";
 import { CLICK_LUA, expectErrors, STRIP_ENV, TIDY_ENV, UI_ENV, UNITS_ENV, INSIDES_LUA, borderOf, chatHas, isTok, later, loggedIn, setCombat, tok, WINDOWS_ENV, windowState } from "./helpers.mjs";
 
@@ -1781,128 +1781,114 @@ it("R2.13 the time manager: check boxes, dropdowns, the alarm message box, label
   expect(odd.eval("return #ns.errors"), "odd parts are skipped").toBe(0);
 });
 
-describe("auto-accept: Forever's own invite windows and the teleport check", () => {
-  // TEST-ONLY models of Forever's invite windows, made before the addon as the client does
-  // (Blizzard_FrameXML/GuildInviteFrame.xml, Blizzard_LFGUtil/Shared/LFGInvitePopup.xml): the guild
-  // window shows on its event and declines as it hides unless accepted; the role popup is shown by
-  // the game for an invite with roles. Every answer is recorded.
-  const FOREVER_INVITES = `
-    __answers = {}
-    DeclineGuild = function() __answers[#__answers + 1] = "guild" end
-    DeclineGroup = function() __answers[#__answers + 1] = "group" end
-    StaticPopup_Hide = function(which) __answers[#__answers + 1] = "close " .. which end
-    StaticPopupSpecial_Hide = function(frame) __answers[#__answers + 1] = "hide " .. frame:GetName() frame:Hide() end
-    GuildInviteFrame = CreateFrame("Frame", "GuildInviteFrame", UIParent)
-    GuildInviteFrame:Hide()
-    GuildInviteFrame:RegisterEvent("GUILD_INVITE_REQUEST")
-    GuildInviteFrame:SetScript("OnEvent", function(self) self.accepted = nil self:Show() end)
-    GuildInviteFrame:SetScript("OnHide", function(self) if not self.accepted then DeclineGuild() end end)
-    LFGInvitePopup = CreateFrame("Frame", "LFGInvitePopup", UIParent)
-    LFGInvitePopup:Hide()
-  `;
-  const ON = "VanguardDB.profiles = { Default = { AutoAccept = { guildInvites = true, strangerGroups = true, summons = true } } }";
-
-  it("a declined guild invite closes Forever's invite window, declining once", () => {
-    const addon = loggedIn(FOREVER_INVITES, { savedVariables: ON });
-    addon.fire("GUILD_INVITE_REQUEST", "<name>", "<guild>", 0, "", false);
-    expect(addon.eval("return #__answers"), "nothing yet: the game's window gets the event too").toBe(0);
-    addon.update(0);
-    expect(addon.eval("return { GuildInviteFrame:IsShown(), __answers }"), "the window is hidden and its own hide declines, once").toEqual([false, ["hide GuildInviteFrame", "guild", "close GUILD_INVITE"]]);
-    expect(chatHas(addon, /guild invite from <name>/), "and said in chat").toBe(true);
-  });
-
-  it("a declined stranger's role invite closes Forever's role popup", () => {
-    const addon = loggedIn(FOREVER_INVITES + "StaticPopupSpecial_Hide = nil", { savedVariables: ON });
-    addon.eval("LFGInvitePopup:Show()");
-    addon.fire("PARTY_INVITE_REQUEST", "<name>", true, false, true, false, false, "stranger", false);
-    addon.update(0);
-    expect(addon.eval("return { LFGInvitePopup:IsShown(), __answers }"), "declined and the popup hidden (a client without StaticPopupSpecial_Hide hides it itself)").toEqual([false, ["group", "close PARTY_INVITE"]]);
-  });
-
-  it("a summon the game won't let you take yet leaves its prompt up", () => {
-    const addon = loggedIn("", { savedVariables: ON });
-    addon.eval("__wfgWorld.summon = { summoner = '<name>', area = 'TEST-ONLY Vale' } __wfgWorld.cannotTeleport = true");
-    addon.fire("CONFIRM_SUMMON");
-    expect(addon.eval("return __wfgWorld.summonAccepted == true"), "PlayerCanTeleport false: not accepted").toBe(false);
-    addon.eval("__wfgWorld.cannotTeleport = false");
-    addon.fire("CONFIRM_SUMMON");
-    expect(addon.eval("return __wfgWorld.summonAccepted == true"), "once it can: accepted").toBe(true);
-  });
+// TEST-ONLY models of Forever's invite windows, made before the addon as the client does
+// (Blizzard_FrameXML/GuildInviteFrame.xml, Blizzard_LFGUtil/Shared/LFGInvitePopup.xml): the guild
+// window shows on its event and declines as it hides unless accepted; the role popup is shown by
+// the game for an invite with roles. Every answer is recorded.
+const FOREVER_INVITES = `
+  __answers = {}
+  DeclineGuild = function() __answers[#__answers + 1] = "guild" end
+  DeclineGroup = function() __answers[#__answers + 1] = "group" end
+  StaticPopup_Hide = function(which) __answers[#__answers + 1] = "close " .. which end
+  StaticPopupSpecial_Hide = function(frame) __answers[#__answers + 1] = "hide " .. frame:GetName() frame:Hide() end
+  GuildInviteFrame = CreateFrame("Frame", "GuildInviteFrame", UIParent)
+  GuildInviteFrame:Hide()
+  GuildInviteFrame:RegisterEvent("GUILD_INVITE_REQUEST")
+  GuildInviteFrame:SetScript("OnEvent", function(self) self.accepted = nil self:Show() end)
+  GuildInviteFrame:SetScript("OnHide", function(self) if not self.accepted then DeclineGuild() end end)
+  LFGInvitePopup = CreateFrame("Frame", "LFGInvitePopup", UIParent)
+  LFGInvitePopup:Hide()
+`;
+const INVITE_SWITCHES_ON = "VanguardDB.profiles = { Default = { AutoAccept = { guildInvites = true, strangerGroups = true, summons = true } } }";
+it("auto-accept: Forever's own invite windows and the teleport check: a declined guild invite closes Forever's invite window, declining once", () => {
+  const addon = loggedIn(FOREVER_INVITES, { savedVariables: INVITE_SWITCHES_ON });
+  addon.fire("GUILD_INVITE_REQUEST", "<name>", "<guild>", 0, "", false);
+  expect(addon.eval("return #__answers"), "nothing yet: the game's window gets the event too").toBe(0);
+  addon.update(0);
+  expect(addon.eval("return { GuildInviteFrame:IsShown(), __answers }"), "the window is hidden and its own hide declines, once").toEqual([false, ["hide GuildInviteFrame", "guild", "close GUILD_INVITE"]]);
+  expect(chatHas(addon, /guild invite from <name>/), "and said in chat").toBe(true);
 });
 
-describe("chat text size: the game's chat setting", () => {
-  it("survives a reload, so chat keeps following the game's own size", () => {
-    const first = loggedIn();
-    first.eval(`for _, p in ipairs(ns.Options.PAGES) do if p.key == "chat" then
-      for _, r in ipairs(p.rows()) do if r[2] == "Chat text size (follows Text size)" then r[5](0) end end end end`);
-    const saved = first.eval("return VanguardDB.profiles.Default.Chat");
-    const again = loggedIn("FCF_SetChatWindowFontSize = nil", { savedVariables: `VanguardDB.profiles.Default = { Chat = ${luaValue(saved)} }` });
-    again.eval("ChatFrame1:SetFont(ChatFrame1:GetFont(), 18)");
-    expect(again.eval('return { ns.Settings("Chat").textSize, ns.GetModule("Chat").TextSize(ChatFrame1) }'), "still the game's setting after the reload: the window's own 18").toEqual([0, 18]);
-  });
+it("auto-accept: Forever's own invite windows and the teleport check: a declined stranger's role invite closes Forever's role popup", () => {
+  const addon = loggedIn(FOREVER_INVITES + "StaticPopupSpecial_Hide = nil", { savedVariables: INVITE_SWITCHES_ON });
+  addon.eval("LFGInvitePopup:Show()");
+  addon.fire("PARTY_INVITE_REQUEST", "<name>", true, false, true, false, false, "stranger", false);
+  addon.update(0);
+  expect(addon.eval("return { LFGInvitePopup:IsShown(), __answers }"), "declined and the popup hidden (a client without StaticPopupSpecial_Hide hides it itself)").toEqual([false, ["group", "close PARTY_INVITE"]]);
 });
 
-describe("chat tabs: the selected tab is the one the game colours as selected", () => {
-  // Whether chat tab n is painted in the raised (selected) fill, and its fill's alpha.
-  const look = (addon, n) => addon.eval(`local bg for _, r in ipairs({ ChatFrame${n}Tab:GetRegions() }) do if r.__layer == "BACKGROUND" and r.__vertexColor then bg = r end end
-    local c, r, g, b = bg and bg.__vertexColor, ns.Theme.RGB("raised") return { c ~= nil and c[1] == r and c[2] == g and c[3] == b, bg and bg:GetAlpha() }`);
-  // TEST-ONLY: Blizzard's FCFTab_UpdateColors only recolours the label (it never disables a tab); the
-  // dock knows its selected window.
-  const DOCK = `function FCFTab_UpdateColors(tab, selected) tab:GetFontString():SetTextColor(1, 0.82, 0) end
-    GENERAL_CHAT_DOCK = CreateFrame("Frame", "GENERAL_CHAT_DOCK", UIParent)
-    ChatFrame1.isDocked, ChatFrame2.isDocked = 1, 1
-    function FCFDock_GetSelectedWindow() return ChatFrame1 end`;
-
-  it("the game's colouring picks the raised tab, with no tab disabled", () => {
-    const addon = loggedIn(UI_ENV + DOCK);
-    addon.eval("FCFTab_UpdateColors(ChatFrame1Tab, false) FCFTab_UpdateColors(ChatFrame2Tab, true)");
-    expect([look(addon, 1), look(addon, 2)], "ChatFrame2's tab is the shown one: raised with its fill showing").toEqual([[false, 0], [true, 1]]);
-  });
-
-  it("at skin time the dock's selected window and a floating window's tab are drawn selected", () => {
-    const addon = loggedIn(UI_ENV + DOCK);
-    expect([look(addon, 1), look(addon, 2)], "the dock's selected window raised, the other docked one not").toEqual([[true, 1], [false, 0]]);
-    addon.eval("ChatFrame2.isDocked = nil ns.GetModule('Chat').SkinAll()");
-    expect(look(addon, 2), "a floating window's tab is always its window's selected tab").toEqual([true, 1]);
-  });
+it("auto-accept: Forever's own invite windows and the teleport check: a summon the game won't let you take yet leaves its prompt up", () => {
+  const addon = loggedIn("", { savedVariables: INVITE_SWITCHES_ON });
+  addon.eval("__wfgWorld.summon = { summoner = '<name>', area = 'TEST-ONLY Vale' } __wfgWorld.cannotTeleport = true");
+  addon.fire("CONFIRM_SUMMON");
+  expect(addon.eval("return __wfgWorld.summonAccepted == true"), "PlayerCanTeleport false: not accepted").toBe(false);
+  addon.eval("__wfgWorld.cannotTeleport = false");
+  addon.fire("CONFIRM_SUMMON");
+  expect(addon.eval("return __wfgWorld.summonAccepted == true"), "once it can: accepted").toBe(true);
 });
 
-describe("chat tabs: a floating whisper window whose name the client hides", () => {
-  it("keeps the game's tab width, and the windows after it are still skinned", () => {
-    const addon = loggedIn();
-    addon.world.secretGeometry("derived");
-    // The game's whisper pop-out, dragged out of the dock: its tab text is the sender's name, which the client
-    // hides in chat lockdown (Blizzard_ChatFrameBase/Mainline/FloatingChatFrame.lua, FCF_HasSecretName).
-    addon.eval(`ChatFrame2.isDocked = nil ChatFrame2Tab:SetWidth(180)
-      ChatFrame2Tab.Text:SetText(__wfgWorld.secret("TEST-ONLY Whisperer"))`);
-    expect(addon.eval("local ok = pcall(ns.GetModule('Chat').RefitTabs) return { ok, ChatFrame2Tab:GetWidth() }"), "no error; the game's fixed width stays").toEqual([true, 180]);
-    addon.eval('FCF_OpenTemporaryWindow("WHISPER")');
-    expect(addon.eval("return ns.GetModule('Chat').frames[ChatFrame11] ~= nil"), "the whisper window opened after it is skinned").toBe(true);
-  });
+it("chat text size: the game's chat setting: survives a reload, so chat keeps following the game's own size", () => {
+  const first = loggedIn();
+  first.eval(`for _, p in ipairs(ns.Options.PAGES) do if p.key == "chat" then
+    for _, r in ipairs(p.rows()) do if r[2] == "Chat text size (follows Text size)" then r[5](0) end end end end`);
+  const saved = first.eval("return VanguardDB.profiles.Default.Chat");
+  const again = loggedIn("FCF_SetChatWindowFontSize = nil", { savedVariables: `VanguardDB.profiles.Default = { Chat = ${luaValue(saved)} }` });
+  again.eval("ChatFrame1:SetFont(ChatFrame1:GetFont(), 18)");
+  expect(again.eval('return { ns.Settings("Chat").textSize, ns.GetModule("Chat").TextSize(ChatFrame1) }'), "still the game's setting after the reload: the window's own 18").toEqual([0, 18]);
 });
 
-describe("chat bar tiles: Chat switched on under Modules without the reload", () => {
-  it("the Copy switch makes its tile in the loose spot, with no error", () => {
-    const addon = loggedIn(CLICK_LUA, { savedVariables: "VanguardDB.profiles = { Default = { modules = { Chat = false }, ChatExtras = { copy = false } } }" });
-    // What the Modules page's Chat switch does: the flag only, the module runs after the reload.
-    addon.eval('ns.SetModuleEnabled("Chat", true) ns.Options.NeedReload() ns.Options.Show("chat")');
-    expect(addon.eval(`return __click("Copy button in the chat's tab bar")`), "the row is there").toBe(true);
-    expect(addon.eval("local b = ns.GetModule('ChatExtras').copyButton return { b ~= nil, b and b:GetParent() == ChatFrame1, #ns.errors }"), "made over the window's top right, nothing filed").toEqual([true, true, 0]);
-  });
+// Whether chat tab n is painted in the raised (selected) fill, and its fill's alpha.
+const tabLook = (addon, n) => addon.eval(`local bg for _, r in ipairs({ ChatFrame${n}Tab:GetRegions() }) do if r.__layer == "BACKGROUND" and r.__vertexColor then bg = r end end
+  local c, r, g, b = bg and bg.__vertexColor, ns.Theme.RGB("raised") return { c ~= nil and c[1] == r and c[2] == g and c[3] == b, bg and bg:GetAlpha() }`);
+// TEST-ONLY: Blizzard's FCFTab_UpdateColors only recolours the label (it never disables a tab); the
+// dock knows its selected window.
+const SELECTED_DOCK_ENV = `function FCFTab_UpdateColors(tab, selected) tab:GetFontString():SetTextColor(1, 0.82, 0) end
+  GENERAL_CHAT_DOCK = CreateFrame("Frame", "GENERAL_CHAT_DOCK", UIParent)
+  ChatFrame1.isDocked, ChatFrame2.isDocked = 1, 1
+  function FCFDock_GetSelectedWindow() return ChatFrame1 end`;
+it("chat tabs: the selected tab is the one the game colours as selected: the game's colouring picks the raised tab, with no tab disabled", () => {
+  const addon = loggedIn(UI_ENV + SELECTED_DOCK_ENV);
+  addon.eval("FCFTab_UpdateColors(ChatFrame1Tab, false) FCFTab_UpdateColors(ChatFrame2Tab, true)");
+  expect([tabLook(addon, 1), tabLook(addon, 2)], "ChatFrame2's tab is the shown one: raised with its fill showing").toEqual([[false, 0], [true, 1]]);
 });
 
-describe("chat window size: the first size is each character's own", () => {
-  // The chat window's width and height.
-  const size = (addon) => addon.eval("return { ChatFrame1:GetWidth(), ChatFrame1:GetHeight() }");
+it("chat tabs: the selected tab is the one the game colours as selected: at skin time the dock's selected window and a floating window's tab are drawn selected", () => {
+  const addon = loggedIn(UI_ENV + SELECTED_DOCK_ENV);
+  expect([tabLook(addon, 1), tabLook(addon, 2)], "the dock's selected window raised, the other docked one not").toEqual([[true, 1], [false, 0]]);
+  addon.eval("ChatFrame2.isDocked = nil ns.GetModule('Chat').SkinAll()");
+  expect(tabLook(addon, 2), "a floating window's tab is always its window's selected tab").toEqual([true, 1]);
+});
 
-  it("a new alt on a profile another character sized still gets the first size", () => {
-    const addon = loggedIn(UI_ENV + TIDY_ENV, { savedVariables: "VanguardDB.profiles = { Default = { Chat = { sized = true, widened = true } } } VanguardCharDB = nil" });
-    expect([addon.eval("return ns.NewCharacter()"), size(addon)], "a new character: 524 x 200").toEqual([true, [524, 200]]);
-  });
+it("chat tabs: a floating whisper window whose name the client hides: keeps the game's tab width, and the windows after it are still skinned", () => {
+  const addon = loggedIn();
+  addon.world.secretGeometry("derived");
+  // The game's whisper pop-out, dragged out of the dock: its tab text is the sender's name, which the client
+  // hides in chat lockdown (Blizzard_ChatFrameBase/Mainline/FloatingChatFrame.lua, FCF_HasSecretName).
+  addon.eval(`ChatFrame2.isDocked = nil ChatFrame2Tab:SetWidth(180)
+    ChatFrame2Tab.Text:SetText(__wfgWorld.secret("TEST-ONLY Whisperer"))`);
+  expect(addon.eval("local ok = pcall(ns.GetModule('Chat').RefitTabs) return { ok, ChatFrame2Tab:GetWidth() }"), "no error; the game's fixed width stays").toEqual([true, 180]);
+  addon.eval('FCF_OpenTemporaryWindow("WHISPER")');
+  expect(addon.eval("return ns.GetModule('Chat').frames[ChatFrame11] ~= nil"), "the whisper window opened after it is skinned").toBe(true);
+});
 
-  it("a character that played before keeps the size it has, and the flags stay out of an export", () => {
-    const addon = loggedIn(UI_ENV + TIDY_ENV + "ChatFrame1:SetSize(600, 300)", { savedVariables: "VanguardDB.profiles = { Default = { Chat = { sized = true, widened = true } } }" });
-    expect([size(addon), addon.eval("return VanguardCharDB.chatSize.sized")], "the profile's old flags are taken as this character's").toEqual([[600, 300], true]);
-    expect(addon.eval("return ns.WithoutClientState({ Chat = { sized = true, widened = true, textSize = 14 } }).Chat"), "a string carries no window flags").toEqual({ textSize: 14 });
-  });
+it("chat bar tiles: Chat switched on under Modules without the reload: the Copy switch makes its tile in the loose spot, with no error", () => {
+  const addon = loggedIn(CLICK_LUA, { savedVariables: "VanguardDB.profiles = { Default = { modules = { Chat = false }, ChatExtras = { copy = false } } }" });
+  // What the Modules page's Chat switch does: the flag only, the module runs after the reload.
+  addon.eval('ns.SetModuleEnabled("Chat", true) ns.Options.NeedReload() ns.Options.Show("chat")');
+  expect(addon.eval(`return __click("Copy button in the chat's tab bar")`), "the row is there").toBe(true);
+  expect(addon.eval("local b = ns.GetModule('ChatExtras').copyButton return { b ~= nil, b and b:GetParent() == ChatFrame1, #ns.errors }"), "made over the window's top right, nothing filed").toEqual([true, true, 0]);
+});
+
+// The chat window's width and height.
+const size = (addon) => addon.eval("return { ChatFrame1:GetWidth(), ChatFrame1:GetHeight() }");
+
+it("chat window size: the first size is each character's own: a new alt on a profile another character sized still gets the first size", () => {
+  const addon = loggedIn(UI_ENV + TIDY_ENV, { savedVariables: "VanguardDB.profiles = { Default = { Chat = { sized = true, widened = true } } } VanguardCharDB = nil" });
+  expect([addon.eval("return ns.NewCharacter()"), size(addon)], "a new character: 524 x 200").toEqual([true, [524, 200]]);
+});
+
+it("chat window size: the first size is each character's own: a character that played before keeps the size it has, and the flags stay out of an export", () => {
+  const addon = loggedIn(UI_ENV + TIDY_ENV + "ChatFrame1:SetSize(600, 300)", { savedVariables: "VanguardDB.profiles = { Default = { Chat = { sized = true, widened = true } } }" });
+  expect([size(addon), addon.eval("return VanguardCharDB.chatSize.sized")], "the profile's old flags are taken as this character's").toEqual([[600, 300], true]);
+  expect(addon.eval("return ns.WithoutClientState({ Chat = { sized = true, widened = true, textSize = 14 } }).Chat"), "a string carries no window flags").toEqual({ textSize: 14 });
 });
