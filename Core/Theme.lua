@@ -1859,14 +1859,20 @@ local function isChecked(button, c)
   return type(button.GetChecked) == "function" and button:GetChecked() == true
 end
 
+-- The mark of a check box or radio for its state: shown while checked, in the disabled tier while
+-- disabled. A disabled one loses its hover here (it gets no OnLeave, so the hover ends at once).
+local function paintBoxMark(box, on, off, markToken)
+  box.hover = box.hover and not off
+  box.mark:SetShown(on)
+  T.Tint(box.mark, off and "disabled" or markToken)
+end
+
 -- Paints a check button for its state: the mark (and the fill, when T.CHECK names one) shown while it
 -- is checked, in their colours, the hover border while the mouse is over it, or the disabled tier while
 -- the button is disabled (its label too, and no hover border).
 local function paintCheck(button, c)
   local on, off = isChecked(button, c), not isEnabled(button)
-  c.hover = c.hover and not off -- a disabled button gets no OnLeave, so its hover ends here
-  c.mark:SetShown(on)
-  T.Tint(c.mark, off and "disabled" or T.CHECK.markColor)
+  paintBoxMark(c, on, off, T.CHECK.markColor)
   c.fill:SetShown(on and T.CHECK.fill ~= nil)
   T.Tint(c.fill, off and "disabled" or T.CHECK.fill or "inset")
   T.SetBorder(c.box, c.hover and not off and { T.RGB(T.CHECK.hover) } or nil)
@@ -1932,18 +1938,24 @@ local function watchCheck(button)
   button:HookScript("OnLeave", ns.Guard("check hover", function(b) hoverCheck(b, false) end))
 end
 
+-- A check button's or radio's painted parts, made on first use by makeParts, then watched for the game's state.
+local function boxFor(button, makeParts)
+  local box = checkOf[button]
+  if not box then
+    box = makeParts(button)
+    checkOf[button] = box
+    watchCheck(button)
+  end
+  return box
+end
+
 -- One of the game's check buttons (UICheckButtonTemplate and kin) in the theme (DESIGN-PRINCIPLES
 -- 2.6): its art faded (its label kept), a T.CHECK.size inset box centred on it with the Check glyph in
 -- accentText while checked, a borderHi border under the mouse, a shade while pressed, the disabled tier
 -- while disabled. Follows the game's SetChecked and clicks. opts.mark: the texture a plain frame shows
 -- while checked (QuestLogTrackCheckboxTemplate's CheckMark), which the box then follows. Safe to run again.
 function T.CheckBox(button, opts)
-  local c = checkOf[button]
-  if not c then
-    c = checkParts(button)
-    checkOf[button] = c
-    watchCheck(button)
-  end
+  local c = boxFor(button, checkParts)
   if opts and opts.mark and not c.source then watchMark(button, c, opts.mark) end
   T.FadeRegions(button)
   c.paint(button, c)
@@ -1965,9 +1977,7 @@ end
 -- disabled tier while disabled (its label too).
 local function paintRadio(button, r)
   local on, off = isChecked(button, r), not isEnabled(button)
-  r.hover = r.hover and not off -- a disabled button gets no OnLeave, so its hover ends here
-  r.mark:SetShown(on)
-  T.Tint(r.mark, off and "disabled" or T.RADIO.dotColor)
+  paintBoxMark(r, on, off, T.RADIO.dotColor)
   T.Tint(r.ring, r.hover and not off and T.RADIO.hover or "edge")
   T.Tint(r.well, "inset")
   T.DisabledLook(button, off)
@@ -1992,12 +2002,7 @@ end
 -- under the mouse, a shade while pressed, the disabled tier while disabled. Follows the game's
 -- SetChecked and clicks like T.CheckBox. Safe to run again.
 function T.Radio(button)
-  local r = checkOf[button]
-  if not r then
-    r = radioParts(button)
-    checkOf[button] = r
-    watchCheck(button)
-  end
+  local r = boxFor(button, radioParts)
   T.FadeRegions(button)
   r.paint(button, r)
   return button
