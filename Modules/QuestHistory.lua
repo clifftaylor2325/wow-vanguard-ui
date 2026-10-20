@@ -133,7 +133,7 @@ end
 -- /vg quests history [n]: the latest turn-ins from every character.
 function QH.Command(rest)
   if not QH.On() then return ns.Chat("Quest history is off (/vg > Quests).") end
-  local n = math.min(tonumber(rest:match("(%d+)")) or QH.LIST, QH.LIST_MAX)
+  local n = math.max(1, math.min(tonumber(rest:match("(%d+)")) or QH.LIST, QH.LIST_MAX))
   local list = QH.Latest(n)
   if #list == 0 then return ns.Chat("No turn-ins remembered yet.") end
   ns.Chat(string.format("Latest %d quest turn-in(s), of %d remembered:", #list, QH.Store().count))

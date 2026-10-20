@@ -1478,3 +1478,10 @@ it("best reward: rewards that sell for nothing are left to you", () => {
 it("best reward: the one reward that sells for most is taken", () => {
   expect(calls(pricedRewards(300, 50))).toEqual(["reward 1"]);
 });
+
+// W4-C-6: a count of 0 asked for no lines and then said the history was empty.
+it("quest history: /vg quests history 0 lists one turn-in instead of saying none are remembered", () => {
+  const addon = loggedIn(TRACK_ENV + QLOG_ENV + HISTORY_ENV, { savedVariables: HISTORY_SAVED });
+  addon.slash("quests history 0");
+  expect([chatHas(addon, /No turn-ins remembered yet/), chatHas(addon, /Latest 1 quest turn-in\(s\), of 2 remembered:/)]).toEqual([false, true]);
+});
