@@ -188,7 +188,7 @@ end
 local function skinControls(win)
   local GW, kind = ns.GetModule("Windows"), win.DamageMeterTypeDropdown
   skinMinimize(win)
-  if type(win.SettingsDropdown) == "table" and win.SettingsDropdown.CreateTexture then T.ControlPlate(win.SettingsDropdown) end
+  GW.SkinPlate(win.SettingsDropdown)
   GW.SkinDropdown(win.SessionDropdown)
   if type(kind) == "table" then GW.DropArrow(kind, kind.Arrow) end
 end
@@ -219,9 +219,10 @@ function GT.SkinWindow(win)
   T.HudPanel(win, { alpha = 0.9 })
   skinControls(win)
   watchLines(win)
-  local box = type(win.MinimizeContainer) == "table" and win.MinimizeContainer or {}
-  skinScrollBar(box.ScrollBar)
-  skinBreakdown(box.SourceWindow)
+  local container = win.MinimizeContainer
+  if type(container) ~= "table" then return end
+  skinScrollBar(container.ScrollBar)
+  skinBreakdown(container.SourceWindow)
 end
 
 -- Every meter window, now and whenever the game opens another.

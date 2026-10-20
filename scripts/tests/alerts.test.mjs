@@ -225,7 +225,7 @@ it("damage meter: the header's controls in the theme, the minimise glyph followi
   expect(glyphOf(addon, `${w}.MinimizeButton`), "and back").toMatch(/Minimize$/);
   const arrows = addon.eval(`local w = ${w} return { w.SessionDropdown.Arrow.__alpha, w.DamageMeterTypeDropdown.Arrow.__alpha }`);
   expect(arrows, "both drop-downs' gold arrows give way to the theme's").toEqual([0, 0]);
-  expect(addon.eval(`return ns.Theme.ControlGlyph(${w}.SettingsDropdown) == nil and ns.FrameState('vgSkinned')[${w}] == true`), "the cog keeps its own icon on a plate").toBe(true);
+  expect(addon.eval(`local b = ${w}.SettingsDropdown return { ns.Theme.ControlGlyph(b) == nil, select("#", b:GetRegions()) > 0 }`), "the cog keeps its own icon, on a plate drawn behind it").toEqual([true, true]);
   addon.eval("__startMinimized = true __line(DamageMeter:SetupSessionWindow()) __startMinimized = nil");
   expect(glyphOf(addon, "DamageMeterSessionWindow2.MinimizeButton"), "a window that starts minimised shows expand").toMatch(/Maximize$/);
   addon.eval("local f = CreateFrame('Frame', nil, UIParent) __list(f) f.MinimizeButton = CreateFrame('Button', nil, f) ns.GetModule('GameTools').SkinWindow(f) local g = CreateFrame('Frame', nil, UIParent) g.MinimizeContainer = {} ns.GetModule('GameTools').SkinWindow(g)");
@@ -244,7 +244,7 @@ it("damage meter: styling never reads a line's hidden name or amount", () => {
   addon.eval(`local w = DamageMeterSessionWindow1 local l = __line(w) local src = w.MinimizeContainer.SourceWindow local s = __line(src)
     for _, line in ipairs({ l, s }) do for _, key in ipairs({ "Name", "Value" }) do line.StatusBar[key].GetText = function() error("read a hidden value") end end end
     w.ScrollBox:Update() src.ScrollBox:Update()`);
-  expect(addon.eval("return #ns.errors"), "styled without a GetText").toBe(0);
+  expect(addon.eval("local w, done = DamageMeterSessionWindow1, ns.FrameState('vgSkinned') return { #ns.errors, done[w.ScrollBox.lines[2]] == true, done[w.MinimizeContainer.SourceWindow.ScrollBox.lines[1]] == true }"), "both lines styled, without a GetText").toEqual([0, true, true]);
 });
 it("Edit Mode shows Vanguard's handles too, with a note under its window", () => {
   const addon = loggedIn(TOOLS_ENV + CLICK_LUA);
