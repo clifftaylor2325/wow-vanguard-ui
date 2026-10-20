@@ -159,16 +159,70 @@ local function skinLines(win)
   if type(win.LocalPlayerEntry) == "table" then GT.SkinEntry(win.LocalPlayerEntry) end
 end
 
--- One meter window in the theme: its header art faded, a flat panel, its
--- lines restyled whenever the list redraws. Once per window.
+-- A meter list's lines (a session window's or the breakdown's) in the theme now and whenever it redraws.
+local function watchLines(win)
+  skinLines(win)
+  local box = win.ScrollBox
+  if type(box) == "table" and type(box.Update) == "function" then hooksecurefunc(box, "Update", ns.Guard("hook Update", function() skinLines(win) end)) end
+end
+
+-- The minimise button's glyph for the window's state: Maximize (expand it) while it is minimised, else
+-- Minimize. The game swaps its own art in SetMinimized, which this follows.
+local function pointMinimize(win)
+  local glyph = T.ControlGlyph(win.MinimizeButton)
+  local minimized = type(win.IsMinimized) == "function" and win:IsMinimized() == true
+  if glyph then glyph:SetTexture(T.Icon(minimized and "Maximize" or "Minimize")) end
+end
+
+-- The minimise button as a window control (art only: its click stays the game's), its glyph following the window.
+local function skinMinimize(win)
+  local button = win.MinimizeButton
+  if type(button) ~= "table" or not button.CreateTexture then return end
+  T.WindowControl(button, "Minimize")
+  pointMinimize(win)
+  if type(win.SetMinimized) == "function" then hooksecurefunc(win, "SetMinimized", ns.Guard("hook SetMinimized", pointMinimize)) end
+end
+
+-- The header's controls: the minimise button, the settings cog on a flat plate, the segment drop-down
+-- flat, and the meter type's arrow in the theme (its text stays the game's).
+local function skinControls(win)
+  local GW, kind = ns.GetModule("Windows"), win.DamageMeterTypeDropdown
+  skinMinimize(win)
+  GW.SkinPlate(win.SettingsDropdown)
+  GW.SkinDropdown(win.SessionDropdown)
+  if type(kind) == "table" then GW.DropArrow(kind, kind.Arrow) end
+end
+
+-- A meter scroll bar as the theme's thin line (art only).
+local function skinScrollBar(bar)
+  if type(bar) == "table" then T.ScrollBar(bar) end
+end
+
+-- The breakdown window (a click on a line): its art faded under a flat panel, its lines like the meter's,
+-- the theme's scroll bar and close button. Once.
+local function skinBreakdown(src)
+  if type(src) ~= "table" or vgSkinned[src] then return end
+  vgSkinned[src] = true
+  if type(src.Background) == "table" then src.Background:SetAlpha(0) end
+  T.HudPanel(src, { alpha = 0.9 })
+  skinScrollBar(src.ScrollBar)
+  if type(src.CloseButton) == "table" and src.CloseButton.CreateTexture then T.CloseButton(src.CloseButton) end
+  watchLines(src)
+end
+
+-- One meter window in the theme: its header art faded, a flat panel, its header controls, its lines restyled
+-- whenever the list redraws, its scroll bar and its breakdown window. Once per window.
 function GT.SkinWindow(win)
   if vgSkinned[win] then return end
   vgSkinned[win] = true
   if type(win.Header) == "table" then win.Header:SetAlpha(0) end
   T.HudPanel(win, { alpha = 0.9 })
-  skinLines(win)
-  local box = win.ScrollBox
-  if type(box) == "table" and type(box.Update) == "function" then hooksecurefunc(box, "Update", ns.Guard("hook Update", function() skinLines(win) end)) end
+  skinControls(win)
+  watchLines(win)
+  local container = win.MinimizeContainer
+  if type(container) ~= "table" then return end
+  skinScrollBar(container.ScrollBar)
+  skinBreakdown(container.SourceWindow)
 end
 
 -- Every meter window, now and whenever the game opens another.

@@ -213,6 +213,39 @@ it("damage meter: a pooled line set up again keeps its background faded, with on
   addon.eval("local l = __line(DamageMeterSessionWindow1) l.StatusBar.BackgroundRegions = nil l.UpdateBackground = nil DamageMeterSessionWindow1.ScrollBox:Update()");
   expect(addon.eval("return { ns.FrameState('vgSkinned')[DamageMeterSessionWindow1.ScrollBox.lines[2]], #ns.errors }"), "a line without background art or its reset is styled without them").toEqual([true, 0]);
 });
+// The glyph texture on a meter window control (nil when it has none).
+const glyphOf = (addon, path) => addon.eval(`local g = ns.Theme.ControlGlyph(${path}) return g and g:GetTexture()`);
+it("damage meter: the header's controls in the theme, the minimise glyph following the window", () => {
+  const addon = loggedIn(TOOLS_ENV);
+  const w = "DamageMeterSessionWindow1";
+  expect(glyphOf(addon, `${w}.MinimizeButton`), "a window control with the minimise glyph").toMatch(/Minimize$/);
+  addon.eval(`${w}:SetMinimized(true)`);
+  expect(glyphOf(addon, `${w}.MinimizeButton`), "minimised: the expand glyph").toMatch(/Maximize$/);
+  addon.eval(`${w}:SetMinimized(false)`);
+  expect(glyphOf(addon, `${w}.MinimizeButton`), "and back").toMatch(/Minimize$/);
+  const arrows = addon.eval(`local w = ${w} return { w.SessionDropdown.Arrow.__alpha, w.DamageMeterTypeDropdown.Arrow.__alpha }`);
+  expect(arrows, "both drop-downs' gold arrows give way to the theme's").toEqual([0, 0]);
+  expect(addon.eval(`local b = ${w}.SettingsDropdown return { ns.Theme.ControlGlyph(b) == nil, select("#", b:GetRegions()) > 0 }`), "the cog keeps its own icon, on a plate drawn behind it").toEqual([true, true]);
+  addon.eval("__startMinimized = true __line(DamageMeter:SetupSessionWindow()) __startMinimized = nil");
+  expect(glyphOf(addon, "DamageMeterSessionWindow2.MinimizeButton"), "a window that starts minimised shows expand").toMatch(/Maximize$/);
+  addon.eval("local f = CreateFrame('Frame', nil, UIParent) __list(f) f.MinimizeButton = CreateFrame('Button', nil, f) ns.GetModule('GameTools').SkinWindow(f) local g = CreateFrame('Frame', nil, UIParent) g.MinimizeContainer = {} ns.GetModule('GameTools').SkinWindow(g)");
+  expect(addon.eval("return #ns.errors"), "a window without those parts is styled without them").toBe(0);
+});
+it("damage meter: the breakdown window gets the flat panel, the meter's lines, the thin scroll bar and the theme's close button", () => {
+  const addon = loggedIn(TOOLS_ENV);
+  const src = "DamageMeterSessionWindow1.MinimizeContainer.SourceWindow";
+  addon.eval(`__line(${src}) ${src}.ScrollBox:Update() ${src}:Show()`);
+  const out = addon.eval(`local s, done = ${src}, ns.FrameState('vgSkinned') return { s.Background.__alpha, done[s] == true, done[s.ScrollBox.lines[1]] == true, s.ScrollBox.lines[1].StatusBar.BackgroundRegions[1].__alpha }`);
+  expect(out, "its art faded, styled once, a line it draws later styled with its background faded").toEqual([0, true, true, 0]);
+  expect(glyphOf(addon, `${src}.CloseButton`), "the close button is the theme's cross").toMatch(/CloseMark$/);
+});
+it("damage meter: styling never reads a line's hidden name or amount", () => {
+  const addon = loggedIn(TOOLS_ENV);
+  addon.eval(`local w = DamageMeterSessionWindow1 local l = __line(w) local src = w.MinimizeContainer.SourceWindow local s = __line(src)
+    for _, line in ipairs({ l, s }) do for _, key in ipairs({ "Name", "Value" }) do line.StatusBar[key].GetText = function() error("read a hidden value") end end end
+    w.ScrollBox:Update() src.ScrollBox:Update()`);
+  expect(addon.eval("local w, done = DamageMeterSessionWindow1, ns.FrameState('vgSkinned') return { #ns.errors, done[w.ScrollBox.lines[2]] == true, done[w.MinimizeContainer.SourceWindow.ScrollBox.lines[1]] == true }"), "both lines styled, without a GetText").toEqual([0, true, true]);
+});
 it("Edit Mode shows Vanguard's handles too, with a note under its window", () => {
   const addon = loggedIn(TOOLS_ENV + CLICK_LUA);
   // Whether the handles are up, how many grid lines show, and whether the note shows (with its text).
