@@ -217,7 +217,7 @@ it("history: 7 days of values are kept, older ones go at login, and older versio
     for _, m in ipairs({ p.days, p.qtys, p.markets }) do local n = 0 for _ in pairs(m) do n = n + 1 end out[#out + 1] = n end return out`);
   expect(left, "each kind keeps only the day 6 days back").toEqual([1, 1, 1]);
   expect(addon.eval('return __showItem("item:2592")[1][1]'), "an older version's price: the low alone").toBe("AH: 70c (today)");
-  addon.eval("ns.AuctionPrices.Record(2592, 60, __now, 3, 65)");
+  addon.eval("ns.AuctionPrices.Record(2592, 60, __now, { units = 3, market = 65 })");
   expect(addon.eval("local p = ns.AuctionPrices.House().prices[2592] local d = math.floor(__now / 86400) return { p.days[d], p.qtys[d], p.markets[d] }"), "and it takes the new values").toEqual([60, 3, 65]);
 });
 // Realms and factions ------------------------------------------------------------------------

@@ -374,7 +374,7 @@ const GEAR = `
   gear(9105, 7, 2, 18) gear(9106, 4, 1, 18) gear(9107, 4, 2, 3) gear(9108, 4, __wfgWorld.secret(2), 18)`;
 // Strange Dust's market is 1s, Greater Magic Essence has a low of 10s only, a Large Brilliant Shard
 // went for 3g; the greens' shard and Nexus Crystals have no price.
-const MATS = "ns.AuctionPrices.Record(10940, 80, __now, 10, 100) ns.AuctionPrices.Record(10939, 1000, __now) ns.AuctionPrices.Record(14344, 30000, __now)";
+const MATS = "ns.AuctionPrices.Record(10940, 80, __now, { units = 10, market = 100 }) ns.AuctionPrices.Record(10939, 1000, __now) ns.AuctionPrices.Record(14344, 30000, __now)";
 // TEST-ONLY professions: Tailoring, and Enchanting second.
 const ENCHANTER = "__wfgWorld.professions = { { name = 'Tailoring', skillLine = 197, profession = 7 }, { name = 'Enchanting', skillLine = 333, profession = 9 } }";
 // The tooltip lines of item `id`, as text.

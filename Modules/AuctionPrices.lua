@@ -152,18 +152,26 @@ function AP.OnSeen(fn)
   AP.seenListeners[#AP.seenListeners + 1] = fn
 end
 
--- Notes an item seen at time t: its cheapest unit price (now, and the low of t's day), and the
--- units up and market value when given (t's day keeps the last seen), and how many listings
--- (the item keeps the last count). A new item past AP.MAX_ITEMS evicts the items priced longest
--- ago. The listeners hear of it on the next frame, AP.OnSeen's at once.
-function AP.Record(itemID, unitPrice, t, qty, market, listings)
+-- The day's low, and a scan's units up and market value for that day (the day keeps the last
+-- seen; a scan without one leaves it as it was).
+local function noteDay(p, day, unitPrice, scan)
+  p.days[day] = math.min(p.days[day] or unitPrice, unitPrice)
+  local units, market = scan and scan.units, scan and scan.market
+  p.qtys[day], p.markets[day] = units or p.qtys[day], market or p.markets[day]
+end
+
+-- Notes an item seen at time t: its cheapest unit price (now, and the low of t's day), and from a
+-- scan (scan = { units, market, listings }, nil for a search) its units up, market value and how
+-- many listings (the item keeps the last count). A new item past AP.MAX_ITEMS evicts the items
+-- priced longest ago. The listeners hear of it on the next frame, AP.OnSeen's at once.
+function AP.Record(itemID, unitPrice, t, scan)
   local house, day = AP.House(), AP.Day(t)
   local p = house.prices[itemID]
   if not p then p = {} house.prices[itemID] = p house.count = house.count + 1 end
   ns.Fill(p, { days = {}, qtys = {}, markets = {} })
+  local listings = scan and scan.listings
   p.min, p.t, p.listings = unitPrice, t, listings or p.listings
-  p.days[day] = math.min(p.days[day] or unitPrice, unitPrice)
-  p.qtys[day], p.markets[day] = qty or p.qtys[day], market or p.markets[day]
+  noteDay(p, day, unitPrice, scan)
   if house.count > AP.MAX_ITEMS then AP.Evict() end
   ns.Soon("auction prices changed", tellListeners)
   for _, fn in ipairs(AP.seenListeners) do fn(itemID, unitPrice, t) end

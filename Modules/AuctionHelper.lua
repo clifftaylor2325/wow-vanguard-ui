@@ -540,7 +540,7 @@ local function recordScan(s, now)
   local n = 0
   for id, prices in pairs(s.items) do
     local low, units, market = AP.Summary(prices)
-    AP.Record(id, low, now, units, market, s.listings[id])
+    AP.Record(id, low, now, { units = units, market = market, listings = s.listings[id] })
     n = n + 1
   end
   return n
