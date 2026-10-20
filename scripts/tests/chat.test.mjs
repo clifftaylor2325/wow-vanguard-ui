@@ -254,6 +254,10 @@ it("minimap: Rotate Minimap's config update puts Vanguard's mask back, square or
   expect([square.eval("return Minimap.__maskTexture"), round.eval("return Minimap.__maskTexture")], "the square stays square, the round map keeps Vanguard's disc")
     .toEqual([square.eval("return ns.Theme.WHITE"), expect.stringContaining("RoundDisc")]);
 });
+it("minimap: the faded zoom buttons take no mouse, so nothing invisible catches a click", () => {
+  const addon = loggedIn(UI_ENV + 'Minimap.ZoomOut = CreateFrame("Button", nil, Minimap)');
+  expect(addon.eval("return { Minimap.ZoomIn.__mouse, Minimap.ZoomOut.__mouse, Minimap.ZoomIn.__alpha, Minimap.ZoomIn:IsEnabled() }"), "faded, no mouse, still enabled for the wheel's clicks").toEqual([false, false, 0, true]);
+});
 it("chat art is hidden so the game's mouseover fade cannot bring it back", () => {
   const addon = loggedIn(UI_ENV + CHAT_ART_ENV);
   // Whether each window's art is showing.

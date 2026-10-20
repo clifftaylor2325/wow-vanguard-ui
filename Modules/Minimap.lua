@@ -3,7 +3,7 @@
 -- (colored by PvP status; hover it for the zone's territory, click it for the
 -- world map), the coordinates on a band along its bottom between the tracking
 -- and addon slot buttons, accent rules inside both bands, and mouse-wheel zoom. The round
--- border art and zoom buttons are faded out (alpha only), and the game's
+-- border art and zoom buttons are faded out (the zoom buttons take no mouse either), and the game's
 -- emptied cluster frame stops taking the mouse and loses its zone button.
 -- Nothing is unregistered. The game's small minimap buttons (tracking, mail,
 -- dungeon difficulty, the addon compartment) move from the old minimap spot
@@ -103,6 +103,16 @@ local function fadeArt()
     if type(obj) == "table" and obj.SetAlpha then
       obj:SetAlpha(0)
     end
+  end
+end
+
+-- The zoom buttons, faded with the art, take no mouse either: the game shows them over the map's corner
+-- while the mouse is over the map, and faded they still took clicks. The wheel still zooms
+-- (Minimap_ZoomIn clicks them from code, which needs no mouse; a disabled button wouldn't click).
+local function quietZoom()
+  for _, key in ipairs({ "ZoomIn", "ZoomOut" }) do
+    local b = Minimap[key]
+    if type(b) == "table" and b.EnableMouse then b:EnableMouse(false) end
   end
 end
 
@@ -515,6 +525,7 @@ local function build(settings)
   adoptMinimap(holder, settings.size)
   dress(createOverlay(holder, settings.size), settings)
   fadeArt()
+  quietZoom()
   quietCluster()
   if settings.icons then placeLeftovers() end
   if settings.coords then coordsTicker(holder) end
