@@ -1633,3 +1633,20 @@ it("quest tracker: a failed quest reads Failed in the bad colour in place of its
   expect([t.blocks[0][1], t.blocks[2][1]]).toEqual([["Failed"], ["- 0/1 TEST-ONLY Stone"]]);
   expect(isTok(addon, addon.eval("return Vanguard_QuestTrackerFrame.blocks[1].lines[1].__textColor"), "bad")).toBe(true);
 });
+
+it("quest history: a quest the client flags as done on this character, with no turn-in remembered, reads Done on this character", () => {
+  const addon = loggedIn("__wfgWorld.questFacts[90081] = { done = true } __wfgWorld.questFacts[90082] = { done = __wfgWorld.secret() }");
+  // Quest history's line for a quest id.
+  const line = (id) => addon.eval(`return ns.GetModule('QuestHistory').Line(${id})`);
+  expect([line(90081), line(90082), line(90083)], "flagged; hidden; not done").toEqual(["Done on this character", null, null]);
+  addon.eval("ns.GetModule('QuestHistory').settings.track = false");
+  expect(line(90081), "history off: no line").toBe(null);
+});
+
+it("quest history: the Quest history card's button lists the latest turn-ins in chat", () => {
+  const addon = loggedIn("");
+  addon.eval(`for _, p in ipairs(ns.Options.PAGES) do
+      if p.key == "quests" then for _, r in ipairs(p.rows()) do if r[2] == "List latest turn-ins" then r[3]() end end end
+    end`);
+  expect(chatHas(addon, /No turn-ins remembered yet\./)).toBe(true);
+});

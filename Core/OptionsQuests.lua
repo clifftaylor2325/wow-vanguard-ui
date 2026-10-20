@@ -46,6 +46,7 @@ local function questHistoryRows()
   return {
     { "header", "Quest history" },
     check("Remember which character finished each quest (\"Done on Thrall-Realm\")", setting("QuestHistory", "track")),
+    { "button", "List latest turn-ins", function() ns.GetModule("QuestHistory").Command("") end },
   }
 end
 
