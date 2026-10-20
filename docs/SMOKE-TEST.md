@@ -1497,6 +1497,18 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 - Expect: the copy box is titled "Copy Trade (Ctrl+C)", holds that tab's lines (not General's), and opens scrolled to the newest line with all of it selected, so the paste holds every line. The guild message of the day shows "discord.gg/abc" as an accent link; in the said line "discord.gg/abc" is a link with the comma after it plain, the item link still shows its tooltip on click, and "1.5" and "e.g." stay plain. Clicking either address opens it in the copy box. `/vg errors` is empty. [Needs in game: that SetCursorPosition then HighlightText keeps the whole text selected and the box scrolled to the end on the Forever client; that the game adds the message of the day through the window's AddMessage with GUILD_MOTD_TEMPLATE's text.]
 - If it fails, paste: `/vg errors` and a screenshot of the copy box or the line.
 
+### 15.6j Chat page order and the Chat filter card
+
+- Do: open `/vg` → Chat and scroll the page. Switch the Chat filter on and stand in a capital city until some Trade spam is caught; open the Filtered tab and click one sender's name; open the Chat page again and press **Filter them again**. Set Caught lines to Are hidden and look at the card.
+- Expect: the cards run Chat, Chat tabs, Chat extras (Copy, Find in chat and the Find switch together), Chat watch, Chat filter, Chat history, Chat windows, then Group board, each looking as before. With no phrases or words, Chat watch and Chat filter say so. The filter card reads "Caught this session: N (Gold selling …, Repeat …)"; after the click it lists "Let through: Name", and Filter them again says "Every sender is filtered again." in chat and that sender's next spam goes to the tab. Hidden: the card says the Filtered tab is where lines can be seen and let through. A guild post such as "pays gold for herbs, discord.gg/xyz" is not caught. The Filtered tab (made fresh: close it first if you have one) holds only caught lines, never live Trade or Say. `/vg errors` is empty. [Needs in game: that FCF_OpenNewWindow's second argument leaves the new tab with no message groups or channels on Forever, now that Vanguard no longer removes them itself.]
+- If it fails, paste: `/vg errors` and a screenshot of the Chat filter card.
+
+### 15.6k Officer and Emotes on a chat tab
+
+- Do: on a tab other than General, tick Show Officer and Show Emotes under Chat → Chat tabs (have an officer line and a `/wave` arrive). Then, with no reload, enter a dungeon and pull a few packs while chat lines arrive.
+- Expect: officer lines and emotes show on that tab; untick them and they stop. No Lua error from the game's chat code in the dungeon, and `/vg errors` is empty. [Needs in game: that adding the OFFICER and EMOTE message groups from Vanguard's rows taints nothing the game reads in an instance, as the eight existing rows don't.]
+- If it fails, paste: `/vg errors` and any Lua error text.
+
 ## 16. Realm and ruleset
 
 ### 16.0 Data from the beta
