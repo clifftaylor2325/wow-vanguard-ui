@@ -12,7 +12,7 @@ Two columns of plain figures, one pair a row, so nothing runs together. Durabili
 
 ## Broker strip
 
-Other addons' data feeds (LibDataBroker data sources, the kind info-bar addons show: gold trackers, durability, guild counts and so on) in a thin strip along the top edge of the screen, left of center, movable with `/vg unlock`. Pick the feeds under Map → Data from other addons (up to four, in the order picked); each shows its icon and text, its own tooltip on hover, and takes your clicks. Launchers stay in the minimap drawer. Vanguard doesn't bundle LibDataBroker: the addons that share feeds load it, so with none of them the strip stays hidden.
+Other addons' data feeds (LibDataBroker data sources, the kind info-bar addons show: gold trackers, durability, guild counts and so on) in a thin strip along the top edge of the screen, left of center, movable with `/vg unlock`. Pick the feeds under Map → Data from other addons (up to four, in the order picked); each shows its icon (with the crop and tint the feed gives) and text in a slot as wide as they need (48 to 200 wide; a slot grows while you play but never shrinks, so a ticking figure doesn't make the strip jump), its own tooltip on hover (below the strip in the top half of the screen, above it in the bottom half), and takes your clicks. The strip and its icons grow with Text size. Launchers stay in the minimap drawer. Vanguard doesn't bundle LibDataBroker: the addons that share feeds load it, so with none of them the strip stays hidden.
 
 ## Minimap drawer
 
