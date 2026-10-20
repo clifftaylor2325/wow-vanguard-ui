@@ -148,3 +148,13 @@ it("inventory: /vg alts <name> lists that character's items, biggest first, and 
   addon.slash("alts nobody");
   expect(chatHas(addon, /No character called nobody is remembered here/), "an unknown name").toBe(true);
 });
+
+it("inventory: /vg alts and /vg inventory forget find a name with an accented capital typed in lower case", () => {
+  const addon = loggedIn(BAGS_ENV);
+  addon.eval("local c = ns.GetModule('Inventory').Characters() c['Élodie'] = { level = 20, money = 5, bags = { [2589] = 3 }, bank = {} }");
+  addon.slash("alts élodie");
+  expect([chatHas(addon, /Élodie carries 1 kind\(s\) of item\./), chatHas(addon, /No character called/)], "her items").toEqual([true, false]);
+  addon.slash("inventory forget ÉLODIE");
+  expect(addon.eval("return ns.GetModule('Inventory').Characters()['Élodie']"), "forgotten").toBeNull();
+  expect(addon.eval("return { strcmputf8i('a', 'B'), strcmputf8i('b', 'A'), strcmputf8i('×', '÷') }"), "the harness compare orders too").toEqual([-1, 1, -1]);
+});
