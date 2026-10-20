@@ -21,12 +21,13 @@ GT.EVENTS = { "UNIT_THREAT_LIST_UPDATE", "UNIT_THREAT_SITUATION_UPDATE", "PLAYER
 
 -- Reading -------------------------------------------------------------------------------------
 
--- Whether the client says threat values are hidden now. An error or a hidden answer counts as hidden;
--- a client without the call (an older one) is taken as readable, and the values themselves are still checked.
+-- Whether the client says threat values against your target are hidden now. An error or a hidden answer
+-- counts as hidden; a client without the call (an older one) is taken as readable, and the values themselves
+-- are still checked. The client requires both units: asked with none, it always errors.
 function GT.Hidden()
   local ask = C_Secrets and C_Secrets.ShouldUnitThreatValuesBeSecret
   if type(ask) ~= "function" then return false end
-  local ok, secret = pcall(ask)
+  local ok, secret = pcall(ask, "player", "target")
   return not ok or ns.IsSecret(secret) or secret == true
 end
 
