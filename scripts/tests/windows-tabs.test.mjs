@@ -925,9 +925,9 @@ const FOLD_ENV = PANE_ENV + `
     local e = __entry(box, "ReputationBar")
     local glow = CreateFrame("Frame", nil, e.Content)
     glow.TextureRegions = { __art(glow), __art(glow), __art(glow) }
-    e.Content.BackgroundHighlight, e.selected, e.atWar = glow, false, false
+    e.Content.BackgroundHighlight, e.selected, e.atWar, e.elementData = glow, false, false, {}
     function e:IsSelected() return self.selected end
-    function e:IsAtWar() return self.atWar end
+    function e:IsAtWar() return self.elementData.atWarWith or self.atWar end
     function e:RefreshBackgroundHighlight() self.Content.BackgroundHighlight:SetAlpha((self.atWar and 0.5) or (self.selected and 0.2) or 0.1) end
     return e
   end
@@ -973,6 +973,11 @@ it("pane lists: an entry's rounded highlight gives way to the theme's row look, 
   addon.eval("__faction.atWar, __faction.selected = true, false __faction:RefreshBackgroundHighlight()");
   expect(row("__faction"), "at war: the game's red band stays, flat").toEqual([0.5, true, false]);
   expect(row("__sub"), "a sub-header is an entry too").toEqual([0, true, false]);
+  const early = addon.eval(`local e = __entry(ReputationFrame.ScrollBox, "ReputationBar") e.Content.BackgroundHighlight = CreateFrame("Frame", nil, e.Content)
+    e.Content.BackgroundHighlight.TextureRegions = {} e.IsAtWar = function(self) return self.elementData.atWarWith end e.RefreshBackgroundHighlight = function() end
+    ReputationFrame.ScrollBox:Acquire(e) local before = { e.Content.BackgroundHighlight.__alpha == nil, #ns.errors }
+    e.elementData = { atWarWith = false } e:RefreshBackgroundHighlight() return { before[1], before[2], e.Content.BackgroundHighlight:GetAlpha(), #ns.errors }`);
+  expect(early, "a row acquired before the game fills it (no elementData yet) is left until its first refresh, with no error").toEqual([true, 0, 0, 0]);
   const bare = loggedIn(FOLD_ENV + "__plain = __entry(SkillsFrame.ScrollBox, 'SkillsBar') __noToggle = __glowEntry(SkillsFrame.ScrollBox) __noToggle.ToggleCollapseButton = true");
   expect(bare.eval("return { ns.Theme.RowParts(__plain) == nil, ns.Theme.RowParts(__noToggle) ~= nil, #ns.errors }"), "an entry without the game's highlight is left alone; a toggle that is not a button is skipped").toEqual([true, true, 0]);
 });

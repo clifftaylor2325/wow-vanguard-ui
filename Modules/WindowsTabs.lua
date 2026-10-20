@@ -349,21 +349,24 @@ end
 
 -- An entry's rounded highlight (Content.BackgroundHighlight, which the game shows at a low alpha under the mouse and
 -- on the selected row) hidden for the row's theme look; kept for a faction at war, whose red says so, as a flat band.
+-- A row the game has not filled yet (no elementData: IsAtWar would index nil) is left until its first refresh.
 local function followHighlight(row)
+  if row.elementData == nil then return end
   local atWar = type(row.IsAtWar) == "function" and row:IsAtWar()
   if not atWar then row.Content.BackgroundHighlight:SetAlpha(0) end
   if type(row.IsSelected) == "function" then T.SelectRow(row, row:IsSelected() == true) end
 end
 
 -- A list entry (a faction, a statistic, a sub-header) as a theme row: the game's rounded highlight pieces made flat
--- and shown only for a faction at war, the one selected look on the row the game selects, after each refresh.
+-- and shown only for a faction at war, the one selected look on the row the game selects, after each refresh (the game
+-- refreshes a row as it fills it, which comes after the acquire this runs on).
 local function dressEntryRow(row)
   local glow = row.Content.BackgroundHighlight
   if type(glow) ~= "table" or not row.CreateTexture then return end
   T.Row(row)
   for _, piece in ipairs(glow.TextureRegions or {}) do piece:SetTexture(T.WHITE) end
-  followHighlight(row)
   GW.HookAfter(row, "RefreshBackgroundHighlight", followHighlight)
+  followHighlight(row)
 end
 
 -- One row of a pane list: a header as a flat button; an entry as a theme row with its progress bar in the theme and
