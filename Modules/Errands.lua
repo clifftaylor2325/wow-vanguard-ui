@@ -358,9 +358,19 @@ local function settle(run)
   return got == p.count
 end
 
+-- The item IDs a run bought, in order (pairs order is undefined).
+local function boughtIDs(run)
+  local ids = {}
+  for id in pairs(run.bought) do ids[#ids + 1] = id end
+  table.sort(ids)
+  return ids
+end
+
 -- Says what a run bought, and which item stopped it short.
 local function report(run)
-  for id, n in pairs(run.bought) do ns.Chat(string.format("Bought %d × %s for %s.", n, itemName(id), money(run.spent[id]))) end
+  for _, id in ipairs(boughtIDs(run)) do
+    ns.Chat(string.format("Bought %d × %s for %s.", run.bought[id], itemName(id), money(run.spent[id])))
+  end
   if run.short then ns.Chat(string.format("Stopped buying %s: the last purchase did not arrive in full (bags full, a stock limit or not enough money?).", itemName(run.short))) end
 end
 

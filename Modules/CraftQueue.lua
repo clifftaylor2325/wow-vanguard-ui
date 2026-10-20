@@ -192,17 +192,31 @@ local function remaining(seconds)
   return h > 0 and string.format("%dh %dm", h, m) or string.format("%dm", m)
 end
 
--- /vg craft cd: every character's noted cooldowns and when each is ready.
-function CQ.Cooldowns()
-  local any = false
-  if not listCall() then CQ.Scan() end
+-- Orders cooldown rows by character, then by recipe name.
+local function byCharThenName(a, b)
+  if a.char ~= b.char then return a.char < b.char end
+  return a.name < b.name
+end
+
+-- Every noted cooldown as { char, name, line }, sorted, because pairs order is undefined.
+local function cooldownRows()
+  local rows = {}
   for char, c in pairs(CQ.settings.chars) do
     for _, cd in pairs(c.cooldowns) do
-      any = true
-      ns.Chat(string.format("%s: %s, %s", char, cd.name, remaining(cd.ready - now())))
+      local line = string.format("%s: %s, %s", char, cd.name, remaining(cd.ready - now()))
+      rows[#rows + 1] = { char = char, name = cd.name, line = line }
     end
   end
-  if not any then ns.Chat("No profession cooldowns noted yet. Open a profession that has one and select its recipe.") end
+  table.sort(rows, byCharThenName)
+  return rows
+end
+
+-- /vg craft cd: every character's noted cooldowns and when each is ready.
+function CQ.Cooldowns()
+  if not listCall() then CQ.Scan() end
+  local rows = cooldownRows()
+  for _, row in ipairs(rows) do ns.Chat(row.line) end
+  if #rows == 0 then ns.Chat("No profession cooldowns noted yet. Open a profession that has one and select its recipe.") end
 end
 
 -- Ranking ------------------------------------------------------------------------------------
