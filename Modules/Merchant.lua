@@ -18,6 +18,8 @@ local T = ns.Theme
 local MC = ns.Module("Merchant", { defaults = { repair = true, junk = true, errors = true, listSell = false, junkList = {}, bulkBuy = true } })
 
 MC.RETRIES, MC.RETRY_AFTER = 3, 0.3
+-- How many of the client's message types the noisy-error scan looks at, at most.
+MC.LAST_MESSAGE_TYPE = 2000
 -- The client's own names for the noisy errors (their text is in the player's language).
 MC.NOISE = {
   "ERR_ABILITY_COOLDOWN", "ERR_SPELL_COOLDOWN", "ERR_ITEM_COOLDOWN", "ERR_OUT_OF_ENERGY", "ERR_OUT_OF_RAGE",
@@ -95,26 +97,26 @@ end
 
 -- Errors ------------------------------------------------------------------------------------
 
--- True for an error that only repeats what the action bar shows.
-function MC.Noisy(message)
-  for _, name in ipairs(MC.NOISE) do
-    if _G[name] == message then return true end
+-- The client's message types for the noisy errors, found by their names (GetGameMessageInfo).
+-- The scan stops at the first index the client refuses, or at MC.LAST_MESSAGE_TYPE.
+function MC.NoisyTypes()
+  local names, out = {}, {}
+  for _, name in ipairs(MC.NOISE) do names[name] = true end
+  for index = 1, MC.LAST_MESSAGE_TYPE do
+    local ok, name = pcall(GetGameMessageInfo, index)
+    if not ok then break end
+    if names[name] then out[#out + 1] = index end
   end
-  return false
+  return out
 end
 
--- Makes the client's own error line decline the noisy errors. Its handler stays
--- (per-type lines that refresh instead of stacking, throttling, flashing, sounds):
--- it asks the frame whether each message may show, and that answer is filtered here.
+-- Turns the noisy errors off through the client's own switch for each message type
+-- (UIErrorsFrame:SetMessageTypeEnabled). The game's handler stays as it is, with its lines,
+-- throttling and sounds, and Vanguard never replaces one of its methods (that would taint it).
 local function filterErrors()
   local frame = _G.UIErrorsFrame
-  if type(frame) ~= "table" or type(frame.ShouldDisplayMessageType) ~= "function" then return end
-  local allowed = frame.ShouldDisplayMessageType
-  -- The client's answer, unless the message is noise.
-  frame.ShouldDisplayMessageType = function(self, messageType, message)
-    if not ns.IsSecret(message) and MC.Noisy(message) then return false end
-    return allowed(self, messageType, message)
-  end
+  if type(frame) ~= "table" or type(frame.SetMessageTypeEnabled) ~= "function" or type(GetGameMessageInfo) ~= "function" then return end
+  for _, index in ipairs(MC.NoisyTypes()) do frame:SetMessageTypeEnabled(index, false) end
 end
 
 -- HUD text ----------------------------------------------------------------------------------
