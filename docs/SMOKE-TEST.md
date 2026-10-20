@@ -165,6 +165,18 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Expect: no world shows through any of these windows, including the empty space under a short options page. Tooltips and menus may still be very slightly see-through (that is the theme's panel opacity, not a window).
 - If it fails, paste: a screenshot of the window over the bright ground and `/vg errors`.
 
+### 2.1f The options window's height, search and changed dots
+
+- Do: type `/vg`. Note how tall the window is. Change Text size, then point at the small accent dot by its caption. Type "move frames", then "square", then "a" in the search box. On the Modules page, find Vanguard meter. Then run `/vg setup`, change the UI scale on its Screen step, and open `/vg` again.
+- Expect: the window is about three quarters of your screen tall (at least as tall as before). The dot's tooltip has a second line, "Default: 100%" or the like. "move frames" lists Move frames, and clicking that line only marks the button (frames do not unlock). "square" lists Corners. "a" lists eight and ends with "N more: type more words". Vanguard meter says "On, but its own switch is off (Combat tools)" beside its name until you switch the meter on under Combat tools. After the UI scale change the window is still tall and fits the screen.
+- If it fails, paste: a screenshot of the window, your screen resolution and UI scale, and `/vg errors`.
+
+### 2.1g The addons button's tooltip and the AddOns list heading
+
+- Do: point at the addons button by the minimap without clicking. Then open the game's AddOns list from the character select screen or the game menu.
+- Expect: the tooltip reads "Vanguard" and the version, then "Left-click: options · Right-click: move frames (out of combat)", and a red line with the count when errors were caught this session; it goes when the mouse leaves. In the AddOns list Vanguard sits under a "UI Overhaul" heading. If the client shows no headings there, nothing else changes (note it, and the line is dropped after launch).
+- If it fails, paste: a screenshot of the tooltip or the AddOns list, and `/vg errors`.
+
 ### 2.1c Options and questions let go of the mouse and keyboard when they close
 
 - Do: `/vg`, press and hold the mouse on any slider's track, and while holding press Escape; open the window again and move the mouse over the track without clicking. Then click a key button (Click casting, or a bar button's key), and while it says "Press a key..." close the window with Escape; reopen it and press a movement key. Finally start a fight, and during it open a question (`/vg` > Profiles > Reset profile; answer No afterwards) and try to move and use your action bar keys; end the fight.

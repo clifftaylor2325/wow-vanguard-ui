@@ -21,8 +21,8 @@ globals = {
   "SLASH_VANGUARDWAY1",
   -- Minimap shape for addons that place icons around it (Modules/Minimap.lua)
   "GetMinimapShape",
-  -- Addon compartment click handler named in the TOC (Core/Options.lua)
-  "Vanguard_OnAddonCompartmentClick",
+  -- Addon compartment click and hover handlers named in the TOC (Core/Options.lua)
+  "Vanguard_OnAddonCompartmentClick", "Vanguard_OnAddonCompartmentEnter", "Vanguard_OnAddonCompartmentLeave",
   -- The engine's floating damage font path, set to the theme font at load (Modules/Merchant.lua)
   "DAMAGE_TEXT_FONT",
   -- The game's chat tab alphas, set to 1 while Keep chat tabs visible is on (Modules/Chat.lua)

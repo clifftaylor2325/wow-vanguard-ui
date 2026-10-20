@@ -37,6 +37,45 @@ it("options window", () => {
   expect(addon.eval("return Vanguard_Options:IsShown()") === true, "left-clicking it opens the options").toBeTruthy();
 });
 
+it("options: pointing at the addons button says the version, what each click does and the errors caught", () => {
+  const addon = loggedIn();
+  // Hovers the addons button: the tooltip's lines and whether it shows; then leaves it.
+  const hover = () => addon.eval(`local b = CreateFrame("Button") __b = b Vanguard_OnAddonCompartmentEnter("Vanguard", b)
+    local out = {} for _, l in ipairs(GameTooltip.__lines) do out[#out + 1] = l.text end return { out, GameTooltip:IsShown() }`);
+  const version = addon.eval("return ns.AddonVersion()");
+  expect(hover(), "no errors: the version and the clicks").toEqual([[`Vanguard ${version}`, "Left-click: options · Right-click: move frames (out of combat)"], true]);
+  addon.eval('Vanguard_OnAddonCompartmentLeave("Vanguard", __b)');
+  expect(addon.eval("return GameTooltip:IsShown()"), "leaving hides it").toBe(false);
+  addon.eval('ns.errors[1] = { text = "TEST-ONLY" }');
+  expect(hover()[0][2], "an error caught: a line says so").toBe("1 error caught this session (/vg errors)");
+  addon.eval('ns.errors[2] = { text = "TEST-ONLY 2" }');
+  expect(hover()[0][2], "and counts them").toBe("2 errors caught this session (/vg errors)");
+  addon.eval('GameTooltip:SetOwner(UIParent) GameTooltip:Show() Vanguard_OnAddonCompartmentLeave("Vanguard", __b)');
+  expect(addon.eval("return GameTooltip:IsShown()"), "a tooltip another frame owns by now stays").toBe(true);
+  addon.eval("GameTooltip = nil");
+  expect(addon.eval('Vanguard_OnAddonCompartmentEnter("Vanguard", __b) Vanguard_OnAddonCompartmentLeave("Vanguard", __b) local n = #ns.errors ns.errors[1], ns.errors[2] = nil, nil return n'), "a client without the tooltip: nothing breaks (no third error)").toBe(2);
+});
+
+it("options: the window opens three quarters of the screen tall (the screen less 50 at most, 600 at least) and fits again after a screen change", () => {
+  const addon = loggedIn();
+  addon.slash("");
+  // The window's height, and whether it is the height given rounded to whole pixels.
+  const tall = (h) => addon.eval(`return Vanguard_Options:GetHeight() == ns.Theme.PixelRound(Vanguard_Options, ${h}, true)`);
+  expect(tall(810), "on the 1080 screen: 810").toBe(true);
+  // Gives UIParent a new height and lets the game say the screen changed.
+  const screen = (h) => { addon.eval(`UIParent:SetSize(1920, ${h})`); addon.fire("DISPLAY_SIZE_CHANGED"); addon.update(0.1); };
+  screen(700);
+  expect(tall(600), "a 700 screen: never under 600").toBe(true);
+  screen(1000);
+  expect(tall(750), "a 1000 screen: three quarters again").toBe(true);
+  screen(620);
+  expect(tall(600), "a 620 screen: still 600, as before (the nav is sized for it)").toBe(true);
+  addon.eval('Vanguard_Options:Hide() Vanguard_Options:ClearAllPoints()');
+  screen(1080);
+  expect([tall(810), addon.eval("return Vanguard_Options:GetPoint() ~= nil")], "a closed window is placed again too").toEqual([true, true]);
+  addon.eval("UIParent:SetSize(1920, 1080)");
+});
+
 it("options window: nav, search, controls, footer", () => {
   const addon = loggedIn(CLICK_LUA + "GetAddOnMetadata = function(_, key) return key == 'Version' and 'TEST-ONLY-9.9' or nil end");
   addon.eval('ns.Options.Show("general")');
@@ -244,6 +283,25 @@ it("options: a search hit scrolls to its row and marks it after the window was c
   expect(openHit("reduce motion"), "after a reopen a row on a page built before is marked too").toMatch(/^Reduce motion/);
 });
 
+it("options: search finds buttons, choice names, the note under a setting and reload rows, and says how many more there are", () => {
+  const addon = loggedIn(CLICK_LUA);
+  addon.eval('ns.Options.Show("general")');
+  // The captions a search lists, and the list's last line.
+  const found = (text) => addon.eval(`ns.Options.Search(${JSON.stringify(text)})
+    local out = {} for _, hit in ipairs(ns.Options.hits) do out[#out + 1] = hit.caption end
+    return { out, Vanguard_Options.results.more.__text }`);
+  expect(found("move frames")[0][0], "a button is listed").toBe("Move frames");
+  addon.eval("ns.Options.OpenHit(ns.Options.hits[1])");
+  expect(addon.eval("return ns.Unlocked()"), "opening a button hit marks it and never presses it").toBe(false);
+  expect(found("square")[0], "a choice's names: Corners has Square").toContain("Corners");
+  expect(addon.eval("return { Vanguard_Options.nav.general:GetAlpha(), Vanguard_Options.nav.raid:GetAlpha() }"), "the nav keeps the hit's page lit and dims the rest").toEqual([1, 0.35]);
+  expect(found("brass rule")[0], "the note under a setting").toEqual(["Window ornaments"]);
+  expect(found("reload minimap")[0], "a setting that applies on reload").toContain("Minimap shape");
+  const many = found("a");
+  expect([many[0].length, many[1]], "past eight hits the list says how many more").toEqual([8, expect.stringMatching(/^\d+ more: type more words$/)]);
+  expect(found("backup")[1], "eight or fewer: no last line").toBe("");
+});
+
 it("options: a live row of a module that is off saves its value without an error", () => {
   const addon = loggedIn(RETAIL + CLICK_LUA + DATA_ENV, { savedVariables: "VanguardDB.profiles.Default = { modules = { CooldownGlow = false, GameAlerts = false, ActionBars = false } }\n" });
   addon.eval('ns.Options.Show("cooldowns")');
@@ -375,7 +433,7 @@ it("options: a changed setting gets a dot that puts the default back", () => {
   addon.eval('__click("General")');
   expect(resetDot(addon, "Snap to other frames"), "a setting with no default has no dot").toEqual([false, false]);
   addon.eval(`GameTooltip = CreateFrame("Frame", "GameTooltip", UIParent) function GameTooltip:SetOwner(o) self.__owner = o end
-    function GameTooltip:SetText(t) self.__tip = t end`);
+    function GameTooltip:SetText(t) self.__tip = t end function GameTooltip:AddLine(t) self.__line = t end`);
   addon.eval('__click("Nameplates")');
   addon.eval('__click("Width")');
   expect(resetDot(addon, "Width"), "choices get one too").toEqual([true, true]);
@@ -384,8 +442,37 @@ it("options: a changed setting gets a dot that puts the default back", () => {
   addon.eval('__click("Cast bar")');
   addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.reset and w.reset:IsShown() then __dot = w.reset end end __dot:GetScript("OnEnter")(__dot)`);
   expect(addon.eval("return { GameTooltip.__owner == __dot, GameTooltip:IsShown(), GameTooltip.__tip }"), "hovering the dot says what it does").toEqual([true, true, "Changed from the default. Click to put it back."]);
+  expect(addon.eval("return GameTooltip.__line"), "then what the default is, in the row's words").toMatch(/^Default: (On|Off)$/);
   addon.eval("__dot:GetScript('OnLeave')(__dot)");
   expect(addon.eval("return GameTooltip:IsShown()"), "and the tooltip goes when the mouse leaves").toBe(false);
+});
+
+// Each visible row's caption and the default its reset dot names, as Lua.
+const DEFAULTS_LUA = `local out = {} for _, w in ipairs(__wfgStub.frames) do
+  if w.reset and w.label and w:IsVisible() then out[w.label.__text] = w.reset.defaultText end end return out`;
+
+it("options: the changed dot names the default as the row shows it, for switches, choices and sliders", () => {
+  const addon = loggedIn(CLICK_LUA);
+  addon.eval('ns.Options.Show("actionbars")');
+  const bars = addon.eval(DEFAULTS_LUA);
+  expect([bars["Red when out of range"], bars["Bar backing"]], "a switch's On, a choice's label").toEqual(["On", "Follow the theme"]);
+  addon.eval('ns.Options.Show("general")');
+  expect(addon.eval(DEFAULTS_LUA)["Its scale"], "a slider's text").toBe("100%");
+});
+
+// The own-switch note beside a visible module row's name, as Lua (nil for a row with no link).
+const ownSwitch = (name) => `(function() for _, w in ipairs(__wfgStub.frames) do
+  if w.ownSwitch ~= nil and w.label.__text == "${name}" and w:IsVisible() then return w.ownSwitch.__text end end end)()`;
+
+it("options: a module that is on while its own switch inside is off says so beside its name, and the note goes with the switch", () => {
+  const addon = loggedIn(CLICK_LUA);
+  addon.eval('ns.Options.Show("modules")');
+  expect(addon.eval(`return ${ownSwitch("Vanguard meter")}`), "the meter's own switch starts off").toBe("On, but its own switch is off (Combat tools)");
+  addon.eval('ns.Settings("Meter").on = true ns.Options.Show("tools") ns.Options.Show("modules")');
+  expect(addon.eval(`return ${ownSwitch("Vanguard meter")}`), "on: the note goes").toBe("");
+  addon.eval('ns.Settings("SpellRanks").trainerMemory = true ns.SetModuleEnabled("MailTools", false) ns.Options.Show("general") ns.Options.Show("modules")');
+  expect([addon.eval(`return ${ownSwitch("Spell ranks")}`), addon.eval(`return ${ownSwitch("Mail tools")}`)], "one of two own switches on is enough; a module that is off needs no note").toEqual(["", ""]);
+  expect(addon.eval(`return ${ownSwitch("Unit frames")}`), "a module with no own switch has no note").toBe(null);
 });
 
 // The visible options page's scroll view, as Lua.
