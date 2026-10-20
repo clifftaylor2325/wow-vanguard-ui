@@ -121,4 +121,6 @@ read_globals = {
   "ToggleWorldMap", "ToggleCalendar", "LOCALIZED_CLASS_NAMES_MALE",
   -- R1.4 Waypoints: the game's floating waypoint pin (Blizzard_QuestNavigation).
   "SuperTrackedFrame",
+  -- Inventory: the engine's case-blind UTF-8 compare, so a name with an accented capital is found.
+  "strcmputf8i",
 }

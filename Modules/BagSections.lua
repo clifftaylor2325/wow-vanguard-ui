@@ -288,9 +288,14 @@ local function itemLoaded(_, itemID)
   BG.QueueSections()
 end
 
--- The sections switch changed (options): sections at once, or the plain grid back.
+-- The sections switch or your categories changed: sections at once (laid out again even with the
+-- same items, as a category's place may have moved: the shown layout is marked stale, not cleared,
+-- since PlainBag puts the grid back only over sections), or the plain grid back.
 function BG.SectionsChanged()
-  if BG.sectionFrame then BG.QueueSections() end
+  local frame = BG.sectionFrame
+  if not frame then return end
+  if vgSections[frame] then vgSections[frame] = "changed" end
+  BG.QueueSections()
 end
 
 -- Whether the client has the item calls the sections classify with.

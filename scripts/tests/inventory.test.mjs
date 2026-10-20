@@ -46,6 +46,17 @@ it("inventory: the bags are read at login and half a second after they change, t
   expect(bare.eval("return #ns.GetModule('Inventory').BankBags()"), "a client without bank tabs: no bank containers").toBe(0);
 });
 
+it("inventory: an item taken from the bank just before it closes leaves the bank's reading", () => {
+  const addon = loggedIn(BAGS_ENV);
+  addon.fire("BANKFRAME_OPENED");
+  addon.eval("__wfgWorld.bags[6][1] = nil __wfgWorld.bags[0][2] = { itemID = 2589, count = 4 }");
+  addon.fire("BAG_UPDATE_DELAYED");
+  addon.advance(0.1, 0.05);
+  addon.fire("BANKFRAME_CLOSED");
+  addon.advance(0.6, 0.1);
+  expect([mine(addon).bags[2589], mine(addon).bank], "in the bags only").toEqual([12, {}]);
+});
+
 // TEST-ONLY saved characters on this realm and side: two with linen (one with a class),
 // one without any, a broken entry, and the logged-in character itself.
 const ALTS = `VanguardDB.inventory = { ["ForeverTest-Alliance"] = {
@@ -124,6 +135,8 @@ it("inventory: the Game windows page lists every character's overview line", () 
   addon.eval('ns.Options.Show("windows")');
   const shown = addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.GetText and w:GetText() and tostring(w:GetText()):find("^Tester: level 12") then return true end end return false`);
   expect(shown, "the page shows this character's line").toBe(true);
+  const note = addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.GetText and w:GetText() and tostring(w:GetText()):find("^Read ") then return w:GetText() end end`);
+  expect(note, "the note says when the records are read, as the module reads them").toMatch(/^Read at login, as your bags change and at logout; the bank while it's open\./);
 });
 
 it("inventory: /vg alts <name> lists that character's items, biggest first, and says when nobody has the name", () => {
@@ -136,4 +149,14 @@ it("inventory: /vg alts <name> lists that character's items, biggest first, and 
   expect(chatHas(addon, /20 × item 1020$/) && chatHas(addon, /6 × item 119$/), "the biggest stacks first").toBe(true);
   addon.slash("alts nobody");
   expect(chatHas(addon, /No character called nobody is remembered here/), "an unknown name").toBe(true);
+});
+
+it("inventory: /vg alts and /vg inventory forget find a name with an accented capital typed in lower case", () => {
+  const addon = loggedIn(BAGS_ENV);
+  addon.eval("local c = ns.GetModule('Inventory').Characters() c['Élodie'] = { level = 20, money = 5, bags = { [2589] = 3 }, bank = {} }");
+  addon.slash("alts élodie");
+  expect([chatHas(addon, /Élodie carries 1 kind\(s\) of item\./), chatHas(addon, /No character called/)], "her items").toEqual([true, false]);
+  addon.slash("inventory forget ÉLODIE");
+  expect(addon.eval("return ns.GetModule('Inventory').Characters()['Élodie']"), "forgotten").toBeNull();
+  expect(addon.eval("return { strcmputf8i('a', 'B'), strcmputf8i('b', 'A'), strcmputf8i('×', '÷') }"), "the harness compare orders too").toEqual([-1, 1, -1]);
 });

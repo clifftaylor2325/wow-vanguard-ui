@@ -34,7 +34,7 @@ AH.UP_COLUMNS = { { key = "price", title = "Price each", width = 100, side = "RI
   { key = "qty", title = "Qty", width = 60, side = "RIGHT", role = "small", color = "text2" },
   { key = "time", title = "Time left", width = 90, side = "LEFT", role = "small", color = "text2" } }
 -- The sell card's settings: the auction length a new item starts with ("last": the last one
--- used; or 1 to 3), and lastDuration, the last one picked on the card (none at first).
+-- used; or "1" to "3"), and lastDuration, the last one picked on the card (none at first).
 AH.defaults.duration = "last"
 -- And whether Post refuses a price under the item's vendor sell price (on: a sale that loses to
 -- the vendor is never what you meant).
@@ -118,10 +118,18 @@ function AH.DurationName(d)
   return _G["AUCTION_DURATION_" .. AH.DURATIONS[d]] or ("duration " .. d)
 end
 
--- The three auction lengths as choices, by the game's names; "Last used" first when asked for.
-function AH.DurationChoices(withLast)
-  local out = withLast and { { "last", "Last used" } } or {}
+-- The three auction lengths as the card's choices (1 to 3), by the game's names.
+function AH.DurationChoices()
+  local out = {}
   for d = 1, 3 do out[#out + 1] = { d, AH.DurationName(d) } end
+  return out
+end
+
+-- The Auction length setting's choices: "Last used", then the three lengths saved as text ("1" to "3"),
+-- the type of the setting's default, so a fixed length is not put back to Last used at the next login.
+function AH.DurationSettingChoices()
+  local out = { { "last", "Last used" } }
+  for d = 1, 3 do out[#out + 1] = { tostring(d), AH.DurationName(d) } end
   return out
 end
 

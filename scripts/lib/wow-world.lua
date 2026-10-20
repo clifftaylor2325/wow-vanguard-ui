@@ -1102,12 +1102,12 @@ C_Container = {
     for _ in pairs(world.bags[bag] or {}) do used = used + 1 end
     return (world.bagSizes[bag] or 0) - used, 0
   end,
-  -- Item info in a bag slot, as the client's table.
+  -- Item info in a bag slot, as the client's table (world.bags entry .locked and .bound for isLocked and isBound).
   GetContainerItemInfo = function(bag, slot)
     local it = (world.bags[bag] or {})[slot]
     if not it then return nil end
     local _, link, quality, _, _, _, _, _, _, icon = C_Item.GetItemInfo(it.itemID)
-    return { iconFileID = it.icon or icon, stackCount = it.count or 1, quality = it.quality or quality, hyperlink = it.link or link, itemID = it.itemID, hasNoValue = (world.items[it.itemID] or {}).sellPrice == 0, isLocked = it.locked == true }
+    return { iconFileID = it.icon or icon, stackCount = it.count or 1, quality = it.quality or quality, hyperlink = it.link or link, itemID = it.itemID, hasNoValue = (world.items[it.itemID] or {}).sellPrice == 0, isLocked = it.locked == true, isBound = it.bound == true }
   end,
   -- Whether a slot holds a quest item (the item's quest = true) and the quest it starts (questID).
   GetContainerItemQuestInfo = function(bag, slot)

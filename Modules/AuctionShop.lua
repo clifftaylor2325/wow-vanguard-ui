@@ -135,7 +135,7 @@ function AH.ParseEntry(text)
 end
 
 -- Adds an item (a link, an ID or a name) to a list: the one named, else the one in use (not Recent),
--- else "Shopping".
+-- else "Shopping"; true once added.
 function AH.AddEntry(text, listName)
   local entry, store = AH.ParseEntry(text), AP.Store()
   local name = listName or (store.lists[store.list or ""] and store.list) or AH.DEFAULT_LIST
@@ -144,6 +144,7 @@ function AH.AddEntry(text, listName)
   if #list >= AH.MAX_ENTRIES then return ns.Chat("A shopping list holds at most 50 items.") end
   list[#list + 1] = entry
   AH.PaintShop()
+  return true
 end
 
 -- Takes entry i off a list.

@@ -923,6 +923,18 @@ function CreateColor(r, g, b, a)
   return c
 end
 
+-- A name folded to lower case as the client's UTF-8 compare sees it: ASCII, and here the Latin-1
+-- capitals (two bytes, \195\128 to \195\158, but not the sign ×) too, enough for character names.
+local function foldUtf8(s)
+  return (s:lower():gsub("\195([\128-\158])", function(c) return c == "\151" and "\195\151" or "\195" .. string.char(c:byte() + 32) end))
+end
+
+-- The client's case-blind UTF-8 compare (strcmputf8i): -1, 0 or 1.
+function strcmputf8i(a, b)
+  local x, y = foldUtf8(a), foldUtf8(b)
+  return x == y and 0 or (x < y and -1 or 1)
+end
+
 UIParent = newWidget("Frame", "UIParent")
 SlashCmdList = {}
 DEFAULT_CHAT_FRAME = {

@@ -103,8 +103,10 @@ function IV.Scan()
   if IV.bankOpen then mine.bank = countIn(IV.BankBags()) end
 end
 
--- Something in the bags or bank changed: read them SCAN_DELAY later, once for a burst of changes.
+-- Something in the bags or bank changed: the open bank is read at once (it may close before the scan,
+-- and a closed bank is not read), and everything SCAN_DELAY later, once for a burst of changes.
 function IV.OnChanged()
+  if IV.bankOpen then IV.Mine().bank = countIn(IV.BankBags()) end
   if IV.pending then return end
   IV.pending = true
   C_Timer.After(IV.SCAN_DELAY, ns.Guard("timer bag scan", IV.Scan))
@@ -179,11 +181,17 @@ local function names()
   return out
 end
 
+-- Whether two character names are the same in any case, accented capitals too (string.lower changes
+-- only ASCII; the client's UTF-8 compare folds the rest).
+local function sameName(a, b)
+  return strcmputf8i(a, b) == 0
+end
+
 -- Drops one character (any case).
 local function forget(name)
   local chars = IV.Characters()
   for known in pairs(chars) do
-    if known:lower() == name:lower() then chars[known] = nil return ns.Chat("Forgot " .. known .. "'s bags and bank.") end
+    if sameName(known, name) then chars[known] = nil return ns.Chat("Forgot " .. known .. "'s bags and bank.") end
   end
   ns.Chat("No character called " .. name .. " is remembered here.")
 end
@@ -274,7 +282,7 @@ function IV.AltsCommand(rest)
   rest = (rest or ""):match("^%s*(.-)%s*$")
   if rest == "" then return overview() end
   for name, r in pairs(IV.Characters()) do
-    if type(r) == "table" and name:lower() == rest:lower() then return contents(name, r) end
+    if type(r) == "table" and sameName(name, rest) then return contents(name, r) end
   end
   ns.Chat("No character called " .. rest .. " is remembered here.")
 end

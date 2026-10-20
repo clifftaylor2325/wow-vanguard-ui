@@ -88,7 +88,7 @@ end
 local function altRows()
   local rows = { { "header", "Your characters" } }
   for _, line in ipairs(ns.GetModule("Inventory").AltLines()) do rows[#rows + 1] = { "text", line } end
-  rows[#rows + 1] = { "text", "Read when you log out or open your bags. /vg alts <name> lists one character's items.", "note" }
+  rows[#rows + 1] = { "text", "Read at login, as your bags change and at logout; the bank while it's open. /vg alts <name> lists one character's items.", "note" }
   return rows
 end
 

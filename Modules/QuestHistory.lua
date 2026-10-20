@@ -12,8 +12,8 @@ local T = ns.Theme
 
 local QH = ns.Module("QuestHistory", { defaults = { track = true } })
 
--- Quests kept, and the share of them a prune keeps (1000 -> 900); seconds in a day.
-QH.MAX_QUESTS, QH.KEEP, QH.DAY = 1000, 0.9, 86400
+-- Quests kept, and the share of them a prune keeps (1000 -> 900).
+QH.MAX_QUESTS, QH.KEEP = 1000, 0.9
 -- How many turn-ins /vg quests history lists by default, and at most.
 QH.LIST, QH.LIST_MAX = 10, 25
 
@@ -84,11 +84,9 @@ end
 
 -- Showing -------------------------------------------------------------------------------------
 
--- How long ago a time was: "today", "yesterday", "3 days ago".
+-- How long ago a time was, in the computer's days, as every other "ago" reads: "today", "yesterday", "3 days ago".
 function QH.Ago(t)
-  local days = math.floor(now() / QH.DAY) - math.floor((t or 0) / QH.DAY)
-  if days < 1 then return "today" end
-  return days == 1 and "yesterday" or days .. " days ago"
+  return ns.AuctionPrices.Ago(t or 0)
 end
 
 -- The quest's entry, or nil (none, or history is off).

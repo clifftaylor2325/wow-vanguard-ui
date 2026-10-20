@@ -273,10 +273,11 @@ end
 
 -- Buys the next chunk (a stack at most, in whole merchant stacks) of the first order if you can pay; false when done.
 -- The game answers a buy later and says nothing when it fails, so the chunk is only noted as pending here
--- (with how many you carried): settle notes what really arrived.
+-- (with how many you carried): settle notes what really arrived. A buy goes by merchant index, so the
+-- merchant must still have the order's item there.
 local function buyChunk(run)
   local order = run.orders[1]
-  if not order then return false end
+  if not order or not ns.GetModule("Merchant").Sells(order.index, order.id) then return false end
   local count = wholeStacks(math.min(order.need, math.max(ns.PlainNumber(ask("GetMerchantItemMaxStack", order.index)) or 1, 1)), order.stack)
   if math.ceil(order.unit * count) > cash() then return false end
   run.pending = { order = order, count = count, before = owned(order.id) }
@@ -305,12 +306,12 @@ local function report(run)
 end
 
 -- Notes the last purchase, then buys a chunk and checks again shortly after; says what it bought once done
--- (or a purchase fell short, or out of money, or the merchant closed, or combat started).
-function ER.StockNext()
-  local run = ER.stocking
-  if not run then return end
+-- (or a purchase fell short, or out of money, or the merchant closed, or combat started). A run that
+-- already ended (its merchant closed) does nothing.
+function ER.StockNext(run)
+  if ER.stocking ~= run then return end
   local arrived = settle(run)
-  if arrived and ER.merchantOpen and not ns.InCombat() and buyChunk(run) then return later(ER.BUY_EVERY, ER.StockNext) end
+  if arrived and ER.merchantOpen and not ns.InCombat() and buyChunk(run) then return later(ER.BUY_EVERY, function() ER.StockNext(run) end) end
   ER.stocking = nil
   report(run)
 end
@@ -320,7 +321,19 @@ local function onMerchant()
   ER.merchantOpen = true
   if not ER.settings.stock or ER.stocking or ns.InCombat() or next(ER.StockList()) == nil then return end
   ER.stocking = { orders = ER.Orders(), bought = {}, spent = {} }
-  ER.StockNext()
+  ER.StockNext(ER.stocking)
+end
+
+-- The merchant closed: a stock run ends here, noting a last purchase that already arrived (one still on its
+-- way is not called short), and says what it bought; the next merchant starts a run of its own.
+local function onMerchantClosed()
+  ER.merchantOpen = false
+  local run = ER.stocking
+  if not run then return end
+  ER.stocking = nil
+  settle(run)
+  run.short = nil
+  report(run)
 end
 
 -- Flight timer -------------------------------------------------------------------------------
@@ -412,7 +425,7 @@ function ER.Enable(settings)
   ns.On("ADDON_LOADED", onLoaded)
   watchTrainer()
   ns.On("MERCHANT_SHOW", onMerchant)
-  ns.On("MERCHANT_CLOSED", function() ER.merchantOpen = false end)
+  ns.On("MERCHANT_CLOSED", onMerchantClosed)
   if settings.flightTimer then watchFlights() end
   if settings.boatTimer then ER.WatchBoats() end
 end

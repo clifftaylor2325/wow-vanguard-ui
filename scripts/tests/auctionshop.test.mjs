@@ -262,6 +262,18 @@ it("/vg ah list and add", () => {
   addon.slash("ah list Twenty-first");
   expect(chatHas(addon, /Shopping list/), "refused past the cap, nothing listed").toBe(false);
 });
+it("/vg ah add with only an item puts it on the list in use, not on a list named after the link", () => {
+  const addon = loggedIn(AH_ENV);
+  addon.slash("ah add |cff9d9d9d|Hitem:2589::::::::60:::::::|h[Linen Cloth]|h|r");
+  addon.slash("ah list Herbs");
+  addon.slash("ah add 2589");
+  expect([addon.eval("local n = {} for k in pairs(VanguardDB.ah.lists) do n[#n + 1] = k end table.sort(n) return n"), addon.eval("return VanguardDB.ah.lists.Herbs")], "Shopping, then Herbs in use").toEqual([["Herbs", "Shopping"], [2589]]);
+  expect([chatHas(addon, /Added to the shopping list Shopping\./), chatHas(addon, /Added to the shopping list Herbs\./)], "chat says which list").toEqual([true, true]);
+  addon.eval("for i = 1, 50 do VanguardDB.ah.lists.Herbs[i] = i end");
+  addon.clearChat();
+  addon.slash("ah add item:2589");
+  expect(chatHas(addon, /Added to/), "a full list adds nothing and says only that").toBe(false);
+});
 // The filter dialog's fields: shown, title, exact switch, level boxes, quality and max price.
 const filterDialog = (addon) => addon.eval(`local d = Vanguard_AuctionFilters
   return { d:IsShown(), d.title:GetText(), d.draft.exact, d.minLevel:GetText(), d.maxLevel:GetText(), d.quality.dropdown.text:GetText(), d.price:GetText() }`);

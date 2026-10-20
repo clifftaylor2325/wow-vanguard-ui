@@ -26,7 +26,7 @@ local function auctionRows()
     check("Lists and Posting tabs on the auction house (lists, deals, upgrades, sell helper, your auctions, scan)", setting("AuctionHelper", "panel")),
     check("Auction prices in tooltips (from your scans)", setting("AuctionHelper", "tooltip")),
     { "cycle", "Undercut by", { { "copper", "1 copper" }, { "silver", "1 silver" }, { "percent", "1 %" }, { "match", "Match" } }, setting("AuctionHelper", "undercut") },
-    { "cycle", "Auction length", ns.GetModule("AuctionHelper").DurationChoices(true), setting("AuctionHelper", "duration") },
+    { "cycle", "Auction length", ns.GetModule("AuctionHelper").DurationSettingChoices(), setting("AuctionHelper", "duration") },
     check("Never post under vendor price", setting("AuctionHelper", "vendorFloor")),
   }, auctionScanRows())
 end

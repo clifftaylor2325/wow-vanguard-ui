@@ -534,7 +534,7 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 ### 8.3a Quest history
 
 - Do: turn in a quest on one character, then log in on another character on the same account and talk to a quest giver offering that quest (or open it in the quest log if you have it). Type `/vg quests history` and `/vg quests history 3`. Under `/vg` → Quests, switch off "Remember which character finished each quest" and turn in another quest.
-- Expect: in Vanguard's quest dialog on the quest's details page, a muted line under the text and objectives, `Done on Name-Realm · today` (then `yesterday`, `3 days ago`); the same line under the objectives in the quest log. For a repeatable quest turned in on the same character, `Done on this character`. `/vg quests history` prints `Latest N quest turn-in(s), of M remembered:` and a line per quest, `Title · Name-Realm · today`, newest first, at most the number you gave (25 at most). Switched off, the lines are gone, nothing new is remembered and the command says `Quest history is off (/vg > Quests).` [Needs in game: that `QUEST_TURNED_IN` fires on Forever with the quest's id first, that a quest's title is still known to `C_QuestLog.GetTitleForQuestID` after it is turned in (else the list reads `Quest 12345`), and how the muted line reads under a long quest text.]
+- Expect: in Vanguard's quest dialog on the quest's details page, a muted line under the text and objectives, `Done on Name-Realm · today` (then `yesterday`, `3 days ago`; a quest turned in during the evening still says `today` until your computer's midnight, even past midnight UTC); the same line under the objectives in the quest log. For a repeatable quest turned in on the same character, `Done on this character`. `/vg quests history` prints `Latest N quest turn-in(s), of M remembered:` and a line per quest, `Title · Name-Realm · today`, newest first, at most the number you gave (25 at most). Switched off, the lines are gone, nothing new is remembered and the command says `Quest history is off (/vg > Quests).` [Needs in game: that `QUEST_TURNED_IN` fires on Forever with the quest's id first, that a quest's title is still known to `C_QuestLog.GetTitleForQuestID` after it is turned in (else the list reads `Quest 12345`), and how the muted line reads under a long quest text.]
 - If it fails, paste: a screenshot and `/vg errors`.
 
 ### 8.4 Quest tracker overflow
@@ -622,8 +622,8 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 
 ### 9.2b Junk stops with the merchant; keep stocked buys for gold only
 
-- Do: with gray items that equip (grey armour or a weapon), click "Sell junk" or open a merchant and at once walk away (or close the window). Then `/vg stock <item a merchant sells for honor or tokens> 5` and open that merchant; then `/vg stock <an item for gold> 1000` with bags full and open a merchant who sells it.
-- Expect: once the merchant window is gone no gray item is equipped or used; nothing is bought for an item that costs honor, badges or other items; with full bags the run stops after one try with `Stopped buying <item>: the last purchase did not arrive in full ...` and no `Bought` line for what did not arrive. [Needs in game: that a right-click on a bag item with no merchant open equips or uses it; that GetMerchantItemCostInfo (or the item table's hasExtendedCost) is set for such items; and that C_Item.GetItemCount shows a purchase within the 0.2 s wait. If a run stops early on a slow server, say so.]
+- Do: with gray items that equip (grey armour or a weapon), click "Sell junk" or open a merchant and at once walk away (or close the window). Then `/vg stock <item a merchant sells for honor or tokens> 5` and open that merchant; then `/vg stock <an item for gold> 1000` with bags full and open a merchant who sells it; last, empty some bag room, open that merchant and at once right-click a different merchant standing next to it.
+- Expect: once the merchant window is gone no gray item is equipped or used; nothing is bought for an item that costs honor, badges or other items; with full bags the run stops after one try with `Stopped buying <item>: the last purchase did not arrive in full ...` and no `Bought` line for what did not arrive; switching merchants mid-run ends the run with a `Bought` line for what arrived and buys nothing from the second merchant that is not on your list. [Needs in game: that a right-click on a bag item with no merchant open equips or uses it; that GetMerchantItemCostInfo (or the item table's hasExtendedCost) is set for such items; and that C_Item.GetItemCount shows a purchase within the 0.2 s wait. If a run stops early on a slow server, say so.]
 - If it fails, paste: the chat lines and `/vg errors`.
 
 ### 9.2b Item tooltip lines with Tooltips off
@@ -634,8 +634,8 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 
 ### 9.2d A Buy question left open past its merchant
 
-- Do: at a merchant selling a cheap stackable item, open its quantity window (Shift-click it) and click Max so it asks "Buy N × <item> for <money>?". Leave the question up, walk away until the merchant window closes, then click Buy.
-- Expect: nothing is bought, and chat says `Nothing bought: the merchant closed or changed what it sells.` Asking again at the merchant and answering Buy at once still buys as before.
+- Do: at a merchant selling a cheap stackable item, open its quantity window (Shift-click it) and click Max so it asks "Buy N × <item> for <money>?". Leave the question up, walk away until the merchant window closes, then click Buy. Then stand between two merchants, ask for Max of several stacks at the first, answer Buy, and at once right-click the second merchant.
+- Expect: nothing is bought, and chat says `Nothing bought: the merchant closed or changed what it sells.` Asking again at the merchant and answering Buy at once still buys as before. Between two merchants, buying stops when the first merchant's window closes (the `Bought` line counts only what came from it); nothing is bought from the second merchant.
 - If it fails, paste: the chat lines and `/vg errors`.
 
 ### 9.2c Character sheet extras
@@ -1580,14 +1580,14 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 
 ### 23.2 Send-to-alt presets
 
-- Do: click **+ Add** on the panel, type `Smith <an alt> iron` and click Add (or `/vg mail preset add Smith <an alt> iron`). Point at the Smith button. Open the Send Mail tab, click the Smith button (or `/vg mail send Smith`). Then right-click the Smith button and confirm.
-- Expect: the box closes and a Smith button appears with + Add after it; its tooltip says `Sends items named iron to <alt>.` and `Right-click to remove.` The alt's name is in the To box and bag items whose name holds "iron" are attached (12 at most); nothing is sent until you press Send. In combat or with the tab closed, chat says to open the tab. The right-click asks `Remove the preset Smith?`, and confirming removes the button. [Needs in game: that C_Container.UseContainerItem attaches to the open Send Mail tab, and that the panel (anchored to the Mail window) shows on the Send Mail tab too.]
+- Do: click **+ Add** on the panel, type `Smith <an alt> iron` and click Add (or `/vg mail preset add Smith <an alt> iron`). Point at the Smith button. Open the Send Mail tab, click the Smith button (or `/vg mail send Smith`). Click Smith a second time. Make a preset with no words (`/vg mail preset add All <an alt>`), keep your Hearthstone in your bags and click All. Then right-click the Smith button and confirm.
+- Expect: the box closes and a Smith button appears with + Add after it; its tooltip says `Sends items named iron to <alt>.` and `Right-click to remove.` The alt's name is in the To box and bag items whose name holds "iron" are attached (12 at most) and chat's count matches the attachments; the second click attaches nothing more and says 0; All passes over the Hearthstone and other soulbound items (the Hearthstone is not cast); nothing is sent until you press Send. In combat or with the tab closed, chat says to open the tab. The right-click asks `Remove the preset Smith?`, and confirming removes the button. [Needs in game: that C_Container.UseContainerItem attaches to the open Send Mail tab, and that the panel (anchored to the Mail window) shows on the Send Mail tab too.]
 - If it fails, paste: `/vg errors` and what chat said.
 
 ### 23.3 Take all and Return all
 
 - Do: with the mail tools on, open a mailbox holding a few mails with money and items (one from another player, one auction sale, ideally one pay-on-delivery). Click Take all; later, with other mail, click Return all and answer the question.
-- Expect: the money and items of the listed mails come in about three a second, with a chat line `Take all: N of N done.`; pay-on-delivery mail is left; Return all asks `Return N mail(s) to their senders?` and sends back only mail from players (the sale stays); closing the mailbox mid-run stops it with a count. [Needs in game: that ReturnInboxItem takes the inbox index; 23.3b checks the takes.]
+- Expect: with more than eight mails matching, a small `+N more` sits right of Return all, inside the panel and not cut off; the money and items of every matching mail (those past the rows too) come in about three a second, with a chat line `Take all: N of N done.`; pay-on-delivery mail is left; Return all asks `Return N mail(s) to their senders?` and sends back only mail from players (the sale stays); closing the mailbox mid-run stops it with a count. [Needs in game: that ReturnInboxItem takes the inbox index; 23.3b checks the takes.]
 - If it fails, paste: the chat lines and `/vg errors`.
 
 ### 23.3a Pay-on-delivery mail stays untaken
@@ -1604,8 +1604,8 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 
 ### 23.4 Alt overview
 
-- Do: log in on two characters of the same realm and side, type `/played` on one, then on either type `/vg alts` and `/vg alts <the other's name>`.
-- Expect: one line per character with its level, money, rested XP percent when it has some, and time played once `/played` was typed there; an `All together:` money line; the second command lists the other character's bags and bank, biggest stacks first, at most fifteen. Open `/vg`, Game windows, scroll to the foot: "Your characters" shows the same lines. [Needs in game: that TIME_PLAYED_MSG fires after /played and GetXPExhaustion answers.]
+- Do: log in on two characters of the same realm and side, type `/played` on one, then on either type `/vg alts` and `/vg alts <the other's name>`. On the first, open the bank, right-click a stack from a bank tab into your bags and press Escape at once; log on the second and point at that item.
+- Expect: one line per character with its level, money, rested XP percent when it has some, and time played once `/played` was typed there; an `All together:` money line; the second command lists the other character's bags and bank, biggest stacks first, at most fifteen; the item taken from the bank counts in the first character's bags only, not in its bank too. Open `/vg`, Game windows, scroll to the foot: "Your characters" shows the same lines. [Needs in game: that TIME_PLAYED_MSG fires after /played and GetXPExhaustion answers.]
 - If it fails, paste: the chat lines and `/vg errors`.
 
 ## 24. Dungeon card
