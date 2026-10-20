@@ -1364,6 +1364,8 @@ function GetProgressText() return openQuest().progress or "" end
 function GetRewardText() return openQuest().rewardText or "" end
 function GetQuestID() return openQuest().questID or 0 end
 function GetRewardMoney() return openQuest().money or 0 end
+-- The money a quest asks for to hand it in (QuestFrame.lua reads it on the progress and reward pages).
+function GetQuestMoneyToGet() return openQuest().cost or 0 end
 function GetRewardXP() return openQuest().xp or 0 end
 function GetNumQuestRewards() return #(openQuest().rewards or {}) end
 function GetNumQuestChoices() return #(openQuest().choices or {}) end

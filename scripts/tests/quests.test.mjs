@@ -1395,3 +1395,65 @@ it("in a fight the quest log's Map button and a tracker title say the map waits,
   noLog.eval("local b = Vanguard_QuestTrackerFrame.blocks[1] b.__scripts.OnClick(b, 'LeftButton')");
   expect([chatHas(noLog, /The world map doesn't open from Vanguard in a fight/), noLog.eval("return __opened == nil")], "with the game's log, a title clicked in a fight says so too").toEqual([true, true]);
 });
+
+// W4-L-2: a quest that costs money to hand in. TEST-ONLY: it asks for 5 gold (the game's Complete asks first then).
+const COST_ENV = "__cost = 50000 GetQuestMoneyToGet = function() return __cost end\n";
+// Turn-in automation switched on.
+const TURN_IN = "VanguardDB.profiles = { Default = { QuestAuto = { turnIn = true } } }";
+// A logged-in client at a quest giver whose quest costs 5g and has one reward choice.
+const costedQuest = (saved) => {
+  const addon = loggedIn(QUEST_ENV + COST_ENV, saved && { savedVariables: saved });
+  addon.eval("__choices = { __choices[1] }");
+  return addon;
+};
+// The costed quest's reward page with Complete pressed, the calls so far cleared.
+const costAsked = () => {
+  const addon = costedQuest();
+  addon.fire("QUEST_COMPLETE");
+  key(addon, "SPACE");
+  calls(addon);
+  return addon;
+};
+
+it("quest cost: the hand-in page shows what it costs", () => {
+  const addon = costedQuest();
+  addon.fire("QUEST_PROGRESS");
+  expect(addon.eval("return Vanguard_QuestDialog.money:GetText()")).toBe("Costs 5g 0s 0c");
+});
+
+it("quest cost: Complete asks first, naming the cost, and pays nothing before the answer", () => {
+  const addon = costAsked();
+  expect([addon.eval("return Vanguard_Question.title:GetText()"), calls(addon)]).toEqual(["Completing TEST-ONLY Wolves costs 5g 0s 0c. Complete it?", []]);
+});
+
+it("quest cost: Yes takes the reward", () => {
+  const addon = costAsked();
+  addon.click("Vanguard_Question.confirm");
+  expect(calls(addon)).toEqual(["reward 1"]);
+});
+
+it("quest cost: No declines the hand-in, as the game's does", () => {
+  const addon = costAsked();
+  addon.click("Vanguard_Question.no");
+  expect(calls(addon)).toEqual(["decline nil"]);
+});
+
+it("quest cost: a cost the client hides counts as none (no cost line)", () => {
+  const addon = costedQuest();
+  addon.eval("__cost = { __secret = true }");
+  addon.fire("QUEST_PROGRESS");
+  expect(addon.eval("return Vanguard_QuestDialog.money:GetText()")).toBe("");
+});
+
+it("quest cost: turn-in automation leaves the hand-in and the reward page to you", () => {
+  const addon = costedQuest(TURN_IN);
+  addon.fire("QUEST_PROGRESS");
+  addon.fire("QUEST_COMPLETE");
+  expect([calls(addon), addon.eval("return Vanguard_QuestDialog:IsShown()")]).toEqual([[], true]);
+});
+
+it("quest cost: turn-in automation leaves it to the game's window when the quest dialog is off", () => {
+  const addon = costedQuest("VanguardDB.profiles = { Default = { QuestAuto = { turnIn = true }, modules = { QuestDialog = false } } }");
+  addon.fire("QUEST_COMPLETE");
+  expect(calls(addon)).toEqual([]);
+});

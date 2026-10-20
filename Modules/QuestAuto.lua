@@ -3,7 +3,8 @@
 --   * accept quests you're offered;
 --   * accept quests a party member shares with you (its own switch: the offer comes from a player, not an NPC);
 --   * turn in finished quests: Continue, then Complete when there's no reward
---     to choose (it never chooses for you, unless the next switch is on);
+--     to choose (it never chooses for you, unless the next switch is on, and
+--     it leaves a quest that costs money to you);
 --   * with a choice of rewards, take the one that sells for the most;
 --   * skip the gossip when an NPC has exactly one quest for you and nothing else to say.
 -- Each says in chat what it did. The quest dialog asks Claims(event) first,
@@ -90,14 +91,20 @@ function QA.OnlyGreeting()
   return function() SelectActiveQuest(1) end
 end
 
+-- Whether turn-in automation answers this quest: switched on, and the quest costs no money (the game asks
+-- before paying, so automation never pays for you).
+function QA.TurnsIn()
+  return QA.settings.turnIn and ns.QuestParts.Cost() <= 0
+end
+
 -- What each event's automation would do, or nil when it leaves the page to you.
 QA.ACTIONS = {
   -- A quest offered: accept it (a quest shared by a player follows its own switch).
   QUEST_DETAIL = function() return QA.settings[fromPlayer() and "acceptShared" or "accept"] and QA.Accept or nil end,
-  -- A finished quest's hand-in: continue.
-  QUEST_PROGRESS = function() return QA.settings.turnIn and call(IsQuestCompletable) == true and QA.Continue or nil end,
-  -- The reward page: finish, when the reward is settled.
-  QUEST_COMPLETE = function() return QA.settings.turnIn and QA.RewardChoice() and QA.Finish or nil end,
+  -- A finished quest's hand-in: continue (a quest that costs money is left to you).
+  QUEST_PROGRESS = function() return QA.TurnsIn() and call(IsQuestCompletable) == true and QA.Continue or nil end,
+  -- The reward page: finish, when the reward is settled (a quest that costs money is left to you).
+  QUEST_COMPLETE = function() return QA.TurnsIn() and QA.RewardChoice() and QA.Finish or nil end,
   -- Gossip with one quest and nothing else: pick it.
   GOSSIP_SHOW = function() return QA.settings.skipGossip and QA.OnlyQuest() or nil end,
   -- The same without gossip.

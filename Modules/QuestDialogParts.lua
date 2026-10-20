@@ -55,6 +55,13 @@ function QP.XPText(xp)
   return s .. " XP"
 end
 
+-- The money the open quest asks for to hand it in (copper): 0 for none, and 0 when the client can't say or
+-- hides it (the game's own reward button asks before paying when this is above 0).
+function QP.Cost()
+  local cost = type(GetQuestMoneyToGet) == "function" and ns.PlainNumber(GetQuestMoneyToGet())
+  return cost or 0
+end
+
 -- Lines ----------------------------------------------------------------------------------------
 
 -- A texture sized square; returns it.

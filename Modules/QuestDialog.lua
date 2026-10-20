@@ -208,10 +208,16 @@ function QD.DetailPage()
   }
 end
 
--- A quest you're turning in: what it still needs, and Continue once you have it.
+-- What the quest asks for to hand it in, as "Costs 5g 0s 0c" ("" for nothing).
+function QD.CostLine()
+  local cost = QP.Cost()
+  return cost > 0 and "Costs " .. ns.GetModule("InfoStrip").Money(cost) or ""
+end
+
+-- A quest you're turning in: what it still needs (items, and the money it costs), and Continue once you have it.
 function QD.ProgressPage()
   return {
-    title = call(GetTitleText), text = call(GetProgressText), rewards = QD.Items("required", call(GetNumQuestItems)),
+    title = call(GetTitleText), text = call(GetProgressText), rewards = QD.Items("required", call(GetNumQuestItems)), money = QD.CostLine(),
     primary = { "Continue", function() call(CompleteQuest) end, call(IsQuestCompletable) == true }, escape = GOODBYE,
   }
 end
@@ -225,9 +231,15 @@ function QD.CompletePage()
   }
 end
 
--- Takes the reward picked (or the only one) and finishes the quest.
+-- Takes the reward picked (or the only one) and finishes the quest. A quest that costs money asks first,
+-- naming the cost, as the game's own Complete does; No declines the hand-in, as the game's does.
 function QD.Complete()
-  call(GetQuestReward, QD.choice or (QD.page.choices and #QD.page.choices == 1 and 1) or nil)
+  local choice, cost = QD.choice or (QD.page.choices and #QD.page.choices == 1 and 1) or nil, QP.Cost()
+  -- Pays (when it costs) and takes the reward.
+  local function take() call(GetQuestReward, choice) end
+  if cost <= 0 then return take() end
+  local text = "Completing " .. QP.Plain(call(GetTitleText)) .. " costs " .. ns.GetModule("InfoStrip").Money(cost) .. ". Complete it?"
+  ns.Ask(text, "Complete", take, function() call(DeclineQuest) end)
 end
 
 -- Showing --------------------------------------------------------------------------------------
