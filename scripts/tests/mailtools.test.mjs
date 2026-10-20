@@ -121,6 +121,16 @@ it("presets: add, list, replace and remove; Send types the name and attaches the
   expect(addon.eval("return #ns.errors"), "no errors").toBe(0);
 });
 
+it("more matches than rows: '+4 more' beside Return all, and Take all takes every match", () => {
+  const addon = mailer("__wfgWorld.mail = {} for i = 1, 12 do __wfgWorld.mail[i] = { sender = 'Alt' .. i, subject = 'Gold', money = 100 * i, itemCount = 0 } end");
+  addon.world.openMailWindow();
+  // Whether the "+N more" line shows, and its text.
+  const more = () => addon.eval("local m = Vanguard_MailTools.more return { m:IsShown(), m:GetText() }");
+  expect([rows(addon).length, more()], "eight rows and the count of the rest").toEqual([8, [true, "+4 more"]]);
+  addon.slash("mail takeall");
+  addon.advance(6);
+  expect([addon.eval("return #__wfgWorld.taken"), more()[0]], "all twelve taken; none left past the rows").toEqual([12, false]);
+});
 it("presets attach only what can be mailed: a soulbound or locked item is passed over and not counted", () => {
   const addon = mailer("__wfgWorld.bagSizes[0] = 6 __wfgWorld.bags[0][5] = { itemID = 900, bound = true } __wfgWorld.bags[0][6] = { itemID = 901, locked = true } __wfgWorld.bags[0][1].bound = true __wfgWorld.bags[0][2].locked = true");
   addon.slash("mail preset add Smith Bobalt iron");

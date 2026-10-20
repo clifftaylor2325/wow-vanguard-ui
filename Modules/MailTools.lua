@@ -317,10 +317,13 @@ function MT.Paint()
   MT.PaintPresets()
 end
 
--- The matching mails in the rows, the filter's name, and the line shown when no row is.
+-- The matching mails in the rows, "+N more" for those past the rows, the filter's name, and the line shown
+-- when no row is.
 function MT.PaintRows(f)
   local found = MT.Find(MT.query)
   for i, row in ipairs(f.rows) do paintRow(row, found[i]) end
+  f.more:SetShown(#found > MT.ROWS)
+  f.more:SetText(string.format("+%d more", #found - MT.ROWS))
   f.filterButton.text:SetText(MT.filter)
   MT.PaintEmpty(#found)
 end
@@ -370,12 +373,15 @@ local function buildSearch(f)
   f.filterButton:SetPoint("LEFT", f.search, "RIGHT", T.SPACE.gap, 0)
 end
 
--- Take all and Return all above the preset buttons.
+-- Take all and Return all above the preset buttons, and beside them how many more mails match than the
+-- rows show (both buttons act on those too; small muted).
 local function buildBulk(f)
   f.takeAll = W.Button(f, "Take all", function() MT.TakeAll() end, 100)
   f.takeAll:SetPoint("BOTTOMLEFT", MT.PAD, MT.PAD + T.BUTTON_H + T.SPACE.gap)
   f.returnAll = W.Button(f, "Return all", function() MT.ReturnAll() end, 100)
   f.returnAll:SetPoint("LEFT", f.takeAll, "RIGHT", T.SPACE.gap, 0)
+  f.more = T.Text(f:CreateFontString(nil, "OVERLAY"), "small", "muted")
+  f.more:SetPoint("LEFT", f.returnAll, "RIGHT", T.SPACE.gap, 0)
 end
 
 -- How far in from the left the i-th place along the bottom (a preset button, or + Add) sits.
