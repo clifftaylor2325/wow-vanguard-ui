@@ -134,9 +134,11 @@ local function titleText(f, text)
 end
 
 -- Puts text in the text dialog's box and shows its start (the thumb follows the new height as the client grows it).
+-- The errors window's Clear goes, so a window opened over it shows only its own buttons.
 local function boxText(f, text)
   f.edit:SetText(text)
   f.view:ScrollTo(0)
+  if f.clear then f.clear:Hide() end
 end
 
 -- The text dialog's buttons: the primary at the bottom right and, left of it, the one that closes the box.
@@ -150,9 +152,8 @@ end
 
 -- The text dialog's buttons in Tab order (the errors window's Clear once it exists; hidden ones are skipped).
 local function textButtons()
-  local list = { box.primary }
+  local list = { box.primary, box.close }
   if box.clear then list[#list + 1] = box.clear end
-  list[#list + 1] = box.close
   return list
 end
 
@@ -191,14 +192,14 @@ function ns.ShowText(title, text)
   f.edit:HighlightText()
 end
 
--- The errors window's Clear button, left of Close, made the first time; it hides with the box, so only
--- ns.ShowErrors shows it.
+-- The errors window's Clear button, left of Close, made the first time; it hides with the box and when another
+-- text fills it, so only ns.ShowErrors shows it.
 local function clearButton(f)
   if f.clear then return f.clear end
   f.clear = button(f, "Clear")
   f.clear:SetPoint("RIGHT", f.close, "LEFT", -T.SPACE.gap, 0)
   f.clear:SetScript("OnClick", ns.Guard("click clear errors", function() ns.ClearErrors() f:Hide() ns.Chat("Errors cleared.") end))
-  f:HookScript("OnHide", function() f.clear:Hide() end)
+  f:HookScript("OnHide", ns.Guard("hide errors clear", function() f.clear:Hide() end))
   return f.clear
 end
 

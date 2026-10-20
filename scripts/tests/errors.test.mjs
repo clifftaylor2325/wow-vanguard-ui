@@ -424,6 +424,7 @@ it("A-14 the errors window: Report a bug opens the feedback form on a bug, Clear
   addon.clearChat();
   expect(addon.eval('return __click("Clear")'), "Clear is there").toBe(true);
   expect([addon.eval("return { #ns.errors, Vanguard_TextDialog:IsShown() }"), chatHas(addon, /Errors cleared\./)], "the list emptied, the window closed, chat says so").toEqual([[0, false], true]);
+  addon.slash("errors");
   addon.eval('ns.ShowText("TEST-ONLY", "TEST-ONLY text")');
-  expect(buttons(), "a plain text window shows Close only").toEqual(["Close"]);
+  expect(buttons(), "a plain text window opened over it shows Close only").toEqual(["Close"]);
 });

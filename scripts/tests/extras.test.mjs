@@ -566,15 +566,21 @@ it("A-13 the AFK screen waits while you cast or channel, tries once more 30 s on
   const addon = loggedIn(UNITS_ENV + AFK_ENV + "__cast, __channel = 'TEST-ONLY Hearthstone', nil UnitCastingInfo = function() return __cast end UnitChannelInfo = function() return __channel end");
   expect(goAway(addon), "casting: shut").toBe(false);
   addon.eval("__cast, __channel = nil, 'TEST-ONLY Drink'");
-  addon.fire("PLAYER_FLAGS_CHANGED", "player");
   addon.eval("__wfgStub.advance(30, 1)");
-  expect(addon.eval("return Vanguard_AfkScreen:IsShown()"), "one retry: still channelling, still shut").toBe(false);
+  expect(addon.eval("return Vanguard_AfkScreen:IsShown()"), "the retry: still channelling, still shut").toBe(false);
   addon.eval("__channel = nil");
-  addon.eval("__wfgStub.advance(30, 1)");
-  expect(addon.eval("return Vanguard_AfkScreen:IsShown()"), "the retry came from the channel above, and now it opens").toBe(true);
-  addon.eval("Vanguard_AfkScreen:Hide() __cast = { __secret = true }");
+  addon.eval("__wfgStub.advance(60, 1)");
+  expect(addon.eval("return Vanguard_AfkScreen:IsShown()"), "only one retry each time you're away").toBe(false);
+  addon.eval("__afk = false");
   addon.fire("PLAYER_FLAGS_CHANGED", "player");
-  expect(addon.eval("return Vanguard_AfkScreen:IsShown()"), "a hidden cast answer: shut").toBe(false);
+  addon.eval("__cast = 'TEST-ONLY Hearthstone'");
+  expect(goAway(addon), "away again while casting: shut").toBe(false);
+  addon.eval("__cast = nil __wfgStub.advance(30, 1)");
+  expect(addon.eval("return Vanguard_AfkScreen:IsShown()"), "the cast over by the retry: it opens").toBe(true);
+  addon.eval("__afk = false");
+  addon.fire("PLAYER_FLAGS_CHANGED", "player");
+  addon.eval("__cast = { __secret = true }");
+  expect(goAway(addon), "a hidden cast answer: shut").toBe(false);
 });
 it("A-13 a ready check or a popup puts the AFK screen away at once, so the first click lands on the prompt; it comes back next time you're away", () => {
   const addon = loggedIn(UNITS_ENV + AFK_ENV + FAKE_FADES);
@@ -583,6 +589,8 @@ it("A-13 a ready check or a popup puts the AFK screen away at once, so the first
   addon.eval("__finishFades()");
   addon.fire("READY_CHECK", "TEST-ONLY leader", 30);
   expect(addon.eval("return Vanguard_AfkScreen:IsShown()"), "a ready check: gone, no fade").toBe(false);
+  addon.fire("PLAYER_REGEN_ENABLED");
+  expect(addon.eval("return Vanguard_AfkScreen:IsShown()"), "and it stays away while the prompt may still be up").toBe(false);
   addon.eval("__afk = false");
   addon.fire("PLAYER_FLAGS_CHANGED", "player");
   goAway(addon);

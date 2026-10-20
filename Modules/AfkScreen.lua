@@ -143,11 +143,11 @@ local function casting()
   return busy((ask("UnitCastingInfo", "player"))) or busy((ask("UnitChannelInfo", "player")))
 end
 
--- Tries the screen again once, AFK.RETRY seconds on (the cast that kept it shut may be over by then).
+-- Tries the screen again once each time you're away, AFK.RETRY seconds on (the cast that kept it shut may be over).
 local function retryLater()
-  if AFK.retrying then return end
-  AFK.retrying = true
-  C_Timer.After(AFK.RETRY, ns.Guard("timer afk retry", function() AFK.retrying = false AFK.Update() end))
+  if AFK.retried then return end
+  AFK.retried = true
+  C_Timer.After(AFK.RETRY, ns.Guard("timer afk retry", AFK.Update))
 end
 
 -- Whether the screen stays shut for now: inside a dungeon, raid, battleground or arena, or while you cast.
@@ -172,9 +172,11 @@ function AFK.Close()
 end
 
 -- Something needs you (a ready check, a popup): the screen goes at once, with no fade, so your first click lands
--- on the prompt. It comes back the next time you're marked away.
+-- on the prompt, and stays away until you're next marked away (as a click puts it away).
 function AFK.StepAside()
+  AFK.dismissed = true
   AFK.frame:Hide()
+  AFK.frame:SetAlpha(1)
 end
 
 -- Your away flag changed (or a fight ended): show the screen while you're away, put it away when you're
@@ -184,7 +186,7 @@ function AFK.Update()
     AFK.since = AFK.since or ask("GetTime") or 0
     return AFK.Open()
   end
-  AFK.since, AFK.dismissed = nil, false
+  AFK.since, AFK.dismissed, AFK.retried = nil, false, false
   AFK.Close()
 end
 
@@ -275,8 +277,10 @@ local function wire(f)
   ns.Every("afk screen", 1, AFK.Tick, f)
 end
 
--- The screen steps aside after each prompt the game shows (calls the client lacks are skipped).
+-- The screen steps aside after each prompt the game shows (calls the client lacks are skipped, and all of them on a
+-- client without hooksecurefunc).
 local function watchPrompts()
+  if type(hooksecurefunc) ~= "function" then return end
   for _, fn in ipairs(AFK.PROMPTS) do
     if type(_G[fn]) == "function" then hooksecurefunc(fn, ns.Guard("hook afk " .. fn, AFK.StepAside)) end
   end
