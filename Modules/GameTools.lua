@@ -35,11 +35,15 @@ GT.VIEWERS = { "EssentialCooldownViewer", "UtilityCooldownViewer", "BuffIconCool
 
 -- Placing -------------------------------------------------------------------------------------
 
--- Puts one of the game's frames on its spot: the meter fills it; a cooldown
--- row is centered on it (the row sizes itself to its icons).
-function GT.Fit(frame, spot, fill)
+-- Puts one of the game's frames centered on its spot (a cooldown row sizes itself to its icons).
+function GT.FitCenter(frame, spot)
   frame:ClearAllPoints()
-  if not fill then return frame:SetPoint("CENTER", spot, "CENTER") end
+  frame:SetPoint("CENTER", spot, "CENTER")
+end
+
+-- Puts one of the game's frames over its spot, filling it (the damage meter).
+function GT.FitFill(frame, spot)
+  frame:ClearAllPoints()
   frame:SetPoint("TOPLEFT", spot, "TOPLEFT")
   frame:SetPoint("BOTTOMRIGHT", spot, "BOTTOMRIGHT")
 end
@@ -51,7 +55,8 @@ local function place(name)
   local holder = CreateFrame("Frame", "Vanguard_" .. name .. "Spot", UIParent)
   holder:SetSize(spot[4], spot[5])
   ns.Mover(holder, spot[1], spot[2], spot[3])
-  ns.Pin(f, function(frame) GT.Fit(frame, holder, name == "DamageMeter") end)
+  local fit = name == "DamageMeter" and GT.FitFill or GT.FitCenter
+  ns.Pin(f, function(frame) fit(frame, holder) end)
 end
 
 -- Cooldown Manager ---------------------------------------------------------------------------

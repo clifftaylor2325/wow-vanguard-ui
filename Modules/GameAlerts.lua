@@ -44,7 +44,7 @@ local function place(name)
   local holder = CreateFrame("Frame", "Vanguard_" .. name .. "Spot", UIParent)
   holder:SetSize(spot[4], spot[5])
   ns.Mover(holder, spot[1], spot[2], spot[3])
-  ns.Pin(f, function(frame) ns.GetModule("GameTools").Fit(frame, holder, false) end)
+  ns.Pin(f, function(frame) ns.GetModule("GameTools").FitCenter(frame, holder) end)
 end
 
 -- Hides a frame's named art parts. Hidden, not faded: the frame's own

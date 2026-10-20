@@ -61,27 +61,34 @@ local function keysOf(o)
   return def and def[o.keys] or {}
 end
 
--- The keys of `keys` that are on (`want` true) or off (false) in the row's module; none without keys,
+-- The keys of `keys` whose value in the row's module passes `test`; none without keys,
 -- so a row naming a missing module reads no settings.
-local function keysAt(o, keys, want)
+local function keysWhere(o, keys, test)
   local found = {}
   if #keys == 0 then return found end
   local settings = ns.Settings(o.module)
   for _, key in ipairs(keys) do
-    if (settings[key] ~= false) == want then found[#found + 1] = key end
+    if test(settings[key]) then found[#found + 1] = key end
   end
   return found
 end
 
--- The keys of the row's list that are on in this profile.
-local function keysOn(o)
-  return keysAt(o, keysOf(o), true)
-end
+-- A setting is on unless the profile has it false.
+local function isOn(value) return value ~= false end
+
+-- A setting is off when the profile has it false.
+local function isOff(value) return value == false end
+
+-- The keys of `keys` that are on in the row's module.
+local function keysOn(o, keys) return keysWhere(o, keys, isOn) end
+
+-- The keys of `keys` that are off in the row's module.
+local function keysOff(o, keys) return keysWhere(o, keys, isOff) end
 
 -- Whether Vanguard still does what the row names: its module is on, and with keys, at least one of them.
 local function doing(o)
   if not ns.ModuleEnabled(o.module) then return false end
-  return o.keys == nil or #keysOn(o) > 0
+  return o.keys == nil or #keysOn(o, keysOf(o)) > 0
 end
 
 -- One overlap as the card and chat use it: the row's fields plus the addon's name and the profile's answer.
@@ -98,7 +105,7 @@ end
 -- still off, even if another row or the Game windows page turned some back on.
 local function restorable(o)
   if not o.keys then return not ns.ModuleEnabled(o.module) end
-  return ns.ModuleEnabled(o.module) and #keysAt(o, keysToRestore(o), false) > 0
+  return ns.ModuleEnabled(o.module) and #keysOff(o, keysToRestore(o)) > 0
 end
 
 -- Whether the card has something to offer: a question or Vanguard's part still on after "kept", or after "off"
@@ -160,7 +167,7 @@ end
 
 -- Turns the row's keys off and keeps which ones were on, so turning back on restores just those.
 local function turnKeysOff(o)
-  local on, settings = keysOn(o), ns.Settings(o.module)
+  local on, settings = keysOn(o, keysOf(o)), ns.Settings(o.module)
   for _, key in ipairs(on) do settings[key] = false end
   ns.Settings("Coexist", CX.defaults).off[o.addon] = on
 end
