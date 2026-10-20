@@ -68,10 +68,11 @@ local function addScroll(f)
   f.child = f.scroll.child
 end
 
--- The scrolling body: the text, the objectives under it, the quest history line, then the numbered lines.
+-- The scrolling body: the text, the objectives under it, the needs line, the quest history line, then the numbered lines.
 local function addBody(f)
   addScroll(f)
   f.text, f.objectives, f.history = bodyText(f.child, "text"), bodyText(f.child, "text2"), bodyText(f.child, "muted")
+  f.needs = bodyText(f.child, "text2")
   f.text:SetPoint("TOPLEFT", f.child, "TOPLEFT", 0, -BODY_PAD)
   f.objectives:SetPoint("TOPLEFT", f.text, "BOTTOMLEFT", 0, -OBJECTIVES_GAP)
 end
@@ -155,16 +156,25 @@ end
 local function bodyHeight(f, lineCount)
   local h = BODY_PAD + f.text:GetStringHeight()
   if f.objectives:IsShown() then h = h + OBJECTIVES_GAP + f.objectives:GetStringHeight() end
+  if f.needs:IsShown() then h = h + OBJECTIVES_GAP + f.needs:GetStringHeight() end
   if f.history:IsShown() then h = h + OBJECTIVES_GAP + f.history:GetStringHeight() end
   if lineCount > 0 then h = h + LINES_GAP + lineCount * QP.LINE_H end
   return h + BODY_PAD
 end
 
--- The quest history line ("Done on Thrall-Realm"), muted under the objectives (or the text); hidden for a quest not done.
+-- The needs line (the group a quest suggests; QP.Needs) under the objectives (or the text); hidden when it has none.
+local function renderNeeds(f, p)
+  f.needs:SetShown((p.needs or "") ~= "")
+  QP.PaintNeeds(f.needs, p.needs or "", p.short)
+  f.needs:SetPoint("TOPLEFT", f.objectives:IsShown() and f.objectives or f.text, "BOTTOMLEFT", 0, -OBJECTIVES_GAP)
+end
+
+-- The quest history line ("Done on Thrall-Realm"), muted under the needs line, the objectives or the text; hidden for a quest not done.
 local function renderHistory(f, p)
+  local above = f.needs:IsShown() and f.needs or f.objectives:IsShown() and f.objectives or f.text
   f.history:SetShown(p.done ~= nil)
   f.history:SetText(p.done or "")
-  f.history:SetPoint("TOPLEFT", f.objectives:IsShown() and f.objectives or f.text, "BOTTOMLEFT", 0, -OBJECTIVES_GAP)
+  f.history:SetPoint("TOPLEFT", above, "BOTTOMLEFT", 0, -OBJECTIVES_GAP)
 end
 
 -- The text and objectives, then the lines, scrolled back to the top; returns how tall they are.
@@ -172,6 +182,7 @@ local function renderBody(f, p)
   f.text:SetText(QP.Plain(p.text))
   f.objectives:SetShown(p.objectives ~= nil)
   f.objectives:SetText(p.objectives and ("Objectives:  " .. QP.Plain(p.objectives)) or "")
+  renderNeeds(f, p)
   renderHistory(f, p)
   renderLines(f, p.lines)
   f.scroll:ScrollTo(0)

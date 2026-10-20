@@ -217,6 +217,41 @@ function QP.RequiredSection(items)
   return #items > 0 and { { caption = caption("TURN_IN_ITEMS"), items = items } } or {}
 end
 
+-- Requirements ---------------------------------------------------------------------------------
+
+-- The money part of a needs line in the client's words ("Required Money: 1g 50s"), and whether you have
+-- less than it (only when both figures are plain); nil for no money.
+local function moneyPart(copper)
+  if copper <= 0 then return nil, false end
+  local have = ns.PlainNumber(type(GetMoney) == "function" and GetMoney() or nil)
+  local text = (caption("REQUIRED_MONEY") or "Needs") .. " " .. ns.GetModule("InfoStrip").Money(copper)
+  return text, have ~= nil and have < copper
+end
+
+-- The group size part in the client's words ("Suggested Players [3]"), or nil.
+local function groupPart(players)
+  local fmt = caption("QUEST_SUGGESTED_GROUP_NUM")
+  if players <= 0 or not fmt then return nil end
+  return (fmt:gsub("%%d", tostring(players)))
+end
+
+-- What a quest asks of you beside its objectives, as one line: the money it needs and the group it suggests
+-- (plain numbers, 0 for none). Returns the text ("" for nothing) and whether you are short of the money.
+function QP.Needs(copper, players)
+  local money, short = moneyPart(ns.PlainNumber(copper) or 0)
+  local parts = {}
+  for _, part in ipairs({ money or false, groupPart(ns.PlainNumber(players) or 0) or false }) do
+    if part then parts[#parts + 1] = part end
+  end
+  return table.concat(parts, "  ·  "), short
+end
+
+-- Paints a needs line from QP.Needs: muted, or in the danger colour while you are short of the money.
+function QP.PaintNeeds(fs, text, short)
+  fs:SetText(text)
+  T.Color(fs, short and "bad" or "text2")
+end
+
 -- A section's caption at y down the holder's left edge (none when the client has no words for it); returns the y under it.
 local function placeCaption(lay, text, y)
   if not text then return y end

@@ -201,6 +201,7 @@ function QD.DetailPage()
   local auto = call(QuestGetAutoAccept) == true
   return {
     title = QP.WithMark(call(GetTitleText), ns.PlainNumber(call(GetQuestID))), text = call(GetQuestText), objectives = call(GetObjectiveText),
+    needs = QP.Needs(0, call(GetSuggestedGroupSize)),
     done = ns.GetModule("QuestHistory").Line(ns.PlainNumber(call(GetQuestID))),
     choices = QD.Items("choice", call(GetNumQuestChoices)), rewards = QD.Items("reward", call(GetNumQuestRewards)), money = QD.MoneyLine(),
     primary = auto and { "OK", function() call(AcknowledgeAutoAcceptQuest) end } or { "Accept", function() call(AcceptQuest) end },

@@ -85,6 +85,7 @@ end
 -- The objectives under their header: a box the rows stack in, and the quest history line under it.
 local function addObjectives(f)
   f.objectives, f.history = detailText(f.detail, "label", "text2"), detailText(f.detail, "label", "text2")
+  f.needs = detailText(f.detail, "label", "text2")
   f.objectives:SetPoint("TOPLEFT", f.text, "BOTTOMLEFT", 0, -TEXT_GAP)
   f.objectiveBox = CreateFrame("Frame", nil, f.detail)
   f.objectiveBox:SetSize(DETAIL_W, 1)
@@ -265,27 +266,43 @@ local function paintObjective(row, o)
   row:Show()
 end
 
--- Places the objectives box under its header and the history line under the box, each with its gap only when
--- there is something to separate; returns the gaps added.
-local function placeObjectives(f, rows, history)
-  local boxGap, historyGap = rows > 0 and T.SPACE.tight or 0, history ~= "" and TITLE_GAP or 0
+-- Places the objectives box under its header, the needs line under the box and the history line under that,
+-- each with its gap only when there is something to separate; returns the gaps added.
+local function placeObjectives(f, rows, needs, history)
+  local boxGap = rows > 0 and T.SPACE.tight or 0
+  local needsGap, historyGap = needs ~= "" and TITLE_GAP or 0, history ~= "" and TITLE_GAP or 0
   f.objectiveBox:SetPoint("TOPLEFT", f.objectives, "BOTTOMLEFT", 0, -boxGap)
-  f.history:SetPoint("TOPLEFT", f.objectiveBox, "BOTTOMLEFT", 0, -historyGap)
-  return boxGap + historyGap
+  f.needs:SetPoint("TOPLEFT", f.objectiveBox, "BOTTOMLEFT", 0, -needsGap)
+  f.history:SetPoint("TOPLEFT", f.needs, "BOTTOMLEFT", 0, -historyGap)
+  return boxGap + needsGap + historyGap
 end
 
--- The objectives as rows under their header, and the quest history line under them.
-local function renderObjectives(f, d)
+-- The objectives' header: "Objectives" over their rows, "Failed" in the danger colour for a quest that failed
+-- (its rows left out), nothing for a quest without objectives.
+local function objectivesHeader(f, d, rows)
+  f.objectives:SetText(d.failed and "Failed" or rows > 0 and "Objectives" or "")
+  T.Color(f.objectives, d.failed and "bad" or "text2")
+end
+
+-- One row per objective in the objectives box, which takes their height.
+local function renderObjectiveRows(f, shown)
   f.objectiveRows.Reset()
-  for i, o in ipairs(d.objectives) do
+  for i, o in ipairs(shown) do
     local row = f.objectiveRows.Next()
     row:SetPoint("TOPLEFT", f.objectiveBox, "TOPLEFT", 0, -(i - 1) * QP.LINE_H)
     paintObjective(row, o)
   end
-  f.objectiveBox:SetHeight(#d.objectives * QP.LINE_H)
-  f.objectives:SetText(#d.objectives > 0 and "Objectives" or "")
+  f.objectiveBox:SetHeight(#shown * QP.LINE_H)
+end
+
+-- The objectives as rows under their header, then the needs line and the quest history line under them.
+local function renderObjectives(f, d)
+  local shown = d.failed and {} or d.objectives
+  renderObjectiveRows(f, shown)
+  objectivesHeader(f, d, #shown)
+  QP.PaintNeeds(f.needs, d.needs or "", d.short)
   f.history:SetText(d.done or "")
-  f.objectiveGaps = placeObjectives(f, #d.objectives, d.done or "")
+  f.objectiveGaps = placeObjectives(f, #shown, d.needs or "", d.done or "")
 end
 
 -- The details buttons: Track or Untrack, Share only when you can.
@@ -308,7 +325,7 @@ end
 
 -- How tall the details side's contents are: title, text, objectives, reward rows and the money line, with their gaps.
 local function detailHeight(f)
-  local h = f.questTitle:GetStringHeight() + TITLE_GAP + f.text:GetStringHeight() + TEXT_GAP + f.objectives:GetStringHeight() + f.objectiveBox:GetHeight() + f.objectiveGaps + f.history:GetStringHeight() + REWARDS_GAP
+  local h = f.questTitle:GetStringHeight() + TITLE_GAP + f.text:GetStringHeight() + TEXT_GAP + f.objectives:GetStringHeight() + f.objectiveBox:GetHeight() + f.objectiveGaps + f.needs:GetStringHeight() + f.history:GetStringHeight() + REWARDS_GAP
   return h + f.rewardsH + (f.rewardsH > 0 and QP.GAP or 0) + MONEY_GAP + f.money:GetStringHeight() + MONEY_GAP
 end
 

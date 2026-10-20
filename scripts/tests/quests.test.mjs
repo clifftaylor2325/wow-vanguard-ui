@@ -783,6 +783,42 @@ it("quest log: the chosen quest's rewards are captioned, the choice first", () =
   addon.eval("ns.GetModule('QuestLog').Open()");
   expect(captions(addon, "Vanguard_QuestLog"), "its one choice is simply received, then what it also gives").toEqual(["TEST-ONLY You get:", "TEST-ONLY You also get:"]);
 });
+// TEST-ONLY copies of the client's requirement words (its global strings).
+const NEEDS_ENV = `REQUIRED_MONEY, QUEST_SUGGESTED_GROUP_NUM = "TEST-ONLY Required Money:", "TEST-ONLY Suggested Players [%d]"`;
+// A window's needs line ("Vanguard_QuestDialog" or "Vanguard_QuestLog"): its text, shown, and whether it is in the danger colour.
+const needsLine = (addon, name) => {
+  const [text, shown, color] = addon.eval(`local n = ${name}.needs return { n:GetText(), n:IsShown(), n.__textColor }`);
+  return [text, shown, isTok(addon, color, "bad")];
+};
+it("quest dialog: a quest that suggests a group says so in the client's words, under its objectives", () => {
+  const addon = loggedIn(QUEST_ENV + NEEDS_ENV + " GetSuggestedGroupSize = function() return 3 end");
+  addon.fire("QUEST_DETAIL");
+  expect(needsLine(addon, "Vanguard_QuestDialog"), "muted, never short: the details page asks no money").toEqual(["TEST-ONLY Suggested Players [3]", true, false]);
+  expect(addon.eval("local f = Vanguard_QuestDialog return select(2, f.needs:GetPoint(1)) == f.objectives"), "under the objectives").toBe(true);
+  addon.eval("GetSuggestedGroupSize = function() return 0 end");
+  addon.fire("QUEST_DETAIL");
+  expect(needsLine(addon, "Vanguard_QuestDialog").slice(0, 2), "a solo quest: no line").toEqual(["", false]);
+  const bare = loggedIn(QUEST_ENV + " GetSuggestedGroupSize = function() return 3 end");
+  bare.fire("QUEST_DETAIL");
+  expect(needsLine(bare, "Vanguard_QuestDialog").slice(0, 2), "a client without the words: no line").toEqual(["", false]);
+});
+it("quest log: the chosen quest's money and group size share a line, in the danger colour while you are short", () => {
+  const addon = loggedIn(TRACK_ENV + QLOG_ENV + NEEDS_ENV + ` C_QuestLog.GetRequiredMoney = function() return __cost end
+    C_QuestLog.GetSuggestedGroupSize = function() return 5 end __cost = 200000`);
+  addon.eval("ns.GetModule('QuestLog').Open()");
+  const money = addon.eval("return ns.GetModule('InfoStrip').Money(200000)");
+  expect(needsLine(addon, "Vanguard_QuestLog"), "more than you carry (123456)").toEqual([`TEST-ONLY Required Money: ${money}  ·  TEST-ONLY Suggested Players [5]`, true, true]);
+  addon.eval("__cost = 100 ns.GetModule('QuestLog').Open()");
+  expect(needsLine(addon, "Vanguard_QuestLog")[2], "enough money: muted").toBe(false);
+  addon.eval("__cost = { __secret = true } C_QuestLog.GetSuggestedGroupSize = function() return { __secret = true } end ns.GetModule('QuestLog').Open()");
+  expect(needsLine(addon, "Vanguard_QuestLog")[0], "hidden figures: no line").toBe("");
+});
+it("quest log: a failed quest says Failed in the danger colour, its objectives left out", () => {
+  const addon = loggedIn(TRACK_ENV + QLOG_ENV + " C_QuestLog.IsFailed = function(id) return __quests[id].failed end __quests[90051].failed = true");
+  addon.eval("ns.GetModule('QuestLog').Open()");
+  const [text, color, rows] = addon.eval("local f = Vanguard_QuestLog return { f.objectives:GetText(), f.objectives.__textColor, f.objectiveRows.used }");
+  expect([text, isTok(addon, color, "bad"), rows]).toEqual(["Failed", true, 0]);
+});
 it("quest log: an objective's count is found at either end, a text without one has none, and a done one is muted with a check", () => {
   const addon = loggedIn(TRACK_ENV + QLOG_ENV);
   addon.eval(`__quests[90051].objectives = { { text = "TEST-ONLY Wolf slain: 3/8", finished = false }, { text = "TEST-ONLY Explore the vale", finished = false },
