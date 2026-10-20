@@ -202,10 +202,15 @@ function CX.RecentText(frame)
   return table.concat(lines, "\n")
 end
 
+-- True when frame is a chat window (one that can read its own lines back).
+local function isChatWindow(frame)
+  return type(frame) == "table" and type(frame.GetNumMessages) == "function"
+end
+
 -- The chat window you are looking at (the shown tab), or the main one.
 local function shownWindow()
   local frame = _G.SELECTED_CHAT_FRAME
-  if type(frame) == "table" and type(frame.GetNumMessages) == "function" then return frame end
+  if isChatWindow(frame) then return frame end
   return _G.ChatFrame1
 end
 
@@ -219,24 +224,21 @@ end
 -- Opens the recent chat of the shown tab in the copy box, at its newest line.
 function CX.ShowCopy()
   local frame = shownWindow()
-  if type(frame) ~= "table" or type(frame.GetNumMessages) ~= "function" then return ns.Chat("This client can't read the chat back.") end
+  if not isChatWindow(frame) then return ns.Chat("This client can't read the chat back.") end
   ns.ShowTextAtEnd(copyTitle(frame), CX.RecentText(frame))
 end
 
--- A small Copy button in the main chat window's tab bar, at its right end.
+-- A small Copy button in the main chat window's tab bar, at its right end (nil when the window can't read back).
 local function addCopyButton()
   local frame = _G.ChatFrame1
-  if type(frame) ~= "table" or type(frame.GetNumMessages) ~= "function" then return end
-  CX.copyButton = ns.GetModule("Chat").AddBarButton(frame, "Copy", "click copy chat", CX.ShowCopy)
+  if not isChatWindow(frame) then return nil end
+  return ns.GetModule("Chat").AddBarButton(frame, "Copy", "click copy chat", CX.ShowCopy)
 end
 
--- Shows or hides the Copy button as its switch is set (made now when it was off at login), at once;
--- the bar's other tiles and the dock close up over it (Modules/Chat.lua CH.PlaceBarButtons).
+-- Shows or hides the Copy button as its switch is set (made now when it was off at login), at once
+-- (Modules/Chat.lua CH.ApplyBarButton).
 function CX.ApplyCopy()
-  if CX.settings.copy and not CX.copyButton then addCopyButton() end
-  if not CX.copyButton then return end
-  CX.copyButton:SetShown(CX.settings.copy == true)
-  ns.GetModule("Chat").PlaceBarButtons(_G.ChatFrame1)
+  CX.copyButton = ns.GetModule("Chat").ApplyBarButton(CX.copyButton, CX.settings.copy == true, addCopyButton)
 end
 
 -- Short channel names ---------------------------------------------------------------------

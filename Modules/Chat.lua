@@ -363,6 +363,16 @@ function CH.AddBarButton(frame, label, where, onClick)
   return button
 end
 
+-- Shows or hides a bar button as its switch is set, made first (with make) when it is wanted and missing;
+-- the bar's other tiles close up over it. Returns the button, or nil when none could be made.
+function CH.ApplyBarButton(button, shown, make)
+  if shown and not button then button = make() end
+  if not button then return nil end
+  button:SetShown(shown)
+  CH.PlaceBarButtons(_G.ChatFrame1)
+  return button
+end
+
 -- Shows the painted panel round a chat window when the background is on, else the scrim in its
 -- place (the outline with its bar stays either way).
 local function showFrame(frame, on)

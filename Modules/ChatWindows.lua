@@ -275,17 +275,14 @@ end
 -- A small Find button in the main chat window's tab bar, left of the Copy button.
 local function addFindButton()
   local frame = _G.ChatFrame1
-  if type(frame) ~= "table" then return end
-  CW.findButton = ns.GetModule("Chat").AddBarButton(frame, "Find", "click find in chat", CW.AskFind)
+  if type(frame) ~= "table" then return nil end
+  return ns.GetModule("Chat").AddBarButton(frame, "Find", "click find in chat", CW.AskFind)
 end
 
--- Shows or hides the Find button as its switch is set (made now when it was off at login), at once;
--- the bar's other tiles and the dock close up over it (Modules/Chat.lua CH.PlaceBarButtons).
+-- Shows or hides the Find button as its switch is set (made now when it was off at login), at once
+-- (Modules/Chat.lua CH.ApplyBarButton).
 function CW.ApplyFind()
-  if CW.settings.find and not CW.findButton then addFindButton() end
-  if not CW.findButton then return end
-  CW.findButton:SetShown(CW.settings.find == true)
-  ns.GetModule("Chat").PlaceBarButtons(_G.ChatFrame1)
+  CW.findButton = ns.GetModule("Chat").ApplyBarButton(CW.findButton, CW.settings.find == true, addFindButton)
 end
 
 -- Module entry point (Core/Modules.lua).
