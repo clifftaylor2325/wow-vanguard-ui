@@ -1197,6 +1197,28 @@ it("quiet the game: hiding the red error line keeps yellow info lines, whichever
   plain.fire("UI_ERROR_MESSAGE", 50, "TEST-ONLY Out of range");
   expect(plain.eval("return __shown"), "a client without the game's red leaves the line alone").toEqual(["TEST-ONLY Out of range"]);
 });
+// TEST-ONLY the client's names for message types: 3 is bags full, 4 the quest log full; past 9 it refuses.
+const KEEP_ENV = `GetGameMessageInfo = function(i) if i > 9 then error("bad index") end return ({ [3] = "ERR_INV_FULL", [4] = "ERR_QUEST_LOG_FULL" })[i] or "ERR_OTHER" end`;
+it("quiet the game: the red errors you must act on stay, put back only within their own time", () => {
+  const addon = loggedIn(QUIET_ENV + KEEP_ENV, { savedVariables: "VanguardDB.profiles = { Default = { Quiet = { errors = true } } }" });
+  addon.fire("UI_ERROR_MESSAGE", 3, "TEST-ONLY Inventory is full");
+  addon.fire("UI_ERROR_MESSAGE", 50, "TEST-ONLY Out of range");
+  expect(addon.eval("return __shown"), "bags full stays, out of range goes").toEqual(["TEST-ONLY Inventory is full"]);
+  addon.advance(2);
+  addon.fire("UI_ERROR_MESSAGE", 50, "TEST-ONLY Out of range");
+  addon.advance(1);
+  addon.fire("UI_ERROR_MESSAGE", 50, "TEST-ONLY Out of range");
+  expect(addon.eval("return #__shown"), "put back once without a new time: gone after its own 2.5 s").toBe(0);
+});
+it("quiet the game: an error type the client won't name, or a hidden one, is hidden", () => {
+  const addon = loggedIn(QUIET_ENV + KEEP_ENV, { savedVariables: "VanguardDB.profiles = { Default = { Quiet = { errors = true } } }" });
+  addon.fire("UI_ERROR_MESSAGE", 40, "TEST-ONLY Unknown type");
+  addon.eval('UIErrorsFrame:AddMessage("TEST-ONLY hidden type", 1, 0.125, 0.125, 1, __wfgWorld.secret(3))');
+  expect(addon.eval("return #__shown"), "neither stays").toBe(0);
+  const bare = loggedIn(QUIET_ENV, { savedVariables: "VanguardDB.profiles = { Default = { Quiet = { errors = true } } }" });
+  bare.fire("UI_ERROR_MESSAGE", 3, "TEST-ONLY Inventory is full");
+  expect(bare.eval("return #__shown"), "a client without GetGameMessageInfo hides every red line").toBe(0);
+});
 // TEST-ONLY extra windows: friends, a book (its page text records the colors it's given), and
 // the game's loss of control and talking head alerts with their parts.
 const ALERTS_ENV = `
