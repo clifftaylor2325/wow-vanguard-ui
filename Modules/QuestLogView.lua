@@ -243,14 +243,6 @@ local function renderRewards(f, d)
   f.money:SetText(d.money)
 end
 
--- An objective's text split into its label and its count ("Wolves slain: 3/8" or "3/8 Wolves slain" give
--- "Wolves slain", "3/8"); the count is nil when it has none.
-local function splitCount(text)
-  local label, count = text:match("^(.-):?%s*(%d+/%d+)$")
-  if not count then count, label = text:match("^(%d+/%d+)%s+(.+)$") end
-  return label and label ~= "" and label or text, count
-end
-
 -- Fills a row's progress bar from its count ("3/8"): shown while the objective is not done.
 local function paintProgress(row, count, done)
   local have, need = (count or ""):match("^(%d+)/(%d+)$")
@@ -261,7 +253,7 @@ end
 
 -- Fills an objective row from { text, done }: a check and muted text when done, else the text, its count and a bar.
 local function paintObjective(row, o)
-  local label, count = splitCount(o.text)
+  local label, count = QP.SplitCount(o.text)
   row.label:SetText(label)
   row.count:SetText(count or "")
   T.Color(row.label, o.done and "text2" or "text")

@@ -60,7 +60,7 @@ const MAP_ENV = `
 
 // The tracker's blocks: title and lines each.
 const tracker = (addon) => addon.eval(`local f, out = Vanguard_QuestTrackerFrame, {}
-  for i = 1, f.blocks.used do local b, lines = f.blocks[i], {} for j = 1, b.lines.used do lines[j] = b.lines[j]:GetText() end out[i] = { b.title:GetText(), lines } end
+  for i = 1, f.blocks.used do local b, lines = f.blocks[i], {} for j = 1, b.lines.used do local l = b.lines[j] lines[j] = l.count:GetText() ~= "" and (l.text:GetText() .. " " .. l.count:GetText()) or l.text:GetText() end out[i] = { b.title:GetText(), lines } end
   return out`);
 
 // The New mark as the addon paints it.
@@ -109,8 +109,11 @@ it("quest guidance: Shift-click a tracked quest and the game's quest arrow follo
   expect([addon.eval("return __super"), chatHas(addon, /Arrow: TEST-ONLY Letter\./)], "the game's arrow on the quest, and chat says so").toEqual([[90052], true]);
   const t = tracker(addon);
   expect(t[1], "the next step first under the followed quest").toEqual(["[12] TEST-ONLY Letter", ["> TEST-ONLY Take the boat"]]);
-  expect(isTok(addon, addon.eval("return Vanguard_QuestTrackerFrame.blocks[2].lines[1].__textColor"), "accent"), "in the accent").toBe(true);
-  expect(t[0][1], "the other quest has no step line").toEqual(["- 3/8 TEST-ONLY Wolves slain"]);
+  expect(isTok(addon, addon.eval("return Vanguard_QuestTrackerFrame.blocks[2].lines[1].text.__textColor"), "accent"), "in the accent").toBe(true);
+  expect(t[0][1], "the other quest has no step line").toEqual(["TEST-ONLY Wolves slain 3/8"]);
+  addon.eval("ns.QuestArrow.Pick()");
+  addon.update(0);
+  expect(addon.eval("local b = Vanguard_QuestTrackerFrame.blocks return { b[1].edge:IsShown(), b[2].edge:IsShown() }"), "once the arrow picks it up, the followed quest has the accent line down its edge").toEqual([false, true]);
   addon.eval("ns.Settings('QuestGuide').stepLine = false ns.GetModule('QuestTracker').Refresh()");
   expect(tracker(addon)[1][1], "the step line switched off").toEqual({});
   addon.keys({ shift: false });
@@ -229,4 +232,18 @@ it("quest guidance: /vg questdata reads the quest's ID from a quest link, not it
   addon.clearChat();
   addon.slash("questdata |cffffff00|Hquest:90051:10|h[TEST-ONLY Wolves]|h|r");
   expect(addon.chat().filter((l) => /Quest \d+:/.test(l)).map((l) => l.match(/Quest (\d+):/)[1])).toEqual(["90051"]);
+});
+
+it("quest guidance: a quest-start pin's tooltip gives the quest's level in its difficulty colour and says when it repeats", () => {
+  const addon = loggedIn(QUESTS_ENV + ARROW_ENV + MAP_ENV + `GetQuestDifficultyColor = function() return { r = 1, g = 0.5, b = 0.25 } end
+    __wfgWorld.questFacts[90071] = { level = 24, repeatable = true } __wfgWorld.questFacts[90074] = { level = __wfgWorld.secret(), repeatable = __wfgWorld.secret() }`);
+  addon.eval("WorldMapFrame:Show()");
+  addon.update(0);
+  // The tooltip of pin i: each line's text and colour.
+  const tip = (i) => addon.eval(`local p = ns.QuestGuide.pins[${i}] p.__scripts.OnEnter(p)
+    local out = {} for j, l in ipairs(GameTooltip.__lines) do out[j] = { l.text, l.r } end return out`);
+  const lines = tip(1);
+  expect(lines.slice(0, 3).map((l) => l[0]), "the name, the level, Repeatable").toEqual(["TEST-ONLY Bandits", "Level 24", expect.stringContaining("Repeatable")]);
+  expect(lines[1][1], "the level in the client's difficulty colour").toBe(1);
+  expect(tip(2).length, "hidden answers add no line").toBe(2);
 });

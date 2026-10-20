@@ -61,12 +61,16 @@ read_globals = {
   "CALENDAR_EVENT_ALARM_MESSAGE",
   -- Info strip: the calendar button's count of invites waiting for an answer.
   "C_Calendar",
+  -- Info strip: a click on durability opens the character window, on free space or gold the bags.
+  "ToggleCharacter", "ToggleAllBags",
   -- Info strip: a click on the time opens the game's clock window, or turns off its ringing alarm (Blizzard_TimeManager).
   "ToggleTimeManager", "TimeManager_IsAlarmFiring", "TimeManager_TurnOffAlarm",
   -- Info strip: the time in the game's clock format, realm and local (Blizzard_FrameXMLUtil/GameTimeUtil.lua).
   "GameTime_GetTime", "GameTime_GetGameTime", "GameTime_GetLocalTime",
   -- Info strip: the realm's date beside the realm time, and whether the game's clock shows local time.
   "C_DateAndTime", "GetCVarBool",
+  -- Reputation bar: the game's standing words in your character's form (its click uses ToggleCharacter, above).
+  "GetText", "UnitSex",
   -- P3.3 Visibility conditions: In an instance, and what a state driver's string says now.
   "IsInInstance", "SecureCmdOptionParse", "SendChatMessage",
   -- R1.6 Chat bubbles (Modules/ChatBubbles.lua): the engine's list of the bubbles it is showing.
@@ -117,7 +121,7 @@ read_globals = {
   -- E5 Auction ledger: the inbox's auction mail (Blizzard_MailFrame/MailFrame.lua), and the game's
   -- "Auction expired" subject line.
   "TakeInboxMoney", "ReturnInboxItem", "TakeInboxItem", "MailFrame", "SendMailFrame", "SendMailNameEditBox",
-  "GetInboxNumItems", "GetInboxHeaderInfo", "GetInboxInvoiceInfo", "AUCTION_EXPIRED_MAIL_SUBJECT",
+  "GetInboxNumItems", "GetInboxHeaderInfo", "GetInboxInvoiceInfo", "InboxItemCanDelete", "AUCTION_EXPIRED_MAIL_SUBJECT",
   -- Mail tools, Take all: which attachment slots a mail still holds, and whether the server is still
   -- answering the last take (Blizzard_MailFrame/MailFrame.lua, MailInfoDocumentation.lua).
   "HasInboxItem", "C_Mail",
@@ -129,4 +133,6 @@ read_globals = {
   "SuperTrackedFrame",
   -- Inventory: the engine's case-blind UTF-8 compare, so a name with an accented capital is found.
   "strcmputf8i",
+  -- H-04 Reset moved windows (Modules/WindowsMove.lua): the panel manager's list of the windows it lays out.
+  "UIPanelWindows",
 }

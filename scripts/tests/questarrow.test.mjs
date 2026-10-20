@@ -136,8 +136,8 @@ it("quest arrow: a Shift-click pin wins; with auto off only the pinned quest is 
 it("quest arrow: its options sit on the Quests page and change the settings", () => {
   const addon = loggedIn(ARROW_ENV);
   const rows = addon.eval("local out = {} for i, row in ipairs(ns.QuestArrow.Rows()) do out[i] = row[2] end return out");
-  expect(rows, "the card").toEqual(["Quest arrow", rows[1], "Show the quest arrow", "Follow the nearest quest (off: only the one you pinned)"]);
-  addon.eval("local rows = ns.QuestArrow.Rows() local _, set = rows[3][3]() rows[3][4](false) rows[4][4](false)");
+  expect(rows, "its rows on the Finding your way card").toEqual(["Show the quest arrow", "Follow the nearest quest (off: only the one you pinned)"]);
+  addon.eval("local rows = ns.QuestArrow.Rows() rows[1][4](false) rows[2][4](false)");
   expect(addon.eval("local s = ns.Settings('QuestArrow') return { s.show, s.auto }"), "both switched off").toEqual([false, false]);
 });
 
@@ -215,4 +215,35 @@ it("quest arrow: a pin whose quest left the log is let go, so a quest the game t
   expect(addon.eval("return { ns.QuestGuide.pointed == nil, ns.QuestArrow.current }"), "the pin let go, the nearest followed").toEqual([true, 90061]);
   addon.eval(`__wfgWorld.addQuest({ questID = 90062, title = "TEST-ONLY Far", level = 8, watched = true, distanceSq = 90000, objectives = {} }) __tracked = 90062 ns.QuestArrow.Pick()`);
   expect([addon.eval("return ns.QuestArrow.current"), pinState(addon)[0]], "the game's tracked quest doesn't hold the arrow").toEqual([90061, false]);
+});
+
+it("quests page: its cards in the order a player meets them, the arrow, guidance and minimap spots on one card", () => {
+  const addon = loggedIn(ARROW_ENV);
+  const page = addon.eval(`local out = {}
+    for _, p in ipairs(ns.Options.PAGES) do
+      if p.key == "quests" then for _, r in ipairs(p.rows()) do if r[1] == "header" or r[1] == "cycle" then out[#out + 1] = r[2] end end end
+    end
+    return out`);
+  expect(page).toEqual(["Quest windows", "Quest tracker", "With Questie loaded (reload)", "Order", "Finding your way", "Shift-click points", "Quest history", "Automation (hold Shift while talking to skip it)"]);
+  expect(addon.eval("local r = ns.QuestGuide.Rows()[1] return { r[3][1][2], r[3][2][2] }"), "the game's marker, not a second arrow").toEqual(["The game's quest marker", "A map waypoint"]);
+});
+
+// Which tracker blocks show the followed quest's accent line, by title.
+const edges = (addon) => addon.eval(`local f, out = Vanguard_QuestTrackerFrame, {}
+  for i = 1, f.blocks.used do if f.blocks[i].edge:IsShown() then out[#out + 1] = f.blocks[i].title:GetText() end end
+  return out`);
+
+it("quest arrow: the tracker draws an accent line down the left edge of the quest the arrow follows, and moves it with the arrow", () => {
+  const addon = loggedIn(ARROW_ENV);
+  addon.update(0);
+  expect(edges(addon), "the nearer quest, the arrow's pick").toEqual(["[8] TEST-ONLY Near"]);
+  expect(isTok(addon, addon.eval("return Vanguard_QuestTrackerFrame.blocks[1].edge.__vertexColor"), "accent"), "in the accent").toBe(true);
+  addon.eval("C_QuestLog.GetDistanceSqToQuest = function(id) return id == 90061 and 10000 or 4000 end ns.QuestArrow.Pick()");
+  addon.update(0);
+  expect(edges(addon), "the arrow moved on: so does the line").toEqual(["[8] TEST-ONLY Far"]);
+  addon.eval("for _, r in ipairs(ns.QuestArrow.Rows()) do if r[2] == 'Show the quest arrow' then r[4](false) end end");
+  addon.update(0);
+  expect(edges(addon), "with the arrow hidden (its switch) its pick marks nothing").toEqual({});
+  addon.eval("ns.QuestGuide.pointed = 90061 ns.GetModule('QuestTracker').Refresh()");
+  expect(edges(addon), "the quest you Shift-clicked has it, as its step line does").toEqual(["[8] TEST-ONLY Near"]);
 });

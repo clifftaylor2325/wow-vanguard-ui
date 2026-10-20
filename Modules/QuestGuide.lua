@@ -142,8 +142,7 @@ end
 
 -- The steps or the followed quest changed: the tracker redraws, if it shows.
 function QG.StepsChanged()
-  local QT = ns.GetModule("QuestTracker")
-  if QT.frame then ns.Soon("questtracker", QT.Refresh) end
+  ns.GetModule("QuestTracker").Redraw()
 end
 
 -- /vg questdata --------------------------------------------------------------------------------
@@ -205,18 +204,16 @@ local function setting(key, after)
     function(v) ns.Settings("QuestGuide", QG.defaults)[key] = v if QG.settings then after() end end, QG.defaults[key]
 end
 
--- The guidance card on the Quests page.
+-- The guidance rows on the Quests page's "Finding your way" card (Core/OptionsQuests.lua places them). "Arrow"
+-- there is Vanguard's panel only; the game's own is its quest marker.
 function QG.Rows()
   return {
-    { "header", "Quest guidance" },
-    { "text", "Shift-click a quest in the tracker to point the arrow at its next step. /vg questdata shows what the client says about quests." },
-    { "check", "New mark on quests new in WoW Forever (when the client flags them)", setting("newMark", QG.StepsChanged) },
-    { "check", "Quest-start pins on the world map", setting("pins", function() QG.MapChanged() end) },
+    { "cycle", "Shift-click points", { { "quest", "The game's quest marker" }, { "waypoint", "A map waypoint" } }, setting("arrow", function() end) },
     { "check", "The followed quest's next step in the tracker", setting("stepLine", QG.StepsChanged) },
-    { "cycle", "The arrow", { { "quest", "The game's quest arrow" }, { "waypoint", "A map waypoint on the next step" } }, setting("arrow", function() end) },
+    { "check", "Quest-start pins on the world map", setting("pins", function() QG.MapChanged() end) },
+    { "check", "New mark on quests new in WoW Forever (when the client flags them)", setting("newMark", QG.StepsChanged) },
   }
 end
-ns.Options.AddRows("quests", QG.Rows)
 
 -- Module entry point (Core/Modules.lua): the map pins, and the tracker following the arrow (redrawn
 -- now: it was built at login before this module, so without its marks).
