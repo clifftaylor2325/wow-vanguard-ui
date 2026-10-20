@@ -49,19 +49,33 @@ local function promptRows()
   }
 end
 
--- Quiet the game: declined invites, hidden HUD text, a further camera, release in battlegrounds.
-local function quietRows()
+-- Quiet the game, its first part: declined invites and release in battlegrounds.
+local function quietInviteRows()
   return {
     { "header", "Quiet the game" },
     check("Decline guild invites", setting("AutoAccept", "guildInvites")),
     check("Decline group invites from people who aren't friends or guildmates", setting("AutoAccept", "strangerGroups")),
     check("Decline Battle.net friend requests", setting("AutoAccept", "friendRequests")),
     check("Release at once when you die in a battleground", setting("AutoAccept", "pvpRelease")),
-    check("Hide the red error line", setting("Quiet", "errors")), check("Hide the zone names that fade in", setting("Quiet", "zoneText")),
+  }
+end
+
+-- Quiet the game, its second part: the error line (all of it, or what the action bar already shows: the
+-- Merchant module's filter), the zone names, and a further camera.
+local function quietScreenRows()
+  return {
+    check("Hide the red error line", setting("Quiet", "errors")),
+    check("Hide errors the action bar already shows (reload)", setting("Merchant", "errors", true)),
+    check("Hide the zone names that fade in", setting("Quiet", "zoneText")),
     -- The setter must stay the row's last element: liveSetting returns a getter and a setter.
     { "cycle", "Furthest the camera zooms out", ns.GetModule("Quiet").CAMERA,
       O.LiveSetting("Quiet", "camera", function() ns.GetModule("Quiet").ApplyCamera() end) },
   }
+end
+
+-- Quiet the game: declined invites, release in battlegrounds, hidden HUD text, a further camera.
+local function quietRows()
+  return append(quietInviteRows(), quietScreenRows())
 end
 
 -- Vendor memory: where items are sold, in their tooltips.

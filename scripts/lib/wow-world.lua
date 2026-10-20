@@ -1817,15 +1817,19 @@ end
 
 -- The mailbox --------------------------------------------------------------------------------------
 -- world.mail = { mail, ... }, the inbox in order: { sender, subject, money, cod (the pay-on-delivery amount, 0 if none), gm, daysLeft, itemCount,
+-- deletes (true: the game deletes it when it runs out, as a sale or a returned mail, rather than sending it back),
 -- firstItemQuantity, firstItemLink, slots (the attachment slots holding an item, as a set; slots 1 to itemCount
 -- when unset), letter (true: a letter with text, kept once emptied), invoice = { type ("seller",
 -- "seller_temp_invoice", "buyer"), itemName, playerName, bid, buyout, deposit, consignment, count } }, read by
--- the globals Blizzard_MailFrame/MailFrame.lua calls (GetInboxNumItems, GetInboxHeaderInfo, GetInboxInvoiceInfo, HasInboxItem);
+-- the globals Blizzard_MailFrame/MailFrame.lua calls (GetInboxNumItems, GetInboxHeaderInfo, GetInboxInvoiceInfo, HasInboxItem,
+-- InboxItemCanDelete); world.mailOnServer is how many the server holds when more than the inbox loaded;
 -- world.openMailbox() fires MAIL_SHOW and MAIL_INBOX_UPDATE (MailInfoDocumentation.lua).
 world.mail = {}
 
--- How many mails are in the inbox, and how many there are in all.
-function GetInboxNumItems() return #world.mail, #world.mail end
+-- How many mails are in the inbox, and how many there are in all (on the server too).
+function GetInboxNumItems() return #world.mail, world.mailOnServer or #world.mail end
+-- Whether mail i is deleted when it runs out (MailFrame.lua: "Time until deleted"), rather than returned.
+function InboxItemCanDelete(i) return (world.mail[i] or {}).deletes == true end
 -- A mail's header: packageIcon, stationeryIcon, sender, subject, money, CODAmount, daysLeft, itemCount,
 -- wasRead, wasReturned, textCreated, canReply, isGM, firstItemQuantity, firstItemLink (nothing for none).
 function GetInboxHeaderInfo(i)
