@@ -52,9 +52,14 @@ function CW.Windows()
   return windowsWhere(function(i, frame) return frame:IsShown() or docked(i) end)
 end
 
--- The window's width or height (0 for width, 1 for height) as a plain number.
-local function dimension(frame, height)
-  return ns.PlainNumber(height and frame:GetHeight() or frame:GetWidth()) or 0
+-- The window's width as a plain number.
+local function widthOf(frame)
+  return ns.PlainNumber(frame:GetWidth()) or 0
+end
+
+-- The window's height as a plain number.
+local function heightOf(frame)
+  return ns.PlainNumber(frame:GetHeight()) or 0
 end
 
 -- Saves the window's size and spot in the game's chat layout (where the client can).
@@ -62,13 +67,20 @@ local function remember(frame)
   if type(FCF_SavePositionAndDimensions) == "function" then FCF_SavePositionAndDimensions(frame) end
 end
 
--- get/set for one window's width (height = false) or height (height = true).
-function CW.SizeSetting(frame, height)
-  return function() return dimension(frame, height) end,
-    function(v)
-      frame:SetSize(height and dimension(frame, false) or v, height and v or dimension(frame, true))
-      remember(frame)
-    end
+-- get/set for one window's width (its height kept as it is).
+function CW.WidthSetting(frame)
+  return function() return widthOf(frame) end, function(v)
+    frame:SetSize(v, heightOf(frame))
+    remember(frame)
+  end
+end
+
+-- get/set for one window's height (its width kept as it is).
+function CW.HeightSetting(frame)
+  return function() return heightOf(frame) end, function(v)
+    frame:SetSize(widthOf(frame), v)
+    remember(frame)
+  end
 end
 
 -- Whether the game has chat window 1 (and so the dock) locked.

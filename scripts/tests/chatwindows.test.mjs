@@ -57,7 +57,7 @@ it("chat windows: nothing happens without the movers switch, and a client withou
   expect(off.eval("return ns.MoverPoint('chat2')"), "off: no mover").toBeFalsy();
   const bare = loggedIn(`ChatFrame2 = nil FCF_SetLocked = nil FCF_SavePositionAndDimensions = nil GetChatWindowInfo = nil
     __wfgWorld.chatWindows[1] = "General" ChatFrame1:SetSize(400, 150)`, { savedVariables: 'VanguardDB.profiles = { Default = { ChatWindows = { movers = true } } }' });
-  const out = bare.eval(`local CW = ns.GetModule("ChatWindows") local g, s = CW.LockSetting() s(true) local w, ws = CW.SizeSetting(ChatFrame1, false) ws(450)
+  const out = bare.eval(`local CW = ns.GetModule("ChatWindows") local g, s = CW.LockSetting() s(true) local w, ws = CW.WidthSetting(ChatFrame1) ws(450)
     return { #CW.Windows(), g(), ChatFrame1:GetWidth() }`);
   expect(out, "no windows without the info call; unlocked; the size still sets").toEqual([0, false, 450]);
   expect(bare.eval("return #ns.errors"), "no errors").toBe(0);

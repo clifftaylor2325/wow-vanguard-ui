@@ -59,25 +59,33 @@ CB.bars = {}
 
 -- Reading casts -----------------------------------------------------------------------
 
--- A cast from one of the client's cast calls: name, icon, startMS, endMS,
--- shielded, channel; nothing when there is none. The uninterruptible flag is
--- the 8th return for casts and the 7th for channels.
-local function castFrom(unit, call, channel)
-  local get = _G[call]
+-- The unit's cast from UnitCastingInfo as CB.Cast's values, or nothing when there is none. The uninterruptible
+-- flag is its 8th return.
+local function castInfo(unit)
+  local get = _G.UnitCastingInfo
   if type(get) ~= "function" then return nil end
-  local name, _, icon, startMS, endMS, _, a7, a8 = get(unit)
+  local name, _, icon, startMS, endMS, _, _, shielded = get(unit)
   if type(name) == "nil" then return nil end
-  if channel then return name, icon, startMS, endMS, a7, true end
-  return name, icon, startMS, endMS, a8, false
+  return name, icon, startMS, endMS, shielded, false
+end
+
+-- The unit's channel from UnitChannelInfo as CB.Cast's values, or nothing when there is none. The uninterruptible
+-- flag is its 7th return.
+local function channelInfo(unit)
+  local get = _G.UnitChannelInfo
+  if type(get) ~= "function" then return nil end
+  local name, _, icon, startMS, endMS, _, shielded = get(unit)
+  if type(name) == "nil" then return nil end
+  return name, icon, startMS, endMS, shielded, true
 end
 
 -- The unit's current cast or channel as values (no table each time it's
 -- asked): name, icon, startMS, endMS, shielded, channel; nil when there is
 -- none. (Checked with type() so a hidden name is never tested for truth.)
 function CB.Cast(unit)
-  local name, icon, startMS, endMS, shielded, channel = castFrom(unit, "UnitCastingInfo", false)
+  local name, icon, startMS, endMS, shielded, channel = castInfo(unit)
   if type(name) ~= "nil" then return name, icon, startMS, endMS, shielded, channel end
-  return castFrom(unit, "UnitChannelInfo", true)
+  return channelInfo(unit)
 end
 
 -- Whether the unit is casting or channeling.
