@@ -640,14 +640,14 @@ end
 local function onAdded(_, unit)
   local plate = NP.PlateFor(unit)
   if not plate then return end
-  vgPlate[plate] = vgPlate[plate] or claim(plate)
+  local f = vgPlate[plate] or claim(plate)
+  vgPlate[plate] = f
   hideDefault(plate)
-  NP.plates[unit] = vgPlate[plate]
-  vgPlate[plate].unit = unit
+  NP.plates[unit], f.unit = f, unit
   takeHitArea(plate)
-  ns.SetUnits(vgPlate[plate].events, unit)
-  vgPlate[plate]:Show()
-  refresh(vgPlate[plate], unit)
+  ns.SetUnits(f.events, unit)
+  f:Show()
+  refresh(f, unit)
 end
 
 -- A nameplate went away: forget it (the client reuses the plate).
