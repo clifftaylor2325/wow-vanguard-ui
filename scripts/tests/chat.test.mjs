@@ -756,13 +756,13 @@ it("chat extras: web links you can copy, and a Copy button for the recent chat",
   addon.eval('__linkCallback(nil, "addon:Vanguard:url:https://example.test/a") __linkCallback(nil, "addon:OtherAddon:thing")');
   expect(addon.eval("return __shown"), "clicking one opens it ready to copy; other addons' links are left to them").toEqual(["Copy the address (Ctrl+C)", "https://example.test/a"]);
   addon.eval('__lines = { "|cffff8000[TEST-ONLY General]|r hi |Hitem:90001|h[TEST-ONLY Sword]|h", { __secret = true }, "two |TTEST-ONLY-ICON:0|tlines" }');
-  addon.eval("local b = ns.GetModule('ChatExtras').copyButton b.__scripts.OnClick(b)");
+  addon.eval("SELECTED_CHAT_FRAME = ChatFrame1 local b = ns.GetModule('ChatExtras').copyButton b.__scripts.OnClick(b)");
   expect(addon.eval("return __shown"), "the Copy button gives plain text; hidden lines are left out").toEqual(["Copy chat (Ctrl+C)", "[TEST-ONLY General] hi [TEST-ONLY Sword]\ntwo lines"]);
   const real = loggedIn(UI_ENV + CHAT_EXTRAS_ENV);
-  real.eval('__lines = { "TEST-ONLY hello" } local b = ns.GetModule("ChatExtras").copyButton b.__scripts.OnClick(b)');
+  real.eval('SELECTED_CHAT_FRAME = ChatFrame1 __lines = { "TEST-ONLY hello" } local b = ns.GetModule("ChatExtras").copyButton b.__scripts.OnClick(b)');
   expect(real.eval("return { Vanguard_TextDialog:IsShown(), Vanguard_TextEdit:GetText(), Vanguard_TextEdit:GetFont() ~= nil }"),
     "the real copy box opens with the text, its edit box given a font first (the game's SetText errors without one)").toEqual([true, "TEST-ONLY hello", true]);
-  const bare = loggedIn("ChatFrame1 = nil");
+  const bare = loggedIn("ChatFrame1 = nil SELECTED_CHAT_FRAME = nil");
   bare.slash("copy");
   expect(chatHas(bare, /can't read the chat back/) && bare.eval("return ns.GetModule('ChatExtras').copyButton == nil"), "a client that can't read chat back says so").toBe(true);
   const off = loggedIn(UI_ENV + CHAT_EXTRAS_ENV + CLICK_LUA, { savedVariables: "VanguardDB.profiles = { Default = { ChatExtras = { links = false, copy = false } } }" });
@@ -774,6 +774,57 @@ it("chat extras: web links you can copy, and a Copy button for the recent chat",
   off.eval('__click("Copy button in the chat\'s tab bar")');
   expect(off.eval("return ns.GetModule('ChatExtras').copyButton:IsShown()"), "off again hides it").toBe(false);
   expect(off.eval("return #ns.errors"), "no errors").toBe(0);
+});
+it("chat extras: Copy reads the tab you are looking at, is named for it, and opens at its newest line", () => {
+  const addon = loggedIn(UI_ENV + CHAT_EXTRAS_ENV + `
+    ChatFrame2:SetID(2) ChatFrame2.GetNumMessages = function() return 2 end
+    ChatFrame2.GetMessageInfo = function(_, i) return ({ "TEST-ONLY first", "TEST-ONLY newest" })[i] end
+    GetChatWindowInfo = function(i) return ({ "General", "TEST-ONLY Trade" })[i] end`);
+  // The harness's edit box keeps no cursor: record where the copy box puts it.
+  addon.eval("ns.ShowText('TEST-ONLY', '') Vanguard_TextEdit.SetCursorPosition = function(_, at) __cursor = at end");
+  addon.eval("SELECTED_CHAT_FRAME = ChatFrame2 ns.GetModule('ChatExtras').ShowCopy()");
+  const box = "return { Vanguard_TextDialog.title:GetText(), Vanguard_TextEdit:GetText(), __cursor }";
+  const text = "TEST-ONLY first\nTEST-ONLY newest";
+  expect(addon.eval(box), "the second tab's lines, titled with its name, the cursor after the newest line").toEqual(["Copy TEST-ONLY Trade (Ctrl+C)", text, text.length]);
+  addon.eval("SELECTED_CHAT_FRAME = nil __lines = { 'TEST-ONLY main' } GetChatWindowInfo = function() return { __secret = true } end ns.GetModule('ChatExtras').ShowCopy()");
+  expect(addon.eval(box), "no shown tab: the main window, and a hidden tab name reads chat").toEqual(["Copy chat (Ctrl+C)", "TEST-ONLY main", 14]);
+  addon.eval("GetChatWindowInfo = nil ns.GetModule('ChatExtras').ShowCopy()");
+  expect(addon.eval(box)[0], "a client without GetChatWindowInfo reads chat too").toBe("Copy chat (Ctrl+C)");
+  expect(addon.eval("return #ns.errors"), "no errors").toBe(0);
+});
+it("chat extras: bare addresses with a web ending become links, never inside a link, and the guild message of the day is linked", () => {
+  const addon = loggedIn(UI_ENV + CHAT_EXTRAS_ENV + CHAT_LINES_ENV + 'GUILD_MOTD_TEMPLATE = "Guild Message of the Day: %s"');
+  // The say filter's text for a line: linked, or as it was.
+  const said = (line) => { const out = addon.eval(`return { __filters.CHAT_MSG_SAY(nil, "CHAT_MSG_SAY", ${luaValue(line)}, "<name>") }`); return out[1] ?? line; };
+  const linkOf = (url) => `|Haddon:Vanguard:url:${url}|h[${url}]|h|r`;
+  // A string's regular expression characters escaped.
+  const esc = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  expect(said("join discord.gg/abc, we raid"), "a bare address with its path, the comma left after the link").toContain(`${linkOf("discord.gg/abc")}, we raid`);
+  expect(said("see Site.COM."), "any case of a known ending, the full stop left outside").toContain(`${linkOf("Site.COM")}.`);
+  expect(["e.g. this", "lvl 1.5 dps", "my.stuff here", "bob@site.com", "|Hitem:1|h[a.com]|h"].map(said), "unknown endings, numbers, mail and a link's own text are left alone")
+    .toEqual(["e.g. this", "lvl 1.5 dps", "my.stuff here", "bob@site.com", "|Hitem:1|h[a.com]|h"]);
+  expect(said("https://example.test/x and www.example.test"), "the http and www addresses are linked once, not again as bare words").not.toContain("|h|r|h");
+  expect(said("see https://example.test/x. or (discord.gg/abc)"), "punctuation after an http address and brackets round a bare one stay outside the links")
+    .toMatch(new RegExp(`${esc(linkOf("https://example.test/x"))}\\. or \\(\\|c\\w{8}${esc(linkOf("discord.gg/abc"))}\\)$`));
+  const quest = "|cffffff00|Hquest:1|h[Visit the site.com vendor]|h|r then site.com";
+  expect(said(quest), "a dotted word in a link's name stays in the link; the one after it is linked").toBe(`|cffffff00|Hquest:1|h[Visit the site.com vendor]|h|r then |cff${addon.eval("local r, g, b = ns.Theme.RGB('accentText') return string.format('%02x%02x%02x', math.floor(r * 255), math.floor(g * 255), math.floor(b * 255))")}${linkOf("site.com")}`);
+  addon.eval('ChatFrame1:AddMessage("Guild Message of the Day: raid at 8, discord.gg/abc")');
+  expect(lastLine(addon), "the guild message of the day line is linked as it is added").toContain(linkOf("discord.gg/abc"));
+  addon.eval('ChatFrame1:AddMessage("[15:27] Guild Message of the Day: discord.gg/xyz")');
+  expect(lastLine(addon), "a timestamp before the words still counts").toContain(linkOf("discord.gg/xyz"));
+  addon.eval("Enum.AddOnRestrictionType = { Chat = 5 } Enum.AddOnRestrictionState = { Inactive = 0 } C_RestrictedActions = { GetAddOnRestrictionState = function() return 2 end }");
+  addon.eval('ChatFrame1:AddMessage("Guild Message of the Day: discord.gg/abc")');
+  expect(lastLine(addon), "while chat is restricted it is left as it is, as the link filter does").toBe("Guild Message of the Day: discord.gg/abc");
+  addon.eval("C_RestrictedActions = nil");
+  addon.eval('ChatFrame1:AddMessage("TEST-ONLY not the motd discord.gg/abc")');
+  expect(lastLine(addon), "any other added line is left to the chat filters").toBe("TEST-ONLY not the motd discord.gg/abc");
+  addon.eval('ns.GetModule("ChatExtras").settings.links = false ChatFrame1:AddMessage("Guild Message of the Day: discord.gg/abc")');
+  expect(lastLine(addon), "links switched off: the message of the day stays plain").toBe("Guild Message of the Day: discord.gg/abc");
+  addon.eval('GUILD_MOTD_TEMPLATE = nil ns.GetModule("ChatExtras").settings.links = true ChatFrame1:AddMessage("Guild Message of the Day: discord.gg/abc")');
+  expect(lastLine(addon), "a client without the template: nothing is taken for the message of the day").toBe("Guild Message of the Day: discord.gg/abc");
+  addon.eval('local s = ns.GetModule("ChatExtras").settings s.links, s.shortChannels = false, false ChatFrame1:AddMessage("|Hchannel:channel:2|h[2. Trade]|h hi")');
+  expect(lastLine(addon), "both switches off: an added line is left as it is").toBe("|Hchannel:channel:2|h[2. Trade]|h hi");
+  expect(addon.eval("return #ns.errors"), "no errors").toBe(0);
 });
 it("chat extras: a hidden line never reaches the link filter's comparison, and a failing filter or click lets the line through", () => {
   const addon = loggedIn(UI_ENV + CHAT_EXTRAS_ENV);
@@ -812,8 +863,8 @@ it("chat: short channel names by default, off live and in a profile that turned 
   const addon = loggedIn(UI_ENV + CHAT_LINES_ENV);
   const trade = "|Hchannel:channel:2|h[2. Trade - City]|h [TEST-ONLY Name]: wts";
   addon.eval(`ChatFrame1:AddMessage({ __secret = true }) ChatFrame1:AddMessage("${trade}")`);
-  expect([lastLine(addon), addon.eval("return issecretvalue(ChatFrame1.__messages[#ChatFrame1.__messages - 1])")], "on by default: [2. Trade - City] becomes [T], the link kept; a hidden line stays as it was")
-    .toEqual(["|Hchannel:channel:2|h[T]|h [TEST-ONLY Name]: wts", true]);
+  expect([lastLine(addon), addon.eval("return issecretvalue(ChatFrame1.__messages[#ChatFrame1.__messages - 1])")], "on by default: [2. Trade - City] becomes [2], the link kept; a hidden line stays as it was")
+    .toEqual(["|Hchannel:channel:2|h[2]|h [TEST-ONLY Name]: wts", true]);
   addon.eval("ns.GetModule('ChatExtras').settings.shortChannels = false");
   addon.eval(`ChatFrame1:AddMessage("${trade}")`);
   expect(lastLine(addon), "switched off: the game's channel names").toBe(trade);
@@ -823,8 +874,8 @@ it("chat: short channel names by default, off live and in a profile that turned 
   addon.eval("ns.GetModule('ChatExtras').settings.shortChannels = true");
   // A line with one channel tag, as the shortener leaves it.
   const short = (label) => addon.eval(`return ns.GetModule('ChatExtras').ShortChannels("|Hchannel:X|h[${label}]|h hi")`);
-  expect(["Guild", "Raid Leader", "5. LookingForGroup", "1. General - TEST-ONLY Vale", "6. testonly"].map(short), "the capitals of the name, or its first letter")
-    .toEqual(["|Hchannel:X|h[G]|h hi", "|Hchannel:X|h[RL]|h hi", "|Hchannel:X|h[LFG]|h hi", "|Hchannel:X|h[G]|h hi", "|Hchannel:X|h[t]|h hi"]);
+  expect(["5. LookingForGroup", "1. General - TEST-ONLY Vale", "Guild", "Raid Leader", "testonly"].map(short), "a numbered channel's number, else the capitals of the name, or its first letter")
+    .toEqual(["|Hchannel:X|h[5]|h hi", "|Hchannel:X|h[1]|h hi", "|Hchannel:X|h[G]|h hi", "|Hchannel:X|h[RL]|h hi", "|Hchannel:X|h[t]|h hi"]);
   expect(addon.eval('ChatFrame2:AddMessage("plain TEST-ONLY line") local m = ChatFrame2.__messages return m[#m]'), "a line without a channel tag is left alone").toBe("plain TEST-ONLY line");
   addon.eval('FCF_OpenTemporaryWindow("WHISPER", "TestOnly")');
   expect(addon.eval("return ns.FrameState('vgWatched')[ChatFrame11]"), "a whisper window that opens later is followed too").toBe(true);

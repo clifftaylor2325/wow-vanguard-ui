@@ -54,7 +54,7 @@ local function chatRows()
     { "header", "Chat extras" },
     check("Clickable web links in chat", setting("ChatExtras", "links")),
     check("Copy button in the chat's tab bar", liveSetting("ChatExtras", "copy", CX.ApplyCopy)),
-    check("Short channel names: [2. Trade] shows as [T]", setting("ChatExtras", "shortChannels")),
+    check("Short channel names: [2. Trade] shows as [2]", setting("ChatExtras", "shortChannels")),
     check("Ctrl + mouse wheel jumps to the top or bottom of chat", setting("ChatExtras", "ctrlScroll")),
     { "cycle", "Chat timestamps (the game's setting)", CX.TimestampChoices(), CX.CVarSetting("showTimestamps", timestampChoice) },
     { "cycle", "Class-colored names in chat (the game's setting)", CLASS_NAMES, CX.CVarSetting("chatClassColorOverride", classNameChoice) },

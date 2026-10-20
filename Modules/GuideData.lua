@@ -15,7 +15,8 @@ local GD = {}
 ns.GuideData = GD
 
 -- The reads probed, and what each is called with: "quest" is the first quest in the log, "map" the
--- map the player is on, "player" the unit.
+-- map the player is on, "player" the unit. `/vg probe` also asks with "selected" (the quest picked in
+-- the log) and "done" (a quest this character has turned in).
 GD.PROBES = {
   { "C_QuestLog.GetDistanceSqToQuest", "quest" },
   { "C_QuestLog.IsQuestFlaggedCompleted", "quest" },
@@ -57,15 +58,36 @@ function GD.Find(name)
   return type(fn) == "function" and fn or nil
 end
 
--- The first quest in the log (its id), or nil.
-local function firstQuest()
-  local get = GD.Find("C_QuestLog.GetInfo")
+-- The ids of the first quests in the log (headers skipped), up to limit.
+function GD.LogQuests(limit)
+  local get, ids = GD.Find("C_QuestLog.GetInfo"), {}
   local n = GD.Find("C_QuestLog.GetNumQuestLogEntries")
   for i = 1, n and ns.PlainNumber((n())) or 0 do
     local info = get and get(i)
-    local id = type(info) == "table" and ns.PlainNumber(info.questID)
-    if id and not info.isHeader then return id end
+    local id = type(info) == "table" and not info.isHeader and ns.PlainNumber(info.questID)
+    if id then ids[#ids + 1] = id end
+    if #ids >= limit then break end
   end
+  return ids
+end
+
+-- The first quest in the log (its id), or nil.
+local function firstQuest()
+  return GD.LogQuests(1)[1]
+end
+
+-- The quest selected in the quest log, or nil when none is (the client gives 0).
+local function selectedQuest()
+  local get = GD.Find("C_QuestLog.GetSelectedQuest")
+  local id = get and ns.PlainNumber(get())
+  return id and id > 0 and id or nil
+end
+
+-- A quest this character has turned in: the first plain id the client lists, or nil.
+local function doneQuest()
+  local get = GD.Find("C_QuestLog.GetAllCompletedQuestIDs")
+  local ids = get and get()
+  return type(ids) == "table" and ns.PlainNumber(ids[1]) or nil
 end
 
 -- The map the player is on, if the client gives a plain one.
@@ -82,7 +104,10 @@ local function currentTarget()
 end
 
 -- What each argument word stands for.
-GD.ARGS = { quest = firstQuest, map = currentMap, player = function() return "player" end, target = currentTarget }
+GD.ARGS = {
+  quest = firstQuest, selected = selectedQuest, done = doneQuest, map = currentMap,
+  player = function() return "player" end, target = currentTarget,
+}
 
 -- The arguments a probe wants, or nil and the word that could not be had.
 local function argsFor(words)
