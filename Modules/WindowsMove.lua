@@ -46,6 +46,8 @@ GW.MOVABLE_TOP = {
 }
 -- How far down from a window's top edge a press starts a drag (units).
 GW.MOVE_GRAB = 30
+-- How far (units) a press may move and still count as a click: a press that never leaves its spot saves no place.
+GW.MOVE_SLOP = 1
 -- The part a window's title bar is, by window, when it isn't its TitleContainer (parentKey).
 GW.MOVE_BAR = { GameMenuFrame = "Header" }
 -- The pages that cover a window and carry its title (the group finder's), by window: each page's title
@@ -261,16 +263,19 @@ end
 -- gets the press where none of the game's buttons or panels sits over the spot, so no click is taken.
 local function pressTop(frame, button)
   if button ~= "LeftButton" or ns.InCombat() or vgDragging[frame] or not overTop(frame) then return end
-  vgDragging[frame], vgPress[frame] = true, { frame:GetLeft() or 0, frame:GetTop() }
+  vgDragging[frame] = true
+  vgPress[frame] = { left = frame:GetLeft() or 0, top = frame:GetTop() }
   frame:StartMoving()
 end
 
--- The drop of a press-move that started with the window's top-left corner at `from`: it stops, and its place is
--- saved unless it never left its spot (a click).
+-- The drop of a press-move that started with the window's top-left corner at `from` (left, top): it stops, and its
+-- place is saved unless it never left its spot (a click, within GW.MOVE_SLOP).
 local function released(frame, from)
   stop(frame)
   local left, top = frame:GetLeft(), frame:GetTop()
-  if left and top and (math.abs(left - from[1]) >= 1 or math.abs(top - from[2]) >= 1) then GW.SavePlace(frame:GetName(), frame) end
+  if left and top and (math.abs(left - from.left) >= GW.MOVE_SLOP or math.abs(top - from.top) >= GW.MOVE_SLOP) then
+    GW.SavePlace(frame:GetName(), frame)
+  end
 end
 
 -- The release of a press-move (or the window closing): dropped as `released`, out of combat.
