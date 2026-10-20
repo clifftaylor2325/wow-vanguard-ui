@@ -135,6 +135,8 @@ it("inventory: the Game windows page lists every character's overview line", () 
   addon.eval('ns.Options.Show("windows")');
   const shown = addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.GetText and w:GetText() and tostring(w:GetText()):find("^Tester: level 12") then return true end end return false`);
   expect(shown, "the page shows this character's line").toBe(true);
+  const note = addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.GetText and w:GetText() and tostring(w:GetText()):find("^Read ") then return w:GetText() end end`);
+  expect(note, "the note says when the records are read, as the module reads them").toMatch(/^Read at login, as your bags change and at logout; the bank while it's open\./);
 });
 
 it("inventory: /vg alts <name> lists that character's items, biggest first, and says when nobody has the name", () => {
