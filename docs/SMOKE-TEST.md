@@ -22,6 +22,16 @@ One command asks the client every open question the research left and writes the
 5. In an instance if you can: stand at the entrance, out of combat, and run `/vg probe` once more, so the restriction states and `C_Secrets` lines are on record for a dungeon.
 6. If you have a minute: set a map waypoint (`/way`) or super-track a quest on another zone's map and run `/vg probe` again, so the navigation lines show a distance and a next waypoint.
 
+**Probe rows for the polish batch (session 0, about 15 minutes).**
+
+These rows answer what the quest windows, raid marks, group frames and bars wait on. They are the report's "Quest and map reads", "Party, marks and bosses" and "Bars and strips" sections. [Needs in game: everything these rows print.]
+
+1. In town: open the quest log and click a quest in it, talk to a flight master so the flight map opens, and close it. Untick the game's "Show numbers for cooldowns" box in its options, use a spell with a cooldown, and watch a faction on the reputation bar. Type `/vg probe` and paste the box. Expect: under Quest and map reads, `asked about: done quest <id>, selected quest <id>`, the two completed flags, the money, group size, failed and repeatable lines, and `last flight map: system number <n>, TaxiFrame shown` (or FlightMapFrame); under Bars and strips, the three `GetCVarDefault` lines, two `GetQuestLogRewardXP` lines (compare each number with the quest log's reward), the `bar button cooldown:` line, and `watched faction:` with its thresholds. Say whether Vanguard's bar buttons showed the countdown numbers with the box unticked.
+2. In a dungeon with a party, out of combat: put a raid mark on a mob, target it, and type `/vg probe`. Expect under Party, marks and bosses: `in combat: false`, `UnitHealth(party1)` and `UnitHealthMissing(party1)` as a number or `hidden (<type>)`, and `GetRaidTargetIndex(target)` as a number or hidden.
+3. Mid-pull, on trash: type `/vg probe`. Chat says `Probe: party, mark and boss reads taken in this fight.` Do it again just after pulling a boss.
+4. After the fights: type `/vg probe last` and paste the box. Expect the report, then one `== In a fight (/vg probe), <time>` block per fight run, each with `in combat: true` and the same rows; after the boss pull `UnitExists(boss1)` reads true or false.
+5. If you can, in a battleground: type `/vg probe` once inside. Expect `UnitHealth(raid2)` as a number, hidden, or an error line (an error is a raid-frames bug to report).
+
 After the first run (2026-10-19, results in the project's `research/probe/probe-2026-10-19.md`), these are still open, in this order: step 3 (the round trip), step 4 (a fight with a mob targeted, for threat), step 5 (a dungeon), step 6 with a quest in another zone, and one run with a profession window open (the craft queue's recipe list was empty with it closed).
 
 What each part of the report answers (read the section title in the box):

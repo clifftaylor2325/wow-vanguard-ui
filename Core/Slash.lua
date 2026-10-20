@@ -41,7 +41,7 @@ local HELP = {
   "filter [on|off|tab|hide|add|remove <word>|clear]   Chat filter: gold selling, boosting, recruiting and repeat lines go to a Filtered tab (or are hidden)",
   "history [on|off|whispers|nowhispers|clear]   Chat history: your chat comes back after a reload or the next login (off until switched on)",
   "quests [history [n]] open or close Vanguard's quest log (the game's quest log key does too); history lists the latest quests any of your characters turned in",
-  "probe [chat|fight|last]   one run out of combat asks the client the open questions (saved quest flag, threat secrecy, group listing, secure paging, realm format, secret predicates, restrictions, navigation) and opens a copy box; fight takes the secrecy reads in the next fight; last reopens the saved report",
+  "probe [chat|fight|last]   one run out of combat asks the client the open questions (saved quest flag, threat secrecy, group listing, secure paging, realm format, secret predicates, restrictions, navigation, quest and map reads, party health and marks, bar defaults) and opens a copy box; in a fight it takes only the party, mark and boss reads; fight takes the secrecy reads in the next fight; last reopens the saved report",
   "guide probe         what this client returns for the reads a levelling guide would use (chat only; changes nothing)",
   "questdata [questID]  what the client says about a quest (or the quests an open NPC offers and those you track), and whether it flags quests new in WoW Forever",
   "lfg [probe]          open or close the group board: looking-for-more and looking-for-group posts from chat by dungeon, role and level; probe says what chat it has heard",
