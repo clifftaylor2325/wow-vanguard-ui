@@ -237,6 +237,45 @@ function AP.Prune(now)
   end
 end
 
+-- The newest price time in a price home (0 for none, or for a damaged home).
+local function newestPrice(house)
+  local newest = 0
+  local prices = type(house) == "table" and type(house.prices) == "table" and house.prices or {}
+  for _, p in pairs(prices) do
+    if type(p) == "table" and (tonumber(p.t) or 0) > newest then newest = tonumber(p.t) end
+  end
+  return newest
+end
+
+-- The keys of the price homes other than `keep`, the one with the oldest prices first.
+local function oldestHomes(houses, keep)
+  local keys = {}
+  for key, house in pairs(houses) do
+    if key ~= keep then keys[#keys + 1] = { key = key, newest = newestPrice(house) } end
+  end
+  table.sort(keys, function(a, b) return a.newest < b.newest end)
+  return keys
+end
+
+-- The price homes in VanguardDB.ah, or none when the file has no list (AP.Store would make an empty one).
+local function savedHomes()
+  local ah = VanguardDB.ah
+  return type(ah) == "table" and type(ah.houses) == "table" and ah.houses or {}
+end
+
+-- Drops price homes, oldest first and never the one in use, until `free` bytes are gone (sizeOf(house, 1)
+-- gives a home's bytes); returns how many it dropped. Reads VanguardDB.ah as it is, so a file without one stays so.
+function AP.DropOldestHomes(free, sizeOf)
+  local houses, dropped = savedHomes(), 0
+  for _, home in ipairs(oldestHomes(houses, ns.Home.Key())) do
+    if free <= 0 then break end
+    free = free - sizeOf(houses[home.key], 1)
+    houses[home.key] = nil
+    dropped = dropped + 1
+  end
+  return dropped
+end
+
 -- Reading ------------------------------------------------------------------------------------
 
 -- The lowest price of the last 7 days (today and the six before), or nil.

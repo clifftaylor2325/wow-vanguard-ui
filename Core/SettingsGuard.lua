@@ -311,36 +311,11 @@ function G.Sizes(t)
   return list
 end
 
--- The newest price time in a price home (0 for none, or for a damaged home).
-local function newestPrice(house)
-  local newest = 0
-  for _, p in pairs(tbl(house) and tbl(house.prices) or {}) do
-    if type(p) == "table" and (tonumber(p.t) or 0) > newest then newest = tonumber(p.t) end
-  end
-  return newest
-end
-
--- The keys of the price homes other than `keep`, the one with the oldest prices first.
-local function oldestHomes(houses, keep)
-  local keys = {}
-  for key, house in pairs(houses) do
-    if key ~= keep then keys[#keys + 1] = { key = key, newest = newestPrice(house) } end
-  end
-  table.sort(keys, function(a, b) return a.newest < b.newest end)
-  return keys
-end
-
 -- Drops price homes, oldest first and never this one, until `free` bytes are gone; returns how many it dropped.
+-- The auction data's layout is AuctionPrices' (AP.DropOldestHomes); the sizes are this file's (G.Bytes).
 function G.Trim(free)
-  local ah = tbl(VanguardDB.ah)
-  local houses, dropped = ah and tbl(ah.houses) or {}, 0
-  for _, home in ipairs(oldestHomes(houses, ns.Home.Key())) do
-    if free <= 0 then break end
-    free = free - G.Bytes(houses[home.key], 1)
-    houses[home.key] = nil
-    dropped = dropped + 1
-  end
-  return dropped
+  local AP = ns.AuctionPrices
+  return AP and AP.DropOldestHomes(free, G.Bytes) or 0
 end
 
 -- "1.2 MB" or "340 KB" for a byte count.
