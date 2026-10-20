@@ -1643,17 +1643,29 @@ T.SELECT = { rail = 2, fill = "raisedHover" }
 -- The one scroll thumb (the options window, ns.ScrollView and T.ScrollBar): how wide (units), in text2 at
 -- the rest alpha, and at the lit alpha while the mouse is over it or it is dragged; no arrows.
 T.SCROLL = { thumb = 4, rest = 0.5, lit = 1 }
--- The tile's color and opacity by control while the mouse is over it: red behind close, the grey raisedHover
--- tile behind the others (only close is coloured); at rest every control sits on the same faint raised-slate tile.
-T.CONTROL_TILES = { close = { "bad", 0.9 }, other = { "raisedHover", 1 }, rest = { "raised", 0.9 } }
+-- The window controls' look (the ghost tile, docs/design/UI-COHERENCE.md 12a): nothing behind the glyph at rest;
+-- under the mouse a rounded tile (fill and one-pixel line) in `hover`, held down in `press` with the glyph one
+-- pixel lower. The glyph's colour at rest, lit, and lit on close (the state vermilion: only its mark is coloured).
+T.CONTROL_TILES = { hover = { "raisedHover", "borderHi" }, press = { "inset", "divider" },
+  glyph = { rest = "text2", lit = "text", close = "bad" } }
 
--- Paints a window control: its glyph in the secondary text color on a faint tile, or while lit white over
--- close's red tile and in the text color over the others' grey one.
-local function paintControl(entry)
-  local p, tile = entry.parts, T.CONTROL_TILES[entry.opts.tile] or T.CONTROL_TILES.other
-  if not entry.lit then tile = T.CONTROL_TILES.rest end
-  T.Tint(p.glyph, entry.lit and (entry.opts.tile == "close" and "white" or "text") or "text2")
-  T.Tint(p.tile, tile[1], tile[2])
+-- Shows a window control's rounded tile in its state's fill and line (pressed over lit), or hides it at rest.
+local function paintControlTile(p, entry)
+  local look = entry.pressed and T.CONTROL_TILES.press or entry.lit and T.CONTROL_TILES.hover
+  for i, key in ipairs({ "tile", "line" }) do
+    p[key]:SetShown(look and true or false)
+    if look then T.Tint(p[key], look[i]) end
+  end
+end
+
+-- Paints a window control: its tile for the state, and its glyph (a plate has none) in its state's colour,
+-- dropped one pixel while pressed.
+local function paintControl(entry, button)
+  local p, colors = entry.parts, T.CONTROL_TILES.glyph
+  paintControlTile(p, entry)
+  if not p.glyph then return end
+  T.Tint(p.glyph, not entry.lit and colors.rest or entry.opts.tile == "close" and colors.close or colors.lit)
+  p.glyph:SetPoint("CENTER", button, "CENTER", 0, entry.pressed and -T.Pixel(button) or 0)
 end
 
 -- A texture centered on a button: the path at the size (an even number of screen pixels,
@@ -1666,35 +1678,41 @@ local function centered(button, layer, path, size)
   return t
 end
 
--- A window control's parts (made once), centered on the button: the square tile and the glyph.
+-- A window control's parts (made once), centered on the button: the rounded tile's fill and line, under
+-- the glyph (a plate, which keeps the button's own icon, gets no glyph).
 local function controlParts(button, icon)
-  return { tile = centered(button, "ARTWORK", T.WHITE, T.CONTROL.tile), glyph = centered(button, "OVERLAY", T.Icon(icon), T.CONTROL.glyph) }
+  local size = T.CONTROL.tile
+  local p = { tile = centered(button, "BACKGROUND", T.Texture("ControlTile"), size), line = centered(button, "BORDER", T.Texture("ControlTileLine"), size) }
+  p.glyph = icon and centered(button, "OVERLAY", T.Icon(icon), T.CONTROL.glyph) or nil
+  return p
 end
 
--- Sets whether a window control is lit, and repaints it.
-local function lightControl(button, entry, lit)
-  entry.lit = lit
-  repaint(button, entry)
-end
-
--- Lights a window control while the mouse is over it, and puts it back after; a control the game
--- hides under the mouse (minimize swaps itself for maximize) gets no OnLeave, so hiding puts it back too.
+-- Lights a window control while the mouse is over it and sinks it while held; a control the game hides
+-- under the mouse (minimize swaps itself for maximize) gets no OnLeave or OnMouseUp, so hiding puts it back too.
 local function watchControl(button, entry)
-  button:HookScript("OnEnter", function() lightControl(button, entry, true) end)
-  button:HookScript("OnLeave", function() lightControl(button, entry, false) end)
-  button:HookScript("OnHide", function() lightControl(button, entry, false) end)
+  button:HookScript("OnEnter", ns.Guard("window control", function() entry.lit = true repaint(button, entry) end))
+  button:HookScript("OnLeave", ns.Guard("window control", function() entry.lit = false repaint(button, entry) end))
+  button:HookScript("OnMouseDown", ns.Guard("window control", function() entry.pressed = true repaint(button, entry) end))
+  button:HookScript("OnMouseUp", ns.Guard("window control", function() entry.pressed = false repaint(button, entry) end))
+  button:HookScript("OnHide", ns.Guard("window control", function() entry.lit, entry.pressed = false, false repaint(button, entry) end))
+end
+
+-- Makes a window control's entry (once): its parts and hooks, kind "control" or "plate".
+local function controlEntry(button, kind, icon, opts)
+  local entry = { kind = kind, opts = opts or {}, parts = controlParts(button, icon), paint = paintControl }
+  painted[button] = entry
+  watchControl(button, entry)
+  return entry
 end
 
 -- A window control drawn with one of the theme's icons (CloseMark, Maximize, Minimize): its template
--- art faded, the glyph quiet until the mouse is over it, then white on its tile (opts.tile "close"
--- makes the tile red). Sized to the tile when it has no size yet. Safe to run again.
+-- art faded, the glyph quiet in text2 with nothing behind it until the mouse is over it (T.CONTROL_TILES;
+-- opts.tile "close" turns close's mark vermilion). Sized to the tile when it has no size yet. Safe to run again.
 function T.WindowControl(button, icon, opts)
   local entry = painted[button]
   if not entry then
     T.FadeRegions(button)
-    entry = { kind = "control", opts = opts or {}, parts = controlParts(button, icon), paint = paintControl }
-    painted[button] = entry
-    watchControl(button, entry)
+    entry = controlEntry(button, "control", icon, opts)
     if (button:GetWidth() or 0) < 1 then T.PixelSize(button, T.CONTROL.tile, T.CONTROL.tile, true) end
   end
   repaint(button, entry)
@@ -1707,24 +1725,15 @@ function T.ControlGlyph(button)
   return entry and entry.kind == "control" and entry.parts.glyph or nil
 end
 
--- Paints a resting-tile-only control (T.ControlPlate): its tile in T.CONTROL_TILES.rest.
-local function paintRestTile(entry)
-  T.Tint(entry.parts.tile, T.CONTROL_TILES.rest[1], T.CONTROL_TILES.rest[2])
-end
-
--- Puts a window control's resting tile behind a button of a window's control row that keeps its own icon (the group
--- finder's gear), so the row reads as one set of buttons. Safe to run again.
+-- Gives a button of a window's control row that keeps its own icon (the group finder's gear) a window
+-- control's tile and states, with no glyph, so the row reads as one set of buttons. Safe to run again.
 function T.ControlPlate(button)
-  local entry = painted[button]
-  if not entry then
-    entry = { kind = "plate", opts = {}, parts = { tile = centered(button, "BACKGROUND", T.WHITE, T.CONTROL.tile) }, paint = paintRestTile }
-    painted[button] = entry
-  end
+  local entry = painted[button] or controlEntry(button, "plate")
   repaint(button, entry)
   return button
 end
 
--- A close button as a window control: a plain cross, white on a red tile under the mouse.
+-- A close button as a window control: a plain cross, vermilion under the mouse.
 function T.CloseButton(button)
   return T.WindowControl(button, "CloseMark", { tile = "close" })
 end
