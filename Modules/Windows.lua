@@ -123,7 +123,7 @@ function GW.FadeWindowArt(frame)
     if type(part) == "table" and part.GetRegions then T.FadeRegions(part) end
     if type(part) == "table" and part.SetAlpha and key ~= "Inset" then part:SetAlpha(0) end
   end
-  if type(frame.Inset) == "table" and type(frame.Inset.NineSlice) == "table" then frame.Inset.NineSlice:SetAlpha(0) end
+  GW.FadeFrame(GW.Part(frame, "Inset.NineSlice"))
 end
 
 -- The window's push buttons (its button container's, else Name..Button1-4).
@@ -562,7 +562,7 @@ end
 function GW.InsetPanel(part)
   if type(part) ~= "table" or not part.GetRegions or not part.CreateTexture then return end
   T.FadeRegions(part)
-  if type(part.NineSlice) == "table" and part.NineSlice.SetAlpha then part.NineSlice:SetAlpha(0) end
+  GW.FadeFrame(GW.Part(part, "NineSlice"))
   T.Panel(part, { inset = true, noSheen = true })
 end
 
@@ -991,7 +991,7 @@ for i = 1, 4 do GW.INSIDES["GroupLootFrame" .. i] = rollInside end
 -- A popup's text box (a tooltip-backdrop edit box) as a theme edit box, the backdrop's nine-slice faded.
 local function skinPopupBox(box)
   GW.SkinEditBox(box)
-  if type(box) == "table" and type(box.NineSlice) == "table" and box.NineSlice.SetAlpha then box.NineSlice:SetAlpha(0) end
+  GW.FadeFrame(GW.Part(box, "NineSlice"))
 end
 
 -- A popup's item (the item to hand over: a name plate and an item button): the plate faded, the item look.
@@ -1072,7 +1072,7 @@ GW.INSIDES.ReadyCheckFrame = function()
   local listener = _G.ReadyCheckListenerFrame
   if type(listener) ~= "table" then return end
   GW.FadeParts(listener, { "Bg", "NineSlice" })
-  if type(listener.NineSlice) == "table" and listener.NineSlice.SetAlpha then listener.NineSlice:SetAlpha(0) end
+  GW.FadeFrame(GW.Part(listener, "NineSlice"))
   GW.SkinTitle(type(listener.TitleContainer) == "table" and listener.TitleContainer.TitleText or nil)
   GW.SkinButton(listener.YesButton)
   GW.SkinButton(listener.NoButton)

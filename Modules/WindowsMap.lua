@@ -1132,7 +1132,7 @@ end
 local function dressBox(box)
   if not isFrame(box) then return end
   T.FadeRegions(box)
-  if type(box.NineSlice) == "table" then box.NineSlice:SetAlpha(0) end
+  GW.FadeFrame(GW.Part(box, "NineSlice"))
   T.Panel(box, { inset = true, noSheen = true })
 end
 
