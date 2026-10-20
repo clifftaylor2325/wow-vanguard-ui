@@ -146,11 +146,51 @@ local function xpNow()
   if cur and max and max > 0 then return cur, max end
 end
 
--- Starts this session's counters (at login or a reload; once).
+-- Starts this session's counters when the strip is enabled (once). A reload swaps them for the saved
+-- ones at PLAYER_ENTERING_WORLD (IS.ResumeSession). GetTime runs on across a reload, so the start stays good.
 function IS.StartSession()
   if IS.session then return end
   local cur, max = xpNow()
-  IS.session = { start = ask("GetTime") or 0, gained = 0, xp = cur, max = max, money = ns.PlainNumber(ask("GetMoney")) }
+  local money = ns.PlainNumber(ask("GetMoney"))
+  IS.session = { start = ask("GetTime") or 0, gained = 0, xp = cur, max = max, money = money, last = money, earned = 0, spent = 0 }
+end
+
+-- This character's saved session (VanguardCharDB.infoSession), or nil when there is none to carry on.
+local function savedSession()
+  local s = type(VanguardCharDB) == "table" and VanguardCharDB.infoSession
+  local now = ask("GetTime") or 0
+  if type(s) == "table" and type(s.start) == "number" and type(s.gained) == "number" and s.start <= now then return s end
+end
+
+-- Keeps the session in the character's saved file, which the game writes at a reload or logout.
+local function keepSession()
+  if type(VanguardCharDB) == "table" then VanguardCharDB.infoSession = IS.session end
+end
+
+-- A reload carries the saved session on; a fresh login (or no saved session) keeps the new one; zoning
+-- (neither flag) changes nothing. The game's flags are plain booleans.
+function IS.ResumeSession(_, isLogin, isReload)
+  if not (isLogin or isReload) then return end
+  local saved = isReload and savedSession()
+  if saved then IS.session = saved end
+  keepSession()
+  IS.PaintRates()
+end
+
+-- Starts counting again from now (a right-click on a rate).
+function IS.RestartSession()
+  IS.session = nil
+  IS.StartSession()
+  keepSession()
+  IS.PaintRates()
+end
+
+-- Counts the money earned and spent since the last change (for the gold tooltip).
+function IS.CountMoney()
+  local s, now = IS.session, ns.PlainNumber(ask("GetMoney"))
+  if not (s and now and s.last) then return end
+  if now > s.last then s.earned = (s.earned or 0) + now - s.last else s.spent = (s.spent or 0) + s.last - now end
+  s.last = now
 end
 
 -- Counts the XP gained since the last update; after a level-up, the old level's rest too.
@@ -709,7 +749,8 @@ end
 local function watch()
   for event, key in pairs(IS.EVENTS) do ns.On(event, function() IS.Paint(key) end) end
   ns.On("BAG_UPDATE_DELAYED", function() IS.Paint("ammo") IS.Paint("shards") end)
-  ns.On("PLAYER_MONEY", function() IS.Paint("goldrate") end)
+  ns.On("PLAYER_MONEY", function() IS.CountMoney() IS.Paint("goldrate") end)
+  ns.On("PLAYER_ENTERING_WORLD", IS.ResumeSession)
   ns.On("PLAYER_XP_UPDATE", onXP)
   ns.On("PLAYER_LEVEL_UP", IS.PaintRates)
   ns.On("PLAYER_ENTERING_WORLD", IS.UpdateAll)

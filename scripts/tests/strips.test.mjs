@@ -1,7 +1,9 @@
 // strips: Vanguard's real Lua in the TEST-ONLY headless client (scripts/lib/lua-harness.mjs).
 
 import { expect, it } from "vitest";
-import { CLICK_LUA, chatHas, expectErrors, HEALING_ENV, MICRO_ENV, PANEL_OPENERS, PLATE_ENV, RAID_ENV, STRIPS_ENV, STRIP_ENV, TIDY_ENV, UI_ENV, UNITS_ENV, block, borderOf, button, isTok, later, loggedIn, pinned, putAway, setCombat, strips } from "./helpers.mjs";
+import { createAddon } from "../lib/lua-harness.mjs";
+import { luaValue } from "../lib/lua-emit.mjs";
+import { CLICK_LUA, chatHas, expectErrors, HEALING_ENV, MICRO_ENV, PANEL_OPENERS, PLATE_ENV, RAID_ENV, STRIPS_ENV, STRIP_ENV, TIDY_ENV, UI_ENV, UNITS_ENV, block, borderOf, button, isTok, later, loggedIn, pinned, putAway, SETUP_DONE, setCombat, strips } from "./helpers.mjs";
 
 // TEST-ONLY damage meter: someone else's line, then yours at 1234.5 per second.
 const DPS_ENV = `
@@ -524,6 +526,35 @@ it("the info strip: XP and gold per hour, and time to level", () => {
   addon.fire("PLAYER_XP_UPDATE", "player");
   expect(rates(), "hidden XP: the rate so far stays, the time to level hides").toEqual([true, false, false]);
   expect(addon.eval('local IS = ns.GetModule("InfoStrip") return { IS.ShortMoney(5), IS.ShortMoney(507), IS.Duration(30) }'), "short money and times").toEqual(["5c", "5s 7c", "1m"]);
+});
+it("the info strip's rates carry on through a /reload, start again on a new login, and can be started again from now", () => {
+  const addon = loggedIn(UNITS_ENV + STRIP_ENV + LEVEL_ENV);
+  addon.eval("__xp = 1900");
+  addon.fire("PLAYER_XP_UPDATE", "player");
+  later(addon, 1800);
+  addon.fire("PLAYER_XP_UPDATE", "player");
+  expect(block(addon, "xprate").text, "900 XP in half an hour").toBe("1.8K xp/h");
+  const sv = addon.savedVariables(), now = addon.eval("return __wfgStub.now");
+  // The same character's UI started again a second later, with the game's PLAYER_ENTERING_WORLD flags (login, reload).
+  const again = (login, reload) => {
+    const next = createAddon({ savedVariables: `VanguardDB = ${luaValue(sv.account)}\nVanguardCharDB = ${luaValue(sv.char)}\n` });
+    next.eval(UNITS_ENV + STRIP_ENV + LEVEL_ENV + `__xp = 1900 __wfgStub.now = ${now + 1}`);
+    for (const [event, ...args] of [["ADDON_LOADED", "Vanguard"], ["PLAYER_LOGIN"], ["PLAYER_ENTERING_WORLD", login, reload]]) next.fire(event, ...args);
+    return next;
+  };
+  const reloaded = again(false, true);
+  expect(block(reloaded, "xprate").text, "a /reload carries the session on").toBe("1.8K xp/h");
+  reloaded.fire("PLAYER_ENTERING_WORLD", false, false);
+  expect(block(reloaded, "xprate").text, "and a zone change leaves it alone").toBe("1.8K xp/h");
+  expect(block(again(true, false), "xprate").shown, "a new login starts fresh").toBe(false);
+  const blank = createAddon({ savedVariables: SETUP_DONE + "VanguardCharDB.infoSession = { start = 'TEST-ONLY not a time' }" });
+  blank.eval(UNITS_ENV + STRIP_ENV + LEVEL_ENV);
+  blank.fire("ADDON_LOADED", "Vanguard");
+  blank.fire("PLAYER_LOGIN");
+  blank.fire("PLAYER_ENTERING_WORLD", false, true);
+  expect([block(blank, "xprate").shown, blank.eval("return type(VanguardCharDB.infoSession.start)")], "a reload with a broken saved session starts a new one").toEqual([false, "number"]);
+  reloaded.eval("ns.GetModule('InfoStrip').RestartSession()");
+  expect([block(reloaded, "xprate").shown, reloaded.eval("return VanguardCharDB.infoSession.gained")], "started again from now: nothing gained, the rates wait to settle").toEqual([false, 0]);
 });
 it("flight timer: the taxi check runs only from picking a flight until it lands", () => {
   const addon = loggedIn(UNITS_ENV + TAXI_ENV + "__asked = 0 local real = UnitOnTaxi UnitOnTaxi = function(...) __asked = __asked + 1 return real(...) end");
