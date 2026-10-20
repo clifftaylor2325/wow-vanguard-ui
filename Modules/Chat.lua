@@ -191,11 +191,30 @@ local function tintScrim(s)
   s.right:SetGradient("HORIZONTAL", full, clear)
 end
 
--- Anchors a frame to the panel's footprint round a chat window: a gap out, the bar's height above,
--- the scroll column to the right.
+-- The band the game keeps between a window's tab row and its text: the Combat Log's filter strip
+-- (CombatLogQuickButtonFrame, 24 tall, a field Blizzard_CombatLog sets on ChatFrame2 as it loads,
+-- pushing the docked log's top down by that much); 0 for a window without one.
+local function topInset(frame)
+  local strip = frame.CombatLogQuickButtonFrame
+  return type(strip) == "table" and ns.PlainNumber(strip:GetHeight()) or 0
+end
+
+-- Anchors a frame to the panel's footprint round a chat window: a gap out, the bar's height (and the
+-- filter strip's, on the Combat Log) above, the scroll column to the right.
 local function pinFootprint(f, frame)
-  f:SetPoint("TOPLEFT", frame, "TOPLEFT", -T.SPACE.tight, CH.BAR)
+  f:SetPoint("TOPLEFT", frame, "TOPLEFT", -T.SPACE.tight, CH.BAR + topInset(frame))
   f:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", T.SPACE.tight + CH.SIDE_COLUMN, -T.SPACE.tight)
+end
+
+-- Seats a window's filter strip in the band under the bar's rule, two units in from the panel's
+-- edges as the tab row sits in the bar: the game lifts it 3 units over the window's top, into the
+-- rule, and ends it at the scroll bar's edge.
+local function seatStrip(frame)
+  local strip, margin = frame.CombatLogQuickButtonFrame, T.SPACE.tight / 2
+  if type(strip) ~= "table" then return end
+  strip:ClearAllPoints()
+  strip:SetPoint("BOTTOMLEFT", frame, "TOPLEFT", -margin, 0)
+  strip:SetPoint("BOTTOMRIGHT", frame, "TOPRIGHT", CH.SIDE_COLUMN + margin, 0)
 end
 
 -- The scrim behind a window while the chat background is off: a frame under the outline, on the
@@ -230,15 +249,17 @@ local function barFrame(outline)
 end
 
 -- The chat window's frame: an outline on the panel's footprint (the text, the scroll column right of
--- it and the tab bar above it) holding the painted panel (its fill is the chat background, at the
--- strength setting), the bar on its top band and the scrim that stands in for the panel with the
--- background off. It sits in the BACKGROUND strata, under the dock and its tabs: those are low in
--- the LOW strata (the dock is UIParent's child, the window a level-5 frame), so a panel a level under
--- the window would still cover them, and the window's text, above the panel in LOW, reads over the fill either way.
+-- it and the tab bar above it, over the Combat Log's filter strip) holding the painted panel (its
+-- fill is the chat background, at the strength setting), the bar on its top band and the scrim that
+-- stands in for the panel with the background off. It sits in the BACKGROUND strata, under the dock
+-- and its tabs: those are low in the LOW strata (the dock is UIParent's child, the window a level-5
+-- frame), so a panel a level under the window would still cover them, and the window's text, above
+-- the panel in LOW, reads over the fill either way.
 local function frameParts(frame)
   local outline = CreateFrame("Frame", nil, frame)
   pinFootprint(outline, frame)
   outline:SetFrameStrata("BACKGROUND")
+  seatStrip(frame)
   local panel, bar = panelPlate(outline, frame), barFrame(outline)
   return { outline = outline, panel = panel, bar = bar, fill = T.FillParts(panel, "BACKGROUND", -7, "panel", CH.Strength()), rule = barRule(bar), scrim = scrimFrame(outline, frame) }
 end
@@ -248,6 +269,17 @@ function CH.Bar(frame)
   CH.frames = CH.frames or {}
   CH.frames[frame] = CH.frames[frame] or frameParts(frame)
   return CH.frames[frame].bar
+end
+
+-- Puts a window's outline, panel and scrim back on the panel's footprint and seats its filter strip
+-- again after the game's background layout (FloatingChatFrame_UpdateBackgroundAnchors): the Combat
+-- Log runs it on every dock update, and first as its strip loads, which is when its band appears.
+-- A window without a strip has nothing to move.
+local function placeFootprint(frame)
+  local parts = type(frame) == "table" and CH.frames and CH.frames[frame]
+  if not parts or topInset(frame) == 0 then return end
+  for _, f in ipairs({ parts.outline, parts.panel, parts.scrim.frame }) do pinFootprint(f, frame) end
+  seatStrip(frame)
 end
 
 -- The bar's buttons by label: the glyph on each one's tile and its slot from the bar's right end
@@ -924,9 +956,11 @@ local function hookAlertFlash()
   after("FCF_StopAlertFlash", function(frame) setAlerting(frame, false) end)
 end
 
--- Follows the game's anchoring of the dock, the edit boxes (its dock layout), a tab and the side
--- buttons, and its colouring of a tab: each is put right after it.
+-- Follows the game's anchoring of the dock, the edit boxes (its dock layout), a tab, the side
+-- buttons and a window's background (the Combat Log's band), and its colouring of a tab: each is
+-- put right after it.
 local function hookLayout()
+  after("FloatingChatFrame_UpdateBackgroundAnchors", placeFootprint)
   after("FCFDock_SetPrimary", CH.PlaceDock)
   after("FCFDock_UpdateTabs", CH.PlaceEditBoxes)
   after("FCFTab_UpdateColors", restyleTab)

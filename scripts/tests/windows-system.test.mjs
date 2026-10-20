@@ -735,6 +735,13 @@ it("combat log bar: a panel, its filter buttons themed as the game makes them", 
   const bar = "CombatLogQuickButtonFrame_Custom";
   expect(addon.eval(`return { __faded(${bar}), __panelled(${bar}), __panelled(CombatLogQuickButtonFrameButton1), __panelled(CombatLogQuickButtonFrameButton2) }`),
     "strip faded, an inset panel, the buttons that exist themed").toEqual([0, true, true, true]);
+  // How many textures in the edge colour the strip's panel has (its four border edges): none on a borderless band.
+  const edges = (a) => a.eval(`local r, g, b = ns.Theme.RGB("edge") local n = 0 for _, t in ipairs({ ${bar}:GetRegions() }) do local c = t.__vertexColor if c and c[1] == r and c[2] == g and c[3] == b then n = n + 1 end end return n`);
+  expect(edges(addon), "a band with no border of its own (the Chat panel seats it under its bar's rule)").toBe(0);
+  const noChat = loggedIn(RECAP_ENV, { savedVariables: "VanguardDB.profiles = { Default = { modules = { Chat = false } } }" });
+  noChat.eval("__logBar() __quickButton(1)");
+  noChat.fire("ADDON_LOADED", "Blizzard_CombatLog");
+  expect([edges(noChat), noChat.eval(`return __panelled(${bar})`)], "with the Chat module off the game's own layout stands, so the strip keeps its border").toEqual([4, true]);
   expect(addon.eval(`local bar = CombatLogQuickButtonFrame_CustomProgressBar local r, g, b = ns.Theme.RGB("accent") local c = bar.__barColor
     return { ns.Theme.ArrowParts(CombatLogQuickButtonFrame_CustomAdditionalFilterButton) ~= nil, bar:GetStatusBarTexture().__texture ~= "TEST-ONLY-ART", c ~= nil and c[1] == r and c[2] == g and c[3] == b }`),
     "the additional filters button a theme arrow button, the progress bar in the bar texture and the accent").toEqual([true, true, true]);

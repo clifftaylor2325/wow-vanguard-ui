@@ -827,11 +827,14 @@ local function dressLogParts()
   T.BarColor(bar, "accent")
 end
 
--- The combat log's filter bar: its black strip faded, an inset panel, its own parts, its filter buttons themed now
--- and whenever the game shows or refreshes the bar or picks a filter (that is when it makes buttons).
+-- The combat log's filter bar: its black strip faded, an inset panel (a borderless band while the
+-- Chat module is on, whose panel seats it under the bar's rule; with Chat off the game's own layout
+-- stands and the strip keeps its border), its own parts, its filter buttons themed now and whenever
+-- the game shows or refreshes the bar or picks a filter (that is when it makes buttons).
 function GW.SkinCombatLogBar(frame)
+  local band = ns.ModuleEnabled("Chat")
   T.FadeRegions(frame)
-  T.Panel(frame, { inset = true })
+  T.Panel(frame, { inset = true, noBorder = band, noSheen = band })
   dressLogParts()
   dressQuickButtons()
   if vgQuickButtons[frame] or type(hooksecurefunc) ~= "function" then return end
