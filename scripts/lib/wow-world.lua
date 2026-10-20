@@ -43,6 +43,15 @@ function issecretvalue(v)
 end
 
 world.aurasSecret = false
+world.threatSecret = false
+
+-- The client's argument check on a two-unit secret predicate: both units are required.
+local function needUnits(name, unit, mobUnit)
+  local usage = "(Usage: local isUnitThreatSecret = C_Secrets." .. name .. "(unit, mobUnit))"
+  if type(unit) ~= "string" then error("bad argument #1 to '?' " .. usage, 3) end
+  if type(mobUnit) ~= "string" then error("bad argument #2 to '?' " .. usage, 3) end
+end
+
 C_Secrets = {
   -- Whether the client hides aura values right now.
   ShouldAurasBeSecret = function() return world.aurasSecret end,
@@ -50,6 +59,11 @@ C_Secrets = {
   ShouldUnitAuraInstanceBeSecret = function(unit, id)
     local aura = C_UnitAuras.GetAuraDataByAuraInstanceID(unit, id)
     return world.aurasSecret or (aura ~= nil and (issecretvalue(aura.duration) or issecretvalue(aura.expirationTime)))
+  end,
+  -- Whether unit's threat values against mobUnit are hidden; both units are required, as in the client.
+  ShouldUnitThreatValuesBeSecret = function(unit, mobUnit)
+    needUnits("ShouldUnitThreatValuesBeSecret", unit, mobUnit)
+    return world.threatSecret
   end,
 }
 

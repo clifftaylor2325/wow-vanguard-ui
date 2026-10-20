@@ -15,6 +15,8 @@ MT.CHANNELS = { say = "SAY", party = "PARTY", raid = "RAID", instance = "INSTANC
 MT.REPORT_MAX, MT.REPORT_DEFAULT = 10, 5
 -- The rows the spell panel has.
 MT.DETAIL_ROWS = 8
+-- The gap between the meter and its spell panel.
+MT.DETAIL_SPACE = 4
 
 -- Spells ---------------------------------------------------------------------------------------
 
@@ -31,11 +33,13 @@ function MT.SpellList(src)
   return result.combatSpells
 end
 
--- A spell's name (hidden ones go straight on): the game's, else its ID as text; "" with neither.
+-- A spell's name: the game's, else its ID as text; "" where the call refuses. A hidden name
+-- goes straight on, untested (a truth test on it raises).
 local function spellName(spell)
   local get = C_Spell and C_Spell.GetSpellName
   local ok, name = pcall(get or tostring, spell.spellID)
-  return ok and name or ""
+  if ok then return name end
+  return ""
 end
 
 -- Fills one spell row from one spell, scaled to the top spell's total.
@@ -82,12 +86,11 @@ local function addDetailEmpty(d)
   d.empty:SetText("No spell detail yet")
 end
 
--- Built the first time a line is clicked: a panel left of the meter, its rows the meter's own look; Escape closes it.
+-- Built the first time a line is clicked: a panel beside the meter, its rows the meter's own look; Escape closes it.
 local function buildDetail()
   local d = T.HudPanel(CreateFrame("Frame", "Vanguard_MeterDetail", UIParent))
   ns.CloseOnEscape(d)
   d:SetSize(MT.WIDTH, MT.HEAD + MT.DETAIL_ROWS * (MT.ROW + MT.GAP) + MT.GAP)
-  d:SetPoint("BOTTOMRIGHT", MT.frame, "BOTTOMLEFT", -4, 0)
   addDetailTitle(d)
   addDetailEmpty(d)
   d.rows = {}
@@ -126,10 +129,21 @@ local function showing(d, src)
   return key ~= nil and key == sourceKey(d.src)
 end
 
+-- Puts the panel left of the meter, or right of it when the screen has no room on the left (a meter
+-- moved to the left edge). Both sides are measured in screen pixels, since the meter may be scaled.
+local function placeDetail(d)
+  local left = MT.frame:GetLeft()
+  local fits = not left or left * MT.frame:GetEffectiveScale() >= (d:GetWidth() + MT.DETAIL_SPACE) * d:GetEffectiveScale()
+  d:ClearAllPoints()
+  if fits then return d:SetPoint("BOTTOMRIGHT", MT.frame, "BOTTOMLEFT", -MT.DETAIL_SPACE, 0) end
+  d:SetPoint("BOTTOMLEFT", MT.frame, "BOTTOMRIGHT", MT.DETAIL_SPACE, 0)
+end
+
 -- Opens the panel for a meter line (a click on the same player's row again closes it).
 function MT.OpenDetail(src)
   local d = MT.detail or buildDetail()
   if d:IsShown() and showing(d, src) then return d:Hide() end
+  placeDetail(d)
   d.src = src
   MT.Give(d.title, "SetText", src.name)
   d:Show()

@@ -341,14 +341,14 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 
 ### 6.1 Party frames (if you can)
 
-- Do: join a party.
-- Expect: party frames just above the player frame, growing upward, and the game's own party frames gone.
+- Do: join a party. Then, under Raid frames, untick "Use them for your party too", `/reload`, and with the party look again; as leader, convert to a raid (the Raid button on the raid tools bar).
+- Expect: party frames just above the player frame, growing upward, and the game's own party frames gone. With the switch off, Vanguard's separate party frames show in the party and hide once it is a raid, leaving only the raid frames (no tiles on top of each other); `/vg unlock` still shows the party frames' handle.
 - If it fails, paste: a screenshot and `/vg errors`.
 
 ### 6.2 Raid frames (if you can)
 
-- Do: as leader or assistant, press the Raid button on the raid tools bar (top left) to convert to a raid, then press Ready on the same bar.
-- Expect: raid frames in groups, 100x48 tiles at 10 members or fewer and smaller above that; the ready check starts. A debuff you can dispel shows its type's letter (M, C, D or P) and a small mark beside it (diamond, circle, square or triangle) in the icon's top-left corner, 12 units wide at the least, in combat in an instance too. With a Priest in the group, the Priest's bar is a light gray (not white) and its white name reads clearly on it, full health or hurt.
+- Do: as leader or assistant, press the Raid button on the raid tools bar (top left) to convert to a raid, then press Ready on the same bar. With the game's "Cast action keybinds on key down" setting on, click a world marker button on that bar, then right-click it.
+- Expect: raid frames in groups, 100x48 tiles at 10 members or fewer and smaller above that; the ready check starts. The world marker is placed on the click and removed on the right-click. A debuff you can dispel shows its type's letter (M, C, D or P) and a small mark beside it (diamond, circle, square or triangle) in the icon's top-left corner, 12 units wide at the least, in combat in an instance too. With a Priest in the group, the Priest's bar is a light gray (not white) and its white name reads clearly on it, full health or hurt.
 - If it fails, paste: a screenshot and `/vg errors`. In an instance during combat `/vg status` should say `aura values hidden right now` while the bars still fill; paste that line if the bars do not fill.
 
 ### 6.2a Raid indicators (if you can)
@@ -366,7 +366,7 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 ### 6.4 Preview the party and raid frames alone
 
 - Do: on a profile whose frames you haven't moved (for example a new one from `/vg` → Profiles), out of a group and out of combat, type `/vg preview party`, then `/vg preview 25` and `/vg preview 40`. Open `/vg` → Raid frames, change Width, Height, Style, Sort by role and Groups as, then pick Off under Preview. Turn it on again and attack a training dummy.
-- Expect: five sample tiles in a column just above your player frame, centered on it (one Dead, one Offline, a shield and a cross before the tanks' and healers' names), then 10 the same, with two groups side by side; 25 and 40 drawn smaller, at the left of your character with their groups stacked as rows (five across, one group above the next), clear of your pet, focus and player frames; **Stack big raids at the left** off puts them back over your player frame in columns; each settings change shows on the preview at once. Off hides it, and combat hides it with a chat line. Your real frames don't change until a reload.
+- Expect: five sample tiles in a column just above your player frame, centered on it (one Dead, one Offline, a shield and a cross before the tanks' and healers' names), then 10 the same, with two groups side by side; 25 and 40 drawn smaller, at the left of your character with their groups stacked as rows (five across, one group above the next), clear of your pet, focus and player frames and, on a 1366 x 768 screen at UI scale 1, of the roll tracker at the left edge (roll a few times to see it); **Stack big raids at the left** off puts them back over your player frame in columns; each settings change shows on the preview at once. Off hides it, and combat hides it with a chat line. Your real frames don't change until a reload.
 - If it fails, paste: a screenshot, `/vg errors` and `/vg frame Vanguard_RaidPreview`.
 
 ### 6.5 Raid readiness on the ready-check card (batch 2)
@@ -388,7 +388,7 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 
 ### 6.6 Group threat panel (batch 2)
 
-- Do: `/vg` → Unit frames, switch on "Group threat panel" and `/reload`. In a party with a tank, target a hostile mob out of combat, then pull it. In the open world, then a dungeon, then on a boss, watch the panel; at the same moment type `/run print(C_Secrets.ShouldUnitThreatValuesBeSecret())` and `/vg errors` (this is the threat test of issue #223).
+- Do: `/vg` → Unit frames, switch on "Group threat panel" and `/reload`. In a party with a tank, target a hostile mob out of combat, then pull it. In the open world, then a dungeon, then on a boss, watch the panel; at the same moment type `/run print(C_Secrets.ShouldUnitThreatValuesBeSecret("player", "target"))` and `/vg errors` (this is the threat test of issue #223).
 - Expect: the panel lists the group by threat on your target, highest first, with the tank at the top; it hides when you drop the target or leave the group. If the game prints `true` (threat hidden), the panel must be hidden during the fight, and there must be no Lua error either way. `/vg unlock` lets you move it.
 - If it fails, paste: a screenshot, the printed line, which place you were in (world, dungeon, boss), and `/vg errors`.
 
@@ -490,6 +490,12 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Expect: half a second after the fight a chat line "Fight recap: Interrupts 1  ·  Dispels 0 ..." with only the parts the meter had; the same for `/vg recap`; `/vg recap party` sends that one line to party chat; during the fight `/vg recap` says the meter is hidden until the fight is over. [Needs in game: that those Enum.DamageMeterType keys exist, that a session of each has combatSources with isLocalPlayer and totalAmount, that Deaths lists one line per member who died, and that SendChatMessage to party works from a slash command.]
 - If it fails, paste: the `/run` line's output, the recap line and `/vg errors`.
 
+### 7.6a Chain pull (fight history and recap)
+
+- Do: with Fight history and the recap on, kill a mob and pull the next one at once (within half a second: a ranged pull or an add already on its way). After the second fight, hover the fight history strip and type `/vg fights`.
+- Expect: both fights are listed, the first with its own length and DPS; a recap line for the first fight appears as the second begins. [Needs in game: that the game's meter has finished the first fight's figures when the next pull starts; if its DPS or length looks short, say so.]
+- If it fails, paste: `/vg fights` and `/vg errors`.
+
 ### 7.7 Vanguard meter (off until switched on: /vg > Combat tools > Vanguard meter)
 
 - Do: type `/vg meter on` and fight a mob for a few seconds (in a group if you can); click the panel's title; type `/vg meter hps`, then `/vg meter dps`. Then type `/run for _, k in ipairs({"Dps","Hps"}) do print(k, Enum.DamageMeterType[k]) end` and paste what it prints.
@@ -499,7 +505,7 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 ### 7.7a Meter kinds, segments, spell panel and report
 
 - Do: with the meter on after a fight with a group (or alone): click the meter's title several times, then right-click it; click your own line; click it again; click another line; click the spell panel's title; click the Report and Reset buttons on the meter's title row; after a fight look at the percentages on the lines and in the spell panel; under General → Layout pick the Vanguard meter frame and drag Its width wider and narrower. On the Deaths view click a line: the chat should get "Death recap:" with a link that opens the game's recap. Out of combat type `/vg meter report`, `/vg meter report party 3`, `/vg meter overall`, `/vg meter interrupts`, `/vg meter reset`. Paste the output of `/run for _, k in pairs(Enum.DamageMeterType) do print(k) end` and of `/run for _, k in pairs(Enum.DamageMeterSessionType) do print(k) end`.
-- Expect: each left click moves the title through Damage per second, Healing per second, Damage done, Healing done, Damage taken, Interrupts, Dispels, Deaths and round; a right click through this fight, Overall ("... · Overall") and Previous fight; a click on a line opens a panel left of the meter titled with the player's name and listing their spells (name, bar, total), top first; clicking the same line again or the panel's title closes it; the report prints one line "Damage per second: 1. Name 12.3K  2. ..." (and to the party with a channel); `reset` says the game's meter was reset and the lists empty. [Needs in game: that every kind and segment key exists in the enums, that GetCombatSessionSourceFromType takes a line's sourceGUID and returns combatSpells (spellID, totalAmount) already sorted, that C_Spell.GetSpellName takes a spell ID, that Overall and Expired mean "all fights" and "the previous fight", what the total of Interrupts, Dispels and Deaths lines means, and that the panel's spell list is empty rather than an error in combat. `/vg errors` must stay empty.]
+- Expect: each left click moves the title through Damage per second, Healing per second, Damage done, Healing done, Damage taken, Interrupts, Dispels, Deaths and round; a right click through this fight, Overall ("... · Overall") and Previous fight; a click on a line opens a panel left of the meter (right of it once you move the meter to the screen's left edge) titled with the player's name and listing their spells (name, bar, total), top first; clicking the same line again or the panel's title closes it; the report prints one line "Damage per second: 1. Name 12.3K  2. ..." (and to the party with a channel); `reset` says the game's meter was reset and the lists empty. [Needs in game: that every kind and segment key exists in the enums, that GetCombatSessionSourceFromType takes a line's sourceGUID and returns combatSpells (spellID, totalAmount) already sorted, that C_Spell.GetSpellName takes a spell ID, that Overall and Expired mean "all fights" and "the previous fight", what the total of Interrupts, Dispels and Deaths lines means, and that the panel's spell list is empty rather than an error in combat. `/vg errors` must stay empty.]
 - If it fails, paste: the two `/run` outputs, the title after each click, `/vg errors`.
 
 ### 7.8 Personal resource display

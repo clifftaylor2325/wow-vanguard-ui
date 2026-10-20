@@ -63,9 +63,11 @@ it("group threat: hides while threat is hidden, and with no group, no target or 
   const shown = () => panel(addon)[0];
   addon.fire("PLAYER_TARGET_CHANGED");
   expect(shown(), "readable: shown").toBe(true);
-  addon.eval("C_Secrets.ShouldUnitThreatValuesBeSecret = function() return true end");
+  expect(addon.eval("return { pcall(C_Secrets.ShouldUnitThreatValuesBeSecret) }")[0], "the client's call refuses to be asked with no units").toBe(false);
+  addon.eval("C_Secrets.ShouldUnitThreatValuesBeSecret = function(unit, mobUnit) __asked = { unit, mobUnit } return true end");
   addon.fire("UNIT_THREAT_LIST_UPDATE", "target");
   expect(shown(), "the client says threat is hidden").toBe(false);
+  expect(addon.eval("return __asked"), "asked about you against your target").toEqual(["player", "target"]);
   addon.eval("C_Secrets.ShouldUnitThreatValuesBeSecret = function() error('no') end");
   addon.fire("UNIT_THREAT_LIST_UPDATE", "target");
   expect(shown(), "an error counts as hidden").toBe(false);

@@ -27,9 +27,10 @@ local RF = ns.Module("RaidFrames", {
 RF.COMPACT = { { 10, 1 }, { 25, 0.8 }, { 40, 0.72 } }
 -- Where the grid starts by default: a party or a raid of 10 right over your player frame; a bigger raid
 -- (with Stack big raids on) left of your character, as healers keep it, so the boss and your own frames stay in
--- view, its left edge 620 units left of the screen's middle, 344 up and clear of the frames around your character.
+-- view, its left edge 500 units left of the screen's middle, 344 up and clear of the frames around your character
+-- and, on a 1365-wide UI, of the roll tracker and the boss column at the left edge.
 RF.SPOT = { "BOTTOM", "BOTTOM", -240, 344 }
-RF.SPOT_BIG = { "BOTTOMLEFT", "BOTTOM", -620, 344 }
+RF.SPOT_BIG = { "BOTTOMLEFT", "BOTTOM", -500, 344 }
 -- How large the grid is drawn now (RF.Fit sets it).
 RF.tileScale = 1
 
@@ -385,9 +386,10 @@ function RF.Zones(w, h, scale)
   return z
 end
 
--- The zones of the tiles at the set size and the grid's current scale.
+-- The zones of the tiles at the size they were built with and the grid's current scale. A new size
+-- reaches the secure tiles only at a reload, so until then their texts keep fitting the old one.
 function RF.TileZones()
-  return RF.Zones(RF.settings.width, RF.settings.height, RF.tileScale)
+  return RF.Zones(RF.builtSize.width, RF.builtSize.height, RF.tileScale)
 end
 
 -- Building ---------------------------------------------------------------------------------
@@ -700,7 +702,7 @@ function RF.Arrange(n)
   if key ~= RF.layoutKey then
     RF.layoutKey = key
     layout(RF.header, RF.settings, key)
-    RF.SizeHolder(RF.holder, RF.settings, key)
+    RF.SizeHolder(RF.holder, RF.builtSize, key)
   end
   RF.PlaceFor(n)
 end
@@ -717,6 +719,7 @@ end
 
 -- Builds the header, precreates its buttons and replaces the default frames.
 local function build(s)
+  RF.builtSize = { width = s.width, height = s.height, spacing = s.spacing }
   RF.holder, RF.header = holder(s), createHeader(s)
   RF.Fit()
   membership(RF.header, s)

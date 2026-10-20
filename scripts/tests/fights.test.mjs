@@ -83,12 +83,21 @@ it("fights under two seconds, hidden lengths and fights in combat are skipped", 
   addon.world.combat(false);
   addon.world.combat(true);
   addon.advance(1);
-  expect(fights(addon), "a new pull before the read: nothing is read in that one either").toEqual([]);
-  addon.world.combat(false);
+  expect(fights(addon), "a new pull before the read: that fight is read as the pull starts, once").toEqual([[30, 100, 1, 1]]);
+});
+
+it("a chain pull within half a second of a fight ending keeps that fight", () => {
+  const addon = loggedIn(METER_ENV);
   addon.world.combat(true);
+  setFight(addon, 400, 30);
   addon.world.combat(false);
-  addon.advance(1);
-  expect(fights(addon), "two ends of combat within half a second: one read").toEqual([[30, 100, 1, 1]]);
+  addon.advance(0.3, 0.1);
+  addon.world.combat(true);
+  addon.advance(0.5, 0.1);
+  setFight(addon, 300, 20);
+  addon.world.combat(false);
+  addon.advance(1, 0.1);
+  expect(fights(addon).map((f) => f[1]), "both fights, the first read as the second began").toEqual([400, 300]);
 });
 
 it("the strip is off by default; switched on, the latest bar is in the accent and heights follow the DPS", () => {

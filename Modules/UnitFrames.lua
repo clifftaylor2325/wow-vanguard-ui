@@ -445,11 +445,14 @@ end
 
 -- Setup ---------------------------------------------------------------------------------
 
--- Shows the frame while its unit exists (the client does this securely).
+-- Shows the frame while its unit exists (the client does this securely). A party frame also hides in a
+-- raid, where party1-4 still exist (your subgroup) but the raid frames show them: one driver does both,
+-- since a unit watch beside it would fight it over the frame's visibility.
 local function watch(f)
-  if f.unit ~= "player" and type(RegisterUnitWatch) == "function" then
-    RegisterUnitWatch(f)
+  if f.unit:find("^party") then
+    return RegisterAttributeDriver(f, "state-visibility", "[group:raid] hide; [@" .. f.unit .. ",exists] show; hide")
   end
+  if f.unit ~= "player" and type(RegisterUnitWatch) == "function" then RegisterUnitWatch(f) end
 end
 
 -- Creates, places and wires one frame.

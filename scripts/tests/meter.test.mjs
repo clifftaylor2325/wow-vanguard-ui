@@ -85,6 +85,23 @@ it("hidden figures go straight into the bars and texts and are never compared", 
   expect(isTok(addon, addon.eval("return Vanguard_Meter.rows[1].__barColor"), "accent"), "a hidden class falls back to the accent").toBe(true);
 });
 
+it("a hidden figure's short text is the game's answer, handed back without a truth test; a refusal is empty", () => {
+  const addon = loggedIn(METER_ENV, METER_ON);
+  // MT.Short of a hidden figure while the game's formatter answers `answer` (Lua), as text.
+  const short = (answer) => addon.eval(`local real = AbbreviateNumbers AbbreviateNumbers = function() ${answer} end
+    local text = ns.GetModule('Meter').Short(__wfgWorld.secret(5)) AbbreviateNumbers = real return tostring(text)`);
+  // A harness secret is always truthy, so a falsy answer stands in: `ok and text or ""` would turn it into "".
+  expect(short("return false"), "the answer goes back as it is, never tested").toBe("false");
+  expect(short("error('refused')"), "a refusal is empty").toBe("");
+});
+
+it("a plain figure that rounds up to a thousand reads in the next unit", () => {
+  const addon = loggedIn(METER_ENV, METER_ON);
+  // MT.Short of a plain number, as text.
+  const short = (n) => addon.eval(`return ns.GetModule('Meter').Short(${n})`);
+  expect([short(999.996), short(999999), short(1500), short(12)], "1000 never shows before K or M").toEqual(["1K", "1M", "1.5K", "12"]);
+});
+
 it("a widget that refuses a hidden value leaves the row as it was, with no error", () => {
   const addon = loggedIn(METER_ENV, METER_ON);
   addon.eval("local row = Vanguard_Meter.rows[1] row.SetValue = function() error('refused') end row.name.SetText = function() error('refused') end");
@@ -286,6 +303,35 @@ it("spell lists fall back safely: no call, hidden list, hidden spells, unknown n
   addon.eval(`${MT}.OpenDetail({ name = 'Tess' })`);
   expect(addon.eval("return Vanguard_MeterDetail.rows[1].name.__text"), "without a name call the ID stands in").toBe("7");
   expect(addon.eval("return #ns.errors"), "hidden totals raise nothing").toBe(0);
+});
+
+it("the spell panel opens left of the meter, or right of it when the meter sits at the screen's left edge", () => {
+  const addon = loggedIn(METER_ENV, METER_ON);
+  // The panel's and the meter's left and right edges after opening a line's panel with the meter put at `x` from the left (nil: where it is).
+  const open = (x) => addon.eval(`local MT = ns.GetModule("Meter") MT.CloseDetail()
+    if ${x} then MT.frame:ClearAllPoints() MT.frame:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", ${x}, 14) end
+    MT.OpenDetail({ name = "TEST-ONLY" })
+    local d = Vanguard_MeterDetail
+    return { d:GetLeft(), d:GetRight(), MT.frame:GetLeft(), MT.frame:GetRight() }`);
+  const [left, right, meterLeft] = open("nil");
+  expect([right, left >= 0], "at its default spot: on the meter's left, 4 apart, on screen").toEqual([meterLeft - 4, true]);
+  const [edgeLeft, , , meterRight] = open(10);
+  expect(edgeLeft, "at the left edge: on the meter's right, 4 apart").toBe(meterRight + 4);
+});
+
+it("a spell row's name is the game's answer, handed on without a truth test; a refused one is empty", () => {
+  const addon = loggedIn(FULL_ENV, METER_ON);
+  addon.eval("C_DamageMeter.GetCombatSessionSourceFromType = function() return { combatSpells = { { spellID = 7, totalAmount = 5 } } } end");
+  // The first spell row's name text after opening the panel with the name call answering `answer` (Lua).
+  const name = (answer) => addon.eval(`local MT = ns.GetModule('Meter') MT.CloseDetail()
+    __names = {}
+    C_Spell.GetSpellName = function() ${answer} end
+    if MT.detail then MT.detail.rows[1].name.SetText = function(_, text) __names[#__names + 1] = tostring(text) end end
+    MT.OpenDetail({ name = 'Tess' }) return __names[#__names]`);
+  name("return 'Spell7'"); // builds the panel, so the next opens record what its row is given
+  // A harness secret is always truthy, so a falsy answer stands in: `ok and name or ""` would turn it into "".
+  expect(name("return false"), "the answer goes on as it is, never tested").toBe("false");
+  expect(name("error('refused')"), "a refusal is empty").toBe("");
 });
 
 it("a report holds plain names and figures only, out of combat, to chat or a channel", () => {

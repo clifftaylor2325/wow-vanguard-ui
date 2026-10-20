@@ -57,6 +57,15 @@ it("a tie marks both, a roll in another range starts a new round, and a differen
   expect(panel(addon)[2].map((l) => l.slice(0, 2)), "only the new range").toEqual([["Rolls 1-6", ""], ["Thrall", "3 (1-6)"]]);
 });
 
+it("a stray roll in another range doesn't split a 1-100 round", () => {
+  const addon = loggedIn(ROLL_ENV);
+  roll(addon, "Thrall", 42);
+  roll(addon, "Jaina", 87);
+  roll(addon, "Garrosh", 30, 1, 50);
+  roll(addon, "Sylvanas", 60);
+  expect(panel(addon)[2].map((l) => l[0]), "the 1-100 round, with the stray roll left out").toEqual(["Rolls 1-100", "Jaina", "Sylvanas", "Thrall"]);
+});
+
 it("a round older than 30 seconds is not part of the next one, and the panel goes when it falls quiet", () => {
   const addon = loggedIn(ROLL_ENV);
   roll(addon, "Thrall", 90);
@@ -165,6 +174,15 @@ it("a client without the loot history, one that errors or hides it, or with the 
   const off = loggedIn(ROLL_ENV + lootEnv(true, ['{ "Thrall", 0, 9, true }']), { savedVariables: "VanguardDB.profiles = { Default = { Rolls = { loot = false } } }" });
   off.fire("LOOT_HISTORY_UPDATE_DROP", 7, 1);
   expect(off.eval("return #ns.GetModule('Rolls').items"), "loot switched off: not read").toBe(0);
+});
+
+it("switching loot rolls off takes the items already shown off the panel", () => {
+  const addon = loggedIn(ROLL_ENV + lootEnv(false, ['{ "Thrall", 0, 88, false }']));
+  addon.fire("LOOT_HISTORY_UPDATE_DROP", 7, 1);
+  expect(panel(addon)[0], "the item shows").toBe(true);
+  // What the options row does: set the switch, then read the loot again.
+  addon.eval("local R = ns.GetModule('Rolls') R.settings.loot = false R.ReadLoot()");
+  expect([panel(addon)[0], addon.eval("return #ns.GetModule('Rolls').items")], "the panel goes with its items").toEqual([false, 0]);
 });
 
 it("the panel follows its visibility setting", () => {

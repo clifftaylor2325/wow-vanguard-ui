@@ -122,6 +122,14 @@ local function precreate(header)
   header:SetAttribute("startingIndex", 1)
 end
 
+-- Gives the header the holder's saved Scale and Opacity: it is pinned to the holder but is not its
+-- child, so it inherits neither (out of combat: the header is secure).
+function MT.FollowHolder()
+  local scale, alpha = ns.MoverLook("maintanks")
+  MT.header:SetScale(scale)
+  MT.header:SetAlpha(alpha)
+end
+
 -- The movable holder (room for four tiles and their target lines), the header pinned in it.
 local function build()
   local holder = CreateFrame("Frame", "Vanguard_MainTanksHolder", UIParent)
@@ -129,6 +137,7 @@ local function build()
   ns.Mover(holder, "maintanks", "Main tanks", { "TOPLEFT", "TOPLEFT", 400, -20 })
   MT.holder, MT.header = holder, createHeader()
   MT.header:SetPoint("TOPLEFT", holder, "TOPLEFT")
+  MT.FollowHolder()
   precreate(MT.header)
   if type(RegisterAttributeDriver) == "function" then RegisterAttributeDriver(MT.header, "state-visibility", "[group:raid] show; hide") end
   ns.Client.WhenSnippetsKnown(function(worked) if worked == false then MT.WithoutSnippets() end end)
@@ -149,7 +158,13 @@ function MT.WithoutSnippets()
   ns.On("GROUP_ROSTER_UPDATE", function() ns.OutOfCombat(MT.SetupTiles, "maintanktiles") end)
 end
 
+-- The holder's new scale or opacity (or a reset): the header follows, out of combat.
+local function onPlaced(key)
+  if key == "maintanks" and MT.header then ns.OutOfCombat(MT.FollowHolder, "maintankslook") end
+end
+
 -- Module entry point (Core/Modules.lua): secure frames are made out of combat.
 function MT.Enable()
   ns.OutOfCombat(build)
+  ns.OnMoverPlaced(onPlaced)
 end

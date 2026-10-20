@@ -38,7 +38,7 @@ GB.DUNGEONS = {
   { "The Deadmines", 17, 26, { "deadmines", "vc", "dm" } }, { "Shadowfang Keep", 22, 30, { "sfk", "shadowfang" } },
   { "Blackfathom Deeps", 24, 32, { "bfd", "blackfathom" } }, { "The Stockade", 24, 32, { "stocks", "stockade", "stockades" } },
   { "Gnomeregan", 29, 38, { "gnomer", "gnomeregan" } }, { "Razorfen Kraul", 29, 38, { "rfk", "kraul" } },
-  { "Scarlet Monastery", 34, 45, { "sm", "scarlet", "lib", "library", "arms", "armory", "cath", "cathedral", "gy", "graveyard" } },
+  { "Scarlet Monastery", 34, 45, { "sm", "scarlet" } },
   { "Razorfen Downs", 37, 46, { "rfd", "downs" } }, { "Uldaman", 41, 51, { "ulda", "uld", "uldaman" } },
   { "Zul'Farrak", 44, 54, { "zf", "zul farrak", "zulfarrak" } }, { "Maraudon", 46, 55, { "mara", "maraudon" } },
   { "Sunken Temple", 50, 56, { "st", "sunken temple", "atal hakkar" } }, { "Blackrock Depths", 52, 60, { "brd", "blackrock depths" } },
@@ -49,6 +49,8 @@ GB.DUNGEONS = {
   { "Ruins of Ahn'Qiraj", 60, 60, { "aq20", "aq 20" } }, { "Temple of Ahn'Qiraj", 60, 60, { "aq40", "aq 40" } },
   { "Naxxramas", 60, 60, { "naxx", "naxxramas" } },
 }
+-- Scarlet Monastery's wings, which name it when a line names no dungeon of its own.
+GB.SM_WINGS = { "lib", "library", "arms", "armory", "cath", "cathedral", "gy", "graveyard" }
 
 -- The posts on the board, newest first: { kind, dungeon, roles, text, sender, time }.
 GB.entries = {}
@@ -79,11 +81,19 @@ function GB.Kind(words)
   if hasAny(words, GB.LFG) then return "LFG" end
 end
 
--- The dungeon a line names, as { name, min, max }, or nil.
-function GB.Dungeon(words)
+-- The dungeon whose own short names a line uses, as { name, min, max }, or nil.
+local function namedDungeon(words)
   for _, d in ipairs(GB.DUNGEONS) do
     if hasAny(words, d[4]) then return { name = d[1], min = d[2], max = d[3] } end
   end
+end
+
+-- The dungeon a line names, as { name, min, max }, or nil. Scarlet Monastery's wing names are
+-- ordinary chat words too ("60 arms warrior LFG strat"), so they count only when no dungeon is named.
+function GB.Dungeon(words)
+  local named = namedDungeon(words)
+  if named or not hasAny(words, GB.SM_WINGS) then return named end
+  return namedDungeon(" sm ")
 end
 
 -- The roles a line names, in GB.ROLE_ORDER.

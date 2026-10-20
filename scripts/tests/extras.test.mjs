@@ -35,6 +35,20 @@ it("main tank frames: the raid's main tanks and assists, with what each is targe
   expect(off.eval("return Vanguard_MainTanks == nil"), "switched off under Modules, nothing is built").toBe(true);
   expect(loggedIn(UNITS_ENV).eval("return Vanguard_MainTanks ~= nil"), "a client without attribute drivers still builds them").toBe(true);
 });
+it("main tank tiles take their handle's scale and opacity (the header sits beside its holder)", () => {
+  const addon = loggedIn(UNITS_ENV + RAID_ENV);
+  // The header's scale and opacity.
+  const look = () => addon.eval("return { Vanguard_MainTanks:GetScale(), Vanguard_MainTanks:GetAlpha() }");
+  expect(look(), "at 100% as built").toEqual([1, 1]);
+  addon.eval('ns.SetMoverScale("maintanks", 2) ns.SetMoverAlpha("maintanks", 0.3)');
+  expect(look(), "at the handle's scale and opacity").toEqual([2, 0.3]);
+  setCombat(addon, true);
+  addon.eval('ns.SetMoverScale("maintanks", 1)');
+  expect(look()[0], "in combat the secure header waits").toBe(2);
+  setCombat(addon, false);
+  expect(look()[0], "and follows once the fight is over").toBe(1);
+});
+
 it("main tank frames without secure snippets: the header copies the clicks; tiles are sized and set up out of combat", () => {
   const addon = loggedIn(UNITS_ENV + GROUP_EXTRAS_ENV + 'SecureHandlerExecute = function() error("TEST-ONLY: snippets do not compile") end');
   expect(addon.eval("local h = Vanguard_MainTanks return { h:GetAttribute('initialConfigFunction') == nil, h:GetAttribute('_initialAttributeNames') }"),
@@ -328,6 +342,7 @@ it("raid tools: calls, target icons and world markers for the leader and assista
   expect(addon.eval("return #__calls"), "a target that can't be marked is left alone").toBe(0);
   expect(addon.eval(`local m, c = Vanguard_RaidTools.list[14], Vanguard_RaidTools.list[22]
     return { m:GetAttribute("type"), m:GetAttribute("marker"), m:GetAttribute("action1"), m:GetAttribute("action2"), c:GetAttribute("action") }`), "world markers are the game's secure marker buttons").toEqual(["worldmarker", 1, "toggle", "clear", "clear"]);
+  expect(addon.eval("return { Vanguard_RaidTools.list[14]:GetAttribute('useOnKeyDown'), Vanguard_RaidTools.list[22]:GetAttribute('useOnKeyDown') }"), "the marker buttons act on the release they listen for, even with key-down casting on").toEqual([false, false]);
   addon.eval("__inRaid, __leader, __assist = true, false, true");
   addon.fire("GROUP_ROSTER_UPDATE");
   expect(state(), "a raid assistant sees it too, without Raid").toEqual([true, false]);

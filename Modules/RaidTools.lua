@@ -83,7 +83,8 @@ function RT.Place(bar, b, row, col)
   bar.list[#bar.list + 1] = b
 end
 
--- An icon button showing raid icon `index` (or the clear mark for nil).
+-- An icon button showing raid icon `index` (or the clear mark for nil). A secure one acts on the
+-- click's release whatever the key-down casting setting says, since it only listens for releases.
 local function iconButton(bar, template, index)
   local b = T.Button(CreateFrame("Button", nil, bar, template))
   b:SetSize(RT.ICON, RT.ICON)
@@ -92,6 +93,7 @@ local function iconButton(bar, template, index)
   b.icon:SetPoint("BOTTOMRIGHT", -2, 2)
   if index then ns.GetModule("RaidStatus").PaintIcon(b.icon, index) else b.icon:SetTexture(RT.CLEAR) end
   b:RegisterForClicks("AnyUp")
+  if template then b:SetAttribute("useOnKeyDown", false) end
   return b
 end
 

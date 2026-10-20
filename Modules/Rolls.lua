@@ -75,12 +75,13 @@ local function onSystem(_, text)
 end
 
 -- The latest round: the rolls sharing the newest roll's range, each within R.ROUND of the next; highest first.
+-- A roll in another range between them is skipped, so a stray /roll 50 doesn't split a 1-100 round.
 function R.Round()
   local round, last = {}, R.rolls[#R.rolls]
   for i = #R.rolls, 1, -1 do
     local r = R.rolls[i]
-    if r.low ~= last.low or r.high ~= last.high or (round[#round] or last).at - r.at > R.ROUND then break end
-    round[#round + 1] = r
+    if (round[#round] or last).at - r.at > R.ROUND then break end
+    if r.low == last.low and r.high == last.high then round[#round + 1] = r end
   end
   table.sort(round, function(a, b) return a.roll > b.roll or (a.roll == b.roll and a.seq < b.seq) end)
   return round
@@ -152,9 +153,13 @@ function R.Drops()
   return out
 end
 
--- Reads the newest R.ITEMS drops again, oldest first (the loot history changed).
+-- Reads the newest R.ITEMS drops again, oldest first (the loot history changed); with loot rolls
+-- off, or no loot history, the items already shown go.
 function R.ReadLoot()
-  if not (R.settings.loot and R.HasLoot()) then return end
+  if not (R.settings.loot and R.HasLoot()) then
+    R.items = {}
+    return R.Paint()
+  end
   local drops = R.Drops()
   table.sort(drops, function(a, b) return a.at < b.at or (a.at == b.at and a.key < b.key) end)
   R.items = { unpack(drops, math.max(1, #drops - R.ITEMS + 1)) }

@@ -1,7 +1,7 @@
 // status: Vanguard's real Lua in the TEST-ONLY headless client (scripts/lib/lua-harness.mjs).
 
 import { expect, it } from "vitest";
-import { RAID_ENV, UNITS_ENV, isTok, loggedIn, marks } from "./helpers.mjs";
+import { NO_RAID, RAID_ENV, UNITS_ENV, isTok, loggedIn, marks } from "./helpers.mjs";
 
 // TEST-ONLY group status: raid icons, ready check, resurrection, leader, range.
 const STATUS_ENV = `
@@ -61,6 +61,18 @@ const tile2 = (addon) => addon.eval("local b = Vanguard_RaidUnitButton2 return {
 // A roster refresh in a fight: GROUP_ROSTER_UPDATE, then the queued update of every tile.
 const rosterInFight = (addon) => { addon.world.combat(true); addon.fire("GROUP_ROSTER_UPDATE"); addon.eval("__wfgStub.advance(0.3)"); };
 
+it("the Raid frames page's mark switches repaint the tiles at once", () => {
+  const addon = loggedIn("C_Timer = nil " + UNITS_ENV + RAID_ENV + STATUS_ENV);
+  addon.eval('__spawn(1, "raid1")');
+  // Unticks the Raid frames page's row captioned `cap` through its own setter.
+  const untick = (cap) => addon.eval(`for _, p in ipairs(ns.Options.PAGES) do if p.key == "raid" then
+    for _, row in ipairs(p.rows()) do if row[2] == "${cap}" then row[4](false) end end end end`);
+  untick("Raid target icons");
+  untick("Leader and assistant marks");
+  const after = marks(addon, 1);
+  expect([after.icon, after.leader], "both marks go as they are unticked").toEqual([false, false]);
+});
+
 it("your own tile stays opaque when an encounter hides UnitIsUnit's answer on a roster refresh", () => {
   const addon = loggedIn("C_Timer = nil " + UNITS_ENV + RAID_ENV + STATUS_ENV + GUIDS);
   addon.eval('__spawn(1, "raid1"); __spawn(2, "raid2")');
@@ -113,6 +125,11 @@ it("range ticker: only while the raid frames show, no repeat questions, no repai
   rangeCalls(addon); // the tiles repaint as they come back into view
   addon.eval("__wfgStub.advance(0.25)");
   expect(rangeCalls(addon).range, "shown again, the checks resume").toBe(2);
+});
+
+it("range ticker: with the raid frames off there is no header to follow, so no range job runs", () => {
+  const addon = loggedIn("", NO_RAID);
+  expect(addon.eval('return { ns.GetModule("RaidStatus").enabled == true, ns.ticker.vgJobs["raid range"] ~= nil }'), "raid status on, no range job").toEqual([true, false]);
 });
 
 it("ready check: a new check started while the last one's answers linger keeps its answers up", () => {
