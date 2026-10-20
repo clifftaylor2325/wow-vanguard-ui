@@ -212,6 +212,19 @@ it("the info strip at Text size 130 %: wider and taller rows, every block placed
   addon.eval("ns.Theme.Settings().textScale = 0.8 ns.Theme.Refresh()");
   expect(addon.eval("return { Vanguard_InfoStrip:GetWidth(), Vanguard_InfoStrip:GetHeight() }"), "smaller text keeps today's strip").toEqual([182, 76]);
 });
+it("the quest tracker's spot moves down with the info strip's taller rows, after a fight, unless it was moved", () => {
+  const addon = loggedIn(UNITS_ENV + STRIP_ENV);
+  // How far down the quest tracker's spot sits.
+  const trackerY = () => addon.eval("return Vanguard_QuestTracker.__points.TOPRIGHT.y");
+  expect(trackerY(), "at 100 % it sits 6 under the seventh row (200 + 7 x 18 + 4)").toBe(-336);
+  setCombat(addon, true);
+  addon.eval("ns.Theme.Settings().textScale = 1.3 ns.Theme.Refresh()");
+  expect(trackerY(), "in a fight it waits: the game's tracker is pinned to it").toBe(-336);
+  setCombat(addon, false);
+  expect(trackerY(), "after it, 7 rows of 23 lower down").toBe(-371);
+  addon.eval('ns.SetMoverPoint("questtracker", "TOPRIGHT", "TOPRIGHT", -40, -500) ns.Theme.Settings().textScale = 1 ns.Theme.Refresh()');
+  expect(trackerY(), "a spot the player picked stays").toBe(-500);
+});
 it("the Bars and bags page's two tracker switches name the game's tracker, the one they change", () => {
   const addon = loggedIn(UI_ENV);
   const labels = addon.eval(`local out = {}

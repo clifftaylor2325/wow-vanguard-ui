@@ -826,7 +826,7 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 ### 13.2b Strips at Text size 130 %
 
 - Do: in the game's clock window untick 24-hour mode; under `/vg` → General set Text size to 130 %; with an addon that shares broker feeds, pick two feeds under Map → Data from other addons. Then set Text size back to 100 %.
-- Expect: at 130 % the info strip is wider and its rows taller; no block's text runs into its neighbour (the 12-hour time, the date and the calendar button share their row), and nothing spills past the strip's edge. The broker strip is taller, its icons larger, each slot as wide as its text; a feed's tooltip opens below the strip at the top of the screen (move the strip near the bottom with `/vg unlock`: it opens above). Back at 100 % both strips return to their usual size.
+- Expect: at 130 % the info strip is wider and its rows taller; no block's text runs into its neighbour (the 12-hour time, the date and the calendar button share their row), and nothing spills past the strip's edge. The broker strip is taller, its icons larger, each slot as wide as its text; a feed's tooltip opens below the strip at the top of the screen (move the strip near the bottom with `/vg unlock`: it opens above). The quest tracker starts just under the info strip's last row, clear of it. Back at 100 % both strips return to their usual size (a broker slot widened at 130 % narrows again) and the tracker moves back up.
 - If it fails, paste: a screenshot of both strips at 130 %, and `/vg errors`.
 
 ### 13.3 Move the strips

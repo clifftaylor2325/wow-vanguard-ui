@@ -670,7 +670,7 @@ end
 local function buildTracker()
   MS.trackerSpot = CreateFrame("Frame", "Vanguard_QuestTracker", UIParent)
   MS.trackerSpot:SetSize(MS.TRACKER_W, MS.TRACKER_H)
-  ns.Mover(MS.trackerSpot, "questtracker", "Quest tracker", { "TOPRIGHT", "TOPRIGHT", -12, -336 })
+  ns.Mover(MS.trackerSpot, "questtracker", "Quest tracker", ns.GetModule("InfoStrip").TrackerPoint())
   local tracker = _G.ObjectiveTrackerFrame
   if MS.OwnTracker() or type(tracker) ~= "table" or not tracker.SetPoint then return end
   ns.Pin(tracker, function(f)

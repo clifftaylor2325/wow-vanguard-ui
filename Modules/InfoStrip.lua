@@ -27,6 +27,10 @@ local IS = ns.Module("InfoStrip", {
 
 -- The strip's width and row height with text at 100 %; a larger Text size widens and heightens them in step.
 IS.WIDTH, IS.ROW = 182, 18
+-- Where the strip sits (just under the minimap), the most rows it shows, the room it keeps under its rows,
+-- and the gap from its last row down to the quest tracker's spot.
+IS.HOME = { "TOPRIGHT", "TOPRIGHT", -12, -200 }
+IS.MOST_ROWS, IS.EDGE, IS.TRACKER_GAP = 7, 4, 6
 -- Where each block sits: row, and its side of the row (two columns, so no two blocks run together).
 IS.BLOCKS = {
   durability = { 1, "LEFT" }, bags = { 1, "RIGHT" },
@@ -414,7 +418,7 @@ end
 local function fitRows()
   local rows = rowsShown()
   IS.frame:SetShown(rows > 0 and V.Shows(IS.frame))
-  IS.frame:SetHeight(IS.Row() * math.max(rows, 2) + 4)
+  IS.frame:SetHeight(IS.Row() * math.max(rows, 2) + IS.EDGE)
 end
 
 -- Sits the date right after the time, or at the row's left edge while the time is off.
@@ -602,6 +606,19 @@ local function watchVisibility(f)
   IS.ApplyVisibility()
 end
 
+-- The quest tracker's default spot: under the strip's last row at the current Text size, so a larger Text
+-- size never runs the strip into the tracker.
+function IS.TrackerPoint()
+  local y = IS.HOME[4] - IS.Row() * IS.MOST_ROWS - IS.EDGE - IS.TRACKER_GAP
+  return { "TOPRIGHT", "TOPRIGHT", IS.HOME[3], y }
+end
+
+-- Moves the quest tracker's default spot to follow the strip's height (a spot the player saved wins). Out of
+-- a fight only: the game's tracker, with its item buttons, is pinned to that spot.
+function IS.MoveTracker()
+  ns.SetMoverDefault("questtracker", IS.TrackerPoint())
+end
+
 -- Lays the strip out again for the current Text size: its width, every block on its row and the
 -- calendar button beside the date (plain frames, so this is fine in a fight), then the rows that show.
 function IS.Layout()
@@ -610,14 +627,15 @@ function IS.Layout()
   if IS.calendar then placeCalendar(IS.calendar) end
   IS.PlaceDate()
   fitRows()
+  ns.OutOfCombat(IS.MoveTracker, "infostrip-tracker")
 end
 
 -- The movable strip, just under the minimap.
 local function build()
   local f = T.HudPanel(CreateFrame("Frame", "Vanguard_InfoStrip", UIParent))
   IS.frame = f
-  f:SetSize(IS.Width(), IS.Row() * 2 + 4)
-  ns.Mover(f, "infostrip", "Info strip", { "TOPRIGHT", "TOPRIGHT", -12, -200 })
+  f:SetSize(IS.Width(), IS.Row() * 2 + IS.EDGE)
+  ns.Mover(f, "infostrip", "Info strip", IS.HOME)
   IS.texts = {}
   for key in pairs(IS.BLOCKS) do IS.texts[key] = addText(key) end
   addButtons(f)
