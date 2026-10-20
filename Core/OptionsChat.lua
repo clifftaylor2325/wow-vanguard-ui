@@ -81,14 +81,23 @@ local function chatWatchSwitches(CW)
   }
 end
 
--- Chat watch: add a phrase, a Remove button per phrase (or a hint while there are none), then the switches.
+-- A saved list's rows: its Add button, a hint while it is empty, then a Remove button per item.
+-- spec: { add = a button row, items = the list, empty = the hint, remove = function(item) }.
+local function listRows(spec)
+  local rows = { spec.add }
+  if #spec.items == 0 then rows[#rows + 1] = { "text", spec.empty } end
+  for _, item in ipairs(spec.items) do
+    rows[#rows + 1] = { "button", "Remove: " .. item, function() spec.remove(item) end }
+  end
+  return rows
+end
+
+-- Chat watch: its prose, the phrases (listRows), then the switches.
 local function chatWatchRows()
   local CW = ns.GetModule("ChatWatch")
-  local rows = { { "header", "Chat watch" }, { "text", "Phrases to watch for: a sound and a toast when one is said (all the words, in any order; in a fight, once it ends). Click the toast to whisper." },
-    { "button", "Add a phrase", function() ns.AskText("Watch for", CW.AddFromDialog, "Add") end } }
-  local phrases = moduleSettings("ChatWatch").phrases
-  if #phrases == 0 then rows[#rows + 1] = { "text", "No phrases yet. Add one, such as LFM or a dungeon's name." } end
-  for _, p in ipairs(phrases) do rows[#rows + 1] = { "button", "Remove: " .. p, function() CW.Remove(p) end } end
+  local rows = { { "header", "Chat watch" }, { "text", "Phrases to watch for: a sound and a toast when one is said (all the words, in any order; in a fight, once it ends). Click the toast to whisper." } }
+  append(rows, listRows({ add = { "button", "Add a phrase", function() ns.AskText("Watch for", CW.AddFromDialog, "Add") end },
+    items = moduleSettings("ChatWatch").phrases, empty = "No phrases yet. Add one, such as LFM or a dungeon's name.", remove = CW.Remove }))
   return append(rows, chatWatchSwitches(CW))
 end
 
@@ -105,11 +114,8 @@ end
 
 -- Chat filter's words of your own: Add a word, then a Remove button per word (or a hint while there are none).
 local function chatFilterWordRows(CF)
-  local rows = { { "button", "Add a word", function() ns.AskText("Filter lines with", CF.AddFromDialog, "Add") end } }
-  local words = moduleSettings("ChatFilter").keywords
-  if #words == 0 then rows[#rows + 1] = { "text", "No words of your own yet." } end
-  for _, w in ipairs(words) do rows[#rows + 1] = { "button", "Remove: " .. w, function() CF.Remove(w) end } end
-  return rows
+  return listRows({ add = { "button", "Add a word", function() ns.AskText("Filter lines with", CF.AddFromDialog, "Add") end },
+    items = moduleSettings("ChatFilter").keywords, empty = "No words of your own yet.", remove = CF.Remove })
 end
 
 -- Chat filter: the switches, where caught lines go, what it caught (chatFilterStatusRows), then your words.
