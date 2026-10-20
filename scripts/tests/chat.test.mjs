@@ -783,6 +783,26 @@ it("chat extras: Copy reads the tab you are looking at, is named for it, and ope
   expect(addon.eval(box), "no shown tab: the main window, and a hidden tab name reads chat").toEqual(["Copy chat (Ctrl+C)", "TEST-ONLY main", 14]);
   expect(addon.eval("return #ns.errors"), "no errors").toBe(0);
 });
+it("chat extras: bare addresses with a web ending become links, never inside a link, and the guild message of the day is linked", () => {
+  const addon = loggedIn(UI_ENV + CHAT_EXTRAS_ENV + CHAT_LINES_ENV + 'GUILD_MOTD_TEMPLATE = "Guild Message of the Day: %s"');
+  // The say filter's text for a line: linked, or as it was.
+  const said = (line) => { const out = addon.eval(`return { __filters.CHAT_MSG_SAY(nil, "CHAT_MSG_SAY", ${luaValue(line)}, "<name>") }`); return out[1] ?? line; };
+  const linkOf = (url) => `|Haddon:Vanguard:url:${url}|h[${url}]|h|r`;
+  expect(said("join discord.gg/abc, we raid"), "a bare address with its path, the comma left after the link").toContain(`${linkOf("discord.gg/abc")}, we raid`);
+  expect(said("see Site.COM."), "any case of a known ending, the full stop left outside").toContain(`${linkOf("Site.COM")}.`);
+  expect(["e.g. this", "lvl 1.5 dps", "my.stuff here", "bob@site.com", "|Hitem:1|h[a.com]|h"].map(said), "unknown endings, numbers, mail and a link's own text are left alone")
+    .toEqual(["e.g. this", "lvl 1.5 dps", "my.stuff here", "bob@site.com", "|Hitem:1|h[a.com]|h"]);
+  expect(said("https://example.test/x and www.example.test"), "the http and www addresses are linked once, not again as bare words").not.toContain("|h|r|h");
+  addon.eval('ChatFrame1:AddMessage("Guild Message of the Day: raid at 8, discord.gg/abc")');
+  expect(lastLine(addon), "the guild message of the day line is linked as it is added").toContain(linkOf("discord.gg/abc"));
+  addon.eval('ChatFrame1:AddMessage("TEST-ONLY not the motd discord.gg/abc")');
+  expect(lastLine(addon), "any other added line is left to the chat filters").toBe("TEST-ONLY not the motd discord.gg/abc");
+  addon.eval('ns.GetModule("ChatExtras").settings.links = false ChatFrame1:AddMessage("Guild Message of the Day: discord.gg/abc")');
+  expect(lastLine(addon), "links switched off: the message of the day stays plain").toBe("Guild Message of the Day: discord.gg/abc");
+  addon.eval('GUILD_MOTD_TEMPLATE = nil ns.GetModule("ChatExtras").settings.links = true ChatFrame1:AddMessage("Guild Message of the Day: discord.gg/abc")');
+  expect(lastLine(addon), "a client without the template: nothing is taken for the message of the day").toBe("Guild Message of the Day: discord.gg/abc");
+  expect(addon.eval("return #ns.errors"), "no errors").toBe(0);
+});
 it("chat extras: a hidden line never reaches the link filter's comparison, and a failing filter or click lets the line through", () => {
   const addon = loggedIn(UI_ENV + CHAT_EXTRAS_ENV);
   // The harness's secrets can't raise on ==, so prove the early return: LinkURLs is never reached for hidden or non-string text.

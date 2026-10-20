@@ -1,6 +1,7 @@
 -- Chat extras:
---   * web addresses in chat become links in the accent color; clicking one
---     opens a box with the address selected, ready to copy (Ctrl+C);
+--   * web addresses in chat (and in the guild message of the day) become links in the accent
+--     color, "discord.gg/abc" too; clicking one opens a box with the address selected, ready to
+--     copy (Ctrl+C);
 --   * a small Copy button in the main chat window's tab bar (and /vg copy) opens
 --     the recent chat of the tab you are looking at as plain text, at its newest line, ready to copy;
 --   * short channel names (on by default): "[2. Trade - City]" shows as "[2]", "[Guild]" as
@@ -28,6 +29,8 @@ CX.EVENTS = {
 }
 -- Web addresses: a word starting http(s):// or www. (up to a space or an escape code).
 CX.PATTERNS = { "%f[%S]https?://[^%s|]+", "%f[%S]www%.[^%s|]+" }
+-- The web endings a bare address ("discord.gg/abc", "site.com") must have to become a link.
+CX.TLDS = { com = true, net = true, org = true, gg = true, tv = true, io = true, eu = true }
 CX.COPY_LINES = 100
 -- The link's prefix: the game hands "addon:" links to addons instead of the item tooltip.
 local PREFIX = "addon:Vanguard:url:"
@@ -40,15 +43,45 @@ local function accentCode()
   return string.format("|cff%02x%02x%02x", math.floor(r * 255), math.floor(g * 255), math.floor(b * 255))
 end
 
--- A message with each web address made a clickable accent link (hidden text is returned as is).
+-- An address as a clickable link in the accent color.
+local function linkText(url, color)
+  return color .. "|H" .. PREFIX .. url .. "|h[" .. url .. "]|h|r"
+end
+
+-- The address at the start of a bare word ("discord.gg/abc," -> "discord.gg/abc"), or nil: a host ending in
+-- one of CX.TLDS, then an optional path (less a full stop or comma after it). A word holding a bracket or an
+-- escape (an item or quest link, a link made already) is never one.
+function CX.BareAddress(word)
+  local host = not word:find("[%[%]|]") and word:match("^[%w%-%.]+")
+  if not host then return nil end
+  host = host:gsub("%.+$", "")
+  local ending = host:match("%w%.(%a+)$")
+  if not (ending and CX.TLDS[ending:lower()]) then return nil end
+  local path = (word:sub(#host + 1):match("^/[^%s]*") or ""):gsub("[%.,!%?;:%)]+$", "")
+  return host .. path
+end
+
+-- A word with its bare address made a link (the rest of the word, a comma say, after it), or the word as it was.
+local function linkBare(word, color)
+  local url = CX.BareAddress(word)
+  if not url then return word end
+  return linkText(url, color) .. word:sub(#url + 1)
+end
+
+-- Whether a line may hold an address: "://", or a letter, a dot and two letters ("www.", "site.com").
+local function mayLink(text)
+  return text:find("://", 1, true) or text:find("%w%.%a%a")
+end
+
+-- A message with each web address made a clickable accent link (hidden text is returned as is). Only a line that
+-- may hold one (mayLink) is read, word by word.
 function CX.LinkURLs(text)
-  if ns.IsSecret(text) or type(text) ~= "string" then return text end
-  if not (text:find("://", 1, true) or text:find("www.", 1, true)) then return text end
+  if ns.IsSecret(text) or type(text) ~= "string" or not mayLink(text) then return text end
   local color = accentCode()
   for _, pattern in ipairs(CX.PATTERNS) do
-    text = text:gsub(pattern, function(url) return color .. "|H" .. PREFIX .. url .. "|h[" .. url .. "]|h|r" end)
+    text = text:gsub(pattern, function(url) return linkText(url, color) end)
   end
-  return text
+  return (text:gsub("%S+", function(word) return linkBare(word, color) end))
 end
 
 -- Chat filter: hands the game the message with its addresses linked (or unchanged; links off
@@ -153,13 +186,32 @@ function CX.ShortChannels(text)
   return (text:gsub("(|Hchannel:[^|]+|h)%[([^%]]+)%](|h)", function(link, label, close) return link .. "[" .. CX.ShortName(label) .. "]" .. close end))
 end
 
--- The line a window just added, with its channel tags short: the game's own
--- TransformMessages rewrites it (no addon code runs inside the game's chat handler).
-local function shortenAdded(frame, text)
-  if not CX.settings.shortChannels or ns.IsSecret(text) or type(text) ~= "string" then return end
-  local short = CX.ShortChannels(text)
-  if short == text then return end
-  frame:TransformMessages(function(message) return not ns.IsSecret(message) and message == text end, function(_, ...) return short, ... end)
+-- The start of the game's guild message of the day line ("Guild Message of the Day: "), or nil.
+local function motdStart()
+  return type(GUILD_MOTD_TEMPLATE) == "string" and GUILD_MOTD_TEMPLATE:match("^(.-)%%s") or nil
+end
+
+-- The guild message of the day line with its addresses linked (no chat filter sees it: the game adds it to the
+-- window itself); any other line as it is.
+function CX.LinkMotd(text)
+  local start = motdStart()
+  if not (CX.settings.links and start and start ~= "" and text:sub(1, #start) == start) then return text end
+  return CX.LinkURLs(text)
+end
+
+-- A line as Vanguard shows it: its channel tags short (switched on), and the guild message of the day linked.
+local function rewrite(text)
+  if CX.settings.shortChannels then text = CX.ShortChannels(text) end
+  return CX.LinkMotd(text)
+end
+
+-- The line a window just added, rewritten (rewrite): the game's own TransformMessages swaps it in
+-- (no addon code runs inside the game's chat handler). Hidden text is never read.
+local function rewriteAdded(frame, text)
+  if ns.IsSecret(text) or type(text) ~= "string" then return end
+  local shown = rewrite(text)
+  if shown == text then return end
+  frame:TransformMessages(function(message) return not ns.IsSecret(message) and message == text end, function(_, ...) return shown, ... end)
 end
 
 -- How many lines a wheel tick moves in all, and how many of them the game's own handler moves
@@ -184,7 +236,7 @@ end
 local function watchWindow(frame)
   if type(frame) ~= "table" or vgWatched[frame] then return end
   vgWatched[frame] = true
-  if type(frame.TransformMessages) == "function" and type(hooksecurefunc) == "function" then hooksecurefunc(frame, "AddMessage", ns.Guard("hook AddMessage", shortenAdded)) end
+  if type(frame.TransformMessages) == "function" and type(hooksecurefunc) == "function" then hooksecurefunc(frame, "AddMessage", ns.Guard("hook AddMessage", rewriteAdded)) end
   frame:HookScript("OnMouseWheel", wheel)
 end
 

@@ -1466,6 +1466,12 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 - Expect: `[2. Trade - City]` shows as `[2]`, `[1. General - Elwynn Forest]` as `[1]` and `[Guild]` as `[G]`, each in the channel's own colour with the rest of the line untouched; clicking the short tag still opens the channel. Unticked, the next line shows the game's full channel name. One plain tick moves four lines (count them against a fixed line), Ctrl goes to the oldest line, and each the other way down (to the newest). `/vg errors` is empty. [Needs in game: that the window's TransformMessages rewrites the line the AddMessage hook just saw, on the Forever client too; that the game's wheel handler moves three lines a tick (ScrollUtil's), so a plain tick is four lines and not more.]
 - If it fails, paste: `/vg errors` and one line as it shows, or how many lines a tick moved.
 
+### 15.6i Chat extras: Copy on another tab, and bare and guild links
+
+- Do: with a second docked tab (Trade, say) that has lines, click it and press the Copy tile, then Ctrl+C and paste into the chat box. Have a guild message of the day that holds an address ("discord.gg/abc") and `/reload`. Say "join discord.gg/abc, and see [an item link]" with a real item link, and "lvl 1.5 e.g. test".
+- Expect: the copy box is titled "Copy Trade (Ctrl+C)", holds that tab's lines (not General's), and opens scrolled to the newest line with all of it selected, so the paste holds every line. The guild message of the day shows "discord.gg/abc" as an accent link; in the said line "discord.gg/abc" is a link with the comma after it plain, the item link still shows its tooltip on click, and "1.5" and "e.g." stay plain. Clicking either address opens it in the copy box. `/vg errors` is empty. [Needs in game: that SetCursorPosition then HighlightText keeps the whole text selected and the box scrolled to the end on the Forever client; that the game adds the message of the day through the window's AddMessage with GUILD_MOTD_TEMPLATE's text.]
+- If it fails, paste: `/vg errors` and a screenshot of the copy box or the line.
+
 ## 16. Realm and ruleset
 
 ### 16.0 Data from the beta
