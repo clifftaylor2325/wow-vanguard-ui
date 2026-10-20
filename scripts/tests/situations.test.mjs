@@ -56,7 +56,7 @@ it("situations: joining a raid applies its override; leaving puts the base back 
   expect(spot(addon), "in a raid: the raid's spot").toEqual(["TOP", "TOP", 0, -60]);
   expect(addon.eval("return Vanguard_InfoStrip:GetScale()"), "and its scale").toBe(0.8);
   expect(dps(addon), "the DPS block switched on").toBe(true);
-  expect(addon.eval("return ns.GetModule('InfoStrip').texts.dps ~= nil"), "the strip repainted its blocks").toBe(true);
+  expect(addon.eval("return ns.GetModule('InfoStrip').fonts.dps ~= nil"), "the strip repainted its blocks").toBe(true);
   expect(addon.eval("return { ns.GetModule('Nameplates').settings.width, ns.GetModule('Nameplates').settings.castBar }"), "keys outside the allowlist are not applied").toEqual([130, true]);
   raid(addon, false);
   expect(spot(addon), "out of the raid: back at the default spot").toEqual(HOME);

@@ -204,7 +204,7 @@ export const STRIP_ENV = `
 `;
 
 // One info strip block: shown, its text and its color.
-export const block = (addon, key) => addon.eval(`local fs = ns.GetModule("InfoStrip").texts.${key} return { shown = fs:IsShown(), text = fs:GetText(), color = fs.__textColor }`);
+export const block = (addon, key) => addon.eval(`local fs = ns.GetModule("InfoStrip").fonts.${key} return { shown = fs:IsShown(), text = fs:GetText(), color = fs.__textColor }`);
 
 // Moves the test clock without running a frame (a long stretch of play).
 export const later = (addon, seconds) => addon.eval(`__wfgStub.now = __wfgStub.now + ${seconds}`);
