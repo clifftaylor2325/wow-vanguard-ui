@@ -217,6 +217,20 @@ local function undoTable()
   return s.undo
 end
 
+-- Keeps Vanguard's pixel-perfect scale as it was before the first apply (a screen's sizes turn it off).
+local function keepPixel(undo)
+  if undo.pixel ~= nil then return end
+  local theme = ns.Theme.Settings()
+  undo.pixel = { on = theme.pixelScale == true, multiple = tonumber(theme.pixelMultiple) or 0 }
+end
+
+-- Turns Vanguard's pixel-perfect scale back on, at its old multiple, when it was on before the first apply.
+local function restorePixel(kept)
+  if type(kept) ~= "table" or not kept.on then return end
+  ns.Theme.Settings().pixelMultiple = tonumber(kept.multiple) or 0
+  ns.Theme.SetPixelScale(true)
+end
+
 -- What apply changed, in one line.
 local function appliedLine(last, ok)
   local q = last.quality and (ok and string.format("Graphics Quality %d", last.quality + 1) or "not Graphics Quality (the client refused it)")
@@ -232,18 +246,20 @@ function G.Apply()
   if ns.InCombat() then return ns.Chat("Settings don't change in combat: try /vg graphics apply after the fight.") end
   if not set then return ns.Chat("This client can't change its settings.") end
   local undo = undoTable()
-  keep(undo, "useUiScale") keep(undo, "uiScale")
+  keep(undo, "useUiScale") keep(undo, "uiScale") keepPixel(undo)
   local ok = setAll(set, undo, last)
   ns.Setup.ApplyScreen(last.screen)
   ns.Chat(appliedLine(last, ok))
 end
 
--- Puts kept settings back, the details before Graphics Quality as the game's Options set them.
+-- Puts kept settings back, the details before Graphics Quality as the game's Options set them,
+-- then Vanguard's pixel-perfect scale.
 local function restore(set, undo)
   for name, v in pairs(undo) do
-    if v and name ~= "graphicsQuality" then pcall(set, name, v) end
+    if type(v) == "string" and name ~= "graphicsQuality" then pcall(set, name, v) end
   end
   if undo.graphicsQuality then pcall(set, "graphicsQuality", undo.graphicsQuality) end
+  restorePixel(undo.pixel)
 end
 
 -- /vg graphics undo: puts back what the last apply changed, out of combat.

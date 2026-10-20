@@ -197,11 +197,21 @@ local function importMatch(name, result)
   return "This string matches profile " .. name .. ", which this character already uses: nothing new to import."
 end
 
+-- Puts this player's own pixel-perfect switch and multiple in an imported profile's theme: like the
+-- display block they belong to the screen the string was made on, so that screen's never come along
+-- (Use its UI scale? then turns the switch off where the game's scale runs).
+local function ownPixelScale(data)
+  data.theme = type(data.theme) == "table" and data.theme or {}
+  local mine = ns.Theme.Settings()
+  data.theme.pixelScale, data.theme.pixelMultiple = mine.pixelScale, mine.pixelMultiple
+end
+
 -- A whole imported profile: saved under a free name (without its display block, which goes
--- in the result), and this character switches to it on reload; one that matches a profile
--- this account has uses that profile instead of making another copy.
+-- in the result, and with this player's pixel-perfect scale), and this character switches to it
+-- on reload; one that matches a profile this account has uses that profile instead of making another copy.
 local function importWhole(data, result)
   result.display = takeDisplay(data)
+  ownPixelScale(data)
   local match = ns.MatchingProfile(ns.StripPayload(data))
   if match then return importMatch(match, result) end
   local name = freeName("Imported")
