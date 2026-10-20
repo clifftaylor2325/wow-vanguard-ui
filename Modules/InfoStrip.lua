@@ -318,9 +318,23 @@ function IS.TEXT.clock()
   if t then return t, "text" end
 end
 
--- The day and date, "Tue 13 Oct".
+-- Day and month names for the realm's date, as date("%a %d %b") writes the computer's.
+IS.WEEKDAYS = { "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat" }
+IS.MONTHS = { "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec" }
+
+-- The realm's date ("Tue 13 Oct", C_DateAndTime) while the game's clock shows realm time, so the date beside
+-- the time is that time's day; nil while it shows local time or on a client without these helpers.
+local function realmDate()
+  local get = C_DateAndTime and C_DateAndTime.GetCurrentCalendarTime
+  if type(get) ~= "function" or type(_G.GameTime_GetTime) ~= "function" or ask("GetCVarBool", "timeMgrUseLocalTime") then return nil end
+  local d = get()
+  local day, month = IS.WEEKDAYS[ns.PlainNumber(d.weekday) or 0], IS.MONTHS[ns.PlainNumber(d.month) or 0]
+  if day and month and ns.PlainNumber(d.monthDay) then return string.format("%s %02d %s", day, d.monthDay, month) end
+end
+
+-- The day and date, "Tue 13 Oct": the day the time beside it belongs to.
 function IS.TEXT.date()
-  local t = ask("date", "%a %d %b")
+  local t = realmDate() or ask("date", "%a %d %b")
   if t then return t, "text" end
 end
 
@@ -461,8 +475,8 @@ function IS.PaintInvites()
   IS.invitesBack:SetShown(n > 0)
 end
 
--- The calendar button's invite count: the badge text over a dark backing, in its bottom-right
--- corner, as the backpack's free count on the bag bar (Modules/MenuStrip.lua).
+-- The calendar button's invite count: the badge text over a dark backing, in its bottom-right corner, in the
+-- backpack count's look (Modules/MenuStrip.lua; the strip is at the UI's scale, so no scale correction).
 local function addInvites(b)
   local pad, back = ns.GetModule("MenuStrip").COUNT_PAD, T.Snap(b:CreateTexture(nil, "OVERLAY", nil, 7))
   back:SetTexture(T.WHITE)

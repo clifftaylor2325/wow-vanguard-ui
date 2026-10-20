@@ -166,6 +166,18 @@ it("the info strip's time follows the game's clock (realm or local, 12 or 24 hou
   addon.eval("Vanguard_InfoStripClock.__scripts.OnLeave(Vanguard_InfoStripClock)");
   expect(addon.eval("return GameTooltip:IsShown()"), "and goes with the mouse").toBe(false);
 });
+it("the info strip's date is the day of the time beside it: the realm's date while the game's clock shows realm time", () => {
+  const addon = loggedIn(STRIP_ENV + `GameTime_GetTime = function() return "23:30" end
+    date = function(f) return f == "%a %d %b" and "Tue 14 Oct" or "05:30" end
+    __local = false GetCVarBool = function(name) return name == "timeMgrUseLocalTime" and __local end
+    C_DateAndTime = { GetCurrentCalendarTime = function() return __realm end }
+    __realm = { weekday = 2, monthDay = 3, month = 10, year = 2026 }`);
+  // The date block's text after the minute's tick, with lua run first.
+  const dateNow = (lua) => { addon.eval(lua + " ns.GetModule('InfoStrip').Paint('date')"); return block(addon, "date").text; };
+  expect(dateNow(""), "realm time: the realm's Monday, not the computer's Tuesday").toBe("Mon 03 Oct");
+  expect(dateNow("__local = true"), "local time: the computer's date").toBe("Tue 14 Oct");
+  expect(dateNow("__local = false __realm = { weekday = { __secret = true }, monthDay = 3, month = 10 }"), "a realm date the client hides: the computer's").toBe("Tue 14 Oct");
+});
 it("the info strip's calendar button counts the invites waiting, and is absent where the realm has no calendar", () => {
   const addon = loggedIn(STRIP_ENV + "__invites = 0 C_Calendar = { GetNumPendingInvites = function() return __invites end }");
   // The badge's text and whether its backing shows, after the game says the invites changed to n (Lua).
