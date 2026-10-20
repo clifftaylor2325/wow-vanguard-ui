@@ -39,12 +39,8 @@ GA.LOC_ART = { "blackBg", "RedLineTop", "RedLineBottom" }
 
 -- A movable spot for one of the game's alerts, with the alert kept centered on it.
 local function place(name)
-  local f, spot = _G[name], GA.SPOTS[name]
-  if type(f) ~= "table" or not f.SetPoint then return end
-  local holder = CreateFrame("Frame", "Vanguard_" .. name .. "Spot", UIParent)
-  holder:SetSize(spot[4], spot[5])
-  ns.Mover(holder, spot[1], spot[2], spot[3])
-  ns.Pin(f, function(frame) ns.GetModule("GameTools").FitCenter(frame, holder) end)
+  local tools = ns.GetModule("GameTools")
+  tools.PlaceSpot(name, GA.SPOTS[name], tools.FitCenter)
 end
 
 -- Hides a frame's named art parts. Hidden, not faded: the frame's own
