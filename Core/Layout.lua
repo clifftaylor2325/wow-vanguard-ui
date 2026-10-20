@@ -51,18 +51,19 @@ function L.Anchor(left, bottom, w, h, sw, sh)
 end
 
 -- The smallest shift (within the snap distance) that lines one of `edges` up
--- with one of `targets`; 0 when nothing is close.
+-- with one of `targets`; 0 when nothing is close. An exact line-up (a shift of 0)
+-- is kept: nothing after it replaces it.
 local function bestShift(edges, targets)
-  local best = 0
+  local best
   for _, e in ipairs(edges) do
     for _, t in ipairs(targets) do
       local d = t - e
-      if math.abs(d) <= L.SNAP_DISTANCE and (best == 0 or math.abs(d) < math.abs(best)) then
+      if math.abs(d) <= L.SNAP_DISTANCE and (not best or math.abs(d) < math.abs(best)) then
         best = d
       end
     end
   end
-  return best
+  return best or 0
 end
 
 -- Snap targets from other rects ({ left, bottom, w, h }) plus the screen's center lines.

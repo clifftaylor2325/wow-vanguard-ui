@@ -43,6 +43,9 @@ it("layout", () => {
   expect(JSON.stringify(snap(605, 250)) === JSON.stringify([600, 250]), "a left edge within 8 px snaps to another frame's right edge").toBeTruthy();
   expect(JSON.stringify(snap(700, 250)) === JSON.stringify([700, 250]), "nothing close, no snap").toBeTruthy();
   expect(JSON.stringify(snap(1000, 527)) === JSON.stringify([1000, 530]), "a center within 8 px snaps to the screen center").toBeTruthy();
+  // The left edge lines up exactly with one frame, and the right edge is 3 px from another: the exact line-up stays.
+  const exact = addon.eval("return { ns.Layout.Snap(500, 250, 100, 20, { { left = 500, bottom = 300, w = 100, h = 20 }, { left = 603, bottom = 600, w = 50, h = 20 } }, 1920, 1080) }");
+  expect(exact, "an exact line-up is not replaced by a near one").toEqual([500, 250]);
 });
 
 it("mover coordinates with no handle", () => {
