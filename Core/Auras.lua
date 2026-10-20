@@ -21,6 +21,10 @@ local T = ns.Theme
 local A = {}
 ns.Auras = A
 
+-- How many refused aura reads (A.Get) one pass over a unit steps past before it gives
+-- up: a vanilla unit's 16 debuff slots, so a unit the client hides whole costs 17 reads.
+A.REFUSED_LIMIT = 16
+
 -- Debuff type -> color token (anything else, including no type, is "bad").
 A.DISPEL_TOKENS = { Magic = "magic", Curse = "curse", Disease = "disease", Poison = "poison" }
 
@@ -70,21 +74,26 @@ local function probe(get, filter)
 end
 
 -- The filter the client accepts for `filter`, probed once per session (see probe);
--- a nil filter, or a client without the read, passes through unchanged.
+-- a nil filter, or a client without the read, passes through unchanged. While the
+-- client hides auras it may refuse the probe's read, which would take every word for
+-- an unknown one: the filter passes through unprobed until auras can be read again.
 function A.Filter(filter)
   local get = C_UnitAuras and C_UnitAuras.GetAuraDataByIndex
   if type(filter) ~= "string" or type(get) ~= "function" then return filter end
-  if knownFilters[filter] == nil then knownFilters[filter] = probe(get, filter) end
-  return knownFilters[filter]
+  if knownFilters[filter] == nil and not ns.AurasSecret() then knownFilters[filter] = probe(get, filter) end
+  return knownFilters[filter] or filter
 end
 
 -- The i-th aura on a unit through a client filter (with the words this client
--- rejects dropped, see A.Filter), or nil (no API, none, or an error).
+-- rejects dropped, see A.Filter), or nil (no API, or no aura there). A read the
+-- client refuses (an aura it hides from addons raises an error) gives nil, true:
+-- a refused index is not the end of the list.
 function A.Get(unit, i, filter)
   local get = C_UnitAuras and C_UnitAuras.GetAuraDataByIndex
   if type(get) ~= "function" then return nil end
   local ok, aura = pcall(get, unit, i, A.Filter(filter))
-  return ok and type(aura) == "table" and aura or nil
+  if not ok then return nil, true end
+  return type(aura) == "table" and aura or nil
 end
 
 -- The color token for a debuff type name ("Magic"...); "bad" for none or unknown.

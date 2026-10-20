@@ -8,7 +8,7 @@ const ON = "VanguardDB.profiles = { Default = { CooldownGlow = { glow = true } }
 // TEST-ONLY: the buff row's first item tracks aura 77 on the player.
 const ITEM = "BuffIconCooldownViewer.items[1].auraInstanceID = 77\n";
 
-// TEST-ONLY curves: a step curve, and a duration object that evaluates itself against one (a hidden answer with __hidden).
+// TEST-ONLY curves: a step curve, and a duration object (a userdata, as the client's) that evaluates itself against one (a hidden answer with __hidden).
 const CURVE_ENV = `
   Enum = Enum or {}
   Enum.LuaCurveType = { Step = 1 }
@@ -22,11 +22,11 @@ const CURVE_ENV = `
   local get = C_UnitAuras.GetAuraDuration
   C_UnitAuras.GetAuraDuration = function(unit, id)
     local d = get(unit, id)
-    if d then function d:EvaluateRemainingPercent(curve)
-      local y = curve:Evaluate(self:GetRemainingDuration() / self:GetTotalDuration())
+    if d == nil then return nil end
+    return __wfgUserdata({ EvaluateRemainingPercent = function(_, curve)
+      local y = curve:Evaluate(d:GetRemainingDuration() / d:GetTotalDuration())
       return __hidden and { __secret = true, n = y } or y
-    end end
-    return d
+    end })
   end
 `;
 
@@ -88,6 +88,22 @@ it("cooldown glow: where the client has curves, the duration object goes to the 
   addon.eval("BuffIconCooldownViewer.items[1]:Hide()");
   addon.advance(1);
   expect(lit(addon), "a hidden item has no ring lit").toBe(false);
+});
+
+it("cooldown glow: an aura whose times are hidden still lights through the client's duration object, a userdata", () => {
+  const HIDDEN_TIMES = `C_UnitAuras.GetAuraDuration = function()
+    return __wfgUserdata({ EvaluateRemainingPercent = function() return __wfgWorld.secret(__answer) end })
+  end
+`;
+  const addon = loggedIn(UNITS_ENV + TOOLS_ENV + CURVE_ENV + HIDDEN_TIMES + ITEM, { savedVariables: ON });
+  addon.world.addAura("player", { name: "TEST-ONLY Hidden", duration: { __secret: true }, expirationTime: { __secret: true }, auraInstanceID: 77 });
+  expect(addon.eval("return type(C_UnitAuras.GetAuraDuration('player', 77))"), "the client's duration object").toBe("userdata");
+  addon.eval("__answer = 1");
+  addon.advance(1);
+  expect(lit(addon), "the curve's hidden answer goes to the ring, which shows").toBe(true);
+  addon.eval("C_UnitAuras.GetAuraDuration = function() return __wfgUserdata({}) end");
+  addon.advance(1);
+  expect([lit(addon), addon.eval("return #ns.errors")], "an object without the method: dark, no error").toEqual([false, 0]);
 });
 
 it("cooldown glow: a hidden aura id or unit is never handed to the client (it refuses one from addons), so the ring stays dark with no error", () => {

@@ -637,13 +637,16 @@ local function rangeEvents()
   return C_ActionBar and type(C_ActionBar.EnableActionRangeCheck) == "function"
 end
 
--- Asks the client to report range changes for the button's slot (or checks range now).
+-- Asks the client to report range changes for the button's slot (or checks range now). When the
+-- slot changes (a page, a stance), the old slot's watch is turned off, one off for each on as
+-- Blizzard's buttons do, and the tint is asked for the new slot instead of kept from the old.
 function AB.WatchRange(b)
-  if rangeEvents() then
-    pcall(C_ActionBar.EnableActionRangeCheck, b.action, true)
-  else
-    updateRange(b)
-  end
+  if not rangeEvents() then return updateRange(b) end
+  if b.rangeSlot == b.action then return end
+  if b.rangeSlot then pcall(C_ActionBar.EnableActionRangeCheck, b.rangeSlot, false) end
+  b.rangeSlot = b.action
+  pcall(C_ActionBar.EnableActionRangeCheck, b.action, true)
+  updateRange(b)
 end
 
 -- ACTION_RANGE_CHECK_UPDATE: red when the slot checks range and is out of it.

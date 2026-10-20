@@ -139,14 +139,16 @@ local function fresh(aura)
 end
 
 -- Up to `max` auras through a group's filter that no earlier group shows, into `auras`.
+-- An index the client refuses is stepped over (up to A.REFUSED_LIMIT of them), so the
+-- auras after it still show; the first index with no aura ends the list.
 local function collect(unit, g)
   clear(auras)
-  local i = 1
-  local aura = unit and A.Get(unit, i, g.filter)
-  while aura and #auras < #g.icons do
-    if fresh(aura) then auras[#auras + 1] = aura end
+  local i, refusals = 1, 0
+  while unit and #auras < #g.icons and refusals <= A.REFUSED_LIMIT do
+    local aura, refused = A.Get(unit, i, g.filter)
+    if aura == nil and not refused then return end
+    if refused then refusals = refusals + 1 elseif fresh(aura) then auras[#auras + 1] = aura end
     i = i + 1
-    aura = A.Get(unit, i, g.filter)
   end
 end
 

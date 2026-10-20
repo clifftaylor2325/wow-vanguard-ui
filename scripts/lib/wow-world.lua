@@ -758,7 +758,8 @@ local function filtered(unit, filter)
 end
 world.auras = filtered
 
--- A duration object for an aura or cast: the client's "secret-safe" timer.
+-- A duration object for an aura or cast: the client's "secret-safe" timer. It is a
+-- userdata in the client (LuaDurationObject, ObjectType "Userdata"), so it is one here.
 local function durationObject(start, duration)
   local d = { start = start, duration = duration }
   -- Start, total, end and remaining time; IsZero and HasSecretValues as the client's.
@@ -768,7 +769,7 @@ local function durationObject(start, duration)
   function d:GetRemainingDuration() return math.max(0, self.start + self.duration - stub.now) end
   function d:IsZero() return self.duration == 0 end
   function d:HasSecretValues() return issecretvalue(self.duration) end
-  return d
+  return __wfgUserdata(d)
 end
 world.durationObject = durationObject
 

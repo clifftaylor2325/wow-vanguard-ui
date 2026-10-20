@@ -282,8 +282,22 @@ function runLib(L, name, nresults = 0) {
   runFile(L, path.join(root, "scripts/lib", name), `@${name}`, false, nresults);
 }
 
+// __wfgUserdata(fields): a full userdata that reads its fields and methods from
+// the table `fields`, as the client's script objects that are not frames (a
+// duration object is one: type() says "userdata", not "table").
+function newUserdata(L) {
+  lua.lua_newuserdata(L, 0);
+  lua.lua_createtable(L, 0, 1);
+  lua.lua_pushvalue(L, 1);
+  lua.lua_setfield(L, -2, to_luastring("__index"));
+  lua.lua_setmetatable(L, -2);
+  return 1;
+}
+
 // Loads the widget API list, the WoW stub, its layout, the world, the taint rules, and an empty addon namespace.
 function loadStub(L) {
+  lua.lua_pushjsfunction(L, newUserdata);
+  lua.lua_setglobal(L, to_luastring("__wfgUserdata"));
   runLib(L, "wow-widget-api.lua", 1);
   lua.lua_setglobal(L, to_luastring("__wfgWidgetApi"));
   runLib(L, "wow-stub.lua");

@@ -286,13 +286,14 @@ end
 
 -- Updating ------------------------------------------------------------------------------
 
--- Health bar value, color and text. Raw values go straight to the bar.
+-- Health bar value, color and text. Raw values go straight to the bar; the
+-- text may be secret, so it goes to the font string untested.
 function UF.UpdateHealth(f)
   local unit = f.unit
   f.health:SetMinMaxValues(0, UnitHealthMax(unit))
   T.SetBarValue(f.health, UnitHealth(unit))
   f.health:SetStatusBarColor(UF.HealthColor(unit))
-  f.healthText:SetText(UF.settings.healthText and UF.HealthText(unit) or "")
+  if UF.settings.healthText then f.healthText:SetText(UF.HealthText(unit)) else f.healthText:SetText("") end
 end
 
 -- Power bar value and color.

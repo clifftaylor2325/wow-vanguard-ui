@@ -105,10 +105,24 @@ local function watch(name)
   end
 end
 
--- Module entry point (Core/Modules.lua): watch the events and the rows, then paint.
+-- Repaints on the next frame, once for however many buttons changed in this one.
+local function refreshSoon()
+  ns.Soon("cooldown keys", CK.Refresh)
+end
+
+-- Repaints after a Vanguard bar button is pointed at another slot. A stance, form or
+-- Shift+number page lands a frame after its event (the secure state driver re-points
+-- bar 1 on its next update), so the bar, not the event, says when the keys moved.
+local function followButtons()
+  if type(hooksecurefunc) ~= "function" then return end
+  hooksecurefunc(ns.GetModule("ActionBars"), "UpdateButton", ns.Guard("hook UpdateButton keys", refreshSoon))
+end
+
+-- Module entry point (Core/Modules.lua): watch the events, the bars and the rows, then paint.
 function CK.Enable(settings)
   CK.settings = settings
   for _, event in ipairs(CK.EVENTS) do ns.On(event, ns.Guard("cooldown keys", CK.Refresh)) end
+  followButtons()
   for _, name in ipairs(CK.VIEWERS) do watch(name) end
   CK.Refresh()
 end

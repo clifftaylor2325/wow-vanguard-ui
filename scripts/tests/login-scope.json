@@ -29,6 +29,7 @@
       "a client that rejects every aura filter word keeps the filter and shows no auras",
       "target and focus auras",
       "your buffs and debuffs replace the game's, with weapon enchants in front",
+      "your buffs: an enchant's sweep keeps its full length when it moves to another cell",
       "your buffs: the enchant switch, and clients without enchant info",
       "your buffs: the game's external defensives and deadly debuff frames go with its buff frames"
     ],
@@ -101,7 +102,8 @@
     "scripts/tests/cooldownglow.test.mjs": [],
     "scripts/tests/cooldownkeys.test.mjs": [
       "cooldown keys: /vg cdmkeys and the options switch it at once; the row's layout hook repaints",
-      "cooldown keys: the key of the bar button that holds the spell, or a macro that casts it, follows moves and bindings"
+      "cooldown keys: the key of the bar button that holds the spell, or a macro that casts it, follows moves and bindings",
+      "cooldown keys: the labels follow bar 1 to its new page after a stance change or Shift+number"
     ],
     "scripts/tests/cooldownspage.test.mjs": [],
     "scripts/tests/core.test.mjs": [
@@ -205,7 +207,8 @@
       "raid tools: a burst of roster events in combat queues one update of the bar, not one per event"
     ],
     "scripts/tests/range.test.mjs": [
-      "range tint"
+      "range tint",
+      "range tint: a page change turns the old slot's watch off and does not keep its red"
     ],
     "scripts/tests/report.test.mjs": [
       "/vg report names the modules turned off and the skinned addons, with any that are off or failed"
@@ -265,6 +268,7 @@
       "unit frame health text settings apply at once",
       "unit frames",
       "unit frames on WoW Forever: levels, health percent, classification",
+      "unit frames: a hidden health text goes to the text as it is, and with health numbers off it is never asked for",
       "unit frames: a hidden percent text is handed on as it is, Dead wins over it, a plain percent still shows"
     ],
     "scripts/tests/unlock.test.mjs": [],

@@ -138,6 +138,14 @@ export const ACTIONS_ENV = `
   MainMenuBar = CreateFrame("Frame", "MainMenuBar", UIParent)
 `;
 
+// Runs bar 1's secure page snippet for page n as the client's state driver does, a frame
+// after the stance, form or Shift+number event that asked for it.
+export const pageBar1 = (addon, n) => addon.eval(`
+  local bar, kids = Vanguard_Bar1, {}
+  for _, w in ipairs(__wfgStub.frames) do if w.__parent == bar then kids[#kids + 1] = w end end
+  local env = { self = { SetAttribute = function() end, GetChildren = function() return unpack(kids) end }, newstate = ${Number(n)}, ipairs = ipairs, newtable = function(...) return { ... } end }
+  load(ns.GetModule("ActionBars").ON_PAGE, "page", "t", env)()`);
+
 // One action button's state.
 export const button = (addon, bar, i) => addon.eval(`
   local b = Vanguard_Bar${bar}Button${i}

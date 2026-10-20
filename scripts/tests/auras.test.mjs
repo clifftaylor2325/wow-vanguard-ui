@@ -310,6 +310,20 @@ it("your buffs and debuffs replace the game's, with weapon enchants in front", (
   expect(addon.eval("return GameTooltip:IsShown()"), "and leaving hides it; an empty cell shows nothing").toBe(false);
 });
 
+it("your buffs: an enchant's sweep keeps its full length when it moves to another cell", () => {
+  const addon = loggedIn(UNITS_ENV + ENGINE_ENV + WEAPONS_ENV + `GetTime = function() return 1000 end
+    __enchants[1] = { { hasEnchant = true, timeLeft = 1800000, enchantIconID = "TEST-ONLY-ICON-Oil" } }`);
+  addon.eval("__enchants[0][1].timeLeft = 300000 __enchants[1][1].timeLeft = 1200000");
+  addon.fire("UNIT_INVENTORY_CHANGED", "player");
+  expect(playerAuras(addon).cells[1], "the off hand, second: 1200 of 1800 seconds left").toMatchObject({ inv: 17, sweep: [400, 1800] });
+  addon.eval("__enchants[0] = nil");
+  addon.fire("UNIT_INVENTORY_CHANGED", "player");
+  expect(playerAuras(addon).cells[0], "the main hand's ends: the off hand moves to the first cell and keeps its 1800 s length").toMatchObject({ inv: 17, sweep: [400, 1800] });
+  addon.eval("__enchants[1][1].timeLeft = 1800000");
+  addon.fire("UNIT_INVENTORY_CHANGED", "player");
+  expect(playerAuras(addon).cells[0].sweep, "put on again: the sweep starts full").toEqual([1000, 1800]);
+});
+
 it("your buffs: the game's external defensives and deadly debuff frames go with its buff frames", () => {
   // TEST-ONLY the newer companions of the buff frames (Blizzard_BuffFrame on camelot and retail clients).
   const addon = loggedIn(UNITS_ENV + ENGINE_ENV + WEAPONS_ENV + `
@@ -416,6 +430,28 @@ it("fallback containers skip a UNIT_AURA that changes nothing they show, and re-
   expect(aura("{ updatedAuraInstanceIDs = { 99 } }")[0] > 0, "while it shows an aura whose id is hidden, every update reads again").toBe(true);
 });
 
+it("a fallback row steps over an aura the client refuses to read and still shows the ones after it", () => {
+  expectErrors(AURA_FALLBACK);
+  // TEST-ONLY: on the target, index 1 names an aura the client hides (its read raises, as the client's does) and index 2 a plain one.
+  const addon = loggedIn(UNITS_ENV + `__wfgStub.noAuraContainer = true
+    __ca = { ["HARMFUL|PLAYER"] = { { icon = "SECRET-DOT", auraInstanceID = 1 }, { icon = "MY-CURSE", auraInstanceID = 2 } } }
+    __reads = 0
+    C_UnitAuras = { GetAuraDataByIndex = function(unit, i, filter)
+      local a = (__ca[filter] or {})[i]
+      if unit ~= "player" then __reads = __reads + 1 end
+      if unit ~= "player" and ((a and a.icon == "SECRET-DOT") or __refuseAll) then error("TEST-ONLY: Auras cannot be accessed when secret while tainted") end
+      return a
+    end }`);
+  // The row's first two icons: shown and texture.
+  const row = () => addon.eval(`local g = ns.Auras.Container(UIParent, { point = { "TOPLEFT", UIParent, "BOTTOMLEFT", 0, -3 }, grow = "RIGHT", growY = "DOWN", lineSize = 60,
+      groups = { { filter = "HARMFUL|PLAYER", max = 3, size = 20, debuff = true } } }, "target").groups[1]
+    return { g.icons[1]:IsShown() and g.icons[1].icon.__texture, g.icons[2]:IsShown() }`);
+  expect(row(), "the plain aura at index 2 takes the first icon").toEqual(["MY-CURSE", false]);
+  const errors = addon.eval("__refuseAll = true __reads = 0 return #ns.errors");
+  expect([row(), addon.eval("return #ns.errors")], "every read refused: no icons, no error").toEqual([[false, false], errors]);
+  expect(addon.eval("return __reads"), "and the pass gives up after 16 refusals").toBe(17);
+});
+
 // TEST-ONLY client whose aura read errors on the words CROWD_CONTROL and RAID_IN_COMBAT, as a client that doesn't know them would.
 const REJECTING_AURAS = `__wfgStub.noAuraContainer = true
   __reads = {}
@@ -464,6 +500,21 @@ it("a client that rejects every aura filter word keeps the filter and shows no a
   expect(addon.eval('return ns.Auras.Get("target", 1, "HARMFUL|CROWD_CONTROL")'), "and the read gives no aura").toBe(null);
   expect(addon.eval('local k, text = 0 for _, e in ipairs(ns.errors) do if e.text:find("aura filter HARMFUL|CROWD_CONTROL", 1, true) then k, text = k + 1, e.text end end return { k, text }'))
     .toEqual([1, "aura filter HARMFUL|CROWD_CONTROL: no part of it is known to this client"]);
+});
+
+it("an aura filter first asked for while the client hides auras is probed once they can be read, with no false report", () => {
+  expectErrors("aura filter HARMFUL|CROWD_CONTROL: this client rejects it; reading HARMFUL");
+  const addon = loggedIn(UNITS_ENV + REJECTING_AURAS + `
+    local read = C_UnitAuras.GetAuraDataByIndex
+    C_UnitAuras.GetAuraDataByIndex = function(...)
+      if __wfgWorld.aurasSecret then error("TEST-ONLY: Auras cannot be accessed when secret while tainted") end
+      return read(...)
+    end`);
+  addon.eval("__wfgWorld.aurasSecret = true");
+  expect(addon.eval('return { ns.Auras.Filter("HARMFUL|RAID"), ns.Auras.Filter("HARMFUL|CROWD_CONTROL") }'), "auras hidden: both pass through as they are").toEqual(["HARMFUL|RAID", "HARMFUL|CROWD_CONTROL"]);
+  expect(addon.eval('return __errs("aura filter")'), "and nothing is reported").toBe(0);
+  addon.eval("__wfgWorld.aurasSecret = false");
+  expect(addon.eval('return { ns.Auras.Filter("HARMFUL|RAID"), ns.Auras.Filter("HARMFUL|CROWD_CONTROL") }'), "readable again: probed then, the unknown word alone dropped").toEqual(["HARMFUL|RAID", "HARMFUL"]);
 });
 
 it("aura filters pass through on a client without the aura read", () => {

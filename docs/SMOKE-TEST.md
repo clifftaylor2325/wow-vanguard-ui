@@ -394,6 +394,12 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Expect: debuffs under the target and focus frames, buffs above them, wrapping at the frame width, with timers off by default.
 - If it fails, paste: a screenshot, `/vg status` and `/vg errors`. [After P0.3 and P0.12: a rejected aura filter word is listed in `/vg errors`.]
 
+### 7.1a Weapon enchant sweeps when one runs out
+
+- Do: as a rogue or shaman, put a poison or imbue (or a sharpening stone or oil) on both weapons, the main hand's a few minutes before the off hand's. Watch the two enchant cells left of your buffs as the main hand's runs out.
+- Expect: when the main hand's enchant ends, the off hand's cell moves into the first place and its dark sweep keeps the share of time it showed before (it does not jump back to full). Putting an enchant on again starts its sweep full. `/vg errors` stays empty.
+- If it fails, paste: a screenshot before and after the main hand's enchant ends.
+
 ### 7.2 Cast bars
 
 - Do: cast a spell with a long cast time, and have a mob cast at you.
@@ -453,6 +459,12 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Do: take a quest that wants kills or items from mobs (for example "Kill 8 Wolves"), stand where those mobs are with enemy nameplates on, and look at their plates. Kill one, finish the quest's count, then abandon the quest. Target one of the mobs and type `/vg guide probe`.
 - Expect: a small gold `!` right of the name on the plates of mobs the quest needs, and none on other mobs; it follows the count (within a moment of a kill's progress) and goes when the quest is done or abandoned. The probe's `C_TooltipInfo.GetUnit` line reads `present, tooltip data, N lines` with a target, `not called (no target)` without. Under `/vg` → Nameplates, "A gold ! by units your quests need" off hides the marks at once. [Needs in game: whether Forever returns quest title and objective lines in the unit's tooltip data (`C_TooltipInfo.GetUnit`) on nameplate units, in and out of combat, and whether a finished objective still carries its line (the mark would stay until the quest is handed in); the game's own `C_QuestLog.UnitIsRelatedToActiveQuest` answer is used first when it says yes.]
 - If it fails, paste: a screenshot with the mob's plate and its tooltip, the probe line, and `/vg errors`.
+
+### 7.3b Your debuffs on a plate drawn mid-fight
+
+- Do: in a dungeon, pull a big pack so that more than 40 plates have been drawn (or come back to a pull after a long run), and put your damage-over-time debuff on a mob whose plate appeared during the fight and that already carries another player's or the mob's own debuffs.
+- Expect: your debuff shows on that plate (Vanguard's own icons) even when the game hides the debuffs before it, and `/vg errors` stays empty. [Needs in game: whether the client refuses a hidden aura's read one aura at a time (then later auras still show) or for the whole unit (then the plate shows none until the fight ends, as before).]
+- If it fails, paste: a screenshot of the plate and `/vg errors`.
 
 ### 7.4 Nameplates in a crowd
 
@@ -679,6 +691,12 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Do: on a warrior, druid or rogue, change stance, form or stealth out of combat, then again in a fight; also press Shift+2 and Shift+1.
 - Expect: bar 1's icons change with each stance, form or stealth and with Shift+number, in and out of combat, and the button casts what it shows. This holds whether `/vg status` says `secure snippets: yes` or `no` (with `no`, bar 1 pages through the game's own page attribute).
 - If it fails, paste: your class, what you changed, what the bar showed, `/vg status` and `/vg errors`.
+
+### 10.3a The range tint after a page change
+
+- Do: with a ranged attack or spell on bar 1 button 1 on both pages, stand out of its range of a target so the icon is red, then change stance, form or stealth (or press Shift+2) so bar 1 shows another page, walk into range on the new page's spell, and change back.
+- Expect: each page's icon is red only while its own action is out of range, right after the page changes; coming back does not keep the other page's red. `/vg errors` stays empty. [Needs in game: that IsActionInRange answers for the new page's slot at once, in combat too.]
+- If it fails, paste: your class, the spells, what the icon showed, and `/vg errors`.
 
 ### 10.4 Keybind mode on the action bars
 
@@ -1597,11 +1615,23 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 - Expect: chat says "Cooldown glow is off: turn the module on in the options first." and `/vg errors` stays empty.
 - If it fails, paste: `/vg errors`.
 
+### 28.1b The glow in a dungeon fight
+
+- Do: with `/vg cdmglow on` and a heal-over-time buff tracked in the manager's buff row, enter a dungeon, pull a pack and cast the buff on yourself; let it run under 30 percent left while still fighting.
+- Expect: the glow ring lights under the share in the fight too (where the game hides the aura's times from addons, the game's own curve answers), and goes out when the buff is renewed or ends. `/vg errors` stays empty. [Needs in game: that `/run local d = C_UnitAuras.GetAuraDuration("player", <id>) print(type(d))` prints `userdata`, and that the ring lights in instanced combat.]
+- If it fails, paste: `/vg errors`.
+
 ### 28.2 Key text on the manager's icons
 
 - Do: with the game's Cooldown Manager on and Vanguard's action bars on, put a spell that is in the manager's essential row on a Vanguard bar button with a key (say Shift-3). Type `/vg cdmkeys on`. Then move the spell to another button, change its key, and take it off the bars. Repeat once with the spell inside a macro.
 - Expect: the spell's icon shows "S3" in its top-right corner, over the cooldown sweep and clear of the charge count; it follows the move and the new key and goes blank once the spell is off the bars. A spell on no Vanguard bar shows nothing. `/vg cdmkeys off` clears the labels. In combat, nothing breaks and the labels stay put.
 - If it fails, paste: `/vg errors`, and what `/run local i=EssentialCooldownViewer:GetItemFrames()[1] print(i and i.GetSpellID and i:GetSpellID())` prints.
+
+### 28.2a Key text after a stance, form or page change
+
+- Do: with `/vg cdmkeys on`, put a spell from the manager's essential row on a bar 1 button with a key, and a different spell from the manager on the same button of another page (a warrior's other stance, a druid's form, a rogue's stealth bar, or Shift+2's page). Change stance, form or page, out of combat and then in combat, and back.
+- Expect: the label moves to whichever spell bar 1's button holds on the page now showing, within a frame of the change, and back when you return. `/vg errors` stays empty.
+- If it fails, paste: `/vg errors`, and which page and button you used.
 
 ## 29. Cooldown gaps
 

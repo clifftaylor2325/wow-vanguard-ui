@@ -116,6 +116,13 @@ it("shows totems that are down", () => {
   expect(shown(on("GetTotemInfo = nil")).length, "a client without totems adds nothing").toBe(1);
 });
 
+it("a totem slot whose 'down' answer the client hides adds nothing and raises nothing", () => {
+  const addon = on(`__totems[2] = { 300, 60 }
+    local real = GetTotemInfo
+    GetTotemInfo = function(slot) local have, name, start, length, icon = real(slot) return __wfgWorld.secret(have), name, start, length, icon end`);
+  expect([shown(addon).filter((c) => c.icon.includes("Totem")), addon.eval("return #ns.errors")], "a hidden answer is never compared: no totem").toEqual([[], 0]);
+});
+
 it("leaves totems to the class bars when they show them", () => {
   const addon = on("__totems[1] = { 300, 60 }");
   expect(shown(addon).filter((c) => c.icon.includes("Totem")).length, "shown until the class bars take over").toBe(1);
