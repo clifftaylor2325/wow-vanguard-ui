@@ -110,6 +110,23 @@ end
 world.viaGlobal = viaGlobal
 
 C_CVar = { GetCVar = viaGlobal("GetCVar"), SetCVar = viaGlobal("SetCVar"), GetCVarBool = viaGlobal("GetCVarBool") }
+-- Bitfield CVars (CVarDocumentation.lua): world.cvarBits[name][index] by lua index, as the
+-- client keeps them packed in the CVar's string. nil for a CVar the client lacks.
+world.cvarBits = { nameplateInfoDisplay = {} }
+-- The bitfield functions, kept here too for a test whose own C_CVar replaces the table.
+world.cvarBitfield = {
+  -- One bit of a bitfield CVar, or nil when the client lacks the CVar.
+  GetCVarBitfield = function(name, index)
+    local bits = world.cvarBits[name]
+    if bits then return bits[index] == true end
+  end,
+  -- Sets one bit of a bitfield CVar (the client fires CVAR_UPDATE; tests fire it themselves).
+  SetCVarBitfield = function(name, index, value)
+    world.cvarBits[name] = world.cvarBits[name] or {}
+    world.cvarBits[name][index] = value == true
+  end,
+}
+C_CVar.GetCVarBitfield, C_CVar.SetCVarBitfield = world.cvarBitfield.GetCVarBitfield, world.cvarBitfield.SetCVarBitfield
 
 -- Sounds are recorded, not played.
 function PlaySound(id) world.sounds[#world.sounds + 1] = id end
@@ -161,6 +178,7 @@ Enum = {
   CustomAuraButtonDispelTypeTextureStyle = { PreserveAsset = 0, Flat = 1 },
   DurationTextBindingProperty = { RemainingDuration = 0, TotalDuration = 1 },
   LuaCurveType = { Linear = 0, Step = 1 },
+  NamePlateInfoDisplay = { None = 0, CurrentHealthPercent = 1, CurrentHealthValue = 2, RarityIcon = 3 },
   NumericRuleFormatRounding = { Down = 0, Up = 1, Nearest = 2 },
   PlayerSwingType = { MainHand = 0, OffHand = 1, Ranged = 2 },
   SpellBookSpellBank = { Player = 0, Pet = 1 },
@@ -217,6 +235,8 @@ world.popups = {}
 -- (wow-taint.lua adds the panel manager's combat refusal).
 function StaticPopup_Show(name, ...) world.popups[name] = { ... } return world.popups[name] end
 function StaticPopup_Hide(name) world.popups[name] = nil end
+-- A prompt frame of its own shown as a popup (the role check, a queue): Blizzard_StaticPopup/StaticPopup.lua.
+function StaticPopupSpecial_Show(frame) frame:Show() end
 function ShowUIPanel(frame) if frame and frame.Show and not frame:IsShown() then frame:Show() end end
 function HideUIPanel(frame) if frame and frame.Hide then frame:Hide() end end
 
