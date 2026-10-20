@@ -10,6 +10,32 @@
 local ADDON, ns = ...
 
 ns.WHATS_NEW = {
+  { version = "0.7.2", groups = {
+    { module = "Windows", label = "Look and windows", items = {
+      { text = "Window buttons (close, minimize, maximize, back) show only their mark at rest; under the mouse a grey rounded tile appears and the close cross turns vermilion." },
+      { text = "The world map's breadcrumbs and their arrows are one control, the inbox Prev and Next captions sit clear of their arrows, and the Spellbook's category icons fill their tiles." },
+      { text = "The character pane's tabs, fold chevrons and rows take the theme, reputation rows read their state once the game has filled them, and the Settings window's Graphics box sits under its tabs with centred tab labels." },
+      { text = "The social window shows status in words with the presence dot centred on the name." },
+    } },
+    { module = "Chat", label = "Chat", items = {
+      { text = "Chat tabs sit over the panel in the tab bar, after the game's own dock layout." },
+      { text = "Chat polish: the frame, tabs, edit box, text fade, find box and bubbles; the edit box sits under the panel with a rail in the channel's colour." },
+      { text = "The Combat Log's filter strip sits in a band under the bar, and the copy box and the find box never stack." },
+    } },
+    { module = "UnitFrames", label = "Unit frames and HUD", items = {
+      { text = "A grey X and a grey nameplate bar mark mobs another player has tagged; mobs you tagged keep the green check." },
+      { text = "Scaled action bars touch in the bottom stack, and in Edit Mode the handles keep a dialog's layer and bars stack on whole pixels." },
+    } },
+    { module = "Map", label = "Map and minimap", items = {
+      { text = "On a round minimap, quest marks, the zone name and the rim buttons stay on the map." },
+      { text = "With OpenMap loaded, Vanguard's map extras step aside: no cursor spot on the coordinates line and no quest-start pins. The Map page says so." },
+    } },
+    { module = "Other", label = "Safety and tools", items = {
+      { text = "A window drag held as a fight starts ends before the lockdown, popups keep their own layout, Forever's addon list is dressed, and the social side windows are fixed." },
+      { text = "Profiles: a backup never overwrites another character's profile, swapping back to a spec with no profile undoes the staged switch, and a settings restore reads its backup the way an import does." },
+      { text = "Hiding the red error line keeps the yellow info lines, and an options search hit marks its row when the window opens again." },
+    } },
+  } },
   { version = "0.7.1", groups = {
     { module = "Chat", label = "Chat", items = {
       { text = "The chat window is one rounded panel with a tab bar, tabs you can always see and its side buttons stacked." },
