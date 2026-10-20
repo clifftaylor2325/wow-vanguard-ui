@@ -4,11 +4,11 @@ Pick by who you are. The behaviour spec for the whole addon is the root [README.
 
 ## Feature pages (the behaviour spec)
 
-- [Look and layout](features/look-and-layout.md)
+- [Look and theme](features/look-and-layout.md)
 - [Unit frames and nameplates](features/unit-frames.md)
 - [Raid frames and click casting](features/raid-frames.md)
 - [Action bars and cooldowns](features/action-bars.md)
-- [Game windows](features/game-windows.md)
+- [Game windows and extras](features/game-windows.md)
 - [Combat tools](features/combat-tools.md)
 - [Chat](features/chat.md)
 - [Map, minimap, bags and more](features/map-and-minimap.md)
