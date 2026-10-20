@@ -33,7 +33,7 @@ it("/vg probe: one run opens a report with a section per question and reads each
   addon.world.setUnit("target", { name: "TEST-ONLY Wolf", hp: 100, maxhp: 100, reaction: 2 });
   addon.slash("probe");
   const text = reportText(addon);
-  for (const title of ["== Client", "== SavedVariables round trip", "== New-quest flag", "== Group listing", "== Secure paging", "== Realm and name format", "== Colour-blind mode CVars", "== C_Secrets predicates", "== Restrictions and lockdown", "== Navigation", "== Undocumented on Forever", "== Guide reads"]) {
+  for (const title of ["== Client", "== SavedVariables round trip", "== New-quest flag", "== Group listing", "== Secure paging", "== Realm and name format", "== Colour-blind mode CVars", "== C_Secrets predicates", "== Restrictions and lockdown", "== Navigation", "== Undocumented on Forever", "== Quest and map reads", "== Party, marks and bosses", "== Bars and strips"]) {
     expect(text, title).toContain(title);
   }
   expect(lineOf(text, "GetCVar(colorblindMode)"), "the colour-blind CVar is read and printed").toMatch(/present, /);
@@ -64,13 +64,13 @@ it("/vg probe: the report is kept in SavedVariables and the next run finds the m
 it("/vg probe last: with nothing saved it says so", () => {
   const addon = loggedIn();
   addon.slash("probe last");
-  expect(chatHas(addon, /no saved report yet/), "a line, no box").toBe(true);
+  expect(chatHas(addon, /nothing saved yet/), "a line, no box").toBe(true);
 });
-it("/vg probe: in combat it refuses, and chat prints the lines when asked", () => {
+it("/vg probe: in combat it takes only the party reads, and chat prints the lines when asked", () => {
   const addon = loggedIn(PROBE_ENV);
   setCombat(addon, true);
   addon.slash("probe");
-  expect(chatHas(addon, /run it out of combat/), "refused").toBe(true);
+  expect(chatHas(addon, /party, mark and boss reads taken in this fight/), "the fight run").toBe(true);
   expect(addon.eval("return ns.Probe.Paging()"), "the secure frame is left alone in combat").toBe("skipped (in combat)");
   setCombat(addon, false);
   addon.slash("probe chat");
@@ -159,4 +159,125 @@ it("/vg probe: anything else prints the usage", () => {
   const addon = loggedIn();
   addon.slash("probe now");
   expect(chatHas(addon, /Usage: \/vg probe \[chat\|fight\|last\]/), "the usage line").toBe(true);
+});
+
+// TEST-ONLY quest reads and a log with two quests, one selected.
+const QUEST_ENV = `
+  __wfgWorld.addQuest({ questID = 90061, title = "TEST-ONLY Boars", level = 9 })
+  __wfgWorld.addQuest({ questID = 90062, title = "TEST-ONLY Bears", level = 10 })
+  C_QuestLog.GetSelectedQuest = function() return 90062 end
+  C_QuestLog.GetAllCompletedQuestIDs = function() return { 90001, 90002 } end
+  C_QuestLog.IsQuestFlaggedCompleted = function(id) return id == 90001 end
+  C_QuestLog.IsQuestFlaggedCompletedOnAccount = function() return __wfgWorld.secret(true) end
+  C_QuestLog.GetRequiredMoney = function(id) return id == 90062 and 500 or 0 end
+  C_QuestLog.GetSuggestedGroupSize = function() return 3 end
+  C_QuestLog.IsFailed = function() return false end
+`;
+it("/vg probe: the quest reads ask about a done quest and the selected one, and say which", () => {
+  const addon = loggedIn(PROBE_ENV + QUEST_ENV);
+  addon.slash("probe");
+  const text = reportText(addon);
+  expect(lineOf(text, "asked about:"), "the two quests by id").toMatch(/done quest 90001, selected quest 90062$/);
+  expect(lineOf(text, "C_QuestLog.GetNumQuestLogEntries"), "both of the log's counts").toMatch(/present, number \d+, number \d+/);
+  expect(lineOf(text, "C_QuestLog.IsQuestFlaggedCompleted(90001)"), "this character's flag on the done quest, labelled with its id").toMatch(/present, boolean true/);
+  expect(lineOf(text, "C_QuestLog.IsQuestFlaggedCompletedOnAccount(90001)"), "a hidden account flag").toMatch(/present, hidden \(\w+\)$/);
+  expect(lineOf(text, "C_QuestLog.GetRequiredMoney(90062)"), "money on the selected quest").toMatch(/present, number 500/);
+  expect(lineOf(text, "C_QuestLog.GetSuggestedGroupSize"), "group size").toMatch(/present, number 3/);
+  expect(lineOf(text, "C_QuestLog.IsRepeatableQuest"), "a read the client lacks").toMatch(/missing/);
+  expect(lineOf(text, "GetQuestLogRewardXP(90061)").length, "the first quest's reward XP").toBeGreaterThan(0);
+  expect(lineOf(text, "GetQuestLogRewardXP(90062)").length, "and the second's").toBeGreaterThan(0);
+});
+it("/vg probe: with nothing selected or done, the quest reads say why they were not called", () => {
+  const addon = loggedIn(PROBE_ENV);
+  addon.eval("C_QuestLog.GetSelectedQuest = function() return 0 end C_QuestLog.GetAllCompletedQuestIDs = nil C_QuestLog.GetRequiredMoney = function() return 0 end");
+  addon.slash("probe");
+  let text = reportText(addon);
+  expect(lineOf(text, "asked about:"), "none of either").toMatch(/done quest none, selected quest none \(click a quest in the log\)/);
+  expect(lineOf(text, "C_QuestLog.GetRequiredMoney"), "not called").toMatch(/not called \(no selected quest\)/);
+  addon.eval("ns.GuideData.ARGS.done = function() error('TEST-ONLY args') end");
+  addon.slash("probe");
+  text = reportText(addon);
+  expect(lineOf(text, "asked about:"), "an error counts as none").toMatch(/done quest none/);
+  expect(lineOf(text, "last flight map:").length, "and the section goes on").toBeGreaterThan(0);
+});
+it("/vg probe: the last flight map opened is named by its system and the window that showed", () => {
+  const addon = loggedIn(PROBE_ENV);
+  addon.slash("probe");
+  expect(lineOf(reportText(addon), "last flight map:"), "none yet").toMatch(/none opened this session/);
+  addon.eval("CreateFrame('Frame', 'TaxiFrame', UIParent):Show()");
+  addon.fire("TAXIMAP_OPENED", 1);
+  addon.slash("probe");
+  expect(lineOf(reportText(addon), "last flight map:"), "before the windows are read").toMatch(/system number 1, windows not read/);
+  addon.advance(1);
+  addon.slash("probe");
+  expect(lineOf(reportText(addon), "last flight map:"), "the window that showed").toMatch(/system number 1, TaxiFrame shown, FlightMapFrame missing/);
+  addon.eval("TaxiFrame:Hide()");
+  addon.fire("TAXIMAP_OPENED", addon.world.secret(1));
+  addon.advance(1);
+  addon.slash("probe");
+  expect(lineOf(reportText(addon), "last flight map:"), "a hidden system and a hidden window").toMatch(/system hidden \(\w+\), TaxiFrame hidden/);
+});
+it("/vg probe: party health, the raid mark and the boss unit print plain or hidden, with the type", () => {
+  const addon = loggedIn(PROBE_ENV);
+  addon.world.setUnit("party1", { name: "TEST-ONLY Ally", hp: 50, maxhp: 100 });
+  addon.eval("UnitHealthMissing = function() return __wfgWorld.secret(50) end GetRaidTargetIndex = function() return 8 end");
+  addon.slash("probe");
+  const text = reportText(addon);
+  expect(lineOf(text, "UnitExists(party1)"), "the party member is there").toMatch(/present, boolean true/);
+  expect(lineOf(text, "UnitHealthMissing(party1)"), "a hidden return names its type").toMatch(/present, hidden \(\w+\)$/);
+  expect(lineOf(text, "GetRaidTargetIndex(target)"), "a plain mark").toMatch(/present, number 8/);
+  expect(lineOf(text, "UnitExists(boss1)"), "no boss out of a fight").toMatch(/present, /);
+  expect(text, "the section says it ran out of combat").toMatch(/== Party, marks and bosses\n\s+in combat: false/);
+});
+it("/vg probe in a fight: each run is kept as a block, shown by last after the report", () => {
+  const addon = loggedIn(PROBE_ENV);
+  setCombat(addon, true);
+  addon.slash("probe chat");
+  expect(chatHas(addon, /in combat: true/), "chat carries the lines when asked").toBe(true);
+  setCombat(addon, false);
+  expect(addon.eval("return VanguardDB.probe"), "the round trip's marker is left to the full run").toBeNull();
+  addon.slash("probe last");
+  expect(reportText(addon), "a fight run alone can be shown").toMatch(/== In a fight \(\/vg probe\), \d+/);
+  addon.slash("probe");
+  setCombat(addon, true);
+  addon.slash("probe");
+  setCombat(addon, false);
+  addon.slash("probe last");
+  let text = reportText(addon);
+  expect(text, "the report comes first").toMatch(/^Vanguard probe report/);
+  expect(text.match(/== In a fight/g)?.length, "both fight runs of this session are kept").toBe(2);
+  expect(text, "each says it ran in combat").toMatch(/In a fight[^\n]*\n\s+in combat: true\n\s+IsInInstance/);
+  addon.eval("ns.Probe.COMBAT_MAX = 1");
+  setCombat(addon, true);
+  addon.slash("probe");
+  expect(addon.eval("return #VanguardDB.probeFights"), "the oldest run goes past the cap, whole").toBe(1);
+  setCombat(addon, false);
+  addon.eval("ns.Probe.session = 'another'");
+  addon.slash("probe");
+  addon.slash("probe last");
+  expect(reportText(addon), "a new report drops an earlier session's fight runs").not.toMatch(/== In a fight/);
+});
+it("/vg probe: the bars' reads: CVar defaults, the bar button's cooldown numbers and the watched faction", () => {
+  const addon = loggedIn(PROBE_ENV);
+  addon.eval("GetCVarDefault = function(name) return name == 'countdownForCooldowns' and '1' or '0' end");
+  addon.slash("probe");
+  let text = reportText(addon);
+  expect(lineOf(text, "GetCVarDefault(countdownForCooldowns)"), "a default").toMatch(/present, '1'/);
+  expect(lineOf(text, "GetCVarDefault(timeMgrUseMilitaryTime)"), "the clock's").toMatch(/present, '0'/);
+  expect(lineOf(text, "bar button cooldown:"), "the harness has no getter").toMatch(/GetHideCountdownNumbers missing|no Vanguard bar button/);
+  expect(lineOf(text, "watched faction:"), "nothing watched").toMatch(/none watched/);
+  addon.eval(`local AB = ns.GetModule("ActionBars") AB.buttons[1] = { cooldown = { GetHideCountdownNumbers = function() return false end } }
+    C_Reputation.GetWatchedFactionData = function() return { reaction = 8, currentReactionThreshold = 42000, nextReactionThreshold = 42000, currentStanding = __wfgWorld.secret(42999) } end`);
+  addon.slash("probe");
+  text = reportText(addon);
+  expect(lineOf(text, "bar button cooldown:"), "the getter's answer").toMatch(/GetHideCountdownNumbers: present, boolean false/);
+  expect(lineOf(text, "watched faction:"), "the thresholds, the standing hidden").toMatch(/reaction number 8, thresholds number 42000 to number 42000, standing hidden/);
+  addon.eval(`ns.GetModule("ActionBars").buttons[1] = nil C_Reputation.GetWatchedFactionData = nil`);
+  addon.slash("probe");
+  text = reportText(addon);
+  expect(lineOf(text, "bar button cooldown:"), "no button").toMatch(/no Vanguard bar button/);
+  expect(lineOf(text, "watched faction:"), "no read").toMatch(/GetWatchedFactionData missing/);
+  addon.eval("C_Reputation.GetWatchedFactionData = function() error('TEST-ONLY faction') end");
+  addon.slash("probe");
+  expect(lineOf(reportText(addon), "watched faction:"), "an error is a line").toMatch(/error .*TEST-ONLY faction/);
 });
