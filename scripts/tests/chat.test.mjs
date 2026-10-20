@@ -1880,3 +1880,13 @@ describe("chat tabs: a floating whisper window whose name the client hides", () 
     expect(addon.eval("return ns.GetModule('Chat').frames[ChatFrame11] ~= nil"), "the whisper window opened after it is skinned").toBe(true);
   });
 });
+
+describe("chat bar tiles: Chat switched on under Modules without the reload", () => {
+  it("the Copy switch makes its tile in the loose spot, with no error", () => {
+    const addon = loggedIn(CLICK_LUA, { savedVariables: "VanguardDB.profiles = { Default = { modules = { Chat = false }, ChatExtras = { copy = false } } }" });
+    // What the Modules page's Chat switch does: the flag only, the module runs after the reload.
+    addon.eval('ns.SetModuleEnabled("Chat", true) ns.Options.NeedReload() ns.Options.Show("chat")');
+    expect(addon.eval(`return __click("Copy button in the chat's tab bar")`), "the row is there").toBe(true);
+    expect(addon.eval("local b = ns.GetModule('ChatExtras').copyButton return { b ~= nil, b and b:GetParent() == ChatFrame1, #ns.errors }"), "made over the window's top right, nothing filed").toEqual([true, true, 0]);
+  });
+});

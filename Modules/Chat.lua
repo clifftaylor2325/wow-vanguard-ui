@@ -348,11 +348,12 @@ end
 
 -- A glyph tile (the side buttons' window control, 20 x 20) in the tab bar's right end, in the slot
 -- CH.BAR_BUTTONS gives its label (Copy at the end, Find left of it; the shown ones close up, and the
--- tab dock ends before the furthest). Its label is its tooltip. With Chat switched off the bar isn't
--- drawn, so it sits over the window's top right instead. Called by Modules/ChatExtras.lua and
--- Modules/ChatWindows.lua, which call CH.PlaceBarButtons after showing or hiding theirs.
+-- tab dock ends before the furthest). Its label is its tooltip. While Chat isn't running (off, or
+-- switched on under Modules and not reloaded yet) the bar isn't drawn, so it sits over the window's
+-- top right instead. Called by Modules/ChatExtras.lua and Modules/ChatWindows.lua, which call
+-- CH.PlaceBarButtons after showing or hiding theirs.
 function CH.AddBarButton(frame, label, where, onClick)
-  local bar = ns.ModuleEnabled("Chat") and CH.Bar(frame) or nil
+  local bar = CH.settings and CH.Bar(frame) or nil
   local look = CH.BAR_BUTTONS[label] or { icon = "Right", slot = 3 }
   local button = T.WindowControl(CreateFrame("Button", nil, bar or frame), look.icon)
   tipButton(button, label)
