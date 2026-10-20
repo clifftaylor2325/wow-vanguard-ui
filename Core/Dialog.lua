@@ -377,7 +377,7 @@ local function questionDialog()
   question:HookScript("OnHide", ns.Guard("decline question", function() declined(question) end))
   addQuestionButtons(question)
   listenForEnter(question)
-  ns.TabFocus(question, function() return { question.no, question.yes, question.sure } end, true)
+  ns.TabFocusOwnKeys(question, function() return { question.no, question.yes, question.sure } end)
   return question
 end
 

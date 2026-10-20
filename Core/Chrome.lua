@@ -369,7 +369,7 @@ end
 
 -- What a key does in a window with focus; true when it used the key. Tab and Shift-Tab step; Enter and Space press
 -- the focused button (and do nothing with no focus: Enter then belongs to the window's own primary). Not in combat.
----@param frame table  a window given ns.TabFocus
+---@param frame table  a window given ns.TabFocus or ns.TabFocusOwnKeys
 ---@param key string
 ---@return boolean used
 function ns.FocusKey(frame, key)
@@ -380,7 +380,7 @@ function ns.FocusKey(frame, key)
 end
 
 -- Drops a window's focus ring (a wizard changed page, say).
----@param frame table  a window given ns.TabFocus
+---@param frame table  a window given ns.TabFocus or ns.TabFocusOwnKeys
 function ns.FocusClear(frame)
   if focusOf[frame] then setFocused(frame, nil) end
 end
@@ -408,19 +408,34 @@ local function releaseInCombat(frame)
   end)
 end
 
+-- Records a window's buttons (list() is read at each key) and clears its focus ring when it shows or hides.
+---@param frame table  a window of Vanguard's own
+---@param list function  returns the buttons that can take focus, in order
+local function trackFocus(frame, list)
+  focusOf[frame] = { list = list }
+  frame:HookScript("OnShow", ns.Guard("window focus show", function(f) setFocused(f, nil) end))
+  frame:HookScript("OnHide", ns.Guard("window focus hide", function(f) setFocused(f, nil) end))
+end
+
 -- Gives a window Tab focus over the buttons list() returns (a function, read at each key): a Tab or Shift-Tab
 -- moves a T.FocusRing along them, Enter or Space presses the focused one, every other key goes on to the game. The
 -- ring clears when the window shows or hides. Hooks only; the window's own key script, if any, still runs. A window
--- that holds the keyboard and routes its keys itself passes own = true and calls ns.FocusKey from its key script.
+-- that holds the keyboard and routes its keys itself uses ns.TabFocusOwnKeys instead.
 ---@param frame table  a window of Vanguard's own
 ---@param list function  returns the buttons that can take focus, in order
----@param own boolean|nil  the window holds the keyboard and calls ns.FocusKey itself
-function ns.TabFocus(frame, list, own)
-  focusOf[frame] = { list = list }
-  frame:HookScript("OnShow", ns.Guard("window focus show", function(f) setFocused(f, nil) if not own then holdKeys(f, true) end end))
-  frame:HookScript("OnHide", ns.Guard("window focus hide", function(f) setFocused(f, nil) if not own then holdKeys(f, false) end end))
-  if own then return end
+function ns.TabFocus(frame, list)
+  trackFocus(frame, list)
+  frame:HookScript("OnShow", ns.Guard("window keys show", function(f) holdKeys(f, true) end))
+  frame:HookScript("OnHide", ns.Guard("window keys hide", function(f) holdKeys(f, false) end))
   hookFocusKeys(frame)
   releaseInCombat(frame)
   if frame:IsShown() then holdKeys(frame, true) end
+end
+
+-- Gives a window that holds the keyboard and calls ns.FocusKey from its own key script the focus ring of ns.TabFocus,
+-- without taking the keyboard or hooking its keys.
+---@param frame table  a window of Vanguard's own
+---@param list function  returns the buttons that can take focus, in order
+function ns.TabFocusOwnKeys(frame, list)
+  trackFocus(frame, list)
 end
