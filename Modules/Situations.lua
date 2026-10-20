@@ -313,9 +313,10 @@ function ns.OwnValues(fn, ...)
 end
 
 -- Puts the active situation's override on screen, the last one's base back first: nothing
--- while recording, nothing new while the right one is on. Run out of combat.
+-- while recording or while the module is off under Modules (nothing would take it off again),
+-- nothing new while the right one is on. Run out of combat.
 function SI.Apply()
-  if SI.recording then return end
+  if SI.recording or not SI.settings then return end
   local name = SI.Where()
   local ov = db().enabled and SI.Override(name) or nil
   local want = ov and name or nil
@@ -391,8 +392,12 @@ ns.OnProfileChanged(SI.ProfileChanged)
 
 -- Commands and options ---------------------------------------------------------------------------
 
+-- The page's status line while the module is off under Modules.
+SI.OFF_TEXT = "Situations is off under Modules: overrides don't apply."
+
 -- The page's status line: the situation you're in and what its override changes, or what's being recorded.
 function SI.StatusText()
+  if not SI.settings then return SI.OFF_TEXT end
   if SI.recording then
     return "Recording for " .. SI.LABELS[SI.recording] .. ": move frames and change settings, then stop recording."
   end
