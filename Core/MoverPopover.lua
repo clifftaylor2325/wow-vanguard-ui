@@ -145,7 +145,7 @@ end
 local function numberBox(y, onEnter)
   local box = W.Input(popover, FIELD_W)
   box:SetPoint("RIGHT", popover, "TOPRIGHT", -T.SPACE.col, -y)
-  box:SetScript("OnEnterPressed", onEnter)
+  box:SetScript("OnEnterPressed", ns.Guard("apply a typed number", onEnter))
   return box
 end
 

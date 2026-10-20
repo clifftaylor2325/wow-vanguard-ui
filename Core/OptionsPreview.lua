@@ -10,6 +10,13 @@ local T, W, O = ns.Theme, ns.Widgets, ns.Options
 -- The rows' heights.
 local SWATCHES_H, PREVIEW_H = 30, 52
 
+-- Applies the typed #rrggbb as the accent (a bad one is ignored), then leaves the box.
+local function applyHex(self)
+  local cr, cg, cb = T.ParseHex(self:GetText())
+  if cr then T.SetAccent(cr, cg, cb) end
+  self:ClearFocus()
+end
+
 -- The accent row: a swatch per preset and a hex box (Enter applies).
 local function accentRow(parent, width)
   local r = CreateFrame("Frame", nil, parent)
@@ -19,7 +26,7 @@ local function accentRow(parent, width)
   r.label:SetText("Accent")
   r.hex = W.Input(r, 74)
   r.hex:SetPoint("RIGHT", -8, 0)
-  r.hex:SetScript("OnEnterPressed", function(self) local cr, cg, cb = T.ParseHex(self:GetText()) if cr then T.SetAccent(cr, cg, cb) end self:ClearFocus() end)
+  r.hex:SetScript("OnEnterPressed", ns.Guard("apply the accent hex", applyHex))
   -- Shows the current accent as #rrggbb.
   r.Refresh = function(self) self.hex:SetText("#" .. T.Hex("accent"):sub(3):upper()) end
   return r

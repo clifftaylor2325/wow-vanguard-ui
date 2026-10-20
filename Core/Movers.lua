@@ -328,8 +328,8 @@ end
 local function watchEditMode()
   local edit = _G.EditModeManagerFrame
   if type(edit) ~= "table" or not edit.HookScript then return end
-  edit:HookScript("OnShow", function() ns.PausePins(true) ns.EditModeOpened(edit) end)
-  edit:HookScript("OnHide", function() ns.PausePins(false) ns.EditModeClosed(edit) end)
+  edit:HookScript("OnShow", ns.Guard("edit mode opened", function() ns.PausePins(true) ns.EditModeOpened(edit) end))
+  edit:HookScript("OnHide", ns.Guard("edit mode closed", function() ns.PausePins(false) ns.EditModeClosed(edit) end))
 end
 ns.On("PLAYER_LOGIN", watchEditMode)
 
@@ -440,11 +440,11 @@ local function wire(h)
   h:SetClampedToScreen(true)
   h:EnableMouse(true)
   h:RegisterForDrag("LeftButton")
-  h:SetScript("OnDragStart", h.StartMoving)
-  h:SetScript("OnDragStop", onDragStop)
-  h:SetScript("OnMouseDown", onMouseDown)
+  h:SetScript("OnDragStart", ns.Guard("drag mover handle", h.StartMoving))
+  h:SetScript("OnDragStop", ns.Guard("drop mover handle", onDragStop))
+  h:SetScript("OnMouseDown", ns.Guard("click mover handle", onMouseDown))
   h:EnableKeyboard(true)
-  h:SetScript("OnKeyDown", onKeyDown)
+  h:SetScript("OnKeyDown", ns.Guard("key on mover handle", onKeyDown))
 end
 
 -- The strata from lowest to highest, to rank a mover's frame's own against HIGH.
