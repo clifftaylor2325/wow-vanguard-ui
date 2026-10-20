@@ -445,6 +445,8 @@ const EXTRAS_ENV = `
   UnitDetailedThreatSituation = function(a, b) return __threatInfo[1], __threatInfo[2], __threatInfo[3], 0, 0 end
   __happy = 3
   GetPetHappiness = function() return __happy, 0, 0 end
+  __grouped = true
+  IsInGroup = function() return __grouped end
 `;
 
 it("threat on your target and your pet's happiness", () => {
@@ -534,6 +536,22 @@ it("a raid target icon sits on every unit frame's top edge, following the Raid t
   expect(icon("targettarget")[0], "the target of target's mark follows its timer").toBe(true);
   addon.eval("ns.Settings('RaidStatus').raidIcons = false ns.GetModule('UnitFrames').RefreshRaidIcons()");
   expect(icon("player")[0], "the switch off: no marks").toBe(false);
+});
+
+it("threat is quiet solo: it shows in a group or with a pet", () => {
+  const addon = loggedIn(UNITS_ENV + EXTRAS_ENV + "__grouped = false");
+  // The threat text above the target frame.
+  const threat = () => addon.eval("return ns.GetModule('UnitExtras').threat:GetText()");
+  expect(threat(), "solo with no pet, every mob is on you at 100%: nothing shows").toBe("");
+  addon.eval('__units.pet = { name = "TEST-ONLY Wolf", hp = 1, maxhp = 1, power = 0, maxpower = 0, ptype = "FOCUS" }');
+  addon.fire("UNIT_PET", "player");
+  expect(threat(), "a pet can pull aggro off you: it shows").toBe("42%");
+  addon.eval("__units.pet = nil __grouped = true");
+  addon.fire("GROUP_ROSTER_UPDATE");
+  expect(threat(), "so can a group").toBe("42%");
+  addon.eval("__grouped = { __secret = true }");
+  addon.fire("GROUP_ROSTER_UPDATE");
+  expect(threat(), "a hidden answer counts as solo").toBe("");
 });
 
 // The tooltip's owner, unit, shown state and lines, after hovering (or leaving) a unit frame.

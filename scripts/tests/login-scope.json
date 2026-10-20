@@ -278,6 +278,7 @@
       "target of target: health and power on every look, its name only when it's someone else",
       "the pet frame's tooltip adds your hunter pet's mood",
       "threat and happiness only where the client and settings allow",
+      "threat is quiet solo: it shows in a group or with a pet",
       "threat on your target and your pet's happiness",
       "unit events: combo points, the druid's mana, power ticks and threat ask the client for your own units only",
       "unit frame events",

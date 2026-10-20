@@ -27,10 +27,17 @@ UX.GLYPH = 10
 
 -- Threat ----------------------------------------------------------------------------------------
 
--- Your threat on your target: "87%" and its color token, or nil when you have none (or it's hidden).
+-- True while threat can matter to someone else: you are in a group, or you have a pet (solo, every mob you
+-- fight is on you at 100%, which says nothing).
+function UX.ThreatMatters()
+  local grouped, pet = IsInGroup(), UnitExists("pet")
+  return (not ns.IsSecret(grouped) and grouped == true) or (not ns.IsSecret(pet) and pet == true)
+end
+
+-- Your threat on your target: "87%" and its color token, or nil when you have none, it's hidden or it can't matter.
 function UX.Threat()
   local get = _G.UnitDetailedThreatSituation
-  if type(get) ~= "function" then return nil end
+  if type(get) ~= "function" or not UX.ThreatMatters() then return nil end
   local _, status, percent = get("player", "target")
   status, percent = ns.PlainNumber(status), ns.PlainNumber(percent)
   if not status or not percent or percent <= 0 then return nil end
@@ -157,6 +164,10 @@ end
 
 -- Building ---------------------------------------------------------------------------------------
 
+-- What else redraws the threat text: a new target, the fight ending, and joining or leaving a group or
+-- calling or losing a pet (whether threat can matter).
+UX.THREAT_EVENTS = { "PLAYER_TARGET_CHANGED", "PLAYER_REGEN_ENABLED", "GROUP_ROSTER_UPDATE", "UNIT_PET" }
+
 -- The threat text above the target frame, clear of its corner diamond,
 -- following threat and target changes: your target's threat list, and your
 -- own threat situation (the client names you, not the mob, when it changes).
@@ -165,7 +176,7 @@ local function addThreat(target)
   UX.threat:SetPoint("BOTTOMRIGHT", target, "TOPRIGHT", -12, 3)
   ns.OnUnit("UNIT_THREAT_LIST_UPDATE", UX.UpdateThreat, "target")
   ns.OnUnit("UNIT_THREAT_SITUATION_UPDATE", UX.UpdateThreat, "player")
-  for _, e in ipairs({ "PLAYER_TARGET_CHANGED", "PLAYER_REGEN_ENABLED" }) do ns.On(e, UX.UpdateThreat) end
+  for _, e in ipairs(UX.THREAT_EVENTS) do ns.On(e, UX.UpdateThreat) end
   UX.UpdateThreat()
 end
 
