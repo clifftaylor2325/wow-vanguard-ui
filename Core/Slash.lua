@@ -179,16 +179,28 @@ local function gridCommand(rest)
   chat(o.grid and string.format("Grid on, every %d px.", o.gridSize) or "Grid off.")
 end
 
+-- A switch command's word as the switch's new state: on, off (in any case), or nothing for the other of
+-- current; nil for any other word, so the command prints its usage instead of guessing.
+local function toggleWord(rest, current)
+  local word = rest:lower()
+  if word == "" then return not current end
+  if word == "on" or word == "off" then return word == "on" end
+  return nil
+end
+
 -- /vg snap on|off
 local function snapCommand(rest)
   local o = ns.MoverOptions()
-  o.snap = rest == "on" or (rest == "" and not o.snap)
+  local on = toggleWord(rest, o.snap)
+  if on == nil then return chat("Usage: /vg snap [on|off]") end
+  o.snap = on
   chat(o.snap and "Snapping on." or "Snapping off.")
 end
 
 -- /vg texelsnap [on|off]: pixel-grid snapping for still textures, for the A/B test (#226).
 local function texelSnapCommand(rest)
-  local on = rest == "on" or (rest == "" and not T.Settings().texelSnap)
+  local on = toggleWord(rest, T.Settings().texelSnap)
+  if on == nil then return chat("Usage: /vg texelsnap [on|off]") end
   T.SetTexelSnap(on)
   chat(on and "Texel snapping on: borders, fills, dividers and sheens snap to the pixel grid." or "Texel snapping off.")
 end
@@ -196,7 +208,9 @@ end
 -- /vg nineslice [on|off]: shadows and glows as one nine-slice texture each, after a reload (#236).
 local function nineSliceCommand(rest)
   local s = T.Settings()
-  s.sliceRings = rest == "on" or (rest == "" and not s.sliceRings)
+  local on = toggleWord(rest, s.sliceRings)
+  if on == nil then return chat("Usage: /vg nineslice [on|off]") end
+  s.sliceRings = on
   chat((s.sliceRings and "Nine-slice shadows on" or "Nine-slice shadows off") .. " after a /reload.")
 end
 
@@ -206,7 +220,9 @@ local function cdmGlowCommand(rest)
   if not CG.settings then return chat("Cooldown glow is off: turn the module on in the options first.") end
   local percent = tonumber(rest)
   if percent then CG.settings.percent = math.min(60, math.max(10, math.floor(percent))) end
-  CG.settings.glow = percent ~= nil or rest == "on" or (rest == "" and not CG.settings.glow)
+  local on = percent ~= nil or toggleWord(rest, CG.settings.glow)
+  if on == nil then return chat("Usage: /vg cdmglow [on|off|<percent>]") end
+  CG.settings.glow = on
   CG.Apply()
   chat(CG.settings.glow and ("Cooldown Manager glow on: under " .. CG.settings.percent .. " percent left.") or "Cooldown Manager glow off.")
 end
@@ -215,7 +231,9 @@ end
 local function cdmKeysCommand(rest)
   local CK = ns.GetModule("CooldownKeys")
   if not CK.settings then return chat("The Cooldown Manager keys module is off. Turn it on under /vg > Modules, then /reload.") end
-  CK.settings.keys = rest == "on" or (rest == "" and not CK.settings.keys)
+  local on = toggleWord(rest, CK.settings.keys)
+  if on == nil then return chat("Usage: /vg cdmkeys [on|off]") end
+  CK.settings.keys = on
   CK.Refresh()
   chat(CK.settings.keys and "Cooldown Manager keys on." or "Cooldown Manager keys off.")
 end
@@ -229,7 +247,9 @@ end
 -- /vg gradient [on|off]: floating windows' fills a shade lighter toward the top, at once (#259).
 local function gradientCommand(rest)
   local s = T.Settings()
-  s.panelGradient = rest == "on" or (rest == "" and not s.panelGradient)
+  local on = toggleWord(rest, s.panelGradient)
+  if on == nil then return chat("Usage: /vg gradient [on|off]") end
+  s.panelGradient = on
   T.Refresh()
   chat(s.panelGradient and "Panel gradient on: windows run a shade lighter toward the top." or "Panel gradient off.")
 end
@@ -237,7 +257,9 @@ end
 -- /vg ornaments [on|off]: window ornaments, repainted at once (#238).
 local function ornamentsCommand(rest)
   local s = T.Settings()
-  s.ornaments = rest == "on" or (rest == "" and not s.ornaments)
+  local on = toggleWord(rest, s.ornaments)
+  if on == nil then return chat("Usage: /vg ornaments [on|off]") end
+  s.ornaments = on
   T.Refresh()
   chat(s.ornaments and "Window ornaments on." or "Window ornaments off.")
 end
@@ -245,8 +267,9 @@ end
 -- /vg icons [on|off]: line and menu icons baked at their on-screen size (#232), after a /reload.
 local function iconsCommand(rest)
   local s = T.Settings()
-  if rest ~= "" and rest ~= "on" and rest ~= "off" then return chat("Usage: /vg icons [on|off]") end
-  s.sizedIcons = rest == "on" or (rest == "" and not s.sizedIcons)
+  local on = toggleWord(rest, s.sizedIcons)
+  if on == nil then return chat("Usage: /vg icons [on|off]") end
+  s.sizedIcons = on
   chat(s.sizedIcons and "Sized icons on after a /reload." or "Sized icons off after a /reload.")
 end
 
@@ -271,7 +294,9 @@ end
 -- /vg slug [on|off]: the SLUG font flag on world text, repainted at once (#239).
 local function slugCommand(rest)
   local s = T.Settings()
-  s.slugText = rest == "on" or (rest == "" and not s.slugText)
+  local on = toggleWord(rest, s.slugText)
+  if on == nil then return chat("Usage: /vg slug [on|off]") end
+  s.slugText = on
   T.RefreshText()
   chat(s.slugText and "SLUG text on for world text." or "SLUG text off.")
 end
@@ -279,7 +304,9 @@ end
 -- /vg framebuffer [on|off]: windows go through a frame buffer while they fade (#239).
 local function frameBufferCommand(rest)
   local s = T.Settings()
-  s.frameBuffer = rest == "on" or (rest == "" and not s.frameBuffer)
+  local on = toggleWord(rest, s.frameBuffer)
+  if on == nil then return chat("Usage: /vg framebuffer [on|off]") end
+  s.frameBuffer = on
   chat(s.frameBuffer and "Frame buffers on while windows open and close." or "Frame buffers off.")
 end
 
