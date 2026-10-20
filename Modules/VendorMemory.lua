@@ -98,8 +98,9 @@ end
 
 -- "Thomas Miller (Elwynn Forest, Goldshire)": a merchant and as much of where as is known.
 function VM.Text(entry)
-  local where = entry.z and entry.s and (entry.z .. ", " .. entry.s) or entry.z or entry.s
-  return where and string.format("%s (%s)", entry.n, where) or entry.n
+  local place = ns.PlaceText(entry.z, entry.s)
+  if not place then return entry.n end
+  return string.format("%s (%s)", entry.n, place)
 end
 
 -- An item tooltip's lines: "Sold by ..." per merchant, " · limited stock" in the warning colour.

@@ -64,6 +64,15 @@ function ns.TextPrefix(s, n)
   return s
 end
 
+-- A place's name from its zone and subzone: "Zone, Subzone" when both are known, else whichever is; nil for neither.
+---@param zone string|nil
+---@param sub string|nil
+---@return string|nil
+function ns.PlaceText(zone, sub)
+  if zone and sub then return zone .. ", " .. sub end
+  return zone or sub
+end
+
 -- State kept for the game's frames ---------------------------------------------------------
 -- A field stored on a frame the game owns plants taint, and taint errors in the
 -- game's own code then get blamed on Vanguard. So whatever Vanguard remembers
