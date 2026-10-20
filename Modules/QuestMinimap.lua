@@ -1,7 +1,7 @@
 -- Quest spots on the minimap: a small mark on the minimap for each quest in your log that the client
 -- puts on the map you're on (its quest spot, C_QuestLog.GetQuestsOnMap): a gold ! while it has
 -- objectives left, a gold ? once it is ready to turn in. A spot past the minimap's edge sits on the
--- edge, faint, in its direction. The marks turn with the minimap when it rotates.
+-- edge, faint, in its direction (the rim of a round minimap, the sides of a square one), inside it. The marks turn with the minimap when it rotates.
 --
 -- Client data only, never a quest database: no spot from the client, no mark. The scale comes from the
 -- client's minimap view radius and the map's size in yards; without either, no marks are drawn rather
@@ -72,14 +72,27 @@ local function scale(mapID)
   return { radius = radius, w = w, h = h, px = px, py = py }
 end
 
+-- Whether the minimap is round: Vanguard's built round, or the game's own (round) one while Vanguard's is off.
+function QM.Round()
+  local map = ns.GetModule("Minimap")
+  return map.round == true or not map.enabled
+end
+
+-- How far an offset reaches towards the minimap's edge: straight out on a round map, along the farther axis on a square one.
+local function reach(ox, oy)
+  if QM.Round() then return math.sqrt(ox * ox + oy * oy) end
+  return math.max(math.abs(ox), math.abs(oy))
+end
+
 -- Where a spot (x, y on the map, 0 to 1) sits from the minimap's centre, in UI units, given `half` its half-width:
--- x, y and true when it is past the edge (then it sits on the edge in its direction).
+-- x, y and true when it is past the edge (then it sits faint on the edge in its direction). A mark never
+-- runs past the map's edge: one that would is drawn just inside it, its whole self on the map.
 function QM.Offset(s, x, y, half)
   local east, north = rotated((x - s.px) * s.w, -(y - s.py) * s.h)
   local ox, oy = east / s.radius * half, north / s.radius * half
-  local far = math.max(math.abs(ox), math.abs(oy))
-  if far <= half then return ox, oy, false end
-  return ox * half / far, oy * half / far, true
+  local far, room = reach(ox, oy), half - QM.SIZE / 2
+  if far <= room then return ox, oy, false end
+  return ox * room / far, oy * room / far, far > half
 end
 
 -- Drawing -----------------------------------------------------------------------------------------

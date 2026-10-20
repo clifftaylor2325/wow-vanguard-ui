@@ -40,8 +40,29 @@ it("quest minimap: a ! for each quest in the log with objectives left, a ? once 
   const addon = loggedIn(MINIMAP_ENV);
   addon.advance(0.5);
   const half = addon.eval("return Minimap:GetWidth() / 2");
-  expect(marks(addon), "east, north on the edge, and west past it").toEqual([
-    ["QuestBang", Math.round(half / 2), 0, 1], ["QuestQuery", 0, Math.round(half), 1], ["QuestBang", -Math.round(half), 0, 0.5]]);
+  const room = half - addon.eval("return ns.QuestMinimap.SIZE") / 2;
+  expect(marks(addon), "east, north on the edge (drawn just inside it), and west past it").toEqual([
+    ["QuestBang", Math.round(half / 2), 0, 1], ["QuestQuery", 0, Math.round(room), 1], ["QuestBang", -Math.round(room), 0, 0.5]]);
+});
+
+// TEST-ONLY: one quest 400 yards north-east, past the minimap's corner.
+const NORTH_EAST = `C_QuestLog.GetQuestsOnMap = function() return { { questID = 90061, x = 0.5 + 0.4 / math.sqrt(2), y = 0.5 - 0.4 / math.sqrt(2) } } end`;
+
+it("quest minimap: on a round minimap a far mark sits on the rim, inside the disc, not in the square's corner", () => {
+  const addon = loggedIn(MINIMAP_ENV + NORTH_EAST, { savedVariables: 'VanguardDB.profiles = { Default = { Minimap = { shape = "round" } } }' });
+  addon.advance(0.5);
+  const half = addon.eval("return Minimap:GetWidth() / 2");
+  const along = Math.round((half - addon.eval("return ns.QuestMinimap.SIZE") / 2) / Math.sqrt(2));
+  expect(marks(addon), "on the rim at 45 degrees, faint").toEqual([["QuestBang", along, along, 0.5]]);
+});
+
+it("quest minimap: with Vanguard's minimap off the game's round one gets rim marks; a square one gets its corner", () => {
+  const off = loggedIn(MINIMAP_ENV + NORTH_EAST, { savedVariables: "VanguardDB.profiles = { Default = { modules = { Minimap = false } } }" });
+  expect(off.eval("return ns.QuestMinimap.Round()"), "the game's own minimap is round").toBe(true);
+  const square = loggedIn(MINIMAP_ENV + NORTH_EAST);
+  square.advance(0.5);
+  const room = Math.round(square.eval("return Minimap:GetWidth() / 2 - ns.QuestMinimap.SIZE / 2"));
+  expect(marks(square)[0].slice(1, 3), "the square map's corner, inside it").toEqual([room, room]);
 });
 
 it("quest minimap: the marks turn with a rotating minimap", () => {
