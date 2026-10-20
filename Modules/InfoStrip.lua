@@ -25,7 +25,12 @@ local IS = ns.Module("InfoStrip", {
   },
 })
 
+-- The strip's width and row height with text at 100 %; a larger Text size widens and heightens them in step.
 IS.WIDTH, IS.ROW = 182, 18
+-- Where the strip sits (just under the minimap), the most rows it shows, the room it keeps under its rows,
+-- and the gap from its last row down to the quest tracker's spot.
+IS.HOME = { "TOPRIGHT", "TOPRIGHT", -12, -200 }
+IS.MOST_ROWS, IS.EDGE, IS.TRACKER_GAP = 7, 4, 6
 -- Where each block sits: row, and its side of the row (two columns, so no two blocks run together).
 IS.BLOCKS = {
   durability = { 1, "LEFT" }, bags = { 1, "RIGHT" },
@@ -378,6 +383,27 @@ end
 
 -- Showing -----------------------------------------------------------------------------------
 
+-- How much larger the strip's text is drawn than at 100 % Text size; never under 1, so smaller text
+-- keeps today's strip (the calendar button's 18-unit slot still fits a row).
+local function textGrowth()
+  return math.max(1, T.RoleSize("small") / T.ROLES.small[1])
+end
+
+-- The strip's row height at the current Text size.
+function IS.Row()
+  return math.floor(IS.ROW * textGrowth() + 0.5)
+end
+
+-- The strip's width at the current Text size.
+function IS.Width()
+  return math.floor(IS.WIDTH * textGrowth() + 0.5)
+end
+
+-- How far down from the strip's top a row's middle sits.
+local function rowY(row)
+  return -(row - 0.5) * IS.Row()
+end
+
 -- The lowest row with a block showing (0 when nothing shows).
 local function rowsShown()
   local rows = 0
@@ -392,7 +418,7 @@ end
 local function fitRows()
   local rows = rowsShown()
   IS.frame:SetShown(rows > 0 and V.Shows(IS.frame))
-  IS.frame:SetHeight(IS.ROW * math.max(rows, 2) + 4)
+  IS.frame:SetHeight(IS.Row() * math.max(rows, 2) + IS.EDGE)
 end
 
 -- Sits the date right after the time, or at the row's left edge while the time is off.
@@ -400,7 +426,7 @@ function IS.PlaceDate()
   local date, clock = IS.texts.date, IS.texts.clock
   date:ClearAllPoints()
   if clock:IsShown() then date:SetPoint("LEFT", clock, "RIGHT", IS.DATE_GAP, 0)
-  else date:SetPoint("LEFT", IS.frame, "TOPLEFT", 6, -(IS.BLOCKS.date[1] - 0.5) * IS.ROW) end
+  else date:SetPoint("LEFT", IS.frame, "TOPLEFT", 6, rowY(IS.BLOCKS.date[1])) end
 end
 
 -- The button that goes with a block, by its key on IS: the calendar with the date, the clock's hit area with the time.
@@ -438,12 +464,17 @@ end
 
 -- Building ----------------------------------------------------------------------------------
 
--- One block's text, at its side of its row (left blocks 6 in from the left edge, right ones 6 from the right).
-local function addText(frame, key)
+-- Sets a block's text at its side of its row (left blocks 6 in from the left edge, right ones 6 from the right).
+local function placeText(fs, key)
   local row, point = IS.BLOCKS[key][1], IS.BLOCKS[key][2]
-  local fs = T.Text(frame:CreateFontString(nil, "OVERLAY"), "small", "text")
-  local x = point == "LEFT" and 6 or -6
-  fs:SetPoint(point, frame, "TOP" .. point, x, -(row - 0.5) * IS.ROW)
+  fs:ClearAllPoints()
+  fs:SetPoint(point, IS.frame, "TOP" .. point, point == "LEFT" and 6 or -6, rowY(row))
+end
+
+-- One block's text, in its place.
+local function addText(key)
+  local fs = T.Text(IS.frame:CreateFontString(nil, "OVERLAY"), "small", "text")
+  placeText(fs, key)
   return fs
 end
 
@@ -489,12 +520,18 @@ local function addInvites(b)
   IS.invites, IS.invitesBack = fs, back
 end
 
+-- Sets the calendar button at the date row's right end.
+local function placeCalendar(b)
+  b:ClearAllPoints()
+  b:SetPoint("RIGHT", IS.frame, "TOPRIGHT", -IS.CALENDAR_GAP, rowY(IS.BLOCKS.date[1]))
+end
+
 -- The calendar button (shown with the date): a slot button of the minimap's kind at the date row's right end,
 -- opening the calendar like /calendar, with a count of the invites waiting. None where the realm has no calendar.
 local function addCalendar(frame)
   if IS.CalendarOff() then return end
   local b = CreateFrame("Button", "Vanguard_InfoStripCalendar", frame)
-  b:SetPoint("RIGHT", frame, "TOPRIGHT", -IS.CALENDAR_GAP, -(IS.BLOCKS.date[1] - 0.5) * IS.ROW)
+  placeCalendar(b)
   b:SetScript("OnClick", ns.Guard("click info strip calendar", openCalendar))
   b:SetScript("OnEnter", ns.Guard("info strip calendar tip", IS.CalendarTip))
   b:SetScript("OnLeave", ns.Guard("info strip calendar tip", function() GameTooltip:Hide() end))
@@ -569,14 +606,38 @@ local function watchVisibility(f)
   IS.ApplyVisibility()
 end
 
+-- The quest tracker's default spot: under the strip's last row at the current Text size, so a larger Text
+-- size never runs the strip into the tracker.
+function IS.TrackerPoint()
+  local y = IS.HOME[4] - IS.Row() * IS.MOST_ROWS - IS.EDGE - IS.TRACKER_GAP
+  return { "TOPRIGHT", "TOPRIGHT", IS.HOME[3], y }
+end
+
+-- Moves the quest tracker's default spot to follow the strip's height (a spot the player saved wins). Out of
+-- a fight only: the game's tracker, with its item buttons, is pinned to that spot.
+function IS.MoveTracker()
+  ns.SetMoverDefault("questtracker", IS.TrackerPoint())
+end
+
+-- Lays the strip out again for the current Text size: its width, every block on its row and the
+-- calendar button beside the date (plain frames, so this is fine in a fight), then the rows that show.
+function IS.Layout()
+  IS.frame:SetWidth(IS.Width())
+  for key, fs in pairs(IS.texts) do placeText(fs, key) end
+  if IS.calendar then placeCalendar(IS.calendar) end
+  IS.PlaceDate()
+  fitRows()
+  ns.OutOfCombat(IS.MoveTracker, "infostrip-tracker")
+end
+
 -- The movable strip, just under the minimap.
 local function build()
   local f = T.HudPanel(CreateFrame("Frame", "Vanguard_InfoStrip", UIParent))
   IS.frame = f
-  f:SetSize(IS.WIDTH, IS.ROW * 2 + 4)
-  ns.Mover(f, "infostrip", "Info strip", { "TOPRIGHT", "TOPRIGHT", -12, -200 })
+  f:SetSize(IS.Width(), IS.Row() * 2 + IS.EDGE)
+  ns.Mover(f, "infostrip", "Info strip", IS.HOME)
   IS.texts = {}
-  for key in pairs(IS.BLOCKS) do IS.texts[key] = addText(f, key) end
+  for key in pairs(IS.BLOCKS) do IS.texts[key] = addText(key) end
   addButtons(f)
   ticker(f)
   IS.UpdateAll()
@@ -656,13 +717,14 @@ local function watch()
   for _, event in ipairs({ "PLAYER_REGEN_ENABLED", "DAMAGE_METER_RESET" }) do ns.On(event, function() IS.Paint("dps") IS.Paint("rank") end) end
 end
 
--- Module entry point (Core/Modules.lua).
+-- Module entry point (Core/Modules.lua): the strip, laid out again whenever the Text size changes.
 function IS.Enable(settings)
   IS.settings = settings
   hideReplaced(settings)
   keepReminders(settings)
   IS.StartSession()
   build()
+  T.OnChanged(IS.Layout)
   watch()
   watchInvites()
 end

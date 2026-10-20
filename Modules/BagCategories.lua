@@ -120,10 +120,17 @@ function BG.NewGroup(text)
   ns.Chat("Group " .. name .. " made. Pick an item up, then choose it under Groups.")
 end
 
+-- The item on the cursor's ID, or nil (and the player told to pick one up, with the hint) when it holds no item.
+local function heldItem(hint)
+  local kind, id = GetCursorInfo()
+  if kind == "item" and ns.PlainNumber(id) then return id end
+  ns.Chat("Pick an item up first, then " .. hint .. ".")
+end
+
 -- Puts the item on the cursor in the group (the bag buttons' "Put held item in").
 function BG.AddHeld(name)
-  local kind, id = GetCursorInfo()
-  if kind ~= "item" or not ns.PlainNumber(id) then return ns.Chat("Pick an item up first, then choose the group.") end
+  local id = heldItem("choose the group")
+  if not id then return end
   add(name, id)
   ClearCursor()
   BG.SectionsChanged()
@@ -142,6 +149,16 @@ local USAGE = "Usage: /vg bag [add <name> <item> | remove <item> | delete <name>
 local function drop(id)
   release(id)
   ns.Chat(itemName(id) .. " is in no category.")
+end
+
+-- Takes the item on the cursor out of its group (the bag buttons' "Take held item out of its group").
+function BG.RemoveHeld()
+  local id = heldItem("take it out of its group")
+  if not id then return end
+  if not BG.CategoryOf(id) then return ns.Chat(itemName(id) .. " is in no group.") end
+  drop(id)
+  ClearCursor()
+  BG.SectionsChanged()
 end
 
 -- What a command line holds: the verb, the rest after it, the first word of that (a category name), and

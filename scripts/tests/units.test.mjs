@@ -375,10 +375,52 @@ it("swing timer: a weapon swap restarts a swing under way at the new weapon's sp
   expect(swings(addon)[0][0], "a speed the client hides: no guess, the row stops").toBe(false);
 });
 
+// A swing login on the client's own range model (scripts/lib/wow-world.lua), not SWING_ENV's empty C_SwingTimer,
+// with the target out of the main hand's reach.
+const RANGE_ENV = UNITS_ENV + SWING_ENV.replace("C_SwingTimer = {}", "") + "__wfgWorld.swingRange = { [0] = false } UnitAttackSpeed = function() return 2.6 end";
+// Each swing row's opacity, main hand first.
+const swingAlphas = (addon) => addon.eval(`local SW = ns.GetModule("SwingTimer") return { SW.rows[0]:GetAlpha(), SW.rows[1]:GetAlpha(), SW.rows[2]:GetAlpha() }`);
+
+it("swing timer: at login it asks for every hand's reach and dims the one out of reach", () => {
+  const addon = loggedIn(RANGE_ENV);
+  expect(addon.eval("local c = __wfgWorld.swingRangeChecks return { c[0], c[1], c[2] }"), "it asks the client to report every hand's reach").toEqual([true, true, true]);
+  expect(unitEvents(addon, "PLAYER_SWING_RANGE_UPDATE").plain, "it hears the client's range event").toBe(1);
+  expect(swingAlphas(addon), "the main hand dims, as the game's own timer does; no check for the others is not out of range").toEqual([0.4, 1, 1]);
+});
+
+it("swing timer: the client's range event dims and restores a row", () => {
+  const addon = loggedIn(RANGE_ENV);
+  addon.fire("PLAYER_SWING_RANGE_UPDATE", 0, true, true);
+  expect(swingAlphas(addon)[0], "stepping in brings it back").toBe(1);
+  addon.fire("PLAYER_SWING_RANGE_UPDATE", 0, false, true);
+  addon.fire("PLAYER_SWING_RANGE_UPDATE", 1, false, false);
+  expect(swingAlphas(addon).slice(0, 2), "out again dims it; an answer with no check made does not").toEqual([0.4, 1]);
+  addon.fire("PLAYER_SWING_RANGE_UPDATE", 0, { __secret: true }, true);
+  addon.fire("PLAYER_SWING_RANGE_UPDATE", 7, false, true);
+  expect(swingAlphas(addon)[0], "a hidden answer counts as in reach, and an unknown hand changes nothing").toBe(1);
+});
+
+it("swing timer: a new target reads the reach, and a weapon swap asks for the checks again", () => {
+  const addon = loggedIn(RANGE_ENV);
+  addon.eval("__wfgWorld.swingRange = {} __wfgWorld.swingRangeChecks = {}");
+  addon.fire("PLAYER_TARGET_CHANGED");
+  expect([swingAlphas(addon)[0], addon.eval("return __wfgWorld.swingRangeChecks[0]")], "no target to check (nil): never dim, and no new ask").toEqual([1, null]);
+  addon.eval("__wfgWorld.swingRange = { [0] = false }");
+  addon.fire("WEAPON_SLOT_CHANGED");
+  expect([swingAlphas(addon)[0], addon.eval("return __wfgWorld.swingRangeChecks[0]")], "a weapon swap asks again and reads the reach now").toEqual([0.4, true]);
+});
+
+it("swing timer: a client without the range calls keeps rows at full strength and hears no range event", () => {
+  const addon = loggedIn(UNITS_ENV + SWING_ENV);
+  expect(addon.eval("return ns.GetModule('SwingTimer').rows[0]:GetAlpha()"), "full strength").toBe(1);
+  expect(unitEvents(addon, "PLAYER_SWING_RANGE_UPDATE").plain, "the event isn't asked for").toBe(0);
+});
+
 it("swing timer: who sees it", () => {
   // Whether a login with this setup and these saved settings builds the swing rows.
   const wanted = (env, saved) => loggedIn(UNITS_ENV + env, saved ? { savedVariables: saved } : undefined).eval("return ns.GetModule('SwingTimer').rows ~= nil");
   expect(wanted(SWING_ENV.replace("WARRIOR", "MAGE")), "a mage doesn't, by default").toBe(false);
+  for (const cls of ["PALADIN", "SHAMAN", "DRUID"]) expect(wanted(SWING_ENV.replace("WARRIOR", cls)), `a ${cls.toLowerCase()} does: they swing too`).toBe(true);
   expect(wanted(SWING_ENV.replace("WARRIOR", "MAGE"), "VanguardDB.profiles = { Default = { SwingTimer = { show = 'always' } } }"), "unless it's set to always").toBe(true);
   expect(wanted(SWING_ENV, "VanguardDB.profiles = { Default = { SwingTimer = { show = 'never' } } }"), "never is never").toBe(false);
   expect(wanted(SWING_ENV.replace('"WARRIOR"', '{ __secret = true }')), "a hidden class: no timer").toBe(false);

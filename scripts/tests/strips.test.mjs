@@ -193,6 +193,38 @@ it("the info strip's calendar button counts the invites waiting, and is absent w
   const bare = loggedIn(STRIP_ENV);
   expect(bare.eval("return ns.GetModule('InfoStrip').invites:GetText()"), "a client without the calendar API shows no count").toBe("");
 });
+it("the info strip at Text size 130 %: wider and taller rows, every block placed again, and the longest texts still fit", () => {
+  const addon = loggedIn(UNITS_ENV + STRIP_ENV + `GameTime_GetTime = function() return "12:59 PM" end
+    date = function(f) return f == "%a %d %b" and "Wed 30 Sep" or "23:59" end
+    __fps, __ammo, __money = 144, 1000, 9999999 __dur = { [1] = { 100, 100 } } GetNetStats = function() return 0, 0, 999, 999 end
+    C_Container = { GetContainerNumFreeSlots = function() return 26 end } UnitClass = function() return "Hunter", "HUNTER" end`);
+  addon.eval("ns.Theme.Settings().textScale = 1.3 ns.Theme.Refresh() __wfgStub.advance(1.1)");
+  // The strip's width and height, a block's anchor offset down from the top, and the calendar button's.
+  const layout = addon.eval(`local IS = ns.GetModule("InfoStrip")
+    return { Vanguard_InfoStrip:GetWidth(), Vanguard_InfoStrip:GetHeight(), IS.texts.gold.__points.LEFT.y, Vanguard_InfoStripCalendar.__points.RIGHT.y }`);
+  expect(layout, "13-point text: 237 wide, 23-tall rows (four shown), each row's middle a row lower").toEqual([237, 96, -34.5, -80.5]);
+  // Text widths as the client draws them at 13 points: the harness's 6 units a letter at 10, grown by 1.3.
+  const drawn = (key) => block(addon, key).text.length * 6 * 1.3;
+  const width = layout[0];
+  const pairs = [["durability", "bags"], ["system", "ammo"]];
+  for (const [left, right] of pairs) expect(drawn(left) + drawn(right) + 12 + 8, `${block(addon, left).text} | ${block(addon, right).text}`).toBeLessThan(width);
+  expect([block(addon, "clock").text, drawn("clock") + 8 + drawn("date") + 6 + 18 + 3 + 4 < width], "a 12-hour time, the date and the calendar button share the fourth row").toEqual(["12:59 PM", true]);
+  addon.eval("ns.Theme.Settings().textScale = 0.8 ns.Theme.Refresh()");
+  expect(addon.eval("return { Vanguard_InfoStrip:GetWidth(), Vanguard_InfoStrip:GetHeight() }"), "smaller text keeps today's strip").toEqual([182, 76]);
+});
+it("the quest tracker's spot moves down with the info strip's taller rows, after a fight, unless it was moved", () => {
+  const addon = loggedIn(UNITS_ENV + STRIP_ENV);
+  // How far down the quest tracker's spot sits.
+  const trackerY = () => addon.eval("return Vanguard_QuestTracker.__points.TOPRIGHT.y");
+  expect(trackerY(), "at 100 % it sits 6 under the seventh row (200 + 7 x 18 + 4)").toBe(-336);
+  setCombat(addon, true);
+  addon.eval("ns.Theme.Settings().textScale = 1.3 ns.Theme.Refresh()");
+  expect(trackerY(), "in a fight it waits: the game's tracker is pinned to it").toBe(-336);
+  setCombat(addon, false);
+  expect(trackerY(), "after it, 7 rows of 23 lower down").toBe(-371);
+  addon.eval('ns.SetMoverPoint("questtracker", "TOPRIGHT", "TOPRIGHT", -40, -500) ns.Theme.Settings().textScale = 1 ns.Theme.Refresh()');
+  expect(trackerY(), "a spot the player picked stays").toBe(-500);
+});
 it("the Bars and bags page's two tracker switches name the game's tracker, the one they change", () => {
   const addon = loggedIn(UI_ENV);
   const labels = addon.eval(`local out = {}
