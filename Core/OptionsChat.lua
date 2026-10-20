@@ -136,9 +136,9 @@ local function chatWindowsRows()
   local rows = { { "header", "Chat windows" }, { "text", "Size each chat window here instead of dragging its corner. Lock stops the game's drag." },
     check("Lock chat windows", CW.LockSetting()), check("Move floating windows with /vg unlock (reload)", reloadSetting("ChatWindows", "movers")) }
   for _, w in ipairs(CW.Shown()) do
-    local wGet, wSet = CW.SizeSetting(w[2], false)
-    local hGet, hSet = CW.SizeSetting(w[2], true)
-    append(rows, { { "slider", w[3] .. ": width", CW.WIDTH, wGet, wSet }, { "slider", w[3] .. ": height", CW.HEIGHT, hGet, hSet } })
+    local wGet, wSet = CW.SizeSetting(w.frame, false)
+    local hGet, hSet = CW.SizeSetting(w.frame, true)
+    append(rows, { { "slider", w.name .. ": width", CW.WIDTH, wGet, wSet }, { "slider", w.name .. ": height", CW.HEIGHT, hGet, hSet } })
   end
   return rows
 end

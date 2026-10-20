@@ -31,17 +31,17 @@ local function docked(i)
   return flag ~= nil and flag ~= 0 and flag ~= false
 end
 
--- The chat windows in use for which keep(i, frame) holds: { index, frame, name } each.
+-- The chat windows in use for which keep(i, frame) holds, as records { index, frame, name }.
 local function windowsWhere(keep)
   local out = {}
   for i = 1, windowCount() do
     local frame, name = _G["ChatFrame" .. i], windowName(i)
-    if name and type(frame) == "table" and keep(i, frame) then out[#out + 1] = { i, frame, name } end
+    if name and type(frame) == "table" and keep(i, frame) then out[#out + 1] = { index = i, frame = frame, name = name } end
   end
   return out
 end
 
--- The chat windows in use and showing (the size sliders and the floating movers): { index, frame, name } each.
+-- The chat windows in use and showing (the size sliders and the floating movers): records { index, frame, name }.
 function CW.Shown()
   return windowsWhere(function(_, frame) return frame:IsShown() end)
 end
@@ -83,7 +83,7 @@ end
 function CW.LockSetting()
   return locked, function(v)
     if type(FCF_SetLocked) ~= "function" then return end
-    for _, w in ipairs(CW.Windows()) do FCF_SetLocked(w[2], v) end
+    for _, w in ipairs(CW.Windows()) do FCF_SetLocked(w.frame, v) end
   end
 end
 
@@ -103,10 +103,10 @@ end
 
 -- Makes a floating window a /vg unlock handle, kept where it is put.
 local function floatingMover(window)
-  local frame, key = window[2], "chat" .. window[1]
+  local frame, key = window.frame, "chat" .. window.index
   local point, _, relPoint, x, y = frame:GetPoint(1)
   if not point then return end
-  ns.Mover(frame, key, "Chat: " .. window[3], { point, relPoint, x, y })
+  ns.Mover(frame, key, "Chat: " .. window.name, { point, relPoint, x, y })
   pinTo(frame, key)
 end
 
@@ -122,11 +122,12 @@ CW.MAX_NAME = 16
 
 -- The window being edited on the Chat page (a chat window number; the main window when unset or gone).
 function CW.Editing()
-  for _, w in ipairs(CW.Windows()) do
-    if w[1] == CW.editing then return w[1], w[2], w[3] end
+  local windows = CW.Windows()
+  for _, w in ipairs(windows) do
+    if w.index == CW.editing then return w.index, w.frame, w.name end
   end
-  local main = CW.Windows()[1]
-  return main and main[1], main and main[2], main and main[3]
+  local main = windows[1] or {}
+  return main.index, main.frame, main.name
 end
 
 -- get/set for the tab picker: the choices are the windows in use; a pick rebuilds the page.
@@ -135,10 +136,10 @@ function CW.TabSetting()
     function(v) CW.editing = v ns.Options.RebuildPage("chat") end
 end
 
--- The windows in use as choices { index, name }.
+-- The windows in use as choices { index, name } (positional: the options cycle reads them by place).
 function CW.TabChoices()
   local out = {}
-  for _, w in ipairs(CW.Windows()) do out[#out + 1] = { w[1], w[3] } end
+  for _, w in ipairs(CW.Windows()) do out[#out + 1] = { w.index, w.name } end
   return out
 end
 
@@ -238,7 +239,7 @@ end
 local function allLines()
   local shown, all = {}, {}
   for _, w in ipairs(CW.Windows()) do
-    for _, text in ipairs(frameLines(w[2])) do shown[text] = true all[#all + 1] = text end
+    for _, text in ipairs(frameLines(w.frame)) do shown[text] = true all[#all + 1] = text end
   end
   local saved = savedLines(shown)
   for _, text in ipairs(all) do saved[#saved + 1] = text end
@@ -291,6 +292,6 @@ function CW.Enable(settings)
   CW.ApplyFind()
   if not settings.movers then return end
   for _, window in ipairs(CW.Shown()) do
-    if floating(window[1]) then floatingMover(window) end
+    if floating(window.index) then floatingMover(window) end
   end
 end
