@@ -41,3 +41,10 @@ it("skin SetFont and a UI scale change", () => {
   addon.fire("DISPLAY_SIZE_CHANGED");
   expect(addon.eval("return ns.Theme.PaintedCount()") > 0, "a scale change repaints").toBeTruthy();
 });
+it("/vg skins switches a skin whose name has a space", () => {
+  const addon = loggedIn();
+  addon.eval("Vanguard.RegisterSkin('TEST-ONLY My Addon', function() end)");
+  addon.slash("skins TEST-ONLY My Addon off");
+  expect(addon.eval("return ns.Settings('skins')['TEST-ONLY My Addon']"), "the whole name before the state").toBe(false);
+  expect(chatHas(addon, /Skin for TEST-ONLY My Addon off\./), "and says so").toBe(true);
+});

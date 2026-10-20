@@ -364,7 +364,7 @@ end
 
 -- /vg skins [<addon> on|off]: only a registered skin, and only on or off, changes anything.
 local function skinsCommand(rest)
-  local typed, state = rest:match("^(%S+)%s+(%S+)$")
+  local typed, state = rest:match("^(.-)%s+(%S+)$")
   if not typed then
     return listSkins()
   end
