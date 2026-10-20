@@ -47,9 +47,10 @@ function warrior(extra = "", opts) {
   return addon;
 }
 
-// The replicate list (a Lua list of rows), a click on Scan, the list arriving, and frames until the walks end.
+// The replicate list (a Lua list of rows), the scan card painted (as its countdown is while it shows), a
+// click on Scan, the list arriving, and frames until the walks end.
 function scan(addon, rows) {
-  addon.eval(`__wfgWorld.ah.replicate = ${rows}`);
+  addon.eval(`__wfgWorld.ah.replicate = ${rows} ${HELPER}.PaintScan()`);
   addon.click(SCAN_BUTTON);
   addon.fire("REPLICATE_ITEM_LIST_UPDATE");
   for (let i = 0; i < 10; i++) addon.update(0.01);

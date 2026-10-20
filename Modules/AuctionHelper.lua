@@ -15,8 +15,9 @@
 --   * Your auctions: "Check undercuts" asks for your auctions, checks each
 --     item's price now, and marks the ones someone else asks less for; each
 --     row's Cancel (its cost on hover) cancels that auction, from the click only.
---   * Scan: "Scan the auction house" (once every 15 minutes, the game's own
---     limit for a whole-house query) reads every listing and records each
+--   * Scan: "Scan the auction house" (once every 15 minutes for the account,
+--     the game's own limit for a whole-house query: the button counts down
+--     until then) reads every listing and records each
 --     item's cheapest unit price, units up and market value
 --     (Modules/AuctionPrices.lua), which item tooltips then show everywhere.
 --
@@ -55,6 +56,9 @@ local AH = ns.Module("AuctionHelper", { defaults = { panel = true, tooltip = tru
 -- window); the scan card's height; the Lists pane's width, and the height of a card's toolbar
 -- line (the heading with buttons on its right).
 AH.SCAN_GAP, AH.SCAN_ROWS = 900, 400
+-- How long a scan waits for the house's list before it lets the button go (the game sends nothing when it
+-- refuses one), and how old the last scan may be (seconds) before its line turns the warning colour.
+AH.SCAN_WAIT, AH.SCAN_STALE = 90, 86400
 AH.WIDTH, AH.PAD, AH.INSET, AH.SCAN_H = 300, T.SPACE.gap, T.SPACE.gap, 80
 AH.PANE_W, AH.TOOLBAR_H = 240, 24
 -- A page's insets on the window: from its sides (T.SPACE.tight), under its title and above its money
@@ -240,13 +244,14 @@ function AH.Column(f, side, width)
   return c
 end
 
--- The scan card under the Lists pane: the scan button and when the last scan was.
+-- The scan card under the Lists pane: the scan button and when the last scan was, painted again as it shows.
 local function buildScan(column, y)
   local c = AH.Card(column, "Scan", y, AH.SCAN_H)
   c.scan = W.Button(c, "Scan the auction house", function() AH.StartScan() end, 150)
   c.scan:SetPoint("TOPLEFT", 0, -20)
   c.last = T.Text(c:CreateFontString(nil, "OVERLAY"), "small", "text2")
   c.last:SetPoint("TOPLEFT", 0, -50)
+  c:SetScript("OnShow", ns.Guard("show scan card", function() AH.PaintScan() end))
   AH.scanCard = c
 end
 
@@ -378,25 +383,67 @@ function AH.OnShow()
   AH.PaintSell()
   AH.PaintScan()
   AH.PaintOwned()
+  ns.Every("auction scan countdown", AH.COUNTDOWN_TICK, AH.PaintScan, AH.scanCard)
 end
 
 -- The auction house closed: searches waiting and a scan in progress stop (the pages go with the
 -- window), and the modes it was in are forgotten.
 function AH.OnClosed()
   AH.open, AH.scan, AH.pending, AH.queue, AH.progress, AH.sell = false, nil, nil, {}, nil, nil
-  AH.mode, AH.lastMode = nil, nil
+  AH.mode, AH.lastMode, AH.lateScan = nil, nil, nil
   AH.walker:Hide()
+  ns.Every("auction scan countdown", nil)
 end
 
 -- Scan ---------------------------------------------------------------------------------------
 
--- "last scan 12 min ago", "scanning 400 of 12000", or "no scan yet"; the button with its switch.
+-- How often the scan card's countdown is painted again while it shows (seconds).
+AH.COUNTDOWN_TICK = 15
+
+-- Seconds until the next scan may start: the game allows one whole-house query every 15 minutes for the
+-- account, so the account's last finished scan counts (and this house's, for scans kept before that).
+function AH.NextScanIn()
+  local last = math.max(ns.PlainNumber(AP.Store().scannedAt) or 0, AP.House().lastScan, AH.refusedAt or 0)
+  return math.max(0, last + AH.SCAN_GAP - AP.Now())
+end
+
+-- How long ago a time was, in words: "2 min ago", "3 h ago", "2 days ago".
+local function ago(t)
+  local seconds = math.max(0, AP.Now() - t)
+  if seconds < 3600 then return math.floor(seconds / 60) .. " min ago" end
+  if seconds < 86400 then return math.floor(seconds / 3600) .. " h ago" end
+  return math.floor(seconds / 86400) .. " days ago"
+end
+
+-- A count with its thousands apart: 8412 as "8,412".
+local function grouped(n)
+  local text = tostring(math.floor(n))
+  return (text:reverse():gsub("(%d%d%d)", "%1,"):reverse():gsub("^,", ""))
+end
+
+-- The line under the button: "scanning 400 of 12000", "no scan yet", or "Scanned 2 min ago · 8,412 items",
+-- the last in the warning colour once the prices are over a day old.
+local function paintScanLine(line, s, last)
+  T.Color(line, not s and last > 0 and AP.Now() - last > AH.SCAN_STALE and "warn" or "text2")
+  if s then return line:SetText(string.format("scanning %d of %d", s.next, s.total or 0)) end
+  if last == 0 then return line:SetText("no scan yet") end
+  line:SetText(string.format("Scanned %s · %s items", ago(last), grouped(AP.House().count)))
+end
+
+-- The scan button: greyed and counting down ("Next scan in 12 min") inside the 15 minutes, else ready.
+local function paintScanButton(button)
+  local wait = AH.NextScanIn()
+  button.text:SetText(wait > 0 and string.format("Next scan in %d min", math.ceil(wait / 60)) or "Scan the auction house")
+  if wait > 0 then button:Disable() else button:Enable() end
+end
+
+-- The scan card: the button (with its switch) and the line under it.
 function AH.PaintScan()
-  local c, s, last = AH.scanCard, AH.scan, AP.House().lastScan
+  local c = AH.scanCard
   if not c then return end
   c.scan:SetShown(AH.settings.scanButton)
-  if s then return c.last:SetText(string.format("scanning %d of %d", s.next, s.total or 0)) end
-  c.last:SetText(last > 0 and string.format("last scan %d min ago", math.floor((AP.Now() - last) / 60)) or "no scan yet")
+  paintScanButton(c.scan)
+  paintScanLine(c.last, AH.scan, AP.House().lastScan)
 end
 
 -- A new scan: where the walk is, each item's listings and how many, the gear to judge for
@@ -411,20 +458,35 @@ end
 -- finished scan counts: one cut short by closing the house doesn't); the rows are read once
 -- REPLICATE_ITEM_LIST_UPDATE says they're in.
 function AH.StartScan()
-  local wait = AP.House().lastScan + AH.SCAN_GAP - AP.Now()
+  local wait = AH.NextScanIn()
   AH.PaintScan()
   if not AH.open then return ns.Chat("Open the auction house to scan it.") end
   if AH.scan then return ns.Chat(string.format("Already scanning: %d of %d read.", AH.scan.next, AH.scan.total or 0)) end
   if wait > 0 then return ns.Chat(string.format("One auction house scan every 15 minutes: the next in %d min.", math.ceil(wait / 60))) end
-  AH.scan = newScan()
+  local s = newScan()
+  AH.scan, AH.lateScan = s, nil
   C_AuctionHouse.ReplicateItems()
+  C_Timer.After(AH.SCAN_WAIT, ns.Guard("timer scan unanswered", function() AH.ScanUnanswered(s) end))
   AH.PaintScan()
 end
 
--- The listings are in: walk them, AH.SCAN_ROWS per frame.
+-- A scan still without its list after AH.SCAN_WAIT seconds (the game refused it, as it does inside 15
+-- minutes of a scan by another character or another auction addon): the button counts down 15 minutes
+-- from the try (so it doesn't ask again inside the game's limit), and a list that still comes this visit is read.
+function AH.ScanUnanswered(s)
+  if AH.scan ~= s or s.total then return end
+  AH.scan, AH.lateScan, AH.refusedAt = nil, s, s.started
+  ns.Chat("The auction house hasn't answered the scan: another character or auction addon may have scanned in the last 15 minutes. The button counts down to the next try.")
+  AH.PaintScan()
+end
+
+-- The listings are in (for the scan running, or one given up on during this visit): walk them,
+-- AH.SCAN_ROWS per frame.
 local function onReplicate()
-  if not AH.scan or AH.scan.total then return end
-  AH.scan.total = ns.PlainNumber(C_AuctionHouse.GetNumReplicateItems()) or 0
+  local s = AH.scan or AH.lateScan
+  if not s or s.total then return end
+  AH.scan, AH.lateScan = s, nil
+  s.total = ns.PlainNumber(C_AuctionHouse.GetNumReplicateItems()) or 0
   AH.walker:Show()
 end
 
@@ -475,7 +537,7 @@ end
 function AH.FinishScan()
   local s = AH.scan
   local n = recordScan(s, AP.Now())
-  AP.House().lastScan, AH.scan = s.started, nil
+  AP.House().lastScan, AP.Store().scannedAt, AH.scan = s.started, s.started, nil
   AH.walker:Hide()
   AH.JudgeGear(s.gear)
   local yours = s.mine > 0 and string.format(" %d of them were yours and are left out.", s.mine) or ""

@@ -31,9 +31,10 @@ function atAuctionHouse(extra = "", opts) {
   addon.update(0);
   return addon;
 }
-// The replicate list (a Lua list of rows), a click on Scan, the list arriving, and frames until the walk ends.
+// The replicate list (a Lua list of rows), the scan card painted (as its countdown is while it shows), a click
+// on Scan, the list arriving, and frames until the walk ends.
 function scan(addon, rows) {
-  addon.eval(`__wfgWorld.ah.replicate = ${rows}`);
+  addon.eval(`__wfgWorld.ah.replicate = ${rows} ${HELPER}.PaintScan()`);
   addon.click(SCAN_BUTTON);
   addon.fire("REPLICATE_ITEM_LIST_UPDATE");
   for (let i = 0; i < 10; i++) addon.update(0.01);
@@ -50,16 +51,27 @@ it("a scan records each item's cheapest unit price and the day's low", () => {
   expect(addon.eval("return { ns.AuctionPrices.House().prices[159] == nil, ns.AuctionPrices.House().count }"), "a listing without a buyout is skipped").toEqual([true, 1]);
   expect(chatHas(addon, /Auction house scanned: 3 listings, prices for 1 items\./), "says what it read").toBe(true);
   expect(addon.eval("return __wfgWorld.ah.queries[1].fn"), "one whole-house query").toBe("ReplicateItems");
-  expect(lastLine(addon), "the line under the button").toBe("last scan 0 min ago");
+  expect(lastLine(addon), "the line under the button: when, and how many items are priced").toBe("Scanned 0 min ago · 1 items");
 });
-it("scans are 15 minutes apart", () => {
+// The scan button: [its label, whether it can be clicked].
+const scanButton = (addon) => addon.eval(`local b = ${SCAN_BUTTON} return { b.text:GetText(), b:IsEnabled() }`);
+it("scans are 15 minutes apart: the button is greyed and counts down until then", () => {
   const addon = atAuctionHouse();
+  addon.click("AuctionHouseFrame.Tabs[4]");
   scan(addon, LINEN);
   addon.eval("__now = __now + 600");
+  addon.update(15);
+  expect(scanButton(addon), "greyed, with the minutes left").toEqual(["Next scan in 5 min", false]);
   addon.click(SCAN_BUTTON);
-  expect([addon.eval("return #__wfgWorld.ah.queries"), chatHas(addon, /One auction house scan every 15 minutes: the next in 5 min\./)], "too soon: nothing sent").toEqual([1, true]);
-  expect(lastLine(addon), "the line counts the minutes").toBe("last scan 10 min ago");
-  addon.eval("__now = __now + 300");
+  addon.slash("ah scan");
+  expect([addon.eval("return #__wfgWorld.ah.queries"), chatHas(addon, /One auction house scan every 15 minutes: the next in 5 min\./)], "too soon: nothing sent; the command says when").toEqual([1, true]);
+  expect(lastLine(addon), "the line counts the minutes").toBe("Scanned 10 min ago · 1 items");
+  addon.eval("__now = __now + 240");
+  addon.update(15);
+  expect(scanButton(addon), "the countdown repaints while the card shows").toEqual(["Next scan in 1 min", false]);
+  addon.eval("__now = __now + 60");
+  addon.update(15);
+  expect(scanButton(addon), "15 minutes on: ready").toEqual(["Scan the auction house", true]);
   addon.click(SCAN_BUTTON);
   expect([addon.eval("return #__wfgWorld.ah.queries"), lastLine(addon)], "after 15 minutes a new scan starts").toEqual([2, "scanning 0 of 0"]);
   addon.click(SCAN_BUTTON);
@@ -70,6 +82,53 @@ it("a second Scan click while the first scan runs says it is scanning, never a t
   addon.eval(`${HELPER}.StartScan() ${HELPER}.StartScan()`);
   const lines = Array.from(addon.chat()).filter((l) => /scan/i.test(l));
   expect([lines.some((l) => /next in/.test(l)), chatHas(addon, /Already scanning: 0 of 0 read\./)], "no first scan yet: no \"next in -29 million min\"").toEqual([false, true]);
+});
+it("the 15 minutes are the account's: a scan on one side greys the button on the other", () => {
+  const addon = atAuctionHouse();
+  scan(addon, LINEN);
+  addon.eval(`__wfgWorld.units.player.faction = 'Horde' __now = __now + 120 ${HELPER}.PaintScan()`);
+  expect([scanButton(addon), lastLine(addon)], "another house, no prices of its own yet, but the account's last scan counts").toEqual([["Next scan in 13 min", false], "no scan yet"]);
+});
+it("a scan the house doesn't answer is given up after 90 s, says why and counts down from the try; a list that still comes is read", () => {
+  const addon = atAuctionHouse("__wfgWorld.ah.replicate = { { itemID = 2589, count = 1, buyoutPrice = 90 } }");
+  addon.click(SCAN_BUTTON);
+  addon.update(89);
+  expect(lastLine(addon), "waiting").toBe("scanning 0 of 0");
+  addon.update(1);
+  expect([addon.eval(`return ${HELPER}.scan == nil`), lastLine(addon), scanButton(addon)], "given up on: no scan running, the button counts down from the try").toEqual([true, "no scan yet", ["Next scan in 15 min", false]]);
+  expect(chatHas(addon, /hasn't answered the scan: another character or auction addon may have scanned in the last 15 minutes/), "chat says why").toBe(true);
+  addon.fire("REPLICATE_ITEM_LIST_UPDATE");
+  addon.update(0.01);
+  expect([addon.eval("return ns.AuctionPrices.House().prices[2589].min"), chatHas(addon, /Auction house scanned: 1 listings/)], "the late list is read all the same").toEqual([90, true]);
+  addon.fire("REPLICATE_ITEM_LIST_UPDATE");
+  addon.update(0.01);
+  expect(addon.eval("return #__wfgWorld.ah.queries"), "a second list event with no scan waiting does nothing").toBe(1);
+});
+it("a scan answered in time is not given up on, and closing the house forgets one given up on", () => {
+  const addon = atAuctionHouse();
+  scan(addon, LINEN);
+  addon.update(90);
+  expect(chatHas(addon, /hasn't answered/), "answered: no message").toBe(false);
+  addon.eval("__now = __now + 900");
+  addon.click("AuctionHouseFrame.Tabs[4]");
+  addon.click(SCAN_BUTTON);
+  addon.update(90);
+  addon.world.closeAuctionHouse();
+  addon.fire("REPLICATE_ITEM_LIST_UPDATE");
+  addon.update(0.01);
+  expect(addon.eval(`return { ${HELPER}.scan == nil, ${HELPER}.lateScan == nil }`), "closed: nothing waits for a list").toEqual([true, true]);
+});
+it("the last scan's line counts in hours and days, the thousands apart, and turns the warning colour after a day", () => {
+  const addon = atAuctionHouse();
+  scan(addon, LINEN);
+  addon.eval(`ns.AuctionPrices.House().count = 8412 __now = __now + 7200 ${HELPER}.PaintScan()`);
+  // The line's text, and whether it is in the warning colour.
+  const line = () => [lastLine(addon), isTok(addon, addon.eval(`return ${HELPER}.scanCard.last.__textColor`), "warn")];
+  expect(line(), "two hours: plain").toEqual(["Scanned 2 h ago · 8,412 items", false]);
+  addon.eval(`__now = __now + 2 * 86400 ${HELPER}.PaintScan()`);
+  expect(line(), "two days: the warning colour").toEqual(["Scanned 2 days ago · 8,412 items", true]);
+  addon.click(SCAN_BUTTON);
+  expect(line(), "a new scan's progress is plain").toEqual(["scanning 0 of 0", false]);
 });
 it("one frame of a scan reads at most 400 listings", () => {
   const addon = atAuctionHouse();
@@ -82,7 +141,7 @@ it("one frame of a scan reads at most 400 listings", () => {
     addon.update(0.01);
     reads.push([addon.world.get("ah.reads"), lastLine(addon)]);
   }
-  expect(reads, "400, 400, then the last 200; the line counts them").toEqual([[400, "scanning 400 of 1000"], [400, "scanning 800 of 1000"], [200, "last scan 0 min ago"], [0, "last scan 0 min ago"]]);
+  expect(reads, "400, 400, then the last 200; the line counts them").toEqual([[400, "scanning 400 of 1000"], [400, "scanning 800 of 1000"], [200, "Scanned 0 min ago · 7 items"], [0, "Scanned 0 min ago · 7 items"]]);
   expect(addon.eval("return { ns.AuctionPrices.House().count, ns.AuctionPrices.House().prices[90001].min }"), "7 items, each at its cheapest").toEqual([7, 1001]);
 });
 it("the tooltip line says what an item went for, and when", () => {
@@ -174,19 +233,21 @@ it("the account-wide prices move into this realm and faction once; the lists sta
   const addon = atAuctionHouse("", { savedVariables: ACCOUNT_WIDE });
   expect(houses(addon), "one house: the realm's normalized name and the faction").toEqual(["ForeverTest-Alliance:1"]);
   expect(addon.eval("local ah = VanguardDB.ah return { ah.prices == nil, ah.count == nil, ah.lastScan == nil, ah.lists.Shopping[1] }"), "the old fields are gone, the list is where it was").toEqual([true, true, true, 2589]);
-  expect([addon.eval('return __showItem("item:2589")[1][1]'), lastLine(addon)], "the tooltip and the last scan carry over").toEqual(["AH: 90c (today)", "last scan 10 min ago"]);
+  expect([addon.eval('return __showItem("item:2589")[1][1]'), lastLine(addon)], "the tooltip and the last scan carry over").toEqual(["AH: 90c (today)", "Scanned 10 min ago · 1 items"]);
   addon.eval("ns.AuctionPrices.Migrate() ns.AuctionPrices.Prune(__now)");
   expect(houses(addon), "a second run moves nothing more").toEqual(["ForeverTest-Alliance:1"]);
   addon.eval("__wfgWorld.realm = 'Other-Realm Two'");
   expect([addon.eval('return #__showItem("item:2589")'), addon.eval("return ns.AuctionPrices.Low7(2589)")], "another realm has no price for it").toEqual([0, null]);
+  addon.eval(`${HELPER}.PaintScan()`);
   addon.click(SCAN_BUTTON);
-  expect(addon.eval("return #__wfgWorld.ah.queries"), "and its own 15 minutes: it scans at once").toBe(1);
+  expect(addon.eval("return #__wfgWorld.ah.queries"), "a scan kept from before the account-wide time counts only for its own house: it scans at once").toBe(1);
 });
 it("each realm and faction keeps its own prices and its own cap", () => {
   const addon = atAuctionHouse();
   scan(addon, LINEN);
   addon.eval(`__wfgWorld.units.player.faction = 'Horde' ${HELPER}.PaintScan()`);
   expect([addon.eval('return #__showItem("item:2589")'), lastLine(addon)], "a Horde character on the realm sees none of it").toEqual([0, "no scan yet"]);
+  addon.eval("__now = __now + 900");
   scan(addon, "{ { itemID = 2589, count = 1, buyoutPrice = 40 } }");
   addon.eval("__wfgWorld.realm = 'Second Realm'");
   addon.eval("local AP = ns.AuctionPrices AP.MAX_ITEMS = 10 for i = 1, 11 do AP.Record(100 + i, i, __now + i) end");
@@ -323,7 +384,7 @@ it("a finished scan spends the 15 minutes from its start, and your own listings 
   const p = addon.eval("local p = ns.AuctionPrices.House().prices return { p[2589].min, p[2589].listings, p[2589].qtys[math.floor(__now / 86400)], p[2592] == nil }");
   expect(p, "yours (by name, by full name) left out; a hidden seller and an unnamed one count").toEqual([70, 3, 6, true]);
   expect(chatHas(addon, /Auction house scanned: 6 listings, prices for 1 items\. 3 of them were yours and are left out\./), "says so").toBe(true);
-  expect([addon.eval("return ns.AuctionPrices.House().lastScan"), lastLine(addon)], "the 15 minutes run from the start").toEqual([1790000000, "last scan 2 min ago"]);
+  expect([addon.eval("return ns.AuctionPrices.House().lastScan"), lastLine(addon)], "the 15 minutes run from the start").toEqual([1790000000, "Scanned 2 min ago · 1 items"]);
 });
 it("switches: no tabs, no scan button; nothing at all in combat", () => {
   const off = atAuctionHouse("", { savedVariables: "VanguardDB.profiles = { Default = { AuctionHelper = { panel = false } } }" });
