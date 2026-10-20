@@ -25,14 +25,6 @@ local function partOf(frame, keys)
   end
 end
 
--- Themes the push buttons a frame keeps under those keys.
-local function dressKeys(frame, keys)
-  for _, key in ipairs(keys) do
-    local button = frame[key]
-    if type(button) == "table" and button.CreateTexture then T.Button(button) end
-  end
-end
-
 -- A game font string in the theme font for a text role, at the size the game gave it; its colour left alone unless
 -- a theme colour is given.
 local function themeFont(fs, role, color)
@@ -133,7 +125,7 @@ function GW.SkinPvPMatch(frame)
   if content then skinTable(content) skinEarnings(content) skinMatchTexts(frame, content) end
   local bar = frame.ScrollBar or frame.scrollBar
   if type(bar) == "table" then T.ScrollBar(bar) end
-  dressKeys(frame, GW.PVP_PUSH)
+  GW.EachKey(frame, GW.PVP_PUSH, GW.SkinButton)
   dressRewards(frame)
   GW.HookAfter(frame, "SetupArtwork", GW.SkinPvPMatch)
   GW.HookAfter(frame, "AddItemReward", dressRewards)
