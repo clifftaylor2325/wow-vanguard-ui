@@ -621,7 +621,7 @@ local function moveButton(button)
   GW.DressRow(button, { "icon" })
   if type(button) ~= "table" or type(button.GetChecked) ~= "function" then return end
   T.SelectRow(button, button:GetChecked() == true)
-  GW.HookAfter(button, "SetChecked", function(b, on) T.SelectRow(b, on == true) end)
+  GW.FollowSelected(button, "SetChecked")
   if vgMoveClicks[button] then return end
   vgMoveClicks[button] = true
   button:HookScript("OnClick", ns.Guard("move pad click", function(b) T.SelectRow(b, b:GetChecked() == true) end))
@@ -690,7 +690,7 @@ local reportFrame = skinner({
 local function minorButton(button)
   GW.DressRow(button)
   T.SelectRow(button, button:GetChecked() == true)
-  GW.HookAfter(button, "SetChecked", function(b, on) T.SelectRow(b, on == true) end)
+  GW.FollowSelected(button, "SetChecked")
 end
 
 -- The minor-category buttons the window shows now, in the theme (the game pools them, and runs AnchorMinorCategory for each).

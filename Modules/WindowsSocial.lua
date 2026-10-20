@@ -899,7 +899,7 @@ local function dressChannelRow(row, list)
   if type(row) ~= "table" or not row.CreateTexture then return end
   fadeChannelRow(row)
   GW.HookAfter(row, "Update", fadeChannelRow)
-  GW.HookAfter(row, "SetIsSelectedChannel", function(self, on) T.SelectRow(self, on == true) end)
+  GW.FollowSelected(row, "SetIsSelectedChannel")
   if type(list.GetSelectedChannelButton) == "function" then T.SelectRow(row, list:GetSelectedChannelButton() == row) end
 end
 
@@ -1073,7 +1073,7 @@ local function dressCard(card)
   GW.DressRow(card, GW.CARD_KEEP)
   centrePresence(card)
   GW.HookAfter(card, "LayoutScaledTextHolderAnchors", centrePresence)
-  GW.HookAfter(card, "SetSelected", function(self, on) T.SelectRow(self, on == true) end)
+  GW.FollowSelected(card, "SetSelected")
   dressCardAction(card.PartyButton)
   dressCardAction(card.RAFSummonButton)
   GW.SkinButton(card.AcceptButton)

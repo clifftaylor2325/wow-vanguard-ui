@@ -762,15 +762,10 @@ local function insetPane(pane)
   T.Panel(pane, { inset = true, noSheen = true })
 end
 
--- The game's selection globals already hooked (see watchSelection).
-local selectHooked = {}
-
 -- Has a row's selected look follow the game's global that marks a row selected or not (called with the row and a flag at
 -- every init and click; a row not dressed is left alone). Hooked once, when the game has the function.
 local function watchSelection(name)
-  if selectHooked[name] or type(_G[name]) ~= "function" then return end
-  selectHooked[name] = true
-  hooksecurefunc(name, ns.Guard("hook " .. name, function(row, on) T.SelectRow(row, on == true) end))
+  GW.FollowSelected(_G, name)
 end
 
 -- A title row (PlayerTitleButtonTemplate): a theme row (its zebra stripe, hover and selected bars faded, the tick kept)
@@ -951,7 +946,7 @@ local function skinSetsRow(row)
   if type(row) ~= "table" then return end
   GW.DressRow(row, GW.SETS_ROW_KEEP)
   GW.FollowMark(row, row.SelectedTexture)
-  GW.HookAfter(row, "SetSelected", function(r, on) T.SelectRow(r, on == true) end)
+  GW.FollowSelected(row, "SetSelected")
 end
 
 -- The sets tab's variant dropdown, the plate behind the set's icons and the fade over its model, and its list's rows.

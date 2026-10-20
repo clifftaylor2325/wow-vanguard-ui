@@ -660,6 +660,12 @@ function GW.FollowMark(row, mark)
   T.SelectRow(row, type(mark) == "table" and type(mark.IsShown) == "function" and mark:IsShown() == true)
 end
 
+-- The row's selected look following the game's method `method` (SetChecked, SetSelected): each time the game calls it
+-- with the flag, the look is set to that flag. A post-hook, once per frame and method.
+function GW.FollowSelected(frame, method)
+  GW.HookAfter(frame, method, function(row, on) T.SelectRow(row, on == true) end)
+end
+
 -- An edit box (the game's input border and all) as a theme edit box; anything that is not one is skipped.
 function GW.SkinEditBox(box)
   if type(box) == "table" and box.SetText and box.GetRegions then T.EditBox(box) end
