@@ -5,7 +5,6 @@
 local ADDON, ns = ...
 
 -- Per-frame state kept off the game's frames (Core/Events.lua, ns.FrameState).
-local vgPadded = ns.FrameState("vgPadded")
 local vgSocialSide = ns.FrameState("vgSocialSide")
 local vgEmptyNote = ns.FrameState("vgEmptyNote")
 local vgInsetFill = ns.FrameState("vgInsetFill")
@@ -1241,8 +1240,7 @@ end
 local function dressSocialTabs(frame)
   if not (GW.settings and GW.settings.tabs) or type(frame.EnumerateTabs) ~= "function" then return end
   for tab in frame:EnumerateTabs() do
-    vgPadded[tab] = nil
-    if type(GW.ClearPadding) == "function" then GW.ClearPadding(tab, frame) end
+    GW.PadTabAgain(tab, frame)
     T.Tab(tab, { dimIcon = true })
   end
 end

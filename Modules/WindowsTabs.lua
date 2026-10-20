@@ -9,7 +9,7 @@
 local ADDON, ns = ...
 
 -- Per-frame state kept off the game's frames (Core/Events.lua, ns.FrameState).
-local vgPadded = ns.FrameState("vgPadded")
+local vgTabPadded = ns.FrameState("vgTabPadded")
 local vgSeeded = ns.FrameState("vgSeeded")
 local vgUnmasked = ns.FrameState("vgUnmasked")
 
@@ -167,10 +167,16 @@ end
 -- cover the tab's near end.
 function GW.ClearPadding(tab, window)
   local pad, count, moved = T.Padding(window) - T.Pixel(window), tab:GetNumPoints(), {}
-  if vgPadded[tab] or pad <= 0 or count < 1 or count > 2 then return end
-  vgPadded[tab] = true
+  if vgTabPadded[tab] or pad <= 0 or count < 1 or count > 2 then return end
+  vgTabPadded[tab] = true
   for i = 1, count do moved[i] = { movedOut(window, pad, tab:GetPoint(i)) } end
   for _, anchor in ipairs(moved) do if anchor[1] then tab:SetPoint(unpack(anchor)) end end
+end
+
+-- Pads a tab again after the game re-anchored it (a refreshed tab set): clears its once-flag, then pads it.
+function GW.PadTabAgain(tab, window)
+  vgTabPadded[tab] = nil
+  GW.ClearPadding(tab, window)
 end
 
 -- Takes the game's rounded mask off an icon tab's icon, once (the mask sits a little off the icon's centre, so its

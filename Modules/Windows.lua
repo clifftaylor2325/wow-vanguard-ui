@@ -23,7 +23,7 @@ local vgDropArrow = ns.FrameState("vgDropArrow")
 local vgLootRows = ns.FrameState("vgLootRows")
 local vgMenuSkinned = ns.FrameState("vgMenuSkinned")
 local vgMoneyBox = ns.FrameState("vgMoneyBox")
-local vgPadded = ns.FrameState("vgPadded")
+local vgPlatePadded = ns.FrameState("vgPlatePadded")
 local vgChevron = ns.FrameState("vgChevron")
 local vgRowsWatched = ns.FrameState("vgRowsWatched")
 local vgRowsLater = ns.FrameState("vgRowsLater")
@@ -432,8 +432,8 @@ end
 -- low in it).
 function GW.PadMoneyLine(plate, well, above)
   local line = type(plate) == "table" and plate.MoneyFrame
-  if type(line) ~= "table" or not line.SetPoint or type(well) ~= "table" or vgPadded[plate] then return end
-  vgPadded[plate] = true
+  if type(line) ~= "table" or not line.SetPoint or type(well) ~= "table" or vgPlatePadded[plate] then return end
+  vgPlatePadded[plate] = true
   if type(above) == "table" and above.GetObjectType then hangUnder(well, above) end
   line:ClearAllPoints()
   line:SetPoint("RIGHT", well, "RIGHT", -T.SPACE.gap, 0)
