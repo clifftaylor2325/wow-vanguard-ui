@@ -82,7 +82,7 @@ end
 local function timerRows()
   return {
     { "header", "Combat timers" },
-    { "cycle", "Swing timer (reload)", { { "auto", "Classes that swing a weapon" }, { "always", "Always" }, { "never", "Never" } }, setting("SwingTimer", "show", true) },
+    { "cycle", "Swing timer (reload)", { { "auto", "Melee classes and hunters" }, { "always", "Always" }, { "never", "Never" } }, setting("SwingTimer", "show", true) },
     check("Five-second rule spark on your mana bar", sparkSetting("mana")),
     check("Energy tick spark on your energy bar", sparkSetting("energy")),
   }

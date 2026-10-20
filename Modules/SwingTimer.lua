@@ -27,8 +27,9 @@ SW.CLASSES = { WARRIOR = true, ROGUE = true, HUNTER = true, PALADIN = true, SHAM
 SW.WIDTH, SW.ROW, SW.GAP = 220, 10, 2
 -- A row's opacity while your target is out of that hand's reach (the game's own timer uses the same).
 SW.OUT_OF_RANGE = 0.4
--- What makes the rows ask the client about range again: a new target, a new zone, other weapons.
-SW.RANGE_EVENTS = { "PLAYER_TARGET_CHANGED", "PLAYER_ENTERING_WORLD", "WEAPON_SLOT_CHANGED" }
+-- What makes the rows ask the client to report range again (a new zone, other weapons), and read the
+-- reach now; a new target only reads it.
+SW.RANGE_EVENTS = { "PLAYER_ENTERING_WORLD", "WEAPON_SLOT_CHANGED" }
 -- Swing type name (Enum.PlayerSwingType) -> row order and color token. The order is
 -- also that of UnitAttackSpeed's returns (main hand, off hand, ranged).
 SW.KINDS = { { "MainHand", "accent" }, { "OffHand", "text2" }, { "Ranged", "focus" } }
@@ -105,31 +106,40 @@ local function paintRange(r, outOfRange)
   r:SetAlpha(outOfRange and SW.OUT_OF_RANGE or 1)
 end
 
--- The client says a hand's reach changed: dim its row only when a check was made and the target
--- is out of reach. A hidden answer counts as in reach.
+-- True only for a plain "not in reach": nil (no check could be made) and a hidden answer never are.
+local function outOfReach(inRange)
+  return not ns.IsSecret(inRange) and inRange == false
+end
+
+-- The client says a hand's reach changed (payload swingType, isInRange, checksRange, as
+-- SwingTimerDocumentation.lua lists it): dim its row only when a check was made and it says out.
 function SW.OnRange(_, kind, inRange, checksRange)
   local r = not ns.IsSecret(kind) and SW.rows[kind]
   if not r then return end
-  paintRange(r, not ns.IsSecret(checksRange) and checksRange == true and not ns.IsSecret(inRange) and inRange == false)
+  paintRange(r, not ns.IsSecret(checksRange) and checksRange == true and outOfReach(inRange))
 end
 
--- Asks the client to send range changes for every row's hand (again: a new target or weapon can
--- reset it), and reads the reach now; only a plain "out of reach" dims, nil never does.
+-- Reads every row's reach now.
 function SW.CheckRange()
-  local enable, within = C_SwingTimer.EnableRangeCheck, C_SwingTimer.IsTargetWithinSwingRange
-  if type(enable) ~= "function" or type(within) ~= "function" then return end
-  for kind, r in pairs(SW.rows) do
-    enable(kind, true)
-    local inRange = within(kind)
-    paintRange(r, not ns.IsSecret(inRange) and inRange == false)
-  end
+  for kind, r in pairs(SW.rows) do paintRange(r, outOfReach(C_SwingTimer.IsTargetWithinSwingRange(kind))) end
 end
 
--- Follows your target's reach: the client's range event, and a fresh look on each range event.
-local function listenRange()
-  ns.On("PLAYER_SWING_RANGE_UPDATE", SW.OnRange)
-  for _, event in ipairs(SW.RANGE_EVENTS) do ns.On(event, SW.CheckRange) end
+-- Asks the client to send range changes for every row's hand (again after a zone or weapon change,
+-- which can reset it), then reads the reach now.
+function SW.WatchRange()
+  for kind in pairs(SW.rows) do C_SwingTimer.EnableRangeCheck(kind, true) end
   SW.CheckRange()
+end
+
+-- Follows your target's reach where the client offers the range calls: its range event, a fresh
+-- look on a new target, and the checks asked for again on a zone or weapon change.
+local function listenRange()
+  local api = C_SwingTimer
+  if type(api.EnableRangeCheck) ~= "function" or type(api.IsTargetWithinSwingRange) ~= "function" then return end
+  ns.On("PLAYER_SWING_RANGE_UPDATE", SW.OnRange)
+  ns.On("PLAYER_TARGET_CHANGED", SW.CheckRange)
+  for _, event in ipairs(SW.RANGE_EVENTS) do ns.On(event, SW.WatchRange) end
+  SW.WatchRange()
 end
 
 -- The game's swing timer ---------------------------------------------------------------------
