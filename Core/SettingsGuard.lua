@@ -3,7 +3,7 @@
 -- time) in the account file (VanguardDB.guard, which also notes the profile
 -- each character uses) and in this character's file (VanguardCharDB.guard,
 -- with a backup of the character's profile as a profile string). At login:
---   * the account file came back without that stamp, or older than it: chat
+--   * the account file came back without this character's stamp, or older than it: chat
 --     says the saved settings didn't load, a question offers to restore the
 --     profile from this character's backup (or to paste a profile string),
 --     the General and Profiles pages show the same, and setup waits;
@@ -49,13 +49,23 @@ end
 
 -- Checking ----------------------------------------------------------------------------------
 
--- "blank" when the account file has no stamp, "older" when its stamp is older than this
+-- The account file's stamp for this character: its own note's (another character's logout after a
+-- loss renews the account's stamp, not this one's), or the account's when the client won't name it.
+local function accountStamp(acct)
+  local key = G.CharKey()
+  if not key then return tonumber(acct.stamp) end
+  local note = tbl(acct.chars) and tbl(acct.chars[key])
+  return note and tonumber(note.stamp)
+end
+
+-- "blank" when the account file has no stamp for this character, "older" when it is older than this
 -- character's; nil when it is as new or this character has no stamp (a first run, or saved before the guard).
 local function accountState(mine, acct)
   local stamp = mine and tonumber(mine.stamp)
   if not stamp then return nil end
-  if not acct or not tonumber(acct.stamp) then return "blank" end
-  return tonumber(acct.stamp) < stamp and "older" or nil
+  local theirs = acct and accountStamp(acct)
+  if not theirs then return "blank" end
+  return theirs < stamp and "older" or nil
 end
 
 -- The account file's note of this character ({ profile, stamp }) when this character's file came back blank; else nil.
@@ -214,6 +224,14 @@ local function backupString()
   return encodeOwn(ns.Profile())
 end
 
+-- The backup this character keeps: the old one while the profile it names is still missing (a pasted
+-- string or a fresh start must not erase its only copy), else one of the profile in use.
+local function keptBackup()
+  local old = G.Backup()
+  if old and not VanguardDB.profiles[restoreName(old)] then return old.profile, old.backup end
+  return ns.ProfileName(), backupString()
+end
+
 -- Leaves the stamp in both files, the profile each character uses in the account file and
 -- the backup in this character's; not while a loss is unanswered and nothing was imported or picked.
 function G.Save()
@@ -221,7 +239,8 @@ function G.Save()
   local t, key, acct = now(), G.CharKey(), accountGuard()
   acct.stamp = t
   if key then acct.chars[key] = { profile = ns.SelectedProfileName(), stamp = t } end
-  VanguardCharDB.guard = { stamp = t, profile = ns.ProfileName(), backup = backupString() }
+  local profile, backup = keptBackup()
+  VanguardCharDB.guard = { stamp = t, profile = profile, backup = backup }
 end
 ns.On("PLAYER_LOGOUT", G.Save)
 
