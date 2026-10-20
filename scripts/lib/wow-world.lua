@@ -976,12 +976,14 @@ function world.learn(id, fields)
 end
 
 -- Whether the player knows a spell (it is in the spellbook, rank or not).
-function IsPlayerSpell(id)
+local function knowsSpell(id)
   for _, item in ipairs(world.book) do
     if item.id == id then return true end
   end
   return false
 end
+-- The older global, which Forever loads with its deprecation fallbacks (loadDeprecationFallbacks, on by default).
+IsPlayerSpell = knowsSpell
 
 -- Forgets every learned spell (the spellbook is empty again).
 function world.forgetAll()
@@ -990,6 +992,11 @@ function world.forgetAll()
 end
 
 C_SpellBook = {
+  -- Whether the player (the default bank) knows a spell; the pet bank knows none here.
+  IsSpellKnown = function(id, bank)
+    if bank ~= nil and bank ~= Enum.SpellBookSpellBank.Player then return false end
+    return knowsSpell(id)
+  end,
   -- One skill line while anything is learned.
   GetNumSpellBookSkillLines = function() return #world.book > 0 and 1 or 0 end,
   -- The one skill line holds every learned spell.
