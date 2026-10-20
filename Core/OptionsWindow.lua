@@ -10,6 +10,10 @@ local ADDON, ns = ...
 local T, W, O = ns.Theme, ns.Widgets, ns.Options
 
 local WIDTH, HEIGHT, NAV_WIDTH = 780, 600, 176
+
+-- How tall the window opens on a big screen: this share of the screen's height (never under HEIGHT), and at least
+-- this much of the screen left free.
+local FIT = { share = 0.75, margin = 50 }
 -- The header bar is centred on the title line (T.CONTROL.inset down, where every window's title and close button sit);
 -- the footer bar holds a standalone button (T.BUTTON_H) with air above and below.
 local HEAD, FOOT = 2 * T.CONTROL.inset, T.BUTTON_H + 14
@@ -691,11 +695,25 @@ function O.PlaceWindow()
   ns.GetModule("Windows").PutBack(PLACE_KEY, window)
 end
 
+-- The window's height for the screen now: FIT.share of it but at least HEIGHT, and never past the screen less
+-- FIT.margin. The nav's entries are sized for HEIGHT, so they fit at any of these.
+local function fitHeight()
+  local screen = UIParent:GetHeight()
+  return math.min(math.max(HEIGHT, math.floor(screen * FIT.share)), screen - FIT.margin)
+end
+
+-- After a UI scale or screen change, the window takes the height that fits now, and its place again.
+T.OnScale(function()
+  if not window then return end
+  T.PixelSize(window, WIDTH, fitHeight(), true)
+  O.PlaceWindow()
+end)
+
 -- The window frame: opaque (T.ALPHA.opaque: no world shows through, under short pages either), above other windows,
 -- closes with Escape (O.PlaceWindow places it).
 local function windowFrame()
   local f = T.Panel(CreateFrame("Frame", "Vanguard_Options", UIParent), { alpha = T.ALPHA.opaque, shadow = true })
-  T.PixelSize(f, WIDTH, HEIGHT, true)
+  T.PixelSize(f, WIDTH, fitHeight(), true)
   f:SetFrameStrata("DIALOG")
   f:EnableMouse(true)
   if type(UISpecialFrames) == "table" then table.insert(UISpecialFrames, "Vanguard_Options") end

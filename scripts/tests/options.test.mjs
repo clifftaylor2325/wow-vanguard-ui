@@ -56,6 +56,21 @@ it("options: pointing at the addons button says the version, what each click doe
   expect(addon.eval('Vanguard_OnAddonCompartmentEnter("Vanguard", __b) Vanguard_OnAddonCompartmentLeave("Vanguard", __b) local n = #ns.errors ns.errors[1], ns.errors[2] = nil, nil return n'), "a client without the tooltip: nothing breaks (no third error)").toBe(2);
 });
 
+it("options: the window opens three quarters of the screen tall (600 at least, the screen less 50 at most) and fits again after a screen change", () => {
+  const addon = loggedIn();
+  addon.slash("");
+  // The window's height, and whether it is the height given rounded to whole pixels.
+  const tall = (h) => addon.eval(`return Vanguard_Options:GetHeight() == ns.Theme.PixelRound(Vanguard_Options, ${h}, true)`);
+  expect(tall(810), "on the 1080 screen: 810").toBe(true);
+  // Gives UIParent a new height and lets the game say the screen changed.
+  const screen = (h) => { addon.eval(`UIParent:SetSize(1920, ${h})`); addon.fire("DISPLAY_SIZE_CHANGED"); addon.update(0.1); };
+  screen(700);
+  expect(tall(600), "a 700 screen: never under 600").toBe(true);
+  screen(620);
+  expect(tall(570), "a 620 screen: the screen less 50").toBe(true);
+  addon.eval("UIParent:SetSize(1920, 1080)");
+});
+
 it("options window: nav, search, controls, footer", () => {
   const addon = loggedIn(CLICK_LUA + "GetAddOnMetadata = function(_, key) return key == 'Version' and 'TEST-ONLY-9.9' or nil end");
   addon.eval('ns.Options.Show("general")');
