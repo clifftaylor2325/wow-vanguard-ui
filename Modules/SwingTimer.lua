@@ -20,10 +20,16 @@ local UF = ns.GetModule("UnitFrames")
 -- show: "auto" (the classes that live by auto-attack), "always" or "never".
 local SW = ns.Module("SwingTimer", { defaults = { show = "auto" } })
 
--- The classes "auto" shows it for: warriors and rogues, and hunters for Auto Shot.
-SW.CLASSES = { WARRIOR = true, ROGUE = true, HUNTER = true }
+-- The classes "auto" shows it for: every class that fights with its weapon (hunters for Auto Shot too).
+-- Rows show only while a swing runs, so a healer who rarely swings sees nothing at rest.
+SW.CLASSES = { WARRIOR = true, ROGUE = true, HUNTER = true, PALADIN = true, SHAMAN = true, DRUID = true }
 
 SW.WIDTH, SW.ROW, SW.GAP = 220, 10, 2
+-- A row's opacity while your target is out of that hand's reach (the game's own timer uses the same).
+SW.OUT_OF_RANGE = 0.4
+-- What makes the rows ask the client to report range again (a new zone, other weapons), and read the
+-- reach now; a new target only reads it.
+SW.RANGE_EVENTS = { "PLAYER_ENTERING_WORLD", "WEAPON_SLOT_CHANGED" }
 -- Swing type name (Enum.PlayerSwingType) -> row order and color token. The order is
 -- also that of UnitAttackSpeed's returns (main hand, off hand, ranged).
 SW.KINDS = { { "MainHand", "accent" }, { "OffHand", "text2" }, { "Ranged", "focus" } }
@@ -90,6 +96,50 @@ function SW.OnWeapons()
     local length = r.live and ns.PlainNumber(speeds[r.hand])
     if length and length > 0 then SW.OnSwing(nil, length, kind) elseif r.live then r.live = false r:Hide() end
   end
+end
+
+-- Range --------------------------------------------------------------------------------------
+
+-- Dims a row while your target is out of its hand's reach, as the game's own timer does (an
+-- opacity, not a fade).
+local function paintRange(r, outOfRange)
+  r:SetAlpha(outOfRange and SW.OUT_OF_RANGE or 1)
+end
+
+-- True only for a plain "not in reach": nil (no check could be made) and a hidden answer never are.
+local function outOfReach(inRange)
+  return not ns.IsSecret(inRange) and inRange == false
+end
+
+-- The client says a hand's reach changed (payload swingType, isInRange, checksRange, as
+-- SwingTimerDocumentation.lua lists it): dim its row only when a check was made and it says out.
+function SW.OnRange(_, kind, inRange, checksRange)
+  local r = not ns.IsSecret(kind) and SW.rows[kind]
+  if not r then return end
+  paintRange(r, not ns.IsSecret(checksRange) and checksRange == true and outOfReach(inRange))
+end
+
+-- Reads every row's reach now.
+function SW.CheckRange()
+  for kind, r in pairs(SW.rows) do paintRange(r, outOfReach(C_SwingTimer.IsTargetWithinSwingRange(kind))) end
+end
+
+-- Asks the client to send range changes for every row's hand (again after a zone or weapon change,
+-- which can reset it), then reads the reach now.
+function SW.WatchRange()
+  for kind in pairs(SW.rows) do C_SwingTimer.EnableRangeCheck(kind, true) end
+  SW.CheckRange()
+end
+
+-- Follows your target's reach where the client offers the range calls: its range event, a fresh
+-- look on a new target, and the checks asked for again on a zone or weapon change.
+local function listenRange()
+  local api = C_SwingTimer
+  if type(api.EnableRangeCheck) ~= "function" or type(api.IsTargetWithinSwingRange) ~= "function" then return end
+  ns.On("PLAYER_SWING_RANGE_UPDATE", SW.OnRange)
+  ns.On("PLAYER_TARGET_CHANGED", SW.CheckRange)
+  for _, event in ipairs(SW.RANGE_EVENTS) do ns.On(event, SW.WatchRange) end
+  SW.WatchRange()
 end
 
 -- The game's swing timer ---------------------------------------------------------------------
@@ -167,4 +217,5 @@ function SW.Enable(settings)
   ns.On("PLAYER_SWING", SW.OnSwing)
   ns.On("PLAYER_DEAD", SW.Stop)
   ns.On("WEAPON_SLOT_CHANGED", SW.OnWeapons)
+  listenRange()
 end

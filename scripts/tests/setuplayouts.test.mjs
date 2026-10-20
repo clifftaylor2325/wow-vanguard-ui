@@ -145,6 +145,8 @@ const attachedRect = (p, s, [, side, gap, w, h]) => (side === "above"
 function layoutRects(addon, n, sw, sh) {
   const spots = moverSpots(addon), out = {};
   for (const [key, spot] of Object.entries(spots)) if (onScreen(key, n)) out[key] = rectAt(spot.slice(0, 4), spot[4], spot[5], sw, sh);
+  // At the level cap (this account's level 60) the XP bar hides and the reputation bar takes its spot.
+  if (!addon.eval("return Vanguard_xpbar:IsShown()")) delete out.xpbar;
   for (const [key, row] of Object.entries(ATTACHED)) if (out[row[0]]) out[key] = attachedRect(out[row[0]], spots[row[0]][6], row);
   if (n > 0) out.raid = raidRect(addon, n, sw, sh);
   // Chat is a mover: its panel reaches a gap past the window's left, right and bottom (over the
