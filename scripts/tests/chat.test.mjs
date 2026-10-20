@@ -913,6 +913,7 @@ it("minimap drawer: a button an addon makes later joins at once (after a fight),
 });
 it("minimap drawer: buttons in name order, the toggle counts them, Escape closes it, and it opens on the side with room", () => {
   const addon = loggedIn(UI_ENV + DRAWER_ENV + 'CreateFrame("Button", "LibDBIcon10_TestOnlyAlpha", Minimap) CreateFrame("Button", "LibDBIcon10_TestOnlyZeta", Minimap)');
+  // A drawer button's offset across the drawer.
   const x = (name) => addon.eval(`return ${name}.__points.TOPLEFT.x`);
   expect(["Alpha", "One", "Zeta"].map((n) => x(`LibDBIcon10_TestOnly${n}`)), "by name, whatever order they were made in").toEqual([4, 32, 60]);
   addon.eval("local t = Vanguard_MinimapDrawerToggle t.__scripts.OnEnter(t)");
