@@ -1,10 +1,10 @@
 -- Cooldown gaps: a small, display-only row of icons for what the game's Cooldown
 -- Manager misses, in the Vanguard look and in a spot you can move:
---   * on-use trinkets you wear, and the items you choose (a Healthstone, a potion:
---     /vg gaps add <item>) while you carry them;
+--   * on-use trinkets you wear, and the items you choose (a Healthstone, a potion: dragged
+--     onto the Gaps card on the Cooldowns page, or /vg gaps add <item>) while you carry them;
 --   * your pet's abilities (the pet bar);
 --   * totems you have down, unless the class bars already show them;
---   * spells you choose (/vg gaps spell add <spell>), and with "Cooldown Manager's cooldowns"
+--   * spells you choose (on the Gaps card too, or /vg gaps spell add <spell>), and with "Cooldown Manager's cooldowns"
 --     ticked, the spells the game's manager tracks in its essential and utility rows, each drawn
 --     here as an icon with its sweep (a Vanguard-drawn cooldown row; charges and buff rows stay
 --     with the game's manager).
@@ -17,6 +17,7 @@
 local ADDON, ns = ...
 
 local A = ns.Auras
+local T, W = ns.Theme, ns.Widgets
 
 local CG = ns.Module("CooldownGaps", { defaults = { on = false, items = "", spells = "", tracked = false } })
 
@@ -333,3 +334,121 @@ function CG.Enable(settings)
   for _, event in ipairs(CG.REREAD) do ns.On(event, CG.Reread) end
   CG.Rebuild()
 end
+
+-- Options rows: the Cooldowns page's Gaps card ---------------------------------------------------
+
+-- The card's note with nothing chosen, and its note while the row is off (its settings load only then).
+CG.EMPTY = "Nothing chosen yet. Drag an item or spell here, or type its name."
+CG.OFF = "The gaps row is off. Tick Gaps row and reload to choose its items and spells."
+-- A chosen entry's icon size, the name box's width and the small buttons' width on the card's rows.
+CG.ROW_ICON, CG.ROW_INPUT, CG.ROW_BUTTON = 20, 160, 84
+
+-- A chosen entry's icon and name; an item the client hasn't loaded yet reads "Item <id>".
+local function entryLook(kind, id)
+  if kind == "spells" then return C_Spell.GetSpellTexture(id), C_Spell.GetSpellName(id) or ("Spell " .. id) end
+  local name = C_Item.GetItemInfo(id)
+  return select(5, C_Item.GetItemInfoInstant(id)), name or ("Item " .. id)
+end
+
+-- One row per chosen item, then per chosen spell: { "gapentry", name, kind =, id =, icon = }.
+local function entryRows(settings)
+  local rows = {}
+  for _, kind in ipairs({ "items", "spells" }) do
+    for _, id in ipairs(CG.Chosen(settings, kind)) do
+      local icon, name = entryLook(kind, id)
+      rows[#rows + 1] = { "gapentry", name, kind = kind, id = id, icon = icon }
+    end
+  end
+  return rows
+end
+
+-- The Gaps card's list: the chosen entries (or the empty note) and the add row; only the off
+-- note while the row is off, since CG.settings is set only while it is on.
+function CG.CardRows()
+  if not CG.settings then return { { "text", CG.OFF, "note" } } end
+  local rows = entryRows(CG.settings)
+  if #rows == 0 then rows[1] = { "text", CG.EMPTY, "note" } end
+  rows[#rows + 1] = { "gapadd" }
+  return rows
+end
+
+-- Draws the Cooldowns page again so the card lists the change.
+local function relist()
+  ns.Options.RebuildPage("cooldowns")
+end
+
+-- Takes an entry off the list, then lists the rest.
+local function removeEntry(kind, id)
+  CG.Remove(tostring(id), kind)
+  relist()
+end
+
+-- A chosen entry's icon at the left of its row.
+local function entryIcon(r, icon)
+  r.icon = r:CreateTexture(nil, "ARTWORK")
+  r.icon:SetSize(CG.ROW_ICON, CG.ROW_ICON)
+  r.icon:SetPoint("LEFT", T.SPACE.gap, 0)
+  r.icon:SetTexture(icon)
+end
+
+-- One chosen item or spell: its icon and name, and × to take it off the list.
+local function entryRow(parent, row, width)
+  local r = CreateFrame("Frame", nil, parent)
+  r:SetSize(width, T.ROW.height)
+  entryIcon(r, row.icon)
+  r.label = W.Text(r, row[2])
+  r.label:SetPoint("LEFT", r.icon, "RIGHT", T.SPACE.gap, 0)
+  r.remove = W.Button(r, "×", function() removeEntry(row.kind, row.id) end, T.ROW.height)
+  r.remove:SetPoint("RIGHT", -T.SPACE.gap, 0)
+  return r
+end
+
+-- The list kind and ID of what is on the cursor (an item, or a spell from the spellbook or a bar), or nil.
+local function cursorEntry()
+  local kind, id, _, spell = GetCursorInfo()
+  if kind == "item" then return "items", id end
+  if kind == "spell" then return "spells", spell end
+end
+
+-- Something was dropped on the add row: an item or spell goes on the list and leaves the cursor.
+local function onDrop()
+  local kind, id = cursorEntry()
+  if not id then return end
+  CG.Add(tostring(id), kind)
+  ClearCursor()
+  relist()
+end
+
+-- Adds what is typed in the add row's box as kind (CG.Add reads a name, link or ID), then lists it.
+local function addTyped(r, kind)
+  local text = r.input:GetText()
+  if text == "" then return end
+  CG.Add(text, kind)
+  relist()
+end
+
+-- The add row's box and its Add item and Add spell buttons, right to left.
+local function addControls(r)
+  r.spell = W.Button(r, "Add spell", function() addTyped(r, "spells") end, CG.ROW_BUTTON)
+  r.spell:SetPoint("RIGHT", -T.SPACE.gap, 0)
+  r.item = W.Button(r, "Add item", function() addTyped(r, "items") end, CG.ROW_BUTTON)
+  r.item:SetPoint("RIGHT", r.spell, "LEFT", -T.SPACE.gap, 0)
+  r.input = W.Input(r, CG.ROW_INPUT)
+  r.input:SetPoint("RIGHT", r.item, "LEFT", -T.SPACE.gap, 0)
+end
+
+-- The add row: the whole row takes a dragged item or spell, and the box takes a typed name or ID.
+local function addRow(parent, _, width)
+  local r = CreateFrame("Frame", nil, parent)
+  r:SetSize(width, T.ROW.height)
+  r:EnableMouse(true)
+  r:SetScript("OnReceiveDrag", ns.Guard("drop on gaps add row", onDrop))
+  r:SetScript("OnMouseUp", ns.Guard("drop on gaps add row", onDrop))
+  r.label = W.Text(r, "Drag here, or type")
+  r.label:SetPoint("LEFT", T.SPACE.gap, 0)
+  addControls(r)
+  return r
+end
+
+ns.Options.AddRowKind("gapentry", entryRow, T.ROW.height)
+ns.Options.AddRowKind("gapadd", addRow, T.ROW.height)

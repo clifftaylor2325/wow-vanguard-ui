@@ -1961,6 +1961,12 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 - Expect: a row of square icons in thin borders appears above the game's Cooldown Manager, each with a sweep and numbers in the theme font while its cooldown runs; `/vg unlock` lets you move it. Where the client hides cooldown values in combat, that icon is simply missing or sweeps from the client's own timer; never a wrong number. `/vg gaps` lists the chosen items, `/vg gaps remove <item>` takes one off. The row is never clickable and `/vg errors` stays empty. [Needs in game: whether the client has C_Item.GetItemCooldown (or C_Container.GetItemCooldown), C_Item.GetItemSpell, C_Spell.GetSpellCooldownDuration and GetPetActionInfo, and what each returns in instanced combat.]
 - If it fails, paste: `/vg gaps`, `/vg status` and `/vg errors`.
 
+### 29.1a Choosing the gap row's items and spells in the window
+
+- Do: with **Gaps row** on (and reloaded), open `/vg` > Cooldowns. Drag an on-use trinket from your bags onto the "Drag here, or type" row under the Gaps card, then drag a spell from your spellbook onto it. Type `Healthstone` in its box and press **Add item**; type a spell's name and press **Add spell**. Press × on one of the rows.
+- Expect: before anything is chosen the card reads "Nothing chosen yet. Drag an item or spell here, or type its name." Each drop or Add puts a row with the item's or spell's icon and name on the card at once (and a chat line), the dragged thing leaves the cursor, and the gap row shows it (an item only while you carry it). × takes its row off the card and the icon off the gap row. With Gaps row off the card says to tick it and reload. [Needs in game: that a spell dragged from the spellbook gives its spell ID as GetCursorInfo's fourth value on Forever, and that a drop with a click (picking up, then clicking the row) works like a drag.]
+- If it fails, paste: `/vg gaps`, a screenshot of the card and `/vg errors`.
+
 ### 29.2 Spells in the gap row (the Vanguard cooldown row)
 
 - Do: with the row on, type `/vg gaps spell add <a spell of yours>`, then tick "Cooldown gaps row also draws the Cooldown Manager's essential and utility cooldowns", reload, and turn the game's Cooldown Manager on (Options > Gameplay Enhancements). Use some of those spells, in and out of combat, and in an instance.
