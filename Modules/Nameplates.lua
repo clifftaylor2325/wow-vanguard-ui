@@ -578,10 +578,10 @@ end
 -- A plate's unit event -> what it repaints on that plate. Each plate asks the
 -- client for its own unit's events only (ns.OnUnit), so 30 plates don't each
 -- hear the other 29 (or the raid's).
--- Health moves the fill only; threat and faction recolor the bar only.
+-- Health moves the fill only; threat, flags and faction (a tap change can come as any) repaint the tag mark and the bar.
 local UNIT_HANDLERS = {
   UNIT_HEALTH = NP.UpdateHealth, UNIT_MAXHEALTH = NP.UpdateHealth, UNIT_NAME_UPDATE = NP.UpdateName,
-  UNIT_FACTION = NP.UpdateColor, UNIT_THREAT_LIST_UPDATE = NP.PaintTag,
+  UNIT_FACTION = NP.PaintTag, UNIT_THREAT_LIST_UPDATE = NP.PaintTag,
   UNIT_FLAGS = NP.PaintTag, UNIT_LEVEL = NP.UpdateName,
 }
 for _, event in ipairs(CB.EVENTS) do UNIT_HANDLERS[event] = showCast end
@@ -629,6 +629,8 @@ local EVENTS = {
   -- Your new level changes how hard every unit is for you.
   PLAYER_LEVEL_UP = function() each(NP.UpdateName) end,
   PLAYER_REGEN_ENABLED = upgradeRows, UPDATE_MOUSEOVER_UNIT = onMouseover,
+  -- Joining or leaving the tagger's group changes who tagged each mob.
+  GROUP_ROSTER_UPDATE = function() each(NP.PaintTag) end,
   -- Your quests changed: which units they need may have too.
   QUEST_LOG_UPDATE = NP.QuestsChanged, UNIT_QUEST_LOG_CHANGED = NP.QuestsChanged,
 }

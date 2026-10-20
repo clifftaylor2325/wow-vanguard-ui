@@ -214,6 +214,18 @@ it("tag marks: a green check on a mob you tagged, a grey X and a grey plate bar 
   addon.eval("__units.target.tapDenied, __units.target.inCombat, __threat.nameplate1 = false, false, nil");
   expect(look("UNIT_FLAGS"), "untouched: no mark, the reaction colour").toEqual(["hidden", "hostile", "hidden"]);
 });
+it("tag marks follow a tap change the client sends as UNIT_FACTION, or a group change, on the plate and the target", () => {
+  const addon = loggedIn(UNITS_ENV + PLATE_ENV + TAGGED + LOOK_LUA);
+  addon.fire("NAME_PLATE_UNIT_ADDED", "nameplate1");
+  addon.fire("PLAYER_TARGET_CHANGED");
+  addon.eval("__units.target.tapDenied = true");
+  addon.fire("UNIT_FACTION", "nameplate1");
+  addon.fire("UNIT_FACTION", "target");
+  expect(addon.eval("return __look()"), "UNIT_FACTION: the grey X on both marks with the grey bar").toEqual(["x tapped", "tapped", "x tapped"]);
+  addon.eval("__units.target.tapDenied = false");
+  addon.fire("GROUP_ROSTER_UPDATE");
+  expect(addon.eval("return __look()"), "you joined the tagger's group: the green check on both, the bar back").toEqual(["check good", "hostile", "check good"]);
+});
 it("the tag state skips players and their pets, units you cannot attack, and answers that are missing or hidden", () => {
   const addon = loggedIn(UNITS_ENV + TAGGED);
   // Whose tag the addon says the target carries ("yours", "theirs" or none).

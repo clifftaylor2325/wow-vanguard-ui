@@ -169,6 +169,7 @@
     "scripts/tests/platebuffs.test.mjs": [],
     "scripts/tests/platepaint.test.mjs": [],
     "scripts/tests/plates.test.mjs": [
+      "tag marks follow a tap change the client sends as UNIT_FACTION, or a group change, on the plate and the target",
       "tag marks: a green check on a mob you tagged, a grey X and a grey plate bar on another player's, none on an untouched one",
       "the Nameplates and Unit frames pages switch the tag marks and the grey bar"
     ],

@@ -377,8 +377,9 @@ local UNIT_EVENTS = {
   UNIT_LEVEL = UF.UpdateName,
 }
 
--- What the target frame's tag mark also hears: a mob was tagged or let go (its flags), or its threat list changed.
-local TAG_EVENTS = { "UNIT_FLAGS", "UNIT_THREAT_LIST_UPDATE" }
+-- What the target frame's tag mark also hears: a mob was tagged or let go (its flags, or its faction, which is
+-- what the game's target frame re-greys on), or its threat list changed.
+local TAG_EVENTS = { "UNIT_FLAGS", "UNIT_FACTION", "UNIT_THREAT_LIST_UPDATE" }
 
 -- The unit events, as a list for ns.OnUnit.
 local UNIT_EVENT_LIST = {}
@@ -432,7 +433,8 @@ local GLOBAL_EVENTS = {
   PLAYER_TARGET_CHANGED = { target = true, targettarget = true },
   PLAYER_FOCUS_CHANGED = { focus = true },
   UNIT_PET = { pet = true },
-  GROUP_ROSTER_UPDATE = { party1 = true, party2 = true, party3 = true, party4 = true },
+  -- The party frames, and the target's tag mark: joining or leaving the tagger's group changes who tagged it.
+  GROUP_ROSTER_UPDATE = { party1 = true, party2 = true, party3 = true, party4 = true, target = true },
   -- A boss joined or left the fight, or became attackable.
   INSTANCE_ENCOUNTER_ENGAGE_UNIT = { boss1 = true, boss2 = true, boss3 = true, boss4 = true, boss5 = true },
   UNIT_TARGETABLE_CHANGED = { boss1 = true, boss2 = true, boss3 = true, boss4 = true, boss5 = true },
