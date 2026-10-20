@@ -163,10 +163,12 @@ end
 
 -- Who has tagged a creature you can attack: "theirs" when the client calls it tap denied (another player
 -- or group tagged it), "yours" when it is in combat and not tap denied, nil for anything else (an untouched
--- mob, a player, a friend, a hidden or missing answer). The client has no call that says "yours" outright,
+-- mob, a player or a player's pet, a friend, a hidden or missing answer). The client has no call that says "yours" outright,
 -- so a mob in combat with you (or only with your pet) reads the same.
 function UF.TagState(unit)
   if asked("UnitCanAttack", "player", unit) ~= true or asked("UnitIsPlayer", unit) == true then return nil end
+  -- Only creatures are tagged: a player's pet or demon never is (the game's own tap greys skip them too).
+  if asked("UnitPlayerControlled", unit) == true then return nil end
   local denied = asked("UnitIsTapDenied", unit)
   if denied == true then return "theirs" end
   if denied == false and asked("UnitAffectingCombat", unit) == true then return "yours" end

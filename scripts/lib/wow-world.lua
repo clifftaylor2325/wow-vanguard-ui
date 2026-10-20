@@ -555,6 +555,8 @@ end
 -- More unit facts: power type, player, class, level, reaction and states.
 function UnitPowerType(unit) local u = resolveUnit(unit) return u and u.ptype or 0, u and u.ptypeName or "MANA" end
 function UnitIsPlayer(unit) return uf(unit, "isPlayer") == true end
+-- Players and what they control (a pet, a demon: the unit's `controlled` field), as UnitDocumentation.lua has it.
+function UnitPlayerControlled(unit) return uf(unit, "isPlayer") == true or uf(unit, "controlled") == true end
 function UnitClass(unit) local u = resolveUnit(unit) return u and (u.className or u.class), u and u.class, 0 end
 function UnitLevel(unit) return uf(unit, "level") or 0 end
 function UnitReaction(unit) local u = resolveUnit(unit) return u and (u.reaction or 5) end
