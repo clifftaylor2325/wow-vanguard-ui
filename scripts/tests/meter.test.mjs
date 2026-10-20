@@ -85,6 +85,16 @@ it("hidden figures go straight into the bars and texts and are never compared", 
   expect(isTok(addon, addon.eval("return Vanguard_Meter.rows[1].__barColor"), "accent"), "a hidden class falls back to the accent").toBe(true);
 });
 
+it("a hidden figure's short text is the game's answer, handed back without a truth test; a refusal is empty", () => {
+  const addon = loggedIn(METER_ENV, METER_ON);
+  // MT.Short of a hidden figure while the game's formatter answers `answer` (Lua), as text.
+  const short = (answer) => addon.eval(`local real = AbbreviateNumbers AbbreviateNumbers = function() ${answer} end
+    local text = ns.GetModule('Meter').Short(__wfgWorld.secret(5)) AbbreviateNumbers = real return tostring(text)`);
+  // A harness secret is always truthy, so a falsy answer stands in: `ok and text or ""` would turn it into "".
+  expect(short("return false"), "the answer goes back as it is, never tested").toBe("false");
+  expect(short("error('refused')"), "a refusal is empty").toBe("");
+});
+
 it("a widget that refuses a hidden value leaves the row as it was, with no error", () => {
   const addon = loggedIn(METER_ENV, METER_ON);
   addon.eval("local row = Vanguard_Meter.rows[1] row.SetValue = function() error('refused') end row.name.SetText = function() error('refused') end");

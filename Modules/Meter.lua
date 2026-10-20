@@ -104,11 +104,13 @@ local function plainShort(n)
 end
 
 -- A figure as short text ("12.3K"): a plain one formatted here, a hidden one by the game; "" where the client refuses.
+-- The game's text for a hidden figure is hidden too, so it is handed back untested (a truth test on it raises).
 local function short(v)
   local n = figure(v)
   if not ns.IsSecret(n) then return plainShort(n) end
   local ok, text = pcall(AbbreviateNumbers, n)
-  return ok and text or ""
+  if ok then return text end
+  return ""
 end
 
 -- A part's share of a total as "45%": only for plain figures, with the Share switch on and a total above 0.
