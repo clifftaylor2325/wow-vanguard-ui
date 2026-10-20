@@ -905,9 +905,11 @@ it("minimap drawer: a button an addon makes later joins at once (after a fight),
   expect(parent("LibDBIcon10_TestOnlySecure"), "a protected button stays on the map").toBe("Minimap");
   const later = loggedIn(UI_ENV + DRAWER_ENV);
   later.eval(DBICON_ENV);
+  later.eval('__icon("TestOnlyEarly")');
   later.fire("ADDON_LOADED", "TEST-ONLY Iconer");
   later.eval('__icon("TestOnlyLoaded")');
-  expect(later.eval("return LibDBIcon10_TestOnlyLoaded:GetParent():GetName()"), "LibDBIcon loaded after Vanguard: hooked when it loads").toBe("Vanguard_MinimapDrawer");
+  expect(later.eval("return { LibDBIcon10_TestOnlyEarly:GetParent():GetName(), LibDBIcon10_TestOnlyLoaded:GetParent():GetName() }"), "LibDBIcon loaded after Vanguard: a button it made before the hook is gathered at the hook, and later ones as they come")
+    .toEqual(["Vanguard_MinimapDrawer", "Vanguard_MinimapDrawer"]);
 });
 it("minimap drawer: buttons in name order, the toggle counts them, Escape closes it, and it opens on the side with room", () => {
   const addon = loggedIn(UI_ENV + DRAWER_ENV + 'CreateFrame("Button", "LibDBIcon10_TestOnlyAlpha", Minimap) CreateFrame("Button", "LibDBIcon10_TestOnlyZeta", Minimap)');

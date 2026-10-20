@@ -43,25 +43,21 @@ local function fit()
   MB.toggle:SetShown(n > 0)
 end
 
--- A gathered button's place in the name order: its addon's name, without the library's prefix, in lower case.
-local function sortName(b)
-  return ((b:GetName() or ""):gsub(MB.NAME, "")):lower()
-end
-
 -- Puts every gathered button in its cell, in name order, each kept there when its addon moves it again.
 local function arrange()
-  table.sort(MB.buttons, function(a, b) return sortName(a) < sortName(b) end)
+  table.sort(MB.buttons, function(a, b) return vgGathered[a] < vgGathered[b] end)
   for n, b in ipairs(MB.buttons) do ns.Pin(b, function(f) cell(f, n) end) end
   fit()
 end
 
--- Takes one addon button into the drawer.
+-- Takes one addon button into the drawer, keeping its place in the name order (its addon's name without
+-- the library's prefix, in lower case); true when it was new.
 local function gather(b)
-  if vgGathered[b] then return end
-  vgGathered[b] = true
+  if vgGathered[b] then return false end
+  vgGathered[b] = (b:GetName():gsub(MB.NAME, "")):lower()
   MB.buttons[#MB.buttons + 1] = b
   b:SetParent(MB.drawer)
-  arrange()
+  return true
 end
 
 -- Whether the drawer may take a minimap child: LibDBIcon's kind, and not protected (Vanguard can't
@@ -72,11 +68,13 @@ local function gatherable(child)
   return not (child.IsProtected and child:IsProtected())
 end
 
--- Gathers every addon button on the minimap that isn't in the drawer yet.
+-- Gathers every addon button on the minimap that isn't in the drawer yet, then lays the drawer out once.
 function MB.Scan()
+  local added = false
   for _, child in ipairs({ Minimap:GetChildren() }) do
-    if gatherable(child) then gather(child) end
+    if gatherable(child) and gather(child) then added = true end
   end
+  if added then arrange() end
 end
 
 -- Gathers again, now or when the fight ends (a loading screen or a new button can come mid-fight).
@@ -84,12 +82,15 @@ local function scanSoon()
   ns.OutOfCombat(MB.Scan, "minimapbuttons")
 end
 
--- Listens for the buttons LibDBIcon makes from now on (LibDBIcon_IconCreated), once an addon has loaded it.
+-- Listens for the buttons LibDBIcon makes from now on (LibDBIcon_IconCreated), once an addon has loaded it,
+-- and gathers the ones it made before (an addon loaded on demand registers before Vanguard hears of it).
 function MB.Hook()
   local lib = type(LibStub) == "table" and LibStub("LibDBIcon-1.0", true)
   if MB.hooked or type(lib) ~= "table" or type(lib.RegisterCallback) ~= "function" then return end
   MB.hooked = true
-  lib.RegisterCallback(MB, "LibDBIcon_IconCreated", scanSoon)
+  lib.RegisterCallback(MB, "LibDBIcon_IconCreated", ns.Guard("minimap drawer new button", scanSoon))
+  ns.Off("ADDON_LOADED", MB.Hook)
+  scanSoon()
 end
 
 -- Building ------------------------------------------------------------------------------------
@@ -103,7 +104,6 @@ local function buildDrawer(map)
   MB.drawer:SetClampedToScreen(true)
   MB.drawer:Hide()
   ns.CloseOnEscape(MB.drawer)
-  MB.PlaceDrawer()
 end
 
 -- An edge of a frame in screen pixels (so frames at different scales compare), or nil when it has none yet.
@@ -112,14 +112,17 @@ local function edge(frame, getter)
   return v and v * frame:GetEffectiveScale()
 end
 
+-- The drawer's anchor on each side of the map: its point, the map's point, and which way the gap goes.
+MB.SIDES = { LEFT = { "TOPRIGHT", "TOPLEFT", -1 }, RIGHT = { "TOPLEFT", "TOPRIGHT", 1 } }
+
 -- Sets the drawer beside the map, level with its top, on the side with room: left of it unless that would
 -- leave the screen, then right. The drawer is held to the screen, so a map near the bottom pushes it up.
 function MB.PlaceDrawer()
   local d, gap = MB.drawer, T.SPACE.tight
   local left = edge(MB.map, "GetLeft")
-  local side = left and left < (d:GetWidth() + gap) * d:GetEffectiveScale() and "RIGHT" or "LEFT"
+  local side = MB.SIDES[left and left < (d:GetWidth() + gap) * d:GetEffectiveScale() and "RIGHT" or "LEFT"]
   d:ClearAllPoints()
-  if side == "LEFT" then d:SetPoint("TOPRIGHT", MB.map, "TOPLEFT", -gap, 0) else d:SetPoint("TOPLEFT", MB.map, "TOPRIGHT", gap, 0) end
+  d:SetPoint(side[1], MB.map, side[2], side[3] * gap, 0)
 end
 
 -- Opens the drawer on the side with room, or shuts it.
@@ -165,8 +168,8 @@ local function build()
   MB.Scan()
   ns.On("PLAYER_ENTERING_WORLD", scanSoon)
   if type(C_Timer) == "table" and type(C_Timer.After) == "function" then C_Timer.After(MB.RESCAN_AFTER, ns.Guard("timer minimap button rescan", scanSoon)) end
-  MB.Hook()
   ns.On("ADDON_LOADED", MB.Hook)
+  MB.Hook()
 end
 
 -- Module entry point (Core/Modules.lua): after the minimap is built (it waits out combat too).
