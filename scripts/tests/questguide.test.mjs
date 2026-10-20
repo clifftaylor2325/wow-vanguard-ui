@@ -212,3 +212,11 @@ it("quest guidance: switched off, the tracker's Shift-click opens the quest and 
   addon.eval('ns.Options.Show("quests") __click("Quest-start pins on the world map") __click("New mark on quests")');
   expect(addon.eval("return { ns.Settings('QuestGuide').pins, ns.Settings('QuestGuide').newMark }"), "the switches still save").toEqual([false, false]);
 });
+
+// W4-C-4: a shift-clicked quest link carries a colour code whose digits come before the quest's ID.
+it("quest guidance: /vg questdata reads the quest's ID from a quest link, not its colour code", () => {
+  const addon = loggedIn(QUESTS_ENV);
+  addon.clearChat();
+  addon.slash("questdata |cffffff00|Hquest:90051:10|h[TEST-ONLY Wolves]|h|r");
+  expect(addon.chat().filter((l) => /Quest \d+:/.test(l)).map((l) => l.match(/Quest (\d+):/)[1])).toEqual(["90051"]);
+});
