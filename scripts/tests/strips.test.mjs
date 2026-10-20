@@ -138,6 +138,21 @@ it("with the strip's clock putting the calendar button away, a calendar event's 
   off.fire("CALENDAR_EVENT_ALARM", "TEST-ONLY Molten Core", 20, 0);
   expect([ruled, off].map((a) => a.chat().filter((l) => /is about to begin/.test(l)).length), "none where the realm has no calendar, or with the clock block off (the game's button prints it)").toEqual([0, 0]);
 });
+it("a click on the info strip's time opens the game's clock window, or turns off its alarm while it rings", () => {
+  const addon = loggedIn(STRIP_ENV + `__calls = {}
+    ToggleTimeManager = function() __calls[#__calls + 1] = "window" end
+    TimeManager_IsAlarmFiring = function() return __ringing == true end
+    TimeManager_TurnOffAlarm = function() __calls[#__calls + 1] = "alarm off" __ringing = false end`);
+  // Clicks the strip's time.
+  const click = () => addon.eval("Vanguard_InfoStripClock.__scripts.OnClick(Vanguard_InfoStripClock)");
+  click();
+  addon.eval("__ringing = true");
+  click();
+  expect(addon.eval("return { __calls, Vanguard_InfoStripClock:IsShown(), Vanguard_InfoStripClock.__points.TOPLEFT.rel == ns.GetModule('InfoStrip').texts.clock }"), "the window, then the ringing alarm off; the hit area covers the time")
+    .toEqual([["window", "alarm off"], true, true]);
+  addon.eval('ns.Settings("InfoStrip").clock = false ns.GetModule("InfoStrip").Paint("clock")');
+  expect(addon.eval("return Vanguard_InfoStripClock:IsShown()"), "with the time off, nothing takes its clicks").toBe(false);
+});
 it("the Bars and bags page's two tracker switches name the game's tracker, the one they change", () => {
   const addon = loggedIn(UI_ENV);
   const labels = addon.eval(`local out = {}

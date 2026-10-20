@@ -387,6 +387,15 @@ function IS.PlaceDate()
   else date:SetPoint("LEFT", IS.frame, "TOPLEFT", 6, -(IS.BLOCKS.date[1] - 0.5) * IS.ROW) end
 end
 
+-- The button that goes with a block, by its key on IS: the calendar with the date, the clock's hit area with the time.
+IS.BUTTONS = { date = "calendar", clock = "clockButton" }
+
+-- Shows a block's button while the block shows.
+local function showButton(key, shown)
+  local b = IS[IS.BUTTONS[key] or ""]
+  if b then b:SetShown(shown) end
+end
+
 -- Repaints one block: hidden when off or when the client can't answer; the strip fits what shows.
 function IS.Paint(key)
   local fs = IS.texts and IS.texts[key]
@@ -394,7 +403,7 @@ function IS.Paint(key)
   local text, color
   if IS.settings[key] then text, color = IS.TEXT[key]() end
   fs:SetShown(text ~= nil)
-  if key == "date" and IS.calendar then IS.calendar:SetShown(text ~= nil) end
+  showButton(key, text ~= nil)
   if text and text ~= fs.last then fs:SetText(text) fs.last = text end
   if color then T.Color(fs, color) end
   if key == "clock" or key == "date" then IS.PlaceDate() end
@@ -440,6 +449,27 @@ local function addCalendar(frame)
   IS.calendar = b
 end
 
+-- A click on the time: turns off the game's alarm while it rings, else opens or closes the game's clock window
+-- (the alarm, local or realm time, the stopwatch switch), which the put-away minimap clock opened.
+function IS.ClockClick()
+  if ask("TimeManager_IsAlarmFiring") == true then return ask("TimeManager_TurnOffAlarm") end
+  ask("ToggleTimeManager")
+end
+
+-- The time's hit area: the text takes the mouse, so a click reaches the game's clock window.
+local function addClock(frame)
+  local b = CreateFrame("Button", "Vanguard_InfoStripClock", frame)
+  b:SetAllPoints(IS.texts.clock)
+  b:SetScript("OnClick", ns.Guard("click info strip clock", IS.ClockClick))
+  IS.clockButton = b
+end
+
+-- The strip's buttons: the calendar at the date row's end, and the time's hit area.
+local function addButtons(frame)
+  addCalendar(frame)
+  addClock(frame)
+end
+
 -- The strip's timer while it shows: the clock every second, fps and latency every third, the rates every fifth.
 local function ticker(frame)
   local ticks = 0
@@ -475,7 +505,7 @@ local function build()
   ns.Mover(f, "infostrip", "Info strip", { "TOPRIGHT", "TOPRIGHT", -12, -200 })
   IS.texts = {}
   for key in pairs(IS.BLOCKS) do IS.texts[key] = addText(f, key) end
-  addCalendar(f)
+  addButtons(f)
   ticker(f)
   IS.UpdateAll()
   watchVisibility(f)

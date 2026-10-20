@@ -1292,7 +1292,7 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 ### 14.14.6 Time manager
 
 - Do: click the clock on the minimap (or the info strip's clock) to open the time manager. Tick and untick Alarm enabled, 24-hour mode and Local time; open the hour, minute and AM/PM dropdowns; click in the alarm message box and type; tick the stopwatch switch to open the stopwatch.
-- Expect: the three check boxes are flat squares with an accent tick; the dropdowns are flat buttons that keep their arrows; the message box is a flat dark box; the captions (Alarm time, Alarm message, Show stopwatch) and the window's title are light, not gold; the stopwatch switch keeps its clock icon on a small tile; the globe at the window's top left still shows; the stopwatch's title is light text.
+- Expect: the three check boxes are flat squares with an accent tick; the dropdowns are flat buttons that keep their arrows; the message box is a flat dark box; the captions (Alarm time, Alarm message, Show stopwatch) and the window's title are light, not gold; the stopwatch switch keeps its clock icon on a small tile; the globe at the window's top left still shows; the stopwatch's title is light text. With the info strip's time on (the default, which puts the minimap clock away), a click on the strip's time opens and closes the clock window; set an alarm a minute ahead, and a click on the time while it rings turns it off.
 - If it fails, paste: a screenshot and `/vg errors`.
 
 ### 14.14.7 Spellbook and talents
