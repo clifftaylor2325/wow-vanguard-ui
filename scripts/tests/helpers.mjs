@@ -419,14 +419,32 @@ export const TOOLS_ENV = `
     function v:RefreshLayout() __item(self, self == BuffBarCooldownViewer) end
     __item(v, name == "BuffBarCooldownViewer")
   end
+  function __list(w)
+    w.ScrollBox = CreateFrame("Frame", nil, w) w.ScrollBox.lines = {}
+    function w.ScrollBox:ForEachFrame(fn) for _, l in ipairs(self.lines) do fn(l) end end
+    function w.ScrollBox:Update() end
+  end
+  function __scrollBar(parent)
+    local bar = CreateFrame("Frame", nil, parent) bar.Track = CreateFrame("Frame", nil, bar) bar.Track.Thumb = CreateFrame("Button", nil, bar.Track)
+    bar.Track.Thumb:SetSize(8, 40)
+    return bar
+  end
   DamageMeter = CreateFrame("Frame", "DamageMeter", UIParent) DamageMeter:SetSize(400, 200) DamageMeter:SetPoint("TOPLEFT")
   DamageMeter.windows = {}
   function DamageMeter:ForEachSessionWindow(fn) for _, w in ipairs(self.windows) do fn(w) end end
   function DamageMeter:SetupSessionWindow()
     local w = CreateFrame("Frame", "DamageMeterSessionWindow" .. (#self.windows + 1), self)
-    w.Header = w:CreateTexture() w.ScrollBox = CreateFrame("Frame", nil, w) w.ScrollBox.lines = {}
-    function w.ScrollBox:ForEachFrame(fn) for _, l in ipairs(self.lines) do fn(l) end end
-    function w.ScrollBox:Update() end
+    w.Header = w:CreateTexture() __list(w)
+    w.MinimizeButton = CreateFrame("Button", nil, w) w.MinimizeButton:SetSize(18, 19) w.MinimizeButton.art = w.MinimizeButton:CreateTexture()
+    w.isMinimized = __startMinimized
+    function w:IsMinimized() return self.isMinimized end
+    function w:SetMinimized(on) self.isMinimized = on end
+    w.SettingsDropdown = CreateFrame("Button", nil, w) w.SettingsDropdown:SetSize(18, 18)
+    for _, key in ipairs({ "SessionDropdown", "DamageMeterTypeDropdown" }) do w[key] = CreateFrame("Button", nil, w) w[key]:SetSize(80, 20) w[key].Arrow = w[key]:CreateTexture() end
+    w.MinimizeContainer = CreateFrame("Frame", nil, w) w.MinimizeContainer.ScrollBar = __scrollBar(w.MinimizeContainer)
+    local src = CreateFrame("Frame", nil, w.MinimizeContainer) __list(src) src.Background = src:CreateTexture() src.ScrollBar = __scrollBar(src)
+    src.CloseButton = CreateFrame("Button", nil, src) src.CloseButton:SetSize(20, 20) src:Hide()
+    w.MinimizeContainer.SourceWindow = src
     self.windows[#self.windows + 1] = w
     return w
   end
