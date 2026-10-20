@@ -167,6 +167,15 @@ it("a client without the loot history, one that errors or hides it, or with the 
   expect(off.eval("return #ns.GetModule('Rolls').items"), "loot switched off: not read").toBe(0);
 });
 
+it("switching loot rolls off takes the items already shown off the panel", () => {
+  const addon = loggedIn(ROLL_ENV + lootEnv(false, ['{ "Thrall", 0, 88, false }']));
+  addon.fire("LOOT_HISTORY_UPDATE_DROP", 7, 1);
+  expect(panel(addon)[0], "the item shows").toBe(true);
+  // What the options row does: set the switch, then read the loot again.
+  addon.eval("local R = ns.GetModule('Rolls') R.settings.loot = false R.ReadLoot()");
+  expect([panel(addon)[0], addon.eval("return #ns.GetModule('Rolls').items")], "the panel goes with its items").toEqual([false, 0]);
+});
+
 it("the panel follows its visibility setting", () => {
   const addon = loggedIn(ROLL_ENV, { savedVariables: 'VanguardDB.profiles = { Default = { Rolls = { visibility = "hidden" } } }' });
   roll(addon, "Thrall", 9);

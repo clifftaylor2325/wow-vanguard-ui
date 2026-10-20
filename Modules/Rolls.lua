@@ -152,9 +152,13 @@ function R.Drops()
   return out
 end
 
--- Reads the newest R.ITEMS drops again, oldest first (the loot history changed).
+-- Reads the newest R.ITEMS drops again, oldest first (the loot history changed); with loot rolls
+-- off, or no loot history, the items already shown go.
 function R.ReadLoot()
-  if not (R.settings.loot and R.HasLoot()) then return end
+  if not (R.settings.loot and R.HasLoot()) then
+    R.items = {}
+    return R.Paint()
+  end
   local drops = R.Drops()
   table.sort(drops, function(a, b) return a.at < b.at or (a.at == b.at and a.key < b.key) end)
   R.items = { unpack(drops, math.max(1, #drops - R.ITEMS + 1)) }
