@@ -165,7 +165,7 @@ end
 -- The needs line (the group a quest suggests; QP.Needs) under the objectives (or the text); hidden when it has none.
 local function renderNeeds(f, p)
   f.needs:SetShown((p.needs or "") ~= "")
-  QP.PaintNeeds(f.needs, p.needs or "", p.short)
+  QP.PaintNeeds(f.needs, p.needs or "")
   f.needs:SetPoint("TOPLEFT", f.objectives:IsShown() and f.objectives or f.text, "BOTTOMLEFT", 0, -OBJECTIVES_GAP)
 end
 

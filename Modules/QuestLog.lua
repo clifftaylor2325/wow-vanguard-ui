@@ -291,8 +291,9 @@ function QL.Enable(settings)
   addToggle()
   bindKeys()
   hookGameToggle()
-  ns.On("QUEST_LOG_UPDATE", refreshSoon)
-  ns.On("QUEST_WATCH_LIST_CHANGED", refreshSoon)
-  -- Share is lit only in a group (as the game's quest map does on the same event).
-  ns.On("GROUP_ROSTER_UPDATE", refreshSoon)
+  -- Share is lit only in a group (as the game's quest map does on GROUP_ROSTER_UPDATE); an item's info
+  -- arriving can settle the reward crown.
+  for _, event in ipairs({ "QUEST_LOG_UPDATE", "QUEST_WATCH_LIST_CHANGED", "GROUP_ROSTER_UPDATE", "GET_ITEM_INFO_RECEIVED" }) do
+    ns.On(event, refreshSoon)
+  end
 end

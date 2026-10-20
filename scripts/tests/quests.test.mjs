@@ -799,6 +799,9 @@ it("quest dialog: a quest that suggests a group says so in the client's words, u
   addon.eval("GetSuggestedGroupSize = function() return 0 end");
   addon.fire("QUEST_DETAIL");
   expect(needsLine(addon, "Vanguard_QuestDialog").slice(0, 2), "a solo quest: no line").toEqual(["", false]);
+  addon.eval("QUEST_SUGGESTED_GROUP_NUM = 'TEST-ONLY %d and %d' GetSuggestedGroupSize = function() return 3 end");
+  addon.fire("QUEST_DETAIL");
+  expect(needsLine(addon, "Vanguard_QuestDialog").slice(0, 2), "words that don't format: no line").toEqual(["", false]);
   const bare = loggedIn(QUEST_ENV + " GetSuggestedGroupSize = function() return 3 end");
   bare.fire("QUEST_DETAIL");
   expect(needsLine(bare, "Vanguard_QuestDialog").slice(0, 2), "a client without the words: no line").toEqual(["", false]);
@@ -836,12 +839,19 @@ it("quest dialog: the gold crown marks the one choice that sells for most, never
   expect(crowns(addon, "Vanguard_QuestDialog"), "Gloves (300) over Boots (50); the Bread you get anyway is never crowned").toEqual([false, true, false]);
   expect(addon.eval("local c = Vanguard_QuestDialog.cards[2].crown return { c:GetWidth(), (c:GetPoint(1)) }"), "12 px, in the card's top-right corner").toEqual([12, "TOPRIGHT"]);
   expect(isTok(addon, addon.eval("return Vanguard_QuestDialog.cards[2].crown.__vertexColor"), "gold"), "in gold").toBe(true);
+  expect(addon.eval("local f = Vanguard_QuestDialog return { f.cards[1]:GetRight() - f.cards[1].name:GetRight(), f.cards[2]:GetRight() - f.cards[2].name:GetRight() }"), "a crowned card's name ends short of the crown").toEqual([4, 18]);
   addon.eval("__prices['item:90021'] = 300");
   addon.fire("QUEST_COMPLETE");
   expect(crowns(addon, "Vanguard_QuestDialog"), "a tie: no crown").toEqual([false, false, false]);
   addon.eval("__prices['item:90021'] = nil");
   addon.fire("QUEST_COMPLETE");
   expect(crowns(addon, "Vanguard_QuestDialog"), "a price not known yet: no crown").toEqual([false, false, false]);
+  addon.eval("__prices['item:90021'] = 50");
+  addon.fire("GET_ITEM_INFO_RECEIVED", 90021);
+  addon.update(0);
+  expect(crowns(addon, "Vanguard_QuestDialog"), "the price arrives: the crown follows").toEqual([false, true, false]);
+  addon.eval("__prices['item:90021'] = nil");
+  addon.fire("QUEST_COMPLETE");
   addon.eval("__prices['item:90021'], __prices['item:90022'] = 0, 0");
   addon.fire("QUEST_COMPLETE");
   expect(crowns(addon, "Vanguard_QuestDialog"), "nothing sells: no crown").toEqual([false, false, false]);
@@ -857,8 +867,12 @@ it("quest log: the chosen quest's top-selling choice wears the crown too", () =>
     GetQuestLogItemLink = function(kind, i) return kind == "choice" and ("item:9002" .. i) or nil end
     __prices = { ["item:90021"] = 50, ["item:90022"] = 300 }
     C_Item.GetItemInfo = function(link) return "x", link, 1, 1, 1, "", "", 1, "", "", __prices[link] end`);
-  addon.eval("ns.GetModule('QuestLog').Open()");
-  expect(crowns(addon, "Vanguard_QuestLog"), "item:90022 (300) over item:90021 (50)").toEqual([false, true, false]);
+  addon.eval("__prices['item:90021'] = nil ns.GetModule('QuestLog').Open()");
+  expect(crowns(addon, "Vanguard_QuestLog"), "a price not known yet: no crown").toEqual([false, false, false]);
+  addon.eval("__prices['item:90021'] = 50");
+  addon.fire("GET_ITEM_INFO_RECEIVED", 90021);
+  addon.update(0);
+  expect(crowns(addon, "Vanguard_QuestLog"), "it arrives: item:90022 (300) over item:90021 (50)").toEqual([false, true, false]);
 });
 it("quest log: an objective's count is found at either end, a text without one has none, and a done one is muted with a check", () => {
   const addon = loggedIn(TRACK_ENV + QLOG_ENV);
@@ -1422,8 +1436,9 @@ it("quest automation: says Accepted only once the game takes that quest, at once
   expect(accepted(), "a quest the game took itself: said at once").toBe(2);
   addon.eval("__autoAccept, GetQuestID = false, function() return 0 end");
   addon.fire("QUEST_DETAIL");
+  expect(accepted(), "a client that can't name the quest: said at once, nothing left waiting").toBe(3);
   addon.fire("QUEST_ACCEPTED", 90005);
-  expect(accepted(), "a client that can't name the quest: the next quest taken").toBe(3);
+  expect(accepted(), "so a later quest taken adds nothing").toBe(3);
 });
 it("quest automation: a quest a player shares follows its own switch, and Shift skips it", () => {
   // Makes the quest on offer come from a player.

@@ -290,6 +290,12 @@ local function releaseKeys()
   ns.AfterCombat(takeKeys, "quest dialog keys")
 end
 
+-- An item's info arrived (a reward's sell price, say, which settles the crown): redraw on the next frame,
+-- once for a burst.
+local function itemArrived()
+  ns.Soon("questdialog items", QD.Redraw)
+end
+
 -- Module entry point (Core/Modules.lua).
 function QD.Enable(settings)
   if not settings.dialog then return end
@@ -299,4 +305,5 @@ function QD.Enable(settings)
   for _, event in ipairs({ "GOSSIP_CLOSED", "QUEST_FINISHED" }) do ns.On(event, QD.Quiet) end
   ns.On("PLAYER_REGEN_DISABLED", releaseKeys)
   ns.On("QUEST_ITEM_UPDATE", QD.Redraw)
+  ns.On("GET_ITEM_INFO_RECEIVED", itemArrived)
 end

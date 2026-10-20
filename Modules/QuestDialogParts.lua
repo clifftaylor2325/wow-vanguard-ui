@@ -125,15 +125,15 @@ end
 
 -- Reward cards ---------------------------------------------------------------------------------
 
--- The crown's size on the reward choice that sells for most.
-QP.CROWN_SIZE = 12
+-- The crown's size on the reward choice that sells for most, and its inset from the card's top-right corner.
+QP.CROWN_SIZE, QP.CROWN_INSET = 12, 2
 
 -- A card's crown: the gold mark in its top-right corner for the choice that sells for most, hidden until
 -- the layout picks one (the upgrade arrow keeps the icon's top-left). Returns the card.
 local function addCrown(c)
   c.crown = T.Tint(QP.Square(c:CreateTexture(nil, "OVERLAY"), QP.CROWN_SIZE), "gold")
   c.crown:SetTexture(T.Icon("Crown"))
-  c.crown:SetPoint("TOPRIGHT", c, "TOPRIGHT", -2, -2)
+  c.crown:SetPoint("TOPRIGHT", c, "TOPRIGHT", -QP.CROWN_INSET, -QP.CROWN_INSET)
   c.crown:Hide()
   return c
 end
@@ -275,11 +275,13 @@ local function moneyPart(copper)
   return text, have ~= nil and have < copper
 end
 
--- The group size part in the client's words ("Suggested Players [3]"), or nil.
+-- The group size part in the client's words ("Suggested Players [3]"), formatted as the game's quest frame
+-- does; nil for none, or when the client lacks the words or they don't format.
 local function groupPart(players)
   local fmt = caption("QUEST_SUGGESTED_GROUP_NUM")
   if players <= 0 or not fmt then return nil end
-  return (fmt:gsub("%%d", tostring(players)))
+  local ok, text = pcall(string.format, fmt, players)
+  return ok and text or nil
 end
 
 -- What a quest asks of you beside its objectives, as one line: the money it needs and the group it suggests
@@ -299,6 +301,13 @@ function QP.PaintNeeds(fs, text, short)
   T.Color(fs, short and "bad" or "text2")
 end
 
+-- Shows or hides a card's crown; the name ends short of a shown crown so a long one never runs under it.
+function QP.Crown(c, shown)
+  c.crown:SetShown(shown)
+  local room = shown and QP.CROWN_SIZE + QP.CROWN_INSET or 0
+  c.name:SetPoint("RIGHT", c, "RIGHT", -T.SPACE.tight - room, 0)
+end
+
 -- A section's caption at y down the holder's left edge (none when the client has no words for it); returns the y under it.
 local function placeCaption(lay, text, y)
   if not text then return y end
@@ -316,7 +325,7 @@ local function placeCards(lay, items, y, top)
     local c, col, row = lay.cards.Next(), (n - 1) % lay.perRow, math.floor((n - 1) / lay.perRow)
     c:SetPoint("TOPLEFT", lay.holder, "TOPLEFT", col * (QP.CARD_W + QP.GAP), -y - row * (QP.CARD_H + QP.GAP))
     QP.PaintCard(c, item)
-    c.crown:SetShown(n == top)
+    QP.Crown(c, n == top)
     if lay.onCard then lay.onCard(c, item) end
   end
   return y + math.ceil(#items / lay.perRow) * (QP.CARD_H + QP.GAP) - QP.GAP

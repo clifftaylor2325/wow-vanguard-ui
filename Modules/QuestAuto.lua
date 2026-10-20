@@ -116,8 +116,7 @@ end
 
 -- Actions ---------------------------------------------------------------------------------------
 
--- The accept line waiting for the game to confirm the quest ({ id, line }; id nil when the client can't
--- name the quest), and the listeners that end the wait.
+-- The accept line waiting for the game to confirm the quest ({ id, line }), and the listeners that end the wait.
 local waiting
 local confirmAccept, dropAccept
 
@@ -129,16 +128,18 @@ end
 
 -- Says the waiting accept line once the game takes that quest into the log.
 function confirmAccept(_, questId)
-  local line, id = waiting and waiting.line, waiting and waiting.id
-  if not line or (id and ns.PlainNumber(questId) ~= id) then return end
+  local line = waiting and ns.PlainNumber(questId) == waiting.id and waiting.line
+  if not line then return end
   dropAccept()
   ns.Chat(line)
 end
 
--- Waits for the game to take the quest before saying so (it refuses some, such as with a full log).
+-- Waits for the game to take the quest before saying so (it refuses some, such as with a full log); a
+-- quest the client can't name is said at once, as no confirmation could be matched to it.
 local function awaitAccept(line)
   local id = ns.PlainNumber(call(GetQuestID))
-  waiting = { id = id ~= 0 and id or nil, line = line }
+  if not id or id == 0 then return ns.Chat(line) end
+  waiting = { id = id, line = line }
   ns.On("QUEST_ACCEPTED", confirmAccept)
 end
 

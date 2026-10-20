@@ -337,6 +337,7 @@ local function markChosen(f)
 end
 
 -- How tall the details side's contents are: title, text, objectives, reward rows and the money line, with their gaps.
+-- Read after renderObjectives and renderRewards, which leave f.objectiveGaps and f.rewardsH.
 local function detailHeight(f)
   local h = f.questTitle:GetStringHeight() + TITLE_GAP + f.text:GetStringHeight() + TEXT_GAP + f.objectives:GetStringHeight() + f.objectiveBox:GetHeight() + f.objectiveGaps + f.needs:GetStringHeight() + f.history:GetStringHeight() + REWARDS_GAP
   return h + f.rewardsH + (f.rewardsH > 0 and QP.GAP or 0) + MONEY_GAP + f.money:GetStringHeight() + MONEY_GAP
