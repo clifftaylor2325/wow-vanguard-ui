@@ -1380,6 +1380,12 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 - Expect: with the switch on, the floating pin and its distance appear at once after each Ctrl-click; the Clear waypoint button shows only while a waypoint exists and removes it and the pin; the Map page lists up to eight spots, newest first, and each button puts that spot back with the pin; `/way recent` prints the same list; with the switch off the click only drops the map pin and the arrow stays off. [Needs in game: that the event is `USER_WAYPOINT_UPDATED`, that `C_Map.GetUserWaypoint` returns the position on Forever, and the Clear button's place on the map.]
 - If it fails, paste: which step broke and `/vg errors`.
 
+### 18.4b With OpenMap installed
+
+- Do: install OpenMap from CurseForge, `/reload`, and open the world map. Zoom out to the continent and back in. Ctrl-click a spot. Open `/vg` → Map. Then turn OpenMap off in the AddOns list, `/reload`, and open the map again.
+- Expect: with OpenMap on, the map's frame still has Vanguard's look; the line along the bottom shows only "You x, y" (no Cursor part); Vanguard's gold "!" quest-start pins don't show; Ctrl-click still drops a waypoint and the Clear waypoint button still works; the Map page ends with an OpenMap card saying OpenMap is drawing the map. With OpenMap off, the Cursor part and the pins come back. [Needs in game: that OpenMap's folder name is `OpenMap`, that Vanguard's frame skin and Clear waypoint button sit well beside OpenMap's own controls, whether OpenMap's login warning about other map addons names Vanguard, and what OpenMap does on a Ctrl-click.]
+- If it fails, paste: a screenshot of the map, which step broke, and `/vg errors`.
+
 ### 18.5 Levelling guide probe (LG-0)
 
 - Do: with at least one quest in your log, stand in a town and type `/vg guide probe`. Type it again in combat, and once inside a dungeon if you can. Turn in one quest, then type it again.
