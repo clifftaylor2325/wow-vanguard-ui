@@ -258,12 +258,13 @@ end
 
 -- Updating ----------------------------------------------------------------------------------
 
--- Fills an overlay from a value; hides it when the value isn't there. It is
--- as wide as the whole health bar (the button less its 1 px border), so the
--- same max gives the same scale as the health fill.
+-- Fills an overlay from a value; hides it when the value isn't there, emptied, so the
+-- shield anchored after the heal fill starts at the health edge. It is as wide as the
+-- whole health bar (the button less its 1 px border), so the same max gives the same
+-- scale as the health fill.
 local function fill(b, bar, max, value, on)
   bar:SetShown(on and not absent(value))
-  if not on or absent(value) then return end
+  if not on or absent(value) then return bar:SetValue(0) end
   bar:SetWidth(math.max(0, (b:GetWidth() or 0) - 2))
   bar:SetMinMaxValues(0, max)
   bar:SetValue(value)

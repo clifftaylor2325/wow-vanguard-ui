@@ -94,18 +94,31 @@ function RF.RoleMark(unit)
   return RF.ROLE_MARKS[role], RF.ROLE_MARKS[role] and "text2"
 end
 
--- Missing health as short text ("-16K") from plain numbers; "" at full health.
+-- Missing health as text ("-1234") from plain numbers; "" at full health. The same look as RF.SecretDeficit's.
 function RF.DeficitText(health, max)
   if health >= max then return "" end
-  local missing = max - health
-  return "-" .. (type(AbbreviateNumbers) == "function" and AbbreviateNumbers(missing) or tostring(missing))
+  return "-" .. math.floor(max - health)
 end
 
--- A unit's missing health as short text; "" at full health, or when the client
--- keeps the values secret (in instanced combat), since they can't be subtracted.
+-- The client's own missing health made into "-1234" ("" at full health) by its string calls, which take a
+-- secret and give one back. Nothing here compares, joins or truth-tests the value.
+local function clientDeficit(unit)
+  local strings = C_StringUtil
+  return strings.WrapString(strings.TruncateWhenZero(UnitHealthMissing(unit)), "-")
+end
+
+-- A unit's missing health while the client keeps its health secret (instanced combat): the text is
+-- secret too and only goes to SetText. "" on a client without these calls.
+function RF.SecretDeficit(unit)
+  local ok, text = pcall(clientDeficit, unit)
+  if not ok then return "" end
+  return text
+end
+
+-- A unit's missing health as text; "" at full health.
 function RF.Deficit(unit)
   local health, max = ns.PlainNumber(UnitHealth(unit)), ns.PlainNumber(UnitHealthMax(unit))
-  if not health or not max then return "" end
+  if not health or not max then return RF.SecretDeficit(unit) end
   return RF.DeficitText(health, max)
 end
 
@@ -518,13 +531,40 @@ local function onAttributeChanged(b, name, value)
   RF.Update(b)
 end
 
--- A button's scripts: clicks, follow its unit, refresh on show, light on hover.
+-- The tiles that show their unit's tooltip (RF.UnitTooltip), so a pull can hide the one a tile owns.
+RF.tooltipTiles = {}
+
+-- Shows a tile's unit in the game's tooltip, out of combat only (a forbidden tooltip is left alone).
+local function showTileTooltip(b)
+  local tt, unit = GameTooltip, b:GetAttribute("unit")
+  if ns.InCombat() or not unit or tt:IsForbidden() then return end
+  GameTooltip_SetDefaultAnchor(tt, b)
+  tt:SetUnit(unit)
+end
+
+-- A fight starts: a tooltip a tile shows goes, so it never covers the tiles while you heal.
+local function hideTooltipInFight()
+  local tt = GameTooltip
+  if not tt:IsForbidden() and RF.tooltipTiles[tt:GetOwner()] then tt:Hide() end
+end
+
+-- Gives a tile (a raid or main tank tile) its unit's tooltip on hover, out of combat; post-hooks only,
+-- so the secure clicks and click casting's wrap are untouched.
+function RF.UnitTooltip(b)
+  if not RF.tooltipInFight then ns.On("PLAYER_REGEN_DISABLED", hideTooltipInFight) end
+  RF.tooltipInFight, RF.tooltipTiles[b] = true, true
+  b:HookScript("OnEnter", ns.Guard("raid tile tooltip", showTileTooltip))
+  b:HookScript("OnLeave", ns.Guard("raid tile tooltip", function() unitFrames().HideTooltip(b) end))
+end
+
+-- A button's scripts: clicks, follow its unit, refresh on show, light on hover, its unit's tooltip.
 local function addScripts(b)
   b:RegisterForClicks("AnyUp")
   b:HookScript("OnAttributeChanged", onAttributeChanged)
   b:HookScript("OnShow", RF.Update)
   b:HookScript("OnEnter", function() b.hover:Show() end)
   b:HookScript("OnLeave", function() b.hover:Hide() end)
+  RF.UnitTooltip(b)
 end
 
 -- The panel and every part of a tile (bars, texts, marks, overlay): on a button

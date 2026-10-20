@@ -66,7 +66,7 @@ local function poll(b)
 end
 
 -- Dresses a unit button as a small tile: a flat panel, a health bar one pixel
--- inside it, and the name on the bar (cut off, never wrapped).
+-- inside it, the name on the bar (cut off, never wrapped), and its unit's tooltip on hover.
 function MT.Tile(b)
   local px = T.Pixel(b)
   T.HudPanel(b)
@@ -77,6 +77,7 @@ function MT.Tile(b)
   b.name:SetPoint("LEFT", 4, 0) b.name:SetPoint("RIGHT", -4, 0)
   b.name:SetJustifyH("LEFT") b.name:SetWordWrap(false)
   poll(b)
+  ns.GetModule("RaidFrames").UnitTooltip(b)
 end
 
 -- Main tanks ------------------------------------------------------------------------------
