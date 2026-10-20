@@ -26,6 +26,8 @@ local vgDragging = ns.FrameState("vgDragging")
 local vgMovable = ns.FrameState("vgMovable")
 local vgMoveHandle = ns.FrameState("vgMoveHandle")
 local vgPress = ns.FrameState("vgPress")
+-- Where a window sat before Vanguard moved it: its points as the game set them, for Reset.
+local vgHome = ns.FrameState("vgHome")
 
 local GW = ns.GetModule("Windows")
 
@@ -55,6 +57,8 @@ GW.MOVE_PAGES = { LFGParentFrame = { "LFGListingFrame", "LFGBrowseFrame", "LFGWh
 GW.MOVE_STRIP = { trim = 40, height = 24, left = 58, right = 64 }
 -- The game's calls that place its windows again; every moved window is put back after each.
 GW.MOVE_LAYOUTS = { "UpdateUIPanelPositions", "UpdateContainerFrameAnchors" }
+-- The windows the game lays out with a call of their own (not the panel manager's), by window.
+GW.MOVE_LAID_OUT = { ContainerFrameCombinedBags = "UpdateContainerFrameAnchors" }
 
 -- Saved places ---------------------------------------------------------------------------------
 
@@ -79,12 +83,6 @@ function GW.PutBack(key, frame)
   frame:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", ns.SaneOffset(at.x) / scale, ns.SaneOffset(at.y) / scale)
 end
 
--- Forgets every saved place: each window goes back where the game puts it the next time it opens.
-function GW.ResetMoves()
-  local moved = GW.Moved()
-  for key in pairs(moved) do moved[key] = nil end
-end
-
 -- Putting windows back ----------------------------------------------------------------------------
 
 -- Puts one window back on its saved place (not while it's being dragged), out of combat: in a fight
@@ -107,6 +105,61 @@ end
 -- Puts every moved window back (after the game has laid its windows out again).
 function GW.PlaceAll()
   for _, name in ipairs(names()) do place(name) end
+end
+
+-- Putting windows home ----------------------------------------------------------------------------
+
+-- Keeps a window's points as the game set them (plain reads), before Vanguard first moves it.
+local function recordHome(frame)
+  local points = {}
+  for i = 1, frame:GetNumPoints() do
+    local point, relativeTo, relativePoint, x, y = frame:GetPoint(i)
+    points[i] = { point = point, relativeTo = relativeTo, relativePoint = relativePoint, x = x, y = y }
+  end
+  vgHome[frame] = points
+end
+
+-- Puts a window back on the points it had before Vanguard moved it (the open letter beside the mailbox);
+-- nothing when it had none.
+local function goHome(frame)
+  local points = vgHome[frame]
+  if not points or #points == 0 then return end
+  frame:ClearAllPoints()
+  for _, p in ipairs(points) do frame:SetPoint(p.point, p.relativeTo, p.relativePoint, p.x, p.y) end
+end
+
+-- The game's call that lays a window out: its own (the bags'), the panel manager's for a panel window
+-- (one UIPanelWindows lists, or one its XML marks as a panel), or nil when the game never places it again.
+local function layoutOf(frame, name)
+  if GW.MOVE_LAID_OUT[name] then return GW.MOVE_LAID_OUT[name] end
+  local listed = type(UIPanelWindows) == "table" and UIPanelWindows[name] ~= nil
+  if listed or frame:GetAttribute("UIPanelLayout-defined") ~= nil then return "UpdateUIPanelPositions" end
+end
+
+-- Puts one window where the game would have it: one the game lays out adds that call to `calls` while it is
+-- shown (a hidden one is placed when it next opens); any other goes back to its home points.
+local function putHome(name, calls)
+  local frame = _G[name]
+  if type(frame) ~= "table" or not vgMovable[frame] then return end
+  local layout = layoutOf(frame, name)
+  if not layout then return goHome(frame) end
+  if frame:IsShown() then calls[layout] = true end
+end
+
+-- Forgets every saved place and puts each window back where the game puts it, each layout call made once.
+local function resetAll()
+  local moved, calls = GW.Moved(), {}
+  for key in pairs(moved) do moved[key] = nil end
+  for _, name in ipairs(names()) do putHome(name, calls) end
+  for fn in pairs(calls) do
+    if type(_G[fn]) == "function" then _G[fn]() end
+  end
+end
+
+-- Puts every moved window back where the game puts it, now or, in a fight, once it ends (laying the game's
+-- windows out is not allowed in one).
+function GW.ResetMoves()
+  ns.OutOfCombat(resetAll, "reset moves")
 end
 
 -- Dragging ------------------------------------------------------------------------------------------
@@ -248,6 +301,7 @@ local function setUp(name, withHandle)
   local frame = _G[name]
   if type(frame) ~= "table" or type(frame.HookScript) ~= "function" or vgMovable[frame] then return end
   vgMovable[frame] = true
+  recordHome(frame)
   ns.OutOfCombat(function() makeMovable(frame, name, withHandle) end, "move setup " .. name)
   frame:HookScript("OnShow", function() place(name) end)
 end

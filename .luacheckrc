@@ -123,4 +123,6 @@ read_globals = {
   "SuperTrackedFrame",
   -- Inventory: the engine's case-blind UTF-8 compare, so a name with an accented capital is found.
   "strcmputf8i",
+  -- H-04 Reset moved windows (Modules/WindowsMove.lua): the panel manager's list of the windows it lays out.
+  "UIPanelWindows",
 }

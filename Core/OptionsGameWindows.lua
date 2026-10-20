@@ -22,10 +22,14 @@ local WINDOW_GROUPS = {
   { "movable", "Drag game windows by their title bar (reload)" },
 }
 
--- Forgets where game windows were dragged to (and the options window's place, which goes back to the middle at once).
+-- Puts dragged game windows back where the game puts them, open ones too, and the options window in the middle;
+-- in a fight all of it waits until the fight ends (the game's window layout isn't allowed in one), and says so.
 local function resetWindowPlaces()
-  ns.GetModule("Windows").ResetMoves()
-  O.PlaceWindow()
+  if ns.InCombat() then ns.Chat("Moved windows go back once the fight ends.") end
+  ns.OutOfCombat(function()
+    ns.GetModule("Windows").ResetMoves()
+    O.PlaceWindow()
+  end, "reset window places")
 end
 
 -- The game's own windows in the Vanguard look (after a reload): one switch per group, dragging them by

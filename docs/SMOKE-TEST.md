@@ -1266,6 +1266,12 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 - Expect: as the fight starts the window stops following the mouse and stays where it was; nothing sticks to the mouse after you let go; it opens at that spot after the fight. No "Interface action failed because of an AddOn" message, and `/vg errors` is empty. [Needs in-game check: the harness models StartMoving and StopMovingOrSizing as protected on a window that holds secure buttons, from Forever's API docs.]
 - If it fails, paste: the window's name, where it ended up, and `/vg errors`.
 
+### 14.10b Reset moved windows, and five more windows to drag
+
+- Do: open the character pane and the mailbox, open a letter, and drag the pane and the letter away. `/vg` → Game windows → **Reset window positions** with both still open. Drag them away again, start a fight, click Reset, and leave combat. Then open the clock (the strip's time, or the minimap clock), chat channels (`/chatconfig` → Channels, or the social window's Chat Channels), Options → Game settings (Escape → Options), chat settings (right-click a chat tab → Settings) and guild control (guild window → Guild Control, if you can), and drag each.
+- Expect: Reset puts the open character pane where the game opens it and the letter back beside the mailbox at once, with no `/reload`. In the fight the chat says "Moved windows go back once the fight ends." and nothing moves; after the fight both go back, with no `/vg errors`. The clock and chat channels drag by their title bar; game settings, chat settings and guild control drag by an empty spot along their top edge, and every button, tab and box in all five still takes its click. [Needs in game: the letter's spot after Reset, and that no button in the five new windows lost its click.]
+- If it fails, paste: which window, a screenshot after Reset, and `/vg errors`.
+
 ### 14.11 Breath and fatigue bars
 
 - Do: swim under water until the breath bar shows and stay down a few seconds; surface. Then swim out to sea until the fatigue bar shows, and swim back.
