@@ -686,20 +686,21 @@ end
 
 -- Places the sheen just inside the top border (`pad` units out past the frame's top), one pixel tall:
 -- on the first row inside it, or the `row`th (a bevelled panel keeps row 1 for its bevel line).
--- (A button's hover line sits on row 1, in `token`.) `r` units are left clear at each end for rounded corners.
-local function placeSheen(t, frame, pad, token, row, r)
+-- `r` units are left clear at each end for rounded corners. Returns t, untinted: the caller tints it.
+local function placeSheen(t, frame, pad, row, r)
   local px, out = T.Pixel(frame), T.PixelRound(frame, pad or 0)
   local inset = px + (r or 0)
   t:ClearAllPoints()
   t:SetPoint("TOPLEFT", frame, "TOPLEFT", inset - out, out - px * (row or 1))
   t:SetPoint("TOPRIGHT", frame, "TOPRIGHT", out - inset, out - px * (row or 1))
   t:SetHeight(px)
-  T.Tint(t, token or "sheen")
+  return t
 end
 
 -- The inner bevel (#234) on buttons and raised panels: { token, alpha } of the light line along the
 -- top inner edge and the dark one along the bottom inner edge, each one pixel, just inside the border.
-T.BEVEL = { top = { "borderHi", 0.35 }, bottom = { "shade", 0.35 } }
+-- sheenRow: the row a bevelled panel's sheen sits on, below its light line.
+T.BEVEL = { top = { "borderHi", 0.35 }, bottom = { "shade", 0.35 }, sheenRow = 2 }
 
 -- Places one bevel line's geometry (side "TOP" or "BOTTOM") on the first row inside frame's border, `out`
 -- past it, `r` units clear of each rounded corner.
@@ -1240,7 +1241,7 @@ local function repaint(frame, entry)
   corner.paintCorners(frame, entry, r, look)
   if p.bg then paintBg(p, entry.opts, r > 0) end
   if p.edges then paintEdges(frame, entry, r) end
-  if p.sheen then placeSheen(p.sheen, frame, entry.opts.pad, nil, p.bevel and 2, r) end
+  if p.sheen then T.Tint(placeSheen(p.sheen, frame, entry.opts.pad, p.bevel and T.BEVEL.sheenRow, r), "sheen") end
   if p.bevel then placeBevelLines(p.bevel, frame, entry.opts.pad, r) end
   for _, fill in ipairs(entry.fills or NO_PARTS) do repaintFill(frame, fill, entry.opts.pad, r) end
   if entry.paint then entry.paint(entry, frame) end
@@ -1329,7 +1330,7 @@ end
 
 -- Places a button's hover line (one pixel inside its top border, in borderHi) when it is painted.
 local function paintHoverLine(entry, button)
-  placeSheen(entry.parts.hoverLine, button, entry.opts.pad, entry.opts.hoverTo or "borderHi", nil, entry.round)
+  T.Tint(placeSheen(entry.parts.hoverLine, button, entry.opts.pad, 1, entry.round), entry.opts.hoverTo or "borderHi")
 end
 
 -- Each themed button's hover parts (weak; kept off the button, which may be one of the game's).
@@ -2280,7 +2281,7 @@ local function paintFlat(entry, frame, on)
     for _, t in pairs(p[key] or NO_PARTS) do t:SetAlpha(a) end
   end
   for _, t in pairs(p.edges) do t:SetAlpha(a) end
-  placeSheen(p.lit, frame, entry.opts.pad, T.BEVEL.top[1], 1, entry.round)
+  T.Tint(placeSheen(p.lit, frame, entry.opts.pad, 1, entry.round), T.BEVEL.top[1])
   p.lit:SetShown(on)
 end
 
