@@ -114,8 +114,10 @@ end
 
 -- Blocks ---------------------------------------------------------------------------------------
 
--- The lines for a quest's state: "Ready to turn in" (an achievement: "Complete"), or its objectives (gray, then green when done).
+-- The lines for a quest's state: "Failed" (a timed quest run out, an escort lost), "Ready to turn in" (an
+-- achievement: "Complete"), or its objectives (gray, then green when done).
 function QT.StateLines(q)
+  if q.failed then return { { "Failed", "bad" } } end
   if q.ready then return { { q.achievement and "Complete" or "Ready to turn in", "good" } } end
   local out = {}
   for _, o in ipairs(q.objectives) do out[#out + 1] = { "- " .. o.text, o.done and "good" or "text2" } end

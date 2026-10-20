@@ -1,6 +1,6 @@
 -- Vanguard's quest tracker, in the tracker's spot under the info strip
 -- (Modules/MenuStrip.lua makes the spot): each quest you watch as a block,
---   * "[12] Title" in its difficulty color ("Ready to turn in" when done),
+--   * "[12] Title" in its difficulty color ("Ready to turn in" when done, "Failed" when failed),
 --   * its objectives, gray until each is done, then green,
 --   * "Time left 4:32" while the quest is timed (the game's own timer frame is hidden with its tracker),
 --   * its usable quest item as a button beside it (the game's own item use, with
@@ -97,14 +97,14 @@ function QT.LogIndex(id)
   return ns.PlainNumber(questLog("GetLogIndexForQuestID", id))
 end
 
--- One watched quest: { id, title, level, ready, objectives, item, xp }, or nil when the log doesn't have it.
+-- One watched quest: { id, title, level, ready, failed, objectives, item, xp }, or nil when the log doesn't have it.
 -- The XP switch is read from the profile: the arrow and the minimap marks ask with this module off, before any QT.Enable.
 function QT.Quest(id)
   local index = QT.LogIndex(id)
   local info = index and questLog("GetInfo", index)
   if type(info) ~= "table" then return nil end
   local ready = yes(questLog("ReadyForTurnIn", id)) or yes(questLog("IsComplete", id))
-  return { id = id, title = info.title, level = info.level, ready = ready, objectives = QT.Objectives(id), item = questItem(index),
+  return { id = id, title = info.title, level = info.level, ready = ready, failed = yes(questLog("IsFailed", id)), objectives = QT.Objectives(id), item = questItem(index),
     xp = ns.Settings("QuestTracker", QT.defaults).xp and ns.GetModule("DataBars").RewardXP(id) or 0 }
 end
 

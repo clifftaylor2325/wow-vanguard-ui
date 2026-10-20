@@ -1561,3 +1561,10 @@ it("quest log: the question for marked quests names the items each destroys", ()
   addon.eval("local QL = ns.GetModule('QuestLog') QL.marked = { [7] = true, [8] = true } QL.AbandonMarked()");
   expect(addon.eval("return Vanguard_Question.title:GetText()")).toBe("Abandon 2 quest(s)?\nTEST-ONLY Wolves (destroys TEST-ONLY Sack)\nTEST-ONLY Boars");
 });
+
+it("quest tracker: a failed quest reads Failed in the bad colour in place of its objectives; a hidden answer is not failed", () => {
+  const addon = loggedIn(TRACK_ENV + "C_QuestLog.IsFailed = function(id) return __quests[id].failed end __quests[90051].failed = true __quests[90053].failed = { __secret = true }");
+  const t = tracker(addon);
+  expect([t.blocks[0][1], t.blocks[2][1]]).toEqual([["Failed"], ["- 0/1 TEST-ONLY Stone"]]);
+  expect(isTok(addon, addon.eval("return Vanguard_QuestTrackerFrame.blocks[1].lines[1].__textColor"), "bad")).toBe(true);
+});
