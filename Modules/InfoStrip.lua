@@ -472,9 +472,9 @@ end
 -- The button that goes with a block, by its key on IS: the calendar with the date, the clock's hit area with the time.
 IS.BUTTONS = { date = "calendar", clock = "clockButton" }
 
--- Shows a block's button while the block shows.
+-- Shows a block's button (its own, or its hit area) while the block shows.
 local function showButton(key, shown)
-  local b = IS[IS.BUTTONS[key] or ""]
+  local b = IS[IS.BUTTONS[key] or ""] or (IS.hits and IS.hits[key])
   if b then b:SetShown(shown) end
 end
 
@@ -613,10 +613,133 @@ local function addClock(frame)
   IS.clockButton = b
 end
 
--- The strip's buttons: the calendar at the date row's end, and the time's hit area.
+-- Block tooltips -----------------------------------------------------------------------------
+
+-- The worn slots durability reads, by inventory slot, with the names the tooltip gives them.
+IS.SLOT_NAMES = {
+  [1] = "Head", [3] = "Shoulders", [5] = "Chest", [6] = "Waist", [7] = "Legs", [8] = "Feet", [9] = "Wrists",
+  [10] = "Hands", [16] = "Main hand", [17] = "Off hand", [18] = "Ranged",
+}
+-- What a bag that holds one kind of thing is called, by the game's bag family number; any other family is a "special bag".
+IS.BAG_KINDS = { [1] = "quiver", [2] = "ammo pouch", [4] = "soul bag" }
+
+-- Each worn item under full durability, most worn first: { name, percent }.
+function IS.WornSlots()
+  local out = {}
+  for slot, name in pairs(IS.SLOT_NAMES) do
+    local share = slotShare(slot)
+    if share and share < 1 then out[#out + 1] = { name, math.floor(share * 100 + 0.5) } end
+  end
+  table.sort(out, function(a, b) return a[2] < b[2] or (a[2] == b[2] and a[1] < b[1]) end)
+  return out
+end
+
+-- A tooltip line in two parts: the label muted, the value in a colour token.
+local function tipLine(tt, label, value, token)
+  local r, g, b = T.RGB("text2")
+  tt:AddDoubleLine(label, value, r, g, b, T.RGB(token or "text"))
+end
+
+-- Durability's tooltip: each worn item under 100 %, most worn first, coloured as the strip colours it.
+local function durabilityTip(tt)
+  local worn = IS.WornSlots()
+  for _, item in ipairs(worn) do tipLine(tt, item[1], item[2] .. "%", IS.DurabilityColor(item[2])) end
+  local r, g, b = T.RGB("text2")
+  if #worn == 0 then tt:AddLine("Everything at 100%", r, g, b) end
+end
+
+-- A bag's name in the tooltip: the backpack, or "Bag 3", with what it holds when it takes only one kind of thing.
+local function bagName(bag, family)
+  local name = bag == 0 and "Backpack" or "Bag " .. bag
+  if family == 0 then return name end
+  return name .. " (" .. (IS.BAG_KINDS[family] or "special bag") .. ")"
+end
+
+-- Free space's tooltip: each bag's slots used of its total (a soul bag or quiver named as such).
+local function bagsTip(tt)
+  local MS = ns.GetModule("MenuStrip")
+  for bag = 0, MS.LAST_BAG do
+    local total, free = MS.BagSpace(bag)
+    if total and total > 0 then
+      local _, family = C_Container.GetContainerNumFreeSlots(bag)
+      tipLine(tt, bagName(bag, ns.PlainNumber(family) or 0), (total - free) .. " / " .. total .. " used")
+    end
+  end
+end
+
+-- Gold's tooltip: what came in and went out since you logged in.
+local function goldTip(tt)
+  local s = IS.session or {}
+  tipLine(tt, "Earned this session", IS.Money(s.earned or 0), "gold")
+  tipLine(tt, "Spent this session", IS.Money(s.spent or 0), "gold")
+end
+
+-- Frame rate and latency's tooltip: home and world latency, and Vanguard's memory (not read in a fight).
+local function systemTip(tt)
+  local _, _, home, world = ask("GetNetStats")
+  home, world = ns.PlainNumber(home), ns.PlainNumber(world)
+  if home then tipLine(tt, "Home latency", home .. " ms") end
+  if world then tipLine(tt, "World latency", world .. " ms") end
+  local kb = ns.Perf.Memory()
+  if kb then tipLine(tt, "Vanguard's memory", string.format("%.1f MB", kb / 1024)) end
+end
+
+-- The session rates' tooltip: how long the session has run, the XP gained and the gold made or spent in it.
+local function ratesTip(tt)
+  local s = IS.session or {}
+  tipLine(tt, "Session", IS.Duration((ask("GetTime") or 0) - (s.start or 0)))
+  tipLine(tt, "XP gained", ns.GetModule("DataBars").Short(s.gained or 0))
+  local now, start = ns.PlainNumber(ask("GetMoney")), s.money
+  if now and start then tipLine(tt, "Gold", (now < start and "-" or "+") .. IS.ShortMoney(math.abs(now - start)), now < start and "bad" or "gold") end
+end
+
+-- A fight's length: "42s", or "3m 05s".
+function IS.FightLength(seconds)
+  local whole = math.floor(seconds + 0.5)
+  if whole < 60 then return whole .. "s" end
+  return string.format("%dm %02ds", math.floor(whole / 60), whole % 60)
+end
+
+-- The last fight's tooltip (DPS and place): how long it lasted.
+local function fightTip(tt)
+  local seconds = IS.FightSeconds()
+  if seconds then tipLine(tt, "Fight length", IS.FightLength(seconds)) end
+end
+
+-- Each block's tooltip: its title, and the function that adds its lines.
+IS.TIPS = {
+  durability = { "Durability", durabilityTip }, bags = { "Bag space", bagsTip }, gold = { "Gold", goldTip },
+  system = { "Frame rate and latency", systemTip },
+  xprate = { "This session", ratesTip }, leveltime = { "This session", ratesTip }, goldrate = { "This session", ratesTip },
+  dps = { "Last fight", fightTip }, rank = { "Last fight", fightTip },
+}
+
+-- Shows a block's tooltip, beside the strip.
+function IS.ShowTip(hit)
+  local tip = IS.TIPS[hit.key]
+  GameTooltip:SetOwner(hit, "ANCHOR_LEFT")
+  GameTooltip:SetText(tip[1], T.RGB("text"))
+  tip[2](GameTooltip)
+  GameTooltip:Show()
+end
+
+-- One block's hit area over its text (the text takes no mouse): its tooltip on hover.
+local function addHit(frame, key)
+  local hit = CreateFrame("Button", nil, frame)
+  hit.key = key
+  hit:SetAllPoints(IS.texts[key])
+  hit:SetScript("OnEnter", ns.Guard("info strip tip", IS.ShowTip))
+  hit:SetScript("OnLeave", ns.Guard("info strip tip", function() GameTooltip:Hide() end))
+  hit:Hide()
+  return hit
+end
+
+-- The strip's buttons: the calendar at the date row's end, the time's hit area, and every other block's.
 local function addButtons(frame)
   addCalendar(frame)
   addClock(frame)
+  IS.hits = {}
+  for key in pairs(IS.TIPS) do IS.hits[key] = addHit(frame, key) end
 end
 
 -- The strip's timer while it shows: the clock every second, fps and latency every third, the rates every fifth.

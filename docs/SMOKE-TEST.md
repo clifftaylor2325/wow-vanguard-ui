@@ -835,6 +835,12 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Expect: after the reload the XP per hour, time to level and gold per hour show again at once, near the same figures; after logging back in they start again (hidden for the first minute).
 - If it fails, paste: the figures before and after, and `/vg errors`.
 
+### 13.2d Info strip tooltips
+
+- Do: with some gear worn down, a soul bag or quiver if you have one, and some gold earned and spent since logging in, hover each number on the info strip under the minimap. Hover fps and latency once in a fight too.
+- Expect: durability lists each item under 100 % (for example "Chest 23%"), most worn first; the free count lists each bag's slots used of its total, a soul bag or quiver named; gold shows earned and spent this session; fps and latency shows home and world latency and Vanguard's memory (in a fight, no memory line); the XP and gold rates and time to level show the session's length, XP gained and gold; your DPS (if switched on) shows the last fight's length. Each tooltip goes when the mouse leaves.
+- If it fails, paste: a screenshot of the tooltip, and `/vg errors`.
+
 ### 13.3 Move the strips
 
 - Do: type `/vg unlock`, drag the Bags and Game menu handles apart, type `/vg lock`, then `/reload`.

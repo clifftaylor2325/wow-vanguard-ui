@@ -556,6 +556,47 @@ it("the info strip's rates carry on through a /reload, start again on a new logi
   reloaded.eval("ns.GetModule('InfoStrip').RestartSession()");
   expect([block(reloaded, "xprate").shown, reloaded.eval("return VanguardCharDB.infoSession.gained")], "started again from now: nothing gained, the rates wait to settle").toEqual([false, 0]);
 });
+// A block's tooltip on hover, each line "label|value", and whether it goes with the mouse.
+const blockTip = (addon, key) => addon.eval(`local hit = ns.GetModule("InfoStrip").hits.${key} hit.__scripts.OnEnter(hit)
+  local out = {} for i, l in ipairs(GameTooltip.__lines) do out[i] = l.text .. (l.right and "|" .. l.right or "") end
+  hit.__scripts.OnLeave(hit) out[#out + 1] = GameTooltip:IsShown() and "still shown" or "hidden" return out`);
+it("the info strip's numbers explain themselves on hover", () => {
+  const addon = loggedIn(UNITS_ENV + STRIP_ENV + LEVEL_ENV + DPS_ENV + `
+    __dur = { [5] = { 23, 100 }, [7] = { 50, 100 }, [10] = { 50, 100 }, [1] = { 100, 100 } }
+    __space = { [0] = { 16, 4, 0 }, [3] = { 20, 18, 4 }, [4] = { 10, 0, 1 } }
+    C_Container.GetContainerNumSlots = function(bag) return (__space[bag] or { 0 })[1] end
+    C_Container.GetContainerNumFreeSlots = function(bag) local s = __space[bag] or { 0, 0 } return s[2], s[3] end
+    GetAddOnMemoryUsage = function() return 12800 end`, { savedVariables: "VanguardDB.profiles = { Default = { InfoStrip = { dps = true, rank = true } } }" });
+  expect(blockTip(addon, "durability"), "each worn item under 100 %, most worn first").toEqual(["Durability", "Chest|23%", "Hands|50%", "Legs|50%", "hidden"]);
+  expect(blockTip(addon, "bags"), "each bag's slots used, a soul bag and quiver named").toEqual(["Bag space", "Backpack|12 / 16 used", "Bag 3 (soul bag)|2 / 20 used", "Bag 4 (quiver)|10 / 10 used", "hidden"]);
+  addon.eval("__money = 133407");
+  addon.fire("PLAYER_MONEY");
+  addon.eval("__money = 128407");
+  addon.fire("PLAYER_MONEY");
+  expect(blockTip(addon, "gold"), "what came in and went out since login").toEqual(["Gold", "Earned this session|1g 0s 0c", "Spent this session|50s 0c", "hidden"]);
+  expect(blockTip(addon, "system"), "both latencies and Vanguard's memory").toEqual(["Frame rate and latency", "Home latency|40 ms", "World latency|64 ms", "Vanguard's memory|12.5 MB", "hidden"]);
+  setCombat(addon, true);
+  expect(blockTip(addon, "system").length, "in a fight the memory isn't read").toBe(4);
+  setCombat(addon, false);
+  addon.eval("__xp = 1900");
+  addon.fire("PLAYER_XP_UPDATE", "player");
+  later(addon, 3900);
+  addon.fire("PLAYER_XP_UPDATE", "player");
+  expect(blockTip(addon, "xprate"), "the session's length, XP gained and gold made").toEqual(["This session", "Session|1h 05m", "XP gained|900", "Gold|+50s 0c", "hidden"]);
+  addon.eval("__money = 100");
+  addon.fire("PLAYER_MONEY");
+  expect(blockTip(addon, "goldrate")[3], "or spent").toBe("Gold|-12g 33s");
+  addon.eval("__dps.durationSeconds = 65");
+  addon.fire("PLAYER_REGEN_ENABLED");
+  expect([blockTip(addon, "dps"), blockTip(addon, "rank")[1]], "the last fight's length").toEqual([["Last fight", "Fight length|1m 05s", "hidden"], "Fight length|1m 05s"]);
+  addon.eval("__dps.durationSeconds = 41.6");
+  expect(blockTip(addon, "dps")[1], "a short one in seconds").toBe("Fight length|42s");
+  addon.eval("__dur = { [5] = { 100, 100 } }");
+  addon.fire("UPDATE_INVENTORY_DURABILITY");
+  expect(blockTip(addon, "durability"), "nothing worn").toEqual(["Durability", "Everything at 100%", "hidden"]);
+  addon.eval('ns.Settings("InfoStrip").gold = false ns.GetModule("InfoStrip").Paint("gold")');
+  expect(addon.eval("return ns.GetModule('InfoStrip').hits.gold:IsShown()"), "a block turned off takes no mouse").toBe(false);
+});
 it("flight timer: the taxi check runs only from picking a flight until it lands", () => {
   const addon = loggedIn(UNITS_ENV + TAXI_ENV + "__asked = 0 local real = UnitOnTaxi UnitOnTaxi = function(...) __asked = __asked + 1 return real(...) end");
   // How often the taxi state was asked so far, then reset.
