@@ -185,7 +185,7 @@ end
 -- Puts an item on the sell list, or takes it off.
 local function setJunk(id, on)
   MC.settings.junkList[id] = on or nil
-  ns.Chat(itemName(id) .. (on and " is on your sell list." or " is off your sell list.") .. (on and not MC.settings.listSell and " Switch it on under Merchants and errors." or ""))
+  ns.Chat(itemName(id) .. (on and " is on your sell list." or " is off your sell list.") .. (on and not MC.settings.listSell and " Switch it on under Town and gear, Merchants." or ""))
 end
 
 -- /vg junk [<item> | remove <item> | clear]: show, add to, take from or empty the sell list.

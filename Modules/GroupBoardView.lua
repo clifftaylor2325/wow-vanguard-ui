@@ -1,6 +1,7 @@
 -- The group board's window (Modules/GroupBoard.lua reads the posts): a title
 -- with the count, a filter button (all posts, looking for more, looking for a
--- group) and the "only for my level" switch, then a row per post, newest first:
+-- group, needs my role: posts that need your role first, the rest dimmed) and
+-- the "only for my level" switch, then a row per post, newest first:
 -- the kind, the dungeon and its level range (in its difficulty color), the roles
 -- named, who posted and how long ago. Hover a row for the whole line; click it
 -- to open a whisper with a message filled in. /vg lfg opens and closes it.
@@ -24,7 +25,12 @@ local NOTE_H, HINT_H = 24, 12
 GB.W, GB.ROW_H, GB.ROWS, GB.AGE_EVERY = SPAN + 2 * PAD, T.ROW.height, 10, 10
 GB.H = BODY_TOP + GB.ROWS * GB.ROW_H + T.SPACE.tight + NOTE_H + T.SPACE.gap + HINT_H + PAD
 -- The filter button's choices in order, and its caption for each.
-GB.FILTERS = { all = { "LFM", "All posts" }, LFM = { "LFG", "Looking for more" }, LFG = { "all", "Looking for a group" } }
+GB.FILTERS = {
+  all = { "LFM", "All posts" }, LFM = { "LFG", "Looking for more" }, LFG = { "role", "Looking for a group" },
+  role = { "all", "Needs my role" },
+}
+-- The row's cells drawn in the text colour (the kind and the dungeon have colours of their own).
+GB.PLAIN_CELLS = { "roles", "sender", "age" }
 
 -- Building -------------------------------------------------------------------------------------
 
@@ -131,13 +137,27 @@ local function rolesText(e)
   return table.concat(names, ", ")
 end
 
--- Fills a row from a post: the kind in the accent (LFM) or info blue (LFG), the dungeon in its difficulty color.
+-- The dungeon's difficulty color, or text2 for a post that names none.
+local function dungeonColor(e)
+  if not e.dungeon then return "text2" end
+  return QP.LevelColor(math.floor((e.dungeon.min + e.dungeon.max) / 2))
+end
+
+-- A row's colors: the kind in the accent (LFM) or info blue (LFG), the dungeon in its difficulty color, the
+-- rest in the text color; every cell muted for a post that Needs my role dims.
+local function paintColors(b, e)
+  local dim = GB.Dimmed(e)
+  T.Color(b.kind, dim and "muted" or (e.kind == "LFM" and "accent" or "info"))
+  T.Color(b.dungeon, dim and "muted" or dungeonColor(e))
+  for _, key in ipairs(GB.PLAIN_CELLS) do T.Color(b[key], dim and "muted" or "text") end
+end
+
+-- Fills a row from a post (paintColors colors it).
 function GB.PaintRow(b, e, now)
   b.entry = e
   b.kind:SetText(e.kind)
-  T.Color(b.kind, e.kind == "LFM" and "accent" or "info")
   b.dungeon:SetText(dungeonText(e))
-  if e.dungeon then T.Color(b.dungeon, QP.LevelColor(math.floor((e.dungeon.min + e.dungeon.max) / 2))) else T.Color(b.dungeon, "text2") end
+  paintColors(b, e)
   b.roles:SetText(rolesText(e))
   b.sender:SetText((e.sender:match("^[^%-]+")))
   b.age:SetText(GB.Age(e, now))
@@ -190,7 +210,7 @@ function GB.Changed()
   if GB.frame and GB.frame:IsShown() then ns.Soon("groupboard", GB.Refresh) end
 end
 
--- The filter button: all posts, then looking for more, then looking for a group.
+-- The filter button: all posts, then looking for more, then looking for a group, then needs my role.
 function GB.CycleFilter()
   GB.filter = GB.FILTERS[GB.filter][1]
   GB.frame.filter.text:SetText(GB.FILTERS[GB.filter][2])

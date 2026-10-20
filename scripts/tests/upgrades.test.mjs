@@ -62,6 +62,8 @@ it("upgrades: the role picks the weights, and /vg weights shows and changes them
   addon.eval("__wfgWorld.units.player.role = 'TANK'");
   addon.fire("PLAYER_ROLES_ASSIGNED");
   expect(addon.eval("local UP = ns.GetModule('Upgrades') return { select(2, UP.Current()), UP.Role() }"), "a tank role: the tank weights").toEqual(["tank", "tank"]);
+  addon.eval("__wfgWorld.units.player.role = __wfgWorld.secret('TANK')");
+  expect(addon.eval("return ns.GetModule('Upgrades').Role()"), "a hidden group role counts as none: damage").toBe("damage");
   addon.eval("ns.GetModule('Upgrades').settings.role = 'healer' ns.GetModule('Upgrades').Changed()");
   expect(addon.eval("return select(2, ns.GetModule('Upgrades').Current())"), "a role the class doesn't have: its damage weights").toBe("strength");
   expect(addon.eval("local W = ns.UpgradeWeights return { W.Kind('DRUID', 'healer'), W.Kind('TEST-ONLY', 'tank') }"), "a druid healer; a class not listed").toEqual(["healer", "caster"]);

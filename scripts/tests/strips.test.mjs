@@ -1,7 +1,9 @@
 // strips: Vanguard's real Lua in the TEST-ONLY headless client (scripts/lib/lua-harness.mjs).
 
 import { expect, it } from "vitest";
-import { CLICK_LUA, chatHas, expectErrors, HEALING_ENV, MICRO_ENV, PANEL_OPENERS, PLATE_ENV, RAID_ENV, STRIPS_ENV, STRIP_ENV, TIDY_ENV, UI_ENV, UNITS_ENV, block, borderOf, button, isTok, later, loggedIn, pinned, putAway, setCombat, strips } from "./helpers.mjs";
+import { createAddon } from "../lib/lua-harness.mjs";
+import { luaValue } from "../lib/lua-emit.mjs";
+import { CLICK_LUA, chatHas, expectErrors, HEALING_ENV, MICRO_ENV, PANEL_OPENERS, PLATE_ENV, RAID_ENV, STRIPS_ENV, STRIP_ENV, TIDY_ENV, UI_ENV, UNITS_ENV, block, borderOf, button, isTok, later, loggedIn, pinned, putAway, SETUP_DONE, setCombat, strips } from "./helpers.mjs";
 
 // TEST-ONLY damage meter: someone else's line, then yours at 1234.5 per second.
 const DPS_ENV = `
@@ -192,6 +194,38 @@ it("the info strip's calendar button counts the invites waiting, and is absent w
   expect(ruled.eval("return #ns.errors"), "nor on the invites event").toBe(0);
   const bare = loggedIn(STRIP_ENV);
   expect(bare.eval("return ns.GetModule('InfoStrip').invites:GetText()"), "a client without the calendar API shows no count").toBe("");
+});
+it("the info strip at Text size 130 %: wider and taller rows, every block placed again, and the longest texts still fit", () => {
+  const addon = loggedIn(UNITS_ENV + STRIP_ENV + `GameTime_GetTime = function() return "12:59 PM" end
+    date = function(f) return f == "%a %d %b" and "Wed 30 Sep" or "23:59" end
+    __fps, __ammo, __money = 144, 1000, 9999999 __dur = { [1] = { 100, 100 } } GetNetStats = function() return 0, 0, 999, 999 end
+    C_Container = { GetContainerNumFreeSlots = function() return 26 end } UnitClass = function() return "Hunter", "HUNTER" end`);
+  addon.eval("ns.Theme.Settings().textScale = 1.3 ns.Theme.Refresh() __wfgStub.advance(1.1)");
+  // The strip's width and height, a block's anchor offset down from the top, and the calendar button's.
+  const layout = addon.eval(`local IS = ns.GetModule("InfoStrip")
+    return { Vanguard_InfoStrip:GetWidth(), Vanguard_InfoStrip:GetHeight(), IS.texts.gold.__points.LEFT.y, Vanguard_InfoStripCalendar.__points.RIGHT.y }`);
+  expect(layout, "13-point text: 237 wide, 23-tall rows (four shown), each row's middle a row lower").toEqual([237, 96, -34.5, -80.5]);
+  // Text widths as the client draws them at 13 points: the harness's 6 units a letter at 10, grown by 1.3.
+  const drawn = (key) => block(addon, key).text.length * 6 * 1.3;
+  const width = layout[0];
+  const pairs = [["durability", "bags"], ["system", "ammo"]];
+  for (const [left, right] of pairs) expect(drawn(left) + drawn(right) + 12 + 8, `${block(addon, left).text} | ${block(addon, right).text}`).toBeLessThan(width);
+  expect([block(addon, "clock").text, drawn("clock") + 8 + drawn("date") + 6 + 18 + 3 + 4 < width], "a 12-hour time, the date and the calendar button share the fourth row").toEqual(["12:59 PM", true]);
+  addon.eval("ns.Theme.Settings().textScale = 0.8 ns.Theme.Refresh()");
+  expect(addon.eval("return { Vanguard_InfoStrip:GetWidth(), Vanguard_InfoStrip:GetHeight() }"), "smaller text keeps today's strip").toEqual([182, 76]);
+});
+it("the quest tracker's spot moves down with the info strip's taller rows, after a fight, unless it was moved", () => {
+  const addon = loggedIn(UNITS_ENV + STRIP_ENV);
+  // How far down the quest tracker's spot sits.
+  const trackerY = () => addon.eval("return Vanguard_QuestTracker.__points.TOPRIGHT.y");
+  expect(trackerY(), "at 100 % it sits 6 under the seventh row (200 + 7 x 18 + 4)").toBe(-336);
+  setCombat(addon, true);
+  addon.eval("ns.Theme.Settings().textScale = 1.3 ns.Theme.Refresh()");
+  expect(trackerY(), "in a fight it waits: the game's tracker is pinned to it").toBe(-336);
+  setCombat(addon, false);
+  expect(trackerY(), "after it, 7 rows of 23 lower down").toBe(-371);
+  addon.eval('ns.SetMoverPoint("questtracker", "TOPRIGHT", "TOPRIGHT", -40, -500) ns.Theme.Settings().textScale = 1 ns.Theme.Refresh()');
+  expect(trackerY(), "a spot the player picked stays").toBe(-500);
 });
 it("the Bars and bags page's two tracker switches name the game's tracker, the one they change", () => {
   const addon = loggedIn(UI_ENV);
@@ -497,6 +531,110 @@ it("the info strip: XP and gold per hour, and time to level", () => {
   addon.fire("PLAYER_XP_UPDATE", "player");
   expect(rates(), "hidden XP: the rate so far stays, the time to level hides").toEqual([true, false, false]);
   expect(addon.eval('local IS = ns.GetModule("InfoStrip") return { IS.ShortMoney(5), IS.ShortMoney(507), IS.Duration(30) }'), "short money and times").toEqual(["5c", "5s 7c", "1m"]);
+});
+it("the info strip's rates carry on through a /reload, start again on a new login, and can be started again from now", () => {
+  const addon = loggedIn(UNITS_ENV + STRIP_ENV + LEVEL_ENV);
+  addon.eval("__xp = 1900");
+  addon.fire("PLAYER_XP_UPDATE", "player");
+  later(addon, 1800);
+  addon.fire("PLAYER_XP_UPDATE", "player");
+  expect(block(addon, "xprate").text, "900 XP in half an hour").toBe("1.8K xp/h");
+  addon.fire("PLAYER_LOGOUT");
+  const sv = addon.savedVariables(), now = addon.eval("return __wfgStub.now");
+  // The same character's UI started again a second later, with the game's PLAYER_ENTERING_WORLD flags (login, reload).
+  const again = (login, reload, wait = 1) => {
+    const next = createAddon({ savedVariables: `VanguardDB = ${luaValue(sv.account)}\nVanguardCharDB = ${luaValue(sv.char)}\n` });
+    next.eval(UNITS_ENV + STRIP_ENV + LEVEL_ENV + `__xp = 1900 __wfgStub.now = ${now + wait}`);
+    for (const [event, ...args] of [["ADDON_LOADED", "Vanguard"], ["PLAYER_LOGIN"], ["PLAYER_ENTERING_WORLD", login, reload]]) next.fire(event, ...args);
+    return next;
+  };
+  const reloaded = again(false, true);
+  expect(block(reloaded, "xprate").text, "a /reload carries the session on").toBe("1.8K xp/h");
+  reloaded.fire("PLAYER_ENTERING_WORLD", false, false);
+  expect(block(reloaded, "xprate").text, "and a zone change leaves it alone").toBe("1.8K xp/h");
+  expect(block(again(true, false), "xprate").shown, "a new login starts fresh").toBe(false);
+  expect(block(again(false, true, 600), "xprate").shown, "a session the game saved ten minutes ago belongs to an earlier login").toBe(false);
+  const blank = createAddon({ savedVariables: SETUP_DONE + "VanguardCharDB.infoSession = { start = 1, saved = 1000, gained = 900, earned = 0, spent = 0, xp = 'TEST-ONLY not a number', max = 2000 }" });
+  blank.eval(UNITS_ENV + STRIP_ENV + LEVEL_ENV);
+  blank.fire("ADDON_LOADED", "Vanguard");
+  blank.fire("PLAYER_LOGIN");
+  blank.fire("PLAYER_ENTERING_WORLD", false, true);
+  expect([block(blank, "xprate").shown, blank.eval("return VanguardCharDB.infoSession.gained")], "a reload with a broken saved session (its XP not a number) starts a new one").toEqual([false, 0]);
+  reloaded.eval("ns.GetModule('InfoStrip').RestartSession()");
+  expect([block(reloaded, "xprate").shown, reloaded.eval("return VanguardCharDB.infoSession.gained")], "started again from now: nothing gained, the rates wait to settle").toEqual([false, 0]);
+});
+// A block's tooltip on hover, each line "label|value", and whether it goes with the mouse.
+const blockTip = (addon, key) => addon.eval(`local hit = ns.GetModule("InfoStrip").hits.${key} hit.__scripts.OnEnter(hit)
+  local out = {} for i, l in ipairs(GameTooltip.__lines) do out[i] = l.text .. (l.right and "|" .. l.right or "") end
+  hit.__scripts.OnLeave(hit) out[#out + 1] = GameTooltip:IsShown() and "still shown" or "hidden" return out`);
+it("the info strip's numbers explain themselves on hover", () => {
+  const addon = loggedIn(UNITS_ENV + STRIP_ENV + LEVEL_ENV + DPS_ENV + `
+    __dur = { [5] = { 23, 100 }, [7] = { 50, 100 }, [10] = { 50, 100 }, [1] = { 100, 100 } }
+    __space = { [0] = { 16, 4, 0 }, [3] = { 20, 18, 4 }, [4] = { 10, 0, 1 } }
+    C_Container.GetContainerNumSlots = function(bag) return (__space[bag] or { 0 })[1] end
+    C_Container.GetContainerNumFreeSlots = function(bag) local s = __space[bag] or { 0, 0 } return s[2], s[3] end
+    __memReads = 0 UpdateAddOnMemoryUsage = function() __memReads = __memReads + 1 end
+    GetAddOnMemoryUsage = function() return 12800 end`, { savedVariables: "VanguardDB.profiles = { Default = { InfoStrip = { dps = true, rank = true } } }" });
+  expect(blockTip(addon, "durability"), "each worn item under 100 %, most worn first").toEqual(["Durability", "Chest|23%", "Hands|50%", "Legs|50%", "Click: the character window", "hidden"]);
+  expect(blockTip(addon, "bags"), "each bag's slots used, a soul bag and quiver named").toEqual(["Bag space", "Backpack|12 / 16 used", "Bag 3 (soul bag)|2 / 20 used", "Bag 4 (quiver)|10 / 10 used", "Click: the bag window", "hidden"]);
+  addon.eval("__money = 133407");
+  addon.fire("PLAYER_MONEY");
+  addon.eval("__money = 128407");
+  addon.fire("PLAYER_MONEY");
+  expect(blockTip(addon, "gold"), "what came in and went out since login").toEqual(["Gold", "Earned this session|1g 0s 0c", "Spent this session|50s 0c", "Click: the bag window", "hidden"]);
+  expect(blockTip(addon, "system"), "both latencies and Vanguard's memory").toEqual(["Frame rate and latency", "Home latency|40 ms", "World latency|64 ms", "Vanguard's memory|12.5 MB", "hidden"]);
+  blockTip(addon, "system");
+  expect(addon.eval("return __memReads"), "a second hover within 10 s reuses the reading").toBe(1);
+  later(addon, 11);
+  setCombat(addon, true);
+  expect([blockTip(addon, "system").length, addon.eval("return __memReads")], "in a fight the memory isn't read").toEqual([4, 1]);
+  expect(blockTip(addon, "dps").slice(1, 2), "the last fight's figure waits for this one to end").toEqual(["Updates when this fight ends"]);
+  setCombat(addon, false);
+  addon.eval("__xp = 1900");
+  addon.fire("PLAYER_XP_UPDATE", "player");
+  later(addon, 3889);
+  addon.fire("PLAYER_XP_UPDATE", "player");
+  expect(blockTip(addon, "xprate"), "the session's length, XP gained and gold made").toEqual(["This session", "Session|1h 05m", "XP gained|900", "Gold|+50s 0c", "Right-click: start counting again", "hidden"]);
+  addon.eval("__money = 100");
+  addon.fire("PLAYER_MONEY");
+  expect(blockTip(addon, "goldrate")[3], "or spent").toBe("Gold|-12g 33s");
+  addon.eval("__dps.durationSeconds = 65");
+  addon.fire("PLAYER_REGEN_ENABLED");
+  expect([blockTip(addon, "dps"), blockTip(addon, "rank")[1]], "the last fight's length").toEqual([["Last fight", "Fight length|1m 05s", "hidden"], "Fight length|1m 05s"]);
+  addon.eval("__dps.durationSeconds = 41.6");
+  expect(blockTip(addon, "dps")[1], "a short one in seconds").toBe("Fight length|42s");
+  addon.eval("__dur = { [5] = { 100, 100 } }");
+  addon.fire("UPDATE_INVENTORY_DURABILITY");
+  expect(blockTip(addon, "durability"), "nothing worn").toEqual(["Durability", "Everything at 100%", "Click: the character window", "hidden"]);
+  addon.eval('ns.Settings("InfoStrip").gold = false ns.GetModule("InfoStrip").Paint("gold")');
+  expect(addon.eval("return ns.GetModule('InfoStrip').hits.gold:IsShown()"), "a block turned off takes no mouse").toBe(false);
+});
+it("a click on the info strip's durability opens the character window, on free space or gold the bags, out of a fight; a right-click on a rate starts it again", () => {
+  const addon = loggedIn(UNITS_ENV + STRIP_ENV + LEVEL_ENV + `__opened = {}
+    ToggleCharacter = function(tab) __opened[#__opened + 1] = "character " .. tab end
+    ToggleAllBags = function() __opened[#__opened + 1] = "bags" end`);
+  // Clicks a block with a mouse button.
+  const click = (key, button = "LeftButton") => addon.eval(`local hit = ns.GetModule("InfoStrip").hits.${key} hit.__scripts.OnClick(hit, "${button}")`);
+  for (const key of ["durability", "bags", "gold", "system"]) click(key);
+  click("durability", "RightButton");
+  expect(addon.eval("return __opened"), "each its window; fps has none, and a right-click opens nothing").toEqual(["character PaperDollFrame", "bags", "bags"]);
+  expect(blockTip(addon, "durability").slice(-2), "the tooltip says what a click does").toEqual(["Click: the character window", "hidden"]);
+  setCombat(addon, true);
+  click("bags");
+  expect([addon.eval("return #__opened"), chatHas(addon, /The bag window doesn't open from Vanguard in a fight/), blockTip(addon, "gold").slice(-2)[0]], "in a fight nothing opens, chat says it waits, the hint says so").toEqual([3, true, "Click: the bag window (not in a fight)"]);
+  setCombat(addon, false);
+  addon.eval("__xp = 1900");
+  addon.fire("PLAYER_XP_UPDATE", "player");
+  later(addon, 1800);
+  addon.fire("PLAYER_XP_UPDATE", "player");
+  expect([block(addon, "xprate").shown, blockTip(addon, "xprate").slice(-2)[0]], "a rate shows, and says a right-click restarts it").toEqual([true, "Right-click: start counting again"]);
+  click("xprate", "LeftButton");
+  expect(block(addon, "xprate").shown, "a left-click leaves it").toBe(true);
+  addon.eval("__money = __money + 500");
+  addon.fire("PLAYER_MONEY");
+  click("goldrate", "RightButton");
+  expect(block(addon, "xprate").shown, "a right-click starts again from now: nothing to show until it settles").toBe(false);
+  expect(blockTip(addon, "gold")[1], "the gold tooltip still counts from the login").toBe("Earned this session|5s 0c");
 });
 it("flight timer: the taxi check runs only from picking a flight until it lands", () => {
   const addon = loggedIn(UNITS_ENV + TAXI_ENV + "__asked = 0 local real = UnitOnTaxi UnitOnTaxi = function(...) __asked = __asked + 1 return real(...) end");

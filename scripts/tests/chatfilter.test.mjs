@@ -128,6 +128,59 @@ it("chat filter: clicking a sender's name lets them through for the session", ()
   expect(deliver(addon, GOLD, "Goldy"), "their next line stays in the chat").toBe(false);
 });
 
+// The Chat page's text rows (its hints and the filter's status lines).
+const pageTexts = (addon) => addon.eval(`local page for _, p in ipairs(ns.Options.PAGES) do if p.key == "chat" then page = p end end
+  local out = {} for _, r in ipairs(page.rows()) do if r[1] == "text" then out[#out + 1] = type(r[2]) == "function" and r[2]() or r[2] end end return out`);
+
+it("chat filter card: what it caught this session, by reason, in a fixed order", () => {
+  const addon = filtering();
+  expect(pageTexts(addon), "nothing yet").toContain("Nothing caught this session.");
+  addon.slash("filter add spamword");
+  deliver(addon, "repeat after me, a long line", "Parrot");
+  deliver(addon, "repeat after me, a long line", "Parrot");
+  deliver(addon, GOLD, "Goldy");
+  deliver(addon, "buy my spamword now", "Worder");
+  expect(pageTexts(addon), "the total, then the categories, your words and repeats").toContain("Caught this session: 3 (Gold selling 1, Your word 1, Repeat 1)");
+});
+
+it("chat filter card: the senders let through are listed, and Filter them again catches them again", () => {
+  const addon = filtering(CLICK_LUA);
+  expect(pageTexts(addon), "nobody yet").toContain("Nobody let through this session.");
+  deliver(addon, GOLD, "Goldy");
+  addon.eval('local CF = ns.GetModule("ChatFilter") CF.OnLink(nil, "addon:Vanguard:allow:Goldy") CF.OnLink(nil, "addon:Vanguard:allow:Goldy-" .. GetNormalizedRealmName())');
+  expect(pageTexts(addon), "named once on the card, whichever form of the name was let through").toContain("Let through: Goldy");
+  addon.eval('ns.Options.Show("chat") __click("Filter them again")');
+  expect([chatHas(addon, /Every sender is filtered again\./), deliver(addon, GOLD, "Goldy")], "says so, and their next line is caught").toEqual([true, true]);
+  expect(addon.texts("Nobody let through this session.").length, "the shown card says so at once").toBe(1);
+});
+
+it("chat filter card: the shown card's lines follow catches and the Caught lines choice without a rebuild", () => {
+  const addon = filtering(CLICK_LUA);
+  addon.eval('ns.Options.Show("chat")');
+  expect(addon.texts("Nothing caught this session.").length, "the count line as the page opens").toBe(1);
+  deliver(addon, GOLD, "Goldy");
+  addon.eval('ns.Options.Hide() ns.Options.Show("chat")');
+  expect(addon.texts("Caught this session: 1 (Gold selling 1)").length, "reopened, the count is new").toBe(1);
+  addon.eval('__click("Caught lines")');
+  expect(addon.texts("Hidden lines can't be seen or let through: set Caught lines to the Filtered tab for that.").length, "the hint shows once the choice is Are hidden").toBe(1);
+});
+
+it("chat filter card: with caught lines hidden, a hint points to the Filtered tab", () => {
+  const addon = filtering();
+  const hint = "Hidden lines can't be seen or let through: set Caught lines to the Filtered tab for that.";
+  expect(pageTexts(addon), "not while they go to the tab").not.toContain(hint);
+  addon.slash("filter hide");
+  expect(pageTexts(addon), "hidden: the hint").toContain(hint);
+});
+
+it("chat filter: gold selling needs a sale word, so honest posts that mention Discord or a little gold pass", () => {
+  const addon = filtering();
+  const honest = ["LF enchanter, 5 gold tip, add me on discord", "Guild bank pays gold for herbs, discord.gg/xyz", "LFM Stockades, 5 gold each", "WTS [Linen Cloth] cheap, 1 gold a stack"];
+  expect(honest.map((line, i) => deliver(addon, line, `Honest${i}`)), "all pass").toEqual([false, false, false, false]);
+  expect(deliver(addon, "cheap gold fast delivery www.x.com", "Seller"), "a gold seller is still caught").toBe(true);
+  expect(deliver(addon, "gold for € now", "Euro"), "a price in euros counts").toBe(true);
+});
+
 it("chat filter: hide mode drops lines without a tab; with no tab possible nothing is lost", () => {
   const addon = loggedIn();
   addon.slash("filter hide");
@@ -137,12 +190,12 @@ it("chat filter: hide mode drops lines without a tab; with no tab possible nothi
   const bare = loggedIn("FCF_OpenNewWindow = nil");
   bare.slash("filter on");
   expect(deliver(bare, GOLD), "a client that can't make the tab filters nothing").toBe(false);
-  const odd = loggedIn("FCF_OpenNewWindow = function() end ChatFrame_RemoveAllMessageGroups = function() end ChatFrame_RemoveAllChannels = function() end");
+  const odd = loggedIn("FCF_OpenNewWindow = function() end");
   odd.slash("filter on");
   expect(deliver(odd, GOLD), "a call that returns no window filters nothing").toBe(false);
-  const full = loggedIn("ChatFrame_RemoveAllMessageGroups = function(f) __groups = f:GetName() end ChatFrame_RemoveAllChannels = function(f) __channels = f:GetName() end");
+  const full = loggedIn("local open = FCF_OpenNewWindow FCF_OpenNewWindow = function(name, bare) __bare = bare return open(name, bare) end ChatFrame_RemoveAllMessageGroups = function() __removed = true end");
   full.slash("filter on");
-  expect(full.eval("return { __groups, __channels }"), "the new tab hears no chat of its own").toEqual(["ChatFrame3", "ChatFrame3"]);
+  expect(full.eval("return { __bare, __removed == nil }"), "the new tab hears no chat of its own: the game's call takes every group and channel off it, so nothing is removed twice").toEqual([true, true]);
 });
 
 it("chat filter: the filter waits for the end of a fight to make the tab; no GetChatWindowInfo means a new tab each time is not tried", () => {

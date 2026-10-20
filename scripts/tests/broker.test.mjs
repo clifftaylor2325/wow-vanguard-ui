@@ -70,3 +70,55 @@ it("broker strip: without LibDataBroker it hides, and joins when an addon loads 
   off.eval("ns.GetModule('BrokerStrip').Choose('TEST-ONLY Gold', true)");
   expect([off.eval("return Vanguard_BrokerStrip == nil"), off.eval("return ns.GetModule('BrokerStrip').Chosen('TEST-ONLY Gold')")], "module off: no strip, but picks are kept").toEqual([true, true]);
 });
+
+// Each shown slot's width, the strip's width and height.
+const sizes = (addon) => addon.eval(`local out = {}
+  for i = 1, 4 do local s = _G["Vanguard_BrokerSlot" .. i] if s:IsShown() then out[#out + 1] = s:GetWidth() end end
+  return { out, Vanguard_BrokerStrip:GetWidth(), Vanguard_BrokerStrip:GetHeight() }`);
+
+it("broker strip: each slot fits its feed between 48 and 200 wide, grows but never shrinks while you play, and the strip fits the slots", () => {
+  const addon = loggedIn(LDB_ENV + '__feed("TEST-ONLY Long", { type = "data source", text = string.rep("x", 40) })', {
+    savedVariables: "VanguardDB.profiles = { Default = { BrokerStrip = { feeds = { 'TEST-ONLY Gold', 'TEST-ONLY Guild', 'TEST-ONLY Long' } } } }" });
+  expect(sizes(addon), "12g at the 48 floor, Guild's icon-less 5 letters (50), a long text held to 200; slots side by side inside 4 each end").toEqual([[48, 50, 200], 306, 18]);
+  expect(addon.eval("local p = Vanguard_BrokerSlot3.__points.LEFT return { p.rel == Vanguard_BrokerStrip, p.x }"), "the third slot starts after the first two").toEqual([true, 102]);
+  addon.eval('__set("TEST-ONLY Gold", "text", "1234g 56s 78c")');
+  expect(sizes(addon)[0], "a longer figure widens its slot (12 + 78 + 8) and the strip lays out again").toEqual([98, 50, 200]);
+  addon.eval('__set("TEST-ONLY Gold", "text", "1g")');
+  expect(sizes(addon)[0][0], "a shorter one keeps the width, so the strip doesn't jump").toBe(98);
+  addon.eval('__set("TEST-ONLY Guild", "value", "x")');
+  expect(sizes(addon)[0], "a change to anything else is not measured").toEqual([98, 50, 200]);
+  addon.eval("Vanguard_BrokerSlot1.text.GetStringWidth = function() return { __secret = true } end ns.GetModule('BrokerStrip').Layout()");
+  expect(sizes(addon)[0][0], "a width the client hides keeps the slot's earlier width").toBe(98);
+  addon.eval("Vanguard_BrokerSlot1.text.GetStringWidth = function() return { __secret = true } end ns.GetModule('BrokerStrip').widths = {} ns.GetModule('BrokerStrip').Layout()");
+  expect([sizes(addon)[0][0], addon.eval("return ns.GetModule('BrokerStrip').widths['TEST-ONLY Gold'] == nil")], "never measured: the old fixed 120, and nothing remembered").toEqual([120, true]);
+});
+
+it("broker strip: a feed's own icon crop and tint, a hidden text, and the tooltip on the side with room", () => {
+  const addon = loggedIn(LDB_ENV, { savedVariables: "VanguardDB.profiles = { Default = { BrokerStrip = { feeds = { 'TEST-ONLY Gold' } } } }" });
+  // The first slot icon's crop and tint.
+  const icon = () => addon.eval("local i = Vanguard_BrokerSlot1.icon return { i.__texCoord, i.__vertexColor }");
+  expect(icon(), "whole and untinted by default").toEqual([[0, 1, 0, 1], [1, 1, 1, 1]]);
+  addon.eval('local o = LibStub("LibDataBroker-1.1"):GetDataObjectByName("TEST-ONLY Gold") o.iconCoords = { 0.1, 0.9, 0.1, 0.9 } o.iconR, o.iconG = 0.5, 0.25 __set("TEST-ONLY Gold", "iconB", "TEST-ONLY not a number")');
+  expect(icon(), "the feed's crop and colour, a channel that isn't a number left white").toEqual([[0.1, 0.9, 0.1, 0.9], [0.5, 0.25, 1, 1]]);
+  addon.eval('__set("TEST-ONLY Gold", "iconCoords", { 0.1, 0.9, "TEST-ONLY top", 0.9 })');
+  expect(icon()[0], "a crop with anything but numbers in it: the whole icon").toEqual([0, 1, 0, 1]);
+  addon.eval('__set("TEST-ONLY Gold", "text", { __secret = true })');
+  expect(strip(addon).slots[0][1], "a hidden text shows nothing").toBe("");
+  addon.eval('local o = LibStub("LibDataBroker-1.1"):GetDataObjectByName("TEST-ONLY Gold") o.label = "TEST-ONLY Gold" __set("TEST-ONLY Gold", "text", nil)');
+  expect(strip(addon).slots[0][1], "no text: its label").toBe("TEST-ONLY Gold");
+  // The anchor the tooltip took on hover.
+  const anchor = () => addon.eval("local s = Vanguard_BrokerSlot1 s.__scripts.OnEnter(s) s.__scripts.OnLeave(s) return GameTooltip.__anchor");
+  expect(anchor(), "at the top of the screen it opens below").toBe("ANCHOR_BOTTOM");
+  addon.eval('Vanguard_BrokerStrip:ClearAllPoints() Vanguard_BrokerStrip:SetPoint("BOTTOM", UIParent, "BOTTOM", 0, 40)');
+  expect(anchor(), "near the bottom it opens above").toBe("ANCHOR_TOP");
+});
+
+it("broker strip: at Text size 130 % the strip and its icons are taller, and the slots measure their text again", () => {
+  const addon = loggedIn(LDB_ENV, { savedVariables: "VanguardDB.profiles = { Default = { BrokerStrip = { feeds = { 'TEST-ONLY Gold' } } } }" });
+  addon.eval("ns.Theme.Settings().textScale = 1.3 ns.Theme.Refresh()");
+  expect([sizes(addon)[2], addon.eval("return { Vanguard_BrokerSlot1:GetHeight(), Vanguard_BrokerSlot1.icon:GetWidth() }")], "13-point text: a 17-tall slot in a 21-tall strip, a 15 icon").toEqual([21, [17, 15]]);
+  addon.eval('__set("TEST-ONLY Gold", "text", "1234g 56s 78c")');
+  expect(sizes(addon)[0][0], "a longer figure measured with the 15 icon (15 + 78 + 8)").toBe(101);
+  addon.eval("ns.Theme.Settings().textScale = 1 ns.Theme.Refresh()");
+  expect([sizes(addon)[2], sizes(addon)[0][0]], "and back: the strip and the slot shrink again (12 + 78 + 8)").toEqual([18, 98]);
+});
