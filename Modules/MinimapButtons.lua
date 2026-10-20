@@ -2,7 +2,9 @@
 -- gathered into one drawer beside the map, so the square map stays clean.
 -- A small "..." button on the map's left edge opens and closes the drawer;
 -- it only shows once there's a button to gather. The buttons stay the
--- addons' own: they still click, drag and show their tooltips.
+-- addons' own: they still click, drag and show their tooltips. A button an
+-- addon makes later (enabled from its settings, or loaded on demand) joins
+-- as LibDBIcon makes it; a protected button is never taken.
 
 local ADDON, ns = ...
 
@@ -50,12 +52,32 @@ local function gather(b)
   fit()
 end
 
+-- Whether the drawer may take a minimap child: LibDBIcon's kind, and not protected (Vanguard can't
+-- reparent another addon's secure button in a fight, and doing it at all would taint it).
+local function gatherable(child)
+  local name = child.GetName and child:GetName()
+  if type(name) ~= "string" or not name:find(MB.NAME) then return false end
+  return not (child.IsProtected and child:IsProtected())
+end
+
 -- Gathers every addon button on the minimap that isn't in the drawer yet.
 function MB.Scan()
   for _, child in ipairs({ Minimap:GetChildren() }) do
-    local name = child.GetName and child:GetName()
-    if type(name) == "string" and name:find(MB.NAME) then gather(child) end
+    if gatherable(child) then gather(child) end
   end
+end
+
+-- Gathers again, now or when the fight ends (a loading screen or a new button can come mid-fight).
+local function scanSoon()
+  ns.OutOfCombat(MB.Scan, "minimapbuttons")
+end
+
+-- Listens for the buttons LibDBIcon makes from now on (LibDBIcon_IconCreated), once an addon has loaded it.
+function MB.Hook()
+  local lib = type(LibStub) == "table" and LibStub("LibDBIcon-1.0", true)
+  if MB.hooked or type(lib) ~= "table" or type(lib.RegisterCallback) ~= "function" then return end
+  MB.hooked = true
+  lib.RegisterCallback(MB, "LibDBIcon_IconCreated", scanSoon)
 end
 
 -- Building ------------------------------------------------------------------------------------
@@ -89,8 +111,10 @@ local function build()
   buildDrawer(map)
   buildToggle(map)
   MB.Scan()
-  ns.On("PLAYER_ENTERING_WORLD", MB.Scan)
-  if type(C_Timer) == "table" and type(C_Timer.After) == "function" then C_Timer.After(MB.RESCAN_AFTER, ns.Guard("timer minimap button rescan", MB.Scan)) end
+  ns.On("PLAYER_ENTERING_WORLD", scanSoon)
+  if type(C_Timer) == "table" and type(C_Timer.After) == "function" then C_Timer.After(MB.RESCAN_AFTER, ns.Guard("timer minimap button rescan", scanSoon)) end
+  MB.Hook()
+  ns.On("ADDON_LOADED", MB.Hook)
 end
 
 -- Module entry point (Core/Modules.lua): after the minimap is built (it waits out combat too).

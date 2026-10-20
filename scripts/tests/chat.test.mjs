@@ -876,6 +876,32 @@ it("minimap drawer: addon buttons gathered beside the map", () => {
   const off = loggedIn(UI_ENV + DRAWER_ENV, { savedVariables: "VanguardDB.profiles = { Default = { MinimapButtons = { drawer = false } } }" });
   expect(off.eval("return { LibDBIcon10_TestOnlyOne:GetParent():GetName(), Vanguard_MinimapDrawer == nil }"), "switched off, they stay on the map").toEqual(["Minimap", true]);
 });
+// TEST-ONLY LibDBIcon-1.0 as another addon would load it: __icon(name) makes a button and fires its callback.
+const DBICON_ENV = `
+  local lib = LibStub:NewLibrary("LibDBIcon-1.0", 1)
+  lib.callbacks = LibStub("CallbackHandler-1.0"):New(lib)
+  function __icon(name) local b = CreateFrame("Button", "LibDBIcon10_" .. name, Minimap) lib.callbacks:Fire("LibDBIcon_IconCreated", b, name) return b end
+`;
+it("minimap drawer: a button an addon makes later joins at once (after a fight), and a protected one is left on the map", () => {
+  const addon = loggedIn(UI_ENV + DRAWER_ENV + DBICON_ENV);
+  // The named button's parent.
+  const parent = (name) => addon.eval(`return ${name}:GetParent():GetName()`);
+  addon.eval('__icon("TestOnlyLate")');
+  expect(parent("LibDBIcon10_TestOnlyLate"), "made after login: gathered as LibDBIcon makes it").toBe("Vanguard_MinimapDrawer");
+  setCombat(addon, true);
+  addon.eval('__icon("TestOnlyFight")');
+  expect(parent("LibDBIcon10_TestOnlyFight"), "in a fight it waits").toBe("Minimap");
+  setCombat(addon, false);
+  expect(parent("LibDBIcon10_TestOnlyFight"), "and joins when the fight ends").toBe("Vanguard_MinimapDrawer");
+  addon.eval('local b = CreateFrame("Button", "LibDBIcon10_TestOnlySecure", Minimap) b.__protected = true');
+  addon.fire("PLAYER_ENTERING_WORLD");
+  expect(parent("LibDBIcon10_TestOnlySecure"), "a protected button stays on the map").toBe("Minimap");
+  const later = loggedIn(UI_ENV + DRAWER_ENV);
+  later.eval(DBICON_ENV);
+  later.fire("ADDON_LOADED", "TEST-ONLY Iconer");
+  later.eval('__icon("TestOnlyLoaded")');
+  expect(later.eval("return LibDBIcon10_TestOnlyLoaded:GetParent():GetName()"), "LibDBIcon loaded after Vanguard: hooked when it loads").toBe("Vanguard_MinimapDrawer");
+});
 it("minimap drawer: its Modules row says it needs the Minimap module, which it gathers nothing without", () => {
   const addon = loggedIn(UI_ENV + DRAWER_ENV, { savedVariables: "VanguardDB.profiles = { Default = { modules = { Minimap = false } } }" });
   expect(addon.eval("return Vanguard_MinimapDrawer == nil and LibDBIcon10_TestOnlyOne:GetParent():GetName()"), "Minimap off: no drawer, the button stays on the map").toBe("Minimap");
