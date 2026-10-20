@@ -257,10 +257,10 @@ local function keepOnly(list, kept)
   for i = 1, #list do list[i] = kept[i] end
 end
 
--- Sets a house's count to the prices it holds.
+-- Sets a house's count to the prices it holds; a house with no price table counts none.
 local function recount(house)
   house.count = 0
-  for _ in pairs(house.prices) do house.count = house.count + 1 end
+  for _ in pairs(type(house.prices) == "table" and house.prices or {}) do house.count = house.count + 1 end
 end
 
 -- Removes what a found set lists from the saved data, and recounts the houses whose prices went.

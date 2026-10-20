@@ -166,6 +166,14 @@ it("home: /vg launch counts what the beta left, and clears only data stamped bef
   expect(addon.eval("return #ns.errors"), "no errors").toBe(0);
 });
 
+it("home: a house saved without its price table clears to a count of none, with no error", () => {
+  const addon = loggedIn("", { savedVariables: `time = function() return ${LIVE_DAY} end` });
+  addon.eval(`VanguardDB.ah.houses["ForeverTest-Alliance"] = { count = 3, lastScan = 5 }`);
+  addon.slash("launch clear");
+  expect([chatHas(addon, /No prices, sales or characters saved from before launch\./), addon.eval("return VanguardDB.ah.houses['ForeverTest-Alliance'].count"), addon.eval("return #ns.errors")],
+    "nothing to clear: the count is none, and no error").toEqual([true, 0, 0]);
+});
+
 it("home: the first login after launch says once that beta data is saved; the Town and gear button asks before clearing", () => {
   const addon = loggedIn("", { savedVariables: SAVED + "time = function() return " + LIVE_DAY + " end" });
   addon.fire("PLAYER_LOGIN");
