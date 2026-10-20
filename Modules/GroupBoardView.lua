@@ -170,7 +170,8 @@ function GB.RowTooltip(b)
   if not tip or not b.entry then return end
   tip:SetOwner(b, "ANCHOR_RIGHT")
   tip:SetText(b.entry.sender)
-  tip:AddLine(b.entry.text, 1, 1, 1, true)
+  local r, g, bl = T.RGB("white")
+  tip:AddLine(b.entry.text, r, g, bl, true)
   tip:AddLine(T.Paint("Click: whisper with a message filled in", "text2"))
   tip:Show()
 end
