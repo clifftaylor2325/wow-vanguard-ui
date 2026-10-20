@@ -48,6 +48,17 @@ it("layout", () => {
   expect(exact, "an exact line-up is not replaced by a near one").toEqual([500, 250]);
 });
 
+it("a mover's size the client can't give reads 0, not its height", () => {
+  const addon = loggedIn(`
+    __nw = CreateFrame("Frame", nil, UIParent)
+    __nw:SetSize(200, 40)
+    ns.Mover(__nw, "nw", "No width", { "CENTER", "CENTER", 0, 0 })
+    __nw.GetWidth = function() return nil end
+  `);
+  expect(addon.eval('return ns.MoverSize("nw", "width")'), "a width the client can't give is 0").toBe(0);
+  expect(addon.eval('return ns.MoverSize("nw", "height")'), "the height is still the frame's").toBe(40);
+});
+
 it("mover coordinates with no handle", () => {
   const addon = loggedIn();
   expect(addon.eval('return ns.ShowCoords({ label = "TEST-ONLY" })') === null, "a mover that has no handle yet shows nothing").toBeTruthy();

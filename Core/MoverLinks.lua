@@ -108,11 +108,17 @@ local function matchedSize(key, dim)
   return size
 end
 
+-- A frame's width or height (dim) as the client reports it now, or 0 while it can't say.
+local function frameSize(f, dim)
+  if dim == "width" then return f:GetWidth() or 0 end
+  return f:GetHeight() or 0
+end
+
 -- A mover's width or height (dim) in its own units as it should be now: for a frame Vanguard
 -- sizes, matched to another frame's, else the size you set, else its own; else what it is.
 function K.Own(key, dim)
   local s, f = sizable[key], ns.MoverFrame(key)
-  if not (s and s[dim]) then return (dim == "width" and f:GetWidth() or f:GetHeight()) or 0 end
+  if not (s and s[dim]) then return frameSize(f, dim) end
   local own = tonumber((entryOf(key) or {})[DIMS[dim]])
   return within(matchedSize(key, dim) or own or s.natural[dim], s[dim])
 end
