@@ -62,7 +62,7 @@ it("fills: a padded panel's fill reaches out with it; a frame never painted gets
   corners(addon, true);
   const r = addon.eval("return ns.Theme.CORNER_RADIUS * ns.Theme.Pixel(__p)");
   expect(addon.eval("local p = __pf.bg.__points local c = __pf.roundFill.TOPLEFT.__points.TOPLEFT return { #__pf.textures, p.TOPLEFT.x, c.x, c.y }"), "rounded: the centre pulled in r from the padded edge, the discs at the padded corners").toEqual([7, r - out, -out, out]);
-  expect(addon.eval("local p = __plain.bg.__points return { #__plain.textures, __plain.round, p.TOPLEFT.x + 0, p.BOTTOMRIGHT.x + 0 }"), "an unpainted frame: the plain texture, still square").toEqual([1, 0, 0, 0]);
+  expect(addon.eval("local p = __plain.bg.__points return { #__plain.textures, __plain.radius, p.TOPLEFT.x + 0, p.BOTTOMRIGHT.x + 0 }"), "an unpainted frame: the plain texture, still square").toEqual([1, 0, 0, 0]);
 });
 
 it("fills: a button's hover fill and press overlay follow its rounded corners, and ease or show every part (#257)", () => {

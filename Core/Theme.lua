@@ -1021,7 +1021,7 @@ end
 
 -- Gives a frame's corner pieces the art of a corner look ("rounded" or "cut") when it changes.
 function corner.art(p, look)
-  if not p.round or not look or p.look == look then return end
+  if not p.hasRounded or not look or p.look == look then return end
   p.look = look
   local art = T.CORNER_ART[look]
   for _, t in pairs(p.roundLine or NO_PARTS) do t:SetTexture(T.Texture(art.line)) end
@@ -1032,8 +1032,8 @@ end
 -- gives the background its corners back. Nothing is made for a frame that was never rounded.
 local function paintRound(frame, entry, r)
   local p, out = entry.parts, T.PixelRound(frame, entry.opts.pad or 0)
-  if r == 0 and not p.round then return end
-  if not p.round then roundParts(frame, p) p.round = true end
+  if r == 0 and not p.hasRounded then return end
+  if not p.hasRounded then roundParts(frame, p) p.hasRounded = true end
   for _, key in ipairs({ "roundLine", "roundFill", "roundSides" }) do
     for _, t in pairs(p[key] or NO_PARTS) do t:SetShown(r > 0) end
   end
@@ -1070,7 +1070,7 @@ local function paintEdges(frame, entry, r)
   local p = entry.parts
   colorEdges(p.edges, borderColor(entry))
   sizeEdges(p.edges, frame, entry.opts.accent or entry.opts.border)
-  if r > 0 or p.round then placeEdges(p.edges, frame, entry.opts.pad, r) end
+  if r > 0 or p.hasRounded then placeEdges(p.edges, frame, entry.opts.pad, r) end
 end
 
 -- Fills (T.FillParts) ------------------------------------------------------------------------
@@ -1105,7 +1105,7 @@ end
 local function showFillParts(fill)
   fill.bg:SetShown(fill.shown)
   for _, t in ipairs(fill.textures) do
-    if t ~= fill.bg then t:SetShown(fill.shown and fill.round > 0) end
+    if t ~= fill.bg then t:SetShown(fill.shown and fill.radius > 0) end
   end
 end
 
@@ -1130,7 +1130,7 @@ end
 
 -- Places, shows and tints one of a painted frame's fills, `pad` units out, for radius r.
 local function repaintFill(frame, fill, pad, r)
-  fill.round = r
+  fill.radius = r
   placeFill(frame, fill, pad, r)
   showFillParts(fill)
   T.TintFill(fill, fill.token, fill.alpha)
@@ -1149,7 +1149,7 @@ function T.FillParts(frame, layer, sublevel, token, alpha)
     entry.fills = entry.fills or {}
     entry.fills[#entry.fills + 1] = fill
   end
-  repaintFill(frame, fill, entry and entry.opts.pad, entry and entry.round or 0)
+  repaintFill(frame, fill, entry and entry.opts.pad, entry and entry.radius or 0)
   return fill
 end
 
@@ -1203,7 +1203,7 @@ end
 -- Sizes a painted frame's masks to its corners, gives them its look's art, and puts them on its masked
 -- textures while its corners are cut or rounded.
 function corner.paintMasks(frame, entry)
-  local size = math.max(entry.round, T.Pixel(frame))
+  local size = math.max(entry.radius, T.Pixel(frame))
   for _, set in pairs(entry.maskSets) do
     if entry.look then corner.maskArt(set, entry.look) end
     for _, m in pairs(set) do m:SetSize(size, size) end
@@ -1245,7 +1245,7 @@ end
 -- Applies the current colors (and pixel size) to one painted frame.
 local function repaint(frame, entry)
   local p, r, look = entry.parts, roundRadius(frame, entry)
-  entry.round, entry.look = r, look
+  entry.radius, entry.look = r, look
   corner.paintCorners(frame, entry, r, look)
   if p.bg then paintBg(p, entry.opts, r > 0) end
   if p.edges then paintEdges(frame, entry, r) end
@@ -1338,7 +1338,7 @@ end
 
 -- Places a button's hover line (one pixel inside its top border, in borderHi) when it is painted.
 local function paintHoverLine(entry, button)
-  T.Tint(placeSheen(entry.parts.hoverLine, button, entry.opts.pad, 1, entry.round), entry.opts.hoverTo or "borderHi")
+  T.Tint(placeSheen(entry.parts.hoverLine, button, entry.opts.pad, 1, entry.radius), entry.opts.hoverTo or "borderHi")
 end
 
 -- Each themed button's hover parts (weak; kept off the button, which may be one of the game's).
@@ -1419,8 +1419,8 @@ end
 
 -- How a pressed button looks (#257): a shade overlay at T.PRESS.alpha over its fill (one step darker)
 -- and its own label (button.text) T.PRESS.drop screen pixels lower, at once, while the mouse is held.
--- token: the shade's colour; row: the alpha of a list row's press shade (T.Row).
-T.PRESS = { token = "shade", alpha = 0.3, drop = 1, row = 0.2 }
+-- token: the shade's colour; rowAlpha: the alpha of a list row's press shade (T.Row).
+T.PRESS = { token = "shade", alpha = 0.3, drop = 1, rowAlpha = 0.2 }
 -- Each themed button's press state (weak): { overlay = the fill's centre texture, fill = its T.FillParts
 -- fill, ys = its label's anchor ys before the press }.
 local pressOf = setmetatable({}, { __mode = "k" })
@@ -1448,7 +1448,7 @@ local function isEnabled(widget)
   return type(widget.IsEnabled) ~= "function" or widget:IsEnabled()
 end
 
--- Shows or hides a button's press look; only an enabled button shows it. A shade marked `row` (a check
+-- Shows or hides a button's press look; only an enabled button shows it. A shade marked `keepsLabel` (a check
 -- box's today) leaves the label where it is; a push button's drops it a pixel.
 function T.PressButton(button, down)
   local s = pressOf[button]
@@ -1456,7 +1456,7 @@ function T.PressButton(button, down)
   local on = down == true and isEnabled(button)
   if on == s.overlay:IsShown() then return end
   if s.fill then T.ShowFill(s.fill, on) else s.overlay:SetShown(on) end
-  if not s.row then dropLabel(button, s, on) end
+  if not s.keepsLabel then dropLabel(button, s, on) end
 end
 
 -- Each disabled themed button's label colour from before (weak), given back when it's enabled.
@@ -1884,7 +1884,7 @@ local function checkParts(button)
   fill:SetAllPoints()
   press:SetAllPoints()
   press:Hide()
-  pressOf[button] = { overlay = press, row = true } -- row: the shade only, the label stays put
+  pressOf[button] = { overlay = press, keepsLabel = true } -- keepsLabel: the shade only, the label stays put
   return { box = box, fill = fill, mark = centered(box, "OVERLAY", T.Icon("Check"), T.CHECK.mark), paint = paintCheck }
 end
 
@@ -1981,7 +1981,7 @@ local function radioParts(button)
   local inner = T.RADIO.size - 2 * T.RADIO.ring
   local press = T.Tint(centered(holder, "ARTWORK", T.Texture("Knob"), inner), T.PRESS.token, T.PRESS.alpha)
   press:Hide()
-  pressOf[button] = { overlay = press, row = true }
+  pressOf[button] = { overlay = press, keepsLabel = true }
   local r = { holder = holder, ring = disc(holder, "BACKGROUND", T.RADIO.size, "edge"), well = disc(holder, "BORDER", inner, "inset") }
   r.mark, r.paint = disc(holder, "OVERLAY", T.RADIO.dot, T.RADIO.dotColor), paintRadio
   return r
@@ -2293,7 +2293,7 @@ local function paintFlat(entry, frame, on)
     for _, t in pairs(p[key] or NO_PARTS) do t:SetAlpha(a) end
   end
   for _, t in pairs(p.edges) do t:SetAlpha(a) end
-  T.Tint(placeSheen(p.lit, frame, entry.opts.pad, 1, entry.round), T.BEVEL.top[1])
+  T.Tint(placeSheen(p.lit, frame, entry.opts.pad, 1, entry.radius), T.BEVEL.top[1])
   p.lit:SetShown(on)
 end
 
@@ -2302,7 +2302,7 @@ end
 local function paintTab(entry, frame)
   local on, p = tabSelected(frame), entry.parts
   entry.opts.inset, entry.opts.raised = not on, on
-  paintBg(p, entry.opts, entry.round > 0)
+  paintBg(p, entry.opts, entry.radius > 0)
   paintTabLabel(frame, on)
   if entry.opts.dimIcon then dimIcon(frame, not on) end
   if entry.opts.flat then paintFlat(entry, frame, on) end
@@ -2402,7 +2402,7 @@ end
 -- A row's layers, bottom to top: the selected fill, the hover wash, the press shade and the rail.
 local function rowParts(row)
   local fill = rowLayer(row, -1, T.SELECT.fill)
-  local hover, press = rowLayer(row, 1, "hover"), rowLayer(row, 2, T.PRESS.token, T.PRESS.row)
+  local hover, press = rowLayer(row, 1, "hover"), rowLayer(row, 2, T.PRESS.token, T.PRESS.rowAlpha)
   return { fill = fill, hover = hover, press = press, rail = rowRail(row) }
 end
 
@@ -2430,7 +2430,7 @@ function T.RowState(row, state, on)
   return row
 end
 
--- Shows or hides a row's press shade (T.PRESS.row, the row counterpart of T.PressButton).
+-- Shows or hides a row's press shade (T.PRESS.rowAlpha, the row counterpart of T.PressButton).
 function T.PressRow(row, down) return T.RowState(row, "pressed", down) end
 
 -- Shows or hides a row's selected look (the rail and fill of T.SELECT): the one place it is drawn.
@@ -2447,12 +2447,12 @@ local function watchRow(row)
   note("OnEnter", "hover", true) note("OnLeave", "hover", false)
   note("OnMouseDown", "pressed", true) note("OnMouseUp", "pressed", false)
   note("OnHide", "hover", false) note("OnHide", "pressed", false)
-  for script, off in pairs({ OnEnable = false, OnDisable = true }) do
-    pcall(row.HookScript, row, script, ns.Guard("row state", function(r) T.RowState(r, "disabled", off) end))
+  for script, disabled in pairs({ OnEnable = false, OnDisable = true }) do
+    pcall(row.HookScript, row, script, ns.Guard("row state", function(r) T.RowState(r, "disabled", disabled) end))
   end
 end
 
--- A list row in the theme: see-through, with the `hover` wash under the mouse, the press shade (T.PRESS.row)
+-- A list row in the theme: see-through, with the `hover` wash under the mouse, the press shade (T.PRESS.rowAlpha)
 -- while held and the one selected look (T.SELECT) through T.RowState; hover never recolours the text. With
 -- opts.fade the game's own art on the row is faded by alpha first (the row's layout and scripts stay the
 -- game's). Hooks only, never the row's own scripts. Safe to run again.

@@ -272,7 +272,7 @@ it("T.Row and T.RowState: hover, press, selected and disabled are layers that st
   expect(layers(), "held: the press shade over the hover").toEqual([true, true, false, false]);
   addon.eval("local r = __r r.__scripts.OnMouseUp(r, 'LeftButton')");
   expect(layers('"selected"'), "selected stacks with hover: the fill and the rail").toEqual([true, false, true, true]);
-  expect(addon.eval("local p = ns.Theme.RowParts(__r) return { p.press.__vertexColor[4] }"), "the press shade is T.PRESS.row").toEqual([addon.eval("return ns.Theme.PRESS.row")]);
+  expect(addon.eval("local p = ns.Theme.RowParts(__r) return { p.press.__vertexColor[4] }"), "the press shade is T.PRESS.rowAlpha").toEqual([addon.eval("return ns.Theme.PRESS.rowAlpha")]);
   expect(layers('"disabled"'), "disabled: no hover (the selected look stays)").toEqual([false, false, true, true]);
   expect(isTok(addon, addon.eval("return __r.text.__textColor"), "disabled"), "its label takes the disabled tier").toBe(true);
   addon.eval("local r = __r r.__scripts.OnEnter(r) r.__scripts.OnMouseDown(r)");

@@ -423,7 +423,7 @@ it("chat: a whisper window, ChatFrame11 as the game names it, is skinned when it
 it("chat background: the panel's fill in the panel colour, three strengths, tabs fit their labels and are rounded and 20 tall, Copy sits in the bar", () => {
   const addon = loggedIn(UI_ENV);
   // The main window's fill: its alpha and colour token.
-  const look = () => addon.eval("local f = ns.GetModule('Chat').frames[ChatFrame1] return { f.fill.alpha, f.fill.token, f.fill.round > 0 }");
+  const look = () => addon.eval("local f = ns.GetModule('Chat').frames[ChatFrame1] return { f.fill.alpha, f.fill.token, f.fill.radius > 0 }");
   expect(look(), "Medium by default, the panel colour, rounded with the panel").toEqual([0.75, "panel", true]);
   addon.eval("ns.GetModule('Chat').settings.backdrop = 0.55 ns.GetModule('Chat').Refresh()");
   expect(look()[0], "Light").toBe(0.55);
