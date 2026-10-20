@@ -211,11 +211,19 @@ local function paintTitle(b, q)
   T.Color(b.title, QP.LevelColor(q.level))
 end
 
--- Fills a block: its title, then its lines (a section heading is its name alone, and takes no mouse: it has
--- no clicks, no tooltip and no hover).
+-- A section heading takes no mouse (no clicks, no tooltip, no hover). A block repainted under the mouse keeps
+-- its tooltip with the row it now holds, or drops it (and its wash) as a heading or in a fight.
+local function followMouse(b, q)
+  b:EnableMouse(not q.section)
+  if q.section then T.RowState(b, "hover", false) end
+  if not b:IsMouseOver() then return end
+  if q.section or ns.InCombat() then hideTooltip() else QT.TitleTooltip(b) end
+end
+
+-- Fills a block: its title, then its lines (a section heading is its name alone).
 function QT.PaintBlock(b, q)
   b.id, b.achievement, b.recipe, b.row = q.id, q.achievement, q.recipe, q
-  b:EnableMouse(not q.section)
+  followMouse(b, q)
   if q.section then paintSection(b, q) else
     paintTitle(b, q)
     paintLines(b, q)

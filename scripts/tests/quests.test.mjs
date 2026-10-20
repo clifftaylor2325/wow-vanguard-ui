@@ -1611,6 +1611,22 @@ it("quest tracker: a recipe's tooltip names its click and right-click", () => {
   expect(trackerTip(addon)[1]).toEqual(["TEST-ONLY Bolt", "Click: open · Right-click: stop tracking"]);
 });
 
+it("quest tracker: a tooltip follows the row repainted under it, and goes when that row is a heading or a fight starts", () => {
+  const addon = loggedIn(TRACK_ENV + ACH_ENV + ONE_QUEST);
+  hoverBlock(addon, 1);
+  addon.eval("__watches = { 90051 } ns.GetModule('QuestTracker').Refresh()");
+  expect(trackerTip(addon)[1][0], "the block now holds the wolves").toBe("TEST-ONLY Wolves");
+  setCombat(addon, true);
+  addon.eval("ns.GetModule('QuestTracker').Refresh()");
+  expect(trackerTip(addon)[0], "in a fight it goes").toBe(false);
+  setCombat(addon, false);
+  hoverBlock(addon);
+  hoverBlock(addon, 1);
+  addon.eval("__watches = {} ns.GetModule('QuestTracker').Refresh()");
+  expect([trackerTip(addon)[0], addon.eval("local b = Vanguard_QuestTrackerFrame.blocks[1] return { b.title:GetText(), ns.Theme.RowParts(b).hover:IsShown() }")],
+    "repainted as the heading: no tooltip, no wash").toEqual([false, ["Legacy challenges", false]]);
+});
+
 it("quest tracker: a failed quest reads Failed in the bad colour in place of its objectives; a hidden answer is not failed", () => {
   const addon = loggedIn(TRACK_ENV + "C_QuestLog.IsFailed = function(id) return __quests[id].failed end __quests[90051].failed = true __quests[90053].failed = { __secret = true }");
   const t = tracker(addon);
