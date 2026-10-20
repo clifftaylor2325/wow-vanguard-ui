@@ -242,7 +242,7 @@ end
 -- General, part three: moving frames.
 local function layoutRows()
   return append(setupRows(), {
-    { "button", "Move frames", function() O.Hide(); ns.Unlock() end },
+    { "button", "Move frames", function() ns.UnlockFromOptions(O.current) end },
     check("Show a grid while moving", moverOption("grid")),
     check("Snap to other frames", moverOption("snap")),
     check("Show these handles in the game's Edit Mode too", moverOption("editMode")),

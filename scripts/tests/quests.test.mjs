@@ -1086,13 +1086,13 @@ it("windows are opaque: game windows, the quest log and the options window (unde
   addon.eval("MerchantFrame:Show()");
   addon.slash("quests");
   addon.slash("");
-  addon.eval('ns.Options.Show("situations")');
+  addon.eval('ns.Options.Show("feedback")');
   const opaque = ["MerchantFrame", "Vanguard_QuestLog", "Vanguard_Options"].map((name) => fillAlpha(addon, name));
   expect(opaque, "a skinned game window, the quest log and the options window: no world shows through").toEqual([1, 1, 1]);
   const page = addon.eval(`local f, child = Vanguard_Options, nil
     for _, w in ipairs(__wfgStub.frames) do if w.__kind == "ScrollFrame" and w:IsVisible() and w:GetParent() == f then child = w.child end end
     return { child:GetBottom() > f:GetBottom(), f:GetHeight() == ns.Theme.PixelRound(f, 600, true) }`);
-  expect(page, "the Situations page ends above the window's foot; the opaque fill covers the window (600 tall, pixel-rounded) to its edges").toEqual([true, true]);
+  expect(page, "the Feedback page ends above the window's foot; the opaque fill covers the window (600 tall, pixel-rounded) to its edges").toEqual([true, true]);
   expect(fillAlpha(addon, "GameTooltip"), "tooltips keep the theme's panel opacity").toBe(addon.eval("return select(4, ns.Theme.RGB('panel'))"));
 });
 it("quest log: the game's quest log button opens Vanguard's log instead of the game's", () => {

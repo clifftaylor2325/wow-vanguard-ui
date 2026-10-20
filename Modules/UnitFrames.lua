@@ -117,8 +117,8 @@ function UF.PowerColor(unit)
 end
 
 -- A number as short text (12.3K). Secret values go to the client's own
--- formatter when there is one, since only it may read them.
-local function shortNumber(value)
+-- formatter when there is one, since only it may read them. Nameplates' health value uses it too.
+function UF.ShortNumber(value)
   if type(AbbreviateNumbers) == "function" then
     local ok, text = pcall(AbbreviateNumbers, value)
     if ok then
@@ -151,13 +151,16 @@ function UF.DownState(unit)
 end
 
 -- Health as a percent ("84%"), from the client's own percent with its 0-100
--- curve, so it works while health is hidden; nil where the client can't.
-local function percentText(unit)
+-- curve, so it works while health is hidden (the text is then hidden too, and
+-- only ever shown); nil where the client can't. No closure: plates call it on
+-- every health change.
+function UF.PercentText(unit)
   local get, curve = _G.UnitHealthPercent, _G.CurveConstants and _G.CurveConstants.ScaleTo100
   if type(get) ~= "function" or not curve then return nil end
-  local ok, text = pcall(function() return string.format("%d%%", get(unit, true, curve)) end)
+  local ok, percent = pcall(get, unit, true, curve)
   if not ok then return nil end
-  return text
+  local formatted, text = pcall(string.format, "%d%%", percent)
+  if formatted then return text end
 end
 
 -- The health text: Dead, Offline, else the percent (if chosen) or current
@@ -165,9 +168,9 @@ end
 function UF.HealthText(unit)
   local down = UF.DownState(unit)
   if down then return down end
-  local percent = UF.settings and UF.settings.healthFormat == "percent" and percentText(unit)
+  local percent = UF.settings and UF.settings.healthFormat == "percent" and UF.PercentText(unit)
   if isSecret(percent) or type(percent) == "string" then return percent end
-  return shortNumber(UnitHealth(unit))
+  return UF.ShortNumber(UnitHealth(unit))
 end
 
 -- The unit's level as text ("??" for a boss or a level too far above you), or "".
