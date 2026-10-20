@@ -460,6 +460,12 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Expect: the totem you right-clicked is destroyed on the release of the button and its cell clears; the other stays. A left-click does nothing. No error, in combat too. [Needs in-game check: the key-down phase rule was read from the game's SecureTemplates.lua and modelled in the harness, not watched in game.]
 - If it fails, paste: what the CVar printed, what happened to the totem and `/vg errors`.
 
+### 7.2j Swing timer dims out of reach, and auto for every class that swings
+
+- Do: on a warrior or rogue with Vanguard's swing timer on, auto-attack a mob, then step out of melee range and back in, swap weapons out of range, and target nothing. Then on a paladin, shaman or druid (Swing timer left on auto), stand idle, then auto-attack a mob.
+- Expect: while the target is out of melee range the swinging rows dim (to about 40%) and come back at full strength when you step in, also right after the weapon swap; with no target they are never dim. The paladin, shaman or druid sees no rows at rest and the rows while swinging. `/vg errors` stays empty.
+- If it fails, paste: a screenshot in and out of range, your class, and `/vg errors`.
+
 ### 7.3 Nameplates in a pull
 
 - Do: pull three or more mobs.

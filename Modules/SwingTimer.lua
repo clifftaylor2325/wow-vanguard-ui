@@ -25,6 +25,10 @@ local SW = ns.Module("SwingTimer", { defaults = { show = "auto" } })
 SW.CLASSES = { WARRIOR = true, ROGUE = true, HUNTER = true, PALADIN = true, SHAMAN = true, DRUID = true }
 
 SW.WIDTH, SW.ROW, SW.GAP = 220, 10, 2
+-- A row's opacity while your target is out of that hand's reach (the game's own timer uses the same).
+SW.OUT_OF_RANGE = 0.4
+-- What makes the rows ask the client about range again: a new target, a new zone, other weapons.
+SW.RANGE_EVENTS = { "PLAYER_TARGET_CHANGED", "PLAYER_ENTERING_WORLD", "WEAPON_SLOT_CHANGED" }
 -- Swing type name (Enum.PlayerSwingType) -> row order and color token. The order is
 -- also that of UnitAttackSpeed's returns (main hand, off hand, ranged).
 SW.KINDS = { { "MainHand", "accent" }, { "OffHand", "text2" }, { "Ranged", "focus" } }
@@ -91,6 +95,41 @@ function SW.OnWeapons()
     local length = r.live and ns.PlainNumber(speeds[r.hand])
     if length and length > 0 then SW.OnSwing(nil, length, kind) elseif r.live then r.live = false r:Hide() end
   end
+end
+
+-- Range --------------------------------------------------------------------------------------
+
+-- Dims a row while your target is out of its hand's reach, as the game's own timer does (an
+-- opacity, not a fade).
+local function paintRange(r, outOfRange)
+  r:SetAlpha(outOfRange and SW.OUT_OF_RANGE or 1)
+end
+
+-- The client says a hand's reach changed: dim its row only when a check was made and the target
+-- is out of reach. A hidden answer counts as in reach.
+function SW.OnRange(_, kind, inRange, checksRange)
+  local r = not ns.IsSecret(kind) and SW.rows[kind]
+  if not r then return end
+  paintRange(r, not ns.IsSecret(checksRange) and checksRange == true and not ns.IsSecret(inRange) and inRange == false)
+end
+
+-- Asks the client to send range changes for every row's hand (again: a new target or weapon can
+-- reset it), and reads the reach now; only a plain "out of reach" dims, nil never does.
+function SW.CheckRange()
+  local enable, within = C_SwingTimer.EnableRangeCheck, C_SwingTimer.IsTargetWithinSwingRange
+  if type(enable) ~= "function" or type(within) ~= "function" then return end
+  for kind, r in pairs(SW.rows) do
+    enable(kind, true)
+    local inRange = within(kind)
+    paintRange(r, not ns.IsSecret(inRange) and inRange == false)
+  end
+end
+
+-- Follows your target's reach: the client's range event, and a fresh look on each range event.
+local function listenRange()
+  ns.On("PLAYER_SWING_RANGE_UPDATE", SW.OnRange)
+  for _, event in ipairs(SW.RANGE_EVENTS) do ns.On(event, SW.CheckRange) end
+  SW.CheckRange()
 end
 
 -- The game's swing timer ---------------------------------------------------------------------
@@ -168,4 +207,5 @@ function SW.Enable(settings)
   ns.On("PLAYER_SWING", SW.OnSwing)
   ns.On("PLAYER_DEAD", SW.Stop)
   ns.On("WEAPON_SLOT_CHANGED", SW.OnWeapons)
+  listenRange()
 end

@@ -375,6 +375,31 @@ it("swing timer: a weapon swap restarts a swing under way at the new weapon's sp
   expect(swings(addon)[0][0], "a speed the client hides: no guess, the row stops").toBe(false);
 });
 
+it("swing timer: a row dims while your target is out of that hand's reach, as the game's own timer does", () => {
+  // The client's own range model (scripts/lib/wow-world.lua), not SWING_ENV's empty C_SwingTimer.
+  const addon = loggedIn(UNITS_ENV + SWING_ENV.replace("C_SwingTimer = {}", "") + "__wfgWorld.swingRange = { [0] = false } UnitAttackSpeed = function() return 2.6 end");
+  // Each row's opacity, main hand first.
+  const alphas = () => addon.eval(`local SW = ns.GetModule("SwingTimer") return { SW.rows[0]:GetAlpha(), SW.rows[1]:GetAlpha(), SW.rows[2]:GetAlpha() }`);
+  expect(addon.eval("local c = __wfgWorld.swingRangeChecks return { c[0], c[1], c[2] }"), "it asks the client to report every hand's reach").toEqual([true, true, true]);
+  expect(alphas(), "at login the target is out of the main hand's reach; no check for the others is not out of range").toEqual([0.4, 1, 1]);
+  addon.fire("PLAYER_SWING_RANGE_UPDATE", 0, true, true);
+  expect(alphas()[0], "stepping in brings it back").toBe(1);
+  addon.fire("PLAYER_SWING_RANGE_UPDATE", 0, false, true);
+  addon.fire("PLAYER_SWING_RANGE_UPDATE", 1, false, false);
+  expect(alphas().slice(0, 2), "out again dims it; an answer with no check made does not").toEqual([0.4, 1]);
+  addon.fire("PLAYER_SWING_RANGE_UPDATE", 0, { __secret: true }, true);
+  addon.fire("PLAYER_SWING_RANGE_UPDATE", 7, false, true);
+  expect(alphas()[0], "a hidden answer counts as in reach, and an unknown hand changes nothing").toBe(1);
+  addon.eval("__wfgWorld.swingRange = { [0] = false } __wfgWorld.swingRangeChecks = {}");
+  addon.fire("WEAPON_SLOT_CHANGED");
+  expect([alphas()[0], addon.eval("return __wfgWorld.swingRangeChecks[0]")], "a weapon swap asks again and reads the reach now").toEqual([0.4, true]);
+  addon.eval("__wfgWorld.swingRange = {}");
+  addon.fire("PLAYER_TARGET_CHANGED");
+  expect(alphas()[0], "no target to check (nil): never out of range").toBe(1);
+  const old = loggedIn(UNITS_ENV + SWING_ENV);
+  expect(old.eval("return ns.GetModule('SwingTimer').rows[0]:GetAlpha()"), "a client without the range calls: rows stay at full strength").toBe(1);
+});
+
 it("swing timer: who sees it", () => {
   // Whether a login with this setup and these saved settings builds the swing rows.
   const wanted = (env, saved) => loggedIn(UNITS_ENV + env, saved ? { savedVariables: saved } : undefined).eval("return ns.GetModule('SwingTimer').rows ~= nil");
