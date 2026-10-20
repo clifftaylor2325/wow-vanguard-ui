@@ -106,11 +106,11 @@ function W.KeyCapture(parent, caption, onKey)
   local b = ns.DialogButton(parent, caption, 220)
   b.caption, b.onKey = caption, onKey
   b:SetScript("OnClick", ns.Guard("click key capture", function(self) self.capturing = true; self:EnableKeyboard(true); self.text:SetText("Press a key, click or scroll...") end))
-  b:SetScript("OnKeyDown", onKeyDown)
-  b:SetScript("OnMouseDown", onMouseDown)
+  b:SetScript("OnKeyDown", ns.Guard("key capture key", onKeyDown))
+  b:SetScript("OnMouseDown", ns.Guard("key capture mouse", onMouseDown))
   b:EnableMouseWheel(true)
-  b:SetScript("OnMouseWheel", onWheel)
-  b:HookScript("OnHide", stopCapture)
+  b:SetScript("OnMouseWheel", ns.Guard("key capture wheel", onWheel))
+  b:HookScript("OnHide", ns.Guard("key capture hide", stopCapture))
   return b
 end
 

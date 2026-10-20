@@ -164,8 +164,8 @@ local function resetDot(w, set, initial)
   d.mark:SetSize(DOT, DOT)
   d.mark:SetPoint("CENTER")
   d:SetScript("OnClick", ns.Guard("click reset setting", function() set(initial); T.Sound("off"); w:Refresh() end))
-  d:SetScript("OnEnter", dotTooltip)
-  d:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
+  d:SetScript("OnEnter", ns.Guard("reset dot tip", dotTooltip))
+  d:SetScript("OnLeave", ns.Guard("reset dot tip", function() if GameTooltip then GameTooltip:Hide() end end))
   return d
 end
 
@@ -249,8 +249,8 @@ local function addNote(w, row)
   local getter = getterOf(row)
   if not (getter and O.SettingOf(getter) and w.label) then return end
   w.row = row
-  w:HookScript("OnEnter", noteTooltip)
-  w:HookScript("OnLeave", hideNote)
+  w:HookScript("OnEnter", ns.Guard("row note", noteTooltip))
+  w:HookScript("OnLeave", ns.Guard("row note", hideNote))
   local refresh = w.Refresh
   -- The row's own refresh, then its caption: muted while the setting has a note.
   w.Refresh = function(self) refresh(self) T.Color(self.label, noteOf(row) and "muted" or "text") end
@@ -500,7 +500,7 @@ local function addHeaderControls(f)
   f.profile:SetPoint("RIGHT", f.close, "LEFT", -T.SPACE.gap, 0)
   f.search = W.Search(f.header, SEARCH_WIDTH, "Search settings", function(text) O.Search(text) end)
   f.search:SetPoint("RIGHT", f.profile, "LEFT", -T.SPACE.gap, 0)
-  f.search:SetScript("OnEnterPressed", searchEnter)
+  f.search:SetScript("OnEnterPressed", ns.Guard("search enter", searchEnter))
   T.Ornament(f, "rule", f.header)
 end
 
@@ -678,8 +678,8 @@ end
 -- Takes the keyboard while shown and out of combat (it can't pass keys on in a fight), never while hidden;
 -- a fight lets it go, and the combat queue takes it back when the fight ends.
 local function wireKeys(f)
-  f:SetScript("OnKeyDown", onKey)
-  f:SetScript("OnHide", function(self) self:EnableKeyboard(false) setFocus(nil) O.HideHits() end)
+  f:SetScript("OnKeyDown", ns.Guard("key options", onKey))
+  f:SetScript("OnHide", ns.Guard("hide options", function(self) self:EnableKeyboard(false) setFocus(nil) O.HideHits() end))
   ns.On("PLAYER_REGEN_DISABLED", function()
     f:EnableKeyboard(false)
     ns.AfterCombat(function() f:EnableKeyboard(f:IsShown()) end, "options keyboard")

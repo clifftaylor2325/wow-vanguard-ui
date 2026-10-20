@@ -215,7 +215,7 @@ end
 
 -- Registers a state string as the frame's "vgvis" driver (out of combat only); the caller repaints (V.Refresh).
 function V.ApplyState(frame, state)
-  if not frame.vgStateString then frame:HookScript("OnAttributeChanged", onAttribute) end
+  if not frame.vgStateString then frame:HookScript("OnAttributeChanged", ns.Guard("visibility state", onAttribute)) end
   frame.vgStateString, frame.vgState = state, V.Parse(state)
   RegisterStateDriver(frame, "vgvis", state)
   if frame.vgHoverRoot then motion(frame) end
@@ -255,8 +255,8 @@ end
 -- Follows the mouse over a frame and every frame inside it (nothing polls).
 local function hookHover(f, frame)
   vgHoverOf[f] = frame
-  f:HookScript("OnEnter", hoverEnter)
-  f:HookScript("OnLeave", hoverLeave)
+  f:HookScript("OnEnter", ns.Guard("visibility hover", hoverEnter))
+  f:HookScript("OnLeave", ns.Guard("visibility hover", hoverLeave))
   for _, child in ipairs({ f:GetChildren() }) do hookHover(child, frame) end
 end
 

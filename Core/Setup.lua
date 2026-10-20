@@ -770,7 +770,7 @@ local function build()
   local f = window()
   controls(f)
   addPages(f)
-  f:SetScript("OnHide", finished)
+  f:SetScript("OnHide", ns.Guard("finish setup", finished))
   ns.TabFocus(f, focusList)
   return f
 end
