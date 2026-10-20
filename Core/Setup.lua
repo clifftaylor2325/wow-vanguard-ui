@@ -654,7 +654,8 @@ end
 -- The last step: how to move frames (they are unlocked while this step shows).
 local function movePage(page)
   local lines = { "Your frames are unlocked: drag a handle to move that frame.",
-    "Click a handle, then the arrow keys nudge it (Shift: 10 px).", "Done locks them. /vg unlock moves them any time." }
+    "Click a handle, then the arrow keys nudge it (Shift ×10).", "Right-click a frame for its anchor, scale and opacity.",
+    "The bar at the top: Save and lock, or Exit without saving.", "Done locks them. /vg unlock moves them any time." }
   for i, line in ipairs(lines) do
     text(page, "label", i == 1 and "text" or "text2", line):SetPoint("TOPLEFT", 0, -(i - 1) * 22)
   end
