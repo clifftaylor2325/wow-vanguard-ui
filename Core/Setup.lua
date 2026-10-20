@@ -217,12 +217,11 @@ function S.ApplyLayout(key)
   APPLY[key]()
 end
 
--- Your role: the specialization's where the client has them, else your group role; nil when neither says.
+-- Your role: the specialization's where the client has them, else your group role (ns.PlayerRole).
 local function playerRole()
   local spec, get = ns.SpecIndex(), _G.GetSpecializationRole
   local role = spec and type(get) == "function" and get(spec) or nil
-  if not role and type(UnitGroupRolesAssigned) == "function" then role = UnitGroupRolesAssigned("player") end
-  return ns.GetModule("Upgrades").ROLES[role or "NONE"]
+  return ns.RoleKey(role) or ns.PlayerRole()
 end
 
 -- Each role's centered layout (anyone else gets Centered: damage).

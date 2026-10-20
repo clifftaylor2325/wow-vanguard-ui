@@ -129,6 +129,10 @@ C_AddOns = {
   IsAddOnLoaded = function(name) return name == "Vanguard" end,
 }
 
+-- The panel manager's windows (Blizzard_UIParentPanelManager, UIPanelWindows.lua): name -> its layout
+-- ({ area = "left", pushable = 3 }); empty here, a test lists the windows it opens.
+UIPanelWindows = {}
+
 -- Modifier keys: whatever a test puts in world.keys.
 function IsShiftKeyDown() return world.keys.shift == true end
 function IsControlKeyDown() return world.keys.ctrl == true end

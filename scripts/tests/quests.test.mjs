@@ -313,7 +313,7 @@ const tracker = (addon) => addon.eval(`local f = Vanguard_QuestTrackerFrame
   local blocks = {}
   for i = 1, f.blocks.used do
     local b, lines = f.blocks[i], {}
-    for j = 1, b.lines.used do lines[j] = b.lines[j]:GetText() end
+    for j = 1, b.lines.used do local l = b.lines[j] lines[j] = l.count:GetText() ~= "" and (l.text:GetText() .. " " .. l.count:GetText()) or l.text:GetText() end
     blocks[i] = { b.title:GetText(), lines }
   end
   return { shown = f:IsShown(), count = f.count:GetText(), blocks = blocks, more = f.more:IsShown() and f.more:GetText() or false }`);
@@ -322,9 +322,13 @@ it("quest tracker: watched quests with levels, objectives and items", () => {
   const t = tracker(addon);
   expect([t.shown, t.count, t.more], "shown with the count").toEqual([true, "3", false]);
   expect(t.blocks, "each quest with its level, its objectives, or ready to turn in").toEqual([
-    ["[8] TEST-ONLY Wolves", ["- 3/8 TEST-ONLY Wolves slain", "- 1/1 TEST-ONLY Pelt"]], ["[12] TEST-ONLY Letter", ["Ready to turn in"]], ["[3] TEST-ONLY Far", ["- 0/1 TEST-ONLY Stone"]]]);
-  const colors = addon.eval("local b = Vanguard_QuestTrackerFrame.blocks return { b[1].lines[1].__textColor, b[1].lines[2].__textColor, b[2].lines[1].__textColor, b[2].title.__textColor }");
-  expect([isTok(addon, colors[0], "text2"), isTok(addon, colors[1], "good"), isTok(addon, colors[2], "good"), colors[3][0]], "done objectives in green, the title in its difficulty color").toEqual([true, true, true, 1]);
+    ["[8] TEST-ONLY Wolves", ["TEST-ONLY Wolves slain 3/8", "TEST-ONLY Pelt 1/1"]], ["[12] TEST-ONLY Letter", ["Ready to turn in"]], ["[3] TEST-ONLY Far", ["TEST-ONLY Stone 0/1"]]]);
+  const colors = addon.eval("local b = Vanguard_QuestTrackerFrame.blocks return { b[1].lines[1].text.__textColor, b[1].lines[2].text.__textColor, b[2].lines[1].text.__textColor, b[2].title.__textColor }");
+  expect([isTok(addon, colors[0], "text2"), isTok(addon, colors[1], "muted"), isTok(addon, colors[2], "good"), colors[3][0]], "done objectives fade to muted, the title in its difficulty color").toEqual([true, true, true, 1]);
+  const rows = addon.eval(`local b = Vanguard_QuestTrackerFrame.blocks[1] local function row(l) return { l.mark:IsShown(), l.text.__points.LEFT.x, l.count.__points.RIGHT.rel == l } end
+    return { row(b.lines[1]), row(b.lines[2]) }`);
+  expect(rows, "each objective a row: its count at the right edge; a done one has its check, the text after it, the count muted with it").toEqual([[false, 0, true], [true, 14, true]]);
+  expect(isTok(addon, addon.eval("return Vanguard_QuestTrackerFrame.blocks[1].lines[2].count.__textColor"), "muted"), "the done count muted too").toBe(true);
   expect(addon.eval("return { ObjectiveTrackerFrame:IsShown(), ObjectiveTrackerFrame:GetParent() == UIParent, Vanguard_QuestTrackerFrame:GetParent() == Vanguard_QuestTracker }"), "the game's tracker is hidden in place; this one sits in the tracker's spot").toEqual([false, true, true]);
   expect(addon.eval(`local b = Vanguard_QuestItem1 return { b:GetAttribute("type"), b:GetAttribute("item"), b.__points.TOPRIGHT.rel == Vanguard_QuestTrackerFrame.blocks[1], b:IsShown() }`), "the wolves' item, beside its quest").toEqual(["item", "item:90061", true, true]);
   expect(addon.eval("return { Vanguard_QuestTrackerFrame.__strata, Vanguard_QuestItem1.__strata }"),
@@ -366,8 +370,8 @@ it("quest tracker: tracked Legacy challenges under their own heading", () => {
   const addon = loggedIn(TRACK_ENV + ACH_ENV + ONE_QUEST);
   expect(blockTitles(addon), "the quest, then the heading, then each tracked challenge").toEqual(["[12] TEST-ONLY Letter", "Legacy challenges", "TEST-ONLY Legacy Pathfinder", "TEST-ONLY Legacy Done"]);
   expect(tracker(addon).blocks.slice(1), "the criteria as objectives, and a finished challenge reads Complete").toEqual([
-    ["Legacy challenges", {}], ["TEST-ONLY Legacy Pathfinder", ["- 2/3 TEST-ONLY Roads", "- 1/1 TEST-ONLY Bridges"]], ["TEST-ONLY Legacy Done", ["Complete"]]]);
-  const colors = addon.eval("local b = Vanguard_QuestTrackerFrame.blocks return { b[2].title.__textColor, b[3].title.__textColor, b[4].lines[1].__textColor }");
+    ["Legacy challenges", {}], ["TEST-ONLY Legacy Pathfinder", ["TEST-ONLY Roads 2/3", "TEST-ONLY Bridges 1/1"]], ["TEST-ONLY Legacy Done", ["Complete"]]]);
+  const colors = addon.eval("local b = Vanguard_QuestTrackerFrame.blocks return { b[2].title.__textColor, b[3].title.__textColor, b[4].lines[1].text.__textColor }");
   expect([isTok(addon, colors[0], "gold"), isTok(addon, colors[1], "text"), isTok(addon, colors[2], "good")], "the heading in gold, a challenge's title in the text color").toEqual([true, true, true]);
   expect(tracker(addon).count, "the count still counts quests only").toBe("1");
 });
@@ -407,8 +411,8 @@ const timerTicking = (addon) => addon.eval("return ns.ticker.vgJobs['quest timer
 it("quest tracker: a timed quest shows its countdown under its title, ticking once a second until the timer is gone, and only while watched", () => {
   const addon = loggedIn();
   timedQuest(addon, 272);
-  expect(tracker(addon).blocks[0], "Time left as m:ss above the objectives").toEqual(["[10] TEST-ONLY Hurry", ["Time left 4:32", "- 0/1 TEST-ONLY Parcel delivered"]]);
-  expect([isTok(addon, addon.eval("return Vanguard_QuestTrackerFrame.blocks[1].lines[1].__textColor"), "text2"), timerTicking(addon)], "in the objective color; the redraw ticks").toEqual([true, true]);
+  expect(tracker(addon).blocks[0], "Time left as m:ss above the objectives").toEqual(["[10] TEST-ONLY Hurry", ["Time left 4:32", "TEST-ONLY Parcel delivered 0/1"]]);
+  expect([isTok(addon, addon.eval("return Vanguard_QuestTrackerFrame.blocks[1].lines[1].text.__textColor"), "text2"), timerTicking(addon)], "in the objective color; the redraw ticks").toEqual([true, true]);
   addon.advance(2);
   expect(tracker(addon).blocks[0][1][0], "two seconds later").toBe("Time left 4:30");
   addon.eval("__wfgWorld.setQuestTimer(90090, 3725)");
@@ -416,7 +420,7 @@ it("quest tracker: a timed quest shows its countdown under its title, ticking on
   expect(tracker(addon).blocks[0][1][0], "an hour and more stays minutes and seconds").toBe("Time left 62:05");
   addon.eval("__wfgWorld.setQuestTimer(90090, nil)");
   addon.update(0);
-  expect([tracker(addon).blocks[0][1], timerTicking(addon)], "the timer gone: the line and the ticking go").toEqual([["- 0/1 TEST-ONLY Parcel delivered"], false]);
+  expect([tracker(addon).blocks[0][1], timerTicking(addon)], "the timer gone: the line and the ticking go").toEqual([["TEST-ONLY Parcel delivered 0/1"], false]);
   addon.eval("ns.GetModule('QuestTracker').settings.autoTrack = false");
   addon.world.addQuest({ questID: 90091, title: "TEST-ONLY Dawdle", level: 10, watched: false, objectives: [{ text: "0/1 TEST-ONLY Note read", finished: false }] });
   addon.eval("__wfgWorld.setQuestTimer(90091, 500)");
@@ -426,10 +430,10 @@ it("quest tracker: a timed quest shows its countdown under its title, ticking on
 it("quest tracker: a timer the client hides shows nothing, a client without timers shows nothing, and neither errors", () => {
   const addon = loggedIn();
   timedQuest(addon, "__wfgWorld.secret(90)");
-  expect([tracker(addon).blocks[0][1], timerTicking(addon)], "a secret timer: no line, no ticking").toEqual([["- 0/1 TEST-ONLY Parcel delivered"], false]);
+  expect([tracker(addon).blocks[0][1], timerTicking(addon)], "a secret timer: no line, no ticking").toEqual([["TEST-ONLY Parcel delivered 0/1"], false]);
   const bare = loggedIn("C_QuestLog.GetQuestTimers = nil");
   timedQuest(bare, 272);
-  expect([tracker(bare).blocks[0][1], timerTicking(bare)], "no timer API: the quest as usual").toEqual([["- 0/1 TEST-ONLY Parcel delivered"], false]);
+  expect([tracker(bare).blocks[0][1], timerTicking(bare)], "no timer API: the quest as usual").toEqual([["TEST-ONLY Parcel delivered 0/1"], false]);
 });
 // TEST-ONLY tracked recipes in the world: a bandage from two Linen Cloth (the world names it) and a thread the
 // client hasn't named yet, with a finishing reagent, a slot without reagents and a hidden slot to skip; a
@@ -448,18 +452,18 @@ it("quest tracker: recipes you track sit under a Recipes heading with their reag
   addon.eval("__wfgWorld.trackRecipe(90100) __wfgWorld.trackRecipe(90103) __wfgWorld.trackRecipe(90104) __wfgWorld.trackedRecipes[#__wfgWorld.trackedRecipes + 1] = __wfgWorld.secret(7)");
   addon.update(0);
   expect(tracker(addon).blocks, "the quest, the heading, then the named recipe with the reagent the client names").toEqual([
-    ["[12] TEST-ONLY Letter", {}], ["Recipes", {}], ["TEST-ONLY Linen Bandage", ["- 1/2 Linen Cloth"]]]);
-  const colors = addon.eval("local b = Vanguard_QuestTrackerFrame.blocks return { b[2].title.__textColor, b[3].title.__textColor, b[3].lines[1].__textColor }");
+    ["[12] TEST-ONLY Letter", {}], ["Recipes", {}], ["TEST-ONLY Linen Bandage", ["Linen Cloth 1/2"]]]);
+  const colors = addon.eval("local b = Vanguard_QuestTrackerFrame.blocks return { b[2].title.__textColor, b[3].title.__textColor, b[3].lines[1].text.__textColor }");
   expect([isTok(addon, colors[0], "gold"), isTok(addon, colors[1], "text"), isTok(addon, colors[2], "text2")], "the heading in gold, the recipe's name in the text color, a short reagent in gray").toEqual([true, true, true]);
   addon.eval("__wfgWorld.items[90102] = { name = 'TEST-ONLY Thread', icon = 'TEST-ONLY-ICON', quality = 1 } __wfgWorld.bags[1][2] = { itemID = 2589, count = 1 }");
   addon.fire("GET_ITEM_INFO_RECEIVED", 90102);
   addon.update(0);
-  expect(tracker(addon).blocks[2][1], "the thread's name arrives: its line joins; the bags are read again").toEqual(["- 2/2 Linen Cloth", "- 0/1 TEST-ONLY Thread"]);
-  expect(isTok(addon, addon.eval("return Vanguard_QuestTrackerFrame.blocks[3].lines[1].__textColor"), "good"), "a reagent you have enough of is green").toBe(true);
+  expect(tracker(addon).blocks[2][1], "the thread's name arrives: its line joins; the bags are read again").toEqual(["Linen Cloth 2/2", "TEST-ONLY Thread 0/1"]);
+  expect(isTok(addon, addon.eval("return Vanguard_QuestTrackerFrame.blocks[3].lines[1].text.__textColor"), "muted"), "a reagent you have enough of is done: faded, as a done objective").toBe(true);
   addon.eval("__wfgWorld.bags[1][3] = { itemID = 90102, count = 1 }");
   addon.fire("BAG_UPDATE_DELAYED");
   addon.update(0);
-  expect(tracker(addon).blocks[2][1], "a bag change redraws the counts").toEqual(["- 2/2 Linen Cloth", "- 1/1 TEST-ONLY Thread"]);
+  expect(tracker(addon).blocks[2][1], "a bag change redraws the counts").toEqual(["Linen Cloth 2/2", "TEST-ONLY Thread 1/1"]);
   addon.eval("local b = Vanguard_QuestTrackerFrame.blocks b[2].__scripts.OnClick(b[2], 'LeftButton') b[3].__scripts.OnClick(b[3], 'LeftButton')");
   expect(addon.eval("return __wfgWorld.openedRecipe"), "the heading ignores clicks; left-click opens the recipe through the game's call").toBe(90100);
   addon.eval("local b = Vanguard_QuestTrackerFrame.blocks b[3].__scripts.OnClick(b[3], 'RightButton')");
@@ -526,7 +530,7 @@ it("quest tracker: each quest keeps its own item button; in combat counts update
   addon.fire("QUEST_WATCH_LIST_CHANGED");
   for (let i = 0; i < 5; i++) addon.fire("QUEST_LOG_UPDATE");
   addon.update(0);
-  expect([blockTitles(addon), tracker(addon).blocks[2][1][0]], "in combat the tracker redraws: the letter is gone and the wolves' count is up").toEqual([["[3] TEST-ONLY Far", "[9] TEST-ONLY Boar", "[8] TEST-ONLY Wolves"], "- 5/8 TEST-ONLY Wolves slain"]);
+  expect([blockTitles(addon), tracker(addon).blocks[2][1][0]], "in combat the tracker redraws: the letter is gone and the wolves' count is up").toEqual([["[3] TEST-ONLY Far", "[9] TEST-ONLY Boar", "[8] TEST-ONLY Wolves"], "TEST-ONLY Wolves slain 5/8"]);
   const anchors = "local items = ns.GetModule('QuestTracker').items return { items[1].__points.TOPRIGHT.rel == __rels[1], items[2].__points.TOPRIGHT.rel == __rels[2], ns.QueuedCount() }";
   expect(addon.eval(anchors).map((v, k) => (k === 2 ? v - waiting : v)), "the item buttons keep their anchors, and one placement waits").toEqual([true, true, 1]);
   setCombat(addon, false);
@@ -962,13 +966,13 @@ it("windows are opaque: game windows, the quest log and the options window (unde
   addon.eval("MerchantFrame:Show()");
   addon.slash("quests");
   addon.slash("");
-  addon.eval('ns.Options.Show("situations")');
+  addon.eval('ns.Options.Show("feedback")');
   const opaque = ["MerchantFrame", "Vanguard_QuestLog", "Vanguard_Options"].map((name) => fillAlpha(addon, name));
   expect(opaque, "a skinned game window, the quest log and the options window: no world shows through").toEqual([1, 1, 1]);
   const page = addon.eval(`local f, child = Vanguard_Options, nil
     for _, w in ipairs(__wfgStub.frames) do if w.__kind == "ScrollFrame" and w:IsVisible() and w:GetParent() == f then child = w.child end end
     return { child:GetBottom() > f:GetBottom(), f:GetHeight() == ns.Theme.PixelRound(f, 600, true) }`);
-  expect(page, "the Situations page ends above the window's foot; the opaque fill covers the window (600 tall, pixel-rounded) to its edges").toEqual([true, true]);
+  expect(page, "the Feedback page ends above the window's foot; the opaque fill covers the window (600 tall, pixel-rounded) to its edges").toEqual([true, true]);
   expect(fillAlpha(addon, "GameTooltip"), "tooltips keep the theme's panel opacity").toBe(addon.eval("return select(4, ns.Theme.RGB('panel'))"));
 });
 it("quest log: the game's quest log button opens Vanguard's log instead of the game's", () => {
@@ -1574,7 +1578,7 @@ it("quest tracker: hovering a quest shows its title, its objectives in full and,
   hoverBlock(addon, 1);
   const [shown, lines] = trackerTip(addon);
   expect([shown, lines[0], lines.length], "the tooltip, titled with the quest").toEqual([true, "TEST-ONLY Wolves", 4]);
-  expect(lines[1], "each objective in its tracker colour").toContain("- 3/8 TEST-ONLY Wolves slain");
+  expect(lines[1], "each objective in its tracker colour").toContain("3/8 TEST-ONLY Wolves slain");
   expect(lines[3], "the clicks").toBe("Click: open · Shift-click: point the arrow · Right-click: stop watching");
   expect(addon.eval("local l = GameTooltip.__lines[4] local r, g, b = ns.Theme.RGB('muted') return l.r == r and l.g == g and l.b == b"), "in the muted tier").toBe(true);
   expect(addon.eval("return ns.Theme.RowParts(Vanguard_QuestTrackerFrame.blocks[1]).hover:IsShown()"), "the list row's hover wash").toBe(true);
@@ -1630,6 +1634,6 @@ it("quest tracker: a tooltip follows the row repainted under it, and goes when t
 it("quest tracker: a failed quest reads Failed in the bad colour in place of its objectives; a hidden answer is not failed", () => {
   const addon = loggedIn(TRACK_ENV + "C_QuestLog.IsFailed = function(id) return __quests[id].failed end __quests[90051].failed = true __quests[90053].failed = { __secret = true }");
   const t = tracker(addon);
-  expect([t.blocks[0][1], t.blocks[2][1]]).toEqual([["Failed"], ["- 0/1 TEST-ONLY Stone"]]);
-  expect(isTok(addon, addon.eval("return Vanguard_QuestTrackerFrame.blocks[1].lines[1].__textColor"), "bad")).toBe(true);
+  expect([t.blocks[0][1], t.blocks[2][1]]).toEqual([["Failed"], ["TEST-ONLY Stone 0/1"]]);
+  expect(isTok(addon, addon.eval("return Vanguard_QuestTrackerFrame.blocks[1].lines[1].text.__textColor"), "bad")).toBe(true);
 });

@@ -24,8 +24,6 @@ local UP = ns.Module("Upgrades", { defaults = { tooltip = true, bags = true, que
 
 -- A change smaller than this (per cent) isn't shown.
 UP.MIN_PCT = 0.5
--- The group roles the client names -> the roles weights are kept for.
-UP.ROLES = { TANK = "tank", HEALER = "healer", DAMAGER = "damage" }
 -- Equip locations -> the inventory slots they go in (a pair compares with the weaker).
 UP.SLOTS = {
   INVTYPE_HEAD = { 1 }, INVTYPE_NECK = { 2 }, INVTYPE_SHOULDER = { 3 }, INVTYPE_CHEST = { 5 }, INVTYPE_ROBE = { 5 },
@@ -41,8 +39,7 @@ UP.SLOTS = {
 -- The role weights are picked for: the setting, else (auto) your group role, damage when you have none.
 function UP.Role()
   if UP.settings.role ~= "auto" then return UP.settings.role end
-  local assigned = type(UnitGroupRolesAssigned) == "function" and UnitGroupRolesAssigned("player")
-  return UP.ROLES[assigned] or "damage"
+  return ns.PlayerRole()
 end
 
 -- The weights in use (the defaults with this profile's changes) and the kind of character they're for.

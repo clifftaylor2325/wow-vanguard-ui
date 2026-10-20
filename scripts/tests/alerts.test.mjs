@@ -200,6 +200,19 @@ it("the game's tools: Cooldown Manager and damage meter styled and placed, stand
   expect(off.eval("return { ns.FrameState('vgSkinned')[EssentialCooldownViewer.items[1]] == nil, ns.FrameState('vgSkinned')[DamageMeterSessionWindow1] == nil, Vanguard_DamageMeterSpot == nil }"), "switched off, both stay the game's").toEqual([true, true, true]);
   expect(loggedIn("").eval("return ns.GetModule('GameTools') ~= nil"), "a client without these tools loads cleanly").toBe(true);
 });
+it("damage meter: a pooled line set up again keeps its background faded, with one hook per line", () => {
+  const addon = loggedIn(TOOLS_ENV);
+  // The first line's background alpha.
+  const alpha = () => addon.eval("return DamageMeterSessionWindow1.ScrollBox.lines[1].StatusBar.BackgroundRegions[1].__alpha");
+  expect(alpha(), "faded when styled").toBe(0);
+  addon.eval("DamageMeterSessionWindow1.ScrollBox:Update() DamageMeterSessionWindow1.ScrollBox:Update()");
+  addon.eval("__sets = 0 local r = DamageMeterSessionWindow1.ScrollBox.lines[1].StatusBar.BackgroundRegions[1] local set = r.SetAlpha r.SetAlpha = function(self, a) __sets = __sets + 1 return set(self, a) end");
+  addon.eval("DamageMeterSessionWindow1.ScrollBox.lines[1]:SetBackgroundAlpha(1)");
+  expect(alpha(), "the game's reset as it sets the line up again is faded at once").toBe(0);
+  expect(addon.eval("return __sets"), "the game's one SetAlpha, then one fade: redraws added no second hook").toBe(2);
+  addon.eval("local l = __line(DamageMeterSessionWindow1) l.StatusBar.BackgroundRegions = nil l.UpdateBackground = nil DamageMeterSessionWindow1.ScrollBox:Update()");
+  expect(addon.eval("return { ns.FrameState('vgSkinned')[DamageMeterSessionWindow1.ScrollBox.lines[2]], #ns.errors }"), "a line without background art or its reset is styled without them").toEqual([true, 0]);
+});
 it("Edit Mode shows Vanguard's handles too, with a note under its window", () => {
   const addon = loggedIn(TOOLS_ENV + CLICK_LUA);
   // Whether the handles are up, how many grid lines show, and whether the note shows (with its text).
