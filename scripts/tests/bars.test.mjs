@@ -245,6 +245,16 @@ it("the right-edge bars start off and show on mouseover when turned on", () => {
   expect(second, "one button per row, as before (38 + 2 apart, each in whole screen pixels)").toEqual([0, -(px(on, 38) + px(on, 2))]);
 });
 
+it("hotkey short names: modifiers, then the key by its whole name, so no key is named inside another", () => {
+  const addon = loggedIn();
+  const keys = { "SHIFT-1": "S1", "ALT-CTRL-SHIFT-Q": "ACSQ", BACKSPACE: "Bs", "SHIFT-BACKSPACE": "SBs", SPACE: "Sp", NUMPADPLUS: "N+", NUMPADMINUS: "N-",
+    NUMPADMULTIPLY: "N*", NUMPADDIVIDE: "N/", NUMPADDECIMAL: "N.", NUMPAD1: "N1", BUTTON4: "M4", "CTRL-BUTTON4": "CM4", "META-4": "Cmd4",
+    MOUSEWHEELUP: "WU", "SHIFT-MOUSEWHEELDOWN": "SWD", MINUS: "MINUS", "SHIFT-MINUS": "SMINUS", F12: "F12" };
+  const names = Object.keys(keys);
+  const got = addon.eval(`local AB, out = ns.GetModule("ActionBars"), {} for i, k in ipairs({ ${names.map((k) => JSON.stringify(k)).join(", ")} }) do out[i] = AB.ShortKey(k) end out[#out + 1] = AB.ShortKey(nil) return out`);
+  expect(got, "each key's label, and nothing for no key").toEqual([...Object.values(keys), ""]);
+});
+
 // TEST-ONLY profile saved before bars had a visibility setting: bar 4 was on
 // (the old default), bar 5 had been turned off.
 const OLD_BARS_PROFILE = `VanguardDB = { profiles = { Default = { ActionBars = { size = 36, spacing = 4, bars = {

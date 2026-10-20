@@ -89,11 +89,15 @@ local BLIZZARD_BUTTONS = {
   "MultiBarRightButton", "MultiBar5Button", "MultiBar6Button", "MultiBar7Button",
 }
 
--- Short key names for the hotkey text.
+-- Short names for the hotkey text: each modifier (Meta, the Mac's Command key, is "Cmd", since M is a mouse
+-- button), a key by its whole name, and the numbered keys (BUTTON4 is M4, NUMPAD1 is N1); any other key as it is.
 local KEY_SHORT = {
-  { "SHIFT%-", "S" }, { "CTRL%-", "C" }, { "ALT%-", "A" }, { "META%-", "M" },
-  { "MOUSEWHEELUP", "WU" }, { "MOUSEWHEELDOWN", "WD" }, { "BUTTON", "M" },
-  { "NUMPAD", "N" }, { "SPACE", "Sp" },
+  mods = { SHIFT = "S", CTRL = "C", ALT = "A", META = "Cmd" },
+  keys = {
+    SPACE = "Sp", BACKSPACE = "Bs", MOUSEWHEELUP = "WU", MOUSEWHEELDOWN = "WD",
+    NUMPADPLUS = "N+", NUMPADMINUS = "N-", NUMPADMULTIPLY = "N*", NUMPADDIVIDE = "N/", NUMPADDECIMAL = "N.",
+  },
+  numbered = { { "^BUTTON(%d+)$", "M" }, { "^NUMPAD(%d+)$", "N" } },
 }
 
 AB.buttons = {}
@@ -159,15 +163,26 @@ local function call(name, ...)
   return nil
 end
 
--- A key binding shortened for the hotkey text ("SHIFT-1" -> "S1").
-function AB.ShortKey(key)
-  if type(key) ~= "string" then
-    return ""
-  end
-  for _, pair in ipairs(KEY_SHORT) do
-    key = key:gsub(pair[1], pair[2])
+-- One key's short name, without its modifiers ("BACKSPACE" -> "Bs", "BUTTON4" -> "M4", "Q" -> "Q").
+local function shortKeyName(key)
+  if KEY_SHORT.keys[key] then return KEY_SHORT.keys[key] end
+  for _, numbered in ipairs(KEY_SHORT.numbered) do
+    local n = key:match(numbered[1])
+    if n then return numbered[2] .. n end
   end
   return key
+end
+
+-- A key binding shortened for the hotkey text ("SHIFT-1" -> "S1", "CTRL-BUTTON4" -> "CM4"): the modifiers
+-- at its front one by one, then the key by its whole name, so a key named inside another stays whole.
+function AB.ShortKey(key)
+  if type(key) ~= "string" then return "" end
+  local mods, mod, rest = "", key:match("^(%u+)%-(.+)$")
+  while mod and KEY_SHORT.mods[mod] do
+    mods, key = mods .. KEY_SHORT.mods[mod], rest
+    mod, rest = key:match("^(%u+)%-(.+)$")
+  end
+  return mods .. shortKeyName(key)
 end
 
 -- Updating a button ----------------------------------------------------------------------

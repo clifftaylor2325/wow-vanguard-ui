@@ -768,6 +768,12 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 
 ## 11. AFK
 
+### 10.4a Short key names on the buttons
+
+- Do: in the game's Key Bindings (Escape → Options → Keybindings → Action Bars), bind Backspace, Shift+Backspace, Numpad + and Numpad 1 to four bar 1 buttons, and (on a Mac) Command+4 to another and mouse button 4 to one more. Close the window and look at the buttons.
+- Expect: the hotkey texts read Bs, SBs, N+, N1, Cmd4 and M4, each one different, none cut to a half word. No error.
+- If it fails, paste: a screenshot of the bar and the keys you bound.
+
 ### 11.1 AFK card
 
 - Do: standing still out of combat, type `/afk`. Move. Type `/afk` again, then click or press a key.
