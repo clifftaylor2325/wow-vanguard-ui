@@ -1633,6 +1633,13 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 - Expect: every coin and every item of both mails comes in (the last mail first), the emptied mails leave the inbox (a letter with text may stay, empty), and chat says `Take all: N of N done.` with both numbers equal; nothing is left in either mail. [Needs in-game check: that HasInboxItem names the slots still holding an item after a take, and that C_Mail.IsCommandPending is true until the server has answered.]
 - If it fails, paste: the chat line, what is left in each mail, and `/vg errors`.
 
+### 23.3c More than eight mails, and the days left
+
+- Do: with more than eight mails in the inbox (or more than the game shows at once), open the mailbox with Mail tools on; scroll the mouse wheel over the panel's rows; type a word in the search box.
+- Expect: the heading reads "1-8 of N" beside "Find mail" (with "more on the server" when the game holds some back); the wheel over the rows moves through the rest a row at a time and stops at the ends (over the buttons and search box it does nothing); each row ends with its days or hours left, in the warning colour in the last 3 days, when a mail that would be deleted (not returned) says "deleted in Nd"; typing goes back to the top, and so does closing and opening the mailbox.
+- [Needs in game: that InboxItemCanDelete is true for mail deleted at expiry (an auction house sale, a system mail) and false for a letter with items that goes back; that the count beside the title doesn't run into it; that the days label leaves the subject readable.]
+- If it fails, paste: a screenshot of the panel and `/vg errors`.
+
 ### 23.4 Alt overview
 
 - Do: log in on two characters of the same realm and side, type `/played` on one, then on either type `/vg alts` and `/vg alts <the other's name>`. On the first, open the bank, right-click a stack from a bank tab into your bags and press Escape at once; log on the second and point at that item.

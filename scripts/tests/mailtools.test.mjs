@@ -121,15 +121,51 @@ it("presets: add, list, replace and remove; Send types the name and attaches the
   expect(addon.eval("return #ns.errors"), "no errors").toBe(0);
 });
 
-it("more matches than rows: '+4 more' beside Return all, and Take all takes every match", () => {
+it("more matches than rows: the heading counts them, the wheel scrolls through them, and Take all takes every match", () => {
   const addon = mailer("__wfgWorld.mail = {} for i = 1, 12 do __wfgWorld.mail[i] = { sender = 'Alt' .. i, subject = 'Gold', money = 100 * i, itemCount = 0 } end");
   addon.world.openMailWindow();
-  // Whether the "+N more" line shows, and its text.
-  const more = () => addon.eval("local m = Vanguard_MailTools.more return { m:IsShown(), m:GetText() }");
-  expect([rows(addon).length, more()], "eight rows and the count of the rest").toEqual([8, [true, "+4 more"]]);
+  // The heading's count.
+  const count = () => addon.eval("return Vanguard_MailTools.count:GetText()");
+  expect([rows(addon).length, rows(addon)[0], count()], "eight rows, and which of how many").toEqual([8, "Alt1: Gold (1s 0c)", "1-8 of 12"]);
+  addon.wheel("Vanguard_MailTools.search", -3);
+  expect(count(), "the wheel over the search box moves nothing").toBe("1-8 of 12");
+  addon.wheel("Vanguard_MailTools.rows[2].take", -3);
+  expect([rows(addon)[0], count()], "the wheel over the rows (a Take button too) moves them down the matches").toEqual(["Alt4: Gold (4s 0c)", "4-11 of 12"]);
+  addon.wheel("Vanguard_MailTools.rows[1]", -9);
+  expect([rows(addon)[7], count()], "no further than the last match").toEqual(["Alt12: Gold (12s 0c)", "5-12 of 12"]);
+  addon.world.closeMailWindow();
+  addon.world.openMailWindow();
+  expect(count(), "the mailbox opened again starts at the top").toBe("1-8 of 12");
+  addon.wheel("Vanguard_MailTools.rows[1]", -9);
+  addon.type("Vanguard_MailTools.search", "Alt1");
+  expect([rows(addon).length, count()], "new words start at the top again: Alt1, Alt10-12").toEqual([4, ""]);
+  addon.type("Vanguard_MailTools.search", "");
   addon.slash("mail takeall");
   addon.advance(6);
-  expect([addon.eval("return #__wfgWorld.taken"), more()[0]], "all twelve taken; none left past the rows").toEqual([12, false]);
+  expect([addon.eval("return #__wfgWorld.taken"), count()], "all twelve taken; none left past the rows").toEqual([12, ""]);
+});
+it("the heading says when the server holds more mail than the inbox loaded", () => {
+  const addon = mailer("__wfgWorld.mailOnServer = 60");
+  addon.world.openMailWindow();
+  expect(addon.eval("return Vanguard_MailTools.count:GetText()"), "taking some loads the rest").toBe("more on the server");
+  addon.eval("__wfgWorld.mail = {} for i = 1, 9 do __wfgWorld.mail[i] = { sender = 'Alt' .. i, subject = 'Hi', itemCount = 0 } end");
+  addon.fire("MAIL_INBOX_UPDATE");
+  expect(addon.eval("return Vanguard_MailTools.count:GetText()"), "both at once").toBe("1-8 of 9 · more on the server");
+});
+it("each row says how long its mail has left, in the warning colour when short, and when the game then deletes it with something in it", () => {
+  const addon = mailer(`__wfgWorld.mail = {
+    { sender = "Auction House", subject = "Sold", money = 5000, itemCount = 0, daysLeft = 29.5, deletes = true },
+    { sender = "Bobalt", subject = "Ore", money = 0, itemCount = 1, daysLeft = 2.5 },
+    { sender = "Mum", subject = "Hello", money = 0, itemCount = 0, daysLeft = 0.3, deletes = true },
+    { sender = "Auction House", subject = "Sold too", money = 900, itemCount = 0, daysLeft = 1.5, deletes = true },
+    { sender = "Carl", subject = "Hi", money = 0, itemCount = 0, daysLeft = 12 },
+    { sender = "Dee", subject = "Secret", money = 0, itemCount = 0, daysLeft = __wfgWorld.secret(5) },
+  }`);
+  addon.world.openMailWindow();
+  const days = addon.eval(`local out = {} for i = 1, 6 do local d = Vanguard_MailTools.rows[i].days
+    out[i] = { d:GetText() or "", d.__textColor } end return out`).map((r) => [r[0], isTok(addon, r[1], "warn")]);
+  expect(days, "a sale's gold 29 days off: plain; 2 days left; hours under a day (an empty letter is lost with nothing); a sale's gold deleted in a day; plain days; a hidden time says nothing").toEqual([
+    ["29d", false], ["2d", true], ["7h", true], ["deleted in 1d", true], ["12d", false], ["", false]]);
 });
 it("presets attach only what can be mailed: a soulbound or locked item is passed over and not counted", () => {
   const addon = mailer("__wfgWorld.bagSizes[0] = 6 __wfgWorld.bags[0][5] = { itemID = 900, bound = true } __wfgWorld.bags[0][6] = { itemID = 901, locked = true } __wfgWorld.bags[0][1].bound = true __wfgWorld.bags[0][2].locked = true");
