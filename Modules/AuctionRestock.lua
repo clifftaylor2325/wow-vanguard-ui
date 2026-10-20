@@ -96,8 +96,10 @@ end
 -- A commodity listing as { unit price, units you can buy } (your own units left out); nil for a
 -- hidden number.
 local function commodityRow(r)
-  local unit, qty, mine = ns.PlainNumber(r.unitPrice), ns.PlainNumber(r.quantity), ns.PlainNumber(r.numOwnerItems or 0)
-  if unit and qty and mine then return { unit = unit, qty = qty - mine } end
+  if ns.IsSecret(r.numOwnerItems) then return nil end
+  local unit, qty = ns.PlainNumber(r.unitPrice), ns.PlainNumber(r.quantity)
+  local mine = ns.PlainNumber(r.numOwnerItems) or 0
+  if unit and qty then return { unit = unit, qty = qty - mine } end
 end
 
 -- An item listing as { unit price, quantity, whole = its buyout (it's bought as one) }; nil when
