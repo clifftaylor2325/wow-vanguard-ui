@@ -381,10 +381,11 @@ O.MODULE_LINKS = {
 
 -- A page's title in the list on the left (its key until its file has added it).
 local function pageTitle(key)
+  local title = key
   for _, page in ipairs(O.PAGES) do
-    if page.key == key then return page.title or key end
+    if page.key == key and page.title then title = page.title end
   end
-  return key
+  return title
 end
 
 -- "On, but its own switch is off (Combat tools)" while a linked module is on and every one of its own switches is off.
