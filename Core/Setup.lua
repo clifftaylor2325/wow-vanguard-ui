@@ -245,7 +245,7 @@ end
 
 -- The raid frames' settings in the active profile, with their defaults.
 local function raidSettings()
-  return ns.Settings("RaidFrames", ns.GetModule("RaidFrames").defaults)
+  return moduleSettings("RaidFrames")
 end
 
 -- Sets the raid frame style, repainting the raid frames when they are built.
@@ -258,13 +258,13 @@ end
 
 -- Whether the Calm HUD is on (Modules/UnitFrames.lua).
 function S.Calm()
-  return ns.Settings("UnitFrames", ns.GetModule("UnitFrames").defaults).calm == true
+  return moduleSettings("UnitFrames").calm == true
 end
 
 -- Turns the Calm HUD on or off, applying it at once when the unit frames are built.
 function S.SetCalm(on)
   S.Backup()
-  ns.Settings("UnitFrames", ns.GetModule("UnitFrames").defaults).calm = on == true
+  moduleSettings("UnitFrames").calm = on == true
   local UF = ns.GetModule("UnitFrames")
   if UF.settings then UF.ApplyCalm() end
 end
@@ -299,14 +299,14 @@ end
 -- Turns the Versus deck on or off (UnitFrames' deck setting), applying it at once when the unit frames are built.
 function S.SetDeck(on)
   local UF = ns.GetModule("UnitFrames")
-  ns.Settings("UnitFrames", UF.defaults).deck = on == true
+  moduleSettings("UnitFrames").deck = on == true
   if UF.settings then UF.ApplyDeck() end
 end
 
 -- Sets how tall the target frame stands (UnitFrames' targetHeight), sizing it at once when the unit frames are built.
 function S.SetTargetHeight(h)
   local UF = ns.GetModule("UnitFrames")
-  ns.Settings("UnitFrames", UF.defaults).targetHeight = h
+  moduleSettings("UnitFrames").targetHeight = h
   if UF.settings then UF.ApplySizes() end
 end
 
@@ -395,13 +395,13 @@ end
 -- Sets the action buttons' shared size and lays the built bars out again (a bar's own size still wins).
 local function setButtons(size)
   local AB = ns.GetModule("ActionBars")
-  ns.Settings("ActionBars", AB.defaults).size = size
+  moduleSettings("ActionBars").size = size
   for n in pairs(AB.enabled and AB.bars or {}) do AB.SettingChanged(n, "size") end
 end
 
 -- Sets the raid tile size; a new size takes effect on reload.
 local function setTiles(tile)
-  local s = ns.Settings("RaidFrames", ns.GetModule("RaidFrames").defaults)
+  local s = raidSettings()
   if s.width == tile[1] and s.height == tile[2] then return end
   s.width, s.height = tile[1], tile[2]
   state.retile = true
