@@ -378,9 +378,19 @@ local function closeOnEscape()
   ns.On("PLAYER_REGEN_DISABLED", W.CloseMenu)
 end
 
+-- Each frame while the menu is open: it closes once the window its dropdown sits in stops showing (a bag
+-- closed, the auction house left), so its catcher never eats the next click. It asks the dropdown's parent,
+-- since a dropdown can be hidden itself (the auction shop's row menu).
+local function closeWhenOwnerGone(m)
+  local owner = m.owner
+  local host = owner and (owner:GetParent() or owner)
+  if host and not host:IsVisible() then W.CloseMenu() end
+end
+
 -- The menu showed or hid: its catcher follows (just under it), and the dropdown that opened it keeps its hover
--- look (T.HoldHover) only while it is open.
+-- look (T.HoldHover) only while it is open; while open it watches that its dropdown's window still shows.
 local function wireMenuState()
+  menu:SetScript("OnUpdate", closeWhenOwnerGone)
   menu:SetScript("OnShow", ns.Guard("menu show", function(m) m.catcher:Show() end))
   menu:SetScript("OnHide", ns.Guard("menu hide", function(m)
     m.catcher:Hide()

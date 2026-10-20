@@ -224,6 +224,15 @@ it("the house closing in a fight still clears the scan, the sell card and this v
     "closed in combat: the state is gone, the walker stopped").toEqual([false, true, false, true, 0, true, 0]);
   expect(addon.eval("return #ns.errors"), "no errors").toBe(0);
 });
+it("a row's right-click menu closes with the auction house (its dropdown is hidden, so the shop card is watched)", () => {
+  const addon = atAuctionHouse();
+  makeList(addon, "TEST-ONLY Mats", '{ "a", "b" }');
+  addon.click(`${TABLE}.rows[1]`, "RightButton");
+  expect(addon.eval("return Vanguard_Menu:IsShown()"), "the row's menu opens").toBe(true);
+  addon.world.closeAuctionHouse();
+  addon.update(0);
+  expect(addon.eval("return { Vanguard_Menu:IsShown(), Vanguard_Menu.catcher:IsShown() }"), "leaving the house closes it and its catcher").toEqual([false, false]);
+});
 it("Search list needs entries; closing the auction house drops the searches waiting", () => {
   const addon = atAuctionHouse();
   addon.click(`${HELPER}.shopCard.search`);
