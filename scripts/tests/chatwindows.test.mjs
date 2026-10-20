@@ -75,6 +75,27 @@ const TABS = `
 // A row on the Chat page, by caption.
 const chatRow = (cap) => `${PAGE} local r for _, row in ipairs(page.rows()) do if row[2] == "${cap}" then r = row end end`;
 
+it("chat tabs: Officer and Emotes switches show and hide those message groups on the tab picked", () => {
+  const addon = loggedIn(ENV + `ChatFrame_ContainsMessageGroup = function(f, g) return (__groups or {})[g] == true end
+    ChatFrame_AddMessageGroup = function(f, g) __groups = __groups or {} __groups[g] = true end
+    ChatFrame_RemoveMessageGroup = function(f, g) __groups[g] = nil end`);
+  addon.eval(`${chatRow("Show Officer")} r[4](true) ${chatRow("Show Emotes")} r[4](true)`);
+  expect(addon.eval("return { __groups.OFFICER, __groups.EMOTE }"), "both groups added").toEqual([true, true]);
+  addon.eval(`${chatRow("Show Officer")} r[4](false)`);
+  expect(addon.eval(`${chatRow("Show Officer")} return { r[3](), __groups.OFFICER == nil }`), "and taken off again").toEqual([false, true]);
+});
+
+it("chat page: empty phrase and word lists say so, and the hints go once there is one", () => {
+  const addon = loggedIn(ENV);
+  // The Chat page's text rows.
+  const texts = () => addon.eval(`${PAGE} local out = {} for _, r in ipairs(page.rows()) do if r[1] == "text" then out[#out + 1] = r[2] end end return out`);
+  const hints = ["No phrases yet. Add one, such as LFM or a dungeon's name.", "No words of your own yet."];
+  expect(hints.every((h) => texts().includes(h)), "both hints while the lists are empty").toBe(true);
+  addon.slash("watch add lfm");
+  addon.slash("filter add spamword");
+  expect(hints.some((h) => texts().includes(h)), "gone once each list has one").toBe(false);
+});
+
 it("chat tabs: the tab picker lists the windows showing; a pick edits that one", () => {
   const addon = loggedIn(ENV + TABS);
   expect(addon.eval(`${chatRow("Tab")} return { r[3][1][2], r[3][2][2], r[4]() }`), "both windows listed, the main one picked").toEqual(["General", "Loot", 1]);
@@ -201,7 +222,7 @@ it("chat find: the Chat page has the button and the switch; off, no button, and 
   expect(off.eval("return ns.GetModule('ChatWindows').findButton:IsShown()"), "the switch makes and shows the button at once").toBe(true);
   off.eval(`${chatRow("Find button in the chat's tab bar")} r[4](false)`);
   expect(off.eval("return { ns.GetModule('ChatWindows').findButton:IsShown(), ns.GetModule('ChatWindows').settings.find }"), "and hides it again, no reload").toEqual([false, false]);
-  expect(off.eval(`${PAGE} local out = {} for _, r in ipairs(page.rows()) do if r[1] == "header" then out[#out + 1] = r[2] end end return out`), "the page's groups, the extras under a header of their own").toEqual(["Chat", "Chat windows", "Chat tabs", "Chat extras", "Chat history", "Chat watch", "Chat filter", "Group board"]);
+  expect(off.eval(`${PAGE} local out = {} for _, r in ipairs(page.rows()) do if r[1] == "header" then out[#out + 1] = r[2] end end return out`), "the page's groups in the order players look for things, the extras under a header of their own").toEqual(["Chat", "Chat tabs", "Chat extras", "Chat watch", "Chat filter", "Chat history", "Chat windows", "Group board"]);
   const addon = loggedIn(ENV);
   addon.eval(`${PAGE} for _, r in ipairs(page.rows()) do if r[2] == "Find in chat" then r[3]() end end`);
   expect(addon.eval("return Vanguard_FindDialog:IsShown()"), "the Chat page's Find in chat opens the same find box").toBe(true);
