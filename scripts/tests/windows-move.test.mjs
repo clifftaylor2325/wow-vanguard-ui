@@ -345,3 +345,13 @@ it("H-04 Reset in a fight waits until it ends, says so, and then puts everything
   expect(errors(addon)).toBe("none");
 });
 
+it("H-05 the clock, chat channels, game settings, chat settings and guild control windows can be dragged too", () => {
+  const addon = loggedIn(MOVE_ENV);
+  addon.eval(`for _, name in ipairs({ "TimeManagerFrame", "ChannelFrame", "SettingsPanel", "ChatConfigFrame", "GuildControlUI" }) do
+    local f = __window(name) f:SetSize(300, 300) f:SetPoint("CENTER")
+  end`);
+  addon.fire("ADDON_LOADED", "Blizzard_TimeManager");
+  const W = "ns.FrameState('vgMoveHandle')";
+  expect(addon.eval(`return { ${W}[TimeManagerFrame] ~= nil, ${W}[ChannelFrame] ~= nil }`), "the clock and channels by their title bar").toEqual([true, true]);
+  expect(addon.eval(`local m = ns.FrameState('vgMovable') return { m[SettingsPanel], m[ChatConfigFrame], m[GuildControlUI], ${W}[SettingsPanel] == nil }`), "the other three by their top edge only").toEqual([true, true, true, true]);
+});

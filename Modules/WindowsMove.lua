@@ -35,14 +35,14 @@ local GW = ns.GetModule("Windows")
 GW.MOVABLE = {
   "CharacterFrame", "ContainerFrameCombinedBags", "GameMenuFrame", "FriendsFrame", "SocialUIFrame", "MerchantFrame",
   "MailFrame", "LFGParentFrame", "CommunitiesFrame", "PlayerSpellsFrame", "LegacySystemFrame",
-  "CollectionsJournal", "AuctionHouseFrame", "ProfessionsFrame", "AchievementFrame",
+  "CollectionsJournal", "AuctionHouseFrame", "ProfessionsFrame", "AchievementFrame", "TimeManagerFrame", "ChannelFrame",
 }
 -- The windows dragged only by an empty spot along their top edge: no drag area is laid over them, since
 -- the game draws buttons (the calendar's month arrows) where one would go.
 GW.MOVABLE_TOP = {
   "CalendarFrame", "InspectFrame", "TradeFrame", "DressUpFrame", "ClassTrainerFrame", "GuildBankFrame", "MacroFrame",
   "PetStableFrame", "RaidParentFrame", "OpenMailFrame", "GroupLootHistoryFrame", "ItemTextFrame", "AddonList",
-  "HelpFrame", "QuestLogPopupDetailFrame",
+  "HelpFrame", "QuestLogPopupDetailFrame", "SettingsPanel", "ChatConfigFrame", "GuildControlUI",
 }
 -- How far down from a window's top edge a press starts a drag (units).
 GW.MOVE_GRAB = 30
