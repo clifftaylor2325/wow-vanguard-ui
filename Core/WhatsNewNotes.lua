@@ -23,7 +23,7 @@ ns.WHATS_NEW = {
       { text = "The Combat Log's filter strip sits in a band under the bar, and the copy box and the find box never stack." },
     } },
     { module = "UnitFrames", label = "Unit frames and HUD", items = {
-      { text = "A grey X and a grey nameplate bar mark mobs another player has tagged; mobs you tagged keep the green check." },
+      { text = "A grey X and a grey nameplate bar mark mobs another player has tagged; mobs you tagged keep the green check.", page = "unitframes", row = "Tag mark on your target" },
       { text = "Scaled action bars touch in the bottom stack, and in Edit Mode the handles keep a dialog's layer and bars stack on whole pixels." },
     } },
     { module = "Map", label = "Map and minimap", items = {
@@ -33,17 +33,17 @@ ns.WHATS_NEW = {
     { module = "Other", label = "Safety and tools", items = {
       { text = "A window drag held as a fight starts ends before the lockdown, popups keep their own layout, Forever's addon list is dressed, and the social side windows are fixed." },
       { text = "Profiles: a backup never overwrites another character's profile, swapping back to a spec with no profile undoes the staged switch, and a settings restore reads its backup the way an import does." },
-      { text = "Hiding the red error line keeps the yellow info lines, and an options search hit marks its row when the window opens again." },
+      { text = "Hiding the red error line keeps the yellow info lines, and an options search hit marks its row when the window opens again.", page = "windows", row = "Hide the red error line" },
     } },
   } },
   { version = "0.7.1", groups = {
     { module = "Chat", label = "Chat", items = {
-      { text = "The chat window is one rounded panel with a tab bar, tabs you can always see and its side buttons stacked." },
+      { text = "The chat window is one rounded panel with a tab bar, tabs you can always see and its side buttons stacked.", page = "chat", row = "Keep chat tabs visible" },
     } },
     { module = "UnitFrames", label = "Unit frames and HUD", items = {
       { text = "Your cast bar moves up with the action bars instead of sitting under them." },
       { text = "The Versus deck rounds its corners instead of cutting them." },
-      { text = "A green check marks mobs you have tagged, on nameplates and unit frames." },
+      { text = "A green check marks mobs you have tagged, on nameplates and unit frames.", page = "unitframes", row = "Tag mark on your target" },
       { text = "In Edit Mode the window sits over the handles, bars line up with no gap and the default spots are tidier." },
     } },
     { module = "Quests", label = "Questing", items = {
@@ -60,7 +60,7 @@ ns.WHATS_NEW = {
     } },
     { module = "Other", label = "Safety and tools", items = {
       { text = "Escape closes the meter's spell panel and the Instance prep card." },
-      { text = "The Cooldown Manager glow never reads an aura the game hides." },
+      { text = "The Cooldown Manager glow never reads an aura the game hides.", page = "cooldowns", row = "Glow a buff near its end" },
       { text = "Your own name counts as you when it carries a realm other than the realm's name, in chat watch, the chat filter and the roll tracker." },
       { text = "/vg probe never makes a call the game restricts." },
     } },
