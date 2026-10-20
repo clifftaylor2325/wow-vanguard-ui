@@ -108,6 +108,9 @@ GW.INSIDES = {}
 -- that room; it is the contents' margin to the panel's edge on every side (art that fills the window
 -- edge to edge, like the spellbook's pages, included), and keeps the close button 12 in from the window.
 GW.PAD = 12
+-- The windows the game sizes from their own regions and child frames (ResizeLayoutFrame: a popup grows to fit what it
+-- shows), by name: the pieces of the panel painted on them, which reach past the window's edge, stay out of that layout.
+GW.LAYOUT_WINDOWS = { StaticPopup1 = true, StaticPopup2 = true, StaticPopup3 = true, StaticPopup4 = true }
 
 -- Skinning ------------------------------------------------------------------------------------
 
@@ -234,15 +237,39 @@ local function paintInset(frame)
   if type(inset) == "table" and inset.CreateTexture then T.Panel(inset, { inset = true, noSheen = true }) end
 end
 
--- Skins one window: art faded (its content art kept), its Inset painted as an inset panel, a flat opaque panel
--- (the world never shows through a window) with a soft shadow `pad` units (default GW.PAD) out past it, its
--- parts themed.
+-- The frame's regions and child frames, as a set.
+local function members(frame)
+  local set = {}
+  for _, r in ipairs({ frame:GetRegions() }) do set[r] = true end
+  for _, c in ipairs({ frame:GetChildren() }) do set[c] = true end
+  return set
+end
+
+-- Runs fn(frame, ...) on a layout frame (the game's ResizeLayoutFrame sizes itself from every child region and frame)
+-- and marks the pieces fn added to it ignoreInLayout, so Layout() leaves them out.
+function GW.InLayout(frame, fn, ...)
+  local before = members(frame)
+  fn(frame, ...)
+  for piece in pairs(members(frame)) do
+    if not before[piece] then piece.ignoreInLayout = true end
+  end
+end
+
+-- A window's flat opaque panel (the world never shows through a window) with a soft shadow `pad` units (default
+-- GW.PAD) out past it, kept out of the layout of a window the game sizes from its parts (GW.LAYOUT_WINDOWS).
+local function paintPanel(frame, name, pad)
+  local opts = { shadow = true, pad = pad or GW.PAD, alpha = 1 }
+  if GW.LAYOUT_WINDOWS[name or ""] then GW.InLayout(frame, T.Panel, opts) else T.Panel(frame, opts) end
+end
+
+-- Skins one window: art faded (its content art kept), its Inset painted as an inset panel, the window's panel
+-- (paintPanel), its parts themed.
 function GW.Skin(frame, pad)
   local name = frame.GetName and frame:GetName()
   fadeArt(frame)
   paintInset(frame)
   keepContent(frame, name)
-  T.Panel(frame, { shadow = true, pad = pad or GW.PAD, alpha = 1 })
+  paintPanel(frame, name, pad)
   dressParts(frame, name)
 end
 

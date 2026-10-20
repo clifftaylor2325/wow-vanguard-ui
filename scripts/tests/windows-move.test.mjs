@@ -114,6 +114,47 @@ it("#201 nothing moves in combat: a drag doesn't start, putting back waits until
   expect(errors(addon)).toBe("none");
 });
 
+// TEST-ONLY: the character pane and the calendar each hold a protected button (as the collections window holds the
+// toy box's secure buttons), so the client refuses addon code that starts or stops moving either in a fight.
+const SECURE_MOVE_ENV = `${MOVE_ENV}
+  __wfgStub.protect(CreateFrame("Button", nil, CharacterFrame)) __wfgStub.protect(CreateFrame("Button", nil, CalendarFrame))
+`;
+
+// Starts a title-bar drag on the character pane and a press-move on the calendar, and moves each to a new spot.
+const holdBoth = (addon) => addon.eval(`local h = ns.FrameState('vgMoveHandle')[CharacterFrame] h:GetScript("OnDragStart")(h, "LeftButton")
+  CharacterFrame:ClearAllPoints() CharacterFrame:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", 500, 700)
+  __wfgStub.world.mouse.x, __wfgStub.world.mouse.y = 300, 970 CalendarFrame:GetScript("OnMouseDown")(CalendarFrame, "LeftButton")
+  CalendarFrame:ClearAllPoints() CalendarFrame:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", 400, 500)`);
+
+// Whether each window still follows the mouse: the character pane, then the calendar.
+const following = (addon) => addon.eval("return { CharacterFrame.__moving == true, CalendarFrame.__moving == true }");
+
+it("a drag still held as a fight starts ends before the lockdown, where the window is; letting go in the fight does nothing", () => {
+  const addon = loggedIn(SECURE_MOVE_ENV);
+  addon.eval("__open(CharacterFrame) CalendarFrame:Show()");
+  holdBoth(addon);
+  expect(following(addon), "both follow the mouse").toEqual([true, true]);
+  addon.world.combat(true);
+  expect(following(addon), "the fight starting lets go of both").toEqual([false, false]);
+  expect(saved(addon), "each saved where it was let go").toMatchObject({ CharacterFrame: { x: 500, y: 700 }, CalendarFrame: { x: 400, y: 500 } });
+  addon.eval(`local h = ns.FrameState('vgMoveHandle')[CharacterFrame] h:GetScript("OnDragStop")(h)
+    CalendarFrame:GetScript("OnMouseUp")(CalendarFrame, "LeftButton") CharacterFrame:Hide() CalendarFrame:Hide()`);
+  addon.world.combat(false);
+  expect([following(addon), errors(addon)], "the drop, the release and the windows closing in the fight call nothing protected").toEqual([[false, false], "none"]);
+});
+
+it("a drop the fight caught waits for its end: the window is stopped and its place saved once the fight is over", () => {
+  const addon = loggedIn(SECURE_MOVE_ENV);
+  addon.eval("__open(CharacterFrame) CalendarFrame:Show()");
+  holdBoth(addon);
+  setCombat(addon, true);
+  addon.eval('CharacterFrame:Hide() CalendarFrame:GetScript("OnMouseUp")(CalendarFrame, "LeftButton")');
+  expect([following(addon), saved(addon).CharacterFrame, saved(addon).CalendarFrame], "nothing protected in the fight: both still follow the mouse").toEqual([[true, true], undefined, undefined]);
+  setCombat(addon, false);
+  expect(following(addon), "the fight over: both stopped").toEqual([false, false]);
+  expect([saved(addon), errors(addon)], "and saved where they were let go").toEqual([{ CharacterFrame: { x: 500, y: 700 }, CalendarFrame: { x: 400, y: 500 } }, "none"]);
+});
+
 it("the group finder: its pages cover the window and carry the title, so each page's title bar drags the whole window", () => {
   const addon = loggedIn(MOVE_ENV);
   addon.eval(`local w = __window("LFGParentFrame") w:SetSize(440, 520) w:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 100, -100)
