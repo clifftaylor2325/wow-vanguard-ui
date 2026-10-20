@@ -48,6 +48,15 @@ it("layout", () => {
   expect(exact, "an exact line-up is not replaced by a near one").toEqual([500, 250]);
 });
 
+it("the popover says why a typed offset's link is refused", () => {
+  const addon = loggedIn(BOX);
+  // A hand-edited profile anchors the box to itself: the popover's offset can't hold that link.
+  addon.eval('ns.Settings("positions").box = { rel = { to = "box", side = "LEFT", x = 0, y = 0 } }');
+  addon.eval('ns.MoverPopover({ key = "box", label = "TEST-ONLY box" })');
+  addon.eval('Vanguard_MoverPopover.x:SetText("5") Vanguard_MoverPopover.x:GetScript("OnEnterPressed")(Vanguard_MoverPopover.x)');
+  expect(addon.eval("return Vanguard_MoverPopover.why:GetText()"), "a refused offset says why").toBe("A frame can't be anchored to itself.");
+});
+
 it("a mover's size the client can't give reads 0, not its height", () => {
   const addon = loggedIn(`
     __nw = CreateFrame("Frame", nil, UIParent)
