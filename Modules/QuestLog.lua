@@ -258,4 +258,6 @@ function QL.Enable(settings)
   hookGameToggle()
   ns.On("QUEST_LOG_UPDATE", refreshSoon)
   ns.On("QUEST_WATCH_LIST_CHANGED", refreshSoon)
+  -- Share is lit only in a group (as the game's quest map does on the same event).
+  ns.On("GROUP_ROSTER_UPDATE", refreshSoon)
 end

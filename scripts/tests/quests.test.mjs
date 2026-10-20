@@ -1513,3 +1513,18 @@ it("quest tracker: a level-up redraws the XP-to-level line", () => {
   addon.advance(2);
   expect(levelLine(addon)).toBe("Quests: 100% of the XP to level");
 });
+
+// W4-E-3: the quest log's Share button follows joining and leaving a group.
+// Whether the quest log's Share button can be clicked.
+const shareLit = (addon) => addon.eval("return Vanguard_QuestLog.buttons.share:IsEnabled()");
+
+it("quest log: Share lights up when you join a group, without picking the quest again", () => {
+  const addon = loggedIn();
+  addon.world.addQuest({ questID: 7, title: "Wolves", level: 8, watched: true, pushable: true, objectives: [] });
+  addon.eval("ns.GetModule('QuestLog').Open(7)");
+  addon.update(0);
+  const solo = shareLit(addon);
+  addon.world.setUnit("party1", { name: "Mate", hp: 500, maxhp: 500, isPlayer: true, class: "WARRIOR" });
+  addon.advance(1);
+  expect([solo, shareLit(addon)]).toEqual([false, true]);
+});
