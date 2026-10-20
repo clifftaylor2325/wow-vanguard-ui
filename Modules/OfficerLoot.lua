@@ -17,6 +17,10 @@ ns.Options.MODULE_INFO.OfficerLoot = { "Officer loot tools", "A soft-reserve lis
 -- The longest chat line the game takes, kept under with room for the /p or /raid prefix.
 OL.CHUNK = 230
 
+-- The text between two names on one line, and between two lines of one chat part.
+OL.NAME_SEP = ", "
+OL.PART_SEP = " | "
+
 -- Names and items -----------------------------------------------------------------------------
 
 -- A player's name as compared: lower-case, without the "-Realm" the game adds across realms.
@@ -145,11 +149,11 @@ end
 local function groupLines(g)
   local out, names = {}, {}
   for _, name in ipairs(g.names) do
-    local now = lineHead(g.item, #out + 1) .. table.concat(names, ", ")
-    if #names > 0 and #now + 2 + #name > OL.CHUNK then out[#out + 1] = now names = {} end
+    local now = lineHead(g.item, #out + 1) .. table.concat(names, OL.NAME_SEP)
+    if #names > 0 and #now + #OL.NAME_SEP + #name > OL.CHUNK then out[#out + 1] = now names = {} end
     names[#names + 1] = name
   end
-  out[#out + 1] = lineHead(g.item, #out + 1) .. table.concat(names, ", ")
+  out[#out + 1] = lineHead(g.item, #out + 1) .. table.concat(names, OL.NAME_SEP)
   return out
 end
 
@@ -158,8 +162,8 @@ function OL.Chunks()
   local parts, now = {}, ""
   for _, g in ipairs(OL.Groups()) do
     for _, line in ipairs(groupLines(g)) do
-      if now ~= "" and #now + #line + 3 > OL.CHUNK then parts[#parts + 1] = now now = "" end
-      now = now == "" and (#parts == 0 and "Soft reserves: " or "") .. line or now .. " | " .. line
+      if now ~= "" and #now + #OL.PART_SEP + #line > OL.CHUNK then parts[#parts + 1] = now now = "" end
+      now = now == "" and (#parts == 0 and "Soft reserves: " or "") .. line or now .. OL.PART_SEP .. line
     end
   end
   if now ~= "" then parts[#parts + 1] = now end
