@@ -1734,6 +1734,57 @@ it("R2.11 popups: the dark tile faded, the warning icon and progress fill kept, 
   bare.eval("StaticPopup1:Show()");
   expect([windowState(bare, "StaticPopup1").panel, bare.eval("return #ns.errors")], "a bare popup, or odd controls, are skinned without an error").toEqual([true, 0]);
 });
+// TEST-ONLY StaticPopup1 with its first button in its ButtonContainer (GameDialog.xml), so the window skin themes
+// it, the label in the game's gold from its normal font object.
+const DANGER_ENV = `${POPUP_ENV}
+  local p = StaticPopup1
+  p.ButtonContainer = CreateFrame("Frame", nil, p)
+  local b = CreateFrame("Button", nil, p.ButtonContainer) p.ButtonContainer.Button1 = b p.ButtonContainer.Buttons = { b }
+  b:SetFontString(b:CreateFontString(nil, "OVERLAY"))
+  __gold = UIParent:CreateFontString(nil, "OVERLAY") __gold:SetTextColor(1, 0.82, 0)
+  b:SetNormalFontObject(__gold) b:GetFontString():SetTextColor(1, 0.82, 0)`;
+// The popup's first button's label colour.
+const confirmLabel = (addon) => addon.eval("return { StaticPopup1.ButtonContainer.Button1:GetFontString():GetTextColor() }");
+// Shows StaticPopup1 as the given popup (the game sets which before the show).
+const showPopup = (addon, which) => addon.eval(`StaticPopup1:Hide() StaticPopup1.which = "${which}" StaticPopup1:Show()`);
+it("H-08 popups: a destroy popup's first button reads in the danger colour, and keeps it after the game's hover", () => {
+  const addon = loggedIn(DANGER_ENV);
+  showPopup(addon, "DELETE_ITEM");
+  expect(isTok(addon, confirmLabel(addon), "bad"), "Delete item: the confirm label is in the danger colour").toBe(true);
+  addon.eval("local b = StaticPopup1.ButtonContainer.Button1 b:GetFontString():SetTextColor(1, 1, 1) b.__scripts.OnEnter(b)");
+  expect(isTok(addon, confirmLabel(addon), "bad"), "the game's hover colour is painted over again").toBe(true);
+});
+it("H-08 popups: an ordinary popup on the same frame gets the game's gold back, and a theme refresh leaves it gold", () => {
+  const addon = loggedIn(DANGER_ENV);
+  showPopup(addon, "DELETE_ITEM");
+  showPopup(addon, "CAMP");
+  expect(confirmLabel(addon).slice(0, 3), "the gold from the button's normal font object").toEqual([1, 0.82, 0]);
+  addon.eval("local b = StaticPopup1.ButtonContainer.Button1 b.__scripts.OnEnter(b) b.__scripts.OnLeave(b) ns.Theme.Refresh()");
+  expect(confirmLabel(addon).slice(0, 3), "hover and a theme refresh leave it gold").toEqual([1, 0.82, 0]);
+});
+it("H-08 popups: without a normal font object, the colour from before the paint comes back", () => {
+  const addon = loggedIn(DANGER_ENV);
+  addon.eval("StaticPopup1.ButtonContainer.Button1:SetNormalFontObject(nil)");
+  showPopup(addon, "ABANDON_QUEST");
+  showPopup(addon, "CAMP");
+  expect(confirmLabel(addon).slice(0, 3), "the label's own gold").toEqual([1, 0.82, 0]);
+});
+it("H-08 popups: a destroy popup waiting for DELETE leaves the disabled button alone, and paints it once it is enabled", () => {
+  const addon = loggedIn(DANGER_ENV);
+  addon.eval("StaticPopup1.ButtonContainer.Button1:Disable()");
+  showPopup(addon, "DELETE_GOOD_ITEM");
+  expect(isTok(addon, confirmLabel(addon), "bad"), "disabled: not the danger colour").toBe(false);
+  addon.eval("StaticPopup1.ButtonContainer.Button1:Enable()");
+  expect(isTok(addon, confirmLabel(addon), "bad"), "enabled: the danger colour").toBe(true);
+});
+it("H-08 popups: a first button without a label, or an odd Button1, is no error", () => {
+  const addon = loggedIn(DANGER_ENV);
+  addon.eval("StaticPopup1.ButtonContainer.Button1:SetFontString(nil)");
+  showPopup(addon, "ABANDON_QUEST");
+  addon.eval("StaticPopup1.ButtonContainer.Button1 = 1");
+  showPopup(addon, "DELETE_MAIL");
+  expect(addon.eval("return #ns.errors")).toBe(0);
+});
 it("R2.11 the ready check: the listener's tile and border faded, the portrait kept, title, prompt and buttons in the theme", () => {
   const addon = loggedIn(POPUP_ENV);
   addon.eval("ReadyCheckFrame:Show()");

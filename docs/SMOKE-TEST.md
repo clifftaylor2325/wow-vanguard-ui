@@ -888,6 +888,24 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Expect: at 130 % the info strip is wider and its rows taller; no block's text runs into its neighbour (the 12-hour time, the date and the calendar button share their row), and nothing spills past the strip's edge. The broker strip is taller, its icons larger, each slot as wide as its text; a feed's tooltip opens below the strip at the top of the screen (move the strip near the bottom with `/vg unlock`: it opens above). The quest tracker starts just under the info strip's last row, clear of it. Back at 100 % both strips return to their usual size (a broker slot widened at 130 % narrows again) and the tracker moves back up.
 - If it fails, paste: a screenshot of both strips at 130 %, and `/vg errors`.
 
+### 13.2c Session rates through a reload
+
+- Do: while levelling, kill a few mobs until the strip shows XP per hour; note it, type `/reload`; then log out to the character list and back in.
+- Expect: after the reload the XP per hour, time to level and gold per hour show again at once, near the same figures; after logging back in they start again (hidden for the first minute).
+- If it fails, paste: the figures before and after, and `/vg errors`.
+
+### 13.2d Info strip tooltips
+
+- Do: with some gear worn down, a soul bag or quiver if you have one, and some gold earned and spent since logging in, hover each number on the info strip under the minimap. Hover fps and latency once in a fight too.
+- Expect: durability lists each item under 100 % (for example "Chest 23%"), most worn first; the free count lists each bag's slots used of its total, a soul bag or quiver named; gold shows earned and spent this session; fps and latency shows home and world latency and Vanguard's memory (in a fight, no memory line); the XP and gold rates and time to level show the session's length, XP gained and gold; your DPS (if switched on) shows the last fight's length. Each tooltip goes when the mouse leaves.
+- If it fails, paste: a screenshot of the tooltip, and `/vg errors`.
+
+### 13.2e Info strip clicks
+
+- Do: out of a fight, click the info strip's durability, then its free count, then its gold. Right-click the XP per hour. Then open your bags from the strip's free count, start a fight (a training dummy) and drink a potion or use a bag item in it. In the fight, click the free count once more.
+- Expect: durability opens the character window; the free count and gold each open (and, clicked again, close) your bags; the right-click hides the rates and they come back about a minute later counting from then. Using the item in the fight works, with no "Interface action failed because of an AddOn" line and no blocked-action error. The click in the fight opens nothing and chat says `The bag window doesn't open from Vanguard in a fight. Try again after it.`; the free count's tooltip then ends with "(after the fight)". If the item use shows a blocked message, the bag clicks are to be dropped: say so.
+- If it fails, paste: a screenshot, and `/vg errors`.
+
 ### 13.3 Move the strips
 
 - Do: type `/vg unlock`, drag the Bags and Game menu handles apart, type `/vg lock`, then `/reload`.
@@ -1405,6 +1423,12 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 - Expect: the space under a popup's buttons is about the same as the space above its text; there is no empty band of panel under the buttons. Popups that the game gives a fixed height are unchanged.
 - If it fails, paste: a screenshot of the popup and `/vg frame StaticPopup1`.
 
+### 14.14.4b Danger popups
+
+- Do: delete a grey item from your bags (drag it out and confirm), then delete a green or better one (the popup that asks you to type DELETE): look at the confirm button before typing, after typing DELETE, and with the mouse on and off it. Then abandon a quest, and open an ordinary popup (leave a group, or `/camp`) right after.
+- Expect: on each delete and abandon popup the confirm button's label (Yes, Okay, Accept) is red, the danger colour of Vanguard's own Abandon button, and stays red under the mouse and after you type DELETE (before typing it is the game's grey disabled label); the leave-group or camp popup that follows on the same spot has the game's gold label again, gold under the mouse too. [Needs in game: that the game's hover and enable changes run before the hooks that paint the red back, so it never flashes gold; if it flashes, say so.]
+- If it fails, paste: a screenshot of the popup and `/vg errors`.
+
 ### 14.14.5 Roll windows, dressing room, books and the game menu header
 
 - Do: roll on an item in a group (or loot with a friend), and look at the roll window. Open the dressing room (Ctrl-click an item), open the outfit dropdown and the details toggle. Read a book or a letter and turn a page; read a timed book if you know one. Press Escape and look at the top of the game menu.
@@ -1563,6 +1587,18 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 - Expect: the copy box is titled "Copy Trade (Ctrl+C)", holds that tab's lines (not General's), and opens scrolled to the newest line with all of it selected, so the paste holds every line. The guild message of the day shows "discord.gg/abc" as an accent link; in the said line "discord.gg/abc" is a link with the comma after it plain, the item link still shows its tooltip on click, and "1.5" and "e.g." stay plain. Clicking either address opens it in the copy box. `/vg errors` is empty. [Needs in game: that SetCursorPosition then HighlightText keeps the whole text selected and the box scrolled to the end on the Forever client; that the game adds the message of the day through the window's AddMessage with GUILD_MOTD_TEMPLATE's text.]
 - If it fails, paste: `/vg errors` and a screenshot of the copy box or the line.
 
+### 15.6j Chat page order and the Chat filter card
+
+- Do: open `/vg` → Chat and scroll the page. Switch the Chat filter on and stand in a capital city until some Trade spam is caught; open the Filtered tab and click one sender's name; open the Chat page again and press **Filter them again**. Set Caught lines to Are hidden and look at the card.
+- Expect: the cards run Chat, Chat tabs, Chat extras (Copy, Find in chat and the Find switch together), Chat watch, Chat filter, Chat history, Chat windows, then Group board, each looking as before. With no phrases or words, Chat watch and Chat filter say so. The filter card reads "Caught this session: N (Gold selling …, Repeat …)"; after the click it lists "Let through: Name", and Filter them again says "Every sender is filtered again." in chat and that sender's next spam goes to the tab. Hidden: the card says the Filtered tab is where lines can be seen and let through. A guild post such as "pays gold for herbs, discord.gg/xyz" is not caught. The Filtered tab (made fresh: close it first if you have one) holds only caught lines, never live Trade or Say. `/vg errors` is empty. [Needs in game: that FCF_OpenNewWindow's second argument leaves the new tab with no message groups or channels on Forever, now that Vanguard no longer removes them itself.]
+- If it fails, paste: `/vg errors` and a screenshot of the Chat filter card.
+
+### 15.6k Officer and Emotes on a chat tab
+
+- Do: on a tab other than General, tick Show Officer and Show Emotes under Chat → Chat tabs (have an officer line and a `/wave` arrive). Then, with no reload, enter a dungeon and pull a few packs while chat lines arrive.
+- Expect: officer lines and emotes show on that tab; untick them and they stop. No Lua error from the game's chat code in the dungeon, and `/vg errors` is empty. [Needs in game: that adding the OFFICER and EMOTE message groups from Vanguard's rows taints nothing the game reads in an instance, as the eight existing rows don't.]
+- If it fails, paste: `/vg errors` and any Lua error text.
+
 ## 16. Realm and ruleset
 
 ### 16.0 Data from the beta
@@ -1593,6 +1629,12 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 - Expect: one chat line at login, `<addon> also does bags. Choose which one does under /vg > Modules (nothing changes until you do).`; an **Other addons** card at the top of the Modules page with **Turn off Bags** and **Keep both**; after Keep both, no card and no chat line. The folder name matches the one Vanguard looks for (`Modules/Coexist.lua`, `CX.OVERLAPS`); a different name is a finding.
 - Also, if EllesmereUI is on Forever: run `/dump C_AddOns.GetNumAddOns()` and list its folders (`/dump C_AddOns.GetAddOnInfo(i)` for each) and paste the ones starting with Ellesmere. Vanguard looks for `EllesmereUIUnitFrames`, `EllesmereUIActionBars`, `EllesmereUINameplates` and `EllesmereUIRaidFrames` (retail names, unconfirmed on Forever); a different name is a finding.
 - If it fails, paste: the folder name, a screenshot of the Modules page and `/vg errors`.
+
+### 18.1a Other addons you pair with Vanguard
+
+- Do: install one Forever add-on people pair with Vanguard (Platynator or BlizzMove is enough; Aurora or Forevermore Classic UI if you have a window skinner) and log in. Open `/vg` → Modules, click **Turn off …** on its row, take the reload, then open Modules again and click **Turn … back on**.
+- Expect: the card's button names what it turns off (**Turn off Nameplates** for Platynator; **Turn off Vanguard's window moving** for BlizzMove, **Turn off Vanguard's window looks** for a skinner); the reload comes up; after it the card still shows the addon with **Turn … back on**, and that button puts it back (with another reload). With a window skinner, after the reload only one skin shows on the character window, popups and menus, and the windows still drag and show durability. With BlizzMove, only BlizzMove moves windows (no snap-back). `/dump C_AddOns.IsAddOnLoaded("<folder>")` prints true for the folder name Vanguard looks for; false is a finding. [Needs in game.]
+- If it fails, paste: the addon's folder name, a screenshot of the Modules page before and after the reload, and `/vg errors`.
 
 ### 18.2 Group board
 
