@@ -55,20 +55,6 @@ UF.frames = {}
 
 local isSecret = ns.IsSecret
 
--- A plain boolean from an API that may return a secret: secrets count as false.
-local function flag(value)
-  return not isSecret(value) and value == true
-end
-
--- A client answer about a unit, or nil when the client lacks the call or hides the answer.
-local function asked(name, ...)
-  local fn = _G[name]
-  if type(fn) ~= "function" then return nil end
-  local answer = fn(...)
-  if isSecret(answer) then return nil end
-  return answer
-end
-
 -- The color for a unit's reaction to the player (hostile, neutral, friendly).
 local function reactionColor(unit)
   local reaction = UnitReaction and UnitReaction(unit, "player")
@@ -81,13 +67,13 @@ end
 -- True for a creature another player or group has tagged (the game's own test, as its target frame greys
 -- it): never a player or what a player controls. A hidden or missing answer counts as untagged.
 function UF.Tapped(unit)
-  return asked("UnitPlayerControlled", unit) ~= true and asked("UnitIsTapDenied", unit) == true
+  return ns.PlainCall("UnitPlayerControlled", unit) ~= true and ns.PlainCall("UnitIsTapDenied", unit) == true
 end
 
 -- r, g, b for a unit with no tag grey: class color for players, reaction otherwise (the plates add their
 -- own grey, behind their Tag marks switch).
 function UF.UnitColor(unit)
-  if flag(UnitIsPlayer(unit)) then
+  if ns.IsTrue(UnitIsPlayer(unit)) then
     local _, class = UnitClass(unit)
     local c = not isSecret(class) and RAID_CLASS_COLORS and RAID_CLASS_COLORS[class]
     if c then return c.r, c.g, c.b end
@@ -99,7 +85,7 @@ end
 -- r, g, b for a unit's health bar: grey for a creature someone else tagged, always, as the game's
 -- frames do; else its class or reaction color.
 function UF.HealthColor(unit)
-  if not flag(UnitIsPlayer(unit)) and UF.Tapped(unit) then return T.RGB("tapped") end
+  if not ns.IsTrue(UnitIsPlayer(unit)) and UF.Tapped(unit) then return T.RGB("tapped") end
   return UF.UnitColor(unit)
 end
 
@@ -130,7 +116,7 @@ end
 
 -- True for a player who is known to be offline (secret or unknown counts as online).
 local function isOffline(unit)
-  if not UnitIsConnected or not flag(UnitIsPlayer(unit)) then
+  if not UnitIsConnected or not ns.IsTrue(UnitIsPlayer(unit)) then
     return false
   end
   local connected = UnitIsConnected(unit)
@@ -140,8 +126,8 @@ end
 -- "Ghost" for a player who released, "Dead" for anyone else dead, nil for the living and for a hunter
 -- feigning death (the client calls them dead too). A hidden answer counts as no.
 local function deathWord(unit)
-  if asked("UnitIsFeignDeath", unit) == true or not flag(UnitIsDeadOrGhost(unit)) then return nil end
-  return asked("UnitIsGhost", unit) == true and "Ghost" or "Dead"
+  if ns.PlainCall("UnitIsFeignDeath", unit) == true or not ns.IsTrue(UnitIsDeadOrGhost(unit)) then return nil end
+  return ns.PlainCall("UnitIsGhost", unit) == true and "Ghost" or "Dead"
 end
 
 -- "Dead", "Ghost", "Offline", or nil when the unit is none of them. Safe with secret
@@ -175,7 +161,7 @@ end
 
 -- The unit's level as text ("??" for a boss or a level too far above you), or "".
 function UF.LevelText(unit)
-  local level = ns.PlainNumber(type(UnitLevel) == "function" and UnitLevel(unit) or nil)
+  local level = ns.PlainNumber(ns.PlainCall("UnitLevel", unit))
   if not level then return "" end
   return level < 1 and "??" or tostring(level)
 end
@@ -185,12 +171,12 @@ end
 -- mob, a player or a player's pet, a friend, a hidden or missing answer). The client has no call that says "yours" outright,
 -- so a mob in combat with you (or only with your pet) reads the same.
 function UF.TagState(unit)
-  if asked("UnitCanAttack", "player", unit) ~= true or asked("UnitIsPlayer", unit) == true then return nil end
+  if ns.PlainCall("UnitCanAttack", "player", unit) ~= true or ns.PlainCall("UnitIsPlayer", unit) == true then return nil end
   -- Only creatures are tagged: a player's pet or demon never is (the game's own tap greys skip them too).
-  if asked("UnitPlayerControlled", unit) == true then return nil end
-  local denied = asked("UnitIsTapDenied", unit)
+  if ns.PlainCall("UnitPlayerControlled", unit) == true then return nil end
+  local denied = ns.PlainCall("UnitIsTapDenied", unit)
   if denied == true then return "theirs" end
-  if denied == false and asked("UnitAffectingCombat", unit) == true then return "yours" end
+  if denied == false and ns.PlainCall("UnitAffectingCombat", unit) == true then return "yours" end
   return nil
 end
 
@@ -208,8 +194,8 @@ end
 
 -- The color token of a unit's classification diamond, or nil for a normal unit.
 function UF.ClassToken(unit)
-  local kind = type(UnitClassification) == "function" and UnitClassification(unit) or nil
-  return not ns.IsSecret(kind) and CLASSIFICATION[kind] or nil
+  local kind = ns.PlainCall("UnitClassification", unit)
+  return CLASSIFICATION[kind]
 end
 
 -- Building ------------------------------------------------------------------------------
@@ -373,7 +359,7 @@ UF.SKULL_LEVEL = 999
 -- r, g, b for how hard a unit is for you (the client's level color), or nil when it can't say.
 function UF.LevelColor(unit)
   local get = _G.GetCreatureDifficultyColor
-  local level = ns.PlainNumber(type(UnitLevel) == "function" and UnitLevel(unit) or nil)
+  local level = ns.PlainNumber(ns.PlainCall("UnitLevel", unit))
   if level and level < 1 then level = UF.SKULL_LEVEL end
   local c = type(get) == "function" and level and get(level)
   if c then return c.r, c.g, c.b end
@@ -427,7 +413,7 @@ end
 
 -- Everything on a frame, if its unit exists.
 function UF.UpdateFrame(f)
-  if not flag(UnitExists(f.unit)) then
+  if not ns.IsTrue(UnitExists(f.unit)) then
     return
   end
   UF.UpdateHealth(f)
@@ -481,7 +467,7 @@ end
 -- One look at the target of target: health and power every time (they change
 -- with no event to say so), its name, level and class only when it's someone else.
 local function refreshTargetOfTarget(f)
-  if not flag(UnitExists(f.unit)) then return end
+  if not ns.IsTrue(UnitExists(f.unit)) then return end
   UF.UpdateHealth(f)
   UF.UpdatePower(f)
   if identityChanged(f) then UF.UpdateName(f) UF.UpdateRaidIcon(f) end
