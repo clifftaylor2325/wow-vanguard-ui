@@ -841,6 +841,12 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Expect: durability lists each item under 100 % (for example "Chest 23%"), most worn first; the free count lists each bag's slots used of its total, a soul bag or quiver named; gold shows earned and spent this session; fps and latency shows home and world latency and Vanguard's memory (in a fight, no memory line); the XP and gold rates and time to level show the session's length, XP gained and gold; your DPS (if switched on) shows the last fight's length. Each tooltip goes when the mouse leaves.
 - If it fails, paste: a screenshot of the tooltip, and `/vg errors`.
 
+### 13.2e Info strip clicks
+
+- Do: out of a fight, click the info strip's durability, then its free count, then its gold. Right-click the XP per hour. Then open your bags from the strip's free count, start a fight (a training dummy) and drink a potion or use a bag item in it. In the fight, click the free count once more.
+- Expect: durability opens the character window; the free count and gold each open (and, clicked again, close) your bags; the right-click hides the rates and they come back about a minute later counting from then. Using the item in the fight works, with no "Interface action failed because of an AddOn" line and no blocked-action error. The click in the fight opens nothing and chat says `The bag window doesn't open from Vanguard in a fight. Try again after it.`; the free count's tooltip then ends with "(after the fight)". If the item use shows a blocked message, the bag clicks are to be dropped: say so.
+- If it fails, paste: a screenshot, and `/vg errors`.
+
 ### 13.3 Move the strips
 
 - Do: type `/vg unlock`, drag the Bags and Game menu handles apart, type `/vg lock`, then `/reload`.

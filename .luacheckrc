@@ -61,6 +61,8 @@ read_globals = {
   "CALENDAR_EVENT_ALARM_MESSAGE",
   -- Info strip: the calendar button's count of invites waiting for an answer.
   "C_Calendar",
+  -- Info strip: a click on durability opens the character window, on free space or gold the bags.
+  "ToggleCharacter", "ToggleAllBags",
   -- Info strip: a click on the time opens the game's clock window, or turns off its ringing alarm (Blizzard_TimeManager).
   "ToggleTimeManager", "TimeManager_IsAlarmFiring", "TimeManager_TurnOffAlarm",
   -- Info strip: the time in the game's clock format, realm and local (Blizzard_FrameXMLUtil/GameTimeUtil.lua).

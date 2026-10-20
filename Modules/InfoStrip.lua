@@ -714,22 +714,50 @@ IS.TIPS = {
   dps = { "Last fight", fightTip }, rank = { "Last fight", fightTip },
 }
 
+-- What a left-click on a block opens, out of a fight: the window's name (for the hint and the in-a-fight
+-- line), the game's function and its argument.
+IS.CLICKS = {
+  durability = { "The character window", "ToggleCharacter", "PaperDollFrame" },
+  bags = { "The bag window", "ToggleAllBags" }, gold = { "The bag window", "ToggleAllBags" },
+}
+-- The blocks a right-click starts counting again from now (the session's rates).
+IS.RESTARTS = { xprate = true, leveltime = true, goldrate = true }
+
+-- The muted hint lines at a tooltip's end: what a click opens (after the fight while one is on), and the restart.
+local function clickHints(tt, key)
+  local click, r, g, b = IS.CLICKS[key], T.RGB("text2")
+  if click then tt:AddLine("Click: " .. click[1]:lower() .. (ns.InCombat() and " (after the fight)" or ""), r, g, b) end
+  if IS.RESTARTS[key] then tt:AddLine("Right-click: start counting again", r, g, b) end
+end
+
 -- Shows a block's tooltip, beside the strip.
 function IS.ShowTip(hit)
   local tip = IS.TIPS[hit.key]
   GameTooltip:SetOwner(hit, "ANCHOR_LEFT")
   GameTooltip:SetText(tip[1], T.RGB("text"))
   tip[2](GameTooltip)
+  clickHints(GameTooltip, hit.key)
   GameTooltip:Show()
 end
 
--- One block's hit area over its text (the text takes no mouse): its tooltip on hover.
+-- A click on a block: a right-click on a rate starts the session again; a left-click opens the block's
+-- window, except in a fight (chat says it waits; the game refuses Vanguard there).
+function IS.Click(hit, button)
+  if button == "RightButton" and IS.RESTARTS[hit.key] then return IS.RestartSession() end
+  local click = IS.CLICKS[hit.key]
+  if button ~= "LeftButton" or not click or ns.WindowWaitsForCombat(click[1]) then return end
+  ask(click[2], click[3])
+end
+
+-- One block's hit area over its text (the text takes no mouse): its tooltip on hover, and its clicks.
 local function addHit(frame, key)
   local hit = CreateFrame("Button", nil, frame)
   hit.key = key
   hit:SetAllPoints(IS.texts[key])
+  hit:RegisterForClicks("LeftButtonUp", "RightButtonUp")
   hit:SetScript("OnEnter", ns.Guard("info strip tip", IS.ShowTip))
   hit:SetScript("OnLeave", ns.Guard("info strip tip", function() GameTooltip:Hide() end))
+  hit:SetScript("OnClick", ns.Guard("click info strip", IS.Click))
   hit:Hide()
   return hit
 end
