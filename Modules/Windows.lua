@@ -1006,13 +1006,13 @@ do
 
   -- Gives a popup's first button back the game's colour, once it is enabled: its normal font object's (the label's
   -- own colour may be the red a destroy popup left on this reused frame), else the colour from before the paint.
-  -- The numeric T.Color drops the danger token, so a theme refresh doesn't paint it red again.
+  -- The numeric T.ColorRGB drops the danger token, so a theme refresh doesn't paint it red again.
   local function unpaint(button, label)
     if not (vgDanger[button] and button:IsEnabled()) then return end
     local font = button:GetNormalFontObject()
     local c = font and { font:GetTextColor() } or vgDanger[button]
     vgDanger[button] = nil
-    T.Color(label, c[1], c[2], c[3])
+    T.ColorRGB(label, c[1], c[2], c[3])
   end
 
   -- Paints a popup's first button: the danger colour while it is enabled on a destroy popup (GW.DANGER_POPUPS),

@@ -1460,7 +1460,7 @@ function T.DisabledLook(button, disabled)
   if disabled then labelBefore[button] = labelBefore[button] or { fs:GetTextColor() } return T.Color(fs, "disabled") end
   local c = labelBefore[button]
   labelBefore[button] = nil
-  if c then T.Color(fs, c[1], c[2], c[3]) end
+  if c then T.ColorRGB(fs, c[1], c[2], c[3]) end
 end
 
 -- A button's press and disabled looks (#257): the hidden overlay (T.FillParts, so it follows rounded
@@ -2703,17 +2703,21 @@ function T.RefreshText()
   for fs, token in pairs(colored) do fs:SetTextColor(T.RGB(token)) shadowFor(fs, token) end
 end
 
--- Colors a font string by token (remembered, so T.RefreshText keeps it current; see shadowFor), by
--- r, g, b (for other addons' skins; forgotten), or in the accent's text variant.
+-- Colors a font string by token (remembered, so T.RefreshText keeps it current; see shadowFor), or in
+-- the accent's text variant with no token. Given r, g, b instead, it is T.ColorRGB (for other addons' skins).
 function T.Color(fs, r, g, b)
-  if type(r) == "number" then
-    colored[fs] = nil
-    fs:SetTextColor(r, g, b)
-  else
-    colored[fs] = r or "accentText"
-    fs:SetTextColor(T.RGB(r or "accentText"))
-    shadowFor(fs, colored[fs])
-  end
+  if type(r) == "number" then return T.ColorRGB(fs, r, g, b) end
+  local token = r or "accentText"
+  colored[fs] = token
+  fs:SetTextColor(T.RGB(token))
+  shadowFor(fs, token)
+  return fs
+end
+
+-- Colors a font string r, g, b (0-1 components). Forgotten: T.RefreshText does not repaint it.
+function T.ColorRGB(fs, r, g, b)
+  colored[fs] = nil
+  fs:SetTextColor(r, g, b)
   return fs
 end
 
