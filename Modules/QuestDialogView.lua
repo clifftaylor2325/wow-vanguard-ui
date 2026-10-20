@@ -198,7 +198,8 @@ end
 local function pageSections(p)
   local rewards = p.rewards or {}
   if rewards[1] and rewards[1].kind == "required" then return QP.RequiredSection(rewards) end
-  return QP.RewardSections(p.choices or {}, rewards, p.pick == true)
+  local sections = p.pick == true and QP.ChooseSections or QP.ReceiveSections
+  return sections(p.choices or {}, rewards)
 end
 
 -- A card as it is laid out: its clicks, and no picked wash yet.

@@ -255,7 +255,7 @@ end
 local function renderRewards(f, d)
   f.rewards:SetPoint("TOPLEFT", f.history, "BOTTOMLEFT", 0, -REWARDS_GAP)
   local choices, fixed = splitRewards(d.rewards)
-  f.rewardsH = QP.LayoutRewards(f.lay, QP.RewardSections(choices, fixed, false))
+  f.rewardsH = QP.LayoutRewards(f.lay, QP.ReceiveSections(choices, fixed))
   f.money:SetPoint("TOPLEFT", f.rewards, "TOPLEFT", 0, -f.rewardsH - (f.rewardsH > 0 and QP.GAP or 0) - MONEY_GAP)
   f.money:SetText(d.money)
 end
