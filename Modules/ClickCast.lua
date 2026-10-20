@@ -99,10 +99,15 @@ local function drop(list, key)
   end
 end
 
--- Puts a checked binding in a spec's list, replacing the key's old one (nothing is applied).
-local function put(list, key, action, value, id, rank)
-  drop(list, key)
-  list[#list + 1] = { key = key, action = action, value = value, spellID = id, rank = rank }
+-- A copy of a binding record, so a stored binding never shares a table with the one it came from.
+local function copyOf(b)
+  return { key = b.key, action = b.action, value = b.value, spellID = b.spellID, rank = b.rank }
+end
+
+-- Puts a checked binding record in a spec's list, replacing the key's old one (nothing is applied).
+local function put(list, b)
+  drop(list, b.key)
+  list[#list + 1] = copyOf(b)
 end
 
 -- Adds (or replaces) the binding for a key in the current spec, then applies once.
@@ -110,7 +115,7 @@ end
 function CC.Add(key, action, value, id, rank)
   local err = problem(key, action, value)
   if err then return false, err end
-  put(CC.Bindings(), key, action, value, id, rank)
+  put(CC.Bindings(), { key = key, action = action, value = value, spellID = id, rank = rank })
   ns.OutOfCombat(CC.ApplyAll, "clickcast")
   return true
 end
@@ -121,10 +126,14 @@ function CC.Remove(key)
   ns.OutOfCombat(CC.ApplyAll, "clickcast")
 end
 
+-- Empties a list in place (the saved table stays the same one).
+local function clearList(list)
+  for i = #list, 1, -1 do list[i] = nil end
+end
+
 -- Removes every binding in the current spec.
 function CC.Clear()
-  local list = CC.Bindings()
-  for i = #list, 1, -1 do list[i] = nil end
+  clearList(CC.Bindings())
   ns.OutOfCombat(CC.ApplyAll, "clickcast")
 end
 
@@ -136,7 +145,9 @@ end
 function CC.ApplyLayout(layout)
   local list = CC.Bindings()
   for key, b in pairs(layout) do
-    if not problem(key, b.action, b.value) then put(list, key, b.action, b.value, b.action == "spell" and spellID(b.value) or nil) end
+    if not problem(key, b.action, b.value) then
+      put(list, { key = key, action = b.action, value = b.value, spellID = b.action == "spell" and spellID(b.value) or nil })
+    end
   end
   ns.OutOfCombat(CC.ApplyAll, "clickcast")
 end
@@ -144,18 +155,14 @@ end
 -- Copies the current spec's bindings over another spec's.
 function CC.CopyToSpec(spec)
   local from, to = CC.Bindings(), CC.Bindings(spec)
-  for i = #to, 1, -1 do to[i] = nil end
-  for i, b in ipairs(from) do
-    to[i] = { key = b.key, action = b.action, value = b.value, spellID = b.spellID, rank = b.rank }
-  end
+  clearList(to)
+  for i, b in ipairs(from) do to[i] = copyOf(b) end
 end
 
 -- The current spec's bindings as a string to share.
 function CC.Export()
   local list = {}
-  for i, b in ipairs(CC.Bindings()) do
-    list[i] = { key = b.key, action = b.action, value = b.value, spellID = b.spellID, rank = b.rank }
-  end
+  for i, b in ipairs(CC.Bindings()) do list[i] = copyOf(b) end
   return ns.Serialize.Encode("clickcast", { bindings = list })
 end
 
@@ -191,8 +198,10 @@ end
 -- Swaps the current spec's bindings for a checked list (the last of two for one key wins) and applies once.
 local function replaceAll(list)
   local mine = CC.Bindings()
-  for i = #mine, 1, -1 do mine[i] = nil end
-  for _, b in ipairs(list) do put(mine, b.key, b.action, b.value, wholeNumber(b.spellID), wholeNumber(b.rank)) end
+  clearList(mine)
+  for _, b in ipairs(list) do
+    put(mine, { key = b.key, action = b.action, value = b.value, spellID = wholeNumber(b.spellID), rank = wholeNumber(b.rank) })
+  end
   ns.OutOfCombat(CC.ApplyAll, "clickcast")
 end
 
