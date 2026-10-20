@@ -377,11 +377,13 @@ local function resetPageRow(page, rows)
   end, function() return anyChanged(rows) end, isReset = true }
 end
 
--- A copy of a page's row list, "(reload)" moved off each caption: a page may hand back the same table at every
--- opening (Click casting's), and the window's own rows must not pile up in it.
+-- A copy of a page's row list, each row copied too, "(reload)" moved off each caption: a page may hand back the same
+-- tables at every opening (Click casting's), and the window's own marks (the reload tag, the tip) must not pile up in them.
 local function copiedRows(page)
   local rows = {}
-  for i, row in ipairs(page.rows()) do
+  for i, source in ipairs(page.rows()) do
+    local row = {}
+    for key, value in pairs(source) do row[key] = value end
     moveReload(row)
     rows[i] = row
   end
