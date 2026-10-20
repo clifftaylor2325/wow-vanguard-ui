@@ -34,6 +34,8 @@ MT.MAXROWS = 10
 MT.WIDTHS = { 200, 600 }
 -- A header button's width.
 MT.BUTTON_W = 52
+-- The short-number units, each a thousand times the last.
+MT.SUFFIXES = { "", "K", "M" }
 
 -- Reading ------------------------------------------------------------------------------------
 
@@ -96,11 +98,15 @@ local function trim(n)
   return (string.format("%.2f", n):gsub("%.?0+$", ""))
 end
 
--- A plain number as short text: "12.3K", "1.5M", or the number itself below a thousand.
+-- A plain number as short text: "12.3K", "1.5M", or the number itself below a thousand. It is
+-- rounded first, so one that rounds up to a thousand reads in the next unit ("1M", not "1000K").
 local function plainShort(n)
-  if n >= 1e6 then return trim(n / 1e6) .. "M" end
-  if n >= 1e3 then return trim(n / 1e3) .. "K" end
-  return trim(n)
+  local step, text = 1, trim(n)
+  while step < #MT.SUFFIXES and tonumber(text) >= 1000 do
+    step = step + 1
+    text = trim(n / 1000 ^ (step - 1))
+  end
+  return text .. MT.SUFFIXES[step]
 end
 
 -- A figure as short text ("12.3K"): a plain one formatted here, a hidden one by the game; "" where the client refuses.

@@ -31,14 +31,13 @@ local REACTION = {
   "repFriendly", "repFriendly", "repFriendly", "repFriendly",
 }
 
--- A number as short text: 12.3K, 1.2M.
+-- A number as short text: 12.3K, 1.2M. Thousands are rounded first, so one that rounds up to
+-- a thousand reads in millions ("1.0M", not "1000.0K").
 function DB.Short(n)
-  if n >= 1e6 then
-    return string.format("%.1fM", n / 1e6)
-  elseif n >= 1e3 then
-    return string.format("%.1fK", n / 1e3)
-  end
-  return tostring(math.floor(n))
+  if n < 1e3 then return tostring(math.floor(n)) end
+  local thousands = string.format("%.1fK", n / 1e3)
+  if n >= 1e6 or thousands == "1000.0K" then return string.format("%.1fM", n / 1e6) end
+  return thousands
 end
 
 -- Values -------------------------------------------------------------------------------

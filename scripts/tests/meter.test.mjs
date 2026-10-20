@@ -95,6 +95,13 @@ it("a hidden figure's short text is the game's answer, handed back without a tru
   expect(short("error('refused')"), "a refusal is empty").toBe("");
 });
 
+it("a plain figure that rounds up to a thousand reads in the next unit", () => {
+  const addon = loggedIn(METER_ENV, METER_ON);
+  // MT.Short of a plain number, as text.
+  const short = (n) => addon.eval(`return ns.GetModule('Meter').Short(${n})`);
+  expect([short(999.996), short(999999), short(1500), short(12)], "1000 never shows before K or M").toEqual(["1K", "1M", "1.5K", "12"]);
+});
+
 it("a widget that refuses a hidden value leaves the row as it was, with no error", () => {
   const addon = loggedIn(METER_ENV, METER_ON);
   addon.eval("local row = Vanguard_Meter.rows[1] row.SetValue = function() error('refused') end row.name.SetText = function() error('refused') end");

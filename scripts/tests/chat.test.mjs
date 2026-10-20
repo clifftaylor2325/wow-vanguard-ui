@@ -1171,6 +1171,8 @@ it("minimap with no position, chat window hooks, and short numbers", () => {
   expect(addon.eval("return type(__hooks.FCF_Tab_OnClick)") === "function", "clicking a chat tab refreshes the tabs").toBeTruthy();
   expect(addon.eval('return ns.GetModule("DataBars").Short(1500000)') === "1.5M", "a million is shown as millions").toBeTruthy();
   expect(addon.eval('return ns.GetModule("DataBars").Short(12)') === "12", "a small number is shown whole").toBeTruthy();
+  expect(addon.eval('return ns.GetModule("DataBars").Short(999960)'), "a number that rounds up to a thousand thousands reads in millions").toBe("1.0M");
+  expect(addon.eval('return ns.GetModule("DataBars").Short(999940)'), "one that doesn't stays in thousands").toBe("999.9K");
 });
 it("game windows in the Vanguard look: framed windows, popups, breath bar, and windows that load later", () => {
   const addon = loggedIn(WINDOWS_ENV);
