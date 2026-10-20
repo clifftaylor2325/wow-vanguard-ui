@@ -199,44 +199,50 @@ end
 
 -- A reagent line for a recipe's slot: "2/4 Linen Cloth" (your bags and bank against what the recipe needs)
 -- and whether you have enough; nil for an optional slot, a hidden value, or an item the client hasn't
--- named yet (its data is asked for, and the line comes with it).
+-- named yet (its data is asked for, and the line comes with it). The second value is true in that last case.
 local function reagentLine(slot)
   local basic = (Enum and Enum.CraftingReagentType or {}).Basic or QT.BASIC_REAGENT
   local r, need = plainTable(slot.reagents) and plainTable(slot.reagents[1]), ns.PlainNumber(slot.quantityRequired)
   local id = r and ns.PlainNumber(r.itemID)
   if ns.PlainNumber(slot.reagentType) ~= basic or not (id and need) then return nil end
   local name = ns.CallIf(C_Item, "GetItemInfo", id)
-  if ns.IsSecret(name) or type(name) ~= "string" then ns.CallIf(C_Item, "RequestLoadItemDataByID", id) QT.waitingItems = true return nil end
+  if ns.IsSecret(name) or type(name) ~= "string" then ns.CallIf(C_Item, "RequestLoadItemDataByID", id) return nil, true end
   local have = ns.PlainNumber(ns.CallIf(C_Item, "GetItemCount", id, true)) or 0
   return { text = have .. "/" .. need .. " " .. name, done = have >= need }
 end
 
--- A tracked recipe's reagents as { text, done } lines, in the recipe's order.
+-- A tracked recipe's reagents as { text, done } lines, in the recipe's order; the second value is true while
+-- a reagent's name is still loading.
 local function recipeReagents(schematic)
-  local out = {}
+  local out, loading = {}, false
   for _, slot in ipairs(plainTable(schematic.reagentSlotSchematics) or {}) do
-    local line = plainTable(slot) and reagentLine(slot)
+    local line, waiting
+    if plainTable(slot) then line, waiting = reagentLine(slot) end
     if line then out[#out + 1] = line end
+    loading = loading or waiting == true
   end
-  return out
+  return out, loading
 end
 
 -- One tracked recipe: { id, title, objectives, recipe = true }, or nil when the client has no schematic for it.
+-- The second value is true while one of its reagent names is still loading.
 function QT.Recipe(id)
   local s = id and plainTable(ns.CallIf(C_TradeSkillUI, "GetRecipeSchematic", id, false))
   if not s or ns.IsSecret(s.name) or type(s.name) ~= "string" then return nil end
-  return { id = id, title = s.name, objectives = recipeReagents(s), recipe = true }
+  local reagents, loading = recipeReagents(s)
+  return { id = id, title = s.name, objectives = reagents, recipe = true }, loading
 end
 
 -- The recipes you track in a profession window, in the game's order (none on a client without the
 -- tracking API; C_TradeSkillUI.GetRecipesTracked, TradeSkillUIDocumentation.lua).
 function QT.Recipes()
-  local out = {}
-  QT.waitingItems = false
+  local out, loading = {}, false
   for _, id in ipairs(plainTable(ns.CallIf(C_TradeSkillUI, "GetRecipesTracked", false)) or {}) do
-    local r = QT.Recipe(ns.PlainNumber(id))
+    local r, waiting = QT.Recipe(ns.PlainNumber(id))
+    loading = loading or waiting == true
     if r then out[#out + 1] = r end
   end
+  QT.waitingItems = loading
   return out
 end
 

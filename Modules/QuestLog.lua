@@ -101,7 +101,8 @@ local function requirements(id, d)
 end
 
 -- The chosen quest's details: { id, title, level, text, objectives, rewards, money, watched, shareable, done (the
--- quest history line), needs and short (QP.Needs), failed }.
+-- quest history line), needs and short (QP.Needs), failed }. It selects the quest in the game's log, which the
+-- quest text read needs.
 function QL.Details(id)
   local index = ns.PlainNumber(questLog("GetLogIndexForQuestID", id))
   local info = index and questLog("GetInfo", index)
