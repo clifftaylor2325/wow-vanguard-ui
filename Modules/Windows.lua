@@ -41,6 +41,11 @@ local GW = ns.Module("Windows", { defaults = {
 
 -- The groups of game windows, each a switch under Game windows.
 GW.GROUPS = { "windows", "popups", "timers", "social", "town", "system", "map", "menus", "tabs", "pvp" }
+
+-- Whether the switch of a group of windows is on (a key of GW.settings, false until the settings load).
+function GW.GroupOn(group)
+  return type(GW.settings) == "table" and GW.settings[group] == true
+end
 -- Every registered window: name -> { group = , skin = }, and the names in the order registered.
 GW.REGISTERED, GW.ORDER = {}, {}
 

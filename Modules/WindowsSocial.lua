@@ -1180,7 +1180,8 @@ local sideSkins = {
 -- edge, while the tabs group dresses them) and by the side window's own panel padding, so the game's gap between the
 -- tab column and the side window (SocialUIFrameMixin:GetTabColumnWidth, 7 past the tab) holds.
 local function sideShift(window, side)
-  local tabs = GW.settings and GW.settings.tabs and T.Padding(window) - T.Pixel(window) or 0
+  local tabs = 0
+  if GW.GroupOn("tabs") then tabs = GW.TabPad(window) end
   return math.max(tabs, 0) + T.Padding(side)
 end
 
@@ -1211,7 +1212,7 @@ end
 -- with its icon and count kept, out past the window's padding, raised while it is selected and its icon
 -- greyed while another is selected. Left to the game when the tabs group is off.
 local function dressSocialTabs(frame)
-  if not (GW.settings and GW.settings.tabs) or type(frame.EnumerateTabs) ~= "function" then return end
+  if not GW.GroupOn("tabs") or type(frame.EnumerateTabs) ~= "function" then return end
   for tab in frame:EnumerateTabs() do
     GW.PadTabAgain(tab, frame)
     T.Tab(tab, { dimIcon = true })
@@ -1415,7 +1416,7 @@ end
 
 -- The group boxes and buttons are made when Blizzard_RaidUI loads, after the tab itself is skinned.
 local function onRaidUILoaded(_, addon)
-  if addon == "Blizzard_RaidUI" and GW.settings and GW.settings.social then GW.SkinRaidTab() end
+  if addon == "Blizzard_RaidUI" and GW.GroupOn("social") then GW.SkinRaidTab() end
 end
 ns.On("ADDON_LOADED", onRaidUILoaded)
 

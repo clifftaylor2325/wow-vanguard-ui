@@ -155,11 +155,16 @@ local function movedOut(window, pad, point, rel, relPoint, x, y)
   return point, rel, relPoint, x, y
 end
 
+-- How far a tab set against an outer edge of its window moves out: its panel's padding, one pixel in so their borders meet.
+function GW.TabPad(window)
+  return T.Padding(window) - T.Pixel(window)
+end
+
 -- Moves a tab (or a holder of tabs, which has two anchors) set against an outer edge of its window out to its
 -- panel's padded edge (one pixel in, so their borders meet), once: the panel reaches past the window, and would
 -- cover the tab's near end.
 function GW.ClearPadding(tab, window)
-  local pad, count, moved = T.Padding(window) - T.Pixel(window), tab:GetNumPoints(), {}
+  local pad, count, moved = GW.TabPad(window), tab:GetNumPoints(), {}
   if vgTabPadded[tab] or pad <= 0 or count < 1 or count > 2 then return end
   vgTabPadded[tab] = true
   for i = 1, count do moved[i] = { movedOut(window, pad, tab:GetPoint(i)) } end
@@ -1030,7 +1035,7 @@ end
 -- window's own group is on if it is registered (a window left to the game keeps the game's tabs).
 local function wanted(name)
   local entry = GW.REGISTERED[name]
-  return GW.settings and GW.settings.tabs and (not entry or GW.settings[entry.group]) or false
+  return GW.GroupOn("tabs") and (not entry or GW.GroupOn(entry.group)) or false
 end
 
 -- Dresses the tabs of the window of that name again, when they are Vanguard's to dress: for a
@@ -1066,7 +1071,7 @@ end
 -- At login, after the Windows module enabled: every window registered now and the side-tab windows,
 -- and later those that load with their part of the game.
 local function enable()
-  if not (GW.settings and GW.settings.tabs) then return end
+  if not GW.GroupOn("tabs") then return end
   dressAll(GW.ORDER)
   dressAll(GW.TAB_WINDOWS)
   ns.On("ADDON_LOADED", onLoaded)

@@ -474,7 +474,7 @@ end
 -- MerchantFrame.lua, which MerchantFrame_Update calls for the merchant tab), so paging keeps the look. Once.
 local function watchMerchant()
   local frame = _G.MerchantFrame
-  if not (GW.settings and GW.settings.town) or type(frame) ~= "table" or not frame.HookScript or vgMerchant[frame] then return end
+  if not GW.GroupOn("town") or type(frame) ~= "table" or not frame.HookScript or vgMerchant[frame] then return end
   vgMerchant[frame] = true
   GW.SkinMerchant()
   frame:HookScript("OnShow", ns.Guard("show merchant", GW.SkinMerchant))

@@ -320,7 +320,7 @@ local function watchCheckMakers(window, names, apply)
       vgCheckMakers[name] = true
       hooksecurefunc(name, ns.Guard("hook " .. name, function(frame)
         local target = type(frame) == "table" and frame.GetChildren and frame or _G[window]
-        if GW.settings and GW.settings.system and type(target) == "table" then apply(target) end
+        if GW.GroupOn("system") and type(target) == "table" then apply(target) end
       end))
     end
   end
