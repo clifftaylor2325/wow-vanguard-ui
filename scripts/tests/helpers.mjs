@@ -126,6 +126,7 @@ export const ACTIONS_ENV = `
   IsCurrentAction = function(slot) return a(slot).current == true end
   IsAutoRepeatAction = function() return false end
   GetActionCooldown = function(slot) local cd = a(slot).cd or { 0, 0 } return cd[1], cd[2] end
+  C_ActionBar.IsEquippedAction = function(slot) return a(slot).equipped == true end
   PickupAction = function(slot) __picked = slot end
   PlaceAction = function(slot) __placed = slot end
   __binds = { ACTIONBUTTON1 = { "1" }, ACTIONBUTTON2 = { "SHIFT-2" }, MULTIACTIONBAR1BUTTON1 = { "CTRL-BUTTON4" } }

@@ -743,3 +743,21 @@ it("hotkey text stays on one line inside the button, right-aligned", () => {
   expect(hk, "pinned to both top corners, so a long name is cut at the button's edge").toEqual({ left: true, right: true, justify: "RIGHT", noWrap: true });
 });
 
+it("an action button marks an item you wear with a thin ring, and drops it when the item comes off", () => {
+  // As the client: an empty slot is refused.
+  const addon = loggedIn(ACTIONS_ENV + ` __actions[1].equipped = true
+    C_ActionBar.IsEquippedAction = function(slot) if not __actions[slot] then error("TEST-ONLY invalid slot") end return __actions[slot].equipped end`);
+  // Whether each edge of bar 1 button n's equipped ring shows.
+  const ring = (n) => addon.eval(`local out = {} for side, e in pairs(Vanguard_Bar1Button${n}.equipped) do out[side] = e:IsShown() end return out`);
+  expect(ring(1), "a worn trinket's button: every edge").toEqual({ top: true, bottom: true, left: true, right: true });
+  expect(Object.values(ring(2)).includes(true), "another action: none").toBe(false);
+  const edge = addon.eval("local e = Vanguard_Bar1Button1.equipped.top return { e.__layer, e.__vertexColor }");
+  expect([edge[0], edge[1].slice(0, 3)], "over the icon, in the good colour").toEqual(["OVERLAY", addon.eval('return { ns.Theme.RGB("good") }').slice(0, 3)]);
+  expect(addon.eval("return #ns.errors"), "no slot was refused").toBe(0);
+  addon.eval("__actions[1].equipped = false");
+  addon.fire("PLAYER_EQUIPMENT_CHANGED", 13, true);
+  expect(Object.values(ring(1)).includes(true), "taken off: the ring goes").toBe(false);
+  expect(Object.values(ring(4)).includes(true), "an empty slot is never asked (the client would refuse it)").toBe(false);
+  addon.eval("__actions[2].equipped = { __secret = true } ns.GetModule('ActionBars').UpdateButton(Vanguard_Bar1Button2)");
+  expect(Object.values(ring(2)).includes(true), "a hidden answer counts as no").toBe(false);
+});

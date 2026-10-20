@@ -281,6 +281,14 @@ local function updateChecked(b)
   b:SetChecked(isTrue(call("IsCurrentAction", b.action)) or isTrue(call("IsAutoRepeatAction", b.action)))
 end
 
+-- Shows the equipped-item ring (where Vanguard skins the button) while its action is an item you wear;
+-- the client is asked only about a slot with an action, and a hidden answer counts as no.
+local function updateEquipped(b)
+  if not b.equipped then return end
+  local on = b.hasAction and isTrue(call("IsEquippedAction", b.action))
+  for _, edge in pairs(b.equipped) do edge:SetShown(on) end
+end
+
 -- The hotkey text from the binding this button answers to.
 local function updateHotkey(b)
   local key = GetBindingKey and GetBindingKey(b.binding)
@@ -304,6 +312,7 @@ function AB.UpdateButton(b)
   updateCooldown(b)
   updateUsable(b)
   updateChecked(b)
+  updateEquipped(b)
   updateHotkey(b)
   AB.WatchRange(b)
 end
@@ -415,6 +424,7 @@ local function addRegions(b)
   b.glow = T.Glow(b, 6)
   b:SetCheckedTexture(T.WHITE)
   T.Tint(b:GetCheckedTexture(), "checked")
+  if not ns.Masque.Group(AB.MASQUE) then b.equipped = T.InnerRing(b, "good") end
 end
 
 -- The mouse came over a button: the tooltip of the action in the slot it shows
@@ -706,6 +716,7 @@ end
 local function onEquipment()
   refreshIcons()
   refreshCarried()
+  each(updateEquipped)
 end
 
 -- Event -> what it refreshes.

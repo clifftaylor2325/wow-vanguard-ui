@@ -1368,6 +1368,16 @@ local function ringAt(e, frame, pixels, token)
   sizeEdges(e, frame)
 end
 
+-- A one-pixel ring in token just inside frame's edge and over its art (an action button's
+-- equipped-item mark), hidden until its four edges are shown; returns them by side.
+function T.InnerRing(frame, token)
+  local e = {}
+  for side in pairs(EDGE_POINTS) do e[side] = solid(frame, "OVERLAY", 1, "border") end
+  ringAt(e, frame, -1, token)
+  for _, t in pairs(e) do t:Hide() end
+  return e
+end
+
 -- A frame's focus ring parts, { gap = edges, ring = edges }, or nil before it ever had one.
 function T.FocusParts(frame) return focusOf[frame] end
 
