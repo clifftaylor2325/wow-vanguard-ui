@@ -80,7 +80,7 @@ Every layout holds at Text size 130 % with a long caption: captions wrap left of
 | Disabled | no hover or press, text and icons `disabled` at full alpha (never fade a whole bordered control) | the same | `disabled` |
 | Focus | `T.FocusRing`; an edit box instead turns its border `accentText` while it has focus | the same | |
 
-The controls with a moving part keep this vocabulary on their own geometry: the switch's knob brightens on hover and drops 1 px on press while the track never changes (today's `accentDim` press fill goes); the slider thumb gets a 20 px `hover` wash disc on hover, 12 % while dragging. The window controls' hover tile becomes `raisedHover` so only close keeps a coloured tile ([DECIDE] 12a). States are layers over an unchanged base, so they stack; only press moves anything, and only by one pixel. Escape closes every Vanguard window, dialog and menu; a click outside closes a menu.
+The controls with a moving part keep this vocabulary on their own geometry: the switch's knob brightens on hover and drops 1 px on press while the track never changes (today's `accentDim` press fill goes); the slider thumb gets a 20 px `hover` wash disc on hover, 12 % while dragging. The window controls show only their glyph at rest; under the mouse a rounded `raisedHover` tile with a `borderHi` line appears, and pressed it turns `inset` with a `divider` line and the glyph drops 1 px. No control has a coloured tile: close's cross turns vermilion (`bad`) on hover, its tile stays grey ([DECIDE] 12a). States are layers over an unchanged base, so they stack; only press moves anything, and only by one pixel. Escape closes every Vanguard window, dialog and menu; a click outside closes a menu.
 
 ### 2.6 One type pairing per place
 
@@ -194,7 +194,7 @@ Not planned, on purpose: a light theme (decided), window ornaments on by default
 
 Decided on 2026-10-17: Cliff took the recommended answer, (a), on every open item ("i agree with all recommendations", project chat, 13:02 and 14:39 UTC); items 2 and 13 were settled by his in-game look at the pills the same day. The questions stay below as the record; §5 says which phase builds each answer.
 
-1. **Window titles on skinned game windows.** (a) Keep the game's centred placement, recoloured to `text` in the `title` role; no layout risk. (b) Left-align them like Vanguard's own windows; a layout change on every game window. **Decided: (a).**
+1. **Window titles on skinned game windows.** (a) Keep the game's centred placement, recoloured to `text` in the `title` role; no layout risk. (b) Left-align them like Vanguard's own windows; a layout change on every game window. **Decided: (a)** on 2026-10-17; replaced on 2026-10-20 by Cliff's pick of the ghost tile (option B of that day's wireframe): no tile at rest, a rounded grey tile on hover for every control, close coloured only by its cross.
 2. **Slider track ends.** Settled, no answer needed: the track merged in PR #393 is a pill with rounded ends, and Cliff saw it in game on 2026-10-17 without objection; his second look (PR #395) is about the thumb and the outline, not the shape.
 3. **Active tab.** (a) The attached tab: it takes its page's colour and has no border where it meets the page; no accent on any tab. (b) A 2 px accent line that replaces the tab's top border. **Decided: (a).**
 4. **List and nav selection.** (a) An accent rail plus a lighter fill, text and icon unchanged. (b) Keep today's accent wash and brass icon. **Decided: (a).**

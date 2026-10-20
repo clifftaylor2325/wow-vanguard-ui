@@ -90,6 +90,18 @@ function cut(size, w, kind, flipX, flipY) {
   });
 }
 
+// A window control's tile (Core/Theme.lua T.WindowControl, 20 units shown), drawn at 4 texels a unit: a square
+// with T.CORNER_RADIUS (4 units) arcs, by signed distance so the arcs are smooth and the sides stay hard. `w`
+// texels wide along the edge for its line (one unit), or the whole square for the fill under it.
+function controlTile(w) {
+  const size = 80, half = 40, r = 16;
+  return fill(image(size, size), (x, y) => {
+    const qx = Math.abs(x + 0.5 - half) - (half - r), qy = Math.abs(y + 0.5 - half) - (half - r);
+    const sd = Math.hypot(Math.max(qx, 0), Math.max(qy, 0)) + Math.min(Math.max(qx, qy), 0) - r;
+    return [1, 1, 1, clamp01(0.5 - sd) - (w ? clamp01(0.5 - sd - w) : 0)];
+  });
+}
+
 // The low-health vignette (Modules/GameAlerts.lua), stretched over the screen: clear in the middle, rising to full
 // white toward the edges and corners, so the theme's vignette color tints it and the curve sets its strength.
 function vignette() {
@@ -191,6 +203,9 @@ export const TEXTURES = {
   OrnamentCorner: () => draw(image(16, 16), 16, [box(0, 5, 1, 16), box(5, 0, 16, 1), line(0.5, 5, 5, 0.5, 1)]),
   // Rounded corners (the corners setting): the border's arc, 8 of 32 wide (one pixel at T.CORNER_RADIUS 4 px), and the fill under it.
   CornerLine: () => corner(32, 8, true),
+  // A window control's tile under the mouse (its fill and its one-pixel line, both tinted by the theme).
+  ControlTile: () => controlTile(0),
+  ControlTileLine: () => controlTile(4),
   CornerFill: () => corner(32, 8, false),
   // Its masks, which round a bar inside a rounded frame (the Versus deck's unit frames) inside the arc.
   CornerRoundMask: () => roundMask(32, 8),

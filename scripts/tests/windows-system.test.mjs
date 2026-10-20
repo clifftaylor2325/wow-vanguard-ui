@@ -546,7 +546,7 @@ it("click bindings: skinned when their addon loads, with the three buttons and t
   addon.eval("local box = ClickBindingFrame.ScrollBox box:Take(__bindingRow())");
   expect(addon.eval(`local row = ClickBindingFrame.ScrollBox.rows[1]
     return { ns.Theme.RowParts(row) ~= nil, row.Background.__alpha, row.FrameHighlight.__alpha, row.Icon.__alpha ~= 0, row.NewOutline.__alpha ~= 0, #({ row.DeleteButton:GetRegions() }), row.DeleteButton.Icon.__alpha ~= 0 }`),
-    "a binding row the game takes: a theme row, its plate and gold glow faded, its icon and new mark kept, the delete button with a control tile added to its icon and art").toEqual([true, 0, 0, true, true, 3, true]);
+    "a binding row the game takes: a theme row, its plate and gold glow faded, its icon and new mark kept, the delete button with a control tile and its line added to its icon and art").toEqual([true, 0, 0, true, true, 4, true]);
   sameOnReshow(addon, "ClickBindingFrame");
   const off = loggedIn(COOLDOWN_ENV, SWITCH_OFF);
   off.eval("__clickBinding()");

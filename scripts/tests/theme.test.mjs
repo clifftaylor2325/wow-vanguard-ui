@@ -43,33 +43,64 @@ it("widgets", () => {
   expect(/Media\\Icons\\CloseMark$/.test(out.glyph || ""), "the close button draws the theme's cross").toBeTruthy();
 });
 
-it("window controls: sized when the caller gave no size, on a faint tile at rest, then white on a colored tile under the mouse (red behind close)", () => {
+// A window control's regions by layer: its tile's fill (BACKGROUND), line (BORDER) and glyph (OVERLAY).
+const CONTROL_PARTS = `local function parts(b)
+  local p = {}
+  for _, r in ipairs({ b:GetRegions() }) do p[r.__layer] = r end
+  return p.BACKGROUND, p.BORDER, p.OVERLAY
+end`;
+
+it("window controls at rest: sized when the caller gave no size, a plain glyph in text2 with no tile behind it", () => {
   const addon = loggedIn();
-  const out = addon.eval(`
-    local function parts(b)
-      local tile, glyph, extra = nil, nil, 0
-      for _, r in ipairs({ b:GetRegions() }) do
-        if r.__layer == "ARTWORK" then tile = r
-        elseif r.__layer == "OVERLAY" then extra = extra + (glyph and 1 or 0) glyph = r end
-      end
-      return tile, glyph, extra
-    end
+  const out = addon.eval(`${CONTROL_PARTS}
     local c = ns.Theme.CloseButton(CreateFrame("Button", nil, UIParent))
     local m = CreateFrame("Button", nil, UIParent)
     m:SetSize(30, 30) ns.Theme.WindowControl(m, "Maximize")
-    local tile, glyph, extra = parts(c)
-    local quiet = { c:GetWidth(), tile:IsShown(), glyph.__vertexColor, extra, tile:GetWidth(), (glyph.__texture or ""):match("(%a+)$"), tile.__vertexColor }
-    c.__scripts.OnEnter(c)
-    local lit = { tile:IsShown(), tile.__vertexColor, glyph.__vertexColor }
-    c.__scripts.OnHide(c)
-    local mTile, mGlyph = parts(m)
-    m.__scripts.OnEnter(m)
-    return { quiet = quiet, lit = lit, after = tile.__vertexColor, m = { m:GetWidth(), mGlyph.__texture, mTile.__vertexColor } }`);
-  expect([out.quiet[0], out.quiet[1], isTok(addon, out.quiet[2], "text2"), out.quiet[3], out.quiet[4], out.quiet[5]],
-    "an unsized close button takes the 20-unit tile's size in whole, even screen pixels; at rest: a faint raised tile under a plain cross in text2 and nothing else").toEqual([px(addon, 20, true), true, true, 0, px(addon, 20, true), "CloseMark"]);
-  expect(isTok(addon, out.quiet[6], "raised"), "the resting tile is the raised slate, the same behind every control").toBe(true);
-  expect([out.lit[0], isTok(addon, out.lit[1], "bad"), isTok(addon, out.lit[2], "white"), isTok(addon, out.after, "raised")], "under the mouse: a red square tile, the cross white; hidden under the mouse (no OnLeave comes) the tile goes back to the resting slate").toEqual([true, true, true, true]);
-  expect([out.m[0], /Icons\\Maximize$/.test(out.m[1]), isTok(addon, out.m[2], "raisedHover")], "a sized control keeps its size; a maximize control's glyph, on the grey raisedHover tile (only close is coloured)").toEqual([30, true, true]);
+    local tile, line, glyph = parts(c)
+    return { c:GetWidth(), tile:IsShown(), line:IsShown(), glyph.__vertexColor, tile:GetWidth(), (glyph.__texture or ""):match("(%a+)$"), (tile.__texture or ""):match("(%a+)$"), m:GetWidth() }`);
+  expect([out[0], out[1], out[2], isTok(addon, out[3], "text2"), out[4], out[5], out[6], out[7]],
+    "an unsized close button takes the 20-unit tile's size in whole, even screen pixels (a sized one keeps its own); at rest its rounded tile is hidden under a plain cross in text2").toEqual([px(addon, 20, true), false, false, true, px(addon, 20, true), "CloseMark", "ControlTile", 30]);
+});
+
+it("window controls under the mouse: a grey rounded tile with a borderHi line; close's cross turns vermilion, the others' glyph text", () => {
+  const addon = loggedIn();
+  const out = addon.eval(`${CONTROL_PARTS}
+    local c = ns.Theme.CloseButton(CreateFrame("Button", nil, UIParent))
+    local m = ns.Theme.WindowControl(CreateFrame("Button", nil, UIParent), "Maximize")
+    c.__scripts.OnEnter(c) m.__scripts.OnEnter(m)
+    local tile, line, glyph = parts(c)
+    local _, _, mGlyph = parts(m)
+    return { tile:IsShown(), tile.__vertexColor, line.__vertexColor, glyph.__vertexColor, mGlyph.__vertexColor }`);
+  expect([out[0], isTok(addon, out[1], "raisedHover"), isTok(addon, out[2], "borderHi"), isTok(addon, out[3], "bad"), isTok(addon, out[4], "text")],
+    "lit: the tile shows in raisedHover with its borderHi line, close's mark is the state vermilion and its tile stays grey; maximize's glyph is text").toEqual([true, true, true, true, true]);
+});
+
+it("window controls pressed: an inset tile with a divider line, the glyph one pixel down; hiding puts it back to rest", () => {
+  const addon = loggedIn();
+  const out = addon.eval(`${CONTROL_PARTS}
+    local c = ns.Theme.CloseButton(CreateFrame("Button", nil, UIParent))
+    local tile, line, glyph = parts(c)
+    c.__scripts.OnEnter(c) c.__scripts.OnMouseDown(c)
+    local held = { tile.__vertexColor, line.__vertexColor, glyph.__points.CENTER.y, ns.Theme.Pixel(c) }
+    c.__scripts.OnMouseUp(c)
+    local up = glyph.__points.CENTER.y
+    c.__scripts.OnMouseDown(c) c.__scripts.OnHide(c)
+    return { held = held, up = up, after = { tile:IsShown(), glyph.__points.CENTER.y, glyph.__vertexColor } }`);
+  expect([isTok(addon, out.held[0], "inset"), isTok(addon, out.held[1], "divider"), out.held[2], out.up], "held: inset with a divider line, the cross a pixel lower, back up on release").toEqual([true, true, -out.held[3], 0]);
+  expect([out.after[0], out.after[1], isTok(addon, out.after[2], "text2")], "hidden while held (no OnLeave or OnMouseUp comes): back to rest").toEqual([false, 0, true]);
+});
+
+it("control plates: the tile and its states behind a button's own icon, with no glyph of their own", () => {
+  const addon = loggedIn();
+  const out = addon.eval(`${CONTROL_PARTS}
+    local b = CreateFrame("Button", nil, UIParent)
+    b:SetSize(20, 20)
+    ns.Theme.ControlPlate(ns.Theme.ControlPlate(b))
+    local tile, line, glyph = parts(b)
+    local rest = tile:IsShown()
+    b.__scripts.OnEnter(b)
+    return { rest, tile:IsShown(), tile.__vertexColor, glyph == nil, ns.Theme.ControlGlyph(b) == nil }`);
+  expect([out[0], out[1], isTok(addon, out[2], "raisedHover"), out[3], out[4]], "hidden at rest, the grey tile under the mouse; no glyph, and ControlGlyph says so; safe to run twice").toEqual([false, true, true, true, true]);
 });
 
 it("panels with padding: the fill, border and shadow reach out past the frame, the frame itself stays put", () => {
