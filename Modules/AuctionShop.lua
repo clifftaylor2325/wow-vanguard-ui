@@ -488,9 +488,10 @@ end
 
 -- Listing i of the view's item as a row, or nil (unreadable, or above the entry's max price).
 local function listing(v, i)
-  local api = C_AuctionHouse
-  local r = v.commodity and api.GetCommoditySearchResultInfo(v.key.itemID, i) or api.GetItemSearchResultInfo(v.key, i)
-  local row = r and (v.commodity and commodityListing(r) or itemListing(r))
+  local r = AH.SearchResultInfo(v.key, v.commodity, i)
+  if not r then return nil end
+  local row
+  if v.commodity then row = commodityListing(r) else row = itemListing(r) end
   if row and not (v.maxPrice and row.price > v.maxPrice) then return row end
 end
 

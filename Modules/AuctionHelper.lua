@@ -159,6 +159,13 @@ function AH.RequestMore(commodity, key)
   api.RequestMoreItemSearchResults(key)
 end
 
+-- Search result i of an item: a commodity's by its itemID, an item's by its key (nil when there's none).
+function AH.SearchResultInfo(key, commodity, i)
+  local api = C_AuctionHouse
+  if commodity then return api.GetCommoditySearchResultInfo(key.itemID, i) end
+  return api.GetItemSearchResultInfo(key, i)
+end
+
 -- Waits until AH.SEND_GAP has passed since the last search, then tries the next (one timer at a time).
 local function sendLater(wait)
   if AH.waiting then return end

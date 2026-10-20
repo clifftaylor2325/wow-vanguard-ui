@@ -208,7 +208,7 @@ local function results(commodity, key)
   local api, out = C_AuctionHouse, {}
   local n = commodity and api.GetNumCommoditySearchResults(key.itemID) or api.GetNumItemSearchResults(key)
   for i = 1, ns.PlainNumber(n) or 0 do
-    out[#out + 1] = commodity and api.GetCommoditySearchResultInfo(key.itemID, i) or api.GetItemSearchResultInfo(key, i)
+    out[#out + 1] = AH.SearchResultInfo(key, commodity, i)
   end
   return out
 end

@@ -112,13 +112,10 @@ end
 
 -- Search result i of an item (a commodity's by its item ID, else by its key) as a row, or nil.
 local function resultRow(key, commodity, i)
-  local api = C_AuctionHouse
-  if commodity then
-    local r = api.GetCommoditySearchResultInfo(key.itemID, i)
-    return r and commodityRow(r)
-  end
-  local r = api.GetItemSearchResultInfo(key, i)
-  return r and itemRow(r)
+  local r = AH.SearchResultInfo(key, commodity, i)
+  if not r then return nil end
+  if commodity then return commodityRow(r) end
+  return itemRow(r)
 end
 
 -- The listings of an item you could buy, cheapest per unit first: none of yours, none over the
