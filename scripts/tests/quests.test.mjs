@@ -121,7 +121,7 @@ it("quest dialog: a long greeting or quest text scrolls, a short one does not", 
   expect(bodyScroll(addon)[2], "a new page starts at the top").toBe(0);
   addon.eval('GetQuestText = function() return "TEST-ONLY " .. string.rep("word ", 300) end');
   addon.fire("QUEST_DETAIL");
-  expect([panelHeights(addon), bodyScroll(addon)], "a quest's text and its objectives (24 + 14 px lines) count too; a row of reward cards (8 + 36 px) leaves the body 202 px").toEqual([[360, 202], [278, 76, 0]]);
+  expect([panelHeights(addon), bodyScroll(addon)], "a quest's text and its objectives (24 + 14 px lines) count too; the choices' row and the reward's row (8 + 36 + 8 + 36 px) leave the body 158 px").toEqual([[360, 158], [278, 120, 0]]);
 });
 it("quest dialog: sized to its page, above the cast bars, cards under the text, a quest mark without a portrait", () => {
   const addon = loggedIn(QUEST_ENV);
@@ -131,11 +131,11 @@ it("quest dialog: sized to its page, above the cast bars, cards under the text, 
   expect(addon.eval("return { ns.MoverPoint('questdialog') }"), "by default it sits centered, 8 px above the focus cast bar's top (324 + 14)").toEqual(["BOTTOM", "BOTTOM", 0, 346]);
   const castTops = ["player", "target", "focus"].map((u) => rect(`Vanguard_CastBar_${u}`).top);
   expect(castTops.every((top) => rect("Vanguard_QuestDialog").bottom > top), "every cast bar is below the dialog").toBe(true);
-  expect(panelHeights(addon), "a short quest: the text and objectives (40 px) and a row of cards (44 px) between the 64 px header and the 50 px footer").toEqual([198, 40]);
+  expect(panelHeights(addon), "a short quest: the text and objectives (40 px), then the two choices' row and the reward's row (8 + 36 + 8 + 36 px) between the 64 px header and the 50 px footer").toEqual([242, 40]);
   expect([addon.eval("return Vanguard_QuestDialog.cards[1]:GetLeft() - Vanguard_QuestDialog.text:GetLeft()"), addon.eval("return Vanguard_QuestDialog.money:GetLeft() - Vanguard_QuestDialog.text:GetLeft()")], "the cards and the money line start where the text does").toEqual([0, 0]);
   addon.eval("for i = 1, 4 do __rewards[#__rewards + 1] = __rewards[1] end");
   addon.fire("QUEST_DETAIL");
-  expect([panelHeights(addon)[0], addon.eval("return Vanguard_QuestDialog.cards[4]:GetTop() - Vanguard_QuestDialog.cards[1]:GetBottom()")], "seven items: three rows (8 + 3 x 36 + 2 x 4 px), the fourth card on the second row").toEqual([278, -4]);
+  expect([panelHeights(addon)[0], addon.eval("return Vanguard_QuestDialog.cards[4]:GetTop() - Vanguard_QuestDialog.cards[1]:GetBottom()")], "two choices and five rewards: the choices' row, then the rewards' two rows (8 + 36 + 8 + 2 x 36 + 4 px); the fourth card, the second reward, starts the rewards' row 8 px under the choices").toEqual([282, -8]);
   addon.eval("__greeting, __avail, __active, __options = '', {}, {}, {}");
   addon.fire("GOSSIP_SHOW");
   expect(panelHeights(addon), "an NPC with nothing to say still gets the least height (160), the body taking the rest").toEqual([160, 46]);
@@ -244,6 +244,7 @@ it("quest automation: accept, turn in, best reward, skip chatter; Shift skips it
   const on = "VanguardDB.profiles = { Default = { QuestAuto = { accept = true, turnIn = true, skipGossip = true } } }";
   const addon = loggedIn(QUEST_ENV, { savedVariables: on });
   addon.fire("QUEST_DETAIL");
+  addon.fire("QUEST_ACCEPTED", 90001);
   expect([dialog(addon).shown, calls(addon), chatHas(addon, /Accepted: TEST-ONLY Wolves/)], "accepted for you, the dialog stays shut").toEqual([false, ["accept nil"], true]);
   addon.eval("__shift = true");
   addon.fire("QUEST_DETAIL");
@@ -255,7 +256,7 @@ it("quest automation: accept, turn in, best reward, skip chatter; Shift skips it
   expect(calls(addon), "acknowledged, handed in; a choice of rewards is left to you").toEqual(["ack nil", "complete nil"]);
   addon.eval("VanguardDB.profiles.Default.QuestAuto.bestReward = true");
   addon.fire("QUEST_COMPLETE");
-  expect([calls(addon), chatHas(addon, /Turned in: TEST-ONLY Wolves \(took TEST-ONLY Gloves\)/)], "the best seller, when switched on").toEqual([["reward 2"], true]);
+  expect([calls(addon), chatHas(addon, /Turned in: TEST-ONLY Wolves \(took TEST-ONLY Gloves: sells for most\)/)], "the best seller, when switched on").toEqual([["reward 2"], true]);
   addon.eval('__prices["item:90022"] = nil');
   addon.fire("QUEST_COMPLETE");
   expect(calls(addon), "a price the game doesn't know yet: left to you").toEqual([]);
@@ -754,6 +755,125 @@ const logThumbs = (addon) => addon.eval(`local f = Vanguard_QuestLog
   return { list = look(f.listScroll), detail = look(f.detailScroll) }`);
 // Turns one of the quest log's scroll areas ("listScroll" or "detailScroll") by one wheel step of this delta.
 const wheelLog = (addon, which, delta) => addon.eval(`local s = Vanguard_QuestLog.${which} s.__scripts.OnMouseWheel(s, ${delta})`);
+// TEST-ONLY copies of the client's reward captions (its global strings).
+const CAPTIONS_ENV = `REWARD_CHOOSE, REWARD_CHOICES, REWARD_ITEMS, REWARD_ITEMS_ONLY, TURN_IN_ITEMS = "TEST-ONLY Choose one:", "TEST-ONLY You may choose one:", "TEST-ONLY You also get:", "TEST-ONLY You get:", "TEST-ONLY Required items:"`;
+// The shown reward captions of a window ("Vanguard_QuestDialog" or "Vanguard_QuestLog"), in order.
+const captions = (addon, name) => addon.eval(`local f, out = ${name}, {} for i = 1, f.captions.used do out[i] = f.captions[i]:GetText() end return out`);
+it("quest dialog: reward captions in the client's words: choose from, also get, only get, required", () => {
+  const addon = loggedIn(QUEST_ENV + CAPTIONS_ENV);
+  addon.fire("QUEST_DETAIL");
+  expect(captions(addon, "Vanguard_QuestDialog"), "details: two choices to pick later, then what you get anyway").toEqual(["TEST-ONLY You may choose one:", "TEST-ONLY You also get:"]);
+  expect(addon.eval("local f = Vanguard_QuestDialog return f.cards[1]:GetTop() - f.captions[1]:GetTop()"), "the caption sits over the cards, 16 px").toBe(-16);
+  addon.fire("QUEST_COMPLETE");
+  expect(captions(addon, "Vanguard_QuestDialog"), "the reward page: choose one now").toEqual(["TEST-ONLY Choose one:", "TEST-ONLY You also get:"]);
+  addon.eval("table.remove(__choices, 2)");
+  addon.fire("QUEST_COMPLETE");
+  expect(captions(addon, "Vanguard_QuestDialog"), "one choice is simply received").toEqual(["TEST-ONLY You get:", "TEST-ONLY You also get:"]);
+  addon.eval("__choices = {}");
+  addon.fire("QUEST_COMPLETE");
+  expect(captions(addon, "Vanguard_QuestDialog"), "no choices: you get the rest").toEqual(["TEST-ONLY You get:"]);
+  addon.eval("GetNumQuestItems = function() return 1 end __required = { { 'TEST-ONLY Pelt', 'TEST-ONLY-ICON', 4, 1, 'item:90024' } } local get = GetQuestItemInfo GetQuestItemInfo = function(kind, i) if kind == 'required' then return unpack(__required[i]) end return get(kind, i) end");
+  addon.fire("QUEST_PROGRESS");
+  expect(captions(addon, "Vanguard_QuestDialog"), "the hand-in page names the items it needs").toEqual(["TEST-ONLY Required items:"]);
+  const bare = loggedIn(QUEST_ENV);
+  bare.fire("QUEST_DETAIL");
+  expect([bare.eval("return Vanguard_QuestDialog.captions.used"), bare.eval("return Vanguard_QuestDialog.cards.used")], "a client without the words: the cards, no captions").toEqual([0, 3]);
+});
+it("quest log: the chosen quest's rewards are captioned, the choice first", () => {
+  const addon = loggedIn(TRACK_ENV + QLOG_ENV + CAPTIONS_ENV);
+  addon.eval("ns.GetModule('QuestLog').Open()");
+  expect(captions(addon, "Vanguard_QuestLog"), "its one choice is simply received, then what it also gives").toEqual(["TEST-ONLY You get:", "TEST-ONLY You also get:"]);
+});
+// TEST-ONLY copies of the client's requirement words (its global strings).
+const NEEDS_ENV = `REQUIRED_MONEY, QUEST_SUGGESTED_GROUP_NUM = "TEST-ONLY Required Money:", "TEST-ONLY Suggested Players [%d]"`;
+// A window's needs line ("Vanguard_QuestDialog" or "Vanguard_QuestLog"): its text, shown, and whether it is in the danger colour.
+const needsLine = (addon, name) => {
+  const [text, shown, color] = addon.eval(`local n = ${name}.needs return { n:GetText(), n:IsShown(), n.__textColor }`);
+  return [text, shown, isTok(addon, color, "bad")];
+};
+it("quest dialog: a quest that suggests a group says so in the client's words, under its objectives", () => {
+  const addon = loggedIn(QUEST_ENV + NEEDS_ENV + " GetSuggestedGroupSize = function() return 3 end");
+  addon.fire("QUEST_DETAIL");
+  expect(needsLine(addon, "Vanguard_QuestDialog"), "muted, never short: the details page asks no money").toEqual(["TEST-ONLY Suggested Players [3]", true, false]);
+  expect(addon.eval("local f = Vanguard_QuestDialog return select(2, f.needs:GetPoint(1)) == f.objectives"), "under the objectives").toBe(true);
+  addon.eval("GetSuggestedGroupSize = function() return 0 end");
+  addon.fire("QUEST_DETAIL");
+  expect(needsLine(addon, "Vanguard_QuestDialog").slice(0, 2), "a solo quest: no line").toEqual(["", false]);
+  addon.eval("QUEST_SUGGESTED_GROUP_NUM = 'TEST-ONLY %d and %d' GetSuggestedGroupSize = function() return 3 end");
+  addon.fire("QUEST_DETAIL");
+  expect(needsLine(addon, "Vanguard_QuestDialog").slice(0, 2), "words that don't format: no line").toEqual(["", false]);
+  const bare = loggedIn(QUEST_ENV + " GetSuggestedGroupSize = function() return 3 end");
+  bare.fire("QUEST_DETAIL");
+  expect(needsLine(bare, "Vanguard_QuestDialog").slice(0, 2), "a client without the words: no line").toEqual(["", false]);
+});
+it("quest log: the chosen quest's money and group size share a line, in the danger colour while you are short", () => {
+  const addon = loggedIn(TRACK_ENV + QLOG_ENV + NEEDS_ENV + ` C_QuestLog.GetRequiredMoney = function() return __cost end
+    C_QuestLog.GetSuggestedGroupSize = function() return 5 end __cost = 200000`);
+  addon.eval("ns.GetModule('QuestLog').Open()");
+  const money = addon.eval("return ns.GetModule('InfoStrip').Money(200000)");
+  expect(needsLine(addon, "Vanguard_QuestLog"), "more than you carry (123456)").toEqual([`TEST-ONLY Required Money: ${money}  ·  TEST-ONLY Suggested Players [5]`, true, true]);
+  addon.eval("__cost = 100 ns.GetModule('QuestLog').Open()");
+  expect(needsLine(addon, "Vanguard_QuestLog")[2], "enough money: muted").toBe(false);
+  addon.eval("__cost = { __secret = true } C_QuestLog.GetSuggestedGroupSize = function() return { __secret = true } end ns.GetModule('QuestLog').Open()");
+  expect(needsLine(addon, "Vanguard_QuestLog")[0], "hidden figures: no line").toBe("");
+});
+it("quest log: a failed quest says Failed in the danger colour, its objectives left out", () => {
+  const addon = loggedIn(TRACK_ENV + QLOG_ENV + " C_QuestLog.IsFailed = function(id) return __quests[id].failed end __quests[90051].failed = true");
+  addon.eval("ns.GetModule('QuestLog').Open()");
+  const [text, color, rows] = addon.eval("local f = Vanguard_QuestLog return { f.objectives:GetText(), f.objectives.__textColor, f.objectiveRows.used }");
+  expect([text, isTok(addon, color, "bad"), rows]).toEqual(["Failed", true, 0]);
+});
+it("quest log: an empty log says where quests come from, in muted type", () => {
+  const addon = loggedIn(TRACK_ENV + QLOG_ENV + " __log = {}");
+  addon.eval("ns.GetModule('QuestLog').Open()");
+  const [text, shown, color] = addon.eval("local e = Vanguard_QuestLog.empty return { e:GetText(), e:IsShown(), e.__textColor }");
+  expect([text, shown, isTok(addon, color, "muted")]).toEqual(["No quests yet. Quest givers show a ! over their heads.", true, true]);
+  addon.eval("__log = { { questID = 90051 } } ns.GetModule('QuestLog').Refresh()");
+  expect(addon.eval("return Vanguard_QuestLog.empty:IsShown()"), "a quest taken: the line goes").toBe(false);
+});
+// Which of a window's shown reward cards wear the crown, in order.
+const crowns = (addon, name) => addon.eval(`local f, out = ${name}, {} for i = 1, f.cards.used do out[i] = f.cards[i].crown:IsShown() end return out`);
+it("quest dialog: the gold crown marks the one choice that sells for most, never a tie, an unknown price or a fixed reward", () => {
+  const addon = loggedIn(QUEST_ENV);
+  addon.fire("QUEST_COMPLETE");
+  expect(crowns(addon, "Vanguard_QuestDialog"), "Gloves (300) over Boots (50); the Bread you get anyway is never crowned").toEqual([false, true, false]);
+  expect(addon.eval("local c = Vanguard_QuestDialog.cards[2].crown return { c:GetWidth(), (c:GetPoint(1)) }"), "12 px, in the card's top-right corner").toEqual([12, "TOPRIGHT"]);
+  expect(isTok(addon, addon.eval("return Vanguard_QuestDialog.cards[2].crown.__vertexColor"), "gold"), "in gold").toBe(true);
+  expect(addon.eval("local f = Vanguard_QuestDialog return { f.cards[1]:GetRight() - f.cards[1].name:GetRight(), f.cards[2]:GetRight() - f.cards[2].name:GetRight() }"), "a crowned card's name ends short of the crown").toEqual([4, 18]);
+  addon.eval("__prices['item:90021'] = 300");
+  addon.fire("QUEST_COMPLETE");
+  expect(crowns(addon, "Vanguard_QuestDialog"), "a tie: no crown").toEqual([false, false, false]);
+  addon.eval("__prices['item:90021'] = nil");
+  addon.fire("QUEST_COMPLETE");
+  expect(crowns(addon, "Vanguard_QuestDialog"), "a price not known yet: no crown").toEqual([false, false, false]);
+  addon.eval("__prices['item:90021'] = 50");
+  addon.fire("GET_ITEM_INFO_RECEIVED", 90021);
+  addon.update(0);
+  expect(crowns(addon, "Vanguard_QuestDialog"), "the price arrives: the crown follows").toEqual([false, true, false]);
+  addon.eval("__prices['item:90021'] = nil");
+  addon.fire("QUEST_COMPLETE");
+  addon.eval("__prices['item:90021'], __prices['item:90022'] = 0, 0");
+  addon.fire("QUEST_COMPLETE");
+  expect(crowns(addon, "Vanguard_QuestDialog"), "nothing sells: no crown").toEqual([false, false, false]);
+  addon.eval("__prices['item:90021'], __prices['item:90022'] = 50, { __secret = true }");
+  addon.fire("QUEST_COMPLETE");
+  expect(crowns(addon, "Vanguard_QuestDialog"), "a hidden price: no crown").toEqual([false, false, false]);
+  addon.eval("__prices['item:90022'] = 300 __choices = { __choices[2] }");
+  addon.fire("QUEST_COMPLETE");
+  expect(crowns(addon, "Vanguard_QuestDialog"), "a single choice: just received, no crown").toEqual([false, false]);
+});
+it("quest log: the chosen quest's top-selling choice wears the crown too", () => {
+  const addon = loggedIn(TRACK_ENV + QLOG_ENV + ` GetNumQuestLogChoices = function(id) return id == 90051 and 2 or 0 end
+    GetQuestLogItemLink = function(kind, i) return kind == "choice" and ("item:9002" .. i) or nil end
+    __prices = { ["item:90021"] = 50, ["item:90022"] = 300 }
+    C_Item.GetItemInfo = function(link) return "x", link, 1, 1, 1, "", "", 1, "", "", __prices[link] end`);
+  addon.eval("__prices['item:90021'] = nil ns.GetModule('QuestLog').Open()");
+  expect(crowns(addon, "Vanguard_QuestLog"), "a price not known yet: no crown").toEqual([false, false, false]);
+  addon.eval("__prices['item:90021'] = 50");
+  addon.fire("GET_ITEM_INFO_RECEIVED", 90021);
+  addon.update(0);
+  expect(crowns(addon, "Vanguard_QuestLog"), "it arrives: item:90022 (300) over item:90021 (50)").toEqual([false, true, false]);
+});
 it("quest log: an objective's count is found at either end, a text without one has none, and a done one is muted with a check", () => {
   const addon = loggedIn(TRACK_ENV + QLOG_ENV);
   addon.eval(`__quests[90051].objectives = { { text = "TEST-ONLY Wolf slain: 3/8", finished = false }, { text = "TEST-ONLY Explore the vale", finished = false },
@@ -768,7 +888,7 @@ it("quest log: a long list and long quest text scroll, a short one does not", ()
   const addon = loggedIn(TRACK_ENV + QLOG_ENV);
   addon.eval("ns.GetModule('QuestLog').Open()");
   expect(addon.eval("local c = ns.GetModule('QuestLog').frame.close return { c:GetWidth(), c:GetHeight(), c:IsVisible() }"), "the close button has a size (it was 0 by 0, so it never showed): 20, an even count of whole screen pixels").toEqual([px(addon, 20, true), px(addon, 20, true), true]);
-  expect(logScrolls(addon), "three quests under two zones (two 18 px headers, three 28 px rows, an 8 px gap) and a short text fit the 384 px and 350 px views: nothing to scroll").toEqual({ list: [128, 0, 0], detail: [204, 0, 0] });
+  expect(logScrolls(addon), "three quests under two zones (two 18 px headers, three 28 px rows, an 8 px gap) and a short text with its choice and its reward in their own rows (248 px) fit the 384 px and 350 px views: nothing to scroll").toEqual({ list: [128, 0, 0], detail: [248, 0, 0] });
   expect(logThumbs(addon), "so no thumb and no soft edge show on either side").toEqual({ list: [false, false, false], detail: [false, false, false] });
   addon.eval(`for i = 1, 20 do local id = 91000 + i
     __log[#__log + 1] = { questID = id }
@@ -776,7 +896,7 @@ it("quest log: a long list and long quest text scroll, a short one does not", ()
     GetQuestLogQuestText = function() return "TEST-ONLY " .. string.rep("word ", 300) end`);
   addon.fire("QUEST_LOG_UPDATE");
   addon.update(0);
-  expect(logScrolls(addon), "23 rows of 28 px and two zone headers make the list 688 px; the wolves' 1510 characters, objectives, a row of rewards and the money line make the details 568 px").toEqual({ list: [688, 304, 0], detail: [568, 218, 0] });
+  expect(logScrolls(addon), "23 rows of 28 px and two zone headers make the list 688 px; the wolves' 1510 characters, objectives, the choice's row, the reward's row and the money line make the details 612 px").toEqual({ list: [688, 304, 0], detail: [612, 262, 0] });
   expect(logThumbs(addon), "both sides show the scroll thumb, and the list's bottom edge fades (there is more below)").toEqual({ list: [true, false, true], detail: [true, false, true] });
   expect(addon.eval("local f = Vanguard_QuestLog return { f.listScroll.thumb:GetRight() - f.listScroll:GetRight(), f.listScroll.thumb:GetHeight(), f.detailScroll.thumb:GetRight() - f.detailScroll:GetRight() }"), "T.SPACE.col right of each view, as tall as its share of the content (384 of 688, 350 of 530)").toEqual([12, 384 * 384 / 688, 12]);
   wheelLog(addon, "listScroll", -1);
@@ -790,7 +910,7 @@ it("quest log: a long list and long quest text scroll, a short one does not", ()
   wheelLog(addon, "detailScroll", -3);
   addon.fire("QUEST_LOG_UPDATE");
   addon.update(0);
-  expect(logScrolls(addon).detail, "the details scroll too (three steps of 40), and the same quest redrawn keeps its place").toEqual([568, 218, 120]);
+  expect(logScrolls(addon).detail, "the details scroll too (three steps of 40), and the same quest redrawn keeps its place").toEqual([612, 262, 120]);
   logLine(addon, 2);
   expect(logScrolls(addon).detail, "another quest starts at the top, with its own height (no objectives or rewards)").toEqual([454, 104, 0]);
   wheelLog(addon, "detailScroll", -100);
@@ -1294,6 +1414,33 @@ it("quest history: /vg quests history [n] lists the latest turn-ins, newest firs
   off.slash("quests history");
   expect(chatHas(off, /Quest history is off/), "switched off").toBe(true);
 });
+it("quest automation: says Accepted only once the game takes that quest, at once for one the game took itself", () => {
+  const addon = loggedIn(QUEST_ENV, { savedVariables: "VanguardDB.profiles = { Default = { QuestAuto = { accept = true } } }" });
+  // How many "Accepted" lines chat has had.
+  const accepted = () => Array.from(addon.chat()).filter((line) => /Accepted: /.test(line)).length;
+  addon.eval("GetQuestID = function() return 90001 end");
+  addon.fire("QUEST_DETAIL");
+  expect(accepted(), "asked, not yet taken: nothing said").toBe(0);
+  addon.fire("QUEST_ACCEPTED", 90002);
+  expect(accepted(), "another quest taken: still nothing").toBe(0);
+  addon.fire("QUEST_ACCEPTED", 90001);
+  addon.fire("QUEST_ACCEPTED", 90001);
+  expect(accepted(), "that quest: said once").toBe(1);
+  addon.fire("QUEST_DETAIL");
+  addon.eval("__shift = true");
+  addon.fire("QUEST_DETAIL");
+  addon.eval("__shift = false");
+  addon.fire("QUEST_ACCEPTED", 90001);
+  expect(accepted(), "refused, then another offer opened: the old line is dropped").toBe(1);
+  addon.eval("__autoAccept = true");
+  addon.fire("QUEST_DETAIL");
+  expect(accepted(), "a quest the game took itself: said at once").toBe(2);
+  addon.eval("__autoAccept, GetQuestID = false, function() return 0 end");
+  addon.fire("QUEST_DETAIL");
+  expect(accepted(), "a client that can't name the quest: said at once, nothing left waiting").toBe(3);
+  addon.fire("QUEST_ACCEPTED", 90005);
+  expect(accepted(), "so a later quest taken adds nothing").toBe(3);
+});
 it("quest automation: a quest a player shares follows its own switch, and Shift skips it", () => {
   // Makes the quest on offer come from a player.
   const shared = (addon) => addon.eval("UnitIsPlayer = function(unit) return unit == 'npc' and __sharer == true end __sharer = true");
@@ -1304,6 +1451,7 @@ it("quest automation: a quest a player shares follows its own switch, and Shift 
   const on = loggedIn(QUEST_ENV, { savedVariables: "VanguardDB.profiles = { Default = { QuestAuto = { acceptShared = true } } }" });
   shared(on);
   on.fire("QUEST_DETAIL");
+  on.fire("QUEST_ACCEPTED", 90001);
   expect([dialog(on).shown, calls(on), chatHas(on, /Accepted: TEST-ONLY Wolves \(shared by TEST-ONLY Farmer\)/)], "a shared quest is accepted and chat says who shared it").toEqual([false, ["accept nil"], true]);
   on.eval("__shift = true");
   on.fire("QUEST_DETAIL");

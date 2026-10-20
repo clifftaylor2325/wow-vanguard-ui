@@ -1338,6 +1338,8 @@ function GetQuestLogSpecialItemInfo(i) local q = questAt(i) if not q or not q.it
 function GetQuestLogQuestText() local _, q = questIndex(world.selectedQuest) return q and q.description or "", q and q.objectivesText or "" end
 function GetNumQuestLogChoices() local _, q = questIndex(world.selectedQuest) return q and q.choices and #q.choices or 0 end
 function GetQuestLogChoiceInfo(i) local _, q = questIndex(world.selectedQuest) local c = q and q.choices and q.choices[i] if not c then return nil end return c.name, c.icon, c.count or 1, c.quality or 1, true end
+-- Mainline/QuestInfo.lua's GetQuestLogItemLink(type, index): a selected quest's reward ("choice" or "reward") as an item link, from its link field.
+function GetQuestLogItemLink(kind, i) local _, q = questIndex(world.selectedQuest) local list = q and q[kind == "choice" and "choices" or "rewards"] local r = list and list[i] return r and r.link end
 function GetNumQuestLogRewards() local _, q = questIndex(world.selectedQuest) return q and q.rewards and #q.rewards or 0 end
 function GetQuestLogRewardInfo(i) local _, q = questIndex(world.selectedQuest) local r = q and q.rewards and q.rewards[i] if not r then return nil end return r.name, r.icon, r.count or 1, r.quality or 1, true end
 function GetQuestLogRewardMoney() local _, q = questIndex(world.selectedQuest) return q and q.money or 0 end

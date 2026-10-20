@@ -125,6 +125,19 @@ end
 
 -- Reward cards ---------------------------------------------------------------------------------
 
+-- The crown's size on the reward choice that sells for most, and its inset from the card's top-right corner.
+QP.CROWN_SIZE, QP.CROWN_INSET = 12, 2
+
+-- A card's crown: the gold mark in its top-right corner for the choice that sells for most, hidden until
+-- the layout picks one (the upgrade arrow keeps the icon's top-left). Returns the card.
+local function addCrown(c)
+  c.crown = T.Tint(QP.Square(c:CreateTexture(nil, "OVERLAY"), QP.CROWN_SIZE), "gold")
+  c.crown:SetTexture(T.Icon("Crown"))
+  c.crown:SetPoint("TOPRIGHT", c, "TOPRIGHT", -QP.CROWN_INSET, -QP.CROWN_INSET)
+  c.crown:Hide()
+  return c
+end
+
 -- A reward card: the icon (cropped, with its count), the name beside it, a border for its quality.
 function QP.Card(parent)
   local c = T.Button(CreateFrame("Button", nil, parent))
@@ -136,7 +149,7 @@ function QP.Card(parent)
   c.name = T.Text(c:CreateFontString(nil, "OVERLAY"), "small", "text")
   c.name:SetPoint("LEFT", c.icon, "RIGHT", 6, 0)
   c.name:SetPoint("RIGHT", c, "RIGHT", -T.SPACE.tight, 0)
-  return QP.WireTooltip(c)
+  return QP.WireTooltip(addCrown(c))
 end
 
 -- Shows a card's item tooltip: a quest log reward by its quest, a quest dialog reward by its slot (nothing when the client lacks the call).
@@ -183,6 +196,157 @@ function QP.PaintCard(c, item)
   c.item = item
   for _, fn in ipairs(QP.cardHooks) do ns.Try("reward card", fn, c, item) end
   c:Show()
+end
+
+-- Reward sections --------------------------------------------------------------------------------
+
+-- What an item sells to a vendor for (copper, C_Item.GetItemInfo's 11th return), or nil while the client
+-- doesn't know it yet or hides it.
+---@param link string|nil
+---@return number|nil
+function QP.SellPrice(link)
+  local info = C_Item and C_Item.GetItemInfo
+  if type(link) ~= "string" or type(info) ~= "function" then return nil end
+  return ns.PlainNumber((select(11, info(link))))
+end
+
+-- The place of the one price above the rest, from n prices (nil for unknown): nil while any is unknown,
+-- when two share the top, or when none is above 0. Quest automation and the reward crown both use it.
+---@param prices table
+---@param n number
+---@return number|nil
+function QP.TopSeller(prices, n)
+  local best, bestPrice, tied = nil, 0, false
+  for i = 1, n do
+    local price = prices[i]
+    if not price then return nil end
+    if price > bestPrice then best, bestPrice, tied = i, price, false elseif price == bestPrice then tied = true end
+  end
+  return not tied and best or nil
+end
+
+-- The place of the choice that sells for most among a section's items (QP.TopSeller); nil for a section of
+-- other rewards or of a single choice.
+function QP.TopChoice(items)
+  if #items < 2 or items[1].kind ~= "choice" then return nil end
+  local prices = {}
+  for i, item in ipairs(items) do prices[i] = QP.SellPrice(item.link) end
+  return QP.TopSeller(prices, #items)
+end
+
+-- A section caption's line height, and the gap between two sections.
+QP.CAPTION_H, QP.SECTION_GAP = 16, T.SPACE.gap
+
+-- The client's own caption text by its global name, or nil when this client lacks it.
+local function caption(name)
+  local text = _G[name]
+  return type(text) == "string" and text or nil
+end
+
+-- The choices' caption, worded as the game's quest frame words it (Mainline/QuestInfo.lua): one choice is
+-- just received; two or more are chosen from now (choosing) or later.
+local function choiceCaption(n, choosing)
+  if n == 1 then return caption("REWARD_ITEMS_ONLY") end
+  return caption(choosing and "REWARD_CHOOSE" or "REWARD_CHOICES")
+end
+
+-- A page's reward sections, { caption, items } each: the choices, then what you get anyway ("You will also
+-- receive:" after choices, else "You will receive:"). choosing is true where you pick one now.
+function QP.RewardSections(choices, rewards, choosing)
+  local out = {}
+  if #choices > 0 then out[1] = { caption = choiceCaption(#choices, choosing), items = choices } end
+  if #rewards > 0 then out[#out + 1] = { caption = caption(#choices > 0 and "REWARD_ITEMS" or "REWARD_ITEMS_ONLY"), items = rewards } end
+  return out
+end
+
+-- The required items' one section, captioned as the game's progress page is ("Required items:").
+function QP.RequiredSection(items)
+  return #items > 0 and { { caption = caption("TURN_IN_ITEMS"), items = items } } or {}
+end
+
+-- Requirements ---------------------------------------------------------------------------------
+
+-- The money part of a needs line in the client's words ("Required Money: 1g 50s"), and whether you have
+-- less than it (only when both figures are plain); nil for no money.
+local function moneyPart(copper)
+  if copper <= 0 then return nil, false end
+  local have = ns.PlainNumber(type(GetMoney) == "function" and GetMoney() or nil)
+  local text = (caption("REQUIRED_MONEY") or "Needs") .. " " .. ns.GetModule("InfoStrip").Money(copper)
+  return text, have ~= nil and have < copper
+end
+
+-- The group size part in the client's words ("Suggested Players [3]"), formatted as the game's quest frame
+-- does; nil for none, or when the client lacks the words or they don't format.
+local function groupPart(players)
+  local fmt = caption("QUEST_SUGGESTED_GROUP_NUM")
+  if players <= 0 or not fmt then return nil end
+  local ok, text = pcall(string.format, fmt, players)
+  return ok and text or nil
+end
+
+-- What a quest asks of you beside its objectives, as one line: the money it needs and the group it suggests
+-- (plain numbers, 0 for none). Returns the text ("" for nothing) and whether you are short of the money.
+function QP.Needs(copper, players)
+  local money, short = moneyPart(ns.PlainNumber(copper) or 0)
+  local parts = {}
+  for _, part in ipairs({ money or false, groupPart(ns.PlainNumber(players) or 0) or false }) do
+    if part then parts[#parts + 1] = part end
+  end
+  return table.concat(parts, "  ·  "), short
+end
+
+-- Paints a needs line from QP.Needs: muted, or in the danger colour while you are short of the money.
+function QP.PaintNeeds(fs, text, short)
+  fs:SetText(text)
+  T.Color(fs, short and "bad" or "text2")
+end
+
+-- Shows or hides a card's crown; the name ends short of a shown crown so a long one never runs under it.
+function QP.Crown(c, shown)
+  c.crown:SetShown(shown)
+  local room = shown and QP.CROWN_SIZE + QP.CROWN_INSET or 0
+  c.name:SetPoint("RIGHT", c, "RIGHT", -T.SPACE.tight - room, 0)
+end
+
+-- A section's caption at y down the holder's left edge (none when the client has no words for it); returns the y under it.
+local function placeCaption(lay, text, y)
+  if not text then return y end
+  local fs = lay.captions.Next()
+  fs:SetPoint("TOPLEFT", lay.holder, "TOPLEFT", 0, -y)
+  fs:SetText(text)
+  fs:Show()
+  return y + QP.CAPTION_H
+end
+
+-- A section's cards, lay.perRow to a row from y down, each painted (the crown on card top, if any), then
+-- lay.onCard(card, item); returns the y under them.
+local function placeCards(lay, items, y, top)
+  for n, item in ipairs(items) do
+    local c, col, row = lay.cards.Next(), (n - 1) % lay.perRow, math.floor((n - 1) / lay.perRow)
+    c:SetPoint("TOPLEFT", lay.holder, "TOPLEFT", col * (QP.CARD_W + QP.GAP), -y - row * (QP.CARD_H + QP.GAP))
+    QP.PaintCard(c, item)
+    QP.Crown(c, n == top)
+    if lay.onCard then lay.onCard(c, item) end
+  end
+  return y + math.ceil(#items / lay.perRow) * (QP.CARD_H + QP.GAP) - QP.GAP
+end
+
+-- A reward caption: small muted text over a section's cards.
+function QP.Caption(parent)
+  return T.Text(parent:CreateFontString(nil, "OVERLAY"), "small", "text2")
+end
+
+-- Lays reward sections out from the holder's top, each caption over its cards. lay is { holder, cards and
+-- captions (QP.Pool), perRow, onCard (optional) }. Returns how tall they are (0 for none).
+function QP.LayoutRewards(lay, sections)
+  lay.cards.Reset()
+  lay.captions.Reset()
+  local y = 0
+  for i, sec in ipairs(sections) do
+    y = placeCaption(lay, sec.caption, y + (i > 1 and QP.SECTION_GAP or 0))
+    y = placeCards(lay, sec.items, y, QP.TopChoice(sec.items))
+  end
+  return y
 end
 
 -- Your faction's crest, faint (T.CREST.watermark at T.CREST.wash), behind a reading window's top-right corner:

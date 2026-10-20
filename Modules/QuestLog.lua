@@ -73,9 +73,10 @@ end
 
 -- Details ----------------------------------------------------------------------------------------
 
--- A reward item for a card: its kind ("choice" or "reward"), slot and quest are what its tooltip is set from.
+-- A reward item for a card: its kind ("choice" or "reward"), slot and quest are what its tooltip is set from;
+-- its link gives its sell price (the crown).
 local function rewardItem(kind, i, id, name, texture, count, quality)
-  return { kind = kind, index = i, questID = id, name = name, texture = texture, count = count, quality = quality }
+  return { kind = kind, index = i, questID = id, name = name, texture = texture, count = count, quality = quality, link = call(GetQuestLogItemLink, kind, i) }
 end
 
 -- The quest's reward items: choices, then what you always get.
@@ -107,16 +108,25 @@ function QL.IsWatched(id)
   return false
 end
 
--- The chosen quest's details: { id, title, level, text, objectives, rewards, money, watched, shareable, done (the quest history line) }.
+-- What the chosen quest asks beside its objectives (QP.Needs: money and group size), and whether it failed
+-- (a timed or escort quest that ran out); a read the client lacks or hides is left out.
+local function requirements(id, d)
+  d.needs, d.short = ns.QuestParts.Needs(questLog("GetRequiredMoney", id), questLog("GetSuggestedGroupSize", id))
+  d.failed = yes(questLog("IsFailed", id))
+  return d
+end
+
+-- The chosen quest's details: { id, title, level, text, objectives, rewards, money, watched, shareable, done (the
+-- quest history line), needs and short (QP.Needs), failed }.
 function QL.Details(id)
   local index = ns.PlainNumber(questLog("GetLogIndexForQuestID", id))
   local info = index and questLog("GetInfo", index)
   if type(info) ~= "table" then return nil end
   questLog("SetSelectedQuest", id)
   local text = call(GetQuestLogQuestText)
-  return { id = id, title = info.title, level = info.level, text = text, objectives = ns.GetModule("QuestTracker").Objectives(id),
+  return requirements(id, { id = id, title = info.title, level = info.level, text = text, objectives = ns.GetModule("QuestTracker").Objectives(id),
     rewards = rewardItems(id), money = moneyLine(id), watched = QL.IsWatched(id),
-    shareable = yes(questLog("IsPushableQuest", id)) and yes(call(IsInGroup)), done = ns.GetModule("QuestHistory").Muted(id) }
+    shareable = yes(questLog("IsPushableQuest", id)) and yes(call(IsInGroup)), done = ns.GetModule("QuestHistory").Muted(id) })
 end
 
 -- Actions ----------------------------------------------------------------------------------------
@@ -281,8 +291,9 @@ function QL.Enable(settings)
   addToggle()
   bindKeys()
   hookGameToggle()
-  ns.On("QUEST_LOG_UPDATE", refreshSoon)
-  ns.On("QUEST_WATCH_LIST_CHANGED", refreshSoon)
-  -- Share is lit only in a group (as the game's quest map does on the same event).
-  ns.On("GROUP_ROSTER_UPDATE", refreshSoon)
+  -- Share is lit only in a group (as the game's quest map does on GROUP_ROSTER_UPDATE); an item's info
+  -- arriving can settle the reward crown.
+  for _, event in ipairs({ "QUEST_LOG_UPDATE", "QUEST_WATCH_LIST_CHANGED", "GROUP_ROSTER_UPDATE", "GET_ITEM_INFO_RECEIVED" }) do
+    ns.On(event, refreshSoon)
+  end
 end
