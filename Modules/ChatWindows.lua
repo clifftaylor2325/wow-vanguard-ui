@@ -156,9 +156,20 @@ function CW.GroupSetting(group)
   end
 end
 
+-- A text's first `count` characters, cut on whole UTF-8 characters (string.sub counts bytes, and
+-- a cut inside a letter would leave half of it).
+local function firstChars(text, count)
+  local out = {}
+  for ch in text:gmatch("[\1-\127\194-\244][\128-\191]*") do
+    if #out == count then break end
+    out[#out + 1] = ch
+  end
+  return table.concat(out)
+end
+
 -- A tab name as typed: trimmed, with no escape codes, at most CW.MAX_NAME characters (or nil).
 function CW.CleanName(text)
-  local name = (type(text) == "string" and text or ""):gsub("|", ""):match("^%s*(.-)%s*$"):sub(1, CW.MAX_NAME)
+  local name = firstChars((type(text) == "string" and text or ""):gsub("|", ""):match("^%s*(.-)%s*$"), CW.MAX_NAME)
   return name ~= "" and name or nil
 end
 

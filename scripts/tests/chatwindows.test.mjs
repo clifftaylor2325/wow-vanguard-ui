@@ -244,3 +244,12 @@ describe("chat windows: a docked tab behind the selected one is still a window",
     expect(addon.eval(`return { #${CW}.Shown(), #${CW}.Windows() }`), "Loot neither shown nor docked (closed): only General").toEqual([1, 1]);
   });
 });
+
+describe("chat tabs: a tab name is cut at 16 characters, not 16 bytes", () => {
+  it("keeps 16 whole letters of an accented or Cyrillic name", () => {
+    const addon = loggedIn("");
+    const clean = (text) => addon.eval(`local n = ns.GetModule('ChatWindows').CleanName("${text}") return { n, #n }`);
+    expect(clean("Ventes à l’hôtel des ventes"), "16 letters, ending on a whole one").toEqual(["Ventes à l’hôtel", 20]);
+    expect(clean("Торговля и обмен"), "a 16-letter Cyrillic name is kept whole").toEqual(["Торговля и обмен", 30]);
+  });
+});
