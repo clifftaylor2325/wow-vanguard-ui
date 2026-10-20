@@ -224,29 +224,56 @@ function GB.Level()
   return level and level > 0 and level or nil
 end
 
--- The kind the board shows: "all", "LFM" or "LFG" (this session; the board's filter button cycles it).
+-- The board's filter: "all", "LFM", "LFG" or "role" (Needs my role) (this session; the board's filter button cycles it).
 GB.filter = "all"
+-- The filters that show one kind of post only, and that kind.
+GB.FILTER_KIND = { LFM = "LFM", LFG = "LFG" }
 
--- Your role for the whisper: the setting, or with Automatic your group role.
+-- Your role for the whisper and the Needs my role filter: the setting, or with Automatic your group role.
 function GB.MyRole()
   local role = GB.settings.role
   if role == "auto" then return GB.AUTO_ROLES[ns.PlayerRole()] end
   return role
 end
 
+-- Whether a post needs you: a group looking for more that names your role, or names none.
+function GB.NeedsMe(e)
+  if e.kind ~= "LFM" then return false end
+  if #e.roles == 0 then return true end
+  local mine = GB.MyRole()
+  for _, role in ipairs(e.roles) do
+    if role == mine then return true end
+  end
+  return false
+end
+
+-- Whether a row is dimmed: the Needs my role filter shows a post that doesn't need you.
+function GB.Dimmed(e)
+  return GB.filter == "role" and not GB.NeedsMe(e)
+end
+
 -- Whether the board shows a post: its kind passes the filter, and it fits your level when that switch is on.
 local function shows(e, level)
-  if GB.filter ~= "all" and e.kind ~= GB.filter then return false end
+  local kind = GB.FILTER_KIND[GB.filter]
+  if kind and e.kind ~= kind then return false end
   return not GB.settings.mine or GB.Fits(e, level)
 end
 
--- The posts the board shows, newest first.
+-- The posts that need you first, then the rest (dimmed), each newest first.
+local function needsFirst(posts)
+  local first, rest = {}, {}
+  for _, e in ipairs(posts) do table.insert(GB.NeedsMe(e) and first or rest, e) end
+  for _, e in ipairs(rest) do first[#first + 1] = e end
+  return first
+end
+
+-- The posts the board shows, newest first (with Needs my role, the ones that need you come first).
 function GB.Shown()
   local out, level = {}, GB.Level()
   for _, e in ipairs(GB.entries) do
     if shows(e, level) then out[#out + 1] = e end
   end
-  return out
+  return GB.filter == "role" and needsFirst(out) or out
 end
 
 -- The whisper ---------------------------------------------------------------------------------

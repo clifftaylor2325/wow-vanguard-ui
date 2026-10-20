@@ -149,6 +149,26 @@ it("group board: a profile saved with the old dps default becomes Automatic once
   expect(saved("dps", ", autoRole = true"), "DPS picked after the change stays DPS").toBe("dps");
 });
 
+it("group board: Needs my role puts the posts that need you (or name no role) first and dims the rest", () => {
+  const addon = board();
+  post(addon, "LFG SFK healer", "Seeker");
+  post(addon, "LFM BFD need tank", "Tanky");
+  post(addon, "LFM WC", "Anyone");
+  post(addon, "LFM SFK need heals", "Lightmend");
+  addon.eval('ns.Settings("GroupBoard").role = "healer"');
+  addon.slash("lfg");
+  for (const caption of ["All posts", "Looking for more", "Looking for a group"]) addon.eval(`__click("${caption}")`);
+  expect(rows(addon).map((r) => r[3]), "healer posts and posts naming no role first, then the rest, each newest first").toEqual(["Lightmend", "Anyone", "Tanky", "Seeker"]);
+  // Row i's kind and sender colours.
+  const colors = (i) => addon.eval(`local b = Vanguard_GroupBoard.rows[${i}] return { { b.kind:GetTextColor() }, { b.sender:GetTextColor() } }`);
+  expect([isTok(addon, colors(1)[0], "accent"), isTok(addon, colors(1)[1], "text")], "a post that needs you keeps its colors").toEqual([true, true]);
+  expect([isTok(addon, colors(3)[0], "muted"), isTok(addon, colors(3)[1], "muted"), isTok(addon, colors(4)[0], "muted")], "the rest are muted, still listed").toEqual([true, true, true]);
+  addon.eval('__click("Needs my role")');
+  expect([isTok(addon, colors(1)[0], "accent"), isTok(addon, colors(4)[1], "text")], "All posts again: no row stays muted").toEqual([true, true]);
+  addon.eval('ns.Settings("GroupBoard").role = "auto" __wfgWorld.units.player.role = "TANK"');
+  expect(addon.eval("local GB = ns.GetModule('GroupBoard') GB.filter = 'role' local out = {} for i, e in ipairs(GB.Shown()) do out[i] = e.sender end return out"), "Automatic: your group role").toEqual(["Anyone", "Tanky", "Lightmend", "Seeker"]);
+});
+
 it("group board: the filter, the level switch, the note, more posts than rows, and old posts going", () => {
   const addon = board(60);
   addon.slash("lfg");
@@ -167,6 +187,8 @@ it("group board: the filter, the level switch, the note, more posts than rows, a
   addon.eval('__click("Looking for more")');
   expect(status(addon)[0], "looking for a group only").toBe("12 posts");
   addon.eval('__click("Looking for a group")');
+  expect([addon.eval("return Vanguard_GroupBoard.filter.text:GetText()"), status(addon)[0]], "needs my role: every post").toEqual(["Needs my role", "13 posts"]);
+  addon.eval('__click("Needs my role")');
   expect(status(addon)[0], "all again").toBe("13 posts");
   addon.advance(601);
   expect(status(addon)[0], "after ten minutes the posts are gone (the board's tick)").toBe("0 posts");
