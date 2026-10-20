@@ -170,6 +170,15 @@ it("raid status: a summon on its way shows the game's summon icon, over the resu
   addon.fire("INCOMING_SUMMON_CHANGED", "raid1");
   expect(summonOf(addon, 1)[0], "declined").toBe("RaidFrame-Icon-SummonDeclined");
   expect(summonOf(addon, 3)[0], "only the tile showing that unit").toBe(false);
+  addon.eval('__status.ready.raid1 = "ready"');
+  addon.fire("READY_CHECK");
+  expect(summonOf(addon, 1)[0], "a ready check answer goes first: one center mark at a time").toBe(false);
+  addon.fire("READY_CHECK_FINISHED");
+  addon.eval("ns.GetModule('RaidStatus').readyRunning = false ns.GetModule('RaidStatus').UpdateAll()");
+  expect(summonOf(addon, 1)[0], "and the summon is back after it").toBe("RaidFrame-Icon-SummonDeclined");
+  addon.eval("local t = Vanguard_RaidUnitButton1.summon t.SetAtlas = function() return false end ns.GetModule('RaidStatus').UpdateAll()");
+  expect(summonOf(addon, 1), "an atlas the client doesn't have: no blank mark, the status text stays").toEqual([false, false, true]);
+  addon.eval("Vanguard_RaidUnitButton1.summon.SetAtlas = nil");
   addon.eval("__summon.raid1 = __wfgWorld.secret(1)");
   addon.fire("INCOMING_SUMMON_CHANGED", "raid1");
   expect(summonOf(addon, 1), "a hidden status shows nothing").toEqual([false, false, true]);

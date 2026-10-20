@@ -542,12 +542,6 @@ local function showTileTooltip(b)
   tt:SetUnit(unit)
 end
 
--- Hides the tooltip when the mouse leaves the tile, if the tile still owns it.
-local function hideTileTooltip(b)
-  local tt = GameTooltip
-  if not tt:IsForbidden() and tt:GetOwner() == b then tt:Hide() end
-end
-
 -- A fight starts: a tooltip a tile shows goes, so it never covers the tiles while you heal.
 local function hideTooltipInFight()
   local tt = GameTooltip
@@ -560,7 +554,7 @@ function RF.UnitTooltip(b)
   if not RF.tooltipInFight then ns.On("PLAYER_REGEN_DISABLED", hideTooltipInFight) end
   RF.tooltipInFight, RF.tooltipTiles[b] = true, true
   b:HookScript("OnEnter", ns.Guard("raid tile tooltip", showTileTooltip))
-  b:HookScript("OnLeave", ns.Guard("raid tile tooltip", hideTileTooltip))
+  b:HookScript("OnLeave", ns.Guard("raid tile tooltip", function() unitFrames().HideTooltip(b) end))
 end
 
 -- A button's scripts: clicks, follow its unit, refresh on show, light on hover, its unit's tooltip.

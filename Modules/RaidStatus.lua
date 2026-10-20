@@ -213,18 +213,17 @@ local function updateRaidIcon(b, unit)
   RS.PaintIcon(b.raidIcon, RS.settings.raidIcons and RS.RaidIcon(unit))
 end
 
--- Shows a game atlas on a texture, or hides it for nil.
+-- Shows a game atlas on a texture, or hides it for nil or an atlas the client doesn't have (SetAtlas says false).
 local function showAtlas(t, atlas)
-  t:SetShown(atlas ~= nil)
-  if atlas then t:SetAtlas(atlas) end
+  t:SetShown(atlas ~= nil and t:SetAtlas(atlas) ~= false)
 end
 
--- The marks that come and go in the center: the ready check answer, and the summon or else the
--- resurrection (one switch). The status text (missing health, Dead) hides while one shows.
+-- The marks that come and go in the center, one at a time: the ready check answer, else the summon,
+-- else the resurrection (the last two under one switch). The status text (missing health, Dead) hides while one shows.
 local function updateCenter(b, unit)
   local s = RS.settings
-  local summon = s.resurrect and RS.SummonAtlas(unit) or nil
   showMark(b.ready, s.readyCheck and RS.readyRunning, RS.ReadyMark(unit))
+  local summon = s.resurrect and not b.ready:IsShown() and RS.SummonAtlas(unit) or nil
   showAtlas(b.summon, summon)
   b.rez:SetShown(s.resurrect and not summon and RS.Resurrecting(unit))
   b.status:SetShown(not (b.ready:IsShown() or b.rez:IsShown() or b.summon:IsShown()))
