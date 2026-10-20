@@ -288,6 +288,11 @@ it("flight timer: the first flight is timed, the next counts down", () => {
   expect(addon.eval('return ns.GetModule("Errands").flight'), "a flight that never takes off is forgotten").toBe(null);
   addon.eval('TaxiNodeGetType = function() return { __secret = true } end TakeTaxiNode(2)');
   expect(addon.eval('return ns.GetModule("Errands").flight'), "no route when the start is hidden").toBe(null);
+  addon.eval('TaxiNodeGetType = function(i) return i == 1 and "CURRENT" or "REACHABLE" end TaxiNodeName = function(i) return i == 1 and "TEST-ONLY Landing" or "TEST-ONLY Hidden" end');
+  addon.eval('local is = issecretvalue issecretvalue = function(v) return v == "TEST-ONLY Hidden" or (is ~= nil and is(v)) end');
+  addon.fire("ADDON_LOADED", "TEST-ONLY");
+  addon.eval("TakeTaxiNode(2)");
+  expect(addon.eval('return ns.GetModule("Errands").flight'), "nor when the destination's name is a hidden string").toBe(null);
   expect(addon.eval("return { ns.MoverPoint('flighttimer') }"), "the bar is movable, at the top centre under the quest arrow, clear of the cluster").toEqual(["TOP", "TOP", 0, -198]);
   const bare = loggedIn("");
   expect(bare.eval("return Vanguard_FlightTimer == nil and ns.GetModule('Errands').settings ~= nil"), "a client without taxi calls loads cleanly").toBe(true);
@@ -321,7 +326,7 @@ it("boat timer: the first ride is timed, the next from that dock counts down", (
   wait(addon, "__pos = false", 25);
   wait(addon, "__pos = true __sub = ''", 1);
   expect(addon.eval('return VanguardDB.profiles.Default.Errands.boats["TEST-ONLY Dock > Elwynn Forest"]'), "a place with no sub-zone is named by its zone").toBe(25);
-  expect(addon.eval("return { ns.MoverPoint('boattimer') }"), "the bar is movable, just above your target's cast bar under the boss timers").toEqual(["BOTTOM", "BOTTOM", 240, 284]);
+  expect(addon.eval("return { ns.MoverPoint('boattimer') }"), "the bar is movable, on the flight bar's spot (you never ride both at once)").toEqual(["TOP", "TOP", 0, -198]);
 });
 it("boat timer: off by default, and quiet where a ride can't be judged", () => {
   const off = loggedIn(BOAT_ENV);

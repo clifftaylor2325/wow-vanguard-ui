@@ -23,6 +23,8 @@ local ER = ns.Module("Errands", {
 ER.TRAIN_STEPS, ER.BUY_EVERY = 30, 0.2
 ER.FLIGHT_POLL, ER.FLIGHT_MAX, ER.TAKEOFF_WAIT = 0.5, 3600, 10
 ER.BAR_W, ER.BAR_H = 200, 14
+-- Where the flight and boat bars start, above the cluster: one spot, as you never ride both at once.
+ER.TRAVEL_SPOT = { "TOP", "TOP", 0, -198 }
 
 -- Helpers ------------------------------------------------------------------------------------
 
@@ -338,6 +340,11 @@ end
 
 -- Flight timer -------------------------------------------------------------------------------
 
+-- A flight point's name when the client gives it plainly, else nil (a hidden name is never kept or joined).
+local function plainName(name)
+  return type(name) == "string" and not ns.IsSecret(name) and name or nil
+end
+
 -- The name of the flight point you're standing at, or nil.
 local function currentNode()
   for i = 1, ns.PlainNumber(ask("NumTaxiNodes")) or 0 do
@@ -349,8 +356,8 @@ end
 -- You picked a destination: note the route, and check the taxi state twice a
 -- second from now until the flight lands or is forgotten.
 function ER.OnTakeTaxi(index)
-  local from, to = currentNode(), ask("TaxiNodeName", index)
-  if type(from) ~= "string" or type(to) ~= "string" then return end
+  local from, to = plainName(currentNode()), plainName(ask("TaxiNodeName", index))
+  if not (from and to) then return end
   local key = from .. " > " .. to
   ER.flight = { key = key, to = to, picked = ask("GetTime") or 0, known = ER.settings.flights[key] }
   ns.Every("flight poll", ER.FLIGHT_POLL, ER.PollFlight)
@@ -396,7 +403,7 @@ local function buildBar()
   local bar = T.BarColor(T.StyleBar(CreateFrame("StatusBar", "Vanguard_FlightTimer", UIParent)), "accent")
   T.HudPanel(bar)
   bar:SetSize(ER.BAR_W, ER.BAR_H)
-  ns.Mover(bar, "flighttimer", "Flight timer", { "TOP", "TOP", 0, -198 })
+  ns.Mover(bar, "flighttimer", "Flight timer", ER.TRAVEL_SPOT)
   bar.text = T.Text(bar:CreateFontString(nil, "OVERLAY"), "barSmall")
   bar.text:SetPoint("CENTER")
   bar:Hide()
