@@ -1,38 +1,49 @@
 -- Coexistence: other addons that do a job a Vanguard module also does (a bag
--- addon beside Vanguard's bags, a nameplate addon beside its plates). At login
--- Vanguard looks for the loaded ones in CX.OVERLAPS; for each new overlap it
--- says so once in chat, and the Modules page of /vg shows a card that offers to
--- turn Vanguard's module off or keep both. Nothing changes without a click, and
--- an answer is kept in the profile, so the card doesn't come back.
--- The addon names are the folder names other addons use on other clients; each
--- still needs checking on the WoW Forever client (the EllesmereUI ones are the
--- retail folder names, from memory; its listing was not readable; ElvUI, Tukui,
--- Auctionator and TradeSkillMaster are as unchecked as the rest). An addon names one
--- module, so the whole-UI addons ElvUI and Tukui ask about action bars only.
+-- addon beside Vanguard's bags, a window skinner beside its window looks). At
+-- login Vanguard looks for the loaded ones in CX.OVERLAPS; for each new overlap
+-- it says so once in chat, and the Modules page of /vg shows a card that offers
+-- to turn Vanguard's part off or keep both. Nothing changes without a click, and
+-- an answer is kept in the profile, so it isn't asked again; while that addon is
+-- still loaded the card keeps the answer, with a button to change it.
+-- Folder names: the Forever add-ons (Platynator to BetterFriendlist) are from
+-- each one's published package; the older rows are the names those addons use
+-- on other clients. A wrong name only means no card. An addon names one target,
+-- so the whole-UI addons ElvUI and Tukui ask about action bars only.
 
 local ADDON, ns = ...
 
-local CX = ns.Module("Coexist", { defaults = { answered = {}, told = {} } })
+local CX = ns.Module("Coexist", { defaults = { answered = {}, told = {}, off = {} } })
 
--- Addon folder name -> { the Vanguard module it overlaps, what both do }. One place for the list.
+-- Addon folder name -> { the Vanguard module it overlaps, what both do }, plus optional
+-- keys (the module's settings to turn off instead of the whole module: a list, or the name
+-- of a list on the module's table, read at click time), reload (those keys apply only after
+-- a reload) and also (one more sentence for the card). One place for the list.
 CX.OVERLAPS = {
   Bagnon = { "Bags", "bags" }, AdiBags = { "Bags", "bags" }, ArkInventory = { "Bags", "bags" },
-  BetterBags = { "Bags", "bags" }, Baganator = { "Bags", "bags" },
+  BetterBags = { "Bags", "bags" }, Baganator = { "Bags", "bags" }, Sorted = { "Bags", "bags" },
   Plater = { "Nameplates", "nameplates" }, Kui_Nameplates = { "Nameplates", "nameplates" },
-  TidyPlates_ThreatPlates = { "Nameplates", "nameplates" },
+  TidyPlates_ThreatPlates = { "Nameplates", "nameplates" }, Platynator = { "Nameplates", "nameplates" },
   Bartender4 = { "ActionBars", "action bars" }, Dominos = { "ActionBars", "action bars" },
   ShadowedUnitFrames = { "UnitFrames", "unit frames" }, PitBull4 = { "UnitFrames", "unit frames" },
   Grid2 = { "RaidFrames", "raid frames" }, VuhDo = { "RaidFrames", "raid frames" }, Cell = { "RaidFrames", "raid frames" },
   Clique = { "ClickCast", "click casting" }, Quartz = { "CastBars", "cast bars" },
   EllesmereUIUnitFrames = { "UnitFrames", "unit frames" }, EllesmereUIActionBars = { "ActionBars", "action bars" },
   EllesmereUINameplates = { "Nameplates", "nameplates" }, EllesmereUIRaidFrames = { "RaidFrames", "raid frames" },
-  SexyMap = { "Minimap", "the minimap" }, ["Prat-3.0"] = { "Chat", "chat" }, TipTac = { "Tooltips", "tooltips" },
+  SexyMap = { "Minimap", "the minimap" }, TipTac = { "Tooltips", "tooltips" },
+  ["Prat-3.0"] = { "Chat", "chat" }, Chattynator = { "Chat", "chat" }, Glass = { "Chat", "chat" },
   ElvUI = { "ActionBars", "action bars" }, Tukui = { "ActionBars", "action bars" },
   Auctionator = { "AuctionHelper", "auction house shopping and posting" },
   TradeSkillMaster = { "AuctionHelper", "auction house shopping and posting" },
+  -- Window skinners restyle popups, menus and tabs too, so every look group goes; durability and moving stay.
+  Aurora = { "Windows", "window looks", keys = "GROUPS", reload = true },
+  ForevermoreClassicUI = { "Windows", "window looks", keys = "GROUPS", reload = true },
+  BlizzMove = { "Windows", "window moving", keys = { "movable" }, reload = true },
+  MoveAny = { "Windows", "window moving", keys = { "movable" }, reload = true },
+  MovableWindowsForever = { "Windows", "window moving", keys = { "movable" }, reload = true },
+  BetterFriendlist = { "Windows", "friends list looks", keys = { "social" }, reload = true },
 }
 
-ns.Options.MODULE_INFO.Coexist = { "Other addons", "At login, notices addons that do a job a Vanguard module also does, and offers to turn that module off." }
+ns.Options.MODULE_INFO.Coexist = { "Other addons", "At login, notices addons that do a job a Vanguard module also does, and offers to turn that part of Vanguard off." }
 
 -- Whether the client says the addon is loaded (a client without the call: no).
 local function loaded(name)
@@ -40,14 +51,57 @@ local function loaded(name)
   return type(fn) == "function" and fn(name) == true
 end
 
--- The overlaps to ask about: loaded addons whose Vanguard module is on and not yet answered,
--- as { addon, module, what }, sorted by addon name.
-function CX.Pending()
+-- The row's settings keys, or nil for a whole-module row. A named list is read off the module now.
+local function keysOf(o)
+  if type(o.keys) ~= "string" then return o.keys end
+  local def = ns.GetModule(o.module)
+  return def and def[o.keys] or {}
+end
+
+-- The keys of the row's list that are on in this profile.
+local function keysOn(o)
+  local on, settings = {}, ns.Settings(o.module)
+  for _, key in ipairs(keysOf(o)) do
+    if settings[key] ~= false then on[#on + 1] = key end
+  end
+  return on
+end
+
+-- Whether Vanguard still does what the row names: its module is on, and with keys, at least one of them.
+local function doing(o)
+  if not ns.ModuleEnabled(o.module) then return false end
+  return o.keys == nil or #keysOn(o) > 0
+end
+
+-- One overlap as the card and chat use it: the row's fields plus the addon's name and the profile's answer.
+local function overlap(addon, row, answered)
+  return { addon = addon, module = row[1], what = row[2], keys = row.keys, reload = row.reload, also = row.also, answer = answered[addon] }
+end
+
+-- Whether the card has something to offer: a question, Vanguard's part still on after "kept",
+-- or after "off" a part that can come back (a keys row only while its module is on).
+local function offered(o)
+  if o.answer == "off" then return not doing(o) and (o.keys == nil or ns.ModuleEnabled(o.module)) end
+  return doing(o)
+end
+
+-- The loaded addons the card speaks for, as overlap() tables sorted by addon name.
+local function collect()
   local out, answered = {}, ns.Settings("Coexist", CX.defaults).answered
-  for addon, o in pairs(CX.OVERLAPS) do
-    if not answered[addon] and ns.ModuleEnabled(o[1]) and loaded(addon) then out[#out + 1] = { addon = addon, module = o[1], what = o[2] } end
+  for addon, row in pairs(CX.OVERLAPS) do
+    local o = overlap(addon, row, answered)
+    if offered(o) and loaded(addon) then out[#out + 1] = o end
   end
   table.sort(out, function(a, b) return a.addon < b.addon end)
+  return out
+end
+
+-- The overlaps to ask about: on the card and not yet answered.
+function CX.Pending()
+  local out = {}
+  for _, o in ipairs(collect()) do
+    if not o.answer then out[#out + 1] = o end
+  end
   return out
 end
 
@@ -57,17 +111,56 @@ local function moduleName(module)
   return info and info[1] or module
 end
 
--- Records the answer and builds the Modules page again (the card loses that row).
+-- What the buttons name: the module by its Modules page name, or for a keys row "Vanguard's <what>".
+local function targetName(o)
+  if o.keys then return "Vanguard's " .. o.what end
+  return moduleName(o.module)
+end
+
+-- The target as the sentences say it, always with "Vanguard's".
+local function ownName(o)
+  if o.keys then return targetName(o) end
+  return "Vanguard's " .. moduleName(o.module)
+end
+
+-- Records the answer and builds the Modules page again (the card shows the new answer).
 local function answer(o, choice)
   ns.Settings("Coexist", CX.defaults).answered[o.addon] = choice
   ns.Options.RebuildPage("modules")
 end
 
--- Turns Vanguard's module off for this profile and offers the reload it needs.
+-- Offers the reload a module change or a reload row needs; says what changed.
+local function offerReload(o, said)
+  if o.keys and not o.reload then return end
+  ns.OfferReload(said)
+end
+
+-- Turns the row's keys off and keeps which ones were on, so turning back on restores just those.
+local function turnKeysOff(o)
+  local on, settings = keysOn(o), ns.Settings(o.module)
+  for _, key in ipairs(on) do settings[key] = false end
+  ns.Settings("Coexist", CX.defaults).off[o.addon] = on
+end
+
+-- Turns Vanguard's part off for this profile and offers the reload it needs.
 function CX.TurnOff(o)
-  ns.SetModuleEnabled(o.module, false)
+  if o.keys then turnKeysOff(o) else ns.SetModuleEnabled(o.module, false) end
   answer(o, "off")
-  ns.OfferReload(string.format("Vanguard's %s is off; %s keeps them.", moduleName(o.module), o.addon))
+  offerReload(o, string.format("Turned off %s; %s does that now.", ownName(o), o.addon))
+end
+
+-- Turns back on the keys this card turned off (all the row's keys if it doesn't know which).
+local function turnKeysOn(o)
+  local store, settings = ns.Settings("Coexist", CX.defaults).off, ns.Settings(o.module)
+  for _, key in ipairs(store[o.addon] or keysOf(o)) do settings[key] = true end
+  store[o.addon] = nil
+end
+
+-- Turns Vanguard's part back on beside the other addon; the answer becomes "kept".
+function CX.TurnBackOn(o)
+  if o.keys then turnKeysOn(o) else ns.SetModuleEnabled(o.module, true) end
+  answer(o, "kept")
+  offerReload(o, string.format("Turned %s back on beside %s.", ownName(o), o.addon))
 end
 
 -- Keeps both running; the question doesn't come back.
@@ -75,19 +168,31 @@ function CX.Keep(o)
   answer(o, "kept")
 end
 
--- One overlap's rows on the card: what both do, then the two choices.
-local function overlapRows(o, rows)
-  rows[#rows + 1] = { "text", string.format("%s is loaded and also does %s.", o.addon, o.what) }
-  rows[#rows + 1] = { "button", "Turn off " .. moduleName(o.module), function() CX.TurnOff(o) end }
-  rows[#rows + 1] = { "button", "Keep both", function() CX.Keep(o) end }
+-- The card's sentence for one overlap: what both do, or the answer given, then the row's extra sentence.
+local function overlapText(o)
+  local said = string.format("%s is loaded and also does %s.", o.addon, o.what)
+  if o.answer == "off" then said = string.format("%s is loaded; you turned off %s.", o.addon, ownName(o)) end
+  if o.answer == "kept" then said = said .. " You kept both." end
+  return o.also and said .. " " .. o.also or said
 end
 
--- The Modules page's "Other addons" card, first on the page; nothing when nothing is pending.
+-- One overlap's rows on the card: its sentence, then the choices its answer leaves.
+local function overlapRows(o, rows)
+  rows[#rows + 1] = { "text", overlapText(o) }
+  if o.answer == "off" then
+    rows[#rows + 1] = { "button", "Turn " .. targetName(o) .. " back on", function() CX.TurnBackOn(o) end }
+    return
+  end
+  rows[#rows + 1] = { "button", "Turn off " .. targetName(o), function() CX.TurnOff(o) end }
+  if not o.answer then rows[#rows + 1] = { "button", "Keep both", function() CX.Keep(o) end } end
+end
+
+-- The Modules page's "Other addons" card, first on the page; nothing when no loaded addon applies.
 function CX.Rows()
-  local pending, rows = CX.Pending(), {}
-  if #pending == 0 then return rows end
+  local shown, rows = collect(), {}
+  if #shown == 0 then return rows end
   rows[1] = { "header", "Other addons" }
-  for _, o in ipairs(pending) do overlapRows(o, rows) end
+  for _, o in ipairs(shown) do overlapRows(o, rows) end
   return rows
 end
 ns.Options.AddRows("modules", CX.Rows, true)

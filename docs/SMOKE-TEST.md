@@ -1497,6 +1497,12 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 - Also, if EllesmereUI is on Forever: run `/dump C_AddOns.GetNumAddOns()` and list its folders (`/dump C_AddOns.GetAddOnInfo(i)` for each) and paste the ones starting with Ellesmere. Vanguard looks for `EllesmereUIUnitFrames`, `EllesmereUIActionBars`, `EllesmereUINameplates` and `EllesmereUIRaidFrames` (retail names, unconfirmed on Forever); a different name is a finding.
 - If it fails, paste: the folder name, a screenshot of the Modules page and `/vg errors`.
 
+### 18.1a Other addons you pair with Vanguard
+
+- Do: install one Forever add-on people pair with Vanguard (Platynator or BlizzMove is enough; Aurora or Forevermore Classic UI if you have a window skinner) and log in. Open `/vg` → Modules, click **Turn off …** on its row, take the reload, then open Modules again and click **Turn … back on**.
+- Expect: the card's button names what it turns off (**Turn off Nameplates** for Platynator; **Turn off Vanguard's window moving** for BlizzMove, **Turn off Vanguard's window looks** for a skinner); the reload comes up; after it the card still shows the addon with **Turn … back on**, and that button puts it back (with another reload). With a window skinner, after the reload only one skin shows on the character window, popups and menus, and the windows still drag and show durability. With BlizzMove, only BlizzMove moves windows (no snap-back). `/dump C_AddOns.IsAddOnLoaded("<folder>")` prints true for the folder name Vanguard looks for; false is a finding. [Needs in game.]
+- If it fails, paste: the addon's folder name, a screenshot of the Modules page before and after the reload, and `/vg errors`.
+
 ### 18.2 Group board
 
 - Do: in a capital city, type `/vg lfg` and leave it open for a few minutes while people post in Trade and LookingForGroup. Hover a row, then click one. Do not press Enter unless you want to send it. Then click the filter button twice and switch **Only dungeons for my level** off and on. Finally post `LFM SFK need heals` yourself in a channel.
