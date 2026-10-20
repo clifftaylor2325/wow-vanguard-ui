@@ -630,7 +630,7 @@ it("accent variants (#230): accentText and accentDim are made from any accent in
 
 it("type sizes (#258): no role under 10 but badge; the error badge uses it", () => {
   const addon = loggedIn();
-  const small = addon.eval("local out = {} for name, r in pairs(ns.Theme.ROLES) do if r[1] < 10 then out[#out + 1] = name end end return out");
+  const small = addon.eval("local out = {} for name, r in pairs(ns.Theme.ROLES) do if r.size < 10 then out[#out + 1] = name end end return out");
   expect(small, "only badge is under 10").toEqual(["badge"]);
   expect(addon.eval("return { ns.Theme.RoleSize('tiny'), ns.Theme.RoleSize('auraTimerSmall'), ns.Theme.RoleSize('badge') }"), "tiny and the small aura timer at 10, badge 9").toEqual([10, 10, 9]);
 });

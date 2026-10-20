@@ -647,8 +647,12 @@ T.CORNER_RADIUS = 4
 -- Shield corners (the shield setting, on the frames that ask for them): a 45-degree cut this many screen
 -- pixels across each corner (Media/Textures/CornerCutLine, CornerCutFill and the CornerCutMask images, one pixel wide at it).
 T.CORNER_CUT = 8
--- The corner looks (rounded, cut): the art of the border's corner piece, of the fill's, and its size in screen pixels.
-T.CORNER_ART = { rounded = { "CornerLine", "CornerFill", T.CORNER_RADIUS }, cut = { "CornerCutLine", "CornerCutFill", T.CORNER_CUT } }
+-- The corner looks (rounded, cut): the art of the border's corner piece (line), of the fill's (fill), and
+-- its size in screen pixels (size).
+T.CORNER_ART = {
+  rounded = { line = "CornerLine", fill = "CornerFill", size = T.CORNER_RADIUS },
+  cut = { line = "CornerCutLine", fill = "CornerCutFill", size = T.CORNER_CUT },
+}
 
 -- Pins one edge texture between its two corner points, `out` units past frame, each end stopped
 -- `r` units short of the corner (0 runs it into the corner).
@@ -986,8 +990,8 @@ end
 -- it has edges, and the fill's quarter discs and left and right strips where it has a background.
 local function roundParts(frame, p)
   local layer, sub = edgeLayer(frame)
-  p.roundLine = p.edges and cornerPieces(frame, T.CORNER_ART.rounded[1], layer, sub) or nil
-  p.roundFill = p.bg and cornerPieces(frame, T.CORNER_ART.rounded[2], "BACKGROUND") or nil
+  p.roundLine = p.edges and cornerPieces(frame, T.CORNER_ART.rounded.line, layer, sub) or nil
+  p.roundFill = p.bg and cornerPieces(frame, T.CORNER_ART.rounded.fill, "BACKGROUND") or nil
   p.roundSides = p.bg and { solid(frame, "BACKGROUND", nil, "fill"), solid(frame, "BACKGROUND", nil, "fill") } or nil
 end
 
@@ -1019,9 +1023,9 @@ end
 function corner.art(p, look)
   if not p.round or not look or p.look == look then return end
   p.look = look
-  for i, key in ipairs({ "roundLine", "roundFill" }) do
-    for _, t in pairs(p[key] or NO_PARTS) do t:SetTexture(T.Texture(T.CORNER_ART[look][i])) end
-  end
+  local art = T.CORNER_ART[look]
+  for _, t in pairs(p.roundLine or NO_PARTS) do t:SetTexture(T.Texture(art.line)) end
+  for _, t in pairs(p.roundFill or NO_PARTS) do t:SetTexture(T.Texture(art.fill)) end
 end
 
 -- Shows and places a frame's rounded (or cut) parts for radius r (units), or hides them (r 0) and
@@ -1058,7 +1062,7 @@ end
 local function roundRadius(frame, entry)
   local look, v = corner.look(frame, entry), T.Variant()
   if not look then return 0 end
-  return T.CORNER_ART[look][3] * T.Pixel(frame) * ((entry.opts.accent or entry.opts.border) and v and v.ring or 1), look
+  return T.CORNER_ART[look].size * T.Pixel(frame) * ((entry.opts.accent or entry.opts.border) and v and v.ring or 1), look
 end
 
 -- Colours and sizes a painted frame's edges, re-pinned `r` short of the corners once it has been rounded.
@@ -1075,7 +1079,7 @@ end
 -- discs on the fill's layer, at the centre's alpha, added to fill.textures.
 local function roundFillParts(frame, fill)
   fill.roundSides = { solid(frame, fill.layer, fill.sublevel, "fill"), solid(frame, fill.layer, fill.sublevel, "fill") }
-  fill.roundFill = cornerPieces(frame, T.CORNER_ART.rounded[2], fill.layer, fill.sublevel)
+  fill.roundFill = cornerPieces(frame, T.CORNER_ART.rounded.fill, fill.layer, fill.sublevel)
   for _, t in pairs(fill.roundSides) do fill.textures[#fill.textures + 1] = t end
   for _, t in pairs(fill.roundFill) do fill.textures[#fill.textures + 1] = t end
   for i = 2, #fill.textures do fill.textures[i]:SetAlpha(fill.bg:GetAlpha()) end
@@ -1413,9 +1417,10 @@ function T.FocusRing(frame, on)
   for _, e in pairs(f) do for _, t in pairs(e) do t:SetShown(on == true) end end
 end
 
--- How a pressed button looks (#257): a shade overlay at T.PRESS[2] over its fill (one step darker)
+-- How a pressed button looks (#257): a shade overlay at T.PRESS.alpha over its fill (one step darker)
 -- and its own label (button.text) T.PRESS.drop screen pixels lower, at once, while the mouse is held.
-T.PRESS = { "shade", 0.3, drop = 1, row = 0.2 }
+-- token: the shade's colour; row: the alpha of a list row's press shade (T.Row).
+T.PRESS = { token = "shade", alpha = 0.3, drop = 1, row = 0.2 }
 -- Each themed button's press state (weak): { overlay = the fill's centre texture, fill = its T.FillParts
 -- fill, ys = its label's anchor ys before the press }.
 local pressOf = setmetatable({}, { __mode = "k" })
@@ -1473,7 +1478,7 @@ end
 -- corners), and hooks on the mouse and on its state (pcall: a widget without OnEnable/OnDisable can't
 -- have them hooked).
 local function stateParts(button)
-  local fill = T.FillParts(button, "BACKGROUND", 2, T.PRESS[1], T.PRESS[2])
+  local fill = T.FillParts(button, "BACKGROUND", 2, T.PRESS.token, T.PRESS.alpha)
   T.ShowFill(fill, false)
   pressOf[button] = { overlay = fill.bg, fill = fill }
   button:HookScript("OnMouseDown", ns.Guard("button press", function(b) T.PressButton(b, true) end))
@@ -1673,15 +1678,15 @@ T.SCROLL = { thumb = 4, rest = 0.5, lit = 1 }
 -- The window controls' look (the ghost tile, docs/design/UI-COHERENCE.md 12a): nothing behind the glyph at rest;
 -- under the mouse a rounded tile (fill and one-pixel line) in `hover`, held down in `press` with the glyph one
 -- pixel lower. The glyph's colour at rest, lit, and lit on close (the state vermilion: only its mark is coloured).
-T.CONTROL_TILES = { hover = { "raisedHover", "borderHi" }, press = { "inset", "divider" },
+T.CONTROL_TILES = { hover = { tile = "raisedHover", line = "borderHi" }, press = { tile = "inset", line = "divider" },
   glyph = { rest = "text2", lit = "text", close = "bad" } }
 
 -- Shows a window control's rounded tile in its state's fill and line (pressed over lit), or hides it at rest.
 local function paintControlTile(p, entry)
   local look = entry.pressed and T.CONTROL_TILES.press or entry.lit and T.CONTROL_TILES.hover
-  for i, key in ipairs({ "tile", "line" }) do
+  for _, key in ipairs({ "tile", "line" }) do
     p[key]:SetShown(look and true or false)
-    if look then T.Tint(p[key], look[i]) end
+    if look then T.Tint(p[key], look[key]) end
   end
 end
 
@@ -1875,7 +1880,7 @@ local function checkParts(button)
   local box = T.Panel(CreateFrame("Frame", nil, button), { inset = true, noSheen = true })
   T.PixelSize(box, T.CHECK.size, T.CHECK.size, true)
   box:SetPoint("CENTER")
-  local fill, press = solid(box, "BACKGROUND", 1, "fill"), T.Tint(solid(box, "BACKGROUND", 2, "fill"), T.PRESS[1], T.PRESS[2])
+  local fill, press = solid(box, "BACKGROUND", 1, "fill"), T.Tint(solid(box, "BACKGROUND", 2, "fill"), T.PRESS.token, T.PRESS.alpha)
   fill:SetAllPoints()
   press:SetAllPoints()
   press:Hide()
@@ -1974,7 +1979,7 @@ local function radioParts(button)
   local holder = T.PixelSize(CreateFrame("Frame", nil, button), T.RADIO.size, T.RADIO.size, true)
   holder:SetPoint("CENTER")
   local inner = T.RADIO.size - 2 * T.RADIO.ring
-  local press = T.Tint(centered(holder, "ARTWORK", T.Texture("Knob"), inner), T.PRESS[1], T.PRESS[2])
+  local press = T.Tint(centered(holder, "ARTWORK", T.Texture("Knob"), inner), T.PRESS.token, T.PRESS.alpha)
   press:Hide()
   pressOf[button] = { overlay = press, row = true }
   local r = { holder = holder, ring = disc(holder, "BACKGROUND", T.RADIO.size, "edge"), well = disc(holder, "BORDER", inner, "inset") }
@@ -2060,10 +2065,10 @@ end
 
 -- An arrow button's look: the glyph's size and colour at rest and under the mouse.
 T.ARROW = { glyph = 10, color = "text2", hover = "text" }
--- Each direction: the theme icon it turns, and the texture coordinates that turn it.
+-- Each direction: the theme icon it turns, and the texture coordinates that turn it (left, right, top, bottom).
 local ARROW_TURN = {
-  down = { "Down", 0, 1, 0, 1 }, up = { "Down", 0, 1, 1, 0 },
-  right = { "Right", 0, 1, 0, 1 }, left = { "Right", 1, 0, 0, 1 },
+  down = { icon = "Down", left = 0, right = 1, top = 0, bottom = 1 }, up = { icon = "Down", left = 0, right = 1, top = 1, bottom = 0 },
+  right = { icon = "Right", left = 0, right = 1, top = 0, bottom = 1 }, left = { icon = "Right", left = 1, right = 0, top = 0, bottom = 1 },
 }
 -- Each themed arrow button -> { glyph, hover }. Weak.
 local arrowOf = setmetatable({}, { __mode = "k" })
@@ -2104,8 +2109,8 @@ function T.ArrowButton(button, direction, opts)
   local turn = ARROW_TURN[direction] or ARROW_TURN.down
   if not arrowOf[button] then arrowParts(button, opts and opts.flat) end
   if arrowOf[button].flat then T.FadeRegions(button) else T.Button(button) end
-  arrowOf[button].glyph:SetTexture(T.Icon(turn[1]))
-  arrowOf[button].glyph:SetTexCoord(turn[2], turn[3], turn[4], turn[5])
+  arrowOf[button].glyph:SetTexture(T.Icon(turn.icon))
+  arrowOf[button].glyph:SetTexCoord(turn.left, turn.right, turn.top, turn.bottom)
   paintArrow(button)
   return button
 end
@@ -2396,7 +2401,7 @@ end
 -- A row's layers, bottom to top: the selected fill, the hover wash, the press shade and the rail.
 local function rowParts(row)
   local fill = rowLayer(row, -1, T.SELECT.fill)
-  local hover, press = rowLayer(row, 1, "hover"), rowLayer(row, 2, T.PRESS[1], T.PRESS.row)
+  local hover, press = rowLayer(row, 1, "hover"), rowLayer(row, 2, T.PRESS.token, T.PRESS.row)
   return { fill = fill, hover = hover, press = press, rail = rowRail(row) }
 end
 
@@ -2469,7 +2474,10 @@ local SCROLL_PIECES = { "Begin", "Middle", "End", "Texture" }
 local SCROLL_ARROWS = { "Back", "Forward" }
 local OLD_SCROLL_ARROWS = { "ScrollUpButton", "ScrollDownButton" }
 -- What a game thumb's hooks note about the mouse: over it (OnEnter, OnLeave) and holding it (OnMouseDown, OnMouseUp).
-local THUMB_HOOKS = { OnEnter = { "over", true }, OnLeave = { "over", false }, OnMouseDown = { "held", true }, OnMouseUp = { "held", false } }
+local THUMB_HOOKS = {
+  OnEnter = { state = "over", on = true }, OnLeave = { state = "over", on = false },
+  OnMouseDown = { state = "held", on = true }, OnMouseUp = { state = "held", on = false },
+}
 -- Per-frame state kept off the game's frames: a game thumb (an old scroll bar's slider, whose thumb is a
 -- texture) -> { bar, over, held }, the T.SCROLL line Vanguard drew down it and where the mouse is.
 -- (vgArrow, above, marks an arrow button faded once.)
@@ -2491,7 +2499,7 @@ end
 -- Follows the mouse on a game thumb through hooks (never its own scripts), relighting its line on each change.
 local function watchThumb(thumb)
   for script, note in pairs(THUMB_HOOKS) do
-    thumb:HookScript(script, ns.Guard("scroll thumb " .. script, function() vgThumb[thumb][note[1]] = note[2]; lightThumb(thumb) end))
+    thumb:HookScript(script, ns.Guard("scroll thumb " .. script, function() vgThumb[thumb][note.state] = note.on; lightThumb(thumb) end))
   end
 end
 
@@ -2613,22 +2621,25 @@ function T.SetFont(fs, size)
   return fs
 end
 
--- Text roles: size at text scale 1, bold (the SemiBold weight), and an
--- outline instead of a shadow (world text such as nameplates, and text drawn
--- over a bright bar, such as raid frame names).
+-- Text roles: size at text scale 1, bold (the SemiBold weight), an outline instead of a shadow (world
+-- text such as nameplates, and text drawn over a bright bar, such as raid frame names), and upper
+-- (T.SetText capitals the text).
 T.ROLES = {
-  title = { 15, true }, heading = { 13, true }, name = { 12, true }, cell = { 11, true },
+  title = { size = 15, bold = true }, heading = { size = 13, bold = true }, name = { size = 12, bold = true },
+  cell = { size = 11, bold = true },
   -- No role is under 10 (#258) but badge, for a count or mark on a tiny badge.
-  label = { 12 }, number = { 12 }, small = { 10 }, tiny = { 10 }, badge = { 9 }, world = { 11, true, "OUTLINE" },
-  barName = { 11, true, "OUTLINE" }, barSmall = { 10, false, "OUTLINE" },
+  label = { size = 12 }, number = { size = 12 }, small = { size = 10 }, tiny = { size = 10 }, badge = { size = 9 },
+  world = { size = 11, bold = true, outline = "OUTLINE" },
+  barName = { size = 11, bold = true, outline = "OUTLINE" }, barSmall = { size = 10, bold = false, outline = "OUTLINE" },
   -- Aura icons: stack counts, and the timer on larger and smaller icons.
-  cooldown = { 14, true, "OUTLINE" }, auraCount = { 10, true, "OUTLINE" }, auraTimer = { 11, true, "OUTLINE" }, auraTimerSmall = { 10, true, "OUTLINE" },
+  cooldown = { size = 14, bold = true, outline = "OUTLINE" }, auraCount = { size = 10, bold = true, outline = "OUTLINE" },
+  auraTimer = { size = 11, bold = true, outline = "OUTLINE" }, auraTimerSmall = { size = 10, bold = true, outline = "OUTLINE" },
   -- Chat windows (Modules/Chat.lua picks the size; this is Medium).
-  chat = { 12 },
+  chat = { size = 12 },
   -- The minimap's zone text: a bold 13 that never takes the faction look's display font (not in T.HEADING_ROLES).
-  zone = { 13, true },
-  -- A section header: small, and upper-cased by T.SetText (the fourth field) instead of by :upper() on the string.
-  section = { 10, false, nil, true },
+  zone = { size = 13, bold = true },
+  -- A section header: small, and upper-cased by T.SetText instead of by :upper() on the string.
+  section = { size = 10, bold = false, upper = true },
 }
 
 -- Every font string styled with a role: string -> role name. Weak, so text
@@ -2647,7 +2658,7 @@ end
 
 -- A role's font size after the text scale setting.
 local function roleSize(r)
-  return T.ScaledSize(r[1])
+  return T.ScaledSize(r.size)
 end
 
 -- A text role's font size (by name) after the text scale setting, for layouts.
@@ -2669,7 +2680,7 @@ end
 -- Sets a styled font string's text, in capitals when its role says so (T.ROLES.section).
 function T.SetText(fs, text)
   local r = T.ROLES[styled[fs]]
-  fs:SetText(r and r[4] and text:upper() or text)
+  fs:SetText(r and r.upper and text:upper() or text)
 end
 
 -- A font's flags with SLUG added (#239) when the slugText setting is on and the text is world text
@@ -2682,10 +2693,10 @@ end
 -- Sets a role's font, size and shadow (or outline) on a font string; leaves its color alone.
 function T.ApplyRole(fs, role)
   local r = T.ROLES[role]
-  local path, outline = T.Font(r[2])
+  local path, outline = T.Font(r.bold)
   if T.HEADING_ROLES[role] then path = T.HeadingFont() or path end
-  fs:SetFont(path, sizes[fs] or roleSize(r), T.FontFlags(r[3] or outline, r[3]))
-  fs:SetShadowOffset(r[3] and 0 or 1, r[3] and 0 or -1)
+  fs:SetFont(path, sizes[fs] or roleSize(r), T.FontFlags(r.outline or outline, r.outline ~= nil))
+  fs:SetShadowOffset(r.outline and 0 or 1, r.outline and 0 or -1)
   fs:SetShadowColor(T.RGB("textShadow"))
 end
 

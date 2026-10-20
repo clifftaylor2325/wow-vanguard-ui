@@ -146,7 +146,7 @@ it("the zone role: a bold 13 that keeps Fira Sans while the faction look gives t
   addon.eval('ns.Theme.Settings().faction = "auto" ns.Theme.Refresh()');
   // A new string of a role: its font file and size.
   const look = (role) => addon.eval(`local fs = ns.Theme.Text(UIParent:CreateFontString(), "${role}") return { fs.__font[1]:match("[^\\\\]+$"), fs.__font[2] }`);
-  expect(addon.eval("return ns.Theme.ROLES.zone"), "13, bold").toEqual([13, true]);
+  expect(addon.eval("local r = ns.Theme.ROLES.zone return { r.size, r.bold }"), "13, bold").toEqual([13, true]);
   expect(look("title"), "a title takes the display font").toEqual(["Cinzel-SemiBold.ttf", 15]);
   expect(look("zone"), "the zone text keeps Fira Sans SemiBold at 13").toEqual(["FiraSansCondensed-SemiBold.ttf", 13]);
   expect(addon.eval('return ns.Theme.RoleSize("zone")'), "RoleSize knows it").toBe(13);

@@ -454,7 +454,7 @@ end
 -- How much larger the strip's text is drawn than at 100 % Text size; never under 1, so smaller text
 -- keeps today's strip (the calendar button's 18-unit slot still fits a row).
 local function textGrowth()
-  return math.max(1, T.RoleSize("small") / T.ROLES.small[1])
+  return math.max(1, T.RoleSize("small") / T.ROLES.small.size)
 end
 
 -- The strip's row height at the current Text size.

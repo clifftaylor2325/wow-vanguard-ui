@@ -539,7 +539,7 @@ end
 -- The text line: UI scale, Text size, and how tall chat text draws on this screen.
 local function textLine()
   local CH, frame = ns.GetModule("Chat"), _G.ChatFrame1
-  local size = (CH.settings and frame) and CH.TextSize(frame) or T.ScaledSize(T.ROLES.chat[1])
+  local size = (CH.settings and frame) and CH.TextSize(frame) or T.ScaledSize(T.ROLES.chat.size)
   local percent = math.floor((T.Settings().textScale or 1) * 100 + 0.5)
   return string.format("UI scale %.2f  ·  text %d%%  ·  chat %d (about %d px on this screen)",
     UIParent:GetScale(), percent, size, math.floor(size * T.PixelsPerUnit() + 0.5))
