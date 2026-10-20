@@ -124,6 +124,7 @@ Modules/Merchant.lua
 Modules/MerchantBulk.lua
 Modules/Errands.lua
 Modules/ErrandsBoats.lua
+Modules/ErrandsStock.lua
 Modules/InstancePrep.lua
 Modules/InstancePrepBuffs.lua
 Modules/InstancePrepWizard.lua

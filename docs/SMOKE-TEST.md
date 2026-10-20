@@ -723,6 +723,7 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 
 - Do: on a character whose stock list you set before this update, type `/vg stock`. Log in a second character that uses the same profile and type `/vg stock`; on it, `/vg stock <an item a merchant sells> 5`, then visit that merchant. Log back in on the first character, type `/vg stock`, and visit the same merchant.
 - Expect: the first character to log in after the update lists the old list; the second starts with `Your stock list is empty. ...` and buys only its own 5; back on the first, its list is unchanged and the merchant buys nothing for the second character's item. A profile export (`/vg` → Profiles) carries no stock list. [Needs in game: that the list survives a logout on each character (it lives in the character's saved file).]
+- Also expect (the window): `/vg` → Town and gear → Errands → **Edit list...** opens "Keep stocked" with one row per item (icon, name, where to buy it, the amount, Remove). Drag a bag item onto the + slot: it joins the list with one stack (Arrows 200, Water 20). Type a new amount, click away and type `/vg stock`: it lists the new amount. Clear an amount and click away: the row goes. Clear list asks first, then empties the window. [Needs in game: that a drag onto the slot is received (OnReceiveDrag), that GetItemIconByID and the stack size answer on Forever, and that typing in a box never moves your character.]
 - If it fails, paste: both characters' `/vg stock` output and `/vg errors`.
 
 ### 9.2f Missing-enchant mark on a shield

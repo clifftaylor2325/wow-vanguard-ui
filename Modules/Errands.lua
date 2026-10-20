@@ -200,13 +200,20 @@ local function itemName(id)
   if type(name) == "string" then return name end
   return "item " .. id
 end
+ER.ItemName = itemName
 
--- " — sold by Thomas Miller (Elwynn Forest, Goldshire)": where Vendor memory last saw
--- the item sold, or "" (never seen, or Vendor memory is off).
-local function soldBy(id)
+-- "sold by Thomas Miller (Elwynn Forest, Goldshire)": where Vendor memory last saw the item sold, or nil
+-- (never seen, or Vendor memory is off).
+function ER.WhereToBuy(id)
   local VM = ns.GetModule("VendorMemory")
   local list = VM and VM.enabled and VM.Where(id)
-  return list and (" — sold by " .. VM.Text(list[1])) or ""
+  return list and ("sold by " .. VM.Text(list[1])) or nil
+end
+
+-- " — sold by ...", for a chat line, or "".
+local function soldBy(id)
+  local where = ER.WhereToBuy(id)
+  return where and (" — " .. where) or ""
 end
 
 -- The Keep stocked list, { [itemID] = how many }: this character's own (VanguardCharDB), never the
@@ -232,9 +239,10 @@ local function listStock()
   for _, id in ipairs(ids) do ns.Chat(string.format("Keep %d × %s", list[id], itemName(id)) .. soldBy(id)) end
 end
 
--- Sets how many of an item to keep (0 takes it off the list).
+-- Sets how many of an item to keep (0 takes it off the list); an open Keep stocked window follows.
 local function setStock(id, amount)
   ER.StockList()[id] = amount > 0 and amount or nil
+  ER.StockWindow.Refresh()
   if amount > 0 then return ns.Chat(string.format("Keeping %d × %s.", amount, itemName(id))) end
   ns.Chat(itemName(id) .. " is off your stock list.")
 end
@@ -243,7 +251,7 @@ end
 function ER.StockCommand(rest)
   rest = rest or ""
   if rest == "" then return listStock() end
-  if rest == "clear" then VanguardCharDB.stockList = {} return ns.Chat("Your stock list is empty.") end
+  if rest == "clear" then VanguardCharDB.stockList = {} ER.StockWindow.Refresh() return ns.Chat("Your stock list is empty.") end
   local id, amount = ER.ItemID(rest), tonumber(rest:match("%s(%d+)%s*$"))
   if not (id and amount) then return ns.Chat("Usage: /vg stock <shift-click an item> <amount>  (0 removes it)") end
   setStock(id, amount)

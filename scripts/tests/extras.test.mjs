@@ -257,6 +257,98 @@ it("keep stocked: /vg stock sets the list, a merchant tops you up", () => {
   off.fire("MERCHANT_SHOW");
   expect(off.eval("return #__buys"), "switched off it buys nothing").toBe(0);
 });
+// TEST-ONLY item details for the Keep stocked window: 90011 stacks to 20 and has an icon; 90012's info isn't cached.
+const STOCK_WINDOW_ENV = STOCK_ENV + `
+  C_Item.GetItemInfo = function(id) if id == 90011 then return "TEST-ONLY Bread", "", 1, 1, 1, "", "", 20 end end
+  C_Item.GetItemIconByID = function(id) return "TEST-ONLY-ICON-" .. id end
+`;
+// The Keep stocked window's shown rows, each { name, where, amount, icon }, and whether the empty line shows.
+// (An empty Lua table comes back as {}, so no rows is made [] here.)
+const stockWindow = (addon) => {
+  const w = addon.eval(`local f, rows = Vanguard_StockList, {}
+    for i = 1, f.rows.used do local r = f.rows[i] rows[i] = { r.name:GetText(), r.where:GetText(), r.amount:GetText(), r.icon:GetTexture() or false } end
+    return { shown = f:IsShown(), rows = rows, empty = f.empty:IsShown() }`);
+  return { ...w, rows: Array.isArray(w.rows) ? w.rows : [] };
+};
+it("keep stocked: Edit list... on Town and gear opens the window, empty at first", () => {
+  const addon = loggedIn(CLICK_LUA + STOCK_WINDOW_ENV);
+  addon.eval('ns.Options.Show("town")');
+  addon.eval('for _, w in ipairs(__wfgStub.frames) do if w.caption == "Edit list..." and w:IsVisible() then w.__scripts.OnClick(w) end end');
+  expect(stockWindow(addon), "open, no rows, the line saying how to add one").toEqual({ shown: true, rows: [], empty: true });
+  expect(addon.eval("return Vanguard_StockList.title:GetText()")).toBe("Keep stocked");
+  const off = loggedIn(STOCK_WINDOW_ENV, { savedVariables: "VanguardDB.profiles = { Default = { modules = { Errands = false } } }" });
+  off.eval("ns.GetModule('Errands').StockWindow.Open()");
+  expect([chatHas(off, /Errands is off/), off.eval("return Vanguard_StockList == nil")], "Errands off: it says so and builds nothing").toEqual([true, true]);
+});
+it("keep stocked: an item dragged onto the slot is added with a stack, a row shows where to buy it, and Remove takes it off", () => {
+  const addon = loggedIn(STOCK_WINDOW_ENV);
+  addon.eval("ns.GetModule('Errands').StockWindow.Open()");
+  addon.eval("__wfgWorld.cursor = { type = 'item', id = 90011 } local s = Vanguard_StockList.slot s.__scripts.OnReceiveDrag(s)");
+  addon.eval("__wfgWorld.cursor = { type = 'item', id = 90012 } local s = Vanguard_StockList.slot s.__scripts.OnClick(s)");
+  expect(stockWindow(addon).rows, "one stack of Bread (20); 90012's stack unknown: 20; never seen at a merchant").toEqual([
+    ["TEST-ONLY Bread", "where to buy: not seen yet", "20", "TEST-ONLY-ICON-90011"], ["item 90012", "where to buy: not seen yet", "20", "TEST-ONLY-ICON-90012"]]);
+  expect(addon.eval("return { __wfgWorld.cursor == nil, VanguardCharDB.stockList[90011] }"), "the cursor is emptied; the list has it").toEqual([true, 20]);
+  addon.eval("VanguardCharDB.stockList[90011] = 45 __wfgWorld.cursor = { type = 'item', id = 90011 } local s = Vanguard_StockList.slot s.__scripts.OnClick(s)");
+  expect(stockWindow(addon).rows[0][2], "an item already on the list keeps its amount").toBe("45");
+  addon.eval("__wfgWorld.cursor = { type = 'spell', id = 133 } local s = Vanguard_StockList.slot s.__scripts.OnClick(s)");
+  addon.eval("local s = Vanguard_StockList.slot s.__scripts.OnClick(s)");
+  expect(stockWindow(addon).rows.length, "a spell, or nothing held: nothing added").toBe(2);
+  addon.eval("local VM = ns.GetModule('VendorMemory') VM.enabled, VM.Where, VM.Text = true, function(id) return id == 90012 and { { n = 'TEST-ONLY Thomas' } } or nil end, function(e) return e.n end");
+  addon.eval("ns.GetModule('Errands').StockWindow.Refresh()");
+  expect(stockWindow(addon).rows[1][1], "Vendor memory knows a merchant: sold by them").toBe("sold by TEST-ONLY Thomas");
+  addon.eval("local b = Vanguard_StockList.rows[1].remove b.__scripts.OnClick(b)");
+  expect([stockWindow(addon).rows.map((r) => r[0]), addon.eval("return VanguardCharDB.stockList[90011]")], "Remove: the row and the list entry go").toEqual([["item 90012"], null]);
+});
+it("keep stocked: an amount saves as you type, 0 or an empty box takes the item off when you leave it", () => {
+  const addon = loggedIn(STOCK_WINDOW_ENV);
+  addon.eval("VanguardCharDB.stockList = { [90011] = 20, [90012] = 5 } ns.GetModule('Errands').StockWindow.Open()");
+  // Types text into row i's amount box, as the player would.
+  const type = (i, text) => addon.eval(`local b = Vanguard_StockList.rows[${i}].amount b:SetText("${text}") b.__scripts.OnTextChanged(b, true)`);
+  // Leaves row i's amount box.
+  const leave = (i) => addon.eval(`local b = Vanguard_StockList.rows[${i}].amount b.__scripts.OnEditFocusLost(b)`);
+  type(1, "60");
+  expect(addon.eval("return VanguardCharDB.stockList[90011]"), "saved at once").toBe(60);
+  type(1, "");
+  expect(addon.eval("return VanguardCharDB.stockList[90011]"), "an empty box waits").toBe(60);
+  leave(2);
+  expect(addon.eval("return Vanguard_StockList.rows[2].amount:GetText()"), "leaving a kept amount shows it").toBe("5");
+  leave(1);
+  expect([addon.eval("return VanguardCharDB.stockList[90011]"), stockWindow(addon).rows.map((r) => r[0])], "left empty: off the list").toEqual([null, ["item 90012"]]);
+  type(1, "0");
+  leave(1);
+  expect(stockWindow(addon), "0: off the list too; the list is empty").toEqual({ shown: true, rows: [], empty: true });
+  addon.eval("local b = Vanguard_StockList.rows[1].amount b.__scripts.OnEditFocusLost(b) b.__scripts.OnTextChanged(b, true)");
+  expect(addon.eval("return next(VanguardCharDB.stockList)"), "a box whose item is gone does nothing").toBe(null);
+});
+it("keep stocked: Clear list asks first, and /vg stock changes show in the open window", () => {
+  const addon = loggedIn(STOCK_WINDOW_ENV);
+  addon.eval("ns.GetModule('Errands').StockWindow.Open()");
+  addon.eval("local b = Vanguard_StockList.clear b.__scripts.OnClick(b)");
+  expect(addon.eval("return Vanguard_Question == nil or not Vanguard_Question:IsShown()"), "an empty list: nothing to ask").toBe(true);
+  addon.slash("stock item:90011 45");
+  expect(stockWindow(addon).rows.map((r) => r[2]), "/vg stock adds it to the open window").toEqual(["45"]);
+  addon.eval("local b = Vanguard_StockList.clear b.__scripts.OnClick(b)");
+  expect(addon.eval("return VanguardCharDB.stockList[90011]"), "asked, not yet cleared").toBe(45);
+  addon.eval("local q = ns.QuestionFrame and ns.QuestionFrame() for _, w in ipairs(__wfgStub.frames) do if w.text and w.text.__text == 'Clear list' and w:IsVisible() and w ~= Vanguard_StockList.clear then w.__scripts.OnClick(w) end end");
+  expect(stockWindow(addon).rows, "yes: the list is empty").toEqual([]);
+  addon.slash("stock item:90011 5");
+  addon.slash("stock clear");
+  expect(stockWindow(addon).rows, "/vg stock clear empties the open window").toEqual([]);
+  addon.eval("local b = Vanguard_StockList.done b.__scripts.OnClick(b)");
+  expect(stockWindow(addon).shown, "Done closes it").toBe(false);
+});
+it("keep stocked: an item's name arriving repaints the open window on the next frame", () => {
+  const addon = loggedIn(STOCK_WINDOW_ENV);
+  addon.eval("VanguardCharDB.stockList = { [90012] = 5 } ns.GetModule('Errands').StockWindow.Open()");
+  addon.eval("local get = C_Item.GetItemInfo C_Item.GetItemInfo = function(id) if id == 90012 then return 'TEST-ONLY Water' end return get(id) end");
+  addon.fire("GET_ITEM_INFO_RECEIVED", 90012);
+  addon.update(0);
+  expect(stockWindow(addon).rows[0][0]).toBe("TEST-ONLY Water");
+  addon.eval("Vanguard_StockList:Hide()");
+  addon.fire("GET_ITEM_INFO_RECEIVED", 90012);
+  addon.eval("C_Item.GetItemIconByID = nil ns.GetModule('Errands').StockWindow.Open()");
+  expect(stockWindow(addon).rows[0][3], "a client without the icon call: no icon").toBe(false);
+});
 it("keep stocked: the list is this character's own, never the shared profile's", () => {
   const hunter = loggedIn(STOCK_ENV);
   hunter.slash("stock item:90014 400");
