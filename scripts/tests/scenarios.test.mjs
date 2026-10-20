@@ -44,7 +44,8 @@ it("a tracked quest lists its title and objectives", () => {
   addon.world.addQuest({ questID: 7, title: "Wolves Across the Border", level: 8, watched: true, objectives: [{ text: "0/8 Wolves slain", finished: false, type: "monster" }] });
   addon.update(0); // the tracker rebuilds on the next frame
   expect(addon.find("Wolves Across the Border").kind).toBe("FontString");
-  expect(addon.find("Wolves slain").text).toBe("- 0/8 Wolves slain");
+  expect(addon.find("Wolves slain").text).toBe("Wolves slain");
+  expect(addon.find("0/8").kind, "its count apart, at the row's right edge").toBe("FontString");
 });
 
 it("/vg unlock waits for combat to end, then shows the movers", () => {

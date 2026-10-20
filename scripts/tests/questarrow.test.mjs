@@ -216,3 +216,18 @@ it("quest arrow: a pin whose quest left the log is let go, so a quest the game t
   addon.eval(`__wfgWorld.addQuest({ questID = 90062, title = "TEST-ONLY Far", level = 8, watched = true, distanceSq = 90000, objectives = {} }) __tracked = 90062 ns.QuestArrow.Pick()`);
   expect([addon.eval("return ns.QuestArrow.current"), pinState(addon)[0]], "the game's tracked quest doesn't hold the arrow").toEqual([90061, false]);
 });
+
+// Which tracker blocks show the followed quest's accent line, by title.
+const edges = (addon) => addon.eval(`local f, out = Vanguard_QuestTrackerFrame, {}
+  for i = 1, f.blocks.used do if f.blocks[i].edge:IsShown() then out[#out + 1] = f.blocks[i].title:GetText() end end
+  return out`);
+
+it("quest arrow: the tracker draws an accent line down the left edge of the quest the arrow follows, and moves it with the arrow", () => {
+  const addon = loggedIn(ARROW_ENV);
+  addon.update(0);
+  expect(edges(addon), "the nearer quest, the arrow's pick").toEqual(["[8] TEST-ONLY Near"]);
+  expect(isTok(addon, addon.eval("return Vanguard_QuestTrackerFrame.blocks[1].edge.__vertexColor"), "accent"), "in the accent").toBe(true);
+  addon.eval("C_QuestLog.GetDistanceSqToQuest = function(id) return id == 90061 and 10000 or 4000 end ns.QuestArrow.Pick()");
+  addon.update(0);
+  expect(edges(addon), "the arrow moved on: so does the line").toEqual(["[8] TEST-ONLY Far"]);
+});

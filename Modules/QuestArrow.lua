@@ -113,7 +113,7 @@ local function paintPick(f)
 end
 
 -- Picks the quest, whether it is held and ready to turn in, and its spot (map, x, y); says so when it moved on
--- from a finished one, and redraws.
+-- from a finished one, redraws, and has the tracker move its accent line when the quest changed.
 function QA.Pick()
   if not QA.frame then return end
   local old = QA.current
@@ -123,6 +123,7 @@ function QA.Pick()
   if old and QA.current and old ~= QA.current and finished(old) and not ns.InCombat() then ns.Chat("Arrow: " .. titleOf(QA.current) .. ".") end
   paintPick(QA.frame)
   QA.Draw()
+  if old ~= QA.current then ns.QuestGuide.StepsChanged() end
 end
 
 -- Turning and distance -----------------------------------------------------------------------------
