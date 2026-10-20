@@ -18,7 +18,7 @@ local UF = ns.Module("UnitFrames", {
 -- Target classification -> the color of its diamond (none for normal units).
 local CLASSIFICATION = { elite = "gold", rareelite = "accent", rare = "text2", worldboss = "bad" }
 
--- key, unit, size, label and default point (on UIParent) for each frame. The
+-- key (also the unit), size, label and default point (on UIParent) for each frame. The
 -- Centered layout: everything anchored to the bottom center, so it keeps its
 -- shape at any UI scale. Player and target mirror each other either side of
 -- your character, the target of target sits outside the target on the same
@@ -26,13 +26,16 @@ local CLASSIFICATION = { elite = "gold", rareelite = "accent", rare = "text2", w
 -- left end, and the chat reaches up beside the frame), and the focus sits
 -- above the player (its debuffs under it, its cast bar over it; Modules/CastBars.lua).
 local LAYOUT = {
-  { key = "player", unit = "player", w = 240, h = 36, label = "Player", point = { "BOTTOM", "BOTTOM", -240, 196 } },
-  { key = "target", unit = "target", w = 240, h = 36, label = "Target", point = { "BOTTOM", "BOTTOM", 240, 196 } },
-  { key = "targettarget", unit = "targettarget", w = 120, h = 24, label = "Target of target", point = { "BOTTOM", "BOTTOM", 426, 196 } },
-  { key = "focus", unit = "focus", w = 160, h = 30, label = "Focus", point = { "BOTTOM", "BOTTOM", -270, 290 } },
-  { key = "pet", unit = "pet", w = 120, h = 24, label = "Pet", point = { "BOTTOM", "BOTTOM", -184, 240 } },
+  { key = "player", w = 240, h = 36, label = "Player", point = { "BOTTOM", "BOTTOM", -240, 196 } },
+  { key = "target", w = 240, h = 36, label = "Target", point = { "BOTTOM", "BOTTOM", 240, 196 } },
+  { key = "targettarget", w = 120, h = 24, label = "Target of target", point = { "BOTTOM", "BOTTOM", 426, 196 } },
+  { key = "focus", w = 160, h = 30, label = "Focus", point = { "BOTTOM", "BOTTOM", -270, 290 } },
+  { key = "pet", w = 120, h = 24, label = "Pet", point = { "BOTTOM", "BOTTOM", -184, 240 } },
 }
 UF.LAYOUT = LAYOUT
+-- The same rows by key (the target's size, for one).
+UF.LAYOUT_BY_KEY = {}
+for _, def in ipairs(LAYOUT) do UF.LAYOUT_BY_KEY[def.key] = def end
 local PARTY_SIZE = 4
 -- Party 1 at the top of a column that ends 344 up, just above your player frame and centered on it
 -- (where the raid frames sit too).
@@ -318,16 +321,16 @@ local function addBars(f, settings)
   shieldBars(f)
 end
 
--- Creates one unit frame (a secure unit button) with its bars and texts, its corners cut to the
--- shield look (the bars cut with it) while the shield setting is on.
-local function createUnitFrame(key, unit, w, h, settings)
+-- Creates one unit frame (a secure unit button, its unit the same as its key) with its bars and texts,
+-- its corners cut to the shield look (the bars cut with it) while the shield setting is on.
+local function createUnitFrame(key, w, h)
   local f = CreateFrame("Button", "Vanguard_" .. key, UIParent, "SecureUnitButtonTemplate")
-  f.unit, f.key = unit, key
+  f.unit, f.key = key, key
   T.PixelSize(f, w, h)
-  makeSecure(f, unit)
+  makeSecure(f, key)
   T.HudPanel(f, { shield = true })
-  addBars(f, settings)
-  addTexts(f, settings)
+  addBars(f, UF.settings)
+  addTexts(f, UF.settings)
   addRaidIcon(f)
   return f
 end
@@ -519,17 +522,21 @@ local function watch(f)
   if f.unit ~= "player" and type(RegisterUnitWatch) == "function" then RegisterUnitWatch(f) end
 end
 
--- Creates, places and wires one frame.
-local function addFrame(key, unit, w, h, label, point)
-  local f = createUnitFrame(key, unit, w, h, UF.settings)
+-- Creates and wires one frame, its unit the same as its key. size has w and h (a LAYOUT row, PARTY or UF.BOSS).
+local function addFrame(key, size)
+  local f = createUnitFrame(key, size.w, size.h)
   if key == "target" or key == "focus" then addClassMark(f) end
   if key == "target" then addTagMark(f) end
   UF.frames[key] = f
   listen(f)
   watch(f)
-  if point then
-    ns.Mover(f, "uf_" .. key, label, point)
-  end
+  return f
+end
+
+-- A frame that also gets a mover, labelled and placed by spec (a LAYOUT row, PARTY or UF.BOSS).
+local function addMovable(key, spec)
+  local f = addFrame(key, spec)
+  ns.Mover(f, "uf_" .. key, spec.label, spec.point)
   return f
 end
 
@@ -541,10 +548,10 @@ end
 
 -- Party 1-4: the first is movable, the rest stack below it.
 local function addParty()
-  local first = addFrame("party1", "party1", PARTY.w, PARTY.h, PARTY.label, PARTY.point)
+  local first = addMovable("party1", PARTY)
   local prev = first
   for i = 2, PARTY_SIZE do
-    local f = addFrame("party" .. i, "party" .. i, PARTY.w, PARTY.h)
+    local f = addFrame("party" .. i, PARTY)
     f:SetPoint("TOPLEFT", prev, "BOTTOMLEFT", 0, -PARTY.gap)
     prev = f
   end
@@ -553,10 +560,10 @@ end
 -- Boss 1-5: the first is movable, the rest stack below it (each shows while its boss exists).
 local function addBosses()
   local b = UF.BOSS
-  local prev = addFrame("boss1", "boss1", b.w, b.h, b.label, b.point)
+  local prev = addMovable("boss1", b)
   addClassMark(prev)
   for i = 2, b.count do
-    local f = addFrame("boss" .. i, "boss" .. i, b.w, b.h)
+    local f = addFrame("boss" .. i, b)
     f:SetPoint("TOPLEFT", prev, "BOTTOMLEFT", 0, -b.gap)
     addClassMark(f)
     prev = f
@@ -592,7 +599,7 @@ end
 -- Builds every frame. Secure frames can't be set up in combat, so this waits.
 local function build(settings)
   for _, def in ipairs(LAYOUT) do
-    addFrame(def.key, def.unit, def.w, def.h, def.label, def.point)
+    addMovable(def.key, def)
   end
   if not UF.RaidCoversParty() then addParty() end
   if settings.boss then addBosses() end
@@ -648,14 +655,14 @@ end
 -- How tall the target frame stands: its targetHeight setting (setup's role layouts raise it, a taller
 -- target for damage dealers and tanks), else its layout's height. It grows up from its bottom edge.
 function UF.TargetHeight()
-  return tonumber(UF.settings.targetHeight) or LAYOUT[2].h
+  return tonumber(UF.settings.targetHeight) or UF.LAYOUT_BY_KEY.target.h
 end
 
 -- Sizes the target frame to UF.TargetHeight (out of combat: it is a secure button).
 function UF.ApplySizes()
   local target = UF.frames.target
   if not target then return end
-  ns.OutOfCombat(function() T.PixelSize(target, LAYOUT[2].w, UF.TargetHeight()) end)
+  ns.OutOfCombat(function() T.PixelSize(target, UF.LAYOUT_BY_KEY.target.w, UF.TargetHeight()) end)
 end
 
 -- Applies the Versus deck setting: now, or when combat ends (a new deck joins the Calm HUD).
