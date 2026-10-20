@@ -470,18 +470,6 @@ GW.LFG_PAGES = { "LFGListingFrame", "LFGBrowseFrame", "LFGWhoListFrame" }
 -- what the browse page says over an empty result (its NoResultsFound line, which the browse page keeps).
 GW.LFG_EMPTY = { LFGWhoListFrame = "LFG_LIST_NO_RESULTS_FOUND" }
 
--- Fades the art a window's template draws (GW.ART, its own textures too), with no panel: for windows
--- made of several frames, where one panel goes on the outer frame.
-function GW.FadeWindowArt(frame)
-  T.FadeRegions(frame)
-  GW.FadeParts(frame, GW.ART)
-  for _, key in ipairs(GW.ART) do
-    local part = frame[key]
-    if key ~= "Inset" and type(part) == "table" and part.SetAlpha then part:SetAlpha(0) end
-  end
-  if type(frame.Inset) == "table" and type(frame.Inset.NineSlice) == "table" then frame.Inset.NineSlice:SetAlpha(0) end
-end
-
 -- A page's title text in the title role.
 local function dressTitle(page)
   GW.SkinTitle(type(page.TitleContainer) == "table" and page.TitleContainer.TitleText)

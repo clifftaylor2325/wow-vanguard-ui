@@ -114,8 +114,9 @@ GW.LAYOUT_WINDOWS = { StaticPopup1 = true, StaticPopup2 = true, StaticPopup3 = t
 
 -- Skinning ------------------------------------------------------------------------------------
 
--- Fades the art on a window and on each art piece it has (the inset's own frame too).
-local function fadeArt(frame)
+-- Fades the art a window's template draws (GW.ART, its own textures too), with no panel: for windows made of several
+-- frames, where one panel goes on the outer frame. The Inset's frame stays; its art and NineSlice fade.
+function GW.FadeWindowArt(frame)
   T.FadeRegions(frame)
   for _, key in ipairs(GW.ART) do
     local part = frame[key]
@@ -294,7 +295,7 @@ end
 -- (paintPanel), its parts themed.
 function GW.Skin(frame, pad)
   local name = frame.GetName and frame:GetName()
-  fadeArt(frame)
+  GW.FadeWindowArt(frame)
   paintInset(frame)
   keepContent(frame, name)
   paintPanel(frame, name, pad)
