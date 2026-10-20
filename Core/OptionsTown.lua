@@ -5,7 +5,7 @@
 local ADDON, ns = ...
 
 local O = ns.Options
-local setting, reloadSetting, liveSetting, check, append = O.Setting, O.ReloadSetting, O.LiveSetting, O.Check, O.Append
+local setting, reloadSetting, liveSetting, liveMethod, check, append = O.Setting, O.ReloadSetting, O.LiveSetting, O.LiveMethod, O.Check, O.Append
 
 -- The auction helper's scan, auction check, disenchant, crafting, deals and upgrades rows.
 local function auctionScanRows()
@@ -14,8 +14,8 @@ local function auctionScanRows()
     check("Check your auctions for undercuts again after each post and cancel", setting("AuctionHelper", "recheck")),
     check("Disenchant values in tooltips (on for enchanters until you choose)", ns.AuctionPrices.DisenchantSetting()),
     check("Crafting costs and profit beside the profession window", setting("AuctionHelper", "crafting")),
-    check("Deals list in the Lists tab: listings under the 7-day market or vendor price", liveSetting("AuctionHelper", "deals", function() ns.GetModule("AuctionHelper").PaintDeals() end)),
-    check("Upgrades list in the Lists tab: armor and weapons that beat what you wear, by Gear upgrades' weights", liveSetting("AuctionHelper", "upgrades", function() ns.GetModule("AuctionHelper").PaintUpgrades() end)),
+    check("Deals list in the Lists tab: listings under the 7-day market or vendor price", liveMethod("AuctionHelper", "deals", "PaintDeals")),
+    check("Upgrades list in the Lists tab: armor and weapons that beat what you wear, by Gear upgrades' weights", liveMethod("AuctionHelper", "upgrades", "PaintUpgrades")),
   }
 end
 
@@ -67,7 +67,7 @@ end
 local function mailRows()
   return {
     { "header", "Mail tools" },
-    check("Search the inbox and send-to-alt presets beside the mail window (/vg mail)", liveSetting("MailTools", "on", function() ns.GetModule("MailTools").Paint() end)),
+    check("Search the inbox and send-to-alt presets beside the mail window (/vg mail)", liveMethod("MailTools", "on", "Paint")),
   }
 end
 
@@ -131,7 +131,7 @@ local function upgradeRows()
   local roles = { { "auto", "group role, else damage" }, { "damage", "damage" }, { "tank", "tank" }, { "healer", "healer" } }
   return {
     { "header", "Gear upgrades" },
-    { "cycle", "Weigh stats for", roles, liveSetting("Upgrades", "role", function() ns.GetModule("Upgrades").Changed() end) },
+    { "cycle", "Weigh stats for", roles, liveMethod("Upgrades", "role", "Changed") },
     check("Upgrade or downgrade on item tooltips", setting("Upgrades", "tooltip")),
     check("Arrow on upgrades in the combined bag", setting("Upgrades", "bags")), check("Arrow on quest rewards that are upgrades", setting("Upgrades", "quests")),
     { "button", "Set up stat weights", function() O.Hide(); ns.GetModule("Upgrades").Wizard.Open() end },

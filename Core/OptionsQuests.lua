@@ -5,7 +5,7 @@
 local ADDON, ns = ...
 
 local O = ns.Options
-local setting, reloadSetting, liveSetting, check, append = O.Setting, O.ReloadSetting, O.LiveSetting, O.Check, O.Append
+local setting, reloadSetting, liveSetting, liveMethod, check, append = O.Setting, O.ReloadSetting, O.LiveSetting, O.LiveMethod, O.Check, O.Append
 
 -- Quests: the dialog, and the automation (each off until switched on).
 local function questRows()
@@ -23,10 +23,10 @@ local function trackerRows()
     { "header", "Quest tracker" },
     check("Vanguard's quest tracker under the info strip (reload)", reloadSetting("QuestTracker", "own")),
     { "cycle", "With Questie loaded (reload)", { { "questie", "Questie's tracker" }, { "vanguard", "Vanguard's tracker" } }, reloadSetting("QuestTracker", "withQuestie") },
-    check("Each quest's XP under it", liveSetting("QuestTracker", "xp", function() ns.GetModule("QuestTracker").Refresh() end)),
-    check("Under the quests, how much of the XP to level they give", liveSetting("QuestTracker", "levelXp", function() ns.GetModule("QuestTracker").Refresh() end)),
+    check("Each quest's XP under it", liveMethod("QuestTracker", "xp", "Refresh")),
+    check("Under the quests, how much of the XP to level they give", liveMethod("QuestTracker", "levelXp", "Refresh")),
     check("Watch a quest when you accept it", setting("QuestTracker", "autoTrack")),
-    { "cycle", "Order", { { "game", "As the game orders them" }, { "nearest", "Nearest first" } }, liveSetting("QuestTracker", "order", function() ns.GetModule("QuestTracker").ApplyOrder() end) },
+    { "cycle", "Order", { { "game", "As the game orders them" }, { "nearest", "Nearest first" } }, liveMethod("QuestTracker", "order", "ApplyOrder") },
   }
 end
 

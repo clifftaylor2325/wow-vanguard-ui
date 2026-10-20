@@ -5,7 +5,7 @@
 local ADDON, ns = ...
 
 local O = ns.Options
-local moduleSettings, setting, reloadSetting, liveSetting, check, append = O.ModuleSettings, O.Setting, O.ReloadSetting, O.LiveSetting, O.Check, O.Append
+local moduleSettings, setting, reloadSetting, liveSetting, liveMethod, check, append = O.ModuleSettings, O.Setting, O.ReloadSetting, O.LiveSetting, O.LiveMethod, O.Check, O.Append
 
 -- get/set for whether action bar n is shown (applies on reload).
 local function barSetting(n)
@@ -56,7 +56,7 @@ end
 local function actionBarRows()
   return {
     { "header", "Action bars" },
-    check("Lock buttons (Shift-drag to move actions)", setting("ActionBars", "lockButtons")), check("Red when out of range", liveSetting("ActionBars", "rangeTint", function() ns.GetModule("ActionBars").RepaintIcons() end)),
+    check("Lock buttons (Shift-drag to move actions)", setting("ActionBars", "lockButtons")), check("Red when out of range", liveMethod("ActionBars", "rangeTint", "RepaintIcons")),
     { "cycle", "Bar backing", { { "auto", "Follow the theme" }, { "on", "Always" }, { "off", "Never" } }, backingSetting() },
     check("Hide the default bars", reloadSetting("ActionBars", "hideBlizzard")),
     check("Restyle the pet, stance, possess and extra action buttons (reload)", skinSpecial()),

@@ -9,7 +9,7 @@ local ADDON, ns = ...
 local T, W = ns.Theme, ns.Widgets
 
 local O = ns.Options
-local moduleSettings, setting, reloadSetting, liveSetting, check, append = O.ModuleSettings, O.Setting, O.ReloadSetting, O.LiveSetting, O.Check, O.Append
+local moduleSettings, setting, reloadSetting, liveSetting, liveMethod, check, append = O.ModuleSettings, O.Setting, O.ReloadSetting, O.LiveSetting, O.LiveMethod, O.Check, O.Append
 
 local WZ = {}
 O.CooldownWizard = WZ
@@ -60,7 +60,7 @@ end
 -- The key text switch (Modules/CooldownKeys.lua), applied at once.
 local function keyRows()
   return {
-    keys = tip(check("Key text on the manager's icons", liveSetting("CooldownKeys", "keys", function() ns.GetModule("CooldownKeys").Refresh() end)), "Shows the key you press for each spell in the manager's essential and utility rows, read from Vanguard's action bars. An icon whose spell isn't on a Vanguard bar shows none."),
+    keys = tip(check("Key text on the manager's icons", liveMethod("CooldownKeys", "keys", "Refresh")), "Shows the key you press for each spell in the manager's essential and utility rows, read from Vanguard's action bars. An icon whose spell isn't on a Vanguard bar shows none."),
   }
 end
 

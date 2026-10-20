@@ -69,7 +69,7 @@ local function quietScreenRows()
     check("Hide the zone names that fade in", setting("Quiet", "zoneText")),
     -- The setter must stay the row's last element: liveSetting returns a getter and a setter.
     { "cycle", "Furthest the camera zooms out", ns.GetModule("Quiet").CAMERA,
-      O.LiveSetting("Quiet", "camera", function() ns.GetModule("Quiet").ApplyCamera() end) },
+      O.LiveMethod("Quiet", "camera", "ApplyCamera") },
   }
 end
 

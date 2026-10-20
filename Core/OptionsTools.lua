@@ -5,7 +5,7 @@
 local ADDON, ns = ...
 
 local O = ns.Options
-local setting, reloadSetting, liveSetting, check, append = O.Setting, O.ReloadSetting, O.LiveSetting, O.Check, O.Append
+local setting, reloadSetting, liveSetting, liveMethod, check, append = O.Setting, O.ReloadSetting, O.LiveSetting, O.LiveMethod, O.Check, O.Append
 
 -- Puts the low-health vignette (Modules/GameAlerts.lua) right after a change of its switch.
 local function applyVignette()
@@ -43,11 +43,10 @@ end
 
 -- Fight history under the damage meter: its switch (applied at once) and its visibility.
 local function fightRows()
-  local FH = ns.GetModule("FightHistory")
   local fightVisibility, fightWhen = O.VisibilityRows("Fight history visibility", "FightHistory", "visibility", "showWhen")
   return {
     { "header", "Fight history" },
-    check("Sparkline of your DPS in the last 20 fights, under the damage meter", liveSetting("FightHistory", "strip", function() if FH.enabled then FH.Paint() end end)),
+    check("Sparkline of your DPS in the last 20 fights, under the damage meter", liveMethod("FightHistory", "strip", "Paint")),
     check("Recap in chat after each fight: interrupts, dispels, damage taken, deaths (/vg recap)", setting("FightHistory", "recap")),
     fightVisibility, fightWhen,
   }
@@ -105,7 +104,7 @@ local function rollRows()
   return {
     { "header", "Roll tracker" },
     check("Show the group's /roll results in a small panel", liveSetting("Rolls", "show", repaint)),
-    check("Show loot rolls (who rolled what) where the client has them", liveSetting("Rolls", "loot", function() if R.enabled then R.ReadLoot() end end)),
+    check("Show loot rolls (who rolled what) where the client has them", liveMethod("Rolls", "loot", "ReadLoot")),
     rollVisibility, rollWhen,
   }
 end

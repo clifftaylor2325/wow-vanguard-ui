@@ -5,7 +5,7 @@
 local ADDON, ns = ...
 
 local O = ns.Options
-local setting, reloadSetting, liveSetting, check, append = O.Setting, O.ReloadSetting, O.LiveSetting, O.Check, O.Append
+local setting, reloadSetting, liveSetting, liveMethod, check, append = O.Setting, O.ReloadSetting, O.LiveSetting, O.LiveMethod, O.Check, O.Append
 
 -- XP and reputation bars: which, their numbers, and when they're seen.
 local function dataBarRows()
@@ -25,7 +25,7 @@ local function bagRows()
     { "header", "Bags" },
     check("Combined bag (reload)", reloadSetting("Bags", "combined")), check("Bank in the Vanguard look (reload)", reloadSetting("Bags", "bank")),
     check("Combined bag in sections: equipment, consumables, quest items, junk",
-      liveSetting("Bags", "sections", function() ns.GetModule("Bags").SectionsChanged() end)),
+      liveMethod("Bags", "sections", "SectionsChanged")),
   }
 end
 

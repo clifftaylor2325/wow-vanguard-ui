@@ -73,6 +73,11 @@ local function liveSetting(module, key, after)
   return get, function(v) set(v); if moduleRunning(module) then after() end end, initial
 end
 
+-- get/set for a module setting that applies at once by calling method (no arguments) on the module, when it runs.
+local function liveMethod(module, key, method)
+  return liveSetting(module, key, function() ns.GetModule(module)[method]() end)
+end
+
 -- get/set for an unlock-mode option (grid, snap), applied at once.
 local function moverOption(key)
   return function() return ns.MoverOptions()[key] end, function(v) ns.MoverOptions()[key] = v end
@@ -140,7 +145,7 @@ end
 
 -- The helpers the area files build their rows with.
 O.VisibilityRows = visibilityRows
-O.ModuleSettings, O.Setting, O.ReloadSetting, O.LiveSetting, O.Check, O.Append = moduleSettings, setting, reloadSetting, liveSetting, check, append
+O.ModuleSettings, O.Setting, O.ReloadSetting, O.LiveSetting, O.LiveMethod, O.Check, O.Append = moduleSettings, setting, reloadSetting, liveSetting, liveMethod, check, append
 
 -- get/set for a theme setting; changes apply on reload.
 local function themeSetting(key)

@@ -6,7 +6,7 @@
 local ADDON, ns = ...
 
 local O = ns.Options
-local setting, reloadSetting, liveSetting, check, append = O.Setting, O.ReloadSetting, O.LiveSetting, O.Check, O.Append
+local setting, reloadSetting, liveSetting, liveMethod, check, append = O.Setting, O.ReloadSetting, O.LiveSetting, O.LiveMethod, O.Check, O.Append
 
 -- The minimap's coordinates, icons and drawer, and map waypoints.
 local function minimapRows()
@@ -23,7 +23,7 @@ end
 
 -- get/set for one info strip block, which shows or hides at once.
 local function stripSetting(key)
-  return liveSetting("InfoStrip", key, function() ns.GetModule("InfoStrip").UpdateAll() end)
+  return liveMethod("InfoStrip", key, "UpdateAll")
 end
 
 -- The info strip's auction sales (the sales ledger, Modules/AuctionLedger.lua): off until switched on.

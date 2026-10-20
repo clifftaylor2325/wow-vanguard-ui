@@ -5,7 +5,7 @@
 local ADDON, ns = ...
 
 local O = ns.Options
-local setting, reloadSetting, liveSetting, check, append = O.Setting, O.ReloadSetting, O.LiveSetting, O.Check, O.Append
+local setting, reloadSetting, liveSetting, liveMethod, check, append = O.Setting, O.ReloadSetting, O.LiveSetting, O.LiveMethod, O.Check, O.Append
 
 -- get/set for a raid frame setting that repaints the raid frames at once (look, power bar).
 local function raidSetting(key)
@@ -20,19 +20,19 @@ end
 
 -- get/set for a unit frame setting that repaints the frames at once.
 local function unitFrameSetting(key)
-  return liveSetting("UnitFrames", key, function() ns.GetModule("UnitFrames").Refresh() end)
+  return liveMethod("UnitFrames", key, "Refresh")
 end
 
 -- The Calm HUD switch: your frames dim out of combat (applied at once, also from a situation).
 local function calmRow()
   return check("Calm HUD: dim your frames out of combat until a fight, a hostile target or the mouse",
-    liveSetting("UnitFrames", "calm", function() ns.GetModule("UnitFrames").ApplyCalm() end))
+    liveMethod("UnitFrames", "calm", "ApplyCalm"))
 end
 
 -- The Versus deck switch: one shield panel behind your frame and your target's, the crest between (at once).
 local function deckRow()
   return check("Versus deck: your frame and your target's joined in one panel, the crest between",
-    liveSetting("UnitFrames", "deck", function() ns.GetModule("UnitFrames").ApplyDeck() end))
+    liveMethod("UnitFrames", "deck", "ApplyDeck"))
 end
 
 -- Unit frames, and the class bars under the player frame.
@@ -55,8 +55,8 @@ local function castRows()
     { "header", "Cast bars" },
     check("Your cast bar (and your pet's)", reloadSetting("CastBars", "player")),
     check("Target cast bar", reloadSetting("CastBars", "target")), check("Focus cast bar", reloadSetting("CastBars", "focus")),
-    check("Ring at the cursor: the global cooldown and your cast", liveSetting("CastBars", "ring", function() ns.GetModule("CastBars").ApplyRing() end)),
-    check("Interrupt mark beside the target and focus cast bars", liveSetting("CastBars", "interruptMark", function() ns.GetModule("CastBars").RefreshMarks() end)),
+    check("Ring at the cursor: the global cooldown and your cast", liveMethod("CastBars", "ring", "ApplyRing")),
+    check("Interrupt mark beside the target and focus cast bars", liveMethod("CastBars", "interruptMark", "RefreshMarks")),
     { "header", "Target and focus auras" },
     check("Only your debuffs (reload)", reloadSetting("FrameAuras", "onlyMine")),
     check("Timer numbers on the icons (reload)", reloadSetting("FrameAuras", "timers")),
@@ -65,7 +65,7 @@ end
 
 -- get/set for the weapon enchant cells, which show or hide at once.
 local function enchantSetting()
-  return liveSetting("PlayerAuras", "enchants", function() ns.GetModule("PlayerAuras").UpdateEnchants() end)
+  return liveMethod("PlayerAuras", "enchants", "UpdateEnchants")
 end
 
 -- Your own buffs and debuffs (their icons sit by the minimap), after the target and focus auras.
@@ -154,7 +154,7 @@ end
 
 -- get/set for a raid frame mark switch (range fade, icons, ready check, ...) that repaints the tiles at once.
 local function statusSetting(key)
-  return liveSetting("RaidStatus", key, function() ns.GetModule("RaidStatus").UpdateAll() end)
+  return liveMethod("RaidStatus", key, "UpdateAll")
 end
 
 -- get/set for the Raid target icons switch: it repaints the tiles and the unit frames' marks at once.
