@@ -25,7 +25,7 @@ end
 
 -- Whether the arguments of RegisterPreset are usable, and if not what is wrong with them.
 local function problem(name, text, info)
-  if type(name) ~= "string" or name:gsub("%s", "") == "" or #name > 32 then return "name must be a string of 1 to 32 characters" end
+  if type(name) ~= "string" or name:gsub("%s", "") == "" or ns.TextLength(name) > 32 then return "name must be a string of 1 to 32 characters" end
   if type(text) ~= "string" or #text > MAX_TEXT or not text:find("^%s*VG1:") then return "text must be a Vanguard profile string" end
   if info ~= nil and type(info) ~= "string" then return "info must be a string" end
   if not find(name) and #presets >= MAX_PRESETS then return "too many presets" end
@@ -38,7 +38,7 @@ local function add(name, text, info, source)
   if why then return false, why end
   local old, at = find(name)
   if old and old.source == "Vanguard" and source ~= "Vanguard" then return false, "a built-in preset has that name" end
-  local entry = { name = name, text = text, info = (info or ""):gsub("|", ""):sub(1, MAX_INFO), source = source }
+  local entry = { name = name, text = text, info = ns.TextPrefix((info or ""):gsub("|", ""), MAX_INFO), source = source }
   presets[at or (#presets + 1)] = entry
   return true
 end
@@ -81,9 +81,9 @@ function ns.FindPreset(name)
   return type(name) == "string" and (find(name)) or nil
 end
 
--- Applies a preset's string like /vg import does, once the player has said yes. Waits out combat.
+-- Applies a preset's string like /vg import does, once the player has said yes; refused in combat.
 local function apply(preset)
-  if ns.InCombat() then return ns.Chat("Applying a preset waits until combat ends.") end
+  if ns.InCombat() then return ns.Chat("Presets can't be applied in combat: try again after the fight.") end
   local ok = ns.StartImport(preset.text, function() end, ns.ImportDone)
   if not ok then ns.Chat("Import failed: an import is still running.") end
 end

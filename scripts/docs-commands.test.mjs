@@ -35,3 +35,16 @@ it("docs/COMMANDS.md lists every command /vg help lists", () => {
   const missing = helpWords().filter((w) => !listed.has(w));
   expect(missing, "commands missing from docs/COMMANDS.md").toEqual([]);
 });
+
+// The command words Core/Slash.lua's COMMANDS table answers to.
+const commandKeys = () => {
+  const block = read("Core/Slash.lua").split(/\nlocal COMMANDS = \{\n/)[1].split(/\n\}\n/)[0];
+  return [...block.matchAll(/^ {2}([a-z]+) = /gm)].map((m) => m[1]);
+};
+
+it("docs/COMMANDS.md's word-for-word reference documents every command /vg answers to", () => {
+  const [, reference] = commandsPage();
+  const known = documentedWords(reference);
+  expect(commandKeys().length, "the COMMANDS table was read").toBeGreaterThan(50);
+  expect(commandKeys().filter((w) => !known.has(w)), "commands missing from the reference").toEqual([]);
+});

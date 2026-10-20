@@ -237,3 +237,17 @@ it("unlock handles: a frame above HIGH (the quest dialog, on DIALOG) keeps its h
   expect([handleStrata("d"), handleStrata("e")], "a DIALOG frame's handle rides on DIALOG with it; a LOW frame's handle on HIGH, under Edit Mode's window").toEqual(["DIALOG", "HIGH"]);
   addon.eval("ns.Lock()");
 });
+it("unlock handles: in the game's Edit Mode every handle is on HIGH, so Edit Mode's window (DIALOG) stays over the quest dialog's", () => {
+  const addon = loggedIn(`
+    __d = CreateFrame("Frame", nil, UIParent); __d:SetSize(100, 20); __d:SetFrameStrata("DIALOG")
+    ns.Mover(__d, "d", "D", { "CENTER", "CENTER", 0, 0 })
+  `);
+  // The strata of the handle for mover `key` (TEST-ONLY read).
+  const handleStrata = (key) => addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.mover and w.mover.key == "${key}" then return w.__strata end end`);
+  addon.eval("__edit = CreateFrame('Frame', nil, UIParent) ns.EditModeMovers(__edit, true)");
+  expect(handleStrata("d"), "in Edit Mode the DIALOG frame's handle drops to HIGH").toBe("HIGH");
+  addon.eval("ns.EditModeMovers(__edit, false)");
+  addon.slash("unlock");
+  expect(handleStrata("d"), "/vg unlock puts it back on its own strata").toBe("DIALOG");
+  addon.eval("ns.Lock()");
+});

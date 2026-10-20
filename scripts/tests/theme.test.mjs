@@ -1198,3 +1198,38 @@ it("T.Slider: a game slider gets the pill look on its own geometry, a fill to th
   addon.eval('Vanguard.RegisterSkin("TEST-ONLY-slider", function(S) __sl = S.Slider(CreateFrame("Slider", nil, UIParent)) end)');
   expect(addon.eval("return __sl ~= nil"), "other addons get it as S.Slider").toBe(true);
 });
+it("switch commands: on and off in any case set the switch, a mistyped word changes nothing and shows the usage", () => {
+  const addon = loggedIn();
+  const toggles = { ornaments: "ornaments", gradient: "panelGradient", slug: "slugText", framebuffer: "frameBuffer", texelsnap: "texelSnap", nineslice: "sliceRings", icons: "sizedIcons" };
+  const wrong = [];
+  for (const [cmd, key] of Object.entries(toggles)) {
+    addon.eval(`ns.Theme.Settings().${key} = false`);
+    addon.slash(`${cmd} ON`);
+    addon.slash(`${cmd} On`);
+    if (addon.eval(`return ns.Theme.Settings().${key}`) !== true) wrong.push(`${cmd} ON twice is not on`);
+    addon.slash(`${cmd} onn`);
+    if (addon.eval(`return ns.Theme.Settings().${key}`) !== true || !chatHas(addon, new RegExp(`Usage: /vg ${cmd} \\[on\\|off\\]`))) wrong.push(`${cmd} onn is not refused`);
+    addon.slash(`${cmd} OFF`);
+    if (addon.eval(`return ns.Theme.Settings().${key}`) !== false) wrong.push(`${cmd} OFF is not off`);
+  }
+  addon.eval("ns.MoverOptions().snap = true");
+  addon.slash("snap On");
+  addon.slash("snap of");
+  if (addon.eval("return ns.MoverOptions().snap") !== true || !chatHas(addon, /Usage: \/vg snap \[on\|off\]/)) wrong.push("snap");
+  expect(wrong).toEqual([]);
+});
+it("switch commands: cdmglow and cdmkeys take on and off in any case and refuse a mistyped word", () => {
+  const addon = loggedIn();
+  // The Cooldown Manager glow switch as saved.
+  const glow = () => addon.eval('return ns.GetModule("CooldownGlow").settings.glow');
+  // The Cooldown Manager key text switch as saved.
+  const keys = () => addon.eval('return ns.GetModule("CooldownKeys").settings.keys');
+  addon.slash("cdmglow OFF");
+  addon.slash("cdmkeys OFF");
+  addon.slash("cdmglow ON");
+  addon.slash("cdmkeys On");
+  expect([glow(), keys()], "on in capitals").toEqual([true, true]);
+  addon.slash("cdmglow x");
+  addon.slash("cdmkeys x");
+  expect([glow(), keys(), chatHas(addon, /Usage: \/vg cdmglow \[on\|off\|<percent>\]/), chatHas(addon, /Usage: \/vg cdmkeys \[on\|off\]/)], "a mistyped word changes nothing").toEqual([true, true, true, true]);
+});

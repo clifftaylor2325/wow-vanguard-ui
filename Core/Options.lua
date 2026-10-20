@@ -188,9 +188,31 @@ local function lookTextRows()
     { "cycle", "Theme variant", VARIANT_CHOICES, liveThemeSetting("variant") },
     { "cycle", "Corners", CORNER_CHOICES, liveThemeSetting("corners") },
     check("Shield corners on unit frames", liveThemeSetting("shield")),
-    check("Window ornaments", previewedSetting("ornaments")),
+    check("Window ornaments", liveThemeSetting("ornaments")),
     { "text", "A brass rule or corners on large windows.", "note" },
   }
+end
+
+-- The theme settings that show fully only after a reload (pixel-perfect's scale stays on screen until then).
+O.RELOAD_THEME = { "colorAssist", "colorAssistGame", "hudShadow", "pixelScale" }
+
+-- The reload-only theme settings' values now, in O.RELOAD_THEME's order.
+local function reloadThemeValues()
+  local theme, out = T.Settings(), {}
+  for i, key in ipairs(O.RELOAD_THEME) do out[i] = theme[key] end
+  return out
+end
+
+-- Puts every theme setting back to its default (T.Reset); when that changed a reload-only one, the options
+-- window shows its reload notice. Returns true then.
+function O.ResetTheme()
+  local before = reloadThemeValues()
+  T.Reset()
+  local after = reloadThemeValues()
+  for i, value in ipairs(before) do
+    if value ~= after[i] then O.NeedReload() return true end
+  end
+  return false
 end
 
 -- General, part one: accent, safer colours, font, text size, variant, ornaments, scale and theme reset.
@@ -203,7 +225,7 @@ local function lookRows()
   for _, row in ipairs(lookTextRows()) do rows[#rows + 1] = row end
   rows[#rows + 1] = check("Pixel-perfect scale", function() return T.Settings().pixelScale end,
     function(v) T.SetPixelScale(v); if not v then O.NeedReload() end end)
-  rows[#rows + 1] = { "button", "Reset theme", function() T.Reset() end }
+  rows[#rows + 1] = { "button", "Reset theme", function() O.ResetTheme() end }
   return rows
 end
 
@@ -300,6 +322,8 @@ O.MODULE_INFO = {
   ChatWatch = { "Chat watch", "A sound and a toast when a phrase you watch for is said in chat; click to whisper." },
   ChatFilter = { "Chat filter", "Gold selling, boosting, guild recruiting and repeated lines in Trade and the other channels go to a Filtered tab. Off until you switch it on (Chat)." },
   ChatBubbles = { "Chat bubbles", "Speech bubbles in the world on a flat panel, in the theme font (the game's own inside instances)." },
+  ChatHistory = { "Chat history", "Your chat comes back after a /reload or the next login, each window in its own tab. Off until you switch it on (Chat)." },
+  ChatWindows = { "Chat windows", "Each chat window's width, height and lock from the Chat page, floating windows moved with /vg unlock, and Find in chat." },
   MinimapButtons = { "Minimap drawer", "Other addons' minimap buttons gathered into a drawer beside the map. Needs Minimap." },
   AutoAccept = { "Auto-accept", "Accept summons and resurrections, decline duels, guild invites, stranger group invites and friend requests, loot faster, release in battlegrounds (each off until you switch it on)." },
   Quiet = { "Quiet the game", "Hide the red error line and the zone names that fade in, and zoom the camera further out (each off until you switch it on)." },
@@ -447,6 +471,7 @@ end
 local function resetProfile()
   confirmReset("Reset this profile?", "Reset", O.NeedReload)
 end
+O.AskResetProfile = resetProfile
 
 -- Start over: after asking, the profile back to defaults (backed up first), and setup opens after the reload that applies it.
 local function startOver()

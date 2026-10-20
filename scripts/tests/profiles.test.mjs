@@ -94,7 +94,9 @@ it("profile management", () => {
   addon.slash("profile delete Raid");
   expect(addon.eval("return VanguardDB.profiles.Raid") === null, "others can").toBeTruthy();
   addon.slash("profile reset");
-  expect(addon.eval("return VanguardDB.profiles.Default.theme") === null, "/vg profile reset clears the active profile").toBeTruthy();
+  expect(addon.eval("return VanguardDB.profiles.Default.theme ~= nil and Vanguard_Question:IsShown()"), "/vg profile reset asks first").toBe(true);
+  addon.eval("Vanguard_Question.confirm:GetScript(\"OnClick\")(Vanguard_Question.confirm)");
+  expect(addon.eval("return { VanguardDB.profiles.Default.theme == nil, VanguardDB.profiles[\"Default backup\"].theme.accent[2] }"), "then clears the active profile and keeps a copy").toEqual([true, 1]);
   addon.slash("profile bad/name");
   expect(chatHas(addon, /1-32 letters/), "profile names are checked").toBeTruthy();
 });
@@ -254,6 +256,27 @@ it("Use it after an import turns Pixel-perfect off in the imported profile, not 
   addon.eval("ns.UseProfile('Default') ns.OfferDisplay({ uiScale = 0.8 }, function() end)");
   addon.eval('Vanguard_Question.yes:GetScript("OnClick")(Vanguard_Question.yes)');
   expect(addon.eval("return { ns.Theme.Settings().pixelScale, GetCVar('uiScale') }"), "with no switch staged it goes off in the profile in use").toEqual([false, "0.8"]);
+});
+it("No to 'Use its UI scale?' keeps this player's scale: a Pixel-perfect profile from a 4K screen brings neither its switch nor its multiple", () => {
+  const other = loggedIn(CLICK_LUA + "__wfgStub.setScreen(3840, 2160)");
+  other.eval('ns.Setup.ApplyScreen("pixel")');
+  const text = other.eval("return ns.ExportProfile()");
+  const a = loggedIn(CLICK_LUA);
+  const before = a.eval("return UIParent:GetScale()");
+  importText(a, text);
+  expect(a.eval("return Vanguard_Question.title:GetText()")).toBe("This profile was made at UI scale 71% on a 3840 x 2160 screen (yours: 100%). Use its UI scale?");
+  a.eval('local b = Vanguard_Question.no b:GetScript("OnClick")(b, "LeftButton")');
+  a.fire("PLAYER_LOGOUT");
+  const sv = a.savedVariables();
+  const b = createAddon({ savedVariables: `VanguardDB = ${luaValue(sv.account)}\nVanguardCharDB = ${luaValue(sv.char)}\n` });
+  b.eval(CLICK_LUA);
+  b.login();
+  expect(b.eval("local s = ns.Theme.Settings() return { ns.ProfileName(), UIParent:GetScale(), s.pixelScale, s.pixelMultiple }"), "after the reload: the imported profile at this player's scale").toEqual(["Imported", before, false, 0]);
+});
+it("a whole-profile import keeps this player's own Pixel-perfect switch and multiple, even with no UI scale to ask about", () => {
+  const addon = loggedIn("", { savedVariables: "VanguardDB.profiles.Default = { theme = { pixelScale = true, pixelMultiple = 2 } }\n" });
+  importText(addon, addon.eval('return ns.Serialize.Encode("profile", ns.StampPayload({ theme = { accent = "jade" } }))'));
+  expect(addon.eval("local t = VanguardDB.profiles.Imported.theme return { t.pixelScale, t.pixelMultiple, t.accent }"), "the string's settings with this player's scale").toEqual([true, 2, "jade"]);
 });
 // TEST-ONLY Edit Mode: its manager lists the presets, then the account's layouts; the
 // layouts load when UpdateLayoutInfo first runs; C_EditMode switches and reloads them.

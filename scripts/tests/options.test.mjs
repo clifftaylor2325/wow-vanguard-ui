@@ -1259,3 +1259,58 @@ it("the text and reload dialogs take Tab focus too, and a hidden button is skipp
   addon.key("Vanguard_Reload", "TAB");
   expect(ring(addon, "Vanguard_Reload.cancel"), "the reload dialog starts at Later").toBe(true);
 });
+// Whether the options window shows its reload notice.
+const reloadNotice = (addon) => addon.eval("return Vanguard_Options.notice:IsShown()");
+it("Reset theme: a reset that only changes the accent needs no reload", () => {
+  const addon = loggedIn(CLICK_LUA);
+  addon.slash("accent arcane");
+  addon.eval('ns.Options.Show("general") __click("Reset theme")');
+  expect(reloadNotice(addon), "no notice").toBe(false);
+  addon.slash("theme reset");
+  expect(chatHas(addon, /Theme back to defaults\.$/), "chat says it plainly").toBe(true);
+});
+it("Reset theme with Safer colours on shows the reload notice, and /vg theme reset says to reload", () => {
+  const addon = loggedIn(CLICK_LUA);
+  addon.eval('ns.Theme.Settings().colorAssist = true ns.Options.Show("general") __click("Reset theme")');
+  expect([addon.eval("return ns.Theme.Settings().colorAssist"), reloadNotice(addon)], "Safer colours is off, after a reload").toEqual([false, true]);
+  addon.eval("ns.Theme.Settings().hudShadow = true");
+  addon.slash("theme reset");
+  expect(chatHas(addon, /Theme back to defaults \(reload to apply\)\.$/), "the command says so").toBe(true);
+});
+it("Reset theme with Pixel-perfect scale on shows the reload notice, since its scale stays until then", () => {
+  const addon = loggedIn(CLICK_LUA);
+  addon.eval('ns.Theme.SetPixelScale(true) ns.Options.Show("general") __click("Reset theme")');
+  expect([addon.eval("return ns.Theme.Settings().pixelScale"), reloadNotice(addon)]).toEqual([false, true]);
+});
+it("a page rebuilt while it shows (a chat tab picked on the Chat page) keeps its scroll", () => {
+  const addon = loggedIn(CLICK_LUA);
+  addon.eval('ns.Options.Show("chat")');
+  const out = addon.eval(`
+    local function view() for _, c in ipairs({ Vanguard_Options:GetChildren() }) do if c.child and c.child.pageKey == "chat" and c:IsShown() then return c end end end
+    local v = view() v:ScrollTo(400) local before = v:GetVerticalScroll()
+    ns.Options.RebuildPage("chat")
+    return { before, view() ~= v, view():GetVerticalScroll() }`);
+  expect(out, "a new view, at the old offset").toEqual([400, true, 400]);
+});
+it("Window ornaments applies at once and asks for no reload", () => {
+  const addon = loggedIn(CLICK_LUA);
+  // The diamond rule's textures showing on the options window.
+  const diamonds = () => addon.eval(`local n = 0 for _, w in ipairs(__wfgStub.frames) do
+    if w.__kind == "Texture" and w.__parent == Vanguard_Options and w:IsShown() and tostring(w.__texture):find("Diamond") then n = n + 1 end end return n`);
+  addon.eval('ns.Options.Show("general")');
+  expect(diamonds(), "off by default").toBe(0);
+  expect(addon.eval('return __click("Window ornaments")')).toBe(true);
+  expect([diamonds(), reloadNotice(addon)], "the rule shows at once; no reload notice").toEqual([1, false]);
+});
+it("Modules page: every module it groups has a name and a line saying what it does", () => {
+  const addon = loggedIn();
+  const missing = addon.eval(`local out = {}
+    for _, group in ipairs(ns.Options.MODULE_GROUPS) do
+      for _, name in ipairs(group[2]) do
+        local info = ns.Options.MODULE_INFO[name]
+        if not (info and type(info[1]) == "string" and type(info[2]) == "string" and info[2] ~= "") then out[#out + 1] = name end
+      end
+    end
+    return out`);
+  expect(missing, "modules shown by their code name with no description").toEqual({});
+});

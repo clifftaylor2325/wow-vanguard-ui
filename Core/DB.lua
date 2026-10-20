@@ -84,6 +84,27 @@ end
 -- True when this character had no saved settings at load: its first login with Vanguard.
 local newCharacter = false
 
+-- The profile the account's characters used last: the newest note in VanguardDB.guard.chars whose profile
+-- still exists, or nil.
+local function lastUsedProfile(chars)
+  local name, newest
+  for _, note in pairs(chars) do
+    local stamp = type(note) == "table" and VanguardDB.profiles[note.profile] and tonumber(note.stamp)
+    if stamp and (not newest or stamp > newest) then name, newest = note.profile, stamp end
+  end
+  return name
+end
+
+-- A new character on an account that has run setup (its Profile step then offers to share the profile it
+-- loads with) starts on the profile the account's characters used last, not on Default. A character the
+-- account file remembers is left to the settings guard (Core/SettingsGuard.lua), which puts its own back.
+local function startOnLastUsedProfile()
+  local guard = type(VanguardDB.guard) == "table" and VanguardDB.guard
+  local chars = guard and type(guard.chars) == "table" and guard.chars
+  if not (newCharacter and VanguardDB.setupDone and chars) or chars[ns.SettingsGuard.CharKey()] then return end
+  VanguardCharDB.profile = lastUsedProfile(chars) or DEFAULT_PROFILE
+end
+
 -- Creates or repairs the saved tables, and upgrades an older account file.
 -- Runs at ADDON_LOADED, when WoW has restored them.
 local function initDB()
@@ -94,6 +115,7 @@ local function initDB()
   VanguardDB.version = from or DB_VERSION
   if from and from < DB_VERSION then ns.MigrateDB(from, DB_VERSION) end
   VanguardCharDB = fill(type(VanguardCharDB) == "table" and VanguardCharDB or {}, { profile = DEFAULT_PROFILE })
+  startOnLastUsedProfile()
   chooseProfile()
 end
 

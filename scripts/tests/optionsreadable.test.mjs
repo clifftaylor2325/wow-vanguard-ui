@@ -91,3 +91,11 @@ it("options: every search keyword belongs to a real caption", () => {
     local out = {} for caption in pairs(ns.Options.KEYWORDS) do if not have[caption] then out[#out + 1] = caption end end return out`);
   expect(Object.values(gone), "a caption that was renamed takes its keywords with it").toEqual([]);
 });
+
+it("options: picking a camera zoom on the Game windows page sets it and the game's zoom", () => {
+  const addon = loggedIn(CLICK_LUA);
+  addon.eval('ns.Options.Show("windows")');
+  const clicked = addon.eval('return __click("Furthest the camera zooms out")');
+  const out = addon.eval(`return { camera = ns.GetModule("Quiet").settings.camera, cvar = tostring(GetCVar("cameraDistanceMaxZoomFactor")) }`);
+  expect([clicked, out]).toEqual([true, { camera: 1.5, cvar: "1.5" }]);
+});

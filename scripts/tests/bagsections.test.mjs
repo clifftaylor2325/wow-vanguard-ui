@@ -551,6 +551,15 @@ it("the bag's Groups button makes groups, files the held item, sends to the bank
   expect(addon.eval("return #ns.Settings('Bags').categories"), "Delete removes one group").toBe(1);
 });
 
+it("the bag's Groups menu closes with the bag, so its catcher doesn't eat the next click", () => {
+  const addon = loggedIn(BAG_ENV + CLICK_LUA);
+  addon.eval("__openBag()");
+  addon.eval('local g = ns.GetModule("Bags").tools.groups g:GetScript("OnClick")(g)');
+  expect(addon.eval("return Vanguard_Menu:IsShown()"), "the menu opens").toBe(true);
+  addon.eval("ContainerFrameCombinedBags:Hide()");
+  addon.update(0);
+  expect(addon.eval("return { Vanguard_Menu:IsShown(), Vanguard_Menu.catcher:IsShown() }"), "closing the bag closes it and its catcher").toEqual([false, false]);
+});
 it("the Filter and Groups buttons are as wide as their labels need, so neither is cut off", () => {
   const addon = openFilled([8, 4, 0, 0, 0], { equipment: 1 });
   const rows = Object.values(addon.eval(`local out = {} for _, key in ipairs({ "filter", "groups" }) do

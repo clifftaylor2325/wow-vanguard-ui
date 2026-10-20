@@ -85,7 +85,7 @@ Every `/vg` command (`/vanguard` works too), grouped by what it does. `/vg help`
 | `/vg help` | Every command with a line on what it does |
 | `/vg errors [clear]` | What Vanguard caught going wrong this session |
 | `/vg report`, `/vg feedback [bug\|feature]` | A block to paste at vanguardui.com/feedback |
-| `/vg perf [cpu\|watch]`, `/vg mem` | CPU time and memory |
+| `/vg perf [cpu\|watch\|slow]`, `/vg mem` | CPU time and memory |
 | `/vg graphics` | Checks your computer, screen and frame rate, then suggests a Graphics Quality and the sizes for your screen |
 | `/vg graphics apply` | Sets what the check suggested: Graphics Quality, render scale on a slow 4K screen, and the sizes for your screen |
 | `/vg graphics undo` | Puts your graphics settings and UI scale back as they were before apply |
@@ -107,6 +107,10 @@ Every `/vg` command (`/vanguard` works too), grouped by what it does. `/vg help`
 /vg nineslice [on|off]          shadows and glows drawn as one texture each, after a /reload (a side-by-side test, off by default)
 /vg icons [on|off]              the menu strip icons drawn at the pixel size they show at (16, 20, 24 or 32), after a /reload (off by default)
 /vg ornaments [on|off]          a brass rule under the options window's header and corner brackets on setup and the quest log, in the accent's dim shade (off by default; also General → Look → Window ornaments)
+/vg cooldowns [setup]           the Cooldowns page (the game's Cooldown Manager, the gaps row, the buff glow); setup opens the step-by-step wizard, which in a fight waits for it to end
+/vg cdmkeys [on|off]            the key you press for each Cooldown Manager spell on its icon, read from Vanguard's action bars (off by default; also Cooldowns → Key text on the manager's icons)
+/vg cdmglow [on|off|<percent>]  glow a Cooldown Manager buff icon in its last part, 10 to 60 percent of it (off by default; also Cooldowns → Glow a buff near its end)
+/vg gaps [add <item>|remove <item>|spell add <spell>|spell remove <spell>|clear]   the Cooldown gaps row's chosen items (a Healthstone or a potion, say) and spells, shown beside trinkets, pet abilities and totems; no verb lists them (switch the row on under Cooldowns)
 /vg variant [default|contrast|vellum|classic|midnight|obsidian|moss|ember]   theme variant: Slate and brass, High contrast (opaque panels, white text, 2 px accent focus ring, Safer colours on), Vellum and ink (warm dark, cream text), Classic look, Midnight, Obsidian, Moss or Ash and ember; also General → Look → Theme variant
 /vg corners [square|rounded]     panel corners on every theme: square (default) or rounded (4 px arcs on panels, frames, tooltips and buttons); also General → Look → Corners
 /vg slug [on|off]               world text (nameplates, floating numbers) drawn with the SLUG font flag, at once (a side-by-side test, off by default)
@@ -116,7 +120,7 @@ Every `/vg` command (`/vanguard` works too), grouped by what it does. `/vg help`
 /vg modules       the list of modules; /vg enable|disable <module>, then /reload
 /vg skins         addons skinned through the API; skins <addon> on|off
 /vg preset [name]               presets on offer (healer, damage, tank, and any an addon registers); a name asks to apply it
-/vg profile [name]              switch (or create); profile new|copy|delete <name>, profile reset
+/vg profile [name]              switch (or create); profile new|copy|delete <name>, profile reset (asks and backs up first)
 /vg export [part ...|pick] | import   profile strings: the whole profile, or only some parts (layout, situations, global, a module's name); pick opens a switch for each part
 /vg spec [profile|off]          use a profile whenever you're in this specialization
 /vg binds                       this spec's click-casting and hover-key bindings
@@ -136,6 +140,8 @@ Every `/vg` command (`/vanguard` works too), grouped by what it does. `/vg help`
 /vg alts [<name>]                every character's level, money, rested XP and time played; with a name, that character's bags and bank
 /vg inventory [forget <name>|clear]   your characters remembered here and when their bags were read
 /vg weights [wizard|set <stat> <n>|reset|export|import]   the stat weights gear upgrades use for your class and role
+/vg talents [plan|spend|clear|export|import]   the Talent planner: the plan's summary; plan mode on or off, spend the planned points, clear the plan, share it as a string
+/vg legacy [probe|plan ...]     the Legacy system: probe lists what the client has for it; plan [add <points> <name>|remove <name>|clear] keeps a list of perks for the tree's 16 points (planner off until switched on)
 /vg way [zone] x y [title]      a waypoint the game's arrow points to; /vg way clear removes it; /vg way recent [n] lists the last eight or goes back to one
 /vg dock                        line up Deadly Boss Mods' bars with the Boss timers spots; for BigWigs, where to drag its bars
 /vg factionart                  which of the game's own faction pictures this client has
@@ -150,10 +156,11 @@ Every `/vg` command (`/vanguard` works too), grouped by what it does. `/vg help`
 /vg loot [on|off|add|remove|list|clear|focus|roster]   officer loot tools (off until switched on): a soft-reserve list flagged in the roll tracker, and a group roster
 /vg meter [on|off|<kind>|<segment>|reset|report [channel] [lines]]   Vanguard's own meter (off until switched on): kinds dps hps damage healing taken interrupts dispels deaths; segments this overall previous; reset clears the game's meter; report prints the top lines or sends them to say, party, raid, instance or guild
 /vg fights                      your DPS, length and place in each fight this session, newest first
+/vg recap [say|party|raid|instance|guild]   the last fight's interrupts, dispels, damage taken and deaths from the game's damage meter, in your chat or sent to that channel
 /vg ranks [swap]                bar buttons holding an older spell rank; swap puts the newest rank there (out of combat)
 /vg trainers [next|clear]       what the trainers you've visited teach: how many services, the next levels and where, or forget them
 /vg vendors [clear]             how many merchants Vanguard remembers (for tooltips and the stock list); clear forgets them
-/vg prep [want <kind> <n>|buffs]   the Instance prep card now; want sets how many food, bandages, potions, ammo or shards to carry; buffs lists your buffs and the buff check each counts for
+/vg prep [want <kind> <n>|setup|buffs]   the Instance prep card now; want sets how many food, bandages, potions, ammo or shards to carry; setup opens the wanted-amounts window; buffs lists your buffs and the buff check each counts for
 /vg watch [add|remove <phrase>|list|clear]   Chat watch's phrases: add one, remove one, list them, or clear them all
 /vg filter [on|off|tab|hide|add|remove <word>|clear]   Chat filter: switch it on or off, send caught lines to the Filtered tab or hide them, add or remove a word of your own, or show its state
 /vg history [on|off|whispers|nowhispers|clear]   Chat history: your chat comes back after a reload or the next login, or show what is saved
@@ -167,7 +174,7 @@ Every `/vg` command (`/vanguard` works too), grouped by what it does. `/vg help`
 /vg mem                         first prints how large Vanguard's saved files are (an estimate: the account file against its 6 MB budget, the three largest keys, this character's file), then watches Vanguard's memory for a minute (a reading every 5 s, none in combat), then says how far it moved and how much Vanguard kept: a garbage collection before the first reading and after the last (out of combat; a short hitch) gives live memory at the start and the end, or, where the client refuses one, whether the low point rose (memory kept) or held (garbage the game collects); run again to end it early
 /vg graphics                    checks this computer (the graphics card the game sees and the Graphics Quality the game recommends for it), your screen and your frame rate for 5 s (out of combat), then suggests a Graphics Quality and the sizes for your screen; again ends it early. It starts from the game's own recommendation, two steps under the one in use below 30 fps, one above it from 60 fps, at most 5 on a built-in (low-power) graphics chip, and on a slow 4K screen it suggests Render Scale 80%. It ends with a line naming the next two commands
 /vg graphics apply              sets what the last check suggested, out of combat: every detail setting from the game's own table for that Graphics Quality and then Graphics Quality itself (as the Options slider does, so custom detail settings are replaced), Render Scale 80% when the 4K tip showed, and setup's sizes for your screen (UI scale, buttons, raid tiles, text; setup saves your profile first)
-/vg graphics undo               puts back the graphics settings and UI scale as they were before the first apply on this computer (a profile string never carries them)
+/vg graphics undo               puts back the graphics settings and UI scale (Vanguard's pixel-perfect scale too) as they were before the first apply on this computer (a profile string never carries them)
 ```
 
 To measure Vanguard's CPU cost yourself: play a while (a raid pull is the hard case), then `/vg perf`; for the busiest functions too, `/vg perf cpu`, reload, play, then `/vg perf`; `/vg perf cpu` again (and a reload) turns profiling off. To measure memory: stand still out of combat, `/vg mem`, and read the two lines it prints after a minute; the second gives live memory at the start and the end, after a garbage collection each (the game's own figure also counts garbage not yet freed), so a rise there is memory Vanguard keeps.

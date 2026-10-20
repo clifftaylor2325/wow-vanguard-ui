@@ -336,14 +336,22 @@ local function resetPageRow(page, rows)
   end, function() return anyChanged(rows) end, isReset = true }
 end
 
--- A page's rows as the window uses them: "(reload)" moved off the captions, and a reset button at the foot of a page
--- that has settings with defaults (a card of its own).
-local function preparedRows(page)
-  local rows, defaults = page.rows(), false
-  for _, row in ipairs(rows) do
+-- A copy of a page's row list, "(reload)" moved off each caption: a page may hand back the same table at every
+-- opening (Click casting's), and the window's own rows must not pile up in it.
+local function copiedRows(page)
+  local rows = {}
+  for i, row in ipairs(page.rows()) do
     moveReload(row)
-    defaults = defaults or hasDefault(row)
+    rows[i] = row
   end
+  return rows
+end
+
+-- A page's rows as the window uses them (copiedRows), and a reset button at the foot of a page that has
+-- settings with defaults (a card of its own).
+local function preparedRows(page)
+  local rows, defaults = copiedRows(page), false
+  for _, row in ipairs(rows) do defaults = defaults or hasDefault(row) end
   if defaults then
     rows[#rows + 1] = { "header", "This page" }
     rows[#rows + 1] = resetPageRow(page, rows)
@@ -787,11 +795,15 @@ function O.Frame()
 end
 
 -- Throws a built page away so it's built again from its rows (its list
--- changed), showing it again if it's the current one.
+-- changed), showing it again if it's the current one, scrolled where it was.
 function O.RebuildPage(key)
   rowCache[key] = nil
-  if pages[key] then forgetRows(pages[key]) pages[key]:Hide() pages[key] = nil end
-  if window and window:IsShown() and O.current == key then O.Show(key) end
+  local old = pages[key]
+  local scroll = old and old:GetVerticalScroll() or 0
+  if old then forgetRows(old) old:Hide() pages[key] = nil end
+  if not (window and window:IsShown() and O.current == key) then return end
+  O.Show(key)
+  if pages[key] then pages[key]:ScrollTo(scroll) end
 end
 
 -- The first row on a page whose caption has the (lower-case) text.

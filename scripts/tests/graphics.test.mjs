@@ -131,6 +131,15 @@ it("/vg graphics apply: sets the suggestion as the game's Options would, and und
   expect(cvars(addon, ["graphicsQuality", "graphicsShadowQuality", "graphicsParticleDensity", "uiScale", "useUiScale"]), "back to before the first apply; a setting that had no value stays").toEqual(["6", "4", "9", "0.9", "1"]);
   expect(said(addon, "graphics undo"), "and once only").toEqual(["Nothing to undo: /vg graphics apply hasn't changed anything."]);
 });
+it("/vg graphics undo: a pixel-perfect player's scale comes back on, at its old multiple", () => {
+  const addon = loggedIn(GFX_ENV + TABLE_ENV);
+  addon.eval("ns.Theme.Settings().pixelMultiple = 2 ns.Theme.SetPixelScale(true)");
+  check(addon);
+  said(addon, "graphics apply");
+  expect(addon.eval("return ns.Theme.Settings().pixelScale"), "apply's screen sizes turn it off").toBe(false);
+  said(addon, "graphics undo");
+  expect(addon.eval("local t = ns.Theme.Settings() return { t.pixelScale, t.pixelMultiple, UIParent:GetScale() == ns.Theme.PixelScale() }"), "undo turns it back on at 2").toEqual([true, 2, true]);
+});
 it("/vg graphics undo: what apply kept stays on this computer: a profile string neither carries nor brings one", () => {
   const friend = loggedIn(GFX_ENV + TABLE_ENV);
   check(friend);

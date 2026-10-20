@@ -78,12 +78,12 @@ it("a built-in preset applies after a question, and keeps local data", () => {
   expect(addon.eval("local n = 0 for k in pairs(VanguardDB.profiles) do if k:find('backup') then n = n + 1 end end return n"), "a backup was made").toBe(1);
 });
 
-it("a preset waits out combat, and a bad string fails with a reason", () => {
+it("a preset is refused in combat, and a bad string fails with a reason", () => {
   const addon = loggedIn(CLICK_LUA);
   setCombat(addon, true);
   addon.slash("preset Tank");
   addon.eval('__click("Apply")');
-  expect(chatHas(addon, /waits until combat ends/), "no import in combat").toBeTruthy();
+  expect(chatHas(addon, /Presets can't be applied in combat: try again after the fight\.$/), "no import in combat, and chat says to try again after the fight").toBeTruthy();
   expect(addon.eval("local n = 0 for k in pairs(VanguardDB.profiles) do if k:find('backup') then n = n + 1 end end return n"), "nothing was imported or backed up").toBe(0);
   setCombat(addon, false);
   addon.eval('Vanguard.RegisterPreset("Broken", "VG1:parts:zzzz:@@@")');
@@ -94,4 +94,14 @@ it("a preset waits out combat, and a bad string fails with a reason", () => {
   addon.eval("ns.StartImport('VG1:parts:0000:x', function() end, function() end)");
   addon.eval("ns.AskPreset(ns.FindPreset('Tank')) __click('Apply')");
   expect(addon.eval("return ns.FindPreset(5)"), "a non-string name finds nothing").toBeNull();
+});
+it("RegisterPreset counts characters, not bytes: an 11-character Chinese name is fine, and a long info is cut between characters", () => {
+  const addon = loggedIn("");
+  const out = addon.eval(`local name = string.rep("\\228\\184\\173", 11)
+    local ok = Vanguard.RegisterPreset(name, "VG1:x", "x")
+    local tooLong = Vanguard.RegisterPreset(string.rep("\\228\\184\\173", 33), "VG1:x")
+    Vanguard.RegisterPreset("TEST-ONLY Pack", "VG1:x", string.rep("\\195\\169", 250))
+    local info for _, p in ipairs(Vanguard.GetPresets()) do if p.name == "TEST-ONLY Pack" then info = p.info end end
+    return { ok, tooLong, ns.TextLength(info), #info, info == string.rep("\\195\\169", 200) }`);
+  expect(out, "11 characters pass, 33 don't; the info keeps 200 whole characters").toEqual([true, false, 200, 400, true]);
 });

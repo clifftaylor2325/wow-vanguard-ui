@@ -49,7 +49,6 @@ end
 
 -- Quiet the game: declined invites, hidden HUD text, a further camera, release in battlegrounds.
 local function quietRows()
-  local zoom = O.LiveSetting("Quiet", "camera", function() ns.GetModule("Quiet").ApplyCamera() end)
   return {
     { "header", "Quiet the game" },
     check("Decline guild invites", setting("AutoAccept", "guildInvites")),
@@ -57,7 +56,9 @@ local function quietRows()
     check("Decline Battle.net friend requests", setting("AutoAccept", "friendRequests")),
     check("Release at once when you die in a battleground", setting("AutoAccept", "pvpRelease")),
     check("Hide the red error line", setting("Quiet", "errors")), check("Hide the zone names that fade in", setting("Quiet", "zoneText")),
-    { "cycle", "Furthest the camera zooms out", ns.GetModule("Quiet").CAMERA, zoom },
+    -- The setter must stay the row's last element: liveSetting returns a getter and a setter.
+    { "cycle", "Furthest the camera zooms out", ns.GetModule("Quiet").CAMERA,
+      O.LiveSetting("Quiet", "camera", function() ns.GetModule("Quiet").ApplyCamera() end) },
   }
 end
 

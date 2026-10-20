@@ -555,3 +555,13 @@ it("the test tile keeps the keys it reads from the game, and passes Escape and m
   addon.hover(null);
   expect(addon.eval(`return __wfgStub.frames[${tile}].__kb`), "and gives the keyboard back when it leaves").toBe(false);
 });
+it("the Click casting page shows one Reset this page card however often the window opened before a rebuild", () => {
+  const addon = loggedIn(CLICK_LUA + "C_ClickBindings = {}");
+  for (let i = 0; i < 3; i++) addon.eval('ns.Options.Show("general") ns.Options.Hide() Vanguard_Options:Hide()');
+  addon.eval('ns.Options.Show("clickcast")');
+  expect(addon.eval('return __click("More modifiers")'), "the columns button rebuilds the page").toBe(true);
+  const shown = addon.eval(`local n = 0 for _, w in ipairs(__wfgStub.frames) do
+      local fs = w.text or w.label
+      if w:IsVisible() and type(fs) == "table" and fs.__text == "Reset this page" then n = n + 1 end end return n`);
+  expect(shown, "one reset button").toBe(1);
+});

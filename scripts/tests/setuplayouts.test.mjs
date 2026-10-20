@@ -156,11 +156,12 @@ function layoutProblems(rects, sw, sh) {
   return bad;
 }
 // The whole HUD logged in on a new account, party pets and targets on, the info strip
-// at its tallest (with the leveling and DPS rows) and the bag and menu bar at its
-// laid-out size (404 wide, 68 tall: the bags row over the menu row's 14 slots).
+// at its tallest (with the leveling and DPS rows), the roll tracker at its most lines and the bag and
+// menu bar at its laid-out size (404 wide, 68 tall: the bags row over the menu row's 14 slots).
 function wholeHud() {
   const addon = loggedIn(UI_ENV + ACTIONS_ENV + UNITS_ENV + RAID_ENV + SWING_ENV + TOOLS_ENV + TIDY_ENV + MICRO_ENV + STRIPS_ENV + SPECIAL_BARS_ENV + "TakeTaxiNode = function() end", { firstRun: true, savedVariables: "VanguardDB = { profiles = { Default = { PartyExtras = { show = true } } } }" });
   addon.eval("Vanguard_InfoStrip:SetHeight(68)");
+  addon.eval('local R = ns.GetModule("Rolls") Vanguard_Rolls:SetHeight(R.LINES * R.LINE + 2 * R.PAD)');
   addon.eval("MicroMenuContainer:Layout() BagsBar:Layout()");
   return addon;
 }

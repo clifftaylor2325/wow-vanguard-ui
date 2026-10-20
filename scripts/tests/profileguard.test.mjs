@@ -59,12 +59,14 @@ it("settings-loss guard: an account file older than this character's last sessio
   first.slash("accent fel");
   first.fire("PLAYER_LOGOUT");
   const sv = first.savedVariables();
-  const old = { ...sv.account, guard: { stamp: sv.char.guard.stamp - 100, chars: {} }, profiles: { Default: {} } };
+  // The account's guard block with this character's note at `stamp`, as every account file since the guard has.
+  const note = (stamp) => ({ stamp, chars: { "Tester-ForeverTest": { profile: "Default", stamp } } });
+  const old = { ...sv.account, guard: note(sv.char.guard.stamp - 100), profiles: { Default: {} } };
   const lost = relog(first, { account: luaValue(old) });
   expect(chatHas(lost, /the account file came back older than this character's last session/), "chat says the account file is older").toBe(true);
   answer(lost, true);
   expect(lost.eval("return VanguardDB.profiles.Default.theme.accent[1] == ns.Theme.PRESETS.fel[1]"), "Restore puts the newer profile back").toBe(true);
-  const same = relog(first, { account: luaValue({ ...old, guard: { stamp: sv.char.guard.stamp, chars: {} } }) });
+  const same = relog(first, { account: luaValue({ ...old, guard: note(sv.char.guard.stamp) }) });
   expect(question(same), "an account file as new as the character's stamp is fine").toBe(null);
 });
 it("settings-loss guard: without a backup it offers to paste a string; Not now leaves the notice, and an unanswered loss keeps the stamps", () => {
@@ -236,4 +238,27 @@ it("saved data size: /vg mem reports the saved files, and waits out of combat", 
   setCombat(fight, true);
   fight.eval("ns.SettingsGuard.SizeReport()");
   expect(chatHas(fight, /Saved data sizes are read out of combat/), "in combat it waits").toBe(true);
+});
+it("settings-loss guard: after a lost account file every character is asked, not only the first to log in", () => {
+  const acct0 = `{ version = 2, setupDone = true, profiles = { Alpha = { theme = { accent = { 0.9, 0.1, 0.1 } } }, Beta = { theme = { accent = { 0.1, 0.9, 0.1 } } } } }`;
+  // The harness Lua that makes the player `name`.
+  const as = (name) => CLICK_LUA + `__wfgWorld.units.player.name = "${name}"\n`;
+  const tester = createAddon({ savedVariables: `VanguardDB = ${acct0}\nVanguardCharDB = { profile = "Alpha", setupDone = true }\n` });
+  tester.eval(as("Tester"));
+  tester.login();
+  const bravo = relog(tester, { char: `{ profile = "Beta", setupDone = true }`, extra: as("Bravo") });
+  const testerBack = relog(bravo, { account: "nil", char: luaValue(tester.savedVariables().char), extra: as("Tester") });
+  testerBack.eval("ns.SettingsGuard.Restore()");
+  const bravoBack = relog(testerBack, { char: luaValue(bravo.savedVariables().char), extra: as("Bravo") });
+  expect(question(bravoBack), "Bravo is offered its own backup").toBe("Vanguard's saved settings didn't load. Restore profile Beta from this character's backup?");
+  bravoBack.eval("ns.SettingsGuard.Restore()");
+  expect(bravoBack.eval("return VanguardDB.profiles.Beta and VanguardDB.profiles.Beta.theme.accent[2]"), "Restore brings back Beta").toBe(0.9);
+});
+it("settings-loss guard: a backup whose profile is still missing is kept at logout, even after a fresh start", () => {
+  const addon = loggedIn(CLICK_LUA);
+  addon.eval('VanguardCharDB.guard = { stamp = 1, profile = "Beta", backup = "VG1:profile:kept" }');
+  addon.eval("ns.SettingsGuard.Save()");
+  expect(addon.eval("return { VanguardCharDB.guard.profile, VanguardCharDB.guard.backup }"), "Beta's backup stays").toEqual(["Beta", "VG1:profile:kept"]);
+  addon.eval('VanguardDB.profiles.Beta = {} ns.SettingsGuard.Save()');
+  expect(addon.eval("return VanguardCharDB.guard.profile"), "once Beta exists, the profile in use is backed up").toBe("Default");
 });

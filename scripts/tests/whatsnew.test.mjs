@@ -168,3 +168,10 @@ it("what's new notes: every version has groups of lines, and every line's settin
     return out`);
   expect(problems).toEqual({});
 });
+it("what's new: the hint to click a line shows only for notes that have a line with a setting", () => {
+  const addon = loggedIn(ENV);
+  addon.eval("ns.WhatsNew.Show(ns.WHATS_NEW[1])");
+  expect(addon.eval("return Vanguard_WhatsNew.hint:IsShown()"), "9.9.9 has setting lines").toBe(true);
+  addon.eval("ns.WhatsNew.Show(ns.WHATS_NEW[2])");
+  expect(addon.eval("return Vanguard_WhatsNew.hint:IsShown()"), "9.8.0 has only plain lines").toBe(false);
+});

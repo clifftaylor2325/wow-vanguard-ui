@@ -452,3 +452,13 @@ it("situations: Stop and save pressed in a fight still stops after a roster chan
   addon.advance(0.5);
   expect([addon.eval("return ns.GetModule('Situations').recording"), stripShown(addon, OPTIONS_STRIP)], "stopped and saved when the fight ends; the banner gone").toEqual([null, false]);
 });
+
+it("with the Situations module off under Modules, its page's Apply switch applies nothing and the page says why", () => {
+  const sv = `VanguardDB.profiles = { Default = { modules = { Situations = false },
+    Situations = { enabled = false, overrides = { party = { settings = { InfoStrip = { gold = false } } } } } } }\n`;
+  const addon = loggedIn("IsInGroup = function() return true end", { savedVariables: sv });
+  addon.eval('for _, row in ipairs(ns.GetModule("Situations").Rows()) do if row[2] == "Apply situation overrides" then row[4](true) end end');
+  addon.advance(1);
+  expect(addon.eval('return ns.GetModule("InfoStrip").settings.gold'), "the Party override is not applied").toBe(true);
+  expect(addon.eval('return ns.GetModule("Situations").StatusText()'), "the status line says the module is off").toBe("Situations is off under Modules: overrides don't apply.");
+});

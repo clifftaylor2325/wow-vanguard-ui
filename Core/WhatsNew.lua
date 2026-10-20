@@ -158,10 +158,21 @@ local function newChild(view)
   return view.child
 end
 
--- Fills the window with one version's notes, scrolled to the top.
+-- True when one of a version's lines opens a setting, so the hint to click a line holds.
+local function hasLink(entry)
+  for _, group in ipairs(entry.groups) do
+    for _, item in ipairs(group.items) do
+      if item.page then return true end
+    end
+  end
+  return false
+end
+
+-- Fills the window with one version's notes, scrolled to the top; the click hint shows only when a line has a setting.
 local function fill(entry)
   local child, y = newChild(frame.view), 0
   for _, group in ipairs(entry.groups) do y = addGroup(child, group, y) end
+  frame.hint:SetShown(hasLink(entry))
   frame.view:Fit(y - GROUP_GAP - LINE_GAP)
   frame.lines, frame.version = child.lines, entry.version
   frame.title:SetText("What's new in Vanguard " .. entry.version)

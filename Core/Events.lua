@@ -42,6 +42,28 @@ function ns.AddChatFilters(events, fn)
   return true
 end
 
+-- Text --------------------------------------------------------------------------------------
+
+-- Characters in a string: UTF-8 code points, so "é" or "中" counts once (as the website counts).
+---@param s string
+---@return number
+function ns.TextLength(s)
+  return select(2, s:gsub("[^\128-\191]", ""))
+end
+
+-- The first n characters (UTF-8 code points) of a string, never cut inside one.
+---@param s string
+---@param n number
+---@return string
+function ns.TextPrefix(s, n)
+  local count = 0
+  for start in s:gmatch("()[^\128-\191]") do
+    count = count + 1
+    if count > n then return s:sub(1, start - 1) end
+  end
+  return s
+end
+
 -- State kept for the game's frames ---------------------------------------------------------
 -- A field stored on a frame the game owns plants taint, and taint errors in the
 -- game's own code then get blamed on Vanguard. So whatever Vanguard remembers

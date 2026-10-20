@@ -42,8 +42,9 @@ S.LAYOUTS = {
 -- player, the target of target beside the target, the focus under that), the
 -- party and raid down the left side (the raid grows up from above the bars'
 -- height, so a full raid stays clear of the middle), the boss frames on the
--- right under your buffs, and the raid leader's tools and main tanks near the
--- top center, clear of all of it.
+-- right under your buffs, the raid leader's tools and main tanks near the
+-- top center, clear of all of it, and the roll tracker right of center below
+-- the raid tools, where its 14 lines grow down into empty space.
 S.CLASSIC = {
   uf_player = { "TOPLEFT", "TOPLEFT", 20, -40 }, uf_pet = { "TOPLEFT", "TOPLEFT", 20, -84 },
   uf_target = { "TOPLEFT", "TOPLEFT", 270, -40 }, uf_targettarget = { "TOPLEFT", "TOPLEFT", 520, -46 },
@@ -52,7 +53,7 @@ S.CLASSIC = {
   raid = { "BOTTOMLEFT", "BOTTOMLEFT", 20, 330 }, uf_party1 = { "TOPLEFT", "TOPLEFT", 20, -310 },
   partyextras = { "TOPLEFT", "TOPLEFT", 190, -310 }, uf_boss1 = { "TOPRIGHT", "TOPRIGHT", -290, -200 },
   raidtools = { "TOP", "TOP", 200, -120 }, maintanks = { "TOP", "TOP", 100, -196 },
-  rolls = { "TOPLEFT", "TOPLEFT", 20, -8 },
+  rolls = { "TOP", "TOP", 280, -300 },
 }
 -- What each centered layout sizes on top of Vanguard's defaults: a mover's scale (it keeps its default
 -- spot, so a big raid still moves to the left), and how tall the target frame stands (UnitFrames'
@@ -234,11 +235,13 @@ function S.GuessLayout()
 end
 
 -- Applies the profile step: "new" gives this character a profile of its own and keeps Back
--- from returning to it, so the new profile stays; "share" changes nothing.
+-- from returning to it, so the new profile stays (setup opened again doesn't ask again, either);
+-- "share" changes nothing.
 function S.ApplyProfile(key)
   if key ~= "new" then return end
   ns.ForkProfile(UnitName("player"))
   state.floor = state.step + 1
+  VanguardCharDB.pickProfile = nil
 end
 
 -- The raid frames' settings in the active profile, with their defaults.
@@ -545,6 +548,15 @@ local function profilePage(page)
   choicePage(page, "Vanguard is set up on this account. Profiles in /vg switches this later.", profileChoices(), "profile")
 end
 
+-- Names the profile step's choices after the profile in use now (the page is built once, at setup's first open).
+local function relabelProfile()
+  for i, l in ipairs(profileChoices()) do
+    local b = frame.pages.profile.choices[i]
+    b.text:SetText(l.text)
+    b.hint = l.hint
+  end
+end
+
 -- The layout choices, the one for your role marked.
 local function layoutChoices()
   local mine, out = S.GuessLayout(), {}
@@ -731,7 +743,7 @@ local function finished()
   if ns.Unlocked() then ns.Lock() end
   if state.complete then markDone() elseif state.owed then ns.Chat(LATER) end
   afterSetup(state.complete and state.owed and state.done, reloadReason())
-  state.reload, state.retile, state.role = false, false, false
+  state.reload, state.retile, state.role, state.backup = false, false, false, nil
   for _, fn in ipairs(S.onEnd) do fn() end
 end
 
@@ -833,6 +845,7 @@ function S.Open()
   state.order, state.floor, state.owed, state.complete, state.profile = pick and PROFILE_STEPS or STEPS, 1, owe, false, "share"
   state.layout, state.screen, state.backup = "keep", "keep", nil
   state.reload, state.paused, state.done, state.role = false, false, false, false
+  relabelProfile()
   T.OpenWindow(frame)
   showStep(1)
 end
