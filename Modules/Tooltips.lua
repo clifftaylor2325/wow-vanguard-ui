@@ -79,7 +79,7 @@ function TT.Unit(tt)
   return unit
 end
 
--- r, g, b for a unit: class color for players, reaction color otherwise.
+-- r, g, b for a unit: class color for players, grey for a creature another player tagged, reaction color otherwise.
 local function unitColor(unit)
   return ns.GetModule("UnitFrames").HealthColor(unit)
 end

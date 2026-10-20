@@ -142,8 +142,7 @@ end
 
 -- The steps or the followed quest changed: the tracker redraws, if it shows.
 function QG.StepsChanged()
-  local QT = ns.GetModule("QuestTracker")
-  if QT.frame then ns.Soon("questtracker", QT.Refresh) end
+  ns.GetModule("QuestTracker").Redraw()
 end
 
 -- /vg questdata --------------------------------------------------------------------------------

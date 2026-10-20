@@ -64,6 +64,14 @@ end
 
 -- Lines ----------------------------------------------------------------------------------------
 
+-- An objective's text split into its label and its count ("Wolves slain: 3/8" or "3/8 Wolves slain" give
+-- "Wolves slain", "3/8"); the count is nil when it has none. The quest log and the tracker both show it so.
+function QP.SplitCount(text)
+  local label, count = text:match("^(.-):?%s*(%d+/%d+)$")
+  if not count then count, label = text:match("^(%d+/%d+)%s+(.+)$") end
+  return label and label ~= "" and label or text, count
+end
+
 -- A texture sized square; returns it.
 function QP.Square(t, size)
   t:SetSize(size, size)
