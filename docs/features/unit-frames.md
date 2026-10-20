@@ -8,7 +8,7 @@ Player, target, target of target, focus and party frames (built when the raid fr
 
 ## Combat timers
 
-A swing timer with a row per hand (main hand, off hand, and ranged for a hunter's Auto Shot), from WoW Forever's own swing events. It is on for warriors, rogues and hunters, and can be set to always or never. While it is on, the game's own swing timer (its Show Swing Timer setting) is hidden; while it is off, the game's bars are drawn in the theme, each hand in its row's color. On your power bar, a spark counts down the five-second rule after each mana spell, or crosses the bar with every two-second energy tick (it goes after three sweeps with no tick, as at full energy, and starts again with the next one).
+A swing timer with a row per hand (main hand, off hand, and ranged for a hunter's Auto Shot), from WoW Forever's own swing events. It is on for warriors, rogues, hunters, paladins, shamans and druids (a row shows only while a swing runs), and can be set to always or never. While it is on, the game's own swing timer (its Show Swing Timer setting) is hidden; while it is off, the game's bars are drawn in the theme, each hand in its row's color. On your power bar, a spark counts down the five-second rule after each mana spell, or crosses the bar with every two-second energy tick (it goes after three sweeps with no tick, as at full energy, and starts again with the next one).
 
 ## Readouts
 

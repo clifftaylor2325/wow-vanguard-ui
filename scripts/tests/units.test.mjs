@@ -379,6 +379,7 @@ it("swing timer: who sees it", () => {
   // Whether a login with this setup and these saved settings builds the swing rows.
   const wanted = (env, saved) => loggedIn(UNITS_ENV + env, saved ? { savedVariables: saved } : undefined).eval("return ns.GetModule('SwingTimer').rows ~= nil");
   expect(wanted(SWING_ENV.replace("WARRIOR", "MAGE")), "a mage doesn't, by default").toBe(false);
+  for (const cls of ["PALADIN", "SHAMAN", "DRUID"]) expect(wanted(SWING_ENV.replace("WARRIOR", cls)), `a ${cls.toLowerCase()} does: they swing too`).toBe(true);
   expect(wanted(SWING_ENV.replace("WARRIOR", "MAGE"), "VanguardDB.profiles = { Default = { SwingTimer = { show = 'always' } } }"), "unless it's set to always").toBe(true);
   expect(wanted(SWING_ENV, "VanguardDB.profiles = { Default = { SwingTimer = { show = 'never' } } }"), "never is never").toBe(false);
   expect(wanted(SWING_ENV.replace('"WARRIOR"', '{ __secret = true }')), "a hidden class: no timer").toBe(false);

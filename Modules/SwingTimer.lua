@@ -20,8 +20,9 @@ local UF = ns.GetModule("UnitFrames")
 -- show: "auto" (the classes that live by auto-attack), "always" or "never".
 local SW = ns.Module("SwingTimer", { defaults = { show = "auto" } })
 
--- The classes "auto" shows it for: warriors and rogues, and hunters for Auto Shot.
-SW.CLASSES = { WARRIOR = true, ROGUE = true, HUNTER = true }
+-- The classes "auto" shows it for: every class that fights with its weapon (hunters for Auto Shot too).
+-- Rows show only while a swing runs, so a healer who rarely swings sees nothing at rest.
+SW.CLASSES = { WARRIOR = true, ROGUE = true, HUNTER = true, PALADIN = true, SHAMAN = true, DRUID = true }
 
 SW.WIDTH, SW.ROW, SW.GAP = 220, 10, 2
 -- Swing type name (Enum.PlayerSwingType) -> row order and color token. The order is
