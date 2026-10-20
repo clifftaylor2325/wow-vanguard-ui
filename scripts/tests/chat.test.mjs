@@ -24,7 +24,7 @@ it("minimap", () => {
   expect(addon.eval("return ns.MoverList()[1] ~= nil") === true, "the minimap is movable").toBeTruthy();
   const M = "ns.GetModule('Minimap')";
   const bands = addon.eval(`local M = ${M} return { #M.bands, M.top.__color, M.top.__height, M.bottom.__height, M.bottom:IsShown(),
-    M.zone.__noWrap, M.zone.__width, M.zone.__points.CENTER.rel == M.top, M.coords.__points.CENTER.rel == M.bottom }`);
+    M.zone.__noWrap, M.zone.__width, M.zone.__points.CENTER.rel == M.zoneButton, M.coords.__points.CENTER.rel == M.bottom }`);
   expect([bands[0], isTok(addon, bands[1], "panel"), bands[1][3], bands.slice(2)], "a see-through panel-colored band along the top and bottom edges, the zone name and coordinates centered on them; the name is clamped and doesn't wrap").toEqual([2, true, 0.7, [20, 24, true, true, 124, true, true]]);
   addon.eval("ns.Theme.Settings().panel = { 0.1, 0.2, 0.3, 1 } ns.Theme.Refresh()");
   expect(addon.eval(`return ${M}.top.__color`), "the bands follow the panel color live").toEqual([0.1, 0.2, 0.3, 0.7]);
@@ -47,11 +47,13 @@ it("a round minimap: masked to a disc, an outline on its rim, bands cut to the d
   expect(shapeOf('{ theme = { variant = "classic" } }').eval("return GetMinimapShape()"), "following the theme, Classic look makes it round").toBe("ROUND");
   const addon = shapeOf('{ Minimap = { shape = "round" } }');
   const round = addon.eval(`local M = ${M} return { GetMinimapShape(), Minimap.__maskTexture, #M.corners, #M.bands, M.top.__masks and #M.top.__masks, M.rules[1].__masks and #M.rules[1].__masks,
-    M.zone.__width, Vanguard_MinimapZone.__points.TOPLEFT.x }`);
+    M.zone.__width, Vanguard_MinimapZone.__points.TOPLEFT.x, M.top:IsShown(), M.rules[1]:IsShown(), Vanguard_Minimap:GetHeight(), M.overlay:GetHeight(),
+    M.zone.__points.CENTER.rel == M.zoneButton, Vanguard_MinimapZone.__points.TOPLEFT.rel == Vanguard_Minimap, Minimap.__points.BOTTOM.y }`);
   expect(round.slice(0, 6), "ROUND to other addons, the disc as the map's mask, no corner diamonds, the bands and rules masked to it, a zone name that fits the top chord").toEqual(["ROUND", expect.stringContaining("RoundDisc"), 0, 2, 1, 1]);
-  expect(round[6] < 124 && round[7] === (180 - round[6]) / 2, "the zone name and its button are narrower than on a square map").toBe(true);
+  expect(round.slice(6), "the zone name runs the map's whole width on a strip above the disc (the holder a band taller, the map and overlay on its bottom square), with no top band or rule").toEqual([180, 0, false, false, 202, 182, true, true, 1]);
   const rim = addon.eval("return { MinimapCluster.Tracking.__points.CENTER.x, MinimapCluster.Tracking.__points.CENTER.y, MinimapCluster.Tracking.__points.CENTER.rel == ns.GetModule('Minimap').overlay }");
   expect(rim[0] < -50 && rim[1] < -50 && rim[2], "the tracking button sits on the rim at the lower left, in the map's overlay").toBe(true);
+  expect(Math.hypot(Math.abs(rim[0]) + 9, Math.abs(rim[1]) + 9) <= 88, "its outer corner stays inside the outline, so the whole button shows").toBe(true);
   expect(addon.eval("local ok = pcall(ns.Theme.Refresh) return ok"), "a theme refresh repaints the disc and ring").toBe(true);
 });
 it("a minimap that has the game's own wheel handler keeps it, and Vanguard adds none", () => {
