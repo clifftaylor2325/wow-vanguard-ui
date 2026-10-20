@@ -597,7 +597,7 @@ it("the bag's Groups button makes groups, files the held item, sends to the bank
   addon.eval("ns.GetModule('Bags').NewGroup('food-ITEMS') ns.GetModule('Bags').NewGroup('   ')");
   expect(chat(), "the same name twice is refused").toMatch(/food-ITEMS already exists/);
   openTool(addon, "groups");
-  expect(menuRows(addon), "four actions per group").toEqual(["New group...", "Put held item in Food-items", "Send Food-items to the bank", "Make Food-items first", "Delete Food-items"]);
+  expect(menuRows(addon), "four actions per group, then taking the held item out").toEqual(["New group...", "Put held item in Food-items", "Send Food-items to the bank", "Make Food-items first", "Delete Food-items", "Take held item out of its group"]);
   addon.click("Vanguard_Menu.items[2]");
   expect(chat(), "nothing in hand").toMatch(/Pick an item up first/);
   addon.eval("__wfgWorld.cursor = { type = 'item', id = 159 }");
@@ -637,6 +637,28 @@ it("the Filter and Groups buttons are as wide as their labels need, so neither i
   end return out`)).map((r) => Object.values(r));
   expect(rows, "each label in full, with room to spare between its left inset and the arrow").toEqual([["Filter", true, true], ["Groups", true, true]]);
   expect(addon.eval("return BagItemSearchBox:GetWidth() > 100"), "and the search box keeps a usable width").toBe(true);
+});
+
+it("the bag's Groups menu takes the held item out of its group, and its header goes", () => {
+  const addon = openFilled([8, 4, 0, 0, 0], { equipment: 1, consumables: 2 });
+  // The chat so far, as one string.
+  const chat = () => Array.from(addon.chat()).join("\n");
+  addon.slash("bag add Water 159");
+  expect(addon.texts("WATER").length, "the group's header shows").toBe(1);
+  openTool(addon, "groups");
+  addon.click("Vanguard_Menu.items[6]");
+  expect(chat(), "nothing in hand: told so").toMatch(/Pick an item up first, then take it out of its group\./);
+  addon.eval("__wfgWorld.cursor = { type = 'item', id = 6948 }");
+  openTool(addon, "groups");
+  addon.click("Vanguard_Menu.items[6]");
+  expect(chat(), "an item in no group: told so").toMatch(/is in no group\./);
+  expect(addon.eval("return __wfgWorld.cursor.id"), "and it stays in hand").toBe(6948);
+  addon.eval("__wfgWorld.cursor = { type = 'item', id = 159 }");
+  openTool(addon, "groups");
+  addon.click("Vanguard_Menu.items[6]");
+  expect([addon.eval("return ns.Settings('Bags').categories[1].items[159]"), addon.eval("return __wfgWorld.cursor")], "the water is out of the group and the cursor is clear").toEqual([null, null]);
+  expect(addon.texts("WATER").length, "the empty group's header goes at once").toBe(0);
+  expect(chat(), "it says so").toMatch(/Refreshing Spring Water is in no category/);
 });
 
 // The Junk header's count text.
