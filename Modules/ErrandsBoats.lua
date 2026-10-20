@@ -6,17 +6,10 @@
 
 local ADDON, ns = ...
 
-local T = ns.Theme
 local ER = ns.GetModule("Errands")
 
 -- Seconds between checks, the checks that confirm a ride, and the shortest and longest ride saved.
 ER.BOAT_POLL, ER.BOAT_CONFIRM, ER.BOAT_MIN, ER.BOAT_MAX = 1, 3, 20, 1800
-
--- Seconds as "1:05".
-local function clock(seconds)
-  seconds = math.max(0, math.ceil(seconds))
-  return string.format("%d:%02d", math.floor(seconds / 60), seconds % 60)
-end
 
 -- The client's time now.
 local function now()
@@ -49,11 +42,8 @@ end
 
 -- The bar: a countdown on a route taken before, else "timing".
 function ER.PaintBoat(b)
-  local bar, left = ER.boatBar, (b.known or 0) - (now() - b.start)
-  bar:Show()
-  bar:SetMinMaxValues(0, b.known or 1)
-  bar:SetValue(b.known and math.max(0, left) or 1)
-  bar.text:SetText(b.known and (b.to .. "  " .. clock(left)) or "Timing this ride")
+  local left = (b.known or 0) - (now() - b.start)
+  ER.PaintRoute(ER.boatBar, b, left, "Timing this ride")
 end
 
 -- Off the boat: save a sane ride's time under its route, and put the bar away.
@@ -92,14 +82,7 @@ end
 
 -- The movable boat bar, hidden until a ride.
 local function buildBar()
-  local bar = T.BarColor(T.StyleBar(CreateFrame("StatusBar", "Vanguard_BoatTimer", UIParent)), "accent")
-  T.HudPanel(bar)
-  bar:SetSize(ER.BAR_W, ER.BAR_H)
-  ns.Mover(bar, "boattimer", "Boat timer", ER.TRAVEL_SPOT)
-  bar.text = T.Text(bar:CreateFontString(nil, "OVERLAY"), "barSmall")
-  bar.text:SetPoint("CENTER")
-  bar:Hide()
-  ER.boatBar = bar
+  ER.boatBar = ER.TimerBar("Vanguard_BoatTimer", "boattimer", "Boat timer")
 end
 
 -- Starts watching for boat and zeppelin rides, on a client that has the map calls.
