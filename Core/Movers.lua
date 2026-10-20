@@ -21,6 +21,8 @@ local NUDGE = { UP = { 0, 1 }, DOWN = { 0, -1 }, LEFT = { -1, 0 }, RIGHT = { 1, 
 
 local movers, order = {}, {}
 local unlocked = false
+-- Pins paused (Edit Mode open), the note under Edit Mode's window, and whether Edit Mode unlocked the handles.
+local pinsPaused, editModeNote, editUnlocked = false, nil, false
 local selected
 -- Text after every handle's label (Situations: " · recording Raid"), or "".
 local suffix = ""
@@ -232,7 +234,7 @@ end
 -- Queues a frame's pin for after combat, one entry per frame however often the
 -- game moves it; nothing happens while pins are paused (Edit Mode open).
 local function runPin(frame)
-  if ns.pinsPaused then return end
+  if pinsPaused then return end
   ns.OutOfCombat(runs[frame], frame)
 end
 
@@ -258,8 +260,8 @@ end
 -- Pauses every pin (so the game's Edit Mode can move its frames freely), or
 -- ends the pause and puts every pinned frame back in its Vanguard spot.
 function ns.PausePins(paused)
-  ns.pinsPaused = paused == true
-  if ns.pinsPaused then return end
+  pinsPaused = paused == true
+  if pinsPaused then return end
   for frame in pairs(pinned) do runPin(frame) end
 end
 
@@ -272,7 +274,7 @@ ns.EDIT_NOTE = "The labeled handles are Vanguard's frames: drag them here too (r
 -- resizes itself from every child frame, so the note is marked ignoreInLayout: hung below the window, it would
 -- otherwise count as part of the window and stretch it each time the game lays it out.
 local function editNote(edit)
-  if ns.editNote then return ns.editNote end
+  if editModeNote then return editModeNote end
   local note = T.Panel(CreateFrame("Frame", "Vanguard_EditModeNote", edit), { accent = true })
   note.ignoreInLayout = true
   note:SetSize(320, 36)
@@ -280,7 +282,7 @@ local function editNote(edit)
   note.text = T.Text(note:CreateFontString(nil, "OVERLAY"), "small")
   note.text:SetPoint("TOPLEFT", 8, -6) note.text:SetPoint("BOTTOMRIGHT", -8, 6)
   note.text:SetText(ns.EDIT_NOTE)
-  ns.editNote = note
+  editModeNote = note
   return note
 end
 
@@ -288,9 +290,9 @@ end
 -- draws its own), with the note, unless that's switched off. It closed: they
 -- hide, unless /vg unlock had them up already.
 function ns.EditModeMovers(edit, open)
-  if open and not unlocked and ns.MoverOptions().editMode then ns.editUnlocked = ns.Unlock(true) end
-  if not open and ns.editUnlocked then
-    ns.editUnlocked = false
+  if open and not unlocked and ns.MoverOptions().editMode then editUnlocked = ns.Unlock(true) end
+  if not open and editUnlocked then
+    editUnlocked = false
     ns.Lock()
   end
   editNote(edit):SetShown(open and unlocked)
