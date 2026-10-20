@@ -169,12 +169,13 @@ function QA.Continue()
   call(CompleteQuest)
 end
 
--- Takes the reward (the only one, or the best seller) and finishes the quest.
+-- Takes the reward (the only one, or the best seller) and finishes the quest; from a choice it says which
+-- it took and why (a reward taken is for good).
 function QA.Finish()
   local choice = QA.RewardChoice()
   local name = choice > 0 and ns.QuestParts.Plain((call(GetQuestItemInfo, "choice", choice)))
   call(GetQuestReward, choice > 0 and choice or nil)
-  ns.Chat("Turned in: " .. title() .. (count(call(GetNumQuestChoices)) > 1 and name and (" (took " .. name .. ")") or ""))
+  ns.Chat("Turned in: " .. title() .. (count(call(GetNumQuestChoices)) > 1 and name and (" (took " .. name .. ": sells for most)") or ""))
 end
 
 -- Module entry point (Core/Modules.lua): each switch is read when its event comes. A new quest offer first

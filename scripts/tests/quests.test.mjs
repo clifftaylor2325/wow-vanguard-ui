@@ -256,7 +256,7 @@ it("quest automation: accept, turn in, best reward, skip chatter; Shift skips it
   expect(calls(addon), "acknowledged, handed in; a choice of rewards is left to you").toEqual(["ack nil", "complete nil"]);
   addon.eval("VanguardDB.profiles.Default.QuestAuto.bestReward = true");
   addon.fire("QUEST_COMPLETE");
-  expect([calls(addon), chatHas(addon, /Turned in: TEST-ONLY Wolves \(took TEST-ONLY Gloves\)/)], "the best seller, when switched on").toEqual([["reward 2"], true]);
+  expect([calls(addon), chatHas(addon, /Turned in: TEST-ONLY Wolves \(took TEST-ONLY Gloves: sells for most\)/)], "the best seller, when switched on").toEqual([["reward 2"], true]);
   addon.eval('__prices["item:90022"] = nil');
   addon.fire("QUEST_COMPLETE");
   expect(calls(addon), "a price the game doesn't know yet: left to you").toEqual([]);
