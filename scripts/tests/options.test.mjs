@@ -1302,3 +1302,15 @@ it("Window ornaments applies at once and asks for no reload", () => {
   expect(addon.eval('return __click("Window ornaments")')).toBe(true);
   expect([diamonds(), reloadNotice(addon)], "the rule shows at once; no reload notice").toEqual([1, false]);
 });
+it("Modules page: every module it groups has a name and a line saying what it does", () => {
+  const addon = loggedIn();
+  const missing = addon.eval(`local out = {}
+    for _, group in ipairs(ns.Options.MODULE_GROUPS) do
+      for _, name in ipairs(group[2]) do
+        local info = ns.Options.MODULE_INFO[name]
+        if not (info and type(info[1]) == "string" and type(info[2]) == "string" and info[2] ~= "") then out[#out + 1] = name end
+      end
+    end
+    return out`);
+  expect(missing, "modules shown by their code name with no description").toEqual({});
+});
