@@ -48,6 +48,7 @@ local function errandRows()
     { "header", "Errands" },
     check("Train all button at trainers", setting("Errands", "trainAll")),
     check("Keep items stocked from merchants (/vg stock)", setting("Errands", "stock")),
+    { "button", "Edit list...", function() ns.GetModule("Errands").StockWindow.Open() end, function() return ns.GetModule("Errands").settings ~= nil end },
     check("Flight timer (reload)", setting("Errands", "flightTimer", true)),
     check("Boat and zeppelin timer (reload)", setting("Errands", "boatTimer", true)),
   }
