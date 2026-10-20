@@ -332,7 +332,7 @@ local function watchWindow(frame)
   if type(frame) ~= "table" or vgWatched[frame] then return end
   vgWatched[frame] = true
   if type(frame.TransformMessages) == "function" and type(hooksecurefunc) == "function" then hooksecurefunc(frame, "AddMessage", ns.Guard("hook AddMessage", rewriteAdded)) end
-  frame:HookScript("OnMouseWheel", wheel)
+  frame:HookScript("OnMouseWheel", ns.Guard("chat wheel", wheel))
 end
 
 -- Follows every chat window, the temporary ones (whispers) too.

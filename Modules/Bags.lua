@@ -146,11 +146,17 @@ function BG.SkinBankItems()
   skinSearch("BankItemSearchBox")
 end
 
+-- Skins the bank window and its item slots as the window opens or shows another tab.
+local function skinBankWindow()
+  ns.GetModule("Windows").Skin(_G.BankFrame)
+  BG.SkinBankItems()
+end
+
 -- The bank window and its slots, whenever it opens or shows another tab.
 local function watchBank()
   local bank, panel = _G.BankFrame, _G.BankPanel
   if type(bank) ~= "table" or type(panel) ~= "table" then return end
-  bank:HookScript("OnShow", function() ns.GetModule("Windows").Skin(bank) BG.SkinBankItems() end)
+  bank:HookScript("OnShow", ns.Guard("show bank window", skinBankWindow))
   if type(panel.GenerateItemSlotsForSelectedTab) == "function" and type(hooksecurefunc) == "function" then
     hooksecurefunc(panel, "GenerateItemSlotsForSelectedTab", ns.Guard("hook GenerateItemSlotsForSelectedTab", BG.SkinBankItems))
   end
@@ -279,7 +285,7 @@ function BG.Enable(settings)
   local frame = combinedFrame()
   if not frame then return end
   BG.AddSort(frame)
-  frame:HookScript("OnShow", BG.SkinWindow)
+  frame:HookScript("OnShow", ns.Guard("show bags window", BG.SkinWindow))
   if type(frame.UpdateItems) == "function" and type(hooksecurefunc) == "function" then
     hooksecurefunc(frame, "UpdateItems", ns.Guard("hook UpdateItems", skinItems))
   end

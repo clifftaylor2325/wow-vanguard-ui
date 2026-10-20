@@ -126,8 +126,8 @@ end
 -- Wires a slot's hover and clicks to its feed.
 local function wireSlot(b)
   b:RegisterForClicks("AnyUp")
-  b:SetScript("OnEnter", BS.OnEnter)
-  b:SetScript("OnLeave", BS.OnLeave)
+  b:SetScript("OnEnter", ns.Guard("hover broker feed", BS.OnEnter))
+  b:SetScript("OnLeave", ns.Guard("leave broker feed", BS.OnLeave))
   b:SetScript("OnClick", ns.Guard("click broker feed", BS.OnClick))
   b:Hide()
   return b

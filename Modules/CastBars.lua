@@ -435,7 +435,7 @@ function CB.SkinOverlay()
   vgSkinned[bar] = true
   T.HudPanel(bar, { inset = true })
   styleOverlay(bar)
-  bar:HookScript("OnShow", styleOverlay)
+  bar:HookScript("OnShow", ns.Guard("show overlay cast bar", styleOverlay))
   if type(hooksecurefunc) ~= "function" then return end
   if type(bar.UpdateBarFillTexture) == "function" then hooksecurefunc(bar, "UpdateBarFillTexture", ns.Guard("hook UpdateBarFillTexture", styleOverlay)) end
   if type(bar.PlayFadeAnim) == "function" then hooksecurefunc(bar, "PlayFadeAnim", ns.Guard("hook PlayFadeAnim", hideFlash)) end
