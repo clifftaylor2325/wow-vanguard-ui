@@ -244,6 +244,24 @@ it("options: a search hit scrolls to its row and marks it after the window was c
   expect(openHit("reduce motion"), "after a reopen a row on a page built before is marked too").toMatch(/^Reduce motion/);
 });
 
+it("options: search finds buttons, choice names, the note under a setting and reload rows, and says how many more there are", () => {
+  const addon = loggedIn(CLICK_LUA);
+  addon.eval('ns.Options.Show("general")');
+  // The captions a search lists, and the list's last line.
+  const found = (text) => addon.eval(`ns.Options.Search(${JSON.stringify(text)})
+    local out = {} for _, hit in ipairs(ns.Options.hits) do out[#out + 1] = hit.caption end
+    return { out, Vanguard_Options.results.more.__text }`);
+  expect(found("move frames")[0][0], "a button is listed").toBe("Move frames");
+  addon.eval("ns.Options.OpenHit(ns.Options.hits[1])");
+  expect(addon.eval("return ns.Unlocked()"), "opening a button hit marks it and never presses it").toBe(false);
+  expect(found("square")[0], "a choice's names: Corners has Square").toContain("Corners");
+  expect(found("brass rule")[0], "the note under a setting").toEqual(["Window ornaments"]);
+  expect(found("reload minimap")[0], "a setting that applies on reload").toContain("Minimap shape");
+  const many = found("a");
+  expect([many[0].length, many[1]], "past eight hits the list says how many more").toEqual([8, expect.stringMatching(/^\d+ more: type more words$/)]);
+  expect(found("backup")[1], "eight or fewer: no last line").toBe("");
+});
+
 it("options: a live row of a module that is off saves its value without an error", () => {
   const addon = loggedIn(RETAIL + CLICK_LUA + DATA_ENV, { savedVariables: "VanguardDB.profiles.Default = { modules = { CooldownGlow = false, GameAlerts = false, ActionBars = false } }\n" });
   addon.eval('ns.Options.Show("cooldowns")');

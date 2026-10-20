@@ -16,6 +16,11 @@ O.KEYWORDS = {
   ["pixel-perfect scale"] = "ui scale resolution crisp blurry",
   ["theme variant"] = "dark light colours colors surfaces skin",
   ["corners"] = "round rounded square panels",
+  ["move frames"] = "move unlock drag position layout edit mode",
+  ["its scale"] = "scale size bigger smaller",
+  ["export profile"] = "backup save share copy",
+  ["import"] = "profile backup restore paste",
+  ["minimap shape"] = "map round square",
 }
 
 -- The most settings the list shows, and how wide it is and what each line holds (units).
@@ -24,15 +29,25 @@ local MAX_HITS, LIST_WIDTH, PAGE_WIDTH = 8, 360, 110
 -- The settings a search found: { page = key, title = the page's title, caption = the row's, row = the row }.
 O.hits = nil
 
--- The words of a row that a search reads: its caption, tip and keywords, in lower case.
-local function haystack(row)
-  local caption = tostring(row[2])
-  return table.concat({ caption, row.tip or "", O.KEYWORDS[caption:lower()] or "" }, " "):lower()
+-- A choice row's choice names ("Square", "Jade"), as one string.
+local function choiceNames(row)
+  if row[1] ~= "cycle" or type(row[3]) ~= "table" then return "" end
+  local names = {}
+  for _, choice in ipairs(row[3]) do names[#names + 1] = tostring(choice[2]) end
+  return table.concat(names, " ")
 end
 
--- Whether every word of the (lower-case) text is in the row's words.
-local function matches(row, words)
-  local text = haystack(row)
+-- The words of a row that a search reads: its caption, tip, keywords, choice names, the note under it and
+-- "reload" when it applies on reload, in lower case.
+local function haystack(row, note)
+  local caption = tostring(row[2])
+  local words = { caption, row.tip or "", O.KEYWORDS[caption:lower()] or "", choiceNames(row), note or "", row.reload and "reload" or "" }
+  return table.concat(words, " "):lower()
+end
+
+-- Whether every word of the (lower-case) text is in the row's words (with the note under it).
+local function matches(row, words, note)
+  local text = haystack(row, note)
   for _, word in ipairs(words) do
     if not text:find(word, 1, true) then return false end
   end
@@ -46,32 +61,42 @@ local function wordsOf(text)
   return words
 end
 
--- The kinds of row the list can show: a switch, choice or slider, and a module's switch.
-local SETTING_KINDS = { check = true, cycle = true, slider = true, module = true }
+-- The kinds of row the list can show: a switch, choice or slider, a module's switch, and a button (a hit on a
+-- button only opens its page and marks it; some buttons reset or delete).
+local SETTING_KINDS = { check = true, cycle = true, slider = true, module = true, button = true }
 
 -- Whether a row is one the list can show: a setting with a caption.
 local function isSetting(row)
   return SETTING_KINDS[row[1]] == true and type(row[2]) == "string"
 end
 
--- Every setting that passes `wanted(row)`, page by page in the nav's order, up to MAX_HITS.
-local function collect(wanted)
-  local out = {}
-  for _, page in ipairs(O.NavOrder()) do
-    for _, row in ipairs(O.RowsOf(page)) do
-      if #out < MAX_HITS and isSetting(row) and wanted(row) then
-        out[#out + 1] = { page = page.key, title = page.title, caption = row[2], row = row }
-      end
-    end
-  end
-  return out
+-- The note row under row i ({ "text", words, "note" }), if there is one: its words.
+local function noteUnder(rows, i)
+  local below = rows[i + 1]
+  return below and below[1] == "text" and below[3] == "note" and below[2] or nil
 end
 
--- The settings that match a (lower-case) search text; "changed" is the ones off their default.
+-- Every setting that passes `wanted(row, note)`, page by page in the nav's order, up to MAX_HITS; then how many
+-- more passed.
+local function collect(wanted)
+  local out, more = {}, 0
+  for _, page in ipairs(O.NavOrder()) do
+    local rows = O.RowsOf(page)
+    for i, row in ipairs(rows) do
+      local hit = isSetting(row) and wanted(row, noteUnder(rows, i))
+      if hit and #out == MAX_HITS then more = more + 1 end
+      if hit and #out < MAX_HITS then out[#out + 1] = { page = page.key, title = page.title, caption = row[2], row = row } end
+    end
+  end
+  return out, more
+end
+
+-- The settings that match a (lower-case) search text, and how many more the list has no room for; "changed" is
+-- the ones off their default.
 function O.FindSettings(text)
   if text == "changed" then return collect(function(row) return O.RowChanged(row) end) end
   local words = wordsOf(text)
-  return collect(function(row) return matches(row, words) end)
+  return collect(function(row, note) return matches(row, words, note) end)
 end
 
 -- Hit lines ------------------------------------------------------------------------------------
@@ -113,6 +138,8 @@ local function listPanel(window)
   list.none = T.Text(list:CreateFontString(nil, "OVERLAY"), "label", "muted")
   list.none:SetPoint("TOPLEFT", T.SPACE.pad, -T.SPACE.col)
   list.none:SetText("No setting matches.")
+  list.more = T.Text(list:CreateFontString(nil, "OVERLAY"), "small", "muted")
+  list.more:SetPoint("BOTTOMLEFT", T.SPACE.pad, T.SPACE.tight + T.SPACE.gap)
   return list
 end
 
@@ -127,15 +154,17 @@ local function listFrame()
   return list
 end
 
--- Fills the list with the hits (a line each; the rest hidden) and sizes it; no hits says so.
-local function fillList(list, hits)
+-- Fills the list with the hits (a line each; the rest hidden) and sizes it; no hits says so, and a last line says
+-- how many more there are.
+local function fillList(list, hits, more)
   for i, line in ipairs(list.lines) do
     line.hit = hits[i]
     line:SetShown(hits[i] ~= nil)
     if hits[i] then line.caption:SetText(hits[i].caption) line.page:SetText(hits[i].title) end
   end
   list.none:SetShown(#hits == 0)
-  list:SetHeight(2 * T.SPACE.tight + math.max(#hits, 1) * T.ROW.height)
+  list.more:SetText(more > 0 and string.format("%d more: type more words", more) or "")
+  list:SetHeight(2 * T.SPACE.tight + (math.max(#hits, 1) + (more > 0 and 1 or 0)) * T.ROW.height)
 end
 
 -- Hides the list.
@@ -149,9 +178,10 @@ function O.ShowHits(text)
   O.hits = nil
   if text == "" then return O.HideHits() end
   if not O.Frame() then return end
-  O.hits = O.FindSettings(text)
+  local more
+  O.hits, more = O.FindSettings(text)
   if #O.hits == 0 and O.matches and O.matches[1] then return O.HideHits() end
   local list = listFrame()
-  fillList(list, O.hits)
+  fillList(list, O.hits, more)
   list:Show()
 end
