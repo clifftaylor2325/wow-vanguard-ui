@@ -232,6 +232,31 @@ it("a Buy question answered after the merchant closed, or at another merchant, b
   expect(bought(addon), "the next merchant's item at that place is never bought").toEqual({});
 });
 
+it("a confirmed Max buy stops when its merchant closes, even when the next merchant opens before its next chunk", () => {
+  const addon = loggedIn(BUY_ENV + "__later = {} C_Timer = { After = function(s, fn) if s == 0.2 then __later[#__later + 1] = fn end end }");
+  const MC = "ns.GetModule('Merchant')";
+  addon.fire("MERCHANT_SHOW");
+  addon.eval(`${MC}.Order(1, 8)`);
+  addon.click("Vanguard_Question.confirm");
+  addon.fire("MERCHANT_CLOSED");
+  addon.eval(`__wfgWorld.items[777] = { name = "TEST-ONLY Pricey", stack = 20 }
+    __wfgWorld.merchant = { items = { { itemID = 777, name = "TEST-ONLY Pricey", price = 50, stack = 1, maxStack = 20 } } }`);
+  addon.fire("MERCHANT_SHOW");
+  addon.eval(`${MC}.Buy(1, 2)`);
+  addon.eval("__later[1]()");
+  expect(bought(addon), "one chunk at the first merchant, then only the run started at the second").toEqual([[1, 20], [1, 2]]);
+  expect(addon.eval(`return ${MC}.buying ~= nil`), "the old run's timer leaves the new run's guard alone").toBe(true);
+});
+
+it("a running buy stops when the merchant swaps what it sells at that place", () => {
+  const addon = loggedIn(BUY_ENV + "__later = {} C_Timer = { After = function(s, fn) if s == 0.2 then __later[#__later + 1] = fn end end }");
+  addon.fire("MERCHANT_SHOW");
+  addon.eval("ns.GetModule('Merchant').Buy(1, 8)");
+  addon.eval("__wfgWorld.merchant.items[1].itemID = 160");
+  addon.eval("__later[1]()");
+  expect([bought(addon), chatHas(addon, /Bought 20 × TEST-ONLY Water/)], "the first chunk only, and it says what it bought").toEqual([[[1, 20]], true]);
+});
+
 it("the tenth item on a merchant page gets Stack and Max too", () => {
   const water = `{ itemID = 159, name = "TEST-ONLY Water", price = 10, stack = 5, maxStack = 20 }`;
   const addon = loggedIn(BUY_ENV + `__wfgWorld.merchant = { items = { ${Array(10).fill(water).join(", ")} } } __owner("MerchantItem10ItemButton", 10)`);

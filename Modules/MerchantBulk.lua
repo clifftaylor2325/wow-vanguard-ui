@@ -241,10 +241,17 @@ function MC.MaxPacks(index)
   return math.max(math.min(packs, math.floor(bagRoom(ask("GetMerchantItemLink", index)) / quantity)), 0)
 end
 
--- Buys the next chunk of a run (a merchant stack at most, in whole packs); false when it can't go on.
+-- True when the open merchant still sells item id at index: a buy goes by index, and the next merchant
+-- (opened before a timer or a question ran) may have something else there. Errands' stock runs use it too.
+function MC.Sells(index, id)
+  return trading() and MC.ItemID(ask("GetMerchantItemLink", index)) == id
+end
+
+-- Buys the next chunk of a run (a merchant stack at most, in whole packs); false when it can't go on
+-- (the run's merchant closed, or what it sells at that index changed).
 local function buyChunk(run)
   local price, quantity = wares(run.index)
-  if not price or run.packs <= 0 or not trading() then return false end
+  if not price or run.packs <= 0 or run.stopped or not MC.Sells(run.index, run.id) then return false end
   local per = math.max(math.floor((ns.PlainNumber(ask("GetMerchantItemMaxStack", run.index)) or quantity) / quantity), 1)
   local packs = math.min(run.packs, per)
   if packs * price > (ns.PlainNumber(GetMoney()) or 0) then return false end
@@ -257,8 +264,8 @@ end
 -- merchant closed, or combat started).
 function MC.BuyNext(run)
   if buyChunk(run) then return later(MC.BUY_EVERY, function() MC.BuyNext(run) end) end
-  MC.buying = nil
-  if run.bought > 0 then ns.Chat(string.format("Bought %d × %s for %s.", run.bought, itemName(run.id), money(run.spent))) end
+  if MC.buying == run then MC.buying = nil end
+  if run.bought > 0 then ns.Chat(string.format("Bought %d × %s for %s.", run.bought, itemName(run.id or 0), money(run.spent))) end
 end
 
 -- Starts buying packs of merchant item index; one run at a time.
@@ -266,7 +273,7 @@ function MC.Buy(index, packs)
   if MC.buying or packs <= 0 or not trading() then return end
   local _, quantity = wares(index)
   local id = MC.ItemID(ask("GetMerchantItemLink", index))
-  MC.buying = { index = index, id = id or 0, packs = packs, bought = 0, spent = 0, quantity = quantity }
+  MC.buying = { index = index, id = id, packs = packs, bought = 0, spent = 0, quantity = quantity }
   MC.BuyNext(MC.buying)
 end
 
@@ -281,7 +288,7 @@ end
 -- The answer to a Buy question: buys the packs when the merchant is still open and still sells, at index,
 -- the item asked about (id) at the same pack price; a question left open past its merchant buys nothing.
 local function buyAsked(index, packs, id, price)
-  local same = trading() and MC.ItemID(ask("GetMerchantItemLink", index)) == id and wares(index) == price
+  local same = MC.Sells(index, id) and wares(index) == price
   if not same then return ns.Chat("Nothing bought: the merchant closed or changed what it sells.") end
   MC.Buy(index, packs)
 end
@@ -343,8 +350,11 @@ function MC.HookSplit()
   frame:HookScript("OnShow", ns.Guard("stack split bulk", MC.OnSplitShow))
 end
 
--- The merchant opened or closed.
+-- The merchant opened or closed. Closing ends a running buy for good: its next chunk buys nothing,
+-- even when another merchant opens before it comes round.
 function MC.SetOpen(open)
   MC.open = open
-  if open then MC.HookSplit() else MC.buying = nil end
+  if open then return MC.HookSplit() end
+  if MC.buying then MC.buying.stopped = true end
+  MC.buying = nil
 end

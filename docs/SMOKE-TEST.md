@@ -634,8 +634,8 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 
 ### 9.2d A Buy question left open past its merchant
 
-- Do: at a merchant selling a cheap stackable item, open its quantity window (Shift-click it) and click Max so it asks "Buy N × <item> for <money>?". Leave the question up, walk away until the merchant window closes, then click Buy.
-- Expect: nothing is bought, and chat says `Nothing bought: the merchant closed or changed what it sells.` Asking again at the merchant and answering Buy at once still buys as before.
+- Do: at a merchant selling a cheap stackable item, open its quantity window (Shift-click it) and click Max so it asks "Buy N × <item> for <money>?". Leave the question up, walk away until the merchant window closes, then click Buy. Then stand between two merchants, ask for Max of several stacks at the first, answer Buy, and at once right-click the second merchant.
+- Expect: nothing is bought, and chat says `Nothing bought: the merchant closed or changed what it sells.` Asking again at the merchant and answering Buy at once still buys as before. Between two merchants, buying stops when the first merchant's window closes (the `Bought` line counts only what came from it); nothing is bought from the second merchant.
 - If it fails, paste: the chat lines and `/vg errors`.
 
 ### 9.2c Character sheet extras
