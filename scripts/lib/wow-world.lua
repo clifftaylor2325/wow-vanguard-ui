@@ -697,6 +697,8 @@ C_SummonInfo = {
   GetSummonConfirmAreaName = function() return world.summon and world.summon.area end,
   ConfirmSummon = function() world.summonAccepted = true end,
 }
+-- Whether the player may take a summon now (the game's Accept waits on it); a test sets world.cannotTeleport.
+function PlayerCanTeleport() return world.cannotTeleport ~= true end
 -- Accepting a resurrection and cancelling a duel, recorded.
 function AcceptResurrect() world.resurrectAccepted = true end
 function CancelDuel() world.duelCancelled = true end

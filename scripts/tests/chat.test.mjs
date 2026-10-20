@@ -1777,7 +1777,7 @@ it("R2.13 the time manager: check boxes, dropdowns, the alarm message box, label
   expect(odd.eval("return #ns.errors"), "odd parts are skipped").toBe(0);
 });
 
-describe("auto-accept: Forever's own invite windows", () => {
+describe("auto-accept: Forever's own invite windows and the teleport check", () => {
   // TEST-ONLY models of Forever's invite windows, made before the addon as the client does
   // (Blizzard_FrameXML/GuildInviteFrame.xml, Blizzard_LFGUtil/Shared/LFGInvitePopup.xml): the guild
   // window shows on its event and declines as it hides unless accepted; the role popup is shown by
@@ -1815,4 +1815,13 @@ describe("auto-accept: Forever's own invite windows", () => {
     expect(addon.eval("return { LFGInvitePopup:IsShown(), __answers }"), "declined and the popup hidden (a client without StaticPopupSpecial_Hide hides it itself)").toEqual([false, ["group", "close PARTY_INVITE"]]);
   });
 
+  it("a summon the game won't let you take yet leaves its prompt up", () => {
+    const addon = loggedIn("", { savedVariables: ON });
+    addon.eval("__wfgWorld.summon = { summoner = '<name>', area = 'TEST-ONLY Vale' } __wfgWorld.cannotTeleport = true");
+    addon.fire("CONFIRM_SUMMON");
+    expect(addon.eval("return __wfgWorld.summonAccepted == true"), "PlayerCanTeleport false: not accepted").toBe(false);
+    addon.eval("__wfgWorld.cannotTeleport = false");
+    addon.fire("CONFIRM_SUMMON");
+    expect(addon.eval("return __wfgWorld.summonAccepted == true"), "once it can: accepted").toBe(true);
+  });
 });

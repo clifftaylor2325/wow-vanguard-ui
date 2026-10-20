@@ -39,9 +39,16 @@ local function plain(text, fallback)
   return fallback
 end
 
--- A summon is waiting: accept it (not in combat) and say from whom and to where.
+-- Whether the game lets you take a summon now (PlayerCanTeleport, which its own Accept button waits on);
+-- true on a client without it.
+local function canTeleport()
+  return type(PlayerCanTeleport) ~= "function" or PlayerCanTeleport() == true
+end
+
+-- A summon is waiting: accept it (not in combat, and only when the game would let you) and say from
+-- whom and to where; otherwise the game's prompt stays up.
 function AA.OnSummon()
-  if not AA.settings.summons or ns.InCombat() then return end
+  if not AA.settings.summons or ns.InCombat() or not canTeleport() then return end
   local who, where = plain(summon("GetSummonConfirmSummoner"), "someone"), plain(summon("GetSummonConfirmAreaName"), "somewhere")
   summon("ConfirmSummon")
   closePrompt("CONFIRM_SUMMON")
