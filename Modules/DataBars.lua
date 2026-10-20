@@ -74,27 +74,35 @@ function DB.XPToLevel()
   return cur and max and max > cur and max - cur or nil
 end
 
--- The reputation at the top standing, where the game leaves no range to the next: a full bar, no numbers
--- (the game's own bar does the same).
-local function capped(name, standing)
-  return { name = name, standing = standing, cur = 1, max = 1, capped = true }
+-- The top standing (Exalted): the game's own reputation list counts a faction there as capped
+-- (MAX_REPUTATION_REACTION), whatever range it still gives.
+DB.TOP_STANDING = 8
+
+-- The watched faction with no numbers to show, the bar filled to `fill` (0 to 1): full at the top
+-- standing, empty while the client hides its range (so a hidden range never reads as maxed).
+local function noNumbers(name, standing, fill)
+  return { name = name, standing = standing, cur = fill, max = 1, noNumbers = true }
 end
 
--- { name, standing, cur, max } for the watched faction (capped at the top standing), or nil when none.
+-- { name, standing, cur, max } for the watched faction, or nil when none. The standing is nil while the
+-- client hides it (the bar then takes Neutral's colour, and names no standing).
 function DB.Reputation()
   local get = C_Reputation and C_Reputation.GetWatchedFactionData
   local data = type(get) == "function" and get() or nil
   if type(data) ~= "table" or not data.name then return nil end
-  local low, high = ns.PlainNumber(data.currentReactionThreshold) or 0, ns.PlainNumber(data.nextReactionThreshold) or 0
-  local standing = ns.PlainNumber(data.reaction) or 4
-  if high <= low then return capped(data.name, standing) end
+  local standing = ns.PlainNumber(data.reaction)
+  local low, high = ns.PlainNumber(data.currentReactionThreshold), ns.PlainNumber(data.nextReactionThreshold)
+  local top = standing and standing >= DB.TOP_STANDING
+  local readable = low and high and high > low
+  if top or not readable then return noNumbers(data.name, standing, (top or (low and high)) and 1 or 0) end
   local cur = (ns.PlainNumber(data.currentStanding) or low) - low
   return { name = data.name, standing = standing, cur = cur, max = high - low }
 end
 
 -- The game's word for a standing (1 Hated .. 8 Exalted, "Honored"), in your character's form of it; nil
--- where the game has none (past Exalted, or a client without the labels).
+-- where the game has none (a hidden standing, past Exalted, or a client without the labels).
 function DB.StandingName(standing)
+  if not standing or standing > DB.TOP_STANDING then return nil end
   local key = "FACTION_STANDING_LABEL" .. standing
   local word = type(GetText) == "function" and GetText(key, number(UnitSex, "player")) or _G[key]
   return type(word) == "string" and word or nil
@@ -110,7 +118,7 @@ end
 function DB.ReputationText(rep)
   local word = DB.StandingName(rep.standing)
   local head = word and rep.name .. "  " .. word or rep.name
-  if rep.capped then return head end
+  if rep.noNumbers then return head end
   return string.format("%s  %s / %s (%d%%)", head, DB.Short(rep.cur), DB.Short(rep.max), math.floor(rep.cur / rep.max * 100))
 end
 
@@ -206,8 +214,8 @@ end
 function DB.ReputationLines(rep)
   local word, lines = DB.StandingName(rep.standing), {}
   if word then lines[1] = { "Standing", word } end
-  if rep.capped then return lines end
-  local nextWord = DB.StandingName(rep.standing + 1)
+  if rep.noNumbers then return lines end
+  local nextWord = rep.standing and DB.StandingName(rep.standing + 1)
   lines[#lines + 1] = { nextWord and "To " .. nextWord or "To the next standing", DB.Short(rep.max - rep.cur) }
   lines[#lines + 1] = { "Through this standing", math.floor(rep.cur / rep.max * 100) .. "%" }
   return lines
@@ -312,16 +320,16 @@ end
 -- Each bar's default spot: the XP bar along the bottom edge, the reputation bar just above it.
 DB.POINTS = { xpbar = { "BOTTOM", "BOTTOM", 0, 4 }, repbar = { "BOTTOM", "BOTTOM", 0, 12 } }
 
--- The reputation bar's default spot: above the XP bar, or the XP bar's own while that has nothing to show
--- (at the level cap, or turned off), so no gap is left under it.
-function DB.RepPoint()
-  return DB.xpBar and DB.XP() and DB.POINTS.repbar or DB.POINTS.xpbar
+-- The reputation bar's default spot, given the XP bar's figures (nil when it has nothing to show): above
+-- the XP bar, or the XP bar's own spot at the level cap or with that bar turned off, so no gap is left.
+function DB.RepPoint(xp)
+  return DB.xpBar and xp and DB.POINTS.repbar or DB.POINTS.xpbar
 end
 
 -- Moves the reputation bar's default spot when the XP bar comes or goes (a spot the player saved wins).
--- Plain frames, so a level-up in a fight can move it.
-function DB.PlaceRepBar()
-  local point = DB.RepPoint()
+-- Movers place frames out of a fight, so a ding in one moves it when the fight ends.
+function DB.PlaceRepBar(xp)
+  local point = DB.RepPoint(xp)
   if not DB.repBar or point == DB.repPoint then return end
   DB.repPoint = point
   ns.SetMoverDefault("repbar", point)
@@ -329,8 +337,8 @@ end
 
 -- Fills the XP bar, or hides it at max level (or while its visibility hides it).
 function DB.UpdateXP()
-  DB.PlaceRepBar()
   local bar, xp = DB.xpBar, DB.XP()
+  DB.PlaceRepBar(xp)
   bar:SetShown(xp ~= nil and V.Shows(bar))
   if not xp then return end
   bar:SetMinMaxValues(0, xp.max)
@@ -366,7 +374,7 @@ end
 
 -- The reputation bar for the watched faction, kept current, with its tooltip and a click to the reputation list.
 local function enableReputation(settings)
-  DB.repPoint = DB.RepPoint()
+  DB.repPoint = DB.RepPoint(DB.XP())
   DB.repBar = createBar("repbar", "Reputation", DB.repPoint, settings)
   DB.repBar.vgOnState = DB.UpdateReputation
   hoverTip(DB.repBar, "show reputation tooltip", DB.ShowReputationTooltip)

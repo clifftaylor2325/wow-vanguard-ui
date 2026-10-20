@@ -45,41 +45,69 @@ const STANDINGS_ENV = `
 const repTip = (addon) => addon.eval(`Vanguard_repbar:GetScript("OnEnter")(Vanguard_repbar)
   local out = {} for i, l in ipairs(GameTooltip.__lines or {}) do out[i] = l.right and (l.text .. " | " .. l.right) or l.text end return out`);
 
-it("the reputation bar names the standing and explains itself on hover", () => {
+it("the reputation bar's numbers start with the standing", () => {
   const addon = loggedIn(DATA_ENV + STANDINGS_ENV);
-  expect(bars(addon).repText, "the standing word after the faction").toBe("TEST-ONLY Faction  Friendly  1.2K / 6.0K (20%)");
-  expect(repTip(addon), "the standing, what the next needs, how far through, and the click").toEqual(["TEST-ONLY Faction", "Standing | Friendly", "To Honored | 4.8K", "Through this standing | 20%", "Click: the reputation list"]);
+  expect(bars(addon).repText).toBe("TEST-ONLY Faction  Friendly  1.2K / 6.0K (20%)");
+});
+
+it("the reputation bar's tooltip: standing, what the next one needs, how far through, and the click", () => {
+  const addon = loggedIn(DATA_ENV + STANDINGS_ENV);
+  expect(repTip(addon)).toEqual(["TEST-ONLY Faction", "Standing | Friendly", "To Honored | 4.8K", "Through this standing | 20%", "Click: the reputation list"]);
   addon.eval("Vanguard_repbar:GetScript('OnLeave')(Vanguard_repbar)");
   expect(addon.eval("return GameTooltip:IsShown()"), "leaving hides it").toBe(false);
-  addon.eval("__sex = 3");
-  addon.fire("UPDATE_FACTION");
-  expect(bars(addon).repText, "the word in your character's form").toBe("TEST-ONLY Faction  TEST-ONLY Friendly (her)  1.2K / 6.0K (20%)");
-  addon.eval("ns.GetModule('DataBars').settings.tooltip = false GameTooltip:Hide()");
+});
+
+it("the reputation bar names the standing in your character's form of the word", () => {
+  const addon = loggedIn(DATA_ENV + STANDINGS_ENV + "\n  __sex = 3");
+  expect(bars(addon).repText).toBe("TEST-ONLY Faction  TEST-ONLY Friendly (her)  1.2K / 6.0K (20%)");
+});
+
+it("the tooltip switch turns the reputation bar's tooltip off too", () => {
+  const addon = loggedIn(DATA_ENV + STANDINGS_ENV, { savedVariables: "VanguardDB.profiles = { Default = { DataBars = { tooltip = false } } }" });
   repTip(addon);
-  expect(addon.eval("return GameTooltip:IsShown()"), "the tooltip switch turns it off").toBe(false);
+  expect(addon.eval("return GameTooltip:IsShown()")).toBe(false);
 });
 
-it("the reputation bar at the top standing: a full bar and its name, with no range to show", () => {
+it("at Exalted the reputation bar is full and reads just the faction and its standing, whatever range the game gives", () => {
   const addon = loggedIn(DATA_ENV + STANDINGS_ENV + `
-  __faction = { name = "TEST-ONLY Faction", reaction = 8, currentReactionThreshold = 42000, nextReactionThreshold = 42000, currentStanding = 42999 }`);
+  __faction = { name = "TEST-ONLY Faction", reaction = 8, currentReactionThreshold = 42000, nextReactionThreshold = 42999, currentStanding = 42999 }`);
   const b = bars(addon);
-  expect([b.rep, b.repMax, b.repText], "full, no numbers").toEqual([1, 1, "TEST-ONLY Faction  Exalted"]);
-  expect(repTip(addon), "just the standing").toEqual(["TEST-ONLY Faction", "Standing | Exalted", "Click: the reputation list"]);
-  addon.eval("__faction = { name = 'TEST-ONLY Faction', reaction = 9, currentReactionThreshold = 0, nextReactionThreshold = 100, currentStanding = { __secret = true } }");
-  addon.fire("UPDATE_FACTION");
-  expect([bars(addon).repText, repTip(addon)[1]], "a standing the game has no word for, and a hidden figure, read plainly").toEqual(["TEST-ONLY Faction  0 / 100 (0%)", "To the next standing | 100"]);
+  expect([b.rep, b.repMax, b.repText, repTip(addon)]).toEqual([1, 1, "TEST-ONLY Faction  Exalted", ["TEST-ONLY Faction", "Standing | Exalted", "Click: the reputation list"]]);
 });
 
-it("a click on the reputation bar opens the reputation list, out of a fight", () => {
+it("an empty range the game gives below Exalted reads as full, with no numbers", () => {
+  const addon = loggedIn(DATA_ENV + STANDINGS_ENV + `
+  __faction = { name = "TEST-ONLY Faction", reaction = 7, currentReactionThreshold = 21000, nextReactionThreshold = 21000, currentStanding = 21000 }`);
+  const b = bars(addon);
+  expect([b.rep, b.repMax, b.repText]).toEqual([1, 1, "TEST-ONLY Faction  Revered"]);
+});
+
+it("a reputation range the client hides never reads as maxed: an empty bar with the standing and no numbers", () => {
+  const addon = loggedIn(DATA_ENV + STANDINGS_ENV + `
+  __faction = { name = "TEST-ONLY Faction", reaction = 5, currentReactionThreshold = { __secret = true }, nextReactionThreshold = { __secret = true }, currentStanding = 4200 }`);
+  const b = bars(addon);
+  expect([b.rep, b.repText, repTip(addon)]).toEqual([0, "TEST-ONLY Faction  Friendly", ["TEST-ONLY Faction", "Standing | Friendly", "Click: the reputation list"]]);
+});
+
+it("a standing the client hides names no standing, and the bar takes Neutral's colour", () => {
+  const addon = loggedIn(DATA_ENV + STANDINGS_ENV + `
+  __faction = { name = "TEST-ONLY Faction", reaction = { __secret = true }, currentReactionThreshold = 0, nextReactionThreshold = 100, currentStanding = { __secret = true } }`);
+  const neutral = loggedIn(DATA_ENV + `
+  __faction = { name = "TEST-ONLY Faction", reaction = 4, currentReactionThreshold = 0, nextReactionThreshold = 100, currentStanding = 0 }`);
+  expect([bars(addon).repText, repTip(addon), bars(addon).repColor]).toEqual(["TEST-ONLY Faction  0 / 100 (0%)", ["TEST-ONLY Faction", "To the next standing | 100", "Through this standing | 0%", "Click: the reputation list"], bars(neutral).repColor]);
+});
+
+it("a left-click on the reputation bar opens the reputation list; a right-click doesn't", () => {
   const addon = loggedIn(DATA_ENV + STANDINGS_ENV);
-  // Clicks the reputation bar with a mouse button.
-  const click = (button) => addon.eval(`Vanguard_repbar:GetScript("OnMouseUp")(Vanguard_repbar, "${button}")`);
-  click("LeftButton");
-  click("RightButton");
-  expect(addon.eval("return __opened"), "a left-click opens it; a right-click doesn't").toEqual(["ReputationFrame"]);
+  for (const button of ["LeftButton", "RightButton"]) addon.eval(`Vanguard_repbar:GetScript("OnMouseUp")(Vanguard_repbar, "${button}")`);
+  expect(addon.eval("return __opened")).toEqual(["ReputationFrame"]);
+});
+
+it("in a fight a click on the reputation bar opens nothing, and chat and the tooltip say so", () => {
+  const addon = loggedIn(DATA_ENV + STANDINGS_ENV);
   setCombat(addon, true);
-  click("LeftButton");
-  expect([addon.eval("return #__opened"), chatHas(addon, /The reputation list doesn't open from Vanguard in a fight/), repTip(addon).at(-1)], "in a fight: nothing opens, chat says so, the hint too").toEqual([1, true, "Click: the reputation list (not in a fight)"]);
+  addon.eval('Vanguard_repbar:GetScript("OnMouseUp")(Vanguard_repbar, "LeftButton")');
+  expect([addon.eval("return #__opened"), chatHas(addon, /The reputation list doesn't open from Vanguard in a fight/), repTip(addon).at(-1)]).toEqual([0, true, "Click: the reputation list (not in a fight)"]);
 });
 
 it("at the level cap the reputation bar takes the XP bar's spot, unless it was moved", () => {
@@ -93,6 +121,9 @@ it("at the level cap the reputation bar takes the XP bar's spot, unless it was m
   addon.eval('ns.SetMoverPoint("repbar", "BOTTOM", "BOTTOM", 0, 300) __maxLevel = false');
   addon.fire("PLAYER_XP_UPDATE");
   expect(repY(), "a spot the player picked stays").toBe(300);
-  const repOnly = loggedIn(DATA_ENV, { savedVariables: "VanguardDB.profiles = { Default = { DataBars = { xp = false } } }" });
-  expect(repOnly.eval("return Vanguard_repbar.__points.BOTTOM.y"), "with the XP bar off it starts in its spot").toBe(4);
+});
+
+it("with the XP bar turned off the reputation bar starts in the XP bar's spot", () => {
+  const addon = loggedIn(DATA_ENV, { savedVariables: "VanguardDB.profiles = { Default = { DataBars = { xp = false } } }" });
+  expect(addon.eval("return Vanguard_repbar.__points.BOTTOM.y")).toBe(4);
 });

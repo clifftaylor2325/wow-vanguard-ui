@@ -616,7 +616,7 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 ### 8.5c Reputation bar at the level cap
 
 - Do: on a character at the level cap (or with the XP bar turned off under Modules → XP and reputation), watch a faction and look at the bottom of the screen. If you can, ding the cap with a faction watched.
-- Expect: the reputation bar sits just above the screen's bottom edge, in the XP bar's spot, with no empty gap under it; at the ding it moves down at once. A reputation bar you dragged in `/vg unlock` stays where you put it.
+- Expect: the reputation bar sits just above the screen's bottom edge, in the XP bar's spot, with no empty gap under it; at the ding it moves down (after the fight, if you ding in one). A reputation bar you dragged in `/vg unlock` stays where you put it.
 - If it fails, paste: a screenshot of the bottom of the screen.
 
 ### 8.6 Quiet the game
