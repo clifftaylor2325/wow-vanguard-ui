@@ -84,7 +84,7 @@ end
 -- Chat watch: add a phrase, a Remove button per phrase (or a hint while there are none), then the switches.
 local function chatWatchRows()
   local CW = ns.GetModule("ChatWatch")
-  local rows = { { "header", "Chat watch" }, { "text", "Phrases to watch for: a sound and a toast when one is said; click the toast to whisper." },
+  local rows = { { "header", "Chat watch" }, { "text", "Phrases to watch for: a sound and a toast when one is said (all the words, in any order; in a fight, once it ends). Click the toast to whisper." },
     { "button", "Add a phrase", function() ns.AskText("Watch for", CW.AddFromDialog, "Add") end } }
   local phrases = moduleSettings("ChatWatch").phrases
   if #phrases == 0 then rows[#rows + 1] = { "text", "No phrases yet. Add one, such as LFM or a dungeon's name." } end

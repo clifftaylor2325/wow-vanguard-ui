@@ -53,7 +53,7 @@ end
 local function castRows()
   return {
     { "header", "Cast bars" },
-    check("Your cast bar", setting("CastBars", "player", true)),
+    check("Your cast bar (and your pet's)", setting("CastBars", "player", true)),
     check("Target cast bar", setting("CastBars", "target", true)), check("Focus cast bar", setting("CastBars", "focus", true)),
     check("Ring at the cursor: the global cooldown and your cast", liveSetting("CastBars", "ring", function() ns.GetModule("CastBars").ApplyRing() end)),
     check("Interrupt mark beside the target and focus cast bars", liveSetting("CastBars", "interruptMark", function() ns.GetModule("CastBars").RefreshMarks() end)),

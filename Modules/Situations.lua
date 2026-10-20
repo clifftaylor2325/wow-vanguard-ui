@@ -331,6 +331,7 @@ function SI.Refresh()
   ns.Soon("situations", function()
     ns.OutOfCombat(SI.Apply, "situations")
     ns.Options.Refresh()
+    ns.Options.RebuildPage("situations")
   end)
 end
 
@@ -362,15 +363,12 @@ function SI.StopRecording()
   return true, ov
 end
 
--- Forgets a situation's override; the active one comes off the screen (out of combat).
+-- Forgets a situation's override; the active one comes off the screen (out of combat), and the Situations page,
+-- if built, is built again.
 function SI.Clear(name)
   db().overrides[name] = nil
   ns.OutOfCombat(SI.Apply, "situations")
-end
-
--- Forgets the active situation's override.
-function SI.ClearActive()
-  SI.Clear(SI.Where())
+  ns.Options.RebuildPage("situations")
 end
 
 -- At logout: a recording is saved, and the profile gets its own values back before it is written to disk.
@@ -422,6 +420,7 @@ local function record(name)
   if not SI.LABELS[name] then return ns.Chat(SI.UNKNOWN) end
   if not SI.StartRecording(name) then return ns.Chat("Recording waits until combat ends.") end
   ns.Chat("Recording for " .. SI.LABELS[name] .. ": move frames (/vg unlock) and change settings, then /vg situation stop.")
+  ns.Options.RebuildPage("situations")
 end
 
 -- Stops recording from a command or the options, and says what was kept.
@@ -430,6 +429,7 @@ local function stop()
   local stopped, ov = SI.StopRecording()
   if not stopped then return ns.Chat("Not recording.") end
   ns.Chat(SI.LABELS[name] .. ": " .. SI.Describe(ov and SI.Override(name)) .. " saved.")
+  ns.Options.RebuildPage("situations")
 end
 
 -- Clears a situation's override (the active one's without a name) from a command, and says so.
@@ -458,15 +458,14 @@ end
 -- Picks Record for: a situation starts recording it (stopping, and saving, any other); Off stops and saves.
 function SI.SetRecording(name)
   if name == "off" then stop() else record(name) end
-  ns.Options.Refresh()
 end
 
--- What the page says first, a row per line (text rows don't wrap).
-SI.INTRO = {
-  "Overrides for Solo, Party, Raid, PvP, Instance and Resting: frame spots, scale, opacity,",
-  "visibility, info strip blocks and nameplate switches, applied out of combat.",
-  "A change to something the active override sets lasts until you leave the situation.",
-}
+-- What the page says first, as one note.
+SI.INTRO = "Overrides for Solo, Party, Raid, PvP, Instance and Resting: frame spots, scale, opacity, visibility, "
+  .. "info strip blocks and nameplate switches, applied out of combat. A change to something the active override "
+  .. "sets lasts until you leave the situation."
+-- What the Your situations card says with no override yet.
+SI.EMPTY = "No overrides yet. Pick Record for to make one."
 
 -- What an override can hold, in plain words: each live module's settings (SI.ORDER), after frames.
 SI.HOLDS = {
@@ -488,16 +487,40 @@ function SI.HoldRows(rows)
   return rows
 end
 
+-- Whether a situation's Clear can be clicked: not while it is being recorded or the frames are unlocked.
+local function clearable(name)
+  return SI.recording ~= name and not ns.Unlocked()
+end
+
+-- One situation's override on the Your situations card: "Raid (now): 2 overrides (...)", then its Clear.
+-- (The page is built again when you move between situations, record, stop or clear.)
+local function situationRows(rows, name, ov, now)
+  local label = SI.LABELS[name] .. (name == now and " (now)" or "")
+  rows[#rows + 1] = { "text", label .. ": " .. SI.Describe(ov) }
+  rows[#rows + 1] = { "button", "Clear " .. SI.LABELS[name], function() clear(name) end, function() return clearable(name) end }
+end
+
+-- The Your situations card: every situation with an override, in precedence order, or a line saying there are none.
+local function yourRows(rows)
+  local before, now = #rows, SI.Where()
+  rows[#rows + 1] = { "header", "Your situations" }
+  for _, name in ipairs(SI.NAMES) do
+    local ov = SI.Override(name)
+    if ov then situationRows(rows, name, ov, now) end
+  end
+  if #rows == before + 1 then rows[#rows + 1] = { "text", SI.EMPTY } end
+  return rows
+end
+
 -- The Situations page's rows.
 function SI.Rows()
-  return SI.HoldRows({
-    { "header", "Situations" }, { "text", SI.INTRO[1] }, { "text", SI.INTRO[2] }, { "text", SI.INTRO[3] },
+  return SI.HoldRows(yourRows({
+    { "header", "Situations" }, { "text", SI.INTRO, "note" },
     { "check", "Apply situation overrides", function() return db().enabled end, function(v) db().enabled = v SI.Refresh() end, true },
     { "text", SI.StatusText },
     { "cycle", "Record for", SI.CHOICES, SI.GetRecording, SI.SetRecording, "off" },
-    { "button", "Stop recording and save", function() stop() ns.Options.Refresh() end, function() return SI.recording ~= nil end },
-    { "button", "Clear the active situation's overrides", function() SI.ClearActive() ns.Options.Refresh() end },
-  })
+    { "button", "Stop recording and save", stop, function() return SI.recording ~= nil end },
+  }))
 end
 
 ns.Options.AddPage({ key = "situations", title = "Situations", icon = "NavSituations", order = 86, rows = SI.Rows })

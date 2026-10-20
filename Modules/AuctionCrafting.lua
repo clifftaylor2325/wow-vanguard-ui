@@ -162,6 +162,7 @@ function CR.AddReagents()
   if not ER.settings then return ns.Chat("Keep stocked is part of Errands, which is off (/vg > Modules).") end
   local n = crafts(CR.frame.crafts)
   ns.Chat(string.format("Keep stocked for %d x %s: %s.", n, data.name or "this recipe", keepStocked(ER.StockList(), data, n)))
+  ER.StockWindow.Refresh()
   AH.Restock()
 end
 

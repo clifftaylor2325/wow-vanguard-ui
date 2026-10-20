@@ -1,6 +1,8 @@
 -- Chat watch: phrases you watch for ("lfm", "wts devilsaur") in the channels
--- you tick. When a line says one, the whisper sound plays and a small toast
--- shows the sender and the line at the top of the screen for a few seconds;
+-- you tick. A line says one when it holds all its words, in any order. Then the
+-- whisper sound plays and a small toast shows the sender and the line, its
+-- watched words marked, at the top of the screen for a few seconds (in a fight,
+-- once the fight ends: the newest alert only);
 -- click it to whisper the sender, right-click to put it away. When the line
 -- links an item the auction house has a price for (Modules/AuctionPrices.lua,
 -- this realm and faction), the toast shows it beside the line: "AH 12s 50c".
@@ -26,8 +28,8 @@ CW.MAX_PHRASES, CW.MAX_LENGTH = 20, 40
 -- How long the toast stays (seconds); how long one sender's phrase stays quiet
 -- after it rang; the least gap between two sounds; how many line IDs are kept.
 CW.LINGER, CW.REPEAT, CW.SOUND_GAP, CW.MAX_LINES, CW.MAX_RECENT = 8, 30, 2, 200, 100
--- The toast's size.
-CW.WIDTH, CW.HEIGHT = 300, 44
+-- The toast's size; how many characters of a long line it keeps before the first watched word.
+CW.WIDTH, CW.HEIGHT, CW.LEAD = 300, 44, 24
 -- Chat events -> the channel switch that watches them (ChatInfoDocumentation.lua).
 CW.EVENTS = {
   CHAT_MSG_CHANNEL = "channel", CHAT_MSG_SAY = "say", CHAT_MSG_YELL = "yell", CHAT_MSG_GUILD = "guild",
@@ -46,13 +48,43 @@ local function plain(text)
   return (s:gsub("[%[%]]", "")):lower()
 end
 
--- The first watched phrase the line holds (case-insensitive, as plain text), or nil.
--- With no phrases there is nothing to look for, so the line is not even made plain.
+-- A phrase's words, in order.
+function CW.Words(phrase)
+  local words = {}
+  for word in phrase:gmatch("%S+") do words[#words + 1] = word end
+  return words
+end
+
+-- A word as a pattern: its magic characters escaped, and one that starts with a letter or digit held to a
+-- word's start ("lfm" doesn't find "alfm").
+local function wordPattern(word)
+  local escaped = ns.GetModule("ChatExtras").Escape(word)
+  return word:find("^%w") and "%f[%w]" .. escaped or escaped
+end
+
+-- Each phrase's word patterns, made once per phrase (never per line; forgotten when the list changes).
+local patternsOf = setmetatable({}, { __index = function(cache, phrase)
+  local patterns = {}
+  for i, word in ipairs(CW.Words(phrase)) do patterns[i] = wordPattern(word) end
+  cache[phrase] = patterns
+  return patterns
+end })
+
+-- True when the plain line holds every one of the phrase's words, in any order.
+local function holds(line, phrase)
+  for _, pattern in ipairs(patternsOf[phrase]) do
+    if not line:find(pattern) then return false end
+  end
+  return true
+end
+
+-- The first watched phrase the line holds (all its words, in any order, case-insensitive, as plain
+-- text), or nil. With no phrases there is nothing to look for, so the line is not even made plain.
 function CW.Match(text)
   if #CW.settings.phrases == 0 then return nil end
   local line = plain(text)
   for _, phrase in ipairs(CW.settings.phrases) do
-    if line:find(phrase, 1, true) then return phrase end
+    if holds(line, phrase) then return phrase end
   end
 end
 
@@ -93,7 +125,7 @@ function CW.OnChat(event, text, sender, ...)
   if ns.IsSecret(text) or ns.IsSecret(sender) or type(text) ~= "string" or type(sender) ~= "string" then return end
   if seenLine(ns.PlainNumber((select(9, ...)))) or ns.Home.IsMe(sender) then return end
   local phrase = CW.Match(text)
-  if phrase and fresh(sender, phrase, GetTime()) then CW.Alert(sender, text, phrase) end
+  if phrase then CW.Alert(sender, text, phrase) end
 end
 
 -- The alert sound, at most every CW.SOUND_GAP seconds (a phrase's and other modules' alerts alike).
@@ -104,10 +136,18 @@ local function ring()
   T.Sound("alert")
 end
 
--- A phrase was said: the alert sound and the toast, as switched on.
-function CW.Alert(sender, text, phrase)
+-- The alert sound and the toast for a phrase, as switched on, unless this sender rang for it lately (noted
+-- when it shows, so an alert a fight's newer one replaced never mutes its sender).
+local function alertNow(sender, text, phrase)
+  if not fresh(sender, phrase, GetTime()) then return end
   if CW.settings.sound then ring() end
   if CW.settings.toast then CW.ShowToast(sender, text, phrase) end
+end
+
+-- A phrase was said: the alert sound and the toast; in a fight both wait until it ends, and a later alert
+-- replaces one waiting (the chat line itself is never held).
+function CW.Alert(sender, text, phrase)
+  ns.OutOfCombat(function() alertNow(sender, text, phrase) end, "chatwatch toast")
 end
 
 -- The toast --------------------------------------------------------------------------------------
@@ -137,16 +177,41 @@ local function fitLine(f, price)
   if price then f.line:SetPoint("RIGHT", f.price, "LEFT", -6, 0) else f.line:SetPoint("RIGHT", -8, 0) end
 end
 
--- Shows the toast for a line: the sender in the accent, the line under it with an item's auction
--- price beside it; it goes after CW.LINGER seconds.
-function CW.ShowToast(sender, text)
-  local f = CW.toast
-  f.vgSender, f.vgClick = sender, nil
-  f.sender:SetText(ns.Home.Display(sender))
-  f.line:SetText(text)
-  fitLine(f, CW.PriceText(text))
+-- Shows the toast with its title, line and price (or none); it goes after CW.LINGER seconds.
+local function present(f, title, line, price)
+  f.sender:SetText(title)
+  f.line:SetText(line)
+  fitLine(f, price)
   T.FadeIn(f)
   ns.AutoHide(f, CW.LINGER)
+end
+
+-- Where a long line starts on the toast: after the space CW.LEAD characters or so before the first
+-- match of the word patterns, so it shows (at the match itself when no space is there); 1 when it is
+-- near the start or nothing is found.
+local function leadStart(lower, patterns)
+  local first = #lower + 1
+  for _, pattern in ipairs(patterns) do first = math.min(first, lower:find(pattern) or first) end
+  if first <= CW.LEAD or first > #lower then return 1 end
+  local space = lower:find(" ", first - CW.LEAD, true)
+  return space and space < first and space + 1 or first
+end
+
+-- The toast's line: plain, the phrase's words marked in the accent's text colour, and a long line
+-- starting at "…" a few words before the first of them.
+function CW.ToastLine(text, phrase)
+  local CX, patterns = ns.GetModule("ChatExtras"), patternsOf[phrase]
+  local line = CX.Plain(text)
+  local start = leadStart(line:lower(), patterns)
+  return (start > 1 and "\226\128\166" or "") .. CX.Marked(line:sub(start), patterns)
+end
+
+-- Shows the toast for a line: the sender in the accent, the line under it (CW.ToastLine) with an
+-- item's auction price beside it.
+function CW.ShowToast(sender, text, phrase)
+  local f = CW.toast
+  f.vgSender, f.vgClick = sender, nil
+  present(f, ns.Home.Display(sender), CW.ToastLine(text, phrase), CW.PriceText(text))
 end
 
 -- Puts the toast away.
@@ -195,19 +260,20 @@ local function buildToast()
   ns.Mover(f, "chatwatch", "Chat alert", { "TOP", "TOP", 0, -216 })
 end
 
+-- Rings and shows another module's alert on the toast.
+local function notifyNow(title, text, price, onClick)
+  ring()
+  CW.toast.vgSender, CW.toast.vgClick = nil, onClick
+  present(CW.toast, title, text, price)
+end
+
 -- Another module's alert (Auction helper's price alerts) with the alert sound, on the same toast,
 -- built here when Chat watch is off: a title in the sender's place, a line with a price beside it
--- (or none), and onClick, what a left click does (right-click puts it away). It goes after CW.LINGER seconds.
+-- (or none), and onClick, what a left click does (right-click puts it away). As a phrase's alert, it
+-- waits out a fight, and the newest waiting alert of either kind wins.
 function CW.Notify(title, text, price, onClick)
   if not CW.toast then buildToast() end
-  local f = CW.toast
-  ring()
-  f.vgSender, f.vgClick = nil, onClick
-  f.sender:SetText(title)
-  f.line:SetText(text)
-  fitLine(f, price)
-  T.FadeIn(f)
-  ns.AutoHide(f, CW.LINGER)
+  ns.OutOfCombat(function() notifyNow(title, text, price, onClick) end, "chatwatch toast")
 end
 
 -- Phrases ----------------------------------------------------------------------------------------
@@ -217,14 +283,17 @@ local function phrases()
   return ns.Settings("ChatWatch", CW.defaults).phrases
 end
 
--- The options page lists a Remove button per phrase: built again after a change.
+-- The options page lists a Remove button per phrase: built again after a change; the patterns made for
+-- the old list are forgotten.
 local function phrasesChanged()
+  for phrase in pairs(patternsOf) do patternsOf[phrase] = nil end
   ns.Options.RebuildPage("chat")
 end
 
 -- Why a phrase can't be added, or nil when it can.
 local function refusal(phrase, list)
   if phrase == "" then return "Type a phrase to watch for." end
+  if phrase:find("|", 1, true) then return "A phrase can't hold the | character." end
   if #phrase > CW.MAX_LENGTH then return string.format("A phrase can be at most %d characters.", CW.MAX_LENGTH) end
   if #list >= CW.MAX_PHRASES then return string.format("Chat watch keeps at most %d phrases; remove one first.", CW.MAX_PHRASES) end
   for _, p in ipairs(list) do

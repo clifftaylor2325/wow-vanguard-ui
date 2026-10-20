@@ -11,6 +11,8 @@ local QP = ns.QuestParts
 local QL = ns.GetModule("QuestLog")
 
 QL.W, QL.H, QL.LIST_W, QL.PER_ROW = 640, 440, 230, 2
+-- What the list says when you have no quests, pointing to where they come from.
+QL.EMPTY = "No quests yet. Quest givers show a ! over their heads."
 
 -- The gaps on the details side: under the title, under the text, above the reward cards, around the money line.
 local TITLE_GAP, TEXT_GAP, REWARDS_GAP, MONEY_GAP = T.SPACE.gap, T.SPACE.col, T.SPACE.col, T.SPACE.gap
@@ -85,6 +87,7 @@ end
 -- The objectives under their header: a box the rows stack in, and the quest history line under it.
 local function addObjectives(f)
   f.objectives, f.history = detailText(f.detail, "label", "text2"), detailText(f.detail, "label", "text2")
+  f.needs = detailText(f.detail, "label", "text2")
   f.objectives:SetPoint("TOPLEFT", f.text, "BOTTOMLEFT", 0, -TEXT_GAP)
   f.objectiveBox = CreateFrame("Frame", nil, f.detail)
   f.objectiveBox:SetSize(DETAIL_W, 1)
@@ -101,7 +104,8 @@ local function addDetails(f)
   addObjectives(f)
   f.rewards = CreateFrame("Frame", nil, f.detail)
   f.rewards:SetSize(DETAIL_W, 1)
-  f.cards = QP.Pool(f.rewards, QP.Card)
+  f.cards, f.captions = QP.Pool(f.rewards, QP.Card), QP.Pool(f.rewards, QP.Caption)
+  f.lay = { holder = f.rewards, cards = f.cards, captions = f.captions, perRow = QL.PER_ROW }
 end
 
 -- The buttons along the bottom of the details side.
@@ -127,6 +131,17 @@ local function makeZone(parent)
   return zone
 end
 
+-- The quest list's scroll area, its line and zone pools, and the line an empty log shows instead.
+local function addList(f)
+  f.listScroll, f.list = scrollArea(f, LIST_X, QL.LIST_W, LIST_H)
+  f.lines, f.zones, f.buttons = QP.Pool(f.list, QP.Line), QP.Pool(f.list, makeZone), {}
+  f.empty = T.Text(f.list:CreateFontString(nil, "OVERLAY"), "label", "muted")
+  f.empty:SetPoint("TOPLEFT", f.list, "TOPLEFT", 0, 0)
+  f.empty:SetWidth(QL.LIST_W)
+  f.empty:SetJustifyH("LEFT")
+  f.empty:SetText(QL.EMPTY)
+end
+
 -- Builds the window (hidden, opaque), movable, closed by Escape.
 function QL.Build()
   local f = T.Panel(CreateFrame("Frame", "Vanguard_QuestLog", UIParent), { alpha = T.ALPHA.opaque, shadow = true })
@@ -134,8 +149,7 @@ function QL.Build()
   f:SetFrameStrata("HIGH")
   ns.Mover(f, "questlog", "Quest log", { "CENTER", "CENTER", -200, 40 })
   addTop(f)
-  f.listScroll, f.list = scrollArea(f, LIST_X, QL.LIST_W, LIST_H)
-  f.lines, f.zones, f.buttons = QP.Pool(f.list, QP.Line), QP.Pool(f.list, makeZone), {}
+  addList(f)
   addDetails(f)
   QL.frame = f
   QL.Finish(f)
@@ -221,6 +235,7 @@ end
 function QL.Refresh()
   local f, entries = QL.frame, QL.Entries()
   f.count:SetText(QL.Count() .. " quests")
+  f.empty:SetShown(#entries == 0)
   f.lines.Reset()
   f.zones.Reset()
   f.listScroll:Fit(paintList(f, entries))
@@ -229,17 +244,19 @@ end
 
 -- Details -----------------------------------------------------------------------------------------
 
--- The reward cards under the objectives, two to a row, then the money line.
+-- A quest's reward items split into its choices and what it gives anyway, in their order.
+local function splitRewards(rewards)
+  local choices, fixed = {}, {}
+  for _, item in ipairs(rewards) do table.insert(item.kind == "choice" and choices or fixed, item) end
+  return choices, fixed
+end
+
+-- The reward sections under the objectives, each caption over its cards two to a row, then the money line.
 local function renderRewards(f, d)
-  f.cards.Reset()
   f.rewards:SetPoint("TOPLEFT", f.history, "BOTTOMLEFT", 0, -REWARDS_GAP)
-  for n, item in ipairs(d.rewards) do
-    local c, col, row = f.cards.Next(), (n - 1) % QL.PER_ROW, math.floor((n - 1) / QL.PER_ROW)
-    c:SetPoint("TOPLEFT", f.rewards, "TOPLEFT", col * (QP.CARD_W + QP.GAP), -row * (QP.CARD_H + QP.GAP))
-    QP.PaintCard(c, item)
-  end
-  local rows = math.ceil(#d.rewards / QL.PER_ROW)
-  f.money:SetPoint("TOPLEFT", f.rewards, "TOPLEFT", 0, -rows * (QP.CARD_H + QP.GAP) - MONEY_GAP)
+  local choices, fixed = splitRewards(d.rewards)
+  f.rewardsH = QP.LayoutRewards(f.lay, QP.RewardSections(choices, fixed, false))
+  f.money:SetPoint("TOPLEFT", f.rewards, "TOPLEFT", 0, -f.rewardsH - (f.rewardsH > 0 and QP.GAP or 0) - MONEY_GAP)
   f.money:SetText(d.money)
 end
 
@@ -262,27 +279,43 @@ local function paintObjective(row, o)
   row:Show()
 end
 
--- Places the objectives box under its header and the history line under the box, each with its gap only when
--- there is something to separate; returns the gaps added.
-local function placeObjectives(f, rows, history)
-  local boxGap, historyGap = rows > 0 and T.SPACE.tight or 0, history ~= "" and TITLE_GAP or 0
+-- Places the objectives box under its header, the needs line under the box and the history line under that,
+-- each with its gap only when there is something to separate; returns the gaps added.
+local function placeObjectives(f, rows, needs, history)
+  local boxGap = rows > 0 and T.SPACE.tight or 0
+  local needsGap, historyGap = needs ~= "" and TITLE_GAP or 0, history ~= "" and TITLE_GAP or 0
   f.objectiveBox:SetPoint("TOPLEFT", f.objectives, "BOTTOMLEFT", 0, -boxGap)
-  f.history:SetPoint("TOPLEFT", f.objectiveBox, "BOTTOMLEFT", 0, -historyGap)
-  return boxGap + historyGap
+  f.needs:SetPoint("TOPLEFT", f.objectiveBox, "BOTTOMLEFT", 0, -needsGap)
+  f.history:SetPoint("TOPLEFT", f.needs, "BOTTOMLEFT", 0, -historyGap)
+  return boxGap + needsGap + historyGap
 end
 
--- The objectives as rows under their header, and the quest history line under them.
-local function renderObjectives(f, d)
+-- The objectives' header: "Objectives" over their rows, "Failed" in the danger colour for a quest that failed
+-- (its rows left out), nothing for a quest without objectives.
+local function objectivesHeader(f, d, rows)
+  f.objectives:SetText(d.failed and "Failed" or rows > 0 and "Objectives" or "")
+  T.Color(f.objectives, d.failed and "bad" or "text2")
+end
+
+-- One row per objective in the objectives box, which takes their height.
+local function renderObjectiveRows(f, shown)
   f.objectiveRows.Reset()
-  for i, o in ipairs(d.objectives) do
+  for i, o in ipairs(shown) do
     local row = f.objectiveRows.Next()
     row:SetPoint("TOPLEFT", f.objectiveBox, "TOPLEFT", 0, -(i - 1) * QP.LINE_H)
     paintObjective(row, o)
   end
-  f.objectiveBox:SetHeight(#d.objectives * QP.LINE_H)
-  f.objectives:SetText(#d.objectives > 0 and "Objectives" or "")
+  f.objectiveBox:SetHeight(#shown * QP.LINE_H)
+end
+
+-- The objectives as rows under their header, then the needs line and the quest history line under them.
+local function renderObjectives(f, d)
+  local shown = d.failed and {} or d.objectives
+  renderObjectiveRows(f, shown)
+  objectivesHeader(f, d, #shown)
+  QP.PaintNeeds(f.needs, d.needs or "", d.short)
   f.history:SetText(d.done or "")
-  f.objectiveGaps = placeObjectives(f, #d.objectives, d.done or "")
+  f.objectiveGaps = placeObjectives(f, #shown, d.needs or "", d.done or "")
 end
 
 -- The details buttons: Track or Untrack, Share only when you can.
@@ -304,10 +337,10 @@ local function markChosen(f)
 end
 
 -- How tall the details side's contents are: title, text, objectives, reward rows and the money line, with their gaps.
-local function detailHeight(f, d)
-  local rows = math.ceil(#d.rewards / QL.PER_ROW)
-  local h = f.questTitle:GetStringHeight() + TITLE_GAP + f.text:GetStringHeight() + TEXT_GAP + f.objectives:GetStringHeight() + f.objectiveBox:GetHeight() + f.objectiveGaps + f.history:GetStringHeight() + REWARDS_GAP
-  return h + rows * (QP.CARD_H + QP.GAP) + MONEY_GAP + f.money:GetStringHeight() + MONEY_GAP
+-- Read after renderObjectives and renderRewards, which leave f.objectiveGaps and f.rewardsH.
+local function detailHeight(f)
+  local h = f.questTitle:GetStringHeight() + TITLE_GAP + f.text:GetStringHeight() + TEXT_GAP + f.objectives:GetStringHeight() + f.objectiveBox:GetHeight() + f.objectiveGaps + f.needs:GetStringHeight() + f.history:GetStringHeight() + REWARDS_GAP
+  return h + f.rewardsH + (f.rewardsH > 0 and QP.GAP or 0) + MONEY_GAP + f.money:GetStringHeight() + MONEY_GAP
 end
 
 -- Fills the details side with a quest and sizes its scroll to fit.
@@ -316,7 +349,7 @@ local function renderDetails(f, d)
   f.text:SetText(QP.Plain(d.text))
   renderObjectives(f, d)
   renderRewards(f, d)
-  f.detailScroll:Fit(detailHeight(f, d))
+  f.detailScroll:Fit(detailHeight(f))
 end
 
 -- Shows a quest on the details side (or nothing, when it's gone from the log).
