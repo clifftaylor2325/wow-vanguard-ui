@@ -639,3 +639,23 @@ it("the Filter and Groups buttons are as wide as their labels need, so neither i
   expect(addon.eval("return BagItemSearchBox:GetWidth() > 100"), "and the search box keeps a usable width").toBe(true);
 });
 
+// The Junk header's count text.
+const junkValue = (addon) => addon.eval("return ns.GetModule('Bags').headers.junk.count:GetText()");
+
+it("the Junk header shows what the junk sells for, kept up as a stack changes", () => {
+  const addon = openFilled([8, 4, 0, 0, 0], { equipment: 1, junk: 3 });
+  expect(junkValue(addon), "three gray items at 3c each").toBe("· 9c");
+  addon.eval("__wfgWorld.bags[0][2].count = 50 ContainerFrameCombinedBags:UpdateItems()");
+  expect(junkValue(addon), "one of them now a stack of 50, with no section moving").toBe("· 1s 56c");
+  addon.eval("__wfgWorld.items[90002].sellPrice = 0 ContainerFrameCombinedBags:UpdateItems()");
+  expect(junkValue(addon), "junk that sells for nothing shows no value").toBe("");
+  expect(addon.eval("return ns.GetModule('Bags').headers.equipment.count"), "no other header has a value").toBeNull();
+});
+
+it("the Junk value counts a gray item filed in a group, and Junk is wide enough to show it", () => {
+  const addon = openFilled([8, 4, 0, 0, 0], { equipment: 1, junk: 2 });
+  addon.slash("bag add Keep " + addon.eval("return __wfgWorld.bags[0][2].itemID"));
+  expect(junkValue(addon), "the filed gray still sells: 3c + 3c").toBe("· 6c");
+  addon.eval("__wfgWorld.items[90002].sellPrice = 123456 ContainerFrameCombinedBags:UpdateItems()");
+  expect(junkValue(addon), "a value too wide for Junk's narrow header is left off, not drawn over the next header").toBe("");
+});
