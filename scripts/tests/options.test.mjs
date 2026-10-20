@@ -37,6 +37,25 @@ it("options window", () => {
   expect(addon.eval("return Vanguard_Options:IsShown()") === true, "left-clicking it opens the options").toBeTruthy();
 });
 
+it("options: pointing at the addons button says the version, what each click does and the errors caught", () => {
+  const addon = loggedIn();
+  // Hovers the addons button: the tooltip's lines and whether it shows; then leaves it.
+  const hover = () => addon.eval(`local b = CreateFrame("Button") __b = b Vanguard_OnAddonCompartmentEnter("Vanguard", b)
+    local out = {} for _, l in ipairs(GameTooltip.__lines) do out[#out + 1] = l.text end return { out, GameTooltip:IsShown() }`);
+  const version = addon.eval("return ns.AddonVersion()");
+  expect(hover(), "no errors: the version and the clicks").toEqual([[`Vanguard ${version}`, "Left-click: options · Right-click: move frames (out of combat)"], true]);
+  addon.eval('Vanguard_OnAddonCompartmentLeave("Vanguard", __b)');
+  expect(addon.eval("return GameTooltip:IsShown()"), "leaving hides it").toBe(false);
+  addon.eval('ns.errors[1] = { text = "TEST-ONLY" }');
+  expect(hover()[0][2], "an error caught: a line says so").toBe("1 error caught this session (/vg errors)");
+  addon.eval('ns.errors[2] = { text = "TEST-ONLY 2" }');
+  expect(hover()[0][2], "and counts them").toBe("2 errors caught this session (/vg errors)");
+  addon.eval('GameTooltip:SetOwner(UIParent) GameTooltip:Show() Vanguard_OnAddonCompartmentLeave("Vanguard", __b)');
+  expect(addon.eval("return GameTooltip:IsShown()"), "a tooltip another frame owns by now stays").toBe(true);
+  addon.eval("GameTooltip = nil");
+  expect(addon.eval('Vanguard_OnAddonCompartmentEnter("Vanguard", __b) Vanguard_OnAddonCompartmentLeave("Vanguard", __b) local n = #ns.errors ns.errors[1], ns.errors[2] = nil, nil return n'), "a client without the tooltip: nothing breaks (no third error)").toBe(2);
+});
+
 it("options window: nav, search, controls, footer", () => {
   const addon = loggedIn(CLICK_LUA + "GetAddOnMetadata = function(_, key) return key == 'Version' and 'TEST-ONLY-9.9' or nil end");
   addon.eval('ns.Options.Show("general")');

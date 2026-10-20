@@ -614,3 +614,20 @@ function Vanguard_OnAddonCompartmentClick(_, button)
     O.Toggle()
   end
 end
+
+-- The addons button's tooltip: Vanguard's version, what each click does, and the errors caught this session.
+function Vanguard_OnAddonCompartmentEnter(_, button)
+  if not GameTooltip then return end
+  GameTooltip:SetOwner(button, "ANCHOR_LEFT")
+  GameTooltip:SetText("Vanguard " .. ns.AddonVersion())
+  GameTooltip:AddLine("Left-click: options · Right-click: move frames (out of combat)", T.RGB("text2"))
+  local n = #ns.errors
+  local caught = n == 1 and "1 error" or (n .. " errors")
+  if n > 0 then GameTooltip:AddLine(caught .. " caught this session (/vg errors)", T.RGB("bad")) end
+  GameTooltip:Show()
+end
+
+-- Hides the addons button's tooltip, only while it is still the button's (another addon may own it by now).
+function Vanguard_OnAddonCompartmentLeave(_, button)
+  if GameTooltip and GameTooltip:GetOwner() == button then GameTooltip:Hide() end
+end
