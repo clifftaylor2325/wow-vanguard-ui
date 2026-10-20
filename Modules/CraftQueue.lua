@@ -182,9 +182,10 @@ function CQ.Scan()
   for _, id in ipairs(recipeIDs()) do noteCooldown(cooldowns, id) end
 end
 
--- "ready", or how long is left, as "2h 5m" or "3d 4h".
+-- "ready", or how long is left, as "2h 5m", "3d 4h" or "<1m" (not "0m", which reads as ready).
 local function remaining(seconds)
   if seconds <= 0 then return "ready" end
+  if seconds < 60 then return "<1m" end
   local d, h, m = math.floor(seconds / 86400), math.floor(seconds % 86400 / 3600), math.floor(seconds % 3600 / 60)
   if d > 0 then return string.format("%dd %dh", d, h) end
   return h > 0 and string.format("%dh %dm", h, m) or string.format("%dm", m)

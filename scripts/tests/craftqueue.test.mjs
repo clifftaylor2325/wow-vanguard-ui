@@ -123,6 +123,10 @@ it("notes profession cooldowns for each character and says when they are ready",
   addon.fire("TRADE_SKILL_LIST_UPDATE");
   addon.slash("craft cd");
   expect(chatHas(addon, /TEST-ONLY Linen Bag, 25m/), "minutes").toBe(true);
+  addon.eval("__now = __now + 1470");
+  addon.slash("craft cd");
+  expect(chatHas(addon, /TEST-ONLY Linen Bag, <1m$/), "under a minute: <1m, not 0m").toBe(true);
+  addon.eval("__now = __now - 1470");
   addon.eval("__now = __now + 4000");
   addon.slash("craft cd");
   expect(chatHas(addon, /TEST-ONLY Linen Bag, ready/), "past its time: ready").toBe(true);
