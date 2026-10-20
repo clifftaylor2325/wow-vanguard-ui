@@ -254,7 +254,10 @@ local function usableState(slot)
   if ns.IsSecret(usable) or usable then
     return "ok"
   end
-  return (noPower and not ns.IsSecret(noPower)) and "power" or "unusable"
+  if not ns.IsSecret(noPower) and noPower then
+    return "power"
+  end
+  return "unusable"
 end
 
 -- Dims an action that can't be used now; blue when it's for lack of power.
