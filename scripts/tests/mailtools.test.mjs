@@ -60,9 +60,10 @@ it("searches and filters the inbox beside the mail window, and Take takes the mo
   addon.click("Vanguard_MailTools.filterButton");
   expect(rows(addon).length, "back to All").toBe(3);
   addon.eval("Vanguard_MailTools.rows[1].take:Click()");
-  addon.eval("Vanguard_MailTools.rows[2].take:Click()");
-  expect(taken(addon), "money, then the item").toEqual([["money", 1], ["item", 2, 1]]);
-  expect(addon.eval("return Vanguard_MailTools.rows[3].take:IsShown()"), "nothing to take: no button").toBe(false);
+  expect(rows(addon), "the emptied sale leaves the inbox, and the rows move up").toEqual(["Bobalt: Some ore (1 item)", "Mum: Hello"]);
+  addon.eval("Vanguard_MailTools.rows[1].take:Click()");
+  expect(taken(addon), "money, then the item").toEqual([["money", 1], ["item", 1, 1]]);
+  expect(addon.eval("return Vanguard_MailTools.rows[1].take:IsShown()"), "nothing to take: no button").toBe(false);
   addon.eval("Vanguard_MailTools.rows[3].mail = nil Vanguard_MailTools.rows[3].take:Click()");
   expect(Object.keys(taken(addon)).length, "a row with no mail takes nothing").toBe(2);
   addon.world.closeMailWindow();
@@ -264,10 +265,10 @@ it("Take all takes the money and items of the shown mail one step at a time, lea
   addon.slash("mail takeall");
   addon.slash("mail takeall");
   expect(chatHas(addon, /Mail: a run is already going/), "one run at a time").toBe(true);
-  expect(taken(addon), "the first step went at once").toEqual([["money", 1]]);
+  expect(taken(addon), "the first step went at once, from the last mail").toEqual([["money", 5]]);
   addon.advance(2);
-  expect(taken(addon), "money, the two items, the game master's money; Carl's parcel left").toEqual([["money", 1], ["item", 2, 1], ["item", 2, 2], ["money", 5]]);
-  expect(chatHas(addon, /Take all: 4 of 4 done/), "and says so").toBe(true);
+  expect(taken(addon), "the game master's money, the two items, the sale's money; Carl's parcel left").toEqual([["money", 5], ["item", 2, 1], ["item", 2, 2], ["money", 1]]);
+  expect([chatHas(addon, /Take all: 4 of 4 done/), addon.eval("local out = {} for i, m in ipairs(__wfgWorld.mail) do out[i] = m.sender end return out")], "says so; the emptied mails are gone").toEqual([true, ["Mum", "Carl"]]);
   addon.eval("__wfgWorld.mail = {}");
   addon.slash("mail takeall");
   expect(chatHas(addon, /Take all: nothing to do/), "an empty inbox").toBe(true);
@@ -280,18 +281,18 @@ it("a run stops when the mailbox closes, skips a mail that moved, and the button
   addon.eval("__wfgWorld.mail[2].subject = 'Moved'");
   addon.fire("MAIL_CLOSED");
   addon.advance(2);
-  expect(taken(addon), "the first step only: the mailbox closed").toEqual([["money", 1]]);
+  expect(taken(addon), "the first step only: the mailbox closed").toEqual([["money", 5]]);
   expect(chatHas(addon, /Take all: 1 of 4 done/), "and says how far it got").toBe(true);
   const later = mailer(BULK);
   later.world.openMailWindow();
   later.click("Vanguard_MailTools.takeAll");
   later.eval("__wfgWorld.mail[2].subject = 'Moved'");
   later.advance(2);
-  expect(taken(later), "the moved mail's items are skipped").toEqual([["money", 1], ["money", 5]]);
+  expect([taken(later), chatHas(later, /Take all: 2 of 4 done/)], "the moved mail's items are skipped, and not counted").toEqual([[["money", 5], ["money", 1]], true]);
   const bare = mailer(BULK + "C_Timer = nil TakeInboxItem = nil");
   bare.world.openMailWindow();
   bare.slash("mail takeall");
-  expect(chatHas(bare, /Take all: 4 of 4 done/), "without timers the steps run at once; a missing call is skipped").toBe(true);
+  expect(chatHas(bare, /Take all: 2 of 4 done/), "without timers the steps run at once; a missing call is skipped, and not counted").toBe(true);
 });
 
 it("Return all asks, then sends back the shown mail a player can have returned, last first", () => {
@@ -350,9 +351,10 @@ it("Take all and Return all compare more than the sender and subject before they
   const same = `sender = 'Bobalt', subject = 'Some ore', ${link}`;
   expect(afterSwap(`{ ${same}, itemCount = 2 }`), "the same mail rebuilt: taken as before").toEqual([["item", 2, 1], ["item", 2, 2]]);
   expect(afterSwap(`{ ${same}, itemCount = 2, cod = 500 }`), "a pay-on-delivery mail with the same header").toEqual([]);
-  expect(afterSwap(`{ ${same}, itemCount = 1 }`), "a different item count").toEqual([]);
+  expect(afterSwap(`{ ${same}, itemCount = 3 }`), "more items than listed").toEqual([]);
+  expect(afterSwap(`{ ${same}, itemCount = 1 }`), "fewer items (one taken by hand): the one left is taken").toEqual([["item", 2, 1]]);
   expect(afterSwap(`{ ${same}, itemCount = 2, money = 9 }`), "different money").toEqual([]);
-  expect(afterSwap("{ sender = 'Bobalt', subject = 'Some ore', itemCount = 2, firstItemLink = '|cffffffff|Hitem:902::::::::60|h[TEST-ONLY Herb]|h|r' }"), "a different first item").toEqual([]);
+  expect(afterSwap("{ sender = 'Bobalt', subject = 'Some ore', itemCount = 2, cod = 0 }"), "the first item gone from the header: taken, as a take changes it").toEqual([["item", 2, 1], ["item", 2, 2]]);
   const addon = mailer(BULK);
   addon.world.openMailWindow();
   addon.click("Vanguard_MailTools.returnAll");
@@ -360,5 +362,54 @@ it("Take all and Return all compare more than the sender and subject before they
   addon.click("Vanguard_Question.confirm");
   addon.advance(2);
   expect(returned(addon), "Return all skips the parcel that changed and returns the other").toEqual([2]);
-  expect(chatHas(addon, /Return all: 2 of 2 done/), "and still counts the steps").toBe(true);
+  expect(chatHas(addon, /Return all: 1 of 2 done/), "and counts only the mail it returned").toBe(true);
+});
+
+// TEST-ONLY inbox the way the server changes it: a letter from Bobalt with money and three items, and two items
+// from Mum. A take empties its slot; an emptied mail leaves the inbox and moves up those after it.
+const SERVER = `
+  __wfgWorld.mail = {
+    { sender = "Bobalt", subject = "Gold and ore", money = 5000, itemCount = 3, firstItemQuantity = 5, firstItemLink = "|cffffffff|Hitem:901::::::::60|h[TEST-ONLY Iron Ore]|h|r" },
+    { sender = "Mum", subject = "Herbs", money = 0, itemCount = 2 },
+  }
+`;
+// The senders left in the inbox.
+const senders = (addon) => addon.eval("local out = {} for i, m in ipairs(__wfgWorld.mail) do out[i] = m.sender end return out");
+
+it("Take all empties every mail as the inbox changes after each take, and counts what it took", () => {
+  const addon = mailer(SERVER);
+  addon.world.openMailWindow();
+  addon.click("Vanguard_MailTools.takeAll");
+  addon.advance(5);
+  expect(taken(addon), "Mum's two items, then Bobalt's money and his three items, each from the slot that still holds one").toEqual([["item", 2, 1], ["item", 2, 2], ["money", 1], ["item", 1, 1], ["item", 1, 2], ["item", 1, 3]]);
+  expect([chatHas(addon, /Take all: 6 of 6 done\./), senders(addon)], "every step went, and the inbox is empty").toEqual([true, {}]);
+});
+
+it("Take all leaves a letter with text in the inbox once it is empty, and waits while the game answers a take", () => {
+  const addon = mailer(SERVER + "__wfgWorld.mail[1].letter = true");
+  addon.world.openMailWindow();
+  addon.click("Vanguard_MailTools.takeAll");
+  addon.eval("__wfgWorld.mailPending = true");
+  addon.advance(2);
+  expect(taken(addon), "the game still busy: one take only").toEqual([["item", 2, 1]]);
+  addon.eval("__wfgWorld.mailPending = false");
+  addon.advance(5);
+  expect([taken(addon).length, chatHas(addon, /Take all: 6 of 6 done\./), senders(addon)], "then the rest; Bobalt's emptied letter stays").toEqual([6, true, ["Bobalt"]]);
+});
+
+it("Take all passes a mail whose take the game refuses (bags full), says so, and ends with an honest count", () => {
+  const addon = mailer(SERVER + "TakeInboxItem = function(i, n) table.insert(__wfgWorld.taken, { 'item', i, n }) end");
+  addon.world.openMailWindow();
+  addon.click("Vanguard_MailTools.takeAll");
+  addon.advance(5);
+  expect(taken(addon), "each item tried once; Bobalt's money still comes in").toEqual([["item", 2, 1], ["money", 1], ["item", 1, 1]]);
+  expect([chatHas(addon, /Mail: could not take from Herbs \(bags full\?\)\./), chatHas(addon, /Mail: could not take from Gold and ore \(bags full\?\)\./)], "chat names each mail once").toEqual([true, true]);
+  expect([chatHas(addon, /Take all: 1 of 6 done\./), addon.eval(`return ${MT}.running == nil`)], "the run ended, counting only the money").toEqual([true, true]);
+});
+
+it("Take on a row takes the first attachment slot that still holds an item", () => {
+  const addon = mailer("__wfgWorld.mail[2].slots = { [3] = true }");
+  addon.world.openMailWindow();
+  addon.eval("Vanguard_MailTools.rows[2].take:Click()");
+  expect(taken(addon), "slots 1 and 2 were already taken: slot 3").toEqual([["item", 2, 3]]);
 });

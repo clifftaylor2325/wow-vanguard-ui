@@ -208,6 +208,18 @@ it("Cancel next undercut cancels one undercut auction per click, then says none 
   expect([ownedRow(addon, 1)[1], ownedRow(addon, 3).slice(1), nextState(addon)], "the blade and the dust at 1s 10c are left (and the sold blade)").toEqual(["TEST-ONLY Blade", ["Strange Dust", "1s 10c", false], ["none undercut", false]]);
   expect(addon.eval("local n = 0 for _, c in ipairs(__wfgWorld.ah.restricted) do if c.path:find('AuctionOwned.lua') then n = n + 1 end end return n"), "both made by the button").toBe(2);
 });
+it("Cancel next undercut offers an auction again once its cancel did not go through", () => {
+  const addon = atAuctionHouse(BAGS + OWNED + MORE_DUST);
+  checkUndercuts(addon);
+  addon.click(CANCEL_NEXT);
+  addon.fire("AUCTION_HOUSE_THROTTLED_MESSAGE_DROPPED");
+  checkUndercuts(addon);
+  expect(addon.eval(`return ${HELPER}.NextUndercut().id`), "a fresh list while the cancel may be on its way: the next click takes the one after").toBe(506);
+  addon.advance(10);
+  checkUndercuts(addon);
+  addon.advance(5);
+  expect([nextState(addon), addon.eval(`return ${HELPER}.NextUndercut().id`)], "the game dropped it: 501 is still up and undercut, and offered again").toEqual([["2 undercut", true], 501]);
+});
 it("Cancel next undercut skips an auction the game won't cancel; the line waits for a check that never answers", () => {
   const addon = atAuctionHouse(BAGS + OWNED + MORE_DUST + "__wfgWorld.ah.noCancel[501] = true");
   addon.click(`${OWNED_CARD}.check`);

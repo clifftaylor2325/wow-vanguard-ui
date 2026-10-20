@@ -1747,9 +1747,10 @@ end
 
 -- The mailbox --------------------------------------------------------------------------------------
 -- world.mail = { mail, ... }, the inbox in order: { sender, subject, money, cod (the pay-on-delivery amount, 0 if none), gm, daysLeft, itemCount,
--- firstItemQuantity, firstItemLink, invoice = { type ("seller", "seller_temp_invoice", "buyer"),
--- itemName, playerName, bid, buyout, deposit, consignment, count } }, read by the globals
--- Blizzard_MailFrame/MailFrame.lua calls (GetInboxNumItems, GetInboxHeaderInfo, GetInboxInvoiceInfo);
+-- firstItemQuantity, firstItemLink, slots (the attachment slots holding an item, as a set; slots 1 to itemCount
+-- when unset), letter (true: a letter with text, kept once emptied), invoice = { type ("seller",
+-- "seller_temp_invoice", "buyer"), itemName, playerName, bid, buyout, deposit, consignment, count } }, read by
+-- the globals Blizzard_MailFrame/MailFrame.lua calls (GetInboxNumItems, GetInboxHeaderInfo, GetInboxInvoiceInfo, HasInboxItem);
 -- world.openMailbox() fires MAIL_SHOW and MAIL_INBOX_UPDATE (MailInfoDocumentation.lua).
 world.mail = {}
 
@@ -1776,12 +1777,50 @@ function world.openMailbox()
   stub.fire("MAIL_INBOX_UPDATE")
 end
 
+-- A mail's attachment slots that hold an item, as a set: mail.slots when a test sets it, else slots 1 to
+-- its itemCount. A slot keeps its number as the items before it leave (Blizzard_MailFrame/MailFrame.lua
+-- walks slots 1 to ATTACHMENTS_MAX_RECEIVE with HasInboxItem).
+local function mailSlots(m)
+  if not m.slots then
+    m.slots = {}
+    for n = 1, m.itemCount or 0 do m.slots[n] = true end
+  end
+  return m.slots
+end
+-- Whether attachment slot n of mail i holds an item.
+function HasInboxItem(i, n)
+  local m = world.mail[i]
+  return m ~= nil and mailSlots(m)[n] == true
+end
+C_Mail = C_Mail or {}
+-- Whether the server is still answering a mail command: world.mailPending (false by default).
+function C_Mail.IsCommandPending() return world.mailPending == true end
+
+-- After a take the server answers with the changed inbox: a mail left with no money and no items leaves it
+-- (the mails after it move up a place) unless it is a letter with text (mail.letter), and MAIL_INBOX_UPDATE fires.
+local function settleMail(i)
+  local m = world.mail[i]
+  if m and (m.money or 0) == 0 and (m.itemCount or 0) == 0 and not m.letter then table.remove(world.mail, i) end
+  stub.fire("MAIL_INBOX_UPDATE")
+end
 -- world.taken = what TakeInboxMoney and TakeInboxItem were asked for: { "money", mail } or { "item", mail, attachment }.
 world.taken = {}
--- Takes a mail's money (only noted here).
-function TakeInboxMoney(i) table.insert(world.taken, { "money", i }) end
--- Takes a mail's attachment (only noted here).
-function TakeInboxItem(i, n) table.insert(world.taken, { "item", i, n }) end
+-- Takes a mail's money: noted, the mail's money goes to 0, and the inbox settles.
+function TakeInboxMoney(i)
+  table.insert(world.taken, { "money", i })
+  if world.mail[i] then world.mail[i].money = 0 end
+  settleMail(i)
+end
+-- Takes attachment n of mail i: noted; the slot empties (its item count drops, and the first item's link goes
+-- with the last item), and the inbox settles. An empty slot takes nothing.
+function TakeInboxItem(i, n)
+  table.insert(world.taken, { "item", i, n })
+  local m = world.mail[i]
+  if not (m and mailSlots(m)[n]) then return end
+  m.slots[n], m.itemCount = nil, m.itemCount - 1
+  if m.itemCount == 0 then m.firstItemLink, m.firstItemQuantity = nil, nil end
+  settleMail(i)
+end
 
 -- The mail window (MailFrame, with the Send Mail tab's SendMailFrame and its name box), made on the
 -- first call; world.openMailWindow() shows it with the mailbox, world.showSendMail() the Send Mail tab,
@@ -2130,7 +2169,7 @@ function world.reset()
   world.ah = emptyAuctionHouse()
   world.professions, world.recipes, world.cooldowns, world.openedRecipe = {}, {}, {}, nil
   world.questTimers, world.trackedRecipes = {}, {}
-  world.mail, world.taken = {}, {}
+  world.mail, world.taken, world.mailPending = {}, {}, nil
   world.bubbles, world.instance = {}, false
   refreshWatches()
 end

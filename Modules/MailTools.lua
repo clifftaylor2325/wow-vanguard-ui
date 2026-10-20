@@ -23,6 +23,8 @@ local MT = ns.Module("MailTools", { defaults = { on = false, presets = {} } })
 -- The panel's width and padding (a HUD card's, T.SPACE.gap), a row's height (T.ROW.height), rows, preset buttons,
 -- bags read, the game's attachment limit, mails scanned and the gap to the window (T.SPACE.gap).
 MT.WIDTH, MT.PAD, MT.ROW, MT.ROWS, MT.BUTTONS, MT.BAGS, MT.ATTACH, MT.SCAN, MT.GAP = 270, T.SPACE.gap, T.ROW.height, 8, 4, 4, 12, 60, T.SPACE.gap
+-- The attachment slots a received mail has (ATTACHMENTS_MAX_RECEIVE in Blizzard_MailFrame/MailFrame.lua).
+MT.RECEIVE = 16
 -- Where the search line (the box, with the filter button on its middle) and the first row start, down from the top:
 -- under the heading; the room along the bottom for the preset buttons; and a preset button's width.
 local SEARCH_TOP, ROWS_TOP, PRESET_W = 30, 64, 60
@@ -94,71 +96,146 @@ local function unchanged(m)
   return true
 end
 
+-- The first attachment slot of mail i that still holds an item, or nil. Slots keep their numbers as items
+-- leave, so after the first take slot 1 is empty while later ones still hold theirs.
+local function firstItem(i)
+  if type(HasInboxItem) ~= "function" then return nil end
+  for n = 1, MT.RECEIVE do
+    if HasInboxItem(i, n) then return n end
+  end
+end
+
 -- Takes a mail's money and its first item (one click each; the game needs a moment between items). A mail that
 -- asks for payment on delivery is never taken here, and neither is one that is no longer what the row showed.
 function MT.Take(m)
   if m.cod > 0 then return ns.Chat("Mail: that one asks for payment on delivery. Open it in the mail window, where the game asks you first.") end
   if not unchanged(m) then return ns.Chat("Mail: that mail has moved. Look at the list again.") end
   if m.money > 0 and type(TakeInboxMoney) == "function" then TakeInboxMoney(m.index) end
-  if m.items > 0 and type(TakeInboxItem) == "function" then TakeInboxItem(m.index, 1) end
+  local slot = m.items > 0 and firstItem(m.index)
+  if slot and type(TakeInboxItem) == "function" then TakeInboxItem(m.index, slot) end
 end
 
 -- Take all and Return all ---------------------------------------------------------------------
 
 MT.STEP = 0.3
 
--- The steps that empty the mails: each one's money, then its attachments, in order (a mail that asks
--- for payment on delivery is left alone; so is one with nothing in it).
-function MT.TakeSteps(mails)
-  local out = {}
+-- How many steps empty the mails: each one's money and its items (a mail that asks for payment on delivery
+-- is left alone). Only the count: Take all reads each mail again before every step it takes.
+function MT.TakeCount(mails)
+  local n = 0
   for _, m in ipairs(mails) do
-    if m.cod == 0 and m.money > 0 then out[#out + 1] = { mail = m, take = TakeInboxMoney } end
-    for n = 1, m.cod == 0 and math.min(m.items, MT.ATTACH) or 0 do out[#out + 1] = { mail = m, take = TakeInboxItem, n = n } end
+    if m.cod == 0 then n = n + (m.money > 0 and 1 or 0) + math.min(m.items, MT.RECEIVE) end
   end
-  return out
+  return n
 end
 
--- The steps that send the mails back, the last in the inbox first so the others keep their places. Only
+-- Whether mail now (read again) can still be the listed mail m as Take all empties it: the same sender and
+-- subject, nothing to pay on delivery, and no more money or items than were listed.
+local function sameMail(now, m)
+  return now.sender == m.sender and now.subject == m.subject and now.cod == 0 and now.money <= m.money and now.items <= m.items
+end
+
+-- One take from mail m (read again): its money, else its first item left; false when it holds neither (or
+-- the game lacks the call).
+local function takeFrom(m)
+  if m.money > 0 and type(TakeInboxMoney) == "function" then TakeInboxMoney(m.index) return true end
+  local slot = m.items > 0 and firstItem(m.index)
+  if slot and type(TakeInboxItem) == "function" then TakeInboxItem(m.index, slot) return true end
+  return false
+end
+
+-- Whether the last take from mail now (read again, the game done answering) changed nothing: the game refused
+-- it (bags full, a unique item you already carry). It no longer counts, and chat says so once, as the run passes the mail.
+local function refused(run, now)
+  local last = run.last
+  if not (last and last.index == now.index and last.money == now.money and last.items == now.items) then return false end
+  run.last, run.done = nil, run.done - 1
+  ns.Chat(string.format("Mail: could not take from %s (bags full?).", now.subject ~= "" and now.subject or now.sender))
+  return true
+end
+
+-- A take went out from mail now: noted (so the next read tells a refused one) and counted, never past the steps planned.
+local function took(run, now)
+  run.last = { index = now.index, money = now.money, items = now.items }
+  run.done = math.min(run.done + 1, run.total)
+  return true
+end
+
+-- Take all's next step: while the game is still busy with the last take, nothing (and the run waits);
+-- else one take from the first mail left on the run's list that is still itself, passing those that are
+-- empty, gone, changed or refused. False once none is left.
+local function takeNext(run)
+  if C_Mail and C_Mail.IsCommandPending and C_Mail.IsCommandPending() then return true end
+  local m = run.mails[1]
+  while m do
+    local now = MT.Read(m.index)
+    if now and sameMail(now, m) and not refused(run, now) and takeFrom(now) then return took(run, now) end
+    table.remove(run.mails, 1)
+    m = run.mails[1]
+  end
+  return false
+end
+
+-- Return all's next step: the first mail left on the run's list that is still as listed goes back to its
+-- sender, passing those that changed. False once none is left.
+local function returnNext(run)
+  local m = table.remove(run.mails, 1)
+  while m and not unchanged(m) do m = table.remove(run.mails, 1) end
+  if not m then return false end
+  ReturnInboxItem(m.index)
+  run.done = run.done + 1
+  return true
+end
+
+-- The mails Return all sends back, the last in the inbox first so the others keep their places. Only
 -- mail from a player that holds something and is not a sale.
-function MT.ReturnSteps(mails)
+function MT.ReturnMails(mails)
   local out = {}
   for _, m in ipairs(mails) do
-    if m.returnable and not m.sale and (m.money > 0 or m.items > 0) then table.insert(out, 1, { mail = m, take = ReturnInboxItem }) end
+    if m.returnable and not m.sale and (m.money > 0 or m.items > 0) then table.insert(out, 1, m) end
   end
   return out
 end
 
--- Runs the steps one at a time (the game needs a moment between them), stopping when the mailbox
--- closes or combat starts; says how many went through.
-function MT.Run(steps, i, label)
-  local s = steps[i]
-  if not s or not MT.mailOpen or ns.InCombat() then
+-- Runs a run's steps one at a time (the game needs a moment between them), stopping when the mailbox
+-- closes, combat starts or no step is left; says how many steps went through of those planned.
+function MT.Run(run)
+  if not MT.mailOpen or ns.InCombat() or not run.step(run) then
     MT.running = nil
-    return ns.Chat(string.format("%s: %d of %d done.", label, math.min(i - 1, #steps), #steps))
+    return ns.Chat(string.format("%s: %d of %d done.", run.label, run.done, run.total))
   end
-  if type(s.take) == "function" and unchanged(s.mail) then s.take(s.mail.index, s.n) end
-  if C_Timer and C_Timer.After then return C_Timer.After(MT.STEP, ns.Guard("mail run", function() MT.Run(steps, i + 1, label) end)) end
-  MT.Run(steps, i + 1, label)
+  if C_Timer and C_Timer.After then return C_Timer.After(MT.STEP, ns.Guard("mail run", function() MT.Run(run) end)) end
+  MT.Run(run)
 end
 
--- Starts a run of steps unless one is going or there are none.
-local function start(steps, label)
+-- Starts a run (its label, the mails, the step that works through them and the steps planned) unless one
+-- is going or there is nothing to do.
+local function start(label, mails, step, total)
   if MT.running then return ns.Chat("Mail: a run is already going.") end
-  if #steps == 0 then return ns.Chat(label .. ": nothing to do.") end
+  if total == 0 then return ns.Chat(label .. ": nothing to do.") end
   MT.running = true
-  MT.Run(steps, 1, label)
+  MT.Run({ label = label, mails = mails, step = step, total = total, done = 0 })
+end
+
+-- The mails Take all empties, the last in the inbox first: an emptied mail leaves the inbox and moves up
+-- the mails after it, never those still to go.
+local function takeMails(mails)
+  local out = {}
+  for _, m in ipairs(mails) do table.insert(out, 1, m) end
+  return out
 end
 
 -- Take all: the money and items of every mail the panel shows (its filter and words), COD mail excepted.
 function MT.TakeAll()
-  start(MT.TakeSteps(MT.Find(MT.query)), "Take all")
+  local mails = MT.Find(MT.query)
+  start("Take all", takeMails(mails), takeNext, MT.TakeCount(mails))
 end
 
 -- Return all: after a question, sends the shown mails that can go back to their senders.
 function MT.ReturnAll()
-  local steps = MT.ReturnSteps(MT.Find(MT.query))
-  if #steps == 0 then return ns.Chat("Return all: nothing to return.") end
-  ns.Ask(string.format("Return %d mail(s) to their senders?", #steps), "Return", function() start(steps, "Return all") end, nil, "danger")
+  local mails = MT.ReturnMails(MT.Find(MT.query))
+  if #mails == 0 then return ns.Chat("Return all: nothing to return.") end
+  ns.Ask(string.format("Return %d mail(s) to their senders?", #mails), "Return", function() start("Return all", mails, returnNext, #mails) end, nil, "danger")
 end
 
 -- Presets ------------------------------------------------------------------------------------

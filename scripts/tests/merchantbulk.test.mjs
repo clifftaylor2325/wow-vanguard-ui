@@ -212,3 +212,30 @@ it("a run stops when the merchant closes, combat starts or the gold runs out; on
   addon.eval(`C_Timer = nil __bought = {} __gold = 10000 ${MC}.Buy(1, 8)`);
   expect(bought(addon), "a client without timers buys the chunks one after another").toEqual([[1, 20], [1, 20]]);
 });
+
+it("a Buy question answered after the merchant closed, or at another merchant, buys nothing and says so", () => {
+  const addon = loggedIn(BUY_ENV);
+  addon.fire("MERCHANT_SHOW");
+  addon.eval("StackSplitFrame:Show()");
+  press(addon, "max");
+  addon.fire("MERCHANT_CLOSED");
+  addon.click("Vanguard_Question.confirm");
+  expect([bought(addon), chatHas(addon, /Nothing bought: the merchant closed or changed what it sells\./)], "closed: nothing, and chat says why").toEqual([{}, true]);
+  addon.fire("MERCHANT_SHOW");
+  addon.eval("StackSplitFrame:Show()");
+  press(addon, "max");
+  addon.fire("MERCHANT_CLOSED");
+  addon.eval(`__wfgWorld.items[777] = { name = "TEST-ONLY Pricey", stack = 20 }
+    __wfgWorld.merchant = { items = { { itemID = 777, name = "TEST-ONLY Pricey", price = 50000, stack = 1, maxStack = 20 } } }`);
+  addon.fire("MERCHANT_SHOW");
+  addon.click("Vanguard_Question.confirm");
+  expect(bought(addon), "the next merchant's item at that place is never bought").toEqual({});
+});
+
+it("the tenth item on a merchant page gets Stack and Max too", () => {
+  const water = `{ itemID = 159, name = "TEST-ONLY Water", price = 10, stack = 5, maxStack = 20 }`;
+  const addon = loggedIn(BUY_ENV + `__wfgWorld.merchant = { items = { ${Array(10).fill(water).join(", ")} } } __owner("MerchantItem10ItemButton", 10)`);
+  addon.fire("MERCHANT_SHOW");
+  addon.eval("StackSplitFrame:Show()");
+  expect([addon.eval("return ns.GetModule('Merchant').SplitIndex(StackSplitFrame)"), split(addon)], "MerchantItem10ItemButton is item 10").toEqual([10, [true, true, true, "Max 40 for 0s 80c"]]);
+});

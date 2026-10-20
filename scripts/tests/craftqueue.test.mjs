@@ -102,6 +102,15 @@ it("next opens the first recipe with its count typed in; stock raises Keep stock
   expect([chatHas(old, /Next: 1 x recipe 100/), old.eval("return #ns.errors")], "no OpenRecipe: told which, no error").toEqual([true, 0]);
 });
 
+it("/vg craft stock with the Auction helper off raises Keep stocked but makes no Restock list", () => {
+  const addon = crafter("", "VanguardDB.profiles = { Default = { CraftQueue = { on = true }, modules = { AuctionHelper = false } } }");
+  addon.eval(`${CQ}.Add(100, 4)`);
+  addon.slash("craft stock");
+  const lines = Array.from(addon.chat());
+  expect([addon.eval("return ns.Settings('Errands').stockList[2589]"), chatHas(addon, /The auction helper is off \(\/vg > Modules\)\./)], "Keep stocked still fits the queue, and chat says why there is no list").toEqual([12, true]);
+  expect([lines.some((l) => /Lists tab|Shopping list Restock/.test(l)), addon.eval("return ns.AuctionPrices.Store().lists.Restock == nil")], "no Restock list, and no direction to a Lists tab that isn't there").toEqual([false, true]);
+});
+
 it("notes profession cooldowns for each character and says when they are ready", () => {
   const addon = crafter();
   expect(say(addon, "craft cd", /No profession cooldowns noted yet/), "none yet").toBe(true);
@@ -164,6 +173,14 @@ it("ranks the recipes whose prices are all known, by profit, per craft and per h
   addon.eval("ns.Settings('CraftQueue').secs = 36");
   addon.slash("craft top");
   expect(chatHas(addon, /TEST-ONLY Linen Bag: 4s 50c a craft, 4g 50s 0c an hour at 36s a craft/), "the pace is the setting").toBe(true);
+});
+
+it("/vg craft top shows a losing recipe's loss with a minus, never as a profit", () => {
+  const addon = crafter();
+  addon.eval("__price(2589, 10) __price(2320, 20) __price(4238, 500) __price(1251, 2)");
+  addon.slash("craft top");
+  expect(chatHas(addon, /2\. TEST-ONLY Bandage: -6c a craft, -36s 0c an hour at 6s a craft/), "bandages: 2 x 2 - 10 = -6c").toBe(true);
+  expect(addon.eval("local AP = ns.AuctionPrices return { AP.Money(-500), AP.Money(-15000), AP.Money(-25), AP.Money(0) }"), "every size of loss").toEqual(["-5s 0c", "-1g 50s 0c", "-25c", "0c"]);
 });
 
 it("the options have the switch and the pace", () => {

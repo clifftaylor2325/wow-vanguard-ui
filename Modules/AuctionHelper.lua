@@ -414,7 +414,8 @@ function AH.StartScan()
   local wait = AP.House().lastScan + AH.SCAN_GAP - AP.Now()
   AH.PaintScan()
   if not AH.open then return ns.Chat("Open the auction house to scan it.") end
-  if AH.scan or wait > 0 then return ns.Chat(string.format("One auction house scan every 15 minutes: the next in %d min.", math.ceil(wait / 60))) end
+  if AH.scan then return ns.Chat(string.format("Already scanning: %d of %d read.", AH.scan.next, AH.scan.total or 0)) end
+  if wait > 0 then return ns.Chat(string.format("One auction house scan every 15 minutes: the next in %d min.", math.ceil(wait / 60))) end
   AH.scan = newScan()
   C_AuctionHouse.ReplicateItems()
   AH.PaintScan()

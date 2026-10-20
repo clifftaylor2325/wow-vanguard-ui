@@ -857,11 +857,20 @@ local function filteredEntry(d)
   return d.term
 end
 
--- Save: the entry takes the dialog's filters (its old row is searched again next time).
+-- Where entry sits in list now (a row above it may have gone, or Recent moved it), or nil once it is gone.
+local function placeOf(list, entry)
+  for i, e in ipairs(list) do
+    if e == entry then return i end
+  end
+end
+
+-- Save: the entry the dialog opened on takes its filters (its old row is searched again next time), wherever
+-- it sits in its list now; nothing changes once it is off the list.
 function AH.SaveFilters()
   local d = AH.filterDialog
   local list = AH.ListByName(d.listName)
-  if list and list[d.index] ~= nil then list[d.index] = filteredEntry(d) end
+  local i = list and placeOf(list, d.entry)
+  if i then list[i] = filteredEntry(d) end
   d:Hide()
   AH.PaintShop()
 end
@@ -969,7 +978,7 @@ end
 function AH.EditFilters(listName, i)
   local d, list = AH.filterDialog or buildFilters(), AH.ListByName(listName)
   if not (list and list[i] ~= nil) then return end
-  d.listName, d.index = listName, i
+  d.listName, d.entry = listName, list[i]
   fillFilters(d, list[i])
   d:ClearAllPoints()
   d:SetPoint("CENTER", type(AuctionHouseFrame) == "table" and AuctionHouseFrame or UIParent, "CENTER", 0, 0)

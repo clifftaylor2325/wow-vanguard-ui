@@ -76,12 +76,13 @@ function AP.Migrate()
   store.prices, store.count, store.lastScan = nil, nil, nil
 end
 
--- Copper as "1g 23s 45c", "12s 50c" or "90c".
+-- Copper as "1g 23s 45c", "12s 50c" or "90c"; less than 0 (a loss) the same with a minus, "-5s 0c".
 function AP.Money(copper)
-  local g, s, c = math.floor(copper / 10000), math.floor(copper / 100) % 100, copper % 100
-  if g > 0 then return string.format("%dg %ds %dc", g, s, c) end
-  if s > 0 then return string.format("%ds %dc", s, c) end
-  return c .. "c"
+  local sign, size = copper < 0 and "-" or "", math.abs(copper)
+  local g, s, c = math.floor(size / 10000), math.floor(size / 100) % 100, size % 100
+  if g > 0 then return string.format("%s%dg %ds %dc", sign, g, s, c) end
+  if s > 0 then return string.format("%s%ds %dc", sign, s, c) end
+  return sign .. c .. "c"
 end
 
 -- Recording ----------------------------------------------------------------------------------

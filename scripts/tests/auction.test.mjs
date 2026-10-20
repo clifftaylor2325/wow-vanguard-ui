@@ -63,7 +63,13 @@ it("scans are 15 minutes apart", () => {
   addon.click(SCAN_BUTTON);
   expect([addon.eval("return #__wfgWorld.ah.queries"), lastLine(addon)], "after 15 minutes a new scan starts").toEqual([2, "scanning 0 of 0"]);
   addon.click(SCAN_BUTTON);
-  expect(addon.eval("return #__wfgWorld.ah.queries"), "not while one runs").toBe(2);
+  expect([addon.eval("return #__wfgWorld.ah.queries"), chatHas(addon, /Already scanning: 0 of 0 read\./)], "not while one runs, and chat says it is running").toEqual([2, true]);
+});
+it("a second Scan click while the first scan runs says it is scanning, never a time to wait", () => {
+  const addon = atAuctionHouse();
+  addon.eval(`${HELPER}.StartScan() ${HELPER}.StartScan()`);
+  const lines = Array.from(addon.chat()).filter((l) => /scan/i.test(l));
+  expect([lines.some((l) => /next in/.test(l)), chatHas(addon, /Already scanning: 0 of 0 read\./)], "no first scan yet: no \"next in -29 million min\"").toEqual([false, true]);
 });
 it("one frame of a scan reads at most 400 listings", () => {
   const addon = atAuctionHouse();

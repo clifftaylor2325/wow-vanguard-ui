@@ -624,6 +624,12 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Expect: the item tooltip still shows the "Sold by ..." line and the "AH: ..." line (and "Upgrade +N% (estimate)" where it applies), in the game's own tooltip; there is no "Sells for ..." or "You have ..." line from Vanguard, and no unit-tooltip changes. Turn Tooltips back on: those two lines come back, with no line shown twice. [Needs in-game check: the lines on the client's tooltip, with the module off.]
 - If it fails, paste: which line is missing or doubled, and `/vg errors`.
 
+### 9.2d A Buy question left open past its merchant
+
+- Do: at a merchant selling a cheap stackable item, open its quantity window (Shift-click it) and click Max so it asks "Buy N × <item> for <money>?". Leave the question up, walk away until the merchant window closes, then click Buy.
+- Expect: nothing is bought, and chat says `Nothing bought: the merchant closed or changed what it sells.` Asking again at the merchant and answering Buy at once still buys as before.
+- If it fails, paste: the chat lines and `/vg errors`.
+
 ### 9.2c Character sheet extras
 
 - Do: open the character pane with gear worn. Then `/vg` → Game windows → Character sheet extras: tick "Mark worn pieces missing an enchant", and look at a chest, legs, boots, bracers, gloves, cloak or weapon of green quality or better without an enchant. Press "Show my gear summary in chat" (or run `/vg gear`).
@@ -1349,6 +1355,12 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 - Expect: the guide under Post lights 1 Item, then 2 Price ("Checking what it sells for..."), then 3 Post ("Click Post to list stack 1 of 2."). Each click says "Post: sending stack 1 of 2 (5 at ... each, ...)" in chat and puts one stack up (the game's "Auction created" line in chat); the guide says "Stack 1 sent: waiting for the auction house..." until the game is ready, then "Click Post to list stack 2 of 2." with Post lit; after the second the card empties, the count keeps "posted 2 of 2" and the guide says "Finished: ...". The gear goes up with its bid and price (both in whole silver if the game takes no copper). If the game asks to confirm a price, Post reads Confirm and the next click lists it. Post never stays lit without posting: when it is off the guide says why. `/vg errors` stays empty.
 - If it fails, paste: a screenshot of the Posting tab, every chat line starting "Post:" (none at all after a click means the click never reached Post), and `/vg errors`.
 
+### 14.9.2a A price changed after the game asks to confirm
+
+- Do: on Posting, drop an item the game asks you to confirm (a price far from what it usually sells for), click Post so it reads Confirm, then type a different price in Price (or click a listing on Up now, or pick another auction length) before clicking again.
+- Expect: as soon as you change the price or length, Confirm reads Post again and the guide says "Click Post to list stack 1 of 1."; the next click says "Post: sending stack 1 of 1 (... at <the new price> each, ...)" and the item goes up at the new price (the game may ask to confirm again). It never lists at the price you had before the change. [Needs in-game check: that the game takes a second Post after a confirm it was never sent.]
+- If it fails, paste: every chat line starting "Post:", the auction's price on the game's Auctions tab, and `/vg errors`.
+
 ### 15.6 Legacy probe and perk plan (planner off until switched on)
 
 - Do: type `/vg legacy probe` before opening the Legacy window, open it (the Legacy button on the menu bar), click each of its three tabs, and type `/vg legacy probe` again. Under Town and gear tick "Legacy perk planner", then type `/vg legacy plan add 3 Test perk`, `/vg legacy plan add 14 Other perk`, `/vg legacy plan`, `/vg legacy plan remove test perk`, `/vg legacy plan clear`. Paste the second probe's whole output.
@@ -1555,7 +1567,7 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 ### 23.3 Take all and Return all
 
 - Do: with the mail tools on, open a mailbox holding a few mails with money and items (one from another player, one auction sale, ideally one pay-on-delivery). Click Take all; later, with other mail, click Return all and answer the question.
-- Expect: the money and items of the listed mails come in about three a second, with a chat line `Take all: N of N done.`; pay-on-delivery mail is left; Return all asks `Return N mail(s) to their senders?` and sends back only mail from players (the sale stays); closing the mailbox mid-run stops it with a count. [Needs in game: that TakeInboxItem for each attachment slot 1 to the item count empties a mail, and that ReturnInboxItem takes the inbox index.]
+- Expect: the money and items of the listed mails come in about three a second, with a chat line `Take all: N of N done.`; pay-on-delivery mail is left; Return all asks `Return N mail(s) to their senders?` and sends back only mail from players (the sale stays); closing the mailbox mid-run stops it with a count. [Needs in game: that ReturnInboxItem takes the inbox index; 23.3b checks the takes.]
 - If it fails, paste: the chat lines and `/vg errors`.
 
 ### 23.3a Pay-on-delivery mail stays untaken
@@ -1563,6 +1575,12 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 - Do: with the mail tools on, open a mailbox holding a pay-on-delivery mail (cash on delivery) and a free one, and look at their rows; click Take all.
 - Expect: the pay-on-delivery row reads `pay <amount> on delivery` and has no Take button; Take all leaves it; the free mail comes in. [Needs in game: that GetInboxHeaderInfo's sixth return is the amount due, and that a mail whose place shifts mid-run is skipped rather than taken.]
 - If it fails, paste: a screenshot of the rows and `/vg errors`.
+
+### 23.3b Take all empties mails with several items
+
+- Do: with the mail tools on, open a mailbox holding a mail with money and three or more items (send one to an alt) and another with two items. Click Take all and watch the inbox.
+- Expect: every coin and every item of both mails comes in (the last mail first), the emptied mails leave the inbox (a letter with text may stay, empty), and chat says `Take all: N of N done.` with both numbers equal; nothing is left in either mail. [Needs in-game check: that HasInboxItem names the slots still holding an item after a take, and that C_Mail.IsCommandPending is true until the server has answered.]
+- If it fails, paste: the chat line, what is left in each mail, and `/vg errors`.
 
 ### 23.4 Alt overview
 
