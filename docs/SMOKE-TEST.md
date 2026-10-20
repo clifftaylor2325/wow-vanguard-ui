@@ -476,6 +476,12 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Expect: each frame shows its unit's tooltip where your tooltips usually sit, and it goes when the mouse leaves; a hunter's pet tooltip adds a line like "Happy: 125% damage" in the mood's colour; in a fight too, unless **Hide unit tooltips in combat** (Tooltips) is on, and `/vg errors` stays empty. The tagged mob's health bar is grey, as on the game's frames and Vanguard's plates. A released player reads Ghost (red on raid tiles too), a feigning hunter in your group does not read Dead. The mark sits centred on the top edge of every frame whose unit carries it, comes and goes at once, and **Raid target icons** (Raid frames page) turns them off. Solo with no pet the threat number above the target frame stays away; with a pet or in a group it shows.
 - If it fails, paste: a screenshot of the frame, `/vg errors`, and `/run local i=GetRaidTargetIndex("target") print(type(i), issecretvalue(i))` on a marked mob.
 
+### 7.2j Swing timer dims out of reach, and auto for every class that swings
+
+- Do: on a warrior or rogue with Vanguard's swing timer on, auto-attack a mob, then step out of melee range and back in, swap weapons out of range, and target nothing. Then on a paladin, shaman or druid (Swing timer left on auto), stand idle, then auto-attack a mob.
+- Expect: while the target is out of melee range the swinging rows dim (to about 40%) and come back at full strength when you step in, also right after the weapon swap; with no target they are never dim. The paladin, shaman or druid sees no rows at rest and the rows while swinging. `/vg errors` stays empty.
+- If it fails, paste: a screenshot in and out of range, your class, and `/vg errors`.
+
 ### 7.3 Nameplates in a pull
 
 - Do: pull three or more mobs.
@@ -517,6 +523,12 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Do: with Fight history and the recap on, kill a mob and pull the next one at once (within half a second: a ranged pull or an add already on its way). After the second fight, hover the fight history strip and type `/vg fights`.
 - Expect: both fights are listed, the first with its own length and DPS; a recap line for the first fight appears as the second begins. [Needs in game: that the game's meter has finished the first fight's figures when the next pull starts; if its DPS or length looks short, say so.]
 - If it fails, paste: `/vg fights` and `/vg errors`.
+
+### 7.6b The game's damage meter lines stay flat
+
+- Do: with the game's damage meter shown (its own setting) and "Damage meter in the Vanguard look" on under Combat tools, fight two or three mobs one after another, then look at the meter's lines, and scroll its list if it has more lines than fit.
+- Expect: every line is a flat theme bar over a dark inset after each fight, with no gradient or shaded background behind it, including lines that appear only after the first fight. [Needs in game: that the game's own background art never comes back on a line.]
+- If it fails, paste: a screenshot of the meter after the fight in which the shading came back, and `/vg errors`.
 
 ### 7.7 Vanguard meter (off until switched on: /vg > Combat tools > Vanguard meter)
 
@@ -647,15 +659,27 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Expect: items that match every word stay lit and the rest dim as with a normal search; a plain word still works the game's way; clearing the box lights everything again. Send moves that group's stacks to the bank and says how many; in a fight, or with no bank open, it says to open the bank and moves nothing.
 - If it fails, paste: a screenshot, `/vg probe` (the SetItemSearch and UpdateSearchResults lines) and `/vg errors`.
 
+### 9.1c Bank search words, the Junk value, taking an item out of a group
+
+- Do: at the bank, with a green or better item in the bank, type `ilvl>20`, then `q:epic` (or `q:unc`) in the bank's search box (or the bag's: the game copies the text). Move an item in the bank and turn a bank page. Do the same in your bags. Then look at the bag's Junk header with gray items in your bags, and open a merchant. Then file an item in one of your groups, pick it up, and click **Groups** → Take held item out of its group.
+- Expect: only matching items stay bright in the bank and the bags, and the match holds after the move and the page turn (the bank never goes all grey). The Junk header reads "JUNK · 12s 40c" (or similar), the same amount the merchant pays for your gray items (a Junk section only two slots wide may leave it off rather than run into the next header: note which). The taken-out item goes back to its normal section, its group's header goes if the group is now empty, and chat says it is in no category; with an item that is in no group held, chat says so and the item stays in hand.
+- If it fails, paste: a screenshot, the search text, the Junk header and the merchant's line, and `/vg errors`.
+
 ### 9.2 Merchant repair and sell
 
 - Do: with damaged gear and gray items, open a merchant who repairs.
 - Expect: `Repaired for <money>.` (or `Not enough gold to repair (<money>).`) and `Selling N junk item(s).` in chat; the gray items vanish over a few seconds.
 - If it fails, paste: the chat lines and `/vg errors`.
 
+### 9.2g The error switch under Quiet the game
+
+- Do: /vg > Game windows > Quiet the game; find "Hide errors the action bar already shows (reload)"; then Town and gear > Merchants.
+- Expect: the switch is on under Quiet the game, beside "Hide the red error line", and no longer on the Merchants card; with it on (after a reload) casting before a cooldown ends shows no red line, and switched off (and reloaded) it does.
+- If it fails, paste: a screenshot of both cards.
+
 ### 9.2a Sell list, sell all and bulk buy
 
-- Do: `/vg junk` with a shift-clicked cheap item you own, then Merchants and errors → "Offer to sell the items on your sell list"; open a merchant. Then `/vg sell` with a shift-clicked item of which you hold several stacks. Then shift-click an item for sale (a stackable one, with a few bag slots free) and press Stack, then Max.
+- Do: `/vg junk` with a shift-clicked cheap item you own, then Town and gear → Merchants → "Offer to sell the items on your sell list"; open a merchant. Then `/vg sell` with a shift-clicked item of which you hold several stacks. Then shift-click an item for sale (a stackable one, with a few bag slots free) and press Stack, then Max.
 - Expect: a question listing the item(s) and what they fetch; answering Sell sells them within a few seconds and the Buyback tab holds them; pressing Enter while the question is up does not answer it (click Sell); an item in an equipment set is not offered; Stack and Max and a "Max N for <money>" line sit under the quantity window for a merchant's item and not for an item in your bags; Max above one stack asks first; the buys finish with `Bought N × <item> for <money>.` and no error; an item that costs tokens or honor shows no buttons.
 - If it fails, paste: the chat lines and `/vg errors`.
 
@@ -1292,6 +1316,12 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 - Expect: as the fight starts the window stops following the mouse and stays where it was; nothing sticks to the mouse after you let go; it opens at that spot after the fight. No "Interface action failed because of an AddOn" message, and `/vg errors` is empty. [Needs in-game check: the harness models StartMoving and StopMovingOrSizing as protected on a window that holds secure buttons, from Forever's API docs.]
 - If it fails, paste: the window's name, where it ended up, and `/vg errors`.
 
+### 14.10b Reset moved windows, and five more windows to drag
+
+- Do: open the character pane and the mailbox, open a letter, and drag the pane and the letter away. `/vg` → Game windows → **Reset window positions** with both still open. Drag them away again, start a fight, click Reset, and leave combat. Then open the clock (the strip's time, or the minimap clock), chat channels (`/chatconfig` → Channels, or the social window's Chat Channels), Options → Game settings (Escape → Options), chat settings (right-click a chat tab → Settings) and guild control (guild window → Guild Control, if you can), and drag each.
+- Expect: Reset puts the open character pane where the game opens it and the letter back beside the mailbox at once, with no `/reload`. In the fight the chat says "Moved windows go back once the fight ends." and nothing moves; after the fight both go back, with no `/vg errors`. The clock and chat channels drag by their title bar; game settings, chat settings and guild control drag by an empty spot along their top edge, and every button, tab and box in all five still takes its click. After a Reset, open and close the collections window and the spellbook in a fight: no "blocked" message. [Needs in game: the letter's spot after Reset, that no button in the five new windows lost its click, and that Reset's call to the game's window layout leaves no blocked action later.]
+- If it fails, paste: which window, a screenshot after Reset, and `/vg errors`.
+
 ### 14.11 Breath and fatigue bars
 
 - Do: swim under water until the breath bar shows and stay down a few seconds; surface. Then swim out to sea until the fatigue bar shows, and swim back.
@@ -1534,6 +1564,7 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 - Do: in a capital city, type `/vg lfg` and leave it open for a few minutes while people post in Trade and LookingForGroup. Hover a row, then click one. Do not press Enter unless you want to send it. Then click the filter button twice and switch **Only dungeons for my level** off and on. Finally post `LFM SFK need heals` yourself in a channel.
 - Expect: the board has a title with its count, a close button at the top right, and Escape closes it; rows appear as people post, newest first, each with a faint wash under the mouse and LFM or LFG, a dungeon and its range (or "Any dungeon"), the roles named, the sender's name without its realm or ruleset part and the age; the tooltip shows the whole line and the full name. The click opens the chat box with `/w <full name> Hi! ...` filled in and sends nothing. Your own post does not appear. The whisper reaches the player when you send it (a two-part name that fails is a finding). Inside a dungeon nothing new appears and `/vg errors` stays empty.
 - If it fails, paste: a screenshot of the board and the chat box, the line that was misread, and `/vg errors`.
+- Do also: on a healer whose role was never picked, open `/vg` → Chat → Group board and read **Your role, for the whisper** (it should read **Automatic**); then on the board click the filter button until it reads **Needs my role**, and click an LFM row with the healer role assigned in a group and with none. Every post should be listed, the LFM posts asking for heals (or naming no role) first, newest first, and the rest below them in grey; the whisper should say `(Healer)` with the healer role and `(DPS)` with none, and `/vg errors` stay empty. [Needs in-game check: all of it.]
 
 ### 18.3 Quest guidance
 
@@ -1667,6 +1698,13 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 - Do: with the mail tools on, open a mailbox holding a mail with money and three or more items (send one to an alt) and another with two items. Click Take all and watch the inbox.
 - Expect: every coin and every item of both mails comes in (the last mail first), the emptied mails leave the inbox (a letter with text may stay, empty), and chat says `Take all: N of N done.` with both numbers equal; nothing is left in either mail. [Needs in-game check: that HasInboxItem names the slots still holding an item after a take, and that C_Mail.IsCommandPending is true until the server has answered.]
 - If it fails, paste: the chat line, what is left in each mail, and `/vg errors`.
+
+### 23.3c More than eight mails, and the days left
+
+- Do: with more than eight mails in the inbox (or more than the game shows at once), open the mailbox with Mail tools on; scroll the mouse wheel over the panel's rows; type a word in the search box.
+- Expect: the heading reads "1-8 of N" beside "Find mail" (with "more on the server" when the game holds some back); the wheel over the rows moves through the rest a row at a time and stops at the ends (over the buttons and search box it does nothing); each row ends with its days or hours left, in the warning colour in the last 3 days, when a mail that would be deleted (not returned) says "deleted in 2d" (or however many days); typing goes back to the top, and so does closing and opening the mailbox.
+- [Needs in game: that InboxItemCanDelete is true for mail deleted at expiry (an auction house sale, a system mail) and false for a letter with items that goes back; that the count beside the title doesn't run into it; that the days label leaves the subject readable.]
+- If it fails, paste: a screenshot of the panel and `/vg errors`.
 
 ### 23.4 Alt overview
 
