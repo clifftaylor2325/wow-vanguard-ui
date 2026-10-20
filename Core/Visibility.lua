@@ -289,13 +289,13 @@ function V.Toggle(acc, key)
   acc.after()
 end
 
--- The options rows for a visibility setting kept in tbl()[modeKey], its checklist
--- in tbl()[whenKey]: the mode (one of modes, V.MODES unless given), then the
--- checklist. after() applies a change.
-function V.Rows(caption, tbl, modeKey, whenKey, after, initial, modes)
-  local acc = { tbl = tbl, modeKey = modeKey, whenKey = whenKey, after = after }
-  return { "cycle", caption, modes or V.MODES, function() return V.Mode(tbl()[modeKey]) end,
-    function(v) tbl()[modeKey] = v after() end, initial }, { "showwhen", "Show when", acc }
+-- The options rows for a visibility setting kept in tbl()[modeKey], its checklist in tbl()[whenKey]: the
+-- mode (one of modes, V.MODES unless given), then the checklist. after() applies a change. opts =
+-- { caption, tbl, modeKey, whenKey, after, initial, modes }; the checklist keeps opts for its own reads.
+function V.Rows(opts)
+  local tbl, modeKey, whenKey, after = opts.tbl, opts.modeKey, opts.whenKey, opts.after
+  return { "cycle", opts.caption, opts.modes or V.MODES, function() return V.Mode(tbl()[modeKey]) end,
+    function(v) tbl()[modeKey] = v after() end, opts.initial }, { "showwhen", "Show when", opts }
 end
 
 -- Lights the chips of the conditions the setting shows on.

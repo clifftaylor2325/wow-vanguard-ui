@@ -82,8 +82,13 @@ end
 -- Bars shown on mouseover or on conditions also show while you drag a spell or
 -- item. "Hidden" doesn't draw the bar, but its keys still cast (a keybind-only bar).
 local function barVisibilityRows(n)
-  local mode, when = ns.Visibility.Rows("Visibility", function() return moduleSettings("ActionBars").bars[n] end,
-    "visibility", "showWhen", function() barChanged(n, "visibility") end)
+  local mode, when = ns.Visibility.Rows({
+    caption = "Visibility",
+    tbl = function() return moduleSettings("ActionBars").bars[n] end,
+    modeKey = "visibility",
+    whenKey = "showWhen",
+    after = function() barChanged(n, "visibility") end,
+  })
   O.Tag(mode[4], "ActionBars", "bars")
   return mode, when
 end

@@ -132,13 +132,22 @@ local function append(a, b)
   return a
 end
 
+-- Applies a module's visibility now, when the module runs.
+local function applyModuleVisibility(module)
+  local m = ns.GetModule(module)
+  if m.enabled then m.ApplyVisibility() end
+end
+
 -- The visibility rows (Core/Visibility.lua) of a module's frame, applied at once
 -- (when the module runs); unset, the setting is Always. modes: its choices (V.MODES unless given).
 local function visibilityRows(caption, module, modeKey, whenKey, modes)
-  local mode, when = ns.Visibility.Rows(caption, function() return moduleSettings(module) end, modeKey, whenKey, function()
-    local m = ns.GetModule(module)
-    if m.enabled then m.ApplyVisibility() end
-  end, "always", modes)
+  local mode, when = ns.Visibility.Rows({
+    caption = caption,
+    tbl = function() return moduleSettings(module) end,
+    modeKey = modeKey, whenKey = whenKey,
+    after = function() applyModuleVisibility(module) end,
+    initial = "always", modes = modes,
+  })
   O.Tag(mode[4], module, modeKey)
   return mode, when
 end
