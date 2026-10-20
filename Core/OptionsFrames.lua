@@ -136,15 +136,20 @@ local function raidAuraRows()
   }
 end
 
+-- get/set for a raid frame mark switch (range fade, icons, ready check, ...) that repaints the tiles at once.
+local function statusSetting(key)
+  return liveSetting("RaidStatus", key, function() ns.GetModule("RaidStatus").UpdateAll() end)
+end
+
 -- Raid frames plus their indicators.
 local function raidPageRows()
   return append(append(append(raidRows(), raidAuraRows()), {
     check("Power bar", raidSetting("showPower")),
-    check("Fade players out of range", setting("RaidStatus", "rangeFade")),
-    check("Raid target icons", setting("RaidStatus", "raidIcons")),
-    check("Ready check answers", setting("RaidStatus", "readyCheck")),
-    check("Mark players being resurrected", setting("RaidStatus", "resurrect")),
-    check("Leader and assistant marks", setting("RaidStatus", "leader")),
+    check("Fade players out of range", statusSetting("rangeFade")),
+    check("Raid target icons", statusSetting("raidIcons")),
+    check("Ready check answers", statusSetting("readyCheck")),
+    check("Mark players being resurrected", statusSetting("resurrect")),
+    check("Leader and assistant marks", statusSetting("leader")),
   }), raidPreviewRows())
 end
 

@@ -61,6 +61,18 @@ const tile2 = (addon) => addon.eval("local b = Vanguard_RaidUnitButton2 return {
 // A roster refresh in a fight: GROUP_ROSTER_UPDATE, then the queued update of every tile.
 const rosterInFight = (addon) => { addon.world.combat(true); addon.fire("GROUP_ROSTER_UPDATE"); addon.eval("__wfgStub.advance(0.3)"); };
 
+it("the Raid frames page's mark switches repaint the tiles at once", () => {
+  const addon = loggedIn("C_Timer = nil " + UNITS_ENV + RAID_ENV + STATUS_ENV);
+  addon.eval('__spawn(1, "raid1")');
+  // Unticks the Raid frames page's row captioned `cap` through its own setter.
+  const untick = (cap) => addon.eval(`for _, p in ipairs(ns.Options.PAGES) do if p.key == "raid" then
+    for _, row in ipairs(p.rows()) do if row[2] == "${cap}" then row[4](false) end end end end`);
+  untick("Raid target icons");
+  untick("Leader and assistant marks");
+  const after = marks(addon, 1);
+  expect([after.icon, after.leader], "both marks go as they are unticked").toEqual([false, false]);
+});
+
 it("your own tile stays opaque when an encounter hides UnitIsUnit's answer on a roster refresh", () => {
   const addon = loggedIn("C_Timer = nil " + UNITS_ENV + RAID_ENV + STATUS_ENV + GUIDS);
   addon.eval('__spawn(1, "raid1"); __spawn(2, "raid2")');
