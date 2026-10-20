@@ -70,6 +70,19 @@ it("raid frames", () => {
   expect(addon.eval("local out = {} for _, m in ipairs(ns.MoverList()) do out[m.key] = true end return out.raid") === true, "the raid frames are movable").toBeTruthy();
 });
 
+it("a new tile size waits for the reload: the tiles' texts and the holder keep the size the tiles were built with", () => {
+  const addon = loggedIn("C_Timer = nil " + UNITS_ENV + RAID_ENV);
+  addon.eval('__spawn(1, "raid1")');
+  // Tile 1's width, its name's right stop, its status width and the holder's size.
+  const look = () => addon.eval(`local b = Vanguard_RaidUnitButton1
+    return { b:GetWidth(), b.name.__points.TOPRIGHT.x, b.status:GetWidth(), Vanguard_RaidHolder:GetWidth(), Vanguard_RaidHolder:GetHeight() }`);
+  const before = look();
+  addon.eval(`local _, set = ns.Options.Setting("RaidFrames", "width") set(72)
+    local RF = ns.GetModule("RaidFrames") RF.layoutKey = "rows" RF.Arrange(0)`);
+  addon.fire("GROUP_ROSTER_UPDATE");
+  expect(look(), "texts and holder as they were, for tiles still 100 wide").toEqual(before);
+});
+
 it("raid role mark: a hidden role shows no mark, no role call or NONE shows none, a healer gets the cross", () => {
   const addon = loggedIn(UNITS_ENV + RAID_ENV);
   // The role mark RaidFrames gives raid1 after setup: [there is an icon, its color].

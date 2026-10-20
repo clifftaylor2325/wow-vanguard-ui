@@ -385,9 +385,10 @@ function RF.Zones(w, h, scale)
   return z
 end
 
--- The zones of the tiles at the set size and the grid's current scale.
+-- The zones of the tiles at the size they were built with and the grid's current scale. A new size
+-- reaches the secure tiles only at a reload, so until then their texts keep fitting the old one.
 function RF.TileZones()
-  return RF.Zones(RF.settings.width, RF.settings.height, RF.tileScale)
+  return RF.Zones(RF.builtSize.width, RF.builtSize.height, RF.tileScale)
 end
 
 -- Building ---------------------------------------------------------------------------------
@@ -700,7 +701,7 @@ function RF.Arrange(n)
   if key ~= RF.layoutKey then
     RF.layoutKey = key
     layout(RF.header, RF.settings, key)
-    RF.SizeHolder(RF.holder, RF.settings, key)
+    RF.SizeHolder(RF.holder, RF.builtSize, key)
   end
   RF.PlaceFor(n)
 end
@@ -717,6 +718,7 @@ end
 
 -- Builds the header, precreates its buttons and replaces the default frames.
 local function build(s)
+  RF.builtSize = { width = s.width, height = s.height, spacing = s.spacing }
   RF.holder, RF.header = holder(s), createHeader(s)
   RF.Fit()
   membership(RF.header, s)
