@@ -148,3 +148,44 @@ it("ready check: a new check started while the last one's answers linger keeps i
   addon.eval("__wfgStub.advance(6.5)");
   expect([marks(addon, 3).ready, marks(addon, 3).status], "the new check's answers go a few seconds after it ends").toEqual([false, true]);
 });
+
+// Tile i's summon mark: its atlas while shown, else false; whether the resurrection mark and the status text show.
+const summonOf = (addon, i) => addon.eval(`local b = Vanguard_RaidUnitButton${i}
+  return { b.summon:IsShown() and b.summon:GetAtlas(), b.rez:IsShown(), b.status:IsShown() }`);
+
+it("raid status: a summon on its way shows the game's summon icon, over the resurrection and the status text", () => {
+  // TEST-ONLY summons by unit (Enum.SummonStatus: 1 pending, 2 accepted, 3 declined), read through the client's calls.
+  const summons = `__summon = {}
+    C_IncomingSummon = { HasIncomingSummon = function(unit) return __summon[unit] ~= nil end, IncomingSummonStatus = function(unit) return __summon[unit] end }`;
+  const addon = loggedIn(UNITS_ENV + RAID_ENV + STATUS_ENV + summons);
+  addon.eval('__spawn(1, "raid1") __spawn(3, "raid3")');
+  expect(summonOf(addon, 1), "no summon: no mark, the status text shows").toEqual([false, false, true]);
+  addon.eval("__summon.raid1 = 1");
+  addon.fire("INCOMING_SUMMON_CHANGED", "raid1");
+  expect(summonOf(addon, 1), "pending").toEqual(["RaidFrame-Icon-SummonPending", false, false]);
+  addon.eval("__summon.raid1 = 2 __status.rez.raid1 = true");
+  addon.fire("INCOMING_SUMMON_CHANGED", "raid1");
+  expect(summonOf(addon, 1), "accepted, and it outranks a resurrection").toEqual(["RaidFrame-Icon-SummonAccepted", false, false]);
+  addon.eval("__summon.raid1 = 3 __status.rez.raid1 = false");
+  addon.fire("INCOMING_SUMMON_CHANGED", "raid1");
+  expect(summonOf(addon, 1)[0], "declined").toBe("RaidFrame-Icon-SummonDeclined");
+  expect(summonOf(addon, 3)[0], "only the tile showing that unit").toBe(false);
+  addon.eval('__status.ready.raid1 = "ready"');
+  addon.fire("READY_CHECK");
+  expect(summonOf(addon, 1)[0], "a ready check answer goes first: one center mark at a time").toBe(false);
+  addon.fire("READY_CHECK_FINISHED");
+  addon.eval("ns.GetModule('RaidStatus').readyRunning = false ns.GetModule('RaidStatus').UpdateAll()");
+  expect(summonOf(addon, 1)[0], "and the summon is back after it").toBe("RaidFrame-Icon-SummonDeclined");
+  addon.eval("local t = Vanguard_RaidUnitButton1.summon t.SetAtlas = function() return false end ns.GetModule('RaidStatus').UpdateAll()");
+  expect(summonOf(addon, 1), "an atlas the client doesn't have: no blank mark, the status text stays").toEqual([false, false, true]);
+  addon.eval("Vanguard_RaidUnitButton1.summon.SetAtlas = nil");
+  addon.eval("__summon.raid1 = __wfgWorld.secret(1)");
+  addon.fire("INCOMING_SUMMON_CHANGED", "raid1");
+  expect(summonOf(addon, 1), "a hidden status shows nothing").toEqual([false, false, true]);
+  addon.eval("__summon.raid1 = 1 VanguardDB.profiles.Default.RaidStatus.resurrect = false ns.GetModule('RaidStatus').UpdateAll()");
+  expect(summonOf(addon, 1)[0], "the resurrection switch turns it off too").toBe(false);
+  addon.eval("VanguardDB.profiles.Default.RaidStatus.resurrect = true C_IncomingSummon.IncomingSummonStatus = nil ns.GetModule('RaidStatus').UpdateAll()");
+  expect(summonOf(addon, 1)[0], "a client without the calls shows none").toBe(false);
+  addon.eval("C_IncomingSummon = nil");
+  expect(addon.eval("return ns.GetModule('RaidStatus').SummonAtlas('raid1')"), "nor without the namespace").toBe(null);
+});

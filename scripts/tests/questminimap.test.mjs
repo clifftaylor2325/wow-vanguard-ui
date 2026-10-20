@@ -33,16 +33,16 @@ const MINIMAP_ENV = `
 const marks = (addon) => Object.values(addon.eval(`local out, QM = {}, ns.QuestMinimap
   for i, m in ipairs(QM.marks) do if m:IsShown() then
     local _, _, _, x, y = m:GetPoint(1) local _, _, _, a = m:GetVertexColor()
-    out[#out + 1] = { (m:GetTexture() or ""):match("Icons\\\\(%a+)"), math.floor(x + 0.5), math.floor(y + 0.5), a } end end
+    out[#out + 1] = { (m:GetTexture() or ""):match("(%a+)$"), math.floor(x + 0.5), math.floor(y + 0.5), a } end end
   return out`));
 
-it("quest minimap: a ! for each quest in the log with objectives left, a ? once ready, faint on the edge past the minimap", () => {
+it("quest minimap: a dot for each quest in the log with objectives left, a ? once ready, faint on the edge past the minimap", () => {
   const addon = loggedIn(MINIMAP_ENV);
   addon.advance(0.5);
   const half = addon.eval("return Minimap:GetWidth() / 2");
   const room = half - addon.eval("return ns.QuestMinimap.SIZE") / 2;
   expect(marks(addon), "east, north on the edge (drawn just inside it), and west past it").toEqual([
-    ["QuestBang", Math.round(half / 2), 0, 1], ["QuestQuery", 0, Math.round(room), 1], ["QuestBang", -Math.round(room), 0, 0.5]]);
+    ["Knob", Math.round(half / 2), 0, 1], ["QuestQuery", 0, Math.round(room), 1], ["Knob", -Math.round(room), 0, 0.5]]);
 });
 
 // TEST-ONLY: one quest 400 yards north-east, past the minimap's corner.
@@ -53,7 +53,7 @@ it("quest minimap: on a round minimap a far mark sits on the rim, inside the dis
   addon.advance(0.5);
   const half = addon.eval("return Minimap:GetWidth() / 2");
   const along = Math.round((half - addon.eval("return ns.QuestMinimap.SIZE") / 2) / Math.sqrt(2));
-  expect(marks(addon), "on the rim at 45 degrees, faint").toEqual([["QuestBang", along, along, 0.5]]);
+  expect(marks(addon), "on the rim at 45 degrees, faint").toEqual([["Knob", along, along, 0.5]]);
 });
 
 it("quest minimap: with Vanguard's minimap off the game's round one gets rim marks; a square one gets its corner", () => {
@@ -114,4 +114,20 @@ it("quest minimap: marks show with Vanguard's quest tracker module off", () => {
   const addon = loggedIn(MINIMAP_ENV, { savedVariables: "VanguardDB.profiles = { Default = { modules = { QuestTracker = false } } }" });
   addon.advance(2.5);
   expect(marks(addon).length, "east, north and west, as with the tracker on").toBe(3);
+});
+
+it("quest minimap: an objective's dot is small and in the accent, a ? gold and drawn over the dots, and the quest the arrow follows a size larger", () => {
+  const addon = loggedIn(MINIMAP_ENV);
+  addon.advance(0.5);
+  // Each shown mark's texture name, size, draw sublevel and whether its colour is the token given.
+  const looks = () => addon.eval(`local out, T = {}, ns.Theme for _, m in ipairs(ns.QuestMinimap.marks) do if m:IsShown() then
+    local _, sub = m:GetDrawLayer() local r, g, b = m:GetVertexColor() local tr, tg, tb = T.RGB(m:GetTexture():find("Knob") and "accent" or "gold")
+    out[#out + 1] = { m:GetTexture():match("(%a+)$"), m:GetWidth(), sub, r == tr and g == tg and b == tb } end end return out`);
+  expect(looks().slice(0, 2), "the east dot: 8, under; the north ?: 12, over").toEqual([["Knob", 8, 1, true], ["QuestQuery", 12, 2, true]]);
+  // TEST-ONLY: the arrow picks the quest given.
+  const follow = (id) => { addon.eval(`ns.QuestArrow.Choose = function() return ${id} end`); addon.advance(1.5); };
+  follow(90061);
+  expect([addon.eval("return ns.QuestArrow.current"), looks()[0]], "followed: the dot a size larger").toEqual([90061, ["Knob", 12, 1, true]]);
+  follow(90062);
+  expect(looks().map((l) => l[1]), "a followed ? is the largest mark (QM.SIZE), the dot back to 8").toEqual([8, addon.eval("return ns.QuestMinimap.SIZE"), 8]);
 });

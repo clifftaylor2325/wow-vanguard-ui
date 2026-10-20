@@ -2,7 +2,8 @@
 --   * players out of your range fade
 --   * raid target icons (skull, cross...) along the top
 --   * ready check answers in the middle while a check runs
---   * a marker on dead players someone is resurrecting
+--   * a marker on dead players someone is resurrecting, and on players being
+--     summoned (pending, accepted or declined: the game's own raid frame icons)
 --   * a crown for the group leader, a smaller mark for assistants
 -- The ready check, leader and assist marks are Vanguard's own icons in
 -- theme colors; the missing-health text steps aside while a center mark shows.
@@ -31,6 +32,8 @@ RS.READY = {
   waiting = { T.Icon("Waiting"), "text2" },
 }
 RS.REZ = "Interface\\RaidFrame\\Raid-Icon-Rez"
+-- The game's summon atlases by Enum.SummonStatus (1 pending, 2 accepted, 3 declined), drawn untinted.
+RS.SUMMON = { "RaidFrame-Icon-SummonPending", "RaidFrame-Icon-SummonAccepted", "RaidFrame-Icon-SummonDeclined" }
 RS.LEADER = { T.Icon("Crown"), "gold" }
 RS.ASSIST = { T.Texture("Diamond"), "text2" }
 
@@ -72,6 +75,15 @@ end
 -- True while someone is resurrecting the unit.
 function RS.Resurrecting(unit)
   return plain(call("UnitHasIncomingResurrection", unit)) == true
+end
+
+-- The summon atlas for a unit someone is summoning, or nil (none, a hidden answer, or a client without the calls).
+function RS.SummonAtlas(unit)
+  local summons = C_IncomingSummon
+  if type(summons) ~= "table" or type(summons.HasIncomingSummon) ~= "function" then return nil end
+  if type(summons.IncomingSummonStatus) ~= "function" or plain(summons.HasIncomingSummon(unit)) ~= true then return nil end
+  local status = plain(summons.IncomingSummonStatus(unit))
+  return type(status) == "number" and RS.SUMMON[status] or nil
 end
 
 -- Range ------------------------------------------------------------------------------------
@@ -150,18 +162,23 @@ local function addShadow(b, t, size)
   t.shadow:Hide()
 end
 
--- Adds the marks to a raid button (RF setup hook): raid icon and leader crown
--- on the top edge; the ready check and resurrection, which come and go, big
--- in the center over everything (as the client's own raid frames do).
-local function setup(b)
-  followHeader()
-  local big = RF.TileZones().icon + 4
-  b.raidIcon = mark(b, 12, "TOP", 0, 3)
+-- The marks that come and go, `big`, in the center over everything (as the client's own raid frames do):
+-- the ready check (with its shadow), the resurrection and the summon.
+local function centerMarks(b, big)
   b.ready = mark(b, big, "CENTER", 0, 0)
   b.rez = mark(b, big, "CENTER", 0, 0)
   b.rez:SetTexture(RS.REZ)
-  b.leader = mark(b, 10, "TOPLEFT", 2, 5)
+  b.summon = mark(b, big, "CENTER", 0, 0)
   addShadow(b, b.ready, big)
+end
+
+-- Adds the marks to a raid button (RF setup hook): raid icon and leader crown
+-- on the top edge, and the center marks.
+local function setup(b)
+  followHeader()
+  b.raidIcon = mark(b, 12, "TOP", 0, 3)
+  centerMarks(b, RF.TileZones().icon + 4)
+  b.leader = mark(b, 10, "TOPLEFT", 2, 5)
   addShadow(b, b.leader, 10)
 end
 
@@ -196,13 +213,20 @@ local function updateRaidIcon(b, unit)
   RS.PaintIcon(b.raidIcon, RS.settings.raidIcons and RS.RaidIcon(unit))
 end
 
--- The marks that come and go in the center: the ready check answer and the
--- resurrection. The status text (missing health, Dead) hides while one shows.
+-- Shows a game atlas on a texture, or hides it for nil or an atlas the client doesn't have (SetAtlas says false).
+local function showAtlas(t, atlas)
+  t:SetShown(atlas ~= nil and t:SetAtlas(atlas) ~= false)
+end
+
+-- The marks that come and go in the center, one at a time: the ready check answer, else the summon,
+-- else the resurrection (the last two under one switch). The status text (missing health, Dead) hides while one shows.
 local function updateCenter(b, unit)
   local s = RS.settings
   showMark(b.ready, s.readyCheck and RS.readyRunning, RS.ReadyMark(unit))
-  b.rez:SetShown(s.resurrect and RS.Resurrecting(unit))
-  b.status:SetShown(not (b.ready:IsShown() or b.rez:IsShown()))
+  local summon = s.resurrect and not b.ready:IsShown() and RS.SummonAtlas(unit) or nil
+  showAtlas(b.summon, summon)
+  b.rez:SetShown(s.resurrect and not summon and RS.Resurrecting(unit))
+  b.status:SetShown(not (b.ready:IsShown() or b.rez:IsShown() or b.summon:IsShown()))
 end
 
 -- The leader crown or assistant mark.
@@ -268,7 +292,7 @@ local function updateMarks(b, unit)
   if b.raidIcon then updateCenter(b, unit) end
 end
 
--- A unit's resurrection state changed: refresh the tile showing it.
+-- A unit's resurrection or summon state changed: refresh the tile showing it.
 local function onUnit(_, unit)
   RF.ForUnit(unit, updateMarks)
 end
@@ -278,7 +302,7 @@ local EVENTS = {
   -- A roster change refreshes every tile, marks included, through RF.RosterChanged.
   RAID_TARGET_UPDATE = eachPart(updateRaidIcon), PARTY_LEADER_CHANGED = eachPart(updateLeader),
   READY_CHECK = onReadyCheck, READY_CHECK_CONFIRM = onReadyCheck, READY_CHECK_FINISHED = onReadyFinished,
-  INCOMING_RESURRECT_CHANGED = onUnit,
+  INCOMING_RESURRECT_CHANGED = onUnit, INCOMING_SUMMON_CHANGED = onUnit,
 }
 
 -- Module entry point (Core/Modules.lua): hook into raid buttons (existing and new), then listen.

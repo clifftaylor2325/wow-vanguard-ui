@@ -387,9 +387,15 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 
 ### 6.2a Raid indicators (if you can)
 
-- Do: in a group, open `/vg` → Raid frames, set Indicator 1 to "your buffs" and Indicator 2 to "crowd control", reload, then buff a member and let a mob crowd-control another.
+- Do: in a group, open `/vg` → Raid frames, set Right edge, top to "Your buffs" and Right edge, second to "Crowd control", reload, then buff a member and let a mob crowd-control another.
 - Expect: a small icon of the buff on the right edge of that member's tile, under the missing-buff mark, and the crowd control's icon below it (or beside it on a short tile). Empty slots show nothing, and offline or dead members show none. Nothing errors in combat.
 - If it fails, paste: a screenshot and `/vg errors`. A filter word the game rejects is reported once in `/vg errors` as `aura filter ...`.
+
+### 6.2b Raid tiles in a fight: missing health, the tooltip, summons
+
+- Do: open `/vg` → Raid frames and read the indicator captions and **Mark players being resurrected or summoned**. In a party, let a member lose some health, out of combat and then in a dungeon fight; let them heal to full. Point at a tile out of combat, then pull with the pointer on it. With a warlock, summon a member who is away, and have them accept once and decline once. Then turn **Incoming heals** off under Healing while a heal is on its way to a shielded member.
+- Expect: the captions read "Right edge, top (reload)", "Right edge, second (reload)" and "Right edge, third (reload)" with a note above them, and the choices start with a capital. The missing health reads like "-1234" both out of and in combat, and is blank at full health. The tooltip shows the player out of combat and goes on the pull; in the fight none shows. The summon icon shows on the tile while the summon is pending and changes when they accept or decline. The shield starts at the health edge once the heal bar is off. `/vg errors` stays empty. [Needs in-game check: all of it.]
+- If it fails, paste: a screenshot of the tile, `/vg errors`, and whether you were in an instance.
 
 ### 6.3 Main tank tiles (if you can)
 
@@ -645,7 +651,7 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 ### 8.4d Quest spots on the minimap
 
 - Do: with quests in your log in the zone you are in, look at the minimap, walk toward one quest's area and away from another, then turn on the game's Rotate Minimap option and turn round.
-- Expect: a small gold `!` on the minimap over each quest's area (the same spots as the world map's quest blobs), a gold `?` for a quest ready to turn in; a quest farther than the minimap shows sits faint on its edge in its direction and slides in as you approach. With Rotate Minimap on, the marks turn with the map. `/vg guide probe` shows `C_Minimap.GetViewRadius: present`. [Needs in game: that the marks sit on the right spots at every zoom.]
+- Expect: a small dot in your accent on the minimap over each quest's area (the same spots as the world map's quest blobs), a gold `?` for a quest ready to turn in, drawn over any dot it overlaps; Shift-click a quest in the tracker and its mark grows a size; a quest farther than the minimap shows sits faint on its edge in its direction and slides in as you approach. With Rotate Minimap on, the marks turn with the map. `/vg guide probe` shows `C_Minimap.GetViewRadius: present`. [Needs in game: that the marks sit on the right spots at every zoom, and that the dot reads clearly on busy ground (grass, snow, desert, a city) on both the square and the round minimap.]
 - If it fails, paste: a screenshot of the minimap and the world map, and `/vg errors`.
 
 ### 8.5 Levelling helpers

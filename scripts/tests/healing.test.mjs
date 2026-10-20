@@ -24,6 +24,9 @@ it("heal prediction, aggro, buff watch", () => {
   addon.eval("__pred.raid1.heals = 50");
   addon.fire("UNIT_HEAL_PREDICTION", "raid1");
   expect(healing(addon, 1).heal === 50, "UNIT_HEAL_PREDICTION refreshes the heal bar").toBeTruthy();
+  addon.eval("VanguardDB.profiles.Default.RaidHealing.healPrediction = false");
+  addon.fire("UNIT_HEAL_PREDICTION", "raid1");
+  expect(addon.eval("local b = Vanguard_RaidUnitButton1 return { b.heal:IsShown(), b.heal:GetValue() }"), "incoming heals turned off: the bar hides empty, so the shield starts at the health edge").toEqual([false, 0]);
 });
 
 // TEST-ONLY: the client's all-at-once aura list (counted), the by-name lookup and the spell lookup (counted too),
@@ -75,7 +78,7 @@ it("healing fallbacks and options", () => {
   const addon = loggedIn(UNITS_ENV + RAID_ENV + CLICK_LUA + HEALING_ENV + `CreateUnitHealPredictionCalculator = nil UnitGetTotalAbsorbs = nil
     UnitGetIncomingHeals = function() return 120 end`);
   addon.eval('__spawn(1, "raid1")');
-  expect(healing(addon, 1).heal === 120 && healing(addon, 1).shield == null, "without the calculator: the older incoming-heals call; no shields").toBeTruthy();
+  expect(healing(addon, 1).heal === 120 && healing(addon, 1).shield === 0 && addon.eval("return Vanguard_RaidUnitButton1.shield:IsShown()") === false, "without the calculator: the older incoming-heals call; no shields (the bar hidden, empty)").toBeTruthy();
   addon.eval('ns.Options.Show("healing")');
   // The one buff editor on the page, found before Save is pressed: Save rebuilds the page (new rows for the typed
   // names), which appends a fresh editor to the client's frame list, so a walk over that list would press Save forever.

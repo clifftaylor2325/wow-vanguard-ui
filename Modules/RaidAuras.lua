@@ -38,8 +38,8 @@ RA.SOURCES = {
   mine = "HELPFUL|PLAYER", cc = "HARMFUL|CROWD_CONTROL", dispel = RA.DISPELLABLE,
 }
 RA.SOURCE_CHOICES = {
-  { "none", "none" }, { "external", "external defensive" }, { "defensive", "big defensive" }, { "important", "important buff" },
-  { "mine", "your buffs" }, { "cc", "crowd control" }, { "dispel", "dispellable debuff" },
+  { "none", "None" }, { "external", "External defensive" }, { "defensive", "Big defensive" }, { "important", "Important buff" },
+  { "mine", "Your buffs" }, { "cc", "Crowd control" }, { "dispel", "Dispellable debuff" },
 }
 -- An indicator icon's side, and how many slots there are.
 RA.IND_SIZE, RA.IND_SLOTS = 9, 3

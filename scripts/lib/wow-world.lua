@@ -492,6 +492,18 @@ C_StringUtil = {
     end
     return f
   end,
+  -- A number as whole-number text (rounded down), "" for zero; a secret stays secret.
+  TruncateWhenZero = function(n)
+    if issecretvalue(n) then local v = rawget(n, "n") return world.secret(v and C_StringUtil.TruncateWhenZero(v)) end
+    local whole = math.floor(n)
+    return whole == 0 and "" or tostring(whole)
+  end,
+  -- prefix .. infix .. suffix, or "" when infix is ""; a secret infix gives a secret.
+  WrapString = function(infix, prefix, suffix)
+    if issecretvalue(infix) then local v = rawget(infix, "n") return world.secret(v and C_StringUtil.WrapString(v, prefix, suffix)) end
+    if infix == "" then return "" end
+    return (prefix or "") .. infix .. (suffix or "")
+  end,
 }
 
 -- Atlases the client has (a test adds to world.atlases); unknown ones are nil, as in game.
@@ -550,6 +562,13 @@ function UnitHealth(unit) return uf(unit, "hp") or 0 end
 function UnitHealthMax(unit) return uf(unit, "maxhp") or 0 end
 -- The number inside a value that may be secret (the harness looks; the addon never does).
 local function inside(v) return issecretvalue(v) and rawget(v, "n") or v end
+-- Max health minus health, secret when either is (SecretReturns in Forever's docs).
+function UnitHealthMissing(unit)
+  local hp, max = UnitHealth(unit), UnitHealthMax(unit)
+  if not (issecretvalue(hp) or issecretvalue(max)) then return max - hp end
+  local h, m = inside(hp), inside(max)
+  return world.secret(type(h) == "number" and type(m) == "number" and m - h or nil)
+end
 
 -- A unit's health as a percent (0 to 100); with a curve, what the curve gives at the fraction (0 to 1), as the client
 -- evaluates it. With hidden health, a color comes back with hidden components.
