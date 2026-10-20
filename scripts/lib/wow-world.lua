@@ -560,7 +560,10 @@ function UnitPlayerControlled(unit) return uf(unit, "isPlayer") == true or uf(un
 function UnitClass(unit) local u = resolveUnit(unit) return u and (u.className or u.class), u and u.class, 0 end
 function UnitLevel(unit) return uf(unit, "level") or 0 end
 function UnitReaction(unit) local u = resolveUnit(unit) return u and (u.reaction or 5) end
-function UnitIsDeadOrGhost(unit) return uf(unit, "dead") == true end
+function UnitIsDeadOrGhost(unit) return uf(unit, "dead") == true or uf(unit, "ghost") == true end
+-- A released player (the unit's ghost field), and a hunter feigning death (feign), whom the client also calls dead.
+function UnitIsGhost(unit) return uf(unit, "ghost") == true end
+function UnitIsFeignDeath(unit) return uf(unit, "feign") == true end
 function UnitIsConnected(unit) local u = resolveUnit(unit) return u ~= nil and u.connected ~= false end
 function UnitIsAFK(unit) return uf(unit, "afk") == true end
 function UnitOnTaxi(unit) return uf(unit, "taxi") == true end

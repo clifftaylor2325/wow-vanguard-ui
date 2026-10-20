@@ -88,7 +88,7 @@ read_globals = {
   -- F4 Chat watch: the game's whisper call, and its older name.
   "ChatFrameUtil", "GetChannelList", "ChatFrame_SendTell",
   -- F5 Situations: whether you're in a raid, and resting.
-  "IsInRaid", "IsResting", "UnitIsGroupLeader", "UnitIsGroupAssistant", "UnitCanAttack", "UnitIsTapDenied", "UnitAffectingCombat", "UnitDetailedThreatSituation",
+  "IsInRaid", "IsResting", "UnitIsGroupLeader", "UnitIsGroupAssistant", "UnitCanAttack", "UnitIsTapDenied", "UnitIsGhost", "UnitIsFeignDeath", "UnitAffectingCombat", "UnitDetailedThreatSituation",
   -- #208 Quest guidance: the client's quest lines (quest-start spots on a map).
   "C_QuestLine",
   -- F6 Auction helper: the auction house API and the game's auction house window.

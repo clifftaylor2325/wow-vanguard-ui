@@ -483,6 +483,41 @@ it("threat on your target and your pet's happiness", () => {
   expect(addon.eval('return __click("happiness") and VanguardDB.profiles.Default.UnitExtras.happiness'), "and the pet's").toBe(false);
 });
 
+it("a creature someone else tagged is grey on the unit frames, as on the game's frames", () => {
+  const addon = loggedIn(UNITS_ENV + `__tapped = { target = true }
+    UnitIsTapDenied = function(unit) return __tapped[unit] end
+    UnitPlayerControlled = function(unit) return __units[unit] and __units[unit].controlled end`);
+  expect(isTok(addon, ufState(addon, "target").color, "tapped"), "another player's mob is grey").toBe(true);
+  addon.eval("__tapped.target = false");
+  addon.fire("UNIT_FACTION", "target");
+  expect(isTok(addon, ufState(addon, "target").color, "hostile"), "let go, it is red again on the faction change the game re-greys on").toBe(true);
+  addon.eval("__tapped.target = true __units.target.controlled = true");
+  addon.fire("UNIT_FACTION", "target");
+  expect(isTok(addon, ufState(addon, "target").color, "hostile"), "a player's pet or demon is never tagged").toBe(true);
+  addon.eval("__units.target.controlled = nil __tapped.target = { __secret = true }");
+  addon.fire("UNIT_FACTION", "target");
+  expect(isTok(addon, ufState(addon, "target").color, "hostile"), "a hidden answer counts as untagged").toBe(true);
+  addon.eval("__tapped.player = true");
+  expect(ufState(addon, "player").color[0], "players keep their class color").toBe(0.25);
+});
+
+it("a released player reads Ghost and a feigning hunter reads alive", () => {
+  const addon = loggedIn(UNITS_ENV + `UnitIsGhost = function(unit) return __units[unit].ghost end
+    UnitIsFeignDeath = function(unit) return __units[unit].feign end`, NO_RAID);
+  // The party frame's health text.
+  const text = () => ufState(addon, "party1").text;
+  expect(text(), "dead and not released: Dead").toBe("Dead");
+  addon.eval("__units.party1.ghost = true");
+  addon.fire("UNIT_HEALTH", "party1");
+  expect(text(), "released: Ghost").toBe("Ghost");
+  addon.eval("__units.party1.ghost = { __secret = true }");
+  addon.fire("UNIT_HEALTH", "party1");
+  expect(text(), "a hidden ghost answer: Dead").toBe("Dead");
+  addon.eval("__units.party1.ghost = nil __units.party1.feign = true");
+  addon.fire("UNIT_HEALTH", "party1");
+  expect(text(), "feigning (the client calls it dead): the health shows").toBe("0");
+});
+
 it("unit events: combo points, the druid's mana, power ticks and threat ask the client for your own units only", () => {
   const addon = loggedIn(UNITS_ENV + EXTRAS_ENV + TICKS_ENV + `__units.player.class = "DRUID" __cp = 2
     GetComboPoints = function() return __cp end`, NO_RAID);

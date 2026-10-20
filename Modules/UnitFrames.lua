@@ -60,6 +60,15 @@ local function flag(value)
   return not isSecret(value) and value == true
 end
 
+-- A client answer about a unit, or nil when the client lacks the call or hides the answer.
+local function asked(name, ...)
+  local fn = _G[name]
+  if type(fn) ~= "function" then return nil end
+  local answer = fn(...)
+  if isSecret(answer) then return nil end
+  return answer
+end
+
 -- The color for a unit's reaction to the player (hostile, neutral, friendly).
 local function reactionColor(unit)
   local reaction = UnitReaction and UnitReaction(unit, "player")
@@ -69,17 +78,29 @@ local function reactionColor(unit)
   return { T.RGB(reaction <= 3 and "hostile" or reaction == 4 and "neutral" or "friendly") }
 end
 
--- r, g, b for a unit's health bar: class color for players, reaction otherwise.
-function UF.HealthColor(unit)
+-- True for a creature another player or group has tagged (the game's own test, as its target frame greys
+-- it): never a player or what a player controls. A hidden or missing answer counts as untagged.
+function UF.Tapped(unit)
+  return asked("UnitPlayerControlled", unit) ~= true and asked("UnitIsTapDenied", unit) == true
+end
+
+-- r, g, b for a unit with no tag grey: class color for players, reaction otherwise (the plates add their
+-- own grey, behind their Tag marks switch).
+function UF.UnitColor(unit)
   if flag(UnitIsPlayer(unit)) then
     local _, class = UnitClass(unit)
     local c = not isSecret(class) and RAID_CLASS_COLORS and RAID_CLASS_COLORS[class]
-    if c then
-      return c.r, c.g, c.b
-    end
+    if c then return c.r, c.g, c.b end
   end
   local c = reactionColor(unit)
   return c[1], c[2], c[3]
+end
+
+-- r, g, b for a unit's health bar: grey for a creature someone else tagged, always, as the game's
+-- frames do; else its class or reaction color.
+function UF.HealthColor(unit)
+  if UF.Tapped(unit) then return T.RGB("tapped") end
+  return UF.UnitColor(unit)
 end
 
 -- Power types with a Vanguard color; others use the client's PowerBarColor.
@@ -116,13 +137,17 @@ local function isOffline(unit)
   return not isSecret(connected) and connected == false
 end
 
--- "Dead", "Offline", or nil when the unit is neither. Safe with secret
--- values: they count as neither, and nothing secret is compared.
+-- "Ghost" for a player who released, "Dead" for anyone else dead, nil for the living and for a hunter
+-- feigning death (the client calls them dead too). A hidden answer counts as no.
+local function deathWord(unit)
+  if asked("UnitIsFeignDeath", unit) == true or not flag(UnitIsDeadOrGhost(unit)) then return nil end
+  return asked("UnitIsGhost", unit) == true and "Ghost" or "Dead"
+end
+
+-- "Dead", "Ghost", "Offline", or nil when the unit is none of them. Safe with secret
+-- values: they count as none, and nothing secret is compared.
 function UF.DownState(unit)
-  if flag(UnitIsDeadOrGhost(unit)) then
-    return "Dead"
-  end
-  return isOffline(unit) and "Offline" or nil
+  return deathWord(unit) or (isOffline(unit) and "Offline" or nil)
 end
 
 -- Health as a percent ("84%"), from the client's own percent with its 0-100
@@ -150,15 +175,6 @@ function UF.LevelText(unit)
   local level = ns.PlainNumber(type(UnitLevel) == "function" and UnitLevel(unit) or nil)
   if not level then return "" end
   return level < 1 and "??" or tostring(level)
-end
-
--- A client answer about a unit, or nil when the client lacks the call or hides the answer.
-local function asked(name, ...)
-  local fn = _G[name]
-  if type(fn) ~= "function" then return nil end
-  local answer = fn(...)
-  if isSecret(answer) then return nil end
-  return answer
 end
 
 -- Who has tagged a creature you can attack: "theirs" when the client calls it tap denied (another player
