@@ -178,58 +178,111 @@ function H.Launched()
   return (type(clock) == "function" and ns.PlainNumber(clock()) or 0) >= H.LAUNCH
 end
 
--- The keys of a map's entries stamped before launch under `field`; with drop, the entries are removed. Returns how many.
-local function sweepMap(map, field, drop)
+-- The keys of a map's entries stamped before launch under `field`.
+local function staleKeys(map, field)
   local old = {}
   for key, entry in pairs(type(map) == "table" and map or {}) do
     if type(entry) == "table" and early(entry[field]) then old[#old + 1] = key end
   end
-  for _, key in ipairs(drop and old or {}) do map[key] = nil end
-  return #old
+  return old
 end
 
--- A list's records stamped before launch (field t); with drop, they are removed and the rest keep their order. Returns how many.
-local function sweepList(list, drop)
+-- A list's records not stamped before launch (field t), in their order.
+local function keptRecords(list)
   local kept = {}
   for _, r in ipairs(type(list) == "table" and list or {}) do
     if not (type(r) == "table" and early(r.t)) then kept[#kept + 1] = r end
   end
-  local gone = type(list) == "table" and #list - #kept or 0
-  for i = 1, drop and gone > 0 and #list or 0 do list[i] = kept[i] end
-  return gone
+  return kept
 end
 
--- The beta-era prices of every home's house (recounted when dropped).
-local function sweepPrices(houses, drop)
-  local n = 0
+-- How many records a list loses to the sweep: none when it is not a list.
+local function goneCount(list, kept)
+  return type(list) == "table" and #list - #kept or 0
+end
+
+-- The beta-era prices of each home's house: the house, and the keys of its prices stamped before launch.
+local function findPrices(houses)
+  local found = {}
   for _, house in pairs(type(houses) == "table" and houses or {}) do
-    n = n + sweepMap(type(house) == "table" and house.prices, "t", drop)
-    if drop and type(house) == "table" then house.count = 0 for _ in pairs(house.prices) do house.count = house.count + 1 end end
+    if type(house) == "table" then found[#found + 1] = { house = house, keys = staleKeys(house.prices, "t") } end
   end
-  return n
+  return found
 end
 
--- The beta-era sales of every home's ledger, and its auctions still open from then.
-local function sweepSales(books, drop)
-  local n = 0
+-- The beta-era sales of each ledger: the book, its records to keep, how many go, and its auctions open from then.
+local function findSales(books)
+  local found = {}
   for _, book in pairs(type(books) == "table" and books or {}) do
-    n = n + sweepList(type(book) == "table" and book.records, drop) + sweepMap(type(book) == "table" and book.open, "t", drop)
+    if type(book) == "table" then
+      local kept = keptRecords(book.records)
+      found[#found + 1] = { book = book, kept = kept, gone = goneCount(book.records, kept), openKeys = staleKeys(book.open, "t") }
+    end
   end
-  return n
+  return found
 end
 
--- The beta-era characters of every home.
-local function sweepCharacters(homes, drop)
-  local n = 0
-  for _, chars in pairs(type(homes) == "table" and homes or {}) do n = n + sweepMap(chars, "updated", drop) end
-  return n
+-- The beta-era characters of each home: the home's table, and the keys of its characters stamped before launch.
+local function findCharacters(homes)
+  local found = {}
+  for _, chars in pairs(type(homes) == "table" and homes or {}) do
+    found[#found + 1] = { chars = chars, keys = staleKeys(chars, "updated") }
+  end
+  return found
 end
 
--- How many prices, sales and characters were last noted before launch: { prices, sales, characters }; with drop, they are removed.
-function H.Beta(drop)
+-- What the saved data holds from before launch, found without changing it: { prices, sales, characters }.
+local function findBeta()
   local db = type(VanguardDB) == "table" and VanguardDB or {}
   local ah = type(db.ah) == "table" and db.ah or {}
-  return { prices = sweepPrices(ah.houses, drop), sales = sweepSales(ah.ledgers, drop), characters = sweepCharacters(db.inventory, drop) }
+  return { prices = findPrices(ah.houses), sales = findSales(ah.ledgers), characters = findCharacters(db.inventory) }
+end
+
+-- How many prices, sales and characters a found set lists: { prices, sales, characters }.
+local function countsOf(found)
+  local n = { prices = 0, sales = 0, characters = 0 }
+  for _, item in ipairs(found.prices) do n.prices = n.prices + #item.keys end
+  for _, item in ipairs(found.sales) do n.sales = n.sales + item.gone + #item.openKeys end
+  for _, item in ipairs(found.characters) do n.characters = n.characters + #item.keys end
+  return n
+end
+
+-- Removes the listed keys from a map.
+local function dropKeys(map, keys)
+  for _, key in ipairs(keys) do map[key] = nil end
+end
+
+-- Puts the kept records back at the front of a list, so its old end is removed.
+local function keepOnly(list, kept)
+  for i = 1, #list do list[i] = kept[i] end
+end
+
+-- Sets a house's count to the prices it holds.
+local function recount(house)
+  house.count = 0
+  for _ in pairs(house.prices) do house.count = house.count + 1 end
+end
+
+-- Removes what a found set lists from the saved data, and recounts the houses whose prices went.
+local function removeFound(found)
+  for _, item in ipairs(found.prices) do dropKeys(item.house.prices, item.keys) recount(item.house) end
+  for _, item in ipairs(found.sales) do
+    if item.gone > 0 then keepOnly(item.book.records, item.kept) end
+    dropKeys(item.book.open, item.openKeys)
+  end
+  for _, item in ipairs(found.characters) do dropKeys(item.chars, item.keys) end
+end
+
+-- How many prices, sales and characters were last noted before launch: { prices, sales, characters }.
+function H.Beta()
+  return countsOf(findBeta())
+end
+
+-- Removes what was noted before launch, and returns the counts removed: { prices, sales, characters }.
+function H.ClearBeta()
+  local found = findBeta()
+  removeFound(found)
+  return countsOf(found)
 end
 
 -- "12 prices, 3 sales, 2 characters" (the ones there are), or nil when there are none.
@@ -244,14 +297,14 @@ end
 -- /vg launch [clear]: what is saved from before launch, or (clear, once launch has passed) removes it.
 function H.Launch(arg)
   if arg == "clear" and not H.Launched() then return ns.Chat("Launch is on 4 November 2026; nothing is cleared before then.") end
-  local text = betaText(H.Beta(arg == "clear"))
+  local text = betaText(arg == "clear" and H.ClearBeta() or H.Beta())
   if not text then return ns.Chat("No prices, sales or characters saved from before launch.") end
   ns.Chat(arg == "clear" and ("Cleared what was saved from before launch: " .. text .. ".") or ("Saved from before launch (the beta): " .. text .. ". /vg launch clear removes them."))
 end
 
 -- The Clear button on the Town and gear page: asks first, naming what would go.
 function H.AskClear()
-  local text = betaText(H.Beta(false))
+  local text = betaText(H.Beta())
   if not text then return ns.Chat("No prices, sales or characters saved from before launch.") end
   ns.Ask("Clear what was saved before launch (" .. text .. ")? Prices, sales and characters you saw after launch stay.", "Clear", function() H.Launch("clear") end, function() end)
 end
@@ -260,7 +313,7 @@ end
 function H.LaunchNotice()
   if not H.Launched() or type(VanguardDB) ~= "table" or VanguardDB.launchNoticed then return end
   VanguardDB.launchNoticed = true
-  local text = betaText(H.Beta(false))
+  local text = betaText(H.Beta())
   if text then ns.Chat("Still saved from the beta: " .. text .. ". Clear them under /vg > Town and gear if the live game starts fresh.") end
 end
 ns.On("PLAYER_LOGIN", ns.Guard("launch notice", H.LaunchNotice))
