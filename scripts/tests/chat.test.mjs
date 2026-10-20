@@ -1825,3 +1825,15 @@ describe("auto-accept: Forever's own invite windows and the teleport check", () 
     expect(addon.eval("return __wfgWorld.summonAccepted == true"), "once it can: accepted").toBe(true);
   });
 });
+
+describe("chat text size: the game's chat setting", () => {
+  it("survives a reload, so chat keeps following the game's own size", () => {
+    const first = loggedIn();
+    first.eval(`for _, p in ipairs(ns.Options.PAGES) do if p.key == "chat" then
+      for _, r in ipairs(p.rows()) do if r[2] == "Chat text size (follows Text size)" then r[5](0) end end end end`);
+    const saved = first.eval("return VanguardDB.profiles.Default.Chat");
+    const again = loggedIn("FCF_SetChatWindowFontSize = nil", { savedVariables: `VanguardDB.profiles.Default = { Chat = ${luaValue(saved)} }` });
+    again.eval("ChatFrame1:SetFont(ChatFrame1:GetFont(), 18)");
+    expect(again.eval('return { ns.Settings("Chat").textSize, ns.GetModule("Chat").TextSize(ChatFrame1) }'), "still the game's setting after the reload: the window's own 18").toEqual([0, 18]);
+  });
+});

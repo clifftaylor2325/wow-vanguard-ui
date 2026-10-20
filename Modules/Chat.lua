@@ -72,8 +72,9 @@ function CH.DefaultSize(width)
   return math.max(CH.SMALL[1], math.min(CH.SPOT[3], roomWidth(width))), CH.SPOT[4]
 end
 
--- Chat text sizes before the Text size setting; "game" keeps each window's own size.
-CH.SIZES = { { 10, "Small" }, { 12, "Medium" }, { 14, "Large" }, { "game", "The game's chat setting" } }
+-- Chat text sizes before the Text size setting; 0 keeps each window's own size (a number, as the
+-- setting's default is: a saved value of another type is put back to the default at login).
+CH.SIZES = { { 10, "Small" }, { 12, "Medium" }, { 14, "Large" }, { 0, "The game's chat setting" } }
 
 -- The chat window count on this client.
 local function windowCount()
@@ -97,11 +98,17 @@ local function fontSize(frame)
   return ns.PlainNumber(size) or 14
 end
 
+-- The chat text size chosen on the Chat page, or nil while chat follows the game's own size (0).
+local function chosenSize()
+  local size = tonumber(CH.settings.textSize) or 0
+  return size > 0 and size or nil
+end
+
 -- The size chat text draws at: the chosen size scaled by Text size, or the window's own.
 function CH.TextSize(frame)
-  local size = CH.settings.textSize
-  if type(size) ~= "number" then return fontSize(frame) end
-  return T.ScaledSize(size)
+  local size = chosenSize()
+  if size then return T.ScaledSize(size) end
+  return fontSize(frame)
 end
 
 -- Theme font on a chat window, at the chat text size, with the theme's drop shadow under every line
@@ -957,7 +964,7 @@ end
 
 -- The game's own chat size menu re-fonts a window: put ours back (unless chat follows the game).
 local function onGameSize()
-  if type(CH.settings.textSize) == "number" then CH.Refresh() end
+  if chosenSize() then CH.Refresh() end
 end
 
 -- Follows the game's tab alert flash (FCF_StartAlertFlash and FCF_StopAlertFlash), which keeps a
