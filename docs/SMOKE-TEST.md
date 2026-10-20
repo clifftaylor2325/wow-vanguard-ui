@@ -736,6 +736,12 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Expect: the first three are not taken as prices (the box goes back to the suggestion; nothing posts at 100,000 gold or 16 gold); `1g 50s` is the price. With per stack on, `55c` for a stack of 10 shows `60c` in the box (6c a unit, rounded up) and the stack posts at 60c, never under the 55c typed. [Needs in-game check: what the client does with a posted price near the highest it takes.]
 - If it fails, paste: a screenshot of the Sell card and `/vg errors`.
 
+### 9.4b The scan countdown, a refused scan, and deals kept through the mailbox
+
+- Do: on the Lists tab, Scan the auction house and let it finish; close the auction house and open it again. Within 15 minutes, open the auction house on a second character (or, with another auction addon, run its full scan first) and look at the Scan button; if it can be pressed, press it and wait two minutes. Back on the first character, after a scan with deals found, walk to the mailbox, then come back and open Deals and Upgrades.
+- Expect: the Scan button is greyed and reads "Next scan in N min", counting down, with "Scanned N min ago · N items" under it. On the second character the button is greyed too (the 15 minutes are the account's); if the game refused a scan, after about 90 seconds chat says another character or auction addon may have scanned, the button counts down 15 minutes from the try, and nothing is stuck at "scanning 0 of 0" (the line under the button is never in the warning colour while a scan runs). Note how long a full scan took. The deals and upgrades are still listed, the heading reading "N found, the oldest N min ago" and each tooltip "Found N min ago."
+- If it fails, paste: a screenshot of the Lists tab, the chat lines and `/vg errors`.
+
 ### 9.5 Sort clear of the backpack icon
 
 - Do: without a gamepad, open your bags (combined bag on) and look at the top row. Click Sort, including on its right half. Close and open the bags, then `/reload` and open them again.
@@ -875,6 +881,18 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Do: type `/vg unlock`, drag the Bags and Game menu handles apart, type `/vg lock`, then `/reload`.
 - Expect: both strips stay where you put them.
 - If it fails, paste: a screenshot after the reload.
+
+### 13.4 Minimap drawer and zone hints
+
+- Do: hover the minimap's zone name. Then, with an addon that has a minimap button (LibDBIcon kind), log in; then turn on another addon's minimap button from its own settings (or load one on demand) without reloading, once out of a fight and once in one.
+- Expect: the zone tooltip ends with "Click: world map" and "Wheel: zoom" in the muted colour. The new button goes into the drawer at once (in a fight, as soon as it ends), not onto the map.
+- If it fails, paste: the addon's name, a screenshot of the minimap, and `/vg errors`.
+
+### 13.5 Minimap drawer: order, count, Escape and side
+
+- Do: with three or more addon buttons, hover the "..." toggle, open the drawer, press Escape; drag the minimap (`/vg unlock`) to the screen's left edge and to the bottom, and open the drawer at each; right-click a drawer button that has a menu.
+- Expect: the toggle's tooltip reads "Addon buttons (N)"; the buttons sit in name order; Escape closes the drawer; at the left edge it opens right of the map, near the bottom it stays on screen; a button's right-click menu stays open.
+- If it fails, paste: the addon's name, a screenshot of the minimap, and `/vg errors`.
 
 ## 14. Game windows, by area
 
@@ -1374,6 +1392,12 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 - Do: open a few popups of different sizes (delete an item from your bags, leave a group, abandon a quest, one with a text box such as renaming a guild rank).
 - Expect: the space under a popup's buttons is about the same as the space above its text; there is no empty band of panel under the buttons. Popups that the game gives a fixed height are unchanged.
 - If it fails, paste: a screenshot of the popup and `/vg frame StaticPopup1`.
+
+### 14.14.4b Danger popups
+
+- Do: delete a grey item from your bags (drag it out and confirm), then delete a green or better one (the popup that asks you to type DELETE): look at the confirm button before typing, after typing DELETE, and with the mouse on and off it. Then abandon a quest, and open an ordinary popup (leave a group, or `/camp`) right after.
+- Expect: on each delete and abandon popup the confirm button's label (Yes, Okay, Accept) is red, the danger colour of Vanguard's own Abandon button, and stays red under the mouse and after you type DELETE (before typing it is the game's grey disabled label); the leave-group or camp popup that follows on the same spot has the game's gold label again, gold under the mouse too. [Needs in game: that the game's hover and enable changes run before the hooks that paint the red back, so it never flashes gold; if it flashes, say so.]
+- If it fails, paste: a screenshot of the popup and `/vg errors`.
 
 ### 14.14.5 Roll windows, dressing room, books and the game menu header
 
