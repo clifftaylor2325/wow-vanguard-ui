@@ -360,11 +360,49 @@ O.MODULE_INFO = {
   Situations = { "Situations", "Different frame spots and settings for solo, party, raid, PvP, instance and resting, applied out of combat." },
 }
 
+-- Modules with their own switch inside (off by default): its setting keys (on if any is) and the page it is on.
+-- Kept apart from O.MODULE_INFO, whose two-item lines the website reads.
+O.MODULE_LINKS = {
+  PartyExtras = { keys = { "show" }, page = "unitframes" },
+  GroupThreat = { keys = { "show" }, page = "unitframes" },
+  OfficerLoot = { keys = { "on" }, page = "tools" },
+  ChatFilter = { keys = { "on" }, page = "chat" },
+  ChatHistory = { keys = { "on" }, page = "chat" },
+  CooldownGaps = { keys = { "on" }, page = "cooldowns" },
+  CooldownGlow = { keys = { "glow" }, page = "cooldowns" },
+  CooldownKeys = { keys = { "keys" }, page = "cooldowns" },
+  CraftQueue = { keys = { "on" }, page = "town" },
+  MailTools = { keys = { "on" }, page = "town" },
+  SpellRanks = { keys = { "barNotice", "trainerMemory" }, page = "town" },
+  Legacy = { keys = { "planner" }, page = "town" },
+  FightHistory = { keys = { "strip", "recap" }, page = "tools" },
+  Meter = { keys = { "on" }, page = "tools" },
+}
+
+-- A page's title in the list on the left (its key until its file has added it).
+local function pageTitle(key)
+  for _, page in ipairs(O.PAGES) do
+    if page.key == key then return page.title or key end
+  end
+  return key
+end
+
+-- "On, but its own switch is off (Combat tools)" while a linked module is on and every one of its own switches is off.
+function O.OwnSwitchNote(name)
+  local link = O.MODULE_LINKS[name]
+  if not (link and ns.ModuleEnabled(name)) then return nil end
+  local settings = ns.Settings(name)
+  for _, key in ipairs(link.keys) do
+    if settings[key] then return nil end
+  end
+  return string.format("On, but its own switch is off (%s)", pageTitle(link.page))
+end
+
 -- One module's switch, with its name and what it does (applies on reload).
 local function moduleRow(name)
   local info = O.MODULE_INFO[name] or { name, "" }
   return { "module", info[1], function() return ns.ModuleEnabled(name) end,
-    function(v) ns.SetModuleEnabled(name, v); O.NeedReload() end, nil, info[2] }
+    function(v) ns.SetModuleEnabled(name, v); O.NeedReload() end, nil, info[2], name }
 end
 
 -- The Modules page's groups, in the nav's order: a title and the modules under it (a module in none is under "More").

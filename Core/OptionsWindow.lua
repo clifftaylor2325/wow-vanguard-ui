@@ -44,17 +44,34 @@ local quiet = false
 
 -- Rows ---------------------------------------------------------------------------------------
 
--- A module's switch: its name, and under it what the module does, in small muted text.
+-- Under a module's name, what the module does, in small muted text.
+local function addDescription(r, text, width)
+  r.desc = T.Text(r:CreateFontString(nil, "OVERLAY"), "small", "muted")
+  r.desc:SetPoint("TOPLEFT", r.label, "BOTTOMLEFT", 0, -T.SPACE.tight)
+  r.desc:SetJustifyH("LEFT")
+  r.desc:SetWidth(width - 62)
+  r.desc:SetText(text)
+end
+
+-- Beside a module's name, a quiet note while the module is on but its own switch inside is off (O.OwnSwitchNote).
+local function addOwnSwitchNote(r, name)
+  if not O.MODULE_LINKS[name] then return end
+  r.ownSwitch = T.Text(r:CreateFontString(nil, "OVERLAY"), "small", "muted")
+  r.ownSwitch:SetPoint("LEFT", r.label, "LEFT", r.label:GetStringWidth() + T.SPACE.gap, 0)
+  local refresh = r.Refresh
+  -- The switch's own refresh, then the note, read again each time (the own switch is on another page).
+  r.Refresh = function(self) refresh(self) self.ownSwitch:SetText(O.OwnSwitchNote(name) or "") end
+  r:Refresh()
+end
+
+-- A module's switch: its name (and the own-switch note), and under it what the module does.
 local function moduleRow(parent, row, width)
   local r = W.Check(parent, row[2], row[3], row[4], width)
   r:SetHeight(ROW_HEIGHT.module)
   r.label:ClearAllPoints()
   r.label:SetPoint("TOPLEFT", T.SPACE.gap, -AIR)
-  r.desc = T.Text(r:CreateFontString(nil, "OVERLAY"), "small", "muted")
-  r.desc:SetPoint("TOPLEFT", r.label, "BOTTOMLEFT", 0, -T.SPACE.tight)
-  r.desc:SetJustifyH("LEFT")
-  r.desc:SetWidth(width - 62)
-  r.desc:SetText(row[6])
+  addDescription(r, row[6], width)
+  addOwnSwitchNote(r, row[7])
   return r
 end
 

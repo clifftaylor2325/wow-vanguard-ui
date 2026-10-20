@@ -402,6 +402,21 @@ it("options: the changed dot names the default as the row shows it, for switches
   expect(addon.eval(DEFAULTS_LUA)["Its scale"], "a slider's text").toBe("100%");
 });
 
+// The own-switch note beside a visible module row's name, as Lua (nil for a row with no link).
+const ownSwitch = (name) => `(function() for _, w in ipairs(__wfgStub.frames) do
+  if w.ownSwitch ~= nil and w.label.__text == "${name}" and w:IsVisible() then return w.ownSwitch.__text end end end)()`;
+
+it("options: a module that is on while its own switch inside is off says so beside its name, and the note goes with the switch", () => {
+  const addon = loggedIn(CLICK_LUA);
+  addon.eval('ns.Options.Show("modules")');
+  expect(addon.eval(`return ${ownSwitch("Vanguard meter")}`), "the meter's own switch starts off").toBe("On, but its own switch is off (Combat tools)");
+  addon.eval('ns.Settings("Meter").on = true ns.Options.Show("tools") ns.Options.Show("modules")');
+  expect(addon.eval(`return ${ownSwitch("Vanguard meter")}`), "on: the note goes").toBe("");
+  addon.eval('ns.Settings("SpellRanks").trainerMemory = true ns.SetModuleEnabled("MailTools", false) ns.Options.Show("general") ns.Options.Show("modules")');
+  expect([addon.eval(`return ${ownSwitch("Spell ranks")}`), addon.eval(`return ${ownSwitch("Mail tools")}`)], "one of two own switches on is enough; a module that is off needs no note").toEqual(["", ""]);
+  expect(addon.eval(`return ${ownSwitch("Unit frames")}`), "a module with no own switch has no note").toBe(null);
+});
+
 // The visible options page's scroll view, as Lua.
 const PAGE_VIEW = "(function() for _, w in ipairs(__wfgStub.frames) do if w.fadeTop and w:IsVisible() then return w end end end)()";
 
