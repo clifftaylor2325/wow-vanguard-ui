@@ -170,10 +170,17 @@ local function dumpOffered()
   end
 end
 
+-- The quest ID a /vg questdata argument names: a shift-clicked quest link's (its colour code has digits
+-- of its own), else a number typed first.
+local function questArg(rest)
+  rest = rest or ""
+  return tonumber(rest:match("quest:(%d+)") or rest:match("^%s*(%d+)"))
+end
+
 -- /vg questdata [questID]: the new-quest flag this client has (or none), then one quest, or the
 -- quests the open NPC offers and those you track: what the in-game check reads to find the flag.
 function QG.Command(rest)
-  local flag, id = QG.Flag(), tonumber((rest or ""):match("%d+"))
+  local flag, id = QG.Flag(), questArg(rest)
   ns.Chat(flag and ("New-quest flag: " .. flag.source .. " " .. flag.name .. ".") or "New-quest flag: none on this client (no quest classification or tag named Forever or New).")
   if id then return ns.Chat(QG.Describe(id)) end
   dumpOffered()

@@ -3,8 +3,10 @@
 --   * accept quests you're offered;
 --   * accept quests a party member shares with you (its own switch: the offer comes from a player, not an NPC);
 --   * turn in finished quests: Continue, then Complete when there's no reward
---     to choose (it never chooses for you, unless the next switch is on);
---   * with a choice of rewards, take the one that sells for the most;
+--     to choose (it never chooses for you, unless the next switch is on, and
+--     it leaves a quest that costs money to you);
+--   * with a choice of rewards, take the one that sells for the most (on a tie,
+--     or when none sells, you choose);
 --   * skip the gossip when an NPC has exactly one quest for you and nothing else to say.
 -- Each says in chat what it did. The quest dialog asks Claims(event) first,
 -- so a page that's about to be answered for you isn't shown.
@@ -53,15 +55,16 @@ local function choicePrice(i)
   return ns.PlainNumber((select(11, info(link))))
 end
 
--- The reward choice that sells for the most, or nil while any price is unknown.
+-- The reward choice that sells for the most, or nil (you choose) while any price is unknown, when two
+-- share the top price, or when none sells for anything.
 function QA.BestChoice()
-  local best, bestPrice = nil, -1
+  local best, bestPrice, tied = nil, 0, false
   for i = 1, count(call(GetNumQuestChoices)) do
     local price = choicePrice(i)
     if not price then return nil end
-    if price > bestPrice then best, bestPrice = i, price end
+    if price > bestPrice then best, bestPrice, tied = i, price, false elseif price == bestPrice then tied = true end
   end
-  return best
+  return not tied and best or nil
 end
 
 -- The reward to take: the only one (or none), else the best seller when that switch is on; nil to let you choose.
@@ -90,14 +93,20 @@ function QA.OnlyGreeting()
   return function() SelectActiveQuest(1) end
 end
 
+-- Whether turn-in automation answers this quest: switched on, and the quest costs no money (the game asks
+-- before paying, so automation never pays for you).
+function QA.TurnsIn()
+  return QA.settings.turnIn and ns.QuestParts.Cost() <= 0
+end
+
 -- What each event's automation would do, or nil when it leaves the page to you.
 QA.ACTIONS = {
   -- A quest offered: accept it (a quest shared by a player follows its own switch).
   QUEST_DETAIL = function() return QA.settings[fromPlayer() and "acceptShared" or "accept"] and QA.Accept or nil end,
-  -- A finished quest's hand-in: continue.
-  QUEST_PROGRESS = function() return QA.settings.turnIn and call(IsQuestCompletable) == true and QA.Continue or nil end,
-  -- The reward page: finish, when the reward is settled.
-  QUEST_COMPLETE = function() return QA.settings.turnIn and QA.RewardChoice() and QA.Finish or nil end,
+  -- A finished quest's hand-in: continue (a quest that costs money is left to you).
+  QUEST_PROGRESS = function() return QA.TurnsIn() and call(IsQuestCompletable) == true and QA.Continue or nil end,
+  -- The reward page: finish, when the reward is settled (a quest that costs money is left to you).
+  QUEST_COMPLETE = function() return QA.TurnsIn() and QA.RewardChoice() and QA.Finish or nil end,
   -- Gossip with one quest and nothing else: pick it.
   GOSSIP_SHOW = function() return QA.settings.skipGossip and QA.OnlyQuest() or nil end,
   -- The same without gossip.

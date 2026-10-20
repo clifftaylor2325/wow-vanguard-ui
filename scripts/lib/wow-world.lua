@@ -1260,6 +1260,8 @@ C_QuestLog = {
   GetSelectedQuest = function() return world.selectedQuest end,
   IsPushableQuest = function(id) local _, q = questIndex(id) return q ~= nil and q.pushable == true end,
   SetAbandonQuest = function() world.abandoning = world.selectedQuest end,
+  -- QuestLogDocumentation.lua: the item IDs the game destroys with the quest being abandoned (a quest's abandonItems).
+  GetAbandonQuestItems = function() local _, q = questIndex(world.abandoning) return q and q.abandonItems or {} end,
   AbandonQuest = function() local i = questIndex(world.abandoning) if i then table.remove(world.quests, i) stub.fire("QUEST_LOG_UPDATE") end end,
   GetQuestRewardCurrencies = function() return {} end,
   GetQuestRewardSpells = function() return {} end,
@@ -1364,6 +1366,8 @@ function GetProgressText() return openQuest().progress or "" end
 function GetRewardText() return openQuest().rewardText or "" end
 function GetQuestID() return openQuest().questID or 0 end
 function GetRewardMoney() return openQuest().money or 0 end
+-- The money a quest asks for to hand it in (QuestFrame.lua reads it on the progress and reward pages).
+function GetQuestMoneyToGet() return openQuest().cost or 0 end
 function GetRewardXP() return openQuest().xp or 0 end
 function GetNumQuestRewards() return #(openQuest().rewards or {}) end
 function GetNumQuestChoices() return #(openQuest().choices or {}) end

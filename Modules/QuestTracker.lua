@@ -20,8 +20,10 @@ local ADDON, ns = ...
 local QT = ns.Module("QuestTracker", { defaults = { own = true, order = "game", withQuestie = "questie", xp = true, levelXp = true, autoTrack = true, expanded = false } })
 
 QT.W, QT.H, QT.SORT_EVERY, QT.TICK_EVERY = 260, 174, 1, 1
+-- The events that redraw the tracker; XP and a level-up move the "Quests: N% of the XP to level" line.
 QT.EVENTS = { "QUEST_WATCH_LIST_CHANGED", "QUEST_LOG_UPDATE", "QUEST_ACCEPTED", "QUEST_REMOVED", "PLAYER_ENTERING_WORLD",
-  "CONTENT_TRACKING_UPDATE", "TRACKED_ACHIEVEMENT_UPDATE", "TRACKED_ACHIEVEMENT_LIST_CHANGED", "ACHIEVEMENT_EARNED" }
+  "CONTENT_TRACKING_UPDATE", "TRACKED_ACHIEVEMENT_UPDATE", "TRACKED_ACHIEVEMENT_LIST_CHANGED", "ACHIEVEMENT_EARNED",
+  "PLAYER_XP_UPDATE", "PLAYER_LEVEL_UP" }
 -- Enum.CraftingReagentType.Basic (ProfessionConstantsDocumentation.lua), for a client without the Enum.
 QT.BASIC_REAGENT = 1
 

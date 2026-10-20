@@ -1,7 +1,7 @@
 // quests: Vanguard's real Lua in the TEST-ONLY headless client (scripts/lib/lua-harness.mjs).
 
 import { expect, it } from "vitest";
-import { CLICK_LUA, PANEL_OPENERS, PLATE_ENV, QUEST_ENV, TIDY_ENV, UI_ENV, UNITS_ENV, borderOf, calls, chatHas, isTok, key, loggedIn, px, setCombat, WINDOWS_ENV } from "./helpers.mjs";
+import { CLICK_LUA, DATA_ENV, PANEL_OPENERS, PLATE_ENV, QUEST_ENV, TIDY_ENV, UI_ENV, UNITS_ENV, borderOf, calls, chatHas, isTok, key, loggedIn, px, setCombat, WINDOWS_ENV } from "./helpers.mjs";
 
 // The theme's layout numbers the quest windows are built on: { inset, pad, col, gap, tight, buttonH, rowH, watermark, wash }.
 const layout = (addon) => addon.eval(`local T = ns.Theme
@@ -1394,4 +1394,170 @@ it("in a fight the quest log's Map button and a tracker title say the map waits,
   setCombat(noLog, true);
   noLog.eval("local b = Vanguard_QuestTrackerFrame.blocks[1] b.__scripts.OnClick(b, 'LeftButton')");
   expect([chatHas(noLog, /The world map doesn't open from Vanguard in a fight/), noLog.eval("return __opened == nil")], "with the game's log, a title clicked in a fight says so too").toEqual([true, true]);
+});
+
+// W4-L-2: a quest that costs money to hand in. TEST-ONLY: it asks for 5 gold (the game's Complete asks first then).
+const COST_ENV = "__cost = 50000 GetQuestMoneyToGet = function() return __cost end\n";
+// Turn-in automation switched on.
+const TURN_IN = "VanguardDB.profiles = { Default = { QuestAuto = { turnIn = true } } }";
+// A logged-in client at a quest giver whose quest costs 5g and has one reward choice.
+const costedQuest = (saved) => {
+  const addon = loggedIn(QUEST_ENV + COST_ENV, saved && { savedVariables: saved });
+  addon.eval("__choices = { __choices[1] }");
+  return addon;
+};
+// The costed quest's reward page with Complete pressed, the calls so far cleared.
+const costAsked = () => {
+  const addon = costedQuest();
+  addon.fire("QUEST_COMPLETE");
+  key(addon, "SPACE");
+  calls(addon);
+  return addon;
+};
+
+it("quest cost: the hand-in page shows what it costs", () => {
+  const addon = costedQuest();
+  addon.fire("QUEST_PROGRESS");
+  expect(addon.eval("return Vanguard_QuestDialog.money:GetText()")).toBe("Costs 5g 0s 0c");
+});
+
+it("quest cost: Complete asks first, naming the cost, and pays nothing before the answer", () => {
+  const addon = costAsked();
+  expect([addon.eval("return Vanguard_Question.title:GetText()"), calls(addon)]).toEqual(["Completing TEST-ONLY Wolves costs 5g 0s 0c. Complete it?", []]);
+});
+
+it("quest cost: Yes takes the reward", () => {
+  const addon = costAsked();
+  addon.click("Vanguard_Question.confirm");
+  expect(calls(addon)).toEqual(["reward 1"]);
+});
+
+it("quest cost: No declines the hand-in, as the game's does", () => {
+  const addon = costAsked();
+  addon.click("Vanguard_Question.no");
+  expect(calls(addon)).toEqual(["decline nil"]);
+});
+
+it("quest cost: a cost the client hides counts as none (no cost line)", () => {
+  const addon = costedQuest();
+  addon.eval("__cost = { __secret = true }");
+  addon.fire("QUEST_PROGRESS");
+  expect(addon.eval("return Vanguard_QuestDialog.money:GetText()")).toBe("");
+});
+
+it("quest cost: turn-in automation leaves the hand-in and the reward page to you", () => {
+  const addon = costedQuest(TURN_IN);
+  addon.fire("QUEST_PROGRESS");
+  addon.fire("QUEST_COMPLETE");
+  expect([calls(addon), addon.eval("return Vanguard_QuestDialog:IsShown()")]).toEqual([[], true]);
+});
+
+it("quest cost: turn-in automation leaves it to the game's window when the quest dialog is off", () => {
+  const addon = costedQuest("VanguardDB.profiles = { Default = { QuestAuto = { turnIn = true }, modules = { QuestDialog = false } } }");
+  addon.fire("QUEST_COMPLETE");
+  expect(calls(addon)).toEqual([]);
+});
+
+// L-4: "take the one that sells for most" picks only a reward that clearly sells for most.
+// The reward page, turn-in and best reward on, with the two choices selling for these prices (copper).
+const pricedRewards = (boots, gloves) => {
+  const addon = loggedIn(QUEST_ENV, { savedVariables: "VanguardDB.profiles = { Default = { QuestAuto = { turnIn = true, bestReward = true } } }" });
+  addon.eval(`__prices["item:90021"], __prices["item:90022"] = ${boots}, ${gloves}`);
+  addon.fire("QUEST_COMPLETE");
+  return addon;
+};
+
+it("best reward: two rewards that sell for the same are left to you", () => {
+  expect(calls(pricedRewards(300, 300))).toEqual([]);
+});
+
+it("best reward: rewards that sell for nothing are left to you", () => {
+  expect(calls(pricedRewards(0, 0))).toEqual([]);
+});
+
+it("best reward: the one reward that sells for most is taken", () => {
+  expect(calls(pricedRewards(300, 50))).toEqual(["reward 1"]);
+});
+
+// W4-C-6: a count of 0 asked for no lines and then said the history was empty.
+it("quest history: /vg quests history 0 lists one turn-in instead of saying none are remembered", () => {
+  const addon = loggedIn(TRACK_ENV + QLOG_ENV + HISTORY_ENV, { savedVariables: HISTORY_SAVED });
+  addon.slash("quests history 0");
+  expect([chatHas(addon, /No turn-ins remembered yet/), chatHas(addon, /Latest 1 quest turn-in\(s\), of 2 remembered:/)]).toEqual([false, true]);
+});
+
+// W4-E-2: the tracker's "Quests: N% of the XP to level" line follows XP from kills and a level-up.
+// A tracker with two 6925 XP quests, the player 12300 XP into the level (the line reads 50%).
+const halfwayToLevel = () => {
+  const addon = loggedIn(DATA_ENV + " __xp = 12300 UnitXP = function() return __xp end",
+    { savedVariables: "VanguardDB.profiles = { Default = { QuestTracker = { autoTrack = false } } }" });
+  addon.world.addQuest({ questID: 7, title: "Wolves", level: 8, watched: true, xp: 6925, objectives: [] });
+  addon.world.addQuest({ questID: 8, title: "Boars", level: 8, xp: 6925, objectives: [] });
+  addon.update(0);
+  addon.eval("__xp = 26150");
+  return addon;
+};
+// The tracker's XP-to-level line.
+const levelLine = (addon) => addon.eval("return Vanguard_QuestTrackerFrame.levelXp:GetText()");
+
+it("quest tracker: kill XP redraws the XP-to-level line", () => {
+  const addon = halfwayToLevel();
+  addon.fire("PLAYER_XP_UPDATE", "player");
+  addon.advance(2);
+  expect(levelLine(addon)).toBe("Quests: 100% of the XP to level");
+});
+
+it("quest tracker: a level-up redraws the XP-to-level line", () => {
+  const addon = halfwayToLevel();
+  addon.fire("PLAYER_LEVEL_UP", 9);
+  addon.advance(2);
+  expect(levelLine(addon)).toBe("Quests: 100% of the XP to level");
+});
+
+// W4-E-3: the quest log's Share button follows joining and leaving a group.
+// Whether the quest log's Share button can be clicked.
+const shareLit = (addon) => addon.eval("return Vanguard_QuestLog.buttons.share:IsEnabled()");
+
+it("quest log: Share lights up when you join a group, without picking the quest again", () => {
+  const addon = loggedIn();
+  addon.world.addQuest({ questID: 7, title: "Wolves", level: 8, watched: true, pushable: true, objectives: [] });
+  addon.eval("ns.GetModule('QuestLog').Open(7)");
+  addon.update(0);
+  const solo = shareLit(addon);
+  addon.world.setUnit("party1", { name: "Mate", hp: 500, maxhp: 500, isPlayer: true, class: "WARRIOR" });
+  addon.advance(1);
+  expect([solo, shareLit(addon)]).toEqual([false, true]);
+});
+
+// W4-E-4: abandoning a quest that holds items names them, as the game's quest map does.
+// The quest log open on TEST-ONLY quests: 7 holds a sack the client knows and an item it can't name yet.
+const holdingItems = () => {
+  const addon = loggedIn();
+  addon.eval("__wfgWorld.items[90091] = { name = 'TEST-ONLY Sack' }");
+  addon.world.addQuest({ questID: 7, title: "TEST-ONLY Wolves", level: 8, watched: true, objectives: [], abandonItems: [90091, 90092] });
+  addon.world.addQuest({ questID: 8, title: "TEST-ONLY Boars", level: 8, objectives: [] });
+  addon.eval("ns.GetModule('QuestLog').Open(7)");
+  addon.update(0);
+  return addon;
+};
+// The game popups showing, each as "NAME: arg | arg".
+const shownPopups = (addon) => addon.eval("local out = {} for k, v in pairs(__wfgWorld.popups) do out[#out + 1] = k .. ': ' .. table.concat(v, ' | ') end table.sort(out) return out");
+
+it("quest log: Abandon shows the game's warning naming the items it destroys", () => {
+  const addon = holdingItems();
+  logButton(addon, "abandon");
+  expect(shownPopups(addon)).toEqual(["ABANDON_QUEST_WITH_ITEMS: TEST-ONLY Wolves | TEST-ONLY Sack"]);
+});
+
+it("quest log: Abandon on a quest holding nothing gets the plain confirmation", () => {
+  const addon = holdingItems();
+  addon.eval("ns.GetModule('QuestLog').Open(8)");
+  logButton(addon, "abandon");
+  expect(shownPopups(addon)).toEqual(["ABANDON_QUEST: TEST-ONLY Boars"]);
+});
+
+it("quest log: the question for marked quests names the items each destroys", () => {
+  const addon = holdingItems();
+  addon.eval("local QL = ns.GetModule('QuestLog') QL.marked = { [7] = true, [8] = true } QL.AbandonMarked()");
+  expect(addon.eval("return Vanguard_Question.title:GetText()")).toBe("Abandon 2 quest(s)?\nTEST-ONLY Wolves (destroys TEST-ONLY Sack)\nTEST-ONLY Boars");
 });
