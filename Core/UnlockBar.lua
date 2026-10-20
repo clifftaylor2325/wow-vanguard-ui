@@ -32,13 +32,19 @@ function ns.ExitWithoutSaving()
   ns.Chat("Every frame is back where it was when you unlocked.")
 end
 
--- Runs a bar button's action, then opens the options window again on the page unlock started from, if it did
--- (the action locks the frames, which forgets the page, so it is read first).
+-- Whether the options window is open now.
+local function optionsOpen()
+  local window = ns.Options.Frame()
+  return window ~= nil and window:IsShown()
+end
+
+-- Runs a bar button's action, then opens the options window again on the page unlock started from, if it did and
+-- the window isn't open already (the action locks the frames, which forgets the page, so it is read first).
 local function thenBack(action)
   return function()
     local page = fromPage
     action()
-    if page and not ns.InCombat() then ns.Options.Show(page) end
+    if page and not ns.InCombat() and not optionsOpen() then ns.Options.Show(page) end
   end
 end
 
@@ -51,12 +57,16 @@ local function addButtons()
   bar.exit:SetPoint("RIGHT", bar.save, "LEFT", -u.gap, 0)
 end
 
--- The bar's note at its left, and the bar as wide as the note and the buttons need.
+-- The bar's note at its left.
 local function addHint()
-  local u = BAR
   bar.text = T.Text(bar:CreateFontString(nil, "OVERLAY"), "label", "text2")
-  bar.text:SetPoint("LEFT", u.pad, 0)
-  bar.text:SetText(u.hint)
+  bar.text:SetPoint("LEFT", BAR.pad, 0)
+  bar.text:SetText(BAR.hint)
+end
+
+-- Makes the bar as wide as its note and buttons need, at the text size in use now.
+local function fitBar()
+  local u = BAR
   bar:SetSize(u.pad + bar.text:GetStringWidth() + u.pad + u.exit + u.gap + u.save + u.edge, u.height)
 end
 
@@ -70,10 +80,13 @@ local function build()
   addButtons()
 end
 
--- Unlocks the frames from the options window's page `page`: the bar's buttons open it again there.
+-- Unlocks the frames from the options window's page `page`, which closes; the bar's buttons open it again there.
+-- In a fight nothing unlocks, the window stays, and chat says why.
 ---@param page string
 function ns.UnlockFromOptions(page)
-  if not ns.Unlock() then return end
+  if ns.InCombat() then return ns.Chat("In combat. Try again once combat ends.") end
+  ns.Options.Hide()
+  ns.Unlock()
   fromPage = page
 end
 
@@ -82,6 +95,7 @@ end
 function ns.UnlockStarted(editMode)
   before = before or ns.Copy(ns.Settings("positions"))
   if not bar then build() end
+  fitBar()
   bar:SetShown(not editMode)
 end
 

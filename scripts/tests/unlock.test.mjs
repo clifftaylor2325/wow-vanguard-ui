@@ -276,6 +276,11 @@ it("A-10 unlock from the options window: Save and lock and Exit without saving e
   addon.fire("PLAYER_REGEN_DISABLED");
   setCombat(addon, true);
   expect([addon.eval("return ns.Unlocked()"), addon.eval("return Vanguard_Options:IsShown()")], "a fight locks, and the options stay closed").toEqual([false, false]);
-  addon.eval('Vanguard_Options:Hide() ns.UnlockFromOptions("general")');
-  expect(addon.eval("return ns.Unlocked()"), "in a fight it doesn't unlock").toBe(false);
+  addon.slash("");
+  addon.eval('ns.Options.Show("general") __click("Move frames")');
+  expect([addon.eval("return ns.Unlocked()"), addon.eval("return Vanguard_Options:IsShown()"), chatHas(addon, /In combat\. Try again once combat ends\./)], "in a fight Move frames doesn't unlock, the window stays, and chat says why").toEqual([false, true, true]);
+  setCombat(addon, false);
+  addon.eval('__click("Move frames") Vanguard_Options:Show() ns.Options.Show("situations")');
+  addon.eval("Vanguard_UnlockBar.save:GetScript('OnClick')(Vanguard_UnlockBar.save)");
+  expect(addon.eval("return ns.Options.current"), "the window opened again meanwhile: it stays on its page").toBe("situations");
 });
