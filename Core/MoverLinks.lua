@@ -93,11 +93,6 @@ end
 
 -- Sizes ------------------------------------------------------------------------------------
 
--- A size kept to a range { min, max }.
-local function within(v, range)
-  return math.max(range[1], math.min(range[2], v))
-end
-
 -- The width or height (dim) another frame gives a matched mover (in the mover's own units), or nil.
 local function matchedSize(key, dim)
   local source = matchOf(dim)(key)
@@ -120,7 +115,7 @@ function K.Own(key, dim)
   local s, f = sizable[key], ns.MoverFrame(key)
   if not (s and s[dim]) then return frameSize(f, dim) end
   local own = tonumber((entryOf(key) or {})[DIMS[dim]])
-  return within(matchedSize(key, dim) or own or s.natural[dim], s[dim])
+  return L.Within(matchedSize(key, dim) or own or s.natural[dim], s[dim][1], s[dim][2])
 end
 
 -- A mover's rect on screen ({ left, bottom, w, h } in UIParent's units), from where it goes and its size.
@@ -372,7 +367,7 @@ function ns.SetMoverSize(key, dim, value)
   local why = ns.MoverSizeLock(key, dim)
   if why or type(value) ~= "number" then return false, why end
   local s = sizable[key]
-  local v = within(round(value), s[dim])
+  local v = L.Within(round(value), s[dim][1], s[dim][2])
   entry(key)[DIMS[dim]] = v ~= round(s.natural[dim]) and v or nil
   return settle(key)
 end

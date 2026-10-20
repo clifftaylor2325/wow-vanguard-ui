@@ -55,7 +55,7 @@ ns.MOVER_ALPHA = { min = 0.1, max = 1 }
 -- A saved scale or opacity kept to its range; 1 when it isn't a number (a hand-edited profile string).
 local function within(v, range)
   v = tonumber(v)
-  return v and math.max(range.min, math.min(range.max, v)) or 1
+  return v and L.Within(v, range.min, range.max) or 1
 end
 
 -- A mover's saved scale and opacity: 1 and 1 unless set.
@@ -503,7 +503,7 @@ end
 local function setLook(key, field, value, range)
   local m = movers[key]
   if not m or type(value) ~= "number" then return end
-  value = math.max(range.min, math.min(range.max, math.floor(value * 100 + 0.5) / 100))
+  value = L.Within(math.floor(value * 100 + 0.5) / 100, range.min, range.max)
   entry(key)[field] = value ~= 1 and value or nil
   place(m)
   if m.handle then handleFor(m) end

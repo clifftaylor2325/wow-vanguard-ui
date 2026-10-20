@@ -113,6 +113,11 @@ function L.Rect(anchor, size, screen)
   return L.RectAt(anchor.point, ax + anchor.x, ay + anchor.y, size.w, size.h)
 end
 
+-- The number v kept to min..max.
+function L.Within(v, min, max)
+  return math.max(min, math.min(max, v))
+end
+
 -- A rect moved as little as it takes to be on a sw x sh screen (one bigger
 -- than the screen starts at its left or bottom edge).
 function L.Clamp(r, sw, sh)
