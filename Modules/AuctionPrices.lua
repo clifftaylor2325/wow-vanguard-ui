@@ -23,6 +23,8 @@ ns.AuctionPrices = AP
 -- Items priced at most per house, and the share of them a prune keeps (6000 -> 5400); days of
 -- values kept per item (the 7 days every reader looks at); days a price is kept; seconds in a day.
 AP.MAX_ITEMS, AP.KEEP, AP.DAYS, AP.MAX_AGE, AP.DAY = 6000, 0.9, 7, 30, 86400
+-- Leap days in the years before 1970 (in the Gregorian count), so 1970's days start at 0.
+AP.LEAPS_BEFORE_1970 = 477
 -- The share of an item's units (per cent) its market value is taken over: the cheapest 15 %.
 AP.MARKET_PCT = 15
 
@@ -32,9 +34,19 @@ function AP.Now()
   return type(clock) == "function" and ns.PlainNumber(clock()) or 0
 end
 
--- The day a time falls on: whole days since 1970 (UTC).
+-- The day a time falls on: whole days since 1970 (UTC). The price buckets go by it.
 function AP.Day(t)
   return math.floor(t / AP.DAY)
+end
+
+-- The day a time falls on by the computer's own clock (whole days since 1970 in its time zone), so
+-- "today" ends at the player's midnight; the UTC day on a client without date().
+function AP.LocalDay(t)
+  local d = type(_G.date) == "function" and _G.date("*t", t)
+  if type(d) ~= "table" then return AP.Day(t) end
+  local y = d.year - 1
+  local leaps = math.floor(y / 4) - math.floor(y / 100) + math.floor(y / 400) - AP.LEAPS_BEFORE_1970
+  return (d.year - 1970) * 365 + leaps + d.yday - 1
 end
 
 -- The account's auction data: VanguardDB.ah = { lists (Auction helper's shopping lists, for every
@@ -236,9 +248,9 @@ function AP.Low7(itemID, now)
   return low
 end
 
--- How long ago a time was, in days: "today", "yesterday", "3 days ago".
+-- How long ago a time was, in the computer's days: "today", "yesterday", "3 days ago".
 function AP.Ago(t)
-  local days = AP.Day(AP.Now()) - AP.Day(t)
+  local days = AP.LocalDay(AP.Now()) - AP.LocalDay(t)
   if days < 1 then return "today" end
   return days == 1 and "yesterday" or days .. " days ago"
 end

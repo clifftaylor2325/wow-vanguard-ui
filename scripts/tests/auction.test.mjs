@@ -382,3 +382,30 @@ it("a window without the tab row this client knows: nothing is built, and chat s
 });
 // A Lua list as a JS array (an empty Lua table comes back as {}).
 const list = (v) => (Array.isArray(v) ? v : []);
+
+// TEST-ONLY date("*t", t) of a computer `offset` hours from UTC, for the times given (the harness has no date()).
+const dateStub = (offset, times) => {
+  const rows = times.map((t) => {
+    const d = new Date((t + offset * 3600) * 1000);
+    const [year, month, day] = [d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()];
+    const yday = (Date.UTC(year, month, day) - Date.UTC(year, 0, 1)) / 86400000 + 1;
+    return `[${t}] = { year = ${year}, month = ${month + 1}, day = ${day}, yday = ${yday} }`;
+  });
+  return `local dates = { ${rows.join(", ")} } date = function(_, t) return dates[t] end`;
+};
+it("'today' and 'yesterday' go by the computer's day: an hour before 19:30 in New York is today, across UTC midnight", () => {
+  const now = Date.UTC(2026, 10, 10, 0, 30) / 1000;
+  const [hourAgo, lastNight] = [now - 3600, now - 20 * 3600];
+  const addon = loggedIn(`time = function() return ${now} end ` + dateStub(-5, [now, hourAgo, lastNight]));
+  // What a price's and a quest's "ago" say for time t.
+  const ago = (t) => addon.eval(`return { ns.AuctionPrices.Ago(${t}), ns.GetModule("QuestHistory").Ago(${t}) }`);
+  expect([ago(hourAgo), ago(lastNight)], "price, scan, sale and turn-in times alike").toEqual([["today", "today"], ["yesterday", "yesterday"]]);
+});
+it("the computer's day counts every day since 1970, over year ends and leap years; a client without date() counts UTC days", () => {
+  const times = [0, 951782400, 951868800, 1735603200, 1735689600, 1798675200, 1798761600 - 1];
+  const addon = loggedIn(dateStub(0, times));
+  const days = addon.eval(`local out = {} for i, t in ipairs({ ${times.join(", ")} }) do out[i] = ns.AuctionPrices.LocalDay(t) - ns.AuctionPrices.Day(t) end return out`);
+  expect(days, "at UTC the computer's day is the UTC day").toEqual(times.map(() => 0));
+  const bare = loggedIn("");
+  expect(bare.eval("return ns.AuctionPrices.LocalDay(1798675200)"), "no date(): the UTC day").toBe(20818);
+});
