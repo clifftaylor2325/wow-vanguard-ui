@@ -116,6 +116,16 @@ function QG.Point(questID)
   QG.StepsChanged()
 end
 
+-- Lets the pin go (the arrow's Pin button), and the game's tracked quest with it, else the arrow would hold on to
+-- that one (0 is how the game's own tracker stops tracking, Blizzard_QuestObjectiveTracker.lua). A map waypoint,
+-- your /way or Ctrl-click, is the game's other kind of tracking and is left alone.
+function QG.Unpin()
+  QG.pointed = nil
+  local id = ns.PlainNumber(call(C_SuperTrack, "GetSuperTrackedQuestID"))
+  if id and id > 0 then call(C_SuperTrack, "SetSuperTrackedQuestID", 0) end
+  QG.StepsChanged()
+end
+
 -- The quest the arrow follows: the game's super-tracked quest, else the one last pointed at.
 function QG.Followed()
   local id = ns.PlainNumber(call(C_SuperTrack, "GetSuperTrackedQuestID"))
@@ -132,8 +142,7 @@ end
 
 -- The steps or the followed quest changed: the tracker redraws, if it shows.
 function QG.StepsChanged()
-  local QT = ns.GetModule("QuestTracker")
-  if QT.frame then ns.Soon("questtracker", QT.Refresh) end
+  ns.GetModule("QuestTracker").Redraw()
 end
 
 -- /vg questdata --------------------------------------------------------------------------------

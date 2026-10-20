@@ -122,6 +122,53 @@ it("group board: a click opens a whisper with the message filled in, never sends
   expect(addon.eval("return __tells[3]"), "without the call: a plain whisper to them").toBe("Anyone");
 });
 
+it("group board: the whisper role is Automatic by default, your group role else DPS, and a hidden role counts as none", () => {
+  const addon = board();
+  post(addon, "LFM SFK need heals", "Lightmend-Ruleset");
+  // The whisper for the first post.
+  const template = () => addon.eval("local GB = ns.GetModule('GroupBoard') return GB.Template(GB.entries[1])");
+  expect(addon.eval('return ns.Settings("GroupBoard").role'), "the default").toBe("auto");
+  expect(template(), "no group role: DPS").toBe("Hi! Level 24 Mage (DPS) for Shadowfang Keep, if you still need one.");
+  addon.eval("__wfgWorld.units.player.role = 'HEALER'");
+  expect(template(), "a healer: Healer").toBe("Hi! Level 24 Mage (Healer) for Shadowfang Keep, if you still need one.");
+  addon.eval("__wfgWorld.units.player.role = 'TANK'");
+  expect(template(), "a tank: Tank").toBe("Hi! Level 24 Mage (Tank) for Shadowfang Keep, if you still need one.");
+  addon.eval("__wfgWorld.units.player.role = __wfgWorld.secret('HEALER')");
+  expect(template(), "a hidden role is read as none: DPS").toBe("Hi! Level 24 Mage (DPS) for Shadowfang Keep, if you still need one.");
+  const choices = addon.eval(`for _, row in ipairs(ns.GetModule("GroupBoard").Rows()) do
+    if row[2] == "Your role, for the whisper" then local out = {} for i, c in ipairs(row[3]) do out[i] = c[2] end return out end end`);
+  expect(choices, "the Chat page's row: Automatic first").toEqual(["Automatic", "Tank", "Healer", "DPS"]);
+});
+
+it("group board: a profile saved with the old dps default becomes Automatic once; a picked role stays", () => {
+  // The whisper role a profile saved with `role` (and `extra`) reads after login.
+  const saved = (role, extra = "") => loggedIn(WHISPER_ENV, { savedVariables: `VanguardDB.profiles = { Default = { GroupBoard = { role = "${role}"${extra} } } }` })
+    .eval('return ns.Settings("GroupBoard").role');
+  expect(saved("dps"), "the old default: Automatic").toBe("auto");
+  expect(saved("healer"), "a picked role stays").toBe("healer");
+  expect(saved("dps", ", autoRole = true"), "DPS picked after the change stays DPS").toBe("dps");
+});
+
+it("group board: Needs my role puts the posts that need you (or name no role) first and dims the rest", () => {
+  const addon = board();
+  post(addon, "LFG SFK healer", "Seeker");
+  post(addon, "LFM BFD need tank", "Tanky");
+  post(addon, "LFM WC", "Anyone");
+  post(addon, "LFM SFK need heals", "Lightmend");
+  addon.eval('ns.Settings("GroupBoard").role = "healer"');
+  addon.slash("lfg");
+  for (const caption of ["All posts", "Looking for more", "Looking for a group"]) addon.eval(`__click("${caption}")`);
+  expect(rows(addon).map((r) => r[3]), "healer posts and posts naming no role first, then the rest, each newest first").toEqual(["Lightmend", "Anyone", "Tanky", "Seeker"]);
+  // Row i's kind and sender colours.
+  const colors = (i) => addon.eval(`local b = Vanguard_GroupBoard.rows[${i}] return { { b.kind:GetTextColor() }, { b.sender:GetTextColor() } }`);
+  expect([isTok(addon, colors(1)[0], "accent"), isTok(addon, colors(1)[1], "text")], "a post that needs you keeps its colors").toEqual([true, true]);
+  expect([isTok(addon, colors(3)[0], "muted"), isTok(addon, colors(3)[1], "muted"), isTok(addon, colors(4)[0], "muted")], "the rest are muted, still listed").toEqual([true, true, true]);
+  addon.eval('__click("Needs my role")');
+  expect([isTok(addon, colors(1)[0], "accent"), isTok(addon, colors(4)[1], "text")], "All posts again: no row stays muted").toEqual([true, true]);
+  addon.eval('ns.Settings("GroupBoard").role = "auto" __wfgWorld.units.player.role = "TANK"');
+  expect(addon.eval("local GB = ns.GetModule('GroupBoard') GB.filter = 'role' local out = {} for i, e in ipairs(GB.Shown()) do out[i] = e.sender end return out"), "Automatic: your group role").toEqual(["Anyone", "Tanky", "Lightmend", "Seeker"]);
+});
+
 it("group board: the filter, the level switch, the note, more posts than rows, and old posts going", () => {
   const addon = board(60);
   addon.slash("lfg");
@@ -140,6 +187,8 @@ it("group board: the filter, the level switch, the note, more posts than rows, a
   addon.eval('__click("Looking for more")');
   expect(status(addon)[0], "looking for a group only").toBe("12 posts");
   addon.eval('__click("Looking for a group")');
+  expect([addon.eval("return Vanguard_GroupBoard.filter.text:GetText()"), status(addon)[0]], "needs my role: every post").toEqual(["Needs my role", "13 posts"]);
+  addon.eval('__click("Needs my role")');
   expect(status(addon)[0], "all again").toBe("13 posts");
   addon.advance(601);
   expect(status(addon)[0], "after ten minutes the posts are gone (the board's tick)").toBe("0 posts");

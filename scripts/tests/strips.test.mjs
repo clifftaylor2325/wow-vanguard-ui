@@ -153,6 +153,46 @@ it("a click on the info strip's time opens the game's clock window, or turns off
   addon.eval('ns.Settings("InfoStrip").clock = false ns.GetModule("InfoStrip").Paint("clock")');
   expect(addon.eval("return Vanguard_InfoStripClock:IsShown()"), "with the time off, nothing takes its clicks").toBe(false);
 });
+it("the info strip's time follows the game's clock (realm or local, 12 or 24 hours), and its tooltip shows both", () => {
+  const addon = loggedIn(STRIP_ENV + `__wanted = {}
+    GameTime_GetTime = function(ampm) __wanted[#__wanted + 1] = ampm return __twelve and "9:04 PM" or "21:04" end
+    GameTime_GetGameTime = function(ampm) return ampm and "9:04 PM" end
+    GameTime_GetLocalTime = function() return nil end`);
+  addon.eval("__twelve = true __wfgStub.advance(1.1)");
+  expect([block(addon, "clock").text, addon.eval("return __wanted[#__wanted]")], "the game's own clock text, asked with AM/PM").toEqual(["9:04 PM", true]);
+  addon.eval("Vanguard_InfoStripClock.__scripts.OnEnter(Vanguard_InfoStripClock)");
+  const tip = addon.eval("local out = {} for i, l in ipairs(GameTooltip.__lines) do out[i] = l.text .. '|' .. (l.right or '') end return out");
+  expect(tip, "the realm time (a time the client can't give is left out) and the click").toEqual(["Time|", "Realm time|9:04 PM", "Click: the game's clock and alarm|"]);
+  addon.eval("Vanguard_InfoStripClock.__scripts.OnLeave(Vanguard_InfoStripClock)");
+  expect(addon.eval("return GameTooltip:IsShown()"), "and goes with the mouse").toBe(false);
+});
+it("the info strip's date is the day of the time beside it: the realm's date while the game's clock shows realm time", () => {
+  const addon = loggedIn(STRIP_ENV + `GameTime_GetTime = function() return "23:30" end
+    date = function(f) return f == "%a %d %b" and "Tue 14 Oct" or "05:30" end
+    __local = false GetCVarBool = function(name) return name == "timeMgrUseLocalTime" and __local end
+    C_DateAndTime = { GetCurrentCalendarTime = function() return __realm end }
+    __realm = { weekday = 2, monthDay = 3, month = 10, year = 2026 }`);
+  // The date block's text after the minute's tick, with lua run first.
+  const dateNow = (lua) => { addon.eval(lua + " ns.GetModule('InfoStrip').Paint('date')"); return block(addon, "date").text; };
+  expect(dateNow(""), "realm time: the realm's Monday, not the computer's Tuesday").toBe("Mon 03 Oct");
+  expect(dateNow("__local = true"), "local time: the computer's date").toBe("Tue 14 Oct");
+  expect(dateNow("__local = false __realm = { weekday = { __secret = true }, monthDay = 3, month = 10 }"), "a realm date the client hides: the computer's").toBe("Tue 14 Oct");
+});
+it("the info strip's calendar button counts the invites waiting, and is absent where the realm has no calendar", () => {
+  const addon = loggedIn(STRIP_ENV + "__invites = 0 C_Calendar = { GetNumPendingInvites = function() return __invites end }");
+  // The badge's text and whether its backing shows, after the game says the invites changed to n (Lua).
+  const badge = (n) => { addon.eval(`__invites = ${n}`); addon.fire("CALENDAR_UPDATE_PENDING_INVITES"); return addon.eval("local IS = ns.GetModule('InfoStrip') return { IS.invites:GetText(), IS.invitesBack:IsShown() }"); };
+  expect([badge("0"), badge("2"), badge("{ __secret = true }")], "none, two waiting, a hidden count").toEqual([["", false], ["2", true], ["", false]]);
+  // The calendar button's tooltip lines with n invites waiting.
+  const tip = (n) => addon.eval(`__invites = ${n} Vanguard_InfoStripCalendar.__scripts.OnEnter(Vanguard_InfoStripCalendar) local out = {} for i, l in ipairs(GameTooltip.__lines) do out[i] = l.text end return out`);
+  expect([tip(0), tip(1), tip(3)], "the tooltip says how many wait").toEqual([["Calendar"], ["Calendar", "1 invite waiting"], ["Calendar", "3 invites waiting"]]);
+  const ruled = loggedIn(STRIP_ENV + "Enum.GameRule = { IngameCalendarDisabled = 7 } C_GameRules = { IsGameRuleActive = function(rule) return rule == 7 end }");
+  expect(ruled.eval("return { Vanguard_InfoStripCalendar == nil, #ns.errors }"), "no calendar button under the calendar-off rule, and no error").toEqual([true, 0]);
+  ruled.fire("CALENDAR_UPDATE_PENDING_INVITES");
+  expect(ruled.eval("return #ns.errors"), "nor on the invites event").toBe(0);
+  const bare = loggedIn(STRIP_ENV);
+  expect(bare.eval("return ns.GetModule('InfoStrip').invites:GetText()"), "a client without the calendar API shows no count").toBe("");
+});
 it("the Bars and bags page's two tracker switches name the game's tracker, the one they change", () => {
   const addon = loggedIn(UI_ENV);
   const labels = addon.eval(`local out = {}
@@ -886,6 +926,17 @@ it("bag and menu bar: each bag's slot shows how full it is, the backpack how man
   expect(bare.eval("return { ns.GetModule('MenuStrip').free:GetText(), ns.FrameState('vgFill')[MainMenuBarBackpackButton]:IsShown() }"), "a client that can't count bag slots shows no count and no fill").toEqual(["", false]);
 });
 
+it("bags nearly full: the backpack's count and the strip's free count turn amber at 4 or fewer and red at none, and a bag's tooltip says how many of its slots are free", () => {
+  const addon = loggedIn(UI_ENV + TIDY_ENV + MICRO_ENV + STRIPS_ENV + BAGS_ENV);
+  // The backpack count's and the strip's free count's tokens, after the bags change (Lua).
+  const tones = (lua) => { addon.eval(lua); addon.fire("BAG_UPDATE_DELAYED"); const color = addon.eval("return ns.GetModule('MenuStrip').free.__textColor"); return ["text", "warn", "bad"].filter((t) => isTok(addon, color, t) && isTok(addon, block(addon, "bags").color, t)); };
+  expect([tones("__space[0][2] = 5"), tones("__space[0][2] = 4"), tones("__space[0][2] = 0")], "5 free plain, 4 amber, none red (the soul bag's free slots don't count)").toEqual([["text"], ["warn"], ["bad"]]);
+  // The lines Vanguard adds to the item tooltip shown over the button named, joined.
+  const tip = (name) => addon.eval(`GameTooltip:SetOwner(${name}, "ANCHOR_NONE") GameTooltip.__itemLink = "|Hitem:5765|h[TEST-ONLY Bag]|h" ns.GetModule("Tooltips").OnItem(GameTooltip)
+    local out = {} for i, l in ipairs(GameTooltip.__lines) do out[i] = l.text end return table.concat(out, "; ")`);
+  expect([tip("CharacterBag1Slot"), tip("CharacterBag2Slot"), tip("CharacterBag0Slot"), tip("MainMenuBarBackpackButton"), tip("UIParent")], "a bag, a soul bag: their own free slots; an empty slot, the backpack and anything else: no line")
+    .toEqual(["0 of 10 free", "5 of 20 free", "", "", ""]);
+});
 it("the minimap's zone name is the zone role: a bold 13 in Fira Sans that the faction look's display font does not reach", () => {
   const addon = loggedIn(UI_ENV + 'UnitFactionGroup = function() return "Alliance" end GetLocale = function() return "enUS" end');
   addon.eval('ns.Theme.Settings().faction = "auto" ns.Theme.Refresh() __heading = ns.Theme.Text(UIParent:CreateFontString(), "heading")');
