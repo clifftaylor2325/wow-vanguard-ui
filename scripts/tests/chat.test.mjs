@@ -522,6 +522,42 @@ it("chat dock: the docked tabs sit centred in the main window's bar, over the pa
   const plain = loggedIn(UI_ENV + CHAT_DOCK_ENV, { savedVariables: "VanguardDB.profiles = { Default = { ChatExtras = { copy = false }, ChatWindows = { find = false } } }" });
   expect(plain.eval("local d = GENERAL_CHAT_DOCK.__points return { d.RIGHT.rel == ns.GetModule('Chat').frames[ChatFrame1].bar, d.RIGHT.relPoint, d.RIGHT.x }"), "without Find and Copy the dock runs to the bar's right end").toEqual([true, "RIGHT", -4]);
 });
+// TEST-ONLY the Combat Log's filter strip as Blizzard_CombatLog sets it up when it loads: 24 tall, a child
+// of the log's tab, its bottom 3 over the window's top and its right end at the scroll bar's edge, and the
+// window's CombatLogQuickButtonFrame field; and the game's background layout, which the log's load and every
+// dock update run for the log (it anchors the window's art, which the windows here lack).
+const COMBAT_LOG_ENV = `
+  __backgroundUpdates = 0
+  function FloatingChatFrame_UpdateBackgroundAnchors(frame) __backgroundUpdates = __backgroundUpdates + 1 end
+  function __combatLogStrip()
+    local strip = CreateFrame("Frame", "CombatLogQuickButtonFrame_Custom", ChatFrame2Tab)
+    strip:SetHeight(24)
+    strip:SetPoint("BOTTOMLEFT", ChatFrame2, "TOPLEFT", 0, 3)
+    strip:SetPoint("BOTTOMRIGHT", ChatFrame2, "TOPRIGHT", 8, 3)
+    ChatFrame2.CombatLogQuickButtonFrame = strip
+    FloatingChatFrame_UpdateBackgroundAnchors(ChatFrame2)
+  end
+`;
+
+it("combat log: its panel, bar and scrim stand the filter strip's height higher, so its bar lines up with the dock's, and the strip is seated under the rule two units in from the panel's edges, as the strip loads and on every dock update; other windows keep the bar's height", () => {
+  const addon = loggedIn(UI_ENV + CHAT_DOCK_ENV + COMBAT_LOG_ENV);
+  // How far over a window's top its outline, panel and scrim sit (the TOPLEFT y of each).
+  const tops = (frame) => addon.eval(`local F = ns.GetModule('Chat').frames[${frame}] return { F.outline.__points.TOPLEFT.y, F.panel.__points.TOPLEFT.y, F.scrim.frame.__points.TOPLEFT.y }`);
+  expect(tops("ChatFrame2"), "before the log's filter strip loads, the bar's height (24)").toEqual([24, 24, 24]);
+  addon.eval("__combatLogStrip()");
+  expect(tops("ChatFrame2"), "the strip loaded (the game's background layout ran): the strip's 24 more").toEqual([48, 48, 48]);
+  expect(tops("ChatFrame1"), "the main window keeps the bar's height").toEqual([24, 24, 24]);
+  // The strip's anchors: its bottom corners on the window's top edge, the right one over the scroll column.
+  const strip = () => addon.eval("local p = CombatLogQuickButtonFrame_Custom.__points return { p.BOTTOMLEFT.rel == ChatFrame2, p.BOTTOMLEFT.relPoint, p.BOTTOMLEFT.x, p.BOTTOMLEFT.y, p.BOTTOMRIGHT.relPoint, p.BOTTOMRIGHT.x, p.BOTTOMRIGHT.y }");
+  expect(strip(), "the strip's bottom on the window's top (not 3 over it, into the rule), two units in from the panel's edges (over the scroll column on the right)").toEqual([true, "TOPLEFT", -2, 0, "TOPRIGHT", 26, 0]);
+  addon.eval("CombatLogQuickButtonFrame_Custom:ClearAllPoints() CombatLogQuickButtonFrame_Custom:SetPoint('BOTTOMLEFT', ChatFrame2, 'TOPLEFT', 0, 3) FloatingChatFrame_UpdateBackgroundAnchors(ChatFrame2)");
+  expect(strip(), "a dock update (the game's layout again) seats it again").toEqual([true, "TOPLEFT", -2, 0, "TOPRIGHT", 26, 0]);
+  expect(addon.eval("FloatingChatFrame_UpdateBackgroundAnchors(ChatFrame1) FloatingChatFrame_UpdateBackgroundAnchors({ GetName = function() return 'ChatFrame9' end }) return { __backgroundUpdates, #ns.errors }"), "a window without a strip, or one Vanguard hasn't dressed, is left alone").toEqual([4, 0]);
+  expect(tops("ChatFrame1")).toEqual([24, 24, 24]);
+  const early = loggedIn(UI_ENV + CHAT_DOCK_ENV + COMBAT_LOG_ENV + "__combatLogStrip()");
+  expect(early.eval("local F = ns.GetModule('Chat').frames[ChatFrame2] local p = CombatLogQuickButtonFrame_Custom.__points return { F.outline.__points.TOPLEFT.y, p.BOTTOMLEFT.y, p.BOTTOMRIGHT.x, #ns.errors }"), "a strip loaded before Vanguard dressed the window: the band and the seat from the start").toEqual([48, 0, 26, 0]);
+});
+
 it("chat window size: a window left at an earlier first size is set to the new one once, Larger and Largest scale the default, a size the player set is kept, and the first size follows the screen", () => {
   const addon = loggedIn(UI_ENV + TIDY_ENV, { savedVariables: "VanguardDB.profiles = { Default = { Chat = { sized = true, grown = true } } }" });
   // The chat window's width and height.
