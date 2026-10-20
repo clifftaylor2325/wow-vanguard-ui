@@ -353,7 +353,7 @@ it("swing timer: a row per hand, from the client's own swings", () => {
   addon.fire("PLAYER_SWING", 2, 7);
   expect(swings(addon)[0][1], "a hidden or empty length, or an unknown hand, changes nothing").toBe(1.5);
   addon.eval("__wfgStub.advance(2)");
-  expect([swings(addon)[0][0], addon.eval("return Vanguard_SwingTimer.__scripts.OnUpdate == nil")], "once every swing has landed the timer stops").toEqual([false, true]);
+  expect([swings(addon)[0][0], addon.eval('return ns.ticker.vgJobs["swing timer"] == nil')], "once every swing has landed the timer stops").toEqual([false, true]);
   addon.fire("PLAYER_SWING", 2, 2);
   addon.fire("PLAYER_DEAD");
   expect(swings(addon)[2][0], "dying clears the rows").toBe(false);

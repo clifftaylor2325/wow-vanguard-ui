@@ -67,7 +67,7 @@ function SW.Tick()
   for _, r in pairs(SW.rows) do
     if r.live then step(r, now) any = any or r.live end
   end
-  if not any then SW.holder:SetScript("OnUpdate", nil) end
+  if not any then ns.Every("swing timer", nil) end
 end
 
 -- A swing started: its row restarts from empty, for the length the client gives.
@@ -79,7 +79,7 @@ function SW.OnSwing(_, length, kind)
   r:SetMinMaxValues(0, length)
   r:Show()
   step(r, r.start)
-  SW.holder:SetScript("OnUpdate", SW.Tick)
+  ns.Every("swing timer", 0, SW.Tick)
 end
 
 -- You died: every row stops.
@@ -169,7 +169,7 @@ local function skinGameBar(frame, color)
   vgSkinned[frame] = true
   dressGameBar(frame.StatusBar, color)
   fadeGameArt(frame)
-  frame:HookScript("OnShow", fadeGameArt)
+  frame:HookScript("OnShow", ns.Guard("show game swing bar", fadeGameArt))
   if type(hooksecurefunc) == "function" and type(frame.ApplyRangePresentation) == "function" then hooksecurefunc(frame, "ApplyRangePresentation", ns.Guard("hook ApplyRangePresentation", fadeGameArt)) end
 end
 

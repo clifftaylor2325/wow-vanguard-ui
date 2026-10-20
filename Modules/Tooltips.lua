@@ -266,7 +266,7 @@ function TT.Enable(settings)
   TT.SkinAll()
   TT.ApplyFonts()
   hookTooltips()
-  if _G.GameTooltip then _G.GameTooltip:HookScript("OnHide", onHide) end
+  if _G.GameTooltip then _G.GameTooltip:HookScript("OnHide", ns.Guard("hide tooltip", onHide)) end
   if type(hooksecurefunc) == "function" and type(_G.GameTooltip_SetDefaultAnchor) == "function" then
     hooksecurefunc("GameTooltip_SetDefaultAnchor", ns.Guard("hook GameTooltip_SetDefaultAnchor", TT.Anchor))
   end

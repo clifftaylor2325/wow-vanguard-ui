@@ -397,8 +397,8 @@ local function markParts(m)
   m.ring = T.Glow(m, TP.RING)
   m:RegisterForClicks("LeftButtonUp", "RightButtonUp")
   m:SetScript("OnClick", ns.Guard("click talent plan", function(self, mouse) TP.Click(self, mouse) end))
-  m:SetScript("OnEnter", function(self) TP.ShowTip(self) end)
-  m:SetScript("OnLeave", hideTip)
+  m:SetScript("OnEnter", ns.Guard("hover talent plan", function(self) TP.ShowTip(self) end))
+  m:SetScript("OnLeave", ns.Guard("leave talent plan", hideTip))
   m:EnableMouse(false)
 end
 
@@ -498,8 +498,8 @@ local function barSummary(bar, frame)
   bar.tip = CreateFrame("Frame", nil, bar)
   bar.tip:SetAllPoints(bar.summary)
   bar.tip:EnableMouseMotion(true)
-  bar.tip:SetScript("OnEnter", showSummaryTip)
-  bar.tip:SetScript("OnLeave", function() GameTooltip:Hide() end)
+  bar.tip:SetScript("OnEnter", ns.Guard("hover talent plan summary", showSummaryTip))
+  bar.tip:SetScript("OnLeave", ns.Guard("leave talent plan summary", function() GameTooltip:Hide() end))
 end
 
 -- The bar's controls: the Plan switch, Spend planned, and the summary after them.
@@ -552,8 +552,8 @@ function TP.Attach()
   if not frame or vgPlanner[frame] then return end
   vgPlanner[frame] = true
   buildBar(frame)
-  frame:HookScript("OnShow", TP.Schedule)
-  frame:HookScript("OnHide", function() GameTooltip:Hide() end)
+  frame:HookScript("OnShow", ns.Guard("show talent window", TP.Schedule))
+  frame:HookScript("OnHide", ns.Guard("hide talent window", function() GameTooltip:Hide() end))
   TP.Schedule()
 end
 
