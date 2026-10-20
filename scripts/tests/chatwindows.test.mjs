@@ -153,6 +153,21 @@ it("chat find: the Find button opens the find box with the word field at the top
   expect(addon.eval("return #ns.errors"), "no errors").toBe(0);
 });
 
+it("chat find: the find box and the copy box never stack; the one opening takes the other's spot and the other closes", () => {
+  const addon = loggedIn(ENV + LINES);
+  addon.eval("ns.GetModule('ChatWindows').AskFind() Vanguard_FindDialog:ClearAllPoints() Vanguard_FindDialog:SetPoint('TOPLEFT', UIParent, 'TOPLEFT', 30, -40)");
+  addon.eval("ns.GetModule('ChatExtras').ShowCopy()");
+  // A dialog's first anchor, with whether it is on UIParent.
+  const spot = (name) => addon.eval(`local p, rel, rp, x, y = ${name}:GetPoint() return { p, rel == UIParent, rp, x, y }`);
+  expect(addon.eval("return { Vanguard_FindDialog:IsShown(), Vanguard_TextDialog:IsShown() }"), "Copy closes the find box").toEqual([false, true]);
+  expect(spot("Vanguard_TextDialog"), "and opens where it was").toEqual(["TOPLEFT", true, "TOPLEFT", 30, -40]);
+  addon.eval("Vanguard_TextDialog:ClearAllPoints() Vanguard_TextDialog:SetPoint('CENTER', UIParent, 'CENTER', 5, 6) ns.GetModule('ChatWindows').AskFind()");
+  expect(addon.eval("return { Vanguard_FindDialog:IsShown(), Vanguard_TextDialog:IsShown() }"), "Find closes the copy box").toEqual([true, false]);
+  expect(spot("Vanguard_FindDialog"), "and opens where it was").toEqual(["CENTER", true, "CENTER", 5, 6]);
+  addon.eval("ns.AskText('TEST-ONLY ask', function() end)");
+  expect(addon.eval("return { Vanguard_FindDialog:IsShown(), Vanguard_TextDialog:IsShown() }"), "a typing box closes it too").toEqual([false, true]);
+});
+
 it("chat find: saved history that no window shows is searched too, and only the newest lines are listed", () => {
   const addon = loggedIn(ENV + LINES, { savedVariables: 'VanguardCharDB = { chatHistory = { [1] = { "5|ffffff|old Sword talk", "6|ffffff|two Sword lines |Hitem:1|h[Big Sword]|h", "bad" }, [7] = "nope" } }' });
   const sword = lit(addon, "Sword");
