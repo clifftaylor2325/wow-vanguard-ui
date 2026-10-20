@@ -327,7 +327,7 @@ Vanguard moves little and quietly. Every fade goes through the theme (`T.FadeIn`
 | AFK screen appears | fade in | 0.4 s | - (never opens in a fight) | Reduce motion |
 | AFK screen goes (you are back, a click or key, a fight starts) | fade out | 0.2 s | 0.15 s | Reduce motion |
 | Instance prep card shows, then goes after Hide after (20 s) or its close button | fade in / fade out | 0.12 s | - (never opens in a fight; closes in 0.12 s) | Reduce motion |
-| Chat watch toast (a phrase, or an auction price alert) shows, then goes after 8 s or a click | fade in / fade out | 0.12 s | 0.12 s | Reduce motion |
+| Chat watch toast (a phrase, or an auction price alert) shows, then goes after 8 s or a click; held in a fight until it ends (the newest only) | fade in / fade out | 0.12 s | 0.12 s | Reduce motion |
 | Cast bar ends | flash: the bar fills, green for a finished cast, red with the reason (Interrupted, Failed) | held while it fades | held while it fades | Reduce motion (the bar hides at once) |
 | Cast bar ends, then | fade out | 0.35 s | 0.15 s | Reduce motion |
 | Cursor ring (Ring at the cursor, Cast bars) | the global cooldown and cast sweeps run with the client's duration objects; the ring shows and hides at once, no fade | the sweep's own length | the sweep's own length | - (the sweeps are information, not decoration) |
@@ -367,8 +367,8 @@ All are the client's own interface sounds (`SOUNDKIT`), played with `T.Sound` un
 | A switch is turned on in the options, a visibility condition is ticked or unticked, a click-cast starter layout is applied | `IG_MAINMENU_OPTION_CHECKBOX_ON` | Interface sounds |
 | A switch is turned off in the options, or a row's reset dot is clicked | `IG_MAINMENU_OPTION_CHECKBOX_OFF` | Interface sounds |
 | A rare shows up on the minimap (out of combat, once per rare) | `RAID_WARNING`, with one chat line | "A rare nearby: a sound and a chat line" (off by default; not Interface sounds, since it is an alert you asked for) |
-| A phrase you watch for is said in chat (Chat watch, at most once every 2 s) | `TELL_MESSAGE` (`T.Sound("alert")`) | Interface sounds, and Chat watch's Sound switch |
-| A shopping list item is up at or under its max price (Auction helper's price alerts, sharing Chat watch's 2 s gap) | `TELL_MESSAGE` (`T.Sound("alert")`) | Interface sounds, and the item's alert switch |
+| A phrase you watch for is said in chat (Chat watch, at most once every 2 s; held in a fight, then rung once when it ends) | `TELL_MESSAGE` (`T.Sound("alert")`) | Interface sounds, and Chat watch's Sound switch |
+| A shopping list item is up at or under its max price (Auction helper's price alerts, sharing Chat watch's 2 s gap; held in a fight as Chat watch's) | `TELL_MESSAGE` (`T.Sound("alert")`) | Interface sounds, and the item's alert switch |
 
 The game's own sounds (error messages, the micro menu, windows Vanguard restyles) stay the game's.
 

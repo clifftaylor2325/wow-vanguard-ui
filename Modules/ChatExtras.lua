@@ -149,6 +149,49 @@ function CX.Plain(text)
   return text
 end
 
+-- Text with Lua's pattern characters escaped, so a pattern made from it finds it as it is.
+---@param text string
+---@return string
+function CX.Escape(text)
+  return (text:gsub("[%^%$%(%)%%%.%[%]%*%+%-%?]", "%%%0"))
+end
+
+-- Notes in `hit` every byte of `lower` that is part of a match of pattern (one that never matches
+-- empty text).
+local function markHits(lower, pattern, hit)
+  local from = 1
+  while true do
+    local s, e = lower:find(pattern, from)
+    if not s then return end
+    for i = s, e do hit[i] = true end
+    from = e + 1
+  end
+end
+
+-- The text with each run of hit bytes painted in the accent's text colour.
+local function paintHits(text, hit)
+  local out, i = {}, 1
+  while i <= #text do
+    local j = i
+    while j < #text and (hit[j + 1] == true) == (hit[i] == true) do j = j + 1 end
+    out[#out + 1] = hit[i] and T.Paint(text:sub(i, j), "accentText") or text:sub(i, j)
+    i = j + 1
+  end
+  return table.concat(out)
+end
+
+-- A plain line (CX.Plain's: no codes left in it) with every match of the patterns (lower-case, none
+-- matching empty text: CX.Escape a plain word) in the accent's text colour, for Find in chat and Chat
+-- watch's toast. Only lines read as plain text get here: a hidden (secret) line was left out before.
+---@param text string
+---@param patterns string[]
+---@return string
+function CX.Marked(text, patterns)
+  local hit, lower = {}, text:lower()
+  for _, pattern in ipairs(patterns) do markHits(lower, pattern, hit) end
+  return paintHits(text, hit)
+end
+
 -- A chat window's last lines as plain text (lines the game hides are left out).
 function CX.RecentText(frame)
   local lines, count = {}, ns.PlainNumber(frame:GetNumMessages()) or 0
