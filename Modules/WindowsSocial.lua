@@ -18,6 +18,9 @@ local GW = ns.GetModule("Windows")
 -- options and the tabard's pickers.
 local COUNT = { MAIL_ATTACHMENTS = 16, PETITION_MEMBERS = 9, REGISTRAR_OPTIONS = 3, TABARD_PICKERS = 5 }
 
+-- The frame names and parentKeys the social windows read, by name (only this file reads them).
+local PARTS = {}
+
 -- Helpers ---------------------------------------------------------------------------------------
 
 -- A font string, when it is one, in a theme text color.
@@ -693,7 +696,7 @@ local function dressSettings(frame)
 end
 
 -- The invite links' labels, gold in the game.
-GW.TICKET_LABELS = { "LinkInstructions", "ExpandLabel", "ExpiresDropdownLabel", "UsesDropdownLabel" }
+PARTS.TICKET_LABELS = { "LinkInstructions", "ExpandLabel", "ExpiresDropdownLabel", "UsesDropdownLabel" }
 
 -- One row of the invite links list: a hoverable row without its stripe, its two buttons themed (the revoke cross kept).
 local function dressTicketRow(row)
@@ -725,7 +728,7 @@ local function dressTicketManager(frame)
   GW.ShowTexture(frame.Icon)
   GW.EachKey(frame, { "ExpiresDropdown", "UsesDropdown" }, GW.SkinDropdown)
   GW.SkinPlate(frame.MaximizeButton)
-  paintKeys(frame, GW.TICKET_LABELS, "text")
+  paintKeys(frame, PARTS.TICKET_LABELS, "text")
   dressRule(frame.Separator)
   dressInviteManager(frame.InviteManager)
 end
@@ -779,14 +782,14 @@ end
 local function dressMemberDetail(dialog)
   if not isFrame(dialog) then return end
   GW.SkinSocialDialog(dialog)
-  paintKeys(dialog, GW.MEMBER_DETAIL_TEXT, "text")
+  paintKeys(dialog, PARTS.MEMBER_DETAIL_TEXT, "text")
   GW.EachKey(dialog, { "RemoveButton", "GroupInviteButton" }, GW.SkinButton)
   GW.SkinDropdown(dialog.RankDropdown)
   GW.EachKey(dialog, { "NoteBackground", "OfficerNoteBackground" }, GW.InsetPanel)
 end
 
 -- The member detail pop-up's gold name and field labels.
-GW.MEMBER_DETAIL_TEXT = { "Name", "ZoneLabel", "RankLabel", "OnlineLabel", "NoteLabel", "OfficerNoteLabel" }
+PARTS.MEMBER_DETAIL_TEXT = { "Name", "ZoneLabel", "RankLabel", "OnlineLabel", "NoteLabel", "OfficerNoteLabel" }
 -- The community invitation and ticket pages' gold lines.
 GW.INVITATION_TEXT = { "InvitationText", "Type", "MemberCount", "Leader" }
 -- The reported-name overlays over the guild window (parentKeys).
@@ -1347,8 +1350,8 @@ GW.Add("social", { "RolePollPopup", "LFGInvitePopup" }, GW.SkinRolePopup)
 -- How many group boxes and member buttons the raid tab has (RaidGroup1-8, RaidGroupButton1-40).
 GW.RAID_GROUPS, GW.RAID_BUTTONS = 8, 40
 -- The tab's own push buttons, and its labels the game colors for its own look.
-GW.RAID_PUSH_BUTTONS = { "RaidFrameRaidInfoButton", "RaidFrameConvertToRaidButton" }
-GW.RAID_LABELS = { "RaidFrameAllAssistCheckButtonText" }
+PARTS.RAID_PUSH_BUTTONS = { "RaidFrameRaidInfoButton", "RaidFrameConvertToRaidButton" }
+PARTS.RAID_LABELS = { "RaidFrameAllAssistCheckButtonText" }
 
 -- One group box: its outline and title art faded, an inset panel behind its slots, its "Group n" caption in the text colour.
 local function dressRaidGroup(i)
@@ -1404,7 +1407,7 @@ local function dressRaidButtons()
 end
 
 -- The tab's "All assist" check button, as a themed check box.
-GW.RAID_CHECK = "RaidFrameAllAssistCheckButton"
+PARTS.RAID_CHECK = "RaidFrameAllAssistCheckButton"
 
 -- The raid roster tab: its group boxes, member buttons, push buttons, labels and check box, in that order,
 -- so a disabled box greys its label last. (The tab sits inside the friends window, which is panelled already.)
@@ -1413,11 +1416,11 @@ function GW.SkinRaidTab()
   for i = 1, GW.RAID_CLASS_BUTTONS do dressRaidClassButton(i) end
   dressRaidInfo(_G.RaidInfoFrame)
   ns.OutOfCombat(dressRaidButtons, "vgSocialRaidButtons")
-  for _, name in ipairs(GW.RAID_PUSH_BUTTONS) do
+  for _, name in ipairs(PARTS.RAID_PUSH_BUTTONS) do
     if type(_G[name]) == "table" and _G[name].CreateTexture then T.Button(_G[name]) end
   end
-  GW.PaintNamed(GW.RAID_LABELS, "text")
-  if type(_G[GW.RAID_CHECK]) == "table" and _G[GW.RAID_CHECK].GetChecked then T.CheckBox(_G[GW.RAID_CHECK]) end
+  GW.PaintNamed(PARTS.RAID_LABELS, "text")
+  if type(_G[PARTS.RAID_CHECK]) == "table" and _G[PARTS.RAID_CHECK].GetChecked then T.CheckBox(_G[PARTS.RAID_CHECK]) end
 end
 
 -- The group boxes and buttons are made when Blizzard_RaidUI loads, after the tab itself is skinned.

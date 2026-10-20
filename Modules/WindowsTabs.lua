@@ -859,7 +859,7 @@ end
 -- boxes, the gear slots, the model area, the paper doll's level lines, pet bar, titles and sets lists, the skill rank
 -- bar, the honor tab and the equipment flyout. Safe to run again: lists, side panes and the flyout are watched once,
 -- and a slot is skinned once.
-function GW.DressCharacterPane()
+local function dressCharacterPane()
   watchLists()
   flattenPane()
   placePaneToggle(_G.CharacterFrame)
@@ -954,7 +954,7 @@ end
 -- Dresses the inside of the collections window: the mount, pet, toy and heirloom journals (GW.DressJournals), and the
 -- appearances tab's backdrops, tabs, search box, dropdowns, page arrows and sets list, and the grid's empty note. Safe
 -- to run again.
-function GW.DressCollections()
+local function dressCollections()
   GW.DressJournals()
   local wardrobe = _G.WardrobeCollectionFrame
   if type(wardrobe) ~= "table" then return end
@@ -967,7 +967,7 @@ function GW.DressCollections()
 end
 
 -- What a window holds besides tabs that is dressed with it, by window name: a function that takes no argument.
-GW.INSIDE = { CharacterFrame = GW.DressCharacterPane, CollectionsJournal = GW.DressCollections }
+GW.INSIDE = { CharacterFrame = dressCharacterPane, CollectionsJournal = dressCollections }
 
 -- Dresses what the window holds besides tabs (GW.INSIDE), now and every time it shows; a failure is reported.
 local function dressInside(frame)
@@ -999,29 +999,29 @@ end
 -- scroll bars (an old scroll frame's slider) is left alone by T.ScrollBar itself. A frame the game
 -- keeps from addons is skipped, and so is the inside of one that holds such a frame (the game refuses
 -- to list its children then).
-function GW.DressBars(frame, depth)
+local function dressBars(frame, depth)
   if frame.IsForbidden and frame:IsForbidden() then return end
   for _, key in ipairs(GW.SCROLL_KEYS) do dressBar(frame[key]) end
   dressBar(pairedBar(frame))
   if depth <= 0 or not frame.GetChildren then return end
   local ok, children = pcall(function() return { frame:GetChildren() } end)
   if not ok then return end
-  for _, child in ipairs(children) do GW.DressBars(child, depth - 1) end
+  for _, child in ipairs(children) do dressBars(child, depth - 1) end
 end
 
 -- What runs when a window shows: its tabs, and its scroll bars if it is a registered window.
-function GW.DressWindow(frame)
+local function dressWindow(frame)
   GW.DressTabs(frame)
   local name = frame:GetName() or ""
-  if GW.REGISTERED[name] then ns.Try("scroll bars " .. name, GW.DressBars, frame, GW.SCROLL_DEPTH) end
+  if GW.REGISTERED[name] then ns.Try("scroll bars " .. name, dressBars, frame, GW.SCROLL_DEPTH) end
 end
 
 -- Dresses a window's tabs and scroll bars now and every time it shows, once per window, and what it holds inside.
 local function dress(frame)
   if type(frame) ~= "table" or not frame.HookScript or dressed[frame] then return end
   dressed[frame] = true
-  GW.DressWindow(frame)
-  frame:HookScript("OnShow", ns.Guard("show window tabs", GW.DressWindow))
+  dressWindow(frame)
+  frame:HookScript("OnShow", ns.Guard("show window tabs", dressWindow))
   watchSystems(frame)
   dressInside(frame)
 end

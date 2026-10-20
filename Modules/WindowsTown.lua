@@ -15,6 +15,9 @@ local GW = ns.GetModule("Windows")
 
 -- Sizes the windows below use, named here rather than written into the code.
 local TOWN = {
+  -- How many rows a page of the merchant window has (MerchantItem1-12, MerchantItemTemplate: a slot plate, a name plate,
+  -- the name, an item button, a price and a token price); the buyback slot under them has the same parts.
+  MERCHANT_ITEMS = 12,
   -- The height of the field the typed amount sits in (the stack split and coin pickup).
   AMOUNT_FIELD_HEIGHT = 24,
 }
@@ -388,9 +391,6 @@ GW.Add("town", { "ContainerFrame1", "ContainerFrame2", "ContainerFrame3", "Conta
 -- this group dresses what it holds, and leaves every button's own script alone (buying, selling and repairing are the
 -- game's clicks; constraint S).
 
--- How many rows a page of the merchant window has (MerchantItem1-12, MerchantItemTemplate: a slot plate, a name plate,
--- the name, an item button, a price and a token price); the buyback slot under them has the same parts.
-GW.MERCHANT_ITEMS = 12
 -- The repair, repair-all, guild repair and sell-junk buttons: square tiles with an icon (their slot plate faded).
 local MERCHANT_TILES = { "MerchantRepairItemButton", "MerchantRepairAllButton", "MerchantGuildBankRepairButton", "MerchantSellAllJunkButton" }
 -- The page arrows (their arrow is their normal and disabled texture; a PREV or NEXT caption beside it).
@@ -462,7 +462,7 @@ end
 function GW.SkinMerchant()
   local frame = _G.MerchantFrame
   if type(frame) ~= "table" then return end
-  for i = 1, GW.MERCHANT_ITEMS do skinMerchantRow("MerchantItem" .. i) end
+  for i = 1, TOWN.MERCHANT_ITEMS do skinMerchantRow("MerchantItem" .. i) end
   skinMerchantRow("MerchantBuyBackItem")
   skinMerchantTiles()
   GW.EachKey(frame, { "FilterDropdown" }, GW.SkinButton)

@@ -517,7 +517,7 @@ function GW.DressChecks(frame, depth)
 end
 
 -- The scroll bars a window keeps, by key: the usual one and the description, no-recruits and scrolling-description
--- ones (GW.DressBars in Modules/WindowsTabs.lua looks for each of them on a frame).
+-- ones (dressBars in Modules/WindowsTabs.lua looks for each of them on a frame).
 GW.SCROLL_KEYS = { "ScrollBar", "DescriptionScrollBar", "NoRecruitsScrollBar", "ScrollingDescriptionScrollBar" }
 
 -- Tries GW.WatchRows again the next time a box with no view yet is shown (once per box).
