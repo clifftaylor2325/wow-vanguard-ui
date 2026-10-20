@@ -2,7 +2,7 @@
 --   durability (orange at 25% or less, red at 10% or less) · free bag slots
 --   gold
 --   fps and latency · ammo (hunters, warriors, rogues) or soul shards (warlocks)
---   the time and the day and date ("21:04  Tue 13 Oct"), with a calendar button
+--   the time as the game's clock shows it and the day and date ("21:04  Tue 13 Oct"), with a calendar button
 --   leveling: XP per hour · time to level
 --   gold per hour this session · what your auction sales came to (Modules/AuctionLedger.lua, off until you turn it on)
 --   your damage per second in the last fight · your place in it in a group (each off until you turn it on)
@@ -310,9 +310,10 @@ function IS.TEXT.shards()
   if n then return "shards " .. n, n == 0 and "bad" or "text" end
 end
 
--- The time.
+-- The time as the game's clock shows it (realm or local time, 12 or 24 hours, as set in the game's
+-- clock window); the computer's 24-hour time on a client without the game's clock helpers.
 function IS.TEXT.clock()
-  local t = ask("date", "%H:%M")
+  local t = ask("GameTime_GetTime", true) or ask("date", "%H:%M")
   if t then return t, "text" end
 end
 
@@ -456,11 +457,29 @@ function IS.ClockClick()
   ask("ToggleTimeManager")
 end
 
+-- The time tooltip's lines: a label and the game's helper that gives that time in the clock's format.
+IS.CLOCK_TIMES = { { "Realm time", "GameTime_GetGameTime" }, { "Local time", "GameTime_GetLocalTime" } }
+
+-- The time's tooltip: realm and local time (with AM/PM in 12-hour mode), and what a click does.
+function IS.ClockTip(b)
+  GameTooltip:SetOwner(b, "ANCHOR_LEFT")
+  GameTooltip:SetText("Time", T.RGB("text"))
+  local r, g, bl = T.RGB("text2")
+  for _, line in ipairs(IS.CLOCK_TIMES) do
+    local t = ask(line[2], true)
+    if type(t) == "string" then GameTooltip:AddDoubleLine(line[1], t, r, g, bl, T.RGB("text")) end
+  end
+  GameTooltip:AddLine("Click: the game's clock and alarm", r, g, bl)
+  GameTooltip:Show()
+end
+
 -- The time's hit area: the text takes the mouse, so a click reaches the game's clock window.
 local function addClock(frame)
   local b = CreateFrame("Button", "Vanguard_InfoStripClock", frame)
   b:SetAllPoints(IS.texts.clock)
   b:SetScript("OnClick", ns.Guard("click info strip clock", IS.ClockClick))
+  b:SetScript("OnEnter", ns.Guard("info strip clock tip", IS.ClockTip))
+  b:SetScript("OnLeave", ns.Guard("info strip clock tip", function() GameTooltip:Hide() end))
   IS.clockButton = b
 end
 

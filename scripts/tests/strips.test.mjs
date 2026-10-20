@@ -153,6 +153,19 @@ it("a click on the info strip's time opens the game's clock window, or turns off
   addon.eval('ns.Settings("InfoStrip").clock = false ns.GetModule("InfoStrip").Paint("clock")');
   expect(addon.eval("return Vanguard_InfoStripClock:IsShown()"), "with the time off, nothing takes its clicks").toBe(false);
 });
+it("the info strip's time follows the game's clock (realm or local, 12 or 24 hours), and its tooltip shows both", () => {
+  const addon = loggedIn(STRIP_ENV + `__wanted = {}
+    GameTime_GetTime = function(ampm) __wanted[#__wanted + 1] = ampm return __twelve and "9:04 PM" or "21:04" end
+    GameTime_GetGameTime = function(ampm) return ampm and "9:04 PM" end
+    GameTime_GetLocalTime = function() return nil end`);
+  addon.eval("__twelve = true __wfgStub.advance(1.1)");
+  expect([block(addon, "clock").text, addon.eval("return __wanted[#__wanted]")], "the game's own clock text, asked with AM/PM").toEqual(["9:04 PM", true]);
+  addon.eval("Vanguard_InfoStripClock.__scripts.OnEnter(Vanguard_InfoStripClock)");
+  const tip = addon.eval("local out = {} for i, l in ipairs(GameTooltip.__lines) do out[i] = l.text .. '|' .. (l.right or '') end return out");
+  expect(tip, "the realm time (a time the client can't give is left out) and the click").toEqual(["Time|", "Realm time|9:04 PM", "Click: the game's clock and alarm|"]);
+  addon.eval("Vanguard_InfoStripClock.__scripts.OnLeave(Vanguard_InfoStripClock)");
+  expect(addon.eval("return GameTooltip:IsShown()"), "and goes with the mouse").toBe(false);
+});
 it("the Bars and bags page's two tracker switches name the game's tracker, the one they change", () => {
   const addon = loggedIn(UI_ENV);
   const labels = addon.eval(`local out = {}
