@@ -78,12 +78,12 @@ it("a built-in preset applies after a question, and keeps local data", () => {
   expect(addon.eval("local n = 0 for k in pairs(VanguardDB.profiles) do if k:find('backup') then n = n + 1 end end return n"), "a backup was made").toBe(1);
 });
 
-it("a preset waits out combat, and a bad string fails with a reason", () => {
+it("a preset is refused in combat, and a bad string fails with a reason", () => {
   const addon = loggedIn(CLICK_LUA);
   setCombat(addon, true);
   addon.slash("preset Tank");
   addon.eval('__click("Apply")');
-  expect(chatHas(addon, /waits until combat ends/), "no import in combat").toBeTruthy();
+  expect(chatHas(addon, /Presets can't be applied in combat: try again after the fight\.$/), "no import in combat, and chat says to try again after the fight").toBeTruthy();
   expect(addon.eval("local n = 0 for k in pairs(VanguardDB.profiles) do if k:find('backup') then n = n + 1 end end return n"), "nothing was imported or backed up").toBe(0);
   setCombat(addon, false);
   addon.eval('Vanguard.RegisterPreset("Broken", "VG1:parts:zzzz:@@@")');

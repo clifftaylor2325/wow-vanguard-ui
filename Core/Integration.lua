@@ -81,9 +81,9 @@ function ns.FindPreset(name)
   return type(name) == "string" and (find(name)) or nil
 end
 
--- Applies a preset's string like /vg import does, once the player has said yes. Waits out combat.
+-- Applies a preset's string like /vg import does, once the player has said yes; refused in combat.
 local function apply(preset)
-  if ns.InCombat() then return ns.Chat("Applying a preset waits until combat ends.") end
+  if ns.InCombat() then return ns.Chat("Presets can't be applied in combat: try again after the fight.") end
   local ok = ns.StartImport(preset.text, function() end, ns.ImportDone)
   if not ok then ns.Chat("Import failed: an import is still running.") end
 end

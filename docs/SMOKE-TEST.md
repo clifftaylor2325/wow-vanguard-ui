@@ -1547,7 +1547,7 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 ### 21.2 In combat
 
 - Do: pull a mob, then type `/vg preset Tank` and answer Apply.
-- Expect: chat says `Applying a preset waits until combat ends.` and nothing changes.
+- Expect: chat says `Presets can't be applied in combat: try again after the fight.` and nothing changes, after the fight too.
 - If it fails, paste: the chat lines and `/vg errors`.
 
 ### 21.3 Another addon
