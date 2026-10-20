@@ -169,12 +169,20 @@ local function catch(why, sender, text)
   countCaught(why)
 end
 
+-- Why a line is caught ("Gold selling", ...), or nil to let it through: a sender let through, the player's own
+-- line, or a filtered tab that can't take the line let it through; otherwise CF.Reason decides.
+local function verdict(text, sender)
+  if CF.allowed[sender] or ns.Home.IsMe(sender) then return nil end
+  if not canCatch() then return nil end
+  return CF.Reason(text, sender, GetTime())
+end
+
 -- Judges one line (once per line ID, or per sender and text without one: the game asks once per chat
 -- window). True to keep it out of the chat.
 function CF.Judge(text, sender, lineID)
   local id = lineID or (sender .. "\1" .. text)
   if id == CF.lastID then return CF.lastVerdict end
-  local why = not (CF.allowed[sender] or ns.Home.IsMe(sender)) and canCatch() and CF.Reason(text, sender, GetTime()) or nil
+  local why = verdict(text, sender)
   if why then catch(why, sender, text) end
   CF.lastID, CF.lastVerdict = id, why ~= nil
   return CF.lastVerdict
