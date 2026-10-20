@@ -61,10 +61,14 @@ end
 local function addOwnSwitchNote(r, name)
   if not O.MODULE_LINKS[name] then return end
   r.ownSwitch = T.Text(r:CreateFontString(nil, "OVERLAY"), "small", "muted")
-  r.ownSwitch:SetPoint("LEFT", r.label, "LEFT", r.label:GetStringWidth() + T.SPACE.gap, 0)
   local refresh = r.Refresh
-  -- The switch's own refresh, then the note, read again each time (the own switch is on another page).
-  r.Refresh = function(self) refresh(self) self.ownSwitch:SetText(O.OwnSwitchNote(name) or "") end
+  -- The switch's own refresh, then the note, read again each time (the own switch is on another page), placed just
+  -- after the name as it measures now (a font change moves it).
+  r.Refresh = function(self)
+    refresh(self)
+    self.ownSwitch:SetText(O.OwnSwitchNote(name) or "")
+    self.ownSwitch:SetPoint("LEFT", self.label, "LEFT", self.label:GetStringWidth() + T.SPACE.gap, 0)
+  end
   r:Refresh()
 end
 
@@ -695,25 +699,28 @@ function O.PlaceWindow()
   ns.GetModule("Windows").PutBack(PLACE_KEY, window)
 end
 
--- The window's height for the screen now: FIT.share of it but at least HEIGHT, and never past the screen less
--- FIT.margin. The nav's entries are sized for HEIGHT, so they fit at any of these.
+-- The window's height for the screen now: FIT.share of it, no more than the screen less FIT.margin, and never
+-- under HEIGHT (the nav's entries are sized for HEIGHT).
 local function fitHeight()
   local screen = UIParent:GetHeight()
-  return math.min(math.max(HEIGHT, math.floor(screen * FIT.share)), screen - FIT.margin)
+  return math.max(HEIGHT, math.min(math.floor(screen * FIT.share), screen - FIT.margin))
 end
 
--- After a UI scale or screen change, the window takes the height that fits now, and its place again.
+-- After a UI scale or screen change, a window whose fitting height changed takes it; a closed one is placed again
+-- too (an open one stays under the mouse, e.g. after the Pixel-perfect scale switch in it).
 T.OnScale(function()
-  if not window then return end
-  T.PixelSize(window, WIDTH, fitHeight(), true)
-  O.PlaceWindow()
+  if not window or fitHeight() == window.fitted then return end
+  window.fitted = fitHeight()
+  T.PixelSize(window, WIDTH, window.fitted, true)
+  if not window:IsShown() then O.PlaceWindow() end
 end)
 
 -- The window frame: opaque (T.ALPHA.opaque: no world shows through, under short pages either), above other windows,
 -- closes with Escape (O.PlaceWindow places it).
 local function windowFrame()
   local f = T.Panel(CreateFrame("Frame", "Vanguard_Options", UIParent), { alpha = T.ALPHA.opaque, shadow = true })
-  T.PixelSize(f, WIDTH, fitHeight(), true)
+  f.fitted = fitHeight()
+  T.PixelSize(f, WIDTH, f.fitted, true)
   f:SetFrameStrata("DIALOG")
   f:EnableMouse(true)
   if type(UISpecialFrames) == "table" then table.insert(UISpecialFrames, "Vanguard_Options") end
@@ -824,11 +831,14 @@ function O.MarkChanged(key)
   end
 end
 
--- Whether a page's title or any row's caption (a card title is no row's) contains the (lower-case) text.
+-- Whether a page's title or any row's caption (a card title is no row's) contains the (lower-case) text, or the
+-- search lists one of its rows (O.RowMatches: keywords, choice names, a note), so the nav never dims a hit's page.
 local function pageMatches(page, text)
   if page.title:lower():find(text, 1, true) then return true end
-  for _, row in ipairs(rowsOf(page)) do
+  local rows = rowsOf(page)
+  for i, row in ipairs(rows) do
     if row[1] ~= "header" and type(row[2]) == "string" and row[2]:lower():find(text, 1, true) then return true end
+    if O.RowMatches(rows, i, text) then return true end
   end
   return false
 end

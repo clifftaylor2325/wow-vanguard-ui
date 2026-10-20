@@ -391,7 +391,7 @@ end
 function O.OwnSwitchNote(name)
   local link = O.MODULE_LINKS[name]
   if not (link and ns.ModuleEnabled(name)) then return nil end
-  local settings = ns.Settings(name)
+  local settings = moduleSettings(name)
   for _, key in ipairs(link.keys) do
     if settings[key] then return nil end
   end

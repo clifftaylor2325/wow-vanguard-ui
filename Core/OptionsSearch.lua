@@ -91,6 +91,11 @@ local function collect(wanted)
   return out, more
 end
 
+-- Whether the search lists row i of a page's rows for this (lower-case) text (the nav keeps its page lit).
+function O.RowMatches(rows, i, text)
+  return isSetting(rows[i]) and matches(rows[i], wordsOf(text), noteUnder(rows, i))
+end
+
 -- The settings that match a (lower-case) search text, and how many more the list has no room for; "changed" is
 -- the ones off their default.
 function O.FindSettings(text)
