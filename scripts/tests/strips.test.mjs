@@ -116,6 +116,13 @@ it("the info strip: the day and date with a calendar button", () => {
   addon.eval('ns.Settings("InfoStrip").date = true __wfgStub.advance(60)');
   expect(block(addon, "date").shown, "and come back on the next minute's tick").toBe(true);
 });
+it("the Bars and bags page's two tracker switches name the game's tracker, the one they change", () => {
+  const addon = loggedIn(UI_ENV);
+  const labels = addon.eval(`local out = {}
+    for _, p in ipairs(ns.Options.PAGES) do if p.key == "bars" then for _, r in ipairs(p.rows()) do if type(r[2]) == "string" and r[2]:find("quest tracker") then out[#out + 1] = r[2] end end end end
+    return out`);
+  expect(labels, "each switch says it is the game's tracker's").toEqual(["The game's quest tracker under the info strip (reload)", "The game's quest tracker in the Vanguard look (reload)"]);
+});
 it("in a fight the info strip's calendar button says the calendar waits, and asks the game for nothing", () => {
   const addon = loggedIn(UNITS_ENV + STRIP_ENV + PANEL_OPENERS);
   setCombat(addon, true);
