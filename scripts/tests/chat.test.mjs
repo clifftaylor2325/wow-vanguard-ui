@@ -494,10 +494,11 @@ it("chat bar hidden until hover (off by default): the bar goes after 4 s away, c
   addon.eval("ChatFrame1.__mouseOver = true");
   addon.advance(0.1, 0.1);
   expect(state()[0], "the mouse over the chat brings it back").toBe(true);
-  addon.eval("ChatFrame1.__mouseOver = false FCF_StartAlertFlash(ChatFrame1)");
+  // The game flashes only a window that isn't shown: here the docked one behind the shown tab.
+  addon.eval("ChatFrame1.isDocked, ChatFrame2.isDocked = 1, 1 ChatFrame2:Hide() ChatFrame1.__mouseOver = false FCF_StartAlertFlash(ChatFrame2)");
   addon.advance(4.5, 0.1);
-  expect(state()[0], "a tab alerting keeps it, mouse or not").toBe(true);
-  addon.eval("FCF_StopAlertFlash(ChatFrame1) FCF_StartAlertFlash(nil)");
+  expect(state()[0], "a docked tab alerting keeps the shown window's bar, mouse or not").toBe(true);
+  addon.eval("FCF_StopAlertFlash(ChatFrame2) FCF_StartAlertFlash(nil)");
   addon.advance(4.5, 0.1);
   expect(state()[0], "the alert over, it goes after the idle time again").toBe(false);
   addon.eval("ChatFrame1EditBox.__mouseOver = true");

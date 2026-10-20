@@ -611,11 +611,23 @@ local function inEditBox(frame)
   return type(box.HasFocus) == "function" and box:HasFocus() == true
 end
 
+-- Whether the game is flashing a tab on a window's bar: its own, or for a docked window any docked
+-- window's (the game flashes only a window that isn't shown, a docked one behind the shown tab, and
+-- every docked tab rides in the dock on the shown window's bar).
+local function alerting(frame)
+  if CH.alerting[frame] then return true end
+  if not frame.isDocked then return false end
+  for other in pairs(CH.alerting) do
+    if other.isDocked then return true end
+  end
+  return false
+end
+
 -- Whether a window wants its bar: the mouse is over its chat (the text, the bar's band above it and
--- the columns either side) or on its edit box, the typing is in the box, or the game is flashing one
--- of its tabs (the bar stays while a tab alerts).
+-- the columns either side) or on its edit box, the typing is in the box, or the game is flashing a
+-- tab on it (the bar stays while a tab alerts).
 local function wantsBar(frame)
-  if CH.alerting[frame] or inEditBox(frame) then return true end
+  if alerting(frame) or inEditBox(frame) then return true end
   return frame:IsMouseOver(CH.BAR + T.SPACE.tight, -T.SPACE.tight, -CH.STACK_ROOM, CH.SIDE_COLUMN + T.SPACE.tight) == true
 end
 
