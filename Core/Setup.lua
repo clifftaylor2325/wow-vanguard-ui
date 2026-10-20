@@ -224,7 +224,7 @@ end
 -- Your role: the specialization's where the client has them, else your group role (ns.PlayerRole).
 local function playerRole()
   local spec, get = ns.SpecIndex(), _G.GetSpecializationRole
-  local role = spec and type(get) == "function" and get(spec) or nil
+  local role = spec and type(get) == "function" and get(spec)
   return ns.RoleKey(role) or ns.PlayerRole()
 end
 
