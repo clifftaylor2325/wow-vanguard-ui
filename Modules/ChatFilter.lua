@@ -317,16 +317,31 @@ local function status()
   if #s.keywords > 0 then ns.Chat("Your words: " .. table.concat(s.keywords, ", ")) end
 end
 
+-- Forgets every keyword; says so.
+function CF.ClearWords()
+  ns.Settings("ChatFilter", CF.defaults).keywords = {}
+  ns.Options.RebuildPage("chat")
+  ns.Chat("Chat filter has no words now.")
+end
+
+-- What each /vg filter verb does with the rest of the line; no verb at all prints the status.
+local VERBS = {
+  on = function() return CF.SetOn(true) end,
+  off = function() return CF.SetOn(false) end,
+  tab = function() return CF.SetMode("tab") end,
+  hide = function() return CF.SetMode("hide") end,
+  add = CF.Add,
+  remove = CF.Remove,
+  clear = CF.ClearWords,
+  [""] = status,
+}
+
 -- /vg filter [on | off | tab | hide | add <word> | remove <word> | clear].
 function CF.Command(rest)
   local verb, arg = (rest or ""):match("^(%S*)%s*(.-)$")
-  if verb == "on" or verb == "off" then return CF.SetOn(verb == "on") end
-  if verb == "tab" or verb == "hide" then return CF.SetMode(verb) end
-  if verb == "add" then return CF.Add(arg) end
-  if verb == "remove" then return CF.Remove(arg) end
-  if verb == "clear" then ns.Settings("ChatFilter", CF.defaults).keywords = {} ns.Options.RebuildPage("chat") return ns.Chat("Chat filter has no words now.") end
-  if verb == "" then return status() end
-  ns.Chat("Usage: /vg filter [on | off | tab | hide | add <word> | remove <word> | clear]")
+  local run = VERBS[verb]
+  if not run then return ns.Chat("Usage: /vg filter [on | off | tab | hide | add <word> | remove <word> | clear]") end
+  return run(arg)
 end
 
 -- Follows a setting changed in the options: the Filtered tab is made when it is first needed, and the card's
