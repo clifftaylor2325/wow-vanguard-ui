@@ -37,7 +37,7 @@ it("the sell list: /vg junk adds, lists, removes and clears; the merchant asks f
   addon.slash("junk");
   expect(chatHas(addon, /Your sell list is empty/), "empty list says so").toBe(true);
   addon.slash("junk |Hitem:159::|h[TEST-ONLY Water]|h");
-  expect(chatHas(addon, /TEST-ONLY Water is on your sell list\. Switch it on under Merchants and errors/), "added, with a hint while the switch is off").toBe(true);
+  expect(chatHas(addon, /TEST-ONLY Water is on your sell list\. Switch it on under Town and gear, Merchants/), "added, with a hint while the switch is off").toBe(true);
   addon.slash("junk 6948");
   addon.slash("junk");
   expect(chatHas(addon, /Sell list: TEST-ONLY Water/), "the list names its items").toBe(true);

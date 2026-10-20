@@ -2,7 +2,7 @@
 // window's remembered place (Core/OptionsWindow.lua), in the TEST-ONLY headless client.
 
 import { expect, it } from "vitest";
-import { CLICK_LUA, WINDOWS_ENV, loggedIn, setCombat } from "./helpers.mjs";
+import { CLICK_LUA, WINDOWS_ENV, chatHas, loggedIn, setCombat } from "./helpers.mjs";
 
 // TEST-ONLY game: the character pane (a ButtonFrameTemplate window with its 20-unit title bar), the combined
 // bag (no title bar) and the two calls that place them, as Blizzard_UIParentPanelManager and ContainerFrame.lua
@@ -280,4 +280,90 @@ it("the windows dragged by their top edge only are ones Vanguard skins, and the 
     end
     return table.concat(bad, " ")`);
   expect(lists, "windows that are not registered, or listed twice").toBe("");
+});
+
+// TEST-ONLY game for Reset: the character pane listed as a left panel (UIPanelWindows), the mailbox with an open
+// letter anchored to its right edge as MailFrame.xml anchors it (the panel manager never places the letter), and
+// a count of the panel manager's layout calls.
+const RESET_ENV = `${MOVE_ENV}
+  UIPanelWindows.CharacterFrame = { area = "left", pushable = 3 }
+  local mail = __window("MailFrame") mail:SetSize(384, 512) mail:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 16, -116)
+  local letter = CreateFrame("Frame", "OpenMailFrame", UIParent) letter:SetSize(340, 420) letter:SetPoint("TOPLEFT", mail, "TOPRIGHT", 0, 0) letter:Hide()
+  letter.SetUserPlaced = function(self, on) self.__testUserPlaced = on end
+  __testLayouts = 0
+  local layout = UpdateUIPanelPositions
+  function UpdateUIPanelPositions(...) __testLayouts = __testLayouts + 1 return layout(...) end
+`;
+
+// Opens the character pane, the bag and a letter and drags each away from where the game put it.
+const moveAll = (addon) => {
+  addon.eval("__open(CharacterFrame) __open(ContainerFrameCombinedBags) MailFrame:Show() OpenMailFrame:Show()");
+  drag(addon, "CharacterFrame", 500, 700);
+  drag(addon, "ContainerFrameCombinedBags", 200, 500);
+  pressDrag(addon, "OpenMailFrame", [600, 960], [900, 600]);
+};
+
+// Clicks Reset window positions on the Game windows page.
+const clickReset = (addon) => addon.eval('ns.Options.Show("windows") return __click("Reset window positions")');
+
+it("H-04 Reset puts open windows back where the game puts them: a panel by one layout, the bag by its own, the letter beside the mailbox", () => {
+  const addon = loggedIn(RESET_ENV + CLICK_LUA);
+  moveAll(addon);
+  expect(Object.keys(saved(addon)).sort(), "three places saved").toEqual(["CharacterFrame", "ContainerFrameCombinedBags", "OpenMailFrame"]);
+  const before = addon.eval("return __testLayouts");
+  expect(clickReset(addon), "the button is on the page").toBe(true);
+  expect(saved(addon), "every place forgotten").toEqual({});
+  expect(corner(addon, "CharacterFrame"), "the character pane where the panel manager puts it").toEqual([16, 964]);
+  expect(addon.eval("return __testLayouts") - before, "the panels laid out once").toBe(1);
+  expect(corner(addon, "ContainerFrameCombinedBags"), "the bag stacked from the bottom-right corner again").toEqual([1500, 340]);
+  expect(corner(addon, "OpenMailFrame"), "the letter beside the mailbox, not where it was dragged").toEqual([400, 964]);
+  expect(errors(addon)).toBe("none");
+});
+
+it("H-04 Reset leaves a closed panel to the game: no layout call, and it opens where the game puts it", () => {
+  const addon = loggedIn(RESET_ENV + CLICK_LUA);
+  addon.eval("__open(CharacterFrame)");
+  drag(addon, "CharacterFrame", 500, 700);
+  addon.eval("CharacterFrame:Hide()");
+  const before = addon.eval("return __testLayouts");
+  clickReset(addon);
+  expect(addon.eval("return __testLayouts") - before, "nothing open to lay out").toBe(0);
+  addon.eval("__open(CharacterFrame)");
+  expect(corner(addon, "CharacterFrame"), "opened again: where the game puts it").toEqual([16, 964]);
+});
+
+it("H-04 Reset in a fight waits until it ends, says so, and then puts everything back", () => {
+  const addon = loggedIn(RESET_ENV + CLICK_LUA);
+  moveAll(addon);
+  setCombat(addon, true);
+  addon.clearChat();
+  clickReset(addon);
+  expect(chatHas(addon, /Moved windows go back once the fight ends\./), "it says when").toBe(true);
+  expect([saved(addon), corner(addon, "CharacterFrame")], "places forgotten, but nothing moved in the fight").toEqual([{}, [500, 700]]);
+  addon.clearChat();
+  clickReset(addon);
+  expect(chatHas(addon, /Moved windows go back/), "a second click with nothing left to forget says nothing").toBe(false);
+  setCombat(addon, false);
+  expect([saved(addon), corner(addon, "CharacterFrame"), corner(addon, "OpenMailFrame")], "after it, all back").toEqual([{}, [16, 964], [400, 964]]);
+  expect(errors(addon)).toBe("none");
+});
+
+it("H-04 Reset moves only the windows that were dragged: one the game or another addon moved since stays put", () => {
+  const addon = loggedIn(RESET_ENV + CLICK_LUA);
+  addon.eval("CalendarFrame:Show() __open(CharacterFrame)");
+  drag(addon, "CharacterFrame", 500, 700);
+  addon.eval("CalendarFrame:ClearAllPoints() CalendarFrame:SetPoint('TOPLEFT', UIParent, 'BOTTOMLEFT', 700, 400)");
+  clickReset(addon);
+  expect([corner(addon, "CharacterFrame"), corner(addon, "CalendarFrame")], "the pane back, the calendar left where it was put").toEqual([[16, 964], [700, 400]]);
+});
+
+it("H-05 the clock, chat channels, game settings, chat settings and guild control windows can be dragged too", () => {
+  const addon = loggedIn(MOVE_ENV);
+  addon.eval(`for _, name in ipairs({ "TimeManagerFrame", "ChannelFrame", "SettingsPanel", "ChatConfigFrame", "GuildControlUI" }) do
+    local f = __window(name) f:SetSize(300, 300) f:SetPoint("CENTER")
+  end`);
+  addon.fire("ADDON_LOADED", "Blizzard_TimeManager");
+  const W = "ns.FrameState('vgMoveHandle')";
+  expect(addon.eval(`return { ${W}[TimeManagerFrame] ~= nil, ${W}[ChannelFrame] ~= nil }`), "the clock and channels by their title bar").toEqual([true, true]);
+  expect(addon.eval(`local m = ns.FrameState('vgMovable') return { m[SettingsPanel], m[ChatConfigFrame], m[GuildControlUI], ${W}[SettingsPanel] == nil }`), "the other three by their top edge only").toEqual([true, true, true, true]);
 });
