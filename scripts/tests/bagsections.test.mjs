@@ -426,6 +426,14 @@ it("bag categories: your own sections above the built-in ones, in list order, fi
   expect(chat(), "the list names each category and its items").toMatch(/Mix: /);
 });
 
+it("bag categories: Make first moves the category's section first at once, with the same items", () => {
+  const addon = openFilled([8, 4, 0, 0, 0], { quest: 1, equipment: 1, consumables: 2, junk: 1 });
+  addon.slash("bag add Potions |Hitem:159::|h[TEST-ONLY Water]|h");
+  addon.slash("bag add Tools 90001");
+  addon.slash("bag top Tools");
+  expect(addon.eval(`local h = ns.GetModule("Bags").headers
+    return h["cat:tools"]:GetLeft() < h["cat:potions"]:GetLeft()`), "Tools now sits before Potions").toBe(true);
+});
 it("bag categories ignore an item with no usable ID", () => {
   const addon = openFilled([8, 0, 0, 0, 0], { equipment: 1 });
   addon.slash("bag add Tools 90001");
