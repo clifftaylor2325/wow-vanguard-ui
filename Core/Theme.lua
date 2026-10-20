@@ -2324,8 +2324,9 @@ end
 -- Side tabs (LargeSideTabButtonTemplate) are Frames, which have no OnEnable or
 -- OnDisable script, and hooking a script a widget lacks is an error: hence the pcalls.
 local function watchTab(button)
-  pcall(button.HookScript, button, "OnEnable", repaintTab)
-  pcall(button.HookScript, button, "OnDisable", repaintTab)
+  local onState = ns.Guard("tab state", repaintTab)
+  pcall(button.HookScript, button, "OnEnable", onState)
+  pcall(button.HookScript, button, "OnDisable", onState)
   if type(hooksecurefunc) ~= "function" then return end
   if type(button.SetChecked) == "function" then hooksecurefunc(button, "SetChecked", ns.Guard("hook SetChecked", onTabChecked)) end
   if type(button.SetTabSelected) == "function" then hooksecurefunc(button, "SetTabSelected", ns.Guard("hook SetTabSelected", repaintTab)) end
@@ -2889,7 +2890,7 @@ local function playFade(f, from, to, seconds, done)
   f.alpha:SetFromAlpha(from)
   f.alpha:SetToAlpha(to)
   f.alpha:SetDuration(seconds)
-  f.group:SetScript("OnFinished", done)
+  f.group:SetScript("OnFinished", ns.Guard("fade done", done))
   f.group:Play()
 end
 
