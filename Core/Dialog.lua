@@ -148,6 +148,14 @@ local function addTextButtons(f)
   f.close:SetScript("OnClick", ns.Guard("click close text box", function() f:Hide() end))
 end
 
+-- The text dialog's buttons in Tab order (the errors window's Clear once it exists; hidden ones are skipped).
+local function textButtons()
+  local list = { box.primary }
+  if box.clear then list[#list + 1] = box.clear end
+  list[#list + 1] = box.close
+  return list
+end
+
 -- Builds the text dialog once: title, text area, the primary (accent) button and the one that
 -- dismisses it, which reads Cancel beside the primary and Close when the box only shows text.
 local function textBox()
@@ -156,7 +164,7 @@ local function textBox()
   addEditBox(box)
   limitTitle(box)
   addTextButtons(box)
-  ns.TabFocus(box, function() return { box.primary, box.close } end)
+  ns.TabFocus(box, textButtons)
   return box
 end
 
@@ -181,6 +189,28 @@ function ns.ShowText(title, text)
   f:Show()
   f.edit:SetFocus()
   f.edit:HighlightText()
+end
+
+-- The errors window's Clear button, left of Close, made the first time; it hides with the box, so only
+-- ns.ShowErrors shows it.
+local function clearButton(f)
+  if f.clear then return f.clear end
+  f.clear = button(f, "Clear")
+  f.clear:SetPoint("RIGHT", f.close, "LEFT", -T.SPACE.gap, 0)
+  f.clear:SetScript("OnClick", ns.Guard("click clear errors", function() ns.ClearErrors() f:Hide() ns.Chat("Errors cleared.") end))
+  f:HookScript("OnHide", function() f.clear:Hide() end)
+  return f.clear
+end
+
+-- Shows the errors Vanguard caught, selected for copying, with Report a bug (the feedback form on a bug, which
+-- attaches the report) and Clear (empties the list) beside Close.
+function ns.ShowErrors(title, text)
+  ns.ShowText(title, text)
+  local f = box
+  f.primary.text:SetText("Report a bug")
+  f.primary:SetScript("OnClick", ns.Guard("click report a bug", function() f:Hide() ns.Feedback.Open("bug") end))
+  f.primary:Show()
+  clearButton(f):Show()
 end
 
 -- An empty box to type or paste into; onImport(text) runs when the primary button

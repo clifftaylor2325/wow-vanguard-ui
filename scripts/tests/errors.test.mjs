@@ -2,7 +2,7 @@
 
 import { expect, it } from "vitest";
 import path from "node:path";
-import { FOREVER_ENV, MICRO_ENV, TIDY_ENV, UI_ENV, UNITS_ENV, calls, chatHas, expectErrors, isTok, loggedIn, putAway, setCombat } from "./helpers.mjs";
+import { CLICK_LUA, FOREVER_ENV, MICRO_ENV, TIDY_ENV, UI_ENV, UNITS_ENV, calls, chatHas, expectErrors, isTok, loggedIn, putAway, setCombat } from "./helpers.mjs";
 
 // The reload overlay on a button as [type, macro, key-down, sits above the button, template, clicks], or false.
 const reloadOverlay = (addon, path) => addon.eval(`local b = ${path} local o = b.reloadOverlay
@@ -15,7 +15,7 @@ it("/vg errors: what Vanguard caught this session", () => {
   expect(chatHas(addon, /No errors caught this session/), "with nothing caught, it says so").toBe(true);
   const broken = loggedIn(`__wfgStub.noAuraContainer = true
     local M = ns.Module("TEST-ONLY Broken", {}) function M.Enable() error("TEST-ONLY boom") end`);
-  broken.eval("ns.ShowText = function(title, text) __shown = { title, text } end");
+  broken.eval("ns.ShowErrors = function(title, text) __shown = { title, text } end");
   broken.slash("errors");
   const text = broken.eval("return __shown[2]");
   expect(chatHas(broken, /\d+ error\(s\), opened in the copy window\./) && /\d+ error\(s\) caught this session \(\d+ in all\), newest last/.test(text) && /aura containers \(using Vanguard's own icons\)/.test(text) && /module TEST-ONLY Broken: .*TEST-ONLY boom  \(x1\)/.test(text), "a module that failed and a missing aura container are both listed").toBe(true);
@@ -76,7 +76,7 @@ it("caught errors: without debugstack or an error handler (this stub), and a hid
   const addon = loggedIn("GetBuildInfo = nil debugstack = nil geterrorhandler = nil CallErrorHandler = nil");
   addon.eval('ns.ClearErrors() ns.Report("TEST-ONLY bare", "x")');
   expect(addon.eval("return { ns.errors[1].text, ns.errors[1].stack, ns.errors[1].count }"), "the error is kept without a stack").toEqual(["TEST-ONLY bare: x", "", 1]);
-  addon.eval("ns.ShowText = function(title, text) __shown = { title, text } end");
+  addon.eval("ns.ShowErrors = function(title, text) __shown = { title, text } end");
   addon.clearChat();
   addon.slash("errors");
   const lines = addon.eval("return __shown[2]").split("\n");
@@ -107,7 +107,7 @@ it("/vg errors: counts, build, interface version and the aura backend, then clea
   expectErrors("TEST-ONLY twice: x", "TEST-ONLY once: y");
   const addon = loggedIn(FOREVER_ENV + ERRORS_ENV);
   addon.eval('ns.ClearErrors() ns.Report("TEST-ONLY twice", "x") ns.Report("TEST-ONLY twice", "x") ns.Report("TEST-ONLY once", "y")');
-  addon.eval("ns.ShowText = function(title, text) __shown = { title, text } end");
+  addon.eval("ns.ShowErrors = function(title, text) __shown = { title, text } end");
   addon.clearChat();
   addon.slash("errors");
   expect(chatHas(addon, /2 error\(s\), opened in the copy window\./), "chat gets a one-line note").toBe(true);
@@ -405,4 +405,25 @@ it("the error badge: a count on the addons button and in the options footer, gon
   plain.advance(0.5);
   plain.eval("ns.Options.Show()");
   expect(plain.eval('return { Vanguard_ErrorBadge == nil, Vanguard_OptionsErrors.text:GetText() }'), "a client without the addons button: the footer still counts").toEqual([true, "1 error caught this session: click to list them"]);
+});
+
+it("A-14 the errors window: Report a bug opens the feedback form on a bug, Clear empties the list, and other text windows don't show them", () => {
+  expectErrors("TEST-ONLY shown: x");
+  const addon = loggedIn(CLICK_LUA);
+  addon.eval('ns.ClearErrors() ns.Report("TEST-ONLY shown", "x")');
+  addon.slash("errors");
+  // The text window's shown buttons, left to right as the player reads them.
+  const buttons = () => addon.eval(`local f, out = Vanguard_TextDialog, {}
+    for _, b in ipairs({ f.clear, f.close, f.primary }) do if b and b:IsShown() then out[#out + 1] = b.text:GetText() end end
+    return out`);
+  expect(buttons(), "Clear, Close and the accent Report a bug").toEqual(["Clear", "Close", "Report a bug"]);
+  expect(addon.eval('return __click("Report a bug")'), "the button is there").toBe(true);
+  expect(addon.eval("return { Vanguard_TextDialog:IsShown(), Vanguard_Feedback:IsShown(), Vanguard_Feedback.kind }"), "the errors window gives way to the form, on a bug").toEqual([false, true, "bug"]);
+  addon.eval("Vanguard_Feedback:Hide()");
+  addon.slash("errors");
+  addon.clearChat();
+  expect(addon.eval('return __click("Clear")'), "Clear is there").toBe(true);
+  expect([addon.eval("return { #ns.errors, Vanguard_TextDialog:IsShown() }"), chatHas(addon, /Errors cleared\./)], "the list emptied, the window closed, chat says so").toEqual([[0, false], true]);
+  addon.eval('ns.ShowText("TEST-ONLY", "TEST-ONLY text")');
+  expect(buttons(), "a plain text window shows Close only").toEqual(["Close"]);
 });
