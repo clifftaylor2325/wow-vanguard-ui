@@ -562,7 +562,8 @@ function MS.BagLine(tt)
   local b = type(tt.GetOwner) == "function" and tt:GetOwner()
   if not (b and vgFill[b]) or b == _G.MainMenuBarBackpackButton then return end
   local total, free = MS.BagSpace(b:GetBagID())
-  if total and total > 0 then tt:AddLine(string.format("%d of %d free", free, total), T.RGB("text2")) end
+  local r, g, bl = T.RGB("text2")
+  if total and total > 0 then tt:AddLine(string.format("%d of %d free", free, total), r, g, bl) end
 end
 
 -- The backpack's free count: small, in the icon's corner, over a dark backing

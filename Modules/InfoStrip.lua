@@ -464,7 +464,8 @@ function IS.CalendarTip(b)
   GameTooltip:SetOwner(b, "ANCHOR_LEFT")
   GameTooltip:SetText("Calendar", T.RGB("text"))
   local n = IS.PendingInvites()
-  if n > 0 then GameTooltip:AddLine(n == 1 and "1 invite waiting" or n .. " invites waiting", T.RGB("text2")) end
+  local r, g, bl = T.RGB("text2")
+  if n > 0 then GameTooltip:AddLine(n == 1 and "1 invite waiting" or n .. " invites waiting", r, g, bl) end
   GameTooltip:Show()
 end
 
