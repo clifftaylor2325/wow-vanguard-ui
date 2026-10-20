@@ -18,6 +18,7 @@ const ENV = `
   items[1017] = { name = "TEST-ONLY Shield", quality = 3, level = 35, equipLoc = "INVTYPE_SHIELD" }
   items[1018] = { name = "TEST-ONLY Dagger", quality = 3, level = 20, equipLoc = "INVTYPE_WEAPONOFFHAND" }
   items[1019] = { name = "TEST-ONLY Rag Vest", quality = 1, level = 5, equipLoc = "INVTYPE_CHEST" }
+  items[1020] = { name = "TEST-ONLY Orb", quality = 3, level = 30, equipLoc = "INVTYPE_HOLDABLE" }
   __wfgWorld.worn[1], __wfgWorld.worn[5], __wfgWorld.worn[17] = "item:1001:0", "item:1005:0:0", "item:1017::"
   UnitDamage = function() return 10, 20, 4, 8, 1, -1, 1.1 end
   UnitAttackSpeed = function() return 2, 1.5 end
@@ -35,12 +36,18 @@ it("shows the item level on each worn slot and no mark until the enchant switch 
   expect(label(addon, "Chest", "mark")[0], "marks are off by default").toBe(false);
 });
 
-it("marks unenchanted enchantable pieces once switched on, an off hand only when it is a weapon", () => {
+it("marks unenchanted enchantable pieces once switched on, an off hand when it is a weapon or a shield", () => {
   const addon = loggedIn(ENV, { savedVariables: ENCHANTS });
   addon.eval("CharacterFrame:Show()");
   expect(label(addon, "Chest", "mark")[0], "an uncommon chest piece with enchant 0").toBe(true);
   expect(label(addon, "Head", "mark")[0], "head is not an enchantable slot").toBe(false);
-  expect(label(addon, "SecondaryHand", "mark")[0], "a shield takes no enchant").toBe(false);
+  expect(label(addon, "SecondaryHand", "mark")[0], "an unenchanted shield").toBe(true);
+  addon.eval("__wfgWorld.worn[17] = 'item:1017:929'");
+  repaint(addon);
+  expect(label(addon, "SecondaryHand", "mark")[0], "an enchanted shield").toBe(false);
+  addon.eval("__wfgWorld.worn[17] = 'item:1020:0'");
+  repaint(addon);
+  expect(label(addon, "SecondaryHand", "mark")[0], "a held off-hand item takes no enchant").toBe(false);
   addon.eval("__wfgWorld.worn[17] = 'item:1018:2564'");
   repaint(addon);
   expect(label(addon, "SecondaryHand", "mark")[0], "an enchanted off-hand weapon").toBe(false);
@@ -73,7 +80,7 @@ it("says the average level, melee damage and missing enchants for /vg gear", () 
   addon.slash("gear");
   expect(chatHas(addon, /Average item level 35 \(3 pieces\)\./)).toBe(true);
   expect(chatHas(addon, /Melee 8\.3 damage per second \(2\.0 s swing\), off hand 4\.4\./)).toBe(true);
-  expect(chatHas(addon, /Missing an enchant: Chest\./)).toBe(true);
+  expect(chatHas(addon, /Missing an enchant: Chest, Off hand\./)).toBe(true);
 });
 
 it("copes with no gear and no damage figures, and does nothing without the character pane", () => {

@@ -5,7 +5,7 @@ local ADDON, ns = ...
 
 local QU = ns.Module("Quiet", { defaults = { errors = false, zoneText = false, camera = 0 } })
 
--- The furthest-zoom choices (the game's cameraDistanceMaxZoomFactor); 0 leaves the game's own setting.
+-- The furthest-zoom choices (the game's cameraDistanceMaxZoomFactor); 0 is the game's own setting.
 QU.CAMERA = { { 0, "game's setting" }, { 1.5, "1.5 x" }, { 2, "2 x" }, { 2.6, "2.6 x (furthest)" } }
 
 -- Hides a frame the game just showed, while `key` is switched on.
@@ -70,12 +70,32 @@ local function errorLine()
   hooksecurefunc(f, "AddMessage", ns.Guard("quiet errors", onLine))
 end
 
--- The camera's furthest zoom (a CVar the client lets addons set), out of combat; 0 leaves the game's own setting.
+-- The camera's furthest zoom as the client has it now (nil when it can't say).
+local function cameraNow()
+  local get = (C_CVar and C_CVar.GetCVar) or _G.GetCVar
+  if type(get) == "function" then return get("cameraDistanceMaxZoomFactor") end
+end
+
+-- Sets the furthest zoom from the settings: a chosen factor, keeping the player's own value from before
+-- Vanguard's first change in settings.cameraPrior; or, for "game's setting", that kept value put back.
+local function setCamera(set, settings)
+  local factor = tonumber(settings.camera) or 0
+  if factor > 0 then
+    if settings.cameraPrior == nil then settings.cameraPrior = cameraNow() end
+    return set("cameraDistanceMaxZoomFactor", factor)
+  end
+  if settings.cameraPrior ~= nil then set("cameraDistanceMaxZoomFactor", settings.cameraPrior) end
+  settings.cameraPrior = nil
+end
+
+-- The camera's furthest zoom (a CVar the client lets addons set), out of combat. "game's setting" (0) puts
+-- back the player's own value if Vanguard changed it, and otherwise leaves the game's setting alone.
 function QU.ApplyCamera()
   local set = (C_CVar and C_CVar.SetCVar) or _G.SetCVar
-  local factor = QU.settings and tonumber(QU.settings.camera) or 0
-  if type(set) ~= "function" or factor <= 0 then return end
-  ns.OutOfCombat(function() set("cameraDistanceMaxZoomFactor", factor) end, "quiet camera")
+  local settings = QU.settings
+  if type(set) ~= "function" or type(settings) ~= "table" then return end
+  if (tonumber(settings.camera) or 0) <= 0 and settings.cameraPrior == nil then return end
+  ns.OutOfCombat(function() setCamera(set, settings) end, "quiet camera")
 end
 
 -- Module entry point (Core/Modules.lua): the hooks read their switch each time, so the options apply at once.

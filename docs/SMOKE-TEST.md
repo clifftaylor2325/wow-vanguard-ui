@@ -582,6 +582,12 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Expect: the yellow progress line (`<mob> slain: 3/10`) stays on screen for its usual time, the red line never shows, and the error voice and sound play as they do without Vanguard. With the switch off, both lines show.
 - If it fails, paste: a screenshot of the top of the screen and `/vg errors`.
 
+### 8.6b Camera zoom back to the game's setting
+
+- Do: with "Furthest the camera zooms out" on "game's setting", scroll the camera all the way out and note how far it goes. Pick "2.6 x (furthest)" and scroll out, then pick "game's setting" again and scroll out. Try picking "game's setting" during a fight too.
+- Expect: 2.6 x zooms out further; back on "game's setting" the camera stops where it did at first (in a fight, only once the fight ends), and it stays that way after `/reload`.
+- If it fails, paste: `/dump GetCVar("cameraDistanceMaxZoomFactor")` before and after, and `/vg errors`.
+
 ## 9. Bags, merchant, trainer
 
 ### 9.1 Bag search
@@ -635,7 +641,7 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 ### 9.2c Character sheet extras
 
 - Do: open the character pane with gear worn. Then `/vg` → Game windows → Character sheet extras: tick "Mark worn pieces missing an enchant", and look at a chest, legs, boots, bracers, gloves, cloak or weapon of green quality or better without an enchant. Press "Show my gear summary in chat" (or run `/vg gear`).
-- Expect: each worn slot shows its item level along the top edge (durability stays along the bottom); an unenchanted piece of those slots shows a `!` in the top-right corner, and not a shield or a held item; unticking a switch removes its labels at once; `/vg gear` prints the average item level, a melee damage-per-second line (with the swing time) and the pieces missing an enchant.
+- Expect: each worn slot shows its item level along the top edge (durability stays along the bottom); an unenchanted piece of those slots shows a `!` in the top-right corner, and not a held off-hand item (a shield does get one; see 9.2f); unticking a switch removes its labels at once; `/vg gear` prints the average item level, a melee damage-per-second line (with the swing time) and the pieces missing an enchant.
 - If it fails, paste: a screenshot of the character pane, the `/vg gear` lines and `/vg errors`.
 
 ### 9.2e Keep stocked is each character's own
@@ -643,6 +649,12 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Do: on a character whose stock list you set before this update, type `/vg stock`. Log in a second character that uses the same profile and type `/vg stock`; on it, `/vg stock <an item a merchant sells> 5`, then visit that merchant. Log back in on the first character, type `/vg stock`, and visit the same merchant.
 - Expect: the first character to log in after the update lists the old list; the second starts with `Your stock list is empty. ...` and buys only its own 5; back on the first, its list is unchanged and the merchant buys nothing for the second character's item. A profile export (`/vg` → Profiles) carries no stock list. [Needs in game: that the list survives a logout on each character (it lives in the character's saved file).]
 - If it fails, paste: both characters' `/vg stock` output and `/vg errors`.
+
+### 9.2f Missing-enchant mark on a shield
+
+- Do: with "Mark worn pieces missing an enchant" ticked, wear a green-or-better shield with no enchant and open the character pane; run `/vg gear`. Then wear an enchanted shield, then a held off-hand item (an orb, a tome or a lantern) of green or better.
+- Expect: the unenchanted shield's off-hand slot shows the `!` and `/vg gear` lists `Off hand` among the pieces missing an enchant; the enchanted shield and the held item show no `!` and are not listed.
+- If it fails, paste: a screenshot of the character pane, the shield's link in chat (shift-click it) and the `/vg gear` lines.
 
 ### 9.3 Trainer: Train all
 

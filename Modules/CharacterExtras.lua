@@ -6,7 +6,7 @@
 -- Everything is read from the client (the worn item's link and its item info, UnitDamage and
 -- UnitAttackSpeed). Nothing here is protected, so it also works in combat; a value the client hides is
 -- left out, never guessed. Which slots take an enchant is CE.ENCHANTABLE; an off-hand counts only when it
--- is a weapon, and only gear of uncommon quality or better is marked.
+-- is a weapon or a shield, and only gear of uncommon quality or better is marked.
 
 local ADDON, ns = ...
 
@@ -18,10 +18,10 @@ ns.Options.MODULE_INFO.CharacterExtras = { "Character sheet extras", "Item level
 
 -- The worn slots that can carry an enchant (inventory slot ids), by the name /vg gear gives them.
 CE.ENCHANTABLE = { [5] = "Chest", [7] = "Legs", [8] = "Feet", [9] = "Wrist", [10] = "Hands", [15] = "Back", [16] = "Main hand", [17] = "Off hand" }
--- The off-hand slot, which takes an enchant only as a weapon (not a shield or a held item).
+-- The off-hand slot, which takes an enchant only as a weapon or a shield (not a held item).
 CE.OFF_HAND = 17
--- The item types (the client's equip locations) that make an off-hand piece a weapon.
-CE.WEAPONS = { INVTYPE_WEAPON = true, INVTYPE_WEAPONOFFHAND = true, INVTYPE_WEAPONMAINHAND = true, INVTYPE_2HWEAPON = true }
+-- The item types (the client's equip locations) of an off-hand piece that takes an enchant: the weapons and the shield.
+CE.ENCHANTABLE_OFF_HAND = { INVTYPE_WEAPON = true, INVTYPE_WEAPONOFFHAND = true, INVTYPE_WEAPONMAINHAND = true, INVTYPE_2HWEAPON = true, INVTYPE_SHIELD = true }
 -- The worn slots that count toward the average item level (everything but the shirt, id 4, and the tabard, id 19).
 CE.GEAR = { 1, 2, 3, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18 }
 -- The lowest item quality that gets an enchant mark (2 = uncommon).
@@ -42,7 +42,7 @@ end
 -- Whether a worn piece could carry an enchant and has none (the link's enchant field is empty or 0).
 function CE.MissingEnchant(slot, item)
   if not (CE.ENCHANTABLE[slot] and item and (item.quality or 0) >= CE.MIN_QUALITY) then return false end
-  if slot == CE.OFF_HAND and not CE.WEAPONS[item.loc] then return false end
+  if slot == CE.OFF_HAND and not CE.ENCHANTABLE_OFF_HAND[item.loc] then return false end
   local enchant = item.link:match("item:%d+:(%d*)")
   return enchant == nil or enchant == "" or enchant == "0"
 end

@@ -981,6 +981,22 @@ it("quiet the game: the error line and the zone names, each off until switched o
   expect(bare.eval("return ZoneTextFrame == nil and ns.GetModule('Quiet').settings.errors"), "a client without these frames is left alone").toBe(true);
   expect(loggedIn(QUIET_ENV + "SetCVar, C_CVar = nil, nil", { savedVariables: "VanguardDB.profiles = { Default = { Quiet = { camera = 2 } } }" }).eval("return GetCVar('cameraDistanceMaxZoomFactor')"), "no CVar call, no change").toBe(null);
 });
+it("quiet the game: picking the game's setting for the camera zoom puts back the player's own, out of combat", () => {
+  // TEST-ONLY the player's own furthest zoom before Vanguard changes it.
+  const addon = loggedIn(QUIET_ENV + "SetCVar('cameraDistanceMaxZoomFactor', '1.9')", { savedVariables: "VanguardDB.profiles = { Default = { Quiet = { camera = 2.6 } } }" });
+  expect(addon.eval("return { GetCVar('cameraDistanceMaxZoomFactor'), ns.Settings('Quiet').cameraPrior }"), "the camera set, the player's value kept").toEqual(["2.6", "1.9"]);
+  addon.eval("ns.Settings('Quiet').camera = 2 ns.GetModule('Quiet').ApplyCamera()");
+  expect(addon.eval("return ns.Settings('Quiet').cameraPrior"), "a second choice keeps the value from before the first").toBe("1.9");
+  setCombat(addon, true);
+  addon.eval("ns.Settings('Quiet').camera = 0 ns.GetModule('Quiet').ApplyCamera()");
+  expect(addon.eval("return GetCVar('cameraDistanceMaxZoomFactor')"), "not in combat").toBe("2");
+  setCombat(addon, false);
+  expect(addon.eval("return { GetCVar('cameraDistanceMaxZoomFactor'), ns.Settings('Quiet').cameraPrior == nil }"), "the game's setting: the player's own value back").toEqual(["1.9", true]);
+  addon.eval("SetCVar('cameraDistanceMaxZoomFactor', '1.5') ns.GetModule('Quiet').ApplyCamera()");
+  expect(addon.eval("return GetCVar('cameraDistanceMaxZoomFactor')"), "and after that the game's setting is left alone").toBe("1.5");
+  addon.eval("ns.Settings('Quiet').camera = 2.6 ns.GetModule('Quiet').ApplyCamera()");
+  expect(addon.eval("local _, data = ns.Serialize.Decode(ns.ExportProfile()) return { data.Quiet.camera, data.Quiet.cameraPrior == nil }"), "a profile string has the choice, not this computer's camera").toEqual([2.6, true]);
+});
 it("quiet the game: hiding the red error line keeps yellow info lines, whichever way the red line came", () => {
   const addon = loggedIn(QUIET_ENV, { savedVariables: "VanguardDB.profiles = { Default = { Quiet = { errors = true } } }" });
   addon.fire("UI_INFO_MESSAGE", 0, "TEST-ONLY Kobold Vermin slain: 3/10");
