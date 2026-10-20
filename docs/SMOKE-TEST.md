@@ -341,8 +341,8 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 
 ### 6.1 Party frames (if you can)
 
-- Do: join a party.
-- Expect: party frames just above the player frame, growing upward, and the game's own party frames gone.
+- Do: join a party. Then, under Raid frames, untick "Use them for your party too", `/reload`, and with the party look again; as leader, convert to a raid (the Raid button on the raid tools bar).
+- Expect: party frames just above the player frame, growing upward, and the game's own party frames gone. With the switch off, Vanguard's separate party frames show in the party and hide once it is a raid, leaving only the raid frames (no tiles on top of each other); `/vg unlock` still shows the party frames' handle.
 - If it fails, paste: a screenshot and `/vg errors`.
 
 ### 6.2 Raid frames (if you can)

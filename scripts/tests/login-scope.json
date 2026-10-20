@@ -263,6 +263,8 @@
       "power ticks: the energy spark stops its timer when no tick comes (full energy)",
       "power ticks: the five-second rule after a mana spell",
       "power ticks: the spark moves on one anchor, as tall as the bar, with no anchors cleared per frame",
+      "separate party frames hide in a raid with the raid frames module off too",
+      "separate party frames hide in a raid: one visibility driver, no unit watch",
       "target of target: health and power on every look, its name only when it's someone else",
       "threat and happiness only where the client and settings allow",
       "threat on your target and your pet's happiness",

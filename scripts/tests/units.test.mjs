@@ -582,3 +582,18 @@ it("Versus deck: one rounded panel behind the player and target, the crest at th
   expect(addon.eval("return { select(2, Vanguard_player.name:GetFont()), select(2, Vanguard_target.healthText:GetFont()) }"), "the texts back in their own sizes")
     .toEqual(addon.eval("return { select(2, ns.Theme.Text(UIParent:CreateFontString(), 'name'):GetFont()), select(2, ns.Theme.Text(UIParent:CreateFontString(), 'number'):GetFont()) }"));
 });
+
+// Each party frame's visibility driver and whether it has a unit watch, with `savedVariables` (UnitFrames builds them).
+const partyWatch = (savedVariables) => loggedIn(UNITS_ENV, { savedVariables }).eval(`local out = {}
+  for i = 1, 4 do local f = _G["Vanguard_party" .. i] out[i] = { f.__drivers and f.__drivers["state-visibility"] or false, f.__watched or false } end
+  return out`);
+// What partyWatch should find: each frame hides in a raid and shows while its unit exists, by one driver.
+const PARTY_DRIVERS = [1, 2, 3, 4].map((i) => [`[group:raid] hide; [@party${i},exists] show; hide`, false]);
+
+it("separate party frames hide in a raid: one visibility driver, no unit watch", () => {
+  expect(partyWatch("VanguardDB.profiles = { Default = { RaidFrames = { showInParty = false } } }")).toEqual(PARTY_DRIVERS);
+});
+
+it("separate party frames hide in a raid with the raid frames module off too", () => {
+  expect(partyWatch(NO_RAID.savedVariables)).toEqual(PARTY_DRIVERS);
+});
