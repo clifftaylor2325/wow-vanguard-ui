@@ -90,9 +90,7 @@ end
 
 -- Every reward tile the results hold now (run after the game adds one, since the pool gives no event).
 local function dressRewards(frame)
-  local pool = frame.itemPool
-  if type(pool) ~= "table" or type(pool.EnumerateActive) ~= "function" then return end
-  for button in pool:EnumerateActive() do dressReward(button) end
+  GW.EachActive(frame.itemPool, dressReward)
 end
 
 -- The results' title (Victory, Defeat): the heading font and the text colour at the game's big size, its place unchanged.

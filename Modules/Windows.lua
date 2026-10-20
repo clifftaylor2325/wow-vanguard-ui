@@ -729,6 +729,13 @@ function GW.EachKey(frame, keys, fn)
   for _, key in ipairs(keys) do fn(frame[key]) end
 end
 
+-- Runs fn(item) on each active item of a frame pool (one with EnumerateActive, the game's pooled buttons and rows); a
+-- pool the client lacks is skipped.
+function GW.EachActive(pool, fn)
+  if type(pool) ~= "table" or type(pool.EnumerateActive) ~= "function" then return end
+  for item in pool:EnumerateActive() do fn(item) end
+end
+
 -- The parts of frame under those keys as a set, for T.FadeRegions' keep argument (art the game animates or the
 -- window shows as content).
 function GW.KeepKeys(frame, keys)

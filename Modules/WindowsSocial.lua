@@ -168,11 +168,11 @@ end
 -- After the roster lays out its column headers: the guild Rank header wider by GW.GUILD_RANK_EXTRA (the
 -- Note header after it fills what is left, so it gives the room).
 local function widenRankHeader(display, columns)
-  local index, pool = rankColumn(columns), display.columnHeaders
-  if not index or type(pool) ~= "table" or type(pool.EnumerateActive) ~= "function" then return end
-  for header in pool:EnumerateActive() do
+  local index = rankColumn(columns)
+  if not index then return end
+  GW.EachActive(display.columnHeaders, function(header)
     if header:GetID() == index then header:SetWidth((columns[index].width or 0) + GW.GUILD_RANK_EXTRA) end
-  end
+  end)
 end
 
 -- After the game lays out a guild roster row: its Rank cell as wide as the header, and its Note cell narrower by
@@ -203,9 +203,7 @@ end
 
 -- The roster's column headers (ColumnDisplay's pool of buttons) as theme buttons, the game's tab plates faded.
 local function dressHeaders(display)
-  local pool = display.columnHeaders
-  if type(pool) ~= "table" or type(pool.EnumerateActive) ~= "function" then return end
-  for header in pool:EnumerateActive() do GW.SkinButton(header) end
+  GW.EachActive(display.columnHeaders, GW.SkinButton)
 end
 
 -- After the roster lays out its column headers: the Rank header wider, every header a theme button.
@@ -743,9 +741,7 @@ end
 
 -- Every stream row the dialog has now.
 local function dressStreams(dialog)
-  local pool = dialog.buttonPool
-  if type(pool) ~= "table" or type(pool.EnumerateActive) ~= "function" then return end
-  for entry in pool:EnumerateActive() do dressStreamEntry(entry) end
+  GW.EachActive(dialog.buttonPool, dressStreamEntry)
 end
 
 -- The notification dialog's scroll child: the quick join check box, the None and All buttons, the settings divider.
@@ -913,10 +909,7 @@ end
 -- Every row the channel list has now, after each of its Updates.
 local function dressChannelList(list)
   for _, key in ipairs(GW.CHANNEL_POOLS) do
-    local pool = list[key]
-    if type(pool) == "table" and type(pool.EnumerateActive) == "function" then
-      for row in pool:EnumerateActive() do dressChannelRow(row, list) end
-    end
+    GW.EachActive(list[key], function(row) dressChannelRow(row, list) end)
   end
 end
 
@@ -1130,10 +1123,7 @@ end
 -- Every member card the raid tab has now, in each group's own (secure) pool.
 local function dressSocialRaidPlayers(raid)
   for _, group in ipairs(raid.groups) do
-    local pool = type(group) == "table" and group.playerPool
-    if type(pool) == "table" and type(pool.EnumerateActive) == "function" then
-      for player in pool:EnumerateActive() do dressSocialRaidPlayer(player) end
-    end
+    GW.EachActive(type(group) == "table" and group.playerPool, dressSocialRaidPlayer)
   end
 end
 

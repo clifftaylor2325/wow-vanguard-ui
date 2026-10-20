@@ -412,9 +412,7 @@ end
 -- The window tabs along the top of the chat settings in the theme (the game pools them), the one for the chat
 -- window being set up selected.
 local function chatTabs(manager, selected)
-  local pool = manager.tabPool
-  if type(pool) ~= "table" or type(pool.EnumerateActive) ~= "function" then return end
-  for tab in pool:EnumerateActive() do tabSelected(tab, selected == tab:GetID()) end
+  GW.EachActive(manager.tabPool, function(tab) tabSelected(tab, selected == tab:GetID()) end)
 end
 
 -- The chat window tabs, now and each time the game picks one (it also runs when the game rebuilds them).
@@ -695,9 +693,7 @@ end
 
 -- The minor-category buttons the window shows now, in the theme (the game pools them, and runs AnchorMinorCategory for each).
 local function minorButtons(frame)
-  local pool = frame.MinorCategoryButtonPool
-  if type(pool) ~= "table" or type(pool.EnumerateActive) ~= "function" then return end
-  for button in pool:EnumerateActive() do minorButton(button) end
+  GW.EachActive(frame.MinorCategoryButtonPool, minorButton)
 end
 
 -- Skins the report window (see reportFrame), and its minor-category buttons now and as the game anchors them.
