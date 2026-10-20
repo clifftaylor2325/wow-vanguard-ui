@@ -525,6 +525,14 @@ function UnitHealthMax(unit) return uf(unit, "maxhp") or 0 end
 -- The number inside a value that may be secret (the harness looks; the addon never does).
 local function inside(v) return issecretvalue(v) and rawget(v, "n") or v end
 
+-- A summon on its way to a unit, from the unit's summon field (Enum.SummonStatus: 1 pending, 2 accepted, 3 declined).
+C_IncomingSummon = {
+  -- Whether a summon is on its way.
+  HasIncomingSummon = function(unit) return (uf(unit, "summon") or 0) ~= 0 end,
+  -- Its status, 0 for none.
+  IncomingSummonStatus = function(unit) return uf(unit, "summon") or 0 end,
+}
+
 -- A unit's health as a percent (0 to 100); with a curve, what the curve gives at the fraction (0 to 1), as the client
 -- evaluates it. With hidden health, a color comes back with hidden components.
 function UnitHealthPercent(unit, _, curve)

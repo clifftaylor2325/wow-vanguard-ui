@@ -154,7 +154,7 @@ local function raidPageRows()
     check("Fade players out of range", statusSetting("rangeFade")),
     check("Raid target icons", raidIconSetting()),
     check("Ready check answers", statusSetting("readyCheck")),
-    check("Mark players being resurrected", statusSetting("resurrect")),
+    check("Mark players being resurrected or summoned", statusSetting("resurrect")),
     check("Leader and assistant marks", statusSetting("leader")),
   }), raidPreviewRows())
 end
