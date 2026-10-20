@@ -107,12 +107,27 @@ end
 
 -- Changed from the default ------------------------------------------------------------------
 
--- The reset dot's tooltip, where the client has one.
+-- The reset dot's tooltip, where the client has one: what a click does, then the default in the row's words.
 local function dotTooltip(d)
   if not GameTooltip then return end
   GameTooltip:SetOwner(d, "ANCHOR_RIGHT")
   GameTooltip:SetText("Changed from the default. Click to put it back.")
+  GameTooltip:AddLine("Default: " .. d.defaultText, T.RGB("text2"))
   GameTooltip:Show()
+end
+
+-- The label of the choice holding this value, if one does.
+local function choiceLabel(choices, value)
+  for _, choice in ipairs(choices) do
+    if choice[1] == value then return choice[2] end
+  end
+end
+
+-- A row's default as the row shows values: On or Off, the slider's text, or the choice's label.
+local function defaultText(w, kind, initial)
+  if kind == "check" then return initial and "On" or "Off" end
+  if kind == "slider" then return w.format(initial) end
+  return choiceLabel(w.choices, initial) or tostring(initial)
 end
 
 -- A small accent dot left of a row's caption; clicking it puts the default back.
@@ -157,6 +172,7 @@ local function markChanges(w, row)
   local initial = at and row[at + 1]
   if initial == nil then return end
   w.reset = resetDot(w, row[at], initial)
+  w.reset.defaultText = defaultText(w, row[1], initial)
   local refresh = w.Refresh
   -- The row's own refresh, then the dot: shown while changed, in the current accent; then the page's dot.
   w.Refresh = function(self) refresh(self) self.reset:SetShown(rowChanged(row)) T.Tint(self.reset.mark, "accent") rowRefreshed(self) end

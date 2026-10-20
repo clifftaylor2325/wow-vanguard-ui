@@ -375,7 +375,7 @@ it("options: a changed setting gets a dot that puts the default back", () => {
   addon.eval('__click("General")');
   expect(resetDot(addon, "Snap to other frames"), "a setting with no default has no dot").toEqual([false, false]);
   addon.eval(`GameTooltip = CreateFrame("Frame", "GameTooltip", UIParent) function GameTooltip:SetOwner(o) self.__owner = o end
-    function GameTooltip:SetText(t) self.__tip = t end`);
+    function GameTooltip:SetText(t) self.__tip = t end function GameTooltip:AddLine(t) self.__line = t end`);
   addon.eval('__click("Nameplates")');
   addon.eval('__click("Width")');
   expect(resetDot(addon, "Width"), "choices get one too").toEqual([true, true]);
@@ -384,8 +384,22 @@ it("options: a changed setting gets a dot that puts the default back", () => {
   addon.eval('__click("Cast bar")');
   addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.reset and w.reset:IsShown() then __dot = w.reset end end __dot:GetScript("OnEnter")(__dot)`);
   expect(addon.eval("return { GameTooltip.__owner == __dot, GameTooltip:IsShown(), GameTooltip.__tip }"), "hovering the dot says what it does").toEqual([true, true, "Changed from the default. Click to put it back."]);
+  expect(addon.eval("return GameTooltip.__line"), "then what the default is, in the row's words").toMatch(/^Default: (On|Off)$/);
   addon.eval("__dot:GetScript('OnLeave')(__dot)");
   expect(addon.eval("return GameTooltip:IsShown()"), "and the tooltip goes when the mouse leaves").toBe(false);
+});
+
+// Each visible row's caption and the default its reset dot names, as Lua.
+const DEFAULTS_LUA = `local out = {} for _, w in ipairs(__wfgStub.frames) do
+  if w.reset and w.label and w:IsVisible() then out[w.label.__text] = w.reset.defaultText end end return out`;
+
+it("options: the changed dot names the default as the row shows it, for switches, choices and sliders", () => {
+  const addon = loggedIn(CLICK_LUA);
+  addon.eval('ns.Options.Show("actionbars")');
+  const bars = addon.eval(DEFAULTS_LUA);
+  expect([bars["Red when out of range"], bars["Bar backing"]], "a switch's On, a choice's label").toEqual(["On", "Follow the theme"]);
+  addon.eval('ns.Options.Show("general")');
+  expect(addon.eval(DEFAULTS_LUA)["Its scale"], "a slider's text").toBe("100%");
 });
 
 // The visible options page's scroll view, as Lua.
@@ -696,7 +710,7 @@ it("options: the pages, their nav order and each page's row count stay as they w
     "general|General|10|39", "modules|Modules|20|88", "unitframes|Unit frames|30|30", "raid|Raid frames|40|25",
     "actionbars|Action bars|60|74", "quests|Quests|70|30", "bars|Bars and bags|80|17", "map|Map|81|36", "chat|Chat|82|74", "windows|Game windows|83|46", "cooldowns|Cooldowns|83.5|13", "tools|Combat tools|84|39", "town|Town and gear|85|57", "profiles|Profiles|90|22",
     "feedback|Feedback|100|7", "healing|Healing|45|44", "talents|Talents|47|7", "nameplates|Nameplates|65|16",
-    "situations|Situations|86|17", "clickcast|Click casting|46|11",
+    "situations|Situations|86|16", "clickcast|Click casting|46|11",
   ]);
   addon.eval('ns.Options.Show("general")');
   // The nav entries top to bottom, by each one's offset from the top of the nav.
