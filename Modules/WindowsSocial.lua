@@ -1168,15 +1168,15 @@ local function dressNotice(frame)
   GW.SkinTitle(GW.Part(frame, "Header.HeaderText"))
 end
 
--- The saved-instance list beside the raid tab: its list in an inset, the names light.
-local function dressSocialRaidInfo(frame)
+-- The saved-instance list of a raid info frame: its list in an inset, the names light.
+local function dressRaidInfoList(frame)
   GW.InsetPanel(frame.ScrollBox)
   GW.WatchRows(frame.ScrollBox, dressNamedRow)
 end
 
 -- The skin of each side window (parentKeys): the dialog skin and the parts only that window has.
 local sideSkins = {
-  BattleNetUnavailableNoticeFrame = dialogWith(dressNotice), BattleNetBroadcastFrame = GW.SkinSocialDialog, RaidInfoFrame = dialogWith(dressSocialRaidInfo),
+  BattleNetUnavailableNoticeFrame = dialogWith(dressNotice), BattleNetBroadcastFrame = GW.SkinSocialDialog, RaidInfoFrame = dialogWith(dressRaidInfoList),
 }
 
 -- How far a side window moves out (units): by what GW.ClearPadding moved the side tabs out (to the window's padded
@@ -1372,11 +1372,6 @@ end
 GW.RAID_INFO_HEADERS = { "RaidInfoInstanceLabel", "RaidInfoIDLabel" }
 GW.RAID_INFO_BUTTONS = { "RaidInfoExtendButton", "RaidInfoCancelButton" }
 
--- One row of the raid info list: the instance's name in the text colour (the game draws it gold).
-local function dressRaidInfoRow(row)
-  if type(row) == "table" then paintText(row.name, "text") end
-end
-
 -- A raid info column header: its tab art faded under a raised panel.
 local function dressRaidInfoHeader(header)
   if type(header) ~= "table" or not header.GetRegions then return end
@@ -1392,8 +1387,7 @@ local function dressRaidInfo(frame)
   GW.DressClose(frame, _G.RaidInfoCloseButton)
   for _, name in ipairs(GW.RAID_INFO_HEADERS) do dressRaidInfoHeader(_G[name]) end
   for _, name in ipairs(GW.RAID_INFO_BUTTONS) do GW.SkinButton(_G[name]) end
-  GW.InsetPanel(frame.ScrollBox)
-  GW.WatchRows(frame.ScrollBox, dressRaidInfoRow)
+  dressRaidInfoList(frame)
 end
 
 -- The member buttons as flat buttons. They are secure unit buttons: only textures are touched, and
