@@ -1578,8 +1578,9 @@ GW.AddOnDemand("social", "Blizzard_GuildControlUI", { "GuildControlUI" }, GW.Ski
 -- Text is the time-played alert's one line, and the voice chat prompts' (Text2 is the second line of a voice channel
 -- notification, which keeps the game's colour codes: they colour the channel's name).
 GW.TOAST_LINES = {
-  TopLine = { "label", false }, MiddleLine = { "small", false }, BottomLine = { "small", "text2" }, DoubleLine = { "label", "text2" },
-  Text = { "label", false }, Text2 = { "small", false },
+  TopLine = { role = "label", color = false }, MiddleLine = { role = "small", color = false },
+  BottomLine = { role = "small", color = "text2" }, DoubleLine = { role = "label", color = "text2" },
+  Text = { role = "label", color = false }, Text2 = { role = "small", color = false },
 }
 
 -- A line's text with the game's inline colour codes stripped, so the role colour can show: SetTextColor
@@ -1592,11 +1593,11 @@ end
 
 -- A toast's texts in their roles, those this toast has; a line given a role colour loses the game's inline colour first.
 local function dressToastLines(frame)
-  for key, role in pairs(GW.TOAST_LINES) do
+  for key, line in pairs(GW.TOAST_LINES) do
     local fs = frame[key]
     if type(fs) == "table" and type(fs.SetFont) == "function" then
-      if role[2] then uncolourText(fs) end
-      T.Text(fs, role[1], role[2])
+      if line.color then uncolourText(fs) end
+      T.Text(fs, line.role, line.color)
     end
   end
 end
