@@ -119,18 +119,13 @@ local function checkRange()
   end
 end
 
--- Checks range five times a second (range has no dependable event); once the
--- raid header exists, only while it is visible.
-local function pollRange()
-  ns.Every("raid range", RANGE_EVERY, checkRange, RF.header)
-end
-
--- The range check follows the raid header as it shows and hides, once the header exists.
+-- Checks range five times a second (range has no dependable event), only while the raid header is
+-- visible. Nothing runs until the header exists: with the raid frames off there are no tiles to fade.
 local function followHeader()
   local header = RF.header
   if not header or RS.following then return end
   RS.following = true
-  pollRange()
+  ns.Every("raid range", RANGE_EVERY, checkRange, header)
 end
 
 -- Parts ------------------------------------------------------------------------------------
@@ -289,7 +284,6 @@ local EVENTS = {
 -- Module entry point (Core/Modules.lua): hook into raid buttons (existing and new), then listen.
 function RS.Enable(settings)
   RS.settings = settings
-  pollRange()
   for _, b in ipairs(RF.buttons) do setup(b) end
   table.insert(RF.setupHooks, setup)
   table.insert(RF.updateHooks, update)

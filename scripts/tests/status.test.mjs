@@ -1,7 +1,7 @@
 // status: Vanguard's real Lua in the TEST-ONLY headless client (scripts/lib/lua-harness.mjs).
 
 import { expect, it } from "vitest";
-import { RAID_ENV, UNITS_ENV, isTok, loggedIn, marks } from "./helpers.mjs";
+import { NO_RAID, RAID_ENV, UNITS_ENV, isTok, loggedIn, marks } from "./helpers.mjs";
 
 // TEST-ONLY group status: raid icons, ready check, resurrection, leader, range.
 const STATUS_ENV = `
@@ -125,6 +125,11 @@ it("range ticker: only while the raid frames show, no repeat questions, no repai
   rangeCalls(addon); // the tiles repaint as they come back into view
   addon.eval("__wfgStub.advance(0.25)");
   expect(rangeCalls(addon).range, "shown again, the checks resume").toBe(2);
+});
+
+it("range ticker: with the raid frames off there is no header to follow, so no range job runs", () => {
+  const addon = loggedIn("", NO_RAID);
+  expect(addon.eval('return { ns.GetModule("RaidStatus").enabled == true, ns.ticker.vgJobs["raid range"] ~= nil }'), "raid status on, no range job").toEqual([true, false]);
 });
 
 it("ready check: a new check started while the last one's answers linger keeps its answers up", () => {
