@@ -1292,3 +1292,13 @@ it("a page rebuilt while it shows (a chat tab picked on the Chat page) keeps its
     return { before, view() ~= v, view():GetVerticalScroll() }`);
   expect(out, "a new view, at the old offset").toEqual([400, true, 400]);
 });
+it("Window ornaments applies at once and asks for no reload", () => {
+  const addon = loggedIn(CLICK_LUA);
+  // The diamond rule's textures showing on the options window.
+  const diamonds = () => addon.eval(`local n = 0 for _, w in ipairs(__wfgStub.frames) do
+    if w.__kind == "Texture" and w.__parent == Vanguard_Options and w:IsShown() and tostring(w.__texture):find("Diamond") then n = n + 1 end end return n`);
+  addon.eval('ns.Options.Show("general")');
+  expect(diamonds(), "off by default").toBe(0);
+  expect(addon.eval('return __click("Window ornaments")')).toBe(true);
+  expect([diamonds(), reloadNotice(addon)], "the rule shows at once; no reload notice").toEqual([1, false]);
+});

@@ -188,7 +188,7 @@ local function lookTextRows()
     { "cycle", "Theme variant", VARIANT_CHOICES, liveThemeSetting("variant") },
     { "cycle", "Corners", CORNER_CHOICES, liveThemeSetting("corners") },
     check("Shield corners on unit frames", liveThemeSetting("shield")),
-    check("Window ornaments", previewedSetting("ornaments")),
+    check("Window ornaments", liveThemeSetting("ornaments")),
     { "text", "A brass rule or corners on large windows.", "note" },
   }
 end
