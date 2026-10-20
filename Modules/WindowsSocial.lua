@@ -14,6 +14,10 @@ local vgPresenceLabel = ns.FrameState("vgPresenceLabel")
 local T = ns.Theme
 local GW = ns.GetModule("Windows")
 
+-- How many of each part the game makes: the letter's attachments, the petition's member names, the registrar's
+-- options and the tabard's pickers.
+local COUNT = { MAIL_ATTACHMENTS = 16, PETITION_MEMBERS = 9, REGISTRAR_OPTIONS = 3, TABARD_PICKERS = 5 }
+
 -- Helpers ---------------------------------------------------------------------------------------
 
 -- A font string, when it is one, in a theme text color.
@@ -43,7 +47,7 @@ end
 GW.MAIL_ART = { "OpenStationeryBackgroundLeft", "OpenStationeryBackgroundRight" }
 -- The letter window's item buttons: the letter, the money and its attachments.
 GW.MAIL_ITEMS = { "OpenMailLetterButton", "OpenMailMoneyButton" }
-for i = 1, 16 do GW.MAIL_ITEMS[#GW.MAIL_ITEMS + 1] = "OpenMailAttachmentButton" .. i end
+for i = 1, COUNT.MAIL_ATTACHMENTS do GW.MAIL_ITEMS[#GW.MAIL_ITEMS + 1] = "OpenMailAttachmentButton" .. i end
 
 -- The letter's stationery faded and its body text in light text, headings too (the
 -- game colors the body for its parchment as each letter loads, so this runs after it).
@@ -1245,7 +1249,7 @@ GW.CREATION_BODY = {
   "GuildRegistrarText", "GuildRegistrarPurchaseText", "GuildRegistrarCostLabel", "TabardFrameNameText",
   "PetitionFrameCharterName", "PetitionFrameMasterName", "PetitionFrameInstructions",
 }
-for i = 1, 9 do GW.CREATION_BODY[#GW.CREATION_BODY + 1] = "PetitionFrameMemberName" .. i end
+for i = 1, COUNT.PETITION_MEMBERS do GW.CREATION_BODY[#GW.CREATION_BODY + 1] = "PetitionFrameMemberName" .. i end
 GW.CREATION_HEADS = { "PetitionFrameCharterTitle", "PetitionFrameMasterTitle", "PetitionFrameMemberTitle" }
 -- The registrar's "Available services" heading (QuestTitleFont, black for its parchment).
 GW.CREATION_TITLE = "AvailableServicesText"
@@ -1261,7 +1265,7 @@ end
 
 -- The registrar's options and the charter's price in the number font.
 local function dressRegistrar()
-  for i = 1, 3 do dressOptionRow(_G["GuildRegistrarButton" .. i]) end
+  for i = 1, COUNT.REGISTRAR_OPTIONS do dressOptionRow(_G["GuildRegistrarButton" .. i]) end
   GW.SkinMoney(_G.GuildRegistrarMoneyFrame)
 end
 
@@ -1281,7 +1285,7 @@ end
 -- and its two price lines in the number font. The model and its rotate buttons stay the game's.
 local function dressTabard()
   GW.FadeNamed({ "TabardFrameCustomizationBorder" })
-  for i = 1, 5 do dressTabardPicker(i) end
+  for i = 1, COUNT.TABARD_PICKERS do dressTabardPicker(i) end
   GW.InsetPanel(_G.TabardFrameCostFrame)
   GW.InsetPanel(_G.TabardFrameMoneyInset)
   GW.FadeArt(_G.TabardFrameMoneyBg)

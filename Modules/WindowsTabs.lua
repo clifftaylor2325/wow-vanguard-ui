@@ -93,6 +93,8 @@ end
 -- Adds the buttons a tab system holds, by its accessor (TabSystemMixin:GetTabButton(tabID), nil past the last).
 local function addSystem(list, system)
   if type(system) ~= "table" or type(system.GetTabButton) ~= "function" then return end
+  -- A safety cap, three times the usual count: the loop stops at the first id with no tab, so the cap only matters
+  -- for a system that never runs out.
   for id = 1, GW.MAX_TABS * 3 do
     local button = system:GetTabButton(id)
     if not button then return end
@@ -772,7 +774,8 @@ end
 local function setLost(row)
   local sets = _G.C_EquipmentSet
   if type(sets) ~= "table" or type(sets.GetEquipmentSetInfo) ~= "function" or not row.setID then return false end
-  return (select(8, sets.GetEquipmentSetInfo(row.setID)) or 0) > 0
+  local _, _, _, _, _, _, _, numLost = sets.GetEquipmentSetInfo(row.setID)
+  return (numLost or 0) > 0
 end
 
 -- A gear set row (GearSetButtonTemplate): a theme row (its card plate, rings and hover and selected cards faded, the icon,

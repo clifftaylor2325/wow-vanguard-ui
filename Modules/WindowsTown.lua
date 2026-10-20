@@ -13,6 +13,12 @@ local T = ns.Theme
 
 local GW = ns.GetModule("Windows")
 
+-- Sizes the windows below use, named here rather than written into the code.
+local TOWN = {
+  -- The height of the field the typed amount sits in (the stack split and coin pickup).
+  AMOUNT_FIELD_HEIGHT = 24,
+}
+
 -- Helpers shared by the windows below -------------------------------------------------------------
 
 -- Themes each button named in names that this client has.
@@ -316,7 +322,7 @@ local function amountField(frame, left, right)
   local field = CreateFrame("Frame", nil, frame)
   field:SetPoint("LEFT", left, "RIGHT", 0, 0)
   field:SetPoint("RIGHT", right, "LEFT", 0, 0)
-  field:SetHeight(24)
+  field:SetHeight(TOWN.AMOUNT_FIELD_HEIGHT)
   T.Panel(field, { inset = true, noBg = true, noSheen = true })
   vgAmountFields[frame] = field
 end
