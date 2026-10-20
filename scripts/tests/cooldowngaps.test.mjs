@@ -302,7 +302,9 @@ it("the Gaps card's add row takes a dragged item or spell, or a typed name", () 
   expect(cardRows(addon), "nothing chosen: the note, then the add row").toEqual([["text", "Nothing chosen yet. Drag an item or spell here, or type its name."], ["gapadd", false]]);
   addon.eval('__wfgWorld.cursor = { type = "item", id = 30001 } local r = __addRow() r.__scripts.OnReceiveDrag(r)');
   expect(addon.eval("return { __chosen()[1], __wfgWorld.cursor == nil }"), "a dragged trinket goes on the list and leaves the cursor").toEqual(["30001", true]);
-  addon.eval('__wfgWorld.cursor = { type = "spell", id = 502 } local r = __addRow() r.__scripts.OnMouseUp(r)');
+  addon.eval('__wfgWorld.cursor = { type = "spell", id = 502 } local r = __addRow() r.__scripts.OnMouseUp(r, "RightButton")');
+  expect(addon.eval("return { __chosen()[2], __wfgWorld.cursor ~= nil }"), "a right-click on the row leaves the cursor alone").toEqual(["", true]);
+  addon.eval('local r = __addRow() r.__scripts.OnMouseUp(r, "LeftButton")');
   expect(addon.eval("return __chosen()[2]"), "a spell from the spellbook, dropped with a click").toBe("502");
   addon.eval('local r = __addRow() r.__scripts.OnReceiveDrag(r)');
   expect(addon.eval("return __chosen()"), "an empty cursor adds nothing").toEqual(["30001", "502"]);
@@ -311,6 +313,9 @@ it("the Gaps card's add row takes a dragged item or spell, or a typed name", () 
   addon.eval('local r = __addRow() r.input:SetText("") r.spell.__scripts.OnClick(r.spell)');
   expect(addon.eval("return __chosen()"), "typed names go on as an item and a spell; an empty box adds nothing").toEqual(["30001 5512", "502 501"]);
   expect(addon.eval('return __entry("Strike") ~= nil'), "and show on the card").toBe(true);
+  addon.slash("gaps clear");
+  expect(cardRows(addon)[0][0], "a /vg gaps change shows on the card too").toBe("text");
+  expect(addon.eval('return __entry("Strike") == nil'), "with the page redrawn").toBe(true);
 });
 
 it("the Gaps card says to switch the row on while it is off", () => {

@@ -257,10 +257,12 @@ CG.KINDS = {
   spells = { read = spellID, word = "spell", ask = "Say a spell: a link, an ID, or a name the game knows. /vg gaps spell add <spell>", after = "" },
 }
 
--- Writes the chosen IDs of one kind back into the setting and repaints.
+-- Writes the chosen IDs of one kind back into the setting, repaints, and has the Cooldowns page's
+-- Gaps card list them afresh (from its buttons and from /vg gaps alike).
 local function save(kind, ids)
   CG.settings[kind] = table.concat(ids, " ")
   if CG.holder then CG.Refresh() end
+  ns.Options.RebuildPage("cooldowns")
 end
 
 -- Adds an item or a spell (kind "items" or "spells") to the chosen list (or says why not).
@@ -372,15 +374,9 @@ function CG.CardRows()
   return rows
 end
 
--- Draws the Cooldowns page again so the card lists the change.
-local function relist()
-  ns.Options.RebuildPage("cooldowns")
-end
-
--- Takes an entry off the list, then lists the rest.
+-- Takes an entry off the list (the card then lists the rest).
 local function removeEntry(kind, id)
   CG.Remove(tostring(id), kind)
-  relist()
 end
 
 -- A chosen entry's icon at the left of its row.
@@ -396,18 +392,20 @@ local function entryRow(parent, row, width)
   local r = CreateFrame("Frame", nil, parent)
   r:SetSize(width, T.ROW.height)
   entryIcon(r, row.icon)
-  r.label = W.Text(r, row[2])
-  r.label:SetPoint("LEFT", r.icon, "RIGHT", T.SPACE.gap, 0)
   r.remove = W.Button(r, "×", function() removeEntry(row.kind, row.id) end, T.ROW.height)
   r.remove:SetPoint("RIGHT", -T.SPACE.gap, 0)
+  -- A long name stops short of ×.
+  r.label = W.Text(r, row[2])
+  r.label:SetPoint("LEFT", r.icon, "RIGHT", T.SPACE.gap, 0)
+  r.label:SetPoint("RIGHT", r.remove, "LEFT", -T.SPACE.gap, 0)
   return r
 end
 
 -- The list kind and ID of what is on the cursor (an item, or a spell from the spellbook or a bar), or nil.
 local function cursorEntry()
   local kind, id, _, spell = GetCursorInfo()
-  if kind == "item" then return "items", id end
-  if kind == "spell" then return "spells", spell end
+  if kind == "item" then return "items", ns.PlainNumber(id) end
+  if kind == "spell" then return "spells", ns.PlainNumber(spell) end
 end
 
 -- Something was dropped on the add row: an item or spell goes on the list and leaves the cursor.
@@ -416,7 +414,11 @@ local function onDrop()
   if not id then return end
   CG.Add(tostring(id), kind)
   ClearCursor()
-  relist()
+end
+
+-- A click on the add row drops what the cursor holds, with the left button only.
+local function onClickDrop(_, button)
+  if button == "LeftButton" then onDrop() end
 end
 
 -- Adds what is typed in the add row's box as kind (CG.Add reads a name, link or ID), then lists it.
@@ -424,7 +426,6 @@ local function addTyped(r, kind)
   local text = r.input:GetText()
   if text == "" then return end
   CG.Add(text, kind)
-  relist()
 end
 
 -- The add row's box and its Add item and Add spell buttons, right to left.
@@ -443,7 +444,7 @@ local function addRow(parent, _, width)
   r:SetSize(width, T.ROW.height)
   r:EnableMouse(true)
   r:SetScript("OnReceiveDrag", ns.Guard("drop on gaps add row", onDrop))
-  r:SetScript("OnMouseUp", ns.Guard("drop on gaps add row", onDrop))
+  r:SetScript("OnMouseUp", ns.Guard("click-drop on gaps add row", onClickDrop))
   r.label = W.Text(r, "Drag here, or type")
   r.label:SetPoint("LEFT", T.SPACE.gap, 0)
   addControls(r)
