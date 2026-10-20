@@ -9,7 +9,7 @@ local ADDON, ns = ...
 local T, W = ns.Theme, ns.Widgets
 
 local O = ns.Options
-local moduleSettings, setting, liveSetting, check = O.ModuleSettings, O.Setting, O.LiveSetting, O.Check
+local moduleSettings, setting, liveSetting, check, append = O.ModuleSettings, O.Setting, O.LiveSetting, O.Check, O.Append
 
 local WZ = {}
 O.CooldownWizard = WZ
@@ -44,7 +44,7 @@ end
 -- The gaps row switches, by name.
 local function gapRows()
   return {
-    gaps = tip(check("Gaps row (reload)", setting("CooldownGaps", "on", true)), "A row of icons for what the game's manager misses: on-use trinkets, items and spells you choose (/vg gaps add, /vg gaps spell add), pet abilities and totems."),
+    gaps = tip(check("Gaps row (reload)", setting("CooldownGaps", "on", true)), "A row of icons for what the game's manager misses: on-use trinkets, items and spells you choose (in the list below), pet abilities and totems."),
     tracked = tip(check("Add the manager's cooldowns (reload)", setting("CooldownGaps", "tracked", true)), "Also draws the spells the manager tracks in its essential and utility rows as Vanguard icons in the gaps row."),
   }
 end
@@ -73,17 +73,13 @@ local function defs()
   return rows
 end
 
--- The page: the setup button, then the manager, the gaps row and the glow, each in its own card.
+-- The page: the setup button, then the manager, the gaps row with its chosen items and spells
+-- (Modules/CooldownGaps.lua draws that list), the glow and the key text, each in its own card.
 local function pageRows()
   local d = defs()
-  return {
-    { "button", "Set up cooldowns", function() WZ.Open() end },
-    { "header", "The game's manager" }, d.show, d.look,
-    { "header", "Gaps row" }, d.gaps, d.tracked,
-    { "text", "Choose items and spells for the row with /vg gaps add and /vg gaps spell add.", "note" },
-    { "header", "Buff glow" }, d.glow, d.percent,
-    { "header", "Key text" }, d.keys,
-  }
+  local top = { { "button", "Set up cooldowns", function() WZ.Open() end }, { "header", "The game's manager" }, d.show, d.look, { "header", "Gaps row" }, d.gaps, d.tracked }
+  local rest = { { "header", "Buff glow" }, d.glow, d.percent, { "header", "Key text" }, d.keys }
+  return append(append(top, ns.GetModule("CooldownGaps").CardRows()), rest)
 end
 
 O.AddPage({ key = "cooldowns", title = "Cooldowns", icon = "Legacy", order = 83.5, rows = pageRows })
@@ -97,7 +93,7 @@ WZ.BODY = WZ.TOP + 64
 -- The steps in order: caption name, the note under it, and the rows each shows (names from defs).
 WZ.STEPS = {
   { name = "Show it", note = "The game's Cooldown Manager keeps its essential row between your frames. Show it, and choose how it looks.", keys = { "show", "look" } },
-  { name = "Gaps row", note = "A row of icons for what the manager misses. Choose items and spells with /vg gaps add and /vg gaps spell add.", keys = { "gaps", "tracked" } },
+  { name = "Gaps row", note = "A row of icons for what the manager misses. Choose its items and spells on the Cooldowns page.", keys = { "gaps", "tracked" } },
   { name = "Buff glow", note = "Glow a manager buff when it is nearly over.", keys = { "glow", "percent" } },
 }
 

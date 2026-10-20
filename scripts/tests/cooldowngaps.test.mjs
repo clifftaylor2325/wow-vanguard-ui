@@ -3,7 +3,7 @@
 // game's Cooldown Manager misses; hidden cooldown values show nothing.
 
 import { expect, it } from "vitest";
-import { chatHas, loggedIn, setCombat } from "./helpers.mjs";
+import { CLICK_LUA, chatHas, loggedIn, setCombat } from "./helpers.mjs";
 
 // Saved settings with the row on and the chosen items given.
 const saved = (items) => `VanguardDB.profiles = { Default = { CooldownGaps = { on = true, items = '${items}' } } }`;
@@ -264,4 +264,61 @@ it("the tracked spells follow a spec or spellbook change, and the spell commands
   addon.slash("gaps clear");
   addon.slash("gaps spell");
   expect(chatHas(addon, /Chosen spells: none/), "cleared").toBe(true);
+});
+
+// TEST-ONLY: finds the Gaps card's rows on the open options page. __entry(name) is a chosen entry's row,
+// __addRow() the add row; __chosen() the saved lists.
+const CARD_LUA = `
+  function __entry(name)
+    for _, w in ipairs(__wfgStub.frames) do if w.remove and w.label and w.label.__text == name and w:IsVisible() then return w end end
+  end
+  function __addRow()
+    for _, w in ipairs(__wfgStub.frames) do if w.input and w.spell and w:IsVisible() then return w end end
+  end
+  function __chosen() local s = ns.GetModule("CooldownGaps").settings return { s.items, s.spells } end
+`;
+// The Gaps card's rows as the page lists them: each row's kind and caption.
+const cardRows = (addon) => addon.eval(`local out = {} for i, r in ipairs(ns.GetModule("CooldownGaps").CardRows()) do out[i] = { r[1], r[2] or false } end return out`);
+// An addon with the row on, SPELLS_ENV and the chosen items, on the open Cooldowns page.
+function card(items, spells = "") {
+  const addon = on(SPELLS_ENV + CLICK_LUA + CARD_LUA, items);
+  addon.eval(`ns.GetModule("CooldownGaps").settings.spells = "${spells}" ns.Options.Show("cooldowns")`);
+  return addon;
+}
+
+it("the Gaps card lists the chosen items and spells with their icons, and × takes one off", () => {
+  const addon = card("5512 30001", "501");
+  expect(cardRows(addon), "items first, then spells, then the add row").toEqual([["gapentry", "TEST-ONLY Healthstone"], ["gapentry", "TEST-ONLY Trinket"], ["gapentry", "Strike"], ["gapadd", false]]);
+  expect(addon.eval('return { __entry("TEST-ONLY Healthstone").icon.__texture, __entry("Strike").icon.__texture }'), "each with its icon").toEqual(["TEST-ONLY-ICON-Healthstone", "TEST-ONLY-ICON-Strike"]);
+  addon.eval('local r = __entry("TEST-ONLY Healthstone") r.remove.__scripts.OnClick(r.remove)');
+  expect(addon.eval("return __chosen()"), "× takes the item off").toEqual(["30001", "501"]);
+  expect(addon.eval('return __entry("TEST-ONLY Healthstone") == nil and __entry("TEST-ONLY Trinket") ~= nil'), "and the card lists the rest at once").toBe(true);
+  addon.eval('local r = __entry("Strike") r.remove.__scripts.OnClick(r.remove)');
+  expect(addon.eval("return __chosen()[2]"), "a spell too").toBe("");
+});
+
+it("the Gaps card's add row takes a dragged item or spell, or a typed name", () => {
+  const addon = card("");
+  expect(cardRows(addon), "nothing chosen: the note, then the add row").toEqual([["text", "Nothing chosen yet. Drag an item or spell here, or type its name."], ["gapadd", false]]);
+  addon.eval('__wfgWorld.cursor = { type = "item", id = 30001 } local r = __addRow() r.__scripts.OnReceiveDrag(r)');
+  expect(addon.eval("return { __chosen()[1], __wfgWorld.cursor == nil }"), "a dragged trinket goes on the list and leaves the cursor").toEqual(["30001", true]);
+  addon.eval('__wfgWorld.cursor = { type = "spell", id = 502 } local r = __addRow() r.__scripts.OnMouseUp(r, "RightButton")');
+  expect(addon.eval("return { __chosen()[2], __wfgWorld.cursor ~= nil }"), "a right-click on the row leaves the cursor alone").toEqual(["", true]);
+  addon.eval('local r = __addRow() r.__scripts.OnMouseUp(r, "LeftButton")');
+  expect(addon.eval("return __chosen()[2]"), "a spell from the spellbook, dropped with a click").toBe("502");
+  addon.eval('local r = __addRow() r.__scripts.OnReceiveDrag(r)');
+  expect(addon.eval("return __chosen()"), "an empty cursor adds nothing").toEqual(["30001", "502"]);
+  addon.eval('local r = __addRow() r.input:SetText("TEST-ONLY Healthstone") r.item.__scripts.OnClick(r.item)');
+  addon.eval('local r = __addRow() r.input:SetText("Strike") r.spell.__scripts.OnClick(r.spell)');
+  addon.eval('local r = __addRow() r.input:SetText("") r.spell.__scripts.OnClick(r.spell)');
+  expect(addon.eval("return __chosen()"), "typed names go on as an item and a spell; an empty box adds nothing").toEqual(["30001 5512", "502 501"]);
+  expect(addon.eval('return __entry("Strike") ~= nil'), "and show on the card").toBe(true);
+  addon.slash("gaps clear");
+  expect(cardRows(addon)[0][0], "a /vg gaps change shows on the card too").toBe("text");
+  expect(addon.eval('return __entry("Strike") == nil'), "with the page redrawn").toBe(true);
+});
+
+it("the Gaps card says to switch the row on while it is off", () => {
+  const addon = loggedIn(GAPS_ENV);
+  expect(cardRows(addon), "only the note: the chosen lists load with the row").toEqual([["text", "The gaps row is off. Tick Gaps row and reload to choose its items and spells."]]);
 });
