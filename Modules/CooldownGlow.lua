@@ -53,8 +53,10 @@ local function isStrength(value)
   return ns.IsSecret(value) or type(value) == "number"
 end
 
--- The curve for a percent, made once and reused while the setting stays the same (not once per item per tick).
+-- The last curve made, and the percent it was made for.
 local cachedCurve, cachedPercent
+
+-- The curve for a percent, made once and reused while the setting stays the same (not once per item per tick).
 local function curveFor(percent)
   if cachedPercent ~= percent then cachedCurve, cachedPercent = CG.Curve(percent), percent end
   return cachedCurve
