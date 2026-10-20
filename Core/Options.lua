@@ -447,6 +447,7 @@ end
 local function resetProfile()
   confirmReset("Reset this profile?", "Reset", O.NeedReload)
 end
+O.AskResetProfile = resetProfile
 
 -- Start over: after asking, the profile back to defaults (backed up first), and setup opens after the reload that applies it.
 local function startOver()

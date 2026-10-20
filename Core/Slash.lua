@@ -371,8 +371,8 @@ local PROFILE_ACTIONS = {
   end,
   -- /vg profile delete <name>
   delete = function(name) chat(ns.DeleteProfile(name) and ("Deleted profile " .. name .. ".") or "Can't delete that one (missing, or in use).") end,
-  -- /vg profile reset
-  reset = function() ns.ResetProfile(); ns.OfferReload("Profile " .. ns.ProfileName() .. " is back to defaults.") end,
+  -- /vg profile reset: asks and backs up first, as the Profiles page's Reset profile does
+  reset = function() ns.Options.AskResetProfile() end,
 }
 
 -- /vg profile [new|copy|delete <name> | reset | <name>]

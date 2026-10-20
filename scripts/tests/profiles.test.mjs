@@ -94,7 +94,9 @@ it("profile management", () => {
   addon.slash("profile delete Raid");
   expect(addon.eval("return VanguardDB.profiles.Raid") === null, "others can").toBeTruthy();
   addon.slash("profile reset");
-  expect(addon.eval("return VanguardDB.profiles.Default.theme") === null, "/vg profile reset clears the active profile").toBeTruthy();
+  expect(addon.eval("return VanguardDB.profiles.Default.theme ~= nil and Vanguard_Question:IsShown()"), "/vg profile reset asks first").toBe(true);
+  addon.eval("Vanguard_Question.confirm:GetScript(\"OnClick\")(Vanguard_Question.confirm)");
+  expect(addon.eval("return { VanguardDB.profiles.Default.theme == nil, VanguardDB.profiles[\"Default backup\"].theme.accent[2] }"), "then clears the active profile and keeps a copy").toEqual([true, 1]);
   addon.slash("profile bad/name");
   expect(chatHas(addon, /1-32 letters/), "profile names are checked").toBeTruthy();
 });
