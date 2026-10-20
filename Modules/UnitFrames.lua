@@ -487,7 +487,7 @@ function UF.Refresh(keys)
   end
 end
 
--- Global event -> which frames it refreshes (nil = all).
+-- Global event -> which frames it refreshes (false = every frame; the key must stay, so UF.Enable registers the event).
 local GLOBAL_EVENTS = {
   PLAYER_ENTERING_WORLD = false,
   PLAYER_TARGET_CHANGED = { target = true, targettarget = true },
@@ -504,7 +504,7 @@ local GLOBAL_EVENTS = {
 
 -- Refreshes the frames a global event affects.
 local function onGlobalEvent(event)
-  UF.Refresh(GLOBAL_EVENTS[event] or nil)
+  UF.Refresh(GLOBAL_EVENTS[event])
 end
 
 -- Setup ---------------------------------------------------------------------------------
