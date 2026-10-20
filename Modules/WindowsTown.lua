@@ -71,8 +71,8 @@ local STABLE_DIVIDERS = { "TopDividerFrame", "BottomDividerFrame" }
 -- The slot art that stays on a pet slot: the lock, the generic pet picture and the current pet's glow.
 local SLOT_KEEP = { "lockIcon", "genericPetIcon", "currentGlow" }
 
--- The pet slots already dressed and the footer panels already made, by frame.
-local vgPetSlots = ns.FrameState("vgPetSlots")
+-- The slot tiles already dressed (pet slots and selector tiles) and the footer panels already made, by frame.
+local vgSlotTiles = ns.FrameState("vgSlotTiles")
 local vgStableFoot = ns.FrameState("vgStableFoot")
 
 -- The pet scene: its art faded and an inset panel behind the model, its zoom and rotate buttons themed.
@@ -108,11 +108,13 @@ local function slotStates(button)
   button:HookScript("OnMouseUp", ns.Guard("hook OnMouseUp", function(self) T.SlotState(self, self:IsMouseOver() and "hover" or nil) end))
 end
 
--- One pet slot as a quiet slot tile (its rims faded, its icon, lock and glow kept), once.
-local function dressPetSlot(button)
-  if type(button) ~= "table" or not button.GetRegions or not button.HookScript or vgPetSlots[button] then return end
-  vgPetSlots[button] = true
-  T.FadeRegions(button, slotKeep(button))
+-- One slot-style tile (a pet slot, a selector tile) as a quiet slot: its rims faded, the parts keepOf(button) returns
+-- kept, its accent edge following the mouse. Once per tile; keepOf runs only after the frame check, as a button name
+-- is read from the button.
+local function dressSlotTile(button, keepOf)
+  if type(button) ~= "table" or not button.GetRegions or not button.HookScript or vgSlotTiles[button] then return end
+  vgSlotTiles[button] = true
+  T.FadeRegions(button, keepOf(button))
   T.Slot(button, { quiet = true })
   slotStates(button)
 end
@@ -139,7 +141,7 @@ end
 -- The pet's level, slots, rules and money lines: the three slots as tiles, the two rules as one pixel of divider, the
 -- money lines (the player's in a coin box, the slot's cost beside the Costs label) in the theme font.
 local function styleStableParts(frame)
-  for _, name in ipairs(STABLE_SLOTS) do dressPetSlot(_G[name]) end
+  for _, name in ipairs(STABLE_SLOTS) do dressSlotTile(_G[name], slotKeep) end
   GW.EachKey(frame, STABLE_DIVIDERS, stableRule)
   GW.SkinCoinBox(_G.PetStableMoneyFrame)
   GW.SkinMoney(_G.PetStableCostMoneyFrame)
@@ -547,17 +549,15 @@ GW.Add("town", { "GroupLootHistoryFrame" }, GW.SkinLootHistory)
 local MACRO_BUTTONS = { "MacroEditButton", "MacroCancelButton", "MacroSaveButton", "MacroDeleteButton", "MacroNewButton", "MacroExitButton" }
 GW.AddButtons("MacroFrame", MACRO_BUTTONS)
 
--- Each selector tile (a macro's or an icon's) already dressed.
-local vgTiles = ns.FrameState("vgSelectorTiles")
+-- The parts a selector tile keeps: its icon and the game's selected mark.
+local function selectorKeep(button)
+  return GW.KeepKeys(button, { "Icon", "SelectedTexture" })
+end
 
 -- One tile of a selector (SelectorButtonTemplate: the macro grid, the selected macro, the icon pickers) as a quiet slot:
 -- its slot plate and hover strip faded, its icon and the game's selected mark kept, an accent edge under the mouse. Once per tile.
 local function dressSelectorTile(button)
-  if type(button) ~= "table" or not button.GetRegions or not button.HookScript or vgTiles[button] then return end
-  vgTiles[button] = true
-  T.FadeRegions(button, GW.KeepKeys(button, { "Icon", "SelectedTexture" }))
-  T.Slot(button, { quiet = true })
-  slotStates(button)
+  dressSlotTile(button, selectorKeep)
 end
 
 -- The icon picker's header: the selected icon's area gets an inset panel and its tile and heading, the name box, the
