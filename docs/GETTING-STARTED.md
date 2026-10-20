@@ -1,6 +1,6 @@
 # Getting started with Vanguard
 
-Vanguard is one addon that replaces a pile of them: unit frames, raid frames, action bars, bags, chat, nameplates, the map, quest tools, an auction helper and more, in one look. It is made for WoW Forever. This page is the short version for players; [README.md](../README.md) is the full description of what every part does.
+Vanguard is one addon that replaces a pile of them: unit frames, raid frames, action bars, bags, chat, nameplates, the map, quest tools, an auction helper and more, in one look. It is made for WoW Forever. This page is the short version for players; the [feature pages](features/) are the full description of what every part does.
 
 ## Install
 
@@ -33,7 +33,7 @@ These are settings of the game itself, so they stay when you disable Vanguard. T
 - `/vg report` prints one block to copy; paste it at vanguardui.com/feedback, or write the report in game with `/vg feedback`.
 - `/vg status` says the version, profile, modules and what the client has.
 
-Much of what this page and the README describe has not been checked in the game yet: CHANGELOG.md and SMOKE-TEST.md say what has. If something looks wrong, tell us (`/vg report`).
+Much of what this page and the feature pages describe has not been checked in the game yet: CHANGELOG.md and SMOKE-TEST.md say what has. If something looks wrong, tell us (`/vg report`).
 
 Several newer parts start switched off (the Vanguard meter, craft queue, mail tools, boat timer and others). The What's new window and the options pages say which; turn them on under `/vg`.
 
@@ -41,4 +41,4 @@ Several newer parts start switched off (the Vanguard meter, craft queue, mail to
 
 - [COMMANDS.md](COMMANDS.md): every `/vg` command, grouped by what it does.
 - [CHANGELOG.md](CHANGELOG.md): what changed in each release.
-- [README.md](../README.md): the full feature description.
+- [README.md](../README.md): the overview, with a link to each feature page.

@@ -14,7 +14,7 @@ Nobody working on the repo can run the game. A visual fix is made from what the 
 3. **Reproduce in the harness** where the measurement exists: `addon.frame("<name>")` gives `visible`, `alpha`, `width`, `height`, `left`, `bottom`, `texture`, `text`; `addon.frames('<Lua predicate>')` finds children. `scripts/lib/wow-layout.lua` resolves anchors to screen rects, so overlap and cut-off text are measurable. A font string's width is approximate.
 4. **Fix at the source**: a colour or size only in `Core/Theme.lua`; a layout in the module; a game-window skin in `Modules/Windows*.lua`. Keep to the theme's spacing steps (4 px, 8 px) and text roles. Never a one-off colour number.
 5. **A test** that asserts the measured thing (the label fits, the panel's alpha is 1, the button no longer covers the other).
-6. **Docs**: the README sentence if what the player sees changed; `docs/SMOKE-TEST.md` step that will confirm it in game, with the exact Expect text.
+6. **Docs**: the feature page sentence if what the player sees changed; `docs/SMOKE-TEST.md` step that will confirm it in game, with the exact Expect text.
 7. **PR**: the issue number in the body, and under "Needs in-game check" the one thing Cliff should look at and what it should look like. The issue stays open until he has.
 
 ## What the harness cannot tell you

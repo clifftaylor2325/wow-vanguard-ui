@@ -1,4 +1,4 @@
--- The public integration surface beyond skins and auction prices (README, docs/API.md):
+-- The public integration surface beyond skins and auction prices (docs/API.md):
 --   Vanguard.OpenOptions(page, setting)       opens the options window on a page and row
 --   Vanguard.RegisterPreset(name, text, info) offers a profile string on the Profiles page
 --   Vanguard.GetPresets()                     the presets on offer, built-in ones first
