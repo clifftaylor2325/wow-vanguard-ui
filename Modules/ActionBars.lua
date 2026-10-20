@@ -121,9 +121,9 @@ end
 -- visibility; a bar the player turns on later was saved with the default
 -- (On mouseover) filled in, so it keeps that.
 local function keepOldRightBars(saved)
-  for n, bar in pairs(type(saved.bars) == "table" and saved.bars or {}) do
-    if AB.RightEdge(n) and type(bar) == "table" and bar.enabled == true and bar.visibility == nil then
-      bar.visibility = "always"
+  for n, barSettings in pairs(type(saved.bars) == "table" and saved.bars or {}) do
+    if AB.RightEdge(n) and type(barSettings) == "table" and barSettings.enabled == true and barSettings.visibility == nil then
+      barSettings.visibility = "always"
     end
   end
 end
@@ -503,11 +503,11 @@ end
 -- size), the size and the gap rounded to whole screen pixels as AB.LayoutBar sizes the bar (against
 -- the built bar, or UIParent before it is built), times the scale you gave the bar (ns.MoverLook), so
 -- the bar stacked above it starts on its top edge at any UI scale and at any scale of its own.
-local function barHeight(settings, bar, k)
+local function barHeight(settings, barSettings, k)
   local f = AB.bars[k] or UIParent
-  local size, gap = T.PixelRound(f, bar.size or settings.size), T.PixelRound(f, settings.spacing)
+  local size, gap = T.PixelRound(f, barSettings.size or settings.size), T.PixelRound(f, settings.spacing)
   local scale = ns.MoverLook("bar" .. k)
-  return (math.ceil(bar.buttons / bar.perRow) * (size + gap) - gap) * scale
+  return (math.ceil(barSettings.buttons / barSettings.perRow) * (size + gap) - gap) * scale
 end
 
 -- Default point for stacked bar n: every enabled stacked bar with a higher
@@ -515,8 +515,10 @@ end
 function AB.StackPoint(n, settings)
   local y = STACK_BASE
   for k = #BARS, n + 1, -1 do
-    local bar = settings.bars[k]
-    if BARS[k].stack and bar and bar.enabled then y = y + barHeight(settings, bar, k) + BAR_GAP end
+    local barSettings = settings.bars[k]
+    if BARS[k].stack and barSettings and barSettings.enabled then
+      y = y + barHeight(settings, barSettings, k) + BAR_GAP
+    end
   end
   return { "BOTTOM", "BOTTOM", 0, y }
 end
@@ -764,8 +766,8 @@ end
 -- bars exist, since a scaled bar's height rounds to its own pixels only then.
 local function build(settings)
   for n, def in ipairs(BARS) do
-    local bar = settings.bars[n]
-    if bar and bar.enabled then createBar(n, def, buildPoint(n, def, settings)) end
+    local barSettings = settings.bars[n]
+    if barSettings and barSettings.enabled then createBar(n, def, buildPoint(n, def, settings)) end
   end
   AB.RestackMoved()
   if settings.hideBlizzard then hideBlizzardBars() end
