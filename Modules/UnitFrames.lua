@@ -295,14 +295,26 @@ local function addTagMark(f)
   f.tag:Hide()
 end
 
--- The name (with the level left of it, where shown) and the health text. The
+-- The raid target icon's size: the raid tiles' 12 grown to the unit frames' scale.
+UF.RAID_ICON = 16
+
+-- The raid target icon, centred on the frame's top edge (hidden until UF.UpdateRaidIcon paints it).
+local function addRaidIcon(f)
+  f.raidIcon = f.health:CreateTexture(nil, "OVERLAY")
+  f.raidIcon:SetSize(UF.RAID_ICON, UF.RAID_ICON)
+  f.raidIcon:SetPoint("CENTER", f, "TOP")
+  f.raidIcon:Hide()
+end
+
+-- The name (with the level left of it, where shown), the health text and the raid icon. The
 -- name stops short of the health text: a long one is cut off, not overlapped.
-local function addTexts(f, settings)
+local function addTextsAndIcon(f, settings)
   f.name, f.healthText = createText(f, "name", "LEFT", 4), createText(f, "number", "RIGHT", -4)
   if settings.showLevel then addLevel(f) end
   f.name:SetPoint("RIGHT", f.healthText, "LEFT", -4, 0)
   f.name:SetJustifyH("LEFT")
   f.name:SetWordWrap(false)
+  addRaidIcon(f)
 end
 
 -- Cuts the bars to the shield corners: the health bar at the frame's top corners, the power bar at its bottom ones.
@@ -322,7 +334,7 @@ local function createUnitFrame(key, unit, w, h, settings)
   f.health, f.power = createBar(f), createBar(f)
   layoutBars(f, settings.powerHeight)
   shieldBars(f)
-  addTexts(f, settings)
+  addTextsAndIcon(f, settings)
   return f
 end
 
@@ -392,6 +404,19 @@ function UF.UpdateTag(f)
   if f.tag then UF.PaintTagMark(f.tag, UF.settings.tagMark == true and UF.TagState(f.unit) or nil) end
 end
 
+-- The raid mark on the frame's unit, painted as Raid status paints the raid tiles' and following its
+-- Raid target icons switch (read even while that module is off). A hidden mark shows nothing.
+function UF.UpdateRaidIcon(f)
+  local RS = ns.GetModule("RaidStatus")
+  local on = ns.Settings("RaidStatus", RS.defaults).raidIcons == true
+  RS.PaintIcon(f.raidIcon, on and RS.RaidIcon(f.unit) or nil)
+end
+
+-- Repaints every frame's raid mark (a mark was set or cleared, or the switch changed).
+function UF.RefreshRaidIcons()
+  for _, f in pairs(UF.frames) do UF.UpdateRaidIcon(f) end
+end
+
 -- Everything on a frame, if its unit exists.
 function UF.UpdateFrame(f)
   if not flag(UnitExists(f.unit)) then
@@ -401,6 +426,7 @@ function UF.UpdateFrame(f)
   UF.UpdatePower(f)
   UF.UpdateName(f)
   UF.UpdateTag(f)
+  UF.UpdateRaidIcon(f)
 end
 
 -- Unit event -> what it updates.
@@ -450,7 +476,7 @@ local function refreshTargetOfTarget(f)
   if not flag(UnitExists(f.unit)) then return end
   UF.UpdateHealth(f)
   UF.UpdatePower(f)
-  if identityChanged(f) then UF.UpdateName(f) end
+  if identityChanged(f) then UF.UpdateName(f) UF.UpdateRaidIcon(f) end
 end
 
 -- Target of target has no events of its own; refresh it a few times a second while it shows.
@@ -688,4 +714,5 @@ function UF.Enable(settings)
   for event in pairs(GLOBAL_EVENTS) do
     ns.On(event, onGlobalEvent)
   end
+  ns.On("RAID_TARGET_UPDATE", UF.RefreshRaidIcons)
 end

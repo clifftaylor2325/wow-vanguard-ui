@@ -136,9 +136,9 @@ local function raidAuraRows()
   }
 end
 
--- get/set for a raid frame mark switch (range fade, icons, ready check, ...) that repaints the tiles at once.
+-- get/set for a raid frame mark switch (range fade, icons, ready check, ...) that repaints the tiles, and the unit frames' raid icons, at once.
 local function statusSetting(key)
-  return liveSetting("RaidStatus", key, function() ns.GetModule("RaidStatus").UpdateAll() end)
+  return liveSetting("RaidStatus", key, function() ns.GetModule("RaidStatus").UpdateAll() ns.GetModule("UnitFrames").RefreshRaidIcons() end)
 end
 
 -- Raid frames plus their indicators.

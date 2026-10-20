@@ -518,6 +518,24 @@ it("a released player reads Ghost and a feigning hunter reads alive", () => {
   expect(text(), "feigning (the client calls it dead): the health shows").toBe("0");
 });
 
+it("a raid target icon sits on every unit frame's top edge, following the Raid target icons switch", () => {
+  const addon = loggedIn(UNITS_ENV + "__marks = { target = 8, party1 = 1 } GetRaidTargetIndex = function(unit) return __marks[unit] end", NO_RAID);
+  // The raid icon on a unit frame: shown, its sheet cell, and where it sits.
+  const icon = (key) => addon.eval(`local t = Vanguard_${key}.raidIcon local p, rel, rp = t:GetPoint()
+    return { t:IsShown(), t:IsShown() and t.__texCoord or false, p, rel == Vanguard_${key}, rp }`);
+  expect(icon("target"), "skull on the target: the last cell, centred on the top edge").toEqual([true, [0.75, 1, 0.25, 0.5], "CENTER", true, "TOP"]);
+  expect(icon("party1").slice(0, 2), "star on a party member").toEqual([true, [0, 0.25, 0, 0.25]]);
+  expect(icon("player")[0], "no mark: none").toBe(false);
+  addon.eval("__marks = { player = 2, target = { __secret = true } }");
+  addon.fire("RAID_TARGET_UPDATE");
+  expect([icon("player")[0], icon("target")[0], icon("party1")[0]], "a new mark shows at once, a hidden one shows nothing, a cleared one goes").toEqual([true, false, false]);
+  addon.eval('__units.targettarget = { name = "TEST-ONLY ToT", hp = 1, maxhp = 2, power = 0, maxpower = 0, ptype = "MANA" } __marks.targettarget = 3');
+  addon.update(0.25);
+  expect(icon("targettarget")[0], "the target of target's mark follows its timer").toBe(true);
+  addon.eval("ns.Settings('RaidStatus').raidIcons = false ns.GetModule('UnitFrames').RefreshRaidIcons()");
+  expect(icon("player")[0], "the switch off: no marks").toBe(false);
+});
+
 // The tooltip's owner, unit, shown state and lines, after hovering (or leaving) a unit frame.
 const hover = (addon, key, script = "OnEnter") => addon.eval(`
   local f = Vanguard_${key}

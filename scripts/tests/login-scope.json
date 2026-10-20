@@ -262,6 +262,7 @@
       "Versus deck: one rounded panel behind the player and target, the crest at the seam, the target's bars mirrored",
       "a ?? (boss or far higher) level reads in the hardest difficulty color, not the easiest",
       "a creature someone else tagged is grey on the unit frames, as on the game's frames",
+      "a raid target icon sits on every unit frame's top edge, following the Raid target icons switch",
       "a released player reads Ghost and a feigning hunter reads alive",
       "class bars: a right-click on a totem cell destroys it, with key-down casting on or off",
       "class bars: druid mana while a form shows rage or energy",
