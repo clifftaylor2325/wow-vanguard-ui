@@ -287,6 +287,21 @@ it("keep stocked waits for each purchase to arrive before the next, and trusts a
   blind.fire("MERCHANT_SHOW");
   expect([blind.eval("return #__buys"), chatHas(blind, /Bought 5 × TEST-ONLY Bread for 0s 25c\./)], "no item count: the purchase is taken as made").toEqual([1, true]);
 });
+it("keep stocked: closing the merchant ends the run, and the next merchant's item at that place is not bought", () => {
+  const swap = loggedIn(STOCK_ENV + "__have = {} __goods[1].max = 2 __later = {} C_Timer = { After = function(s, fn) if s == 0.2 then __later[#__later + 1] = fn end end }", WANT_5);
+  swap.fire("MERCHANT_SHOW");
+  swap.fire("MERCHANT_CLOSED");
+  expect(chatHas(swap, /Bought 2 × TEST-ONLY Bread for 0s 10c\./) && !chatHas(swap, /Stopped buying/), "the run ends and says what arrived").toBe(true);
+  swap.eval("__goods = { { id = 77777, price = 50000, stack = 1, left = -1, max = 20 } }");
+  swap.fire("MERCHANT_SHOW");
+  swap.eval("for _, f in ipairs(__later) do f() end");
+  expect([swap.eval("return #__buys"), swap.eval("return ns.GetModule('Errands').stocking")], "the old run's timer buys nothing at the new merchant").toEqual([1, null]);
+  const moved = loggedIn(STOCK_ENV + "__have = {} __goods[1].max = 2 __later = {} C_Timer = { After = function(s, fn) if s == 0.2 then __later[#__later + 1] = fn end end }", WANT_5);
+  moved.fire("MERCHANT_SHOW");
+  moved.eval("__goods[1] = { id = 77777, price = 50000, stack = 1, left = -1, max = 20 }");
+  moved.eval("__later[1]()");
+  expect(moved.eval("return #__buys"), "the merchant has something else at the order's place: no buy").toBe(1);
+});
 // TEST-ONLY group: you lead a party; every raid tool call is recorded.
 const TOOLS_GROUP_ENV = `
   __leader, __assist, __inGroup, __inRaid, __markable, __calls = true, false, true, false, true, {}

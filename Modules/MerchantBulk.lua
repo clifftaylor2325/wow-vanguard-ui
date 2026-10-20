@@ -241,17 +241,17 @@ function MC.MaxPacks(index)
   return math.max(math.min(packs, math.floor(bagRoom(ask("GetMerchantItemLink", index)) / quantity)), 0)
 end
 
--- True when the open merchant still sells item id at index: a buy goes by index, and the next merchant
+-- True when the merchant's item at index is still item id: a buy goes by index, and the next merchant
 -- (opened before a timer or a question ran) may have something else there. Errands' stock runs use it too.
 function MC.Sells(index, id)
-  return trading() and MC.ItemID(ask("GetMerchantItemLink", index)) == id
+  return MC.ItemID(ask("GetMerchantItemLink", index)) == id
 end
 
 -- Buys the next chunk of a run (a merchant stack at most, in whole packs); false when it can't go on
 -- (the run's merchant closed, or what it sells at that index changed).
 local function buyChunk(run)
   local price, quantity = wares(run.index)
-  if not price or run.packs <= 0 or run.stopped or not MC.Sells(run.index, run.id) then return false end
+  if not price or run.packs <= 0 or run.stopped or not trading() or not MC.Sells(run.index, run.id) then return false end
   local per = math.max(math.floor((ns.PlainNumber(ask("GetMerchantItemMaxStack", run.index)) or quantity) / quantity), 1)
   local packs = math.min(run.packs, per)
   if packs * price > (ns.PlainNumber(GetMoney()) or 0) then return false end
@@ -288,7 +288,7 @@ end
 -- The answer to a Buy question: buys the packs when the merchant is still open and still sells, at index,
 -- the item asked about (id) at the same pack price; a question left open past its merchant buys nothing.
 local function buyAsked(index, packs, id, price)
-  local same = MC.Sells(index, id) and wares(index) == price
+  local same = trading() and MC.Sells(index, id) and wares(index) == price
   if not same then return ns.Chat("Nothing bought: the merchant closed or changed what it sells.") end
   MC.Buy(index, packs)
 end
