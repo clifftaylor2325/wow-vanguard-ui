@@ -42,10 +42,13 @@ end
 
 -- The text buttons -----------------------------------------------------------------------
 
+-- The pull countdown in seconds (a right-click sends 0 instead).
+RT.PULL_SECONDS = 10
+
 -- Each text button: label, what a click does, and the client call it needs.
 RT.ACTIONS = {
   { "Ready", function() party("DoReadyCheck") end, "DoReadyCheck" },
-  { "Pull", function(_, button) party("DoCountdown", button == "RightButton" and 0 or 10) end, "DoCountdown" },
+  { "Pull", function(_, button) party("DoCountdown", button == "RightButton" and 0 or RT.PULL_SECONDS) end, "DoCountdown" },
   { "Roles", function() _G.InitiateRolePoll() end, "InitiateRolePoll" },
   { "Raid", function() party("ConvertToRaid") end, "ConvertToRaid" },
 }

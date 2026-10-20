@@ -91,12 +91,15 @@ end
 
 local calc
 
+-- The heal prediction calculator's clamp mode and overflow, as the client takes them (the numbers the calculator is set to).
+RH.CALC_CLAMP_MODE, RH.CALC_OVERFLOW = 0, 1
+
 -- The client's heal prediction calculator (made once), or nil if this client has none.
 local function calculator()
   if not calc and type(CreateUnitHealPredictionCalculator) == "function" then
     calc = CreateUnitHealPredictionCalculator()
-    pcall(calc.SetIncomingHealClampMode, calc, 0)
-    pcall(calc.SetIncomingHealOverflowPercent, calc, 1)
+    pcall(calc.SetIncomingHealClampMode, calc, RH.CALC_CLAMP_MODE)
+    pcall(calc.SetIncomingHealOverflowPercent, calc, RH.CALC_OVERFLOW)
   end
   return calc
 end

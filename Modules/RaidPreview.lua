@@ -105,14 +105,14 @@ end
 -- Where tile k (counting from 0) sits from the grid's bottom left: groups of five as
 -- columns (each growing up, side by side) or rows (each growing right, stacked upward).
 local function place(k, s, key)
-  local step, group = k % 5, math.floor(k / 5)
+  local step, group = k % RF.GROUP, math.floor(k / RF.GROUP)
   if key == "rows" then return step * (s.width + s.spacing), group * (s.height + s.spacing) end
   return group * (s.width + s.spacing), step * (s.height + s.spacing)
 end
 
 -- The grid's width and height for n tiles.
 local function gridSize(n, s)
-  local across, up = math.ceil(n / 5), math.min(n, 5)
+  local across, up = math.ceil(n / RF.GROUP), math.min(n, RF.GROUP)
   if RF.LayoutFor(n) == "rows" then across, up = up, across end
   return across * (s.width + s.spacing) - s.spacing, up * (s.height + s.spacing) - s.spacing
 end
