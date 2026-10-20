@@ -1304,3 +1304,60 @@ it("quest log: each line shows its quest's XP at the right, with thousands set a
   addon.eval("GetQuestLogRewardXP = function() return 0 end ns.GetModule('QuestLog').settings.xp = true ns.GetModule('QuestLog').Refresh()");
   expect(xps(), "a quest worth nothing shows none").toEqual(["", "", ""]);
 });
+it("quest history: /vg quests history sorts a long history newest first, by turn-in time", () => {
+  const seed = Array.from({ length: 40 }, (_, i) => `[${90100 + i}] = { who = "Thrall-Forever", t = 1000000 + ${(i * 17) % 40} * 60, title = "TEST-ONLY T${(i * 17) % 40}" }`).join(", ");
+  const addon = loggedIn(TRACK_ENV + QLOG_ENV + HISTORY_ENV, { savedVariables: `VanguardDB.questHistory = { count = 40, quests = { ${seed} } }` });
+  addon.slash("quests history 25");
+  const titles = addon.chat().slice(-25).map((l) => l.match(/TEST-ONLY T(\d+)/)?.[1]);
+  expect(titles, "the 25 latest, each older than the one before").toEqual(Array.from({ length: 25 }, (_, i) => String(39 - i)));
+});
+it("quest tracker: the XP switches save while Vanguard's tracker isn't built", () => {
+  const addon = loggedIn(TRACK_ENV, { savedVariables: "VanguardDB.profiles = { Default = { QuestTracker = { own = false } } }" });
+  addon.eval(`for _, page in ipairs(ns.Options.PAGES) do if page.key == "quests" then for _, row in ipairs(page.rows()) do
+    if row[2] == "Each quest's XP under it" or row[2] == "Under the quests, how much of the XP to level they give" then row[4](false) end end end end`);
+  expect(addon.eval("local s = ns.Settings('QuestTracker') return { s.xp, s.levelXp, Vanguard_QuestTrackerFrame == nil }"), "both saved, no tracker drawn").toEqual([false, false, true]);
+});
+it("quest dialog: a fight lets go of the keys, and they come back when it ends with the dialog still open", () => {
+  const addon = loggedIn(QUEST_ENV);
+  addon.eval("Vanguard_QuestDialog.EnableKeyboard = function(self, on) self.__kb = on end");
+  addon.fire("GOSSIP_SHOW");
+  // Whether the dialog has the keyboard now.
+  const keys = () => addon.eval("return Vanguard_QuestDialog.__kb");
+  expect(keys(), "shown out of combat: it takes the keys").toBe(true);
+  addon.world.combat(true);
+  expect(keys(), "in a fight: no keys").toBe(false);
+  addon.world.combat(false);
+  expect([addon.eval("return Vanguard_QuestDialog:IsShown()"), keys()], "after the fight, still open: the keys are back").toEqual([true, true]);
+  addon.world.combat(true);
+  addon.fire("GOSSIP_CLOSED");
+  addon.world.combat(false);
+  expect(keys(), "closed during the fight: it stays without keys").toBe(false);
+});
+it("quest log: Ctrl-click marks inside a folded zone still count, and Abandon abandons them all", () => {
+  const addon = loggedIn(TRACK_ENV + QLOG_ENV + "__gone = {} C_QuestLog.AbandonQuest = function() __gone[#__gone + 1] = __selected end");
+  addon.eval("Vanguard_QuestLogToggle.__scripts.OnClick(Vanguard_QuestLogToggle)");
+  addon.eval("__wfgWorld.keys.ctrl = true");
+  for (const i of [1, 2, 3]) logLine(addon, i);
+  addon.eval("__wfgWorld.keys.ctrl = false");
+  logZone(addon, 1);
+  expect(addon.eval("return Vanguard_QuestLog.buttons.abandon.text:GetText()"), "the folded zone's two marks still count").toBe("Abandon 3");
+  logButton(addon, "abandon");
+  expect(addon.eval("return Vanguard_Question.title:GetText()"), "the question names all three").toBe("Abandon 3 quest(s)?\nTEST-ONLY Wolves\nTEST-ONLY Letter\nTEST-ONLY Far");
+  addon.click("Vanguard_Question.confirm");
+  expect(addon.eval("return __gone"), "all three abandoned").toEqual([90051, 90052, 90053]);
+});
+it("quest dialog: an NPC whose one option the game goes to directly (a flight master) opens it without the dialog", () => {
+  const addon = loggedIn();
+  const FLY = { name: "TEST-ONLY Show me where I can fly.", gossipOptionID: 90077, orderIndex: 0, selectOptionWhenOnlyOption: true };
+  // Talks to an NPC, then says whether the dialog shows, how many lines it has, and which option index the game was asked for.
+  const talk = (npc) => {
+    addon.eval("__wfgWorld.gossipChosenIndex = nil Vanguard_QuestDialog:Hide()");
+    addon.world.openNpc(npc);
+    return addon.eval("return { Vanguard_QuestDialog:IsShown(), Vanguard_QuestDialog.lines.used, __wfgWorld.gossipChosenIndex or false }");
+  };
+  expect(talk({ options: [FLY] }), "one flagged option, no quests: the game's pick, no dialog").toEqual([false, 0, 0]);
+  expect(talk({ options: [FLY], forceGossip: true }), "an NPC that forces its gossip: the dialog").toEqual([true, 1, false]);
+  expect(talk({ options: [{ ...FLY, selectOptionWhenOnlyOption: false }] }), "an option not flagged: the dialog").toEqual([true, 1, false]);
+  expect(talk({ options: [FLY], available: [{ title: "TEST-ONLY Rats", questLevel: 5, questID: 90078 }] }), "a quest to show as well: the dialog").toEqual([true, 2, false]);
+  expect(talk({ options: [FLY, { ...FLY, gossipOptionID: 90079, orderIndex: 1 }] }), "two options: the dialog").toEqual([true, 2, false]);
+});

@@ -266,8 +266,8 @@ end
 -- counts keep up with a fight), then places the quest items: those are secure buttons that
 -- can't be moved in combat, so they keep their places until combat ends and one
 -- keyed placement runs then, however many redraws asked for it.
-function QT.Refresh()
-  local f, quests, timed = QT.frame, QT.Quests()
+local function redraw(f)
+  local quests, timed = QT.Quests()
   local all = QT.Rows(quests)
   QT.TickTimers(timed)
   f.count:SetText(#quests > 0 and tostring(#quests) or "")
@@ -277,6 +277,12 @@ function QT.Refresh()
   f:SetShown(#all > 0)
   drawRows(f, QT.collapsed and {} or all)
   ns.OutOfCombat(QT.PlaceItems, "questitems")
+end
+
+-- Redraws the tracker, once it is built: it isn't while Vanguard's tracker is switched off or Questie's shows
+-- instead, and the options' XP switches still call this then (a timed quest would otherwise tick it every second).
+function QT.Refresh()
+  if QT.frame then redraw(QT.frame) end
 end
 
 -- Item buttons ---------------------------------------------------------------------------------

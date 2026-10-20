@@ -16,7 +16,7 @@ Other addons' data feeds (LibDataBroker data sources, the kind info-bar addons s
 
 ## Minimap drawer
 
-Other addons' round minimap buttons are gathered into a drawer beside the map; the small "..." button on the map's left edge opens it (it only shows once there's a button to gather).
+Other addons' round minimap buttons are gathered into a drawer beside the map; the small "..." button on the map's left edge opens it (it only shows once there's a button to gather). It needs Vanguard's Minimap module: with that off (or turned off for SexyMap), the buttons stay on the game's map, and its row under Modules says so.
 
 ## Waypoints
 

@@ -513,7 +513,9 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 ### 8.1 Quest dialog
 
 - Do: under `/vg > Quests` tick Accept quests and Turn in finished quests (they are off by default). Talk to a quest giver who offers three or more quests. Press a number key, Space and Escape in turn. Then talk to a quest giver again without Shift (a quest is accepted for you), and once more holding Shift.
-- Expect: Vanguard's dialog at the bottom centre, the NPC's name at the top in the window-title type (there is no close button: Goodbye and Escape end the talk), with numbered lines in difficulty colours, each led by a gold `!` (a quest you can take), a gold `?` (ready to turn in) or a grey `?` (in progress); Goodbye sits alone at the far left of the buttons; the number picks a line, Space or Enter presses the main button (Accept, Continue or Complete; with only Goodbye on the page, that), Escape says goodbye; in combat Enter does nothing; without Shift the ticked automation runs; with Shift held, no automation runs and the dialog stays open for you.
+- Expect: Vanguard's dialog at the bottom centre, the NPC's name at the top in the window-title type (there is no close button: Goodbye and Escape end the talk), with numbered lines in difficulty colours, each led by a gold `!` (a quest you can take), a gold `?` (ready to turn in) or a grey `?` (in progress); Goodbye sits alone at the far left of the buttons; the number picks a line, Space or Enter presses the main button (Accept, Continue or Complete; with only Goodbye on the page, that), Escape says goodbye; in combat number keys, Space and Enter go to the game (Escape still says goodbye); without Shift the ticked automation runs; with Shift held, no automation runs and the dialog stays open for you.
+- Also expect (a fight with the dialog open): talk to a quest giver, pull a mob that reaches you (or get hit) with the dialog still open, and finish the fight without closing it. During the fight Space moves or jumps as usual; once the fight ends, Space and the number keys work in the dialog again without you clicking anything or turning a page. [Needs in game: that the keys come back on PLAYER_REGEN_ENABLED, and that Escape closes the dialog during the fight.]
+- Also expect (a flight master): talk to a flight master with no quests for you. The flight map opens at once, with no Vanguard dialog in between, as with the game's own windows. An NPC with several options, or a quest as well, still opens the dialog. [Needs in game: which NPCs the client flags `selectOptionWhenOnlyOption` on Forever, and that `C_GossipInfo.SelectOptionByIndex` opens the flight map from an addon.]
 - If it fails, paste: a screenshot and `/vg errors`.
 
 ### 8.2 Long quest text
@@ -635,6 +637,12 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Do: open the character pane with gear worn. Then `/vg` → Game windows → Character sheet extras: tick "Mark worn pieces missing an enchant", and look at a chest, legs, boots, bracers, gloves, cloak or weapon of green quality or better without an enchant. Press "Show my gear summary in chat" (or run `/vg gear`).
 - Expect: each worn slot shows its item level along the top edge (durability stays along the bottom); an unenchanted piece of those slots shows a `!` in the top-right corner, and not a shield or a held item; unticking a switch removes its labels at once; `/vg gear` prints the average item level, a melee damage-per-second line (with the swing time) and the pieces missing an enchant.
 - If it fails, paste: a screenshot of the character pane, the `/vg gear` lines and `/vg errors`.
+
+### 9.2e Keep stocked is each character's own
+
+- Do: on a character whose stock list you set before this update, type `/vg stock`. Log in a second character that uses the same profile and type `/vg stock`; on it, `/vg stock <an item a merchant sells> 5`, then visit that merchant. Log back in on the first character, type `/vg stock`, and visit the same merchant.
+- Expect: the first character to log in after the update lists the old list; the second starts with `Your stock list is empty. ...` and buys only its own 5; back on the first, its list is unchanged and the merchant buys nothing for the second character's item. A profile export (`/vg` → Profiles) carries no stock list. [Needs in game: that the list survives a logout on each character (it lives in the character's saved file).]
+- If it fails, paste: both characters' `/vg stock` output and `/vg errors`.
 
 ### 9.3 Trainer: Train all
 

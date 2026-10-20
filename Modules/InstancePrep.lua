@@ -151,7 +151,7 @@ end
 -- The Keep-stocked items (Errands, /vg stock) you carry fewer of than the list says, by item ID.
 function PR.StockRows()
   local ER, rows, ids = ns.GetModule("Errands"), {}, {}
-  local list = ER.settings and ER.settings.stockList or {}
+  local list = ER.settings and ER.StockList() or {}
   for id in pairs(list) do ids[#ids + 1] = id end
   table.sort(ids)
   for _, id in ipairs(ids) do rows[#rows + 1] = short(itemName(id), count(id), list[id], id) end

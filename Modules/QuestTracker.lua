@@ -96,13 +96,14 @@ function QT.LogIndex(id)
 end
 
 -- One watched quest: { id, title, level, ready, objectives, item, xp }, or nil when the log doesn't have it.
+-- The XP switch is read from the profile: the arrow and the minimap marks ask with this module off, before any QT.Enable.
 function QT.Quest(id)
   local index = QT.LogIndex(id)
   local info = index and questLog("GetInfo", index)
   if type(info) ~= "table" then return nil end
   local ready = yes(questLog("ReadyForTurnIn", id)) or yes(questLog("IsComplete", id))
   return { id = id, title = info.title, level = info.level, ready = ready, objectives = QT.Objectives(id), item = questItem(index),
-    xp = QT.settings.xp and ns.GetModule("DataBars").RewardXP(id) or 0 }
+    xp = ns.Settings("QuestTracker", QT.defaults).xp and ns.GetModule("DataBars").RewardXP(id) or 0 }
 end
 
 -- How far a quest is (squared), or a long way when the client can't say.

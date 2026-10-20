@@ -1,8 +1,9 @@
 -- The errands of leveling, done for you:
 --   * Train all: a button on the trainer's window that learns everything you
 --     can afford, in one click, and says what it cost;
---   * keep stocked: a list of items and how many to carry (/vg stock); a
---     merchant who sells them tops you up, a stack at a time, while you can pay;
+--   * keep stocked: a list of items and how many to carry (/vg stock), each
+--     character's own; a merchant who sells them tops you up, a stack at a
+--     time, while you can pay;
 --   * flight timer: each flight's time is saved by route, and the next flight
 --     on that route shows a bar counting down to landing;
 --   * boat timer (off until switched on): the same for boats and zeppelins, in
@@ -15,7 +16,7 @@ local ADDON, ns = ...
 local T = ns.Theme
 
 local ER = ns.Module("Errands", {
-  defaults = { trainAll = true, stock = true, flightTimer = true, stockList = {}, flights = {},
+  defaults = { trainAll = true, stock = true, flightTimer = true, flights = {},
     boatTimer = false, boats = {}, boatLast = {} },
 })
 
@@ -170,18 +171,32 @@ local function soldBy(id)
   return list and (" — sold by " .. VM.Text(list[1])) or ""
 end
 
+-- The Keep stocked list, { [itemID] = how many }: this character's own (VanguardCharDB), never the
+-- shared profile's, so an alt on the same profile never buys what another character asked for.
+function ER.StockList()
+  VanguardCharDB.stockList = type(VanguardCharDB.stockList) == "table" and VanguardCharDB.stockList or {}
+  return VanguardCharDB.stockList
+end
+
+-- 0.7.1 kept the list in the profile. The first character to log in since takes it (unless it has its own
+-- list already) and the profile drops it, so the others start empty and a profile export carries none.
+local function moveStockList(settings)
+  if type(settings.stockList) == "table" and VanguardCharDB.stockList == nil then VanguardCharDB.stockList = settings.stockList end
+  settings.stockList = nil
+end
+
 -- Prints the stock list, with where to buy each item when that's known.
 local function listStock()
-  local ids = {}
-  for id in pairs(ER.settings.stockList) do ids[#ids + 1] = id end
+  local list, ids = ER.StockList(), {}
+  for id in pairs(list) do ids[#ids + 1] = id end
   if #ids == 0 then return ns.Chat("Your stock list is empty. /vg stock <item> <amount> adds one.") end
   table.sort(ids)
-  for _, id in ipairs(ids) do ns.Chat(string.format("Keep %d × %s", ER.settings.stockList[id], itemName(id)) .. soldBy(id)) end
+  for _, id in ipairs(ids) do ns.Chat(string.format("Keep %d × %s", list[id], itemName(id)) .. soldBy(id)) end
 end
 
 -- Sets how many of an item to keep (0 takes it off the list).
 local function setStock(id, amount)
-  ER.settings.stockList[id] = amount > 0 and amount or nil
+  ER.StockList()[id] = amount > 0 and amount or nil
   if amount > 0 then return ns.Chat(string.format("Keeping %d × %s.", amount, itemName(id))) end
   ns.Chat(itemName(id) .. " is off your stock list.")
 end
@@ -190,7 +205,7 @@ end
 function ER.StockCommand(rest)
   rest = rest or ""
   if rest == "" then return listStock() end
-  if rest == "clear" then ER.settings.stockList = {} return ns.Chat("Your stock list is empty.") end
+  if rest == "clear" then VanguardCharDB.stockList = {} return ns.Chat("Your stock list is empty.") end
   local id, amount = ER.ItemID(rest), tonumber(rest:match("%s(%d+)%s*$"))
   if not (id and amount) then return ns.Chat("Usage: /vg stock <shift-click an item> <amount>  (0 removes it)") end
   setStock(id, amount)
@@ -219,7 +234,7 @@ end
 -- How many of merchant item i your list wants (0 for none), and its item ID.
 local function wanted(i)
   local id = ER.ItemID(ask("GetMerchantItemLink", i))
-  local goal = id and ER.settings.stockList[id]
+  local goal = id and ER.StockList()[id]
   if not goal then return 0, id end
   return math.max(0, goal - (owned(id) or 0)), id
 end
@@ -303,7 +318,7 @@ end
 -- A merchant opened: top up your stock list (not in combat).
 local function onMerchant()
   ER.merchantOpen = true
-  if not ER.settings.stock or ER.stocking or ns.InCombat() or next(ER.settings.stockList) == nil then return end
+  if not ER.settings.stock or ER.stocking or ns.InCombat() or next(ER.StockList()) == nil then return end
   ER.stocking = { orders = ER.Orders(), bought = {}, spent = {} }
   ER.StockNext()
 end
@@ -382,14 +397,20 @@ local function watchFlights()
   buildBar()
 end
 
--- Module entry point (Core/Modules.lua).
-function ER.Enable(settings)
-  ER.settings = settings
-  ER.AddTrainButton()
-  ns.On("ADDON_LOADED", onLoaded)
+-- Follows the trainer's window for the Train all button.
+local function watchTrainer()
   ns.On("TRAINER_SHOW", trainerOpen(true))
   ns.On("TRAINER_CLOSED", trainerOpen(false))
   ns.On("TRAINER_UPDATE", ER.UpdateTrainButton)
+end
+
+-- Module entry point (Core/Modules.lua).
+function ER.Enable(settings)
+  ER.settings = settings
+  moveStockList(settings)
+  ER.AddTrainButton()
+  ns.On("ADDON_LOADED", onLoaded)
+  watchTrainer()
   ns.On("MERCHANT_SHOW", onMerchant)
   ns.On("MERCHANT_CLOSED", function() ER.merchantOpen = false end)
   if settings.flightTimer then watchFlights() end

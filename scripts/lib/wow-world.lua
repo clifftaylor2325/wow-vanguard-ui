@@ -1292,6 +1292,10 @@ C_GossipInfo = {
   GetActiveQuests = function() return npc().active or {} end,
   GetText = function() return npc().greeting or "" end,
   SelectOption = function(id) world.gossipChosen = id end,
+  -- GossipInfoDocumentation.lua: SelectOptionByIndex(optionID = an option's orderIndex) and ForceGossip (the NPC
+  -- wants its gossip shown even with one option), which the game's gossip frame reads before it skips to one.
+  SelectOptionByIndex = function(index) world.gossipChosenIndex = index end,
+  ForceGossip = function() return npc().forceGossip == true end,
   SelectAvailableQuest = function(id) world.questChosen = id end,
   SelectActiveQuest = function(id) world.questChosen = id end,
   CloseGossip = function() world.npc = nil stub.fire("GOSSIP_CLOSED") end,

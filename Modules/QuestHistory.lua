@@ -111,11 +111,18 @@ function QH.Muted(questID)
   return line and T.Paint(line, "muted") or nil
 end
 
+-- Orders two { id, rec } pairs: the newer turn-in first, the lower quest id on the same second. A strict
+-- order (never true both ways round), or table.sort errors or leaves the list half sorted.
+local function newestFirst(a, b)
+  if a[2].t ~= b[2].t then return a[2].t > b[2].t end
+  return a[1] < b[1]
+end
+
 -- The latest turn-ins, newest first: { id, rec } pairs.
 function QH.Latest(n)
   local list = {}
   for id, rec in pairs(QH.Store().quests) do list[#list + 1] = { id, rec } end
-  table.sort(list, function(a, b) return a[2].t ~= b[2].t and a[2].t > b[2].t or a[1] < b[1] end)
+  table.sort(list, newestFirst)
   for i = #list, n + 1, -1 do list[i] = nil end
   return list
 end

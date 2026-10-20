@@ -73,6 +73,28 @@ function QD.GossipLines()
   return out
 end
 
+-- A plain true from the client (a hidden value counts as false).
+local function plainTrue(v)
+  return not ns.IsSecret(v) and v == true
+end
+
+-- The NPC's one option when the game goes to it directly instead of showing gossip (a flight master, a
+-- vendor), or nil: as GossipFrameSharedMixin:HandleShow does, no quests to show, a single option flagged
+-- selectOptionWhenOnlyOption, and an NPC that doesn't force its gossip (C_GossipInfo.ForceGossip).
+local function directOption()
+  local options = sortedOptions()
+  local quests = #(gossip("GetAvailableQuests") or {}) + #(gossip("GetActiveQuests") or {})
+  if quests > 0 or #options ~= 1 or plainTrue(gossip("ForceGossip")) then return nil end
+  return plainTrue(options[1].selectOptionWhenOnlyOption) and options[1] or nil
+end
+
+-- Goes straight to the NPC's one option when the game would (the dialog doesn't open); true when it did.
+function QD.SkipGossip()
+  local option = directOption()
+  if option then gossip("SelectOptionByIndex", option.orderIndex) end
+  return option ~= nil
+end
+
 -- A quest giver's lines without gossip (the game's greeting window).
 function QD.GreetingLines()
   local out = {}
@@ -210,14 +232,21 @@ end
 
 -- Showing --------------------------------------------------------------------------------------
 
+-- Gives the dialog the keyboard while it shows. Run out of combat: a key caught in a fight could not be
+-- handed on to the game, so the dialog has no keys then.
+local function takeKeys()
+  QD.frame:EnableKeyboard(QD.frame:IsShown())
+end
+
 -- Shows a page (unless automation is about to answer it for you).
 function QD.Show(key, event)
   local auto = ns.GetModule("QuestAuto")
   if auto and auto.Claims and auto.Claims(event) then return end
+  if key == "gossip" and QD.SkipGossip() then return end
   QD.key, QD.page, QD.choice = key, QD.PAGES[key](), nil
   QD.Render(QD.page)
   QD.frame:Show()
-  QD.frame:EnableKeyboard(not ns.InCombat())
+  ns.OutOfCombat(takeKeys, "quest dialog keys")
 end
 
 -- The game finished loading an item's details: redraw the page (keeping a reward already picked).
@@ -242,6 +271,12 @@ local function takeOver()
   end
 end
 
+-- A fight starts: the dialog lets go of the keyboard, and takes it back when the fight ends if it still shows.
+local function releaseKeys()
+  QD.frame:EnableKeyboard(false)
+  ns.AfterCombat(takeKeys, "quest dialog keys")
+end
+
 -- Module entry point (Core/Modules.lua).
 function QD.Enable(settings)
   if not settings.dialog then return end
@@ -249,6 +284,6 @@ function QD.Enable(settings)
   takeOver()
   for event, key in pairs(QD.EVENTS) do ns.On(event, function() QD.Show(key, event) end) end
   for _, event in ipairs({ "GOSSIP_CLOSED", "QUEST_FINISHED" }) do ns.On(event, QD.Quiet) end
-  ns.On("PLAYER_REGEN_DISABLED", function() QD.frame:EnableKeyboard(false) end)
+  ns.On("PLAYER_REGEN_DISABLED", releaseKeys)
   ns.On("QUEST_ITEM_UPDATE", QD.Redraw)
 end

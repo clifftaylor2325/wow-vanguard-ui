@@ -141,7 +141,8 @@ end
 function CQ.Stock()
   local ER = ns.GetModule("Errands")
   if not ER.settings then return ns.Chat("Keep stocked is part of Errands, which is off (/vg > Modules).") end
-  for id, qty in pairs(needs()) do ER.settings.stockList[id] = math.max(ER.settings.stockList[id] or 0, qty) end
+  local list = ER.StockList()
+  for id, qty in pairs(needs()) do list[id] = math.max(list[id] or 0, qty) end
   ns.Chat("Keep stocked now covers the queue.")
   if not AH.settings then return ns.Chat("The auction helper is off (/vg > Modules).") end
   AH.Restock()

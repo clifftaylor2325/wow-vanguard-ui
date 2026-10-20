@@ -92,7 +92,7 @@ it("next opens the first recipe with its count typed in; stock raises Keep stock
   addon.slash("craft next");
   expect(addon.eval("return Vanguard_CraftingPanel.crafts:GetText()"), "the count in the panel").toBe("4");
   addon.slash("craft stock");
-  expect(addon.eval("local s = ns.Settings('Errands').stockList return { s[2589], s[2320] }"), "Keep stocked fits the queue").toEqual([12, 4]);
+  expect(addon.eval("local s = VanguardCharDB.stockList return { s[2589], s[2320] }"), "Keep stocked fits the queue").toEqual([12, 4]);
   expect(chatHas(addon, /Keep stocked now covers the queue/), "chat says so").toBe(true);
   const noErrands = crafter("", "VanguardDB.profiles = { Default = { CraftQueue = { on = true }, modules = { Errands = false } } }");
   expect(say(noErrands, "craft stock", /Keep stocked is part of Errands, which is off/), "Errands off").toBe(true);
@@ -107,7 +107,7 @@ it("/vg craft stock with the Auction helper off raises Keep stocked but makes no
   addon.eval(`${CQ}.Add(100, 4)`);
   addon.slash("craft stock");
   const lines = Array.from(addon.chat());
-  expect([addon.eval("return ns.Settings('Errands').stockList[2589]"), chatHas(addon, /The auction helper is off \(\/vg > Modules\)\./)], "Keep stocked still fits the queue, and chat says why there is no list").toEqual([12, true]);
+  expect([addon.eval("return VanguardCharDB.stockList[2589]"), chatHas(addon, /The auction helper is off \(\/vg > Modules\)\./)], "Keep stocked still fits the queue, and chat says why there is no list").toEqual([12, true]);
   expect([lines.some((l) => /Lists tab|Shopping list Restock/.test(l)), addon.eval("return ns.AuctionPrices.Store().lists.Restock == nil")], "no Restock list, and no direction to a Lists tab that isn't there").toEqual([false, true]);
 });
 

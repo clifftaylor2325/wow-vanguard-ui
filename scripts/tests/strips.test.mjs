@@ -492,14 +492,28 @@ it("a menu button takes clicks while the game's notification badge is shown (#24
     __badge:HookScript("OnShow", function(self) self:EnableMouse(true) self:SetHitRectInsets(0, 0, 0, 0) end)
     __alert = CreateFrame("Frame", nil, CharacterMicroButton) __alert:EnableMouse(true)`;
   const addon = loggedIn(UI_ENV + TIDY_ENV + MICRO_ENV + BADGE_ENV);
-  // A frame's mouse switch and its hit area's left inset.
-  const state = (f) => addon.eval(`return { ${f}:IsMouseEnabled() and 1 or 0, ${f}.__hitInsets[1] }`);
+  // A frame's mouse switch (as EnableMouse last set it; the test client's IsMouseEnabled says nothing) and its hit area's left inset.
+  const state = (f) => addon.eval(`return { ${f}.__mouse and 1 or 0, ${f}.__hitInsets[1] }`);
   expect([state("__badge"), state("__alert")], "both frames take no mouse and have no place to hit").toEqual([[0, 512], [0, 512]]);
   addon.eval("__badge:Show()");
   expect(state("__badge"), "a badge shown later is made click-through again").toEqual([0, 512]);
-  expect(addon.eval("return ns.FrameState('vgSlot')[CharacterMicroButton]:IsMouseEnabled() and 1 or 0"), "our own slot is left alone").toBe(0);
+  expect(addon.eval("return (ns.FrameState('vgSlot')[CharacterMicroButton].__hitInsets or {})[1] ~= 512"), "our own slot is left alone").toBe(true);
   addon.eval("local clicked = 0 CharacterMicroButton:HookScript('OnClick', function() clicked = clicked + 1 end) CharacterMicroButton:Click() __clicked = clicked");
   expect(addon.eval("return __clicked"), "a click reaches the button").toBe(1);
+});
+it("badges shown on two menu buttons in one fight both let clicks through once it ends (#243)", () => {
+  // TEST-ONLY badges like the one above, on two menu buttons, each turning the mouse back on when shown.
+  const BADGES_ENV = `local function badge(parent)
+      local b = CreateFrame("Frame", nil, parent) b:SetAllPoints() b:SetFrameLevel(100) b:Hide()
+      b:HookScript("OnShow", function(self) self:EnableMouse(true) self:SetHitRectInsets(0, 0, 0, 0) end)
+      return b
+    end
+    __b1, __b2 = badge(CharacterMicroButton), badge(MainMenuMicroButton)`;
+  const addon = loggedIn(UI_ENV + TIDY_ENV + MICRO_ENV + BADGES_ENV);
+  setCombat(addon, true);
+  addon.eval("__b1:Show() __b2:Show()");
+  setCombat(addon, false);
+  expect(addon.eval("return { __b1.__mouse and 1 or 0, __b1.__hitInsets[1], __b2.__mouse and 1 or 0, __b2.__hitInsets[1] }"), "both badges: no mouse, no place to hit").toEqual([0, 512, 0, 512]);
 });
 it("Round Four leftovers: menu glyphs, a target diamond, raid names above incoming heals", () => {
   const addon = loggedIn(UI_ENV + TIDY_ENV + MICRO_ENV + CLICK_LUA, { savedVariables: "VanguardDB.profiles.Default = { MenuStrip = { glyphs = true } }" });

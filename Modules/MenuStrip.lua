@@ -456,12 +456,14 @@ end
 -- Lets clicks through the game's own child frames on a menu button (its
 -- notification diamond overlay and any other alert), now and each time one is
 -- shown, so a click reaches the button while a badge is shown. Our slot is left alone.
+-- A badge shown in combat waits for the fight to end under its own queue key (the frame),
+-- so two badges shown in one fight both pass clicks through after it.
 local function clickThrough(b)
   for _, child in ipairs({ b:GetChildren() }) do
     if child ~= vgSlot[b] then
       passThrough(child)
       child:HookScript("OnShow", ns.Guard("menustrip passthrough", function(self)
-        ns.OutOfCombat(function() passThrough(self) end, "menustrip passthrough")
+        ns.OutOfCombat(function() passThrough(self) end, self)
       end))
     end
   end

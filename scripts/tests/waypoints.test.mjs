@@ -270,3 +270,12 @@ it("waypoints: the world map has a Clear waypoint button, shown only while there
   addon.update(0.2);
   expect([shown(), addon.eval("return __point")], "the click clears it").toEqual([false, null]);
 });
+it("waypoints: /vg way recent lists and goes back to a spot with the Waypoints module off", () => {
+  const addon = loggedIn(MAP_ENV, { savedVariables: "VanguardDB.profiles = { Default = { modules = { Waypoints = false }, Waypoints = { recent = { { map = 10, x = 0.2, y = 0.3 } } } } }" });
+  addon.slash("way recent");
+  expect(chatHas(addon, /1\. TEST-ONLY Elwynn Forest 20\.0, 30\.0/), "the list").toBe(true);
+  addon.slash("way recent 1");
+  expect(chatHas(addon, /Waypoint: TEST-ONLY Elwynn Forest 20\.0, 30\.0/), "back to it").toBe(true);
+  addon.eval("for _, r in ipairs(ns.GetModule('Waypoints').Rows()) do if r[1] == 'button' and r[2]:match('^Go to') then r[3]() end end");
+  expect(addon.eval("return ns.GetModule('Waypoints').settings"), "the options' Go to button leaves the module's settings alone").toBe(null);
+});

@@ -218,13 +218,29 @@ it("keep stocked: /vg stock sets the list, a merchant tops you up", () => {
   addon.fire("MERCHANT_CLOSED");
   addon.slash("stock item:90011 0");
   addon.slash("stock clear");
-  expect(chatHas(addon, /TEST-ONLY Bread is off your stock list/) && addon.eval("return next(VanguardDB.profiles.Default.Errands.stockList)") === null, "0 removes an item, clear empties the list").toBe(true);
+  expect(chatHas(addon, /TEST-ONLY Bread is off your stock list/) && addon.eval("return next(VanguardCharDB.stockList)") === null, "0 removes an item, clear empties the list").toBe(true);
   const old = loggedIn(STOCK_ENV + "C_Timer = nil C_MerchantFrame = nil GetMerchantItemInfo = function(i) local g = __goods[i] return 'x', '', g.price, g.stack, g.left end", { savedVariables: "VanguardDB.profiles = { Default = { Errands = { stockList = { [90012] = 5 } } } }" });
   old.fire("MERCHANT_SHOW");
   expect(old.eval("return __buys"), "a client with the old merchant call (and no timers)").toEqual([[90012, 5]]);
   const off = loggedIn(STOCK_ENV, { savedVariables: "VanguardDB.profiles = { Default = { Errands = { stock = false, stockList = { [90012] = 5 } } } }" });
   off.fire("MERCHANT_SHOW");
   expect(off.eval("return #__buys"), "switched off it buys nothing").toBe(0);
+});
+it("keep stocked: the list is this character's own, never the shared profile's", () => {
+  const hunter = loggedIn(STOCK_ENV);
+  hunter.slash("stock item:90014 400");
+  expect(hunter.eval("return { VanguardCharDB.stockList[90014], VanguardDB.profiles.Default.Errands.stockList == nil }"), "kept in this character's file; the profile (and its export) has no list").toEqual([400, true]);
+  const alt = loggedIn(STOCK_ENV + "__goods[4] = { id = 90014, price = 100, stack = 200, left = -1, max = 200 }", { savedVariables: "VanguardDB.profiles = { Default = { Errands = {} } } VanguardCharDB = { profile = 'Default' }" });
+  alt.fire("MERCHANT_SHOW");
+  expect(alt.eval("return __buys"), "another character on the same profile buys nothing").toEqual({});
+});
+it("keep stocked: a list saved in the profile moves to the first character who logs in, and leaves the profile", () => {
+  const first = loggedIn(STOCK_ENV + "__have = {}", WANT_5);
+  expect(first.eval("return { VanguardCharDB.stockList[90011], VanguardDB.profiles.Default.Errands.stockList == nil }"), "this character has it now; the profile doesn't").toEqual([5, true]);
+  first.fire("MERCHANT_SHOW");
+  expect(first.eval("return __buys"), "and it buys from it").toEqual([[90011, 5]]);
+  const own = loggedIn(STOCK_ENV, { savedVariables: "VanguardDB.profiles = { Default = { Errands = { stockList = { [90011] = 5 } } } } VanguardCharDB = { profile = 'Default', stockList = { [90012] = 3 } }" });
+  expect(own.eval("return { VanguardCharDB.stockList[90011] or false, VanguardCharDB.stockList[90012], VanguardDB.profiles.Default.Errands.stockList == nil }"), "a character with its own list keeps it; the profile's goes").toEqual([false, 3, true]);
 });
 it("keep stocked: an item sold in stacks (ammo) is bought in whole stacks", () => {
   const addon = loggedIn(STOCK_ENV + "__goods[4] = { id = 90014, price = 100, stack = 200, left = -1, max = 200 }", { savedVariables: "VanguardDB.profiles = { Default = { Errands = { stockList = { [90014] = 450 } } } }" });

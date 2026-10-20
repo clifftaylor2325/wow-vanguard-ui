@@ -51,14 +51,19 @@ function QL.Entries()
   return out
 end
 
--- How many quests you have (headers aside).
-function QL.Count()
-  local n = 0
+-- Every quest in your log in log order, those under a folded zone too (headers aside).
+local function allQuests()
+  local out = {}
   for i = 1, ns.PlainNumber(questLog("GetNumQuestLogEntries")) or 0 do
     local e = entry(questLog("GetInfo", i))
-    if e and not e.header then n = n + 1 end
+    if e and not e.header then out[#out + 1] = e end
   end
-  return n
+  return out
+end
+
+-- How many quests you have (headers aside).
+function QL.Count()
+  return #allQuests()
 end
 
 -- The XP a quest's list line shows: its reward, or 0 with the setting off.
@@ -141,10 +146,10 @@ function QL.Abandon(d)
   call(StaticPopup_Show, "ABANDON_QUEST", ns.QuestParts.Plain(d.title))
 end
 
--- The marked quests still in your log, as { id, title } in log order.
+-- The marked quests still in your log, as { id, title } in log order (a folded zone's marks count too).
 function QL.MarkedQuests()
   local out = {}
-  for _, e in ipairs(QL.Entries()) do
+  for _, e in ipairs(allQuests()) do
     if e.id and QL.marked[e.id] then out[#out + 1] = e end
   end
   return out
