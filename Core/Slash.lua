@@ -230,11 +230,10 @@ local function cdmGlowCommand(rest)
   local CG = ns.GetModule("CooldownGlow")
   if not CG.settings then return chat("Cooldown glow is off: turn the module on in the options first.") end
   local percent = tonumber(rest)
-  if percent then CG.settings.percent = math.min(60, math.max(10, math.floor(percent))) end
+  if percent then CG.SetPercent(percent) end
   local on = percent ~= nil or toggleWord(rest, CG.settings.glow)
   if on == nil then return chat("Usage: /vg cdmglow [on|off|<percent>]") end
-  CG.settings.glow = on
-  CG.Apply()
+  CG.SetGlow(on)
   chat(CG.settings.glow and ("Cooldown Manager glow on: under " .. CG.settings.percent .. " percent left.") or "Cooldown Manager glow off.")
 end
 
@@ -242,8 +241,7 @@ end
 local cdmKeysSwitch = switchCommand({
   usage = "Usage: /vg cdmkeys [on|off]",
   read = function() return ns.GetModule("CooldownKeys").settings.keys end,
-  write = function(on) ns.GetModule("CooldownKeys").settings.keys = on end,
-  after = function() ns.GetModule("CooldownKeys").Refresh() end,
+  write = function(on) ns.GetModule("CooldownKeys").SetKeys(on) end,
   onText = "Cooldown Manager keys on.", offText = "Cooldown Manager keys off.",
 })
 

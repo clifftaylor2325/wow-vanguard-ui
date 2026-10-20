@@ -18,6 +18,8 @@ local T = ns.Theme
 local vgGlow = ns.FrameState("vgGlow")
 
 local CG = ns.Module("CooldownGlow", { defaults = { glow = false, percent = 30 } })
+-- The share (per cent) the glow can be set to: the options slider's and /vg cdmglow's limits.
+CG.PERCENT = { min = 10, max = 60 }
 
 -- The rows whose items can track an aura (the buff row, the essential and utility rows).
 CG.VIEWERS = { "BuffIconCooldownViewer", "EssentialCooldownViewer", "UtilityCooldownViewer" }
@@ -119,6 +121,17 @@ function CG.Apply()
     return CG.Tick()
   end
   for _, item in ipairs(CG.Items()) do CG.Light(item, nil) end
+end
+
+-- Sets the share (per cent), kept within CG.PERCENT; the glow takes it at its next look.
+function CG.SetPercent(percent)
+  CG.settings.percent = math.min(CG.PERCENT.max, math.max(CG.PERCENT.min, math.floor(percent)))
+end
+
+-- Turns the glow on or off, applied at once.
+function CG.SetGlow(on)
+  CG.settings.glow = on
+  CG.Apply()
 end
 
 -- Module entry point (Core/Modules.lua).

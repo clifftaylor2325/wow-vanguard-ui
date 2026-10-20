@@ -14,8 +14,12 @@ local moduleSettings, setting, reloadSetting, liveSetting, liveMethod, check, ap
 local WZ = {}
 O.CooldownWizard = WZ
 
--- The share of an aura's time left under which the Cooldown Manager's icon glows.
-local GLOW_PERCENT = { min = 10, max = 60, step = 5, format = function(v) return string.format("%d%%", v) end }
+-- The share of an aura's time left under which the Cooldown Manager's icon glows: the slider's limits are the
+-- module's (CooldownGlow.PERCENT), read when the row is made, as the module loads after this file.
+local function glowPercentSlider()
+  local limits = ns.GetModule("CooldownGlow").PERCENT
+  return { min = limits.min, max = limits.max, step = 5, format = function(v) return string.format("%d%%", v) end }
+end
 
 -- get/set for showing the game's Cooldown Manager, which turns it on or off at once.
 local function cooldownManagerSetting()
@@ -53,7 +57,7 @@ end
 local function glowRows()
   return {
     glow = tip(check("Glow a buff near its end", liveSetting("CooldownGlow", "glow", applyGlow)), "Glows a Cooldown Manager buff in its last part, where the game's own flag is missing."),
-    percent = tip({ "slider", "Glow when this much is left", GLOW_PERCENT, liveSetting("CooldownGlow", "percent", applyGlow) }, "The share of the buff's time left under which its icon glows."),
+    percent = tip({ "slider", "Glow when this much is left", glowPercentSlider(), liveSetting("CooldownGlow", "percent", applyGlow) }, "The share of the buff's time left under which its icon glows."),
   }
 end
 
