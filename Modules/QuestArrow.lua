@@ -85,12 +85,20 @@ local function titleOf(id)
   return plainText(call(C_QuestLog, "GetTitleForQuestID", id)) or "Quest"
 end
 
--- Picks the quest, whether it is finished, and its spot (map, x, y); says so when it moved on from a
+-- The quest to follow and whether the arrow holds it as a pin: the Shift-clicked quest (with "Follow the
+-- nearest quest" off, also the game's tracked one), else the nearest, else the game's tracked one.
+local function follow(old)
+  local pin = pinned()
+  if pin and (ns.QuestGuide.pointed or not QA.settings.auto) then return pin, true end
+  return QA.settings.auto and QA.Choose(old) or pin, false
+end
+
+-- Picks the quest, whether it is held and finished, and its spot (map, x, y); says so when it moved on from a
 -- finished one, and redraws.
 function QA.Pick()
   if not QA.frame then return end
   local old = QA.current
-  QA.current = (QA.settings.auto and (ns.QuestGuide.pointed and pinned() or QA.Choose(old))) or pinned()
+  QA.current, QA.held = follow(old)
   QA.ready = QA.current ~= nil and finished(QA.current)
   QA.target = QA.current and { ns.QuestGuide.Target(QA.current) } or nil
   if old and QA.current and old ~= QA.current and finished(old) and not ns.InCombat() then ns.Chat("Arrow: " .. titleOf(QA.current) .. ".") end
@@ -186,7 +194,14 @@ local function paintState(f, id, turn)
   f.arrow:SetAlpha(turn and not here and 1 or QA.FAINT)
 end
 
--- Redraws the arrow's turn, title and distance for the current quest; hides the frame with none.
+-- The Pin button shows while the arrow holds a pinned quest, and the title then stops short of it.
+local function paintPin(f)
+  f.pin:SetShown(QA.held == true)
+  if QA.held then return f.title:SetPoint("RIGHT", f.pin, "LEFT", -T.SPACE.tight, 0) end
+  f.title:SetPoint("RIGHT", f, "RIGHT", -8, 0)
+end
+
+-- Redraws the arrow's turn, title, distance and Pin button for the current quest; hides the frame with none.
 function QA.Draw()
   local f, id = QA.frame, QA.current
   if not (f and QA.settings.show and id) then return f and f:Hide() end
@@ -194,7 +209,25 @@ function QA.Draw()
   f.title:SetText(titleOf(id))
   paintState(f, id, turn)
   f.arrow:SetRotation(turn or 0)
+  paintPin(f)
   f:Show()
+end
+
+-- The Pin button: back to the nearest quest (or, with "Follow the nearest quest" off, no arrow until the next pin).
+function QA.Unpin()
+  ns.QuestGuide.Unpin()
+  ns.Chat(QA.settings.auto and "Arrow: nearest quest." or "Arrow: off until you Shift-click a quest in the tracker.")
+  QA.Pick()
+end
+
+-- What the Pin button says it does.
+function QA.PinTooltip(b)
+  local tip = GameTooltip
+  if not tip then return end
+  tip:SetOwner(b, "ANCHOR_BOTTOM")
+  tip:SetText("Pinned (Shift-click in the tracker)", T.RGB("text"))
+  tip:AddLine(QA.settings.auto and "Click: follow the nearest quest." or "Click: let it go. Follow the nearest quest is off, so the arrow hides.", T.RGB("text2"))
+  tip:Show()
 end
 
 -- The frame ---------------------------------------------------------------------------------------
@@ -209,6 +242,19 @@ local function fill(f)
   f.title:SetPoint("TOPLEFT", f.arrow, "TOPRIGHT", 8, -2)
   f.title:SetPoint("RIGHT", f, "RIGHT", -8, 0)
   f.title:SetJustifyH("LEFT")
+  f.title:SetWordWrap(false)
+end
+
+-- The Pin button at the panel's right edge, the one part of the panel that takes the mouse (the rest lets
+-- clicks and camera turns through): a ghost tile, as the window controls.
+local function pinButton(f)
+  local b = T.WindowControl(CreateFrame("Button", nil, f), "Pin")
+  b:SetPoint("RIGHT", f, "RIGHT", -T.SPACE.tight, 0)
+  b:SetScript("OnClick", ns.Guard("unpin quest arrow", function() QA.Unpin() end))
+  b:HookScript("OnEnter", ns.Guard("quest arrow pin tip", QA.PinTooltip))
+  b:HookScript("OnLeave", ns.Guard("quest arrow pin tip", function() if GameTooltip then GameTooltip:Hide() end end))
+  b:Hide()
+  f.pin = b
 end
 
 -- The movable frame (/vg unlock), hidden until there is a quest to point at.
@@ -219,6 +265,7 @@ local function build()
   fill(f)
   f.dist = T.Text(f:CreateFontString(nil, "OVERLAY"), "small", "text2")
   f.dist:SetPoint("BOTTOMLEFT", f.arrow, "BOTTOMRIGHT", 8, 2)
+  pinButton(f)
   f:Hide()
   QA.frame = f
   ns.Mover(f, "questarrow", "Quest arrow", { "TOP", "TOP", 0, -150 })
