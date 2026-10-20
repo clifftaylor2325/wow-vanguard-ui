@@ -36,7 +36,7 @@ The Find tile (a magnifier) in the main chat window's tab bar (left of Copy; Fin
 
 ## Chat bubbles
 
-Speech bubbles over heads in the world sit on a flat, slightly see-through slate panel (the chat's own material: no sheen, no shadow) with their text in Vanguard's font, instead of the game's rounded white bubble; **Text-only bubbles** (off) drops the panel too, so the text floats over the speaker; inside instances the game keeps its own bubbles (the engine does not let addons touch them there); `/vg` → Modules → Chat bubbles turns it off (reload).
+Speech bubbles over heads in the world sit on a flat, slightly see-through slate panel (the chat's own material: no sheen, no shadow) with their text in Vanguard's font, instead of the game's rounded white bubble; **Text-only bubbles** (off; reload) drops the panel too, so the text floats over the speaker; inside instances the game keeps its own bubbles (the engine does not let addons touch them there); `/vg` → Modules → Chat bubbles turns it off (reload).
 
 ## Group board
 

@@ -1141,7 +1141,7 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 
 ### 14.7.7 Chat bubbles
 
-- Do: with chat bubbles on in the game's options (Options → Interface → Social → Chat Bubbles), say something in /say out in the world, then have a party or raid member or an NPC speak near you; then enter a dungeon and say something there. Afterwards tick Text-only bubbles (`/vg` → Chat) and say something in the world again.
+- Do: with chat bubbles on in the game's options (Options → Interface → Social → Chat Bubbles), say something in /say out in the world, then have a party or raid member or an NPC speak near you; then enter a dungeon and say something there. Afterwards tick Text-only bubbles (reload) under `/vg` → Chat, reload, and say something in the world again.
 - Expect: in the world, each speech bubble is a flat, slightly see-through slate panel with no sheen line and no soft shadow (the same flat material as the chat window) instead of the game's rounded white bubble, its text in Vanguard's font, light on the dark panel, and the bubble's tail (the pointer toward the speaker) is gone with the rest of the game's art; with Text-only bubbles on, no panel at all: the text alone floats over the speaker; the bubble appears and goes as before; inside the dungeon the bubbles keep the game's own look (the engine does not let addons touch them there) and `/vg errors` stays empty.
 - If it fails, paste: a screenshot of a bubble and `/vg errors`.
 

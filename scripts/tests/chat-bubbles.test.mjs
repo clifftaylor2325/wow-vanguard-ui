@@ -1,7 +1,7 @@
 // chat-bubbles: Vanguard's real Lua in the TEST-ONLY headless client (scripts/lib/lua-harness.mjs).
 
-import { expect, it } from "vitest";
-import { isTok, loggedIn } from "./helpers.mjs";
+import { describe, expect, it } from "vitest";
+import { CLICK_LUA, isTok, loggedIn } from "./helpers.mjs";
 
 const THEME_FONT = "Interface\\AddOns\\Vanguard\\Media\\Fonts\\FiraSansCondensed-Medium.ttf";
 const OFF = { savedVariables: "VanguardDB.profiles = { Default = { modules = { ChatBubbles = false } } }" };
@@ -106,4 +106,16 @@ it("chat bubbles: the module off leaves them the game's; a client without C_Chat
   open.world.addChatBubble("TEST-ONLY old client");
   open.update(0.1);
   expect([bubbleLook(open, 1).panel, open.eval("return #ns.errors")], "a client without IsInInstance still dresses its bubbles").toEqual([true, 0]);
+});
+
+describe("chat bubbles: the Text-only switch applies on reload", () => {
+  it("ticking or unticking it asks for the reload that redresses the bubbles the engine reuses", () => {
+    const addon = loggedIn(CLICK_LUA);
+    const row = "Text-only bubbles: no panel behind the words over heads";
+    addon.eval('ns.Options.Show("chat")');
+    expect(addon.eval("return Vanguard_Options.reload:IsShown()"), "no reload asked for yet").toBe(false);
+    expect(addon.eval(`return __click("${row}") and ns.GetModule("ChatBubbles").settings.textOnly`), "ticked and saved").toBe(true);
+    expect(addon.eval("return Vanguard_Options.reload:IsShown()"), "the reload is offered").toBe(true);
+    expect(addon.eval(`return __click("${row}") and ns.GetModule("ChatBubbles").settings.textOnly`), "unticked again").toBe(false);
+  });
 });
