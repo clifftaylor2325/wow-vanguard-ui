@@ -368,11 +368,6 @@ function SI.Clear(name)
   ns.OutOfCombat(SI.Apply, "situations")
 end
 
--- Forgets the active situation's override.
-function SI.ClearActive()
-  SI.Clear(SI.Where())
-end
-
 -- At logout: a recording is saved, and the profile gets its own values back before it is written to disk.
 function SI.Logout()
   if SI.recording then SI.StopRecording() end
@@ -455,18 +450,19 @@ function SI.GetRecording()
   return SI.recording or "off"
 end
 
--- Picks Record for: a situation starts recording it (stopping, and saving, any other); Off stops and saves.
+-- Picks Record for: a situation starts recording it (stopping, and saving, any other); Off stops and saves. The page
+-- is built again, so Your situations shows what was saved.
 function SI.SetRecording(name)
   if name == "off" then stop() else record(name) end
-  ns.Options.Refresh()
+  ns.Options.RebuildPage("situations")
 end
 
--- What the page says first, a row per line (text rows don't wrap).
-SI.INTRO = {
-  "Overrides for Solo, Party, Raid, PvP, Instance and Resting: frame spots, scale, opacity,",
-  "visibility, info strip blocks and nameplate switches, applied out of combat.",
-  "A change to something the active override sets lasts until you leave the situation.",
-}
+-- What the page says first, as one note.
+SI.INTRO = "Overrides for Solo, Party, Raid, PvP, Instance and Resting: frame spots, scale, opacity, visibility, "
+  .. "info strip blocks and nameplate switches, applied out of combat. A change to something the active override "
+  .. "sets lasts until you leave the situation."
+-- What the Your situations card says with no override yet.
+SI.EMPTY = "No overrides yet. Pick Record for to make one."
 
 -- What an override can hold, in plain words: each live module's settings (SI.ORDER), after frames.
 SI.HOLDS = {
@@ -488,16 +484,42 @@ function SI.HoldRows(rows)
   return rows
 end
 
+-- One situation's override on the Your situations card: "Raid (now): 2 overrides (...)", then Clear, which is off while
+-- that situation is being recorded or the frames are unlocked.
+local function situationRows(rows, name, ov)
+  local label = SI.LABELS[name] .. (name == SI.Where() and " (now)" or "")
+  rows[#rows + 1] = { "text", label .. ": " .. SI.Describe(ov) }
+  rows[#rows + 1] = { "button", "Clear " .. SI.LABELS[name], function() clear(name) ns.Options.RebuildPage("situations") end,
+    function() return SI.recording ~= name and not ns.Unlocked() end }
+end
+
+-- The Your situations card: every situation with an override, in precedence order, or a line saying there are none.
+local function yourRows(rows)
+  local before = #rows
+  rows[#rows + 1] = { "header", "Your situations" }
+  for _, name in ipairs(SI.NAMES) do
+    local ov = SI.Override(name)
+    if ov then situationRows(rows, name, ov) end
+  end
+  if #rows == before + 1 then rows[#rows + 1] = { "text", SI.EMPTY } end
+  return rows
+end
+
+-- Stops recording from the page; the page is built again, so Your situations shows what was kept.
+local function stopFromPage()
+  stop()
+  ns.Options.RebuildPage("situations")
+end
+
 -- The Situations page's rows.
 function SI.Rows()
-  return SI.HoldRows({
-    { "header", "Situations" }, { "text", SI.INTRO[1] }, { "text", SI.INTRO[2] }, { "text", SI.INTRO[3] },
+  return SI.HoldRows(yourRows({
+    { "header", "Situations" }, { "text", SI.INTRO, "note" },
     { "check", "Apply situation overrides", function() return db().enabled end, function(v) db().enabled = v SI.Refresh() end, true },
     { "text", SI.StatusText },
     { "cycle", "Record for", SI.CHOICES, SI.GetRecording, SI.SetRecording, "off" },
-    { "button", "Stop recording and save", function() stop() ns.Options.Refresh() end, function() return SI.recording ~= nil end },
-    { "button", "Clear the active situation's overrides", function() SI.ClearActive() ns.Options.Refresh() end },
-  })
+    { "button", "Stop recording and save", stopFromPage, function() return SI.recording ~= nil end },
+  }))
 end
 
 ns.Options.AddPage({ key = "situations", title = "Situations", icon = "NavSituations", order = 86, rows = SI.Rows })

@@ -143,6 +143,12 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Expect: with Record for at Off the button is greyed out and a click does nothing (no chat line). While recording it is bright and a click saves (`Solo: ... saved.` in chat), Record for goes back to Off and the button greys out again.
 - If it fails, paste: a screenshot of the page, the chat lines and `/vg errors`.
 
+### 2.1b Situations: Your situations
+
+- Do: on the Situations page, record an override for Party (Record for: Party, move one frame, Stop recording and save) and one for the situation you're in. Look at **Your situations**, then click **Clear Party**, then clear the other one.
+- Expect: the card lists each situation with what its override changes, "(now)" on the one you're in; Clear Party removes that row and says `Cleared the overrides for Party.`; with both gone the card reads "No overrides yet. Pick Record for to make one." While frames are unlocked the Clear buttons are greyed. [Needs in game.]
+- If it fails, paste: a screenshot of the page and `/vg errors`.
+
 ### 2.1b Windows are opaque
 
 - Do: stand where the world behind is bright (snow, sky, a lit city). Type `/vg` and open Situations and Talents (short pages); then open a merchant, your character pane and the quest log (L).

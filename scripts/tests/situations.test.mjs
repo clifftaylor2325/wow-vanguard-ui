@@ -298,7 +298,7 @@ it("situations: the options page records, stops, clears and switches overrides o
   expect(addon.texts("Now: Raid · 2 overrides (1 frame, info strip)").length, "the page says where you are and what applies").toBe(1);
   // Stop recording and save: whether it can be clicked, and whether its label is in the disabled tier.
   const stopButton = () => {
-    const b = addon.frames('w.text ~= nil and w.text.__text == "Stop recording and save"')[0];
+    const b = addon.frames('w.text ~= nil and w.text.__text == "Stop recording and save"').at(-1); // the page is built again: the newest
     return [b.enabled, isTok(addon, addon.eval(`return __wfgStub.frames[${b.id}].text.__textColor`), "disabled")];
   };
   expect(stopButton(), "Record for is Off: Stop recording and save is greyed out").toEqual([false, true]);
@@ -311,7 +311,7 @@ it("situations: the options page records, stops, clears and switches overrides o
   addon.eval('__click("Stop recording and save")');
   expect(addon.eval("return ns.Settings('Situations').overrides.party.positions.infostrip.point"), "the party's override is saved").toBe("BOTTOM");
   expect(stopButton(), "stopped: greyed out again").toEqual([false, true]);
-  addon.eval('__click("Clear the active")');
+  addon.eval('__click("Clear Raid")');
   expect([addon.eval("return ns.Settings('Situations').overrides.raid"), spot(addon)], "the raid's override is gone and so is its spot").toEqual([null, HOME]);
   addon.eval('__click("Apply situation overrides")');
   addon.advance(0.5);
@@ -461,4 +461,26 @@ it("with the Situations module off under Modules, its page's Apply switch applie
   addon.advance(1);
   expect(addon.eval('return ns.GetModule("InfoStrip").settings.gold'), "the Party override is not applied").toBe(true);
   expect(addon.eval('return ns.GetModule("Situations").StatusText()'), "the status line says the module is off").toBe("Situations is off under Modules: overrides don't apply.");
+});
+
+it("A-11 situations: Your situations lists every override with Clear on each, (now) on the active one, and says when there are none", () => {
+  const addon = situated(saved());
+  raid(addon);
+  addon.slash("");
+  addon.eval('__click("Situations")');
+  addon.eval('__click("Record for") __click("Record for")');
+  addon.eval("ns.SetMoverPoint('infostrip', 'BOTTOM', 'BOTTOM', 0, 300)");
+  addon.eval('__click("Stop recording and save")');
+  expect([addon.texts("Raid (now): 2 overrides (1 frame, info strip)").length, addon.texts("Party: 1 override (1 frame)").length], "both, the one you're in marked").toEqual([1, 1]);
+  // Whether the named Clear button can be clicked.
+  const clearable = (name) => addon.frames(`w.text ~= nil and w.text.__text == "Clear ${name}"`).at(-1).enabled;
+  expect([clearable("Raid"), clearable("Party")], "each can be cleared").toEqual([true, true]);
+  addon.eval("ns.Unlock()");
+  addon.eval("ns.Options.Refresh()");
+  expect(clearable("Party"), "not while the frames are unlocked").toBe(false);
+  addon.eval("ns.Lock() ns.Options.Refresh()");
+  addon.eval('__click("Clear Party")');
+  expect([addon.eval("return ns.Settings('Situations').overrides.party"), addon.texts("Party: 1 override (1 frame)").length, chatHas(addon, /Cleared the overrides for Party\./)], "the party's override gone from the profile, the page and with a chat line").toEqual([null, 0, true]);
+  addon.eval('__click("Clear Raid")');
+  expect(addon.texts("No overrides yet. Pick Record for to make one.").length, "none left: the card says how to make one").toBe(1);
 });
