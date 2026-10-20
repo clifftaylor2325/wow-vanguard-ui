@@ -44,7 +44,7 @@ it("is off until switched on", () => {
   const addon = loggedIn(GAPS_ENV);
   expect(addon.eval('return Vanguard_CooldownGaps'), "no row").toBeNull();
   addon.slash("gaps");
-  expect(chatHas(addon, /cooldown gaps row is off/), "the command says how to turn it on").toBe(true);
+  expect(chatHas(addon, /cooldown gaps row is off\. Tick Gaps row under \/vg > Cooldowns, then \/reload\.$/), "the command names the page its switch is on").toBe(true);
 });
 
 it("shows an on-use trinket with its sweep and skips one with no use", () => {
