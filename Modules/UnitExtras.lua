@@ -60,6 +60,25 @@ function UX.Happiness()
   return UX.HAPPINESS[ns.PlainNumber(get()) or 0]
 end
 
+-- Pet happiness -> the word the pet frame's tooltip line uses.
+UX.MOODS = { "Unhappy", "Content", "Happy" }
+
+-- The pet tooltip's mood line ("Happy: 125% damage") and its color token, or nil (no pet that has moods, or no answer).
+function UX.HappinessLine()
+  local get = UX.HappinessCall()
+  if not get then return nil end
+  local mood, damage = get()
+  mood, damage = ns.PlainNumber(mood), ns.PlainNumber(damage)
+  if not UX.MOODS[mood or 0] then return nil end
+  return UX.MOODS[mood] .. (damage and string.format(": %d%% damage", damage) or ""), UX.HAPPINESS[mood]
+end
+
+-- Adds the mood line to the pet frame's tooltip, in the mood's color.
+function UX.AddHappinessLine(tt)
+  local text, token = UX.HappinessLine()
+  if text then tt:AddLine(text, T.RGB(token)) end
+end
+
 -- Shows the glyph on the pet frame for your pet's mood, in its state color, or hides it.
 function UX.UpdateHappiness()
   local token = UX.Happiness()
@@ -150,12 +169,13 @@ local function addThreat(target)
   UX.UpdateThreat()
 end
 
--- The mood glyph in the pet frame's top-right corner, following your pet.
+-- The mood glyph in the pet frame's top-right corner, following your pet, and its line on the pet's tooltip.
 local function addHappiness(pet)
   UX.happy = T.Snap(pet.health:CreateTexture(nil, "OVERLAY"), "icon")
   UX.happy:SetSize(UX.GLYPH, UX.GLYPH)
   UX.happy:SetPoint("TOPRIGHT", pet, "TOPRIGHT", -3, -3)
   for _, e in ipairs({ "UNIT_HAPPINESS", "UNIT_PET" }) do ns.On(e, UX.UpdateHappiness) end
+  UF.TOOLTIP_LINES.pet = UX.AddHappinessLine
   UX.UpdateHappiness()
 end
 

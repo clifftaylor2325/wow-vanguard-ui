@@ -239,12 +239,36 @@ local function layoutBars(f, powerHeight)
   f.power:SetPoint("BOTTOMRIGHT", -px, px)
 end
 
--- The secure part: which unit, left-click targets, right-click opens the menu.
+-- Lines a readout adds under a frame's unit tooltip, by frame key: a function given the tooltip (UnitExtras: the pet's mood).
+UF.TOOLTIP_LINES = {}
+
+-- Shows the frame's unit in the game's tooltip, as the game's own unit frames do, then the lines a readout
+-- adds. A forbidden tooltip is left alone, and one the Tooltips module hid (its in-combat switch) stays hidden.
+function UF.ShowTooltip(f)
+  local tt = GameTooltip
+  if tt:IsForbidden() then return end
+  GameTooltip_SetDefaultAnchor(tt, f)
+  tt:SetUnit(f.unit)
+  local addLines = UF.TOOLTIP_LINES[f.key]
+  if addLines and tt:IsShown() then addLines(tt) tt:Show() end
+end
+
+-- Hides the tooltip when the mouse leaves the frame, if the frame still owns it.
+function UF.HideTooltip(f)
+  local tt = GameTooltip
+  if not tt:IsForbidden() and tt:GetOwner() == f then tt:Hide() end
+end
+
+-- The secure part: which unit, left-click targets, right-click opens the menu; and the unit's tooltip on
+-- hover, kept fresh while the mouse stays (the tooltip calls UpdateTooltip on its owner).
 local function makeSecure(f, unit)
   f:SetAttribute("unit", unit)
   f:SetAttribute("*type1", "target")
   f:SetAttribute("*type2", "togglemenu")
   f:RegisterForClicks("AnyUp")
+  f:HookScript("OnEnter", ns.Guard("unit frame tooltip", UF.ShowTooltip))
+  f:HookScript("OnLeave", ns.Guard("unit frame tooltip", UF.HideTooltip))
+  f.UpdateTooltip = ns.Guard("unit frame tooltip", UF.ShowTooltip)
 end
 
 -- The level left of the name (where levels are shown).

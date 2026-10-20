@@ -518,6 +518,48 @@ it("a released player reads Ghost and a feigning hunter reads alive", () => {
   expect(text(), "feigning (the client calls it dead): the health shows").toBe("0");
 });
 
+// The tooltip's owner, unit, shown state and lines, after hovering (or leaving) a unit frame.
+const hover = (addon, key, script = "OnEnter") => addon.eval(`
+  local f = Vanguard_${key}
+  f:GetScript("${script}")(f)
+  local lines = {}
+  for i, l in ipairs(GameTooltip.__lines or {}) do lines[i] = l.text end
+  return { owned = GameTooltip:GetOwner() == f, unit = GameTooltip.__unit, shown = GameTooltip:IsShown(), lines = lines }`);
+
+it("hovering a unit frame shows its unit's tooltip, as the game's frames do", () => {
+  const addon = loggedIn(UNITS_ENV + EXTRAS_ENV, NO_RAID);
+  for (const key of ["player", "target", "party1"]) {
+    const t = hover(addon, key);
+    expect([t.owned, t.unit, t.shown], `${key}: the frame owns the tooltip, showing its unit`).toEqual([true, key, true]);
+  }
+  expect(addon.eval("return Vanguard_target.UpdateTooltip ~= nil"), "the tooltip can keep it fresh while the mouse stays").toBe(true);
+  hover(addon, "target");
+  expect(hover(addon, "target", "OnLeave").shown, "leaving hides it").toBe(false);
+  hover(addon, "player");
+  addon.eval("GameTooltip:SetOwner(UIParent)");
+  expect(hover(addon, "target", "OnLeave").shown, "but a tooltip something else took over is left alone").toBe(true);
+  addon.eval("GameTooltip:Hide() GameTooltip.IsForbidden = function() return true end");
+  const forbidden = hover(addon, "target");
+  expect(forbidden.shown, "a forbidden tooltip is never touched").toBe(false);
+  expect(hover(addon, "target", "OnLeave").shown, "on leave either").toBe(false);
+});
+
+it("the pet frame's tooltip adds your hunter pet's mood", () => {
+  const addon = loggedIn(UNITS_ENV + EXTRAS_ENV + `__units.pet = { name = "TEST-ONLY Wolf", hp = 1, maxhp = 1, power = 0, maxpower = 0, ptype = "FOCUS" }
+    GetPetHappiness = function() return __happy, __damage, 0 end __damage = 125`);
+  // The pet tooltip's lines and the mood line's red.
+  const pet = () => addon.eval(`Vanguard_pet:GetScript("OnEnter")(Vanguard_pet)
+    local lines = GameTooltip.__lines return { lines[1].text, lines[2] and lines[2].text or false, lines[2] and lines[2].r or false }`);
+  expect(pet(), "a happy pet: its mood and the damage it gives, in the good color").toEqual(["TEST-ONLY Wolf", "Happy: 125% damage", addon.eval("return (ns.Theme.RGB('good'))")]);
+  addon.eval("__happy, __damage = 1, { __secret = true }");
+  expect(pet().slice(0, 2), "a hidden damage figure leaves just the mood").toEqual(["TEST-ONLY Wolf", "Unhappy"]);
+  addon.eval("__happy = nil");
+  expect(pet()[1], "a pet without moods: no line").toBe(false);
+  addon.eval("ns.GetModule('Tooltips').settings.hideInCombat = true __wfgStub.inCombat = true __happy = 3");
+  addon.eval("GameTooltip.SetUnit = function(self, unit) self.__lines = { { text = unit } } self:Hide() end");
+  expect([pet()[1], addon.eval("return GameTooltip:IsShown()")], "a tooltip hidden for the fight stays hidden, with no line added").toEqual([false, false]);
+});
+
 it("unit events: combo points, the druid's mana, power ticks and threat ask the client for your own units only", () => {
   const addon = loggedIn(UNITS_ENV + EXTRAS_ENV + TICKS_ENV + `__units.player.class = "DRUID" __cp = 2
     GetComboPoints = function() return __cp end`, NO_RAID);

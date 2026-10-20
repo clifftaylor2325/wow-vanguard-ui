@@ -633,8 +633,13 @@ function GetTotemDuration(slot)
   return world.durationObject(t.start or stub.now, t.duration or 0)
 end
 
--- Pet happiness (hunters): 1 unhappy, 2 content, 3 happy.
-function GetPetHappiness() return uf("pet", "happiness") end
+-- Pet happiness (hunters): 1 unhappy, 2 content, 3 happy, then the damage percent it gives (the pet's
+-- petDamage field, else the client's 75 / 100 / 125) and its loyalty rate.
+function GetPetHappiness()
+  local mood = uf("pet", "happiness")
+  if mood == nil then return nil end
+  return mood, uf("pet", "petDamage") or ({ 75, 100, 125 })[mood], 0
+end
 C_PetInfo = { GetPetHappiness = viaGlobal("GetPetHappiness") }
 
 -- Specializations: none on WoW Forever.
@@ -2185,7 +2190,7 @@ end
 -- The tooltip's setters, recorded so tests can read what it shows.
 local function tooltipSetters(tip)
   -- What the tooltip was set to: a unit, an equipped item, a link, an item or a spell id.
-  function tip:SetUnit(unit) self.__unit = unit self.__lines = { { text = UnitName(unit) } } end
+  function tip:SetUnit(unit) self.__unit = unit self.__lines = { { text = UnitName(unit) } } self:Show() return true end
   function tip:SetInventoryItem(unit, slot) self.__item = { unit = unit, slot = slot } end
   function tip:SetHyperlink(link) self.__link = link end
   function tip:SetItemByID(id) self.__itemId = id end
