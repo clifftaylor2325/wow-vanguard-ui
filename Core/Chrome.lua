@@ -386,10 +386,19 @@ function ns.FocusClear(frame)
 end
 
 -- Takes the keyboard only while the window is shown, out of combat and where the client can pass keys on (a key
--- the window doesn't use must reach the game); a window shown in a fight, or up when one starts, waits for it to end.
-local function holdKeys(frame, on)
-  if on and ns.InCombat() then return ns.AfterCombat(function() holdKeys(frame, frame:IsShown()) end, frame) end
-  frame:EnableKeyboard(on and ns.Client.Has("keyPropagate") or false)
+-- the window doesn't use must reach the game), and then lets the keys it doesn't use go on to the game. In a fight it
+-- lets the keyboard go and takes it back after, if the window is still up: the call that takes keys is barred in
+-- combat, and a propagate flag left false (after an Enter or Tab the window used) would swallow every key of a window
+-- shown in one.
+---@param frame table  a window of Vanguard's own
+function ns.HoldKeyboard(frame)
+  if ns.InCombat() then
+    frame:EnableKeyboard(false)
+    return ns.AfterCombat(function() ns.HoldKeyboard(frame) end, frame)
+  end
+  local pass = ns.Client.Has("keyPropagate")
+  frame:EnableKeyboard(frame:IsShown() and pass)
+  if pass then frame:SetPropagateKeyboardInput(true) end
 end
 
 -- The window's key script hook: a key the focus uses stops here, every other one goes on to the game (out of combat).
@@ -400,11 +409,13 @@ local function hookFocusKeys(frame)
   end))
 end
 
--- A fight lets the keyboard go; the combat queue takes it back after, if the window is still up.
-local function releaseInCombat(frame)
+-- A fight starts: the window lets the keyboard go, and the combat queue takes it back after, if the window is still up.
+-- The handler runs before the lockdown, so the hold waits for the queue rather than running here.
+---@param frame table  a window of Vanguard's own
+function ns.ReleaseKeyboardInCombat(frame)
   ns.On("PLAYER_REGEN_DISABLED", function()
     frame:EnableKeyboard(false)
-    ns.AfterCombat(function() holdKeys(frame, frame:IsShown()) end, frame)
+    ns.AfterCombat(function() ns.HoldKeyboard(frame) end, frame)
   end)
 end
 
@@ -425,11 +436,11 @@ end
 ---@param list function  returns the buttons that can take focus, in order
 function ns.TabFocus(frame, list)
   trackFocus(frame, list)
-  frame:HookScript("OnShow", ns.Guard("window keys show", function(f) holdKeys(f, true) end))
-  frame:HookScript("OnHide", ns.Guard("window keys hide", function(f) holdKeys(f, false) end))
+  frame:HookScript("OnShow", ns.Guard("window keys show", function(f) ns.HoldKeyboard(f) end))
+  frame:HookScript("OnHide", ns.Guard("window keys hide", function(f) ns.HoldKeyboard(f) end))
   hookFocusKeys(frame)
-  releaseInCombat(frame)
-  if frame:IsShown() then holdKeys(frame, true) end
+  ns.ReleaseKeyboardInCombat(frame)
+  if frame:IsShown() then ns.HoldKeyboard(frame) end
 end
 
 -- Gives a window that holds the keyboard and calls ns.FocusKey from its own key script the focus ring of ns.TabFocus,

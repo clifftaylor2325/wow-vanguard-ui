@@ -338,25 +338,13 @@ local function askKey(f, key)
   if enter then confirm:GetScript("OnClick")(confirm) end
 end
 
--- The question reads keys only while it is shown and out of combat, passing them all on until askKey takes one. The
--- call that lets keys through is barred in a fight, so a flag left at "take it" by the last Enter or Tab would
--- swallow every key of a question shown in one: there the keyboard is let go, and given back (the flag reset) after.
-local function holdQuestion(f)
-  if ns.InCombat() then
-    f:EnableKeyboard(false)
-    return ns.AfterCombat(function() holdQuestion(f) end, f)
-  end
-  local pass = ns.Client.Has("keyPropagate")
-  f:EnableKeyboard(f:IsShown() and pass)
-  if pass then f:SetPropagateKeyboardInput(true) end
-end
-
--- Lets the question read keys (see holdQuestion): as it shows, hides and when a fight starts.
+-- Lets the question read keys while it is shown and out of combat (ns.HoldKeyboard), passing them all on until
+-- askKey takes one. It holds the keyboard as it shows and hides, and lets it go when a fight starts.
 local function listenForEnter(f)
   f:SetScript("OnKeyDown", ns.Guard("question key", askKey))
-  f:HookScript("OnShow", ns.Guard("question keys", holdQuestion))
-  f:HookScript("OnHide", ns.Guard("question keys", holdQuestion))
-  ns.On("PLAYER_REGEN_DISABLED", function() holdQuestion(f) end)
+  f:HookScript("OnShow", ns.Guard("question keys", function(q) ns.HoldKeyboard(q) end))
+  f:HookScript("OnHide", ns.Guard("question keys", function(q) ns.HoldKeyboard(q) end))
+  ns.ReleaseKeyboardInCombat(f)
 end
 
 -- The question's buttons: the primary Yes and the danger Yes (one shows) at the bottom right, No left of them.
