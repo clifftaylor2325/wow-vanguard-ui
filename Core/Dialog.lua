@@ -183,6 +183,17 @@ function ns.ShowText(title, text)
   f.edit:HighlightText()
 end
 
+-- Shows text selected for copying, as ns.ShowText, with the cursor at its end so the box opens on its last line
+-- (the newest, for a chat copy); the view follows the cursor (ns.ScrollView's FollowCursor).
+---@param title string
+---@param text string
+function ns.ShowTextAtEnd(title, text)
+  local f = textBox()
+  ns.ShowText(title, text)
+  f.edit:SetCursorPosition(#text)
+  f.edit:HighlightText()
+end
+
 -- An empty box to type or paste into; onImport(text) runs when the primary button
 -- (Import, or the label given) is clicked, and Cancel sits beside it.
 function ns.AskText(title, onImport, label)

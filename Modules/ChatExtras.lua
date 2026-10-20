@@ -2,7 +2,7 @@
 --   * web addresses in chat become links in the accent color; clicking one
 --     opens a box with the address selected, ready to copy (Ctrl+C);
 --   * a small Copy button in the main chat window's tab bar (and /vg copy) opens
---     the recent chat as plain text, ready to copy;
+--     the recent chat of the tab you are looking at as plain text, at its newest line, ready to copy;
 --   * short channel names (on by default): "[2. Trade - City]" shows as "[2]", "[Guild]" as
 --     "[G]", beside the channel's colour; a profile that turned it off keeps that;
 --   * the mouse wheel moves four lines a tick (the game's three and one more), and
@@ -85,7 +85,7 @@ function CX.Plain(text)
   return text
 end
 
--- The main chat window's last lines as plain text (lines the game hides are left out).
+-- A chat window's last lines as plain text (lines the game hides are left out).
 function CX.RecentText(frame)
   local lines, count = {}, ns.PlainNumber(frame:GetNumMessages()) or 0
   for i = math.max(1, count - CX.COPY_LINES + 1), count do
@@ -95,11 +95,25 @@ function CX.RecentText(frame)
   return table.concat(lines, "\n")
 end
 
--- Opens the recent chat in the copy box.
+-- The chat window you are looking at (the shown tab), or the main one.
+local function shownWindow()
+  local frame = _G.SELECTED_CHAT_FRAME
+  if type(frame) == "table" and type(frame.GetNumMessages) == "function" then return frame end
+  return _G.ChatFrame1
+end
+
+-- The copy box's title, naming the tab ("Copy Trade (Ctrl+C)"), or "Copy chat" when the game gives no plain name.
+local function copyTitle(frame)
+  local name = type(frame.GetID) == "function" and GetChatWindowInfo(frame:GetID())
+  if ns.IsSecret(name) or type(name) ~= "string" or name == "" then name = "chat" end
+  return "Copy " .. name .. " (Ctrl+C)"
+end
+
+-- Opens the recent chat of the shown tab in the copy box, at its newest line.
 function CX.ShowCopy()
-  local frame = _G.ChatFrame1
+  local frame = shownWindow()
   if type(frame) ~= "table" or type(frame.GetNumMessages) ~= "function" then return ns.Chat("This client can't read the chat back.") end
-  ns.ShowText("Copy chat (Ctrl+C)", CX.RecentText(frame))
+  ns.ShowTextAtEnd(copyTitle(frame), CX.RecentText(frame))
 end
 
 -- A small Copy button in the main chat window's tab bar, at its right end.

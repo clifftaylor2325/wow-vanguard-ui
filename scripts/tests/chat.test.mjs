@@ -749,13 +749,13 @@ it("chat extras: web links you can copy, and a Copy button for the recent chat",
   addon.eval('__linkCallback(nil, "addon:Vanguard:url:https://example.test/a") __linkCallback(nil, "addon:OtherAddon:thing")');
   expect(addon.eval("return __shown"), "clicking one opens it ready to copy; other addons' links are left to them").toEqual(["Copy the address (Ctrl+C)", "https://example.test/a"]);
   addon.eval('__lines = { "|cffff8000[TEST-ONLY General]|r hi |Hitem:90001|h[TEST-ONLY Sword]|h", { __secret = true }, "two |TTEST-ONLY-ICON:0|tlines" }');
-  addon.eval("local b = ns.GetModule('ChatExtras').copyButton b.__scripts.OnClick(b)");
+  addon.eval("SELECTED_CHAT_FRAME = ChatFrame1 local b = ns.GetModule('ChatExtras').copyButton b.__scripts.OnClick(b)");
   expect(addon.eval("return __shown"), "the Copy button gives plain text; hidden lines are left out").toEqual(["Copy chat (Ctrl+C)", "[TEST-ONLY General] hi [TEST-ONLY Sword]\ntwo lines"]);
   const real = loggedIn(UI_ENV + CHAT_EXTRAS_ENV);
-  real.eval('__lines = { "TEST-ONLY hello" } local b = ns.GetModule("ChatExtras").copyButton b.__scripts.OnClick(b)');
+  real.eval('SELECTED_CHAT_FRAME = ChatFrame1 __lines = { "TEST-ONLY hello" } local b = ns.GetModule("ChatExtras").copyButton b.__scripts.OnClick(b)');
   expect(real.eval("return { Vanguard_TextDialog:IsShown(), Vanguard_TextEdit:GetText(), Vanguard_TextEdit:GetFont() ~= nil }"),
     "the real copy box opens with the text, its edit box given a font first (the game's SetText errors without one)").toEqual([true, "TEST-ONLY hello", true]);
-  const bare = loggedIn("ChatFrame1 = nil");
+  const bare = loggedIn("ChatFrame1 = nil SELECTED_CHAT_FRAME = nil");
   bare.slash("copy");
   expect(chatHas(bare, /can't read the chat back/) && bare.eval("return ns.GetModule('ChatExtras').copyButton == nil"), "a client that can't read chat back says so").toBe(true);
   const off = loggedIn(UI_ENV + CHAT_EXTRAS_ENV + CLICK_LUA, { savedVariables: "VanguardDB.profiles = { Default = { ChatExtras = { links = false, copy = false } } }" });
@@ -767,6 +767,21 @@ it("chat extras: web links you can copy, and a Copy button for the recent chat",
   off.eval('__click("Copy button in the chat\'s tab bar")');
   expect(off.eval("return ns.GetModule('ChatExtras').copyButton:IsShown()"), "off again hides it").toBe(false);
   expect(off.eval("return #ns.errors"), "no errors").toBe(0);
+});
+it("chat extras: Copy reads the tab you are looking at, is named for it, and opens at its newest line", () => {
+  const addon = loggedIn(UI_ENV + CHAT_EXTRAS_ENV + `
+    ChatFrame2:SetID(2) ChatFrame2.GetNumMessages = function() return 2 end
+    ChatFrame2.GetMessageInfo = function(_, i) return ({ "TEST-ONLY first", "TEST-ONLY newest" })[i] end
+    GetChatWindowInfo = function(i) return ({ "General", "TEST-ONLY Trade" })[i] end`);
+  // The harness's edit box keeps no cursor: record where the copy box puts it.
+  addon.eval("ns.ShowText('TEST-ONLY', '') Vanguard_TextEdit.SetCursorPosition = function(_, at) __cursor = at end");
+  addon.eval("SELECTED_CHAT_FRAME = ChatFrame2 ns.GetModule('ChatExtras').ShowCopy()");
+  const box = "return { Vanguard_TextDialog.title:GetText(), Vanguard_TextEdit:GetText(), __cursor }";
+  const text = "TEST-ONLY first\nTEST-ONLY newest";
+  expect(addon.eval(box), "the second tab's lines, titled with its name, the cursor after the newest line").toEqual(["Copy TEST-ONLY Trade (Ctrl+C)", text, text.length]);
+  addon.eval("SELECTED_CHAT_FRAME = nil __lines = { 'TEST-ONLY main' } GetChatWindowInfo = function() return { __secret = true } end ns.GetModule('ChatExtras').ShowCopy()");
+  expect(addon.eval(box), "no shown tab: the main window, and a hidden tab name reads chat").toEqual(["Copy chat (Ctrl+C)", "TEST-ONLY main", 14]);
+  expect(addon.eval("return #ns.errors"), "no errors").toBe(0);
 });
 it("chat extras: a hidden line never reaches the link filter's comparison, and a failing filter or click lets the line through", () => {
   const addon = loggedIn(UI_ENV + CHAT_EXTRAS_ENV);
