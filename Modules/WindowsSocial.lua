@@ -16,25 +16,6 @@ local GW = ns.GetModule("Windows")
 
 -- Helpers ---------------------------------------------------------------------------------------
 
--- Frames whose game methods are already hooked here (a skin runs on every show; a hook goes on once).
-local hooked = {}
-
--- Runs fn after the frame's game method (or the table's function) `name` each time it runs, with
--- that call's own arguments (self first, for a method); once per frame and method, a client
--- without the method is skipped. A post-hook (hooksecurefunc): the game's function is kept.
-local function afterWith(frame, name, fn)
-  local key = tostring(name)
-  hooked[frame] = hooked[frame] or {}
-  if hooked[frame][key] or type(frame[name]) ~= "function" or type(hooksecurefunc) ~= "function" then return end
-  hooked[frame][key] = true
-  hooksecurefunc(frame, name, ns.Guard("hook " .. key, fn))
-end
-
--- Runs fn(frame) after the frame's game method `name` each time it runs (see afterWith).
-local function after(frame, name, fn)
-  afterWith(frame, name, function() fn(frame) end)
-end
-
 -- A font string, when it is one, in a theme text color.
 local function paintText(fs, token)
   if type(fs) == "table" and fs.SetTextColor then T.Color(fs, token) end
@@ -118,7 +99,7 @@ function GW.SkinOpenMail(frame)
   GW.LightMailText()
   dressInvoice()
   GW.SkinMailItems()
-  after(frame, "Update", GW.SkinOpenMail)
+  GW.HookAfter(frame, "Update", GW.SkinOpenMail)
 end
 
 GW.Add("social", { "OpenMailFrame" }, GW.SkinOpenMail)
@@ -214,8 +195,8 @@ end
 -- One roster row's hooks, unless it took them from the row mixin when it was made.
 local function hookRow(row, mixin)
   if type(row) ~= "table" or row.RefreshExpandedColumns == mixin.RefreshExpandedColumns then return end
-  afterWith(row, "UpdatePresence", lightOffline)
-  afterWith(row, "RefreshExpandedColumns", widenRankCell)
+  GW.HookAfter(row, "UpdatePresence", lightOffline)
+  GW.HookAfter(row, "RefreshExpandedColumns", widenRankCell)
 end
 
 -- The roster's column headers (ColumnDisplay's pool of buttons) as theme buttons, the game's tab plates faded.
@@ -237,10 +218,10 @@ end
 local function hookRoster(list)
   local mixin = _G.CommunitiesMemberListEntryMixin
   if type(list) ~= "table" or type(mixin) ~= "table" then return end
-  afterWith(mixin, "UpdatePresence", lightOffline)
-  afterWith(mixin, "RefreshExpandedColumns", widenRankCell)
+  GW.HookAfter(mixin, "UpdatePresence", lightOffline)
+  GW.HookAfter(mixin, "RefreshExpandedColumns", widenRankCell)
   if type(list.ScrollBox) == "table" and list.ScrollBox.ForEachFrame then list.ScrollBox:ForEachFrame(function(row) hookRow(row, mixin) end) end
-  if type(list.ColumnDisplay) == "table" then afterWith(list.ColumnDisplay, "LayoutColumns", layoutHeaders) end
+  if type(list.ColumnDisplay) == "table" then GW.HookAfter(list.ColumnDisplay, "LayoutColumns", layoutHeaders) end
 end
 
 -- The note the Guild Info page shows in its Guild Information box while the guild has none.
@@ -483,7 +464,7 @@ local function dressGuildPages(frame)
   dressCommunitiesList(frame.CommunitiesList)
   dressBenefits(frame.GuildBenefitsFrame)
   dressGuildDetails(frame.GuildDetailsFrame)
-  afterWith(_G, "CommunitiesGuildInfoFrame_UpdateText", noteGuildInfo)
+  GW.HookAfter(_G, "CommunitiesGuildInfoFrame_UpdateText", noteGuildInfo)
   dressPlaySettings(frame.GuildPreferredPlaySettingsFrame)
 end
 
@@ -532,7 +513,7 @@ function GW.SkinGuildWindow(frame)
   dressGuildControls(frame)
   dressGuildPages(frame)
   GW.SkinCommunitiesDialogs(frame)
-  after(frame, "SetDisplayMode", GW.SkinGuildWindow)
+  GW.HookAfter(frame, "SetDisplayMode", GW.SkinGuildWindow)
 end
 
 GW.Add("social", { "CommunitiesFrame" }, GW.SkinGuildWindow)
@@ -782,7 +763,7 @@ local function dressNotifications(dialog)
   dressSelector(dialog)
   dressNotificationChild(GW.Part(dialog, "ScrollFrame.Child"))
   dressStreams(dialog)
-  after(dialog, "Refresh", dressStreams)
+  GW.HookAfter(dialog, "Refresh", dressStreams)
 end
 
 -- The channel edit dialog (inside the guild window): the dialog skin, its type check box, its description text area, its labels light.
@@ -922,8 +903,8 @@ end
 local function dressChannelRow(row, list)
   if type(row) ~= "table" or not row.CreateTexture then return end
   fadeChannelRow(row)
-  afterWith(row, "Update", fadeChannelRow)
-  afterWith(row, "SetIsSelectedChannel", function(self, on) T.SelectRow(self, on == true) end)
+  GW.HookAfter(row, "Update", fadeChannelRow)
+  GW.HookAfter(row, "SetIsSelectedChannel", function(self, on) T.SelectRow(self, on == true) end)
   if type(list.GetSelectedChannelButton) == "function" then T.SelectRow(row, list:GetSelectedChannelButton() == row) end
 end
 
@@ -951,7 +932,7 @@ local function dressChannels(frame)
   GW.WatchRows(GW.Part(frame, "ChannelRoster.ScrollBox"), dressRosterRow)
   if type(frame.ChannelList) ~= "table" then return end
   dressChannelList(frame.ChannelList)
-  after(frame.ChannelList, "Update", dressChannelList)
+  GW.HookAfter(frame.ChannelList, "Update", dressChannelList)
 end
 
 GW.Add("social", { "ChannelFrame" }, dressChannels)
@@ -1032,7 +1013,7 @@ local function dressPresence(dropdown)
   vgPresenceLabel[dropdown] = T.Text(dropdown:CreateFontString(nil, "OVERLAY"), "label")
   vgPresenceLabel[dropdown]:SetPoint("LEFT", dropdown, "LEFT", GW.PRESENCE_LABEL.x, 0)
   showPresence(dropdown)
-  afterWith(dropdown, "UpdateToMenuSelections", showPresence)
+  GW.HookAfter(dropdown, "UpdateToMenuSelections", showPresence)
 end
 
 -- The Battle.net bar: its plate and the band behind the status dropdown and battletag faded, the status
@@ -1096,8 +1077,8 @@ local function dressCard(card)
   if type(card) ~= "table" or not card.CreateTexture or type(card.Background) ~= "table" then return end
   GW.DressRow(card, GW.CARD_KEEP)
   centrePresence(card)
-  afterWith(card, "LayoutScaledTextHolderAnchors", centrePresence)
-  afterWith(card, "SetSelected", function(self, on) T.SelectRow(self, on == true) end)
+  GW.HookAfter(card, "LayoutScaledTextHolderAnchors", centrePresence)
+  GW.HookAfter(card, "SetSelected", function(self, on) T.SelectRow(self, on == true) end)
   dressCardAction(card.PartyButton)
   dressCardAction(card.RAFSummonButton)
   GW.SkinButton(card.AcceptButton)
@@ -1170,7 +1151,7 @@ local function dressSocialRaid(raid)
   paintText(GW.Part(raid, "AllAssistCheckButton.AllText"), "text")
   paintText(raid.RaidDescription, "text")
   dressSocialRaidGroups(raid)
-  after(raid, "UpdateContents", dressSocialRaidGroups)
+  GW.HookAfter(raid, "UpdateContents", dressSocialRaidGroups)
 end
 
 -- A row of a side window's list: its name (the ignore list's Name, the saved instances' name) in the text colour.
@@ -1256,7 +1237,7 @@ function GW.SkinSocial(frame)
   for _, key in ipairs(GW.SOCIAL_SIDE) do watchSide(frame, frame[key], sideSkins[key]) end
   for _, key in ipairs(GW.SOCIAL_SIDE_FRAMED) do watchSide(frame, frame[key], skinIgnoreList) end
   dressSocialTabs(frame)
-  after(frame, "RefreshTabs", dressSocialTabs)
+  GW.HookAfter(frame, "RefreshTabs", dressSocialTabs)
 end
 
 GW.Add("social", { "SocialUIFrame" }, GW.SkinSocial)
@@ -1318,7 +1299,7 @@ end
 function GW.SkinGuildCreation(frame)
   GW.Skin(frame)
   GW.LightCreationText()
-  for _, name in ipairs(GW.CREATION_REDRAWS) do after(_G, name, GW.LightCreationText) end
+  for _, name in ipairs(GW.CREATION_REDRAWS) do GW.HookAfter(_G, name, GW.LightCreationText) end
   if type(_G.GuildRegistrarFrameEditBox) == "table" and _G.GuildRegistrarFrameEditBox.SetText then T.EditBox(_G.GuildRegistrarFrameEditBox) end
   dressRegistrar()
   dressTabard()
@@ -1582,7 +1563,7 @@ local function watchControl(frame)
   vgControlWatched[frame] = true
   -- Dresses the pages again.
   local function redress() dressControlPages(frame) end
-  for _, name in ipairs(GW.CONTROL_UPDATES) do afterWith(_G, name, redress) end
+  for _, name in ipairs(GW.CONTROL_UPDATES) do GW.HookAfter(_G, name, redress) end
   frame:HookScript("OnEvent", ns.Guard("guild control event", redress))
 end
 
@@ -1648,7 +1629,7 @@ end
 -- are dressed again every time.
 function GW.SkinToast(frame)
   if type(frame) ~= "table" or not frame.GetRegions then return end
-  after(frame, "ShowToast", GW.SkinToast)
+  GW.HookAfter(frame, "ShowToast", GW.SkinToast)
   local icon = frame.IconTexture or frame.Icon
   T.FadeRegions(frame, { [type(icon) == "table" and icon or false] = true })
   T.Tooltip(frame)

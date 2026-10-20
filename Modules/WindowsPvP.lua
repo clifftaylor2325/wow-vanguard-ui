@@ -18,22 +18,6 @@ local GW = ns.GetModule("Windows")
 
 -- Helpers ---------------------------------------------------------------------------------------
 
--- Frames whose game methods or scripts are already hooked here (a skin runs on every show; a hook goes on once).
-local hooked = setmetatable({}, { __mode = "k" })
-
--- Runs fn(frame) after the frame's game method `name` each time it runs (with script set, after its script
--- handler of that name), once per frame and name; a frame without the method is skipped.
-local function after(frame, name, fn, script)
-  hooked[frame] = hooked[frame] or {}
-  if hooked[frame][name] then return end
-  if not script and (type(frame[name]) ~= "function" or type(hooksecurefunc) ~= "function") then return end
-  hooked[frame][name] = true
-  -- Runs fn on the frame.
-  local function run() fn(frame) end
-  if script then return frame:HookScript(name, ns.Guard("hook " .. name, run)) end
-  hooksecurefunc(frame, name, ns.Guard("hook " .. name, run))
-end
-
 -- The first part of frame found under one of keys, or nil.
 local function partOf(frame, keys)
   for _, key in ipairs(keys) do
@@ -151,8 +135,8 @@ function GW.SkinPvPMatch(frame)
   if type(bar) == "table" then T.ScrollBar(bar) end
   dressKeys(frame, GW.PVP_PUSH)
   dressRewards(frame)
-  after(frame, "SetupArtwork", GW.SkinPvPMatch)
-  after(frame, "AddItemReward", dressRewards)
+  GW.HookAfter(frame, "SetupArtwork", GW.SkinPvPMatch)
+  GW.HookAfter(frame, "AddItemReward", dressRewards)
 end
 
 -- Blizzard_PVPMatch loads at login on Forever (LoadOnDemand 0); registered on demand as well, so a client
@@ -245,8 +229,8 @@ end
 function GW.SkinWidgetBox(box)
   vgBackdrop[box] = vgBackdrop[box] or makeBackdrop(box)
   fitBackdrop(box)
-  after(box, "OnSizeChanged", fitBackdrop, true)
-  after(box, "UpdateWidgetLayout", fitBackdrop)
+  GW.HookScriptOnce(box, "OnSizeChanged", "hook OnSizeChanged", fitBackdrop)
+  GW.HookAfter(box, "UpdateWidgetLayout", fitBackdrop)
 end
 
 GW.Add("pvp", { "UIWidgetTopCenterContainerFrame", "UIWidgetBelowMinimapContainerFrame" }, GW.SkinWidgetBox)
@@ -268,7 +252,7 @@ end
 -- hook on the global TimerTracker_OnEvent would never run.
 function GW.SkinTimerTracker(frame)
   for _, timer in ipairs(frame.timerList or {}) do skinTimerBar(timer) end
-  after(frame, "OnEvent", GW.SkinTimerTracker, true)
+  GW.HookScriptOnce(frame, "OnEvent", "hook OnEvent", GW.SkinTimerTracker)
 end
 
 GW.Add("pvp", { "TimerTracker" }, GW.SkinTimerTracker)
