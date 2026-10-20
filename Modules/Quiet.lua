@@ -1,4 +1,5 @@
--- Quiet the game (each off until you switch it on): hide the red error line, hide the zone and subzone
+-- Quiet the game (each off until you switch it on): hide the red error line (but for four errors you
+-- must act on: full bags, a full quest log, too many of an item, loot gone), hide the zone and subzone
 -- names that fade in on entering an area, and let the camera zoom out further.
 
 local ADDON, ns = ...
@@ -18,9 +19,27 @@ end
 -- fadeDuration 0.5), and how far a line's colour may be from the game's red and still count as red.
 QU.LINE_LIFE, QU.RED_TOLERANCE = 2.5, 0.1
 
--- The error line's other lines (yellow info such as quest progress, system lines) still showing:
--- { text, r, g, b, a, id, at }, so taking a red line off can put them back.
-local shown = {}
+-- The red errors that stay with the switch on, by the client's names for them (GetGameMessageInfo).
+QU.KEEP = { ERR_INV_FULL = true, ERR_QUEST_LOG_FULL = true, ERR_ITEM_MAX_COUNT = true, ERR_LOOT_GONE = true }
+
+-- The error line's other lines (yellow info such as quest progress, system lines, the kept errors) still
+-- showing: { text, r, g, b, a, id, at }, so taking a red line off can put them back; and whether they are
+-- being put back now (their own AddMessage calls are not new lines).
+local shown, readding = {}, false
+
+-- Whether each message type is one of QU.KEEP, read once per type.
+local keptType = {}
+
+-- True when a red line's message type is one of QU.KEEP; a hidden, missing or unknown type is not.
+local function kept(id)
+  id = ns.PlainNumber(id)
+  if not id or type(GetGameMessageInfo) ~= "function" then return false end
+  if keptType[id] == nil then
+    local ok, name = pcall(GetGameMessageInfo, id)
+    keptType[id] = ok and type(name) == "string" and not ns.IsSecret(name) and QU.KEEP[name] == true
+  end
+  return keptType[id]
+end
 
 -- True when a colour component is a plain number within QU.RED_TOLERANCE of the red one.
 local function near(x, red)
@@ -45,20 +64,31 @@ local function stillShown(now)
   return out
 end
 
+-- Adds the lines back to the error line.
+local function readd(frame, lines)
+  for _, l in ipairs(lines) do frame:AddMessage(l.text, l.r, l.g, l.b, l.a, l.id) end
+end
+
 -- Takes a red line off the error line: it clears, and the other lines still showing are added again.
+-- Each keeps when it first came, so it is put back only within its own time: the game shows a line
+-- put back for its full time again, so it can stay up to twice as long, never on and on. An error while
+-- putting them back still ends the putting back.
 local function dropRed(frame, now)
   local others = stillShown(now)
-  shown = {}
   frame:Clear()
-  for _, l in ipairs(others) do frame:AddMessage(l.text, l.r, l.g, l.b, l.a, l.id) end
+  readding = true
+  pcall(readd, frame, others)
+  readding = false
+  shown = others
 end
 
 -- After the error line adds a line, while the switch is on: a red one (an error, whichever way it came)
--- is taken off; any other is remembered. An error the game doesn't show adds no line, so it clears nothing.
+-- is taken off, unless it is one of QU.KEEP; any other is remembered. An error the game doesn't show
+-- adds no line, so it clears nothing.
 local function onLine(frame, text, r, g, b, a, id)
-  if not QU.settings.errors then return end
+  if not QU.settings.errors or readding then return end
   local now = type(GetTime) == "function" and GetTime() or 0
-  if isRed(r, g, b) then return dropRed(frame, now) end
+  if isRed(r, g, b) and not kept(id) then return dropRed(frame, now) end
   shown = stillShown(now)
   shown[#shown + 1] = { text = text, r = r, g = g, b = b, a = a, id = id, at = now }
 end

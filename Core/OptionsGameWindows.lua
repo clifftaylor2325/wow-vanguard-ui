@@ -64,7 +64,7 @@ end
 -- Merchant module's filter), the zone names, and a further camera.
 local function quietScreenRows()
   return {
-    check("Hide the red error line", setting("Quiet", "errors")),
+    check("Hide the red error line (full bags and quest log still show)", setting("Quiet", "errors")),
     check("Hide errors the action bar already shows (reload)", setting("Merchant", "errors", true)),
     check("Hide the zone names that fade in", setting("Quiet", "zoneText")),
     -- The setter must stay the row's last element: liveSetting returns a getter and a setter.
