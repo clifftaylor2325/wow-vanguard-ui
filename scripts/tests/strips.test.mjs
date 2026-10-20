@@ -116,6 +116,15 @@ it("the info strip: the day and date with a calendar button", () => {
   addon.eval('ns.Settings("InfoStrip").date = true __wfgStub.advance(60)');
   expect(block(addon, "date").shown, "and come back on the next minute's tick").toBe(true);
 });
+it("the info strip's free slots leave out a soul bag's, as the menu bar's backpack does: full general bags read 0 free, in red", () => {
+  const addon = loggedIn(STRIP_ENV + `
+    __space = { [0] = { 16, 0, 0 }, [1] = { 10, 0, 0 }, [2] = { 10, 0, 0 }, [3] = { 20, 18, 256 }, [4] = { 10, 0, 0 } }
+    C_Container.GetContainerNumSlots = function(bag) return (__space[bag] or { 0 })[1] end
+    C_Container.GetContainerNumFreeSlots = function(bag) local s = __space[bag] or { 0, 0 } return s[2], s[3] end`);
+  addon.fire("BAG_UPDATE_DELAYED");
+  const bags = block(addon, "bags");
+  expect([bags.text, isTok(addon, bags.color, "bad")], "the soul bag's 18 free slots don't count").toEqual(["0 free", true]);
+});
 it("the Bars and bags page's two tracker switches name the game's tracker, the one they change", () => {
   const addon = loggedIn(UI_ENV);
   const labels = addon.eval(`local out = {}

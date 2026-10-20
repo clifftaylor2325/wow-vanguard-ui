@@ -87,13 +87,10 @@ function IS.DurabilityColor(percent)
   return percent <= 25 and "warn" or "text"
 end
 
--- Free slots across your five bags, or nil when the client can't say.
+-- Free slots that take anything across your five bags, counted as the menu bar's backpack counts them
+-- (a soul bag's or quiver's slots hold only shards or ammo, so they are left out); nil when the client can't say.
 function IS.FreeSlots()
-  local free = C_Container and C_Container.GetContainerNumFreeSlots
-  if type(free) ~= "function" then return nil end
-  local total = 0
-  for bag = 0, 4 do total = total + (ns.PlainNumber(free(bag)) or 0) end
-  return total
+  return ns.GetModule("MenuStrip").FreeSlots()
 end
 
 -- How many soul shards one bag slot's item is (0 for anything else or a hidden item).
