@@ -499,3 +499,20 @@ it("the AFK screen's backdrop: your faction's passage under the card, in its hea
   addon.eval('__click("Faction look") __click("Faction look") __faction = "Neutral" ns.Theme.Refresh()');
   expect(addon.eval("return Vanguard_AfkScreen.passage:IsShown()"), "a neutral character: none").toBe(false);
 });
+it("the AFK screen: after a fight while you're still away, the time away runs on from when you went away", () => {
+  const addon = loggedIn(UNITS_ENV + AFK_ENV);
+  addon.eval("__afk = true");
+  addon.fire("PLAYER_FLAGS_CHANGED", "player");
+  addon.eval("__wfgStub.advance(300, 1)");
+  setCombat(addon, true);
+  addon.fire("PLAYER_REGEN_DISABLED");
+  addon.eval("__wfgStub.advance(10, 1)");
+  setCombat(addon, false);
+  addon.eval("__wfgStub.advance(1, 1)");
+  expect(addon.eval("return { Vanguard_AfkScreen:IsShown(), Vanguard_AfkScreen.away:GetText() }"), "back on screen, still counting").toEqual([true, "Away 5:11"]);
+  addon.eval("__afk = false");
+  addon.fire("PLAYER_FLAGS_CHANGED", "player");
+  addon.eval("__afk = true");
+  addon.fire("PLAYER_FLAGS_CHANGED", "player");
+  expect(addon.eval("return Vanguard_AfkScreen.away:GetText()"), "back, then away again: it starts over").toBe("Away 0:00");
+});

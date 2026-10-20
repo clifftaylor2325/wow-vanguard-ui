@@ -1,7 +1,7 @@
 // strips: Vanguard's real Lua in the TEST-ONLY headless client (scripts/lib/lua-harness.mjs).
 
 import { expect, it } from "vitest";
-import { CLICK_LUA, expectErrors, HEALING_ENV, MICRO_ENV, PLATE_ENV, RAID_ENV, STRIPS_ENV, STRIP_ENV, TIDY_ENV, UI_ENV, UNITS_ENV, block, borderOf, button, isTok, later, loggedIn, pinned, putAway, setCombat, strips } from "./helpers.mjs";
+import { CLICK_LUA, chatHas, expectErrors, HEALING_ENV, MICRO_ENV, PANEL_OPENERS, PLATE_ENV, RAID_ENV, STRIPS_ENV, STRIP_ENV, TIDY_ENV, UI_ENV, UNITS_ENV, block, borderOf, button, isTok, later, loggedIn, pinned, putAway, setCombat, strips } from "./helpers.mjs";
 
 // TEST-ONLY damage meter: someone else's line, then yours at 1234.5 per second.
 const DPS_ENV = `
@@ -115,6 +115,65 @@ it("the info strip: the day and date with a calendar button", () => {
   expect([block(addon, "date").shown, addon.eval(`return ${button}:IsShown()`)], "turned off, the date and its button go").toEqual([false, false]);
   addon.eval('ns.Settings("InfoStrip").date = true __wfgStub.advance(60)');
   expect(block(addon, "date").shown, "and come back on the next minute's tick").toBe(true);
+});
+it("the info strip's free slots leave out a soul bag's, as the menu bar's backpack does: full general bags read 0 free, in red", () => {
+  const addon = loggedIn(STRIP_ENV + `
+    __space = { [0] = { 16, 0, 0 }, [1] = { 10, 0, 0 }, [2] = { 10, 0, 0 }, [3] = { 20, 18, 256 }, [4] = { 10, 0, 0 } }
+    C_Container.GetContainerNumSlots = function(bag) return (__space[bag] or { 0 })[1] end
+    C_Container.GetContainerNumFreeSlots = function(bag) local s = __space[bag] or { 0, 0 } return s[2], s[3] end`);
+  addon.fire("BAG_UPDATE_DELAYED");
+  const bags = block(addon, "bags");
+  expect([bags.text, isTok(addon, bags.color, "bad")], "the soul bag's 18 free slots don't count").toEqual(["0 free", true]);
+});
+// TEST-ONLY: the game's reminder line and the system chat colour.
+const ALARM_ENV = `CALENDAR_EVENT_ALARM_MESSAGE = "%s is about to begin." ChatTypeInfo = { SYSTEM = { r = 1, g = 1, b = 0 } }`;
+it("with the strip's clock putting the calendar button away, a calendar event's reminder still comes up in chat", () => {
+  const addon = loggedIn(STRIP_ENV + ALARM_ENV);
+  addon.fire("CALENDAR_EVENT_ALARM", "TEST-ONLY Molten Core", 20, 0);
+  addon.fire("CALENDAR_EVENT_ALARM", { __secret: true }, 20, 0);
+  expect(addon.chat().filter((l) => /is about to begin/.test(l)), "the game's line, once (a hidden title is left out)").toEqual(["TEST-ONLY Molten Core is about to begin."]);
+  const ruled = loggedIn(STRIP_ENV + ALARM_ENV + "Enum.GameRule = { IngameCalendarDisabled = 7 } C_GameRules = { IsGameRuleActive = function(rule) return rule == 7 end }");
+  ruled.fire("CALENDAR_EVENT_ALARM", "TEST-ONLY Molten Core", 20, 0);
+  const off = loggedIn(STRIP_ENV + ALARM_ENV, { savedVariables: "VanguardDB.profiles = { Default = { InfoStrip = { clock = false } } }" });
+  off.fire("CALENDAR_EVENT_ALARM", "TEST-ONLY Molten Core", 20, 0);
+  expect([ruled, off].map((a) => a.chat().filter((l) => /is about to begin/.test(l)).length), "none where the realm has no calendar, or with the clock block off (the game's button prints it)").toEqual([0, 0]);
+});
+it("a click on the info strip's time opens the game's clock window, or turns off its alarm while it rings", () => {
+  const addon = loggedIn(STRIP_ENV + `__calls = {}
+    ToggleTimeManager = function() __calls[#__calls + 1] = "window" end
+    TimeManager_IsAlarmFiring = function() return __ringing == true end
+    TimeManager_TurnOffAlarm = function() __calls[#__calls + 1] = "alarm off" __ringing = false end`);
+  // Clicks the strip's time.
+  const click = () => addon.eval("Vanguard_InfoStripClock.__scripts.OnClick(Vanguard_InfoStripClock)");
+  click();
+  addon.eval("__ringing = true");
+  click();
+  expect(addon.eval("return { __calls, Vanguard_InfoStripClock:IsShown(), Vanguard_InfoStripClock.__points.TOPLEFT.rel == ns.GetModule('InfoStrip').texts.clock }"), "the window, then the ringing alarm off; the hit area covers the time")
+    .toEqual([["window", "alarm off"], true, true]);
+  addon.eval('ns.Settings("InfoStrip").clock = false ns.GetModule("InfoStrip").Paint("clock")');
+  expect(addon.eval("return Vanguard_InfoStripClock:IsShown()"), "with the time off, nothing takes its clicks").toBe(false);
+});
+it("the Bars and bags page's two tracker switches name the game's tracker, the one they change", () => {
+  const addon = loggedIn(UI_ENV);
+  const labels = addon.eval(`local out = {}
+    for _, p in ipairs(ns.Options.PAGES) do if p.key == "bars" then for _, r in ipairs(p.rows()) do if type(r[2]) == "string" and r[2]:find("quest tracker") then out[#out + 1] = r[2] end end end end
+    return out`);
+  expect(labels, "each switch says it is the game's tracker's").toEqual(["The game's quest tracker under the info strip (reload)", "The game's quest tracker in the Vanguard look (reload)"]);
+});
+it("in a fight the info strip's calendar button says the calendar waits, and asks the game for nothing", () => {
+  const addon = loggedIn(UNITS_ENV + STRIP_ENV + PANEL_OPENERS);
+  setCombat(addon, true);
+  addon.eval("Vanguard_InfoStripCalendar.__scripts.OnClick(Vanguard_InfoStripCalendar)");
+  expect([chatHas(addon, /The calendar doesn't open from Vanguard in a fight/), addon.eval("return CalendarFrame == nil")], "a chat line, and no refused panel call").toEqual([true, true]);
+});
+it("in a fight the minimap's zone name says the world map waits, and asks the game for nothing", () => {
+  const addon = loggedIn(UNITS_ENV + PANEL_OPENERS);
+  setCombat(addon, true);
+  addon.eval("Vanguard_MinimapZone.__scripts.OnClick(Vanguard_MinimapZone)");
+  expect([chatHas(addon, /The world map doesn't open from Vanguard in a fight/), addon.eval("return WorldMapFrame == nil or not WorldMapFrame:IsShown()")], "a chat line, and the map stays shut").toEqual([true, true]);
+  setCombat(addon, false);
+  addon.eval("Vanguard_MinimapZone.__scripts.OnClick(Vanguard_MinimapZone)");
+  expect(addon.eval("return WorldMapFrame:IsShown()"), "after the fight the click opens it").toBe(true);
 });
 it("the info strip: ammo, and clients that can't answer", () => {
   const hunter = loggedIn(UNITS_ENV + STRIP_ENV + '__units.player.class = "HUNTER"');

@@ -2,7 +2,7 @@
 --   * loss of control (stunned, feared, silenced...): a flat panel with its
 --     icon and text in the theme, centered a little above your character;
 --   * the talking head (an NPC speaking during a quest): a flat panel at the
---     top center, or hidden if you'd rather not see it;
+--     top left under the raid tools, or hidden if you'd rather not see it;
 --   * the raid warning frame's lines in the theme font at the game's size, and
 --     Hardcore death notices (the game shows them in that frame) in the theme
 --     title font and its red; the centre-screen status line (screenshots) and

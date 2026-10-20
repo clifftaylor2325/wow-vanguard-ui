@@ -57,6 +57,10 @@ read_globals = {
   "CHAT_FRAME_TEXTURES",
   -- Chat: the game's chat type table (its colours come from the client's settings), for the edit box's rail.
   "ChatTypeInfo",
+  -- Info strip: the calendar's reminder line the game's calendar button prints (GameTime.lua), shown while the clock block hides it.
+  "CALENDAR_EVENT_ALARM_MESSAGE",
+  -- Info strip: a click on the time opens the game's clock window, or turns off its ringing alarm (Blizzard_TimeManager).
+  "ToggleTimeManager", "TimeManager_IsAlarmFiring", "TimeManager_TurnOffAlarm",
   -- P3.3 Visibility conditions: In an instance, and what a state driver's string says now.
   "IsInInstance", "SecureCmdOptionParse", "SendChatMessage",
   -- R1.6 Chat bubbles (Modules/ChatBubbles.lua): the engine's list of the bubbles it is showing.

@@ -326,6 +326,24 @@ it("taint: a hook in front of a protected method doesn't hide the addon code tha
   expect(addon.eval("return __secure:IsShown()"), "still shown").toBe(true);
 });
 
+it("taint: in combat, ShowUIPanel and HideUIPanel refuse a run with addon code in it, as the client's panel manager does", () => {
+  const addon = createAddon();
+  addon.eval(`__panel = CreateFrame("Frame", "TESTONLY_Panel", UIParent) __panel:Hide()
+    __opener = assert(load("ShowUIPanel(__panel)", "@Interface/TEST-ONLY.lua"))`);
+  asAddon(addon, "__opener()");
+  expect(addon.eval("return __panel:IsShown()"), "out of combat the addon may open a panel").toBe(true);
+  addon.world.combat(true);
+  expectErrors("blocked in combat: Modules/TEST-ONLY.lua:1 reached HideUIPanel(TESTONLY_Panel), which refuses addon code in a fight",
+    "blocked in combat: Modules/TEST-ONLY.lua:1 reached ShowUIPanel(TESTONLY_Panel), which refuses addon code in a fight");
+  asAddon(addon, "HideUIPanel(__panel)");
+  expect(addon.eval("return __panel:IsShown()"), "a refused call does nothing").toBe(true);
+  addon.eval("__panel:Hide()");
+  asAddon(addon, "__opener()");
+  expect(addon.eval("return __panel:IsShown()"), "game code the addon called is refused too").toBe(false);
+  addon.eval("__opener()");
+  expect(addon.eval("return __panel:IsShown()"), "the game's own run is never refused").toBe(true);
+});
+
 it("taint: addon code that hands an aura call a secret gets the client's error, through pcall too; plain ids, game and test code don't", () => {
   const addon = createAddon();
   addon.world.addAura("player", { name: "TEST-ONLY Buff", duration: 10, auraInstanceID: 7 });

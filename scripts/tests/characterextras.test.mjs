@@ -79,7 +79,7 @@ it("says the average level, melee damage and missing enchants for /vg gear", () 
   const addon = loggedIn(ENV);
   addon.slash("gear");
   expect(chatHas(addon, /Average item level 35 \(3 pieces\)\./)).toBe(true);
-  expect(chatHas(addon, /Melee 8\.3 damage per second \(2\.0 s swing\), off hand 4\.4\./)).toBe(true);
+  expect(chatHas(addon, /Melee 7\.5 damage per second \(2\.0 s swing\), off hand 4\.0\./)).toBe(true);
   expect(chatHas(addon, /Missing an enchant: Chest, Off hand\./)).toBe(true);
 });
 

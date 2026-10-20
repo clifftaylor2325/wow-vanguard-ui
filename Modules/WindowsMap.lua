@@ -160,6 +160,28 @@ end
 -- How big (px) a theme glyph is on a map button.
 GW.MAP_GLYPH = 16
 
+-- A map button's theme glyph, made once and centred on it.
+local function addMapGlyph(button, name)
+  vgMapGlyph[button] = T.Snap(button:CreateTexture(nil, "OVERLAY"))
+  vgMapGlyph[button]:SetTexture(T.Icon(name))
+  T.PixelSize(vgMapGlyph[button], GW.MAP_GLYPH, GW.MAP_GLYPH, true)
+  vgMapGlyph[button]:SetPoint("CENTER")
+end
+
+-- A map button's glyph in the second text colour, or the disabled one while the game has the button disabled.
+local function paintMapGlyph(button)
+  local enabled = not button.IsEnabled or button:IsEnabled()
+  T.Tint(vgMapGlyph[button], enabled and "text2" or "disabled")
+end
+
+-- The glyph follows the button's enabled state (the tracking pin turns off where it can't be used, and the game's
+-- greying of the grey glyph changed nothing), from now on and as the game enables or disables it.
+local function followEnabled(button)
+  paintMapGlyph(button)
+  button:HookScript("OnEnable", ns.Guard("map button enabled", paintMapGlyph))
+  button:HookScript("OnDisable", ns.Guard("map button disabled", paintMapGlyph))
+end
+
 -- A theme icon (made once, centred on the button) in place of the game's yellow pictures `arts` on a map button, which are
 -- faded: the game swaps their atlas on a click, so they are hidden by alpha and not replaced.
 local function mapGlyph(button, name, arts)
@@ -168,10 +190,8 @@ local function mapGlyph(button, name, arts)
     if type(art) == "table" and art.SetAlpha then art:SetAlpha(0) end
   end
   if vgMapGlyph[button] then return end
-  vgMapGlyph[button] = T.Tint(T.Snap(button:CreateTexture(nil, "OVERLAY")), "text2")
-  vgMapGlyph[button]:SetTexture(T.Icon(name))
-  T.PixelSize(vgMapGlyph[button], GW.MAP_GLYPH, GW.MAP_GLYPH, true)
-  vgMapGlyph[button]:SetPoint("CENTER")
+  addMapGlyph(button, name)
+  followEnabled(button)
 end
 
 -- One quest log toggle button as a theme button: its yellow normal and pushed pictures faded, a theme icon in their place.
@@ -1093,6 +1113,8 @@ end
 local function skinToday(today)
   if not isFrame(today) then return end
   T.FadeRegions(today)
+  -- The ornate glow is hidden, not faded: the game's OnUpdate pulses its alpha every frame.
+  if type(_G.CalendarTodayTextureGlow) == "table" and _G.CalendarTodayTextureGlow.Hide then _G.CalendarTodayTextureGlow:Hide() end
   T.Panel(today, { accent = true, noBg = true, noSheen = true })
   GW.FitToday(today, today:GetParent())
   if type(hooksecurefunc) == "function" and type(_G.CalendarFrame_SetToday) == "function" and not GW.todayHooked then

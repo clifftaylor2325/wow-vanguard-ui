@@ -1,7 +1,7 @@
 // quests: Vanguard's real Lua in the TEST-ONLY headless client (scripts/lib/lua-harness.mjs).
 
 import { expect, it } from "vitest";
-import { CLICK_LUA, PLATE_ENV, QUEST_ENV, TIDY_ENV, UI_ENV, UNITS_ENV, borderOf, calls, chatHas, isTok, key, loggedIn, px, setCombat, WINDOWS_ENV } from "./helpers.mjs";
+import { CLICK_LUA, PANEL_OPENERS, PLATE_ENV, QUEST_ENV, TIDY_ENV, UI_ENV, UNITS_ENV, borderOf, calls, chatHas, isTok, key, loggedIn, px, setCombat, WINDOWS_ENV } from "./helpers.mjs";
 
 // The theme's layout numbers the quest windows are built on: { inset, pad, col, gap, tight, buttonH, rowH, watermark, wash }.
 const layout = (addon) => addon.eval(`local T = ns.Theme
@@ -1091,7 +1091,7 @@ const PARCHMENT_ENV = `
     else local orig = _G[a] _G[a] = function(...) orig(...) b(...) end end
   end
   QuestFrame = CreateFrame("Frame", "QuestFrame", UIParent) QuestFrame:Hide()
-  for _, name in ipairs({ "QuestInfoDescriptionText", "QuestInfoTitleHeader" }) do UIParent:CreateFontString(name) _G[name] = __wfgStub.frames[#__wfgStub.frames] end
+  for _, name in ipairs({ "QuestInfoDescriptionText", "QuestInfoTitleHeader" }) do QuestFrame:CreateFontString(name) _G[name] = __wfgStub.frames[#__wfgStub.frames] end
   function QuestFrame_SetTextColor(fs) fs:SetTextColor(0.2, 0.1, 0) end
   function QuestFrame_SetTitleTextColor(fs) fs:SetTextColor(0.2, 0.1, 0) end
   function QuestInfo_Display() QuestInfoDescriptionText:SetTextColor(0.2, 0.1, 0) end
@@ -1107,21 +1107,41 @@ const PARCHMENT_ENV = `
   function box:Update() for _, f in ipairs(__lines) do (f.GreetingText or f.label):SetTextColor(0.2, 0.1, 0) end end
 `;
 it("game windows: quest and gossip text stays readable on the dark panel", () => {
-  const addon = loggedIn(PARCHMENT_ENV);
+  // The game's quest window dressed (Vanguard's quest dialog, which stands in for it, off).
+  const addon = loggedIn(PARCHMENT_ENV, { savedVariables: "VanguardDB.profiles.Default = { modules = { QuestDialog = false } }" });
   addon.eval("QuestInfo_Display()");
   expect([isTok(addon, addon.eval("return QuestInfoDescriptionText.__textColor"), "text"), isTok(addon, addon.eval("return QuestInfoTitleHeader.__textColor"), "text")], "quest text and the headings (the quest's name too) go light after the game colors them").toEqual([true, true]);
   addon.eval("QuestInfoTitleHeader:SetTextColor(0.2, 0.1, 0) QuestFrame_SetTitleTextColor(QuestInfoTitleHeader)");
   expect(isTok(addon, addon.eval("return QuestInfoTitleHeader.__textColor"), "text"), "and when the game recolors a heading on its own").toBe(true);
-  addon.eval("local fs = UIParent:CreateFontString() QuestFrame_SetTextColor(fs) __fs = fs");
+  addon.eval("local fs = QuestFrame:CreateFontString() QuestFrame_SetTextColor(fs) __fs = fs");
   expect(isTok(addon, addon.eval("return __fs.__textColor"), "text"), "any text the game colors for parchment is lightened").toBe(true);
   addon.eval("GossipFrame.GreetingPanel.ScrollBox:Update()");
   expect(addon.eval("return { __lines[1].GreetingText.__textColor[1] > 0.5, __lines[2].label.__textColor[1] > 0.5 }"), "the gossip greeting and options are light after each redraw").toEqual([true, true]);
   addon.eval("QuestInfoDescriptionText:SetTextColor(0, 0, 0) QuestFrame:Show()");
   expect(isTok(addon, addon.eval("return QuestInfoDescriptionText.__textColor"), "text"), "and when the window shows").toBe(true);
-  const off = loggedIn(PARCHMENT_ENV, { savedVariables: "VanguardDB.profiles.Default = { Windows = { windows = false } }" });
+  const off = loggedIn(PARCHMENT_ENV, { savedVariables: "VanguardDB.profiles.Default = { modules = { QuestDialog = false }, Windows = { windows = false } }" });
   off.eval("QuestInfo_Display()");
   expect(off.eval("return QuestInfoDescriptionText.__textColor[1]"), "with game windows off, the game's colors stay").toBeCloseTo(0.2);
   expect(loggedIn("").eval("return ns.GetModule('Windows').LightGossip() == nil"), "a client without these windows is fine").toBe(true);
+});
+// TEST-ONLY: the map's quest panel with its details, where QuestInfo_Display moves the shared quest text (as the game
+// parents each element to the panel it shows in) and colours it for parchment.
+const MAP_DETAILS_ENV = PARCHMENT_ENV + `
+  local panel = CreateFrame("Frame", "QuestMapFrame", UIParent) panel:Hide()
+  panel.QuestsFrame = CreateFrame("Frame", nil, panel)
+  panel.QuestsFrame.DetailsFrame = CreateFrame("Frame", nil, panel.QuestsFrame)
+  function QuestInfo_Display(_, parent) QuestInfoDescriptionText:SetParent(parent) QuestInfoDescriptionText:SetTextColor(0.2, 0.1, 0) end
+`;
+// Shows a quest in the map's details panel, and whether its text came out light.
+const lightInMap = (addon) => {
+  addon.eval("QuestInfo_Display(nil, QuestMapFrame.QuestsFrame.DetailsFrame)");
+  return isTok(addon, addon.eval("return QuestInfoDescriptionText.__textColor"), "text");
+};
+it("quest text goes light only in a window with Vanguard's dark panel, whichever group dressed it", () => {
+  // A client logged in with the Game windows and World map groups on or off (Vanguard's quest log off).
+  const groups = (windows, map) => loggedIn(MAP_DETAILS_ENV, { savedVariables: `VanguardDB.profiles.Default = { QuestLog = { own = false }, Windows = { windows = ${windows}, map = ${map} } }` });
+  expect([lightInMap(groups(false, true)), lightInMap(groups(true, false)), lightInMap(groups(false, false))],
+    "the map's panel dark (World map group on): light; on the game's parchment (that group off): the game's colours, whatever Game windows says").toEqual([true, false, false]);
 });
 // TEST-ONLY quest tracker parts the game builds: headers with art, a title and a
 // collapse button, a list of sections, an Update the game calls, and its font objects.
@@ -1360,4 +1380,18 @@ it("quest dialog: an NPC whose one option the game goes to directly (a flight ma
   expect(talk({ options: [{ ...FLY, selectOptionWhenOnlyOption: false }] }), "an option not flagged: the dialog").toEqual([true, 1, false]);
   expect(talk({ options: [FLY], available: [{ title: "TEST-ONLY Rats", questLevel: 5, questID: 90078 }] }), "a quest to show as well: the dialog").toEqual([true, 2, false]);
   expect(talk({ options: [FLY, { ...FLY, gossipOptionID: 90079, orderIndex: 1 }] }), "two options: the dialog").toEqual([true, 2, false]);
+});
+it("in a fight the quest log's Map button and a tracker title say the map waits, and ask the game for nothing", () => {
+  const addon = loggedIn(TRACK_ENV + QLOG_ENV + PANEL_OPENERS);
+  addon.eval("Vanguard_QuestLogToggle.__scripts.OnClick(Vanguard_QuestLogToggle)");
+  setCombat(addon, true);
+  logButton(addon, "map");
+  expect([chatHas(addon, /The world map doesn't open from Vanguard in a fight/), addon.eval("return __opened == nil")], "a chat line, and no refused panel call").toEqual([true, true]);
+  setCombat(addon, false);
+  logButton(addon, "map");
+  expect(addon.eval("return { __opened, WorldMapFrame:IsShown() }"), "after the fight it opens the map on the quest").toEqual([90051, true]);
+  const noLog = loggedIn(TRACK_ENV + PANEL_OPENERS, { savedVariables: "VanguardDB.profiles = { Default = { QuestLog = { own = false } } }" });
+  setCombat(noLog, true);
+  noLog.eval("local b = Vanguard_QuestTrackerFrame.blocks[1] b.__scripts.OnClick(b, 'LeftButton')");
+  expect([chatHas(noLog, /The world map doesn't open from Vanguard in a fight/), noLog.eval("return __opened == nil")], "with the game's log, a title clicked in a fight says so too").toEqual([true, true]);
 });

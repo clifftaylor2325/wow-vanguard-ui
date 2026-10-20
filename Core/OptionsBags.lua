@@ -36,8 +36,8 @@ local function gamePartRows()
     { "header", "The game's extras" },
     menuVisibility, menuWhen,
     check("Vanguard icons on the menu buttons (reload)", setting("MenuStrip", "glyphs", true)),
-    check("Quest tracker under the info strip (reload)", setting("MenuStrip", "tracker", true)),
-    check("Quest tracker in the Vanguard look (reload)", setting("MenuStrip", "trackerLook", true)),
+    check("The game's quest tracker under the info strip (reload)", setting("MenuStrip", "tracker", true)),
+    check("The game's quest tracker in the Vanguard look (reload)", setting("MenuStrip", "trackerLook", true)),
   }
 end
 

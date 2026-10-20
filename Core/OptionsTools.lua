@@ -16,7 +16,7 @@ end
 local function alertRows()
   return {
     check("Loss of control in the Vanguard look, above your character (reload)", setting("GameAlerts", "lossOfControl", true)),
-    { "cycle", "Talking head (reload)", { { "move", "Vanguard look, top center" }, { "hide", "Hidden" }, { "game", "The game's" } }, setting("GameAlerts", "talkingHead", true) },
+    { "cycle", "Talking head (reload)", { { "move", "Vanguard look, top left" }, { "hide", "Hidden" }, { "game", "The game's" } }, setting("GameAlerts", "talkingHead", true) },
     check("Hardcore death notices in the Vanguard look (reload)", setting("GameAlerts", "hardcore", true)),
     check("A rare nearby: a sound and a chat line, out of combat", setting("GameAlerts", "rares")),
     check("Low health: a soft tint round the screen edge that grows as your health drops (no pulse)", liveSetting("GameAlerts", "vignette", applyVignette)),

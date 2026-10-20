@@ -211,11 +211,19 @@ function GW.SkinTitle(fs)
   if type(fs) == "table" and fs.SetFont then T.Text(fs, "heading", "text") end
 end
 
+-- A window's title in the theme, and in the light text colour again each time the window sets its colour itself
+-- (SetTitleColor: the character pane does on every tab and refresh, after it shows).
+local function dressTitle(frame)
+  local title = (type(frame.TitleContainer) == "table" and frame.TitleContainer.TitleText) or frame.TitleText
+  GW.SkinTitle(title)
+  if type(title) == "table" and title.SetFont then GW.HookAfter(frame, "SetTitleColor", function() T.Color(title, "text") end) end
+end
+
 -- The close, maximize and minimize buttons, title and push buttons in the theme.
 local function dressParts(frame, name)
   GW.DressClose(frame, frame.CloseButton or (name and _G[name .. "CloseButton"]), GW.HIDE_BUTTONS[name or ""])
   GW.DressMaxMin(frame)
-  GW.SkinTitle((type(frame.TitleContainer) == "table" and frame.TitleContainer.TitleText) or frame.TitleText)
+  dressTitle(frame)
   for _, b in ipairs(buttons(frame, name)) do T.Button(b) end
   for _, extra in ipairs(GW.EXTRA_BUTTONS[name] or {}) do
     if type(_G[extra]) == "table" then T.Button(_G[extra]) end
@@ -1619,10 +1627,27 @@ local function paintNamed(names, token)
 end
 GW.PaintNamed = paintNamed
 
+-- Whether a region sits in a window Vanguard dressed (its dark panel behind it), whichever group dressed it: the
+-- quest texts move between the quest window (Game windows group) and the map's quest panel (World map group).
+local function inDressedWindow(region)
+  local f = region:GetParent()
+  while f and not vgWindow[f] do f = f:GetParent() end
+  return f ~= nil
+end
+
+-- The quest texts' light colours, each only where its window has the dark panel (left as the game colours them on
+-- its parchment).
+local function lightDressed(names)
+  for _, name in ipairs(names) do
+    local fs = _G[name]
+    if type(fs) == "table" and fs.SetTextColor and inDressedWindow(fs) then T.Color(fs, "text") end
+  end
+end
+
 -- The quest window's texts in light body text and light headings (the quest's name included).
 function GW.LightQuestText()
-  paintNamed(GW.QUEST_BODY, "text")
-  paintNamed(GW.QUEST_HEADS, "text")
+  lightDressed(GW.QUEST_BODY)
+  lightDressed(GW.QUEST_HEADS)
 end
 
 -- The gossip window's list of lines (greeting and options), or nil on a client without it.
@@ -1668,13 +1693,17 @@ end
 local function keepTextReadable()
   after(nil, "QuestFrame_SetTextColor", function(fs) T.Color(fs, "text") end)
   after(nil, "QuestFrame_SetTitleTextColor", function(fs) T.Color(fs, "text") end)
-  after(nil, "QuestInfo_Display", GW.LightQuestText)
   local box = gossipBox()
   if type(box) == "table" then after(box, "Update", GW.LightGossip) end
   for _, f in ipairs({ _G.QuestFrame, _G.GossipFrame }) do
     GW.HookScriptOnce(f, "OnShow", "quest text", function() GW.LightQuestText() GW.LightGossip() end)
   end
   GW.HookScriptOnce(_G.ItemTextFrame, "OnEvent", "item text", function(...) GW.LightItemText(...) end)
+end
+
+-- Keeps the shared quest texts readable after each QuestInfo_Display, in whichever dressed window shows them.
+local function keepQuestInfoReadable()
+  after(nil, "QuestInfo_Display", GW.LightQuestText)
 end
 
 -- The auction house's own panels --------------------------------------------------------------
@@ -2006,6 +2035,7 @@ function GW.Enable(settings)
   ns.On("ADDON_LOADED", onLoaded)
   watchAll(GW.ORDER)
   if settings.windows then watchGameMenu() keepTextReadable() end
+  if settings.windows or settings.map then keepQuestInfoReadable() end
   if settings.durability then watchDurability() end
   if settings.movable then GW.WatchMoves() end
 end

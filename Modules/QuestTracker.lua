@@ -280,6 +280,7 @@ function QT.OnTitle(id, button)
   if IsShiftKeyDown() and guide.settings then return guide.Point(id) end
   local log = ns.GetModule("QuestLog")
   if log and log.Open and log.frame then return log.Open(id) end
+  if ns.WindowWaitsForCombat("The world map") then return end
   if type(QuestMapFrame_OpenToQuestDetails) == "function" then QuestMapFrame_OpenToQuestDetails(id) end
 end
 

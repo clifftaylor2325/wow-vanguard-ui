@@ -3,7 +3,7 @@
 -- (colored by PvP status; hover it for the zone's territory, click it for the
 -- world map), the coordinates on a band along its bottom between the tracking
 -- and addon slot buttons, accent rules inside both bands, and mouse-wheel zoom. The round
--- border art and zoom buttons are faded out (alpha only), and the game's
+-- border art and zoom buttons are faded out (the zoom buttons take no mouse either), and the game's
 -- emptied cluster frame stops taking the mouse and loses its zone button.
 -- Nothing is unregistered. The game's small minimap buttons (tracking, mail,
 -- dungeon difficulty, the addon compartment) move from the old minimap spot
@@ -56,13 +56,13 @@ MM.RIM_INSET = 15
 -- Zone text color tokens by PvP type (GetZonePVPInfo); gold otherwise.
 local ZONE_COLORS = {
   sanctuary = "zoneSanctuary", friendly = "zoneFriendly", hostile = "zoneHostile",
-  contested = "zoneContested", combat = "zoneHostile",
+  contested = "zoneContested", combat = "zoneHostile", arena = "zoneHostile",
 }
 
 -- What the zone tooltip says of each PvP type.
 local PVP_WORDS = {
   sanctuary = "Sanctuary", friendly = "Friendly territory", hostile = "Hostile territory",
-  contested = "Contested territory", combat = "Combat zone",
+  contested = "Contested territory", combat = "Combat zone", arena = "Free-for-all territory",
 }
 
 -- Minimap art this module fades out, by path under the global table.
@@ -103,6 +103,16 @@ local function fadeArt()
     if type(obj) == "table" and obj.SetAlpha then
       obj:SetAlpha(0)
     end
+  end
+end
+
+-- The zoom buttons, faded with the art, take no mouse either: the game shows them over the map's corner
+-- while the mouse is over the map, and faded they still took clicks. The wheel still zooms
+-- (Minimap_ZoomIn clicks them from code, which needs no mouse; a disabled button wouldn't click).
+local function quietZoom()
+  for _, key in ipairs({ "ZoomIn", "ZoomOut" }) do
+    local b = Minimap[key]
+    if type(b) == "table" and b.EnableMouse then b:EnableMouse(false) end
   end
 end
 
@@ -148,6 +158,13 @@ local function slotStates(obj, b)
   b:HookScript("OnMouseUp", function() T.SlotState(vgSlot[obj], vgHover[obj] and "hover" or nil) end)
 end
 
+-- The game's tracking and compartment buttons put their round art back on hover, press and while the
+-- menu is open (OnButtonStateChanged sets AddTexture's alpha); it is faded again after each change.
+local function keepFaded(b)
+  if type(b.OnButtonStateChanged) ~= "function" then return end
+  hooksecurefunc(b, "OnButtonStateChanged", ns.Guard("hook OnButtonStateChanged", function() T.FadeRegions(b) end))
+end
+
 -- The slot tile (a level under the button, so the game's count text draws over it) and the icon on it, made once.
 local function addSlot(obj, icon, glyph)
   vgSlot[obj] = T.Slot(CreateFrame("Frame", nil, obj))
@@ -179,6 +196,7 @@ function MM.SlotButton(obj, icon, side, glyph)
   if vgSlot[obj] then return end
   addSlot(obj, icon, glyph)
   slotStates(obj, b)
+  keepFaded(b)
 end
 
 -- SetPoint arguments for a leftover button: its corner of the map, or on a round map the rim at its angle.
@@ -334,13 +352,27 @@ local function createHolder(size)
   return holder
 end
 
+-- The map's mask: Vanguard's disc on a round map, else the square.
+local function applyMask()
+  Minimap:SetMaskTexture(MM.round and T.Texture("RoundDisc") or T.WHITE)
+end
+
+-- Rotate Minimap (Edit Mode, or the rotateMinimap CVar) runs the cluster's UpdateMinimapConfig, which
+-- puts the game's round mask back on the map; Vanguard's goes on again after it.
+local function keepMask()
+  local cluster = _G.MinimapCluster
+  if type(cluster) ~= "table" or type(cluster.UpdateMinimapConfig) ~= "function" then return end
+  hooksecurefunc(cluster, "UpdateMinimapConfig", ns.Guard("hook UpdateMinimapConfig", applyMask))
+end
+
 -- Moves the minimap into the holder, square and sized, a pixel in from its bottom edge.
 local function adoptMinimap(holder, size)
   Minimap:SetParent(holder)
   Minimap:ClearAllPoints()
   Minimap:SetPoint("BOTTOM", holder, "BOTTOM", 0, 1)
   Minimap:SetSize(size, size)
-  Minimap:SetMaskTexture(MM.round and T.Texture("RoundDisc") or T.WHITE)
+  applyMask()
+  keepMask()
   wheelZoom()
 end
 
@@ -439,6 +471,12 @@ local function addTexts(overlay, size)
   T.Color(MM.coords, "text")
 end
 
+-- Opens or closes the world map, unless a fight is on (the game refuses Vanguard there).
+local function toggleWorldMap()
+  if ns.WindowWaitsForCombat("The world map") then return end
+  if type(ToggleWorldMap) == "function" then ToggleWorldMap() end
+end
+
 -- The zone name takes the mouse: a click opens (or closes) the world map,
 -- hovering names the zone and its territory, and the wheel still zooms. It
 -- stops short of the top corners, so the buttons there keep their clicks. It runs along the holder's
@@ -449,7 +487,7 @@ local function zoneButton(overlay, size)
   b:SetPoint("TOPLEFT", MM.holder, "TOPLEFT", inset, 0)
   b:SetPoint("TOPRIGHT", MM.holder, "TOPRIGHT", -inset, 0)
   b:SetHeight(MM.BAND.top)
-  b:SetScript("OnClick", ns.Guard("click minimap world map", function() if type(ToggleWorldMap) == "function" then ToggleWorldMap() end end))
+  b:SetScript("OnClick", ns.Guard("click minimap world map", toggleWorldMap))
   b:SetScript("OnEnter", zoneTooltip)
   b:SetScript("OnLeave", function() GameTooltip:Hide() end)
   b:EnableMouseWheel(true) b:SetScript("OnMouseWheel", onWheel)
@@ -495,6 +533,7 @@ local function build(settings)
   adoptMinimap(holder, settings.size)
   dress(createOverlay(holder, settings.size), settings)
   fadeArt()
+  quietZoom()
   quietCluster()
   if settings.icons then placeLeftovers() end
   if settings.coords then coordsTicker(holder) end

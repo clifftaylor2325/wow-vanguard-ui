@@ -833,6 +833,7 @@ end
 -- Opens the game's own Click Casting window (it loads on demand).
 local function openGameBindings()
   if type(ToggleClickBindingFrame) ~= "function" then return ns.Chat("This client has no click bindings window.") end
+  if ns.WindowWaitsForCombat("The game's click bindings window") then return end
   O.Hide()
   ToggleClickBindingFrame()
 end

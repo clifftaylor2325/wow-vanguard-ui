@@ -16,7 +16,7 @@ Mail tools (off until you turn it on under Town and gear → Mail tools; `/vg ma
 
 ## Character sheet extras
 
-Character sheet extras (`/vg gear`; Game windows → Character sheet extras): each gear slot of the character pane shows its item level along the top edge (durability stays along the bottom), and a switch (off until you turn it on) marks a worn piece of uncommon quality or better with a `!` when its slot can take an enchant (chest, legs, feet, wrist, hands, back, weapons; an off hand if it is a weapon or a shield, not a held item) and it has none. `/vg gear` (or the "Show my gear summary in chat" button) prints your average item level, your melee damage per second and swing time from the game's own figures, and the pieces missing an enchant. Values the client hides are left out.
+Character sheet extras (`/vg gear`; Game windows → Character sheet extras): each gear slot of the character pane shows its item level along the top edge (durability stays along the bottom), and a switch (off until you turn it on) marks a worn piece of uncommon quality or better with a `!` when its slot can take an enchant (chest, legs, feet, wrist, hands, back, weapons; an off hand if it is a weapon or a shield, not a held item) and it has none. `/vg gear` (or the "Show my gear summary in chat" button) prints your average item level, your melee damage per second (the character sheet's figure) and swing time from the game's own figures, and the pieces missing an enchant. Values the client hides are left out.
 
 ## Other characters' items
 

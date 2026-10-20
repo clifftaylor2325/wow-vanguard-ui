@@ -87,13 +87,10 @@ function IS.DurabilityColor(percent)
   return percent <= 25 and "warn" or "text"
 end
 
--- Free slots across your five bags, or nil when the client can't say.
+-- Free slots that take anything across your five bags, counted as the menu bar's backpack counts them
+-- (a soul bag's or quiver's slots hold only shards or ammo, so they are left out); nil when the client can't say.
 function IS.FreeSlots()
-  local free = C_Container and C_Container.GetContainerNumFreeSlots
-  if type(free) ~= "function" then return nil end
-  local total = 0
-  for bag = 0, 4 do total = total + (ns.PlainNumber(free(bag)) or 0) end
-  return total
+  return ns.GetModule("MenuStrip").FreeSlots()
 end
 
 -- How many soul shards one bag slot's item is (0 for anything else or a hidden item).
@@ -390,6 +387,15 @@ function IS.PlaceDate()
   else date:SetPoint("LEFT", IS.frame, "TOPLEFT", 6, -(IS.BLOCKS.date[1] - 0.5) * IS.ROW) end
 end
 
+-- The button that goes with a block, by its key on IS: the calendar with the date, the clock's hit area with the time.
+IS.BUTTONS = { date = "calendar", clock = "clockButton" }
+
+-- Shows a block's button while the block shows.
+local function showButton(key, shown)
+  local b = IS[IS.BUTTONS[key] or ""]
+  if b then b:SetShown(shown) end
+end
+
 -- Repaints one block: hidden when off or when the client can't answer; the strip fits what shows.
 function IS.Paint(key)
   local fs = IS.texts and IS.texts[key]
@@ -397,7 +403,7 @@ function IS.Paint(key)
   local text, color
   if IS.settings[key] then text, color = IS.TEXT[key]() end
   fs:SetShown(text ~= nil)
-  if key == "date" and IS.calendar then IS.calendar:SetShown(text ~= nil) end
+  showButton(key, text ~= nil)
   if text and text ~= fs.last then fs:SetText(text) fs.last = text end
   if color then T.Color(fs, color) end
   if key == "clock" or key == "date" then IS.PlaceDate() end
@@ -425,16 +431,43 @@ local function addText(frame, key)
   return fs
 end
 
+-- Opens the calendar, unless a fight is on (the game refuses Vanguard there).
+local function openCalendar()
+  if ns.WindowWaitsForCombat("The calendar") then return end
+  if type(ToggleCalendar) == "function" then ToggleCalendar() end
+end
+
 -- The calendar button (shown with the date): a slot button of the minimap's kind at the date row's right end,
 -- opening the calendar like /calendar.
 local function addCalendar(frame)
   local b = CreateFrame("Button", "Vanguard_InfoStripCalendar", frame)
   b:SetPoint("RIGHT", frame, "TOPRIGHT", -IS.CALENDAR_GAP, -(IS.BLOCKS.date[1] - 0.5) * IS.ROW)
-  b:SetScript("OnClick", ns.Guard("click info strip calendar", function() if type(ToggleCalendar) == "function" then ToggleCalendar() end end))
+  b:SetScript("OnClick", ns.Guard("click info strip calendar", openCalendar))
   b:SetScript("OnEnter", ns.Guard("info strip calendar tip", function(self) GameTooltip:SetOwner(self, "ANCHOR_LEFT") GameTooltip:SetText("Calendar", T.RGB("text")) GameTooltip:Show() end))
   b:SetScript("OnLeave", ns.Guard("info strip calendar tip", function() GameTooltip:Hide() end))
   ns.GetModule("Minimap").SlotButton(b, IS.CALENDAR_ICON.slot, IS.CALENDAR, IS.CALENDAR_GLYPH)
   IS.calendar = b
+end
+
+-- A click on the time: turns off the game's alarm while it rings, else opens or closes the game's clock window
+-- (the alarm, local or realm time, the stopwatch switch), which the put-away minimap clock opened.
+function IS.ClockClick()
+  if ask("TimeManager_IsAlarmFiring") == true then return ask("TimeManager_TurnOffAlarm") end
+  ask("ToggleTimeManager")
+end
+
+-- The time's hit area: the text takes the mouse, so a click reaches the game's clock window.
+local function addClock(frame)
+  local b = CreateFrame("Button", "Vanguard_InfoStripClock", frame)
+  b:SetAllPoints(IS.texts.clock)
+  b:SetScript("OnClick", ns.Guard("click info strip clock", IS.ClockClick))
+  IS.clockButton = b
+end
+
+-- The strip's buttons: the calendar at the date row's end, and the time's hit area.
+local function addButtons(frame)
+  addCalendar(frame)
+  addClock(frame)
 end
 
 -- The strip's timer while it shows: the clock every second, fps and latency every third, the rates every fifth.
@@ -472,7 +505,7 @@ local function build()
   ns.Mover(f, "infostrip", "Info strip", { "TOPRIGHT", "TOPRIGHT", -12, -200 })
   IS.texts = {}
   for key in pairs(IS.BLOCKS) do IS.texts[key] = addText(f, key) end
-  addCalendar(f)
+  addButtons(f)
   ticker(f)
   IS.UpdateAll()
   watchVisibility(f)
@@ -489,7 +522,7 @@ IS.EVENTS = {
 -- carry the warning; a player who wants the game's own figure turns the module off).
 IS.HIDES = { "DurabilityFrame" }
 -- The game's frames a block replaces, hidden while that block is on: the minimap clock and calendar
--- button (/calendar still opens it).
+-- button (/calendar still opens it, and the strip prints the calendar's event reminders the button did).
 IS.REPLACES = { clock = { "TimeManagerClockButton", "GameTimeFrame" } }
 
 -- Hides the game's frames the strip stands in for, and those that switched-on blocks replace.
@@ -500,6 +533,27 @@ local function hideReplaced(settings)
       for _, name in ipairs(names) do ns.GetModule("UnitFrames").HideBlizzard(name) end
     end
   end
+end
+
+-- Whether the realm's rules switch the in-game calendar off (C_GameRules); no when the client can't say.
+function IS.CalendarOff()
+  local rule = Enum and Enum.GameRule and Enum.GameRule.IngameCalendarDisabled
+  if rule == nil or type(C_GameRules) ~= "table" or type(C_GameRules.IsGameRuleActive) ~= "function" then return false end
+  local on = C_GameRules.IsGameRuleActive(rule)
+  return not ns.IsSecret(on) and on == true
+end
+
+-- A calendar event's reminder, as the game's calendar button prints it (GameTime.lua): with that button put
+-- away nothing else would, so the strip prints the game's line in the system chat colour.
+function IS.CalendarAlarm(_, title)
+  if ns.IsSecret(title) or type(title) ~= "string" or type(CALENDAR_EVENT_ALARM_MESSAGE) ~= "string" then return end
+  local info = type(ChatTypeInfo) == "table" and ChatTypeInfo.SYSTEM or {}
+  DEFAULT_CHAT_FRAME:AddMessage(string.format(CALENDAR_EVENT_ALARM_MESSAGE, title), info.r, info.g, info.b)
+end
+
+-- While the clock block puts the game's calendar button away, its event reminders still reach chat.
+local function keepReminders(settings)
+  if settings.clock and not IS.CalendarOff() then ns.On("CALENDAR_EVENT_ALARM", IS.CalendarAlarm) end
 end
 
 -- XP came in: count it and repaint the leveling blocks.
@@ -524,6 +578,7 @@ end
 function IS.Enable(settings)
   IS.settings = settings
   hideReplaced(settings)
+  keepReminders(settings)
   IS.StartSession()
   build()
   watch()
