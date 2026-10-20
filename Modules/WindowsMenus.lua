@@ -71,7 +71,7 @@ function GW.SkinDropDownList(list)
   T.Tooltip(list)
 end
 
-GW.Add("menus", "framed", GW.DROPDOWN_LISTS, GW.SkinDropDownList)
+GW.Add("menus", GW.DROPDOWN_LISTS, GW.SkinDropDownList)
 
 -- A heading row's text (the game's disabled gold font) in the text colour, by the row's text name; only the colour
 -- changes, by r, g, b so a later row filled into the same button is not recoloured by a theme refresh.

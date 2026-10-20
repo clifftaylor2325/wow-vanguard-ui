@@ -58,7 +58,7 @@ const WINDOW_TABS_ENV = TABS_ENV + `
   TestOnlyHeader.FriendsTabHeader = CreateFrame("Frame", nil, TestOnlyHeader)
   TestOnlyHeader.FriendsTabHeader.TabSystem = __system(TestOnlyHeader.FriendsTabHeader)
   TestOnlyHeader.FriendsTabHeader.TabSystem:AddTab()
-  ns.GetModule("Windows").Add("windows", "framed", { "TestOnlyFriends", "TestOnlySpells", "TestOnlyHeader", "TestOnlyMissing" })
+  ns.GetModule("Windows").Add("windows", { "TestOnlyFriends", "TestOnlySpells", "TestOnlyHeader", "TestOnlyMissing" })
 `;
 
 it("the tabs group loads cleanly on a client without its windows", () => {
@@ -129,7 +129,7 @@ const ICON_TABS_ENV = TABS_ENV + `
   TestOnlyBook.CategoryTabSystem = __iconSystem(TestOnlyBook)
   TestOnlyBook.CategoryTabSystem:AddTab(nil, 136243) TestOnlyBook.CategoryTabSystem:AddTab(nil, 135812)
   TestOnlyBook.CategoryTabSystem:GetTabButton(1):SetTabSelected(true)
-  ns.GetModule("Windows").Add("windows", "framed", { "TestOnlyBook" })
+  ns.GetModule("Windows").Add("windows", { "TestOnlyBook" })
 `;
 
 it("icon tabs: the spellbook's category tabs are squares with the icon filling them one pixel inside the border", () => {
@@ -156,7 +156,7 @@ it("icon tabs: a tab with no height yet keeps the game's size and mask", () => {
 });
 
 it("tab buttons: windows that load later are dressed when their part of the game loads", () => {
-  const addon = loggedIn(WINDOWS_ENV + TABS_ENV + `ns.GetModule("Windows").Add("windows", "onDemand", "TestOnly_Later", { "TestOnlyLater" })`);
+  const addon = loggedIn(WINDOWS_ENV + TABS_ENV + `ns.GetModule("Windows").AddOnDemand("windows", "TestOnly_Later", { "TestOnlyLater" })`);
   addon.eval(`__window("TestOnlyLater") TestOnlyLater.Tabs = { __tab(TestOnlyLater) }`);
   expect(addon.eval("return __tabState(TestOnlyLater.Tabs[1]).art"), "not before its addon loads").toBe(-1);
   addon.fire("ADDON_LOADED", "TestOnly_Other");
@@ -172,7 +172,7 @@ it("tab buttons: the tabs switch off, or a window's own group off, leaves the ga
   expect(off.eval("return { __tabState(MerchantFrameTab1).art, __tabState(TestOnlySpells.TabSystem:GetTabButton(1)).art }"), "tabs off: the art is the game's").toEqual([-1, -1]);
   expect(off.eval("return ns.FrameState('vgWindow')[MerchantFrame]"), "while the window itself is still skinned").toBe(true);
   const social = WINDOWS_ENV + TABS_ENV + `__window("TestOnlySocial") TestOnlySocial.Tabs = { __tab(TestOnlySocial) }
-    ns.GetModule("Windows").Add("social", "framed", { "TestOnlySocial" })`;
+    ns.GetModule("Windows").Add("social", { "TestOnlySocial" })`;
   const gameOwn = loggedIn(social, { savedVariables: "VanguardDB.profiles = { Default = { Windows = { social = false } } }" });
   gameOwn.eval("TestOnlySocial:Show()");
   expect(gameOwn.eval("return __tabState(TestOnlySocial.Tabs[1]).art"), "a window left to the game keeps its tabs").toBe(-1);
@@ -249,7 +249,7 @@ it("side tabs: the guild window's, whether or not another group registered it, u
   addon.eval("CommunitiesFrame.RosterTab:SetChecked(true) CommunitiesFrame.ChatTab:SetChecked(false)");
   expect(addon.eval("return { __sideState(CommunitiesFrame.ChatTab).raised, __sideState(CommunitiesFrame.RosterTab).raised }"), "and it moves with SetChecked").toEqual([false, true]);
   expect(addon.eval("return { __sideState(CommunitiesFrame.ChatTab).dim, __sideState(CommunitiesFrame.RosterTab).dim }"), "the greyed icon moves with it").toEqual([true, false]);
-  const registered = guild + `ns.GetModule("Windows").Add("social", "framed", { "CommunitiesFrame" })`;
+  const registered = guild + `ns.GetModule("Windows").Add("social", { "CommunitiesFrame" })`;
   expect(loggedIn(registered).eval("return __sideState(CommunitiesFrame.ChatTab).art"), "registered by the social group, still dressed").toBe(0);
   const off = loggedIn(registered, { savedVariables: "VanguardDB.profiles = { Default = { Windows = { social = false } } }" });
   expect(off.eval("return __sideState(CommunitiesFrame.ChatTab).art"), "with that group off the window and its tabs are the game's").toBe(-1);
@@ -621,7 +621,7 @@ const BARS_ENV = PANE_ENV + `
   TestOnlyList.Far.One.Two.Three = CreateFrame("Frame", nil, TestOnlyList.Far.One.Two)
   TestOnlyList.Far.One.Two.Three.Four = CreateFrame("Frame", nil, TestOnlyList.Far.One.Two.Three)
   __bar(TestOnlyList.Far.One.Two.Three.Four, "ScrollBar")
-  ns.GetModule("Windows").Add("windows", "framed", { "TestOnlyList" })
+  ns.GetModule("Windows").Add("windows", { "TestOnlyList" })
 `;
 
 it("scroll bars: a window's ScrollBar key and the bar paired with a ScrollBox are in the theme, a second show paints nothing more", () => {
@@ -666,7 +666,7 @@ it("tabs and the window's padding: a tab set outside the window moves out to the
     local roster = __right(CommunitiesFrame, "RosterTab") roster:SetSize(32, 32) roster:SetPoint("TOP", chat, "BOTTOM", 0, -8)
     __window("TestOnlyBottom") TestOnlyBottom:SetSize(300, 200) TestOnlyBottom:SetPoint("CENTER")
     local tab = __tab(TestOnlyBottom, "TestOnlyBottomTab1") tab:SetSize(80, 24) tab:SetPoint("TOPLEFT", TestOnlyBottom, "BOTTOMLEFT", 11, 2)
-    ns.GetModule("Windows").Add("windows", "framed", { "TestOnlyBottom" })`);
+    ns.GetModule("Windows").Add("windows", { "TestOnlyBottom" })`);
   addon.eval("CommunitiesFrame:Show() TestOnlyBottom:Show() CommunitiesFrame:Hide() CommunitiesFrame:Show()");
   const out = addon.eval(`local px = ns.Theme.Pixel(CommunitiesFrame) local pad = ns.GetModule("Windows").PAD - px
     local c, r, b = CommunitiesFrame.ChatTab.__points.TOPLEFT, CommunitiesFrame.RosterTab.__points.TOP, TestOnlyBottomTab1.__points.TOPLEFT
@@ -683,7 +683,7 @@ it("window controls: the corner close button and the max/min box sit the same in
     box.MaximizeButton, box.MinimizeButton = CreateFrame("Button", nil, box), CreateFrame("Button", nil, box)
     TestOnlyControls.MaximizeMinimizeButton = box
     __window("TestOnlyOdd") TestOnlyOdd.CloseButton:SetPoint("BOTTOM", TestOnlyOdd, "BOTTOM", 0, 8)
-    ns.GetModule("Windows").Add("windows", "framed", { "TestOnlyControls", "TestOnlyOdd" })
+    ns.GetModule("Windows").Add("windows", { "TestOnlyControls", "TestOnlyOdd" })
     __window("TestOnlyBare") TestOnlyBare.CloseButton:SetPoint("TOPRIGHT", TestOnlyBare, "TOPRIGHT", -3, -2)`);
   addon.eval("TestOnlyControls:Show() TestOnlyOdd:Show() TestOnlyControls:Hide() TestOnlyControls:Show()");
   const out = addon.eval(`local c, b = TestOnlyControls.CloseButton.__points.CENTER, TestOnlyControls.MaximizeMinimizeButton.__points.CENTER
@@ -723,7 +723,7 @@ it("side tabs: the professions window's, the cooldown settings' and the inspect 
     local next = __side(profs, "Professions1Tab") next:SetSize(40, 40) next:SetPoint("TOPLEFT", first, "BOTTOMLEFT", 0, -2)
     __side(profs, "Professions7Tab")
     local cd = __window("TestOnlyCooldown") __side(cd, "SpellsTab") __side(cd, "AurasTab") __side(cd, "GroupBuffsTab")
-    ns.GetModule("Windows").Add("windows", "framed", { "TestOnlyProfs", "TestOnlyCooldown" })
+    ns.GetModule("Windows").Add("windows", { "TestOnlyProfs", "TestOnlyCooldown" })
     __window("InspectFrame") InspectFrame.ModeTabs = CreateFrame("Frame", nil, InspectFrame) InspectFrame.ModeTabs.Tabs = {}
     table.insert(InspectFrame.ModeTabs.Tabs, __side(InspectFrame.ModeTabs, "GuildTab"))
   `);
@@ -795,7 +795,7 @@ it("guild bank side tabs: the plate faded, the icon button a tab with its icon a
       b:SetChecked(i == 2)
     end
     GuildBankTab3.Button = nil
-    ns.GetModule("Windows").Add("windows", "framed", { "GuildBankFrame" })
+    ns.GetModule("Windows").Add("windows", { "GuildBankFrame" })
   `);
   const out = addon.eval(`local b = GuildBankTab2.Button
     return { __a((GuildBankTab1:GetRegions())), __a(b.NormalTexture), __a(b.IconTexture), __a(b.SearchOverlay), __raised(b), __raised(GuildBankTab1.Button),

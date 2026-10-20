@@ -288,7 +288,7 @@ function GW.SkinSettings(frame)
   watchSettings(frame)
 end
 
-GW.Add("system", "framed", { "SettingsPanel" }, GW.SkinSettings)
+GW.Add("system", { "SettingsPanel" }, GW.SkinSettings)
 
 -- Addon list, chat config, nameplates tutorial -----------------------------------------------
 
@@ -444,9 +444,9 @@ GW.AddButtons("ChatConfigFrame", {
   "CombatConfigSettingsSaveButton", "ChatConfigFrameRedockButton",
 })
 
-GW.Add("system", "framed", { "AddonList" }, GW.SkinAddonList)
-GW.Add("system", "framed", { "ChatConfigFrame" }, GW.SkinChatConfig)
-GW.Add("system", "framed", { "NamePlatesTutorial" }, GW.SkinNamePlatesTutorial)
+GW.Add("system", { "AddonList" }, GW.SkinAddonList)
+GW.Add("system", { "ChatConfigFrame" }, GW.SkinChatConfig)
+GW.Add("system", { "NamePlatesTutorial" }, GW.SkinNamePlatesTutorial)
 
 -- Edit Mode windows ---------------------------------------------------------------------------
 
@@ -520,9 +520,9 @@ function GW.SkinEditSettings(dialog)
   GW.HookAfter(dialog, "UpdateExtraButtons", dressExtraButtons)
 end
 
-GW.Add("system", "framed", { "EditModeManagerFrame" }, GW.SkinEditMode)
-GW.Add("system", "framed", { "EditModeSystemSettingsDialog" }, GW.SkinEditSettings)
-GW.Add("system", "framed", {
+GW.Add("system", { "EditModeManagerFrame" }, GW.SkinEditMode)
+GW.Add("system", { "EditModeSystemSettingsDialog" }, GW.SkinEditSettings)
+GW.Add("system", {
   "EditModeLayoutDialog", "EditModeImportLayoutDialog", "EditModeImportLayoutLinkDialog", "EditModeUnsavedChangesDialog",
 }, GW.SkinEditDialog)
 
@@ -660,13 +660,13 @@ function GW.SkinScriptErrors(frame)
   GW.SkinArrow(frame.NextError, "right")
 end
 
-GW.Add("system", "framed", { "QuickKeybindFrame" }, GW.SkinQuickKeybind)
-GW.Add("system", "framed", { "CooldownViewerSettings" }, GW.SkinCooldownSettings)
-GW.Add("system", "framed", { "CooldownViewerLayoutDialog", "CooldownViewerImportLayoutDialog" }, GW.SkinEditDialog)
-GW.Add("system", "framed", { "CooldownViewerSettingsEditAlert", "GroupBuffFilterEditVisualAlert" }, GW.SkinCooldownAlert)
-GW.Add("system", "onDemand", "Blizzard_MovePad", { "MovePadFrame" }, GW.SkinMovePad)
-GW.Add("system", "framed", { "ScriptErrorsFrame" }, GW.SkinScriptErrors)
-GW.Add("system", "onDemand", "Blizzard_ClickBindingUI", { "ClickBindingFrame" }, GW.SkinClickBinding)
+GW.Add("system", { "QuickKeybindFrame" }, GW.SkinQuickKeybind)
+GW.Add("system", { "CooldownViewerSettings" }, GW.SkinCooldownSettings)
+GW.Add("system", { "CooldownViewerLayoutDialog", "CooldownViewerImportLayoutDialog" }, GW.SkinEditDialog)
+GW.Add("system", { "CooldownViewerSettingsEditAlert", "GroupBuffFilterEditVisualAlert" }, GW.SkinCooldownAlert)
+GW.AddOnDemand("system", "Blizzard_MovePad", { "MovePadFrame" }, GW.SkinMovePad)
+GW.Add("system", { "ScriptErrorsFrame" }, GW.SkinScriptErrors)
+GW.AddOnDemand("system", "Blizzard_ClickBindingUI", { "ClickBindingFrame" }, GW.SkinClickBinding)
 
 -- Help, report, splash, colour picker, death recap, combat log bar ---------------------------
 
@@ -824,12 +824,12 @@ function GW.SkinCombatLogBar(frame)
   if type(_G.Blizzard_CombatLog_QuickButton_OnClick) == "function" then hooksecurefunc("Blizzard_CombatLog_QuickButton_OnClick", ns.Guard("hook Blizzard_CombatLog_QuickButton_OnClick", dressQuickButtons)) end
 end
 
-GW.Add("system", "framed", { "HelpFrame" }, GW.SkinHelp)
-GW.Add("system", "framed", { "TicketStatusFrame" }, GW.SkinTicketStatus)
-GW.Add("system", "framed", { "ReportFrame" }, GW.SkinReport)
-GW.Add("system", "framed", { "ReportCheatingDialog" }, GW.SkinReportCheating)
-GW.Add("system", "framed", { "SplashFrame" }, GW.SkinSplash)
-GW.Add("system", "framed", { "ColorPickerFrame" }, GW.SkinColorPicker)
-GW.Add("system", "framed", { "OpacityFrame" }, GW.SkinOpacity)
-GW.Add("system", "onDemand", "Blizzard_DeathRecap", { "DeathRecapFrame" }, GW.SkinDeathRecap)
-GW.Add("system", "onDemand", "Blizzard_CombatLog", { "CombatLogQuickButtonFrame_Custom" }, GW.SkinCombatLogBar)
+GW.Add("system", { "HelpFrame" }, GW.SkinHelp)
+GW.Add("system", { "TicketStatusFrame" }, GW.SkinTicketStatus)
+GW.Add("system", { "ReportFrame" }, GW.SkinReport)
+GW.Add("system", { "ReportCheatingDialog" }, GW.SkinReportCheating)
+GW.Add("system", { "SplashFrame" }, GW.SkinSplash)
+GW.Add("system", { "ColorPickerFrame" }, GW.SkinColorPicker)
+GW.Add("system", { "OpacityFrame" }, GW.SkinOpacity)
+GW.AddOnDemand("system", "Blizzard_DeathRecap", { "DeathRecapFrame" }, GW.SkinDeathRecap)
+GW.AddOnDemand("system", "Blizzard_CombatLog", { "CombatLogQuickButtonFrame_Custom" }, GW.SkinCombatLogBar)

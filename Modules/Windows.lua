@@ -2027,15 +2027,18 @@ local function record(group, names, skin)
 end
 
 -- Registers game windows under a group (docs/design/RESKIN.md 3.1), at file scope:
---   GW.Add(group, "framed", names, skin)            skinned now and on every show
---   GW.Add(group, "popups", names, skin)            the same, for popups
---   GW.Add(group, "onDemand", addon, names, skin)   once that part of the game loads
+--   GW.Add(group, names, skin)                      skinned now and on every show (popups too)
+--   GW.AddOnDemand(group, addon, names, skin)       once that part of the game loads
 -- skin is a function(frame), GW.Skin when nil.
-function GW.Add(group, kind, a, b, c)
-  if kind ~= "onDemand" then return record(group, a, b) end
-  GW.ON_DEMAND[a] = GW.ON_DEMAND[a] or {}
-  for _, name in ipairs(b) do table.insert(GW.ON_DEMAND[a], name) end
-  record(group, b, c)
+function GW.Add(group, names, skin)
+  record(group, names, skin)
+end
+
+-- Registers game windows under a group once the named part of the game (addon) loads (see GW.Add).
+function GW.AddOnDemand(group, addon, names, skin)
+  GW.ON_DEMAND[addon] = GW.ON_DEMAND[addon] or {}
+  for _, name in ipairs(names) do table.insert(GW.ON_DEMAND[addon], name) end
+  record(group, names, skin)
 end
 
 -- Push buttons a window keeps outside Button1-4, themed with it.
@@ -2086,11 +2089,11 @@ end
 
 -- The windows this file skins itself: framed windows, popups, the breath bars' container and the
 -- windows that load later. Other groups register from Modules/Windows<Area>.lua.
-GW.Add("windows", "framed", GW.FRAMED, GW.SkinFramed)
-GW.Add("windows", "framed", { "LootFrame" }, GW.SkinLoot)
-GW.Add("popups", "popups", GW.POPUPS, GW.SkinFramed)
-GW.Add("timers", "framed", GW.TIMERS, GW.SkinTimerContainer)
-for addon, names in pairs(GW.LATER) do GW.Add("windows", "onDemand", addon, names, GW.SkinFramed) end
+GW.Add("windows", GW.FRAMED, GW.SkinFramed)
+GW.Add("windows", { "LootFrame" }, GW.SkinLoot)
+GW.Add("popups", GW.POPUPS, GW.SkinFramed)
+GW.Add("timers", GW.TIMERS, GW.SkinTimerContainer)
+for addon, names in pairs(GW.LATER) do GW.AddOnDemand("windows", addon, names, GW.SkinFramed) end
 
 -- Module entry point (Core/Modules.lua): every registered window whose group is on is
 -- watched (those loaded now and later), plus the game menu, readable text, durability

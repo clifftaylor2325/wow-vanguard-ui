@@ -173,7 +173,7 @@ function GW.SkinStable(frame)
   styleStableParts(frame)
 end
 
-GW.Add("town", "framed", { "PetStableFrame" }, GW.SkinStable)
+GW.Add("town", { "PetStableFrame" }, GW.SkinStable)
 
 -- Trainer -------------------------------------------------------------------------------------------
 
@@ -295,7 +295,7 @@ function GW.SkinTrainer(frame)
 end
 
 GW.AddButtons("ClassTrainerFrame", { "ClassTrainerTrainButton" })
-GW.Add("town", "onDemand", "Blizzard_TrainerUI", { "ClassTrainerFrame" }, GW.SkinTrainer)
+GW.AddOnDemand("town", "Blizzard_TrainerUI", { "ClassTrainerFrame" }, GW.SkinTrainer)
 
 -- Dress-up, stack split, coin pickup ----------------------------------------------------------------
 
@@ -365,9 +365,9 @@ function GW.SkinCoinPickup(frame)
   namedFonts({ "CoinPickupText", "CoinPickupLabel" }, "number")
 end
 
-GW.Add("town", "popups", { "SideDressUpFrame" }, GW.SkinSideDressUp)
-GW.Add("town", "popups", { "StackSplitFrame" }, GW.SkinStackSplit)
-GW.Add("town", "popups", { "CoinPickupFrame" }, GW.SkinCoinPickup)
+GW.Add("town", { "SideDressUpFrame" }, GW.SkinSideDressUp)
+GW.Add("town", { "StackSplitFrame" }, GW.SkinStackSplit)
+GW.Add("town", { "CoinPickupFrame" }, GW.SkinCoinPickup)
 
 -- Separate bag windows ------------------------------------------------------------------------------
 
@@ -388,7 +388,7 @@ function GW.SkinBagWindow(frame)
   hooksecurefunc(frame, "UpdateItems", ns.Guard("hook UpdateItems", skinBagItems))
 end
 
-GW.Add("town", "framed", { "ContainerFrame1", "ContainerFrame2", "ContainerFrame3", "ContainerFrame4", "ContainerFrame5", "ContainerFrame6", "ContainerFrame7" }, GW.SkinBagWindow)
+GW.Add("town", { "ContainerFrame1", "ContainerFrame2", "ContainerFrame3", "ContainerFrame4", "ContainerFrame5", "ContainerFrame6", "ContainerFrame7" }, GW.SkinBagWindow)
 
 -- Merchant ------------------------------------------------------------------------------------------
 
@@ -560,8 +560,8 @@ function GW.SkinLootHistory(frame)
   GW.WatchRows(frame.ScrollBox, dressLootRow)
 end
 
-GW.Add("town", "framed", { "MasterLooterFrame" }, GW.SkinMasterLooter)
-GW.Add("town", "framed", { "GroupLootHistoryFrame" }, GW.SkinLootHistory)
+GW.Add("town", { "MasterLooterFrame" }, GW.SkinMasterLooter)
+GW.Add("town", { "GroupLootHistoryFrame" }, GW.SkinLootHistory)
 
 -- Macro, icon pickers, stopwatch, recipe inspection ------------------------------------------------------
 
@@ -632,12 +632,12 @@ function GW.SkinStopwatch(frame)
   GW.TextNamed({ "StopwatchTitle" }, "small", "text")
 end
 
-GW.Add("town", "onDemand", "Blizzard_MacroUI", { "MacroFrame" }, GW.SkinMacro)
-GW.Add("town", "onDemand", "Blizzard_MacroUI", { "MacroPopupFrame" }, GW.SkinIconPicker)
-GW.Add("town", "onDemand", "Blizzard_GuildBankUI", { "GuildBankPopupFrame" }, GW.SkinIconPicker)
-GW.Add("town", "framed", { "GearManagerPopupFrame" }, GW.SkinIconPicker)
-GW.Add("town", "onDemand", "Blizzard_TimeManager", { "StopwatchFrame" }, GW.SkinStopwatch)
-GW.Add("town", "onDemand", "Blizzard_Professions", { "InspectRecipeFrame" }, GW.SkinFramed)
+GW.AddOnDemand("town", "Blizzard_MacroUI", { "MacroFrame" }, GW.SkinMacro)
+GW.AddOnDemand("town", "Blizzard_MacroUI", { "MacroPopupFrame" }, GW.SkinIconPicker)
+GW.AddOnDemand("town", "Blizzard_GuildBankUI", { "GuildBankPopupFrame" }, GW.SkinIconPicker)
+GW.Add("town", { "GearManagerPopupFrame" }, GW.SkinIconPicker)
+GW.AddOnDemand("town", "Blizzard_TimeManager", { "StopwatchFrame" }, GW.SkinStopwatch)
+GW.AddOnDemand("town", "Blizzard_Professions", { "InspectRecipeFrame" }, GW.SkinFramed)
 
 -- Small dialogs -------------------------------------------------------------------------------------
 
@@ -688,10 +688,10 @@ function GW.SkinCurrencyTransfer(frame)
   if type(frame.Content) == "table" then styleTransferForm(frame.Content) end
 end
 
-GW.Add("town", "framed", { "GhostFrame" }, GW.SkinGhost)
-GW.Add("town", "popups", { "BasicMessageDialog" })
-GW.Add("town", "popups", { "AddonDialog" }, GW.SkinAddonDialog)
-GW.Add("town", "framed", { "CurrencyTransferMenu" }, GW.SkinCurrencyTransfer)
+GW.Add("town", { "GhostFrame" }, GW.SkinGhost)
+GW.Add("town", { "BasicMessageDialog" })
+GW.Add("town", { "AddonDialog" }, GW.SkinAddonDialog)
+GW.Add("town", { "CurrencyTransferMenu" }, GW.SkinCurrencyTransfer)
 
 -- Auction house multisell progress ------------------------------------------------------------------
 
@@ -714,4 +714,4 @@ function GW.SkinMultisell(frame)
   GW.SkinPlate(frame.CancelButton)
 end
 
-GW.Add("town", "onDemand", "Blizzard_AuctionHouseUI", { "AuctionHouseMultisellProgressFrame" }, GW.SkinMultisell)
+GW.AddOnDemand("town", "Blizzard_AuctionHouseUI", { "AuctionHouseMultisellProgressFrame" }, GW.SkinMultisell)

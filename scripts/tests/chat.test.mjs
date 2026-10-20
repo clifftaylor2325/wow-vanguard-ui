@@ -1359,7 +1359,7 @@ it("game windows in the Vanguard look: framed windows, popups, breath bar, and w
   addon.eval("MerchantFrame:Hide() MerchantFrame:Show()");
   expect(windowState(addon, "MerchantFrame"), "showing it again keeps the panel and paints nothing new").toMatchObject({ panel: true, painted: first.painted });
   expect(windowState(addon, "StaticPopup1"), "popups too").toMatchObject({ art: 0, inset: true, panel: true });
-  addon.eval('__window("TestOnlyNoInset").Inset = nil __window("TestOnlyBareInset").Inset = {} ns.GetModule("Windows").Add("windows", "framed", { "TestOnlyNoInset", "TestOnlyBareInset" })');
+  addon.eval('__window("TestOnlyNoInset").Inset = nil __window("TestOnlyBareInset").Inset = {} ns.GetModule("Windows").Add("windows", { "TestOnlyNoInset", "TestOnlyBareInset" })');
   expect(addon.eval("TestOnlyNoInset:Show() TestOnlyBareInset:Show() return { ns.Theme.PaintedCount() > 0, #ns.errors }"), "a window without an Inset, or with one that is no frame, is skinned all the same").toEqual([true, 0]);
   // Whether every breath bar in the container has the theme's bar texture (not the game's) and its frame art faded.
   const timers = () => addon.eval(`local ok = true
@@ -1474,16 +1474,16 @@ it("game windows registry: a window added under a group is skinned, its group's 
   const reg = `__window("TestOnlySocialFrame") __window("TestOnlyLaterFrame")
     local GW = ns.GetModule("Windows")
     -- TEST-ONLY skin: the window skin, then the window's extra art faded.
-    GW.Add("social", "framed", { "TestOnlySocialFrame" }, function(f) GW.Skin(f) GW.FadeParts(f, { "TestOnlyExtra" }) end)
+    GW.Add("social", { "TestOnlySocialFrame" }, function(f) GW.Skin(f) GW.FadeParts(f, { "TestOnlyExtra" }) end)
     TestOnlySocialFrame.TestOnlyExtra = TestOnlySocialFrame:CreateTexture()
     GW.AddButtons("TestOnlySocialFrame", { "TestOnlyLooseButton" }) CreateFrame("Button", "TestOnlyLooseButton", TestOnlySocialFrame)`;
   const on = loggedIn(WINDOWS_ENV + reg);
   on.eval("TestOnlySocialFrame:Show()");
   expect(windowState(on, "TestOnlySocialFrame"), "skinned like any window").toMatchObject({ art: 0, nine: 0, panel: true, title: true });
   expect(on.eval("return { TestOnlySocialFrame.TestOnlyExtra.__alpha, select('#', TestOnlyLooseButton:GetRegions()) > 0 }"), "its extra art faded and its loose button themed").toEqual([0, true]);
-  on.eval(`ns.GetModule("Windows").Add("map", "onDemand", "TestOnly_Part", { "TestOnlyLaterFrame" })`);
+  on.eval(`ns.GetModule("Windows").AddOnDemand("map", "TestOnly_Part", { "TestOnlyLaterFrame" })`);
   expect(windowState(on, "TestOnlyLaterFrame").panel, "a late registration for a window that already exists is skinned at once").toBe(true);
-  on.eval(`ns.GetModule("Windows").Add("map", "onDemand", "TestOnly_Later", { "TestOnlyLoadsLater" }) __window("TestOnlyLoadsLater")`);
+  on.eval(`ns.GetModule("Windows").AddOnDemand("map", "TestOnly_Later", { "TestOnlyLoadsLater" }) __window("TestOnlyLoadsLater")`);
   expect(on.eval("return ns.FrameState('vgWindow')[TestOnlyLoadsLater] == nil"), "a window that doesn't exist yet waits").toBe(true);
   on.fire("ADDON_LOADED", "TestOnly_Later");
   expect(on.eval("return ns.FrameState('vgWindow')[TestOnlyLoadsLater] == true"), "until its part of the game loads").toBe(true);

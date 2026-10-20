@@ -157,7 +157,7 @@ end
 
 -- Blizzard_PVPMatch loads at login on Forever (LoadOnDemand 0); registered on demand as well, so a client
 -- that loads it later is covered too.
-GW.Add("pvp", "onDemand", "Blizzard_PVPMatch", { "PVPMatchScoreboard", "PVPMatchResults" }, GW.SkinPvPMatch)
+GW.AddOnDemand("pvp", "Blizzard_PVPMatch", { "PVPMatchScoreboard", "PVPMatchResults" }, GW.SkinPvPMatch)
 
 -- Queue dialogs ---------------------------------------------------------------------------------
 
@@ -207,8 +207,8 @@ function GW.SkinPvPReadyPopup(frame)
   end
 end
 
-GW.Add("pvp", "popups", { "PVPReadyDialog", "PVPRoleCheckPopup", "PVPFramePopup" }, GW.SkinPvPDialog)
-GW.Add("pvp", "popups", { "PVPReadyPopup" }, GW.SkinPvPReadyPopup)
+GW.Add("pvp", { "PVPReadyDialog", "PVPRoleCheckPopup", "PVPFramePopup" }, GW.SkinPvPDialog)
+GW.Add("pvp", { "PVPReadyPopup" }, GW.SkinPvPReadyPopup)
 
 -- Objectives and the match timer ----------------------------------------------------------------
 
@@ -249,7 +249,7 @@ function GW.SkinWidgetBox(box)
   after(box, "UpdateWidgetLayout", fitBackdrop)
 end
 
-GW.Add("pvp", "framed", { "UIWidgetTopCenterContainerFrame", "UIWidgetBelowMinimapContainerFrame" }, GW.SkinWidgetBox)
+GW.Add("pvp", { "UIWidgetTopCenterContainerFrame", "UIWidgetBelowMinimapContainerFrame" }, GW.SkinWidgetBox)
 
 -- One countdown bar of the match timer, once: the theme's bar texture, its border and backdrop faded, a flat HUD
 -- panel, and the time in the theme font at the game's size. The big numbers stay the game's.
@@ -271,7 +271,7 @@ function GW.SkinTimerTracker(frame)
   after(frame, "OnEvent", GW.SkinTimerTracker, true)
 end
 
-GW.Add("pvp", "framed", { "TimerTracker" }, GW.SkinTimerTracker)
+GW.Add("pvp", { "TimerTracker" }, GW.SkinTimerTracker)
 
 -- The objective banner's texts and their text roles: the objective's name and its flash, and the line under it.
 GW.BANNER_TEXTS = { Title = "title", TitleFlash = "title", BonusLabel = "label" }
@@ -285,7 +285,7 @@ function GW.SkinPvPBanner(frame)
   end
 end
 
-GW.Add("pvp", "framed", { "PvPObjectiveBannerFrame" }, GW.SkinPvPBanner)
+GW.Add("pvp", { "PvPObjectiveBannerFrame" }, GW.SkinPvPBanner)
 
 -- Honor tab -------------------------------------------------------------------------------------
 
@@ -299,4 +299,4 @@ function GW.SkinPvPRankPane(frame)
   if type(pane.DescriptionScrollBar) == "table" then T.ScrollBar(pane.DescriptionScrollBar) end
 end
 
-GW.Add("pvp", "framed", { "PVPRankFrame" }, GW.SkinPvPRankPane)
+GW.Add("pvp", { "PVPRankFrame" }, GW.SkinPvPRankPane)

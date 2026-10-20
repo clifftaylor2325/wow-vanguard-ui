@@ -261,8 +261,8 @@ function GW.SkinWorldMap(map)
   watchMap(map)
 end
 
-GW.Add("map", "framed", { "WorldMapFrame" }, GW.SkinWorldMap)
-GW.Add("map", "onDemand", "Blizzard_WorldMap", { "WorldMapFrame" }, GW.SkinWorldMap)
+GW.Add("map", { "WorldMapFrame" }, GW.SkinWorldMap)
+GW.AddOnDemand("map", "Blizzard_WorldMap", { "WorldMapFrame" }, GW.SkinWorldMap)
 
 -- Quest log inside the map -------------------------------------------------------------------
 
@@ -443,8 +443,8 @@ function GW.SkinQuestPopup(frame)
 end
 
 GW.AddButtons("QuestLogPopupDetailFrame", { "QuestLogPopupDetailFrameAbandonButton", "QuestLogPopupDetailFrameShareButton", "QuestLogPopupDetailFrameTrackButton" })
-GW.Add("map", "framed", { "QuestMapFrame" }, GW.SkinQuestMap)
-GW.Add("map", "framed", { "QuestLogPopupDetailFrame" }, GW.SkinQuestPopup)
+GW.Add("map", { "QuestMapFrame" }, GW.SkinQuestMap)
+GW.Add("map", { "QuestLogPopupDetailFrame" }, GW.SkinQuestPopup)
 
 -- Battlefield map -----------------------------------------------------------------------------
 
@@ -456,7 +456,7 @@ function GW.SkinBattlefieldMap(map)
   GW.SkinText(GW.Part(_G, "BattlefieldMapTab.Text"), "small", "text")
 end
 
-GW.Add("map", "onDemand", "Blizzard_BattlefieldMap", { "BattlefieldMapFrame" }, GW.SkinBattlefieldMap)
+GW.AddOnDemand("map", "Blizzard_BattlefieldMap", { "BattlefieldMapFrame" }, GW.SkinBattlefieldMap)
 
 -- Group finder --------------------------------------------------------------------------------
 
@@ -700,9 +700,9 @@ function GW.SkinLFGTooltip(frame)
   T.Tooltip(frame)
 end
 
-GW.Add("map", "onDemand", "Blizzard_GroupFinder_VanillaStyle", { "LFGParentFrame" }, GW.SkinLFGParent)
-GW.Add("map", "onDemand", "Blizzard_GroupFinder_VanillaStyle", GW.LFG_PAGES, GW.SkinLFGPage)
-GW.Add("map", "onDemand", "Blizzard_GroupFinder_VanillaStyle", { "LFGBrowseSearchEntryTooltip" }, GW.SkinLFGTooltip)
+GW.AddOnDemand("map", "Blizzard_GroupFinder_VanillaStyle", { "LFGParentFrame" }, GW.SkinLFGParent)
+GW.AddOnDemand("map", "Blizzard_GroupFinder_VanillaStyle", GW.LFG_PAGES, GW.SkinLFGPage)
+GW.AddOnDemand("map", "Blizzard_GroupFinder_VanillaStyle", { "LFGBrowseSearchEntryTooltip" }, GW.SkinLFGTooltip)
 
 -- Legacy system -------------------------------------------------------------------------------
 
@@ -972,7 +972,7 @@ function GW.SkinLegacy(frame)
   GW.HookAfter(objectives, "Display", skinObjectives)
 end
 
-GW.Add("map", "onDemand", "Blizzard_LegacySystem", { "LegacySystemFrame" }, GW.SkinLegacy)
+GW.AddOnDemand("map", "Blizzard_LegacySystem", { "LegacySystemFrame" }, GW.SkinLegacy)
 
 -- Queue status ---------------------------------------------------------------------------------
 
@@ -999,7 +999,7 @@ function GW.SkinQueueStatus(frame)
   hooksecurefunc(frame, "Update", ns.Guard("hook Update", skinQueueEntries))
 end
 
-GW.Add("map", "framed", { "QueueStatusFrame" }, GW.SkinQueueStatus)
+GW.Add("map", { "QueueStatusFrame" }, GW.SkinQueueStatus)
 
 -- Calendar ---------------------------------------------------------------------------------------
 
@@ -1241,8 +1241,8 @@ function GW.SkinCalendarDialog(frame)
   if name == "CalendarViewHolidayFrame" then GW.FadeFrame(frame.Texture) end
 end
 
-GW.Add("map", "onDemand", "Blizzard_Calendar", { "CalendarFrame" }, GW.SkinCalendar)
-GW.Add("map", "onDemand", "Blizzard_Calendar", {
+GW.AddOnDemand("map", "Blizzard_Calendar", { "CalendarFrame" }, GW.SkinCalendar)
+GW.AddOnDemand("map", "Blizzard_Calendar", {
   "CalendarViewHolidayFrame", "CalendarViewRaidFrame", "CalendarViewEventFrame", "CalendarCreateEventFrame",
   "CalendarMassInviteFrame", "CalendarEventPickerFrame", "CalendarTexturePickerFrame",
 }, GW.SkinCalendarDialog)

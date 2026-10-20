@@ -122,7 +122,7 @@ function GW.SkinOpenMail(frame)
   after(frame, "Update", GW.SkinOpenMail)
 end
 
-GW.Add("social", "framed", { "OpenMailFrame" }, GW.SkinOpenMail)
+GW.Add("social", { "OpenMailFrame" }, GW.SkinOpenMail)
 GW.AddButtons("OpenMailFrame", { "OpenMailReplyButton", "OpenMailDeleteButton", "OpenMailCancelButton", "OpenMailReportSpamButton" })
 
 -- Guild window ----------------------------------------------------------------------------------
@@ -536,7 +536,7 @@ function GW.SkinGuildWindow(frame)
   after(frame, "SetDisplayMode", GW.SkinGuildWindow)
 end
 
-GW.Add("social", "framed", { "CommunitiesFrame" }, GW.SkinGuildWindow)
+GW.Add("social", { "CommunitiesFrame" }, GW.SkinGuildWindow)
 
 -- Dialogs -----------------------------------------------------------------------------------------
 
@@ -859,13 +859,13 @@ function GW.SkinCommunitiesDialogs(frame)
   dressNameAlert(frame.GuildNameAlertFrame)
 end
 
-GW.Add("social", "framed", { "CommunitiesGuildLogFrame" }, dialogWith(dressGuildLog))
-GW.Add("social", "framed", { "CommunitiesGuildTextEditFrame" }, dialogWith(dressTextEdit))
-GW.Add("social", "framed", { "CommunitiesGuildNewsFiltersFrame" }, dialogWith(dressNewsFilters))
-GW.Add("social", "framed", { "GuildInviteFrame" }, dialogWith(dressGuildInvite))
-GW.Add("social", "framed", { "CommunitiesSettingsDialog" }, dialogWith(dressSettings))
-GW.Add("social", "framed", { "CommunitiesAvatarPickerDialog" }, dialogWith(dressSelector))
-GW.Add("social", "framed", { "CommunitiesTicketManagerDialog" }, dialogWith(dressTicketManager))
+GW.Add("social", { "CommunitiesGuildLogFrame" }, dialogWith(dressGuildLog))
+GW.Add("social", { "CommunitiesGuildTextEditFrame" }, dialogWith(dressTextEdit))
+GW.Add("social", { "CommunitiesGuildNewsFiltersFrame" }, dialogWith(dressNewsFilters))
+GW.Add("social", { "GuildInviteFrame" }, dialogWith(dressGuildInvite))
+GW.Add("social", { "CommunitiesSettingsDialog" }, dialogWith(dressSettings))
+GW.Add("social", { "CommunitiesAvatarPickerDialog" }, dialogWith(dressSelector))
+GW.Add("social", { "CommunitiesTicketManagerDialog" }, dialogWith(dressTicketManager))
 -- The rename window's descriptions and cost label (QuestFont, black for the game's parchment), paths from the window.
 GW.RENAME_TEXTS = { "TitleFlow.Description", "RenameFlow.Description", "RenameFlow.CostLabel" }
 
@@ -881,7 +881,7 @@ local function dressGuildRename(frame)
   GW.SkinMoney(frame.MoneyFrame)
 end
 
-GW.Add("social", "framed", { "GuildRenameFrame" }, dressGuildRename)
+GW.Add("social", { "GuildRenameFrame" }, dressGuildRename)
 
 -- Channels and friends dialogs ------------------------------------------------------------------
 
@@ -955,7 +955,7 @@ local function dressChannels(frame)
   after(frame.ChannelList, "Update", dressChannelList)
 end
 
-GW.Add("social", "framed", { "ChannelFrame" }, dressChannels)
+GW.Add("social", { "ChannelFrame" }, dressChannels)
 
 -- The create channel dialog: its title (on the header when the client has one), its two field labels light, its voice check box.
 local function dressCreateChannel(popup)
@@ -975,10 +975,10 @@ local function dressInvitee(frame)
   paintText(frame.InviteeName, "text")
 end
 
-GW.Add("social", "framed", { "CreateChannelPopup" }, dialogWith(dressCreateChannel))
-GW.Add("social", "framed", { "FriendsFriendsFrame" }, dialogWith(dressFriendsFriends))
-GW.Add("social", "framed", { "BattleNetInviteFrame" }, dialogWith(dressInvitee))
-GW.Add("social", "framed", { "AddFriendFrame" }, GW.SkinAddFriend)
+GW.Add("social", { "CreateChannelPopup" }, dialogWith(dressCreateChannel))
+GW.Add("social", { "FriendsFriendsFrame" }, dialogWith(dressFriendsFriends))
+GW.Add("social", { "BattleNetInviteFrame" }, dialogWith(dressInvitee))
+GW.Add("social", { "AddFriendFrame" }, GW.SkinAddFriend)
 
 -- The social window -----------------------------------------------------------------------------
 
@@ -1261,7 +1261,7 @@ function GW.SkinSocial(frame)
   after(frame, "RefreshTabs", dressSocialTabs)
 end
 
-GW.Add("social", "framed", { "SocialUIFrame" }, GW.SkinSocial)
+GW.Add("social", { "SocialUIFrame" }, GW.SkinSocial)
 
 -- Guild creation --------------------------------------------------------------------------------
 
@@ -1326,7 +1326,7 @@ function GW.SkinGuildCreation(frame)
   dressTabard()
 end
 
-GW.Add("social", "framed", { "GuildRegistrarFrame", "PetitionFrame", "TabardFrame" }, GW.SkinGuildCreation)
+GW.Add("social", { "GuildRegistrarFrame", "PetitionFrame", "TabardFrame" }, GW.SkinGuildCreation)
 GW.AddButtons("GuildRegistrarFrame", { "GuildRegistrarFrameGoodbyeButton", "GuildRegistrarFrameCancelButton", "GuildRegistrarFramePurchaseButton" })
 GW.AddButtons("PetitionFrame", { "PetitionFrameCancelButton", "PetitionFrameSignButton", "PetitionFrameRequestButton", "PetitionFrameRenameButton" })
 GW.AddButtons("TabardFrame", { "TabardFrameAcceptButton", "TabardFrameCancelButton" })
@@ -1362,7 +1362,7 @@ function GW.SkinRolePopup(frame)
   dressRoleChecks(name)
 end
 
-GW.Add("social", "popups", { "RolePollPopup", "LFGInvitePopup" }, GW.SkinRolePopup)
+GW.Add("social", { "RolePollPopup", "LFGInvitePopup" }, GW.SkinRolePopup)
 
 -- Raid tab --------------------------------------------------------------------------------------
 
@@ -1454,8 +1454,8 @@ local function onRaidUILoaded(_, addon)
 end
 ns.On("ADDON_LOADED", onRaidUILoaded)
 
-GW.Add("social", "onDemand", "Blizzard_RaidUI", { "RaidFrame" }, GW.SkinRaidTab)
-GW.Add("social", "framed", { "RaidParentFrame" })
+GW.AddOnDemand("social", "Blizzard_RaidUI", { "RaidFrame" }, GW.SkinRaidTab)
+GW.Add("social", { "RaidParentFrame" })
 
 -- Guild control window ----------------------------------------------------------------------------
 
@@ -1599,7 +1599,7 @@ function GW.SkinGuildControl(frame)
   watchControl(frame)
 end
 
-GW.Add("social", "onDemand", "Blizzard_GuildControlUI", { "GuildControlUI" }, GW.SkinGuildControl)
+GW.AddOnDemand("social", "Blizzard_GuildControlUI", { "GuildControlUI" }, GW.SkinGuildControl)
 
 -- Toasts ----------------------------------------------------------------------------------------
 
@@ -1659,7 +1659,7 @@ function GW.SkinToast(frame)
   dressToastTooltip(frame.TooltipFrame)
 end
 
-GW.Add("social", "popups", { "BNToastFrame", "TimeAlertFrame" }, GW.SkinToast)
+GW.Add("social", { "BNToastFrame", "TimeAlertFrame" }, GW.SkinToast)
 
 -- The voice chat prompts (the offer to join a party's or raid's voice channel, the note that it is on) are the same
 -- kind of toast, with their icon under Icon: the toast skin, and the offer's Join button themed.
@@ -1668,4 +1668,4 @@ function GW.SkinVoicePrompt(frame)
   if type(frame) == "table" then GW.SkinButton(frame.AcceptButton) end
 end
 
-GW.Add("social", "popups", { "VoiceChatPromptActivateChannel", "VoiceChatChannelActivatedNotification" }, GW.SkinVoicePrompt)
+GW.Add("social", { "VoiceChatPromptActivateChannel", "VoiceChatChannelActivatedNotification" }, GW.SkinVoicePrompt)
