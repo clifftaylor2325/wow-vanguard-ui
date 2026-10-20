@@ -466,6 +466,11 @@ function methods:Disable()
   if not was and self.__scripts.OnDisable then self.__scripts.OnDisable(self) end
 end
 
+-- A button's normal font object: the one last set (nil until one is).
+function methods:SetNormalFontObject(font) self.__normalFont = font end
+-- The font object SetNormalFontObject gave.
+function methods:GetNormalFontObject() return self.__normalFont end
+
 -- Runs fn after a script's current handler, as HookScript does.
 function methods:HookScript(name, fn)
   local old = self.__scripts[name]

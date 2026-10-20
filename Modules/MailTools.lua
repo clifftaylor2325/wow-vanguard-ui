@@ -1,8 +1,10 @@
 -- Mail tools (off until you switch them on): a panel beside the mailbox that searches and
 -- filters the inbox, and presets for sending items to your alts.
 --   * Search: words typed in the panel (every word must appear in the sender, subject or first
---     item) and a filter (All, Money, Items, Sales) list up to 8 matching mails; Take takes the
---     mail's money and its first item, one click each. /vg mail <words> prints the same in chat.
+--     item) and a filter (All, Money, Items, Sales) list the matching mails, 8 rows at a time (the
+--     wheel scrolls them), each with the days it has left ("deleted in 2d" for one the game deletes
+--     with money or items still in it); Take takes the mail's money and its first item, one click
+--     each. /vg mail <words> prints the same in chat.
 --   * Presets: a name, the character it goes to and the words an item's name must contain,
 --     made with the panel's + Add button (a right-click on a preset's button removes it), or
 --     /vg mail preset add <name> <character> [words], remove <name>, list. With the Send Mail tab
@@ -25,6 +27,8 @@ local MT = ns.Module("MailTools", { defaults = { on = false, presets = {} } })
 MT.WIDTH, MT.PAD, MT.ROW, MT.ROWS, MT.BUTTONS, MT.BAGS, MT.ATTACH, MT.SCAN, MT.GAP = 270, T.SPACE.gap, T.ROW.height, 8, 4, 4, 12, 60, T.SPACE.gap
 -- The attachment slots a received mail has (ATTACHMENTS_MAX_RECEIVE in Blizzard_MailFrame/MailFrame.lua).
 MT.RECEIVE = 16
+-- Under this many days left a mail's time is in the warning colour; the first match the rows show (the wheel moves it).
+MT.WARN_DAYS, MT.offset = 3, 0
 -- Where the search line (the box, with the filter button on its middle) and the first row start, down from the top:
 -- under the heading; the room along the bottom for the preset buttons; and a preset button's width.
 local SEARCH_TOP, ROWS_TOP, PRESET_W = 30, 64, 60
@@ -40,13 +44,23 @@ local function plain(value)
   return type(value) == "string" and not ns.IsSecret(value) and value or ""
 end
 
--- Mail i as { index, sender, subject, money, items, link, cod, returnable, sale }; nil when there is none.
+-- Whether the game deletes mail i when it runs out (InboxItemCanDelete: a sale, a returned or system mail)
+-- rather than sending it back, while it still holds money or items that would be lost with it.
+local function lostAtExpiry(i, m)
+  local deletes = type(InboxItemCanDelete) == "function" and InboxItemCanDelete(i)
+  return not ns.IsSecret(deletes) and deletes == true and (m.money > 0 or m.items > 0)
+end
+
+-- Mail i as { index, sender, subject, money, items, link, cod, returnable, sale, days (left, or nil), lost (deleted
+-- with money or items in it when it runs out) }; nil when there is none.
 function MT.Read(i)
-  local _, _, sender, subject, money, cod, _, count, _, _, _, reply, gm, _, link = GetInboxHeaderInfo(i)
+  local _, _, sender, subject, money, cod, days, count, _, _, _, reply, gm, _, link = GetInboxHeaderInfo(i)
   if sender == nil and subject == nil then return nil end
-  return { index = i, sender = plain(sender), subject = plain(subject), money = ns.PlainNumber(money) or 0,
-    items = ns.PlainNumber(count) or 0, link = plain(link), cod = ns.PlainNumber(cod) or 0,
+  local m = { index = i, sender = plain(sender), subject = plain(subject), money = ns.PlainNumber(money) or 0,
+    items = ns.PlainNumber(count) or 0, link = plain(link), cod = ns.PlainNumber(cod) or 0, days = ns.PlainNumber(days),
     returnable = not ns.IsSecret(reply) and reply == true and not ns.IsSecret(gm) and gm ~= true, sale = type(GetInboxInvoiceInfo) == "function" and GetInboxInvoiceInfo(i) ~= nil }
+  m.lost = lostAtExpiry(i, m)
+  return m
 end
 
 -- Whether a mail passes the named filter (All keeps everything).
@@ -296,12 +310,28 @@ end
 
 -- The panel ----------------------------------------------------------------------------------
 
--- Row i's text and Take button: the mail shown (nil hides the row).
+-- A time left in days as words: "5d", or "7h" under a day.
+local function timeLeft(days)
+  if days >= 1 then return math.floor(days) .. "d" end
+  return math.max(1, math.floor(days * 24)) .. "h"
+end
+
+-- A row's time left: "5d" ("7h" under a day), in the warning colour under MT.WARN_DAYS, and then "deleted in
+-- 2d" for mail lost with what it holds when it runs out; nothing when the client doesn't say.
+local function paintDays(text, m)
+  if not m.days then return text:SetText("") end
+  local soon = m.days < MT.WARN_DAYS
+  text:SetText((soon and m.lost) and ("deleted in " .. timeLeft(m.days)) or timeLeft(m.days))
+  T.Color(text, soon and "warn" or "text2")
+end
+
+-- Row i's text, time left and Take button: the mail shown (nil hides the row).
 local function paintRow(row, m)
   row:SetShown(m ~= nil)
   row.mail = m
   if not m then return end
   row.text:SetText(describe(m))
+  paintDays(row.days, m)
   row.take:SetShown(m.cod == 0 and (m.money > 0 or m.items > 0))
 end
 
@@ -317,15 +347,38 @@ function MT.Paint()
   MT.PaintPresets()
 end
 
--- The matching mails in the rows, "+N more" for those past the rows, the filter's name, and the line shown
--- when no row is.
+-- Whether the server holds more mail than the client has loaded (the inbox shows at most so many; taking
+-- some loads the rest).
+function MT.MoreOnServer()
+  if type(GetInboxNumItems) ~= "function" then return false end
+  local shown, total = GetInboxNumItems()
+  return (ns.PlainNumber(total) or 0) > (ns.PlainNumber(shown) or 0)
+end
+
+-- The heading's count: which matches the rows show of how many ("1-8 of 23") while more match than fit, and
+-- "more on the server" while the server holds mail not loaded yet.
+local function countText(found)
+  local parts = {}
+  if found > MT.ROWS then parts[1] = string.format("%d-%d of %d", MT.offset + 1, MT.offset + MT.ROWS, found) end
+  if MT.MoreOnServer() then parts[#parts + 1] = "more on the server" end
+  return table.concat(parts, " · ")
+end
+
+-- The matching mails in the rows from the first the wheel has reached, the count in the heading, the filter's
+-- name, and the line shown when no row is.
 function MT.PaintRows(f)
   local found = MT.Find(MT.query)
-  for i, row in ipairs(f.rows) do paintRow(row, found[i]) end
-  f.more:SetShown(#found > MT.ROWS)
-  f.more:SetText(string.format("+%d more", #found - MT.ROWS))
+  MT.offset = math.max(0, math.min(MT.offset, #found - MT.ROWS))
+  for i, row in ipairs(f.rows) do paintRow(row, found[MT.offset + i]) end
+  f.count:SetText(countText(#found))
   f.filterButton.text:SetText(MT.filter)
   MT.PaintEmpty(#found)
+end
+
+-- The wheel over the panel: the rows move a mail a notch through the matches.
+function MT.Wheel(delta)
+  MT.offset = MT.offset - delta
+  if MT.frame then MT.PaintRows(MT.frame) end
 end
 
 -- Sits the panel right of the mail window's own panel (which reaches past the window), on its layer, as
@@ -345,11 +398,13 @@ function MT.PaintEmpty(found)
   MT.frame.empty:SetText(total == 0 and "Your inbox is empty." or "No mail matches.")
 end
 
--- A row's line of text, left of its Take button.
+-- A row's line of text, then its time left (small), left of its Take button.
 local function rowText(r)
+  r.days = T.Text(r:CreateFontString(nil, "OVERLAY"), "small", "text2")
+  r.days:SetPoint("RIGHT", r.take, "LEFT", -T.SPACE.tight, 0)
   r.text = T.Text(r:CreateFontString(nil, "OVERLAY"), "label", "text")
   r.text:SetPoint("LEFT", 0, 0)
-  r.text:SetPoint("RIGHT", r.take, "LEFT", -T.SPACE.tight, 0)
+  r.text:SetPoint("RIGHT", r.days, "LEFT", -T.SPACE.tight, 0)
   r.text:SetWordWrap(false)
 end
 
@@ -364,24 +419,31 @@ local function buildRow(f, i)
   return r
 end
 
+-- The rows, which the wheel over them moves through the matches.
+local function buildRows(f)
+  f.rows = {}
+  for i = 1, MT.ROWS do
+    f.rows[i] = buildRow(f, i)
+    f.rows[i]:EnableMouseWheel(true)
+    f.rows[i]:SetScript("OnMouseWheel", ns.Guard("wheel mail rows", function(_, delta) MT.Wheel(delta) end))
+  end
+end
+
 -- The search box and the filter button under the heading.
 local function buildSearch(f)
   f.search = W.Input(f, 150)
   f.search:SetPoint("TOPLEFT", MT.PAD, -SEARCH_TOP)
-  f.search:SetScript("OnTextChanged", ns.Guard("mail search", function(self) MT.query = self:GetText() or "" MT.Paint() end))
+  f.search:SetScript("OnTextChanged", ns.Guard("mail search", function(self) MT.query, MT.offset = self:GetText() or "", 0 MT.Paint() end))
   f.filterButton = W.Button(f, MT.filter, function() MT.CycleFilter() end, 90)
   f.filterButton:SetPoint("LEFT", f.search, "RIGHT", T.SPACE.gap, 0)
 end
 
--- Take all and Return all above the preset buttons, and beside them how many more mails match than the
--- rows show (both buttons act on those too; small muted).
+-- Take all and Return all above the preset buttons (both act on every match, those past the rows too).
 local function buildBulk(f)
   f.takeAll = W.Button(f, "Take all", function() MT.TakeAll() end, 100)
   f.takeAll:SetPoint("BOTTOMLEFT", MT.PAD, MT.PAD + T.BUTTON_H + T.SPACE.gap)
   f.returnAll = W.Button(f, "Return all", function() MT.ReturnAll() end, 100)
   f.returnAll:SetPoint("LEFT", f.takeAll, "RIGHT", T.SPACE.gap, 0)
-  f.more = T.Text(f:CreateFontString(nil, "OVERLAY"), "small", "muted")
-  f.more:SetPoint("LEFT", f.returnAll, "RIGHT", T.SPACE.gap, 0)
 end
 
 -- How far in from the left the i-th place along the bottom (a preset button, or + Add) sits.
@@ -409,10 +471,11 @@ local function buildPresets(f)
   f.hint:SetPoint("LEFT", f.addPreset, "RIGHT", T.SPACE.gap, 0)
 end
 
--- The panel's heading (ns.WindowTitle: a card's; the panel follows the mail window, so it has no close button),
--- the empty-state line (label muted) and the hint shown while there are no presets (a note: small muted).
+-- The panel's heading (ns.WindowTitle: a card's; the panel follows the mail window, so it has no close button)
+-- with the count beside its title, the empty-state line (label muted) and the hint shown while
+-- there are no presets (a note: small muted).
 local function heading(f)
-  ns.WindowTitle(f, "Find mail", { kind = "card" })
+  f.count = ns.WindowTitle(f, "Find mail", { kind = "card", count = "" }).count
   f.empty = T.Text(f:CreateFontString(nil, "OVERLAY"), "label", "muted")
   f.empty:SetPoint("TOP", 0, -ROWS_TOP - MT.ROW)
   f.hint = T.Text(f:CreateFontString(nil, "OVERLAY"), "small", "muted")
@@ -426,8 +489,7 @@ function MT.Build()
   local f = T.Panel(CreateFrame("Frame", "Vanguard_MailTools", UIParent), { shadow = true, alpha = T.ALPHA.opaque })
   f:SetSize(MT.WIDTH, ROWS_TOP + MT.ROWS * MT.ROW + FOOT)
   heading(f)
-  f.rows = {}
-  for i = 1, MT.ROWS do f.rows[i] = buildRow(f, i) end
+  buildRows(f)
   buildSearch(f)
   buildBulk(f)
   buildPresets(f)
@@ -440,6 +502,7 @@ function MT.CycleFilter()
   for i, name in ipairs(MT.FILTERS) do
     if name == MT.filter then MT.filter = MT.FILTERS[i % #MT.FILTERS + 1] break end
   end
+  MT.offset = 0
   MT.Paint()
 end
 
@@ -556,7 +619,7 @@ end
 -- Module entry point (Core/Modules.lua): the panel follows the mailbox.
 function MT.Enable(settings)
   MT.settings = settings
-  ns.On("MAIL_SHOW", ns.Guard("mail tools", function() MT.mailOpen = true MT.Paint() MT.PaintPresets() end))
+  ns.On("MAIL_SHOW", ns.Guard("mail tools", function() MT.mailOpen, MT.offset = true, 0 MT.Paint() MT.PaintPresets() end))
   ns.On("MAIL_INBOX_UPDATE", ns.Guard("mail tools", MT.Paint))
   ns.On("MAIL_CLOSED", ns.Guard("mail tools", function() MT.mailOpen = false if MT.frame then MT.frame:Hide() end end))
 end

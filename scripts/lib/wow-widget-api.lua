@@ -87,7 +87,7 @@ local FRAME = {
 local BUTTON = {
   "Click", "Disable", "Enable", "GetButtonState", "GetDisabledTexture",
   "GetFontString", "GetHighlightTexture", "GetNormalTexture",
-  "GetPushedTexture", "GetText", "IsEnabled", "LockHighlight",
+  "GetNormalFontObject", "GetPushedTexture", "GetText", "IsEnabled", "LockHighlight",
   "RegisterForClicks", "SetButtonState", "SetDisabledTexture", "SetEnabled",
   "SetFontString", "SetHighlightTexture", "SetNormalFontObject",
   "SetNormalTexture", "SetPushedTexture", "SetText", "UnlockHighlight",

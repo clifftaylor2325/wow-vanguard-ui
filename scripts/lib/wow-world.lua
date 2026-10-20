@@ -129,6 +129,10 @@ C_AddOns = {
   IsAddOnLoaded = function(name) return name == "Vanguard" end,
 }
 
+-- The panel manager's windows (Blizzard_UIParentPanelManager, UIPanelWindows.lua): name -> its layout
+-- ({ area = "left", pushable = 3 }); empty here, a test lists the windows it opens.
+UIPanelWindows = {}
+
 -- Modifier keys: whatever a test puts in world.keys.
 function IsShiftKeyDown() return world.keys.shift == true end
 function IsControlKeyDown() return world.keys.ctrl == true end
@@ -562,7 +566,10 @@ function UnitPlayerControlled(unit) return uf(unit, "isPlayer") == true or uf(un
 function UnitClass(unit) local u = resolveUnit(unit) return u and (u.className or u.class), u and u.class, 0 end
 function UnitLevel(unit) return uf(unit, "level") or 0 end
 function UnitReaction(unit) local u = resolveUnit(unit) return u and (u.reaction or 5) end
-function UnitIsDeadOrGhost(unit) return uf(unit, "dead") == true end
+function UnitIsDeadOrGhost(unit) return uf(unit, "dead") == true or uf(unit, "ghost") == true end
+-- A released player (the unit's ghost field), and a hunter feigning death (feign), whom the client also calls dead.
+function UnitIsGhost(unit) return uf(unit, "ghost") == true end
+function UnitIsFeignDeath(unit) return uf(unit, "feign") == true end
 function UnitIsConnected(unit) local u = resolveUnit(unit) return u ~= nil and u.connected ~= false end
 function UnitIsAFK(unit) return uf(unit, "afk") == true end
 function UnitOnTaxi(unit) return uf(unit, "taxi") == true end
@@ -632,8 +639,13 @@ function GetTotemDuration(slot)
   return world.durationObject(t.start or stub.now, t.duration or 0)
 end
 
--- Pet happiness (hunters): 1 unhappy, 2 content, 3 happy.
-function GetPetHappiness() return uf("pet", "happiness") end
+-- Pet happiness (hunters): 1 unhappy, 2 content, 3 happy, then the damage percent it gives (the pet's
+-- petDamage field, else the client's 75 / 100 / 125) and its loyalty rate.
+function GetPetHappiness()
+  local mood = uf("pet", "happiness")
+  if mood == nil then return nil end
+  return mood, uf("pet", "petDamage") or ({ 75, 100, 125 })[mood], 0
+end
 C_PetInfo = { GetPetHappiness = viaGlobal("GetPetHappiness") }
 
 -- Specializations: none on WoW Forever.
@@ -1074,8 +1086,10 @@ C_ActionBar = {
   HasAction = HasAction,
 }
 
--- Swing timers (the Forever client's C_SwingTimer): per hand, { start, duration }.
-world.swings = {}
+-- Swing timers (the Forever client's C_SwingTimer): per hand, { start, duration }. The range model:
+-- world.swingRange[kind] is whether the target is in that hand's reach (nil: no check could be made),
+-- and world.swingRangeChecks[kind] whether the addon asked for PLAYER_SWING_RANGE_UPDATE on it.
+world.swings, world.swingRange, world.swingRangeChecks = {}, {}, {}
 C_SwingTimer = {
   -- A hand's swing start and duration, or nil when it isn't swinging.
   GetSwingTimerInfo = function(kind)
@@ -1083,6 +1097,10 @@ C_SwingTimer = {
     if not s then return nil end
     return s.start or stub.now, s.duration or 0
   end,
+  -- Turns the range events for a swing type on or off (SwingTimerDocumentation.lua).
+  EnableRangeCheck = function(kind, enable) world.swingRangeChecks[kind] = enable end,
+  -- Whether the target is within that swing type's reach; nil when no check could be made.
+  IsTargetWithinSwingRange = function(kind) return world.swingRange[kind] end,
 }
 
 -- Items, bags and money ------------------------------------------------------------------------
@@ -1247,6 +1265,8 @@ C_QuestLog = {
   GetLogIndexForQuestID = function(id) return (questIndex(id)) end,
   GetQuestObjectives = function(id) local _, q = questIndex(id) return q and q.objectives or {} end,
   IsComplete = function(id) local _, q = questIndex(id) return q ~= nil and q.isComplete == true end,
+  -- QuestLogDocumentation.lua's IsFailed: a quest marked failed = true (a timed quest run out, an escort lost).
+  IsFailed = function(id) local _, q = questIndex(id) return q ~= nil and q.failed == true end,
   GetNumQuestWatches = function() local n = 0 for _, q in ipairs(world.quests) do if q.watched then n = n + 1 end end return n end,
   -- The i-th watched quest's id.
   GetQuestIDForQuestWatchIndex = function(i)
@@ -1805,15 +1825,19 @@ end
 
 -- The mailbox --------------------------------------------------------------------------------------
 -- world.mail = { mail, ... }, the inbox in order: { sender, subject, money, cod (the pay-on-delivery amount, 0 if none), gm, daysLeft, itemCount,
+-- deletes (true: the game deletes it when it runs out, as a sale or a returned mail, rather than sending it back),
 -- firstItemQuantity, firstItemLink, slots (the attachment slots holding an item, as a set; slots 1 to itemCount
 -- when unset), letter (true: a letter with text, kept once emptied), invoice = { type ("seller",
 -- "seller_temp_invoice", "buyer"), itemName, playerName, bid, buyout, deposit, consignment, count } }, read by
--- the globals Blizzard_MailFrame/MailFrame.lua calls (GetInboxNumItems, GetInboxHeaderInfo, GetInboxInvoiceInfo, HasInboxItem);
+-- the globals Blizzard_MailFrame/MailFrame.lua calls (GetInboxNumItems, GetInboxHeaderInfo, GetInboxInvoiceInfo, HasInboxItem,
+-- InboxItemCanDelete); world.mailOnServer is how many the server holds when more than the inbox loaded;
 -- world.openMailbox() fires MAIL_SHOW and MAIL_INBOX_UPDATE (MailInfoDocumentation.lua).
 world.mail = {}
 
--- How many mails are in the inbox, and how many there are in all.
-function GetInboxNumItems() return #world.mail, #world.mail end
+-- How many mails are in the inbox, and how many there are in all (on the server too).
+function GetInboxNumItems() return #world.mail, world.mailOnServer or #world.mail end
+-- Whether mail i is deleted when it runs out (MailFrame.lua: "Time until deleted"), rather than returned.
+function InboxItemCanDelete(i) return (world.mail[i] or {}).deletes == true end
 -- A mail's header: packageIcon, stationeryIcon, sender, subject, money, CODAmount, daysLeft, itemCount,
 -- wasRead, wasReturned, textCreated, canReply, isGM, firstItemQuantity, firstItemLink (nothing for none).
 function GetInboxHeaderInfo(i)
@@ -2184,7 +2208,7 @@ end
 -- The tooltip's setters, recorded so tests can read what it shows.
 local function tooltipSetters(tip)
   -- What the tooltip was set to: a unit, an equipped item, a link, an item or a spell id.
-  function tip:SetUnit(unit) self.__unit = unit self.__lines = { { text = UnitName(unit) } } end
+  function tip:SetUnit(unit) self.__unit = unit self.__lines = { { text = UnitName(unit) } } self:Show() return true end
   function tip:SetInventoryItem(unit, slot) self.__item = { unit = unit, slot = slot } end
   function tip:SetHyperlink(link) self.__link = link end
   function tip:SetItemByID(id) self.__itemId = id end

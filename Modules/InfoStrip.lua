@@ -2,7 +2,8 @@
 --   durability (orange at 25% or less, red at 10% or less) · free bag slots
 --   gold
 --   fps and latency · ammo (hunters, warriors, rogues) or soul shards (warlocks)
---   the time and the day and date ("21:04  Tue 13 Oct"), with a calendar button
+--   the time as the game's clock shows it and the day and date ("21:04  Tue 13 Oct"), with a calendar button
+--     that counts the invites waiting
 --   leveling: XP per hour · time to level
 --   gold per hour this session · what your auction sales came to (Modules/AuctionLedger.lua, off until you turn it on)
 --   your damage per second in the last fight · your place in it in a group (each off until you turn it on)
@@ -24,7 +25,12 @@ local IS = ns.Module("InfoStrip", {
   },
 })
 
+-- The strip's width and row height with text at 100 %; a larger Text size widens and heightens them in step.
 IS.WIDTH, IS.ROW = 182, 18
+-- Where the strip sits (just under the minimap), the most rows it shows, the room it keeps under its rows,
+-- and the gap from its last row down to the quest tracker's spot.
+IS.HOME = { "TOPRIGHT", "TOPRIGHT", -12, -200 }
+IS.MOST_ROWS, IS.EDGE, IS.TRACKER_GAP = 7, 4, 6
 -- Where each block sits: row, and its side of the row (two columns, so no two blocks run together).
 IS.BLOCKS = {
   durability = { 1, "LEFT" }, bags = { 1, "RIGHT" },
@@ -263,10 +269,10 @@ function IS.TEXT.durability()
   if p then return p .. "% durability", IS.DurabilityColor(p) end
 end
 
--- Free bag slots (red when full).
+-- Free bag slots, toned as the backpack's count (amber when few, red when full).
 function IS.TEXT.bags()
   local n = IS.FreeSlots()
-  if n then return n .. " free", n == 0 and "bad" or "text" end
+  if n then return n .. " free", ns.GetModule("MenuStrip").FreeTone(n) end
 end
 
 -- Frame rate and latency.
@@ -310,15 +316,30 @@ function IS.TEXT.shards()
   if n then return "shards " .. n, n == 0 and "bad" or "text" end
 end
 
--- The time.
+-- The time as the game's clock shows it (realm or local time, 12 or 24 hours, as set in the game's
+-- clock window); the computer's 24-hour time on a client without the game's clock helpers.
 function IS.TEXT.clock()
-  local t = ask("date", "%H:%M")
+  local t = ask("GameTime_GetTime", true) or ask("date", "%H:%M")
   if t then return t, "text" end
 end
 
--- The day and date, "Tue 13 Oct".
+-- Day and month names for the realm's date, as date("%a %d %b") writes the computer's.
+IS.WEEKDAYS = { "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat" }
+IS.MONTHS = { "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec" }
+
+-- The realm's date ("Tue 13 Oct", C_DateAndTime) while the game's clock shows realm time, so the date beside
+-- the time is that time's day; nil while it shows local time or on a client without these helpers.
+local function realmDate()
+  local get = C_DateAndTime and C_DateAndTime.GetCurrentCalendarTime
+  if type(get) ~= "function" or type(_G.GameTime_GetTime) ~= "function" or ask("GetCVarBool", "timeMgrUseLocalTime") then return nil end
+  local d = get()
+  local day, month = IS.WEEKDAYS[ns.PlainNumber(d.weekday) or 0], IS.MONTHS[ns.PlainNumber(d.month) or 0]
+  if day and month and ns.PlainNumber(d.monthDay) then return string.format("%s %02d %s", day, d.monthDay, month) end
+end
+
+-- The day and date, "Tue 13 Oct": the day the time beside it belongs to.
 function IS.TEXT.date()
-  local t = ask("date", "%a %d %b")
+  local t = realmDate() or ask("date", "%a %d %b")
   if t then return t, "text" end
 end
 
@@ -362,6 +383,27 @@ end
 
 -- Showing -----------------------------------------------------------------------------------
 
+-- How much larger the strip's text is drawn than at 100 % Text size; never under 1, so smaller text
+-- keeps today's strip (the calendar button's 18-unit slot still fits a row).
+local function textGrowth()
+  return math.max(1, T.RoleSize("small") / T.ROLES.small[1])
+end
+
+-- The strip's row height at the current Text size.
+function IS.Row()
+  return math.floor(IS.ROW * textGrowth() + 0.5)
+end
+
+-- The strip's width at the current Text size.
+function IS.Width()
+  return math.floor(IS.WIDTH * textGrowth() + 0.5)
+end
+
+-- How far down from the strip's top a row's middle sits.
+local function rowY(row)
+  return -(row - 0.5) * IS.Row()
+end
+
 -- The lowest row with a block showing (0 when nothing shows).
 local function rowsShown()
   local rows = 0
@@ -376,7 +418,7 @@ end
 local function fitRows()
   local rows = rowsShown()
   IS.frame:SetShown(rows > 0 and V.Shows(IS.frame))
-  IS.frame:SetHeight(IS.ROW * math.max(rows, 2) + 4)
+  IS.frame:SetHeight(IS.Row() * math.max(rows, 2) + IS.EDGE)
 end
 
 -- Sits the date right after the time, or at the row's left edge while the time is off.
@@ -384,7 +426,7 @@ function IS.PlaceDate()
   local date, clock = IS.texts.date, IS.texts.clock
   date:ClearAllPoints()
   if clock:IsShown() then date:SetPoint("LEFT", clock, "RIGHT", IS.DATE_GAP, 0)
-  else date:SetPoint("LEFT", IS.frame, "TOPLEFT", 6, -(IS.BLOCKS.date[1] - 0.5) * IS.ROW) end
+  else date:SetPoint("LEFT", IS.frame, "TOPLEFT", 6, rowY(IS.BLOCKS.date[1])) end
 end
 
 -- The button that goes with a block, by its key on IS: the calendar with the date, the clock's hit area with the time.
@@ -422,12 +464,17 @@ end
 
 -- Building ----------------------------------------------------------------------------------
 
--- One block's text, at its side of its row (left blocks 6 in from the left edge, right ones 6 from the right).
-local function addText(frame, key)
+-- Sets a block's text at its side of its row (left blocks 6 in from the left edge, right ones 6 from the right).
+local function placeText(fs, key)
   local row, point = IS.BLOCKS[key][1], IS.BLOCKS[key][2]
-  local fs = T.Text(frame:CreateFontString(nil, "OVERLAY"), "small", "text")
-  local x = point == "LEFT" and 6 or -6
-  fs:SetPoint(point, frame, "TOP" .. point, x, -(row - 0.5) * IS.ROW)
+  fs:ClearAllPoints()
+  fs:SetPoint(point, IS.frame, "TOP" .. point, point == "LEFT" and 6 or -6, rowY(row))
+end
+
+-- One block's text, in its place.
+local function addText(key)
+  local fs = T.Text(IS.frame:CreateFontString(nil, "OVERLAY"), "small", "text")
+  placeText(fs, key)
   return fs
 end
 
@@ -437,15 +484,59 @@ local function openCalendar()
   if type(ToggleCalendar) == "function" then ToggleCalendar() end
 end
 
+-- How many calendar invites wait for your answer (0 when the client can't say or hides it).
+function IS.PendingInvites()
+  local get = C_Calendar and C_Calendar.GetNumPendingInvites
+  return type(get) == "function" and ns.PlainNumber(get()) or 0
+end
+
+-- The calendar button's tooltip: "Calendar", and how many invites wait.
+function IS.CalendarTip(b)
+  GameTooltip:SetOwner(b, "ANCHOR_LEFT")
+  GameTooltip:SetText("Calendar", T.RGB("text"))
+  local n = IS.PendingInvites()
+  local r, g, bl = T.RGB("text2")
+  if n > 0 then GameTooltip:AddLine(n == 1 and "1 invite waiting" or n .. " invites waiting", r, g, bl) end
+  GameTooltip:Show()
+end
+
+-- The invite count in the calendar button's corner, shown only while invites wait; its backing with it.
+function IS.PaintInvites()
+  local n = IS.PendingInvites()
+  IS.invites:SetText(n > 0 and tostring(n) or "")
+  IS.invitesBack:SetShown(n > 0)
+end
+
+-- The calendar button's invite count: the badge text over a dark backing, in its bottom-right corner, in the
+-- backpack count's look (Modules/MenuStrip.lua; the strip is at the UI's scale, so no scale correction).
+local function addInvites(b)
+  local pad, back = ns.GetModule("MenuStrip").COUNT_PAD, T.Snap(b:CreateTexture(nil, "OVERLAY", nil, 7))
+  back:SetTexture(T.WHITE)
+  T.Tint(back, "edge", ns.GetModule("MenuStrip").COUNT_BACK)
+  local fs = T.Text(b:CreateFontString(nil, "OVERLAY"), "badge")
+  fs:SetPoint("BOTTOMRIGHT", b, "BOTTOMRIGHT", -pad, pad)
+  back:SetPoint("TOPLEFT", fs, "TOPLEFT", -pad, pad)
+  back:SetPoint("BOTTOMRIGHT", fs, "BOTTOMRIGHT", pad, -pad)
+  IS.invites, IS.invitesBack = fs, back
+end
+
+-- Sets the calendar button at the date row's right end.
+local function placeCalendar(b)
+  b:ClearAllPoints()
+  b:SetPoint("RIGHT", IS.frame, "TOPRIGHT", -IS.CALENDAR_GAP, rowY(IS.BLOCKS.date[1]))
+end
+
 -- The calendar button (shown with the date): a slot button of the minimap's kind at the date row's right end,
--- opening the calendar like /calendar.
+-- opening the calendar like /calendar, with a count of the invites waiting. None where the realm has no calendar.
 local function addCalendar(frame)
+  if IS.CalendarOff() then return end
   local b = CreateFrame("Button", "Vanguard_InfoStripCalendar", frame)
-  b:SetPoint("RIGHT", frame, "TOPRIGHT", -IS.CALENDAR_GAP, -(IS.BLOCKS.date[1] - 0.5) * IS.ROW)
+  placeCalendar(b)
   b:SetScript("OnClick", ns.Guard("click info strip calendar", openCalendar))
-  b:SetScript("OnEnter", ns.Guard("info strip calendar tip", function(self) GameTooltip:SetOwner(self, "ANCHOR_LEFT") GameTooltip:SetText("Calendar", T.RGB("text")) GameTooltip:Show() end))
+  b:SetScript("OnEnter", ns.Guard("info strip calendar tip", IS.CalendarTip))
   b:SetScript("OnLeave", ns.Guard("info strip calendar tip", function() GameTooltip:Hide() end))
   ns.GetModule("Minimap").SlotButton(b, IS.CALENDAR_ICON.slot, IS.CALENDAR, IS.CALENDAR_GLYPH)
+  addInvites(b)
   IS.calendar = b
 end
 
@@ -456,11 +547,29 @@ function IS.ClockClick()
   ask("ToggleTimeManager")
 end
 
+-- The time tooltip's lines: a label and the game's helper that gives that time in the clock's format.
+IS.CLOCK_TIMES = { { "Realm time", "GameTime_GetGameTime" }, { "Local time", "GameTime_GetLocalTime" } }
+
+-- The time's tooltip: realm and local time (with AM/PM in 12-hour mode), and what a click does.
+function IS.ClockTip(b)
+  GameTooltip:SetOwner(b, "ANCHOR_LEFT")
+  GameTooltip:SetText("Time", T.RGB("text"))
+  local r, g, bl = T.RGB("text2")
+  for _, line in ipairs(IS.CLOCK_TIMES) do
+    local t = ask(line[2], true)
+    if type(t) == "string" then GameTooltip:AddDoubleLine(line[1], t, r, g, bl, T.RGB("text")) end
+  end
+  GameTooltip:AddLine("Click: the game's clock and alarm", r, g, bl)
+  GameTooltip:Show()
+end
+
 -- The time's hit area: the text takes the mouse, so a click reaches the game's clock window.
 local function addClock(frame)
   local b = CreateFrame("Button", "Vanguard_InfoStripClock", frame)
   b:SetAllPoints(IS.texts.clock)
   b:SetScript("OnClick", ns.Guard("click info strip clock", IS.ClockClick))
+  b:SetScript("OnEnter", ns.Guard("info strip clock tip", IS.ClockTip))
+  b:SetScript("OnLeave", ns.Guard("info strip clock tip", function() GameTooltip:Hide() end))
   IS.clockButton = b
 end
 
@@ -497,14 +606,38 @@ local function watchVisibility(f)
   IS.ApplyVisibility()
 end
 
+-- The quest tracker's default spot: under the strip's last row at the current Text size, so a larger Text
+-- size never runs the strip into the tracker.
+function IS.TrackerPoint()
+  local y = IS.HOME[4] - IS.Row() * IS.MOST_ROWS - IS.EDGE - IS.TRACKER_GAP
+  return { "TOPRIGHT", "TOPRIGHT", IS.HOME[3], y }
+end
+
+-- Moves the quest tracker's default spot to follow the strip's height (a spot the player saved wins). Out of
+-- a fight only: the game's tracker, with its item buttons, is pinned to that spot.
+function IS.MoveTracker()
+  ns.SetMoverDefault("questtracker", IS.TrackerPoint())
+end
+
+-- Lays the strip out again for the current Text size: its width, every block on its row and the
+-- calendar button beside the date (plain frames, so this is fine in a fight), then the rows that show.
+function IS.Layout()
+  IS.frame:SetWidth(IS.Width())
+  for key, fs in pairs(IS.texts) do placeText(fs, key) end
+  if IS.calendar then placeCalendar(IS.calendar) end
+  IS.PlaceDate()
+  fitRows()
+  ns.OutOfCombat(IS.MoveTracker, "infostrip-tracker")
+end
+
 -- The movable strip, just under the minimap.
 local function build()
   local f = T.HudPanel(CreateFrame("Frame", "Vanguard_InfoStrip", UIParent))
   IS.frame = f
-  f:SetSize(IS.WIDTH, IS.ROW * 2 + 4)
-  ns.Mover(f, "infostrip", "Info strip", { "TOPRIGHT", "TOPRIGHT", -12, -200 })
+  f:SetSize(IS.Width(), IS.Row() * 2 + IS.EDGE)
+  ns.Mover(f, "infostrip", "Info strip", IS.HOME)
   IS.texts = {}
-  for key in pairs(IS.BLOCKS) do IS.texts[key] = addText(f, key) end
+  for key in pairs(IS.BLOCKS) do IS.texts[key] = addText(key) end
   addButtons(f)
   ticker(f)
   IS.UpdateAll()
@@ -556,6 +689,16 @@ local function keepReminders(settings)
   if settings.clock and not IS.CalendarOff() then ns.On("CALENDAR_EVENT_ALARM", IS.CalendarAlarm) end
 end
 
+-- The events that change how many calendar invites wait (the game's calendar button listens for the same).
+IS.INVITE_EVENTS = { "CALENDAR_UPDATE_PENDING_INVITES", "PLAYER_ENTERING_WORLD" }
+
+-- Keeps the calendar button's invite count up to date; nothing to keep where the realm has no calendar.
+local function watchInvites()
+  if not IS.calendar then return end
+  IS.PaintInvites()
+  for _, event in ipairs(IS.INVITE_EVENTS) do ns.On(event, IS.PaintInvites) end
+end
+
 -- XP came in: count it and repaint the leveling blocks.
 local function onXP()
   IS.CountXP()
@@ -574,12 +717,14 @@ local function watch()
   for _, event in ipairs({ "PLAYER_REGEN_ENABLED", "DAMAGE_METER_RESET" }) do ns.On(event, function() IS.Paint("dps") IS.Paint("rank") end) end
 end
 
--- Module entry point (Core/Modules.lua).
+-- Module entry point (Core/Modules.lua): the strip, laid out again whenever the Text size changes.
 function IS.Enable(settings)
   IS.settings = settings
   hideReplaced(settings)
   keepReminders(settings)
   IS.StartSession()
   build()
+  T.OnChanged(IS.Layout)
   watch()
+  watchInvites()
 end

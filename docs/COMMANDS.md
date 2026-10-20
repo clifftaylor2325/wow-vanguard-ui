@@ -64,7 +64,7 @@ Every `/vg` command (`/vanguard` works too), grouped by what it does. `/vg help`
 | `/vg quests`, `/vg way`, `/vg questdata` | Quest log, waypoints, what the client says about a quest |
 | `/vg quests history [n]` | The latest quests any of your characters turned in, and who did each |
 | `/vg guide probe` | What this client returns for the reads a levelling guide would use (chat only) |
-| `/vg probe [chat\|fight\|last]` | One out-of-combat run that asks the client the open questions and opens the answers in a copy box (saved in SavedVariables); `fight` takes the secrecy reads in the next fight; `last` reopens the saved report |
+| `/vg probe [chat\|fight\|last]` | One out-of-combat run that asks the client the open questions and opens the answers in a copy box (saved in SavedVariables); typed in a fight it takes only the party, mark and boss reads; `fight` takes the secrecy reads in the next fight; `last` reopens the saved report |
 | `/vg ah ...` | Auction prices, shopping lists, scans |
 | `/vg weights [wizard\|...]` | Stat weights for gear upgrades |
 | `/vg craft ...`, `/vg mail ...` | Craft queue; mail tools (off until switched on) |
@@ -75,7 +75,7 @@ Every `/vg` command (`/vanguard` works too), grouped by what it does. `/vg help`
 | `/vg alts`, `/vg stock`, `/vg inventory`, `/vg vendors` | Alt overview, items to keep, characters remembered, merchants remembered |
 | `/vg junk`, `/vg sell` | Your sell list; sell every stack of one item at a merchant |
 | `/vg ranks`, `/vg trainers`, `/vg legacy` | Spell ranks, what trainers teach, the Legacy system |
-| `/vg copy` | The recent chat as plain text |
+| `/vg copy` | The recent chat of the shown tab as plain text, at its newest line |
 | `/vg talents [plan\|spend\|clear\|export\|import]` | The talent planner on the game's talents window |
 
 ## Help and diagnostics
@@ -126,12 +126,12 @@ Every `/vg` command (`/vanguard` works too), grouped by what it does. `/vg help`
 /vg binds                       this spec's click-casting and hover-key bindings
 /vg preview [party|10|25|40|off]   the raid frames filled with sample players, to check them without a group (not saved; joining a group or combat ends it)
 /vg keybind                     keybind mode: hover an action button and press a key, a side mouse button or the wheel to bind it; Backspace clears, Escape leaves
-/vg copy                        the recent chat as plain text, ready to copy
+/vg copy                        the recent chat of the shown tab as plain text, ready to copy
 /vg quests [history [n]]        open or close Vanguard's quest log; history lists the latest quests any of your characters turned in
 /vg lfg [probe]                 open or close the group board: looking-for-more and looking-for-group posts from chat; `probe` says what chat it has heard and which channels you are in
 /vg questdata [questID]         what the client says about a quest (or the quests an open NPC offers and those you track), and whether it flags quests new in WoW Forever
 /vg guide probe                 what this client returns for the quest, map, taxi and unit reads a levelling guide would use, and for the unit tooltip data of your target (its line count only) (chat only; nothing changes)
-/vg probe [chat|fight|last]    one run out of combat asks the client the open questions (SavedVariables round trip, new-quest flag, threat secrecy, group listing, secure paging, realm and name format, C_Secrets predicates, restriction states, navigation, reads Forever's API docs lack) and opens the report in a copy box; chat prints it too; fight takes the secrecy reads in the next fight; last reopens the saved report
+/vg probe [chat|fight|last]    one run out of combat asks the client the open questions (SavedVariables round trip, new-quest flag, threat secrecy, group listing, secure paging, realm and name format, C_Secrets predicates, restriction states, navigation, reads Forever's API docs lack, quest and map reads, party health, raid marks and boss units, the bars' CVar defaults, reward XP and watched faction) and opens the report in a copy box; chat prints it too; typed in a fight it takes only the party, mark and boss reads and keeps them; fight takes the secrecy reads in the next fight; last reopens the saved report with the fight reads after it
 /vg junk [<item>|remove <item>|clear]   your sell list: items a merchant offers to buy from you with your grays (off until switched on); the question sells only the stacks it lists, and Enter alone never answers it
 /vg bag [add <name> <item>|remove <item>|delete <name>|top <name>|deposit <name>]   your bag categories: a name and its items, each under its own header in the combined bag, above the built-in sections; deposit sends one to the open bank
 /vg sell <item>                 at a merchant: sell every stack of an item in your bags, after a question

@@ -444,9 +444,9 @@ it("deals: a scan lists what's under 70 % of the 7-day market or under vendor pr
     [true, "Linen Cloth", "10c", "< vendor", "Vendor price 13c"], [true, "Strange Dust", "5s 0c", "-56 %", "7-day market 11s 40c"], [false, false, false, false, false]]);
   expect([dealsCard(addon), isTok(addon, addon.eval(`return ${TABLE}.rows[2].cells.off.__textColor`), "good")], "the count; how far under in good").toEqual([[true, 2, "Deals", "2 found", ""], true]);
   addon.hover(`${TABLE}.rows[2]`);
-  expect(tipLines(addon), "what the dust was judged against").toEqual(["Strange Dust", "7-day market: 11s 40c", "Click to show it in the auction house's list."]);
+  expect(tipLines(addon), "what the dust was judged against, and when it was found").toEqual(["Strange Dust", "7-day market: 11s 40c", "Found 0 min ago.", "Click to show it in the auction house's list."]);
   addon.hover(`${TABLE}.rows[1]`);
-  expect(tipLines(addon), "the linen's vendor price it is under (one day of market is no basis)").toEqual(["Linen Cloth", "Vendor price: 13c", "Click to show it in the auction house's list."]);
+  expect(tipLines(addon), "the linen's vendor price it is under (one day of market is no basis)").toEqual(["Linen Cloth", "Vendor price: 13c", "Found 0 min ago.", "Click to show it in the auction house's list."]);
   addon.hover(null);
   expect(addon.eval("return GameTooltip:IsShown()"), "gone with the mouse").toBe(false);
   addon.click(`${TABLE}.rows[1]`);
@@ -460,7 +460,7 @@ it("deals: one outlier day doesn't set the market, and a single day of market is
   const alone = atAuctionHouse(DUSTS, { savedVariables: dustHistory(1000, `, markets = { [${TODAY - 1}] = 33566 }`) });
   expect(alone.eval("return ns.GetModule('AuctionHelper').Market7(10940, __now)"), "one day of market: none, so the low before today stands in").toBe(null);
 });
-it("deals: each search judges its item again; a low before today stands in for a market; closing forgets them", () => {
+it("deals: each search judges its item again; a low before today stands in for a market; kept 30 minutes after closing", () => {
   const addon = atAuctionHouse(BAGS + DUST_UP + CLICK_LUA, { savedVariables: dustHistory(150) });
   pickTab(addon, 4);
   pick(addon, `${HELPER}.DEALS`);
@@ -484,14 +484,55 @@ it("deals: each search judges its item again; a low before today stands in for a
   addon.wheel(`${TABLE}.rows[1]`, 9);
   expect(dealRow(addon, 1)[1], "nor above the first").toBe("item 50010");
   addon.world.closeAuctionHouse();
-  addon.eval("ns.AuctionPrices.RecordSeen(50001, 1)");
+  addon.eval("__now = __now + 720 ns.AuctionPrices.RecordSeen(50001, 1)");
   addon.world.openAuctionHouse();
   addon.update(0);
   pickTab(addon, 4);
-  expect(dealsCard(addon), "a new visit starts with none, Deals still shown; nothing is judged while the house is closed").toEqual([true, 0, "Deals", "", "None yet: a scan or a search finds them."]);
+  expect([dealsCard(addon), dealRow(addon, 10).slice(1, 4)], "back from the mailbox 12 minutes later: the deals are kept and say how old; nothing was judged while the house was closed").toEqual([[true, 10, "Deals", "10 found, the oldest 12 min ago", ""], ["item 50001", "9s 90c", "-1 %"]]);
+  addon.hover(null);
+  addon.hover(`${TABLE}.rows[1]`);
+  expect(tipLines(addon)[2], "each row says when it was found").toBe("Found 12 min ago.");
+  addon.world.closeAuctionHouse();
+  addon.eval("__now = __now + 1799");
+  addon.world.openAuctionHouse();
+  addon.update(0);
+  expect(addon.eval(`return next(${HELPER}.deals) ~= nil`), "the 30 minutes count from closing: still kept a second short of them").toBe(true);
+  addon.world.closeAuctionHouse();
+  addon.eval("__now = __now + 1800");
+  addon.world.openAuctionHouse();
+  addon.update(0);
+  pickTab(addon, 4);
+  expect(dealsCard(addon), "30 minutes after the house closed they are gone, Deals still shown").toEqual([true, 0, "Deals", "", "None yet: a scan or a search finds them."]);
   addon.eval('ns.Options.Show("town") __click("Deals list")');
   addon.eval("ns.AuctionPrices.RecordSeen(50001, 1)");
   expect([addon.eval("return ns.Settings('AuctionHelper').deals"), dealsCard(addon).slice(0, 3), addon.eval(`return next(${HELPER}.deals) == nil`)], "switched off under Auction house: the entry goes at once and gives way to no list, nothing is judged").toEqual([false, [false, false, "Shopping"], true]);
+});
+it("deals: what was found is forgotten 30 minutes after closing even if the house isn't opened again", () => {
+  const addon = atAuctionHouse();
+  addon.eval("ns.AuctionPrices.RecordSeen(2589, 5)");
+  addon.world.closeAuctionHouse();
+  addon.eval("__now = __now + 1800");
+  addon.update(1800);
+  expect(addon.eval(`return { next(${HELPER}.deals) == nil, ${HELPER}.closed == nil }`), "the timer drops the deals").toEqual([true, true]);
+});
+it("deals: the forget timer leaves alone a house opened again before it fires", () => {
+  const addon = atAuctionHouse();
+  addon.eval("ns.AuctionPrices.RecordSeen(2589, 5)");
+  addon.world.closeAuctionHouse();
+  addon.world.openAuctionHouse();
+  addon.update(0);
+  addon.eval("__now = __now + 1800");
+  addon.update(1800);
+  expect(addon.eval(`return next(${HELPER}.deals) ~= nil`), "open: the timer does nothing").toBe(true);
+});
+it("deals: kept deals are this realm and side's alone", () => {
+  const addon = atAuctionHouse();
+  addon.eval("ns.AuctionPrices.RecordSeen(2589, 5)");
+  addon.world.closeAuctionHouse();
+  addon.eval("__wfgWorld.units.player.faction = 'Horde'");
+  addon.world.openAuctionHouse();
+  addon.update(0);
+  expect(addon.eval(`return next(${HELPER}.deals) == nil`), "the Alliance deal is not shown at the Horde house").toBe(true);
 });
 it("deals: with the tabs off nothing is built, and a deal found paints nothing", () => {
   const addon = atAuctionHouse("", { savedVariables: "VanguardDB.profiles = { Default = { AuctionHelper = { panel = false } } }" });

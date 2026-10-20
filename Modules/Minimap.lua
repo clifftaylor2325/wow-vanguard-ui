@@ -256,8 +256,11 @@ local function rgb(name)
   return r, g, b
 end
 
+-- The zone tooltip's closing hints: what a click and the wheel do on the zone name.
+MM.ZONE_HINTS = { "Click: world map", "Wheel: zoom" }
+
 -- Fills the tooltip for the zone band: the zone, its subzone when it has
--- one, and whose territory it is, in the zone text's color.
+-- one, and whose territory it is, in the zone text's color; then what a click and the wheel do.
 local function zoneTooltip(button)
   local zone = GetZoneText and GetZoneText() or ""
   local sub, pvp = GetSubZoneText and GetSubZoneText() or "", zonePvP()
@@ -266,6 +269,7 @@ local function zoneTooltip(button)
   GameTooltip:SetText(zone, rgb("text"))
   if sub ~= "" and sub ~= zone then GameTooltip:AddLine(sub, rgb("text2")) end
   if PVP_WORDS[pvp] then GameTooltip:AddLine(PVP_WORDS[pvp], rgb(ZONE_COLORS[pvp])) end
+  for _, hint in ipairs(MM.ZONE_HINTS) do GameTooltip:AddLine(hint, rgb("text2")) end
   GameTooltip:Show()
 end
 

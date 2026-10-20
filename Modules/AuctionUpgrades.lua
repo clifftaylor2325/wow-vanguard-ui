@@ -11,8 +11,9 @@
 -- the item, its slot, the gain and its price per unit; its tooltip is the
 -- item's own (with the Upgrade line Gear upgrades adds); a click shows the
 -- item in the game's own list, so buying stays in the game's hands. The
--- listings are judged again when what you wear or the weights change, and
--- forgotten when the house closes.
+-- listings are judged again when what you wear or the weights change. Like
+-- Deals they are kept for 30 minutes after the house closes, back at the same
+-- realm and side's house, unless what you wear changes meanwhile.
 --
 -- Standing rules here: links come only from the scan (GetReplicateItemLink,
 -- read for armor and weapons alone) and from item search results (itemLink);
@@ -41,8 +42,8 @@ AH.SLOT_NAMES = { INVTYPE_HEAD = "Head", INVTYPE_NECK = "Neck", INVTYPE_SHOULDER
   INVTYPE_HOLDABLE = "Held In Off-hand", INVTYPE_RANGED = "Ranged", INVTYPE_RANGEDRIGHT = "Ranged", INVTYPE_THROWN = "Thrown", INVTYPE_RELIC = "Relic" }
 -- The Upgrades entry's switch (Town and gear > Auction house): on, as Deals is.
 AH.defaults.upgrades = true
--- This visit's upgrades by link: { link, id, key, price, pct, empty, slot, score }; and every gear
--- listing seen (link -> price per unit), to judge again when what you wear changes.
+-- The upgrades found lately by link: { link, id, key, price, pct, empty, slot, score, found (when) }; and every
+-- gear listing seen (link -> price per unit), to judge again when what you wear changes.
 AH.upgrades, AH.gearSeen, AH.gearKeys = {}, {}, {}
 
 -- Judging ------------------------------------------------------------------------------------
@@ -56,14 +57,14 @@ end
 -- A listing of gear (its link) at a price per unit as an upgrade, or nil: a gain of at least
 -- UP.MIN_PCT over what you wear, or an empty slot it fills (then with its score, to pick the best
 -- for the slot); nil too while the Upgrades module is off.
-function AH.Upgrade(link, price)
+function AH.Upgrade(link, price, found)
   local UP = ns.GetModule("Upgrades")
   if not UP.settings then return nil end
   local pct, empty = UP.Compare(link)
   if not empty and not (pct and pct >= UP.MIN_PCT) then return nil end
   local id, _, _, loc = C_Item.GetItemInfoInstant(link)
   return { link = link, id = id, key = C_AuctionHouse.MakeItemKey(id), price = price, pct = pct, empty = empty == true,
-    slot = slotName(loc), score = empty and UP.Score(link, (UP.Current())) or nil }
+    slot = slotName(loc), score = empty and UP.Score(link, (UP.Current())) or nil, found = found }
 end
 
 -- Which item a gear link is: its ID, enchant, gems and suffix, without the per-listing unique ID
@@ -91,13 +92,17 @@ end
 function AH.SeeGear(link, price)
   if not (AH.open and AH.settings.upgrades) or type(link) ~= "string" or not claimGear(link, price) then return end
   AH.gearSeen[link] = price
-  AH.upgrades[link] = AH.Upgrade(link, price)
+  AH.upgrades[link] = AH.Upgrade(link, price, AP.Now())
   ns.Soon("auction upgrades", AH.PaintUpgrades)
 end
 
 -- Every gear listing seen, judged again (what you wear, or the weights, changed).
 local function judgeAgain()
-  for link, price in pairs(AH.gearSeen) do AH.upgrades[link] = AH.Upgrade(link, price) end
+  local now = AP.Now()
+  for link, price in pairs(AH.gearSeen) do
+    local before = AH.upgrades[link]
+    AH.upgrades[link] = AH.Upgrade(link, price, before and before.found or now)
+  end
 end
 
 -- The weights in use changed since the listings were judged (your role, /vg weights): judged again.
@@ -215,24 +220,30 @@ function AH.OnGearResults(_, key)
   for link, price in pairs(seen) do AH.SeeGear(link, price) end
 end
 
--- What you wear changed while the house is open: every listing seen is judged again.
+-- Every upgrade and gear listing found is forgotten.
+function AH.ForgetGear()
+  AH.upgrades, AH.gearSeen, AH.gearKeys = {}, {}, {}
+end
+
+-- What you wear changed: while the house is open every listing seen is judged again; while it is
+-- closed the kept ones are forgotten (they were judged against what you wore).
 local function onGearChanged()
-  if not AH.open then return end
+  if not AH.open then return AH.ForgetGear() end
   judgeAgain()
   AH.PaintUpgrades()
 end
 
 -- The Upgrades entry's events (on: the helper's, which ignores them in combat): item search
--- results, your gear changing, and closing the house (this visit's listings forgotten, judging
--- stopped); the judging walker is made here.
+-- results and closing the house (judging stopped); your gear
+-- changing, also in combat (the house is closed then, so that only forgets); the judging walker is made here.
 function AH.ListenUpgrades(on)
   AH.judge = CreateFrame("Frame")
   AH.judge:Hide()
   AH.judge:SetScript("OnUpdate", judgeStep)
   on("ITEM_SEARCH_RESULTS_UPDATED", AH.OnGearResults)
   on("ITEM_SEARCH_RESULTS_ADDED", AH.OnGearResults)
-  on("PLAYER_EQUIPMENT_CHANGED", onGearChanged)
-  ns.On("AUCTION_HOUSE_CLOSED", function() AH.upgrades, AH.gearSeen, AH.gearKeys = {}, {}, {} AH.StopJudging() end) -- state only, so also in combat
+  ns.On("PLAYER_EQUIPMENT_CHANGED", onGearChanged)
+  ns.On("AUCTION_HOUSE_CLOSED", AH.StopJudging) -- state only, so also in combat
 end
 
 -- The entry ------------------------------------------------------------------------------------
@@ -262,6 +273,7 @@ end
 local function upgradeTip(r)
   GameTooltip:SetOwner(r, "ANCHOR_RIGHT")
   GameTooltip:SetHyperlink(r.item.link)
+  AH.FoundLine(r.item)
   GameTooltip:AddLine("Click to show it in the auction house's list.", T.RGB("text2"))
   GameTooltip:Show()
 end
@@ -282,7 +294,7 @@ AH.PANE_EXTRAS[#AH.PANE_EXTRAS + 1] = paneEntry
 -- What the card shows for Upgrades: the columns, this visit's upgrades best first, the count
 -- beside the heading, and the line shown while there are none.
 AH.Sources[AH.UPGRADES] = { name = "Upgrades", columns = AH.UPGRADE_COLUMNS, items = AH.SortedUpgrades, paint = paintUpgrade, click = AH.OpenUpgrade,
-  enter = upgradeTip, status = upgradeStatus, count = function(items) return #items > 0 and (#items .. " found") or "" end }
+  enter = upgradeTip, status = upgradeStatus, count = AH.FoundCount }
 
 -- The Upgrades entry painted: the listings judged again if the weights changed, its count in the
 -- pane and, while it is the entry shown, its rows (the entry gives way to no list when its switch goes off).

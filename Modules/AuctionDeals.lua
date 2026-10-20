@@ -8,8 +8,10 @@
 -- in that time, under its lowest price on the six days before today. Each
 -- row shows the item, its price per unit, how far under it is and what it was
 -- judged against, the best first; a click shows the item in the game's own
--- list, so buying stays in the game's hands. A visit's deals are forgotten
--- when the house closes.
+-- list, so buying stays in the game's hands. Deals (and upgrades) are kept
+-- for 30 minutes after the house closes (a trip to the mailbox), when you
+-- come back to the same realm and side's house, and the heading says how long
+-- ago the oldest was found.
 --
 -- Standing rules here: deals are judged from the prices the store records
 -- as it records them (AP.OnSeen: each item's cheapest price per unit from a
@@ -35,8 +37,12 @@ AH.DEAL_COLUMNS = { { key = "price", title = "Unit price", width = 90, side = "R
 -- The Deals entry's switch (Town and gear > Auction house): on, as the auction plan's Deals list
 -- is part of the tabs; it only reads prices the tabs' searches and scans already bring.
 AH.defaults.deals = true
--- This visit's deals: itemID -> { id, key, price, ref, basis, vendor, off }.
+-- The deals found here lately: itemID -> { id, key, price, ref, basis, vendor, off, found (when) }.
 AH.deals = {}
+-- How long found deals and upgrades are kept after the house closes (seconds).
+AH.KEEP = 1800
+-- When and where the house last closed ({ at, house }), while what was found then is kept.
+AH.closed = nil
 
 -- Judging --------------------------------------------------------------------------------------
 
@@ -79,7 +85,7 @@ function AH.Deal(itemID, price, now)
   if not vendor and not (ref and price * 100 < ref * pct) then return nil end
   local base = vendor or ref
   return { id = itemID, key = C_AuctionHouse.MakeItemKey(itemID), price = price, ref = ref, basis = basis, vendor = vendor,
-    off = math.floor((base - price) * 100 / base) }
+    off = math.floor((base - price) * 100 / base), found = now }
 end
 
 -- A price recorded (AP.OnSeen) while the house is open and the entry on: the item's deal is set, or
@@ -102,11 +108,52 @@ function AH.SortedDeals()
   return out
 end
 
--- The Deals entry's events (the helper passes its switch, which this one has no use for): each price recorded is
--- judged, and closing the house forgets this visit's deals.
+-- Whether what was found before the house last closed is past keeping: it closed AH.KEEP seconds ago or
+-- more, or this is another realm or side's house.
+function AH.FoundExpired()
+  local c = AH.closed
+  return c ~= nil and (AP.Now() - c.at >= AH.KEEP or c.house ~= AP.House())
+end
+
+-- What was found before the house closed, forgotten once past keeping: deals, upgrades and gear seen.
+function AH.DropExpired()
+  if not AH.FoundExpired() then return end
+  AH.deals, AH.closed = {}, nil
+  AH.ForgetGear()
+end
+
+-- The house closed: what was found is kept AH.KEEP seconds, then forgotten if the house is still closed
+-- (so a scan's gear isn't held for the rest of the session).
+local function onClosed()
+  AH.closed = { at = AP.Now(), house = AP.House() }
+  C_Timer.After(AH.KEEP, ns.Guard("timer forget found", function() if not AH.open then AH.DropExpired() end end))
+end
+
+-- Whole minutes since a time.
+function AH.MinutesSince(t)
+  return math.floor((AP.Now() - t) / 60)
+end
+
+-- The heading's count for found rows: "3 found", or "3 found, the oldest 12 min ago" once a row is a
+-- minute old (a deal kept from before the mailbox).
+function AH.FoundCount(items)
+  if #items == 0 then return "" end
+  local oldest = AP.Now()
+  for _, row in ipairs(items) do oldest = math.min(oldest, row.found) end
+  local minutes = AH.MinutesSince(oldest)
+  return minutes > 0 and string.format("%d found, the oldest %d min ago", #items, minutes) or (#items .. " found")
+end
+
+-- A found row's tooltip line: "Found 12 min ago."
+function AH.FoundLine(row)
+  GameTooltip:AddLine(string.format("Found %d min ago.", AH.MinutesSince(row.found)), T.RGB("text2"))
+end
+
+-- The Deals entry's events: each price recorded is judged, and closing the house starts keeping what was
+-- found (state only, so also in combat; AH.OnShow drops it when the house opens past keeping).
 function AH.ListenDeals()
   AP.OnSeen(AH.CheckDeal)
-  ns.On("AUCTION_HOUSE_CLOSED", function() AH.deals = {} end) -- state only, so also in combat
+  ns.On("AUCTION_HOUSE_CLOSED", onClosed)
 end
 
 -- The entry ------------------------------------------------------------------------------------
@@ -145,6 +192,7 @@ local function dealTip(r)
   GameTooltip:SetText((AH.EntryLook(d.id, d)))
   if d.ref then GameTooltip:AddLine(d.basis .. ": " .. AP.Money(d.ref), T.RGB("text2")) end
   if d.vendor then GameTooltip:AddLine("Vendor price: " .. AP.Money(d.vendor), T.RGB("text2")) end
+  AH.FoundLine(d)
   GameTooltip:AddLine("Click to show it in the auction house's list.", T.RGB("text2"))
   GameTooltip:Show()
 end
@@ -158,8 +206,7 @@ AH.PANE_EXTRAS[#AH.PANE_EXTRAS + 1] = paneEntry
 -- What the card shows for Deals: the columns, this visit's deals best first, the count beside the
 -- heading, and the line shown while there are none.
 AH.Sources[AH.DEALS] = { name = "Deals", columns = AH.DEAL_COLUMNS, items = AH.SortedDeals, paint = paintDeal, click = AH.OpenDeal, enter = dealTip,
-  count = function(items) return #items > 0 and (#items .. " found") or "" end,
-  status = function(items) return #items == 0 and "None yet: a scan or a search finds them." or "" end }
+  count = AH.FoundCount, status = function(items) return #items == 0 and "None yet: a scan or a search finds them." or "" end }
 
 -- The Deals entry painted: its count in the pane and, while it is the entry shown, its rows (the
 -- entry gives way to no list when its switch goes off).
