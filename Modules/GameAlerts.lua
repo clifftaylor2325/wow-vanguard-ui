@@ -166,7 +166,9 @@ GA.seenRares = {}
 -- The rare a minimap mark shows (its name), or nil for another mark, a dead one or a hidden one.
 function GA.RareName(guid)
   local info = C_VignetteInfo.GetVignetteInfo(guid)
-  if type(info) ~= "table" or ns.IsSecret(info.atlasName) or ns.IsSecret(info.name) then return nil end
+  if type(info) ~= "table" or ns.IsSecret(info.atlasName) or ns.IsSecret(info.name) or ns.IsSecret(info.isDead) then
+    return nil
+  end
   if GA.RARE_ATLAS[info.atlasName] and info.isDead ~= true then return info.name end
 end
 

@@ -64,7 +64,7 @@ function GD.LogQuests(limit)
   local n = GD.Find("C_QuestLog.GetNumQuestLogEntries")
   for i = 1, n and ns.PlainNumber((n())) or 0 do
     local info = get and get(i)
-    local id = type(info) == "table" and not info.isHeader and ns.PlainNumber(info.questID)
+    local id = type(info) == "table" and not (ns.IsSecret(info.isHeader) or info.isHeader) and ns.PlainNumber(info.questID)
     if id then ids[#ids + 1] = id end
     if #ids >= limit then break end
   end

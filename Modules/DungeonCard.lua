@@ -141,7 +141,7 @@ end
 
 -- A log entry as { title, level, done }, or nil when it is a header or its title or level is hidden.
 local function entry(info)
-  if type(info) ~= "table" or info.isHeader or ns.IsSecret(info.questID) then return nil end
+  if type(info) ~= "table" or ns.IsSecret(info.isHeader) or info.isHeader or ns.IsSecret(info.questID) then return nil end
   local level = ns.PlainNumber(info.level)
   if not plainText(info.title) or not ns.PlainNumber(info.questID) or not level then return nil end
   return { title = info.title, level = level, done = questDone(info.questID), questID = info.questID }
