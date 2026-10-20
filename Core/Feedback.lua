@@ -31,11 +31,6 @@ local KINDS = { { "bug", "Report a bug" }, { "feature", "Request a feature" } }
 
 -- Checks -------------------------------------------------------------------------------------
 
--- Characters in a string (UTF-8 code points, which is what the site counts).
-local function length(s)
-  return select(2, s:gsub("[^\128-\191]", ""))
-end
-
 -- A text trimmed and without the game's color codes (|cAARRGGBB and |r).
 local function clean(s)
   return tostring(s or ""):gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", ""):match("^%s*(.-)%s*$")
@@ -48,7 +43,7 @@ end
 
 -- The message when a text is missing, too short or too long, else nil.
 local function lengthError(field, value, label)
-  local least, most, n = LIMITS[field][1], LIMITS[field][2], length(value)
+  local least, most, n = LIMITS[field][1], LIMITS[field][2], ns.TextLength(value)
   if least > 0 and n == 0 then return label .. " is required." end
   if n > 0 and n < least then return string.format("%s needs at least %s characters.", label, count(least)) end
   if n > most then return string.format("%s can be at most %s characters (it has %s).", label, count(most), count(n)) end

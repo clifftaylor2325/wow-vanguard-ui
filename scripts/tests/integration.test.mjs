@@ -95,3 +95,13 @@ it("a preset is refused in combat, and a bad string fails with a reason", () => 
   addon.eval("ns.AskPreset(ns.FindPreset('Tank')) __click('Apply')");
   expect(addon.eval("return ns.FindPreset(5)"), "a non-string name finds nothing").toBeNull();
 });
+it("RegisterPreset counts characters, not bytes: an 11-character Chinese name is fine, and a long info is cut between characters", () => {
+  const addon = loggedIn("");
+  const out = addon.eval(`local name = string.rep("\\228\\184\\173", 11)
+    local ok = Vanguard.RegisterPreset(name, "VG1:x", "x")
+    local tooLong = Vanguard.RegisterPreset(string.rep("\\228\\184\\173", 33), "VG1:x")
+    Vanguard.RegisterPreset("TEST-ONLY Pack", "VG1:x", string.rep("\\195\\169", 250))
+    local info for _, p in ipairs(Vanguard.GetPresets()) do if p.name == "TEST-ONLY Pack" then info = p.info end end
+    return { ok, tooLong, ns.TextLength(info), #info, info == string.rep("\\195\\169", 200) }`);
+  expect(out, "11 characters pass, 33 don't; the info keeps 200 whole characters").toEqual([true, false, 200, 400, true]);
+});

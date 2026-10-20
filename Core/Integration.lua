@@ -25,7 +25,7 @@ end
 
 -- Whether the arguments of RegisterPreset are usable, and if not what is wrong with them.
 local function problem(name, text, info)
-  if type(name) ~= "string" or name:gsub("%s", "") == "" or #name > 32 then return "name must be a string of 1 to 32 characters" end
+  if type(name) ~= "string" or name:gsub("%s", "") == "" or ns.TextLength(name) > 32 then return "name must be a string of 1 to 32 characters" end
   if type(text) ~= "string" or #text > MAX_TEXT or not text:find("^%s*VG1:") then return "text must be a Vanguard profile string" end
   if info ~= nil and type(info) ~= "string" then return "info must be a string" end
   if not find(name) and #presets >= MAX_PRESETS then return "too many presets" end
@@ -38,7 +38,7 @@ local function add(name, text, info, source)
   if why then return false, why end
   local old, at = find(name)
   if old and old.source == "Vanguard" and source ~= "Vanguard" then return false, "a built-in preset has that name" end
-  local entry = { name = name, text = text, info = (info or ""):gsub("|", ""):sub(1, MAX_INFO), source = source }
+  local entry = { name = name, text = text, info = ns.TextPrefix((info or ""):gsub("|", ""), MAX_INFO), source = source }
   presets[at or (#presets + 1)] = entry
   return true
 end
