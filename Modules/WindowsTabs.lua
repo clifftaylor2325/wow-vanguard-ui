@@ -608,16 +608,14 @@ end
 -- The equipment flyout (the items you can swap into a slot): its art faded, flat panels behind the
 -- item grid and the page bar, its page arrows flat, and its item buttons skinned as the bags' are.
 local function skinFlyout()
-  local flyout, bags = _G.EquipmentFlyoutFrame, ns.GetModule("Bags")
+  local flyout = _G.EquipmentFlyoutFrame
   if type(flyout) ~= "table" then return end
   for _, key in ipairs({ "buttonFrame", "NavigationFrame" }) do
     local part = flyout[key]
     if type(part) == "table" then T.FadeRegions(part) T.Panel(part, { shadow = true }) end
   end
   skinFlyoutNav(flyout.NavigationFrame)
-  for _, button in ipairs(flyout.buttons or {}) do
-    if bags and bags.SkinItem then bags.SkinItem(button) end
-  end
+  for _, button in ipairs(flyout.buttons or {}) do GW.SkinItem(button) end
 end
 
 -- Dresses the flyout on show and after the game fills it again (it makes its buttons and pages as needed), once.
@@ -732,10 +730,9 @@ end
 -- IconBorder and the BorderFrame child) faded, a flat panel behind the icon and the item's quality border
 -- (Modules/Bags.lua skinItem), and the ammo slot's plate faded.
 local function skinSlots()
-  local bags = ns.GetModule("Bags")
   for _, slot in ipairs(GW.EQUIP_SLOTS) do
     local button = _G["Character" .. slot .. "Slot"]
-    if bags and bags.SkinItem then bags.SkinItem(button) end
+    GW.SkinItem(button)
     fadeSlotFrame(button)
   end
   fadeAmmoPlate(_G.CharacterAmmoSlot)

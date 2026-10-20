@@ -374,7 +374,7 @@ GW.Add("town", { "CoinPickupFrame" }, GW.SkinCoinPickup)
 -- The item buttons a separate bag window shows now, in the Bags module's item look (it skips buttons already done).
 local function skinBagItems(frame)
   if type(frame.EnumerateValidItems) ~= "function" then return end
-  for _, button in frame:EnumerateValidItems() do ns.GetModule("Bags").SkinItem(button) end
+  for _, button in frame:EnumerateValidItems() do GW.SkinItem(button) end
 end
 
 -- One of the separate bag windows (shown when Combined bags is off): the Bags module's window skin, and
@@ -433,12 +433,12 @@ end
 -- One merchant row, or the buyback slot, by name: its slot and name plates faded, its item button in the bags' item
 -- look (a thin border in the item's quality colour), its name in the theme font, its price and token price too.
 local function skinMerchantRow(name)
-  local row, bags = _G[name], ns.GetModule("Bags")
+  local row = _G[name]
   if type(row) ~= "table" then return end
   fadeWhole(row, { "SlotTexture" })
   GW.FadeNamed({ name .. "NameFrame" })
   keyFonts(row, { "Name" }, "small")
-  if bags and bags.SkinItem then bags.SkinItem(row.ItemButton) end
+  GW.SkinItem(row.ItemButton)
   GW.SkinMoney(_G[name .. "MoneyFrame"])
   skinAltCurrency(name .. "AltCurrencyFrame")
 end

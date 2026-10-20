@@ -56,12 +56,7 @@ end
 
 -- The letter, money and attachment buttons with the bags' quality border.
 function GW.SkinMailItems()
-  local bags = ns.GetModule("Bags")
-  if type(bags) ~= "table" or type(bags.SkinItem) ~= "function" then return end
-  for _, name in ipairs(GW.MAIL_ITEMS) do
-    local button = _G[name]
-    if type(button) == "table" and button.CreateTexture then bags.SkinItem(button) end
-  end
+  for _, name in ipairs(GW.MAIL_ITEMS) do GW.SkinItem(_G[name]) end
 end
 
 -- The auction invoice's labels (the game names them; dark brown for its parchment) and its four money lines.
