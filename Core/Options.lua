@@ -54,10 +54,17 @@ local function setting(module, key, reload)
     default(module, key)
 end
 
+-- True when a module was built this session, so its live callbacks have its settings to read.
+local function moduleRunning(module)
+  local def = ns.GetModule(module)
+  return def ~= nil and def.enabled == true
+end
+
 -- get/set for a module setting that applies at once (after() runs on each change), and its default.
+-- A module that is off only saves the value: it applies when the module next runs.
 local function liveSetting(module, key, after)
   local get, set, initial = setting(module, key)
-  return get, function(v) set(v); after() end, initial
+  return get, function(v) set(v); if moduleRunning(module) then after() end end, initial
 end
 
 -- get/set for an unlock-mode option (grid, snap), applied at once.

@@ -227,9 +227,41 @@ it("options: search reads each page's rows once per opening; a rebuilt page leav
   addon.eval('ns.Options.Search("tan")');
   expect(reads(), "the next keystroke reads nothing").toEqual([0, 0]);
   addon.eval('ns.Options.Hide() Vanguard_Options:Hide() ns.Options.Show() ns.Options.Search("tan")');
-  expect(reads(), "opening the window again reads the rows afresh").toEqual([1, 1]);
+  expect(reads(), "opening the window again reads afresh the pages not built yet; a built page keeps the rows it shows").toEqual([1, 0]);
 });
 
+it("options: a search hit scrolls to its row and marks it after the window was closed and opened again", () => {
+  const addon = loggedIn(CLICK_LUA);
+  // Searches, opens the first hit and says which row is marked: its caption, or false.
+  const openHit = (text) => addon.eval(`ns.Options.Search(${JSON.stringify(text)})
+    local hit = ns.Options.hits[1]
+    ns.Options.OpenHit(hit)
+    for _, w in ipairs(__wfgStub.frames) do if w.found and w.found == Vanguard_Options.found and w.found:IsShown() and w.source == hit.row then return w.caption end end
+    return false`);
+  addon.eval('ns.Options.Show("general")');
+  expect(openHit("interface sounds"), "the first opening marks the row").toBe("Interface sounds");
+  addon.eval("ns.Options.Hide() Vanguard_Options:Hide() ns.Options.Show()");
+  expect(openHit("reduce motion"), "after a reopen a row on a page built before is marked too").toMatch(/^Reduce motion/);
+});
+
+it("options: a live row of a module that is off saves its value without an error", () => {
+  const addon = loggedIn(RETAIL + CLICK_LUA + DATA_ENV, { savedVariables: "VanguardDB.profiles.Default = { modules = { CooldownGlow = false, GameAlerts = false, ActionBars = false } }\n" });
+  addon.eval('ns.Options.Show("cooldowns")');
+  addon.eval('__click("Glow a buff near its end")');
+  addon.eval('ns.Options.Show("tools")');
+  addon.eval('__click("Low health: a soft tint")');
+  addon.eval('ns.Options.Show("actionbars")');
+  addon.eval('__click("Bar backing")');
+  expect(addon.eval("return { #ns.errors, ns.Settings('CooldownGlow').glow }"), "no error, and the switch is saved").toEqual([0, true]);
+});
+it("controls: clicking a choice row's caption with an empty list does nothing and raises no error", () => {
+  const addon = loggedIn();
+  const r = addon.eval(`__set = "unset"
+    local row = ns.Widgets.Choice(UIParent, "TEST-ONLY Frame to size", {}, function() return nil end, function(v) __set = v end)
+    row:GetScript("OnClick")(row)
+    return { __set, #ns.errors }`);
+  expect(r, "nothing is set").toEqual(["unset", 0]);
+});
 it("choice fallback, key capture and the mouse wheel", () => {
   const addon = loggedIn(CLICK_LUA + `
     -- TEST-ONLY spec index so the click-cast page builds for spec 1.
@@ -891,6 +923,15 @@ it("dialogs: Import and Reload are the primary buttons, Yes and No stay plain; t
   expect(addon.eval("return { Vanguard_Reload:IsShown(), Vanguard_Reload.accept.reloadOverlay:IsShown() }"), "Later hides the dialog and the overlay with it").toEqual([false, false]);
 });
 
+it("profiles: an armed Delete asks again after the window was closed, so one later click deletes nothing", () => {
+  const addon = loggedIn(CLICK_LUA + 'VanguardDB.profiles["TEST-ONLY Spare"] = {}');
+  addon.eval('ns.Options.Show("profiles")');
+  expect(addon.eval('return __click("Delete")'), "the first click arms Delete").toBe(true);
+  addon.eval("ns.Options.Hide() Vanguard_Options:Hide()");
+  addon.eval('ns.Options.Show("general") ns.Options.Hide() Vanguard_Options:Hide() ns.Options.Show("profiles")');
+  expect(addon.eval('return { __click("Sure?"), VanguardDB.profiles["TEST-ONLY Spare"] ~= nil }'), "no button still says Sure?, and the profile is still there").toEqual([false, true]);
+  expect([addon.eval('return __click("Delete")'), addon.eval('return __click("Sure?")'), addon.eval('return VanguardDB.profiles["TEST-ONLY Spare"] == nil')], "two clicks still delete it").toEqual([true, true, true]);
+});
 it("profiles: Use is a plain button, so Create is the page's one accent button", () => {
   const addon = loggedIn(CLICK_LUA + 'VanguardDB.profiles["TEST-ONLY Healer"] = {}');
   addon.eval('ns.Options.Show("profiles")');

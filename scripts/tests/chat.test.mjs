@@ -1,6 +1,7 @@
 // chat: Vanguard's real Lua in the TEST-ONLY headless client (scripts/lib/lua-harness.mjs).
 
 import { expect, it } from "vitest";
+import { luaValue } from "../lib/lua-emit.mjs";
 import { CLICK_LUA, expectErrors, STRIP_ENV, TIDY_ENV, UI_ENV, UNITS_ENV, INSIDES_LUA, borderOf, chatHas, isTok, later, loggedIn, setCombat, tok, WINDOWS_ENV, windowState } from "./helpers.mjs";
 
 it("minimap", () => {
@@ -912,30 +913,57 @@ it("quiet the game: guild invites, stranger group invites, friend requests and b
   noFriends.fire("PARTY_INVITE_REQUEST", "<name>", false, false, false, false, false, false, "stranger");
   expect(noFriends.eval("return __answers"), "with no way to tell who is a friend, a stranger is declined").toEqual(["group", "close PARTY_INVITE"]);
 });
-// TEST-ONLY game text: the error line and the zone names record what they were given.
+// TEST-ONLY game text: the error line and the zone names record what they were given. The error line
+// works as Blizzard_UIErrorsFrame does: red errors (UI_ERROR_MESSAGE, a blacklisted type 99 never shown)
+// and yellow info lines (UI_INFO_MESSAGE) go through AddMessage, as does AddExternalErrorMessage.
 const QUIET_ENV = `
-  hooksecurefunc = function(t, name, fn) if type(t) == "string" then return end local orig = t[name] t[name] = function(...) local r = orig(...) fn(...) return r end end
-  UIErrorsFrame = CreateFrame("Frame", "UIErrorsFrame", UIParent) __lines = 0
-  function UIErrorsFrame:AddMessage() __lines = __lines + 1 end
-  function UIErrorsFrame:Clear() __lines = 0 end
+  RED_FONT_COLOR = { GetRGB = function() return 1, 0.125, 0.125 end }
+  UIErrorsFrame = CreateFrame("Frame", "UIErrorsFrame", UIParent) __shown = {}
+  UIErrorsFrame:RegisterEvent("UI_ERROR_MESSAGE") UIErrorsFrame:RegisterEvent("UI_INFO_MESSAGE")
+  function UIErrorsFrame:AddMessage(text, r, g, b) __shown[#__shown + 1] = text end
+  function UIErrorsFrame:Clear() __shown = {} end
+  function UIErrorsFrame:AddExternalErrorMessage(text) self:AddMessage(text, RED_FONT_COLOR:GetRGB()) end
+  UIErrorsFrame:SetScript("OnEvent", function(self, event, messageType, message)
+    if event == "UI_INFO_MESSAGE" then self:AddMessage(message, 1, 0.82, 0, 1, messageType)
+    elseif messageType ~= 99 then self:AddMessage(message, 1, 0.125, 0.125, 1, messageType) end
+  end)
   ZoneTextFrame = CreateFrame("Frame", "ZoneTextFrame", UIParent) ZoneTextFrame:Hide()
   SubZoneTextFrame = CreateFrame("Frame", "SubZoneTextFrame", UIParent) SubZoneTextFrame:Hide()
 `;
 it("quiet the game: the error line and the zone names, each off until switched on and applied at once; a further camera", () => {
   const off = loggedIn(QUIET_ENV);
-  off.eval("UIErrorsFrame:AddMessage('x') ZoneTextFrame:Show() SubZoneTextFrame:Show()");
-  expect(off.eval("return { __lines, ZoneTextFrame:IsShown(), SubZoneTextFrame:IsShown(), tostring(GetCVar('cameraDistanceMaxZoomFactor')) }"), "off by default: the game's own").toEqual([1, true, true, "nil"]);
+  off.fire("UI_ERROR_MESSAGE", 50, "TEST-ONLY Out of range")
+  off.eval("ZoneTextFrame:Show() SubZoneTextFrame:Show()");
+  expect(off.eval("return { #__shown, ZoneTextFrame:IsShown(), SubZoneTextFrame:IsShown(), tostring(GetCVar('cameraDistanceMaxZoomFactor')) }"), "off by default: the game's own").toEqual([1, true, true, "nil"]);
   const on = loggedIn(QUIET_ENV, { savedVariables: "VanguardDB.profiles = { Default = { Quiet = { errors = true, zoneText = true, camera = 2.6 } } }" });
-  on.eval("UIErrorsFrame:AddMessage('x') ZoneTextFrame:Show() SubZoneTextFrame:Show()");
-  expect(on.eval("return { __lines, ZoneTextFrame:IsShown(), SubZoneTextFrame:IsShown(), tostring(GetCVar('cameraDistanceMaxZoomFactor')) }"), "the error line cleared, both names hidden, the camera set").toEqual([0, false, false, "2.6"]);
-  on.eval("ns.GetModule('Quiet').settings.errors = false ns.GetModule('Quiet').settings.zoneText = false UIErrorsFrame:AddMessage('x') ZoneTextFrame:Show()");
-  expect(on.eval("return { __lines, ZoneTextFrame:IsShown() }"), "switched off, they show again at once").toEqual([1, true]);
+  on.fire("UI_ERROR_MESSAGE", 50, "TEST-ONLY Out of range")
+  on.eval("ZoneTextFrame:Show() SubZoneTextFrame:Show()");
+  expect(on.eval("return { #__shown, ZoneTextFrame:IsShown(), SubZoneTextFrame:IsShown(), tostring(GetCVar('cameraDistanceMaxZoomFactor')) }"), "the error line cleared, both names hidden, the camera set").toEqual([0, false, false, "2.6"]);
+  on.eval("ns.GetModule('Quiet').settings.errors = false ns.GetModule('Quiet').settings.zoneText = false ZoneTextFrame:Show()");
+  on.fire("UI_ERROR_MESSAGE", 50, "TEST-ONLY Out of range");
+  expect(on.eval("return { #__shown, ZoneTextFrame:IsShown() }"), "switched off, they show again at once").toEqual([1, true]);
   setCombat(on, true);
   on.eval("ns.GetModule('Quiet').settings.camera = 1.5 ns.GetModule('Quiet').ApplyCamera()");
   expect(on.eval("return GetCVar('cameraDistanceMaxZoomFactor')"), "not changed in combat").toBe("2.6");
   const bare = loggedIn("", { savedVariables: "VanguardDB.profiles = { Default = { Quiet = { errors = true, zoneText = true } } }" });
   expect(bare.eval("return ZoneTextFrame == nil and ns.GetModule('Quiet').settings.errors"), "a client without these frames is left alone").toBe(true);
   expect(loggedIn(QUIET_ENV + "SetCVar, C_CVar = nil, nil", { savedVariables: "VanguardDB.profiles = { Default = { Quiet = { camera = 2 } } }" }).eval("return GetCVar('cameraDistanceMaxZoomFactor')"), "no CVar call, no change").toBe(null);
+});
+it("quiet the game: hiding the red error line keeps yellow info lines, whichever way the red line came", () => {
+  const addon = loggedIn(QUIET_ENV, { savedVariables: "VanguardDB.profiles = { Default = { Quiet = { errors = true } } }" });
+  addon.fire("UI_INFO_MESSAGE", 0, "TEST-ONLY Kobold Vermin slain: 3/10");
+  addon.fire("UI_ERROR_MESSAGE", 50, "TEST-ONLY Out of range");
+  expect(addon.eval("return __shown"), "the red error goes, the yellow progress line stays").toEqual(["TEST-ONLY Kobold Vermin slain: 3/10"]);
+  addon.fire("UI_ERROR_MESSAGE", 99, "TEST-ONLY Ability not ready");
+  expect(addon.eval("return __shown"), "an error the game doesn't show clears nothing").toEqual(["TEST-ONLY Kobold Vermin slain: 3/10"]);
+  addon.eval("UIErrorsFrame:AddExternalErrorMessage('TEST-ONLY No empty slots')");
+  expect(addon.eval("return __shown"), "a red line added outside the event goes too").toEqual(["TEST-ONLY Kobold Vermin slain: 3/10"]);
+  addon.advance(3);
+  addon.fire("UI_ERROR_MESSAGE", 50, "TEST-ONLY Out of range");
+  expect(addon.eval("return #__shown"), "a yellow line that has faded is not shown again").toBe(0);
+  const plain = loggedIn(QUIET_ENV + "RED_FONT_COLOR = nil", { savedVariables: "VanguardDB.profiles = { Default = { Quiet = { errors = true } } }" });
+  plain.fire("UI_ERROR_MESSAGE", 50, "TEST-ONLY Out of range");
+  expect(plain.eval("return __shown"), "a client without the game's red leaves the line alone").toEqual(["TEST-ONLY Out of range"]);
 });
 // TEST-ONLY extra windows: friends, a book (its page text records the colors it's given), and
 // the game's loss of control and talking head alerts with their parts.
@@ -1017,7 +1045,20 @@ it("bags: the combined CVar is set once per change of the setting, and given bac
   const blind = loggedIn(UI_ENV);
   blind.eval("ns.SetModuleEnabled('Bags', false)");
   expect(blind.eval("return { __cvars.combinedBags, ns.Settings('Bags').applied == nil }"), "a client that can't read the CVar has nothing to give back").toEqual(["1", true]);
+});it("bags: an imported profile turns combined bags on, since what Vanguard set on one computer never travels in a string", () => {
+  const me = loggedIn(UI_ENV + CVAR_ENV);
+  expect(me.eval(`local _, data = ns.Serialize.Decode(ns.ExportProfile()) local s = ns.Settings("Bags") return { data.Bags.combined, data.Bags.applied == nil, data.Bags.prior == nil, s.applied }`), "the string has the setting, not the flags this computer keeps").toEqual([true, true, true, true]);
+  // TEST-ONLY string from an older Vanguard that exported the flags of a computer on separate bags.
+  me.eval('ns.ImportProfile(ns.Serialize.Encode("profile", ns.StampPayload({ Bags = { combined = true, applied = true, prior = "0" } })))');
+  expect(me.eval("local b = VanguardDB.profiles.Imported.Bags return { b.combined, b.applied == nil, b.prior == nil }"), "the import keeps the setting and drops the flags").toEqual([true, true, true]);
+  me.fire("PLAYER_LOGOUT");
+  const sv = me.savedVariables();
+  // The next session on another computer (its own CVars: separate bags) with the imported profile.
+  const next = loggedIn(UI_ENV + CVAR_ENV, { savedVariables: `VanguardDB = ${luaValue(sv.account)}\nVanguardCharDB = ${luaValue(sv.char)}\n` });
+  expect(next.eval("return { ns.ProfileName(), __cvars.combinedBags, ns.Settings('Bags').prior }"), "the imported profile sets combined bags once, keeping this computer's value").toEqual(["Imported", "1", "0"]);
 });
+
+
 it("minimap coordinates: asked again only after the player moves", () => {
   // TEST-ONLY world position, and a counter of map position lookups.
   const addon = loggedIn(UI_ENV + `__pos = { 100, 200, 0, 1 } UnitPosition = function() return __pos[1], __pos[2], __pos[3], __pos[4] end

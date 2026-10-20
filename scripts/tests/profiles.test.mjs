@@ -188,6 +188,20 @@ it("the spec change events stage the spec's profile, whatever they pass", () => 
   addon.fire("ACTIVE_TALENT_GROUP_CHANGED", 2, 1);
   expect(addon.eval("return VanguardCharDB.pendingProfile"), "changing back to the running profile's spec takes the switch back").toBe(null);
 });
+it("swapping back to a spec with no profile of its own takes back the switch another spec staged", () => {
+  const addon = createAddon({ savedVariables: 'VanguardDB = { version = 1, setupDone = true, profiles = { Default = {}, Heal = {}, Picked = {} } }\nVanguardCharDB = { profile = "Default", setupDone = true, specProfiles = { [2] = "Heal" } }' });
+  addon.eval("GetSpecialization = function() return __spec end __spec = 1");
+  addon.login();
+  addon.eval("__spec = 2");
+  addon.fire("PLAYER_SPECIALIZATION_CHANGED", "player");
+  expect(addon.eval("return VanguardCharDB.pendingProfile"), "spec 2 stages its profile").toBe("Heal");
+  addon.eval("__spec = 1");
+  addon.fire("PLAYER_SPECIALIZATION_CHANGED", "player");
+  expect(addon.eval("return VanguardCharDB.pendingProfile"), "spec 1 uses the character's profile again").toBe(null);
+  addon.eval("ns.UseProfile('Picked')");
+  addon.fire("PLAYER_SPECIALIZATION_CHANGED", "player");
+  expect(addon.eval("return VanguardCharDB.pendingProfile"), "a profile the player picked stays staged").toBe("Picked");
+});
 it("a frame's scale and opacity travel with the profile: export, import and a staged switch", () => {
   const src = loggedIn(UI_ENV);
   src.eval('ns.SetMoverScale("minimap", 1.25) ns.SetMoverAlpha("minimap", 0.75)');
@@ -225,6 +239,21 @@ it("profile strings carry the UI scale and screen; importing one asks whether to
   importText(dst, old);
   expect(dst.eval("return { Vanguard_Question:IsShown(), Vanguard_Reload:IsShown(), VanguardDB.profiles['Imported 2'].display == nil }"), "a string with no usable UI scale goes straight to the reload").toEqual([false, true, true]);
   expect(dst.eval("return ns.DisplayQuestion({ uiScale = 0.8 })"), "a block with no screen size leaves it out").toBe("This profile was made at UI scale 80% (yours: 100%). Use its UI scale?");
+});
+it("Use it after an import turns Pixel-perfect off in the imported profile, not in the one being left", () => {
+  const addon = loggedIn("", { savedVariables: "VanguardDB.profiles.Default = { theme = { pixelScale = true } }\n" });
+  // TEST-ONLY whole profile made with Pixel-perfect on, at UI scale 90%.
+  const text = addon.eval('return ns.Serialize.Encode("profile", ns.StampPayload({ theme = { accent = "jade", pixelScale = true }, display = { uiScale = 0.9 } }))');
+  importText(addon, text);
+  addon.eval('Vanguard_Question.yes:GetScript("OnClick")(Vanguard_Question.yes)');
+  expect(addon.eval("return { VanguardCharDB.pendingProfile, GetCVar('uiScale') }"), "the import is staged and the game's UI scale set").toEqual(["Imported", "0.9"]);
+  expect(addon.eval("return { VanguardDB.profiles.Imported.theme.pixelScale, ns.Theme.Settings().pixelScale }"), "Pixel-perfect goes off where the chosen scale will run, and the profile on screen keeps its own").toEqual([false, true]);
+  addon.eval("ns.UseProfile('Default') VanguardDB.profiles.Bare = {} ns.UseProfile('Bare') ns.OfferDisplay({ uiScale = 0.8 }, function() end)");
+  addon.eval('Vanguard_Question.yes:GetScript("OnClick")(Vanguard_Question.yes)');
+  expect(addon.eval("return VanguardDB.profiles.Bare.theme.pixelScale"), "a staged profile with no theme yet gets one").toBe(false);
+  addon.eval("ns.UseProfile('Default') ns.OfferDisplay({ uiScale = 0.8 }, function() end)");
+  addon.eval('Vanguard_Question.yes:GetScript("OnClick")(Vanguard_Question.yes)');
+  expect(addon.eval("return { ns.Theme.Settings().pixelScale, GetCVar('uiScale') }"), "with no switch staged it goes off in the profile in use").toEqual([false, "0.8"]);
 });
 // TEST-ONLY Edit Mode: its manager lists the presets, then the account's layouts; the
 // layouts load when UpdateLayoutInfo first runs; C_EditMode switches and reloads them.
@@ -450,6 +479,15 @@ it("every import backs up the profile in use first, into one rolling backup prof
   const backupOf = (name) => addon.eval(`VanguardDB.profiles["${name}"] = {} VanguardCharDB.profile = "${name}" return ns.BackupProfile()`);
   expect(backupOf(`TEST-ONLY ${"x".repeat(22)}`), "a long name is cut to fit 32 characters").toBe(`TEST-ONLY ${"x".repeat(15)} backup`);
   expect(backupOf(`TEST-ONLY ${"x".repeat(15)} backup`), "and the backup is never the profile in use").toBe(`TEST-ONLY ${"x".repeat(13)} backup 2`);
+});
+it("an import's backup never overwrites a profile another character or a spec uses", () => {
+  // TEST-ONLY: another character runs on "Default backup", and this character's spec 2 uses "Default backup 2".
+  const sv = 'VanguardDB.profiles = { Default = {}, ["Default backup"] = { marker = "other" }, ["Default backup 2"] = { marker = "spec" } }\nVanguardDB.guard = { chars = { ["TEST-ONLY Other-Realm"] = { profile = "Default backup", stamp = 1 }, broken = "x" } }\nVanguardCharDB.specProfiles = { [2] = "Default backup 2" }';
+  const addon = loggedIn("", { savedVariables: sv });
+  const backup = addon.eval('return (select(2, ns.ImportProfile(ns.Serialize.Encode("profile", ns.StampPayload({ theme = { accent = "copper" } }))))).backup');
+  expect(backup, "the backup takes the next free name").toBe("Default backup 3");
+  expect(addon.eval('return { VanguardDB.profiles["Default backup"].marker, VanguardDB.profiles["Default backup 2"].marker }'), "the profiles in use keep their settings").toEqual(["other", "spec"]);
+  expect(addon.eval('VanguardDB.profiles["Default backup 3"] = nil VanguardDB.guard = nil VanguardCharDB.specProfiles = nil return ns.BackupProfile()'), "a file without a guard or spec map backs up as before").toBe("Default backup");
 });
 it("importing a string that matches a profile here uses that profile instead of making a copy", () => {
   const addon = loggedIn();

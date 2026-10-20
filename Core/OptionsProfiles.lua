@@ -18,11 +18,18 @@ local function warnTip(b)
   GameTooltip:Show()
 end
 
+-- Puts an armed danger button back to its label whenever it hides (its page left, or the window
+-- closed), so a click after that asks "Sure?" again.
+local function disarmOnHide(b, text)
+  b:HookScript("OnHide", ns.Guard("disarm danger button", function(self) self.armed = nil self.text:SetText(text) end))
+end
+
 -- A destructive push button: its label in the danger color, and warn (what it loses) in a tooltip
 -- under the mouse. The first click asks "Sure?" in its place, the second runs onClick.
 function W.Danger(parent, text, onClick, width, warn)
   local b = ns.DialogButton(parent, text, width or 120, "danger")
   b.warn = warn
+  disarmOnHide(b, text)
   b:HookScript("OnEnter", ns.Guard("hover danger button", warnTip))
   b:HookScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
   -- Asks first, then acts.

@@ -272,6 +272,13 @@ local function addDropdown(r, choices, get, set)
   r.Refresh = function(self) self.dropdown:Refresh() end
 end
 
+-- Sets a choice row to the choice after its current one (an empty list has none to step to).
+local function stepChoice(r, set)
+  local nextChoice = W.NextChoice(r.choices, r.get())
+  if nextChoice then set(nextChoice[1]) end
+  r:Refresh()
+end
+
 -- A choice row: segments when they fit, else a dropdown. Clicking the caption steps to the next choice.
 function W.Choice(parent, caption, choices, get, set, width)
   local r = row(parent, caption, width)
@@ -279,7 +286,7 @@ function W.Choice(parent, caption, choices, get, set, width)
   r.caption, r.choices, r.get = caption, choices, get
   if fitsSegments(choices) then addSegments(r, choices, set) else addDropdown(r, choices, get, set) fitCaption(r, width) end
   r.Refresh = r.Refresh or refreshSegments
-  r:SetScript("OnClick", ns.Guard("click choice", function(self) set(W.NextChoice(self.choices, self.get())[1]); self:Refresh() end))
+  r:SetScript("OnClick", ns.Guard("click choice", function(self) stepChoice(self, set) end))
   r:Refresh()
   return r
 end

@@ -24,6 +24,13 @@ function ns.NewProfile(name)
   return true
 end
 
+-- A copy of a profile's own values: an active Situations override is taken out of the profile in use
+-- for the copy (ns.OwnValues, Modules/Situations.lua), as for an export.
+local function ownCopy(profile)
+  if ns.OwnValues then return ns.OwnValues(ns.Copy, profile) end
+  return ns.Copy(profile)
+end
+
 -- Copies another profile's settings over the one this character uses after the next reload: the
 -- active one, or the one staged while a switch waits (so the profile running until then is never
 -- overwritten). Returns the name copied into, or false.
@@ -32,7 +39,7 @@ function ns.CopyProfile(from)
   if not source or from == into then
     return false
   end
-  VanguardDB.profiles[into] = ns.Copy(source)
+  VanguardDB.profiles[into] = ownCopy(source)
   if into == ns.ProfileName() then ns.ProfileChanged() end
   return into
 end
@@ -64,12 +71,13 @@ function ns.DisplayBlock()
   return { uiScale = math.floor(scale * 100 + 0.5) / 100, width = tonumber(w) or 0, height = tonumber(h) or 0 }
 end
 
--- The whole profile for export: its settings, plus the display block, format and version beside them.
+-- The whole profile for export: its settings (without this computer's own state), plus the display
+-- block, format and version beside them.
 local function withDisplay(profile)
   local data = {}
   for k, v in pairs(profile) do data[k] = v end
   data.display = ns.DisplayBlock()
-  return ns.StampPayload(data)
+  return ns.StampPayload(ns.WithoutClientState(data))
 end
 
 -- The export string for scope, from the profile's tables as they are now: the whole profile,
@@ -119,24 +127,48 @@ end
 
 -- Gives this character a profile of its own named after `name`, without a reload: the running
 -- profile's tables move to the new name (the modules and the settings cache keep using them), and
--- the old name keeps a copy, so the characters sharing it see what they had. Returns the new name.
+-- the old name keeps a copy of its own values (no Situations override), so the characters sharing it
+-- see what they had. Returns the new name.
 function ns.ForkProfile(name)
   local new, live = ns.ForkName(name), ns.Profile()
-  VanguardDB.profiles[ns.ProfileName()] = ns.Copy(live)
+  VanguardDB.profiles[ns.ProfileName()] = ownCopy(live)
   VanguardDB.profiles[new] = live
   VanguardCharDB.profile, VanguardCharDB.editModeProfile = new, new
   return new
 end
 
--- The rolling backup's name for a profile: "<name> backup", the name cut to fit 32 characters;
--- never the profile in use nor the one this character switches to at the reload (then
--- "<name> backup 2", or 3).
-function ns.BackupName(name)
-  for n = 1, 3 do
-    local suffix = n == 1 and " backup" or (" backup " .. n)
-    local backup = name:sub(1, 32 - #suffix) .. suffix
-    if backup ~= ns.ProfileName() and backup ~= ns.SelectedProfileName() then return backup end
+-- True when another character runs on the profile called name, as the account file's guard notes
+-- each character's profile at logout (Core/SettingsGuard.lua; a damaged note is skipped).
+local function characterUses(name)
+  local guard = type(VanguardDB.guard) == "table" and VanguardDB.guard
+  for _, char in pairs(guard and type(guard.chars) == "table" and guard.chars or {}) do
+    if type(char) == "table" and char.profile == name then return true end
   end
+  return false
+end
+
+-- True when a backup must not replace the profile called name: this character uses it now, after
+-- the reload or for a spec, or another character uses it.
+local function profileInUse(name)
+  if name == ns.ProfileName() or name == ns.SelectedProfileName() then return true end
+  for _, profile in pairs(type(VanguardCharDB.specProfiles) == "table" and VanguardCharDB.specProfiles or {}) do
+    if profile == name then return true end
+  end
+  return characterUses(name)
+end
+
+-- "<name> backup" (n 1) or "<name> backup <n>", the name cut to fit 32 characters.
+local function backupName(name, n)
+  local suffix = n == 1 and " backup" or (" backup " .. n)
+  return name:sub(1, 32 - #suffix) .. suffix
+end
+
+-- The rolling backup's name for a profile: "<name> backup"; never a profile in use (by this
+-- character, now, after the reload or for a spec, or by another character): then "<name> backup 2", 3 and on.
+function ns.BackupName(name)
+  local n = 1
+  while profileInUse(backupName(name, n)) do n = n + 1 end
+  return backupName(name, n)
 end
 
 -- Copies the profile this character uses (its own values: an active Situations override is
@@ -144,7 +176,7 @@ end
 -- backup. Runs before every import. Returns the backup's name.
 function ns.BackupProfile()
   local name = ns.BackupName(ns.ProfileName())
-  VanguardDB.profiles[name] = ns.OwnValues and ns.OwnValues(ns.Copy, ns.Profile()) or ns.Copy(ns.Profile())
+  VanguardDB.profiles[name] = ownCopy(ns.Profile())
   return name
 end
 
@@ -192,13 +224,15 @@ local function importNotes(payload, backup)
 end
 
 -- Applies a decoded string (scope and settings, or nil and why not; Core/Serialize.lua): an
--- older string is upgraded first, and the profile in use is backed up (ns.BackupProfile). A
+-- older string is upgraded first, the other computer's own state is left out (ns.WithoutClientState),
+-- and the profile in use is backed up (ns.BackupProfile). A
 -- whole profile becomes a new profile this character switches to (or the one it matches); a
 -- partial string merges into the active profile. Returns what happened and the result
 -- { display (a whole profile's UI scale block, or nil), reload, notes, backup }, or nil and why not.
 function ns.ApplyImport(scope, data)
   local kind, payload = ns.ReadPayload(scope, data)
   if not kind then return nil, payload end
+  ns.WithoutClientState(payload)
   local backup = ns.BackupProfile()
   local result = { notes = importNotes(payload, backup), backup = backup, reload = true }
   local text = kind == "profile" and importWhole(payload, result) or importParts(payload)
@@ -225,11 +259,32 @@ function ns.DisplayQuestion(display)
     math.floor(display.uiScale * 100 + 0.5), screen, math.floor(mine.uiScale * 100 + 0.5))
 end
 
+-- A staged profile's theme table (made when it has none yet): the settings cache only holds the
+-- profile on screen until the reload.
+local function stagedTheme(name)
+  local profile = VanguardDB.profiles[name]
+  profile.theme = type(profile.theme) == "table" and profile.theme or {}
+  return profile.theme
+end
+
+-- Turns Vanguard's pixel-perfect scale off in the profile this character uses after the reload
+-- (an import is only staged, so the profile on screen keeps its own), since it would replace the game's UI scale.
+local function pixelScaleOffAfterReload()
+  local name = ns.SelectedProfileName()
+  local theme = name == ns.ProfileName() and ns.Theme.Settings() or stagedTheme(name)
+  theme.pixelScale = false
+end
+
+-- Sets an imported profile's UI scale (the game's, out of combat) for the profile it was imported into.
+local function useDisplayScale(display)
+  if ns.SetGameUIScale(display.uiScale) then pixelScaleOffAfterReload() end
+end
+
 -- After a whole-profile import that carries its UI scale: asks whether to apply that
--- scale (ns.SetUIScale, out of combat), then runs after() either way.
+-- scale (useDisplayScale), then runs after() either way.
 function ns.OfferDisplay(display, after)
   if not display then return after() end
-  ns.Ask(ns.DisplayQuestion(display), "Use it", function() ns.SetUIScale(display.uiScale) after() end, after)
+  ns.Ask(ns.DisplayQuestion(display), "Use it", function() useDisplayScale(display) after() end, after)
 end
 
 -- Specialization -------------------------------------------------------------------------
@@ -272,10 +327,21 @@ function ns.SpecProfile(spec)
   return name and VanguardDB.profiles[name] and name or nil
 end
 
+-- True when the staged profile is one a spec uses, so a spec change staged it (not the player's own pick).
+local function specStaged()
+  local pending = ns.PendingProfileName()
+  for _, name in pairs(specMap()) do
+    if name == pending then return true end
+  end
+  return false
+end
+
 -- Stages the current spec's profile (and applies it now when `now`, which is only safe before modules
--- read their settings). Returns true if it changed.
+-- read their settings); a spec with no profile of its own uses the character's, so it takes back a
+-- switch another spec staged. Returns true if a switch was staged.
 local function followSpec(now)
   local name = ns.SpecProfile()
+  if not name and specStaged() then ns.UseProfile(ns.ProfileName()) end
   if not name or name == ns.SelectedProfileName() then
     return false
   end

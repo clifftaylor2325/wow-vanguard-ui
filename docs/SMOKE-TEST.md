@@ -286,6 +286,12 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Expect: the tooltips say what each loses (`Deletes profile Spare for every character on this account. It can't be undone.`, `Replaces every setting in profile <yours> with profile Spare's. It can't be undone.`). Reset asks `Reset this profile? Every setting in profile <yours> goes back to Vanguard's defaults, for every character that uses it. A copy is kept as profile <yours> backup.`; No changes nothing; Reset says `Profile <yours> as it was is saved as profile <yours> backup.` and the list shows that backup. After the reload the accent is brass again, and **Copy here** on the backup brings fel back.
 - If it fails, paste: the question's text, the chat lines and `/vg errors`.
 
+### 4.8a Sure? doesn't wait for later
+
+- Do: `/vg` → Profiles, click **Delete** once on a spare profile's row (it says `Sure?`), close the window, open it again on Profiles.
+- Expect: the button reads `Delete` again; one click only asks `Sure?` again and deletes nothing, and a second click deletes the profile.
+- If it fails, paste: a screenshot of the row and `/vg errors`.
+
 ## 5. Pixel borders
 
 ### 5.1 Border width at 1440p
@@ -549,6 +555,12 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Do: `/vg` → Game windows → "Quiet the game". Switch on "Hide the red error line", then press a key that fails (jump into a wall of mobs' "Not enough mana", or use an ability on cooldown). Switch on "Hide the zone names that fade in", then walk into a new zone and subzone. Pick a "Furthest the camera zooms out" value and scroll out. Have a stranger (or an alt) invite you to a group and to a guild with "Decline group invites..." and "Decline guild invites" on, then once from a friend. Die in a battleground with "Release at once..." on.
 - Expect: no red error text; no zone or subzone name fades in (switching either off brings it back without a reload); the camera zooms out further than the game's default; a declined invite closes its prompt and says `Declined a ... from <name>.` in chat, a friend's or guildmate's group invite still shows; you release at once in a battleground and not in an arena or a dungeon.
 - If it fails, paste: which switch, what you did, and `/vg errors`.
+
+### 8.6a The error line keeps quest progress
+
+- Do: with "Hide the red error line" on, kill a mob for a quest objective (or loot a quest item) and, while its yellow progress line is still up, cast at a target out of range. Then try to open the keyring or loot with full bags (a red line the game adds outside the error event).
+- Expect: the yellow progress line (`<mob> slain: 3/10`) stays on screen for its usual time, the red line never shows, and the error voice and sound play as they do without Vanguard. With the switch off, both lines show.
+- If it fails, paste: a screenshot of the top of the screen and `/vg errors`.
 
 ## 9. Bags, merchant, trainer
 
