@@ -256,6 +256,7 @@
       "Calm HUD: setup's look step and the situations offer it",
       "Versus deck: one rounded panel behind the player and target, the crest at the seam, the target's bars mirrored",
       "a ?? (boss or far higher) level reads in the hardest difficulty color, not the easiest",
+      "class bars: a right-click on a totem cell destroys it, with key-down casting on or off",
       "class bars: druid mana while a form shows rage or energy",
       "class bars: totems for shamans, mana in forms for druids",
       "combo points for rogues and druids",

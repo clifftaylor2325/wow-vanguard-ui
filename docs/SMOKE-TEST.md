@@ -454,6 +454,12 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Expect: at full energy the spark is gone after about six seconds and stays gone (no spark crossing a bar that is not regenerating); after you spend energy the next tick starts it again and it crosses the power bar every two seconds. [Needs in-game check: that energy ticks keep it going, and whether abilities that give energy nudge its timing (not changed here).]
 - If it fails, paste: the class, form and what the spark did.
 
+### 7.2h Right-click destroys a totem
+
+- Do: on a shaman with Vanguard's unit frames on, type `/dump GetCVar("ActionButtonUseKeyDown")` (it should print 1, the game's "Cast action keybinds on key down"). Drop two totems, then right-click one of the cells under the player frame. Do it once more in a fight.
+- Expect: the totem you right-clicked is destroyed on the release of the button and its cell clears; the other stays. A left-click does nothing. No error, in combat too. [Needs in-game check: the key-down phase rule was read from the game's SecureTemplates.lua and modelled in the harness, not watched in game.]
+- If it fails, paste: what the CVar printed, what happened to the totem and `/vg errors`.
+
 ### 7.3 Nameplates in a pull
 
 - Do: pull three or more mobs.

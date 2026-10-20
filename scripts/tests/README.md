@@ -155,6 +155,7 @@ values); a test that must tell them apart sets one in `env`.
 | Call | Effect |
 | --- | --- |
 | `click(ref, button = "LeftButton")` | PreClick, OnMouseDown, OnMouseUp, OnClick, PostClick on a frame. |
+| `__wfgStub.secureActs(frame, button, down)` (Lua, through `addon.eval`) | Whether a SecureActionButtonTemplate button of the addon's runs its action on that click phase, as the client's SecureActionButton_OnClick decides: the phase must be registered (`RegisterForClicks`), and the `useOnKeyDown` attribute, else the `ActionButtonUseKeyDown` CVar (on unless `world.cvars` says `"0"`), or `pressAndHoldAction` makes the press act and the release do nothing. The stub's own clicks run OnClick whatever the phase. |
 | `hover(ref)` / `hover(null)` | The mouse onto a frame (OnEnter, `IsMouseOver`), or off everything (OnLeave). |
 | `wheel(ref, delta)`, `key(ref, key)` | OnMouseWheel (on the frame, or the nearest parent that takes the wheel, as in game), OnKeyDown. |
 | `drag(ref, point, x, y)` | Drags a frame to a point on the screen and drops it. |

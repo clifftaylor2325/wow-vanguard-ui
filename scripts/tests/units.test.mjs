@@ -116,6 +116,15 @@ it("class bars: totems for shamans, mana in forms for druids", () => {
   expect(early.eval('ns.GetModule("ClassBars").UpdateTotems() return ns.GetModule("ClassBars").cells[1].__alpha'), "no totem call on this client: cells stay as built").toBe(null);
 });
 
+it("class bars: a right-click on a totem cell destroys it, with key-down casting on or off", () => {
+  const addon = loggedIn(UNITS_ENV + TOTEMS_ENV);
+  // Which phases of a right-click run the cell's secure action: [press, release].
+  const acts = () => addon.eval('local c = ns.GetModule("ClassBars").cells[1] return { __wfgStub.secureActs(c, "RightButton", true), __wfgStub.secureActs(c, "RightButton", false) }');
+  expect(acts(), "key-down casting on (the game's default): the release acts").toEqual([false, true]);
+  addon.eval('SetCVar("ActionButtonUseKeyDown", "0")');
+  expect(acts(), "key-down casting off: still the release").toEqual([false, true]);
+});
+
 it("class bars: druid mana while a form shows rage or energy", () => {
   const addon = loggedIn(UNITS_ENV + '__units.player.class = "DRUID" __form = 1 UnitPowerType = function() return __form end');
   // The mana bar: shown, max and value.

@@ -349,6 +349,27 @@ end
 -- Removes an attribute driver.
 function UnregisterAttributeDriver(frame, attr) if frame.__drivers then frame.__drivers[attr] = nil end end
 
+-- Whether a click registration ("AnyUp", "RightButtonDown") sends this button's press or release.
+local function clickRegistered(frame, button, down)
+  local phase = down and "Down" or "Up"
+  for _, reg in ipairs(frame.__clicks or {}) do
+    if reg == "Any" .. phase or reg == button .. phase then return true end
+  end
+  return false
+end
+
+-- Whether an addon's SecureActionButtonTemplate button runs its action on this click phase, as
+-- SecureActionButton_OnClick decides (SecureTemplates.lua): an addon's OnClick has no isKeyPress or
+-- isSecureAction, so the useOnKeyDown attribute, else the ActionButtonUseKeyDown CVar (on, "1", unless
+-- world.cvars says otherwise), or pressAndHoldAction picks the down phase; the other phase does nothing.
+function stub.secureActs(frame, button, down)
+  if not clickRegistered(frame, button, down == true) then return false end
+  local onDown = frame:GetAttribute("useOnKeyDown")
+  if onDown == nil then onDown = world.cvars.ActionButtonUseKeyDown ~= "0" end
+  onDown = onDown or frame:GetAttribute("pressAndHoldAction")
+  return (down == true) == (not not onDown)
+end
+
 -- Unit watches: a watched frame shows while its unit exists (re-checked on unit changes).
 world.watched = {}
 -- Shows a frame while its unit exists (the unit comes from its attribute or .unit).
