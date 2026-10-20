@@ -42,8 +42,9 @@ S.LAYOUTS = {
 -- player, the target of target beside the target, the focus under that), the
 -- party and raid down the left side (the raid grows up from above the bars'
 -- height, so a full raid stays clear of the middle), the boss frames on the
--- right under your buffs, and the raid leader's tools and main tanks near the
--- top center, clear of all of it.
+-- right under your buffs, the raid leader's tools and main tanks near the
+-- top center, clear of all of it, and the roll tracker right of center below
+-- the raid tools, where its 14 lines grow down into empty space.
 S.CLASSIC = {
   uf_player = { "TOPLEFT", "TOPLEFT", 20, -40 }, uf_pet = { "TOPLEFT", "TOPLEFT", 20, -84 },
   uf_target = { "TOPLEFT", "TOPLEFT", 270, -40 }, uf_targettarget = { "TOPLEFT", "TOPLEFT", 520, -46 },
@@ -52,7 +53,7 @@ S.CLASSIC = {
   raid = { "BOTTOMLEFT", "BOTTOMLEFT", 20, 330 }, uf_party1 = { "TOPLEFT", "TOPLEFT", 20, -310 },
   partyextras = { "TOPLEFT", "TOPLEFT", 190, -310 }, uf_boss1 = { "TOPRIGHT", "TOPRIGHT", -290, -200 },
   raidtools = { "TOP", "TOP", 200, -120 }, maintanks = { "TOP", "TOP", 100, -196 },
-  rolls = { "TOPLEFT", "TOPLEFT", 20, -8 },
+  rolls = { "TOP", "TOP", 280, -300 },
 }
 -- What each centered layout sizes on top of Vanguard's defaults: a mover's scale (it keeps its default
 -- spot, so a big raid still moves to the left), and how tall the target frame stands (UnitFrames'
