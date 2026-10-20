@@ -52,7 +52,7 @@ AH.closed = nil
 function AH.Market7(itemID, now)
   local p, today, vals = AP.House().prices[itemID], AP.Day(now), {}
   for day, v in pairs(p and p.markets or {}) do
-    if day > today - 7 then vals[#vals + 1] = v end
+    if AP.WithinDays(day, today) then vals[#vals + 1] = v end
   end
   if #vals < AH.MARKET_DAYS then return nil end
   table.sort(vals)
@@ -63,7 +63,7 @@ end
 function AH.LowBefore(itemID, now)
   local p, today, low = AP.House().prices[itemID], AP.Day(now), nil
   for day, v in pairs(p and p.days or {}) do
-    if day > today - 7 and day < today and (not low or v < low) then low = v end
+    if AP.WithinDays(day, today) and day < today and (not low or v < low) then low = v end
   end
   return low
 end

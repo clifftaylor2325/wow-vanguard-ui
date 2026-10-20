@@ -39,6 +39,11 @@ function AP.Day(t)
   return math.floor(t / AP.DAY)
 end
 
+-- Whether a day falls in the AP.DAYS days up to and including today.
+function AP.WithinDays(day, today)
+  return day > today - AP.DAYS
+end
+
 -- The day a time falls on by the computer's own clock (whole days since 1970 in its time zone), so
 -- "today" ends at the player's midnight; the UTC day on a client without date().
 function AP.LocalDay(t)
@@ -221,7 +226,7 @@ end
 local function trimDays(p, today)
   for _, byDay in ipairs({ p.days, p.qtys or {}, p.markets or {} }) do
     for day in pairs(byDay) do
-      if day <= today - AP.DAYS then byDay[day] = nil end
+      if not AP.WithinDays(day, today) then byDay[day] = nil end
     end
   end
 end
@@ -290,7 +295,7 @@ end
 function AP.Low7(itemID, now)
   local p, today, low = AP.House().prices[itemID], AP.Day(now or AP.Now()), nil
   for day, copper in pairs(p and p.days or {}) do
-    if day > today - 7 and (not low or copper < low) then low = copper end
+    if AP.WithinDays(day, today) and (not low or copper < low) then low = copper end
   end
   return low
 end
