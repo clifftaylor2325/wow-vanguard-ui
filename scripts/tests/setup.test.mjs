@@ -173,6 +173,16 @@ it("setup's backup is once per run: /vg graphics apply after setup closed backs 
   expect(chatHas(addon, /as it was before setup is saved as profile Default backup/), "chat names the new backup").toBe(true);
   expect(addon.eval("return VanguardDB.profiles['Default backup'].ActionBars.size"), "which holds the sizes from after setup").toBe(50);
 });
+it("first-run setup: a new character starts on the profile the account's characters used last, and its Profile step offers to share that one", () => {
+  const notes = `{ ["Alice-ForeverTest"] = { profile = "Main", stamp = 10 }, ["Carl-ForeverTest"] = { profile = "Gone", stamp = 20 }, ["Dan-ForeverTest"] = { profile = "Default", stamp = 5 } }`;
+  const sv = `VanguardDB = { version = 2, setupDone = true, profiles = { Default = {}, Main = { positions = { raid = { point = "TOP", relPoint = "TOP", x = 0, y = -222 } } } }, guard = { stamp = 20, chars = ${notes} } }\n`;
+  const addon = loggedIn(CLICK_LUA, { firstRun: true, savedVariables: sv });
+  expect(addon.eval("return { ns.ProfileName(), Vanguard_Setup.pages.profile.choices[1].text:GetText() }"), "Main, the newest note whose profile still exists")
+    .toEqual(["Main", "Share profile Main with your other characters"]);
+  expect(addon.eval("return ns.Settings('positions').raid.y"), "with that profile's settings").toBe(-222);
+  const none = loggedIn(CLICK_LUA, { firstRun: true, savedVariables: `VanguardDB = { version = 2, setupDone = true, profiles = { Default = {} }, guard = { stamp = 5, chars = { ["Carl-ForeverTest"] = { profile = "Gone", stamp = 5 } } } }\n` });
+  expect(none.eval("return ns.ProfileName()"), "Default when no note's profile is left").toBe("Default");
+});
 it("setup again: Keep and Keep change nothing; Run setup in the options; Start over owes setup after the reload", () => {
   const addon = loggedIn(CLICK_LUA + ACTIONS_ENV + UNITS_ENV + RAID_ENV + "__wfgStub.setScreen(2560, 1440)");
   addon.eval('ns.SetMoverPoint("raid", "TOP", "TOP", 0, -300)');
