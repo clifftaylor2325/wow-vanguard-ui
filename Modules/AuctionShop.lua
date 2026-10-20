@@ -196,7 +196,7 @@ function AH.DeleteList(name)
   if not store.lists[name] then return end
   store.lists[name] = nil
   if store.list == name then store.list = firstList(store) end
-  if AH.shopCard then AH.shopCard.offset = 0 end
+  AH.ShopTop()
   ns.Chat("Deleted the shopping list " .. name .. ".")
   AH.PaintShop()
 end
