@@ -27,7 +27,7 @@ local function entry(info)
   if type(info) ~= "table" or ns.IsTrue(info.isHidden) then return nil end
   if ns.IsTrue(info.isHeader) then return { header = true, title = info.title } end
   local id = ns.PlainNumber(info.questID)
-  return id and { id = id, title = info.title, level = info.level, ready = ns.IsTrue(questLog("ReadyForTurnIn", id)) or ns.IsTrue(questLog("IsComplete", id)) }
+  return id and { id = id, title = info.title, level = info.level, ready = ns.GetModule("QuestTracker").IsReady(id) }
 end
 
 -- Your quests under their zone headers (a collapsed zone keeps its header, without its quests).
@@ -83,19 +83,13 @@ end
 
 -- The quest's money and XP, as "+1g 20s 0c · 450 XP" ("" for none).
 local function moneyLine(id)
-  local money, xp, parts = ns.PlainNumber(ns.CallIf(_G, "GetQuestLogRewardMoney", id)), ns.PlainNumber(ns.CallIf(_G, "GetQuestLogRewardXP", id)), {}
-  if money and money > 0 then parts[#parts + 1] = "+" .. ns.GetModule("InfoStrip").Money(money) end
-  if xp and xp > 0 then parts[#parts + 1] = xp .. " XP" end
-  return table.concat(parts, "  ·  ")
+  return ns.QuestParts.MoneyText(ns.PlainNumber(ns.CallIf(_G, "GetQuestLogRewardMoney", id)), ns.PlainNumber(ns.CallIf(_G, "GetQuestLogRewardXP", id)))
 end
 
 -- Whether you watch a quest: it is in the watch list the tracker draws from (the client's watch type
 -- can't be trusted to be nil for a quest you don't watch).
 function QL.IsWatched(id)
-  for _, watched in ipairs(ns.GetModule("QuestTracker").Watched()) do
-    if watched == id then return true end
-  end
-  return false
+  return ns.GetModule("QuestTracker").IsWatched(id)
 end
 
 -- What the chosen quest asks beside its objectives (QP.Needs: money and group size), and whether it failed

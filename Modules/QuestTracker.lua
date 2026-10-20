@@ -53,6 +53,16 @@ function QT.Watched()
   return out
 end
 
+-- Whether the quest is watched: it is in the list the tracker draws from.
+---@param id number
+---@return boolean
+function QT.IsWatched(id)
+  for _, watched in ipairs(QT.Watched()) do
+    if watched == id then return true end
+  end
+  return false
+end
+
 -- A quest's objectives as { text, done } (the quest log shows them too).
 function QT.Objectives(id)
   local out = {}
@@ -74,13 +84,20 @@ function QT.LogIndex(id)
   return ns.PlainNumber(ns.CallIf(C_QuestLog, "GetLogIndexForQuestID", id))
 end
 
+-- Whether the quest is ready to turn in: the game's ready flag, or complete. The quest log's list uses it too.
+---@param id number
+---@return boolean
+function QT.IsReady(id)
+  return ns.IsTrue(ns.CallIf(C_QuestLog, "ReadyForTurnIn", id)) or ns.IsTrue(ns.CallIf(C_QuestLog, "IsComplete", id))
+end
+
 -- One watched quest: { id, title, level, ready, failed, objectives, item, xp }, or nil when the log doesn't have it.
 -- The XP switch is read from the profile: the arrow and the minimap marks ask with this module off, before any QT.Enable.
 function QT.Quest(id)
   local index = QT.LogIndex(id)
   local info = index and ns.CallIf(C_QuestLog, "GetInfo", index)
   if type(info) ~= "table" then return nil end
-  local ready = ns.IsTrue(ns.CallIf(C_QuestLog, "ReadyForTurnIn", id)) or ns.IsTrue(ns.CallIf(C_QuestLog, "IsComplete", id))
+  local ready = QT.IsReady(id)
   return { id = id, title = info.title, level = info.level, ready = ready, failed = ns.IsTrue(ns.CallIf(C_QuestLog, "IsFailed", id)), objectives = QT.Objectives(id), item = questItem(index),
     xp = ns.Settings("QuestTracker", QT.defaults).xp and ns.GetModule("DataBars").RewardXP(id) or 0 }
 end
@@ -139,10 +156,7 @@ end
 -- and the game itself refuses past its watch limit). Older clients send the log index before the id.
 function QT.AutoTrack(_, first, second)
   local id = ns.PlainNumber(second or first)
-  if not (QT.settings.autoTrack and id) then return end
-  for _, watched in ipairs(QT.Watched()) do
-    if watched == id then return end
-  end
+  if not (QT.settings.autoTrack and id) or QT.IsWatched(id) then return end
   ns.CallIf(C_QuestLog, "AddQuestWatch", id)
 end
 

@@ -55,6 +55,19 @@ function QP.XPText(xp)
   return s .. " XP"
 end
 
+-- The money and XP a quest gives as text ("+1g 20s 0c  ·  1,250 XP"), then any extra parts; "" for none.
+---@param money number|nil  copper, a plain number or nil
+---@param xp number|nil  a plain number or nil
+---@param extra string[]|nil
+---@return string
+function QP.MoneyText(money, xp, extra)
+  local parts = {}
+  if money and money > 0 then parts[#parts + 1] = "+" .. ns.GetModule("InfoStrip").Money(money) end
+  if xp and xp > 0 then parts[#parts + 1] = QP.XPText(xp) end
+  for _, part in ipairs(extra or {}) do parts[#parts + 1] = part end
+  return table.concat(parts, "  ·  ")
+end
+
 -- The money the open quest asks for to hand it in (copper): 0 for none, and 0 when the client can't say or
 -- hides it (the game's own reward button asks before paying when this is above 0).
 function QP.Cost()

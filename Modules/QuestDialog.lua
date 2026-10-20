@@ -110,11 +110,8 @@ end
 
 -- The money and XP a quest gives, as "+1g 20s 0c · 450 XP" ("" for none).
 function QD.MoneyLine()
-  local money, xp, parts = ns.PlainNumber(ns.CallIf(_G, "GetRewardMoney")), ns.PlainNumber(ns.CallIf(_G, "GetRewardXP")), {}
-  if money and money > 0 then parts[#parts + 1] = "+" .. ns.GetModule("InfoStrip").Money(money) end
-  if xp and xp > 0 then parts[#parts + 1] = xp .. " XP" end
-  for _, extra in ipairs(QD.ExtraRewards(ns.PlainNumber(ns.CallIf(_G, "GetQuestID")))) do parts[#parts + 1] = extra end
-  return table.concat(parts, "  ·  ")
+  local money, xp = ns.PlainNumber(ns.CallIf(_G, "GetRewardMoney")), ns.PlainNumber(ns.CallIf(_G, "GetRewardXP"))
+  return QP.MoneyText(money, xp, QD.ExtraRewards(ns.PlainNumber(ns.CallIf(_G, "GetQuestID"))))
 end
 
 -- The spells a quest teaches, as "Teaches: Name".
