@@ -300,6 +300,14 @@ it("plate health numbers follow the game's Info display, on enemy plates only", 
   addon.eval("UnitCanAttack = function() return true end");
   addon.fire("UNIT_FACTION", "nameplate2");
   expect(numbers("nameplate2").value[0], "a unit that turns hostile gets them").toBe(true);
+  addon.eval("UnitCanAttack = function(_, unit) return unit == 'nameplate1' end");
+  addon.fire("UNIT_FLAGS", "nameplate2");
+  expect(numbers("nameplate2").value[0], "and loses them when a flag change makes it friendly").toBe(false);
+  addon.eval("__info(true, true)");
+  addon.fire("CVAR_UPDATE", "cameraDistanceMaxZoomFactor", "2");
+  expect(numbers("nameplate1").percent[0], "another setting's change leaves the plates alone").toBe(false);
+  addon.fire("CVAR_UPDATE", "NAMEPLATEINFODISPLAY", "3");
+  expect(numbers("nameplate1").percent[0], "the Info display's, by any case, repaints them").toBe(true);
 });
 it("plate health numbers: none on the smallest plates or a client without the setting, and a failing percent is left blank", () => {
   const short = loggedIn(UNITS_ENV + PLATE_ENV + NUMBERS + " __info(true, true) ns.Settings('Nameplates').height = 8");

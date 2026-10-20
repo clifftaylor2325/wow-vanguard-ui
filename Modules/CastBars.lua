@@ -584,7 +584,7 @@ local function createBars(settings)
   for _, unit in ipairs({ "player", "target", "focus" }) do
     if settings[unit] then CB.bars[unit], units[#units + 1] = createBar(unit), unit end
   end
-  if settings.hideBlizzard then CB.bars.pet = createBar("pet") end
+  if settings.hideBlizzard and settings.player then CB.bars.pet = createBar("pet") end
   return units
 end
 

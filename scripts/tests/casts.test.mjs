@@ -206,7 +206,7 @@ it("cast bars ask the client for their own units' casts only", () => {
   addon.fire("UNIT_SPELLCAST_START", "focus");
   expect(addon.eval("return __updates[1]"), "the focus's does").toBe("focus");
   const some = loggedIn(CAST_ENV, { savedVariables: "VanguardDB.profiles = { Default = { CastBars = { player = false, focus = false } } }" });
-  expect(unitEvents(some, "UNIT_SPELLCAST_STOP").subs, "only the units whose bars are on (your pet's while the game's bars are put away)").toBe("pet target");
+  expect(unitEvents(some, "UNIT_SPELLCAST_STOP").subs, "only the units whose bars are on (your pet's goes with yours)").toBe("target");
 });
 
 it("a channel the client stops with an interrupter flashes red, one it lets run out flashes green", () => {

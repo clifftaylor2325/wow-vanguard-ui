@@ -472,7 +472,7 @@ function NP.UpdateHealth(f, unit)
 end
 
 -- Whether a plate shows health numbers: a unit you can attack (a hidden answer counts as no),
--- with one of the game's bits on, on a plate tall enough.
+-- with one of the game's bits on, on a plate tall enough. Looked up as UnitFrames' TagState does.
 local function wantsNumbers(unit)
   local can = type(UnitCanAttack) == "function" and UnitCanAttack("player", unit)
   local enemy = not ns.IsSecret(can) and can == true
@@ -486,13 +486,18 @@ local function placeValue(f)
   f.healthValue:SetPoint("RIGHT", f, "RIGHT", -2, 0)
 end
 
--- Works out whether a plate shows health numbers (when it is drawn, its unit's faction changes,
--- or the game's setting does), places and shows them, and fills them in.
-function NP.PaintNumbers(f, unit)
+-- Works out whether a plate shows health numbers (when it is drawn, its unit's faction or flags
+-- change, or the game's setting does) and places and shows them; NP.UpdateNumbers fills them in.
+function NP.ShowNumbers(f, unit)
   f.vgNumbers = wantsNumbers(unit) == true
   f.healthPercent:SetShown(f.vgNumbers and NP.info.percent)
   f.healthValue:SetShown(f.vgNumbers and NP.info.value)
   placeValue(f)
+end
+
+-- Shows or hides a plate's health numbers as above, and fills them in.
+function NP.PaintNumbers(f, unit)
+  NP.ShowNumbers(f, unit)
   NP.UpdateNumbers(f, unit)
 end
 
@@ -572,7 +577,7 @@ end
 
 -- Everything on one plate (a plate under the mouse wakes the mouseover watch).
 local function refresh(f, unit)
-  NP.PaintNumbers(f, unit)
+  NP.ShowNumbers(f, unit)
   NP.Update(f, unit)
   NP.PaintQuest(f, unit)
   NP.PaintTag(f, unit)
@@ -592,18 +597,35 @@ function NP.RefreshAll()
   each(refresh)
 end
 
--- Whether one of the game's Info display bits is on; a client without the setting, or no answer, is off.
-local function infoBit(key)
-  local get, kinds = C_CVar and C_CVar.GetCVarBitfield, Enum and Enum.NamePlateInfoDisplay
-  if type(get) ~= "function" or type(kinds) ~= "table" or not kinds[key] then return false end
-  return get(NP.INFO_CVAR, kinds[key]) == true
+-- The client's bit index for one of the Info display's boxes ("CurrentHealthPercent"), or nil on a client without it.
+local function infoIndex(key)
+  local kinds = Enum and Enum.NamePlateInfoDisplay
+  return type(kinds) == "table" and kinds[key] or nil
 end
 
--- Reads the game's health number bits again (at login, and after any game setting changed)
--- and repaints the numbers on every plate.
+-- One of the game's Info display bits: true, false, or nil on a client without the setting.
+local function readInfoBit(key)
+  local get, index = C_CVar and C_CVar.GetCVarBitfield, infoIndex(key)
+  if type(get) ~= "function" or not index then return nil end
+  return get(NP.INFO_CVAR, index)
+end
+
+-- Whether one of the game's Info display bits is on; a client without the setting, or no answer, is off.
+local function infoBit(key)
+  return readInfoBit(key) == true
+end
+
+-- Reads the game's health number bits again (at login, after Vanguard's own rows write them,
+-- and when the game says the setting changed) and repaints the numbers on every plate.
 function NP.ReadInfoDisplay()
   NP.info.percent, NP.info.value = infoBit("CurrentHealthPercent"), infoBit("CurrentHealthValue")
   each(NP.PaintNumbers)
+end
+
+-- A game setting changed: re-read the bits when it was the Info display (the client sends
+-- every setting's change; the name comes as registered, matched without case to be safe).
+local function onSettingChanged(_, name)
+  if type(name) == "string" and name:lower() == NP.INFO_CVAR:lower() then NP.ReadInfoDisplay() end
 end
 
 -- Events -----------------------------------------------------------------------------------
@@ -645,7 +667,8 @@ end
 -- A plate's unit event -> what it repaints on that plate. Each plate asks the
 -- client for its own unit's events only (ns.OnUnit), so 30 plates don't each
 -- hear the other 29 (or the raid's).
--- A plate's unit changed faction: its tag mark and bar, and whether it shows health numbers (it may now be an enemy).
+-- A plate's unit changed faction or flags: its tag mark and bar, and whether it shows health numbers
+-- (it may now be an enemy, or no longer one).
 local function onFaction(f, unit)
   NP.PaintTag(f, unit)
   NP.PaintNumbers(f, unit)
@@ -655,7 +678,7 @@ end
 local UNIT_HANDLERS = {
   UNIT_HEALTH = NP.UpdateHealth, UNIT_MAXHEALTH = NP.UpdateHealth, UNIT_NAME_UPDATE = NP.UpdateName,
   UNIT_FACTION = onFaction, UNIT_THREAT_LIST_UPDATE = NP.PaintTag,
-  UNIT_FLAGS = NP.PaintTag, UNIT_LEVEL = NP.UpdateName,
+  UNIT_FLAGS = onFaction, UNIT_LEVEL = NP.UpdateName,
 }
 for _, event in ipairs(CB.EVENTS) do UNIT_HANDLERS[event] = showCast end
 NP.UNIT_EVENTS = {}
@@ -706,8 +729,7 @@ local EVENTS = {
   GROUP_ROSTER_UPDATE = function() each(NP.PaintTag) end,
   -- Your quests changed: which units they need may have too.
   QUEST_LOG_UPDATE = NP.QuestsChanged, UNIT_QUEST_LOG_CHANGED = NP.QuestsChanged,
-  -- A game setting changed: maybe the Info display's health numbers.
-  CVAR_UPDATE = NP.ReadInfoDisplay,
+  CVAR_UPDATE = onSettingChanged,
 }
 
 -- Module entry point (Core/Modules.lua): builds the plate frames ahead, out of combat, and
@@ -794,16 +816,16 @@ end
 -- Whether the client has the game's Info display setting (a client without it gets no rows for
 -- it): reading one of its bits answers nil there.
 local function hasInfoDisplay()
-  local get = C_CVar and C_CVar.GetCVarBitfield
-  return type(get) == "function" and get(NP.INFO_CVAR, 1) ~= nil
+  return readInfoBit("CurrentHealthPercent") ~= nil
 end
 
--- Sets one of the game's Info display bits, once out of combat, then reads them all again
--- (Vanguard writes it only when you tick its row).
+-- Sets one of the game's Info display bits, once out of combat, then reads them all again: the
+-- plates follow at once whether or not the client sends CVAR_UPDATE for an addon's write.
+-- Vanguard writes it only when you tick its row.
 local function setInfoBit(key, on)
-  local set, kinds = C_CVar and C_CVar.SetCVarBitfield, Enum and Enum.NamePlateInfoDisplay
-  if type(set) ~= "function" or type(kinds) ~= "table" or not kinds[key] then return end
-  ns.OutOfCombat(function() set(NP.INFO_CVAR, kinds[key], on); NP.ReadInfoDisplay() end, "plates " .. key)
+  local set, index = C_CVar and C_CVar.SetCVarBitfield, infoIndex(key)
+  if type(set) ~= "function" or not index then return end
+  ns.OutOfCombat(function() set(NP.INFO_CVAR, index, on); NP.ReadInfoDisplay() end, "plates " .. key)
 end
 
 -- get/set for a check row on one of the game's Info display bits.
