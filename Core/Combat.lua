@@ -91,6 +91,13 @@ function ns.PlainNumber(value)
   return value
 end
 
+-- True only for a plain true from the client; a hidden value counts as no.
+---@param value any
+---@return boolean
+function ns.IsTrue(value)
+  return not ns.IsSecret(value) and value == true
+end
+
 -- True on the WoW Forever client (game type "camelot"): the 12.1 engine with
 -- vanilla content, reporting a 1.x interface number (16001). A build that
 -- reports the 12.x number instead still counts when the client has the Forever

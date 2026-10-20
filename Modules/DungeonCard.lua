@@ -129,14 +129,9 @@ local function wanted(info, onThisMap, tags)
   return type(tag) == "table" and tags[ns.PlainNumber(tag.tagID) or 0] == true
 end
 
--- A plain true from the client (hidden values count as false).
-local function yes(v)
-  return not ns.IsSecret(v) and v == true
-end
-
 -- Whether a quest is ready to turn in, asked as the quest log asks (QuestInfo has no completion field).
 local function questDone(questID)
-  return yes(call(C_QuestLog, "ReadyForTurnIn", questID)) or yes(call(C_QuestLog, "IsComplete", questID))
+  return ns.IsTrue(call(C_QuestLog, "ReadyForTurnIn", questID)) or ns.IsTrue(call(C_QuestLog, "IsComplete", questID))
 end
 
 -- A log entry as { title, level, done }, or nil when it is a header or its title or level is hidden.

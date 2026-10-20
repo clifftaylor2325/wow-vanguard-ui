@@ -40,14 +40,10 @@ function GT.Units()
   return units
 end
 
--- True when the client says so with a plain true (a hidden answer counts as no).
-local function isTrue(v)
-  return not ns.IsSecret(v) and v == true
-end
 
 -- One unit's row { name, percent, status } on your target, nil when it has none; false when the client hid a value.
 local function read(unit)
-  if not isTrue(UnitExists(unit)) or isTrue(UnitIsUnit(unit, "player")) and unit ~= "player" then return nil end
+  if not ns.IsTrue(UnitExists(unit)) or ns.IsTrue(UnitIsUnit(unit, "player")) and unit ~= "player" then return nil end
   local _, status, percent = UnitDetailedThreatSituation(unit, "target")
   local name = UnitName(unit)
   if ns.IsSecret(status) or ns.IsSecret(percent) or ns.IsSecret(name) then return false end
@@ -70,7 +66,7 @@ end
 -- Whether there is something to compare against: a client that has the call, a group and a hostile target.
 function GT.CanShow()
   if type(UnitDetailedThreatSituation) ~= "function" or type(IsInGroup) ~= "function" then return false end
-  if not IsInGroup() or not isTrue(UnitExists("target")) then return false end
+  if not IsInGroup() or not ns.IsTrue(UnitExists("target")) then return false end
   return type(UnitCanAttack) ~= "function" or UnitCanAttack("player", "target") == true
 end
 
