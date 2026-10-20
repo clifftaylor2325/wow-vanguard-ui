@@ -258,6 +258,15 @@ it("minimap: the faded zoom buttons take no mouse, so nothing invisible catches 
   const addon = loggedIn(UI_ENV + 'Minimap.ZoomOut = CreateFrame("Button", nil, Minimap)');
   expect(addon.eval("return { Minimap.ZoomIn.__mouse, Minimap.ZoomOut.__mouse, Minimap.ZoomIn.__alpha, Minimap.ZoomIn:IsEnabled() }"), "faded, no mouse, still enabled for the wheel's clicks").toEqual([false, false, 0, true]);
 });
+it("minimap: the tracking and compartment slots fade the game's round art again whenever it puts it back", () => {
+  const STATES = `for _, f in ipairs({ MinimapCluster.Tracking, AddonCompartmentFrame }) do
+      f.AddTexture = f:CreateTexture(nil, "ARTWORK")
+      f.OnButtonStateChanged = function(self) self.AddTexture:SetAlpha(0.1) end
+    end`;
+  const addon = loggedIn(UI_ENV + TIDY_ENV + STATES);
+  addon.eval("MinimapCluster.Tracking:OnButtonStateChanged() AddonCompartmentFrame:OnButtonStateChanged()");
+  expect(addon.eval("return { MinimapCluster.Tracking.AddTexture.__alpha, AddonCompartmentFrame.AddTexture.__alpha }"), "hover or press: the art stays faded").toEqual([0, 0]);
+});
 it("chat art is hidden so the game's mouseover fade cannot bring it back", () => {
   const addon = loggedIn(UI_ENV + CHAT_ART_ENV);
   // Whether each window's art is showing.

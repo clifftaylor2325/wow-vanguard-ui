@@ -158,6 +158,13 @@ local function slotStates(obj, b)
   b:HookScript("OnMouseUp", function() T.SlotState(vgSlot[obj], vgHover[obj] and "hover" or nil) end)
 end
 
+-- The game's tracking and compartment buttons put their round art back on hover, press and while the
+-- menu is open (OnButtonStateChanged sets AddTexture's alpha); it is faded again after each change.
+local function keepFaded(b)
+  if type(b.OnButtonStateChanged) ~= "function" then return end
+  hooksecurefunc(b, "OnButtonStateChanged", ns.Guard("hook OnButtonStateChanged", function() T.FadeRegions(b) end))
+end
+
 -- The slot tile (a level under the button, so the game's count text draws over it) and the icon on it, made once.
 local function addSlot(obj, icon, glyph)
   vgSlot[obj] = T.Slot(CreateFrame("Frame", nil, obj))
@@ -189,6 +196,7 @@ function MM.SlotButton(obj, icon, side, glyph)
   if vgSlot[obj] then return end
   addSlot(obj, icon, glyph)
   slotStates(obj, b)
+  keepFaded(b)
 end
 
 -- SetPoint arguments for a leftover button: its corner of the map, or on a round map the rim at its angle.
