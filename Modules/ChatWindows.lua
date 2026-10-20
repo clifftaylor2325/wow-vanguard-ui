@@ -117,7 +117,7 @@ end
 -- The message groups a tab can show or hide, as the game names them.
 CW.GROUPS = {
   { "SAY", "Say" }, { "YELL", "Yell" }, { "GUILD", "Guild" }, { "PARTY", "Party" }, { "RAID", "Raid" },
-  { "WHISPER", "Whispers" }, { "LOOT", "Loot" }, { "SYSTEM", "System messages" },
+  { "WHISPER", "Whispers" }, { "LOOT", "Loot" }, { "SYSTEM", "System messages" }, { "OFFICER", "Officer" }, { "EMOTE", "Emotes" },
 }
 -- The longest tab name.
 CW.MAX_NAME = 16

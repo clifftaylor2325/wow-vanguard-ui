@@ -25,7 +25,12 @@ local IS = ns.Module("InfoStrip", {
   },
 })
 
+-- The strip's width and row height with text at 100 %; a larger Text size widens and heightens them in step.
 IS.WIDTH, IS.ROW = 182, 18
+-- Where the strip sits (just under the minimap), the most rows it shows, the room it keeps under its rows,
+-- and the gap from its last row down to the quest tracker's spot.
+IS.HOME = { "TOPRIGHT", "TOPRIGHT", -12, -200 }
+IS.MOST_ROWS, IS.EDGE, IS.TRACKER_GAP = 7, 4, 6
 -- Where each block sits: row, and its side of the row (two columns, so no two blocks run together).
 IS.BLOCKS = {
   durability = { 1, "LEFT" }, bags = { 1, "RIGHT" },
@@ -141,11 +146,79 @@ local function xpNow()
   if cur and max and max > 0 then return cur, max end
 end
 
--- Starts this session's counters (at login or a reload; once).
+-- Starts this session's counters when the strip is enabled (once). A reload swaps them for the saved
+-- ones at PLAYER_ENTERING_WORLD (IS.ResumeSession). GetTime runs on across a reload, so the start stays good.
 function IS.StartSession()
   if IS.session then return end
   local cur, max = xpNow()
-  IS.session = { start = ask("GetTime") or 0, gained = 0, xp = cur, max = max, money = ns.PlainNumber(ask("GetMoney")) }
+  local money = ns.PlainNumber(ask("GetMoney"))
+  local now = ask("GetTime") or 0
+  IS.session = { start = now, saved = now, gained = 0, xp = cur, max = max, money = money, last = money, earned = 0, spent = 0 }
+end
+
+-- How many seconds after the game saved a session (at the logout or reload, IS.StampSession) it can carry on:
+-- a /reload takes a few; anything older was an earlier login, saved while the strip was on and left since.
+IS.RESUME_WITHIN = 300
+-- A saved session's fields its counters read: the ones that must be numbers, and the ones that may also be
+-- missing (the client hid them at the start).
+IS.SESSION_NUMBERS = { "start", "gained", "earned", "spent", "saved" }
+IS.SESSION_MAYBE = { "xp", "max", "money", "last" }
+
+-- Whether every field a saved session's counters read is of the kind they need (an edited or older file
+-- otherwise breaks every count after it).
+local function wellFormed(s)
+  for _, k in ipairs(IS.SESSION_NUMBERS) do if type(s[k]) ~= "number" then return false end end
+  for _, k in ipairs(IS.SESSION_MAYBE) do if s[k] ~= nil and type(s[k]) ~= "number" then return false end end
+  return (s.xp == nil) == (s.max == nil)
+end
+
+-- This character's saved session (VanguardCharDB.infoSession), or nil when there is none to carry on: it must
+-- be whole, and saved moments ago (GetTime runs on across a reload and logins; it starts again after a restart).
+local function savedSession()
+  local s = type(VanguardCharDB) == "table" and VanguardCharDB.infoSession
+  if type(s) ~= "table" or not wellFormed(s) then return nil end
+  local now = ask("GetTime") or 0
+  local age = now - s.saved
+  if s.start <= now and age >= 0 and age <= IS.RESUME_WITHIN then return s end
+end
+
+-- Marks the session with when the game saved it (PLAYER_LOGOUT fires at a reload and a logout).
+function IS.StampSession()
+  if IS.session then IS.session.saved = ask("GetTime") or 0 end
+end
+
+-- Keeps the session in the character's saved file, which the game writes at a reload or logout.
+local function keepSession()
+  if type(VanguardCharDB) == "table" then VanguardCharDB.infoSession = IS.session end
+end
+
+-- A reload carries the saved session on; a fresh login (or no saved session) keeps the new one; zoning
+-- (neither flag) changes nothing. The game's flags are plain booleans.
+function IS.ResumeSession(_, isLogin, isReload)
+  if not (isLogin or isReload) then return end
+  local saved = isReload and savedSession()
+  if saved then IS.session = saved end
+  keepSession()
+  IS.PaintRates()
+end
+
+-- Starts the rates counting again from now (a right-click on a rate); the gold tooltip's earned and spent
+-- still count from the login.
+function IS.RestartSession()
+  local old = IS.session or {}
+  IS.session = nil
+  IS.StartSession()
+  IS.session.earned, IS.session.spent = old.earned or 0, old.spent or 0
+  keepSession()
+  IS.PaintRates()
+end
+
+-- Counts the money earned and spent since the last change (for the gold tooltip).
+function IS.CountMoney()
+  local s, now = IS.session, ns.PlainNumber(ask("GetMoney"))
+  if not (s and now and s.last) then return end
+  if now > s.last then s.earned = (s.earned or 0) + now - s.last else s.spent = (s.spent or 0) + s.last - now end
+  s.last = now
 end
 
 -- Counts the XP gained since the last update; after a level-up, the old level's rest too.
@@ -378,6 +451,27 @@ end
 
 -- Showing -----------------------------------------------------------------------------------
 
+-- How much larger the strip's text is drawn than at 100 % Text size; never under 1, so smaller text
+-- keeps today's strip (the calendar button's 18-unit slot still fits a row).
+local function textGrowth()
+  return math.max(1, T.RoleSize("small") / T.ROLES.small[1])
+end
+
+-- The strip's row height at the current Text size.
+function IS.Row()
+  return math.floor(IS.ROW * textGrowth() + 0.5)
+end
+
+-- The strip's width at the current Text size.
+function IS.Width()
+  return math.floor(IS.WIDTH * textGrowth() + 0.5)
+end
+
+-- How far down from the strip's top a row's middle sits.
+local function rowY(row)
+  return -(row - 0.5) * IS.Row()
+end
+
 -- The lowest row with a block showing (0 when nothing shows).
 local function rowsShown()
   local rows = 0
@@ -392,7 +486,7 @@ end
 local function fitRows()
   local rows = rowsShown()
   IS.frame:SetShown(rows > 0 and V.Shows(IS.frame))
-  IS.frame:SetHeight(IS.ROW * math.max(rows, 2) + 4)
+  IS.frame:SetHeight(IS.Row() * math.max(rows, 2) + IS.EDGE)
 end
 
 -- Sits the date right after the time, or at the row's left edge while the time is off.
@@ -400,15 +494,15 @@ function IS.PlaceDate()
   local date, clock = IS.texts.date, IS.texts.clock
   date:ClearAllPoints()
   if clock:IsShown() then date:SetPoint("LEFT", clock, "RIGHT", IS.DATE_GAP, 0)
-  else date:SetPoint("LEFT", IS.frame, "TOPLEFT", 6, -(IS.BLOCKS.date[1] - 0.5) * IS.ROW) end
+  else date:SetPoint("LEFT", IS.frame, "TOPLEFT", 6, rowY(IS.BLOCKS.date[1])) end
 end
 
 -- The button that goes with a block, by its key on IS: the calendar with the date, the clock's hit area with the time.
 IS.BUTTONS = { date = "calendar", clock = "clockButton" }
 
--- Shows a block's button while the block shows.
+-- Shows a block's button (its own, or its hit area) while the block shows.
 local function showButton(key, shown)
-  local b = IS[IS.BUTTONS[key] or ""]
+  local b = IS[IS.BUTTONS[key] or ""] or (IS.hits and IS.hits[key])
   if b then b:SetShown(shown) end
 end
 
@@ -438,12 +532,17 @@ end
 
 -- Building ----------------------------------------------------------------------------------
 
--- One block's text, at its side of its row (left blocks 6 in from the left edge, right ones 6 from the right).
-local function addText(frame, key)
+-- Sets a block's text at its side of its row (left blocks 6 in from the left edge, right ones 6 from the right).
+local function placeText(fs, key)
   local row, point = IS.BLOCKS[key][1], IS.BLOCKS[key][2]
-  local fs = T.Text(frame:CreateFontString(nil, "OVERLAY"), "small", "text")
-  local x = point == "LEFT" and 6 or -6
-  fs:SetPoint(point, frame, "TOP" .. point, x, -(row - 0.5) * IS.ROW)
+  fs:ClearAllPoints()
+  fs:SetPoint(point, IS.frame, "TOP" .. point, point == "LEFT" and 6 or -6, rowY(row))
+end
+
+-- One block's text, in its place.
+local function addText(key)
+  local fs = T.Text(IS.frame:CreateFontString(nil, "OVERLAY"), "small", "text")
+  placeText(fs, key)
   return fs
 end
 
@@ -489,12 +588,18 @@ local function addInvites(b)
   IS.invites, IS.invitesBack = fs, back
 end
 
+-- Sets the calendar button at the date row's right end.
+local function placeCalendar(b)
+  b:ClearAllPoints()
+  b:SetPoint("RIGHT", IS.frame, "TOPRIGHT", -IS.CALENDAR_GAP, rowY(IS.BLOCKS.date[1]))
+end
+
 -- The calendar button (shown with the date): a slot button of the minimap's kind at the date row's right end,
 -- opening the calendar like /calendar, with a count of the invites waiting. None where the realm has no calendar.
 local function addCalendar(frame)
   if IS.CalendarOff() then return end
   local b = CreateFrame("Button", "Vanguard_InfoStripCalendar", frame)
-  b:SetPoint("RIGHT", frame, "TOPRIGHT", -IS.CALENDAR_GAP, -(IS.BLOCKS.date[1] - 0.5) * IS.ROW)
+  placeCalendar(b)
   b:SetScript("OnClick", ns.Guard("click info strip calendar", openCalendar))
   b:SetScript("OnEnter", ns.Guard("info strip calendar tip", IS.CalendarTip))
   b:SetScript("OnLeave", ns.Guard("info strip calendar tip", function() GameTooltip:Hide() end))
@@ -536,10 +641,175 @@ local function addClock(frame)
   IS.clockButton = b
 end
 
--- The strip's buttons: the calendar at the date row's end, and the time's hit area.
+-- Block tooltips -----------------------------------------------------------------------------
+
+-- The worn slots durability reads, by inventory slot, with the names the tooltip gives them.
+IS.SLOT_NAMES = {
+  [1] = "Head", [3] = "Shoulders", [5] = "Chest", [6] = "Waist", [7] = "Legs", [8] = "Feet", [9] = "Wrists",
+  [10] = "Hands", [16] = "Main hand", [17] = "Off hand", [18] = "Ranged",
+}
+-- What a bag that holds one kind of thing is called, by the game's bag family number; any other family is a "special bag".
+IS.BAG_KINDS = { [1] = "quiver", [2] = "ammo pouch", [4] = "soul bag" }
+
+-- Each worn item under full durability, most worn first: { name, percent }.
+function IS.WornSlots()
+  local out = {}
+  for slot, name in pairs(IS.SLOT_NAMES) do
+    local share = slotShare(slot)
+    if share and share < 1 then out[#out + 1] = { name, math.floor(share * 100 + 0.5) } end
+  end
+  table.sort(out, function(a, b) return a[2] < b[2] or (a[2] == b[2] and a[1] < b[1]) end)
+  return out
+end
+
+-- A tooltip line in two parts: the label muted, the value in a colour token.
+local function tipLine(tt, label, value, token)
+  local r, g, b = T.RGB("text2")
+  tt:AddDoubleLine(label, value, r, g, b, T.RGB(token or "text"))
+end
+
+-- Durability's tooltip: each worn item under 100 %, most worn first, coloured as the strip colours it.
+local function durabilityTip(tt)
+  local worn = IS.WornSlots()
+  for _, item in ipairs(worn) do tipLine(tt, item[1], item[2] .. "%", IS.DurabilityColor(item[2])) end
+  local r, g, b = T.RGB("text2")
+  if #worn == 0 then tt:AddLine("Everything at 100%", r, g, b) end
+end
+
+-- A bag's name in the tooltip: the backpack, or "Bag 3", with what it holds when it takes only one kind of thing.
+local function bagName(bag, family)
+  local name = bag == 0 and "Backpack" or "Bag " .. bag
+  if family == 0 then return name end
+  return name .. " (" .. (IS.BAG_KINDS[family] or "special bag") .. ")"
+end
+
+-- Free space's tooltip: each bag's slots used of its total (a soul bag or quiver named as such).
+local function bagsTip(tt)
+  local MS = ns.GetModule("MenuStrip")
+  for bag = 0, MS.LAST_BAG do
+    local total, free = MS.BagSpace(bag)
+    if total and total > 0 then
+      local _, family = C_Container.GetContainerNumFreeSlots(bag)
+      tipLine(tt, bagName(bag, ns.PlainNumber(family) or 0), (total - free) .. " / " .. total .. " used")
+    end
+  end
+end
+
+-- Gold's tooltip: what came in and went out since you logged in.
+local function goldTip(tt)
+  local s = IS.session or {}
+  tipLine(tt, "Earned this session", IS.Money(s.earned or 0), "gold")
+  tipLine(tt, "Spent this session", IS.Money(s.spent or 0), "gold")
+end
+
+-- How often the tooltip reads Vanguard's memory at most: the read walks every loaded addon's memory.
+IS.MEMORY_EVERY = 10
+
+-- Vanguard's memory in KB for the tooltip: the last reading while it is fresh, else a new one (nil in a fight).
+function IS.Memory()
+  local now = ask("GetTime") or 0
+  if IS.memoryAt and now - IS.memoryAt < IS.MEMORY_EVERY then return IS.memory end
+  local kb = ns.Perf.Memory()
+  if kb then IS.memory, IS.memoryAt = kb, now end
+  return kb
+end
+
+-- Frame rate and latency's tooltip: home and world latency, and Vanguard's memory (not read in a fight).
+local function systemTip(tt)
+  local _, _, home, world = ask("GetNetStats")
+  home, world = ns.PlainNumber(home), ns.PlainNumber(world)
+  if home then tipLine(tt, "Home latency", home .. " ms") end
+  if world then tipLine(tt, "World latency", world .. " ms") end
+  local kb = IS.Memory()
+  if kb then tipLine(tt, "Vanguard's memory", string.format("%.1f MB", kb / 1024)) end
+end
+
+-- The session rates' tooltip: how long the session has run, the XP gained and the gold made or spent in it.
+local function ratesTip(tt)
+  local s = IS.session or {}
+  tipLine(tt, "Session", IS.Duration((ask("GetTime") or 0) - (s.start or 0)))
+  tipLine(tt, "XP gained", ns.GetModule("DataBars").Short(s.gained or 0))
+  local now, start = ns.PlainNumber(ask("GetMoney")), s.money
+  if now and start then tipLine(tt, "Gold", (now < start and "-" or "+") .. IS.ShortMoney(math.abs(now - start)), now < start and "bad" or "gold") end
+end
+
+-- A fight's length: "42s", or "3m 05s".
+function IS.FightLength(seconds)
+  local whole = math.floor(seconds + 0.5)
+  if whole < 60 then return whole .. "s" end
+  return string.format("%dm %02ds", math.floor(whole / 60), whole % 60)
+end
+
+-- The last fight's tooltip (DPS and place): how long it lasted; in a fight, that the figure waits for its end.
+local function fightTip(tt)
+  local seconds = IS.FightSeconds()
+  if seconds then tipLine(tt, "Fight length", IS.FightLength(seconds)) end
+  local r, g, b = T.RGB("text2")
+  if ns.InCombat() then tt:AddLine("Updates when this fight ends", r, g, b) end
+end
+
+-- Each block's tooltip: its title, and the function that adds its lines.
+IS.TIPS = {
+  durability = { "Durability", durabilityTip }, bags = { "Bag space", bagsTip }, gold = { "Gold", goldTip },
+  system = { "Frame rate and latency", systemTip },
+  xprate = { "This session", ratesTip }, leveltime = { "This session", ratesTip }, goldrate = { "This session", ratesTip },
+  dps = { "Last fight", fightTip }, rank = { "Last fight", fightTip },
+}
+
+-- What a left-click on a block opens, out of a fight: the window's name (for the hint and the in-a-fight
+-- line), the game's function and its argument.
+IS.CLICKS = {
+  durability = { "The character window", "ToggleCharacter", "PaperDollFrame" },
+  bags = { "The bag window", "ToggleAllBags" }, gold = { "The bag window", "ToggleAllBags" },
+}
+-- The blocks a right-click starts counting again from now (the session's rates).
+IS.RESTARTS = { xprate = true, leveltime = true, goldrate = true }
+
+-- The muted hint lines at a tooltip's end: what a click opens (not in a fight), and the restart.
+local function clickHints(tt, key)
+  local click, r, g, b = IS.CLICKS[key], T.RGB("text2")
+  if click then tt:AddLine("Click: " .. click[1]:lower() .. (ns.InCombat() and " (not in a fight)" or ""), r, g, b) end
+  if IS.RESTARTS[key] then tt:AddLine("Right-click: start counting again", r, g, b) end
+end
+
+-- Shows a block's tooltip, beside the strip.
+function IS.ShowTip(hit)
+  local tip = IS.TIPS[hit.key]
+  GameTooltip:SetOwner(hit, "ANCHOR_LEFT")
+  GameTooltip:SetText(tip[1], T.RGB("text"))
+  tip[2](GameTooltip)
+  clickHints(GameTooltip, hit.key)
+  GameTooltip:Show()
+end
+
+-- A click on a block: a right-click on a rate starts the session again; a left-click opens the block's
+-- window, except in a fight (chat says it waits; the game refuses Vanguard there).
+function IS.Click(hit, button)
+  if button == "RightButton" and IS.RESTARTS[hit.key] then return IS.RestartSession() end
+  local click = IS.CLICKS[hit.key]
+  if button ~= "LeftButton" or not click or ns.WindowWaitsForCombat(click[1]) then return end
+  ask(click[2], click[3])
+end
+
+-- One block's hit area over its text (the text takes no mouse): its tooltip on hover, and its clicks.
+local function addHit(frame, key)
+  local hit = CreateFrame("Button", nil, frame)
+  hit.key = key
+  hit:SetAllPoints(IS.texts[key])
+  hit:RegisterForClicks("LeftButtonUp", "RightButtonUp")
+  hit:SetScript("OnEnter", ns.Guard("info strip tip", IS.ShowTip))
+  hit:SetScript("OnLeave", ns.Guard("info strip tip", function() GameTooltip:Hide() end))
+  hit:SetScript("OnClick", ns.Guard("click info strip", IS.Click))
+  hit:Hide()
+  return hit
+end
+
+-- The strip's buttons: the calendar at the date row's end, the time's hit area, and every other block's.
 local function addButtons(frame)
   addCalendar(frame)
   addClock(frame)
+  IS.hits = {}
+  for key in pairs(IS.TIPS) do IS.hits[key] = addHit(frame, key) end
 end
 
 -- The strip's timer while it shows: the clock every second, fps and latency every third, the rates every fifth.
@@ -569,14 +839,38 @@ local function watchVisibility(f)
   IS.ApplyVisibility()
 end
 
+-- The quest tracker's default spot: under the strip's last row at the current Text size, so a larger Text
+-- size never runs the strip into the tracker.
+function IS.TrackerPoint()
+  local y = IS.HOME[4] - IS.Row() * IS.MOST_ROWS - IS.EDGE - IS.TRACKER_GAP
+  return { "TOPRIGHT", "TOPRIGHT", IS.HOME[3], y }
+end
+
+-- Moves the quest tracker's default spot to follow the strip's height (a spot the player saved wins). Out of
+-- a fight only: the game's tracker, with its item buttons, is pinned to that spot.
+function IS.MoveTracker()
+  ns.SetMoverDefault("questtracker", IS.TrackerPoint())
+end
+
+-- Lays the strip out again for the current Text size: its width, every block on its row and the
+-- calendar button beside the date (plain frames, so this is fine in a fight), then the rows that show.
+function IS.Layout()
+  IS.frame:SetWidth(IS.Width())
+  for key, fs in pairs(IS.texts) do placeText(fs, key) end
+  if IS.calendar then placeCalendar(IS.calendar) end
+  IS.PlaceDate()
+  fitRows()
+  ns.OutOfCombat(IS.MoveTracker, "infostrip-tracker")
+end
+
 -- The movable strip, just under the minimap.
 local function build()
   local f = T.HudPanel(CreateFrame("Frame", "Vanguard_InfoStrip", UIParent))
   IS.frame = f
-  f:SetSize(IS.WIDTH, IS.ROW * 2 + 4)
-  ns.Mover(f, "infostrip", "Info strip", { "TOPRIGHT", "TOPRIGHT", -12, -200 })
+  f:SetSize(IS.Width(), IS.Row() * 2 + IS.EDGE)
+  ns.Mover(f, "infostrip", "Info strip", IS.HOME)
   IS.texts = {}
-  for key in pairs(IS.BLOCKS) do IS.texts[key] = addText(f, key) end
+  for key in pairs(IS.BLOCKS) do IS.texts[key] = addText(key) end
   addButtons(f)
   ticker(f)
   IS.UpdateAll()
@@ -648,7 +942,9 @@ end
 local function watch()
   for event, key in pairs(IS.EVENTS) do ns.On(event, function() IS.Paint(key) end) end
   ns.On("BAG_UPDATE_DELAYED", function() IS.Paint("ammo") IS.Paint("shards") end)
-  ns.On("PLAYER_MONEY", function() IS.Paint("goldrate") end)
+  ns.On("PLAYER_MONEY", function() IS.CountMoney() IS.Paint("goldrate") end)
+  ns.On("PLAYER_ENTERING_WORLD", IS.ResumeSession)
+  ns.On("PLAYER_LOGOUT", IS.StampSession)
   ns.On("PLAYER_XP_UPDATE", onXP)
   ns.On("PLAYER_LEVEL_UP", IS.PaintRates)
   ns.On("PLAYER_ENTERING_WORLD", IS.UpdateAll)
@@ -656,13 +952,14 @@ local function watch()
   for _, event in ipairs({ "PLAYER_REGEN_ENABLED", "DAMAGE_METER_RESET" }) do ns.On(event, function() IS.Paint("dps") IS.Paint("rank") end) end
 end
 
--- Module entry point (Core/Modules.lua).
+-- Module entry point (Core/Modules.lua): the strip, laid out again whenever the Text size changes.
 function IS.Enable(settings)
   IS.settings = settings
   hideReplaced(settings)
   keepReminders(settings)
   IS.StartSession()
   build()
+  T.OnChanged(IS.Layout)
   watch()
   watchInvites()
 end

@@ -139,11 +139,10 @@ local function setShow(v)
   if QM.settings then QM.Draw() end
 end
 
--- The switch on the Quests page.
+-- The switch on the Quests page's "Finding your way" card (Core/OptionsQuests.lua places it).
 function QM.Rows()
   return { { "check", "Quest spots on the minimap", getShow, setShow, QM.defaults.show } }
 end
-ns.Options.AddRows("quests", QM.Rows)
 
 -- Module entry point (Core/Modules.lua): the marks' layer over the minimap, the spots read each second and
 -- when the log or zone changes, and the marks redrawn a few times a second as you move.
