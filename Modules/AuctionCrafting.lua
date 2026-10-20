@@ -102,10 +102,10 @@ end
 
 -- A total line's value and colour: copper in gold (the profit in good or bad), else what's missing in muted.
 local function totalText(data, key)
-  local unpriced = data.unpriced > 0 and string.format("%d without a price", data.unpriced)
-  if key == "cost" then return unpriced and ("at least " .. AP.Money(data.cost)) or AP.Money(data.cost), unpriced and "muted" or "gold" end
+  local someUnpriced = data.unpriced > 0
+  if key == "cost" then return someUnpriced and ("at least " .. AP.Money(data.cost)) or AP.Money(data.cost), someUnpriced and "muted" or "gold" end
   if key == "worth" then return data.worth and AP.Money(data.worth) or (data.output and "no price" or "nothing to sell"), data.worth and "gold" or "muted" end
-  if not data.worth or unpriced then return "needs every price", "muted" end
+  if not data.worth or someUnpriced then return "needs every price", "muted" end
   local profit = data.worth - data.cost
   return AP.Money(profit), profit < 0 and "bad" or "good"
 end
