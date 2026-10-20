@@ -35,6 +35,11 @@ it("main tank frames: the raid's main tanks and assists, with what each is targe
   expect(off.eval("return Vanguard_MainTanks == nil"), "switched off under Modules, nothing is built").toBe(true);
   expect(loggedIn(UNITS_ENV).eval("return Vanguard_MainTanks ~= nil"), "a client without attribute drivers still builds them").toBe(true);
 });
+it("main tank tiles: hovering one out of combat shows its unit's tooltip", () => {
+  const addon = loggedIn(UNITS_ENV + GROUP_EXTRAS_ENV);
+  addon.eval('__mt(1, "raid1")');
+  expect(addon.eval("local b = Vanguard_MainTanksUnitButton1 b:GetScript('OnEnter')(b) return { GameTooltip:GetOwner() == b, GameTooltip.__unit }"), "the tile owns the tooltip, showing its unit").toEqual([true, "raid1"]);
+});
 it("main tank tiles take their handle's scale and opacity (the header sits beside its holder)", () => {
   const addon = loggedIn(UNITS_ENV + RAID_ENV);
   // The header's scale and opacity.

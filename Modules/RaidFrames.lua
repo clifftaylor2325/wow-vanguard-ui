@@ -518,13 +518,46 @@ local function onAttributeChanged(b, name, value)
   RF.Update(b)
 end
 
--- A button's scripts: clicks, follow its unit, refresh on show, light on hover.
+-- The tiles that show their unit's tooltip (RF.UnitTooltip), so a pull can hide the one a tile owns.
+RF.tooltipTiles = {}
+
+-- Shows a tile's unit in the game's tooltip, out of combat only (a forbidden tooltip is left alone).
+local function showTileTooltip(b)
+  local tt, unit = GameTooltip, b:GetAttribute("unit")
+  if ns.InCombat() or not unit or tt:IsForbidden() then return end
+  GameTooltip_SetDefaultAnchor(tt, b)
+  tt:SetUnit(unit)
+end
+
+-- Hides the tooltip when the mouse leaves the tile, if the tile still owns it.
+local function hideTileTooltip(b)
+  local tt = GameTooltip
+  if not tt:IsForbidden() and tt:GetOwner() == b then tt:Hide() end
+end
+
+-- A fight starts: a tooltip a tile shows goes, so it never covers the tiles while you heal.
+local function hideTooltipInFight()
+  local tt = GameTooltip
+  if not tt:IsForbidden() and RF.tooltipTiles[tt:GetOwner()] then tt:Hide() end
+end
+
+-- Gives a tile (a raid or main tank tile) its unit's tooltip on hover, out of combat; post-hooks only,
+-- so the secure clicks and click casting's wrap are untouched.
+function RF.UnitTooltip(b)
+  if not RF.tooltipInFight then ns.On("PLAYER_REGEN_DISABLED", hideTooltipInFight) end
+  RF.tooltipInFight, RF.tooltipTiles[b] = true, true
+  b:HookScript("OnEnter", ns.Guard("raid tile tooltip", showTileTooltip))
+  b:HookScript("OnLeave", ns.Guard("raid tile tooltip", hideTileTooltip))
+end
+
+-- A button's scripts: clicks, follow its unit, refresh on show, light on hover, its unit's tooltip.
 local function addScripts(b)
   b:RegisterForClicks("AnyUp")
   b:HookScript("OnAttributeChanged", onAttributeChanged)
   b:HookScript("OnShow", RF.Update)
   b:HookScript("OnEnter", function() b.hover:Show() end)
   b:HookScript("OnLeave", function() b.hover:Hide() end)
+  RF.UnitTooltip(b)
 end
 
 -- The panel and every part of a tile (bars, texts, marks, overlay): on a button

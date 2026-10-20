@@ -434,6 +434,34 @@ it("a softened bar is never brighter than the light name on it can be read again
   expect(luma(warrior) < 0.3, "a darker class is left as the plain mix").toBe(true);
 });
 
+// The tooltip's owner, unit and shown state after a tile's script runs.
+const hoverTile = (addon, name, script = "OnEnter") => addon.eval(`local b = ${name}
+  b:GetScript("${script}")(b)
+  return { owned = GameTooltip:GetOwner() == b, unit = GameTooltip.__unit, shown = GameTooltip:IsShown() }`);
+
+it("raid frames: hovering a tile out of combat shows its unit's tooltip; a fight hides it and keeps it away", () => {
+  const addon = loggedIn(UNITS_ENV + RAID_ENV);
+  addon.eval('__spawn(1, "raid1")');
+  expect(hoverTile(addon, "Vanguard_RaidUnitButton1"), "the tile owns the tooltip, showing its unit").toEqual({ owned: true, unit: "raid1", shown: true });
+  expect(addon.eval("return Vanguard_RaidUnitButton1.hover:IsShown()"), "the hover wash still shows").toBe(true);
+  expect(hoverTile(addon, "Vanguard_RaidUnitButton1", "OnLeave").shown, "leaving hides it").toBe(false);
+  hoverTile(addon, "Vanguard_RaidUnitButton1");
+  addon.eval("__wfgStub.inCombat = true");
+  addon.fire("PLAYER_REGEN_DISABLED");
+  expect(addon.eval("return GameTooltip:IsShown()"), "a pull hides it").toBe(false);
+  expect(hoverTile(addon, "Vanguard_RaidUnitButton1").shown, "and in a fight hovering shows none").toBe(false);
+  setCombat(addon, false);
+  addon.eval("GameTooltip:SetOwner(UIParent) GameTooltip:Show() __wfgStub.inCombat = true");
+  addon.fire("PLAYER_REGEN_DISABLED");
+  expect(addon.eval("return GameTooltip:IsShown()"), "a tooltip a tile doesn't own stays up").toBe(true);
+  setCombat(addon, false);
+  addon.eval('GameTooltip:Hide() Vanguard_RaidUnitButton1:SetAttribute("unit", nil)');
+  expect(hoverTile(addon, "Vanguard_RaidUnitButton1").shown, "a tile without a unit shows none").toBe(false);
+  addon.eval("GameTooltip.IsForbidden = function() return true end");
+  expect(hoverTile(addon, "Vanguard_RaidUnitButton1", "OnLeave").shown, "a forbidden tooltip is never touched").toBe(false);
+  addon.fire("PLAYER_REGEN_DISABLED");
+});
+
 it("raid frames: the indicators are named by where they sit, with a note, and their choices in sentence case", () => {
   const addon = loggedIn(UNITS_ENV + RAID_ENV + CLICK_LUA);
   addon.eval('ns.Options.Show("raid")');
