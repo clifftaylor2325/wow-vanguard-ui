@@ -754,6 +754,12 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Expect: each page's icon is red only while its own action is out of range, right after the page changes; coming back does not keep the other page's red. `/vg errors` stays empty. [Needs in game: that IsActionInRange answers for the new page's slot at once, in combat too.]
 - If it fails, paste: your class, the spells, what the icon showed, and `/vg errors`.
 
+### 10.3b Red when out of range, switched
+
+- Do: stand out of range of a target so a bar icon is red, then untick `/vg` → Action bars → **Red when out of range**, and tick it again, without moving.
+- Expect: the icon loses its red the moment you untick and turns red again the moment you tick; nothing waits for a reload or a step. No error.
+- If it fails, paste: what the icon showed and `/vg errors`.
+
 ### 10.4 Keybind mode on the action bars
 
 - Do: out of combat, type `/vg keybind`. Hover an empty slot on bar 1 and press Shift+Q; then, still over it, press mouse button 4, roll the wheel down, and press Backspace. Hover a button that has a key and press W. Hover a button and left-click it. Press Escape.

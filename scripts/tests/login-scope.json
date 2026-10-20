@@ -211,6 +211,7 @@
     ],
     "scripts/tests/range.test.mjs": [
       "range tint",
+      "range tint: Red when out of range repaints the buttons at once, both ways",
       "range tint: a page change turns the old slot's watch off and does not keep its red"
     ],
     "scripts/tests/report.test.mjs": [

@@ -328,6 +328,11 @@ local function each(fn)
   end
 end
 
+-- Repaints every button's icon tint, for a change to "Red when out of range".
+function AB.RepaintIcons()
+  each(paintIcon)
+end
+
 -- Building ------------------------------------------------------------------------------
 
 -- Drag an action off the button (Shift needed while buttons are locked).
