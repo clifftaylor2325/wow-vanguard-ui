@@ -56,13 +56,13 @@ MM.RIM_INSET = 15
 -- Zone text color tokens by PvP type (GetZonePVPInfo); gold otherwise.
 local ZONE_COLORS = {
   sanctuary = "zoneSanctuary", friendly = "zoneFriendly", hostile = "zoneHostile",
-  contested = "zoneContested", combat = "zoneHostile",
+  contested = "zoneContested", combat = "zoneHostile", arena = "zoneHostile",
 }
 
 -- What the zone tooltip says of each PvP type.
 local PVP_WORDS = {
   sanctuary = "Sanctuary", friendly = "Friendly territory", hostile = "Hostile territory",
-  contested = "Contested territory", combat = "Combat zone",
+  contested = "Contested territory", combat = "Combat zone", arena = "Free-for-all territory",
 }
 
 -- Minimap art this module fades out, by path under the global table.

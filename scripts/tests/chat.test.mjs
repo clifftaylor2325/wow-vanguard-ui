@@ -238,6 +238,13 @@ it("minimap: the game's emptied cluster takes no mouse and its zone button is hi
   expect(addon.eval("return { MinimapCluster.BorderTop.__alpha, Vanguard_Minimap:IsShown() }"), "the border art is still faded, the map still shows").toEqual([0, true]);
   expect(loggedIn(UI_ENV + "MinimapCluster = nil").eval("return Vanguard_Minimap ~= nil"), "a client without the cluster still gets the map").toBe(true);
 });
+it("minimap: a free-for-all zone (arena) is named in the hostile colour, with a free-for-all territory line", () => {
+  const addon = loggedIn(UI_ENV + `GetZonePVPInfo = nil C_PvP = { GetZonePVPInfo = function() return "arena" end }`);
+  addon.eval("ns.GetModule('Minimap').UpdateZone() Vanguard_MinimapZone.__scripts.OnEnter(Vanguard_MinimapZone)");
+  const tip = addon.eval("return GameTooltip.__lines");
+  expect([isTok(addon, addon.eval("return ns.GetModule('Minimap').zone.__textColor"), "zoneHostile"), tip[tip.length - 1].text, isTok(addon, [tip[tip.length - 1].r, tip[tip.length - 1].g, tip[tip.length - 1].b], "zoneHostile")],
+    "as the game's own minimap colours and names it").toEqual([true, "Free-for-all territory", true]);
+});
 it("chat art is hidden so the game's mouseover fade cannot bring it back", () => {
   const addon = loggedIn(UI_ENV + CHAT_ART_ENV);
   // Whether each window's art is showing.
