@@ -103,8 +103,10 @@ function IV.Scan()
   if IV.bankOpen then mine.bank = countIn(IV.BankBags()) end
 end
 
--- Something in the bags or bank changed: read them SCAN_DELAY later, once for a burst of changes.
+-- Something in the bags or bank changed: the open bank is read at once (it may close before the scan,
+-- and a closed bank is not read), and everything SCAN_DELAY later, once for a burst of changes.
 function IV.OnChanged()
+  if IV.bankOpen then IV.Mine().bank = countIn(IV.BankBags()) end
   if IV.pending then return end
   IV.pending = true
   C_Timer.After(IV.SCAN_DELAY, ns.Guard("timer bag scan", IV.Scan))

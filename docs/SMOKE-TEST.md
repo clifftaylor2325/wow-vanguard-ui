@@ -1604,8 +1604,8 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 
 ### 23.4 Alt overview
 
-- Do: log in on two characters of the same realm and side, type `/played` on one, then on either type `/vg alts` and `/vg alts <the other's name>`.
-- Expect: one line per character with its level, money, rested XP percent when it has some, and time played once `/played` was typed there; an `All together:` money line; the second command lists the other character's bags and bank, biggest stacks first, at most fifteen. Open `/vg`, Game windows, scroll to the foot: "Your characters" shows the same lines. [Needs in game: that TIME_PLAYED_MSG fires after /played and GetXPExhaustion answers.]
+- Do: log in on two characters of the same realm and side, type `/played` on one, then on either type `/vg alts` and `/vg alts <the other's name>`. On the first, open the bank, right-click a stack from a bank tab into your bags and press Escape at once; log on the second and point at that item.
+- Expect: one line per character with its level, money, rested XP percent when it has some, and time played once `/played` was typed there; an `All together:` money line; the second command lists the other character's bags and bank, biggest stacks first, at most fifteen; the item taken from the bank counts in the first character's bags only, not in its bank too. Open `/vg`, Game windows, scroll to the foot: "Your characters" shows the same lines. [Needs in game: that TIME_PLAYED_MSG fires after /played and GetXPExhaustion answers.]
 - If it fails, paste: the chat lines and `/vg errors`.
 
 ## 24. Dungeon card

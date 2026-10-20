@@ -46,6 +46,17 @@ it("inventory: the bags are read at login and half a second after they change, t
   expect(bare.eval("return #ns.GetModule('Inventory').BankBags()"), "a client without bank tabs: no bank containers").toBe(0);
 });
 
+it("inventory: an item taken from the bank just before it closes leaves the bank's reading", () => {
+  const addon = loggedIn(BAGS_ENV);
+  addon.fire("BANKFRAME_OPENED");
+  addon.eval("__wfgWorld.bags[6][1] = nil __wfgWorld.bags[0][2] = { itemID = 2589, count = 4 }");
+  addon.fire("BAG_UPDATE_DELAYED");
+  addon.advance(0.1, 0.05);
+  addon.fire("BANKFRAME_CLOSED");
+  addon.advance(0.6, 0.1);
+  expect([mine(addon).bags[2589], mine(addon).bank], "in the bags only").toEqual([12, {}]);
+});
+
 // TEST-ONLY saved characters on this realm and side: two with linen (one with a class),
 // one without any, a broken entry, and the logged-in character itself.
 const ALTS = `VanguardDB.inventory = { ["ForeverTest-Alliance"] = {
