@@ -124,6 +124,9 @@ end
 
 PR.You = you
 
+-- The supply each class keeps: ammo for hunters, soul shards for warlocks (the wizard's class page).
+PR.CLASS_KEYS = { HUNTER = { "ammo" }, WARLOCK = { "shards" } }
+
 -- The class rows: ammo for hunters, soul shards for warlocks, then the class's reagents at your level.
 function PR.ReagentRows()
   local rows, class, level = {}, you()
