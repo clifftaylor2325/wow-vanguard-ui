@@ -73,9 +73,10 @@ end
 
 -- Details ----------------------------------------------------------------------------------------
 
--- A reward item for a card: its kind ("choice" or "reward"), slot and quest are what its tooltip is set from.
+-- A reward item for a card: its kind ("choice" or "reward"), slot and quest are what its tooltip is set from;
+-- its link gives its sell price (the crown).
 local function rewardItem(kind, i, id, name, texture, count, quality)
-  return { kind = kind, index = i, questID = id, name = name, texture = texture, count = count, quality = quality }
+  return { kind = kind, index = i, questID = id, name = name, texture = texture, count = count, quality = quality, link = call(GetQuestLogItemLink, kind, i) }
 end
 
 -- The quest's reward items: choices, then what you always get.

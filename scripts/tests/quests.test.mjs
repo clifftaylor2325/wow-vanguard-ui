@@ -828,6 +828,38 @@ it("quest log: an empty log says where quests come from, in muted type", () => {
   addon.eval("__log = { { questID = 90051 } } ns.GetModule('QuestLog').Refresh()");
   expect(addon.eval("return Vanguard_QuestLog.empty:IsShown()"), "a quest taken: the line goes").toBe(false);
 });
+// Which of a window's shown reward cards wear the crown, in order.
+const crowns = (addon, name) => addon.eval(`local f, out = ${name}, {} for i = 1, f.cards.used do out[i] = f.cards[i].crown:IsShown() end return out`);
+it("quest dialog: the gold crown marks the one choice that sells for most, never a tie, an unknown price or a fixed reward", () => {
+  const addon = loggedIn(QUEST_ENV);
+  addon.fire("QUEST_COMPLETE");
+  expect(crowns(addon, "Vanguard_QuestDialog"), "Gloves (300) over Boots (50); the Bread you get anyway is never crowned").toEqual([false, true, false]);
+  expect(addon.eval("local c = Vanguard_QuestDialog.cards[2].crown return { c:GetWidth(), (c:GetPoint(1)) }"), "12 px, in the card's top-right corner").toEqual([12, "TOPRIGHT"]);
+  expect(isTok(addon, addon.eval("return Vanguard_QuestDialog.cards[2].crown.__vertexColor"), "gold"), "in gold").toBe(true);
+  addon.eval("__prices['item:90021'] = 300");
+  addon.fire("QUEST_COMPLETE");
+  expect(crowns(addon, "Vanguard_QuestDialog"), "a tie: no crown").toEqual([false, false, false]);
+  addon.eval("__prices['item:90021'] = nil");
+  addon.fire("QUEST_COMPLETE");
+  expect(crowns(addon, "Vanguard_QuestDialog"), "a price not known yet: no crown").toEqual([false, false, false]);
+  addon.eval("__prices['item:90021'], __prices['item:90022'] = 0, 0");
+  addon.fire("QUEST_COMPLETE");
+  expect(crowns(addon, "Vanguard_QuestDialog"), "nothing sells: no crown").toEqual([false, false, false]);
+  addon.eval("__prices['item:90021'], __prices['item:90022'] = 50, { __secret = true }");
+  addon.fire("QUEST_COMPLETE");
+  expect(crowns(addon, "Vanguard_QuestDialog"), "a hidden price: no crown").toEqual([false, false, false]);
+  addon.eval("__prices['item:90022'] = 300 __choices = { __choices[2] }");
+  addon.fire("QUEST_COMPLETE");
+  expect(crowns(addon, "Vanguard_QuestDialog"), "a single choice: just received, no crown").toEqual([false, false]);
+});
+it("quest log: the chosen quest's top-selling choice wears the crown too", () => {
+  const addon = loggedIn(TRACK_ENV + QLOG_ENV + ` GetNumQuestLogChoices = function(id) return id == 90051 and 2 or 0 end
+    GetQuestLogItemLink = function(kind, i) return kind == "choice" and ("item:9002" .. i) or nil end
+    __prices = { ["item:90021"] = 50, ["item:90022"] = 300 }
+    C_Item.GetItemInfo = function(link) return "x", link, 1, 1, 1, "", "", 1, "", "", __prices[link] end`);
+  addon.eval("ns.GetModule('QuestLog').Open()");
+  expect(crowns(addon, "Vanguard_QuestLog"), "item:90022 (300) over item:90021 (50)").toEqual([false, true, false]);
+});
 it("quest log: an objective's count is found at either end, a text without one has none, and a done one is muted with a check", () => {
   const addon = loggedIn(TRACK_ENV + QLOG_ENV);
   addon.eval(`__quests[90051].objectives = { { text = "TEST-ONLY Wolf slain: 3/8", finished = false }, { text = "TEST-ONLY Explore the vale", finished = false },

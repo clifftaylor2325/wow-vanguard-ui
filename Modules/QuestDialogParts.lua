@@ -125,6 +125,19 @@ end
 
 -- Reward cards ---------------------------------------------------------------------------------
 
+-- The crown's size on the reward choice that sells for most.
+QP.CROWN_SIZE = 12
+
+-- A card's crown: the gold mark in its top-right corner for the choice that sells for most, hidden until
+-- the layout picks one (the upgrade arrow keeps the icon's top-left). Returns the card.
+local function addCrown(c)
+  c.crown = T.Tint(QP.Square(c:CreateTexture(nil, "OVERLAY"), QP.CROWN_SIZE), "gold")
+  c.crown:SetTexture(T.Icon("Crown"))
+  c.crown:SetPoint("TOPRIGHT", c, "TOPRIGHT", -2, -2)
+  c.crown:Hide()
+  return c
+end
+
 -- A reward card: the icon (cropped, with its count), the name beside it, a border for its quality.
 function QP.Card(parent)
   local c = T.Button(CreateFrame("Button", nil, parent))
@@ -136,7 +149,7 @@ function QP.Card(parent)
   c.name = T.Text(c:CreateFontString(nil, "OVERLAY"), "small", "text")
   c.name:SetPoint("LEFT", c.icon, "RIGHT", 6, 0)
   c.name:SetPoint("RIGHT", c, "RIGHT", -T.SPACE.tight, 0)
-  return QP.WireTooltip(c)
+  return QP.WireTooltip(addCrown(c))
 end
 
 -- Shows a card's item tooltip: a quest log reward by its quest, a quest dialog reward by its slot (nothing when the client lacks the call).
@@ -186,6 +199,40 @@ function QP.PaintCard(c, item)
 end
 
 -- Reward sections --------------------------------------------------------------------------------
+
+-- What an item sells to a vendor for (copper, C_Item.GetItemInfo's 11th return), or nil while the client
+-- doesn't know it yet or hides it.
+---@param link string|nil
+---@return number|nil
+function QP.SellPrice(link)
+  local info = C_Item and C_Item.GetItemInfo
+  if type(link) ~= "string" or type(info) ~= "function" then return nil end
+  return ns.PlainNumber((select(11, info(link))))
+end
+
+-- The place of the one price above the rest, from n prices (nil for unknown): nil while any is unknown,
+-- when two share the top, or when none is above 0. Quest automation and the reward crown both use it.
+---@param prices table
+---@param n number
+---@return number|nil
+function QP.TopSeller(prices, n)
+  local best, bestPrice, tied = nil, 0, false
+  for i = 1, n do
+    local price = prices[i]
+    if not price then return nil end
+    if price > bestPrice then best, bestPrice, tied = i, price, false elseif price == bestPrice then tied = true end
+  end
+  return not tied and best or nil
+end
+
+-- The place of the choice that sells for most among a section's items (QP.TopSeller); nil for a section of
+-- other rewards or of a single choice.
+function QP.TopChoice(items)
+  if #items < 2 or items[1].kind ~= "choice" then return nil end
+  local prices = {}
+  for i, item in ipairs(items) do prices[i] = QP.SellPrice(item.link) end
+  return QP.TopSeller(prices, #items)
+end
 
 -- A section caption's line height, and the gap between two sections.
 QP.CAPTION_H, QP.SECTION_GAP = 16, T.SPACE.gap
@@ -262,12 +309,14 @@ local function placeCaption(lay, text, y)
   return y + QP.CAPTION_H
 end
 
--- A section's cards, lay.perRow to a row from y down, each painted, then lay.onCard(card, item); returns the y under them.
-local function placeCards(lay, items, y)
+-- A section's cards, lay.perRow to a row from y down, each painted (the crown on card top, if any), then
+-- lay.onCard(card, item); returns the y under them.
+local function placeCards(lay, items, y, top)
   for n, item in ipairs(items) do
     local c, col, row = lay.cards.Next(), (n - 1) % lay.perRow, math.floor((n - 1) / lay.perRow)
     c:SetPoint("TOPLEFT", lay.holder, "TOPLEFT", col * (QP.CARD_W + QP.GAP), -y - row * (QP.CARD_H + QP.GAP))
     QP.PaintCard(c, item)
+    c.crown:SetShown(n == top)
     if lay.onCard then lay.onCard(c, item) end
   end
   return y + math.ceil(#items / lay.perRow) * (QP.CARD_H + QP.GAP) - QP.GAP
@@ -286,7 +335,7 @@ function QP.LayoutRewards(lay, sections)
   local y = 0
   for i, sec in ipairs(sections) do
     y = placeCaption(lay, sec.caption, y + (i > 1 and QP.SECTION_GAP or 0))
-    y = placeCards(lay, sec.items, y)
+    y = placeCards(lay, sec.items, y, QP.TopChoice(sec.items))
   end
   return y
 end

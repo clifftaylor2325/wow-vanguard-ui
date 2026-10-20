@@ -48,23 +48,12 @@ end
 
 -- Rewards ---------------------------------------------------------------------------------------
 
--- What reward choice i sells for (copper), or nil when the client doesn't know yet.
-local function choicePrice(i)
-  local link, info = call(GetQuestItemLink, "choice", i), C_Item and C_Item.GetItemInfo
-  if type(link) ~= "string" or type(info) ~= "function" then return nil end
-  return ns.PlainNumber((select(11, info(link))))
-end
-
 -- The reward choice that sells for the most, or nil (you choose) while any price is unknown, when two
--- share the top price, or when none sells for anything.
+-- share the top price, or when none sells for anything: the choice the quest windows crown.
 function QA.BestChoice()
-  local best, bestPrice, tied = nil, 0, false
-  for i = 1, count(call(GetNumQuestChoices)) do
-    local price = choicePrice(i)
-    if not price then return nil end
-    if price > bestPrice then best, bestPrice, tied = i, price, false elseif price == bestPrice then tied = true end
-  end
-  return not tied and best or nil
+  local QP, prices, n = ns.QuestParts, {}, count(call(GetNumQuestChoices))
+  for i = 1, n do prices[i] = QP.SellPrice(call(GetQuestItemLink, "choice", i)) end
+  return QP.TopSeller(prices, n)
 end
 
 -- The reward to take: the only one (or none), else the best seller when that switch is on; nil to let you choose.
