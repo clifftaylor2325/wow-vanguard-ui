@@ -1,7 +1,7 @@
 // quests: Vanguard's real Lua in the TEST-ONLY headless client (scripts/lib/lua-harness.mjs).
 
 import { expect, it } from "vitest";
-import { CLICK_LUA, PANEL_OPENERS, PLATE_ENV, QUEST_ENV, TIDY_ENV, UI_ENV, UNITS_ENV, borderOf, calls, chatHas, isTok, key, loggedIn, px, setCombat, WINDOWS_ENV } from "./helpers.mjs";
+import { CLICK_LUA, DATA_ENV, PANEL_OPENERS, PLATE_ENV, QUEST_ENV, TIDY_ENV, UI_ENV, UNITS_ENV, borderOf, calls, chatHas, isTok, key, loggedIn, px, setCombat, WINDOWS_ENV } from "./helpers.mjs";
 
 // The theme's layout numbers the quest windows are built on: { inset, pad, col, gap, tight, buttonH, rowH, watermark, wash }.
 const layout = (addon) => addon.eval(`local T = ns.Theme
@@ -1484,4 +1484,32 @@ it("quest history: /vg quests history 0 lists one turn-in instead of saying none
   const addon = loggedIn(TRACK_ENV + QLOG_ENV + HISTORY_ENV, { savedVariables: HISTORY_SAVED });
   addon.slash("quests history 0");
   expect([chatHas(addon, /No turn-ins remembered yet/), chatHas(addon, /Latest 1 quest turn-in\(s\), of 2 remembered:/)]).toEqual([false, true]);
+});
+
+// W4-E-2: the tracker's "Quests: N% of the XP to level" line follows XP from kills and a level-up.
+// A tracker with two 6925 XP quests, the player 12300 XP into the level (the line reads 50%).
+const halfwayToLevel = () => {
+  const addon = loggedIn(DATA_ENV + " __xp = 12300 UnitXP = function() return __xp end",
+    { savedVariables: "VanguardDB.profiles = { Default = { QuestTracker = { autoTrack = false } } }" });
+  addon.world.addQuest({ questID: 7, title: "Wolves", level: 8, watched: true, xp: 6925, objectives: [] });
+  addon.world.addQuest({ questID: 8, title: "Boars", level: 8, xp: 6925, objectives: [] });
+  addon.update(0);
+  addon.eval("__xp = 26150");
+  return addon;
+};
+// The tracker's XP-to-level line.
+const levelLine = (addon) => addon.eval("return Vanguard_QuestTrackerFrame.levelXp:GetText()");
+
+it("quest tracker: kill XP redraws the XP-to-level line", () => {
+  const addon = halfwayToLevel();
+  addon.fire("PLAYER_XP_UPDATE", "player");
+  addon.advance(2);
+  expect(levelLine(addon)).toBe("Quests: 100% of the XP to level");
+});
+
+it("quest tracker: a level-up redraws the XP-to-level line", () => {
+  const addon = halfwayToLevel();
+  addon.fire("PLAYER_LEVEL_UP", 9);
+  addon.advance(2);
+  expect(levelLine(addon)).toBe("Quests: 100% of the XP to level");
 });
