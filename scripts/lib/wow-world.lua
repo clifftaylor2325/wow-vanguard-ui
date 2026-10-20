@@ -1253,6 +1253,8 @@ C_QuestLog = {
   GetLogIndexForQuestID = function(id) return (questIndex(id)) end,
   GetQuestObjectives = function(id) local _, q = questIndex(id) return q and q.objectives or {} end,
   IsComplete = function(id) local _, q = questIndex(id) return q ~= nil and q.isComplete == true end,
+  -- QuestLogDocumentation.lua's IsFailed: a quest marked failed = true (a timed quest run out, an escort lost).
+  IsFailed = function(id) local _, q = questIndex(id) return q ~= nil and q.failed == true end,
   GetNumQuestWatches = function() local n = 0 for _, q in ipairs(world.quests) do if q.watched then n = n + 1 end end return n end,
   -- The i-th watched quest's id.
   GetQuestIDForQuestWatchIndex = function(i)
