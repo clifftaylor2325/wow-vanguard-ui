@@ -33,15 +33,39 @@ G.RENDER = 0.8
 -- The check under way: its timer and the readings so far.
 local run
 
--- A client setting as a number (or its default with "default"), or nil when the client can't say.
+-- The client's getter for a setting's current value, or nil.
+local function cvarGet()
+  return (C_CVar and C_CVar.GetCVar) or _G.GetCVar
+end
+
+-- The client's getter for a setting's default value, or nil.
+local function cvarDefaultGet()
+  return (C_CVar and C_CVar.GetCVarDefault) or _G.GetCVarDefault
+end
+
+-- A setting read by `get` as a number, or nil when there is no getter, it fails or the answer is not a number.
+---@param get function|nil
 ---@param name string
----@param default boolean|nil
 ---@return number|nil
-function G.Setting(name, default)
-  local get = default and ((C_CVar and C_CVar.GetCVarDefault) or _G.GetCVarDefault) or ((C_CVar and C_CVar.GetCVar) or _G.GetCVar)
+local function readNumber(get, name)
   if type(get) ~= "function" then return nil end
   local ok, v = pcall(get, name)
   return ok and tonumber(v) or nil
+end
+
+-- A client setting's current value as a number, or nil when the client can't say.
+---@param name string
+---@return number|nil
+function G.Setting(name)
+  return readNumber(cvarGet(), name)
+end
+
+-- A client setting's default as a number, or nil when the client can't say. Without a default getter the
+-- current value is read, as Vanguard has always done.
+---@param name string
+---@return number|nil
+function G.DefaultSetting(name)
+  return readNumber(cvarDefaultGet() or cvarGet(), name)
 end
 
 -- The graphics card the game lists first, as { name, lowPower }, or nil when the client can't say.
@@ -138,7 +162,7 @@ end
 
 -- Prints the result: the frame rate, the computer, the suggestion, the screen and, on a slow 4K screen, the render scale tip.
 local function report(avg, n)
-  local card, quality, recommended, render = G.Card(), G.Setting("graphicsQuality"), G.Setting("graphicsQuality", true), G.Setting("renderScale")
+  local card, quality, recommended, render = G.Card(), G.Setting("graphicsQuality"), G.DefaultSetting("graphicsQuality"), G.Setting("renderScale")
   local lowPower, tip = card ~= nil and card.lowPower, G.RenderTip(avg, select(2, G.ScreenSize()), render)
   ns.Chat(string.format("Frame rate: %d fps on average over %d s.", math.floor(avg + 0.5), n))
   ns.Chat(computerLine(card, quality, recommended, render))
@@ -175,7 +199,7 @@ end
 -- Keeps a setting's value in undo before its first change (false when the client can't say).
 local function keep(undo, name)
   if undo[name] ~= nil then return end
-  local get = (C_CVar and C_CVar.GetCVar) or _G.GetCVar
+  local get = cvarGet()
   local ok, v = pcall(type(get) == "function" and get or error, name)
   undo[name] = ok and v ~= nil and tostring(v) or false
 end
