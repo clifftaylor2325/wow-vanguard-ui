@@ -2781,20 +2781,15 @@ function T.Crest(parent, size, layer, alpha)
   return t
 end
 
--- The tex coords that turn the top-left corner bracket into each corner (#238).
-local CORNER_FLIPS = { TOPLEFT = { 0, 1, 0, 1 }, TOPRIGHT = { 1, 0, 0, 1 }, BOTTOMLEFT = { 0, 1, 1, 0 }, BOTTOMRIGHT = { 1, 0, 1, 0 } }
 -- How far the brackets and the rule sit in from the window's edge (units), and the bracket's size.
 T.ORNAMENT_INSET, T.ORNAMENT_SIZE = 3, 14
 
 -- Four corner brackets just inside a frame's corners.
 local function cornerBrackets(frame)
   local out = {}
-  for point, flip in pairs(CORNER_FLIPS) do
-    local t = frame:CreateTexture(nil, "OVERLAY")
-    t:SetTexture(T.Texture("OrnamentCorner"))
+  for point, t in pairs(cornerPieces(frame, "OrnamentCorner", "OVERLAY")) do
     t:SetSize(T.ORNAMENT_SIZE, T.ORNAMENT_SIZE)
     t:SetPoint(point, frame, point, outward(point, -T.ORNAMENT_INSET))
-    t:SetTexCoord(flip[1], flip[2], flip[3], flip[4])
     out[#out + 1] = t
   end
   return out
@@ -2999,7 +2994,7 @@ local heldHover = setmetatable({}, { __mode = "k" })
 function T.EaseHover(button, on, now)
   local h = hoverOf[button]
   if not h then return end
-  local to = (on or heldHover[button]) and (not button.IsEnabled or button:IsEnabled()) and 1 or 0
+  local to = (on or heldHover[button]) and isEnabled(button) and 1 or 0
   for _, t in ipairs(h.fill.textures) do easeTo(t, to, now) end
   easeTo(h[2], to, now)
 end
