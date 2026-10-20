@@ -5,7 +5,8 @@
 --   * turn in finished quests: Continue, then Complete when there's no reward
 --     to choose (it never chooses for you, unless the next switch is on, and
 --     it leaves a quest that costs money to you);
---   * with a choice of rewards, take the one that sells for the most;
+--   * with a choice of rewards, take the one that sells for the most (on a tie,
+--     or when none sells, you choose);
 --   * skip the gossip when an NPC has exactly one quest for you and nothing else to say.
 -- Each says in chat what it did. The quest dialog asks Claims(event) first,
 -- so a page that's about to be answered for you isn't shown.
@@ -54,15 +55,16 @@ local function choicePrice(i)
   return ns.PlainNumber((select(11, info(link))))
 end
 
--- The reward choice that sells for the most, or nil while any price is unknown.
+-- The reward choice that sells for the most, or nil (you choose) while any price is unknown, when two
+-- share the top price, or when none sells for anything.
 function QA.BestChoice()
-  local best, bestPrice = nil, -1
+  local best, bestPrice, tied = nil, 0, false
   for i = 1, count(call(GetNumQuestChoices)) do
     local price = choicePrice(i)
     if not price then return nil end
-    if price > bestPrice then best, bestPrice = i, price end
+    if price > bestPrice then best, bestPrice, tied = i, price, false elseif price == bestPrice then tied = true end
   end
-  return best
+  return not tied and best or nil
 end
 
 -- The reward to take: the only one (or none), else the best seller when that switch is on; nil to let you choose.

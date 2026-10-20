@@ -1457,3 +1457,24 @@ it("quest cost: turn-in automation leaves it to the game's window when the quest
   addon.fire("QUEST_COMPLETE");
   expect(calls(addon)).toEqual([]);
 });
+
+// L-4: "take the one that sells for most" picks only a reward that clearly sells for most.
+// The reward page, turn-in and best reward on, with the two choices selling for these prices (copper).
+const pricedRewards = (boots, gloves) => {
+  const addon = loggedIn(QUEST_ENV, { savedVariables: "VanguardDB.profiles = { Default = { QuestAuto = { turnIn = true, bestReward = true } } }" });
+  addon.eval(`__prices["item:90021"], __prices["item:90022"] = ${boots}, ${gloves}`);
+  addon.fire("QUEST_COMPLETE");
+  return addon;
+};
+
+it("best reward: two rewards that sell for the same are left to you", () => {
+  expect(calls(pricedRewards(300, 300))).toEqual([]);
+});
+
+it("best reward: rewards that sell for nothing are left to you", () => {
+  expect(calls(pricedRewards(0, 0))).toEqual([]);
+});
+
+it("best reward: the one reward that sells for most is taken", () => {
+  expect(calls(pricedRewards(300, 50))).toEqual(["reward 1"]);
+});
