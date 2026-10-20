@@ -385,12 +385,14 @@ end
 CH.BACKDROPS = T.CHAT_BACKDROP.levels
 
 -- A tab wide enough for its label at the theme font: the game sized it for its own font, which
--- cut a name to "Gene...".
+-- cut a name to "Gene...". A label the client hides (a whisper window named in chat lockdown, whose
+-- width comes back secret) keeps the fixed width the game gave it.
 local function fitTab(tab)
   local text = tab.Text or (tab.GetFontString and tab:GetFontString())
   if not (text and text.GetStringWidth and tab.SetWidth) then return end
   text:SetWidth(0)
-  tab:SetWidth(ns.PlainNumber(text:GetStringWidth()) + T.SPACE.col * 2)
+  local width = ns.PlainNumber(text:GetStringWidth())
+  if width then tab:SetWidth(width + T.SPACE.col * 2) end
 end
 
 -- A floating window's tab fitted to its label; a docked window's keeps the width the game gave it

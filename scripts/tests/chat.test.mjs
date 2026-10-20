@@ -1866,3 +1866,17 @@ describe("chat tabs: the selected tab is the one the game colours as selected", 
     expect(look(addon, 2), "a floating window's tab is always its window's selected tab").toEqual([true, 1]);
   });
 });
+
+describe("chat tabs: a floating whisper window whose name the client hides", () => {
+  it("keeps the game's tab width, and the windows after it are still skinned", () => {
+    const addon = loggedIn();
+    addon.world.secretGeometry("derived");
+    // The game's whisper pop-out, dragged out of the dock: its tab text is the sender's name, which the client
+    // hides in chat lockdown (Blizzard_ChatFrameBase/Mainline/FloatingChatFrame.lua, FCF_HasSecretName).
+    addon.eval(`ChatFrame2.isDocked = nil ChatFrame2Tab:SetWidth(180)
+      ChatFrame2Tab.Text:SetText(__wfgWorld.secret("TEST-ONLY Whisperer"))`);
+    expect(addon.eval("local ok = pcall(ns.GetModule('Chat').RefitTabs) return { ok, ChatFrame2Tab:GetWidth() }"), "no error; the game's fixed width stays").toEqual([true, 180]);
+    addon.eval('FCF_OpenTemporaryWindow("WHISPER")');
+    expect(addon.eval("return ns.GetModule('Chat').frames[ChatFrame11] ~= nil"), "the whisper window opened after it is skinned").toBe(true);
+  });
+});
