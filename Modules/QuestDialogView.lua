@@ -291,10 +291,11 @@ function QD.SelectLine(n)
 end
 
 -- Presses the main button, if it's enabled (Complete once a reward is picked); on a page with only Goodbye, that.
+-- The button's own enabled state decides, as renderButton and QD.Pick set it.
 function QD.Press()
   local spec = QD.page and (QD.page.primary or QD.page.escape)
-  local ready = spec and (spec[3] ~= false or (QD.page.pick and QD.choice ~= nil))
-  if ready then spec[2]() end
+  local button = QD.page and (QD.page.primary and QD.frame.primary or QD.frame.escape)
+  if spec and button:IsEnabled() then spec[2]() end
 end
 
 -- What a key does here: 1-9 pick a line (or a reward) that exists, Space presses the main button, and so does
