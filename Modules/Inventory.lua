@@ -58,6 +58,11 @@ local function containerApi()
   return api.GetContainerNumSlots, api.GetContainerItemInfo
 end
 
+-- How many items a slot holds; a stack the client hides counts as one.
+local function stackSize(it)
+  return ns.PlainNumber(it.stackCount) or 1
+end
+
 -- itemID -> count over a list of containers (none when the client can't say).
 local function countIn(bags)
   local counts, slots, info = {}, containerApi()
@@ -66,7 +71,7 @@ local function countIn(bags)
     for slot = 1, ns.PlainNumber(slots(bag)) or 0 do
       local it = info(bag, slot)
       local id = it and ns.PlainNumber(it.itemID)
-      if id then counts[id] = (counts[id] or 0) + (ns.PlainNumber(it.stackCount) or 1) end
+      if id then counts[id] = (counts[id] or 0) + stackSize(it) end
     end
   end
   return counts
