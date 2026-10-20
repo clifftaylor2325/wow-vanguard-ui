@@ -1,6 +1,21 @@
 # Docs
 
-Pick by who you are. The behaviour spec for the whole addon is the root [README.md](../README.md); everything else points into it.
+Pick by who you are. The behaviour spec for the whole addon is the root [README.md](../README.md) (the overview, install, safety, license and credits) together with the feature pages below, one per area; everything else points into them.
+
+## Feature pages (the behaviour spec)
+
+- [Look and layout](features/look-and-layout.md)
+- [Unit frames and nameplates](features/unit-frames.md)
+- [Raid frames and click casting](features/raid-frames.md)
+- [Action bars and cooldowns](features/action-bars.md)
+- [Game windows](features/game-windows.md)
+- [Combat tools](features/combat-tools.md)
+- [Chat](features/chat.md)
+- [Map, minimap, bags and more](features/map-and-minimap.md)
+- [Quests](features/quests.md)
+- [Town and gear](features/town-and-gear.md)
+- [Auction house](features/auction-house.md)
+- [Options and setup](features/options-and-setup.md)
 
 ## Players
 
@@ -14,11 +29,12 @@ Pick by who you are. The behaviour spec for the whole addon is the root [README.
 
 ## Addon authors
 
-- [API.md](API.md): the Skin API and the preset and options hooks other addons can use.
+- [API.md](API.md): the Skin API, auction prices and shopping lists, and the preset and options hooks other addons can use.
 
 ## Developers
 
 - Start with [../CLAUDE.md](../CLAUDE.md) (how to work in the repo) and [PATTERNS.md](PATTERNS.md) (the canonical shape of a module, a guarded callback, frame state, combat-deferred work, a migration and a scenario).
+- [DEVELOPMENT.md](DEVELOPMENT.md): the npm scripts, playing from a clone, editor and Windows tools, the pre-push hook, art and fonts, testing, code quality, CI and CurseForge packaging.
 - [RELEASING.md](RELEASING.md): the local release route and the launch-day hotfix steps.
 - [THEME.md](THEME.md): colours, text roles, spacing, every fade and sound. Update it when you add one.
 - [../scripts/tests/README.md](../scripts/tests/README.md): how to write a headless-client test.

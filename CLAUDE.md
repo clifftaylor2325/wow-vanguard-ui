@@ -1,6 +1,6 @@
 # CLAUDE.md: Vanguard (WoW addon)
 
-Read this before touching anything. README.md is the spec for behaviour; this file is how to work in the repo.
+Read this before touching anything. README.md and the feature pages in `docs/features/` (one per area) are the spec for behaviour; this file is how to work in the repo.
 
 ## What this is
 
@@ -78,13 +78,13 @@ Precedence: where this section and any other rule in this file disagree, the oth
 - `Core/`: the framework. Events, DB, Profiles, Options and OptionsWindow, Theme, Movers, Slash, Feedback, Setup, and so on.
 - `Modules/`: one file per feature. Files share a prefix when they belong to one area (`Auction*`, `Quest*`, `Raid*`, `Windows*`, `ClickCast*`).
 - `scripts/tests/<area>.test.mjs`: area tests that run the real Lua in a headless client (`scripts/lib/wow-*.lua`). Read `scripts/tests/README.md` before writing one.
-- `docs/`: `THEME.md`, `API.md` (the Skin API for other addons), `SMOKE-TEST.md` (in-game checklist), `CHANGELOG.md`, `GETTING-STARTED.md`, `COMMANDS.md`, `design/`, `handoff/` (work plans), `research/`. `docs/README.md` indexes them by reader.
+- `docs/`: `features/` (one page per area: the behaviour spec the README links to), `THEME.md`, `API.md` (the Skin API and the other surfaces for other addons), `DEVELOPMENT.md` (scripts, testing, CI, packaging), `SMOKE-TEST.md` (in-game checklist), `CHANGELOG.md`, `GETTING-STARTED.md`, `COMMANDS.md`, `design/`, `handoff/` (work plans), `research/`. `docs/README.md` indexes them by reader.
 - `art/`: sources for Media/ art. Credits in `art/CREDITS.md`.
 
 ## Working method
 
-- Before a change, read every file the task names in full, plus the README section for that feature.
-- If behaviour changes, update the matching README sentence in the same commit.
+- Before a change, read every file the task names in full, plus that feature's page in `docs/features/`.
+- If behaviour changes, update the matching sentence on its feature page (`docs/features/`) in the same commit. A `/vg` command's wording lives in `docs/COMMANDS.md`.
 - Work in branches named after the phase (`work/p1-performance`). One task is one commit, with subject `<task id> <area>: <change>` and a body saying what changed and what was verified.
 - Tick the task's checkbox in the work plan in the same commit, when there is one.
 - Check tasks marked `[DECIDE]` with the user before going ahead. For everything else, take the smallest reasonable choice and note it in the commit body.

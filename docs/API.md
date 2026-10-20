@@ -1,4 +1,34 @@
-# Vanguard.API.v1: auction prices for other addons
+# Vanguard's API for other addons
+
+What another addon can ask of Vanguard: a skin in Vanguard's look, auction prices and shopping lists, and presets and options links. Each surface only grows: functions are added, never changed or removed.
+
+## Skin API
+
+```
+## OptionalDeps: Vanguard
+```
+```lua
+if Vanguard and Vanguard.RegisterSkin then
+  Vanguard.RegisterSkin("MyAddon", function(S)
+    S.Panel(MyFrame, { shadow = true }) -- flat panel, 1px border, sheen; shadow for floating windows
+    S.Button(MyFrame.OkButton)
+    S.EditBox(MyFrame.Input)
+    S.CloseButton(MyFrame.Close)
+    S.CheckBox(MyFrame.Option)       -- a CheckButton as a 16 px box with a check mark
+    S.Radio(MyFrame.Choice)          -- a radio CheckButton as a 16 px ring with a dot
+    S.ArrowButton(MyFrame.Next, "right")
+    S.Slider(MyFrame.Volume)         -- a Slider (or MinimalSliderWithSteppers) as a pill track, quiet fill and round knob
+    S.Divider(MyFrame.Rule)          -- a divider texture as one pixel of the divider colour
+    S.Text(MyFrame.Title, "title")  -- text roles: title, heading, name, cell, label, number, small, tiny, world
+    S.Color(MyFrame.Hint, "text2")  -- theme colors by name: text, text2, muted, accent, accentText, good, bad...
+    S.Tint(MyFrame.Glow, "accent")
+  end)
+end
+```
+
+The callback runs once at login, or immediately if the addon registers after login. Errors in it are reported and don't break anything else. Painted frames follow `/vg accent` changes live, and their borders stay one screen pixel at any UI scale (`S.Pixel(frame)` gives that size). `S.RGB(name)` returns any theme color; the names, text roles and the rest of the look are listed in `docs/THEME.md` (from `Core/Theme.lua`). `S.apiVersion` is 1; the API only grows.
+
+## Auction prices: Vanguard.API.v1
 
 Vanguard keeps auction prices per realm and faction (from the Auction helper's scans and from every search at the auction house) and hands them to other addons through `Vanguard.API.v1`. Its function names and argument order are those of Auctionator's v1 API, as Vanguard's auction plan lists them (Auctionator's own source was not read when this was written), so an addon written for Auctionator can switch with a one-line shim:
 
@@ -8,13 +38,13 @@ local api = (Auctionator and Auctionator.API and Auctionator.API.v1) or (Vanguar
 local price = api and api.GetAuctionPriceByItemID("MyAddon", 2589)
 ```
 
-## Rules
+### Rules
 
 - Every function takes your addon's name first (`callerID`, a string). A call without one, or with another argument of the wrong type, raises an error at your line that says which argument, for example `Vanguard.API.v1.MultiSearch: terms must be a table, got string`.
 - Prices are in copper, for the realm and faction of the character logged in. A function returns `nil` when it knows no price.
 - `v1` only grows: functions are added, never changed or removed.
 
-## Prices
+### Prices
 
 | Function | Returns |
 | --- | --- |
@@ -25,11 +55,11 @@ local price = api and api.GetAuctionPriceByItemID("MyAddon", 2589)
 | `GetDisenchantPriceByItemID(callerID, itemID)` | What disenchanting one is worth on average: for each material vanilla's disenchanting tables give for its quality and item level, chance x average quantity x the material's market value (else its cheapest price). `nil` for anything but weapons and armour of green quality or better, or when none of its materials has a price. The tables are not yet checked in game. |
 | `GetDisenchantPriceByItemLink(callerID, itemLink)` | The same, by an item link. |
 
-## Being told about new prices
+### Being told about new prices
 
 `RegisterForDBUpdate(callerID, callback)`: `callback()` runs, with no arguments, on the frame after prices are recorded: once after a whole scan, and after each search that saw a price. A callback that errors is reported in Vanguard's error list (`/vg errors`) and does not stop the others.
 
-## Shopping lists and searches
+### Shopping lists and searches
 
 Search strings are item names, as you would type them in the game's search box. In Auctionator's form, `name;field;field...`, only the name is read (quotes around it are dropped); an item link or an item ID written as text works too. A string that is blank, and anything that isn't a string, is left out. A list holds at most 50 entries and there are at most 20 lists (Vanguard's caps); they are the player's lists, shown on the Shop card at the auction house.
 
@@ -62,4 +92,4 @@ if Vanguard and Vanguard.OpenOptions then Vanguard.OpenOptions("profiles") end
 
 A preset never applies by itself. The player picks it on the Profiles page (or types `/vg preset <name>`), answers a question, and it is imported like `/vg import`: a backup of their profile first, a partial string merged key by key (their layout, theme and everything the string leaves out are kept), a whole profile saved as a new profile. It waits until combat ends. Vanguard's own Healer, Damage and Tank presets are partial strings for the raid frames and nameplates.
 
-Widget builders: the skin API's `S` table (see the README) already carries the theme builders (Panel, Button, EditBox, Tab, CheckBox, Radio, Divider, ArrowButton, Slider, ScrollBar, Tooltip, Text, Color and the rest); `W.*` builders stay private for now.
+Widget builders: the skin API's `S` table (see [Skin API](#skin-api)) already carries the theme builders (Panel, Button, EditBox, Tab, CheckBox, Radio, Divider, ArrowButton, Slider, ScrollBar, Tooltip, Text, Color and the rest); `W.*` builders stay private for now.
