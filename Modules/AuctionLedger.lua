@@ -150,9 +150,9 @@ local function openOf(a, was)
   return { id = id, name = nameOf(id), qty = a.qty, unit = a.unit, t = was and was.t or AP.Now() }
 end
 
--- A record of auction id's outcome (a kind) from what it was (a), and a sale's amount.
-local function eventRecord(kind, id, a, amount)
-  return { kind = kind, auction = id, id = a.id, name = a.name, qty = a.qty, amount = amount, t = AP.Now() }
+-- A record of auction auctionID's outcome (a kind) from what it was (a), and a sale's amount.
+local function eventRecord(kind, auctionID, a, amount)
+  return { kind = kind, auction = auctionID, id = a.id, name = a.name, qty = a.qty, amount = amount, t = AP.Now() }
 end
 
 -- Your auctions list came in (OWNED_AUCTIONS_UPDATED): a sold row is a sale, and each auction up
@@ -160,36 +160,37 @@ end
 function AL.OnOwned()
   local open = AL.Book().open
   for _, a in ipairs(AH.ReadOwned()) do
-    if a.status == "sold" then AL.Sold(a.id, a) else open[a.id] = openOf(a, open[a.id]) end
+    local auctionID = a.id
+    if a.status == "sold" then AL.Sold(auctionID, a) else open[auctionID] = openOf(a, open[auctionID]) end
   end
 end
 
 -- Auction id sold (row: its sold row from your auctions list, else it is as it was up): a sale of
 -- its units at its price, unless the ledger never saw it; it is up no more.
-function AL.Sold(id, row)
+function AL.Sold(auctionID, row)
   local book = AL.Book()
-  local a = row and openOf(row) or book.open[id]
-  book.open[id] = nil
+  local a = row and openOf(row) or book.open[auctionID]
+  book.open[auctionID] = nil
   local amount = row and row.amount or a and a.unit and a.unit * a.qty
-  if amount then AL.Note(eventRecord("sold", id, a, amount)) end
+  if amount then AL.Note(eventRecord("sold", auctionID, a, amount)) end
 end
 
 -- Auction id ran out ("expired") or was cancelled ("cancelled"): a record of what it was; for a
 -- notice about one the ledger never saw up, of one of the item it names. It is up no more.
-function AL.Ended(kind, id, name)
-  if not id then return end
+function AL.Ended(kind, auctionID, name)
+  if not auctionID then return end
   local book = AL.Book()
-  local a = book.open[id] or name and { id = idOf(name), name = name, qty = 1 }
-  book.open[id] = nil
-  if a then AL.Note(eventRecord(kind, id, a)) end
+  local a = book.open[auctionID] or name and { id = idOf(name), name = name, qty = 1 }
+  book.open[auctionID] = nil
+  if a then AL.Note(eventRecord(kind, auctionID, a)) end
 end
 
 -- The game's notice about an auction (AUCTION_HOUSE_SHOW_FORMATTED_NOTIFICATION: the notice, its
 -- text, which is the item's name, and the auction): one of yours sold, or ran out.
-function AL.OnNotice(_, note, text, id)
-  id = ns.PlainNumber(id)
-  if note == AH.SOLD_NOTE and id then AL.Sold(id) end
-  if note == AH.EXPIRED_NOTE then AL.Ended("expired", id, plain(text)) end
+function AL.OnNotice(_, note, text, auctionID)
+  auctionID = ns.PlainNumber(auctionID)
+  if note == AH.SOLD_NOTE and auctionID then AL.Sold(auctionID) end
+  if note == AH.EXPIRED_NOTE then AL.Ended("expired", auctionID, plain(text)) end
 end
 
 -- The mail ---------------------------------------------------------------------------------------
