@@ -1084,8 +1084,10 @@ C_ActionBar = {
   HasAction = HasAction,
 }
 
--- Swing timers (the Forever client's C_SwingTimer): per hand, { start, duration }.
-world.swings = {}
+-- Swing timers (the Forever client's C_SwingTimer): per hand, { start, duration }. The range model:
+-- world.swingRange[kind] is whether the target is in that hand's reach (nil: no check could be made),
+-- and world.swingRangeChecks[kind] whether the addon asked for PLAYER_SWING_RANGE_UPDATE on it.
+world.swings, world.swingRange, world.swingRangeChecks = {}, {}, {}
 C_SwingTimer = {
   -- A hand's swing start and duration, or nil when it isn't swinging.
   GetSwingTimerInfo = function(kind)
@@ -1093,6 +1095,10 @@ C_SwingTimer = {
     if not s then return nil end
     return s.start or stub.now, s.duration or 0
   end,
+  -- Turns the range events for a swing type on or off (SwingTimerDocumentation.lua).
+  EnableRangeCheck = function(kind, enable) world.swingRangeChecks[kind] = enable end,
+  -- Whether the target is within that swing type's reach; nil when no check could be made.
+  IsTargetWithinSwingRange = function(kind) return world.swingRange[kind] end,
 }
 
 -- Items, bags and money ------------------------------------------------------------------------
