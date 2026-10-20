@@ -287,15 +287,19 @@ local function editNote(edit)
 end
 
 -- Edit Mode opened: Vanguard's handles show too (without the grid: the game
--- draws its own), with the note, unless that's switched off. It closed: they
--- hide, unless /vg unlock had them up already.
-function ns.EditModeMovers(edit, open)
-  if open and not unlocked and ns.MoverOptions().editMode then editUnlocked = ns.Unlock(true) end
-  if not open and editUnlocked then
+-- draws its own), with the note, unless that's switched off.
+function ns.EditModeOpened(edit)
+  if not unlocked and ns.MoverOptions().editMode then editUnlocked = ns.UnlockForEditMode() end
+  editNote(edit):SetShown(unlocked)
+end
+
+-- Edit Mode closed: its handles hide with the note, unless /vg unlock had them up already.
+function ns.EditModeClosed(edit)
+  if editUnlocked then
     editUnlocked = false
     ns.Lock()
   end
-  editNote(edit):SetShown(open and unlocked)
+  editNote(edit):Hide()
 end
 
 -- The game's frames Vanguard hides or replaces (set): Edit Mode gets no handle for them.
@@ -324,8 +328,8 @@ end
 local function watchEditMode()
   local edit = _G.EditModeManagerFrame
   if type(edit) ~= "table" or not edit.HookScript then return end
-  edit:HookScript("OnShow", function() ns.PausePins(true) ns.EditModeMovers(edit, true) end)
-  edit:HookScript("OnHide", function() ns.PausePins(false) ns.EditModeMovers(edit, false) end)
+  edit:HookScript("OnShow", function() ns.PausePins(true) ns.EditModeOpened(edit) end)
+  edit:HookScript("OnHide", function() ns.PausePins(false) ns.EditModeClosed(edit) end)
 end
 ns.On("PLAYER_LOGIN", watchEditMode)
 
@@ -531,17 +535,29 @@ local function showHandle(m, strata)
   h:Show()
 end
 
--- Shows every handle and the grid (not for the game's Edit Mode, which draws its own),
--- and remembers every spot for Exit without saving (Core/UnlockBar.lua). Refused in combat.
--- In Edit Mode every handle goes on HIGH, so Edit Mode's window (DIALOG) stays over them all.
-function ns.Unlock(editMode)
-  if ns.InCombat() then return false end
-  ns.UnlockStarted(editMode)
+-- Marks the frames unlocked and shows every handle on strata (nil: each handle's own).
+local function showAllHandles(strata)
   unlocked = true
-  local strata = editMode and "HIGH" or nil
   for _, key in ipairs(order) do showHandle(movers[key], strata) end
+end
+
+-- Shows every handle and the grid, and remembers every spot for Exit without saving (Core/UnlockBar.lua).
+-- Refused in combat.
+function ns.Unlock()
+  if ns.InCombat() then return false end
+  ns.UnlockStarted()
+  showAllHandles(nil)
   local options = ns.MoverOptions()
-  if options.grid and not editMode then ns.ShowGrid(options.gridSize) end
+  if options.grid then ns.ShowGrid(options.gridSize) end
+  return true
+end
+
+-- Unlock for the game's Edit Mode: every handle goes on HIGH, so Edit Mode's window (DIALOG) stays over
+-- them all, and there is no grid (the game draws its own). Refused in combat.
+function ns.UnlockForEditMode()
+  if ns.InCombat() then return false end
+  ns.UnlockStartedForEditMode()
+  showAllHandles("HIGH")
   return true
 end
 

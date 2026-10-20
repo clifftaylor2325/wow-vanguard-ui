@@ -19,7 +19,7 @@ it("without issecretvalue nothing is secret, and a failing after-combat update i
 
 it("a mover dropped before the client has laid it out keeps the point the client reports", () => {
   const addon = loggedIn();
-  addon.eval("ns.Unlock(true)");
+  addon.eval("ns.UnlockForEditMode()");
   const point = addon.eval(`local h for _, w in ipairs(__wfgStub.frames) do if w.mover then h = w break end end
     h.GetLeft = function() return nil end
     h:ClearAllPoints() h:SetPoint("CENTER", UIParent, "CENTER", 12, 34)
