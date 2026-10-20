@@ -130,9 +130,10 @@ local function raidAuraRows()
     check("Highlight debuffs you can dispel (reload)", setting("RaidAuras", "dispel", true)),
     { "cycle", "Debuff icons (reload)", { { 0, "none" }, { 2, "2" }, { 3, "3" } }, setting("RaidAuras", "debuffs", true) },
     check("Show your HoTs (reload)", setting("RaidAuras", "hots", true)),
-    { "cycle", "Indicator 1 (reload)", ns.GetModule("RaidAuras").SOURCE_CHOICES, setting("RaidAuras", "indicator1", true) },
-    { "cycle", "Indicator 2 (reload)", ns.GetModule("RaidAuras").SOURCE_CHOICES, setting("RaidAuras", "indicator2", true) },
-    { "cycle", "Indicator 3 (reload)", ns.GetModule("RaidAuras").SOURCE_CHOICES, setting("RaidAuras", "indicator3", true) },
+    { "text", "Small icons down the right edge of each tile, under the missing-buff mark; on short tiles they continue in a column to the left.", "note" },
+    { "cycle", "Right edge, top (reload)", ns.GetModule("RaidAuras").SOURCE_CHOICES, setting("RaidAuras", "indicator1", true) },
+    { "cycle", "Right edge, second (reload)", ns.GetModule("RaidAuras").SOURCE_CHOICES, setting("RaidAuras", "indicator2", true) },
+    { "cycle", "Right edge, third (reload)", ns.GetModule("RaidAuras").SOURCE_CHOICES, setting("RaidAuras", "indicator3", true) },
   }
 end
 

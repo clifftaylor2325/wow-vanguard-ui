@@ -693,7 +693,7 @@ it("options: the pages, their nav order and each page's row count stay as they w
   const pages = addon.eval("local out = {} for i, p in ipairs(ns.Options.PAGES) do out[i] = p.key .. '|' .. p.title .. '|' .. p.order .. '|' .. #p.rows() end return out");
   // Adding or removing a row (or a module, which adds a row under Modules) changes these counts on purpose.
   expect(pages, "the page list and each page's row count (a new row is one more on its page)").toEqual([
-    "general|General|10|39", "modules|Modules|20|88", "unitframes|Unit frames|30|30", "raid|Raid frames|40|25",
+    "general|General|10|39", "modules|Modules|20|88", "unitframes|Unit frames|30|30", "raid|Raid frames|40|26",
     "actionbars|Action bars|60|74", "quests|Quests|70|30", "bars|Bars and bags|80|17", "map|Map|81|36", "chat|Chat|82|74", "windows|Game windows|83|46", "cooldowns|Cooldowns|83.5|13", "tools|Combat tools|84|39", "town|Town and gear|85|57", "profiles|Profiles|90|22",
     "feedback|Feedback|100|7", "healing|Healing|45|44", "talents|Talents|47|7", "nameplates|Nameplates|65|16",
     "situations|Situations|86|17", "clickcast|Click casting|46|11",

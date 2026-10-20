@@ -353,7 +353,7 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 
 ### 6.2a Raid indicators (if you can)
 
-- Do: in a group, open `/vg` → Raid frames, set Indicator 1 to "your buffs" and Indicator 2 to "crowd control", reload, then buff a member and let a mob crowd-control another.
+- Do: in a group, open `/vg` → Raid frames, set Right edge, top to "Your buffs" and Right edge, second to "Crowd control", reload, then buff a member and let a mob crowd-control another.
 - Expect: a small icon of the buff on the right edge of that member's tile, under the missing-buff mark, and the crowd control's icon below it (or beside it on a short tile). Empty slots show nothing, and offline or dead members show none. Nothing errors in combat.
 - If it fails, paste: a screenshot and `/vg errors`. A filter word the game rejects is reported once in `/vg errors` as `aura filter ...`.
 

@@ -433,3 +433,16 @@ it("a softened bar is never brighter than the light name on it can be read again
   const warrior = soft([0.78, 0.61, 0.43]);
   expect(luma(warrior) < 0.3, "a darker class is left as the plain mix").toBe(true);
 });
+
+it("raid frames: the indicators are named by where they sit, with a note, and their choices in sentence case", () => {
+  const addon = loggedIn(UNITS_ENV + RAID_ENV + CLICK_LUA);
+  addon.eval('ns.Options.Show("raid")');
+  // Whether some font string on the page has this text.
+  const has = (text) => addon.eval(`for _, w in ipairs(__wfgStub.frames) do
+    if w.__kind == "FontString" and w:GetText() == ${JSON.stringify(text)} then return true end
+  end return false`);
+  expect(["Right edge, top", "Right edge, second", "Right edge, third"].map(has), "the three captions (each with its reload tag)").toEqual([true, true, true]);
+  expect(has("Small icons down the right edge of each tile, under the missing-buff mark; on short tiles they continue in a column to the left."), "the note").toBe(true);
+  expect(addon.eval('local out = {} for i, c in ipairs(ns.GetModule("RaidAuras").SOURCE_CHOICES) do out[i] = c[2] end return out'), "sentence case").toEqual(
+    ["None", "External defensive", "Big defensive", "Important buff", "Your buffs", "Crowd control", "Dispellable debuff"]);
+});
