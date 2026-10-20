@@ -383,12 +383,16 @@ function T.ColorAssist()
 end
 
 -- r, g, b, a of a named color (see TOKENS; accent, panel, inset and edge follow the settings,
--- accentText and accentDim follow the accent, and the reactions follow Color assist).
+-- accentText and accentDim follow the accent, and the reactions follow Color assist). The first
+-- source that has the name wins: the variant's tokens, the accent variant, the saved setting, Color
+-- assist's colours, then TOKENS.
 function T.RGB(name)
-  local key, v = SETTING_TOKENS[name], T.Variant()
-  local assist = T.ColorAssist()
-  local c = v and v.tokens[name] or T.ACCENT_VARIANTS[name] and accentVariant(name) or key and T.Settings()[key]
-    or assist and T.ASSIST[name] or T.TOKENS[name]
+  local v, key = T.Variant(), SETTING_TOKENS[name]
+  local c = v and v.tokens[name]
+  if not c and T.ACCENT_VARIANTS[name] then c = accentVariant(name) end
+  if not c and key then c = T.Settings()[key] end
+  if not c and T.ColorAssist() then c = T.ASSIST[name] end
+  c = c or T.TOKENS[name]
   if not c then error("Vanguard: no color named " .. tostring(name), 2) end
   return c[1], c[2], c[3], c[4] or 1
 end
@@ -1425,8 +1429,9 @@ local function dropLabel(button, state, down)
   for i = 1, fs:GetNumPoints() do points[i] = { fs:GetPoint(i) } end
   if down then state.ys = {} end
   for i, p in ipairs(points) do
-    if down then state.ys[i] = p[5] end
-    fs:SetPoint(p[1], p[2], p[3], p[4], down and p[5] - drop or state.ys and state.ys[i] or p[5])
+    local y = p[5]
+    if down then state.ys[i] = p[5] y = p[5] - drop elseif state.ys and state.ys[i] then y = state.ys[i] end
+    fs:SetPoint(p[1], p[2], p[3], p[4], y)
   end
 end
 
@@ -1686,7 +1691,9 @@ local function paintControl(entry, button)
   local p, colors = entry.parts, T.CONTROL_TILES.glyph
   paintControlTile(p, entry)
   if not p.glyph then return end
-  T.Tint(p.glyph, not entry.lit and colors.rest or entry.opts.tile == "close" and colors.close or colors.lit)
+  local color = colors.lit
+  if not entry.lit then color = colors.rest elseif entry.opts.tile == "close" then color = colors.close end
+  T.Tint(p.glyph, color)
   p.glyph:SetPoint("CENTER", button, "CENTER", 0, entry.pressed and -T.Pixel(button) or 0)
 end
 
