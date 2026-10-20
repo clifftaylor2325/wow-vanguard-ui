@@ -25,6 +25,8 @@ QA.WIDTH, QA.HEIGHT, QA.DRAW, QA.PICK = 190, 44, 0.1, 1
 QA.READY_BIAS = 0.25
 -- A challenger replaces the current quest only when its distance (squared) is under this share of the current one's.
 QA.SWITCH = 0.5
+-- Within this many yards the arrow reads "Here"; the arrow's alpha while it can't point (or you're there).
+QA.HERE, QA.FAINT = 15, 0.35
 
 -- Calls t[name](...) if the client has it.
 local function call(t, name, ...)
@@ -83,11 +85,13 @@ local function titleOf(id)
   return plainText(call(C_QuestLog, "GetTitleForQuestID", id)) or "Quest"
 end
 
--- Picks the quest and its spot (map, x, y), says so when it moved on from a finished one, and redraws.
+-- Picks the quest, whether it is finished, and its spot (map, x, y); says so when it moved on from a
+-- finished one, and redraws.
 function QA.Pick()
   if not QA.frame then return end
   local old = QA.current
   QA.current = (QA.settings.auto and (ns.QuestGuide.pointed and pinned() or QA.Choose(old))) or pinned()
+  QA.ready = QA.current ~= nil and finished(QA.current)
   QA.target = QA.current and { ns.QuestGuide.Target(QA.current) } or nil
   if old and QA.current and old ~= QA.current and finished(old) and not ns.InCombat() then ns.Chat("Arrow: " .. titleOf(QA.current) .. ".") end
   QA.Draw()
@@ -128,11 +132,19 @@ local function yards(id)
   return sq and math.floor(math.sqrt(sq) + 0.5)
 end
 
--- The distance line: "230 yd", or why there is none.
-local function distanceText(id, turn)
-  local d = yards(id)
+-- The distance line: "230 yd" ("Turn in · 230 yd" for a finished quest), or why there is none.
+local function distanceText(d, turn, ready)
   if not d then return "No direction" end
-  return turn and (d .. " yd") or (d .. " yd, no direction")
+  local text = turn and (d .. " yd") or (d .. " yd, no direction")
+  return ready and ("Turn in · " .. text) or text
+end
+
+-- Whether you're there: within QA.HERE yards and not on a flight, which passes over spots without
+-- stopping (a hidden answer counts as on one).
+local function arrived(d)
+  if not d or d > QA.HERE then return false end
+  local taxi = call(_G, "UnitOnTaxi", "player")
+  return not ns.IsSecret(taxi) and taxi ~= true
 end
 
 -- The game's next waypoint on a map toward its super-tracked target, as x, y (C_Navigation since 12.1, C_SuperTrack before).
@@ -162,15 +174,26 @@ local function turnFor(id, target)
   return x and QA.Turn(here, x, y)
 end
 
+-- The distance line and the arrow's look: "Here" in good with a faint arrow once you're there, else the
+-- distance; the arrow gold for a turn-in, else the accent. A state change, never a fade.
+local function paintState(f, id, turn)
+  local d = yards(id)
+  local spot = QA.target ~= nil and QA.target[1] ~= nil
+  local here = spot and arrived(d)
+  f.dist:SetText((not spot and "No spot from the game") or (here and "Here") or distanceText(d, turn, QA.ready))
+  T.Color(f.dist, here and "good" or "text2")
+  T.Tint(f.arrow, QA.ready and "gold" or "accent")
+  f.arrow:SetAlpha(turn and not here and 1 or QA.FAINT)
+end
+
 -- Redraws the arrow's turn, title and distance for the current quest; hides the frame with none.
 function QA.Draw()
   local f, id = QA.frame, QA.current
   if not (f and QA.settings.show and id) then return f and f:Hide() end
   local turn = turnFor(id, QA.target)
   f.title:SetText(titleOf(id))
-  f.dist:SetText(QA.target and QA.target[1] and distanceText(id, turn) or "No spot from the game")
+  paintState(f, id, turn)
   f.arrow:SetRotation(turn or 0)
-  f.arrow:SetAlpha(turn and 1 or 0.35)
   f:Show()
 end
 
@@ -182,7 +205,6 @@ local function fill(f)
   f.arrow:SetSize(28, 28)
   f.arrow:SetPoint("LEFT", f, "LEFT", 8, 0)
   f.arrow:SetTexture(T.Icon("QuestArrow"))
-  T.Tint(f.arrow, "accent")
   f.title = T.Text(f:CreateFontString(nil, "OVERLAY"), "small", "text")
   f.title:SetPoint("TOPLEFT", f.arrow, "TOPRIGHT", 8, -2)
   f.title:SetPoint("RIGHT", f, "RIGHT", -8, 0)

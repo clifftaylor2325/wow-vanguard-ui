@@ -3,7 +3,7 @@
 // of the watched quests, with the quest's title and distance.
 
 import { expect, it } from "vitest";
-import { chatHas, loggedIn, setCombat } from "./helpers.mjs";
+import { chatHas, isTok, loggedIn, setCombat } from "./helpers.mjs";
 
 // TEST-ONLY world: the player at (0.5, 0.5) on map 10 (1000 x 1000 yards) facing north. Quest 90061
 // is 100 yards away with its spot due east, 90062 is 300 yards away with its spot to the north-west.
@@ -145,4 +145,26 @@ it("quest arrow: points at a watched quest with Vanguard's quest tracker module 
   const addon = loggedIn(ARROW_ENV, { savedVariables: "VanguardDB.profiles = { Default = { modules = { QuestTracker = false } } }" });
   addon.advance(2.5);
   expect(arrow(addon).slice(1), "the nearer quest, as with the tracker on").toEqual(["TEST-ONLY Near", "100 yd", 1, true]);
+});
+
+it("quest arrow: within 15 yards it reads Here in the good colour with a faint arrow, but not on a flight", () => {
+  const addon = loggedIn(ARROW_ENV + "C_QuestLog.GetDistanceSqToQuest = function() return 144 end");
+  addon.eval("ns.QuestArrow.Pick()");
+  expect(arrow(addon).slice(2, 4), "12 yards: there").toEqual(["Here", 0.35]);
+  expect(isTok(addon, addon.eval("return Vanguard_QuestArrow.dist.__textColor"), "good")).toBe(true);
+  addon.eval("UnitOnTaxi = function() return true end ns.QuestArrow.Draw()");
+  expect(arrow(addon).slice(2, 4), "on a taxi the distance stays").toEqual(["12 yd", 1]);
+  addon.eval("UnitOnTaxi = function() return __wfgWorld.secret() end ns.QuestArrow.Draw()");
+  expect(arrow(addon)[2], "a hidden taxi answer counts as on one").toBe("12 yd");
+  addon.eval("UnitOnTaxi = function() return false end C_QuestLog.GetDistanceSqToQuest = function() return 400 end ns.QuestArrow.Draw()");
+  expect(arrow(addon)[2], "20 yards: not yet").toBe("20 yd");
+});
+
+it("quest arrow: a finished quest reads Turn in with the distance, the arrow in gold", () => {
+  const addon = loggedIn(ARROW_ENV + "__wfgWorld.quests[1].isComplete = true");
+  addon.eval("ns.QuestArrow.Pick()");
+  expect(arrow(addon)[2]).toBe("Turn in · 100 yd");
+  expect(isTok(addon, addon.eval("return Vanguard_QuestArrow.arrow.__vertexColor"), "gold")).toBe(true);
+  addon.eval("GetPlayerFacing = function() return nil end ns.QuestArrow.Draw()");
+  expect(arrow(addon)[2], "with no direction").toBe("Turn in · 100 yd, no direction");
 });
