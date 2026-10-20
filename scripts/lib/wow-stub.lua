@@ -395,6 +395,14 @@ function methods:GetPoint(i)
   end
 end
 
+-- The anchor point by its name ("TOPLEFT"), as GetPoint returns it.
+function methods:GetPointByName(point)
+  local p = self.__points[point]
+  if p then
+    return p.point, p.rel, p.relPoint, p.x, p.y
+  end
+end
+
 -- Check buttons: checked state and the checked highlight texture.
 function methods:SetChecked(on) self.__checked = on == true end
 function methods:GetChecked() return self.__checked == true end

@@ -10,6 +10,7 @@ local vgSocialSide = ns.FrameState("vgSocialSide")
 local vgEmptyNote = ns.FrameState("vgEmptyNote")
 local vgInsetFill = ns.FrameState("vgInsetFill")
 local vgControlWatched = ns.FrameState("vgControlWatched")
+local vgPresenceLabel = ns.FrameState("vgPresenceLabel")
 
 local T = ns.Theme
 local GW = ns.GetModule("Windows")
@@ -1001,15 +1002,46 @@ local function iconButton(button)
   if type(button.Icon) == "table" and button.Icon.SetAlpha then button.Icon:SetAlpha(1) end
 end
 
+-- The status dropdown's label: where it starts (past the game's presence dot, drawn 8 in and 19 wide) and the
+-- room kept right of it for the chevron.
+GW.PRESENCE_LABEL = { x = 31, chevron = 26 }
+
+-- The game's word for the status the player has now (Available, Away, Busy), "" on a client without it.
+local function presenceWord(dropdown)
+  local util = SocialUIUtil
+  if type(util) ~= "table" or type(util.GetLabelForPresenceType) ~= "function" then return "" end
+  return util.GetLabelForPresenceType(dropdown.presenceTypeSelf) or ""
+end
+
+-- The status dropdown's label set to the status now, the dropdown as wide as the dot, the label and the chevron
+-- (the battletag beside it is anchored to its right edge and moves along).
+local function showPresence(dropdown)
+  local label = vgPresenceLabel[dropdown]
+  label:SetText(presenceWord(dropdown))
+  local width = ns.PlainNumber(label:GetStringWidth())
+  if width then dropdown:SetWidth(GW.PRESENCE_LABEL.x + width + GW.PRESENCE_LABEL.chevron) end
+end
+
+-- The status dropdown: flat with its arrow, and the status in words after the game's dot (the game shows only
+-- the dot), kept up after each of the game's selection updates (a pick, a Battle.net change, a show).
+local function dressPresence(dropdown)
+  GW.SkinDropdown(dropdown)
+  if type(dropdown) ~= "table" or not dropdown.CreateFontString or vgPresenceLabel[dropdown] then return end
+  vgPresenceLabel[dropdown] = T.Text(dropdown:CreateFontString(nil, "OVERLAY"), "label")
+  vgPresenceLabel[dropdown]:SetPoint("LEFT", dropdown, "LEFT", GW.PRESENCE_LABEL.x, 0)
+  showPresence(dropdown)
+  afterWith(dropdown, "UpdateToMenuSelections", showPresence)
+end
+
 -- The Battle.net bar: its plate and the band behind the status dropdown and battletag faded, the status
--- dropdown flat (its presence dot is in its text), the menu button flat with its icon.
+-- dropdown flat with its status in words, the menu button flat with its icon.
 local function dressBattleNetBar(bar)
   if type(bar) ~= "table" or not bar.GetRegions then return end
   T.FadeRegions(bar)
   local box = bar.ControlsContainer
   if type(box) ~= "table" or not box.GetRegions then return end
   T.FadeRegions(box)
-  dressKeys(box, { "OnlineStatusDropdown" }, "CreateTexture", GW.SkinDropdown)
+  dressPresence(box.OnlineStatusDropdown)
   iconButton(box.BattleNetMenuButton)
 end
 
@@ -1030,12 +1062,39 @@ local function dressCardNames(card)
   end
 end
 
+-- How the game placed a card's presence dot and its name block (the dot's centre from the card's top-left
+-- corner, the block's top-left from the dot's bottom-right), or nil once they are placed otherwise (centred already).
+local function gamePresenceAnchors(card, dot, text)
+  local _, dotRel, _, dx, dy = dot:GetPointByName("CENTER")
+  local _, textRel, _, _, ty = text:GetPointByName("TOPLEFT")
+  if dotRel ~= card or textRel ~= dot then return nil end
+  return dx, dy, ty
+end
+
+-- A friends or recent allies card's presence dot centred on its name block: the game hangs the block off the dot's
+-- bottom-right corner, so the dot sat above the first name. The block keeps the game's height and starts just past the
+-- dot, which then centres on the block's left edge. After each of the game's layouts, before it fits the names in.
+local function centrePresence(card)
+  local dot, text = card.PresenceHolder, card.TextHolder
+  if not (isFrame(dot) and isFrame(text)) then return end
+  local dx, dy, ty = gamePresenceAnchors(card, dot, text)
+  local width, height = ns.PlainNumber(dot:GetWidth()), ns.PlainNumber(dot:GetHeight())
+  if not (dx and width and height) then return end
+  local half = width / 2
+  text:SetPoint("TOPLEFT", card, "TOPLEFT", dx + half + T.SPACE.tight, dy - height / 2 + ty)
+  dot:ClearAllPoints()
+  dot:SetPoint("CENTER", text, "LEFT", -half - T.SPACE.tight, 0)
+end
+
 -- One list card (friends, recent allies, quick join, requests, recruits; each has a Background plate): a see-through theme
--- row with the plate faded and its icon kept, its selected look following the game's own SetSelected, its icon buttons on
--- control tiles, its Accept button flat, its quick join names light. Anything without a plate (a spacer) is left alone.
+-- row with the plate faded and its icon kept, its presence dot centred on its names, its selected look following the game's
+-- own SetSelected, its icon buttons on control tiles, its Accept button flat, its quick join names light. Anything without a
+-- plate (a spacer) is left alone.
 local function dressCard(card)
   if type(card) ~= "table" or not card.CreateTexture or type(card.Background) ~= "table" then return end
   GW.DressRow(card, GW.CARD_KEEP)
+  centrePresence(card)
+  afterWith(card, "LayoutScaledTextHolderAnchors", centrePresence)
   afterWith(card, "SetSelected", function(self, on) T.SelectRow(self, on == true) end)
   dressCardAction(card.PartyButton)
   dressCardAction(card.RAFSummonButton)
