@@ -21,12 +21,6 @@ ns.Options.MODULE_INFO.QuestGuide = { "Quest guidance", "A New mark on quests ne
 -- The names a new-quest flag would have in the client's enums (lower-case patterns).
 QG.FLAG_NAMES = { "forever", "^new" }
 
--- Calls t[name](...) if the client has it.
-local function call(t, name, ...)
-  local fn = type(t) == "table" and t[name]
-  if type(fn) == "function" then return fn(...) end
-end
-
 -- The new-quest flag ------------------------------------------------------------------------------
 
 -- The first key of an enum whose lower-cased name matches a flag name, and its value.
@@ -53,8 +47,8 @@ end
 -- What the client says about a quest for the flag's source: its classification or its tag ID (a hidden value counts as none).
 local function flagValue(source, questID)
   local v
-  if source == "classification" then v = call(C_QuestInfoSystem, "GetQuestClassification", questID) end
-  if source == "tag" then v = (call(C_QuestLog, "GetQuestTagInfo", questID) or {}).tagID end
+  if source == "classification" then v = ns.CallIf(C_QuestInfoSystem, "GetQuestClassification", questID) end
+  if source == "tag" then v = (ns.CallIf(C_QuestLog, "GetQuestTagInfo", questID) or {}).tagID end
   return not ns.IsSecret(v) and v or nil
 end
 
@@ -75,10 +69,10 @@ end
 
 -- The quest's next step as map, x, y: its next waypoint, else its spot on the map you're on; nil when the client won't say.
 function QG.Target(questID)
-  local mapID, x, y = call(C_QuestLog, "GetNextWaypoint", questID)
+  local mapID, x, y = ns.CallIf(C_QuestLog, "GetNextWaypoint", questID)
   if ns.PlainNumber(mapID) and ns.PlainNumber(x) and ns.PlainNumber(y) then return mapID, x, y end
-  local here = ns.PlainNumber(call(C_Map, "GetBestMapForUnit", "player"))
-  for _, q in ipairs(here and call(C_QuestLog, "GetQuestsOnMap", here) or {}) do
+  local here = ns.PlainNumber(ns.CallIf(C_Map, "GetBestMapForUnit", "player"))
+  for _, q in ipairs(here and ns.CallIf(C_QuestLog, "GetQuestsOnMap", here) or {}) do
     if q.questID == questID and ns.PlainNumber(q.x) and ns.PlainNumber(q.y) then return here, q.x, q.y end
   end
 end
@@ -98,7 +92,7 @@ end
 
 -- The quest's title for chat, or "that quest".
 local function titleOf(questID)
-  local title = call(C_QuestLog, "GetTitleForQuestID", questID)
+  local title = ns.CallIf(C_QuestLog, "GetTitleForQuestID", questID)
   return (not ns.IsSecret(title) and type(title) == "string") and title or "that quest"
 end
 
@@ -121,21 +115,21 @@ end
 -- your /way or Ctrl-click, is the game's other kind of tracking and is left alone.
 function QG.Unpin()
   QG.pointed = nil
-  local id = ns.PlainNumber(call(C_SuperTrack, "GetSuperTrackedQuestID"))
-  if id and id > 0 then call(C_SuperTrack, "SetSuperTrackedQuestID", 0) end
+  local id = ns.PlainNumber(ns.CallIf(C_SuperTrack, "GetSuperTrackedQuestID"))
+  if id and id > 0 then ns.CallIf(C_SuperTrack, "SetSuperTrackedQuestID", 0) end
   QG.StepsChanged()
 end
 
 -- The quest the arrow follows: the game's super-tracked quest, else the one last pointed at.
 function QG.Followed()
-  local id = ns.PlainNumber(call(C_SuperTrack, "GetSuperTrackedQuestID"))
+  local id = ns.PlainNumber(ns.CallIf(C_SuperTrack, "GetSuperTrackedQuestID"))
   return (id and id > 0) and id or QG.pointed
 end
 
 -- The tracker line for the followed quest's next step ("> Take the boat to Menethil"), or nil.
 function QG.StepLine(questID)
   if not (QG.settings and QG.settings.stepLine) or questID ~= QG.Followed() then return nil end
-  local text = call(C_QuestLog, "GetNextWaypointText", questID)
+  local text = ns.CallIf(C_QuestLog, "GetNextWaypointText", questID)
   if ns.IsSecret(text) or type(text) ~= "string" or text == "" then return nil end
   return { "> " .. text, "accent" }
 end
@@ -165,15 +159,15 @@ end
 
 -- One quest as the client describes it: its classification, its tag, and its quest log fields (when it's in the log).
 function QG.Describe(questID)
-  local index = ns.PlainNumber(call(C_QuestLog, "GetLogIndexForQuestID", questID))
-  local info = index and call(C_QuestLog, "GetInfo", index)
-  local class = call(C_QuestInfoSystem, "GetQuestClassification", questID)
-  return string.format("Quest %d: classification %s; tag %s; log %s", questID, shown(class), fields(call(C_QuestLog, "GetQuestTagInfo", questID)), fields(info))
+  local index = ns.PlainNumber(ns.CallIf(C_QuestLog, "GetLogIndexForQuestID", questID))
+  local info = index and ns.CallIf(C_QuestLog, "GetInfo", index)
+  local class = ns.CallIf(C_QuestInfoSystem, "GetQuestClassification", questID)
+  return string.format("Quest %d: classification %s; tag %s; log %s", questID, shown(class), fields(ns.CallIf(C_QuestLog, "GetQuestTagInfo", questID)), fields(info))
 end
 
 -- The quests the open NPC offers, each with the NPC's own fields first.
 local function dumpOffered()
-  for _, q in ipairs(call(C_GossipInfo, "GetAvailableQuests") or {}) do
+  for _, q in ipairs(ns.CallIf(C_GossipInfo, "GetAvailableQuests") or {}) do
     ns.Chat("Offered: " .. fields(q))
     if ns.PlainNumber(q.questID) then ns.Chat(QG.Describe(q.questID)) end
   end

@@ -29,17 +29,15 @@ local function party(name, ...)
   if type(fn) == "function" then return fn(...) end
 end
 
--- A plain true from a client call (hidden values count as false).
-local function yes(name, ...)
-  local fn = _G[name]
-  local v = type(fn) == "function" and fn(...)
-  return not ns.IsSecret(v) and v == true
+-- A plain true from a global client call (hidden values count as false).
+local function globalTrue(name, ...)
+  return ns.IsTrue(ns.CallIf(_G, name, ...))
 end
 
 -- Who may use the tools: the leader, an assistant, or anyone when everyone assists.
 function RT.CanLead()
-  if not yes("IsInGroup") then return false end
-  return yes("UnitIsGroupLeader", "player") or (yes("IsInRaid") and (yes("UnitIsGroupAssistant", "player") or yes("IsEveryoneAssistant")))
+  if not globalTrue("IsInGroup") then return false end
+  return globalTrue("UnitIsGroupLeader", "player") or (globalTrue("IsInRaid") and (globalTrue("UnitIsGroupAssistant", "player") or globalTrue("IsEveryoneAssistant")))
 end
 
 -- The text buttons -----------------------------------------------------------------------
@@ -99,8 +97,8 @@ end
 
 -- Marks your target with raid icon i (0 clears it), if it can be marked.
 function RT.MarkTarget(i)
-  if type(SetRaidTarget) ~= "function" or not yes("UnitExists", "target") then return end
-  if type(CanBeRaidTarget) == "function" and not yes("CanBeRaidTarget", "target") then return end
+  if type(SetRaidTarget) ~= "function" or not globalTrue("UnitExists", "target") then return end
+  if type(CanBeRaidTarget) == "function" and not globalTrue("CanBeRaidTarget", "target") then return end
   SetRaidTarget("target", i)
 end
 
@@ -141,7 +139,7 @@ function RT.Update()
   ns.OutOfCombat(function()
     local raid = RT.bar.actions.Raid
     RT.bar:SetShown(RT.CanLead())
-    if raid then raid:SetShown(not yes("IsInRaid") and yes("UnitIsGroupLeader", "player")) end
+    if raid then raid:SetShown(not globalTrue("IsInRaid") and globalTrue("UnitIsGroupLeader", "player")) end
   end, "raidtools")
 end
 

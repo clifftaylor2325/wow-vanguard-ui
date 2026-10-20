@@ -78,7 +78,7 @@ local function assignment(unit)
   if type(GetPartyAssignment) ~= "function" then return nil end
   for kind, color in pairs(RF.ASSIGNMENTS) do
     local yes = GetPartyAssignment(kind, unit)
-    if not ns.IsSecret(yes) and yes == true then return color end
+    if ns.IsTrue(yes) then return color end
   end
 end
 
@@ -125,7 +125,7 @@ end
 -- True when two unit tokens name the same unit (a hidden answer counts as no).
 function RF.Same(a, b)
   local same = type(UnitIsUnit) == "function" and UnitIsUnit(a, b)
-  return not ns.IsSecret(same) and same == true
+  return ns.IsTrue(same)
 end
 
 -- True when a unit is your target (a hidden answer counts as no).

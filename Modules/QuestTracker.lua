@@ -36,29 +36,6 @@ function QT.Shows(settings)
   return not (questie and settings.withQuestie == "questie")
 end
 
--- Calls a C_QuestLog function by name, if this client has it.
-local function questLog(name, ...)
-  local fn = C_QuestLog and C_QuestLog[name]
-  if type(fn) == "function" then return fn(...) end
-end
-
--- Calls a C_TradeSkillUI function by name, if this client has it.
-local function tradeSkill(name, ...)
-  local fn = type(C_TradeSkillUI) == "table" and C_TradeSkillUI[name]
-  if type(fn) == "function" then return fn(...) end
-end
-
--- Calls a C_Item function by name, if this client has it.
-local function item(name, ...)
-  local fn = type(C_Item) == "table" and C_Item[name]
-  if type(fn) == "function" then return fn(...) end
-end
-
--- A plain true from the client (hidden values count as false).
-local function yes(v)
-  return not ns.IsSecret(v) and v == true
-end
-
 -- A table the client gives plainly (a hidden one counts as none).
 local function plainTable(v)
   return not ns.IsSecret(v) and type(v) == "table" and v or nil
@@ -69,8 +46,8 @@ end
 -- The quest IDs you watch, in the game's order.
 function QT.Watched()
   local out = {}
-  for i = 1, ns.PlainNumber(questLog("GetNumQuestWatches")) or 0 do
-    local id = ns.PlainNumber(questLog("GetQuestIDForQuestWatchIndex", i))
+  for i = 1, ns.PlainNumber(ns.CallIf(C_QuestLog, "GetNumQuestWatches")) or 0 do
+    local id = ns.PlainNumber(ns.CallIf(C_QuestLog, "GetQuestIDForQuestWatchIndex", i))
     if id then out[#out + 1] = id end
   end
   return out
@@ -79,8 +56,8 @@ end
 -- A quest's objectives as { text, done } (the quest log shows them too).
 function QT.Objectives(id)
   local out = {}
-  for _, o in ipairs(questLog("GetQuestObjectives", id) or {}) do
-    out[#out + 1] = { text = ns.QuestParts.Plain(o.text), done = yes(o.finished) }
+  for _, o in ipairs(ns.CallIf(C_QuestLog, "GetQuestObjectives", id) or {}) do
+    out[#out + 1] = { text = ns.QuestParts.Plain(o.text), done = ns.IsTrue(o.finished) }
   end
   return out
 end
@@ -94,30 +71,30 @@ end
 
 -- A quest's place in the log (it moves as quests come and go), or nil when the log doesn't have it.
 function QT.LogIndex(id)
-  return ns.PlainNumber(questLog("GetLogIndexForQuestID", id))
+  return ns.PlainNumber(ns.CallIf(C_QuestLog, "GetLogIndexForQuestID", id))
 end
 
 -- One watched quest: { id, title, level, ready, failed, objectives, item, xp }, or nil when the log doesn't have it.
 -- The XP switch is read from the profile: the arrow and the minimap marks ask with this module off, before any QT.Enable.
 function QT.Quest(id)
   local index = QT.LogIndex(id)
-  local info = index and questLog("GetInfo", index)
+  local info = index and ns.CallIf(C_QuestLog, "GetInfo", index)
   if type(info) ~= "table" then return nil end
-  local ready = yes(questLog("ReadyForTurnIn", id)) or yes(questLog("IsComplete", id))
-  return { id = id, title = info.title, level = info.level, ready = ready, failed = yes(questLog("IsFailed", id)), objectives = QT.Objectives(id), item = questItem(index),
+  local ready = ns.IsTrue(ns.CallIf(C_QuestLog, "ReadyForTurnIn", id)) or ns.IsTrue(ns.CallIf(C_QuestLog, "IsComplete", id))
+  return { id = id, title = info.title, level = info.level, ready = ready, failed = ns.IsTrue(ns.CallIf(C_QuestLog, "IsFailed", id)), objectives = QT.Objectives(id), item = questItem(index),
     xp = ns.Settings("QuestTracker", QT.defaults).xp and ns.GetModule("DataBars").RewardXP(id) or 0 }
 end
 
 -- How far a quest is (squared), or a long way when the client can't say.
 local function distance(q)
-  return ns.PlainNumber((questLog("GetDistanceSqToQuest", q.id))) or math.huge
+  return ns.PlainNumber((ns.CallIf(C_QuestLog, "GetDistanceSqToQuest", q.id))) or math.huge
 end
 
 -- Seconds left on each timed quest, by quest id, from C_QuestLog.GetQuestTimers (the call the game's own
 -- timer frame reads; QuestLogDocumentation.lua's QuestTimerInfo). A timer the client hides is left out.
 function QT.Timers()
   local out = {}
-  for _, info in ipairs(plainTable(questLog("GetQuestTimers")) or {}) do
+  for _, info in ipairs(plainTable(ns.CallIf(C_QuestLog, "GetQuestTimers")) or {}) do
     local id, left = plainTable(info) and ns.PlainNumber(info.questID), plainTable(info) and ns.PlainNumber(info.questTimer)
     if id and left then out[id] = left end
   end
@@ -166,13 +143,7 @@ function QT.AutoTrack(_, first, second)
   for _, watched in ipairs(QT.Watched()) do
     if watched == id then return end
   end
-  questLog("AddQuestWatch", id)
-end
-
--- Calls a global achievement function by name, if this client has it (all its results).
-local function achievementCall(name, ...)
-  local fn = _G[name]
-  if type(fn) == "function" then return fn(...) end
+  ns.CallIf(C_QuestLog, "AddQuestWatch", id)
 end
 
 -- The achievement type of the content tracker (Enum.ContentTrackingType.Achievement), or nil without it.
@@ -184,9 +155,9 @@ end
 -- A tracked achievement's criteria as { text, done }, in the game's order.
 local function achievementCriteria(id)
   local out = {}
-  for i = 1, ns.PlainNumber(achievementCall("GetAchievementNumCriteria", id)) or 0 do
-    local text, _, done = achievementCall("GetAchievementCriteriaInfo", id, i)
-    out[#out + 1] = { text = ns.QuestParts.Plain(text or ""), done = yes(done) }
+  for i = 1, ns.PlainNumber(ns.CallIf(_G, "GetAchievementNumCriteria", id)) or 0 do
+    local text, _, done = ns.CallIf(_G, "GetAchievementCriteriaInfo", id, i)
+    out[#out + 1] = { text = ns.QuestParts.Plain(text or ""), done = ns.IsTrue(done) }
   end
   return out
 end
@@ -194,9 +165,9 @@ end
 -- One tracked achievement (a Legacy challenge on Forever): { id, title, ready, objectives, achievement = true },
 -- or nil when the client doesn't have it.
 function QT.Achievement(id)
-  local _, name, _, completed = achievementCall("GetAchievementInfo", id)
+  local _, name, _, completed = ns.CallIf(_G, "GetAchievementInfo", id)
   if type(name) ~= "string" then return nil end
-  return { id = id, title = name, ready = yes(completed), objectives = achievementCriteria(id), achievement = true }
+  return { id = id, title = name, ready = ns.IsTrue(completed), objectives = achievementCriteria(id), achievement = true }
 end
 
 -- The achievements you track, in the game's order.
@@ -220,9 +191,9 @@ local function reagentLine(slot)
   local r, need = plainTable(slot.reagents) and plainTable(slot.reagents[1]), ns.PlainNumber(slot.quantityRequired)
   local id = r and ns.PlainNumber(r.itemID)
   if ns.PlainNumber(slot.reagentType) ~= basic or not (id and need) then return nil end
-  local name = item("GetItemInfo", id)
-  if ns.IsSecret(name) or type(name) ~= "string" then item("RequestLoadItemDataByID", id) QT.waitingItems = true return nil end
-  local have = ns.PlainNumber(item("GetItemCount", id, true)) or 0
+  local name = ns.CallIf(C_Item, "GetItemInfo", id)
+  if ns.IsSecret(name) or type(name) ~= "string" then ns.CallIf(C_Item, "RequestLoadItemDataByID", id) QT.waitingItems = true return nil end
+  local have = ns.PlainNumber(ns.CallIf(C_Item, "GetItemCount", id, true)) or 0
   return { text = have .. "/" .. need .. " " .. name, done = have >= need }
 end
 
@@ -238,7 +209,7 @@ end
 
 -- One tracked recipe: { id, title, objectives, recipe = true }, or nil when the client has no schematic for it.
 function QT.Recipe(id)
-  local s = id and plainTable(tradeSkill("GetRecipeSchematic", id, false))
+  local s = id and plainTable(ns.CallIf(C_TradeSkillUI, "GetRecipeSchematic", id, false))
   if not s or ns.IsSecret(s.name) or type(s.name) ~= "string" then return nil end
   return { id = id, title = s.name, objectives = recipeReagents(s), recipe = true }
 end
@@ -248,7 +219,7 @@ end
 function QT.Recipes()
   local out = {}
   QT.waitingItems = false
-  for _, id in ipairs(plainTable(tradeSkill("GetRecipesTracked", false)) or {}) do
+  for _, id in ipairs(plainTable(ns.CallIf(C_TradeSkillUI, "GetRecipesTracked", false)) or {}) do
     local r = QT.Recipe(ns.PlainNumber(id))
     if r then out[#out + 1] = r end
   end
@@ -277,7 +248,7 @@ end
 -- A title was clicked: left opens the quest (Vanguard's quest log, else the game's map), Shift-left points
 -- the arrow at it (Quest guidance, when it's on); right stops watching it.
 function QT.OnTitle(id, button)
-  if button == "RightButton" then return questLog("RemoveQuestWatch", id) end
+  if button == "RightButton" then return ns.CallIf(C_QuestLog, "RemoveQuestWatch", id) end
   local guide = ns.QuestGuide
   if IsShiftKeyDown() and guide.settings then return guide.Point(id) end
   local log = ns.GetModule("QuestLog")
@@ -297,8 +268,8 @@ end
 -- A tracked recipe's title was clicked: left opens it in the profession window, right stops tracking it (the
 -- game's own calls; its tracker's menu offers the same).
 function QT.OnRecipe(id, button)
-  if button == "RightButton" then return tradeSkill("SetRecipeTracked", id, false, false) end
-  tradeSkill("OpenRecipe", id)
+  if button == "RightButton" then return ns.CallIf(C_TradeSkillUI, "SetRecipeTracked", id, false, false) end
+  ns.CallIf(C_TradeSkillUI, "OpenRecipe", id)
 end
 
 -- Updates ---------------------------------------------------------------------------------------
@@ -325,7 +296,7 @@ end
 -- Follows the events the game's own recipe tracker does (Blizzard_ProfessionsRecipeTracker.lua: a recipe
 -- tracked or untracked, the bags settling), and an item's name arriving, on a client that tracks recipes.
 local function followRecipes()
-  if not plainTable(tradeSkill("GetRecipesTracked", false)) then return end
+  if not plainTable(ns.CallIf(C_TradeSkillUI, "GetRecipesTracked", false)) then return end
   ns.On("TRACKED_RECIPE_UPDATE", refreshSoon)
   ns.On("BAG_UPDATE_DELAYED", refreshSoon)
   ns.On("GET_ITEM_INFO_RECEIVED", itemArrived)

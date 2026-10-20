@@ -14,12 +14,6 @@ local QG = ns.QuestGuide
 
 QG.PIN, QG.MAX_PINS = 16, 60
 
--- Calls t[name](...) if the client has it.
-local function call(t, name, ...)
-  local fn = type(t) == "table" and t[name]
-  if type(fn) == "function" then return fn(...) end
-end
-
 -- Data -------------------------------------------------------------------------------------------
 
 -- Adds a start { questID, x, y, name } unless its quest is there already or a value is hidden.
@@ -33,11 +27,11 @@ end
 -- Where quests start on a map: its quest lines' starts (hidden ones left out), then the quest spots marked as starts.
 function QG.Starts(mapID)
   local out, seen = {}, {}
-  for _, l in ipairs(call(C_QuestLine, "GetAvailableQuestLines", mapID) or {}) do
+  for _, l in ipairs(ns.CallIf(C_QuestLine, "GetAvailableQuestLines", mapID) or {}) do
     if l.isHidden ~= true then addStart(out, seen, l.questID, l.x, l.y, l.questName) end
   end
-  for _, q in ipairs(call(C_QuestLog, "GetQuestsOnMap", mapID) or {}) do
-    if q.isQuestStart == true then addStart(out, seen, q.questID, q.x, q.y, call(C_QuestLog, "GetTitleForQuestID", q.questID)) end
+  for _, q in ipairs(ns.CallIf(C_QuestLog, "GetQuestsOnMap", mapID) or {}) do
+    if q.isQuestStart == true then addStart(out, seen, q.questID, q.x, q.y, ns.CallIf(C_QuestLog, "GetTitleForQuestID", q.questID)) end
   end
   return out
 end
@@ -45,7 +39,7 @@ end
 -- Whether Vanguard draws pins on this map: the setting is on, neither Questie nor OpenMap is loaded,
 -- and the game's own map shows no quest offers.
 function QG.DrawsPins(map)
-  if not QG.settings.pins or call(C_AddOns, "IsAddOnLoaded", "Questie") == true then return false end
+  if not QG.settings.pins or ns.CallIf(C_AddOns, "IsAddOnLoaded", "Questie") == true then return false end
   if ns.GetModule("Waypoints").OpenMapDraws() then return false end
   local offers = map.GetNumActivePinsByTemplate and ns.PlainNumber(map:GetNumActivePinsByTemplate("QuestOfferPinTemplate")) or 0
   return offers == 0
@@ -56,9 +50,9 @@ end
 -- What the client says of a start's quest, read on hover: its level (nil when hidden, missing or 0) and
 -- whether it repeats (a hidden answer: no).
 local function startFacts(questID)
-  local level = ns.PlainNumber(call(C_QuestLog, "GetQuestDifficultyLevel", questID))
-  local repeats = call(C_QuestLog, "IsRepeatableQuest", questID)
-  return (level and level > 0) and level or nil, not ns.IsSecret(repeats) and repeats == true
+  local level = ns.PlainNumber(ns.CallIf(C_QuestLog, "GetQuestDifficultyLevel", questID))
+  local repeats = ns.CallIf(C_QuestLog, "IsRepeatableQuest", questID)
+  return (level and level > 0) and level or nil, ns.IsTrue(repeats)
 end
 
 -- The pin's tooltip: the quest's name, its level in its difficulty colour, "Repeatable", and what a click does.
@@ -127,7 +121,7 @@ end
 function QG.MapChanged()
   local map = _G.WorldMapFrame
   local mapID = map and map:IsShown() and ns.PlainNumber(map:GetMapID())
-  if mapID then call(C_QuestLine, "RequestQuestLinesForMap", mapID) end
+  if mapID then ns.CallIf(C_QuestLine, "RequestQuestLinesForMap", mapID) end
   QG.ListsChanged()
 end
 

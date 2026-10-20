@@ -248,6 +248,13 @@ it("secret checks: the client's check is chosen once and called bare, with no pc
     return { calls, __asked, answers }`);
   expect(out, "three values asked: three calls to the client's check, none through pcall").toEqual([0, 3, [true, false, 7]]);
 });
+it("plain checks: IsTrue passes only a plain true, and CallIf calls only a function the client has", () => {
+  const addon = loggedIn(`issecretvalue = function(v) return type(v) == "table" and v.__secret == true end
+    __probeGlobal = function(a) return a * 2 end
+    __probe = { Known = function(a) return a + 1 end, Other = 5 }`);
+  expect(addon.eval("return { ns.IsTrue(true), ns.IsTrue(false), ns.IsTrue(1), ns.IsTrue({ __secret = true }) }"), "only a plain true is true; a hidden one is no").toEqual([true, false, false, false]);
+  expect(addon.eval(`return { ns.CallIf(__probe, "Known", 7) == 8, ns.CallIf(__probe, "Other") == nil, ns.CallIf(nil, "Known") == nil, ns.CallIf(_G, "__probeGlobal", 4) == 8 }`), "a table's function is called with the arguments; a missing name, a non-function or no table gives nil").toEqual([true, true, true, true]);
+});
 // TEST-ONLY unit-event listener: notes "event:unit:arg" for each event it hears; __took() hands the notes over.
 const NOTE_LUA = `
   __heard = {}

@@ -167,7 +167,7 @@ end
 -- True while you're in a party or raid (a hidden answer counts as no).
 local function inGroup()
   local yes = type(IsInGroup) == "function" and IsInGroup()
-  return not ns.IsSecret(yes) and yes == true
+  return ns.IsTrue(yes)
 end
 
 -- Why the preview can't start now, or nil when it can.

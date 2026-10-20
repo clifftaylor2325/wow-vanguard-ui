@@ -102,7 +102,7 @@ end
 local function clientLine(questID)
   local api = type(C_QuestLog) == "table" and C_QuestLog.IsQuestFlaggedCompleted
   local done = QH.On() and type(questID) == "number" and type(api) == "function" and api(questID)
-  return not ns.IsSecret(done) and done == true and "Done on this character" or nil
+  return ns.IsTrue(done) and "Done on this character" or nil
 end
 
 -- "Done on Thrall-Forever · 3 days ago" (on this character's own name: "Done on this character"); with no

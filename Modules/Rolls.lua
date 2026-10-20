@@ -107,16 +107,11 @@ local function ask(name, ...)
   return (ok and type(v) == "table" and not ns.IsSecret(v)) and v or {}
 end
 
--- A value that is plainly true: false for anything else, a hidden value included.
-local function isTrue(v)
-  return not ns.IsSecret(v) and v == true
-end
-
 -- One roll of a drop: { name, choice, roll, winner }; nil when the name is hidden.
 function R.ReadRoll(info)
   local name = type(info) == "table" and info.playerName
   if type(name) ~= "string" or ns.IsSecret(name) then return nil end
-  return { name = name, choice = R.CHOICES[ns.PlainNumber(info.state)] or "?", roll = ns.PlainNumber(info.roll), winner = isTrue(info.isWinner) }
+  return { name = name, choice = R.CHOICES[ns.PlainNumber(info.state)] or "?", roll = ns.PlainNumber(info.roll), winner = ns.IsTrue(info.isWinner) }
 end
 
 -- One drop from the loot history: { link, done, players = { roll... }, at, key }; done once it has a winner or all passed.
@@ -126,7 +121,7 @@ function R.ReadDrop(drop)
   local link = drop.itemHyperlink
   return {
     link = (type(link) == "string" and not ns.IsSecret(link)) and link or "?", players = players,
-    done = type(drop.winner) == "table" or isTrue(drop.allPassed), at = ns.PlainNumber(drop.startTime) or 0, key = ns.PlainNumber(drop.lootListKey) or 0,
+    done = type(drop.winner) == "table" or ns.IsTrue(drop.allPassed), at = ns.PlainNumber(drop.startTime) or 0, key = ns.PlainNumber(drop.lootListKey) or 0,
   }
 end
 
