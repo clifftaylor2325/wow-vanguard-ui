@@ -609,11 +609,11 @@ it("chat window size: a window left at an earlier first size is set to the new o
   const addon = loggedIn(UI_ENV + TIDY_ENV, { savedVariables: "VanguardDB.profiles = { Default = { Chat = { sized = true, grown = true } } }" });
   // The chat window's width and height.
   const size = () => addon.eval("return { ChatFrame1:GetWidth(), ChatFrame1:GetHeight() }");
-  addon.eval("ChatFrame1:SetSize(500, 154) ns.GetModule('Chat').settings.widened = false");
+  addon.eval("ChatFrame1:SetSize(500, 154) VanguardCharDB.chatSize.widened = false");
   addon.fire("PLAYER_ENTERING_WORLD");
   expect(size(), "0.7.0's first size becomes the new default (524 x 200 on a 1920-unit screen)").toEqual([524, 200]);
-  expect(addon.eval("local s = VanguardDB.profiles.Default.Chat return { s.grown == nil, s.widened }"), "0.7.0's grown flag is dropped from the profile (ns.Migrate); widened is set in its place").toEqual([true, true]);
-  addon.eval("ChatFrame1:SetSize(420, 140) ns.GetModule('Chat').settings.widened = false");
+  expect(addon.eval("return { VanguardDB.profiles.Default.Chat.grown == nil, VanguardCharDB.chatSize.widened }"), "0.7.0's grown flag is dropped from the profile (ns.Migrate); widened is set in its place, for this character").toEqual([true, true]);
+  addon.eval("ChatFrame1:SetSize(420, 140) VanguardCharDB.chatSize.widened = false");
   addon.fire("PLAYER_ENTERING_WORLD");
   expect(size(), "so is 0.6's first size, once").toEqual([524, 200]);
   addon.eval("ChatFrame1:SetSize(600, 300)");
@@ -637,7 +637,7 @@ it("chat is a mover: placed once, sized once, kept where the player put it", () 
   addon.eval("ChatFrame1:SetSize(600, 300)");
   addon.fire("PLAYER_ENTERING_WORLD");
   expect(spot().slice(3), "entering the world again keeps the player's size").toEqual([600, 300]);
-  expect(addon.eval("return VanguardDB.profiles.Default.Chat.sized"), "the size is only set once ever").toBe(true);
+  expect(addon.eval("return { VanguardCharDB.chatSize.sized, VanguardDB.profiles.Default.Chat.sized == nil }"), "the size is only set once for this character, noted in its own file, not the profile").toEqual([true, true]);
   expect(addon.eval('return ns.ResetMovers("chat")'), "/vg reset chat puts it back").toBe(1);
   expect(spot().slice(0, 3), "at the bottom-left").toEqual(["BOTTOMLEFT", 40, 20]);
 });
@@ -1888,5 +1888,21 @@ describe("chat bar tiles: Chat switched on under Modules without the reload", ()
     addon.eval('ns.SetModuleEnabled("Chat", true) ns.Options.NeedReload() ns.Options.Show("chat")');
     expect(addon.eval(`return __click("Copy button in the chat's tab bar")`), "the row is there").toBe(true);
     expect(addon.eval("local b = ns.GetModule('ChatExtras').copyButton return { b ~= nil, b and b:GetParent() == ChatFrame1, #ns.errors }"), "made over the window's top right, nothing filed").toEqual([true, true, 0]);
+  });
+});
+
+describe("chat window size: the first size is each character's own", () => {
+  // The chat window's width and height.
+  const size = (addon) => addon.eval("return { ChatFrame1:GetWidth(), ChatFrame1:GetHeight() }");
+
+  it("a new alt on a profile another character sized still gets the first size", () => {
+    const addon = loggedIn(UI_ENV + TIDY_ENV, { savedVariables: "VanguardDB.profiles = { Default = { Chat = { sized = true, widened = true } } } VanguardCharDB = nil" });
+    expect([addon.eval("return ns.NewCharacter()"), size(addon)], "a new character: 524 x 200").toEqual([true, [524, 200]]);
+  });
+
+  it("a character that played before keeps the size it has, and the flags stay out of an export", () => {
+    const addon = loggedIn(UI_ENV + TIDY_ENV + "ChatFrame1:SetSize(600, 300)", { savedVariables: "VanguardDB.profiles = { Default = { Chat = { sized = true, widened = true } } }" });
+    expect([size(addon), addon.eval("return VanguardCharDB.chatSize.sized")], "the profile's old flags are taken as this character's").toEqual([[600, 300], true]);
+    expect(addon.eval("return ns.WithoutClientState({ Chat = { sized = true, widened = true, textSize = 14 } }).Chat"), "a string carries no window flags").toEqual({ textSize: 14 });
   });
 });

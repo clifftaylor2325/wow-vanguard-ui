@@ -21,7 +21,7 @@ local ADDON, ns = ...
 local T = ns.Theme
 
 local CH = ns.Module("Chat", {
-  defaults = { background = true, backdrop = 0.75, windowScale = 1, widened = false, textSize = 12, place = true, sized = false, tabsVisible = true, lineFade = 60, barHover = false },
+  defaults = { background = true, backdrop = 0.75, windowScale = 1, textSize = 12, place = true, tabsVisible = true, lineFade = 60, barHover = false },
 })
 
 -- The tab bar's height above a chat window: a control-high tab with a tight gap round it.
@@ -959,6 +959,18 @@ CH.OLD_SIZES = { { 420, 140 }, { 500, 154 }, { 420, 154 } }
 -- size); widened takes its place, so a window still at that size is set to the new one once.
 ns.Migrate("Chat", function(saved) saved.grown = nil end)
 
+-- This character's own window flags (VanguardCharDB.chatSize: sized once, widened once), made on
+-- first use: the game keeps each character's chat size, so one character's first size must not
+-- stop another's. A character that played before the flags moved here takes the profile's (they
+-- sized the window then); a new character starts with none.
+local function sizeFlags()
+  if type(VanguardCharDB.chatSize) ~= "table" then
+    local before = ns.NewCharacter() and {} or CH.settings
+    VanguardCharDB.chatSize = { sized = before.sized == true, widened = before.widened == true }
+  end
+  return VanguardCharDB.chatSize
+end
+
 -- Whether the window still has a first size that an earlier version gave it.
 local function isOldDefault(frame)
   local w, h = ns.PlainNumber(frame:GetWidth()), ns.PlainNumber(frame:GetHeight())
@@ -968,14 +980,15 @@ local function isOldDefault(frame)
   return false
 end
 
--- Sizes the main chat window the first time only (when entering the world, after the game's
--- layout has been applied); a resize after that is the player's, except that a window still at
--- an earlier version's first size is set to the new one once.
+-- Sizes the main chat window the first time only for each character (when entering the world,
+-- after the game's layout has been applied); a resize after that is the player's, except that a
+-- window still at an earlier version's first size is set to the new one once.
 function CH.Size()
   local frame = _G.ChatFrame1
   if not CH.settings.place or type(frame) ~= "table" then return end
-  local first, old = not CH.settings.sized, not CH.settings.widened and isOldDefault(frame)
-  CH.settings.sized, CH.settings.widened = true, true
+  local flags = sizeFlags()
+  local first, old = not flags.sized, not flags.widened and isOldDefault(frame)
+  flags.sized, flags.widened = true, true
   if first or old then CH.ApplySize() end
 end
 
