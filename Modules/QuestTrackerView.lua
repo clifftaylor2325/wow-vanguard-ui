@@ -53,17 +53,57 @@ local function onTitleClick(self, button)
   if self.id then QT.OnTitle(self.id, button) end
 end
 
+-- What a click does on each kind of row, for its tooltip (a quest's Shift-click only while Quest guidance is on).
+QT.CLICKS = {
+  quest = "Click: open · Shift-click: point the arrow · Right-click: stop watching",
+  questNoGuide = "Click: open · Right-click: stop watching",
+  achievement = "Right-click: stop tracking",
+  recipe = "Click: open · Right-click: stop tracking",
+}
+
+-- The clicks line for a row.
+local function clicksFor(q)
+  if q.achievement then return QT.CLICKS.achievement end
+  if q.recipe then return QT.CLICKS.recipe end
+  return ns.QuestGuide.settings and QT.CLICKS.quest or QT.CLICKS.questNoGuide
+end
+
+-- A row's tooltip: its title, its lines in full (the tracker cuts long ones short) and, muted, what its clicks
+-- do, which nothing else on screen says. None in a fight, where it would cover the screen mid-pull.
+function QT.TitleTooltip(b)
+  local tip, q = GameTooltip, b.row
+  if not (tip and q) or q.section or ns.InCombat() then return end
+  tip:SetOwner(b, "ANCHOR_LEFT")
+  tip:SetText(q.title, T.RGB("text"))
+  for _, line in ipairs(QT.StateLines(q)) do tip:AddLine(T.Paint(line[1], line[2]), nil, nil, nil, true) end
+  tip:AddLine(clicksFor(q), T.RGB("muted"))
+  tip:Show()
+end
+
+-- Hides the tooltip a tracker button showed.
+local function hideTooltip()
+  if GameTooltip then GameTooltip:Hide() end
+end
+
+-- A block's clicks, its tooltip and the list row's hover wash (T.Row).
+local function wireBlock(b)
+  b:RegisterForClicks("AnyUp")
+  b:SetScript("OnClick", ns.Guard("click quest tracker title", onTitleClick))
+  b:SetScript("OnEnter", ns.Guard("quest tracker tooltip", QT.TitleTooltip))
+  b:SetScript("OnLeave", ns.Guard("quest tracker tooltip", hideTooltip))
+  T.Row(b)
+end
+
 -- A quest's block: its title (clickable) and its objective lines.
 local function makeBlock(parent)
   local b = CreateFrame("Button", nil, parent)
   b:SetWidth(QT.W)
-  b:RegisterForClicks("AnyUp")
   b.title = T.Text(b:CreateFontString(nil, "OVERLAY"), "label", "text")
   b.title:SetPoint("TOPLEFT", b, "TOPLEFT", 0, 0)
   b.title:SetWidth(QT.W)
   b.title:SetJustifyH("LEFT")
   b.lines = QP.Pool(b, objectiveLine)
-  b:SetScript("OnClick", ns.Guard("click quest tracker title", onTitleClick))
+  wireBlock(b)
   return b
 end
 
@@ -171,9 +211,11 @@ local function paintTitle(b, q)
   T.Color(b.title, QP.LevelColor(q.level))
 end
 
--- Fills a block: its title, then its lines (a section heading is its name alone).
+-- Fills a block: its title, then its lines (a section heading is its name alone, and takes no mouse: it has
+-- no clicks, no tooltip and no hover).
 function QT.PaintBlock(b, q)
-  b.id, b.achievement, b.recipe = q.id, q.achievement, q.recipe
+  b.id, b.achievement, b.recipe, b.row = q.id, q.achievement, q.recipe, q
+  b:EnableMouse(not q.section)
   if q.section then paintSection(b, q) else
     paintTitle(b, q)
     paintLines(b, q)
@@ -336,7 +378,7 @@ local function wireItem(b)
   b.cooldown = CreateFrame("Cooldown", nil, b, "CooldownFrameTemplate")
   b.cooldown:SetAllPoints()
   b:SetScript("OnEnter", QT.ItemTooltip)
-  b:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
+  b:SetScript("OnLeave", hideTooltip)
   ns.Every(b, QT.RANGE_EVERY, QT.UpdateRange, b, true)
 end
 

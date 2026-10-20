@@ -1562,6 +1562,55 @@ it("quest log: the question for marked quests names the items each destroys", ()
   expect(addon.eval("return Vanguard_Question.title:GetText()")).toBe("Abandon 2 quest(s)?\nTEST-ONLY Wolves (destroys TEST-ONLY Sack)\nTEST-ONLY Boars");
 });
 
+// F-05: what the tracker's tooltip shows: its owner's title, each line, and whether it is shown.
+const trackerTip = (addon) => addon.eval(`local lines = {}
+  for i, l in ipairs(GameTooltip.__lines or {}) do lines[i] = l.text end
+  return { GameTooltip:IsShown(), lines }`);
+// Hovers tracker block i (nil: off everything).
+const hoverBlock = (addon, i) => addon.eval(i ? `__wfgStub.hover(Vanguard_QuestTrackerFrame.blocks[${i}])` : "__wfgStub.hover(nil)");
+
+it("quest tracker: hovering a quest shows its title, its objectives in full and, muted, what its clicks do", () => {
+  const addon = loggedIn(TRACK_ENV);
+  hoverBlock(addon, 1);
+  const [shown, lines] = trackerTip(addon);
+  expect([shown, lines[0], lines.length], "the tooltip, titled with the quest").toEqual([true, "TEST-ONLY Wolves", 4]);
+  expect(lines[1], "each objective in its tracker colour").toContain("- 3/8 TEST-ONLY Wolves slain");
+  expect(lines[3], "the clicks").toBe("Click: open · Shift-click: point the arrow · Right-click: stop watching");
+  expect(addon.eval("local l = GameTooltip.__lines[4] local r, g, b = ns.Theme.RGB('muted') return l.r == r and l.g == g and l.b == b"), "in the muted tier").toBe(true);
+  expect(addon.eval("return ns.Theme.RowParts(Vanguard_QuestTrackerFrame.blocks[1]).hover:IsShown()"), "the list row's hover wash").toBe(true);
+  hoverBlock(addon);
+  expect([trackerTip(addon)[0], addon.eval("return ns.Theme.RowParts(Vanguard_QuestTrackerFrame.blocks[1]).hover:IsShown()")], "leaving hides both").toEqual([false, false]);
+});
+
+it("quest tracker: no title tooltip in a fight", () => {
+  const addon = loggedIn(TRACK_ENV);
+  setCombat(addon, true);
+  hoverBlock(addon, 1);
+  expect(trackerTip(addon)[0]).toBe(false);
+});
+
+it("quest tracker: without Quest guidance the tooltip leaves Shift-click out", () => {
+  const addon = loggedIn(TRACK_ENV, { savedVariables: "VanguardDB.profiles = { Default = { modules = { QuestGuide = false } } }" });
+  hoverBlock(addon, 1);
+  expect(trackerTip(addon)[1][3]).toBe("Click: open · Right-click: stop watching");
+});
+
+it("quest tracker: a challenge's tooltip names its right-click, and its heading takes no mouse", () => {
+  const addon = loggedIn(TRACK_ENV + ACH_ENV + ONE_QUEST);
+  expect(addon.eval("local b = Vanguard_QuestTrackerFrame.blocks return { b[1].__mouse, b[2].__mouse }"), "a quest takes the mouse, the heading doesn't").toEqual([true, false]);
+  addon.eval("ns.GetModule('QuestTracker').TitleTooltip(Vanguard_QuestTrackerFrame.blocks[2])");
+  expect(trackerTip(addon)[0], "the heading has no tooltip").toBe(false);
+  hoverBlock(addon, 3);
+  const lines = trackerTip(addon)[1];
+  expect([lines[0], lines[lines.length - 1]]).toEqual(["TEST-ONLY Legacy Pathfinder", "Right-click: stop tracking"]);
+});
+
+it("quest tracker: a recipe's tooltip names its click and right-click", () => {
+  const addon = loggedIn(TRACK_ENV);
+  addon.eval("local QT = ns.GetModule('QuestTracker') local b = Vanguard_QuestTrackerFrame.blocks[1] QT.PaintBlock(b, { id = 1, title = 'TEST-ONLY Bolt', objectives = {}, recipe = true }) QT.TitleTooltip(b)");
+  expect(trackerTip(addon)[1]).toEqual(["TEST-ONLY Bolt", "Click: open · Right-click: stop tracking"]);
+});
+
 it("quest tracker: a failed quest reads Failed in the bad colour in place of its objectives; a hidden answer is not failed", () => {
   const addon = loggedIn(TRACK_ENV + "C_QuestLog.IsFailed = function(id) return __quests[id].failed end __quests[90051].failed = true __quests[90053].failed = { __secret = true }");
   const t = tracker(addon);

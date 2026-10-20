@@ -7,7 +7,7 @@
 --     its cooldown, a red tint out of range and the game's item tooltip).
 -- Legacy challenges you track sit under a "Legacy challenges" heading, and recipes you track in a
 -- profession window under "Recipes", each with its reagents ("2/4 Linen Cloth", green once you have them).
--- Left-click a title to open the quest; right-click to stop watching it.
+-- Left-click a title to open the quest; right-click to stop watching it; hover it for a tooltip that says so.
 -- Quests are in the game's order, or nearest first. The game's objective
 -- tracker is hidden in place while this one shows (it's an Edit Mode frame).
 -- In combat the text still updates; the item buttons are secure, so they stay put
