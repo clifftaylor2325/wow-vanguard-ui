@@ -211,11 +211,19 @@ function GW.SkinTitle(fs)
   if type(fs) == "table" and fs.SetFont then T.Text(fs, "heading", "text") end
 end
 
+-- A window's title in the theme, and in the light text colour again each time the window sets its colour itself
+-- (SetTitleColor: the character pane does on every tab and refresh, after it shows).
+local function dressTitle(frame)
+  local title = (type(frame.TitleContainer) == "table" and frame.TitleContainer.TitleText) or frame.TitleText
+  GW.SkinTitle(title)
+  if type(title) == "table" and title.SetFont then GW.HookAfter(frame, "SetTitleColor", function() T.Color(title, "text") end) end
+end
+
 -- The close, maximize and minimize buttons, title and push buttons in the theme.
 local function dressParts(frame, name)
   GW.DressClose(frame, frame.CloseButton or (name and _G[name .. "CloseButton"]), GW.HIDE_BUTTONS[name or ""])
   GW.DressMaxMin(frame)
-  GW.SkinTitle((type(frame.TitleContainer) == "table" and frame.TitleContainer.TitleText) or frame.TitleText)
+  dressTitle(frame)
   for _, b in ipairs(buttons(frame, name)) do T.Button(b) end
   for _, extra in ipairs(GW.EXTRA_BUTTONS[name] or {}) do
     if type(_G[extra]) == "table" then T.Button(_G[extra]) end

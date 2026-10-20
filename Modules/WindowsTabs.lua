@@ -526,11 +526,26 @@ local function dressPaneTitle(pane)
   hooksecurefunc(pane, "SetPaneTitleColor", ns.Guard("hook SetPaneTitleColor", function() T.Color(title, "text") end))
 end
 
--- A side pane's check box (T.CheckBox), its label (the game's gold) in the text colour unless keepLabel is set.
+-- How close a colour channel must be to the game's gold to count as it (colours come back as floats).
+GW.GOLD_TOLERANCE = 0.01
+
+-- Whether a font string is in the game's gold (NORMAL_FONT_COLOR); no when it can't be read.
+local function isGold(fs)
+  local gold = _G.NORMAL_FONT_COLOR
+  if type(gold) ~= "table" or type(gold.GetRGB) ~= "function" or type(fs) ~= "table" or not fs.GetTextColor then return false end
+  local r, g, b = fs:GetTextColor()
+  r, g, b = ns.PlainNumber(r), ns.PlainNumber(g), ns.PlainNumber(b)
+  if not (r and g and b) then return false end
+  local gr, gg, gb = gold:GetRGB()
+  return math.abs(r - gr) + math.abs(g - gg) + math.abs(b - gb) < GW.GOLD_TOLERANCE
+end
+
+-- A side pane's check box (T.CheckBox), its label in the text colour while the game has it gold (a grey one, for a
+-- box that can't be used, stays grey), unless keepLabel is set.
 local function paneCheck(box, keepLabel)
   if type(box) ~= "table" or not box.GetChecked or not box.HookScript then return end
   T.CheckBox(box)
-  if not keepLabel then colorText(box.Label, "text") end
+  if not keepLabel and isGold(box.Label) then colorText(box.Label, "text") end
 end
 
 -- A side pane's push button as a theme button.
@@ -547,6 +562,18 @@ local function paneParts(pane)
   GW.SkinBar(pane.StandingBar)
 end
 
+-- After the pane's Refresh (each entry picked), its check box labels the game painted gold again go back to the
+-- text colour; a grey one (a faction that can't be made inactive) stays the game's grey.
+local function keepCheckLabels(pane)
+  if type(pane.Refresh) ~= "function" then return end
+  hooksecurefunc(pane, "Refresh", ns.Guard("hook pane Refresh", function()
+    for _, key in ipairs(GW.PANE_CHECKS) do
+      local label = type(pane[key]) == "table" and pane[key].Label
+      if isGold(label) then colorText(label, "text") end
+    end
+  end))
+end
+
 -- One side pane in the theme, once: its heading, its rule faded, its rows as the game adds them (those it has now
 -- too) and its own parts. The description's scroll bar is reached with the window's (GW.SCROLL_KEYS).
 local function dressSidePane(pane)
@@ -557,6 +584,7 @@ local function dressSidePane(pane)
   for _, row in ipairs(paneRows(pane)) do dressRowArt(row) end
   for method, at in pairs(GW.SIDE_ROWS) do hookRows(pane, method, at) end
   paneParts(pane)
+  keepCheckLabels(pane)
 end
 
 -- The side panes this client has (the currency one once its part of the game has loaded).

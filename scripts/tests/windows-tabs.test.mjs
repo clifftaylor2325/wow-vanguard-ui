@@ -920,6 +920,25 @@ it("side panes: the reputation and currency panes' check boxes, standing bar, pu
   expect(bare.eval("return #ns.errors"), "a part that is not a check button or a button is skipped").toBe(0);
 });
 
+it("side panes: each Refresh puts the reputation pane's gold check box labels back in the text colour; a grey one stays grey", () => {
+  const addon = loggedIn(SIDE_PANE_ENV + `
+    local rep = ReputationFrame.ReputationDetailFrame
+    function rep:Refresh() self.MakeInactiveCheckbox.Label:SetTextColor((__canInactive and NORMAL_FONT_COLOR or { GetRGB = function() return 0.5, 0.5, 0.5 end }):GetRGB()) end`);
+  addon.eval("__canInactive = true ReputationFrame.ReputationDetailFrame:Refresh()");
+  const label = "ReputationFrame.ReputationDetailFrame.MakeInactiveCheckbox.Label";
+  expect(addon.eval(`return __text(${label})`), "a faction you can make inactive: the text colour").toBe(true);
+  addon.eval("__canInactive = false ReputationFrame.ReputationDetailFrame:Refresh()");
+  expect(addon.eval(`return ${label}.__textColor[1]`), "one you can't: the game's grey").toBe(0.5);
+});
+
+it("a window that sets its own title colour (the character pane, after it shows) gets the light title back each time", () => {
+  const addon = loggedIn(WINDOWS_ENV + `
+    local f = __window("CharacterFrame")
+    function f:SetTitleColor(c) self.TitleContainer.TitleText:SetTextColor(c.r, c.g, c.b) end`);
+  addon.eval("CharacterFrame:Show() CharacterFrame:SetTitleColor({ r = 1, g = 0.82, b = 0 }) CharacterFrame:Hide() CharacterFrame:Show() CharacterFrame:SetTitleColor({ r = 1, g = 0.82, b = 0 })");
+  expect(isTok(addon, addon.eval("return CharacterFrame.TitleContainer.TitleText.__textColor"), "text"), "the text colour after the game's gold, each show").toBe(true);
+});
+
 it("pane lists: the rules over and under each list are one pixel of divider, a header's name goes to the text colour", () => {
   const addon = loggedIn(PANE_ENV + `
     function __ruled(f) local line = CreateFrame("Frame", nil, f.ScrollBox) line.rule = __art(line, "OVERLAY") f.rule = line.rule end
