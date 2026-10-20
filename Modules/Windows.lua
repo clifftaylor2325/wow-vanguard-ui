@@ -1294,6 +1294,16 @@ function GW.HookAfter(frame, name, fn)
   hooksecurefunc(frame, name, ns.Guard("hook " .. name, fn))
 end
 
+-- Runs fn after the game's global function `name` each time it runs (under ns.Guard as `where`), once per global however
+-- often the skin that asks for it runs; a global the client lacks is skipped, so a later call may still hook it.
+function GW.HookGlobalOnce(name, where, fn)
+  if type(hooksecurefunc) ~= "function" or type(_G[name]) ~= "function" then return end
+  vgHooked[_G] = vgHooked[_G] or {}
+  if vgHooked[_G][name] then return end
+  vgHooked[_G][name] = true
+  hooksecurefunc(name, ns.Guard(where, fn))
+end
+
 -- Hooks fn into the frame's script `script` (under ns.Guard as `where`) once per frame and script, however often the
 -- skin that asks for it runs; a frame without HookScript is skipped. Hooks cannot be taken off, so a repeat would pile up.
 function GW.HookScriptOnce(frame, script, where, fn)
@@ -1868,18 +1878,13 @@ local function skinCategoryButton(button)
   button:HookScript("OnLeave", ns.Guard("category leave", lightCategory))
 end
 
--- Whether the category set-up hook is in (it is a global, hooked once).
-local categoriesHooked = false
-
 -- The category list (AuctionHouseCategoriesListTemplate): the dark tile an inset, its rows as the list acquires them
 -- and as the game sets each up.
 local function skinCategories(list)
   if type(list) ~= "table" or not list.GetRegions then return end
   GW.InsetPanel(list)
   GW.WatchRows(list.ScrollBox, skinCategoryButton)
-  if categoriesHooked or type(_G.AuctionHouseFilterButton_SetUp) ~= "function" then return end
-  categoriesHooked = true
-  hooksecurefunc("AuctionHouseFilterButton_SetUp", ns.Guard("hook filter set-up", skinCategoryButton))
+  GW.HookGlobalOnce("AuctionHouseFilterButton_SetUp", "hook filter set-up", skinCategoryButton)
 end
 
 -- The search bar (AuctionHouseSearchBarTemplate): the search box with its magnifier, the Search button, the filter

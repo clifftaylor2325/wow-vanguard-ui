@@ -14,7 +14,6 @@ local vgEmptyNote = ns.FrameState("vgEmptyNote")
 local vgEmptyWatched = ns.FrameState("vgEmptyWatched")
 local vgHeaderGlyph = ns.FrameState("vgHeaderGlyph")
 local vgHeadersWatched = ns.FrameState("vgHeadersWatched")
-local vgRewardsWatched = {}
 
 local T = ns.Theme
 local GW = ns.GetModule("Windows")
@@ -331,9 +330,7 @@ end
 -- Keeps the reward tiles dressed after each QuestInfo_Display, hooked once.
 local function watchQuestRewards()
   GW.SkinQuestRewards()
-  if vgRewardsWatched.done or type(_G.QuestInfo_Display) ~= "function" then return end
-  vgRewardsWatched.done = true
-  hooksecurefunc("QuestInfo_Display", ns.Guard("hook QuestInfo_Display rewards", GW.SkinQuestRewards))
+  GW.HookGlobalOnce("QuestInfo_Display", "hook QuestInfo_Display rewards", GW.SkinQuestRewards)
 end
 
 -- One quest's details: the art faded (the rewards' tile too), an inset panel, the buttons flat, the Rewards heading light.
@@ -558,15 +555,10 @@ local function skinCategories(view)
   for _, button in ipairs(view.CategoryButtons) do skinCategoryButton(button) end
 end
 
--- Whether the game's category updater is hooked (a global it runs on the listing's category view).
-local categoriesHooked = false
-
 -- Dresses the category pickers now and after each time the game lays them out. Hooked once.
 local function watchCategories(page)
   skinCategories(page.CategoryView)
-  if categoriesHooked or type(_G.LFGListingCategorySelection_UpdateCategoryButtons) ~= "function" then return end
-  categoriesHooked = true
-  hooksecurefunc("LFGListingCategorySelection_UpdateCategoryButtons", ns.Guard("hook category buttons", skinCategories))
+  GW.HookGlobalOnce("LFGListingCategorySelection_UpdateCategoryButtons", "hook category buttons", skinCategories)
 end
 
 -- The group description box's old scroll bar (UIPanelScrollFrameTemplate: a slider with a thumb picture and arrow buttons).
@@ -615,14 +607,11 @@ local function skinBrowseRow(row)
   keepArt(GW.Part(row, "DataDisplay.DelistButton"), "Icon")
 end
 
--- Whether the game's browse row selection is hooked (a global it runs when a row is selected or unselected).
-local browseHooked = false
-
 -- Has a browse row's selected look follow the game's SetSelection of it (a row not dressed is left alone). Hooked once.
 local function watchBrowseSelection()
-  if browseHooked or type(_G.LFGBrowseSearchEntry_SetSelection) ~= "function" then return end
-  browseHooked = true
-  hooksecurefunc("LFGBrowseSearchEntry_SetSelection", ns.Guard("hook browse selection", function(row, on) T.SelectRow(row, on == true) end))
+  GW.HookGlobalOnce("LFGBrowseSearchEntry_SetSelection", "hook browse selection", function(row, on)
+    T.SelectRow(row, on == true)
+  end)
 end
 
 -- The browse page's own parts: its two dropdowns (arrows kept), the refresh button (its picture kept) and its rows.
@@ -1117,10 +1106,7 @@ local function skinToday(today)
   if type(_G.CalendarTodayTextureGlow) == "table" and _G.CalendarTodayTextureGlow.Hide then _G.CalendarTodayTextureGlow:Hide() end
   T.Panel(today, { accent = true, noBg = true, noSheen = true })
   GW.FitToday(today, today:GetParent())
-  if type(hooksecurefunc) == "function" and type(_G.CalendarFrame_SetToday) == "function" and not GW.todayHooked then
-    GW.todayHooked = true
-    hooksecurefunc("CalendarFrame_SetToday", ns.Guard("hook CalendarFrame_SetToday", function(day) GW.FitToday(today, day) end))
-  end
+  GW.HookGlobalOnce("CalendarFrame_SetToday", "hook CalendarFrame_SetToday", function(day) GW.FitToday(today, day) end)
 end
 
 -- The calendar window: every texture of its frame faded but the two it keeps (see GW.CALENDAR_KEEP), a panel with a
