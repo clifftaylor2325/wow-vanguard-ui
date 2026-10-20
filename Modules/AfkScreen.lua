@@ -150,18 +150,14 @@ local function retryLater()
   C_Timer.After(AFK.RETRY, ns.Guard("timer afk retry", AFK.Update))
 end
 
--- Whether the screen stays shut for now: inside a dungeon, raid, battleground or arena, or while you cast.
-local function heldBack()
-  if AFK.SHUT_IN[ns.Where()] then return true end
-  if not casting() then return false end
-  retryLater()
-  return true
-end
-
 -- Dims the screen and shows the card (not in combat, an instance or a cast, and not again once you've clicked
--- it away).
+-- it away). A cast that keeps it shut schedules one retry.
 function AFK.Open()
-  if AFK.frame:IsShown() or AFK.dismissed or ns.InCombat() or heldBack() then return end
+  if AFK.frame:IsShown() or AFK.dismissed or ns.InCombat() or AFK.SHUT_IN[ns.Where()] then return end
+  if casting() then
+    retryLater()
+    return
+  end
   AFK.Paint()
   T.FadeIn(AFK.frame, 0.4)
 end
