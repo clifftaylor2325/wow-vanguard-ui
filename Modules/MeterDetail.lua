@@ -31,11 +31,13 @@ function MT.SpellList(src)
   return result.combatSpells
 end
 
--- A spell's name (hidden ones go straight on): the game's, else its ID as text; "" with neither.
+-- A spell's name: the game's, else its ID as text; "" where the call refuses. A hidden name
+-- goes straight on, untested (a truth test on it raises).
 local function spellName(spell)
   local get = C_Spell and C_Spell.GetSpellName
   local ok, name = pcall(get or tostring, spell.spellID)
-  return ok and name or ""
+  if ok then return name end
+  return ""
 end
 
 -- Fills one spell row from one spell, scaled to the top spell's total.

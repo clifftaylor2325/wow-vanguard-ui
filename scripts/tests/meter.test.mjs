@@ -298,6 +298,21 @@ it("spell lists fall back safely: no call, hidden list, hidden spells, unknown n
   expect(addon.eval("return #ns.errors"), "hidden totals raise nothing").toBe(0);
 });
 
+it("a spell row's name is the game's answer, handed on without a truth test; a refused one is empty", () => {
+  const addon = loggedIn(FULL_ENV, METER_ON);
+  addon.eval("C_DamageMeter.GetCombatSessionSourceFromType = function() return { combatSpells = { { spellID = 7, totalAmount = 5 } } } end");
+  // The first spell row's name text after opening the panel with the name call answering `answer` (Lua).
+  const name = (answer) => addon.eval(`local MT = ns.GetModule('Meter') MT.CloseDetail()
+    __names = {}
+    C_Spell.GetSpellName = function() ${answer} end
+    if MT.detail then MT.detail.rows[1].name.SetText = function(_, text) __names[#__names + 1] = tostring(text) end end
+    MT.OpenDetail({ name = 'Tess' }) return __names[#__names]`);
+  name("return 'Spell7'"); // builds the panel, so the next opens record what its row is given
+  // A harness secret is always truthy, so a falsy answer stands in: `ok and name or ""` would turn it into "".
+  expect(name("return false"), "the answer goes on as it is, never tested").toBe("false");
+  expect(name("error('refused')"), "a refusal is empty").toBe("");
+});
+
 it("a report holds plain names and figures only, out of combat, to chat or a channel", () => {
   const addon = loggedIn(FULL_ENV, METER_ON);
   setLines(addon, `{ { name = 'Tess', amountPerSecond = 12300 }, { name = __wfgWorld.secret('Hid'), amountPerSecond = 500 }, { name = 'Bo', amountPerSecond = __wfgWorld.secret(9) }, { name = 'Cy', amountPerSecond = 40 } }`);
