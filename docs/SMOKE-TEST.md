@@ -787,6 +787,18 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Expect: the screen dims to a card with your name in your class colour, level and class, the zone, time away, the clock and an XP bar, and under the card your faction's passage (Varian's letter for Alliance, the Blood Oath for Horde; in Cinzel or Metamorphous with the faction look on Crest and heading font, otherwise in Fira Sans) in the crest colour; moving removes it; a click or key removes it until you are next away; it never shows in combat.
 - If it fails, paste: a screenshot and `/vg errors`.
 
+### 11.1a AFK card gives way to what needs you
+
+- Do: in a group, type `/afk` and have someone start a ready check; type `/afk` twice again and have someone invite you to a group (or trade you). Then `/afk` while casting Hearthstone, and `/afk` inside a dungeon.
+- Expect: the ready check and the invite each put the card away at once, and your first click lands on the prompt's button. While you cast, the card doesn't show; about 30 seconds later, if you're still away, it does. Inside the dungeon it never shows. [Needs in game.]
+- If it fails, paste: which prompt, a screenshot and `/vg errors`.
+
+### 11.1b Errors window buttons
+
+- Do: with an error caught (or after `/vg errors` shows at least one), open `/vg errors`; click **Report a bug**. Open `/vg errors` again and click **Clear**.
+- Expect: Report a bug closes the errors window and opens the feedback form on Bug with the report attached; Clear closes the window, chat says "Errors cleared.", the addons button's count goes, and `/vg errors` then says none were caught. Other copy windows (export, report) show Close only. [Needs in game.]
+- If it fails, paste: a screenshot of the window and `/vg errors`.
+
 ## 12. Game menu
 
 ### 12.1 The Vanguard button

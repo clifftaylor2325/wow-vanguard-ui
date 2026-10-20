@@ -5,7 +5,9 @@
 -- passage: Varian's last letter to Anduin for the Alliance, the Blood Oath of
 -- the Horde for the Horde (gone while the faction look is off).
 -- Moving, typing or a fight brings everything back, and a click on the screen
--- puts it away until the next time. It shows only out of combat, and it's
+-- puts it away until the next time; a ready check or any popup puts it away at
+-- once. It stays shut in dungeons, raids, battlegrounds and arenas and while
+-- you cast (tried again once, 30 s on). It shows only out of combat, and it's
 -- drawn over the UI rather than hiding it, so nothing secure is touched.
 
 local ADDON, ns = ...
@@ -17,6 +19,12 @@ local AFK = ns.Module("AfkScreen", { defaults = {} })
 AFK.CARD_W, AFK.CARD_H, AFK.BAR_H = 380, 132, 10
 -- The passage under the card, in your faction's heading font: how wide it wraps, its size over the title's.
 AFK.PASSAGE_W, AFK.PASSAGE_UP = 640, 3
+-- Kept shut while you cast; tried again once this many seconds later.
+AFK.RETRY = 30
+-- The instances it stays shut in (ns.Where): dungeons, raids, battlegrounds and arenas.
+AFK.SHUT_IN = { party = true, raid = true, pvp = true, arena = true }
+-- The game's calls that show a prompt (a popup, the role check, a queue): the screen steps aside after each.
+AFK.PROMPTS = { "StaticPopup_Show", "StaticPopupSpecial_Show" }
 
 -- The backdrop passage for each faction (shown while the faction look is on).
 AFK.PASSAGES = {
@@ -125,9 +133,35 @@ end
 
 -- Showing ---------------------------------------------------------------------------------------
 
--- Dims the screen and shows the card (not in combat, and not again once you've clicked it away).
+-- Whether a cast answer says you're casting (a hidden one counts as yes).
+local function busy(name)
+  return ns.IsSecret(name) or name ~= nil
+end
+
+-- Whether you're casting or channelling a spell.
+local function casting()
+  return busy((ask("UnitCastingInfo", "player"))) or busy((ask("UnitChannelInfo", "player")))
+end
+
+-- Tries the screen again once, AFK.RETRY seconds on (the cast that kept it shut may be over by then).
+local function retryLater()
+  if AFK.retrying then return end
+  AFK.retrying = true
+  C_Timer.After(AFK.RETRY, ns.Guard("timer afk retry", function() AFK.retrying = false AFK.Update() end))
+end
+
+-- Whether the screen stays shut for now: inside a dungeon, raid, battleground or arena, or while you cast.
+local function heldBack()
+  if AFK.SHUT_IN[ns.Where()] then return true end
+  if not casting() then return false end
+  retryLater()
+  return true
+end
+
+-- Dims the screen and shows the card (not in combat, an instance or a cast, and not again once you've clicked
+-- it away).
 function AFK.Open()
-  if AFK.frame:IsShown() or AFK.dismissed or ns.InCombat() then return end
+  if AFK.frame:IsShown() or AFK.dismissed or ns.InCombat() or heldBack() then return end
   AFK.Paint()
   T.FadeIn(AFK.frame, 0.4)
 end
@@ -135,6 +169,12 @@ end
 -- Puts the screen away (you're back, a fight started, or you clicked it).
 function AFK.Close()
   if AFK.frame:IsShown() then T.FadeOut(AFK.frame, 0.2) end
+end
+
+-- Something needs you (a ready check, a popup): the screen goes at once, with no fade, so your first click lands
+-- on the prompt. It comes back the next time you're marked away.
+function AFK.StepAside()
+  AFK.frame:Hide()
 end
 
 -- Your away flag changed (or a fight ended): show the screen while you're away, put it away when you're
@@ -235,6 +275,13 @@ local function wire(f)
   ns.Every("afk screen", 1, AFK.Tick, f)
 end
 
+-- The screen steps aside after each prompt the game shows (calls the client lacks are skipped).
+local function watchPrompts()
+  for _, fn in ipairs(AFK.PROMPTS) do
+    if type(_G[fn]) == "function" then hooksecurefunc(fn, ns.Guard("hook afk " .. fn, AFK.StepAside)) end
+  end
+end
+
 -- Module entry point (Core/Modules.lua): a fight puts the screen away, and it
 -- comes back after the fight if you're still away.
 function AFK.Enable()
@@ -244,5 +291,7 @@ function AFK.Enable()
   ns.On("PLAYER_FLAGS_CHANGED", function(_, unit) if unit == "player" then AFK.Update() end end)
   ns.On("PLAYER_REGEN_DISABLED", AFK.Close)
   ns.On("PLAYER_REGEN_ENABLED", AFK.Update)
+  ns.On("READY_CHECK", AFK.StepAside)
   T.OnChanged(AFK.PaintPassage)
+  watchPrompts()
 end
