@@ -91,10 +91,11 @@ local BLIZZARD_BUTTONS = {
 
 -- Short names for the hotkey text: each modifier (Meta, the Mac's Command key, is "Cmd", since M is a mouse
 -- button), a key by its whole name, and the numbered keys (BUTTON4 is M4, NUMPAD1 is N1); any other key as it is.
-local KEY_SHORT = {
+AB.KEY_SHORT = {
   mods = { SHIFT = "S", CTRL = "C", ALT = "A", META = "Cmd" },
   keys = {
-    SPACE = "Sp", BACKSPACE = "Bs", MOUSEWHEELUP = "WU", MOUSEWHEELDOWN = "WD",
+    SPACE = "Sp", BACKSPACE = "Bs", MOUSEWHEELUP = "WU", MOUSEWHEELDOWN = "WD", CAPSLOCK = "Cap",
+    PAGEUP = "PU", PAGEDOWN = "PD", INSERT = "Ins", DELETE = "Del", HOME = "Hm", END = "End",
     NUMPADPLUS = "N+", NUMPADMINUS = "N-", NUMPADMULTIPLY = "N*", NUMPADDIVIDE = "N/", NUMPADDECIMAL = "N.",
   },
   numbered = { { "^BUTTON(%d+)$", "M" }, { "^NUMPAD(%d+)$", "N" } },
@@ -165,8 +166,9 @@ end
 
 -- One key's short name, without its modifiers ("BACKSPACE" -> "Bs", "BUTTON4" -> "M4", "Q" -> "Q").
 local function shortKeyName(key)
-  if KEY_SHORT.keys[key] then return KEY_SHORT.keys[key] end
-  for _, numbered in ipairs(KEY_SHORT.numbered) do
+  local short = AB.KEY_SHORT
+  if short.keys[key] then return short.keys[key] end
+  for _, numbered in ipairs(short.numbered) do
     local n = key:match(numbered[1])
     if n then return numbered[2] .. n end
   end
@@ -177,9 +179,9 @@ end
 -- at its front one by one, then the key by its whole name, so a key named inside another stays whole.
 function AB.ShortKey(key)
   if type(key) ~= "string" then return "" end
-  local mods, mod, rest = "", key:match("^(%u+)%-(.+)$")
-  while mod and KEY_SHORT.mods[mod] do
-    mods, key = mods .. KEY_SHORT.mods[mod], rest
+  local names, mods, mod, rest = AB.KEY_SHORT.mods, "", key:match("^(%u+)%-(.+)$")
+  while mod and names[mod] do
+    mods, key = mods .. names[mod], rest
     mod, rest = key:match("^(%u+)%-(.+)$")
   end
   return mods .. shortKeyName(key)
@@ -279,6 +281,14 @@ local function updateChecked(b)
   b:SetChecked(isTrue(call("IsCurrentAction", b.action)) or isTrue(call("IsAutoRepeatAction", b.action)))
 end
 
+-- Shows the equipped-item ring (where Vanguard skins the button) while its action is an item you wear;
+-- the client is asked only about a slot with an action, and a hidden answer counts as no.
+local function updateEquipped(b)
+  if not b.equipped then return end
+  local on = b.hasAction and isTrue(call("IsEquippedAction", b.action))
+  T.ShowInnerRing(b.equipped, b, "good", on)
+end
+
 -- The hotkey text from the binding this button answers to.
 local function updateHotkey(b)
   local key = GetBindingKey and GetBindingKey(b.binding)
@@ -302,6 +312,7 @@ function AB.UpdateButton(b)
   updateCooldown(b)
   updateUsable(b)
   updateChecked(b)
+  updateEquipped(b)
   updateHotkey(b)
   AB.WatchRange(b)
 end
@@ -382,13 +393,16 @@ local function addIcon(b)
   T.Crop(b.icon)
 end
 
--- The count (bottom right, white) and hotkey (top right, light gray) texts.
+-- The count (bottom right, white) and hotkey (top right, light gray, one line cut at the button's width) texts.
 local function addTexts(b)
   b.count = T.Text(b:CreateFontString(nil, "OVERLAY"), "small")
   b.count:SetPoint("BOTTOMRIGHT", -2, 2)
   T.Color(b.count, "white")
   b.hotkey = T.Text(b:CreateFontString(nil, "OVERLAY"), "small")
+  b.hotkey:SetPoint("TOPLEFT", 2, -2)
   b.hotkey:SetPoint("TOPRIGHT", -2, -2)
+  b.hotkey:SetJustifyH("RIGHT")
+  b.hotkey:SetWordWrap(false)
   T.Color(b.hotkey, "text2")
 end
 
@@ -410,6 +424,7 @@ local function addRegions(b)
   b.glow = T.Glow(b, 6)
   b:SetCheckedTexture(T.WHITE)
   T.Tint(b:GetCheckedTexture(), "checked")
+  if not ns.Masque.Group(AB.MASQUE) then b.equipped = T.InnerRing(b) end
 end
 
 -- The mouse came over a button: the tooltip of the action in the slot it shows
@@ -701,6 +716,7 @@ end
 local function onEquipment()
   refreshIcons()
   refreshCarried()
+  each(updateEquipped)
 end
 
 -- Event -> what it refreshes.

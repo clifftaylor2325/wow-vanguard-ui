@@ -975,7 +975,7 @@ end
 
 -- Spells, action slots and cooldowns ---------------------------------------------------------
 -- world.spells[id] = { name, icon, cost }; world.actions[slot] = { type, id,
--- icon, count, usable, noPower, current, inRange, cooldown = { start, duration } }.
+-- icon, count, usable, noPower, current, inRange, equipped, cooldown = { start, duration } }.
 
 world.spells = {
   [133] = { name = "Fireball", icon = "Interface\\Icons\\Spell_Fire_FlameBolt", cost = 30 },
@@ -1125,6 +1125,12 @@ C_ActionBar = {
   EnableActionRangeCheck = function(slot, on) world.rangeChecks = world.rangeChecks or {} world.rangeChecks[slot] = on end,
   GetActionBarPage = function() return world.page or 1 end,
   HasAction = HasAction,
+  -- Whether the slot's action is an item you wear (action.equipped); the client refuses a slot number
+  -- outside the bars (ActionBarFrameDocumentation.lua: RequiresValidActionSlot).
+  IsEquippedAction = function(slot)
+    if type(slot) ~= "number" or slot < 1 or slot > 180 then error("Invalid action slot", 2) end
+    return actionOf(slot).equipped == true
+  end,
 }
 
 -- Swing timers (the Forever client's C_SwingTimer): per hand, { start, duration }. The range model:

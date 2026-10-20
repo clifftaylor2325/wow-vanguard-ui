@@ -249,7 +249,8 @@ it("hotkey short names: modifiers, then the key by its whole name, so no key is 
   const addon = loggedIn();
   const keys = { "SHIFT-1": "S1", "ALT-CTRL-SHIFT-Q": "ACSQ", BACKSPACE: "Bs", "SHIFT-BACKSPACE": "SBs", SPACE: "Sp", NUMPADPLUS: "N+", NUMPADMINUS: "N-",
     NUMPADMULTIPLY: "N*", NUMPADDIVIDE: "N/", NUMPADDECIMAL: "N.", NUMPAD1: "N1", BUTTON4: "M4", "CTRL-BUTTON4": "CM4", "META-4": "Cmd4",
-    MOUSEWHEELUP: "WU", "SHIFT-MOUSEWHEELDOWN": "SWD", MINUS: "MINUS", "SHIFT-MINUS": "SMINUS", F12: "F12" };
+    MOUSEWHEELUP: "WU", "SHIFT-MOUSEWHEELDOWN": "SWD", MINUS: "MINUS", "SHIFT-MINUS": "SMINUS", F12: "F12",
+    PAGEUP: "PU", PAGEDOWN: "PD", INSERT: "Ins", DELETE: "Del", HOME: "Hm", END: "End", "SHIFT-END": "SEnd", CAPSLOCK: "Cap" };
   const names = Object.keys(keys);
   const got = addon.eval(`local AB, out = ns.GetModule("ActionBars"), {} for i, k in ipairs({ ${names.map((k) => JSON.stringify(k)).join(", ")} }) do out[i] = AB.ShortKey(k) end out[#out + 1] = AB.ShortKey(nil) return out`);
   expect(got, "each key's label, and nothing for no key").toEqual([...Object.values(keys), ""]);
@@ -600,6 +601,11 @@ const BIND_ENV = `
 const binder = (addon) => addon.eval(`local f, AB = Vanguard_KeybindMode, ns.GetModule("ActionBars")
   return { shown = f:IsShown(), passed = f.__passed == true, mark = AB.bindHover ~= nil and AB.bindHover.vgCatcher.wash:IsShown() }`);
 
+// The banner's result line: its text, and whether it shows in the given theme colour.
+const resultLine = (addon, token) => addon.eval(`local r, T = Vanguard_KeybindMode.result, ns.Theme
+  local a, b, c = r:GetTextColor() local x, y, z = T.RGB("${token}")
+  return { r:GetText(), a == x and b == y and c == z }`);
+
 // The tooltip's lines while it shows (its text only), or null when hidden.
 const tipLines = (addon) => addon.eval(`if not GameTooltip:IsShown() then return nil end
   local out = {} for _, l in ipairs(GameTooltip.__lines) do out[#out + 1] = l.text end return out`);
@@ -612,6 +618,7 @@ it("keybind mode: hover a button and press a key to bind it; a modifier alone wa
   addon.slash("keybind");
   addon.eval("Vanguard_KeybindMode.SetPropagateKeyboardInput = function(self, v) self.__passed = v end");
   expect(binder(addon), "/vg keybind shows the banner").toMatchObject({ shown: true, mark: false });
+  expect(resultLine(addon, "text2"), "its result line starts empty-handed").toEqual(["Nothing bound yet.", true]);
   expect(addon.eval("return Vanguard_Bar1Button4:GetAlpha()"), "empty slots show, so they can be bound").toBe(1);
   addon.key("Vanguard_KeybindMode", "Q");
   expect([binder(addon).passed, boundTo(addon, "ACTIONBUTTON4")], "a key with no button under the mouse goes on to the game").toEqual([true, ""]);
@@ -627,6 +634,7 @@ it("keybind mode: hover a button and press a key to bind it; a modifier alone wa
   expect([boundTo(addon, "ACTIONBUTTON4"), addon.eval("return __savedSet")], "Shift-Q is bound to the button's command and saved in the set in use").toEqual(["SHIFT-Q", 2]);
   expect([addon.eval("return Vanguard_Bar1Button4.hotkey:GetText()"), addon.eval("return __wfgWorld.overrides['SHIFT-Q'].target")], "the hotkey shows it, and the key clicks the button").toEqual(["SQ", "Vanguard_Bar1Button4:LeftButton"]);
   expect([chatHas(addon, /SHIFT-Q bound to Bar 1 button 4\.$/), tipLines(addon)[1]], "chat says so (the key was free), and the tooltip follows").toEqual([true, "Keys: SHIFT-Q"]);
+  expect(resultLine(addon, "text2"), "and so does the banner, in its quiet colour").toEqual(["SHIFT-Q bound to Bar 1 button 4.", true]);
   addon.hover("Vanguard_Bar1Button1.vgCatcher");
   addon.keys({ alt: true, ctrl: true });
   addon.key("Vanguard_KeybindMode", "F");
@@ -666,8 +674,10 @@ it("keybind mode: the mouse's side buttons and wheel bind too; Backspace clears;
   expect(chatHas(addon, /Bar 1 button 4 unbound \(was MOUSEWHEELDOWN\)\.$/), "and says what it had").toBe(true);
   addon.key("Vanguard_KeybindMode", "DELETE");
   expect(chatHas(addon, /Bar 1 button 4 has no key\.$/), "Delete clears too; with no key it only says so").toBe(true);
+  expect(resultLine(addon, "text2"), "the banner shows the last result").toEqual(["Bar 1 button 4 has no key.", true]);
   addon.key("Vanguard_KeybindMode", "W");
   expect([boundTo(addon, "ACTIONBUTTON4"), boundTo(addon, "MOVEFORWARD"), chatHas(addon, /W bound to Bar 1 button 4, taken from Move Forward\.$/)], "a key the game used is taken, and chat says from what").toEqual(["W", "", true]);
+  expect(resultLine(addon, "warn"), "the banner says it too, in the warning colour").toEqual(["W bound to Bar 1 button 4, taken from Move Forward.", true]);
   addon.key("Vanguard_KeybindMode", "SPACE");
   expect(chatHas(addon, /SPACE bound to Bar 1 button 4, taken from JUMP\.$/), "a command with no name is named as is").toBe(true);
   addon.key("Vanguard_KeybindMode", "1");
@@ -697,6 +707,8 @@ it("keybind mode: out of combat only, ends when a fight starts; from the options
   setCombat(addon, false);
   addon.eval('for _, p in ipairs(ns.Options.PAGES) do if p.key == "actionbars" then for _, r in ipairs(p.rows()) do if r[2] == "Keybind mode" then r[3]() end end end end');
   expect(addon.eval("return Vanguard_KeybindMode:IsShown()"), "the Keybind mode button on the Action bars page starts it").toBe(true);
+  addon.click("Vanguard_KeybindMode.done");
+  expect([addon.eval("return Vanguard_KeybindMode:IsShown()"), resultLine(addon, "text2")[0]], "the banner's Done button leaves, and clears the result line").toEqual([false, ""]);
   const off = loggedIn(BIND_ENV, { savedVariables: "VanguardDB = { profiles = { Default = { modules = { ActionBars = false } } } }" });
   off.slash("keybind");
   expect([off.eval("return Vanguard_KeybindMode == nil"), chatHas(off, /Keybind mode needs Vanguard.s action bars/)], "without the bars it says why").toEqual([true, true]);
@@ -733,4 +745,30 @@ it("bar backing: a flat panel under each bar's buttons on Classic look or when a
   expect(backing(plain)[0], "Follow the theme hides it again on the default theme").toBe(false);
   const on = loggedIn(ACTIONS_ENV, { savedVariables: 'VanguardDB = { profiles = { Default = { ActionBars = { backing = "on" } } } }' });
   expect(backing(on)[0], "Always shows it on the default theme").toBe(true);
+});
+
+it("hotkey text stays on one line inside the button, right-aligned", () => {
+  const addon = loggedIn(ACTIONS_ENV);
+  const hk = addon.eval(`local h = Vanguard_Bar1Button1.hotkey
+    return { left = h.__points.TOPLEFT.rel == Vanguard_Bar1Button1, right = h.__points.TOPRIGHT.rel == Vanguard_Bar1Button1, justify = h.__justifyH, noWrap = h.__noWrap }`);
+  expect(hk, "pinned to both top corners, so a long name is cut at the button's edge").toEqual({ left: true, right: true, justify: "RIGHT", noWrap: true });
+});
+
+it("an action button marks an item you wear with a thin ring, and drops it when the item comes off", () => {
+  // Stricter than the client on purpose: an empty slot is refused, so asking about one shows.
+  const addon = loggedIn(ACTIONS_ENV + ` __actions[1].equipped = true
+    C_ActionBar.IsEquippedAction = function(slot) if not __actions[slot] then error("TEST-ONLY invalid slot") end return __actions[slot].equipped end`);
+  // Whether each edge of bar 1 button n's equipped ring shows.
+  const ring = (n) => addon.eval(`local out = {} for side, e in pairs(Vanguard_Bar1Button${n}.equipped) do out[side] = e:IsShown() end return out`);
+  expect(ring(1), "a worn trinket's button: every edge").toEqual({ top: true, bottom: true, left: true, right: true });
+  expect(Object.values(ring(2)).includes(true), "another action: none").toBe(false);
+  const edge = addon.eval("local e, b = Vanguard_Bar1Button1.equipped.top, Vanguard_Bar1Button1 return { e.__layer, e.__vertexColor, e:GetHeight() == ns.Theme.Pixel(b) }");
+  expect([edge[0], edge[1].slice(0, 3), edge[2]], "over the icon, in the good colour, one screen pixel thick").toEqual(["OVERLAY", addon.eval('return { ns.Theme.RGB("good") }').slice(0, 3), true]);
+  expect(addon.eval("return #ns.errors"), "no slot was refused").toBe(0);
+  addon.eval("__actions[1].equipped = false");
+  addon.fire("PLAYER_EQUIPMENT_CHANGED", 13, true);
+  expect(Object.values(ring(1)).includes(true), "taken off: the ring goes").toBe(false);
+  expect(Object.values(ring(4)).includes(true), "an empty slot is never asked").toBe(false);
+  addon.eval("__actions[2].equipped = { __secret = true } ns.GetModule('ActionBars').UpdateButton(Vanguard_Bar1Button2)");
+  expect(Object.values(ring(2)).includes(true), "a hidden answer counts as no").toBe(false);
 });

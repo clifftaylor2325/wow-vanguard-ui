@@ -12,8 +12,11 @@
 -- so a click binds instead of casting (left and right click bind nothing, as
 -- in the game), and it carries the accent wash under the mouse.
 --
--- Escape leaves; a modifier pressed alone (Shift, Ctrl, Alt) waits for the key it
--- goes with; a key pressed with no button under the mouse goes on to the game.
+-- Escape or the banner's Done button leaves (keys are saved as they are bound, so
+-- both keep them); the banner's second line says what the last key did, in the
+-- warn colour when it took a key from something else. A modifier pressed alone
+-- (Shift, Ctrl, Alt) waits for the key it goes with; a key pressed with no button
+-- under the mouse goes on to the game.
 -- Bindings are protected, so the mode only runs out of combat and ends when a
 -- fight starts. While it is on, empty slots and faded bars show, as they do
 -- while you drag a spell, so every button can be bound.
@@ -29,6 +32,8 @@ AB.MODIFIER_KEYS = { LSHIFT = true, RSHIFT = true, LCTRL = true, RCTRL = true, L
 AB.CLEAR_KEYS = { BACKSPACE = true, DELETE = true }
 -- Mouse buttons as binding keys; left and right click (the game's own) bind nothing.
 AB.MOUSE_KEYS = { MiddleButton = "BUTTON3", Button4 = "BUTTON4", Button5 = "BUTTON5" }
+-- The banner's size, and the width of its Done button.
+AB.BANNER = { w = 640, h = 76, done = 84 }
 
 -- A key as a binding with the modifiers held, in the game's order ("ALT-CTRL-SHIFT-Q").
 function AB.KeyChord(key)
@@ -84,6 +89,15 @@ local function saved(b)
   if AB.bindHover == b then showTip(b) end
 end
 
+-- What the last key did, in chat and on the banner's second line (in tone, the plain
+-- second text colour unless given).
+function AB.ShowResult(text, tone)
+  ns.Chat(text)
+  if not AB.binder then return end
+  AB.binder.result:SetText(text)
+  T.Color(AB.binder.result, tone or "text2")
+end
+
 -- Binds key to the button's command in place of its keys, saves the binding
 -- set in use and repaints the hotkeys; says in chat what the key did before,
 -- if anything. Out of combat only; false in a fight.
@@ -93,7 +107,7 @@ function AB.BindKey(b, key)
   dropKeys(b)
   SetBinding(key, b.binding)
   saved(b)
-  ns.Chat(string.format("%s bound to %s%s.", key, buttonLabel(b), owner and (", taken from " .. owner) or ""))
+  AB.ShowResult(string.format("%s bound to %s%s.", key, buttonLabel(b), owner and (", taken from " .. owner) or ""), owner and "warn")
   return true
 end
 
@@ -101,11 +115,11 @@ end
 -- of combat only, and only when it has a key; false otherwise.
 function AB.ClearKeys(b)
   if ns.InCombat() then return false end
-  if not GetBindingKey(b.binding) then ns.Chat(buttonLabel(b) .. " has no key.") return false end
+  if not GetBindingKey(b.binding) then AB.ShowResult(buttonLabel(b) .. " has no key.") return false end
   local had = keysText(b)
   dropKeys(b)
   saved(b)
-  ns.Chat(string.format("%s unbound (was %s).", buttonLabel(b), had))
+  AB.ShowResult(string.format("%s unbound (was %s).", buttonLabel(b), had))
   return true
 end
 
@@ -184,14 +198,35 @@ local function catcher(b)
   return c
 end
 
+-- The banner's two lines: how the mode works on top, the last key's result under it, left of Done.
+local function addBannerText(f)
+  f.text = T.Text(f:CreateFontString(nil, "OVERLAY"), "label")
+  f.text:SetPoint("TOPLEFT", T.SPACE.pad, -T.SPACE.pad)
+  f.text:SetPoint("TOPRIGHT", -T.SPACE.pad, -T.SPACE.pad)
+  f.text:SetWordWrap(false)
+  f.text:SetText("Hover a button, then press a key, a side mouse button or the wheel. Backspace clears, Escape leaves.")
+  f.result = T.Text(f:CreateFontString(nil, "OVERLAY"), "label", "text2")
+  f.result:SetPoint("BOTTOMLEFT", T.SPACE.pad, T.SPACE.pad)
+  f.result:SetPoint("RIGHT", f.done, "LEFT", -T.SPACE.gap, 0)
+  f.result:SetJustifyH("LEFT")
+  f.result:SetWordWrap(false)
+end
+
+-- Done, at the banner's bottom right: leaves the mode, keeping every key bound (each saved as it was bound).
+-- The banner takes keys, not mouse buttons, so a click on it never becomes a bind.
+local function addDone(f)
+  f.done = ns.DialogButton(f, "Done", AB.BANNER.done)
+  f.done:SetPoint("BOTTOMRIGHT", -T.SPACE.pad, T.SPACE.gap)
+  f.done:SetScript("OnClick", ns.Guard("click keybind Done", function() AB.KeybindMode(false) end))
+end
+
 -- The mode's banner at the top center, built on first use; it takes the keyboard.
 local function build()
   local f = T.Panel(CreateFrame("Frame", "Vanguard_KeybindMode", UIParent), { raised = true, shadow = true })
-  f:SetSize(640, 40) f:SetPoint("TOP", UIParent, "TOP", 0, -120)
+  f:SetSize(AB.BANNER.w, AB.BANNER.h) f:SetPoint("TOP", UIParent, "TOP", 0, -120)
   f:SetFrameStrata("DIALOG")
-  f.text = T.Text(f:CreateFontString(nil, "OVERLAY"), "label")
-  f.text:SetPoint("CENTER")
-  f.text:SetText("Keybind mode: hover a button, then press a key, a side mouse button or the wheel. Backspace clears, Escape leaves.")
+  addDone(f)
+  addBannerText(f)
   f:EnableKeyboard(true)
   f:SetScript("OnKeyDown", AB.OnBindKey)
   return f
@@ -216,6 +251,8 @@ end
 function AB.KeybindMode(on)
   if on and not canStart() then return end
   AB.binder = AB.binder or build()
+  AB.binder.result:SetText(on and "Nothing bound yet." or "")
+  T.Color(AB.binder.result, "text2")
   setCatchers(on)
   AB.binding = on
   AB.binder:SetShown(on)

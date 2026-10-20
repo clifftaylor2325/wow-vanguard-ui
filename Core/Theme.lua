@@ -1368,6 +1368,27 @@ local function ringAt(e, frame, pixels, token)
   sizeEdges(e, frame)
 end
 
+-- A one-pixel ring just inside frame's edge and over its art (an action button's equipped-item
+-- mark), hidden until T.ShowInnerRing shows it; returns its four edges by side.
+function T.InnerRing(frame)
+  local e = {}
+  for side in pairs(EDGE_POINTS) do e[side] = solid(frame, "OVERLAY", 1, "border") end
+  for _, t in pairs(e) do t:Hide() end
+  return e
+end
+
+-- Shows (or hides) an inner ring in token, placed at frame's pixel size each time it shows and kept
+-- short of the corners the frame rounds or cuts, so a rescale or a Corners change never leaves it off.
+function T.ShowInnerRing(e, frame, token, on)
+  if on then
+    local entry = painted[frame]
+    placeEdges(e, frame, -T.Pixel(frame), entry and roundRadius(frame, entry) or 0)
+    for _, t in pairs(e) do T.Tint(t, token) end
+    sizeEdges(e, frame)
+  end
+  for _, t in pairs(e) do t:SetShown(on == true) end
+end
+
 -- A frame's focus ring parts, { gap = edges, ring = edges }, or nil before it ever had one.
 function T.FocusParts(frame) return focusOf[frame] end
 

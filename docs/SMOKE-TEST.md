@@ -887,13 +887,31 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Expect: a banner at the top, and a tooltip over each button naming it and its keys. Shift+Q, the side button and the wheel each bind in turn (the hotkey text shows SQ, M4, WD) and chat says so; Backspace clears the key and chat says what it was; W binds and chat says it was taken from Move Forward; the left click binds and casts nothing. Escape closes the banner and the tooltip; the keys still work and survive `/reload`.
 - If it fails, paste: what you pressed, what chat said, the key's hotkey text, and `/vg errors`.
 
-## 11. AFK
-
 ### 10.4a Short key names on the buttons
 
 - Do: in the game's Key Bindings (Escape → Options → Keybindings → Action Bars), bind Backspace, Shift+Backspace, Numpad + and Numpad 1 to four bar 1 buttons, and (on a Mac) Command+4 to another and mouse button 4 to one more. Close the window and look at the buttons.
 - Expect: the hotkey texts read Bs, SBs, N+, N1, Cmd4 and M4, each one different, none cut to a half word. No error.
 - If it fails, paste: a screenshot of the bar and the keys you bound.
+
+### 10.4b Long keys stay on one line
+
+- Do: bind Page Up, Insert, Caps Lock and Shift+Ctrl+Alt+Delete to four bar 1 buttons in the game's Key Bindings, then look at the buttons at your smallest button size.
+- Expect: the hotkey texts read PU, Ins, Cap and ACSDel (or as much as fits), on one line in the button's top right corner, never wrapping onto a second line or running past the button's edge.
+- If it fails, paste: a screenshot of the bar.
+
+### 10.4c Equipped items are ringed
+
+- Do: put a weapon or trinket you are wearing on a bar 1 button (drag it from the character window), and another you are not wearing on the next one. Swap the two in the character window.
+- Expect: a thin green ring inside the edge of the worn item's button only; after the swap the ring moves to the other one. With Masque skinning the bars, Vanguard draws no ring.
+- If it fails, paste: a screenshot of the two buttons and `/vg errors`.
+
+### 10.4d Keybind banner says what happened
+
+- Do: type `/vg keybind`. Hover an empty bar 1 button and press Shift+Q, then press W over it (W moves you forward), then press Backspace twice. Click the banner's **Done** button.
+- Expect: the banner's second line reads "Nothing bound yet." at first, then each result as chat gets it ("SHIFT-Q bound to …", then in the warning colour "W bound to …, taken from Move Forward.", then "… unbound (was W)." and "… has no key."). Done closes the banner like Escape, and W stays bound to the button.
+- If it fails, paste: a screenshot of the banner and `/vg errors`.
+
+## 11. AFK
 
 ### 11.1 AFK card
 
