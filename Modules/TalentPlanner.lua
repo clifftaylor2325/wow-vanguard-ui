@@ -475,7 +475,7 @@ local function showSummaryTip(area)
   GameTooltip:SetText("Talent plan", T.RGB("text"))
   local r, g, b = T.RGB("text2")
   GameTooltip:AddLine(text, r, g, b, true)
-  if text:find("unreachable", 1, true) then GameTooltip:AddLine(TP.UNREACHABLE_NOTE, r, g, b, true) end
+  if TP.result and next(TP.result.stuck) then GameTooltip:AddLine(TP.UNREACHABLE_NOTE, r, g, b, true) end
   GameTooltip:Show()
 end
 
