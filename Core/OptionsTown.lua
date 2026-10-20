@@ -31,15 +31,14 @@ local function auctionRows()
   }, auctionScanRows())
 end
 
--- At a merchant, and the error line.
+-- At a merchant (the error line's switch is under Game windows, Quiet the game).
 local function merchantRows()
   return {
-    { "header", "Merchants and errors" },
+    { "header", "Merchants" },
     check("Repair with your own gold at a merchant", setting("Merchant", "repair")),
     check("Sell gray items at a merchant", setting("Merchant", "junk")),
     check("Offer to sell the items on your sell list (/vg junk)", setting("Merchant", "listSell")),
     check("Stack and Max buttons on a merchant item's quantity window", setting("Merchant", "bulkBuy")),
-    check("Hide errors the action bar already shows (reload)", setting("Merchant", "errors", true)),
   }
 end
 

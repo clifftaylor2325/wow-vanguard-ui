@@ -476,6 +476,12 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Expect: each frame shows its unit's tooltip where your tooltips usually sit, and it goes when the mouse leaves; a hunter's pet tooltip adds a line like "Happy: 125% damage" in the mood's colour; in a fight too, unless **Hide unit tooltips in combat** (Tooltips) is on, and `/vg errors` stays empty. The tagged mob's health bar is grey, as on the game's frames and Vanguard's plates. A released player reads Ghost (red on raid tiles too), a feigning hunter in your group does not read Dead. The mark sits centred on the top edge of every frame whose unit carries it, comes and goes at once, and **Raid target icons** (Raid frames page) turns them off. Solo with no pet the threat number above the target frame stays away; with a pet or in a group it shows.
 - If it fails, paste: a screenshot of the frame, `/vg errors`, and `/run local i=GetRaidTargetIndex("target") print(type(i), issecretvalue(i))` on a marked mob.
 
+### 7.2j Swing timer dims out of reach, and auto for every class that swings
+
+- Do: on a warrior or rogue with Vanguard's swing timer on, auto-attack a mob, then step out of melee range and back in, swap weapons out of range, and target nothing. Then on a paladin, shaman or druid (Swing timer left on auto), stand idle, then auto-attack a mob.
+- Expect: while the target is out of melee range the swinging rows dim (to about 40%) and come back at full strength when you step in, also right after the weapon swap; with no target they are never dim. The paladin, shaman or druid sees no rows at rest and the rows while swinging. `/vg errors` stays empty.
+- If it fails, paste: a screenshot in and out of range, your class, and `/vg errors`.
+
 ### 7.3 Nameplates in a pull
 
 - Do: pull three or more mobs.
@@ -517,6 +523,12 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Do: with Fight history and the recap on, kill a mob and pull the next one at once (within half a second: a ranged pull or an add already on its way). After the second fight, hover the fight history strip and type `/vg fights`.
 - Expect: both fights are listed, the first with its own length and DPS; a recap line for the first fight appears as the second begins. [Needs in game: that the game's meter has finished the first fight's figures when the next pull starts; if its DPS or length looks short, say so.]
 - If it fails, paste: `/vg fights` and `/vg errors`.
+
+### 7.6b The game's damage meter lines stay flat
+
+- Do: with the game's damage meter shown (its own setting) and "Damage meter in the Vanguard look" on under Combat tools, fight two or three mobs one after another, then look at the meter's lines, and scroll its list if it has more lines than fit.
+- Expect: every line is a flat theme bar over a dark inset after each fight, with no gradient or shaded background behind it, including lines that appear only after the first fight. [Needs in game: that the game's own background art never comes back on a line.]
+- If it fails, paste: a screenshot of the meter after the fight in which the shading came back, and `/vg errors`.
 
 ### 7.7 Vanguard meter (off until switched on: /vg > Combat tools > Vanguard meter)
 
@@ -570,10 +582,11 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 
 - Do: watch more quests than fit under the info strip, then click the QUESTS header at the top of the tracker, and again.
 - Expect: the tracker's header reads `QUESTS` in small grey capitals with the number of quests you watch after it and a chevron before it; clicking it folds the tracker down to that header (the brass line stays under it) and clicking again opens it. A `+N more` line at the bottom of the tracker. Click it: the tracker grows to at most 10 quests, ending in `Show fewer` (with `· +N more` past ten). `/reload`: it is still expanded. Click `Show fewer` to fold it.
-- Also expect (Legacy challenges): with a challenge tracked in the game (its Legacy window), a `Legacy challenges` heading sits under the quests with the challenge beneath it, its criteria as `- 2/3 …` lines and `Complete` once done. Right-click the challenge: it leaves the tracker. With none tracked, no heading. A heading never shows alone: when no challenge fits under it, it is left out and the `+N more` line counts the challenges. [Needs in game: how a Forever client tracks a challenge, and that its criteria text reads as above.]
+- Also expect (Legacy challenges): with a challenge tracked in the game (its Legacy window), a `Legacy challenges` heading sits under the quests with the challenge beneath it, its criteria as rows (`…` at the left, `2/3` at the right edge) and `Complete` once done. Right-click the challenge: it leaves the tracker. With none tracked, no heading. A heading never shows alone: when no challenge fits under it, it is left out and the `+N more` line counts the challenges. [Needs in game: how a Forever client tracks a challenge, and that its criteria text reads as above.]
 - Also expect (timed quests): take a timed quest (an escort, or one that says "Hurry!") and watch it. Under its title, above its objectives, a gray `Time left 4:32` line counts down once a second; it goes when the quest is done or abandoned, and no countdown shows anywhere else on the screen. [Needs in game: that the Forever client reports the timer to addons (`C_QuestLog.GetQuestTimers`); if the line never shows while the quest is timed, say so.]
 - Also expect (tooltips and failed quests): hover a quest title in the tracker. It lights with a faint wash and a tooltip shows its title, its objectives in full and a muted line `Click: open · Shift-click: point the arrow · Right-click: stop watching`; a challenge's says `Right-click: stop tracking`, and the `Legacy challenges` heading shows nothing. In a fight, no tooltip. Let a timed quest run out (or fail an escort): its block reads `Failed` in red in place of its objectives. [Needs in game: that `C_QuestLog.IsFailed` is true for a failed quest on Forever.]
-- Also expect (recipes): open a profession window and track a recipe (its track checkbox or Shift-click as the game offers). A `Recipes` heading sits after the quests and challenges with the recipe beneath it and a line per reagent, `- 2/4 Linen Cloth`, gray until you have enough, then green; buy or craft a reagent and the count follows. Left-click the recipe: the profession window opens on it. Right-click: it leaves the tracker, and the heading goes with the last one. [Needs in game: that a reagent the client hasn't cached joins the list a moment later.]
+- Also expect (recipes): open a profession window and track a recipe (its track checkbox or Shift-click as the game offers). A `Recipes` heading sits after the quests and challenges with the recipe beneath it and a row per reagent, `Linen Cloth` with `2/4` at the right edge, gray until you have enough, then muted gray with a check; buy or craft a reagent and the count follows. Left-click the recipe: the profession window opens on it. Right-click: it leaves the tracker, and the heading goes with the last one. [Needs in game: that a reagent the client hasn't cached joins the list a moment later.]
+- Also expect (objective rows and the followed quest): each objective in the tracker is a row: its name at the left (no `- ` before it) and its count such as `3/8` at the right edge, lined up down the tracker. Finish one: it turns muted gray with a small check before its name, rather than turning green. The quest the arrow names has a thin brass line down its left edge; walk until the arrow moves on to another quest and the line moves with it within a second or so; Shift-click another and the line goes to it at once, with its step line. A quest item button beside a quest still sits just left of its block and works in and out of combat, and the line does not cover it. [Needs in game: that long objective names cut short before the count rather than run under it, and that the line reads as one quest's mark, not a divider.]
 - If it fails, paste: a screenshot.
 
 ### 8.4a Quest arrow
@@ -657,15 +670,27 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Expect: items that match every word stay lit and the rest dim as with a normal search; a plain word still works the game's way; clearing the box lights everything again. Send moves that group's stacks to the bank and says how many; in a fight, or with no bank open, it says to open the bank and moves nothing.
 - If it fails, paste: a screenshot, `/vg probe` (the SetItemSearch and UpdateSearchResults lines) and `/vg errors`.
 
+### 9.1c Bank search words, the Junk value, taking an item out of a group
+
+- Do: at the bank, with a green or better item in the bank, type `ilvl>20`, then `q:epic` (or `q:unc`) in the bank's search box (or the bag's: the game copies the text). Move an item in the bank and turn a bank page. Do the same in your bags. Then look at the bag's Junk header with gray items in your bags, and open a merchant. Then file an item in one of your groups, pick it up, and click **Groups** → Take held item out of its group.
+- Expect: only matching items stay bright in the bank and the bags, and the match holds after the move and the page turn (the bank never goes all grey). The Junk header reads "JUNK · 12s 40c" (or similar), the same amount the merchant pays for your gray items (a Junk section only two slots wide may leave it off rather than run into the next header: note which). The taken-out item goes back to its normal section, its group's header goes if the group is now empty, and chat says it is in no category; with an item that is in no group held, chat says so and the item stays in hand.
+- If it fails, paste: a screenshot, the search text, the Junk header and the merchant's line, and `/vg errors`.
+
 ### 9.2 Merchant repair and sell
 
 - Do: with damaged gear and gray items, open a merchant who repairs.
 - Expect: `Repaired for <money>.` (or `Not enough gold to repair (<money>).`) and `Selling N junk item(s).` in chat; the gray items vanish over a few seconds.
 - If it fails, paste: the chat lines and `/vg errors`.
 
+### 9.2g The error switch under Quiet the game
+
+- Do: /vg > Game windows > Quiet the game; find "Hide errors the action bar already shows (reload)"; then Town and gear > Merchants.
+- Expect: the switch is on under Quiet the game, beside "Hide the red error line", and no longer on the Merchants card; with it on (after a reload) casting before a cooldown ends shows no red line, and switched off (and reloaded) it does.
+- If it fails, paste: a screenshot of both cards.
+
 ### 9.2a Sell list, sell all and bulk buy
 
-- Do: `/vg junk` with a shift-clicked cheap item you own, then Merchants and errors → "Offer to sell the items on your sell list"; open a merchant. Then `/vg sell` with a shift-clicked item of which you hold several stacks. Then shift-click an item for sale (a stackable one, with a few bag slots free) and press Stack, then Max.
+- Do: `/vg junk` with a shift-clicked cheap item you own, then Town and gear → Merchants → "Offer to sell the items on your sell list"; open a merchant. Then `/vg sell` with a shift-clicked item of which you hold several stacks. Then shift-click an item for sale (a stackable one, with a few bag slots free) and press Stack, then Max.
 - Expect: a question listing the item(s) and what they fetch; answering Sell sells them within a few seconds and the Buyback tab holds them; pressing Enter while the question is up does not answer it (click Sell); an item in an equipment set is not offered; Stack and Max and a "Max N for <money>" line sit under the quantity window for a merchant's item and not for an item in your bags; Max above one stack asks first; the buys finish with `Bought N × <item> for <money>.` and no error; an item that costs tokens or honor shows no buttons.
 - If it fails, paste: the chat lines and `/vg errors`.
 
@@ -722,6 +747,12 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Do: on the Posting tab drop an item on the Sell card. In the Price box type `1e5`, then `0x10`, then `99999999`, then `1g 50s`; switch the button beside it to per stack and type `55c` with a stack size of 10.
 - Expect: the first three are not taken as prices (the box goes back to the suggestion; nothing posts at 100,000 gold or 16 gold); `1g 50s` is the price. With per stack on, `55c` for a stack of 10 shows `60c` in the box (6c a unit, rounded up) and the stack posts at 60c, never under the 55c typed. [Needs in-game check: what the client does with a posted price near the highest it takes.]
 - If it fails, paste: a screenshot of the Sell card and `/vg errors`.
+
+### 9.4b The scan countdown, a refused scan, and deals kept through the mailbox
+
+- Do: on the Lists tab, Scan the auction house and let it finish; close the auction house and open it again. Within 15 minutes, open the auction house on a second character (or, with another auction addon, run its full scan first) and look at the Scan button; if it can be pressed, press it and wait two minutes. Back on the first character, after a scan with deals found, walk to the mailbox, then come back and open Deals and Upgrades.
+- Expect: the Scan button is greyed and reads "Next scan in N min", counting down, with "Scanned N min ago · N items" under it. On the second character the button is greyed too (the 15 minutes are the account's); if the game refused a scan, after about 90 seconds chat says another character or auction addon may have scanned, the button counts down 15 minutes from the try, and nothing is stuck at "scanning 0 of 0" (the line under the button is never in the warning colour while a scan runs). Note how long a full scan took. The deals and upgrades are still listed, the heading reading "N found, the oldest N min ago" and each tooltip "Found N min ago."
+- If it fails, paste: a screenshot of the Lists tab, the chat lines and `/vg errors`.
 
 ### 9.5 Sort clear of the backpack icon
 
@@ -851,11 +882,29 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Expect: the backpack's count and the info strip's "free" turn amber at 4 and red at 0, together; a soul bag's or quiver's slots don't count towards either. The bag's tooltip ends with a line such as "9 of 16 free" for that bag alone.
 - If it fails, paste: a screenshot of the bag bar and strip, and `/vg errors`.
 
+### 13.2b Strips at Text size 130 %
+
+- Do: in the game's clock window untick 24-hour mode; under `/vg` → General set Text size to 130 %; with an addon that shares broker feeds, pick two feeds under Map → Data from other addons. Then set Text size back to 100 %.
+- Expect: at 130 % the info strip is wider and its rows taller; no block's text runs into its neighbour (the 12-hour time, the date and the calendar button share their row), and nothing spills past the strip's edge. The broker strip is taller, its icons larger, each slot as wide as its text; a feed's tooltip opens below the strip at the top of the screen (move the strip near the bottom with `/vg unlock`: it opens above). The quest tracker starts just under the info strip's last row, clear of it. Back at 100 % both strips return to their usual size (a broker slot widened at 130 % narrows again) and the tracker moves back up.
+- If it fails, paste: a screenshot of both strips at 130 %, and `/vg errors`.
+
 ### 13.3 Move the strips
 
 - Do: type `/vg unlock`, drag the Bags and Game menu handles apart, type `/vg lock`, then `/reload`.
 - Expect: both strips stay where you put them.
 - If it fails, paste: a screenshot after the reload.
+
+### 13.4 Minimap drawer and zone hints
+
+- Do: hover the minimap's zone name. Then, with an addon that has a minimap button (LibDBIcon kind), log in; then turn on another addon's minimap button from its own settings (or load one on demand) without reloading, once out of a fight and once in one.
+- Expect: the zone tooltip ends with "Click: world map" and "Wheel: zoom" in the muted colour. The new button goes into the drawer at once (in a fight, as soon as it ends), not onto the map.
+- If it fails, paste: the addon's name, a screenshot of the minimap, and `/vg errors`.
+
+### 13.5 Minimap drawer: order, count, Escape and side
+
+- Do: with three or more addon buttons, hover the "..." toggle, open the drawer, press Escape; drag the minimap (`/vg unlock`) to the screen's left edge and to the bottom, and open the drawer at each; right-click a drawer button that has a menu.
+- Expect: the toggle's tooltip reads "Addon buttons (N)"; the buttons sit in name order; Escape closes the drawer; at the left edge it opens right of the map, near the bottom it stays on screen; a button's right-click menu stays open.
+- If it fails, paste: the addon's name, a screenshot of the minimap, and `/vg errors`.
 
 ## 14. Game windows, by area
 
@@ -1302,6 +1351,12 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 - Expect: as the fight starts the window stops following the mouse and stays where it was; nothing sticks to the mouse after you let go; it opens at that spot after the fight. No "Interface action failed because of an AddOn" message, and `/vg errors` is empty. [Needs in-game check: the harness models StartMoving and StopMovingOrSizing as protected on a window that holds secure buttons, from Forever's API docs.]
 - If it fails, paste: the window's name, where it ended up, and `/vg errors`.
 
+### 14.10b Reset moved windows, and five more windows to drag
+
+- Do: open the character pane and the mailbox, open a letter, and drag the pane and the letter away. `/vg` → Game windows → **Reset window positions** with both still open. Drag them away again, start a fight, click Reset, and leave combat. Then open the clock (the strip's time, or the minimap clock), chat channels (`/chatconfig` → Channels, or the social window's Chat Channels), Options → Game settings (Escape → Options), chat settings (right-click a chat tab → Settings) and guild control (guild window → Guild Control, if you can), and drag each.
+- Expect: Reset puts the open character pane where the game opens it and the letter back beside the mailbox at once, with no `/reload`. In the fight the chat says "Moved windows go back once the fight ends." and nothing moves; after the fight both go back, with no `/vg errors`. The clock and chat channels drag by their title bar; game settings, chat settings and guild control drag by an empty spot along their top edge, and every button, tab and box in all five still takes its click. After a Reset, open and close the collections window and the spellbook in a fight: no "blocked" message. [Needs in game: the letter's spot after Reset, that no button in the five new windows lost its click, and that Reset's call to the game's window layout leaves no blocked action later.]
+- If it fails, paste: which window, a screenshot after Reset, and `/vg errors`.
+
 ### 14.11 Breath and fatigue bars
 
 - Do: swim under water until the breath bar shows and stay down a few seconds; surface. Then swim out to sea until the fatigue bar shows, and swim back.
@@ -1544,6 +1599,7 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 - Do: in a capital city, type `/vg lfg` and leave it open for a few minutes while people post in Trade and LookingForGroup. Hover a row, then click one. Do not press Enter unless you want to send it. Then click the filter button twice and switch **Only dungeons for my level** off and on. Finally post `LFM SFK need heals` yourself in a channel.
 - Expect: the board has a title with its count, a close button at the top right, and Escape closes it; rows appear as people post, newest first, each with a faint wash under the mouse and LFM or LFG, a dungeon and its range (or "Any dungeon"), the roles named, the sender's name without its realm or ruleset part and the age; the tooltip shows the whole line and the full name. The click opens the chat box with `/w <full name> Hi! ...` filled in and sends nothing. Your own post does not appear. The whisper reaches the player when you send it (a two-part name that fails is a finding). Inside a dungeon nothing new appears and `/vg errors` stays empty.
 - If it fails, paste: a screenshot of the board and the chat box, the line that was misread, and `/vg errors`.
+- Do also: on a healer whose role was never picked, open `/vg` → Chat → Group board and read **Your role, for the whisper** (it should read **Automatic**); then on the board click the filter button until it reads **Needs my role**, and click an LFM row with the healer role assigned in a group and with none. Every post should be listed, the LFM posts asking for heals (or naming no role) first, newest first, and the rest below them in grey; the whisper should say `(Healer)` with the healer role and `(DPS)` with none, and `/vg errors` stay empty. [Needs in-game check: all of it.]
 
 ### 18.3 Quest guidance
 
@@ -1674,6 +1730,13 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 - Do: with the mail tools on, open a mailbox holding a mail with money and three or more items (send one to an alt) and another with two items. Click Take all and watch the inbox.
 - Expect: every coin and every item of both mails comes in (the last mail first), the emptied mails leave the inbox (a letter with text may stay, empty), and chat says `Take all: N of N done.` with both numbers equal; nothing is left in either mail. [Needs in-game check: that HasInboxItem names the slots still holding an item after a take, and that C_Mail.IsCommandPending is true until the server has answered.]
 - If it fails, paste: the chat line, what is left in each mail, and `/vg errors`.
+
+### 23.3c More than eight mails, and the days left
+
+- Do: with more than eight mails in the inbox (or more than the game shows at once), open the mailbox with Mail tools on; scroll the mouse wheel over the panel's rows; type a word in the search box.
+- Expect: the heading reads "1-8 of N" beside "Find mail" (with "more on the server" when the game holds some back); the wheel over the rows moves through the rest a row at a time and stops at the ends (over the buttons and search box it does nothing); each row ends with its days or hours left, in the warning colour in the last 3 days, when a mail that would be deleted (not returned) says "deleted in 2d" (or however many days); typing goes back to the top, and so does closing and opening the mailbox.
+- [Needs in game: that InboxItemCanDelete is true for mail deleted at expiry (an auction house sale, a system mail) and false for a letter with items that goes back; that the count beside the title doesn't run into it; that the days label leaves the subject readable.]
+- If it fails, paste: a screenshot of the panel and `/vg errors`.
 
 ### 23.4 Alt overview
 

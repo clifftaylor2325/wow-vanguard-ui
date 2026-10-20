@@ -10,6 +10,7 @@ it("setup layouts: your specialization's role, else your group role, marks your 
   const guess = (lua) => loggedIn(lua, { firstRun: true }).eval("return ns.Setup.GuessLayout()");
   expect(guess(""), "no role: damage").toBe("damage");
   expect(guess("__wfgWorld.units.player.role = 'TANK'"), "a tank: tanking").toBe("tank");
+  expect(guess("__wfgWorld.units.player.role = __wfgWorld.secret('TANK')"), "a hidden group role counts as none: damage").toBe("damage");
   expect(guess("__wfgWorld.spec = 2 GetSpecializationRole = function(i) return i == 2 and 'HEALER' or 'DAMAGER' end"), "a healing spec: healing").toBe("healing");
   expect(guess("__wfgWorld.spec = 1 __wfgWorld.units.player.role = 'HEALER' GetSpecializationRole = function() return 'DAMAGER' end"), "the spec wins over the group role").toBe("damage");
   const healer = loggedIn("__wfgWorld.units.player.role = 'HEALER'", { firstRun: true });

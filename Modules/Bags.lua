@@ -262,10 +262,12 @@ function BG.AddSort(frame)
   BG.AddTools(frame)
 end
 
--- The combined bag's sections and its search words (Modules/BagSections.lua, Modules/BagSearch.lua).
+-- The combined bag's sections and its search words, and the bank's search words (Modules/BagSections.lua,
+-- Modules/BagSearch.lua).
 local function watchLayout(frame)
   BG.WatchSections(frame)
   BG.WatchSearch(frame)
+  if type(_G.BankPanel) == "table" then BG.WatchBankSearch(_G.BankPanel) end
 end
 
 -- Module entry point (Core/Modules.lua): the combined setting applied to the
