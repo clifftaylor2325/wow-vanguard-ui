@@ -21,11 +21,11 @@ The first time you log in, a short setup wizard asks for a layout, sizes for you
 
 One page per area, each with everything that part of Vanguard does:
 
-- [Look and layout](docs/features/look-and-layout.md): the theme, the centered layout, text size, theme variants, corners, shield corners, the faction look and the AFK screen.
+- [Look and theme](docs/features/look-and-layout.md): the theme, the centered layout, text size, theme variants, corners, shield corners, the faction look and the AFK screen.
 - [Unit frames and nameplates](docs/features/unit-frames.md): unit frames, combat timers, readouts, auras and cast bars, your buffs, nameplates, main tank frames, party pets and group threat.
 - [Raid frames and click casting](docs/features/raid-frames.md): raid frames built for healers, click casting and the raid tools.
 - [Action bars and cooldowns](docs/features/action-bars.md): action bars, and Vanguard's additions to the game's Cooldown Manager.
-- [Game windows](docs/features/game-windows.md): the game's own windows in Vanguard's look, the game's extras tidied away, the game's tools, Quiet the game and Auto-accept.
+- [Game windows and extras](docs/features/game-windows.md): the game's own windows in Vanguard's look, the game's extras tidied away, the game's tools, Quiet the game and Auto-accept.
 - [Combat tools](docs/features/combat-tools.md): boss mod docks, fight history, Vanguard's meter, the roll tracker and the officer loot tools.
 - [Chat](docs/features/chat.md): the chat window and its extras: watch, filter, history, windows, tabs, search, bubbles and the group board.
 - [Map, minimap, bags and more](docs/features/map-and-minimap.md): XP and reputation bars, the square minimap, bags and the rest of the everyday HUD, the strip under the minimap, the broker strip, the minimap drawer and waypoints.

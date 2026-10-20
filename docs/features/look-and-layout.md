@@ -1,4 +1,4 @@
-# Look and layout
+# Look and theme
 
 What Vanguard does here, in full. This page is part of the behaviour spec; the [README](../../README.md) has the overview and [docs/README.md](../README.md) lists every page.
 
