@@ -31,14 +31,6 @@ local LIST_W = SW.WIDTH - 2 * SW.PAD - SW.THUMB_ROOM
 
 -- The list ------------------------------------------------------------------------------------
 
--- The stock list's item IDs, in the order /vg stock lists them.
-function SW.Items()
-  local ids = {}
-  for id in pairs(ER.StockList()) do ids[#ids + 1] = id end
-  table.sort(ids)
-  return ids
-end
-
 -- How many of an item a dragged one is added with: one stack, or SW.DEFAULT_AMOUNT while the client can't say.
 function SW.StartAmount(id)
   local info = C_Item and C_Item.GetItemInfo
@@ -76,10 +68,11 @@ local function typeAmount(box, user)
   if user and id and n and n > 0 then ER.StockList()[id] = math.floor(n) end
 end
 
--- Leaving a row's box: 0 or nothing takes the item off; anything else shows the amount kept.
+-- Leaving a row's box: 0 or nothing takes the item off; anything else shows the amount kept. A box losing
+-- focus because a repaint hid it (SW.painting) leaves the list alone: the player didn't leave it.
 function SW.LeaveAmount(box)
   local id = box:GetParent().id
-  if not id or not ER.StockList()[id] then return end
+  if SW.painting or not id or not ER.StockList()[id] then return end
   local n = tonumber(box:GetText())
   if not n or n <= 0 then return SW.Remove(id) end
   box:SetText(tostring(ER.StockList()[id]))
@@ -132,7 +125,7 @@ local function paintRow(row, i, id)
   row.icon:SetTexture(C_Item and C_Item.GetItemIconByID and C_Item.GetItemIconByID(id) or nil)
   row.name:SetText(ER.ItemName(id))
   row.where:SetText(ER.WhereToBuy(id) or SW.NOT_SEEN)
-  if not row.amount:HasFocus() then row.amount:SetText(tostring(ER.StockList()[id])) end
+  row.amount:SetText(tostring(ER.StockList()[id]))
   row:Show()
 end
 
@@ -140,9 +133,11 @@ end
 function SW.Refresh()
   local f = SW.frame
   if not f then return end
-  local ids = SW.Items()
+  local ids = ER.StockIDs()
+  SW.painting = true
   f.rows.Reset()
   for i, id in ipairs(ids) do paintRow(f.rows.Next(), i, id) end
+  SW.painting = nil
   f.empty:SetShown(#ids == 0)
   f.list:Fit(#ids * (SW.ROW_H + SW.ROW_GAP))
 end
@@ -201,13 +196,13 @@ local function slotText(f)
   f.slotText:SetText("Add an item: drag one from your bags onto this slot")
   f.slotHint = T.Text(f:CreateFontString(nil, "OVERLAY"), "small", "muted")
   f.slotHint:SetPoint("BOTTOMLEFT", f.slot, "BOTTOMRIGHT", T.SPACE.col, T.SPACE.tight)
-  f.slotHint:SetText("It is added with one stack (or 20); change the amount in its row.")
+  f.slotHint:SetText(string.format("It is added with one stack (or %d); change the amount in its row.", SW.DEFAULT_AMOUNT))
 end
 
 -- Clear list asks first (it can't be undone), then empties the list.
 function SW.AskClear()
   if next(ER.StockList()) == nil then return end
-  ns.Ask("Clear your Keep stocked list?", "Clear list", function() VanguardCharDB.stockList = {} SW.Refresh() end, nil, "danger")
+  ns.Ask("Clear your Keep stocked list?", "Clear list", ER.ClearStock, nil, "danger")
 end
 
 -- The footer: Clear list at the far left, Done (the list saves as you go) at the right.

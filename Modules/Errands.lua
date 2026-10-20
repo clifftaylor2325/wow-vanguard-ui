@@ -90,12 +90,13 @@ local function nextAffordable(run)
 end
 
 -- What one click learns, the way the click picks: down the list, each service the gold left still
--- covers. { count, cost } of that, { all, allCost } of the whole list, and the cheapest service's cost.
+-- covers, up to ER.TRAIN_STEPS. { count, cost } of that, { all, allCost } of the whole list, and the cheapest service's cost.
 function ER.TrainPlan()
   local plan, left = { count = 0, cost = 0, all = 0, allCost = 0 }, cash()
   for _, s in ipairs(ER.Trainable()) do
     plan.all, plan.allCost, plan.cheapest = plan.all + 1, plan.allCost + s.cost, math.min(plan.cheapest or s.cost, s.cost)
-    if s.cost <= left then plan.count, plan.cost, left = plan.count + 1, plan.cost + s.cost, left - s.cost end
+    local fits = s.cost <= left and plan.count < ER.TRAIN_STEPS
+    if fits then plan.count, plan.cost, left = plan.count + 1, plan.cost + s.cost, left - s.cost end
   end
   return plan
 end
@@ -129,8 +130,8 @@ end
 -- Gives the Train all button its tooltip, shown while it is greyed out too.
 local function addTrainTip(b)
   b:SetMotionScriptsWhileDisabled(true)
-  b:SetScript("OnEnter", ns.Guard("train all tooltip", trainTip))
-  b:SetScript("OnLeave", ns.Guard("train all tooltip", function() if GameTooltip then GameTooltip:Hide() end end))
+  b:HookScript("OnEnter", ns.Guard("train all tooltip", trainTip))
+  b:HookScript("OnLeave", ns.Guard("train all tooltip", function() if GameTooltip then GameTooltip:Hide() end end))
 end
 
 -- Learns the next affordable service not yet bought in this click; false when
@@ -230,12 +231,24 @@ local function moveStockList(settings)
   settings.stockList = nil
 end
 
+-- The stock list's item IDs in order, as /vg stock and the Keep stocked window list them.
+function ER.StockIDs()
+  local ids = {}
+  for id in pairs(ER.StockList()) do ids[#ids + 1] = id end
+  table.sort(ids)
+  return ids
+end
+
+-- Empties the stock list; an open Keep stocked window follows.
+function ER.ClearStock()
+  VanguardCharDB.stockList = {}
+  ER.StockWindow.Refresh()
+end
+
 -- Prints the stock list, with where to buy each item when that's known.
 local function listStock()
-  local list, ids = ER.StockList(), {}
-  for id in pairs(list) do ids[#ids + 1] = id end
+  local list, ids = ER.StockList(), ER.StockIDs()
   if #ids == 0 then return ns.Chat("Your stock list is empty. /vg stock <item> <amount> adds one.") end
-  table.sort(ids)
   for _, id in ipairs(ids) do ns.Chat(string.format("Keep %d × %s", list[id], itemName(id)) .. soldBy(id)) end
 end
 
@@ -251,7 +264,7 @@ end
 function ER.StockCommand(rest)
   rest = rest or ""
   if rest == "" then return listStock() end
-  if rest == "clear" then VanguardCharDB.stockList = {} ER.StockWindow.Refresh() return ns.Chat("Your stock list is empty.") end
+  if rest == "clear" then ER.ClearStock() return ns.Chat("Your stock list is empty.") end
   local id, amount = ER.ItemID(rest), tonumber(rest:match("%s(%d+)%s*$"))
   if not (id and amount) then return ns.Chat("Usage: /vg stock <shift-click an item> <amount>  (0 removes it)") end
   setStock(id, amount)

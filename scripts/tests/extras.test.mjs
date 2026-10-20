@@ -212,6 +212,9 @@ it("Train all in one click: no purchase twice, the budget counted before the gam
   capped.fire("TRAINER_SHOW");
   capped.eval('ns.GetModule("Errands").trainButton.__scripts.OnClick()');
   expect(capped.eval("return #__learned"), "a click learns at most TRAIN_STEPS services").toBe(2);
+  const plan = loggedIn(FOREVER_TRAINER_ENV + "__money = 100000 ns.GetModule('Errands').TRAIN_STEPS = 1");
+  plan.fire("TRAINER_SHOW");
+  expect(plan.eval("return ns.GetModule('Errands').TrainPlan().count"), "the count it shows stops at the same cap").toBe(1);
 });
 // TEST-ONLY merchant stock: 90011 sells singly (5c, stacks of 20), 90012 in fives (40c for 5), 90013 is sold out.
 const STOCK_ENV = `
@@ -317,6 +320,11 @@ it("keep stocked: an amount saves as you type, 0 or an empty box takes the item 
   type(1, "0");
   leave(1);
   expect(stockWindow(addon), "0: off the list too; the list is empty").toEqual({ shown: true, rows: [], empty: true });
+  addon.eval("VanguardCharDB.stockList = { [90011] = 20 } ns.GetModule('Errands').StockWindow.Refresh()");
+  type(1, "");
+  addon.eval("local SW, b = ns.GetModule('Errands').StockWindow, Vanguard_StockList.rows[1].amount SW.painting = true b.__scripts.OnEditFocusLost(b) SW.painting = nil");
+  expect(addon.eval("return VanguardCharDB.stockList[90011]"), "a box hidden by a repaint while you type keeps the item").toBe(20);
+  addon.eval("VanguardCharDB.stockList = {}");
   addon.eval("local b = Vanguard_StockList.rows[1].amount b.__scripts.OnEditFocusLost(b) b.__scripts.OnTextChanged(b, true)");
   expect(addon.eval("return next(VanguardCharDB.stockList)"), "a box whose item is gone does nothing").toBe(null);
 });
