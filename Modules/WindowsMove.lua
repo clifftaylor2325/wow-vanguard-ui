@@ -136,8 +136,8 @@ local function layoutOf(frame, name)
   if listed or frame:GetAttribute("UIPanelLayout-defined") ~= nil then return "UpdateUIPanelPositions" end
 end
 
--- Puts one window where the game would have it: one the game lays out adds that call to `calls` while it is
--- shown (a hidden one is placed when it next opens); any other goes back to its home points.
+-- Puts one dragged window where the game would have it: one the game lays out adds that call to `calls` while
+-- it is shown (a hidden one is placed when it next opens); any other goes back to its home points.
 local function putHome(name, calls)
   local frame = _G[name]
   if type(frame) ~= "table" or not vgMovable[frame] then return end
@@ -146,20 +146,24 @@ local function putHome(name, calls)
   if frame:IsShown() then calls[layout] = true end
 end
 
--- Forgets every saved place and puts each window back where the game puts it, each layout call made once.
-local function resetAll()
-  local moved, calls = GW.Moved(), {}
-  for key in pairs(moved) do moved[key] = nil end
-  for _, name in ipairs(names()) do putHome(name, calls) end
+-- Puts the named windows where the game puts them, each layout call made once.
+local function putAllHome(dragged)
+  local calls = {}
+  for _, name in ipairs(dragged) do putHome(name, calls) end
   for fn in pairs(calls) do
     if type(_G[fn]) == "function" then _G[fn]() end
   end
 end
 
--- Puts every moved window back where the game puts it, now or, in a fight, once it ends (laying the game's
--- windows out is not allowed in one).
+-- Forgets every saved place at once (the options window's too) and puts each dragged window back where the game
+-- puts it, now or, in a fight, once it ends (laying the game's windows out is not allowed in one). Returns how
+-- many places it forgot.
 function GW.ResetMoves()
-  ns.OutOfCombat(resetAll, "reset moves")
+  local moved, dragged = GW.Moved(), {}
+  for key in pairs(moved) do dragged[#dragged + 1] = key end
+  for _, key in ipairs(dragged) do moved[key] = nil end
+  ns.OutOfCombat(function() putAllHome(dragged) end)
+  return #dragged
 end
 
 -- Dragging ------------------------------------------------------------------------------------------
@@ -301,7 +305,7 @@ local function setUp(name, withHandle)
   local frame = _G[name]
   if type(frame) ~= "table" or type(frame.HookScript) ~= "function" or vgMovable[frame] then return end
   vgMovable[frame] = true
-  recordHome(frame)
+  if not layoutOf(frame, name) then recordHome(frame) end
   ns.OutOfCombat(function() makeMovable(frame, name, withHandle) end, "move setup " .. name)
   frame:HookScript("OnShow", function() place(name) end)
 end

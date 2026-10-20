@@ -339,10 +339,22 @@ it("H-04 Reset in a fight waits until it ends, says so, and then puts everything
   addon.clearChat();
   clickReset(addon);
   expect(chatHas(addon, /Moved windows go back once the fight ends\./), "it says when").toBe(true);
-  expect([saved(addon).CharacterFrame, corner(addon, "CharacterFrame")], "nothing moved or forgotten in the fight").toEqual([{ x: 500, y: 700 }, [500, 700]]);
+  expect([saved(addon), corner(addon, "CharacterFrame")], "places forgotten, but nothing moved in the fight").toEqual([{}, [500, 700]]);
+  addon.clearChat();
+  clickReset(addon);
+  expect(chatHas(addon, /Moved windows go back/), "a second click with nothing left to forget says nothing").toBe(false);
   setCombat(addon, false);
   expect([saved(addon), corner(addon, "CharacterFrame"), corner(addon, "OpenMailFrame")], "after it, all back").toEqual([{}, [16, 964], [400, 964]]);
   expect(errors(addon)).toBe("none");
+});
+
+it("H-04 Reset moves only the windows that were dragged: one the game or another addon moved since stays put", () => {
+  const addon = loggedIn(RESET_ENV + CLICK_LUA);
+  addon.eval("CalendarFrame:Show() __open(CharacterFrame)");
+  drag(addon, "CharacterFrame", 500, 700);
+  addon.eval("CalendarFrame:ClearAllPoints() CalendarFrame:SetPoint('TOPLEFT', UIParent, 'BOTTOMLEFT', 700, 400)");
+  clickReset(addon);
+  expect([corner(addon, "CharacterFrame"), corner(addon, "CalendarFrame")], "the pane back, the calendar left where it was put").toEqual([[16, 964], [700, 400]]);
 });
 
 it("H-05 the clock, chat channels, game settings, chat settings and guild control windows can be dragged too", () => {
