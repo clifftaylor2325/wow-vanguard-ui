@@ -123,7 +123,7 @@ function QA.Pick()
   if old and QA.current and old ~= QA.current and finished(old) and not ns.InCombat() then ns.Chat("Arrow: " .. titleOf(QA.current) .. ".") end
   paintPick(QA.frame)
   QA.Draw()
-  if old ~= QA.current then ns.QuestGuide.StepsChanged() end
+  if old ~= QA.current then ns.GetModule("QuestTracker").Redraw() end
 end
 
 -- Turning and distance -----------------------------------------------------------------------------
@@ -291,12 +291,18 @@ local function setting(key, after)
     function(v) ns.Settings("QuestArrow", QA.defaults)[key] = v if QA.settings then after() end end, QA.defaults[key]
 end
 
+-- Shows or hides the arrow, and the tracker's mark on its pick with it.
+local function showChanged()
+  QA.Draw()
+  ns.GetModule("QuestTracker").Redraw()
+end
+
 -- The arrow's card on the Quests page.
 function QA.Rows()
   return {
     { "header", "Quest arrow" },
     { "text", "An arrow on screen that turns toward the nearest unfinished objective of the quests you watch. Move it with /vg unlock; Shift-click a quest in the tracker to pin the arrow to it." },
-    { "check", "Show the quest arrow", setting("show", QA.Draw) },
+    { "check", "Show the quest arrow", setting("show", showChanged) },
     { "check", "Follow the nearest quest (off: only the one you pinned)", setting("auto", QA.Pick) },
   }
 end

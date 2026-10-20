@@ -230,4 +230,9 @@ it("quest arrow: the tracker draws an accent line down the left edge of the ques
   addon.eval("C_QuestLog.GetDistanceSqToQuest = function(id) return id == 90061 and 10000 or 4000 end ns.QuestArrow.Pick()");
   addon.update(0);
   expect(edges(addon), "the arrow moved on: so does the line").toEqual(["[8] TEST-ONLY Far"]);
+  addon.eval("for _, r in ipairs(ns.QuestArrow.Rows()) do if r[2] == 'Show the quest arrow' then r[4](false) end end");
+  addon.update(0);
+  expect(edges(addon), "with the arrow hidden (its switch) its pick marks nothing").toEqual({});
+  addon.eval("ns.QuestGuide.pointed = 90061 ns.GetModule('QuestTracker').Refresh()");
+  expect(edges(addon), "the quest you Shift-clicked has it, as its step line does").toEqual(["[8] TEST-ONLY Near"]);
 });

@@ -17,7 +17,7 @@ local QT = ns.GetModule("QuestTracker")
 QT.HEADER, QT.TITLE, QT.LINE, QT.GAP, QT.ITEM, QT.MAX_ITEMS, QT.RANGE_EVERY = 22, 16, 14, 6, 22, 8, 0.25
 -- A finished objective's check mark (square), and the followed quest's accent line down its block's left edge:
 -- its width and how far left of the block it sits (clear of the quest item button beside the block).
-QT.MARK, QT.EDGE, QT.EDGE_X = 10, 2, 2
+QT.MARK, QT.EDGE, QT.EDGE_X = 10, 2, 1
 QT.items, QT.shown = {}, {}
 
 -- Building -------------------------------------------------------------------------------------
@@ -218,7 +218,7 @@ end
 -- Fills one line from its spec: the text after the check when done, and the count (if any) in the same color.
 local function paintLine(row, spec)
   row.text:SetPoint("LEFT", row, "LEFT", spec.done and QT.MARK + T.SPACE.tight or 0, 0)
-  row.mark:SetShown(spec.done == true)
+  row.mark:SetShown(spec.done)
   T.Color(row.text, spec[2]):SetText(spec[1])
   T.Color(row.count, spec[2]):SetText(spec.count or "")
   row:Show()
@@ -251,11 +251,12 @@ local function paintTitle(b, q)
   T.Color(b.title, QP.LevelColor(q.level))
 end
 
--- Whether a row is the quest the arrow follows (else the one Quest guidance follows): a quest, not a heading,
--- a challenge or a recipe.
+-- Whether a row is the followed quest: the one you Shift-clicked or the game tracks (Quest guidance, the quest
+-- with the step line), else the shown arrow's own pick; a quest, not a heading, a challenge or a recipe.
 function QT.IsFollowed(q)
   if q.section or q.achievement or q.recipe or not q.id then return false end
-  return q.id == (ns.QuestArrow.current or ns.QuestGuide.Followed())
+  local QA = ns.QuestArrow
+  return q.id == (ns.QuestGuide.Followed() or (QA.settings and QA.settings.show and QA.current))
 end
 
 -- A section heading takes no mouse (no clicks, no tooltip, no hover). A block repainted under the mouse keeps
@@ -267,8 +268,8 @@ local function followMouse(b, q)
   if q.section or ns.InCombat() then hideTooltip() else QT.TitleTooltip(b) end
 end
 
--- Fills a block: its title, then its lines (a section heading is its name alone); the quest the arrow follows
--- (else the one Quest guidance follows) has the accent line down its left edge.
+-- Fills a block: its title, then its lines (a section heading is its name alone); the followed quest has the
+-- accent line down its left edge.
 function QT.PaintBlock(b, q)
   b.id, b.achievement, b.recipe, b.row = q.id, q.achievement, q.recipe, q
   b.edge:SetShown(QT.IsFollowed(q))
@@ -279,6 +280,11 @@ function QT.PaintBlock(b, q)
   end
   b:SetHeight(QT.BlockHeight(q))
   b:Show()
+end
+
+-- Redraws the tracker soon, if it shows: the guide's steps or the followed quest changed.
+function QT.Redraw()
+  if QT.frame then ns.Soon("questtracker", QT.Refresh) end
 end
 
 -- What the foot of the tracker keeps free under the quests: the "+N more" line, and the level XP line when it shows.
