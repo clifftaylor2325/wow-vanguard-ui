@@ -110,6 +110,23 @@ end
 world.viaGlobal = viaGlobal
 
 C_CVar = { GetCVar = viaGlobal("GetCVar"), SetCVar = viaGlobal("SetCVar"), GetCVarBool = viaGlobal("GetCVarBool") }
+-- Bitfield CVars (CVarDocumentation.lua): world.cvarBits[name][index] by lua index, as the
+-- client keeps them packed in the CVar's string. nil for a CVar the client lacks.
+world.cvarBits = { nameplateInfoDisplay = {} }
+-- The bitfield functions, kept here too for a test whose own C_CVar replaces the table.
+world.cvarBitfield = {
+  -- One bit of a bitfield CVar, or nil when the client lacks the CVar.
+  GetCVarBitfield = function(name, index)
+    local bits = world.cvarBits[name]
+    if bits then return bits[index] == true end
+  end,
+  -- Sets one bit of a bitfield CVar (the client fires CVAR_UPDATE; tests fire it themselves).
+  SetCVarBitfield = function(name, index, value)
+    world.cvarBits[name] = world.cvarBits[name] or {}
+    world.cvarBits[name][index] = value == true
+  end,
+}
+C_CVar.GetCVarBitfield, C_CVar.SetCVarBitfield = world.cvarBitfield.GetCVarBitfield, world.cvarBitfield.SetCVarBitfield
 
 -- Sounds are recorded, not played.
 function PlaySound(id) world.sounds[#world.sounds + 1] = id end
@@ -120,13 +137,15 @@ function ReloadUI() world.reloads = world.reloads + 1 end
 
 -- Addon metadata comes from the TOC the harness read.
 world.addons = { Vanguard = { Version = "0.3.0", Title = "Vanguard" } }
+-- The addons the client says are loaded: Vanguard, and any a test adds (world.loaded.Bagnon = true).
+world.loaded = { Vanguard = true }
 -- A TOC field of an addon.
 function GetAddOnMetadata(name, field) return (world.addons[name] or {})[field] end
 C_AddOns = {
   GetAddOnMetadata = viaGlobal("GetAddOnMetadata"),
   -- Loading a Blizzard addon: true for the ones the world lists as loadable.
   LoadAddOn = function(name) return world.loadable and world.loadable[name] == true, nil end,
-  IsAddOnLoaded = function(name) return name == "Vanguard" end,
+  IsAddOnLoaded = function(name) return world.loaded[name] == true end,
 }
 
 -- The panel manager's windows (Blizzard_UIParentPanelManager, UIPanelWindows.lua): name -> its layout
@@ -159,6 +178,7 @@ Enum = {
   CustomAuraButtonDispelTypeTextureStyle = { PreserveAsset = 0, Flat = 1 },
   DurationTextBindingProperty = { RemainingDuration = 0, TotalDuration = 1 },
   LuaCurveType = { Linear = 0, Step = 1 },
+  NamePlateInfoDisplay = { None = 0, CurrentHealthPercent = 1, CurrentHealthValue = 2, RarityIcon = 3 },
   NumericRuleFormatRounding = { Down = 0, Up = 1, Nearest = 2 },
   PlayerSwingType = { MainHand = 0, OffHand = 1, Ranged = 2 },
   SpellBookSpellBank = { Player = 0, Pet = 1 },
@@ -215,6 +235,8 @@ world.popups = {}
 -- (wow-taint.lua adds the panel manager's combat refusal).
 function StaticPopup_Show(name, ...) world.popups[name] = { ... } return world.popups[name] end
 function StaticPopup_Hide(name) world.popups[name] = nil end
+-- A prompt frame of its own shown as a popup (the role check, a queue): Blizzard_StaticPopup/StaticPopup.lua.
+function StaticPopupSpecial_Show(frame) frame:Show() end
 function ShowUIPanel(frame) if frame and frame.Show and not frame:IsShown() then frame:Show() end end
 function HideUIPanel(frame) if frame and frame.Hide then frame:Hide() end end
 
@@ -1245,6 +1267,8 @@ function BuyTrainerService(i) world.trained = world.trained or {} table.insert(w
 
 world.quests = {}
 world.npc = nil
+-- world.questFacts: { [questID] = { done, repeatable, level } } for the C_QuestLog reads of quests by id.
+world.questFacts = {}
 
 -- The log entry at an index.
 local function questAt(i) return world.quests[i] end
@@ -1291,6 +1315,11 @@ C_QuestLog = {
   GetQuestRewardSpells = function() return {} end,
   GetQuestRewardSpellInfo = function() return nil end,
   GetMaxNumQuestsCanAccept = function() return 25 end,
+  -- QuestLogDocumentation.lua: what the client knows of any quest, in or out of the log, from
+  -- world.questFacts[id] = { done, repeatable, level } (done: this character finished it).
+  IsQuestFlaggedCompleted = function(id) return (world.questFacts[id] or {}).done == true end,
+  IsRepeatableQuest = function(id) return (world.questFacts[id] or {}).repeatable == true end,
+  GetQuestDifficultyLevel = function(id) return (world.questFacts[id] or {}).level or 0 end,
 }
 -- A unit's tooltip data (TooltipInfoDocumentation.lua, GetUnit): its `tooltipLines`, each { type, leftText }
 -- with a type from Enum.TooltipDataLineType; nothing for a unit that does not exist.

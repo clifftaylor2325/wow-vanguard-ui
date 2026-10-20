@@ -134,9 +134,11 @@ local function titleText(f, text)
 end
 
 -- Puts text in the text dialog's box and shows its start (the thumb follows the new height as the client grows it).
+-- The errors window's Clear goes, so a window opened over it shows only its own buttons.
 local function boxText(f, text)
   f.edit:SetText(text)
   f.view:ScrollTo(0)
+  if f.clear then f.clear:Hide() end
 end
 
 -- The text dialog's buttons: the primary at the bottom right and, left of it, the one that closes the box.
@@ -148,6 +150,13 @@ local function addTextButtons(f)
   f.close:SetScript("OnClick", ns.Guard("click close text box", function() f:Hide() end))
 end
 
+-- The text dialog's buttons in Tab order (the errors window's Clear once it exists; hidden ones are skipped).
+local function textButtons()
+  local list = { box.primary, box.close }
+  if box.clear then list[#list + 1] = box.clear end
+  return list
+end
+
 -- Builds the text dialog once: title, text area, the primary (accent) button and the one that
 -- dismisses it, which reads Cancel beside the primary and Close when the box only shows text.
 local function textBox()
@@ -156,7 +165,7 @@ local function textBox()
   addEditBox(box)
   limitTitle(box)
   addTextButtons(box)
-  ns.TabFocus(box, function() return { box.primary, box.close } end)
+  ns.TabFocus(box, textButtons)
   return box
 end
 
@@ -181,6 +190,28 @@ function ns.ShowText(title, text)
   f:Show()
   f.edit:SetFocus()
   f.edit:HighlightText()
+end
+
+-- The errors window's Clear button, left of Close, made the first time; it hides with the box and when another
+-- text fills it, so only ns.ShowErrors shows it.
+local function clearButton(f)
+  if f.clear then return f.clear end
+  f.clear = button(f, "Clear")
+  f.clear:SetPoint("RIGHT", f.close, "LEFT", -T.SPACE.gap, 0)
+  f.clear:SetScript("OnClick", ns.Guard("click clear errors", function() ns.ClearErrors() f:Hide() ns.Chat("Errors cleared.") end))
+  f:HookScript("OnHide", ns.Guard("hide errors clear", function() f.clear:Hide() end))
+  return f.clear
+end
+
+-- Shows the errors Vanguard caught, selected for copying, with Report a bug (the feedback form on a bug, which
+-- attaches the report) and Clear (empties the list) beside Close.
+function ns.ShowErrors(title, text)
+  ns.ShowText(title, text)
+  local f = box
+  f.primary.text:SetText("Report a bug")
+  f.primary:SetScript("OnClick", ns.Guard("click report a bug", function() f:Hide() ns.Feedback.Open("bug") end))
+  f.primary:Show()
+  clearButton(f):Show()
 end
 
 -- Shows text selected for copying, as ns.ShowText, with the cursor at its end so the box opens on its last line

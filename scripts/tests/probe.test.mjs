@@ -172,6 +172,7 @@ const QUEST_ENV = `
   C_QuestLog.GetRequiredMoney = function(id) return id == 90062 and 500 or 0 end
   C_QuestLog.GetSuggestedGroupSize = function() return 3 end
   C_QuestLog.IsFailed = function() return false end
+  C_QuestLog.IsRepeatableQuest = nil -- a read this client lacks
 `;
 it("/vg probe: the quest reads ask about a done quest and the selected one, and say which", () => {
   const addon = loggedIn(PROBE_ENV + QUEST_ENV);

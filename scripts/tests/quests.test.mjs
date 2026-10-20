@@ -966,13 +966,13 @@ it("windows are opaque: game windows, the quest log and the options window (unde
   addon.eval("MerchantFrame:Show()");
   addon.slash("quests");
   addon.slash("");
-  addon.eval('ns.Options.Show("situations")');
+  addon.eval('ns.Options.Show("feedback")');
   const opaque = ["MerchantFrame", "Vanguard_QuestLog", "Vanguard_Options"].map((name) => fillAlpha(addon, name));
   expect(opaque, "a skinned game window, the quest log and the options window: no world shows through").toEqual([1, 1, 1]);
   const page = addon.eval(`local f, child = Vanguard_Options, nil
     for _, w in ipairs(__wfgStub.frames) do if w.__kind == "ScrollFrame" and w:IsVisible() and w:GetParent() == f then child = w.child end end
     return { child:GetBottom() > f:GetBottom(), f:GetHeight() == ns.Theme.PixelRound(f, 600, true) }`);
-  expect(page, "the Situations page ends above the window's foot; the opaque fill covers the window (600 tall, pixel-rounded) to its edges").toEqual([true, true]);
+  expect(page, "the Feedback page ends above the window's foot; the opaque fill covers the window (600 tall, pixel-rounded) to its edges").toEqual([true, true]);
   expect(fillAlpha(addon, "GameTooltip"), "tooltips keep the theme's panel opacity").toBe(addon.eval("return select(4, ns.Theme.RGB('panel'))"));
 });
 it("quest log: the game's quest log button opens Vanguard's log instead of the game's", () => {
@@ -1636,4 +1636,34 @@ it("quest tracker: a failed quest reads Failed in the bad colour in place of its
   const t = tracker(addon);
   expect([t.blocks[0][1], t.blocks[2][1]]).toEqual([["Failed"], ["TEST-ONLY Stone 0/1"]]);
   expect(isTok(addon, addon.eval("return Vanguard_QuestTrackerFrame.blocks[1].lines[1].text.__textColor"), "bad")).toBe(true);
+});
+
+it("quest history: a quest the client flags as done on this character, with no turn-in remembered, reads Done on this character", () => {
+  const addon = loggedIn("__wfgWorld.questFacts[90081] = { done = true } __wfgWorld.questFacts[90082] = { done = __wfgWorld.secret() }");
+  // Quest history's line for a quest id.
+  const line = (id) => addon.eval(`return ns.GetModule('QuestHistory').Line(${id})`);
+  expect([line(90081), line(90082), line(90083)], "flagged; hidden; not done").toEqual(["Done on this character", null, null]);
+  addon.eval("ns.GetModule('QuestHistory').settings.track = false");
+  expect(line(90081), "history off: no line").toBe(null);
+});
+
+it("quest history: the Quest history card's button lists the latest turn-ins in chat", () => {
+  const addon = loggedIn("");
+  addon.eval(`for _, p in ipairs(ns.Options.PAGES) do
+      if p.key == "quests" then for _, r in ipairs(p.rows()) do if r[2] == "List latest turn-ins" then r[3]() end end end
+    end`);
+  expect(chatHas(addon, /No turn-ins remembered yet\./)).toBe(true);
+});
+
+it("quest history: the List latest turn-ins button is greyed while quest history is off", () => {
+  const addon = loggedIn("");
+  // Whether the button row says it is enabled.
+  const enabled = () => addon.eval(`for _, p in ipairs(ns.Options.PAGES) do
+      if p.key == "quests" then for _, r in ipairs(p.rows()) do if r[2] == "List latest turn-ins" then return r[4]() end end end
+    end`);
+  expect(enabled(), "on by default").toBe(true);
+  addon.eval("ns.GetModule('QuestHistory').settings.track = false");
+  expect(enabled(), "its switch off").toBe(false);
+  addon.eval("ns.GetModule('QuestHistory').settings = nil");
+  expect(enabled(), "its module off").toBe(false);
 });

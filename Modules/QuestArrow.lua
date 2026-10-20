@@ -297,16 +297,13 @@ local function showChanged()
   ns.GetModule("QuestTracker").Redraw()
 end
 
--- The arrow's card on the Quests page.
+-- The arrow's rows on the Quests page's "Finding your way" card (Core/OptionsQuests.lua places them).
 function QA.Rows()
   return {
-    { "header", "Quest arrow" },
-    { "text", "An arrow on screen that turns toward the nearest unfinished objective of the quests you watch. Move it with /vg unlock; Shift-click a quest in the tracker to pin the arrow to it." },
     { "check", "Show the quest arrow", setting("show", showChanged) },
     { "check", "Follow the nearest quest (off: only the one you pinned)", setting("auto", QA.Pick) },
   }
 end
-ns.Options.AddRows("quests", QA.Rows)
 
 -- Module entry point (Core/Modules.lua): the frame, a pick whenever the log or the zone changes, a pick
 -- each second as you move, and the redraw of the turn a few times a second.

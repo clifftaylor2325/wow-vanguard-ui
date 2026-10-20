@@ -153,6 +153,12 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Expect: with Record for at Off the button is greyed out and a click does nothing (no chat line). While recording it is bright and a click saves (`Solo: ... saved.` in chat), Record for goes back to Off and the button greys out again.
 - If it fails, paste: a screenshot of the page, the chat lines and `/vg errors`.
 
+### 2.1e Situations: Your situations
+
+- Do: on the Situations page, record an override for Party (Record for: Party, move one frame, Stop recording and save) and one for the situation you're in. Look at **Your situations**, then click **Clear Party**, then clear the other one.
+- Expect: the card lists each situation with what its override changes, "(now)" on the one you're in; Clear Party removes that row and says `Cleared the overrides for Party.`; with both gone the card reads "No overrides yet. Pick Record for to make one." While frames are unlocked the Clear buttons are greyed. [Needs in game.]
+- If it fails, paste: a screenshot of the page and `/vg errors`.
+
 ### 2.1b Windows are opaque
 
 - Do: stand where the world behind is bright (snow, sky, a lit city). Type `/vg` and open Situations and Talents (short pages); then open a merchant, your character pane and the quest log (L).
@@ -209,6 +215,12 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Do: out of combat, open the merchant (or your character pane), start dragging it by its title bar, and without letting go press Escape (or walk out of range). Let go, open it again, drag it somewhere else, then close it and open it again.
 - Expect: the window is gone while you drag, nothing sticks to the mouse, and the next time it opens it is where it was let go; after the second drag it comes back at the new spot every time, also after another window opens and shuffles the panels. `/vg errors` is empty. [Needs in-game check: whether the client sends the drag's end to a drag area that is hidden mid-drag; Vanguard now ends the drag itself when the window hides.]
 - If it fails, paste: which window, where it came back, and `/vg errors`.
+
+### 3.2b Move frames from the options, and back
+
+- Do: `/vg` → General → **Move frames**. Read the bar at the top, move a frame, click **Save and lock**. Again **Move frames**, then **Exit without saving**. Again **Move frames**, then `/vg lock`.
+- Expect: the bar's note reads in full ("Drag to move · right-click for anchor, scale, opacity · arrows nudge (Shift ×10)") with nothing over the buttons at your resolution; Save and lock and Exit without saving each lock and open `/vg` again on General; `/vg lock` just locks. [Needs in game: the bar's width at your resolution.]
+- If it fails, paste: a screenshot of the bar and `/vg errors`.
 
 ### 3.3 Combat while unlocked
 
@@ -434,6 +446,12 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Expect: one dark panel with rounded corners and an accent-coloured border runs from your player frame's left end to your target frame's right end, behind the cast bar, swing timer and cooldown icons between them (all still visible over it); the Vanguard crest sits centred on the panel's top edge; your target's health and power bars fill from the right. The player and target frames have rounded corners too, with no bar colour showing past the curve (no cut corners anywhere on the deck); switching the deck off gives them their cut shield corners back. With Calm HUD on, the panel dims with the frames. Switching it off removes the panel and the target's bars fill from the left again, at once. In setup, Versus deck turns it on with your role's layout (a healer gets the healing layout and click casting); picking another layout turns it off. No error.
 - If it fails, paste: a screenshot of the bottom centre and `/vg errors`.
 
+### 7.2b1 Pet cast bar
+
+- Do: as a warlock with the Imp out (or any pet that casts), let it cast Firebolt at a mob. Dismiss the pet and summon another. Then `/vg unlock` and look for the pet cast bar's handle.
+- Expect: a small cast bar just left of the pet frame (between the combo points' spot and the focus's debuffs) fills with each of the pet's casts, with the spell's name and icon and no interrupt diamond, and goes when the cast ends or the pet goes; in unlock mode it has its own handle, "Pet cast bar". No error.
+- If it fails, paste: a screenshot during a pet cast and `/vg errors`.
+
 ### 7.2c Cursor ring
 
 - Do: `/vg` → Unit frames, tick **Ring at the cursor: the global cooldown and your cast** (nothing needs a reload). Move the mouse around, then cast an instant spell, then a spell with a long cast time, then a channel, and click and hover things under the ring (a button, a unit frame, a world object). Untick the switch.
@@ -512,6 +530,12 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Expect: hostile creatures in range have a Vanguard plate at the first login without pressing anything. `/vg plates` gives plates drawn, how many are attackable, and Enemy on. Each switch hides and shows that kind of plate, and the Enemy switch follows V. After the reload Vanguard does not turn enemy plates back on. [Needs in game: that nameplateShowEnemies, nameplateShowFriendlyPlayers and nameplateShowFriendlyNPCs are the Forever 16001 CVar names (nameplateShowFriends is not: GetCVar gives nil) and that the client keeps them after a reload.]
 - If it fails, paste: the `/vg plates` line, a screenshot, and `/vg errors`.
 
+### 7.5a Health numbers on enemy plates
+
+- Do: stand near hostile mobs and a friendly NPC with plates on. Open the game's options → Nameplates → Info display and tick Current health percent; look at the plates. Tick Current health value too, then untick the percent. Open `/vg` → Nameplates and untick "Health value on enemy plates". Tick "Health percent on enemy plates" during a fight and watch the plates when it ends. Set Height to 8 on the same page and `/reload`.
+- Expect: each box shows its number at the right end of every enemy plate's bar, small and outlined (the value left of the percent when both are on), following the mob's health as you hit it; the friendly NPC's plate shows none. Vanguard's two rows tick and untick with the game's boxes, and the game's boxes follow Vanguard's rows; a row ticked in a fight takes effect when it ends. At height 8 no numbers show. [Needs in game: that the percent reads right on a mob whose health the client hides (it formats the hidden number, which the harness can't), that `CVAR_UPDATE` fires when the game's box changes so the plates follow at once, and how the numbers fit a 10-high bar.]
+- If it fails, paste: a screenshot of a plate and `/vg errors`.
+
 ### 7.6 Fight recap
 
 - Do: under Combat tools tick "Recap in chat after each fight". Fight a mob for a few seconds (in a group, interrupt or dispel something if you can). Type `/vg recap`, then `/vg recap party` in a group. In the fight's first seconds type `/vg recap`. Then type `/run for _, k in ipairs({"Interrupts","Dispels","DamageTaken","Deaths","AvoidableDamageTaken"}) do print(k, Enum.DamageMeterType[k]) end` and paste what it prints.
@@ -576,6 +600,7 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 
 - Do: turn in a quest on one character, then log in on another character on the same account and talk to a quest giver offering that quest (or open it in the quest log if you have it). Type `/vg quests history` and `/vg quests history 3`. Under `/vg` → Quests, switch off "Remember which character finished each quest" and turn in another quest.
 - Expect: in Vanguard's quest dialog on the quest's details page, a muted line under the text and objectives, `Done on Name-Realm · today` (then `yesterday`, `3 days ago`; a quest turned in during the evening still says `today` until your computer's midnight, even past midnight UTC); the same line under the objectives in the quest log. For a repeatable quest turned in on the same character, `Done on this character`. `/vg quests history` prints `Latest N quest turn-in(s), of M remembered:` and a line per quest, `Title · Name-Realm · today`, newest first, at most the number you gave (25 at most). Switched off, the lines are gone, nothing new is remembered and the command says `Quest history is off (/vg > Quests).` [Needs in game: that `QUEST_TURNED_IN` fires on Forever with the quest's id first, that a quest's title is still known to `C_QuestLog.GetTitleForQuestID` after it is turned in (else the list reads `Quest 12345`), and how the muted line reads under a long quest text.]
+- Also expect (quests done before Vanguard, and the button): on a character that finished a quest before Vanguard was installed, if the game offers it again (a repeatable one, say), its details read `Done on this character`; say if you never see a quest the game offers again. Under `/vg` → Quests → Quest history, press `List latest turn-ins`: chat prints the same list as `/vg quests history`; switch history off and the button greys. [Needs in game: that `C_QuestLog.IsQuestFlaggedCompleted` is true there, and whether a repeatable quest stays flagged after its reset.]
 - If it fails, paste: a screenshot and `/vg errors`.
 
 ### 8.4 Quest tracker overflow
@@ -619,6 +644,18 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Do: while levelling, watch a faction (Escape → Reputation → Show as experience bar). In `/vg` → Bars and bags set Numbers to "always" (it needs a reload). Look at the two bars at the bottom, then set Text size under General to 130% and look again.
 - Expect: the XP numbers at the left end of the XP bar and the reputation numbers at the right end of the bar above it, both readable, not on top of each other, at both text sizes. [Needs in-game check: how far apart the two lines sit at 100% depends on the font's real line height.]
 - If it fails, paste: a screenshot of the two bars.
+
+### 8.5b Reputation bar tooltip and click
+
+- Do: watch a faction and hover the reputation bar; click it; close the character window, start a fight (a training dummy) and click the bar again. If a character has a faction at Exalted, watch that one.
+- Expect: the bar's numbers start with the standing (for example "Darnassus  Friendly  1.2K / 6.0K (20%)"); the tooltip shows the faction, Standing, "To Honored" with what is left, how far through and "Click: the reputation list"; the click opens the character window on its Reputation tab; in the fight nothing opens and chat says to try after it. An Exalted faction shows a full bar reading "Name  Exalted" with no numbers, and its tooltip only the standing.
+- If it fails, paste: a screenshot of the tooltip, `/vg probe`'s `watched faction:` line and `/vg errors`.
+
+### 8.5c Reputation bar at the level cap
+
+- Do: on a character at the level cap (or with the XP bar turned off under Modules → XP and reputation), watch a faction and look at the bottom of the screen. If you can, ding the cap with a faction watched.
+- Expect: the reputation bar sits just above the screen's bottom edge, in the XP bar's spot, with no empty gap under it; at the ding it moves down (after the fight, if you ding in one). A reputation bar you dragged in `/vg unlock` stays where you put it.
+- If it fails, paste: a screenshot of the bottom of the screen.
 
 ### 8.6 Quiet the game
 
@@ -842,6 +879,18 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Expect: the screen dims to a card with your name in your class colour, level and class, the zone, time away, the clock and an XP bar, and under the card your faction's passage (Varian's letter for Alliance, the Blood Oath for Horde; in Cinzel or Metamorphous with the faction look on Crest and heading font, otherwise in Fira Sans) in the crest colour; moving removes it; a click or key removes it until you are next away; it never shows in combat.
 - If it fails, paste: a screenshot and `/vg errors`.
 
+### 11.1a AFK card gives way to what needs you
+
+- Do: in a group, type `/afk` and have someone start a ready check; type `/afk` twice again and have someone invite you to a group (or trade you). Then `/afk` while casting Hearthstone, and `/afk` inside a dungeon.
+- Expect: the ready check and the invite each put the card away at once, and your first click lands on the prompt's button. While you cast, the card doesn't show; about 30 seconds later, if you're still away, it does. Inside the dungeon it never shows. [Needs in game.]
+- If it fails, paste: which prompt, a screenshot and `/vg errors`.
+
+### 11.1b Errors window buttons
+
+- Do: with an error caught (or after `/vg errors` shows at least one), open `/vg errors`; click **Report a bug**. Open `/vg errors` again and click **Clear**.
+- Expect: Report a bug closes the errors window and opens the feedback form on Bug with the report attached; Clear closes the window, chat says "Errors cleared.", the addons button's count goes, and `/vg errors` then says none were caught. Other copy windows (export, report) show Close only. [Needs in game.]
+- If it fails, paste: a screenshot of the window and `/vg errors`.
+
 ## 12. Game menu
 
 ### 12.1 The Vanguard button
@@ -881,6 +930,24 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Do: in the game's clock window untick 24-hour mode; under `/vg` → General set Text size to 130 %; with an addon that shares broker feeds, pick two feeds under Map → Data from other addons. Then set Text size back to 100 %.
 - Expect: at 130 % the info strip is wider and its rows taller; no block's text runs into its neighbour (the 12-hour time, the date and the calendar button share their row), and nothing spills past the strip's edge. The broker strip is taller, its icons larger, each slot as wide as its text; a feed's tooltip opens below the strip at the top of the screen (move the strip near the bottom with `/vg unlock`: it opens above). The quest tracker starts just under the info strip's last row, clear of it. Back at 100 % both strips return to their usual size (a broker slot widened at 130 % narrows again) and the tracker moves back up.
 - If it fails, paste: a screenshot of both strips at 130 %, and `/vg errors`.
+
+### 13.2c Session rates through a reload
+
+- Do: while levelling, kill a few mobs until the strip shows XP per hour; note it, type `/reload`; then log out to the character list and back in.
+- Expect: after the reload the XP per hour, time to level and gold per hour show again at once, near the same figures; after logging back in they start again (hidden for the first minute).
+- If it fails, paste: the figures before and after, and `/vg errors`.
+
+### 13.2d Info strip tooltips
+
+- Do: with some gear worn down, a soul bag or quiver if you have one, and some gold earned and spent since logging in, hover each number on the info strip under the minimap. Hover fps and latency once in a fight too.
+- Expect: durability lists each item under 100 % (for example "Chest 23%"), most worn first; the free count lists each bag's slots used of its total, a soul bag or quiver named; gold shows earned and spent this session; fps and latency shows home and world latency and Vanguard's memory (in a fight, no memory line); the XP and gold rates and time to level show the session's length, XP gained and gold; your DPS (if switched on) shows the last fight's length. Each tooltip goes when the mouse leaves.
+- If it fails, paste: a screenshot of the tooltip, and `/vg errors`.
+
+### 13.2e Info strip clicks
+
+- Do: out of a fight, click the info strip's durability, then its free count, then its gold. Right-click the XP per hour. Then open your bags from the strip's free count, start a fight (a training dummy) and drink a potion or use a bag item in it. In the fight, click the free count once more.
+- Expect: durability opens the character window; the free count and gold each open (and, clicked again, close) your bags; the right-click hides the rates and they come back about a minute later counting from then. Using the item in the fight works, with no "Interface action failed because of an AddOn" line and no blocked-action error. The click in the fight opens nothing and chat says `The bag window doesn't open from Vanguard in a fight. Try again after it.`; the free count's tooltip then ends with "(after the fight)". If the item use shows a blocked message, the bag clicks are to be dropped: say so.
+- If it fails, paste: a screenshot, and `/vg errors`.
 
 ### 13.3 Move the strips
 
@@ -1606,6 +1673,12 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 - Also, if EllesmereUI is on Forever: run `/dump C_AddOns.GetNumAddOns()` and list its folders (`/dump C_AddOns.GetAddOnInfo(i)` for each) and paste the ones starting with Ellesmere. Vanguard looks for `EllesmereUIUnitFrames`, `EllesmereUIActionBars`, `EllesmereUINameplates` and `EllesmereUIRaidFrames` (retail names, unconfirmed on Forever); a different name is a finding.
 - If it fails, paste: the folder name, a screenshot of the Modules page and `/vg errors`.
 
+### 18.1a Other addons you pair with Vanguard
+
+- Do: install one Forever add-on people pair with Vanguard (Platynator or BlizzMove is enough; Aurora or Forevermore Classic UI if you have a window skinner) and log in. Open `/vg` → Modules, click **Turn off …** on its row, take the reload, then open Modules again and click **Turn … back on**.
+- Expect: the card's button names what it turns off (**Turn off Nameplates** for Platynator; **Turn off Vanguard's window moving** for BlizzMove, **Turn off Vanguard's window looks** for a skinner); the reload comes up; after it the card still shows the addon with **Turn … back on**, and that button puts it back (with another reload). With a window skinner, after the reload only one skin shows on the character window, popups and menus, and the windows still drag and show durability. With BlizzMove, only BlizzMove moves windows (no snap-back). `/dump C_AddOns.IsAddOnLoaded("<folder>")` prints true for the folder name Vanguard looks for; false is a finding. [Needs in game.]
+- If it fails, paste: the addon's folder name, a screenshot of the Modules page before and after the reload, and `/vg errors`.
+
 ### 18.2 Group board
 
 - Do: in a capital city, type `/vg lfg` and leave it open for a few minutes while people post in Trade and LookingForGroup. Hover a row, then click one. Do not press Enter unless you want to send it. Then click the filter button twice and switch **Only dungeons for my level** off and on. Finally post `LFM SFK need heals` yourself in a channel.
@@ -1615,8 +1688,10 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 
 ### 18.3 Quest guidance
 
-- Do: talk to a quest giver with a quest you don't have, then type `/vg questdata`. Type `/vg questdata <id>` for one quest you know is new in WoW Forever and one you know is from 2004. Open the world map on a zone with quests you haven't taken; hover a "!" pin and click it. Shift-click a quest in Vanguard's tracker. Under `/vg` → Quests → Quest guidance set The arrow to "A map waypoint on the next step" and Shift-click again.
+- Do: talk to a quest giver with a quest you don't have, then type `/vg questdata`. Type `/vg questdata <id>` for one quest you know is new in WoW Forever and one you know is from 2004. Open the world map on a zone with quests you haven't taken; hover a "!" pin and click it. Shift-click a quest in Vanguard's tracker. Under `/vg` → Quests → Finding your way set Shift-click points to "A map waypoint" and Shift-click again.
 - Expect: the first chat line says `New-quest flag: none on this client (...)` or names one; the lines for the two quests differ in some field (that field is the flag to use; a New mark on the new quest means Vanguard found it). Pins sit on quest givers, or Vanguard draws none because the game's own map shows its quest offers there (either is fine; two "!" on one spot is a finding). The click puts a waypoint there and the game's arrow points at it. Shift-click says `Arrow: <quest>.` and the game's arrow follows the quest; with the waypoint setting the arrow points at its next waypoint or objective area. When the game gives a next step, the tracker shows it in the accent above the objectives.
+- Also expect (the Quests page): `/vg` → Quests shows its cards in this order: Quest windows, Quest tracker, Finding your way (the arrow, Shift-click points, the step line, quest-start pins, the New mark and quest spots on the minimap, under one note), Quest history, Automation; Shift-click points offers "The game's quest marker" and "A map waypoint".
+- Also expect (pin tooltips): hover a quest-start pin: under its name, `Level 24` in the quest's difficulty colour, and `Repeatable` for a quest that repeats. [Needs in game: that `C_QuestLog.GetQuestDifficultyLevel` and `IsRepeatableQuest` answer for a quest you haven't taken.]
 - If it fails, paste: the whole `/vg questdata` output for both quests, a screenshot of the map and the tracker, and `/vg errors`.
 
 ### 18.4 /way and the floating waypoint pin
@@ -1629,6 +1704,7 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 
 - Do: open the world map, hold Ctrl and click a spot; then click another spot, then press **Clear waypoint** on the map's bottom edge. Open `/vg` → Map → Waypoints and Recent waypoints; press a "Go to ..." button. Type `/way recent` and `/way recent 2`. Untick "Point the arrow at a waypoint you Ctrl-click on the map" and Ctrl-click again.
 - Expect: with the switch on, the floating pin and its distance appear at once after each Ctrl-click; the Clear waypoint button shows only while a waypoint exists and removes it and the pin; the Map page lists up to eight spots, newest first, and each button puts that spot back with the pin; `/way recent` prints the same list; with the switch off the click only drops the map pin and the arrow stays off. [Needs in game: that the event is `USER_WAYPOINT_UPDATED`, that `C_Map.GetUserWaypoint` returns the position on Forever, and the Clear button's place on the map.]
+- Also expect (titles): type `/way 42 65 Inn`, then open `/vg` → Map → Waypoints: the first button reads `Go to Inn · <zone> 42.0, 65.0` and `/way recent` prints `1. Inn · <zone> 42.0, 65.0`; Ctrl-click the same spot on the map and the title stays. The card says `Shift-click the pin on the map to share it.`: Shift-click the map pin with chat open and the game puts a link in chat.
 - If it fails, paste: which step broke and `/vg errors`.
 
 ### 18.4b With OpenMap installed

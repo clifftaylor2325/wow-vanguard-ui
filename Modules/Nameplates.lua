@@ -3,7 +3,8 @@
 -- above it with its level (colored by how hard it is for you), your debuffs over the name, the raid target icon to the left,
 -- a cast bar under it, an accent border and glow on your target, a faint wash on
 -- the plate under the mouse, a player's buffs right of the bar (defensives and
--- important ones, and yours on friends), and a gold "!" by the name of units
+-- important ones, and yours on friends), the health percent and value on enemy plates while the
+-- game's own Info display setting asks for them, and a gold "!" by the name of units
 -- your quests need (when the client says so plainly, or the unit's tooltip data lists one of your quests). The game's personal
 -- resource display (its health and power bars under your character, with its
 -- nameplateShowSelf setting on) takes the same look: the theme's bar texture on
@@ -32,6 +33,7 @@ local vgPlate = ns.FrameState("vgPlate")
 local T = ns.Theme
 local CB = ns.GetModule("CastBars")
 local RS = ns.GetModule("RaidStatus")
+local UF = ns.GetModule("UnitFrames")
 
 local NP = ns.Module("Nameplates", {
   defaults = { width = 130, height = 10, level = true, threat = true, castBar = true, debuffs = 4, buffs = 3, targetBorder = true, timers = true, questMarks = true, tagMarks = true },
@@ -52,6 +54,12 @@ NP.MARKER = 8
 NP.QUEST = 12
 -- How many screen pixels the accent glow around your target's plate reaches out.
 NP.GLOW = 2
+-- The game's Info display setting (its Nameplates options), whose health percent and
+-- value bits Vanguard's enemy plates follow; NP.info holds them as last read.
+NP.INFO_CVAR = "nameplateInfoDisplay"
+NP.info = { percent = false, value = false }
+-- Plates shorter than this (the smallest Height) have no room for the health numbers.
+NP.NUMBERS_MIN_HEIGHT = 10
 
 NP.plates = {}
 -- Every frame we built for a plate (the client reuses plates, so each keeps one).
@@ -84,10 +92,10 @@ end
 -- The bar color: grey on a mob another player has tagged (while the tag marks are on), else threat
 -- while you have aggro (if on), else class or reaction.
 function NP.Color(unit)
-  if NP.settings.tagMarks == true and ns.GetModule("UnitFrames").TagState(unit) == "theirs" then return T.RGB("tapped") end
+  if NP.settings.tagMarks == true and UF.TagState(unit) == "theirs" then return T.RGB("tapped") end
   local threat = NP.settings.threat and NP.ThreatColor(unit)
   if threat then return threat[1], threat[2], threat[3] end
-  return ns.GetModule("UnitFrames").UnitColor(unit)
+  return UF.UnitColor(unit)
 end
 
 -- True when the line is a quest title or a quest objective of the unit's tooltip (a hidden line or type counts as no).
@@ -183,6 +191,16 @@ local function addTexts(f)
   addQuestMark(f)
 end
 
+-- The health numbers at the bar's right end (shown on enemy plates while the game's
+-- Info display asks): the percent, and the value left of it. Never measured.
+local function addNumbers(f)
+  f.healthPercent = T.Text(f:CreateFontString(nil, "OVERLAY"), "barSmall")
+  f.healthPercent:SetPoint("RIGHT", f, "RIGHT", -2, 0)
+  f.healthValue = T.Text(f:CreateFontString(nil, "OVERLAY"), "barSmall")
+  f.healthPercent:Hide()
+  f.healthValue:Hide()
+end
+
 -- The box the mouse hits and the client stacks by (nothing drawn, no mouse of
 -- its own): from the top of the name to half a bar under the bar, reaching
 -- NP.HIT_PAD past each side of it, as the client's own plates do.
@@ -264,6 +282,7 @@ end
 -- A plate's texts, tag mark, click area and mouseover wash.
 local function addOverlays(f, s)
   addTexts(f)
+  addNumbers(f)
   addTagMark(f)
   addHitArea(f, s)
   addHover(f)
@@ -433,14 +452,53 @@ end
 
 -- The level left of the name, where it's switched on.
 local function updateLevel(f, unit)
-  if NP.settings.level then return ns.GetModule("UnitFrames").PaintLevel(f.level, unit) end
+  if NP.settings.level then return UF.PaintLevel(f.level, unit) end
   f.level:SetText("")
 end
 
--- The bar's fill: health goes to the bar as the client gives it, hidden or not.
+-- The health numbers' text, on a plate that shows them (NP.PaintNumbers decides that): the
+-- health path reads no setting and makes no closure. Hidden numbers go to the text as they are.
+function NP.UpdateNumbers(f, unit)
+  if not f.vgNumbers then return end
+  if NP.info.percent then f.healthPercent:SetText(UF.PercentText(unit)) end
+  if NP.info.value then f.healthValue:SetText(UF.ShortNumber(UnitHealth(unit))) end
+end
+
+-- The bar's fill (health goes to the bar as the client gives it, hidden or not), and the numbers on it.
 function NP.UpdateHealth(f, unit)
   f:SetMinMaxValues(0, UnitHealthMax(unit))
   T.SetBarValue(f, UnitHealth(unit))
+  NP.UpdateNumbers(f, unit)
+end
+
+-- Whether a plate shows health numbers: a unit you can attack (a hidden answer counts as no),
+-- with one of the game's bits on, on a plate tall enough. Looked up as UnitFrames' TagState does.
+local function wantsNumbers(unit)
+  local can = type(UnitCanAttack) == "function" and UnitCanAttack("player", unit)
+  local enemy = not ns.IsSecret(can) and can == true
+  return enemy and (NP.info.percent or NP.info.value) and NP.settings.height >= NP.NUMBERS_MIN_HEIGHT
+end
+
+-- The value sits at the bar's right end, or left of the percent while that shows.
+local function placeValue(f)
+  f.healthValue:ClearAllPoints()
+  if NP.info.percent then return f.healthValue:SetPoint("RIGHT", f.healthPercent, "LEFT", -3, 0) end
+  f.healthValue:SetPoint("RIGHT", f, "RIGHT", -2, 0)
+end
+
+-- Works out whether a plate shows health numbers (when it is drawn, its unit's faction or flags
+-- change, or the game's setting does) and places and shows them; NP.UpdateNumbers fills them in.
+function NP.ShowNumbers(f, unit)
+  f.vgNumbers = wantsNumbers(unit) == true
+  f.healthPercent:SetShown(f.vgNumbers and NP.info.percent)
+  f.healthValue:SetShown(f.vgNumbers and NP.info.value)
+  placeValue(f)
+end
+
+-- Shows or hides a plate's health numbers as above, and fills them in.
+function NP.PaintNumbers(f, unit)
+  NP.ShowNumbers(f, unit)
+  NP.UpdateNumbers(f, unit)
 end
 
 -- The bar's color: tapped grey, threat, class or reaction (see NP.Color).
@@ -495,7 +553,6 @@ end
 -- Paints a plate's tag mark for whoever tagged its unit (none while the marks are off), and its bar,
 -- which goes grey on another player's mob.
 function NP.PaintTag(f, unit)
-  local UF = ns.GetModule("UnitFrames")
   UF.PaintTagMark(f.tag, NP.settings.tagMarks == true and UF.TagState(unit) or nil)
   NP.UpdateColor(f, unit)
 end
@@ -520,6 +577,7 @@ end
 
 -- Everything on one plate (a plate under the mouse wakes the mouseover watch).
 local function refresh(f, unit)
+  NP.ShowNumbers(f, unit)
   NP.Update(f, unit)
   NP.PaintQuest(f, unit)
   NP.PaintTag(f, unit)
@@ -537,6 +595,37 @@ end
 -- threat colors, the target border, quest marks): the options and Situations call it.
 function NP.RefreshAll()
   each(refresh)
+end
+
+-- The client's bit index for one of the Info display's boxes ("CurrentHealthPercent"), or nil on a client without it.
+local function infoIndex(key)
+  local kinds = Enum and Enum.NamePlateInfoDisplay
+  return type(kinds) == "table" and kinds[key] or nil
+end
+
+-- One of the game's Info display bits: true, false, or nil on a client without the setting.
+local function readInfoBit(key)
+  local get, index = C_CVar and C_CVar.GetCVarBitfield, infoIndex(key)
+  if type(get) ~= "function" or not index then return nil end
+  return get(NP.INFO_CVAR, index)
+end
+
+-- Whether one of the game's Info display bits is on; a client without the setting, or no answer, is off.
+local function infoBit(key)
+  return readInfoBit(key) == true
+end
+
+-- Reads the game's health number bits again (at login, after Vanguard's own rows write them,
+-- and when the game says the setting changed) and repaints the numbers on every plate.
+function NP.ReadInfoDisplay()
+  NP.info.percent, NP.info.value = infoBit("CurrentHealthPercent"), infoBit("CurrentHealthValue")
+  each(NP.PaintNumbers)
+end
+
+-- A game setting changed: re-read the bits when it was the Info display (the client sends
+-- every setting's change; the name comes as registered, matched without case to be safe).
+local function onSettingChanged(_, name)
+  if type(name) == "string" and name:lower() == NP.INFO_CVAR:lower() then NP.ReadInfoDisplay() end
 end
 
 -- Events -----------------------------------------------------------------------------------
@@ -578,11 +667,18 @@ end
 -- A plate's unit event -> what it repaints on that plate. Each plate asks the
 -- client for its own unit's events only (ns.OnUnit), so 30 plates don't each
 -- hear the other 29 (or the raid's).
--- Health moves the fill only; threat, flags and faction (a tap change can come as any) repaint the tag mark and the bar.
+-- A plate's unit changed faction or flags: its tag mark and bar, and whether it shows health numbers
+-- (it may now be an enemy, or no longer one).
+local function onFaction(f, unit)
+  NP.PaintTag(f, unit)
+  NP.PaintNumbers(f, unit)
+end
+
+-- Health moves the fill and its numbers only; threat, flags and faction (a tap change can come as any) repaint the tag mark and the bar.
 local UNIT_HANDLERS = {
   UNIT_HEALTH = NP.UpdateHealth, UNIT_MAXHEALTH = NP.UpdateHealth, UNIT_NAME_UPDATE = NP.UpdateName,
-  UNIT_FACTION = NP.PaintTag, UNIT_THREAT_LIST_UPDATE = NP.PaintTag,
-  UNIT_FLAGS = NP.PaintTag, UNIT_LEVEL = NP.UpdateName,
+  UNIT_FACTION = onFaction, UNIT_THREAT_LIST_UPDATE = NP.PaintTag,
+  UNIT_FLAGS = onFaction, UNIT_LEVEL = NP.UpdateName,
 }
 for _, event in ipairs(CB.EVENTS) do UNIT_HANDLERS[event] = showCast end
 NP.UNIT_EVENTS = {}
@@ -633,12 +729,14 @@ local EVENTS = {
   GROUP_ROSTER_UPDATE = function() each(NP.PaintTag) end,
   -- Your quests changed: which units they need may have too.
   QUEST_LOG_UPDATE = NP.QuestsChanged, UNIT_QUEST_LOG_CHANGED = NP.QuestsChanged,
+  CVAR_UPDATE = onSettingChanged,
 }
 
 -- Module entry point (Core/Modules.lua): builds the plate frames ahead, out of combat, and
 -- dresses the game's personal resource display.
 function NP.Enable(settings)
   NP.settings = settings
+  NP.ReadInfoDisplay()
   ns.OutOfCombat(NP.FillPool)
   NP.EnemyPlatesOnce()
   watchPersonalResources()
@@ -715,11 +813,39 @@ local function setting(key, reload)
     end, NP.defaults[key]
 end
 
--- The Nameplates page: looks first, then debuffs, buffs and size (after a reload).
-function NP.OptionRows()
+-- Whether the client has the game's Info display setting (a client without it gets no rows for
+-- it): reading one of its bits answers nil there.
+local function hasInfoDisplay()
+  return readInfoBit("CurrentHealthPercent") ~= nil
+end
+
+-- Sets one of the game's Info display bits, once out of combat, then reads them all again: the
+-- plates follow at once whether or not the client sends CVAR_UPDATE for an addon's write.
+-- Vanguard writes it only when you tick its row.
+local function setInfoBit(key, on)
+  local set, index = C_CVar and C_CVar.SetCVarBitfield, infoIndex(key)
+  if type(set) ~= "function" or not index then return end
+  ns.OutOfCombat(function() set(NP.INFO_CVAR, index, on); NP.ReadInfoDisplay() end, "plates " .. key)
+end
+
+-- get/set for a check row on one of the game's Info display bits.
+function NP.InfoSetting(key)
+  return function() return infoBit(key) end, function(v) setInfoBit(key, v) end
+end
+
+-- The game's own plate settings Vanguard mirrors: which plates it draws (the V and Shift-V keys)
+-- and, where the client has them, the Info display's health numbers.
+function NP.GameRows()
+  local rows = { { "check", "Enemy nameplates (the game's setting, the V key)", NP.GameSetting("nameplateShowEnemies") }, { "check", "Friendly players' nameplates (the game's setting)", NP.GameSetting("nameplateShowFriendlyPlayers") }, { "check", "Friendly NPCs' nameplates (the game's setting)", NP.GameSetting("nameplateShowFriendlyNPCs") } }
+  if not hasInfoDisplay() then return rows end
+  rows[#rows + 1] = { "check", "Health percent on enemy plates (the game's setting)", NP.InfoSetting("CurrentHealthPercent") }
+  rows[#rows + 1] = { "check", "Health value on enemy plates (the game's setting)", NP.InfoSetting("CurrentHealthValue") }
+  return rows
+end
+
+-- This module's own rows: looks first, then debuffs, buffs and size (after a reload).
+local function lookRows()
   return {
-    { "header", "Nameplates" },
-    { "text", "Turn the whole module off under Modules to keep the default plates." }, { "check", "Enemy nameplates (the game's setting, the V key)", NP.GameSetting("nameplateShowEnemies") }, { "check", "Friendly players' nameplates (the game's setting)", NP.GameSetting("nameplateShowFriendlyPlayers") }, { "check", "Friendly NPCs' nameplates (the game's setting)", NP.GameSetting("nameplateShowFriendlyNPCs") },
     { "check", "Levels, colored by how hard the unit is for you", setting("level") },
     { "check", "Threat colors while you have aggro", setting("threat") },
     { "check", "Accent border, glow and marker on your target", setting("targetBorder") }, { "check", "Cast bar", setting("castBar", true) },
@@ -727,6 +853,14 @@ function NP.OptionRows()
     { "cycle", "Your debuffs shown", { { 0, "none" }, { 4, "4" }, { 6, "6" } }, setting("debuffs", true) }, { "cycle", "Buffs on players (defensives, and yours on friends)", { { 0, "none" }, { 3, "3" }, { 5, "5" } }, setting("buffs", true) },
     { "check", "Timer numbers on your debuffs (reload)", setting("timers", true) },
     { "cycle", "Width", { { 110, "110" }, { 130, "130" }, { 160, "160" } }, setting("width", true) }, { "cycle", "Height", { { 8, "8" }, { 10, "10" }, { 14, "14" } }, setting("height", true) } }
+end
+
+-- The Nameplates page: the game's plate settings it mirrors, then this module's own.
+function NP.OptionRows()
+  local rows = { { "header", "Nameplates" }, { "text", "Turn the whole module off under Modules to keep the default plates." } }
+  for _, row in ipairs(NP.GameRows()) do rows[#rows + 1] = row end
+  for _, row in ipairs(lookRows()) do rows[#rows + 1] = row end
+  return rows
 end
 
 ns.Options.AddPage({
