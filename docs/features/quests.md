@@ -28,7 +28,7 @@ Quest arrow (on by default; `/vg` → Quests → Finding your way): a small pane
 
 ## Quest spots on the minimap
 
-Quest spots on the minimap (on by default; `/vg` → Quests → Finding your way): a small gold `!` on the minimap where each quest in your log has its spot on the map you're on, and a gold `?` once it's ready to turn in. A spot farther than the minimap shows sits faint on its edge, in its direction (just inside the rim of a round minimap, never outside the map), and the marks turn with the minimap when it rotates. The spots are the client's own quest spots (one per quest); without them, or without the client's minimap scale, no marks are drawn.
+Quest spots on the minimap (on by default; `/vg` → Quests → Finding your way): a small dot in your accent on the minimap where each quest in your log has its spot on the map you're on, and a gold `?` once it's ready to turn in, drawn over the dots; the quest the arrow follows has its mark a size larger. A spot farther than the minimap shows sits faint on its edge, in its direction (just inside the rim of a round minimap, never outside the map), and the marks turn with the minimap when it rotates. The spots are the client's own quest spots (one per quest); without them, or without the client's minimap scale, no marks are drawn.
 
 ## Quest automation
 

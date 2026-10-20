@@ -506,10 +506,16 @@ const MERCHANT_ENV = `
     UseContainerItem = function(bag, slot) __used[#__used + 1] = slot if __sticky > 0 then __sticky = __sticky - 1 else __bag[slot] = nil end end }
   C_Timer = { After = function(_, fn) fn() end }
   ERR_ABILITY_COOLDOWN = "TEST-ONLY not ready"
-  -- The game's own error line: its handler asks ShouldDisplayMessageType (type 99 is on the game's blacklist),
-  -- shows the message under its type as the line's ID, and plays the type's sound.
+  -- The client's message names by type: 51 is a noisy one, 52 is not; past 60 the client refuses the index.
+  GetGameMessageInfo = function(i) if i > 60 then error("bad index") end return ({ [51] = "ERR_ABILITY_COOLDOWN", [52] = "ERR_OUT_OF_RANGE" })[i] or "ERR_OTHER" end
+  -- The game's own error line: its handler asks ShouldDisplayMessageType, which reads the game's blacklist
+  -- (type 99 on it; SetMessageTypeEnabled adds to it), shows the message under its type as the line's ID,
+  -- and plays the type's sound.
   UIErrorsFrame = CreateFrame("Frame", "UIErrorsFrame", UIParent) UIErrorsFrame:RegisterEvent("UI_ERROR_MESSAGE")
-  function UIErrorsFrame:ShouldDisplayMessageType(messageType) return messageType ~= 99 end
+  __blacklist = { [99] = true }
+  function UIErrorsFrame:SetMessageTypeEnabled(messageType, enabled) __blacklist[messageType] = not enabled end
+  function UIErrorsFrame:ShouldDisplayMessageType(messageType) return not __blacklist[messageType] end
+  __askGame = UIErrorsFrame.ShouldDisplayMessageType
   function UIErrorsFrame:AddMessage(text, r, g, b, a, id) self.__lines = self.__lines or {} self.__lines[#self.__lines + 1] = { text, id } end
   UIErrorsFrame:SetScript("OnEvent", function(self, event, messageType, message)
     if type(message) == "string" and self:ShouldDisplayMessageType(messageType, message) then self:AddMessage(message, 1, 0.1, 0.1, 1, messageType) __sounds = (__sounds or 0) + 1 end
@@ -536,7 +542,7 @@ it("at a merchant: repair with your own gold, sell junk", () => {
   expect(off.eval("return { #__repairs, #__used, UIErrorsFrame:IsEventRegistered('UI_ERROR_MESSAGE') }"), "each part can be turned off").toEqual([0, 0, true]);
   const bare = loggedIn("CanMerchantRepair = nil");
   bare.fire("MERCHANT_SHOW");
-  expect(bare.eval("return ns.GetModule('Merchant').Noisy('x')"), "a client without these calls does nothing").toBe(false);
+  expect(bare.eval("return #ns.GetModule('Merchant').NoisyTypes()"), "a client without these calls does nothing").toBe(0);
 });
 it("junk selling stops when the merchant closes or a fight starts: no retry uses a bag item with no merchant open", () => {
   const addon = loggedIn(MERCHANT_ENV + "__sticky = 5 __later = {} C_Timer = { After = function(s, fn) if s == 0.3 then __later[#__later + 1] = fn end end }");
@@ -564,11 +570,12 @@ it("the error line drops what the action bar already shows, and the rest takes t
   addon.fire("UI_ERROR_MESSAGE", 53);
   expect(addon.eval("return UIErrorsFrame.__lines"), "noise is dropped, useful errors stay under their type as the line's ID (so repeats refresh), the game's own blacklist still applies").toEqual([["TEST-ONLY Out of range", 52], ["TEST-ONLY Out of range", 52]]);
   expect(addon.eval("return __sounds"), "and the game's handler still ran for what showed (sounds)").toBe(2);
-  expect(addon.eval("return UIErrorsFrame:ShouldDisplayMessageType(7, { __secret = true })"), "a message the client hides is never compared, and shown the game's way").toBe(true);
+  expect(addon.eval("return UIErrorsFrame.ShouldDisplayMessageType == __askGame"), "the game's own method is never replaced").toBe(true);
   const none = loggedIn("UIErrorsFrame = nil");
   expect(none.eval("return ns.GetModule('Merchant').settings.errors"), "no error line on this client: nothing to filter").toBe(true);
-  const old = loggedIn(MERCHANT_ENV + "UIErrorsFrame.ShouldDisplayMessageType = nil");
-  expect(old.eval("return UIErrorsFrame.ShouldDisplayMessageType == nil"), "an error line without that question is left alone").toBe(true);
+  const old = loggedIn(MERCHANT_ENV + "UIErrorsFrame.SetMessageTypeEnabled = nil");
+  old.fire("UI_ERROR_MESSAGE", 51, "TEST-ONLY not ready");
+  expect(old.eval("return UIErrorsFrame.__lines"), "an error line without the per-type switch is left alone").toEqual([["TEST-ONLY not ready", 51]]);
 });
 it("the AFK screen: a dimmed screen and a card while you're away", () => {
   const addon = loggedIn(UNITS_ENV + AFK_ENV);

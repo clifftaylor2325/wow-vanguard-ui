@@ -651,7 +651,7 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 ### 8.4d Quest spots on the minimap
 
 - Do: with quests in your log in the zone you are in, look at the minimap, walk toward one quest's area and away from another, then turn on the game's Rotate Minimap option and turn round.
-- Expect: a small gold `!` on the minimap over each quest's area (the same spots as the world map's quest blobs), a gold `?` for a quest ready to turn in; a quest farther than the minimap shows sits faint on its edge in its direction and slides in as you approach. With Rotate Minimap on, the marks turn with the map. `/vg guide probe` shows `C_Minimap.GetViewRadius: present`. [Needs in game: that the marks sit on the right spots at every zoom.]
+- Expect: a small dot in your accent on the minimap over each quest's area (the same spots as the world map's quest blobs), a gold `?` for a quest ready to turn in, drawn over any dot it overlaps; Shift-click a quest in the tracker and its mark grows a size; a quest farther than the minimap shows sits faint on its edge in its direction and slides in as you approach. With Rotate Minimap on, the marks turn with the map. `/vg guide probe` shows `C_Minimap.GetViewRadius: present`. [Needs in game: that the marks sit on the right spots at every zoom, and that the dot reads clearly on busy ground (grass, snow, desert, a city) on both the square and the round minimap.]
 - If it fails, paste: a screenshot of the minimap and the world map, and `/vg errors`.
 
 ### 8.5 Levelling helpers
