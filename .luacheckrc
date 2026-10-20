@@ -59,8 +59,14 @@ read_globals = {
   "ChatTypeInfo",
   -- Info strip: the calendar's reminder line the game's calendar button prints (GameTime.lua), shown while the clock block hides it.
   "CALENDAR_EVENT_ALARM_MESSAGE",
+  -- Info strip: the calendar button's count of invites waiting for an answer.
+  "C_Calendar",
   -- Info strip: a click on the time opens the game's clock window, or turns off its ringing alarm (Blizzard_TimeManager).
   "ToggleTimeManager", "TimeManager_IsAlarmFiring", "TimeManager_TurnOffAlarm",
+  -- Info strip: the time in the game's clock format, realm and local (Blizzard_FrameXMLUtil/GameTimeUtil.lua).
+  "GameTime_GetTime", "GameTime_GetGameTime", "GameTime_GetLocalTime",
+  -- Info strip: the realm's date beside the realm time, and whether the game's clock shows local time.
+  "C_DateAndTime", "GetCVarBool",
   -- P3.3 Visibility conditions: In an instance, and what a state driver's string says now.
   "IsInInstance", "SecureCmdOptionParse", "SendChatMessage",
   -- R1.6 Chat bubbles (Modules/ChatBubbles.lua): the engine's list of the bubbles it is showing.
