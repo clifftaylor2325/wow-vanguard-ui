@@ -517,12 +517,14 @@ function NP.UpdateIcon(f, unit)
   RS.PaintIcon(f.raidIcon, RS.RaidIcon(unit))
 end
 
--- Your target's accent border, glow and marker. They are repainted only when
--- the plate's target state or its scale (the pixel size of the edge and the
--- glow) changed since they were last painted, or when `force` says the theme did.
-function NP.UpdateTarget(f, unit, force)
-  local target, scale = NP.settings.targetBorder and isUnit(unit, "target") or false, f:GetEffectiveScale()
-  if not force and target == f.vgTarget and scale == f.vgScale then return end
+-- Whether a plate's unit is your target, while the target border is on.
+local function targetShown(unit)
+  return NP.settings.targetBorder and isUnit(unit, "target") or false
+end
+
+-- Paints a plate's target border, glow and marker, and records the state and scale they show.
+local function paintTarget(f, unit)
+  local target, scale = targetShown(unit), f:GetEffectiveScale()
   f.vgTarget, f.vgScale = target, scale
   T.SetBorder(f, target and { T.Accent() } or nil)
   T.SizeGlow(f.glow, f, NP.GLOW)
@@ -531,9 +533,13 @@ function NP.UpdateTarget(f, unit, force)
   if target then T.Tint(f.marker, "accent") end
 end
 
--- Repaints a plate's target border, glow and marker whatever its state (the accent changed).
-local function repaintTarget(f, unit)
-  NP.UpdateTarget(f, unit, true)
+-- Your target's accent border, glow and marker. They are repainted only when
+-- the plate's target state or its scale (the pixel size of the edge and the
+-- glow) changed since they were last painted.
+function NP.UpdateTarget(f, unit)
+  local target, scale = targetShown(unit), f:GetEffectiveScale()
+  if target == f.vgTarget and scale == f.vgScale then return end
+  paintTarget(f, unit)
 end
 
 -- Health bar, color, name and level, raid icon, and your target's border, glow and marker.
@@ -741,7 +747,7 @@ function NP.Enable(settings)
   NP.EnemyPlatesOnce()
   watchPersonalResources()
   for event, fn in pairs(EVENTS) do ns.On(event, fn) end
-  T.OnChanged(function() each(repaintTarget) end)
+  T.OnChanged(function() each(paintTarget) end)
 end
 
 -- Slash -------------------------------------------------------------------------------------
