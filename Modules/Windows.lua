@@ -988,8 +988,57 @@ local function skinPopupItem(frame)
   GW.SkinItem(holder.Item)
 end
 
+-- The popups whose first button destroys something (an item, a letter, money, a quest, a profession): that
+-- button's label takes the danger colour, as Vanguard's own Abandon does.
+GW.DANGER_POPUPS = {
+  DELETE_ITEM = true, DELETE_GOOD_ITEM = true, DELETE_QUEST_ITEM = true, DELETE_GOOD_QUEST_ITEM = true, DELETE_MAIL = true,
+  DELETE_MONEY = true, ABANDON_QUEST = true, ABANDON_QUEST_WITH_ITEMS = true, UNLEARN_SKILL = true,
+}
+
+-- The first button's scripts after which its paint is put back (the game's hover and enable changes).
+GW.CONFIRM_SCRIPTS = { "OnEnter", "OnLeave", "OnEnable" }
+
+do
+  -- The popup each hooked first button belongs to; the buttons painted in the danger colour now, each with its
+  -- label's colour from before (the fallback when the button has no normal font object).
+  local vgConfirmOf = ns.FrameState("vgConfirmOf")
+  local vgDanger = ns.FrameState("vgDanger")
+
+  -- Gives a popup's first button back the game's colour, once it is enabled: its normal font object's (the label's
+  -- own colour may be the red a destroy popup left on this reused frame), else the colour from before the paint.
+  -- The numeric T.Color drops the danger token, so a theme refresh doesn't paint it red again.
+  local function unpaint(button, label)
+    if not (vgDanger[button] and button:IsEnabled()) then return end
+    local font = button:GetNormalFontObject()
+    local c = font and { font:GetTextColor() } or vgDanger[button]
+    vgDanger[button] = nil
+    T.Color(label, c[1], c[2], c[3])
+  end
+
+  -- Paints a popup's first button: the danger colour while it is enabled on a destroy popup (GW.DANGER_POPUPS),
+  -- else the game's own. Only the label's colour changes; the shared font object never does.
+  local function paintConfirm(button)
+    local popup, label = vgConfirmOf[button], button:GetFontString()
+    if not (popup and label) then return end
+    if not (GW.DANGER_POPUPS[popup.which] and button:IsEnabled()) then return unpaint(button, label) end
+    vgDanger[button] = vgDanger[button] or { label:GetTextColor() }
+    T.Color(label, "bad")
+  end
+
+  -- The popup's first button (ButtonContainer.Button1), hooked once (the paint is put back after the game's own
+  -- hover and enable changes, and the theme's disabled look) and painted for the popup now showing.
+  function GW.PaintPopupConfirm(frame)
+    local button = type(frame.ButtonContainer) == "table" and frame.ButtonContainer.Button1
+    if type(button) ~= "table" or type(button.GetNormalFontObject) ~= "function" then return end
+    vgConfirmOf[button] = frame
+    for _, script in ipairs(GW.CONFIRM_SCRIPTS) do GW.HookScriptOnce(button, script, "paint popup confirm", paintConfirm) end
+    paintConfirm(button)
+  end
+end
+
 -- The controls a popup shows when it has them, in the theme: its dark tile faded, the text box, the money
--- boxes and line, the dropdown, the fifth button and the item. Its buttons and close button are the window skin's.
+-- boxes and line, the dropdown, the fifth button and the item, and a destroy popup's first button in the danger
+-- colour. Its buttons and close button are the window skin's.
 local function popupInside(frame)
   GW.FadeParts(frame, { "BG" })
   skinPopupBox(frame.EditBox)
@@ -998,6 +1047,7 @@ local function popupInside(frame)
   GW.SkinDropdown(frame.Dropdown)
   GW.SkinButton(frame.ExtraButton)
   skinPopupItem(frame)
+  GW.PaintPopupConfirm(frame)
 end
 for _, name in ipairs(GW.POPUPS) do GW.INSIDES[name] = popupInside end
 
