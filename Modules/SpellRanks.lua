@@ -21,15 +21,6 @@ SR.SLOTS, SR.MAX_SERVICES, SR.AHEAD, SR.LINES = 180, 400, 5, 8
 
 -- Helpers ------------------------------------------------------------------------------------
 
--- Calls a client function by name; nil when this client doesn't have it.
-local ask = ns.CallGlobal
-
--- The text if it's a plain, non-empty string; nil otherwise (hidden, missing, empty).
-local function plainText(text)
-  if ns.IsSecret(text) or type(text) ~= "string" or text == "" then return nil end
-  return text
-end
-
 -- The settings in use (the defaults while the module is off).
 local function settings()
   return SR.settings or SR.defaults
@@ -50,7 +41,7 @@ end
 function SR.Stale()
   local known, out = byID(), {}
   for slot = 1, SR.SLOTS do
-    local kind, id = ask("GetActionInfo", slot)
+    local kind, id = ns.CallGlobal("GetActionInfo", slot)
     local have = kind == "spell" and known[ns.PlainNumber(id) or 0]
     if have and have.rank < have.spell.maxRank then
       out[#out + 1] = { slot = slot, name = have.spell.name, from = id, to = have.spell.spellID, old = have.rank, new = have.spell.maxRank }
@@ -76,16 +67,16 @@ end
 -- Picks the spell up onto the cursor; whether the cursor holds a spell now.
 local function pickup(spellID)
   local api = type(C_Spell) == "table" and C_Spell.PickupSpell
-  if type(api) == "function" then api(spellID) else ask("PickupSpell", spellID) end
-  return ask("GetCursorInfo") == "spell"
+  if type(api) == "function" then api(spellID) else ns.CallGlobal("PickupSpell", spellID) end
+  return ns.CallGlobal("GetCursorInfo") == "spell"
 end
 
 -- Puts spellID on a button, leaving the cursor empty; whether it worked. Never with something already on the cursor.
 local function place(slot, spellID)
-  if ask("GetCursorInfo") then return false end
+  if ns.CallGlobal("GetCursorInfo") then return false end
   local ok = pickup(spellID)
-  if ok then ask("PlaceAction", slot) end
-  ask("ClearCursor")
+  if ok then ns.CallGlobal("PlaceAction", slot) end
+  ns.CallGlobal("ClearCursor")
   return ok
 end
 
@@ -132,26 +123,26 @@ end
 
 -- A trainer service's rank text ("Rank 3"): the client puts it among the later returns, by client.
 local function rankText(i)
-  local info = { ask("GetTrainerServiceInfo", i) }
+  local info = { ns.CallGlobal("GetTrainerServiceInfo", i) }
   for k = 2, 6 do
-    local v = plainText(info[k])
+    local v = ns.PlainText(info[k])
     if v and v:match("^Rank %d+") then return v end
   end
 end
 
 -- Where the trainer is: its name, zone and subzone (nil for any the client hides; the subzone drops when it is the zone).
 local function whereNow()
-  local zone, sub = plainText(ask("GetZoneText")), plainText(ask("GetSubZoneText"))
-  return plainText(ask("UnitName", "npc")), zone, sub ~= zone and sub or nil
+  local zone, sub = ns.PlainText(ns.CallGlobal("GetZoneText")), ns.PlainText(ns.CallGlobal("GetSubZoneText"))
+  return ns.PlainText(ns.CallGlobal("UnitName", "npc")), zone, sub ~= zone and sub or nil
 end
 
 -- Service i as a record { name, rank, level, cost, trainer, zone, sub, t }, or nil (hidden name, already learned, no level to learn it at).
 local function service(i, where)
-  local name, kind = ask("GetTrainerServiceInfo", i)
-  local level = ns.PlainNumber(ask("GetTrainerServiceLevelReq", i))
-  if not plainText(name) or kind == "used" or not level or level < 1 then return nil end
-  return { name = name, rank = rankText(i), level = level, cost = ns.PlainNumber(ask("GetTrainerServiceCost", i)) or 0,
-    trainer = where[1], zone = where[2], sub = where[3], t = ns.PlainNumber(ask("time")) or 0 }
+  local name, kind = ns.CallGlobal("GetTrainerServiceInfo", i)
+  local level = ns.PlainNumber(ns.CallGlobal("GetTrainerServiceLevelReq", i))
+  if not ns.PlainText(name) or kind == "used" or not level or level < 1 then return nil end
+  return { name = name, rank = rankText(i), level = level, cost = ns.PlainNumber(ns.CallGlobal("GetTrainerServiceCost", i)) or 0,
+    trainer = where[1], zone = where[2], sub = where[3], t = ns.PlainNumber(ns.CallGlobal("time")) or 0 }
 end
 
 -- Keeps a service for this class (a new one only below the cap).
@@ -173,7 +164,7 @@ function SR.Record()
   if not settings().trainerMemory or ns.InCombat() or not token then return end
   local where = { whereNow() }
   if not where[1] then return end
-  for i = 1, ns.PlainNumber(ask("GetNumTrainerServices")) or 0 do
+  for i = 1, ns.PlainNumber(ns.CallGlobal("GetNumTrainerServices")) or 0 do
     local s = service(i, where)
     if s then SR.Remember(token, s) end
   end
@@ -230,7 +221,7 @@ end
 function SR.TrainersCommand(rest)
   if rest == "clear" then VanguardDB.trainers = nil return ns.Chat("Forgot every trainer.") end
   if rest == "next" then
-    local level = ns.PlainNumber(ask("UnitLevel", "player")) or 1
+    local level = ns.PlainNumber(ns.CallGlobal("UnitLevel", "player")) or 1
     return sayUpcoming(level, "Trainers you've visited teach, in the next levels:") or ns.Chat("Nothing remembered for the next levels. Visit your trainer with Trainer memory on (/vg > Town and gear).")
   end
   ns.Chat(string.format("%d trainer service(s) remembered for your class. /vg trainers next lists the next levels; clear forgets them.", remembered()))

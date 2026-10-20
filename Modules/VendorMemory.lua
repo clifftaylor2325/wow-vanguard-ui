@@ -15,17 +15,6 @@ local VM = ns.Module("VendorMemory", { defaults = { tooltip = true, remember = t
 -- Merchants kept per item; items kept, and the share of them a prune keeps (2000 -> 1800).
 VM.PER_ITEM, VM.MAX_ITEMS, VM.KEEP = 3, 2000, 0.9
 
--- Helpers ------------------------------------------------------------------------------------
-
--- Calls a client function by name; nil when this client doesn't have it.
-local ask = ns.CallGlobal
-
--- The text if it's a plain, non-empty string; nil otherwise (hidden, missing, empty).
-local function plainText(text)
-  if ns.IsSecret(text) or type(text) ~= "string" or text == "" then return nil end
-  return text
-end
-
 -- The account-wide store: VanguardDB.vendors = { items = { [itemID] = { entry, ... } }, count = items }.
 function VM.Store()
   VanguardDB.vendors = ns.Fill(type(VanguardDB.vendors) == "table" and VanguardDB.vendors or {}, { items = {}, count = 0 })
@@ -36,12 +25,12 @@ end
 
 -- The merchant you're talking to, or nil when the client hides the name.
 local function merchantName()
-  return plainText(ask("UnitName", "npc"))
+  return ns.PlainText(ns.CallGlobal("UnitName", "npc"))
 end
 
 -- Where you are: the zone and the subzone (nil when hidden, empty, or the zone's own name).
 local function zoneNow()
-  local zone, sub = plainText(ask("GetZoneText")), plainText(ask("GetSubZoneText"))
+  local zone, sub = ns.PlainText(ns.CallGlobal("GetZoneText")), ns.PlainText(ns.CallGlobal("GetSubZoneText"))
   return zone, sub ~= zone and sub or nil
 end
 
@@ -50,16 +39,16 @@ end
 local function limited(i)
   local api = C_MerchantFrame and C_MerchantFrame.GetItemInfo
   local info = type(api) == "function" and api(i) or nil
-  local left = type(info) == "table" and info.numAvailable or select(5, ask("GetMerchantItemInfo", i))
+  local left = type(info) == "table" and info.numAvailable or select(5, ns.CallGlobal("GetMerchantItemInfo", i))
   left = ns.PlainNumber(left)
   return left ~= nil and left >= 0
 end
 
 -- Merchant item i's item ID (the client's call, else the ID in its link), or nil.
 local function itemAt(i)
-  local id = ns.PlainNumber(ask("GetMerchantItemID", i))
+  local id = ns.PlainNumber(ns.CallGlobal("GetMerchantItemID", i))
   if id then return id end
-  local link = plainText(ask("GetMerchantItemLink", i))
+  local link = ns.PlainText(ns.CallGlobal("GetMerchantItemLink", i))
   return link and tonumber(link:match("item:(%d+)"))
 end
 
@@ -80,10 +69,10 @@ end
 -- The open merchant's wares, remembered (not in combat, and only when the merchant's name can be read).
 function VM.Record()
   if not VM.settings.remember or ns.InCombat() then return end
-  local name, now = merchantName(), ns.PlainNumber(ask("time")) or 0
+  local name, now = merchantName(), ns.PlainNumber(ns.CallGlobal("time")) or 0
   if not name then return end
   local zone, sub = zoneNow()
-  for i = 1, ns.PlainNumber(ask("GetMerchantNumItems")) or 0 do
+  for i = 1, ns.PlainNumber(ns.CallGlobal("GetMerchantNumItems")) or 0 do
     local id = itemAt(i)
     if id then VM.Remember(id, { n = name, z = zone, s = sub, l = limited(i) or nil, t = now }) end
   end

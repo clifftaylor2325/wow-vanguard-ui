@@ -116,7 +116,7 @@ end
 function SW.OnRange(_, kind, inRange, checksRange)
   local r = not ns.IsSecret(kind) and SW.rows[kind]
   if not r then return end
-  paintRange(r, not ns.IsSecret(checksRange) and checksRange == true and outOfReach(inRange))
+  paintRange(r, ns.IsTrue(checksRange) and outOfReach(inRange))
 end
 
 -- Reads every row's reach now.
