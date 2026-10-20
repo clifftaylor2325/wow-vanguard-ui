@@ -2586,7 +2586,21 @@ function T.ScrollBar(bar)
 end
 end
 
--- The game's font objects Vanguard sets: name -> { size before Text size, bold }.
+-- The game's font objects Vanguard sets, by the surface they sit on: name -> { size before Text size, bold }.
+-- The sizes are the game's own (T.FontObjects scales them by Text size). Keep every one here.
+T.FONT_OBJECTS = {
+  tooltip = { GameTooltipHeaderText = { 14, true }, GameTooltipText = { 12 }, GameTooltipTextSmall = { 11 } },
+  -- The error line, and the zone, subzone and PvP lines (PVPArenaTextString's too).
+  hud = { ErrorFont = { 16, true }, ZoneTextFont = { 32, true }, SubZoneTextFont = { 26, true }, PVPInfoTextFont = { 22, true } },
+  -- The scrolling combat text (Blizzard_CombatText, a part of the game that loads when its setting is on). The game sets
+  -- each line's height by scaling what the face drew (25, up to 60 for a critical hit), so a smaller face would draw
+  -- critical hits soft. The face and weight are what change.
+  combatText = { CombatTextFont = { 64, true } },
+  -- The quest tracker's fonts (the quest titles and objectives keep the game's colors).
+  tracker = { ObjectiveTrackerLineFont = { 12 }, ObjectiveTrackerHeaderFont = { 13, true } },
+}
+
+-- The game's font objects Vanguard has sized so far (T.FontObjects adds to it).
 local fontObjects = {}
 
 -- The theme font, scaled by Text size, on each listed font object this client has.

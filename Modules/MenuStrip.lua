@@ -689,8 +689,6 @@ end
 
 -- Tracker header art that's faded ("All Objectives", "Quests"... each have their own).
 MS.HEADER_ART = { "Background", "Shine", "Glow" }
--- The tracker's font objects -> { size before Text size, bold }.
-MS.TRACKER_FONTS = { ObjectiveTrackerLineFont = { 12 }, ObjectiveTrackerHeaderFont = { 13, true } }
 -- The accent lines under the tracker's headers (repainted when the accent changes).
 MS.rules = {}
 
@@ -751,7 +749,7 @@ end
 -- The theme font, scaled by Text size, on the tracker's font objects (the
 -- quest titles and objectives keep the game's colors), kept after every theme change.
 function MS.TrackerFonts()
-  T.FontObjects(MS.TRACKER_FONTS)
+  T.FontObjects(T.FONT_OBJECTS.tracker)
 end
 
 -- The quest tracker in the Vanguard look, kept up as the game adds sections

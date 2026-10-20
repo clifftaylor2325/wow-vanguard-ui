@@ -121,15 +121,11 @@ end
 
 -- HUD text ----------------------------------------------------------------------------------
 
--- The game's font objects for its text on the HUD, at the game's own sizes (scaled by Text
--- size): the error line, and the zone, subzone and PvP lines (PVPArenaTextString's too).
-MC.FONTS = { ErrorFont = { 16, true }, ZoneTextFont = { 32, true }, SubZoneTextFont = { 26, true }, PVPInfoTextFont = { 22, true } }
-
 -- The HUD text in the theme font, with the theme's drop shadow in place of the game's
 -- thick outline so it reads over the world. A font object the client lacks is skipped.
 function MC.ThemeFonts()
-  T.FontObjects(MC.FONTS)
-  for name in pairs(MC.FONTS) do
+  T.FontObjects(T.FONT_OBJECTS.hud)
+  for name in pairs(T.FONT_OBJECTS.hud) do
     local font = _G[name]
     if type(font) == "table" and font.SetShadowOffset then
       font:SetShadowOffset(1, -1)
@@ -137,12 +133,6 @@ function MC.ThemeFonts()
     end
   end
 end
-
--- The scrolling combat text's font object (Blizzard_CombatText, a part of the game that loads
--- when its setting is on), at the game's own size like the HUD text above: the game sets each
--- line's height itself (25, up to 60 for a critical hit) by scaling what the face drew, so a
--- smaller face would draw critical hits soft. The face and weight are what change.
-MC.COMBAT_FONTS = { CombatTextFont = { 64, true } }
 
 -- True when a part of the game is loaded (a client without the call, or a hidden answer, counts as no).
 local function partLoaded(name)
@@ -155,7 +145,7 @@ end
 -- (justLoaded, from ADDON_LOADED) or, at Enable, if the client says it is loaded already.
 -- The game draws the lines in the font object's colour.
 function MC.ThemeCombatText(justLoaded)
-  if justLoaded or partLoaded("Blizzard_CombatText") then T.FontObjects(MC.COMBAT_FONTS) end
+  if justLoaded or partLoaded("Blizzard_CombatText") then T.FontObjects(T.FONT_OBJECTS.combatText) end
 end
 
 -- The engine's floating damage numbers (over your target) in the theme font: the path the engine
