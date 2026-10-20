@@ -1,7 +1,7 @@
 // raid: Vanguard's real Lua in the TEST-ONLY headless client (scripts/lib/lua-harness.mjs).
 
 import { expect, it } from "vitest";
-import { CLICK_LUA, HEALING_ENV, RAID_ENV, UNITS_ENV, borderOf, chatHas, isTok, loggedIn, raidButton, setCombat } from "./helpers.mjs";
+import { CLICK_LUA, HEALING_ENV, RAID_ENV, UNITS_ENV, borderOf, chatHas, isTok, loggedIn, overlaps, raidButton, setCombat } from "./helpers.mjs";
 
 it("a unit event reaches only the tile showing that unit", () => {
   const addon = loggedIn(UNITS_ENV + RAID_ENV);
@@ -81,6 +81,23 @@ it("a new tile size waits for the reload: the tiles' texts and the holder keep t
     local RF = ns.GetModule("RaidFrames") RF.layoutKey = "rows" RF.Arrange(0)`);
   addon.fire("GROUP_ROSTER_UPDATE");
   expect(look(), "texts and holder as they were, for tiles still 100 wide").toEqual(before);
+});
+
+it("a 25 or 40 raid at its default spot on a 1365 x 768 UI clears the roll tracker at its tallest", () => {
+  const addon = loggedIn(UNITS_ENV + RAID_ENV + "__wfgStub.setScreen(1365, 768) __members = 0 GetNumGroupMembers = function() return __members end");
+  // The roll tracker with all R.LINES lines, growing up from its default spot.
+  addon.eval("local R = ns.GetModule('Rolls') Vanguard_Rolls:SetHeight(R.LINES * R.LINE + 2 * R.PAD)");
+  // A frame's edges on the screen.
+  const rect = (name) => addon.eval(`local f = ${name} return { l = f:GetLeft(), b = f:GetBottom(), r = f:GetRight(), t = f:GetTop() }`);
+  for (const n of [25, 40]) {
+    addon.eval(`__members = ${n}`);
+    addon.fire("GROUP_ROSTER_UPDATE");
+    // The grid: groups of five as rows stacked up from the holder's left, at the compact scale.
+    const { l, b } = rect("Vanguard_RaidHolder");
+    const [w, h, sp, scale] = addon.eval(`local s = ns.GetModule('RaidFrames').settings return { s.width, s.height, s.spacing, ns.GetModule('RaidFrames').Scale(${n}) }`);
+    const grid = { l, b, r: l + (5 * (w + sp) - sp) * scale, t: b + ((n / 5) * (h + sp) - sp) * scale };
+    expect(overlaps(grid, rect("Vanguard_Rolls")), `${n} players`).toBe(false);
+  }
 });
 
 it("raid role mark: a hidden role shows no mark, no role call or NONE shows none, a healer gets the cross", () => {
@@ -383,7 +400,7 @@ it("raid preview: a real group or combat ends it; it won't start in a group, in 
   addon.slash("preview 25");
   addon.fire("PLAYER_REGEN_DISABLED");
   expect([shownTiles(addon), chatHas(addon, /Vanguard:\S*\sRaid frames preview off: combat started\.$/)], "combat ends it").toEqual([0, true]);
-  expect(addon.eval("return { ns.MoverPoint('raid') }"), "and the real grid isn't re-anchored at that edge, before the lockdown").toEqual(["BOTTOMLEFT", "BOTTOM", -620, 344]);
+  expect(addon.eval("return { ns.MoverPoint('raid') }"), "and the real grid isn't re-anchored at that edge, before the lockdown").toEqual(["BOTTOMLEFT", "BOTTOM", -500, 344]);
   setCombat(addon, true);
   addon.slash("preview 10");
   expect([shownTiles(addon), chatHas(addon, /Vanguard:\S*\sIn combat\. Try the preview again once combat ends\.$/)], "and it won't start in combat").toEqual([0, true]);

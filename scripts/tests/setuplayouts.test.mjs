@@ -101,10 +101,17 @@ const moverSpots = (addon) => addon.eval(`local out = {}
     if f then local s = f:GetScale() out[m.key] = { p, rp, x, y, f:GetWidth() * s, f:GetHeight() * s, s } end
   end
   return out`);
-// The raid grid for n players: groups of five as columns side by side (or as rows
-// stacked up), drawn at the compact scale, pinned to the holder's side.
-function raidRect(addon, spot, n, sw, sh) {
-  const s = addon.eval("local s = ns.GetModule('RaidFrames').settings return { s.width, s.height, s.spacing, s.layout }");
+// The raid holder's spot with n players, as moverSpots gives it: the default moves with the group's
+// size (RF.SpotFor), so it is read with the default for n set, then set back for a solo player.
+const raidSpot = (addon, n) => addon.eval(`local RF = ns.GetModule("RaidFrames") RF.PlaceFor(${n})
+  local f, p, rp, x, y = ns.MoverFrame("raid"), ns.MoverPoint("raid") local s = f:GetScale()
+  RF.PlaceFor(0)
+  return { p, rp, x, y, f:GetWidth() * s, f:GetHeight() * s, s }`);
+// The raid grid for n players: groups of five as columns side by side (or as rows stacked up, as
+// RF.LayoutFor(n) says), drawn at the compact scale, pinned to the holder's side.
+function raidRect(addon, n, sw, sh) {
+  const s = addon.eval(`local RF = ns.GetModule('RaidFrames') local s = RF.settings return { s.width, s.height, s.spacing, RF.LayoutFor(${n}) }`);
+  const spot = raidSpot(addon, n);
   const scale = addon.eval(`return ns.GetModule('RaidFrames').Scale(${n})`);
   const groups = Math.ceil(n / 5), five = [5 * (s[0] + s[2]) - s[2], 5 * (s[1] + s[2]) - s[2]];
   const across = [groups * (s[0] + s[2]) - s[2], groups * (s[1] + s[2]) - s[2]];
@@ -138,7 +145,7 @@ function layoutRects(addon, n, sw, sh) {
   const spots = moverSpots(addon), out = {};
   for (const [key, spot] of Object.entries(spots)) if (onScreen(key, n)) out[key] = rectAt(spot.slice(0, 4), spot[4], spot[5], sw, sh);
   for (const [key, row] of Object.entries(ATTACHED)) if (out[row[0]]) out[key] = attachedRect(out[row[0]], spots[row[0]][6], row);
-  if (n > 0) out.raid = raidRect(addon, spots.raid, n, sw, sh);
+  if (n > 0) out.raid = raidRect(addon, n, sw, sh);
   // Chat is a mover: its panel reaches a gap past the window's left, right and bottom (over the
   // scroll column on the right) and the tab bar's height above its top, and its side buttons
   // stack left of the panel. Its first-time size depends on the screen's width.
@@ -292,14 +299,14 @@ it("raid frames: up to 10 sit over your player frame, a bigger raid stacks its g
   const state = (n) => { addon.eval(`__members = ${n}`); addon.fire("GROUP_ROSTER_UPDATE"); return addon.eval(`return { ns.MoverPoint('raid') }`).concat(addon.eval(`return { ${RF}.LayoutFor(${n}), Vanguard_Raid:GetAttribute('point'), Vanguard_Raid:GetAttribute('columnAnchorPoint') }`)); };
   expect(state(5), "a party: over your player frame, groups as columns").toEqual(["BOTTOM", "BOTTOM", -240, 344, "columns", "BOTTOM", "LEFT"]);
   expect(state(10), "10 players: the same").toEqual(["BOTTOM", "BOTTOM", -240, 344, "columns", "BOTTOM", "LEFT"]);
-  expect(state(25), "25: left of your character, groups stacked as rows").toEqual(["BOTTOMLEFT", "BOTTOM", -620, 344, "rows", "LEFT", "BOTTOM"]);
-  expect(state(40), "40: the same").toEqual(["BOTTOMLEFT", "BOTTOM", -620, 344, "rows", "LEFT", "BOTTOM"]);
+  expect(state(25), "25: left of your character, groups stacked as rows").toEqual(["BOTTOMLEFT", "BOTTOM", -500, 344, "rows", "LEFT", "BOTTOM"]);
+  expect(state(40), "40: the same").toEqual(["BOTTOMLEFT", "BOTTOM", -500, 344, "rows", "LEFT", "BOTTOM"]);
   // A roster change in combat leaves the secure header, its anchor and the holder's default alone until the fight ends.
   addon.eval("__secureSets = 0 local set = Vanguard_Raid.SetAttribute Vanguard_Raid.SetAttribute = function(...) __secureSets = __secureSets + 1 return set(...) end");
   setCombat(addon, true);
   addon.eval("__members = 5");
   addon.fire("GROUP_ROSTER_UPDATE");
-  expect([addon.eval("return __secureSets"), addon.eval("return { ns.MoverPoint('raid') }"), addon.eval("return Vanguard_Raid:GetAttribute('point')")], "in combat nothing is re-anchored or re-laid out").toEqual([0, ["BOTTOMLEFT", "BOTTOM", -620, 344], "LEFT"]);
+  expect([addon.eval("return __secureSets"), addon.eval("return { ns.MoverPoint('raid') }"), addon.eval("return Vanguard_Raid:GetAttribute('point')")], "in combat nothing is re-anchored or re-laid out").toEqual([0, ["BOTTOMLEFT", "BOTTOM", -500, 344], "LEFT"]);
   setCombat(addon, false);
   expect([addon.eval("return { ns.MoverPoint('raid') }"), addon.eval("return Vanguard_Raid:GetAttribute('point')")], "and it follows when combat ends").toEqual([["BOTTOM", "BOTTOM", -240, 344], "BOTTOM"]);
   expect(state(5), "and back over your player frame when the raid shrinks").toEqual(["BOTTOM", "BOTTOM", -240, 344, "columns", "BOTTOM", "LEFT"]);
@@ -309,7 +316,7 @@ it("raid frames: up to 10 sit over your player frame, a bigger raid stacks its g
   addon.eval(`${RF}.settings.stackBig = true ${RF}.settings.layout = "rows"`);
   expect(state(5)[4], "Groups as rows is still rows for a party").toBe("rows");
   addon.eval(`${RF}.settings.layout = "columns"`);
-  expect(state(40).slice(0, 4), "a raid of 40 at the left again").toEqual(["BOTTOMLEFT", "BOTTOM", -620, 344]);
+  expect(state(40).slice(0, 4), "a raid of 40 at the left again").toEqual(["BOTTOMLEFT", "BOTTOM", -500, 344]);
   addon.eval('ns.Options.Show("raid") __click("Stack big raids at the left (more than 10 players)")');
   expect([addon.eval(`return ${RF}.settings.stackBig`), addon.eval("return { ns.MoverPoint('raid') }")], "the option turns it off at once, for the real frames").toEqual([false, ["BOTTOM", "BOTTOM", -240, 344]]);
   const moved = loggedIn(UNITS_ENV + RAID_ENV + "__members = 40 GetNumGroupMembers = function() return __members end", { savedVariables: 'VanguardDB = { profiles = { Default = { positions = { raid = { point = "BOTTOMRIGHT", relPoint = "BOTTOMRIGHT", x = -20, y = 344 } } } } }' });
@@ -317,7 +324,7 @@ it("raid frames: up to 10 sit over your player frame, a bigger raid stacks its g
   expect(moved.eval("return { ns.MoverPoint('raid') }"), "frames you already moved keep their spot at every size").toEqual(["BOTTOMRIGHT", "BOTTOMRIGHT", -20, 344]);
   expect(moved.eval("local p = Vanguard_Raid.__points return p.BOTTOMRIGHT ~= nil"), "the grid is pinned to the right of the holder at the saved spot").toBe(true);
   moved.eval("ns.ResetMovers('raid')");
-  expect([moved.eval("return { ns.MoverPoint('raid') }"), moved.eval("local p = Vanguard_Raid.__points return p.BOTTOMLEFT ~= nil")], "a reset puts a raid of 40 at the left default, and the grid follows at once, without a roster change").toEqual([["BOTTOMLEFT", "BOTTOM", -620, 344], true]);
+  expect([moved.eval("return { ns.MoverPoint('raid') }"), moved.eval("local p = Vanguard_Raid.__points return p.BOTTOMLEFT ~= nil")], "a reset puts a raid of 40 at the left default, and the grid follows at once, without a roster change").toEqual([["BOTTOMLEFT", "BOTTOM", -500, 344], true]);
 });
 it("Centered layout: compact raid grid, one-time migrations, a strip with nothing to show", () => {
   const addon = loggedIn(UNITS_ENV + RAID_ENV + "__members = 5 GetNumGroupMembers = function() return __members end");
