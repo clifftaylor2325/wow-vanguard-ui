@@ -1282,3 +1282,13 @@ it("Reset theme with Pixel-perfect scale on shows the reload notice, since its s
   addon.eval('ns.Theme.SetPixelScale(true) ns.Options.Show("general") __click("Reset theme")');
   expect([addon.eval("return ns.Theme.Settings().pixelScale"), reloadNotice(addon)]).toEqual([false, true]);
 });
+it("a page rebuilt while it shows (a chat tab picked on the Chat page) keeps its scroll", () => {
+  const addon = loggedIn(CLICK_LUA);
+  addon.eval('ns.Options.Show("chat")');
+  const out = addon.eval(`
+    local function view() for _, c in ipairs({ Vanguard_Options:GetChildren() }) do if c.child and c.child.pageKey == "chat" and c:IsShown() then return c end end end
+    local v = view() v:ScrollTo(400) local before = v:GetVerticalScroll()
+    ns.Options.RebuildPage("chat")
+    return { before, view() ~= v, view():GetVerticalScroll() }`);
+  expect(out, "a new view, at the old offset").toEqual([400, true, 400]);
+});

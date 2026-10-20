@@ -787,11 +787,15 @@ function O.Frame()
 end
 
 -- Throws a built page away so it's built again from its rows (its list
--- changed), showing it again if it's the current one.
+-- changed), showing it again if it's the current one, scrolled where it was.
 function O.RebuildPage(key)
   rowCache[key] = nil
-  if pages[key] then forgetRows(pages[key]) pages[key]:Hide() pages[key] = nil end
-  if window and window:IsShown() and O.current == key then O.Show(key) end
+  local old = pages[key]
+  local scroll = old and old:GetVerticalScroll() or 0
+  if old then forgetRows(old) old:Hide() pages[key] = nil end
+  if not (window and window:IsShown() and O.current == key) then return end
+  O.Show(key)
+  if pages[key] then pages[key]:ScrollTo(scroll) end
 end
 
 -- The first row on a page whose caption has the (lower-case) text.
