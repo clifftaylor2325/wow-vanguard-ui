@@ -1534,6 +1534,62 @@ it("social window cards: each list sits in an inset, its cards are theme rows wi
   expect([windowErrors(addon), addon.eval("return #ns.errors")], "no errors").toEqual(["none", 0]);
 });
 
+// TEST-ONLY: the status dropdown keeps its presence in presenceTypeSelf and shows only a dot; the game's words for each presence.
+const PRESENCE_ENV = SOCIAL_ENV + `
+  SocialUIUtil = { GetLabelForPresenceType = function(t) return ({ "TEST-ONLY Available", "TEST-ONLY Away" })[t] end }
+  __status = SocialUIFrame.BattleNetBar.ControlsContainer.OnlineStatusDropdown
+  __status.presenceTypeSelf = 1
+  function __status:UpdateToMenuSelections() end
+`;
+
+// Lua: the status dropdown's label text, and whether the dropdown is as wide as the dot, the label and the chevron.
+const PRESENCE = `local label = ns.FrameState("vgPresenceLabel")[__status] local P = ns.GetModule("Windows").PRESENCE_LABEL
+  return { label:GetText(), __status:GetWidth() == P.x + label:GetStringWidth() + P.chevron }`;
+
+it("social window: the status dropdown shows its status in words after the dot, and follows the game's updates", () => {
+  const addon = loggedIn(PRESENCE_ENV);
+  addon.eval("SocialUIFrame:Show()");
+  expect(addon.eval(PRESENCE), "the status now, the dropdown widened to hold it").toEqual(["TEST-ONLY Available", true]);
+  addon.eval("__status.presenceTypeSelf = 2 __status:UpdateToMenuSelections()");
+  expect(addon.eval(PRESENCE), "a new status after the game's update").toEqual(["TEST-ONLY Away", true]);
+  addon.eval("SocialUIFrame:Hide() SocialUIFrame:Show()");
+  expect(addon.eval("local n = 0 for _, r in ipairs({ __status:GetRegions() }) do if r.GetText and r:GetText() == 'TEST-ONLY Away' then n = n + 1 end end return n"), "one label, not one per show").toBe(1);
+  const bare = loggedIn(SOCIAL_ENV);
+  bare.eval("SocialUIFrame:Show()");
+  expect([bare.eval("return ns.FrameState('vgPresenceLabel')[SocialUIFrame.BattleNetBar.ControlsContainer.OnlineStatusDropdown]:GetText()"), windowErrors(bare)], "a client without the game's words").toEqual(["", "none"]);
+});
+
+// TEST-ONLY: a friends or recent allies card with its presence dot and name block, placed as the game's
+// LayoutScaledPresenceHolderAnchors and LayoutScaledTextHolderAnchors place them (19 px dot, the template's offsets).
+const PRESENCE_CARD_LUA = `
+  function __presenceCard(parent)
+    local c = __card(parent)
+    c.PresenceHolder, c.TextHolder = CreateFrame("Frame", nil, c), CreateFrame("Frame", nil, c)
+    c.PresenceHolder:SetSize(19, 19)
+    function c:LayoutScaledTextHolderAnchors()
+      self.PresenceHolder:ClearAllPoints() self.PresenceHolder:SetPoint("CENTER", self, "TOPLEFT", 3, -4)
+      self.TextHolder:ClearAllPoints() self.TextHolder:SetPoint("TOPLEFT", self.PresenceHolder, "BOTTOMRIGHT", -4, 3) self.TextHolder:SetPoint("BOTTOM", self, "BOTTOM", 0, 5)
+    end
+    c:LayoutScaledTextHolderAnchors()
+    return c
+  end
+`;
+
+// Lua: where a card's name block and presence dot are anchored.
+const PLACED = (c) => `local c = ${c} local _, tr, tp, tx, ty = c.TextHolder:GetPointByName("TOPLEFT") local dp, dr, drp, dx, dy = c.PresenceHolder:GetPoint(1)
+  return { tr == c, tp, tx, ty, dp, dr == c.TextHolder, drp, dx, dy, c.PresenceHolder:GetNumPoints() }`;
+
+it("social window cards: the presence dot sits centred on the card's names, after each of the game's layouts", () => {
+  const addon = loggedIn(SOCIAL_CARDS_ENV + PRESENCE_CARD_LUA);
+  addon.eval("SocialUIFrame:Show() local f = SocialUIFrame __p1 = __acquire(f.FriendsList.ScrollBox, __presenceCard(f.FriendsList.ScrollBox)) __p2 = __acquire(f.RecentAlliesList.ScrollBox, __presenceCard(f.RecentAlliesList.ScrollBox))");
+  // The block starts past the dot (3 + 9.5 + 4) at the game's height (-4 - 9.5 + 3); the dot keeps its centre 3 in.
+  const centred = [true, "TOPLEFT", 16.5, -10.5, "CENTER", true, "LEFT", -13.5, 0, 1];
+  expect([addon.eval(PLACED("__p1")), addon.eval(PLACED("__p2"))], "friends and recent allies cards").toEqual([centred, centred]);
+  addon.eval("__p1:LayoutScaledTextHolderAnchors() __acquire(SocialUIFrame.FriendsList.ScrollBox, __p1)");
+  expect(addon.eval(PLACED("__p1")), "laid out again by the game, and dressed again: the same place").toEqual(centred);
+  expect([windowErrors(addon), addon.eval("return #ns.errors")], "no errors").toEqual(["none", 0]);
+});
+
 it("social window: the reward card, the raid tab's check box, description and groups (the member buttons out of combat), the side windows' headings and lists", () => {
   const addon = loggedIn(SOCIAL_CARDS_ENV);
   addon.eval("SocialUIFrame:Show()");

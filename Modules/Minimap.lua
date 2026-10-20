@@ -49,6 +49,9 @@ MM.BAND = { top = 20, bottom = 24 }
 MM.BAND_ALPHA = 0.7
 -- Room kept clear of the zone name on each side, for the buttons in the top corners.
 MM.ZONE_INSET = 28
+-- How far in from a round map's edge the buttons' centres sit (UI units): half a slot button's
+-- diagonal and a little more, so a whole button stays inside the outline.
+MM.RIM_INSET = 15
 
 -- Zone text color tokens by PvP type (GetZonePVPInfo); gold otherwise.
 local ZONE_COLORS = {
@@ -305,28 +308,37 @@ end
 
 -- Building -------------------------------------------------------------------------------
 
+-- Points a region at the square along the holder's bottom where the map sits (a round map's holder
+-- is a strip taller, for the zone name above the disc).
+local function onMapSquare(region, holder, size)
+  region:SetPoint("BOTTOMLEFT", holder, "BOTTOMLEFT")
+  region:SetPoint("BOTTOMRIGHT", holder, "BOTTOMRIGHT")
+  region:SetHeight(size + 2)
+end
+
 -- A round map's backing: a disc in the panel color (it follows the theme).
-local function roundBacking(holder)
+local function roundBacking(holder, size)
   local disc = holder:CreateTexture(nil, "BACKGROUND")
   disc:SetTexture(T.Texture("RoundDisc"))
-  disc:SetAllPoints()
+  onMapSquare(disc, holder, size)
   T.Tint(disc, "panel")
 end
 
--- The themed holder the minimap moves into.
+-- The themed holder the minimap moves into; a round map's is a band taller, for the zone name above it.
 local function createHolder(size)
   local holder = CreateFrame("Frame", "Vanguard_Minimap", UIParent)
-  holder:SetSize(size + 2, size + 2)
-  if MM.round then roundBacking(holder) else T.HudPanel(holder) end
+  MM.holder = holder
+  holder:SetSize(size + 2, size + 2 + (MM.round and MM.BAND.top or 0))
+  if MM.round then roundBacking(holder, size) else T.HudPanel(holder) end
   ns.Mover(holder, "minimap", "Minimap", { "TOPRIGHT", "TOPRIGHT", -12, -12 })
   return holder
 end
 
--- Moves the minimap into the holder, square and sized.
+-- Moves the minimap into the holder, square and sized, a pixel in from its bottom edge.
 local function adoptMinimap(holder, size)
   Minimap:SetParent(holder)
   Minimap:ClearAllPoints()
-  Minimap:SetPoint("CENTER", holder, "CENTER")
+  Minimap:SetPoint("BOTTOM", holder, "BOTTOM", 0, 1)
   Minimap:SetSize(size, size)
   Minimap:SetMaskTexture(MM.round and T.Texture("RoundDisc") or T.WHITE)
   wheelZoom()
@@ -345,12 +357,12 @@ end
 
 -- The overlay frame above the map that holds the bands, the texts, the
 -- corner marks and the game's buttons; on the holder the map would cover them.
-local function createOverlay(holder)
+local function createOverlay(holder, size)
   local overlay = CreateFrame("Frame", nil, holder)
   MM.overlay = overlay
   if MM.round then roundTrim(overlay) end
   overlay.Layout = MM.NoLayout
-  overlay:SetAllPoints()
+  onMapSquare(overlay, holder, size)
   overlay:SetFrameLevel((Minimap:GetFrameLevel() or 1) + 2)
   return overlay
 end
@@ -389,8 +401,8 @@ local function paintChrome()
   for _, t in ipairs(MM.rules) do T.Tint(t, "accent") end
 end
 
--- The bands along the map's top and bottom edges (the bottom one, which holds
--- the coordinates and the slot buttons, only with coordinates on), each with an
+-- The bands along the map's top and bottom edges (the top one only on a square map, the bottom one,
+-- which holds the coordinates and the slot buttons, only with coordinates on), each with an
 -- accent rule on its inner edge; they follow the panel color and accent live.
 local function addBands(overlay, settings)
   MM.bands = {}
@@ -399,26 +411,27 @@ local function addBands(overlay, settings)
   MM.bottom:SetShown(settings.coords ~= false)
   MM.rules = { rule(overlay, MM.top, "BOTTOM"), rule(overlay, MM.bottom, "TOP") }
   MM.rules[2]:SetShown(settings.coords ~= false)
+  MM.top:SetShown(not MM.round)
+  MM.rules[1]:SetShown(not MM.round)
   paintChrome()
   T.OnChanged(paintChrome)
 end
 
 -- How wide the zone name may run: the room between the top corner buttons, or on a round map the
--- chord across the middle of the top band.
+-- whole width of the strip above the disc.
 function MM.ZoneWidth(size)
   if not MM.round then return size - 2 * MM.ZONE_INSET end
-  local r = size / 2
-  return 2 * math.sqrt(r * r - (r - MM.BAND.top / 2) ^ 2) - 8
+  return size
 end
 
--- The zone name centered on the top band in the zone role (a bold 13 that keeps
--- Fira Sans when the faction look sets the display font on window titles), kept to the room between the
--- corner buttons (a long name is cut short rather than run under them), and
+-- The zone name centered on its button (the top band, or the strip above a round map) in the zone
+-- role (a bold 13 that keeps Fira Sans when the faction look sets the display font on window titles),
+-- kept to the button's width (a long name is cut short rather than run under the corner buttons), and
 -- the coordinates centered on the bottom band (inside the map, so a map in a
 -- screen corner never pushes them off screen).
 local function addTexts(overlay, size)
   MM.zone = T.Text(overlay:CreateFontString(nil, "OVERLAY"), "zone", false)
-  MM.zone:SetPoint("CENTER", MM.top, "CENTER")
+  MM.zone:SetPoint("CENTER", MM.zoneButton, "CENTER")
   MM.zone:SetWidth(MM.ZoneWidth(size))
   MM.zone:SetWordWrap(false)
   MM.coords = T.Text(overlay:CreateFontString(nil, "OVERLAY"), "small")
@@ -428,12 +441,13 @@ end
 
 -- The zone name takes the mouse: a click opens (or closes) the world map,
 -- hovering names the zone and its territory, and the wheel still zooms. It
--- stops short of the top corners, so the buttons there keep their clicks.
+-- stops short of the top corners, so the buttons there keep their clicks. It runs along the holder's
+-- top: over the top band, or on a round map over the strip above the disc.
 local function zoneButton(overlay, size)
   local b = CreateFrame("Button", "Vanguard_MinimapZone", overlay)
   local inset = (size - MM.ZoneWidth(size)) / 2
-  b:SetPoint("TOPLEFT", overlay, "TOPLEFT", inset, 0)
-  b:SetPoint("TOPRIGHT", overlay, "TOPRIGHT", -inset, 0)
+  b:SetPoint("TOPLEFT", MM.holder, "TOPLEFT", inset, 0)
+  b:SetPoint("TOPRIGHT", MM.holder, "TOPRIGHT", -inset, 0)
   b:SetHeight(MM.BAND.top)
   b:SetScript("OnClick", ns.Guard("click minimap world map", function() if type(ToggleWorldMap) == "function" then ToggleWorldMap() end end))
   b:SetScript("OnEnter", zoneTooltip)
@@ -469,17 +483,17 @@ end
 -- Dresses the overlay: the bands, the texts on them, the zone button and the corner marks.
 local function dress(overlay, settings)
   addBands(overlay, settings)
-  addTexts(overlay, settings.size)
   zoneButton(overlay, settings.size)
+  addTexts(overlay, settings.size)
   addCorners(overlay)
 end
 
 -- Builds the minimap frame. Out of combat, since it moves Blizzard frames.
 local function build(settings)
-  MM.round, MM.rim = MM.IsRound(settings), settings.size / 2 - 4
+  MM.round, MM.rim = MM.IsRound(settings), settings.size / 2 - MM.RIM_INSET
   local holder = createHolder(settings.size)
   adoptMinimap(holder, settings.size)
-  dress(createOverlay(holder), settings)
+  dress(createOverlay(holder, settings.size), settings)
   fadeArt()
   quietCluster()
   if settings.icons then placeLeftovers() end

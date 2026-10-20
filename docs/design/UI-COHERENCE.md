@@ -168,7 +168,7 @@ Outside the phases: D's `work/game-primitives` adds new functions to the game-fr
 
 ### 4.4 Rules every phase follows
 
-One branch named `work/<phase>` from fresh `origin/main`, one draft PR marked ready once, Cliff's attribution only, `npm run quality` and `npm run coverage` (100 %) green, the README sentence and `docs/THEME.md` updated in the same commit as the behaviour, every new global in `.luacheckrc`, every new fade in THEME.md's table, a needs-in-game-check list in the PR, and the phase's checkbox ticked in `.planning/ROADMAP.md`. Nothing protected in combat, no secret-value reads, no field on a game frame and no `SetScript` on one: the harness fails both. Nothing is built behind an unanswered [DECIDE].
+One branch named `work/<phase>` from fresh `origin/main`, one draft PR marked ready once, Cliff's attribution only, `npm run quality` and `npm run coverage` (100 %) green, the feature page sentence (`docs/features/`) and `docs/THEME.md` updated in the same commit as the behaviour, every new global in `.luacheckrc`, every new fade in THEME.md's table, a needs-in-game-check list in the PR, and the phase's checkbox ticked in `.planning/ROADMAP.md`. Nothing protected in combat, no secret-value reads, no field on a game frame and no `SetScript` on one: the harness fails both. Nothing is built behind an unanswered [DECIDE].
 
 ## 5. Phases in build order
 

@@ -3,7 +3,7 @@
 # release zip (the TOC, every file it loads, Media/, the libraries' licenses
 # and LICENSE); scripts/pkgmeta.test.mjs fails if the two ever differ.
 # The CurseForge project ID goes in Vanguard.toc as ## X-Curse-Project-ID
-# once the project exists (see README, Releases on CurseForge).
+# once the project exists (see docs/DEVELOPMENT.md, Releases on CurseForge).
 
 package-as: Vanguard
 
