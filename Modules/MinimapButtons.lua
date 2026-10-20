@@ -106,9 +106,9 @@ local function buildDrawer(map)
   ns.CloseOnEscape(MB.drawer)
 end
 
--- An edge of a frame in screen pixels (so frames at different scales compare), or nil when it has none yet.
-local function edge(frame, getter)
-  local v = ns.PlainNumber(frame[getter](frame))
+-- The map's left edge in screen pixels (so frames at different scales compare), or nil when it has none yet.
+local function leftEdge(frame)
+  local v = ns.PlainNumber(frame:GetLeft())
   return v and v * frame:GetEffectiveScale()
 end
 
@@ -119,7 +119,7 @@ MB.SIDES = { LEFT = { "TOPRIGHT", "TOPLEFT", -1 }, RIGHT = { "TOPLEFT", "TOPRIGH
 -- leave the screen, then right. The drawer is held to the screen, so a map near the bottom pushes it up.
 function MB.PlaceDrawer()
   local d, gap = MB.drawer, T.SPACE.tight
-  local left = edge(MB.map, "GetLeft")
+  local left = leftEdge(MB.map)
   local side = MB.SIDES[left and left < (d:GetWidth() + gap) * d:GetEffectiveScale() and "RIGHT" or "LEFT"]
   d:ClearAllPoints()
   d:SetPoint(side[1], MB.map, side[2], side[3] * gap, 0)
