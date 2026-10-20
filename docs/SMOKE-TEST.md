@@ -434,6 +434,12 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Expect: one dark panel with rounded corners and an accent-coloured border runs from your player frame's left end to your target frame's right end, behind the cast bar, swing timer and cooldown icons between them (all still visible over it); the Vanguard crest sits centred on the panel's top edge; your target's health and power bars fill from the right. The player and target frames have rounded corners too, with no bar colour showing past the curve (no cut corners anywhere on the deck); switching the deck off gives them their cut shield corners back. With Calm HUD on, the panel dims with the frames. Switching it off removes the panel and the target's bars fill from the left again, at once. In setup, Versus deck turns it on with your role's layout (a healer gets the healing layout and click casting); picking another layout turns it off. No error.
 - If it fails, paste: a screenshot of the bottom centre and `/vg errors`.
 
+### 7.2b1 Pet cast bar
+
+- Do: as a warlock with the Imp out (or any pet that casts), let it cast Firebolt at a mob. Dismiss the pet and summon another. Then `/vg unlock` and look for the pet cast bar's handle.
+- Expect: a small cast bar just left of the pet frame (between the combo points' spot and the focus's debuffs) fills with each of the pet's casts, with the spell's name and icon and no interrupt diamond, and goes when the cast ends or the pet goes; in unlock mode it has its own handle, "Pet cast bar". No error.
+- If it fails, paste: a screenshot during a pet cast and `/vg errors`.
+
 ### 7.2c Cursor ring
 
 - Do: `/vg` → Unit frames, tick **Ring at the cursor: the global cooldown and your cast** (nothing needs a reload). Move the mouse around, then cast an instant spell, then a spell with a long cast time, then a channel, and click and hover things under the ring (a button, a unit frame, a world object). Untick the switch.

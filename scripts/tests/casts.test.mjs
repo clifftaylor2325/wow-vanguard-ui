@@ -177,9 +177,26 @@ it("cast bars read a cast as values and write the seconds left only when they re
   expect(seconds.map((s) => s[2]), "formatted only on a new tenth (or on a half tenth)").toEqual([1, 0, 0, 1, 1, 0]);
 });
 
+it("your pet's casts show on a small bar by the pet frame while the game's cast bars are put away", () => {
+  const addon = loggedIn(CAST_ENV);
+  // The pet bar's spot, its size, and whether it has an interrupt mark.
+  const spot = addon.eval("local b = Vanguard_CastBar_pet local p, _, _, x, y = b:GetPoint() return { p, x, y, b:GetWidth(), b:GetHeight(), b.mark ~= nil }");
+  expect(spot, "100 x 10 left of the pet frame, with no interrupt mark").toEqual(["BOTTOM", -300, 252, 100, 10, false]);
+  expect(addon.eval("local out = {} for _, m in ipairs(ns.MoverList()) do if m.key == 'cast_pet' then out[1] = m.label end end return out[1]"), "movable in unlock mode").toBe("Pet cast bar");
+  addon.eval('__casts.pet = { kind = "cast", start = 999000, finish = 1001000 }');
+  addon.fire("UNIT_SPELLCAST_START", "pet");
+  addon.update(0.01);
+  expect(castBar(addon, "pet").shown && castBar(addon, "pet").text === "TEST-ONLY Spell", "an Imp's Firebolt shows on it").toBe(true);
+  addon.eval("__casts.pet = nil");
+  addon.fire("UNIT_PET", "player");
+  expect(castBar(addon, "pet").shown, "a new pet (or none) refreshes it").toBe(false);
+  const kept = loggedIn(CAST_ENV, { savedVariables: "VanguardDB.profiles = { Default = { CastBars = { hideBlizzard = false } } }" });
+  expect(kept.eval("return Vanguard_CastBar_pet == nil"), "with the game's cast bars kept, the game shows your pet's casts and Vanguard builds none").toBe(true);
+});
+
 it("cast bars ask the client for their own units' casts only", () => {
   const addon = loggedIn(CAST_ENV + "__updates = {}");
-  expect(unitEvents(addon, "UNIT_SPELLCAST_START"), "one subscription for you, your target and your focus; nothing takes every unit's casts").toEqual({ subs: "player,target,focus", plain: 0 });
+  expect(unitEvents(addon, "UNIT_SPELLCAST_START"), "one subscription for you, your target and your focus, one for your pet; nothing takes every unit's casts").toEqual({ subs: "pet player,target,focus", plain: 0 });
   addon.eval(`local CB = ns.GetModule("CastBars") local update = CB.Update
     CB.Update = function(unit) __updates[#__updates + 1] = unit return update(unit) end
     __casts.nameplate7 = { kind = "cast", start = 1000, finish = 3000 }`);
@@ -189,7 +206,7 @@ it("cast bars ask the client for their own units' casts only", () => {
   addon.fire("UNIT_SPELLCAST_START", "focus");
   expect(addon.eval("return __updates[1]"), "the focus's does").toBe("focus");
   const some = loggedIn(CAST_ENV, { savedVariables: "VanguardDB.profiles = { Default = { CastBars = { player = false, focus = false } } }" });
-  expect(unitEvents(some, "UNIT_SPELLCAST_STOP").subs, "only the units whose bars are on").toBe("target");
+  expect(unitEvents(some, "UNIT_SPELLCAST_STOP").subs, "only the units whose bars are on (your pet's while the game's bars are put away)").toBe("pet target");
 });
 
 it("a channel the client stops with an interrupter flashes red, one it lets run out flashes green", () => {

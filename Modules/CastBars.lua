@@ -1,4 +1,4 @@
--- Cast bars for you, your target and your focus: spell icon, name, the
+-- Cast bars for you, your target, your focus and your pet: spell icon, name, the
 -- bar filling as the cast goes (emptying for a channel), gray when the cast
 -- can't be interrupted. Each is movable in unlock mode. The game's cast bar
 -- over the professions window while crafting is kept, in the theme.
@@ -41,7 +41,12 @@ local LAYOUT = {
   -- The target's sits over its buff row (Modules/FrameAuras.lua), the focus's over the focus frame.
   target = { w = 240, h = 16, point = { "BOTTOM", "BOTTOM", 240, 262 } },
   focus = { w = 160, h = 14, point = { "BOTTOM", "BOTTOM", -270, 324 } },
+  -- Your pet's, small, just left of the pet frame, between the combo points and the focus's debuffs
+  -- (built only while the game's bars are put away).
+  pet = { w = 100, h = 10, point = { "BOTTOM", "BOTTOM", -300, 252 } },
 }
+-- The bars that get the interrupt mark: casts you might interrupt (never yours or your pet's).
+CB.MARKED = { target = true, focus = true }
 -- The default sizes and points, for layouts placed around them (Core/Setup.lua).
 CB.LAYOUT = LAYOUT
 -- The game's own cast bars (their 12.x names), put away for good while the hideBlizzard setting is on (the default).
@@ -197,7 +202,7 @@ function CB.Finish(bar, reason)
   T.FadeOut(bar, 0.35, function() bar.vgFinishing = nil end)
 end
 
--- Shows the unit's cast on its own bar (player, target, focus), if it has one.
+-- Shows the unit's cast on its own bar (player, target, focus, pet), if it has one.
 function CB.Update(unit)
   if CB.bars[unit] then CB.Show(CB.bars[unit], unit) end
 end
@@ -376,7 +381,7 @@ local function createBar(unit)
   local bar = CB.Build(CreateFrame("StatusBar", "Vanguard_CastBar_" .. unit, UIParent), def.w, def.h)
   bar.unit = unit
   bar:SetFrameStrata("HIGH")
-  if unit ~= "player" and ns.Client.Has("cooldownObject") then addMark(bar, def.h) end
+  if CB.MARKED[unit] and ns.Client.Has("cooldownObject") then addMark(bar, def.h) end
   ns.Mover(bar, "cast_" .. unit, unit:sub(1, 1):upper() .. unit:sub(2) .. " cast bar", unit == "player" and CB.PlayerPoint() or def.point)
   ns.MoverSizable("cast_" .. unit, { width = CB.WIDTHS })
   return bar
@@ -572,26 +577,40 @@ local function onCast(event, unit, _, _, interruptedBy)
   CB.Update(unit)
 end
 
--- Builds the bars switched on (yours, your target's, your focus's); returns their units.
+-- Builds the bars switched on (yours, your target's, your focus's); returns their units. Your pet's bar
+-- is built while the game's bars are put away (its pet cast bar with them), so your pet's casts still show.
 local function createBars(settings)
   local units = {}
   for _, unit in ipairs({ "player", "target", "focus" }) do
     if settings[unit] then CB.bars[unit], units[#units + 1] = createBar(unit), unit end
   end
+  if settings.hideBlizzard then CB.bars.pet = createBar("pet") end
   return units
 end
 
--- Module entry point (Core/Modules.lua). Cast events come only for the units
--- with a bar (the client sends every nameplate's casts to whoever asks for all).
+-- Your pet's casts (on a subscription of its own: one takes three units) and your pet coming or going.
+local function listenPet()
+  ns.OnUnit(CAST_EVENTS, onCast, "pet")
+  ns.OnUnit("UNIT_PET", function() CB.Update("pet") end, "player")
+end
+
+-- Cast events come only for the units with a bar (the client sends every nameplate's casts to whoever
+-- asks for all), and the bars follow a new target, focus or pet.
+local function listen(units)
+  ns.OnUnit(CAST_EVENTS, onCast, unpack(units))
+  if CB.bars.pet then listenPet() end
+  ns.On("PLAYER_TARGET_CHANGED", function() CB.Update("target") end)
+  ns.On("PLAYER_FOCUS_CHANGED", function() CB.Update("focus") end)
+  ns.On("SPELL_UPDATE_COOLDOWN", CB.RefreshMarks)
+  ns.On("PLAYER_ENTERING_WORLD", function() for unit in pairs(CB.bars) do CB.Update(unit) end end)
+end
+
+-- Module entry point (Core/Modules.lua).
 function CB.Enable(settings)
   CB.settings = settings
   local units = createBars(settings)
   if settings.hideBlizzard then ns.OutOfCombat(function() for _, n in ipairs(BLIZZARD) do hideBlizzard(n) end end) end
   CB.SkinOverlay()
-  ns.OnUnit(CAST_EVENTS, onCast, unpack(units))
-  ns.On("PLAYER_TARGET_CHANGED", function() CB.Update("target") end)
-  ns.On("PLAYER_FOCUS_CHANGED", function() CB.Update("focus") end)
-  ns.On("SPELL_UPDATE_COOLDOWN", CB.RefreshMarks)
-  ns.On("PLAYER_ENTERING_WORLD", function() for unit in pairs(CB.bars) do CB.Update(unit) end end)
+  listen(units)
   CB.ApplyRing()
 end
