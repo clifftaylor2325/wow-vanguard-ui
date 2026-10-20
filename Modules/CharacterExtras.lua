@@ -67,22 +67,21 @@ function CE.Average()
   return math.floor(sum / n + 0.5), n
 end
 
--- Melee damage per second: the average hit (the game's damage figures, with its bonuses) over the swing time.
--- Nil when the client won't say or the swing time is zero.
-local function dps(low, high, speed, pos, neg, percent)
+-- Melee damage per second as the character sheet works it out (PaperDollFrame_CalculateDPS): the average hit
+-- over the swing time. UnitDamage's low and high already carry the bonuses and the percent, so neither is added
+-- again. Nil when the client won't say or the swing time is zero.
+local function dps(low, high, speed)
   low, high, speed = ns.PlainNumber(low), ns.PlainNumber(high), ns.PlainNumber(speed)
   if not (low and high and speed and speed > 0) then return nil end
-  local hit = ((low + high) / 2 + (ns.PlainNumber(pos) or 0) + (ns.PlainNumber(neg) or 0)) * (ns.PlainNumber(percent) or 1)
-  return hit / speed
+  return (low + high) / 2 / speed
 end
 
 -- Your main hand's damage per second and swing time, and your off hand's (nil when you have none); all nil when the client has no figures.
 function CE.Melee()
   if type(UnitDamage) ~= "function" or type(UnitAttackSpeed) ~= "function" then return nil end
-  local low, high, offLow, offHigh, pos, neg, percent = UnitDamage("player")
+  local low, high, offLow, offHigh = UnitDamage("player")
   local main, off = UnitAttackSpeed("player")
-  local mainDps = dps(low, high, main, pos, neg, percent)
-  return mainDps, ns.PlainNumber(main), off and dps(offLow, offHigh, off, pos, neg, percent) or nil
+  return dps(low, high, main), ns.PlainNumber(main), off and dps(offLow, offHigh, off) or nil
 end
 
 -- The slot labels -----------------------------------------------------------------------------------
