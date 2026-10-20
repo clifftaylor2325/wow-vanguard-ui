@@ -5,7 +5,7 @@
 --     the recent chat as plain text, ready to copy;
 --   * short channel names (on by default): "[2. Trade - City]" shows as "[T]", "[Guild]" as
 --     "[G]", a letter beside the channel's colour; a profile that turned it off keeps that;
---   * the mouse wheel moves four lines a tick (the game's one and three more), and
+--   * the mouse wheel moves four lines a tick (the game's three and one more), and
 --     Ctrl + wheel jumps to the top or the bottom of a chat window;
 --   * the game's own timestamp and class-colored name settings, offered in /vg.
 -- Chat text the game hides from addons (in instances) is never read or
@@ -146,8 +146,9 @@ local function shortenAdded(frame, text)
   frame:TransformMessages(function(message) return not ns.IsSecret(message) and message == text end, function(_, ...) return short, ... end)
 end
 
--- How many lines a plain wheel tick moves in all: the game's one and the rest here.
-CX.WHEEL_LINES = 4
+-- How many lines a wheel tick moves in all, and how many of them the game's own handler moves
+-- (ScrollUtil's ScrollByAmount(delta * 3), whatever the modifiers): the rest are added here.
+CX.WHEEL_LINES, CX.GAME_WHEEL_LINES = 4, 3
 
 -- Ctrl + wheel (switched on): the top of the window (wheel up) or the bottom (wheel down).
 local function jump(frame, delta)
@@ -155,14 +156,12 @@ local function jump(frame, delta)
   if delta > 0 then frame:ScrollToTop() else frame:ScrollToBottom() end
 end
 
--- The wheel, after the game's own scroll (it reads the modifiers first: a line, Ctrl a page, Shift
--- the end): Ctrl then jumps to the end, Shift is left as the game's, and a plain tick gets the
--- lines that make it CX.WHEEL_LINES in all.
+-- The wheel, after the game's own scroll (its three lines; it reads no modifiers): Ctrl then jumps
+-- to the end, and any other tick gets the lines that make it CX.WHEEL_LINES in all.
 local function wheel(frame, delta)
   if IsControlKeyDown() then return jump(frame, delta) end
-  if IsShiftKeyDown() then return end
   local step = delta > 0 and frame.ScrollUp or frame.ScrollDown
-  for _ = 2, CX.WHEEL_LINES do step(frame) end
+  for _ = CX.GAME_WHEEL_LINES + 1, CX.WHEEL_LINES do step(frame) end
 end
 
 -- Follows a chat window's new lines and wheel, once per window.
