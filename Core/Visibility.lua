@@ -122,7 +122,7 @@ end
 function V.Linger(frame)
   local token = (frame.vgLingerCount or 0) + 1
   frame.vgLingerCount = token
-  frame.vgLingering = type(C_Timer) == "table" and type(C_Timer.After) == "function" or nil
+  frame.vgLingering = ns.HasTimer() or nil
   if frame.vgLingering then C_Timer.After(V.LINGER, ns.Guard("timer end linger", function() V.EndLinger(frame, token) end)) end
   V.Refresh(frame)
 end
@@ -141,7 +141,7 @@ end
 function ns.AutoHide(frame, seconds)
   local token = (vgAutoHideCount[frame] or 0) + 1
   vgAutoHideCount[frame] = token
-  if type(C_Timer) ~= "table" or type(C_Timer.After) ~= "function" then return end
+  if not ns.HasTimer() then return end
   C_Timer.After(seconds, ns.Guard("timer auto hide", function()
     if vgAutoHideCount[frame] == token then T.FadeOut(frame) end
   end))

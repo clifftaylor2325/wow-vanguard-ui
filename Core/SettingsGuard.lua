@@ -357,7 +357,7 @@ end
 
 -- A while after login, out of combat, the file's size is checked.
 local function scheduleAudit()
-  if C_Timer and C_Timer.After then C_Timer.After(G.AUDIT_AFTER, ns.Guard("saved data size", function() ns.OutOfCombat(G.Audit, "saved data size") end)) end
+  if ns.HasTimer() then C_Timer.After(G.AUDIT_AFTER, ns.Guard("saved data size", function() ns.OutOfCombat(G.Audit, "saved data size") end)) end
 end
 ns.On("PLAYER_LOGIN", scheduleAudit)
 
