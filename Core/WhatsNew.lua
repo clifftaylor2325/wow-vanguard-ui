@@ -68,14 +68,6 @@ end
 
 -- The window ----------------------------------------------------------------------------------
 
--- A left-aligned line of text in a role and color.
-local function text(parent, role, color, value)
-  local fs = T.Text(parent:CreateFontString(nil, "OVERLAY"), role, color)
-  fs:SetJustifyH("LEFT")
-  fs:SetText(value)
-  return fs
-end
-
 -- The title, centred across the window, with the hint under it, the close button and Escape (ns.WindowTitle);
 -- fill() puts the version in the title.
 local function addTitle(f)
@@ -127,7 +119,7 @@ end
 -- open, plain text otherwise.
 local function addItem(child, item, y)
   local line = item.page and W.Row(child) or CreateFrame("Frame", nil, child)
-  line.text = text(line, "label", item.page and "accent" or "text", itemText(item))
+  line.text = W.Label(line, itemText(item), "label", item.page and "accent" or "text")
   line.text:SetPoint("TOPLEFT", T.SPACE.gap, 0)
   line.text:SetWidth(LIST_W - 2 * T.SPACE.gap)
   line:SetSize(LIST_W, line.text:GetStringHeight())

@@ -10,8 +10,8 @@ local T = ns.Theme
 local W = {}
 ns.Widgets = W
 
--- A left-aligned string in a text role and color.
-local function label(parent, text, role, color)
+-- A left-aligned line of text in a role and color: W.Label(parent, text, role, color).
+function W.Label(parent, text, role, color)
   local fs = T.Text(parent:CreateFontString(nil, "OVERLAY"), role, color)
   fs:SetJustifyH("LEFT")
   fs:SetText(text)
@@ -20,7 +20,7 @@ end
 
 -- A line of gray text (help or status); :Refresh() re-reads it when text is a function.
 function W.Text(parent, text)
-  local fs = label(parent, type(text) == "function" and text() or text, "label", "text2")
+  local fs = W.Label(parent, type(text) == "function" and text() or text, "label", "text2")
   -- Re-reads a text given as a function.
   fs.Refresh = function(self) if type(text) == "function" then self:SetText(text()) end end
   return fs

@@ -495,19 +495,11 @@ end
 
 -- Building ------------------------------------------------------------------------------
 
--- A left-aligned line of text on the wizard.
-local function text(parent, role, color, value)
-  local fs = T.Text(parent:CreateFontString(nil, "OVERLAY"), role, color)
-  fs:SetJustifyH("LEFT")
-  fs:SetText(value)
-  return fs
-end
-
 -- A full-width choice row at y (a negative offset down the page); value is what it picks. It rests flat
 -- and lifts under the mouse; the chosen one wears the selected look.
 local function choice(page, label, value, y, onClick)
   local b = W.Row(page, T.BUTTON_H, { width = WIDTH - 2 * PAD })
-  b.text = text(b, "label", "text", label)
+  b.text = W.Label(b, label, "label", "text")
   b.text:SetPoint("LEFT", T.SPACE.section, 0)
   b:SetScript("OnClick", ns.Guard(W.ClickLabel(label), onClick))
   b:SetPoint("TOPLEFT", 0, y)
@@ -523,13 +515,13 @@ end
 -- A page of choices under a question: a button per { key, text, hint }; picking one
 -- sets state[field]. The chosen one's hint shows under them.
 local function choicePage(page, question, list, field)
-  text(page, "label", "text2", question):SetPoint("TOPLEFT")
+  W.Label(page, question, "label", "text2"):SetPoint("TOPLEFT")
   page.choices = {}
   for i, l in ipairs(list) do
     page.choices[i] = choice(page, l.text, l.key, choiceY(i), function() state[field] = l.key; refresh() end)
     page.choices[i].hint = l.hint or ""
   end
-  page.hint = text(page, "small", "text2", "")
+  page.hint = W.Label(page, "", "small", "text2")
   page.hint:SetPoint("TOPLEFT", 0, choiceY(#list + 1))
   page.hint:SetWidth(WIDTH - 2 * PAD)
 end
@@ -607,7 +599,7 @@ local function styleTile(page, i, s)
   b:SetPoint("TOPLEFT", (i - 1) * (TILE_W + TILE_GAP), -82)
   b.value = s[1]
   tileBar(b)
-  b.text = text(page, "small", "text", s[3])
+  b.text = W.Label(page, s[3], "small", "text")
   b.text:SetPoint("TOP", b, "BOTTOM", 0, -T.SPACE.tight)
   b:SetScript("OnClick", ns.Guard("click setup style", function() S.SetStyle(s[1]); refresh() end))
   return b
@@ -615,7 +607,7 @@ end
 
 -- The raid frame styles under the accent swatches: a tile drawn in each, side by side.
 local function stylePicker(page)
-  text(page, "label", "text", "Raid frame style"):SetPoint("TOPLEFT", 0, -62)
+  W.Label(page, "Raid frame style", "label", "text"):SetPoint("TOPLEFT", 0, -62)
   page.styles = {}
   for i, s in ipairs(S.STYLES) do page.styles[i] = styleTile(page, i, s) end
 end
@@ -642,7 +634,7 @@ end
 
 -- The look step: the accent presets, the raid frame style, then Calm HUD and the readability switches.
 local function lookPage(page)
-  text(page, "label", "text", "Accent"):SetPoint("TOPLEFT")
+  W.Label(page, "Accent", "label", "text"):SetPoint("TOPLEFT")
   page.swatches = {}
   for i, name in ipairs(T.PRESET_ORDER) do
     page.swatches[i] = swatch(page, i, T.PRESETS[name])
@@ -657,7 +649,7 @@ local function movePage(page)
     "Click a handle, then the arrow keys nudge it (Shift ×10).", "Right-click a frame for its anchor, scale and opacity.",
     "The bar at the top: Save and lock, or Exit without saving.", "Done locks them. /vg unlock moves them any time." }
   for i, line in ipairs(lines) do
-    text(page, "label", i == 1 and "text" or "text2", line):SetPoint("TOPLEFT", 0, -(i - 1) * 22)
+    W.Label(page, line, "label", i == 1 and "text" or "text2"):SetPoint("TOPLEFT", 0, -(i - 1) * 22)
   end
 end
 
