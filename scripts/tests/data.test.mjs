@@ -82,3 +82,17 @@ it("a click on the reputation bar opens the reputation list, out of a fight", ()
   expect([addon.eval("return #__opened"), chatHas(addon, /The reputation list doesn't open from Vanguard in a fight/), repTip(addon).at(-1)], "in a fight: nothing opens, chat says so, the hint too").toEqual([1, true, "Click: the reputation list (not in a fight)"]);
 });
 
+it("at the level cap the reputation bar takes the XP bar's spot, unless it was moved", () => {
+  const addon = loggedIn(DATA_ENV);
+  // How high the reputation bar sits above the screen's bottom.
+  const repY = () => addon.eval("return Vanguard_repbar.__points.BOTTOM.y");
+  expect(repY(), "while levelling it sits above the XP bar").toBe(12);
+  addon.eval("__maxLevel = true");
+  addon.fire("PLAYER_LEVEL_UP");
+  expect(repY(), "at the cap it moves down into the XP bar's spot").toBe(4);
+  addon.eval('ns.SetMoverPoint("repbar", "BOTTOM", "BOTTOM", 0, 300) __maxLevel = false');
+  addon.fire("PLAYER_XP_UPDATE");
+  expect(repY(), "a spot the player picked stays").toBe(300);
+  const repOnly = loggedIn(DATA_ENV, { savedVariables: "VanguardDB.profiles = { Default = { DataBars = { xp = false } } }" });
+  expect(repOnly.eval("return Vanguard_repbar.__points.BOTTOM.y"), "with the XP bar off it starts in its spot").toBe(4);
+});

@@ -309,8 +309,27 @@ end
 
 -- Updating -------------------------------------------------------------------------------
 
+-- Each bar's default spot: the XP bar along the bottom edge, the reputation bar just above it.
+DB.POINTS = { xpbar = { "BOTTOM", "BOTTOM", 0, 4 }, repbar = { "BOTTOM", "BOTTOM", 0, 12 } }
+
+-- The reputation bar's default spot: above the XP bar, or the XP bar's own while that has nothing to show
+-- (at the level cap, or turned off), so no gap is left under it.
+function DB.RepPoint()
+  return DB.xpBar and DB.XP() and DB.POINTS.repbar or DB.POINTS.xpbar
+end
+
+-- Moves the reputation bar's default spot when the XP bar comes or goes (a spot the player saved wins).
+-- Plain frames, so a level-up in a fight can move it.
+function DB.PlaceRepBar()
+  local point = DB.RepPoint()
+  if not DB.repBar or point == DB.repPoint then return end
+  DB.repPoint = point
+  ns.SetMoverDefault("repbar", point)
+end
+
 -- Fills the XP bar, or hides it at max level (or while its visibility hides it).
 function DB.UpdateXP()
+  DB.PlaceRepBar()
   local bar, xp = DB.xpBar, DB.XP()
   bar:SetShown(xp ~= nil and V.Shows(bar))
   if not xp then return end
@@ -335,7 +354,7 @@ end
 
 -- The XP bar with its rested overlay, kept current.
 local function enableXP(settings)
-  DB.xpBar = createBar("xpbar", "Experience", { "BOTTOM", "BOTTOM", 0, 4 }, settings)
+  DB.xpBar = createBar("xpbar", "Experience", DB.POINTS.xpbar, settings)
   DB.xpBar.vgOnState = DB.UpdateXP
   addRested(DB.xpBar)
   for _, e in ipairs({ "PLAYER_XP_UPDATE", "PLAYER_LEVEL_UP", "UPDATE_EXHAUSTION", "PLAYER_ENTERING_WORLD" }) do ns.On(e, DB.UpdateXP) end
@@ -347,7 +366,8 @@ end
 
 -- The reputation bar for the watched faction, kept current, with its tooltip and a click to the reputation list.
 local function enableReputation(settings)
-  DB.repBar = createBar("repbar", "Reputation", { "BOTTOM", "BOTTOM", 0, 12 }, settings)
+  DB.repPoint = DB.RepPoint()
+  DB.repBar = createBar("repbar", "Reputation", DB.repPoint, settings)
   DB.repBar.vgOnState = DB.UpdateReputation
   hoverTip(DB.repBar, "show reputation tooltip", DB.ShowReputationTooltip)
   DB.repBar:HookScript("OnMouseUp", ns.Guard("open reputation list", DB.OpenReputation))
