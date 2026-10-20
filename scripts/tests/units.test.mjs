@@ -521,7 +521,7 @@ it("a released player reads Ghost and a feigning hunter reads alive", () => {
 });
 
 it("a raid target icon sits on every unit frame's top edge, following the Raid target icons switch", () => {
-  const addon = loggedIn(UNITS_ENV + "__marks = { target = 8, party1 = 1 } GetRaidTargetIndex = function(unit) return __marks[unit] end", NO_RAID);
+  const addon = loggedIn(CLICK_LUA + UNITS_ENV + "__marks = { target = 8, party1 = 1 } GetRaidTargetIndex = function(unit) return __marks[unit] end", NO_RAID);
   // The raid icon on a unit frame: shown, its sheet cell, and where it sits.
   const icon = (key) => addon.eval(`local t = Vanguard_${key}.raidIcon local p, rel, rp = t:GetPoint()
     return { t:IsShown(), t:IsShown() and t.__texCoord or false, p, rel == Vanguard_${key}, rp }`);
@@ -534,8 +534,9 @@ it("a raid target icon sits on every unit frame's top edge, following the Raid t
   addon.eval('__units.targettarget = { name = "TEST-ONLY ToT", hp = 1, maxhp = 2, power = 0, maxpower = 0, ptype = "MANA" } __marks.targettarget = 3');
   addon.update(0.25);
   expect(icon("targettarget")[0], "the target of target's mark follows its timer").toBe(true);
-  addon.eval("ns.Settings('RaidStatus').raidIcons = false ns.GetModule('UnitFrames').RefreshRaidIcons()");
-  expect(icon("player")[0], "the switch off: no marks").toBe(false);
+  addon.slash("");
+  addon.eval('ns.Options.Show("raid") __click("Raid target icons")');
+  expect([addon.eval("return ns.Settings('RaidStatus').raidIcons"), icon("player")[0]], "the switch on the Raid frames page, off: no marks, at once").toEqual([false, false]);
 });
 
 it("threat is quiet solo: it shows in a group or with a pet", () => {

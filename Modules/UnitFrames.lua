@@ -99,7 +99,7 @@ end
 -- r, g, b for a unit's health bar: grey for a creature someone else tagged, always, as the game's
 -- frames do; else its class or reaction color.
 function UF.HealthColor(unit)
-  if UF.Tapped(unit) then return T.RGB("tapped") end
+  if not flag(UnitIsPlayer(unit)) and UF.Tapped(unit) then return T.RGB("tapped") end
   return UF.UnitColor(unit)
 end
 
@@ -306,21 +306,27 @@ local function addRaidIcon(f)
   f.raidIcon:Hide()
 end
 
--- The name (with the level left of it, where shown), the health text and the raid icon. The
+-- The name (with the level left of it, where shown) and the health text. The
 -- name stops short of the health text: a long one is cut off, not overlapped.
-local function addTextsAndIcon(f, settings)
+local function addTexts(f, settings)
   f.name, f.healthText = createText(f, "name", "LEFT", 4), createText(f, "number", "RIGHT", -4)
   if settings.showLevel then addLevel(f) end
   f.name:SetPoint("RIGHT", f.healthText, "LEFT", -4, 0)
   f.name:SetJustifyH("LEFT")
   f.name:SetWordWrap(false)
-  addRaidIcon(f)
 end
 
 -- Cuts the bars to the shield corners: the health bar at the frame's top corners, the power bar at its bottom ones.
 local function shieldBars(f)
   T.ShieldMask(f, { f.health:GetStatusBarTexture(), f.health.bg }, "TOP")
   T.ShieldMask(f, { f.power:GetStatusBarTexture(), f.power.bg }, "BOTTOM")
+end
+
+-- The health and power bars, laid out and cut to the shield corners.
+local function addBars(f, settings)
+  f.health, f.power = createBar(f), createBar(f)
+  layoutBars(f, settings.powerHeight)
+  shieldBars(f)
 end
 
 -- Creates one unit frame (a secure unit button) with its bars and texts, its corners cut to the
@@ -331,10 +337,9 @@ local function createUnitFrame(key, unit, w, h, settings)
   T.PixelSize(f, w, h)
   makeSecure(f, unit)
   T.HudPanel(f, { shield = true })
-  f.health, f.power = createBar(f), createBar(f)
-  layoutBars(f, settings.powerHeight)
-  shieldBars(f)
-  addTextsAndIcon(f, settings)
+  addBars(f, settings)
+  addTexts(f, settings)
+  addRaidIcon(f)
   return f
 end
 

@@ -164,9 +164,9 @@ end
 
 -- Building ---------------------------------------------------------------------------------------
 
--- What else redraws the threat text: a new target, the fight ending, and joining or leaving a group or
--- calling or losing a pet (whether threat can matter).
-UX.THREAT_EVENTS = { "PLAYER_TARGET_CHANGED", "PLAYER_REGEN_ENABLED", "GROUP_ROSTER_UPDATE", "UNIT_PET" }
+-- What else redraws the threat text: a new target, the fight ending, and joining or leaving a group
+-- (whether threat can matter; your own pet coming or going is heard with your threat situation).
+UX.THREAT_EVENTS = { "PLAYER_TARGET_CHANGED", "PLAYER_REGEN_ENABLED", "GROUP_ROSTER_UPDATE" }
 
 -- The threat text above the target frame, clear of its corner diamond,
 -- following threat and target changes: your target's threat list, and your
@@ -175,7 +175,7 @@ local function addThreat(target)
   UX.threat = T.Text(target:CreateFontString(nil, "OVERLAY"), "small", "text2")
   UX.threat:SetPoint("BOTTOMRIGHT", target, "TOPRIGHT", -12, 3)
   ns.OnUnit("UNIT_THREAT_LIST_UPDATE", UX.UpdateThreat, "target")
-  ns.OnUnit("UNIT_THREAT_SITUATION_UPDATE", UX.UpdateThreat, "player")
+  ns.OnUnit({ "UNIT_THREAT_SITUATION_UPDATE", "UNIT_PET" }, UX.UpdateThreat, "player")
   for _, e in ipairs(UX.THREAT_EVENTS) do ns.On(e, UX.UpdateThreat) end
   UX.UpdateThreat()
 end
