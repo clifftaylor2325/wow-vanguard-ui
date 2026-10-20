@@ -10,6 +10,15 @@
 local ADDON, ns = ...
 
 ns.WHATS_NEW = {
+  { version = "0.7.4", groups = {
+    { module = "Map", label = "Map and minimap", items = {
+      { text = "The Map page's OpenMap card credits OpenMap's author, jiforever (jigrobbulus on CurseForge), and the README's credits list OpenMap." },
+    } },
+    { module = "ActionBars", label = "Action bars", items = {
+      { text = "Long key names are short on the buttons (Caps Lock Cap, Page Up PU, Insert Ins, Delete Del) and stay on one line." },
+      { text = "A button holding an item you wear gets a thin green ring, and the keybind banner repeats your last bind and has a Done button." },
+    } },
+  } },
   { version = "0.7.3", groups = {
     { module = "Other", label = "Options and windows", items = {
       { text = "The Options window is taller, its changed dot names the default, the Modules page explains modules with their own switch, and search finds more." },

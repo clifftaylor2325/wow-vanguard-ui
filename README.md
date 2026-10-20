@@ -60,3 +60,4 @@ Third-party files keep their own licenses. The fonts: `Media/Fonts/FiraSansConde
 - CallbackHandler-1.0 (minor 8) and LibStub (minor 2) from Ace3, https://github.com/WoWUIDev/Ace3 (the Ace3 project's own repository): CallbackHandler-1.0 under the Ace3 BSD-style license (`Libs/CallbackHandler-1.0/LICENSE.txt`); LibStub is public domain (stated in `Libs/LibStub/LibStub.lua`).
 - Faction crests "Crossed swords" and "Crossed axes" by Lorc, from game-icons.net, CC BY 3.0 (`Media/Art/CREDITS.txt`; all sources in `art/CREDITS.md`).
 - Options nav and minimap icons by Lorc, Delapouite and Sbed, from game-icons.net, CC BY 3.0 (`Media/Icons/CREDITS.txt`; all sources in `art/CREDITS.md`).
+- OpenMap by jiforever (CurseForge project owner jigrobbulus), https://www.curseforge.com/wow/addons/openmap: an optional companion addon. Vanguard works alongside it when it is installed and holds none of its code, data or art.

@@ -4,6 +4,19 @@ What changed for players in each release, newest first. In game, the same notes 
 
 Nothing here has been checked in the game by the people who wrote it down: see the batch checklist (issue #284) and [SMOKE-TEST.md](SMOKE-TEST.md).
 
+## 0.7.4
+
+Nothing in this release has been checked in the game; see the batch checklist (issue #284).
+
+### Credits (0.7.4)
+
+- The Map page's OpenMap card credits OpenMap's author, jiforever (jigrobbulus on CurseForge), and the README's credits list OpenMap.
+
+### Action buttons (0.7.4)
+
+- Long key names are short on the buttons (Caps Lock Cap, Page Up PU, Insert Ins, Delete Del) and stay on one line.
+- A button holding an item you wear gets a thin green ring, and the keybind banner repeats your last bind and has a Done button.
+
 ## 0.7.3
 
 Nothing in this release has been checked in the game; see the batch checklist (issue #284).

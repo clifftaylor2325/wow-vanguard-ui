@@ -234,11 +234,11 @@ it("waypoints: the options list the spots as buttons, and Clear waypoint takes i
   const addon = loggedIn(MAP_ENV + POINT_ENV);
   // Each row as "type|label".
   const rows = () => addon.eval("local out = {} for i, r in ipairs(ns.GetModule('Waypoints').Rows()) do out[i] = r[1] .. '|' .. r[2] end return out");
-  expect(rows().slice(-1)[0], "no spots yet: a line saying so").toMatch(/^text\|No recent waypoints/);
+  expect(rows().slice(-3)[0], "no spots yet: a line saying so (above the OpenMap card)").toMatch(/^text\|No recent waypoints/);
   expect(rows()[1], "how to share the pin, which the game's own map does").toBe("text|Shift-click the pin on the map to share it.");
   click(addon, 10, 0.2, 0.3);
   click(addon, 12, 0.5, 0.25);
-  expect(rows().slice(-2), "a button for each, newest first").toEqual(["button|Go to TEST-ONLY Dun Morogh 50.0, 25.0", "button|Go to TEST-ONLY Elwynn Forest 20.0, 30.0"]);
+  expect(rows().slice(-4, -2), "a button for each, newest first").toEqual(["button|Go to TEST-ONLY Dun Morogh 50.0, 25.0", "button|Go to TEST-ONLY Elwynn Forest 20.0, 30.0"]);
   addon.eval("ns.GetModule('Waypoints').Rows()[7][3]()");
   expect(addon.eval("return __point[1]"), "its button goes back to that spot").toBe(10);
   addon.eval("__tracked = true ns.GetModule('Waypoints').Rows()[4][3]()");
@@ -253,9 +253,9 @@ it("waypoints: with OpenMap drawing the world map, the cursor's coordinates step
   expect(addon.eval("return ns.GetModule('Waypoints').mapLine:GetText()"), "your coordinates only").toBe("You 45.7, 12.3");
   // Each row as "type|label".
   const rows = () => addon.eval("local out = {} for i, r in ipairs(ns.GetModule('Waypoints').Rows()) do out[i] = r[1] .. '|' .. r[2] end return out");
-  expect(rows().slice(-2), "a card naming OpenMap").toEqual(["header|OpenMap", expect.stringMatching(/^text\|OpenMap is drawing the world map\./)]);
+  expect(rows().slice(-3), "a card crediting OpenMap's author and saying it draws the map").toEqual(["header|OpenMap", expect.stringMatching(/^text\|OpenMap is by jiforever/), expect.stringMatching(/^text\|OpenMap is drawing the world map\./)]);
   addon.eval("C_AddOns.IsAddOnLoaded = function() return false end");
-  expect(rows(), "without it: no card").not.toContain("header|OpenMap");
+  expect(rows().slice(-2), "without it: only the credit").toEqual(["header|OpenMap", expect.stringMatching(/^text\|OpenMap is by jiforever/)]);
 });
 
 it("waypoints: the world map has a Clear waypoint button, shown only while there is a waypoint", () => {
