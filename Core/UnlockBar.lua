@@ -1,8 +1,10 @@
 -- Unlock mode's bar: a small bar at the top of the screen while the frames
 -- are unlocked. Save and lock keeps every change; Exit without saving puts
 -- every frame back as it was when unlock started (spot, links, size, scale
--- and opacity) and locks. Not shown while the game's Edit Mode unlocked the
--- frames: Edit Mode has its own buttons, and closing it keeps the changes.
+-- and opacity) and locks. Its note says how to move a frame. When unlock was
+-- started from the options window, either button opens it again on the same
+-- page. Not shown while the game's Edit Mode unlocked the frames: Edit Mode
+-- has its own buttons, and closing it keeps the changes.
 
 local ADDON, ns = ...
 
@@ -11,6 +13,12 @@ local T, W = ns.Theme, ns.Widgets
 local bar
 -- Every saved spot as it was when unlock started (a copy), until the frames lock.
 local before
+-- The options page unlock was started from, until the frames lock.
+local fromPage
+
+-- The bar's note and its spacing (units): the gaps around the note and between the buttons.
+local BAR = { hint = "Drag to move · right-click for anchor, scale, opacity · arrows nudge (Shift ×10)",
+  pad = 12, gap = 6, edge = 8, save = 110, exit = 140, height = 36 }
 
 -- Puts every saved spot back as it was when unlock started, places every frame again, tells what
 -- follows each one (ns.MoverChanged: linked frames, the raid grid's growth) once all are back, and locks.
@@ -24,25 +32,49 @@ function ns.ExitWithoutSaving()
   ns.Chat("Every frame is back where it was when you unlocked.")
 end
 
+-- Runs a bar button's action, then opens the options window again on the page unlock started from, if it did
+-- (the action locks the frames, which forgets the page, so it is read first).
+local function thenBack(action)
+  return function()
+    local page = fromPage
+    action()
+    if page and not ns.InCombat() then ns.Options.Show(page) end
+  end
+end
+
 -- The bar's two buttons, at its right: Save and lock, and Exit without saving left of it.
 local function addButtons()
-  bar.save = W.Primary(bar, "Save and lock", function() ns.Lock() end, 110)
-  bar.save:SetPoint("RIGHT", -8, 0)
-  bar.exit = W.Button(bar, "Exit without saving", function() ns.ExitWithoutSaving() end, 140)
-  bar.exit:SetPoint("RIGHT", bar.save, "LEFT", -6, 0)
+  local u = BAR
+  bar.save = W.Primary(bar, "Save and lock", thenBack(function() ns.Lock() end), u.save)
+  bar.save:SetPoint("RIGHT", -u.edge, 0)
+  bar.exit = W.Button(bar, "Exit without saving", thenBack(function() ns.ExitWithoutSaving() end), u.exit)
+  bar.exit:SetPoint("RIGHT", bar.save, "LEFT", -u.gap, 0)
+end
+
+-- The bar's note at its left, and the bar as wide as the note and the buttons need.
+local function addHint()
+  local u = BAR
+  bar.text = T.Text(bar:CreateFontString(nil, "OVERLAY"), "label", "text2")
+  bar.text:SetPoint("LEFT", u.pad, 0)
+  bar.text:SetText(u.hint)
+  bar:SetSize(u.pad + bar.text:GetStringWidth() + u.pad + u.exit + u.gap + u.save + u.edge, u.height)
 end
 
 -- The bar, built once: a raised panel at the top center, over the handles, with its note and buttons.
 local function build()
   bar = T.Panel(CreateFrame("Frame", "Vanguard_UnlockBar", UIParent), { raised = true, shadow = true })
-  bar:SetSize(400, 36)
   bar:SetPoint("TOP", UIParent, "TOP", 0, -40)
   bar:SetFrameStrata("FULLSCREEN_DIALOG")
   bar:EnableMouse(true)
-  bar.text = T.Text(bar:CreateFontString(nil, "OVERLAY"), "label", "text2")
-  bar.text:SetPoint("LEFT", 12, 0)
-  bar.text:SetText("Moving frames")
+  addHint()
   addButtons()
+end
+
+-- Unlocks the frames from the options window's page `page`: the bar's buttons open it again there.
+---@param page string
+function ns.UnlockFromOptions(page)
+  if not ns.Unlock() then return end
+  fromPage = page
 end
 
 -- Unlock started: remembers every saved spot (once, until the frames lock) and shows the bar,
@@ -55,6 +87,6 @@ end
 
 -- The frames locked: what was remembered is forgotten (the changes stay) and the bar hides.
 function ns.UnlockEnded()
-  before = nil
+  before, fromPage = nil, nil
   if bar then bar:Hide() end
 end

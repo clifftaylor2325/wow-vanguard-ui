@@ -200,6 +200,12 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Expect: the window is gone while you drag, nothing sticks to the mouse, and the next time it opens it is where it was let go; after the second drag it comes back at the new spot every time, also after another window opens and shuffles the panels. `/vg errors` is empty. [Needs in-game check: whether the client sends the drag's end to a drag area that is hidden mid-drag; Vanguard now ends the drag itself when the window hides.]
 - If it fails, paste: which window, where it came back, and `/vg errors`.
 
+### 3.2a Move frames from the options, and back
+
+- Do: `/vg` → General → **Move frames**. Read the bar at the top, move a frame, click **Save and lock**. Again **Move frames**, then **Exit without saving**. Again **Move frames**, then `/vg lock`.
+- Expect: the bar's note reads in full ("Drag to move · right-click for anchor, scale, opacity · arrows nudge (Shift ×10)") with nothing over the buttons at your resolution; Save and lock and Exit without saving each lock and open `/vg` again on General; `/vg lock` just locks. [Needs in game: the bar's width at your resolution.]
+- If it fails, paste: a screenshot of the bar and `/vg errors`.
+
 ### 3.3 Combat while unlocked
 
 - Do: type `/vg unlock`, then start a fight with a mob. During the fight type `/vg unlock` again, and after it ends once more, then type `/vg lock` so the frames are locked again.

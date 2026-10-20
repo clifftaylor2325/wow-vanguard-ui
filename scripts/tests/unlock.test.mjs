@@ -1,7 +1,7 @@
 // unlock: Vanguard's real Lua in the TEST-ONLY headless client (scripts/lib/lua-harness.mjs).
 
 import { expect, it } from "vitest";
-import { UI_ENV, UP, chatHas, gridLines, isTok, key, loggedIn, px } from "./helpers.mjs";
+import { CLICK_LUA, UI_ENV, UP, chatHas, gridLines, isTok, key, loggedIn, px, setCombat } from "./helpers.mjs";
 import { alphaOf, buttonOf, closeOf, escapes, insets, pressEscape, titleOf } from "./dialogs.mjs";
 
 it("unlock mode", () => {
@@ -180,7 +180,7 @@ it("unlock mode's bar: Exit without saving puts every frame back as it was; Save
   const now = () => ({ positions: addon.eval("return ns.Settings('positions')"), a: addon.frame("TESTONLY_A").rect, b: addon.frame("TESTONLY_B").rect });
   const before = now();
   addon.slash("unlock");
-  expect([addon.eval("return Vanguard_UnlockBar:IsShown()"), addon.eval("return Vanguard_UnlockBar.text:GetText()")], "unlocking shows the bar").toEqual([true, "Moving frames"]);
+  expect([addon.eval("return Vanguard_UnlockBar:IsShown()"), addon.eval("return Vanguard_UnlockBar.text:GetText()")], "unlocking shows the bar, with how to move a frame").toEqual([true, "Drag to move · right-click for anchor, scale, opacity · arrows nudge (Shift ×10)"]);
   addon.eval("ns.Nudge('a', 10, 0) ns.SetMoverAnchor('b', 'a', 'BOTTOM', 0, -4) ns.SetMoverScale('b', 1) ns.SetMoverAlpha('a', 0.5)");
   expect(now(), "the frames moved").not.toEqual(before);
   addon.eval("Vanguard_UnlockBar.exit:GetScript('OnClick')(Vanguard_UnlockBar.exit)");
@@ -250,4 +250,32 @@ it("unlock handles: in the game's Edit Mode every handle is on HIGH, so Edit Mod
   addon.slash("unlock");
   expect(handleStrata("d"), "/vg unlock puts it back on its own strata").toBe("DIALOG");
   addon.eval("ns.Lock()");
+});
+
+it("A-10 unlock from the options window: Save and lock and Exit without saving each open it again on the same page; a fight or /vg lock doesn't", () => {
+  const addon = loggedIn(BOXES + CLICK_LUA);
+  // Unlocks from the General page's Move frames button.
+  const fromOptions = () => { addon.slash(""); addon.eval('ns.Options.Show("general") __click("Move frames")'); };
+  fromOptions();
+  expect([addon.eval("return ns.Unlocked()"), addon.eval("return Vanguard_Options:IsShown()")], "unlocked, the options window out of the way").toEqual([true, false]);
+  const bar = addon.frame("Vanguard_UnlockBar").rect;
+  const save = addon.frame("Vanguard_UnlockBar.save").rect, exit = addon.frame("Vanguard_UnlockBar.exit").rect;
+  const text = addon.eval("return Vanguard_UnlockBar.text:GetStringWidth()");
+  expect([exit.left - (bar.left + 12 + text) >= 12 - 0.5, bar.right - save.right], "the bar is wide enough for its note and buttons").toEqual([true, 8]);
+  addon.eval("Vanguard_UnlockBar.save:GetScript('OnClick')(Vanguard_UnlockBar.save)");
+  expect([addon.eval("return Vanguard_Options:IsShown()"), addon.eval("return ns.Options.current")], "Save and lock: back on General").toEqual([true, "general"]);
+  fromOptions();
+  addon.eval("Vanguard_UnlockBar.exit:GetScript('OnClick')(Vanguard_UnlockBar.exit)");
+  expect(addon.eval("return Vanguard_Options:IsShown()"), "Exit without saving: back too").toBe(true);
+  fromOptions();
+  addon.slash("lock");
+  addon.eval("ns.Unlock()");
+  addon.eval("Vanguard_UnlockBar.save:GetScript('OnClick')(Vanguard_UnlockBar.save)");
+  expect(addon.eval("return Vanguard_Options:IsShown()"), "locked another way first: the next unlock doesn't remember the page").toBe(false);
+  fromOptions();
+  addon.fire("PLAYER_REGEN_DISABLED");
+  setCombat(addon, true);
+  expect([addon.eval("return ns.Unlocked()"), addon.eval("return Vanguard_Options:IsShown()")], "a fight locks, and the options stay closed").toEqual([false, false]);
+  addon.eval('Vanguard_Options:Hide() ns.UnlockFromOptions("general")');
+  expect(addon.eval("return ns.Unlocked()"), "in a fight it doesn't unlock").toBe(false);
 });
