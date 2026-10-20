@@ -42,8 +42,8 @@ end
 -- Auto-accept: summons, resurrections, duels and faster auto-loot.
 local function promptRows()
   return {
-    { "header", "Prompts" },
-    check("Accept summons (out of combat)", setting("AutoAccept", "summons")),
+    { "header", "Auto-accept" },
+    check("Accept summons (one offered in a fight is taken when it ends)", setting("AutoAccept", "summons")),
     check("Accept resurrections", setting("AutoAccept", "resurrect")), check("Decline duels", setting("AutoAccept", "duels")),
     check("Faster auto-loot (when the game's auto-loot is on)", setting("AutoAccept", "loot")),
   }

@@ -685,9 +685,15 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 
 ### 8.6b Camera zoom back to the game's setting
 
-- Do: with "Furthest the camera zooms out" on "game's setting", scroll the camera all the way out and note how far it goes. Pick "2.6 x (furthest)" and scroll out, then pick "game's setting" again and scroll out. Try picking "game's setting" during a fight too.
-- Expect: 2.6 x zooms out further; back on "game's setting" the camera stops where it did at first (in a fight, only once the fight ends), and it stays that way after `/reload`.
+- Do: with "Furthest the camera zooms out" on "The game's setting", scroll the camera all the way out and note how far it goes. Pick "2.6 x (furthest)" and scroll out, then pick "The game's setting" again and scroll out. Try picking "The game's setting" during a fight too.
+- Expect: 2.6 x zooms out further; back on "The game's setting" the camera stops where it did at first (in a fight, only once the fight ends), and it stays that way after `/reload`.
 - If it fails, paste: `/dump GetCVar("cameraDistanceMaxZoomFactor")` before and after, and `/vg errors`.
+
+### 8.6c A summon in a fight, and repeated declines
+
+- Do: on Game windows, "Auto-accept", switch on "Accept summons (one offered in a fight is taken when it ends)" and "Decline duels", and under "Quiet the game", "Decline group invites from people who aren't friends or guildmates". Have a warlock summon you while you are fighting a mob, and finish the fight before the summon runs out. Then have someone who is not a friend or guildmate invite you to a group three times in a row, and ask you to duel three times.
+- Expect: the summon prompt stays up during the fight; when the fight ends you are taken to the summoner and one chat line says from whom and to where. If you die in the fight, or the summon runs out first, you are not moved. [Needs in game: that the game lets you teleport the moment the fight ends; if the prompt stays up instead, say so.] Each invite and each duel is declined, but chat says "Declined a group invite from <name>." and "Declined a duel from <name>." once each, not three times; after 5 minutes a new one says it again.
+- If it fails, paste: the chat lines and `/vg errors`.
 
 ## 9. Bags, merchant, trainer
 
