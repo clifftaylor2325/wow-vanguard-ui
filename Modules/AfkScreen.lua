@@ -128,7 +128,6 @@ end
 -- Dims the screen and shows the card (not in combat, and not again once you've clicked it away).
 function AFK.Open()
   if AFK.frame:IsShown() or AFK.dismissed or ns.InCombat() then return end
-  AFK.since = ask("GetTime") or 0
   AFK.Paint()
   T.FadeIn(AFK.frame, 0.4)
 end
@@ -138,10 +137,14 @@ function AFK.Close()
   if AFK.frame:IsShown() then T.FadeOut(AFK.frame, 0.2) end
 end
 
--- Your away flag changed: show the screen while you're away, put it away when you're back.
+-- Your away flag changed (or a fight ended): show the screen while you're away, put it away when you're
+-- back. The time away counts from when the flag came on, so a fight in between doesn't start it over.
 function AFK.Update()
-  if AFK.Away() then return AFK.Open() end
-  AFK.dismissed = false
+  if AFK.Away() then
+    AFK.since = AFK.since or ask("GetTime") or 0
+    return AFK.Open()
+  end
+  AFK.since, AFK.dismissed = nil, false
   AFK.Close()
 end
 
