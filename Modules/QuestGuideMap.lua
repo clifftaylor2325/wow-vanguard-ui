@@ -53,12 +53,23 @@ end
 
 -- Pins -------------------------------------------------------------------------------------------
 
--- The pin's tooltip: the quest's name and what a click does.
+-- What the client says of a start's quest, read on hover: its level (nil when hidden, missing or 0) and
+-- whether it repeats (a hidden answer: no).
+local function startFacts(questID)
+  local level = ns.PlainNumber(call(C_QuestLog, "GetQuestDifficultyLevel", questID))
+  local repeats = call(C_QuestLog, "IsRepeatableQuest", questID)
+  return (level and level > 0) and level or nil, not ns.IsSecret(repeats) and repeats == true
+end
+
+-- The pin's tooltip: the quest's name, its level in its difficulty colour, "Repeatable", and what a click does.
 function QG.PinTooltip(pin)
   local tip = GameTooltip
   if not tip or not pin.start then return end
   tip:SetOwner(pin, "ANCHOR_RIGHT")
   tip:SetText(pin.start.name ~= "" and pin.start.name or "Quest start")
+  local level, repeats = startFacts(pin.start.questID)
+  if level then tip:AddLine("Level " .. level, QP.LevelColor(level)) end
+  if repeats then tip:AddLine("Repeatable", T.RGB("text2")) end
   tip:AddLine(T.Paint("Quest starts here. Click: point the arrow here", "text2"))
   tip:Show()
 end

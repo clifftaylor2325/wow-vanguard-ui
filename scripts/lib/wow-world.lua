@@ -1225,6 +1225,8 @@ function BuyTrainerService(i) world.trained = world.trained or {} table.insert(w
 
 world.quests = {}
 world.npc = nil
+-- world.questFacts: { [questID] = { done, repeatable, level } } for the C_QuestLog reads of quests by id.
+world.questFacts = {}
 
 -- The log entry at an index.
 local function questAt(i) return world.quests[i] end
@@ -1271,6 +1273,11 @@ C_QuestLog = {
   GetQuestRewardSpells = function() return {} end,
   GetQuestRewardSpellInfo = function() return nil end,
   GetMaxNumQuestsCanAccept = function() return 25 end,
+  -- QuestLogDocumentation.lua: what the client knows of any quest, in or out of the log, from
+  -- world.questFacts[id] = { done, repeatable, level } (done: this character finished it).
+  IsQuestFlaggedCompleted = function(id) return (world.questFacts[id] or {}).done == true end,
+  IsRepeatableQuest = function(id) return (world.questFacts[id] or {}).repeatable == true end,
+  GetQuestDifficultyLevel = function(id) return (world.questFacts[id] or {}).level or 0 end,
 }
 -- A unit's tooltip data (TooltipInfoDocumentation.lua, GetUnit): its `tooltipLines`, each { type, leftText }
 -- with a type from Enum.TooltipDataLineType; nothing for a unit that does not exist.

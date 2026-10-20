@@ -230,3 +230,17 @@ it("quest guidance: /vg questdata reads the quest's ID from a quest link, not it
   addon.slash("questdata |cffffff00|Hquest:90051:10|h[TEST-ONLY Wolves]|h|r");
   expect(addon.chat().filter((l) => /Quest \d+:/.test(l)).map((l) => l.match(/Quest (\d+):/)[1])).toEqual(["90051"]);
 });
+
+it("quest guidance: a quest-start pin's tooltip gives the quest's level in its difficulty colour and says when it repeats", () => {
+  const addon = loggedIn(QUESTS_ENV + ARROW_ENV + MAP_ENV + `GetQuestDifficultyColor = function() return { r = 1, g = 0.5, b = 0.25 } end
+    __wfgWorld.questFacts[90071] = { level = 24, repeatable = true } __wfgWorld.questFacts[90074] = { level = __wfgWorld.secret(), repeatable = __wfgWorld.secret() }`);
+  addon.eval("WorldMapFrame:Show()");
+  addon.update(0);
+  // The tooltip of pin i: each line's text and colour.
+  const tip = (i) => addon.eval(`local p = ns.QuestGuide.pins[${i}] p.__scripts.OnEnter(p)
+    local out = {} for j, l in ipairs(GameTooltip.__lines) do out[j] = { l.text, l.r } end return out`);
+  const lines = tip(1);
+  expect(lines.slice(0, 3).map((l) => l[0]), "the name, the level, Repeatable").toEqual(["TEST-ONLY Bandits", "Level 24", "Repeatable"]);
+  expect(lines[1][1], "the level in the client's difficulty colour").toBe(1);
+  expect(tip(2).length, "hidden answers add no line").toBe(2);
+});
