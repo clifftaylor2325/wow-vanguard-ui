@@ -144,6 +144,7 @@ local function place(m)
   ns.OutOfCombat(function()
     applyLook(m)
     ns.MoverLinks.Size(m)
+    ns.MoverLinks.Remember(m.key, saved()[m.key])
     anchor(m.frame, m)
   end)
 end

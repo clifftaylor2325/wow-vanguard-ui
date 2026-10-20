@@ -246,6 +246,16 @@ it("an anchored frame whose frame isn't there lands at its last screen spot, nev
   expect(rectOf(on, "Vanguard_CastBar_player")[1] + cast[3], "with them on again, it follows the player frame to its new spot").toBe(moved[1] - 4);
 });
 
+it("an anchored frame lands where its link last put it, once the frame it's anchored to is off", () => {
+  const addon = loggedIn(BOX + DEP);
+  addon.eval("ns.SetMoverAnchor('dep', 'box', 'RIGHT', 4, 0)");
+  addon.eval('ns.Nudge("box", 50, 0)');
+  const placed = rectOf(addon, "TESTONLY_Dep");
+  const positions = addon.eval("return { dep = ns.Settings('positions').dep }");
+  const off = loggedIn(DEP, { savedVariables: `VanguardDB.profiles.Default = { positions = ${lua(positions)} }` });
+  expect(rectOf(off, "TESTONLY_Dep"), "with the box's module off, it stays where the box last put it").toEqual(placed);
+});
+
 // TEST-ONLY tall frame: 50 x 300, too tall for a bar to match.
 const TALL = `
   __tall = CreateFrame("Frame", "TESTONLY_Tall", UIParent)

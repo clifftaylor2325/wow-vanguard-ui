@@ -164,18 +164,32 @@ local function remember(p, r)
   p.point, p.relPoint, p.x, p.y = point, point, x, y
 end
 
--- Where an anchored mover goes: its own pinned point on UIParent's bottom left, so it grows
--- away from the frame it's anchored to. Nothing while that frame isn't there (or a loop in a
--- hand-edited profile leads back to it): it stays at its saved spot.
-function K.Point(key, p)
+-- The rect an anchored mover takes now, and its link; nil when the link can't be followed now (no link,
+-- the frame it names isn't there, or a loop in a hand-edited profile leads back to it).
+local function linkedRect(key, p)
   local rel = part(p, "rel")
   if not rel or not L.SIDES[rel.side] or not ns.MoverFrame(rel.to) or busy[key] then return nil end
   busy[key] = true
   local r = anchoredRect(key, rel)
   busy[key] = nil
-  remember(p, r)
+  return r, rel
+end
+
+-- Where an anchored mover goes: its own pinned point on UIParent's bottom left, so it grows
+-- away from the frame it's anchored to. Nothing while that frame isn't there: it stays at its
+-- saved spot (K.Remember keeps that spot current). A read only: it saves nothing.
+function K.Point(key, p)
+  local r, rel = linkedRect(key, p)
+  if not r then return nil end
   local x, y = L.PointAt(r, L.SIDES[rel.side][1])
   return L.SIDES[rel.side][1], "BOTTOMLEFT", x, y
+end
+
+-- Keeps an anchored mover's saved spot where its link puts it now, so it still lands there while the
+-- frame it's anchored to isn't there (its module off). Called each time the mover is placed.
+function K.Remember(key, p)
+  local r = linkedRect(key, p)
+  if r then remember(p, r) end
 end
 
 -- Sets an anchored mover's offsets so the rect r is where it sits, from the side it's anchored to.
