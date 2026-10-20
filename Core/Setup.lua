@@ -86,6 +86,10 @@ S.STYLES = { { "soft", "Class colors, softened", "Softened" }, { "dark", "Dark, 
   { "class", "Class colors, bright", "Bright" } }
 -- The style tiles on the Look step: a raid tile's default size, side by side this far apart.
 local TILE_W, TILE_H, TILE_GAP = 100, 48, 16
+-- The look step's rows, down the page from its top (negative), and the steps between them: the switches stack
+-- one check row apart (W.ROW_HEIGHT), the swatches sit this far apart across, and the move step's lines 22 apart.
+local LOOK_Y = { swatches = -20, styleCaption = -62, tiles = -82, switches = -154 }
+local STEP = { swatchAcross = 34, switchDown = W.ROW_HEIGHT, moveLineDown = 22 }
 
 local frame
 -- Functions run each time setup ends, after it has locked the frames and saved (What's new waits for it).
@@ -596,7 +600,7 @@ end
 local function styleTile(page, i, s)
   local b = T.Panel(CreateFrame("Button", nil, page))
   b:SetSize(TILE_W, TILE_H)
-  b:SetPoint("TOPLEFT", (i - 1) * (TILE_W + TILE_GAP), -82)
+  b:SetPoint("TOPLEFT", (i - 1) * (TILE_W + TILE_GAP), LOOK_Y.tiles)
   b.value = s[1]
   tileBar(b)
   b.text = W.Label(page, s[3], "small", "text")
@@ -607,7 +611,7 @@ end
 
 -- The raid frame styles under the accent swatches: a tile drawn in each, side by side.
 local function stylePicker(page)
-  W.Label(page, "Raid frame style", "label", "text"):SetPoint("TOPLEFT", 0, -62)
+  W.Label(page, "Raid frame style", "label", "text"):SetPoint("TOPLEFT", 0, LOOK_Y.styleCaption)
   page.styles = {}
   for i, s in ipairs(S.STYLES) do page.styles[i] = styleTile(page, i, s) end
 end
@@ -615,7 +619,7 @@ end
 -- One accent swatch, with a check when chosen: picking it sets the accent at once.
 local function swatch(page, i, rgb)
   local s = W.Swatch(page, rgb, function() S.Backup(); T.SetAccent(rgb[1], rgb[2], rgb[3]); refresh() end)
-  s:SetPoint("TOPLEFT", (i - 1) * 34, -20)
+  s:SetPoint("TOPLEFT", (i - 1) * STEP.swatchAcross, LOOK_Y.swatches)
   s.rgb = rgb
   s.check = W.IconTexture(s, "Check", 14, "void")
   s.check:SetPoint("CENTER")
@@ -625,11 +629,11 @@ end
 -- The Calm HUD switch and the two readability switches (larger text, safer colours) under the style tiles.
 local function lookSwitches(page)
   page.calm = W.Check(page, "Calm HUD: dim your frames out of combat", S.Calm, S.SetCalm, WIDTH - 2 * PAD)
-  page.calm:SetPoint("TOPLEFT", 0, -154)
+  page.calm:SetPoint("TOPLEFT", 0, LOOK_Y.switches)
   page.larger = W.Check(page, "Larger text (115%)", S.Larger, S.SetLarger, WIDTH - 2 * PAD)
-  page.larger:SetPoint("TOPLEFT", 0, -182)
+  page.larger:SetPoint("TOPLEFT", 0, LOOK_Y.switches - STEP.switchDown)
   page.assist = W.Check(page, "Colour vision: Safer colours (colour blindness)", S.Assist, S.SetAssist, WIDTH - 2 * PAD)
-  page.assist:SetPoint("TOPLEFT", 0, -210)
+  page.assist:SetPoint("TOPLEFT", 0, LOOK_Y.switches - 2 * STEP.switchDown)
 end
 
 -- The look step: the accent presets, the raid frame style, then Calm HUD and the readability switches.
@@ -649,7 +653,7 @@ local function movePage(page)
     "Click a handle, then the arrow keys nudge it (Shift ×10).", "Right-click a frame for its anchor, scale and opacity.",
     "The bar at the top: Save and lock, or Exit without saving.", "Done locks them. /vg unlock moves them any time." }
   for i, line in ipairs(lines) do
-    W.Label(page, line, "label", i == 1 and "text" or "text2"):SetPoint("TOPLEFT", 0, -(i - 1) * 22)
+    W.Label(page, line, "label", i == 1 and "text" or "text2"):SetPoint("TOPLEFT", 0, -(i - 1) * STEP.moveLineDown)
   end
 end
 
