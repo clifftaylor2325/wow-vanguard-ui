@@ -455,13 +455,12 @@ local function handleStrata(frame)
   return (STRATA_RANK[own] or 0) > STRATA_RANK.HIGH and own or "HIGH"
 end
 
--- Builds the handle for a mover: accent-bordered panel with its label, on its strata (handleStrata) well over
+-- Builds the handle for a mover: accent-bordered panel with its label, well over
 -- its frame's level, so a window's scroll views and their thumbs and fade edges (a dozen levels up) stay under
 -- it too.
 local function createHandle(m)
   local h = T.Panel(CreateFrame("Frame", nil, UIParent), { accent = true })
   h.mover = m
-  h:SetFrameStrata(handleStrata(m.frame))
   h:SetFrameLevel((m.frame:GetFrameLevel() or 0) + 50)
   wire(h)
   h.label = h:CreateFontString(nil, "OVERLAY")
@@ -525,15 +524,22 @@ end
 
 -- Lock / unlock -----------------------------------------------------------------------
 
+-- Shows a mover's handle on its strata: the one given, else its own (handleStrata).
+local function showHandle(m, strata)
+  local h = handleFor(m)
+  h:SetFrameStrata(strata or handleStrata(m.frame))
+  h:Show()
+end
+
 -- Shows every handle and the grid (not for the game's Edit Mode, which draws its own),
 -- and remembers every spot for Exit without saving (Core/UnlockBar.lua). Refused in combat.
+-- In Edit Mode every handle goes on HIGH, so Edit Mode's window (DIALOG) stays over them all.
 function ns.Unlock(editMode)
   if ns.InCombat() then return false end
   ns.UnlockStarted(editMode)
   unlocked = true
-  for _, key in ipairs(order) do
-    handleFor(movers[key]):Show()
-  end
+  local strata = editMode and "HIGH" or nil
+  for _, key in ipairs(order) do showHandle(movers[key], strata) end
   local options = ns.MoverOptions()
   if options.grid and not editMode then ns.ShowGrid(options.gridSize) end
   return true
