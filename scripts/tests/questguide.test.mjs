@@ -172,6 +172,16 @@ it("quest guidance: quest-start pins on the world map, unless the game shows its
   expect(addon.eval("return ns.QuestGuide.pins.used"), "the map closed: nothing redrawn").toBe(0);
 });
 
+it("quest guidance: the quest-line answer and quest log changes redraw the pins without asking again", () => {
+  const addon = loggedIn(QUESTS_ENV + ARROW_ENV + MAP_ENV + CLICK_LUA);
+  addon.eval("WorldMapFrame:Show()");
+  addon.update(0);
+  addon.eval("ns.QuestGuide.MAX_PINS = 1");
+  for (const event of ["QUESTLINE_UPDATE", "QUEST_LOG_UPDATE", "QUEST_POI_UPDATE"]) addon.fire(event);
+  addon.update(0);
+  expect([addon.eval("return __requested"), pins(addon).length], "one request, from opening the map; the events only redraw").toEqual([[10], 1]);
+});
+
 it("quest guidance: a world map that loads after login is followed then; one without a canvas is left alone", () => {
   const addon = loggedIn(QUESTS_ENV);
   expect(addon.eval("return ns.QuestGuide.pins"), "no map yet").toBe(null);
