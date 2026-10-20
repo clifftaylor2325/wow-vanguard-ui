@@ -137,13 +137,32 @@ function QL.Share(d)
   call(QuestLogPushQuest)
 end
 
--- Abandons the chosen quest, through the game's own confirmation; with quests marked (Ctrl-click a
--- quest in the list), abandons the marked ones after one question of Vanguard's.
+-- The items the game destroys with the quest SetAbandonQuest picked, as "Name, Name" (as the game's quest
+-- map lists them), or nil for none (an item the client can't name yet is left out, as there).
+local function abandonItems()
+  local names = {}
+  for _, itemID in ipairs(questLog("GetAbandonQuestItems") or {}) do
+    local name = call(C_Item and C_Item.GetItemInfo, itemID)
+    if type(name) == "string" and not ns.IsSecret(name) then names[#names + 1] = name end
+  end
+  return #names > 0 and table.concat(names, ", ") or nil
+end
+
+-- Picks a quest to abandon (the client's SetAbandonQuest) and returns the items it destroys, or nil.
+local function pickToAbandon(id)
+  questLog("SetSelectedQuest", id)
+  questLog("SetAbandonQuest")
+  return abandonItems()
+end
+
+-- Abandons the chosen quest, through the game's own confirmation (the one naming the items it destroys,
+-- when it does); with quests marked (Ctrl-click a quest in the list), abandons the marked ones after one
+-- question of Vanguard's.
 function QL.Abandon(d)
   if QL.MarkedCount() > 0 then return QL.AbandonMarked() end
-  questLog("SetSelectedQuest", d.id)
-  questLog("SetAbandonQuest")
-  call(StaticPopup_Show, "ABANDON_QUEST", ns.QuestParts.Plain(d.title))
+  local title, items = ns.QuestParts.Plain(d.title), pickToAbandon(d.id)
+  if items then return call(StaticPopup_Show, "ABANDON_QUEST_WITH_ITEMS", title, items) end
+  call(StaticPopup_Show, "ABANDON_QUEST", title)
 end
 
 -- The marked quests still in your log, as { id, title } in log order (a folded zone's marks count too).
@@ -172,10 +191,16 @@ local function abandonAll(list)
   QL.Refresh()
 end
 
--- Asks, naming the marked quests, then abandons them all.
+-- A marked quest's line in the abandon question: its title, and the items abandoning it destroys.
+local function markedLine(e)
+  local title, items = ns.QuestParts.Plain(e.title), pickToAbandon(e.id)
+  return items and string.format("%s (destroys %s)", title, items) or title
+end
+
+-- Asks, naming the marked quests (and the items they destroy), then abandons them all.
 function QL.AbandonMarked()
   local list, names = QL.MarkedQuests(), {}
-  for i, e in ipairs(list) do names[i] = ns.QuestParts.Plain(e.title) end
+  for i, e in ipairs(list) do names[i] = markedLine(e) end
   if #list == 0 then return end
   ns.Ask(string.format("Abandon %d quest(s)?\n%s", #list, table.concat(names, "\n")), "Abandon", function() abandonAll(list) end, nil, "danger")
 end

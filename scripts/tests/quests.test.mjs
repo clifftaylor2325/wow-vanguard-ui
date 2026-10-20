@@ -1528,3 +1528,36 @@ it("quest log: Share lights up when you join a group, without picking the quest 
   addon.advance(1);
   expect([solo, shareLit(addon)]).toEqual([false, true]);
 });
+
+// W4-E-4: abandoning a quest that holds items names them, as the game's quest map does.
+// The quest log open on TEST-ONLY quests: 7 holds a sack the client knows and an item it can't name yet.
+const holdingItems = () => {
+  const addon = loggedIn();
+  addon.eval("__wfgWorld.items[90091] = { name = 'TEST-ONLY Sack' }");
+  addon.world.addQuest({ questID: 7, title: "TEST-ONLY Wolves", level: 8, watched: true, objectives: [], abandonItems: [90091, 90092] });
+  addon.world.addQuest({ questID: 8, title: "TEST-ONLY Boars", level: 8, objectives: [] });
+  addon.eval("ns.GetModule('QuestLog').Open(7)");
+  addon.update(0);
+  return addon;
+};
+// The game popups showing, each as "NAME: arg | arg".
+const shownPopups = (addon) => addon.eval("local out = {} for k, v in pairs(__wfgWorld.popups) do out[#out + 1] = k .. ': ' .. table.concat(v, ' | ') end table.sort(out) return out");
+
+it("quest log: Abandon shows the game's warning naming the items it destroys", () => {
+  const addon = holdingItems();
+  logButton(addon, "abandon");
+  expect(shownPopups(addon)).toEqual(["ABANDON_QUEST_WITH_ITEMS: TEST-ONLY Wolves | TEST-ONLY Sack"]);
+});
+
+it("quest log: Abandon on a quest holding nothing gets the plain confirmation", () => {
+  const addon = holdingItems();
+  addon.eval("ns.GetModule('QuestLog').Open(8)");
+  logButton(addon, "abandon");
+  expect(shownPopups(addon)).toEqual(["ABANDON_QUEST: TEST-ONLY Boars"]);
+});
+
+it("quest log: the question for marked quests names the items each destroys", () => {
+  const addon = holdingItems();
+  addon.eval("local QL = ns.GetModule('QuestLog') QL.marked = { [7] = true, [8] = true } QL.AbandonMarked()");
+  expect(addon.eval("return Vanguard_Question.title:GetText()")).toBe("Abandon 2 quest(s)?\nTEST-ONLY Wolves (destroys TEST-ONLY Sack)\nTEST-ONLY Boars");
+});

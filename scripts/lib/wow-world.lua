@@ -1260,6 +1260,8 @@ C_QuestLog = {
   GetSelectedQuest = function() return world.selectedQuest end,
   IsPushableQuest = function(id) local _, q = questIndex(id) return q ~= nil and q.pushable == true end,
   SetAbandonQuest = function() world.abandoning = world.selectedQuest end,
+  -- QuestLogDocumentation.lua: the item IDs the game destroys with the quest being abandoned (a quest's abandonItems).
+  GetAbandonQuestItems = function() local _, q = questIndex(world.abandoning) return q and q.abandonItems or {} end,
   AbandonQuest = function() local i = questIndex(world.abandoning) if i then table.remove(world.quests, i) stub.fire("QUEST_LOG_UPDATE") end end,
   GetQuestRewardCurrencies = function() return {} end,
   GetQuestRewardSpells = function() return {} end,
