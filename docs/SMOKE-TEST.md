@@ -490,6 +490,12 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Expect: half a second after the fight a chat line "Fight recap: Interrupts 1  ·  Dispels 0 ..." with only the parts the meter had; the same for `/vg recap`; `/vg recap party` sends that one line to party chat; during the fight `/vg recap` says the meter is hidden until the fight is over. [Needs in game: that those Enum.DamageMeterType keys exist, that a session of each has combatSources with isLocalPlayer and totalAmount, that Deaths lists one line per member who died, and that SendChatMessage to party works from a slash command.]
 - If it fails, paste: the `/run` line's output, the recap line and `/vg errors`.
 
+### 7.6a Chain pull (fight history and recap)
+
+- Do: with Fight history and the recap on, kill a mob and pull the next one at once (within half a second: a ranged pull or an add already on its way). After the second fight, hover the fight history strip and type `/vg fights`.
+- Expect: both fights are listed, the first with its own length and DPS; a recap line for the first fight appears as the second begins. [Needs in game: that the game's meter has finished the first fight's figures when the next pull starts; if its DPS or length looks short, say so.]
+- If it fails, paste: `/vg fights` and `/vg errors`.
+
 ### 7.7 Vanguard meter (off until switched on: /vg > Combat tools > Vanguard meter)
 
 - Do: type `/vg meter on` and fight a mob for a few seconds (in a group if you can); click the panel's title; type `/vg meter hps`, then `/vg meter dps`. Then type `/run for _, k in ipairs({"Dps","Hps"}) do print(k, Enum.DamageMeterType[k]) end` and paste what it prints.

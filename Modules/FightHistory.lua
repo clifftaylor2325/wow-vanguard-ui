@@ -45,13 +45,25 @@ function FH.Record()
   FH.Announce()
 end
 
--- Combat ended: one read FH.DELAY later, once the meter has finished the fight
--- (a second end of combat before then waits for the same read).
+-- Combat ended: one read FH.DELAY later, once the meter has finished the fight (a second end of
+-- combat before then waits for the same read). FH.waiting is that read's ticket, so a read already
+-- taken by onPull is not taken again.
 local function onRegen()
   if type(C_Timer) ~= "table" or type(C_Timer.After) ~= "function" then return FH.Record() end
   if FH.waiting then return end
-  FH.waiting = true
-  C_Timer.After(FH.DELAY, ns.Guard("timer fight history record", function() FH.waiting = nil FH.Record() end))
+  local ticket = {}
+  FH.waiting = ticket
+  C_Timer.After(FH.DELAY, ns.Guard("timer fight history record", function()
+    if FH.waiting == ticket then FH.waiting = nil FH.Record() end
+  end))
+end
+
+-- A pull while that read waits: read now, before the lockdown starts and the meter moves on to the
+-- new fight, which would lose the last one.
+local function onPull()
+  if not FH.waiting then return end
+  FH.waiting = nil
+  FH.Record()
 end
 
 -- Drawing ------------------------------------------------------------------------------------
@@ -177,5 +189,6 @@ function FH.Enable(settings)
   FH.settings = settings
   build()
   ns.On("PLAYER_REGEN_ENABLED", onRegen)
+  ns.On("PLAYER_REGEN_DISABLED", onPull)
   T.OnChanged(FH.Paint)
 end
