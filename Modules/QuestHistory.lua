@@ -1,7 +1,9 @@
 -- Quest history: which of your characters turned in each quest, remembered for the
 -- whole account from the client's own QUEST_TURNED_IN, so a quest's text can say
--- "Done on Thrall-Forever · 3 days ago" in Vanguard's quest dialog and quest log,
--- and /vg quests history [n] lists the latest turn-ins. Only the latest turn-in
+-- "Done on Thrall-Forever · 3 days ago" in Vanguard's quest dialog and quest log
+-- (or "Done on this character" from the client's own completed flag for a quest
+-- finished before), and the Quest history card's button and /vg quests history [n]
+-- list the latest turn-ins. Only the latest turn-in
 -- of each quest is kept (a repeatable quest overwrites its own entry), up to
 -- QH.MAX_QUESTS quests. Nothing is read in combat that could be hidden: an id or
 -- a name the client hides is skipped.
@@ -95,10 +97,19 @@ function QH.Get(questID)
   if type(rec) == "table" and rec.who then return rec end
 end
 
--- "Done on Thrall-Forever · 3 days ago" (on this character's own name: "Done on this character"), or nil for a quest not done.
+-- "Done on this character" for a quest the client flags as done here (finished before Vanguard was there to
+-- see it), or nil. A hidden answer counts as not done.
+local function clientLine(questID)
+  local api = type(C_QuestLog) == "table" and C_QuestLog.IsQuestFlaggedCompleted
+  local done = QH.On() and type(questID) == "number" and type(api) == "function" and api(questID)
+  return not ns.IsSecret(done) and done == true and "Done on this character" or nil
+end
+
+-- "Done on Thrall-Forever · 3 days ago" (on this character's own name: "Done on this character"); with no
+-- turn-in remembered, the client's own flag for this character; nil for a quest not done.
 function QH.Line(questID)
   local rec = QH.Get(questID)
-  if not rec then return nil end
+  if not rec then return clientLine(questID) end
   local me = QH.Me()
   return string.format("Done on %s · %s", rec.who == me and "this character" or rec.who, QH.Ago(rec.t))
 end

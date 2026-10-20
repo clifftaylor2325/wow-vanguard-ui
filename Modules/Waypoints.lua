@@ -132,28 +132,47 @@ function WP.Current()
   if mapID and x and y then return mapID, x, y end
 end
 
--- Puts a waypoint first among the recent ones (the same spot moves up instead of repeating), keeping WP.RECENT.
-function WP.Remember(mapID, x, y)
+-- Whether a remembered spot is this one (to a thousandth of the map).
+local function sameSpot(w, mapID, x, y)
+  return w.map == mapID and math.abs(w.x - x) < 0.001 and math.abs(w.y - y) < 0.001
+end
+
+-- Puts a waypoint first among the recent ones, with its title if it has one (the same spot moves up instead of
+-- repeating, keeping the newest title it had when the new one has none), keeping WP.RECENT.
+function WP.Remember(mapID, x, y, title)
   local list = WP.settings.recent or {}
   WP.settings.recent = list
-  for i = #list, 1, -1 do
-    if list[i].map == mapID and math.abs(list[i].x - x) < 0.001 and math.abs(list[i].y - y) < 0.001 then table.remove(list, i) end
+  for i = 1, #list do
+    if sameSpot(list[i], mapID, x, y) then title = title or list[i].title end
   end
-  table.insert(list, 1, { map = mapID, x = x, y = y })
+  for i = #list, 1, -1 do
+    if sameSpot(list[i], mapID, x, y) then table.remove(list, i) end
+  end
+  table.insert(list, 1, { map = mapID, x = x, y = y, title = title })
   while #list > WP.RECENT do table.remove(list) end
+end
+
+-- The title /way gave the waypoint at this spot, taken once (the game's event carries no title); nil otherwise. A
+-- pending title for another spot is kept, for an event that comes late.
+local function pendingTitle(mapID, x, y)
+  local pending = WP.pending
+  if not (pending and sameSpot(pending, mapID, x, y)) then return nil end
+  WP.pending = nil
+  return pending.title
 end
 
 -- The game's waypoint changed (a Ctrl-click on the map, /way): remember it and, with the switch on, point the arrow at it.
 function WP.OnWaypoint()
   local mapID, x, y = WP.Current()
   if not mapID then return end
-  WP.Remember(mapID, x, y)
+  WP.Remember(mapID, x, y, pendingTitle(mapID, x, y))
   if WP.settings.follow and C_SuperTrack and C_SuperTrack.SetSuperTrackedUserWaypoint then C_SuperTrack.SetSuperTrackedUserWaypoint(true) end
 end
 
--- "Elwynn Forest 45.2, 61.8" for a remembered waypoint.
+-- "Elwynn Forest 45.2, 61.8" for a remembered waypoint ("Inn · Elwynn Forest 45.2, 61.8" with a title).
 function WP.Describe(w)
-  return string.format("%s %.1f, %.1f", mapName(w.map), w.x * 100, w.y * 100)
+  local spot = string.format("%s %.1f, %.1f", mapName(w.map), w.x * 100, w.y * 100)
+  return (type(w.title) == "string" and w.title ~= "") and (w.title .. " · " .. spot) or spot
 end
 
 -- The recent waypoints, newest first, from the profile: /vg way and the options read them while the module is off too.
@@ -188,6 +207,14 @@ local function canWaypoint()
   return type(C_Map) == "table" and type(C_Map.SetUserWaypoint) == "function" and type(UiMapPoint) == "table"
 end
 
+-- Puts a /way waypoint down, its title held until the game's waypoint event so the recent list keeps it.
+local function setTitled(mapID, x, y, title)
+  WP.pending = title ~= "" and { map = mapID, x = x, y = y, title = title } or nil
+  if WP.Set(mapID, x, y) then return true end
+  WP.pending = nil
+  return false
+end
+
 -- /way and /vg way: "clear", or [zone] x y [title]. The second value from WP.Parse is the reason when it fails.
 function WP.Command(rest)
   rest = rest or ""
@@ -197,7 +224,7 @@ function WP.Command(rest)
   if recent then return WP.RecentCommand(recent) end
   local mapID, x, y, title = WP.Parse(rest)
   if not mapID then return ns.Chat("Can't set that waypoint: " .. x .. ".") end
-  if not WP.Set(mapID, x, y) then return ns.Chat("Can't put a waypoint on " .. mapName(mapID) .. ".") end
+  if not setTitled(mapID, x, y, title) then return ns.Chat("Can't put a waypoint on " .. mapName(mapID) .. ".") end
   local named = title ~= "" and (" (" .. title .. ")") or ""
   ns.Chat(string.format("Waypoint: %s %.1f, %.1f%s.", mapName(mapID), x * 100, y * 100, named))
 end
@@ -333,7 +360,8 @@ end
 
 -- The waypoint card on the Map page.
 function WP.Rows()
-  local rows = { { "header", "Waypoints" }, { "check", "Point the arrow at a waypoint you Ctrl-click on the map", followSetting() },
+  local rows = { { "header", "Waypoints" }, { "text", "Shift-click the pin on the map to share it." },
+    { "check", "Point the arrow at a waypoint you Ctrl-click on the map", followSetting() },
     { "button", "Clear waypoint", WP.Clear }, { "header", "Recent waypoints" } }
   for _, row in ipairs(recentRows()) do rows[#rows + 1] = row end
   if WP.OpenMapDraws() then
