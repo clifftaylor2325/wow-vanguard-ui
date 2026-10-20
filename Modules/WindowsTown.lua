@@ -15,14 +15,6 @@ local GW = ns.GetModule("Windows")
 
 -- Helpers shared by the windows below -------------------------------------------------------------
 
--- Themes each button of a frame, named by parentKey in keys, that this client has.
-local function keyButtons(frame, keys)
-  for _, key in ipairs(keys) do
-    local button = frame[key]
-    if type(button) == "table" and button.GetRegions then T.Button(button) end
-  end
-end
-
 -- Themes each button named in names that this client has.
 local function namedButtons(names)
   for _, name in ipairs(names) do
@@ -168,7 +160,7 @@ function GW.SkinStable(frame)
   styleStableScene(frame.modelScene)
   GW.SkinBar(frame.expBar)
   GW.SkinText(GW.Part(frame, "expBar.Text"), "number", false)
-  keyButtons(frame, { "purchaseButton" })
+  GW.EachKey(frame, { "purchaseButton" }, GW.SkinButton)
   styleStableCaptions()
   styleStableParts(frame)
 end
@@ -275,7 +267,7 @@ local function styleTrainerParts(frame)
   GW.SkinMoney(frame.money)
   GW.SkinText(GW.Part(frame, "trainingPoints.text"), "small", "text")
   styleTrainerBar(_G.ClassTrainerStatusBar)
-  keyButtons(frame, { "FilterDropdown" })
+  GW.EachKey(frame, { "FilterDropdown" }, GW.SkinButton)
   if type(frame.ScrollBar) == "table" then T.ScrollBar(frame.ScrollBar) end
 end
 
@@ -314,7 +306,7 @@ function GW.SkinSideDressUp(frame)
   GW.Skin(frame)
   GW.FadeParts(frame, DRESSUP_ART)
   GW.FadeNamed(DRESSUP_NAMED)
-  keyButtons(frame, { "ResetButton" })
+  GW.EachKey(frame, { "ResetButton" }, GW.SkinButton)
   GW.InsetPanel(frame.ModelScene)
   styleModelControls(frame.ModelScene)
 end
@@ -341,7 +333,7 @@ end
 function GW.SkinStackSplit(frame)
   GW.Skin(frame)
   fadeWhole(frame, SPLIT_ART)
-  keyButtons(frame, { "OkayButton", "CancelButton" })
+  GW.EachKey(frame, { "OkayButton", "CancelButton" }, GW.SkinButton)
   GW.SkinArrow(frame.LeftButton, "left")
   GW.SkinArrow(frame.RightButton, "right")
   amountField(frame, frame.LeftButton, frame.RightButton)
@@ -479,7 +471,7 @@ function GW.SkinMerchant()
   for i = 1, GW.MERCHANT_ITEMS do skinMerchantRow("MerchantItem" .. i) end
   skinMerchantRow("MerchantBuyBackItem")
   skinMerchantTiles()
-  keyButtons(frame, { "FilterDropdown" })
+  GW.EachKey(frame, { "FilterDropdown" }, GW.SkinButton)
   skinMerchantFooter()
 end
 
@@ -592,7 +584,7 @@ local function styleIconPickerBox(box)
   GW.SkinText(GW.Part(box, "SelectedIconArea.SelectedIconText.SelectedIconHeader"), "small", "text")
   if type(box.IconSelectorEditBox) == "table" and box.IconSelectorEditBox.SetText then T.EditBox(box.IconSelectorEditBox) end
   GW.SkinDropdown(box.IconTypeDropdown)
-  keyButtons(box, { "OkayButton", "CancelButton" })
+  GW.EachKey(box, { "OkayButton", "CancelButton" }, GW.SkinButton)
 end
 
 -- A popup made from IconSelectorPopupFrameTemplate (the macro, guild bank and equipment set popups): the
@@ -675,7 +667,7 @@ local TRANSFER_LABELS = { "SourceSelector.SourceLabel", "AmountSelector.Transfer
 local function styleTransferForm(content)
   local rule = content.TransactionDivider
   if type(rule) == "table" and rule.SetAlpha then T.Divider(rule) end
-  keyButtons(content, { "ConfirmButton", "CancelButton" })
+  GW.EachKey(content, { "ConfirmButton", "CancelButton" }, GW.SkinButton)
   GW.SkinDropdown(GW.Part(content, "SourceSelector.Dropdown"))
   GW.SkinEditBox(GW.Part(content, "AmountSelector.InputBox"))
   GW.SkinButton(GW.Part(content, "AmountSelector.MaxQuantityButton"))

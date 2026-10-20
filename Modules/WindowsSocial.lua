@@ -541,12 +541,12 @@ local function dressClose(frame, button)
   if text ~= "" then T.Button(button) else GW.DressClose(frame, button) end
 end
 
--- Themes each part of frame named in keys that is a frame with the method `need` (T.Button, or T.EditBox for boxes; a
--- font string such as the member pop-up's Name has SetText too, but no regions).
-local function dressKeys(frame, keys, need, skin)
+-- Themes each part of frame named in keys with skin (a guarded skinner: GW.SkinButton, GW.SkinEditBox, GW.SkinDropdown).
+-- The window's close button is skipped: dressClose owns the close control.
+local function dressKeys(frame, keys, skin)
   for _, key in ipairs(keys) do
     local part = frame[key]
-    if type(part) == "table" and part[need] and part.GetRegions and part ~= frame.CloseButton then skin(part) end
+    if part ~= frame.CloseButton then skin(part) end
   end
 end
 
@@ -554,8 +554,8 @@ end
 local function dressDialogParts(frame, name)
   GW.SkinTitle(frame.Title)
   dressClose(frame, frame.CloseButton or (name and _G[name .. "CloseButton"]))
-  dressKeys(frame, GW.SOCIAL_DIALOG_BUTTONS, "CreateTexture", T.Button)
-  dressKeys(frame, GW.SOCIAL_DIALOG_BOXES, "SetText", T.EditBox)
+  dressKeys(frame, GW.SOCIAL_DIALOG_BUTTONS, GW.SkinButton)
+  dressKeys(frame, GW.SOCIAL_DIALOG_BOXES, GW.SkinEditBox)
   for _, suffix in ipairs(GW.SOCIAL_DIALOG_NAMED) do
     local button = name and _G[name .. suffix]
     if type(button) == "table" and button.CreateTexture then T.Button(button) end
@@ -1100,9 +1100,9 @@ local function dressSocialPane(pane)
   local bar = pane.FilterBar
   if type(bar) == "table" then
     GW.SkinSearch(bar.SearchBar)
-    dressKeys(bar, { "SearchFilterDropdown" }, "CreateTexture", GW.SkinDropdown)
+    dressKeys(bar, { "SearchFilterDropdown" }, GW.SkinDropdown)
   end
-  dressKeys(pane, GW.SOCIAL_PANE_BUTTONS, "CreateTexture", T.Button)
+  dressKeys(pane, GW.SOCIAL_PANE_BUTTONS, GW.SkinButton)
   GW.InsetPanel(pane.ScrollBox)
   GW.WatchRows(pane.ScrollBox, dressCard)
 end
@@ -1159,7 +1159,7 @@ end
 -- The ignore list (a ButtonFrameTemplate beside the window): the window skin, its two buttons flat, its names light.
 local function skinIgnoreList(frame)
   GW.Skin(frame)
-  dressKeys(frame, GW.SOCIAL_DIALOG_BUTTONS, "CreateTexture", T.Button)
+  dressKeys(frame, GW.SOCIAL_DIALOG_BUTTONS, GW.SkinButton)
   GW.WatchRows(frame.ScrollBox, dressNamedRow)
 end
 
@@ -1331,7 +1331,7 @@ function GW.SkinRolePopup(frame)
   fadeKey(frame, "Border")
   T.Panel(frame, { shadow = true })
   dressClose(frame, frame.CloseButton)
-  dressKeys(frame, GW.POPUP_BUTTON_KEYS, "CreateTexture", T.Button)
+  dressKeys(frame, GW.POPUP_BUTTON_KEYS, GW.SkinButton)
   for _, suffix in ipairs(GW.POPUP_BUTTON_NAMES) do GW.SkinButton(name and _G[name .. suffix]) end
   dressRoleChecks(name)
 end
