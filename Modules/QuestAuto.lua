@@ -48,23 +48,12 @@ end
 
 -- Rewards ---------------------------------------------------------------------------------------
 
--- What reward choice i sells for (copper), or nil when the client doesn't know yet.
-local function choicePrice(i)
-  local link, info = call(GetQuestItemLink, "choice", i), C_Item and C_Item.GetItemInfo
-  if type(link) ~= "string" or type(info) ~= "function" then return nil end
-  return ns.PlainNumber((select(11, info(link))))
-end
-
 -- The reward choice that sells for the most, or nil (you choose) while any price is unknown, when two
--- share the top price, or when none sells for anything.
+-- share the top price, or when none sells for anything: the choice the quest windows crown.
 function QA.BestChoice()
-  local best, bestPrice, tied = nil, 0, false
-  for i = 1, count(call(GetNumQuestChoices)) do
-    local price = choicePrice(i)
-    if not price then return nil end
-    if price > bestPrice then best, bestPrice, tied = i, price, false elseif price == bestPrice then tied = true end
-  end
-  return not tied and best or nil
+  local QP, prices, n = ns.QuestParts, {}, count(call(GetNumQuestChoices))
+  for i = 1, n do prices[i] = QP.SellPrice(call(GetQuestItemLink, "choice", i)) end
+  return QP.TopSeller(prices, n)
 end
 
 -- The reward to take: the only one (or none), else the best seller when that switch is on; nil to let you choose.
@@ -127,10 +116,42 @@ end
 
 -- Actions ---------------------------------------------------------------------------------------
 
--- Accepts the offered quest (or acknowledges one the game accepted already).
+-- The accept line waiting for the game to confirm the quest ({ id, line }), and the listeners that end the wait.
+local waiting
+local confirmAccept, dropAccept
+
+-- Forgets the waiting accept line: the game refused the quest (a full log, say) and another quest dialog opened.
+function dropAccept()
+  waiting = nil
+  ns.Off("QUEST_ACCEPTED", confirmAccept)
+end
+
+-- Says the waiting accept line once the game takes that quest into the log.
+function confirmAccept(_, questId)
+  local line = waiting and ns.PlainNumber(questId) == waiting.id and waiting.line
+  if not line then return end
+  dropAccept()
+  ns.Chat(line)
+end
+
+-- Waits for the game to take the quest before saying so (it refuses some, such as with a full log); a
+-- quest the client can't name is said at once, as no confirmation could be matched to it.
+local function awaitAccept(line)
+  local id = ns.PlainNumber(call(GetQuestID))
+  if not id or id == 0 then return ns.Chat(line) end
+  waiting = { id = id, line = line }
+  ns.On("QUEST_ACCEPTED", confirmAccept)
+end
+
+-- Accepts the offered quest (or acknowledges one the game accepted already, said at once).
 function QA.Accept()
-  if call(QuestGetAutoAccept) == true then call(AcknowledgeAutoAcceptQuest) else call(AcceptQuest) end
-  ns.Chat("Accepted: " .. title() .. (fromPlayer() and (" (shared by " .. ns.QuestParts.Plain(call(UnitName, "npc")) .. ")") or ""))
+  local line = "Accepted: " .. title() .. (fromPlayer() and (" (shared by " .. ns.QuestParts.Plain(call(UnitName, "npc")) .. ")") or "")
+  if call(QuestGetAutoAccept) == true then
+    call(AcknowledgeAutoAcceptQuest)
+    return ns.Chat(line)
+  end
+  awaitAccept(line)
+  call(AcceptQuest)
 end
 
 -- Hands in a finished quest's items (the reward page comes next).
@@ -138,17 +159,20 @@ function QA.Continue()
   call(CompleteQuest)
 end
 
--- Takes the reward (the only one, or the best seller) and finishes the quest.
+-- Takes the reward (the only one, or the best seller) and finishes the quest; from a choice it says which
+-- it took and why (a reward taken is for good).
 function QA.Finish()
   local choice = QA.RewardChoice()
   local name = choice > 0 and ns.QuestParts.Plain((call(GetQuestItemInfo, "choice", choice)))
   call(GetQuestReward, choice > 0 and choice or nil)
-  ns.Chat("Turned in: " .. title() .. (count(call(GetNumQuestChoices)) > 1 and name and (" (took " .. name .. ")") or ""))
+  ns.Chat("Turned in: " .. title() .. (count(call(GetNumQuestChoices)) > 1 and name and (" (took " .. name .. ": sells for most)") or ""))
 end
 
--- Module entry point (Core/Modules.lua): each switch is read when its event comes.
+-- Module entry point (Core/Modules.lua): each switch is read when its event comes. A new quest offer first
+-- forgets an accept line still waiting, before automation may answer the offer.
 function QA.Enable(settings)
   QA.settings = settings
+  ns.On("QUEST_DETAIL", dropAccept)
   for event in pairs(QA.ACTIONS) do
     ns.On(event, function() local act = actionFor(event) if act then act() end end)
   end

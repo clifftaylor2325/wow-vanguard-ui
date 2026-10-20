@@ -9,6 +9,9 @@
 ## OptionalDeps: OpenMap
 ## IconTexture: Interface\AddOns\Vanguard\Media\Textures\Icon
 ## AddonCompartmentFunc: Vanguard_OnAddonCompartmentClick
+## AddonCompartmentFuncOnEnter: Vanguard_OnAddonCompartmentEnter
+## AddonCompartmentFuncOnLeave: Vanguard_OnAddonCompartmentLeave
+## Category: UI Overhaul
 ## X-Flavor: forever
 ## X-License: All Rights Reserved
 ## X-Website: https://vanguardui.com

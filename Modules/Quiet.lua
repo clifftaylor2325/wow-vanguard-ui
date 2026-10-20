@@ -6,7 +6,7 @@ local ADDON, ns = ...
 local QU = ns.Module("Quiet", { defaults = { errors = false, zoneText = false, camera = 0 } })
 
 -- The furthest-zoom choices (the game's cameraDistanceMaxZoomFactor); 0 is the game's own setting.
-QU.CAMERA = { { 0, "game's setting" }, { 1.5, "1.5 x" }, { 2, "2 x" }, { 2.6, "2.6 x (furthest)" } }
+QU.CAMERA = { { 0, "The game's setting" }, { 1.5, "1.5 x" }, { 2, "2 x" }, { 2.6, "2.6 x (furthest)" } }
 
 -- Hides a frame the game just showed, while `key` is switched on.
 local function quiet(frame, key)
@@ -77,7 +77,7 @@ local function cameraNow()
 end
 
 -- Sets the furthest zoom from the settings: a chosen factor, keeping the player's own value from before
--- Vanguard's first change in settings.cameraPrior; or, for "game's setting", that kept value put back.
+-- Vanguard's first change in settings.cameraPrior; or, for "The game's setting", that kept value put back.
 local function setCamera(set, settings)
   local factor = tonumber(settings.camera) or 0
   if factor > 0 then
@@ -88,7 +88,7 @@ local function setCamera(set, settings)
   settings.cameraPrior = nil
 end
 
--- The camera's furthest zoom (a CVar the client lets addons set), out of combat. "game's setting" (0) puts
+-- The camera's furthest zoom (a CVar the client lets addons set), out of combat. "The game's setting" (0) puts
 -- back the player's own value if Vanguard changed it, and otherwise leaves the game's setting alone.
 function QU.ApplyCamera()
   local set = (C_CVar and C_CVar.SetCVar) or _G.SetCVar

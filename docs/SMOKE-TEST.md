@@ -153,11 +153,29 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Expect: with Record for at Off the button is greyed out and a click does nothing (no chat line). While recording it is bright and a click saves (`Solo: ... saved.` in chat), Record for goes back to Off and the button greys out again.
 - If it fails, paste: a screenshot of the page, the chat lines and `/vg errors`.
 
+### 2.1e Situations: Your situations
+
+- Do: on the Situations page, record an override for Party (Record for: Party, move one frame, Stop recording and save) and one for the situation you're in. Look at **Your situations**, then click **Clear Party**, then clear the other one.
+- Expect: the card lists each situation with what its override changes, "(now)" on the one you're in; Clear Party removes that row and says `Cleared the overrides for Party.`; with both gone the card reads "No overrides yet. Pick Record for to make one." While frames are unlocked the Clear buttons are greyed. [Needs in game.]
+- If it fails, paste: a screenshot of the page and `/vg errors`.
+
 ### 2.1b Windows are opaque
 
 - Do: stand where the world behind is bright (snow, sky, a lit city). Type `/vg` and open Situations and Talents (short pages); then open a merchant, your character pane and the quest log (L).
 - Expect: no world shows through any of these windows, including the empty space under a short options page. Tooltips and menus may still be very slightly see-through (that is the theme's panel opacity, not a window).
 - If it fails, paste: a screenshot of the window over the bright ground and `/vg errors`.
+
+### 2.1f The options window's height, search and changed dots
+
+- Do: type `/vg`. Note how tall the window is. Change Text size, then point at the small accent dot by its caption. Type "move frames", then "square", then "a" in the search box. On the Modules page, find Vanguard meter. Then run `/vg setup`, change the UI scale on its Screen step, and open `/vg` again.
+- Expect: the window is about three quarters of your screen tall (at least as tall as before). The dot's tooltip has a second line, "Default: 100%" or the like. "move frames" lists Move frames, and clicking that line only marks the button (frames do not unlock). "square" lists Corners. "a" lists eight and ends with "N more: type more words". Vanguard meter says "On, but its own switch is off (Combat tools)" beside its name until you switch the meter on under Combat tools. After the UI scale change the window is still tall and fits the screen.
+- If it fails, paste: a screenshot of the window, your screen resolution and UI scale, and `/vg errors`.
+
+### 2.1g The addons button's tooltip and the AddOns list heading
+
+- Do: point at the addons button by the minimap without clicking. Then open the game's AddOns list from the character select screen or the game menu.
+- Expect: the tooltip reads "Vanguard" and the version, then "Left-click: options · Right-click: move frames (out of combat)", and a red line with the count when errors were caught this session; it goes when the mouse leaves. In the AddOns list Vanguard sits under a "UI Overhaul" heading. If the client shows no headings there, nothing else changes (note it, and the line is dropped after launch).
+- If it fails, paste: a screenshot of the tooltip or the AddOns list, and `/vg errors`.
 
 ### 2.1c Options and questions let go of the mouse and keyboard when they close
 
@@ -209,6 +227,12 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Do: out of combat, open the merchant (or your character pane), start dragging it by its title bar, and without letting go press Escape (or walk out of range). Let go, open it again, drag it somewhere else, then close it and open it again.
 - Expect: the window is gone while you drag, nothing sticks to the mouse, and the next time it opens it is where it was let go; after the second drag it comes back at the new spot every time, also after another window opens and shuffles the panels. `/vg errors` is empty. [Needs in-game check: whether the client sends the drag's end to a drag area that is hidden mid-drag; Vanguard now ends the drag itself when the window hides.]
 - If it fails, paste: which window, where it came back, and `/vg errors`.
+
+### 3.2b Move frames from the options, and back
+
+- Do: `/vg` → General → **Move frames**. Read the bar at the top, move a frame, click **Save and lock**. Again **Move frames**, then **Exit without saving**. Again **Move frames**, then `/vg lock`.
+- Expect: the bar's note reads in full ("Drag to move · right-click for anchor, scale, opacity · arrows nudge (Shift ×10)") with nothing over the buttons at your resolution; Save and lock and Exit without saving each lock and open `/vg` again on General; `/vg lock` just locks. [Needs in game: the bar's width at your resolution.]
+- If it fails, paste: a screenshot of the bar and `/vg errors`.
 
 ### 3.3 Combat while unlocked
 
@@ -434,6 +458,12 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Expect: one dark panel with rounded corners and an accent-coloured border runs from your player frame's left end to your target frame's right end, behind the cast bar, swing timer and cooldown icons between them (all still visible over it); the Vanguard crest sits centred on the panel's top edge; your target's health and power bars fill from the right. The player and target frames have rounded corners too, with no bar colour showing past the curve (no cut corners anywhere on the deck); switching the deck off gives them their cut shield corners back. With Calm HUD on, the panel dims with the frames. Switching it off removes the panel and the target's bars fill from the left again, at once. In setup, Versus deck turns it on with your role's layout (a healer gets the healing layout and click casting); picking another layout turns it off. No error.
 - If it fails, paste: a screenshot of the bottom centre and `/vg errors`.
 
+### 7.2b1 Pet cast bar
+
+- Do: as a warlock with the Imp out (or any pet that casts), let it cast Firebolt at a mob. Dismiss the pet and summon another. Then `/vg unlock` and look for the pet cast bar's handle.
+- Expect: a small cast bar just left of the pet frame (between the combo points' spot and the focus's debuffs) fills with each of the pet's casts, with the spell's name and icon and no interrupt diamond, and goes when the cast ends or the pet goes; in unlock mode it has its own handle, "Pet cast bar". No error.
+- If it fails, paste: a screenshot during a pet cast and `/vg errors`.
+
 ### 7.2c Cursor ring
 
 - Do: `/vg` → Unit frames, tick **Ring at the cursor: the global cooldown and your cast** (nothing needs a reload). Move the mouse around, then cast an instant spell, then a spell with a long cast time, then a channel, and click and hover things under the ring (a button, a unit frame, a world object). Untick the switch.
@@ -512,6 +542,12 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Expect: hostile creatures in range have a Vanguard plate at the first login without pressing anything. `/vg plates` gives plates drawn, how many are attackable, and Enemy on. Each switch hides and shows that kind of plate, and the Enemy switch follows V. After the reload Vanguard does not turn enemy plates back on. [Needs in game: that nameplateShowEnemies, nameplateShowFriendlyPlayers and nameplateShowFriendlyNPCs are the Forever 16001 CVar names (nameplateShowFriends is not: GetCVar gives nil) and that the client keeps them after a reload.]
 - If it fails, paste: the `/vg plates` line, a screenshot, and `/vg errors`.
 
+### 7.5a Health numbers on enemy plates
+
+- Do: stand near hostile mobs and a friendly NPC with plates on. Open the game's options → Nameplates → Info display and tick Current health percent; look at the plates. Tick Current health value too, then untick the percent. Open `/vg` → Nameplates and untick "Health value on enemy plates". Tick "Health percent on enemy plates" during a fight and watch the plates when it ends. Set Height to 8 on the same page and `/reload`.
+- Expect: each box shows its number at the right end of every enemy plate's bar, small and outlined (the value left of the percent when both are on), following the mob's health as you hit it; the friendly NPC's plate shows none. Vanguard's two rows tick and untick with the game's boxes, and the game's boxes follow Vanguard's rows; a row ticked in a fight takes effect when it ends. At height 8 no numbers show. [Needs in game: that the percent reads right on a mob whose health the client hides (it formats the hidden number, which the harness can't), that `CVAR_UPDATE` fires when the game's box changes so the plates follow at once, and how the numbers fit a 10-high bar.]
+- If it fails, paste: a screenshot of a plate and `/vg errors`.
+
 ### 7.6 Fight recap
 
 - Do: under Combat tools tick "Recap in chat after each fight". Fight a mob for a few seconds (in a group, interrupt or dispel something if you can). Type `/vg recap`, then `/vg recap party` in a group. In the fight's first seconds type `/vg recap`. Then type `/run for _, k in ipairs({"Interrupts","Dispels","DamageTaken","Deaths","AvoidableDamageTaken"}) do print(k, Enum.DamageMeterType[k]) end` and paste what it prints.
@@ -556,6 +592,8 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Expect: Vanguard's dialog at the bottom centre, the NPC's name at the top in the window-title type (there is no close button: Goodbye and Escape end the talk), with numbered lines in difficulty colours, each led by a gold `!` (a quest you can take), a gold `?` (ready to turn in) or a grey `?` (in progress); Goodbye sits alone at the far left of the buttons; the number picks a line, Space or Enter presses the main button (Accept, Continue or Complete; with only Goodbye on the page, that), Escape says goodbye; in combat number keys, Space and Enter go to the game (Escape still says goodbye); without Shift the ticked automation runs; with Shift held, no automation runs and the dialog stays open for you.
 - Also expect (a fight with the dialog open): talk to a quest giver, pull a mob that reaches you (or get hit) with the dialog still open, and finish the fight without closing it. During the fight Space moves or jumps as usual; once the fight ends, Space and the number keys work in the dialog again without you clicking anything or turning a page. [Needs in game: that the keys come back on PLAYER_REGEN_ENABLED, and that Escape closes the dialog during the fight.]
 - Also expect (a flight master): talk to a flight master with no quests for you. The flight map opens at once, with no Vanguard dialog in between, as with the game's own windows. An NPC with several options, or a quest as well, still opens the dialog. [Needs in game: which NPCs the client flags `selectOptionWhenOnlyOption` on Forever, and that `C_GossipInfo.SelectOptionByIndex` opens the flight map from an addon.]
+- Also expect (reward captions): open a quest that offers a choice of rewards and also gives something anyway, then hand it in, and open the same quest in the quest log. Before you take it, the choices sit under `You will be able to choose one of these rewards:` and the rest on its own row under `You will also receive:`; on the hand-in page the first caption reads `Choose one of these rewards:`; a quest with one reward item reads `You will receive:`; a quest that needs items handed in shows them under `Required items:`. The quest log shows the same captions as the first page. Of two or more choices, the one that sells for most has a small gold crown in its top-right corner (hover each to compare the sell prices); two choices at the same price show no crown; the upgrade arrow, when there is one, stays at the icon's top-left. [Needs in game: the client's wording of each caption, and that no caption overlaps a card.]
+- Also expect (needs and failed): take a quest that suggests a group (an elite quest). The dialog shows `Suggested Players [n]` in grey under the objectives, and the quest log shows the same line under the objective rows. A quest that costs money to hand in shows `Required Money:` with the cost on that line in the log, red while you carry less. A failed quest (let a timed or escort quest run out) shows a red `Failed` where its objectives were. [Needs in game: the wording, and that C_QuestLog.GetRequiredMoney and GetSuggestedGroupSize answer on Forever.]
 - Also expect (a quest that costs money to hand in, if you find one): with Turn in finished quests ticked, talk to its NPC. The dialog stays open for you (automation leaves it alone), the hand-in page reads `Costs 5g 0s 0c` (the quest's price) at the bottom left, and Complete asks `Completing <title> costs ... Complete it?`: No ends the talk and keeps your gold, Complete takes the reward and the money. [Needs in game: which Forever quests cost money, and `/dump GetQuestMoneyToGet()` on the hand-in and reward pages of one.]
 - If it fails, paste: a screenshot and `/vg errors`.
 
@@ -600,7 +638,7 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 ### 8.4b Questing conveniences
 
 - Do: with a quest or two in the log that give XP and a level below the cap, look at the foot of the tracker and open the quest log. Under `/vg > Quests` switch off the line under the quests, then each quest's XP in the quest log list, then tick them again. Accept a new quest from an NPC with Watch a quest when you accept it on, and again with it off. Then tick Accept quests a party member shares with you, have a party member share a quest (their Share button), and repeat it holding Shift.
-- Expect: a muted `Quests: 62% of the XP to level` line under the last quest (above `+N more` when that shows), which follows the quests you take and abandon and is gone at the level cap or when no quest gives XP; each quest line in the quest log shows `1,250 XP` in muted type at its right edge with the title cut short, not overlapped; the switches take effect at once. A newly accepted quest appears in the tracker without you watching it (off: it does not, unless the game's own auto-watch does). A shared quest is accepted for you with `Accepted: <title> (shared by <name>)` in chat and no dialog; with Shift held, or the switch off, the dialog opens as usual. [Needs in game: that the XP numbers match the quest dialog's, that QUEST_ACCEPTED arrives with the quest id in the log, that the game refuses a watch past its limit quietly, and that the quest dialog's `npc` unit is the sharing player for a shared quest.]
+- Expect: a muted `Quests: 62% of the XP to level` line under the last quest (above `+N more` when that shows), which follows the quests you take and abandon and is gone at the level cap or when no quest gives XP; each quest line in the quest log shows `1,250 XP` in muted type at its right edge with the title cut short, not overlapped; the switches take effect at once. A newly accepted quest appears in the tracker without you watching it (off: it does not, unless the game's own auto-watch does). A shared quest is accepted for you with `Accepted: <title> (shared by <name>)` in chat and no dialog; with Shift held, or the switch off, the dialog opens as usual. With Turn in and the best-seller switch on, handing in a quest with a choice of rewards says `Turned in: <title> (took <item>: sells for most)`. With Accept quests on and a full quest log, an offered quest is not reported as `Accepted`; with no quests at all the quest log list reads `No quests yet. Quest givers show a ! over their heads.` [Needs in game: that the XP numbers match the quest dialog's, that QUEST_ACCEPTED arrives with the quest id in the log, that the game refuses a watch past its limit quietly, and that the quest dialog's `npc` unit is the sharing player for a shared quest.]
 - If it fails, paste: a screenshot and `/vg errors`.
 
 ### 8.4d Quest spots on the minimap
@@ -647,9 +685,15 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 
 ### 8.6b Camera zoom back to the game's setting
 
-- Do: with "Furthest the camera zooms out" on "game's setting", scroll the camera all the way out and note how far it goes. Pick "2.6 x (furthest)" and scroll out, then pick "game's setting" again and scroll out. Try picking "game's setting" during a fight too.
-- Expect: 2.6 x zooms out further; back on "game's setting" the camera stops where it did at first (in a fight, only once the fight ends), and it stays that way after `/reload`.
+- Do: with "Furthest the camera zooms out" on "The game's setting", scroll the camera all the way out and note how far it goes. Pick "2.6 x (furthest)" and scroll out, then pick "The game's setting" again and scroll out. Try picking "The game's setting" during a fight too.
+- Expect: 2.6 x zooms out further; back on "The game's setting" the camera stops where it did at first (in a fight, only once the fight ends), and it stays that way after `/reload`.
 - If it fails, paste: `/dump GetCVar("cameraDistanceMaxZoomFactor")` before and after, and `/vg errors`.
+
+### 8.6c A summon in a fight, and repeated declines
+
+- Do: on Game windows, "Auto-accept", switch on "Accept summons (one offered in a fight is taken when it ends)" and "Decline duels", and under "Quiet the game", "Decline group invites from people who aren't friends or guildmates". Have a warlock summon you while you are fighting a mob, and finish the fight before the summon runs out. Then have someone who is not a friend or guildmate invite you to a group three times in a row, and ask you to duel three times.
+- Expect: the summon prompt stays up during the fight; when the fight ends you are taken to the summoner and one chat line says from whom and to where. If you die in the fight, or the summon runs out first, you are not moved. [Needs in game: that the game lets you teleport the moment the fight ends; if the prompt stays up instead, say so.] Each invite and each duel is declined, but chat says "Declined a group invite from <name>." and "Declined a duel from <name>." once each, not three times; after 5 minutes a new one says it again.
+- If it fails, paste: the chat lines and `/vg errors`.
 
 ## 9. Bags, merchant, trainer
 
@@ -849,6 +893,18 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Do: standing still out of combat, type `/afk`. Move. Type `/afk` again, then click or press a key.
 - Expect: the screen dims to a card with your name in your class colour, level and class, the zone, time away, the clock and an XP bar, and under the card your faction's passage (Varian's letter for Alliance, the Blood Oath for Horde; in Cinzel or Metamorphous with the faction look on Crest and heading font, otherwise in Fira Sans) in the crest colour; moving removes it; a click or key removes it until you are next away; it never shows in combat.
 - If it fails, paste: a screenshot and `/vg errors`.
+
+### 11.1a AFK card gives way to what needs you
+
+- Do: in a group, type `/afk` and have someone start a ready check; type `/afk` twice again and have someone invite you to a group (or trade you). Then `/afk` while casting Hearthstone, and `/afk` inside a dungeon.
+- Expect: the ready check and the invite each put the card away at once, and your first click lands on the prompt's button. While you cast, the card doesn't show; about 30 seconds later, if you're still away, it does. Inside the dungeon it never shows. [Needs in game.]
+- If it fails, paste: which prompt, a screenshot and `/vg errors`.
+
+### 11.1b Errors window buttons
+
+- Do: with an error caught (or after `/vg errors` shows at least one), open `/vg errors`; click **Report a bug**. Open `/vg errors` again and click **Clear**.
+- Expect: Report a bug closes the errors window and opens the feedback form on Bug with the report attached; Clear closes the window, chat says "Errors cleared.", the addons button's count goes, and `/vg errors` then says none were caught. Other copy windows (export, report) show Close only. [Needs in game.]
+- If it fails, paste: a screenshot of the window and `/vg errors`.
 
 ## 12. Game menu
 

@@ -68,10 +68,11 @@ local function addScroll(f)
   f.child = f.scroll.child
 end
 
--- The scrolling body: the text, the objectives under it, the quest history line, then the numbered lines.
+-- The scrolling body: the text, the objectives under it, the needs line, the quest history line, then the numbered lines.
 local function addBody(f)
   addScroll(f)
   f.text, f.objectives, f.history = bodyText(f.child, "text"), bodyText(f.child, "text2"), bodyText(f.child, "muted")
+  f.needs = bodyText(f.child, "text2")
   f.text:SetPoint("TOPLEFT", f.child, "TOPLEFT", 0, -BODY_PAD)
   f.objectives:SetPoint("TOPLEFT", f.text, "BOTTOMLEFT", 0, -OBJECTIVES_GAP)
 end
@@ -97,7 +98,7 @@ local function addFooter(f)
   f.rewards = CreateFrame("Frame", nil, f)
   f.rewards:SetPoint("TOPLEFT", f.scroll, "BOTTOMLEFT", 0, -CARDS_GAP)
   f.rewards:SetSize(QD.PER_ROW * (QP.CARD_W + QP.GAP) - QP.GAP, QP.CARD_H)
-  f.lines, f.cards = QP.Pool(f.child, QP.Line), QP.Pool(f.rewards, QP.Card)
+  f.lines, f.cards, f.captions = QP.Pool(f.child, QP.Line), QP.Pool(f.rewards, QP.Card), QP.Pool(f.rewards, QP.Caption)
   f.money = T.Text(f:CreateFontString(nil, "OVERLAY"), "label", "gold")
   f.money:SetPoint("LEFT", f, "BOTTOMLEFT", T.SPACE.pad, T.SPACE.pad + T.BUTTON_H / 2)
   addButtons(f)
@@ -155,16 +156,25 @@ end
 local function bodyHeight(f, lineCount)
   local h = BODY_PAD + f.text:GetStringHeight()
   if f.objectives:IsShown() then h = h + OBJECTIVES_GAP + f.objectives:GetStringHeight() end
+  if f.needs:IsShown() then h = h + OBJECTIVES_GAP + f.needs:GetStringHeight() end
   if f.history:IsShown() then h = h + OBJECTIVES_GAP + f.history:GetStringHeight() end
   if lineCount > 0 then h = h + LINES_GAP + lineCount * QP.LINE_H end
   return h + BODY_PAD
 end
 
--- The quest history line ("Done on Thrall-Realm"), muted under the objectives (or the text); hidden for a quest not done.
+-- The needs line (the group a quest suggests; QP.Needs) under the objectives (or the text); hidden when it has none.
+local function renderNeeds(f, p)
+  f.needs:SetShown((p.needs or "") ~= "")
+  QP.PaintNeeds(f.needs, p.needs or "")
+  f.needs:SetPoint("TOPLEFT", f.objectives:IsShown() and f.objectives or f.text, "BOTTOMLEFT", 0, -OBJECTIVES_GAP)
+end
+
+-- The quest history line ("Done on Thrall-Realm"), muted under the needs line, the objectives or the text; hidden for a quest not done.
 local function renderHistory(f, p)
+  local above = f.needs:IsShown() and f.needs or f.objectives:IsShown() and f.objectives or f.text
   f.history:SetShown(p.done ~= nil)
   f.history:SetText(p.done or "")
-  f.history:SetPoint("TOPLEFT", f.objectives:IsShown() and f.objectives or f.text, "BOTTOMLEFT", 0, -OBJECTIVES_GAP)
+  f.history:SetPoint("TOPLEFT", above, "BOTTOMLEFT", 0, -OBJECTIVES_GAP)
 end
 
 -- The text and objectives, then the lines, scrolled back to the top; returns how tall they are.
@@ -172,6 +182,7 @@ local function renderBody(f, p)
   f.text:SetText(QP.Plain(p.text))
   f.objectives:SetShown(p.objectives ~= nil)
   f.objectives:SetText(p.objectives and ("Objectives:  " .. QP.Plain(p.objectives)) or "")
+  renderNeeds(f, p)
   renderHistory(f, p)
   renderLines(f, p.lines)
   f.scroll:ScrollTo(0)
@@ -183,34 +194,25 @@ local function wireCard(c)
   c:SetScript("OnClick", ns.Guard("click quest reward choice", function(self) if self.item.kind == "choice" then QD.Pick(self.item.index) end end))
 end
 
--- Every item the page lists: the choices first, then what you get anyway.
-local function pageItems(p)
-  local out = {}
-  for _, list in ipairs({ p.choices or {}, p.rewards or {} }) do
-    for _, item in ipairs(list) do out[#out + 1] = item end
-  end
-  return out
+-- The page's reward sections: the items to hand in on the progress page, else the choices, then what you get anyway.
+local function pageSections(p)
+  local rewards = p.rewards or {}
+  if rewards[1] and rewards[1].kind == "required" then return QP.RequiredSection(rewards) end
+  return QP.RewardSections(p.choices or {}, rewards, p.pick == true)
 end
 
--- How tall the reward cards' rows are with the gap above them (none on a page without rewards).
-local function cardsHeight(count)
-  local rows = math.ceil(count / QD.PER_ROW)
-  if rows == 0 then return 0 end
-  return CARDS_GAP + rows * QP.CARD_H + (rows - 1) * QP.GAP
+-- A card as it is laid out: its clicks, and no picked wash yet.
+local function readyCard(c)
+  wireCard(c)
+  QD.MarkCard(c, false)
 end
 
--- The reward cards, three to a row, from the text's left edge; returns how many.
+-- The reward sections, each caption over its cards three to a row, from the text's left edge; returns how
+-- tall they are with the gap above them (none on a page without rewards).
 local function renderCards(f, p)
-  f.cards.Reset()
-  local items = pageItems(p)
-  for n, item in ipairs(items) do
-    local c, col, row = f.cards.Next(), (n - 1) % QD.PER_ROW, math.floor((n - 1) / QD.PER_ROW)
-    c:SetPoint("TOPLEFT", f.rewards, "TOPLEFT", col * (QP.CARD_W + QP.GAP), -row * (QP.CARD_H + QP.GAP))
-    QP.PaintCard(c, item)
-    wireCard(c)
-    QD.MarkCard(c, false)
-  end
-  return #items
+  f.lay = f.lay or { holder = f.rewards, cards = f.cards, captions = f.captions, perRow = QD.PER_ROW, onCard = readyCard }
+  local h = QP.LayoutRewards(f.lay, pageSections(p))
+  return h > 0 and CARDS_GAP + h or 0
 end
 
 -- Sizes the panel to its page, between its least and greatest height: the body
@@ -249,7 +251,7 @@ function QD.Render(p)
   f.npc:SetText(QP.Plain(QD.Call(UnitName, "npc")))
   f.title:SetText(QP.Plain(p.title))
   local content = renderBody(f, p)
-  fitPanel(f, content, cardsHeight(renderCards(f, p)))
+  fitPanel(f, content, renderCards(f, p))
   f.money:SetText(p.money or "")
   renderButton(f.primary, p.primary)
   renderButton(f.secondary, p.secondary)
