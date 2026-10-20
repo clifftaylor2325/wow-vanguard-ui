@@ -693,6 +693,12 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Expect: the first three are not taken as prices (the box goes back to the suggestion; nothing posts at 100,000 gold or 16 gold); `1g 50s` is the price. With per stack on, `55c` for a stack of 10 shows `60c` in the box (6c a unit, rounded up) and the stack posts at 60c, never under the 55c typed. [Needs in-game check: what the client does with a posted price near the highest it takes.]
 - If it fails, paste: a screenshot of the Sell card and `/vg errors`.
 
+### 9.4b The scan countdown, a refused scan, and deals kept through the mailbox
+
+- Do: on the Lists tab, Scan the auction house and let it finish; close the auction house and open it again. Within 15 minutes, open the auction house on a second character (or, with another auction addon, run its full scan first) and look at the Scan button; if it can be pressed, press it and wait two minutes. Back on the first character, after a scan with deals found, walk to the mailbox, then come back and open Deals and Upgrades.
+- Expect: the Scan button is greyed and reads "Next scan in N min", counting down, with "Scanned N min ago · N items" under it. On the second character the button is greyed too (the 15 minutes are the account's); if the game refused a scan, after about 90 seconds chat says another character or auction addon may have scanned, the button counts down 15 minutes from the try, and nothing is stuck at "scanning 0 of 0" (the line under the button is never in the warning colour while a scan runs). Note how long a full scan took. The deals and upgrades are still listed, the heading reading "N found, the oldest N min ago" and each tooltip "Found N min ago."
+- If it fails, paste: a screenshot of the Lists tab, the chat lines and `/vg errors`.
+
 ### 9.5 Sort clear of the backpack icon
 
 - Do: without a gamepad, open your bags (combined bag on) and look at the top row. Click Sort, including on its right half. Close and open the bags, then `/reload` and open them again.

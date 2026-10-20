@@ -86,7 +86,7 @@ it("upgrades: a scan lists the gear that beats what you wear, the biggest gain f
     [true, "TEST-ONLY Cheap Helm", "Head", "empty slot", "70c"], [true, "TEST-ONLY Greatsword", "Two-Hand", "empty slot", "20s 0c"], [false, false, false, false, false]]);
   expect([card(addon), addon.eval("return __wfgWorld.ah.linkReads"), isTok(addon, addon.eval(`return ${TABLE}.rows[1].cells.gain.__textColor`), "good")], "the count; a link read for each gear listing, none for the potion; the gain in good").toEqual([[true, 4, "Upgrades", "4 found", ""], 10, true]);
   addon.hover(`${TABLE}.rows[1]`);
-  expect(addon.eval("local t = GameTooltip return { t.__link, t.__lines[1].text, t:IsShown() }"), "the item's own tooltip, and what a click does").toEqual([addon.eval("return __link(102)"), "Click to show it in the auction house's list.", true]);
+  expect(addon.eval("local t = GameTooltip return { t.__link, t.__lines[1].text, t.__lines[2].text, t:IsShown() }"), "the item's own tooltip, when it was found, and what a click does").toEqual([addon.eval("return __link(102)"), "Found 0 min ago.", "Click to show it in the auction house's list.", true]);
   addon.hover(null);
   addon.click(`${TABLE}.rows[1]`);
   expect([sent(addon).at(-1), addon.eval("return #__wfgWorld.ah.restricted"), addon.eval("return AuctionHouseFrame.selectedTab")], "a click shows it in the game's own list, on its Buy tab; nothing is bought").toEqual(["SearchForItemKeys:102", 0, 1]);
@@ -121,7 +121,7 @@ it("upgrades: the same item and suffix at another unique ID is one row at the ch
   expect(addon.eval(`return ${HELPER}.GearKey("not a link")`), "text that is no item link is its own key").toBe("not a link");
 });
 
-it("upgrades: what you wear and the weights change the judgement; closing the house forgets the listings", () => {
+it("upgrades: what you wear and the weights change the judgement; kept after closing until what you wear changes", () => {
   const addon = warrior();
   scan(addon, SCAN);
   addon.eval("__wfgWorld.worn[9] = __link(102)");
@@ -137,7 +137,13 @@ it("upgrades: what you wear and the weights change the judgement; closing the ho
   addon.world.openAuctionHouse();
   addon.update(0);
   addon.click("AuctionHouseFrame.Tabs[4]");
-  expect(card(addon), "a new visit starts with none").toEqual([true, 0, "Upgrades", "", "None yet: a scan or an item search finds armor and weapons that beat what you wear."]);
+  expect(card(addon)[1], "back soon after: the upgrades are kept").toBe(2);
+  addon.world.closeAuctionHouse();
+  addon.fire("PLAYER_EQUIPMENT_CHANGED", 9);
+  addon.world.openAuctionHouse();
+  addon.update(0);
+  addon.click("AuctionHouseFrame.Tabs[4]");
+  expect(card(addon), "gear changed while away: the kept upgrades are gone").toEqual([true, 0, "Upgrades", "", "None yet: a scan or an item search finds armor and weapons that beat what you wear."]);
   addon.fire("PLAYER_EQUIPMENT_CHANGED", 9);
   expect(addon.eval("return #ns.errors"), "gear changing with nothing seen: no error").toBe(0);
 });
@@ -155,7 +161,7 @@ it("upgrades: a big scan is judged a hundred listings a frame, and closing the h
   expect([addon.eval(`return ${HELPER}.scan == nil`), addon.eval(`return ${HELPER}.judging.next`), card(addon)[1]], "the scan read in one frame, and a hundred of its listings judged in the same").toEqual([true, 101, 100]);
   addon.world.closeAuctionHouse();
   addon.update(0.01);
-  expect([addon.eval(`return ${HELPER}.judging == nil`), addon.eval(`return next(${HELPER}.upgrades) == nil`), addon.eval(`return ${HELPER}.judge:IsShown()`)], "closed: judging stops, the listings go").toEqual([true, true, false]);
+  expect([addon.eval(`return ${HELPER}.judging == nil`), addon.eval(`return next(${HELPER}.upgrades) == nil`), addon.eval(`return ${HELPER}.judge:IsShown()`)], "closed: judging stops, the listings judged are kept").toEqual([true, false, false]);
   addon.world.openAuctionHouse();
   addon.update(0);
   addon.eval("__now = __now + 1000");

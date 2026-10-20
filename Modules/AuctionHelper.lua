@@ -377,6 +377,7 @@ end
 -- the window has no tab row), and the cards are painted.
 function AH.OnShow()
   AH.open = true
+  AH.DropExpired()
   if not AH.settings.panel or type(AuctionHouseFrame) ~= "table" then return end
   if not AH.pages and not AH.Build() then return end
   AH.PaintShop()
