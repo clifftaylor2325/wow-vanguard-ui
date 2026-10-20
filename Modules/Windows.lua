@@ -1619,10 +1619,27 @@ local function paintNamed(names, token)
 end
 GW.PaintNamed = paintNamed
 
+-- Whether a region sits in a window Vanguard dressed (its dark panel behind it), whichever group dressed it: the
+-- quest texts move between the quest window (Game windows group) and the map's quest panel (World map group).
+local function inDressedWindow(region)
+  local f = region:GetParent()
+  while f and not vgWindow[f] do f = f:GetParent() end
+  return f ~= nil
+end
+
+-- The quest texts' light colours, each only where its window has the dark panel (left as the game colours them on
+-- its parchment).
+local function lightDressed(names)
+  for _, name in ipairs(names) do
+    local fs = _G[name]
+    if type(fs) == "table" and fs.SetTextColor and inDressedWindow(fs) then T.Color(fs, "text") end
+  end
+end
+
 -- The quest window's texts in light body text and light headings (the quest's name included).
 function GW.LightQuestText()
-  paintNamed(GW.QUEST_BODY, "text")
-  paintNamed(GW.QUEST_HEADS, "text")
+  lightDressed(GW.QUEST_BODY)
+  lightDressed(GW.QUEST_HEADS)
 end
 
 -- The gossip window's list of lines (greeting and options), or nil on a client without it.
@@ -1668,13 +1685,17 @@ end
 local function keepTextReadable()
   after(nil, "QuestFrame_SetTextColor", function(fs) T.Color(fs, "text") end)
   after(nil, "QuestFrame_SetTitleTextColor", function(fs) T.Color(fs, "text") end)
-  after(nil, "QuestInfo_Display", GW.LightQuestText)
   local box = gossipBox()
   if type(box) == "table" then after(box, "Update", GW.LightGossip) end
   for _, f in ipairs({ _G.QuestFrame, _G.GossipFrame }) do
     GW.HookScriptOnce(f, "OnShow", "quest text", function() GW.LightQuestText() GW.LightGossip() end)
   end
   GW.HookScriptOnce(_G.ItemTextFrame, "OnEvent", "item text", function(...) GW.LightItemText(...) end)
+end
+
+-- Keeps the shared quest texts readable after each QuestInfo_Display, in whichever dressed window shows them.
+local function keepQuestInfoReadable()
+  after(nil, "QuestInfo_Display", GW.LightQuestText)
 end
 
 -- The auction house's own panels --------------------------------------------------------------
@@ -2006,6 +2027,7 @@ function GW.Enable(settings)
   ns.On("ADDON_LOADED", onLoaded)
   watchAll(GW.ORDER)
   if settings.windows then watchGameMenu() keepTextReadable() end
+  if settings.windows or settings.map then keepQuestInfoReadable() end
   if settings.durability then watchDurability() end
   if settings.movable then GW.WatchMoves() end
 end
