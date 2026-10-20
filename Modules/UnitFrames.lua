@@ -60,6 +60,15 @@ local function flag(value)
   return not isSecret(value) and value == true
 end
 
+-- A client answer about a unit, or nil when the client lacks the call or hides the answer.
+local function asked(name, ...)
+  local fn = _G[name]
+  if type(fn) ~= "function" then return nil end
+  local answer = fn(...)
+  if isSecret(answer) then return nil end
+  return answer
+end
+
 -- The color for a unit's reaction to the player (hostile, neutral, friendly).
 local function reactionColor(unit)
   local reaction = UnitReaction and UnitReaction(unit, "player")
@@ -69,17 +78,29 @@ local function reactionColor(unit)
   return { T.RGB(reaction <= 3 and "hostile" or reaction == 4 and "neutral" or "friendly") }
 end
 
--- r, g, b for a unit's health bar: class color for players, reaction otherwise.
-function UF.HealthColor(unit)
+-- True for a creature another player or group has tagged (the game's own test, as its target frame greys
+-- it): never a player or what a player controls. A hidden or missing answer counts as untagged.
+function UF.Tapped(unit)
+  return asked("UnitPlayerControlled", unit) ~= true and asked("UnitIsTapDenied", unit) == true
+end
+
+-- r, g, b for a unit with no tag grey: class color for players, reaction otherwise (the plates add their
+-- own grey, behind their Tag marks switch).
+function UF.UnitColor(unit)
   if flag(UnitIsPlayer(unit)) then
     local _, class = UnitClass(unit)
     local c = not isSecret(class) and RAID_CLASS_COLORS and RAID_CLASS_COLORS[class]
-    if c then
-      return c.r, c.g, c.b
-    end
+    if c then return c.r, c.g, c.b end
   end
   local c = reactionColor(unit)
   return c[1], c[2], c[3]
+end
+
+-- r, g, b for a unit's health bar: grey for a creature someone else tagged, always, as the game's
+-- frames do; else its class or reaction color.
+function UF.HealthColor(unit)
+  if not flag(UnitIsPlayer(unit)) and UF.Tapped(unit) then return T.RGB("tapped") end
+  return UF.UnitColor(unit)
 end
 
 -- Power types with a Vanguard color; others use the client's PowerBarColor.
@@ -116,13 +137,17 @@ local function isOffline(unit)
   return not isSecret(connected) and connected == false
 end
 
--- "Dead", "Offline", or nil when the unit is neither. Safe with secret
--- values: they count as neither, and nothing secret is compared.
+-- "Ghost" for a player who released, "Dead" for anyone else dead, nil for the living and for a hunter
+-- feigning death (the client calls them dead too). A hidden answer counts as no.
+local function deathWord(unit)
+  if asked("UnitIsFeignDeath", unit) == true or not flag(UnitIsDeadOrGhost(unit)) then return nil end
+  return asked("UnitIsGhost", unit) == true and "Ghost" or "Dead"
+end
+
+-- "Dead", "Ghost", "Offline", or nil when the unit is none of them. Safe with secret
+-- values: they count as none, and nothing secret is compared.
 function UF.DownState(unit)
-  if flag(UnitIsDeadOrGhost(unit)) then
-    return "Dead"
-  end
-  return isOffline(unit) and "Offline" or nil
+  return deathWord(unit) or (isOffline(unit) and "Offline" or nil)
 end
 
 -- Health as a percent ("84%"), from the client's own percent with its 0-100
@@ -150,15 +175,6 @@ function UF.LevelText(unit)
   local level = ns.PlainNumber(type(UnitLevel) == "function" and UnitLevel(unit) or nil)
   if not level then return "" end
   return level < 1 and "??" or tostring(level)
-end
-
--- A client answer about a unit, or nil when the client lacks the call or hides the answer.
-local function asked(name, ...)
-  local fn = _G[name]
-  if type(fn) ~= "function" then return nil end
-  local answer = fn(...)
-  if isSecret(answer) then return nil end
-  return answer
 end
 
 -- Who has tagged a creature you can attack: "theirs" when the client calls it tap denied (another player
@@ -223,12 +239,36 @@ local function layoutBars(f, powerHeight)
   f.power:SetPoint("BOTTOMRIGHT", -px, px)
 end
 
--- The secure part: which unit, left-click targets, right-click opens the menu.
+-- Lines a readout adds under a frame's unit tooltip, by frame key: a function given the tooltip (UnitExtras: the pet's mood).
+UF.TOOLTIP_LINES = {}
+
+-- Shows the frame's unit in the game's tooltip, as the game's own unit frames do, then the lines a readout
+-- adds. A forbidden tooltip is left alone, and one the Tooltips module hid (its in-combat switch) stays hidden.
+function UF.ShowTooltip(f)
+  local tt = GameTooltip
+  if tt:IsForbidden() then return end
+  GameTooltip_SetDefaultAnchor(tt, f)
+  tt:SetUnit(f.unit)
+  local addLines = UF.TOOLTIP_LINES[f.key]
+  if addLines and tt:IsShown() then addLines(tt) tt:Show() end
+end
+
+-- Hides the tooltip when the mouse leaves the frame, if the frame still owns it.
+function UF.HideTooltip(f)
+  local tt = GameTooltip
+  if not tt:IsForbidden() and tt:GetOwner() == f then tt:Hide() end
+end
+
+-- The secure part: which unit, left-click targets, right-click opens the menu; and the unit's tooltip on
+-- hover, kept fresh while the mouse stays (the tooltip calls UpdateTooltip on its owner).
 local function makeSecure(f, unit)
   f:SetAttribute("unit", unit)
   f:SetAttribute("*type1", "target")
   f:SetAttribute("*type2", "togglemenu")
   f:RegisterForClicks("AnyUp")
+  f:HookScript("OnEnter", ns.Guard("unit frame tooltip", UF.ShowTooltip))
+  f:HookScript("OnLeave", ns.Guard("unit frame tooltip", UF.HideTooltip))
+  f.UpdateTooltip = ns.Guard("unit frame tooltip", UF.ShowTooltip)
 end
 
 -- The level left of the name (where levels are shown).
@@ -255,6 +295,17 @@ local function addTagMark(f)
   f.tag:Hide()
 end
 
+-- The raid target icon's size: the raid tiles' 12 grown to the unit frames' scale.
+UF.RAID_ICON = 16
+
+-- The raid target icon, centred on the frame's top edge (hidden until UF.UpdateRaidIcon paints it).
+local function addRaidIcon(f)
+  f.raidIcon = f.health:CreateTexture(nil, "OVERLAY")
+  f.raidIcon:SetSize(UF.RAID_ICON, UF.RAID_ICON)
+  f.raidIcon:SetPoint("CENTER", f, "TOP")
+  f.raidIcon:Hide()
+end
+
 -- The name (with the level left of it, where shown) and the health text. The
 -- name stops short of the health text: a long one is cut off, not overlapped.
 local function addTexts(f, settings)
@@ -271,6 +322,13 @@ local function shieldBars(f)
   T.ShieldMask(f, { f.power:GetStatusBarTexture(), f.power.bg }, "BOTTOM")
 end
 
+-- The health and power bars, laid out and cut to the shield corners.
+local function addBars(f, settings)
+  f.health, f.power = createBar(f), createBar(f)
+  layoutBars(f, settings.powerHeight)
+  shieldBars(f)
+end
+
 -- Creates one unit frame (a secure unit button) with its bars and texts, its corners cut to the
 -- shield look (the bars cut with it) while the shield setting is on.
 local function createUnitFrame(key, unit, w, h, settings)
@@ -279,10 +337,9 @@ local function createUnitFrame(key, unit, w, h, settings)
   T.PixelSize(f, w, h)
   makeSecure(f, unit)
   T.HudPanel(f, { shield = true })
-  f.health, f.power = createBar(f), createBar(f)
-  layoutBars(f, settings.powerHeight)
-  shieldBars(f)
+  addBars(f, settings)
   addTexts(f, settings)
+  addRaidIcon(f)
   return f
 end
 
@@ -352,6 +409,19 @@ function UF.UpdateTag(f)
   if f.tag then UF.PaintTagMark(f.tag, UF.settings.tagMark == true and UF.TagState(f.unit) or nil) end
 end
 
+-- The raid mark on the frame's unit, painted as Raid status paints the raid tiles' and following its
+-- Raid target icons switch (read even while that module is off). A hidden mark shows nothing.
+function UF.UpdateRaidIcon(f)
+  local RS = ns.GetModule("RaidStatus")
+  local on = ns.Settings("RaidStatus", RS.defaults).raidIcons == true
+  RS.PaintIcon(f.raidIcon, on and RS.RaidIcon(f.unit) or nil)
+end
+
+-- Repaints every frame's raid mark (a mark was set or cleared, or the switch changed).
+function UF.RefreshRaidIcons()
+  for _, f in pairs(UF.frames) do UF.UpdateRaidIcon(f) end
+end
+
 -- Everything on a frame, if its unit exists.
 function UF.UpdateFrame(f)
   if not flag(UnitExists(f.unit)) then
@@ -361,6 +431,7 @@ function UF.UpdateFrame(f)
   UF.UpdatePower(f)
   UF.UpdateName(f)
   UF.UpdateTag(f)
+  UF.UpdateRaidIcon(f)
 end
 
 -- Unit event -> what it updates.
@@ -410,7 +481,7 @@ local function refreshTargetOfTarget(f)
   if not flag(UnitExists(f.unit)) then return end
   UF.UpdateHealth(f)
   UF.UpdatePower(f)
-  if identityChanged(f) then UF.UpdateName(f) end
+  if identityChanged(f) then UF.UpdateName(f) UF.UpdateRaidIcon(f) end
 end
 
 -- Target of target has no events of its own; refresh it a few times a second while it shows.
@@ -648,4 +719,5 @@ function UF.Enable(settings)
   for event in pairs(GLOBAL_EVENTS) do
     ns.On(event, onGlobalEvent)
   end
+  ns.On("RAID_TARGET_UPDATE", UF.RefreshRaidIcons)
 end

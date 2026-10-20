@@ -75,7 +75,7 @@ Every `/vg` command (`/vanguard` works too), grouped by what it does. `/vg help`
 | `/vg alts`, `/vg stock`, `/vg inventory`, `/vg vendors` | Alt overview, items to keep, characters remembered, merchants remembered |
 | `/vg junk`, `/vg sell` | Your sell list; sell every stack of one item at a merchant |
 | `/vg ranks`, `/vg trainers`, `/vg legacy` | Spell ranks, what trainers teach, the Legacy system |
-| `/vg copy` | The recent chat as plain text |
+| `/vg copy` | The recent chat of the shown tab as plain text, at its newest line |
 | `/vg talents [plan\|spend\|clear\|export\|import]` | The talent planner on the game's talents window |
 
 ## Help and diagnostics
@@ -126,7 +126,7 @@ Every `/vg` command (`/vanguard` works too), grouped by what it does. `/vg help`
 /vg binds                       this spec's click-casting and hover-key bindings
 /vg preview [party|10|25|40|off]   the raid frames filled with sample players, to check them without a group (not saved; joining a group or combat ends it)
 /vg keybind                     keybind mode: hover an action button and press a key, a side mouse button or the wheel to bind it; Backspace clears, Escape leaves
-/vg copy                        the recent chat as plain text, ready to copy
+/vg copy                        the recent chat of the shown tab as plain text, ready to copy
 /vg quests [history [n]]        open or close Vanguard's quest log; history lists the latest quests any of your characters turned in
 /vg lfg [probe]                 open or close the group board: looking-for-more and looking-for-group posts from chat; `probe` says what chat it has heard and which channels you are in
 /vg questdata [questID]         what the client says about a quest (or the quests an open NPC offers and those you track), and whether it flags quests new in WoW Forever

@@ -3,7 +3,7 @@
 // of the watched quests, with the quest's title and distance.
 
 import { expect, it } from "vitest";
-import { chatHas, loggedIn, setCombat } from "./helpers.mjs";
+import { chatHas, isTok, loggedIn, setCombat } from "./helpers.mjs";
 
 // TEST-ONLY world: the player at (0.5, 0.5) on map 10 (1000 x 1000 yards) facing north. Quest 90061
 // is 100 yards away with its spot due east, 90062 is 300 yards away with its spot to the north-west.
@@ -145,4 +145,74 @@ it("quest arrow: points at a watched quest with Vanguard's quest tracker module 
   const addon = loggedIn(ARROW_ENV, { savedVariables: "VanguardDB.profiles = { Default = { modules = { QuestTracker = false } } }" });
   addon.advance(2.5);
   expect(arrow(addon).slice(1), "the nearer quest, as with the tracker on").toEqual(["TEST-ONLY Near", "100 yd", 1, true]);
+});
+
+// F-06: TEST-ONLY game super-tracking, recorded: what the game tracks (a quest id, or 0) and every set call.
+const SUPER_ENV = `__supers = {}
+  C_SuperTrack = { SetSuperTrackedQuestID = function(id) table.insert(__supers, id) __tracked = id end, GetSuperTrackedQuestID = function() return __tracked or 0 end }`;
+// The Pin button: { shown, its kind (a button takes the mouse) }, and whether the panel itself takes the mouse.
+const pinState = (addon) => addon.eval("local f = Vanguard_QuestArrow return { f.pin:IsShown(), f.pin:GetObjectType(), f.__mouse == true }");
+
+it("quest arrow: within 15 yards it reads Here in the good colour with a faint arrow, but not on a flight", () => {
+  const addon = loggedIn(ARROW_ENV + "C_QuestLog.GetDistanceSqToQuest = function() return 144 end");
+  addon.eval("ns.QuestArrow.Pick()");
+  expect(arrow(addon).slice(2, 4), "12 yards: there").toEqual(["Here", 0.35]);
+  expect(isTok(addon, addon.eval("return Vanguard_QuestArrow.dist.__textColor"), "good")).toBe(true);
+  addon.eval("UnitOnTaxi = function() return true end ns.QuestArrow.Draw()");
+  expect(arrow(addon).slice(2, 4), "on a taxi the distance stays").toEqual(["12 yd", 1]);
+  addon.eval("UnitOnTaxi = function() return __wfgWorld.secret() end ns.QuestArrow.Draw()");
+  expect(arrow(addon)[2], "a hidden taxi answer counts as on one").toBe("12 yd");
+  addon.eval("UnitOnTaxi = function() return false end C_QuestLog.GetDistanceSqToQuest = function() return 400 end ns.QuestArrow.Draw()");
+  expect(arrow(addon)[2], "20 yards: not yet").toBe("20 yd");
+});
+
+it("quest arrow: a finished quest reads Turn in with the distance, the arrow in gold", () => {
+  const addon = loggedIn(ARROW_ENV + "__wfgWorld.quests[1].isComplete = true");
+  addon.eval("ns.QuestArrow.Pick()");
+  expect(arrow(addon)[2]).toBe("Turn in · 100 yd");
+  expect(isTok(addon, addon.eval("return Vanguard_QuestArrow.arrow.__vertexColor"), "gold")).toBe(true);
+  addon.eval("GetPlayerFacing = function() return nil end ns.QuestArrow.Draw()");
+  expect(arrow(addon)[2], "with no direction").toBe("Turn in · 100 yd, no direction");
+});
+
+it("quest arrow: a pinned arrow shows a Pin button, the only part of the panel that takes the mouse; it goes back to the nearest quest", () => {
+  const addon = loggedIn(ARROW_ENV + SUPER_ENV);
+  addon.eval("ns.QuestArrow.Pick()");
+  expect(pinState(addon), "following the nearest: no button").toEqual([false, "Button", false]);
+  addon.eval("ns.QuestGuide.Point(90062) ns.QuestArrow.Pick()");
+  expect([addon.eval("return ns.QuestArrow.current"), pinState(addon)[0], addon.eval("return Vanguard_QuestArrow.title.__noWrap")], "pinned: the button, the title kept to one line beside it").toEqual([90062, true, true]);
+  addon.eval("__wfgStub.hover(Vanguard_QuestArrow.pin)");
+  expect(addon.eval("return { GameTooltip.__lines[1].text, GameTooltip.__lines[2].text }")).toEqual(["Pinned (Shift-click in the tracker)", "Click: follow the nearest quest."]);
+  addon.eval("__wfgStub.hover(nil) Vanguard_QuestArrow.pin.__scripts.OnClick(Vanguard_QuestArrow.pin)");
+  expect([addon.eval("return { ns.QuestGuide.pointed == nil, __tracked, ns.QuestArrow.current }"), pinState(addon)[0], chatHas(addon, /Arrow: nearest quest\./)],
+    "the pin and the game's tracked quest let go, back to the nearest, the button gone").toEqual([[true, 0, 90061], false, true]);
+});
+
+it("quest arrow: the Pin button leaves a map waypoint the game tracks alone", () => {
+  const addon = loggedIn(ARROW_ENV + SUPER_ENV);
+  addon.eval("ns.QuestGuide.pointed = 90062 ns.QuestArrow.Pick() ns.QuestArrow.Unpin()");
+  expect(addon.eval("return #__supers"), "no quest tracked (a waypoint is): nothing cleared").toBe(0);
+});
+
+it("quest arrow: with Follow the nearest quest off, the Pin button lets the arrow go and says so", () => {
+  const addon = loggedIn(ARROW_ENV + SUPER_ENV);
+  addon.eval("ns.Settings('QuestArrow').auto = false ns.QuestGuide.Point(90062) ns.QuestArrow.Pick()");
+  addon.eval("ns.QuestArrow.PinTooltip(Vanguard_QuestArrow.pin)");
+  expect(addon.eval("return GameTooltip.__lines[2].text")).toBe("Click: let it go. Follow the nearest quest is off, so the arrow hides.");
+  addon.eval("ns.QuestArrow.Unpin()");
+  expect([arrow(addon)[4], chatHas(addon, /Arrow: off until you Shift-click a quest in the tracker\./)]).toEqual([false, true]);
+});
+
+it("quest arrow: a failed quest is not pointed at, and the arrow moves on from it", () => {
+  const addon = loggedIn(ARROW_ENV);
+  addon.eval("ns.QuestArrow.Pick() __wfgWorld.quests[1].failed = true ns.QuestArrow.Pick()");
+  expect([addon.eval("return ns.QuestArrow.current"), chatHas(addon, /Arrow: TEST-ONLY Far\./)]).toEqual([90062, true]);
+});
+
+it("quest arrow: a pin whose quest left the log is let go, so a quest the game tracks later is not held", () => {
+  const addon = loggedIn(ARROW_ENV + SUPER_ENV);
+  addon.eval("ns.QuestGuide.Point(90062) table.remove(__wfgWorld.quests, 2) __tracked = 0 ns.QuestArrow.Pick()");
+  expect(addon.eval("return { ns.QuestGuide.pointed == nil, ns.QuestArrow.current }"), "the pin let go, the nearest followed").toEqual([true, 90061]);
+  addon.eval(`__wfgWorld.addQuest({ questID = 90062, title = "TEST-ONLY Far", level = 8, watched = true, distanceSq = 90000, objectives = {} }) __tracked = 90062 ns.QuestArrow.Pick()`);
+  expect([addon.eval("return ns.QuestArrow.current"), pinState(addon)[0]], "the game's tracked quest doesn't hold the arrow").toEqual([90061, false]);
 });
