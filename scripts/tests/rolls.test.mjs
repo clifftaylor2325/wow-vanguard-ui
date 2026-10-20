@@ -57,6 +57,15 @@ it("a tie marks both, a roll in another range starts a new round, and a differen
   expect(panel(addon)[2].map((l) => l.slice(0, 2)), "only the new range").toEqual([["Rolls 1-6", ""], ["Thrall", "3 (1-6)"]]);
 });
 
+it("a stray roll in another range doesn't split a 1-100 round", () => {
+  const addon = loggedIn(ROLL_ENV);
+  roll(addon, "Thrall", 42);
+  roll(addon, "Jaina", 87);
+  roll(addon, "Garrosh", 30, 1, 50);
+  roll(addon, "Sylvanas", 60);
+  expect(panel(addon)[2].map((l) => l[0]), "the 1-100 round, with the stray roll left out").toEqual(["Rolls 1-100", "Jaina", "Sylvanas", "Thrall"]);
+});
+
 it("a round older than 30 seconds is not part of the next one, and the panel goes when it falls quiet", () => {
   const addon = loggedIn(ROLL_ENV);
   roll(addon, "Thrall", 90);

@@ -75,12 +75,13 @@ local function onSystem(_, text)
 end
 
 -- The latest round: the rolls sharing the newest roll's range, each within R.ROUND of the next; highest first.
+-- A roll in another range between them is skipped, so a stray /roll 50 doesn't split a 1-100 round.
 function R.Round()
   local round, last = {}, R.rolls[#R.rolls]
   for i = #R.rolls, 1, -1 do
     local r = R.rolls[i]
-    if r.low ~= last.low or r.high ~= last.high or (round[#round] or last).at - r.at > R.ROUND then break end
-    round[#round + 1] = r
+    if (round[#round] or last).at - r.at > R.ROUND then break end
+    if r.low == last.low and r.high == last.high then round[#round + 1] = r end
   end
   table.sort(round, function(a, b) return a.roll > b.roll or (a.roll == b.roll and a.seq < b.seq) end)
   return round
