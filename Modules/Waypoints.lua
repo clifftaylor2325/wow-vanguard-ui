@@ -241,8 +241,11 @@ end
 -- The world map's coordinates line -----------------------------------------------------------
 
 -- OpenMap (an optional dependency) draws its own seamless map inside the world map, whose canvas then isn't
--- the zone the map names, so a spot read off the canvas would be wrong. Its folder name.
+-- the zone the map names, so a spot read off the canvas would be wrong. Its folder name. OpenMap is by
+-- jiforever (CurseForge project owner jigrobbulus); Vanguard only checks whether it is loaded and holds none
+-- of its code, data or art.
 WP.OPEN_MAP = "OpenMap"
+WP.OPEN_MAP_CREDIT = "OpenMap is by jiforever (on CurseForge, jigrobbulus). Vanguard works alongside it and holds none of its code."
 
 -- Whether OpenMap is loaded and drawing the world map (no when the client can't say).
 function WP.OpenMapDraws()
@@ -358,16 +361,23 @@ local function recentRows()
   return rows
 end
 
+-- The OpenMap card at the end of the Map page: its author's credit always, and while it draws the world map, what
+-- Vanguard leaves to it.
+local function addOpenMapRows(rows)
+  rows[#rows + 1] = { "header", "OpenMap" }
+  rows[#rows + 1] = { "text", WP.OPEN_MAP_CREDIT }
+  if WP.OpenMapDraws() then
+    rows[#rows + 1] = { "text", "OpenMap is drawing the world map. Vanguard keeps the map's frame in its look and leaves the cursor's coordinates and quest-start pins to OpenMap." }
+  end
+end
+
 -- The waypoint card on the Map page.
 function WP.Rows()
   local rows = { { "header", "Waypoints" }, { "text", "Shift-click the pin on the map to share it." },
     { "check", "Point the arrow at a waypoint you Ctrl-click on the map", followSetting() },
     { "button", "Clear waypoint", WP.Clear }, { "header", "Recent waypoints" } }
   for _, row in ipairs(recentRows()) do rows[#rows + 1] = row end
-  if WP.OpenMapDraws() then
-    rows[#rows + 1] = { "header", "OpenMap" }
-    rows[#rows + 1] = { "text", "OpenMap is drawing the world map. Vanguard keeps the map's frame in its look and leaves the cursor's coordinates and quest-start pins to OpenMap." }
-  end
+  addOpenMapRows(rows)
   return rows
 end
 ns.Options.AddRows("map", WP.Rows)
