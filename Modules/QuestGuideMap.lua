@@ -106,12 +106,18 @@ end
 
 -- Hooks ------------------------------------------------------------------------------------------
 
--- The map changed or the client's quest lists did: ask for the map's quest lines, redraw the pins next frame.
+-- The client's quest lists changed: redraw the pins next frame. No request here, since
+-- QUESTLINE_UPDATE is the answer to one and asking again would loop.
+function QG.ListsChanged()
+  ns.Soon("questpins", QG.RefreshPins)
+end
+
+-- The map changed or opened: ask for the map's quest lines, redraw the pins next frame.
 function QG.MapChanged()
   local map = _G.WorldMapFrame
   local mapID = map and map:IsShown() and ns.PlainNumber(map:GetMapID())
   if mapID then call(C_QuestLine, "RequestQuestLinesForMap", mapID) end
-  ns.Soon("questpins", QG.RefreshPins)
+  QG.ListsChanged()
 end
 
 -- Follows the world map: its map changes and its showing (hooks run after the game's own).
@@ -120,7 +126,7 @@ local function followMap(map)
   QG.pins = QP.Pool(map:GetCanvas(), makePin)
   if type(map.OnMapChanged) == "function" then hooksecurefunc(map, "OnMapChanged", ns.Guard("hook world map changed", QG.MapChanged)) end
   map:HookScript("OnShow", ns.Guard("hook world map shown", QG.MapChanged))
-  for _, event in ipairs({ "QUESTLINE_UPDATE", "QUEST_LOG_UPDATE", "QUEST_POI_UPDATE" }) do ns.On(event, QG.MapChanged) end
+  for _, event in ipairs({ "QUESTLINE_UPDATE", "QUEST_LOG_UPDATE", "QUEST_POI_UPDATE" }) do ns.On(event, QG.ListsChanged) end
 end
 
 -- The game's world map has loaded (when it wasn't there at login).
