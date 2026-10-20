@@ -208,6 +208,16 @@ end
 
 -- The world map's coordinates line -----------------------------------------------------------
 
+-- OpenMap (an optional dependency) draws its own seamless map inside the world map, whose canvas then isn't
+-- the zone the map names, so a spot read off the canvas would be wrong. Its folder name.
+WP.OPEN_MAP = "OpenMap"
+
+-- Whether OpenMap is loaded and drawing the world map (no when the client can't say).
+function WP.OpenMapDraws()
+  local loaded = C_AddOns and C_AddOns.IsAddOnLoaded
+  return type(loaded) == "function" and loaded(WP.OPEN_MAP) == true
+end
+
 -- The cursor's spot on the map as "x, y" in map percent, or "" when it isn't over the map.
 local function cursorText(map)
   local scroll = map.ScrollContainer
@@ -218,11 +228,13 @@ local function cursorText(map)
   return string.format("%.1f, %.1f", x * 100, y * 100)
 end
 
--- "You 45.2, 61.8     Cursor 40.0, 52.3" for the map shown; a part the client won't say is left out.
+-- "You 45.2, 61.8     Cursor 40.0, 52.3" for the map shown; a part the client won't say is left out,
+-- and the cursor's while OpenMap draws the map.
 function WP.MapText(map)
   local mapID = map.GetMapID and map:GetMapID()
   local you = mapID and ns.GetModule("Minimap").CoordsText(mapID) or ""
-  local cursor, parts = cursorText(map), {}
+  local cursor = WP.OpenMapDraws() and "" or cursorText(map)
+  local parts = {}
   if you ~= "" then parts[#parts + 1] = "You " .. you end
   if cursor ~= "" then parts[#parts + 1] = "Cursor " .. cursor end
   return table.concat(parts, "     ")
@@ -319,6 +331,10 @@ function WP.Rows()
   local rows = { { "header", "Waypoints" }, { "check", "Point the arrow at a waypoint you Ctrl-click on the map", followSetting() },
     { "button", "Clear waypoint", WP.Clear }, { "header", "Recent waypoints" } }
   for _, row in ipairs(recentRows()) do rows[#rows + 1] = row end
+  if WP.OpenMapDraws() then
+    rows[#rows + 1] = { "header", "OpenMap" }
+    rows[#rows + 1] = { "text", "OpenMap is drawing the world map. Vanguard keeps the map's frame in its look and leaves the cursor's coordinates and quest-start pins to OpenMap." }
+  end
   return rows
 end
 ns.Options.AddRows("map", WP.Rows)

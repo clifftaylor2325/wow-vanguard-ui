@@ -404,6 +404,8 @@ it("guild window: the communities list rows are theme rows, art faded but their 
   addon.hover(null);
   addon.eval("CommunitiesFrame:SetDisplayMode(2)");
   expect(addon.eval("return { ns.Theme.RowParts(__b).rail:IsShown(), #CommunitiesFrame.CommunitiesList.ScrollBox.callbacks }"), "a page switch dresses nothing twice").toEqual([true, 1]);
+  addon.eval('__b.Icon:SetDesaturated(false) __b.Icon:SetAtlas(nil) __b.Icon:SetTexture("TEST-ONLY-avatar") __b:Init(3)');
+  expect(addon.eval("local r, g, b = __b.Icon:GetVertexColor() return { r, g, b }"), "the add row's frame reused for a club: its avatar keeps no tint").toEqual([1, 1, 1]);
 });
 
 it("guild roster: the Show Offline box, count, column strip and headers, rows and profession headers in the theme", () => {
@@ -1038,6 +1040,49 @@ it("social window: a second show paints nothing more, the switch off leaves it t
     SocialUIFrame.RaidFrame = {} SocialUIFrame.IgnoreListFrame = {} SocialUIFrame.BattleNetBroadcastFrame = CreateFrame("Frame", nil, SocialUIFrame)`);
   bare.eval("SocialUIFrame:Show()");
   expect([windowErrors(bare), bare.eval("return #ns.errors")], "a client with parts missing").toEqual(["none", 0]);
+});
+
+// The social window at Forever's size, its tabs 43 x 55 (LargeSideTabButtonTemplate) and the two side windows where
+// SocialUIFrameMixin:InitializeSideWindowAnchoring puts them: TOPLEFT on the window's TOPRIGHT, the tab column's width
+// (tab plus 7) over.
+const SIDE_GEOMETRY_ENV = SOCIAL_ENV + `
+  local f = SocialUIFrame f:SetSize(410, 675) f:SetPoint("CENTER")
+  local refresh = f.RefreshTabs
+  function f:RefreshTabs() refresh(self) for _, tab in ipairs(self.tabs) do tab:SetSize(43, 55) end end
+  f.IgnoreListFrame:SetSize(300, 400)
+  f.BattleNetBroadcastFrame:SetSize(300, 120)
+  for _, side in ipairs({ f.IgnoreListFrame, f.BattleNetBroadcastFrame }) do side:ClearAllPoints() side:SetPoint("TOPLEFT", f, "TOPRIGHT", 43 + 7, 0) end
+`;
+
+// The gap (units) from the first side tab's right edge to each side window's panel (its left edge less its padding):
+// the ignore list's, then the broadcast dialog's.
+const sideGaps = (addon) => addon.eval(`local f, T = SocialUIFrame, ns.Theme
+  local function gap(side) return math.floor(side:GetLeft() - T.Padding(side) - f.tabs[1]:GetRight() + 0.5) end
+  return { gap(f.IgnoreListFrame), gap(f.BattleNetBroadcastFrame) }`);
+
+it("social window: the side windows move out past the tabs, so neither the tabs nor the ignore list's panel cover the other", () => {
+  const addon = loggedIn(SIDE_GEOMETRY_ENV);
+  addon.eval("SocialUIFrame:Show() SocialUIFrame.IgnoreListFrame:Show() SocialUIFrame.BattleNetBroadcastFrame:Show()");
+  expect(sideGaps(addon), "the game's 7-unit gap between the tab column and each side window's panel").toEqual([7, 7]);
+  addon.eval("SocialUIFrame:Hide() SocialUIFrame:Show() SocialUIFrame:RefreshTabs() SocialUIFrame.IgnoreListFrame:Hide() SocialUIFrame.IgnoreListFrame:Show()");
+  expect(sideGaps(addon), "moved once: showing again moves nothing further").toEqual([7, 7]);
+  const noTabs = loggedIn(SIDE_GEOMETRY_ENV, { savedVariables: "VanguardDB.profiles = { Default = { Windows = { tabs = false } } }" });
+  noTabs.eval("SocialUIFrame:Show() SocialUIFrame.IgnoreListFrame:Show() SocialUIFrame.BattleNetBroadcastFrame:Show()");
+  expect(sideGaps(noTabs), "the tabs left where the game puts them: the side windows clear them by the same gap").toEqual([7, 7]);
+});
+
+it("social window: a side window that first shows up in a fight moves out once the fight is over; a hidden offset leaves it where it is", () => {
+  const addon = loggedIn(SIDE_GEOMETRY_ENV + "__cast, SocialUIFrame.BattleNetBroadcastFrame = SocialUIFrame.BattleNetBroadcastFrame, nil");
+  setCombat(addon, true);
+  addon.eval("SocialUIFrame.BattleNetBroadcastFrame = __cast SocialUIFrame:Show() SocialUIFrame.IgnoreListFrame:Show() __cast:Show()");
+  expect(sideGaps(addon)[1], "in the fight the broadcast dialog stays where the game put it, under the tabs").toBeLessThan(0);
+  setCombat(addon, false);
+  expect(sideGaps(addon), "after it, both clear the tabs").toEqual([7, 7]);
+  const hidden = loggedIn(SIDE_GEOMETRY_ENV + `
+    local side = SocialUIFrame.IgnoreListFrame __gamePoint = side.GetPoint
+    function side:GetPoint(i) local p, r, rp, x, y = __gamePoint(self, i) return p, r, rp, __wfgWorld.secret(x), y end`);
+  hidden.eval("SocialUIFrame:Show() SocialUIFrame.IgnoreListFrame:Show()");
+  expect([hidden.eval("return select(4, __gamePoint(SocialUIFrame.IgnoreListFrame, 1))"), windowErrors(hidden)], "a secret offset: left at the game's place, no error").toEqual([50, "none"]);
 });
 
 // TEST-ONLY social toasts as the game builds them: a hidden backdrop frame with its art, glow and X button;

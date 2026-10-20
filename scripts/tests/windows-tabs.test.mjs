@@ -93,6 +93,14 @@ it("tab buttons: a second show paints nothing more, and tabs a tab system adds l
   expect(addon.eval("return { __tabState(MerchantFrameTab1).raised, __tabState(MerchantFrameTab2).raised }"), "the raised tab follows the game's selection").toEqual([true, false]);
 });
 
+it("tab buttons: a window whose tabs fail to dress on a later show is reported under its own name, and still opens", () => {
+  expectErrors("show window tabs: TEST-ONLY: tab system broke");
+  const addon = loggedIn(WINDOWS_ENV + WINDOW_TABS_ENV + `
+    function TestOnlySpells.TabSystem:GetTabButton(id) if __broken then error("TEST-ONLY: tab system broke", 0) end return self.tabs[id] end`);
+  addon.eval("TestOnlySpells:Show() TestOnlySpells:Hide() __broken = true TestOnlySpells:Show()");
+  expect(addon.eval("return { TestOnlySpells:IsShown(), #ns.errors }"), "shown, the failure caught once").toEqual([true, 1]);
+});
+
 // TEST-ONLY icon tabs as the spellbook's category tab system adds them (TabSystemButtonTemplate's Init with an icon):
 // a 44 x 32 tab, a 36 x 35 icon anchored at the tab's bottom and centre under the game's SquareMask, tabIcon set.
 // __iconTab reads the tab's width, the icon's size, crop, masks and anchors, and whether it is greyed.
@@ -440,6 +448,16 @@ it("equipment flyout: panels behind its grid and page bar, its buttons skinned l
   expect(addon.eval("return { ns.Theme.PaintedCount(), #ns.errors }"), "nothing is painted twice").toEqual([painted, 0]);
   const without = loggedIn(PANE_ENV + `EquipmentFlyoutFrame = CreateFrame("Frame", "EquipmentFlyoutFrame", UIParent)`);
   expect(without.eval("EquipmentFlyoutFrame:Show() return #ns.errors"), "a flyout without its parts or buttons").toBe(0);
+});
+
+it("equipment flyout: a flyout that fails to dress on a later show is reported under its own name, and still opens", () => {
+  expectErrors("show equipment flyout: TEST-ONLY: flyout broke");
+  const addon = loggedIn(PANE_ENV + `
+    EquipmentFlyoutFrame = CreateFrame("Frame", "EquipmentFlyoutFrame", UIParent) EquipmentFlyoutFrame:Hide()
+    EquipmentFlyoutFrame.buttonFrame = CreateFrame("Frame", nil, EquipmentFlyoutFrame)
+    function EquipmentFlyoutFrame.buttonFrame:GetRegions() if __broken then error("TEST-ONLY: flyout broke", 0) end end`);
+  addon.eval("EquipmentFlyoutFrame:Show() EquipmentFlyoutFrame:Hide() __broken = true EquipmentFlyoutFrame:Show()");
+  expect(addon.eval("return { EquipmentFlyoutFrame:IsShown(), #ns.errors }"), "shown, the failure caught once").toEqual([true, 1]);
 });
 
 it("character pane: a list that loads later (the currencies' addon) is dressed when its part of the game loads", () => {
