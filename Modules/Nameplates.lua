@@ -810,12 +810,12 @@ end
 
 -- Options ------------------------------------------------------------------------------------
 
--- get/set for one of this module's settings, and its default; reload says it applies after a reload.
-local function setting(key, reload)
+-- get/set for one of this module's settings, and its default; after runs once the value is set.
+local function setting(key, after)
   return ns.Options.Tag(function() return ns.Settings("Nameplates", NP.defaults)[key] end, "Nameplates", key),
     function(v)
       ns.Settings("Nameplates", NP.defaults)[key] = v
-      if reload then ns.Options.NeedReload() else NP.RefreshAll() end
+      after()
     end, NP.defaults[key]
 end
 
@@ -852,13 +852,13 @@ end
 -- This module's own rows: looks first, then debuffs, buffs and size (after a reload).
 local function lookRows()
   return {
-    { "check", "Levels, colored by how hard the unit is for you", setting("level") },
-    { "check", "Threat colors while you have aggro", setting("threat") },
-    { "check", "Accent border, glow and marker on your target", setting("targetBorder") }, { "check", "Cast bar", setting("castBar", true) },
-    { "check", "A gold ! by units your quests need", setting("questMarks") }, { "check", "Tag marks: a green check on mobs you tagged, a grey X and grey bar on another player's", setting("tagMarks") },
-    { "cycle", "Your debuffs shown", { { 0, "none" }, { 4, "4" }, { 6, "6" } }, setting("debuffs", true) }, { "cycle", "Buffs on players (defensives, and yours on friends)", { { 0, "none" }, { 3, "3" }, { 5, "5" } }, setting("buffs", true) },
-    { "check", "Timer numbers on your debuffs (reload)", setting("timers", true) },
-    { "cycle", "Width", { { 110, "110" }, { 130, "130" }, { 160, "160" } }, setting("width", true) }, { "cycle", "Height", { { 8, "8" }, { 10, "10" }, { 14, "14" } }, setting("height", true) } }
+    { "check", "Levels, colored by how hard the unit is for you", setting("level", NP.RefreshAll) },
+    { "check", "Threat colors while you have aggro", setting("threat", NP.RefreshAll) },
+    { "check", "Accent border, glow and marker on your target", setting("targetBorder", NP.RefreshAll) }, { "check", "Cast bar", setting("castBar", ns.Options.NeedReload) },
+    { "check", "A gold ! by units your quests need", setting("questMarks", NP.RefreshAll) }, { "check", "Tag marks: a green check on mobs you tagged, a grey X and grey bar on another player's", setting("tagMarks", NP.RefreshAll) },
+    { "cycle", "Your debuffs shown", { { 0, "none" }, { 4, "4" }, { 6, "6" } }, setting("debuffs", ns.Options.NeedReload) }, { "cycle", "Buffs on players (defensives, and yours on friends)", { { 0, "none" }, { 3, "3" }, { 5, "5" } }, setting("buffs", ns.Options.NeedReload) },
+    { "check", "Timer numbers on your debuffs (reload)", setting("timers", ns.Options.NeedReload) },
+    { "cycle", "Width", { { 110, "110" }, { 130, "130" }, { 160, "160" } }, setting("width", ns.Options.NeedReload) }, { "cycle", "Height", { { 8, "8" }, { 10, "10" }, { 14, "14" } }, setting("height", ns.Options.NeedReload) } }
 end
 
 -- The Nameplates page: the game's plate settings it mirrors, then this module's own.
