@@ -534,11 +534,12 @@ it("the info strip's rates carry on through a /reload, start again on a new logi
   later(addon, 1800);
   addon.fire("PLAYER_XP_UPDATE", "player");
   expect(block(addon, "xprate").text, "900 XP in half an hour").toBe("1.8K xp/h");
+  addon.fire("PLAYER_LOGOUT");
   const sv = addon.savedVariables(), now = addon.eval("return __wfgStub.now");
   // The same character's UI started again a second later, with the game's PLAYER_ENTERING_WORLD flags (login, reload).
-  const again = (login, reload) => {
+  const again = (login, reload, wait = 1) => {
     const next = createAddon({ savedVariables: `VanguardDB = ${luaValue(sv.account)}\nVanguardCharDB = ${luaValue(sv.char)}\n` });
-    next.eval(UNITS_ENV + STRIP_ENV + LEVEL_ENV + `__xp = 1900 __wfgStub.now = ${now + 1}`);
+    next.eval(UNITS_ENV + STRIP_ENV + LEVEL_ENV + `__xp = 1900 __wfgStub.now = ${now + wait}`);
     for (const [event, ...args] of [["ADDON_LOADED", "Vanguard"], ["PLAYER_LOGIN"], ["PLAYER_ENTERING_WORLD", login, reload]]) next.fire(event, ...args);
     return next;
   };
@@ -547,12 +548,13 @@ it("the info strip's rates carry on through a /reload, start again on a new logi
   reloaded.fire("PLAYER_ENTERING_WORLD", false, false);
   expect(block(reloaded, "xprate").text, "and a zone change leaves it alone").toBe("1.8K xp/h");
   expect(block(again(true, false), "xprate").shown, "a new login starts fresh").toBe(false);
-  const blank = createAddon({ savedVariables: SETUP_DONE + "VanguardCharDB.infoSession = { start = 'TEST-ONLY not a time' }" });
+  expect(block(again(false, true, 600), "xprate").shown, "a session the game saved ten minutes ago belongs to an earlier login").toBe(false);
+  const blank = createAddon({ savedVariables: SETUP_DONE + "VanguardCharDB.infoSession = { start = 1, saved = 1000, gained = 900, earned = 0, spent = 0, xp = 'TEST-ONLY not a number', max = 2000 }" });
   blank.eval(UNITS_ENV + STRIP_ENV + LEVEL_ENV);
   blank.fire("ADDON_LOADED", "Vanguard");
   blank.fire("PLAYER_LOGIN");
   blank.fire("PLAYER_ENTERING_WORLD", false, true);
-  expect([block(blank, "xprate").shown, blank.eval("return type(VanguardCharDB.infoSession.start)")], "a reload with a broken saved session starts a new one").toEqual([false, "number"]);
+  expect([block(blank, "xprate").shown, blank.eval("return VanguardCharDB.infoSession.gained")], "a reload with a broken saved session (its XP not a number) starts a new one").toEqual([false, 0]);
   reloaded.eval("ns.GetModule('InfoStrip').RestartSession()");
   expect([block(reloaded, "xprate").shown, reloaded.eval("return VanguardCharDB.infoSession.gained")], "started again from now: nothing gained, the rates wait to settle").toEqual([false, 0]);
 });
@@ -566,6 +568,7 @@ it("the info strip's numbers explain themselves on hover", () => {
     __space = { [0] = { 16, 4, 0 }, [3] = { 20, 18, 4 }, [4] = { 10, 0, 1 } }
     C_Container.GetContainerNumSlots = function(bag) return (__space[bag] or { 0 })[1] end
     C_Container.GetContainerNumFreeSlots = function(bag) local s = __space[bag] or { 0, 0 } return s[2], s[3] end
+    __memReads = 0 UpdateAddOnMemoryUsage = function() __memReads = __memReads + 1 end
     GetAddOnMemoryUsage = function() return 12800 end`, { savedVariables: "VanguardDB.profiles = { Default = { InfoStrip = { dps = true, rank = true } } }" });
   expect(blockTip(addon, "durability"), "each worn item under 100 %, most worn first").toEqual(["Durability", "Chest|23%", "Hands|50%", "Legs|50%", "Click: the character window", "hidden"]);
   expect(blockTip(addon, "bags"), "each bag's slots used, a soul bag and quiver named").toEqual(["Bag space", "Backpack|12 / 16 used", "Bag 3 (soul bag)|2 / 20 used", "Bag 4 (quiver)|10 / 10 used", "Click: the bag window", "hidden"]);
@@ -575,12 +578,16 @@ it("the info strip's numbers explain themselves on hover", () => {
   addon.fire("PLAYER_MONEY");
   expect(blockTip(addon, "gold"), "what came in and went out since login").toEqual(["Gold", "Earned this session|1g 0s 0c", "Spent this session|50s 0c", "Click: the bag window", "hidden"]);
   expect(blockTip(addon, "system"), "both latencies and Vanguard's memory").toEqual(["Frame rate and latency", "Home latency|40 ms", "World latency|64 ms", "Vanguard's memory|12.5 MB", "hidden"]);
+  blockTip(addon, "system");
+  expect(addon.eval("return __memReads"), "a second hover within 10 s reuses the reading").toBe(1);
+  later(addon, 11);
   setCombat(addon, true);
-  expect(blockTip(addon, "system").length, "in a fight the memory isn't read").toBe(4);
+  expect([blockTip(addon, "system").length, addon.eval("return __memReads")], "in a fight the memory isn't read").toEqual([4, 1]);
+  expect(blockTip(addon, "dps").slice(1, 2), "the last fight's figure waits for this one to end").toEqual(["Updates when this fight ends"]);
   setCombat(addon, false);
   addon.eval("__xp = 1900");
   addon.fire("PLAYER_XP_UPDATE", "player");
-  later(addon, 3900);
+  later(addon, 3889);
   addon.fire("PLAYER_XP_UPDATE", "player");
   expect(blockTip(addon, "xprate"), "the session's length, XP gained and gold made").toEqual(["This session", "Session|1h 05m", "XP gained|900", "Gold|+50s 0c", "Right-click: start counting again", "hidden"]);
   addon.eval("__money = 100");
@@ -609,7 +616,7 @@ it("a click on the info strip's durability opens the character window, on free s
   expect(blockTip(addon, "durability").slice(-2), "the tooltip says what a click does").toEqual(["Click: the character window", "hidden"]);
   setCombat(addon, true);
   click("bags");
-  expect([addon.eval("return #__opened"), chatHas(addon, /The bag window doesn't open from Vanguard in a fight/), blockTip(addon, "gold").slice(-2)[0]], "in a fight nothing opens, chat says it waits, the hint says so").toEqual([3, true, "Click: the bag window (after the fight)"]);
+  expect([addon.eval("return #__opened"), chatHas(addon, /The bag window doesn't open from Vanguard in a fight/), blockTip(addon, "gold").slice(-2)[0]], "in a fight nothing opens, chat says it waits, the hint says so").toEqual([3, true, "Click: the bag window (not in a fight)"]);
   setCombat(addon, false);
   addon.eval("__xp = 1900");
   addon.fire("PLAYER_XP_UPDATE", "player");
@@ -618,8 +625,11 @@ it("a click on the info strip's durability opens the character window, on free s
   expect([block(addon, "xprate").shown, blockTip(addon, "xprate").slice(-2)[0]], "a rate shows, and says a right-click restarts it").toEqual([true, "Right-click: start counting again"]);
   click("xprate", "LeftButton");
   expect(block(addon, "xprate").shown, "a left-click leaves it").toBe(true);
+  addon.eval("__money = __money + 500");
+  addon.fire("PLAYER_MONEY");
   click("goldrate", "RightButton");
   expect(block(addon, "xprate").shown, "a right-click starts again from now: nothing to show until it settles").toBe(false);
+  expect(blockTip(addon, "gold")[1], "the gold tooltip still counts from the login").toBe("Earned this session|5s 0c");
 });
 it("flight timer: the taxi check runs only from picking a flight until it lands", () => {
   const addon = loggedIn(UNITS_ENV + TAXI_ENV + "__asked = 0 local real = UnitOnTaxi UnitOnTaxi = function(...) __asked = __asked + 1 return real(...) end");

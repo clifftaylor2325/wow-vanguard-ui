@@ -152,14 +152,39 @@ function IS.StartSession()
   if IS.session then return end
   local cur, max = xpNow()
   local money = ns.PlainNumber(ask("GetMoney"))
-  IS.session = { start = ask("GetTime") or 0, gained = 0, xp = cur, max = max, money = money, last = money, earned = 0, spent = 0 }
+  local now = ask("GetTime") or 0
+  IS.session = { start = now, saved = now, gained = 0, xp = cur, max = max, money = money, last = money, earned = 0, spent = 0 }
 end
 
--- This character's saved session (VanguardCharDB.infoSession), or nil when there is none to carry on.
+-- How many seconds after the game saved a session (at the logout or reload, IS.StampSession) it can carry on:
+-- a /reload takes a few; anything older was an earlier login, saved while the strip was on and left since.
+IS.RESUME_WITHIN = 300
+-- A saved session's fields its counters read: the ones that must be numbers, and the ones that may also be
+-- missing (the client hid them at the start).
+IS.SESSION_NUMBERS = { "start", "gained", "earned", "spent", "saved" }
+IS.SESSION_MAYBE = { "xp", "max", "money", "last" }
+
+-- Whether every field a saved session's counters read is of the kind they need (an edited or older file
+-- otherwise breaks every count after it).
+local function wellFormed(s)
+  for _, k in ipairs(IS.SESSION_NUMBERS) do if type(s[k]) ~= "number" then return false end end
+  for _, k in ipairs(IS.SESSION_MAYBE) do if s[k] ~= nil and type(s[k]) ~= "number" then return false end end
+  return (s.xp == nil) == (s.max == nil)
+end
+
+-- This character's saved session (VanguardCharDB.infoSession), or nil when there is none to carry on: it must
+-- be whole, and saved moments ago (GetTime runs on across a reload and logins; it starts again after a restart).
 local function savedSession()
   local s = type(VanguardCharDB) == "table" and VanguardCharDB.infoSession
+  if type(s) ~= "table" or not wellFormed(s) then return nil end
   local now = ask("GetTime") or 0
-  if type(s) == "table" and type(s.start) == "number" and type(s.gained) == "number" and s.start <= now then return s end
+  local age = now - s.saved
+  if s.start <= now and age >= 0 and age <= IS.RESUME_WITHIN then return s end
+end
+
+-- Marks the session with when the game saved it (PLAYER_LOGOUT fires at a reload and a logout).
+function IS.StampSession()
+  if IS.session then IS.session.saved = ask("GetTime") or 0 end
 end
 
 -- Keeps the session in the character's saved file, which the game writes at a reload or logout.
@@ -177,10 +202,13 @@ function IS.ResumeSession(_, isLogin, isReload)
   IS.PaintRates()
 end
 
--- Starts counting again from now (a right-click on a rate).
+-- Starts the rates counting again from now (a right-click on a rate); the gold tooltip's earned and spent
+-- still count from the login.
 function IS.RestartSession()
+  local old = IS.session or {}
   IS.session = nil
   IS.StartSession()
+  IS.session.earned, IS.session.spent = old.earned or 0, old.spent or 0
   keepSession()
   IS.PaintRates()
 end
@@ -674,13 +702,25 @@ local function goldTip(tt)
   tipLine(tt, "Spent this session", IS.Money(s.spent or 0), "gold")
 end
 
+-- How often the tooltip reads Vanguard's memory at most: the read walks every loaded addon's memory.
+IS.MEMORY_EVERY = 10
+
+-- Vanguard's memory in KB for the tooltip: the last reading while it is fresh, else a new one (nil in a fight).
+function IS.Memory()
+  local now = ask("GetTime") or 0
+  if IS.memoryAt and now - IS.memoryAt < IS.MEMORY_EVERY then return IS.memory end
+  local kb = ns.Perf.Memory()
+  if kb then IS.memory, IS.memoryAt = kb, now end
+  return kb
+end
+
 -- Frame rate and latency's tooltip: home and world latency, and Vanguard's memory (not read in a fight).
 local function systemTip(tt)
   local _, _, home, world = ask("GetNetStats")
   home, world = ns.PlainNumber(home), ns.PlainNumber(world)
   if home then tipLine(tt, "Home latency", home .. " ms") end
   if world then tipLine(tt, "World latency", world .. " ms") end
-  local kb = ns.Perf.Memory()
+  local kb = IS.Memory()
   if kb then tipLine(tt, "Vanguard's memory", string.format("%.1f MB", kb / 1024)) end
 end
 
@@ -700,10 +740,12 @@ function IS.FightLength(seconds)
   return string.format("%dm %02ds", math.floor(whole / 60), whole % 60)
 end
 
--- The last fight's tooltip (DPS and place): how long it lasted.
+-- The last fight's tooltip (DPS and place): how long it lasted; in a fight, that the figure waits for its end.
 local function fightTip(tt)
   local seconds = IS.FightSeconds()
   if seconds then tipLine(tt, "Fight length", IS.FightLength(seconds)) end
+  local r, g, b = T.RGB("text2")
+  if ns.InCombat() then tt:AddLine("Updates when this fight ends", r, g, b) end
 end
 
 -- Each block's tooltip: its title, and the function that adds its lines.
@@ -723,10 +765,10 @@ IS.CLICKS = {
 -- The blocks a right-click starts counting again from now (the session's rates).
 IS.RESTARTS = { xprate = true, leveltime = true, goldrate = true }
 
--- The muted hint lines at a tooltip's end: what a click opens (after the fight while one is on), and the restart.
+-- The muted hint lines at a tooltip's end: what a click opens (not in a fight), and the restart.
 local function clickHints(tt, key)
   local click, r, g, b = IS.CLICKS[key], T.RGB("text2")
-  if click then tt:AddLine("Click: " .. click[1]:lower() .. (ns.InCombat() and " (after the fight)" or ""), r, g, b) end
+  if click then tt:AddLine("Click: " .. click[1]:lower() .. (ns.InCombat() and " (not in a fight)" or ""), r, g, b) end
   if IS.RESTARTS[key] then tt:AddLine("Right-click: start counting again", r, g, b) end
 end
 
@@ -902,6 +944,7 @@ local function watch()
   ns.On("BAG_UPDATE_DELAYED", function() IS.Paint("ammo") IS.Paint("shards") end)
   ns.On("PLAYER_MONEY", function() IS.CountMoney() IS.Paint("goldrate") end)
   ns.On("PLAYER_ENTERING_WORLD", IS.ResumeSession)
+  ns.On("PLAYER_LOGOUT", IS.StampSession)
   ns.On("PLAYER_XP_UPDATE", onXP)
   ns.On("PLAYER_LEVEL_UP", IS.PaintRates)
   ns.On("PLAYER_ENTERING_WORLD", IS.UpdateAll)
