@@ -91,6 +91,14 @@ function ns.PlainNumber(value)
   return value
 end
 
+-- The value if it's a plain, non-empty string; nil for a hidden value, a non-string or "".
+---@param value any
+---@return string|nil
+function ns.PlainText(value)
+  if ns.IsSecret(value) or type(value) ~= "string" or value == "" then return nil end
+  return value
+end
+
 -- True only for a plain true from the client; a hidden value counts as no.
 ---@param value any
 ---@return boolean

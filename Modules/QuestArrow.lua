@@ -29,12 +29,6 @@ QA.SWITCH = 0.5
 -- panel's inner padding (units).
 QA.HERE, QA.FAINT, QA.PAD = 15, 0.35, 8
 
--- The text if it is a plain, non-empty string; nil otherwise.
-local function plainText(text)
-  if ns.IsSecret(text) or type(text) ~= "string" or text == "" then return nil end
-  return text
-end
-
 -- Choosing the quest ------------------------------------------------------------------------------
 
 -- How near a quest counts (distance squared, less for a finished one); nil when it isn't in the log, it failed
@@ -84,7 +78,7 @@ end
 
 -- The quest title for the arrow, or "Quest".
 local function titleOf(id)
-  return plainText(ns.CallIf(C_QuestLog, "GetTitleForQuestID", id)) or "Quest"
+  return ns.PlainText(ns.CallIf(C_QuestLog, "GetTitleForQuestID", id)) or "Quest"
 end
 
 -- The quest to follow and whether the arrow holds it as a pin: the Shift-clicked quest (with "Follow the

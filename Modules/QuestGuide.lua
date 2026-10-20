@@ -129,8 +129,8 @@ end
 -- The tracker line for the followed quest's next step ("> Take the boat to Menethil"), or nil.
 function QG.StepLine(questID)
   if not (QG.settings and QG.settings.stepLine) or questID ~= QG.Followed() then return nil end
-  local text = ns.CallIf(C_QuestLog, "GetNextWaypointText", questID)
-  if ns.IsSecret(text) or type(text) ~= "string" or text == "" then return nil end
+  local text = ns.PlainText(ns.CallIf(C_QuestLog, "GetNextWaypointText", questID))
+  if not text then return nil end
   return { "> " .. text, "accent" }
 end
 

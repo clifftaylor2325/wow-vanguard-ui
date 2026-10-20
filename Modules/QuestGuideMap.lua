@@ -21,7 +21,7 @@ local function addStart(out, seen, questID, x, y, name)
   questID, x, y = ns.PlainNumber(questID), ns.PlainNumber(x), ns.PlainNumber(y)
   if not (questID and x and y) or seen[questID] then return end
   seen[questID] = true
-  out[#out + 1] = { questID = questID, x = x, y = y, name = (not ns.IsSecret(name) and type(name) == "string") and name or "" }
+  out[#out + 1] = { questID = questID, x = x, y = y, name = ns.PlainText(name) }
 end
 
 -- Where quests start on a map: its quest lines' starts (hidden ones left out), then the quest spots marked as starts.
@@ -60,7 +60,7 @@ function QG.PinTooltip(pin)
   local tip = GameTooltip
   if not tip or not pin.start then return end
   tip:SetOwner(pin, "ANCHOR_RIGHT")
-  tip:SetText(pin.start.name ~= "" and pin.start.name or "Quest start")
+  tip:SetText(pin.start.name or "Quest start")
   local level, repeats = startFacts(pin.start.questID)
   if level then tip:AddLine("Level " .. level, QP.LevelColor(level)) end
   if repeats then tip:AddLine(T.Paint("Repeatable", "text2")) end
@@ -70,7 +70,7 @@ end
 
 -- A click on a pin: a map waypoint on it, which the arrow points at.
 function QG.OnPin(pin)
-  if ns.GetModule("Waypoints").Set(pin.mapID, pin.start.x, pin.start.y) then ns.Chat("Arrow: " .. (pin.start.name ~= "" and pin.start.name or "quest start") .. ".") end
+  if ns.GetModule("Waypoints").Set(pin.mapID, pin.start.x, pin.start.y) then ns.Chat("Arrow: " .. (pin.start.name or "quest start") .. ".") end
 end
 
 -- A pin on the map's canvas: Vanguard's gold quest-start "!" (the quest dialog's mark) on a small inset square.
