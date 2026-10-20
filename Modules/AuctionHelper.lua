@@ -500,12 +500,25 @@ function AH.ListCommand(arg)
   ns.Chat(string.format("Shopping list %s (%d): %s", name, #list, #list > 0 and entryNames(list) or "empty"))
 end
 
--- /vg ah add <list> <item>: the list is the longest list name the words start with, else the first word.
+-- Whether /vg ah add's words start with an item (a link, item:123 or a bare ID) rather than a list name.
+local function startsWithItem(arg)
+  local first = arg:match("^(%S+)") or ""
+  return first:find("^|[cH]") or first:find("item:%d") or first:find("^%d+$")
+end
+
+-- /vg ah add <item>, no list named: the item goes on the list in use (else Shopping), and chat says which.
+local function addToListInUse(arg)
+  if AH.AddEntry(arg) then ns.Chat(string.format("Added to the shopping list %s.", AP.Store().list)) end
+end
+
+-- /vg ah add <list> <item>: the list is the longest list name the words start with, else the first word
+-- (unless the words start with an item: then it's the list in use).
 function AH.AddCommand(arg)
   local best
   for name in pairs(AP.Store().lists) do
     if arg:sub(1, #name + 1) == name .. " " and #name > #(best or "") then best = name end
   end
+  if not best and startsWithItem(arg) then return addToListInUse(arg) end
   local list = best or arg:match("^(%S+)") or ""
   AH.AddEntry(arg:sub(#list + 2), list)
 end
