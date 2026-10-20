@@ -305,6 +305,20 @@ it("spell lists fall back safely: no call, hidden list, hidden spells, unknown n
   expect(addon.eval("return #ns.errors"), "hidden totals raise nothing").toBe(0);
 });
 
+it("the spell panel opens left of the meter, or right of it when the meter sits at the screen's left edge", () => {
+  const addon = loggedIn(METER_ENV, METER_ON);
+  // The panel's and the meter's left and right edges after opening a line's panel with the meter put at `x` from the left (nil: where it is).
+  const open = (x) => addon.eval(`local MT = ns.GetModule("Meter") MT.CloseDetail()
+    if ${x} then MT.frame:ClearAllPoints() MT.frame:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", ${x}, 14) end
+    MT.OpenDetail({ name = "TEST-ONLY" })
+    local d = Vanguard_MeterDetail
+    return { d:GetLeft(), d:GetRight(), MT.frame:GetLeft(), MT.frame:GetRight() }`);
+  const [left, right, meterLeft] = open("nil");
+  expect([right, left >= 0], "at its default spot: on the meter's left, 4 apart, on screen").toEqual([meterLeft - 4, true]);
+  const [edgeLeft, , , meterRight] = open(10);
+  expect(edgeLeft, "at the left edge: on the meter's right, 4 apart").toBe(meterRight + 4);
+});
+
 it("a spell row's name is the game's answer, handed on without a truth test; a refused one is empty", () => {
   const addon = loggedIn(FULL_ENV, METER_ON);
   addon.eval("C_DamageMeter.GetCombatSessionSourceFromType = function() return { combatSpells = { { spellID = 7, totalAmount = 5 } } } end");
