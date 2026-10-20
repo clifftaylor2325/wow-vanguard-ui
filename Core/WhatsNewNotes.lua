@@ -10,6 +10,51 @@
 local ADDON, ns = ...
 
 ns.WHATS_NEW = {
+  { version = "0.7.3", groups = {
+    { module = "Other", label = "Options and windows", items = {
+      { text = "The Options window is taller, its changed dot names the default, the Modules page explains modules with their own switch, and search finds more." },
+      { text = "The Other addons card lists Forever add-ons and keeps answers you can change later; the addons button explains itself." },
+      { text = "The unlock bar explains itself and leads back to the options, and Situations gets a Your situations card." },
+      { text = "Reset puts moved windows back, and five more game windows can be dragged." },
+      { text = "The errors window has Report a bug and Clear buttons, and the AFK screen steps aside when something needs you." },
+      { text = "A destroy popup shows its confirm button in the danger colour." },
+    } },
+    { module = "UnitFrames", label = "Unit frames and HUD", items = {
+      { text = "Unit frames show tooltips on hover, grey for tapped mobs, a Ghost label, raid marks and quieter threat." },
+      { text = "The pet has a cast bar, and nameplates can show health numbers." },
+      { text = "The swing timer dims when you are out of reach and turns on by itself for every class that swings." },
+      { text = "Buff settings live on the Unit frames page, and the Cooldowns page lists gaps." },
+    } },
+    { module = "RaidFrames", label = "Group and raid", items = {
+      { text = "Raid tiles in a fight show missing health, summons, tooltips and indicator names." },
+      { text = "Your role is guarded in a group, with an Automatic whisper role and a Needs my role line." },
+      { text = "The damage meter's header controls and breakdown take the Vanguard look, and the game's meter lines stay flat when reused." },
+    } },
+    { module = "Quests", label = "Questing", items = {
+      { text = "Tracker objectives are rows, muted when done, with an accent line on the followed quest; the tracker tooltip shows a Failed line." },
+      { text = "The arrow says Here and Turn in and has a Pin button; quest-start pins and /way titles read better, and history follows the game's own flag." },
+      { text = "Quest windows show reward captions and the best-reward crown, a needs line, an empty-log message and an honest Accepted." },
+      { text = "On the minimap, objectives are an accent dot under the quest mark, and the followed quest's mark is larger." },
+    } },
+    { module = "Map", label = "Map, minimap and strips", items = {
+      { text = "The minimap drawer takes late buttons, sorts them, closes on Escape and opens on the side with room." },
+      { text = "Info strips fit their text, follow Text size, explain their numbers on hover, open their window on click and keep rates through a reload." },
+      { text = "The clock follows the game's clock, the strip counts calendar invites, and the reputation bar names its standing and takes the XP bar's spot at the cap." },
+    } },
+    { module = "Chat", label = "Chat", items = {
+      { text = "Channel tags are numbered, Copy works on the shown tab, and bare and guild links are clickable." },
+      { text = "The chat filter card says what it caught, and watch words match in any order and are marked." },
+      { text = "A summon that comes in a fight is taken when it ends, declines give one line per sender, and Hide the red error line keeps the four errors you must act on." },
+    } },
+    { module = "Bags", label = "Bags and town", items = {
+      { text = "Bank search finds more words, bags show the Junk value, and an item can leave its group." },
+      { text = "Mail scrolls with days left on every letter, the auction scan counts down, and deals survive a trip to the mailbox." },
+      { text = "The Keep stocked window, the Train all count and the travel bar spot are clearer." },
+    } },
+    { module = "Other", label = "Safety and tools", items = {
+      { text = "About 170 bug fixes from two sweeps across combat, group, quests, map, chat, bags, merchant, mail, auction and setup." },
+    } },
+  } },
   { version = "0.7.2", groups = {
     { module = "Windows", label = "Look and windows", items = {
       { text = "Window buttons (close, minimize, maximize, back) show only their mark at rest; under the mouse a grey rounded tile appears and the close cross turns vermilion." },

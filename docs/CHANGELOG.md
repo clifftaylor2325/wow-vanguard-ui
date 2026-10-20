@@ -4,6 +4,61 @@ What changed for players in each release, newest first. In game, the same notes 
 
 Nothing here has been checked in the game by the people who wrote it down: see the batch checklist (issue #284) and [SMOKE-TEST.md](SMOKE-TEST.md).
 
+## 0.7.3
+
+Nothing in this release has been checked in the game; see the batch checklist (issue #284).
+
+### Options and windows
+
+- The Options window is taller, its changed dot names the default, the Modules page explains modules with their own switch, and search finds more.
+- The Other addons card lists Forever add-ons and keeps answers you can change later; the addons button explains itself.
+- The unlock bar explains itself and leads back to the options, and Situations gets a Your situations card.
+- Reset puts moved windows back, and five more game windows can be dragged.
+- The errors window has Report a bug and Clear buttons, and the AFK screen steps aside when something needs you.
+- A destroy popup shows its confirm button in the danger colour.
+
+### Unit frames, bars and plates
+
+- Unit frames show tooltips on hover, grey for tapped mobs, a Ghost label, raid marks and quieter threat.
+- The pet has a cast bar, and nameplates can show health numbers.
+- The swing timer dims when you are out of reach and turns on by itself for every class that swings.
+- Buff settings live on the Unit frames page, and the Cooldowns page lists gaps.
+
+### Group and raid
+
+- Raid tiles in a fight show missing health, summons, tooltips and indicator names.
+- Your role is guarded in a group, with an Automatic whisper role and a Needs my role line.
+- The damage meter's header controls and breakdown take the Vanguard look, and the game's meter lines stay flat when reused.
+
+### Questing (0.7.3)
+
+- Tracker objectives are rows, muted when done, with an accent line on the followed quest; the tracker tooltip shows a Failed line.
+- The arrow says Here and Turn in and has a Pin button; quest-start pins and /way titles read better, and history follows the game's own flag.
+- Quest windows show reward captions and the best-reward crown, a needs line, an empty-log message and an honest Accepted.
+- On the minimap, objectives are an accent dot under the quest mark, and the followed quest's mark is larger.
+
+### Minimap and info strips
+
+- The minimap drawer takes late buttons, sorts them, closes on Escape and opens on the side with room.
+- Info strips fit their text, follow Text size, explain their numbers on hover, open their window on click and keep rates through a reload.
+- The clock follows the game's clock, the strip counts calendar invites, and the reputation bar names its standing and takes the XP bar's spot at the cap.
+
+### Chat (0.7.3)
+
+- Channel tags are numbered, Copy works on the shown tab, and bare and guild links are clickable.
+- The chat filter card says what it caught, and watch words match in any order and are marked.
+- A summon that comes in a fight is taken when it ends, declines give one line per sender, and Hide the red error line keeps the four errors you must act on.
+
+### Bags and town (0.7.3)
+
+- Bank search finds more words, bags show the Junk value, and an item can leave its group.
+- Mail scrolls with days left on every letter, the auction scan counts down, and deals survive a trip to the mailbox.
+- The Keep stocked window, the Train all count and the travel bar spot are clearer.
+
+### Fixes (0.7.3)
+
+- About 170 bug fixes from two sweeps across combat, group, quests, map, chat, bags, merchant, mail, auction and setup.
+
 ## 0.7.2
 
 Nothing in this release has been checked in the game; see the batch checklist (issue #284).
