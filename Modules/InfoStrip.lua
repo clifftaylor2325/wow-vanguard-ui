@@ -2,7 +2,8 @@
 --   durability (orange at 25% or less, red at 10% or less) · free bag slots
 --   gold
 --   fps and latency · ammo (hunters, warriors, rogues) or soul shards (warlocks)
---   the time and the day and date ("21:04  Tue 13 Oct"), with a calendar button
+--   the time as the game's clock shows it and the day and date ("21:04  Tue 13 Oct"), with a calendar button
+--     that counts the invites waiting
 --   leveling: XP per hour · time to level
 --   gold per hour this session · what your auction sales came to (Modules/AuctionLedger.lua, off until you turn it on)
 --   your damage per second in the last fight · your place in it in a group (each off until you turn it on)
@@ -263,10 +264,10 @@ function IS.TEXT.durability()
   if p then return p .. "% durability", IS.DurabilityColor(p) end
 end
 
--- Free bag slots (red when full).
+-- Free bag slots, toned as the backpack's count (amber when few, red when full).
 function IS.TEXT.bags()
   local n = IS.FreeSlots()
-  if n then return n .. " free", n == 0 and "bad" or "text" end
+  if n then return n .. " free", ns.GetModule("MenuStrip").FreeTone(n) end
 end
 
 -- Frame rate and latency.
@@ -310,15 +311,30 @@ function IS.TEXT.shards()
   if n then return "shards " .. n, n == 0 and "bad" or "text" end
 end
 
--- The time.
+-- The time as the game's clock shows it (realm or local time, 12 or 24 hours, as set in the game's
+-- clock window); the computer's 24-hour time on a client without the game's clock helpers.
 function IS.TEXT.clock()
-  local t = ask("date", "%H:%M")
+  local t = ask("GameTime_GetTime", true) or ask("date", "%H:%M")
   if t then return t, "text" end
 end
 
--- The day and date, "Tue 13 Oct".
+-- Day and month names for the realm's date, as date("%a %d %b") writes the computer's.
+IS.WEEKDAYS = { "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat" }
+IS.MONTHS = { "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec" }
+
+-- The realm's date ("Tue 13 Oct", C_DateAndTime) while the game's clock shows realm time, so the date beside
+-- the time is that time's day; nil while it shows local time or on a client without these helpers.
+local function realmDate()
+  local get = C_DateAndTime and C_DateAndTime.GetCurrentCalendarTime
+  if type(get) ~= "function" or type(_G.GameTime_GetTime) ~= "function" or ask("GetCVarBool", "timeMgrUseLocalTime") then return nil end
+  local d = get()
+  local day, month = IS.WEEKDAYS[ns.PlainNumber(d.weekday) or 0], IS.MONTHS[ns.PlainNumber(d.month) or 0]
+  if day and month and ns.PlainNumber(d.monthDay) then return string.format("%s %02d %s", day, d.monthDay, month) end
+end
+
+-- The day and date, "Tue 13 Oct": the day the time beside it belongs to.
 function IS.TEXT.date()
-  local t = ask("date", "%a %d %b")
+  local t = realmDate() or ask("date", "%a %d %b")
   if t then return t, "text" end
 end
 
@@ -437,15 +453,53 @@ local function openCalendar()
   if type(ToggleCalendar) == "function" then ToggleCalendar() end
 end
 
+-- How many calendar invites wait for your answer (0 when the client can't say or hides it).
+function IS.PendingInvites()
+  local get = C_Calendar and C_Calendar.GetNumPendingInvites
+  return type(get) == "function" and ns.PlainNumber(get()) or 0
+end
+
+-- The calendar button's tooltip: "Calendar", and how many invites wait.
+function IS.CalendarTip(b)
+  GameTooltip:SetOwner(b, "ANCHOR_LEFT")
+  GameTooltip:SetText("Calendar", T.RGB("text"))
+  local n = IS.PendingInvites()
+  local r, g, bl = T.RGB("text2")
+  if n > 0 then GameTooltip:AddLine(n == 1 and "1 invite waiting" or n .. " invites waiting", r, g, bl) end
+  GameTooltip:Show()
+end
+
+-- The invite count in the calendar button's corner, shown only while invites wait; its backing with it.
+function IS.PaintInvites()
+  local n = IS.PendingInvites()
+  IS.invites:SetText(n > 0 and tostring(n) or "")
+  IS.invitesBack:SetShown(n > 0)
+end
+
+-- The calendar button's invite count: the badge text over a dark backing, in its bottom-right corner, in the
+-- backpack count's look (Modules/MenuStrip.lua; the strip is at the UI's scale, so no scale correction).
+local function addInvites(b)
+  local pad, back = ns.GetModule("MenuStrip").COUNT_PAD, T.Snap(b:CreateTexture(nil, "OVERLAY", nil, 7))
+  back:SetTexture(T.WHITE)
+  T.Tint(back, "edge", ns.GetModule("MenuStrip").COUNT_BACK)
+  local fs = T.Text(b:CreateFontString(nil, "OVERLAY"), "badge")
+  fs:SetPoint("BOTTOMRIGHT", b, "BOTTOMRIGHT", -pad, pad)
+  back:SetPoint("TOPLEFT", fs, "TOPLEFT", -pad, pad)
+  back:SetPoint("BOTTOMRIGHT", fs, "BOTTOMRIGHT", pad, -pad)
+  IS.invites, IS.invitesBack = fs, back
+end
+
 -- The calendar button (shown with the date): a slot button of the minimap's kind at the date row's right end,
--- opening the calendar like /calendar.
+-- opening the calendar like /calendar, with a count of the invites waiting. None where the realm has no calendar.
 local function addCalendar(frame)
+  if IS.CalendarOff() then return end
   local b = CreateFrame("Button", "Vanguard_InfoStripCalendar", frame)
   b:SetPoint("RIGHT", frame, "TOPRIGHT", -IS.CALENDAR_GAP, -(IS.BLOCKS.date[1] - 0.5) * IS.ROW)
   b:SetScript("OnClick", ns.Guard("click info strip calendar", openCalendar))
-  b:SetScript("OnEnter", ns.Guard("info strip calendar tip", function(self) GameTooltip:SetOwner(self, "ANCHOR_LEFT") GameTooltip:SetText("Calendar", T.RGB("text")) GameTooltip:Show() end))
+  b:SetScript("OnEnter", ns.Guard("info strip calendar tip", IS.CalendarTip))
   b:SetScript("OnLeave", ns.Guard("info strip calendar tip", function() GameTooltip:Hide() end))
   ns.GetModule("Minimap").SlotButton(b, IS.CALENDAR_ICON.slot, IS.CALENDAR, IS.CALENDAR_GLYPH)
+  addInvites(b)
   IS.calendar = b
 end
 
@@ -456,11 +510,29 @@ function IS.ClockClick()
   ask("ToggleTimeManager")
 end
 
+-- The time tooltip's lines: a label and the game's helper that gives that time in the clock's format.
+IS.CLOCK_TIMES = { { "Realm time", "GameTime_GetGameTime" }, { "Local time", "GameTime_GetLocalTime" } }
+
+-- The time's tooltip: realm and local time (with AM/PM in 12-hour mode), and what a click does.
+function IS.ClockTip(b)
+  GameTooltip:SetOwner(b, "ANCHOR_LEFT")
+  GameTooltip:SetText("Time", T.RGB("text"))
+  local r, g, bl = T.RGB("text2")
+  for _, line in ipairs(IS.CLOCK_TIMES) do
+    local t = ask(line[2], true)
+    if type(t) == "string" then GameTooltip:AddDoubleLine(line[1], t, r, g, bl, T.RGB("text")) end
+  end
+  GameTooltip:AddLine("Click: the game's clock and alarm", r, g, bl)
+  GameTooltip:Show()
+end
+
 -- The time's hit area: the text takes the mouse, so a click reaches the game's clock window.
 local function addClock(frame)
   local b = CreateFrame("Button", "Vanguard_InfoStripClock", frame)
   b:SetAllPoints(IS.texts.clock)
   b:SetScript("OnClick", ns.Guard("click info strip clock", IS.ClockClick))
+  b:SetScript("OnEnter", ns.Guard("info strip clock tip", IS.ClockTip))
+  b:SetScript("OnLeave", ns.Guard("info strip clock tip", function() GameTooltip:Hide() end))
   IS.clockButton = b
 end
 
@@ -556,6 +628,16 @@ local function keepReminders(settings)
   if settings.clock and not IS.CalendarOff() then ns.On("CALENDAR_EVENT_ALARM", IS.CalendarAlarm) end
 end
 
+-- The events that change how many calendar invites wait (the game's calendar button listens for the same).
+IS.INVITE_EVENTS = { "CALENDAR_UPDATE_PENDING_INVITES", "PLAYER_ENTERING_WORLD" }
+
+-- Keeps the calendar button's invite count up to date; nothing to keep where the realm has no calendar.
+local function watchInvites()
+  if not IS.calendar then return end
+  IS.PaintInvites()
+  for _, event in ipairs(IS.INVITE_EVENTS) do ns.On(event, IS.PaintInvites) end
+end
+
 -- XP came in: count it and repaint the leveling blocks.
 local function onXP()
   IS.CountXP()
@@ -582,4 +664,5 @@ function IS.Enable(settings)
   IS.StartSession()
   build()
   watch()
+  watchInvites()
 end

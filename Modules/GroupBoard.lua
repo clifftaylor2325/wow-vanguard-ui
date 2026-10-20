@@ -13,8 +13,16 @@
 local ADDON, ns = ...
 
 local GB = ns.Module("GroupBoard", {
-  defaults = { role = "dps", minutes = 10, mine = true, channels = { channel = true, yell = true, say = false, guild = false } },
+  defaults = { role = "auto", minutes = 10, mine = true, channels = { channel = true, yell = true, say = false, guild = false } },
 })
+
+-- Every profile saved before "Automatic" held "dps", the old default, whether the player picked it or not:
+-- once, it becomes Automatic, which still says DPS for a damage dealer.
+ns.Migrate("GroupBoard", function(saved)
+  if saved.autoRole then return end
+  if saved.role == "dps" then saved.role = nil end
+  saved.autoRole = true
+end)
 
 ns.Options.MODULE_INFO.GroupBoard = { "Group board", "Looking-for-more and looking-for-group posts from chat in one list by dungeon, role and level; a click opens a whisper you send yourself." }
 
@@ -29,6 +37,8 @@ GB.LFG = { "lfg", "looking for group", "lf group", "lf grp" }
 GB.ROLE_ORDER = { "tank", "healer", "dps" }
 GB.ROLE_WORDS = { tank = { "tank", "tanks", "mt" }, healer = { "heal", "heals", "healer", "healers", "healz" }, dps = { "dps", "dd" } }
 GB.ROLE_NAMES = { tank = "Tank", healer = "Healer", dps = "DPS" }
+-- Your group role (ns.PlayerRole) -> the board's name for it, for the Automatic whisper role.
+GB.AUTO_ROLES = { tank = "tank", healer = "healer", damage = "dps" }
 
 -- Vanilla's dungeons and raids, the first that a line names wins (so Dire Maul's
 -- short names come before the Deadmines' "dm"): name, level range, short names.
@@ -214,22 +224,56 @@ function GB.Level()
   return level and level > 0 and level or nil
 end
 
--- The kind the board shows: "all", "LFM" or "LFG" (this session; the board's filter button cycles it).
+-- The board's filter: "all", "LFM", "LFG" or "role" (Needs my role) (this session; the board's filter button cycles it).
 GB.filter = "all"
+-- The filters that show one kind of post only, and that kind.
+GB.FILTER_KIND = { LFM = "LFM", LFG = "LFG" }
+
+-- Your role for the whisper and the Needs my role filter: the setting, or with Automatic your group role.
+function GB.MyRole()
+  local role = GB.settings.role
+  if role == "auto" then return GB.AUTO_ROLES[ns.PlayerRole()] end
+  return role
+end
+
+-- Whether a post needs you: a group looking for more that names your role, or names none.
+function GB.NeedsMe(e)
+  if e.kind ~= "LFM" then return false end
+  if #e.roles == 0 then return true end
+  local mine = GB.MyRole()
+  for _, role in ipairs(e.roles) do
+    if role == mine then return true end
+  end
+  return false
+end
+
+-- Whether a row is dimmed: the Needs my role filter shows a post that doesn't need you.
+function GB.Dimmed(e)
+  return GB.filter == "role" and not GB.NeedsMe(e)
+end
 
 -- Whether the board shows a post: its kind passes the filter, and it fits your level when that switch is on.
 local function shows(e, level)
-  if GB.filter ~= "all" and e.kind ~= GB.filter then return false end
+  local kind = GB.FILTER_KIND[GB.filter]
+  if kind and e.kind ~= kind then return false end
   return not GB.settings.mine or GB.Fits(e, level)
 end
 
--- The posts the board shows, newest first.
+-- The posts that need you first, then the rest (dimmed), each newest first.
+local function needsFirst(posts)
+  local first, rest = {}, {}
+  for _, e in ipairs(posts) do table.insert(GB.NeedsMe(e) and first or rest, e) end
+  for _, e in ipairs(rest) do first[#first + 1] = e end
+  return first
+end
+
+-- The posts the board shows, newest first (with Needs my role, the ones that need you come first).
 function GB.Shown()
   local out, level = {}, GB.Level()
   for _, e in ipairs(GB.entries) do
     if shows(e, level) then out[#out + 1] = e end
   end
-  return out
+  return GB.filter == "role" and needsFirst(out) or out
 end
 
 -- The whisper ---------------------------------------------------------------------------------
@@ -246,7 +290,7 @@ end
 function GB.Template(e)
   local where = e.dungeon and e.dungeon.name or nil
   if e.kind == "LFG" then return string.format("Hi! We're forming %s, want to join?", where or "a group") end
-  local role = GB.ROLE_NAMES[GB.settings.role] or GB.ROLE_NAMES.dps
+  local role = GB.ROLE_NAMES[GB.MyRole()] or GB.ROLE_NAMES.dps
   return string.format("Hi! %s (%s) for %s, if you still need one.", whoAmI(), role, where or "your group")
 end
 
@@ -278,7 +322,7 @@ function GB.Rows()
     { "header", "Group board" },
     { "text", "Looking-for-more and looking-for-group posts from chat, by dungeon, role and level (/vg lfg). A click opens a whisper you send yourself." },
     { "button", "Open the group board", function() GB.Toggle() end },
-    { "cycle", "Your role, for the whisper", { { "tank", "Tank" }, { "healer", "Healer" }, { "dps", "DPS" } }, setting("role") },
+    { "cycle", "Your role, for the whisper", { { "auto", "Automatic" }, { "tank", "Tank" }, { "healer", "Healer" }, { "dps", "DPS" } }, setting("role") },
     { "cycle", "Keep posts for", { { 5, "5 minutes" }, { 10, "10 minutes" }, { 20, "20 minutes" } }, setting("minutes") },
     { "check", "Numbered channels (General, Trade, LookingForGroup)", channel("channel") },
     { "check", "Yell", channel("yell") }, { "check", "Say", channel("say") }, { "check", "Guild", channel("guild") },
