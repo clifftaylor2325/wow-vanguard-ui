@@ -6,7 +6,7 @@
 local ADDON, ns = ...
 
 local O = ns.Options
-local setting, reloadSetting, liveSetting, liveMethod, check, append = O.Setting, O.ReloadSetting, O.LiveSetting, O.LiveMethod, O.Check, O.Append
+local reloadSetting, liveMethod, check, append = O.ReloadSetting, O.LiveMethod, O.Check, O.Append
 
 -- The minimap's coordinates, icons and drawer, and map waypoints.
 local function minimapRows()
