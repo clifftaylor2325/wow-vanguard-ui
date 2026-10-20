@@ -375,10 +375,52 @@ it("swing timer: a weapon swap restarts a swing under way at the new weapon's sp
   expect(swings(addon)[0][0], "a speed the client hides: no guess, the row stops").toBe(false);
 });
 
+// A swing login on the client's own range model (scripts/lib/wow-world.lua), not SWING_ENV's empty C_SwingTimer,
+// with the target out of the main hand's reach.
+const RANGE_ENV = UNITS_ENV + SWING_ENV.replace("C_SwingTimer = {}", "") + "__wfgWorld.swingRange = { [0] = false } UnitAttackSpeed = function() return 2.6 end";
+// Each swing row's opacity, main hand first.
+const swingAlphas = (addon) => addon.eval(`local SW = ns.GetModule("SwingTimer") return { SW.rows[0]:GetAlpha(), SW.rows[1]:GetAlpha(), SW.rows[2]:GetAlpha() }`);
+
+it("swing timer: at login it asks for every hand's reach and dims the one out of reach", () => {
+  const addon = loggedIn(RANGE_ENV);
+  expect(addon.eval("local c = __wfgWorld.swingRangeChecks return { c[0], c[1], c[2] }"), "it asks the client to report every hand's reach").toEqual([true, true, true]);
+  expect(unitEvents(addon, "PLAYER_SWING_RANGE_UPDATE").plain, "it hears the client's range event").toBe(1);
+  expect(swingAlphas(addon), "the main hand dims, as the game's own timer does; no check for the others is not out of range").toEqual([0.4, 1, 1]);
+});
+
+it("swing timer: the client's range event dims and restores a row", () => {
+  const addon = loggedIn(RANGE_ENV);
+  addon.fire("PLAYER_SWING_RANGE_UPDATE", 0, true, true);
+  expect(swingAlphas(addon)[0], "stepping in brings it back").toBe(1);
+  addon.fire("PLAYER_SWING_RANGE_UPDATE", 0, false, true);
+  addon.fire("PLAYER_SWING_RANGE_UPDATE", 1, false, false);
+  expect(swingAlphas(addon).slice(0, 2), "out again dims it; an answer with no check made does not").toEqual([0.4, 1]);
+  addon.fire("PLAYER_SWING_RANGE_UPDATE", 0, { __secret: true }, true);
+  addon.fire("PLAYER_SWING_RANGE_UPDATE", 7, false, true);
+  expect(swingAlphas(addon)[0], "a hidden answer counts as in reach, and an unknown hand changes nothing").toBe(1);
+});
+
+it("swing timer: a new target reads the reach, and a weapon swap asks for the checks again", () => {
+  const addon = loggedIn(RANGE_ENV);
+  addon.eval("__wfgWorld.swingRange = {} __wfgWorld.swingRangeChecks = {}");
+  addon.fire("PLAYER_TARGET_CHANGED");
+  expect([swingAlphas(addon)[0], addon.eval("return __wfgWorld.swingRangeChecks[0]")], "no target to check (nil): never dim, and no new ask").toEqual([1, null]);
+  addon.eval("__wfgWorld.swingRange = { [0] = false }");
+  addon.fire("WEAPON_SLOT_CHANGED");
+  expect([swingAlphas(addon)[0], addon.eval("return __wfgWorld.swingRangeChecks[0]")], "a weapon swap asks again and reads the reach now").toEqual([0.4, true]);
+});
+
+it("swing timer: a client without the range calls keeps rows at full strength and hears no range event", () => {
+  const addon = loggedIn(UNITS_ENV + SWING_ENV);
+  expect(addon.eval("return ns.GetModule('SwingTimer').rows[0]:GetAlpha()"), "full strength").toBe(1);
+  expect(unitEvents(addon, "PLAYER_SWING_RANGE_UPDATE").plain, "the event isn't asked for").toBe(0);
+});
+
 it("swing timer: who sees it", () => {
   // Whether a login with this setup and these saved settings builds the swing rows.
   const wanted = (env, saved) => loggedIn(UNITS_ENV + env, saved ? { savedVariables: saved } : undefined).eval("return ns.GetModule('SwingTimer').rows ~= nil");
   expect(wanted(SWING_ENV.replace("WARRIOR", "MAGE")), "a mage doesn't, by default").toBe(false);
+  for (const cls of ["PALADIN", "SHAMAN", "DRUID"]) expect(wanted(SWING_ENV.replace("WARRIOR", cls)), `a ${cls.toLowerCase()} does: they swing too`).toBe(true);
   expect(wanted(SWING_ENV.replace("WARRIOR", "MAGE"), "VanguardDB.profiles = { Default = { SwingTimer = { show = 'always' } } }"), "unless it's set to always").toBe(true);
   expect(wanted(SWING_ENV, "VanguardDB.profiles = { Default = { SwingTimer = { show = 'never' } } }"), "never is never").toBe(false);
   expect(wanted(SWING_ENV.replace('"WARRIOR"', '{ __secret = true }')), "a hidden class: no timer").toBe(false);
@@ -445,6 +487,8 @@ const EXTRAS_ENV = `
   UnitDetailedThreatSituation = function(a, b) return __threatInfo[1], __threatInfo[2], __threatInfo[3], 0, 0 end
   __happy = 3
   GetPetHappiness = function() return __happy, 0, 0 end
+  __grouped = true
+  IsInGroup = function() return __grouped end
 `;
 
 it("threat on your target and your pet's happiness", () => {
@@ -481,6 +525,118 @@ it("threat on your target and your pet's happiness", () => {
   addon.eval('__click("Unit frames")');
   expect(addon.eval('return __click("Your threat on your target") and VanguardDB.profiles.Default.UnitExtras.threat'), "the threat switch is on the page").toBe(false);
   expect(addon.eval('return __click("happiness") and VanguardDB.profiles.Default.UnitExtras.happiness'), "and the pet's").toBe(false);
+});
+
+it("a creature someone else tagged is grey on the unit frames, as on the game's frames", () => {
+  const addon = loggedIn(UNITS_ENV + `__tapped = { target = true }
+    UnitIsTapDenied = function(unit) return __tapped[unit] end
+    UnitPlayerControlled = function(unit) return __units[unit] and __units[unit].controlled end`);
+  expect(isTok(addon, ufState(addon, "target").color, "tapped"), "another player's mob is grey").toBe(true);
+  addon.eval("__tapped.target = false");
+  addon.fire("UNIT_FACTION", "target");
+  expect(isTok(addon, ufState(addon, "target").color, "hostile"), "let go, it is red again on the faction change the game re-greys on").toBe(true);
+  addon.eval("__tapped.target = true __units.target.controlled = true");
+  addon.fire("UNIT_FACTION", "target");
+  expect(isTok(addon, ufState(addon, "target").color, "hostile"), "a player's pet or demon is never tagged").toBe(true);
+  addon.eval("__units.target.controlled = nil __tapped.target = { __secret = true }");
+  addon.fire("UNIT_FACTION", "target");
+  expect(isTok(addon, ufState(addon, "target").color, "hostile"), "a hidden answer counts as untagged").toBe(true);
+  addon.eval("__tapped.player = true");
+  expect(ufState(addon, "player").color[0], "players keep their class color").toBe(0.25);
+});
+
+it("a released player reads Ghost and a feigning hunter reads alive", () => {
+  const addon = loggedIn(UNITS_ENV + `UnitIsGhost = function(unit) return __units[unit].ghost end
+    UnitIsFeignDeath = function(unit) return __units[unit].feign end`, NO_RAID);
+  // The party frame's health text.
+  const text = () => ufState(addon, "party1").text;
+  expect(text(), "dead and not released: Dead").toBe("Dead");
+  addon.eval("__units.party1.ghost = true");
+  addon.fire("UNIT_HEALTH", "party1");
+  expect(text(), "released: Ghost").toBe("Ghost");
+  addon.eval("__units.party1.ghost = { __secret = true }");
+  addon.fire("UNIT_HEALTH", "party1");
+  expect(text(), "a hidden ghost answer: Dead").toBe("Dead");
+  addon.eval("__units.party1.ghost = nil __units.party1.feign = true");
+  addon.fire("UNIT_HEALTH", "party1");
+  expect(text(), "feigning (the client calls it dead): the health shows").toBe("0");
+});
+
+it("a raid target icon sits on every unit frame's top edge, following the Raid target icons switch", () => {
+  const addon = loggedIn(CLICK_LUA + UNITS_ENV + "__marks = { target = 8, party1 = 1 } GetRaidTargetIndex = function(unit) return __marks[unit] end", NO_RAID);
+  // The raid icon on a unit frame: shown, its sheet cell, and where it sits.
+  const icon = (key) => addon.eval(`local t = Vanguard_${key}.raidIcon local p, rel, rp = t:GetPoint()
+    return { t:IsShown(), t:IsShown() and t.__texCoord or false, p, rel == Vanguard_${key}, rp }`);
+  expect(icon("target"), "skull on the target: the last cell, centred on the top edge").toEqual([true, [0.75, 1, 0.25, 0.5], "CENTER", true, "TOP"]);
+  expect(icon("party1").slice(0, 2), "star on a party member").toEqual([true, [0, 0.25, 0, 0.25]]);
+  expect(icon("player")[0], "no mark: none").toBe(false);
+  addon.eval("__marks = { player = 2, target = { __secret = true } }");
+  addon.fire("RAID_TARGET_UPDATE");
+  expect([icon("player")[0], icon("target")[0], icon("party1")[0]], "a new mark shows at once, a hidden one shows nothing, a cleared one goes").toEqual([true, false, false]);
+  addon.eval('__units.targettarget = { name = "TEST-ONLY ToT", hp = 1, maxhp = 2, power = 0, maxpower = 0, ptype = "MANA" } __marks.targettarget = 3');
+  addon.update(0.25);
+  expect(icon("targettarget")[0], "the target of target's mark follows its timer").toBe(true);
+  addon.slash("");
+  addon.eval('ns.Options.Show("raid") __click("Raid target icons")');
+  expect([addon.eval("return ns.Settings('RaidStatus').raidIcons"), icon("player")[0]], "the switch on the Raid frames page, off: no marks, at once").toEqual([false, false]);
+});
+
+it("threat is quiet solo: it shows in a group or with a pet", () => {
+  const addon = loggedIn(UNITS_ENV + EXTRAS_ENV + "__grouped = false");
+  // The threat text above the target frame.
+  const threat = () => addon.eval("return ns.GetModule('UnitExtras').threat:GetText()");
+  expect(threat(), "solo with no pet, every mob is on you at 100%: nothing shows").toBe("");
+  addon.eval('__units.pet = { name = "TEST-ONLY Wolf", hp = 1, maxhp = 1, power = 0, maxpower = 0, ptype = "FOCUS" }');
+  addon.fire("UNIT_PET", "player");
+  expect(threat(), "a pet can pull aggro off you: it shows").toBe("42%");
+  addon.eval("__units.pet = nil __grouped = true");
+  addon.fire("GROUP_ROSTER_UPDATE");
+  expect(threat(), "so can a group").toBe("42%");
+  addon.eval("__grouped = { __secret = true }");
+  addon.fire("GROUP_ROSTER_UPDATE");
+  expect(threat(), "a hidden answer counts as solo").toBe("");
+});
+
+// The tooltip's owner, unit, shown state and lines, after hovering (or leaving) a unit frame.
+const hover = (addon, key, script = "OnEnter") => addon.eval(`
+  local f = Vanguard_${key}
+  f:GetScript("${script}")(f)
+  local lines = {}
+  for i, l in ipairs(GameTooltip.__lines or {}) do lines[i] = l.text end
+  return { owned = GameTooltip:GetOwner() == f, unit = GameTooltip.__unit, shown = GameTooltip:IsShown(), lines = lines }`);
+
+it("hovering a unit frame shows its unit's tooltip, as the game's frames do", () => {
+  const addon = loggedIn(UNITS_ENV + EXTRAS_ENV, NO_RAID);
+  for (const key of ["player", "target", "party1"]) {
+    const t = hover(addon, key);
+    expect([t.owned, t.unit, t.shown], `${key}: the frame owns the tooltip, showing its unit`).toEqual([true, key, true]);
+  }
+  expect(addon.eval("return Vanguard_target.UpdateTooltip ~= nil"), "the tooltip can keep it fresh while the mouse stays").toBe(true);
+  hover(addon, "target");
+  expect(hover(addon, "target", "OnLeave").shown, "leaving hides it").toBe(false);
+  hover(addon, "player");
+  addon.eval("GameTooltip:SetOwner(UIParent)");
+  expect(hover(addon, "target", "OnLeave").shown, "but a tooltip something else took over is left alone").toBe(true);
+  addon.eval("GameTooltip:Hide() GameTooltip.IsForbidden = function() return true end");
+  const forbidden = hover(addon, "target");
+  expect(forbidden.shown, "a forbidden tooltip is never touched").toBe(false);
+  expect(hover(addon, "target", "OnLeave").shown, "on leave either").toBe(false);
+});
+
+it("the pet frame's tooltip adds your hunter pet's mood", () => {
+  const addon = loggedIn(UNITS_ENV + EXTRAS_ENV + `__units.pet = { name = "TEST-ONLY Wolf", hp = 1, maxhp = 1, power = 0, maxpower = 0, ptype = "FOCUS" }
+    GetPetHappiness = function() return __happy, __damage, 0 end __damage = 125`);
+  // The pet tooltip's lines and the mood line's red.
+  const pet = () => addon.eval(`Vanguard_pet:GetScript("OnEnter")(Vanguard_pet)
+    local lines = GameTooltip.__lines return { lines[1].text, lines[2] and lines[2].text or false, lines[2] and lines[2].r or false }`);
+  expect(pet(), "a happy pet: its mood and the damage it gives, in the good color").toEqual(["TEST-ONLY Wolf", "Happy: 125% damage", addon.eval("return (ns.Theme.RGB('good'))")]);
+  addon.eval("__happy, __damage = 1, { __secret = true }");
+  expect(pet().slice(0, 2), "a hidden damage figure leaves just the mood").toEqual(["TEST-ONLY Wolf", "Unhappy"]);
+  addon.eval("__happy = nil");
+  expect(pet()[1], "a pet without moods: no line").toBe(false);
+  addon.eval("ns.GetModule('Tooltips').settings.hideInCombat = true __wfgStub.inCombat = true __happy = 3");
+  addon.eval("GameTooltip.SetUnit = function(self, unit) self.__lines = { { text = unit } } self:Hide() end");
+  expect([pet()[1], addon.eval("return GameTooltip:IsShown()")], "a tooltip hidden for the fight stays hidden, with no line added").toEqual([false, false]);
 });
 
 it("unit events: combo points, the druid's mana, power ticks and threat ask the client for your own units only", () => {

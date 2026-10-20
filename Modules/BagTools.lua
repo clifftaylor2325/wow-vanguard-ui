@@ -1,7 +1,7 @@
 -- Bag tools (part of the Bags module): two buttons on the combined bag's search row, between the search
 -- box and Sort. Filter fills the search box with a ready-made search (a quality, a binding, a kind of item,
--- one of your groups); Groups makes groups, puts the item on your cursor in one, sends one to the bank,
--- moves it first or deletes it. Everything they do is what /vg bag does; they are the way in, the command the extra.
+-- one of your groups); Groups makes groups, puts the item on your cursor in one or takes it out again, sends
+-- one to the bank, moves it first or deletes it. Everything they do is what /vg bag does; they are the way in, the command the extra.
 
 local ADDON, ns = ...
 
@@ -37,16 +37,21 @@ local function search(text)
   if frame and type(frame.UpdateSearchResults) == "function" then frame:UpdateSearchResults() end
 end
 
--- The Groups menu: a new group, then for each group of yours what can be done with it.
+-- What can be done with one group of yours, added to the Groups menu.
+local function addGroupRows(out, name)
+  out[#out + 1] = { "add:" .. name, "Put held item in " .. name }
+  out[#out + 1] = { "deposit:" .. name, "Send " .. name .. " to the bank" }
+  out[#out + 1] = { "top:" .. name, "Make " .. name .. " first" }
+  out[#out + 1] = { "delete:" .. name, "Delete " .. name }
+end
+
+-- The Groups menu: a new group, then for each group of yours what can be done with it, and (with any
+-- group) taking the held item out of its group.
 local function groupChoices()
   local out = { { "new:", "New group..." } }
-  for _, section in ipairs(BG.CategorySections()) do
-    local name = section.label
-    out[#out + 1] = { "add:" .. name, "Put held item in " .. name }
-    out[#out + 1] = { "deposit:" .. name, "Send " .. name .. " to the bank" }
-    out[#out + 1] = { "top:" .. name, "Make " .. name .. " first" }
-    out[#out + 1] = { "delete:" .. name, "Delete " .. name }
-  end
+  local sections = BG.CategorySections()
+  for _, section in ipairs(sections) do addGroupRows(out, section.label) end
+  if #sections > 0 then out[#out + 1] = { "remove:", "Take held item out of its group" } end
   return out
 end
 
@@ -55,6 +60,7 @@ local function groupAct(value)
   local verb, name = value:match("^(%a+):(.*)$")
   if verb == "new" then return ns.AskText("New group name", BG.NewGroup, "Create") end
   if verb == "add" then return BG.AddHeld(name) end
+  if verb == "remove" then return BG.RemoveHeld() end
   BG.GroupAction(verb, name)
 end
 

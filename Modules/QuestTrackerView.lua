@@ -15,6 +15,9 @@ local QT = ns.GetModule("QuestTracker")
 -- between blocks, a quest item's button, how many item buttons there are, and how often (seconds) their
 -- range is checked.
 QT.HEADER, QT.TITLE, QT.LINE, QT.GAP, QT.ITEM, QT.MAX_ITEMS, QT.RANGE_EVERY = 22, 16, 14, 6, 22, 8, 0.25
+-- A finished objective's check mark (square), and the followed quest's accent line down its block's left edge:
+-- its width and how far left of the block it sits (clear of the quest item button beside the block).
+QT.MARK, QT.EDGE, QT.EDGE_X = 10, 2, 1
 QT.items, QT.shown = {}, {}
 
 -- Building -------------------------------------------------------------------------------------
@@ -37,13 +40,26 @@ local function addHeader(f)
   f.rule:SetPoint("TOPRIGHT", f, "TOPRIGHT", 0, -QT.HEADER + T.SPACE.tight)
 end
 
--- One objective line in a block.
+-- A line's text, on one line between its left edge (or check) and its count.
+local function addLineText(row)
+  row.text = T.Text(row:CreateFontString(nil, "OVERLAY"), "small", "text2")
+  row.text:SetPoint("RIGHT", row.count, "LEFT", -T.SPACE.tight, 0)
+  row.text:SetJustifyH("LEFT")
+  row.text:SetWordWrap(false)
+  return row
+end
+
+-- One line in a block, as the quest log's objective rows: a check (shown when done), its text, and its count
+-- ("3/8") at the right edge. The step line, the timer and the XP use the text alone.
 local function objectiveLine(block)
-  local fs = T.Text(block:CreateFontString(nil, "OVERLAY"), "small", "text2")
-  fs:SetWidth(QT.W - 10)
-  fs:SetJustifyH("LEFT")
-  fs:SetWordWrap(false)
-  return fs
+  local row = CreateFrame("Frame", nil, block)
+  row:SetSize(QT.W - T.SPACE.gap - T.SPACE.tight, QT.LINE)
+  row.mark = T.Tint(QP.Square(row:CreateTexture(nil, "ARTWORK"), QT.MARK), "muted")
+  row.mark:SetTexture(T.Icon("Check"))
+  row.mark:SetPoint("LEFT", row, "LEFT", 0, 0)
+  row.count = T.Text(row:CreateFontString(nil, "OVERLAY"), "small", "text2")
+  row.count:SetPoint("RIGHT", row, "RIGHT", 0, 0)
+  return addLineText(row)
 end
 
 -- A title click: a Legacy challenge untracks on right-click, a recipe opens (or untracks), a quest opens its details.
@@ -75,7 +91,7 @@ function QT.TitleTooltip(b)
   if not (tip and q) or q.section or ns.InCombat() then return end
   tip:SetOwner(b, "ANCHOR_LEFT")
   tip:SetText(q.title, T.RGB("text"))
-  for _, line in ipairs(QT.StateLines(q)) do tip:AddLine(T.Paint(line[1], line[2]), nil, nil, nil, true) end
+  for _, line in ipairs(QT.StateLines(q)) do tip:AddLine(T.Paint(line.full or line[1], line[2]), nil, nil, nil, true) end
   tip:AddLine(clicksFor(q), T.RGB("muted"))
   tip:Show()
 end
@@ -94,6 +110,15 @@ local function wireBlock(b)
   T.Row(b)
 end
 
+-- The accent line down a block's left edge, shown on the followed quest's.
+local function addEdge(b)
+  b.edge = T.Tint(T.Snap(b:CreateTexture(nil, "ARTWORK"), "divider"), "accent")
+  b.edge:SetTexture(T.WHITE)
+  b.edge:SetWidth(QT.EDGE)
+  b.edge:SetPoint("TOPRIGHT", b, "TOPLEFT", -QT.EDGE_X, 0)
+  b.edge:SetPoint("BOTTOMRIGHT", b, "BOTTOMLEFT", -QT.EDGE_X, 0)
+end
+
 -- A quest's block: its title (clickable) and its objective lines.
 local function makeBlock(parent)
   local b = CreateFrame("Button", nil, parent)
@@ -103,6 +128,7 @@ local function makeBlock(parent)
   b.title:SetWidth(QT.W)
   b.title:SetJustifyH("LEFT")
   b.lines = QP.Pool(b, objectiveLine)
+  addEdge(b)
   wireBlock(b)
   return b
 end
@@ -154,13 +180,20 @@ end
 
 -- Blocks ---------------------------------------------------------------------------------------
 
+-- An objective's line: its text and count apart, faded to the muted gray with a check once it is done (the
+-- tooltip shows the game's text in full).
+local function objectiveSpec(o)
+  local text, count = QP.SplitCount(o.text)
+  return { text, o.done and "muted" or "text2", count = count, done = o.done == true, full = o.text }
+end
+
 -- The lines for a quest's state: "Failed" (a timed quest run out, an escort lost), "Ready to turn in" (an
--- achievement: "Complete"), or its objectives (gray, then green when done).
+-- achievement: "Complete"), or its objectives.
 function QT.StateLines(q)
   if q.failed then return { { "Failed", "bad" } } end
   if q.ready then return { { q.achievement and "Complete" or "Ready to turn in", "good" } } end
   local out = {}
-  for _, o in ipairs(q.objectives) do out[#out + 1] = { "- " .. o.text, o.done and "good" or "text2" } end
+  for _, o in ipairs(q.objectives) do out[#out + 1] = objectiveSpec(o) end
   return out
 end
 
@@ -182,15 +215,22 @@ function QT.BlockHeight(q)
   return QT.TITLE + #QT.LineSpecs(q) * QT.LINE
 end
 
+-- Fills one line from its spec: the text after the check when done, and the count (if any) in the same color.
+local function paintLine(row, spec)
+  row.text:SetPoint("LEFT", row, "LEFT", spec.done and QT.MARK + T.SPACE.tight or 0, 0)
+  row.mark:SetShown(spec.done)
+  T.Color(row.text, spec[2]):SetText(spec[1])
+  T.Color(row.count, spec[2]):SetText(spec.count or "")
+  row:Show()
+end
+
 -- A block's lines under its title.
 local function paintLines(b, q)
   b.lines.Reset()
   for i, spec in ipairs(QT.LineSpecs(q)) do
-    local fs = b.lines.Next()
-    fs:SetPoint("TOPLEFT", b, "TOPLEFT", T.SPACE.gap, -QT.TITLE - (i - 1) * QT.LINE)
-    fs:SetText(spec[1])
-    T.Color(fs, spec[2])
-    fs:Show()
+    local row = b.lines.Next()
+    row:SetPoint("TOPLEFT", b, "TOPLEFT", T.SPACE.gap, -QT.TITLE - (i - 1) * QT.LINE)
+    paintLine(row, spec)
   end
 end
 
@@ -211,6 +251,14 @@ local function paintTitle(b, q)
   T.Color(b.title, QP.LevelColor(q.level))
 end
 
+-- Whether a row is the followed quest: the one you Shift-clicked or the game tracks (Quest guidance, the quest
+-- with the step line), else the shown arrow's own pick; a quest, not a heading, a challenge or a recipe.
+function QT.IsFollowed(q)
+  if q.section or q.achievement or q.recipe or not q.id then return false end
+  local QA = ns.QuestArrow
+  return q.id == (ns.QuestGuide.Followed() or (QA.settings and QA.settings.show and QA.current))
+end
+
 -- A section heading takes no mouse (no clicks, no tooltip, no hover). A block repainted under the mouse keeps
 -- its tooltip with the row it now holds, or drops it (and its wash) as a heading or in a fight.
 local function followMouse(b, q)
@@ -220,9 +268,11 @@ local function followMouse(b, q)
   if q.section or ns.InCombat() then hideTooltip() else QT.TitleTooltip(b) end
 end
 
--- Fills a block: its title, then its lines (a section heading is its name alone).
+-- Fills a block: its title, then its lines (a section heading is its name alone); the followed quest has the
+-- accent line down its left edge.
 function QT.PaintBlock(b, q)
   b.id, b.achievement, b.recipe, b.row = q.id, q.achievement, q.recipe, q
+  b.edge:SetShown(QT.IsFollowed(q))
   followMouse(b, q)
   if q.section then paintSection(b, q) else
     paintTitle(b, q)
@@ -230,6 +280,11 @@ function QT.PaintBlock(b, q)
   end
   b:SetHeight(QT.BlockHeight(q))
   b:Show()
+end
+
+-- Redraws the tracker soon, if it shows: the guide's steps or the followed quest changed.
+function QT.Redraw()
+  if QT.frame then ns.Soon("questtracker", QT.Refresh) end
 end
 
 -- What the foot of the tracker keeps free under the quests: the "+N more" line, and the level XP line when it shows.

@@ -37,7 +37,7 @@ read_globals = {
   "UiMapPoint", "C_SuperTrack", "C_Navigation", "C_Minimap", "hash_SlashCmdList", "IsPlayerSpell",
   "C_Bank", "C_ContentTracking", "InputUtil",
   "GetInventoryItemLink", "C_PlayerInfo",
-  "AbbreviateNumbers", "GetTime", "UnitCastingInfo", "UnitChannelInfo", "AuraUtil", "CreateUnitHealPredictionCalculator", "UnitGetDetailedHealPrediction", "UnitGetIncomingHeals", "UnitGetTotalAbsorbs", "UnitThreatSituation", "C_ActionBar", "C_AddOns", "C_CVar", "C_VideoOptions", "GetGraphicsCVarValueForQualityLevel", "C_Reputation", "C_Spell", "C_UnitAuras", "C_Timer", "C_EquipmentSet", "GetMerchantItemCostInfo", "GetLocale", "GetCursorPosition", "Enum", "GetActionInfo", "GetMacroSpell", "SOUNDKIT", "PlaySound", "ClearCursor", "GetCursorInfo", "GetSpellInfo", "C_SpecializationInfo", "GetSpecialization", "ReloadUI", "GetXPExhaustion", "IsPlayerAtEffectiveMaxLevel", "IsXPUserDisabled", "UnitLevel", "UnitXP", "UnitXPMax", "C_Map", "FCF_OpenTemporaryWindow", "FCF_OpenNewWindow", "GetChatWindowInfo", "FCF_SetLocked", "FCF_SetWindowName", "FCF_Close", "ChatFrame_AddMessageGroup", "ChatFrame_RemoveMessageGroup", "ChatFrame_ContainsMessageGroup", "FCF_SavePositionAndDimensions", "ChatFrame_RemoveAllMessageGroups", "ChatFrame_RemoveAllChannels", "FCF_Tab_OnClick", "FCFTab_UpdateAlpha", "FCFDock_SetPrimary", "FCFDock_GetSelectedWindow", "FCFDock_UpdateTabs", "FCFTab_UpdateColors", "FCF_SetTabPosition", "FCF_SetButtonSide", "FloatingChatFrame_UpdateBackgroundAnchors", "GENERAL_CHAT_DOCK", "ChatAlertFrame", "GetMinimapZoneText", "GetZonePVPInfo", "Minimap", "NUM_CHAT_WINDOWS", "SELECTED_CHAT_FRAME", "SecureHandlerExecute", "SecureHandlerUnwrapScript", "SecureHandlerWrapScript", "SetCVar", "DeclineGuild", "DeclineGroup", "BNDeclineFriendInvite", "RepopMe", "HasSoulstone", "C_DeathInfo", "RED_FONT_COLOR", "IsGuildMember", "C_FriendList", "C_BattleNet", "ZoneTextFrame", "SubZoneTextFrame", "UISpecialFrames", "hooksecurefunc", "ClearOverrideBindings", "GetBindingKey", "CreateFrame", "DEFAULT_CHAT_FRAME", "debugstack", "geterrorhandler", "CallErrorHandler",
+  "AbbreviateNumbers", "GetTime", "UnitCastingInfo", "UnitChannelInfo", "AuraUtil", "CreateUnitHealPredictionCalculator", "UnitGetDetailedHealPrediction", "UnitGetIncomingHeals", "UnitGetTotalAbsorbs", "UnitThreatSituation", "C_ActionBar", "C_AddOns", "C_CVar", "C_VideoOptions", "GetGraphicsCVarValueForQualityLevel", "C_Reputation", "C_Spell", "C_UnitAuras", "C_Timer", "C_EquipmentSet", "GetMerchantItemCostInfo", "GetLocale", "GetCursorPosition", "Enum", "GetActionInfo", "GetMacroSpell", "SOUNDKIT", "PlaySound", "ClearCursor", "GetCursorInfo", "GetSpellInfo", "C_SpecializationInfo", "GetSpecialization", "ReloadUI", "GetXPExhaustion", "IsPlayerAtEffectiveMaxLevel", "IsXPUserDisabled", "UnitLevel", "UnitXP", "UnitXPMax", "C_Map", "FCF_OpenTemporaryWindow", "FCF_OpenNewWindow", "GetChatWindowInfo", "FCF_SetLocked", "FCF_SetWindowName", "FCF_Close", "ChatFrame_AddMessageGroup", "ChatFrame_RemoveMessageGroup", "ChatFrame_ContainsMessageGroup", "FCF_SavePositionAndDimensions", "ChatFrame_RemoveAllMessageGroups", "ChatFrame_RemoveAllChannels", "FCF_Tab_OnClick", "FCFTab_UpdateAlpha", "FCFDock_SetPrimary", "FCFDock_GetSelectedWindow", "FCFDock_UpdateTabs", "FCFTab_UpdateColors", "FCF_SetTabPosition", "FCF_SetButtonSide", "FloatingChatFrame_UpdateBackgroundAnchors", "GENERAL_CHAT_DOCK", "ChatAlertFrame", "GetMinimapZoneText", "GetZonePVPInfo", "Minimap", "NUM_CHAT_WINDOWS", "SELECTED_CHAT_FRAME", "GUILD_MOTD_TEMPLATE", "SecureHandlerExecute", "SecureHandlerUnwrapScript", "SecureHandlerWrapScript", "SetCVar", "DeclineGuild", "DeclineGroup", "BNDeclineFriendInvite", "RepopMe", "HasSoulstone", "C_DeathInfo", "RED_FONT_COLOR", "IsGuildMember", "C_FriendList", "C_BattleNet", "ZoneTextFrame", "SubZoneTextFrame", "UISpecialFrames", "hooksecurefunc", "ClearOverrideBindings", "GetBindingKey", "CreateFrame", "DEFAULT_CHAT_FRAME", "debugstack", "geterrorhandler", "CallErrorHandler",
   "GetAddOnMetadata", "GetBuildInfo", "GetNetStats", "UnitClassification", "C_SpellBook", "GetBindingAction", "GetNumSpecializations", "GetCreatureDifficultyColor", "GetComboPoints", "C_Secrets", "CreateColor", "AnchorUtil", "AuraContainerSortMethod", "C_CurveUtil", "C_StringUtil", "InCombatLockdown", "IsAltKeyDown", "IsControlKeyDown", "IsShiftKeyDown", "PowerBarColor", "RAID_CLASS_COLORS",
   "RegisterAttributeDriver", "RegisterStateDriver", "UnregisterStateDriver", "UnitGroupRolesAssigned", "UnitIsUnit", "RegisterUnitWatch", "SetOverrideBindingClick", "STANDARD_TEXT_FONT", "UIParent", "UnitClass",
   "GetInventoryItemID", "GetPetActionInfo", "GetPetActionCooldown", "UnitExists", "UnitHealth", "UnitHealthMax", "UnitIsConnected",
@@ -96,7 +96,7 @@ read_globals = {
   -- F4 Chat watch: the game's whisper call, and its older name.
   "ChatFrameUtil", "GetChannelList", "ChatFrame_SendTell",
   -- F5 Situations: whether you're in a raid, and resting.
-  "IsInRaid", "IsResting", "UnitIsGroupLeader", "UnitIsGroupAssistant", "UnitCanAttack", "UnitIsTapDenied", "UnitAffectingCombat", "UnitDetailedThreatSituation",
+  "IsInRaid", "IsResting", "UnitIsGroupLeader", "UnitIsGroupAssistant", "UnitCanAttack", "UnitIsTapDenied", "UnitIsGhost", "UnitIsFeignDeath", "UnitAffectingCombat", "UnitDetailedThreatSituation",
   -- #208 Quest guidance: the client's quest lines (quest-start spots on a map).
   "C_QuestLine",
   -- F6 Auction helper: the auction house API and the game's auction house window.
@@ -119,7 +119,7 @@ read_globals = {
   -- E5 Auction ledger: the inbox's auction mail (Blizzard_MailFrame/MailFrame.lua), and the game's
   -- "Auction expired" subject line.
   "TakeInboxMoney", "ReturnInboxItem", "TakeInboxItem", "MailFrame", "SendMailFrame", "SendMailNameEditBox",
-  "GetInboxNumItems", "GetInboxHeaderInfo", "GetInboxInvoiceInfo", "AUCTION_EXPIRED_MAIL_SUBJECT",
+  "GetInboxNumItems", "GetInboxHeaderInfo", "GetInboxInvoiceInfo", "InboxItemCanDelete", "AUCTION_EXPIRED_MAIL_SUBJECT",
   -- Mail tools, Take all: which attachment slots a mail still holds, and whether the server is still
   -- answering the last take (Blizzard_MailFrame/MailFrame.lua, MailInfoDocumentation.lua).
   "HasInboxItem", "C_Mail",
@@ -131,4 +131,6 @@ read_globals = {
   "SuperTrackedFrame",
   -- Inventory: the engine's case-blind UTF-8 compare, so a name with an accented capital is found.
   "strcmputf8i",
+  -- H-04 Reset moved windows (Modules/WindowsMove.lua): the panel manager's list of the windows it lays out.
+  "UIPanelWindows",
 }

@@ -434,6 +434,8 @@ export const TOOLS_ENV = `
     local l = CreateFrame("Button", nil, w.ScrollBox) l.StatusBar = CreateFrame("StatusBar", nil, l)
     l.StatusBar.BackgroundRegions = { l.StatusBar:CreateTexture() } l.StatusBar.Name = l.StatusBar:CreateFontString() l.StatusBar.Value = l.StatusBar:CreateFontString()
     l.Icon = CreateFrame("Frame", nil, l) l.Icon.Icon = l.Icon:CreateTexture()
+    function l:UpdateBackground() for _, r in ipairs(self.StatusBar.BackgroundRegions) do r:SetAlpha(1) end end
+    function l:SetBackgroundAlpha() self:UpdateBackground() end
     w.ScrollBox.lines[#w.ScrollBox.lines + 1] = l
     return l
   end
