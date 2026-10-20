@@ -48,6 +48,13 @@ it("/vg probe: one run opens a report with a section per question and reads each
   expect(chatHas(addon, /Probe done: \d+ present, \d+ missing, \d+ errors/), "chat says how it went").toBe(true);
   expect(addon.eval("return #ns.errors"), "and nothing was caught").toBe(0);
 });
+it("/vg probe: the chat tally counts every error line in the report, including a call that threw", () => {
+  const addon = loggedIn(PROBE_ENV);
+  addon.slash("probe");
+  const errorLines = reportText(addon).split("\n").filter((l) => /: (present, )?error /.test(l)).length;
+  expect(errorLines, "the threw predicate is one of them").toBeGreaterThan(0);
+  expect(chatHas(addon, new RegExp(`Probe done: \\d+ present, \\d+ missing, ${errorLines} errors`)), "chat counts the same errors").toBe(true);
+});
 it("/vg probe: the report is kept in SavedVariables and the next run finds the marker", () => {
   const addon = loggedIn(PROBE_ENV);
   addon.slash("probe");
