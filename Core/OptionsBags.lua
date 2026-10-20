@@ -14,7 +14,7 @@ local function dataBarRows()
     { "header", "XP and reputation" },
     check("Experience bar", setting("DataBars", "xp", true)), check("Reputation bar", setting("DataBars", "reputation", true)),
     { "cycle", "Numbers", { { "hover", "on hover" }, { "always", "always" } }, setting("DataBars", "text", true) },
-    check("Experience tooltip on hover (kills to level, rested, quest XP)", setting("DataBars", "tooltip")),
+    check("Tooltips on hover (XP: kills to level, rested, quest XP; reputation: standing and the next)", setting("DataBars", "tooltip")),
     barsVisibility, barsWhen,
   }
 end
