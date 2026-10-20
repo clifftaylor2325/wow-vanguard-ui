@@ -1,6 +1,6 @@
--- Bag search operators (part of the Bags module): the bag's search box also understands words such as
--- `ilvl>20`, `q:epic`, `type:armor`, `bind:boe` and `cat:potions`, any number of them with plain words, all
--- of which must match. A search with none of these is the game's own. Items that match stay lit and the
+-- Bag search operators (part of the Bags module): the bag's and the bank's search boxes also understand words
+-- such as `ilvl>20`, `q:epic`, `type:armor`, `bind:boe` and `cat:potions`, any number of them with plain words,
+-- all of which must match. A search with none of these is the game's own. Items that match stay lit and the
 -- rest dim, as the game does it, by setting each item button's matches-search state after the game has set it.
 
 local ADDON, ns = ...
@@ -85,19 +85,79 @@ function BG.ItemMatches(tests, bag, slot)
   return true
 end
 
--- After the game has set which items match its search: with operators in the box, ours decide.
-function BG.ApplySearch(frame)
-  local box = _G.BagItemSearchBox
-  local tests = type(box) == "table" and BG.ParseSearch(box:GetText())
-  if not tests then return end
-  for _, button in frame:EnumerateValidItems() do
-    if type(button.SetMatchesSearch) == "function" then button:SetMatchesSearch(BG.ItemMatches(tests, button:GetBagID(), button:GetID())) end
-  end
+-- The search last parsed, so a refresh of each slot doesn't parse it again: { text, tests }.
+local parsed = {}
+
+-- The tests of what the named search box holds, or nil when it holds no operator (or there is no such box).
+local function testsIn(boxName)
+  local box = _G[boxName]
+  if type(box) ~= "table" then return nil end
+  local text = box:GetText()
+  if parsed.text ~= text then parsed.text, parsed.tests = text, BG.ParseSearch(text) end
+  return parsed.tests
 end
 
--- Search operators in the combined bag, when the client has the calls they use (Bags.Enable).
+-- Sets whether one button matches the tests (bag and slot: what it holds); a button without the call is left alone.
+local function mark(button, tests, bag, slot)
+  if type(button.SetMatchesSearch) == "function" then button:SetMatchesSearch(BG.ItemMatches(tests, bag, slot)) end
+end
+
+-- After the game has set which items match its search: with operators in the box, ours decide.
+function BG.ApplySearch(frame)
+  local tests = testsIn("BagItemSearchBox")
+  if not tests then return end
+  for _, button in frame:EnumerateValidItems() do mark(button, tests, button:GetBagID(), button:GetID()) end
+end
+
+-- Search operators in the combined bag, when the client has the calls they use (Bags.Enable): after the
+-- game's search refresh, and after it fills the slots (it sets each slot's match from its own search then).
 function BG.WatchSearch(frame)
   if type(frame.UpdateSearchResults) ~= "function" or type(frame.EnumerateValidItems) ~= "function" then return end
   if type(hooksecurefunc) ~= "function" or type(C_Item) ~= "table" or type(C_Container) ~= "table" then return end
   hooksecurefunc(frame, "UpdateSearchResults", ns.Guard("hook UpdateSearchResults", BG.ApplySearch))
+  if type(frame.UpdateItems) == "function" then hooksecurefunc(frame, "UpdateItems", ns.Guard("hook search UpdateItems", BG.ApplySearch)) end
+end
+
+-- The bank -------------------------------------------------------------------------------------
+
+-- Per-frame state kept off the game's frames (Core/Events.lua, ns.FrameState): bank slots whose refresh is hooked.
+local vgSearchHooked = ns.FrameState("vgSearchHooked")
+
+-- One bank slot after the game set its match: with operators in the bank's box, ours decide.
+local function markBankSlot(button)
+  local tests = testsIn("BankItemSearchBox")
+  if tests then mark(button, tests, button:GetBankTabID(), button:GetContainerSlotID()) end
+end
+
+-- Hooks a bank slot's own refresh once (the game refreshes one slot when an item in it is picked up or put down).
+local function watchBankSlot(button)
+  if vgSearchHooked[button] or type(button.Refresh) ~= "function" then return end
+  vgSearchHooked[button] = true
+  hooksecurefunc(button, "Refresh", ns.Guard("hook bank slot Refresh", markBankSlot))
+end
+
+-- The bank tab's slots after the game set their matches (a search, a refresh, a page or tab change).
+function BG.ApplyBankSearch(panel)
+  for button in panel:EnumerateValidItems() do
+    watchBankSlot(button)
+    markBankSlot(button)
+  end
+end
+
+-- The BankPanelMixin calls the search words need, and those hooked when the client has them: a search, and a
+-- page or tab change (new slots get their own hook; a refresh of every slot runs through those).
+local BANK_CALLS = {
+  needed = { "UpdateSearchResults", "EnumerateValidItems" },
+  hooked = { "UpdateSearchResults", "GenerateItemSlotsForSelectedTab" },
+}
+
+-- Search operators in the bank too (Bags.Enable), when the client has the calls.
+function BG.WatchBankSearch(panel)
+  if type(hooksecurefunc) ~= "function" or type(C_Item) ~= "table" or type(C_Container) ~= "table" then return end
+  for _, name in ipairs(BANK_CALLS.needed) do
+    if type(panel[name]) ~= "function" then return end
+  end
+  for _, name in ipairs(BANK_CALLS.hooked) do
+    if type(panel[name]) == "function" then hooksecurefunc(panel, name, ns.Guard("hook bank " .. name, BG.ApplyBankSearch)) end
+  end
 end
