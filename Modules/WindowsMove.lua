@@ -306,7 +306,7 @@ local function setUp(name)
   vgMovable[frame] = true
   if not layoutOf(frame, name) then recordHome(frame) end
   ns.OutOfCombat(function() makeMovable(frame, name) end, "move setup " .. name)
-  frame:HookScript("OnShow", function() place(name) end)
+  frame:HookScript("OnShow", ns.Guard("show " .. name, function() place(name) end))
   return frame
 end
 
