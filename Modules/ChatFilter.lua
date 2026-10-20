@@ -30,7 +30,7 @@ local PREFIX = "addon:Vanguard:allow:"
 CF.CATEGORIES = {
   { key = "gold", label = "Gold selling", groups = {
     { "gold", "coins" },
-    { "www.", ".com", ".net", ".gg", "http", "paypal", "usd", "discord", "$" } } },
+    { "www.", "http", ".com", ".net", "paypal", "usd", "$", "\226\130\172", "fast delivery" } } },
   { key = "boosting", label = "Boosting", groups = {
     { "boost", "power level", "powerlevel" },
     { "wts", "selling", "service", "cheap", "price", "discount", "gold", "usd", "$", "pm me", "whisper me" } } },
@@ -39,8 +39,9 @@ CF.CATEGORIES = {
     { "guild", "raid team", "casual", "social", "community" } } },
 }
 
--- This session's state: the senders let through, the last line judged, who said what lately.
-CF.allowed, CF.recent, CF.recentCount, CF.count = {}, {}, 0, 0
+-- This session's state: the senders let through, the last line judged, who said what lately, and how many
+-- lines were caught, in all and by reason.
+CF.allowed, CF.recent, CF.recentCount, CF.count, CF.counts = {}, {}, 0, 0, {}
 
 -- Matching ------------------------------------------------------------------------------------
 
@@ -112,14 +113,12 @@ function CF.FindWindow()
   end
 end
 
--- A new window called Filtered that hears no chat of its own, or nil on a client without the call.
+-- A new window called Filtered that hears no chat of its own (FCF_OpenNewWindow's second argument takes
+-- every message group and channel off it), or nil on a client without the call.
 local function openWindow()
   if type(FCF_OpenNewWindow) ~= "function" then return nil end
   local frame = FCF_OpenNewWindow(CF.TAB, true)
-  if type(frame) ~= "table" then return nil end
-  if type(ChatFrame_RemoveAllMessageGroups) == "function" then ChatFrame_RemoveAllMessageGroups(frame) end
-  if type(ChatFrame_RemoveAllChannels) == "function" then ChatFrame_RemoveAllChannels(frame) end
-  return frame
+  return type(frame) == "table" and frame or nil
 end
 
 -- Finds or makes the Filtered window when the filter is on and sends to the tab; out of combat only.
@@ -147,9 +146,15 @@ local function inertLinks(text)
   return (text:gsub("|Haddon:", "|H"):gsub("|HVanguard:url:", "|Haddon:Vanguard:url:"))
 end
 
+-- Counts a caught line, in all and under its reason.
+local function countCaught(why)
+  CF.count = CF.count + 1
+  CF.counts[why] = (CF.counts[why] or 0) + 1
+end
+
 -- Puts a caught line in the Filtered tab: why, the sender (a link that un-filters them), the text.
 function CF.Send(why, sender, text)
-  CF.count = CF.count + 1
+  countCaught(why)
   ns.Soon("chatfilter tab", CF.UpdateTab)
   text = inertLinks(text)
   CF.window:AddMessage(string.format("(%s) |H%s%s|h[%s]|h: %s|r", why, PREFIX, sender, ns.Home.Display(sender), text))
@@ -167,7 +172,7 @@ end
 -- Catches a line: sent to the Filtered tab, or just counted when hidden.
 local function catch(why, sender, text)
   if CF.settings.mode == "tab" then return CF.Send(why, sender, text) end
-  CF.count = CF.count + 1
+  countCaught(why)
 end
 
 -- Judges one line (once per line ID, or per sender and text without one: the game asks once per chat
@@ -194,6 +199,51 @@ function CF.OnLink(_, link)
   local sender = link:sub(#PREFIX + 1)
   CF.allowed[sender] = true
   ns.Chat(string.format("%s's lines show in chat again until you log out.", ns.Home.Display(sender)))
+end
+
+-- What it caught -----------------------------------------------------------------------------
+
+-- What the filter caught this session, for its card: "Caught this session: 12 (Gold selling 5, Repeat 7)", the
+-- reasons in a fixed order (the categories, your words, repeats).
+function CF.CaughtText()
+  if CF.count == 0 then return "Nothing caught this session." end
+  local parts = {}
+  for _, why in ipairs(CF.Reasons()) do
+    if CF.counts[why] then parts[#parts + 1] = string.format("%s %d", why, CF.counts[why]) end
+  end
+  return string.format("Caught this session: %d (%s)", CF.count, table.concat(parts, ", "))
+end
+
+-- Every reason a line can be caught for, in the card's order.
+function CF.Reasons()
+  local out = {}
+  for _, cat in ipairs(CF.CATEGORIES) do out[#out + 1] = cat.label end
+  out[#out + 1], out[#out + 2] = "Your word", "Repeat"
+  return out
+end
+
+-- The senders let through this session, for the card: "Let through: Goldy, Seller" (each shown name once, sorted),
+-- or that there are none.
+function CF.LetThroughText()
+  local seen, names = {}, {}
+  for sender in pairs(CF.allowed) do seen[ns.Home.Display(sender)] = true end
+  for name in pairs(seen) do names[#names + 1] = name end
+  if #names == 0 then return "Nobody let through this session." end
+  table.sort(names)
+  return "Let through: " .. table.concat(names, ", ")
+end
+
+-- Filters the senders let through again (the card's Filter them again button); says so.
+function CF.FilterAgain()
+  CF.allowed = {}
+  ns.Options.Refresh()
+  ns.Chat("Every sender is filtered again.")
+end
+
+-- The card's hint while caught lines are hidden (they can't be seen or let through), else nothing.
+function CF.HiddenHint()
+  if ns.Settings("ChatFilter", CF.defaults).mode ~= "hide" then return "" end
+  return "Hidden lines can't be seen or let through: set Caught lines to the Filtered tab for that."
 end
 
 -- Keywords ------------------------------------------------------------------------------------
@@ -259,7 +309,7 @@ end
 -- Sets where caught lines go ("tab" or "hide"); says so.
 function CF.SetMode(mode)
   ns.Settings("ChatFilter", CF.defaults).mode = mode
-  CF.Prepare()
+  CF.Changed()
   ns.Chat(mode == "tab" and "Caught lines go to the Filtered tab." or "Caught lines are hidden.")
 end
 
@@ -282,9 +332,11 @@ function CF.Command(rest)
   ns.Chat("Usage: /vg filter [on | off | tab | hide | add <word> | remove <word> | clear]")
 end
 
--- Follows a setting changed in the options: the Filtered tab is made when it is first needed.
+-- Follows a setting changed in the options: the Filtered tab is made when it is first needed, and the card's
+-- live lines (the hidden-lines hint) are read again.
 function CF.Changed()
   CF.Prepare()
+  ns.Options.Refresh()
 end
 
 -- Module switched off: the filter lets everything through (it stays registered with the game until a reload).
