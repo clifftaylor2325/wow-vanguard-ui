@@ -3,6 +3,7 @@
 
 import { expect, it } from "vitest";
 import { chatHas, isTok, loggedIn } from "./helpers.mjs";
+import { luaValue } from "../lib/lua-emit.mjs";
 
 // TEST-ONLY: a wall clock (a test moves __now), the tooltip data API the Tooltips module
 // hooks, and a way to show an item's tooltip (the client's own price shown, so only the added
@@ -310,11 +311,19 @@ it("the sell form: an item's bid, and the auction length picked, remembered or f
   addon.eval("__wfgWorld.bags[0][2] = { itemID = 9999, count = 1 }");
   dropAndAnswer(addon, 2, "ITEM_SEARCH_RESULTS_UPDATED", { itemID: 9999 });
   expect([card(addon)[0][2], addon.eval("return ns.Settings('AuctionHelper').lastDuration")], "the next item starts at the last length used").toEqual(["45c · TEST-ONLY 48 Hours", 3]);
-  addon.eval("ns.Settings('AuctionHelper').duration = 2");
+  addon.eval("ns.Settings('AuctionHelper').duration = '2'");
   dropAndAnswer(addon, 2, "ITEM_SEARCH_RESULTS_UPDATED", { itemID: 9999 });
   expect(card(addon)[0][2], "a fixed length under Auction length").toBe("30c · TEST-ONLY 24 Hours");
-  const choices = addon.eval(`local out = {} for i, c in ipairs(${HELPER}.DurationChoices(true)) do out[i] = c[2] end return out`);
+  const choices = addon.eval(`local out = {} for i, c in ipairs(${HELPER}.DurationSettingChoices()) do out[i] = c[2] end return out`);
   expect(choices, "the option's choices: last used, then the game's names").toEqual(["Last used", "TEST-ONLY 12 Hours", "TEST-ONLY 24 Hours", "TEST-ONLY 48 Hours"]);
+});
+it("a fixed Auction length picked in the options survives the next login", () => {
+  const first = loggedIn();
+  first.eval(`for _, p in ipairs(ns.Options.PAGES) do if p.key == "town" then
+    for _, r in ipairs(p.rows()) do if r[2] == "Auction length" then r[5](r[3][3][1]) end end end end`);
+  const saved = first.eval("return VanguardDB.profiles.Default.AuctionHelper");
+  const again = loggedIn("", { savedVariables: `VanguardDB.profiles.Default = { AuctionHelper = ${luaValue(saved)} }` });
+  expect(again.eval("return ns.Settings('AuctionHelper').duration"), "24 hours, not put back to Last used").toBe("2");
 });
 it("the next stack is the same item: another variant or a locked slot is passed over", () => {
   const addon = atAuctionHouse(BAGS + `__wfgWorld.bags[1][1] = { itemID = 9999, count = 1 } __wfgWorld.bags[1][2] = { itemID = 9999, count = 1 }
