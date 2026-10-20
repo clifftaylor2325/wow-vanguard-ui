@@ -1,5 +1,5 @@
--- The Chat page (/vg): the chat window, its extras and the game's own
--- timestamp and class-color settings, chat watch and the group board.
+-- The Chat page (/vg): the chat window, its tabs, its extras (with the game's own timestamp and
+-- class-color settings), chat watch, the chat filter, history, the windows' sizes and the group board.
 -- Core/Options.lua has the helpers and the page list.
 
 local ADDON, ns = ...
@@ -46,19 +46,28 @@ local function chatWindowRows()
   }, chatTextRows())
 end
 
--- Chat extras: links, the Copy button, short channel names, the wheel, and the game's own timestamp
--- and class-color settings. Links and the button apply at once.
+-- The Copy tile's switch, then Find in chat and the Find tile's switch, together (each applies at once).
+local function copyFindRows(CX)
+  local CW = ns.GetModule("ChatWindows")
+  return {
+    check("Copy button in the chat's tab bar", liveSetting("ChatExtras", "copy", CX.ApplyCopy)),
+    { "button", "Find in chat", CW.AskFind },
+    check("Find button in the chat's tab bar", liveSetting("ChatWindows", "find", CW.ApplyFind)),
+  }
+end
+
+-- Chat extras: links, the Copy and Find rows (copyFindRows), short channel names, the wheel, and the game's own
+-- timestamp and class-color settings. Links and the buttons apply at once.
 local function chatRows()
   local CX = ns.GetModule("ChatExtras")
-  return {
-    { "header", "Chat extras" },
-    check("Clickable web links in chat", setting("ChatExtras", "links")),
-    check("Copy button in the chat's tab bar", liveSetting("ChatExtras", "copy", CX.ApplyCopy)),
+  local rows = { { "header", "Chat extras" }, check("Clickable web links in chat", setting("ChatExtras", "links")) }
+  append(rows, copyFindRows(CX))
+  return append(rows, {
     check("Short channel names: [2. Trade] shows as [2]", setting("ChatExtras", "shortChannels")),
     check("Ctrl + mouse wheel jumps to the top or bottom of chat", setting("ChatExtras", "ctrlScroll")),
     { "cycle", "Chat timestamps (the game's setting)", CX.TimestampChoices(), CX.CVarSetting("showTimestamps", timestampChoice) },
     { "cycle", "Class-colored names in chat (the game's setting)", CLASS_NAMES, CX.CVarSetting("chatClassColorOverride", classNameChoice) },
-  }
+  })
 end
 
 -- Chat watch's switches: the channels it reads, its sound, its toast and the toast's auction price.
@@ -72,16 +81,38 @@ local function chatWatchSwitches(CW)
   }
 end
 
--- Chat watch: add a phrase, a Remove button per phrase, then the switches.
+-- Chat watch: add a phrase, a Remove button per phrase (or a hint while there are none), then the switches.
 local function chatWatchRows()
   local CW = ns.GetModule("ChatWatch")
   local rows = { { "header", "Chat watch" }, { "text", "Phrases to watch for: a sound and a toast when one is said; click the toast to whisper." },
     { "button", "Add a phrase", function() ns.AskText("Watch for", CW.AddFromDialog, "Add") end } }
-  for _, p in ipairs(moduleSettings("ChatWatch").phrases) do rows[#rows + 1] = { "button", "Remove: " .. p, function() CW.Remove(p) end } end
+  local phrases = moduleSettings("ChatWatch").phrases
+  if #phrases == 0 then rows[#rows + 1] = { "text", "No phrases yet. Add one, such as LFM or a dungeon's name." } end
+  for _, p in ipairs(phrases) do rows[#rows + 1] = { "button", "Remove: " .. p, function() CW.Remove(p) end } end
   return append(rows, chatWatchSwitches(CW))
 end
 
--- Chat filter: the switches, where caught lines go, then a Remove button per word of your own.
+-- What the chat filter caught this session, by reason, the hint while caught lines are hidden, and the senders let
+-- through with a button that filters them again: live lines, re-read each time the window shows or a setting changes.
+local function chatFilterStatusRows(CF)
+  return {
+    { "text", CF.CaughtText },
+    { "text", CF.HiddenHint },
+    { "text", CF.LetThroughText },
+    { "button", "Filter them again", CF.FilterAgain },
+  }
+end
+
+-- Chat filter's words of your own: Add a word, then a Remove button per word (or a hint while there are none).
+local function chatFilterWordRows(CF)
+  local rows = { { "button", "Add a word", function() ns.AskText("Filter lines with", CF.AddFromDialog, "Add") end } }
+  local words = moduleSettings("ChatFilter").keywords
+  if #words == 0 then rows[#rows + 1] = { "text", "No words of your own yet." } end
+  for _, w in ipairs(words) do rows[#rows + 1] = { "button", "Remove: " .. w, function() CF.Remove(w) end } end
+  return rows
+end
+
+-- Chat filter: the switches, where caught lines go, what it caught (chatFilterStatusRows), then your words.
 local function chatFilterRows()
   local CF = ns.GetModule("ChatFilter")
   local changed = CF.Changed
@@ -89,17 +120,14 @@ local function chatFilterRows()
     check("Filter chat", liveSetting("ChatFilter", "on", changed)),
     { "cycle", "Caught lines", { { "tab", "Go to the Filtered tab" }, { "hide", "Are hidden" } }, liveSetting("ChatFilter", "mode", changed) },
     check("Gold selling", setting("ChatFilter", "gold")), check("Boosting", setting("ChatFilter", "boosting")),
-    check("Guild recruiting", setting("ChatFilter", "recruiting")), check("Same line again within a minute", setting("ChatFilter", "repeats")),
-    { "button", "Add a word", function() ns.AskText("Filter lines with", CF.AddFromDialog, "Add") end } }
-  for _, w in ipairs(moduleSettings("ChatFilter").keywords) do rows[#rows + 1] = { "button", "Remove: " .. w, function() CF.Remove(w) end } end
-  return rows
+    check("Guild recruiting", setting("ChatFilter", "recruiting")), check("Same line again within a minute", setting("ChatFilter", "repeats")) }
+  return append(append(rows, chatFilterStatusRows(CF)), chatFilterWordRows(CF))
 end
 
 -- Chat windows: the game's lock, the movers for floating windows, then a width and a height for each window showing.
 local function chatWindowsRows()
   local CW = ns.GetModule("ChatWindows")
   local rows = { { "header", "Chat windows" }, { "text", "Size each chat window here instead of dragging its corner. Lock stops the game's drag." },
-    { "button", "Find in chat", CW.AskFind }, check("Find button in the chat's tab bar", liveSetting("ChatWindows", "find", CW.ApplyFind)),
     check("Lock chat windows", CW.LockSetting()), check("Move floating windows with /vg unlock (reload)", setting("ChatWindows", "movers", true)) }
   for _, w in ipairs(CW.Shown()) do
     local wGet, wSet = CW.SizeSetting(w[2], false)
@@ -112,7 +140,7 @@ end
 -- Chat tabs: pick a tab, make, rename or close one, and choose what it shows.
 local function chatTabRows()
   local CW = ns.GetModule("ChatWindows")
-  local rows = { { "header", "Chat tabs" }, { "text", "Pick a tab, then rename or close it, or choose what it shows." },
+  local rows = { { "header", "Chat tabs" }, { "text", "Pick a tab, then rename or close it, or choose what it shows. Channels: right-click the tab, then Settings." },
     { "cycle", "Tab", CW.TabChoices(), CW.TabSetting() },
     { "button", "New chat tab", function() ns.AskText("Name the new tab", CW.New, "Make") end },
     { "button", "Rename this tab", function() ns.AskText("New name for this tab", CW.Rename, "Rename") end },
@@ -134,9 +162,16 @@ local function chatHistoryRows()
   }
 end
 
--- The Chat page: the chat window, chat watch, the chat filter and the group board (Modules/GroupBoard.lua adds its card).
+-- The Chat page's cards, in the order players look for things: the chat window, its tabs, the extras (Copy and
+-- Find together), chat watch, the chat filter, history and the windows' sizes; the group board's card comes
+-- last (Modules/GroupBoard.lua adds it).
+local CHAT_CARDS = { chatWindowRows, chatTabRows, chatRows, chatWatchRows, chatFilterRows, chatHistoryRows, chatWindowsRows }
+
+-- The Chat page's rows: each card's (CHAT_CARDS), in order.
 local function chatPageRows()
-  return append(append(append(append(append(append(chatWindowRows(), chatWindowsRows()), chatTabRows()), chatRows()), chatHistoryRows()), chatWatchRows()), chatFilterRows())
+  local rows = {}
+  for _, card in ipairs(CHAT_CARDS) do append(rows, card()) end
+  return rows
 end
 
 O.AddPage({ key = "chat", title = "Chat", icon = "NavChat", order = 82, rows = chatPageRows })

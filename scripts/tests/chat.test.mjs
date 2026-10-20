@@ -33,7 +33,7 @@ it("minimap", () => {
   const tip = addon.eval("return { __maps, GameTooltip:IsShown(), GameTooltip.__lines, Vanguard_MinimapZone.__points.TOPLEFT.x, Vanguard_MinimapZone.__height }");
   expect([tip[0], tip[1], tip[2].map((l) => l.text), isTok(addon, [tip[2][2].r, tip[2][2].g, tip[2][2].b], "zoneContested"), tip[3], tip[4]],
     "clicking the zone name opens the world map; hovering it names the zone, its subzone and whose territory it is (in the zone color); the button leaves the top corners to the game's buttons")
-    .toEqual([1, true, ["Elwynn Forest", "Goldshire", "Contested territory"], true, 28, 20]);
+    .toEqual([1, true, ["Elwynn Forest", "Goldshire", "Contested territory", "Click: world map", "Wheel: zoom"], true, 28, 20]);
   addon.eval("local b = Vanguard_MinimapZone b.__scripts.OnLeave(b) b.__scripts.OnMouseWheel(b, -1)");
   expect(addon.eval("return { GameTooltip:IsShown(), Minimap:GetZoom() }"), "the tooltip goes when the mouse leaves, and the wheel over the name still zooms").toEqual([false, 4]);
   const bare = loggedIn(UI_ENV, { savedVariables: "VanguardDB.profiles = { Default = { Minimap = { coords = false } } }" });
@@ -242,8 +242,15 @@ it("minimap: a free-for-all zone (arena) is named in the hostile colour, with a 
   const addon = loggedIn(UI_ENV + `GetZonePVPInfo = nil C_PvP = { GetZonePVPInfo = function() return "arena" end }`);
   addon.eval("ns.GetModule('Minimap').UpdateZone() Vanguard_MinimapZone.__scripts.OnEnter(Vanguard_MinimapZone)");
   const tip = addon.eval("return GameTooltip.__lines");
-  expect([isTok(addon, addon.eval("return ns.GetModule('Minimap').zone.__textColor"), "zoneHostile"), tip[tip.length - 1].text, isTok(addon, [tip[tip.length - 1].r, tip[tip.length - 1].g, tip[tip.length - 1].b], "zoneHostile")],
+  const territory = tip[tip.length - 3];
+  expect([isTok(addon, addon.eval("return ns.GetModule('Minimap').zone.__textColor"), "zoneHostile"), territory.text, isTok(addon, [territory.r, territory.g, territory.b], "zoneHostile")],
     "as the game's own minimap colours and names it").toEqual([true, "Free-for-all territory", true]);
+});
+it("minimap: the zone name's tooltip ends with what a click and the wheel do, muted", () => {
+  const addon = loggedIn(UI_ENV);
+  addon.eval("Vanguard_MinimapZone.__scripts.OnEnter(Vanguard_MinimapZone)");
+  const tip = addon.eval("return GameTooltip.__lines").slice(-2);
+  expect([tip.map((l) => l.text), tip.every((l) => isTok(addon, [l.r, l.g, l.b], "text2"))], "two hint lines in the muted colour").toEqual([["Click: world map", "Wheel: zoom"], true]);
 });
 it("minimap: Rotate Minimap's config update puts Vanguard's mask back, square or round", () => {
   const ROTATE = `MinimapCluster.UpdateMinimapConfig = function() Minimap:SetMaskTexture("ui-hud-minimap-frame-generic-mask") end`;
@@ -926,6 +933,52 @@ it("minimap drawer: addon buttons gathered beside the map", () => {
   expect(spot("LibDBIcon10_TestOnlyOne"), "when its addon moves it back, it returns to its cell").toEqual(["Vanguard_MinimapDrawer", 4, -4]);
   const off = loggedIn(UI_ENV + DRAWER_ENV, { savedVariables: "VanguardDB.profiles = { Default = { MinimapButtons = { drawer = false } } }" });
   expect(off.eval("return { LibDBIcon10_TestOnlyOne:GetParent():GetName(), Vanguard_MinimapDrawer == nil }"), "switched off, they stay on the map").toEqual(["Minimap", true]);
+});
+// TEST-ONLY LibDBIcon-1.0 as another addon would load it: __icon(name) makes a button and fires its callback.
+const DBICON_ENV = `
+  local lib = LibStub:NewLibrary("LibDBIcon-1.0", 1)
+  lib.callbacks = LibStub("CallbackHandler-1.0"):New(lib)
+  function __icon(name) local b = CreateFrame("Button", "LibDBIcon10_" .. name, Minimap) lib.callbacks:Fire("LibDBIcon_IconCreated", b, name) return b end
+`;
+it("minimap drawer: a button an addon makes later joins at once (after a fight), and a protected one is left on the map", () => {
+  const addon = loggedIn(UI_ENV + DRAWER_ENV + DBICON_ENV);
+  // The named button's parent.
+  const parent = (name) => addon.eval(`return ${name}:GetParent():GetName()`);
+  addon.eval('__icon("TestOnlyLate")');
+  expect(parent("LibDBIcon10_TestOnlyLate"), "made after login: gathered as LibDBIcon makes it").toBe("Vanguard_MinimapDrawer");
+  setCombat(addon, true);
+  addon.eval('__icon("TestOnlyFight")');
+  expect(parent("LibDBIcon10_TestOnlyFight"), "in a fight it waits").toBe("Minimap");
+  setCombat(addon, false);
+  expect(parent("LibDBIcon10_TestOnlyFight"), "and joins when the fight ends").toBe("Vanguard_MinimapDrawer");
+  addon.eval('local b = CreateFrame("Button", "LibDBIcon10_TestOnlySecure", Minimap) b.__protected = true');
+  addon.fire("PLAYER_ENTERING_WORLD");
+  expect(parent("LibDBIcon10_TestOnlySecure"), "a protected button stays on the map").toBe("Minimap");
+  const later = loggedIn(UI_ENV + DRAWER_ENV);
+  later.eval(DBICON_ENV);
+  later.eval('__icon("TestOnlyEarly")');
+  later.fire("ADDON_LOADED", "TEST-ONLY Iconer");
+  later.eval('__icon("TestOnlyLoaded")');
+  expect(later.eval("return { LibDBIcon10_TestOnlyEarly:GetParent():GetName(), LibDBIcon10_TestOnlyLoaded:GetParent():GetName() }"), "LibDBIcon loaded after Vanguard: a button it made before the hook is gathered at the hook, and later ones as they come")
+    .toEqual(["Vanguard_MinimapDrawer", "Vanguard_MinimapDrawer"]);
+});
+it("minimap drawer: buttons in name order, the toggle counts them, Escape closes it, and it opens on the side with room", () => {
+  const addon = loggedIn(UI_ENV + DRAWER_ENV + 'CreateFrame("Button", "LibDBIcon10_TestOnlyAlpha", Minimap) CreateFrame("Button", "LibDBIcon10_TestOnlyZeta", Minimap)');
+  // A drawer button's offset across the drawer.
+  const x = (name) => addon.eval(`return ${name}.__points.TOPLEFT.x`);
+  expect(["Alpha", "One", "Zeta"].map((n) => x(`LibDBIcon10_TestOnly${n}`)), "by name, whatever order they were made in").toEqual([4, 32, 60]);
+  addon.eval("local t = Vanguard_MinimapDrawerToggle t.__scripts.OnEnter(t)");
+  expect(addon.eval("return GameTooltip.__lines[1].text"), "the toggle's tooltip counts them").toBe("Addon buttons (3)");
+  addon.eval("local t = Vanguard_MinimapDrawerToggle t.__scripts.OnLeave(t)");
+  expect(addon.eval("for _, n in ipairs(UISpecialFrames) do if n == 'Vanguard_MinimapDrawer' then return true end end return false"), "Escape closes it, as the game's own panels").toBe(true);
+  // Opens the drawer with the map at a point of the screen, and says where it went: its point, the map's point.
+  const openAt = (point, x, y) => addon.eval(`local map = ns.MoverFrame("minimap") map:ClearAllPoints() map:SetPoint("${point}", UIParent, "${point}", ${x}, ${y})
+    Vanguard_MinimapDrawer:Hide() local t = Vanguard_MinimapDrawerToggle t.__scripts.OnClick(t)
+    local d = Vanguard_MinimapDrawer local p, rel, relPoint = d:GetPoint(1) return { d:IsShown(), p, relPoint }`);
+  expect(openAt("TOPRIGHT", -12, -12), "top right of the screen: left of the map, level with its top").toEqual([true, "TOPRIGHT", "TOPLEFT"]);
+  expect(openAt("TOPLEFT", 0, -12), "at the left edge: right of the map").toEqual([true, "TOPLEFT", "TOPRIGHT"]);
+  addon.eval("local t = Vanguard_MinimapDrawerToggle t.__scripts.OnClick(t)");
+  expect(addon.eval("return Vanguard_MinimapDrawer:IsShown()"), "the toggle shuts it again").toBe(false);
 });
 it("minimap drawer: its Modules row says it needs the Minimap module, which it gathers nothing without", () => {
   const addon = loggedIn(UI_ENV + DRAWER_ENV, { savedVariables: "VanguardDB.profiles = { Default = { modules = { Minimap = false } } }" });
@@ -1680,6 +1733,57 @@ it("R2.11 popups: the dark tile faded, the warning icon and progress fill kept, 
   const bare = loggedIn(`${WINDOWS_ENV}${INSIDES_LUA} StaticPopup1.EditBox = {} StaticPopup1.ItemFrame = {} StaticPopup1.Dropdown = {} StaticPopup1.BG = 1`);
   bare.eval("StaticPopup1:Show()");
   expect([windowState(bare, "StaticPopup1").panel, bare.eval("return #ns.errors")], "a bare popup, or odd controls, are skinned without an error").toEqual([true, 0]);
+});
+// TEST-ONLY StaticPopup1 with its first button in its ButtonContainer (GameDialog.xml), so the window skin themes
+// it, the label in the game's gold from its normal font object.
+const DANGER_ENV = `${POPUP_ENV}
+  local p = StaticPopup1
+  p.ButtonContainer = CreateFrame("Frame", nil, p)
+  local b = CreateFrame("Button", nil, p.ButtonContainer) p.ButtonContainer.Button1 = b p.ButtonContainer.Buttons = { b }
+  b:SetFontString(b:CreateFontString(nil, "OVERLAY"))
+  __gold = UIParent:CreateFontString(nil, "OVERLAY") __gold:SetTextColor(1, 0.82, 0)
+  b:SetNormalFontObject(__gold) b:GetFontString():SetTextColor(1, 0.82, 0)`;
+// The popup's first button's label colour.
+const confirmLabel = (addon) => addon.eval("return { StaticPopup1.ButtonContainer.Button1:GetFontString():GetTextColor() }");
+// Shows StaticPopup1 as the given popup (the game sets which before the show).
+const showPopup = (addon, which) => addon.eval(`StaticPopup1:Hide() StaticPopup1.which = "${which}" StaticPopup1:Show()`);
+it("H-08 popups: a destroy popup's first button reads in the danger colour, and keeps it after the game's hover", () => {
+  const addon = loggedIn(DANGER_ENV);
+  showPopup(addon, "DELETE_ITEM");
+  expect(isTok(addon, confirmLabel(addon), "bad"), "Delete item: the confirm label is in the danger colour").toBe(true);
+  addon.eval("local b = StaticPopup1.ButtonContainer.Button1 b:GetFontString():SetTextColor(1, 1, 1) b.__scripts.OnEnter(b)");
+  expect(isTok(addon, confirmLabel(addon), "bad"), "the game's hover colour is painted over again").toBe(true);
+});
+it("H-08 popups: an ordinary popup on the same frame gets the game's gold back, and a theme refresh leaves it gold", () => {
+  const addon = loggedIn(DANGER_ENV);
+  showPopup(addon, "DELETE_ITEM");
+  showPopup(addon, "CAMP");
+  expect(confirmLabel(addon).slice(0, 3), "the gold from the button's normal font object").toEqual([1, 0.82, 0]);
+  addon.eval("local b = StaticPopup1.ButtonContainer.Button1 b.__scripts.OnEnter(b) b.__scripts.OnLeave(b) ns.Theme.Refresh()");
+  expect(confirmLabel(addon).slice(0, 3), "hover and a theme refresh leave it gold").toEqual([1, 0.82, 0]);
+});
+it("H-08 popups: without a normal font object, the colour from before the paint comes back", () => {
+  const addon = loggedIn(DANGER_ENV);
+  addon.eval("StaticPopup1.ButtonContainer.Button1:SetNormalFontObject(nil)");
+  showPopup(addon, "ABANDON_QUEST");
+  showPopup(addon, "CAMP");
+  expect(confirmLabel(addon).slice(0, 3), "the label's own gold").toEqual([1, 0.82, 0]);
+});
+it("H-08 popups: a destroy popup waiting for DELETE leaves the disabled button alone, and paints it once it is enabled", () => {
+  const addon = loggedIn(DANGER_ENV);
+  addon.eval("StaticPopup1.ButtonContainer.Button1:Disable()");
+  showPopup(addon, "DELETE_GOOD_ITEM");
+  expect(isTok(addon, confirmLabel(addon), "bad"), "disabled: not the danger colour").toBe(false);
+  addon.eval("StaticPopup1.ButtonContainer.Button1:Enable()");
+  expect(isTok(addon, confirmLabel(addon), "bad"), "enabled: the danger colour").toBe(true);
+});
+it("H-08 popups: a first button without a label, or an odd Button1, is no error", () => {
+  const addon = loggedIn(DANGER_ENV);
+  addon.eval("StaticPopup1.ButtonContainer.Button1:SetFontString(nil)");
+  showPopup(addon, "ABANDON_QUEST");
+  addon.eval("StaticPopup1.ButtonContainer.Button1 = 1");
+  showPopup(addon, "DELETE_MAIL");
+  expect(addon.eval("return #ns.errors")).toBe(0);
 });
 it("R2.11 the ready check: the listener's tile and border faded, the portrait kept, title, prompt and buttons in the theme", () => {
   const addon = loggedIn(POPUP_ENV);

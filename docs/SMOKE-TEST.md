@@ -737,6 +737,12 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Expect: the first three are not taken as prices (the box goes back to the suggestion; nothing posts at 100,000 gold or 16 gold); `1g 50s` is the price. With per stack on, `55c` for a stack of 10 shows `60c` in the box (6c a unit, rounded up) and the stack posts at 60c, never under the 55c typed. [Needs in-game check: what the client does with a posted price near the highest it takes.]
 - If it fails, paste: a screenshot of the Sell card and `/vg errors`.
 
+### 9.4b The scan countdown, a refused scan, and deals kept through the mailbox
+
+- Do: on the Lists tab, Scan the auction house and let it finish; close the auction house and open it again. Within 15 minutes, open the auction house on a second character (or, with another auction addon, run its full scan first) and look at the Scan button; if it can be pressed, press it and wait two minutes. Back on the first character, after a scan with deals found, walk to the mailbox, then come back and open Deals and Upgrades.
+- Expect: the Scan button is greyed and reads "Next scan in N min", counting down, with "Scanned N min ago · N items" under it. On the second character the button is greyed too (the 15 minutes are the account's); if the game refused a scan, after about 90 seconds chat says another character or auction addon may have scanned, the button counts down 15 minutes from the try, and nothing is stuck at "scanning 0 of 0" (the line under the button is never in the warning colour while a scan runs). Note how long a full scan took. The deals and upgrades are still listed, the heading reading "N found, the oldest N min ago" and each tooltip "Found N min ago."
+- If it fails, paste: a screenshot of the Lists tab, the chat lines and `/vg errors`.
+
 ### 9.5 Sort clear of the backpack icon
 
 - Do: without a gamepad, open your bags (combined bag on) and look at the top row. Click Sort, including on its right half. Close and open the bags, then `/reload` and open them again.
@@ -865,11 +871,29 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Expect: the backpack's count and the info strip's "free" turn amber at 4 and red at 0, together; a soul bag's or quiver's slots don't count towards either. The bag's tooltip ends with a line such as "9 of 16 free" for that bag alone.
 - If it fails, paste: a screenshot of the bag bar and strip, and `/vg errors`.
 
+### 13.2b Strips at Text size 130 %
+
+- Do: in the game's clock window untick 24-hour mode; under `/vg` → General set Text size to 130 %; with an addon that shares broker feeds, pick two feeds under Map → Data from other addons. Then set Text size back to 100 %.
+- Expect: at 130 % the info strip is wider and its rows taller; no block's text runs into its neighbour (the 12-hour time, the date and the calendar button share their row), and nothing spills past the strip's edge. The broker strip is taller, its icons larger, each slot as wide as its text; a feed's tooltip opens below the strip at the top of the screen (move the strip near the bottom with `/vg unlock`: it opens above). The quest tracker starts just under the info strip's last row, clear of it. Back at 100 % both strips return to their usual size (a broker slot widened at 130 % narrows again) and the tracker moves back up.
+- If it fails, paste: a screenshot of both strips at 130 %, and `/vg errors`.
+
 ### 13.3 Move the strips
 
 - Do: type `/vg unlock`, drag the Bags and Game menu handles apart, type `/vg lock`, then `/reload`.
 - Expect: both strips stay where you put them.
 - If it fails, paste: a screenshot after the reload.
+
+### 13.4 Minimap drawer and zone hints
+
+- Do: hover the minimap's zone name. Then, with an addon that has a minimap button (LibDBIcon kind), log in; then turn on another addon's minimap button from its own settings (or load one on demand) without reloading, once out of a fight and once in one.
+- Expect: the zone tooltip ends with "Click: world map" and "Wheel: zoom" in the muted colour. The new button goes into the drawer at once (in a fight, as soon as it ends), not onto the map.
+- If it fails, paste: the addon's name, a screenshot of the minimap, and `/vg errors`.
+
+### 13.5 Minimap drawer: order, count, Escape and side
+
+- Do: with three or more addon buttons, hover the "..." toggle, open the drawer, press Escape; drag the minimap (`/vg unlock`) to the screen's left edge and to the bottom, and open the drawer at each; right-click a drawer button that has a menu.
+- Expect: the toggle's tooltip reads "Addon buttons (N)"; the buttons sit in name order; Escape closes the drawer; at the left edge it opens right of the map, near the bottom it stays on screen; a button's right-click menu stays open.
+- If it fails, paste: the addon's name, a screenshot of the minimap, and `/vg errors`.
 
 ## 14. Game windows, by area
 
@@ -1370,6 +1394,12 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 - Expect: the space under a popup's buttons is about the same as the space above its text; there is no empty band of panel under the buttons. Popups that the game gives a fixed height are unchanged.
 - If it fails, paste: a screenshot of the popup and `/vg frame StaticPopup1`.
 
+### 14.14.4b Danger popups
+
+- Do: delete a grey item from your bags (drag it out and confirm), then delete a green or better one (the popup that asks you to type DELETE): look at the confirm button before typing, after typing DELETE, and with the mouse on and off it. Then abandon a quest, and open an ordinary popup (leave a group, or `/camp`) right after.
+- Expect: on each delete and abandon popup the confirm button's label (Yes, Okay, Accept) is red, the danger colour of Vanguard's own Abandon button, and stays red under the mouse and after you type DELETE (before typing it is the game's grey disabled label); the leave-group or camp popup that follows on the same spot has the game's gold label again, gold under the mouse too. [Needs in game: that the game's hover and enable changes run before the hooks that paint the red back, so it never flashes gold; if it flashes, say so.]
+- If it fails, paste: a screenshot of the popup and `/vg errors`.
+
 ### 14.14.5 Roll windows, dressing room, books and the game menu header
 
 - Do: roll on an item in a group (or loot with a friend), and look at the roll window. Open the dressing room (Ctrl-click an item), open the outfit dropdown and the details toggle. Read a book or a letter and turn a page; read a timed book if you know one. Press Escape and look at the top of the game menu.
@@ -1527,6 +1557,18 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 - Do: with a second docked tab (Trade, say) that has lines, click it and press the Copy tile, then Ctrl+C and paste into the chat box. Have a guild message of the day that holds an address ("discord.gg/abc") and `/reload`. Say "join discord.gg/abc, and see [an item link]" with a real item link, and "lvl 1.5 e.g. test".
 - Expect: the copy box is titled "Copy Trade (Ctrl+C)", holds that tab's lines (not General's), and opens scrolled to the newest line with all of it selected, so the paste holds every line. The guild message of the day shows "discord.gg/abc" as an accent link; in the said line "discord.gg/abc" is a link with the comma after it plain, the item link still shows its tooltip on click, and "1.5" and "e.g." stay plain. Clicking either address opens it in the copy box. `/vg errors` is empty. [Needs in game: that SetCursorPosition then HighlightText keeps the whole text selected and the box scrolled to the end on the Forever client; that the game adds the message of the day through the window's AddMessage with GUILD_MOTD_TEMPLATE's text.]
 - If it fails, paste: `/vg errors` and a screenshot of the copy box or the line.
+
+### 15.6j Chat page order and the Chat filter card
+
+- Do: open `/vg` → Chat and scroll the page. Switch the Chat filter on and stand in a capital city until some Trade spam is caught; open the Filtered tab and click one sender's name; open the Chat page again and press **Filter them again**. Set Caught lines to Are hidden and look at the card.
+- Expect: the cards run Chat, Chat tabs, Chat extras (Copy, Find in chat and the Find switch together), Chat watch, Chat filter, Chat history, Chat windows, then Group board, each looking as before. With no phrases or words, Chat watch and Chat filter say so. The filter card reads "Caught this session: N (Gold selling …, Repeat …)"; after the click it lists "Let through: Name", and Filter them again says "Every sender is filtered again." in chat and that sender's next spam goes to the tab. Hidden: the card says the Filtered tab is where lines can be seen and let through. A guild post such as "pays gold for herbs, discord.gg/xyz" is not caught. The Filtered tab (made fresh: close it first if you have one) holds only caught lines, never live Trade or Say. `/vg errors` is empty. [Needs in game: that FCF_OpenNewWindow's second argument leaves the new tab with no message groups or channels on Forever, now that Vanguard no longer removes them itself.]
+- If it fails, paste: `/vg errors` and a screenshot of the Chat filter card.
+
+### 15.6k Officer and Emotes on a chat tab
+
+- Do: on a tab other than General, tick Show Officer and Show Emotes under Chat → Chat tabs (have an officer line and a `/wave` arrive). Then, with no reload, enter a dungeon and pull a few packs while chat lines arrive.
+- Expect: officer lines and emotes show on that tab; untick them and they stop. No Lua error from the game's chat code in the dungeon, and `/vg errors` is empty. [Needs in game: that adding the OFFICER and EMOTE message groups from Vanguard's rows taints nothing the game reads in an instance, as the eight existing rows don't.]
+- If it fails, paste: `/vg errors` and any Lua error text.
 
 ## 16. Realm and ruleset
 
