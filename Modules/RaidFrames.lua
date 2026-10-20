@@ -177,11 +177,11 @@ local function updateRole(b, unit)
   RF.PaintRole(b, RF.RoleMark(unit))
 end
 
--- Paints the status line: down ("Dead" / "Offline") when given, else the deficit text.
+-- Paints the status line: down ("Dead" / "Ghost" / "Offline") when given, else the deficit text.
 function RF.PaintStatus(b, down, deficit)
   b.down = down ~= nil
   b.status:SetText(down or deficit)
-  T.Color(b.status, down == "Dead" and "bad" or "text2")
+  T.Color(b.status, (down == "Dead" or down == "Ghost") and "bad" or "text2")
 end
 
 -- Dead / Offline, else the missing health, on the status line.
