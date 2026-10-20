@@ -160,9 +160,20 @@ local function textBox()
   return box
 end
 
+-- The text dialog and the find dialog share one spot on screen, so they never stack: the one opening takes the
+-- other's place (where it was dragged to) and the other closes.
+local function takePlace(f, other)
+  if not (other and other:IsShown()) then return f end
+  local point, rel, relPoint, x, y = other:GetPoint()
+  f:ClearAllPoints()
+  f:SetPoint(point, rel, relPoint, x, y)
+  other:Hide()
+  return f
+end
+
 -- Shows text selected for copying (Ctrl+C); Close is the only button.
 function ns.ShowText(title, text)
-  local f = textBox()
+  local f = takePlace(textBox(), find)
   titleText(f, title)
   boxText(f, text)
   f.primary:Hide()
@@ -175,7 +186,7 @@ end
 -- An empty box to type or paste into; onImport(text) runs when the primary button
 -- (Import, or the label given) is clicked, and Cancel sits beside it.
 function ns.AskText(title, onImport, label)
-  local f = textBox()
+  local f = takePlace(textBox(), find)
   f.ownTitle = title
   titleText(f, title)
   boxText(f, "")
@@ -246,7 +257,7 @@ end
 ---@param title string
 ---@param onFind fun(query: string): string|nil, string|nil
 function ns.ShowFind(title, onFind)
-  local f = findBox()
+  local f = takePlace(findBox(), box)
   f.onFind = onFind
   f.title:SetText(title)
   f:Show()

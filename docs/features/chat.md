@@ -8,7 +8,7 @@ The main chat window starts 200 tall and as wide as the room left of your player
 
 ## Chat extras
 
-Web addresses in chat become links in your accent color; click one and it opens selected, ready to copy. The **Copy** tile (two sheets) at the right end of the chat's tab bar (or `/vg copy`) opens the recent chat as plain text to copy. Short channel names (off until you switch it on): `[2. Trade - City]` shows as `[T]`, `[Guild]` as `[G]`, `[Raid Leader]` as `[RL]`, and clicking the short tag still opens the channel. Ctrl + mouse wheel jumps to the top or the bottom of a chat window. The game's own chat timestamps and class-colored names can be set under `/vg` → Chat too (they are the game's settings, so the game's options show the same). Chat the game hides from addons (in instances) is left untouched, never shortened, and out of the copy.
+Web addresses in chat become links in your accent color; click one and it opens selected, ready to copy. The **Copy** tile (two sheets) at the right end of the chat's tab bar (or `/vg copy`) opens the recent chat as plain text to copy. The copy box and the find box never stack: opening one closes the other, and the new one opens where the other was (where you dragged it). Short channel names (off until you switch it on): `[2. Trade - City]` shows as `[T]`, `[Guild]` as `[G]`, `[Raid Leader]` as `[RL]`, and clicking the short tag still opens the channel. Ctrl + mouse wheel jumps to the top or the bottom of a chat window. The game's own chat timestamps and class-colored names can be set under `/vg` → Chat too (they are the game's settings, so the game's options show the same). Chat the game hides from addons (in instances) is left untouched, never shortened, and out of the copy.
 
 ## Chat watch
 
