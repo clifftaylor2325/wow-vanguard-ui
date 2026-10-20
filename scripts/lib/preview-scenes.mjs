@@ -378,6 +378,12 @@ export const SCENES = [
       GetTrainerServiceCost = function(i) return services[i][2] end
       GetMoney = function() return 123407 end
       TakeTaxiNode = function() end hooksecurefunc = hooksecurefunc or function() end` },
+  { name: "vanguard-stock-list", caption: "The Keep stocked window (Town and gear → Errands → Edit list...): each item with where to buy it, how many to carry and Remove, over the slot an item is dragged onto (TEST-ONLY items and merchant)",
+    lua: `VanguardCharDB.stockList = { [90011] = 20, [90012] = 40, [90013] = 1000 }
+      local VM = ns.GetModule("VendorMemory") VM.enabled, VM.Where, VM.Text = true, function(id) return id ~= 90012 and { { n = "TEST-ONLY Thomas Miller" } } or nil end, function(e) return e.n .. " (TEST-ONLY Goldshire)" end
+      ns.GetModule("Errands").StockWindow.Open() if Vanguard_Setup then Vanguard_Setup:Hide() end`,
+    before: `local names = { [90011] = "TEST-ONLY Light Feather", [90012] = "TEST-ONLY Spring Water", [90013] = "TEST-ONLY Rough Arrow" }
+      C_Item = C_Item or {} C_Item.GetItemInfo = function(id) return names[id] end C_Item.GetItemIconByID = function() return "TEST-ONLY-ICON" end` },
   { name: "vanguard-bosses", caption: "A boss fight as the group's leader: two boss frames at the top left, the raid tools bar beside them (calls, target icons, world markers), and two main tanks with the boss each is targeting (TEST-ONLY bosses)",
     lua: `__group({ "player", "party1", "party2" }) __wfgStub.fire("INSTANCE_ENCOUNTER_ENGAGE_UNIT")
       for i, unit in ipairs({ "party1", "party2" }) do

@@ -249,7 +249,7 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 ### 3.5 Reset
 
 - Do: type `/vg reset all`.
-- Expect: `Reset N frame(s).` with N above zero, and the frames back at their default spots. Then `/vg unlock` and look: handles of frames that can show together don't overlap at the defaults (known exceptions: the quest log and quest dialog windows, the raid frames' full footprint, the two thin data bars, and the Instance prep card once it has shown a list, since its handle keeps that height). Action bars 1, 2 and 3 touch with no gap between the rows, and still touch after you scale one of them down from its handle (right-click it): the bars above it come down onto it; the quest arrow, flight timer, chat alert and the big boss timers stack down the top centre; the talking head sits at the top left under the raid tools and main tanks; group threat under the boss frames; the boat timer just above your target's cast bar; at the bottom right the fight history, damage meter and tooltip stack clear of each other under the quest tracker; loss of control under the Instance prep card above your character.
+- Expect: `Reset N frame(s).` with N above zero, and the frames back at their default spots. Then `/vg unlock` and look: handles of frames that can show together don't overlap at the defaults (known exceptions: the quest log and quest dialog windows, the raid frames' full footprint, the two thin data bars, and the Instance prep card once it has shown a list, since its handle keeps that height). Action bars 1, 2 and 3 touch with no gap between the rows, and still touch after you scale one of them down from its handle (right-click it): the bars above it come down onto it; the quest arrow, flight timer, chat alert and the big boss timers stack down the top centre; the talking head sits at the top left under the raid tools and main tanks; group threat under the boss frames; the boat timer on the flight timer's spot (they never show together); at the bottom right the fight history, damage meter and tooltip stack clear of each other under the quest tracker; loss of control under the Instance prep card above your character.
 - If it fails, paste: the chat line.
 
 ### 3.6 Anchor the cast bar under the player frame
@@ -768,6 +768,7 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 
 - Do: on a character whose stock list you set before this update, type `/vg stock`. Log in a second character that uses the same profile and type `/vg stock`; on it, `/vg stock <an item a merchant sells> 5`, then visit that merchant. Log back in on the first character, type `/vg stock`, and visit the same merchant.
 - Expect: the first character to log in after the update lists the old list; the second starts with `Your stock list is empty. ...` and buys only its own 5; back on the first, its list is unchanged and the merchant buys nothing for the second character's item. A profile export (`/vg` → Profiles) carries no stock list. [Needs in game: that the list survives a logout on each character (it lives in the character's saved file).]
+- Also expect (the window): `/vg` → Town and gear → Errands → **Edit list...** opens "Keep stocked" with one row per item (icon, name, where to buy it, the amount, Remove). Drag a bag item onto the + slot: it joins the list with one stack (Arrows 200, Water 20). Type a new amount, click away and type `/vg stock`: it lists the new amount. Clear an amount and click away: the row goes. Clear list asks first, then empties the window. [Needs in game: that a drag onto the slot is received (OnReceiveDrag), that GetItemIconByID and the stack size answer on Forever, and that typing in a box never moves your character.]
 - If it fails, paste: both characters' `/vg stock` output and `/vg errors`.
 
 ### 9.2f Missing-enchant mark on a shield
@@ -778,8 +779,8 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 
 ### 9.3 Trainer: Train all
 
-- Do: at a class trainer with skills you can afford, click Train all. Try it again in combat if you can.
-- Expect: a button reading `Train all (N)` on the trainer window, clear of your money line; clicking it prints `Trained N skill(s) for <money>.`; in combat it does nothing.
+- Do: at a class trainer with skills to learn, hover Train all before clicking it, then click it. Try it again in combat if you can. If you can, visit one with more skills than you can pay for, and one with none you can afford.
+- Expect: a button reading `Train all (N)` on the trainer window, clear of your money line, where N is how many your gold covers; its tooltip reads `M skill(s) for <money>` and, when you can't pay for all, `; you can afford N (<money>)`; clicking it learns N and prints `Trained N skill(s) for <money>.` with the tooltip's figure; greyed out, its tooltip still shows and reads `Not enough gold for any: the cheapest is <money>.`; in combat it does nothing. [Needs in game: that the count and cost match what the click buys.]
 - If it fails, paste: a screenshot of the trainer window and `/vg errors`.
 
 ### 9.4 Lists and Posting tabs at the auction house
@@ -815,7 +816,7 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 ### 9.6 Boat and zeppelin timer (off until switched on)
 
 - Do: under Town and gear tick "Boat and zeppelin timer (reload)" and `/reload`. Board a boat or zeppelin and ride it to the other dock. Board the same one from the same dock again. Afterwards type `/run print(C_Map.GetPlayerMapPosition(C_Map.GetBestMapForUnit("player"), "player"))` once while standing on a boat and paste what it prints.
-- Expect: about three seconds after you board, a bar above the cluster says "Timing this ride"; stepping off hides it and saves the time under "where you boarded > where you got off". The second ride from that dock counts down from the saved time, with the place you landed last time. [Needs in game: that the client gives no map position for you on a boat or zeppelin (the code takes that as being aboard), that the sub-zone names at the docks differ from each other, and that the position comes back as soon as you step off.]
+- Expect: about three seconds after you board, a bar at the top centre (the flight timer's spot) says "Timing this ride"; stepping off hides it and saves the time under "where you boarded > where you got off". The second ride from that dock counts down from the saved time, with the place you landed last time. [Needs in game: that the client gives no map position for you on a boat or zeppelin (the code takes that as being aboard), that the sub-zone names at the docks differ from each other, and that the position comes back as soon as you step off.]
 - If it fails, paste: the `/run` line's output, the dock names, and `/vg errors`.
 
 ## 10. Click casting

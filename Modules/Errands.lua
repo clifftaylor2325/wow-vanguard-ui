@@ -23,6 +23,8 @@ local ER = ns.Module("Errands", {
 ER.TRAIN_STEPS, ER.BUY_EVERY = 30, 0.2
 ER.FLIGHT_POLL, ER.FLIGHT_MAX, ER.TAKEOFF_WAIT = 0.5, 3600, 10
 ER.BAR_W, ER.BAR_H = 200, 14
+-- Where the flight and boat bars start, above the cluster: one spot, as you never ride both at once.
+ER.TRAVEL_SPOT = { "TOP", "TOP", 0, -198 }
 
 -- Helpers ------------------------------------------------------------------------------------
 
@@ -87,13 +89,49 @@ local function nextAffordable(run)
   end
 end
 
--- The button's label (how many; its cost is told when it is clicked); it's off while nothing is affordable.
+-- What one click learns, the way the click picks: down the list, each service the gold left still
+-- covers, up to ER.TRAIN_STEPS. { count, cost } of that, { all, allCost } of the whole list, and the cheapest service's cost.
+function ER.TrainPlan()
+  local plan, left = { count = 0, cost = 0, all = 0, allCost = 0 }, cash()
+  for _, s in ipairs(ER.Trainable()) do
+    plan.all, plan.allCost, plan.cheapest = plan.all + 1, plan.allCost + s.cost, math.min(plan.cheapest or s.cost, s.cost)
+    local fits = s.cost <= left and plan.count < ER.TRAIN_STEPS
+    if fits then plan.count, plan.cost, left = plan.count + 1, plan.cost + s.cost, left - s.cost end
+  end
+  return plan
+end
+
+-- The Train all tooltip: what the list costs and what one click buys, or why it buys nothing.
+function ER.TrainTip(plan)
+  if plan.all == 0 then return "Nothing to learn here right now." end
+  if plan.count == 0 then return string.format("Not enough gold for any: the cheapest is %s.", money(plan.cheapest)) end
+  local text = string.format("%d skill(s) for %s", plan.all, money(plan.allCost))
+  if plan.count < plan.all then text = text .. string.format("; you can afford %d (%s)", plan.count, money(plan.cost)) end
+  return text .. "."
+end
+
+-- Shows the tooltip over the Train all button, greyed or not.
+local function trainTip(b)
+  if not GameTooltip then return end
+  GameTooltip:SetOwner(b, "ANCHOR_TOP")
+  GameTooltip:SetText(ER.TrainTip(ER.TrainPlan()), nil, nil, nil, nil, true)
+  GameTooltip:Show()
+end
+
+-- The button's label (how many one click learns; the tooltip has the cost); it's off while nothing is affordable.
 function ER.UpdateTrainButton()
-  local b, list = ER.trainButton, ER.Trainable()
+  local b, plan = ER.trainButton, ER.TrainPlan()
   if not b then return end
-  b.text:SetText(#list > 0 and string.format("Train all (%d)", #list) or "Train all")
-  if nextAffordable() then b:Enable() else b:Disable() end
+  b.text:SetText(plan.count > 0 and string.format("Train all (%d)", plan.count) or "Train all")
+  if plan.count > 0 then b:Enable() else b:Disable() end
   b:SetShown(ER.settings.trainAll)
+end
+
+-- Gives the Train all button its tooltip, shown while it is greyed out too.
+local function addTrainTip(b)
+  b:SetMotionScriptsWhileDisabled(true)
+  b:HookScript("OnEnter", ns.Guard("train all tooltip", trainTip))
+  b:HookScript("OnLeave", ns.Guard("train all tooltip", function() if GameTooltip then GameTooltip:Hide() end end))
 end
 
 -- Learns the next affordable service not yet bought in this click; false when
@@ -129,6 +167,7 @@ function ER.AddTrainButton()
   local b, train = ns.DialogButton(frame, "Train all", ER.TRAIN_WIDTH), _G.ClassTrainerTrainButton
   if type(train) == "table" then ER.PlaceBesides(b, train) else b:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", 8, 6) end
   b:SetScript("OnClick", ns.Guard("click train all", ER.TrainAll))
+  addTrainTip(b)
   ER.trainButton = b
   ER.UpdateTrainButton()
 end
@@ -162,13 +201,20 @@ local function itemName(id)
   if type(name) == "string" then return name end
   return "item " .. id
 end
+ER.ItemName = itemName
 
--- " — sold by Thomas Miller (Elwynn Forest, Goldshire)": where Vendor memory last saw
--- the item sold, or "" (never seen, or Vendor memory is off).
-local function soldBy(id)
+-- "sold by Thomas Miller (Elwynn Forest, Goldshire)": where Vendor memory last saw the item sold, or nil
+-- (never seen, or Vendor memory is off).
+function ER.WhereToBuy(id)
   local VM = ns.GetModule("VendorMemory")
   local list = VM and VM.enabled and VM.Where(id)
-  return list and (" — sold by " .. VM.Text(list[1])) or ""
+  return list and ("sold by " .. VM.Text(list[1])) or nil
+end
+
+-- " — sold by ...", for a chat line, or "".
+local function soldBy(id)
+  local where = ER.WhereToBuy(id)
+  return where and (" — " .. where) or ""
 end
 
 -- The Keep stocked list, { [itemID] = how many }: this character's own (VanguardCharDB), never the
@@ -185,18 +231,31 @@ local function moveStockList(settings)
   settings.stockList = nil
 end
 
+-- The stock list's item IDs in order, as /vg stock and the Keep stocked window list them.
+function ER.StockIDs()
+  local ids = {}
+  for id in pairs(ER.StockList()) do ids[#ids + 1] = id end
+  table.sort(ids)
+  return ids
+end
+
+-- Empties the stock list; an open Keep stocked window follows.
+function ER.ClearStock()
+  VanguardCharDB.stockList = {}
+  ER.StockWindow.Refresh()
+end
+
 -- Prints the stock list, with where to buy each item when that's known.
 local function listStock()
-  local list, ids = ER.StockList(), {}
-  for id in pairs(list) do ids[#ids + 1] = id end
+  local list, ids = ER.StockList(), ER.StockIDs()
   if #ids == 0 then return ns.Chat("Your stock list is empty. /vg stock <item> <amount> adds one.") end
-  table.sort(ids)
   for _, id in ipairs(ids) do ns.Chat(string.format("Keep %d × %s", list[id], itemName(id)) .. soldBy(id)) end
 end
 
--- Sets how many of an item to keep (0 takes it off the list).
+-- Sets how many of an item to keep (0 takes it off the list); an open Keep stocked window follows.
 local function setStock(id, amount)
   ER.StockList()[id] = amount > 0 and amount or nil
+  ER.StockWindow.Refresh()
   if amount > 0 then return ns.Chat(string.format("Keeping %d × %s.", amount, itemName(id))) end
   ns.Chat(itemName(id) .. " is off your stock list.")
 end
@@ -205,7 +264,7 @@ end
 function ER.StockCommand(rest)
   rest = rest or ""
   if rest == "" then return listStock() end
-  if rest == "clear" then VanguardCharDB.stockList = {} return ns.Chat("Your stock list is empty.") end
+  if rest == "clear" then ER.ClearStock() return ns.Chat("Your stock list is empty.") end
   local id, amount = ER.ItemID(rest), tonumber(rest:match("%s(%d+)%s*$"))
   if not (id and amount) then return ns.Chat("Usage: /vg stock <shift-click an item> <amount>  (0 removes it)") end
   setStock(id, amount)
@@ -338,6 +397,11 @@ end
 
 -- Flight timer -------------------------------------------------------------------------------
 
+-- A flight point's name when the client gives it plainly, else nil (a hidden name is never kept or joined).
+local function plainName(name)
+  return type(name) == "string" and not ns.IsSecret(name) and name or nil
+end
+
 -- The name of the flight point you're standing at, or nil.
 local function currentNode()
   for i = 1, ns.PlainNumber(ask("NumTaxiNodes")) or 0 do
@@ -349,8 +413,8 @@ end
 -- You picked a destination: note the route, and check the taxi state twice a
 -- second from now until the flight lands or is forgotten.
 function ER.OnTakeTaxi(index)
-  local from, to = currentNode(), ask("TaxiNodeName", index)
-  if type(from) ~= "string" or type(to) ~= "string" then return end
+  local from, to = plainName(currentNode()), plainName(ask("TaxiNodeName", index))
+  if not (from and to) then return end
   local key = from .. " > " .. to
   ER.flight = { key = key, to = to, picked = ask("GetTime") or 0, known = ER.settings.flights[key] }
   ns.Every("flight poll", ER.FLIGHT_POLL, ER.PollFlight)
@@ -396,7 +460,7 @@ local function buildBar()
   local bar = T.BarColor(T.StyleBar(CreateFrame("StatusBar", "Vanguard_FlightTimer", UIParent)), "accent")
   T.HudPanel(bar)
   bar:SetSize(ER.BAR_W, ER.BAR_H)
-  ns.Mover(bar, "flighttimer", "Flight timer", { "TOP", "TOP", 0, -198 })
+  ns.Mover(bar, "flighttimer", "Flight timer", ER.TRAVEL_SPOT)
   bar.text = T.Text(bar:CreateFontString(nil, "OVERLAY"), "barSmall")
   bar.text:SetPoint("CENTER")
   bar:Hide()
