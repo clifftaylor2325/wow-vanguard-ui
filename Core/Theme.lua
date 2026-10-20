@@ -1080,9 +1080,9 @@ end
 local function roundFillParts(frame, fill)
   fill.roundSides = { solid(frame, fill.layer, fill.sublevel, "fill"), solid(frame, fill.layer, fill.sublevel, "fill") }
   fill.roundFill = cornerPieces(frame, T.CORNER_ART.rounded.fill, fill.layer, fill.sublevel)
-  for _, t in pairs(fill.roundSides) do fill.textures[#fill.textures + 1] = t end
-  for _, t in pairs(fill.roundFill) do fill.textures[#fill.textures + 1] = t end
-  for i = 2, #fill.textures do fill.textures[i]:SetAlpha(fill.bg:GetAlpha()) end
+  local alpha = fill.bg:GetAlpha()
+  for _, t in pairs(fill.roundSides) do fill.textures[#fill.textures + 1] = t t:SetAlpha(alpha) end
+  for _, t in pairs(fill.roundFill) do fill.textures[#fill.textures + 1] = t t:SetAlpha(alpha) end
 end
 
 -- Places a fill's parts `pad` units out past frame for radius r (units): the centre alone while the frame
