@@ -27,10 +27,17 @@ UX.GLYPH = 10
 
 -- Threat ----------------------------------------------------------------------------------------
 
--- Your threat on your target: "87%" and its color token, or nil when you have none (or it's hidden).
+-- True while threat can matter to someone else: you are in a group, or you have a pet (solo, every mob you
+-- fight is on you at 100%, which says nothing).
+function UX.ThreatMatters()
+  local grouped, pet = IsInGroup(), UnitExists("pet")
+  return (not ns.IsSecret(grouped) and grouped == true) or (not ns.IsSecret(pet) and pet == true)
+end
+
+-- Your threat on your target: "87%" and its color token, or nil when you have none, it's hidden or it can't matter.
 function UX.Threat()
   local get = _G.UnitDetailedThreatSituation
-  if type(get) ~= "function" then return nil end
+  if type(get) ~= "function" or not UX.ThreatMatters() then return nil end
   local _, status, percent = get("player", "target")
   status, percent = ns.PlainNumber(status), ns.PlainNumber(percent)
   if not status or not percent or percent <= 0 then return nil end
@@ -58,6 +65,25 @@ function UX.Happiness()
   local get = UX.HappinessCall()
   if not get then return nil end
   return UX.HAPPINESS[ns.PlainNumber(get()) or 0]
+end
+
+-- Pet happiness -> the word the pet frame's tooltip line uses.
+UX.MOODS = { "Unhappy", "Content", "Happy" }
+
+-- The pet tooltip's mood line ("Happy: 125% damage") and its color token, or nil (no pet that has moods, or no answer).
+function UX.HappinessLine()
+  local get = UX.HappinessCall()
+  if not get then return nil end
+  local mood, damage = get()
+  mood, damage = ns.PlainNumber(mood), ns.PlainNumber(damage)
+  if not UX.MOODS[mood or 0] then return nil end
+  return UX.MOODS[mood] .. (damage and string.format(": %d%% damage", damage) or ""), UX.HAPPINESS[mood]
+end
+
+-- Adds the mood line to the pet frame's tooltip, in the mood's color.
+function UX.AddHappinessLine(tt)
+  local text, token = UX.HappinessLine()
+  if text then tt:AddLine(text, T.RGB(token)) end
 end
 
 -- Shows the glyph on the pet frame for your pet's mood, in its state color, or hides it.
@@ -138,6 +164,10 @@ end
 
 -- Building ---------------------------------------------------------------------------------------
 
+-- What else redraws the threat text: a new target, the fight ending, and joining or leaving a group
+-- (whether threat can matter; your own pet coming or going is heard with your threat situation).
+UX.THREAT_EVENTS = { "PLAYER_TARGET_CHANGED", "PLAYER_REGEN_ENABLED", "GROUP_ROSTER_UPDATE" }
+
 -- The threat text above the target frame, clear of its corner diamond,
 -- following threat and target changes: your target's threat list, and your
 -- own threat situation (the client names you, not the mob, when it changes).
@@ -145,17 +175,18 @@ local function addThreat(target)
   UX.threat = T.Text(target:CreateFontString(nil, "OVERLAY"), "small", "text2")
   UX.threat:SetPoint("BOTTOMRIGHT", target, "TOPRIGHT", -12, 3)
   ns.OnUnit("UNIT_THREAT_LIST_UPDATE", UX.UpdateThreat, "target")
-  ns.OnUnit("UNIT_THREAT_SITUATION_UPDATE", UX.UpdateThreat, "player")
-  for _, e in ipairs({ "PLAYER_TARGET_CHANGED", "PLAYER_REGEN_ENABLED" }) do ns.On(e, UX.UpdateThreat) end
+  ns.OnUnit({ "UNIT_THREAT_SITUATION_UPDATE", "UNIT_PET" }, UX.UpdateThreat, "player")
+  for _, e in ipairs(UX.THREAT_EVENTS) do ns.On(e, UX.UpdateThreat) end
   UX.UpdateThreat()
 end
 
--- The mood glyph in the pet frame's top-right corner, following your pet.
+-- The mood glyph in the pet frame's top-right corner, following your pet, and its line on the pet's tooltip.
 local function addHappiness(pet)
   UX.happy = T.Snap(pet.health:CreateTexture(nil, "OVERLAY"), "icon")
   UX.happy:SetSize(UX.GLYPH, UX.GLYPH)
   UX.happy:SetPoint("TOPRIGHT", pet, "TOPRIGHT", -3, -3)
   for _, e in ipairs({ "UNIT_HAPPINESS", "UNIT_PET" }) do ns.On(e, UX.UpdateHappiness) end
+  UF.TOOLTIP_LINES.pet = UX.AddHappinessLine
   UX.UpdateHappiness()
 end
 

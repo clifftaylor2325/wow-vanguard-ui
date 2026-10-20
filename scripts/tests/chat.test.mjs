@@ -33,7 +33,7 @@ it("minimap", () => {
   const tip = addon.eval("return { __maps, GameTooltip:IsShown(), GameTooltip.__lines, Vanguard_MinimapZone.__points.TOPLEFT.x, Vanguard_MinimapZone.__height }");
   expect([tip[0], tip[1], tip[2].map((l) => l.text), isTok(addon, [tip[2][2].r, tip[2][2].g, tip[2][2].b], "zoneContested"), tip[3], tip[4]],
     "clicking the zone name opens the world map; hovering it names the zone, its subzone and whose territory it is (in the zone color); the button leaves the top corners to the game's buttons")
-    .toEqual([1, true, ["Elwynn Forest", "Goldshire", "Contested territory"], true, 28, 20]);
+    .toEqual([1, true, ["Elwynn Forest", "Goldshire", "Contested territory", "Click: world map", "Wheel: zoom"], true, 28, 20]);
   addon.eval("local b = Vanguard_MinimapZone b.__scripts.OnLeave(b) b.__scripts.OnMouseWheel(b, -1)");
   expect(addon.eval("return { GameTooltip:IsShown(), Minimap:GetZoom() }"), "the tooltip goes when the mouse leaves, and the wheel over the name still zooms").toEqual([false, 4]);
   const bare = loggedIn(UI_ENV, { savedVariables: "VanguardDB.profiles = { Default = { Minimap = { coords = false } } }" });
@@ -242,8 +242,15 @@ it("minimap: a free-for-all zone (arena) is named in the hostile colour, with a 
   const addon = loggedIn(UI_ENV + `GetZonePVPInfo = nil C_PvP = { GetZonePVPInfo = function() return "arena" end }`);
   addon.eval("ns.GetModule('Minimap').UpdateZone() Vanguard_MinimapZone.__scripts.OnEnter(Vanguard_MinimapZone)");
   const tip = addon.eval("return GameTooltip.__lines");
-  expect([isTok(addon, addon.eval("return ns.GetModule('Minimap').zone.__textColor"), "zoneHostile"), tip[tip.length - 1].text, isTok(addon, [tip[tip.length - 1].r, tip[tip.length - 1].g, tip[tip.length - 1].b], "zoneHostile")],
+  const territory = tip[tip.length - 3];
+  expect([isTok(addon, addon.eval("return ns.GetModule('Minimap').zone.__textColor"), "zoneHostile"), territory.text, isTok(addon, [territory.r, territory.g, territory.b], "zoneHostile")],
     "as the game's own minimap colours and names it").toEqual([true, "Free-for-all territory", true]);
+});
+it("minimap: the zone name's tooltip ends with what a click and the wheel do, muted", () => {
+  const addon = loggedIn(UI_ENV);
+  addon.eval("Vanguard_MinimapZone.__scripts.OnEnter(Vanguard_MinimapZone)");
+  const tip = addon.eval("return GameTooltip.__lines").slice(-2);
+  expect([tip.map((l) => l.text), tip.every((l) => isTok(addon, [l.r, l.g, l.b], "text2"))], "two hint lines in the muted colour").toEqual([["Click: world map", "Wheel: zoom"], true]);
 });
 it("minimap: Rotate Minimap's config update puts Vanguard's mask back, square or round", () => {
   const ROTATE = `MinimapCluster.UpdateMinimapConfig = function() Minimap:SetMaskTexture("ui-hud-minimap-frame-generic-mask") end`;
@@ -749,13 +756,13 @@ it("chat extras: web links you can copy, and a Copy button for the recent chat",
   addon.eval('__linkCallback(nil, "addon:Vanguard:url:https://example.test/a") __linkCallback(nil, "addon:OtherAddon:thing")');
   expect(addon.eval("return __shown"), "clicking one opens it ready to copy; other addons' links are left to them").toEqual(["Copy the address (Ctrl+C)", "https://example.test/a"]);
   addon.eval('__lines = { "|cffff8000[TEST-ONLY General]|r hi |Hitem:90001|h[TEST-ONLY Sword]|h", { __secret = true }, "two |TTEST-ONLY-ICON:0|tlines" }');
-  addon.eval("local b = ns.GetModule('ChatExtras').copyButton b.__scripts.OnClick(b)");
+  addon.eval("SELECTED_CHAT_FRAME = ChatFrame1 local b = ns.GetModule('ChatExtras').copyButton b.__scripts.OnClick(b)");
   expect(addon.eval("return __shown"), "the Copy button gives plain text; hidden lines are left out").toEqual(["Copy chat (Ctrl+C)", "[TEST-ONLY General] hi [TEST-ONLY Sword]\ntwo lines"]);
   const real = loggedIn(UI_ENV + CHAT_EXTRAS_ENV);
-  real.eval('__lines = { "TEST-ONLY hello" } local b = ns.GetModule("ChatExtras").copyButton b.__scripts.OnClick(b)');
+  real.eval('SELECTED_CHAT_FRAME = ChatFrame1 __lines = { "TEST-ONLY hello" } local b = ns.GetModule("ChatExtras").copyButton b.__scripts.OnClick(b)');
   expect(real.eval("return { Vanguard_TextDialog:IsShown(), Vanguard_TextEdit:GetText(), Vanguard_TextEdit:GetFont() ~= nil }"),
     "the real copy box opens with the text, its edit box given a font first (the game's SetText errors without one)").toEqual([true, "TEST-ONLY hello", true]);
-  const bare = loggedIn("ChatFrame1 = nil");
+  const bare = loggedIn("ChatFrame1 = nil SELECTED_CHAT_FRAME = nil");
   bare.slash("copy");
   expect(chatHas(bare, /can't read the chat back/) && bare.eval("return ns.GetModule('ChatExtras').copyButton == nil"), "a client that can't read chat back says so").toBe(true);
   const off = loggedIn(UI_ENV + CHAT_EXTRAS_ENV + CLICK_LUA, { savedVariables: "VanguardDB.profiles = { Default = { ChatExtras = { links = false, copy = false } } }" });
@@ -767,6 +774,57 @@ it("chat extras: web links you can copy, and a Copy button for the recent chat",
   off.eval('__click("Copy button in the chat\'s tab bar")');
   expect(off.eval("return ns.GetModule('ChatExtras').copyButton:IsShown()"), "off again hides it").toBe(false);
   expect(off.eval("return #ns.errors"), "no errors").toBe(0);
+});
+it("chat extras: Copy reads the tab you are looking at, is named for it, and opens at its newest line", () => {
+  const addon = loggedIn(UI_ENV + CHAT_EXTRAS_ENV + `
+    ChatFrame2:SetID(2) ChatFrame2.GetNumMessages = function() return 2 end
+    ChatFrame2.GetMessageInfo = function(_, i) return ({ "TEST-ONLY first", "TEST-ONLY newest" })[i] end
+    GetChatWindowInfo = function(i) return ({ "General", "TEST-ONLY Trade" })[i] end`);
+  // The harness's edit box keeps no cursor: record where the copy box puts it.
+  addon.eval("ns.ShowText('TEST-ONLY', '') Vanguard_TextEdit.SetCursorPosition = function(_, at) __cursor = at end");
+  addon.eval("SELECTED_CHAT_FRAME = ChatFrame2 ns.GetModule('ChatExtras').ShowCopy()");
+  const box = "return { Vanguard_TextDialog.title:GetText(), Vanguard_TextEdit:GetText(), __cursor }";
+  const text = "TEST-ONLY first\nTEST-ONLY newest";
+  expect(addon.eval(box), "the second tab's lines, titled with its name, the cursor after the newest line").toEqual(["Copy TEST-ONLY Trade (Ctrl+C)", text, text.length]);
+  addon.eval("SELECTED_CHAT_FRAME = nil __lines = { 'TEST-ONLY main' } GetChatWindowInfo = function() return { __secret = true } end ns.GetModule('ChatExtras').ShowCopy()");
+  expect(addon.eval(box), "no shown tab: the main window, and a hidden tab name reads chat").toEqual(["Copy chat (Ctrl+C)", "TEST-ONLY main", 14]);
+  addon.eval("GetChatWindowInfo = nil ns.GetModule('ChatExtras').ShowCopy()");
+  expect(addon.eval(box)[0], "a client without GetChatWindowInfo reads chat too").toBe("Copy chat (Ctrl+C)");
+  expect(addon.eval("return #ns.errors"), "no errors").toBe(0);
+});
+it("chat extras: bare addresses with a web ending become links, never inside a link, and the guild message of the day is linked", () => {
+  const addon = loggedIn(UI_ENV + CHAT_EXTRAS_ENV + CHAT_LINES_ENV + 'GUILD_MOTD_TEMPLATE = "Guild Message of the Day: %s"');
+  // The say filter's text for a line: linked, or as it was.
+  const said = (line) => { const out = addon.eval(`return { __filters.CHAT_MSG_SAY(nil, "CHAT_MSG_SAY", ${luaValue(line)}, "<name>") }`); return out[1] ?? line; };
+  const linkOf = (url) => `|Haddon:Vanguard:url:${url}|h[${url}]|h|r`;
+  // A string's regular expression characters escaped.
+  const esc = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  expect(said("join discord.gg/abc, we raid"), "a bare address with its path, the comma left after the link").toContain(`${linkOf("discord.gg/abc")}, we raid`);
+  expect(said("see Site.COM."), "any case of a known ending, the full stop left outside").toContain(`${linkOf("Site.COM")}.`);
+  expect(["e.g. this", "lvl 1.5 dps", "my.stuff here", "bob@site.com", "|Hitem:1|h[a.com]|h"].map(said), "unknown endings, numbers, mail and a link's own text are left alone")
+    .toEqual(["e.g. this", "lvl 1.5 dps", "my.stuff here", "bob@site.com", "|Hitem:1|h[a.com]|h"]);
+  expect(said("https://example.test/x and www.example.test"), "the http and www addresses are linked once, not again as bare words").not.toContain("|h|r|h");
+  expect(said("see https://example.test/x. or (discord.gg/abc)"), "punctuation after an http address and brackets round a bare one stay outside the links")
+    .toMatch(new RegExp(`${esc(linkOf("https://example.test/x"))}\\. or \\(\\|c\\w{8}${esc(linkOf("discord.gg/abc"))}\\)$`));
+  const quest = "|cffffff00|Hquest:1|h[Visit the site.com vendor]|h|r then site.com";
+  expect(said(quest), "a dotted word in a link's name stays in the link; the one after it is linked").toBe(`|cffffff00|Hquest:1|h[Visit the site.com vendor]|h|r then |cff${addon.eval("local r, g, b = ns.Theme.RGB('accentText') return string.format('%02x%02x%02x', math.floor(r * 255), math.floor(g * 255), math.floor(b * 255))")}${linkOf("site.com")}`);
+  addon.eval('ChatFrame1:AddMessage("Guild Message of the Day: raid at 8, discord.gg/abc")');
+  expect(lastLine(addon), "the guild message of the day line is linked as it is added").toContain(linkOf("discord.gg/abc"));
+  addon.eval('ChatFrame1:AddMessage("[15:27] Guild Message of the Day: discord.gg/xyz")');
+  expect(lastLine(addon), "a timestamp before the words still counts").toContain(linkOf("discord.gg/xyz"));
+  addon.eval("Enum.AddOnRestrictionType = { Chat = 5 } Enum.AddOnRestrictionState = { Inactive = 0 } C_RestrictedActions = { GetAddOnRestrictionState = function() return 2 end }");
+  addon.eval('ChatFrame1:AddMessage("Guild Message of the Day: discord.gg/abc")');
+  expect(lastLine(addon), "while chat is restricted it is left as it is, as the link filter does").toBe("Guild Message of the Day: discord.gg/abc");
+  addon.eval("C_RestrictedActions = nil");
+  addon.eval('ChatFrame1:AddMessage("TEST-ONLY not the motd discord.gg/abc")');
+  expect(lastLine(addon), "any other added line is left to the chat filters").toBe("TEST-ONLY not the motd discord.gg/abc");
+  addon.eval('ns.GetModule("ChatExtras").settings.links = false ChatFrame1:AddMessage("Guild Message of the Day: discord.gg/abc")');
+  expect(lastLine(addon), "links switched off: the message of the day stays plain").toBe("Guild Message of the Day: discord.gg/abc");
+  addon.eval('GUILD_MOTD_TEMPLATE = nil ns.GetModule("ChatExtras").settings.links = true ChatFrame1:AddMessage("Guild Message of the Day: discord.gg/abc")');
+  expect(lastLine(addon), "a client without the template: nothing is taken for the message of the day").toBe("Guild Message of the Day: discord.gg/abc");
+  addon.eval('local s = ns.GetModule("ChatExtras").settings s.links, s.shortChannels = false, false ChatFrame1:AddMessage("|Hchannel:channel:2|h[2. Trade]|h hi")');
+  expect(lastLine(addon), "both switches off: an added line is left as it is").toBe("|Hchannel:channel:2|h[2. Trade]|h hi");
+  expect(addon.eval("return #ns.errors"), "no errors").toBe(0);
 });
 it("chat extras: a hidden line never reaches the link filter's comparison, and a failing filter or click lets the line through", () => {
   const addon = loggedIn(UI_ENV + CHAT_EXTRAS_ENV);
@@ -805,8 +863,8 @@ it("chat: short channel names by default, off live and in a profile that turned 
   const addon = loggedIn(UI_ENV + CHAT_LINES_ENV);
   const trade = "|Hchannel:channel:2|h[2. Trade - City]|h [TEST-ONLY Name]: wts";
   addon.eval(`ChatFrame1:AddMessage({ __secret = true }) ChatFrame1:AddMessage("${trade}")`);
-  expect([lastLine(addon), addon.eval("return issecretvalue(ChatFrame1.__messages[#ChatFrame1.__messages - 1])")], "on by default: [2. Trade - City] becomes [T], the link kept; a hidden line stays as it was")
-    .toEqual(["|Hchannel:channel:2|h[T]|h [TEST-ONLY Name]: wts", true]);
+  expect([lastLine(addon), addon.eval("return issecretvalue(ChatFrame1.__messages[#ChatFrame1.__messages - 1])")], "on by default: [2. Trade - City] becomes [2], the link kept; a hidden line stays as it was")
+    .toEqual(["|Hchannel:channel:2|h[2]|h [TEST-ONLY Name]: wts", true]);
   addon.eval("ns.GetModule('ChatExtras').settings.shortChannels = false");
   addon.eval(`ChatFrame1:AddMessage("${trade}")`);
   expect(lastLine(addon), "switched off: the game's channel names").toBe(trade);
@@ -816,8 +874,8 @@ it("chat: short channel names by default, off live and in a profile that turned 
   addon.eval("ns.GetModule('ChatExtras').settings.shortChannels = true");
   // A line with one channel tag, as the shortener leaves it.
   const short = (label) => addon.eval(`return ns.GetModule('ChatExtras').ShortChannels("|Hchannel:X|h[${label}]|h hi")`);
-  expect(["Guild", "Raid Leader", "5. LookingForGroup", "1. General - TEST-ONLY Vale", "6. testonly"].map(short), "the capitals of the name, or its first letter")
-    .toEqual(["|Hchannel:X|h[G]|h hi", "|Hchannel:X|h[RL]|h hi", "|Hchannel:X|h[LFG]|h hi", "|Hchannel:X|h[G]|h hi", "|Hchannel:X|h[t]|h hi"]);
+  expect(["5. LookingForGroup", "1. General - TEST-ONLY Vale", "Guild", "Raid Leader", "testonly"].map(short), "a numbered channel's number, else the capitals of the name, or its first letter")
+    .toEqual(["|Hchannel:X|h[5]|h hi", "|Hchannel:X|h[1]|h hi", "|Hchannel:X|h[G]|h hi", "|Hchannel:X|h[RL]|h hi", "|Hchannel:X|h[t]|h hi"]);
   expect(addon.eval('ChatFrame2:AddMessage("plain TEST-ONLY line") local m = ChatFrame2.__messages return m[#m]'), "a line without a channel tag is left alone").toBe("plain TEST-ONLY line");
   addon.eval('FCF_OpenTemporaryWindow("WHISPER", "TestOnly")');
   expect(addon.eval("return ns.FrameState('vgWatched')[ChatFrame11]"), "a whisper window that opens later is followed too").toBe(true);
@@ -875,6 +933,52 @@ it("minimap drawer: addon buttons gathered beside the map", () => {
   expect(spot("LibDBIcon10_TestOnlyOne"), "when its addon moves it back, it returns to its cell").toEqual(["Vanguard_MinimapDrawer", 4, -4]);
   const off = loggedIn(UI_ENV + DRAWER_ENV, { savedVariables: "VanguardDB.profiles = { Default = { MinimapButtons = { drawer = false } } }" });
   expect(off.eval("return { LibDBIcon10_TestOnlyOne:GetParent():GetName(), Vanguard_MinimapDrawer == nil }"), "switched off, they stay on the map").toEqual(["Minimap", true]);
+});
+// TEST-ONLY LibDBIcon-1.0 as another addon would load it: __icon(name) makes a button and fires its callback.
+const DBICON_ENV = `
+  local lib = LibStub:NewLibrary("LibDBIcon-1.0", 1)
+  lib.callbacks = LibStub("CallbackHandler-1.0"):New(lib)
+  function __icon(name) local b = CreateFrame("Button", "LibDBIcon10_" .. name, Minimap) lib.callbacks:Fire("LibDBIcon_IconCreated", b, name) return b end
+`;
+it("minimap drawer: a button an addon makes later joins at once (after a fight), and a protected one is left on the map", () => {
+  const addon = loggedIn(UI_ENV + DRAWER_ENV + DBICON_ENV);
+  // The named button's parent.
+  const parent = (name) => addon.eval(`return ${name}:GetParent():GetName()`);
+  addon.eval('__icon("TestOnlyLate")');
+  expect(parent("LibDBIcon10_TestOnlyLate"), "made after login: gathered as LibDBIcon makes it").toBe("Vanguard_MinimapDrawer");
+  setCombat(addon, true);
+  addon.eval('__icon("TestOnlyFight")');
+  expect(parent("LibDBIcon10_TestOnlyFight"), "in a fight it waits").toBe("Minimap");
+  setCombat(addon, false);
+  expect(parent("LibDBIcon10_TestOnlyFight"), "and joins when the fight ends").toBe("Vanguard_MinimapDrawer");
+  addon.eval('local b = CreateFrame("Button", "LibDBIcon10_TestOnlySecure", Minimap) b.__protected = true');
+  addon.fire("PLAYER_ENTERING_WORLD");
+  expect(parent("LibDBIcon10_TestOnlySecure"), "a protected button stays on the map").toBe("Minimap");
+  const later = loggedIn(UI_ENV + DRAWER_ENV);
+  later.eval(DBICON_ENV);
+  later.eval('__icon("TestOnlyEarly")');
+  later.fire("ADDON_LOADED", "TEST-ONLY Iconer");
+  later.eval('__icon("TestOnlyLoaded")');
+  expect(later.eval("return { LibDBIcon10_TestOnlyEarly:GetParent():GetName(), LibDBIcon10_TestOnlyLoaded:GetParent():GetName() }"), "LibDBIcon loaded after Vanguard: a button it made before the hook is gathered at the hook, and later ones as they come")
+    .toEqual(["Vanguard_MinimapDrawer", "Vanguard_MinimapDrawer"]);
+});
+it("minimap drawer: buttons in name order, the toggle counts them, Escape closes it, and it opens on the side with room", () => {
+  const addon = loggedIn(UI_ENV + DRAWER_ENV + 'CreateFrame("Button", "LibDBIcon10_TestOnlyAlpha", Minimap) CreateFrame("Button", "LibDBIcon10_TestOnlyZeta", Minimap)');
+  // A drawer button's offset across the drawer.
+  const x = (name) => addon.eval(`return ${name}.__points.TOPLEFT.x`);
+  expect(["Alpha", "One", "Zeta"].map((n) => x(`LibDBIcon10_TestOnly${n}`)), "by name, whatever order they were made in").toEqual([4, 32, 60]);
+  addon.eval("local t = Vanguard_MinimapDrawerToggle t.__scripts.OnEnter(t)");
+  expect(addon.eval("return GameTooltip.__lines[1].text"), "the toggle's tooltip counts them").toBe("Addon buttons (3)");
+  addon.eval("local t = Vanguard_MinimapDrawerToggle t.__scripts.OnLeave(t)");
+  expect(addon.eval("for _, n in ipairs(UISpecialFrames) do if n == 'Vanguard_MinimapDrawer' then return true end end return false"), "Escape closes it, as the game's own panels").toBe(true);
+  // Opens the drawer with the map at a point of the screen, and says where it went: its point, the map's point.
+  const openAt = (point, x, y) => addon.eval(`local map = ns.MoverFrame("minimap") map:ClearAllPoints() map:SetPoint("${point}", UIParent, "${point}", ${x}, ${y})
+    Vanguard_MinimapDrawer:Hide() local t = Vanguard_MinimapDrawerToggle t.__scripts.OnClick(t)
+    local d = Vanguard_MinimapDrawer local p, rel, relPoint = d:GetPoint(1) return { d:IsShown(), p, relPoint }`);
+  expect(openAt("TOPRIGHT", -12, -12), "top right of the screen: left of the map, level with its top").toEqual([true, "TOPRIGHT", "TOPLEFT"]);
+  expect(openAt("TOPLEFT", 0, -12), "at the left edge: right of the map").toEqual([true, "TOPLEFT", "TOPRIGHT"]);
+  addon.eval("local t = Vanguard_MinimapDrawerToggle t.__scripts.OnClick(t)");
+  expect(addon.eval("return Vanguard_MinimapDrawer:IsShown()"), "the toggle shuts it again").toBe(false);
 });
 it("minimap drawer: its Modules row says it needs the Minimap module, which it gathers nothing without", () => {
   const addon = loggedIn(UI_ENV + DRAWER_ENV, { savedVariables: "VanguardDB.profiles = { Default = { modules = { Minimap = false } } }" });

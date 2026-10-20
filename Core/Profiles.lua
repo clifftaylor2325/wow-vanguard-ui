@@ -317,6 +317,25 @@ function ns.SpecIndex()
   return index and index > 0 and index or nil
 end
 
+-- The client's role names (a specialization's or a group role) -> Vanguard's.
+local ROLE_KEYS = { TANK = "tank", HEALER = "healer", DAMAGER = "damage" }
+
+-- Vanguard's name for a client role ("tank", "healer" or "damage"), or nil for none, an unknown one or a hidden one.
+---@param role any
+---@return string|nil
+function ns.RoleKey(role)
+  if ns.IsSecret(role) then return nil end
+  return ROLE_KEYS[role]
+end
+
+-- Your group role as Vanguard names it, "damage" when you have none or the client hides it. The group
+-- role can be secret (SecretWhenUnitIdentityRestricted), and callers use it as a table key.
+---@return string
+function ns.PlayerRole()
+  local assigned = type(UnitGroupRolesAssigned) == "function" and UnitGroupRolesAssigned("player")
+  return ns.RoleKey(assigned) or "damage"
+end
+
 -- This character's spec -> profile map.
 local function specMap()
   VanguardCharDB.specProfiles = type(VanguardCharDB.specProfiles) == "table" and VanguardCharDB.specProfiles or {}
