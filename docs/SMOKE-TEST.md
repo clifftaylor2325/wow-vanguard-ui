@@ -821,10 +821,10 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Expect: both strips stay where you put them.
 - If it fails, paste: a screenshot after the reload.
 
-### 13.4 Minimap drawer
+### 13.4 Minimap drawer and zone hints
 
-- Do: with an addon that has a minimap button (LibDBIcon kind), log in; then turn on another addon's minimap button from its own settings (or load one on demand) without reloading, once out of a fight and once in one.
-- Expect: the new button goes into the drawer at once (in a fight, as soon as it ends), not onto the map.
+- Do: hover the minimap's zone name. Then, with an addon that has a minimap button (LibDBIcon kind), log in; then turn on another addon's minimap button from its own settings (or load one on demand) without reloading, once out of a fight and once in one.
+- Expect: the zone tooltip ends with "Click: world map" and "Wheel: zoom" in the muted colour. The new button goes into the drawer at once (in a fight, as soon as it ends), not onto the map.
 - If it fails, paste: the addon's name, a screenshot of the minimap, and `/vg errors`.
 
 ## 14. Game windows, by area

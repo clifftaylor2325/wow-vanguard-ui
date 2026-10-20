@@ -33,7 +33,7 @@ it("minimap", () => {
   const tip = addon.eval("return { __maps, GameTooltip:IsShown(), GameTooltip.__lines, Vanguard_MinimapZone.__points.TOPLEFT.x, Vanguard_MinimapZone.__height }");
   expect([tip[0], tip[1], tip[2].map((l) => l.text), isTok(addon, [tip[2][2].r, tip[2][2].g, tip[2][2].b], "zoneContested"), tip[3], tip[4]],
     "clicking the zone name opens the world map; hovering it names the zone, its subzone and whose territory it is (in the zone color); the button leaves the top corners to the game's buttons")
-    .toEqual([1, true, ["Elwynn Forest", "Goldshire", "Contested territory"], true, 28, 20]);
+    .toEqual([1, true, ["Elwynn Forest", "Goldshire", "Contested territory", "Click: world map", "Wheel: zoom"], true, 28, 20]);
   addon.eval("local b = Vanguard_MinimapZone b.__scripts.OnLeave(b) b.__scripts.OnMouseWheel(b, -1)");
   expect(addon.eval("return { GameTooltip:IsShown(), Minimap:GetZoom() }"), "the tooltip goes when the mouse leaves, and the wheel over the name still zooms").toEqual([false, 4]);
   const bare = loggedIn(UI_ENV, { savedVariables: "VanguardDB.profiles = { Default = { Minimap = { coords = false } } }" });
@@ -242,8 +242,15 @@ it("minimap: a free-for-all zone (arena) is named in the hostile colour, with a 
   const addon = loggedIn(UI_ENV + `GetZonePVPInfo = nil C_PvP = { GetZonePVPInfo = function() return "arena" end }`);
   addon.eval("ns.GetModule('Minimap').UpdateZone() Vanguard_MinimapZone.__scripts.OnEnter(Vanguard_MinimapZone)");
   const tip = addon.eval("return GameTooltip.__lines");
-  expect([isTok(addon, addon.eval("return ns.GetModule('Minimap').zone.__textColor"), "zoneHostile"), tip[tip.length - 1].text, isTok(addon, [tip[tip.length - 1].r, tip[tip.length - 1].g, tip[tip.length - 1].b], "zoneHostile")],
+  const territory = tip[tip.length - 3];
+  expect([isTok(addon, addon.eval("return ns.GetModule('Minimap').zone.__textColor"), "zoneHostile"), territory.text, isTok(addon, [territory.r, territory.g, territory.b], "zoneHostile")],
     "as the game's own minimap colours and names it").toEqual([true, "Free-for-all territory", true]);
+});
+it("minimap: the zone name's tooltip ends with what a click and the wheel do, muted", () => {
+  const addon = loggedIn(UI_ENV);
+  addon.eval("Vanguard_MinimapZone.__scripts.OnEnter(Vanguard_MinimapZone)");
+  const tip = addon.eval("return GameTooltip.__lines").slice(-2);
+  expect([tip.map((l) => l.text), tip.every((l) => isTok(addon, [l.r, l.g, l.b], "text2"))], "two hint lines in the muted colour").toEqual([["Click: world map", "Wheel: zoom"], true]);
 });
 it("minimap: Rotate Minimap's config update puts Vanguard's mask back, square or round", () => {
   const ROTATE = `MinimapCluster.UpdateMinimapConfig = function() Minimap:SetMaskTexture("ui-hud-minimap-frame-generic-mask") end`;
