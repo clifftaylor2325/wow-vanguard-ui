@@ -1005,10 +1005,37 @@ it("auto-accept: summons, resurrections and duels, each off until switched on", 
   fire(on);
   expect(on.eval("return __answers"), "each answered, its prompt closed (all three resurrection prompts, whichever the game showed)").toEqual(["summon", "close CONFIRM_SUMMON", "resurrect", "close RESURRECT", "close RESURRECT_NO_SICKNESS", "close RESURRECT_NO_TIMER", "decline", "close DUEL_REQUESTED"]);
   expect(chatHas(on, /summon from <name> to TEST-ONLY Vale/) && chatHas(on, /resurrection from <name>/) && chatHas(on, /duel from someone/), "and said in chat (a hidden name reads as someone)").toBe(true);
-  on.eval("__answers = {}");
-  setCombat(on, true);
-  on.fire("CONFIRM_SUMMON");
-  expect(on.eval("return #__answers"), "no summons in combat").toBe(0);
+});
+
+it("auto-accept: a summon offered in a fight is taken when the fight ends", () => {
+  const addon = loggedIn("", { savedVariables: INVITE_SWITCHES_ON });
+  addon.eval("__wfgWorld.summon = { summoner = '<name>', area = 'TEST-ONLY Vale' }");
+  setCombat(addon, true);
+  addon.fire("CONFIRM_SUMMON");
+  expect(addon.eval("return __wfgWorld.summonAccepted == true"), "in the fight: the prompt stays up").toBe(false);
+  setCombat(addon, false);
+  expect(addon.eval("return __wfgWorld.summonAccepted == true"), "the fight over: accepted").toBe(true);
+  expect(chatHas(addon, /Accepted a summon from <name> to TEST-ONLY Vale/), "with the same chat line").toBe(true);
+});
+
+// A summon offered in a fight, then `change` (Lua) before the fight ends: whether it was accepted.
+const summonAfter = (change) => {
+  const addon = loggedIn("", { savedVariables: INVITE_SWITCHES_ON });
+  addon.eval("__wfgWorld.summon = { summoner = '<name>', area = 'TEST-ONLY Vale' }");
+  setCombat(addon, true);
+  addon.fire("CONFIRM_SUMMON");
+  addon.eval(change);
+  setCombat(addon, false);
+  return addon.eval("return __wfgWorld.summonAccepted == true");
+};
+
+it("auto-accept: a summon from a fight is left when it ran out, you died or the switch went off", () => {
+  expect(summonAfter("__wfgWorld.summon.timeLeft = 0"), "ran out").toBe(false);
+  expect(summonAfter("__wfgWorld.summon.timeLeft = __wfgWorld.secret(30)"), "time left hidden").toBe(false);
+  expect(summonAfter("__wfgWorld.units.player.dead = true"), "dead").toBe(false);
+  expect(summonAfter("__wfgWorld.secretReads.UnitIsDeadOrGhost = true"), "whether you are dead hidden").toBe(false);
+  expect(summonAfter("ns.GetModule('AutoAccept').settings.summons = false"), "switched off").toBe(false);
+  expect(summonAfter("C_SummonInfo.GetSummonConfirmTimeLeft = nil __wfgWorld.summon = nil"), "no time-left call, and no summoner any more").toBe(false);
 });
 // TEST-ONLY loot window: three slots, the second locked (being rolled for); every slot taken is recorded.
 const LOOT_ENV = `
@@ -1084,6 +1111,23 @@ it("quiet the game: guild invites, stranger group invites, friend requests and b
   invite(noFriends, "stranger");
   noFriends.update(0);
   expect(noFriends.eval("return __answers"), "with no way to tell who is a friend, a stranger is declined").toEqual(["group", "close PARTY_INVITE"]);
+});
+
+// Chat lines matching re.
+const chatCount = (addon, re) => Array.from(addon.chat()).filter((line) => re.test(line)).length;
+
+it("quiet the game: a decline says so once per sender every 5 minutes", () => {
+  const addon = loggedIn(INVITE_ENV, { savedVariables: INVITES_ON });
+  // The sender asks four ways: a duel, a group (always <name>), a guild and a Battle.net friend request.
+  const ask = (name) => { addon.fire("DUEL_REQUESTED", name); invite(addon, "stranger"); addon.fire("GUILD_INVITE_REQUEST", name); addon.fire("BN_FRIEND_INVITE_ADDED", 7); addon.update(0); };
+  addon.eval("ns.GetModule('AutoAccept').settings.duels = true; CancelDuel = function() end");
+  ask("<name>"); ask("<name>");
+  expect([/duel from <name>/, /group invite from <name>/, /guild invite from <name>/, /friend request/].map((re) => chatCount(addon, re)), "asked twice: one line each").toEqual([1, 1, 1, 1]);
+  ask("<other>");
+  expect(chatCount(addon, /duel from <other>/), "another sender gets their own line").toBe(1);
+  addon.update(300);
+  ask("<name>");
+  expect(chatCount(addon, /duel from <name>/), "5 minutes on: said again").toBe(2);
 });
 // TEST-ONLY game text: the error line and the zone names record what they were given. The error line
 // works as Blizzard_UIErrorsFrame does: red errors (UI_ERROR_MESSAGE, a blacklisted type 99 never shown)

@@ -1,15 +1,20 @@
 -- Small conveniences, each off until you switch it on:
---   * accept summons (out of combat), and say who summoned you where;
+--   * accept summons (one offered in a fight is taken when it ends, if still waiting), and say who
+--     summoned you where;
 --   * accept resurrections, and say who brought you back;
 --   * decline duel requests, and say whose;
 --   * faster auto-loot: when the game auto-loots, take every slot at once;
---   * decline guild invites, group invites from strangers and Battle.net friend requests, and say whose;
+--   * decline guild invites, group invites from strangers and Battle.net friend requests, and say whose
+--     (once per sender every few minutes, so repeated asks don't fill chat);
 --   * release your spirit at once when you die in a battleground.
 -- Each uses the game's own answer to its prompt and closes the prompt.
 
 local ADDON, ns = ...
 
 local AA = ns.Module("AutoAccept", { defaults = { summons = false, resurrect = false, duels = false, loot = false, guildInvites = false, strangerGroups = false, friendRequests = false, pvpRelease = false } })
+
+-- Seconds a decline stays quiet after its first chat line, per kind and sender.
+AA.QUIET_FOR = 300
 
 -- Calls a function from C_SummonInfo, else the global of that name; nil when neither exists.
 local function summon(name, ...)
@@ -45,14 +50,33 @@ local function canTeleport()
   return type(PlayerCanTeleport) ~= "function" or PlayerCanTeleport() == true
 end
 
--- A summon is waiting: accept it (not in combat, and only when the game would let you) and say from
--- whom and to where; otherwise the game's prompt stays up.
-function AA.OnSummon()
-  if not AA.settings.summons or ns.InCombat() or not canTeleport() then return end
+-- Whether the summon is still waiting: its time left (a plain number; a hidden one counts as gone), or, on a
+-- client without that call, a summoner still named.
+local function summonWaiting()
+  local left = summon("GetSummonConfirmTimeLeft")
+  if left == nil then return summon("GetSummonConfirmSummoner") ~= nil end
+  return (ns.PlainNumber(left) or 0) > 0
+end
+
+-- Whether you are alive, so a summon can take you (a hidden answer counts as not).
+local function alive()
+  local dead = UnitIsDeadOrGhost("player")
+  return not ns.IsSecret(dead) and not dead
+end
+
+-- Takes the waiting summon, when the switch is still on, it is still waiting, you are alive and the game
+-- would let you (otherwise its prompt stays up), and says from whom and to where.
+function AA.AcceptSummon()
+  if not AA.settings.summons or not summonWaiting() or not alive() or not canTeleport() then return end
   local who, where = plain(summon("GetSummonConfirmSummoner"), "someone"), plain(summon("GetSummonConfirmAreaName"), "somewhere")
   summon("ConfirmSummon")
   closePrompt("CONFIRM_SUMMON")
   ns.Chat(string.format("Accepted a summon from %s to %s.", who, where))
+end
+
+-- A summon is offered: take it now, or, in a fight, once the fight ends (the game doesn't ask again).
+function AA.OnSummon()
+  if AA.settings.summons then ns.OutOfCombat(AA.AcceptSummon, "accept summon") end
 end
 
 -- Someone offers to resurrect you: accept, and say who.
@@ -65,12 +89,32 @@ function AA.OnResurrect(_, who)
   ns.Chat("Accepted a resurrection from " .. plain(who, "someone") .. ".")
 end
 
--- Someone asks you to duel: decline, and say who.
+-- When each decline line was last said, by kind and sender.
+local said = {}
+
+-- Forgets lines said longer ago than AA.QUIET_FOR, so the table stays small.
+local function forgetOld(now)
+  for key, at in pairs(said) do
+    if now - at >= AA.QUIET_FOR then said[key] = nil end
+  end
+end
+
+-- Says a decline's chat line once per kind and sender within AA.QUIET_FOR seconds; repeats stay quiet.
+local function sayOnce(kind, who, line)
+  local key, now = kind .. " " .. who, GetTime()
+  forgetOld(now)
+  if said[key] then return end
+  said[key] = now
+  ns.Chat(line)
+end
+
+-- Someone asks you to duel: decline, and say who (once in a while per sender).
 function AA.OnDuel(_, who)
   if not AA.settings.duels or type(CancelDuel) ~= "function" then return end
   CancelDuel()
   closePrompt("DUEL_REQUESTED")
-  ns.Chat("Declined a duel from " .. plain(who, "someone") .. ".")
+  who = plain(who, "someone")
+  sayOnce("duel", who, "Declined a duel from " .. who .. ".")
 end
 
 -- Takes one loot slot, unless the game has locked it (an item still being rolled
@@ -96,11 +140,12 @@ local function declineGuild()
 end
 
 -- Someone invites you to their guild: decline on the next frame, once the game's own handler has
--- shown its window (the order handlers get an event in is the client's), and say who.
+-- shown its window (the order handlers get an event in is the client's), and say who (once in a while).
 function AA.OnGuildInvite(_, who)
   if not AA.settings.guildInvites or type(DeclineGuild) ~= "function" then return end
   ns.Soon("decline guild invite", declineGuild)
-  ns.Chat("Declined a guild invite from " .. plain(who, "someone") .. ".")
+  who = plain(who, "someone")
+  sayOnce("guild", who, "Declined a guild invite from " .. who .. ".")
 end
 
 -- True when the game can tell the inviter is a friend, a Battle.net friend or in your guild (or hides who).
@@ -125,14 +170,15 @@ end
 function AA.OnGroupInvite(_, who, _, _, _, _, _, guid)
   if not AA.settings.strangerGroups or type(DeclineGroup) ~= "function" or knownPlayer(guid) then return end
   ns.Soon("decline group invite", declineGroup)
-  ns.Chat("Declined a group invite from " .. plain(who, "someone") .. ".")
+  who = plain(who, "someone")
+  sayOnce("group", who, "Declined a group invite from " .. who .. ".")
 end
 
--- A Battle.net friend request arrives: decline it.
+-- A Battle.net friend request arrives: decline it (one line in a while: the request carries no name).
 function AA.OnFriendRequest(_, inviteID)
   if not AA.settings.friendRequests or type(BNDeclineFriendInvite) ~= "function" then return end
   BNDeclineFriendInvite(inviteID)
-  ns.Chat("Declined a Battle.net friend request.")
+  sayOnce("friend", "", "Declined a Battle.net friend request.")
 end
 
 -- Whether you can bring yourself back (a soulstone, Reincarnation): any option the game's death dialog

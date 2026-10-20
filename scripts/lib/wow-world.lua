@@ -704,9 +704,11 @@ C_PartyInfo = {
   ConvertToParty = function() world.converted = "party" end,
 }
 C_SummonInfo = {
-  -- A pending summon's summoner and area, and accepting it.
+  -- A pending summon's summoner, area and seconds left (a test sets world.summon.timeLeft; 120 when unset,
+  -- 0 with no summon), and accepting it.
   GetSummonConfirmSummoner = function() return world.summon and world.summon.summoner end,
   GetSummonConfirmAreaName = function() return world.summon and world.summon.area end,
+  GetSummonConfirmTimeLeft = function() return world.summon and (world.summon.timeLeft or 120) or 0 end,
   ConfirmSummon = function() world.summonAccepted = true end,
 }
 -- Whether the player may take a summon now (the game's Accept waits on it); a test sets world.cannotTeleport.
