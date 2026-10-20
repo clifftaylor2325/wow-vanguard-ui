@@ -127,10 +127,41 @@ end
 
 -- Actions ---------------------------------------------------------------------------------------
 
--- Accepts the offered quest (or acknowledges one the game accepted already).
+-- The accept line waiting for the game to confirm the quest ({ id, line }; id nil when the client can't
+-- name the quest), and the listeners that end the wait.
+local waiting
+local confirmAccept, dropAccept
+
+-- Forgets the waiting accept line: the game refused the quest (a full log, say) and another quest dialog opened.
+function dropAccept()
+  waiting = nil
+  ns.Off("QUEST_ACCEPTED", confirmAccept)
+end
+
+-- Says the waiting accept line once the game takes that quest into the log.
+function confirmAccept(_, questId)
+  local line, id = waiting and waiting.line, waiting and waiting.id
+  if not line or (id and ns.PlainNumber(questId) ~= id) then return end
+  dropAccept()
+  ns.Chat(line)
+end
+
+-- Waits for the game to take the quest before saying so (it refuses some, such as with a full log).
+local function awaitAccept(line)
+  local id = ns.PlainNumber(call(GetQuestID))
+  waiting = { id = id ~= 0 and id or nil, line = line }
+  ns.On("QUEST_ACCEPTED", confirmAccept)
+end
+
+-- Accepts the offered quest (or acknowledges one the game accepted already, said at once).
 function QA.Accept()
-  if call(QuestGetAutoAccept) == true then call(AcknowledgeAutoAcceptQuest) else call(AcceptQuest) end
-  ns.Chat("Accepted: " .. title() .. (fromPlayer() and (" (shared by " .. ns.QuestParts.Plain(call(UnitName, "npc")) .. ")") or ""))
+  local line = "Accepted: " .. title() .. (fromPlayer() and (" (shared by " .. ns.QuestParts.Plain(call(UnitName, "npc")) .. ")") or "")
+  if call(QuestGetAutoAccept) == true then
+    call(AcknowledgeAutoAcceptQuest)
+    return ns.Chat(line)
+  end
+  awaitAccept(line)
+  call(AcceptQuest)
 end
 
 -- Hands in a finished quest's items (the reward page comes next).
@@ -146,9 +177,11 @@ function QA.Finish()
   ns.Chat("Turned in: " .. title() .. (count(call(GetNumQuestChoices)) > 1 and name and (" (took " .. name .. ")") or ""))
 end
 
--- Module entry point (Core/Modules.lua): each switch is read when its event comes.
+-- Module entry point (Core/Modules.lua): each switch is read when its event comes. A new quest offer first
+-- forgets an accept line still waiting, before automation may answer the offer.
 function QA.Enable(settings)
   QA.settings = settings
+  ns.On("QUEST_DETAIL", dropAccept)
   for event in pairs(QA.ACTIONS) do
     ns.On(event, function() local act = actionFor(event) if act then act() end end)
   end

@@ -244,6 +244,7 @@ it("quest automation: accept, turn in, best reward, skip chatter; Shift skips it
   const on = "VanguardDB.profiles = { Default = { QuestAuto = { accept = true, turnIn = true, skipGossip = true } } }";
   const addon = loggedIn(QUEST_ENV, { savedVariables: on });
   addon.fire("QUEST_DETAIL");
+  addon.fire("QUEST_ACCEPTED", 90001);
   expect([dialog(addon).shown, calls(addon), chatHas(addon, /Accepted: TEST-ONLY Wolves/)], "accepted for you, the dialog stays shut").toEqual([false, ["accept nil"], true]);
   addon.eval("__shift = true");
   addon.fire("QUEST_DETAIL");
@@ -819,6 +820,14 @@ it("quest log: a failed quest says Failed in the danger colour, its objectives l
   const [text, color, rows] = addon.eval("local f = Vanguard_QuestLog return { f.objectives:GetText(), f.objectives.__textColor, f.objectiveRows.used }");
   expect([text, isTok(addon, color, "bad"), rows]).toEqual(["Failed", true, 0]);
 });
+it("quest log: an empty log says where quests come from, in muted type", () => {
+  const addon = loggedIn(TRACK_ENV + QLOG_ENV + " __log = {}");
+  addon.eval("ns.GetModule('QuestLog').Open()");
+  const [text, shown, color] = addon.eval("local e = Vanguard_QuestLog.empty return { e:GetText(), e:IsShown(), e.__textColor }");
+  expect([text, shown, isTok(addon, color, "muted")]).toEqual(["No quests yet. Quest givers show a ! over their heads.", true, true]);
+  addon.eval("__log = { { questID = 90051 } } ns.GetModule('QuestLog').Refresh()");
+  expect(addon.eval("return Vanguard_QuestLog.empty:IsShown()"), "a quest taken: the line goes").toBe(false);
+});
 it("quest log: an objective's count is found at either end, a text without one has none, and a done one is muted with a check", () => {
   const addon = loggedIn(TRACK_ENV + QLOG_ENV);
   addon.eval(`__quests[90051].objectives = { { text = "TEST-ONLY Wolf slain: 3/8", finished = false }, { text = "TEST-ONLY Explore the vale", finished = false },
@@ -1359,6 +1368,31 @@ it("quest history: /vg quests history [n] lists the latest turn-ins, newest firs
   off.slash("quests history");
   expect(chatHas(off, /Quest history is off/), "switched off").toBe(true);
 });
+it("quest automation: says Accepted only once the game takes that quest, at once for one the game took itself", () => {
+  const addon = loggedIn(QUEST_ENV, { savedVariables: "VanguardDB.profiles = { Default = { QuestAuto = { accept = true } } }" });
+  const accepted = () => Array.from(addon.chat()).filter((line) => /Accepted: /.test(line)).length;
+  addon.eval("GetQuestID = function() return 90001 end");
+  addon.fire("QUEST_DETAIL");
+  expect(accepted(), "asked, not yet taken: nothing said").toBe(0);
+  addon.fire("QUEST_ACCEPTED", 90002);
+  expect(accepted(), "another quest taken: still nothing").toBe(0);
+  addon.fire("QUEST_ACCEPTED", 90001);
+  addon.fire("QUEST_ACCEPTED", 90001);
+  expect(accepted(), "that quest: said once").toBe(1);
+  addon.fire("QUEST_DETAIL");
+  addon.eval("__shift = true");
+  addon.fire("QUEST_DETAIL");
+  addon.eval("__shift = false");
+  addon.fire("QUEST_ACCEPTED", 90001);
+  expect(accepted(), "refused, then another offer opened: the old line is dropped").toBe(1);
+  addon.eval("__autoAccept = true");
+  addon.fire("QUEST_DETAIL");
+  expect(accepted(), "a quest the game took itself: said at once").toBe(2);
+  addon.eval("__autoAccept, GetQuestID = false, function() return 0 end");
+  addon.fire("QUEST_DETAIL");
+  addon.fire("QUEST_ACCEPTED", 90005);
+  expect(accepted(), "a client that can't name the quest: the next quest taken").toBe(3);
+});
 it("quest automation: a quest a player shares follows its own switch, and Shift skips it", () => {
   // Makes the quest on offer come from a player.
   const shared = (addon) => addon.eval("UnitIsPlayer = function(unit) return unit == 'npc' and __sharer == true end __sharer = true");
@@ -1369,6 +1403,7 @@ it("quest automation: a quest a player shares follows its own switch, and Shift 
   const on = loggedIn(QUEST_ENV, { savedVariables: "VanguardDB.profiles = { Default = { QuestAuto = { acceptShared = true } } }" });
   shared(on);
   on.fire("QUEST_DETAIL");
+  on.fire("QUEST_ACCEPTED", 90001);
   expect([dialog(on).shown, calls(on), chatHas(on, /Accepted: TEST-ONLY Wolves \(shared by TEST-ONLY Farmer\)/)], "a shared quest is accepted and chat says who shared it").toEqual([false, ["accept nil"], true]);
   on.eval("__shift = true");
   on.fire("QUEST_DETAIL");

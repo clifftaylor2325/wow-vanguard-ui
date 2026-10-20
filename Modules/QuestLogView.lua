@@ -11,6 +11,8 @@ local QP = ns.QuestParts
 local QL = ns.GetModule("QuestLog")
 
 QL.W, QL.H, QL.LIST_W, QL.PER_ROW = 640, 440, 230, 2
+-- What the list says when you have no quests, pointing to where they come from.
+QL.EMPTY = "No quests yet. Quest givers show a ! over their heads."
 
 -- The gaps on the details side: under the title, under the text, above the reward cards, around the money line.
 local TITLE_GAP, TEXT_GAP, REWARDS_GAP, MONEY_GAP = T.SPACE.gap, T.SPACE.col, T.SPACE.col, T.SPACE.gap
@@ -129,6 +131,17 @@ local function makeZone(parent)
   return zone
 end
 
+-- The quest list's scroll area, its line and zone pools, and the line an empty log shows instead.
+local function addList(f)
+  f.listScroll, f.list = scrollArea(f, LIST_X, QL.LIST_W, LIST_H)
+  f.lines, f.zones, f.buttons = QP.Pool(f.list, QP.Line), QP.Pool(f.list, makeZone), {}
+  f.empty = T.Text(f.list:CreateFontString(nil, "OVERLAY"), "label", "muted")
+  f.empty:SetPoint("TOPLEFT", f.list, "TOPLEFT", 0, 0)
+  f.empty:SetWidth(QL.LIST_W)
+  f.empty:SetJustifyH("LEFT")
+  f.empty:SetText(QL.EMPTY)
+end
+
 -- Builds the window (hidden, opaque), movable, closed by Escape.
 function QL.Build()
   local f = T.Panel(CreateFrame("Frame", "Vanguard_QuestLog", UIParent), { alpha = T.ALPHA.opaque, shadow = true })
@@ -136,8 +149,7 @@ function QL.Build()
   f:SetFrameStrata("HIGH")
   ns.Mover(f, "questlog", "Quest log", { "CENTER", "CENTER", -200, 40 })
   addTop(f)
-  f.listScroll, f.list = scrollArea(f, LIST_X, QL.LIST_W, LIST_H)
-  f.lines, f.zones, f.buttons = QP.Pool(f.list, QP.Line), QP.Pool(f.list, makeZone), {}
+  addList(f)
   addDetails(f)
   QL.frame = f
   QL.Finish(f)
@@ -223,6 +235,7 @@ end
 function QL.Refresh()
   local f, entries = QL.frame, QL.Entries()
   f.count:SetText(QL.Count() .. " quests")
+  f.empty:SetShown(#entries == 0)
   f.lines.Reset()
   f.zones.Reset()
   f.listScroll:Fit(paintList(f, entries))
