@@ -345,6 +345,21 @@ it("strings and profiles from before the rename (ForeverUI 0.3.0)", () => {
   expect(renamed.eval("return ns.Theme.Settings().barTexture"), "the old bar style name reads as Vanguard's").toBe("vanguard");
   expect(renamed.eval("return ns.Theme.BarTexture() == ns.Theme.Texture('Bar')"), "and draws the bundled bar").toBe(true);
 });
+// TEST-ONLY: what ForeverUI 0.3.0 exported (it wrote every default in): its action bar and data bar sizes, as an FUI1 string.
+const OLD_SIZES = `local p = { ActionBars = { lockButtons = true, rangeTint = true, size = 36, spacing = 4 },
+  DataBars = { width = 476, height = 10, xp = true, reputation = true, text = "hover" } }
+  return (ns.Serialize.Encode("profile", p):gsub("^VG1:", "FUI1:"))`;
+it("an imported ForeverUI 0.3.0 profile gets today's button size with today's data bar width", () => {
+  const a = loggedIn(CLICK_LUA);
+  a.eval("ns.ImportDialog()");
+  a.eval(`Vanguard_TextEdit:SetText(${JSON.stringify(a.eval(OLD_SIZES))})`);
+  a.eval('__click("Import")');
+  a.fire("PLAYER_LOGOUT");
+  const sv = a.savedVariables();
+  const b = createAddon({ savedVariables: `VanguardDB = ${luaValue(sv.account)}\nVanguardCharDB = ${luaValue(sv.char)}\n` });
+  b.login();
+  expect(b.eval("return { ns.ProfileName(), ns.Settings('ActionBars').size, ns.Settings('ActionBars').spacing, ns.Settings('DataBars').width }"), "38 px buttons 2 apart over the 478 px bars").toEqual(["Imported", 38, 2, 478]);
+});
 it("a profile deleted on another character falls back to Default, not back empty", () => {
   // TEST-ONLY saved files: this character last used Raid, which another character has since deleted.
   const gone = createAddon({ savedVariables: 'VanguardDB = { version = 2, setupDone = true, profiles = { Default = { theme = { accent = { 0, 1, 0 } } } } }\nVanguardCharDB = { profile = "Raid" }' });

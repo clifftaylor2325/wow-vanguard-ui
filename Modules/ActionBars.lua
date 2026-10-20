@@ -122,10 +122,12 @@ local function keepOldRightBars(saved)
     end
   end
 end
--- Profiles saved before the Centered layout hold the old button spacing (4)
--- as a value: once, put it back to the new default.
+-- Profiles saved before the Centered layout hold the old button size (36) and
+-- spacing (4) as values (ForeverUI 0.3.0 wrote every default in): once, put
+-- them back to the new defaults, which match the data bars' new width.
 local function centeredSpacing(saved)
   if (saved.layout or 0) >= 2 then return end
+  if saved.size == 36 then saved.size = nil end
   if saved.spacing == 4 then saved.spacing = nil end
   saved.layout = 2
 end
