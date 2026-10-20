@@ -582,6 +582,12 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Expect: the yellow progress line (`<mob> slain: 3/10`) stays on screen for its usual time, the red line never shows, and the error voice and sound play as they do without Vanguard. With the switch off, both lines show.
 - If it fails, paste: a screenshot of the top of the screen and `/vg errors`.
 
+### 8.6b Camera zoom back to the game's setting
+
+- Do: with "Furthest the camera zooms out" on "game's setting", scroll the camera all the way out and note how far it goes. Pick "2.6 x (furthest)" and scroll out, then pick "game's setting" again and scroll out. Try picking "game's setting" during a fight too.
+- Expect: 2.6 x zooms out further; back on "game's setting" the camera stops where it did at first (in a fight, only once the fight ends), and it stays that way after `/reload`.
+- If it fails, paste: `/dump GetCVar("cameraDistanceMaxZoomFactor")` before and after, and `/vg errors`.
+
 ## 9. Bags, merchant, trainer
 
 ### 9.1 Bag search

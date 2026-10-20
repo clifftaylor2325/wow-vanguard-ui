@@ -23,7 +23,8 @@ local META = { format = true, addonVersion = true, parts = true, display = true 
 -- string, and a string's are dropped as it is read, so they never reach another client.
 -- Graphics.undo: the game settings /vg graphics apply changed here, which its undo puts back.
 -- Bags.applied and Bags.prior: what Vanguard set the game's combined bags to here, and the player's value before.
-local CLIENT_STATE = { Graphics = { undo = true }, Bags = { applied = true, prior = true } }
+-- Quiet.cameraPrior: the player's own furthest camera zoom here, from before Vanguard first changed it.
+local CLIENT_STATE = { Graphics = { undo = true }, Bags = { applied = true, prior = true }, Quiet = { cameraPrior = true } }
 
 -- The group parts, in the export panel's order, and what it calls them. Every other
 -- table is a module's own part (its name), or global when no module goes by its name.
