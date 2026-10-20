@@ -81,11 +81,17 @@ local function colorHeading(name)
 end
 
 -- A row's tick or box glyph (the game's gold art on a plain texture) in a theme colour: greyed first so the colour
--- reads true. A row with an icon of its own (a custom check) is shown in the icon's own colours (white).
-local function tintGlyph(glyph, token, custom)
+-- reads true.
+local function tintGlyph(glyph, token)
   if type(glyph) ~= "table" or not glyph.SetVertexColor then return end
-  if not custom and glyph.SetDesaturated then glyph:SetDesaturated(true) end
-  T.Tint(glyph, custom and "white" or token)
+  if glyph.SetDesaturated then glyph:SetDesaturated(true) end
+  T.Tint(glyph, token)
+end
+
+-- A row with an icon of its own (a custom check) is shown in the icon's own colours: white, not greyed.
+local function tintCustomGlyph(glyph)
+  if type(glyph) ~= "table" or not glyph.SetVertexColor then return end
+  T.Tint(glyph, "white")
 end
 
 -- The row the game's UIDropDownMenu_AddButton(info, level) just made: a heading's text in the text colour, the tick in the
@@ -97,8 +103,9 @@ local function dressDropdownRow(info, level)
   if info.isTitle then colorHeading(row .. "NormalText") end
   if info.notCheckable then return end
   local custom = info.customCheckIconAtlas or info.customCheckIconTexture
-  tintGlyph(_G[row .. "Check"], "accentText", custom)
-  tintGlyph(_G[row .. "UnCheck"], "text2", custom)
+  local paint = custom and tintCustomGlyph or tintGlyph
+  paint(_G[row .. "Check"], "accentText")
+  paint(_G[row .. "UnCheck"], "text2")
 end
 
 -- Listens for the old dropdown's rows being made, where the client has the call. Done at login, after the game's
