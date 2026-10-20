@@ -483,6 +483,67 @@ it("search operators wait for a client that has the search refresh, and skip but
   expect(other.eval(`local BG = ns.GetModule("Bags") return BG.ParseSearch(nil) == nil`), "no text: no tests").toBe(true);
 });
 
+// TEST-ONLY game whose bag refill sets each slot's match from its own search, as Mainline/ContainerFrame.lua's
+// UpdateItems does (here the game's own search lights everything).
+const REFILL_ENV = `
+  local f, fill = ContainerFrameCombinedBags, ContainerFrameCombinedBags.UpdateItems
+  function f:UpdateItems() fill(self) for _, b in ipairs(self.Items) do b:SetMatchesSearch(true) end end
+`;
+
+it("search operators hold when the game fills the bag's slots again (an item moved)", () => {
+  const addon = loggedIn(ITEMS_ENV + fill([8, 4, 0, 0, 0], { equipment: 1, consumables: 2 }) + BAG_FRAME + SEARCH_ENV + REFILL_ENV);
+  addon.eval("__openBag()");
+  expect(lit(addon, "q:uncommon"), "the sword alone").toEqual([90001]);
+  addon.eval("ContainerFrameCombinedBags:UpdateItems()");
+  expect(Object.values(addon.eval("local out = {} for _, b in ipairs(ContainerFrameCombinedBags.Items) do if b.matches then out[#out + 1] = (C_Container.GetContainerItemInfo(b:GetBagID(), b:GetID()) or {}).itemID end end return out")), "still the sword alone after the refill").toEqual([90001]);
+});
+
+// TEST-ONLY bank, as Mainline/BankFrameTemplates.lua builds it (BankFrame.xml loads BankPanelTemplate): a tab
+// (bag 6) holding the sword, 5 waters and the gray item; the panel's pooled slots (each knows its tab and slot,
+// and its Refresh sets its match from the game's own search); a page turn makes the slots again; the game's
+// own search, which doesn't know the search words, greys every slot while its box holds any text.
+const BANK_ENV = `
+  __wfgWorld.bagSizes[6] = 4
+  __wfgWorld.bags[6] = { { itemID = 90001 }, { itemID = 159, count = 5 }, { itemID = 90002 } }
+  BankFrame = CreateFrame("Frame", "BankFrame", UIParent) BankFrame:Hide()
+  BankPanel = CreateFrame("Frame", "BankPanel", BankFrame)
+  BankItemSearchBox = CreateFrame("EditBox", "BankItemSearchBox", BankFrame)
+  __bankSlots = {}
+  local function gameMatch() return (BankItemSearchBox:GetText() or "") == "" end
+  local function slot(i)
+    local b = CreateFrame("Button", nil, BankPanel)
+    b.GetBankTabID, b.GetContainerSlotID = function() return 6 end, function() return i end
+    b.SetMatchesSearch = function(self, yes) self.matches = yes end
+    b.Refresh = function(self) self:SetMatchesSearch(gameMatch()) end
+    return b
+  end
+  function BankPanel:EnumerateValidItems() local i = 0 return function() i = i + 1 return __bankSlots[i] end end
+  function BankPanel:GenerateItemSlotsForSelectedTab() for i = 1, 4 do __bankSlots[i] = __bankSlots[i] or slot(i) __bankSlots[i]:Refresh() end end
+  function BankPanel:RefreshAllItemsForSelectedTab() for b in self:EnumerateValidItems() do b:Refresh() end end
+  function BankPanel:UpdateSearchResults() for b in self:EnumerateValidItems() do b:SetMatchesSearch(gameMatch()) end end
+`;
+
+// The items of the bank slots left lit.
+const bankLit = (addon) => Object.values(addon.eval(`local out = {}
+  for _, b in ipairs(__bankSlots) do if b.matches then out[#out + 1] = (C_Container.GetContainerItemInfo(6, b:GetContainerSlotID()) or {}).itemID or "empty" end end
+  return out`));
+
+it("the bank's search box takes the search words too, and they hold through a refreshed slot, a page turn and a refresh", () => {
+  const addon = loggedIn(ITEMS_ENV + BAG_FRAME + SEARCH_ENV + BANK_ENV);
+  addon.eval("__openBag() BankFrame:Show() BankPanel:GenerateItemSlotsForSelectedTab()");
+  expect(bankLit(addon), "no search: every slot lit").toEqual([90001, 159, 90002, "empty"]);
+  addon.eval("BankItemSearchBox:SetText('q:uncommon') BankPanel:UpdateSearchResults()");
+  expect(bankLit(addon), "the sword alone, not the game's all-grey bank").toEqual([90001]);
+  addon.eval("__bankSlots[1]:Refresh() __bankSlots[2]:Refresh()");
+  expect(bankLit(addon), "a slot the game refreshes (an item picked up or put down) keeps the words' answer").toEqual([90001]);
+  addon.eval("BankPanel:GenerateItemSlotsForSelectedTab() BankPanel:RefreshAllItemsForSelectedTab()");
+  expect(bankLit(addon), "a page turn and a whole refresh: the same").toEqual([90001]);
+  addon.eval("BankItemSearchBox:SetText('ilvl<=5 spring') BankPanel:UpdateSearchResults()");
+  expect(bankLit(addon), "words and a plain word together").toEqual([159]);
+  addon.eval("BankItemSearchBox:SetText('sword') BankPanel:UpdateSearchResults()");
+  expect(bankLit(addon), "a plain word alone is the game's own search").toEqual([]);
+});
+
 it("/vg bag deposit sends a category's stacks to the open bank, out of combat only", () => {
   const addon = openFilled([8, 4, 0, 0, 0], { consumables: 2, equipment: 1 });
   // The chat so far, as one string.
@@ -577,3 +638,4 @@ it("the Filter and Groups buttons are as wide as their labels need, so neither i
   expect(rows, "each label in full, with room to spare between its left inset and the arrow").toEqual([["Filter", true, true], ["Groups", true, true]]);
   expect(addon.eval("return BagItemSearchBox:GetWidth() > 100"), "and the search box keeps a usable width").toBe(true);
 });
+
