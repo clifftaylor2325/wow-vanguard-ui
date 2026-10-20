@@ -289,31 +289,37 @@ local function dropHidden(frame)
   endDrag(frame)
 end
 
--- Makes a window movable and kept on the screen, dragged by its top edge, and by an invisible drag area over
--- its title bar too when it is one of GW.MOVABLE.
-local function makeMovable(frame, name, withHandle)
+-- Makes a window movable and kept on the screen, dragged by its top edge.
+local function makeMovable(frame, name)
   frame:SetMovable(true)
   frame:SetClampedToScreen(true)
-  if withHandle then addHandle(frame, name) end
   frame:HookScript("OnMouseDown", ns.Guard("press " .. name, pressTop))
   frame:HookScript("OnMouseUp", ns.Guard("release " .. name, releaseTop))
   frame:HookScript("OnHide", ns.Guard("release " .. name, dropHidden))
 end
 
 -- Sets a window up once, when the client has it: made movable out of combat, and put back each time it shows.
-local function setUp(name, withHandle)
+-- Returns the window's frame only when this call set it up, so the caller can add to it once.
+local function setUp(name)
   local frame = _G[name]
   if type(frame) ~= "table" or type(frame.HookScript) ~= "function" or vgMovable[frame] then return end
   vgMovable[frame] = true
   if not layoutOf(frame, name) then recordHome(frame) end
-  ns.OutOfCombat(function() makeMovable(frame, name, withHandle) end, "move setup " .. name)
+  ns.OutOfCombat(function() makeMovable(frame, name) end, "move setup " .. name)
   frame:HookScript("OnShow", function() place(name) end)
+  return frame
+end
+
+-- Sets a window up (see setUp) and lays its drag area over its title bar too, out of combat.
+local function setUpDragArea(name)
+  local frame = setUp(name)
+  if frame then ns.OutOfCombat(function() addHandle(frame, name) end, "move handle " .. name) end
 end
 
 -- Sets up every window the client has now (called again as parts of the game load their windows).
 local function setUpAll()
-  for _, name in ipairs(GW.MOVABLE) do setUp(name, true) end
-  for _, name in ipairs(GW.MOVABLE_TOP) do setUp(name, false) end
+  for _, name in ipairs(GW.MOVABLE) do setUpDragArea(name) end
+  for _, name in ipairs(GW.MOVABLE_TOP) do setUp(name) end
 end
 
 -- A fight is starting (PLAYER_REGEN_DISABLED, before the lockdown): every drag still held ends now, where the window
