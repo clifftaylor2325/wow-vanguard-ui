@@ -239,7 +239,7 @@ end
 -- mouse's own enter and leave events on it and its buttons (nothing polls),
 -- feeling the mouse but letting clicks through.
 function MS.ApplyVisibility()
-  ns.OutOfCombat(function() V.ApplyNow(MS.strip, MS.settings.menu, MS.settings.menuWhen, true) end, MS.strip)
+  ns.OutOfCombat(function() V.ApplySecureNow(MS.strip, MS.settings.menu, MS.settings.menuWhen) end, MS.strip)
 end
 
 -- Follows the bar's visibility from the start: the mouse over it and the

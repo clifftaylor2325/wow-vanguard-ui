@@ -180,22 +180,39 @@ local function motion(frame)
   frame:SetMouseClickEnabled(false)
 end
 
--- Registers a frame's state driver for a setting now (out of combat only), and
--- with secure, its visibility driver too; onState(frame) runs on every change.
-function V.ApplyNow(frame, mode, when, secure)
+-- Keeps the frame's instance and auto-hide flags for a setting (ApplyNow and ApplySecureNow read them back);
+-- returns the setting's state.
+local function noteMode(frame, mode, when)
   frame.vgInstance = V.Mode(mode) ~= "hidden" and V.Checked(mode, when).instance == true
   frame.vgAutoHide = V.Mode(mode) == "autohide"
-  V.ApplyState(frame, V.State(mode, when), secure)
+  return V.State(mode, when)
+end
+
+-- Repaints a frame after its state is applied; an Auto-hide frame lingers first.
+local function settle(frame)
   if frame.vgAutoHide then return V.Linger(frame) end
   V.Refresh(frame)
 end
 
--- Registers a state string as the frame's "vgvis" driver (out of combat only), and with
--- secure its visibility driver too; the caller repaints (V.Refresh).
-function V.ApplyState(frame, state, secure)
+-- Registers a frame's state driver for a setting now (out of combat only), and repaints it.
+function V.ApplyNow(frame, mode, when)
+  V.ApplyState(frame, noteMode(frame, mode, when))
+  settle(frame)
+end
+
+-- As V.ApplyNow, and also registers the frame's "visibility" driver (secure: out of combat only), which the
+-- client uses to show and hide a protected frame such as the menu strip.
+function V.ApplySecureNow(frame, mode, when)
+  local state = noteMode(frame, mode, when)
+  RegisterStateDriver(frame, "visibility", V.Driver(state))
+  V.ApplyState(frame, state)
+  settle(frame)
+end
+
+-- Registers a state string as the frame's "vgvis" driver (out of combat only); the caller repaints (V.Refresh).
+function V.ApplyState(frame, state)
   if not frame.vgStateString then frame:HookScript("OnAttributeChanged", onAttribute) end
   frame.vgStateString, frame.vgState = state, V.Parse(state)
-  if secure then RegisterStateDriver(frame, "visibility", V.Driver(state)) end
   RegisterStateDriver(frame, "vgvis", state)
   if frame.vgHoverRoot then motion(frame) end
 end
