@@ -739,6 +739,12 @@ function GW.KeepKeys(frame, keys)
   return keep
 end
 
+-- Adds part to a keep set when it is a frame or texture (a part the client lacks is skipped), and returns the set.
+function GW.KeepAlso(keep, part)
+  if type(part) == "table" then keep[part] = true end
+  return keep
+end
+
 -- A paging arrow as a theme arrow button pointing `direction`; anything that is not a frame is skipped.
 function GW.SkinArrow(button, direction)
   if type(button) == "table" and button.CreateTexture then T.ArrowButton(button, direction) end

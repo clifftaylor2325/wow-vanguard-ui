@@ -61,15 +61,6 @@ local function walk(frame, path)
   return type(part) == "table" and part or nil
 end
 
--- A table of the parts of frame named in keys that it has, as a keep list for T.FadeRegions.
-local function keepKeys(frame, keys)
-  local keep = {}
-  for _, key in ipairs(keys) do
-    if type(frame[key]) == "table" then keep[frame[key]] = true end
-  end
-  return keep
-end
-
 -- Adds a tab button to the list, once (anything that takes a script hook is one); side marks a side tab.
 local function add(list, button, side)
   if type(button) ~= "table" or not button.HookScript or list.seen[button] then return end
@@ -222,7 +213,7 @@ local function dressBankTab(tab, window)
   local button = tab.Button
   if type(button) ~= "table" or not button.HookScript then return end
   T.Tab(button)
-  T.FadeRegions(button, keepKeys(button, { "IconTexture", "SearchOverlay" }))
+  T.FadeRegions(button, GW.KeepKeys(button, { "IconTexture", "SearchOverlay" }))
   seedChecked(button)
 end
 
@@ -279,7 +270,7 @@ function GW.SkinBar(bar)
   if type(bar) ~= "table" then return end
   if type(bar.Fill) == "table" then
     T.Panel(bar, { inset = true, noSheen = true })
-    T.FadeRegions(bar, keepKeys(bar, { "Fill" }))
+    T.FadeRegions(bar, GW.KeepKeys(bar, { "Fill" }))
   elseif type(bar.SetStatusBarTexture) == "function" then
     T.StyleBar(bar)
   end
@@ -457,7 +448,7 @@ local function skinPvPRank(frame)
   if type(info) ~= "table" then return end
   T.FadeRegions(info)
   local ring = info.RankProgressBarDisplay
-  if type(ring) == "table" and ring.GetRegions then T.FadeRegions(ring, keepKeys(ring, { "Background", "Bar", "FactionBadge" })) end
+  if type(ring) == "table" and ring.GetRegions then T.FadeRegions(ring, GW.KeepKeys(ring, { "Background", "Bar", "FactionBadge" })) end
 end
 
 -- The side panes (CharacterFrameSidePaneTemplate: the entry you picked, in words, beside the list), each as the path
@@ -719,10 +710,10 @@ end
 -- highlight pictures and the ignored-slot mark stay.
 local function fadeAmmoPlate(slot)
   if type(slot) ~= "table" or not slot.GetRegions then return end
-  local keep = keepKeys(slot, { "icon", "Icon", "IconBorder", "ignoreTexture" })
-  keep[_G.CharacterAmmoSlotIconTexture or slot] = true
-  keep[slot.GetPushedTexture and slot:GetPushedTexture() or slot] = true
-  keep[slot.GetHighlightTexture and slot:GetHighlightTexture() or slot] = true
+  local keep = GW.KeepKeys(slot, { "icon", "Icon", "IconBorder", "ignoreTexture" })
+  GW.KeepAlso(keep, _G.CharacterAmmoSlotIconTexture)
+  GW.KeepAlso(keep, slot.GetPushedTexture and slot:GetPushedTexture())
+  GW.KeepAlso(keep, slot.GetHighlightTexture and slot:GetHighlightTexture())
   T.FadeRegions(slot, keep)
 end
 

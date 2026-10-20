@@ -1364,7 +1364,7 @@ GW.RAID_CLASS_BUTTONS = 16
 local function dressRaidClassButton(i)
   local button = _G["RaidClassButton" .. i]
   if type(button) ~= "table" or not button.GetRegions then return end
-  T.FadeRegions(button, { [_G["RaidClassButton" .. i .. "IconTexture"] or false] = true })
+  T.FadeRegions(button, GW.KeepAlso({}, _G["RaidClassButton" .. i .. "IconTexture"]))
   T.Panel(button, { raised = true, noSheen = true })
 end
 
@@ -1620,7 +1620,7 @@ function GW.SkinToast(frame)
   if type(frame) ~= "table" or not frame.GetRegions then return end
   GW.HookAfter(frame, "ShowToast", GW.SkinToast)
   local icon = frame.IconTexture or frame.Icon
-  T.FadeRegions(frame, { [type(icon) == "table" and icon or false] = true })
+  T.FadeRegions(frame, GW.KeepAlso({}, icon))
   T.Tooltip(frame)
   dressToastLines(frame)
   if type(frame.CloseButton) == "table" and frame.CloseButton.CreateTexture then T.CloseButton(frame.CloseButton) end

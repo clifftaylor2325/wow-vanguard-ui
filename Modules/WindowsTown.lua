@@ -356,7 +356,7 @@ end
 function GW.SkinCoinPickup(frame)
   T.Panel(frame, { shadow = true })
   local keep = {}
-  for _, name in ipairs(COIN_ICONS) do keep[_G[name] or false] = true end
+  for _, name in ipairs(COIN_ICONS) do GW.KeepAlso(keep, _G[name]) end
   T.FadeRegions(frame, keep)
   namedButtons(COIN_BUTTONS)
   GW.SkinGlyph(_G.CoinPickupLeftButton)
