@@ -326,9 +326,13 @@ end
 
 -- What each /vg filter verb does with the rest of the line; no verb at all prints the status.
 local VERBS = {
+  -- Switches the filter on.
   on = function() return CF.SetOn(true) end,
+  -- Switches the filter off.
   off = function() return CF.SetOn(false) end,
+  -- Caught lines go to the Filtered tab.
   tab = function() return CF.SetMode("tab") end,
+  -- Caught lines are hidden.
   hide = function() return CF.SetMode("hide") end,
   add = CF.Add,
   remove = CF.Remove,
