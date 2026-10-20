@@ -147,6 +147,21 @@ it("first-run setup: a profile of its own copies the shared one without a reload
   const fork = (name) => addon.eval(`return ns.ForkName(${JSON.stringify(name)})`);
   expect([fork("name"), fork("Ælfric"), fork("Ææ"), fork(undefined)], "a taken name is numbered; letters a profile can't hold are dropped").toEqual(["name 2", "lfric", "Character", "Character"]);
 });
+it("first-run setup: once a profile of its own is made, setup opened again doesn't offer the Profile step", () => {
+  const addon = loggedIn(CLICK_LUA, { firstRun: true, savedVariables: SET_UP_ACCOUNT });
+  addon.eval('__click("A profile of its own")');
+  setupClick(addon, "next");
+  addon.eval("Vanguard_Setup:Hide()");
+  addon.slash("setup");
+  expect(addon.eval("return { Vanguard_Setup.caption:GetText(), ns.ProfileNames() }"), "it starts at the layout, and no second copy is made").toEqual(["Step 1 of 4 · Layout", ["Default", "Tester"]]);
+});
+it("first-run setup: the Profile step's choices name the profile in use when setup opens again", () => {
+  const addon = loggedIn(CLICK_LUA, { firstRun: true, savedVariables: SET_UP_ACCOUNT });
+  addon.eval("Vanguard_Setup:Hide() ns.ForkProfile('Alt') VanguardCharDB.pickProfile = true");
+  addon.slash("setup");
+  expect(addon.eval("local c = Vanguard_Setup.pages.profile.choices return { c[1].text:GetText(), c[2].text:GetText(), c[2].hint }"), "the labels follow the profile now in use")
+    .toEqual(["Share profile Alt with your other characters", "A profile of its own: Tester", "Starts as a copy of Alt; changes here stay on this character."]);
+});
 it("setup again: Keep and Keep change nothing; Run setup in the options; Start over owes setup after the reload", () => {
   const addon = loggedIn(CLICK_LUA + ACTIONS_ENV + UNITS_ENV + RAID_ENV + "__wfgStub.setScreen(2560, 1440)");
   addon.eval('ns.SetMoverPoint("raid", "TOP", "TOP", 0, -300)');

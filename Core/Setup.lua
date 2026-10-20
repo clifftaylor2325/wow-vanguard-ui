@@ -235,11 +235,13 @@ function S.GuessLayout()
 end
 
 -- Applies the profile step: "new" gives this character a profile of its own and keeps Back
--- from returning to it, so the new profile stays; "share" changes nothing.
+-- from returning to it, so the new profile stays (setup opened again doesn't ask again, either);
+-- "share" changes nothing.
 function S.ApplyProfile(key)
   if key ~= "new" then return end
   ns.ForkProfile(UnitName("player"))
   state.floor = state.step + 1
+  VanguardCharDB.pickProfile = nil
 end
 
 -- The raid frames' settings in the active profile, with their defaults.
@@ -546,6 +548,15 @@ local function profilePage(page)
   choicePage(page, "Vanguard is set up on this account. Profiles in /vg switches this later.", profileChoices(), "profile")
 end
 
+-- Names the profile step's choices after the profile in use now (the page is built once, at setup's first open).
+local function relabelProfile()
+  for i, l in ipairs(profileChoices()) do
+    local b = frame.pages.profile.choices[i]
+    b.text:SetText(l.text)
+    b.hint = l.hint
+  end
+end
+
 -- The layout choices, the one for your role marked.
 local function layoutChoices()
   local mine, out = S.GuessLayout(), {}
@@ -834,6 +845,7 @@ function S.Open()
   state.order, state.floor, state.owed, state.complete, state.profile = pick and PROFILE_STEPS or STEPS, 1, owe, false, "share"
   state.layout, state.screen, state.backup = "keep", "keep", nil
   state.reload, state.paused, state.done, state.role = false, false, false, false
+  relabelProfile()
   T.OpenWindow(frame)
   showStep(1)
 end
