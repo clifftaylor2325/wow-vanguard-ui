@@ -92,33 +92,15 @@ local function close(p, frame)
   GW.DressClose(frame, p)
 end
 
--- The frame's regions and child frames, as a set.
-local function members(frame)
-  local set = {}
-  for _, r in ipairs({ frame:GetRegions() }) do set[r] = true end
-  for _, c in ipairs({ frame:GetChildren() }) do set[c] = true end
-  return set
-end
-
--- Runs fn(frame) on a layout frame (the game's ResizeLayoutFrame sizes itself from every child region and frame) and
--- marks the pieces fn added to it ignoreInLayout, so Layout() leaves them out.
-local function inLayout(frame, fn)
-  local before = members(frame)
-  fn(frame)
-  for piece in pairs(members(frame)) do
-    if not before[piece] then piece.ignoreInLayout = true end
-  end
-end
-
 -- An inset panel behind a part of a layout frame (a scrolling well), its pieces kept out of the layout.
 local function layoutInset(p)
-  inLayout(p, inset)
+  GW.InLayout(p, inset)
 end
 
 -- A divider line as one pixel of `divider`; the line is drawn on the frame the divider texture is on, which may be a
 -- layout frame, so what it adds stays out of that layout.
 local function divider(p)
-  if type(p.GetParent) == "function" and type(p:GetParent()) == "table" then inLayout(p:GetParent(), function() T.Divider(p) end) else T.Divider(p) end
+  if type(p.GetParent) == "function" and type(p:GetParent()) == "table" then GW.InLayout(p:GetParent(), function() T.Divider(p) end) else T.Divider(p) end
 end
 
 -- The divider textures among a frame's regions (the game draws them with no key: an atlas whose name ends in
@@ -155,7 +137,7 @@ end
 -- Mode's windows resize themselves from every child region, and the shadow reaches past the
 -- edge) the pieces the panel adds stay out of the layout.
 local function paint(frame, spec)
-  if spec.layout then inLayout(frame, function(f) T.Panel(f, { shadow = true }) end) else T.Panel(frame, { shadow = true }) end
+  if spec.layout then GW.InLayout(frame, T.Panel, { shadow = true }) else T.Panel(frame, { shadow = true }) end
 end
 
 -- Builds a skin from a spec: the frame's own textures faded, a flat panel with a shadow
@@ -326,7 +308,7 @@ local vgCheckMakers = {}
 -- initialiser its scroll box runs on each row it takes into view, the chat settings' box makers), by the
 -- window's global name.
 GW.CHECK_MAKERS = {
-  AddonList = { "AddonList_Update", "AddonList_InitButton" },
+  AddonList = { "AddonList_Update", "AddonList_InitAddon" },
   ChatConfigFrame = { "ChatConfig_CreateCheckboxes", "ChatConfig_CreateTieredCheckboxes", "ChatConfig_CreateColorSwatches" },
 }
 

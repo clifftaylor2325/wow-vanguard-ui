@@ -11,9 +11,9 @@
 -- bags' own layout (UpdateContainerFrameAnchors stacks the open bags from the bottom-right corner). So a
 -- saved place is put back after the game has placed the window: when it shows, and after each of those
 -- two calls. Nothing is moved in combat (the collections window holds protected buttons, and the game
--- refuses to move a frame anchored to them in a fight): a drag doesn't start, and putting a window back
--- waits until the fight ends. Places are kept in the Windows module's settings (moved), by window name,
--- as the window's top-left corner in UIParent's units.
+-- refuses to move a frame anchored to them in a fight): a drag doesn't start, one still held as a fight
+-- starts ends then, and putting a window back waits until the fight ends. Places are kept in the Windows
+-- module's settings (moved), by window name, as the window's top-left corner in UIParent's units.
 --
 -- Left where the game puts them: the world map and its quest panel (maximised and minimised by the game;
 -- Vanguard's own quest log has its own mover), loot and roll windows (opened at the cursor), popups and
@@ -118,14 +118,34 @@ local function startDrag(handle)
   handle.window:StartMoving()
 end
 
--- The drop: the window stops, the game's own layout cache is kept out of it, and its place is saved.
-local function stopDrag(handle)
-  local frame = handle.window
-  if not vgDragging[frame] then return end
-  vgDragging[frame] = nil
+-- Stops a window following the mouse and keeps the game's layout cache out of it.
+local function stop(frame)
   frame:StopMovingOrSizing()
   frame:SetUserPlaced(false)
+end
+
+-- Runs a window's drop out of combat: StopMovingOrSizing is protected, and the collections window holds protected
+-- buttons, so a drop the fight caught waits for its end (a drag still held as a fight starts ends before it: dropAll).
+local function settle(frame, drop)
+  ns.OutOfCombat(function() drop(frame) end, "drop " .. frame:GetName())
+end
+
+-- The drop of a title-bar drag: the window stops where it is and its place is saved.
+local function dropped(frame)
+  stop(frame)
   GW.SavePlace(frame:GetName(), frame)
+end
+
+-- Ends a title-bar drag (dropped, out of combat); nothing when the window isn't being dragged.
+local function endDrag(frame)
+  if not vgDragging[frame] then return end
+  vgDragging[frame] = nil
+  settle(frame, dropped)
+end
+
+-- The drop on the drag area.
+local function stopDrag(handle)
+  endDrag(handle.window)
 end
 
 -- The window's title bar: its TitleContainer or the part GW.MOVE_BAR names, or nil.
@@ -188,28 +208,28 @@ local function pressTop(frame, button)
   frame:StartMoving()
 end
 
--- The release of a press-move (or the window closing): it stops, the game's layout cache is kept out of
--- it, and its place is saved unless it never left its spot (a click).
-local function releaseTop(frame)
-  local from = vgPress[frame]
-  if not from then return end
-  vgDragging[frame], vgPress[frame] = nil, nil
-  frame:StopMovingOrSizing()
-  frame:SetUserPlaced(false)
+-- The drop of a press-move that started with the window's top-left corner at `from`: it stops, and its place is
+-- saved unless it never left its spot (a click).
+local function released(frame, from)
+  stop(frame)
   local left, top = frame:GetLeft(), frame:GetTop()
   if left and top and (math.abs(left - from[1]) >= 1 or math.abs(top - from[2]) >= 1) then GW.SavePlace(frame:GetName(), frame) end
 end
 
--- The window hid mid-drag (Escape, out of range): a press-move ends as it does on release; a title-bar drag ends
--- where the window is and its place is saved, so the flag never outlives the drag (the drag area, hidden with the
--- window, may not get its drop) and the saved place goes on being put back.
+-- The release of a press-move (or the window closing): dropped as `released`, out of combat.
+local function releaseTop(frame)
+  local from = vgPress[frame]
+  if not from then return end
+  vgDragging[frame], vgPress[frame] = nil, nil
+  settle(frame, function() released(frame, from) end)
+end
+
+-- The window hid mid-drag (Escape, out of range), or a fight is starting: a press-move ends as it does on release; a
+-- title-bar drag ends where the window is and its place is saved, so the flag never outlives the drag (the drag
+-- area, hidden with the window, may not get its drop) and the saved place goes on being put back.
 local function dropHidden(frame)
   if vgPress[frame] then return releaseTop(frame) end
-  if not vgDragging[frame] then return end
-  vgDragging[frame] = nil
-  frame:StopMovingOrSizing()
-  frame:SetUserPlaced(false)
-  GW.SavePlace(frame:GetName(), frame)
+  endDrag(frame)
 end
 
 -- Makes a window movable and kept on the screen, dragged by its top edge, and by an invisible drag area over
@@ -238,11 +258,22 @@ local function setUpAll()
   for _, name in ipairs(GW.MOVABLE_TOP) do setUp(name, false) end
 end
 
+-- A fight is starting (PLAYER_REGEN_DISABLED, before the lockdown): every drag still held ends now, where the window
+-- is, while the game still lets a window stop; one the fight caught would follow the mouse until it ended.
+local function dropAll()
+  for _, name in ipairs(names()) do
+    local frame = _G[name]
+    if type(frame) == "table" and vgDragging[frame] then dropHidden(frame) end
+  end
+end
+
 -- Entry point, from GW.Enable while "Drag game windows by their title bar" is on: the windows now and as
--- they load, and every moved window put back after the game places its windows (calls the client lacks are skipped).
+-- they load, every moved window put back after the game places its windows (calls the client lacks are skipped),
+-- and any drag ended as a fight starts.
 function GW.WatchMoves()
   setUpAll()
   ns.On("ADDON_LOADED", setUpAll)
+  ns.On("PLAYER_REGEN_DISABLED", dropAll)
   for _, fn in ipairs(GW.MOVE_LAYOUTS) do
     if type(_G[fn]) == "function" then hooksecurefunc(fn, ns.Guard("hook " .. fn, GW.PlaceAll)) end
   end

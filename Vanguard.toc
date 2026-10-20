@@ -6,6 +6,7 @@
 ## SavedVariables: VanguardDB
 ## SavedVariablesPerCharacter: VanguardCharDB
 ## DefaultState: enabled
+## OptionalDeps: OpenMap
 ## IconTexture: Interface\AddOns\Vanguard\Media\Textures\Icon
 ## AddonCompartmentFunc: Vanguard_OnAddonCompartmentClick
 ## X-Flavor: forever

@@ -165,6 +165,8 @@ it("quest guidance: quest-start pins on the world map, unless the game shows its
   expect([addon.eval("return ns.Settings('QuestGuide').pins"), pins(addon)], "the switch off").toEqual([false, {}]);
   addon.eval("ns.Settings('QuestGuide').pins = true C_AddOns.IsAddOnLoaded = function(n) return n == 'Questie' end ns.QuestGuide.RefreshPins()");
   expect(pins(addon), "Questie loaded: its own pins, not Vanguard's").toEqual({});
+  addon.eval("C_AddOns.IsAddOnLoaded = function(n) return n == 'OpenMap' end ns.QuestGuide.RefreshPins()");
+  expect(pins(addon), "OpenMap loaded: its canvas isn't the zone, so no Vanguard pins").toEqual({});
   addon.eval("WorldMapFrame:Hide() C_AddOns.IsAddOnLoaded = function() return false end ns.QuestGuide.MapChanged()");
   addon.update(0);
   expect(addon.eval("return ns.QuestGuide.pins.used"), "the map closed: nothing redrawn").toBe(0);

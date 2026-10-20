@@ -246,6 +246,17 @@ it("waypoints: the options list the spots as buttons, and Clear waypoint takes i
   expect(addon.eval("return ns.Settings('Waypoints', ns.GetModule('Waypoints').defaults).follow"), "the switch").toBe(false);
 });
 
+it("waypoints: with OpenMap drawing the world map, the cursor's coordinates step aside and the Map page says so", () => {
+  const addon = loggedIn(MAP_ENV + WORLD_MAP_ENV + "C_AddOns.IsAddOnLoaded = function(n) return n == 'OpenMap' end");
+  addon.update(0.2);
+  expect(addon.eval("return ns.GetModule('Waypoints').mapLine:GetText()"), "your coordinates only").toBe("You 45.7, 12.3");
+  // Each row as "type|label".
+  const rows = () => addon.eval("local out = {} for i, r in ipairs(ns.GetModule('Waypoints').Rows()) do out[i] = r[1] .. '|' .. r[2] end return out");
+  expect(rows().slice(-2), "a card naming OpenMap").toEqual(["header|OpenMap", expect.stringMatching(/^text\|OpenMap is drawing the world map\./)]);
+  addon.eval("C_AddOns.IsAddOnLoaded = function() return false end");
+  expect(rows(), "without it: no card").not.toContain("header|OpenMap");
+});
+
 it("waypoints: the world map has a Clear waypoint button, shown only while there is a waypoint", () => {
   const addon = loggedIn(MAP_ENV + POINT_ENV + WORLD_MAP_ENV);
   // Whether the map's Clear waypoint button shows.

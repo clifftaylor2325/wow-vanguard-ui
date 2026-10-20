@@ -185,7 +185,7 @@ for name, field in pairs(LAZY) do rewrap(name, lazyRegion(field)) end
 -- Combat lockdown ---------------------------------------------------------------------------
 
 -- The methods the client blocks on a protected frame while insecure code runs in combat.
-local PROTECTED_CALLS = { "Show", "Hide", "SetShown", "SetPoint", "ClearAllPoints", "SetAllPoints", "SetSize", "SetWidth", "SetHeight", "SetScale", "SetParent", "SetAttribute" }
+local PROTECTED_CALLS = { "Show", "Hide", "SetShown", "SetPoint", "ClearAllPoints", "SetAllPoints", "SetSize", "SetWidth", "SetHeight", "SetScale", "SetParent", "SetAttribute", "StartMoving", "StopMovingOrSizing" }
 
 -- The game's frames the client protects (secure unit buttons in the real UI).
 local GAME_PROTECTED = { "PlayerFrame", "TargetFrame", "FocusFrame", "PetFrame" }
