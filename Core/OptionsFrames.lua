@@ -141,12 +141,17 @@ local function statusSetting(key)
   return liveSetting("RaidStatus", key, function() ns.GetModule("RaidStatus").UpdateAll() end)
 end
 
+-- get/set for the Raid target icons switch: it repaints the tiles and the unit frames' marks at once.
+local function raidIconSetting()
+  return liveSetting("RaidStatus", "raidIcons", function() ns.GetModule("RaidStatus").UpdateAll() ns.GetModule("UnitFrames").RefreshRaidIcons() end)
+end
+
 -- Raid frames plus their indicators.
 local function raidPageRows()
   return append(append(append(raidRows(), raidAuraRows()), {
     check("Power bar", raidSetting("showPower")),
     check("Fade players out of range", statusSetting("rangeFade")),
-    check("Raid target icons", statusSetting("raidIcons")),
+    check("Raid target icons", raidIconSetting()),
     check("Ready check answers", statusSetting("readyCheck")),
     check("Mark players being resurrected", statusSetting("resurrect")),
     check("Leader and assistant marks", statusSetting("leader")),

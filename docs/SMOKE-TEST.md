@@ -22,6 +22,16 @@ One command asks the client every open question the research left and writes the
 5. In an instance if you can: stand at the entrance, out of combat, and run `/vg probe` once more, so the restriction states and `C_Secrets` lines are on record for a dungeon.
 6. If you have a minute: set a map waypoint (`/way`) or super-track a quest on another zone's map and run `/vg probe` again, so the navigation lines show a distance and a next waypoint.
 
+**Probe rows for the polish batch (session 0, about 15 minutes).**
+
+These rows answer what the quest windows, raid marks, group frames and bars wait on. They are the report's "Quest and map reads", "Party, marks and bosses" and "Bars and strips" sections. [Needs in game: everything these rows print.]
+
+1. In town: open the quest log and click a quest in it, talk to a flight master so the flight map opens, and close it. Untick the game's "Show numbers for cooldowns" box in its options, use a spell with a cooldown, and watch a faction on the reputation bar. Type `/vg probe` and paste the box. Expect: under Quest and map reads, `asked about: done quest <id>, selected quest <id>`, the two completed flags, the money, group size, failed and repeatable lines, and `last flight map: system number <n>, TaxiFrame shown` (or FlightMapFrame); under Bars and strips, the three `GetCVarDefault` lines, two `GetQuestLogRewardXP` lines (compare each number with the quest log's reward), the `bar button cooldown:` line, and `watched faction:` with its thresholds. Say whether Vanguard's bar buttons showed the countdown numbers with the box unticked.
+2. In a dungeon with a party, out of combat: put a raid mark on a mob, target it, and type `/vg probe`. Expect under Party, marks and bosses: `in combat: false`, `UnitHealth(party1)` and `UnitHealthMissing(party1)` as a number or `hidden (<type>)`, and `GetRaidTargetIndex(target)` as a number or hidden.
+3. Mid-pull, on trash: type `/vg probe`. Chat says `Probe: party, mark and boss reads taken in this fight.` Do it again just after pulling a boss.
+4. After the fights: type `/vg probe last` and paste the box. Expect the report, then one `== In a fight (/vg probe), <time>` block per fight run, each with `in combat: true` and the same rows; after the boss pull `UnitExists(boss1)` reads true or false.
+5. If you can, in a battleground: type `/vg probe` once inside. Expect `UnitHealth(raid2)` as a number, hidden, or an error line (an error is a raid-frames bug to report).
+
 After the first run (2026-10-19, results in the project's `research/probe/probe-2026-10-19.md`), these are still open, in this order: step 3 (the round trip), step 4 (a fight with a mob targeted, for threat), step 5 (a dungeon), step 6 with a quest in another zone, and one run with a profession window open (the craft queue's recipe list was empty with it closed).
 
 What each part of the report answers (read the section title in the box):
@@ -460,6 +470,12 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Expect: the totem you right-clicked is destroyed on the release of the button and its cell clears; the other stays. A left-click does nothing. No error, in combat too. [Needs in-game check: the key-down phase rule was read from the game's SecureTemplates.lua and modelled in the harness, not watched in game.]
 - If it fails, paste: what the CVar printed, what happened to the totem and `/vg errors`.
 
+### 7.2i Unit frames act like the game's: tooltips, tapped grey, Ghost, raid marks, quiet threat
+
+- Do: hover your player, target, target of target, focus and pet frames (a hunter's pet too), then hover the target and a boss frame during a dungeon boss fight. Target a mob another player has tagged. Die, release, and look at your frame (or a released party member's). Put a raid mark on your target (and on a party member). Fight a mob solo with no pet, then with a pet or in a group.
+- Expect: each frame shows its unit's tooltip where your tooltips usually sit, and it goes when the mouse leaves; a hunter's pet tooltip adds a line like "Happy: 125% damage" in the mood's colour; in a fight too, unless **Hide unit tooltips in combat** (Tooltips) is on, and `/vg errors` stays empty. The tagged mob's health bar is grey, as on the game's frames and Vanguard's plates. A released player reads Ghost (red on raid tiles too), a feigning hunter in your group does not read Dead. The mark sits centred on the top edge of every frame whose unit carries it, comes and goes at once, and **Raid target icons** (Raid frames page) turns them off. Solo with no pet the threat number above the target frame stays away; with a pet or in a group it shows.
+- If it fails, paste: a screenshot of the frame, `/vg errors`, and `/run local i=GetRaidTargetIndex("target") print(type(i), issecretvalue(i))` on a marked mob.
+
 ### 7.2j Swing timer dims out of reach, and auto for every class that swings
 
 - Do: on a warrior or rogue with Vanguard's swing timer on, auto-attack a mob, then step out of melee range and back in, swap weapons out of range, and target nothing. Then on a paladin, shaman or druid (Swing timer left on auto), stand idle, then auto-attack a mob.
@@ -507,6 +523,12 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Do: with Fight history and the recap on, kill a mob and pull the next one at once (within half a second: a ranged pull or an add already on its way). After the second fight, hover the fight history strip and type `/vg fights`.
 - Expect: both fights are listed, the first with its own length and DPS; a recap line for the first fight appears as the second begins. [Needs in game: that the game's meter has finished the first fight's figures when the next pull starts; if its DPS or length looks short, say so.]
 - If it fails, paste: `/vg fights` and `/vg errors`.
+
+### 7.6b The game's damage meter lines stay flat
+
+- Do: with the game's damage meter shown (its own setting) and "Damage meter in the Vanguard look" on under Combat tools, fight two or three mobs one after another, then look at the meter's lines, and scroll its list if it has more lines than fit.
+- Expect: every line is a flat theme bar over a dark inset after each fight, with no gradient or shaded background behind it, including lines that appear only after the first fight. [Needs in game: that the game's own background art never comes back on a line.]
+- If it fails, paste: a screenshot of the meter after the fight in which the shading came back, and `/vg errors`.
 
 ### 7.7 Vanguard meter (off until switched on: /vg > Combat tools > Vanguard meter)
 
@@ -560,10 +582,11 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 
 - Do: watch more quests than fit under the info strip, then click the QUESTS header at the top of the tracker, and again.
 - Expect: the tracker's header reads `QUESTS` in small grey capitals with the number of quests you watch after it and a chevron before it; clicking it folds the tracker down to that header (the brass line stays under it) and clicking again opens it. A `+N more` line at the bottom of the tracker. Click it: the tracker grows to at most 10 quests, ending in `Show fewer` (with `· +N more` past ten). `/reload`: it is still expanded. Click `Show fewer` to fold it.
-- Also expect (Legacy challenges): with a challenge tracked in the game (its Legacy window), a `Legacy challenges` heading sits under the quests with the challenge beneath it, its criteria as `- 2/3 …` lines and `Complete` once done. Right-click the challenge: it leaves the tracker. With none tracked, no heading. A heading never shows alone: when no challenge fits under it, it is left out and the `+N more` line counts the challenges. [Needs in game: how a Forever client tracks a challenge, and that its criteria text reads as above.]
+- Also expect (Legacy challenges): with a challenge tracked in the game (its Legacy window), a `Legacy challenges` heading sits under the quests with the challenge beneath it, its criteria as rows (`…` at the left, `2/3` at the right edge) and `Complete` once done. Right-click the challenge: it leaves the tracker. With none tracked, no heading. A heading never shows alone: when no challenge fits under it, it is left out and the `+N more` line counts the challenges. [Needs in game: how a Forever client tracks a challenge, and that its criteria text reads as above.]
 - Also expect (timed quests): take a timed quest (an escort, or one that says "Hurry!") and watch it. Under its title, above its objectives, a gray `Time left 4:32` line counts down once a second; it goes when the quest is done or abandoned, and no countdown shows anywhere else on the screen. [Needs in game: that the Forever client reports the timer to addons (`C_QuestLog.GetQuestTimers`); if the line never shows while the quest is timed, say so.]
 - Also expect (tooltips and failed quests): hover a quest title in the tracker. It lights with a faint wash and a tooltip shows its title, its objectives in full and a muted line `Click: open · Shift-click: point the arrow · Right-click: stop watching`; a challenge's says `Right-click: stop tracking`, and the `Legacy challenges` heading shows nothing. In a fight, no tooltip. Let a timed quest run out (or fail an escort): its block reads `Failed` in red in place of its objectives. [Needs in game: that `C_QuestLog.IsFailed` is true for a failed quest on Forever.]
-- Also expect (recipes): open a profession window and track a recipe (its track checkbox or Shift-click as the game offers). A `Recipes` heading sits after the quests and challenges with the recipe beneath it and a line per reagent, `- 2/4 Linen Cloth`, gray until you have enough, then green; buy or craft a reagent and the count follows. Left-click the recipe: the profession window opens on it. Right-click: it leaves the tracker, and the heading goes with the last one. [Needs in game: that a reagent the client hasn't cached joins the list a moment later.]
+- Also expect (recipes): open a profession window and track a recipe (its track checkbox or Shift-click as the game offers). A `Recipes` heading sits after the quests and challenges with the recipe beneath it and a row per reagent, `Linen Cloth` with `2/4` at the right edge, gray until you have enough, then muted gray with a check; buy or craft a reagent and the count follows. Left-click the recipe: the profession window opens on it. Right-click: it leaves the tracker, and the heading goes with the last one. [Needs in game: that a reagent the client hasn't cached joins the list a moment later.]
+- Also expect (objective rows and the followed quest): each objective in the tracker is a row: its name at the left (no `- ` before it) and its count such as `3/8` at the right edge, lined up down the tracker. Finish one: it turns muted gray with a small check before its name, rather than turning green. The quest the arrow names has a thin brass line down its left edge; walk until the arrow moves on to another quest and the line moves with it within a second or so; Shift-click another and the line goes to it at once, with its step line. A quest item button beside a quest still sits just left of its block and works in and out of combat, and the line does not cover it. [Needs in game: that long objective names cut short before the count rather than run under it, and that the line reads as one quest's mark, not a divider.]
 - If it fails, paste: a screenshot.
 
 ### 8.4a Quest arrow
@@ -634,6 +657,12 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Do: with bags open, type `ilvl>20`, then `q:epic`, `type:armor bind:boe`, `cat:<a group of yours>` in the bag's search box, then clear it. At the bank, click **Groups** → Send <group> to the bank; then once in a fight.
 - Expect: items that match every word stay lit and the rest dim as with a normal search; a plain word still works the game's way; clearing the box lights everything again. Send moves that group's stacks to the bank and says how many; in a fight, or with no bank open, it says to open the bank and moves nothing.
 - If it fails, paste: a screenshot, `/vg probe` (the SetItemSearch and UpdateSearchResults lines) and `/vg errors`.
+
+### 9.1c Bank search words, the Junk value, taking an item out of a group
+
+- Do: at the bank, with a green or better item in the bank, type `ilvl>20`, then `q:epic` (or `q:unc`) in the bank's search box (or the bag's: the game copies the text). Move an item in the bank and turn a bank page. Do the same in your bags. Then look at the bag's Junk header with gray items in your bags, and open a merchant. Then file an item in one of your groups, pick it up, and click **Groups** → Take held item out of its group.
+- Expect: only matching items stay bright in the bank and the bags, and the match holds after the move and the page turn (the bank never goes all grey). The Junk header reads "JUNK · 12s 40c" (or similar), the same amount the merchant pays for your gray items (a Junk section only two slots wide may leave it off rather than run into the next header: note which). The taken-out item goes back to its normal section, its group's header goes if the group is now empty, and chat says it is in no category; with an item that is in no group held, chat says so and the item stays in hand.
+- If it fails, paste: a screenshot, the search text, the Junk header and the merchant's line, and `/vg errors`.
 
 ### 9.2 Merchant repair and sell
 
@@ -1477,8 +1506,14 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 ### 15.6h Chat extras: short channel names and the wheel
 
 - Do: with a fresh profile (or Reset this page on Chat), have lines arrive in Trade, General and guild chat, and click a short channel tag. Untick Short channel names under Chat extras and let another line arrive. With forty or more lines in the window, roll the wheel up one tick, then with Ctrl held, then down the same way.
-- Expect: `[2. Trade - City]` shows as `[T]`, `[1. General - Elwynn Forest]` as `[G]` and `[Guild]` as `[G]`, each in the channel's own colour with the rest of the line untouched; clicking the short tag still opens the channel. Unticked, the next line shows the game's full channel name. One plain tick moves four lines (count them against a fixed line), Ctrl goes to the oldest line, and each the other way down (to the newest). `/vg errors` is empty. [Needs in game: that the window's TransformMessages rewrites the line the AddMessage hook just saw, on the Forever client too; that the game's wheel handler moves three lines a tick (ScrollUtil's), so a plain tick is four lines and not more.]
+- Expect: `[2. Trade - City]` shows as `[2]`, `[1. General - Elwynn Forest]` as `[1]` and `[Guild]` as `[G]`, each in the channel's own colour with the rest of the line untouched; clicking the short tag still opens the channel. Unticked, the next line shows the game's full channel name. One plain tick moves four lines (count them against a fixed line), Ctrl goes to the oldest line, and each the other way down (to the newest). `/vg errors` is empty. [Needs in game: that the window's TransformMessages rewrites the line the AddMessage hook just saw, on the Forever client too; that the game's wheel handler moves three lines a tick (ScrollUtil's), so a plain tick is four lines and not more.]
 - If it fails, paste: `/vg errors` and one line as it shows, or how many lines a tick moved.
+
+### 15.6i Chat extras: Copy on another tab, and bare and guild links
+
+- Do: with a second docked tab (Trade, say) that has lines, click it and press the Copy tile, then Ctrl+C and paste into the chat box. Have a guild message of the day that holds an address ("discord.gg/abc") and `/reload`. Say "join discord.gg/abc, and see [an item link]" with a real item link, and "lvl 1.5 e.g. test".
+- Expect: the copy box is titled "Copy Trade (Ctrl+C)", holds that tab's lines (not General's), and opens scrolled to the newest line with all of it selected, so the paste holds every line. The guild message of the day shows "discord.gg/abc" as an accent link; in the said line "discord.gg/abc" is a link with the comma after it plain, the item link still shows its tooltip on click, and "1.5" and "e.g." stay plain. Clicking either address opens it in the copy box. `/vg errors` is empty. [Needs in game: that SetCursorPosition then HighlightText keeps the whole text selected and the box scrolled to the end on the Forever client; that the game adds the message of the day through the window's AddMessage with GUILD_MOTD_TEMPLATE's text.]
+- If it fails, paste: `/vg errors` and a screenshot of the copy box or the line.
 
 ## 16. Realm and ruleset
 
@@ -1516,6 +1551,7 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 - Do: in a capital city, type `/vg lfg` and leave it open for a few minutes while people post in Trade and LookingForGroup. Hover a row, then click one. Do not press Enter unless you want to send it. Then click the filter button twice and switch **Only dungeons for my level** off and on. Finally post `LFM SFK need heals` yourself in a channel.
 - Expect: the board has a title with its count, a close button at the top right, and Escape closes it; rows appear as people post, newest first, each with a faint wash under the mouse and LFM or LFG, a dungeon and its range (or "Any dungeon"), the roles named, the sender's name without its realm or ruleset part and the age; the tooltip shows the whole line and the full name. The click opens the chat box with `/w <full name> Hi! ...` filled in and sends nothing. Your own post does not appear. The whisper reaches the player when you send it (a two-part name that fails is a finding). Inside a dungeon nothing new appears and `/vg errors` stays empty.
 - If it fails, paste: a screenshot of the board and the chat box, the line that was misread, and `/vg errors`.
+- Do also: on a healer whose role was never picked, open `/vg` → Chat → Group board and read **Your role, for the whisper** (it should read **Automatic**); then on the board click the filter button until it reads **Needs my role**, and click an LFM row with the healer role assigned in a group and with none. Every post should be listed, the LFM posts asking for heals (or naming no role) first, newest first, and the rest below them in grey; the whisper should say `(Healer)` with the healer role and `(DPS)` with none, and `/vg errors` stay empty. [Needs in-game check: all of it.]
 
 ### 18.3 Quest guidance
 

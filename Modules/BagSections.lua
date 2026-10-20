@@ -166,7 +166,7 @@ end
 local function headerOf(frame, s)
   local header = BG.headers[s.key]
   if not header then
-    header = W.SectionHeader(frame, s.label)
+    header = W.SectionHeader(frame, s.label, s.key == "junk" and { count = "" } or nil)
     header:EnableMouse(false)
     BG.headers[s.key] = header
   end
@@ -254,16 +254,40 @@ function BG.PlainBag(frame)
   BG.FitSearch(frame)
 end
 
--- Sections in the open bag window (when switched on); a layout already
--- showing the same sections is left as it is.
+-- What the gray items in these slots sell for to a merchant, in copper (an item the client hasn't loaded adds
+-- nothing). Grays in a group of yours count too: the merchant sells them all.
+local function junkValue(buttons)
+  local total = 0
+  for _, button in ipairs(buttons) do
+    local info = C_Container.GetContainerItemInfo(button:GetBagID(), button:GetID())
+    local gray = info and ns.PlainNumber(info.quality) == 0
+    local price = gray and ns.PlainNumber((select(11, C_Item.GetItemInfo(info.itemID))))
+    total = total + (price or 0) * (gray and ns.PlainNumber(info.stackCount) or 1)
+  end
+  return total
+end
+
+-- The Junk header's count: what the bags' grays sell for ("· 12s 40c"), or nothing when they sell for nothing.
+local function paintJunkValue(list)
+  local header, copper = BG.headers.junk, 0
+  if not header then return end
+  for _, s in ipairs(list) do copper = copper + junkValue(s.buttons) end
+  header.count:SetText(copper > 0 and "· " .. ns.GetModule("InfoStrip").ShortMoney(copper) or "")
+  local room = header:GetWidth() - header.text:GetStringWidth() - T.SPACE.tight
+  if header.count:GetStringWidth() > room then header.count:SetText("") end
+end
+
+-- Sections in the open bag window (when switched on); a layout already showing the same sections is left
+-- as it is. The Junk header's value is painted each time, as a stack can change without moving a section.
 function BG.LayOutSections(frame)
   if not ns.Settings("Bags", BG.defaults).sections then return BG.PlainBag(frame) end
   if not frame:IsShown() then return end
-  local buttons = buttonsOf(frame)
-  local list, sig = BG.Group(buttons)
-  if sig == vgSections[frame] then return end
-  vgSections[frame] = sig
-  BG.Place(frame, list)
+  local list, sig = BG.Group(buttonsOf(frame))
+  if sig ~= vgSections[frame] then
+    vgSections[frame] = sig
+    BG.Place(frame, list)
+  end
+  paintJunkValue(list)
 end
 
 -- Lays the sections out now, or once combat ends (the item buttons are

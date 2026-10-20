@@ -123,14 +123,30 @@ end
 
 -- Damage meter -------------------------------------------------------------------------------
 
+-- Hides a meter line's background art. The game sets it back to full alpha each
+-- time it sets a pooled line up again (SetBackgroundAlpha calls UpdateBackground).
+local function fadeBackground(entry)
+  local regions = entry.StatusBar.BackgroundRegions
+  if type(regions) ~= "table" then return end
+  for _, region in ipairs(regions) do region:SetAlpha(0) end
+end
+
+-- Fades a line's background each time the game resets it, where the line and the client allow a hook.
+local function keepBackgroundFaded(entry)
+  if type(entry.UpdateBackground) ~= "function" or type(hooksecurefunc) ~= "function" then return end
+  hooksecurefunc(entry, "UpdateBackground", ns.Guard("hook UpdateBackground", fadeBackground))
+end
+
 -- One meter line (a player or a spell): the theme's bar over a dark inset, its
--- name and amount in the theme font, its icon cropped. Once per line.
+-- name and amount in the theme font, its icon cropped, its background kept faded.
+-- Once per line.
 function GT.SkinEntry(entry)
   local bar = entry.StatusBar
   if vgSkinned[entry] or type(bar) ~= "table" then return end
   vgSkinned[entry] = true
   T.StyleBar(bar)
-  for _, region in ipairs(bar.BackgroundRegions or {}) do region:SetAlpha(0) end
+  fadeBackground(entry)
+  keepBackgroundFaded(entry)
   T.HudPanel(bar, { inset = true })
   for _, key in ipairs({ "Name", "Value" }) do if type(bar[key]) == "table" then T.Text(bar[key], "small", false) end end
   if type(entry.Icon) == "table" and type(entry.Icon.Icon) == "table" then T.Crop(entry.Icon.Icon) end
