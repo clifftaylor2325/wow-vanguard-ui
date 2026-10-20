@@ -815,6 +815,12 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Expect: each opens its window or bag. [The key ring button is skinned only after P0.14.]
 - If it fails, paste: which button, a screenshot and `/vg errors`.
 
+### 13.2a Bags nearly full
+
+- Do: fill your normal bags until 4 slots are free, then until none are; hover a bag (not the backpack) on the bag bar. A warlock or hunter: fill a soul bag or quiver too.
+- Expect: the backpack's count and the info strip's "free" turn amber at 4 and red at 0, together; a soul bag's or quiver's slots don't count towards either. The bag's tooltip ends with a line such as "9 of 16 free" for that bag alone.
+- If it fails, paste: a screenshot of the bag bar and strip, and `/vg errors`.
+
 ### 13.3 Move the strips
 
 - Do: type `/vg unlock`, drag the Bags and Game menu handles apart, type `/vg lock`, then `/reload`.

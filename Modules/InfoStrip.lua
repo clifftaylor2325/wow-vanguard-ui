@@ -264,10 +264,10 @@ function IS.TEXT.durability()
   if p then return p .. "% durability", IS.DurabilityColor(p) end
 end
 
--- Free bag slots (red when full).
+-- Free bag slots, toned as the backpack's count (amber when few, red when full).
 function IS.TEXT.bags()
   local n = IS.FreeSlots()
-  if n then return n .. " free", n == 0 and "bad" or "text" end
+  if n then return n .. " free", ns.GetModule("MenuStrip").FreeTone(n) end
 end
 
 -- Frame rate and latency.

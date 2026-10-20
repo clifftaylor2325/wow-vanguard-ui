@@ -914,6 +914,17 @@ it("bag and menu bar: each bag's slot shows how full it is, the backpack how man
   expect(bare.eval("return { ns.GetModule('MenuStrip').free:GetText(), ns.FrameState('vgFill')[MainMenuBarBackpackButton]:IsShown() }"), "a client that can't count bag slots shows no count and no fill").toEqual(["", false]);
 });
 
+it("bags nearly full: the backpack's count and the strip's free count turn amber at 4 or fewer and red at none, and a bag's tooltip says how many of its slots are free", () => {
+  const addon = loggedIn(UI_ENV + TIDY_ENV + MICRO_ENV + STRIPS_ENV + BAGS_ENV);
+  // The backpack count's and the strip's free count's tokens, after the bags change (Lua).
+  const tones = (lua) => { addon.eval(lua); addon.fire("BAG_UPDATE_DELAYED"); const color = addon.eval("return ns.GetModule('MenuStrip').free.__textColor"); return ["text", "warn", "bad"].filter((t) => isTok(addon, color, t) && isTok(addon, block(addon, "bags").color, t)); };
+  expect([tones("__space[0][2] = 5"), tones("__space[0][2] = 4"), tones("__space[0][2] = 0")], "5 free plain, 4 amber, none red (the soul bag's free slots don't count)").toEqual([["text"], ["warn"], ["bad"]]);
+  // The lines Vanguard adds to the item tooltip shown over the button named, joined.
+  const tip = (name) => addon.eval(`GameTooltip:SetOwner(${name}, "ANCHOR_NONE") GameTooltip.__itemLink = "|Hitem:5765|h[TEST-ONLY Bag]|h" ns.GetModule("Tooltips").OnItem(GameTooltip)
+    local out = {} for i, l in ipairs(GameTooltip.__lines) do out[i] = l.text end return table.concat(out, "; ")`);
+  expect([tip("CharacterBag1Slot"), tip("CharacterBag2Slot"), tip("CharacterBag0Slot"), tip("MainMenuBarBackpackButton"), tip("UIParent")], "a bag, a soul bag: their own free slots; an empty slot, the backpack and anything else: no line")
+    .toEqual(["0 of 10 free", "5 of 20 free", "", "", ""]);
+});
 it("the minimap's zone name is the zone role: a bold 13 in Fira Sans that the faction look's display font does not reach", () => {
   const addon = loggedIn(UI_ENV + 'UnitFactionGroup = function() return "Alliance" end GetLocale = function() return "enUS" end');
   addon.eval('ns.Theme.Settings().faction = "auto" ns.Theme.Refresh() __heading = ns.Theme.Text(UIParent:CreateFontString(), "heading")');

@@ -12,7 +12,8 @@
 --     is off is the game's tracker pinned into it and skinned here (one owner).
 -- The buttons keep working as the game's own, with the game's icons and alert
 -- flashes, each fitted inside a slot tile; a bag's slot shows how full the bag
--- is (red when full) and the backpack's how many slots your bags have free.
+-- is (red when full, its tooltip "9 of 16 free") and the backpack's how many slots
+-- your bags have free (amber at 4 or fewer, red at none).
 -- Vanguard's icons stand on the menu buttons; a switch brings the game's own back.
 -- The bars stay where they're put when the game lays out its own frames again
 -- (ns.Pin), re-fit whenever the game resizes or re-lays them out, hide the
@@ -523,6 +524,15 @@ function MS.FreeSlots()
   return n
 end
 
+-- Free bag slots at or under this count read amber (none reads red): the backpack's count and the info strip's "free".
+MS.FEW_FREE = 4
+
+-- The color token for a count of free bag slots: bad at none, warn at MS.FEW_FREE or fewer, else text.
+function MS.FreeTone(n)
+  if n == 0 then return "bad" end
+  return n <= MS.FEW_FREE and "warn" or "text"
+end
+
 -- One bag's slot: with no bag in it, the game's empty bag-slot art faint and
 -- grey; else a fill along the bottom as wide as the bag is full, red when it is.
 local function paintBag(b)
@@ -537,12 +547,22 @@ local function paintBag(b)
 end
 
 -- Every bag's fill and the backpack's free count, now (after the bags
--- changed); the count's backing only with a count to back.
+-- changed), the count amber when few are free and red at none; the count's backing only with a count to back.
 function MS.PaintBags()
   for _, b in ipairs(MS.filled) do paintBag(b) end
   local n = MS.FreeSlots()
   if MS.free then MS.free:SetText(n and tostring(n) or "") end
+  if MS.free and n then T.Color(MS.free, MS.FreeTone(n)) end
   if MS.freeBack then MS.freeBack:SetShown(n ~= nil) end
+end
+
+-- A bag slot's tooltip line, "9 of 16 free", added to the item tooltip the game shows over a bag button
+-- (Tooltips' AddItemLines): only over a bag on this bar, not the backpack, whose count is on its button.
+function MS.BagLine(tt)
+  local b = type(tt.GetOwner) == "function" and tt:GetOwner()
+  if not (b and vgFill[b]) or b == _G.MainMenuBarBackpackButton then return end
+  local total, free = MS.BagSpace(b:GetBagID())
+  if total and total > 0 then tt:AddLine(string.format("%d of %d free", free, total), T.RGB("text2")) end
 end
 
 -- The backpack's free count: small, in the icon's corner, over a dark backing
@@ -608,6 +628,7 @@ local function skinButtons()
   end
   MS.PaintBags()
   for _, e in ipairs(MS.BAG_EVENTS) do ns.On(e, MS.PaintBags) end
+  ns.GetModule("Tooltips").AddItemLines(MS.BagLine)
   T.OnChanged(function() ns.OutOfCombat(MS.SizeSlots, "menuslots") end)
 end
 
