@@ -208,3 +208,11 @@ it("quest arrow: a failed quest is not pointed at, and the arrow moves on from i
   addon.eval("ns.QuestArrow.Pick() __wfgWorld.quests[1].failed = true ns.QuestArrow.Pick()");
   expect([addon.eval("return ns.QuestArrow.current"), chatHas(addon, /Arrow: TEST-ONLY Far\./)]).toEqual([90062, true]);
 });
+
+it("quest arrow: a pin whose quest left the log is let go, so a quest the game tracks later is not held", () => {
+  const addon = loggedIn(ARROW_ENV + SUPER_ENV);
+  addon.eval("ns.QuestGuide.Point(90062) table.remove(__wfgWorld.quests, 2) __tracked = 0 ns.QuestArrow.Pick()");
+  expect(addon.eval("return { ns.QuestGuide.pointed == nil, ns.QuestArrow.current }"), "the pin let go, the nearest followed").toEqual([true, 90061]);
+  addon.eval(`__wfgWorld.addQuest({ questID = 90062, title = "TEST-ONLY Far", level = 8, watched = true, distanceSq = 90000, objectives = {} }) __tracked = 90062 ns.QuestArrow.Pick()`);
+  expect([addon.eval("return ns.QuestArrow.current"), pinState(addon)[0]], "the game's tracked quest doesn't hold the arrow").toEqual([90061, false]);
+});

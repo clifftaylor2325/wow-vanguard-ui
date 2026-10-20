@@ -25,8 +25,9 @@ QA.WIDTH, QA.HEIGHT, QA.DRAW, QA.PICK = 190, 44, 0.1, 1
 QA.READY_BIAS = 0.25
 -- A challenger replaces the current quest only when its distance (squared) is under this share of the current one's.
 QA.SWITCH = 0.5
--- Within this many yards the arrow reads "Here"; the arrow's alpha while it can't point (or you're there).
-QA.HERE, QA.FAINT = 15, 0.35
+-- Within this many yards the arrow reads "Here"; the arrow's alpha while it can't point (or you're there); the
+-- panel's inner padding (units).
+QA.HERE, QA.FAINT, QA.PAD = 15, 0.35, 8
 
 -- Calls t[name](...) if the client has it.
 local function call(t, name, ...)
@@ -93,15 +94,26 @@ local function titleOf(id)
 end
 
 -- The quest to follow and whether the arrow holds it as a pin: the Shift-clicked quest (with "Follow the
--- nearest quest" off, also the game's tracked one), else the nearest, else the game's tracked one.
+-- nearest quest" off, also the game's tracked one), else the nearest, else the game's tracked one. A
+-- Shift-click whose quest has left the log is let go here, so it can't hold a quest the game tracks later.
 local function follow(old)
+  local guide = ns.QuestGuide
+  if guide.pointed and not ns.GetModule("QuestTracker").Quest(guide.pointed) then guide.pointed = nil end
   local pin = pinned()
   if pin and (ns.QuestGuide.pointed or not QA.settings.auto) then return pin, true end
   return QA.settings.auto and QA.Choose(old) or pin, false
 end
 
--- Picks the quest, whether it is held and finished, and its spot (map, x, y); says so when it moved on from a
--- finished one, and redraws.
+-- The look that changes only with the pick: the Pin button while the arrow holds a pinned quest (the title
+-- then stops short of it), and the arrow gold for a turn-in, else the accent.
+local function paintPick(f)
+  f.pin:SetShown(QA.held == true)
+  if QA.held then f.title:SetPoint("RIGHT", f.pin, "LEFT", -T.SPACE.tight, 0) else f.title:SetPoint("RIGHT", f, "RIGHT", -QA.PAD, 0) end
+  T.Tint(f.arrow, QA.ready and "gold" or "accent")
+end
+
+-- Picks the quest, whether it is held and ready to turn in, and its spot (map, x, y); says so when it moved on
+-- from a finished one, and redraws.
 function QA.Pick()
   if not QA.frame then return end
   local old = QA.current
@@ -109,6 +121,7 @@ function QA.Pick()
   QA.ready = QA.current ~= nil and readyToTurnIn(QA.current)
   QA.target = QA.current and { ns.QuestGuide.Target(QA.current) } or nil
   if old and QA.current and old ~= QA.current and finished(old) and not ns.InCombat() then ns.Chat("Arrow: " .. titleOf(QA.current) .. ".") end
+  paintPick(QA.frame)
   QA.Draw()
 end
 
@@ -190,25 +203,17 @@ local function turnFor(id, target)
 end
 
 -- The distance line and the arrow's look: "Here" in good with a faint arrow once you're there, else the
--- distance; the arrow gold for a turn-in, else the accent. A state change, never a fade.
+-- distance. A state change, never a fade.
 local function paintState(f, id, turn)
   local d = yards(id)
   local spot = QA.target ~= nil and QA.target[1] ~= nil
   local here = spot and arrived(d)
   f.dist:SetText((not spot and "No spot from the game") or (here and "Here") or distanceText(d, turn, QA.ready))
   T.Color(f.dist, here and "good" or "text2")
-  T.Tint(f.arrow, QA.ready and "gold" or "accent")
   f.arrow:SetAlpha(turn and not here and 1 or QA.FAINT)
 end
 
--- The Pin button shows while the arrow holds a pinned quest, and the title then stops short of it.
-local function paintPin(f)
-  f.pin:SetShown(QA.held == true)
-  if QA.held then return f.title:SetPoint("RIGHT", f.pin, "LEFT", -T.SPACE.tight, 0) end
-  f.title:SetPoint("RIGHT", f, "RIGHT", -8, 0)
-end
-
--- Redraws the arrow's turn, title, distance and Pin button for the current quest; hides the frame with none.
+-- Redraws the arrow's turn, title and distance for the current quest; hides the frame with none.
 function QA.Draw()
   local f, id = QA.frame, QA.current
   if not (f and QA.settings.show and id) then return f and f:Hide() end
@@ -216,7 +221,6 @@ function QA.Draw()
   f.title:SetText(titleOf(id))
   paintState(f, id, turn)
   f.arrow:SetRotation(turn or 0)
-  paintPin(f)
   f:Show()
 end
 
@@ -243,11 +247,11 @@ end
 local function fill(f)
   f.arrow = f:CreateTexture(nil, "ARTWORK")
   f.arrow:SetSize(28, 28)
-  f.arrow:SetPoint("LEFT", f, "LEFT", 8, 0)
+  f.arrow:SetPoint("LEFT", f, "LEFT", QA.PAD, 0)
   f.arrow:SetTexture(T.Icon("QuestArrow"))
   f.title = T.Text(f:CreateFontString(nil, "OVERLAY"), "small", "text")
-  f.title:SetPoint("TOPLEFT", f.arrow, "TOPRIGHT", 8, -2)
-  f.title:SetPoint("RIGHT", f, "RIGHT", -8, 0)
+  f.title:SetPoint("TOPLEFT", f.arrow, "TOPRIGHT", QA.PAD, -2)
+  f.title:SetPoint("RIGHT", f, "RIGHT", -QA.PAD, 0)
   f.title:SetJustifyH("LEFT")
   f.title:SetWordWrap(false)
 end
@@ -271,7 +275,7 @@ local function build()
   f:SetSize(QA.WIDTH, QA.HEIGHT)
   fill(f)
   f.dist = T.Text(f:CreateFontString(nil, "OVERLAY"), "small", "text2")
-  f.dist:SetPoint("BOTTOMLEFT", f.arrow, "BOTTOMRIGHT", 8, 2)
+  f.dist:SetPoint("BOTTOMLEFT", f.arrow, "BOTTOMRIGHT", QA.PAD, 2)
   pinButton(f)
   f:Hide()
   QA.frame = f
