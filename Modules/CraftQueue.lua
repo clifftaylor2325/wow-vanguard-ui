@@ -90,11 +90,6 @@ local function needs()
   return total
 end
 
--- An item's name as the client has it (else "item 123").
-local function itemName(id)
-  return (C_Item.GetItemInfo(id)) or ("item " .. id)
-end
-
 -- The reagents still short of what the queue needs: { id, short } in item order.
 function CQ.Short()
   local out = {}
@@ -112,6 +107,7 @@ function CQ.List()
   if #queue == 0 then return ns.Chat("The craft queue is empty. Open a recipe in the profession window and /vg craft add.") end
   for i, e in ipairs(queue) do ns.Chat(string.format("%d. %d x %s", i, e.n, e.name or "recipe " .. e.id)) end
   local short = {}
+  local itemName = ns.GetModule("Errands").ItemName
   for _, s in ipairs(CQ.Short()) do short[#short + 1] = string.format("%s x%d", itemName(s.id), s.short) end
   ns.Chat(#short == 0 and "You have every reagent." or ("Short of: " .. table.concat(short, ", ") .. "."))
 end
