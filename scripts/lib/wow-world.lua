@@ -1125,10 +1125,10 @@ C_ActionBar = {
   EnableActionRangeCheck = function(slot, on) world.rangeChecks = world.rangeChecks or {} world.rangeChecks[slot] = on end,
   GetActionBarPage = function() return world.page or 1 end,
   HasAction = HasAction,
-  -- Whether the slot's action is an item you wear (action.equipped); the client refuses an empty slot
-  -- (ActionBarFrameDocumentation.lua: RequiresValidActionSlot).
+  -- Whether the slot's action is an item you wear (action.equipped); the client refuses a slot number
+  -- outside the bars (ActionBarFrameDocumentation.lua: RequiresValidActionSlot).
   IsEquippedAction = function(slot)
-    if not world.actions[slot] then error("Invalid action slot", 2) end
+    if type(slot) ~= "number" or slot < 1 or slot > 180 then error("Invalid action slot", 2) end
     return actionOf(slot).equipped == true
   end,
 }

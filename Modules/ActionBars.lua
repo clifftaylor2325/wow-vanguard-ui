@@ -286,7 +286,7 @@ end
 local function updateEquipped(b)
   if not b.equipped then return end
   local on = b.hasAction and isTrue(call("IsEquippedAction", b.action))
-  for _, edge in pairs(b.equipped) do edge:SetShown(on) end
+  T.ShowInnerRing(b.equipped, b, "good", on)
 end
 
 -- The hotkey text from the binding this button answers to.
@@ -424,7 +424,7 @@ local function addRegions(b)
   b.glow = T.Glow(b, 6)
   b:SetCheckedTexture(T.WHITE)
   T.Tint(b:GetCheckedTexture(), "checked")
-  if not ns.Masque.Group(AB.MASQUE) then b.equipped = T.InnerRing(b, "good") end
+  if not ns.Masque.Group(AB.MASQUE) then b.equipped = T.InnerRing(b) end
 end
 
 -- The mouse came over a button: the tooltip of the action in the slot it shows

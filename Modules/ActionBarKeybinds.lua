@@ -14,8 +14,9 @@
 --
 -- Escape or the banner's Done button leaves (keys are saved as they are bound, so
 -- both keep them); the banner's second line says what the last key did, in the
--- warn colour when it took a key from something else. A modifier pressed alone (Shift, Ctrl, Alt) waits for the key it
--- goes with; a key pressed with no button under the mouse goes on to the game.
+-- warn colour when it took a key from something else. A modifier pressed alone
+-- (Shift, Ctrl, Alt) waits for the key it goes with; a key pressed with no button
+-- under the mouse goes on to the game.
 -- Bindings are protected, so the mode only runs out of combat and ends when a
 -- fight starts. While it is on, empty slots and faded bars show, as they do
 -- while you drag a spell, so every button can be bound.
@@ -32,7 +33,7 @@ AB.CLEAR_KEYS = { BACKSPACE = true, DELETE = true }
 -- Mouse buttons as binding keys; left and right click (the game's own) bind nothing.
 AB.MOUSE_KEYS = { MiddleButton = "BUTTON3", Button4 = "BUTTON4", Button5 = "BUTTON5" }
 -- The banner's size, and the width of its Done button.
-AB.BANNER = { w = 640, h = 64, done = 84 }
+AB.BANNER = { w = 640, h = 76, done = 84 }
 
 -- A key as a binding with the modifiers held, in the game's order ("ALT-CTRL-SHIFT-Q").
 function AB.KeyChord(key)
@@ -200,12 +201,15 @@ end
 -- The banner's two lines: how the mode works on top, the last key's result under it, left of Done.
 local function addBannerText(f)
   f.text = T.Text(f:CreateFontString(nil, "OVERLAY"), "label")
-  f.text:SetPoint("TOP", 0, -T.SPACE.pad)
-  f.text:SetText("Keybind mode: hover a button, then press a key, a side mouse button or the wheel. Backspace clears.")
+  f.text:SetPoint("TOPLEFT", T.SPACE.pad, -T.SPACE.pad)
+  f.text:SetPoint("TOPRIGHT", -T.SPACE.pad, -T.SPACE.pad)
+  f.text:SetWordWrap(false)
+  f.text:SetText("Hover a button, then press a key, a side mouse button or the wheel. Backspace clears, Escape leaves.")
   f.result = T.Text(f:CreateFontString(nil, "OVERLAY"), "label", "text2")
   f.result:SetPoint("BOTTOMLEFT", T.SPACE.pad, T.SPACE.pad)
   f.result:SetPoint("RIGHT", f.done, "LEFT", -T.SPACE.gap, 0)
   f.result:SetJustifyH("LEFT")
+  f.result:SetWordWrap(false)
 end
 
 -- Done, at the banner's bottom right: leaves the mode, keeping every key bound (each saved as it was bound).

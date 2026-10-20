@@ -79,6 +79,14 @@ local function sampleButton(r)
   return b
 end
 
+-- The sample button's key text as the bars place theirs: one line along the top, right-aligned.
+local function placeHotkey(fs)
+  fs:SetPoint("TOPLEFT", 2, -2)
+  fs:SetPoint("TOPRIGHT", -2, -2)
+  fs:SetJustifyH("RIGHT")
+  fs:SetWordWrap(false)
+end
+
 -- A live sample in the current theme (accent, font, text size, bar texture):
 -- a unit frame and an action button, as the HUD draws them.
 local function previewRow(parent, width)
@@ -87,7 +95,7 @@ local function previewRow(parent, width)
   r.unit = sampleUnit(r)
   sampleTexts(r.unit)
   r.button = sampleButton(r)
-  r.button.hotkey:SetPoint("TOPRIGHT", -2, -2)
+  placeHotkey(r.button.hotkey)
   r.button.count:SetPoint("BOTTOMRIGHT", -2, 2)
   return r
 end
