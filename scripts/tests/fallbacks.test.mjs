@@ -17,6 +17,20 @@ it("without issecretvalue nothing is secret, and a failing after-combat update i
   expect(addon.eval("return __ran")).toBe(true);
 });
 
+it("the shared client-call helpers read nothing from a missing call or a hidden answer, and keep every value of a plain call", () => {
+  const addon = loggedIn();
+  addon.eval("__TwoValues = function() return 1, 2 end __Hidden = function() return __wfgWorld.secret(5) end");
+  expect(addon.eval("return { ns.PlainCall('__NoSuchCall') == nil, ns.PlainCall('__Hidden') == nil }")).toEqual([true, true]);
+  expect(addon.eval("return ns.PlainCall('__TwoValues')")).toBe(1);
+  expect(addon.eval("return select('#', ns.CallGlobal('__TwoValues'))")).toBe(2);
+});
+
+it("ns.IsTrue passes only a plain true, and ns.PlainText only a plain non-empty string", () => {
+  const addon = loggedIn();
+  expect(addon.eval("return { ns.IsTrue(true), ns.IsTrue(__wfgWorld.secret(true)), ns.IsTrue(1) }")).toEqual([true, false, false]);
+  expect(addon.eval('return { ns.PlainText("x"), ns.PlainText("") == nil, ns.PlainText(__wfgWorld.secret("x")) == nil }')).toEqual(["x", true, true]);
+});
+
 it("a mover dropped before the client has laid it out keeps the point the client reports", () => {
   const addon = loggedIn();
   addon.eval("ns.UnlockForEditMode()");
