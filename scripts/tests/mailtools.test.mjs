@@ -121,6 +121,17 @@ it("presets: add, list, replace and remove; Send types the name and attaches the
   expect(addon.eval("return #ns.errors"), "no errors").toBe(0);
 });
 
+it("presets attach only what can be mailed: a soulbound or locked item is passed over and not counted", () => {
+  const addon = mailer("__wfgWorld.bagSizes[0] = 6 __wfgWorld.bags[0][5] = { itemID = 900, bound = true } __wfgWorld.bags[0][6] = { itemID = 901, locked = true } __wfgWorld.bags[0][1].bound = true __wfgWorld.bags[0][2].locked = true");
+  addon.slash("mail preset add Smith Bobalt iron");
+  addon.world.openMailWindow();
+  addon.world.showSendMail();
+  addon.slash("mail send smith");
+  expect([addon.eval("return __wfgWorld.usedItems"), chatHas(addon, /Smith: 0 items attached for Bobalt\./)], "every iron item is bound or locked").toEqual([null, true]);
+  addon.eval("__wfgWorld.bags[0][2].locked = nil");
+  addon.slash("mail send smith");
+  expect([addon.eval("return __wfgWorld.usedItems"), chatHas(addon, /Smith: 1 items attached for Bobalt\./)], "the ore, once free").toEqual([[[0, 2]], true]);
+});
 it("+ Add on the panel makes a preset, a right-click on its button asks and removes it, and pointing says what it sends", () => {
   const addon = mailer();
   addon.world.openMailWindow();

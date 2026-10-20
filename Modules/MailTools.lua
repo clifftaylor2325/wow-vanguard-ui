@@ -265,13 +265,15 @@ local function wanted(name, words)
   return not any
 end
 
--- The name of the item in a bag slot ("" for an empty slot).
+-- The name of the item in a bag slot that can go in the mail ("" for an empty slot, a soulbound item the
+-- game refuses, or a locked one, such as an item already attached).
 local function slotName(bag, slot)
   local info = C_Container.GetContainerItemInfo(bag, slot)
-  return info and (C_Item.GetItemInfo(info.itemID)) or ""
+  local mailable = info and not info.isBound and not info.isLocked
+  return mailable and (C_Item.GetItemInfo(info.itemID)) or ""
 end
 
--- Attaches the bag items that fit a preset (a bag slot at a time, up to the game's limit); how many.
+-- Attaches the bag items that fit a preset and can be mailed (a bag slot at a time, up to the game's limit); how many.
 function MT.Attach(words)
   local n = 0
   for bag = 0, MT.BAGS do
