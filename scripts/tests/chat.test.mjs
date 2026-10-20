@@ -909,6 +909,23 @@ it("minimap drawer: a button an addon makes later joins at once (after a fight),
   later.eval('__icon("TestOnlyLoaded")');
   expect(later.eval("return LibDBIcon10_TestOnlyLoaded:GetParent():GetName()"), "LibDBIcon loaded after Vanguard: hooked when it loads").toBe("Vanguard_MinimapDrawer");
 });
+it("minimap drawer: buttons in name order, the toggle counts them, Escape closes it, and it opens on the side with room", () => {
+  const addon = loggedIn(UI_ENV + DRAWER_ENV + 'CreateFrame("Button", "LibDBIcon10_TestOnlyAlpha", Minimap) CreateFrame("Button", "LibDBIcon10_TestOnlyZeta", Minimap)');
+  const x = (name) => addon.eval(`return ${name}.__points.TOPLEFT.x`);
+  expect(["Alpha", "One", "Zeta"].map((n) => x(`LibDBIcon10_TestOnly${n}`)), "by name, whatever order they were made in").toEqual([4, 32, 60]);
+  addon.eval("local t = Vanguard_MinimapDrawerToggle t.__scripts.OnEnter(t)");
+  expect(addon.eval("return GameTooltip.__lines[1].text"), "the toggle's tooltip counts them").toBe("Addon buttons (3)");
+  addon.eval("local t = Vanguard_MinimapDrawerToggle t.__scripts.OnLeave(t)");
+  expect(addon.eval("for _, n in ipairs(UISpecialFrames) do if n == 'Vanguard_MinimapDrawer' then return true end end return false"), "Escape closes it, as the game's own panels").toBe(true);
+  // Opens the drawer with the map at a point of the screen, and says where it went: its point, the map's point.
+  const openAt = (point, x, y) => addon.eval(`local map = ns.MoverFrame("minimap") map:ClearAllPoints() map:SetPoint("${point}", UIParent, "${point}", ${x}, ${y})
+    Vanguard_MinimapDrawer:Hide() local t = Vanguard_MinimapDrawerToggle t.__scripts.OnClick(t)
+    local d = Vanguard_MinimapDrawer local p, rel, relPoint = d:GetPoint(1) return { d:IsShown(), p, relPoint }`);
+  expect(openAt("TOPRIGHT", -12, -12), "top right of the screen: left of the map, level with its top").toEqual([true, "TOPRIGHT", "TOPLEFT"]);
+  expect(openAt("TOPLEFT", 0, -12), "at the left edge: right of the map").toEqual([true, "TOPLEFT", "TOPRIGHT"]);
+  addon.eval("local t = Vanguard_MinimapDrawerToggle t.__scripts.OnClick(t)");
+  expect(addon.eval("return Vanguard_MinimapDrawer:IsShown()"), "the toggle shuts it again").toBe(false);
+});
 it("minimap drawer: its Modules row says it needs the Minimap module, which it gathers nothing without", () => {
   const addon = loggedIn(UI_ENV + DRAWER_ENV, { savedVariables: "VanguardDB.profiles = { Default = { modules = { Minimap = false } } }" });
   expect(addon.eval("return Vanguard_MinimapDrawer == nil and LibDBIcon10_TestOnlyOne:GetParent():GetName()"), "Minimap off: no drawer, the button stays on the map").toBe("Minimap");

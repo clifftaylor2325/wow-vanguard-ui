@@ -1,7 +1,9 @@
 -- Other addons' minimap buttons (the LibDBIcon kind that ring the minimap)
 -- gathered into one drawer beside the map, so the square map stays clean.
--- A small "..." button on the map's left edge opens and closes the drawer;
--- it only shows once there's a button to gather. The buttons stay the
+-- A small "..." button on the map's left edge opens and closes the drawer
+-- (its tooltip counts the buttons; Escape closes it too); it only shows once
+-- there's a button to gather. The buttons sit in name order, and the drawer
+-- opens on whichever side of the map has room. The buttons stay the
 -- addons' own: they still click, drag and show their tooltips. A button an
 -- addon makes later (enabled from its settings, or loaded on demand) joins
 -- as LibDBIcon makes it; a protected button is never taken.
@@ -41,15 +43,25 @@ local function fit()
   MB.toggle:SetShown(n > 0)
 end
 
--- Takes one addon button into the drawer, kept in its cell when the addon moves it again.
+-- A gathered button's place in the name order: its addon's name, without the library's prefix, in lower case.
+local function sortName(b)
+  return ((b:GetName() or ""):gsub(MB.NAME, "")):lower()
+end
+
+-- Puts every gathered button in its cell, in name order, each kept there when its addon moves it again.
+local function arrange()
+  table.sort(MB.buttons, function(a, b) return sortName(a) < sortName(b) end)
+  for n, b in ipairs(MB.buttons) do ns.Pin(b, function(f) cell(f, n) end) end
+  fit()
+end
+
+-- Takes one addon button into the drawer.
 local function gather(b)
   if vgGathered[b] then return end
   vgGathered[b] = true
   MB.buttons[#MB.buttons + 1] = b
-  local n = #MB.buttons
   b:SetParent(MB.drawer)
-  ns.Pin(b, function(f) cell(f, n) end)
-  fit()
+  arrange()
 end
 
 -- Whether the drawer may take a minimap child: LibDBIcon's kind, and not protected (Vanguard can't
@@ -82,12 +94,52 @@ end
 
 -- Building ------------------------------------------------------------------------------------
 
--- The drawer: a panel beside the minimap's left edge, shut until the toggle opens it.
+-- The drawer: a panel beside the minimap (MB.PlaceDrawer picks the side), shut until the toggle opens
+-- it; Escape closes it.
 local function buildDrawer(map)
+  MB.map = map
   MB.drawer = T.HudPanel(CreateFrame("Frame", "Vanguard_MinimapDrawer", map))
-  MB.drawer:SetPoint("TOPRIGHT", map, "TOPLEFT", -T.SPACE.tight, 0)
   MB.drawer:SetFrameStrata("MEDIUM")
+  MB.drawer:SetClampedToScreen(true)
   MB.drawer:Hide()
+  ns.CloseOnEscape(MB.drawer)
+  MB.PlaceDrawer()
+end
+
+-- An edge of a frame in screen pixels (so frames at different scales compare), or nil when it has none yet.
+local function edge(frame, getter)
+  local v = ns.PlainNumber(frame[getter](frame))
+  return v and v * frame:GetEffectiveScale()
+end
+
+-- Sets the drawer beside the map, level with its top, on the side with room: left of it unless that would
+-- leave the screen, then right. The drawer is held to the screen, so a map near the bottom pushes it up.
+function MB.PlaceDrawer()
+  local d, gap = MB.drawer, T.SPACE.tight
+  local left = edge(MB.map, "GetLeft")
+  local side = left and left < (d:GetWidth() + gap) * d:GetEffectiveScale() and "RIGHT" or "LEFT"
+  d:ClearAllPoints()
+  if side == "LEFT" then d:SetPoint("TOPRIGHT", MB.map, "TOPLEFT", -gap, 0) else d:SetPoint("TOPLEFT", MB.map, "TOPRIGHT", gap, 0) end
+end
+
+-- Opens the drawer on the side with room, or shuts it.
+function MB.Toggle()
+  if not MB.drawer:IsShown() then MB.PlaceDrawer() end
+  MB.drawer:SetShown(not MB.drawer:IsShown())
+end
+
+-- The toggle's tooltip: how many addon buttons the drawer holds.
+function MB.ToggleTip(t)
+  GameTooltip:SetOwner(t, "ANCHOR_LEFT")
+  GameTooltip:SetText("Addon buttons (" .. #MB.buttons .. ")", T.RGB("text"))
+  GameTooltip:Show()
+end
+
+-- The toggle's click and tooltip.
+local function wireToggle(t)
+  t:SetScript("OnClick", ns.Guard("click minimap button drawer", MB.Toggle))
+  t:SetScript("OnEnter", ns.Guard("minimap drawer tip", MB.ToggleTip))
+  t:SetScript("OnLeave", ns.Guard("minimap drawer tip", function() GameTooltip:Hide() end))
 end
 
 -- The "..." toggle on the map's left edge (hidden until a button is gathered).
@@ -99,7 +151,7 @@ local function buildToggle(map)
   t.icon = T.Tint(t:CreateTexture(nil, "OVERLAY"), "text2")
   t.icon:SetTexture(T.Icon("Waiting"))
   t.icon:SetAllPoints()
-  t:SetScript("OnClick", ns.Guard("click minimap button drawer", function() MB.drawer:SetShown(not MB.drawer:IsShown()) end))
+  wireToggle(t)
   t:Hide()
   MB.toggle = t
 end
