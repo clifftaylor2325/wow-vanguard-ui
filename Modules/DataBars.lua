@@ -201,21 +201,39 @@ end
 -- set under General → Layout).
 DB.SIZES = { width = { 60, 1600 }, height = { 2, 40 } }
 
--- The bar's centered text, shown as the text setting says (always, or on hover).
+-- Where a bar's text goes while the bar is thinner than a line of it (the two bars stack 8 apart, so centred
+-- texts would run into each other): the XP text at the left end, the reputation text at the right, a cell
+-- gap in (the sign is the direction in from that end).
+DB.TEXT_SIDE = { xpbar = { "LEFT", 1 }, repbar = { "RIGHT", -1 } }
+
+-- Places a bar's text: centred while the bar is at least as tall as its font (or its height is hidden),
+-- else at the bar's own end.
+function DB.PlaceText(bar)
+  local _, size = bar.text:GetFont()
+  local height = ns.PlainNumber(bar:GetHeight())
+  local side = height and height < (size or 0) and DB.TEXT_SIDE[bar.vgKey]
+  bar.text:ClearAllPoints()
+  if not side then return bar.text:SetPoint("CENTER") end
+  bar.text:SetPoint(side[1], bar, side[1], side[2] * T.SPACE.tight, 0)
+end
+
+-- The bar's text, shown as the text setting says (always, or on hover).
 local function addText(bar, mode)
   bar.text = T.Text(bar:CreateFontString(nil, "OVERLAY"), "small")
-  bar.text:SetPoint("CENTER")
+  DB.PlaceText(bar)
   wireText(bar, mode)
 end
 
--- A bar Vanguard resized: its fill (and the XP bar's rested strip) is drawn again.
+-- A bar Vanguard resized: its fill (and the XP bar's rested strip) is drawn again, and its text placed for the new height.
 local function resized(bar)
+  DB.PlaceText(bar)
   if bar.vgOnState then bar.vgOnState() end
 end
 
--- A themed status bar with centered text, movable as `key`; Vanguard may set its size.
+-- A themed status bar with its text, movable as `key`; Vanguard may set its size.
 local function createBar(key, label, point, settings)
   local bar = CreateFrame("StatusBar", "Vanguard_" .. key, UIParent)
+  bar.vgKey = key
   bar:SetSize(settings.width, settings.height)
   T.StyleBar(bar)
   T.HudPanel(bar, { inset = true })
@@ -318,6 +336,11 @@ function DB.ApplyVisibility()
   end
 end
 
+-- Places both bars' texts again (the text size changed, so a line may now be taller than a bar).
+function DB.PlaceTexts()
+  for _, bar in pairs({ DB.xpBar, DB.repBar }) do DB.PlaceText(bar) end
+end
+
 -- Module entry point (Core/Modules.lua). Data bars aren't protected, so no combat wait.
 function DB.Enable(settings)
   DB.settings = settings
@@ -325,5 +348,6 @@ function DB.Enable(settings)
   if settings.reputation then enableReputation(settings) end
   DB.ApplyVisibility()
   if not (settings.xp or settings.reputation) then return end
+  T.OnChanged(DB.PlaceTexts)
   for _, name in ipairs(DB.BLIZZARD) do DB.Suppress(name) end
 end
