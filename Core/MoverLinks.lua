@@ -81,9 +81,9 @@ local function round(v)
   return math.floor(v + 0.5)
 end
 
--- The screen's width and height in UIParent's units.
+-- The screen's width and height ({ w, h }) in UIParent's units.
 local function screen()
-  return UIParent:GetWidth() or 0, UIParent:GetHeight() or 0
+  return { w = UIParent:GetWidth() or 0, h = UIParent:GetHeight() or 0 }
 end
 
 -- A mover's saved scale.
@@ -121,7 +121,9 @@ end
 function K.RectOf(key)
   local point, relPoint, x, y = ns.MoverPoint(key)
   local s = scaleOf(key)
-  return L.Rect(point, relPoint, x, y, K.Own(key, "width") * s, K.Own(key, "height") * s, screen())
+  local anchor = { point = point, relPoint = relPoint, x = x, y = y }
+  local size = { w = K.Own(key, "width") * s, h = K.Own(key, "height") * s }
+  return L.Rect(anchor, size, screen())
 end
 
 -- Sizes a frame Vanguard may size (as K.Own works it out) and tells its module.
@@ -150,13 +152,14 @@ local function anchoredRect(key, rel)
   local tx, ty = L.PointAt(K.RectOf(rel.to), theirs)
   local s = scaleOf(key)
   local r = L.RectAt(own, tx + (tonumber(rel.x) or 0), ty + (tonumber(rel.y) or 0), K.Own(key, "width") * s, K.Own(key, "height") * s)
-  return L.Clamp(r, screen())
+  local sc = screen()
+  return L.Clamp(r, sc.w, sc.h)
 end
 
 -- Remembers where an anchored mover is as its saved spot (against the nearest screen edge):
 -- where it lands while the frame it's anchored to isn't there.
 local function remember(p, r)
-  local point, x, y = L.Anchor(r.left, r.bottom, r.w, r.h, screen())
+  local point, x, y = L.Anchor(r, screen())
   p.point, p.relPoint, p.x, p.y = point, point, x, y
 end
 
@@ -187,8 +190,9 @@ function K.Saved(key, p)
   local rel = part(p, "rel")
   if not rel or not L.SIDES[rel.side] or not ns.MoverFrame(rel.to) then return end
   local s = scaleOf(key)
-  local w, h = K.Own(key, "width") * s, K.Own(key, "height") * s
-  offsetsFrom(rel, L.Rect(p.point, p.relPoint or p.point, tonumber(p.x) or 0, tonumber(p.y) or 0, w, h, screen()))
+  local anchor = { point = p.point, relPoint = p.relPoint or p.point, x = tonumber(p.x) or 0, y = tonumber(p.y) or 0 }
+  local size = { w = K.Own(key, "width") * s, h = K.Own(key, "height") * s }
+  offsetsFrom(rel, L.Rect(anchor, size, screen()))
 end
 
 -- "Below", "Player frame", and the offsets, for an anchored mover's handle and popover; nil for one that isn't.

@@ -33,18 +33,18 @@ it("movers", () => {
 it("layout", () => {
   const addon = loggedIn();
   // ns.Layout.Anchor on a 1920x1080 screen.
-  const anchor = (l, b, w, h) => addon.eval(`return { ns.Layout.Anchor(${l}, ${b}, ${w}, ${h}, 1920, 1080) }`);
+  const anchor = (l, b, w, h) => addon.eval(`return { ns.Layout.Anchor({ left = ${l}, bottom = ${b}, w = ${w}, h = ${h} }, { w = 1920, h = 1080 }) }`);
   expect(JSON.stringify(anchor(20, 900, 200, 40)) === JSON.stringify(["TOPLEFT", 20, -140]), "top-left third anchors TOPLEFT with edge offsets").toBeTruthy();
   expect(JSON.stringify(anchor(1700, 20, 200, 40)) === JSON.stringify(["BOTTOMRIGHT", -20, 20]), "bottom-right third anchors BOTTOMRIGHT").toBeTruthy();
   expect(JSON.stringify(anchor(860, 520, 200, 40)) === JSON.stringify(["CENTER", 0, 0]), "the middle anchors CENTER").toBeTruthy();
   expect(JSON.stringify(anchor(860, 20, 200, 40)) === JSON.stringify(["BOTTOM", 0, 20]), "bottom middle anchors BOTTOM").toBeTruthy();
   // ns.Layout.Snap of a 100x20 rect next to one at (500, 300).
-  const snap = (l, b) => addon.eval(`return { ns.Layout.Snap(${l}, ${b}, 100, 20, { { left = 500, bottom = 300, w = 100, h = 20 } }, 1920, 1080) }`);
+  const snap = (l, b) => addon.eval(`local r = ns.Layout.Snap({ left = ${l}, bottom = ${b}, w = 100, h = 20 }, { { left = 500, bottom = 300, w = 100, h = 20 } }, { w = 1920, h = 1080 }) return { r.left, r.bottom }`);
   expect(JSON.stringify(snap(605, 250)) === JSON.stringify([600, 250]), "a left edge within 8 px snaps to another frame's right edge").toBeTruthy();
   expect(JSON.stringify(snap(700, 250)) === JSON.stringify([700, 250]), "nothing close, no snap").toBeTruthy();
   expect(JSON.stringify(snap(1000, 527)) === JSON.stringify([1000, 530]), "a center within 8 px snaps to the screen center").toBeTruthy();
   // The left edge lines up exactly with one frame, and the right edge is 3 px from another: the exact line-up stays.
-  const exact = addon.eval("return { ns.Layout.Snap(500, 250, 100, 20, { { left = 500, bottom = 300, w = 100, h = 20 }, { left = 603, bottom = 600, w = 50, h = 20 } }, 1920, 1080) }");
+  const exact = addon.eval("local r = ns.Layout.Snap({ left = 500, bottom = 250, w = 100, h = 20 }, { { left = 500, bottom = 300, w = 100, h = 20 }, { left = 603, bottom = 600, w = 50, h = 20 } }, { w = 1920, h = 1080 }) return { r.left, r.bottom }");
   expect(exact, "an exact line-up is not replaced by a near one").toEqual([500, 250]);
 });
 
@@ -162,7 +162,7 @@ it("layout: rects, clamping to the screen, and the nearest side", () => {
   const addon = loggedIn();
   // A rect from ns.Layout as [left, bottom, w, h].
   const rect = (lua) => addon.eval(`local r = ${lua} return { r.left, r.bottom, r.w, r.h }`);
-  expect(rect("ns.Layout.Rect('TOPRIGHT', 'TOPRIGHT', -12, -12, 100, 50, 1920, 1080)"), "a frame's rect from its point").toEqual([1808, 1018, 100, 50]);
+  expect(rect("ns.Layout.Rect({ point = 'TOPRIGHT', relPoint = 'TOPRIGHT', x = -12, y = -12 }, { w = 100, h = 50 }, { w = 1920, h = 1080 })"), "a frame's rect from its point").toEqual([1808, 1018, 100, 50]);
   expect(rect("ns.Layout.RectAt('LEFT', 500, 300, 100, 20)"), "the rect whose left point is at 500, 300").toEqual([500, 290, 100, 20]);
   expect(rect("ns.Layout.Clamp({ left = -20, bottom = 1070, w = 100, h = 20 }, 1920, 1080)"), "a rect past the edges is moved onto the screen").toEqual([0, 1060, 100, 20]);
   // The side of a 200 x 40 frame at 500, 500 that a 100 x 20 one at left, bottom is nearest.

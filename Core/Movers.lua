@@ -361,12 +361,10 @@ end
 -- Where a dropped handle goes: snapped (if on), anchored to the nearest edge,
 -- all in UIParent's units.
 local function dropPosition(h, r)
-  local sw, sh = UIParent:GetWidth() or 0, UIParent:GetHeight() or 0
-  local left, bottom = r.left, r.bottom
-  if ns.MoverOptions().snap then
-    left, bottom = L.Snap(left, bottom, r.w, r.h, otherRects(h.mover), sw, sh)
-  end
-  local point, x, y = L.Anchor(left, bottom, r.w, r.h, sw, sh)
+  local screen = { w = UIParent:GetWidth() or 0, h = UIParent:GetHeight() or 0 }
+  local rect = r
+  if ns.MoverOptions().snap then rect = L.Snap(r, otherRects(h.mover), screen) end
+  local point, x, y = L.Anchor(rect, screen)
   return point, point, x, y
 end
 
