@@ -102,7 +102,7 @@ it("each nameplate asks the client for its own unit's events, once", () => {
   addon.fire("NAME_PLATE_UNIT_ADDED", "nameplate1");
   addon.fire("NAME_PLATE_UNIT_ADDED", "nameplate2");
   expect(unitEvents(addon, "UNIT_HEALTH").subs, "health: one subscription per plate, for its unit").toBe("nameplate1 nameplate2");
-  expect(unitEvents(addon, "UNIT_SPELLCAST_START"), "casts: each plate's own, beside the cast bars' units; nothing takes every unit's").toEqual({ subs: "nameplate1 nameplate2 player,target,focus", plain: 0 });
+  expect(unitEvents(addon, "UNIT_SPELLCAST_START"), "casts: each plate's own, beside the cast bars' units; nothing takes every unit's").toEqual({ subs: "nameplate1 nameplate2 pet player,target,focus", plain: 0 });
   addon.eval("__units.party1 = { name = 'TEST-ONLY Friend', hp = 120, maxhp = 500, reaction = 5 } __units.nameplate2 = __units.party1");
   addon.fire("UNIT_HEALTH", "nameplate2");
   expect(addon.eval("return ns.FrameState('vgPlate')[__plates.nameplate2]:GetValue()"), "a plate's own unit event repaints it").toBe(120);
@@ -254,4 +254,87 @@ it("the Nameplates and Unit frames pages switch the tag marks and the grey bar",
   addon.eval('ns.Options.Show("unitframes")');
   addon.eval('__click("Tag mark on your target: a green check if you tagged it, a grey X if another player did")');
   expect(addon.eval("return __look()"), "both off, at once: no marks, the plate back to its reaction colour").toEqual(["hidden", "hostile", "hidden"]);
+});
+
+// TEST-ONLY: nameplate1 (the target) is an enemy at 840 of 1000 health, nameplate2 a friend, with the
+// client's bitfield CVars (a UI_ENV C_CVar keeps them) and percent over __units; __numbers(unit)
+// gives a plate's health percent and value as { shown, text } and where the value is anchored.
+const NUMBERS = `UnitCanAttack = function(_, unit) return unit == 'nameplate1' end
+  __units.target.hp, __units.target.maxhp = 840, 1000
+  for name, fn in pairs(__wfgWorld.cvarBitfield) do C_CVar[name] = fn end
+  CurveConstants = { ScaleTo100 = { Evaluate = function(_, x) return x * 100 end } }
+  UnitHealthPercent = function(unit, _, curve)
+    local u = __units[unit]
+    if issecretvalue(u.hp) then return u.hp end
+    return curve:Evaluate(u.hp / u.maxhp)
+  end
+  function __numbers(unit)
+    local f = ns.FrameState('vgPlate')[__plates[unit]]
+    local at = f.healthValue.__points.RIGHT
+    return { percent = { f.healthPercent:IsShown(), f.healthPercent:GetText() }, value = { f.healthValue:IsShown(), f.healthValue:GetText() },
+      valueBy = at and (at.rel == f and "bar" or at.rel == f.healthPercent and "percent") }
+  end
+  function __info(percent, value)
+    C_CVar.SetCVarBitfield("nameplateInfoDisplay", Enum.NamePlateInfoDisplay.CurrentHealthPercent, percent)
+    C_CVar.SetCVarBitfield("nameplateInfoDisplay", Enum.NamePlateInfoDisplay.CurrentHealthValue, value)
+  end`;
+it("plate health numbers follow the game's Info display, on enemy plates only", () => {
+  const addon = loggedIn(UNITS_ENV + PLATE_ENV + NUMBERS);
+  // A plate's numbers.
+  const numbers = (unit) => addon.eval(`return __numbers("${unit}")`);
+  expect(numbers("nameplate1"), "the game's boxes start unticked: no numbers").toMatchObject({ percent: [false], value: [false] });
+  addon.eval("__info(true, false)");
+  addon.fire("CVAR_UPDATE", "nameplateInfoDisplay", "1");
+  expect(numbers("nameplate1"), "Health percent ticked: the enemy's plate shows it").toMatchObject({ percent: [true, "84%"], value: [false] });
+  expect(numbers("nameplate2"), "a friend's plate shows none").toMatchObject({ percent: [false], value: [false] });
+  addon.eval("__info(true, true)");
+  addon.fire("CVAR_UPDATE", "nameplateInfoDisplay", "3");
+  expect(numbers("nameplate1"), "both ticked: the value left of the percent").toEqual({ percent: [true, "84%"], value: [true, "840"], valueBy: "percent" });
+  addon.eval("__units.target.hp = 500");
+  addon.fire("UNIT_HEALTH", "nameplate1");
+  expect(numbers("nameplate1"), "a health change refills them").toMatchObject({ percent: [true, "50%"], value: [true, "500"] });
+  addon.eval("__info(false, true)");
+  addon.fire("CVAR_UPDATE", "nameplateInfoDisplay", "2");
+  const valueOnly = numbers("nameplate1");
+  expect([valueOnly.percent[0], valueOnly.value, valueOnly.valueBy], "only the value: at the bar's right end").toEqual([false, [true, "500"], "bar"]);
+  addon.eval("UnitCanAttack = function() return true end");
+  addon.fire("UNIT_FACTION", "nameplate2");
+  expect(numbers("nameplate2").value[0], "a unit that turns hostile gets them").toBe(true);
+});
+it("plate health numbers: none on the smallest plates or a client without the setting, and a failing percent is left blank", () => {
+  const short = loggedIn(UNITS_ENV + PLATE_ENV + NUMBERS + " __info(true, true) ns.Settings('Nameplates').height = 8");
+  expect(short.eval('return __numbers("nameplate1")'), "an 8-high plate has no room").toMatchObject({ percent: [false], value: [false] });
+  const old = loggedIn(UNITS_ENV + PLATE_ENV + NUMBERS + " __info(true, true) C_CVar.GetCVarBitfield = nil");
+  expect(old.eval('return __numbers("nameplate1")'), "a client that can't read the bits shows none").toMatchObject({ percent: [false], value: [false] });
+  const failing = loggedIn(UNITS_ENV + PLATE_ENV + NUMBERS + " __info(true, false) UnitHealthPercent = function() error('TEST-ONLY') end");
+  expect(failing.eval('return __numbers("nameplate1").percent'), "a percent the client can't give is blank").toEqual([true]);
+  const noCurve = loggedIn(UNITS_ENV + PLATE_ENV + NUMBERS + " __info(true, false) CurveConstants = nil");
+  expect(noCurve.eval('return __numbers("nameplate1").percent'), "so is one without the client's curve").toEqual([true]);
+});
+it("plate health numbers on hidden health go to the text untouched and are never measured", () => {
+  const addon = loggedIn(UNITS_ENV + PLATE_ENV + NUMBERS + " __units.target.hp, __units.target.maxhp = { __secret = true, n = 300 }, { __secret = true, n = 1000 } __info(true, true)");
+  addon.world.secretGeometry("derived");
+  addon.fire("NAME_PLATE_UNIT_ADDED", "nameplate1");
+  addon.fire("UNIT_HEALTH", "nameplate1");
+  const text = addon.eval("local f = ns.FrameState('vgPlate')[__plates.nameplate1] return { value = issecretvalue(f.healthValue:GetText()), percent = f.healthPercent:IsShown() }");
+  expect(text, "the hidden value goes to the text as the client's formatter gave it").toEqual({ value: true, percent: true });
+});
+it("the Nameplates page mirrors the game's health number boxes and writes them out of combat", () => {
+  const addon = loggedIn(UI_ENV + CLICK_LUA + UNITS_ENV + PLATE_ENV + NUMBERS);
+  addon.fire("NAME_PLATE_UNIT_ADDED", "nameplate1");
+  addon.eval('ns.Options.Show("nameplates")');
+  addon.eval('__click("Health percent on enemy plates")');
+  expect(addon.eval('return { C_CVar.GetCVarBitfield("nameplateInfoDisplay", 1), __numbers("nameplate1").percent[1] }'), "ticking the row sets the game's bit, and the plate follows").toEqual([true, true]);
+  setCombat(addon, true);
+  addon.eval('__click("Health value on enemy plates")');
+  expect(addon.eval('return C_CVar.GetCVarBitfield("nameplateInfoDisplay", 2)'), "in a fight it waits").toBe(false);
+  setCombat(addon, false);
+  expect(addon.eval('return { C_CVar.GetCVarBitfield("nameplateInfoDisplay", 2), __numbers("nameplate1").value[1] }'), "and is written after it").toEqual([true, true]);
+  // How many rows the game settings part of the page has, on a client set up by `lua`.
+  const rows = (lua) => loggedIn(UNITS_ENV + lua).eval('local n = 0 for _, row in ipairs(ns.GetModule("Nameplates").GameRows()) do n = n + 1 end return n');
+  expect(rows("__wfgWorld.cvarBits.nameplateInfoDisplay = nil"), "a client without the setting gets no rows for it").toBe(3);
+  expect(rows(""), "the full list where it has it").toBe(5);
+  const unwritable = loggedIn(UNITS_ENV + "C_CVar.SetCVarBitfield = nil");
+  unwritable.eval("local _, set = ns.GetModule('Nameplates').InfoSetting('CurrentHealthValue') set(true)");
+  expect(unwritable.eval('return C_CVar.GetCVarBitfield("nameplateInfoDisplay", 2)'), "a client that can't write the bit is left as it is").toBe(false);
 });

@@ -512,6 +512,12 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Expect: hostile creatures in range have a Vanguard plate at the first login without pressing anything. `/vg plates` gives plates drawn, how many are attackable, and Enemy on. Each switch hides and shows that kind of plate, and the Enemy switch follows V. After the reload Vanguard does not turn enemy plates back on. [Needs in game: that nameplateShowEnemies, nameplateShowFriendlyPlayers and nameplateShowFriendlyNPCs are the Forever 16001 CVar names (nameplateShowFriends is not: GetCVar gives nil) and that the client keeps them after a reload.]
 - If it fails, paste: the `/vg plates` line, a screenshot, and `/vg errors`.
 
+### 7.5a Health numbers on enemy plates
+
+- Do: stand near hostile mobs and a friendly NPC with plates on. Open the game's options → Nameplates → Info display and tick Current health percent; look at the plates. Tick Current health value too, then untick the percent. Open `/vg` → Nameplates and untick "Health value on enemy plates". Tick "Health percent on enemy plates" during a fight and watch the plates when it ends. Set Height to 8 on the same page and `/reload`.
+- Expect: each box shows its number at the right end of every enemy plate's bar, small and outlined (the value left of the percent when both are on), following the mob's health as you hit it; the friendly NPC's plate shows none. Vanguard's two rows tick and untick with the game's boxes, and the game's boxes follow Vanguard's rows; a row ticked in a fight takes effect when it ends. At height 8 no numbers show. [Needs in game: that the percent reads right on a mob whose health the client hides (it formats the hidden number, which the harness can't), that `CVAR_UPDATE` fires when the game's box changes so the plates follow at once, and how the numbers fit a 10-high bar.]
+- If it fails, paste: a screenshot of a plate and `/vg errors`.
+
 ### 7.6 Fight recap
 
 - Do: under Combat tools tick "Recap in chat after each fight". Fight a mob for a few seconds (in a group, interrupt or dispel something if you can). Type `/vg recap`, then `/vg recap party` in a group. In the fight's first seconds type `/vg recap`. Then type `/run for _, k in ipairs({"Interrupts","Dispels","DamageTaken","Deaths","AvoidableDamageTaken"}) do print(k, Enum.DamageMeterType[k]) end` and paste what it prints.
