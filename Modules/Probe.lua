@@ -4,9 +4,10 @@
 -- player sees, no state of the game (a state driver on one hidden frame is made and removed).
 --
 -- Rules: a name is read through _G, never called when absent, and called once, in a pcall. A
--- secret prints "hidden" and is never compared, formatted or concatenated. `/vg probe fight`
--- takes the same secrecy and restriction reads once in the next fight; the lines are printed
--- after it, not during.
+-- secret prints "hidden" (this file's own rows add the type the client gives it) and is never
+-- compared, formatted or concatenated. `/vg probe fight` takes the same secrecy and restriction
+-- reads once in the next fight; the lines are printed after it, not during. `/vg probe` typed in
+-- a fight takes only the party, mark and boss reads and keeps them for `/vg probe last`.
 
 local ADDON, ns = ...
 
@@ -59,6 +60,18 @@ P.CALLS = {
   },
   -- The CVar Safer colours follows (Core/Theme.lua); a wrong name here means the follow switch does nothing.
   access = { { "GetCVar", "colorblindMode" }, { "GetCVar", "colorblindSimulator" } },
+  -- A party member's and a raid unit's health (hidden or plain; raid2 matters in a battleground), the
+  -- target's raid mark and whether a boss unit exists after a pull. Run out of combat and in a fight.
+  party = {
+    { "IsInInstance" }, { "UnitExists", "party1" }, { "UnitHealth", "party1" },
+    { "UnitHealthMissing", "party1" }, { "UnitHealth", "raid2" }, { "GetRaidTargetIndex", "target" },
+    { "UnitExists", "boss1" },
+  },
+  -- The defaults a new character starts with: cooldown numbers on buttons and the clock's two switches.
+  gates = {
+    { "GetCVar", "countdownForCooldowns" }, { "GetCVarDefault", "countdownForCooldowns" },
+    { "GetCVarDefault", "timeMgrUseLocalTime" }, { "GetCVarDefault", "timeMgrUseMilitaryTime" },
+  },
   undocumented = {
     { "C_LootHistory.GetNumItems" }, { "C_LootHistory.GetItem", 1 },
     { "C_LootHistory.GetPlayerInfo", 1, 1 }, { "C_LootHistory.GetAllEncounterInfos" },
@@ -92,9 +105,10 @@ local function errText(v)
   return type(v) == "string" and (v:gsub("%s*\n%s*", " | ")):sub(1, 100) or "?"
 end
 
--- A value as report text: a secret as "hidden", a string quoted, the rest as the guide probe says.
+-- A value as report text: a secret as "hidden" with the type the client gives it, a string quoted,
+-- the rest as the guide probe says.
 local function describe(v)
-  if ns.IsSecret(v) then return "hidden" end
+  if ns.IsSecret(v) then return "hidden (" .. type(v) .. ")" end
   if type(v) == "string" then return "'" .. v:sub(1, 60) .. "'" end
   return ns.GuideData.Describe(v)
 end
@@ -351,10 +365,109 @@ local function skillLine()
   return "C_SkillInfo read: lines " .. total .. ", headers " .. headers .. ", collapsed " .. collapsed .. "; Enchanting " .. skillById(api, 333) .. ", Cooking " .. skillById(api, 185)
 end
 
--- The reads the guide probe holds, so one run carries them too.
-local function guideLines()
-  local out = {}
+-- A line made by fn, or its error as a line under label.
+local function guarded(label, fn)
+  local ok, line = pcall(fn)
+  return ok and line or label .. ": error " .. errText(line)
+end
+
+-- The quest reads the quest windows wait on: the completed flags on a quest this character has
+-- done, and the money, group size, failed and repeatable reads on the quest selected in the log.
+-- { name, argument word } as GuideData.ARGS names them; each is asked with the quest's id.
+P.QUEST_READS = {
+  { "C_QuestLog.IsQuestFlaggedCompleted", "done" }, { "C_QuestLog.IsQuestFlaggedCompletedOnAccount", "done" },
+  { "C_QuestLog.GetRequiredMoney", "selected" }, { "C_QuestLog.GetSuggestedGroupSize", "selected" },
+  { "C_QuestLog.IsFailed", "selected" }, { "C_QuestLog.IsRepeatableQuest", "selected" },
+}
+
+-- The done and selected quest ids, each found once per run in a pcall, or nil.
+local function questsAsked()
+  local A, ids = ns.GuideData.ARGS, {}
+  for _, word in ipairs({ "done", "selected" }) do
+    local ok, id = pcall(A[word])
+    ids[word] = ok and id or nil
+  end
+  return ids
+end
+
+-- Which quests the reads were asked about, by id (a quest id names no one).
+local function askedLine(ids)
+  return "asked about: done quest " .. tostring(ids.done or "none") .. ", selected quest " .. tostring(ids.selected or "none (click a quest in the log)")
+end
+
+-- One quest read asked with its quest's id, labelled with it, or why it was not called.
+local function questRead(read, ids)
+  local id = ids[read[2]]
+  return id and P.Row(read[1], id) or read[1] .. ": not called (no " .. read[2] .. " quest)"
+end
+
+-- The flight map opened last this session: the map system the event names and which window showed.
+P.flight = nil
+
+-- Which flight window is shown, a moment after the map opened.
+local function noteFlightFrames()
+  local shown = {}
+  for _, name in ipairs({ "TaxiFrame", "FlightMapFrame" }) do
+    local f = _G[name]
+    shown[#shown + 1] = name .. (f and (f:IsShown() and " shown" or " hidden") or " missing")
+  end
+  P.flight.frames = table.concat(shown, ", ")
+end
+
+-- TAXIMAP_OPENED: keeps the system it names and, a moment later, which flight window showed.
+local function flightOpened(_, system)
+  P.flight = { system = describe(system), frames = "windows not read" }
+  if C_Timer and C_Timer.After then C_Timer.After(0.2, ns.Guard("probe flight map", noteFlightFrames)) end
+end
+ns.On("TAXIMAP_OPENED", flightOpened)
+
+-- The flight map line.
+local function flightLine()
+  local f = P.flight
+  if not f then return "last flight map: none opened this session (open a flight master's map first)" end
+  return "last flight map: system " .. f.system .. ", " .. f.frames
+end
+
+-- The quest log's count, the quests asked about, the quest reads, the flight map, then the guide probe's reads.
+local function questMapLines()
+  local ids = questsAsked()
+  local out = { P.Row("C_QuestLog.GetNumQuestLogEntries"), askedLine(ids) }
+  for _, read in ipairs(P.QUEST_READS) do out[#out + 1] = questRead(read, ids) end
+  out[#out + 1] = flightLine()
   for _, probe in ipairs(ns.GuideData.PROBES) do out[#out + 1] = ns.GuideData.Line(probe) end
+  return out
+end
+
+-- Whether Vanguard's first bar button hides the game's cooldown numbers.
+local function countdownLine()
+  local bars = ns.GetModule("ActionBars")
+  local cd = bars and bars.buttons[1] and bars.buttons[1].cooldown
+  if not cd then return "bar button cooldown: no Vanguard bar button" end
+  if type(cd.GetHideCountdownNumbers) ~= "function" then return "bar button cooldown: GetHideCountdownNumbers missing" end
+  return "bar button cooldown: " .. answer("GetHideCountdownNumbers", pcall(cd.GetHideCountdownNumbers, cd))
+end
+
+-- The watched faction's standing and its two thresholds, plain or hidden.
+local function factionLine()
+  local get = ns.GuideData.Find("C_Reputation.GetWatchedFactionData")
+  local data = get and get()
+  if type(data) ~= "table" then return "watched faction: " .. (get and "none watched" or "C_Reputation.GetWatchedFactionData missing") end
+  return "watched faction: reaction " .. describe(data.reaction) .. ", thresholds " .. describe(data.currentReactionThreshold) .. " to " .. describe(data.nextReactionThreshold) .. ", standing " .. describe(data.currentStanding)
+end
+
+-- The bars' and strips' open questions: CVar defaults, two quests' reward XP, cooldown numbers, the faction.
+local function gateLines()
+  local out = sectionRows("gates")
+  for _, id in ipairs(ns.GuideData.LogQuests(2)) do out[#out + 1] = P.Row("GetQuestLogRewardXP", id) end
+  out[#out + 1] = guarded("bar button cooldown", countdownLine)
+  out[#out + 1] = guarded("watched faction", factionLine)
+  return out
+end
+
+-- The party, raid, mark and boss reads, with whether it ran in a fight.
+local function partyLines()
+  local out = sectionRows("party")
+  table.insert(out, 1, "in combat: " .. tostring(ns.InCombat()))
   return out
 end
 
@@ -377,7 +490,8 @@ P.SECTIONS = {
   { "Colour-blind mode CVars", function() return sectionRows("access") end },
   { "C_Secrets predicates", secretLines }, { "Restrictions and lockdown", restrictionLines },
   { "Navigation", navigationLines }, { "Undocumented on Forever", undocumentedLines },
-  { "Guide reads", guideLines },
+  { "Quest and map reads", questMapLines }, { "Party, marks and bosses", partyLines },
+  { "Bars and strips", gateLines },
 }
 
 -- A run ------------------------------------------------------------------------------------
@@ -416,20 +530,59 @@ local function publish(lines)
   ns.Chat("Probe done: " .. P.Tally(lines) .. ". The report is in the copy box and saved in Vanguard.lua (SavedVariables) as probe.report.")
 end
 
--- /vg probe: runs everything, out of combat.
+-- The most runs in a fight kept (VanguardDB.probeFights, apart from the report so the round trip's
+-- marker stays the full run's); the oldest goes first.
+P.COMBAT_MAX = 16
+
+-- The time of day as text, or the wall clock's seconds on a client without date().
+local function clock()
+  return type(date) == "function" and date("%H:%M:%S") or tostring(now())
+end
+
+-- In a fight: the party, mark and boss reads now, kept as one block for /vg probe last.
+local function combatRun(toChat)
+  local kept = VanguardDB.probeFights or {}
+  local block = runSection({ "In a fight (/vg probe), " .. clock(), partyLines })
+  kept[#kept + 1] = { session = P.session, lines = block }
+  while #kept > P.COMBAT_MAX do table.remove(kept, 1) end
+  VanguardDB.probeFights = kept
+  if toChat then for _, line in ipairs(block) do ns.Chat(line) end end
+  ns.Chat("Probe: party, mark and boss reads taken in this fight. /vg probe last shows them after the main report.")
+end
+
+-- Drops the fight runs kept from earlier sessions, so a new report is followed only by this session's.
+local function dropOldFights()
+  local kept, fresh = VanguardDB.probeFights or {}, {}
+  for _, run in ipairs(kept) do if run.session == P.session then fresh[#fresh + 1] = run end end
+  VanguardDB.probeFights = fresh
+end
+
+-- /vg probe: runs everything out of combat; in a fight, only the party, mark and boss reads.
 function P.Run(toChat)
-  if ns.InCombat() then return ns.Chat("Probe: run it out of combat. /vg probe fight takes the secrecy reads in the next fight.") end
+  if ns.InCombat() then return combatRun(toChat) end
+  dropOldFights()
   local lines = P.Build()
   publish(lines)
   if toChat then for _, line in ipairs(lines) do ns.Chat(line) end end
 end
 
--- /vg probe last: the report kept in SavedVariables, from this or an earlier session.
+-- The saved lines to show: the report, the fight reads, then each run made in a fight.
+local function keptLines(saved)
+  local out = {}
+  for _, part in ipairs({ saved.report or {}, saved.fight or {} }) do
+    for _, line in ipairs(part) do out[#out + 1] = line end
+  end
+  for _, run in ipairs(VanguardDB.probeFights or {}) do
+    for _, line in ipairs(run.lines) do out[#out + 1] = line end
+  end
+  return out
+end
+
+-- /vg probe last: what is kept in SavedVariables, from this or an earlier session.
 function P.Last()
-  local saved = VanguardDB.probe
-  if type(saved) ~= "table" or type(saved.report) ~= "table" then return ns.Chat("Probe: no saved report yet. Run /vg probe.") end
-  local text = table.concat(saved.report, "\n")
-  ns.ShowText("Vanguard probe (saved)  Ctrl+C to copy", text .. (type(saved.fight) == "table" and ("\n" .. table.concat(saved.fight, "\n")) or ""))
+  local lines = keptLines(type(VanguardDB.probe) == "table" and VanguardDB.probe or {})
+  if #lines == 0 then return ns.Chat("Probe: nothing saved yet. Run /vg probe.") end
+  ns.ShowText("Vanguard probe (saved)  Ctrl+C to copy", table.concat(lines, "\n"))
 end
 
 -- The fight ---------------------------------------------------------------------------------
@@ -437,7 +590,7 @@ end
 -- The secrecy, threat and restriction reads, as lines labelled with the moment.
 function P.Snapshot(moment)
   local out = { "== Fight, " .. moment .. " (in combat: " .. tostring(ns.InCombat()) .. ")" }
-  for _, fn in ipairs({ threatLines, secretLines, restrictionLines }) do
+  for _, fn in ipairs({ threatLines, secretLines, restrictionLines, partyLines }) do
     local ok, lines = pcall(fn)
     for _, line in ipairs(ok and lines or { "failed: " .. errText(lines) }) do out[#out + 1] = "  " .. line end
   end
