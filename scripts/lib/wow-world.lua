@@ -1986,9 +1986,13 @@ C_ChatInfo = C_ChatInfo or {}
 -- C_ChatInfo.SendChatMessage (ChatInfoDocumentation.lua) adds to world.sentChat. The SendChatMessage
 -- global is only a deprecation fallback on Forever (Blizzard_DeprecatedChatInfo), so it is not modelled.
 C_ChatInfo.SendChatMessage = function(text, chatType) table.insert(world.sentChat, { text, chatType }) end
--- Chat filters, temporary windows and the FCF helpers the addon calls.
-function ChatFrame_AddMessageEventFilter(event, fn) world.chatFilters[event] = world.chatFilters[event] or {} table.insert(world.chatFilters[event], fn) end
-function FCF_OpenTemporaryWindow(name) local f = stub.newWidget("ScrollingMessageFrame", "ChatFrameTemp" .. name, UIParent) return f end
+ChatFrameUtil = {}
+-- Chat filters: 12.x keeps them in ChatFrameUtil (Blizzard_ChatFrameBase/Shared/ChatFrameFilters.lua).
+function ChatFrameUtil.AddMessageEventFilter(event, fn) world.chatFilters[event] = world.chatFilters[event] or {} table.insert(world.chatFilters[event], fn) end
+-- The old global is only an alias of it, set while the client loads its deprecation fallbacks
+-- (Blizzard_DeprecatedChatInfo/Deprecated_ChatFrame.lua).
+ChatFrame_AddMessageEventFilter = ChatFrameUtil.AddMessageEventFilter
+-- The FCF helpers the addon calls.
 function FCF_Tab_OnClick() end
 -- Names of the chat windows made by FCF_OpenNewWindow, by index.
 world.chatWindows = {}
@@ -2011,7 +2015,22 @@ function FCF_OpenNewWindow(name)
   NUM_CHAT_WINDOWS = math.max(NUM_CHAT_WINDOWS, i)
   _G["ChatFrame" .. i .. "Tab"] = chatTab(i)
   _G["ChatFrame" .. i] = stub.newWidget("ScrollingMessageFrame", "ChatFrame" .. i, UIParent)
+  table.insert(CHAT_FRAMES, "ChatFrame" .. i)
   return _G["ChatFrame" .. i]
+end
+
+-- The next temporary window's number: 12.x starts at Constants.ChatFrameConstants.MaxChatWindows + 1, 11
+-- (Blizzard_ChatFrameBase/Mainline/FloatingChatFrame.lua:880).
+world.nextTempWindow = 11
+-- FCF_OpenTemporaryWindow(chatType, target): a whisper or pop-out window, ChatFrame11 and up with its tab and
+-- edit box, listed in CHAT_FRAMES as the window's OnLoad lists it (FloatingChatFrame.lua:93, 895-910).
+function FCF_OpenTemporaryWindow()
+  local i = world.nextTempWindow
+  world.nextTempWindow = i + 1
+  chatTab(i)
+  stub.newWidget("EditBox", "ChatFrame" .. i .. "EditBox", UIParent)
+  table.insert(CHAT_FRAMES, "ChatFrame" .. i)
+  return stub.newWidget("ScrollingMessageFrame", "ChatFrame" .. i, UIParent)
 end
 -- Position restore: nothing to do.
 function FCF_RestorePositionAndDimensions() end
@@ -2065,7 +2084,7 @@ end
 -- The game's chat windows: NUM_CHAT_WINDOWS frames with tabs and edit boxes.
 local function chatFrames()
   local new = stub.newWidget
-  NUM_CHAT_WINDOWS = 2
+  NUM_CHAT_WINDOWS, CHAT_FRAMES = 2, { "ChatFrame1", "ChatFrame2" }
   for i = 1, NUM_CHAT_WINDOWS do
     local f = new("ScrollingMessageFrame", "ChatFrame" .. i, UIParent)
     f:SetFont(STANDARD_TEXT_FONT, 14, "")

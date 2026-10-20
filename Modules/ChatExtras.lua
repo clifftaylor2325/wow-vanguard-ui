@@ -71,9 +71,8 @@ end
 -- Links addresses in chat, where the game hands addon links back to addons.
 local function watchLinks()
   local registry = _G.EventRegistry
-  if type(ChatFrame_AddMessageEventFilter) ~= "function" or type(registry) ~= "table" or type(registry.RegisterCallback) ~= "function" then return end
-  local guarded = ns.GuardResult("chat filter links", CX.Filter, false)
-  for _, event in ipairs(CX.EVENTS) do ChatFrame_AddMessageEventFilter(event, guarded) end
+  if type(registry) ~= "table" or type(registry.RegisterCallback) ~= "function" then return end
+  if not ns.AddChatFilters(CX.EVENTS, ns.GuardResult("chat filter links", CX.Filter, false)) then return end
   registry:RegisterCallback("SetItemRef", ns.Guard("chat link click", CX.OnLink), CX)
 end
 

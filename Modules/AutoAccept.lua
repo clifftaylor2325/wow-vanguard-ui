@@ -87,8 +87,9 @@ local function knownPlayer(guid)
   return type(IsGuildMember) == "function" and IsGuildMember(guid) and true or false
 end
 
--- Someone invites you to a group: decline unless they are a friend or a guildmate.
-function AA.OnGroupInvite(_, who, _, _, _, _, _, _, guid)
+-- Someone invites you to a group: decline unless they are a friend or a guildmate. The payload is name,
+-- isTank, isHealer, isDamage, isNativeRealm, allowMultipleRoles, inviterGUID, questSessionActive.
+function AA.OnGroupInvite(_, who, _, _, _, _, _, guid)
   if not AA.settings.strangerGroups or type(DeclineGroup) ~= "function" or knownPlayer(guid) then return end
   DeclineGroup()
   closePrompt("PARTY_INVITE")
@@ -102,10 +103,21 @@ function AA.OnFriendRequest(_, inviteID)
   ns.Chat("Declined a Battle.net friend request.")
 end
 
--- You die: in a battleground (not an arena, and not with a soulstone to use) release at once.
+-- Whether you can bring yourself back (a soulstone, Reincarnation): any option the game's death dialog
+-- offers (C_DeathInfo.GetSelfResurrectOptions) usable now; an older client without it asks HasSoulstone.
+local function canSelfResurrect()
+  local options = type(C_DeathInfo) == "table" and C_DeathInfo.GetSelfResurrectOptions
+  if type(options) ~= "function" then return type(HasSoulstone) == "function" and HasSoulstone() and true or false end
+  for _, option in ipairs(options() or {}) do
+    if option.canUse then return true end
+  end
+  return false
+end
+
+-- You die: in a battleground (not an arena, and not when you can bring yourself back) release at once.
 function AA.OnDeath()
   if not AA.settings.pvpRelease or type(RepopMe) ~= "function" or select(2, IsInInstance()) ~= "pvp" then return end
-  if type(HasSoulstone) == "function" and HasSoulstone() then return end
+  if canSelfResurrect() then return end
   RepopMe()
 end
 

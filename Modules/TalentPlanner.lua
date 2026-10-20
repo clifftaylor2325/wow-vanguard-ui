@@ -583,8 +583,23 @@ local function pickNames(tree, order, n)
   return table.concat(names, ", ")
 end
 
+-- Buys the first count picks of the order, stopping at the first rank the game refuses (PurchaseRank
+-- answers false). How many were bought.
+local function buyRanks(tree, order, count)
+  for i = 1, count do
+    if ask("C_Traits", "PurchaseRank", tree.configID, order[i]) == false then return i - 1 end
+  end
+  return count
+end
+
+-- Says what a spend bought, and names the pick the game refused when it stopped short of wanted.
+local function reportSpend(tree, order, bought, wanted)
+  if bought > 0 then ns.Chat(string.format("Talent planner: spent %d point%s on %s.", bought, bought == 1 and "" or "s", pickNames(tree, order, bought))) end
+  if bought < wanted then ns.Chat(string.format("Talent planner: the game refused %s; nothing after it was bought.", TP.NodeName(tree.nodes[order[bought + 1]]))) end
+end
+
 -- Buys the next n planned ranks (all the points you have when n is nil) in the plan's order and applies
--- them. Nothing in combat, without points, or with nothing planned to buy; chat says which.
+-- what was bought. Nothing in combat, without points, or with nothing planned to buy; chat says which.
 function TP.SpendPlanned(n)
   if ns.InCombat() then return ns.Chat("Talents can't be changed in combat.") end
   local tree = TP.ReadTree()
@@ -592,9 +607,9 @@ function TP.SpendPlanned(n)
   local result = TP.Resolve(tree, TP.Plan())
   local count = math.min(tree.points, #result.order, n or #result.order)
   if count <= 0 then return ns.Chat(tree.points > 0 and "Talent planner: nothing planned that can be bought now." or "Talent planner: no points to spend.") end
-  for i = 1, count do ask("C_Traits", "PurchaseRank", tree.configID, result.order[i]) end
-  ns.Chat(string.format("Talent planner: spent %d point%s on %s.", count, count == 1 and "" or "s", pickNames(tree, result.order, count)))
-  TP.Commit(tree.configID)
+  local bought = buyRanks(tree, result.order, count)
+  reportSpend(tree, result.order, bought, count)
+  if bought > 0 then TP.Commit(tree.configID) end
 end
 
 -- The level-up line: how many points wait and what the plan buys next; Spend by itself buys them instead.

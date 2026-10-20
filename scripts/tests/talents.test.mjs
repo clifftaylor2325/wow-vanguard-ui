@@ -136,6 +136,18 @@ it("talent planner: Spend planned buys the next picks in order and applies them;
   expect(chatHas(addon, /the game refused to apply talents just now/), "a refused commit (the game's throttle) is said").toBe(true);
 });
 
+it("talent planner: Spend planned stops at a rank the game refuses, says which, and applies only what it bought", () => {
+  const addon = open();
+  addon.eval(`VanguardCharDB.talentPlans = { { ranks = { [101] = 5 }, hash = "1-2-3" } } ${TP}.Refresh()`);
+  addon.eval("local buy = C_Traits.PurchaseRank C_Traits.PurchaseRank = function(c, id) if #__bought >= 1 then return false end return buy(c, id) end");
+  addon.eval(`${TP}.SpendPlanned()`);
+  expect(addon.eval("return { __bought, __commits }"), "one rank bought, then applied").toEqual([[101], 1]);
+  expect(chatHas(addon, /Talent planner: spent 1 point on Unbreakable Will\./), "chat counts only the rank bought").toBe(true);
+  expect(chatHas(addon, /Talent planner: the game refused Unbreakable Will; nothing after it was bought\./), "and names the refused pick").toBe(true);
+  addon.eval(`${TP}.SpendPlanned()`);
+  expect(addon.eval("return __commits"), "nothing bought: nothing to apply").toBe(1);
+});
+
 it("talent planner: at a level-up chat names the next pick, or Spend by itself buys it", () => {
   const addon = open();
   addon.eval(`__points = 0 VanguardCharDB.talentPlans = { { ranks = { [101] = 5 }, hash = "1-2-3" } }`);

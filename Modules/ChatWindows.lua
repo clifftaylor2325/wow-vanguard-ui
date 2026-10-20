@@ -145,7 +145,8 @@ function CW.CleanName(text)
   return name ~= "" and name or nil
 end
 
--- Makes a new chat tab, out of combat, and selects it for editing.
+-- Makes a new chat tab, out of combat (each name asked for in a fight is made after it), and selects it
+-- for editing.
 function CW.New(text)
   local name = CW.CleanName(text)
   if not name then return ns.Chat("Type a name for the new tab.") end
@@ -154,7 +155,7 @@ function CW.New(text)
     local frame = FCF_OpenNewWindow(name)
     CW.editing = frame and tonumber((frame:GetName() or ""):match("(%d+)$")) or CW.editing
     ns.Options.RebuildPage("chat")
-  end, "chat new tab")
+  end, "chat new tab " .. name)
   ns.HideText()
 end
 
@@ -167,11 +168,11 @@ function CW.Rename(text)
   ns.Options.RebuildPage("chat")
 end
 
--- Closes the edited tab (never the main one), out of combat.
+-- Closes the edited tab (never the main one), out of combat (each tab closed in a fight is closed after it).
 function CW.Close()
   local index, frame = CW.Editing()
   if not frame or index == 1 or type(FCF_Close) ~= "function" then return ns.Chat("The main chat tab can't be closed.") end
-  ns.OutOfCombat(function() FCF_Close(frame) CW.editing = nil ns.Options.RebuildPage("chat") end, "chat close tab")
+  ns.OutOfCombat(function() FCF_Close(frame) CW.editing = nil ns.Options.RebuildPage("chat") end, "chat close tab " .. index)
 end
 
 -- Find ------------------------------------------------------------------------------------

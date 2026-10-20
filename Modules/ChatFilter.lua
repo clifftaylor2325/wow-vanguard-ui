@@ -123,8 +123,10 @@ local function openWindow()
 end
 
 -- Finds or makes the Filtered window when the filter is on and sends to the tab; out of combat only.
+-- Nothing while the module has not been enabled (switched off from login: no settings yet).
 function CF.Prepare()
-  if not (CF.settings.on and CF.settings.mode == "tab") or CF.window then return end
+  local s = CF.settings
+  if not (s and s.on and s.mode == "tab") or CF.window then return end
   ns.OutOfCombat(function() CF.window = CF.FindWindow() or openWindow() end, "chatfilter window")
 end
 
@@ -139,11 +141,17 @@ function CF.UpdateTab()
   if CH and CH.RefitTabs then CH.RefitTabs() end
 end
 
+-- A caught line's addon links made inert (a spammer's could pose as the tab's own sender links), except the
+-- web addresses Chat extras linked before this filter ran, which still open the copy box.
+local function inertLinks(text)
+  return (text:gsub("|Haddon:", "|H"):gsub("|HVanguard:url:", "|Haddon:Vanguard:url:"))
+end
+
 -- Puts a caught line in the Filtered tab: why, the sender (a link that un-filters them), the text.
 function CF.Send(why, sender, text)
   CF.count = CF.count + 1
   ns.Soon("chatfilter tab", CF.UpdateTab)
-  text = text:gsub("|Haddon:", "|H")
+  text = inertLinks(text)
   CF.window:AddMessage(string.format("(%s) |H%s%s|h[%s]|h: %s|r", why, PREFIX, sender, ns.Home.Display(sender), text))
 end
 
@@ -173,7 +181,7 @@ function CF.Judge(text, sender, lineID)
   return CF.lastVerdict
 end
 
--- The chat filter (ChatFrame_AddMessageEventFilter): true keeps the line out of the window it was asked for.
+-- The chat filter (ns.AddChatFilters): true keeps the line out of the window it was asked for.
 -- A hidden (or missing) text or sender passes before anything reads it.
 function CF.Filter(_, _, text, sender, ...)
   if not (CF.active and CF.settings.on) or ns.Restricted("Chat") or ns.IsSecret(text) or ns.IsSecret(sender) or type(text) ~= "string" or type(sender) ~= "string" then return false end
@@ -276,7 +284,7 @@ end
 
 -- Follows a setting changed in the options: the Filtered tab is made when it is first needed.
 function CF.Changed()
-  if CF.settings then CF.Prepare() end
+  CF.Prepare()
 end
 
 -- Module switched off: the filter lets everything through (it stays registered with the game until a reload).
@@ -290,7 +298,7 @@ function CF.Enable(settings)
   if CF.registered then return CF.Prepare() end
   CF.registered = true
   local guarded = ns.GuardResult("chat filter", CF.Filter, false)
-  for _, event in ipairs(CF.EVENTS) do ChatFrame_AddMessageEventFilter(event, guarded) end
+  ns.AddChatFilters(CF.EVENTS, guarded)
   local registry = _G.EventRegistry
   if type(registry) == "table" and type(registry.RegisterCallback) == "function" then registry:RegisterCallback("SetItemRef", ns.Guard("chat filter link click", CF.OnLink), CF) end
   ns.On("PLAYER_ENTERING_WORLD", CF.Prepare)

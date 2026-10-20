@@ -80,6 +80,17 @@ local function windowCount()
   return NUM_CHAT_WINDOWS or 10
 end
 
+-- Every chat window's name: the permanent ones (1 to the window count), then the temporary ones the
+-- game lists in CHAT_FRAMES (whispers and pop-outs, ChatFrame11 and up: FCF_OpenTemporaryWindow).
+local function windowNames()
+  local names, seen = {}, {}
+  for i = 1, windowCount() do names[i] = "ChatFrame" .. i seen[names[i]] = true end
+  for _, name in ipairs(type(CHAT_FRAMES) == "table" and CHAT_FRAMES or {}) do
+    if not seen[name] then names[#names + 1] = name seen[name] = true end
+  end
+  return names
+end
+
 -- A chat window's own font size, or 14.
 local function fontSize(frame)
   local _, size = frame:GetFont()
@@ -125,8 +136,8 @@ end
 -- Sets every window's line fade again (after the Chat text fades choice, Reduce motion, or a fight's
 -- start or end, which caps the fade).
 function CH.ApplyFades()
-  for i = 1, windowCount() do
-    local frame = _G["ChatFrame" .. i]
+  for _, name in ipairs(windowNames()) do
+    local frame = _G[name]
     if frame then fadeWindow(frame) end
   end
 end
@@ -515,8 +526,8 @@ end
 -- Puts every skinned edit box back under its window's panel (the game anchors it to the window's
 -- art again when it lays the dock out) and sizes its rail to its pixels again (after a scale change).
 function CH.PlaceEditBoxes()
-  for i = 1, windowCount() do
-    local box, parts = _G["ChatFrame" .. i .. "EditBox"], CH.frames and CH.frames[_G["ChatFrame" .. i] or false]
+  for _, name in ipairs(windowNames()) do
+    local box, parts = _G[name .. "EditBox"], CH.frames and CH.frames[_G[name] or false]
     if type(box) == "table" and parts and vgRail[box] then placeEditBox(box, parts.outline) placeRail(vgRail[box], box) end
   end
 end
@@ -561,8 +572,8 @@ function CH.ApplyTabAlpha()
   local game = rememberAlphas()
   for _, name in ipairs(CH.TAB_ALPHAS) do _G[name] = tabAlpha(name, game) end
   if type(FCFTab_UpdateAlpha) ~= "function" then return end
-  for i = 1, windowCount() do
-    local frame = _G["ChatFrame" .. i]
+  for _, name in ipairs(windowNames()) do
+    local frame = _G[name]
     if frame then FCFTab_UpdateAlpha(frame) end
   end
 end
@@ -812,25 +823,25 @@ function CH.SkinButtons()
   CH.StackButtons()
 end
 
--- Skins chat window i (and its tab, edit box and side buttons) if this client has it.
-local function skinIndex(i, settings)
-  local frame = _G["ChatFrame" .. i]
+-- Skins the chat window called name (and its tab, edit box and side buttons) if this client has it.
+local function skinNamed(name, settings)
+  local frame = _G[name]
   if not frame then
     return
   end
   skinWindow(frame, settings)
-  local tab, box = _G["ChatFrame" .. i .. "Tab"], _G["ChatFrame" .. i .. "EditBox"]
+  local tab, box = _G[name .. "Tab"], _G[name .. "EditBox"]
   if tab then skinTab(tab) fitWindowTab(frame, tab) end
   if box then skinEditBox(box, CH.frames[frame].outline) end
-  skinWindowButtons(frame, "ChatFrame" .. i)
+  skinWindowButtons(frame, name)
   if type(frame.ScrollBar) == "table" then T.ScrollBar(frame.ScrollBar) end
 end
 
 -- Re-fits every floating window's tab to its label, and has the dock lay its tabs out again for
 -- the font (after a font change).
 function CH.RefitTabs()
-  for i = 1, windowCount() do
-    local frame, tab = _G["ChatFrame" .. i], _G["ChatFrame" .. i .. "Tab"]
+  for _, name in ipairs(windowNames()) do
+    local frame, tab = _G[name], _G[name .. "Tab"]
     if frame and tab then fitWindowTab(frame, tab) end
   end
   relayoutDock()
@@ -839,8 +850,8 @@ end
 -- Paints the tabs again so the selected window's tab is the raised one (the theme's tab follows the
 -- game's own selection; this catches a selection made while the hooks were not watching).
 function CH.UpdateTabs()
-  for i = 1, windowCount() do
-    local tab = _G["ChatFrame" .. i .. "Tab"]
+  for _, name in ipairs(windowNames()) do
+    local tab = _G[name .. "Tab"]
     if tab then T.Tab(tab) end
   end
 end
@@ -848,8 +859,8 @@ end
 -- Skins every chat window this client has, and the chat frame's side buttons, and has the dock lay
 -- its tabs out again for the theme's font.
 function CH.SkinAll()
-  for i = 1, windowCount() do
-    skinIndex(i, CH.settings)
+  for _, name in ipairs(windowNames()) do
+    skinNamed(name, CH.settings)
   end
   CH.SkinButtons()
   CH.UpdateTabs()
@@ -862,8 +873,8 @@ end
 -- scrim to the panel colour, its rule and edit box rail to their pixels again (after a scale change),
 -- and its edit box back under the panel.
 function CH.Refresh()
-  for i = 1, windowCount() do
-    local frame = _G["ChatFrame" .. i]
+  for _, name in ipairs(windowNames()) do
+    local frame = _G[name]
     if frame then CH.FontWindow(frame) fadeWindow(frame) end
     local parts = frame and CH.frames and CH.frames[frame]
     if parts then T.TintFill(parts.fill, "panel", CH.Strength()) placeRule(parts.rule, parts.bar) tintScrim(parts.scrim) end
