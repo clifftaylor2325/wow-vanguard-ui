@@ -1,6 +1,7 @@
 -- Quest spots on the minimap: a small mark on the minimap for each quest in your log that the client
--- puts on the map you're on (its quest spot, C_QuestLog.GetQuestsOnMap): a gold ! while it has
--- objectives left, a gold ? once it is ready to turn in. A spot past the minimap's edge sits on the
+-- puts on the map you're on (its quest spot, C_QuestLog.GetQuestsOnMap): a small dot in the accent while it
+-- has objectives left (a "!" is the game's sign for a quest to take), a gold ? once it is ready to turn in,
+-- drawn over the dots. The quest the arrow follows gets a mark a size larger. A spot past the minimap's edge sits on the
 -- edge, faint, in its direction (the rim of a round minimap, the sides of a square one), inside it. The marks turn with the minimap when it rotates.
 --
 -- Client data only, never a quest database: no spot from the client, no mark. The scale comes from the
@@ -16,8 +17,14 @@ ns.QuestMinimap = QM
 
 ns.Options.MODULE_INFO.QuestMinimap = { "Quest spots on the minimap", "A mark on the minimap where each quest in your log has its spot on the map you're on." }
 
--- Seconds between redraws; seconds between reads of the quest spots; a mark's size (UI units); the most marks drawn.
-QM.DRAW, QM.READ, QM.SIZE, QM.MAX = 0.2, 1, 12, 25
+-- Seconds between redraws; seconds between reads of the quest spots; the largest mark's size (a followed ?, UI
+-- units: every mark stays inside the minimap's edge); the most marks drawn.
+QM.DRAW, QM.READ, QM.SIZE, QM.MAX = 0.2, 1, 16, 25
+-- The two marks: an objective's dot and a turn-in's ?, each its art, colour, size (UI units) and draw sublevel
+-- (the ? over the dots); the followed quest's mark is QM.FOLLOWED larger.
+QM.OBJECTIVE = { texture = T.Texture("Knob"), color = "accent", size = 8, sublevel = 1 }
+QM.TURN_IN = { texture = T.Icon("QuestQuery"), color = "gold", size = 12, sublevel = 2 }
+QM.FOLLOWED = 4
 -- How faint a mark on the edge is (the spot is farther than the minimap shows).
 QM.EDGE_ALPHA = 0.5
 
@@ -102,16 +109,24 @@ local function mark(i)
   local m = QM.marks[i]
   if m then return m end
   m = QM.layer:CreateTexture(nil, "OVERLAY")
-  m:SetSize(QM.SIZE, QM.SIZE)
   QM.marks[i] = m
   return m
 end
 
--- Puts mark i on a spot: the ! or the ?, in gold, faint on the edge.
+-- Dresses a mark for its spot: the dot or the ?, a size larger for the quest the arrow follows, faint on the edge.
+local function dress(m, sp, edge)
+  local look = sp.ready and QM.TURN_IN or QM.OBJECTIVE
+  local size = look.size + (sp.id == ns.QuestArrow.current and QM.FOLLOWED or 0)
+  m:SetTexture(look.texture)
+  m:SetDrawLayer("OVERLAY", look.sublevel)
+  m:SetSize(size, size)
+  T.Tint(m, look.color, edge and QM.EDGE_ALPHA or 1)
+end
+
+-- Puts mark i on a spot, dressed for it.
 local function place(i, sp, ox, oy, edge)
   local m = mark(i)
-  m:SetTexture(T.Icon(sp.ready and "QuestQuery" or "QuestBang"))
-  T.Tint(m, "gold", edge and QM.EDGE_ALPHA or 1)
+  dress(m, sp, edge)
   m:ClearAllPoints()
   m:SetPoint("CENTER", QM.layer, "CENTER", ox, oy)
   m:Show()
