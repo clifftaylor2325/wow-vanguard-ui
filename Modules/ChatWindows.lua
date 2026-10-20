@@ -27,14 +27,31 @@ local function windowName(i)
   return type(name) == "string" and name ~= "" and name or nil
 end
 
--- The chat windows in use and showing: { index, frame, name } each.
-function CW.Windows()
+-- Whether window i sits in the dock (the game's docked flag, GetChatWindowInfo's ninth value).
+local function docked(i)
+  local flag = select(9, GetChatWindowInfo(i))
+  return flag ~= nil and flag ~= 0 and flag ~= false
+end
+
+-- The chat windows in use for which keep(i, frame) holds: { index, frame, name } each.
+local function windowsWhere(keep)
   local out = {}
   for i = 1, windowCount() do
     local frame, name = _G["ChatFrame" .. i], windowName(i)
-    if name and type(frame) == "table" and frame:IsShown() then out[#out + 1] = { i, frame, name } end
+    if name and type(frame) == "table" and keep(i, frame) then out[#out + 1] = { i, frame, name } end
   end
   return out
+end
+
+-- The chat windows in use and showing (the size sliders and the floating movers): { index, frame, name } each.
+function CW.Shown()
+  return windowsWhere(function(_, frame) return frame:IsShown() end)
+end
+
+-- The chat windows in use, showing or in the dock behind the selected tab (the game hides every
+-- docked window but that one; a closed window is neither): Find, the Tab choice and the lock.
+function CW.Windows()
+  return windowsWhere(function(i, frame) return frame:IsShown() or docked(i) end)
 end
 
 -- The window's width or height (0 for width, 1 for height) as a plain number.
@@ -63,7 +80,8 @@ local function locked()
   return lock == true or lock == 1
 end
 
--- get/set for the game's own chat lock (all windows showing).
+-- get/set for the game's own chat lock (every window in use, docked ones behind another tab too, as
+-- the game's own docked lock does).
 function CW.LockSetting()
   return locked, function(v)
     if type(FCF_SetLocked) ~= "function" then return end
@@ -73,8 +91,7 @@ end
 
 -- Whether window i is pulled out of the dock (the main window never is).
 local function floating(i)
-  local docked = select(9, GetChatWindowInfo(i))
-  return i > 1 and (docked == nil or docked == 0 or docked == false)
+  return i > 1 and not docked(i)
 end
 
 -- Keeps a floating window where its mover put it.
@@ -114,13 +131,13 @@ function CW.Editing()
   return main and main[1], main and main[2], main and main[3]
 end
 
--- get/set for the tab picker: the choices are the windows showing; a pick rebuilds the page.
+-- get/set for the tab picker: the choices are the windows in use; a pick rebuilds the page.
 function CW.TabSetting()
   return function() return (CW.Editing()) end,
     function(v) CW.editing = v ns.Options.RebuildPage("chat") end
 end
 
--- The windows showing as choices { index, name }.
+-- The windows in use as choices { index, name }.
 function CW.TabChoices()
   local out = {}
   for _, w in ipairs(CW.Windows()) do out[#out + 1] = { w[1], w[3] } end
@@ -139,9 +156,20 @@ function CW.GroupSetting(group)
   end
 end
 
+-- A text's first `count` characters, cut on whole UTF-8 characters (string.sub counts bytes, and
+-- a cut inside a letter would leave half of it).
+local function firstChars(text, count)
+  local out = {}
+  for ch in text:gmatch("[\1-\127\194-\244][\128-\191]*") do
+    if #out == count then break end
+    out[#out + 1] = ch
+  end
+  return table.concat(out)
+end
+
 -- A tab name as typed: trimmed, with no escape codes, at most CW.MAX_NAME characters (or nil).
 function CW.CleanName(text)
-  local name = (type(text) == "string" and text or ""):gsub("|", ""):match("^%s*(.-)%s*$"):sub(1, CW.MAX_NAME)
+  local name = firstChars((type(text) == "string" and text or ""):gsub("|", ""):match("^%s*(.-)%s*$"), CW.MAX_NAME)
   return name ~= "" and name or nil
 end
 
@@ -280,7 +308,7 @@ function CW.Enable(settings)
   CW.settings = settings
   CW.ApplyFind()
   if not settings.movers then return end
-  for _, window in ipairs(CW.Windows()) do
+  for _, window in ipairs(CW.Shown()) do
     if floating(window[1]) then floatingMover(window) end
   end
 end

@@ -21,7 +21,8 @@ local function classNameChoice(v) return (v == "0" or v == "1") and v or "2" end
 local function timestampChoice(v) return v or "none" end
 
 -- Chat's text and bar, under the Chat header: the text size, how long lines stay, the tabs, the
--- hidden-until-hover bar and the bubbles over heads.
+-- hidden-until-hover bar and the bubbles over heads (on reload: the engine reuses its bubble
+-- frames, and one already dressed keeps its look).
 local function chatTextRows()
   local CH = ns.GetModule("Chat")
   return {
@@ -29,7 +30,7 @@ local function chatTextRows()
     { "cycle", "Chat text fades", CH.LINE_FADES, chatLive("lineFade", "ApplyFades") },
     check("Keep chat tabs visible (the game fades them until the mouse comes near)", chatLive("tabsVisible", "ApplyTabAlpha")),
     check("Hide the tab bar until the mouse is over the chat", chatLive("barHover", "ApplyBarHover")),
-    check("Text-only bubbles: no panel behind the words over heads", setting("ChatBubbles", "textOnly")),
+    check("Text-only bubbles: no panel behind the words over heads (reload)", setting("ChatBubbles", "textOnly", true)),
   }
 end
 
@@ -100,7 +101,7 @@ local function chatWindowsRows()
   local rows = { { "header", "Chat windows" }, { "text", "Size each chat window here instead of dragging its corner. Lock stops the game's drag." },
     { "button", "Find in chat", CW.AskFind }, check("Find button in the chat's tab bar", liveSetting("ChatWindows", "find", CW.ApplyFind)),
     check("Lock chat windows", CW.LockSetting()), check("Move floating windows with /vg unlock (reload)", setting("ChatWindows", "movers", true)) }
-  for _, w in ipairs(CW.Windows()) do
+  for _, w in ipairs(CW.Shown()) do
     local wGet, wSet = CW.SizeSetting(w[2], false)
     local hGet, hSet = CW.SizeSetting(w[2], true)
     append(rows, { { "slider", w[3] .. ": width", CW.WIDTH, wGet, wSet }, { "slider", w[3] .. ": height", CW.HEIGHT, hGet, hSet } })

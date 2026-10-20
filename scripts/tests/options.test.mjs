@@ -597,7 +597,7 @@ it("text that fits: chat size, tooltip fonts, the status line, name width", () =
   addon.eval('ns.Options.Show("chat")');
   expect(addon.eval('return __click("Chat text size") and VanguardDB.profiles.Default.Chat.textSize'), "the chat size is on the options page").toBe(14);
   expect(sizes()[0], "and Large applies at once (14 at 70%)").toBe(10);
-  addon.eval('VanguardDB.profiles.Default.Chat.textSize = "game" FCF_SetChatWindowFontSize(nil, ChatFrame1, 18)');
+  addon.eval('VanguardDB.profiles.Default.Chat.textSize = 0 FCF_SetChatWindowFontSize(nil, ChatFrame1, 18)');
   expect(sizes()[0], "set to the game's chat setting, chat keeps the size the game's menu picked").toBe(18);
   addon.slash("status");
   expect(chatHas(addon, /UI scale 1\.00 {2}· {2}text 70% {2}· {2}chat 18 \(about \d+ px on this screen\)/), "/vg status shows the UI scale, Text size and chat size").toBe(true);

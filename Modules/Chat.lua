@@ -21,7 +21,7 @@ local ADDON, ns = ...
 local T = ns.Theme
 
 local CH = ns.Module("Chat", {
-  defaults = { background = true, backdrop = 0.75, windowScale = 1, widened = false, textSize = 12, place = true, sized = false, tabsVisible = true, lineFade = 60, barHover = false },
+  defaults = { background = true, backdrop = 0.75, windowScale = 1, textSize = 12, place = true, tabsVisible = true, lineFade = 60, barHover = false },
 })
 
 -- The tab bar's height above a chat window: a control-high tab with a tight gap round it.
@@ -72,8 +72,9 @@ function CH.DefaultSize(width)
   return math.max(CH.SMALL[1], math.min(CH.SPOT[3], roomWidth(width))), CH.SPOT[4]
 end
 
--- Chat text sizes before the Text size setting; "game" keeps each window's own size.
-CH.SIZES = { { 10, "Small" }, { 12, "Medium" }, { 14, "Large" }, { "game", "The game's chat setting" } }
+-- Chat text sizes before the Text size setting; 0 keeps each window's own size (a number, as the
+-- setting's default is: a saved value of another type is put back to the default at login).
+CH.SIZES = { { 10, "Small" }, { 12, "Medium" }, { 14, "Large" }, { 0, "The game's chat setting" } }
 
 -- The chat window count on this client.
 local function windowCount()
@@ -97,11 +98,17 @@ local function fontSize(frame)
   return ns.PlainNumber(size) or 14
 end
 
+-- The chat text size chosen on the Chat page, or nil while chat follows the game's own size (0).
+local function chosenSize()
+  local size = tonumber(CH.settings.textSize) or 0
+  return size > 0 and size or nil
+end
+
 -- The size chat text draws at: the chosen size scaled by Text size, or the window's own.
 function CH.TextSize(frame)
-  local size = CH.settings.textSize
-  if type(size) ~= "number" then return fontSize(frame) end
-  return T.ScaledSize(size)
+  local size = chosenSize()
+  if size then return T.ScaledSize(size) end
+  return fontSize(frame)
 end
 
 -- Theme font on a chat window, at the chat text size, with the theme's drop shadow under every line
@@ -341,11 +348,12 @@ end
 
 -- A glyph tile (the side buttons' window control, 20 x 20) in the tab bar's right end, in the slot
 -- CH.BAR_BUTTONS gives its label (Copy at the end, Find left of it; the shown ones close up, and the
--- tab dock ends before the furthest). Its label is its tooltip. With Chat switched off the bar isn't
--- drawn, so it sits over the window's top right instead. Called by Modules/ChatExtras.lua and
--- Modules/ChatWindows.lua, which call CH.PlaceBarButtons after showing or hiding theirs.
+-- tab dock ends before the furthest). Its label is its tooltip. While Chat isn't running (off, or
+-- switched on under Modules and not reloaded yet) the bar isn't drawn, so it sits over the window's
+-- top right instead. Called by Modules/ChatExtras.lua and Modules/ChatWindows.lua, which call
+-- CH.PlaceBarButtons after showing or hiding theirs.
 function CH.AddBarButton(frame, label, where, onClick)
-  local bar = ns.ModuleEnabled("Chat") and CH.Bar(frame) or nil
+  local bar = CH.settings and CH.Bar(frame) or nil
   local look = CH.BAR_BUTTONS[label] or { icon = "Right", slot = 3 }
   local button = T.WindowControl(CreateFrame("Button", nil, bar or frame), look.icon)
   tipButton(button, label)
@@ -378,12 +386,14 @@ end
 CH.BACKDROPS = T.CHAT_BACKDROP.levels
 
 -- A tab wide enough for its label at the theme font: the game sized it for its own font, which
--- cut a name to "Gene...".
+-- cut a name to "Gene...". A label the client hides (a whisper window named in chat lockdown, whose
+-- width comes back secret) keeps the fixed width the game gave it.
 local function fitTab(tab)
   local text = tab.Text or (tab.GetFontString and tab:GetFontString())
   if not (text and text.GetStringWidth and tab.SetWidth) then return end
   text:SetWidth(0)
-  tab:SetWidth(ns.PlainNumber(text:GetStringWidth()) + T.SPACE.col * 2)
+  local width = ns.PlainNumber(text:GetStringWidth())
+  if width then tab:SetWidth(width + T.SPACE.col * 2) end
 end
 
 -- A floating window's tab fitted to its label; a docked window's keeps the width the game gave it
@@ -413,6 +423,10 @@ end
 -- only a repaint.
 local vgChatTab = ns.FrameState("vgChatTab")
 
+-- Whether each chat tab is the selected one (tab -> boolean), which the theme's tab reads: the game
+-- never disables a chat tab, it only tells FCFTab_UpdateColors whether the tab is selected.
+local vgChecked = ns.FrameState("vgChecked")
+
 -- A tab as the theme's flat tab (raised with a lit top edge when selected, just its label on the bar
 -- otherwise, a faint hover, rounded) with its own art gone and its alert glow in the accent colour;
 -- the game's flash animation still drives the glow's alpha.
@@ -426,12 +440,23 @@ local function skinTab(tab)
   vgChatTab[tab] = true
 end
 
--- A tab after the game colours it (FCFTab_UpdateColors: the dock's layout, a tab click, a new
--- window): its label is gold again, so the theme's tab is painted again, which puts the label back
--- in the theme's colours; a tab Vanguard hasn't dressed yet gets the skin.
-local function restyleTab(tab)
+-- A tab after the game colours it (FCFTab_UpdateColors(tab, selected): the dock's layout, a tab
+-- click, a new window): its label is gold again, so the theme's tab is painted again, selected as
+-- the game says, which puts the label back in the theme's colours; a tab Vanguard hasn't dressed
+-- yet gets the skin.
+local function restyleTab(tab, selected)
   if type(tab) ~= "table" then return end
+  vgChecked[tab] = selected == true
   if vgChatTab[tab] then T.Tab(tab) else skinTab(tab) end
+end
+
+-- Notes whether a window's tab is the selected one before it is skinned, as the game colours it: a
+-- floating window's always, a docked one's while it is the dock's selected window (where this client
+-- can say; the game's next colouring says it anyway).
+local function seedSelected(tab, frame)
+  local dock = _G.GENERAL_CHAT_DOCK
+  if type(FCFDock_GetSelectedWindow) ~= "function" or type(dock) ~= "table" then return end
+  vgChecked[tab] = not frame.isDocked or FCFDock_GetSelectedWindow(dock) == frame
 end
 
 -- Each edit box's rail (box -> texture) and its focus fade (box -> { from, to, start, seconds }),
@@ -589,11 +614,23 @@ local function inEditBox(frame)
   return type(box.HasFocus) == "function" and box:HasFocus() == true
 end
 
+-- Whether the game is flashing a tab on a window's bar: its own, or for a docked window any docked
+-- window's (the game flashes only a window that isn't shown, a docked one behind the shown tab, and
+-- every docked tab rides in the dock on the shown window's bar).
+local function alerting(frame)
+  if CH.alerting[frame] then return true end
+  if not frame.isDocked then return false end
+  for other in pairs(CH.alerting) do
+    if other.isDocked then return true end
+  end
+  return false
+end
+
 -- Whether a window wants its bar: the mouse is over its chat (the text, the bar's band above it and
--- the columns either side) or on its edit box, the typing is in the box, or the game is flashing one
--- of its tabs (the bar stays while a tab alerts).
+-- the columns either side) or on its edit box, the typing is in the box, or the game is flashing a
+-- tab on it (the bar stays while a tab alerts).
 local function wantsBar(frame)
-  if CH.alerting[frame] or inEditBox(frame) then return true end
+  if alerting(frame) or inEditBox(frame) then return true end
   return frame:IsMouseOver(CH.BAR + T.SPACE.tight, -T.SPACE.tight, -CH.STACK_ROOM, CH.SIDE_COLUMN + T.SPACE.tight) == true
 end
 
@@ -831,7 +868,7 @@ local function skinNamed(name, settings)
   end
   skinWindow(frame, settings)
   local tab, box = _G[name .. "Tab"], _G[name .. "EditBox"]
-  if tab then skinTab(tab) fitWindowTab(frame, tab) end
+  if tab then seedSelected(tab, frame) skinTab(tab) fitWindowTab(frame, tab) end
   if box then skinEditBox(box, CH.frames[frame].outline) end
   skinWindowButtons(frame, name)
   if type(frame.ScrollBar) == "table" then T.ScrollBar(frame.ScrollBar) end
@@ -922,6 +959,18 @@ CH.OLD_SIZES = { { 420, 140 }, { 500, 154 }, { 420, 154 } }
 -- size); widened takes its place, so a window still at that size is set to the new one once.
 ns.Migrate("Chat", function(saved) saved.grown = nil end)
 
+-- This character's own window flags (VanguardCharDB.chatSize: sized once, widened once), made on
+-- first use: the game keeps each character's chat size, so one character's first size must not
+-- stop another's. A character that played before the flags moved here takes the profile's (they
+-- sized the window then); a new character starts with none.
+local function sizeFlags()
+  if type(VanguardCharDB.chatSize) ~= "table" then
+    local before = ns.NewCharacter() and {} or CH.settings
+    VanguardCharDB.chatSize = { sized = before.sized == true, widened = before.widened == true }
+  end
+  return VanguardCharDB.chatSize
+end
+
 -- Whether the window still has a first size that an earlier version gave it.
 local function isOldDefault(frame)
   local w, h = ns.PlainNumber(frame:GetWidth()), ns.PlainNumber(frame:GetHeight())
@@ -931,14 +980,15 @@ local function isOldDefault(frame)
   return false
 end
 
--- Sizes the main chat window the first time only (when entering the world, after the game's
--- layout has been applied); a resize after that is the player's, except that a window still at
--- an earlier version's first size is set to the new one once.
+-- Sizes the main chat window the first time only for each character (when entering the world,
+-- after the game's layout has been applied); a resize after that is the player's, except that a
+-- window still at an earlier version's first size is set to the new one once.
 function CH.Size()
   local frame = _G.ChatFrame1
   if not CH.settings.place or type(frame) ~= "table" then return end
-  local first, old = not CH.settings.sized, not CH.settings.widened and isOldDefault(frame)
-  CH.settings.sized, CH.settings.widened = true, true
+  local flags = sizeFlags()
+  local first, old = not flags.sized, not flags.widened and isOldDefault(frame)
+  flags.sized, flags.widened = true, true
   if first or old then CH.ApplySize() end
 end
 
@@ -957,7 +1007,7 @@ end
 
 -- The game's own chat size menu re-fonts a window: put ours back (unless chat follows the game).
 local function onGameSize()
-  if type(CH.settings.textSize) == "number" then CH.Refresh() end
+  if chosenSize() then CH.Refresh() end
 end
 
 -- Follows the game's tab alert flash (FCF_StartAlertFlash and FCF_StopAlertFlash), which keeps a

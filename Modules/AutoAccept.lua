@@ -23,15 +23,32 @@ local function closePrompt(which)
   if type(StaticPopup_Hide) == "function" then StaticPopup_Hide(which) end
 end
 
+-- Hides one of the game's own invite windows when it is up (Forever's GuildInviteFrame and
+-- LFGInvitePopup, shown with StaticPopupSpecial_Show, not static popups), as its own buttons do;
+-- true when it was up.
+local function hideInvite(name)
+  local frame = _G[name]
+  if type(frame) ~= "table" or not frame:IsShown() then return false end
+  if type(StaticPopupSpecial_Hide) == "function" then StaticPopupSpecial_Hide(frame) else frame:Hide() end
+  return true
+end
+
 -- A name or place the client may hide: plain text, else a stand-in.
 local function plain(text, fallback)
   if type(text) == "string" and not ns.IsSecret(text) then return text end
   return fallback
 end
 
--- A summon is waiting: accept it (not in combat) and say from whom and to where.
+-- Whether the game lets you take a summon now (PlayerCanTeleport, which its own Accept button waits on);
+-- true on a client without it.
+local function canTeleport()
+  return type(PlayerCanTeleport) ~= "function" or PlayerCanTeleport() == true
+end
+
+-- A summon is waiting: accept it (not in combat, and only when the game would let you) and say from
+-- whom and to where; otherwise the game's prompt stays up.
 function AA.OnSummon()
-  if not AA.settings.summons or ns.InCombat() then return end
+  if not AA.settings.summons or ns.InCombat() or not canTeleport() then return end
   local who, where = plain(summon("GetSummonConfirmSummoner"), "someone"), plain(summon("GetSummonConfirmAreaName"), "somewhere")
   summon("ConfirmSummon")
   closePrompt("CONFIRM_SUMMON")
@@ -71,11 +88,18 @@ function AA.OnLootReady(_, autoloot)
   for slot = GetNumLootItems(), 1, -1 do takeSlot(slot) end
 end
 
--- Someone invites you to their guild: decline, and say who.
+-- Declines a guild invite. Forever's invite window declines as it hides, so it is only hidden (a
+-- second DeclineGuild would answer twice); a client without it gets DeclineGuild and its popup closed.
+local function declineGuild()
+  if not hideInvite("GuildInviteFrame") then DeclineGuild() end
+  closePrompt("GUILD_INVITE")
+end
+
+-- Someone invites you to their guild: decline on the next frame, once the game's own handler has
+-- shown its window (the order handlers get an event in is the client's), and say who.
 function AA.OnGuildInvite(_, who)
   if not AA.settings.guildInvites or type(DeclineGuild) ~= "function" then return end
-  DeclineGuild()
-  closePrompt("GUILD_INVITE")
+  ns.Soon("decline guild invite", declineGuild)
   ns.Chat("Declined a guild invite from " .. plain(who, "someone") .. ".")
 end
 
@@ -87,12 +111,20 @@ local function knownPlayer(guid)
   return type(IsGuildMember) == "function" and IsGuildMember(guid) and true or false
 end
 
--- Someone invites you to a group: decline unless they are a friend or a guildmate. The payload is name,
--- isTank, isHealer, isDamage, isNativeRealm, allowMultipleRoles, inviterGUID, questSessionActive.
+-- Declines a group invite and closes its prompt: the game's popup, or the role popup Forever shows
+-- for an invite with roles.
+local function declineGroup()
+  DeclineGroup()
+  hideInvite("LFGInvitePopup")
+  closePrompt("PARTY_INVITE")
+end
+
+-- Someone invites you to a group: decline unless they are a friend or a guildmate, on the next frame
+-- (as for a guild invite, once the game has shown its popup). The payload is name, isTank, isHealer,
+-- isDamage, isNativeRealm, allowMultipleRoles, inviterGUID, questSessionActive.
 function AA.OnGroupInvite(_, who, _, _, _, _, _, guid)
   if not AA.settings.strangerGroups or type(DeclineGroup) ~= "function" or knownPlayer(guid) then return end
-  DeclineGroup()
-  closePrompt("PARTY_INVITE")
+  ns.Soon("decline group invite", declineGroup)
   ns.Chat("Declined a group invite from " .. plain(who, "someone") .. ".")
 end
 
