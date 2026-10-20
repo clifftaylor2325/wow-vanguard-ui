@@ -235,14 +235,15 @@ it("waypoints: the options list the spots as buttons, and Clear waypoint takes i
   // Each row as "type|label".
   const rows = () => addon.eval("local out = {} for i, r in ipairs(ns.GetModule('Waypoints').Rows()) do out[i] = r[1] .. '|' .. r[2] end return out");
   expect(rows().slice(-1)[0], "no spots yet: a line saying so").toMatch(/^text\|No recent waypoints/);
+  expect(rows()[1], "how to share the pin, which the game's own map does").toBe("text|Shift-click the pin on the map to share it.");
   click(addon, 10, 0.2, 0.3);
   click(addon, 12, 0.5, 0.25);
   expect(rows().slice(-2), "a button for each, newest first").toEqual(["button|Go to TEST-ONLY Dun Morogh 50.0, 25.0", "button|Go to TEST-ONLY Elwynn Forest 20.0, 30.0"]);
-  addon.eval("ns.GetModule('Waypoints').Rows()[6][3]()");
+  addon.eval("ns.GetModule('Waypoints').Rows()[7][3]()");
   expect(addon.eval("return __point[1]"), "its button goes back to that spot").toBe(10);
-  addon.eval("__tracked = true ns.GetModule('Waypoints').Rows()[3][3]()");
+  addon.eval("__tracked = true ns.GetModule('Waypoints').Rows()[4][3]()");
   expect([addon.eval("return __point"), addon.eval("return __tracked")], "Clear waypoint").toEqual([null, false]);
-  addon.eval("local r = ns.GetModule('Waypoints').Rows()[2] r[4](false)");
+  addon.eval("local r = ns.GetModule('Waypoints').Rows()[3] r[4](false)");
   expect(addon.eval("return ns.Settings('Waypoints', ns.GetModule('Waypoints').defaults).follow"), "the switch").toBe(false);
 });
 
@@ -278,4 +279,19 @@ it("waypoints: /vg way recent lists and goes back to a spot with the Waypoints m
   expect(chatHas(addon, /Waypoint: TEST-ONLY Elwynn Forest 20\.0, 30\.0/), "back to it").toBe(true);
   addon.eval("for _, r in ipairs(ns.GetModule('Waypoints').Rows()) do if r[1] == 'button' and r[2]:match('^Go to') then r[3]() end end");
   expect(addon.eval("return ns.GetModule('Waypoints').settings"), "the options' Go to button leaves the module's settings alone").toBe(null);
+});
+
+it("waypoints: a /way title is kept with the spot in the recent list, and a later click on the same spot keeps it", () => {
+  const addon = loggedIn(MAP_ENV + POINT_ENV);
+  way(addon, "TEST-ONLY Elwynn Forest 42 65 Inn");
+  addon.fire("USER_WAYPOINT_UPDATED");
+  way(addon, "recent");
+  expect(chatHas(addon, /1\. Inn · TEST-ONLY Elwynn Forest 42\.0, 65\.0/), "the title first").toBe(true);
+  click(addon, 10, 0.42, 0.65);
+  way(addon, "recent");
+  expect(chatHas(addon, /1\. Inn · TEST-ONLY Elwynn Forest/), "the same spot again, untitled: still Inn").toBe(true);
+  addon.eval("SlashCmdList.VANGUARDWAY('TEST-ONLY Duskwood 10 10 Camp')");
+  click(addon, 10, 0.3, 0.3);
+  way(addon, "recent");
+  expect(chatHas(addon, /Camp/), "a title for a spot the game refused, or another spot, is not given away").toBe(false);
 });

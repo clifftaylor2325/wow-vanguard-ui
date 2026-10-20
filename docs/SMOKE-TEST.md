@@ -1530,6 +1530,7 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 
 - Do: open the world map, hold Ctrl and click a spot; then click another spot, then press **Clear waypoint** on the map's bottom edge. Open `/vg` → Map → Waypoints and Recent waypoints; press a "Go to ..." button. Type `/way recent` and `/way recent 2`. Untick "Point the arrow at a waypoint you Ctrl-click on the map" and Ctrl-click again.
 - Expect: with the switch on, the floating pin and its distance appear at once after each Ctrl-click; the Clear waypoint button shows only while a waypoint exists and removes it and the pin; the Map page lists up to eight spots, newest first, and each button puts that spot back with the pin; `/way recent` prints the same list; with the switch off the click only drops the map pin and the arrow stays off. [Needs in game: that the event is `USER_WAYPOINT_UPDATED`, that `C_Map.GetUserWaypoint` returns the position on Forever, and the Clear button's place on the map.]
+- Also expect (titles): type `/way 42 65 Inn`, then open `/vg` → Map → Waypoints: the first button reads `Go to Inn · <zone> 42.0, 65.0` and `/way recent` prints `1. Inn · <zone> 42.0, 65.0`; Ctrl-click the same spot on the map and the title stays. The card says `Shift-click the pin on the map to share it.`: Shift-click the map pin with chat open and the game puts a link in chat.
 - If it fails, paste: which step broke and `/vg errors`.
 
 ### 18.4b With OpenMap installed
