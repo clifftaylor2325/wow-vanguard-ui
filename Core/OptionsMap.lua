@@ -1,5 +1,6 @@
--- The Map page (/vg): the minimap and waypoints, your buffs and debuffs,
--- the info strip under the minimap and other addons' data feeds.
+-- The Map page (/vg): the minimap and waypoints, the info strip under the
+-- minimap and other addons' data feeds. Your buffs and debuffs moved to the
+-- Unit frames page (Core/OptionsFrames.lua); a note here points there.
 -- Core/Options.lua has the helpers and the page list.
 
 local ADDON, ns = ...
@@ -17,21 +18,6 @@ local function minimapRows()
     check("Vanguard's pin and font on the game's floating waypoint pin (reload)", setting("Waypoints", "pin", true)),
     check("Tracking, mail and difficulty on the minimap's corners (reload)", setting("Minimap", "icons", true)),
     check("Gather addon minimap buttons into a drawer (reload)", setting("MinimapButtons", "drawer", true)),
-  }
-end
-
--- get/set for the weapon enchant cells, which show or hide at once.
-local function enchantSetting()
-  return liveSetting("PlayerAuras", "enchants", function() ns.GetModule("PlayerAuras").UpdateEnchants() end)
-end
-
--- Your own buffs and debuffs (by the minimap).
-local function playerAuraRows()
-  return {
-    { "header", "Your buffs and debuffs" },
-    check("Timer numbers on your buffs (reload)", setting("PlayerAuras", "timers", true)),
-    check("Weapon enchants in front of your buffs", enchantSetting()),
-    { "cycle", "Icon size (reload)", { { 26, "Small" }, { 30, "Medium" }, { 36, "Large" } }, setting("PlayerAuras", "size", true) },
   }
 end
 
@@ -69,9 +55,12 @@ local function brokerRows()
   return rows
 end
 
--- The Map page: the minimap and waypoints, your buffs and debuffs, the info strip and other addons' feeds.
+-- Where your buffs and debuffs settings went (they sat on this page before).
+local AURAS_MOVED = { "text", "Your buffs and debuffs are on the Unit frames page.", "note" }
+
+-- The Map page: the minimap and waypoints, the note on your buffs, the info strip and other addons' feeds.
 local function mapPageRows()
-  return append(append(append(minimapRows(), playerAuraRows()), stripRows()), brokerRows())
+  return append(append(append(minimapRows(), { AURAS_MOVED }), stripRows()), brokerRows())
 end
 
 O.AddPage({ key = "map", title = "Map", icon = "NavMap", order = 81, rows = mapPageRows })

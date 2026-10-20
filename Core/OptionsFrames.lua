@@ -1,5 +1,5 @@
 -- The Unit frames and Raid frames pages (/vg): the unit frames, their
--- readouts, cast bars and combat timers; the raid frames and their
+-- readouts, cast bars, your buffs and debuffs and combat timers; the raid frames and their
 -- indicators. Core/Options.lua has the helpers and the page list.
 
 local ADDON, ns = ...
@@ -60,6 +60,21 @@ local function castRows()
     { "header", "Target and focus auras" },
     check("Only your debuffs (reload)", setting("FrameAuras", "onlyMine", true)),
     check("Timer numbers on the icons (reload)", setting("FrameAuras", "timers", true)),
+  }
+end
+
+-- get/set for the weapon enchant cells, which show or hide at once.
+local function enchantSetting()
+  return liveSetting("PlayerAuras", "enchants", function() ns.GetModule("PlayerAuras").UpdateEnchants() end)
+end
+
+-- Your own buffs and debuffs (their icons sit by the minimap), after the target and focus auras.
+local function playerAuraRows()
+  return {
+    { "header", "Your buffs and debuffs" },
+    check("Timer numbers on your buffs (reload)", setting("PlayerAuras", "timers", true)),
+    check("Weapon enchants in front of your buffs", enchantSetting()),
+    { "cycle", "Icon size (reload)", { { 26, "Small" }, { 30, "Medium" }, { 36, "Large" } }, setting("PlayerAuras", "size", true) },
   }
 end
 
@@ -159,5 +174,5 @@ local function raidPageRows()
   }), raidPreviewRows())
 end
 
-O.AddPage({ key = "unitframes", title = "Unit frames", icon = "NavUnitFrames", order = 30, rows = function() return append(append(append(unitFrameRows(), readoutRows()), castRows()), timerRows()) end })
+O.AddPage({ key = "unitframes", title = "Unit frames", icon = "NavUnitFrames", order = 30, rows = function() return append(append(append(append(unitFrameRows(), readoutRows()), castRows()), playerAuraRows()), timerRows()) end })
 O.AddPage({ key = "raid", title = "Raid frames", icon = "NavRaidFrames", order = 40, rows = raidPageRows })
