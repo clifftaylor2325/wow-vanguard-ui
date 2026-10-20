@@ -89,6 +89,8 @@ local BUTTON = {
   "GetFontString", "GetHighlightTexture", "GetNormalTexture",
   "GetPushedTexture", "GetText", "IsEnabled", "LockHighlight",
   "RegisterForClicks", "SetButtonState", "SetDisabledTexture", "SetEnabled",
+  -- SetMotionScriptsWhileDisabled: forever SimpleButtonAPIDocumentation.lua.
+  "SetMotionScriptsWhileDisabled",
   "SetFontString", "SetHighlightTexture", "SetNormalFontObject",
   "SetNormalTexture", "SetPushedTexture", "SetText", "UnlockHighlight",
 }

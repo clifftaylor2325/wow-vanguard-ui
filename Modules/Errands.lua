@@ -89,13 +89,48 @@ local function nextAffordable(run)
   end
 end
 
--- The button's label (how many; its cost is told when it is clicked); it's off while nothing is affordable.
+-- What one click learns, the way the click picks: down the list, each service the gold left still
+-- covers. { count, cost } of that, { all, allCost } of the whole list, and the cheapest service's cost.
+function ER.TrainPlan()
+  local plan, left = { count = 0, cost = 0, all = 0, allCost = 0 }, cash()
+  for _, s in ipairs(ER.Trainable()) do
+    plan.all, plan.allCost, plan.cheapest = plan.all + 1, plan.allCost + s.cost, math.min(plan.cheapest or s.cost, s.cost)
+    if s.cost <= left then plan.count, plan.cost, left = plan.count + 1, plan.cost + s.cost, left - s.cost end
+  end
+  return plan
+end
+
+-- The Train all tooltip: what the list costs and what one click buys, or why it buys nothing.
+function ER.TrainTip(plan)
+  if plan.all == 0 then return "Nothing to learn here right now." end
+  if plan.count == 0 then return string.format("Not enough gold for any: the cheapest is %s.", money(plan.cheapest)) end
+  local text = string.format("%d skill(s) for %s", plan.all, money(plan.allCost))
+  if plan.count < plan.all then text = text .. string.format("; you can afford %d (%s)", plan.count, money(plan.cost)) end
+  return text .. "."
+end
+
+-- Shows the tooltip over the Train all button, greyed or not.
+local function trainTip(b)
+  if not GameTooltip then return end
+  GameTooltip:SetOwner(b, "ANCHOR_TOP")
+  GameTooltip:SetText(ER.TrainTip(ER.TrainPlan()), nil, nil, nil, nil, true)
+  GameTooltip:Show()
+end
+
+-- The button's label (how many one click learns; the tooltip has the cost); it's off while nothing is affordable.
 function ER.UpdateTrainButton()
-  local b, list = ER.trainButton, ER.Trainable()
+  local b, plan = ER.trainButton, ER.TrainPlan()
   if not b then return end
-  b.text:SetText(#list > 0 and string.format("Train all (%d)", #list) or "Train all")
-  if nextAffordable() then b:Enable() else b:Disable() end
+  b.text:SetText(plan.count > 0 and string.format("Train all (%d)", plan.count) or "Train all")
+  if plan.count > 0 then b:Enable() else b:Disable() end
   b:SetShown(ER.settings.trainAll)
+end
+
+-- Gives the Train all button its tooltip, shown while it is greyed out too.
+local function addTrainTip(b)
+  b:SetMotionScriptsWhileDisabled(true)
+  b:SetScript("OnEnter", ns.Guard("train all tooltip", trainTip))
+  b:SetScript("OnLeave", ns.Guard("train all tooltip", function() if GameTooltip then GameTooltip:Hide() end end))
 end
 
 -- Learns the next affordable service not yet bought in this click; false when
@@ -131,6 +166,7 @@ function ER.AddTrainButton()
   local b, train = ns.DialogButton(frame, "Train all", ER.TRAIN_WIDTH), _G.ClassTrainerTrainButton
   if type(train) == "table" then ER.PlaceBesides(b, train) else b:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", 8, 6) end
   b:SetScript("OnClick", ns.Guard("click train all", ER.TrainAll))
+  addTrainTip(b)
   ER.trainButton = b
   ER.UpdateTrainButton()
 end

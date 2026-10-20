@@ -695,8 +695,8 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 
 ### 9.3 Trainer: Train all
 
-- Do: at a class trainer with skills you can afford, click Train all. Try it again in combat if you can.
-- Expect: a button reading `Train all (N)` on the trainer window, clear of your money line; clicking it prints `Trained N skill(s) for <money>.`; in combat it does nothing.
+- Do: at a class trainer with skills to learn, hover Train all before clicking it, then click it. Try it again in combat if you can. If you can, visit one with more skills than you can pay for, and one with none you can afford.
+- Expect: a button reading `Train all (N)` on the trainer window, clear of your money line, where N is how many your gold covers; its tooltip reads `M skill(s) for <money>` and, when you can't pay for all, `; you can afford N (<money>)`; clicking it learns N and prints `Trained N skill(s) for <money>.` with the tooltip's figure; greyed out, its tooltip still shows and reads `Not enough gold for any: the cheapest is <money>.`; in combat it does nothing. [Needs in game: that the count and cost match what the click buys.]
 - If it fails, paste: a screenshot of the trainer window and `/vg errors`.
 
 ### 9.4 Lists and Posting tabs at the auction house

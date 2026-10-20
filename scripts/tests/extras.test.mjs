@@ -141,7 +141,7 @@ it("Train all at a trainer: learns what you can afford, one at a time", () => {
   addon.eval("__loadTrainer(true)");
   addon.fire("ADDON_LOADED", "Blizzard_TrainerUI");
   addon.fire("TRAINER_SHOW");
-  expect(trainButton(addon), "on the trainer's window, beside its own Train button, with the count").toEqual({ text: "Train all (2)", enabled: true, shown: true, by: "ClassTrainerTrainButton" });
+  expect(trainButton(addon), "on the trainer's window, beside its own Train button, with the count one click learns").toEqual({ text: "Train all (1)", enabled: true, shown: true, by: "ClassTrainerTrainButton" });
   addon.eval('ns.GetModule("Errands").trainButton.__scripts.OnClick()');
   expect(addon.eval("return __learned"), "learns what 22s pays for, then stops").toEqual(["TEST-ONLY Bolt"]);
   expect(chatHas(addon, /Trained 1 skill\(s\) for 5s 0c\./), "and says what it cost").toBe(true);
@@ -161,6 +161,23 @@ it("Train all at a trainer: learns what you can afford, one at a time", () => {
   const loaded = loggedIn(TRAINER_ENV + "__loadTrainer(false)", { savedVariables: "VanguardDB.profiles = { Default = { Errands = { trainAll = false } } }" });
   loaded.fire("TRAINER_SHOW");
   expect(trainButton(loaded), "a window already loaded gets it too; switched off it hides").toMatchObject({ shown: false, by: "ClassTrainerFrame" });
+});
+it("Train all: its tooltip says what the list costs and what one click buys, greyed out too", () => {
+  const addon = loggedIn(TRAINER_ENV + "__loadTrainer(true)");
+  addon.fire("TRAINER_SHOW");
+  // The tooltip's text as the button shows it on hover.
+  const tip = () => addon.eval('local b = ns.GetModule("Errands").trainButton b.__scripts.OnEnter(b) return GameTooltip.__lines[1].text');
+  expect(tip(), "two skills, one affordable").toBe("2 skill(s) for 25s 0c; you can afford 1 (5s 0c).");
+  addon.eval("__money = 9000");
+  addon.fire("TRAINER_UPDATE");
+  expect([tip(), addon.eval('return ns.GetModule("Errands").trainButton.text:GetText()')], "all of them, and the count says so").toEqual(["2 skill(s) for 25s 0c.", "Train all (2)"]);
+  addon.eval("__money = 100");
+  addon.fire("TRAINER_UPDATE");
+  expect(tip(), "greyed out, it says why").toBe("Not enough gold for any: the cheapest is 5s 0c.");
+  addon.eval('__services = {} ns.GetModule("Errands").trainButton.__scripts.OnLeave()');
+  expect([tip(), addon.eval("return GameTooltip:IsShown()")], "nothing to learn").toEqual(["Nothing to learn here right now.", true]);
+  addon.eval('ns.GetModule("Errands").trainButton.__scripts.OnLeave()');
+  expect(addon.eval("return GameTooltip:IsShown()"), "leaving hides it").toBe(false);
 });
 // TEST-ONLY trainer as the game reports it: GetTrainerServiceInfo is name, kind, texture, ...; buying
 // changes nothing until the server answers (money and list as they were), or removes the service from the list.
