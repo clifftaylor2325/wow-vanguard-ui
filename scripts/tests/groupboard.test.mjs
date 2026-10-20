@@ -45,6 +45,8 @@ it("group board: lines are read as looking for more or for a group, with the dun
   expect(parse(addon, "LF1M dps DM east tribute"), "Dire Maul's short names before the Deadmines' dm").toEqual(["LFM", "Dire Maul", "dps"]);
   expect(parse(addon, "LF2M DM, need dps"), "plain dm is the Deadmines").toEqual(["LFM", "The Deadmines", "dps"]);
   expect(parse(addon, "LFG anything, healer"), "no dungeon named").toEqual(["LFG", "none", "healer"]);
+  expect(parse(addon, "60 arms warrior LFG strat"), "a dungeon named beats Scarlet Monastery's wing words").toEqual(["LFG", "Stratholme", ""]);
+  expect(parse(addon, "LFM arms, need tank"), "a wing word alone is Scarlet Monastery").toEqual(["LFM", "Scarlet Monastery", "tank"]);
   expect(parse(addon, "lfg or lfm? |cff1eff00|Hitem:1::::::::|h[Zul'Farrak Key]|h|r"), "LFM wins; a link's name is read as words").toEqual(["LFM", "Zul'Farrak", ""]);
   expect(parse(addon, "WTS Devilsaur Leggings"), "neither").toBe(null);
   expect(parse(addon, "1st stop sfk? no"), "a short name only as a whole word, and no kind: not a post").toBe(null);
