@@ -197,12 +197,26 @@ end
 -- check stays): it takes the Minimize glyph on the grey control tile, not the red close cross.
 GW.HIDE_BUTTONS = { PVPReadyDialog = true, ReadyStatus = true }
 
--- A window's close button (when it has one) in the theme and in its corner (GW.PlaceControls); with hide set, the
--- button of a window that only hides (GW.HIDE_BUTTONS) as a Minimize control.
-function GW.DressClose(frame, close, hide)
+-- Gives a close button its glyph (`paint`) and puts it in its corner (GW.PlaceControls), when it is a button.
+local function dressCloseWith(paint, frame, close)
   if type(close) ~= "table" or not close.CreateTexture then return end
-  if hide then T.WindowControl(close, "Minimize") else T.CloseButton(close) end
+  paint(close)
   if close.GetPoint then GW.PlaceControls(frame, close) end
+end
+
+-- A window's close button (when it has one) in the theme and in its corner (GW.PlaceControls).
+function GW.DressClose(frame, close)
+  dressCloseWith(T.CloseButton, frame, close)
+end
+
+-- The Minimize glyph, for the close button of a window that only hides (GW.HIDE_BUTTONS).
+local function paintMinimize(button)
+  T.WindowControl(button, "Minimize")
+end
+
+-- The close button of a window that only hides (GW.HIDE_BUTTONS): the Minimize control, in the same corner.
+local function dressHideButton(frame, close)
+  dressCloseWith(paintMinimize, frame, close)
 end
 
 -- A window's or dialog's title text (a font string; skipped when it is not one) in the heading role (the role a game window's own title takes, docs/THEME.md) and the
@@ -221,7 +235,8 @@ end
 
 -- The close, maximize and minimize buttons, title and push buttons in the theme.
 local function dressParts(frame, name)
-  GW.DressClose(frame, frame.CloseButton or (name and _G[name .. "CloseButton"]), GW.HIDE_BUTTONS[name or ""])
+  local close = frame.CloseButton or (name and _G[name .. "CloseButton"])
+  if GW.HIDE_BUTTONS[name or ""] then dressHideButton(frame, close) else GW.DressClose(frame, close) end
   GW.DressMaxMin(frame)
   dressTitle(frame)
   for _, b in ipairs(buttons(frame, name)) do T.Button(b) end
