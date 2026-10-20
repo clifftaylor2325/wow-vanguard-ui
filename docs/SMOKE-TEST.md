@@ -692,6 +692,12 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Expect: the picker closes as the fight starts, and you move and cast as usual without pressing Escape. [Needs in game: that no key is swallowed while the options window stays open in the fight.]
 - If it fails, paste: whether the picker stayed open, what the keys did, and `/vg errors`.
 
+### 10.1d A Target or Unit menu binding the game won't run says so
+
+- Do: with "Use the game's click bindings" off (the switch exists only where the game has click bindings of its own), `/vg` > Click casting, click your class's healing layout, then add Unit menu to a hover key (Add key, Shift+Q, Unit menu). Hover the Middle / Plain cell. Type `/vg binds`. Then middle-click a party or raid tile and hover a tile and press Shift+Q.
+- Expect: the Middle / Plain cell's "Unit menu" is in the warning colour and its tooltip says "Does nothing: the game runs it only on a click its own Click Casting window binds."; the Shift + Q row says "does nothing: the game won't run it from a key"; `/vg binds` adds "(does nothing: ...)" with the same reasons to those two lines, and not to Left click (Target) or Right click. Middle click and Shift+Q open no menu (the warning is right). [Needs in game: that the game's default profile binds only plain Left and Right, and that a Target or Unit menu click it covers still works.]
+- If it fails, paste: the `/vg binds` output, what the clicks did, and `/vg errors`.
+
 ### 10.2 Use it
 
 - Do: out of combat, hover a party or raid tile (or your own frame) and press the key or click.

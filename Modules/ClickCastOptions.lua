@@ -367,11 +367,12 @@ local function columns()
   return cols
 end
 
--- Re-reads a cell: the binding's icon and name, or an empty mark.
+-- Re-reads a cell: the binding's icon and name (in the warning colour when the game won't run it), or an empty mark.
 local function refreshCell(c)
   local b = CC.Binding(c.key)
   c.iconFrame:Set(b)
   c.name:SetText(b and CC.ActionText(b) or "")
+  T.Color(c.name, b and CC.WontRun(b) and "warn" or "text")
   c.empty:SetShown(b == nil)
 end
 
@@ -385,12 +386,30 @@ local function cellClick(c, button)
   openPicker(c, c.key)
 end
 
--- A cell's scripts: clicks, drops and the spell tooltip.
+-- The tooltip for a binding the game won't run: what it is, and why it does nothing (in the warning colour).
+local function wontRunTooltip(f, b, why)
+  if not GameTooltip then return end
+  GameTooltip:SetOwner(f, "ANCHOR_RIGHT")
+  GameTooltip:SetText(CC.ActionText(b), T.RGB("text"))
+  local r, g, bl = T.RGB("warn")
+  GameTooltip:AddLine("Does nothing: " .. why .. ".", r, g, bl, true)
+  GameTooltip:Show()
+end
+
+-- A cell's tooltip: why its binding does nothing when the game won't run it, else its spell's.
+local function cellTooltip(c)
+  local b = CC.Binding(c.key)
+  local why = b and CC.WontRun(b)
+  if why then return wontRunTooltip(c, b, why) end
+  spellTooltip(c, b and b.spellID)
+end
+
+-- A cell's scripts: clicks, drops and the tooltip.
 local function wireCell(c)
   c:RegisterForClicks("LeftButtonUp", "RightButtonUp")
   c:SetScript("OnClick", ns.Guard("click click-cast cell", cellClick))
   c:SetScript("OnReceiveDrag", function(self) if dropSpell(self.key) then changed() end end)
-  c:SetScript("OnEnter", function(self) local b = CC.Binding(self.key) spellTooltip(self, b and b.spellID) end)
+  c:SetScript("OnEnter", cellTooltip)
   c:SetScript("OnLeave", hideTooltip)
 end
 
@@ -497,14 +516,21 @@ local function keyName(key)
   return (CC.KeyText(key):gsub(" %(hover%)$", ""))
 end
 
+-- A hover-key row's note: why the binding does nothing (in the warning colour) when the game won't run it,
+-- else what the key also does off the frames, else nothing.
+local function keyNote(row, b)
+  local why, hit = CC.WontRun(b), CC.Collision(b.key)
+  row.note:SetText(why and ("does nothing: " .. why) or hit and ("also " .. hit) or "")
+  T.Color(row.note, why and "warn" or "muted")
+end
+
 -- Fills a hover-key row from its binding.
 local function fillKeyRow(row, b)
   row.key = b.key
   row.keyText:SetText(keyName(b.key))
   row.iconFrame:Set(b)
   row.text:SetText(CC.ActionText(b))
-  local hit = CC.Collision(b.key)
-  row.note:SetText(hit and ("also " .. hit) or "")
+  keyNote(row, b)
 end
 
 -- The count beside the Add key button: how many more keys there are than rows, or nothing.

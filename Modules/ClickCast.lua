@@ -257,6 +257,47 @@ function CC.Collision(key)
   return slot and ("Action bar 1 slot " .. slot) or action:lower():gsub("_", " ")
 end
 
+-- The actions the units' click handler (SecureUnitButton_OnClick) runs only on a click the game's own click
+-- bindings cover, and why such a binding does nothing, by where it is (player words, read after "does nothing: ").
+local GAME_GATED = { target = true, menu = true }
+local WONT_RUN = {
+  key = "the game won't run it from a key",
+  click = "the game runs it only on a click its own Click Casting window binds",
+}
+-- A mouse button's number from the game's name for it (its profile may use either name).
+local GAME_BUTTONS = { LeftButton = 1, RightButton = 2, MiddleButton = 3, Button1 = 1, Button2 = 2, Button3 = 3, Button4 = 4, Button5 = 5 }
+
+-- The game's click-binding profile (C_ClickBindings), or nil on a client that has none or can't list it.
+local function gameProfile()
+  local api = C_ClickBindings
+  if type(api) ~= "table" or type(api.GetProfileInfo) ~= "function" or type(Enum.ClickBindingType) ~= "table" then return nil end
+  local list = api.GetProfileInfo()
+  return type(list) == "table" and list or nil
+end
+
+-- Whether the game binds a click (a mouse prefix and button number) to one of its interactions (Target, Open menu).
+-- Its modifier bits aren't documented, so a modified click counts as bound when the game binds any modified click
+-- on that button: a warning is only given when it is sure.
+local function gameCovers(profile, prefix, n)
+  local interaction, modified = Enum.ClickBindingType.Interaction, prefix ~= ""
+  for _, info in ipairs(profile) do
+    if info.type == interaction and GAME_BUTTONS[info.button] == n and (info.modifiers ~= 0) == modified then return true end
+  end
+  return false
+end
+
+-- Why a binding does nothing on this client, or nil when it works (or the client can't say). Where the game has
+-- click bindings of its own, the units' click handler drops Target and Unit menu on a click those don't cover,
+-- and a hover key's virtual button is never covered. While the game's bindings are in use, Vanguard's rest.
+function CC.WontRun(b)
+  local profile = GAME_GATED[b.action] and not CC.UsesGame() and gameProfile()
+  if not profile then return nil end
+  local prefix, n = CC.MouseParts(b.key)
+  if not prefix then return WONT_RUN.key end
+  if gameCovers(profile, prefix, n) then return nil end
+  return WONT_RUN.click
+end
+
 -- Applying ---------------------------------------------------------------------------------
 
 -- Sets an attribute and remembers it, so the next apply can clear it.

@@ -441,15 +441,20 @@ local function presetCommand(rest)
   for _, p in ipairs(Vanguard.GetPresets()) do chat("  " .. p.name .. (p.info ~= "" and ("  -  " .. p.info) or "")) end
 end
 
+-- One /vg binds line: the key, what it does, and (in the warning colour) why it does nothing when the game won't run it.
+local function bindLine(CC, b)
+  local why = CC.WontRun(b)
+  local note = why and ("  " .. T.Paint("(does nothing: " .. why .. ")", "warn")) or ""
+  return "  " .. CC.KeyText(b.key) .. "  ->  " .. CC.ActionText(b) .. note
+end
+
 -- /vg binds: this spec's click-casting bindings, one per line.
 local function bindsCommand()
   local CC = ns.GetModule("ClickCast")
   local list = CC and CC.Bindings() or {}
   if CC and CC.UsesGame() then chat("The game's click bindings are in use; Vanguard's below rest until you switch back.") end
   chat(#list == 0 and "No click-casting bindings for this spec. /vg > Click casting to add some." or "Click casting (this spec):")
-  for _, b in ipairs(list) do
-    chat("  " .. CC.KeyText(b.key) .. "  ->  " .. CC.ActionText(b))
-  end
+  for _, b in ipairs(list) do chat(bindLine(CC, b)) end
 end
 
 -- /vg spec [profile|off]
