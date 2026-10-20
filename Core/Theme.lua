@@ -1427,12 +1427,17 @@ end
 -- A themed button's press overlay, or nil for a button T.Button never painted.
 function T.PressOverlay(button) return pressOf[button] and pressOf[button].overlay end
 
+-- Whether a widget is enabled. A widget without IsEnabled (a plain frame) counts as enabled.
+local function isEnabled(widget)
+  return type(widget.IsEnabled) ~= "function" or widget:IsEnabled()
+end
+
 -- Shows or hides a button's press look; only an enabled button shows it. A shade marked `row` (a check
 -- box's today) leaves the label where it is; a push button's drops it a pixel.
 function T.PressButton(button, down)
   local s = pressOf[button]
   if not s then return end
-  local on = down == true and (not button.IsEnabled or button:IsEnabled())
+  local on = down == true and isEnabled(button)
   if on == s.overlay:IsShown() then return end
   if s.fill then T.ShowFill(s.fill, on) else s.overlay:SetShown(on) end
   if not s.row then dropLabel(button, s, on) end
@@ -1485,7 +1490,7 @@ function T.Button(button, kind)
     stateParts(button)
   end
   repaint(button, entry)
-  if button.IsEnabled and not button:IsEnabled() then T.DisabledLook(button, true) end
+  if not isEnabled(button) then T.DisabledLook(button, true) end
   return button
 end
 
@@ -1850,7 +1855,7 @@ end
 -- is checked, in their colours, the hover border while the mouse is over it, or the disabled tier while
 -- the button is disabled (its label too, and no hover border).
 local function paintCheck(button, c)
-  local on, off = isChecked(button, c), type(button.IsEnabled) == "function" and not button:IsEnabled()
+  local on, off = isChecked(button, c), not isEnabled(button)
   c.hover = c.hover and not off -- a disabled button gets no OnLeave, so its hover ends here
   c.mark:SetShown(on)
   T.Tint(c.mark, off and "disabled" or T.CHECK.markColor)
@@ -1951,7 +1956,7 @@ end
 -- Paints a radio for its state: the dot while checked, the ring borderHi under the mouse, the
 -- disabled tier while disabled (its label too).
 local function paintRadio(button, r)
-  local on, off = isChecked(button, r), type(button.IsEnabled) == "function" and not button:IsEnabled()
+  local on, off = isChecked(button, r), not isEnabled(button)
   r.hover = r.hover and not off -- a disabled button gets no OnLeave, so its hover ends here
   r.mark:SetShown(on)
   T.Tint(r.mark, off and "disabled" or T.RADIO.dotColor)
@@ -2065,7 +2070,7 @@ function T.ArrowParts(button) return arrowOf[button] end
 
 -- Paints an arrow's glyph: disabled, under the mouse, or at rest.
 local function paintArrow(button)
-  local a, off = arrowOf[button], type(button.IsEnabled) == "function" and not button:IsEnabled()
+  local a, off = arrowOf[button], not isEnabled(button)
   a.hover = a.hover and not off -- a disabled button gets no OnLeave, so its hover ends here
   T.Tint(a.glyph, off and "disabled" or a.hover and T.ARROW.hover or T.ARROW.color)
 end
@@ -2178,7 +2183,7 @@ end
 -- Paints a slider: the track, outline and fill in their colours, the knob in the disabled tier while
 -- the slider is disabled.
 local function paintSlider(slider, s)
-  local off = type(slider.IsEnabled) == "function" and not slider:IsEnabled()
+  local off = not isEnabled(slider)
   for part, color in pairs({ track = T.SLIDER.track, line = T.SLIDER.line, fill = T.SLIDER.fill }) do
     for _, t in ipairs(s[part]) do T.Tint(t, color) end
   end
@@ -2247,7 +2252,7 @@ do
 local function tabSelected(button)
   if type(button.SetTabSelected) == "function" then return button.isSelected == true end
   if vgChecked[button] ~= nil then return vgChecked[button] end
-  return type(button.IsEnabled) == "function" and not button:IsEnabled()
+  return not isEnabled(button)
 end
 
 -- How faded an unselected tab's icon is.
@@ -2447,7 +2452,7 @@ function T.Row(row, opts)
   if opts and opts.fade then T.FadeRegions(row, s and { [s.fill] = true, [s.hover] = true, [s.press] = true, [s.rail] = true }) end
   if s then return row end
   rowOf[row] = rowParts(row)
-  rowOf[row].disabled = row.IsEnabled ~= nil and not row:IsEnabled()
+  rowOf[row].disabled = not isEnabled(row)
   watchRow(row)
   return row
 end
