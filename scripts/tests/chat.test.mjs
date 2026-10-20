@@ -805,8 +805,8 @@ it("chat: short channel names by default, off live and in a profile that turned 
   const addon = loggedIn(UI_ENV + CHAT_LINES_ENV);
   const trade = "|Hchannel:channel:2|h[2. Trade - City]|h [TEST-ONLY Name]: wts";
   addon.eval(`ChatFrame1:AddMessage({ __secret = true }) ChatFrame1:AddMessage("${trade}")`);
-  expect([lastLine(addon), addon.eval("return issecretvalue(ChatFrame1.__messages[#ChatFrame1.__messages - 1])")], "on by default: [2. Trade - City] becomes [T], the link kept; a hidden line stays as it was")
-    .toEqual(["|Hchannel:channel:2|h[T]|h [TEST-ONLY Name]: wts", true]);
+  expect([lastLine(addon), addon.eval("return issecretvalue(ChatFrame1.__messages[#ChatFrame1.__messages - 1])")], "on by default: [2. Trade - City] becomes [2], the link kept; a hidden line stays as it was")
+    .toEqual(["|Hchannel:channel:2|h[2]|h [TEST-ONLY Name]: wts", true]);
   addon.eval("ns.GetModule('ChatExtras').settings.shortChannels = false");
   addon.eval(`ChatFrame1:AddMessage("${trade}")`);
   expect(lastLine(addon), "switched off: the game's channel names").toBe(trade);
@@ -816,8 +816,8 @@ it("chat: short channel names by default, off live and in a profile that turned 
   addon.eval("ns.GetModule('ChatExtras').settings.shortChannels = true");
   // A line with one channel tag, as the shortener leaves it.
   const short = (label) => addon.eval(`return ns.GetModule('ChatExtras').ShortChannels("|Hchannel:X|h[${label}]|h hi")`);
-  expect(["Guild", "Raid Leader", "5. LookingForGroup", "1. General - TEST-ONLY Vale", "6. testonly"].map(short), "the capitals of the name, or its first letter")
-    .toEqual(["|Hchannel:X|h[G]|h hi", "|Hchannel:X|h[RL]|h hi", "|Hchannel:X|h[LFG]|h hi", "|Hchannel:X|h[G]|h hi", "|Hchannel:X|h[t]|h hi"]);
+  expect(["5. LookingForGroup", "1. General - TEST-ONLY Vale", "Guild", "Raid Leader", "testonly"].map(short), "a numbered channel's number, else the capitals of the name, or its first letter")
+    .toEqual(["|Hchannel:X|h[5]|h hi", "|Hchannel:X|h[1]|h hi", "|Hchannel:X|h[G]|h hi", "|Hchannel:X|h[RL]|h hi", "|Hchannel:X|h[t]|h hi"]);
   expect(addon.eval('ChatFrame2:AddMessage("plain TEST-ONLY line") local m = ChatFrame2.__messages return m[#m]'), "a line without a channel tag is left alone").toBe("plain TEST-ONLY line");
   addon.eval('FCF_OpenTemporaryWindow("WHISPER", "TestOnly")');
   expect(addon.eval("return ns.FrameState('vgWatched')[ChatFrame11]"), "a whisper window that opens later is followed too").toBe(true);

@@ -3,8 +3,8 @@
 --     opens a box with the address selected, ready to copy (Ctrl+C);
 --   * a small Copy button in the main chat window's tab bar (and /vg copy) opens
 --     the recent chat as plain text, ready to copy;
---   * short channel names (on by default): "[2. Trade - City]" shows as "[T]", "[Guild]" as
---     "[G]", a letter beside the channel's colour; a profile that turned it off keeps that;
+--   * short channel names (on by default): "[2. Trade - City]" shows as "[2]", "[Guild]" as
+--     "[G]", beside the channel's colour; a profile that turned it off keeps that;
 --   * the mouse wheel moves four lines a tick (the game's three and one more), and
 --     Ctrl + wheel jumps to the top or the bottom of a chat window;
 --   * the game's own timestamp and class-colored name settings, offered in /vg.
@@ -120,17 +120,19 @@ end
 
 -- Short channel names ---------------------------------------------------------------------
 
--- A channel's short name: the capitals of its name, without the number and the
--- zone ("2. Trade - City" -> "T", "LookingForGroup" -> "LFG", "Raid Leader" -> "RL");
--- a name with no capital letters keeps its first letter.
+-- A channel's short name: its number when it has one ("2. Trade - City" -> "2"), else the
+-- capitals of its name ("Guild" -> "G", "Raid Leader" -> "RL"); a name with no capital letters
+-- keeps its first letter.
 function CX.ShortName(label)
+  local number = label:match("^(%d+)%.")
+  if number then return number end
   local name = label:gsub("^%d+%.%s*", ""):gsub("%s+%-%s+.*$", "")
   local caps = name:gsub("[^%u]", "")
   return caps ~= "" and caps or name:match("^[\1-\127\194-\244][\128-\191]*") or name
 end
 
 -- A chat line with each channel tag shortened ("|Hchannel:...|h[2. Trade - City]|h"
--- -> "...|h[T]|h"), the link kept so clicking the tag still opens the channel.
+-- -> "...|h[2]|h"), the link kept so clicking the tag still opens the channel.
 -- Text the game hides from addons is returned as it is.
 function CX.ShortChannels(text)
   if ns.IsSecret(text) or type(text) ~= "string" then return text end
