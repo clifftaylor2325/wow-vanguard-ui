@@ -1416,6 +1416,7 @@ it("quest history: /vg quests history [n] lists the latest turn-ins, newest firs
 });
 it("quest automation: says Accepted only once the game takes that quest, at once for one the game took itself", () => {
   const addon = loggedIn(QUEST_ENV, { savedVariables: "VanguardDB.profiles = { Default = { QuestAuto = { accept = true } } }" });
+  // How many "Accepted" lines chat has had.
   const accepted = () => Array.from(addon.chat()).filter((line) => /Accepted: /.test(line)).length;
   addon.eval("GetQuestID = function() return 90001 end");
   addon.fire("QUEST_DETAIL");
