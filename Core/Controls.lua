@@ -162,19 +162,24 @@ end
 
 -- Choices ------------------------------------------------------------------------------------
 
+-- The position of the first choice (from a list of { value, text }) whose value is `value`; nil when none is.
+local function indexOf(choices, value)
+  for i, c in ipairs(choices) do
+    if c[1] == value then return i end
+  end
+end
+
 -- The choice after the current one (wrapping), from a list of { value, text }.
 function W.NextChoice(choices, current)
-  for i, c in ipairs(choices) do
-    if c[1] == current then return choices[i % #choices + 1] end
-  end
+  local i = indexOf(choices, current)
+  if i then return choices[i % #choices + 1] end
   return choices[1]
 end
 
 -- The text of the current choice (or the first).
 local function currentText(choices, current)
-  for _, c in ipairs(choices) do
-    if c[1] == current then return c[2] end
-  end
+  local i = indexOf(choices, current)
+  if i then return choices[i][2] end
   return choices[1] and choices[1][2] or ""
 end
 
@@ -182,9 +187,7 @@ end
 -- the row can show it. A copy is made: the list as written stays as it was.
 local function withValue(choices, value)
   if not choices.keep or value == nil then return choices end
-  for _, c in ipairs(choices) do
-    if c[1] == value then return choices end
-  end
+  if indexOf(choices, value) then return choices end
   local out = {}
   for i, c in ipairs(choices) do out[i] = c end
   out[#out + 1] = { value, tostring(value) }
@@ -427,9 +430,8 @@ end
 
 -- How far a menu starts scrolled: enough to show the current choice.
 local function startOffset(choices, current)
-  for i, c in ipairs(choices) do
-    if c[1] == current then return math.max(0, i - MENU_ROWS) end
-  end
+  local i = indexOf(choices, current)
+  if i then return math.max(0, i - MENU_ROWS) end
   return 0
 end
 
