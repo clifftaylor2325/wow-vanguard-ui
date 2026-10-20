@@ -328,6 +328,7 @@ it("raid tools: calls, target icons and world markers for the leader and assista
   expect(addon.eval("return #__calls"), "a target that can't be marked is left alone").toBe(0);
   expect(addon.eval(`local m, c = Vanguard_RaidTools.list[14], Vanguard_RaidTools.list[22]
     return { m:GetAttribute("type"), m:GetAttribute("marker"), m:GetAttribute("action1"), m:GetAttribute("action2"), c:GetAttribute("action") }`), "world markers are the game's secure marker buttons").toEqual(["worldmarker", 1, "toggle", "clear", "clear"]);
+  expect(addon.eval("return { Vanguard_RaidTools.list[14]:GetAttribute('useOnKeyDown'), Vanguard_RaidTools.list[22]:GetAttribute('useOnKeyDown') }"), "the marker buttons act on the release they listen for, even with key-down casting on").toEqual([false, false]);
   addon.eval("__inRaid, __leader, __assist = true, false, true");
   addon.fire("GROUP_ROSTER_UPDATE");
   expect(state(), "a raid assistant sees it too, without Raid").toEqual([true, false]);
