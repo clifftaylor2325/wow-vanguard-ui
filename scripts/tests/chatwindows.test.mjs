@@ -2,7 +2,7 @@
 // Modules/ChatWindows.lua: each chat window's size and the game's lock from the Chat page, and
 // floating windows as /vg unlock handles.
 
-import { expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import { chatHas, loggedIn } from "./helpers.mjs";
 
 // TEST-ONLY game chat layout calls, two windows in use (the second one pulled out of the dock).
@@ -209,4 +209,38 @@ it("chat find: the Chat page has the button and the switch; off, no button, and 
   expect(addon.eval("return { ns.GetModule('ChatWindows').Find('x') }"), "a window that can't be read has no lines").toEqual(['Chat: 0 lines with "x"', ""]);
   const bare = loggedIn("ChatFrame1 = nil");
   expect(bare.eval("return ns.GetModule('ChatWindows').findButton == nil"), "no main window, no button").toBe(true);
+});
+
+describe("chat windows: a docked tab behind the selected one is still a window", () => {
+  // TEST-ONLY: General and Loot both docked (GetChatWindowInfo's ninth value), a Loot line the
+  // window holds, and the game's lock recorded; the dock hides every docked window but the selected one.
+  const DOCKED = `
+    __wfgWorld.chatWindows[1], __wfgWorld.chatWindows[2] = "General", "Loot"
+    GetChatWindowInfo = function(i) local name = __wfgWorld.chatWindows[i] if name then return name, 12, 1, 1, 1, 1, 1, 0, 1 end end
+    __loot = { "You receive loot: TEST-ONLY Sword of the Magistrate" }
+    ChatFrame2.GetNumMessages = function() return #__loot end
+    ChatFrame2.GetMessageInfo = function(_, i) return __loot[i] end
+    __locks = {}
+    FCF_SetLocked = function(frame, v) __locks[frame:GetName()] = v end
+    ChatFrame2:Hide()
+  `;
+
+  it("Find reads the hidden docked tab's lines", () => {
+    const addon = loggedIn(DOCKED);
+    expect(addon.eval("return (ns.GetModule('ChatWindows').Find('sword'))")).toBe('Chat: 1 lines with "sword"');
+  });
+
+  it("the Tab choice offers every docked tab, and Lock locks them all", () => {
+    const addon = loggedIn(DOCKED);
+    const CW = "ns.GetModule('ChatWindows')";
+    expect(addon.eval(`local out = {} for _, c in ipairs(${CW}.TabChoices()) do out[#out + 1] = c[2] end return out`), "General and the hidden Loot").toEqual(["General", "Loot"]);
+    addon.eval(`local _, set = ${CW}.LockSetting() set(true)`);
+    expect(addon.eval("return { __locks.ChatFrame1, __locks.ChatFrame2 }"), "both locked").toEqual([true, true]);
+  });
+
+  it("the size sliders stay for the windows showing, and a closed window is left out", () => {
+    const addon = loggedIn(DOCKED + "GetChatWindowInfo = function(i) local name = __wfgWorld.chatWindows[i] if name then return name, 12, 1, 1, 1, 1, 1, 0, i == 1 and 1 or 0 end end");
+    const CW = "ns.GetModule('ChatWindows')";
+    expect(addon.eval(`return { #${CW}.Shown(), #${CW}.Windows() }`), "Loot neither shown nor docked (closed): only General").toEqual([1, 1]);
+  });
 });
