@@ -1213,6 +1213,16 @@ it("calendar dialogs: the holiday and raid text areas are inset panels, the even
   expect(addon.eval("return #ns.errors"), "and nothing failed").toBe(0);
 });
 
+it("calendar: today's ornate glow stays hidden while the game's OnUpdate pulses its alpha", () => {
+  const addon = loggedIn(CALENDAR_ENV);
+  // TEST-ONLY: the game's CalendarTodayFrame_OnUpdate, which sets the glow's alpha every frame (Blizzard_Calendar.lua).
+  addon.eval(`__calendar()
+    _G.CalendarTodayTextureGlow = CalendarTodayFrame:CreateTexture("CalendarTodayTextureGlow", "OVERLAY")
+    CalendarTodayFrame:SetScript("OnUpdate", function(_, elapsed) CalendarTodayTextureGlow:SetAlpha(math.min(1, elapsed * 2)) end)`);
+  addon.fire("ADDON_LOADED", "Blizzard_Calendar");
+  addon.eval("CalendarFrame:Show() CalendarFrame_SetToday(CalendarDayButton19) CalendarTodayFrame:GetScript('OnUpdate')(CalendarTodayFrame, 0.5)");
+  expect(addon.eval("return { CalendarTodayTextureGlow:GetAlpha(), CalendarTodayTextureGlow:IsShown() }"), "the game sets its alpha back, but the glow is hidden").toEqual([1, false]);
+});
 it("calendar: switched off it stays the game's; a client missing the window, its buttons or its dialogs' parts loads cleanly", () => {
   const off = loggedIn(CALENDAR_ENV, MAP_OFF);
   off.eval("__calendar() __calendarDialogs()");

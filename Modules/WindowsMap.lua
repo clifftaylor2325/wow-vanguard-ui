@@ -1093,6 +1093,8 @@ end
 local function skinToday(today)
   if not isFrame(today) then return end
   T.FadeRegions(today)
+  -- The ornate glow is hidden, not faded: the game's OnUpdate pulses its alpha every frame.
+  if type(_G.CalendarTodayTextureGlow) == "table" and _G.CalendarTodayTextureGlow.Hide then _G.CalendarTodayTextureGlow:Hide() end
   T.Panel(today, { accent = true, noBg = true, noSheen = true })
   GW.FitToday(today, today:GetParent())
   if type(hooksecurefunc) == "function" and type(_G.CalendarFrame_SetToday) == "function" and not GW.todayHooked then
