@@ -5,7 +5,7 @@
 local ADDON, ns = ...
 
 local O = ns.Options
-local setting, liveSetting, check, append = O.Setting, O.LiveSetting, O.Check, O.Append
+local setting, reloadSetting, liveSetting, check, append = O.Setting, O.ReloadSetting, O.LiveSetting, O.Check, O.Append
 
 -- Puts the low-health vignette (Modules/GameAlerts.lua) right after a change of its switch.
 local function applyVignette()
@@ -15,9 +15,9 @@ end
 -- The game's alerts (Modules/GameAlerts.lua) and the low-health vignette.
 local function alertRows()
   return {
-    check("Loss of control in the Vanguard look, above your character (reload)", setting("GameAlerts", "lossOfControl", true)),
-    { "cycle", "Talking head (reload)", { { "move", "Vanguard look, top left" }, { "hide", "Hidden" }, { "game", "The game's" } }, setting("GameAlerts", "talkingHead", true) },
-    check("Hardcore death notices in the Vanguard look (reload)", setting("GameAlerts", "hardcore", true)),
+    check("Loss of control in the Vanguard look, above your character (reload)", reloadSetting("GameAlerts", "lossOfControl")),
+    { "cycle", "Talking head (reload)", { { "move", "Vanguard look, top left" }, { "hide", "Hidden" }, { "game", "The game's" } }, reloadSetting("GameAlerts", "talkingHead") },
+    check("Hardcore death notices in the Vanguard look (reload)", reloadSetting("GameAlerts", "hardcore")),
     check("A rare nearby: a sound and a chat line, out of combat", setting("GameAlerts", "rares")),
     check("Low health: a soft tint round the screen edge that grows as your health drops (no pulse)", liveSetting("GameAlerts", "vignette", applyVignette)),
   }
@@ -28,8 +28,8 @@ local function gameToolRows()
   return append({
     { "header", "The game's tools" },
     { "text", "The Cooldown Manager, the gaps row and the buff glow are on the Cooldowns page.", "note" },
-    check("Damage meter in the Vanguard look (reload)", setting("GameTools", "meter", true)),
-    check("Place them to fit the layout; off leaves them to Edit Mode (reload)", setting("GameTools", "place", true)),
+    check("Damage meter in the Vanguard look (reload)", reloadSetting("GameTools", "meter")),
+    check("Place them to fit the layout; off leaves them to Edit Mode (reload)", reloadSetting("GameTools", "place")),
   }, alertRows())
 end
 

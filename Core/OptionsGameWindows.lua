@@ -4,7 +4,7 @@
 local ADDON, ns = ...
 
 local O = ns.Options
-local setting, check, append = O.Setting, O.Check, O.Append
+local setting, reloadSetting, check, append = O.Setting, O.ReloadSetting, O.Check, O.Append
 
 -- The game's own windows in the Vanguard look, by group: setting key -> its switch's label.
 local WINDOW_GROUPS = {
@@ -34,7 +34,7 @@ end
 -- their title bar, and a button that puts them back where the game places them.
 local function windowRows()
   local rows = { { "header", "Game windows" } }
-  for _, g in ipairs(WINDOW_GROUPS) do rows[#rows + 1] = check(g[2], setting("Windows", g[1], true)) end
+  for _, g in ipairs(WINDOW_GROUPS) do rows[#rows + 1] = check(g[2], reloadSetting("Windows", g[1])) end
   rows[#rows + 1] = { "button", "Reset window positions", resetWindowPlaces }
   return rows
 end
@@ -65,7 +65,7 @@ end
 local function quietScreenRows()
   return {
     check("Hide the red error line (full bags and quest log still show)", setting("Quiet", "errors")),
-    check("Hide errors the action bar already shows (reload)", setting("Merchant", "errors", true)),
+    check("Hide errors the action bar already shows (reload)", reloadSetting("Merchant", "errors")),
     check("Hide the zone names that fade in", setting("Quiet", "zoneText")),
     -- The setter must stay the row's last element: liveSetting returns a getter and a setter.
     { "cycle", "Furthest the camera zooms out", ns.GetModule("Quiet").CAMERA,

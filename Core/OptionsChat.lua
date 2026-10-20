@@ -5,7 +5,7 @@
 local ADDON, ns = ...
 
 local O = ns.Options
-local moduleSettings, setting, liveSetting, check, append = O.ModuleSettings, O.Setting, O.LiveSetting, O.Check, O.Append
+local moduleSettings, setting, reloadSetting, liveSetting, check, append = O.ModuleSettings, O.Setting, O.ReloadSetting, O.LiveSetting, O.Check, O.Append
 
 -- get/set for one of the Chat module's settings, which it applies at once through its `method` (by
 -- name: Refresh, ApplySize, ApplyFades...) while it runs.
@@ -30,7 +30,7 @@ local function chatTextRows()
     { "cycle", "Chat text fades", CH.LINE_FADES, chatLive("lineFade", "ApplyFades") },
     check("Keep chat tabs visible (the game fades them until the mouse comes near)", chatLive("tabsVisible", "ApplyTabAlpha")),
     check("Hide the tab bar until the mouse is over the chat", chatLive("barHover", "ApplyBarHover")),
-    check("Text-only bubbles: no panel behind the words over heads (reload)", setting("ChatBubbles", "textOnly", true)),
+    check("Text-only bubbles: no panel behind the words over heads (reload)", reloadSetting("ChatBubbles", "textOnly")),
   }
 end
 
@@ -39,9 +39,9 @@ local function chatWindowRows()
   local CH = ns.GetModule("Chat")
   return append({
     { "header", "Chat" },
-    check("Chat background", setting("Chat", "background", true)),
+    check("Chat background", reloadSetting("Chat", "background")),
     { "cycle", "Chat background strength", CH.BACKDROPS, chatLive("backdrop", "Refresh") },
-    check("Keep chat in its bottom-left spot (reload)", setting("Chat", "place", true)),
+    check("Keep chat in its bottom-left spot (reload)", reloadSetting("Chat", "place")),
     { "cycle", "Chat window size", CH.WINDOW_SCALES, chatLive("windowScale", "ApplySize") },
   }, chatTextRows())
 end
@@ -128,7 +128,7 @@ end
 local function chatWindowsRows()
   local CW = ns.GetModule("ChatWindows")
   local rows = { { "header", "Chat windows" }, { "text", "Size each chat window here instead of dragging its corner. Lock stops the game's drag." },
-    check("Lock chat windows", CW.LockSetting()), check("Move floating windows with /vg unlock (reload)", setting("ChatWindows", "movers", true)) }
+    check("Lock chat windows", CW.LockSetting()), check("Move floating windows with /vg unlock (reload)", reloadSetting("ChatWindows", "movers")) }
   for _, w in ipairs(CW.Shown()) do
     local wGet, wSet = CW.SizeSetting(w[2], false)
     local hGet, hSet = CW.SizeSetting(w[2], true)

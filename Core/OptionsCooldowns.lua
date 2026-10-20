@@ -9,7 +9,7 @@ local ADDON, ns = ...
 local T, W = ns.Theme, ns.Widgets
 
 local O = ns.Options
-local moduleSettings, setting, liveSetting, check, append = O.ModuleSettings, O.Setting, O.LiveSetting, O.Check, O.Append
+local moduleSettings, setting, reloadSetting, liveSetting, check, append = O.ModuleSettings, O.Setting, O.ReloadSetting, O.LiveSetting, O.Check, O.Append
 
 local WZ = {}
 O.CooldownWizard = WZ
@@ -37,15 +37,15 @@ end
 local function managerRows()
   return {
     show = tip(check("Show the game's manager", cooldownManagerSetting()), "Turns the game's Cooldown Manager on (off again when unticked). Its essential row sits between your frames; /vg unlock moves it."),
-    look = tip(check("Vanguard look (reload)", setting("GameTools", "cooldowns", true)), "Square icons in thin borders, the theme font and timer font on the game's Cooldown Manager."),
+    look = tip(check("Vanguard look (reload)", reloadSetting("GameTools", "cooldowns")), "Square icons in thin borders, the theme font and timer font on the game's Cooldown Manager."),
   }
 end
 
 -- The gaps row switches, by name.
 local function gapRows()
   return {
-    gaps = tip(check("Gaps row (reload)", setting("CooldownGaps", "on", true)), "A row of icons for what the game's manager misses: on-use trinkets, items and spells you choose (in the list below), pet abilities and totems."),
-    tracked = tip(check("Add the manager's cooldowns (reload)", setting("CooldownGaps", "tracked", true)), "Also draws the spells the manager tracks in its essential and utility rows as Vanguard icons in the gaps row."),
+    gaps = tip(check("Gaps row (reload)", reloadSetting("CooldownGaps", "on")), "A row of icons for what the game's manager misses: on-use trinkets, items and spells you choose (in the list below), pet abilities and totems."),
+    tracked = tip(check("Add the manager's cooldowns (reload)", reloadSetting("CooldownGaps", "tracked")), "Also draws the spells the manager tracks in its essential and utility rows as Vanguard icons in the gaps row."),
   }
 end
 

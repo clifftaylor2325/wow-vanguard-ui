@@ -5,7 +5,7 @@
 local ADDON, ns = ...
 
 local O = ns.Options
-local setting, liveSetting, check, append = O.Setting, O.LiveSetting, O.Check, O.Append
+local setting, reloadSetting, liveSetting, check, append = O.Setting, O.ReloadSetting, O.LiveSetting, O.Check, O.Append
 
 -- get/set for a raid frame setting that repaints the raid frames at once (look, power bar).
 local function raidSetting(key)
@@ -39,13 +39,13 @@ end
 local function unitFrameRows()
   return {
     { "header", "Unit frames" },
-    check("Replace the default unit frames", setting("UnitFrames", "hideBlizzard", true)), calmRow(), deckRow(),
+    check("Replace the default unit frames", reloadSetting("UnitFrames", "hideBlizzard")), calmRow(), deckRow(),
     check("Show health numbers", unitFrameSetting("healthText")), check("Tag mark on your target: a green check if you tagged it, a grey X if another player did", unitFrameSetting("tagMark")),
     { "cycle", "Health as", { { "value", "Value (42.8K)" }, { "percent", "Percent (84%)" } }, unitFrameSetting("healthFormat") },
-    check("Show levels (reload)", setting("UnitFrames", "showLevel", true)),
-    check("Boss frames, top left (reload)", setting("UnitFrames", "boss", true)), check("Party pets and targets, above the party (reload)", setting("PartyExtras", "show", true)),
-    check("Group threat panel: who has the most threat on your target (reload)", setting("GroupThreat", "show", true)), check("Shaman totems under the player frame (reload)", setting("ClassBars", "totems", true)),
-    check("Druid mana under the player frame in bear and cat form (reload)", setting("ClassBars", "druidMana", true)),
+    check("Show levels (reload)", reloadSetting("UnitFrames", "showLevel")),
+    check("Boss frames, top left (reload)", reloadSetting("UnitFrames", "boss")), check("Party pets and targets, above the party (reload)", reloadSetting("PartyExtras", "show")),
+    check("Group threat panel: who has the most threat on your target (reload)", reloadSetting("GroupThreat", "show")), check("Shaman totems under the player frame (reload)", reloadSetting("ClassBars", "totems")),
+    check("Druid mana under the player frame in bear and cat form (reload)", reloadSetting("ClassBars", "druidMana")),
   }
 end
 
@@ -53,13 +53,13 @@ end
 local function castRows()
   return {
     { "header", "Cast bars" },
-    check("Your cast bar (and your pet's)", setting("CastBars", "player", true)),
-    check("Target cast bar", setting("CastBars", "target", true)), check("Focus cast bar", setting("CastBars", "focus", true)),
+    check("Your cast bar (and your pet's)", reloadSetting("CastBars", "player")),
+    check("Target cast bar", reloadSetting("CastBars", "target")), check("Focus cast bar", reloadSetting("CastBars", "focus")),
     check("Ring at the cursor: the global cooldown and your cast", liveSetting("CastBars", "ring", function() ns.GetModule("CastBars").ApplyRing() end)),
     check("Interrupt mark beside the target and focus cast bars", liveSetting("CastBars", "interruptMark", function() ns.GetModule("CastBars").RefreshMarks() end)),
     { "header", "Target and focus auras" },
-    check("Only your debuffs (reload)", setting("FrameAuras", "onlyMine", true)),
-    check("Timer numbers on the icons (reload)", setting("FrameAuras", "timers", true)),
+    check("Only your debuffs (reload)", reloadSetting("FrameAuras", "onlyMine")),
+    check("Timer numbers on the icons (reload)", reloadSetting("FrameAuras", "timers")),
   }
 end
 
@@ -72,9 +72,9 @@ end
 local function playerAuraRows()
   return {
     { "header", "Your buffs and debuffs" },
-    check("Timer numbers on your buffs (reload)", setting("PlayerAuras", "timers", true)),
+    check("Timer numbers on your buffs (reload)", reloadSetting("PlayerAuras", "timers")),
     check("Weapon enchants in front of your buffs", enchantSetting()),
-    { "cycle", "Icon size (reload)", { { 26, "Small" }, { 30, "Medium" }, { 36, "Large" } }, setting("PlayerAuras", "size", true) },
+    { "cycle", "Icon size (reload)", { { 26, "Small" }, { 30, "Medium" }, { 36, "Large" } }, reloadSetting("PlayerAuras", "size") },
   }
 end
 
@@ -82,9 +82,9 @@ end
 local function readoutRows()
   return {
     { "header", "Readouts" },
-    check("Your threat on your target, above its frame (reload)", setting("UnitExtras", "threat", true)),
-    check("Your pet's happiness, a dot on the pet frame (reload)", setting("UnitExtras", "happiness", true)),
-    check("Status chip above your frame: Eating, Drinking, Well Fed, or a missing buff from Instance prep's checks, out of combat (reload)", setting("UnitExtras", "chip", true)),
+    check("Your threat on your target, above its frame (reload)", reloadSetting("UnitExtras", "threat")),
+    check("Your pet's happiness, a dot on the pet frame (reload)", reloadSetting("UnitExtras", "happiness")),
+    check("Status chip above your frame: Eating, Drinking, Well Fed, or a missing buff from Instance prep's checks, out of combat (reload)", reloadSetting("UnitExtras", "chip")),
   }
 end
 
@@ -97,7 +97,7 @@ end
 local function timerRows()
   return {
     { "header", "Combat timers" },
-    { "cycle", "Swing timer (reload)", { { "auto", "Melee classes and hunters" }, { "always", "Always" }, { "never", "Never" } }, setting("SwingTimer", "show", true) },
+    { "cycle", "Swing timer (reload)", { { "auto", "Melee classes and hunters" }, { "always", "Always" }, { "never", "Never" } }, reloadSetting("SwingTimer", "show") },
     check("Five-second rule spark on your mana bar", sparkSetting("mana")),
     check("Energy tick spark on your energy bar", sparkSetting("energy")),
   }
@@ -105,13 +105,13 @@ end
 
 -- get/set for a raid frame setting the preview (Modules/RaidPreview.lua) shows at once; the real frames take a reload.
 local function previewedSetting(key)
-  local get, set, initial = setting("RaidFrames", key, true)
+  local get, set, initial = reloadSetting("RaidFrames", key)
   return get, function(v) set(v); ns.RaidPreview.Refresh() end, initial
 end
 
 -- get/set for Stack big raids: the real frames and the preview follow at once.
 local function stackSetting()
-  local get, set, initial = setting("RaidFrames", "stackBig", true)
+  local get, set, initial = reloadSetting("RaidFrames", "stackBig")
   return get, function(v) set(v); ns.GetModule("RaidFrames").Fit(); ns.RaidPreview.Refresh() end, initial
 end
 
@@ -119,10 +119,10 @@ end
 local function raidRows()
   return {
     { "header", "Raid frames" },
-    check("Use them for your party too", setting("RaidFrames", "showInParty", true)), check("Include yourself", setting("RaidFrames", "showPlayer", true)),
+    check("Use them for your party too", reloadSetting("RaidFrames", "showInParty")), check("Include yourself", reloadSetting("RaidFrames", "showPlayer")),
     check("Sort by role (tanks, healers, damage)", previewedSetting("sortByRole")),
     { "cycle", "Groups as (reload)", { { "columns", "Columns" }, { "rows", "Rows (wide, for big raids)" } }, previewedSetting("layout") },
-    check("Stack big raids at the left (more than 10 players)", stackSetting()), check("Hide the default raid frames", setting("RaidFrames", "hideBlizzard", true)),
+    check("Stack big raids at the left (more than 10 players)", stackSetting()), check("Hide the default raid frames", reloadSetting("RaidFrames", "hideBlizzard")),
     { "cycle", "Style", { { "soft", "Class colors, softened" }, { "dark", "Dark, class-colored names" }, { "class", "Class colors, bright" } }, raidSetting("look") },
     { "cycle", "Width", ns.Widgets.Keep({ { 72, "72" }, { 90, "90" }, { 100, "100" }, { 120, "120" } }), previewedSetting("width") },
     { "cycle", "Height", { { 36, "36" }, { 40, "40" }, { 48, "48" }, { 56, "56" } }, previewedSetting("height") },
@@ -142,13 +142,13 @@ end
 -- The raid frames' auras: debuffs, the dispel highlight and your HoTs (after a reload).
 local function raidAuraRows()
   return {
-    check("Highlight debuffs you can dispel (reload)", setting("RaidAuras", "dispel", true)),
-    { "cycle", "Debuff icons (reload)", { { 0, "none" }, { 2, "2" }, { 3, "3" } }, setting("RaidAuras", "debuffs", true) },
-    check("Show your HoTs (reload)", setting("RaidAuras", "hots", true)),
+    check("Highlight debuffs you can dispel (reload)", reloadSetting("RaidAuras", "dispel")),
+    { "cycle", "Debuff icons (reload)", { { 0, "none" }, { 2, "2" }, { 3, "3" } }, reloadSetting("RaidAuras", "debuffs") },
+    check("Show your HoTs (reload)", reloadSetting("RaidAuras", "hots")),
     { "text", "Small icons down the right edge of each tile, under the missing-buff mark; on short tiles they continue in a column to the left.", "note" },
-    { "cycle", "Right edge, top (reload)", ns.GetModule("RaidAuras").SOURCE_CHOICES, setting("RaidAuras", "indicator1", true) },
-    { "cycle", "Right edge, second (reload)", ns.GetModule("RaidAuras").SOURCE_CHOICES, setting("RaidAuras", "indicator2", true) },
-    { "cycle", "Right edge, third (reload)", ns.GetModule("RaidAuras").SOURCE_CHOICES, setting("RaidAuras", "indicator3", true) },
+    { "cycle", "Right edge, top (reload)", ns.GetModule("RaidAuras").SOURCE_CHOICES, reloadSetting("RaidAuras", "indicator1") },
+    { "cycle", "Right edge, second (reload)", ns.GetModule("RaidAuras").SOURCE_CHOICES, reloadSetting("RaidAuras", "indicator2") },
+    { "cycle", "Right edge, third (reload)", ns.GetModule("RaidAuras").SOURCE_CHOICES, reloadSetting("RaidAuras", "indicator3") },
   }
 end
 

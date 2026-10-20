@@ -5,7 +5,7 @@
 local ADDON, ns = ...
 
 local O = ns.Options
-local moduleSettings, setting, liveSetting, check, append = O.ModuleSettings, O.Setting, O.LiveSetting, O.Check, O.Append
+local moduleSettings, setting, reloadSetting, liveSetting, check, append = O.ModuleSettings, O.Setting, O.ReloadSetting, O.LiveSetting, O.Check, O.Append
 
 -- get/set for whether action bar n is shown (applies on reload).
 local function barSetting(n)
@@ -58,10 +58,10 @@ local function actionBarRows()
     { "header", "Action bars" },
     check("Lock buttons (Shift-drag to move actions)", setting("ActionBars", "lockButtons")), check("Red when out of range", liveSetting("ActionBars", "rangeTint", function() ns.GetModule("ActionBars").RepaintIcons() end)),
     { "cycle", "Bar backing", { { "auto", "Follow the theme" }, { "on", "Always" }, { "off", "Never" } }, backingSetting() },
-    check("Hide the default bars", setting("ActionBars", "hideBlizzard", true)),
+    check("Hide the default bars", reloadSetting("ActionBars", "hideBlizzard")),
     check("Restyle the pet, stance, possess and extra action buttons (reload)", skinSpecial()),
-    check("Pet and stance bars in their own movable spots (reload)", setting("SpecialBars", "place", true)),
-    check("Vehicle exit button (reload)", setting("SpecialBars", "vehicleExit", true)),
+    check("Pet and stance bars in their own movable spots (reload)", reloadSetting("SpecialBars", "place")),
+    check("Vehicle exit button (reload)", reloadSetting("SpecialBars", "vehicleExit")),
     { "text", "Empty slots stay hidden until you drag a spell or item onto the bars." }, { "button", "Keybind mode", keybindMode },
   }
 end

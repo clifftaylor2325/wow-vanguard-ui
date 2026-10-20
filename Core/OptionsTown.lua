@@ -5,7 +5,7 @@
 local ADDON, ns = ...
 
 local O = ns.Options
-local setting, liveSetting, check, append = O.Setting, O.LiveSetting, O.Check, O.Append
+local setting, reloadSetting, liveSetting, check, append = O.Setting, O.ReloadSetting, O.LiveSetting, O.Check, O.Append
 
 -- The auction helper's scan, auction check, disenchant, crafting, deals and upgrades rows.
 local function auctionScanRows()
@@ -49,8 +49,8 @@ local function errandRows()
     check("Train all button at trainers", setting("Errands", "trainAll")),
     check("Keep items stocked from merchants (/vg stock)", setting("Errands", "stock")),
     { "button", "Edit list...", function() ns.GetModule("Errands").StockWindow.Open() end, function() return ns.GetModule("Errands").settings ~= nil end },
-    check("Flight timer (reload)", setting("Errands", "flightTimer", true)),
-    check("Boat and zeppelin timer (reload)", setting("Errands", "boatTimer", true)),
+    check("Flight timer (reload)", reloadSetting("Errands", "flightTimer")),
+    check("Boat and zeppelin timer (reload)", reloadSetting("Errands", "boatTimer")),
   }
 end
 
