@@ -87,7 +87,7 @@ function NP.Color(unit)
   if NP.settings.tagMarks == true and ns.GetModule("UnitFrames").TagState(unit) == "theirs" then return T.RGB("tapped") end
   local threat = NP.settings.threat and NP.ThreatColor(unit)
   if threat then return threat[1], threat[2], threat[3] end
-  return ns.GetModule("UnitFrames").HealthColor(unit)
+  return ns.GetModule("UnitFrames").UnitColor(unit)
 end
 
 -- True when the line is a quest title or a quest objective of the unit's tooltip (a hidden line or type counts as no).
