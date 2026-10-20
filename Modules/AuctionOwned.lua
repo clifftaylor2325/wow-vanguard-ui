@@ -317,12 +317,20 @@ local function paintLater()
   C_Timer.After(AH.SEND_GAP, ns.Guard("timer repaint owned", function() AH.paintWait = false AH.PaintOwned() end))
 end
 
--- The toolbar's line once you've checked ("checking...", "3 undercut", "none undercut"), and
+-- The toolbar's line: nothing before a check, "checking..." while one runs, then how many are undercut.
+local function summaryText(checked, busy, undercutCount)
+  if not checked then return "" end
+  if busy then return "checking..." end
+  if undercutCount > 0 then return undercutCount .. " undercut" end
+  return "none undercut"
+end
+
+-- The toolbar's line once you've checked (see summaryText), and
 -- Cancel next undercut, which works while an undercut auction is left to cancel.
 local function paintNext(c)
   local busy, n, nextOne = checking(), #undercuts(), AH.NextUndercut()
   if busy then paintLater() end
-  c.summary:SetText(not AH.checked and "" or busy and "checking..." or n > 0 and (n .. " undercut") or "none undercut")
+  c.summary:SetText(summaryText(AH.checked, busy, n))
   if nextOne then c.cancelNext:Enable() else c.cancelNext:Disable() end
   T.Color(c.cancelNext.text, nextOne and "text" or "disabled")
 end
