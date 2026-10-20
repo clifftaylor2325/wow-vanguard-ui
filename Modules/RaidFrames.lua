@@ -94,18 +94,31 @@ function RF.RoleMark(unit)
   return RF.ROLE_MARKS[role], RF.ROLE_MARKS[role] and "text2"
 end
 
--- Missing health as short text ("-16K") from plain numbers; "" at full health.
+-- Missing health as text ("-1234") from plain numbers; "" at full health. The same look as RF.SecretDeficit's.
 function RF.DeficitText(health, max)
   if health >= max then return "" end
-  local missing = max - health
-  return "-" .. (type(AbbreviateNumbers) == "function" and AbbreviateNumbers(missing) or tostring(missing))
+  return "-" .. math.floor(max - health)
 end
 
--- A unit's missing health as short text; "" at full health, or when the client
--- keeps the values secret (in instanced combat), since they can't be subtracted.
+-- The client's own missing health made into "-1234" ("" at full health) by its string calls, which take a
+-- secret and give one back. Nothing here compares, joins or truth-tests the value.
+local function clientDeficit(unit)
+  local strings = C_StringUtil
+  return strings.WrapString(strings.TruncateWhenZero(UnitHealthMissing(unit)), "-")
+end
+
+-- A unit's missing health while the client keeps its health secret (instanced combat): the text is
+-- secret too and only goes to SetText. "" on a client without these calls.
+function RF.SecretDeficit(unit)
+  local ok, text = pcall(clientDeficit, unit)
+  if not ok then return "" end
+  return text
+end
+
+-- A unit's missing health as text; "" at full health.
 function RF.Deficit(unit)
   local health, max = ns.PlainNumber(UnitHealth(unit)), ns.PlainNumber(UnitHealthMax(unit))
-  if not health or not max then return "" end
+  if not health or not max then return RF.SecretDeficit(unit) end
   return RF.DeficitText(health, max)
 end
 

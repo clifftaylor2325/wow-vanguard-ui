@@ -48,7 +48,7 @@ it("raid frames", () => {
   expect(raidButton(addon, 1).status === "", "no text at full health").toBeTruthy();
   addon.eval("__units.raid1.hp = { __secret = true }");
   addon.fire("UNIT_HEALTH", "raid1");
-  expect(raidButton(addon, 1).status === "", "no missing-health text when the client keeps health secret").toBeTruthy();
+  expect(addon.eval("return issecretvalue(Vanguard_RaidUnitButton1.status:GetText())"), "with secret health the client's own missing-health text goes on the tile, secret").toBe(true);
   // In combat the client's shortened health text is a secret string, and comparing
   // it errors. Raid frames must decide Dead/Offline without reading that text.
   addon.eval(`__healthTextCalls = 0
@@ -146,7 +146,7 @@ it("raid tiles: a class-colored top line in the softened look, and missing healt
   addon.eval("ns.Theme.Settings().textScale = 1.2 ns.Theme.Refresh() __units.raid1.hp = { __secret = true }");
   addon.fire("UNIT_HEALTH", "raid1");
   t = tile();
-  expect([r3(t.size), t.text], "a text size change in a fight keeps the size until the fight ends; hidden health shows no number").toEqual([13.889, ""]);
+  expect([r3(t.size), t.text], "a text size change in a fight keeps the size until the fight ends; hidden health goes on as the client's secret text").toEqual([13.889, { __secret: true }]);
   setCombat(addon, false);
   expect(r3(tile().onScreen), "then the text size applies (the smallest text is 12 at 120%)").toBe(12);
   addon.eval("ns.Theme.Settings().textScale = 1 ns.Theme.Refresh()");
@@ -432,6 +432,28 @@ it("a softened bar is never brighter than the light name on it can be read again
   expect(priest[0] > 0.5 && Math.abs(priest[0] - priest[2]) < 0.02, "gray, not dark").toBe(true);
   const warrior = soft([0.78, 0.61, 0.43]);
   expect(luma(warrior) < 0.3, "a darker class is left as the plain mix").toBe(true);
+});
+
+// Tile 1's status text: the plain text, or the text inside a secret (the harness looks; the addon never does).
+const statusOf = (addon) => addon.eval(`local t = Vanguard_RaidUnitButton1.status:GetText()
+  if issecretvalue(t) then return { secret = true, text = rawget(t, "n") } end
+  return { secret = false, text = t }`);
+
+it("raid frames: missing health stays in a fight, from the client's own secret number, and reads like the plain one", () => {
+  const addon = loggedIn(UNITS_ENV + RAID_ENV);
+  addon.eval('__spawn(1, "raid1")');
+  expect(statusOf(addon), "out of combat: plain").toEqual({ secret: false, text: "-700" });
+  addon.eval("__units.raid1.hp = __wfgWorld.secret(300)");
+  addon.fire("UNIT_HEALTH", "raid1");
+  expect(statusOf(addon), "hidden health: the client's missing health, made text by its own calls").toEqual({ secret: true, text: "-700" });
+  addon.eval("__units.raid1.hp = __wfgWorld.secret(1000)");
+  addon.fire("UNIT_HEALTH", "raid1");
+  expect(statusOf(addon), "hidden and at full health: blank").toEqual({ secret: true, text: "" });
+  addon.eval("C_StringUtil.WrapString = nil");
+  addon.fire("UNIT_HEALTH", "raid1");
+  expect(statusOf(addon), "a client without the string calls: no text, no error").toEqual({ secret: false, text: "" });
+  addon.eval("UnitHealthMissing = nil");
+  expect(addon.eval('return ns.GetModule("RaidFrames").SecretDeficit("raid1")'), "nor without UnitHealthMissing").toBe("");
 });
 
 // The tooltip's owner, unit and shown state after a tile's script runs.
