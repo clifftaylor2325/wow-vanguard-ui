@@ -876,6 +876,18 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Expect: both strips stay where you put them.
 - If it fails, paste: a screenshot after the reload.
 
+### 13.4 Minimap drawer and zone hints
+
+- Do: hover the minimap's zone name. Then, with an addon that has a minimap button (LibDBIcon kind), log in; then turn on another addon's minimap button from its own settings (or load one on demand) without reloading, once out of a fight and once in one.
+- Expect: the zone tooltip ends with "Click: world map" and "Wheel: zoom" in the muted colour. The new button goes into the drawer at once (in a fight, as soon as it ends), not onto the map.
+- If it fails, paste: the addon's name, a screenshot of the minimap, and `/vg errors`.
+
+### 13.5 Minimap drawer: order, count, Escape and side
+
+- Do: with three or more addon buttons, hover the "..." toggle, open the drawer, press Escape; drag the minimap (`/vg unlock`) to the screen's left edge and to the bottom, and open the drawer at each; right-click a drawer button that has a menu.
+- Expect: the toggle's tooltip reads "Addon buttons (N)"; the buttons sit in name order; Escape closes the drawer; at the left edge it opens right of the map, near the bottom it stays on screen; a button's right-click menu stays open.
+- If it fails, paste: the addon's name, a screenshot of the minimap, and `/vg errors`.
+
 ## 14. Game windows, by area
 
 Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsections with fixed numbers, so parallel streams never collide: 14.2 mail, guild, channels, friends (S1); 14.3 stable, trainer, bags, loot and item dialogs (S2); 14.4 game options, Edit Mode, keybinding and help (S3); 14.5 world map, group finder, calendar and Legacy (S4); 14.6 menus and tooltips (S5); 14.7 the game's swing timer, aura frames, crafting cast bar, possess bar and zone text (S6); 14.8 tabs and the inside of the character pane (S7); 14.9 battleground windows (S8). For every window: it has the flat panel with the theme's close button and title, its buttons and tabs still work, and `/vg errors` stays empty.
