@@ -86,7 +86,7 @@ end
 -- Shift-click whose quest has left the log is let go here, so it can't hold a quest the game tracks later.
 local function follow(old)
   local guide = ns.QuestGuide
-  if guide.pointed and not ns.GetModule("QuestTracker").Quest(guide.pointed) then guide.pointed = nil end
+  if guide.pointed and not ns.GetModule("QuestTracker").Quest(guide.pointed) then guide.DropPin() end
   local pin = pinned()
   if pin and (ns.QuestGuide.pointed or not QA.settings.auto) then return pin, true end
   return QA.settings.auto and QA.Choose(old) or pin, false
@@ -112,6 +112,19 @@ function QA.Pick()
   paintPick(QA.frame)
   QA.Draw()
   if old ~= QA.current then ns.GetModule("QuestTracker").Redraw() end
+end
+
+-- The quest the arrow holds (its pick), shown or not: the minimap marks it larger.
+---@return number|nil
+function QA.Current()
+  return QA.current
+end
+
+-- The quest the arrow shows, for the tracker's accent line: its pick while the arrow is on, else nil.
+---@return number|nil
+function QA.Followed()
+  if not (QA.settings and QA.settings.show) then return nil end
+  return QA.current
 end
 
 -- Turning and distance -----------------------------------------------------------------------------

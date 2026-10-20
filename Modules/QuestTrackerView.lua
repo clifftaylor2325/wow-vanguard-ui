@@ -255,8 +255,7 @@ end
 -- with the step line), else the shown arrow's own pick; a quest, not a heading, a challenge or a recipe.
 function QT.IsFollowed(q)
   if q.section or q.achievement or q.recipe or not q.id then return false end
-  local QA = ns.QuestArrow
-  return q.id == (ns.QuestGuide.Followed() or (QA.settings and QA.settings.show and QA.current))
+  return q.id == (ns.QuestGuide.Followed() or ns.QuestArrow.Followed())
 end
 
 -- A section heading takes no mouse (no clicks, no tooltip, no hover). A block repainted under the mouse keeps

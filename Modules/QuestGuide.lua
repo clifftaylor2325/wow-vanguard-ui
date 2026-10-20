@@ -120,6 +120,11 @@ function QG.Unpin()
   QG.StepsChanged()
 end
 
+-- Drops the Shift-click pin without redrawing the tracker (the arrow's own pick redraws it).
+function QG.DropPin()
+  QG.pointed = nil
+end
+
 -- The quest the arrow follows: the game's super-tracked quest, else the one last pointed at.
 function QG.Followed()
   local id = ns.PlainNumber(ns.CallIf(C_SuperTrack, "GetSuperTrackedQuestID"))

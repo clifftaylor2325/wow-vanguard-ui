@@ -110,7 +110,7 @@ end
 -- Dresses a mark for its spot: the dot or the ?, a size larger for the quest the arrow follows, faint on the edge.
 local function dress(m, sp, edge)
   local look = sp.ready and QM.TURN_IN or QM.OBJECTIVE
-  local size = look.size + (sp.id == ns.QuestArrow.current and QM.FOLLOWED or 0)
+  local size = look.size + (sp.id == ns.QuestArrow.Current() and QM.FOLLOWED or 0)
   m:SetTexture(look.texture)
   m:SetDrawLayer("OVERLAY", look.sublevel)
   m:SetSize(size, size)
