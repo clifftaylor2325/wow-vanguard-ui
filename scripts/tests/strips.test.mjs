@@ -125,6 +125,19 @@ it("the info strip's free slots leave out a soul bag's, as the menu bar's backpa
   const bags = block(addon, "bags");
   expect([bags.text, isTok(addon, bags.color, "bad")], "the soul bag's 18 free slots don't count").toEqual(["0 free", true]);
 });
+// TEST-ONLY: the game's reminder line and the system chat colour.
+const ALARM_ENV = `CALENDAR_EVENT_ALARM_MESSAGE = "%s is about to begin." ChatTypeInfo = { SYSTEM = { r = 1, g = 1, b = 0 } }`;
+it("with the strip's clock putting the calendar button away, a calendar event's reminder still comes up in chat", () => {
+  const addon = loggedIn(STRIP_ENV + ALARM_ENV);
+  addon.fire("CALENDAR_EVENT_ALARM", "TEST-ONLY Molten Core", 20, 0);
+  addon.fire("CALENDAR_EVENT_ALARM", { __secret: true }, 20, 0);
+  expect(addon.chat().filter((l) => /is about to begin/.test(l)), "the game's line, once (a hidden title is left out)").toEqual(["TEST-ONLY Molten Core is about to begin."]);
+  const ruled = loggedIn(STRIP_ENV + ALARM_ENV + "Enum.GameRule = { IngameCalendarDisabled = 7 } C_GameRules = { IsGameRuleActive = function(rule) return rule == 7 end }");
+  ruled.fire("CALENDAR_EVENT_ALARM", "TEST-ONLY Molten Core", 20, 0);
+  const off = loggedIn(STRIP_ENV + ALARM_ENV, { savedVariables: "VanguardDB.profiles = { Default = { InfoStrip = { clock = false } } }" });
+  off.fire("CALENDAR_EVENT_ALARM", "TEST-ONLY Molten Core", 20, 0);
+  expect([ruled, off].map((a) => a.chat().filter((l) => /is about to begin/.test(l)).length), "none where the realm has no calendar, or with the clock block off (the game's button prints it)").toEqual([0, 0]);
+});
 it("the Bars and bags page's two tracker switches name the game's tracker, the one they change", () => {
   const addon = loggedIn(UI_ENV);
   const labels = addon.eval(`local out = {}

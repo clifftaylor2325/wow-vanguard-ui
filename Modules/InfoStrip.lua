@@ -492,7 +492,7 @@ IS.EVENTS = {
 -- carry the warning; a player who wants the game's own figure turns the module off).
 IS.HIDES = { "DurabilityFrame" }
 -- The game's frames a block replaces, hidden while that block is on: the minimap clock and calendar
--- button (/calendar still opens it).
+-- button (/calendar still opens it, and the strip prints the calendar's event reminders the button did).
 IS.REPLACES = { clock = { "TimeManagerClockButton", "GameTimeFrame" } }
 
 -- Hides the game's frames the strip stands in for, and those that switched-on blocks replace.
@@ -503,6 +503,27 @@ local function hideReplaced(settings)
       for _, name in ipairs(names) do ns.GetModule("UnitFrames").HideBlizzard(name) end
     end
   end
+end
+
+-- Whether the realm's rules switch the in-game calendar off (C_GameRules); no when the client can't say.
+function IS.CalendarOff()
+  local rule = Enum and Enum.GameRule and Enum.GameRule.IngameCalendarDisabled
+  if rule == nil or type(C_GameRules) ~= "table" or type(C_GameRules.IsGameRuleActive) ~= "function" then return false end
+  local on = C_GameRules.IsGameRuleActive(rule)
+  return not ns.IsSecret(on) and on == true
+end
+
+-- A calendar event's reminder, as the game's calendar button prints it (GameTime.lua): with that button put
+-- away nothing else would, so the strip prints the game's line in the system chat colour.
+function IS.CalendarAlarm(_, title)
+  if ns.IsSecret(title) or type(title) ~= "string" or type(CALENDAR_EVENT_ALARM_MESSAGE) ~= "string" then return end
+  local info = type(ChatTypeInfo) == "table" and ChatTypeInfo.SYSTEM or {}
+  DEFAULT_CHAT_FRAME:AddMessage(string.format(CALENDAR_EVENT_ALARM_MESSAGE, title), info.r, info.g, info.b)
+end
+
+-- While the clock block puts the game's calendar button away, its event reminders still reach chat.
+local function keepReminders(settings)
+  if settings.clock and not IS.CalendarOff() then ns.On("CALENDAR_EVENT_ALARM", IS.CalendarAlarm) end
 end
 
 -- XP came in: count it and repaint the leveling blocks.
@@ -527,6 +548,7 @@ end
 function IS.Enable(settings)
   IS.settings = settings
   hideReplaced(settings)
+  keepReminders(settings)
   IS.StartSession()
   build()
   watch()
