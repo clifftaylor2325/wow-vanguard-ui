@@ -431,10 +431,6 @@ end
 -- only a repaint.
 local vgChatTab = ns.FrameState("vgChatTab")
 
--- Whether each chat tab is the selected one (tab -> boolean), which the theme's tab reads: the game
--- never disables a chat tab, it only tells FCFTab_UpdateColors whether the tab is selected.
-local vgChecked = ns.FrameState("vgChecked")
-
 -- A tab as the theme's flat tab (raised with a lit top edge when selected, just its label on the bar
 -- otherwise, a faint hover, rounded) with its own art gone and its alert glow in the accent colour;
 -- the game's flash animation still drives the glow's alpha.
@@ -454,7 +450,7 @@ end
 -- yet gets the skin.
 local function restyleTab(tab, selected)
   if type(tab) ~= "table" then return end
-  vgChecked[tab] = selected == true
+  T.SetChecked(tab, selected)
   if vgChatTab[tab] then T.Tab(tab) else skinTab(tab) end
 end
 
@@ -464,7 +460,7 @@ end
 local function seedSelected(tab, frame)
   local dock = _G.GENERAL_CHAT_DOCK
   if type(FCFDock_GetSelectedWindow) ~= "function" or type(dock) ~= "table" then return end
-  vgChecked[tab] = not frame.isDocked or FCFDock_GetSelectedWindow(dock) == frame
+  T.SetChecked(tab, not frame.isDocked or FCFDock_GetSelectedWindow(dock) == frame)
 end
 
 -- Each edit box's rail (box -> texture) and its focus fade (box -> { from, to, start, seconds }),

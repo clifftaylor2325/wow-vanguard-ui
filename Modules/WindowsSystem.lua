@@ -8,7 +8,6 @@ local ADDON, ns = ...
 
 -- Per-frame state kept off the game's frames (Core/Events.lua, ns.FrameState).
 local vgBack = ns.FrameState("vgBack")
-local vgChecked = ns.FrameState("vgChecked")
 local vgQuickButtons = ns.FrameState("vgQuickButtons")
 local vgTabWatched = ns.FrameState("vgTabWatched")
 
@@ -53,12 +52,12 @@ end
 local function tabLabel(tab)
   if type(tab.OnSelected) ~= "function" or type(tab.Text) ~= "table" or not tab.Text.SetTextColor then return end
   GW.CenterLabel(tab)
-  T.Color(tab.Text, vgChecked[tab] and "text" or "text2")
+  T.Color(tab.Text, T.IsChecked(tab) and "text" or "text2")
 end
 
 -- A game tab's selected state: the tab's raised look follows the game's SelectableButton calls.
 local function tabSelected(tab, selected)
-  vgChecked[tab] = selected == true
+  T.SetChecked(tab, selected)
   T.Tab(tab)
   tabLabel(tab)
 end
@@ -67,7 +66,7 @@ end
 -- game (which may have picked it before the skin ran), later selections come through OnSelected, and the label is set
 -- again after the game restyles it for the mouse.
 local function skinTab(tab)
-  if vgChecked[tab] == nil and type(tab.IsSelected) == "function" then vgChecked[tab] = tab:IsSelected() == true end
+  if T.IsChecked(tab) == nil and type(tab.IsSelected) == "function" then T.SetChecked(tab, tab:IsSelected()) end
   T.Tab(tab)
   tabLabel(tab)
   if vgTabWatched[tab] or type(tab.OnSelected) ~= "function" then return end

@@ -2258,13 +2258,24 @@ T.TAB_ART = {
   "SquareBackground", "SquareBackgroundActive", "SquareBackgroundActiveGlow",
 }
 
+-- Remembers a tab's checked (selected) state, for the tab look. Chat and the window tabs set it through here.
+function T.SetChecked(frame, on)
+  vgChecked[frame] = on == true
+end
+
+-- A tab's checked state as last set: true or false, or nil when it was never set.
+function T.IsChecked(frame)
+  return vgChecked[frame]
+end
+
 -- Tab, row and scroll bar painting: nothing in this block is used outside it (Lua allows 200 top-level locals).
 do
 -- Whether a game tab is the selected one: a tab system's flag, the checked state a
 -- side tab was last given, else disabled (the game selects a panel tab by disabling it).
 local function tabSelected(button)
   if type(button.SetTabSelected) == "function" then return button.isSelected == true end
-  if vgChecked[button] ~= nil then return vgChecked[button] end
+  local checked = T.IsChecked(button)
+  if checked ~= nil then return checked end
   return not isEnabled(button)
 end
 
@@ -2321,7 +2332,7 @@ end
 
 -- Remembers a side tab's checked state, then repaints it.
 local function onTabChecked(button, checked)
-  vgChecked[button] = checked == true
+  T.SetChecked(button, checked)
   repaintTab(button)
 end
 
