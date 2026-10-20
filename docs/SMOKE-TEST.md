@@ -1656,6 +1656,12 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 - Expect: officer lines and emotes show on that tab; untick them and they stop. No Lua error from the game's chat code in the dungeon, and `/vg errors` is empty. [Needs in game: that adding the OFFICER and EMOTE message groups from Vanguard's rows taints nothing the game reads in an instance, as the eight existing rows don't.]
 - If it fails, paste: `/vg errors` and any Lua error text.
 
+### 15.6l Chat watch: all the words, marked, and held in a fight
+
+- Do: under Chat → Chat watch, add the phrase "lfm brd". Wait for (or have a friend say in a watched channel) "LFM tank for BRD", then a long line that ends with BRD and LFM. Then start a fight with a mob and, during it, have the line said again; finish the fight.
+- Expect: both lines ring and toast (the words in any order). On the toast the line is plain text with LFM and BRD in the accent colour; the long one starts at "…" a few words before the first of them. During the fight no sound and no toast (the chat line still shows); when it ends, one sound and one toast for the newest line. Adding a phrase with a | in it says it can't. [Needs in game: that the word-start match (Lua's %f frontier) behaves the same in the client.]
+- If it fails, paste: a screenshot of the toast and `/vg errors`.
+
 ## 16. Realm and ruleset
 
 ### 16.0 Data from the beta

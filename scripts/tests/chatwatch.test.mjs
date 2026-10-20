@@ -3,7 +3,7 @@
 // show a toast you click to whisper the sender.
 
 import { expect, it } from "vitest";
-import { CLICK_LUA, isTok, loggedIn } from "./helpers.mjs";
+import { CLICK_LUA, isTok, loggedIn, setCombat } from "./helpers.mjs";
 
 // TEST-ONLY sound kit and the game's whisper call, recorded.
 const WATCH_ENV = `
@@ -30,6 +30,9 @@ const sayLua = (addon, text, sender) => addon.eval(`__wfgStub.fire("CHAT_MSG_CHA
 // How many alert sounds have played.
 const rings = (addon) => addon.eval("local n = 0 for _, s in ipairs(__wfgWorld.sounds) do if s == 3081 then n = n + 1 end end return n");
 
+// Text in the accent's text colour, as the toast marks a watched word.
+const accent = (addon, text) => addon.eval(`return ns.Theme.Paint(${JSON.stringify(text)}, "accentText")`);
+
 // The toast: shown, sender, line.
 const toast = (addon) => addon.eval("local f = Vanguard_ChatWatchToast return { f:IsShown(), f.sender:GetText(), f.line:GetText() }");
 
@@ -38,7 +41,7 @@ it("chat watch: a watched phrase in Trade rings the whisper sound and shows a to
   expect(addon.eval("return ns.Settings('ChatWatch').phrases"), "stored lower-case").toEqual(["lfm"]);
   say(addon, "CHANNEL", "LFM Deadmines need a healer", "Lightmend");
   expect(rings(addon), "the whisper sound (3081)").toBe(1);
-  expect(toast(addon), "the toast, with the sender and the line").toEqual([true, "Lightmend", "LFM Deadmines need a healer"]);
+  expect(toast(addon), "the toast, with the sender and the line, the watched word marked").toEqual([true, "Lightmend", accent(addon, "LFM") + " Deadmines need a healer"]);
   expect(isTok(addon, addon.eval("return Vanguard_ChatWatchToast.sender.__textColor"), "accentText"), "the sender in the accent's text colour").toBe(true);
   addon.advance(8.5);
   expect(toast(addon)[0], "gone after 8 s").toBe(false);
@@ -71,8 +74,9 @@ it("chat watch: with no phrase watched a line is not read, and a line without li
   const match = (text) => addon.eval(`return ns.GetModule("ChatWatch").Match(${JSON.stringify(text)})`);
   expect([match("WTS |cff0070dd|Hitem:2589::::::::|h[Linen Cloth]|h|r"), addon.eval("return __made")], "no phrases: nothing found, no string made").toEqual([null, 0]);
   addon.slash("watch add lfm");
+  match("lfm");
   addon.eval("__made = 0");
-  expect([match("[LFM] tank please"), addon.eval("return __made")], "plain text: the brackets and the case only").toEqual(["lfm", 2]);
+  expect([match("[LFM] tank please"), addon.eval("return __made")], "plain text: the brackets and the case only (the phrase's pattern was made on its first line, and kept)").toEqual(["lfm", 2]);
   addon.eval("__made = 0");
   expect([match("|cff0070dd|Hitem:1::::::::|h[LFM]|h|r"), addon.eval("return __made") > 2], "a line with codes strips them first").toEqual(["lfm", true]);
 });
@@ -219,12 +223,12 @@ const priceLook = (addon) => {
   return { text: price.text, color: price.textColor, lineRight: line.rect.right, priceLeft: price.rect?.left, priceRight: price.rect?.right, toastRight: toastRect.rect.right };
 };
 
-it("chat watch: a line linking an item with an auction price shows it beside the line, the line untouched", () => {
+it("chat watch: a line linking an item with an auction price shows it beside the line, the line as plain text", () => {
   const addon = watching("wts");
   addon.eval("ns.AuctionPrices.Record(2589, 1250, 1790000000)");
   say(addon, "CHANNEL", WTS_LINE, "Seller");
   const look = priceLook(addon);
-  expect([look.text, isTok(addon, look.color, "gold"), toast(addon)[2]], "the first linked item with a price; the line as it was sent").toEqual(["AH 12s 50c", true, WTS_LINE]);
+  expect([look.text, isTok(addon, look.color, "gold"), toast(addon)[2]], "the first linked item with a price; the line as plain text, the watched word marked").toEqual(["AH 12s 50c", true, accent(addon, "WTS") + " [Strange Dust] and [Linen Cloth]"]);
   expect([look.priceRight, look.lineRight], "the price at the toast's edge, the line ending 6 px before it").toEqual([look.toastRight - 8, look.priceLeft - 6]);
   say(addon, "CHANNEL", "WTS |cffffffff|Hitem:10940::::|h[Strange Dust]|h|r cheap", "Other");
   const plain = priceLook(addon);
@@ -285,4 +289,64 @@ it("chat watch: alerts older than the repeat window are forgotten once 100 are h
   expect(held(), "a sender still inside the window rings once and is not counted twice").toEqual([2, 2]);
   for (let i = 1; i <= 120; i++) say(addon, "CHANNEL", "LFM run", `Other${i}`);
   expect(held()[0], "120 fresh senders inside one window: all held (nothing to sweep), not lost").toBe(122);
+});
+
+it("chat watch: a phrase matches when the line holds all its words, in any order", () => {
+  const addon = watching("lfm brd");
+  // What ChatWatch.Match makes of a line.
+  const match = (text) => addon.eval(`return ns.GetModule("ChatWatch").Match(${JSON.stringify(text)})`);
+  expect(match("LFM tank for BRD"), "both words, apart").toBe("lfm");
+  addon.slash("watch remove lfm");
+  expect([match("BRD run, LFM"), match("LFM tank for UBRS"), match("lfm brdx")], "any order; every word; held to a word's start only").toEqual(["lfm brd", null, "lfm brd"]);
+  expect(match("alfm brd"), "a word inside another word does not count").toBe(null);
+});
+
+it("chat watch: a phrase's magic characters are plain text, and | is refused", () => {
+  const addon = watching("+1 heal", "50%");
+  // What ChatWatch.Match makes of a line.
+  const match = (text) => addon.eval(`return ns.GetModule("ChatWatch").Match(${JSON.stringify(text)})`);
+  expect([match("need heal +1"), match("price 50% off"), match("price 500 off")], "+ and % match themselves").toEqual(["+1 heal", "50%", null]);
+  addon.slash("watch add a|cff");
+  expect(addon.eval("return #ns.Settings('ChatWatch').phrases"), "a phrase with | is not added").toBe(3);
+});
+
+it("chat watch: a long line on the toast starts a few words before the first watched word", () => {
+  const addon = watching("deadmines");
+  const line = "Hello all, looking for a few nice people to come along to the Deadmines tonight";
+  say(addon, "CHANNEL", line, "Lightmend");
+  const shown = toast(addon)[2];
+  expect(shown.startsWith("…"), "starts at …").toBe(true);
+  expect(shown.endsWith(`to the ${accent(addon, "Deadmines")} tonight`), "the word marked, a few words before it kept").toBe(true);
+  expect(shown.length < line.length, "the start cut").toBe(true);
+});
+
+it("chat watch: in a fight the sound and toast wait until it ends, and only the newest shows", () => {
+  const addon = watching("ubrs");
+  setCombat(addon, true);
+  say(addon, "CHANNEL", "LFM Deadmines", "First");
+  say(addon, "CHANNEL", "LFM UBRS", "Second");
+  expect([rings(addon), toast(addon)[0]], "in the fight: nothing yet").toEqual([0, false]);
+  setCombat(addon, false);
+  expect([rings(addon), toast(addon)[0], toast(addon)[1]], "the fight over: one sound, the newest toast").toEqual([1, true, "Second"]);
+  addon.advance(3);
+  say(addon, "CHANNEL", "LFM Deadmines", "First");
+  expect([rings(addon), toast(addon)[1]], "the sender whose alert was replaced is not muted").toEqual([2, "First"]);
+});
+
+it("chat watch: the toast marks only the words that matched, and a line with no space before the word starts at it", () => {
+  const addon = watching("dm");
+  // The toast line ChatWatch makes for a text, watching "dm".
+  const line = (text) => addon.eval(`return ns.GetModule("ChatWatch").ToastLine(${JSON.stringify(text)}, "dm")`);
+  expect(line("admin: DM run"), "the dm inside admin is left").toBe(`admin: ${accent(addon, "DM")} run`);
+  const long = line(`${"-".repeat(60)}DM`);
+  expect(long, "no space to cut at: the line starts at the word").toBe(`\u2026${accent(addon, "DM")}`);
+});
+
+it("chat watch: another module's alert waits out a fight too", () => {
+  const addon = watching();
+  setCombat(addon, true);
+  addon.eval('ns.GetModule("ChatWatch").Notify("TEST-ONLY price alert", "Linen Cloth", "AH 1s")');
+  expect([rings(addon), toast(addon)[0]], "in the fight: nothing yet").toEqual([0, false]);
+  setCombat(addon, false);
+  expect([rings(addon), toast(addon)[1]], "after it: rung and shown").toEqual([1, "TEST-ONLY price alert"]);
 });
