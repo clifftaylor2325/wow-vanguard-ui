@@ -234,8 +234,7 @@ function BS.Hook()
 end
 
 -- Module entry point (Core/Modules.lua): the strip on the top edge, its slots, and the feeds.
-function BS.Enable(settings)
-  BS.settings = settings
+function BS.Enable()
   BS.frame = T.HudPanel(CreateFrame("Frame", "Vanguard_BrokerStrip", UIParent))
   BS.frame:SetSize(BS.SLOT_W + 2 * BS.EDGE, BS.Height() + 2 * BS.PAD)
   ns.Mover(BS.frame, "brokerstrip", "Broker strip", { "TOP", "TOP", -200, 0 })
