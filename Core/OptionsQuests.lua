@@ -1,5 +1,6 @@
--- The Quests page (/vg): Vanguard's quest windows and tracker, and the
--- quest automation. Core/Options.lua has the helpers and the page list.
+-- The Quests page (/vg): its cards in the order a player meets them: the quest windows, the tracker, finding
+-- your way (the arrow, guidance and minimap spots, whose rows their modules give), quest history and the
+-- automation. Core/Options.lua has the helpers and the page list.
 
 local ADDON, ns = ...
 
@@ -29,6 +30,17 @@ local function trackerRows()
   }
 end
 
+-- Finding your way: the quest arrow, quest guidance and the minimap's quest spots. Their modules load after
+-- this file, so their rows are read here, when the page is built.
+local function wayRows()
+  local rows = {
+    { "header", "Finding your way" },
+    { "text", "The arrow on screen turns toward the nearest unfinished objective of the quests you watch; Shift-click a quest in the tracker to point it there instead. Move it with /vg unlock. /vg questdata shows what the client says about quests." },
+  }
+  rows = append(append(rows, ns.QuestArrow.Rows()), ns.QuestGuide.Rows())
+  return append(rows, ns.GetModule("QuestMinimap").Rows())
+end
+
 -- Quest history: which character finished each quest.
 local function questHistoryRows()
   return {
@@ -46,4 +58,4 @@ local function questAutoRows()
   }
 end
 
-O.AddPage({ key = "quests", title = "Quests", icon = "NavQuests", order = 70, rows = function() return append(append(append(questRows(), trackerRows()), questHistoryRows()), questAutoRows()) end })
+O.AddPage({ key = "quests", title = "Quests", icon = "NavQuests", order = 70, rows = function() return append(append(append(append(questRows(), trackerRows()), wayRows()), questHistoryRows()), questAutoRows()) end })
