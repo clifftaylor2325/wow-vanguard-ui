@@ -5,9 +5,11 @@
 -- to turn Vanguard's part off or keep both. Nothing changes without a click, and
 -- an answer is kept in the profile, so it isn't asked again; while that addon is
 -- still loaded the card keeps the answer, with a button to change it.
--- Folder names: the Forever add-ons (Platynator to BetterFriendlist) are from
--- each one's published package; the older rows are the names those addons use
--- on other clients. A wrong name only means no card. An addon names one target,
+-- Folder names: Glass, Aurora, BlizzMove and MoveAny are from each one's
+-- published .toc, MovableWindowsForever and ForevermoreClassicUI from their
+-- published zip names; Platynator, Chattynator, Sorted, BetterFriendlist and
+-- the older rows are unchecked on the Forever client. A wrong name only means
+-- no card (SMOKE-TEST 18.1 and 18.1a check them). An addon names one target,
 -- so the whole-UI addons ElvUI and Tukui ask about action bars only.
 
 local ADDON, ns = ...
@@ -40,7 +42,8 @@ CX.OVERLAPS = {
   BlizzMove = { "Windows", "window moving", keys = { "movable" }, reload = true },
   MoveAny = { "Windows", "window moving", keys = { "movable" }, reload = true },
   MovableWindowsForever = { "Windows", "window moving", keys = { "movable" }, reload = true },
-  BetterFriendlist = { "Windows", "friends list looks", keys = { "social" }, reload = true },
+  -- The social group: friends, guild, chat channels, the raid tab, letters and the social toasts.
+  BetterFriendlist = { "Windows", "social window looks", keys = { "social" }, reload = true },
 }
 
 ns.Options.MODULE_INFO.Coexist = { "Other addons", "At login, notices addons that do a job a Vanguard module also does, and offers to turn that part of Vanguard off." }
@@ -58,13 +61,21 @@ local function keysOf(o)
   return def and def[o.keys] or {}
 end
 
+-- The keys of `keys` that are on (`want` true) or off (false) in the row's module; none without keys,
+-- so a row naming a missing module reads no settings.
+local function keysAt(o, keys, want)
+  local found = {}
+  if #keys == 0 then return found end
+  local settings = ns.Settings(o.module)
+  for _, key in ipairs(keys) do
+    if (settings[key] ~= false) == want then found[#found + 1] = key end
+  end
+  return found
+end
+
 -- The keys of the row's list that are on in this profile.
 local function keysOn(o)
-  local on, settings = {}, ns.Settings(o.module)
-  for _, key in ipairs(keysOf(o)) do
-    if settings[key] ~= false then on[#on + 1] = key end
-  end
-  return on
+  return keysAt(o, keysOf(o), true)
 end
 
 -- Whether Vanguard still does what the row names: its module is on, and with keys, at least one of them.
@@ -78,10 +89,22 @@ local function overlap(addon, row, answered)
   return { addon = addon, module = row[1], what = row[2], keys = row.keys, reload = row.reload, also = row.also, answer = answered[addon] }
 end
 
--- Whether the card has something to offer: a question, Vanguard's part still on after "kept",
--- or after "off" a part that can come back (a keys row only while its module is on).
+-- The keys an "off" answer would turn back on: the ones the card turned off, or without that record the row's own.
+local function keysToRestore(o)
+  return ns.Settings("Coexist", CX.defaults).off[o.addon] or keysOf(o)
+end
+
+-- Whether an "off" answer has something to turn back on: its module, or (while the module is on) any of its keys
+-- still off, even if another row or the Game windows page turned some back on.
+local function restorable(o)
+  if not o.keys then return not ns.ModuleEnabled(o.module) end
+  return ns.ModuleEnabled(o.module) and #keysAt(o, keysToRestore(o), false) > 0
+end
+
+-- Whether the card has something to offer: a question or Vanguard's part still on after "kept", or after "off"
+-- a part that can come back.
 local function offered(o)
-  if o.answer == "off" then return not doing(o) and (o.keys == nil or ns.ModuleEnabled(o.module)) end
+  if o.answer == "off" then return restorable(o) end
   return doing(o)
 end
 
@@ -89,8 +112,8 @@ end
 local function collect()
   local out, answered = {}, ns.Settings("Coexist", CX.defaults).answered
   for addon, row in pairs(CX.OVERLAPS) do
-    local o = overlap(addon, row, answered)
-    if offered(o) and loaded(addon) then out[#out + 1] = o end
+    local o = loaded(addon) and overlap(addon, row, answered)
+    if o and offered(o) then out[#out + 1] = o end
   end
   table.sort(out, function(a, b) return a.addon < b.addon end)
   return out
@@ -151,9 +174,9 @@ end
 
 -- Turns back on the keys this card turned off (all the row's keys if it doesn't know which).
 local function turnKeysOn(o)
-  local store, settings = ns.Settings("Coexist", CX.defaults).off, ns.Settings(o.module)
-  for _, key in ipairs(store[o.addon] or keysOf(o)) do settings[key] = true end
-  store[o.addon] = nil
+  local settings = ns.Settings(o.module)
+  for _, key in ipairs(keysToRestore(o)) do settings[key] = true end
+  ns.Settings("Coexist", CX.defaults).off[o.addon] = nil
 end
 
 -- Turns Vanguard's part back on beside the other addon; the answer becomes "kept".

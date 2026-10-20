@@ -103,8 +103,8 @@ it("coexist: the Forever add-ons people pair are noticed, each naming what it tu
   const addon = loggedIn(CLICK_LUA + loadedEnv("Platynator", "Chattynator", "Glass", "Sorted", "BetterFriendlist"));
   const texts = cardTexts(addon);
   expect(texts.filter((t) => t.startsWith("Turn off")), "a module, or Vanguard's part, by name").toEqual([
-    "Turn off Vanguard's friends list looks", "Turn off Chat", "Turn off Chat", "Turn off Nameplates", "Turn off Bags"]);
-  expect(texts[1], "the sentence says what both do").toBe("BetterFriendlist is loaded and also does friends list looks.");
+    "Turn off Vanguard's social window looks", "Turn off Chat", "Turn off Chat", "Turn off Nameplates", "Turn off Bags"]);
+  expect(texts[1], "the sentence says what both do").toBe("BetterFriendlist is loaded and also does social window looks.");
 });
 
 it("coexist: a window skinner turns off every window look group, read at click time; moving and durability stay", () => {
@@ -149,4 +149,14 @@ it("coexist: a keys row naming a module that isn't there asks nothing", () => {
   const addon = loggedIn(CLICK_LUA + loadedEnv("Aurora"));
   addon.eval('ns.GetModule("Coexist").OVERLAPS.Aurora = { "TEST-ONLY Missing", "looks", keys = "GROUPS" }');
   expect(cardTexts(addon), "nothing to turn off").toEqual({});
+});
+
+it("coexist: an off answer whose keys another row turned partly back on still offers the rest", () => {
+  const addon = loggedIn(CLICK_LUA + loadedEnv("Aurora", "BetterFriendlist"));
+  addon.eval('ns.Options.Show("modules") __click("Turn off Vanguard\'s social window looks") Vanguard_Reload:Hide()');
+  addon.eval('ns.Options.Show("modules") __click("Turn off Vanguard\'s window looks") Vanguard_Reload:Hide()');
+  addon.eval('ns.Options.Show("modules") __click("Turn Vanguard\'s social window looks back on") Vanguard_Reload:Hide()');
+  expect(cardTexts(addon).includes("Turn Vanguard's window looks back on"), "Aurora's row still offers its groups back").toBe(true);
+  addon.eval('ns.Options.Show("modules") __click("Turn Vanguard\'s window looks back on")');
+  expect(addon.eval('return ns.Settings("Windows").windows'), "and they come back").toBe(true);
 });
