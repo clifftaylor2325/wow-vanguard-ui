@@ -219,10 +219,15 @@ local function dressHideButton(frame, close)
   dressCloseWith(paintMinimize, frame, close)
 end
 
+-- A font string in a role and a theme colour; anything that is not a font string is skipped.
+function GW.SkinText(fs, role, token)
+  if type(fs) == "table" and fs.SetFont then T.Text(fs, role, token) end
+end
+
 -- A window's or dialog's title text (a font string; skipped when it is not one) in the heading role (the role a game window's own title takes, docs/THEME.md) and the
 -- light text colour. The game centres it; only its font and colour change, never its anchors or justification.
 function GW.SkinTitle(fs)
-  if type(fs) == "table" and fs.SetFont then T.Text(fs, "heading", "text") end
+  GW.SkinText(fs, "heading", "text")
 end
 
 -- A window's title in the theme, and in the light text colour again each time the window sets its colour itself
@@ -324,8 +329,7 @@ GW.MONEY_PARTS = { "GoldButton", "SilverButton", "CopperButton" }
 function GW.SkinMoney(frame)
   if type(frame) ~= "table" then return end
   for _, key in ipairs(GW.MONEY_PARTS) do
-    local fs = type(frame[key]) == "table" and frame[key].Text
-    if type(fs) == "table" and fs.SetFont then T.Text(fs, "number", false) end
+    GW.SkinText(GW.Part(frame, key .. ".Text"), "number", false)
   end
 end
 
@@ -344,8 +348,7 @@ GW.MONEY_DISPLAYS = { "GoldDisplay", "SilverDisplay", "CopperDisplay" }
 
 -- One denomination's figure in the number role, its colour left as the game sets it; a part that is not a frame is skipped.
 local function skinDenomination(display)
-  local fs = type(display) == "table" and display.Text
-  if type(fs) == "table" and fs.SetFont then T.Text(fs, "number", false) end
+  GW.SkinText(GW.Part(display, "Text"), "number", false)
 end
 
 -- A money display (the auction house's: the window's money line, the sell form's deposit, the buy dialog's price) in the
@@ -367,7 +370,7 @@ function GW.SkinTimer(frame)
   GW.Skin(frame, 0)
   local bar = frame.StatusBar
   if type(bar) == "table" and bar.SetStatusBarTexture then T.StyleBar(bar) end
-  if type(frame.Text) == "table" and frame.Text.SetFont then T.Text(frame.Text, "barSmall", "text") end
+  GW.SkinText(frame.Text, "barSmall", "text")
 end
 
 -- The breath and fatigue bars are the container's unnamed children on the 12.x engine
@@ -716,11 +719,6 @@ function GW.KeepKeys(frame, keys)
     if type(frame[key]) == "table" then keep[frame[key]] = true end
   end
   return keep
-end
-
--- A font string in a role and a theme colour; anything that is not a font string is skipped.
-function GW.SkinText(fs, role, token)
-  if type(fs) == "table" and fs.SetFont then T.Text(fs, role, token) end
 end
 
 -- A paging arrow as a theme arrow button pointing `direction`; anything that is not a frame is skipped.
