@@ -15,8 +15,9 @@ local ADDON, ns = ...
 
 local SR = ns.Module("SpellRanks", { defaults = { barNotice = false, trainerMemory = false } })
 
--- Action slots scanned (12 buttons on each of 10 bars); services kept per class; levels ahead /vg trainers next and a level-up show; lines listed.
-SR.SLOTS, SR.MAX_SERVICES, SR.AHEAD, SR.LINES = 120, 400, 5, 8
+-- Action slots scanned (12 on each of 15 pages: bar 1's pages and bonus bars, bars 2 to 5, and bars 6 to 8 up
+-- to 180); services kept per class; levels ahead /vg trainers next and a level-up show; lines listed.
+SR.SLOTS, SR.MAX_SERVICES, SR.AHEAD, SR.LINES = 180, 400, 5, 8
 
 -- Helpers ------------------------------------------------------------------------------------
 
@@ -62,9 +63,18 @@ function SR.Stale()
   return out
 end
 
+-- Where a slot is, by the Vanguard bar button that shows it now ("Bar 2 button 5"), else "Action slot 14"
+-- (a page bar 1 isn't on, a bar that is off, or Vanguard's bars off).
+local function slotLabel(slot)
+  for _, b in ipairs(ns.GetModule("ActionBars").buttons) do
+    if b.action == slot then return string.format("Bar %d button %d", b.vgBar.vgIndex, b:GetAttribute("index")) end
+  end
+  return string.format("Action slot %d", slot)
+end
+
 -- "Bar 2 button 5: Frostbolt Rank 2 -> Rank 4".
 function SR.Describe(s)
-  return string.format("Bar %d button %d: %s Rank %d -> Rank %d", math.ceil(s.slot / 12), (s.slot - 1) % 12 + 1, s.name, s.old, s.new)
+  return string.format("%s: %s Rank %d -> Rank %d", slotLabel(s.slot), s.name, s.old, s.new)
 end
 
 -- Picks the spell up onto the cursor; whether the cursor holds a spell now.
