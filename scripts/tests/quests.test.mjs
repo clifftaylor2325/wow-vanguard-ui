@@ -1650,3 +1650,16 @@ it("quest history: the Quest history card's button lists the latest turn-ins in 
     end`);
   expect(chatHas(addon, /No turn-ins remembered yet\./)).toBe(true);
 });
+
+it("quest history: the List latest turn-ins button is greyed while quest history is off", () => {
+  const addon = loggedIn("");
+  // Whether the button row says it is enabled.
+  const enabled = () => addon.eval(`for _, p in ipairs(ns.Options.PAGES) do
+      if p.key == "quests" then for _, r in ipairs(p.rows()) do if r[2] == "List latest turn-ins" then return r[4]() end end end
+    end`);
+  expect(enabled(), "on by default").toBe(true);
+  addon.eval("ns.GetModule('QuestHistory').settings.track = false");
+  expect(enabled(), "its switch off").toBe(false);
+  addon.eval("ns.GetModule('QuestHistory').settings = nil");
+  expect(enabled(), "its module off").toBe(false);
+});

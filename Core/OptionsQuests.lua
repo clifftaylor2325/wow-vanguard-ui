@@ -37,8 +37,14 @@ local function wayRows()
     { "header", "Finding your way" },
     { "text", "The arrow on screen turns toward the nearest unfinished objective of the quests you watch; Shift-click a quest in the tracker to point it there instead. Move it with /vg unlock. /vg questdata shows what the client says about quests." },
   }
-  rows = append(append(rows, ns.QuestArrow.Rows()), ns.QuestGuide.Rows())
+  rows = append(append(rows, ns.GetModule("QuestArrow").Rows()), ns.GetModule("QuestGuide").Rows())
   return append(rows, ns.GetModule("QuestMinimap").Rows())
+end
+
+-- Whether quest history is on (its module and its switch), so its list has something to say.
+local function historyOn()
+  local settings = ns.GetModule("QuestHistory").settings
+  return settings ~= nil and settings.track == true
 end
 
 -- Quest history: which character finished each quest.
@@ -46,7 +52,7 @@ local function questHistoryRows()
   return {
     { "header", "Quest history" },
     check("Remember which character finished each quest (\"Done on Thrall-Realm\")", setting("QuestHistory", "track")),
-    { "button", "List latest turn-ins", function() ns.GetModule("QuestHistory").Command("") end },
+    { "button", "List latest turn-ins", function() ns.GetModule("QuestHistory").Command("") end, historyOn },
   }
 end
 

@@ -295,3 +295,12 @@ it("waypoints: a /way title is kept with the spot in the recent list, and a late
   way(addon, "recent");
   expect(chatHas(addon, /Camp/), "a title for a spot the game refused, or another spot, is not given away").toBe(false);
 });
+
+it("waypoints: a /way title waits for its own spot's event, and the newest title of a spot wins", () => {
+  const addon = loggedIn(MAP_ENV + POINT_ENV, { savedVariables: "VanguardDB.profiles = { Default = { Waypoints = { recent = { { map = 10, x = 0.42, y = 0.65, title = 'TEST-ONLY New' }, { map = 10, x = 0.42, y = 0.65, title = 'TEST-ONLY Old' } } } } }" });
+  addon.eval("local WP = ns.GetModule('Waypoints') WP.pending = { map = 10, x = 0.2, y = 0.2, title = 'TEST-ONLY Camp' }");
+  click(addon, 10, 0.42, 0.65);
+  expect(addon.eval("local WP = ns.GetModule('Waypoints') return { WP.settings.recent[1].title, #WP.settings.recent, WP.pending.title }"), "the click on the old spot: its newest title, one entry, Camp still waiting").toEqual(["TEST-ONLY New", 1, "TEST-ONLY Camp"]);
+  click(addon, 10, 0.2, 0.2);
+  expect(addon.eval("local WP = ns.GetModule('Waypoints') return { WP.settings.recent[1].title, WP.pending == nil }"), "Camp's own spot takes it").toEqual(["TEST-ONLY Camp", true]);
+});

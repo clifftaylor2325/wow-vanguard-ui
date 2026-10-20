@@ -138,22 +138,27 @@ local function sameSpot(w, mapID, x, y)
 end
 
 -- Puts a waypoint first among the recent ones, with its title if it has one (the same spot moves up instead of
--- repeating, keeping the title it had when the new one has none), keeping WP.RECENT.
+-- repeating, keeping the newest title it had when the new one has none), keeping WP.RECENT.
 function WP.Remember(mapID, x, y, title)
   local list = WP.settings.recent or {}
   WP.settings.recent = list
+  for i = 1, #list do
+    if sameSpot(list[i], mapID, x, y) then title = title or list[i].title end
+  end
   for i = #list, 1, -1 do
-    if sameSpot(list[i], mapID, x, y) then title = title or list[i].title table.remove(list, i) end
+    if sameSpot(list[i], mapID, x, y) then table.remove(list, i) end
   end
   table.insert(list, 1, { map = mapID, x = x, y = y, title = title })
   while #list > WP.RECENT do table.remove(list) end
 end
 
--- The title /way gave the waypoint at this spot, taken once (the game's event carries no title); nil otherwise.
+-- The title /way gave the waypoint at this spot, taken once (the game's event carries no title); nil otherwise. A
+-- pending title for another spot is kept, for an event that comes late.
 local function pendingTitle(mapID, x, y)
   local pending = WP.pending
+  if not (pending and sameSpot(pending, mapID, x, y)) then return nil end
   WP.pending = nil
-  if pending and sameSpot(pending, mapID, x, y) then return pending.title end
+  return pending.title
 end
 
 -- The game's waypoint changed (a Ctrl-click on the map, /way): remember it and, with the switch on, point the arrow at it.

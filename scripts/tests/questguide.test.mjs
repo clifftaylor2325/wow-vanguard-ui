@@ -240,7 +240,7 @@ it("quest guidance: a quest-start pin's tooltip gives the quest's level in its d
   const tip = (i) => addon.eval(`local p = ns.QuestGuide.pins[${i}] p.__scripts.OnEnter(p)
     local out = {} for j, l in ipairs(GameTooltip.__lines) do out[j] = { l.text, l.r } end return out`);
   const lines = tip(1);
-  expect(lines.slice(0, 3).map((l) => l[0]), "the name, the level, Repeatable").toEqual(["TEST-ONLY Bandits", "Level 24", "Repeatable"]);
+  expect(lines.slice(0, 3).map((l) => l[0]), "the name, the level, Repeatable").toEqual(["TEST-ONLY Bandits", "Level 24", expect.stringContaining("Repeatable")]);
   expect(lines[1][1], "the level in the client's difficulty colour").toBe(1);
   expect(tip(2).length, "hidden answers add no line").toBe(2);
 });

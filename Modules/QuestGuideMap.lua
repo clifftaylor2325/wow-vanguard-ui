@@ -69,7 +69,7 @@ function QG.PinTooltip(pin)
   tip:SetText(pin.start.name ~= "" and pin.start.name or "Quest start")
   local level, repeats = startFacts(pin.start.questID)
   if level then tip:AddLine("Level " .. level, QP.LevelColor(level)) end
-  if repeats then tip:AddLine("Repeatable", T.RGB("text2")) end
+  if repeats then tip:AddLine(T.Paint("Repeatable", "text2")) end
   tip:AddLine(T.Paint("Quest starts here. Click: point the arrow here", "text2"))
   tip:Show()
 end
