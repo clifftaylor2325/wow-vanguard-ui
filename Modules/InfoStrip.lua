@@ -3,6 +3,7 @@
 --   gold
 --   fps and latency · ammo (hunters, warriors, rogues) or soul shards (warlocks)
 --   the time as the game's clock shows it and the day and date ("21:04  Tue 13 Oct"), with a calendar button
+--     that counts the invites waiting
 --   leveling: XP per hour · time to level
 --   gold per hour this session · what your auction sales came to (Modules/AuctionLedger.lua, off until you turn it on)
 --   your damage per second in the last fight · your place in it in a group (each off until you turn it on)
@@ -438,15 +439,52 @@ local function openCalendar()
   if type(ToggleCalendar) == "function" then ToggleCalendar() end
 end
 
+-- How many calendar invites wait for your answer (0 when the client can't say or hides it).
+function IS.PendingInvites()
+  local get = C_Calendar and C_Calendar.GetNumPendingInvites
+  return type(get) == "function" and ns.PlainNumber(get()) or 0
+end
+
+-- The calendar button's tooltip: "Calendar", and how many invites wait.
+function IS.CalendarTip(b)
+  GameTooltip:SetOwner(b, "ANCHOR_LEFT")
+  GameTooltip:SetText("Calendar", T.RGB("text"))
+  local n = IS.PendingInvites()
+  if n > 0 then GameTooltip:AddLine(n == 1 and "1 invite waiting" or n .. " invites waiting", T.RGB("text2")) end
+  GameTooltip:Show()
+end
+
+-- The invite count in the calendar button's corner, shown only while invites wait; its backing with it.
+function IS.PaintInvites()
+  local n = IS.PendingInvites()
+  IS.invites:SetText(n > 0 and tostring(n) or "")
+  IS.invitesBack:SetShown(n > 0)
+end
+
+-- The calendar button's invite count: the badge text over a dark backing, in its bottom-right
+-- corner, as the backpack's free count on the bag bar (Modules/MenuStrip.lua).
+local function addInvites(b)
+  local pad, back = ns.GetModule("MenuStrip").COUNT_PAD, T.Snap(b:CreateTexture(nil, "OVERLAY", nil, 7))
+  back:SetTexture(T.WHITE)
+  T.Tint(back, "edge", ns.GetModule("MenuStrip").COUNT_BACK)
+  local fs = T.Text(b:CreateFontString(nil, "OVERLAY"), "badge")
+  fs:SetPoint("BOTTOMRIGHT", b, "BOTTOMRIGHT", -pad, pad)
+  back:SetPoint("TOPLEFT", fs, "TOPLEFT", -pad, pad)
+  back:SetPoint("BOTTOMRIGHT", fs, "BOTTOMRIGHT", pad, -pad)
+  IS.invites, IS.invitesBack = fs, back
+end
+
 -- The calendar button (shown with the date): a slot button of the minimap's kind at the date row's right end,
--- opening the calendar like /calendar.
+-- opening the calendar like /calendar, with a count of the invites waiting. None where the realm has no calendar.
 local function addCalendar(frame)
+  if IS.CalendarOff() then return end
   local b = CreateFrame("Button", "Vanguard_InfoStripCalendar", frame)
   b:SetPoint("RIGHT", frame, "TOPRIGHT", -IS.CALENDAR_GAP, -(IS.BLOCKS.date[1] - 0.5) * IS.ROW)
   b:SetScript("OnClick", ns.Guard("click info strip calendar", openCalendar))
-  b:SetScript("OnEnter", ns.Guard("info strip calendar tip", function(self) GameTooltip:SetOwner(self, "ANCHOR_LEFT") GameTooltip:SetText("Calendar", T.RGB("text")) GameTooltip:Show() end))
+  b:SetScript("OnEnter", ns.Guard("info strip calendar tip", IS.CalendarTip))
   b:SetScript("OnLeave", ns.Guard("info strip calendar tip", function() GameTooltip:Hide() end))
   ns.GetModule("Minimap").SlotButton(b, IS.CALENDAR_ICON.slot, IS.CALENDAR, IS.CALENDAR_GLYPH)
+  addInvites(b)
   IS.calendar = b
 end
 
@@ -575,6 +613,16 @@ local function keepReminders(settings)
   if settings.clock and not IS.CalendarOff() then ns.On("CALENDAR_EVENT_ALARM", IS.CalendarAlarm) end
 end
 
+-- The events that change how many calendar invites wait (the game's calendar button listens for the same).
+IS.INVITE_EVENTS = { "CALENDAR_UPDATE_PENDING_INVITES", "PLAYER_ENTERING_WORLD" }
+
+-- Keeps the calendar button's invite count up to date; nothing to keep where the realm has no calendar.
+local function watchInvites()
+  if not IS.calendar then return end
+  IS.PaintInvites()
+  for _, event in ipairs(IS.INVITE_EVENTS) do ns.On(event, IS.PaintInvites) end
+end
+
 -- XP came in: count it and repaint the leveling blocks.
 local function onXP()
   IS.CountXP()
@@ -601,4 +649,5 @@ function IS.Enable(settings)
   IS.StartSession()
   build()
   watch()
+  watchInvites()
 end

@@ -59,6 +59,8 @@ read_globals = {
   "ChatTypeInfo",
   -- Info strip: the calendar's reminder line the game's calendar button prints (GameTime.lua), shown while the clock block hides it.
   "CALENDAR_EVENT_ALARM_MESSAGE",
+  -- Info strip: the calendar button's count of invites waiting for an answer.
+  "C_Calendar",
   -- Info strip: a click on the time opens the game's clock window, or turns off its ringing alarm (Blizzard_TimeManager).
   "ToggleTimeManager", "TimeManager_IsAlarmFiring", "TimeManager_TurnOffAlarm",
   -- Info strip: the time in the game's clock format, realm and local (Blizzard_FrameXMLUtil/GameTimeUtil.lua).

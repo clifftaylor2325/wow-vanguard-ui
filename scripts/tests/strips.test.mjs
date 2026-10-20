@@ -166,6 +166,21 @@ it("the info strip's time follows the game's clock (realm or local, 12 or 24 hou
   addon.eval("Vanguard_InfoStripClock.__scripts.OnLeave(Vanguard_InfoStripClock)");
   expect(addon.eval("return GameTooltip:IsShown()"), "and goes with the mouse").toBe(false);
 });
+it("the info strip's calendar button counts the invites waiting, and is absent where the realm has no calendar", () => {
+  const addon = loggedIn(STRIP_ENV + "__invites = 0 C_Calendar = { GetNumPendingInvites = function() return __invites end }");
+  // The badge's text and whether its backing shows, after the game says the invites changed to n (Lua).
+  const badge = (n) => { addon.eval(`__invites = ${n}`); addon.fire("CALENDAR_UPDATE_PENDING_INVITES"); return addon.eval("local IS = ns.GetModule('InfoStrip') return { IS.invites:GetText(), IS.invitesBack:IsShown() }"); };
+  expect([badge("0"), badge("2"), badge("{ __secret = true }")], "none, two waiting, a hidden count").toEqual([["", false], ["2", true], ["", false]]);
+  // The calendar button's tooltip lines with n invites waiting.
+  const tip = (n) => addon.eval(`__invites = ${n} Vanguard_InfoStripCalendar.__scripts.OnEnter(Vanguard_InfoStripCalendar) local out = {} for i, l in ipairs(GameTooltip.__lines) do out[i] = l.text end return out`);
+  expect([tip(0), tip(1), tip(3)], "the tooltip says how many wait").toEqual([["Calendar"], ["Calendar", "1 invite waiting"], ["Calendar", "3 invites waiting"]]);
+  const ruled = loggedIn(STRIP_ENV + "Enum.GameRule = { IngameCalendarDisabled = 7 } C_GameRules = { IsGameRuleActive = function(rule) return rule == 7 end }");
+  expect(ruled.eval("return { Vanguard_InfoStripCalendar == nil, #ns.errors }"), "no calendar button under the calendar-off rule, and no error").toEqual([true, 0]);
+  ruled.fire("CALENDAR_UPDATE_PENDING_INVITES");
+  expect(ruled.eval("return #ns.errors"), "nor on the invites event").toBe(0);
+  const bare = loggedIn(STRIP_ENV);
+  expect(bare.eval("return ns.GetModule('InfoStrip').invites:GetText()"), "a client without the calendar API shows no count").toBe("");
+});
 it("the Bars and bags page's two tracker switches name the game's tracker, the one they change", () => {
   const addon = loggedIn(UI_ENV);
   const labels = addon.eval(`local out = {}
