@@ -58,6 +58,7 @@
       "bar backing: a flat panel under each bar's buttons on Classic look or when asked for, live with the setting and the theme",
       "counts show on a client without the deprecated GetActionCount (C_ActionBar.GetActionUseCount)",
       "empty slots take no mouse, so blank bar space passes clicks through; a drag turns it back on",
+      "hotkey text stays on one line inside the button, right-aligned",
       "in combat an empty slot's mouse waits for the fight to end, one entry per button, the last state winning",
       "keybind mode: hover a button and press a key to bind it; a modifier alone waits; Escape leaves",
       "keybind mode: out of combat only, ends when a fight starts; from the options; needs the bars",

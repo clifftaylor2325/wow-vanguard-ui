@@ -249,7 +249,8 @@ it("hotkey short names: modifiers, then the key by its whole name, so no key is 
   const addon = loggedIn();
   const keys = { "SHIFT-1": "S1", "ALT-CTRL-SHIFT-Q": "ACSQ", BACKSPACE: "Bs", "SHIFT-BACKSPACE": "SBs", SPACE: "Sp", NUMPADPLUS: "N+", NUMPADMINUS: "N-",
     NUMPADMULTIPLY: "N*", NUMPADDIVIDE: "N/", NUMPADDECIMAL: "N.", NUMPAD1: "N1", BUTTON4: "M4", "CTRL-BUTTON4": "CM4", "META-4": "Cmd4",
-    MOUSEWHEELUP: "WU", "SHIFT-MOUSEWHEELDOWN": "SWD", MINUS: "MINUS", "SHIFT-MINUS": "SMINUS", F12: "F12" };
+    MOUSEWHEELUP: "WU", "SHIFT-MOUSEWHEELDOWN": "SWD", MINUS: "MINUS", "SHIFT-MINUS": "SMINUS", F12: "F12",
+    PAGEUP: "PU", PAGEDOWN: "PD", INSERT: "Ins", DELETE: "Del", HOME: "Hm", END: "End", "SHIFT-END": "SEnd", CAPSLOCK: "Cap" };
   const names = Object.keys(keys);
   const got = addon.eval(`local AB, out = ns.GetModule("ActionBars"), {} for i, k in ipairs({ ${names.map((k) => JSON.stringify(k)).join(", ")} }) do out[i] = AB.ShortKey(k) end out[#out + 1] = AB.ShortKey(nil) return out`);
   expect(got, "each key's label, and nothing for no key").toEqual([...Object.values(keys), ""]);
@@ -734,3 +735,11 @@ it("bar backing: a flat panel under each bar's buttons on Classic look or when a
   const on = loggedIn(ACTIONS_ENV, { savedVariables: 'VanguardDB = { profiles = { Default = { ActionBars = { backing = "on" } } } }' });
   expect(backing(on)[0], "Always shows it on the default theme").toBe(true);
 });
+
+it("hotkey text stays on one line inside the button, right-aligned", () => {
+  const addon = loggedIn(ACTIONS_ENV);
+  const hk = addon.eval(`local h = Vanguard_Bar1Button1.hotkey
+    return { left = h.__points.TOPLEFT.rel == Vanguard_Bar1Button1, right = h.__points.TOPRIGHT.rel == Vanguard_Bar1Button1, justify = h.__justifyH, noWrap = h.__noWrap }`);
+  expect(hk, "pinned to both top corners, so a long name is cut at the button's edge").toEqual({ left: true, right: true, justify: "RIGHT", noWrap: true });
+});
+
