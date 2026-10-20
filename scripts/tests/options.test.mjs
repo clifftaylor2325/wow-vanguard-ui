@@ -1259,3 +1259,26 @@ it("the text and reload dialogs take Tab focus too, and a hidden button is skipp
   addon.key("Vanguard_Reload", "TAB");
   expect(ring(addon, "Vanguard_Reload.cancel"), "the reload dialog starts at Later").toBe(true);
 });
+// Whether the options window shows its reload notice.
+const reloadNotice = (addon) => addon.eval("return Vanguard_Options.notice:IsShown()");
+it("Reset theme: a reset that only changes the accent needs no reload", () => {
+  const addon = loggedIn(CLICK_LUA);
+  addon.slash("accent arcane");
+  addon.eval('ns.Options.Show("general") __click("Reset theme")');
+  expect(reloadNotice(addon), "no notice").toBe(false);
+  addon.slash("theme reset");
+  expect(chatHas(addon, /Theme back to defaults\.$/), "chat says it plainly").toBe(true);
+});
+it("Reset theme with Safer colours on shows the reload notice, and /vg theme reset says to reload", () => {
+  const addon = loggedIn(CLICK_LUA);
+  addon.eval('ns.Theme.Settings().colorAssist = true ns.Options.Show("general") __click("Reset theme")');
+  expect([addon.eval("return ns.Theme.Settings().colorAssist"), reloadNotice(addon)], "Safer colours is off, after a reload").toEqual([false, true]);
+  addon.eval("ns.Theme.Settings().hudShadow = true");
+  addon.slash("theme reset");
+  expect(chatHas(addon, /Theme back to defaults \(reload to apply\)\.$/), "the command says so").toBe(true);
+});
+it("Reset theme with Pixel-perfect scale on shows the reload notice, since its scale stays until then", () => {
+  const addon = loggedIn(CLICK_LUA);
+  addon.eval('ns.Theme.SetPixelScale(true) ns.Options.Show("general") __click("Reset theme")');
+  expect([addon.eval("return ns.Theme.Settings().pixelScale"), reloadNotice(addon)]).toEqual([false, true]);
+});

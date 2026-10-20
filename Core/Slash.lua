@@ -288,8 +288,7 @@ local function themeCommand(rest)
   if rest ~= "reset" then
     return chat("Usage: /vg theme reset")
   end
-  T.Reset()
-  chat("Theme back to defaults.")
+  chat(ns.Options.ResetTheme() and "Theme back to defaults (reload to apply)." or "Theme back to defaults.")
 end
 
 -- /vg modules

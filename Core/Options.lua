@@ -193,6 +193,28 @@ local function lookTextRows()
   }
 end
 
+-- The theme settings that show fully only after a reload (pixel-perfect's scale stays on screen until then).
+O.RELOAD_THEME = { "colorAssist", "colorAssistGame", "hudShadow", "pixelScale" }
+
+-- The reload-only theme settings' values now, in O.RELOAD_THEME's order.
+local function reloadThemeValues()
+  local theme, out = T.Settings(), {}
+  for i, key in ipairs(O.RELOAD_THEME) do out[i] = theme[key] end
+  return out
+end
+
+-- Puts every theme setting back to its default (T.Reset); when that changed a reload-only one, the options
+-- window shows its reload notice. Returns true then.
+function O.ResetTheme()
+  local before = reloadThemeValues()
+  T.Reset()
+  local after = reloadThemeValues()
+  for i, value in ipairs(before) do
+    if value ~= after[i] then O.NeedReload() return true end
+  end
+  return false
+end
+
 -- General, part one: accent, safer colours, font, text size, variant, ornaments, scale and theme reset.
 local function lookRows()
   local rows = { { "header", "Look" }, { "preview" }, { "swatches" },
@@ -203,7 +225,7 @@ local function lookRows()
   for _, row in ipairs(lookTextRows()) do rows[#rows + 1] = row end
   rows[#rows + 1] = check("Pixel-perfect scale", function() return T.Settings().pixelScale end,
     function(v) T.SetPixelScale(v); if not v then O.NeedReload() end end)
-  rows[#rows + 1] = { "button", "Reset theme", function() T.Reset() end }
+  rows[#rows + 1] = { "button", "Reset theme", function() O.ResetTheme() end }
   return rows
 end
 
