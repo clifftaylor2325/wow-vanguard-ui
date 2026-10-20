@@ -143,7 +143,7 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Expect: with Record for at Off the button is greyed out and a click does nothing (no chat line). While recording it is bright and a click saves (`Solo: ... saved.` in chat), Record for goes back to Off and the button greys out again.
 - If it fails, paste: a screenshot of the page, the chat lines and `/vg errors`.
 
-### 2.1b Situations: Your situations
+### 2.1e Situations: Your situations
 
 - Do: on the Situations page, record an override for Party (Record for: Party, move one frame, Stop recording and save) and one for the situation you're in. Look at **Your situations**, then click **Clear Party**, then clear the other one.
 - Expect: the card lists each situation with what its override changes, "(now)" on the one you're in; Clear Party removes that row and says `Cleared the overrides for Party.`; with both gone the card reads "No overrides yet. Pick Record for to make one." While frames are unlocked the Clear buttons are greyed. [Needs in game.]
@@ -206,7 +206,7 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Expect: the window is gone while you drag, nothing sticks to the mouse, and the next time it opens it is where it was let go; after the second drag it comes back at the new spot every time, also after another window opens and shuffles the panels. `/vg errors` is empty. [Needs in-game check: whether the client sends the drag's end to a drag area that is hidden mid-drag; Vanguard now ends the drag itself when the window hides.]
 - If it fails, paste: which window, where it came back, and `/vg errors`.
 
-### 3.2a Move frames from the options, and back
+### 3.2b Move frames from the options, and back
 
 - Do: `/vg` → General → **Move frames**. Read the bar at the top, move a frame, click **Save and lock**. Again **Move frames**, then **Exit without saving**. Again **Move frames**, then `/vg lock`.
 - Expect: the bar's note reads in full ("Drag to move · right-click for anchor, scale, opacity · arrows nudge (Shift ×10)") with nothing over the buttons at your resolution; Save and lock and Exit without saving each lock and open `/vg` again on General; `/vg lock` just locks. [Needs in game: the bar's width at your resolution.]

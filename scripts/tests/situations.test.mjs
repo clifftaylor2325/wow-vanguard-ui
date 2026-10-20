@@ -481,6 +481,14 @@ it("A-11 situations: Your situations lists every override with Clear on each, (n
   addon.eval("ns.Lock() ns.Options.Refresh()");
   addon.eval('__click("Clear Party")');
   expect([addon.eval("return ns.Settings('Situations').overrides.party"), addon.texts("Party: 1 override (1 frame)").length, chatHas(addon, /Cleared the overrides for Party\./)], "the party's override gone from the profile, the page and with a chat line").toEqual([null, 0, true]);
-  addon.eval('__click("Clear Raid")');
-  expect(addon.texts("No overrides yet. Pick Record for to make one.").length, "none left: the card says how to make one").toBe(1);
+  addon.slash("situation clear raid");
+  expect(addon.texts("No overrides yet. Pick Record for to make one.").length, "cleared by the command: the card says how to make one").toBe(1);
+  addon.slash("situation record party");
+  addon.eval("ns.SetMoverPoint('infostrip', 'BOTTOM', 'BOTTOM', 0, 280)");
+  addon.slash("situation stop");
+  expect(addon.texts("Party: 1 override (1 frame)").length, "recorded by command: on the card").toBe(1);
+  raid(addon, false);
+  addon.world.setUnit("party1", { name: "TEST-ONLY Friend" });
+  addon.advance(0.5);
+  expect(addon.texts("Party (now): 1 override (1 frame)").length, "recorded by command, then you moved into a party: the card follows").toBe(1);
 });
