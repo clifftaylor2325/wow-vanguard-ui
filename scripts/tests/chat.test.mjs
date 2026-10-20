@@ -807,7 +807,7 @@ it("chat extras: bare addresses with a web ending become links, never inside a l
   expect(said("see https://example.test/x. or (discord.gg/abc)"), "punctuation after an http address and brackets round a bare one stay outside the links")
     .toMatch(new RegExp(`${esc(linkOf("https://example.test/x"))}\\. or \\(\\|c\\w{8}${esc(linkOf("discord.gg/abc"))}\\)$`));
   const quest = "|cffffff00|Hquest:1|h[Visit the site.com vendor]|h|r then site.com";
-  expect(said(quest), "a dotted word in a link's name stays in the link; the one after it is linked").toBe(`|cffffff00|Hquest:1|h[Visit the site.com vendor]|h|r then |cff${addon.eval("local r, g, b = ns.Theme.RGB('accentText') return string.format('%02x%02x%02x', math.floor(r * 255), math.floor(g * 255), math.floor(b * 255))")}${linkOf("site.com")}`);
+  expect(said(quest), "a dotted word in a link's name stays in the link; the one after it is linked").toBe(`|cffffff00|Hquest:1|h[Visit the site.com vendor]|h|r then |cff${addon.eval("local r, g, b = ns.Theme.RGB('accentText') return string.format('%02x%02x%02x', math.floor(r * 255 + 0.5), math.floor(g * 255 + 0.5), math.floor(b * 255 + 0.5))")}${linkOf("site.com")}`);
   addon.eval('ChatFrame1:AddMessage("Guild Message of the Day: raid at 8, discord.gg/abc")');
   expect(lastLine(addon), "the guild message of the day line is linked as it is added").toContain(linkOf("discord.gg/abc"));
   addon.eval('ChatFrame1:AddMessage("[15:27] Guild Message of the Day: discord.gg/xyz")');

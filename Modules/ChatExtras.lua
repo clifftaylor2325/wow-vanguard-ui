@@ -39,8 +39,7 @@ local PREFIX = "addon:Vanguard:url:"
 
 -- The accent's text variant as a chat color code.
 local function accentCode()
-  local r, g, b = T.RGB("accentText")
-  return string.format("|cff%02x%02x%02x", math.floor(r * 255), math.floor(g * 255), math.floor(b * 255))
+  return "|c" .. T.Hex("accentText")
 end
 
 -- The punctuation after an address that is left out of its link: "site.com/x." links "site.com/x".
