@@ -454,6 +454,12 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Expect: at full energy the spark is gone after about six seconds and stays gone (no spark crossing a bar that is not regenerating); after you spend energy the next tick starts it again and it crosses the power bar every two seconds. [Needs in-game check: that energy ticks keep it going, and whether abilities that give energy nudge its timing (not changed here).]
 - If it fails, paste: the class, form and what the spark did.
 
+### 7.2h Right-click destroys a totem
+
+- Do: on a shaman with Vanguard's unit frames on, type `/dump GetCVar("ActionButtonUseKeyDown")` (it should print 1, the game's "Cast action keybinds on key down"). Drop two totems, then right-click one of the cells under the player frame. Do it once more in a fight.
+- Expect: the totem you right-clicked is destroyed on the release of the button and its cell clears; the other stays. A left-click does nothing. No error, in combat too. [Needs in-game check: the key-down phase rule was read from the game's SecureTemplates.lua and modelled in the harness, not watched in game.]
+- If it fails, paste: what the CVar printed, what happened to the totem and `/vg errors`.
+
 ### 7.3 Nameplates in a pull
 
 - Do: pull three or more mobs.
@@ -575,6 +581,12 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Do: watch a quest worth XP, hover the XP bar, kill a few mobs that give XP, turn in nothing yet, then let your food fall under the wanted count (`/vg prep want food 20`) by using or selling some.
 - Expect: the quest's XP under its objectives in the tracker; the XP bar's tooltip lists what is left, how far through, rested, `Kills to level` (after your first kill, and not changed by a quest turn-in) and `XP in finished quests` (only quests ready to turn in); one `Running low: Food & drink n / 20.` line in chat when food drops under the count, nothing further until it has been back at 20 and drops again, and nothing during a fight (it appears after).
 - If it fails, paste: a screenshot, the chat line and `/vg errors`. Say which came first in chat: the XP message for a kill or the XP bar moving.
+
+### 8.5a XP and reputation numbers side by side
+
+- Do: while levelling, watch a faction (Escape → Reputation → Show as experience bar). In `/vg` → Bars and bags set Numbers to "always" (it needs a reload). Look at the two bars at the bottom, then set Text size under General to 130% and look again.
+- Expect: the XP numbers at the left end of the XP bar and the reputation numbers at the right end of the bar above it, both readable, not on top of each other, at both text sizes. [Needs in-game check: how far apart the two lines sit at 100% depends on the font's real line height.]
+- If it fails, paste: a screenshot of the two bars.
 
 ### 8.6 Quiet the game
 
@@ -748,6 +760,12 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Expect: each page's icon is red only while its own action is out of range, right after the page changes; coming back does not keep the other page's red. `/vg errors` stays empty. [Needs in game: that IsActionInRange answers for the new page's slot at once, in combat too.]
 - If it fails, paste: your class, the spells, what the icon showed, and `/vg errors`.
 
+### 10.3b Red when out of range, switched
+
+- Do: stand out of range of a target so a bar icon is red, then untick `/vg` → Action bars → **Red when out of range**, and tick it again, without moving.
+- Expect: the icon loses its red the moment you untick and turns red again the moment you tick; nothing waits for a reload or a step. No error.
+- If it fails, paste: what the icon showed and `/vg errors`.
+
 ### 10.4 Keybind mode on the action bars
 
 - Do: out of combat, type `/vg keybind`. Hover an empty slot on bar 1 and press Shift+Q; then, still over it, press mouse button 4, roll the wheel down, and press Backspace. Hover a button that has a key and press W. Hover a button and left-click it. Press Escape.
@@ -755,6 +773,12 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - If it fails, paste: what you pressed, what chat said, the key's hotkey text, and `/vg errors`.
 
 ## 11. AFK
+
+### 10.4a Short key names on the buttons
+
+- Do: in the game's Key Bindings (Escape → Options → Keybindings → Action Bars), bind Backspace, Shift+Backspace, Numpad + and Numpad 1 to four bar 1 buttons, and (on a Mac) Command+4 to another and mouse button 4 to one more. Close the window and look at the buttons.
+- Expect: the hotkey texts read Bs, SBs, N+, N1, Cmd4 and M4, each one different, none cut to a half word. No error.
+- If it fails, paste: a screenshot of the bar and the keys you bound.
 
 ### 11.1 AFK card
 
@@ -1566,8 +1590,8 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 
 ### 22.1 Bar notice and swap
 
-- Do: in `/vg` open Town and gear and switch on "Notice older spell ranks on bar buttons (/vg ranks)". On a character with a ranked spell, put an old rank of it on a bar (drag it from the spellbook, or keep one on a bar after learning the next rank). Type `/reload`, then `/vg ranks`, then `/vg ranks swap`. Try `/vg ranks swap` in combat.
-- Expect: after the reload (or after learning a rank), chat says "N button(s) on your bars hold an older spell rank." once. `/vg ranks` lists "Bar B button N: Spell Rank 2 -> Rank 4" and changes nothing. `/vg ranks swap` puts the newest rank on each, says "Put the newest rank on N button(s).", and leaves your cursor empty. In combat it says "Bars can't change in combat." [Needs in game: that C_Spell.PickupSpell with PlaceAction swaps a spell on a bar out of combat, that GetActionInfo gives the spell ID of the rank on the button, and that SPELLS_CHANGED fires when a rank is learned.]
+- Do: in `/vg` open Town and gear and switch on "Notice older spell ranks on bar buttons (/vg ranks)". On a character with a ranked spell, put an old rank of it on a bar (drag it from the spellbook, or keep one on a bar after learning the next rank), and another on Vanguard's bar 2 (and on bar 6 if it is on). Type `/reload`, then `/vg ranks`, then `/vg ranks swap`. Try `/vg ranks swap` in combat.
+- Expect: after the reload (or after learning a rank), chat says "N button(s) on your bars hold an older spell rank." once. `/vg ranks` lists "Bar B button N: Spell Rank 2 -> Rank 4" for each, with B the Vanguard bar the button is on (the one on bar 2 says Bar 2, the one on bar 6 is listed too), and changes nothing. `/vg ranks swap` puts the newest rank on each, says "Put the newest rank on N button(s).", and leaves your cursor empty. In combat it says "Bars can't change in combat." [Needs in game: that C_Spell.PickupSpell with PlaceAction swaps a spell on a bar out of combat, that GetActionInfo gives the spell ID of the rank on the button, and that SPELLS_CHANGED fires when a rank is learned.]
 - If it fails, paste: the `/vg ranks` output and `/vg errors`.
 
 ### 22.2 Trainer memory
@@ -2097,8 +2121,8 @@ The order is the order to play in: looks you can check quickly first, then the g
 
 ### 33.41 Tagged mob marks
 
-- Do: stand near an untouched hostile mob and target it. Pull it (or hit it with a ranged attack). Then target a mob another player is fighting that you have not touched. Open `/vg` → Nameplates and untick "Tag marks", then `/vg` → Unit frames and untick "Tag mark on your target".
-- Expect: no mark on the untouched mob, and its bar in its usual colour; a small green check left of the level on its nameplate and next to the classification diamond on the target frame once it is fighting you (within a moment of the first hit), its bar in its usual (threat) colour; a small grey X in the same places on the other player's mob, and its nameplate bar grey. Both switches take the marks off at once, and the grey bar goes back to its usual colour. [Needs in game: whether `UnitIsTapDenied` answers true for a mob another group tagged, whether `UNIT_FLAGS` fires when it changes so the marks follow within a moment, and what a mob that only fights your pet shows.]
+- Do: stand near an untouched hostile mob and target it. Pull it (or hit it with a ranged attack). Then target a mob another player is fighting that you have not touched, and, if you can, join that player's group while it fights (then leave). Target an enemy player's pet in a fight if you can (a duel partner's pet or demon). Open `/vg` → Nameplates and untick "Tag marks", then `/vg` → Unit frames and untick "Tag mark on your target".
+- Expect: no mark on the untouched mob, and its bar in its usual colour; a small green check left of the level on its nameplate and next to the classification diamond on the target frame once it is fighting you (within a moment of the first hit), its bar in its usual (threat) colour; a small grey X in the same places on the other player's mob, and its nameplate bar grey; when you join that player's group the X turns into the check (and the bar loses its grey) on the plate and the target frame together, and back when you leave; no mark on a player's pet or demon. Both switches take the marks off at once, and the grey bar goes back to its usual colour. [Needs in game: whether `UnitIsTapDenied` answers true for a mob another group tagged, whether `UNIT_FLAGS` or `UNIT_FACTION` fires when it changes so the marks follow within a moment (`/etrace` filtered to both and UNIT_THREAT_LIST_UPDATE), and what a mob that only fights your pet shows.]
 - If it fails, paste: a screenshot of the target frame and plate, and `/vg errors`.
 
 ### 33.42 Chat tabs always visible and the stacked side buttons

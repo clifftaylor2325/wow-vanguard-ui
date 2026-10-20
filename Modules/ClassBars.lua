@@ -30,6 +30,9 @@ local function totemCell(bar, slot, size)
   A.Countdown(c.cooldown, size)
   c:SetPoint("LEFT", bar, "LEFT", (slot - 1) * (size + 3), 0)
   c:RegisterForClicks("RightButtonUp")
+  -- An addon's secure button acts on the press while key-down casting is on (the default), so a cell
+  -- heard only on the release would never act: it acts on the release whatever that CVar says.
+  c:SetAttribute("useOnKeyDown", false)
   c:SetAttribute("type2", "destroytotem")
   c:SetAttribute("totem-slot", slot)
   return c

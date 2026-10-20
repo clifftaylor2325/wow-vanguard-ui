@@ -344,10 +344,10 @@ it("Centered layout: compact raid grid, one-time migrations, a strip with nothin
   addon.eval(`${RF}.settings.compact = false`);
   addon.fire("GROUP_ROSTER_UPDATE");
   expect(grid()[0], "compact off: always full size").toBe(1);
-  const old = loggedIn(ACTIONS_ENV, { savedVariables: "VanguardDB = { profiles = { Default = { ActionBars = { spacing = 4 }, DataBars = { width = 476, height = 10 } } } }" });
-  expect(old.eval("local p = VanguardDB.profiles.Default return { p.ActionBars.spacing, p.DataBars.width, p.DataBars.height }"), "a profile saved with the old sizes moves to the new ones").toEqual([2, 478, 6]);
-  old.eval("local p = VanguardDB.profiles.Default p.ActionBars.spacing = 4 p.DataBars.width = 476 p.DataBars.height = 10");
-  expect(old.eval("local s = ns.Settings('ActionBars', ns.GetModule('ActionBars').defaults) local d = ns.Settings('DataBars', ns.GetModule('DataBars').defaults) return { s.spacing, d.width, d.height }"), "but only once: picking those sizes again keeps them").toEqual([4, 476, 10]);
+  const old = loggedIn(ACTIONS_ENV, { savedVariables: "VanguardDB = { profiles = { Default = { ActionBars = { size = 36, spacing = 4 }, DataBars = { width = 476, height = 10 } } } }" });
+  expect(old.eval("local p = VanguardDB.profiles.Default return { p.ActionBars.size, p.ActionBars.spacing, p.DataBars.width, p.DataBars.height }"), "a profile saved with the old sizes moves to the new ones, buttons too").toEqual([38, 2, 478, 6]);
+  old.eval("local p = VanguardDB.profiles.Default p.ActionBars.size = 36 p.ActionBars.spacing = 4 p.DataBars.width = 476 p.DataBars.height = 10");
+  expect(old.eval("local s = ns.Settings('ActionBars', ns.GetModule('ActionBars').defaults) local d = ns.Settings('DataBars', ns.GetModule('DataBars').defaults) return { s.size, s.spacing, d.width, d.height }"), "but only once: picking those sizes again keeps them").toEqual([36, 4, 476, 10]);
   const strip = loggedIn(UNITS_ENV + STRIP_ENV, { savedVariables: "VanguardDB.profiles = { Default = { InfoStrip = { durability = false, bags = false, system = false, gold = false, ammo = false, clock = false, date = false } } }" });
   expect(strip.eval("return Vanguard_InfoStrip:IsShown()"), "a strip with every block off isn't drawn as an empty box").toBe(false);
   const chatFree = loggedIn(UI_ENV, { savedVariables: "VanguardDB.profiles = { Default = { Chat = { place = false } } }" });
@@ -359,7 +359,7 @@ it("default sizes for a 1080p screen: 240 x 36 unit frames with 12 px names, 38 
   const sizes = (a) => a.eval(`return { Vanguard_player:GetWidth(), Vanguard_player:GetHeight(), select(2, Vanguard_player.name:GetFont()),
     Vanguard_Bar1Button1:GetWidth(), ns.Settings("DataBars").width, ns.Setup.ScreenPreset("1080").button }`);
   expect(sizes(addon), "a new profile: the plan's 1080p sizes (frames in whole screen pixels), and the 1080p preset agrees").toEqual([px(addon, 240), px(addon, 36), 12, px(addon, 38), 478, 38]);
-  const old = loggedIn(ACTIONS_ENV + UNITS_ENV, { savedVariables: 'VanguardDB = { profiles = { Default = { ActionBars = { size = 36 }, DataBars = { width = 454, layout = 2 }, positions = { uf_player = { point = "BOTTOM", relPoint = "BOTTOM", x = -250, y = 180 } } } } }' });
+  const old = loggedIn(ACTIONS_ENV + UNITS_ENV, { savedVariables: 'VanguardDB = { profiles = { Default = { ActionBars = { size = 36, layout = 2 }, DataBars = { width = 454, layout = 2 }, positions = { uf_player = { point = "BOTTOM", relPoint = "BOTTOM", x = -250, y = 180 } } } } }' });
   expect(sizes(old).slice(3, 5), "a profile that saved the old button size and bar width keeps them").toEqual([px(old, 36), 454]);
   expect(old.eval("return { ns.MoverPoint('uf_player') }"), "and a frame it moved stays put").toEqual(["BOTTOM", "BOTTOM", -250, 180]);
 });

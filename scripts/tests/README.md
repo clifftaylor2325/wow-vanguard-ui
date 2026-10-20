@@ -116,7 +116,7 @@ change fires the events the client would.
 
 | Call | Effect |
 | --- | --- |
-| `setUnit(token, fields)` | Creates or changes a unit (`name, hp, maxhp, power, maxpower, ptypeName, reaction, level, class, isPlayer, connected, dead, role, ...`). A new target fires PLAYER_TARGET_CHANGED; changed fields fire their UNIT_* events. |
+| `setUnit(token, fields)` | Creates or changes a unit (`name, hp, maxhp, power, maxpower, ptypeName, reaction, level, class, isPlayer, controlled (a player's pet: `UnitPlayerControlled`), connected, dead, role, ...`). A new target fires PLAYER_TARGET_CHANGED; changed fields fire their UNIT_* events. |
 | `removeUnit(token)` | The unit is gone (target lost, pet dismissed). |
 | `unit(token)` | The unit's fields, or null. |
 | `combat(true/false)` | PLAYER_REGEN_DISABLED, then `InCombatLockdown()` turns true; `InCombatLockdown()` turns false, then PLAYER_REGEN_ENABLED (the client's order). |
@@ -125,7 +125,7 @@ change fires the events the client would.
 | `addQuest(quest)` | A quest in the log (`questID, title, level, watched, objectives: [{ text, finished, type }]`). |
 | `world.setQuestTimer(questID, seconds)` (Lua, through `addon.eval`) | A quest's timer: `seconds` left on the clock (a `secret(n)` for one the client hides), `nil` to clear it; QUEST_LOG_UPDATE fires, as the log does. `C_QuestLog.GetQuestTimers` answers from `world.questTimers` with the remaining seconds as `{ questID, questTimer }` each, counting down with `advance`. |
 | `world.trackRecipe(recipeID, tracked)` (Lua, through `addon.eval`) | Tracks a recipe (`tracked` true or nil) or untracks it (false) and fires TRACKED_RECIPE_UPDATE(recipeID, tracked). `C_TradeSkillUI.GetRecipesTracked(isRecraft)` answers from `world.trackedRecipes` (recrafts are none); `C_TradeSkillUI.SetRecipeTracked` goes through it. |
-| `learn(id, fields)` / `forgetAll()` | A spell in the spellbook (`name, icon, rank, helpful, passive, offSpec`; `C_SpellBook` reads them, SPELLS_CHANGED fires), or an empty spellbook. |
+| `learn(id, fields)` / `forgetAll()` | A spell in the spellbook (`name, icon, rank, helpful, passive, offSpec`; `C_SpellBook` reads them, `C_SpellBook.IsSpellKnown` and the older `IsPlayerSpell` answer from them, SPELLS_CHANGED fires), or an empty spellbook. |
 | `openNpc(data)` | A gossip or quest giver window (`forceGossip = true` for an NPC that forces its gossip; the pick lands in `world.gossipChosen`, or `world.gossipChosenIndex` for `SelectOptionByIndex`). |
 | `openAuctionHouse()` / `closeAuctionHouse()` | The auction house: `AuctionHouseFrame` (made on the first open, as the game loads it) shows and AUCTION_HOUSE_SHOW fires; AUCTION_HOUSE_CLOSED fires and it hides. `C_AuctionHouse` answers from `world.ah` (browse and search results, the replicate list, your auctions; see `scripts/lib/wow-world.lua`); queries are only recorded in `ah.queries`, so a test fires the result event itself (`fireAuctionEvents(key, id)` fires every one), and every restricted call (PostItem, PostCommodity, ConfirmPost*, CancelAuction, PlaceBid, StartCommoditiesPurchase) lands in `ah.restricted` with `clicked` (made inside a click) and `path` (the stack that made it). |
 | `openMailbox()` | The mailbox opens: MAIL_SHOW, then MAIL_INBOX_UPDATE. The inbox is `world.mail`, a list of mails in order (`sender, subject, money, daysLeft, firstItemQuantity, firstItemLink`, and `invoice = { type, itemName, bid, deposit, consignment, count }` for an auction invoice), read by `GetInboxNumItems`, `GetInboxHeaderInfo`, `GetInboxInvoiceInfo` and `HasInboxItem` (a mail's attachment slots: `slots`, a set, else 1 to `itemCount`). Empty by default. `TakeInboxMoney` and `TakeInboxItem` change it as the server does (noted in `world.taken`; the money goes to 0, the slot empties), and a mail left with nothing in it leaves the inbox, moving up the mails after it (not a `letter = true` one), then MAIL_INBOX_UPDATE fires. `world.mailPending = true` makes `C_Mail.IsCommandPending` true. |
@@ -155,6 +155,7 @@ values); a test that must tell them apart sets one in `env`.
 | Call | Effect |
 | --- | --- |
 | `click(ref, button = "LeftButton")` | PreClick, OnMouseDown, OnMouseUp, OnClick, PostClick on a frame. |
+| `__wfgStub.secureActs(frame, button, down)` (Lua, through `addon.eval`) | Whether a SecureActionButtonTemplate button of the addon's runs its action on that click phase, as the client's SecureActionButton_OnClick decides: the phase must be registered (`RegisterForClicks`), and the `useOnKeyDown` attribute, else the `ActionButtonUseKeyDown` CVar (on unless `world.cvars` says `"0"`), or `pressAndHoldAction` makes the press act and the release do nothing. The stub's own clicks run OnClick whatever the phase. |
 | `hover(ref)` / `hover(null)` | The mouse onto a frame (OnEnter, `IsMouseOver`), or off everything (OnLeave). |
 | `wheel(ref, delta)`, `key(ref, key)` | OnMouseWheel (on the frame, or the nearest parent that takes the wheel, as in game), OnKeyDown. |
 | `drag(ref, point, x, y)` | Drags a frame to a point on the screen and drops it. |

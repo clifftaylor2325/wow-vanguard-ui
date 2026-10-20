@@ -1,7 +1,7 @@
 // range: Vanguard's real Lua in the TEST-ONLY headless client (scripts/lib/lua-harness.mjs).
 
 import { expect, it } from "vitest";
-import { ACTIONS_ENV, button, isTok, loggedIn, pageBar1 } from "./helpers.mjs";
+import { ACTIONS_ENV, CLICK_LUA, button, isTok, loggedIn, pageBar1 } from "./helpers.mjs";
 
 it("range tint", () => {
   const polled = loggedIn(ACTIONS_ENV + "C_ActionBar = nil IsActionInRange = function(slot) if slot == 1 then return false end if slot == 3 then return { __secret = true } end return true end");
@@ -31,4 +31,14 @@ it("range tint: a page change turns the old slot's watch off and does not keep i
   expect(red(), "back on slot 1, in range: not red, with no range event").toBe(false);
   addon.fire("PLAYER_ENTERING_WORLD");
   expect(watching(), "one watch per button, however often the buttons refresh").toEqual([1, 0]);
+});
+
+it("range tint: Red when out of range repaints the buttons at once, both ways", () => {
+  const addon = loggedIn(ACTIONS_ENV + CLICK_LUA + "C_ActionBar = { EnableActionRangeCheck = function() end }");
+  addon.fire("ACTION_RANGE_CHECK_UPDATE", 1, false, true);
+  addon.eval('ns.Options.Show("actionbars")');
+  addon.eval('__click("Red when out of range")');
+  expect([addon.eval('return ns.GetModule("ActionBars").settings.rangeTint'), isTok(addon, button(addon, 1, 1).color, "outOfRange")], "unticked: saved, and the red is gone").toEqual([false, false]);
+  addon.eval('__click("Red when out of range")');
+  expect(isTok(addon, button(addon, 1, 1).color, "outOfRange"), "ticked again: red at once").toBe(true);
 });

@@ -169,6 +169,7 @@
     "scripts/tests/platebuffs.test.mjs": [],
     "scripts/tests/platepaint.test.mjs": [],
     "scripts/tests/plates.test.mjs": [
+      "tag marks follow a tap change the client sends as UNIT_FACTION, or a group change, on the plate and the target",
       "tag marks: a green check on a mob you tagged, a grey X and a grey plate bar on another player's, none on an untouched one",
       "the Nameplates and Unit frames pages switch the tag marks and the grey bar"
     ],
@@ -211,6 +212,7 @@
     ],
     "scripts/tests/range.test.mjs": [
       "range tint",
+      "range tint: Red when out of range repaints the buttons at once, both ways",
       "range tint: a page change turns the old slot's watch off and does not keep its red"
     ],
     "scripts/tests/report.test.mjs": [
@@ -236,7 +238,10 @@
     "scripts/tests/skins.test.mjs": [],
     "scripts/tests/special.test.mjs": [],
     "scripts/tests/spellbook.test.mjs": [],
-    "scripts/tests/spellranks.test.mjs": [],
+    "scripts/tests/spellranks.test.mjs": [
+      "/vg ranks names Vanguard's bar and button for a slot, and sees bars 6 to 8",
+      "the bar notice says once that buttons hold an older rank; /vg ranks lists them without changing anything"
+    ],
     "scripts/tests/status.test.mjs": [],
     "scripts/tests/statuschip.test.mjs": [
       "status chip: a client without the aura lookup says nothing, and the switch is on the Unit frames page",
@@ -256,6 +261,7 @@
       "Calm HUD: setup's look step and the situations offer it",
       "Versus deck: one rounded panel behind the player and target, the crest at the seam, the target's bars mirrored",
       "a ?? (boss or far higher) level reads in the hardest difficulty color, not the easiest",
+      "class bars: a right-click on a totem cell destroys it, with key-down casting on or off",
       "class bars: druid mana while a form shows rage or energy",
       "class bars: totems for shamans, mana in forms for druids",
       "combo points for rogues and druids",

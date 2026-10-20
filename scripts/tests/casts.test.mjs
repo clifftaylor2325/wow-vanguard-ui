@@ -428,8 +428,23 @@ it("the interrupt mark: which interrupt, by class and rank", () => {
   expect(pick("MAGE", [2139]), "a mage's Counterspell").toBe(2139);
   expect(pick("MAGE", []), "an interrupt you have not learned").toBe(false);
   expect(pick("DRUID", [2139]), "a class with none").toBe(false);
-  addon.eval("IsPlayerSpell = nil");
+  addon.eval("IsPlayerSpell = nil C_SpellBook.IsSpellKnown = nil");
   expect(addon.eval('return ns.GetModule("CastBars").InterruptSpell() or false'), "a client that cannot say what you know").toBe(false);
+});
+
+it("the interrupt mark asks C_SpellBook what you know, so it shows without the game's deprecation fallbacks", () => {
+  // As Forever with loadDeprecationFallbacks off: no IsPlayerSpell global, C_SpellBook.IsSpellKnown still there.
+  const addon = loggedIn(CAST_ENV + MARK_ENV + "IsPlayerSpell = nil");
+  addon.eval(KNOWS(2139));
+  addon.eval('__casts.target = { kind = "cast", start = 1000, finish = 3000, shielded = false }');
+  addon.fire("UNIT_SPELLCAST_START", "target");
+  expect([addon.eval('return ns.GetModule("CastBars").InterruptSpell() or false'), mark(addon, "target").shown], "Counterspell, and the mark beside the cast").toEqual([2139, true]);
+});
+
+it("the interrupt mark still works on a client with only the older IsPlayerSpell", () => {
+  const addon = loggedIn(CAST_ENV + MARK_ENV + "C_SpellBook.IsSpellKnown = nil");
+  addon.eval(KNOWS(2139));
+  expect(addon.eval('return ns.GetModule("CastBars").InterruptSpell() or false'), "Counterspell, from IsPlayerSpell").toBe(2139);
 });
 
 it("the interrupt mark is not shown without an interrupt, with the switch off, or when the client hides the cooldown", () => {

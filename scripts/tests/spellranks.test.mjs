@@ -39,8 +39,17 @@ it("the bar notice says once that buttons hold an older rank; /vg ranks lists th
   expect(count(addon, /hold an older spell rank/), "the same list is not said again").toBe(1);
   addon.slash("ranks");
   expect(chatHas(addon, /Bar 1 button 3: TEST-ONLY Frostbolt Rank 1 -> Rank 3$/), "bar 1").toBe(true);
-  expect(chatHas(addon, /Bar 2 button 2: TEST-ONLY Frostbolt Rank 2 -> Rank 3$/), "bar 2").toBe(true);
+  expect(chatHas(addon, /Action slot 14: TEST-ONLY Frostbolt Rank 2 -> Rank 3$/), "bar 1's second page, which no button shows now").toBe(true);
   expect(slots(addon, [3, 14]), "nothing changed").toEqual([100, 101]);
+});
+
+it("/vg ranks names Vanguard's bar and button for a slot, and sees bars 6 to 8", () => {
+  const addon = mage("VanguardDB.profiles = { Default = { SpellRanks = { barNotice = true }, ActionBars = { bars = { [6] = { enabled = true } } } } }");
+  put(addon, 61, 100);
+  put(addon, 145, 101);
+  addon.slash("ranks");
+  expect(chatHas(addon, /Bar 2 button 1: TEST-ONLY Frostbolt Rank 1 -> Rank 3$/), "slot 61 is Vanguard's bar 2").toBe(true);
+  expect(chatHas(addon, /Bar 6 button 1: TEST-ONLY Frostbolt Rank 2 -> Rank 3$/), "slot 145 is Vanguard's bar 6").toBe(true);
 });
 
 it("/vg ranks swap puts the newest rank on each button, out of combat, and the notice speaks again for a new one", () => {
@@ -91,7 +100,7 @@ it("the bar notice is off until switched on, and waits out combat", () => {
   off.advance(0.25);
   expect(chatHas(off, /hold an older spell rank/), "off by default").toBe(false);
   off.slash("ranks");
-  expect(chatHas(off, /Bar 1 button 3/), "the list still works").toBe(true);
+  expect(chatHas(off, /(Bar 1 button|Action slot) 3: /), "the list still works").toBe(true);
   const on = mage();
   setCombat(on, true);
   put(on, 3, 100);
@@ -216,7 +225,7 @@ it("the module off: /vg ranks still reads, nothing is watched", () => {
   addon.advance(0.25);
   addon.slash("ranks");
   addon.slash("trainers");
-  expect([chatHas(addon, /hold an older spell rank/), chatHas(addon, /Bar 1 button 3/), chatHas(addon, /0 trainer service\(s\)/)], "no notice, but the commands answer").toEqual([false, true, true]);
+  expect([chatHas(addon, /hold an older spell rank/), chatHas(addon, /(Bar 1 button|Action slot) 3: /), chatHas(addon, /0 trainer service\(s\)/)], "no notice, but the commands answer").toEqual([false, true, true]);
 });
 
 it("upcoming services come lowest level first, then by name", () => {

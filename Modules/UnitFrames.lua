@@ -163,10 +163,12 @@ end
 
 -- Who has tagged a creature you can attack: "theirs" when the client calls it tap denied (another player
 -- or group tagged it), "yours" when it is in combat and not tap denied, nil for anything else (an untouched
--- mob, a player, a friend, a hidden or missing answer). The client has no call that says "yours" outright,
+-- mob, a player or a player's pet, a friend, a hidden or missing answer). The client has no call that says "yours" outright,
 -- so a mob in combat with you (or only with your pet) reads the same.
 function UF.TagState(unit)
   if asked("UnitCanAttack", "player", unit) ~= true or asked("UnitIsPlayer", unit) == true then return nil end
+  -- Only creatures are tagged: a player's pet or demon never is (the game's own tap greys skip them too).
+  if asked("UnitPlayerControlled", unit) == true then return nil end
   local denied = asked("UnitIsTapDenied", unit)
   if denied == true then return "theirs" end
   if denied == false and asked("UnitAffectingCombat", unit) == true then return "yours" end
@@ -375,8 +377,9 @@ local UNIT_EVENTS = {
   UNIT_LEVEL = UF.UpdateName,
 }
 
--- What the target frame's tag mark also hears: a mob was tagged or let go (its flags), or its threat list changed.
-local TAG_EVENTS = { "UNIT_FLAGS", "UNIT_THREAT_LIST_UPDATE" }
+-- What the target frame's tag mark also hears: a mob was tagged or let go (its flags, or its faction, which is
+-- what the game's target frame re-greys on), or its threat list changed.
+local TAG_EVENTS = { "UNIT_FLAGS", "UNIT_FACTION", "UNIT_THREAT_LIST_UPDATE" }
 
 -- The unit events, as a list for ns.OnUnit.
 local UNIT_EVENT_LIST = {}
@@ -430,7 +433,8 @@ local GLOBAL_EVENTS = {
   PLAYER_TARGET_CHANGED = { target = true, targettarget = true },
   PLAYER_FOCUS_CHANGED = { focus = true },
   UNIT_PET = { pet = true },
-  GROUP_ROSTER_UPDATE = { party1 = true, party2 = true, party3 = true, party4 = true },
+  -- The party frames, and the target's tag mark: joining or leaving the tagger's group changes who tagged it.
+  GROUP_ROSTER_UPDATE = { party1 = true, party2 = true, party3 = true, party4 = true, target = true },
   -- A boss joined or left the fight, or became attackable.
   INSTANCE_ENCOUNTER_ENGAGE_UNIT = { boss1 = true, boss2 = true, boss3 = true, boss4 = true, boss5 = true },
   UNIT_TARGETABLE_CHANGED = { boss1 = true, boss2 = true, boss3 = true, boss4 = true, boss5 = true },

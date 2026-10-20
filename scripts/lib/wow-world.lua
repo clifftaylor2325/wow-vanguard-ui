@@ -349,6 +349,27 @@ end
 -- Removes an attribute driver.
 function UnregisterAttributeDriver(frame, attr) if frame.__drivers then frame.__drivers[attr] = nil end end
 
+-- Whether a click registration ("AnyUp", "RightButtonDown") sends this button's press or release.
+local function clickRegistered(frame, button, down)
+  local phase = down and "Down" or "Up"
+  for _, reg in ipairs(frame.__clicks or {}) do
+    if reg == "Any" .. phase or reg == button .. phase then return true end
+  end
+  return false
+end
+
+-- Whether an addon's SecureActionButtonTemplate button runs its action on this click phase, as
+-- SecureActionButton_OnClick decides (SecureTemplates.lua): an addon's OnClick has no isKeyPress or
+-- isSecureAction, so the useOnKeyDown attribute, else the ActionButtonUseKeyDown CVar (on, "1", unless
+-- world.cvars says otherwise), or pressAndHoldAction picks the down phase; the other phase does nothing.
+function stub.secureActs(frame, button, down)
+  if not clickRegistered(frame, button, down == true) then return false end
+  local onDown = frame:GetAttribute("useOnKeyDown")
+  if onDown == nil then onDown = world.cvars.ActionButtonUseKeyDown ~= "0" end
+  onDown = onDown or frame:GetAttribute("pressAndHoldAction")
+  return (down == true) == (not not onDown)
+end
+
 -- Unit watches: a watched frame shows while its unit exists (re-checked on unit changes).
 world.watched = {}
 -- Shows a frame while its unit exists (the unit comes from its attribute or .unit).
@@ -534,6 +555,8 @@ end
 -- More unit facts: power type, player, class, level, reaction and states.
 function UnitPowerType(unit) local u = resolveUnit(unit) return u and u.ptype or 0, u and u.ptypeName or "MANA" end
 function UnitIsPlayer(unit) return uf(unit, "isPlayer") == true end
+-- Players and what they control (a pet, a demon: the unit's `controlled` field), as UnitDocumentation.lua has it.
+function UnitPlayerControlled(unit) return uf(unit, "isPlayer") == true or uf(unit, "controlled") == true end
 function UnitClass(unit) local u = resolveUnit(unit) return u and (u.className or u.class), u and u.class, 0 end
 function UnitLevel(unit) return uf(unit, "level") or 0 end
 function UnitReaction(unit) local u = resolveUnit(unit) return u and (u.reaction or 5) end
@@ -955,12 +978,14 @@ function world.learn(id, fields)
 end
 
 -- Whether the player knows a spell (it is in the spellbook, rank or not).
-function IsPlayerSpell(id)
+local function knowsSpell(id)
   for _, item in ipairs(world.book) do
     if item.id == id then return true end
   end
   return false
 end
+-- The older global, which Forever loads with its deprecation fallbacks (loadDeprecationFallbacks, on by default).
+IsPlayerSpell = knowsSpell
 
 -- Forgets every learned spell (the spellbook is empty again).
 function world.forgetAll()
@@ -969,6 +994,11 @@ function world.forgetAll()
 end
 
 C_SpellBook = {
+  -- Whether the player (the default bank) knows a spell; the pet bank knows none here.
+  IsSpellKnown = function(id, bank)
+    if bank ~= nil and bank ~= Enum.SpellBookSpellBank.Player then return false end
+    return knowsSpell(id)
+  end,
   -- One skill line while anything is learned.
   GetNumSpellBookSkillLines = function() return #world.book > 0 and 1 or 0 end,
   -- The one skill line holds every learned spell.

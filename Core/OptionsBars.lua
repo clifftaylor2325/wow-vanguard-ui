@@ -56,7 +56,7 @@ end
 local function actionBarRows()
   return {
     { "header", "Action bars" },
-    check("Lock buttons (Shift-drag to move actions)", setting("ActionBars", "lockButtons")), check("Red when out of range", setting("ActionBars", "rangeTint")),
+    check("Lock buttons (Shift-drag to move actions)", setting("ActionBars", "lockButtons")), check("Red when out of range", liveSetting("ActionBars", "rangeTint", function() ns.GetModule("ActionBars").RepaintIcons() end)),
     { "cycle", "Bar backing", { { "auto", "Follow the theme" }, { "on", "Always" }, { "off", "Never" } }, backingSetting() },
     check("Hide the default bars", setting("ActionBars", "hideBlizzard", true)),
     check("Restyle the pet, stance, possess and extra action buttons (reload)", skinSpecial()),
