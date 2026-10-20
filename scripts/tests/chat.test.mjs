@@ -368,6 +368,15 @@ it("chat side buttons: module off leaves the game's art; a client without text t
   const bare = loggedIn(UI_ENV + CHAT_BUTTONS_ENV + "TextToSpeechButtonFrame = nil TextToSpeechButton = nil QuickJoinToastButton = nil ChatFrame1.ScrollToBottomButton = nil");
   expect(bare.eval("return __buttonLook(ChatFrameMenuButton, ns.Theme.WHITE)[5]"), "the buttons this client has are still skinned").toBe("NavChat");
 });
+it("chat buttons with the Chat module off: Find sits left of Copy over the window's top right, not on top of it", () => {
+  const off = loggedIn(UI_ENV, { savedVariables: "VanguardDB.profiles = { Default = { modules = { Chat = false } } }" });
+  // A button's anchor over the window (point, its point there, x of its right edge) and its width.
+  const place = (button) => off.eval(`local p, rel, rp, x = ${button}:GetPoint(1) return { p, rel == ChatFrame1 and rp, x, ${button}:GetWidth() }`);
+  const copy = place("ns.GetModule('ChatExtras').copyButton");
+  const find = place("ns.GetModule('ChatWindows').findButton");
+  expect([find[0], find[1]], "both hang from the window's top right").toEqual([copy[0], copy[1]]);
+  expect(find[2] <= copy[2] - copy[3], "Find's right edge is left of Copy's left edge").toBe(true);
+});
 it("chat background: the panel's fill in the panel colour, three strengths, tabs fit their labels and are rounded and 20 tall, Copy sits in the bar", () => {
   const addon = loggedIn(UI_ENV);
   // The main window's fill: its alpha and colour token.
