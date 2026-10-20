@@ -149,6 +149,24 @@ function CX.Plain(text)
   return text
 end
 
+-- A line as plain lower-case text for matching: colour and link codes and brackets gone, so "wts devilsaur"
+-- finds "WTS [Devilsaur Leggings]" sent as an item link. The chat filter and chat watch match on it.
+function CX.Matchable(text)
+  local s = text:find("|", 1, true) and text:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|H.-|h", ""):gsub("|[hr]", "") or text
+  return (s:gsub("[%[%]]", "")):lower()
+end
+
+-- Removes the first entry of list equal to value; true when one was removed.
+function CX.RemoveValue(list, value)
+  for i, entry in ipairs(list) do
+    if entry == value then
+      table.remove(list, i)
+      return true
+    end
+  end
+  return false
+end
+
 -- Text with Lua's pattern characters escaped, so a pattern made from it finds it as it is.
 ---@param text string
 ---@return string

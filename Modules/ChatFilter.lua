@@ -45,12 +45,6 @@ CF.allowed, CF.recent, CF.recentCount, CF.count, CF.counts = {}, {}, 0, 0, {}
 
 -- Matching ------------------------------------------------------------------------------------
 
--- A line as plain lower-case text: colour and link codes and brackets gone.
-local function plain(text)
-  local s = text:find("|", 1, true) and text:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|H.-|h", ""):gsub("|[hr]", "") or text
-  return (s:gsub("[%[%]]", "")):lower()
-end
-
 -- True when the line holds any of the words (as plain text).
 local function holdsAny(line, words)
   for _, word in ipairs(words) do
@@ -96,7 +90,7 @@ end
 
 -- Why a line is filtered ("Gold selling", "Your word", "Repeat"), or nil to let it through.
 function CF.Reason(text, sender, now)
-  local line = plain(text)
+  local line = ns.GetModule("ChatExtras").Matchable(text)
   local why = CF.Category(line)
   if not why and holdsAny(line, CF.settings.keywords) then why = "Your word" end
   if not why and CF.settings.repeats and #line >= CF.MIN_REPEAT and repeated(sender, line, now) then why = "Repeat" end
@@ -281,15 +275,10 @@ end
 
 -- Stops filtering a keyword; says in chat what happened.
 function CF.Remove(text)
-  local word, list = clean(text), keywords()
-  for i, w in ipairs(list) do
-    if w == word then
-      table.remove(list, i)
-      ns.Options.RebuildPage("chat")
-      return ns.Chat(string.format('No longer filtering "%s".', word))
-    end
-  end
-  ns.Chat(string.format('Not filtering "%s".', word))
+  local word = clean(text)
+  if not ns.GetModule("ChatExtras").RemoveValue(keywords(), word) then return ns.Chat(string.format('Not filtering "%s".', word)) end
+  ns.Options.RebuildPage("chat")
+  ns.Chat(string.format('No longer filtering "%s".', word))
 end
 
 -- The options' Add a word dialog: adds what was typed, and closes once it's added.

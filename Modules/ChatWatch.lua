@@ -41,13 +41,6 @@ CW.recent, CW.recentCount, CW.lines, CW.lineCount = {}, 0, {}, 0
 
 -- Matching ------------------------------------------------------------------------------------
 
--- A line as plain lower-case text: colour and link codes and brackets gone,
--- so "wts devilsaur" finds "WTS [Devilsaur Leggings]" sent as an item link.
-local function plain(text)
-  local s = text:find("|", 1, true) and text:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|H.-|h", ""):gsub("|[hr]", "") or text
-  return (s:gsub("[%[%]]", "")):lower()
-end
-
 -- A phrase's words, in order.
 function CW.Words(phrase)
   local words = {}
@@ -82,7 +75,7 @@ end
 -- text), or nil. With no phrases there is nothing to look for, so the line is not even made plain.
 function CW.Match(text)
   if #CW.settings.phrases == 0 then return nil end
-  local line = plain(text)
+  local line = ns.GetModule("ChatExtras").Matchable(text)
   for _, phrase in ipairs(CW.settings.phrases) do
     if holds(line, phrase) then return phrase end
   end
@@ -314,15 +307,10 @@ end
 
 -- Stops watching for a phrase (any case); says in chat what happened.
 function CW.Remove(text)
-  local phrase, list = (type(text) == "string" and text or ""):match("^%s*(.-)%s*$"):lower(), phrases()
-  for i, p in ipairs(list) do
-    if p == phrase then
-      table.remove(list, i)
-      phrasesChanged()
-      return ns.Chat(string.format('No longer watching for "%s".', phrase))
-    end
-  end
-  ns.Chat(string.format('Not watching for "%s".', phrase))
+  local phrase = (type(text) == "string" and text or ""):match("^%s*(.-)%s*$"):lower()
+  if not ns.GetModule("ChatExtras").RemoveValue(phrases(), phrase) then return ns.Chat(string.format('Not watching for "%s".', phrase)) end
+  phrasesChanged()
+  ns.Chat(string.format('No longer watching for "%s".', phrase))
 end
 
 -- The options' Add a phrase dialog: adds what was typed, and closes once it's added.
