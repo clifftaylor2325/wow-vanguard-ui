@@ -114,7 +114,8 @@ local function keepSweeps(list)
   for _, e in ipairs(list) do
     local seen = PA.sweeps[e.inv]
     local fresh = not seen or e.left > seen.left + 1
-    kept[e.inv] = { total = fresh and e.left or seen.total, left = e.left }
+    e.total = fresh and e.left or seen.total
+    kept[e.inv] = { total = e.total, left = e.left }
   end
   PA.sweeps = kept
 end
@@ -123,10 +124,9 @@ end
 local function paintCell(c, e)
   c:SetShown(e ~= nil)
   if not e then c.inv = nil return end
-  local total = PA.sweeps[e.inv].total
   c.inv = e.inv
   c.icon:SetTexture(e.icon)
-  c.cooldown:SetCooldown(GetTime() - (total - e.left), total)
+  c.cooldown:SetCooldown(GetTime() - (e.total - e.left), e.total)
 end
 
 -- Shows the enchant cells and moves the buffs over to make room for them.
