@@ -4,6 +4,39 @@ What changed for players in each release, newest first. In game, the same notes 
 
 Nothing here has been checked in the game by the people who wrote it down: see the batch checklist (issue #284) and [SMOKE-TEST.md](SMOKE-TEST.md).
 
+## 0.7.2
+
+Nothing in this release has been checked in the game; see the batch checklist (issue #284).
+
+### Window look (0.7.2)
+
+- Window buttons (close, minimize, maximize, back) show only their mark at rest; under the mouse a grey rounded tile appears and the close cross turns vermilion.
+- The world map's breadcrumbs and their arrows are one control, the inbox Prev and Next captions sit clear of their arrows, and the Spellbook's category icons fill their tiles.
+- The character pane's tabs, fold chevrons and rows take the theme, reputation rows read their state once the game has filled them, and the Settings window's Graphics box sits under its tabs with centred tab labels.
+- The social window shows status in words with the presence dot centred on the name.
+
+### Chat panel (0.7.2)
+
+- Chat tabs sit over the panel in the tab bar, after the game's own dock layout.
+- Chat polish: the frame, tabs, edit box, text fade, find box and bubbles; the edit box sits under the panel with a rail in the channel's colour.
+- The Combat Log's filter strip sits in a band under the bar, and the copy box and the find box never stack.
+
+### HUD and Edit Mode (0.7.2)
+
+- A grey X and a grey nameplate bar mark mobs another player has tagged; mobs you tagged keep the green check.
+- Scaled action bars touch in the bottom stack, and in Edit Mode the handles keep a dialog's layer and bars stack on whole pixels.
+
+### Map and minimap (0.7.2)
+
+- On a round minimap, quest marks, the zone name and the rim buttons stay on the map.
+- With OpenMap loaded, Vanguard's map extras step aside: no cursor spot on the coordinates line and no quest-start pins. The Map page says so.
+
+### Fixes and safety (0.7.2)
+
+- A window drag held as a fight starts ends before the lockdown, popups keep their own layout, Forever's addon list is dressed, and the social side windows are fixed.
+- Profiles: a backup never overwrites another character's profile, swapping back to a spec with no profile undoes the staged switch, and a settings restore reads its backup the way an import does.
+- Hiding the red error line keeps the yellow info lines, and an options search hit marks its row when the window opens again.
+
 ## 0.7.1
 
 Nothing in this release has been checked in the game; see the batch checklist (issue #284).
