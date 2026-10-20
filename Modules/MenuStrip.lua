@@ -481,8 +481,14 @@ local function menuArt(b)
   for _, key in ipairs(MS.MENU_FIT) do
     if type(b[key]) == "table" and b[key].SetPoint then art[#art + 1] = b[key] end
   end
-  ns.OutOfCombat(function() clickThrough(b) end, "menustrip clickthrough " .. (b:GetName() or ""))
   return art, icons(art)
+end
+
+-- Greys a menu button while it is disabled, and follows the client's enable and disable after that.
+local function followEnabled(b)
+  b:HookScript("OnEnable", paintEnabled)
+  b:HookScript("OnDisable", paintEnabled)
+  paintEnabled(b)
 end
 
 -- One of the game's menu buttons on a slot: its own background plates faded,
@@ -493,12 +499,11 @@ function MS.SkinButton(b, icon)
   if vgSlot[b] then return end
   for _, key in ipairs(MS.MENU_ART) do if type(b[key]) == "table" then b[key]:SetAlpha(0) end end
   addSlot(b, MS.ROWS[2])
+  ns.OutOfCombat(function() clickThrough(b) end, "menustrip clickthrough " .. (b:GetName() or ""))
   vgArt[b], vgIcons[b] = menuArt(b)
   if MS.settings.glyphs then addGlyph(b, icon) end
   slotStates(b)
-  b:HookScript("OnEnable", paintEnabled)
-  b:HookScript("OnDisable", paintEnabled)
-  paintEnabled(b)
+  followEnabled(b)
   sizeSlot(b)
 end
 
