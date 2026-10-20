@@ -420,6 +420,10 @@ end
 -- only a repaint.
 local vgChatTab = ns.FrameState("vgChatTab")
 
+-- Whether each chat tab is the selected one (tab -> boolean), which the theme's tab reads: the game
+-- never disables a chat tab, it only tells FCFTab_UpdateColors whether the tab is selected.
+local vgChecked = ns.FrameState("vgChecked")
+
 -- A tab as the theme's flat tab (raised with a lit top edge when selected, just its label on the bar
 -- otherwise, a faint hover, rounded) with its own art gone and its alert glow in the accent colour;
 -- the game's flash animation still drives the glow's alpha.
@@ -433,12 +437,23 @@ local function skinTab(tab)
   vgChatTab[tab] = true
 end
 
--- A tab after the game colours it (FCFTab_UpdateColors: the dock's layout, a tab click, a new
--- window): its label is gold again, so the theme's tab is painted again, which puts the label back
--- in the theme's colours; a tab Vanguard hasn't dressed yet gets the skin.
-local function restyleTab(tab)
+-- A tab after the game colours it (FCFTab_UpdateColors(tab, selected): the dock's layout, a tab
+-- click, a new window): its label is gold again, so the theme's tab is painted again, selected as
+-- the game says, which puts the label back in the theme's colours; a tab Vanguard hasn't dressed
+-- yet gets the skin.
+local function restyleTab(tab, selected)
   if type(tab) ~= "table" then return end
+  vgChecked[tab] = selected == true
   if vgChatTab[tab] then T.Tab(tab) else skinTab(tab) end
+end
+
+-- Notes whether a window's tab is the selected one before it is skinned, as the game colours it: a
+-- floating window's always, a docked one's while it is the dock's selected window (where this client
+-- can say; the game's next colouring says it anyway).
+local function seedSelected(tab, frame)
+  local dock = _G.GENERAL_CHAT_DOCK
+  if type(FCFDock_GetSelectedWindow) ~= "function" or type(dock) ~= "table" then return end
+  vgChecked[tab] = not frame.isDocked or FCFDock_GetSelectedWindow(dock) == frame
 end
 
 -- Each edit box's rail (box -> texture) and its focus fade (box -> { from, to, start, seconds }),
@@ -838,7 +853,7 @@ local function skinNamed(name, settings)
   end
   skinWindow(frame, settings)
   local tab, box = _G[name .. "Tab"], _G[name .. "EditBox"]
-  if tab then skinTab(tab) fitWindowTab(frame, tab) end
+  if tab then seedSelected(tab, frame) skinTab(tab) fitWindowTab(frame, tab) end
   if box then skinEditBox(box, CH.frames[frame].outline) end
   skinWindowButtons(frame, name)
   if type(frame.ScrollBar) == "table" then T.ScrollBar(frame.ScrollBar) end

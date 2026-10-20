@@ -65,16 +65,16 @@ it("a minimap that has the game's own wheel handler keeps it, and Vanguard adds 
 // Lua that finds the Chat page's row captioned `cap` as `r`.
 const chatRow = (cap) => `local r for _, p in ipairs(ns.Options.PAGES) do if p.key == "chat" then for _, row in ipairs(p.rows()) do if row[2] == "${cap}" then r = row end end end end`;
 it("chat", () => {
-  const addon = loggedIn(UI_ENV + "ChatFrame1.SetSpacing = function(_, s) __spacing = s end");
+  const addon = loggedIn(UI_ENV + "ChatFrame1.SetSpacing = function(_, s) __spacing = s end function FCFTab_UpdateColors() end");
   const c = addon.eval(`return { font = { ChatFrame1:GetFont() }, box = ns.Theme.PaintedCount() }`);
   expect(c.font[0] === "Interface\\AddOns\\Vanguard\\Media\\Fonts\\FiraSansCondensed-Medium.ttf" && c.font[1] === 12, `chat windows get the theme font at Medium, 12 (got ${JSON.stringify(c.font)})`).toBeTruthy();
   const shadow = addon.eval("return { ChatFrame1.__shadowOffset, ChatFrame1.__shadowColor, __spacing }");
   expect([shadow[0], isTok(addon, shadow[1], "textShadow"), shadow[2]], "chat lines carry the theme's (1, -1) drop shadow in textShadow and two units between lines").toEqual([[1, -1], true, 2]);
-  addon.eval("ChatFrame2Tab:Disable() ChatFrame1Tab:Enable()");
+  addon.eval("FCFTab_UpdateColors(ChatFrame2Tab, true) FCFTab_UpdateColors(ChatFrame1Tab, false)");
   // Whether chat tab n is painted in the raised (selected) fill.
   const raised = (n) => addon.eval(`local bg for _, r in ipairs({ ChatFrame${n}Tab:GetRegions() }) do if r.__layer == "BACKGROUND" and r.__vertexColor then bg = r end end
     local c, r, g, b = bg and bg.__vertexColor, ns.Theme.RGB("raised") return c ~= nil and c[1] == r and c[2] == g and c[3] == b`);
-  expect([raised(2), raised(1)], "the game selects a tab by disabling it: the selected tab is raised, the others inset").toEqual([true, false]);
+  expect([raised(2), raised(1)], "the game names the selected tab as it colours it (never disabling one): the selected tab is raised, the others inset").toEqual([true, false]);
   // A flat chat tab's look: its fill's alpha, and whether its lit top line shows (and is borderHi).
   const flat = (n) => addon.eval(`local bg, lit for _, r in ipairs({ ChatFrame${n}Tab:GetRegions() }) do
     if r.__layer == "BACKGROUND" and r.__vertexColor then bg = r end
@@ -1835,5 +1835,30 @@ describe("chat text size: the game's chat setting", () => {
     const again = loggedIn("FCF_SetChatWindowFontSize = nil", { savedVariables: `VanguardDB.profiles.Default = { Chat = ${luaValue(saved)} }` });
     again.eval("ChatFrame1:SetFont(ChatFrame1:GetFont(), 18)");
     expect(again.eval('return { ns.Settings("Chat").textSize, ns.GetModule("Chat").TextSize(ChatFrame1) }'), "still the game's setting after the reload: the window's own 18").toEqual([0, 18]);
+  });
+});
+
+describe("chat tabs: the selected tab is the one the game colours as selected", () => {
+  // Whether chat tab n is painted in the raised (selected) fill, and its fill's alpha.
+  const look = (addon, n) => addon.eval(`local bg for _, r in ipairs({ ChatFrame${n}Tab:GetRegions() }) do if r.__layer == "BACKGROUND" and r.__vertexColor then bg = r end end
+    local c, r, g, b = bg and bg.__vertexColor, ns.Theme.RGB("raised") return { c ~= nil and c[1] == r and c[2] == g and c[3] == b, bg and bg:GetAlpha() }`);
+  // TEST-ONLY: Blizzard's FCFTab_UpdateColors only recolours the label (it never disables a tab); the
+  // dock knows its selected window.
+  const DOCK = `function FCFTab_UpdateColors(tab, selected) tab:GetFontString():SetTextColor(1, 0.82, 0) end
+    GENERAL_CHAT_DOCK = CreateFrame("Frame", "GENERAL_CHAT_DOCK", UIParent)
+    ChatFrame1.isDocked, ChatFrame2.isDocked = 1, 1
+    function FCFDock_GetSelectedWindow() return ChatFrame1 end`;
+
+  it("the game's colouring picks the raised tab, with no tab disabled", () => {
+    const addon = loggedIn(UI_ENV + DOCK);
+    addon.eval("FCFTab_UpdateColors(ChatFrame1Tab, false) FCFTab_UpdateColors(ChatFrame2Tab, true)");
+    expect([look(addon, 1), look(addon, 2)], "ChatFrame2's tab is the shown one: raised with its fill showing").toEqual([[false, 0], [true, 1]]);
+  });
+
+  it("at skin time the dock's selected window and a floating window's tab are drawn selected", () => {
+    const addon = loggedIn(UI_ENV + DOCK);
+    expect([look(addon, 1), look(addon, 2)], "the dock's selected window raised, the other docked one not").toEqual([[true, 1], [false, 0]]);
+    addon.eval("ChatFrame2.isDocked = nil ns.GetModule('Chat').SkinAll()");
+    expect(look(addon, 2), "a floating window's tab is always its window's selected tab").toEqual([true, 1]);
   });
 });
