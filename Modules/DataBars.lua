@@ -74,16 +74,30 @@ function DB.XPToLevel()
   return cur and max and max > cur and max - cur or nil
 end
 
--- { name, standing, cur, max } for the watched faction, or nil when none.
+-- The reputation at the top standing, where the game leaves no range to the next: a full bar, no numbers
+-- (the game's own bar does the same).
+local function capped(name, standing)
+  return { name = name, standing = standing, cur = 1, max = 1, capped = true }
+end
+
+-- { name, standing, cur, max } for the watched faction (capped at the top standing), or nil when none.
 function DB.Reputation()
   local get = C_Reputation and C_Reputation.GetWatchedFactionData
   local data = type(get) == "function" and get() or nil
-  if type(data) ~= "table" or not data.name then
-    return nil
-  end
-  local low, high = data.currentReactionThreshold or 0, data.nextReactionThreshold or 0
-  local cur = (data.currentStanding or 0) - low
-  return { name = data.name, standing = data.reaction or 4, cur = cur, max = math.max(1, high - low) }
+  if type(data) ~= "table" or not data.name then return nil end
+  local low, high = ns.PlainNumber(data.currentReactionThreshold) or 0, ns.PlainNumber(data.nextReactionThreshold) or 0
+  local standing = ns.PlainNumber(data.reaction) or 4
+  if high <= low then return capped(data.name, standing) end
+  local cur = (ns.PlainNumber(data.currentStanding) or low) - low
+  return { name = data.name, standing = standing, cur = cur, max = high - low }
+end
+
+-- The game's word for a standing (1 Hated .. 8 Exalted, "Honored"), in your character's form of it; nil
+-- where the game has none (past Exalted, or a client without the labels).
+function DB.StandingName(standing)
+  local key = "FACTION_STANDING_LABEL" .. standing
+  local word = type(GetText) == "function" and GetText(key, number(UnitSex, "player")) or _G[key]
+  return type(word) == "string" and word or nil
 end
 
 -- "Level 42  12.3K / 40.0K (31%)  rested 5.0K"
@@ -92,9 +106,12 @@ function DB.XPText(xp)
   return xp.rested > 0 and (text .. "  rested " .. DB.Short(xp.rested)) or text
 end
 
--- "Valdrakken Accord  1.2K / 2.5K (48%)"
+-- "Valdrakken Accord  Honored  1.2K / 2.5K (48%)", or "Valdrakken Accord  Exalted" at the top standing.
 function DB.ReputationText(rep)
-  return string.format("%s  %s / %s (%d%%)", rep.name, DB.Short(rep.cur), DB.Short(rep.max), math.floor(rep.cur / rep.max * 100))
+  local word = DB.StandingName(rep.standing)
+  local head = word and rep.name .. "  " .. word or rep.name
+  if rep.capped then return head end
+  return string.format("%s  %s / %s (%d%%)", head, DB.Short(rep.cur), DB.Short(rep.max), math.floor(rep.cur / rep.max * 100))
 end
 
 -- Levelling detail -----------------------------------------------------------------------
@@ -185,6 +202,35 @@ function DB.ShowXPTooltip(bar)
   GameTooltip:Show()
 end
 
+-- The reputation tooltip's lines as { left, right }: the standing, and (below the top) what the next one needs.
+function DB.ReputationLines(rep)
+  local word, lines = DB.StandingName(rep.standing), {}
+  if word then lines[1] = { "Standing", word } end
+  if rep.capped then return lines end
+  local nextWord = DB.StandingName(rep.standing + 1)
+  lines[#lines + 1] = { nextWord and "To " .. nextWord or "To the next standing", DB.Short(rep.max - rep.cur) }
+  lines[#lines + 1] = { "Through this standing", math.floor(rep.cur / rep.max * 100) .. "%" }
+  return lines
+end
+
+-- Shows the reputation bar's tooltip, when it is on: the faction, its lines, and what a click does.
+function DB.ShowReputationTooltip(bar)
+  local rep = DB.settings.tooltip and DB.Reputation()
+  if not rep then return end
+  GameTooltip_SetDefaultAnchor(GameTooltip, bar)
+  GameTooltip:SetText(rep.name, T.RGB("text"))
+  for _, l in ipairs(DB.ReputationLines(rep)) do GameTooltip:AddDoubleLine(l[1], l[2]) end
+  local r, g, b = T.RGB("text2")
+  GameTooltip:AddLine("Click: the reputation list" .. (ns.InCombat() and " (not in a fight)" or ""), r, g, b)
+  GameTooltip:Show()
+end
+
+-- A left-click on the reputation bar opens the game's reputation list, out of a fight (it is a protected panel).
+function DB.OpenReputation(_, button)
+  if button ~= "LeftButton" or ns.WindowWaitsForCombat("The reputation list") then return end
+  if type(ToggleCharacter) == "function" then ToggleCharacter("ReputationFrame") end
+end
+
 -- Building -------------------------------------------------------------------------------
 
 -- Shows the bar's text only while hovered (text = "hover"), or always.
@@ -228,6 +274,13 @@ end
 local function resized(bar)
   DB.PlaceText(bar)
   if bar.vgOnState then bar.vgOnState() end
+end
+
+-- Gives a bar the mouse and a tooltip on hover, hooked so the text's own hover scripts (wireText) stay.
+local function hoverTip(bar, label, show)
+  bar:EnableMouse(true)
+  bar:HookScript("OnEnter", ns.Guard(label, show))
+  bar:HookScript("OnLeave", function() GameTooltip:Hide() end)
 end
 
 -- A themed status bar with its text, movable as `key`; Vanguard may set its size.
@@ -288,16 +341,16 @@ local function enableXP(settings)
   for _, e in ipairs({ "PLAYER_XP_UPDATE", "PLAYER_LEVEL_UP", "UPDATE_EXHAUSTION", "PLAYER_ENTERING_WORLD" }) do ns.On(e, DB.UpdateXP) end
   ns.On("PLAYER_XP_UPDATE", DB.OnXPChange)
   ns.On("CHAT_MSG_COMBAT_XP_GAIN", DB.OnKillMessage)
-  DB.xpBar:EnableMouse(true)
-  DB.xpBar:HookScript("OnEnter", ns.Guard("show XP tooltip", function(self) DB.ShowXPTooltip(self) end))
-  DB.xpBar:HookScript("OnLeave", function() GameTooltip:Hide() end)
+  hoverTip(DB.xpBar, "show XP tooltip", DB.ShowXPTooltip)
   DB.UpdateXP()
 end
 
--- The reputation bar for the watched faction, kept current.
+-- The reputation bar for the watched faction, kept current, with its tooltip and a click to the reputation list.
 local function enableReputation(settings)
   DB.repBar = createBar("repbar", "Reputation", { "BOTTOM", "BOTTOM", 0, 12 }, settings)
   DB.repBar.vgOnState = DB.UpdateReputation
+  hoverTip(DB.repBar, "show reputation tooltip", DB.ShowReputationTooltip)
+  DB.repBar:HookScript("OnMouseUp", ns.Guard("open reputation list", DB.OpenReputation))
   for _, e in ipairs({ "UPDATE_FACTION", "PLAYER_ENTERING_WORLD" }) do ns.On(e, DB.UpdateReputation) end
   DB.UpdateReputation()
 end

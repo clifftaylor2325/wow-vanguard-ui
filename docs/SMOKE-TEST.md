@@ -607,6 +607,12 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Expect: the XP numbers at the left end of the XP bar and the reputation numbers at the right end of the bar above it, both readable, not on top of each other, at both text sizes. [Needs in-game check: how far apart the two lines sit at 100% depends on the font's real line height.]
 - If it fails, paste: a screenshot of the two bars.
 
+### 8.5b Reputation bar tooltip and click
+
+- Do: watch a faction and hover the reputation bar; click it; close the character window, start a fight (a training dummy) and click the bar again. If a character has a faction at Exalted, watch that one.
+- Expect: the bar's numbers start with the standing (for example "Darnassus  Friendly  1.2K / 6.0K (20%)"); the tooltip shows the faction, Standing, "To Honored" with what is left, how far through and "Click: the reputation list"; the click opens the character window on its Reputation tab; in the fight nothing opens and chat says to try after it. An Exalted faction shows a full bar reading "Name  Exalted" with no numbers, and its tooltip only the standing.
+- If it fails, paste: a screenshot of the tooltip, `/vg probe`'s `watched faction:` line and `/vg errors`.
+
 ### 8.6 Quiet the game
 
 - Do: `/vg` → Game windows → "Quiet the game". Switch on "Hide the red error line", then press a key that fails (jump into a wall of mobs' "Not enough mana", or use an ability on cooldown). Switch on "Hide the zone names that fade in", then walk into a new zone and subzone. Pick a "Furthest the camera zooms out" value and scroll out. Have a stranger (or an alt) invite you to a group and to a guild with "Decline group invites..." and "Decline guild invites" on, then once from a friend. Die in a battleground with "Release at once..." on, then once more with a soulstone on you (or as a shaman with Reincarnation ready).

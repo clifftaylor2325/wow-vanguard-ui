@@ -67,6 +67,8 @@ read_globals = {
   "GameTime_GetTime", "GameTime_GetGameTime", "GameTime_GetLocalTime",
   -- Info strip: the realm's date beside the realm time, and whether the game's clock shows local time.
   "C_DateAndTime", "GetCVarBool",
+  -- Reputation bar: the game's standing words in your character's form, and its click to the reputation list.
+  "GetText", "UnitSex", "ToggleCharacter",
   -- P3.3 Visibility conditions: In an instance, and what a state driver's string says now.
   "IsInInstance", "SecureCmdOptionParse", "SendChatMessage",
   -- R1.6 Chat bubbles (Modules/ChatBubbles.lua): the engine's list of the bubbles it is showing.
