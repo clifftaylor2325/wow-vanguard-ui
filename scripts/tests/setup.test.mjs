@@ -162,6 +162,17 @@ it("first-run setup: the Profile step's choices name the profile in use when set
   expect(addon.eval("local c = Vanguard_Setup.pages.profile.choices return { c[1].text:GetText(), c[2].text:GetText(), c[2].hint }"), "the labels follow the profile now in use")
     .toEqual(["Share profile Alt with your other characters", "A profile of its own: Tester", "Starts as a copy of Alt; changes here stay on this character."]);
 });
+it("setup's backup is once per run: /vg graphics apply after setup closed backs the profile up again", () => {
+  const addon = loggedIn("__fps = 45 GetFramerate = function() return __fps end __wfgWorld.cvars.graphicsQuality, __wfgWorld.cvars.renderScale = '6', '1'");
+  addon.slash("setup");
+  addon.eval("ns.Setup.SetLarger(true) Vanguard_Setup:Hide() ns.Settings('ActionBars').size = 50");
+  addon.slash("graphics");
+  addon.advance(5, 1);
+  addon.clearChat();
+  addon.slash("graphics apply");
+  expect(chatHas(addon, /as it was before setup is saved as profile Default backup/), "chat names the new backup").toBe(true);
+  expect(addon.eval("return VanguardDB.profiles['Default backup'].ActionBars.size"), "which holds the sizes from after setup").toBe(50);
+});
 it("setup again: Keep and Keep change nothing; Run setup in the options; Start over owes setup after the reload", () => {
   const addon = loggedIn(CLICK_LUA + ACTIONS_ENV + UNITS_ENV + RAID_ENV + "__wfgStub.setScreen(2560, 1440)");
   addon.eval('ns.SetMoverPoint("raid", "TOP", "TOP", 0, -300)');

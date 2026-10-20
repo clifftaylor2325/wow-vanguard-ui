@@ -743,7 +743,7 @@ local function finished()
   if ns.Unlocked() then ns.Lock() end
   if state.complete then markDone() elseif state.owed then ns.Chat(LATER) end
   afterSetup(state.complete and state.owed and state.done, reloadReason())
-  state.reload, state.retile, state.role = false, false, false
+  state.reload, state.retile, state.role, state.backup = false, false, false, nil
   for _, fn in ipairs(S.onEnd) do fn() end
 end
 
