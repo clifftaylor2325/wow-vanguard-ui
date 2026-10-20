@@ -7,8 +7,6 @@
 
 local ADDON, ns = ...
 
-local T = ns.Theme
-
 local CW = ns.Module("ChatWindows", { defaults = { movers = false, find = true } })
 
 -- The sliders' ranges (width, height) in units.
@@ -256,21 +254,6 @@ function CW.Search(needle)
   return { unpack(found, math.max(1, #found - CW.MAX_FOUND + 1)) }
 end
 
--- A plain line (CX.Plain's: no codes left in it) with each match of `needle` (lower-case) in the
--- accent's text colour, the find box's one accent. Only lines read as plain text get here: a hidden
--- (secret) line was left out before any search.
-local function marked(text, needle)
-  local out, lower, from = {}, text:lower(), 1
-  while true do
-    local s, e = lower:find(needle, from, true)
-    if not s then break end
-    out[#out + 1] = text:sub(from, s - 1) .. T.Paint(text:sub(s, e), "accentText")
-    from = e + 1
-  end
-  out[#out + 1] = text:sub(from)
-  return table.concat(out)
-end
-
 -- Finds a word in the chat and the saved history, for the find box: the line that says how many,
 -- and the lines with each match in the accent's text colour. An empty word says so in chat and
 -- gives nothing (the box keeps its last lines).
@@ -278,7 +261,9 @@ function CW.Find(query)
   local needle = (type(query) == "string" and query or ""):match("^%s*(.-)%s*$"):lower()
   if needle == "" then ns.Chat("Type something to find.") return end
   local found = CW.Search(needle)
-  for i, line in ipairs(found) do found[i] = marked(line, needle) end
+  local CX = ns.GetModule("ChatExtras")
+  local patterns = { CX.Escape(needle) }
+  for i, line in ipairs(found) do found[i] = CX.Marked(line, patterns) end
   return string.format("Chat: %d lines with \"%s\"", #found, needle), table.concat(found, "\n")
 end
 
