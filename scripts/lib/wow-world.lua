@@ -235,6 +235,8 @@ world.popups = {}
 -- (wow-taint.lua adds the panel manager's combat refusal).
 function StaticPopup_Show(name, ...) world.popups[name] = { ... } return world.popups[name] end
 function StaticPopup_Hide(name) world.popups[name] = nil end
+-- A prompt frame of its own shown as a popup (the role check, a queue): Blizzard_StaticPopup/StaticPopup.lua.
+function StaticPopupSpecial_Show(frame) frame:Show() end
 function ShowUIPanel(frame) if frame and frame.Show and not frame:IsShown() then frame:Show() end end
 function HideUIPanel(frame) if frame and frame.Hide then frame:Hide() end end
 

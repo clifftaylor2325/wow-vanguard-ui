@@ -546,3 +546,60 @@ it("the AFK screen: after a fight while you're still away, the time away runs on
   addon.fire("PLAYER_FLAGS_CHANGED", "player");
   expect(addon.eval("return Vanguard_AfkScreen.away:GetText()"), "back, then away again: it starts over").toBe("Away 0:00");
 });
+// Marks you away and says whether the AFK screen shows.
+const goAway = (addon) => {
+  addon.eval("__afk = true");
+  addon.fire("PLAYER_FLAGS_CHANGED", "player");
+  return addon.eval("return Vanguard_AfkScreen:IsShown()");
+};
+it("A-13 the AFK screen stays shut in a dungeon, raid, battleground or arena, but not in the open world or a scenario", () => {
+  const addon = loggedIn(UNITS_ENV + AFK_ENV + '__where = "party" IsInInstance = function() return __where ~= "none", __where end');
+  expect(goAway(addon), "in a dungeon").toBe(false);
+  for (const kind of ["raid", "pvp", "arena"]) {
+    addon.eval(`__where = "${kind}"`);
+    expect(goAway(addon), kind).toBe(false);
+  }
+  addon.eval('__where = "scenario"');
+  expect(goAway(addon), "a scenario").toBe(true);
+});
+it("A-13 the AFK screen waits while you cast or channel, tries once more 30 s on, and a hidden cast counts as casting", () => {
+  const addon = loggedIn(UNITS_ENV + AFK_ENV + "__cast, __channel = 'TEST-ONLY Hearthstone', nil UnitCastingInfo = function() return __cast end UnitChannelInfo = function() return __channel end");
+  expect(goAway(addon), "casting: shut").toBe(false);
+  addon.eval("__cast, __channel = nil, 'TEST-ONLY Drink'");
+  addon.eval("__wfgStub.advance(30, 1)");
+  expect(addon.eval("return Vanguard_AfkScreen:IsShown()"), "the retry: still channelling, still shut").toBe(false);
+  addon.eval("__channel = nil");
+  addon.eval("__wfgStub.advance(60, 1)");
+  expect(addon.eval("return Vanguard_AfkScreen:IsShown()"), "only one retry each time you're away").toBe(false);
+  addon.eval("__afk = false");
+  addon.fire("PLAYER_FLAGS_CHANGED", "player");
+  addon.eval("__cast = 'TEST-ONLY Hearthstone'");
+  expect(goAway(addon), "away again while casting: shut").toBe(false);
+  addon.eval("__cast = nil __wfgStub.advance(30, 1)");
+  expect(addon.eval("return Vanguard_AfkScreen:IsShown()"), "the cast over by the retry: it opens").toBe(true);
+  addon.eval("__afk = false");
+  addon.fire("PLAYER_FLAGS_CHANGED", "player");
+  addon.eval("__cast = { __secret = true }");
+  expect(goAway(addon), "a hidden cast answer: shut").toBe(false);
+});
+it("A-13 a ready check or a popup puts the AFK screen away at once, so the first click lands on the prompt; it comes back next time you're away", () => {
+  const addon = loggedIn(UNITS_ENV + AFK_ENV + FAKE_FADES);
+  addon.eval("__fakeFader(Vanguard_AfkScreen)");
+  goAway(addon);
+  addon.eval("__finishFades()");
+  addon.fire("READY_CHECK", "TEST-ONLY leader", 30);
+  expect(addon.eval("return Vanguard_AfkScreen:IsShown()"), "a ready check: gone, no fade").toBe(false);
+  addon.fire("PLAYER_REGEN_ENABLED");
+  expect(addon.eval("return Vanguard_AfkScreen:IsShown()"), "and it stays away while the prompt may still be up").toBe(false);
+  addon.eval("__afk = false");
+  addon.fire("PLAYER_FLAGS_CHANGED", "player");
+  goAway(addon);
+  addon.eval("__finishFades()");
+  addon.eval('StaticPopup_Show("TEST-ONLY_INVITE")');
+  expect(addon.eval("return Vanguard_AfkScreen:IsShown()"), "a popup: gone").toBe(false);
+  addon.eval("__afk = false");
+  addon.fire("PLAYER_FLAGS_CHANGED", "player");
+  goAway(addon);
+  addon.eval("__finishFades() StaticPopupSpecial_Show(CreateFrame('Frame', 'TEST-ONLY_RolePoll', UIParent))");
+  expect(addon.eval("return Vanguard_AfkScreen:IsShown()"), "a prompt frame of its own: gone").toBe(false);
+});

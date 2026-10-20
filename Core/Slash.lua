@@ -600,7 +600,7 @@ local function errorsCommand(rest)
   if rest == "clear" then ns.ClearErrors() return chat("Cleared.") end
   if #ns.errors == 0 then return chat("No errors caught this session.") end
   chat(string.format("%d error(s), opened in the copy window.", #ns.errors))
-  ns.ShowText("Vanguard errors: Ctrl+C to copy", errorsText())
+  ns.ShowErrors("Vanguard errors: Ctrl+C to copy", errorsText())
 end
 
 -- /vg report ----------------------------------------------------------------------------
