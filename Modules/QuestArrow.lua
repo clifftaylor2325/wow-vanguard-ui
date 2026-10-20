@@ -25,6 +25,9 @@ QA.WIDTH, QA.HEIGHT, QA.DRAW, QA.PICK = 190, 44, 0.1, 1
 QA.READY_BIAS = 0.25
 -- A challenger replaces the current quest only when its distance (squared) is under this share of the current one's.
 QA.SWITCH = 0.5
+-- Within this many yards the arrow reads "Here"; the arrow's alpha while it can't point (or you're there); the
+-- panel's inner padding (units).
+QA.HERE, QA.FAINT, QA.PAD = 15, 0.35, 8
 
 -- Calls t[name](...) if the client has it.
 local function call(t, name, ...)
@@ -40,11 +43,12 @@ end
 
 -- Choosing the quest ------------------------------------------------------------------------------
 
--- How near a quest counts (distance squared, less for a finished one); nil when it isn't in the log or the client won't say.
+-- How near a quest counts (distance squared, less for a finished one); nil when it isn't in the log, it failed
+-- (nothing is left to do there), or the client won't say.
 local function rank(id)
   local q = ns.GetModule("QuestTracker").Quest(id)
   local d = q and ns.PlainNumber(call(C_QuestLog, "GetDistanceSqToQuest", id))
-  if not d then return nil end
+  if not d or q.failed then return nil end
   return q.ready and d * QA.READY_BIAS or d
 end
 
@@ -72,10 +76,16 @@ local function pinned()
   return id and ns.GetModule("QuestTracker").Quest(id) and id or nil
 end
 
--- Whether a quest is finished or gone from the log (the arrow moving on from it is worth a word).
+-- Whether a quest is finished, failed or gone from the log (the arrow moving on from it is worth a word).
 local function finished(id)
   local q = ns.GetModule("QuestTracker").Quest(id)
-  return not q or q.ready
+  return not q or q.ready or q.failed
+end
+
+-- Whether a quest is ready to turn in.
+local function readyToTurnIn(id)
+  local q = ns.GetModule("QuestTracker").Quest(id)
+  return q ~= nil and q.ready
 end
 
 -- The quest title for the arrow, or "Quest".
@@ -83,13 +93,35 @@ local function titleOf(id)
   return plainText(call(C_QuestLog, "GetTitleForQuestID", id)) or "Quest"
 end
 
--- Picks the quest and its spot (map, x, y), says so when it moved on from a finished one, and redraws.
+-- The quest to follow and whether the arrow holds it as a pin: the Shift-clicked quest (with "Follow the
+-- nearest quest" off, also the game's tracked one), else the nearest, else the game's tracked one. A
+-- Shift-click whose quest has left the log is let go here, so it can't hold a quest the game tracks later.
+local function follow(old)
+  local guide = ns.QuestGuide
+  if guide.pointed and not ns.GetModule("QuestTracker").Quest(guide.pointed) then guide.pointed = nil end
+  local pin = pinned()
+  if pin and (ns.QuestGuide.pointed or not QA.settings.auto) then return pin, true end
+  return QA.settings.auto and QA.Choose(old) or pin, false
+end
+
+-- The look that changes only with the pick: the Pin button while the arrow holds a pinned quest (the title
+-- then stops short of it), and the arrow gold for a turn-in, else the accent.
+local function paintPick(f)
+  f.pin:SetShown(QA.held == true)
+  if QA.held then f.title:SetPoint("RIGHT", f.pin, "LEFT", -T.SPACE.tight, 0) else f.title:SetPoint("RIGHT", f, "RIGHT", -QA.PAD, 0) end
+  T.Tint(f.arrow, QA.ready and "gold" or "accent")
+end
+
+-- Picks the quest, whether it is held and ready to turn in, and its spot (map, x, y); says so when it moved on
+-- from a finished one, and redraws.
 function QA.Pick()
   if not QA.frame then return end
   local old = QA.current
-  QA.current = (QA.settings.auto and (ns.QuestGuide.pointed and pinned() or QA.Choose(old))) or pinned()
+  QA.current, QA.held = follow(old)
+  QA.ready = QA.current ~= nil and readyToTurnIn(QA.current)
   QA.target = QA.current and { ns.QuestGuide.Target(QA.current) } or nil
   if old and QA.current and old ~= QA.current and finished(old) and not ns.InCombat() then ns.Chat("Arrow: " .. titleOf(QA.current) .. ".") end
+  paintPick(QA.frame)
   QA.Draw()
 end
 
@@ -128,11 +160,19 @@ local function yards(id)
   return sq and math.floor(math.sqrt(sq) + 0.5)
 end
 
--- The distance line: "230 yd", or why there is none.
-local function distanceText(id, turn)
-  local d = yards(id)
+-- The distance line: "230 yd" ("Turn in · 230 yd" for a finished quest), or why there is none.
+local function distanceText(d, turn, ready)
   if not d then return "No direction" end
-  return turn and (d .. " yd") or (d .. " yd, no direction")
+  local text = turn and (d .. " yd") or (d .. " yd, no direction")
+  return ready and ("Turn in · " .. text) or text
+end
+
+-- Whether you're there: within QA.HERE yards and not on a flight, which passes over spots without
+-- stopping (a hidden answer counts as on one).
+local function arrived(d)
+  if not d or d > QA.HERE then return false end
+  local taxi = call(_G, "UnitOnTaxi", "player")
+  return not ns.IsSecret(taxi) and taxi ~= true
 end
 
 -- The game's next waypoint on a map toward its super-tracked target, as x, y (C_Navigation since 12.1, C_SuperTrack before).
@@ -162,16 +202,43 @@ local function turnFor(id, target)
   return x and QA.Turn(here, x, y)
 end
 
+-- The distance line and the arrow's look: "Here" in good with a faint arrow once you're there, else the
+-- distance. A state change, never a fade.
+local function paintState(f, id, turn)
+  local d = yards(id)
+  local spot = QA.target ~= nil and QA.target[1] ~= nil
+  local here = spot and arrived(d)
+  f.dist:SetText((not spot and "No spot from the game") or (here and "Here") or distanceText(d, turn, QA.ready))
+  T.Color(f.dist, here and "good" or "text2")
+  f.arrow:SetAlpha(turn and not here and 1 or QA.FAINT)
+end
+
 -- Redraws the arrow's turn, title and distance for the current quest; hides the frame with none.
 function QA.Draw()
   local f, id = QA.frame, QA.current
   if not (f and QA.settings.show and id) then return f and f:Hide() end
   local turn = turnFor(id, QA.target)
   f.title:SetText(titleOf(id))
-  f.dist:SetText(QA.target and QA.target[1] and distanceText(id, turn) or "No spot from the game")
+  paintState(f, id, turn)
   f.arrow:SetRotation(turn or 0)
-  f.arrow:SetAlpha(turn and 1 or 0.35)
   f:Show()
+end
+
+-- The Pin button: back to the nearest quest (or, with "Follow the nearest quest" off, no arrow until the next pin).
+function QA.Unpin()
+  ns.QuestGuide.Unpin()
+  ns.Chat(QA.settings.auto and "Arrow: nearest quest." or "Arrow: off until you Shift-click a quest in the tracker.")
+  QA.Pick()
+end
+
+-- What the Pin button says it does.
+function QA.PinTooltip(b)
+  local tip = GameTooltip
+  if not tip then return end
+  tip:SetOwner(b, "ANCHOR_BOTTOM")
+  tip:SetText("Pinned (Shift-click in the tracker)", T.RGB("text"))
+  tip:AddLine(QA.settings.auto and "Click: follow the nearest quest." or "Click: let it go. Follow the nearest quest is off, so the arrow hides.", T.RGB("text2"))
+  tip:Show()
 end
 
 -- The frame ---------------------------------------------------------------------------------------
@@ -180,13 +247,25 @@ end
 local function fill(f)
   f.arrow = f:CreateTexture(nil, "ARTWORK")
   f.arrow:SetSize(28, 28)
-  f.arrow:SetPoint("LEFT", f, "LEFT", 8, 0)
+  f.arrow:SetPoint("LEFT", f, "LEFT", QA.PAD, 0)
   f.arrow:SetTexture(T.Icon("QuestArrow"))
-  T.Tint(f.arrow, "accent")
   f.title = T.Text(f:CreateFontString(nil, "OVERLAY"), "small", "text")
-  f.title:SetPoint("TOPLEFT", f.arrow, "TOPRIGHT", 8, -2)
-  f.title:SetPoint("RIGHT", f, "RIGHT", -8, 0)
+  f.title:SetPoint("TOPLEFT", f.arrow, "TOPRIGHT", QA.PAD, -2)
+  f.title:SetPoint("RIGHT", f, "RIGHT", -QA.PAD, 0)
   f.title:SetJustifyH("LEFT")
+  f.title:SetWordWrap(false)
+end
+
+-- The Pin button at the panel's right edge, the one part of the panel that takes the mouse (the rest lets
+-- clicks and camera turns through): a ghost tile, as the window controls.
+local function pinButton(f)
+  local b = T.WindowControl(CreateFrame("Button", nil, f), "Pin")
+  b:SetPoint("RIGHT", f, "RIGHT", -T.SPACE.tight, 0)
+  b:SetScript("OnClick", ns.Guard("unpin quest arrow", function() QA.Unpin() end))
+  b:HookScript("OnEnter", ns.Guard("quest arrow pin tip", QA.PinTooltip))
+  b:HookScript("OnLeave", ns.Guard("quest arrow pin tip", function() if GameTooltip then GameTooltip:Hide() end end))
+  b:Hide()
+  f.pin = b
 end
 
 -- The movable frame (/vg unlock), hidden until there is a quest to point at.
@@ -196,7 +275,8 @@ local function build()
   f:SetSize(QA.WIDTH, QA.HEIGHT)
   fill(f)
   f.dist = T.Text(f:CreateFontString(nil, "OVERLAY"), "small", "text2")
-  f.dist:SetPoint("BOTTOMLEFT", f.arrow, "BOTTOMRIGHT", 8, 2)
+  f.dist:SetPoint("BOTTOMLEFT", f.arrow, "BOTTOMRIGHT", QA.PAD, 2)
+  pinButton(f)
   f:Hide()
   QA.frame = f
   ns.Mover(f, "questarrow", "Quest arrow", { "TOP", "TOP", 0, -150 })

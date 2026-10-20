@@ -35,7 +35,7 @@ local HELP = {
   "import               paste a string from /vg export: a whole profile becomes a new profile, a partial one merges into yours (backed up first)",
   "preset [name]        presets on offer (Vanguard's healer, damage and tank, and any an addon registers); a name asks to apply it, backed up first",
   "spec [profile|off]   use a profile whenever you're in this specialization",
-  "copy                 the recent chat as plain text, ready to copy",
+  "copy                 the recent chat of the shown tab as plain text, ready to copy",
   "situation [record <name>|stop|clear [name]|list]   Situations: record a layout and settings for solo, party, raid, pvp, instance or resting",
   "watch [add|remove <phrase>|list|clear]   Chat watch: phrases that ring a sound and show a toast when said in chat",
   "filter [on|off|tab|hide|add|remove <word>|clear]   Chat filter: gold selling, boosting, recruiting and repeat lines go to a Filtered tab (or are hidden)",
