@@ -1,6 +1,6 @@
 // chat: Vanguard's real Lua in the TEST-ONLY headless client (scripts/lib/lua-harness.mjs).
 
-import { expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import { luaValue } from "../lib/lua-emit.mjs";
 import { CLICK_LUA, expectErrors, STRIP_ENV, TIDY_ENV, UI_ENV, UNITS_ENV, INSIDES_LUA, borderOf, chatHas, isTok, later, loggedIn, setCombat, tok, WINDOWS_ENV, windowState } from "./helpers.mjs";
 
@@ -940,8 +940,8 @@ const INVITE_ENV = `
 const invite = (addon, guid) => addon.fire("PARTY_INVITE_REQUEST", "<name>", false, false, false, false, false, guid, false);
 const INVITES_ON = "VanguardDB.profiles = { Default = { AutoAccept = { guildInvites = true, strangerGroups = true, friendRequests = true, pvpRelease = true } } }";
 it("quiet the game: guild invites, stranger group invites, friend requests and battleground release, off until switched on", () => {
-  // Brings up all four prompts.
-  const fire = (addon) => { addon.fire("GUILD_INVITE_REQUEST", "<name>"); invite(addon, "stranger"); addon.fire("BN_FRIEND_INVITE_ADDED", 7); addon.fire("PLAYER_DEAD"); };
+  // Brings up all four prompts; the invites are answered on the next frame.
+  const fire = (addon) => { addon.fire("GUILD_INVITE_REQUEST", "<name>"); invite(addon, "stranger"); addon.update(0); addon.fire("BN_FRIEND_INVITE_ADDED", 7); addon.fire("PLAYER_DEAD"); };
   const off = loggedIn(INVITE_ENV);
   fire(off);
   expect(off.eval("return #__answers"), "off by default: the game asks as usual").toBe(0);
@@ -953,6 +953,7 @@ it("quiet the game: guild invites, stranger group invites, friend requests and b
   for (const who of ["friend", "bnet", "guild"]) { on.eval(`__friends.x = "${who}"`); invite(on, "x"); }
   on.fire("PARTY_INVITE_REQUEST", "<name>");
   invite(on, { __secret: true });
+  on.update(0);
   expect(on.eval("return #__answers"), "a friend, a Battle.net friend, a guildmate, or someone the game hides stay invitable").toBe(0);
   on.eval("__pvp = 'arena'");
   on.fire("PLAYER_DEAD");
@@ -969,9 +970,11 @@ it("quiet the game: guild invites, stranger group invites, friend requests and b
   expect(on.eval("return #__answers"), "an older client without C_DeathInfo asks HasSoulstone").toBe(0);
   const bare = loggedIn("", { savedVariables: INVITES_ON });
   for (const e of ["GUILD_INVITE_REQUEST", "PARTY_INVITE_REQUEST", "BN_FRIEND_INVITE_ADDED", "PLAYER_DEAD"]) bare.fire(e, "<name>");
+  bare.update(0);
   expect(bare.eval("return DeclineGuild == nil and RepopMe == nil"), "a client without the calls is left alone").toBe(true);
   const noFriends = loggedIn(INVITE_ENV + "C_FriendList, C_BattleNet, IsGuildMember = nil, nil, nil", { savedVariables: INVITES_ON });
   invite(noFriends, "stranger");
+  noFriends.update(0);
   expect(noFriends.eval("return __answers"), "with no way to tell who is a friend, a stranger is declined").toEqual(["group", "close PARTY_INVITE"]);
 });
 // TEST-ONLY game text: the error line and the zone names record what they were given. The error line
@@ -1772,4 +1775,44 @@ it("R2.13 the time manager: check boxes, dropdowns, the alarm message box, label
   odd.fire("ADDON_LOADED", "Blizzard_TimeManager");
   odd.eval("TimeManagerFrame:Show()");
   expect(odd.eval("return #ns.errors"), "odd parts are skipped").toBe(0);
+});
+
+describe("auto-accept: Forever's own invite windows", () => {
+  // TEST-ONLY models of Forever's invite windows, made before the addon as the client does
+  // (Blizzard_FrameXML/GuildInviteFrame.xml, Blizzard_LFGUtil/Shared/LFGInvitePopup.xml): the guild
+  // window shows on its event and declines as it hides unless accepted; the role popup is shown by
+  // the game for an invite with roles. Every answer is recorded.
+  const FOREVER_INVITES = `
+    __answers = {}
+    DeclineGuild = function() __answers[#__answers + 1] = "guild" end
+    DeclineGroup = function() __answers[#__answers + 1] = "group" end
+    StaticPopup_Hide = function(which) __answers[#__answers + 1] = "close " .. which end
+    StaticPopupSpecial_Hide = function(frame) __answers[#__answers + 1] = "hide " .. frame:GetName() frame:Hide() end
+    GuildInviteFrame = CreateFrame("Frame", "GuildInviteFrame", UIParent)
+    GuildInviteFrame:Hide()
+    GuildInviteFrame:RegisterEvent("GUILD_INVITE_REQUEST")
+    GuildInviteFrame:SetScript("OnEvent", function(self) self.accepted = nil self:Show() end)
+    GuildInviteFrame:SetScript("OnHide", function(self) if not self.accepted then DeclineGuild() end end)
+    LFGInvitePopup = CreateFrame("Frame", "LFGInvitePopup", UIParent)
+    LFGInvitePopup:Hide()
+  `;
+  const ON = "VanguardDB.profiles = { Default = { AutoAccept = { guildInvites = true, strangerGroups = true, summons = true } } }";
+
+  it("a declined guild invite closes Forever's invite window, declining once", () => {
+    const addon = loggedIn(FOREVER_INVITES, { savedVariables: ON });
+    addon.fire("GUILD_INVITE_REQUEST", "<name>", "<guild>", 0, "", false);
+    expect(addon.eval("return #__answers"), "nothing yet: the game's window gets the event too").toBe(0);
+    addon.update(0);
+    expect(addon.eval("return { GuildInviteFrame:IsShown(), __answers }"), "the window is hidden and its own hide declines, once").toEqual([false, ["hide GuildInviteFrame", "guild", "close GUILD_INVITE"]]);
+    expect(chatHas(addon, /guild invite from <name>/), "and said in chat").toBe(true);
+  });
+
+  it("a declined stranger's role invite closes Forever's role popup", () => {
+    const addon = loggedIn(FOREVER_INVITES + "StaticPopupSpecial_Hide = nil", { savedVariables: ON });
+    addon.eval("LFGInvitePopup:Show()");
+    addon.fire("PARTY_INVITE_REQUEST", "<name>", true, false, true, false, false, "stranger", false);
+    addon.update(0);
+    expect(addon.eval("return { LFGInvitePopup:IsShown(), __answers }"), "declined and the popup hidden (a client without StaticPopupSpecial_Hide hides it itself)").toEqual([false, ["group", "close PARTY_INVITE"]]);
+  });
+
 });
