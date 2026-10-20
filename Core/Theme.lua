@@ -701,14 +701,19 @@ end
 -- top inner edge and the dark one along the bottom inner edge, each one pixel, just inside the border.
 T.BEVEL = { top = { "borderHi", 0.35 }, bottom = { "shade", 0.35 } }
 
--- Places one bevel line (side "TOP" or "BOTTOM") on the first row inside frame's border, `out` past
--- it, `r` units clear of each rounded corner.
-local function placeBevelLine(t, frame, side, out, r)
+-- Places one bevel line's geometry (side "TOP" or "BOTTOM") on the first row inside frame's border, `out`
+-- past it, `r` units clear of each rounded corner.
+local function placeBevelGeometry(t, frame, side, out, r)
   local px, y = T.Pixel(frame), side == "TOP" and out - T.Pixel(frame) or T.Pixel(frame) - out
   t:ClearAllPoints()
   t:SetPoint(side .. "LEFT", frame, side .. "LEFT", px + r - out, y)
   t:SetPoint(side .. "RIGHT", frame, side .. "RIGHT", out - px - r, y)
   t:SetHeight(px)
+end
+
+-- Places a bevel line's geometry (as placeBevelGeometry) and tints it with its T.BEVEL token.
+local function placeBevelLine(t, frame, side, out, r)
+  placeBevelGeometry(t, frame, side, out, r)
   T.Tint(t, T.BEVEL[side:lower()][1], T.BEVEL[side:lower()][2])
 end
 
@@ -1548,16 +1553,6 @@ local function placeInner(e, frame)
   sizeEdges(e, frame)
 end
 
--- Places a one-pixel bevel line two pixels inside frame's top or bottom edge (side "TOP" or "BOTTOM").
-local function placeBevel(t, frame, side)
-  local px = T.Pixel(frame)
-  local y = (side == "TOP" and -2 or 2) * px
-  t:ClearAllPoints()
-  t:SetPoint(side .. "LEFT", 2 * px, y)
-  t:SetPoint(side .. "RIGHT", -2 * px, y)
-  t:SetHeight(px)
-end
-
 -- Paints a slot's accent edge (for its state; a quiet slot's only while it
 -- has one) and its bevel (none in a well), at the frame's pixel size.
 local function paintSlot(entry, frame)
@@ -1565,8 +1560,8 @@ local function paintSlot(entry, frame)
   placeInner(p.inner, frame)
   local r, g, b = shadeAccent(T.SLOT_STATES[entry.opts.state] or 0)
   colorEdges(p.inner, r, g, b, (entry.opts.quiet and not entry.opts.state) and 0 or 1)
-  placeBevel(p.lit, frame, "TOP")
-  placeBevel(p.dim, frame, "BOTTOM")
+  placeBevelGeometry(p.lit, frame, "TOP", -T.Pixel(frame), 0)
+  placeBevelGeometry(p.dim, frame, "BOTTOM", -T.Pixel(frame), 0)
   T.Tint(p.lit, "sheen", entry.opts.well and 0 or nil)
   T.Tint(p.dim, "shade", entry.opts.well and 0 or nil)
 end
