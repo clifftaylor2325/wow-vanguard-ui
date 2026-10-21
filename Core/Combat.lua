@@ -120,7 +120,7 @@ end
 ---@param name string
 ---@return any
 function ns.PlainCall(name, ...)
-  local answer = ns.CallGlobal(name, ...)
+  local answer = ns.Client.Call(name, ...)
   if ns.IsSecret(answer) then return nil end
   return answer
 end

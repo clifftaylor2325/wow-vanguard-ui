@@ -25,7 +25,7 @@ local function money(copper)
 end
 
 -- Calls a client function by name; nil when this client doesn't have it.
-local ask = ns.CallGlobal
+local ask = ns.Client.Call
 
 -- Runs fn after a short wait (at once on a client without timers).
 local function later(seconds, fn)

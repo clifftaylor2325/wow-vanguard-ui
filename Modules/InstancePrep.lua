@@ -66,7 +66,7 @@ PR.REAGENTS = {
 -- Counting ------------------------------------------------------------------------------------
 
 -- Calls a client function by name; nil when this client doesn't have it.
-local ask = ns.CallGlobal
+local ask = ns.Client.Call
 
 -- How many of an item you carry, or nil when the client can't (or won't) say.
 local function count(id)

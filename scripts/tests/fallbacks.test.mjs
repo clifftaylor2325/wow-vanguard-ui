@@ -22,7 +22,7 @@ it("the shared client-call helpers read nothing from a missing call or a hidden 
   addon.eval("__TwoValues = function() return 1, 2 end __Hidden = function() return __wfgWorld.secret(5) end");
   expect(addon.eval("return { ns.PlainCall('__NoSuchCall') == nil, ns.PlainCall('__Hidden') == nil }")).toEqual([true, true]);
   expect(addon.eval("return ns.PlainCall('__TwoValues')")).toBe(1);
-  expect(addon.eval("return select('#', ns.CallGlobal('__TwoValues'))")).toBe(2);
+  expect(addon.eval("return select('#', ns.Client.Call('__TwoValues'))")).toBe(2);
 });
 
 it("ns.IsTrue passes only a plain true, and ns.PlainText only a plain non-empty string", () => {

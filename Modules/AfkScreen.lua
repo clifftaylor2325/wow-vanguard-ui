@@ -41,7 +41,7 @@ AFK.PASSAGES = {
 -- Values ---------------------------------------------------------------------------------------
 
 -- Calls a client function by name; nil when this client doesn't have it.
-local ask = ns.CallGlobal
+local ask = ns.Client.Call
 
 -- Text from the client, or "" when it's missing or hidden.
 local function plain(text)

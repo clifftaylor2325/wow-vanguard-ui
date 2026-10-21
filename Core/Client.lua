@@ -183,16 +183,6 @@ ns.On("PLAYER_LOGIN", function() ns.OutOfCombat(C.ProbeSnippets, "snippetprobe")
 
 -- Client globals and items -----------------------------------------------------------------
 
--- Calls a client function by name; nil when this client doesn't have it. Its results are
--- read as usual (a value that may be secret goes through ns.PlainNumber or ns.IsSecret).
----@param name string
----@return any
-function ns.CallGlobal(name, ...)
-  local fn = _G[name]
-  if type(fn) ~= "function" then return nil end
-  return fn(...)
-end
-
 -- An item's name when the client has it cached, else "item 123".
 ---@param id number
 ---@return string

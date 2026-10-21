@@ -25,12 +25,12 @@ end
 
 -- The merchant you're talking to, or nil when the client hides the name.
 local function merchantName()
-  return ns.PlainText(ns.CallGlobal("UnitName", "npc"))
+  return ns.PlainText(ns.Client.Call("UnitName", "npc"))
 end
 
 -- Where you are: the zone and the subzone (nil when hidden, empty, or the zone's own name).
 local function zoneNow()
-  local zone, sub = ns.PlainText(ns.CallGlobal("GetZoneText")), ns.PlainText(ns.CallGlobal("GetSubZoneText"))
+  local zone, sub = ns.PlainText(ns.Client.Call("GetZoneText")), ns.PlainText(ns.Client.Call("GetSubZoneText"))
   return zone, sub ~= zone and sub or nil
 end
 
@@ -39,16 +39,16 @@ end
 local function limited(i)
   local api = C_MerchantFrame and C_MerchantFrame.GetItemInfo
   local info = type(api) == "function" and api(i) or nil
-  local left = type(info) == "table" and info.numAvailable or select(5, ns.CallGlobal("GetMerchantItemInfo", i))
+  local left = type(info) == "table" and info.numAvailable or select(5, ns.Client.Call("GetMerchantItemInfo", i))
   left = ns.PlainNumber(left)
   return left ~= nil and left >= 0
 end
 
 -- Merchant item i's item ID (the client's call, else the ID in its link), or nil.
 local function itemAt(i)
-  local id = ns.PlainNumber(ns.CallGlobal("GetMerchantItemID", i))
+  local id = ns.PlainNumber(ns.Client.Call("GetMerchantItemID", i))
   if id then return id end
-  local link = ns.PlainText(ns.CallGlobal("GetMerchantItemLink", i))
+  local link = ns.PlainText(ns.Client.Call("GetMerchantItemLink", i))
   return link and tonumber(link:match("item:(%d+)"))
 end
 
@@ -69,10 +69,10 @@ end
 -- The open merchant's wares, remembered (not in combat, and only when the merchant's name can be read).
 function VM.Record()
   if not VM.settings.remember or ns.InCombat() then return end
-  local name, now = merchantName(), ns.PlainNumber(ns.CallGlobal("time")) or 0
+  local name, now = merchantName(), ns.PlainNumber(ns.Client.Call("time")) or 0
   if not name then return end
   local zone, sub = zoneNow()
-  for i = 1, ns.PlainNumber(ns.CallGlobal("GetMerchantNumItems")) or 0 do
+  for i = 1, ns.PlainNumber(ns.Client.Call("GetMerchantNumItems")) or 0 do
     local id = itemAt(i)
     if id then VM.Remember(id, { n = name, z = zone, s = sub, l = limited(i) or nil, t = now }) end
   end
