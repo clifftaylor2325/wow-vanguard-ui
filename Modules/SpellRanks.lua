@@ -188,10 +188,10 @@ end
 
 -- "Level 12: Frostbolt Rank 3 (Archmage Vargoth, Stormwind City)".
 function SR.Text(s)
-  local place = ns.PlaceText(s.zone, s.sub)
+  local placeName = ns.PlaceText(s.zone, s.sub)
   local from = ""
-  if s.trainer and place then
-    from = string.format(" (%s, %s)", s.trainer, place)
+  if s.trainer and placeName then
+    from = string.format(" (%s, %s)", s.trainer, placeName)
   elseif s.trainer then
     from = string.format(" (%s)", s.trainer)
   end

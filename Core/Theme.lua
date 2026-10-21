@@ -1939,11 +1939,11 @@ local function watchCheck(button)
   button:HookScript("OnLeave", ns.Guard("check hover", function(b) hoverCheck(b, false) end))
 end
 
--- A check button's or radio's painted parts, made on first use by makeParts, then watched for the game's state.
-local function boxFor(button, makeParts)
+-- A check button's or radio's painted parts, made on first use by buildParts, then watched for the game's state.
+local function boxFor(button, buildParts)
   local box = checkOf[button]
   if not box then
-    box = makeParts(button)
+    box = buildParts(button)
     checkOf[button] = box
     watchCheck(button)
   end

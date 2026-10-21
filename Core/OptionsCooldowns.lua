@@ -9,7 +9,7 @@ local ADDON, ns = ...
 local T, W = ns.Theme, ns.Widgets
 
 local O = ns.Options
-local moduleSettings, setting, reloadSetting, liveSetting, liveMethod, check, append = O.ModuleSettings, O.Setting, O.ReloadSetting, O.LiveSetting, O.LiveMethod, O.Check, O.Append
+local moduleSettings, reloadSetting, liveSetting, liveMethod, check, append = O.ModuleSettings, O.ReloadSetting, O.LiveSetting, O.LiveMethod, O.Check, O.Append
 
 local WZ = {}
 O.CooldownWizard = WZ
