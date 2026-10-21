@@ -29,8 +29,6 @@ TT.MORE_NAMES = {
   "ItemRefShoppingTooltip1", "ItemRefShoppingTooltip2", "GameNoHeaderTooltip", "GameSmallHeaderTooltip", "BuffFrameTooltip",
   "QuickKeybindTooltip", "SettingsTooltip", "PartyMemberBuffTooltip", "AutoCompleteBox",
 }
--- The client's tooltip fonts -> size before Text size, and bold.
-TT.FONTS = { GameTooltipHeaderText = { 14, true }, GameTooltipText = { 12 }, GameTooltipTextSmall = { 11 } }
 
 -- Skinning ---------------------------------------------------------------------------------
 
@@ -51,7 +49,7 @@ end
 -- The theme font, scaled by Text size, on the client's tooltip fonts (those it has), kept
 -- after every theme change.
 function TT.ApplyFonts()
-  T.FontObjects(TT.FONTS)
+  T.FontObjects(T.FONT_OBJECTS.tooltip)
 end
 
 -- Whether the game windows' menus group is on (the Windows module enables before this one).
@@ -268,7 +266,7 @@ function TT.Enable(settings)
   TT.SkinAll()
   TT.ApplyFonts()
   hookTooltips()
-  if _G.GameTooltip then _G.GameTooltip:HookScript("OnHide", onHide) end
+  if _G.GameTooltip then _G.GameTooltip:HookScript("OnHide", ns.Guard("hide tooltip", onHide)) end
   if type(hooksecurefunc) == "function" and type(_G.GameTooltip_SetDefaultAnchor) == "function" then
     hooksecurefunc("GameTooltip_SetDefaultAnchor", ns.Guard("hook GameTooltip_SetDefaultAnchor", TT.Anchor))
   end

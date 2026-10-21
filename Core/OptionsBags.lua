@@ -5,15 +5,15 @@
 local ADDON, ns = ...
 
 local O = ns.Options
-local setting, liveSetting, check, append = O.Setting, O.LiveSetting, O.Check, O.Append
+local setting, reloadSetting, liveMethod, check, append = O.Setting, O.ReloadSetting, O.LiveMethod, O.Check, O.Append
 
 -- XP and reputation bars: which, their numbers, and when they're seen.
 local function dataBarRows()
   local barsVisibility, barsWhen = O.VisibilityRows("XP and reputation bars", "DataBars", "visibility", "showWhen")
   return {
     { "header", "XP and reputation" },
-    check("Experience bar", setting("DataBars", "xp", true)), check("Reputation bar", setting("DataBars", "reputation", true)),
-    { "cycle", "Numbers", { { "hover", "on hover" }, { "always", "always" } }, setting("DataBars", "text", true) },
+    check("Experience bar", reloadSetting("DataBars", "xp")), check("Reputation bar", reloadSetting("DataBars", "reputation")),
+    { "cycle", "Numbers", { { "hover", "on hover" }, { "always", "always" } }, reloadSetting("DataBars", "text") },
     check("Tooltips on hover (XP: kills to level, rested, quest XP; reputation: standing and the next)", setting("DataBars", "tooltip")),
     barsVisibility, barsWhen,
   }
@@ -23,9 +23,9 @@ end
 local function bagRows()
   return {
     { "header", "Bags" },
-    check("Combined bag (reload)", setting("Bags", "combined", true)), check("Bank in the Vanguard look (reload)", setting("Bags", "bank", true)),
+    check("Combined bag (reload)", reloadSetting("Bags", "combined")), check("Bank in the Vanguard look (reload)", reloadSetting("Bags", "bank")),
     check("Combined bag in sections: equipment, consumables, quest items, junk",
-      liveSetting("Bags", "sections", function() ns.GetModule("Bags").SectionsChanged() end)),
+      liveMethod("Bags", "sections", "SectionsChanged")),
   }
 end
 
@@ -35,9 +35,9 @@ local function gamePartRows()
   return {
     { "header", "The game's extras" },
     menuVisibility, menuWhen,
-    check("Vanguard icons on the menu buttons (reload)", setting("MenuStrip", "glyphs", true)),
-    check("The game's quest tracker under the info strip (reload)", setting("MenuStrip", "tracker", true)),
-    check("The game's quest tracker in the Vanguard look (reload)", setting("MenuStrip", "trackerLook", true)),
+    check("Vanguard icons on the menu buttons (reload)", reloadSetting("MenuStrip", "glyphs")),
+    check("The game's quest tracker under the info strip (reload)", reloadSetting("MenuStrip", "tracker")),
+    check("The game's quest tracker in the Vanguard look (reload)", reloadSetting("MenuStrip", "trackerLook")),
   }
 end
 

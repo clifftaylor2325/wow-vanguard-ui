@@ -5,7 +5,6 @@
 local ADDON, ns = ...
 
 -- Per-frame state kept off the game's frames (Core/Events.lua, ns.FrameState).
-local vgPadded = ns.FrameState("vgPadded")
 local vgSocialSide = ns.FrameState("vgSocialSide")
 local vgEmptyNote = ns.FrameState("vgEmptyNote")
 local vgInsetFill = ns.FrameState("vgInsetFill")
@@ -15,26 +14,14 @@ local vgPresenceLabel = ns.FrameState("vgPresenceLabel")
 local T = ns.Theme
 local GW = ns.GetModule("Windows")
 
+-- How many of each part the game makes: the letter's attachments, the petition's member names, the registrar's
+-- options and the tabard's pickers.
+local COUNT = { MAIL_ATTACHMENTS = 16, PETITION_MEMBERS = 9, REGISTRAR_OPTIONS = 3, TABARD_PICKERS = 5 }
+
+-- The frame names and parentKeys the social windows read, by name (only this file reads them).
+local PARTS = {}
+
 -- Helpers ---------------------------------------------------------------------------------------
-
--- Frames whose game methods are already hooked here (a skin runs on every show; a hook goes on once).
-local hooked = {}
-
--- Runs fn after the frame's game method (or the table's function) `name` each time it runs, with
--- that call's own arguments (self first, for a method); once per frame and method, a client
--- without the method is skipped. A post-hook (hooksecurefunc): the game's function is kept.
-local function afterWith(frame, name, fn)
-  local key = tostring(name)
-  hooked[frame] = hooked[frame] or {}
-  if hooked[frame][key] or type(frame[name]) ~= "function" or type(hooksecurefunc) ~= "function" then return end
-  hooked[frame][key] = true
-  hooksecurefunc(frame, name, ns.Guard("hook " .. key, fn))
-end
-
--- Runs fn(frame) after the frame's game method `name` each time it runs (see afterWith).
-local function after(frame, name, fn)
-  afterWith(frame, name, function() fn(frame) end)
-end
 
 -- A font string, when it is one, in a theme text color.
 local function paintText(fs, token)
@@ -63,7 +50,7 @@ end
 GW.MAIL_ART = { "OpenStationeryBackgroundLeft", "OpenStationeryBackgroundRight" }
 -- The letter window's item buttons: the letter, the money and its attachments.
 GW.MAIL_ITEMS = { "OpenMailLetterButton", "OpenMailMoneyButton" }
-for i = 1, 16 do GW.MAIL_ITEMS[#GW.MAIL_ITEMS + 1] = "OpenMailAttachmentButton" .. i end
+for i = 1, COUNT.MAIL_ATTACHMENTS do GW.MAIL_ITEMS[#GW.MAIL_ITEMS + 1] = "OpenMailAttachmentButton" .. i end
 
 -- The letter's stationery faded and its body text in light text, headings too (the
 -- game colors the body for its parchment as each letter loads, so this runs after it).
@@ -76,12 +63,7 @@ end
 
 -- The letter, money and attachment buttons with the bags' quality border.
 function GW.SkinMailItems()
-  local bags = ns.GetModule("Bags")
-  if type(bags) ~= "table" or type(bags.SkinItem) ~= "function" then return end
-  for _, name in ipairs(GW.MAIL_ITEMS) do
-    local button = _G[name]
-    if type(button) == "table" and button.CreateTexture then bags.SkinItem(button) end
-  end
+  for _, name in ipairs(GW.MAIL_ITEMS) do GW.SkinItem(_G[name]) end
 end
 
 -- The auction invoice's labels (the game names them; dark brown for its parchment) and its four money lines.
@@ -119,10 +101,10 @@ function GW.SkinOpenMail(frame)
   GW.LightMailText()
   dressInvoice()
   GW.SkinMailItems()
-  after(frame, "Update", GW.SkinOpenMail)
+  GW.HookAfter(frame, "Update", GW.SkinOpenMail)
 end
 
-GW.Add("social", "framed", { "OpenMailFrame" }, GW.SkinOpenMail)
+GW.Add("social", { "OpenMailFrame" }, GW.SkinOpenMail)
 GW.AddButtons("OpenMailFrame", { "OpenMailReplyButton", "OpenMailDeleteButton", "OpenMailCancelButton", "OpenMailReportSpamButton" })
 
 -- Guild window ----------------------------------------------------------------------------------
@@ -186,11 +168,11 @@ end
 -- After the roster lays out its column headers: the guild Rank header wider by GW.GUILD_RANK_EXTRA (the
 -- Note header after it fills what is left, so it gives the room).
 local function widenRankHeader(display, columns)
-  local index, pool = rankColumn(columns), display.columnHeaders
-  if not index or type(pool) ~= "table" or type(pool.EnumerateActive) ~= "function" then return end
-  for header in pool:EnumerateActive() do
+  local index = rankColumn(columns)
+  if not index then return end
+  GW.EachActive(display.columnHeaders, function(header)
     if header:GetID() == index then header:SetWidth((columns[index].width or 0) + GW.GUILD_RANK_EXTRA) end
-  end
+  end)
 end
 
 -- After the game lays out a guild roster row: its Rank cell as wide as the header, and its Note cell narrower by
@@ -215,15 +197,13 @@ end
 -- One roster row's hooks, unless it took them from the row mixin when it was made.
 local function hookRow(row, mixin)
   if type(row) ~= "table" or row.RefreshExpandedColumns == mixin.RefreshExpandedColumns then return end
-  afterWith(row, "UpdatePresence", lightOffline)
-  afterWith(row, "RefreshExpandedColumns", widenRankCell)
+  GW.HookAfter(row, "UpdatePresence", lightOffline)
+  GW.HookAfter(row, "RefreshExpandedColumns", widenRankCell)
 end
 
 -- The roster's column headers (ColumnDisplay's pool of buttons) as theme buttons, the game's tab plates faded.
 local function dressHeaders(display)
-  local pool = display.columnHeaders
-  if type(pool) ~= "table" or type(pool.EnumerateActive) ~= "function" then return end
-  for header in pool:EnumerateActive() do GW.SkinButton(header) end
+  GW.EachActive(display.columnHeaders, GW.SkinButton)
 end
 
 -- After the roster lays out its column headers: the Rank header wider, every header a theme button.
@@ -238,10 +218,10 @@ end
 local function hookRoster(list)
   local mixin = _G.CommunitiesMemberListEntryMixin
   if type(list) ~= "table" or type(mixin) ~= "table" then return end
-  afterWith(mixin, "UpdatePresence", lightOffline)
-  afterWith(mixin, "RefreshExpandedColumns", widenRankCell)
+  GW.HookAfter(mixin, "UpdatePresence", lightOffline)
+  GW.HookAfter(mixin, "RefreshExpandedColumns", widenRankCell)
   if type(list.ScrollBox) == "table" and list.ScrollBox.ForEachFrame then list.ScrollBox:ForEachFrame(function(row) hookRow(row, mixin) end) end
-  if type(list.ColumnDisplay) == "table" then afterWith(list.ColumnDisplay, "LayoutColumns", layoutHeaders) end
+  if type(list.ColumnDisplay) == "table" then GW.HookAfter(list.ColumnDisplay, "LayoutColumns", layoutHeaders) end
 end
 
 -- The note the Guild Info page shows in its Guild Information box while the guild has none.
@@ -484,7 +464,7 @@ local function dressGuildPages(frame)
   dressCommunitiesList(frame.CommunitiesList)
   dressBenefits(frame.GuildBenefitsFrame)
   dressGuildDetails(frame.GuildDetailsFrame)
-  afterWith(_G, "CommunitiesGuildInfoFrame_UpdateText", noteGuildInfo)
+  GW.HookAfter(_G, "CommunitiesGuildInfoFrame_UpdateText", noteGuildInfo)
   dressPlaySettings(frame.GuildPreferredPlaySettingsFrame)
 end
 
@@ -533,10 +513,10 @@ function GW.SkinGuildWindow(frame)
   dressGuildControls(frame)
   dressGuildPages(frame)
   GW.SkinCommunitiesDialogs(frame)
-  after(frame, "SetDisplayMode", GW.SkinGuildWindow)
+  GW.HookAfter(frame, "SetDisplayMode", GW.SkinGuildWindow)
 end
 
-GW.Add("social", "framed", { "CommunitiesFrame" }, GW.SkinGuildWindow)
+GW.Add("social", { "CommunitiesFrame" }, GW.SkinGuildWindow)
 
 -- Dialogs -----------------------------------------------------------------------------------------
 
@@ -566,12 +546,12 @@ local function dressClose(frame, button)
   if text ~= "" then T.Button(button) else GW.DressClose(frame, button) end
 end
 
--- Themes each part of frame named in keys that is a frame with the method `need` (T.Button, or T.EditBox for boxes; a
--- font string such as the member pop-up's Name has SetText too, but no regions).
-local function dressKeys(frame, keys, need, skin)
+-- Themes each part of frame named in keys with skin (a guarded skinner: GW.SkinButton, GW.SkinEditBox, GW.SkinDropdown).
+-- The window's close button is skipped: dressClose owns the close control.
+local function dressKeys(frame, keys, skin)
   for _, key in ipairs(keys) do
     local part = frame[key]
-    if type(part) == "table" and part[need] and part.GetRegions and part ~= frame.CloseButton then skin(part) end
+    if part ~= frame.CloseButton then skin(part) end
   end
 end
 
@@ -579,8 +559,8 @@ end
 local function dressDialogParts(frame, name)
   GW.SkinTitle(frame.Title)
   dressClose(frame, frame.CloseButton or (name and _G[name .. "CloseButton"]))
-  dressKeys(frame, GW.SOCIAL_DIALOG_BUTTONS, "CreateTexture", T.Button)
-  dressKeys(frame, GW.SOCIAL_DIALOG_BOXES, "SetText", T.EditBox)
+  dressKeys(frame, GW.SOCIAL_DIALOG_BUTTONS, GW.SkinButton)
+  dressKeys(frame, GW.SOCIAL_DIALOG_BOXES, GW.SkinEditBox)
   for _, suffix in ipairs(GW.SOCIAL_DIALOG_NAMED) do
     local button = name and _G[name .. suffix]
     if type(button) == "table" and button.CreateTexture then T.Button(button) end
@@ -714,7 +694,7 @@ local function dressSettings(frame)
 end
 
 -- The invite links' labels, gold in the game.
-GW.TICKET_LABELS = { "LinkInstructions", "ExpandLabel", "ExpiresDropdownLabel", "UsesDropdownLabel" }
+PARTS.TICKET_LABELS = { "LinkInstructions", "ExpandLabel", "ExpiresDropdownLabel", "UsesDropdownLabel" }
 
 -- One row of the invite links list: a hoverable row without its stripe, its two buttons themed (the revoke cross kept).
 local function dressTicketRow(row)
@@ -746,7 +726,7 @@ local function dressTicketManager(frame)
   GW.ShowTexture(frame.Icon)
   GW.EachKey(frame, { "ExpiresDropdown", "UsesDropdown" }, GW.SkinDropdown)
   GW.SkinPlate(frame.MaximizeButton)
-  paintKeys(frame, GW.TICKET_LABELS, "text")
+  paintKeys(frame, PARTS.TICKET_LABELS, "text")
   dressRule(frame.Separator)
   dressInviteManager(frame.InviteManager)
 end
@@ -761,9 +741,7 @@ end
 
 -- Every stream row the dialog has now.
 local function dressStreams(dialog)
-  local pool = dialog.buttonPool
-  if type(pool) ~= "table" or type(pool.EnumerateActive) ~= "function" then return end
-  for entry in pool:EnumerateActive() do dressStreamEntry(entry) end
+  GW.EachActive(dialog.buttonPool, dressStreamEntry)
 end
 
 -- The notification dialog's scroll child: the quick join check box, the None and All buttons, the settings divider.
@@ -783,7 +761,7 @@ local function dressNotifications(dialog)
   dressSelector(dialog)
   dressNotificationChild(GW.Part(dialog, "ScrollFrame.Child"))
   dressStreams(dialog)
-  after(dialog, "Refresh", dressStreams)
+  GW.HookAfter(dialog, "Refresh", dressStreams)
 end
 
 -- The channel edit dialog (inside the guild window): the dialog skin, its type check box, its description text area, its labels light.
@@ -800,14 +778,14 @@ end
 local function dressMemberDetail(dialog)
   if not isFrame(dialog) then return end
   GW.SkinSocialDialog(dialog)
-  paintKeys(dialog, GW.MEMBER_DETAIL_TEXT, "text")
+  paintKeys(dialog, PARTS.MEMBER_DETAIL_TEXT, "text")
   GW.EachKey(dialog, { "RemoveButton", "GroupInviteButton" }, GW.SkinButton)
   GW.SkinDropdown(dialog.RankDropdown)
   GW.EachKey(dialog, { "NoteBackground", "OfficerNoteBackground" }, GW.InsetPanel)
 end
 
 -- The member detail pop-up's gold name and field labels.
-GW.MEMBER_DETAIL_TEXT = { "Name", "ZoneLabel", "RankLabel", "OnlineLabel", "NoteLabel", "OfficerNoteLabel" }
+PARTS.MEMBER_DETAIL_TEXT = { "Name", "ZoneLabel", "RankLabel", "OnlineLabel", "NoteLabel", "OfficerNoteLabel" }
 -- The community invitation and ticket pages' gold lines.
 GW.INVITATION_TEXT = { "InvitationText", "Type", "MemberCount", "Leader" }
 -- The reported-name overlays over the guild window (parentKeys).
@@ -859,13 +837,13 @@ function GW.SkinCommunitiesDialogs(frame)
   dressNameAlert(frame.GuildNameAlertFrame)
 end
 
-GW.Add("social", "framed", { "CommunitiesGuildLogFrame" }, dialogWith(dressGuildLog))
-GW.Add("social", "framed", { "CommunitiesGuildTextEditFrame" }, dialogWith(dressTextEdit))
-GW.Add("social", "framed", { "CommunitiesGuildNewsFiltersFrame" }, dialogWith(dressNewsFilters))
-GW.Add("social", "framed", { "GuildInviteFrame" }, dialogWith(dressGuildInvite))
-GW.Add("social", "framed", { "CommunitiesSettingsDialog" }, dialogWith(dressSettings))
-GW.Add("social", "framed", { "CommunitiesAvatarPickerDialog" }, dialogWith(dressSelector))
-GW.Add("social", "framed", { "CommunitiesTicketManagerDialog" }, dialogWith(dressTicketManager))
+GW.Add("social", { "CommunitiesGuildLogFrame" }, dialogWith(dressGuildLog))
+GW.Add("social", { "CommunitiesGuildTextEditFrame" }, dialogWith(dressTextEdit))
+GW.Add("social", { "CommunitiesGuildNewsFiltersFrame" }, dialogWith(dressNewsFilters))
+GW.Add("social", { "GuildInviteFrame" }, dialogWith(dressGuildInvite))
+GW.Add("social", { "CommunitiesSettingsDialog" }, dialogWith(dressSettings))
+GW.Add("social", { "CommunitiesAvatarPickerDialog" }, dialogWith(dressSelector))
+GW.Add("social", { "CommunitiesTicketManagerDialog" }, dialogWith(dressTicketManager))
 -- The rename window's descriptions and cost label (QuestFont, black for the game's parchment), paths from the window.
 GW.RENAME_TEXTS = { "TitleFlow.Description", "RenameFlow.Description", "RenameFlow.CostLabel" }
 
@@ -881,7 +859,7 @@ local function dressGuildRename(frame)
   GW.SkinMoney(frame.MoneyFrame)
 end
 
-GW.Add("social", "framed", { "GuildRenameFrame" }, dressGuildRename)
+GW.Add("social", { "GuildRenameFrame" }, dressGuildRename)
 
 -- Channels and friends dialogs ------------------------------------------------------------------
 
@@ -923,18 +901,15 @@ end
 local function dressChannelRow(row, list)
   if type(row) ~= "table" or not row.CreateTexture then return end
   fadeChannelRow(row)
-  afterWith(row, "Update", fadeChannelRow)
-  afterWith(row, "SetIsSelectedChannel", function(self, on) T.SelectRow(self, on == true) end)
+  GW.HookAfter(row, "Update", fadeChannelRow)
+  GW.FollowSelected(row, "SetIsSelectedChannel")
   if type(list.GetSelectedChannelButton) == "function" then T.SelectRow(row, list:GetSelectedChannelButton() == row) end
 end
 
 -- Every row the channel list has now, after each of its Updates.
 local function dressChannelList(list)
   for _, key in ipairs(GW.CHANNEL_POOLS) do
-    local pool = list[key]
-    if type(pool) == "table" and type(pool.EnumerateActive) == "function" then
-      for row in pool:EnumerateActive() do dressChannelRow(row, list) end
-    end
+    GW.EachActive(list[key], function(row) dressChannelRow(row, list) end)
   end
 end
 
@@ -952,10 +927,10 @@ local function dressChannels(frame)
   GW.WatchRows(GW.Part(frame, "ChannelRoster.ScrollBox"), dressRosterRow)
   if type(frame.ChannelList) ~= "table" then return end
   dressChannelList(frame.ChannelList)
-  after(frame.ChannelList, "Update", dressChannelList)
+  GW.HookAfter(frame.ChannelList, "Update", dressChannelList)
 end
 
-GW.Add("social", "framed", { "ChannelFrame" }, dressChannels)
+GW.Add("social", { "ChannelFrame" }, dressChannels)
 
 -- The create channel dialog: its title (on the header when the client has one), its two field labels light, its voice check box.
 local function dressCreateChannel(popup)
@@ -975,10 +950,10 @@ local function dressInvitee(frame)
   paintText(frame.InviteeName, "text")
 end
 
-GW.Add("social", "framed", { "CreateChannelPopup" }, dialogWith(dressCreateChannel))
-GW.Add("social", "framed", { "FriendsFriendsFrame" }, dialogWith(dressFriendsFriends))
-GW.Add("social", "framed", { "BattleNetInviteFrame" }, dialogWith(dressInvitee))
-GW.Add("social", "framed", { "AddFriendFrame" }, GW.SkinAddFriend)
+GW.Add("social", { "CreateChannelPopup" }, dialogWith(dressCreateChannel))
+GW.Add("social", { "FriendsFriendsFrame" }, dialogWith(dressFriendsFriends))
+GW.Add("social", { "BattleNetInviteFrame" }, dialogWith(dressInvitee))
+GW.Add("social", { "AddFriendFrame" }, GW.SkinAddFriend)
 
 -- The social window -----------------------------------------------------------------------------
 
@@ -1033,7 +1008,7 @@ local function dressPresence(dropdown)
   vgPresenceLabel[dropdown] = T.Text(dropdown:CreateFontString(nil, "OVERLAY"), "label")
   vgPresenceLabel[dropdown]:SetPoint("LEFT", dropdown, "LEFT", GW.PRESENCE_LABEL.x, 0)
   showPresence(dropdown)
-  afterWith(dropdown, "UpdateToMenuSelections", showPresence)
+  GW.HookAfter(dropdown, "UpdateToMenuSelections", showPresence)
 end
 
 -- The Battle.net bar: its plate and the band behind the status dropdown and battletag faded, the status
@@ -1097,8 +1072,8 @@ local function dressCard(card)
   if type(card) ~= "table" or not card.CreateTexture or type(card.Background) ~= "table" then return end
   GW.DressRow(card, GW.CARD_KEEP)
   centrePresence(card)
-  afterWith(card, "LayoutScaledTextHolderAnchors", centrePresence)
-  afterWith(card, "SetSelected", function(self, on) T.SelectRow(self, on == true) end)
+  GW.HookAfter(card, "LayoutScaledTextHolderAnchors", centrePresence)
+  GW.FollowSelected(card, "SetSelected")
   dressCardAction(card.PartyButton)
   dressCardAction(card.RAFSummonButton)
   GW.SkinButton(card.AcceptButton)
@@ -1125,9 +1100,9 @@ local function dressSocialPane(pane)
   local bar = pane.FilterBar
   if type(bar) == "table" then
     GW.SkinSearch(bar.SearchBar)
-    dressKeys(bar, { "SearchFilterDropdown" }, "CreateTexture", GW.SkinDropdown)
+    dressKeys(bar, { "SearchFilterDropdown" }, GW.SkinDropdown)
   end
-  dressKeys(pane, GW.SOCIAL_PANE_BUTTONS, "CreateTexture", T.Button)
+  dressKeys(pane, GW.SOCIAL_PANE_BUTTONS, GW.SkinButton)
   GW.InsetPanel(pane.ScrollBox)
   GW.WatchRows(pane.ScrollBox, dressCard)
 end
@@ -1148,10 +1123,7 @@ end
 -- Every member card the raid tab has now, in each group's own (secure) pool.
 local function dressSocialRaidPlayers(raid)
   for _, group in ipairs(raid.groups) do
-    local pool = type(group) == "table" and group.playerPool
-    if type(pool) == "table" and type(pool.EnumerateActive) == "function" then
-      for player in pool:EnumerateActive() do dressSocialRaidPlayer(player) end
-    end
+    GW.EachActive(type(group) == "table" and group.playerPool, dressSocialRaidPlayer)
   end
 end
 
@@ -1171,7 +1143,7 @@ local function dressSocialRaid(raid)
   paintText(GW.Part(raid, "AllAssistCheckButton.AllText"), "text")
   paintText(raid.RaidDescription, "text")
   dressSocialRaidGroups(raid)
-  after(raid, "UpdateContents", dressSocialRaidGroups)
+  GW.HookAfter(raid, "UpdateContents", dressSocialRaidGroups)
 end
 
 -- A row of a side window's list: its name (the ignore list's Name, the saved instances' name) in the text colour.
@@ -1184,7 +1156,7 @@ end
 -- The ignore list (a ButtonFrameTemplate beside the window): the window skin, its two buttons flat, its names light.
 local function skinIgnoreList(frame)
   GW.Skin(frame)
-  dressKeys(frame, GW.SOCIAL_DIALOG_BUTTONS, "CreateTexture", T.Button)
+  dressKeys(frame, GW.SOCIAL_DIALOG_BUTTONS, GW.SkinButton)
   GW.WatchRows(frame.ScrollBox, dressNamedRow)
 end
 
@@ -1193,22 +1165,23 @@ local function dressNotice(frame)
   GW.SkinTitle(GW.Part(frame, "Header.HeaderText"))
 end
 
--- The saved-instance list beside the raid tab: its list in an inset, the names light.
-local function dressSocialRaidInfo(frame)
+-- The saved-instance list of a raid info frame: its list in an inset, the names light.
+local function dressRaidInfoList(frame)
   GW.InsetPanel(frame.ScrollBox)
   GW.WatchRows(frame.ScrollBox, dressNamedRow)
 end
 
 -- The skin of each side window (parentKeys): the dialog skin and the parts only that window has.
 local sideSkins = {
-  BattleNetUnavailableNoticeFrame = dialogWith(dressNotice), BattleNetBroadcastFrame = GW.SkinSocialDialog, RaidInfoFrame = dialogWith(dressSocialRaidInfo),
+  BattleNetUnavailableNoticeFrame = dialogWith(dressNotice), BattleNetBroadcastFrame = GW.SkinSocialDialog, RaidInfoFrame = dialogWith(dressRaidInfoList),
 }
 
 -- How far a side window moves out (units): by what GW.ClearPadding moved the side tabs out (to the window's padded
 -- edge, while the tabs group dresses them) and by the side window's own panel padding, so the game's gap between the
 -- tab column and the side window (SocialUIFrameMixin:GetTabColumnWidth, 7 past the tab) holds.
 local function sideShift(window, side)
-  local tabs = GW.settings and GW.settings.tabs and T.Padding(window) - T.Pixel(window) or 0
+  local tabs = 0
+  if GW.GroupOn("tabs") then tabs = GW.TabPad(window) end
   return math.max(tabs, 0) + T.Padding(side)
 end
 
@@ -1239,10 +1212,9 @@ end
 -- with its icon and count kept, out past the window's padding, raised while it is selected and its icon
 -- greyed while another is selected. Left to the game when the tabs group is off.
 local function dressSocialTabs(frame)
-  if not (GW.settings and GW.settings.tabs) or type(frame.EnumerateTabs) ~= "function" then return end
+  if not GW.GroupOn("tabs") or type(frame.EnumerateTabs) ~= "function" then return end
   for tab in frame:EnumerateTabs() do
-    vgPadded[tab] = nil
-    if type(GW.ClearPadding) == "function" then GW.ClearPadding(tab, frame) end
+    GW.PadTabAgain(tab, frame)
     T.Tab(tab, { dimIcon = true })
   end
 end
@@ -1258,10 +1230,10 @@ function GW.SkinSocial(frame)
   for _, key in ipairs(GW.SOCIAL_SIDE) do watchSide(frame, frame[key], sideSkins[key]) end
   for _, key in ipairs(GW.SOCIAL_SIDE_FRAMED) do watchSide(frame, frame[key], skinIgnoreList) end
   dressSocialTabs(frame)
-  after(frame, "RefreshTabs", dressSocialTabs)
+  GW.HookAfter(frame, "RefreshTabs", dressSocialTabs)
 end
 
-GW.Add("social", "framed", { "SocialUIFrame" }, GW.SkinSocial)
+GW.Add("social", { "SocialUIFrame" }, GW.SkinSocial)
 
 -- Guild creation --------------------------------------------------------------------------------
 
@@ -1271,7 +1243,7 @@ GW.CREATION_BODY = {
   "GuildRegistrarText", "GuildRegistrarPurchaseText", "GuildRegistrarCostLabel", "TabardFrameNameText",
   "PetitionFrameCharterName", "PetitionFrameMasterName", "PetitionFrameInstructions",
 }
-for i = 1, 9 do GW.CREATION_BODY[#GW.CREATION_BODY + 1] = "PetitionFrameMemberName" .. i end
+for i = 1, COUNT.PETITION_MEMBERS do GW.CREATION_BODY[#GW.CREATION_BODY + 1] = "PetitionFrameMemberName" .. i end
 GW.CREATION_HEADS = { "PetitionFrameCharterTitle", "PetitionFrameMasterTitle", "PetitionFrameMemberTitle" }
 -- The registrar's "Available services" heading (QuestTitleFont, black for its parchment).
 GW.CREATION_TITLE = "AvailableServicesText"
@@ -1287,7 +1259,7 @@ end
 
 -- The registrar's options and the charter's price in the number font.
 local function dressRegistrar()
-  for i = 1, 3 do dressOptionRow(_G["GuildRegistrarButton" .. i]) end
+  for i = 1, COUNT.REGISTRAR_OPTIONS do dressOptionRow(_G["GuildRegistrarButton" .. i]) end
   GW.SkinMoney(_G.GuildRegistrarMoneyFrame)
 end
 
@@ -1307,7 +1279,7 @@ end
 -- and its two price lines in the number font. The model and its rotate buttons stay the game's.
 local function dressTabard()
   GW.FadeNamed({ "TabardFrameCustomizationBorder" })
-  for i = 1, 5 do dressTabardPicker(i) end
+  for i = 1, COUNT.TABARD_PICKERS do dressTabardPicker(i) end
   GW.InsetPanel(_G.TabardFrameCostFrame)
   GW.InsetPanel(_G.TabardFrameMoneyInset)
   GW.FadeArt(_G.TabardFrameMoneyBg)
@@ -1320,13 +1292,13 @@ end
 function GW.SkinGuildCreation(frame)
   GW.Skin(frame)
   GW.LightCreationText()
-  for _, name in ipairs(GW.CREATION_REDRAWS) do after(_G, name, GW.LightCreationText) end
+  for _, name in ipairs(GW.CREATION_REDRAWS) do GW.HookAfter(_G, name, GW.LightCreationText) end
   if type(_G.GuildRegistrarFrameEditBox) == "table" and _G.GuildRegistrarFrameEditBox.SetText then T.EditBox(_G.GuildRegistrarFrameEditBox) end
   dressRegistrar()
   dressTabard()
 end
 
-GW.Add("social", "framed", { "GuildRegistrarFrame", "PetitionFrame", "TabardFrame" }, GW.SkinGuildCreation)
+GW.Add("social", { "GuildRegistrarFrame", "PetitionFrame", "TabardFrame" }, GW.SkinGuildCreation)
 GW.AddButtons("GuildRegistrarFrame", { "GuildRegistrarFrameGoodbyeButton", "GuildRegistrarFrameCancelButton", "GuildRegistrarFramePurchaseButton" })
 GW.AddButtons("PetitionFrame", { "PetitionFrameCancelButton", "PetitionFrameSignButton", "PetitionFrameRequestButton", "PetitionFrameRenameButton" })
 GW.AddButtons("TabardFrame", { "TabardFrameAcceptButton", "TabardFrameCancelButton" })
@@ -1357,20 +1329,20 @@ function GW.SkinRolePopup(frame)
   fadeKey(frame, "Border")
   T.Panel(frame, { shadow = true })
   dressClose(frame, frame.CloseButton)
-  dressKeys(frame, GW.POPUP_BUTTON_KEYS, "CreateTexture", T.Button)
+  dressKeys(frame, GW.POPUP_BUTTON_KEYS, GW.SkinButton)
   for _, suffix in ipairs(GW.POPUP_BUTTON_NAMES) do GW.SkinButton(name and _G[name .. suffix]) end
   dressRoleChecks(name)
 end
 
-GW.Add("social", "popups", { "RolePollPopup", "LFGInvitePopup" }, GW.SkinRolePopup)
+GW.Add("social", { "RolePollPopup", "LFGInvitePopup" }, GW.SkinRolePopup)
 
 -- Raid tab --------------------------------------------------------------------------------------
 
 -- How many group boxes and member buttons the raid tab has (RaidGroup1-8, RaidGroupButton1-40).
 GW.RAID_GROUPS, GW.RAID_BUTTONS = 8, 40
 -- The tab's own push buttons, and its labels the game colors for its own look.
-GW.RAID_PUSH_BUTTONS = { "RaidFrameRaidInfoButton", "RaidFrameConvertToRaidButton" }
-GW.RAID_LABELS = { "RaidFrameAllAssistCheckButtonText" }
+PARTS.RAID_PUSH_BUTTONS = { "RaidFrameRaidInfoButton", "RaidFrameConvertToRaidButton" }
+PARTS.RAID_LABELS = { "RaidFrameAllAssistCheckButtonText" }
 
 -- One group box: its outline and title art faded, an inset panel behind its slots, its "Group n" caption in the text colour.
 local function dressRaidGroup(i)
@@ -1390,18 +1362,13 @@ GW.RAID_CLASS_BUTTONS = 16
 local function dressRaidClassButton(i)
   local button = _G["RaidClassButton" .. i]
   if type(button) ~= "table" or not button.GetRegions then return end
-  T.FadeRegions(button, { [_G["RaidClassButton" .. i .. "IconTexture"] or false] = true })
+  T.FadeRegions(button, GW.KeepAlso({}, _G["RaidClassButton" .. i .. "IconTexture"]))
   T.Panel(button, { raised = true, noSheen = true })
 end
 
 -- The old raid info pop-out's column headers (own frames with a three-piece tab) and the buttons it names.
 GW.RAID_INFO_HEADERS = { "RaidInfoInstanceLabel", "RaidInfoIDLabel" }
 GW.RAID_INFO_BUTTONS = { "RaidInfoExtendButton", "RaidInfoCancelButton" }
-
--- One row of the raid info list: the instance's name in the text colour (the game draws it gold).
-local function dressRaidInfoRow(row)
-  if type(row) == "table" then paintText(row.name, "text") end
-end
 
 -- A raid info column header: its tab art faded under a raised panel.
 local function dressRaidInfoHeader(header)
@@ -1418,8 +1385,7 @@ local function dressRaidInfo(frame)
   GW.DressClose(frame, _G.RaidInfoCloseButton)
   for _, name in ipairs(GW.RAID_INFO_HEADERS) do dressRaidInfoHeader(_G[name]) end
   for _, name in ipairs(GW.RAID_INFO_BUTTONS) do GW.SkinButton(_G[name]) end
-  GW.InsetPanel(frame.ScrollBox)
-  GW.WatchRows(frame.ScrollBox, dressRaidInfoRow)
+  dressRaidInfoList(frame)
 end
 
 -- The member buttons as flat buttons. They are secure unit buttons: only textures are touched, and
@@ -1432,7 +1398,7 @@ local function dressRaidButtons()
 end
 
 -- The tab's "All assist" check button, as a themed check box.
-GW.RAID_CHECK = "RaidFrameAllAssistCheckButton"
+PARTS.RAID_CHECK = "RaidFrameAllAssistCheckButton"
 
 -- The raid roster tab: its group boxes, member buttons, push buttons, labels and check box, in that order,
 -- so a disabled box greys its label last. (The tab sits inside the friends window, which is panelled already.)
@@ -1441,21 +1407,21 @@ function GW.SkinRaidTab()
   for i = 1, GW.RAID_CLASS_BUTTONS do dressRaidClassButton(i) end
   dressRaidInfo(_G.RaidInfoFrame)
   ns.OutOfCombat(dressRaidButtons, "vgSocialRaidButtons")
-  for _, name in ipairs(GW.RAID_PUSH_BUTTONS) do
+  for _, name in ipairs(PARTS.RAID_PUSH_BUTTONS) do
     if type(_G[name]) == "table" and _G[name].CreateTexture then T.Button(_G[name]) end
   end
-  GW.PaintNamed(GW.RAID_LABELS, "text")
-  if type(_G[GW.RAID_CHECK]) == "table" and _G[GW.RAID_CHECK].GetChecked then T.CheckBox(_G[GW.RAID_CHECK]) end
+  GW.PaintNamed(PARTS.RAID_LABELS, "text")
+  if type(_G[PARTS.RAID_CHECK]) == "table" and _G[PARTS.RAID_CHECK].GetChecked then T.CheckBox(_G[PARTS.RAID_CHECK]) end
 end
 
 -- The group boxes and buttons are made when Blizzard_RaidUI loads, after the tab itself is skinned.
 local function onRaidUILoaded(_, addon)
-  if addon == "Blizzard_RaidUI" and GW.settings and GW.settings.social then GW.SkinRaidTab() end
+  if addon == "Blizzard_RaidUI" and GW.GroupOn("social") then GW.SkinRaidTab() end
 end
 ns.On("ADDON_LOADED", onRaidUILoaded)
 
-GW.Add("social", "onDemand", "Blizzard_RaidUI", { "RaidFrame" }, GW.SkinRaidTab)
-GW.Add("social", "framed", { "RaidParentFrame" })
+GW.AddOnDemand("social", "Blizzard_RaidUI", { "RaidFrame" }, GW.SkinRaidTab)
+GW.Add("social", { "RaidParentFrame" })
 
 -- Guild control window ----------------------------------------------------------------------------
 
@@ -1584,7 +1550,7 @@ local function watchControl(frame)
   vgControlWatched[frame] = true
   -- Dresses the pages again.
   local function redress() dressControlPages(frame) end
-  for _, name in ipairs(GW.CONTROL_UPDATES) do afterWith(_G, name, redress) end
+  for _, name in ipairs(GW.CONTROL_UPDATES) do GW.HookAfter(_G, name, redress) end
   frame:HookScript("OnEvent", ns.Guard("guild control event", redress))
 end
 
@@ -1599,7 +1565,7 @@ function GW.SkinGuildControl(frame)
   watchControl(frame)
 end
 
-GW.Add("social", "onDemand", "Blizzard_GuildControlUI", { "GuildControlUI" }, GW.SkinGuildControl)
+GW.AddOnDemand("social", "Blizzard_GuildControlUI", { "GuildControlUI" }, GW.SkinGuildControl)
 
 -- Toasts ----------------------------------------------------------------------------------------
 
@@ -1610,8 +1576,9 @@ GW.Add("social", "onDemand", "Blizzard_GuildControlUI", { "GuildControlUI" }, GW
 -- Text is the time-played alert's one line, and the voice chat prompts' (Text2 is the second line of a voice channel
 -- notification, which keeps the game's colour codes: they colour the channel's name).
 GW.TOAST_LINES = {
-  TopLine = { "label", false }, MiddleLine = { "small", false }, BottomLine = { "small", "text2" }, DoubleLine = { "label", "text2" },
-  Text = { "label", false }, Text2 = { "small", false },
+  TopLine = { role = "label", color = false }, MiddleLine = { role = "small", color = false },
+  BottomLine = { role = "small", color = "text2" }, DoubleLine = { role = "label", color = "text2" },
+  Text = { role = "label", color = false }, Text2 = { role = "small", color = false },
 }
 
 -- A line's text with the game's inline colour codes stripped, so the role colour can show: SetTextColor
@@ -1624,11 +1591,11 @@ end
 
 -- A toast's texts in their roles, those this toast has; a line given a role colour loses the game's inline colour first.
 local function dressToastLines(frame)
-  for key, role in pairs(GW.TOAST_LINES) do
+  for key, line in pairs(GW.TOAST_LINES) do
     local fs = frame[key]
     if type(fs) == "table" and type(fs.SetFont) == "function" then
-      if role[2] then uncolourText(fs) end
-      T.Text(fs, role[1], role[2])
+      if line.color then uncolourText(fs) end
+      T.Text(fs, line.role, line.color)
     end
   end
 end
@@ -1650,16 +1617,16 @@ end
 -- are dressed again every time.
 function GW.SkinToast(frame)
   if type(frame) ~= "table" or not frame.GetRegions then return end
-  after(frame, "ShowToast", GW.SkinToast)
+  GW.HookAfter(frame, "ShowToast", GW.SkinToast)
   local icon = frame.IconTexture or frame.Icon
-  T.FadeRegions(frame, { [type(icon) == "table" and icon or false] = true })
+  T.FadeRegions(frame, GW.KeepAlso({}, icon))
   T.Tooltip(frame)
   dressToastLines(frame)
   if type(frame.CloseButton) == "table" and frame.CloseButton.CreateTexture then T.CloseButton(frame.CloseButton) end
   dressToastTooltip(frame.TooltipFrame)
 end
 
-GW.Add("social", "popups", { "BNToastFrame", "TimeAlertFrame" }, GW.SkinToast)
+GW.Add("social", { "BNToastFrame", "TimeAlertFrame" }, GW.SkinToast)
 
 -- The voice chat prompts (the offer to join a party's or raid's voice channel, the note that it is on) are the same
 -- kind of toast, with their icon under Icon: the toast skin, and the offer's Join button themed.
@@ -1668,4 +1635,4 @@ function GW.SkinVoicePrompt(frame)
   if type(frame) == "table" then GW.SkinButton(frame.AcceptButton) end
 end
 
-GW.Add("social", "popups", { "VoiceChatPromptActivateChannel", "VoiceChatChannelActivatedNotification" }, GW.SkinVoicePrompt)
+GW.Add("social", { "VoiceChatPromptActivateChannel", "VoiceChatChannelActivatedNotification" }, GW.SkinVoicePrompt)

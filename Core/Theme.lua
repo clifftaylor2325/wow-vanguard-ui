@@ -383,12 +383,16 @@ function T.ColorAssist()
 end
 
 -- r, g, b, a of a named color (see TOKENS; accent, panel, inset and edge follow the settings,
--- accentText and accentDim follow the accent, and the reactions follow Color assist).
+-- accentText and accentDim follow the accent, and the reactions follow Color assist). The first
+-- source that has the name wins: the variant's tokens, the accent variant, the saved setting, Color
+-- assist's colours, then TOKENS.
 function T.RGB(name)
-  local key, v = SETTING_TOKENS[name], T.Variant()
-  local assist = T.ColorAssist()
-  local c = v and v.tokens[name] or T.ACCENT_VARIANTS[name] and accentVariant(name) or key and T.Settings()[key]
-    or assist and T.ASSIST[name] or T.TOKENS[name]
+  local v, key = T.Variant(), SETTING_TOKENS[name]
+  local c = v and v.tokens[name]
+  if not c and T.ACCENT_VARIANTS[name] then c = accentVariant(name) end
+  if not c and key then c = T.Settings()[key] end
+  if not c and T.ColorAssist() then c = T.ASSIST[name] end
+  c = c or T.TOKENS[name]
   if not c then error("Vanguard: no color named " .. tostring(name), 2) end
   return c[1], c[2], c[3], c[4] or 1
 end
@@ -643,8 +647,12 @@ T.CORNER_RADIUS = 4
 -- Shield corners (the shield setting, on the frames that ask for them): a 45-degree cut this many screen
 -- pixels across each corner (Media/Textures/CornerCutLine, CornerCutFill and the CornerCutMask images, one pixel wide at it).
 T.CORNER_CUT = 8
--- The corner looks (rounded, cut): the art of the border's corner piece, of the fill's, and its size in screen pixels.
-T.CORNER_ART = { rounded = { "CornerLine", "CornerFill", T.CORNER_RADIUS }, cut = { "CornerCutLine", "CornerCutFill", T.CORNER_CUT } }
+-- The corner looks (rounded, cut): the art of the border's corner piece (line), of the fill's (fill), and
+-- its size in screen pixels (size).
+T.CORNER_ART = {
+  rounded = { line = "CornerLine", fill = "CornerFill", size = T.CORNER_RADIUS },
+  cut = { line = "CornerCutLine", fill = "CornerCutFill", size = T.CORNER_CUT },
+}
 
 -- Pins one edge texture between its two corner points, `out` units past frame, each end stopped
 -- `r` units short of the corner (0 runs it into the corner).
@@ -686,29 +694,35 @@ end
 
 -- Places the sheen just inside the top border (`pad` units out past the frame's top), one pixel tall:
 -- on the first row inside it, or the `row`th (a bevelled panel keeps row 1 for its bevel line).
--- (A button's hover line sits on row 1, in `token`.) `r` units are left clear at each end for rounded corners.
-local function placeSheen(t, frame, pad, token, row, r)
+-- `r` units are left clear at each end for rounded corners. Returns t, untinted: the caller tints it.
+local function placeSheen(t, frame, pad, row, r)
   local px, out = T.Pixel(frame), T.PixelRound(frame, pad or 0)
   local inset = px + (r or 0)
   t:ClearAllPoints()
   t:SetPoint("TOPLEFT", frame, "TOPLEFT", inset - out, out - px * (row or 1))
   t:SetPoint("TOPRIGHT", frame, "TOPRIGHT", out - inset, out - px * (row or 1))
   t:SetHeight(px)
-  T.Tint(t, token or "sheen")
+  return t
 end
 
 -- The inner bevel (#234) on buttons and raised panels: { token, alpha } of the light line along the
 -- top inner edge and the dark one along the bottom inner edge, each one pixel, just inside the border.
-T.BEVEL = { top = { "borderHi", 0.35 }, bottom = { "shade", 0.35 } }
+-- sheenRow: the row a bevelled panel's sheen sits on, below its light line.
+T.BEVEL = { top = { "borderHi", 0.35 }, bottom = { "shade", 0.35 }, sheenRow = 2 }
 
--- Places one bevel line (side "TOP" or "BOTTOM") on the first row inside frame's border, `out` past
--- it, `r` units clear of each rounded corner.
-local function placeBevelLine(t, frame, side, out, r)
+-- Places one bevel line's geometry (side "TOP" or "BOTTOM") on the first row inside frame's border, `out`
+-- past it, `r` units clear of each rounded corner.
+local function placeBevelGeometry(t, frame, side, out, r)
   local px, y = T.Pixel(frame), side == "TOP" and out - T.Pixel(frame) or T.Pixel(frame) - out
   t:ClearAllPoints()
   t:SetPoint(side .. "LEFT", frame, side .. "LEFT", px + r - out, y)
   t:SetPoint(side .. "RIGHT", frame, side .. "RIGHT", out - px - r, y)
   t:SetHeight(px)
+end
+
+-- Places a bevel line's geometry (as placeBevelGeometry) and tints it with its T.BEVEL token.
+local function placeBevelLine(t, frame, side, out, r)
+  placeBevelGeometry(t, frame, side, out, r)
   T.Tint(t, T.BEVEL[side:lower()][1], T.BEVEL[side:lower()][2])
 end
 
@@ -976,8 +990,8 @@ end
 -- it has edges, and the fill's quarter discs and left and right strips where it has a background.
 local function roundParts(frame, p)
   local layer, sub = edgeLayer(frame)
-  p.roundLine = p.edges and cornerPieces(frame, T.CORNER_ART.rounded[1], layer, sub) or nil
-  p.roundFill = p.bg and cornerPieces(frame, T.CORNER_ART.rounded[2], "BACKGROUND") or nil
+  p.roundLine = p.edges and cornerPieces(frame, T.CORNER_ART.rounded.line, layer, sub) or nil
+  p.roundFill = p.bg and cornerPieces(frame, T.CORNER_ART.rounded.fill, "BACKGROUND") or nil
   p.roundSides = p.bg and { solid(frame, "BACKGROUND", nil, "fill"), solid(frame, "BACKGROUND", nil, "fill") } or nil
 end
 
@@ -1007,19 +1021,19 @@ end
 
 -- Gives a frame's corner pieces the art of a corner look ("rounded" or "cut") when it changes.
 function corner.art(p, look)
-  if not p.round or not look or p.look == look then return end
+  if not p.hasRounded or not look or p.look == look then return end
   p.look = look
-  for i, key in ipairs({ "roundLine", "roundFill" }) do
-    for _, t in pairs(p[key] or NO_PARTS) do t:SetTexture(T.Texture(T.CORNER_ART[look][i])) end
-  end
+  local art = T.CORNER_ART[look]
+  for _, t in pairs(p.roundLine or NO_PARTS) do t:SetTexture(T.Texture(art.line)) end
+  for _, t in pairs(p.roundFill or NO_PARTS) do t:SetTexture(T.Texture(art.fill)) end
 end
 
 -- Shows and places a frame's rounded (or cut) parts for radius r (units), or hides them (r 0) and
 -- gives the background its corners back. Nothing is made for a frame that was never rounded.
 local function paintRound(frame, entry, r)
   local p, out = entry.parts, T.PixelRound(frame, entry.opts.pad or 0)
-  if r == 0 and not p.round then return end
-  if not p.round then roundParts(frame, p) p.round = true end
+  if r == 0 and not p.hasRounded then return end
+  if not p.hasRounded then roundParts(frame, p) p.hasRounded = true end
   for _, key in ipairs({ "roundLine", "roundFill", "roundSides" }) do
     for _, t in pairs(p[key] or NO_PARTS) do t:SetShown(r > 0) end
   end
@@ -1048,7 +1062,7 @@ end
 local function roundRadius(frame, entry)
   local look, v = corner.look(frame, entry), T.Variant()
   if not look then return 0 end
-  return T.CORNER_ART[look][3] * T.Pixel(frame) * ((entry.opts.accent or entry.opts.border) and v and v.ring or 1), look
+  return T.CORNER_ART[look].size * T.Pixel(frame) * ((entry.opts.accent or entry.opts.border) and v and v.ring or 1), look
 end
 
 -- Colours and sizes a painted frame's edges, re-pinned `r` short of the corners once it has been rounded.
@@ -1056,7 +1070,7 @@ local function paintEdges(frame, entry, r)
   local p = entry.parts
   colorEdges(p.edges, borderColor(entry))
   sizeEdges(p.edges, frame, entry.opts.accent or entry.opts.border)
-  if r > 0 or p.round then placeEdges(p.edges, frame, entry.opts.pad, r) end
+  if r > 0 or p.hasRounded then placeEdges(p.edges, frame, entry.opts.pad, r) end
 end
 
 -- Fills (T.FillParts) ------------------------------------------------------------------------
@@ -1065,10 +1079,10 @@ end
 -- discs on the fill's layer, at the centre's alpha, added to fill.textures.
 local function roundFillParts(frame, fill)
   fill.roundSides = { solid(frame, fill.layer, fill.sublevel, "fill"), solid(frame, fill.layer, fill.sublevel, "fill") }
-  fill.roundFill = cornerPieces(frame, T.CORNER_ART.rounded[2], fill.layer, fill.sublevel)
-  for _, t in pairs(fill.roundSides) do fill.textures[#fill.textures + 1] = t end
-  for _, t in pairs(fill.roundFill) do fill.textures[#fill.textures + 1] = t end
-  for i = 2, #fill.textures do fill.textures[i]:SetAlpha(fill.bg:GetAlpha()) end
+  fill.roundFill = cornerPieces(frame, T.CORNER_ART.rounded.fill, fill.layer, fill.sublevel)
+  local alpha = fill.bg:GetAlpha()
+  for _, t in pairs(fill.roundSides) do fill.textures[#fill.textures + 1] = t t:SetAlpha(alpha) end
+  for _, t in pairs(fill.roundFill) do fill.textures[#fill.textures + 1] = t t:SetAlpha(alpha) end
 end
 
 -- Places a fill's parts `pad` units out past frame for radius r (units): the centre alone while the frame
@@ -1091,7 +1105,7 @@ end
 local function showFillParts(fill)
   fill.bg:SetShown(fill.shown)
   for _, t in ipairs(fill.textures) do
-    if t ~= fill.bg then t:SetShown(fill.shown and fill.round > 0) end
+    if t ~= fill.bg then t:SetShown(fill.shown and fill.radius > 0) end
   end
 end
 
@@ -1116,7 +1130,7 @@ end
 
 -- Places, shows and tints one of a painted frame's fills, `pad` units out, for radius r.
 local function repaintFill(frame, fill, pad, r)
-  fill.round = r
+  fill.radius = r
   placeFill(frame, fill, pad, r)
   showFillParts(fill)
   T.TintFill(fill, fill.token, fill.alpha)
@@ -1135,7 +1149,7 @@ function T.FillParts(frame, layer, sublevel, token, alpha)
     entry.fills = entry.fills or {}
     entry.fills[#entry.fills + 1] = fill
   end
-  repaintFill(frame, fill, entry and entry.opts.pad, entry and entry.round or 0)
+  repaintFill(frame, fill, entry and entry.opts.pad, entry and entry.radius or 0)
   return fill
 end
 
@@ -1189,7 +1203,7 @@ end
 -- Sizes a painted frame's masks to its corners, gives them its look's art, and puts them on its masked
 -- textures while its corners are cut or rounded.
 function corner.paintMasks(frame, entry)
-  local size = math.max(entry.round, T.Pixel(frame))
+  local size = math.max(entry.radius, T.Pixel(frame))
   for _, set in pairs(entry.maskSets) do
     if entry.look then corner.maskArt(set, entry.look) end
     for _, m in pairs(set) do m:SetSize(size, size) end
@@ -1231,11 +1245,11 @@ end
 -- Applies the current colors (and pixel size) to one painted frame.
 local function repaint(frame, entry)
   local p, r, look = entry.parts, roundRadius(frame, entry)
-  entry.round, entry.look = r, look
+  entry.radius, entry.look = r, look
   corner.paintCorners(frame, entry, r, look)
   if p.bg then paintBg(p, entry.opts, r > 0) end
   if p.edges then paintEdges(frame, entry, r) end
-  if p.sheen then placeSheen(p.sheen, frame, entry.opts.pad, nil, p.bevel and 2, r) end
+  if p.sheen then T.Tint(placeSheen(p.sheen, frame, entry.opts.pad, p.bevel and T.BEVEL.sheenRow, r), "sheen") end
   if p.bevel then placeBevelLines(p.bevel, frame, entry.opts.pad, r) end
   for _, fill in ipairs(entry.fills or NO_PARTS) do repaintFill(frame, fill, entry.opts.pad, r) end
   if entry.paint then entry.paint(entry, frame) end
@@ -1324,7 +1338,7 @@ end
 
 -- Places a button's hover line (one pixel inside its top border, in borderHi) when it is painted.
 local function paintHoverLine(entry, button)
-  placeSheen(entry.parts.hoverLine, button, entry.opts.pad, entry.opts.hoverTo or "borderHi", nil, entry.round)
+  T.Tint(placeSheen(entry.parts.hoverLine, button, entry.opts.pad, 1, entry.radius), entry.opts.hoverTo or "borderHi")
 end
 
 -- Each themed button's hover parts (weak; kept off the button, which may be one of the game's).
@@ -1403,9 +1417,10 @@ function T.FocusRing(frame, on)
   for _, e in pairs(f) do for _, t in pairs(e) do t:SetShown(on == true) end end
 end
 
--- How a pressed button looks (#257): a shade overlay at T.PRESS[2] over its fill (one step darker)
+-- How a pressed button looks (#257): a shade overlay at T.PRESS.alpha over its fill (one step darker)
 -- and its own label (button.text) T.PRESS.drop screen pixels lower, at once, while the mouse is held.
-T.PRESS = { "shade", 0.3, drop = 1, row = 0.2 }
+-- token: the shade's colour; rowAlpha: the alpha of a list row's press shade (T.Row).
+T.PRESS = { token = "shade", alpha = 0.3, drop = 1, rowAlpha = 0.2 }
 -- Each themed button's press state (weak): { overlay = the fill's centre texture, fill = its T.FillParts
 -- fill, ys = its label's anchor ys before the press }.
 local pressOf = setmetatable({}, { __mode = "k" })
@@ -1419,23 +1434,29 @@ local function dropLabel(button, state, down)
   for i = 1, fs:GetNumPoints() do points[i] = { fs:GetPoint(i) } end
   if down then state.ys = {} end
   for i, p in ipairs(points) do
-    if down then state.ys[i] = p[5] end
-    fs:SetPoint(p[1], p[2], p[3], p[4], down and p[5] - drop or state.ys and state.ys[i] or p[5])
+    local y = p[5]
+    if down then state.ys[i] = p[5] y = p[5] - drop elseif state.ys and state.ys[i] then y = state.ys[i] end
+    fs:SetPoint(p[1], p[2], p[3], p[4], y)
   end
 end
 
 -- A themed button's press overlay, or nil for a button T.Button never painted.
 function T.PressOverlay(button) return pressOf[button] and pressOf[button].overlay end
 
--- Shows or hides a button's press look; only an enabled button shows it. A shade marked `row` (a check
+-- Whether a widget is enabled. A widget without IsEnabled (a plain frame) counts as enabled.
+local function isEnabled(widget)
+  return type(widget.IsEnabled) ~= "function" or widget:IsEnabled()
+end
+
+-- Shows or hides a button's press look; only an enabled button shows it. A shade marked `keepsLabel` (a check
 -- box's today) leaves the label where it is; a push button's drops it a pixel.
 function T.PressButton(button, down)
   local s = pressOf[button]
   if not s then return end
-  local on = down == true and (not button.IsEnabled or button:IsEnabled())
+  local on = down == true and isEnabled(button)
   if on == s.overlay:IsShown() then return end
   if s.fill then T.ShowFill(s.fill, on) else s.overlay:SetShown(on) end
-  if not s.row then dropLabel(button, s, on) end
+  if not s.keepsLabel then dropLabel(button, s, on) end
 end
 
 -- Each disabled themed button's label colour from before (weak), given back when it's enabled.
@@ -1450,14 +1471,14 @@ function T.DisabledLook(button, disabled)
   if disabled then labelBefore[button] = labelBefore[button] or { fs:GetTextColor() } return T.Color(fs, "disabled") end
   local c = labelBefore[button]
   labelBefore[button] = nil
-  if c then T.Color(fs, c[1], c[2], c[3]) end
+  if c then T.ColorRGB(fs, c[1], c[2], c[3]) end
 end
 
 -- A button's press and disabled looks (#257): the hidden overlay (T.FillParts, so it follows rounded
 -- corners), and hooks on the mouse and on its state (pcall: a widget without OnEnable/OnDisable can't
 -- have them hooked).
 local function stateParts(button)
-  local fill = T.FillParts(button, "BACKGROUND", 2, T.PRESS[1], T.PRESS[2])
+  local fill = T.FillParts(button, "BACKGROUND", 2, T.PRESS.token, T.PRESS.alpha)
   T.ShowFill(fill, false)
   pressOf[button] = { overlay = fill.bg, fill = fill }
   button:HookScript("OnMouseDown", ns.Guard("button press", function(b) T.PressButton(b, true) end))
@@ -1485,7 +1506,7 @@ function T.Button(button, kind)
     stateParts(button)
   end
   repaint(button, entry)
-  if button.IsEnabled and not button:IsEnabled() then T.DisabledLook(button, true) end
+  if not isEnabled(button) then T.DisabledLook(button, true) end
   return button
 end
 
@@ -1543,16 +1564,6 @@ local function placeInner(e, frame)
   sizeEdges(e, frame)
 end
 
--- Places a one-pixel bevel line two pixels inside frame's top or bottom edge (side "TOP" or "BOTTOM").
-local function placeBevel(t, frame, side)
-  local px = T.Pixel(frame)
-  local y = (side == "TOP" and -2 or 2) * px
-  t:ClearAllPoints()
-  t:SetPoint(side .. "LEFT", 2 * px, y)
-  t:SetPoint(side .. "RIGHT", -2 * px, y)
-  t:SetHeight(px)
-end
-
 -- Paints a slot's accent edge (for its state; a quiet slot's only while it
 -- has one) and its bevel (none in a well), at the frame's pixel size.
 local function paintSlot(entry, frame)
@@ -1560,8 +1571,8 @@ local function paintSlot(entry, frame)
   placeInner(p.inner, frame)
   local r, g, b = shadeAccent(T.SLOT_STATES[entry.opts.state] or 0)
   colorEdges(p.inner, r, g, b, (entry.opts.quiet and not entry.opts.state) and 0 or 1)
-  placeBevel(p.lit, frame, "TOP")
-  placeBevel(p.dim, frame, "BOTTOM")
+  placeBevelGeometry(p.lit, frame, "TOP", -T.Pixel(frame), 0)
+  placeBevelGeometry(p.dim, frame, "BOTTOM", -T.Pixel(frame), 0)
   T.Tint(p.lit, "sheen", entry.opts.well and 0 or nil)
   T.Tint(p.dim, "shade", entry.opts.well and 0 or nil)
 end
@@ -1623,8 +1634,9 @@ T.SEARCH_ICON = 12
 T.SEARCH_INSET = T.SPACE.gap * 2 + T.SEARCH_ICON
 -- Panel opacity by tier: opaque for the options window, the quest log and a skinned game window; dialog
 -- for a dialog, setup, What's new and anything with an edit box; overlay for tooltips and cards (the panel
--- token's own alpha); alert for an alert; calm for the Calm HUD's unit frames out of combat.
-T.ALPHA = { opaque = 1, dialog = 0.98, overlay = 0.94, alert = 0.92, calm = 0.35 }
+-- token's own alpha); alert for an alert; calm for the Calm HUD's unit frames out of combat; dispelWash for
+-- the raid tile's wash over a debuff you can dispel.
+T.ALPHA = { opaque = 1, dialog = 0.98, overlay = 0.94, alert = 0.92, calm = 0.35, dispelWash = 0.35 }
 -- A list row (W.Row, T.Row): how tall (units).
 T.ROW = { height = 28 }
 -- The chat background (Modules/Chat.lua, the panel's fill): the strengths the Chat background
@@ -1667,15 +1679,15 @@ T.SCROLL = { thumb = 4, rest = 0.5, lit = 1 }
 -- The window controls' look (the ghost tile, docs/design/UI-COHERENCE.md 12a): nothing behind the glyph at rest;
 -- under the mouse a rounded tile (fill and one-pixel line) in `hover`, held down in `press` with the glyph one
 -- pixel lower. The glyph's colour at rest, lit, and lit on close (the state vermilion: only its mark is coloured).
-T.CONTROL_TILES = { hover = { "raisedHover", "borderHi" }, press = { "inset", "divider" },
+T.CONTROL_TILES = { hover = { tile = "raisedHover", line = "borderHi" }, press = { tile = "inset", line = "divider" },
   glyph = { rest = "text2", lit = "text", close = "bad" } }
 
 -- Shows a window control's rounded tile in its state's fill and line (pressed over lit), or hides it at rest.
 local function paintControlTile(p, entry)
   local look = entry.pressed and T.CONTROL_TILES.press or entry.lit and T.CONTROL_TILES.hover
-  for i, key in ipairs({ "tile", "line" }) do
+  for _, key in ipairs({ "tile", "line" }) do
     p[key]:SetShown(look and true or false)
-    if look then T.Tint(p[key], look[i]) end
+    if look then T.Tint(p[key], look[key]) end
   end
 end
 
@@ -1685,7 +1697,9 @@ local function paintControl(entry, button)
   local p, colors = entry.parts, T.CONTROL_TILES.glyph
   paintControlTile(p, entry)
   if not p.glyph then return end
-  T.Tint(p.glyph, not entry.lit and colors.rest or entry.opts.tile == "close" and colors.close or colors.lit)
+  local color = colors.lit
+  if not entry.lit then color = colors.rest elseif entry.opts.tile == "close" then color = colors.close end
+  T.Tint(p.glyph, color)
   p.glyph:SetPoint("CENTER", button, "CENTER", 0, entry.pressed and -T.Pixel(button) or 0)
 end
 
@@ -1846,14 +1860,20 @@ local function isChecked(button, c)
   return type(button.GetChecked) == "function" and button:GetChecked() == true
 end
 
+-- The mark of a check box or radio for its state: shown while checked, in the disabled tier while
+-- disabled. A disabled one loses its hover here (it gets no OnLeave, so the hover ends at once).
+local function paintBoxMark(box, on, off, markToken)
+  box.hover = box.hover and not off
+  box.mark:SetShown(on)
+  T.Tint(box.mark, off and "disabled" or markToken)
+end
+
 -- Paints a check button for its state: the mark (and the fill, when T.CHECK names one) shown while it
 -- is checked, in their colours, the hover border while the mouse is over it, or the disabled tier while
 -- the button is disabled (its label too, and no hover border).
 local function paintCheck(button, c)
-  local on, off = isChecked(button, c), type(button.IsEnabled) == "function" and not button:IsEnabled()
-  c.hover = c.hover and not off -- a disabled button gets no OnLeave, so its hover ends here
-  c.mark:SetShown(on)
-  T.Tint(c.mark, off and "disabled" or T.CHECK.markColor)
+  local on, off = isChecked(button, c), not isEnabled(button)
+  paintBoxMark(c, on, off, T.CHECK.markColor)
   c.fill:SetShown(on and T.CHECK.fill ~= nil)
   T.Tint(c.fill, off and "disabled" or T.CHECK.fill or "inset")
   T.SetBorder(c.box, c.hover and not off and { T.RGB(T.CHECK.hover) } or nil)
@@ -1867,11 +1887,11 @@ local function checkParts(button)
   local box = T.Panel(CreateFrame("Frame", nil, button), { inset = true, noSheen = true })
   T.PixelSize(box, T.CHECK.size, T.CHECK.size, true)
   box:SetPoint("CENTER")
-  local fill, press = solid(box, "BACKGROUND", 1, "fill"), T.Tint(solid(box, "BACKGROUND", 2, "fill"), T.PRESS[1], T.PRESS[2])
+  local fill, press = solid(box, "BACKGROUND", 1, "fill"), T.Tint(solid(box, "BACKGROUND", 2, "fill"), T.PRESS.token, T.PRESS.alpha)
   fill:SetAllPoints()
   press:SetAllPoints()
   press:Hide()
-  pressOf[button] = { overlay = press, row = true } -- row: the shade only, the label stays put
+  pressOf[button] = { overlay = press, keepsLabel = true } -- keepsLabel: the shade only, the label stays put
   return { box = box, fill = fill, mark = centered(box, "OVERLAY", T.Icon("Check"), T.CHECK.mark), paint = paintCheck }
 end
 
@@ -1919,18 +1939,24 @@ local function watchCheck(button)
   button:HookScript("OnLeave", ns.Guard("check hover", function(b) hoverCheck(b, false) end))
 end
 
+-- A check button's or radio's painted parts, made on first use by buildParts, then watched for the game's state.
+local function boxFor(button, buildParts)
+  local box = checkOf[button]
+  if not box then
+    box = buildParts(button)
+    checkOf[button] = box
+    watchCheck(button)
+  end
+  return box
+end
+
 -- One of the game's check buttons (UICheckButtonTemplate and kin) in the theme (DESIGN-PRINCIPLES
 -- 2.6): its art faded (its label kept), a T.CHECK.size inset box centred on it with the Check glyph in
 -- accentText while checked, a borderHi border under the mouse, a shade while pressed, the disabled tier
 -- while disabled. Follows the game's SetChecked and clicks. opts.mark: the texture a plain frame shows
 -- while checked (QuestLogTrackCheckboxTemplate's CheckMark), which the box then follows. Safe to run again.
 function T.CheckBox(button, opts)
-  local c = checkOf[button]
-  if not c then
-    c = checkParts(button)
-    checkOf[button] = c
-    watchCheck(button)
-  end
+  local c = boxFor(button, checkParts)
   if opts and opts.mark and not c.source then watchMark(button, c, opts.mark) end
   T.FadeRegions(button)
   c.paint(button, c)
@@ -1951,10 +1977,8 @@ end
 -- Paints a radio for its state: the dot while checked, the ring borderHi under the mouse, the
 -- disabled tier while disabled (its label too).
 local function paintRadio(button, r)
-  local on, off = isChecked(button, r), type(button.IsEnabled) == "function" and not button:IsEnabled()
-  r.hover = r.hover and not off -- a disabled button gets no OnLeave, so its hover ends here
-  r.mark:SetShown(on)
-  T.Tint(r.mark, off and "disabled" or T.RADIO.dotColor)
+  local on, off = isChecked(button, r), not isEnabled(button)
+  paintBoxMark(r, on, off, T.RADIO.dotColor)
   T.Tint(r.ring, r.hover and not off and T.RADIO.hover or "edge")
   T.Tint(r.well, "inset")
   T.DisabledLook(button, off)
@@ -1966,9 +1990,9 @@ local function radioParts(button)
   local holder = T.PixelSize(CreateFrame("Frame", nil, button), T.RADIO.size, T.RADIO.size, true)
   holder:SetPoint("CENTER")
   local inner = T.RADIO.size - 2 * T.RADIO.ring
-  local press = T.Tint(centered(holder, "ARTWORK", T.Texture("Knob"), inner), T.PRESS[1], T.PRESS[2])
+  local press = T.Tint(centered(holder, "ARTWORK", T.Texture("Knob"), inner), T.PRESS.token, T.PRESS.alpha)
   press:Hide()
-  pressOf[button] = { overlay = press, row = true }
+  pressOf[button] = { overlay = press, keepsLabel = true }
   local r = { holder = holder, ring = disc(holder, "BACKGROUND", T.RADIO.size, "edge"), well = disc(holder, "BORDER", inner, "inset") }
   r.mark, r.paint = disc(holder, "OVERLAY", T.RADIO.dot, T.RADIO.dotColor), paintRadio
   return r
@@ -1979,12 +2003,7 @@ end
 -- under the mouse, a shade while pressed, the disabled tier while disabled. Follows the game's
 -- SetChecked and clicks like T.CheckBox. Safe to run again.
 function T.Radio(button)
-  local r = checkOf[button]
-  if not r then
-    r = radioParts(button)
-    checkOf[button] = r
-    watchCheck(button)
-  end
+  local r = boxFor(button, radioParts)
   T.FadeRegions(button)
   r.paint(button, r)
   return button
@@ -2052,10 +2071,10 @@ end
 
 -- An arrow button's look: the glyph's size and colour at rest and under the mouse.
 T.ARROW = { glyph = 10, color = "text2", hover = "text" }
--- Each direction: the theme icon it turns, and the texture coordinates that turn it.
+-- Each direction: the theme icon it turns, and the texture coordinates that turn it (left, right, top, bottom).
 local ARROW_TURN = {
-  down = { "Down", 0, 1, 0, 1 }, up = { "Down", 0, 1, 1, 0 },
-  right = { "Right", 0, 1, 0, 1 }, left = { "Right", 1, 0, 0, 1 },
+  down = { icon = "Down", left = 0, right = 1, top = 0, bottom = 1 }, up = { icon = "Down", left = 0, right = 1, top = 1, bottom = 0 },
+  right = { icon = "Right", left = 0, right = 1, top = 0, bottom = 1 }, left = { icon = "Right", left = 1, right = 0, top = 0, bottom = 1 },
 }
 -- Each themed arrow button -> { glyph, hover }. Weak.
 local arrowOf = setmetatable({}, { __mode = "k" })
@@ -2065,7 +2084,7 @@ function T.ArrowParts(button) return arrowOf[button] end
 
 -- Paints an arrow's glyph: disabled, under the mouse, or at rest.
 local function paintArrow(button)
-  local a, off = arrowOf[button], type(button.IsEnabled) == "function" and not button:IsEnabled()
+  local a, off = arrowOf[button], not isEnabled(button)
   a.hover = a.hover and not off -- a disabled button gets no OnLeave, so its hover ends here
   T.Tint(a.glyph, off and "disabled" or a.hover and T.ARROW.hover or T.ARROW.color)
 end
@@ -2096,8 +2115,8 @@ function T.ArrowButton(button, direction, opts)
   local turn = ARROW_TURN[direction] or ARROW_TURN.down
   if not arrowOf[button] then arrowParts(button, opts and opts.flat) end
   if arrowOf[button].flat then T.FadeRegions(button) else T.Button(button) end
-  arrowOf[button].glyph:SetTexture(T.Icon(turn[1]))
-  arrowOf[button].glyph:SetTexCoord(turn[2], turn[3], turn[4], turn[5])
+  arrowOf[button].glyph:SetTexture(T.Icon(turn.icon))
+  arrowOf[button].glyph:SetTexCoord(turn.left, turn.right, turn.top, turn.bottom)
   paintArrow(button)
   return button
 end
@@ -2178,7 +2197,7 @@ end
 -- Paints a slider: the track, outline and fill in their colours, the knob in the disabled tier while
 -- the slider is disabled.
 local function paintSlider(slider, s)
-  local off = type(slider.IsEnabled) == "function" and not slider:IsEnabled()
+  local off = not isEnabled(slider)
   for part, color in pairs({ track = T.SLIDER.track, line = T.SLIDER.line, fill = T.SLIDER.fill }) do
     for _, t in ipairs(s[part]) do T.Tint(t, color) end
   end
@@ -2240,14 +2259,25 @@ T.TAB_ART = {
   "SquareBackground", "SquareBackgroundActive", "SquareBackgroundActiveGlow",
 }
 
+-- Remembers a tab's checked (selected) state, for the tab look. Chat and the window tabs set it through here.
+function T.SetChecked(frame, on)
+  vgChecked[frame] = on == true
+end
+
+-- A tab's checked state as last set: true or false, or nil when it was never set.
+function T.IsChecked(frame)
+  return vgChecked[frame]
+end
+
 -- Tab, row and scroll bar painting: nothing in this block is used outside it (Lua allows 200 top-level locals).
 do
 -- Whether a game tab is the selected one: a tab system's flag, the checked state a
 -- side tab was last given, else disabled (the game selects a panel tab by disabling it).
 local function tabSelected(button)
   if type(button.SetTabSelected) == "function" then return button.isSelected == true end
-  if vgChecked[button] ~= nil then return vgChecked[button] end
-  return type(button.IsEnabled) == "function" and not button:IsEnabled()
+  local checked = T.IsChecked(button)
+  if checked ~= nil then return checked end
+  return not isEnabled(button)
 end
 
 -- How faded an unselected tab's icon is.
@@ -2280,7 +2310,7 @@ local function paintFlat(entry, frame, on)
     for _, t in pairs(p[key] or NO_PARTS) do t:SetAlpha(a) end
   end
   for _, t in pairs(p.edges) do t:SetAlpha(a) end
-  placeSheen(p.lit, frame, entry.opts.pad, T.BEVEL.top[1], 1, entry.round)
+  T.Tint(placeSheen(p.lit, frame, entry.opts.pad, 1, entry.radius), T.BEVEL.top[1])
   p.lit:SetShown(on)
 end
 
@@ -2289,7 +2319,7 @@ end
 local function paintTab(entry, frame)
   local on, p = tabSelected(frame), entry.parts
   entry.opts.inset, entry.opts.raised = not on, on
-  paintBg(p, entry.opts, entry.round > 0)
+  paintBg(p, entry.opts, entry.radius > 0)
   paintTabLabel(frame, on)
   if entry.opts.dimIcon then dimIcon(frame, not on) end
   if entry.opts.flat then paintFlat(entry, frame, on) end
@@ -2303,7 +2333,7 @@ end
 
 -- Remembers a side tab's checked state, then repaints it.
 local function onTabChecked(button, checked)
-  vgChecked[button] = checked == true
+  T.SetChecked(button, checked)
   repaintTab(button)
 end
 
@@ -2311,8 +2341,9 @@ end
 -- Side tabs (LargeSideTabButtonTemplate) are Frames, which have no OnEnable or
 -- OnDisable script, and hooking a script a widget lacks is an error: hence the pcalls.
 local function watchTab(button)
-  pcall(button.HookScript, button, "OnEnable", repaintTab)
-  pcall(button.HookScript, button, "OnDisable", repaintTab)
+  local onState = ns.Guard("tab state", repaintTab)
+  pcall(button.HookScript, button, "OnEnable", onState)
+  pcall(button.HookScript, button, "OnDisable", onState)
   if type(hooksecurefunc) ~= "function" then return end
   if type(button.SetChecked) == "function" then hooksecurefunc(button, "SetChecked", ns.Guard("hook SetChecked", onTabChecked)) end
   if type(button.SetTabSelected) == "function" then hooksecurefunc(button, "SetTabSelected", ns.Guard("hook SetTabSelected", repaintTab)) end
@@ -2388,7 +2419,7 @@ end
 -- A row's layers, bottom to top: the selected fill, the hover wash, the press shade and the rail.
 local function rowParts(row)
   local fill = rowLayer(row, -1, T.SELECT.fill)
-  local hover, press = rowLayer(row, 1, "hover"), rowLayer(row, 2, T.PRESS[1], T.PRESS.row)
+  local hover, press = rowLayer(row, 1, "hover"), rowLayer(row, 2, T.PRESS.token, T.PRESS.rowAlpha)
   return { fill = fill, hover = hover, press = press, rail = rowRail(row) }
 end
 
@@ -2416,7 +2447,7 @@ function T.RowState(row, state, on)
   return row
 end
 
--- Shows or hides a row's press shade (T.PRESS.row, the row counterpart of T.PressButton).
+-- Shows or hides a row's press shade (T.PRESS.rowAlpha, the row counterpart of T.PressButton).
 function T.PressRow(row, down) return T.RowState(row, "pressed", down) end
 
 -- Shows or hides a row's selected look (the rail and fill of T.SELECT): the one place it is drawn.
@@ -2433,12 +2464,12 @@ local function watchRow(row)
   note("OnEnter", "hover", true) note("OnLeave", "hover", false)
   note("OnMouseDown", "pressed", true) note("OnMouseUp", "pressed", false)
   note("OnHide", "hover", false) note("OnHide", "pressed", false)
-  for script, off in pairs({ OnEnable = false, OnDisable = true }) do
-    pcall(row.HookScript, row, script, ns.Guard("row state", function(r) T.RowState(r, "disabled", off) end))
+  for script, disabled in pairs({ OnEnable = false, OnDisable = true }) do
+    pcall(row.HookScript, row, script, ns.Guard("row state", function(r) T.RowState(r, "disabled", disabled) end))
   end
 end
 
--- A list row in the theme: see-through, with the `hover` wash under the mouse, the press shade (T.PRESS.row)
+-- A list row in the theme: see-through, with the `hover` wash under the mouse, the press shade (T.PRESS.rowAlpha)
 -- while held and the one selected look (T.SELECT) through T.RowState; hover never recolours the text. With
 -- opts.fade the game's own art on the row is faded by alpha first (the row's layout and scripts stay the
 -- game's). Hooks only, never the row's own scripts. Safe to run again.
@@ -2447,7 +2478,7 @@ function T.Row(row, opts)
   if opts and opts.fade then T.FadeRegions(row, s and { [s.fill] = true, [s.hover] = true, [s.press] = true, [s.rail] = true }) end
   if s then return row end
   rowOf[row] = rowParts(row)
-  rowOf[row].disabled = row.IsEnabled ~= nil and not row:IsEnabled()
+  rowOf[row].disabled = not isEnabled(row)
   watchRow(row)
   return row
 end
@@ -2461,7 +2492,10 @@ local SCROLL_PIECES = { "Begin", "Middle", "End", "Texture" }
 local SCROLL_ARROWS = { "Back", "Forward" }
 local OLD_SCROLL_ARROWS = { "ScrollUpButton", "ScrollDownButton" }
 -- What a game thumb's hooks note about the mouse: over it (OnEnter, OnLeave) and holding it (OnMouseDown, OnMouseUp).
-local THUMB_HOOKS = { OnEnter = { "over", true }, OnLeave = { "over", false }, OnMouseDown = { "held", true }, OnMouseUp = { "held", false } }
+local THUMB_HOOKS = {
+  OnEnter = { state = "over", on = true }, OnLeave = { state = "over", on = false },
+  OnMouseDown = { state = "held", on = true }, OnMouseUp = { state = "held", on = false },
+}
 -- Per-frame state kept off the game's frames: a game thumb (an old scroll bar's slider, whose thumb is a
 -- texture) -> { bar, over, held }, the T.SCROLL line Vanguard drew down it and where the mouse is.
 -- (vgArrow, above, marks an arrow button faded once.)
@@ -2483,7 +2517,7 @@ end
 -- Follows the mouse on a game thumb through hooks (never its own scripts), relighting its line on each change.
 local function watchThumb(thumb)
   for script, note in pairs(THUMB_HOOKS) do
-    thumb:HookScript(script, ns.Guard("scroll thumb " .. script, function() vgThumb[thumb][note[1]] = note[2]; lightThumb(thumb) end))
+    thumb:HookScript(script, ns.Guard("scroll thumb " .. script, function() vgThumb[thumb][note.state] = note.on; lightThumb(thumb) end))
   end
 end
 
@@ -2552,7 +2586,21 @@ function T.ScrollBar(bar)
 end
 end
 
--- The game's font objects Vanguard sets: name -> { size before Text size, bold }.
+-- The game's font objects Vanguard sets, by the surface they sit on: name -> { size before Text size, bold }.
+-- The sizes are the game's own (T.FontObjects scales them by Text size). Keep every one here.
+T.FONT_OBJECTS = {
+  tooltip = { GameTooltipHeaderText = { 14, true }, GameTooltipText = { 12 }, GameTooltipTextSmall = { 11 } },
+  -- The error line, and the zone, subzone and PvP lines (PVPArenaTextString's too).
+  hud = { ErrorFont = { 16, true }, ZoneTextFont = { 32, true }, SubZoneTextFont = { 26, true }, PVPInfoTextFont = { 22, true } },
+  -- The scrolling combat text (Blizzard_CombatText, a part of the game that loads when its setting is on). The game sets
+  -- each line's height by scaling what the face drew (25, up to 60 for a critical hit), so a smaller face would draw
+  -- critical hits soft. The face and weight are what change.
+  combatText = { CombatTextFont = { 64, true } },
+  -- The quest tracker's fonts (the quest titles and objectives keep the game's colors).
+  tracker = { ObjectiveTrackerLineFont = { 12 }, ObjectiveTrackerHeaderFont = { 13, true } },
+}
+
+-- The game's font objects Vanguard has sized so far (T.FontObjects adds to it).
 local fontObjects = {}
 
 -- The theme font, scaled by Text size, on each listed font object this client has.
@@ -2605,22 +2653,25 @@ function T.SetFont(fs, size)
   return fs
 end
 
--- Text roles: size at text scale 1, bold (the SemiBold weight), and an
--- outline instead of a shadow (world text such as nameplates, and text drawn
--- over a bright bar, such as raid frame names).
+-- Text roles: size at text scale 1, bold (the SemiBold weight), an outline instead of a shadow (world
+-- text such as nameplates, and text drawn over a bright bar, such as raid frame names), and upper
+-- (T.SetText capitals the text).
 T.ROLES = {
-  title = { 15, true }, heading = { 13, true }, name = { 12, true }, cell = { 11, true },
+  title = { size = 15, bold = true }, heading = { size = 13, bold = true }, name = { size = 12, bold = true },
+  cell = { size = 11, bold = true },
   -- No role is under 10 (#258) but badge, for a count or mark on a tiny badge.
-  label = { 12 }, number = { 12 }, small = { 10 }, tiny = { 10 }, badge = { 9 }, world = { 11, true, "OUTLINE" },
-  barName = { 11, true, "OUTLINE" }, barSmall = { 10, false, "OUTLINE" },
+  label = { size = 12 }, number = { size = 12 }, small = { size = 10 }, tiny = { size = 10 }, badge = { size = 9 },
+  world = { size = 11, bold = true, outline = "OUTLINE" },
+  barName = { size = 11, bold = true, outline = "OUTLINE" }, barSmall = { size = 10, bold = false, outline = "OUTLINE" },
   -- Aura icons: stack counts, and the timer on larger and smaller icons.
-  cooldown = { 14, true, "OUTLINE" }, auraCount = { 10, true, "OUTLINE" }, auraTimer = { 11, true, "OUTLINE" }, auraTimerSmall = { 10, true, "OUTLINE" },
+  cooldown = { size = 14, bold = true, outline = "OUTLINE" }, auraCount = { size = 10, bold = true, outline = "OUTLINE" },
+  auraTimer = { size = 11, bold = true, outline = "OUTLINE" }, auraTimerSmall = { size = 10, bold = true, outline = "OUTLINE" },
   -- Chat windows (Modules/Chat.lua picks the size; this is Medium).
-  chat = { 12 },
+  chat = { size = 12 },
   -- The minimap's zone text: a bold 13 that never takes the faction look's display font (not in T.HEADING_ROLES).
-  zone = { 13, true },
-  -- A section header: small, and upper-cased by T.SetText (the fourth field) instead of by :upper() on the string.
-  section = { 10, false, nil, true },
+  zone = { size = 13, bold = true },
+  -- A section header: small, and upper-cased by T.SetText instead of by :upper() on the string.
+  section = { size = 10, bold = false, upper = true },
 }
 
 -- Every font string styled with a role: string -> role name. Weak, so text
@@ -2639,7 +2690,7 @@ end
 
 -- A role's font size after the text scale setting.
 local function roleSize(r)
-  return T.ScaledSize(r[1])
+  return T.ScaledSize(r.size)
 end
 
 -- A text role's font size (by name) after the text scale setting, for layouts.
@@ -2661,7 +2712,7 @@ end
 -- Sets a styled font string's text, in capitals when its role says so (T.ROLES.section).
 function T.SetText(fs, text)
   local r = T.ROLES[styled[fs]]
-  fs:SetText(r and r[4] and text:upper() or text)
+  fs:SetText(r and r.upper and text:upper() or text)
 end
 
 -- A font's flags with SLUG added (#239) when the slugText setting is on and the text is world text
@@ -2674,10 +2725,10 @@ end
 -- Sets a role's font, size and shadow (or outline) on a font string; leaves its color alone.
 function T.ApplyRole(fs, role)
   local r = T.ROLES[role]
-  local path, outline = T.Font(r[2])
+  local path, outline = T.Font(r.bold)
   if T.HEADING_ROLES[role] then path = T.HeadingFont() or path end
-  fs:SetFont(path, sizes[fs] or roleSize(r), T.FontFlags(r[3] or outline, r[3]))
-  fs:SetShadowOffset(r[3] and 0 or 1, r[3] and 0 or -1)
+  fs:SetFont(path, sizes[fs] or roleSize(r), T.FontFlags(r.outline or outline, r.outline ~= nil))
+  fs:SetShadowOffset(r.outline and 0 or 1, r.outline and 0 or -1)
   fs:SetShadowColor(T.RGB("textShadow"))
 end
 
@@ -2703,17 +2754,21 @@ function T.RefreshText()
   for fs, token in pairs(colored) do fs:SetTextColor(T.RGB(token)) shadowFor(fs, token) end
 end
 
--- Colors a font string by token (remembered, so T.RefreshText keeps it current; see shadowFor), by
--- r, g, b (for other addons' skins; forgotten), or in the accent's text variant.
+-- Colors a font string by token (remembered, so T.RefreshText keeps it current; see shadowFor), or in
+-- the accent's text variant with no token. Given r, g, b instead, it is T.ColorRGB (for other addons' skins).
 function T.Color(fs, r, g, b)
-  if type(r) == "number" then
-    colored[fs] = nil
-    fs:SetTextColor(r, g, b)
-  else
-    colored[fs] = r or "accentText"
-    fs:SetTextColor(T.RGB(r or "accentText"))
-    shadowFor(fs, colored[fs])
-  end
+  if type(r) == "number" then return T.ColorRGB(fs, r, g, b) end
+  local token = r or "accentText"
+  colored[fs] = token
+  fs:SetTextColor(T.RGB(token))
+  shadowFor(fs, token)
+  return fs
+end
+
+-- Colors a font string r, g, b (0-1 components). Forgotten: T.RefreshText does not repaint it.
+function T.ColorRGB(fs, r, g, b)
+  colored[fs] = nil
+  fs:SetTextColor(r, g, b)
   return fs
 end
 
@@ -2781,20 +2836,15 @@ function T.Crest(parent, size, layer, alpha)
   return t
 end
 
--- The tex coords that turn the top-left corner bracket into each corner (#238).
-local CORNER_FLIPS = { TOPLEFT = { 0, 1, 0, 1 }, TOPRIGHT = { 1, 0, 0, 1 }, BOTTOMLEFT = { 0, 1, 1, 0 }, BOTTOMRIGHT = { 1, 0, 1, 0 } }
 -- How far the brackets and the rule sit in from the window's edge (units), and the bracket's size.
 T.ORNAMENT_INSET, T.ORNAMENT_SIZE = 3, 14
 
 -- Four corner brackets just inside a frame's corners.
 local function cornerBrackets(frame)
   local out = {}
-  for point, flip in pairs(CORNER_FLIPS) do
-    local t = frame:CreateTexture(nil, "OVERLAY")
-    t:SetTexture(T.Texture("OrnamentCorner"))
+  for point, t in pairs(cornerPieces(frame, "OrnamentCorner", "OVERLAY")) do
     t:SetSize(T.ORNAMENT_SIZE, T.ORNAMENT_SIZE)
     t:SetPoint(point, frame, point, outward(point, -T.ORNAMENT_INSET))
-    t:SetTexCoord(flip[1], flip[2], flip[3], flip[4])
     out[#out + 1] = t
   end
   return out
@@ -2871,7 +2921,7 @@ local function playFade(f, from, to, seconds, done)
   f.alpha:SetFromAlpha(from)
   f.alpha:SetToAlpha(to)
   f.alpha:SetDuration(seconds)
-  f.group:SetScript("OnFinished", done)
+  f.group:SetScript("OnFinished", ns.Guard("fade done", done))
   f.group:Play()
 end
 
@@ -2999,7 +3049,7 @@ local heldHover = setmetatable({}, { __mode = "k" })
 function T.EaseHover(button, on, now)
   local h = hoverOf[button]
   if not h then return end
-  local to = (on or heldHover[button]) and (not button.IsEnabled or button:IsEnabled()) and 1 or 0
+  local to = (on or heldHover[button]) and isEnabled(button) and 1 or 0
   for _, t in ipairs(h.fill.textures) do easeTo(t, to, now) end
   easeTo(h[2], to, now)
 end

@@ -21,6 +21,8 @@ local NUDGE = { UP = { 0, 1 }, DOWN = { 0, -1 }, LEFT = { -1, 0 }, RIGHT = { 1, 
 
 local movers, order = {}, {}
 local unlocked = false
+-- Pins paused (Edit Mode open), the note under Edit Mode's window, and whether Edit Mode unlocked the handles.
+local pinsPaused, editModeNote, editUnlocked = false, nil, false
 local selected
 -- Text after every handle's label (Situations: " · recording Raid"), or "".
 local suffix = ""
@@ -55,7 +57,7 @@ ns.MOVER_ALPHA = { min = 0.1, max = 1 }
 -- A saved scale or opacity kept to its range; 1 when it isn't a number (a hand-edited profile string).
 local function within(v, range)
   v = tonumber(v)
-  return v and math.max(range.min, math.min(range.max, v)) or 1
+  return v and L.Within(v, range.min, range.max) or 1
 end
 
 -- A mover's saved scale and opacity: 1 and 1 unless set.
@@ -142,6 +144,7 @@ local function place(m)
   ns.OutOfCombat(function()
     applyLook(m)
     ns.MoverLinks.Size(m)
+    ns.MoverLinks.Remember(m.key, saved()[m.key])
     anchor(m.frame, m)
   end)
 end
@@ -232,7 +235,7 @@ end
 -- Queues a frame's pin for after combat, one entry per frame however often the
 -- game moves it; nothing happens while pins are paused (Edit Mode open).
 local function runPin(frame)
-  if ns.pinsPaused then return end
+  if pinsPaused then return end
   ns.OutOfCombat(runs[frame], frame)
 end
 
@@ -258,8 +261,8 @@ end
 -- Pauses every pin (so the game's Edit Mode can move its frames freely), or
 -- ends the pause and puts every pinned frame back in its Vanguard spot.
 function ns.PausePins(paused)
-  ns.pinsPaused = paused == true
-  if ns.pinsPaused then return end
+  pinsPaused = paused == true
+  if pinsPaused then return end
   for frame in pairs(pinned) do runPin(frame) end
 end
 
@@ -272,7 +275,7 @@ ns.EDIT_NOTE = "The labeled handles are Vanguard's frames: drag them here too (r
 -- resizes itself from every child frame, so the note is marked ignoreInLayout: hung below the window, it would
 -- otherwise count as part of the window and stretch it each time the game lays it out.
 local function editNote(edit)
-  if ns.editNote then return ns.editNote end
+  if editModeNote then return editModeNote end
   local note = T.Panel(CreateFrame("Frame", "Vanguard_EditModeNote", edit), { accent = true })
   note.ignoreInLayout = true
   note:SetSize(320, 36)
@@ -280,20 +283,24 @@ local function editNote(edit)
   note.text = T.Text(note:CreateFontString(nil, "OVERLAY"), "small")
   note.text:SetPoint("TOPLEFT", 8, -6) note.text:SetPoint("BOTTOMRIGHT", -8, 6)
   note.text:SetText(ns.EDIT_NOTE)
-  ns.editNote = note
+  editModeNote = note
   return note
 end
 
 -- Edit Mode opened: Vanguard's handles show too (without the grid: the game
--- draws its own), with the note, unless that's switched off. It closed: they
--- hide, unless /vg unlock had them up already.
-function ns.EditModeMovers(edit, open)
-  if open and not unlocked and ns.MoverOptions().editMode then ns.editUnlocked = ns.Unlock(true) end
-  if not open and ns.editUnlocked then
-    ns.editUnlocked = false
+-- draws its own), with the note, unless that's switched off.
+function ns.EditModeOpened(edit)
+  if not unlocked and ns.MoverOptions().editMode then editUnlocked = ns.UnlockForEditMode() end
+  editNote(edit):SetShown(unlocked)
+end
+
+-- Edit Mode closed: its handles hide with the note, unless /vg unlock had them up already.
+function ns.EditModeClosed(edit)
+  if editUnlocked then
+    editUnlocked = false
     ns.Lock()
   end
-  editNote(edit):SetShown(open and unlocked)
+  editNote(edit):Hide()
 end
 
 -- The game's frames Vanguard hides or replaces (set): Edit Mode gets no handle for them.
@@ -322,8 +329,8 @@ end
 local function watchEditMode()
   local edit = _G.EditModeManagerFrame
   if type(edit) ~= "table" or not edit.HookScript then return end
-  edit:HookScript("OnShow", function() ns.PausePins(true) ns.EditModeMovers(edit, true) end)
-  edit:HookScript("OnHide", function() ns.PausePins(false) ns.EditModeMovers(edit, false) end)
+  edit:HookScript("OnShow", ns.Guard("edit mode opened", function() ns.PausePins(true) ns.EditModeOpened(edit) end))
+  edit:HookScript("OnHide", ns.Guard("edit mode closed", function() ns.PausePins(false) ns.EditModeClosed(edit) end))
 end
 ns.On("PLAYER_LOGIN", watchEditMode)
 
@@ -361,12 +368,10 @@ end
 -- Where a dropped handle goes: snapped (if on), anchored to the nearest edge,
 -- all in UIParent's units.
 local function dropPosition(h, r)
-  local sw, sh = UIParent:GetWidth() or 0, UIParent:GetHeight() or 0
-  local left, bottom = r.left, r.bottom
-  if ns.MoverOptions().snap then
-    left, bottom = L.Snap(left, bottom, r.w, r.h, otherRects(h.mover), sw, sh)
-  end
-  local point, x, y = L.Anchor(left, bottom, r.w, r.h, sw, sh)
+  local screen = { w = UIParent:GetWidth() or 0, h = UIParent:GetHeight() or 0 }
+  local rect = r
+  if ns.MoverOptions().snap then rect = L.Snap(r, otherRects(h.mover), screen) end
+  local point, x, y = L.Anchor(rect, screen)
   return point, point, x, y
 end
 
@@ -436,11 +441,11 @@ local function wire(h)
   h:SetClampedToScreen(true)
   h:EnableMouse(true)
   h:RegisterForDrag("LeftButton")
-  h:SetScript("OnDragStart", h.StartMoving)
-  h:SetScript("OnDragStop", onDragStop)
-  h:SetScript("OnMouseDown", onMouseDown)
+  h:SetScript("OnDragStart", ns.Guard("drag mover handle", h.StartMoving))
+  h:SetScript("OnDragStop", ns.Guard("drop mover handle", onDragStop))
+  h:SetScript("OnMouseDown", ns.Guard("click mover handle", onMouseDown))
   h:EnableKeyboard(true)
-  h:SetScript("OnKeyDown", onKeyDown)
+  h:SetScript("OnKeyDown", ns.Guard("key on mover handle", onKeyDown))
 end
 
 -- The strata from lowest to highest, to rank a mover's frame's own against HIGH.
@@ -505,7 +510,7 @@ end
 local function setLook(key, field, value, range)
   local m = movers[key]
   if not m or type(value) ~= "number" then return end
-  value = math.max(range.min, math.min(range.max, math.floor(value * 100 + 0.5) / 100))
+  value = L.Within(math.floor(value * 100 + 0.5) / 100, range.min, range.max)
   entry(key)[field] = value ~= 1 and value or nil
   place(m)
   if m.handle then handleFor(m) end
@@ -531,17 +536,29 @@ local function showHandle(m, strata)
   h:Show()
 end
 
--- Shows every handle and the grid (not for the game's Edit Mode, which draws its own),
--- and remembers every spot for Exit without saving (Core/UnlockBar.lua). Refused in combat.
--- In Edit Mode every handle goes on HIGH, so Edit Mode's window (DIALOG) stays over them all.
-function ns.Unlock(editMode)
-  if ns.InCombat() then return false end
-  ns.UnlockStarted(editMode)
+-- Marks the frames unlocked and shows every handle on strata (nil: each handle's own).
+local function showAllHandles(strata)
   unlocked = true
-  local strata = editMode and "HIGH" or nil
   for _, key in ipairs(order) do showHandle(movers[key], strata) end
+end
+
+-- Shows every handle and the grid, and remembers every spot for Exit without saving (Core/UnlockBar.lua).
+-- Refused in combat.
+function ns.Unlock()
+  if ns.InCombat() then return false end
+  ns.UnlockStarted()
+  showAllHandles(nil)
   local options = ns.MoverOptions()
-  if options.grid and not editMode then ns.ShowGrid(options.gridSize) end
+  if options.grid then ns.ShowGrid(options.gridSize) end
+  return true
+end
+
+-- Unlock for the game's Edit Mode: every handle goes on HIGH, so Edit Mode's window (DIALOG) stays over
+-- them all, and there is no grid (the game draws its own). Refused in combat.
+function ns.UnlockForEditMode()
+  if ns.InCombat() then return false end
+  ns.UnlockStartedForEditMode()
+  showAllHandles("HIGH")
   return true
 end
 

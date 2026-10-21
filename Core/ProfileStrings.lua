@@ -305,11 +305,6 @@ local function finish(job, ...)
   job.done(...)
 end
 
--- True when the client can wait a frame (C_Timer.After).
-local function canWait()
-  return type(C_Timer) == "table" and type(C_Timer.After) == "function"
-end
-
 local nextStep
 
 -- One frame's share of an import: decoding until it has finished, then the import itself
@@ -318,7 +313,7 @@ local function step(job)
   local done, a, b = job.decode()
   if done then return finish(job, ns.ApplyImport(a, b)) end
   job.progress(math.floor(a * 100))
-  if canWait() then return nextStep(job) end
+  if ns.HasTimer() then return nextStep(job) end
   return step(job)
 end
 

@@ -41,11 +41,17 @@ function WZ.Order(kind)
   return out
 end
 
--- The draft: the weights in use for the kind (the defaults with this profile's changes), or the bare defaults.
-local function load(defaultsOnly)
+-- The draft: the weights in use for the kind (the defaults with this profile's changes), and the kind's sliders.
+local function loadWeights()
   local weights, kind = UP.Weights()
   state.kind, state.stats = kind, WZ.Order(kind)
-  state.draft = defaultsOnly and ns.Copy(UW.KINDS[kind]) or weights
+  state.draft = weights
+end
+
+-- The draft as the kind's bare defaults (the Defaults button; the same kind and sliders as loadWeights).
+local function loadDefaults()
+  loadWeights()
+  state.draft = ns.Copy(UW.KINDS[state.kind])
 end
 
 -- A weight rounded to two places (a slider's float noise never reaches the draft).
@@ -121,7 +127,7 @@ local function addButtons()
   frame.save:SetPoint("BOTTOMRIGHT", -T.SPACE.pad, T.SPACE.pad)
   frame.cancel = W.Button(frame, "Cancel", function() frame:Hide() end)
   frame.cancel:SetPoint("RIGHT", frame.save, "LEFT", -T.SPACE.gap, 0)
-  frame.defaults = W.Button(frame, "Defaults", function() load(true); refresh() end)
+  frame.defaults = W.Button(frame, "Defaults", function() loadDefaults(); refresh() end)
   frame.defaults:SetPoint("BOTTOMLEFT", T.SPACE.pad, T.SPACE.pad)
 end
 
@@ -141,7 +147,7 @@ end
 function WZ.Open()
   if not UP.settings then return ns.Chat("Gear upgrades is switched off: turn it on under Modules first.") end
   if not frame then build() end
-  load()
+  loadWeights()
   refresh()
   frame:Show()
 end

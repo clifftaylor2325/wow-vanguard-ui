@@ -25,6 +25,10 @@ local RF = ns.Module("RaidFrames", {
 
 -- Group size -> how large the grid is drawn when compact: up to 10 full size, up to 25 at 80%, more at 72%.
 RF.COMPACT = { { 10, 1 }, { 25, 0.8 }, { 40, 0.72 } }
+-- Tiles in one group: a group is a column (or a row) of this many.
+RF.GROUP = 5
+-- More players than this is a big raid (Stack big raids moves its grid left of your character).
+RF.BIG_RAID = 10
 -- Where the grid starts by default: a party or a raid of 10 right over your player frame; a bigger raid
 -- (with Stack big raids on) left of your character, as healers keep it, so the boss and your own frames stay in
 -- view, its left edge 500 units left of the screen's middle, 344 up and clear of the frames around your character
@@ -78,7 +82,7 @@ local function assignment(unit)
   if type(GetPartyAssignment) ~= "function" then return nil end
   for kind, color in pairs(RF.ASSIGNMENTS) do
     local yes = GetPartyAssignment(kind, unit)
-    if not ns.IsSecret(yes) and yes == true then return color end
+    if ns.IsTrue(yes) then return color end
   end
 end
 
@@ -125,7 +129,7 @@ end
 -- True when two unit tokens name the same unit (a hidden answer counts as no).
 function RF.Same(a, b)
   local same = type(UnitIsUnit) == "function" and UnitIsUnit(a, b)
-  return not ns.IsSecret(same) and same == true
+  return ns.IsTrue(same)
 end
 
 -- True when a unit is your target (a hidden answer counts as no).
@@ -359,6 +363,10 @@ end
 RF.POWER = 3
 -- How far above the health bar the texts sit (the heal bars are one level above it).
 RF.TEXT_LEVEL = 5
+-- How many frame levels above the tile the hover overlay sits.
+RF.OVERLAY_LEVEL = 20
+-- The icon strip: an icon is a share of the tile's height, kept between min and max px, and perSide icons at most sit each side.
+RF.STRIP = { min = 10, max = 18, share = 0.3, perSide = 3 }
 local CORNER = 10
 
 -- A text role's line height: its size (text scale included) and a pixel of air each side.
@@ -368,8 +376,8 @@ end
 
 -- The icon strip: icon size from the tile's height, how many fit each side, and its top.
 local function strip(w, h)
-  local icon = math.max(10, math.min(18, math.floor(h * 0.3)))
-  local per = math.max(1, math.min(3, math.floor((w / 2 - 3) / (icon + 1))))
+  local icon = math.max(RF.STRIP.min, math.min(RF.STRIP.max, math.floor(h * RF.STRIP.share)))
+  local per = math.max(1, math.min(RF.STRIP.perSide, math.floor((w / 2 - 3) / (icon + 1))))
   return icon, per, h - 1 - RF.POWER - 1 - icon
 end
 
@@ -477,7 +485,7 @@ end
 local function addOverlay(b)
   b.overlay = CreateFrame("Frame", nil, b)
   b.overlay:SetAllPoints()
-  b.overlay:SetFrameLevel(b:GetFrameLevel() + 20)
+  b.overlay:SetFrameLevel(b:GetFrameLevel() + RF.OVERLAY_LEVEL)
   b.hover = T.Tint(T.Snap(b.overlay:CreateTexture(nil, "BACKGROUND")), "hover")
   b.hover:SetTexture(T.WHITE)
   b.hover:SetAllPoints(b.health)
@@ -593,7 +601,7 @@ RF.GROW = {
 
 -- Whether a group of n players is drawn as a big raid: more than 10, with Stack big raids on.
 local function big(n)
-  return n > 10 and RF.settings.stackBig == true
+  return n > RF.BIG_RAID and RF.settings.stackBig == true
 end
 
 -- The groups' direction for n players: your Groups as choice, except that a big raid stacks its
@@ -613,7 +621,7 @@ local function layout(header, s, kind)
   header:SetAttribute("groupBy", s.sortByRole and "ASSIGNEDROLE" or "GROUP")
   header:SetAttribute("groupingOrder", s.sortByRole and "TANK,HEALER,DAMAGER,NONE" or "1,2,3,4,5,6,7,8")
   header:SetAttribute("maxColumns", 8)
-  header:SetAttribute("unitsPerColumn", 5)
+  header:SetAttribute("unitsPerColumn", RF.GROUP)
   header:SetAttribute("columnSpacing", s.spacing)
   for _, key in ipairs({ "point", "columnAnchorPoint" }) do header:SetAttribute(key, grow[key]) end
   header:SetAttribute("xOffset", grow.xOffset > 0 and s.spacing or 0)
@@ -723,10 +731,10 @@ function RF.Fit()
   end, "raidfit")
 end
 
--- Sizes the holder f for one group in a layout: a column of five tall, or a row of five wide.
+-- Sizes the holder f for one group in a layout: a column of RF.GROUP tiles tall, or a row of them wide.
 function RF.SizeHolder(f, s, key)
-  local five = 5 * (s.width + s.spacing) - s.spacing
-  if key == "rows" then f:SetSize(five, s.height) else f:SetSize(s.width, 5 * (s.height + s.spacing) - s.spacing) end
+  local across = RF.GROUP * (s.width + s.spacing) - s.spacing
+  if key == "rows" then f:SetSize(across, s.height) else f:SetSize(s.width, RF.GROUP * (s.height + s.spacing) - s.spacing) end
 end
 
 -- Moves the holder to the default spot for n players when that changed (a saved spot still wins).

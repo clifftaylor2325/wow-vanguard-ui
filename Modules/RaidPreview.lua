@@ -105,14 +105,14 @@ end
 -- Where tile k (counting from 0) sits from the grid's bottom left: groups of five as
 -- columns (each growing up, side by side) or rows (each growing right, stacked upward).
 local function place(k, s, key)
-  local step, group = k % 5, math.floor(k / 5)
+  local step, group = k % RF.GROUP, math.floor(k / RF.GROUP)
   if key == "rows" then return step * (s.width + s.spacing), group * (s.height + s.spacing) end
   return group * (s.width + s.spacing), step * (s.height + s.spacing)
 end
 
 -- The grid's width and height for n tiles.
 local function gridSize(n, s)
-  local across, up = math.ceil(n / 5), math.min(n, 5)
+  local across, up = math.ceil(n / RF.GROUP), math.min(n, RF.GROUP)
   if RF.LayoutFor(n) == "rows" then across, up = up, across end
   return across * (s.width + s.spacing) - s.spacing, up * (s.height + s.spacing) - s.spacing
 end
@@ -167,7 +167,7 @@ end
 -- True while you're in a party or raid (a hidden answer counts as no).
 local function inGroup()
   local yes = type(IsInGroup) == "function" and IsInGroup()
-  return not ns.IsSecret(yes) and yes == true
+  return ns.IsTrue(yes)
 end
 
 -- Why the preview can't start now, or nil when it can.
@@ -177,14 +177,28 @@ local function blocked()
   if inGroup() then return "You're in a group: your real party or raid frames are showing." end
 end
 
--- Turns the preview off, with a chat line ending in why (when given). The real grid is fitted again
--- at once, or, from the PLAYER_REGEN_DISABLED handler (before the lockdown starts), after the fight.
-function RP.Stop(why, atCombatStart)
+-- Turns the preview off: the sample frames hidden, refit() fits the real grid, then a chat line ending in why (when given).
+local function stop(why, refit)
   if RP.size == 0 then return end
   RP.size = 0
   RP.frame:Hide()
-  if atCombatStart then ns.AfterCombat(RF.Fit, "raidfit") else RF.Fit() end
+  refit()
   ns.Chat("Raid frames preview off" .. (why and (": " .. why) or "."))
+end
+
+-- Turns the preview off and fits the real grid at once.
+function RP.Stop(why)
+  stop(why, RF.Fit)
+end
+
+-- Fits the real grid once the fight ends (the combat handler runs before the lockdown starts).
+local function fitAfterCombat()
+  ns.AfterCombat(RF.Fit, "raidfit")
+end
+
+-- Turns the preview off from the PLAYER_REGEN_DISABLED handler, and fits the real grid after the fight.
+function RP.StopAtCombatStart(why)
+  stop(why, fitAfterCombat)
 end
 
 -- Shows the preview with n sample players (5: a party; 10, 25 or 40: a raid), or turns
@@ -215,6 +229,6 @@ end
 -- A roster change: once you're in a real group, the preview ends.
 ns.On("GROUP_ROSTER_UPDATE", function() if RP.size > 0 and inGroup() then RP.Stop("you joined a group.") end end)
 -- Combat ends it at once.
-ns.On("PLAYER_REGEN_DISABLED", function() RP.Stop("combat started.", true) end)
+ns.On("PLAYER_REGEN_DISABLED", function() RP.StopAtCombatStart("combat started.") end)
 -- A new text size or UI scale: the preview is drawn again.
 T.OnChanged(RP.Refresh)

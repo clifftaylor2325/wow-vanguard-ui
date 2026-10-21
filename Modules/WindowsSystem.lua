@@ -8,7 +8,6 @@ local ADDON, ns = ...
 
 -- Per-frame state kept off the game's frames (Core/Events.lua, ns.FrameState).
 local vgBack = ns.FrameState("vgBack")
-local vgChecked = ns.FrameState("vgChecked")
 local vgQuickButtons = ns.FrameState("vgQuickButtons")
 local vgTabWatched = ns.FrameState("vgTabWatched")
 
@@ -53,12 +52,12 @@ end
 local function tabLabel(tab)
   if type(tab.OnSelected) ~= "function" or type(tab.Text) ~= "table" or not tab.Text.SetTextColor then return end
   GW.CenterLabel(tab)
-  T.Color(tab.Text, vgChecked[tab] and "text" or "text2")
+  T.Color(tab.Text, T.IsChecked(tab) and "text" or "text2")
 end
 
 -- A game tab's selected state: the tab's raised look follows the game's SelectableButton calls.
 local function tabSelected(tab, selected)
-  vgChecked[tab] = selected == true
+  T.SetChecked(tab, selected)
   T.Tab(tab)
   tabLabel(tab)
 end
@@ -67,7 +66,7 @@ end
 -- game (which may have picked it before the skin ran), later selections come through OnSelected, and the label is set
 -- again after the game restyles it for the mouse.
 local function skinTab(tab)
-  if vgChecked[tab] == nil and type(tab.IsSelected) == "function" then vgChecked[tab] = tab:IsSelected() == true end
+  if T.IsChecked(tab) == nil and type(tab.IsSelected) == "function" then T.SetChecked(tab, tab:IsSelected()) end
   T.Tab(tab)
   tabLabel(tab)
   if vgTabWatched[tab] or type(tab.OnSelected) ~= "function" then return end
@@ -289,7 +288,7 @@ function GW.SkinSettings(frame)
   watchSettings(frame)
 end
 
-GW.Add("system", "framed", { "SettingsPanel" }, GW.SkinSettings)
+GW.Add("system", { "SettingsPanel" }, GW.SkinSettings)
 
 -- Addon list, chat config, nameplates tutorial -----------------------------------------------
 
@@ -321,7 +320,7 @@ local function watchCheckMakers(window, names, apply)
       vgCheckMakers[name] = true
       hooksecurefunc(name, ns.Guard("hook " .. name, function(frame)
         local target = type(frame) == "table" and frame.GetChildren and frame or _G[window]
-        if GW.settings and GW.settings.system and type(target) == "table" then apply(target) end
+        if GW.GroupOn("system") and type(target) == "table" then apply(target) end
       end))
     end
   end
@@ -413,9 +412,7 @@ end
 -- The window tabs along the top of the chat settings in the theme (the game pools them), the one for the chat
 -- window being set up selected.
 local function chatTabs(manager, selected)
-  local pool = manager.tabPool
-  if type(pool) ~= "table" or type(pool.EnumerateActive) ~= "function" then return end
-  for tab in pool:EnumerateActive() do tabSelected(tab, selected == tab:GetID()) end
+  GW.EachActive(manager.tabPool, function(tab) tabSelected(tab, selected == tab:GetID()) end)
 end
 
 -- The chat window tabs, now and each time the game picks one (it also runs when the game rebuilds them).
@@ -445,9 +442,9 @@ GW.AddButtons("ChatConfigFrame", {
   "CombatConfigSettingsSaveButton", "ChatConfigFrameRedockButton",
 })
 
-GW.Add("system", "framed", { "AddonList" }, GW.SkinAddonList)
-GW.Add("system", "framed", { "ChatConfigFrame" }, GW.SkinChatConfig)
-GW.Add("system", "framed", { "NamePlatesTutorial" }, GW.SkinNamePlatesTutorial)
+GW.Add("system", { "AddonList" }, GW.SkinAddonList)
+GW.Add("system", { "ChatConfigFrame" }, GW.SkinChatConfig)
+GW.Add("system", { "NamePlatesTutorial" }, GW.SkinNamePlatesTutorial)
 
 -- Edit Mode windows ---------------------------------------------------------------------------
 
@@ -521,9 +518,9 @@ function GW.SkinEditSettings(dialog)
   GW.HookAfter(dialog, "UpdateExtraButtons", dressExtraButtons)
 end
 
-GW.Add("system", "framed", { "EditModeManagerFrame" }, GW.SkinEditMode)
-GW.Add("system", "framed", { "EditModeSystemSettingsDialog" }, GW.SkinEditSettings)
-GW.Add("system", "framed", {
+GW.Add("system", { "EditModeManagerFrame" }, GW.SkinEditMode)
+GW.Add("system", { "EditModeSystemSettingsDialog" }, GW.SkinEditSettings)
+GW.Add("system", {
   "EditModeLayoutDialog", "EditModeImportLayoutDialog", "EditModeImportLayoutLinkDialog", "EditModeUnsavedChangesDialog",
 }, GW.SkinEditDialog)
 
@@ -622,7 +619,7 @@ local function moveButton(button)
   GW.DressRow(button, { "icon" })
   if type(button) ~= "table" or type(button.GetChecked) ~= "function" then return end
   T.SelectRow(button, button:GetChecked() == true)
-  GW.HookAfter(button, "SetChecked", function(b, on) T.SelectRow(b, on == true) end)
+  GW.FollowSelected(button, "SetChecked")
   if vgMoveClicks[button] then return end
   vgMoveClicks[button] = true
   button:HookScript("OnClick", ns.Guard("move pad click", function(b) T.SelectRow(b, b:GetChecked() == true) end))
@@ -661,13 +658,13 @@ function GW.SkinScriptErrors(frame)
   GW.SkinArrow(frame.NextError, "right")
 end
 
-GW.Add("system", "framed", { "QuickKeybindFrame" }, GW.SkinQuickKeybind)
-GW.Add("system", "framed", { "CooldownViewerSettings" }, GW.SkinCooldownSettings)
-GW.Add("system", "framed", { "CooldownViewerLayoutDialog", "CooldownViewerImportLayoutDialog" }, GW.SkinEditDialog)
-GW.Add("system", "framed", { "CooldownViewerSettingsEditAlert", "GroupBuffFilterEditVisualAlert" }, GW.SkinCooldownAlert)
-GW.Add("system", "onDemand", "Blizzard_MovePad", { "MovePadFrame" }, GW.SkinMovePad)
-GW.Add("system", "framed", { "ScriptErrorsFrame" }, GW.SkinScriptErrors)
-GW.Add("system", "onDemand", "Blizzard_ClickBindingUI", { "ClickBindingFrame" }, GW.SkinClickBinding)
+GW.Add("system", { "QuickKeybindFrame" }, GW.SkinQuickKeybind)
+GW.Add("system", { "CooldownViewerSettings" }, GW.SkinCooldownSettings)
+GW.Add("system", { "CooldownViewerLayoutDialog", "CooldownViewerImportLayoutDialog" }, GW.SkinEditDialog)
+GW.Add("system", { "CooldownViewerSettingsEditAlert", "GroupBuffFilterEditVisualAlert" }, GW.SkinCooldownAlert)
+GW.AddOnDemand("system", "Blizzard_MovePad", { "MovePadFrame" }, GW.SkinMovePad)
+GW.Add("system", { "ScriptErrorsFrame" }, GW.SkinScriptErrors)
+GW.AddOnDemand("system", "Blizzard_ClickBindingUI", { "ClickBindingFrame" }, GW.SkinClickBinding)
 
 -- Help, report, splash, colour picker, death recap, combat log bar ---------------------------
 
@@ -691,14 +688,12 @@ local reportFrame = skinner({
 local function minorButton(button)
   GW.DressRow(button)
   T.SelectRow(button, button:GetChecked() == true)
-  GW.HookAfter(button, "SetChecked", function(b, on) T.SelectRow(b, on == true) end)
+  GW.FollowSelected(button, "SetChecked")
 end
 
 -- The minor-category buttons the window shows now, in the theme (the game pools them, and runs AnchorMinorCategory for each).
 local function minorButtons(frame)
-  local pool = frame.MinorCategoryButtonPool
-  if type(pool) ~= "table" or type(pool.EnumerateActive) ~= "function" then return end
-  for button in pool:EnumerateActive() do minorButton(button) end
+  GW.EachActive(frame.MinorCategoryButtonPool, minorButton)
 end
 
 -- Skins the report window (see reportFrame), and its minor-category buttons now and as the game anchors them.
@@ -825,12 +820,12 @@ function GW.SkinCombatLogBar(frame)
   if type(_G.Blizzard_CombatLog_QuickButton_OnClick) == "function" then hooksecurefunc("Blizzard_CombatLog_QuickButton_OnClick", ns.Guard("hook Blizzard_CombatLog_QuickButton_OnClick", dressQuickButtons)) end
 end
 
-GW.Add("system", "framed", { "HelpFrame" }, GW.SkinHelp)
-GW.Add("system", "framed", { "TicketStatusFrame" }, GW.SkinTicketStatus)
-GW.Add("system", "framed", { "ReportFrame" }, GW.SkinReport)
-GW.Add("system", "framed", { "ReportCheatingDialog" }, GW.SkinReportCheating)
-GW.Add("system", "framed", { "SplashFrame" }, GW.SkinSplash)
-GW.Add("system", "framed", { "ColorPickerFrame" }, GW.SkinColorPicker)
-GW.Add("system", "framed", { "OpacityFrame" }, GW.SkinOpacity)
-GW.Add("system", "onDemand", "Blizzard_DeathRecap", { "DeathRecapFrame" }, GW.SkinDeathRecap)
-GW.Add("system", "onDemand", "Blizzard_CombatLog", { "CombatLogQuickButtonFrame_Custom" }, GW.SkinCombatLogBar)
+GW.Add("system", { "HelpFrame" }, GW.SkinHelp)
+GW.Add("system", { "TicketStatusFrame" }, GW.SkinTicketStatus)
+GW.Add("system", { "ReportFrame" }, GW.SkinReport)
+GW.Add("system", { "ReportCheatingDialog" }, GW.SkinReportCheating)
+GW.Add("system", { "SplashFrame" }, GW.SkinSplash)
+GW.Add("system", { "ColorPickerFrame" }, GW.SkinColorPicker)
+GW.Add("system", { "OpacityFrame" }, GW.SkinOpacity)
+GW.AddOnDemand("system", "Blizzard_DeathRecap", { "DeathRecapFrame" }, GW.SkinDeathRecap)
+GW.AddOnDemand("system", "Blizzard_CombatLog", { "CombatLogQuickButtonFrame_Custom" }, GW.SkinCombatLogBar)

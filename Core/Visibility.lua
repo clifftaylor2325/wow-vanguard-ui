@@ -104,12 +104,16 @@ end
 
 -- Applying -------------------------------------------------------------------------------------
 
+-- The states that fade a frame by alpha ("fade") or dim it ("dim"); the others show or hide it.
+V.FADING = { fade = true, dim = true }
+
 -- 1 unless the frame fades or dims and the mouse isn't over it (nor is it revealed, as
 -- action bars are while you drag a spell, nor lingering after Auto-hide); then 0, or
 -- the calm alpha for a dimmed frame (the Calm HUD's unit frames, which stay clickable).
 function V.Alpha(frame)
   local state = frame.vgState
-  if (state ~= "fade" and state ~= "dim") or vgHover[frame] or frame.vgReveal or frame.vgLingering then return 1 end
+  local fading = V.FADING[state]
+  if not fading or vgHover[frame] or frame.vgReveal or frame.vgLingering then return 1 end
   return state == "dim" and T.ALPHA.calm or 0
 end
 
@@ -118,7 +122,7 @@ end
 function V.Linger(frame)
   local token = (frame.vgLingerCount or 0) + 1
   frame.vgLingerCount = token
-  frame.vgLingering = type(C_Timer) == "table" and type(C_Timer.After) == "function" or nil
+  frame.vgLingering = ns.HasTimer() or nil
   if frame.vgLingering then C_Timer.After(V.LINGER, ns.Guard("timer end linger", function() V.EndLinger(frame, token) end)) end
   V.Refresh(frame)
 end
@@ -137,7 +141,7 @@ end
 function ns.AutoHide(frame, seconds)
   local token = (vgAutoHideCount[frame] or 0) + 1
   vgAutoHideCount[frame] = token
-  if type(C_Timer) ~= "table" or type(C_Timer.After) ~= "function" then return end
+  if not ns.HasTimer() then return end
   C_Timer.After(seconds, ns.Guard("timer auto hide", function()
     if vgAutoHideCount[frame] == token then T.FadeOut(frame) end
   end))
@@ -180,22 +184,39 @@ local function motion(frame)
   frame:SetMouseClickEnabled(false)
 end
 
--- Registers a frame's state driver for a setting now (out of combat only), and
--- with secure, its visibility driver too; onState(frame) runs on every change.
-function V.ApplyNow(frame, mode, when, secure)
+-- Keeps the frame's instance and auto-hide flags for a setting (ApplyNow and ApplySecureNow read them back);
+-- returns the setting's state.
+local function noteMode(frame, mode, when)
   frame.vgInstance = V.Mode(mode) ~= "hidden" and V.Checked(mode, when).instance == true
   frame.vgAutoHide = V.Mode(mode) == "autohide"
-  V.ApplyState(frame, V.State(mode, when), secure)
+  return V.State(mode, when)
+end
+
+-- Repaints a frame after its state is applied; an Auto-hide frame lingers first.
+local function settle(frame)
   if frame.vgAutoHide then return V.Linger(frame) end
   V.Refresh(frame)
 end
 
--- Registers a state string as the frame's "vgvis" driver (out of combat only), and with
--- secure its visibility driver too; the caller repaints (V.Refresh).
-function V.ApplyState(frame, state, secure)
-  if not frame.vgStateString then frame:HookScript("OnAttributeChanged", onAttribute) end
+-- Registers a frame's state driver for a setting now (out of combat only), and repaints it.
+function V.ApplyNow(frame, mode, when)
+  V.ApplyState(frame, noteMode(frame, mode, when))
+  settle(frame)
+end
+
+-- As V.ApplyNow, and also registers the frame's "visibility" driver (secure: out of combat only), which the
+-- client uses to show and hide a protected frame such as the menu strip.
+function V.ApplySecureNow(frame, mode, when)
+  local state = noteMode(frame, mode, when)
+  RegisterStateDriver(frame, "visibility", V.Driver(state))
+  V.ApplyState(frame, state)
+  settle(frame)
+end
+
+-- Registers a state string as the frame's "vgvis" driver (out of combat only); the caller repaints (V.Refresh).
+function V.ApplyState(frame, state)
+  if not frame.vgStateString then frame:HookScript("OnAttributeChanged", ns.Guard("visibility state", onAttribute)) end
   frame.vgStateString, frame.vgState = state, V.Parse(state)
-  if secure then RegisterStateDriver(frame, "visibility", V.Driver(state)) end
   RegisterStateDriver(frame, "vgvis", state)
   if frame.vgHoverRoot then motion(frame) end
 end
@@ -234,8 +255,8 @@ end
 -- Follows the mouse over a frame and every frame inside it (nothing polls).
 local function hookHover(f, frame)
   vgHoverOf[f] = frame
-  f:HookScript("OnEnter", hoverEnter)
-  f:HookScript("OnLeave", hoverLeave)
+  f:HookScript("OnEnter", ns.Guard("visibility hover", hoverEnter))
+  f:HookScript("OnLeave", ns.Guard("visibility hover", hoverLeave))
   for _, child in ipairs({ f:GetChildren() }) do hookHover(child, frame) end
 end
 
@@ -268,13 +289,13 @@ function V.Toggle(acc, key)
   acc.after()
 end
 
--- The options rows for a visibility setting kept in tbl()[modeKey], its checklist
--- in tbl()[whenKey]: the mode (one of modes, V.MODES unless given), then the
--- checklist. after() applies a change.
-function V.Rows(caption, tbl, modeKey, whenKey, after, initial, modes)
-  local acc = { tbl = tbl, modeKey = modeKey, whenKey = whenKey, after = after }
-  return { "cycle", caption, modes or V.MODES, function() return V.Mode(tbl()[modeKey]) end,
-    function(v) tbl()[modeKey] = v after() end, initial }, { "showwhen", "Show when", acc }
+-- The options rows for a visibility setting kept in tbl()[modeKey], its checklist in tbl()[whenKey]: the
+-- mode (one of modes, V.MODES unless given), then the checklist. after() applies a change. opts =
+-- { caption, tbl, modeKey, whenKey, after, initial, modes }; the checklist keeps opts for its own reads.
+function V.Rows(opts)
+  local tbl, modeKey, after = opts.tbl, opts.modeKey, opts.after
+  return { "cycle", opts.caption, opts.modes or V.MODES, function() return V.Mode(tbl()[modeKey]) end,
+    function(v) tbl()[modeKey] = v after() end, opts.initial }, { "showwhen", "Show when", opts }
 end
 
 -- Lights the chips of the conditions the setting shows on.

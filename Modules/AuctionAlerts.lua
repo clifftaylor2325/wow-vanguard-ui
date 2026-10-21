@@ -121,7 +121,7 @@ function AH.RingAlerts()
   table.sort(list, function(a, b) return a.id < b.id end)
   local key = C_AuctionHouse.MakeItemKey(list[1].id)
   local title, line, price = toastText(list)
-  ns.GetModule("ChatWatch").Notify(title, line, price, function() if AH.open then AH.Queue({ open = key }, true) end end)
+  ns.GetModule("ChatWatch").Notify(title, line, price, function() if AH.open then AH.QueueFirst({ open = key }) end end)
 end
 
 -- Every price the store records is checked against the alerts (only while the house is open).

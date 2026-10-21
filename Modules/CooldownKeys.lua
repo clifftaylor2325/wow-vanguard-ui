@@ -97,6 +97,12 @@ function CK.Refresh()
   CK.Paint(CK.settings.keys and CK.Keys() or {})
 end
 
+-- Turns the key text on or off, repainted at once.
+function CK.SetKeys(on)
+  CK.settings.keys = on
+  CK.Refresh()
+end
+
 -- Repaints after a row lays itself out again (the game makes its items as you set what it tracks).
 local function watch(name)
   local viewer = _G[name]

@@ -33,16 +33,39 @@ it("movers", () => {
 it("layout", () => {
   const addon = loggedIn();
   // ns.Layout.Anchor on a 1920x1080 screen.
-  const anchor = (l, b, w, h) => addon.eval(`return { ns.Layout.Anchor(${l}, ${b}, ${w}, ${h}, 1920, 1080) }`);
+  const anchor = (l, b, w, h) => addon.eval(`return { ns.Layout.Anchor({ left = ${l}, bottom = ${b}, w = ${w}, h = ${h} }, { w = 1920, h = 1080 }) }`);
   expect(JSON.stringify(anchor(20, 900, 200, 40)) === JSON.stringify(["TOPLEFT", 20, -140]), "top-left third anchors TOPLEFT with edge offsets").toBeTruthy();
   expect(JSON.stringify(anchor(1700, 20, 200, 40)) === JSON.stringify(["BOTTOMRIGHT", -20, 20]), "bottom-right third anchors BOTTOMRIGHT").toBeTruthy();
   expect(JSON.stringify(anchor(860, 520, 200, 40)) === JSON.stringify(["CENTER", 0, 0]), "the middle anchors CENTER").toBeTruthy();
   expect(JSON.stringify(anchor(860, 20, 200, 40)) === JSON.stringify(["BOTTOM", 0, 20]), "bottom middle anchors BOTTOM").toBeTruthy();
   // ns.Layout.Snap of a 100x20 rect next to one at (500, 300).
-  const snap = (l, b) => addon.eval(`return { ns.Layout.Snap(${l}, ${b}, 100, 20, { { left = 500, bottom = 300, w = 100, h = 20 } }, 1920, 1080) }`);
+  const snap = (l, b) => addon.eval(`local r = ns.Layout.Snap({ left = ${l}, bottom = ${b}, w = 100, h = 20 }, { { left = 500, bottom = 300, w = 100, h = 20 } }, { w = 1920, h = 1080 }) return { r.left, r.bottom }`);
   expect(JSON.stringify(snap(605, 250)) === JSON.stringify([600, 250]), "a left edge within 8 px snaps to another frame's right edge").toBeTruthy();
   expect(JSON.stringify(snap(700, 250)) === JSON.stringify([700, 250]), "nothing close, no snap").toBeTruthy();
   expect(JSON.stringify(snap(1000, 527)) === JSON.stringify([1000, 530]), "a center within 8 px snaps to the screen center").toBeTruthy();
+  // The left edge lines up exactly with one frame, and the right edge is 3 px from another: the exact line-up stays.
+  const exact = addon.eval("local r = ns.Layout.Snap({ left = 500, bottom = 250, w = 100, h = 20 }, { { left = 500, bottom = 300, w = 100, h = 20 }, { left = 603, bottom = 600, w = 50, h = 20 } }, { w = 1920, h = 1080 }) return { r.left, r.bottom }");
+  expect(exact, "an exact line-up is not replaced by a near one").toEqual([500, 250]);
+});
+
+it("the popover says why a typed offset's link is refused", () => {
+  const addon = loggedIn(BOX);
+  // A hand-edited profile anchors the box to itself: the popover's offset can't hold that link.
+  addon.eval('ns.Settings("positions").box = { rel = { to = "box", side = "LEFT", x = 0, y = 0 } }');
+  addon.eval('ns.MoverPopover({ key = "box", label = "TEST-ONLY box" })');
+  addon.eval('Vanguard_MoverPopover.x:SetText("5") Vanguard_MoverPopover.x:GetScript("OnEnterPressed")(Vanguard_MoverPopover.x)');
+  expect(addon.eval("return Vanguard_MoverPopover.why:GetText()"), "a refused offset says why").toBe("A frame can't be anchored to itself.");
+});
+
+it("a mover's size the client can't give reads 0, not its height", () => {
+  const addon = loggedIn(`
+    __nw = CreateFrame("Frame", nil, UIParent)
+    __nw:SetSize(200, 40)
+    ns.Mover(__nw, "nw", "No width", { "CENTER", "CENTER", 0, 0 })
+    __nw.GetWidth = function() return nil end
+  `);
+  expect(addon.eval('return ns.MoverSize("nw", "width")'), "a width the client can't give is 0").toBe(0);
+  expect(addon.eval('return ns.MoverSize("nw", "height")'), "the height is still the frame's").toBe(40);
 });
 
 it("mover coordinates with no handle", () => {
@@ -159,7 +182,7 @@ it("layout: rects, clamping to the screen, and the nearest side", () => {
   const addon = loggedIn();
   // A rect from ns.Layout as [left, bottom, w, h].
   const rect = (lua) => addon.eval(`local r = ${lua} return { r.left, r.bottom, r.w, r.h }`);
-  expect(rect("ns.Layout.Rect('TOPRIGHT', 'TOPRIGHT', -12, -12, 100, 50, 1920, 1080)"), "a frame's rect from its point").toEqual([1808, 1018, 100, 50]);
+  expect(rect("ns.Layout.Rect({ point = 'TOPRIGHT', relPoint = 'TOPRIGHT', x = -12, y = -12 }, { w = 100, h = 50 }, { w = 1920, h = 1080 })"), "a frame's rect from its point").toEqual([1808, 1018, 100, 50]);
   expect(rect("ns.Layout.RectAt('LEFT', 500, 300, 100, 20)"), "the rect whose left point is at 500, 300").toEqual([500, 290, 100, 20]);
   expect(rect("ns.Layout.Clamp({ left = -20, bottom = 1070, w = 100, h = 20 }, 1920, 1080)"), "a rect past the edges is moved onto the screen").toEqual([0, 1060, 100, 20]);
   // The side of a 200 x 40 frame at 500, 500 that a 100 x 20 one at left, bottom is nearest.
@@ -221,6 +244,16 @@ it("an anchored frame whose frame isn't there lands at its last screen spot, nev
   const on = loggedIn("", { savedVariables: `VanguardDB.profiles.Default = { positions = ${lua(positions)} }` });
   const moved = rectOf(on, "Vanguard_player");
   expect(rectOf(on, "Vanguard_CastBar_player")[1] + cast[3], "with them on again, it follows the player frame to its new spot").toBe(moved[1] - 4);
+});
+
+it("an anchored frame lands where its link last put it, once the frame it's anchored to is off", () => {
+  const addon = loggedIn(BOX + DEP);
+  addon.eval("ns.SetMoverAnchor('dep', 'box', 'RIGHT', 4, 0)");
+  addon.eval('ns.Nudge("box", 50, 0)');
+  const placed = rectOf(addon, "TESTONLY_Dep");
+  const positions = addon.eval("return { dep = ns.Settings('positions').dep }");
+  const off = loggedIn(DEP, { savedVariables: `VanguardDB.profiles.Default = { positions = ${lua(positions)} }` });
+  expect(rectOf(off, "TESTONLY_Dep"), "with the box's module off, it stays where the box last put it").toEqual(placed);
 });
 
 // TEST-ONLY tall frame: 50 x 300, too tall for a bar to match.

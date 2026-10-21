@@ -196,7 +196,7 @@ function AH.DeleteList(name)
   if not store.lists[name] then return end
   store.lists[name] = nil
   if store.list == name then store.list = firstList(store) end
-  if AH.shopCard then AH.shopCard.offset = 0 end
+  AH.ShopTop()
   ns.Chat("Deleted the shopping list " .. name .. ".")
   AH.PaintShop()
 end
@@ -488,9 +488,10 @@ end
 
 -- Listing i of the view's item as a row, or nil (unreadable, or above the entry's max price).
 local function listing(v, i)
-  local api = C_AuctionHouse
-  local r = v.commodity and api.GetCommoditySearchResultInfo(v.key.itemID, i) or api.GetItemSearchResultInfo(v.key, i)
-  local row = r and (v.commodity and commodityListing(r) or itemListing(r))
+  local r = AH.SearchResultInfo(v.key, v.commodity, i)
+  if not r then return nil end
+  local row
+  if v.commodity then row = commodityListing(r) else row = itemListing(r) end
   if row and not (v.maxPrice and row.price > v.maxPrice) then return row end
 end
 
@@ -552,7 +553,7 @@ function AH.OpenListings(key, f)
   viewTop()
   AH.DropQueued("listings")
   AH.DropQueued("page")
-  AH.Queue({ listings = key }, true)
+  AH.QueueFirst({ listings = key })
   AH.PaintShop()
 end
 
@@ -579,7 +580,7 @@ function AH.OpenListing(i)
   local v = AH.view
   if not v.rows[i] then return end
   AH.shopCard.view.table.mark = i
-  AH.Queue({ open = v.key }, true)
+  AH.QueueFirst({ open = v.key })
   AH.ShowInGame()
   AH.PaintShop()
 end

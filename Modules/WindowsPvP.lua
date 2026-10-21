@@ -18,34 +18,10 @@ local GW = ns.GetModule("Windows")
 
 -- Helpers ---------------------------------------------------------------------------------------
 
--- Frames whose game methods or scripts are already hooked here (a skin runs on every show; a hook goes on once).
-local hooked = setmetatable({}, { __mode = "k" })
-
--- Runs fn(frame) after the frame's game method `name` each time it runs (with script set, after its script
--- handler of that name), once per frame and name; a frame without the method is skipped.
-local function after(frame, name, fn, script)
-  hooked[frame] = hooked[frame] or {}
-  if hooked[frame][name] then return end
-  if not script and (type(frame[name]) ~= "function" or type(hooksecurefunc) ~= "function") then return end
-  hooked[frame][name] = true
-  -- Runs fn on the frame.
-  local function run() fn(frame) end
-  if script then return frame:HookScript(name, ns.Guard("hook " .. name, run)) end
-  hooksecurefunc(frame, name, ns.Guard("hook " .. name, run))
-end
-
 -- The first part of frame found under one of keys, or nil.
 local function partOf(frame, keys)
   for _, key in ipairs(keys) do
     if type(frame[key]) == "table" then return frame[key] end
-  end
-end
-
--- Themes the push buttons a frame keeps under those keys.
-local function dressKeys(frame, keys)
-  for _, key in ipairs(keys) do
-    local button = frame[key]
-    if type(button) == "table" and button.CreateTexture then T.Button(button) end
   end
 end
 
@@ -114,9 +90,7 @@ end
 
 -- Every reward tile the results hold now (run after the game adds one, since the pool gives no event).
 local function dressRewards(frame)
-  local pool = frame.itemPool
-  if type(pool) ~= "table" or type(pool.EnumerateActive) ~= "function" then return end
-  for button in pool:EnumerateActive() do dressReward(button) end
+  GW.EachActive(frame.itemPool, dressReward)
 end
 
 -- The results' title (Victory, Defeat): the heading font and the text colour at the game's big size, its place unchanged.
@@ -149,15 +123,15 @@ function GW.SkinPvPMatch(frame)
   if content then skinTable(content) skinEarnings(content) skinMatchTexts(frame, content) end
   local bar = frame.ScrollBar or frame.scrollBar
   if type(bar) == "table" then T.ScrollBar(bar) end
-  dressKeys(frame, GW.PVP_PUSH)
+  GW.EachKey(frame, GW.PVP_PUSH, GW.SkinButton)
   dressRewards(frame)
-  after(frame, "SetupArtwork", GW.SkinPvPMatch)
-  after(frame, "AddItemReward", dressRewards)
+  GW.HookAfter(frame, "SetupArtwork", GW.SkinPvPMatch)
+  GW.HookAfter(frame, "AddItemReward", dressRewards)
 end
 
 -- Blizzard_PVPMatch loads at login on Forever (LoadOnDemand 0); registered on demand as well, so a client
 -- that loads it later is covered too.
-GW.Add("pvp", "onDemand", "Blizzard_PVPMatch", { "PVPMatchScoreboard", "PVPMatchResults" }, GW.SkinPvPMatch)
+GW.AddOnDemand("pvp", "Blizzard_PVPMatch", { "PVPMatchScoreboard", "PVPMatchResults" }, GW.SkinPvPMatch)
 
 -- Queue dialogs ---------------------------------------------------------------------------------
 
@@ -207,8 +181,8 @@ function GW.SkinPvPReadyPopup(frame)
   end
 end
 
-GW.Add("pvp", "popups", { "PVPReadyDialog", "PVPRoleCheckPopup", "PVPFramePopup" }, GW.SkinPvPDialog)
-GW.Add("pvp", "popups", { "PVPReadyPopup" }, GW.SkinPvPReadyPopup)
+GW.Add("pvp", { "PVPReadyDialog", "PVPRoleCheckPopup", "PVPFramePopup" }, GW.SkinPvPDialog)
+GW.Add("pvp", { "PVPReadyPopup" }, GW.SkinPvPReadyPopup)
 
 -- Objectives and the match timer ----------------------------------------------------------------
 
@@ -245,11 +219,11 @@ end
 function GW.SkinWidgetBox(box)
   vgBackdrop[box] = vgBackdrop[box] or makeBackdrop(box)
   fitBackdrop(box)
-  after(box, "OnSizeChanged", fitBackdrop, true)
-  after(box, "UpdateWidgetLayout", fitBackdrop)
+  GW.HookScriptOnce(box, "OnSizeChanged", "hook OnSizeChanged", fitBackdrop)
+  GW.HookAfter(box, "UpdateWidgetLayout", fitBackdrop)
 end
 
-GW.Add("pvp", "framed", { "UIWidgetTopCenterContainerFrame", "UIWidgetBelowMinimapContainerFrame" }, GW.SkinWidgetBox)
+GW.Add("pvp", { "UIWidgetTopCenterContainerFrame", "UIWidgetBelowMinimapContainerFrame" }, GW.SkinWidgetBox)
 
 -- One countdown bar of the match timer, once: the theme's bar texture, its border and backdrop faded, a flat HUD
 -- panel, and the time in the theme font at the game's size. The big numbers stay the game's.
@@ -268,10 +242,10 @@ end
 -- hook on the global TimerTracker_OnEvent would never run.
 function GW.SkinTimerTracker(frame)
   for _, timer in ipairs(frame.timerList or {}) do skinTimerBar(timer) end
-  after(frame, "OnEvent", GW.SkinTimerTracker, true)
+  GW.HookScriptOnce(frame, "OnEvent", "hook OnEvent", GW.SkinTimerTracker)
 end
 
-GW.Add("pvp", "framed", { "TimerTracker" }, GW.SkinTimerTracker)
+GW.Add("pvp", { "TimerTracker" }, GW.SkinTimerTracker)
 
 -- The objective banner's texts and their text roles: the objective's name and its flash, and the line under it.
 GW.BANNER_TEXTS = { Title = "title", TitleFlash = "title", BonusLabel = "label" }
@@ -285,7 +259,7 @@ function GW.SkinPvPBanner(frame)
   end
 end
 
-GW.Add("pvp", "framed", { "PvPObjectiveBannerFrame" }, GW.SkinPvPBanner)
+GW.Add("pvp", { "PvPObjectiveBannerFrame" }, GW.SkinPvPBanner)
 
 -- Honor tab -------------------------------------------------------------------------------------
 
@@ -299,4 +273,4 @@ function GW.SkinPvPRankPane(frame)
   if type(pane.DescriptionScrollBar) == "table" then T.ScrollBar(pane.DescriptionScrollBar) end
 end
 
-GW.Add("pvp", "framed", { "PVPRankFrame" }, GW.SkinPvPRankPane)
+GW.Add("pvp", { "PVPRankFrame" }, GW.SkinPvPRankPane)

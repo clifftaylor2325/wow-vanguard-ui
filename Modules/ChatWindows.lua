@@ -31,17 +31,17 @@ local function docked(i)
   return flag ~= nil and flag ~= 0 and flag ~= false
 end
 
--- The chat windows in use for which keep(i, frame) holds: { index, frame, name } each.
+-- The chat windows in use for which keep(i, frame) holds, as records { index, frame, name }.
 local function windowsWhere(keep)
   local out = {}
   for i = 1, windowCount() do
     local frame, name = _G["ChatFrame" .. i], windowName(i)
-    if name and type(frame) == "table" and keep(i, frame) then out[#out + 1] = { i, frame, name } end
+    if name and type(frame) == "table" and keep(i, frame) then out[#out + 1] = { index = i, frame = frame, name = name } end
   end
   return out
 end
 
--- The chat windows in use and showing (the size sliders and the floating movers): { index, frame, name } each.
+-- The chat windows in use and showing (the size sliders and the floating movers): records { index, frame, name }.
 function CW.Shown()
   return windowsWhere(function(_, frame) return frame:IsShown() end)
 end
@@ -52,9 +52,14 @@ function CW.Windows()
   return windowsWhere(function(i, frame) return frame:IsShown() or docked(i) end)
 end
 
--- The window's width or height (0 for width, 1 for height) as a plain number.
-local function dimension(frame, height)
-  return ns.PlainNumber(height and frame:GetHeight() or frame:GetWidth()) or 0
+-- The window's width as a plain number.
+local function widthOf(frame)
+  return ns.PlainNumber(frame:GetWidth()) or 0
+end
+
+-- The window's height as a plain number.
+local function heightOf(frame)
+  return ns.PlainNumber(frame:GetHeight()) or 0
 end
 
 -- Saves the window's size and spot in the game's chat layout (where the client can).
@@ -62,13 +67,20 @@ local function remember(frame)
   if type(FCF_SavePositionAndDimensions) == "function" then FCF_SavePositionAndDimensions(frame) end
 end
 
--- get/set for one window's width (height = false) or height (height = true).
-function CW.SizeSetting(frame, height)
-  return function() return dimension(frame, height) end,
-    function(v)
-      frame:SetSize(height and dimension(frame, false) or v, height and v or dimension(frame, true))
-      remember(frame)
-    end
+-- get/set for one window's width (its height kept as it is).
+function CW.WidthSetting(frame)
+  return function() return widthOf(frame) end, function(v)
+    frame:SetSize(v, heightOf(frame))
+    remember(frame)
+  end
+end
+
+-- get/set for one window's height (its width kept as it is).
+function CW.HeightSetting(frame)
+  return function() return heightOf(frame) end, function(v)
+    frame:SetSize(widthOf(frame), v)
+    remember(frame)
+  end
 end
 
 -- Whether the game has chat window 1 (and so the dock) locked.
@@ -83,7 +95,7 @@ end
 function CW.LockSetting()
   return locked, function(v)
     if type(FCF_SetLocked) ~= "function" then return end
-    for _, w in ipairs(CW.Windows()) do FCF_SetLocked(w[2], v) end
+    for _, w in ipairs(CW.Windows()) do FCF_SetLocked(w.frame, v) end
   end
 end
 
@@ -103,10 +115,10 @@ end
 
 -- Makes a floating window a /vg unlock handle, kept where it is put.
 local function floatingMover(window)
-  local frame, key = window[2], "chat" .. window[1]
+  local frame, key = window.frame, "chat" .. window.index
   local point, _, relPoint, x, y = frame:GetPoint(1)
   if not point then return end
-  ns.Mover(frame, key, "Chat: " .. window[3], { point, relPoint, x, y })
+  ns.Mover(frame, key, "Chat: " .. window.name, { point, relPoint, x, y })
   pinTo(frame, key)
 end
 
@@ -122,11 +134,12 @@ CW.MAX_NAME = 16
 
 -- The window being edited on the Chat page (a chat window number; the main window when unset or gone).
 function CW.Editing()
-  for _, w in ipairs(CW.Windows()) do
-    if w[1] == CW.editing then return w[1], w[2], w[3] end
+  local windows = CW.Windows()
+  for _, w in ipairs(windows) do
+    if w.index == CW.editing then return w.index, w.frame, w.name end
   end
-  local main = CW.Windows()[1]
-  return main and main[1], main and main[2], main and main[3]
+  local main = windows[1] or {}
+  return main.index, main.frame, main.name
 end
 
 -- get/set for the tab picker: the choices are the windows in use; a pick rebuilds the page.
@@ -135,10 +148,10 @@ function CW.TabSetting()
     function(v) CW.editing = v ns.Options.RebuildPage("chat") end
 end
 
--- The windows in use as choices { index, name }.
+-- The windows in use as choices { index, name } (positional: the options cycle reads them by place).
 function CW.TabChoices()
   local out = {}
-  for _, w in ipairs(CW.Windows()) do out[#out + 1] = { w[1], w[3] } end
+  for _, w in ipairs(CW.Windows()) do out[#out + 1] = { w.index, w.name } end
   return out
 end
 
@@ -238,7 +251,7 @@ end
 local function allLines()
   local shown, all = {}, {}
   for _, w in ipairs(CW.Windows()) do
-    for _, text in ipairs(frameLines(w[2])) do shown[text] = true all[#all + 1] = text end
+    for _, text in ipairs(frameLines(w.frame)) do shown[text] = true all[#all + 1] = text end
   end
   local saved = savedLines(shown)
   for _, text in ipairs(all) do saved[#saved + 1] = text end
@@ -275,17 +288,14 @@ end
 -- A small Find button in the main chat window's tab bar, left of the Copy button.
 local function addFindButton()
   local frame = _G.ChatFrame1
-  if type(frame) ~= "table" then return end
-  CW.findButton = ns.GetModule("Chat").AddBarButton(frame, "Find", "click find in chat", CW.AskFind)
+  if type(frame) ~= "table" then return nil end
+  return ns.GetModule("Chat").AddBarButton(frame, "Find", "click find in chat", CW.AskFind)
 end
 
--- Shows or hides the Find button as its switch is set (made now when it was off at login), at once;
--- the bar's other tiles and the dock close up over it (Modules/Chat.lua CH.PlaceBarButtons).
+-- Shows or hides the Find button as its switch is set (made now when it was off at login), at once
+-- (Modules/Chat.lua CH.ApplyBarButton).
 function CW.ApplyFind()
-  if CW.settings.find and not CW.findButton then addFindButton() end
-  if not CW.findButton then return end
-  CW.findButton:SetShown(CW.settings.find == true)
-  ns.GetModule("Chat").PlaceBarButtons(_G.ChatFrame1)
+  CW.findButton = ns.GetModule("Chat").ApplyBarButton(CW.findButton, CW.settings.find == true, addFindButton)
 end
 
 -- Module entry point (Core/Modules.lua).
@@ -294,6 +304,6 @@ function CW.Enable(settings)
   CW.ApplyFind()
   if not settings.movers then return end
   for _, window in ipairs(CW.Shown()) do
-    if floating(window[1]) then floatingMover(window) end
+    if floating(window.index) then floatingMover(window) end
   end
 end

@@ -39,6 +39,11 @@ function AP.Day(t)
   return math.floor(t / AP.DAY)
 end
 
+-- Whether a day falls in the AP.DAYS days up to and including today.
+function AP.WithinDays(day, today)
+  return day > today - AP.DAYS
+end
+
 -- The day a time falls on by the computer's own clock (whole days since 1970 in its time zone), so
 -- "today" ends at the player's midnight; the UTC day on a client without date().
 function AP.LocalDay(t)
@@ -152,18 +157,26 @@ function AP.OnSeen(fn)
   AP.seenListeners[#AP.seenListeners + 1] = fn
 end
 
--- Notes an item seen at time t: its cheapest unit price (now, and the low of t's day), and the
--- units up and market value when given (t's day keeps the last seen), and how many listings
--- (the item keeps the last count). A new item past AP.MAX_ITEMS evicts the items priced longest
--- ago. The listeners hear of it on the next frame, AP.OnSeen's at once.
-function AP.Record(itemID, unitPrice, t, qty, market, listings)
+-- The day's low, and a scan's units up and market value for that day (the day keeps the last
+-- seen; a scan without one leaves it as it was).
+local function noteDay(p, day, unitPrice, scan)
+  p.days[day] = math.min(p.days[day] or unitPrice, unitPrice)
+  local units, market = scan and scan.units, scan and scan.market
+  p.qtys[day], p.markets[day] = units or p.qtys[day], market or p.markets[day]
+end
+
+-- Notes an item seen at time t: its cheapest unit price (now, and the low of t's day), and from a
+-- scan (scan = { units, market, listings }, nil for a search) its units up, market value and how
+-- many listings (the item keeps the last count). A new item past AP.MAX_ITEMS evicts the items
+-- priced longest ago. The listeners hear of it on the next frame, AP.OnSeen's at once.
+function AP.Record(itemID, unitPrice, t, scan)
   local house, day = AP.House(), AP.Day(t)
   local p = house.prices[itemID]
   if not p then p = {} house.prices[itemID] = p house.count = house.count + 1 end
   ns.Fill(p, { days = {}, qtys = {}, markets = {} })
+  local listings = scan and scan.listings
   p.min, p.t, p.listings = unitPrice, t, listings or p.listings
-  p.days[day] = math.min(p.days[day] or unitPrice, unitPrice)
-  p.qtys[day], p.markets[day] = qty or p.qtys[day], market or p.markets[day]
+  noteDay(p, day, unitPrice, scan)
   if house.count > AP.MAX_ITEMS then AP.Evict() end
   ns.Soon("auction prices changed", tellListeners)
   for _, fn in ipairs(AP.seenListeners) do fn(itemID, unitPrice, t) end
@@ -213,7 +226,7 @@ end
 local function trimDays(p, today)
   for _, byDay in ipairs({ p.days, p.qtys or {}, p.markets or {} }) do
     for day in pairs(byDay) do
-      if day <= today - AP.DAYS then byDay[day] = nil end
+      if not AP.WithinDays(day, today) then byDay[day] = nil end
     end
   end
 end
@@ -237,13 +250,52 @@ function AP.Prune(now)
   end
 end
 
+-- The newest price time in a price home (0 for none, or for a damaged home).
+local function newestPrice(house)
+  local newest = 0
+  local prices = type(house) == "table" and type(house.prices) == "table" and house.prices or {}
+  for _, p in pairs(prices) do
+    if type(p) == "table" and (tonumber(p.t) or 0) > newest then newest = tonumber(p.t) end
+  end
+  return newest
+end
+
+-- The keys of the price homes other than `keep`, the one with the oldest prices first.
+local function oldestHomes(houses, keep)
+  local keys = {}
+  for key, house in pairs(houses) do
+    if key ~= keep then keys[#keys + 1] = { key = key, newest = newestPrice(house) } end
+  end
+  table.sort(keys, function(a, b) return a.newest < b.newest end)
+  return keys
+end
+
+-- The price homes in VanguardDB.ah, or none when the file has no list (AP.Store would make an empty one).
+local function savedHomes()
+  local ah = VanguardDB.ah
+  return type(ah) == "table" and type(ah.houses) == "table" and ah.houses or {}
+end
+
+-- Drops price homes, oldest first and never the one in use, until `free` bytes are gone (sizeOf(house, 1)
+-- gives a home's bytes); returns how many it dropped. Reads VanguardDB.ah as it is, so a file without one stays so.
+function AP.DropOldestHomes(free, sizeOf)
+  local houses, dropped = savedHomes(), 0
+  for _, home in ipairs(oldestHomes(houses, ns.Home.Key())) do
+    if free <= 0 then break end
+    free = free - sizeOf(houses[home.key], 1)
+    houses[home.key] = nil
+    dropped = dropped + 1
+  end
+  return dropped
+end
+
 -- Reading ------------------------------------------------------------------------------------
 
 -- The lowest price of the last 7 days (today and the six before), or nil.
 function AP.Low7(itemID, now)
   local p, today, low = AP.House().prices[itemID], AP.Day(now or AP.Now()), nil
   for day, copper in pairs(p and p.days or {}) do
-    if day > today - 7 and (not low or copper < low) then low = copper end
+    if AP.WithinDays(day, today) and (not low or copper < low) then low = copper end
   end
   return low
 end

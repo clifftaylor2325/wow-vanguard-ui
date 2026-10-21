@@ -20,24 +20,14 @@ local function questLog(name, ...)
   if type(fn) == "function" then return fn(...) end
 end
 
--- Calls fn if it's a function; nil otherwise.
-local function call(fn, ...)
-  if type(fn) == "function" then return fn(...) end
-end
-
--- A plain true from the client (hidden values count as false).
-local function yes(v)
-  return not ns.IsSecret(v) and v == true
-end
-
 -- The list ----------------------------------------------------------------------------------------
 
 -- One log entry: a zone header { header, title }, or a quest { id, title, level, ready }; nil for hidden ones.
 local function entry(info)
-  if type(info) ~= "table" or yes(info.isHidden) then return nil end
-  if yes(info.isHeader) then return { header = true, title = info.title } end
+  if type(info) ~= "table" or ns.IsTrue(info.isHidden) then return nil end
+  if ns.IsTrue(info.isHeader) then return { header = true, title = info.title } end
   local id = ns.PlainNumber(info.questID)
-  return id and { id = id, title = info.title, level = info.level, ready = yes(questLog("ReadyForTurnIn", id)) or yes(questLog("IsComplete", id)) }
+  return id and { id = id, title = info.title, level = info.level, ready = ns.GetModule("QuestTracker").IsReady(id) }
 end
 
 -- Your quests under their zone headers (a collapsed zone keeps its header, without its quests).
@@ -76,57 +66,52 @@ end
 -- A reward item for a card: its kind ("choice" or "reward"), slot and quest are what its tooltip is set from;
 -- its link gives its sell price (the crown).
 local function rewardItem(kind, i, id, name, texture, count, quality)
-  return { kind = kind, index = i, questID = id, name = name, texture = texture, count = count, quality = quality, link = call(GetQuestLogItemLink, kind, i) }
+  return { kind = kind, index = i, questID = id, name = name, texture = texture, count = count, quality = quality, link = ns.CallIf(_G, "GetQuestLogItemLink", kind, i) }
 end
 
 -- The quest's reward items: choices, then what you always get.
 local function rewardItems(id)
   local out = {}
-  for i = 1, ns.PlainNumber(call(GetNumQuestLogChoices, id)) or 0 do
-    out[#out + 1] = rewardItem("choice", i, id, call(GetQuestLogChoiceInfo, i))
+  for i = 1, ns.PlainNumber(ns.CallIf(_G, "GetNumQuestLogChoices", id)) or 0 do
+    out[#out + 1] = rewardItem("choice", i, id, ns.CallIf(_G, "GetQuestLogChoiceInfo", i))
   end
-  for i = 1, ns.PlainNumber(call(GetNumQuestLogRewards, id)) or 0 do
-    out[#out + 1] = rewardItem("reward", i, id, call(GetQuestLogRewardInfo, i, id))
+  for i = 1, ns.PlainNumber(ns.CallIf(_G, "GetNumQuestLogRewards", id)) or 0 do
+    out[#out + 1] = rewardItem("reward", i, id, ns.CallIf(_G, "GetQuestLogRewardInfo", i, id))
   end
   return out
 end
 
 -- The quest's money and XP, as "+1g 20s 0c · 450 XP" ("" for none).
 local function moneyLine(id)
-  local money, xp, parts = ns.PlainNumber(call(GetQuestLogRewardMoney, id)), ns.PlainNumber(call(GetQuestLogRewardXP, id)), {}
-  if money and money > 0 then parts[#parts + 1] = "+" .. ns.GetModule("InfoStrip").Money(money) end
-  if xp and xp > 0 then parts[#parts + 1] = xp .. " XP" end
-  return table.concat(parts, "  ·  ")
+  return ns.QuestParts.MoneyText(ns.PlainNumber(ns.CallIf(_G, "GetQuestLogRewardMoney", id)), ns.PlainNumber(ns.CallIf(_G, "GetQuestLogRewardXP", id)))
 end
 
 -- Whether you watch a quest: it is in the watch list the tracker draws from (the client's watch type
 -- can't be trusted to be nil for a quest you don't watch).
 function QL.IsWatched(id)
-  for _, watched in ipairs(ns.GetModule("QuestTracker").Watched()) do
-    if watched == id then return true end
-  end
-  return false
+  return ns.GetModule("QuestTracker").IsWatched(id)
 end
 
 -- What the chosen quest asks beside its objectives (QP.Needs: money and group size), and whether it failed
 -- (a timed or escort quest that ran out); a read the client lacks or hides is left out.
 local function requirements(id, d)
   d.needs, d.short = ns.QuestParts.Needs(questLog("GetRequiredMoney", id), questLog("GetSuggestedGroupSize", id))
-  d.failed = yes(questLog("IsFailed", id))
+  d.failed = ns.IsTrue(questLog("IsFailed", id))
   return d
 end
 
 -- The chosen quest's details: { id, title, level, text, objectives, rewards, money, watched, shareable, done (the
--- quest history line), needs and short (QP.Needs), failed }.
+-- quest history line), needs and short (QP.Needs), failed }. It selects the quest in the game's log, which the
+-- quest text read needs.
 function QL.Details(id)
   local index = ns.PlainNumber(questLog("GetLogIndexForQuestID", id))
   local info = index and questLog("GetInfo", index)
   if type(info) ~= "table" then return nil end
   questLog("SetSelectedQuest", id)
-  local text = call(GetQuestLogQuestText)
+  local text = ns.CallIf(_G, "GetQuestLogQuestText")
   return requirements(id, { id = id, title = info.title, level = info.level, text = text, objectives = ns.GetModule("QuestTracker").Objectives(id),
     rewards = rewardItems(id), money = moneyLine(id), watched = QL.IsWatched(id),
-    shareable = yes(questLog("IsPushableQuest", id)) and yes(call(IsInGroup)), done = ns.GetModule("QuestHistory").Muted(id) })
+    shareable = ns.IsTrue(questLog("IsPushableQuest", id)) and ns.IsTrue(ns.CallIf(_G, "IsInGroup")), done = ns.GetModule("QuestHistory").Muted(id) })
 end
 
 -- Actions ----------------------------------------------------------------------------------------
@@ -144,7 +129,7 @@ end
 -- Shares the chosen quest with your group.
 function QL.Share(d)
   questLog("SetSelectedQuest", d.id)
-  call(QuestLogPushQuest)
+  ns.CallIf(_G, "QuestLogPushQuest")
 end
 
 -- The items the game destroys with the quest SetAbandonQuest picked, as "Name, Name" (as the game's quest
@@ -152,7 +137,7 @@ end
 local function abandonItems()
   local names = {}
   for _, itemID in ipairs(questLog("GetAbandonQuestItems") or {}) do
-    local name = call(C_Item and C_Item.GetItemInfo, itemID)
+    local name = ns.CallIf(C_Item, "GetItemInfo", itemID)
     if type(name) == "string" and not ns.IsSecret(name) then names[#names + 1] = name end
   end
   return #names > 0 and table.concat(names, ", ") or nil
@@ -171,8 +156,8 @@ end
 function QL.Abandon(d)
   if QL.MarkedCount() > 0 then return QL.AbandonMarked() end
   local title, items = ns.QuestParts.Plain(d.title), pickToAbandon(d.id)
-  if items then return call(StaticPopup_Show, "ABANDON_QUEST_WITH_ITEMS", title, items) end
-  call(StaticPopup_Show, "ABANDON_QUEST", title)
+  if items then return ns.CallIf(_G, "StaticPopup_Show", "ABANDON_QUEST_WITH_ITEMS", title, items) end
+  ns.CallIf(_G, "StaticPopup_Show", "ABANDON_QUEST", title)
 end
 
 -- The marked quests still in your log, as { id, title } in log order (a folded zone's marks count too).
@@ -218,7 +203,7 @@ end
 -- Shows the chosen quest on the game's map.
 function QL.ShowOnMap(d)
   if ns.WindowWaitsForCombat("The world map") then return end
-  call(QuestMapFrame_OpenToQuestDetails, d.id)
+  ns.CallIf(_G, "QuestMapFrame_OpenToQuestDetails", d.id)
 end
 
 -- Opening -----------------------------------------------------------------------------------------
@@ -240,7 +225,7 @@ end
 function QL.BindKeys()
   ns.OutOfCombat(function()
     ClearOverrideBindings(QL.toggle)
-    for _, key in ipairs({ call(GetBindingKey, "TOGGLEQUESTLOG") }) do
+    for _, key in ipairs({ ns.CallIf(_G, "GetBindingKey", "TOGGLEQUESTLOG") }) do
       SetOverrideBindingClick(QL.toggle, false, key, "Vanguard_QuestLogToggle")
     end
   end)

@@ -59,7 +59,7 @@ const SCROLL_ENV = `
   end
   -- Whether a tile is a quiet slot with its plate and hover strip faded and its icon and selected mark kept.
   function __tiled(b)
-    return ns.FrameState("vgSelectorTiles")[b] == true and b.plate:GetAlpha() == 0 and b.glow:GetAlpha() == 0 and b.Icon:GetAlpha() == 1
+    return ns.FrameState("vgSlotTiles")[b] == true and b.plate:GetAlpha() == 0 and b.glow:GetAlpha() == 0 and b.Icon:GetAlpha() == 1
       and b.SelectedTexture:GetAlpha() == 1 and __quiet(b) == 4
   end
 `;
@@ -165,7 +165,7 @@ it("R2.21 the pet stable: its group switched off leaves it the game's; windows a
   expect([bare.eval("return ns.FrameState('vgWindow')[PetStableFrame]"), windowErrors(bare)], "a window without the parts is skinned, no error").toEqual([true, "none"]);
   const odd = loggedIn(`${STABLE_ENV} PetStableCurrentPet.GetCheckedTexture = nil PetStableStabledPet1 = {} PetStableFrame.insideFrameBottom = {} PetStableFrame.TopDividerFrame.horzDivider = nil PetStableMoneyFrame.Border = nil`);
   odd.eval("PetStableFrame:Show()");
-  expect([odd.eval("return ns.FrameState('vgPetSlots')[PetStableCurrentPet]"), odd.eval("return ns.FrameState('vgPetSlots')[PetStableStabledPet1]"), windowErrors(odd)], "a slot without a checked texture is dressed, one that is no frame is skipped; a strip that is no texture, a divider and a coin box that are missing are skipped").toEqual([true, null, "none"]);
+  expect([odd.eval("return ns.FrameState('vgSlotTiles')[PetStableCurrentPet]"), odd.eval("return ns.FrameState('vgSlotTiles')[PetStableStabledPet1]"), windowErrors(odd)], "a slot without a checked texture is dressed, one that is no frame is skipped; a strip that is no texture, a divider and a coin box that are missing are skipped").toEqual([true, null, "none"]);
 });
 
 // TEST-ONLY trainer (Blizzard_TrainerUI, loads on demand): the window, its list as the game's ScrollBox hands out rows,

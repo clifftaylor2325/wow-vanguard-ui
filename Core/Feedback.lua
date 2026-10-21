@@ -23,8 +23,6 @@ local CHECKS = {
   bug = { { "did", "What you did" }, { "expected", "What you expected" }, { "happened", "What happened instead" } },
   feature = { { "want", "What you want" }, { "why", "Why it would help" } },
 }
--- The sections of each kind's block, in order.
-local SECTIONS = { bug = { "did", "expected", "happened" }, feature = { "want", "why" } }
 -- The "Part of Vanguard" choices after the modules (the site's FALLBACK_AREAS).
 local OTHER_AREAS = { { "command", "A command" }, { "setting", "A setting" }, { "new", "Something new" }, { "not-sure", "Not sure" } }
 local KINDS = { { "bug", "Report a bug" }, { "feature", "Request a feature" } }
@@ -115,9 +113,9 @@ end
 function FB.Text(fields)
   local f = cleaned(fields)
   local lines = head(f)
-  for _, field in ipairs(SECTIONS[f.kind]) do
-    lines[#lines + 1] = "--- " .. field .. " ---"
-    lines[#lines + 1] = body(f[field])
+  for _, c in ipairs(CHECKS[f.kind]) do
+    lines[#lines + 1] = "--- " .. c[1] .. " ---"
+    lines[#lines + 1] = body(f[c[1]])
   end
   if f.kind == "bug" then addReport(lines) end
   lines[#lines + 1] = FB.END
@@ -231,12 +229,12 @@ local function showKind()
   if bug then tabBetween({ f.summary, f.bug.did, f.bug.expected, f.bug.happened }) else tabBetween({ f.summary, f.feature.want, f.feature.why }) end
 end
 
--- The fields as typed: kind, title, area and every text.
+-- The fields as typed: kind, title, area and the texts of that kind (its boxes in the form's group for it).
 function FB.Fields()
   local f = form
-  return { kind = f.kind, title = f.summary:GetText(), area = f.area,
-    did = f.bug.did:GetText(), expected = f.bug.expected:GetText(), happened = f.bug.happened:GetText(),
-    want = f.feature.want:GetText(), why = f.feature.why:GetText() }
+  local fields = { kind = f.kind, title = f.summary:GetText(), area = f.area }
+  for _, c in ipairs(CHECKS[f.kind] or {}) do fields[c[1]] = f[f.kind][c[1]]:GetText() end
+  return fields
 end
 
 -- Make report: a problem with the fields is shown under them; else the block
@@ -250,10 +248,11 @@ function FB.Make()
   ns.ShowText(FB.TITLE, FB.Text(fields))
 end
 
--- The summary line under the kind row: its caption and a one-line box of at most 100 letters.
+-- The summary line under the kind row: its caption and a one-line box of at most LIMITS.title[2] letters.
 local function addSummary(f)
   local top = ns.DIALOG.head + T.ROW.height + T.SPACE.gap
-  caption(f, "Short summary (8 to 100 characters)", 0):SetPoint("TOPLEFT", T.SPACE.pad, -top)
+  local range = string.format("%s to %s", count(LIMITS.title[1]), count(LIMITS.title[2]))
+  caption(f, "Short summary (" .. range .. " characters)", 0):SetPoint("TOPLEFT", T.SPACE.pad, -top)
   f.summary = W.Input(f, FIELD_W)
   f.summary:SetMaxLetters(LIMITS.title[2])
   f.summary:SetPoint("TOPLEFT", T.SPACE.pad, -(top + CAPTION))

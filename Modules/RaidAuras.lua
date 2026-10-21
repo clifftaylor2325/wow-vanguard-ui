@@ -43,6 +43,8 @@ RA.SOURCE_CHOICES = {
 }
 -- An indicator icon's side, and how many slots there are.
 RA.IND_SIZE, RA.IND_SLOTS = 9, 3
+-- The aura layers (the dispel wash and the indicators) sit this many frame levels above the tile.
+RA.LEVEL_ABOVE = 10
 
 -- The dispel edge's sides: two anchor points and a width (vertical) or height (horizontal).
 local SIDES = {
@@ -81,7 +83,7 @@ end
 local function engineDispel(b)
   return function(button)
     local wash, edges = RA.DispelParts(button, b)
-    ns.AuraEngine.RegisterDispel(button, { wash }, 0.35)
+    ns.AuraEngine.RegisterDispel(button, { wash }, T.ALPHA.dispelWash)
     ns.AuraEngine.RegisterDispel(button, edges, 1)
   end
 end
@@ -92,7 +94,7 @@ local function paintDispel(b, unit)
   b.dispel:SetShown(aura ~= nil and aura ~= false)
   if not aura then return end
   local r, g, bl = ns.Auras.DispelColor(unit, aura)
-  b.dispel.wash:SetVertexColor(r, g, bl, 0.35)
+  b.dispel.wash:SetVertexColor(r, g, bl, T.ALPHA.dispelWash)
   b.dispel.wash:Show()
   for _, t in ipairs(b.dispel.edges) do t:SetVertexColor(r, g, bl); t:Show() end
 end
@@ -114,7 +116,7 @@ local function legacyDispel(b)
   ns.On("UNIT_AURA", onAura)
   b.dispel = CreateFrame("Frame", nil, b)
   b.dispel:SetAllPoints()
-  b.dispel:SetFrameLevel(b:GetFrameLevel() + 10)
+  b.dispel:SetFrameLevel(b:GetFrameLevel() + RA.LEVEL_ABOVE)
   b.dispel.wash, b.dispel.edges = RA.DispelParts(b.dispel, b)
   b.dispel:Hide()
 end
@@ -175,7 +177,7 @@ function RA.IndicatorSpec(b, z, n)
   local x, y = indicatorSlot(z, n)
   if not filter or not x then return nil end
   return { point = { "TOPRIGHT", b, "TOPRIGHT", -x, -y }, grow = "LEFT", growY = "DOWN", lineSize = RA.IND_SIZE + 1, gap = 1, mouse = false,
-    level = b:GetFrameLevel() + 10, groups = { { filter = filter, max = 1, size = RA.IND_SIZE } } }
+    level = b:GetFrameLevel() + RA.LEVEL_ABOVE, groups = { { filter = filter, max = 1, size = RA.IND_SIZE } } }
 end
 
 -- Builds the tile's indicator icons (RF setup hook).

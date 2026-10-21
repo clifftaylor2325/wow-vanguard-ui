@@ -423,7 +423,7 @@ it("chat: a whisper window, ChatFrame11 as the game names it, is skinned when it
 it("chat background: the panel's fill in the panel colour, three strengths, tabs fit their labels and are rounded and 20 tall, Copy sits in the bar", () => {
   const addon = loggedIn(UI_ENV);
   // The main window's fill: its alpha and colour token.
-  const look = () => addon.eval("local f = ns.GetModule('Chat').frames[ChatFrame1] return { f.fill.alpha, f.fill.token, f.fill.round > 0 }");
+  const look = () => addon.eval("local f = ns.GetModule('Chat').frames[ChatFrame1] return { f.fill.alpha, f.fill.token, f.fill.radius > 0 }");
   expect(look(), "Medium by default, the panel colour, rounded with the panel").toEqual([0.75, "panel", true]);
   addon.eval("ns.GetModule('Chat').settings.backdrop = 0.55 ns.GetModule('Chat').Refresh()");
   expect(look()[0], "Light").toBe(0.55);
@@ -807,7 +807,7 @@ it("chat extras: bare addresses with a web ending become links, never inside a l
   expect(said("see https://example.test/x. or (discord.gg/abc)"), "punctuation after an http address and brackets round a bare one stay outside the links")
     .toMatch(new RegExp(`${esc(linkOf("https://example.test/x"))}\\. or \\(\\|c\\w{8}${esc(linkOf("discord.gg/abc"))}\\)$`));
   const quest = "|cffffff00|Hquest:1|h[Visit the site.com vendor]|h|r then site.com";
-  expect(said(quest), "a dotted word in a link's name stays in the link; the one after it is linked").toBe(`|cffffff00|Hquest:1|h[Visit the site.com vendor]|h|r then |cff${addon.eval("local r, g, b = ns.Theme.RGB('accentText') return string.format('%02x%02x%02x', math.floor(r * 255), math.floor(g * 255), math.floor(b * 255))")}${linkOf("site.com")}`);
+  expect(said(quest), "a dotted word in a link's name stays in the link; the one after it is linked").toBe(`|cffffff00|Hquest:1|h[Visit the site.com vendor]|h|r then |cff${addon.eval("local r, g, b = ns.Theme.RGB('accentText') return string.format('%02x%02x%02x', math.floor(r * 255 + 0.5), math.floor(g * 255 + 0.5), math.floor(b * 255 + 0.5))")}${linkOf("site.com")}`);
   addon.eval('ChatFrame1:AddMessage("Guild Message of the Day: raid at 8, discord.gg/abc")');
   expect(lastLine(addon), "the guild message of the day line is linked as it is added").toContain(linkOf("discord.gg/abc"));
   addon.eval('ChatFrame1:AddMessage("[15:27] Guild Message of the Day: discord.gg/xyz")');
@@ -1359,7 +1359,7 @@ it("game windows in the Vanguard look: framed windows, popups, breath bar, and w
   addon.eval("MerchantFrame:Hide() MerchantFrame:Show()");
   expect(windowState(addon, "MerchantFrame"), "showing it again keeps the panel and paints nothing new").toMatchObject({ panel: true, painted: first.painted });
   expect(windowState(addon, "StaticPopup1"), "popups too").toMatchObject({ art: 0, inset: true, panel: true });
-  addon.eval('__window("TestOnlyNoInset").Inset = nil __window("TestOnlyBareInset").Inset = {} ns.GetModule("Windows").Add("windows", "framed", { "TestOnlyNoInset", "TestOnlyBareInset" })');
+  addon.eval('__window("TestOnlyNoInset").Inset = nil __window("TestOnlyBareInset").Inset = {} ns.GetModule("Windows").Add("windows", { "TestOnlyNoInset", "TestOnlyBareInset" })');
   expect(addon.eval("TestOnlyNoInset:Show() TestOnlyBareInset:Show() return { ns.Theme.PaintedCount() > 0, #ns.errors }"), "a window without an Inset, or with one that is no frame, is skinned all the same").toEqual([true, 0]);
   // Whether every breath bar in the container has the theme's bar texture (not the game's) and its frame art faded.
   const timers = () => addon.eval(`local ok = true
@@ -1474,16 +1474,16 @@ it("game windows registry: a window added under a group is skinned, its group's 
   const reg = `__window("TestOnlySocialFrame") __window("TestOnlyLaterFrame")
     local GW = ns.GetModule("Windows")
     -- TEST-ONLY skin: the window skin, then the window's extra art faded.
-    GW.Add("social", "framed", { "TestOnlySocialFrame" }, function(f) GW.Skin(f) GW.FadeParts(f, { "TestOnlyExtra" }) end)
+    GW.Add("social", { "TestOnlySocialFrame" }, function(f) GW.Skin(f) GW.FadeParts(f, { "TestOnlyExtra" }) end)
     TestOnlySocialFrame.TestOnlyExtra = TestOnlySocialFrame:CreateTexture()
     GW.AddButtons("TestOnlySocialFrame", { "TestOnlyLooseButton" }) CreateFrame("Button", "TestOnlyLooseButton", TestOnlySocialFrame)`;
   const on = loggedIn(WINDOWS_ENV + reg);
   on.eval("TestOnlySocialFrame:Show()");
   expect(windowState(on, "TestOnlySocialFrame"), "skinned like any window").toMatchObject({ art: 0, nine: 0, panel: true, title: true });
   expect(on.eval("return { TestOnlySocialFrame.TestOnlyExtra.__alpha, select('#', TestOnlyLooseButton:GetRegions()) > 0 }"), "its extra art faded and its loose button themed").toEqual([0, true]);
-  on.eval(`ns.GetModule("Windows").Add("map", "onDemand", "TestOnly_Part", { "TestOnlyLaterFrame" })`);
+  on.eval(`ns.GetModule("Windows").AddOnDemand("map", "TestOnly_Part", { "TestOnlyLaterFrame" })`);
   expect(windowState(on, "TestOnlyLaterFrame").panel, "a late registration for a window that already exists is skinned at once").toBe(true);
-  on.eval(`ns.GetModule("Windows").Add("map", "onDemand", "TestOnly_Later", { "TestOnlyLoadsLater" }) __window("TestOnlyLoadsLater")`);
+  on.eval(`ns.GetModule("Windows").AddOnDemand("map", "TestOnly_Later", { "TestOnlyLoadsLater" }) __window("TestOnlyLoadsLater")`);
   expect(on.eval("return ns.FrameState('vgWindow')[TestOnlyLoadsLater] == nil"), "a window that doesn't exist yet waits").toBe(true);
   on.fire("ADDON_LOADED", "TestOnly_Later");
   expect(on.eval("return ns.FrameState('vgWindow')[TestOnlyLoadsLater] == true"), "until its part of the game loads").toBe(true);

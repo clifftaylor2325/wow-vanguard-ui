@@ -90,11 +90,6 @@ local function needs()
   return total
 end
 
--- An item's name as the client has it (else "item 123").
-local function itemName(id)
-  return (C_Item.GetItemInfo(id)) or ("item " .. id)
-end
-
 -- The reagents still short of what the queue needs: { id, short } in item order.
 function CQ.Short()
   local out = {}
@@ -112,6 +107,7 @@ function CQ.List()
   if #queue == 0 then return ns.Chat("The craft queue is empty. Open a recipe in the profession window and /vg craft add.") end
   for i, e in ipairs(queue) do ns.Chat(string.format("%d. %d x %s", i, e.n, e.name or "recipe " .. e.id)) end
   local short = {}
+  local itemName = ns.GetModule("Errands").ItemName
   for _, s in ipairs(CQ.Short()) do short[#short + 1] = string.format("%s x%d", itemName(s.id), s.short) end
   ns.Chat(#short == 0 and "You have every reagent." or ("Short of: " .. table.concat(short, ", ") .. "."))
 end
@@ -192,17 +188,31 @@ local function remaining(seconds)
   return h > 0 and string.format("%dh %dm", h, m) or string.format("%dm", m)
 end
 
--- /vg craft cd: every character's noted cooldowns and when each is ready.
-function CQ.Cooldowns()
-  local any = false
-  if not listCall() then CQ.Scan() end
+-- Orders cooldown rows by character, then by recipe name.
+local function byCharThenName(a, b)
+  if a.char ~= b.char then return a.char < b.char end
+  return a.name < b.name
+end
+
+-- Every noted cooldown as { char, name, line }, sorted, because pairs order is undefined.
+local function cooldownRows()
+  local rows = {}
   for char, c in pairs(CQ.settings.chars) do
     for _, cd in pairs(c.cooldowns) do
-      any = true
-      ns.Chat(string.format("%s: %s, %s", char, cd.name, remaining(cd.ready - now())))
+      local line = string.format("%s: %s, %s", char, cd.name, remaining(cd.ready - now()))
+      rows[#rows + 1] = { char = char, name = cd.name, line = line }
     end
   end
-  if not any then ns.Chat("No profession cooldowns noted yet. Open a profession that has one and select its recipe.") end
+  table.sort(rows, byCharThenName)
+  return rows
+end
+
+-- /vg craft cd: every character's noted cooldowns and when each is ready.
+function CQ.Cooldowns()
+  if not listCall() then CQ.Scan() end
+  local rows = cooldownRows()
+  for _, row in ipairs(rows) do ns.Chat(row.line) end
+  if #rows == 0 then ns.Chat("No profession cooldowns noted yet. Open a profession that has one and select its recipe.") end
 end
 
 -- Ranking ------------------------------------------------------------------------------------

@@ -90,13 +90,23 @@ function ns.UnlockFromOptions(page)
   fromPage = page
 end
 
--- Unlock started: remembers every saved spot (once, until the frames lock) and shows the bar,
--- unless the game's Edit Mode unlocked them.
-function ns.UnlockStarted(editMode)
+-- Remembers every saved spot (once, until the frames lock) and makes the bar ready to show.
+local function prepareBar()
   before = before or ns.Copy(ns.Settings("positions"))
   if not bar then build() end
   fitBar()
-  bar:SetShown(not editMode)
+end
+
+-- Unlock started: remembers every saved spot and shows the bar.
+function ns.UnlockStarted()
+  prepareBar()
+  bar:Show()
+end
+
+-- Unlock started by the game's Edit Mode: remembers every saved spot, and the bar stays hidden (Edit Mode has its own buttons).
+function ns.UnlockStartedForEditMode()
+  prepareBar()
+  bar:Hide()
 end
 
 -- The frames locked: what was remembered is forgotten (the changes stay) and the bar hides.

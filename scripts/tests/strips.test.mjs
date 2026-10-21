@@ -101,7 +101,7 @@ it("the info strip under the minimap", () => {
 it("the info strip: the day and date with a calendar button", () => {
   const addon = loggedIn(UNITS_ENV + STRIP_ENV + 'date = function(f) return f == "%a %d %b" and "Tue 13 Oct" or "21:04" end __opened = 0 ToggleCalendar = function() __opened = __opened + 1 end');
   const button = "Vanguard_InfoStripCalendar";
-  const dateAnchor = 'local p = ns.GetModule("InfoStrip").texts.date.__points.LEFT return { p.rel == ns.GetModule("InfoStrip").texts.clock, p.relPoint, p.x }';
+  const dateAnchor = 'local p = ns.GetModule("InfoStrip").fonts.date.__points.LEFT return { p.rel == ns.GetModule("InfoStrip").fonts.clock, p.relPoint, p.x }';
   expect(addon.eval(dateAnchor), "the date sits right after the time").toEqual([true, "RIGHT", 8]);
   addon.eval('ns.Settings("InfoStrip").clock = false ns.GetModule("InfoStrip").UpdateAll()');
   expect(addon.eval(dateAnchor), "with the time off, the date takes the row's left edge").toEqual([false, "TOPLEFT", 6]);
@@ -150,7 +150,7 @@ it("a click on the info strip's time opens the game's clock window, or turns off
   click();
   addon.eval("__ringing = true");
   click();
-  expect(addon.eval("return { __calls, Vanguard_InfoStripClock:IsShown(), Vanguard_InfoStripClock.__points.TOPLEFT.rel == ns.GetModule('InfoStrip').texts.clock }"), "the window, then the ringing alarm off; the hit area covers the time")
+  expect(addon.eval("return { __calls, Vanguard_InfoStripClock:IsShown(), Vanguard_InfoStripClock.__points.TOPLEFT.rel == ns.GetModule('InfoStrip').fonts.clock }"), "the window, then the ringing alarm off; the hit area covers the time")
     .toEqual([["window", "alarm off"], true, true]);
   addon.eval('ns.Settings("InfoStrip").clock = false ns.GetModule("InfoStrip").Paint("clock")');
   expect(addon.eval("return Vanguard_InfoStripClock:IsShown()"), "with the time off, nothing takes its clicks").toBe(false);
@@ -203,7 +203,7 @@ it("the info strip at Text size 130 %: wider and taller rows, every block placed
   addon.eval("ns.Theme.Settings().textScale = 1.3 ns.Theme.Refresh() __wfgStub.advance(1.1)");
   // The strip's width and height, a block's anchor offset down from the top, and the calendar button's.
   const layout = addon.eval(`local IS = ns.GetModule("InfoStrip")
-    return { Vanguard_InfoStrip:GetWidth(), Vanguard_InfoStrip:GetHeight(), IS.texts.gold.__points.LEFT.y, Vanguard_InfoStripCalendar.__points.RIGHT.y }`);
+    return { Vanguard_InfoStrip:GetWidth(), Vanguard_InfoStrip:GetHeight(), IS.fonts.gold.__points.LEFT.y, Vanguard_InfoStripCalendar.__points.RIGHT.y }`);
   expect(layout, "13-point text: 237 wide, 23-tall rows (four shown), each row's middle a row lower").toEqual([237, 96, -34.5, -80.5]);
   // Text widths as the client draws them at 13 points: the harness's 6 units a letter at 10, grown by 1.3.
   const drawn = (key) => block(addon, key).text.length * 6 * 1.3;

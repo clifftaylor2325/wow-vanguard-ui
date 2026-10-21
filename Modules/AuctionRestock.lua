@@ -90,14 +90,16 @@ function AH.QueueCost(entry, found)
   if not (found and want and want > 0) or found.costQueued then return end
   found.costQueued = true
   if AH.progress then AH.progress.total = AH.progress.total + 1 end
-  AH.Queue({ cost = found, want = want, maxPrice = f.maxPrice }, true)
+  AH.QueueFirst({ cost = found, want = want, maxPrice = f.maxPrice })
 end
 
 -- A commodity listing as { unit price, units you can buy } (your own units left out); nil for a
 -- hidden number.
 local function commodityRow(r)
-  local unit, qty, mine = ns.PlainNumber(r.unitPrice), ns.PlainNumber(r.quantity), ns.PlainNumber(r.numOwnerItems or 0)
-  if unit and qty and mine then return { unit = unit, qty = qty - mine } end
+  if ns.IsSecret(r.numOwnerItems) then return nil end
+  local unit, qty = ns.PlainNumber(r.unitPrice), ns.PlainNumber(r.quantity)
+  local mine = ns.PlainNumber(r.numOwnerItems) or 0
+  if unit and qty then return { unit = unit, qty = qty - mine } end
 end
 
 -- An item listing as { unit price, quantity, whole = its buyout (it's bought as one) }; nil when
@@ -110,13 +112,10 @@ end
 
 -- Search result i of an item (a commodity's by its item ID, else by its key) as a row, or nil.
 local function resultRow(key, commodity, i)
-  local api = C_AuctionHouse
-  if commodity then
-    local r = api.GetCommoditySearchResultInfo(key.itemID, i)
-    return r and commodityRow(r)
-  end
-  local r = api.GetItemSearchResultInfo(key, i)
-  return r and itemRow(r)
+  local r = AH.SearchResultInfo(key, commodity, i)
+  if not r then return nil end
+  if commodity then return commodityRow(r) end
+  return itemRow(r)
 end
 
 -- The listings of an item you could buy, cheapest per unit first: none of yours, none over the

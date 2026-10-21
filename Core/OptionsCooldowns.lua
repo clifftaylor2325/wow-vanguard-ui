@@ -9,13 +9,17 @@ local ADDON, ns = ...
 local T, W = ns.Theme, ns.Widgets
 
 local O = ns.Options
-local moduleSettings, setting, liveSetting, check, append = O.ModuleSettings, O.Setting, O.LiveSetting, O.Check, O.Append
+local moduleSettings, reloadSetting, liveSetting, liveMethod, check, append = O.ModuleSettings, O.ReloadSetting, O.LiveSetting, O.LiveMethod, O.Check, O.Append
 
 local WZ = {}
 O.CooldownWizard = WZ
 
--- The share of an aura's time left under which the Cooldown Manager's icon glows.
-local GLOW_PERCENT = { min = 10, max = 60, step = 5, format = function(v) return string.format("%d%%", v) end }
+-- The share of an aura's time left under which the Cooldown Manager's icon glows: the slider's limits are the
+-- module's (CooldownGlow.PERCENT), read when the row is made, as the module loads after this file.
+local function glowPercentSlider()
+  local limits = ns.GetModule("CooldownGlow").PERCENT
+  return { min = limits.min, max = limits.max, step = 5, format = function(v) return string.format("%d%%", v) end }
+end
 
 -- get/set for showing the game's Cooldown Manager, which turns it on or off at once.
 local function cooldownManagerSetting()
@@ -37,15 +41,15 @@ end
 local function managerRows()
   return {
     show = tip(check("Show the game's manager", cooldownManagerSetting()), "Turns the game's Cooldown Manager on (off again when unticked). Its essential row sits between your frames; /vg unlock moves it."),
-    look = tip(check("Vanguard look (reload)", setting("GameTools", "cooldowns", true)), "Square icons in thin borders, the theme font and timer font on the game's Cooldown Manager."),
+    look = tip(check("Vanguard look (reload)", reloadSetting("GameTools", "cooldowns")), "Square icons in thin borders, the theme font and timer font on the game's Cooldown Manager."),
   }
 end
 
 -- The gaps row switches, by name.
 local function gapRows()
   return {
-    gaps = tip(check("Gaps row (reload)", setting("CooldownGaps", "on", true)), "A row of icons for what the game's manager misses: on-use trinkets, items and spells you choose (in the list below), pet abilities and totems."),
-    tracked = tip(check("Add the manager's cooldowns (reload)", setting("CooldownGaps", "tracked", true)), "Also draws the spells the manager tracks in its essential and utility rows as Vanguard icons in the gaps row."),
+    gaps = tip(check("Gaps row (reload)", reloadSetting("CooldownGaps", "on")), "A row of icons for what the game's manager misses: on-use trinkets, items and spells you choose (in the list below), pet abilities and totems."),
+    tracked = tip(check("Add the manager's cooldowns (reload)", reloadSetting("CooldownGaps", "tracked")), "Also draws the spells the manager tracks in its essential and utility rows as Vanguard icons in the gaps row."),
   }
 end
 
@@ -53,14 +57,14 @@ end
 local function glowRows()
   return {
     glow = tip(check("Glow a buff near its end", liveSetting("CooldownGlow", "glow", applyGlow)), "Glows a Cooldown Manager buff in its last part, where the game's own flag is missing."),
-    percent = tip({ "slider", "Glow when this much is left", GLOW_PERCENT, liveSetting("CooldownGlow", "percent", applyGlow) }, "The share of the buff's time left under which its icon glows."),
+    percent = tip({ "slider", "Glow when this much is left", glowPercentSlider(), liveSetting("CooldownGlow", "percent", applyGlow) }, "The share of the buff's time left under which its icon glows."),
   }
 end
 
 -- The key text switch (Modules/CooldownKeys.lua), applied at once.
 local function keyRows()
   return {
-    keys = tip(check("Key text on the manager's icons", liveSetting("CooldownKeys", "keys", function() ns.GetModule("CooldownKeys").Refresh() end)), "Shows the key you press for each spell in the manager's essential and utility rows, read from Vanguard's action bars. An icon whose spell isn't on a Vanguard bar shows none."),
+    keys = tip(check("Key text on the manager's icons", liveMethod("CooldownKeys", "keys", "Refresh")), "Shows the key you press for each spell in the manager's essential and utility rows, read from Vanguard's action bars. An icon whose spell isn't on a Vanguard bar shows none."),
   }
 end
 

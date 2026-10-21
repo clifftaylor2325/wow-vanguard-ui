@@ -442,6 +442,14 @@ it("list management from the pane's buttons: rename, duplicate, export, and dele
   addon.eval(`${HELPER}.DeleteList("TEST-ONLY Herbs") for i = 1, 19 do ${HELPER}.DeleteList("TEST-ONLY " .. i) end`);
   expect([choices(addon), actions(addon), addon.eval("return VanguardDB.ah.list")], "the last one deleted: no list in use").toEqual([["Deals", "Upgrades"], ["New", "Import"], null]);
 });
+it("a list delete shows the list in use from its top", () => {
+  const addon = atAuctionHouse(DUSTS);
+  makeList(addon, "TEST-ONLY Gone", '{ "2589" }');
+  makeList(addon, "TEST-ONLY Herbs", '{ "Strange Dust", "2589" }');
+  addon.eval(`local AH = ${HELPER} for i = 1, 40 do AH.AddEntry("2589") end AH.shopCard.body.table.offset = 3`);
+  addon.eval(`${HELPER}.DeleteList("TEST-ONLY Gone")`);
+  expect([addon.eval("return VanguardDB.ah.list"), addon.eval(`return ${HELPER}.shopCard.body.table.offset`)], "the list in use stays, from its top").toEqual(["TEST-ONLY Herbs", 0]);
+});
 it("import: plain lines and Auctionator's strings, within the caps", () => {
   const addon = atAuctionHouse(DUSTS);
   act(addon, "Import");

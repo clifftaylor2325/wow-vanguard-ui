@@ -5,7 +5,7 @@
 local ADDON, ns = ...
 
 local O = ns.Options
-local moduleSettings, setting, liveSetting, check, append = O.ModuleSettings, O.Setting, O.LiveSetting, O.Check, O.Append
+local moduleSettings, setting, reloadSetting, liveSetting, liveMethod, check, append = O.ModuleSettings, O.Setting, O.ReloadSetting, O.LiveSetting, O.LiveMethod, O.Check, O.Append
 
 -- get/set for whether action bar n is shown (applies on reload).
 local function barSetting(n)
@@ -56,12 +56,12 @@ end
 local function actionBarRows()
   return {
     { "header", "Action bars" },
-    check("Lock buttons (Shift-drag to move actions)", setting("ActionBars", "lockButtons")), check("Red when out of range", liveSetting("ActionBars", "rangeTint", function() ns.GetModule("ActionBars").RepaintIcons() end)),
+    check("Lock buttons (Shift-drag to move actions)", setting("ActionBars", "lockButtons")), check("Red when out of range", liveMethod("ActionBars", "rangeTint", "RepaintIcons")),
     { "cycle", "Bar backing", { { "auto", "Follow the theme" }, { "on", "Always" }, { "off", "Never" } }, backingSetting() },
-    check("Hide the default bars", setting("ActionBars", "hideBlizzard", true)),
+    check("Hide the default bars", reloadSetting("ActionBars", "hideBlizzard")),
     check("Restyle the pet, stance, possess and extra action buttons (reload)", skinSpecial()),
-    check("Pet and stance bars in their own movable spots (reload)", setting("SpecialBars", "place", true)),
-    check("Vehicle exit button (reload)", setting("SpecialBars", "vehicleExit", true)),
+    check("Pet and stance bars in their own movable spots (reload)", reloadSetting("SpecialBars", "place")),
+    check("Vehicle exit button (reload)", reloadSetting("SpecialBars", "vehicleExit")),
     { "text", "Empty slots stay hidden until you drag a spell or item onto the bars." }, { "button", "Keybind mode", keybindMode },
   }
 end
@@ -82,8 +82,13 @@ end
 -- Bars shown on mouseover or on conditions also show while you drag a spell or
 -- item. "Hidden" doesn't draw the bar, but its keys still cast (a keybind-only bar).
 local function barVisibilityRows(n)
-  local mode, when = ns.Visibility.Rows("Visibility", function() return moduleSettings("ActionBars").bars[n] end,
-    "visibility", "showWhen", function() barChanged(n, "visibility") end)
+  local mode, when = ns.Visibility.Rows({
+    caption = "Visibility",
+    tbl = function() return moduleSettings("ActionBars").bars[n] end,
+    modeKey = "visibility",
+    whenKey = "showWhen",
+    after = function() barChanged(n, "visibility") end,
+  })
   O.Tag(mode[4], "ActionBars", "bars")
   return mode, when
 end

@@ -75,7 +75,7 @@ it("Vanguard.API.v1 has Auctionator's function names, and every one wants a call
 
 it("auction prices by item ID and link: this realm and faction's cheapest unit price last seen, in copper", () => {
   const addon = withApi();
-  addon.eval("ns.AuctionPrices.Record(2589, 90, __now, 100, 120) ns.AuctionPrices.Record(2589, 110, __now + 60)");
+  addon.eval("ns.AuctionPrices.Record(2589, 90, __now, { units = 100, market = 120 }) ns.AuctionPrices.Record(2589, 110, __now + 60)");
   expect(call(addon, "GetAuctionPriceByItemID", "'TEST-ONLY Addon', 2589"), "the last seen, not the day's low or the market").toBe(110);
   expect(call(addon, "GetAuctionPriceByItemLink", "'TEST-ONLY Addon', '|cffffffff|Hitem:2589::::::::60:::::|h[Linen Cloth]|h|r'"), "by link").toBe(110);
   expect(call(addon, "GetAuctionPriceByItemLink", "'TEST-ONLY Addon', 'item:2589'"), "a bare item string").toBe(110);
@@ -100,7 +100,7 @@ it("disenchant prices by item ID and link, whether or not you know Enchanting", 
   const addon = withApi(`__wfgWorld.items[9101] = { name = "TEST-ONLY Gloves", classID = 4, quality = 2, level = 18 }
     __wfgWorld.items[9102] = { name = "TEST-ONLY Sword", classID = 2, quality = 2, level = 18 }`);
   expect(call(addon, "GetDisenchantPriceByItemID", "'TEST-ONLY Addon', 9101"), "no material priced yet").toBe(null);
-  addon.eval("ns.AuctionPrices.Record(10940, 80, __now, 10, 100) ns.AuctionPrices.Record(10939, 1000, __now)");
+  addon.eval("ns.AuctionPrices.Record(10940, 80, __now, { units = 10, market = 100 }) ns.AuctionPrices.Record(10939, 1000, __now)");
   expect(call(addon, "GetDisenchantPriceByItemID", "'TEST-ONLY Addon', 9101"), "75 % of 2.5 dust at 1s, 20 % of 1.5 essence at 10s").toBe(487);
   expect(call(addon, "GetDisenchantPriceByItemLink", "'TEST-ONLY Addon', '|cff1eff00|Hitem:9102::::|h[TEST-ONLY Sword]|h|r'"), "a weapon by link: mostly essence").toBe(1175);
   expect(call(addon, "GetDisenchantPriceByItemID", "'TEST-ONLY Addon', 2589"), "cloth doesn't disenchant").toBe(null);

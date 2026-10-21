@@ -63,16 +63,25 @@ local function answer(ok, why)
   refresh()
 end
 
--- Saves an offset typed into the X or Y box (Enter): from the side of the frame it's anchored
--- to, or from its screen point; a bad number is ignored.
-local function applyOffset(box)
+-- Saves the offset typed into a box: from the side of the frame it's anchored to, or from its screen
+-- point, the other axis as it is. Returns the setter's answer (ok, why); a bad number saves nothing.
+local function saveOffset(box)
   local v, key = tonumber(box:GetText() or ""), popover.key
+  if not v then return nil end
   local to, side, rx, ry = ns.MoverAnchor(key)
   local point, relPoint, x, y = ns.MoverPoint(key)
-  local nx, ny = box == popover.x and v or (to and rx or x), box == popover.y and v or (to and ry or y)
-  if v and to then ns.SetMoverAnchor(key, to, side, nx, ny) elseif v then ns.SetMoverPoint(key, point, relPoint, nx, ny) end
+  local nx, ny = x, y
+  if to then nx, ny = rx, ry end
+  if box == popover.x then nx = v elseif box == popover.y then ny = v end
+  if to then return ns.SetMoverAnchor(key, to, side, nx, ny) end
+  return ns.SetMoverPoint(key, point, relPoint, nx, ny)
+end
+
+-- Saves an offset typed into the X or Y box (Enter), and says why a link was refused.
+local function applyOffset(box)
+  local ok, why = saveOffset(box)
   box:ClearFocus()
-  answer(true)
+  answer(ok, why)
 end
 
 -- Saves a percent typed into the Scale or Opacity box (Enter): the box's setter
@@ -136,7 +145,7 @@ end
 local function numberBox(y, onEnter)
   local box = W.Input(popover, FIELD_W)
   box:SetPoint("RIGHT", popover, "TOPRIGHT", -T.SPACE.col, -y)
-  box:SetScript("OnEnterPressed", onEnter)
+  box:SetScript("OnEnterPressed", ns.Guard("apply a typed number", onEnter))
   return box
 end
 

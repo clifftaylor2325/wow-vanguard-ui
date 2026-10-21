@@ -21,12 +21,8 @@ DC.TAGS = { "Dungeon", "Raid", "Group" }
 
 -- Helpers ------------------------------------------------------------------------------------
 
--- Calls a client function by name; nil when this client doesn't have it.
-local function ask(name, ...)
-  local fn = _G[name]
-  if type(fn) ~= "function" then return nil end
-  return fn(...)
-end
+-- Calls a client function by name (ns.Client.Call); nil when this client doesn't have it.
+local ask = ns.Client.Call
 
 -- Calls tbl[name] when the client has it; nil otherwise.
 local function call(tbl, name, ...)
@@ -129,19 +125,14 @@ local function wanted(info, onThisMap, tags)
   return type(tag) == "table" and tags[ns.PlainNumber(tag.tagID) or 0] == true
 end
 
--- A plain true from the client (hidden values count as false).
-local function yes(v)
-  return not ns.IsSecret(v) and v == true
-end
-
 -- Whether a quest is ready to turn in, asked as the quest log asks (QuestInfo has no completion field).
 local function questDone(questID)
-  return yes(call(C_QuestLog, "ReadyForTurnIn", questID)) or yes(call(C_QuestLog, "IsComplete", questID))
+  return ns.IsTrue(call(C_QuestLog, "ReadyForTurnIn", questID)) or ns.IsTrue(call(C_QuestLog, "IsComplete", questID))
 end
 
 -- A log entry as { title, level, done }, or nil when it is a header or its title or level is hidden.
 local function entry(info)
-  if type(info) ~= "table" or info.isHeader or ns.IsSecret(info.questID) then return nil end
+  if type(info) ~= "table" or ns.IsSecret(info.isHeader) or info.isHeader or ns.IsSecret(info.questID) then return nil end
   local level = ns.PlainNumber(info.level)
   if not plainText(info.title) or not ns.PlainNumber(info.questID) or not level then return nil end
   return { title = info.title, level = level, done = questDone(info.questID), questID = info.questID }

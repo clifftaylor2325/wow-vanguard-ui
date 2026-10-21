@@ -91,6 +91,40 @@ function ns.PlainNumber(value)
   return value
 end
 
+-- The value if it's a plain, non-empty string; nil for a hidden value, a non-string or "".
+---@param value any
+---@return string|nil
+function ns.PlainText(value)
+  if ns.IsSecret(value) or type(value) ~= "string" or value == "" then return nil end
+  return value
+end
+
+-- True only for a plain true from the client; a hidden value counts as no.
+---@param value any
+---@return boolean
+function ns.IsTrue(value)
+  return not ns.IsSecret(value) and value == true
+end
+
+-- Calls t[name](...) if the client has it, else returns nil. Pass _G as t for a global function.
+---@param t table|nil
+---@param name string
+---@return any
+function ns.CallIf(t, name, ...)
+  local fn = type(t) == "table" and t[name]
+  if type(fn) == "function" then return fn(...) end
+end
+
+-- Calls a client function by name and gives back its first value, or nil when the client lacks it or
+-- the value is secret. Test the result only after this: a truth test on a secret value is an error.
+---@param name string
+---@return any
+function ns.PlainCall(name, ...)
+  local answer = ns.Client.Call(name, ...)
+  if ns.IsSecret(answer) then return nil end
+  return answer
+end
+
 -- True on the WoW Forever client (game type "camelot"): the 12.1 engine with
 -- vanilla content, reporting a 1.x interface number (16001). A build that
 -- reports the 12.x number instead still counts when the client has the Forever

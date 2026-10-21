@@ -39,13 +39,6 @@ RS.ASSIST = { T.Texture("Diamond"), "text2" }
 
 -- Values -----------------------------------------------------------------------------------
 
--- Calls a client function by name if this client has it; nil otherwise.
-local function call(name, ...)
-  local fn = _G[name]
-  if type(fn) == "function" then return fn(...) end
-  return nil
-end
-
 -- A plain value, or nil when it is hidden.
 local function plain(v)
   if ns.IsSecret(v) then return nil end
@@ -54,27 +47,27 @@ end
 
 -- The raid target icon number (1-8) on a unit, or nil.
 function RS.RaidIcon(unit)
-  local index = plain(call("GetRaidTargetIndex", unit))
+  local index = plain(ns.CallIf(_G, "GetRaidTargetIndex", unit))
   if type(index) ~= "number" or index < 1 or index > 8 then return nil end
   return index
 end
 
 -- The ready check mark { texture, color } for a unit while a check runs, or nil.
 function RS.ReadyMark(unit)
-  local status = plain(call("GetReadyCheckStatus", unit))
+  local status = plain(ns.CallIf(_G, "GetReadyCheckStatus", unit))
   return type(status) == "string" and RS.READY[status] or nil
 end
 
 -- The leader or assistant mark { texture, color } for a unit, or nil.
 function RS.LeaderMark(unit)
-  if plain(call("UnitIsGroupLeader", unit)) == true then return RS.LEADER end
-  if plain(call("UnitIsGroupAssistant", unit)) == true then return RS.ASSIST end
+  if plain(ns.CallIf(_G, "UnitIsGroupLeader", unit)) == true then return RS.LEADER end
+  if plain(ns.CallIf(_G, "UnitIsGroupAssistant", unit)) == true then return RS.ASSIST end
   return nil
 end
 
 -- True while someone is resurrecting the unit.
 function RS.Resurrecting(unit)
-  return plain(call("UnitHasIncomingResurrection", unit)) == true
+  return plain(ns.CallIf(_G, "UnitHasIncomingResurrection", unit)) == true
 end
 
 -- The summon atlas for a unit someone is summoning, or nil (none, a hidden answer, or a client without the calls).
@@ -94,9 +87,9 @@ end
 -- can give the tile's token to someone else.
 local function isPlayer(unit)
   if unit == "player" then return true end
-  local same = call("UnitIsUnit", unit, "player")
+  local same = ns.CallIf(_G, "UnitIsUnit", unit, "player")
   if not ns.IsSecret(same) then return same == true end
-  local guid, mine = call("UnitGUID", unit), call("UnitGUID", "player")
+  local guid, mine = ns.CallIf(_G, "UnitGUID", unit), ns.CallIf(_G, "UnitGUID", "player")
   return not ns.IsSecret(guid) and not ns.IsSecret(mine) and guid ~= nil and guid == mine
 end
 
@@ -118,9 +111,9 @@ end
 -- is remembered on the button (b.isPlayer) when it gets its unit.
 function RS.UpdateRange(b, unit)
   if not RS.settings.rangeFade or b.isPlayer then return setAlpha(b, 1) end
-  local inRange, checked = call("UnitInRange", unit)
+  local inRange, checked = ns.CallIf(_G, "UnitInRange", unit)
   if ns.IsSecret(inRange) then return fadeHidden(b, inRange) end
-  local out = not ns.IsSecret(checked) and checked == true and inRange == false
+  local out = ns.IsTrue(checked) and inRange == false
   setAlpha(b, out and RS.settings.fadeAlpha or 1)
 end
 

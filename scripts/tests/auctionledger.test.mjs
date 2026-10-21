@@ -239,13 +239,13 @@ it("the info strip's auction sales: this session's, off until switched on, from 
   const before = `VanguardDB.ah = { ledgers = { ["ForeverTest-Alliance"] = { records = { { kind = "sold", id = 9999, qty = 1, amount = 70000, auction = 1, t = 1790000000 - 600 } }, open = {} } } }`;
   const addon = atAuctionHouse(CLICK_LUA, { savedVariables: before });
   // The strip's auction sales block: [shown, text].
-  const block = () => addon.eval("local fs = ns.GetModule('InfoStrip').texts.ahgold return { fs:IsShown(), fs:GetText() or false }");
+  const block = () => addon.eval("local fs = ns.GetModule('InfoStrip').fonts.ahgold return { fs:IsShown(), fs:GetText() or false }");
   addon.eval(`ns.AuctionLedger.Note({ kind = "sold", id = 9999, qty = 1, amount = 4000, auction = 2, t = __now })`);
   expect(block()[0], "off by default").toBe(false);
   addon.eval('ns.Options.Show("map")');
   addon.eval('__click("Your auction sales this session")');
   expect([addon.eval("return ns.Settings('InfoStrip').ahgold"), block()], "on: this session's sale only (the one before login isn't)").toEqual([true, [true, "AH +40s 0c"]]);
-  expect(isTok(addon, addon.frame("ns.GetModule('InfoStrip').texts.ahgold").textColor, "gold"), "in gold").toBe(true);
+  expect(isTok(addon, addon.frame("ns.GetModule('InfoStrip').fonts.ahgold").textColor, "gold"), "in gold").toBe(true);
   addon.eval(`ns.AuctionLedger.Note({ kind = "sold", id = 9999, qty = 1, amount = 125000, auction = 3, t = __now })
     ns.AuctionLedger.Note({ kind = "expired", id = 9999, qty = 1, auction = 4, t = __now })`);
   expect([block()[1], addon.eval("return Vanguard_InfoStrip:GetHeight()")], "a new sale counts at once, on the sixth row; an expiry adds nothing").toEqual(["AH +12g 90s", 112]);
@@ -257,7 +257,7 @@ it("with the auction helper off, nothing is noted and the strip shows nothing", 
   const addon = loggedIn(ENV, { savedVariables: "VanguardDB.profiles = { Default = { modules = { AuctionHelper = false }, InfoStrip = { ahgold = true } } }" });
   addon.eval(`__wfgWorld.mail = { ${invoice("Linen Cloth", 2000, 20)} }`);
   addon.world.openMailbox();
-  expect([addon.eval("return ns.AuctionLedger.SessionSales()"), addon.eval("return ns.GetModule('InfoStrip').texts.ahgold:IsShown()")], "no ledger, no block").toEqual([0, false]);
+  expect([addon.eval("return ns.AuctionLedger.SessionSales()"), addon.eval("return ns.GetModule('InfoStrip').fonts.ahgold:IsShown()")], "no ledger, no block").toEqual([0, false]);
 });
 
 it("a client without the inbox calls doesn't read mail", () => {

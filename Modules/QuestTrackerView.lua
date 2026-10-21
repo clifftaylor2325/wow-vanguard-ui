@@ -255,8 +255,7 @@ end
 -- with the step line), else the shown arrow's own pick; a quest, not a heading, a challenge or a recipe.
 function QT.IsFollowed(q)
   if q.section or q.achievement or q.recipe or not q.id then return false end
-  local QA = ns.QuestArrow
-  return q.id == (ns.QuestGuide.Followed() or (QA.settings and QA.settings.show and QA.current))
+  return q.id == (ns.QuestGuide.Followed() or ns.QuestArrow.Followed())
 end
 
 -- A section heading takes no mouse (no clicks, no tooltip, no hover). A block repainted under the mouse keeps
@@ -287,15 +286,19 @@ function QT.Redraw()
   if QT.frame then ns.Soon("questtracker", QT.Refresh) end
 end
 
--- What the foot of the tracker keeps free under the quests: the "+N more" line, and the level XP line when it shows.
-local function reserved()
-  return QT.LINE * (QT.levelText and 2 or 1)
+-- What the foot of the tracker keeps free under the quests: the "+N more" line, and the level XP line when
+-- there is one (levelText, its text, else nil).
+local function reserved(levelText)
+  return QT.LINE * (levelText and 2 or 1)
 end
 
+-- The expanded tracker's share of the screen's height, and the height assumed when the client gives none.
+QT.EXPANDED_SHARE, QT.FALLBACK_SCREEN_HEIGHT = 0.7, 768
+
 -- How tall the quests may stack: the spot's body, or most of the screen when expanded.
-local function roomFor(f)
-  if QT.settings.expanded then return (UIParent:GetHeight() or 768) * 0.7 end
-  return f.body:GetHeight() - reserved()
+local function roomFor(f, levelText)
+  if QT.settings.expanded then return (UIParent:GetHeight() or QT.FALLBACK_SCREEN_HEIGHT) * QT.EXPANDED_SHARE end
+  return f.body:GetHeight() - reserved(levelText)
 end
 
 -- How many of the quests fit in a room.
@@ -319,8 +322,8 @@ local function fitsAt(quests, i, shown, y, room)
 end
 
 -- Lays the rows out from the top until the room is full or QT.MAX_SHOWN are drawn; "+N more" for the rest.
-local function layout(f, quests)
-  local y, shown, room = 0, {}, roomFor(f)
+local function layout(f, quests, levelText)
+  local y, shown, room = 0, {}, roomFor(f, levelText)
   for i, q in ipairs(quests) do
     if not fitsAt(quests, i, shown, y, room) then break end
     local b = f.blocks.Next()
@@ -341,9 +344,9 @@ end
 
 -- The line under the last block: "+N more" when some quests don't fit; "Show fewer" when expanded
 -- (with "· +N more" when even the expanded list stops at QT.MAX_SHOWN).
-local function showMore(f, quests, shown, y)
+local function showMore(f, quests, shown, y, levelText)
   local hidden = countRows(quests, #shown + 1)
-  local fewer = QT.settings.expanded and #quests > fitCount(quests, f.body:GetHeight() - reserved())
+  local fewer = QT.settings.expanded and #quests > fitCount(quests, f.body:GetHeight() - reserved(levelText))
   local more = hidden > 0 and ("+" .. hidden .. " more") or nil
   f.moreBtn:SetShown(more ~= nil or fewer)
   f.more:SetShown(more ~= nil or fewer)
@@ -353,20 +356,20 @@ end
 
 -- The level XP line under the last block ("Quests: 62% of the XP to level"), when its switch is on and
 -- the client has the numbers; returns where the next line starts.
-local function paintLevelXP(f, y)
-  f.levelXp:SetShown(QT.levelText ~= nil)
-  if not QT.levelText then return y end
-  f.levelXp:SetText(QT.levelText)
+local function paintLevelXP(f, y, levelText)
+  f.levelXp:SetShown(levelText ~= nil)
+  if not levelText then return y end
+  f.levelXp:SetText(levelText)
   f.levelXp:SetPoint("TOPLEFT", f.body, "TOPLEFT", 0, -y)
   return y + QT.LINE
 end
 
 -- Lays out the rows (none while collapsed): the blocks, the level XP line, then the "+N more" line.
 local function drawRows(f, rows)
-  QT.levelText = QT.settings.levelXp and #rows > 0 and QT.LevelLine() or nil
-  local shown, y = layout(f, rows)
+  local levelText = QT.settings.levelXp and #rows > 0 and QT.LevelLine() or nil
+  local shown, y = layout(f, rows, levelText)
   QT.shown = shown
-  showMore(f, rows, shown, paintLevelXP(f, y))
+  showMore(f, rows, shown, paintLevelXP(f, y, levelText), levelText)
 end
 
 -- Redraws the tracker from the quests you watch and the challenges and recipes you track (also in combat, so

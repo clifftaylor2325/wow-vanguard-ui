@@ -23,7 +23,7 @@ local vgDropArrow = ns.FrameState("vgDropArrow")
 local vgLootRows = ns.FrameState("vgLootRows")
 local vgMenuSkinned = ns.FrameState("vgMenuSkinned")
 local vgMoneyBox = ns.FrameState("vgMoneyBox")
-local vgPadded = ns.FrameState("vgPadded")
+local vgPlatePadded = ns.FrameState("vgPlatePadded")
 local vgChevron = ns.FrameState("vgChevron")
 local vgRowsWatched = ns.FrameState("vgRowsWatched")
 local vgRowsLater = ns.FrameState("vgRowsLater")
@@ -41,6 +41,11 @@ local GW = ns.Module("Windows", { defaults = {
 
 -- The groups of game windows, each a switch under Game windows.
 GW.GROUPS = { "windows", "popups", "timers", "social", "town", "system", "map", "menus", "tabs", "pvp" }
+
+-- Whether the switch of a group of windows is on (a key of GW.settings, false until the settings load).
+function GW.GroupOn(group)
+  return type(GW.settings) == "table" and GW.settings[group] == true
+end
 -- Every registered window: name -> { group = , skin = }, and the names in the order registered.
 GW.REGISTERED, GW.ORDER = {}, {}
 
@@ -114,15 +119,16 @@ GW.LAYOUT_WINDOWS = { StaticPopup1 = true, StaticPopup2 = true, StaticPopup3 = t
 
 -- Skinning ------------------------------------------------------------------------------------
 
--- Fades the art on a window and on each art piece it has (the inset's own frame too).
-local function fadeArt(frame)
+-- Fades the art a window's template draws (GW.ART, its own textures too), with no panel: for windows made of several
+-- frames, where one panel goes on the outer frame. The Inset's frame stays; its art and NineSlice fade.
+function GW.FadeWindowArt(frame)
   T.FadeRegions(frame)
   for _, key in ipairs(GW.ART) do
     local part = frame[key]
     if type(part) == "table" and part.GetRegions then T.FadeRegions(part) end
     if type(part) == "table" and part.SetAlpha and key ~= "Inset" then part:SetAlpha(0) end
   end
-  if type(frame.Inset) == "table" and type(frame.Inset.NineSlice) == "table" then frame.Inset.NineSlice:SetAlpha(0) end
+  GW.FadeFrame(GW.Part(frame, "Inset.NineSlice"))
 end
 
 -- The window's push buttons (its button container's, else Name..Button1-4).
@@ -197,18 +203,37 @@ end
 -- check stays): it takes the Minimize glyph on the grey control tile, not the red close cross.
 GW.HIDE_BUTTONS = { PVPReadyDialog = true, ReadyStatus = true }
 
--- A window's close button (when it has one) in the theme and in its corner (GW.PlaceControls); with hide set, the
--- button of a window that only hides (GW.HIDE_BUTTONS) as a Minimize control.
-function GW.DressClose(frame, close, hide)
+-- Gives a close button its glyph (`paint`) and puts it in its corner (GW.PlaceControls), when it is a button.
+local function dressCloseWith(paint, frame, close)
   if type(close) ~= "table" or not close.CreateTexture then return end
-  if hide then T.WindowControl(close, "Minimize") else T.CloseButton(close) end
+  paint(close)
   if close.GetPoint then GW.PlaceControls(frame, close) end
+end
+
+-- A window's close button (when it has one) in the theme and in its corner (GW.PlaceControls).
+function GW.DressClose(frame, close)
+  dressCloseWith(T.CloseButton, frame, close)
+end
+
+-- The Minimize glyph, for the close button of a window that only hides (GW.HIDE_BUTTONS).
+local function paintMinimize(button)
+  T.WindowControl(button, "Minimize")
+end
+
+-- The close button of a window that only hides (GW.HIDE_BUTTONS): the Minimize control, in the same corner.
+local function dressHideButton(frame, close)
+  dressCloseWith(paintMinimize, frame, close)
+end
+
+-- A font string in a role and a theme colour; anything that is not a font string is skipped.
+function GW.SkinText(fs, role, token)
+  if type(fs) == "table" and fs.SetFont then T.Text(fs, role, token) end
 end
 
 -- A window's or dialog's title text (a font string; skipped when it is not one) in the heading role (the role a game window's own title takes, docs/THEME.md) and the
 -- light text colour. The game centres it; only its font and colour change, never its anchors or justification.
 function GW.SkinTitle(fs)
-  if type(fs) == "table" and fs.SetFont then T.Text(fs, "heading", "text") end
+  GW.SkinText(fs, "heading", "text")
 end
 
 -- A window's title in the theme, and in the light text colour again each time the window sets its colour itself
@@ -221,7 +246,8 @@ end
 
 -- The close, maximize and minimize buttons, title and push buttons in the theme.
 local function dressParts(frame, name)
-  GW.DressClose(frame, frame.CloseButton or (name and _G[name .. "CloseButton"]), GW.HIDE_BUTTONS[name or ""])
+  local close = frame.CloseButton or (name and _G[name .. "CloseButton"])
+  if GW.HIDE_BUTTONS[name or ""] then dressHideButton(frame, close) else GW.DressClose(frame, close) end
   GW.DressMaxMin(frame)
   dressTitle(frame)
   for _, b in ipairs(buttons(frame, name)) do T.Button(b) end
@@ -274,7 +300,7 @@ end
 -- (paintPanel), its parts themed.
 function GW.Skin(frame, pad)
   local name = frame.GetName and frame:GetName()
-  fadeArt(frame)
+  GW.FadeWindowArt(frame)
   paintInset(frame)
   keepContent(frame, name)
   paintPanel(frame, name, pad)
@@ -309,8 +335,7 @@ GW.MONEY_PARTS = { "GoldButton", "SilverButton", "CopperButton" }
 function GW.SkinMoney(frame)
   if type(frame) ~= "table" then return end
   for _, key in ipairs(GW.MONEY_PARTS) do
-    local fs = type(frame[key]) == "table" and frame[key].Text
-    if type(fs) == "table" and fs.SetFont then T.Text(fs, "number", false) end
+    GW.SkinText(GW.Part(frame, key .. ".Text"), "number", false)
   end
 end
 
@@ -329,8 +354,7 @@ GW.MONEY_DISPLAYS = { "GoldDisplay", "SilverDisplay", "CopperDisplay" }
 
 -- One denomination's figure in the number role, its colour left as the game sets it; a part that is not a frame is skipped.
 local function skinDenomination(display)
-  local fs = type(display) == "table" and display.Text
-  if type(fs) == "table" and fs.SetFont then T.Text(fs, "number", false) end
+  GW.SkinText(GW.Part(display, "Text"), "number", false)
 end
 
 -- A money display (the auction house's: the window's money line, the sell form's deposit, the buy dialog's price) in the
@@ -352,7 +376,7 @@ function GW.SkinTimer(frame)
   GW.Skin(frame, 0)
   local bar = frame.StatusBar
   if type(bar) == "table" and bar.SetStatusBarTexture then T.StyleBar(bar) end
-  if type(frame.Text) == "table" and frame.Text.SetFont then T.Text(frame.Text, "barSmall", "text") end
+  GW.SkinText(frame.Text, "barSmall", "text")
 end
 
 -- The breath and fatigue bars are the container's unnamed children on the 12.x engine
@@ -413,8 +437,8 @@ end
 -- low in it).
 function GW.PadMoneyLine(plate, well, above)
   local line = type(plate) == "table" and plate.MoneyFrame
-  if type(line) ~= "table" or not line.SetPoint or type(well) ~= "table" or vgPadded[plate] then return end
-  vgPadded[plate] = true
+  if type(line) ~= "table" or not line.SetPoint or type(well) ~= "table" or vgPlatePadded[plate] then return end
+  vgPlatePadded[plate] = true
   if type(above) == "table" and above.GetObjectType then hangUnder(well, above) end
   line:ClearAllPoints()
   line:SetPoint("RIGHT", well, "RIGHT", -T.SPACE.gap, 0)
@@ -498,7 +522,7 @@ function GW.DressChecks(frame, depth)
 end
 
 -- The scroll bars a window keeps, by key: the usual one and the description, no-recruits and scrolling-description
--- ones (GW.DressBars in Modules/WindowsTabs.lua looks for each of them on a frame).
+-- ones (dressBars in Modules/WindowsTabs.lua looks for each of them on a frame).
 GW.SCROLL_KEYS = { "ScrollBar", "DescriptionScrollBar", "NoRecruitsScrollBar", "ScrollingDescriptionScrollBar" }
 
 -- Tries GW.WatchRows again the next time a box with no view yet is shown (once per box).
@@ -538,12 +562,23 @@ local function eachNamed(names, fn)
   end
 end
 
+-- An item-style icon button (a book entry, a Legacy card, a flattened icon): its bronze frame and other art faded (the
+-- icon and the game's hover highlight kept; a Legacy challenge's icon frame holds its picture as texture), the icon
+-- cropped and a thin inset border round it, like an item slot.
+function GW.DressIcon(button)
+  if type(button) ~= "table" or not button.GetRegions or not button.CreateTexture then return end
+  T.FadeRegions(button, GW.KeepKeys(button, { "Icon", "icon", "texture", "IconHighlight", "Highlight" }))
+  local icon = button.Icon or button.icon or button.texture
+  if type(icon) == "table" and icon.SetTexCoord then T.Crop(icon) end
+  T.Panel(button, { inset = true, noBg = true })
+end
+
 -- A frame that is only art in the game (an InsetFrameTemplate well, a model scene): its art and nine-slice faded
 -- and a flat inset panel in their place (T.Panel paints once); anything that is not a frame is skipped.
 function GW.InsetPanel(part)
   if type(part) ~= "table" or not part.GetRegions or not part.CreateTexture then return end
   T.FadeRegions(part)
-  if type(part.NineSlice) == "table" and part.NineSlice.SetAlpha then part.NineSlice:SetAlpha(0) end
+  GW.FadeFrame(GW.Part(part, "NineSlice"))
   T.Panel(part, { inset = true, noSheen = true })
 end
 
@@ -630,6 +665,12 @@ function GW.FollowMark(row, mark)
   T.SelectRow(row, type(mark) == "table" and type(mark.IsShown) == "function" and mark:IsShown() == true)
 end
 
+-- The row's selected look following the game's method `method` (SetChecked, SetSelected): each time the game calls it
+-- with the flag, the look is set to that flag. A post-hook, once per frame and method.
+function GW.FollowSelected(frame, method)
+  GW.HookAfter(frame, method, function(row, on) T.SelectRow(row, on == true) end)
+end
+
 -- An edit box (the game's input border and all) as a theme edit box; anything that is not one is skipped.
 function GW.SkinEditBox(box)
   if type(box) == "table" and box.SetText and box.GetRegions then T.EditBox(box) end
@@ -693,6 +734,13 @@ function GW.EachKey(frame, keys, fn)
   for _, key in ipairs(keys) do fn(frame[key]) end
 end
 
+-- Runs fn(item) on each active item of a frame pool (one with EnumerateActive, the game's pooled buttons and rows); a
+-- pool the client lacks is skipped.
+function GW.EachActive(pool, fn)
+  if type(pool) ~= "table" or type(pool.EnumerateActive) ~= "function" then return end
+  for item in pool:EnumerateActive() do fn(item) end
+end
+
 -- The parts of frame under those keys as a set, for T.FadeRegions' keep argument (art the game animates or the
 -- window shows as content).
 function GW.KeepKeys(frame, keys)
@@ -703,9 +751,10 @@ function GW.KeepKeys(frame, keys)
   return keep
 end
 
--- A font string in a role and a theme colour; anything that is not a font string is skipped.
-function GW.SkinText(fs, role, token)
-  if type(fs) == "table" and fs.SetFont then T.Text(fs, role, token) end
+-- Adds part to a keep set when it is a frame or texture (a part the client lacks is skipped), and returns the set.
+function GW.KeepAlso(keep, part)
+  if type(part) == "table" then keep[part] = true end
+  return keep
 end
 
 -- A paging arrow as a theme arrow button pointing `direction`; anything that is not a frame is skipped.
@@ -977,7 +1026,7 @@ for i = 1, 4 do GW.INSIDES["GroupLootFrame" .. i] = rollInside end
 -- A popup's text box (a tooltip-backdrop edit box) as a theme edit box, the backdrop's nine-slice faded.
 local function skinPopupBox(box)
   GW.SkinEditBox(box)
-  if type(box) == "table" and type(box.NineSlice) == "table" and box.NineSlice.SetAlpha then box.NineSlice:SetAlpha(0) end
+  GW.FadeFrame(GW.Part(box, "NineSlice"))
 end
 
 -- A popup's item (the item to hand over: a name plate and an item button): the plate faded, the item look.
@@ -1006,13 +1055,13 @@ do
 
   -- Gives a popup's first button back the game's colour, once it is enabled: its normal font object's (the label's
   -- own colour may be the red a destroy popup left on this reused frame), else the colour from before the paint.
-  -- The numeric T.Color drops the danger token, so a theme refresh doesn't paint it red again.
+  -- The numeric T.ColorRGB drops the danger token, so a theme refresh doesn't paint it red again.
   local function unpaint(button, label)
     if not (vgDanger[button] and button:IsEnabled()) then return end
     local font = button:GetNormalFontObject()
     local c = font and { font:GetTextColor() } or vgDanger[button]
     vgDanger[button] = nil
-    T.Color(label, c[1], c[2], c[3])
+    T.ColorRGB(label, c[1], c[2], c[3])
   end
 
   -- Paints a popup's first button: the danger colour while it is enabled on a destroy popup (GW.DANGER_POPUPS),
@@ -1058,7 +1107,7 @@ GW.INSIDES.ReadyCheckFrame = function()
   local listener = _G.ReadyCheckListenerFrame
   if type(listener) ~= "table" then return end
   GW.FadeParts(listener, { "Bg", "NineSlice" })
-  if type(listener.NineSlice) == "table" and listener.NineSlice.SetAlpha then listener.NineSlice:SetAlpha(0) end
+  GW.FadeFrame(GW.Part(listener, "NineSlice"))
   GW.SkinTitle(type(listener.TitleContainer) == "table" and listener.TitleContainer.TitleText or nil)
   GW.SkinButton(listener.YesButton)
   GW.SkinButton(listener.NoButton)
@@ -1172,24 +1221,12 @@ GW.TALENT_ICONS = { "ResetButton", "UndoButton" }
 -- own); each is looked for on both, and one the client lacks is skipped.
 GW.BOOK_REFILLS = { "SetDataProvider", "SetCurrentPage", "UpdateFrames", "UpdateDisplay" }
 
--- The icon button of a book entry: its bronze laurel frame and other art faded (the icon and the game's hover
--- highlight kept; a Legacy challenge's icon frame holds its picture as texture), the icon cropped and a thin inset
--- border round it, like an item slot.
-local function dressBookIcon(button)
-  if type(button) ~= "table" or not button.GetRegions or not button.CreateTexture then return end
-  T.FadeRegions(button, GW.KeepKeys(button, { "Icon", "icon", "texture", "IconHighlight", "Highlight" }))
-  local icon = button.Icon or button.icon or button.texture
-  if type(icon) == "table" and icon.SetTexCoord then T.Crop(icon) end
-  T.Panel(button, { inset = true, noBg = true })
-end
-GW.DressIcon = dressBookIcon
-
 -- One spell entry of the book (a name, a rank line and an icon button on a smudged plate): the plate faded, the
 -- icon in the item-slot look, the name and rank in the theme's text roles (the game colours them for parchment,
 -- dark brown on the dark panel).
 local function dressBookEntry(entry)
   GW.FadeParts(entry, { "Backplate" })
-  dressBookIcon(entry.Button)
+  GW.DressIcon(entry.Button)
   GW.SkinText(entry.Name, "label", "text")
   GW.SkinText(entry.SubName, "small", "muted")
 end
@@ -1277,6 +1314,16 @@ function GW.HookAfter(frame, name, fn)
   if vgHooked[frame][name] then return end
   vgHooked[frame][name] = true
   hooksecurefunc(frame, name, ns.Guard("hook " .. name, fn))
+end
+
+-- Runs fn after the game's global function `name` each time it runs (under ns.Guard as `where`), once per global however
+-- often the skin that asks for it runs; a global the client lacks is skipped, so a later call may still hook it.
+function GW.HookGlobalOnce(name, where, fn)
+  if type(hooksecurefunc) ~= "function" or type(_G[name]) ~= "function" then return end
+  vgHooked[_G] = vgHooked[_G] or {}
+  if vgHooked[_G][name] then return end
+  vgHooked[_G][name] = true
+  hooksecurefunc(name, ns.Guard(where, fn))
 end
 
 -- Hooks fn into the frame's script `script` (under ns.Guard as `where`) once per frame and script, however often the
@@ -1853,18 +1900,13 @@ local function skinCategoryButton(button)
   button:HookScript("OnLeave", ns.Guard("category leave", lightCategory))
 end
 
--- Whether the category set-up hook is in (it is a global, hooked once).
-local categoriesHooked = false
-
 -- The category list (AuctionHouseCategoriesListTemplate): the dark tile an inset, its rows as the list acquires them
 -- and as the game sets each up.
 local function skinCategories(list)
   if type(list) ~= "table" or not list.GetRegions then return end
   GW.InsetPanel(list)
   GW.WatchRows(list.ScrollBox, skinCategoryButton)
-  if categoriesHooked or type(_G.AuctionHouseFilterButton_SetUp) ~= "function" then return end
-  categoriesHooked = true
-  hooksecurefunc("AuctionHouseFilterButton_SetUp", ns.Guard("hook filter set-up", skinCategoryButton))
+  GW.HookGlobalOnce("AuctionHouseFilterButton_SetUp", "hook filter set-up", skinCategoryButton)
 end
 
 -- The search bar (AuctionHouseSearchBarTemplate): the search box with its magnifier, the Search button, the filter
@@ -2012,15 +2054,18 @@ local function record(group, names, skin)
 end
 
 -- Registers game windows under a group (docs/design/RESKIN.md 3.1), at file scope:
---   GW.Add(group, "framed", names, skin)            skinned now and on every show
---   GW.Add(group, "popups", names, skin)            the same, for popups
---   GW.Add(group, "onDemand", addon, names, skin)   once that part of the game loads
+--   GW.Add(group, names, skin)                      skinned now and on every show (popups too)
+--   GW.AddOnDemand(group, addon, names, skin)       once that part of the game loads
 -- skin is a function(frame), GW.Skin when nil.
-function GW.Add(group, kind, a, b, c)
-  if kind ~= "onDemand" then return record(group, a, b) end
-  GW.ON_DEMAND[a] = GW.ON_DEMAND[a] or {}
-  for _, name in ipairs(b) do table.insert(GW.ON_DEMAND[a], name) end
-  record(group, b, c)
+function GW.Add(group, names, skin)
+  record(group, names, skin)
+end
+
+-- Registers game windows under a group once the named part of the game (addon) loads (see GW.Add).
+function GW.AddOnDemand(group, addon, names, skin)
+  GW.ON_DEMAND[addon] = GW.ON_DEMAND[addon] or {}
+  for _, name in ipairs(names) do table.insert(GW.ON_DEMAND[addon], name) end
+  record(group, names, skin)
 end
 
 -- Push buttons a window keeps outside Button1-4, themed with it.
@@ -2071,11 +2116,11 @@ end
 
 -- The windows this file skins itself: framed windows, popups, the breath bars' container and the
 -- windows that load later. Other groups register from Modules/Windows<Area>.lua.
-GW.Add("windows", "framed", GW.FRAMED, GW.SkinFramed)
-GW.Add("windows", "framed", { "LootFrame" }, GW.SkinLoot)
-GW.Add("popups", "popups", GW.POPUPS, GW.SkinFramed)
-GW.Add("timers", "framed", GW.TIMERS, GW.SkinTimerContainer)
-for addon, names in pairs(GW.LATER) do GW.Add("windows", "onDemand", addon, names, GW.SkinFramed) end
+GW.Add("windows", GW.FRAMED, GW.SkinFramed)
+GW.Add("windows", { "LootFrame" }, GW.SkinLoot)
+GW.Add("popups", GW.POPUPS, GW.SkinFramed)
+GW.Add("timers", GW.TIMERS, GW.SkinTimerContainer)
+for addon, names in pairs(GW.LATER) do GW.AddOnDemand("windows", addon, names, GW.SkinFramed) end
 
 -- Module entry point (Core/Modules.lua): every registered window whose group is on is
 -- watched (those loaded now and later), plus the game menu, readable text, durability

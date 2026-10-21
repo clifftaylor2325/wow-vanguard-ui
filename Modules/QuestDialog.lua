@@ -27,16 +27,11 @@ QD.TAKEN = {
 
 -- Calls ----------------------------------------------------------------------------------------
 
--- Calls fn if it's a function; nil otherwise.
-local function call(fn, ...)
-  if type(fn) == "function" then return fn(...) end
-end
-
 -- Calls a C_GossipInfo function by name, if this client has it.
 local function gossip(name, ...)
-  return call(C_GossipInfo and C_GossipInfo[name], ...)
+  return ns.CallIf(C_GossipInfo, name, ...)
 end
-QD.Call, QD.Gossip = call, gossip
+QD.Gossip = gossip
 
 -- Lines ----------------------------------------------------------------------------------------
 
@@ -47,7 +42,7 @@ end
 
 -- A quest you have: "?" in gold when ready to turn in, gray while still in progress.
 local function activeLine(level, title, complete, select, questID)
-  local ready = not ns.IsSecret(complete) and complete == true
+  local ready = ns.IsTrue(complete)
   return { text = QP.Titled(level, title, questID), icon = ready and QP.ICONS.ready or QP.ICONS.active, color = ready and "gold" or "text2", select = select, quest = true }
 end
 
@@ -73,19 +68,14 @@ function QD.GossipLines()
   return out
 end
 
--- A plain true from the client (a hidden value counts as false).
-local function plainTrue(v)
-  return not ns.IsSecret(v) and v == true
-end
-
 -- The NPC's one option when the game goes to it directly instead of showing gossip (a flight master, a
 -- vendor), or nil: as GossipFrameSharedMixin:HandleShow does, no quests to show, a single option flagged
 -- selectOptionWhenOnlyOption, and an NPC that doesn't force its gossip (C_GossipInfo.ForceGossip).
 local function directOption()
   local options = sortedOptions()
   local quests = #(gossip("GetAvailableQuests") or {}) + #(gossip("GetActiveQuests") or {})
-  if quests > 0 or #options ~= 1 or plainTrue(gossip("ForceGossip")) then return nil end
-  return plainTrue(options[1].selectOptionWhenOnlyOption) and options[1] or nil
+  if quests > 0 or #options ~= 1 or ns.IsTrue(gossip("ForceGossip")) then return nil end
+  return ns.IsTrue(options[1].selectOptionWhenOnlyOption) and options[1] or nil
 end
 
 -- Goes straight to the NPC's one option when the game would (the dialog doesn't open); true when it did.
@@ -98,10 +88,10 @@ end
 -- A quest giver's lines without gossip (the game's greeting window).
 function QD.GreetingLines()
   local out = {}
-  for i = 1, ns.PlainNumber(call(GetNumAvailableQuests)) or 0 do out[#out + 1] = availableLine(call(GetAvailableLevel, i), call(GetAvailableTitle, i), function() SelectAvailableQuest(i) end) end
-  for i = 1, ns.PlainNumber(call(GetNumActiveQuests)) or 0 do
-    local title, complete = call(GetActiveTitle, i)
-    out[#out + 1] = activeLine(call(GetActiveLevel, i), title, complete, function() SelectActiveQuest(i) end)
+  for i = 1, ns.PlainNumber(ns.CallIf(_G, "GetNumAvailableQuests")) or 0 do out[#out + 1] = availableLine(ns.CallIf(_G, "GetAvailableLevel", i), ns.CallIf(_G, "GetAvailableTitle", i), function() SelectAvailableQuest(i) end) end
+  for i = 1, ns.PlainNumber(ns.CallIf(_G, "GetNumActiveQuests")) or 0 do
+    local title, complete = ns.CallIf(_G, "GetActiveTitle", i)
+    out[#out + 1] = activeLine(ns.CallIf(_G, "GetActiveLevel", i), title, complete, function() SelectActiveQuest(i) end)
   end
   return out
 end
@@ -112,26 +102,23 @@ end
 function QD.Items(kind, count)
   local out = {}
   for i = 1, ns.PlainNumber(count) or 0 do
-    local name, texture, n, quality = call(GetQuestItemInfo, kind, i)
-    out[#out + 1] = { kind = kind, index = i, name = name, texture = texture, count = n, quality = quality, link = call(GetQuestItemLink, kind, i) }
+    local name, texture, n, quality = ns.CallIf(_G, "GetQuestItemInfo", kind, i)
+    out[#out + 1] = { kind = kind, index = i, name = name, texture = texture, count = n, quality = quality, link = ns.CallIf(_G, "GetQuestItemLink", kind, i) }
   end
   return out
 end
 
 -- The money and XP a quest gives, as "+1g 20s 0c · 450 XP" ("" for none).
 function QD.MoneyLine()
-  local money, xp, parts = ns.PlainNumber(call(GetRewardMoney)), ns.PlainNumber(call(GetRewardXP)), {}
-  if money and money > 0 then parts[#parts + 1] = "+" .. ns.GetModule("InfoStrip").Money(money) end
-  if xp and xp > 0 then parts[#parts + 1] = xp .. " XP" end
-  for _, extra in ipairs(QD.ExtraRewards(ns.PlainNumber(call(GetQuestID)))) do parts[#parts + 1] = extra end
-  return table.concat(parts, "  ·  ")
+  local money, xp = ns.PlainNumber(ns.CallIf(_G, "GetRewardMoney")), ns.PlainNumber(ns.CallIf(_G, "GetRewardXP"))
+  return QP.MoneyText(money, xp, QD.ExtraRewards(ns.PlainNumber(ns.CallIf(_G, "GetQuestID"))))
 end
 
 -- The spells a quest teaches, as "Teaches: Name".
 local function spellRewards(info, questID)
   local out = {}
-  for _, spellID in ipairs(call(info.GetQuestRewardSpells, questID) or {}) do
-    local spell = call(info.GetQuestRewardSpellInfo, questID, spellID)
+  for _, spellID in ipairs(ns.CallIf(info, "GetQuestRewardSpells", questID) or {}) do
+    local spell = ns.CallIf(info, "GetQuestRewardSpellInfo", questID, spellID)
     if type(spell) == "table" and spell.name then out[#out + 1] = "Teaches: " .. QP.Plain(spell.name) end
   end
   return out
@@ -142,7 +129,7 @@ function QD.ExtraRewards(questID)
   local info = C_QuestInfoSystem
   if type(info) ~= "table" or not questID then return {} end
   local out = spellRewards(info, questID)
-  for _, c in ipairs(call(info.GetQuestRewardCurrencies, questID) or {}) do
+  for _, c in ipairs(ns.CallIf(info, "GetQuestRewardCurrencies", questID) or {}) do
     out[#out + 1] = (ns.PlainNumber(c.totalRewardAmount) or 0) .. " " .. QP.Plain(c.name)
   end
   return out
@@ -153,7 +140,7 @@ end
 -- Ends the talk with the NPC (the game's own goodbye for gossip and quests).
 local function closeGame()
   gossip("CloseGossip")
-  call(CloseQuest)
+  ns.CallIf(_G, "CloseQuest")
 end
 
 -- The player closed the dialog (Goodbye, Escape): the NPC talk ends too (see QD.OnHide).
@@ -187,7 +174,7 @@ QD.PAGES = {
   -- A gossip NPC: its greeting and lines.
   gossip = function() return { text = gossip("GetText"), lines = QD.GossipLines(), escape = GOODBYE } end,
   -- A quest giver without gossip: its greeting and quests.
-  greeting = function() return { text = call(GetGreetingText), lines = QD.GreetingLines(), escape = GOODBYE } end,
+  greeting = function() return { text = ns.CallIf(_G, "GetGreetingText"), lines = QD.GreetingLines(), escape = GOODBYE } end,
   -- A quest's details.
   detail = function() return QD.DetailPage() end,
   -- A quest being handed in.
@@ -198,14 +185,14 @@ QD.PAGES = {
 
 -- A quest's details: accept it (or acknowledge one the game already accepted), or decline.
 function QD.DetailPage()
-  local auto = call(QuestGetAutoAccept) == true
+  local auto = ns.CallIf(_G, "QuestGetAutoAccept") == true
   return {
-    title = QP.WithMark(call(GetTitleText), ns.PlainNumber(call(GetQuestID))), text = call(GetQuestText), objectives = call(GetObjectiveText),
-    needs = QP.Needs(0, call(GetSuggestedGroupSize)),
-    done = ns.GetModule("QuestHistory").Line(ns.PlainNumber(call(GetQuestID))),
-    choices = QD.Items("choice", call(GetNumQuestChoices)), rewards = QD.Items("reward", call(GetNumQuestRewards)), money = QD.MoneyLine(),
-    primary = auto and { "OK", function() call(AcknowledgeAutoAcceptQuest) end } or { "Accept", function() call(AcceptQuest) end },
-    secondary = not auto and { "Decline", function() call(DeclineQuest) end } or nil,
+    title = QP.WithMark(ns.CallIf(_G, "GetTitleText"), ns.PlainNumber(ns.CallIf(_G, "GetQuestID"))), text = ns.CallIf(_G, "GetQuestText"), objectives = ns.CallIf(_G, "GetObjectiveText"),
+    needs = QP.Needs(0, ns.CallIf(_G, "GetSuggestedGroupSize")),
+    done = ns.GetModule("QuestHistory").Line(ns.PlainNumber(ns.CallIf(_G, "GetQuestID"))),
+    choices = QD.Items("choice", ns.CallIf(_G, "GetNumQuestChoices")), rewards = QD.Items("reward", ns.CallIf(_G, "GetNumQuestRewards")), money = QD.MoneyLine(),
+    primary = auto and { "OK", function() ns.CallIf(_G, "AcknowledgeAutoAcceptQuest") end } or { "Accept", function() ns.CallIf(_G, "AcceptQuest") end },
+    secondary = not auto and { "Decline", function() ns.CallIf(_G, "DeclineQuest") end } or nil,
   }
 end
 
@@ -218,16 +205,16 @@ end
 -- A quest you're turning in: what it still needs (items, and the money it costs), and Continue once you have it.
 function QD.ProgressPage()
   return {
-    title = call(GetTitleText), text = call(GetProgressText), rewards = QD.Items("required", call(GetNumQuestItems)), money = QD.CostLine(),
-    primary = { "Continue", function() call(CompleteQuest) end, call(IsQuestCompletable) == true }, escape = GOODBYE,
+    title = ns.CallIf(_G, "GetTitleText"), text = ns.CallIf(_G, "GetProgressText"), rewards = QD.Items("required", ns.CallIf(_G, "GetNumQuestItems")), money = QD.CostLine(),
+    primary = { "Continue", function() ns.CallIf(_G, "CompleteQuest") end, ns.CallIf(_G, "IsQuestCompletable") == true }, escape = GOODBYE,
   }
 end
 
 -- A quest you're finishing: pick a reward (when there's a choice), then Complete.
 function QD.CompletePage()
-  local choices = QD.Items("choice", call(GetNumQuestChoices))
+  local choices = QD.Items("choice", ns.CallIf(_G, "GetNumQuestChoices"))
   return {
-    title = call(GetTitleText), text = call(GetRewardText), choices = choices, rewards = QD.Items("reward", call(GetNumQuestRewards)),
+    title = ns.CallIf(_G, "GetTitleText"), text = ns.CallIf(_G, "GetRewardText"), choices = choices, rewards = QD.Items("reward", ns.CallIf(_G, "GetNumQuestRewards")),
     money = QD.MoneyLine(), primary = { "Complete", QD.Complete, #choices <= 1 }, pick = #choices > 1,
   }
 end
@@ -237,10 +224,10 @@ end
 function QD.Complete()
   local choice, cost = QD.choice or (QD.page.choices and #QD.page.choices == 1 and 1) or nil, QP.Cost()
   -- Pays (when it costs) and takes the reward.
-  local function take() call(GetQuestReward, choice) end
+  local function take() ns.CallIf(_G, "GetQuestReward", choice) end
   if cost <= 0 then return take() end
-  local text = "Completing " .. QP.Plain(call(GetTitleText)) .. " costs " .. ns.GetModule("InfoStrip").Money(cost) .. ". Complete it?"
-  ns.Ask(text, "Complete", take, function() call(DeclineQuest) end)
+  local text = "Completing " .. QP.Plain(ns.CallIf(_G, "GetTitleText")) .. " costs " .. ns.GetModule("InfoStrip").Money(cost) .. ". Complete it?"
+  ns.Ask(text, "Complete", take, function() ns.CallIf(_G, "DeclineQuest") end)
 end
 
 -- Showing --------------------------------------------------------------------------------------

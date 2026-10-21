@@ -31,8 +31,7 @@ WZ.SUGGESTED = {
 
 -- The amounts for your class's own supply: ammo for hunters, soul shards for warlocks, else none.
 function WZ.ClassKeys()
-  local class = PR.You()
-  return class == "HUNTER" and { "ammo" } or class == "WARLOCK" and { "shards" } or {}
+  return PR.CLASS_KEYS[PR.You()] or {}
 end
 
 -- The pages in order: supplies, class (only when your class has a supply), review.

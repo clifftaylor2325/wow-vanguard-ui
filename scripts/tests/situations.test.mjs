@@ -56,7 +56,7 @@ it("situations: joining a raid applies its override; leaving puts the base back 
   expect(spot(addon), "in a raid: the raid's spot").toEqual(["TOP", "TOP", 0, -60]);
   expect(addon.eval("return Vanguard_InfoStrip:GetScale()"), "and its scale").toBe(0.8);
   expect(dps(addon), "the DPS block switched on").toBe(true);
-  expect(addon.eval("return ns.GetModule('InfoStrip').texts.dps ~= nil"), "the strip repainted its blocks").toBe(true);
+  expect(addon.eval("return ns.GetModule('InfoStrip').fonts.dps ~= nil"), "the strip repainted its blocks").toBe(true);
   expect(addon.eval("return { ns.GetModule('Nameplates').settings.width, ns.GetModule('Nameplates').settings.castBar }"), "keys outside the allowlist are not applied").toEqual([130, true]);
   raid(addon, false);
   expect(spot(addon), "out of the raid: back at the default spot").toEqual(HOME);
@@ -491,4 +491,16 @@ it("A-11 situations: Your situations lists every override with Clear on each, (n
   addon.world.setUnit("party1", { name: "TEST-ONLY Friend" });
   addon.advance(0.5);
   expect(addon.texts("Party (now): 1 override (1 frame)").length, "recorded by command, then you moved into a party: the card follows").toBe(1);
+});
+
+it("every apply function an override runs for a module is one that module has", () => {
+  const addon = loggedIn();
+  const missing = addon.eval(`local out = {}
+    for module, live in pairs(ns.GetModule("Situations").LIVE) do
+      for _, fn in ipairs(live.apply) do
+        if type(ns.GetModule(module)[fn]) ~= "function" then out[#out + 1] = module .. "." .. fn end
+      end
+    end
+    return table.concat(out, " ")`);
+  expect(missing, "a misspelt apply name would fail only when an override applies").toBe("");
 });

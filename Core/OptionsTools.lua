@@ -5,7 +5,7 @@
 local ADDON, ns = ...
 
 local O = ns.Options
-local setting, liveSetting, check, append = O.Setting, O.LiveSetting, O.Check, O.Append
+local setting, reloadSetting, liveSetting, liveMethod, check, append = O.Setting, O.ReloadSetting, O.LiveSetting, O.LiveMethod, O.Check, O.Append
 
 -- Puts the low-health vignette (Modules/GameAlerts.lua) right after a change of its switch.
 local function applyVignette()
@@ -15,9 +15,9 @@ end
 -- The game's alerts (Modules/GameAlerts.lua) and the low-health vignette.
 local function alertRows()
   return {
-    check("Loss of control in the Vanguard look, above your character (reload)", setting("GameAlerts", "lossOfControl", true)),
-    { "cycle", "Talking head (reload)", { { "move", "Vanguard look, top left" }, { "hide", "Hidden" }, { "game", "The game's" } }, setting("GameAlerts", "talkingHead", true) },
-    check("Hardcore death notices in the Vanguard look (reload)", setting("GameAlerts", "hardcore", true)),
+    check("Loss of control in the Vanguard look, above your character (reload)", reloadSetting("GameAlerts", "lossOfControl")),
+    { "cycle", "Talking head (reload)", { { "move", "Vanguard look, top left" }, { "hide", "Hidden" }, { "game", "The game's" } }, reloadSetting("GameAlerts", "talkingHead") },
+    check("Hardcore death notices in the Vanguard look (reload)", reloadSetting("GameAlerts", "hardcore")),
     check("A rare nearby: a sound and a chat line, out of combat", setting("GameAlerts", "rares")),
     check("Low health: a soft tint round the screen edge that grows as your health drops (no pulse)", liveSetting("GameAlerts", "vignette", applyVignette)),
   }
@@ -28,8 +28,8 @@ local function gameToolRows()
   return append({
     { "header", "The game's tools" },
     { "text", "The Cooldown Manager, the gaps row and the buff glow are on the Cooldowns page.", "note" },
-    check("Damage meter in the Vanguard look (reload)", setting("GameTools", "meter", true)),
-    check("Place them to fit the layout; off leaves them to Edit Mode (reload)", setting("GameTools", "place", true)),
+    check("Damage meter in the Vanguard look (reload)", reloadSetting("GameTools", "meter")),
+    check("Place them to fit the layout; off leaves them to Edit Mode (reload)", reloadSetting("GameTools", "place")),
   }, alertRows())
 end
 
@@ -43,11 +43,10 @@ end
 
 -- Fight history under the damage meter: its switch (applied at once) and its visibility.
 local function fightRows()
-  local FH = ns.GetModule("FightHistory")
   local fightVisibility, fightWhen = O.VisibilityRows("Fight history visibility", "FightHistory", "visibility", "showWhen")
   return {
     { "header", "Fight history" },
-    check("Sparkline of your DPS in the last 20 fights, under the damage meter", liveSetting("FightHistory", "strip", function() if FH.enabled then FH.Paint() end end)),
+    check("Sparkline of your DPS in the last 20 fights, under the damage meter", liveMethod("FightHistory", "strip", "Paint")),
     check("Recap in chat after each fight: interrupts, dispels, damage taken, deaths (/vg recap)", setting("FightHistory", "recap")),
     fightVisibility, fightWhen,
   }
@@ -105,7 +104,7 @@ local function rollRows()
   return {
     { "header", "Roll tracker" },
     check("Show the group's /roll results in a small panel", liveSetting("Rolls", "show", repaint)),
-    check("Show loot rolls (who rolled what) where the client has them", liveSetting("Rolls", "loot", function() if R.enabled then R.ReadLoot() end end)),
+    check("Show loot rolls (who rolled what) where the client has them", liveMethod("Rolls", "loot", "ReadLoot")),
     rollVisibility, rollWhen,
   }
 end

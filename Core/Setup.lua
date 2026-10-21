@@ -86,6 +86,10 @@ S.STYLES = { { "soft", "Class colors, softened", "Softened" }, { "dark", "Dark, 
   { "class", "Class colors, bright", "Bright" } }
 -- The style tiles on the Look step: a raid tile's default size, side by side this far apart.
 local TILE_W, TILE_H, TILE_GAP = 100, 48, 16
+-- The look step's rows, down the page from its top (negative), and the steps between them: the switches stack
+-- one check row apart (W.ROW_HEIGHT), the swatches sit this far apart across, and the move step's lines 22 apart.
+local LOOK_Y = { swatches = -20, styleCaption = -62, tiles = -82, switches = -154 }
+local STEP = { swatchAcross = 34, switchDown = W.ROW_HEIGHT, moveLineDown = 22 }
 
 local frame
 -- Functions run each time setup ends, after it has locked the frames and saved (What's new waits for it).
@@ -220,7 +224,7 @@ end
 -- Your role: the specialization's where the client has them, else your group role (ns.PlayerRole).
 local function playerRole()
   local spec, get = ns.SpecIndex(), _G.GetSpecializationRole
-  local role = spec and type(get) == "function" and get(spec) or nil
+  local role = spec and type(get) == "function" and get(spec)
   return ns.RoleKey(role) or ns.PlayerRole()
 end
 
@@ -245,7 +249,7 @@ end
 
 -- The raid frames' settings in the active profile, with their defaults.
 local function raidSettings()
-  return ns.Settings("RaidFrames", ns.GetModule("RaidFrames").defaults)
+  return moduleSettings("RaidFrames")
 end
 
 -- Sets the raid frame style, repainting the raid frames when they are built.
@@ -258,13 +262,13 @@ end
 
 -- Whether the Calm HUD is on (Modules/UnitFrames.lua).
 function S.Calm()
-  return ns.Settings("UnitFrames", ns.GetModule("UnitFrames").defaults).calm == true
+  return moduleSettings("UnitFrames").calm == true
 end
 
 -- Turns the Calm HUD on or off, applying it at once when the unit frames are built.
 function S.SetCalm(on)
   S.Backup()
-  ns.Settings("UnitFrames", ns.GetModule("UnitFrames").defaults).calm = on == true
+  moduleSettings("UnitFrames").calm = on == true
   local UF = ns.GetModule("UnitFrames")
   if UF.settings then UF.ApplyCalm() end
 end
@@ -299,14 +303,14 @@ end
 -- Turns the Versus deck on or off (UnitFrames' deck setting), applying it at once when the unit frames are built.
 function S.SetDeck(on)
   local UF = ns.GetModule("UnitFrames")
-  ns.Settings("UnitFrames", UF.defaults).deck = on == true
+  moduleSettings("UnitFrames").deck = on == true
   if UF.settings then UF.ApplyDeck() end
 end
 
 -- Sets how tall the target frame stands (UnitFrames' targetHeight), sizing it at once when the unit frames are built.
 function S.SetTargetHeight(h)
   local UF = ns.GetModule("UnitFrames")
-  ns.Settings("UnitFrames", UF.defaults).targetHeight = h
+  moduleSettings("UnitFrames").targetHeight = h
   if UF.settings then UF.ApplySizes() end
 end
 
@@ -395,13 +399,13 @@ end
 -- Sets the action buttons' shared size and lays the built bars out again (a bar's own size still wins).
 local function setButtons(size)
   local AB = ns.GetModule("ActionBars")
-  ns.Settings("ActionBars", AB.defaults).size = size
+  moduleSettings("ActionBars").size = size
   for n in pairs(AB.enabled and AB.bars or {}) do AB.SettingChanged(n, "size") end
 end
 
 -- Sets the raid tile size; a new size takes effect on reload.
 local function setTiles(tile)
-  local s = ns.Settings("RaidFrames", ns.GetModule("RaidFrames").defaults)
+  local s = raidSettings()
   if s.width == tile[1] and s.height == tile[2] then return end
   s.width, s.height = tile[1], tile[2]
   state.retile = true
@@ -495,19 +499,11 @@ end
 
 -- Building ------------------------------------------------------------------------------
 
--- A left-aligned line of text on the wizard.
-local function text(parent, role, color, value)
-  local fs = T.Text(parent:CreateFontString(nil, "OVERLAY"), role, color)
-  fs:SetJustifyH("LEFT")
-  fs:SetText(value)
-  return fs
-end
-
 -- A full-width choice row at y (a negative offset down the page); value is what it picks. It rests flat
 -- and lifts under the mouse; the chosen one wears the selected look.
 local function choice(page, label, value, y, onClick)
   local b = W.Row(page, T.BUTTON_H, { width = WIDTH - 2 * PAD })
-  b.text = text(b, "label", "text", label)
+  b.text = W.Label(b, label, "label", "text")
   b.text:SetPoint("LEFT", T.SPACE.section, 0)
   b:SetScript("OnClick", ns.Guard(W.ClickLabel(label), onClick))
   b:SetPoint("TOPLEFT", 0, y)
@@ -523,13 +519,13 @@ end
 -- A page of choices under a question: a button per { key, text, hint }; picking one
 -- sets state[field]. The chosen one's hint shows under them.
 local function choicePage(page, question, list, field)
-  text(page, "label", "text2", question):SetPoint("TOPLEFT")
+  W.Label(page, question, "label", "text2"):SetPoint("TOPLEFT")
   page.choices = {}
   for i, l in ipairs(list) do
     page.choices[i] = choice(page, l.text, l.key, choiceY(i), function() state[field] = l.key; refresh() end)
     page.choices[i].hint = l.hint or ""
   end
-  page.hint = text(page, "small", "text2", "")
+  page.hint = W.Label(page, "", "small", "text2")
   page.hint:SetPoint("TOPLEFT", 0, choiceY(#list + 1))
   page.hint:SetWidth(WIDTH - 2 * PAD)
 end
@@ -604,10 +600,10 @@ end
 local function styleTile(page, i, s)
   local b = T.Panel(CreateFrame("Button", nil, page))
   b:SetSize(TILE_W, TILE_H)
-  b:SetPoint("TOPLEFT", (i - 1) * (TILE_W + TILE_GAP), -82)
+  b:SetPoint("TOPLEFT", (i - 1) * (TILE_W + TILE_GAP), LOOK_Y.tiles)
   b.value = s[1]
   tileBar(b)
-  b.text = text(page, "small", "text", s[3])
+  b.text = W.Label(page, s[3], "small", "text")
   b.text:SetPoint("TOP", b, "BOTTOM", 0, -T.SPACE.tight)
   b:SetScript("OnClick", ns.Guard("click setup style", function() S.SetStyle(s[1]); refresh() end))
   return b
@@ -615,7 +611,7 @@ end
 
 -- The raid frame styles under the accent swatches: a tile drawn in each, side by side.
 local function stylePicker(page)
-  text(page, "label", "text", "Raid frame style"):SetPoint("TOPLEFT", 0, -62)
+  W.Label(page, "Raid frame style", "label", "text"):SetPoint("TOPLEFT", 0, LOOK_Y.styleCaption)
   page.styles = {}
   for i, s in ipairs(S.STYLES) do page.styles[i] = styleTile(page, i, s) end
 end
@@ -623,7 +619,7 @@ end
 -- One accent swatch, with a check when chosen: picking it sets the accent at once.
 local function swatch(page, i, rgb)
   local s = W.Swatch(page, rgb, function() S.Backup(); T.SetAccent(rgb[1], rgb[2], rgb[3]); refresh() end)
-  s:SetPoint("TOPLEFT", (i - 1) * 34, -20)
+  s:SetPoint("TOPLEFT", (i - 1) * STEP.swatchAcross, LOOK_Y.swatches)
   s.rgb = rgb
   s.check = W.IconTexture(s, "Check", 14, "void")
   s.check:SetPoint("CENTER")
@@ -633,16 +629,16 @@ end
 -- The Calm HUD switch and the two readability switches (larger text, safer colours) under the style tiles.
 local function lookSwitches(page)
   page.calm = W.Check(page, "Calm HUD: dim your frames out of combat", S.Calm, S.SetCalm, WIDTH - 2 * PAD)
-  page.calm:SetPoint("TOPLEFT", 0, -154)
+  page.calm:SetPoint("TOPLEFT", 0, LOOK_Y.switches)
   page.larger = W.Check(page, "Larger text (115%)", S.Larger, S.SetLarger, WIDTH - 2 * PAD)
-  page.larger:SetPoint("TOPLEFT", 0, -182)
+  page.larger:SetPoint("TOPLEFT", 0, LOOK_Y.switches - STEP.switchDown)
   page.assist = W.Check(page, "Colour vision: Safer colours (colour blindness)", S.Assist, S.SetAssist, WIDTH - 2 * PAD)
-  page.assist:SetPoint("TOPLEFT", 0, -210)
+  page.assist:SetPoint("TOPLEFT", 0, LOOK_Y.switches - 2 * STEP.switchDown)
 end
 
 -- The look step: the accent presets, the raid frame style, then Calm HUD and the readability switches.
 local function lookPage(page)
-  text(page, "label", "text", "Accent"):SetPoint("TOPLEFT")
+  W.Label(page, "Accent", "label", "text"):SetPoint("TOPLEFT")
   page.swatches = {}
   for i, name in ipairs(T.PRESET_ORDER) do
     page.swatches[i] = swatch(page, i, T.PRESETS[name])
@@ -657,7 +653,7 @@ local function movePage(page)
     "Click a handle, then the arrow keys nudge it (Shift ×10).", "Right-click a frame for its anchor, scale and opacity.",
     "The bar at the top: Save and lock, or Exit without saving.", "Done locks them. /vg unlock moves them any time." }
   for i, line in ipairs(lines) do
-    text(page, "label", i == 1 and "text" or "text2", line):SetPoint("TOPLEFT", 0, -(i - 1) * 22)
+    W.Label(page, line, "label", i == 1 and "text" or "text2"):SetPoint("TOPLEFT", 0, -(i - 1) * STEP.moveLineDown)
   end
 end
 
@@ -774,7 +770,7 @@ local function build()
   local f = window()
   controls(f)
   addPages(f)
-  f:SetScript("OnHide", finished)
+  f:SetScript("OnHide", ns.Guard("finish setup", finished))
   ns.TabFocus(f, focusList)
   return f
 end

@@ -85,3 +85,9 @@ function ns.Every(key, seconds, fn, frame, now)
   local job = jobs[key] or start(key, now and seconds or 0)
   job.period, job.fn, job.frame = seconds, fn, frame
 end
+
+-- Whether the client has its timer (C_Timer.After). Read at each call, so a test can take the timer away.
+---@return boolean
+function ns.HasTimer()
+  return type(C_Timer) == "table" and type(C_Timer.After) == "function"
+end

@@ -126,8 +126,8 @@ end
 -- Wires a slot's hover and clicks to its feed.
 local function wireSlot(b)
   b:RegisterForClicks("AnyUp")
-  b:SetScript("OnEnter", BS.OnEnter)
-  b:SetScript("OnLeave", BS.OnLeave)
+  b:SetScript("OnEnter", ns.Guard("hover broker feed", BS.OnEnter))
+  b:SetScript("OnLeave", ns.Guard("leave broker feed", BS.OnLeave))
   b:SetScript("OnClick", ns.Guard("click broker feed", BS.OnClick))
   b:Hide()
   return b
@@ -234,8 +234,7 @@ function BS.Hook()
 end
 
 -- Module entry point (Core/Modules.lua): the strip on the top edge, its slots, and the feeds.
-function BS.Enable(settings)
-  BS.settings = settings
+function BS.Enable()
   BS.frame = T.HudPanel(CreateFrame("Frame", "Vanguard_BrokerStrip", UIParent))
   BS.frame:SetSize(BS.SLOT_W + 2 * BS.EDGE, BS.Height() + 2 * BS.PAD)
   ns.Mover(BS.frame, "brokerstrip", "Broker strip", { "TOP", "TOP", -200, 0 })

@@ -62,7 +62,7 @@ it("fills: a padded panel's fill reaches out with it; a frame never painted gets
   corners(addon, true);
   const r = addon.eval("return ns.Theme.CORNER_RADIUS * ns.Theme.Pixel(__p)");
   expect(addon.eval("local p = __pf.bg.__points local c = __pf.roundFill.TOPLEFT.__points.TOPLEFT return { #__pf.textures, p.TOPLEFT.x, c.x, c.y }"), "rounded: the centre pulled in r from the padded edge, the discs at the padded corners").toEqual([7, r - out, -out, out]);
-  expect(addon.eval("local p = __plain.bg.__points return { #__plain.textures, __plain.round, p.TOPLEFT.x + 0, p.BOTTOMRIGHT.x + 0 }"), "an unpainted frame: the plain texture, still square").toEqual([1, 0, 0, 0]);
+  expect(addon.eval("local p = __plain.bg.__points return { #__plain.textures, __plain.radius, p.TOPLEFT.x + 0, p.BOTTOMRIGHT.x + 0 }"), "an unpainted frame: the plain texture, still square").toEqual([1, 0, 0, 0]);
 });
 
 it("fills: a button's hover fill and press overlay follow its rounded corners, and ease or show every part (#257)", () => {
@@ -132,7 +132,7 @@ it("the layout constants: T.SPACE, T.ALPHA, T.CREST, T.ROW, T.SCROLL and the con
   const addon = loggedIn();
   expect(addon.eval("return { ns.Theme.SPACE, ns.Theme.ALPHA, ns.Theme.CREST, ns.Theme.ROW, ns.Theme.SCROLL, { ns.Theme.CONTROL_H, ns.Theme.BUTTON_H }, ns.Theme.HEADING_ROLES }")).toEqual([
     { tight: 4, gap: 8, col: 12, pad: 16, section: 24 },
-    { opaque: 1, dialog: 0.98, overlay: 0.94, alert: 0.92, calm: 0.35 },
+    { opaque: 1, dialog: 0.98, overlay: 0.94, alert: 0.92, calm: 0.35, dispelWash: 0.35 },
     { title: 20, card: 44, watermark: 96, wash: 0.1 },
     { height: 28 },
     { thumb: 4, rest: 0.5, lit: 1 },
@@ -146,7 +146,7 @@ it("the zone role: a bold 13 that keeps Fira Sans while the faction look gives t
   addon.eval('ns.Theme.Settings().faction = "auto" ns.Theme.Refresh()');
   // A new string of a role: its font file and size.
   const look = (role) => addon.eval(`local fs = ns.Theme.Text(UIParent:CreateFontString(), "${role}") return { fs.__font[1]:match("[^\\\\]+$"), fs.__font[2] }`);
-  expect(addon.eval("return ns.Theme.ROLES.zone"), "13, bold").toEqual([13, true]);
+  expect(addon.eval("local r = ns.Theme.ROLES.zone return { r.size, r.bold }"), "13, bold").toEqual([13, true]);
   expect(look("title"), "a title takes the display font").toEqual(["Cinzel-SemiBold.ttf", 15]);
   expect(look("zone"), "the zone text keeps Fira Sans SemiBold at 13").toEqual(["FiraSansCondensed-SemiBold.ttf", 13]);
   expect(addon.eval('return ns.Theme.RoleSize("zone")'), "RoleSize knows it").toBe(13);

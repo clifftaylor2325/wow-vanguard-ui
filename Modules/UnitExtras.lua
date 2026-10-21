@@ -31,7 +31,7 @@ UX.GLYPH = 10
 -- fight is on you at 100%, which says nothing).
 function UX.ThreatMatters()
   local grouped, pet = IsInGroup(), UnitExists("pet")
-  return (not ns.IsSecret(grouped) and grouped == true) or (not ns.IsSecret(pet) and pet == true)
+  return ns.IsTrue(grouped) or ns.IsTrue(pet)
 end
 
 -- Your threat on your target: "87%" and its color token, or nil when you have none, it's hidden or it can't matter.

@@ -9,7 +9,7 @@
 local ADDON, ns = ...
 
 -- Per-frame state kept off the game's frames (Core/Events.lua, ns.FrameState).
-local vgPadded = ns.FrameState("vgPadded")
+local vgTabPadded = ns.FrameState("vgTabPadded")
 local vgSeeded = ns.FrameState("vgSeeded")
 local vgUnmasked = ns.FrameState("vgUnmasked")
 
@@ -61,15 +61,6 @@ local function walk(frame, path)
   return type(part) == "table" and part or nil
 end
 
--- A table of the parts of frame named in keys that it has, as a keep list for T.FadeRegions.
-local function keepKeys(frame, keys)
-  local keep = {}
-  for _, key in ipairs(keys) do
-    if type(frame[key]) == "table" then keep[frame[key]] = true end
-  end
-  return keep
-end
-
 -- Adds a tab button to the list, once (anything that takes a script hook is one); side marks a side tab.
 local function add(list, button, side)
   if type(button) ~= "table" or not button.HookScript or list.seen[button] then return end
@@ -102,6 +93,8 @@ end
 -- Adds the buttons a tab system holds, by its accessor (TabSystemMixin:GetTabButton(tabID), nil past the last).
 local function addSystem(list, system)
   if type(system) ~= "table" or type(system.GetTabButton) ~= "function" then return end
+  -- A safety cap, three times the usual count: the loop stops at the first id with no tab, so the cap only matters
+  -- for a system that never runs out.
   for id = 1, GW.MAX_TABS * 3 do
     local button = system:GetTabButton(id)
     if not button then return end
@@ -162,15 +155,26 @@ local function movedOut(window, pad, point, rel, relPoint, x, y)
   return point, rel, relPoint, x, y
 end
 
+-- How far a tab set against an outer edge of its window moves out: its panel's padding, one pixel in so their borders meet.
+function GW.TabPad(window)
+  return T.Padding(window) - T.Pixel(window)
+end
+
 -- Moves a tab (or a holder of tabs, which has two anchors) set against an outer edge of its window out to its
 -- panel's padded edge (one pixel in, so their borders meet), once: the panel reaches past the window, and would
 -- cover the tab's near end.
 function GW.ClearPadding(tab, window)
-  local pad, count, moved = T.Padding(window) - T.Pixel(window), tab:GetNumPoints(), {}
-  if vgPadded[tab] or pad <= 0 or count < 1 or count > 2 then return end
-  vgPadded[tab] = true
+  local pad, count, moved = GW.TabPad(window), tab:GetNumPoints(), {}
+  if vgTabPadded[tab] or pad <= 0 or count < 1 or count > 2 then return end
+  vgTabPadded[tab] = true
   for i = 1, count do moved[i] = { movedOut(window, pad, tab:GetPoint(i)) } end
   for _, anchor in ipairs(moved) do if anchor[1] then tab:SetPoint(unpack(anchor)) end end
+end
+
+-- Pads a tab again after the game re-anchored it (a refreshed tab set): clears its once-flag, then pads it.
+function GW.PadTabAgain(tab, window)
+  vgTabPadded[tab] = nil
+  GW.ClearPadding(tab, window)
 end
 
 -- Takes the game's rounded mask off an icon tab's icon, once (the mask sits a little off the icon's centre, so its
@@ -216,7 +220,7 @@ local function dressBankTab(tab, window)
   local button = tab.Button
   if type(button) ~= "table" or not button.HookScript then return end
   T.Tab(button)
-  T.FadeRegions(button, keepKeys(button, { "IconTexture", "SearchOverlay" }))
+  T.FadeRegions(button, GW.KeepKeys(button, { "IconTexture", "SearchOverlay" }))
   seedChecked(button)
 end
 
@@ -273,7 +277,7 @@ function GW.SkinBar(bar)
   if type(bar) ~= "table" then return end
   if type(bar.Fill) == "table" then
     T.Panel(bar, { inset = true, noSheen = true })
-    T.FadeRegions(bar, keepKeys(bar, { "Fill" }))
+    T.FadeRegions(bar, GW.KeepKeys(bar, { "Fill" }))
   elseif type(bar.SetStatusBarTexture) == "function" then
     T.StyleBar(bar)
   end
@@ -451,7 +455,7 @@ local function skinPvPRank(frame)
   if type(info) ~= "table" then return end
   T.FadeRegions(info)
   local ring = info.RankProgressBarDisplay
-  if type(ring) == "table" and ring.GetRegions then T.FadeRegions(ring, keepKeys(ring, { "Background", "Bar", "FactionBadge" })) end
+  if type(ring) == "table" and ring.GetRegions then T.FadeRegions(ring, GW.KeepKeys(ring, { "Background", "Bar", "FactionBadge" })) end
 end
 
 -- The side panes (CharacterFrameSidePaneTemplate: the entry you picked, in words, beside the list), each as the path
@@ -602,16 +606,14 @@ end
 -- The equipment flyout (the items you can swap into a slot): its art faded, flat panels behind the
 -- item grid and the page bar, its page arrows flat, and its item buttons skinned as the bags' are.
 local function skinFlyout()
-  local flyout, bags = _G.EquipmentFlyoutFrame, ns.GetModule("Bags")
+  local flyout = _G.EquipmentFlyoutFrame
   if type(flyout) ~= "table" then return end
   for _, key in ipairs({ "buttonFrame", "NavigationFrame" }) do
     local part = flyout[key]
     if type(part) == "table" then T.FadeRegions(part) T.Panel(part, { shadow = true }) end
   end
   skinFlyoutNav(flyout.NavigationFrame)
-  for _, button in ipairs(flyout.buttons or {}) do
-    if bags and bags.SkinItem then bags.SkinItem(button) end
-  end
+  for _, button in ipairs(flyout.buttons or {}) do GW.SkinItem(button) end
 end
 
 -- Dresses the flyout on show and after the game fills it again (it makes its buttons and pages as needed), once.
@@ -715,10 +717,10 @@ end
 -- highlight pictures and the ignored-slot mark stay.
 local function fadeAmmoPlate(slot)
   if type(slot) ~= "table" or not slot.GetRegions then return end
-  local keep = keepKeys(slot, { "icon", "Icon", "IconBorder", "ignoreTexture" })
-  keep[_G.CharacterAmmoSlotIconTexture or slot] = true
-  keep[slot.GetPushedTexture and slot:GetPushedTexture() or slot] = true
-  keep[slot.GetHighlightTexture and slot:GetHighlightTexture() or slot] = true
+  local keep = GW.KeepKeys(slot, { "icon", "Icon", "IconBorder", "ignoreTexture" })
+  GW.KeepAlso(keep, _G.CharacterAmmoSlotIconTexture)
+  GW.KeepAlso(keep, slot.GetPushedTexture and slot:GetPushedTexture())
+  GW.KeepAlso(keep, slot.GetHighlightTexture and slot:GetHighlightTexture())
   T.FadeRegions(slot, keep)
 end
 
@@ -726,10 +728,9 @@ end
 -- IconBorder and the BorderFrame child) faded, a flat panel behind the icon and the item's quality border
 -- (Modules/Bags.lua skinItem), and the ammo slot's plate faded.
 local function skinSlots()
-  local bags = ns.GetModule("Bags")
   for _, slot in ipairs(GW.EQUIP_SLOTS) do
     local button = _G["Character" .. slot .. "Slot"]
-    if bags and bags.SkinItem then bags.SkinItem(button) end
+    GW.SkinItem(button)
     fadeSlotFrame(button)
   end
   fadeAmmoPlate(_G.CharacterAmmoSlot)
@@ -759,15 +760,10 @@ local function insetPane(pane)
   T.Panel(pane, { inset = true, noSheen = true })
 end
 
--- The game's selection globals already hooked (see watchSelection).
-local selectHooked = {}
-
 -- Has a row's selected look follow the game's global that marks a row selected or not (called with the row and a flag at
 -- every init and click; a row not dressed is left alone). Hooked once, when the game has the function.
 local function watchSelection(name)
-  if selectHooked[name] or type(_G[name]) ~= "function" then return end
-  selectHooked[name] = true
-  hooksecurefunc(name, ns.Guard("hook " .. name, function(row, on) T.SelectRow(row, on == true) end))
+  GW.FollowSelected(_G, name)
 end
 
 -- A title row (PlayerTitleButtonTemplate): a theme row (its zebra stripe, hover and selected bars faded, the tick kept)
@@ -783,7 +779,8 @@ end
 local function setLost(row)
   local sets = _G.C_EquipmentSet
   if type(sets) ~= "table" or type(sets.GetEquipmentSetInfo) ~= "function" or not row.setID then return false end
-  return (select(8, sets.GetEquipmentSetInfo(row.setID)) or 0) > 0
+  local _, _, _, _, _, _, _, numLost = sets.GetEquipmentSetInfo(row.setID)
+  return (numLost or 0) > 0
 end
 
 -- A gear set row (GearSetButtonTemplate): a theme row (its card plate, rings and hover and selected cards faded, the icon,
@@ -867,7 +864,7 @@ end
 -- boxes, the gear slots, the model area, the paper doll's level lines, pet bar, titles and sets lists, the skill rank
 -- bar, the honor tab and the equipment flyout. Safe to run again: lists, side panes and the flyout are watched once,
 -- and a slot is skinned once.
-function GW.DressCharacterPane()
+local function dressCharacterPane()
   watchLists()
   flattenPane()
   placePaneToggle(_G.CharacterFrame)
@@ -948,7 +945,7 @@ local function skinSetsRow(row)
   if type(row) ~= "table" then return end
   GW.DressRow(row, GW.SETS_ROW_KEEP)
   GW.FollowMark(row, row.SelectedTexture)
-  GW.HookAfter(row, "SetSelected", function(r, on) T.SelectRow(r, on == true) end)
+  GW.FollowSelected(row, "SetSelected")
 end
 
 -- The sets tab's variant dropdown, the plate behind the set's icons and the fade over its model, and its list's rows.
@@ -962,7 +959,7 @@ end
 -- Dresses the inside of the collections window: the mount, pet, toy and heirloom journals (GW.DressJournals), and the
 -- appearances tab's backdrops, tabs, search box, dropdowns, page arrows and sets list, and the grid's empty note. Safe
 -- to run again.
-function GW.DressCollections()
+local function dressCollections()
   GW.DressJournals()
   local wardrobe = _G.WardrobeCollectionFrame
   if type(wardrobe) ~= "table" then return end
@@ -975,7 +972,7 @@ function GW.DressCollections()
 end
 
 -- What a window holds besides tabs that is dressed with it, by window name: a function that takes no argument.
-GW.INSIDE = { CharacterFrame = GW.DressCharacterPane, CollectionsJournal = GW.DressCollections }
+GW.INSIDE = { CharacterFrame = dressCharacterPane, CollectionsJournal = dressCollections }
 
 -- Dresses what the window holds besides tabs (GW.INSIDE), now and every time it shows; a failure is reported.
 local function dressInside(frame)
@@ -1007,29 +1004,29 @@ end
 -- scroll bars (an old scroll frame's slider) is left alone by T.ScrollBar itself. A frame the game
 -- keeps from addons is skipped, and so is the inside of one that holds such a frame (the game refuses
 -- to list its children then).
-function GW.DressBars(frame, depth)
+local function dressBars(frame, depth)
   if frame.IsForbidden and frame:IsForbidden() then return end
   for _, key in ipairs(GW.SCROLL_KEYS) do dressBar(frame[key]) end
   dressBar(pairedBar(frame))
   if depth <= 0 or not frame.GetChildren then return end
   local ok, children = pcall(function() return { frame:GetChildren() } end)
   if not ok then return end
-  for _, child in ipairs(children) do GW.DressBars(child, depth - 1) end
+  for _, child in ipairs(children) do dressBars(child, depth - 1) end
 end
 
 -- What runs when a window shows: its tabs, and its scroll bars if it is a registered window.
-function GW.DressWindow(frame)
+local function dressWindow(frame)
   GW.DressTabs(frame)
   local name = frame:GetName() or ""
-  if GW.REGISTERED[name] then ns.Try("scroll bars " .. name, GW.DressBars, frame, GW.SCROLL_DEPTH) end
+  if GW.REGISTERED[name] then ns.Try("scroll bars " .. name, dressBars, frame, GW.SCROLL_DEPTH) end
 end
 
 -- Dresses a window's tabs and scroll bars now and every time it shows, once per window, and what it holds inside.
 local function dress(frame)
   if type(frame) ~= "table" or not frame.HookScript or dressed[frame] then return end
   dressed[frame] = true
-  GW.DressWindow(frame)
-  frame:HookScript("OnShow", ns.Guard("show window tabs", GW.DressWindow))
+  dressWindow(frame)
+  frame:HookScript("OnShow", ns.Guard("show window tabs", dressWindow))
   watchSystems(frame)
   dressInside(frame)
 end
@@ -1038,7 +1035,7 @@ end
 -- window's own group is on if it is registered (a window left to the game keeps the game's tabs).
 local function wanted(name)
   local entry = GW.REGISTERED[name]
-  return GW.settings and GW.settings.tabs and (not entry or GW.settings[entry.group]) or false
+  return GW.GroupOn("tabs") and (not entry or GW.GroupOn(entry.group)) or false
 end
 
 -- Dresses the tabs of the window of that name again, when they are Vanguard's to dress: for a
@@ -1074,7 +1071,7 @@ end
 -- At login, after the Windows module enabled: every window registered now and the side-tab windows,
 -- and later those that load with their part of the game.
 local function enable()
-  if not (GW.settings and GW.settings.tabs) then return end
+  if not GW.GroupOn("tabs") then return end
   dressAll(GW.ORDER)
   dressAll(GW.TAB_WINDOWS)
   ns.On("ADDON_LOADED", onLoaded)

@@ -22,6 +22,8 @@ CHH.LINE_CHOICES = { { 100, "100 lines" }, { 200, "200 lines" }, { 500, "500 lin
 CHH.DAY_CHOICES = { { 1, "1 day" }, { 3, "3 days" }, { 7, "A week" }, { 30, "A month" } }
 -- A longer line is not kept; a window is trimmed once it is this many over its limit.
 CHH.MAX_LENGTH, CHH.SLACK = 600, 50
+-- Seconds in a day (the days setting counts in these).
+CHH.DAY = 86400
 -- The chat events that carry a whisper.
 CHH.WHISPERS = { "CHAT_MSG_WHISPER", "CHAT_MSG_WHISPER_INFORM", "CHAT_MSG_BN_WHISPER", "CHAT_MSG_BN_WHISPER_INFORM" }
 
@@ -75,11 +77,16 @@ local function kept(list, cutoff, cap)
   return out
 end
 
+-- A window's lines to keep: the newest, and none older than the days setting.
+local function trimmed(list)
+  return kept(list, now() - CHH.settings.days * CHH.DAY, CHH.settings.lines)
+end
+
 -- Drops the old and the surplus lines of every window (and a window left empty).
 function CHH.Prune()
-  local store, cutoff = CHH.Store(), now() - CHH.settings.days * 86400
+  local store = CHH.Store()
   for index, list in pairs(store) do
-    store[index] = type(list) == "table" and kept(list, cutoff, CHH.settings.lines) or nil
+    store[index] = type(list) == "table" and trimmed(list) or nil
     if store[index] and #store[index] == 0 then store[index] = nil end
   end
 end
@@ -115,7 +122,7 @@ function CHH.Record(index, text, r, g, b)
   if not (CHH.active and CHH.settings.on) or CHH.restoring or CHH.Skipped(index) or not keepable(text) then return end
   local list = listFor(index)
   list[#list + 1] = pack(text, r, g, b)
-  if #list > CHH.settings.lines + CHH.SLACK then CHH.Store()[index] = kept(list, now() - CHH.settings.days * 86400, CHH.settings.lines) end
+  if #list > CHH.settings.lines + CHH.SLACK then CHH.Store()[index] = trimmed(list) end
 end
 
 -- The game is about to show a whisper: lines shown in this same frame are not kept.

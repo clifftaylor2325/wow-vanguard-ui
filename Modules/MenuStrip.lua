@@ -239,7 +239,7 @@ end
 -- mouse's own enter and leave events on it and its buttons (nothing polls),
 -- feeling the mouse but letting clicks through.
 function MS.ApplyVisibility()
-  ns.OutOfCombat(function() V.ApplyNow(MS.strip, MS.settings.menu, MS.settings.menuWhen, true) end, MS.strip)
+  ns.OutOfCombat(function() V.ApplySecureNow(MS.strip, MS.settings.menu, MS.settings.menuWhen) end, MS.strip)
 end
 
 -- Follows the bar's visibility from the start: the mouse over it and the
@@ -481,8 +481,14 @@ local function menuArt(b)
   for _, key in ipairs(MS.MENU_FIT) do
     if type(b[key]) == "table" and b[key].SetPoint then art[#art + 1] = b[key] end
   end
-  ns.OutOfCombat(function() clickThrough(b) end, "menustrip clickthrough " .. (b:GetName() or ""))
   return art, icons(art)
+end
+
+-- Greys a menu button while it is disabled, and follows the client's enable and disable after that.
+local function followEnabled(b)
+  b:HookScript("OnEnable", paintEnabled)
+  b:HookScript("OnDisable", paintEnabled)
+  paintEnabled(b)
 end
 
 -- One of the game's menu buttons on a slot: its own background plates faded,
@@ -493,12 +499,11 @@ function MS.SkinButton(b, icon)
   if vgSlot[b] then return end
   for _, key in ipairs(MS.MENU_ART) do if type(b[key]) == "table" then b[key]:SetAlpha(0) end end
   addSlot(b, MS.ROWS[2])
+  ns.OutOfCombat(function() clickThrough(b) end, "menustrip clickthrough " .. (b:GetName() or ""))
   vgArt[b], vgIcons[b] = menuArt(b)
   if MS.settings.glyphs then addGlyph(b, icon) end
   slotStates(b)
-  b:HookScript("OnEnable", paintEnabled)
-  b:HookScript("OnDisable", paintEnabled)
-  paintEnabled(b)
+  followEnabled(b)
   sizeSlot(b)
 end
 
@@ -684,8 +689,6 @@ end
 
 -- Tracker header art that's faded ("All Objectives", "Quests"... each have their own).
 MS.HEADER_ART = { "Background", "Shine", "Glow" }
--- The tracker's font objects -> { size before Text size, bold }.
-MS.TRACKER_FONTS = { ObjectiveTrackerLineFont = { 12 }, ObjectiveTrackerHeaderFont = { 13, true } }
 -- The accent lines under the tracker's headers (repainted when the accent changes).
 MS.rules = {}
 
@@ -746,7 +749,7 @@ end
 -- The theme font, scaled by Text size, on the tracker's font objects (the
 -- quest titles and objectives keep the game's colors), kept after every theme change.
 function MS.TrackerFonts()
-  T.FontObjects(MS.TRACKER_FONTS)
+  T.FontObjects(T.FONT_OBJECTS.tracker)
 end
 
 -- The quest tracker in the Vanguard look, kept up as the game adds sections

@@ -55,6 +55,19 @@ function QP.XPText(xp)
   return s .. " XP"
 end
 
+-- The money and XP a quest gives as text ("+1g 20s 0c  ·  1,250 XP"), then any extra parts; "" for none.
+---@param money number|nil  copper, a plain number or nil
+---@param xp number|nil  a plain number or nil
+---@param extra string[]|nil
+---@return string
+function QP.MoneyText(money, xp, extra)
+  local parts = {}
+  if money and money > 0 then parts[#parts + 1] = "+" .. ns.GetModule("InfoStrip").Money(money) end
+  if xp and xp > 0 then parts[#parts + 1] = QP.XPText(xp) end
+  for _, part in ipairs(extra or {}) do parts[#parts + 1] = part end
+  return table.concat(parts, "  ·  ")
+end
+
 -- The money the open quest asks for to hand it in (copper): 0 for none, and 0 when the client can't say or
 -- hides it (the game's own reward button asks before paying when this is above 0).
 function QP.Cost()
@@ -244,19 +257,29 @@ local function caption(name)
 end
 
 -- The choices' caption, worded as the game's quest frame words it (Mainline/QuestInfo.lua): one choice is
--- just received; two or more are chosen from now (choosing) or later.
-local function choiceCaption(n, choosing)
+-- just received; two or more take the caption under choiceKey (chosen now, or received later).
+local function choiceCaption(n, choiceKey)
   if n == 1 then return caption("REWARD_ITEMS_ONLY") end
-  return caption(choosing and "REWARD_CHOOSE" or "REWARD_CHOICES")
+  return caption(choiceKey)
 end
 
 -- A page's reward sections, { caption, items } each: the choices, then what you get anyway ("You will also
--- receive:" after choices, else "You will receive:"). choosing is true where you pick one now.
-function QP.RewardSections(choices, rewards, choosing)
+-- receive:" after choices, else "You will receive:").
+local function rewardSections(choices, rewards, choiceKey)
   local out = {}
-  if #choices > 0 then out[1] = { caption = choiceCaption(#choices, choosing), items = choices } end
+  if #choices > 0 then out[1] = { caption = choiceCaption(#choices, choiceKey), items = choices } end
   if #rewards > 0 then out[#out + 1] = { caption = caption(#choices > 0 and "REWARD_ITEMS" or "REWARD_ITEMS_ONLY"), items = rewards } end
   return out
+end
+
+-- The sections of a page where you pick one of the choices now.
+function QP.ChooseSections(choices, rewards)
+  return rewardSections(choices, rewards, "REWARD_CHOOSE")
+end
+
+-- The sections of choices you only receive (a finished quest in the log).
+function QP.ReceiveSections(choices, rewards)
+  return rewardSections(choices, rewards, "REWARD_CHOICES")
 end
 
 -- The required items' one section, captioned as the game's progress page is ("Required items:").

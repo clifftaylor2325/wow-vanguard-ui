@@ -5,7 +5,7 @@
 local ADDON, ns = ...
 
 local O = ns.Options
-local moduleSettings, setting, liveSetting, check, append = O.ModuleSettings, O.Setting, O.LiveSetting, O.Check, O.Append
+local moduleSettings, setting, reloadSetting, liveSetting, check, append = O.ModuleSettings, O.Setting, O.ReloadSetting, O.LiveSetting, O.Check, O.Append
 
 -- get/set for one of the Chat module's settings, which it applies at once through its `method` (by
 -- name: Refresh, ApplySize, ApplyFades...) while it runs.
@@ -30,7 +30,7 @@ local function chatTextRows()
     { "cycle", "Chat text fades", CH.LINE_FADES, chatLive("lineFade", "ApplyFades") },
     check("Keep chat tabs visible (the game fades them until the mouse comes near)", chatLive("tabsVisible", "ApplyTabAlpha")),
     check("Hide the tab bar until the mouse is over the chat", chatLive("barHover", "ApplyBarHover")),
-    check("Text-only bubbles: no panel behind the words over heads (reload)", setting("ChatBubbles", "textOnly", true)),
+    check("Text-only bubbles: no panel behind the words over heads (reload)", reloadSetting("ChatBubbles", "textOnly")),
   }
 end
 
@@ -39,9 +39,9 @@ local function chatWindowRows()
   local CH = ns.GetModule("Chat")
   return append({
     { "header", "Chat" },
-    check("Chat background", setting("Chat", "background", true)),
+    check("Chat background", reloadSetting("Chat", "background")),
     { "cycle", "Chat background strength", CH.BACKDROPS, chatLive("backdrop", "Refresh") },
-    check("Keep chat in its bottom-left spot (reload)", setting("Chat", "place", true)),
+    check("Keep chat in its bottom-left spot (reload)", reloadSetting("Chat", "place")),
     { "cycle", "Chat window size", CH.WINDOW_SCALES, chatLive("windowScale", "ApplySize") },
   }, chatTextRows())
 end
@@ -81,14 +81,23 @@ local function chatWatchSwitches(CW)
   }
 end
 
--- Chat watch: add a phrase, a Remove button per phrase (or a hint while there are none), then the switches.
+-- A saved list's rows: its Add button, a hint while it is empty, then a Remove button per item.
+-- spec: { add = a button row, items = the list, empty = the hint, remove = function(item) }.
+local function listRows(spec)
+  local rows = { spec.add }
+  if #spec.items == 0 then rows[#rows + 1] = { "text", spec.empty } end
+  for _, item in ipairs(spec.items) do
+    rows[#rows + 1] = { "button", "Remove: " .. item, function() spec.remove(item) end }
+  end
+  return rows
+end
+
+-- Chat watch: its prose, the phrases (listRows), then the switches.
 local function chatWatchRows()
   local CW = ns.GetModule("ChatWatch")
-  local rows = { { "header", "Chat watch" }, { "text", "Phrases to watch for: a sound and a toast when one is said (all the words, in any order; in a fight, once it ends). Click the toast to whisper." },
-    { "button", "Add a phrase", function() ns.AskText("Watch for", CW.AddFromDialog, "Add") end } }
-  local phrases = moduleSettings("ChatWatch").phrases
-  if #phrases == 0 then rows[#rows + 1] = { "text", "No phrases yet. Add one, such as LFM or a dungeon's name." } end
-  for _, p in ipairs(phrases) do rows[#rows + 1] = { "button", "Remove: " .. p, function() CW.Remove(p) end } end
+  local rows = { { "header", "Chat watch" }, { "text", "Phrases to watch for: a sound and a toast when one is said (all the words, in any order; in a fight, once it ends). Click the toast to whisper." } }
+  append(rows, listRows({ add = { "button", "Add a phrase", function() ns.AskText("Watch for", CW.AddFromDialog, "Add") end },
+    items = moduleSettings("ChatWatch").phrases, empty = "No phrases yet. Add one, such as LFM or a dungeon's name.", remove = CW.Remove }))
   return append(rows, chatWatchSwitches(CW))
 end
 
@@ -105,11 +114,8 @@ end
 
 -- Chat filter's words of your own: Add a word, then a Remove button per word (or a hint while there are none).
 local function chatFilterWordRows(CF)
-  local rows = { { "button", "Add a word", function() ns.AskText("Filter lines with", CF.AddFromDialog, "Add") end } }
-  local words = moduleSettings("ChatFilter").keywords
-  if #words == 0 then rows[#rows + 1] = { "text", "No words of your own yet." } end
-  for _, w in ipairs(words) do rows[#rows + 1] = { "button", "Remove: " .. w, function() CF.Remove(w) end } end
-  return rows
+  return listRows({ add = { "button", "Add a word", function() ns.AskText("Filter lines with", CF.AddFromDialog, "Add") end },
+    items = moduleSettings("ChatFilter").keywords, empty = "No words of your own yet.", remove = CF.Remove })
 end
 
 -- Chat filter: the switches, where caught lines go, what it caught (chatFilterStatusRows), then your words.
@@ -128,11 +134,11 @@ end
 local function chatWindowsRows()
   local CW = ns.GetModule("ChatWindows")
   local rows = { { "header", "Chat windows" }, { "text", "Size each chat window here instead of dragging its corner. Lock stops the game's drag." },
-    check("Lock chat windows", CW.LockSetting()), check("Move floating windows with /vg unlock (reload)", setting("ChatWindows", "movers", true)) }
+    check("Lock chat windows", CW.LockSetting()), check("Move floating windows with /vg unlock (reload)", reloadSetting("ChatWindows", "movers")) }
   for _, w in ipairs(CW.Shown()) do
-    local wGet, wSet = CW.SizeSetting(w[2], false)
-    local hGet, hSet = CW.SizeSetting(w[2], true)
-    append(rows, { { "slider", w[3] .. ": width", CW.WIDTH, wGet, wSet }, { "slider", w[3] .. ": height", CW.HEIGHT, hGet, hSet } })
+    local wGet, wSet = CW.WidthSetting(w.frame)
+    local hGet, hSet = CW.HeightSetting(w.frame)
+    append(rows, { { "slider", w.name .. ": width", CW.WIDTH, wGet, wSet }, { "slider", w.name .. ": height", CW.HEIGHT, hGet, hSet } })
   end
   return rows
 end

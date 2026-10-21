@@ -45,12 +45,6 @@ CF.allowed, CF.recent, CF.recentCount, CF.count, CF.counts = {}, {}, 0, 0, {}
 
 -- Matching ------------------------------------------------------------------------------------
 
--- A line as plain lower-case text: colour and link codes and brackets gone.
-local function plain(text)
-  local s = text:find("|", 1, true) and text:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|H.-|h", ""):gsub("|[hr]", "") or text
-  return (s:gsub("[%[%]]", "")):lower()
-end
-
 -- True when the line holds any of the words (as plain text).
 local function holdsAny(line, words)
   for _, word in ipairs(words) do
@@ -96,7 +90,7 @@ end
 
 -- Why a line is filtered ("Gold selling", "Your word", "Repeat"), or nil to let it through.
 function CF.Reason(text, sender, now)
-  local line = plain(text)
+  local line = ns.GetModule("ChatExtras").Matchable(text)
   local why = CF.Category(line)
   if not why and holdsAny(line, CF.settings.keywords) then why = "Your word" end
   if not why and CF.settings.repeats and #line >= CF.MIN_REPEAT and repeated(sender, line, now) then why = "Repeat" end
@@ -175,12 +169,20 @@ local function catch(why, sender, text)
   countCaught(why)
 end
 
+-- Why a line is caught ("Gold selling", ...), or nil to let it through: a sender let through, the player's own
+-- line, or a filtered tab that can't take the line let it through; otherwise CF.Reason decides.
+local function verdict(text, sender)
+  if CF.allowed[sender] or ns.Home.IsMe(sender) then return nil end
+  if not canCatch() then return nil end
+  return CF.Reason(text, sender, GetTime())
+end
+
 -- Judges one line (once per line ID, or per sender and text without one: the game asks once per chat
 -- window). True to keep it out of the chat.
 function CF.Judge(text, sender, lineID)
   local id = lineID or (sender .. "\1" .. text)
   if id == CF.lastID then return CF.lastVerdict end
-  local why = not (CF.allowed[sender] or ns.Home.IsMe(sender)) and canCatch() and CF.Reason(text, sender, GetTime()) or nil
+  local why = verdict(text, sender)
   if why then catch(why, sender, text) end
   CF.lastID, CF.lastVerdict = id, why ~= nil
   return CF.lastVerdict
@@ -281,15 +283,10 @@ end
 
 -- Stops filtering a keyword; says in chat what happened.
 function CF.Remove(text)
-  local word, list = clean(text), keywords()
-  for i, w in ipairs(list) do
-    if w == word then
-      table.remove(list, i)
-      ns.Options.RebuildPage("chat")
-      return ns.Chat(string.format('No longer filtering "%s".', word))
-    end
-  end
-  ns.Chat(string.format('Not filtering "%s".', word))
+  local word = clean(text)
+  if not ns.GetModule("ChatExtras").RemoveValue(keywords(), word) then return ns.Chat(string.format('Not filtering "%s".', word)) end
+  ns.Options.RebuildPage("chat")
+  ns.Chat(string.format('No longer filtering "%s".', word))
 end
 
 -- The options' Add a word dialog: adds what was typed, and closes once it's added.
@@ -320,16 +317,35 @@ local function status()
   if #s.keywords > 0 then ns.Chat("Your words: " .. table.concat(s.keywords, ", ")) end
 end
 
+-- Forgets every keyword; says so.
+function CF.ClearWords()
+  ns.Settings("ChatFilter", CF.defaults).keywords = {}
+  ns.Options.RebuildPage("chat")
+  ns.Chat("Chat filter has no words now.")
+end
+
+-- What each /vg filter verb does with the rest of the line; no verb at all prints the status.
+local VERBS = {
+  -- Switches the filter on.
+  on = function() return CF.SetOn(true) end,
+  -- Switches the filter off.
+  off = function() return CF.SetOn(false) end,
+  -- Caught lines go to the Filtered tab.
+  tab = function() return CF.SetMode("tab") end,
+  -- Caught lines are hidden.
+  hide = function() return CF.SetMode("hide") end,
+  add = CF.Add,
+  remove = CF.Remove,
+  clear = CF.ClearWords,
+  [""] = status,
+}
+
 -- /vg filter [on | off | tab | hide | add <word> | remove <word> | clear].
 function CF.Command(rest)
   local verb, arg = (rest or ""):match("^(%S*)%s*(.-)$")
-  if verb == "on" or verb == "off" then return CF.SetOn(verb == "on") end
-  if verb == "tab" or verb == "hide" then return CF.SetMode(verb) end
-  if verb == "add" then return CF.Add(arg) end
-  if verb == "remove" then return CF.Remove(arg) end
-  if verb == "clear" then ns.Settings("ChatFilter", CF.defaults).keywords = {} ns.Options.RebuildPage("chat") return ns.Chat("Chat filter has no words now.") end
-  if verb == "" then return status() end
-  ns.Chat("Usage: /vg filter [on | off | tab | hide | add <word> | remove <word> | clear]")
+  local run = VERBS[verb]
+  if not run then return ns.Chat("Usage: /vg filter [on | off | tab | hide | add <word> | remove <word> | clear]") end
+  return run(arg)
 end
 
 -- Follows a setting changed in the options: the Filtered tab is made when it is first needed, and the card's

@@ -81,9 +81,9 @@ local function round(v)
   return math.floor(v + 0.5)
 end
 
--- The screen's width and height in UIParent's units.
+-- The screen's width and height ({ w, h }) in UIParent's units.
 local function screen()
-  return UIParent:GetWidth() or 0, UIParent:GetHeight() or 0
+  return { w = UIParent:GetWidth() or 0, h = UIParent:GetHeight() or 0 }
 end
 
 -- A mover's saved scale.
@@ -92,11 +92,6 @@ local function scaleOf(key)
 end
 
 -- Sizes ------------------------------------------------------------------------------------
-
--- A size kept to a range { min, max }.
-local function within(v, range)
-  return math.max(range[1], math.min(range[2], v))
-end
 
 -- The width or height (dim) another frame gives a matched mover (in the mover's own units), or nil.
 local function matchedSize(key, dim)
@@ -108,20 +103,28 @@ local function matchedSize(key, dim)
   return size
 end
 
+-- A frame's width or height (dim) as the client reports it now, or 0 while it can't say.
+local function frameSize(f, dim)
+  if dim == "width" then return f:GetWidth() or 0 end
+  return f:GetHeight() or 0
+end
+
 -- A mover's width or height (dim) in its own units as it should be now: for a frame Vanguard
 -- sizes, matched to another frame's, else the size you set, else its own; else what it is.
 function K.Own(key, dim)
   local s, f = sizable[key], ns.MoverFrame(key)
-  if not (s and s[dim]) then return (dim == "width" and f:GetWidth() or f:GetHeight()) or 0 end
+  if not (s and s[dim]) then return frameSize(f, dim) end
   local own = tonumber((entryOf(key) or {})[DIMS[dim]])
-  return within(matchedSize(key, dim) or own or s.natural[dim], s[dim])
+  return L.Within(matchedSize(key, dim) or own or s.natural[dim], s[dim][1], s[dim][2])
 end
 
 -- A mover's rect on screen ({ left, bottom, w, h } in UIParent's units), from where it goes and its size.
 function K.RectOf(key)
   local point, relPoint, x, y = ns.MoverPoint(key)
   local s = scaleOf(key)
-  return L.Rect(point, relPoint, x, y, K.Own(key, "width") * s, K.Own(key, "height") * s, screen())
+  local anchor = { point = point, relPoint = relPoint, x = x, y = y }
+  local size = { w = K.Own(key, "width") * s, h = K.Own(key, "height") * s }
+  return L.Rect(anchor, size, screen())
 end
 
 -- Sizes a frame Vanguard may size (as K.Own works it out) and tells its module.
@@ -150,28 +153,43 @@ local function anchoredRect(key, rel)
   local tx, ty = L.PointAt(K.RectOf(rel.to), theirs)
   local s = scaleOf(key)
   local r = L.RectAt(own, tx + (tonumber(rel.x) or 0), ty + (tonumber(rel.y) or 0), K.Own(key, "width") * s, K.Own(key, "height") * s)
-  return L.Clamp(r, screen())
+  local sc = screen()
+  return L.Clamp(r, sc.w, sc.h)
 end
 
 -- Remembers where an anchored mover is as its saved spot (against the nearest screen edge):
 -- where it lands while the frame it's anchored to isn't there.
 local function remember(p, r)
-  local point, x, y = L.Anchor(r.left, r.bottom, r.w, r.h, screen())
+  local point, x, y = L.Anchor(r, screen())
   p.point, p.relPoint, p.x, p.y = point, point, x, y
 end
 
--- Where an anchored mover goes: its own pinned point on UIParent's bottom left, so it grows
--- away from the frame it's anchored to. Nothing while that frame isn't there (or a loop in a
--- hand-edited profile leads back to it): it stays at its saved spot.
-function K.Point(key, p)
+-- The rect an anchored mover takes now, and its link; nil when the link can't be followed now (no link,
+-- the frame it names isn't there, or a loop in a hand-edited profile leads back to it).
+local function linkedRect(key, p)
   local rel = part(p, "rel")
   if not rel or not L.SIDES[rel.side] or not ns.MoverFrame(rel.to) or busy[key] then return nil end
   busy[key] = true
   local r = anchoredRect(key, rel)
   busy[key] = nil
-  remember(p, r)
+  return r, rel
+end
+
+-- Where an anchored mover goes: its own pinned point on UIParent's bottom left, so it grows
+-- away from the frame it's anchored to. Nothing while that frame isn't there: it stays at its
+-- saved spot (K.Remember keeps that spot current). A read only: it saves nothing.
+function K.Point(key, p)
+  local r, rel = linkedRect(key, p)
+  if not r then return nil end
   local x, y = L.PointAt(r, L.SIDES[rel.side][1])
   return L.SIDES[rel.side][1], "BOTTOMLEFT", x, y
+end
+
+-- Keeps an anchored mover's saved spot where its link puts it now, so it still lands there while the
+-- frame it's anchored to isn't there (its module off). Called each time the mover is placed.
+function K.Remember(key, p)
+  local r = linkedRect(key, p)
+  if r then remember(p, r) end
 end
 
 -- Sets an anchored mover's offsets so the rect r is where it sits, from the side it's anchored to.
@@ -187,8 +205,9 @@ function K.Saved(key, p)
   local rel = part(p, "rel")
   if not rel or not L.SIDES[rel.side] or not ns.MoverFrame(rel.to) then return end
   local s = scaleOf(key)
-  local w, h = K.Own(key, "width") * s, K.Own(key, "height") * s
-  offsetsFrom(rel, L.Rect(p.point, p.relPoint or p.point, tonumber(p.x) or 0, tonumber(p.y) or 0, w, h, screen()))
+  local anchor = { point = p.point, relPoint = p.relPoint or p.point, x = tonumber(p.x) or 0, y = tonumber(p.y) or 0 }
+  local size = { w = K.Own(key, "width") * s, h = K.Own(key, "height") * s }
+  offsetsFrom(rel, L.Rect(anchor, size, screen()))
 end
 
 -- "Below", "Player frame", and the offsets, for an anchored mover's handle and popover; nil for one that isn't.
@@ -362,7 +381,7 @@ function ns.SetMoverSize(key, dim, value)
   local why = ns.MoverSizeLock(key, dim)
   if why or type(value) ~= "number" then return false, why end
   local s = sizable[key]
-  local v = within(round(value), s[dim])
+  local v = L.Within(round(value), s[dim][1], s[dim][2])
   entry(key)[DIMS[dim]] = v ~= round(s.natural[dim]) and v or nil
   return settle(key)
 end

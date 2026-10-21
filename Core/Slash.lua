@@ -188,54 +188,67 @@ local function toggleWord(rest, current)
   return nil
 end
 
--- /vg snap on|off
-local function snapCommand(rest)
-  local o = ns.MoverOptions()
-  local on = toggleWord(rest, o.snap)
-  if on == nil then return chat("Usage: /vg snap [on|off]") end
-  o.snap = on
-  chat(o.snap and "Snapping on." or "Snapping off.")
+-- A switch command's handler: its word (on, off, or nothing for the other of the current state) is read through
+-- toggleWord, written with spec.write, then spec.after (a refresh) runs and chat says spec.onText or spec.offText.
+-- Any other word prints spec.usage.
+local function switchCommand(spec)
+  return function(rest)
+    local on = toggleWord(rest, spec.read())
+    if on == nil then return chat(spec.usage) end
+    spec.write(on)
+    if spec.after then spec.after() end
+    chat(on and spec.onText or spec.offText)
+  end
 end
+
+-- /vg snap on|off
+local snapCommand = switchCommand({
+  usage = "Usage: /vg snap [on|off]",
+  read = function() return ns.MoverOptions().snap end,
+  write = function(on) ns.MoverOptions().snap = on end,
+  onText = "Snapping on.", offText = "Snapping off.",
+})
 
 -- /vg texelsnap [on|off]: pixel-grid snapping for still textures, for the A/B test (#226).
-local function texelSnapCommand(rest)
-  local on = toggleWord(rest, T.Settings().texelSnap)
-  if on == nil then return chat("Usage: /vg texelsnap [on|off]") end
-  T.SetTexelSnap(on)
-  chat(on and "Texel snapping on: borders, fills, dividers and sheens snap to the pixel grid." or "Texel snapping off.")
-end
+local texelSnapCommand = switchCommand({
+  usage = "Usage: /vg texelsnap [on|off]",
+  read = function() return T.Settings().texelSnap end,
+  write = function(on) T.SetTexelSnap(on) end,
+  onText = "Texel snapping on: borders, fills, dividers and sheens snap to the pixel grid.", offText = "Texel snapping off.",
+})
 
 -- /vg nineslice [on|off]: shadows and glows as one nine-slice texture each, after a reload (#236).
-local function nineSliceCommand(rest)
-  local s = T.Settings()
-  local on = toggleWord(rest, s.sliceRings)
-  if on == nil then return chat("Usage: /vg nineslice [on|off]") end
-  s.sliceRings = on
-  chat((s.sliceRings and "Nine-slice shadows on" or "Nine-slice shadows off") .. " after a /reload.")
-end
+local nineSliceCommand = switchCommand({
+  usage = "Usage: /vg nineslice [on|off]",
+  read = function() return T.Settings().sliceRings end,
+  write = function(on) T.Settings().sliceRings = on end,
+  onText = "Nine-slice shadows on after a /reload.", offText = "Nine-slice shadows off after a /reload.",
+})
 
 -- /vg cdmglow [on|off|<percent>]: the Cooldown Manager refresh-window glow (#252), at once.
 local function cdmGlowCommand(rest)
   local CG = ns.GetModule("CooldownGlow")
   if not CG.settings then return chat("Cooldown glow is off: turn the module on in the options first.") end
   local percent = tonumber(rest)
-  if percent then CG.settings.percent = math.min(60, math.max(10, math.floor(percent))) end
+  if percent then CG.SetPercent(percent) end
   local on = percent ~= nil or toggleWord(rest, CG.settings.glow)
   if on == nil then return chat("Usage: /vg cdmglow [on|off|<percent>]") end
-  CG.settings.glow = on
-  CG.Apply()
+  CG.SetGlow(on)
   chat(CG.settings.glow and ("Cooldown Manager glow on: under " .. CG.settings.percent .. " percent left.") or "Cooldown Manager glow off.")
 end
 
 -- /vg cdmkeys [on|off]: key text on the Cooldown Manager's icons, at once.
+local cdmKeysSwitch = switchCommand({
+  usage = "Usage: /vg cdmkeys [on|off]",
+  read = function() return ns.GetModule("CooldownKeys").settings.keys end,
+  write = function(on) ns.GetModule("CooldownKeys").SetKeys(on) end,
+  onText = "Cooldown Manager keys on.", offText = "Cooldown Manager keys off.",
+})
+
+-- /vg cdmkeys: the module must be on first (its settings exist only then).
 local function cdmKeysCommand(rest)
-  local CK = ns.GetModule("CooldownKeys")
-  if not CK.settings then return chat("The Cooldown Manager keys module is off. Turn it on under /vg > Modules, then /reload.") end
-  local on = toggleWord(rest, CK.settings.keys)
-  if on == nil then return chat("Usage: /vg cdmkeys [on|off]") end
-  CK.settings.keys = on
-  CK.Refresh()
-  chat(CK.settings.keys and "Cooldown Manager keys on." or "Cooldown Manager keys off.")
+  if not ns.GetModule("CooldownKeys").settings then return chat("The Cooldown Manager keys module is off. Turn it on under /vg > Modules, then /reload.") end
+  return cdmKeysSwitch(rest)
 end
 
 -- /vg cooldowns [setup]: the Cooldowns options page, or its setup wizard.
@@ -245,33 +258,30 @@ local function cooldownsCommand(rest)
 end
 
 -- /vg gradient [on|off]: floating windows' fills a shade lighter toward the top, at once (#259).
-local function gradientCommand(rest)
-  local s = T.Settings()
-  local on = toggleWord(rest, s.panelGradient)
-  if on == nil then return chat("Usage: /vg gradient [on|off]") end
-  s.panelGradient = on
-  T.Refresh()
-  chat(s.panelGradient and "Panel gradient on: windows run a shade lighter toward the top." or "Panel gradient off.")
-end
+local gradientCommand = switchCommand({
+  usage = "Usage: /vg gradient [on|off]",
+  read = function() return T.Settings().panelGradient end,
+  write = function(on) T.Settings().panelGradient = on end,
+  after = function() T.Refresh() end,
+  onText = "Panel gradient on: windows run a shade lighter toward the top.", offText = "Panel gradient off.",
+})
 
 -- /vg ornaments [on|off]: window ornaments, repainted at once (#238).
-local function ornamentsCommand(rest)
-  local s = T.Settings()
-  local on = toggleWord(rest, s.ornaments)
-  if on == nil then return chat("Usage: /vg ornaments [on|off]") end
-  s.ornaments = on
-  T.Refresh()
-  chat(s.ornaments and "Window ornaments on." or "Window ornaments off.")
-end
+local ornamentsCommand = switchCommand({
+  usage = "Usage: /vg ornaments [on|off]",
+  read = function() return T.Settings().ornaments end,
+  write = function(on) T.Settings().ornaments = on end,
+  after = function() T.Refresh() end,
+  onText = "Window ornaments on.", offText = "Window ornaments off.",
+})
 
 -- /vg icons [on|off]: line and menu icons baked at their on-screen size (#232), after a /reload.
-local function iconsCommand(rest)
-  local s = T.Settings()
-  local on = toggleWord(rest, s.sizedIcons)
-  if on == nil then return chat("Usage: /vg icons [on|off]") end
-  s.sizedIcons = on
-  chat(s.sizedIcons and "Sized icons on after a /reload." or "Sized icons off after a /reload.")
-end
+local iconsCommand = switchCommand({
+  usage = "Usage: /vg icons [on|off]",
+  read = function() return T.Settings().sizedIcons end,
+  write = function(on) T.Settings().sizedIcons = on end,
+  onText = "Sized icons on after a /reload.", offText = "Sized icons off after a /reload.",
+})
 
 -- /vg variant [name]: a theme variant (#237), repainted at once.
 local function variantCommand(rest)
@@ -292,23 +302,21 @@ local function cornersCommand(rest)
 end
 
 -- /vg slug [on|off]: the SLUG font flag on world text, repainted at once (#239).
-local function slugCommand(rest)
-  local s = T.Settings()
-  local on = toggleWord(rest, s.slugText)
-  if on == nil then return chat("Usage: /vg slug [on|off]") end
-  s.slugText = on
-  T.RefreshText()
-  chat(s.slugText and "SLUG text on for world text." or "SLUG text off.")
-end
+local slugCommand = switchCommand({
+  usage = "Usage: /vg slug [on|off]",
+  read = function() return T.Settings().slugText end,
+  write = function(on) T.Settings().slugText = on end,
+  after = function() T.RefreshText() end,
+  onText = "SLUG text on for world text.", offText = "SLUG text off.",
+})
 
 -- /vg framebuffer [on|off]: windows go through a frame buffer while they fade (#239).
-local function frameBufferCommand(rest)
-  local s = T.Settings()
-  local on = toggleWord(rest, s.frameBuffer)
-  if on == nil then return chat("Usage: /vg framebuffer [on|off]") end
-  s.frameBuffer = on
-  chat(s.frameBuffer and "Frame buffers on while windows open and close." or "Frame buffers off.")
-end
+local frameBufferCommand = switchCommand({
+  usage = "Usage: /vg framebuffer [on|off]",
+  read = function() return T.Settings().frameBuffer end,
+  write = function(on) T.Settings().frameBuffer = on end,
+  onText = "Frame buffers on while windows open and close.", offText = "Frame buffers off.",
+})
 
 -- /vg theme reset
 local function themeCommand(rest)
@@ -531,7 +539,7 @@ end
 -- The text line: UI scale, Text size, and how tall chat text draws on this screen.
 local function textLine()
   local CH, frame = ns.GetModule("Chat"), _G.ChatFrame1
-  local size = (CH.settings and frame) and CH.TextSize(frame) or T.ScaledSize(T.ROLES.chat[1])
+  local size = (CH.settings and frame) and CH.TextSize(frame) or T.ScaledSize(T.ROLES.chat.size)
   local percent = math.floor((T.Settings().textScale or 1) * 100 + 0.5)
   return string.format("UI scale %.2f  ·  text %d%%  ·  chat %d (about %d px on this screen)",
     UIParent:GetScale(), percent, size, math.floor(size * T.PixelsPerUnit() + 0.5))

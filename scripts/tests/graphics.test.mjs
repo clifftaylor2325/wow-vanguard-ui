@@ -72,9 +72,9 @@ it("/vg graphics: nothing the client can't say is guessed", () => {
     "Graphics Quality can't be read on this client; if the game feels slow, lower it in Options → Graphics.",
   ]);
   addon.eval("GetCVarDefault = function() return '6' end C_CVar.GetCVar = nil GetCVar = nil");
-  expect(addon.eval("local G = ns.Graphics return { G.Setting('graphicsQuality', true), G.Setting('graphicsQuality') == nil }"), "the old default getter; no getter at all").toEqual([6, true]);
+  expect(addon.eval("local G = ns.Graphics return { G.DefaultSetting('graphicsQuality'), G.Setting('graphicsQuality') == nil }"), "the old default getter; no getter at all").toEqual([6, true]);
   addon.eval("GetCVarDefault = function() error('TEST-ONLY') end");
-  expect(addon.eval("return ns.Graphics.Setting('graphicsQuality', true) == nil"), "a getter that errors").toBe(true);
+  expect(addon.eval("return ns.Graphics.DefaultSetting('graphicsQuality') == nil"), "a getter that errors").toBe(true);
   const cards = ["function() error('TEST-ONLY') end", "function() return {} end", "function() return { { name = 5 } } end", "5"];
   for (const get of cards) {
     addon.eval(`C_VideoOptions = { GetGxAdapterInfo = ${get} }`);

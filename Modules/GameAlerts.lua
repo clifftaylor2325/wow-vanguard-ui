@@ -39,12 +39,8 @@ GA.LOC_ART = { "blackBg", "RedLineTop", "RedLineBottom" }
 
 -- A movable spot for one of the game's alerts, with the alert kept centered on it.
 local function place(name)
-  local f, spot = _G[name], GA.SPOTS[name]
-  if type(f) ~= "table" or not f.SetPoint then return end
-  local holder = CreateFrame("Frame", "Vanguard_" .. name .. "Spot", UIParent)
-  holder:SetSize(spot[4], spot[5])
-  ns.Mover(holder, spot[1], spot[2], spot[3])
-  ns.Pin(f, function(frame) ns.GetModule("GameTools").Fit(frame, holder, false) end)
+  local tools = ns.GetModule("GameTools")
+  tools.PlaceSpot(name, GA.SPOTS[name], tools.FitCenter)
 end
 
 -- Hides a frame's named art parts. Hidden, not faded: the frame's own
@@ -166,7 +162,9 @@ GA.seenRares = {}
 -- The rare a minimap mark shows (its name), or nil for another mark, a dead one or a hidden one.
 function GA.RareName(guid)
   local info = C_VignetteInfo.GetVignetteInfo(guid)
-  if type(info) ~= "table" or ns.IsSecret(info.atlasName) or ns.IsSecret(info.name) then return nil end
+  if type(info) ~= "table" or ns.IsSecret(info.atlasName) or ns.IsSecret(info.name) or ns.IsSecret(info.isDead) then
+    return nil
+  end
   if GA.RARE_ATLAS[info.atlasName] and info.isDead ~= true then return info.name end
 end
 

@@ -47,11 +47,17 @@ function O.SettingOf(get)
 end
 
 -- get/set for one module setting, and its default (the window marks a changed
--- setting and can put it back); reload marks a change that needs one.
-local function setting(module, key, reload)
+-- setting and can put it back).
+local function setting(module, key)
   return O.Tag(function() return moduleSettings(module)[key] end, module, key),
-    function(v) moduleSettings(module)[key] = v; if reload then O.NeedReload() end end,
+    function(v) moduleSettings(module)[key] = v end,
     default(module, key)
+end
+
+-- get/set for a module setting that needs a reload: a change lights the reload notice.
+local function reloadSetting(module, key)
+  local get, set, initial = setting(module, key)
+  return get, function(v) set(v) O.NeedReload() end, initial
 end
 
 -- True when a module was built this session, so its live callbacks have its settings to read.
@@ -65,6 +71,11 @@ end
 local function liveSetting(module, key, after)
   local get, set, initial = setting(module, key)
   return get, function(v) set(v); if moduleRunning(module) then after() end end, initial
+end
+
+-- get/set for a module setting that applies at once by calling method (no arguments) on the module, when it runs.
+local function liveMethod(module, key, method)
+  return liveSetting(module, key, function() ns.GetModule(module)[method]() end)
 end
 
 -- get/set for an unlock-mode option (grid, snap), applied at once.
@@ -121,20 +132,29 @@ local function append(a, b)
   return a
 end
 
+-- Applies a module's visibility now, when the module runs.
+local function applyModuleVisibility(module)
+  local m = ns.GetModule(module)
+  if m.enabled then m.ApplyVisibility() end
+end
+
 -- The visibility rows (Core/Visibility.lua) of a module's frame, applied at once
 -- (when the module runs); unset, the setting is Always. modes: its choices (V.MODES unless given).
 local function visibilityRows(caption, module, modeKey, whenKey, modes)
-  local mode, when = ns.Visibility.Rows(caption, function() return moduleSettings(module) end, modeKey, whenKey, function()
-    local m = ns.GetModule(module)
-    if m.enabled then m.ApplyVisibility() end
-  end, "always", modes)
+  local mode, when = ns.Visibility.Rows({
+    caption = caption,
+    tbl = function() return moduleSettings(module) end,
+    modeKey = modeKey, whenKey = whenKey,
+    after = function() applyModuleVisibility(module) end,
+    initial = "always", modes = modes,
+  })
   O.Tag(mode[4], module, modeKey)
   return mode, when
 end
 
 -- The helpers the area files build their rows with.
 O.VisibilityRows = visibilityRows
-O.ModuleSettings, O.Setting, O.LiveSetting, O.Check, O.Append = moduleSettings, setting, liveSetting, check, append
+O.ModuleSettings, O.Setting, O.ReloadSetting, O.LiveSetting, O.LiveMethod, O.Check, O.Append = moduleSettings, setting, reloadSetting, liveSetting, liveMethod, check, append
 
 -- get/set for a theme setting; changes apply on reload.
 local function themeSetting(key)

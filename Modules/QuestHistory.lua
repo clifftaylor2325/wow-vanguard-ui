@@ -32,24 +32,18 @@ function QH.On()
   return QH.settings ~= nil and QH.settings.track == true
 end
 
--- The text if it is a plain, non-empty string; nil otherwise.
-local function plainText(text)
-  if ns.IsSecret(text) or type(text) ~= "string" or text == "" then return nil end
-  return text
-end
-
 -- This character as "Name-Realm" and its class file, or nil when the client hides the name.
 function QH.Me()
-  local name = plainText(UnitName("player"))
+  local name = ns.PlainText(UnitName("player"))
   if not name then return nil end
   local _, class = UnitClass("player")
-  return name .. "-" .. ns.Home.Realm(), plainText(class)
+  return name .. "-" .. ns.Home.Realm(), ns.PlainText(class)
 end
 
 -- The quest's title if the client knows it now, else nil.
 local function titleOf(id)
   local api = type(C_QuestLog) == "table" and C_QuestLog.GetTitleForQuestID
-  return type(api) == "function" and plainText(api(id)) or nil
+  return type(api) == "function" and ns.PlainText(api(id)) or nil
 end
 
 -- The wall clock in seconds (0 when the client can't say).
@@ -102,7 +96,7 @@ end
 local function clientLine(questID)
   local api = type(C_QuestLog) == "table" and C_QuestLog.IsQuestFlaggedCompleted
   local done = QH.On() and type(questID) == "number" and type(api) == "function" and api(questID)
-  return not ns.IsSecret(done) and done == true and "Done on this character" or nil
+  return ns.IsTrue(done) and "Done on this character" or nil
 end
 
 -- "Done on Thrall-Forever · 3 days ago" (on this character's own name: "Done on this character"); with no

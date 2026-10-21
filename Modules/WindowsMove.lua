@@ -46,6 +46,8 @@ GW.MOVABLE_TOP = {
 }
 -- How far down from a window's top edge a press starts a drag (units).
 GW.MOVE_GRAB = 30
+-- How far (units) a press may move and still count as a click: a press that never leaves its spot saves no place.
+GW.MOVE_SLOP = 1
 -- The part a window's title bar is, by window, when it isn't its TitleContainer (parentKey).
 GW.MOVE_BAR = { GameMenuFrame = "Header" }
 -- The pages that cover a window and carry its title (the group finder's), by window: each page's title
@@ -261,16 +263,19 @@ end
 -- gets the press where none of the game's buttons or panels sits over the spot, so no click is taken.
 local function pressTop(frame, button)
   if button ~= "LeftButton" or ns.InCombat() or vgDragging[frame] or not overTop(frame) then return end
-  vgDragging[frame], vgPress[frame] = true, { frame:GetLeft() or 0, frame:GetTop() }
+  vgDragging[frame] = true
+  vgPress[frame] = { left = frame:GetLeft() or 0, top = frame:GetTop() }
   frame:StartMoving()
 end
 
--- The drop of a press-move that started with the window's top-left corner at `from`: it stops, and its place is
--- saved unless it never left its spot (a click).
+-- The drop of a press-move that started with the window's top-left corner at `from` (left, top): it stops, and its
+-- place is saved unless it never left its spot (a click, within GW.MOVE_SLOP).
 local function released(frame, from)
   stop(frame)
   local left, top = frame:GetLeft(), frame:GetTop()
-  if left and top and (math.abs(left - from[1]) >= 1 or math.abs(top - from[2]) >= 1) then GW.SavePlace(frame:GetName(), frame) end
+  if left and top and (math.abs(left - from.left) >= GW.MOVE_SLOP or math.abs(top - from.top) >= GW.MOVE_SLOP) then
+    GW.SavePlace(frame:GetName(), frame)
+  end
 end
 
 -- The release of a press-move (or the window closing): dropped as `released`, out of combat.
@@ -289,31 +294,37 @@ local function dropHidden(frame)
   endDrag(frame)
 end
 
--- Makes a window movable and kept on the screen, dragged by its top edge, and by an invisible drag area over
--- its title bar too when it is one of GW.MOVABLE.
-local function makeMovable(frame, name, withHandle)
+-- Makes a window movable and kept on the screen, dragged by its top edge.
+local function makeMovable(frame, name)
   frame:SetMovable(true)
   frame:SetClampedToScreen(true)
-  if withHandle then addHandle(frame, name) end
   frame:HookScript("OnMouseDown", ns.Guard("press " .. name, pressTop))
   frame:HookScript("OnMouseUp", ns.Guard("release " .. name, releaseTop))
   frame:HookScript("OnHide", ns.Guard("release " .. name, dropHidden))
 end
 
 -- Sets a window up once, when the client has it: made movable out of combat, and put back each time it shows.
-local function setUp(name, withHandle)
+-- Returns the window's frame only when this call set it up, so the caller can add to it once.
+local function setUp(name)
   local frame = _G[name]
   if type(frame) ~= "table" or type(frame.HookScript) ~= "function" or vgMovable[frame] then return end
   vgMovable[frame] = true
   if not layoutOf(frame, name) then recordHome(frame) end
-  ns.OutOfCombat(function() makeMovable(frame, name, withHandle) end, "move setup " .. name)
-  frame:HookScript("OnShow", function() place(name) end)
+  ns.OutOfCombat(function() makeMovable(frame, name) end, "move setup " .. name)
+  frame:HookScript("OnShow", ns.Guard("show " .. name, function() place(name) end))
+  return frame
+end
+
+-- Sets a window up (see setUp) and lays its drag area over its title bar too, out of combat.
+local function setUpDragArea(name)
+  local frame = setUp(name)
+  if frame then ns.OutOfCombat(function() addHandle(frame, name) end, "move handle " .. name) end
 end
 
 -- Sets up every window the client has now (called again as parts of the game load their windows).
 local function setUpAll()
-  for _, name in ipairs(GW.MOVABLE) do setUp(name, true) end
-  for _, name in ipairs(GW.MOVABLE_TOP) do setUp(name, false) end
+  for _, name in ipairs(GW.MOVABLE) do setUpDragArea(name) end
+  for _, name in ipairs(GW.MOVABLE_TOP) do setUp(name) end
 end
 
 -- A fight is starting (PLAYER_REGEN_DISABLED, before the lockdown): every drag still held ends now, where the window

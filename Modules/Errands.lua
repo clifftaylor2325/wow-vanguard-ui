@@ -28,12 +28,8 @@ ER.TRAVEL_SPOT = { "TOP", "TOP", 0, -198 }
 
 -- Helpers ------------------------------------------------------------------------------------
 
--- Calls a client function by name; nil when this client doesn't have it.
-local function ask(name, ...)
-  local fn = _G[name]
-  if type(fn) ~= "function" then return nil end
-  return fn(...)
-end
+-- Calls a client function by name (ns.Client.Call); nil when this client doesn't have it.
+local ask = ns.Client.Call
 
 -- Exposed for Modules/ErrandsBoats.lua.
 ER.ask = ask
@@ -358,9 +354,19 @@ local function settle(run)
   return got == p.count
 end
 
+-- The item IDs a run bought, in order (pairs order is undefined).
+local function boughtIDs(run)
+  local ids = {}
+  for id in pairs(run.bought) do ids[#ids + 1] = id end
+  table.sort(ids)
+  return ids
+end
+
 -- Says what a run bought, and which item stopped it short.
 local function report(run)
-  for id, n in pairs(run.bought) do ns.Chat(string.format("Bought %d × %s for %s.", n, itemName(id), money(run.spent[id]))) end
+  for _, id in ipairs(boughtIDs(run)) do
+    ns.Chat(string.format("Bought %d × %s for %s.", run.bought[id], itemName(id), money(run.spent[id])))
+  end
   if run.short then ns.Chat(string.format("Stopped buying %s: the last purchase did not arrive in full (bags full, a stock limit or not enough money?).", itemName(run.short))) end
 end
 
@@ -426,13 +432,19 @@ local function clock(seconds)
   return string.format("%d:%02d", math.floor(seconds / 60), seconds % 60)
 end
 
+-- Paints a timer bar for a route in progress: a countdown on a route taken before (its known seconds
+-- and destination), else the idle text while it is timed.
+function ER.PaintRoute(bar, route, left, idleText)
+  bar:Show()
+  bar:SetMinMaxValues(0, route.known or 1)
+  bar:SetValue(route.known and math.max(0, left) or 1)
+  bar.text:SetText(route.known and (route.to .. "  " .. clock(left)) or idleText)
+end
+
 -- The bar for a flight in the air: a countdown on a route flown before, else "timing".
 function ER.PaintFlight(f)
-  local bar, left = ER.bar, (f.known or 0) - ((ask("GetTime") or 0) - f.start)
-  bar:Show()
-  bar:SetMinMaxValues(0, f.known or 1)
-  bar:SetValue(f.known and math.max(0, left) or 1)
-  bar.text:SetText(f.known and (f.to .. "  " .. clock(left)) or ("Timing this flight to " .. f.to))
+  local left = (f.known or 0) - ((ask("GetTime") or 0) - f.start)
+  ER.PaintRoute(ER.bar, f, left, "Timing this flight to " .. f.to)
 end
 
 -- Landed: save the flight's time (a sane one) and put the bar away.
@@ -455,16 +467,21 @@ function ER.PollFlight()
   if now - f.picked > ER.TAKEOFF_WAIT then ER.flight = nil end
 end
 
--- The movable flight bar, above the cluster, hidden until a flight.
-local function buildBar()
-  local bar = T.BarColor(T.StyleBar(CreateFrame("StatusBar", "Vanguard_FlightTimer", UIParent)), "accent")
+-- A movable timer bar at the travel spot, hidden until a route: the frame's name, its mover's key and label.
+function ER.TimerBar(frameName, moverKey, label)
+  local bar = T.BarColor(T.StyleBar(CreateFrame("StatusBar", frameName, UIParent)), "accent")
   T.HudPanel(bar)
   bar:SetSize(ER.BAR_W, ER.BAR_H)
-  ns.Mover(bar, "flighttimer", "Flight timer", ER.TRAVEL_SPOT)
+  ns.Mover(bar, moverKey, label, ER.TRAVEL_SPOT)
   bar.text = T.Text(bar:CreateFontString(nil, "OVERLAY"), "barSmall")
   bar.text:SetPoint("CENTER")
   bar:Hide()
-  ER.bar = bar
+  return bar
+end
+
+-- The movable flight bar, above the cluster, hidden until a flight.
+local function buildBar()
+  ER.bar = ER.TimerBar("Vanguard_FlightTimer", "flighttimer", "Flight timer")
 end
 
 -- Times flights, where the client lets addons see you pick one.

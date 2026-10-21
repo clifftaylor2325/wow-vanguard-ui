@@ -162,19 +162,24 @@ end
 
 -- Choices ------------------------------------------------------------------------------------
 
+-- The position of the first choice (from a list of { value, text }) whose value is `value`; nil when none is.
+local function indexOf(choices, value)
+  for i, c in ipairs(choices) do
+    if c[1] == value then return i end
+  end
+end
+
 -- The choice after the current one (wrapping), from a list of { value, text }.
 function W.NextChoice(choices, current)
-  for i, c in ipairs(choices) do
-    if c[1] == current then return choices[i % #choices + 1] end
-  end
+  local i = indexOf(choices, current)
+  if i then return choices[i % #choices + 1] end
   return choices[1]
 end
 
 -- The text of the current choice (or the first).
 local function currentText(choices, current)
-  for _, c in ipairs(choices) do
-    if c[1] == current then return c[2] end
-  end
+  local i = indexOf(choices, current)
+  if i then return choices[i][2] end
   return choices[1] and choices[1][2] or ""
 end
 
@@ -182,9 +187,7 @@ end
 -- the row can show it. A copy is made: the list as written stays as it was.
 local function withValue(choices, value)
   if not choices.keep or value == nil then return choices end
-  for _, c in ipairs(choices) do
-    if c[1] == value then return choices end
-  end
+  if indexOf(choices, value) then return choices end
   local out = {}
   for i, c in ipairs(choices) do out[i] = c end
   out[#out + 1] = { value, tostring(value) }
@@ -371,13 +374,6 @@ local function addCatcher()
   menu.catcher:Hide()
 end
 
--- Lets Escape close the menu through the game's list of special frames (where the client has it), and a fight
--- close it, so its click catcher is never up over the action bars.
-local function closeOnEscape()
-  if type(UISpecialFrames) == "table" then table.insert(UISpecialFrames, "Vanguard_Menu") end
-  ns.On("PLAYER_REGEN_DISABLED", W.CloseMenu)
-end
-
 -- Each frame while the menu is open: it closes once the window its dropdown sits in stops showing (a bag
 -- closed, the auction house left), so its catcher never eats the next click. It asks the dropdown's parent,
 -- since a dropdown can be hidden itself (the auction shop's row menu).
@@ -387,9 +383,12 @@ local function closeWhenOwnerGone(m)
   if host and not host:IsVisible() then W.CloseMenu() end
 end
 
--- The menu showed or hid: its catcher follows (just under it), and the dropdown that opened it keeps its hover
+-- Escape and a fight close the menu (a fight, so its click catcher is never up over the action bars). The menu
+-- showed or hid: its catcher follows (just under it), and the dropdown that opened it keeps its hover
 -- look (T.HoldHover) only while it is open; while open it watches that its dropdown's window still shows.
 local function wireMenuState()
+  ns.CloseOnEscape(menu)
+  ns.On("PLAYER_REGEN_DISABLED", W.CloseMenu)
   menu:SetScript("OnUpdate", closeWhenOwnerGone)
   menu:SetScript("OnShow", ns.Guard("menu show", function(m) m.catcher:Show() end))
   menu:SetScript("OnHide", ns.Guard("menu hide", function(m)
@@ -420,16 +419,15 @@ local function menuFrame()
   menu:SetClampedToScreen(true)
   menu:EnableMouseWheel(true)
   menu:SetScript("OnMouseWheel", scrollMenu)
-  for _, add in ipairs({ addMenuThumb, addCatcher, wireMenuState, closeOnEscape }) do add() end
+  for _, add in ipairs({ addMenuThumb, addCatcher, wireMenuState }) do add() end
   menu:Hide()
   return menu
 end
 
 -- How far a menu starts scrolled: enough to show the current choice.
 local function startOffset(choices, current)
-  for i, c in ipairs(choices) do
-    if c[1] == current then return math.max(0, i - MENU_ROWS) end
-  end
+  local i = indexOf(choices, current)
+  if i then return math.max(0, i - MENU_ROWS) end
   return 0
 end
 

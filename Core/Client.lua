@@ -89,6 +89,15 @@ function C.Has(key)
   return C.has[key] == true
 end
 
+-- Calls a client function by its global name; nil when this client doesn't have it.
+---@param name string
+---@return any
+function C.Call(name, ...)
+  local fn = _G[name]
+  if type(fn) ~= "function" then return nil end
+  return fn(...)
+end
+
 -- Names of the keys whose answer is `want` (a still-waiting key counts as lacking, marked with "?").
 local function names(want)
   local out = {}
@@ -171,6 +180,18 @@ end
 
 -- At login, out of combat (queued if the login is in a fight), before any module's own login work.
 ns.On("PLAYER_LOGIN", function() ns.OutOfCombat(C.ProbeSnippets, "snippetprobe") end)
+
+-- Client globals and items -----------------------------------------------------------------
+
+-- An item's name when the client has it cached, else "item 123".
+---@param id number
+---@return string
+function ns.ItemName(id)
+  local info = C_Item and C_Item.GetItemInfo
+  local name = type(info) == "function" and info(id)
+  if type(name) == "string" then return name end
+  return "item " .. id
+end
 
 -- Group headers without snippets ------------------------------------------------------------
 -- The raid and main tank headers configure each button they make through an

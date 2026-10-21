@@ -14,12 +14,6 @@ local QG = ns.QuestGuide
 
 QG.PIN, QG.MAX_PINS = 16, 60
 
--- Calls t[name](...) if the client has it.
-local function call(t, name, ...)
-  local fn = type(t) == "table" and t[name]
-  if type(fn) == "function" then return fn(...) end
-end
-
 -- Data -------------------------------------------------------------------------------------------
 
 -- Adds a start { questID, x, y, name } unless its quest is there already or a value is hidden.
@@ -27,17 +21,17 @@ local function addStart(out, seen, questID, x, y, name)
   questID, x, y = ns.PlainNumber(questID), ns.PlainNumber(x), ns.PlainNumber(y)
   if not (questID and x and y) or seen[questID] then return end
   seen[questID] = true
-  out[#out + 1] = { questID = questID, x = x, y = y, name = (not ns.IsSecret(name) and type(name) == "string") and name or "" }
+  out[#out + 1] = { questID = questID, x = x, y = y, name = ns.PlainText(name) }
 end
 
 -- Where quests start on a map: its quest lines' starts (hidden ones left out), then the quest spots marked as starts.
 function QG.Starts(mapID)
   local out, seen = {}, {}
-  for _, l in ipairs(call(C_QuestLine, "GetAvailableQuestLines", mapID) or {}) do
+  for _, l in ipairs(ns.CallIf(C_QuestLine, "GetAvailableQuestLines", mapID) or {}) do
     if l.isHidden ~= true then addStart(out, seen, l.questID, l.x, l.y, l.questName) end
   end
-  for _, q in ipairs(call(C_QuestLog, "GetQuestsOnMap", mapID) or {}) do
-    if q.isQuestStart == true then addStart(out, seen, q.questID, q.x, q.y, call(C_QuestLog, "GetTitleForQuestID", q.questID)) end
+  for _, q in ipairs(ns.CallIf(C_QuestLog, "GetQuestsOnMap", mapID) or {}) do
+    if q.isQuestStart == true then addStart(out, seen, q.questID, q.x, q.y, ns.CallIf(C_QuestLog, "GetTitleForQuestID", q.questID)) end
   end
   return out
 end
@@ -45,7 +39,7 @@ end
 -- Whether Vanguard draws pins on this map: the setting is on, neither Questie nor OpenMap is loaded,
 -- and the game's own map shows no quest offers.
 function QG.DrawsPins(map)
-  if not QG.settings.pins or call(C_AddOns, "IsAddOnLoaded", "Questie") == true then return false end
+  if not QG.settings.pins or ns.CallIf(C_AddOns, "IsAddOnLoaded", "Questie") == true then return false end
   if ns.GetModule("Waypoints").OpenMapDraws() then return false end
   local offers = map.GetNumActivePinsByTemplate and ns.PlainNumber(map:GetNumActivePinsByTemplate("QuestOfferPinTemplate")) or 0
   return offers == 0
@@ -56,9 +50,9 @@ end
 -- What the client says of a start's quest, read on hover: its level (nil when hidden, missing or 0) and
 -- whether it repeats (a hidden answer: no).
 local function startFacts(questID)
-  local level = ns.PlainNumber(call(C_QuestLog, "GetQuestDifficultyLevel", questID))
-  local repeats = call(C_QuestLog, "IsRepeatableQuest", questID)
-  return (level and level > 0) and level or nil, not ns.IsSecret(repeats) and repeats == true
+  local level = ns.PlainNumber(ns.CallIf(C_QuestLog, "GetQuestDifficultyLevel", questID))
+  local repeats = ns.CallIf(C_QuestLog, "IsRepeatableQuest", questID)
+  return (level and level > 0) and level or nil, ns.IsTrue(repeats)
 end
 
 -- The pin's tooltip: the quest's name, its level in its difficulty colour, "Repeatable", and what a click does.
@@ -66,7 +60,7 @@ function QG.PinTooltip(pin)
   local tip = GameTooltip
   if not tip or not pin.start then return end
   tip:SetOwner(pin, "ANCHOR_RIGHT")
-  tip:SetText(pin.start.name ~= "" and pin.start.name or "Quest start")
+  tip:SetText(pin.start.name or "Quest start")
   local level, repeats = startFacts(pin.start.questID)
   if level then tip:AddLine("Level " .. level, QP.LevelColor(level)) end
   if repeats then tip:AddLine(T.Paint("Repeatable", "text2")) end
@@ -76,7 +70,7 @@ end
 
 -- A click on a pin: a map waypoint on it, which the arrow points at.
 function QG.OnPin(pin)
-  if ns.GetModule("Waypoints").Set(pin.mapID, pin.start.x, pin.start.y) then ns.Chat("Arrow: " .. (pin.start.name ~= "" and pin.start.name or "quest start") .. ".") end
+  if ns.GetModule("Waypoints").Set(pin.mapID, pin.start.x, pin.start.y) then ns.Chat("Arrow: " .. (pin.start.name or "quest start") .. ".") end
 end
 
 -- A pin on the map's canvas: Vanguard's gold quest-start "!" (the quest dialog's mark) on a small inset square.
@@ -127,7 +121,7 @@ end
 function QG.MapChanged()
   local map = _G.WorldMapFrame
   local mapID = map and map:IsShown() and ns.PlainNumber(map:GetMapID())
-  if mapID then call(C_QuestLine, "RequestQuestLinesForMap", mapID) end
+  if mapID then ns.CallIf(C_QuestLine, "RequestQuestLinesForMap", mapID) end
   QG.ListsChanged()
 end
 

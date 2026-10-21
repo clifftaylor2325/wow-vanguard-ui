@@ -42,27 +42,28 @@ local function vertical(bottom, h, sh)
 end
 
 -- The point (e.g. "TOPLEFT", "CENTER") and x, y offsets that hold a rect
--- (left, bottom, width, height) against the nearest edge of a sw x sh screen.
-function L.Anchor(left, bottom, w, h, sw, sh)
-  local hp, x = horizontal(left, w, sw)
-  local vp, y = vertical(bottom, h, sh)
+-- ({ left, bottom, w, h }) against the nearest edge of a screen ({ w, h }).
+function L.Anchor(r, screen)
+  local hp, x = horizontal(r.left, r.w, screen.w)
+  local vp, y = vertical(r.bottom, r.h, screen.h)
   local point = vp .. hp
   return point ~= "" and point or "CENTER", round(x), round(y)
 end
 
 -- The smallest shift (within the snap distance) that lines one of `edges` up
--- with one of `targets`; 0 when nothing is close.
+-- with one of `targets`; 0 when nothing is close. An exact line-up (a shift of 0)
+-- is kept: nothing after it replaces it.
 local function bestShift(edges, targets)
-  local best = 0
+  local best
   for _, e in ipairs(edges) do
     for _, t in ipairs(targets) do
       local d = t - e
-      if math.abs(d) <= L.SNAP_DISTANCE and (best == 0 or math.abs(d) < math.abs(best)) then
+      if math.abs(d) <= L.SNAP_DISTANCE and (not best or math.abs(d) < math.abs(best)) then
         best = d
       end
     end
   end
-  return best
+  return best or 0
 end
 
 -- Snap targets from other rects ({ left, bottom, w, h }) plus the screen's center lines.
@@ -75,13 +76,13 @@ local function targets(others, sw, sh)
   return xs, ys
 end
 
--- left, bottom moved so an edge or center lines up with a nearby frame edge
+-- The rect r moved so an edge or center lines up with a nearby frame edge
 -- or the screen center, when one is within SNAP_DISTANCE.
-function L.Snap(left, bottom, w, h, others, sw, sh)
-  local xs, ys = targets(others, sw, sh)
-  local dx = bestShift({ left, left + w, left + w / 2 }, xs)
-  local dy = bestShift({ bottom, bottom + h, bottom + h / 2 }, ys)
-  return left + dx, bottom + dy
+function L.Snap(r, others, screen)
+  local xs, ys = targets(others, screen.w, screen.h)
+  local dx = bestShift({ r.left, r.left + r.w, r.left + r.w / 2 }, xs)
+  local dy = bestShift({ r.bottom, r.bottom + r.h, r.bottom + r.h / 2 }, ys)
+  return { left = r.left + dx, bottom = r.bottom + dy, w = r.w, h = r.h }
 end
 
 -- Rects and points --------------------------------------------------------------------------
@@ -105,10 +106,16 @@ function L.RectAt(point, x, y, w, h)
   return { left = x - px, bottom = y - py, w = w, h = h }
 end
 
--- The rect of a w x h frame whose point is at relPoint of a sw x sh screen, offset x, y.
-function L.Rect(point, relPoint, x, y, w, h, sw, sh)
-  local ax, ay = L.PointAt({ left = 0, bottom = 0, w = sw, h = sh }, relPoint)
-  return L.RectAt(point, ax + x, ay + y, w, h)
+-- The rect of a frame (size: { w, h }) whose anchor point (anchor: { point, relPoint, x, y }) sits
+-- at relPoint of a screen ({ w, h }), offset by x, y.
+function L.Rect(anchor, size, screen)
+  local ax, ay = L.PointAt({ left = 0, bottom = 0, w = screen.w, h = screen.h }, anchor.relPoint)
+  return L.RectAt(anchor.point, ax + anchor.x, ay + anchor.y, size.w, size.h)
+end
+
+-- The number v kept to min..max.
+function L.Within(v, min, max)
+  return math.max(min, math.min(max, v))
 end
 
 -- A rect moved as little as it takes to be on a sw x sh screen (one bigger

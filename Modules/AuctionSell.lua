@@ -208,7 +208,7 @@ local function results(commodity, key)
   local api, out = C_AuctionHouse, {}
   local n = commodity and api.GetNumCommoditySearchResults(key.itemID) or api.GetNumItemSearchResults(key)
   for i = 1, ns.PlainNumber(n) or 0 do
-    out[#out + 1] = commodity and api.GetCommoditySearchResultInfo(key.itemID, i) or api.GetItemSearchResultInfo(key, i)
+    out[#out + 1] = AH.SearchResultInfo(key, commodity, i)
   end
   return out
 end
@@ -292,7 +292,7 @@ function AH.TakeItem(loc)
   if status ~= AH.ITEM and status ~= AH.COMMODITY then return end
   AH.sell, AH.sellStatus = newSale(loc, api.GetItemKeyFromItem(loc), status == AH.COMMODITY), nil
   AH.upCard.table.offset = 0
-  AH.Queue({ sell = AH.sell.search, card = true }, true)
+  AH.QueueFirst({ sell = AH.sell.search, card = true })
   AH.PaintSell()
   return true
 end

@@ -18,6 +18,8 @@ local T = ns.Theme
 local vgGlow = ns.FrameState("vgGlow")
 
 local CG = ns.Module("CooldownGlow", { defaults = { glow = false, percent = 30 } })
+-- The share (per cent) the glow can be set to: the options slider's and /vg cdmglow's limits.
+CG.PERCENT = { min = 10, max = 60 }
 
 -- The rows whose items can track an aura (the buff row, the essential and utility rows).
 CG.VIEWERS = { "BuffIconCooldownViewer", "EssentialCooldownViewer", "UtilityCooldownViewer" }
@@ -51,15 +53,29 @@ local function isStrength(value)
   return ns.IsSecret(value) or type(value) == "number"
 end
 
+-- The last curve made, and the percent it was made for.
+local cachedCurve, cachedPercent
+
+-- The curve for a percent, made once and reused while the setting stays the same (not once per item per tick).
+local function curveFor(percent)
+  if cachedPercent ~= percent then cachedCurve, cachedPercent = CG.Curve(percent), percent end
+  return cachedCurve
+end
+
+-- Asks a duration object for its remaining share against a curve (a helper, so pcall never indexes the object itself).
+local function evaluate(duration, curve)
+  return duration:EvaluateRemainingPercent(curve)
+end
+
 -- The glow's strength from the aura's duration object (a userdata in the client), handed to the
 -- game's curve; nil when the client can't do that. The answer may be secret, so it is never tested.
 function CG.FromCurve(id, unit, percent)
   local get = C_UnitAuras and C_UnitAuras.GetAuraDuration
-  local curve = type(get) == "function" and CG.Curve(percent)
+  local curve = type(get) == "function" and curveFor(percent)
   if not curve then return nil end
   local ok, duration = pcall(get, unit, id)
   if not ok or duration == nil then return nil end
-  local done, value = pcall(function() return duration:EvaluateRemainingPercent(curve) end)
+  local done, value = pcall(evaluate, duration, curve)
   if done and isStrength(value) then return value end
   return nil
 end
@@ -119,6 +135,17 @@ function CG.Apply()
     return CG.Tick()
   end
   for _, item in ipairs(CG.Items()) do CG.Light(item, nil) end
+end
+
+-- Sets the share (per cent), kept within CG.PERCENT; the glow takes it at its next look.
+function CG.SetPercent(percent)
+  CG.settings.percent = math.min(CG.PERCENT.max, math.max(CG.PERCENT.min, math.floor(percent)))
+end
+
+-- Turns the glow on or off, applied at once.
+function CG.SetGlow(on)
+  CG.settings.glow = on
+  CG.Apply()
 end
 
 -- Module entry point (Core/Modules.lua).

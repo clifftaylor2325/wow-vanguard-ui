@@ -24,6 +24,8 @@ local UP = ns.Module("Upgrades", { defaults = { tooltip = true, bags = true, que
 
 -- A change smaller than this (per cent) isn't shown.
 UP.MIN_PCT = 0.5
+-- The inventory slots of the main hand and the off hand (a two-hander fills both).
+UP.MAIN_HAND, UP.OFF_HAND = 16, 17
 -- Equip locations -> the inventory slots they go in (a pair compares with the weaker).
 UP.SLOTS = {
   INVTYPE_HEAD = { 1 }, INVTYPE_NECK = { 2 }, INVTYPE_SHOULDER = { 3 }, INVTYPE_CHEST = { 5 }, INVTYPE_ROBE = { 5 },
@@ -102,8 +104,8 @@ end
 
 -- What both hands are worth together, for a two-hander: main hand plus off hand.
 local function bothHands()
-  local mh, empty = equipped(16)
-  return mh + (equipped(17)), empty, GetInventoryItemLink("player", 16)
+  local mh, empty = equipped(UP.MAIN_HAND)
+  return mh + (equipped(UP.OFF_HAND)), empty, GetInventoryItemLink("player", UP.MAIN_HAND)
 end
 
 -- Whether you can wear the item (the client's answers, where it has them).
@@ -119,14 +121,20 @@ local function canCompare()
   return type(item.GetItemStats) == "function" and type(item.GetItemInfoInstant) == "function" and type(GetInventoryItemLink) == "function"
 end
 
+-- What an item of equip location loc is compared with: both hands for a two-hander, else the weakest of its slots.
+local function wornScore(loc, slots)
+  if loc == "INVTYPE_2HWEAPON" then return bothHands() end
+  return weakest(slots)
+end
+
 -- How an item compares with what you wear: the change in per cent (nil when it isn't gear you
 -- can wear, or there's nothing to measure), true when it fills an empty slot, and the worn link.
 function UP.Compare(link)
   if not canCompare() then return nil end
-  local slots = UP.SLOTS[select(4, C_Item.GetItemInfoInstant(link))]
+  local loc = select(4, C_Item.GetItemInfoInstant(link))
+  local slots = UP.SLOTS[loc]
   if not slots or not usable(link) then return nil end
-  local two = slots == UP.SLOTS.INVTYPE_2HWEAPON
-  local old, empty, worn = (two and bothHands or weakest)(slots)
+  local old, empty, worn = wornScore(loc, slots)
   if empty then return nil, true end
   local new = score(link)
   if old <= 0 then return new > 0 and 100 or nil, false, worn end

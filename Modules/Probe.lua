@@ -513,11 +513,18 @@ function P.Build()
   return out
 end
 
+-- The status word of a report line: "present", "missing" or "error". A call that threw reads
+-- "present, error ..." after its label, so that wording is checked first.
+local function statusOf(line)
+  if line:find(": present, error ", 1, true) then return "error" end
+  return line:match(": (%a+)[ ,]") or line:match(": (%a+)$")
+end
+
 -- How many lines say present, missing or error: "41 present, 9 missing, 2 errors".
 function P.Tally(lines)
   local n = { present = 0, missing = 0, error = 0 }
   for _, line in ipairs(lines) do
-    local kind = line:match(": (%a+)[ ,]") or line:match(": (%a+)$")
+    local kind = statusOf(line)
     if n[kind] then n[kind] = n[kind] + 1 end
   end
   return string.format("%d present, %d missing, %d errors", n.present, n.missing, n.error)

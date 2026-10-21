@@ -25,11 +25,7 @@ local function money(copper)
 end
 
 -- Calls a client function by name; nil when this client doesn't have it.
-local function ask(name, ...)
-  local fn = _G[name]
-  if type(fn) ~= "function" then return nil end
-  return fn(...)
-end
+local ask = ns.Client.Call
 
 -- Runs fn after a short wait (at once on a client without timers).
 local function later(seconds, fn)
@@ -44,10 +40,7 @@ function MC.ItemID(text)
 end
 
 -- An item's name, when the client has it cached ("item 123" until then).
-local function itemName(id)
-  local name = C_Item and C_Item.GetItemInfo and C_Item.GetItemInfo(id)
-  return type(name) == "string" and name or ("item " .. id)
-end
+local itemName = ns.ItemName
 
 -- True while you can sell or buy: a merchant is open and you are not in a fight (also used by Merchant.lua's junk sale).
 local function trading()

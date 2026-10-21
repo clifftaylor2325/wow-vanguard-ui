@@ -517,12 +517,14 @@ function NP.UpdateIcon(f, unit)
   RS.PaintIcon(f.raidIcon, RS.RaidIcon(unit))
 end
 
--- Your target's accent border, glow and marker. They are repainted only when
--- the plate's target state or its scale (the pixel size of the edge and the
--- glow) changed since they were last painted, or when `force` says the theme did.
-function NP.UpdateTarget(f, unit, force)
-  local target, scale = NP.settings.targetBorder and isUnit(unit, "target") or false, f:GetEffectiveScale()
-  if not force and target == f.vgTarget and scale == f.vgScale then return end
+-- Whether a plate's unit is your target, while the target border is on.
+local function targetShown(unit)
+  return NP.settings.targetBorder and isUnit(unit, "target") or false
+end
+
+-- Paints a plate's target border, glow and marker, and records the state and scale they show.
+local function paintTarget(f, unit)
+  local target, scale = targetShown(unit), f:GetEffectiveScale()
   f.vgTarget, f.vgScale = target, scale
   T.SetBorder(f, target and { T.Accent() } or nil)
   T.SizeGlow(f.glow, f, NP.GLOW)
@@ -531,9 +533,13 @@ function NP.UpdateTarget(f, unit, force)
   if target then T.Tint(f.marker, "accent") end
 end
 
--- Repaints a plate's target border, glow and marker whatever its state (the accent changed).
-local function repaintTarget(f, unit)
-  NP.UpdateTarget(f, unit, true)
+-- Your target's accent border, glow and marker. They are repainted only when
+-- the plate's target state or its scale (the pixel size of the edge and the
+-- glow) changed since they were last painted.
+function NP.UpdateTarget(f, unit)
+  local target, scale = targetShown(unit), f:GetEffectiveScale()
+  if target == f.vgTarget and scale == f.vgScale then return end
+  paintTarget(f, unit)
 end
 
 -- Health bar, color, name and level, raid icon, and your target's border, glow and marker.
@@ -634,14 +640,14 @@ end
 local function onAdded(_, unit)
   local plate = NP.PlateFor(unit)
   if not plate then return end
-  vgPlate[plate] = vgPlate[plate] or claim(plate)
+  local f = vgPlate[plate] or claim(plate)
+  vgPlate[plate] = f
   hideDefault(plate)
-  NP.plates[unit] = vgPlate[plate]
-  vgPlate[plate].unit = unit
+  NP.plates[unit], f.unit = f, unit
   takeHitArea(plate)
-  ns.SetUnits(vgPlate[plate].events, unit)
-  vgPlate[plate]:Show()
-  refresh(vgPlate[plate], unit)
+  ns.SetUnits(f.events, unit)
+  f:Show()
+  refresh(f, unit)
 end
 
 -- A nameplate went away: forget it (the client reuses the plate).
@@ -741,7 +747,7 @@ function NP.Enable(settings)
   NP.EnemyPlatesOnce()
   watchPersonalResources()
   for event, fn in pairs(EVENTS) do ns.On(event, fn) end
-  T.OnChanged(function() each(repaintTarget) end)
+  T.OnChanged(function() each(paintTarget) end)
 end
 
 -- Slash -------------------------------------------------------------------------------------
@@ -804,12 +810,12 @@ end
 
 -- Options ------------------------------------------------------------------------------------
 
--- get/set for one of this module's settings, and its default; reload says it applies after a reload.
-local function setting(key, reload)
+-- get/set for one of this module's settings, and its default; after runs once the value is set.
+local function setting(key, after)
   return ns.Options.Tag(function() return ns.Settings("Nameplates", NP.defaults)[key] end, "Nameplates", key),
     function(v)
       ns.Settings("Nameplates", NP.defaults)[key] = v
-      if reload then ns.Options.NeedReload() else NP.RefreshAll() end
+      after()
     end, NP.defaults[key]
 end
 
@@ -846,13 +852,13 @@ end
 -- This module's own rows: looks first, then debuffs, buffs and size (after a reload).
 local function lookRows()
   return {
-    { "check", "Levels, colored by how hard the unit is for you", setting("level") },
-    { "check", "Threat colors while you have aggro", setting("threat") },
-    { "check", "Accent border, glow and marker on your target", setting("targetBorder") }, { "check", "Cast bar", setting("castBar", true) },
-    { "check", "A gold ! by units your quests need", setting("questMarks") }, { "check", "Tag marks: a green check on mobs you tagged, a grey X and grey bar on another player's", setting("tagMarks") },
-    { "cycle", "Your debuffs shown", { { 0, "none" }, { 4, "4" }, { 6, "6" } }, setting("debuffs", true) }, { "cycle", "Buffs on players (defensives, and yours on friends)", { { 0, "none" }, { 3, "3" }, { 5, "5" } }, setting("buffs", true) },
-    { "check", "Timer numbers on your debuffs (reload)", setting("timers", true) },
-    { "cycle", "Width", { { 110, "110" }, { 130, "130" }, { 160, "160" } }, setting("width", true) }, { "cycle", "Height", { { 8, "8" }, { 10, "10" }, { 14, "14" } }, setting("height", true) } }
+    { "check", "Levels, colored by how hard the unit is for you", setting("level", NP.RefreshAll) },
+    { "check", "Threat colors while you have aggro", setting("threat", NP.RefreshAll) },
+    { "check", "Accent border, glow and marker on your target", setting("targetBorder", NP.RefreshAll) }, { "check", "Cast bar", setting("castBar", ns.Options.NeedReload) },
+    { "check", "A gold ! by units your quests need", setting("questMarks", NP.RefreshAll) }, { "check", "Tag marks: a green check on mobs you tagged, a grey X and grey bar on another player's", setting("tagMarks", NP.RefreshAll) },
+    { "cycle", "Your debuffs shown", { { 0, "none" }, { 4, "4" }, { 6, "6" } }, setting("debuffs", ns.Options.NeedReload) }, { "cycle", "Buffs on players (defensives, and yours on friends)", { { 0, "none" }, { 3, "3" }, { 5, "5" } }, setting("buffs", ns.Options.NeedReload) },
+    { "check", "Timer numbers on your debuffs (reload)", setting("timers", ns.Options.NeedReload) },
+    { "cycle", "Width", { { 110, "110" }, { 130, "130" }, { 160, "160" } }, setting("width", ns.Options.NeedReload) }, { "cycle", "Height", { { 8, "8" }, { 10, "10" }, { 14, "14" } }, setting("height", ns.Options.NeedReload) } }
 end
 
 -- The Nameplates page: the game's plate settings it mirrors, then this module's own.

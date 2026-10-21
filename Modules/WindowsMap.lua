@@ -14,7 +14,6 @@ local vgEmptyNote = ns.FrameState("vgEmptyNote")
 local vgEmptyWatched = ns.FrameState("vgEmptyWatched")
 local vgHeaderGlyph = ns.FrameState("vgHeaderGlyph")
 local vgHeadersWatched = ns.FrameState("vgHeadersWatched")
-local vgRewardsWatched = {}
 
 local T = ns.Theme
 local GW = ns.GetModule("Windows")
@@ -261,8 +260,8 @@ function GW.SkinWorldMap(map)
   watchMap(map)
 end
 
-GW.Add("map", "framed", { "WorldMapFrame" }, GW.SkinWorldMap)
-GW.Add("map", "onDemand", "Blizzard_WorldMap", { "WorldMapFrame" }, GW.SkinWorldMap)
+GW.Add("map", { "WorldMapFrame" }, GW.SkinWorldMap)
+GW.AddOnDemand("map", "Blizzard_WorldMap", { "WorldMapFrame" }, GW.SkinWorldMap)
 
 -- Quest log inside the map -------------------------------------------------------------------
 
@@ -331,9 +330,7 @@ end
 -- Keeps the reward tiles dressed after each QuestInfo_Display, hooked once.
 local function watchQuestRewards()
   GW.SkinQuestRewards()
-  if vgRewardsWatched.done or type(_G.QuestInfo_Display) ~= "function" then return end
-  vgRewardsWatched.done = true
-  hooksecurefunc("QuestInfo_Display", ns.Guard("hook QuestInfo_Display rewards", GW.SkinQuestRewards))
+  GW.HookGlobalOnce("QuestInfo_Display", "hook QuestInfo_Display rewards", GW.SkinQuestRewards)
 end
 
 -- One quest's details: the art faded (the rewards' tile too), an inset panel, the buttons flat, the Rewards heading light.
@@ -443,8 +440,8 @@ function GW.SkinQuestPopup(frame)
 end
 
 GW.AddButtons("QuestLogPopupDetailFrame", { "QuestLogPopupDetailFrameAbandonButton", "QuestLogPopupDetailFrameShareButton", "QuestLogPopupDetailFrameTrackButton" })
-GW.Add("map", "framed", { "QuestMapFrame" }, GW.SkinQuestMap)
-GW.Add("map", "framed", { "QuestLogPopupDetailFrame" }, GW.SkinQuestPopup)
+GW.Add("map", { "QuestMapFrame" }, GW.SkinQuestMap)
+GW.Add("map", { "QuestLogPopupDetailFrame" }, GW.SkinQuestPopup)
 
 -- Battlefield map -----------------------------------------------------------------------------
 
@@ -456,7 +453,7 @@ function GW.SkinBattlefieldMap(map)
   GW.SkinText(GW.Part(_G, "BattlefieldMapTab.Text"), "small", "text")
 end
 
-GW.Add("map", "onDemand", "Blizzard_BattlefieldMap", { "BattlefieldMapFrame" }, GW.SkinBattlefieldMap)
+GW.AddOnDemand("map", "Blizzard_BattlefieldMap", { "BattlefieldMapFrame" }, GW.SkinBattlefieldMap)
 
 -- Group finder --------------------------------------------------------------------------------
 
@@ -472,18 +469,6 @@ GW.LFG_PAGES = { "LFGListingFrame", "LFGBrowseFrame", "LFGWhoListFrame" }
 -- The pages whose list gets a note while it is empty, and the game's string the note reads: the who list says
 -- what the browse page says over an empty result (its NoResultsFound line, which the browse page keeps).
 GW.LFG_EMPTY = { LFGWhoListFrame = "LFG_LIST_NO_RESULTS_FOUND" }
-
--- Fades the art a window's template draws (GW.ART, its own textures too), with no panel: for windows
--- made of several frames, where one panel goes on the outer frame.
-function GW.FadeWindowArt(frame)
-  T.FadeRegions(frame)
-  GW.FadeParts(frame, GW.ART)
-  for _, key in ipairs(GW.ART) do
-    local part = frame[key]
-    if key ~= "Inset" and type(part) == "table" and part.SetAlpha then part:SetAlpha(0) end
-  end
-  if type(frame.Inset) == "table" and type(frame.Inset.NineSlice) == "table" then frame.Inset.NineSlice:SetAlpha(0) end
-end
 
 -- A page's title text in the title role.
 local function dressTitle(page)
@@ -558,15 +543,10 @@ local function skinCategories(view)
   for _, button in ipairs(view.CategoryButtons) do skinCategoryButton(button) end
 end
 
--- Whether the game's category updater is hooked (a global it runs on the listing's category view).
-local categoriesHooked = false
-
 -- Dresses the category pickers now and after each time the game lays them out. Hooked once.
 local function watchCategories(page)
   skinCategories(page.CategoryView)
-  if categoriesHooked or type(_G.LFGListingCategorySelection_UpdateCategoryButtons) ~= "function" then return end
-  categoriesHooked = true
-  hooksecurefunc("LFGListingCategorySelection_UpdateCategoryButtons", ns.Guard("hook category buttons", skinCategories))
+  GW.HookGlobalOnce("LFGListingCategorySelection_UpdateCategoryButtons", "hook category buttons", skinCategories)
 end
 
 -- The group description box's old scroll bar (UIPanelScrollFrameTemplate: a slider with a thumb picture and arrow buttons).
@@ -615,14 +595,11 @@ local function skinBrowseRow(row)
   keepArt(GW.Part(row, "DataDisplay.DelistButton"), "Icon")
 end
 
--- Whether the game's browse row selection is hooked (a global it runs when a row is selected or unselected).
-local browseHooked = false
-
 -- Has a browse row's selected look follow the game's SetSelection of it (a row not dressed is left alone). Hooked once.
 local function watchBrowseSelection()
-  if browseHooked or type(_G.LFGBrowseSearchEntry_SetSelection) ~= "function" then return end
-  browseHooked = true
-  hooksecurefunc("LFGBrowseSearchEntry_SetSelection", ns.Guard("hook browse selection", function(row, on) T.SelectRow(row, on == true) end))
+  GW.HookGlobalOnce("LFGBrowseSearchEntry_SetSelection", "hook browse selection", function(row, on)
+    T.SelectRow(row, on == true)
+  end)
 end
 
 -- The browse page's own parts: its two dropdowns (arrows kept), the refresh button (its picture kept) and its rows.
@@ -700,9 +677,9 @@ function GW.SkinLFGTooltip(frame)
   T.Tooltip(frame)
 end
 
-GW.Add("map", "onDemand", "Blizzard_GroupFinder_VanillaStyle", { "LFGParentFrame" }, GW.SkinLFGParent)
-GW.Add("map", "onDemand", "Blizzard_GroupFinder_VanillaStyle", GW.LFG_PAGES, GW.SkinLFGPage)
-GW.Add("map", "onDemand", "Blizzard_GroupFinder_VanillaStyle", { "LFGBrowseSearchEntryTooltip" }, GW.SkinLFGTooltip)
+GW.AddOnDemand("map", "Blizzard_GroupFinder_VanillaStyle", { "LFGParentFrame" }, GW.SkinLFGParent)
+GW.AddOnDemand("map", "Blizzard_GroupFinder_VanillaStyle", GW.LFG_PAGES, GW.SkinLFGPage)
+GW.AddOnDemand("map", "Blizzard_GroupFinder_VanillaStyle", { "LFGBrowseSearchEntryTooltip" }, GW.SkinLFGTooltip)
 
 -- Legacy system -------------------------------------------------------------------------------
 
@@ -972,7 +949,7 @@ function GW.SkinLegacy(frame)
   GW.HookAfter(objectives, "Display", skinObjectives)
 end
 
-GW.Add("map", "onDemand", "Blizzard_LegacySystem", { "LegacySystemFrame" }, GW.SkinLegacy)
+GW.AddOnDemand("map", "Blizzard_LegacySystem", { "LegacySystemFrame" }, GW.SkinLegacy)
 
 -- Queue status ---------------------------------------------------------------------------------
 
@@ -999,7 +976,7 @@ function GW.SkinQueueStatus(frame)
   hooksecurefunc(frame, "Update", ns.Guard("hook Update", skinQueueEntries))
 end
 
-GW.Add("map", "framed", { "QueueStatusFrame" }, GW.SkinQueueStatus)
+GW.Add("map", { "QueueStatusFrame" }, GW.SkinQueueStatus)
 
 -- Calendar ---------------------------------------------------------------------------------------
 
@@ -1117,10 +1094,7 @@ local function skinToday(today)
   if type(_G.CalendarTodayTextureGlow) == "table" and _G.CalendarTodayTextureGlow.Hide then _G.CalendarTodayTextureGlow:Hide() end
   T.Panel(today, { accent = true, noBg = true, noSheen = true })
   GW.FitToday(today, today:GetParent())
-  if type(hooksecurefunc) == "function" and type(_G.CalendarFrame_SetToday) == "function" and not GW.todayHooked then
-    GW.todayHooked = true
-    hooksecurefunc("CalendarFrame_SetToday", ns.Guard("hook CalendarFrame_SetToday", function(day) GW.FitToday(today, day) end))
-  end
+  GW.HookGlobalOnce("CalendarFrame_SetToday", "hook CalendarFrame_SetToday", function(day) GW.FitToday(today, day) end)
 end
 
 -- The calendar window: every texture of its frame faded but the two it keeps (see GW.CALENDAR_KEEP), a panel with a
@@ -1158,7 +1132,7 @@ end
 local function dressBox(box)
   if not isFrame(box) then return end
   T.FadeRegions(box)
-  if type(box.NineSlice) == "table" then box.NineSlice:SetAlpha(0) end
+  GW.FadeFrame(GW.Part(box, "NineSlice"))
   T.Panel(box, { inset = true, noSheen = true })
 end
 
@@ -1241,8 +1215,8 @@ function GW.SkinCalendarDialog(frame)
   if name == "CalendarViewHolidayFrame" then GW.FadeFrame(frame.Texture) end
 end
 
-GW.Add("map", "onDemand", "Blizzard_Calendar", { "CalendarFrame" }, GW.SkinCalendar)
-GW.Add("map", "onDemand", "Blizzard_Calendar", {
+GW.AddOnDemand("map", "Blizzard_Calendar", { "CalendarFrame" }, GW.SkinCalendar)
+GW.AddOnDemand("map", "Blizzard_Calendar", {
   "CalendarViewHolidayFrame", "CalendarViewRaidFrame", "CalendarViewEventFrame", "CalendarCreateEventFrame",
   "CalendarMassInviteFrame", "CalendarEventPickerFrame", "CalendarTexturePickerFrame",
 }, GW.SkinCalendarDialog)

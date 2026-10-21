@@ -39,8 +39,7 @@ local PREFIX = "addon:Vanguard:url:"
 
 -- The accent's text variant as a chat color code.
 local function accentCode()
-  local r, g, b = T.RGB("accentText")
-  return string.format("|cff%02x%02x%02x", math.floor(r * 255), math.floor(g * 255), math.floor(b * 255))
+  return "|c" .. T.Hex("accentText")
 end
 
 -- The punctuation after an address that is left out of its link: "site.com/x." links "site.com/x".
@@ -149,6 +148,24 @@ function CX.Plain(text)
   return text
 end
 
+-- A line as plain lower-case text for matching: colour and link codes and brackets gone, so "wts devilsaur"
+-- finds "WTS [Devilsaur Leggings]" sent as an item link. The chat filter and chat watch match on it.
+function CX.Matchable(text)
+  local s = text:find("|", 1, true) and text:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|H.-|h", ""):gsub("|[hr]", "") or text
+  return (s:gsub("[%[%]]", "")):lower()
+end
+
+-- Removes the first entry of list equal to value; true when one was removed.
+function CX.RemoveValue(list, value)
+  for i, entry in ipairs(list) do
+    if entry == value then
+      table.remove(list, i)
+      return true
+    end
+  end
+  return false
+end
+
 -- Text with Lua's pattern characters escaped, so a pattern made from it finds it as it is.
 ---@param text string
 ---@return string
@@ -202,10 +219,15 @@ function CX.RecentText(frame)
   return table.concat(lines, "\n")
 end
 
+-- True when frame is a chat window (one that can read its own lines back).
+local function isChatWindow(frame)
+  return type(frame) == "table" and type(frame.GetNumMessages) == "function"
+end
+
 -- The chat window you are looking at (the shown tab), or the main one.
 local function shownWindow()
   local frame = _G.SELECTED_CHAT_FRAME
-  if type(frame) == "table" and type(frame.GetNumMessages) == "function" then return frame end
+  if isChatWindow(frame) then return frame end
   return _G.ChatFrame1
 end
 
@@ -219,24 +241,21 @@ end
 -- Opens the recent chat of the shown tab in the copy box, at its newest line.
 function CX.ShowCopy()
   local frame = shownWindow()
-  if type(frame) ~= "table" or type(frame.GetNumMessages) ~= "function" then return ns.Chat("This client can't read the chat back.") end
+  if not isChatWindow(frame) then return ns.Chat("This client can't read the chat back.") end
   ns.ShowTextAtEnd(copyTitle(frame), CX.RecentText(frame))
 end
 
--- A small Copy button in the main chat window's tab bar, at its right end.
+-- A small Copy button in the main chat window's tab bar, at its right end (nil when the window can't read back).
 local function addCopyButton()
   local frame = _G.ChatFrame1
-  if type(frame) ~= "table" or type(frame.GetNumMessages) ~= "function" then return end
-  CX.copyButton = ns.GetModule("Chat").AddBarButton(frame, "Copy", "click copy chat", CX.ShowCopy)
+  if not isChatWindow(frame) then return nil end
+  return ns.GetModule("Chat").AddBarButton(frame, "Copy", "click copy chat", CX.ShowCopy)
 end
 
--- Shows or hides the Copy button as its switch is set (made now when it was off at login), at once;
--- the bar's other tiles and the dock close up over it (Modules/Chat.lua CH.PlaceBarButtons).
+-- Shows or hides the Copy button as its switch is set (made now when it was off at login), at once
+-- (Modules/Chat.lua CH.ApplyBarButton).
 function CX.ApplyCopy()
-  if CX.settings.copy and not CX.copyButton then addCopyButton() end
-  if not CX.copyButton then return end
-  CX.copyButton:SetShown(CX.settings.copy == true)
-  ns.GetModule("Chat").PlaceBarButtons(_G.ChatFrame1)
+  CX.copyButton = ns.GetModule("Chat").ApplyBarButton(CX.copyButton, CX.settings.copy == true, addCopyButton)
 end
 
 -- Short channel names ---------------------------------------------------------------------
@@ -312,7 +331,7 @@ local function watchWindow(frame)
   if type(frame) ~= "table" or vgWatched[frame] then return end
   vgWatched[frame] = true
   if type(frame.TransformMessages) == "function" and type(hooksecurefunc) == "function" then hooksecurefunc(frame, "AddMessage", ns.Guard("hook AddMessage", rewriteAdded)) end
-  frame:HookScript("OnMouseWheel", wheel)
+  frame:HookScript("OnMouseWheel", ns.Guard("chat wheel", wheel))
 end
 
 -- Follows every chat window, the temporary ones (whispers) too.

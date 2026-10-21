@@ -201,6 +201,8 @@ end
 
 -- The row of auction id and its place in the list, or nil.
 local function findOwned(id)
+  id = ns.PlainNumber(id)
+  if not id then return end
   for i, a in ipairs(AH.owned) do
     if a.id == id then return a, i end
   end
@@ -224,7 +226,7 @@ end
 -- The game's notice about an auction (AUCTION_HOUSE_SHOW_FORMATTED_NOTIFICATION: the notice, its
 -- text and, when it has one, the auction): one of yours sold, or ran out.
 function AH.OnNotice(_, note, _, id)
-  local a = id and findOwned(id)
+  local a = findOwned(id)
   if not a then return end
   a.status = note == AH.SOLD_NOTE and "sold" or note == AH.EXPIRED_NOTE and "expired" or a.status
   AH.PaintOwned()
@@ -315,12 +317,20 @@ local function paintLater()
   C_Timer.After(AH.SEND_GAP, ns.Guard("timer repaint owned", function() AH.paintWait = false AH.PaintOwned() end))
 end
 
--- The toolbar's line once you've checked ("checking...", "3 undercut", "none undercut"), and
+-- The toolbar's line: nothing before a check, "checking..." while one runs, then how many are undercut.
+local function summaryText(checked, busy, undercutCount)
+  if not checked then return "" end
+  if busy then return "checking..." end
+  if undercutCount > 0 then return undercutCount .. " undercut" end
+  return "none undercut"
+end
+
+-- The toolbar's line once you've checked (see summaryText), and
 -- Cancel next undercut, which works while an undercut auction is left to cancel.
 local function paintNext(c)
   local busy, n, nextOne = checking(), #undercuts(), AH.NextUndercut()
   if busy then paintLater() end
-  c.summary:SetText(not AH.checked and "" or busy and "checking..." or n > 0 and (n .. " undercut") or "none undercut")
+  c.summary:SetText(summaryText(AH.checked, busy, n))
   if nextOne then c.cancelNext:Enable() else c.cancelNext:Disable() end
   T.Color(c.cancelNext.text, nextOne and "text" or "disabled")
 end

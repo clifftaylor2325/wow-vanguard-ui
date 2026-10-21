@@ -29,25 +29,13 @@ QA.SWITCH = 0.5
 -- panel's inner padding (units).
 QA.HERE, QA.FAINT, QA.PAD = 15, 0.35, 8
 
--- Calls t[name](...) if the client has it.
-local function call(t, name, ...)
-  local fn = type(t) == "table" and t[name]
-  if type(fn) == "function" then return fn(...) end
-end
-
--- The text if it is a plain, non-empty string; nil otherwise.
-local function plainText(text)
-  if ns.IsSecret(text) or type(text) ~= "string" or text == "" then return nil end
-  return text
-end
-
 -- Choosing the quest ------------------------------------------------------------------------------
 
 -- How near a quest counts (distance squared, less for a finished one); nil when it isn't in the log, it failed
 -- (nothing is left to do there), or the client won't say.
 local function rank(id)
   local q = ns.GetModule("QuestTracker").Quest(id)
-  local d = q and ns.PlainNumber(call(C_QuestLog, "GetDistanceSqToQuest", id))
+  local d = q and ns.PlainNumber(ns.CallIf(C_QuestLog, "GetDistanceSqToQuest", id))
   if not d or q.failed then return nil end
   return q.ready and d * QA.READY_BIAS or d
 end
@@ -90,7 +78,7 @@ end
 
 -- The quest title for the arrow, or "Quest".
 local function titleOf(id)
-  return plainText(call(C_QuestLog, "GetTitleForQuestID", id)) or "Quest"
+  return ns.PlainText(ns.CallIf(C_QuestLog, "GetTitleForQuestID", id)) or "Quest"
 end
 
 -- The quest to follow and whether the arrow holds it as a pin: the Shift-clicked quest (with "Follow the
@@ -98,7 +86,7 @@ end
 -- Shift-click whose quest has left the log is let go here, so it can't hold a quest the game tracks later.
 local function follow(old)
   local guide = ns.QuestGuide
-  if guide.pointed and not ns.GetModule("QuestTracker").Quest(guide.pointed) then guide.pointed = nil end
+  if guide.pointed and not ns.GetModule("QuestTracker").Quest(guide.pointed) then guide.DropPin() end
   local pin = pinned()
   if pin and (ns.QuestGuide.pointed or not QA.settings.auto) then return pin, true end
   return QA.settings.auto and QA.Choose(old) or pin, false
@@ -126,12 +114,25 @@ function QA.Pick()
   if old ~= QA.current then ns.GetModule("QuestTracker").Redraw() end
 end
 
+-- The quest the arrow holds (its pick), shown or not: the minimap marks it larger.
+---@return number|nil
+function QA.Current()
+  return QA.current
+end
+
+-- The quest the arrow shows, for the tracker's accent line: its pick while the arrow is on, else nil.
+---@return number|nil
+function QA.Followed()
+  if not (QA.settings and QA.settings.show) then return nil end
+  return QA.current
+end
+
 -- Turning and distance -----------------------------------------------------------------------------
 
 -- Your spot on a map as x, y (0 to 1); nil when the client won't say.
 function QA.PlayerSpot(mapID)
   if ns.Restricted("Map") then return nil end
-  local pos = call(C_Map, "GetPlayerMapPosition", mapID, "player")
+  local pos = ns.CallIf(C_Map, "GetPlayerMapPosition", mapID, "player")
   if type(pos) ~= "table" or type(pos.GetXY) ~= "function" then return nil end
   local x, y = pos:GetXY()
   x, y = ns.PlainNumber(x), ns.PlainNumber(y)
@@ -140,7 +141,7 @@ end
 
 -- The map's size in yards as width, height and true; 1, 1 and false when the client doesn't give it (the turn is then a little off on a wide map).
 function QA.WorldSize(mapID)
-  local w, h = call(C_Map, "GetMapWorldSize", mapID)
+  local w, h = ns.CallIf(C_Map, "GetMapWorldSize", mapID)
   w, h = ns.PlainNumber(w), ns.PlainNumber(h)
   if w and h and w > 0 and h > 0 then return w, h, true end
   return 1, 1, false
@@ -149,7 +150,7 @@ end
 -- Radians to turn the arrow, from straight up (up means the spot is ahead of you); nil when the client won't say your spot or facing.
 function QA.Turn(mapID, x, y)
   local px, py = QA.PlayerSpot(mapID)
-  local facing = ns.PlainNumber(call(_G, "GetPlayerFacing"))
+  local facing = ns.PlainNumber(ns.CallIf(_G, "GetPlayerFacing"))
   if not (px and facing) then return nil end
   local w, h = QA.WorldSize(mapID)
   return math.atan2(-(x - px) * w, -(y - py) * h) - facing
@@ -157,7 +158,7 @@ end
 
 -- Yards to the quest, from the distance the client reports; nil when it won't say.
 local function yards(id)
-  local sq = ns.PlainNumber(call(C_QuestLog, "GetDistanceSqToQuest", id))
+  local sq = ns.PlainNumber(ns.CallIf(C_QuestLog, "GetDistanceSqToQuest", id))
   return sq and math.floor(math.sqrt(sq) + 0.5)
 end
 
@@ -172,22 +173,22 @@ end
 -- stopping (a hidden answer counts as on one).
 local function arrived(d)
   if not d or d > QA.HERE then return false end
-  local taxi = call(_G, "UnitOnTaxi", "player")
+  local taxi = ns.CallIf(_G, "UnitOnTaxi", "player")
   return not ns.IsSecret(taxi) and taxi ~= true
 end
 
 -- The game's next waypoint on a map toward its super-tracked target, as x, y (C_Navigation since 12.1, C_SuperTrack before).
 local function navWaypoint(mapID)
-  local x, y = call(C_Navigation, "GetNextWaypointForMap", mapID)
-  if not ns.IsSecret(x) and x == nil then x, y = call(C_SuperTrack, "GetNextWaypointForMap", mapID) end
+  local x, y = ns.CallIf(C_Navigation, "GetNextWaypointForMap", mapID)
+  if not ns.IsSecret(x) and x == nil then x, y = ns.CallIf(C_SuperTrack, "GetNextWaypointForMap", mapID) end
   return x, y
 end
 
 -- The next waypoint on this map toward a quest on another one (a zone exit, a boat), as x, y: the
 -- quest's own, else the game's for its super-tracked quest; nil when the client has neither call or won't say.
 function QA.Exit(id, mapID)
-  local x, y = call(C_QuestLog, "GetNextWaypointForMap", id, mapID)
-  if not ns.PlainNumber(x) and id == ns.PlainNumber(call(C_SuperTrack, "GetSuperTrackedQuestID")) then
+  local x, y = ns.CallIf(C_QuestLog, "GetNextWaypointForMap", id, mapID)
+  if not ns.PlainNumber(x) and id == ns.PlainNumber(ns.CallIf(C_SuperTrack, "GetSuperTrackedQuestID")) then
     x, y = navWaypoint(mapID)
   end
   x, y = ns.PlainNumber(x), ns.PlainNumber(y)
@@ -196,7 +197,7 @@ end
 
 -- The arrow's turn for the quest's spot, or for the way toward it when the spot is on another map; nil when the client won't say.
 local function turnFor(id, target)
-  local here = ns.PlainNumber(call(C_Map, "GetBestMapForUnit", "player"))
+  local here = ns.PlainNumber(ns.CallIf(C_Map, "GetBestMapForUnit", "player"))
   if not (target and target[1] and here) then return nil end
   if here == target[1] then return QA.Turn(here, target[2], target[3]) end
   local x, y = QA.Exit(id, here)

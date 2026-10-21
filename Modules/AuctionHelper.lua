@@ -159,6 +159,13 @@ function AH.RequestMore(commodity, key)
   api.RequestMoreItemSearchResults(key)
 end
 
+-- Search result i of an item: a commodity's by its itemID, an item's by its key (nil when there's none).
+function AH.SearchResultInfo(key, commodity, i)
+  local api = C_AuctionHouse
+  if commodity then return api.GetCommoditySearchResultInfo(key.itemID, i) end
+  return api.GetItemSearchResultInfo(key, i)
+end
+
 -- Waits until AH.SEND_GAP has passed since the last search, then tries the next (one timer at a time).
 local function sendLater(wait)
   if AH.waiting then return end
@@ -178,9 +185,15 @@ function AH.Next()
   C_Timer.After(AH.FALLBACK, ns.Guard("timer search fallback", function() if AH.pending == s then AH.Done() end end))
 end
 
--- Queues a search (first in line when asked) and sends it if nothing is in flight.
-function AH.Queue(search, first)
-  table.insert(AH.queue, first and 1 or #AH.queue + 1, search)
+-- Queues a search at the back of the line and sends it if nothing is in flight.
+function AH.Queue(search)
+  table.insert(AH.queue, search)
+  AH.Next()
+end
+
+-- Queues a search first in line (ahead of the rest) and sends it if nothing is in flight.
+function AH.QueueFirst(search)
+  table.insert(AH.queue, 1, search)
   AH.Next()
 end
 
@@ -527,7 +540,7 @@ local function recordScan(s, now)
   local n = 0
   for id, prices in pairs(s.items) do
     local low, units, market = AP.Summary(prices)
-    AP.Record(id, low, now, units, market, s.listings[id])
+    AP.Record(id, low, now, { units = units, market = market, listings = s.listings[id] })
     n = n + 1
   end
   return n

@@ -198,7 +198,8 @@ end
 local function pageSections(p)
   local rewards = p.rewards or {}
   if rewards[1] and rewards[1].kind == "required" then return QP.RequiredSection(rewards) end
-  return QP.RewardSections(p.choices or {}, rewards, p.pick == true)
+  local sections = p.pick == true and QP.ChooseSections or QP.ReceiveSections
+  return sections(p.choices or {}, rewards)
 end
 
 -- A card as it is laid out: its clicks, and no picked wash yet.
@@ -237,7 +238,7 @@ end
 -- The NPC's portrait when the client can draw one (it has the call, and there
 -- is an NPC: not for a quest started from an item), else the quest mark in the accent.
 local function paintPortrait(f)
-  local drawn = type(SetPortraitTexture) == "function" and QD.Call(UnitExists, "npc") == true
+  local drawn = type(SetPortraitTexture) == "function" and ns.CallIf(_G, "UnitExists", "npc") == true
   if drawn then SetPortraitTexture(f.portrait, "npc") end
   f.portrait:SetShown(drawn)
   f.placeholder:SetShown(not drawn)
@@ -248,7 +249,7 @@ end
 function QD.Render(p)
   local f = QD.frame
   paintPortrait(f)
-  f.npc:SetText(QP.Plain(QD.Call(UnitName, "npc")))
+  f.npc:SetText(QP.Plain(ns.CallIf(_G, "UnitName", "npc")))
   f.title:SetText(QP.Plain(p.title))
   local content = renderBody(f, p)
   fitPanel(f, content, renderCards(f, p))
@@ -290,10 +291,11 @@ function QD.SelectLine(n)
 end
 
 -- Presses the main button, if it's enabled (Complete once a reward is picked); on a page with only Goodbye, that.
+-- The button's own enabled state decides, as renderButton and QD.Pick set it.
 function QD.Press()
   local spec = QD.page and (QD.page.primary or QD.page.escape)
-  local ready = spec and (spec[3] ~= false or (QD.page.pick and QD.choice ~= nil))
-  if ready then spec[2]() end
+  local button = QD.page and (QD.page.primary and QD.frame.primary or QD.frame.escape)
+  if spec and button:IsEnabled() then spec[2]() end
 end
 
 -- What a key does here: 1-9 pick a line (or a reward) that exists, Space presses the main button, and so does

@@ -63,12 +63,8 @@ IS.SHARD_ITEMS, IS.LAST_BAG = { [6265] = true }, 5
 
 -- Values -------------------------------------------------------------------------------------
 
--- Calls a client function by name; nil when this client doesn't have it.
-local function ask(name, ...)
-  local fn = _G[name]
-  if type(fn) ~= "function" then return nil end
-  return fn(...)
-end
+-- Calls a client function by name (ns.Client.Call); nil when this client doesn't have it.
+local ask = ns.Client.Call
 
 -- One slot's durability as a share (current, max), or nil for a slot without durability.
 local function slotShare(slot)
@@ -454,7 +450,7 @@ end
 -- How much larger the strip's text is drawn than at 100 % Text size; never under 1, so smaller text
 -- keeps today's strip (the calendar button's 18-unit slot still fits a row).
 local function textGrowth()
-  return math.max(1, T.RoleSize("small") / T.ROLES.small[1])
+  return math.max(1, T.RoleSize("small") / T.ROLES.small.size)
 end
 
 -- The strip's row height at the current Text size.
@@ -475,7 +471,7 @@ end
 -- The lowest row with a block showing (0 when nothing shows).
 local function rowsShown()
   local rows = 0
-  for key, fs in pairs(IS.texts) do
+  for key, fs in pairs(IS.fonts) do
     if fs:IsShown() then rows = math.max(rows, IS.BLOCKS[key][1]) end
   end
   return rows
@@ -491,7 +487,7 @@ end
 
 -- Sits the date right after the time, or at the row's left edge while the time is off.
 function IS.PlaceDate()
-  local date, clock = IS.texts.date, IS.texts.clock
+  local date, clock = IS.fonts.date, IS.fonts.clock
   date:ClearAllPoints()
   if clock:IsShown() then date:SetPoint("LEFT", clock, "RIGHT", IS.DATE_GAP, 0)
   else date:SetPoint("LEFT", IS.frame, "TOPLEFT", 6, rowY(IS.BLOCKS.date[1])) end
@@ -508,7 +504,7 @@ end
 
 -- Repaints one block: hidden when off or when the client can't answer; the strip fits what shows.
 function IS.Paint(key)
-  local fs = IS.texts and IS.texts[key]
+  local fs = IS.fonts and IS.fonts[key]
   if not fs then return end
   local text, color
   if IS.settings[key] then text, color = IS.TEXT[key]() end
@@ -634,7 +630,7 @@ end
 -- The time's hit area: the text takes the mouse, so a click reaches the game's clock window.
 local function addClock(frame)
   local b = CreateFrame("Button", "Vanguard_InfoStripClock", frame)
-  b:SetAllPoints(IS.texts.clock)
+  b:SetAllPoints(IS.fonts.clock)
   b:SetScript("OnClick", ns.Guard("click info strip clock", IS.ClockClick))
   b:SetScript("OnEnter", ns.Guard("info strip clock tip", IS.ClockTip))
   b:SetScript("OnLeave", ns.Guard("info strip clock tip", function() GameTooltip:Hide() end))
@@ -795,7 +791,7 @@ end
 local function addHit(frame, key)
   local hit = CreateFrame("Button", nil, frame)
   hit.key = key
-  hit:SetAllPoints(IS.texts[key])
+  hit:SetAllPoints(IS.fonts[key])
   hit:RegisterForClicks("LeftButtonUp", "RightButtonUp")
   hit:SetScript("OnEnter", ns.Guard("info strip tip", IS.ShowTip))
   hit:SetScript("OnLeave", ns.Guard("info strip tip", function() GameTooltip:Hide() end))
@@ -856,7 +852,7 @@ end
 -- calendar button beside the date (plain frames, so this is fine in a fight), then the rows that show.
 function IS.Layout()
   IS.frame:SetWidth(IS.Width())
-  for key, fs in pairs(IS.texts) do placeText(fs, key) end
+  for key, fs in pairs(IS.fonts) do placeText(fs, key) end
   if IS.calendar then placeCalendar(IS.calendar) end
   IS.PlaceDate()
   fitRows()
@@ -869,8 +865,8 @@ local function build()
   IS.frame = f
   f:SetSize(IS.Width(), IS.Row() * 2 + IS.EDGE)
   ns.Mover(f, "infostrip", "Info strip", IS.HOME)
-  IS.texts = {}
-  for key in pairs(IS.BLOCKS) do IS.texts[key] = addText(key) end
+  IS.fonts = {}
+  for key in pairs(IS.BLOCKS) do IS.fonts[key] = addText(key) end
   addButtons(f)
   ticker(f)
   IS.UpdateAll()

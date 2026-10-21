@@ -31,7 +31,7 @@ function W.Danger(parent, text, onClick, width, warn)
   b.warn = warn
   disarmOnHide(b, text)
   b:HookScript("OnEnter", ns.Guard("hover danger button", warnTip))
-  b:HookScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
+  b:HookScript("OnLeave", ns.Guard("hide danger tooltip", function() if GameTooltip then GameTooltip:Hide() end end))
   -- Asks first, then acts.
   b:SetScript("OnClick", ns.Guard("click danger button", function(self)
     if not self.armed then self.armed = true return self.text:SetText("Sure?") end
@@ -106,7 +106,7 @@ local function newProfileRow(parent, _, width)
   local r = captioned(parent, width, "New profile", "text2")
   r.input = W.Input(r, 160)
   r.input:SetPoint("RIGHT", -(SMALL + 2 * T.SPACE.gap), 0)
-  r.input:SetScript("OnEnterPressed", function() create(r) end)
+  r.input:SetScript("OnEnterPressed", ns.Guard("create profile from the box", function() create(r) end))
   r.create = W.Primary(r, "Create", function() create(r) end, SMALL)
   r.create:SetPoint("RIGHT", -T.SPACE.gap, 0)
   return r

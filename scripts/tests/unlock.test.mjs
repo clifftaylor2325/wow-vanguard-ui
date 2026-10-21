@@ -190,9 +190,9 @@ it("unlock mode's bar: Exit without saving puts every frame back as it was; Save
   addon.eval("ns.Nudge('a', 0, 7)");
   addon.eval("Vanguard_UnlockBar.save:GetScript('OnClick')(Vanguard_UnlockBar.save)");
   expect([addon.eval("return ns.Settings('positions').a.y"), addon.eval("return ns.Unlocked()")], "Save and lock keeps the change and locks").toEqual([-293, false]);
-  addon.eval("__edit = CreateFrame('Frame', nil, UIParent) ns.EditModeMovers(__edit, true)");
+  addon.eval("__edit = CreateFrame('Frame', nil, UIParent) ns.EditModeOpened(__edit)");
   expect([addon.eval("return ns.Unlocked()"), addon.eval("return Vanguard_UnlockBar:IsShown()")], "the game's Edit Mode unlocks without the bar (it has its own buttons)").toEqual([true, false]);
-  addon.eval("ns.Nudge('a', 0, 1) ns.EditModeMovers(__edit, false)");
+  addon.eval("ns.Nudge('a', 0, 1) ns.EditModeClosed(__edit)");
   expect([addon.eval("return ns.Settings('positions').a.y"), addon.eval("return ns.Unlocked()")], "closing it locks and keeps the change").toEqual([-292, false]);
 });
 
@@ -244,9 +244,9 @@ it("unlock handles: in the game's Edit Mode every handle is on HIGH, so Edit Mod
   `);
   // The strata of the handle for mover `key` (TEST-ONLY read).
   const handleStrata = (key) => addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.mover and w.mover.key == "${key}" then return w.__strata end end`);
-  addon.eval("__edit = CreateFrame('Frame', nil, UIParent) ns.EditModeMovers(__edit, true)");
+  addon.eval("__edit = CreateFrame('Frame', nil, UIParent) ns.EditModeOpened(__edit)");
   expect(handleStrata("d"), "in Edit Mode the DIALOG frame's handle drops to HIGH").toBe("HIGH");
-  addon.eval("ns.EditModeMovers(__edit, false)");
+  addon.eval("ns.EditModeClosed(__edit)");
   addon.slash("unlock");
   expect(handleStrata("d"), "/vg unlock puts it back on its own strata").toBe("DIALOG");
   addon.eval("ns.Lock()");

@@ -28,12 +28,6 @@ QM.FOLLOWED = 4
 -- How faint a mark on the edge is (the spot is farther than the minimap shows).
 QM.EDGE_ALPHA = 0.5
 
--- Calls t[name](...) if the client has it.
-local function call(t, name, ...)
-  local fn = type(t) == "table" and t[name]
-  if type(fn) == "function" then return fn(...) end
-end
-
 -- The spots ---------------------------------------------------------------------------------------
 
 -- One quest spot from the client as { id, x, y, ready }, or nil when it isn't a quest in your log or a value is hidden.
@@ -47,7 +41,7 @@ end
 -- The spots of the quests in your log on a map, at most QM.MAX.
 function QM.Spots(mapID)
   local out = {}
-  for _, q in ipairs(call(C_QuestLog, "GetQuestsOnMap", mapID) or {}) do
+  for _, q in ipairs(ns.CallIf(C_QuestLog, "GetQuestsOnMap", mapID) or {}) do
     local s = #out < QM.MAX and spot(q)
     if s then out[#out + 1] = s end
   end
@@ -56,7 +50,7 @@ end
 
 -- Reads the spots on the map you're on (each second and when the log or the zone changes).
 function QM.Read()
-  QM.mapID = not ns.Restricted("Map") and ns.PlainNumber(call(C_Map, "GetBestMapForUnit", "player")) or nil
+  QM.mapID = not ns.Restricted("Map") and ns.PlainNumber(ns.CallIf(C_Map, "GetBestMapForUnit", "player")) or nil
   QM.spots = QM.mapID and QM.Spots(QM.mapID) or {}
 end
 
@@ -64,7 +58,7 @@ end
 
 -- East and north yards turned with the minimap when it rotates (the way you face is up), else as they are.
 local function rotated(east, north)
-  local facing = call(C_CVar, "GetCVar", "rotateMinimap") == "1" and ns.PlainNumber(call(_G, "GetPlayerFacing"))
+  local facing = ns.CallIf(C_CVar, "GetCVar", "rotateMinimap") == "1" and ns.PlainNumber(ns.CallIf(_G, "GetPlayerFacing"))
   if not facing then return east, north end
   local c, s = math.cos(facing), math.sin(facing)
   return east * c + north * s, north * c - east * s
@@ -72,7 +66,7 @@ end
 
 -- The yards per minimap half-width, the map's size and your spot, or nil when the client won't say one of them.
 local function scale(mapID)
-  local radius = ns.PlainNumber(call(C_Minimap, "GetViewRadius"))
+  local radius = ns.PlainNumber(ns.CallIf(C_Minimap, "GetViewRadius"))
   local w, h, known = ns.QuestArrow.WorldSize(mapID)
   local px, py = ns.QuestArrow.PlayerSpot(mapID)
   if not (radius and radius > 0 and known and px) then return nil end
@@ -116,7 +110,7 @@ end
 -- Dresses a mark for its spot: the dot or the ?, a size larger for the quest the arrow follows, faint on the edge.
 local function dress(m, sp, edge)
   local look = sp.ready and QM.TURN_IN or QM.OBJECTIVE
-  local size = look.size + (sp.id == ns.QuestArrow.current and QM.FOLLOWED or 0)
+  local size = look.size + (sp.id == ns.QuestArrow.Current() and QM.FOLLOWED or 0)
   m:SetTexture(look.texture)
   m:SetDrawLayer("OVERLAY", look.sublevel)
   m:SetSize(size, size)

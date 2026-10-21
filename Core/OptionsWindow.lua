@@ -164,16 +164,34 @@ local function resetDot(w, set, initial)
   d.mark:SetSize(DOT, DOT)
   d.mark:SetPoint("CENTER")
   d:SetScript("OnClick", ns.Guard("click reset setting", function() set(initial); T.Sound("off"); w:Refresh() end))
-  d:SetScript("OnEnter", dotTooltip)
-  d:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
+  d:SetScript("OnEnter", ns.Guard("reset dot tip", dotTooltip))
+  d:SetScript("OnLeave", ns.Guard("reset dot tip", function() if GameTooltip then GameTooltip:Hide() end end))
   return d
+end
+
+-- A row's setter, getter and default: nil where its kind has none. The kind's SETTER_AT index holds the setter,
+-- the getter sits just before it and the default just after.
+local function setterOf(row)
+  local at = SETTER_AT[row[1]]
+  return at and row[at]
+end
+
+-- The function that reads a row's setting (see setterOf), or nil.
+local function getterOf(row)
+  local at = SETTER_AT[row[1]]
+  return at and row[at - 1]
+end
+
+-- A row's default (see setterOf), which may be false; nil where the row has none.
+local function defaultOf(row)
+  local at = SETTER_AT[row[1]]
+  return at and row[at + 1]
 end
 
 -- Whether a row with a default holds another value now.
 local function rowChanged(row)
-  local at = SETTER_AT[row[1]]
-  local initial = at and row[at + 1]
-  return initial ~= nil and row[at - 1]() ~= initial
+  local initial = defaultOf(row)
+  return initial ~= nil and getterOf(row)() ~= initial
 end
 
 -- Whether any of the rows differs from its default.
@@ -193,10 +211,9 @@ end
 
 -- Gives a row with a default its reset dot, shown while the setting differs from the default.
 local function markChanges(w, row)
-  local at = SETTER_AT[row[1]]
-  local initial = at and row[at + 1]
+  local initial = defaultOf(row)
   if initial == nil then return end
-  w.reset = resetDot(w, row[at], initial)
+  w.reset = resetDot(w, setterOf(row), initial)
   w.reset.defaultText = defaultText(w, row[1], initial)
   local refresh = w.Refresh
   -- The row's own refresh, then the dot: shown while changed, in the current accent; then the page's dot.
@@ -209,8 +226,7 @@ end
 -- The note on a row's setting now (O.SettingNote, from Modules/SituationsBanner.lua: a setting
 -- a recording can't hold), or nil. The setting is the one its getter is tagged with (O.Tag).
 local function noteOf(row)
-  local at = SETTER_AT[row[1]]
-  local module, key = O.SettingOf(at and row[at - 1])
+  local module, key = O.SettingOf(getterOf(row))
   return module and O.SettingNote and O.SettingNote(module, key) or nil
 end
 
@@ -230,11 +246,11 @@ end
 
 -- Gives a tagged setting's row its note: the tooltip on hover, and a muted caption while it has one.
 local function addNote(w, row)
-  local at = SETTER_AT[row[1]]
-  if not (at and O.SettingOf(row[at - 1]) and w.label) then return end
+  local getter = getterOf(row)
+  if not (getter and O.SettingOf(getter) and w.label) then return end
   w.row = row
-  w:HookScript("OnEnter", noteTooltip)
-  w:HookScript("OnLeave", hideNote)
+  w:HookScript("OnEnter", ns.Guard("row note", noteTooltip))
+  w:HookScript("OnLeave", ns.Guard("row note", hideNote))
   local refresh = w.Refresh
   -- The row's own refresh, then its caption: muted while the setting has a note.
   w.Refresh = function(self) refresh(self) T.Color(self.label, noteOf(row) and "muted" or "text") end
@@ -349,22 +365,20 @@ local RELOAD_SUFFIX = " (reload)"
 -- Moves a setting row's " (reload)" from its caption to row.reload (the tag).
 local function moveReload(row)
   local caption = row[2]
-  if SETTER_AT[row[1]] and type(caption) == "string" and caption:sub(-#RELOAD_SUFFIX) == RELOAD_SUFFIX then
+  if setterOf(row) and type(caption) == "string" and caption:sub(-#RELOAD_SUFFIX) == RELOAD_SUFFIX then
     row[2], row.reload = caption:sub(1, -#RELOAD_SUFFIX - 1), true
   end
 end
 
 -- Whether a row has a default to go back to.
 local function hasDefault(row)
-  local at = SETTER_AT[row[1]]
-  return at ~= nil and row[at + 1] ~= nil
+  return defaultOf(row) ~= nil
 end
 
 -- Puts back the default of every changed row in the list, then refreshes the window.
 local function resetRows(rows)
   for _, row in ipairs(rows) do
-    local at = SETTER_AT[row[1]]
-    if hasDefault(row) and rowChanged(row) then row[at](row[at + 1]) end
+    if hasDefault(row) and rowChanged(row) then setterOf(row)(defaultOf(row)) end
   end
   O.Refresh()
 end
@@ -377,11 +391,13 @@ local function resetPageRow(page, rows)
   end, function() return anyChanged(rows) end, isReset = true }
 end
 
--- A copy of a page's row list, "(reload)" moved off each caption: a page may hand back the same table at every
--- opening (Click casting's), and the window's own rows must not pile up in it.
+-- A copy of a page's row list, each row copied too, "(reload)" moved off each caption: a page may hand back the same
+-- tables at every opening (Click casting's), and the window's own marks (the reload tag, the tip) must not pile up in them.
 local function copiedRows(page)
   local rows = {}
-  for i, row in ipairs(page.rows()) do
+  for i, source in ipairs(page.rows()) do
+    local row = {}
+    for key, value in pairs(source) do row[key] = value end
     moveReload(row)
     rows[i] = row
   end
@@ -484,7 +500,7 @@ local function addHeaderControls(f)
   f.profile:SetPoint("RIGHT", f.close, "LEFT", -T.SPACE.gap, 0)
   f.search = W.Search(f.header, SEARCH_WIDTH, "Search settings", function(text) O.Search(text) end)
   f.search:SetPoint("RIGHT", f.profile, "LEFT", -T.SPACE.gap, 0)
-  f.search:SetScript("OnEnterPressed", searchEnter)
+  f.search:SetScript("OnEnterPressed", ns.Guard("search enter", searchEnter))
   T.Ornament(f, "rule", f.header)
 end
 
@@ -662,8 +678,8 @@ end
 -- Takes the keyboard while shown and out of combat (it can't pass keys on in a fight), never while hidden;
 -- a fight lets it go, and the combat queue takes it back when the fight ends.
 local function wireKeys(f)
-  f:SetScript("OnKeyDown", onKey)
-  f:SetScript("OnHide", function(self) self:EnableKeyboard(false) setFocus(nil) O.HideHits() end)
+  f:SetScript("OnKeyDown", ns.Guard("key options", onKey))
+  f:SetScript("OnHide", ns.Guard("hide options", function(self) self:EnableKeyboard(false) setFocus(nil) O.HideHits() end))
   ns.On("PLAYER_REGEN_DISABLED", function()
     f:EnableKeyboard(false)
     ns.AfterCombat(function() f:EnableKeyboard(f:IsShown()) end, "options keyboard")

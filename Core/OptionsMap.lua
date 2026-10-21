@@ -6,24 +6,24 @@
 local ADDON, ns = ...
 
 local O = ns.Options
-local setting, liveSetting, check, append = O.Setting, O.LiveSetting, O.Check, O.Append
+local reloadSetting, liveMethod, check, append = O.ReloadSetting, O.LiveMethod, O.Check, O.Append
 
 -- The minimap's coordinates, icons and drawer, and map waypoints.
 local function minimapRows()
   return {
     { "header", "Minimap and waypoints" },
-    { "cycle", "Minimap shape (reload)", { { "auto", "Follow the theme" }, { "square", "Square" }, { "round", "Round" } }, setting("Minimap", "shape", true) },
-    check("Coordinates under the minimap", setting("Minimap", "coords", true)), check("Coordinates on the world map (reload)", setting("Waypoints", "mapCoords", true)),
-    check("/way sets map waypoints, unless another addon has it (reload)", setting("Waypoints", "slash", true)),
-    check("Vanguard's pin and font on the game's floating waypoint pin (reload)", setting("Waypoints", "pin", true)),
-    check("Tracking, mail and difficulty on the minimap's corners (reload)", setting("Minimap", "icons", true)),
-    check("Gather addon minimap buttons into a drawer (reload)", setting("MinimapButtons", "drawer", true)),
+    { "cycle", "Minimap shape (reload)", { { "auto", "Follow the theme" }, { "square", "Square" }, { "round", "Round" } }, reloadSetting("Minimap", "shape") },
+    check("Coordinates under the minimap", reloadSetting("Minimap", "coords")), check("Coordinates on the world map (reload)", reloadSetting("Waypoints", "mapCoords")),
+    check("/way sets map waypoints, unless another addon has it (reload)", reloadSetting("Waypoints", "slash")),
+    check("Vanguard's pin and font on the game's floating waypoint pin (reload)", reloadSetting("Waypoints", "pin")),
+    check("Tracking, mail and difficulty on the minimap's corners (reload)", reloadSetting("Minimap", "icons")),
+    check("Gather addon minimap buttons into a drawer (reload)", reloadSetting("MinimapButtons", "drawer")),
   }
 end
 
 -- get/set for one info strip block, which shows or hides at once.
 local function stripSetting(key)
-  return liveSetting("InfoStrip", key, function() ns.GetModule("InfoStrip").UpdateAll() end)
+  return liveMethod("InfoStrip", key, "UpdateAll")
 end
 
 -- The info strip's auction sales (the sales ledger, Modules/AuctionLedger.lua): off until switched on.

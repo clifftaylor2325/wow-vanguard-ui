@@ -13,15 +13,16 @@ local T = ns.Theme
 
 local GW = ns.GetModule("Windows")
 
--- Helpers shared by the windows below -------------------------------------------------------------
+-- Sizes the windows below use, named here rather than written into the code.
+local TOWN = {
+  -- How many rows a page of the merchant window has (MerchantItem1-12, MerchantItemTemplate: a slot plate, a name plate,
+  -- the name, an item button, a price and a token price); the buyback slot under them has the same parts.
+  MERCHANT_ITEMS = 12,
+  -- The height of the field the typed amount sits in (the stack split and coin pickup).
+  AMOUNT_FIELD_HEIGHT = 24,
+}
 
--- Themes each button of a frame, named by parentKey in keys, that this client has.
-local function keyButtons(frame, keys)
-  for _, key in ipairs(keys) do
-    local button = frame[key]
-    if type(button) == "table" and button.GetRegions then T.Button(button) end
-  end
-end
+-- Helpers shared by the windows below -------------------------------------------------------------
 
 -- Themes each button named in names that this client has.
 local function namedButtons(names)
@@ -35,14 +36,6 @@ end
 local function keyFonts(frame, keys, role)
   for _, key in ipairs(keys) do
     local fs = frame[key]
-    if type(fs) == "table" and fs.SetFont then T.Text(fs, role, false) end
-  end
-end
-
--- The same for font strings named in names.
-local function namedFonts(names, role)
-  for _, name in ipairs(names) do
-    local fs = _G[name]
     if type(fs) == "table" and fs.SetFont then T.Text(fs, role, false) end
   end
 end
@@ -87,8 +80,8 @@ local STABLE_DIVIDERS = { "TopDividerFrame", "BottomDividerFrame" }
 -- The slot art that stays on a pet slot: the lock, the generic pet picture and the current pet's glow.
 local SLOT_KEEP = { "lockIcon", "genericPetIcon", "currentGlow" }
 
--- The pet slots already dressed and the footer panels already made, by frame.
-local vgPetSlots = ns.FrameState("vgPetSlots")
+-- The slot tiles already dressed (pet slots and selector tiles) and the footer panels already made, by frame.
+local vgSlotTiles = ns.FrameState("vgSlotTiles")
 local vgStableFoot = ns.FrameState("vgStableFoot")
 
 -- The pet scene: its art faded and an inset panel behind the model, its zoom and rotate buttons themed.
@@ -124,11 +117,13 @@ local function slotStates(button)
   button:HookScript("OnMouseUp", ns.Guard("hook OnMouseUp", function(self) T.SlotState(self, self:IsMouseOver() and "hover" or nil) end))
 end
 
--- One pet slot as a quiet slot tile (its rims faded, its icon, lock and glow kept), once.
-local function dressPetSlot(button)
-  if type(button) ~= "table" or not button.GetRegions or not button.HookScript or vgPetSlots[button] then return end
-  vgPetSlots[button] = true
-  T.FadeRegions(button, slotKeep(button))
+-- One slot-style tile (a pet slot, a selector tile) as a quiet slot: its rims faded, the parts keepOf(button) returns
+-- kept, its accent edge following the mouse. Once per tile; keepOf runs only after the frame check, as a button name
+-- is read from the button.
+local function dressSlotTile(button, keepOf)
+  if type(button) ~= "table" or not button.GetRegions or not button.HookScript or vgSlotTiles[button] then return end
+  vgSlotTiles[button] = true
+  T.FadeRegions(button, keepOf(button))
   T.Slot(button, { quiet = true })
   slotStates(button)
 end
@@ -155,7 +150,7 @@ end
 -- The pet's level, slots, rules and money lines: the three slots as tiles, the two rules as one pixel of divider, the
 -- money lines (the player's in a coin box, the slot's cost beside the Costs label) in the theme font.
 local function styleStableParts(frame)
-  for _, name in ipairs(STABLE_SLOTS) do dressPetSlot(_G[name]) end
+  for _, name in ipairs(STABLE_SLOTS) do dressSlotTile(_G[name], slotKeep) end
   GW.EachKey(frame, STABLE_DIVIDERS, stableRule)
   GW.SkinCoinBox(_G.PetStableMoneyFrame)
   GW.SkinMoney(_G.PetStableCostMoneyFrame)
@@ -168,12 +163,12 @@ function GW.SkinStable(frame)
   styleStableScene(frame.modelScene)
   GW.SkinBar(frame.expBar)
   GW.SkinText(GW.Part(frame, "expBar.Text"), "number", false)
-  keyButtons(frame, { "purchaseButton" })
+  GW.EachKey(frame, { "purchaseButton" }, GW.SkinButton)
   styleStableCaptions()
   styleStableParts(frame)
 end
 
-GW.Add("town", "framed", { "PetStableFrame" }, GW.SkinStable)
+GW.Add("town", { "PetStableFrame" }, GW.SkinStable)
 
 -- Trainer -------------------------------------------------------------------------------------------
 
@@ -275,7 +270,7 @@ local function styleTrainerParts(frame)
   GW.SkinMoney(frame.money)
   GW.SkinText(GW.Part(frame, "trainingPoints.text"), "small", "text")
   styleTrainerBar(_G.ClassTrainerStatusBar)
-  keyButtons(frame, { "FilterDropdown" })
+  GW.EachKey(frame, { "FilterDropdown" }, GW.SkinButton)
   if type(frame.ScrollBar) == "table" then T.ScrollBar(frame.ScrollBar) end
 end
 
@@ -295,7 +290,7 @@ function GW.SkinTrainer(frame)
 end
 
 GW.AddButtons("ClassTrainerFrame", { "ClassTrainerTrainButton" })
-GW.Add("town", "onDemand", "Blizzard_TrainerUI", { "ClassTrainerFrame" }, GW.SkinTrainer)
+GW.AddOnDemand("town", "Blizzard_TrainerUI", { "ClassTrainerFrame" }, GW.SkinTrainer)
 
 -- Dress-up, stack split, coin pickup ----------------------------------------------------------------
 
@@ -314,7 +309,7 @@ function GW.SkinSideDressUp(frame)
   GW.Skin(frame)
   GW.FadeParts(frame, DRESSUP_ART)
   GW.FadeNamed(DRESSUP_NAMED)
-  keyButtons(frame, { "ResetButton" })
+  GW.EachKey(frame, { "ResetButton" }, GW.SkinButton)
   GW.InsetPanel(frame.ModelScene)
   styleModelControls(frame.ModelScene)
 end
@@ -330,7 +325,7 @@ local function amountField(frame, left, right)
   local field = CreateFrame("Frame", nil, frame)
   field:SetPoint("LEFT", left, "RIGHT", 0, 0)
   field:SetPoint("RIGHT", right, "LEFT", 0, 0)
-  field:SetHeight(24)
+  field:SetHeight(TOWN.AMOUNT_FIELD_HEIGHT)
   T.Panel(field, { inset = true, noBg = true, noSheen = true })
   vgAmountFields[frame] = field
 end
@@ -341,7 +336,7 @@ end
 function GW.SkinStackSplit(frame)
   GW.Skin(frame)
   fadeWhole(frame, SPLIT_ART)
-  keyButtons(frame, { "OkayButton", "CancelButton" })
+  GW.EachKey(frame, { "OkayButton", "CancelButton" }, GW.SkinButton)
   GW.SkinArrow(frame.LeftButton, "left")
   GW.SkinArrow(frame.RightButton, "right")
   amountField(frame, frame.LeftButton, frame.RightButton)
@@ -356,25 +351,25 @@ end
 function GW.SkinCoinPickup(frame)
   T.Panel(frame, { shadow = true })
   local keep = {}
-  for _, name in ipairs(COIN_ICONS) do keep[_G[name] or false] = true end
+  for _, name in ipairs(COIN_ICONS) do GW.KeepAlso(keep, _G[name]) end
   T.FadeRegions(frame, keep)
   namedButtons(COIN_BUTTONS)
   GW.SkinGlyph(_G.CoinPickupLeftButton)
   GW.SkinGlyph(_G.CoinPickupRightButton)
   amountField(frame, _G.CoinPickupLeftButton, _G.CoinPickupRightButton)
-  namedFonts({ "CoinPickupText", "CoinPickupLabel" }, "number")
+  GW.TextNamed({ "CoinPickupText", "CoinPickupLabel" }, "number", false)
 end
 
-GW.Add("town", "popups", { "SideDressUpFrame" }, GW.SkinSideDressUp)
-GW.Add("town", "popups", { "StackSplitFrame" }, GW.SkinStackSplit)
-GW.Add("town", "popups", { "CoinPickupFrame" }, GW.SkinCoinPickup)
+GW.Add("town", { "SideDressUpFrame" }, GW.SkinSideDressUp)
+GW.Add("town", { "StackSplitFrame" }, GW.SkinStackSplit)
+GW.Add("town", { "CoinPickupFrame" }, GW.SkinCoinPickup)
 
 -- Separate bag windows ------------------------------------------------------------------------------
 
 -- The item buttons a separate bag window shows now, in the Bags module's item look (it skips buttons already done).
 local function skinBagItems(frame)
   if type(frame.EnumerateValidItems) ~= "function" then return end
-  for _, button in frame:EnumerateValidItems() do ns.GetModule("Bags").SkinItem(button) end
+  for _, button in frame:EnumerateValidItems() do GW.SkinItem(button) end
 end
 
 -- One of the separate bag windows (shown when Combined bags is off): the Bags module's window skin, and
@@ -388,7 +383,7 @@ function GW.SkinBagWindow(frame)
   hooksecurefunc(frame, "UpdateItems", ns.Guard("hook UpdateItems", skinBagItems))
 end
 
-GW.Add("town", "framed", { "ContainerFrame1", "ContainerFrame2", "ContainerFrame3", "ContainerFrame4", "ContainerFrame5", "ContainerFrame6", "ContainerFrame7" }, GW.SkinBagWindow)
+GW.Add("town", { "ContainerFrame1", "ContainerFrame2", "ContainerFrame3", "ContainerFrame4", "ContainerFrame5", "ContainerFrame6", "ContainerFrame7" }, GW.SkinBagWindow)
 
 -- Merchant ------------------------------------------------------------------------------------------
 
@@ -396,9 +391,6 @@ GW.Add("town", "framed", { "ContainerFrame1", "ContainerFrame2", "ContainerFrame
 -- this group dresses what it holds, and leaves every button's own script alone (buying, selling and repairing are the
 -- game's clicks; constraint S).
 
--- How many rows a page of the merchant window has (MerchantItem1-12, MerchantItemTemplate: a slot plate, a name plate,
--- the name, an item button, a price and a token price); the buyback slot under them has the same parts.
-GW.MERCHANT_ITEMS = 12
 -- The repair, repair-all, guild repair and sell-junk buttons: square tiles with an icon (their slot plate faded).
 local MERCHANT_TILES = { "MerchantRepairItemButton", "MerchantRepairAllButton", "MerchantGuildBankRepairButton", "MerchantSellAllJunkButton" }
 -- The page arrows (their arrow is their normal and disabled texture; a PREV or NEXT caption beside it).
@@ -416,12 +408,6 @@ local function regionFonts(frame, role, color)
   end
 end
 
--- A global font string in a role and a colour token (one this client lacks is skipped).
-local function namedText(name, role, color)
-  local fs = _G[name]
-  if type(fs) == "table" and fs.SetFont then T.Text(fs, role, color) end
-end
-
 -- A row's token price (named frame .. Item1-3): each denomination's figure in the theme font, its icon kept.
 local function skinAltCurrency(name)
   for i = 1, ALT_CURRENCIES do
@@ -433,12 +419,12 @@ end
 -- One merchant row, or the buyback slot, by name: its slot and name plates faded, its item button in the bags' item
 -- look (a thin border in the item's quality colour), its name in the theme font, its price and token price too.
 local function skinMerchantRow(name)
-  local row, bags = _G[name], ns.GetModule("Bags")
+  local row = _G[name]
   if type(row) ~= "table" then return end
   fadeWhole(row, { "SlotTexture" })
   GW.FadeNamed({ name .. "NameFrame" })
   keyFonts(row, { "Name" }, "small")
-  if bags and bags.SkinItem then bags.SkinItem(row.ItemButton) end
+  GW.SkinItem(row.ItemButton)
   GW.SkinMoney(_G[name .. "MoneyFrame"])
   skinAltCurrency(name .. "AltCurrencyFrame")
 end
@@ -465,7 +451,7 @@ end
 -- faded and the insets under them dark panels.
 local function skinMerchantFooter()
   for i, name in ipairs(MERCHANT_ARROWS) do skinPageArrow(_G[name], i == 1 and "left" or "right") end
-  namedText("MerchantPageText", "label", "text")
+  GW.SkinText(_G.MerchantPageText, "label", "text")
   GW.SkinMoney(_G.MerchantMoneyFrame)
   GW.FadeNamed(MERCHANT_PLATES)
   for _, name in ipairs(MERCHANT_INSETS) do insetPanel(_G[name]) end
@@ -476,10 +462,10 @@ end
 function GW.SkinMerchant()
   local frame = _G.MerchantFrame
   if type(frame) ~= "table" then return end
-  for i = 1, GW.MERCHANT_ITEMS do skinMerchantRow("MerchantItem" .. i) end
+  for i = 1, TOWN.MERCHANT_ITEMS do skinMerchantRow("MerchantItem" .. i) end
   skinMerchantRow("MerchantBuyBackItem")
   skinMerchantTiles()
-  keyButtons(frame, { "FilterDropdown" })
+  GW.EachKey(frame, { "FilterDropdown" }, GW.SkinButton)
   skinMerchantFooter()
 end
 
@@ -488,7 +474,7 @@ end
 -- MerchantFrame.lua, which MerchantFrame_Update calls for the merchant tab), so paging keeps the look. Once.
 local function watchMerchant()
   local frame = _G.MerchantFrame
-  if not (GW.settings and GW.settings.town) or type(frame) ~= "table" or not frame.HookScript or vgMerchant[frame] then return end
+  if not GW.GroupOn("town") or type(frame) ~= "table" or not frame.HookScript or vgMerchant[frame] then return end
   vgMerchant[frame] = true
   GW.SkinMerchant()
   frame:HookScript("OnShow", ns.Guard("show merchant", GW.SkinMerchant))
@@ -560,8 +546,8 @@ function GW.SkinLootHistory(frame)
   GW.WatchRows(frame.ScrollBox, dressLootRow)
 end
 
-GW.Add("town", "framed", { "MasterLooterFrame" }, GW.SkinMasterLooter)
-GW.Add("town", "framed", { "GroupLootHistoryFrame" }, GW.SkinLootHistory)
+GW.Add("town", { "MasterLooterFrame" }, GW.SkinMasterLooter)
+GW.Add("town", { "GroupLootHistoryFrame" }, GW.SkinLootHistory)
 
 -- Macro, icon pickers, stopwatch, recipe inspection ------------------------------------------------------
 
@@ -569,17 +555,15 @@ GW.Add("town", "framed", { "GroupLootHistoryFrame" }, GW.SkinLootHistory)
 local MACRO_BUTTONS = { "MacroEditButton", "MacroCancelButton", "MacroSaveButton", "MacroDeleteButton", "MacroNewButton", "MacroExitButton" }
 GW.AddButtons("MacroFrame", MACRO_BUTTONS)
 
--- Each selector tile (a macro's or an icon's) already dressed.
-local vgTiles = ns.FrameState("vgSelectorTiles")
+-- The parts a selector tile keeps: its icon and the game's selected mark.
+local function selectorKeep(button)
+  return GW.KeepKeys(button, { "Icon", "SelectedTexture" })
+end
 
 -- One tile of a selector (SelectorButtonTemplate: the macro grid, the selected macro, the icon pickers) as a quiet slot:
 -- its slot plate and hover strip faded, its icon and the game's selected mark kept, an accent edge under the mouse. Once per tile.
 local function dressSelectorTile(button)
-  if type(button) ~= "table" or not button.GetRegions or not button.HookScript or vgTiles[button] then return end
-  vgTiles[button] = true
-  T.FadeRegions(button, GW.KeepKeys(button, { "Icon", "SelectedTexture" }))
-  T.Slot(button, { quiet = true })
-  slotStates(button)
+  dressSlotTile(button, selectorKeep)
 end
 
 -- The icon picker's header: the selected icon's area gets an inset panel and its tile and heading, the name box, the
@@ -592,7 +576,7 @@ local function styleIconPickerBox(box)
   GW.SkinText(GW.Part(box, "SelectedIconArea.SelectedIconText.SelectedIconHeader"), "small", "text")
   if type(box.IconSelectorEditBox) == "table" and box.IconSelectorEditBox.SetText then T.EditBox(box.IconSelectorEditBox) end
   GW.SkinDropdown(box.IconTypeDropdown)
-  keyButtons(box, { "OkayButton", "CancelButton" })
+  GW.EachKey(box, { "OkayButton", "CancelButton" }, GW.SkinButton)
 end
 
 -- A popup made from IconSelectorPopupFrameTemplate (the macro, guild bank and equipment set popups): the
@@ -632,12 +616,12 @@ function GW.SkinStopwatch(frame)
   GW.TextNamed({ "StopwatchTitle" }, "small", "text")
 end
 
-GW.Add("town", "onDemand", "Blizzard_MacroUI", { "MacroFrame" }, GW.SkinMacro)
-GW.Add("town", "onDemand", "Blizzard_MacroUI", { "MacroPopupFrame" }, GW.SkinIconPicker)
-GW.Add("town", "onDemand", "Blizzard_GuildBankUI", { "GuildBankPopupFrame" }, GW.SkinIconPicker)
-GW.Add("town", "framed", { "GearManagerPopupFrame" }, GW.SkinIconPicker)
-GW.Add("town", "onDemand", "Blizzard_TimeManager", { "StopwatchFrame" }, GW.SkinStopwatch)
-GW.Add("town", "onDemand", "Blizzard_Professions", { "InspectRecipeFrame" }, GW.SkinFramed)
+GW.AddOnDemand("town", "Blizzard_MacroUI", { "MacroFrame" }, GW.SkinMacro)
+GW.AddOnDemand("town", "Blizzard_MacroUI", { "MacroPopupFrame" }, GW.SkinIconPicker)
+GW.AddOnDemand("town", "Blizzard_GuildBankUI", { "GuildBankPopupFrame" }, GW.SkinIconPicker)
+GW.Add("town", { "GearManagerPopupFrame" }, GW.SkinIconPicker)
+GW.AddOnDemand("town", "Blizzard_TimeManager", { "StopwatchFrame" }, GW.SkinStopwatch)
+GW.AddOnDemand("town", "Blizzard_Professions", { "InspectRecipeFrame" }, GW.SkinFramed)
 
 -- Small dialogs -------------------------------------------------------------------------------------
 
@@ -648,7 +632,7 @@ GW.AddButtons("BasicMessageDialog", { "BasicMessageDialogButton" })
 -- The ghost button as a theme button with its text in the theme font (textures and font strings only).
 local function dressGhost(frame)
   T.Button(frame)
-  namedText("GhostFrameContentsFrameText", "label", "text")
+  GW.SkinText(_G.GhostFrameContentsFrameText, "label", "text")
 end
 
 -- The button a dead player gets to return to the graveyard: dressed out of combat (it is shown from the game's
@@ -663,7 +647,7 @@ function GW.SkinAddonDialog()
   local box = _G.AddonDialogBackground
   if type(box) ~= "table" then return end
   GW.Skin(box)
-  namedText("AddonDialogText", "label", "text")
+  GW.SkinText(_G.AddonDialogText, "label", "text")
   namedButtons(ADDON_DIALOG_BUTTONS)
 end
 
@@ -675,7 +659,7 @@ local TRANSFER_LABELS = { "SourceSelector.SourceLabel", "AmountSelector.Transfer
 local function styleTransferForm(content)
   local rule = content.TransactionDivider
   if type(rule) == "table" and rule.SetAlpha then T.Divider(rule) end
-  keyButtons(content, { "ConfirmButton", "CancelButton" })
+  GW.EachKey(content, { "ConfirmButton", "CancelButton" }, GW.SkinButton)
   GW.SkinDropdown(GW.Part(content, "SourceSelector.Dropdown"))
   GW.SkinEditBox(GW.Part(content, "AmountSelector.InputBox"))
   GW.SkinButton(GW.Part(content, "AmountSelector.MaxQuantityButton"))
@@ -688,10 +672,10 @@ function GW.SkinCurrencyTransfer(frame)
   if type(frame.Content) == "table" then styleTransferForm(frame.Content) end
 end
 
-GW.Add("town", "framed", { "GhostFrame" }, GW.SkinGhost)
-GW.Add("town", "popups", { "BasicMessageDialog" })
-GW.Add("town", "popups", { "AddonDialog" }, GW.SkinAddonDialog)
-GW.Add("town", "framed", { "CurrencyTransferMenu" }, GW.SkinCurrencyTransfer)
+GW.Add("town", { "GhostFrame" }, GW.SkinGhost)
+GW.Add("town", { "BasicMessageDialog" })
+GW.Add("town", { "AddonDialog" }, GW.SkinAddonDialog)
+GW.Add("town", { "CurrencyTransferMenu" }, GW.SkinCurrencyTransfer)
 
 -- Auction house multisell progress ------------------------------------------------------------------
 
@@ -714,4 +698,4 @@ function GW.SkinMultisell(frame)
   GW.SkinPlate(frame.CancelButton)
 end
 
-GW.Add("town", "onDemand", "Blizzard_AuctionHouseUI", { "AuctionHouseMultisellProgressFrame" }, GW.SkinMultisell)
+GW.AddOnDemand("town", "Blizzard_AuctionHouseUI", { "AuctionHouseMultisellProgressFrame" }, GW.SkinMultisell)

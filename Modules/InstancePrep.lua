@@ -66,11 +66,7 @@ PR.REAGENTS = {
 -- Counting ------------------------------------------------------------------------------------
 
 -- Calls a client function by name; nil when this client doesn't have it.
-local function ask(name, ...)
-  local fn = _G[name]
-  if type(fn) ~= "function" then return nil end
-  return fn(...)
-end
+local ask = ns.Client.Call
 
 -- How many of an item you carry, or nil when the client can't (or won't) say.
 local function count(id)
@@ -128,6 +124,9 @@ end
 
 PR.You = you
 
+-- The supply each class keeps: ammo for hunters, soul shards for warlocks (the wizard's class page).
+PR.CLASS_KEYS = { HUNTER = { "ammo" }, WARLOCK = { "shards" } }
+
 -- The class rows: ammo for hunters, soul shards for warlocks, then the class's reagents at your level.
 function PR.ReagentRows()
   local rows, class, level = {}, you()
@@ -141,12 +140,7 @@ function PR.ReagentRows()
 end
 
 -- An item's name when the client has it cached, else "item 123".
-local function itemName(id)
-  local info = C_Item and C_Item.GetItemInfo
-  local name = type(info) == "function" and info(id)
-  if type(name) == "string" then return name end
-  return "item " .. id
-end
+local itemName = ns.ItemName
 
 -- The Keep-stocked items (Errands, /vg stock) you carry fewer of than the list says, by item ID.
 function PR.StockRows()

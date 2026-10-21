@@ -131,15 +131,11 @@ function DB.RewardXP(id)
   return xp and xp > 0 and xp or 0
 end
 
--- True when the client says so with a plain true (a hidden value counts as no).
-local function isTrue(v)
-  return not ns.IsSecret(v) and v == true
-end
-
 -- The XP a log entry is worth when it is a quest ready to turn in, else 0.
 local function readyXP(info)
-  if type(info) ~= "table" or info.isHeader == true or not info.questID then return 0 end
-  return isTrue(C_QuestLog.IsComplete(info.questID)) and DB.RewardXP(info.questID) or 0
+  if type(info) ~= "table" or ns.IsSecret(info.isHeader) or info.isHeader == true then return 0 end
+  local id = ns.PlainNumber(info.questID)
+  return id and ns.IsTrue(C_QuestLog.IsComplete(id)) and DB.RewardXP(id) or 0
 end
 
 -- The XP waiting in the quest log: every quest ready to turn in, added up.
