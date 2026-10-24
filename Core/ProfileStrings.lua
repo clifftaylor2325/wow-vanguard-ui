@@ -200,7 +200,7 @@ function ns.ReadPayload(scope, data)
   return kind, payload
 end
 
--- Fonts and bar textures -------------------------------------------------------------------
+-- Fonts, bar and panel textures ---------------------------------------------------------------
 
 -- The bar textures Vanguard draws itself (Core/Theme.lua's T.BarTexture).
 local OWN_BARS = { vanguard = true, soft = true, flat = true }
@@ -217,15 +217,25 @@ local function missingBar(name)
   return type(name) == "string" and not OWN_BARS[name] and not ns.Theme.SharedPath("statusbar", name)
 end
 
--- A line for each font and bar texture the string's theme names that this client doesn't
+-- True when a panel texture name is neither Flat, a built-in nor shared through LibSharedMedia.
+local function missingPanel(name)
+  local own = name == "flat" or ns.Theme.PANEL_TEXTURES[name]
+  return type(name) == "string" and not own and not ns.Theme.SharedPath("background", name)
+end
+
+-- Each theme setting naming media a string may carry: its key, its check, and the line when this client lacks it.
+local MEDIA_CHECKS = {
+  { key = "font", missing = missingFont, line = "Font not found: %s (no addon here shares it). Vanguard uses its default font instead." },
+  { key = "barTexture", missing = missingBar, line = "Bar texture not found: %s (no addon here shares it). Vanguard uses its Vanguard bar texture instead." },
+  { key = "panelTexture", missing = missingPanel, line = "Panel texture not found: %s (no addon here shares it). Vanguard draws its windows flat instead." },
+}
+
+-- A line for each font, bar and panel texture the string's theme names that this client doesn't
 -- have, and what Vanguard draws instead (the name stays saved, for when it comes back).
 function ns.MissingMedia(data)
   local theme, lines = type(data.theme) == "table" and data.theme or {}, {}
-  if missingFont(theme.font) then
-    lines[#lines + 1] = "Font not found: " .. theme.font .. " (no addon here shares it). Vanguard uses its default font instead."
-  end
-  if missingBar(theme.barTexture) then
-    lines[#lines + 1] = "Bar texture not found: " .. theme.barTexture .. " (no addon here shares it). Vanguard uses its Vanguard bar texture instead."
+  for _, check in ipairs(MEDIA_CHECKS) do
+    if check.missing(theme[check.key]) then lines[#lines + 1] = check.line:format(theme[check.key]) end
   end
   return lines
 end

@@ -10,6 +10,7 @@
 import { image, fill, draw, drawSdf, line, poly, box, ring, path, arc } from "./media-art.mjs";
 import { CRESTS, crest, glyph } from "./media-crests.mjs";
 import { crestIcon } from "./media-brand.mjs";
+import { SURFACES } from "./media-surfaces.mjs";
 
 // Textures --------------------------------------------------------------------------------
 
@@ -214,6 +215,8 @@ export const TEXTURES = {
   CornerRoundMaskBR: () => roundMask(32, 8, true, true),
   Fade: fade,
   Vignette: vignette,
+  // The panel textures (scripts/lib/media-surfaces.mjs): faint white surfaces over a floating window's fill.
+  ...SURFACES,
   // The classification diamond, white, for the addon to tint.
   LogoLeft: () => draw(image(64, 64), 64, LOGO_LEFT),
   // The pre-colored addons-list icon: Vanguard's crest (scripts/lib/media-brand.mjs).

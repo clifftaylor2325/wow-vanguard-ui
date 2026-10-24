@@ -539,18 +539,19 @@ it("importing a string that matches a profile here uses that profile instead of 
   expect(imports(addon, own), "a string matching another profile switches to it").toMatchObject({ m: "This string matches profile Raid; this character will use it after a reload.", reload: true });
   expect(addon.eval("return { VanguardCharDB.pendingProfile, VanguardDB.profiles.Imported == nil }")).toEqual(["Raid", true]);
 });
-it("an import names each font and bar texture this client doesn't have, and what it draws instead", () => {
+it("an import names each font, bar and panel texture this client doesn't have, and what it draws instead", () => {
   const addon = loggedIn('LibStub("LibSharedMedia-3.0"):Register("font", "TEST-ONLY Shared", [[Interface\\AddOns\\TestOnly\\Font.ttf]])');
   // TEST-ONLY theme naming a font and a bar texture no addon shares here.
-  const text = encoded(addon, "parts", '{ format = 2, parts = { "global" }, theme = { font = "TEST-ONLY Missing", barTexture = "TEST-ONLY Gone" } }');
+  const text = encoded(addon, "parts", '{ format = 2, parts = { "global" }, theme = { font = "TEST-ONLY Missing", barTexture = "TEST-ONLY Gone", panelTexture = "TEST-ONLY Lost" } }');
   addon.clearChat();
   importText(addon, text);
   expect(chatHas(addon, /Font not found: TEST-ONLY Missing \(no addon here shares it\)\. Vanguard uses its default font instead\./), "a missing font is named, with what is used instead").toBe(true);
   expect(chatHas(addon, /Bar texture not found: TEST-ONLY Gone \(no addon here shares it\)\. Vanguard uses its Vanguard bar texture instead\./), "and a missing bar texture").toBe(true);
+  expect(chatHas(addon, /Panel texture not found: TEST-ONLY Lost \(no addon here shares it\)\. Vanguard draws its windows flat instead\./), "and a missing panel texture").toBe(true);
   expect(addon.eval("return { ns.Theme.Settings().font, ns.Theme.BarTexture() == ns.Theme.Texture('Bar') }"), "the names stay saved, and Vanguard's own are drawn").toEqual(["TEST-ONLY Missing", true]);
   // How many lines ns.MissingMedia gives for a theme (a Lua table).
   const found = (lua) => addon.eval(`return #ns.MissingMedia({ theme = ${lua} })`);
-  expect([found('{ font = "TEST-ONLY Shared", barTexture = "soft" }'), found('{ font = "client" }'), found('{ font = "" }'), found('{ font = [[Fonts\\TEST-ONLY.ttf]] }'), addon.eval("return #ns.MissingMedia({})")], "a shared font, Vanguard's bars, the game's font and a font path are found").toEqual([0, 0, 0, 0, 0]);
+  expect([found('{ font = "TEST-ONLY Shared", barTexture = "soft", panelTexture = "stone" }'), found('{ panelTexture = "flat" }'), found('{ font = "client" }'), found('{ font = "" }'), found('{ font = [[Fonts\\TEST-ONLY.ttf]] }'), addon.eval("return #ns.MissingMedia({})")], "a shared font, Vanguard's bars and panel textures, Flat, the game's font and a font path are found").toEqual([0, 0, 0, 0, 0, 0]);
 });
 // A TEST-ONLY profile big enough to take many frames at a small budget: its string.
 const BIG = `local t = {} for i = 1, 400 do t["TEST-ONLY key " .. i] = i end ns.Profile().TestOnlyBig = t return ns.ExportProfile()`;

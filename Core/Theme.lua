@@ -262,6 +262,8 @@ local DEFAULTS = {
   sizedIcons = false,
   textScale = 1,
   barTexture = "vanguard",
+  -- The surface over floating windows' fills (Core/PanelTexture.lua): "flat", a built-in or a shared background's name.
+  panelTexture = "flat",
   -- Soft shadows under HUD frames (unit frames, bars, minimap); floating windows always have one.
   hudShadow = false,
   -- Reaction colors off the red-green axis (#235, General -> Look; on reload).
@@ -1247,7 +1249,7 @@ local function repaint(frame, entry)
   local p, r, look = entry.parts, roundRadius(frame, entry)
   entry.radius, entry.look = r, look
   corner.paintCorners(frame, entry, r, look)
-  if p.bg then paintBg(p, entry.opts, r > 0) end
+  if p.bg then paintBg(p, entry.opts, r > 0); T.PaintPanelSurface(frame, entry) end
   if p.edges then paintEdges(frame, entry, r) end
   if p.sheen then T.Tint(placeSheen(p.sheen, frame, entry.opts.pad, p.bevel and T.BEVEL.sheenRow, r), "sheen") end
   if p.bevel then placeBevelLines(p.bevel, frame, entry.opts.pad, r) end

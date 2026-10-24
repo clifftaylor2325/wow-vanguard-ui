@@ -1925,6 +1925,12 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 - Expect: every window, frame, tooltip and button shows a four-pixel rounded corner whose arc is as thin as the border, with no square fill poking out past the arc and no gap where the arc meets the edge; the light line under a window's top stops short of the corners; status bars, action and bag slots and tabs stay square; High contrast's two-pixel accent ring rounds at twice the radius. Square puts every corner back without a reload; `/vg errors` stays empty. [Needs in game: how crisp the arc is at 1440p and 4K, with and without Pixel-perfect scale; whether a game window Vanguard skins shows its own square corners under the arc.]
 - If it fails, paste: a screenshot of the corner that looks wrong with the UI scale, and `/vg errors`.
 
+### 26.3 Panel texture
+
+- Do: open `/vg` → General → Look and step **Panel texture** through Fine grain, Carved stone, Dark leather, Rock, Marble and Dialog; each time look at the options window, open your bags, a tooltip and the quest log. Try Carved stone and Rock on Midnight and Classic look, then with **Corners** on Rounded. Set **Theme variant** to High contrast, then back. Then set it back to Flat.
+- Expect: each pick changes every open window at once, with no reload; the unit frames, action bars and other HUD frames stay flat. Fine grain, Carved stone and Dark leather are a faint texture on the usual panel colour; Rock, Marble and Dialog show the game's own background faintly through it. All text stays easy to read, muted and greyed-out text included. No seam shows where the texture repeats. With Rounded corners the texture stops just inside the arcs, with no square corner poking out. High contrast shows flat windows. Flat puts everything back; `/vg errors` stays empty. [Needs in game: that Rock, Marble and Dialog exist on Forever (an empty list entry or a plain window means one is missing); whether the faintness (0.25, 0.3, 0.5 for the game's, the art itself for Vanguard's) reads well at 1080p and 1440p; the size the texture repeats at.]
+- If it fails, paste: a screenshot of the window with the pick and variant named, and `/vg errors`.
+
 ## 27. Window ornaments (#238)
 
 ### 27.1 Rule and corner brackets
