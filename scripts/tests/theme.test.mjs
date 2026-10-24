@@ -1233,3 +1233,42 @@ it("switch commands: cdmglow and cdmkeys take on and off in any case and refuse 
   addon.slash("cdmkeys x");
   expect([glow(), keys(), chatHas(addon, /Usage: \/vg cdmglow \[on\|off\|<percent>\]/), chatHas(addon, /Usage: \/vg cdmkeys \[on\|off\]/)], "a mistyped word changes nothing").toEqual([true, true, true, true]);
 });
+
+// The panel texture surface on a painted frame (TEST-ONLY read): its art's file name, alpha, inset from the
+// top left, wrap and draw layer, or false when it has none showing.
+const surfaceOf = (addon, name) => addon.eval(`for _, r in ipairs({ ${name}:GetRegions() }) do
+  if r.__layer == "BACKGROUND" and r.__sublevel == ns.Theme.PANEL_SURFACE.sublevel and r:IsShown() then
+    return { tostring(r.__texture):match("[^\\\\]+$"), r:GetAlpha(), r.__points.TOPLEFT.x, r.__wrap or false } end end return false`);
+
+it("panel texture (#647): flat by default; a pick draws its surface over floating windows only, at once, and Flat hides it", () => {
+  const addon = loggedIn(CLICK_LUA + '__win = ns.Theme.Panel(CreateFrame("Frame", nil, UIParent), { shadow = true }) __plain = ns.Theme.Panel(CreateFrame("Frame", nil, UIParent)) __faint = ns.Theme.Panel(CreateFrame("Frame", nil, UIParent), { gradient = true, alpha = 0.5, pad = 2 })');
+  expect([addon.eval("return ns.Theme.Settings().panelTexture"), surfaceOf(addon, "__win")], "flat by default: no surface made").toEqual(["flat", false]);
+  addon.eval('ns.Options.Show("general")');
+  addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.dropdown and w.caption == "Panel texture" and w:IsVisible() then w.dropdown.set("stone") end end`);
+  expect([surfaceOf(addon, "__win"), surfaceOf(addon, "__plain")], "the options row draws Carved stone, whole and tiled, on a window at once; a plain panel stays flat")
+    .toEqual([["PanelStone", 1, 0, ["REPEAT", "REPEAT"]], false]);
+  expect(surfaceOf(addon, "__faint").slice(0, 3), "a panel asking for the gradient takes it too, at its own alpha, out to its pad").toEqual(["PanelStone", 0.5, -2]);
+  expect(surfaceOf(addon, "Vanguard_Options")[0], "the options window shows it").toBe("PanelStone");
+  addon.eval('ns.Theme.Settings().panelTexture = "rock" ns.Theme.Refresh()');
+  expect(surfaceOf(addon, "__win").slice(0, 2), "the game's rock, drawn faint").toEqual(["UI-Background-Rock", 0.25]);
+  addon.slash("corners rounded");
+  expect(surfaceOf(addon, "__win")[2], "rounded: pulled in from the corners by the radius").toBe(addon.eval("return ns.Theme.CORNER_RADIUS * ns.Theme.Pixel(__win)"));
+  addon.slash("variant contrast");
+  expect(surfaceOf(addon, "__win"), "High contrast keeps windows flat").toBe(false);
+  addon.slash("variant default");
+  addon.eval('ns.Theme.Settings().panelTexture = "flat" ns.Theme.Refresh()');
+  expect([surfaceOf(addon, "__win"), addon.eval("return VanguardDB.profiles.Default.theme.panelTexture")], "Flat hides it again; the pick is kept in the profile").toEqual([false, "flat"]);
+});
+
+it("panel texture: the picker lists Vanguard's, the game's and other addons' backgrounds, and a name no longer shared draws flat", () => {
+  const addon = loggedIn('LibStub("LibSharedMedia-3.0"):Register("background", "TEST-ONLY Cloth", [[Interface\\AddOns\\TestOnly\\Cloth]]) __win = ns.Theme.Panel(CreateFrame("Frame", nil, UIParent), { shadow = true })');
+  const values = addon.eval("local out = {} for i, c in ipairs(ns.Theme.PanelTextureChoices()) do out[i] = c[1] end return out");
+  expect(values.slice(0, 7), "the built-ins first, in order").toEqual(["flat", "grain", "stone", "leather", "rock", "marble", "dialog"]);
+  expect([values.includes("TEST-ONLY Cloth"), values.includes("None"), values.includes("Solid"), values.includes("Blizzard Rock"), values.includes("Blizzard Low Health"), values.includes("Vanguard Stone")],
+    "another addon's background is offered; no-texture, solid, full-screen effects, built-in duplicates and Vanguard's own shared names are not").toEqual([true, false, false, false, false, false]);
+  expect(addon.eval('return LibStub("LibSharedMedia-3.0"):Fetch("background", "Vanguard Stone", true)'), "Vanguard shares its own surfaces").toBe("Interface\\AddOns\\Vanguard\\Media\\Textures\\PanelStone");
+  addon.eval('ns.Theme.Settings().panelTexture = "TEST-ONLY Cloth" ns.Theme.Refresh()');
+  expect(surfaceOf(addon, "__win").slice(0, 2), "a shared background is drawn faint").toEqual(["Cloth", addon.eval("return ns.Theme.PANEL_SURFACE.sharedAlpha")]);
+  addon.eval('ns.Theme.Settings().panelTexture = "TEST-ONLY Gone" ns.Theme.Refresh()');
+  expect(surfaceOf(addon, "__win"), "a name nothing shares any more draws flat").toBe(false);
+});

@@ -10,6 +10,7 @@ import { orphanMedia, staleMedia } from "./build-media.mjs";
 import { fontFacts } from "./lib/truetype.mjs";
 import { crest, crestNames } from "./lib/media-crests.mjs";
 import { ICONS, ICON_SIZES, MEDIA, SILHOUETTES, SIZED_ICONS } from "./lib/media-sources.mjs";
+import { SURFACES, SURFACE_MAX_ALPHA } from "./lib/media-surfaces.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -248,6 +249,17 @@ function clearPixelsWhite() {
   expect(out.filter(([, n]) => n > 0)).toEqual([]);
 }
 
+// Every panel texture is faint (at most SURFACE_MAX_ALPHA, so text stays readable on it) but not empty.
+function surfacesFaint() {
+  const out = Object.entries(SURFACES).map(([name, make]) => {
+    const img = make();
+    let max = 0;
+    for (let i = 3; i < img.px.length; i += 4) max = Math.max(max, img.px[i]);
+    return [name, max <= SURFACE_MAX_ALPHA && max > 0.02];
+  });
+  expect(out).toEqual(Object.keys(SURFACES).map((name) => [name, true]));
+}
+
 // The addons-list icon is the crest, pre-coloured (media-brand.mjs): a few hundred solid brass
 // pixels (the shield's field and the hilts), the V in slate over them, and grey steel on the blades
 // (thin at 64 px, so most of their pixels are blends: any grey over half alpha counts).
@@ -314,6 +326,7 @@ describe(
     it("icons and shapes keep a clear pixel inside their edge", shapesPadded);
     it("the pill outline is about one screen pixel at 18, 14 and 12 high", capsuleOutlinesOnePixel);
     it("the addons-list icon is the pre-coloured crest", iconIsCrest);
+    it("the panel textures are faint", surfacesFaint);
   },
 );
 

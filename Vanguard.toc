@@ -35,6 +35,7 @@ Core/ProfileStrings.lua
 Core/Modules.lua
 Core/Theme.lua
 Core/SharedMedia.lua
+Core/PanelTexture.lua
 Core/Dialog.lua
 Core/Auras.lua
 Core/AuraLegacy.lua

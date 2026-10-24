@@ -1,4 +1,4 @@
--- Shared fonts and bar textures through LibSharedMedia-3.0 (bundled in Libs/
+-- Shared fonts, bar and panel textures through LibSharedMedia-3.0 (bundled in Libs/
 -- and loaded first by the TOC): Vanguard shares its own font and bar
 -- textures with other addons, and the Font and Bar texture pickers offer
 -- what other addons share. Every call works without the library: then only
@@ -12,6 +12,7 @@ local T = ns.Theme
 T.SHARED_MEDIA = {
   font = { ["Vanguard Fira Sans"] = T.FONTS.regular, ["Vanguard Fira Sans SemiBold"] = T.FONTS.bold },
   statusbar = { ["Vanguard"] = T.Texture("Bar"), ["Vanguard Soft"] = T.Texture("BarSoft"), ["Vanguard Flat"] = T.WHITE },
+  background = { ["Vanguard Grain"] = T.Texture("PanelGrain"), ["Vanguard Stone"] = T.Texture("PanelStone"), ["Vanguard Leather"] = T.Texture("PanelLeather") },
 }
 
 -- LibSharedMedia-3.0, or nil when it isn't loaded.
@@ -27,12 +28,13 @@ function T.SharedPath(kind, name)
 end
 
 -- A picker's choices: the built-ins ({ value, text }), then every name shared
--- for the media type, Vanguard's own left out (the built-ins are those).
-function T.SharedChoices(kind, builtIns)
+-- for the media type, Vanguard's own left out (the built-ins are those), and
+-- any name in the optional skip set.
+function T.SharedChoices(kind, builtIns, skip)
   local list, lsm = {}, T.SharedMedia()
   for _, c in ipairs(builtIns) do list[#list + 1] = c end
   for _, name in ipairs(lsm and lsm:List(kind) or {}) do
-    if not T.SHARED_MEDIA[kind][name] then list[#list + 1] = { name, name } end
+    if not T.SHARED_MEDIA[kind][name] and not (skip or {})[name] then list[#list + 1] = { name, name } end
   end
   return list
 end
@@ -47,11 +49,12 @@ function T.FontChoices(builtIns)
 end
 
 -- Shares Vanguard's font (it has Latin, Greek and Cyrillic, so western and
--- Russian clients) and its three bar textures.
+-- Russian clients), its three bar textures and its three panel textures.
 local function share(lsm)
   local scripts = lsm.LOCALE_BIT_western + lsm.LOCALE_BIT_ruRU
   for name, path in pairs(T.SHARED_MEDIA.font) do lsm:Register("font", name, path, scripts) end
   for name, path in pairs(T.SHARED_MEDIA.statusbar) do lsm:Register("statusbar", name, path) end
+  for name, path in pairs(T.SHARED_MEDIA.background) do lsm:Register("background", name, path) end
 end
 
 if T.SharedMedia() then share(T.SharedMedia()) end

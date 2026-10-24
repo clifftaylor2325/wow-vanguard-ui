@@ -198,19 +198,28 @@ local MOVER_ALPHAS = { min = ns.MOVER_ALPHA.min, max = ns.MOVER_ALPHA.max, step 
 -- Text size: 70% to 130% in steps of 5.
 local TEXT_SIZES = { min = 0.7, max = 1.3, step = 0.05, format = function(v) return string.format("%d%%", math.floor(v * 100 + 0.5)) end }
 
--- Look, the font, text size, faction, variant, corners and ornament rows. A caption is a noun; what it needs
--- saying beyond that is a note row under it.
-local function lookTextRows()
+-- Look, the shape of things: variant, corners, panel texture and ornament rows.
+local function lookShapeRows()
   return {
-    { "cycle", "Font", T.FontChoices(FONT_CHOICES), liveThemeSetting("font") },
-    { "slider", "Text size", TEXT_SIZES, liveThemeSetting("textScale") },
-    { "cycle", "Faction look", FACTION_LOOK, liveThemeSetting("faction") },
     { "cycle", "Theme variant", VARIANT_CHOICES, liveThemeSetting("variant") },
     { "cycle", "Corners", CORNER_CHOICES, liveThemeSetting("corners") },
+    { "cycle", "Panel texture", T.PanelTextureChoices(), liveThemeSetting("panelTexture") },
     check("Shield corners on unit frames", liveThemeSetting("shield")),
     check("Window ornaments", liveThemeSetting("ornaments")),
     { "text", "A brass rule or corners on large windows.", "note" },
   }
+end
+
+-- Look, the font, text size and faction rows, then the shape rows. A caption is a noun; what it needs
+-- saying beyond that is a note row under it.
+local function lookTextRows()
+  local rows = {
+    { "cycle", "Font", T.FontChoices(FONT_CHOICES), liveThemeSetting("font") },
+    { "slider", "Text size", TEXT_SIZES, liveThemeSetting("textScale") },
+    { "cycle", "Faction look", FACTION_LOOK, liveThemeSetting("faction") },
+  }
+  for _, row in ipairs(lookShapeRows()) do rows[#rows + 1] = row end
+  return rows
 end
 
 -- The theme settings that show fully only after a reload (pixel-perfect's scale stays on screen until then).
