@@ -4,6 +4,8 @@
 
 local ADDON, ns = ...
 
+local L = ns.L
+
 local O = ns.Options
 local moduleSettings, setting, reloadSetting, liveSetting, check, append = O.ModuleSettings, O.Setting, O.ReloadSetting, O.LiveSetting, O.Check, O.Append
 
@@ -14,7 +16,7 @@ local function chatLive(key, method)
 end
 
 -- The game's class-colored names in chat: always, never, or as each chat type is set.
-local CLASS_NAMES = { { "0", "Always" }, { "1", "Never" }, { "2", "As each chat type is set" } }
+local CLASS_NAMES = { { "0", L["Always"] }, { "1", L["Never"] }, { "2", L["As each chat type is set"] } }
 -- chatClassColorOverride: "0" and "1" force class colors on or off; anything else leaves them to each chat type.
 local function classNameChoice(v) return (v == "0" or v == "1") and v or "2" end
 -- showTimestamps: "none" (or unset) is off, anything else a time format.
@@ -26,11 +28,11 @@ local function timestampChoice(v) return v or "none" end
 local function chatTextRows()
   local CH = ns.GetModule("Chat")
   return {
-    { "cycle", "Chat text size (follows Text size)", CH.SIZES, chatLive("textSize", "Refresh") },
-    { "cycle", "Chat text fades", CH.LINE_FADES, chatLive("lineFade", "ApplyFades") },
-    check("Keep chat tabs visible (the game fades them until the mouse comes near)", chatLive("tabsVisible", "ApplyTabAlpha")),
-    check("Hide the tab bar until the mouse is over the chat", chatLive("barHover", "ApplyBarHover")),
-    check("Text-only bubbles: no panel behind the words over heads (reload)", reloadSetting("ChatBubbles", "textOnly")),
+    { "cycle", L["Chat text size (follows Text size)"], CH.SIZES, chatLive("textSize", "Refresh") },
+    { "cycle", L["Chat text fades"], CH.LINE_FADES, chatLive("lineFade", "ApplyFades") },
+    check(L["Keep chat tabs visible (the game fades them until the mouse comes near)"], chatLive("tabsVisible", "ApplyTabAlpha")),
+    check(L["Hide the tab bar until the mouse is over the chat"], chatLive("barHover", "ApplyBarHover")),
+    check(L["Text-only bubbles: no panel behind the words over heads (reload)"], reloadSetting("ChatBubbles", "textOnly")),
   }
 end
 
@@ -38,11 +40,11 @@ end
 local function chatWindowRows()
   local CH = ns.GetModule("Chat")
   return append({
-    { "header", "Chat" },
-    check("Chat background", reloadSetting("Chat", "background")),
-    { "cycle", "Chat background strength", CH.BACKDROPS, chatLive("backdrop", "Refresh") },
-    check("Keep chat in its bottom-left spot (reload)", reloadSetting("Chat", "place")),
-    { "cycle", "Chat window size", CH.WINDOW_SCALES, chatLive("windowScale", "ApplySize") },
+    { "header", L["Chat"] },
+    check(L["Chat background"], reloadSetting("Chat", "background")),
+    { "cycle", L["Chat background strength"], CH.BACKDROPS, chatLive("backdrop", "Refresh") },
+    check(L["Keep chat in its bottom-left spot (reload)"], reloadSetting("Chat", "place")),
+    { "cycle", L["Chat window size"], CH.WINDOW_SCALES, chatLive("windowScale", "ApplySize") },
   }, chatTextRows())
 end
 
@@ -50,9 +52,9 @@ end
 local function copyFindRows(CX)
   local CW = ns.GetModule("ChatWindows")
   return {
-    check("Copy button in the chat's tab bar", liveSetting("ChatExtras", "copy", CX.ApplyCopy)),
-    { "button", "Find in chat", CW.AskFind },
-    check("Find button in the chat's tab bar", liveSetting("ChatWindows", "find", CW.ApplyFind)),
+    check(L["Copy button in the chat's tab bar"], liveSetting("ChatExtras", "copy", CX.ApplyCopy)),
+    { "button", L["Find in chat"], CW.AskFind },
+    check(L["Find button in the chat's tab bar"], liveSetting("ChatWindows", "find", CW.ApplyFind)),
   }
 end
 
@@ -60,24 +62,24 @@ end
 -- timestamp and class-color settings. Links and the buttons apply at once.
 local function chatRows()
   local CX = ns.GetModule("ChatExtras")
-  local rows = { { "header", "Chat extras" }, check("Clickable web links in chat", setting("ChatExtras", "links")) }
+  local rows = { { "header", L["Chat extras"] }, check(L["Clickable web links in chat"], setting("ChatExtras", "links")) }
   append(rows, copyFindRows(CX))
   return append(rows, {
-    check("Short channel names: [2. Trade] shows as [2]", setting("ChatExtras", "shortChannels")),
-    check("Ctrl + mouse wheel jumps to the top or bottom of chat", setting("ChatExtras", "ctrlScroll")),
-    { "cycle", "Chat timestamps (the game's setting)", CX.TimestampChoices(), CX.CVarSetting("showTimestamps", timestampChoice) },
-    { "cycle", "Class-colored names in chat (the game's setting)", CLASS_NAMES, CX.CVarSetting("chatClassColorOverride", classNameChoice) },
+    check(L["Short channel names: [2. Trade] shows as [2]"], setting("ChatExtras", "shortChannels")),
+    check(L["Ctrl + mouse wheel jumps to the top or bottom of chat"], setting("ChatExtras", "ctrlScroll")),
+    { "cycle", L["Chat timestamps (the game's setting)"], CX.TimestampChoices(), CX.CVarSetting("showTimestamps", timestampChoice) },
+    { "cycle", L["Class-colored names in chat (the game's setting)"], CLASS_NAMES, CX.CVarSetting("chatClassColorOverride", classNameChoice) },
   })
 end
 
 -- Chat watch's switches: the channels it reads, its sound, its toast and the toast's auction price.
 local function chatWatchSwitches(CW)
   return {
-    check("Numbered channels (General, Trade, LFG)", CW.ChannelSetting("channel")),
-    check("Say", CW.ChannelSetting("say")), check("Yell", CW.ChannelSetting("yell")), check("Guild", CW.ChannelSetting("guild")),
-    check("Party and raid", CW.ChannelSetting("party", "raid")), check("Whispers", CW.ChannelSetting("whisper")),
-    check("Sound", setting("ChatWatch", "sound")), check("Toast", setting("ChatWatch", "toast")),
-    check("Auction price of a linked item on the toast", setting("ChatWatch", "prices")),
+    check(L["Numbered channels (General, Trade, LFG)"], CW.ChannelSetting("channel")),
+    check(L["Say"], CW.ChannelSetting("say")), check(L["Yell"], CW.ChannelSetting("yell")), check(L["Guild"], CW.ChannelSetting("guild")),
+    check(L["Party and raid"], CW.ChannelSetting("party", "raid")), check(L["Whispers"], CW.ChannelSetting("whisper")),
+    check(L["Sound"], setting("ChatWatch", "sound")), check(L["Toast"], setting("ChatWatch", "toast")),
+    check(L["Auction price of a linked item on the toast"], setting("ChatWatch", "prices")),
   }
 end
 
@@ -87,7 +89,7 @@ local function listRows(spec)
   local rows = { spec.add }
   if #spec.items == 0 then rows[#rows + 1] = { "text", spec.empty } end
   for _, item in ipairs(spec.items) do
-    rows[#rows + 1] = { "button", "Remove: " .. item, function() spec.remove(item) end }
+    rows[#rows + 1] = { "button", ns.Format(L["Remove: {item}"], { item = item }), function() spec.remove(item) end }
   end
   return rows
 end
@@ -95,9 +97,9 @@ end
 -- Chat watch: its prose, the phrases (listRows), then the switches.
 local function chatWatchRows()
   local CW = ns.GetModule("ChatWatch")
-  local rows = { { "header", "Chat watch" }, { "text", "Phrases to watch for: a sound and a toast when one is said (all the words, in any order; in a fight, once it ends). Click the toast to whisper." } }
-  append(rows, listRows({ add = { "button", "Add a phrase", function() ns.AskText("Watch for", CW.AddFromDialog, "Add") end },
-    items = moduleSettings("ChatWatch").phrases, empty = "No phrases yet. Add one, such as LFM or a dungeon's name.", remove = CW.Remove }))
+  local rows = { { "header", L["Chat watch"] }, { "text", L["Phrases to watch for: a sound and a toast when one is said (all the words, in any order; in a fight, once it ends). Click the toast to whisper."] } }
+  append(rows, listRows({ add = { "button", L["Add a phrase"], function() ns.AskText(L["Watch for"], CW.AddFromDialog, L["Add"]) end },
+    items = moduleSettings("ChatWatch").phrases, empty = L["No phrases yet. Add one, such as LFM or a dungeon's name."], remove = CW.Remove }))
   return append(rows, chatWatchSwitches(CW))
 end
 
@@ -108,37 +110,38 @@ local function chatFilterStatusRows(CF)
     { "text", CF.CaughtText },
     { "text", CF.HiddenHint },
     { "text", CF.LetThroughText },
-    { "button", "Filter them again", CF.FilterAgain },
+    { "button", L["Filter them again"], CF.FilterAgain },
   }
 end
 
 -- Chat filter's words of your own: Add a word, then a Remove button per word (or a hint while there are none).
 local function chatFilterWordRows(CF)
-  return listRows({ add = { "button", "Add a word", function() ns.AskText("Filter lines with", CF.AddFromDialog, "Add") end },
-    items = moduleSettings("ChatFilter").keywords, empty = "No words of your own yet.", remove = CF.Remove })
+  return listRows({ add = { "button", L["Add a word"], function() ns.AskText(L["Filter lines with"], CF.AddFromDialog, L["Add"]) end },
+    items = moduleSettings("ChatFilter").keywords, empty = L["No words of your own yet."], remove = CF.Remove })
 end
 
 -- Chat filter: the switches, where caught lines go, what it caught (chatFilterStatusRows), then your words.
 local function chatFilterRows()
   local CF = ns.GetModule("ChatFilter")
   local changed = CF.Changed
-  local rows = { { "header", "Chat filter" }, { "text", "Spam in Trade and the other channels goes to a Filtered tab (click a sender there to let them through)." },
-    check("Filter chat", liveSetting("ChatFilter", "on", changed)),
-    { "cycle", "Caught lines", { { "tab", "Go to the Filtered tab" }, { "hide", "Are hidden" } }, liveSetting("ChatFilter", "mode", changed) },
-    check("Gold selling", setting("ChatFilter", "gold")), check("Boosting", setting("ChatFilter", "boosting")),
-    check("Guild recruiting", setting("ChatFilter", "recruiting")), check("Same line again within a minute", setting("ChatFilter", "repeats")) }
+  local rows = { { "header", L["Chat filter"] }, { "text", L["Spam in Trade and the other channels goes to a Filtered tab (click a sender there to let them through)."] },
+    check(L["Filter chat"], liveSetting("ChatFilter", "on", changed)),
+    { "cycle", L["Caught lines"], { { "tab", L["Go to the Filtered tab"] }, { "hide", L["Are hidden"] } }, liveSetting("ChatFilter", "mode", changed) },
+    check(L["Gold selling"], setting("ChatFilter", "gold")), check(L["Boosting"], setting("ChatFilter", "boosting")),
+    check(L["Guild recruiting"], setting("ChatFilter", "recruiting")), check(L["Same line again within a minute"], setting("ChatFilter", "repeats")) }
   return append(append(rows, chatFilterStatusRows(CF)), chatFilterWordRows(CF))
 end
 
 -- Chat windows: the game's lock, the movers for floating windows, then a width and a height for each window showing.
 local function chatWindowsRows()
   local CW = ns.GetModule("ChatWindows")
-  local rows = { { "header", "Chat windows" }, { "text", "Size each chat window here instead of dragging its corner. Lock stops the game's drag." },
-    check("Lock chat windows", CW.LockSetting()), check("Move floating windows with /vg unlock (reload)", reloadSetting("ChatWindows", "movers")) }
+  local rows = { { "header", L["Chat windows"] }, { "text", L["Size each chat window here instead of dragging its corner. Lock stops the game's drag."] },
+    check(L["Lock chat windows"], CW.LockSetting()), check(L["Move floating windows with /vg unlock (reload)"], reloadSetting("ChatWindows", "movers")) }
   for _, w in ipairs(CW.Shown()) do
     local wGet, wSet = CW.WidthSetting(w.frame)
     local hGet, hSet = CW.HeightSetting(w.frame)
-    append(rows, { { "slider", w.name .. ": width", CW.WIDTH, wGet, wSet }, { "slider", w.name .. ": height", CW.HEIGHT, hGet, hSet } })
+    local window = { window = w.name }
+    append(rows, { { "slider", ns.Format(L["{window}: width"], window), CW.WIDTH, wGet, wSet }, { "slider", ns.Format(L["{window}: height"], window), CW.HEIGHT, hGet, hSet } })
   end
   return rows
 end
@@ -146,12 +149,12 @@ end
 -- Chat tabs: pick a tab, make, rename or close one, and choose what it shows.
 local function chatTabRows()
   local CW = ns.GetModule("ChatWindows")
-  local rows = { { "header", "Chat tabs" }, { "text", "Pick a tab, then rename or close it, or choose what it shows. Channels: right-click the tab, then Settings." },
-    { "cycle", "Tab", CW.TabChoices(), CW.TabSetting() },
-    { "button", "New chat tab", function() ns.AskText("Name the new tab", CW.New, "Make") end },
-    { "button", "Rename this tab", function() ns.AskText("New name for this tab", CW.Rename, "Rename") end },
-    { "button", "Close this tab", CW.Close } }
-  for _, g in ipairs(CW.GROUPS) do rows[#rows + 1] = check("Show " .. g[2], CW.GroupSetting(g[1])) end
+  local rows = { { "header", L["Chat tabs"] }, { "text", L["Pick a tab, then rename or close it, or choose what it shows. Channels: right-click the tab, then Settings."] },
+    { "cycle", L["Tab"], CW.TabChoices(), CW.TabSetting() },
+    { "button", L["New chat tab"], function() ns.AskText(L["Name the new tab"], CW.New, L["Make"]) end },
+    { "button", L["Rename this tab"], function() ns.AskText(L["New name for this tab"], CW.Rename, L["Rename"]) end },
+    { "button", L["Close this tab"], CW.Close } }
+  for _, g in ipairs(CW.GROUPS) do rows[#rows + 1] = check(ns.Format(L["Show {channel}"], { channel = g[2] }), CW.GroupSetting(g[1])) end
   return rows
 end
 
@@ -159,12 +162,12 @@ end
 local function chatHistoryRows()
   local CHH = ns.GetModule("ChatHistory")
   return {
-    { "header", "Chat history" }, { "text", "Your chat comes back after a reload or the next login. Saved for this character only." },
-    check("Keep chat history", setting("ChatHistory", "on")),
-    { "cycle", "Lines kept per chat window", CHH.LINE_CHOICES, setting("ChatHistory", "lines") },
-    { "cycle", "Keep lines for", CHH.DAY_CHOICES, setting("ChatHistory", "days") },
-    check("Keep whispers", setting("ChatHistory", "whispers")),
-    { "button", "Clear saved chat", CHH.AskClear },
+    { "header", L["Chat history"] }, { "text", L["Your chat comes back after a reload or the next login. Saved for this character only."] },
+    check(L["Keep chat history"], setting("ChatHistory", "on")),
+    { "cycle", L["Lines kept per chat window"], CHH.LINE_CHOICES, setting("ChatHistory", "lines") },
+    { "cycle", L["Keep lines for"], CHH.DAY_CHOICES, setting("ChatHistory", "days") },
+    check(L["Keep whispers"], setting("ChatHistory", "whispers")),
+    { "button", L["Clear saved chat"], CHH.AskClear },
   }
 end
 
@@ -180,4 +183,4 @@ local function chatPageRows()
   return rows
 end
 
-O.AddPage({ key = "chat", title = "Chat", icon = "NavChat", order = 82, rows = chatPageRows })
+O.AddPage({ key = "chat", title = L["Chat"], icon = "NavChat", order = 82, rows = chatPageRows })

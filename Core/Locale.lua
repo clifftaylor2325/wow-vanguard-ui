@@ -13,6 +13,22 @@ end
 
 ns.L = setmetatable({}, { __index = english })
 
+-- Each translated text's English key, built on first use from the active locale's translations.
+local englishOf
+
+-- The English key a translated text came from; the text itself when it is English or no translation's. Two keys
+-- translated alike give back either one, so a caller reads only what both share (the options window: a reload
+-- caption's translation keeps its bracket, which a plain caption's lacks).
+---@param text string
+---@return string
+function ns.English(text)
+  if not englishOf then
+    englishOf = {}
+    for key, translated in pairs(ns.L) do englishOf[translated] = key end
+  end
+  return englishOf[text] or text
+end
+
 -- The client's locale ("enUS", "deDE", ...); "enUS" when it can't say.
 ---@return string
 function ns.Locale()

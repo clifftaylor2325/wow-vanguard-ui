@@ -4,17 +4,19 @@
 
 local ADDON, ns = ...
 
+local L = ns.L
+
 local O = ns.Options
 local setting, reloadSetting, liveMethod, check, append = O.Setting, O.ReloadSetting, O.LiveMethod, O.Check, O.Append
 
 -- XP and reputation bars: which, their numbers, and when they're seen.
 local function dataBarRows()
-  local barsVisibility, barsWhen = O.VisibilityRows("XP and reputation bars", "DataBars", "visibility", "showWhen")
+  local barsVisibility, barsWhen = O.VisibilityRows(L["XP and reputation bars"], "DataBars", "visibility", "showWhen")
   return {
-    { "header", "XP and reputation" },
-    check("Experience bar", reloadSetting("DataBars", "xp")), check("Reputation bar", reloadSetting("DataBars", "reputation")),
-    { "cycle", "Numbers", { { "hover", "on hover" }, { "always", "always" } }, reloadSetting("DataBars", "text") },
-    check("Tooltips on hover (XP: kills to level, rested, quest XP; reputation: standing and the next)", setting("DataBars", "tooltip")),
+    { "header", L["XP and reputation"] },
+    check(L["Experience bar"], reloadSetting("DataBars", "xp")), check(L["Reputation bar"], reloadSetting("DataBars", "reputation")),
+    { "cycle", L["Numbers"], { { "hover", L["on hover"] }, { "always", L["always"] } }, reloadSetting("DataBars", "text") },
+    check(L["Tooltips on hover (XP: kills to level, rested, quest XP; reputation: standing and the next)"], setting("DataBars", "tooltip")),
     barsVisibility, barsWhen,
   }
 end
@@ -22,22 +24,22 @@ end
 -- Bags: the combined bag, the game's bank look and the sections.
 local function bagRows()
   return {
-    { "header", "Bags" },
-    check("Combined bag (reload)", reloadSetting("Bags", "combined")), check("Bank in the Vanguard look (reload)", reloadSetting("Bags", "bank")),
-    check("Combined bag in sections: equipment, consumables, quest items, junk",
+    { "header", L["Bags"] },
+    check(L["Combined bag (reload)"], reloadSetting("Bags", "combined")), check(L["Bank in the Vanguard look (reload)"], reloadSetting("Bags", "bank")),
+    check(L["Combined bag in sections: equipment, consumables, quest items, junk"],
       liveMethod("Bags", "sections", "SectionsChanged")),
   }
 end
 
 -- The game's extras: the menu strip and the quest tracker (after a reload).
 local function gamePartRows()
-  local menuVisibility, menuWhen = O.VisibilityRows("Bags and game menu", "MenuStrip", "menu", "menuWhen", ns.Visibility.MENU_MODES)
+  local menuVisibility, menuWhen = O.VisibilityRows(L["Bags and game menu"], "MenuStrip", "menu", "menuWhen", ns.Visibility.MENU_MODES)
   return {
-    { "header", "The game's extras" },
+    { "header", L["The game's extras"] },
     menuVisibility, menuWhen,
-    check("Vanguard icons on the menu buttons (reload)", reloadSetting("MenuStrip", "glyphs")),
-    check("The game's quest tracker under the info strip (reload)", reloadSetting("MenuStrip", "tracker")),
-    check("The game's quest tracker in the Vanguard look (reload)", reloadSetting("MenuStrip", "trackerLook")),
+    check(L["Vanguard icons on the menu buttons (reload)"], reloadSetting("MenuStrip", "glyphs")),
+    check(L["The game's quest tracker under the info strip (reload)"], reloadSetting("MenuStrip", "tracker")),
+    check(L["The game's quest tracker in the Vanguard look (reload)"], reloadSetting("MenuStrip", "trackerLook")),
   }
 end
 
@@ -46,4 +48,4 @@ local function barsPageRows()
   return append(append(dataBarRows(), bagRows()), gamePartRows())
 end
 
-O.AddPage({ key = "bars", title = "Bars and bags", icon = "NavBars", order = 80, rows = barsPageRows })
+O.AddPage({ key = "bars", title = L["Bars and bags"], icon = "NavBars", order = 80, rows = barsPageRows })

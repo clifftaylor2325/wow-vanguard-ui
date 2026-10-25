@@ -4,23 +4,26 @@
 
 local ADDON, ns = ...
 
+local L = ns.L
+
 local T, W, O = ns.Theme, ns.Widgets, ns.Options
 
--- Words a player may type for a setting that its caption doesn't say, by the caption in lower case.
+-- Words a player may type for a setting that its caption doesn't say, by the English caption in lower case; a
+-- translation gives the words a player of that language types, and the search reads both.
 O.KEYWORDS = {
-  ["safer colours"] = "colour blind colorblind color blind colour vision deuteranopia protanopia tritanopia accessibility",
-  ["text size"] = "font size bigger smaller larger readable zoom",
-  ["font"] = "typeface lettering text",
-  ["reduce motion (no fades or flashes)"] = "animation animations fades flashes accessibility",
-  ["interface sounds"] = "audio mute noise volume",
-  ["pixel-perfect scale"] = "ui scale resolution crisp blurry",
-  ["theme variant"] = "dark light colours colors surfaces skin",
-  ["corners"] = "round rounded square panels",
-  ["move frames"] = "move unlock drag position layout edit mode",
-  ["its scale"] = "scale size bigger smaller",
-  ["export profile"] = "backup save share copy",
-  ["import"] = "profile backup restore paste",
-  ["minimap shape"] = "map round square",
+  ["safer colours"] = L["colour blind colorblind color blind colour vision deuteranopia protanopia tritanopia accessibility"],
+  ["text size"] = L["font size bigger smaller larger readable zoom"],
+  ["font"] = L["typeface lettering text"],
+  ["reduce motion (no fades or flashes)"] = L["animation animations fades flashes accessibility"],
+  ["interface sounds"] = L["audio mute noise volume"],
+  ["pixel-perfect scale"] = L["ui scale resolution crisp blurry"],
+  ["theme variant"] = L["dark light colours colors surfaces skin"],
+  ["corners"] = L["round rounded square panels"],
+  ["move frames"] = L["move unlock drag position layout edit mode"],
+  ["its scale"] = L["scale size bigger smaller"],
+  ["export profile"] = L["backup save share copy"],
+  ["import"] = L["profile backup restore paste"],
+  ["minimap shape"] = L["map round square"],
 }
 
 -- The most settings the list shows, and how wide it is and what each line holds (units).
@@ -29,19 +32,32 @@ local MAX_HITS, LIST_WIDTH, PAGE_WIDTH = 8, 360, 110
 -- The settings a search found: { page = key, title = the page's title, caption = the row's, row = the row }.
 O.hits = nil
 
--- A choice row's choice names ("Square", "Jade"), as one string.
+-- A text and, when it is a translation, its English (ns.English) after it: a search finds a setting by either.
+function O.BothTongues(text)
+  local english = ns.English(text)
+  return english == text and text or (text .. " " .. english)
+end
+
+-- A choice row's choice names ("Square", "Jade"), each with its English, as one string.
 local function choiceNames(row)
   if row[1] ~= "cycle" or type(row[3]) ~= "table" then return "" end
   local names = {}
-  for _, choice in ipairs(row[3]) do names[#names + 1] = tostring(choice[2]) end
+  for _, choice in ipairs(row[3]) do names[#names + 1] = O.BothTongues(tostring(choice[2])) end
   return table.concat(names, " ")
 end
 
--- The words of a row that a search reads: its caption, tip, keywords, choice names, the note under it and
--- "reload" when it applies on reload, in lower case.
+-- The search words a row's English caption (row.english, from the window) has in O.KEYWORDS, with their English.
+local function keywordsOf(row)
+  local english = row.english or ns.English(tostring(row[2]))
+  local words = O.KEYWORDS[english:lower()]
+  return words and O.BothTongues(words) or ""
+end
+
+-- The words of a row that a search reads, each as shown and in English: its caption, tip, keywords, choice names,
+-- the note under it and "reload" when it applies on reload, in lower case.
 local function haystack(row, note)
-  local caption = tostring(row[2])
-  local words = { caption, row.tip or "", O.KEYWORDS[caption:lower()] or "", choiceNames(row), note or "", row.reload and "reload" or "" }
+  local reload = row.reload and O.BothTongues(L["reload"]) or ""
+  local words = { tostring(row[2]), row.english or "", O.BothTongues(row.tip or ""), keywordsOf(row), choiceNames(row), O.BothTongues(note or ""), reload }
   return table.concat(words, " "):lower()
 end
 
@@ -99,7 +115,7 @@ end
 -- The settings that match a (lower-case) search text, and how many more the list has no room for; "changed" is
 -- the ones off their default.
 function O.FindSettings(text)
-  if text == "changed" then return collect(function(row) return O.RowChanged(row) end) end
+  if text == "changed" or text == L["changed"]:lower() then return collect(function(row) return O.RowChanged(row) end) end
   local words = wordsOf(text)
   return collect(function(row, note) return matches(row, words, note) end)
 end
@@ -142,7 +158,7 @@ local function listPanel(window)
   list:SetPoint("TOPRIGHT", window.search, "BOTTOMRIGHT", 0, -T.SPACE.tight)
   list.none = T.Text(list:CreateFontString(nil, "OVERLAY"), "label", "muted")
   list.none:SetPoint("TOPLEFT", T.SPACE.pad, -T.SPACE.col)
-  list.none:SetText("No setting matches.")
+  list.none:SetText(L["No setting matches."])
   list.more = T.Text(list:CreateFontString(nil, "OVERLAY"), "small", "muted")
   list.more:SetPoint("BOTTOMLEFT", T.SPACE.pad, T.SPACE.tight + T.SPACE.gap)
   return list
@@ -168,7 +184,7 @@ local function fillList(list, hits, more)
     if hits[i] then line.caption:SetText(hits[i].caption) line.page:SetText(hits[i].title) end
   end
   list.none:SetShown(#hits == 0)
-  list.more:SetText(more > 0 and string.format("%d more: type more words", more) or "")
+  list.more:SetText(more > 0 and ns.Format(L["{count} more: type more words"], { count = more }) or "")
   list:SetHeight(2 * T.SPACE.tight + (math.max(#hits, 1) + (more > 0 and 1 or 0)) * T.ROW.height)
 end
 
