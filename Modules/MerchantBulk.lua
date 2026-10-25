@@ -9,6 +9,7 @@
 -- selling only start from a click, a command or an answered question; the Buyback tab undoes a sale.
 
 local ADDON, ns = ...
+local L = ns.L
 
 local T = ns.Theme
 local W = ns.Widgets
@@ -123,13 +124,14 @@ end
 local function shortList(lines)
   local shown = {}
   for i = 1, math.min(#lines, MC.LIST_SHOWN) do shown[i] = lines[i] end
-  if #lines > #shown then shown[#shown + 1] = string.format("and %d more", #lines - #shown) end
+  if #lines > #shown then shown[#shown + 1] = ns.Format(L["and {count} more"], { count = #lines - #shown }) end
   return shown
 end
 
 -- "Sell for 1g 2s?" and up to five of the items by name, one to a line.
 function MC.SellQuestion(rows)
-  return string.format("Sell for %s?\n%s", money(MC.Worth(rows)), table.concat(shortList(itemLines(rows)), "\n"))
+  local question = ns.Format(L["Sell for {money}?"], { money = money(MC.Worth(rows)) })
+  return question .. "\n" .. table.concat(shortList(itemLines(rows)), "\n")
 end
 
 -- A finder of the shown rows that still hold what was shown (the same item, the same count): a stack
@@ -150,10 +152,10 @@ end
 function MC.OfferSale(find)
   local rows = find()
   if #rows == 0 then return false end
-  ns.Ask(MC.SellQuestion(rows), "Sell", function()
-    if not trading() then return ns.Chat("Nothing sold: the merchant is closed.") end
+  ns.Ask(MC.SellQuestion(rows), L["Sell"], function()
+    if not trading() then return ns.Chat(L["Nothing sold: the merchant is closed."]) end
     MC.SellRows(stillShown(rows), MC.RETRIES)
-    ns.Chat(string.format("Selling %d stack(s) for %s. The merchant's Buyback tab gets them back.", #rows, money(MC.Worth(rows))))
+    ns.Chat(ns.Format(L["Selling {count} stack(s) for {money}. The merchant's Buyback tab gets them back."], { count = #rows, money = money(MC.Worth(rows)) }))
   end, nil, "danger")
   return true
 end
@@ -170,34 +172,36 @@ end
 local function listJunk()
   local ids = {}
   for id in pairs(MC.settings.junkList) do ids[#ids + 1] = id end
-  if #ids == 0 then return ns.Chat("Your sell list is empty. /vg junk <shift-click an item> adds one.") end
+  if #ids == 0 then return ns.Chat(L["Your sell list is empty. /vg junk <shift-click an item> adds one."]) end
   table.sort(ids)
-  for _, id in ipairs(ids) do ns.Chat("Sell list: " .. itemName(id)) end
+  for _, id in ipairs(ids) do ns.Chat(ns.Format(L["Sell list: {item}"], { item = itemName(id) })) end
 end
 
 -- Puts an item on the sell list, or takes it off.
 local function setJunk(id, on)
   MC.settings.junkList[id] = on or nil
-  ns.Chat(itemName(id) .. (on and " is on your sell list." or " is off your sell list.") .. (on and not MC.settings.listSell and " Switch it on under Town and gear, Merchants." or ""))
+  local said = ns.Format(on and L["{item} is on your sell list."] or L["{item} is off your sell list."], { item = itemName(id) })
+  if on and not MC.settings.listSell then said = said .. " " .. L["Switch it on under Town and gear, Merchants."] end
+  ns.Chat(said)
 end
 
 -- /vg junk [<item> | remove <item> | clear]: show, add to, take from or empty the sell list.
 function MC.JunkCommand(rest)
   rest = (rest or ""):match("^%s*(.-)%s*$")
   if rest == "" then return listJunk() end
-  if rest == "clear" then MC.settings.junkList = {} return ns.Chat("Your sell list is empty.") end
+  if rest == "clear" then MC.settings.junkList = {} return ns.Chat(L["Your sell list is empty."]) end
   local removing = rest:match("^remove%s+(.+)")
   local id = MC.ItemID(removing or rest)
-  if not id then return ns.Chat("Usage: /vg junk <shift-click an item>, /vg junk remove <item>, /vg junk clear") end
+  if not id then return ns.Chat(L["Usage: /vg junk <shift-click an item>, /vg junk remove <item>, /vg junk clear"]) end
   setJunk(id, not removing)
 end
 
 -- /vg sell <item>: sell every stack of an item in your bags (at a merchant), after a question.
 function MC.SellCommand(rest)
   local id = MC.ItemID(rest)
-  if not id then return ns.Chat("Usage: /vg sell <shift-click an item>  (at a merchant)") end
-  if not trading() then return ns.Chat("Open a merchant first.") end
-  if not MC.OfferSale(function() return MC.Listed(id) end) then ns.Chat("You have no " .. itemName(id) .. " to sell.") end
+  if not id then return ns.Chat(L["Usage: /vg sell <shift-click an item>  (at a merchant)"]) end
+  if not trading() then return ns.Chat(L["Open a merchant first."]) end
+  if not MC.OfferSale(function() return MC.Listed(id) end) then ns.Chat(ns.Format(L["You have no {item} to sell."], { item = itemName(id) })) end
 end
 
 -- Buying ---------------------------------------------------------------------------------------
@@ -258,13 +262,13 @@ end
 function MC.BuyNext(run)
   if buyChunk(run) then return later(MC.BUY_EVERY, function() MC.BuyNext(run) end) end
   if MC.buying == run then MC.buying = nil end
-  if run.bought > 0 then ns.Chat(string.format("Bought %d × %s for %s.", run.bought, itemName(run.id or 0), money(run.spent))) end
+  if run.bought > 0 then ns.Chat(ns.Format(L["Bought {count} × {item} for {money}."], { count = run.bought, item = itemName(run.id or 0), money = money(run.spent) })) end
 end
 
 -- Starts buying packs of merchant item index; one run at a time, so an order during a run says to wait.
 function MC.Buy(index, packs)
   if packs <= 0 or not trading() then return end
-  if MC.buying then return ns.Chat("Nothing bought: still buying the last order; try again when it is done.") end
+  if MC.buying then return ns.Chat(L["Nothing bought: still buying the last order; try again when it is done."]) end
   local _, quantity = wares(index)
   local id = MC.ItemID(ask("GetMerchantItemLink", index))
   MC.buying = { index = index, id = id, packs = packs, bought = 0, spent = 0, quantity = quantity }
@@ -283,7 +287,7 @@ end
 -- the item asked about (id) at the same pack price; a question left open past its merchant buys nothing.
 local function buyAsked(index, packs, id, price)
   local same = trading() and MC.Sells(index, id) and wares(index) == price
-  if not same then return ns.Chat("Nothing bought: the merchant closed or changed what it sells.") end
+  if not same then return ns.Chat(L["Nothing bought: the merchant closed or changed what it sells."]) end
   MC.Buy(index, packs)
 end
 
@@ -294,7 +298,7 @@ function MC.Order(index, packs, frame)
   local id = MC.ItemID(ask("GetMerchantItemLink", index))
   if frame and frame.Hide then frame:Hide() end
   if packs <= MC.StackPacks(index) then return MC.Buy(index, packs) end
-  ns.Ask(string.format("Buy %d × %s for %s?", packs * quantity, itemName(id or 0), money(packs * price)), "Buy", function() buyAsked(index, packs, id, price) end)
+  ns.Ask(ns.Format(L["Buy {count} × {item} for {money}?"], { count = packs * quantity, item = itemName(id or 0), money = money(packs * price) }), L["Buy"], function() buyAsked(index, packs, id, price) end)
 end
 
 -- The quantity window ----------------------------------------------------------------------------
@@ -311,14 +315,14 @@ end
 local function costLine(entry, index)
   local packs = MC.MaxPacks(index)
   local price, quantity = wares(index)
-  entry.line:SetText(packs > 0 and string.format("Max %d for %s", packs * quantity, money(packs * price)) or "Can't afford one")
+  entry.line:SetText(packs > 0 and ns.Format(L["Max {count} for {money}"], { count = packs * quantity, money = money(packs * price) }) or L["Can't afford one"])
 end
 
 -- The window's Stack and Max buttons and the cost line, made once.
 local function makeBulk(frame)
   local entry = { line = T.Text(frame:CreateFontString(nil, "OVERLAY"), "barSmall", "muted") }
-  entry.stack = W.Button(frame, "Stack", function() MC.Order(entry.index, MC.StackPacks(entry.index), frame) end, 60)
-  entry.max = W.Button(frame, "Max", function() MC.Order(entry.index, MC.MaxPacks(entry.index), frame) end, 60)
+  entry.stack = W.Button(frame, L["Stack"], function() MC.Order(entry.index, MC.StackPacks(entry.index), frame) end, 60)
+  entry.max = W.Button(frame, L["Max"], function() MC.Order(entry.index, MC.MaxPacks(entry.index), frame) end, 60)
   entry.stack:SetPoint("TOPLEFT", frame, "BOTTOMLEFT", 0, -T.SPACE.gap)
   entry.max:SetPoint("LEFT", entry.stack, "RIGHT", T.SPACE.gap, 0)
   entry.line:SetPoint("TOPLEFT", entry.stack, "BOTTOMLEFT", 0, -T.SPACE.gap)

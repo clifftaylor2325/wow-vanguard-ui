@@ -21,6 +21,7 @@
 -- writes into the game's auction frames.
 
 local ADDON, ns = ...
+local L = ns.L
 
 local T, W, AP = ns.Theme, ns.Widgets, ns.AuctionPrices
 local AH = ns.GetModule("AuctionHelper")
@@ -28,9 +29,9 @@ local AH = ns.GetModule("AuctionHelper")
 -- The list's rows: how many (until AH.Build counts them from the room they have), and its columns
 -- (Modules/AuctionTable.lua's form): the cheapest unit price, how many are up, and the max price.
 AH.SHOP_ROWS = 6
-AH.LIST_COLUMNS = { { key = "price", title = "Unit price", width = 100, side = "RIGHT", role = "number", color = "gold" },
-  { key = "qty", title = "Up", width = 60, side = "RIGHT", role = "small", color = "text2" },
-  { key = "max", title = "Max", width = 80, side = "RIGHT", role = "small", color = "text2" }, name = "Item" }
+AH.LIST_COLUMNS = { { key = "price", title = L["Unit price"], width = 100, side = "RIGHT", role = "number", color = "gold" },
+  { key = "qty", title = L["Up"], width = 60, side = "RIGHT", role = "small", color = "text2" },
+  { key = "max", title = L["Max"], width = 80, side = "RIGHT", role = "small", color = "text2" }, name = L["Item"] }
 -- The Lists pane: its rows (how many, from where), the height its action buttons take (two rows of
 -- standalone buttons and the gap between), their width (three to a row), and the actions in order.
 AH.PANE_ROWS, AH.PANE_ROWS_Y, AH.ACTIONS_H, AH.ACTION_W = 6, -20, 2 * T.BUTTON_H + T.SPACE.tight, 66
@@ -38,28 +39,28 @@ AH.PANE_ROWS, AH.PANE_ROWS_Y, AH.ACTIONS_H, AH.ACTION_W = 6, -20, 2 * T.BUTTON_H
 AH.MAX_LISTS, AH.MAX_ENTRIES, AH.DEFAULT_LIST, AH.NEW = 20, 50, "Shopping", "\1new"
 -- The other actions on the list in use (values no list name can have).
 AH.RENAME, AH.COPY, AH.DELETE, AH.IMPORT, AH.EXPORT = "\1rename", "\1copy", "\1delete", "\1import", "\1export"
-AH.ACTIONS = { { AH.NEW, "New" }, { AH.RENAME, "Rename" }, { AH.COPY, "Copy" }, { AH.DELETE, "Delete" }, { AH.IMPORT, "Import" }, { AH.EXPORT, "Export" } }
+AH.ACTIONS = { { AH.NEW, L["New"] }, { AH.RENAME, L["Rename"] }, { AH.COPY, L["Copy"] }, { AH.DELETE, L["Delete"] }, { AH.IMPORT, L["Import"] }, { AH.EXPORT, L["Export"] } }
 -- Enum.AuctionHouseFilter's ExactMatch and PoorQuality (AuctionHouseEnumsDocumentation.lua): the
 -- quality filters run on from PoorQuality in Enum.ItemQuality's order (Poor 0 ... Legendary 5).
 AH.EXACT_FILTER, AH.QUALITY_FILTER = 5, 6
 -- The qualities a filter can ask for, as { Enum.ItemQuality, name }, after "Any".
-AH.ANY, AH.QUALITIES = "any", { { "any", "Any" }, { 0, "Poor" }, { 1, "Common" }, { 2, "Uncommon" }, { 3, "Rare" }, { 4, "Epic" }, { 5, "Legendary" } }
+AH.ANY, AH.QUALITIES = "any", { { "any", L["Any"] }, { 0, L["Poor"] }, { 1, L["Common"] }, { 2, L["Uncommon"] }, { 3, L["Rare"] }, { 4, L["Epic"] }, { 5, L["Legendary"] } }
 -- The results view: its rows (how many, until AH.Build counts them) and its columns.
 AH.VIEW_ROWS = 6
-AH.VIEW_COLUMNS = { { key = "price", title = "Unit price", width = 100, side = "RIGHT", role = "number", color = "gold" },
-  { key = "qty", title = "Quantity", width = 70, side = "RIGHT", role = "small", color = "text" },
-  { key = "time", title = "Time left", width = 92, side = "LEFT", role = "small", color = "text2" } }
+AH.VIEW_COLUMNS = { { key = "price", title = L["Unit price"], width = 100, side = "RIGHT", role = "number", color = "gold" },
+  { key = "qty", title = L["Quantity"], width = 70, side = "RIGHT", role = "small", color = "text" },
+  { key = "time", title = L["Time left"], width = 92, side = "LEFT", role = "small", color = "text2" } }
 -- Enum.AuctionHouseTimeLeftBand (Short 0 ... VeryLong 3) as the game's names (TIME_LEFT_SHORT...) and
 -- ours when the client has none.
-AH.TIME_BANDS = { [0] = { "TIME_LEFT_SHORT", "Short" }, [1] = { "TIME_LEFT_MEDIUM", "Medium" }, [2] = { "TIME_LEFT_LONG", "Long" }, [3] = { "TIME_LEFT_VERY_LONG", "Very long" } }
+AH.TIME_BANDS = { [0] = { "TIME_LEFT_SHORT", L["Short"] }, [1] = { "TIME_LEFT_MEDIUM", L["Medium"] }, [2] = { "TIME_LEFT_LONG", L["Long"] }, [3] = { "TIME_LEFT_VERY_LONG", L["Very long"] } }
 -- A shop row's right-click menu; the filter dialog's width.
-AH.ROW_CHOICES, AH.FILTER_W = { { "filters", "Filters..." }, { "remove", "Remove" } }, 280
+AH.ROW_CHOICES, AH.FILTER_W = { { "filters", L["Filters..."] }, { "remove", L["Remove"] } }, 280
 -- Copper in one of each money unit typed into a max price.
 AH.MONEY_UNITS = { g = 10000, s = 100, c = 1 }
 -- The Recent pseudo-list: its pane key, and how many searched terms it keeps.
 AH.RECENT, AH.MAX_RECENT = "\1recent", 20
 -- What chat says when an action needs a list and there's none in use.
-AH.NO_LIST = "Pick a shopping list first (the Lists pane, or /vg ah list <name>)."
+AH.NO_LIST = L["Pick a shopping list first (the Lists pane, or /vg ah list <name>)."]
 
 -- Shopping lists -----------------------------------------------------------------------------
 
@@ -94,7 +95,7 @@ end
 -- The shopping list in use: its name and entries (nil when there's none yet).
 function AH.CurrentList()
   local store = AP.Store()
-  if store.list == AH.RECENT then return "Recent", AH.Recent() end
+  if store.list == AH.RECENT then return L["Recent"], AH.Recent() end
   local list = store.list and store.lists[store.list]
   if list then return store.list, list end
 end
@@ -104,7 +105,7 @@ function AH.NewList(name)
   local store = AP.Store()
   name = (name or ""):match("^%s*(.-)%s*$")
   if name == "" then return false end
-  if not store.lists[name] and countLists(store) >= AH.MAX_LISTS then return ns.Chat("Vanguard keeps at most 20 shopping lists.") end
+  if not store.lists[name] and countLists(store) >= AH.MAX_LISTS then return ns.Chat(ns.Format(L["Vanguard keeps at most {count} shopping lists."], { count = AH.MAX_LISTS })) end
   store.lists[name], store.list = store.lists[name] or {}, name
   ns.HideText()
   AH.PaintShop()
@@ -141,7 +142,7 @@ function AH.AddEntry(text, listName)
   local name = listName or (store.lists[store.list or ""] and store.list) or AH.DEFAULT_LIST
   if not entry or not AH.NewList(name) then return end
   local list = store.lists[name]
-  if #list >= AH.MAX_ENTRIES then return ns.Chat("A shopping list holds at most 50 items.") end
+  if #list >= AH.MAX_ENTRIES then return ns.Chat(ns.Format(L["A shopping list holds at most {count} items."], { count = AH.MAX_ENTRIES })) end
   list[#list + 1] = entry
   AH.PaintShop()
   return true
@@ -181,7 +182,7 @@ function AH.RenameList(name)
   local store, old = AP.Store(), listInUse()
   name = trim(name)
   if not old or name == "" then return false end
-  if store.lists[name] and name ~= old then return ns.Chat("There's already a shopping list named " .. name .. ".") end
+  if store.lists[name] and name ~= old then return ns.Chat(ns.Format(L["There's already a shopping list named {name}."], { name = name })) end
   local list = store.lists[old]
   store.lists[old] = nil
   store.lists[name], store.list = list, name
@@ -197,15 +198,15 @@ function AH.DeleteList(name)
   store.lists[name] = nil
   if store.list == name then store.list = firstList(store) end
   AH.ShopTop()
-  ns.Chat("Deleted the shopping list " .. name .. ".")
+  ns.Chat(ns.Format(L["Deleted the shopping list {name}."], { name = name }))
   AH.PaintShop()
 end
 
 -- Asks before forgetting the recent searches (Clear or No).
 local function askClearRecent()
   local recent = AH.Recent()
-  local question = string.format("Clear the %d recent searches?", #recent)
-  ns.Ask(question, "Clear", function() AP.Store().recent = {} AH.PaintShop() end, function() end, "danger")
+  local question = ns.Format(L["Clear the {count} recent searches?"], { count = #recent })
+  ns.Ask(question, L["Clear"], function() AP.Store().recent = {} AH.PaintShop() end, function() end, "danger")
 end
 
 -- Asks before deleting the list in use (Delete or No); on Recent, before clearing it.
@@ -213,16 +214,16 @@ function AH.AskDelete()
   if AH.ListKey() == AH.RECENT then return askClearRecent() end
   local name = listInUse()
   if not name then return ns.Chat(AH.NO_LIST) end
-  local question = string.format("Delete the shopping list %s (%d items)?", name, #AP.Store().lists[name])
-  ns.Ask(question, "Delete", function() AH.DeleteList(name) end, function() end, "danger")
+  local question = ns.Format(L["Delete the shopping list {name} ({count} items)?"], { name = name, count = #AP.Store().lists[name] })
+  ns.Ask(question, L["Delete"], function() AH.DeleteList(name) end, function() end, "danger")
 end
 
 -- A name no list has yet: "<name> copy", then "<name> copy 2" and on.
 local function copyName(store, name)
-  local new, n = name .. " copy", 1
+  local new, n = ns.Format(L["{name} copy"], { name = name }), 1
   while store.lists[new] do
     n = n + 1
-    new = string.format("%s copy %d", name, n)
+    new = ns.Format(L["{name} copy {n}"], { name = name, n = n })
   end
   return new
 end
@@ -234,7 +235,7 @@ function AH.DuplicateList()
   local new = copyName(store, name)
   if not AH.NewList(new) then return end
   for i, entry in ipairs(list) do store.lists[new][i] = copyEntry(entry) end
-  ns.Chat(string.format("Copied %s to %s.", name, new))
+  ns.Chat(ns.Format(L["Copied {name} to {copy}."], { name = name, copy = new }))
   AH.PaintShop()
 end
 
@@ -251,7 +252,7 @@ function AH.ExportList()
   if not name then return ns.Chat(AH.NO_LIST) end
   local lines = {}
   for i, entry in ipairs(list) do lines[i] = AH.EntryText(entry) end
-  ns.ShowText(string.format("Shopping list %s (Ctrl+C copies it)", name), table.concat(lines, "\n"))
+  ns.ShowText(ns.Format(L["Shopping list {name} (Ctrl+C copies it)"], { name = name }), table.concat(lines, "\n"))
 end
 
 -- One imported term: its entry from the first field (nil for none; in quotes, the exact name),
@@ -284,9 +285,9 @@ end
 
 -- Says what an import brought: how many came in, how many didn't fit, how many fields were ignored.
 local function importSaid(name, added, full, ignored)
-  local out = string.format("Imported %d item(s) into %s.", added, name)
-  if full > 0 then out = out .. string.format(" %d didn't fit (a list holds at most 50).", full) end
-  if ignored > 0 then out = out .. string.format(" %d other search field(s) ignored: Vanguard takes each item's name.", ignored) end
+  local out = ns.Format(L["Imported {count} item(s) into {name}."], { count = added, name = name })
+  if full > 0 then out = out .. " " .. ns.Format(L["{count} didn't fit (a list holds at most {max})."], { count = full, max = AH.MAX_ENTRIES }) end
+  if ignored > 0 then out = out .. " " .. ns.Format(L["{count} other search field(s) ignored: Vanguard takes each item's name."], { count = ignored }) end
   ns.Chat(out)
 end
 
@@ -305,21 +306,21 @@ end
 -- The import box, for the list in use (else Shopping).
 function AH.AskImport()
   local name = listInUse() or AH.DEFAULT_LIST
-  ns.AskText("Import into " .. name .. " (names, IDs, links, or a shopping list string)", function(text) AH.Import(text, name) end, "Import")
+  ns.AskText(ns.Format(L["Import into {name} (names, IDs, links, or a shopping list string)"], { name = name }), function(text) AH.Import(text, name) end, L["Import"])
 end
 
 -- The rename box, for the list in use.
 function AH.AskRename()
   local name = listInUse()
   if not name then return ns.Chat(AH.NO_LIST) end
-  ns.AskText("Rename " .. name, AH.RenameList, "Rename")
+  ns.AskText(ns.Format(L["Rename {name}"], { name = name }), AH.RenameList, L["Rename"])
 end
 
 -- /vg ah's words for the list in use (list and add are in Modules/AuctionHelper.lua).
 -- rename <name>: renames it.
 AH.COMMANDS.rename = function(arg)
   if not listInUse() then return ns.Chat(AH.NO_LIST) end
-  if AH.RenameList(arg) == false then ns.Chat("/vg ah rename <new name> renames the shopping list in use.") end
+  if AH.RenameList(arg) == false then ns.Chat(L["/vg ah rename <new name> renames the shopping list in use."]) end
 end
 -- duplicate: copies it to a new list.
 AH.COMMANDS.duplicate = function() AH.DuplicateList() end
@@ -350,7 +351,7 @@ end
 -- it's Recent that is searched).
 function AH.SearchList()
   local _, list = AH.CurrentList()
-  if not list or #list == 0 then return ns.Chat("Add items to a shopping list first (+ Add, or /vg ah add <list> <item>).") end
+  if not list or #list == 0 then return ns.Chat(L["Add items to a shopping list first (+ Add, or /vg ah add <list> <item>)."]) end
   if AH.ListKey() ~= AH.RECENT then for _, entry in ipairs(list) do AH.Remember(entry) end end
   AH.DropQueued("entry")
   AH.DropQueued("cost")
@@ -467,8 +468,8 @@ end
 
 -- Seconds left as "12 h" or "35 min".
 local function secondsText(secs)
-  if secs >= 3600 then return string.format("%d h", math.floor(secs / 3600)) end
-  return string.format("%d min", math.max(1, math.floor(secs / 60)))
+  if secs >= 3600 then return ns.Format(L["{count} h"], { count = math.floor(secs / 3600) }) end
+  return ns.Format(L["{count} min"], { count = math.max(1, math.floor(secs / 60)) })
 end
 
 -- An item listing as a row: its buyout over its quantity, and its time-left band; nil with only a
@@ -589,8 +590,8 @@ end
 local function paintViewHead(f, v)
   local info = C_AuctionHouse.GetItemKeyInfo(v.key)
   f.icon:SetTexture(info and info.iconFileID or AH.UNKNOWN_ICON)
-  f.name:SetText(info and info.itemName or ("item " .. v.key.itemID))
-  f.table:SetStatus(#v.rows > 0 and "" or (v.searched and "none up" or "searching..."))
+  f.name:SetText(info and info.itemName or ns.Format(L["item {id}"], { id = v.key.itemID }))
+  f.table:SetStatus(#v.rows > 0 and "" or (v.searched and L["none up"] or L["searching..."]))
   f.table:SetSort(v.sort, v.reverse)
 end
 
@@ -623,7 +624,7 @@ function AH.EntryLook(entry, found)
   if info then return info.itemName, info.iconFileID end
   if type(term) ~= "number" then return term, AH.UNKNOWN_ICON end
   local name, _, _, _, _, _, _, _, _, icon = C_Item.GetItemInfo(term)
-  return name or ("item " .. term), icon or AH.UNKNOWN_ICON
+  return name or ns.Format(L["item {id}"], { id = term }), icon or AH.UNKNOWN_ICON
 end
 
 -- A row for one entry: the item, the cheapest price per unit ("none up" after a search found
@@ -634,7 +635,7 @@ local function paintRow(r, entry)
   local _, f = AH.Term(entry)
   r.name:SetText(name)
   r.icon:SetTexture(icon)
-  r.cells.price:SetText(found and AP.Money(found.price) or (found == false and "none up" or ""))
+  r.cells.price:SetText(found and AP.Money(found.price) or (found == false and L["none up"] or ""))
   r.cells.qty:SetText(found and tostring(found.qty) or "")
   r.cells.max:SetText(f and f.maxPrice and AP.Money(f.maxPrice) or "")
   AH.PaintCost(r, entry)
@@ -651,15 +652,15 @@ end
 
 -- The list's status line: how to start while there's no list, or the list is empty.
 local function listStatus(items)
-  if not AH.CurrentList() then return countLists(AP.Store()) > 0 and "Pick a list in the Lists pane." or "No lists yet: New makes one, Import pastes one." end
+  if not AH.CurrentList() then return countLists(AP.Store()) > 0 and L["Pick a list in the Lists pane."] or L["No lists yet: New makes one, Import pastes one."] end
   if #items > 0 then return "" end
-  return AH.ListKey() == AH.RECENT and "Nothing searched yet." or "+ Add takes an item link, an item ID or a name."
+  return AH.ListKey() == AH.RECENT and L["Nothing searched yet."] or L["+ Add takes an item link, an item ID or a name."]
 end
 
 -- The list search's progress, "12 of 50", while one runs.
 local function listCount()
   local p = AH.progress
-  return p and string.format("%d of %d", p.done, p.total) or ""
+  return p and ns.Format(L["{done} of {total}"], { done = p.done, total = p.total }) or ""
 end
 
 -- What the card shows for a list (the entry picked in the pane): its columns, its items, how a
@@ -677,7 +678,7 @@ end
 
 -- The card's toolbar: the heading names the list (or the source), the count beside it, and the list buttons when they apply.
 local function paintToolbar(c, s, items)
-  c.title:SetText(AH.CurrentList() or s.name or "Shopping")
+  c.title:SetText(AH.CurrentList() or s.name or L["Shopping"])
   c.progress:SetText(s.count(items))
   for _, b in ipairs({ c.add, c.search, c.restock }) do b:SetShown(s.buttons == true) end
 end
@@ -717,7 +718,7 @@ function AH.PaneEntries()
   local out = {}
   for name, list in pairs(AP.Store().lists) do out[#out + 1] = { key = name, name = name, count = #list } end
   table.sort(out, function(a, b) return a.name < b.name end)
-  if #AH.Recent() > 0 or AH.ListKey() == AH.RECENT then out[#out + 1] = { key = AH.RECENT, name = "Recent", count = #AH.Recent() } end
+  if #AH.Recent() > 0 or AH.ListKey() == AH.RECENT then out[#out + 1] = { key = AH.RECENT, name = L["Recent"], count = #AH.Recent() } end
   for _, extra in ipairs(AH.PANE_EXTRAS) do out[#out + 1] = extra() end
   return out
 end
@@ -756,7 +757,7 @@ local function paintActions(p)
     if on[b.action] then b:Enable() else b:Disable() end
     T.Color(b.text, on[b.action] and "text" or "disabled")
   end
-  p.delete.text:SetText(AH.ListKey() == AH.RECENT and "Clear" or "Delete")
+  p.delete.text:SetText(AH.ListKey() == AH.RECENT and L["Clear"] or L["Delete"])
 end
 
 -- The pane: its entries from the scroll offset (kept within them), and the actions.
@@ -800,7 +801,7 @@ end
 
 -- The Lists pane on a column (h tall): the entries' rows (the wheel scrolls them) and the actions.
 function AH.BuildPane(column, h)
-  local p = AH.Card(column, "Lists", -AH.PAD, h)
+  local p = AH.Card(column, L["Lists"], -AH.PAD, h)
   p.rows, p.offset, p.actions = {}, 0, {}
   for i = 1, AH.PANE_ROWS do p.rows[i] = paneRow(p, i) end
   for i, choice in ipairs(AH.ACTIONS) do p.actions[i] = actionButton(p, i, choice) end
@@ -812,7 +813,7 @@ end
 
 -- The dropdown's actions, by value.
 AH.LIST_ACTIONS = {
-  [AH.NEW] = function() ns.AskText("New shopping list", AH.NewList, "Create") end,
+  [AH.NEW] = function() ns.AskText(L["New shopping list"], AH.NewList, L["Create"]) end,
   [AH.RENAME] = function() AH.AskRename() end,
   [AH.COPY] = function() AH.DuplicateList() end,
   [AH.DELETE] = function() AH.AskDelete() end,
@@ -913,9 +914,9 @@ end
 
 -- Level: its caption, then the two boxes with "to" between them, from the right edge in.
 local function levelRow(d)
-  filterCaption(d, "Level", 2)
+  filterCaption(d, L["Level"], 2)
   d.maxLevel = filterBox(d, LEVEL_W, 2)
-  local to = filterCaption(d, "to", 2)
+  local to = filterCaption(d, L["to"], 2)
   to:ClearAllPoints()
   to:SetPoint("RIGHT", d.maxLevel, "LEFT", -T.SPACE.gap, 0)
   d.minLevel = W.Input(d, LEVEL_W)
@@ -924,9 +925,9 @@ end
 
 -- Exact name (row 1) and Quality (row 3): the draft's switch and choice.
 local function exactAndQuality(d)
-  d.exact = W.Check(d, "Exact name only", function() return d.draft.exact end, function(v) d.draft.exact = v end, ROW_W)
+  d.exact = W.Check(d, L["Exact name only"], function() return d.draft.exact end, function(v) d.draft.exact = v end, ROW_W)
   placeRow(d.exact, 1)
-  d.quality = W.Choice(d, "Quality", AH.QUALITIES, function() return d.draft.quality end, function(v) d.draft.quality = v end, ROW_W)
+  d.quality = W.Choice(d, L["Quality"], AH.QUALITIES, function() return d.draft.quality end, function(v) d.draft.quality = v end, ROW_W)
   placeRow(d.quality, 3)
 end
 
@@ -935,7 +936,7 @@ end
 local function filterRows(d)
   exactAndQuality(d)
   levelRow(d)
-  filterCaption(d, "Max price", 4)
+  filterCaption(d, L["Max price"], 4)
   d.price = filterBox(d, PRICE_W, 4)
   AH.AlertRow(d)
   placeRow(d.alert, 5)
@@ -944,16 +945,16 @@ end
 -- The filter dialog's draft (what its switch and choice show), and Save and Cancel along its foot.
 local function filterFrame(d)
   d.draft = { exact = false, quality = AH.ANY }
-  d.save = W.Primary(d, "Save", function() AH.SaveFilters() end, FOOT_BUTTON_W)
+  d.save = W.Primary(d, L["Save"], function() AH.SaveFilters() end, FOOT_BUTTON_W)
   d.save:SetPoint("BOTTOMRIGHT", -T.SPACE.pad, T.SPACE.pad)
-  d.cancel = W.Button(d, "Cancel", function() d:Hide() end, FOOT_BUTTON_W)
+  d.cancel = W.Button(d, L["Cancel"], function() d:Hide() end, FOOT_BUTTON_W)
   d.cancel:SetPoint("RIGHT", d.save, "LEFT", -T.SPACE.gap, 0)
 end
 
 -- The filter dialog, built once: a dialog (ns.Dialog: the dialog alpha, its title, X and Escape) over the
 -- auction house, its title (kept short of the X by ns.Dialog) on one line, with Save and Cancel.
 local function buildFilters()
-  local d = ns.Dialog("Vanguard_AuctionFilters", AH.FILTER_W, ns.DIALOG.head + FILTER_ROWS * T.ROW.height + ns.DIALOG.foot, "Filters")
+  local d = ns.Dialog("Vanguard_AuctionFilters", AH.FILTER_W, ns.DIALOG.head + FILTER_ROWS * T.ROW.height + ns.DIALOG.foot, L["Filters"])
   d:SetClampedToScreen(true)
   d.title:SetMaxLines(1)
   filterFrame(d)
@@ -967,7 +968,7 @@ local function fillFilters(d, entry)
   local term, f = AH.Term(entry)
   f = f or {}
   d.term, d.draft, d.want = term, { exact = f.exact == true, quality = f.quality or AH.ANY, alert = f.alert == true }, f.want
-  d.title:SetText("Filters: " .. (AH.EntryLook(entry)))
+  d.title:SetText(ns.Format(L["Filters: {item}"], { item = (AH.EntryLook(entry)) }))
   d.minLevel:SetText(f.minLevel and tostring(f.minLevel) or "")
   d.maxLevel:SetText(f.maxLevel and tostring(f.maxLevel) or "")
   d.price:SetText(f.maxPrice and AP.Money(f.maxPrice) or "")
@@ -1025,8 +1026,8 @@ end
 local function toolbar(c)
   c.progress = T.Text(c.body:CreateFontString(nil, "OVERLAY"), "small", "text2")
   c.progress:SetPoint("LEFT", c.title, "RIGHT", T.SPACE.gap, 0)
-  c.add = AH.ToolButton(c, "+ Add", function() ns.AskText("Add to list", function(text) AH.AddEntry(text) end, "Add") end, 70)
-  c.search = AH.ToolButton(c, "Search list", function() AH.SearchList() end, 100, c.add)
+  c.add = AH.ToolButton(c, L["+ Add"], function() ns.AskText(L["Add to list"], function(text) AH.AddEntry(text) end, L["Add"]) end, 70)
+  c.search = AH.ToolButton(c, L["Search list"], function() AH.SearchList() end, 100, c.add)
   AH.BuildRestock(c)
 end
 
@@ -1048,7 +1049,7 @@ end
 
 -- The view's top line: Back, then the item's icon and name.
 local function viewHead(f)
-  f.back = W.Button(f, "Back", function() AH.CloseListings() end, 60)
+  f.back = W.Button(f, L["Back"], function() AH.CloseListings() end, 60)
   f.back:SetHeight(T.CONTROL_H)
   f.back:SetPoint("TOPLEFT", 0, 2)
   f.icon = T.Crop(f:CreateTexture(nil, "ARTWORK"))
@@ -1077,7 +1078,7 @@ end
 -- takes the place of), a row's menu (a hidden dropdown that opens the dropdown menu under the
 -- row right-clicked), and the results view.
 function AH.BuildShop(f, h)
-  local c = AH.Card(f, "Shopping", -AH.PAD, h)
+  local c = AH.Card(f, L["Shopping"], -AH.PAD, h)
   c.body = CreateFrame("Frame", nil, c)
   c.body:SetAllPoints()
   AH.shopCard = c

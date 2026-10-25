@@ -5,6 +5,7 @@
 -- from the time of the route you took last from there. Nothing here is read in combat.
 
 local ADDON, ns = ...
+local L = ns.L
 
 local ER = ns.GetModule("Errands")
 
@@ -43,7 +44,7 @@ end
 -- The bar: a countdown on a route taken before, else "timing".
 function ER.PaintBoat(b)
   local left = (b.known or 0) - (now() - b.start)
-  ER.PaintRoute(ER.boatBar, b, left, "Timing this ride")
+  ER.PaintRoute(ER.boatBar, b, left, L["Timing this ride"])
 end
 
 -- Off the boat: save a sane ride's time under its route, and put the bar away.
@@ -82,7 +83,7 @@ end
 
 -- The movable boat bar, hidden until a ride.
 local function buildBar()
-  ER.boatBar = ER.TimerBar("Vanguard_BoatTimer", "boattimer", "Boat timer")
+  ER.boatBar = ER.TimerBar("Vanguard_BoatTimer", "boattimer", L["Boat timer"])
 end
 
 -- Starts watching for boat and zeppelin rides, on a client that has the map calls.

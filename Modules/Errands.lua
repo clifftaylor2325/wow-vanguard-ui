@@ -12,6 +12,7 @@
 -- that errand off. Buying and training stop in combat.
 
 local ADDON, ns = ...
+local L = ns.L
 
 local T = ns.Theme
 
@@ -99,11 +100,11 @@ end
 
 -- The Train all tooltip: what the list costs and what one click buys, or why it buys nothing.
 function ER.TrainTip(plan)
-  if plan.all == 0 then return "Nothing to learn here right now." end
-  if plan.count == 0 then return string.format("Not enough gold for any: the cheapest is %s.", money(plan.cheapest)) end
-  local text = string.format("%d skill(s) for %s", plan.all, money(plan.allCost))
-  if plan.count < plan.all then text = text .. string.format("; you can afford %d (%s)", plan.count, money(plan.cost)) end
-  return text .. "."
+  if plan.all == 0 then return L["Nothing to learn here right now."] end
+  if plan.count == 0 then return ns.Format(L["Not enough gold for any: the cheapest is {money}."], { money = money(plan.cheapest) }) end
+  local values = { count = plan.all, money = money(plan.allCost), afford = plan.count, cost = money(plan.cost) }
+  if plan.count < plan.all then return ns.Format(L["{count} skill(s) for {money}; you can afford {afford} ({cost})."], values) end
+  return ns.Format(L["{count} skill(s) for {money}."], values)
 end
 
 -- Shows the tooltip over the Train all button, greyed or not.
@@ -118,7 +119,7 @@ end
 function ER.UpdateTrainButton()
   local b, plan = ER.trainButton, ER.TrainPlan()
   if not b then return end
-  b.text:SetText(plan.count > 0 and string.format("Train all (%d)", plan.count) or "Train all")
+  b.text:SetText(plan.count > 0 and ns.Format(L["Train all ({count})"], { count = plan.count }) or L["Train all"])
   if plan.count > 0 then b:Enable() else b:Disable() end
   b:SetShown(ER.settings.trainAll)
 end
@@ -146,7 +147,7 @@ function ER.TrainAll()
   if ns.InCombat() then return end
   local run = { done = {}, count = 0, spent = 0 }
   while trainOne(run) do end
-  if run.count > 0 then ns.Chat(string.format("Trained %d skill(s) for %s.", run.count, money(run.spent))) end
+  if run.count > 0 then ns.Chat(ns.Format(L["Trained {count} skill(s) for {money}."], { count = run.count, money = money(run.spent) })) end
   ER.UpdateTrainButton()
 end
 
@@ -160,7 +161,7 @@ end
 function ER.AddTrainButton()
   local frame = _G.ClassTrainerFrame
   if ER.trainButton or type(frame) ~= "table" then return end
-  local b, train = ns.DialogButton(frame, "Train all", ER.TRAIN_WIDTH), _G.ClassTrainerTrainButton
+  local b, train = ns.DialogButton(frame, L["Train all"], ER.TRAIN_WIDTH), _G.ClassTrainerTrainButton
   if type(train) == "table" then ER.PlaceBesides(b, train) else b:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", 8, 6) end
   b:SetScript("OnClick", ns.Guard("click train all", ER.TrainAll))
   addTrainTip(b)
@@ -195,7 +196,7 @@ local function itemName(id)
   local info = C_Item and C_Item.GetItemInfo
   local name = type(info) == "function" and info(id)
   if type(name) == "string" then return name end
-  return "item " .. id
+  return ns.Format(L["item {id}"], { id = id })
 end
 ER.ItemName = itemName
 
@@ -204,7 +205,7 @@ ER.ItemName = itemName
 function ER.WhereToBuy(id)
   local VM = ns.GetModule("VendorMemory")
   local list = VM and VM.enabled and VM.Where(id)
-  return list and ("sold by " .. VM.Text(list[1])) or nil
+  return list and ns.Format(L["sold by {merchant}"], { merchant = VM.Text(list[1]) }) or nil
 end
 
 -- " — sold by ...", for a chat line, or "".
@@ -244,25 +245,25 @@ end
 -- Prints the stock list, with where to buy each item when that's known.
 local function listStock()
   local list, ids = ER.StockList(), ER.StockIDs()
-  if #ids == 0 then return ns.Chat("Your stock list is empty. /vg stock <item> <amount> adds one.") end
-  for _, id in ipairs(ids) do ns.Chat(string.format("Keep %d × %s", list[id], itemName(id)) .. soldBy(id)) end
+  if #ids == 0 then return ns.Chat(L["Your stock list is empty. /vg stock <item> <amount> adds one."]) end
+  for _, id in ipairs(ids) do ns.Chat(ns.Format(L["Keep {count} × {item}"], { count = list[id], item = itemName(id) }) .. soldBy(id)) end
 end
 
 -- Sets how many of an item to keep (0 takes it off the list); an open Keep stocked window follows.
 local function setStock(id, amount)
   ER.StockList()[id] = amount > 0 and amount or nil
   ER.StockWindow.Refresh()
-  if amount > 0 then return ns.Chat(string.format("Keeping %d × %s.", amount, itemName(id))) end
-  ns.Chat(itemName(id) .. " is off your stock list.")
+  if amount > 0 then return ns.Chat(ns.Format(L["Keeping {count} × {item}."], { count = amount, item = itemName(id) })) end
+  ns.Chat(ns.Format(L["{item} is off your stock list."], { item = itemName(id) }))
 end
 
 -- /vg stock [<item> <amount> | clear]: list, set or clear the stock list.
 function ER.StockCommand(rest)
   rest = rest or ""
   if rest == "" then return listStock() end
-  if rest == "clear" then ER.ClearStock() return ns.Chat("Your stock list is empty.") end
+  if rest == "clear" then ER.ClearStock() return ns.Chat(L["Your stock list is empty."]) end
   local id, amount = ER.ItemID(rest), tonumber(rest:match("%s(%d+)%s*$"))
-  if not (id and amount) then return ns.Chat("Usage: /vg stock <shift-click an item> <amount>  (0 removes it)") end
+  if not (id and amount) then return ns.Chat(L["Usage: /vg stock <shift-click an item> <amount>  (0 removes it)"]) end
   setStock(id, amount)
 end
 
@@ -365,9 +366,9 @@ end
 -- Says what a run bought, and which item stopped it short.
 local function report(run)
   for _, id in ipairs(boughtIDs(run)) do
-    ns.Chat(string.format("Bought %d × %s for %s.", run.bought[id], itemName(id), money(run.spent[id])))
+    ns.Chat(ns.Format(L["Bought {count} × {item} for {money}."], { count = run.bought[id], item = itemName(id), money = money(run.spent[id]) }))
   end
-  if run.short then ns.Chat(string.format("Stopped buying %s: the last purchase did not arrive in full (bags full, a stock limit or not enough money?).", itemName(run.short))) end
+  if run.short then ns.Chat(ns.Format(L["Stopped buying {item}: the last purchase did not arrive in full (bags full, a stock limit or not enough money?)."], { item = itemName(run.short) })) end
 end
 
 -- Notes the last purchase, then buys a chunk and checks again shortly after; says what it bought once done
@@ -444,7 +445,7 @@ end
 -- The bar for a flight in the air: a countdown on a route flown before, else "timing".
 function ER.PaintFlight(f)
   local left = (f.known or 0) - ((ask("GetTime") or 0) - f.start)
-  ER.PaintRoute(ER.bar, f, left, "Timing this flight to " .. f.to)
+  ER.PaintRoute(ER.bar, f, left, ns.Format(L["Timing this flight to {place}"], { place = f.to }))
 end
 
 -- Landed: save the flight's time (a sane one) and put the bar away.
@@ -481,7 +482,7 @@ end
 
 -- The movable flight bar, above the cluster, hidden until a flight.
 local function buildBar()
-  ER.bar = ER.TimerBar("Vanguard_FlightTimer", "flighttimer", "Flight timer")
+  ER.bar = ER.TimerBar("Vanguard_FlightTimer", "flighttimer", L["Flight timer"])
 end
 
 -- Times flights, where the client lets addons see you pick one.

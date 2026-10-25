@@ -13,6 +13,7 @@
 --     damage numbers over your target.
 
 local ADDON, ns = ...
+local L = ns.L
 
 local T = ns.Theme
 local MC = ns.Module("Merchant", { defaults = { repair = true, junk = true, errors = true, listSell = false, junkList = {}, bulkBuy = true } })
@@ -39,9 +40,9 @@ function MC.Repair()
   local cost, can = GetRepairAllCost()
   cost = ns.PlainNumber(cost)
   if not cost or cost <= 0 or not can then return end
-  if cost > (ns.PlainNumber(GetMoney()) or 0) then return ns.Chat("Not enough gold to repair (" .. money(cost) .. ").") end
+  if cost > (ns.PlainNumber(GetMoney()) or 0) then return ns.Chat(ns.Format(L["Not enough gold to repair ({money})."], { money = money(cost) })) end
   RepairAllItems(false)
-  ns.Chat("Repaired for " .. money(cost) .. ".")
+  ns.Chat(ns.Format(L["Repaired for {money}."], { money = money(cost) }))
 end
 
 -- Junk --------------------------------------------------------------------------------------
@@ -71,7 +72,7 @@ function MC.SellJunk(tries)
   local junk = MC.Junk()
   if #junk == 0 then return end
   for _, spot in ipairs(junk) do C_Container.UseContainerItem(spot[1], spot[2]) end
-  if tries == MC.RETRIES then ns.Chat(string.format("Selling %d junk item(s).", #junk)) end
+  if tries == MC.RETRIES then ns.Chat(ns.Format(L["Selling {count} junk item(s)."], { count = #junk })) end
   if tries > 1 and C_Timer and C_Timer.After then C_Timer.After(MC.RETRY_AFTER, ns.Guard("timer sell junk", function() MC.SellJunk(tries - 1) end)) end
 end
 

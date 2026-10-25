@@ -14,6 +14,7 @@
 -- worth (AP.Disenchant, vanilla's disenchanting tables), for a tooltip line.
 
 local ADDON, ns = ...
+local L = ns.L
 
 local T = ns.Theme
 
@@ -303,15 +304,15 @@ end
 -- How long ago a time was, in the computer's days: "today", "yesterday", "3 days ago".
 function AP.Ago(t)
   local days = AP.LocalDay(AP.Now()) - AP.LocalDay(t)
-  if days < 1 then return "today" end
-  return days == 1 and "yesterday" or days .. " days ago"
+  if days < 1 then return L["today"] end
+  return days == 1 and L["yesterday"] or ns.Format(L["{count} days ago"], { count = days })
 end
 
 -- n units at the cheapest price, and at the market value unless it's unknown or the same:
 -- "12s 50c · market 14s 0c".
 local function priceText(low, market, n)
   local text = AP.Money(low * n)
-  if market and market ~= low then text = text .. " · market " .. AP.Money(market * n) end
+  if market and market ~= low then text = ns.Format(L["{price} · market {market}"], { price = text, market = AP.Money(market * n) }) end
   return text
 end
 
@@ -322,8 +323,8 @@ function AP.Line(tt, link)
   local p = AP.settings.tooltip and AP.House().prices[tonumber(link:match("item:(%d+)"))]
   if not p then return end
   local market, n = p.markets and p.markets[AP.Day(p.t)], ns.GetModule("Tooltips").StackOf(tt)
-  tt:AddLine(string.format("AH: %s (%s)", priceText(p.min, market, 1), AP.Ago(p.t)), T.RGB("text2"))
-  if n > 1 then tt:AddLine(string.format("AH x%d: %s", n, priceText(p.min, market, n)), T.RGB("text2")) end
+  tt:AddLine(ns.Format(L["AH: {price} ({when})"], { price = priceText(p.min, market, 1), when = AP.Ago(p.t) }), T.RGB("text2"))
+  if n > 1 then tt:AddLine(ns.Format(L["AH x{count}: {price}"], { count = n, price = priceText(p.min, market, n) }), T.RGB("text2")) end
 end
 
 -- Disenchanting -----------------------------------------------------------------------------
@@ -468,7 +469,7 @@ end
 -- while the switch is on.
 function AP.DisenchantLine(tt, link)
   local value = AP.DisenchantOn() and AP.Disenchant(link)
-  if value then tt:AddLine("Disenchant: ~" .. AP.Rough(value), T.RGB("text2")) end
+  if value then tt:AddLine(ns.Format(L["Disenchant: ~{money}"], { money = AP.Rough(value) }), T.RGB("text2")) end
 end
 
 -- Starts with Auction helper's settings: the account-wide prices of older versions moved to this

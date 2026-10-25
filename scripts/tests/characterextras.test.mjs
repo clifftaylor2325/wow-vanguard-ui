@@ -83,6 +83,12 @@ it("says the average level, melee damage and missing enchants for /vg gear", () 
   expect(chatHas(addon, /Missing an enchant: Chest, Off hand\./)).toBe(true);
 });
 
+it("leaves the off hand out of the melee line without an off-hand weapon", () => {
+  const addon = loggedIn(`${ENV} UnitAttackSpeed = function() return 2 end`);
+  addon.slash("gear");
+  expect(chatHas(addon, /Melee 7\.5 damage per second \(2\.0 s swing\)\./)).toBe(true);
+});
+
 it("copes with no gear and no damage figures, and does nothing without the character pane", () => {
   const addon = loggedIn("UnitDamage = nil");
   addon.slash("gear");

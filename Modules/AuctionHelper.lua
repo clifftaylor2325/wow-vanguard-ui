@@ -45,6 +45,7 @@
 -- ignored in combat (the house closes then).
 
 local ADDON, ns = ...
+local L = ns.L
 
 local T, W, AP = ns.Theme, ns.Widgets, ns.AuctionPrices
 
@@ -66,7 +67,7 @@ AH.PANE_W, AH.TOOLBAR_H = 240, 24
 AH.PAGE_X, AH.PAGE_TOP, AH.PAGE_BOTTOM = T.SPACE.tight, 30, 30
 -- The helper's two tabs, as the window's tab row and title name them: the Shopping page (your lists,
 -- Deals, Upgrades and the scan) and the Selling page (the Sell card, Up now and your auctions).
-AH.TAB_NAMES = { "Lists", "Posting" }
+AH.TAB_NAMES = { L["Lists"], L["Posting"] }
 -- Searches: seconds between two (at most 60 a minute), and how long one waits for its results.
 AH.SEND_GAP, AH.FALLBACK = 1, 2
 -- A result row's height (the shop's rows and your auctions': as tall as an inline control, T.CONTROL_H,
@@ -259,8 +260,8 @@ end
 
 -- The scan card under the Lists pane: the scan button and when the last scan was, painted again as it shows.
 local function buildScan(column, y)
-  local c = AH.Card(column, "Scan", y, AH.SCAN_H)
-  c.scan = W.Button(c, "Scan the auction house", function() AH.StartScan() end, 150)
+  local c = AH.Card(column, L["Scan"], y, AH.SCAN_H)
+  c.scan = W.Button(c, L["Scan the auction house"], function() AH.StartScan() end, 150)
   c.scan:SetPoint("TOPLEFT", 0, -20)
   c.last = T.Text(c:CreateFontString(nil, "OVERLAY"), "small", "text2")
   c.last:SetPoint("TOPLEFT", 0, -50)
@@ -367,7 +368,7 @@ end
 
 -- No tab row on the window (another client's): said once in chat, and nothing is built.
 function AH.NoTabRow()
-  if not AH.saidNoTabs then ns.Chat(string.format("The auction house window has no tab row this client knows, so the %s and %s tabs can't be added (/vg errors says if something failed).", AH.TAB_NAMES[1], AH.TAB_NAMES[2])) end
+  if not AH.saidNoTabs then ns.Chat(ns.Format(L["The auction house window has no tab row this client knows, so the {lists} and {posting} tabs can't be added (/vg errors says if something failed)."], { lists = AH.TAB_NAMES[1], posting = AH.TAB_NAMES[2] })) end
   AH.saidNoTabs = true
   return false
 end
@@ -424,9 +425,9 @@ end
 -- How long ago a time was, in words: "2 min ago", "3 h ago", "2 days ago".
 local function ago(t)
   local seconds = math.max(0, AP.Now() - t)
-  if seconds < 3600 then return math.floor(seconds / 60) .. " min ago" end
-  if seconds < 86400 then return math.floor(seconds / 3600) .. " h ago" end
-  return math.floor(seconds / 86400) .. " days ago"
+  if seconds < 3600 then return ns.Format(L["{count} min ago"], { count = math.floor(seconds / 60) }) end
+  if seconds < 86400 then return ns.Format(L["{count} h ago"], { count = math.floor(seconds / 3600) }) end
+  return ns.Format(L["{count} days ago"], { count = math.floor(seconds / 86400) })
 end
 
 -- A count with its thousands apart: 8412 as "8,412".
@@ -439,15 +440,15 @@ end
 -- the last in the warning colour once the prices are over a day old.
 local function paintScanLine(line, s, last)
   T.Color(line, not s and last > 0 and AP.Now() - last > AH.SCAN_STALE and "warn" or "text2")
-  if s then return line:SetText(string.format("scanning %d of %d", s.next, s.total or 0)) end
-  if last == 0 then return line:SetText("no scan yet") end
-  line:SetText(string.format("Scanned %s · %s items", ago(last), grouped(AP.House().count)))
+  if s then return line:SetText(ns.Format(L["scanning {done} of {total}"], { done = s.next, total = s.total or 0 })) end
+  if last == 0 then return line:SetText(L["no scan yet"]) end
+  line:SetText(ns.Format(L["Scanned {ago} · {count} items"], { ago = ago(last), count = grouped(AP.House().count) }))
 end
 
 -- The scan button: greyed and counting down ("Next scan in 12 min") inside the 15 minutes, else ready.
 local function paintScanButton(button)
   local wait = AH.NextScanIn()
-  button.text:SetText(wait > 0 and string.format("Next scan in %d min", math.ceil(wait / 60)) or "Scan the auction house")
+  button.text:SetText(wait > 0 and ns.Format(L["Next scan in {minutes} min"], { minutes = math.ceil(wait / 60) }) or L["Scan the auction house"])
   if wait > 0 then button:Disable() else button:Enable() end
 end
 
@@ -474,9 +475,9 @@ end
 function AH.StartScan()
   local wait = AH.NextScanIn()
   AH.PaintScan()
-  if not AH.open then return ns.Chat("Open the auction house to scan it.") end
-  if AH.scan then return ns.Chat(string.format("Already scanning: %d of %d read.", AH.scan.next, AH.scan.total or 0)) end
-  if wait > 0 then return ns.Chat(string.format("One auction house scan every 15 minutes: the next in %d min.", math.ceil(wait / 60))) end
+  if not AH.open then return ns.Chat(L["Open the auction house to scan it."]) end
+  if AH.scan then return ns.Chat(ns.Format(L["Already scanning: {done} of {total} read."], { done = AH.scan.next, total = AH.scan.total or 0 })) end
+  if wait > 0 then return ns.Chat(ns.Format(L["One auction house scan every 15 minutes: the next in {minutes} min."], { minutes = math.ceil(wait / 60) })) end
   local s = newScan()
   AH.scan, AH.lateScan = s, nil
   C_AuctionHouse.ReplicateItems()
@@ -490,7 +491,7 @@ end
 function AH.ScanUnanswered(s)
   if AH.scan ~= s or s.total then return end
   AH.scan, AH.lateScan, AH.refusedAt = nil, s, s.started
-  ns.Chat("The auction house hasn't answered the scan: another character or auction addon may have scanned in the last 15 minutes. The button counts down to the next try.")
+  ns.Chat(L["The auction house hasn't answered the scan: another character or auction addon may have scanned in the last 15 minutes. The button counts down to the next try."])
   AH.PaintScan()
 end
 
@@ -554,8 +555,9 @@ function AH.FinishScan()
   AP.House().lastScan, AP.Store().scannedAt, AH.scan = s.started, s.started, nil
   AH.walker:Hide()
   AH.JudgeGear(s.gear)
-  local yours = s.mine > 0 and string.format(" %d of them were yours and are left out.", s.mine) or ""
-  ns.Chat(string.format("Auction house scanned: %d listings, prices for %d items.%s", s.total, n, yours))
+  local line = ns.Format(L["Auction house scanned: {listings} listings, prices for {items} items."], { listings = s.total, items = n })
+  if s.mine > 0 then line = line .. " " .. ns.Format(L["{count} of them were yours and are left out."], { count = s.mine }) end
+  ns.Chat(line)
   AH.PaintScan()
 end
 
@@ -572,8 +574,8 @@ end
 function AH.ListCommand(arg)
   if arg ~= "" and not AH.NewList(arg) then return end
   local name, list = AH.CurrentList()
-  if not name then return ns.Chat("No shopping lists yet: /vg ah list <name> makes one.") end
-  ns.Chat(string.format("Shopping list %s (%d): %s", name, #list, #list > 0 and entryNames(list) or "empty"))
+  if not name then return ns.Chat(L["No shopping lists yet: /vg ah list <name> makes one."]) end
+  ns.Chat(ns.Format(L["Shopping list {name} ({count}): {entries}"], { name = name, count = #list, entries = #list > 0 and entryNames(list) or L["empty"] }))
 end
 
 -- Whether /vg ah add's words start with an item (a link, item:123 or a bare ID) rather than a list name.
@@ -584,7 +586,7 @@ end
 
 -- /vg ah add <item>, no list named: the item goes on the list in use (else Shopping), and chat says which.
 local function addToListInUse(arg)
-  if AH.AddEntry(arg) then ns.Chat(string.format("Added to the shopping list %s.", AP.Store().list)) end
+  if AH.AddEntry(arg) then ns.Chat(ns.Format(L["Added to the shopping list {name}."], { name = AP.Store().list })) end
 end
 
 -- /vg ah add <list> <item>: the list is the longest list name the words start with, else the first word
@@ -611,20 +613,20 @@ AH.COMMANDS = {
   prices = function(arg)
     if arg ~= "clear" then return AH.Status() end
     AP.Store().houses = {}
-    ns.Chat("Forgot every auction price.")
+    ns.Chat(L["Forgot every auction price."])
   end,
 }
 
 -- What the helper knows: how many prices on this realm and faction, and the last scan there.
 function AH.Status()
   local store = AP.House()
-  local last = store.lastScan > 0 and AP.Ago(store.lastScan) or "never"
-  ns.Chat(string.format("Auction prices for %d item(s); last scan: %s. /vg ah list <name>, add <list> <item>, rename <name>, duplicate, delete, export, import, recent, scan (at the auction house), prices clear, restock.", store.count, last))
+  local last = store.lastScan > 0 and AP.Ago(store.lastScan) or L["never"]
+  ns.Chat(ns.Format(L["Auction prices for {count} item(s); last scan: {last}. /vg ah list <name>, add <list> <item>, rename <name>, duplicate, delete, export, import, recent, scan (at the auction house), prices clear, restock."], { count = store.count, last = last }))
 end
 
 -- /vg ah [list <name>|add <list> <item>|rename <name>|duplicate|delete|export|import|recent|restock|scan|prices clear].
 function AH.Command(rest)
-  if not AH.settings then return ns.Chat("The auction helper is off (/vg > Modules).") end
+  if not AH.settings then return ns.Chat(L["The auction helper is off (/vg > Modules)."]) end
   local word, arg = (rest or ""):match("^(%S*)%s*(.-)%s*$")
   local fn = AH.COMMANDS[word:lower()]
   if fn then return fn(arg) end

@@ -23,13 +23,13 @@ ns.API = API
 -- Checking calls -----------------------------------------------------------------------------
 
 -- Raises "Vanguard.API.v1.<fn>: <what> must be a <want>" at the line that called the API
--- (four levels up: here, check, the API function, its caller).
+-- (four levels up: here, checkCall, the API function, its caller).
 local function fail(fn, what, want, got)
   error(string.format("Vanguard.API.v1.%s: %s must be a %s, got %s", fn, what, want, type(got)), 4)
 end
 
 -- Checks an API call's callerID (a string) and one more argument (v, of type want).
-local function check(fn, callerID, what, v, want)
+local function checkCall(fn, callerID, what, v, want)
   if type(callerID) ~= "string" then fail(fn, "callerID", "string", callerID) end
   if type(v) ~= want then fail(fn, what, want, v) end
 end
@@ -61,25 +61,25 @@ end
 -- The auction price of an item by its ID: the cheapest unit price last seen on this realm and
 -- faction, by a scan or a search, in copper; nil when it was never seen (or not for 30 days).
 function API.GetAuctionPriceByItemID(callerID, itemID)
-  check("GetAuctionPriceByItemID", callerID, "itemID", itemID, "number")
+  checkCall("GetAuctionPriceByItemID", callerID, "itemID", itemID, "number")
   return auctionPrice(itemID)
 end
 
 -- The auction price of an item by its link (see GetAuctionPriceByItemID).
 function API.GetAuctionPriceByItemLink(callerID, itemLink)
-  check("GetAuctionPriceByItemLink", callerID, "itemLink", itemLink, "string")
+  checkCall("GetAuctionPriceByItemLink", callerID, "itemLink", itemLink, "string")
   return auctionPrice(linkID(itemLink))
 end
 
 -- What a merchant pays for one of an item by its ID, in copper, or nil.
 function API.GetVendorPriceByItemID(callerID, itemID)
-  check("GetVendorPriceByItemID", callerID, "itemID", itemID, "number")
+  checkCall("GetVendorPriceByItemID", callerID, "itemID", itemID, "number")
   return vendorPrice(itemID)
 end
 
 -- What a merchant pays for one of an item by its link, in copper, or nil.
 function API.GetVendorPriceByItemLink(callerID, itemLink)
-  check("GetVendorPriceByItemLink", callerID, "itemLink", itemLink, "string")
+  checkCall("GetVendorPriceByItemLink", callerID, "itemLink", itemLink, "string")
   return vendorPrice(itemLink)
 end
 
@@ -93,13 +93,13 @@ end
 -- average quantity x its market value (else its cheapest price) here; nil for an item that
 -- doesn't disenchant (weapons and armour, green or better) or whose materials were never priced.
 function API.GetDisenchantPriceByItemID(callerID, itemID)
-  check("GetDisenchantPriceByItemID", callerID, "itemID", itemID, "number")
+  checkCall("GetDisenchantPriceByItemID", callerID, "itemID", itemID, "number")
   return disenchantPrice(itemID)
 end
 
 -- The disenchant value of an item by its link (see GetDisenchantPriceByItemID).
 function API.GetDisenchantPriceByItemLink(callerID, itemLink)
-  check("GetDisenchantPriceByItemLink", callerID, "itemLink", itemLink, "string")
+  checkCall("GetDisenchantPriceByItemLink", callerID, "itemLink", itemLink, "string")
   return disenchantPrice(itemLink)
 end
 
@@ -107,7 +107,7 @@ end
 -- scan, and after each search that saw a price. One that fails is reported by Vanguard (/vg
 -- errors) and doesn't stop the others.
 function API.RegisterForDBUpdate(callerID, callback)
-  check("RegisterForDBUpdate", callerID, "callback", callback, "function")
+  checkCall("RegisterForDBUpdate", callerID, "callback", callback, "function")
   AP.OnChange(function() ns.Try("Vanguard.API.v1 update for " .. callerID, callback) end)
 end
 
@@ -171,29 +171,29 @@ end
 -- Searches the auction house for each search string (a name, matched as the game's search box
 -- does), one search at a time through the shop; the results show on the shop card. True when queued.
 function API.MultiSearch(callerID, terms)
-  check("MultiSearch", callerID, "terms", terms, "table")
+  checkCall("MultiSearch", callerID, "terms", terms, "table")
   return search(callerID, terms, false)
 end
 
 -- MultiSearch, each name matched exactly: a name the client knows is searched by its item ID.
 function API.MultiSearchExact(callerID, terms)
-  check("MultiSearchExact", callerID, "terms", terms, "table")
+  checkCall("MultiSearchExact", callerID, "terms", terms, "table")
   return search(callerID, terms, true)
 end
 
 -- Makes the shopping list `listName` holding the search strings (a list of that name already
 -- there is replaced). Lists are the account's, shown on the shop card. True when made.
 function API.CreateShoppingList(callerID, listName, items)
-  check("CreateShoppingList", callerID, "listName", listName, "string")
-  check("CreateShoppingList", callerID, "items", items, "table")
+  checkCall("CreateShoppingList", callerID, "listName", listName, "string")
+  checkCall("CreateShoppingList", callerID, "items", items, "table")
   return putList(listName, entries(items, false))
 end
 
 -- Replaces the entries of the shopping list `listName` with the search strings; false when there
 -- is no list of that name.
 function API.AlterShoppingListItems(callerID, listName, items)
-  check("AlterShoppingListItems", callerID, "listName", listName, "string")
-  check("AlterShoppingListItems", callerID, "items", items, "table")
+  checkCall("AlterShoppingListItems", callerID, "listName", listName, "string")
+  checkCall("AlterShoppingListItems", callerID, "items", items, "table")
   if AP.Store().lists[listName] == nil then return false end
   return putList(listName, entries(items, false))
 end

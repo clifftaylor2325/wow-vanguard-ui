@@ -7,6 +7,7 @@
 -- where the combined bag's slots sit: in sections by kind of item.
 
 local ADDON, ns = ...
+local L = ns.L
 
 -- Per-frame state kept off the game's frames (Core/Events.lua, ns.FrameState).
 local vgSkinned = ns.FrameState("vgSkinned")
@@ -258,7 +259,7 @@ end
 function BG.AddSort(frame)
   local sort = C_Container and C_Container.SortBags
   if type(sort) ~= "function" or BG.sort then return end
-  BG.sort = ns.DialogButton(frame, "Sort", SORT_W)
+  BG.sort = ns.DialogButton(frame, L["Sort"], SORT_W)
   BG.sort:SetHeight(T.CONTROL_H)
   placeSort(frame)
   BG.sort:SetScript("OnClick", ns.Guard("click sort bags", function() sort() end))

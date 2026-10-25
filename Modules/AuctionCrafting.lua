@@ -18,6 +18,7 @@
 -- ns.PlainNumber before arithmetic.
 
 local ADDON, ns = ...
+local L = ns.L
 
 local T, W, AP = ns.Theme, ns.Widgets, ns.AuctionPrices
 local AH = ns.GetModule("AuctionHelper")
@@ -37,7 +38,7 @@ CR.ROWS = 8
 -- Enum.CraftingReagentType.Basic (ProfessionConstantsDocumentation.lua), for a client without the Enum.
 CR.BASIC = 1
 -- The total lines, by key and label.
-CR.LINES = { { "cost", "Reagents" }, { "worth", "Sells for" }, { "profit", "Profit" } }
+CR.LINES = { { "cost", L["Reagents"] }, { "worth", L["Sells for"] }, { "profit", L["Profit"] } }
 
 -- Reading the recipe -------------------------------------------------------------------------
 
@@ -85,7 +86,7 @@ end
 -- An item's name and icon, as the client has them (else "item 123" and the unknown icon).
 local function itemLook(id)
   local name, _, _, _, _, _, _, _, _, icon = C_Item.GetItemInfo(id)
-  return name or ("item " .. id), icon or AH.UNKNOWN_ICON
+  return name or ns.Format(L["item {id}"], { id = id }), icon or AH.UNKNOWN_ICON
 end
 
 -- A reagent's row: its icon and name, "x2", and its cost ("no price" in muted).
@@ -95,17 +96,17 @@ local function paintReagent(r, reagent)
   local name, icon = itemLook(reagent.id)
   r.icon:SetTexture(icon)
   r.name:SetText(name)
-  r.qty:SetText("x " .. reagent.qty)
-  r.price:SetText(reagent.cost and AP.Money(reagent.cost) or "no price")
+  r.qty:SetText(ns.Format(L["x {count}"], { count = reagent.qty }))
+  r.price:SetText(reagent.cost and AP.Money(reagent.cost) or L["no price"])
   T.Color(r.price, reagent.cost and "gold" or "muted")
 end
 
 -- A total line's value and colour: copper in gold (the profit in good or bad), else what's missing in muted.
 local function totalText(data, key)
   local someUnpriced = data.unpriced > 0
-  if key == "cost" then return someUnpriced and ("at least " .. AP.Money(data.cost)) or AP.Money(data.cost), someUnpriced and "muted" or "gold" end
-  if key == "worth" then return data.worth and AP.Money(data.worth) or (data.output and "no price" or "nothing to sell"), data.worth and "gold" or "muted" end
-  if not data.worth or someUnpriced then return "needs every price", "muted" end
+  if key == "cost" then return someUnpriced and ns.Format(L["at least {money}"], { money = AP.Money(data.cost) }) or AP.Money(data.cost), someUnpriced and "muted" or "gold" end
+  if key == "worth" then return data.worth and AP.Money(data.worth) or (data.output and L["no price"] or L["nothing to sell"]), data.worth and "gold" or "muted" end
+  if not data.worth or someUnpriced then return L["needs every price"], "muted" end
   local profit = data.worth - data.cost
   return AP.Money(profit), profit < 0 and "bad" or "good"
 end
@@ -131,7 +132,7 @@ function CR.Paint()
   if not data then return end
   local f = CR.frame or CR.Build()
   CR.data = data
-  f.title:SetText(data.name or "Crafting cost")
+  f.title:SetText(data.name or L["Crafting cost"])
   for i, r in ipairs(f.rows) do paintReagent(r, data.reagents[i]) end
   paintTotals(f, data, math.min(#data.reagents, #f.rows))
   f:Show()
@@ -159,9 +160,9 @@ end
 -- of what's short (and searched at the auction house).
 function CR.AddReagents()
   local data, ER = CR.data, ns.GetModule("Errands")
-  if not ER.settings then return ns.Chat("Keep stocked is part of Errands, which is off (/vg > Modules).") end
+  if not ER.settings then return ns.Chat(L["Keep stocked is part of Errands, which is off (/vg > Modules)."]) end
   local n = crafts(CR.frame.crafts)
-  ns.Chat(string.format("Keep stocked for %d x %s: %s.", n, data.name or "this recipe", keepStocked(ER.StockList(), data, n)))
+  ns.Chat(ns.Format(L["Keep stocked for {count} x {recipe}: {reagents}."], { count = n, recipe = data.name or L["this recipe"], reagents = keepStocked(ER.StockList(), data, n) }))
   ER.StockWindow.Refresh()
   AH.Restock()
 end
@@ -190,21 +191,21 @@ end
 
 -- The bottom line: "Crafts" and its box (1 to start), and Add reagents.
 local function addControls(f)
-  f.add = W.Button(f, "Add reagents", function() CR.AddReagents() end, 120)
+  f.add = W.Button(f, L["Add reagents"], function() CR.AddReagents() end, 120)
   f.add:SetPoint("BOTTOMRIGHT", -CR.PAD, CR.PAD)
   f.crafts = W.Input(f, 44)
   f.crafts:SetPoint("RIGHT", f.add, "LEFT", -T.SPACE.gap, 0)
   f.crafts:SetText("1")
   f.craftsLabel = T.Text(f:CreateFontString(nil, "OVERLAY"), "label", "text2")
   f.craftsLabel:SetPoint("RIGHT", f.crafts, "LEFT", -T.SPACE.tight, 0)
-  f.craftsLabel:SetText("Crafts")
+  f.craftsLabel:SetText(L["Crafts"])
 end
 
 -- The panel's heading: a card's title (ns.WindowTitle kind "card") holding the recipe's name, on one line
 -- across the panel; the panel stays on the screen.
 local function heading(f)
   f:SetClampedToScreen(true)
-  ns.WindowTitle(f, "Crafting cost", { kind = "card" })
+  ns.WindowTitle(f, L["Crafting cost"], { kind = "card" })
   f.title:SetWidth(CR.WIDTH - 2 * CR.PAD)
   f.title:SetWordWrap(false)
 end

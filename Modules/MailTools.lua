@@ -17,6 +17,7 @@
 -- Nothing is taken, attached or sent without your click, and nothing here runs in combat.
 
 local ADDON, ns = ...
+local L = ns.L
 
 local T, W = ns.Theme, ns.Widgets
 
@@ -36,6 +37,8 @@ local SEARCH_TOP, ROWS_TOP, PRESET_W = 30, 64, 60
 local FOOT = 2 * (T.SPACE.gap + T.BUTTON_H) + T.SPACE.gap
 -- The filters in the order the button cycles them; the one in use and the words typed.
 MT.FILTERS, MT.filter, MT.query = { "All", "Money", "Items", "Sales" }, "All", ""
+-- What the filter button calls each filter.
+MT.FILTER_NAMES = { All = L["All"], Money = L["Money"], Items = L["Items"], Sales = L["Sales"] }
 
 -- Reading the inbox --------------------------------------------------------------------------
 
@@ -94,8 +97,8 @@ end
 local function describe(m)
   local what = {}
   if m.money > 0 then what[#what + 1] = ns.AuctionPrices.Money(m.money) end
-  if m.items > 0 then what[#what + 1] = m.items .. (m.items == 1 and " item" or " items") end
-  if m.cod > 0 then what[#what + 1] = "pay " .. ns.AuctionPrices.Money(m.cod) .. " on delivery" end
+  if m.items > 0 then what[#what + 1] = ns.Format(m.items == 1 and L["{count} item"] or L["{count} items"], { count = m.items }) end
+  if m.cod > 0 then what[#what + 1] = ns.Format(L["pay {money} on delivery"], { money = ns.AuctionPrices.Money(m.cod) }) end
   return string.format("%s: %s%s", m.sender ~= "" and m.sender or "?", m.subject, #what > 0 and (" (" .. table.concat(what, ", ") .. ")") or "")
 end
 
@@ -122,8 +125,8 @@ end
 -- Takes a mail's money and its first item (one click each; the game needs a moment between items). A mail that
 -- asks for payment on delivery is never taken here, and neither is one that is no longer what the row showed.
 function MT.Take(m)
-  if m.cod > 0 then return ns.Chat("Mail: that one asks for payment on delivery. Open it in the mail window, where the game asks you first.") end
-  if not unchanged(m) then return ns.Chat("Mail: that mail has moved. Look at the list again.") end
+  if m.cod > 0 then return ns.Chat(L["Mail: that one asks for payment on delivery. Open it in the mail window, where the game asks you first."]) end
+  if not unchanged(m) then return ns.Chat(L["Mail: that mail has moved. Look at the list again."]) end
   if m.money > 0 and type(TakeInboxMoney) == "function" then TakeInboxMoney(m.index) end
   local slot = m.items > 0 and firstItem(m.index)
   if slot and type(TakeInboxItem) == "function" then TakeInboxItem(m.index, slot) end
@@ -164,7 +167,7 @@ local function refused(run, now)
   local last = run.last
   if not (last and last.index == now.index and last.money == now.money and last.items == now.items) then return false end
   run.last, run.done = nil, run.done - 1
-  ns.Chat(string.format("Mail: could not take from %s (bags full?).", now.subject ~= "" and now.subject or now.sender))
+  ns.Chat(ns.Format(L["Mail: could not take from {mail} (bags full?)."], { mail = now.subject ~= "" and now.subject or now.sender }))
   return true
 end
 
@@ -216,7 +219,7 @@ end
 function MT.Run(run)
   if not MT.mailOpen or ns.InCombat() or not run.step(run) then
     MT.running = nil
-    return ns.Chat(string.format("%s: %d of %d done.", run.label, run.done, run.total))
+    return ns.Chat(ns.Format(L["{run}: {done} of {total} done."], { run = run.label, done = run.done, total = run.total }))
   end
   if C_Timer and C_Timer.After then return C_Timer.After(MT.STEP, ns.Guard("mail run", function() MT.Run(run) end)) end
   MT.Run(run)
@@ -225,8 +228,8 @@ end
 -- Starts a run (its label, the mails, the step that works through them and the steps planned) unless one
 -- is going or there is nothing to do.
 local function start(label, mails, step, total)
-  if MT.running then return ns.Chat("Mail: a run is already going.") end
-  if total == 0 then return ns.Chat(label .. ": nothing to do.") end
+  if MT.running then return ns.Chat(L["Mail: a run is already going."]) end
+  if total == 0 then return ns.Chat(ns.Format(L["{run}: nothing to do."], { run = label })) end
   MT.running = true
   MT.Run({ label = label, mails = mails, step = step, total = total, done = 0 })
 end
@@ -242,14 +245,14 @@ end
 -- Take all: the money and items of every mail the panel shows (its filter and words), COD mail excepted.
 function MT.TakeAll()
   local mails = MT.Find(MT.query)
-  start("Take all", takeMails(mails), takeNext, MT.TakeCount(mails))
+  start(L["Take all"], takeMails(mails), takeNext, MT.TakeCount(mails))
 end
 
 -- Return all: after a question, sends the shown mails that can go back to their senders.
 function MT.ReturnAll()
   local mails = MT.ReturnMails(MT.Find(MT.query))
-  if #mails == 0 then return ns.Chat("Return all: nothing to return.") end
-  ns.Ask(string.format("Return %d mail(s) to their senders?", #mails), "Return", function() start("Return all", mails, returnNext, #mails) end, nil, "danger")
+  if #mails == 0 then return ns.Chat(L["Return all: nothing to return."]) end
+  ns.Ask(ns.Format(L["Return {count} mail(s) to their senders?"], { count = #mails }), L["Return"], function() start(L["Return all"], mails, returnNext, #mails) end, nil, "danger")
 end
 
 -- Presets ------------------------------------------------------------------------------------
@@ -266,7 +269,8 @@ function MT.AddPreset(name, to, words)
   local old, at = preset(name)
   local p = { name = name, to = to, words = words }
   if old then MT.settings.presets[at] = p else table.insert(MT.settings.presets, p) end
-  ns.Chat(string.format("Preset %s: send to %s%s.", name, to, words ~= "" and (" what is named " .. words) or " every item"))
+  local said = words ~= "" and L["Preset {name}: send to {to} what is named {words}."] or L["Preset {name}: send to {to} every item."]
+  ns.Chat(ns.Format(said, { name = name, to = to, words = words }))
 end
 
 -- Whether an item's name holds one of the preset's words (any word when there are none).
@@ -302,18 +306,18 @@ end
 -- Sends: the Send Mail tab (open) gets the character's name and the items; you press Send.
 function MT.Send(name)
   local p = preset(name)
-  if not p then return ns.Chat("No preset called " .. tostring(name) .. ". /vg mail preset lists them.") end
-  if ns.InCombat() or not (SendMailFrame and SendMailFrame:IsVisible()) then return ns.Chat("Open the Send Mail tab (out of combat) first.") end
+  if not p then return ns.Chat(ns.Format(L["No preset called {name}. /vg mail preset lists them."], { name = tostring(name) })) end
+  if ns.InCombat() or not (SendMailFrame and SendMailFrame:IsVisible()) then return ns.Chat(L["Open the Send Mail tab (out of combat) first."]) end
   SendMailNameEditBox:SetText(p.to)
-  ns.Chat(string.format("%s: %d items attached for %s. Press Send.", p.name, MT.Attach(p.words), p.to))
+  ns.Chat(ns.Format(L["{preset}: {count} items attached for {to}. Press Send."], { preset = p.name, count = MT.Attach(p.words), to = p.to }))
 end
 
 -- The panel ----------------------------------------------------------------------------------
 
 -- A time left in days as words: "5d", or "7h" under a day.
 local function timeLeft(days)
-  if days >= 1 then return math.floor(days) .. "d" end
-  return math.max(1, math.floor(days * 24)) .. "h"
+  if days >= 1 then return ns.Format(L["{count}d"], { count = math.floor(days) }) end
+  return ns.Format(L["{count}h"], { count = math.max(1, math.floor(days * 24)) })
 end
 
 -- A row's time left: "5d" ("7h" under a day), in the warning colour under MT.WARN_DAYS, and then "deleted in
@@ -321,7 +325,7 @@ end
 local function paintDays(text, m)
   if not m.days then return text:SetText("") end
   local soon = m.days < MT.WARN_DAYS
-  text:SetText((soon and m.lost) and ("deleted in " .. timeLeft(m.days)) or timeLeft(m.days))
+  text:SetText((soon and m.lost) and ns.Format(L["deleted in {time}"], { time = timeLeft(m.days) }) or timeLeft(m.days))
   T.Color(text, soon and "warn" or "text2")
 end
 
@@ -359,8 +363,8 @@ end
 -- "more on the server" while the server holds mail not loaded yet.
 local function countText(found)
   local parts = {}
-  if found > MT.ROWS then parts[1] = string.format("%d-%d of %d", MT.offset + 1, MT.offset + MT.ROWS, found) end
-  if MT.MoreOnServer() then parts[#parts + 1] = "more on the server" end
+  if found > MT.ROWS then parts[1] = ns.Format(L["{first}-{last} of {count}"], { first = MT.offset + 1, last = MT.offset + MT.ROWS, count = found }) end
+  if MT.MoreOnServer() then parts[#parts + 1] = L["more on the server"] end
   return table.concat(parts, " · ")
 end
 
@@ -371,7 +375,7 @@ function MT.PaintRows(f)
   MT.offset = math.max(0, math.min(MT.offset, #found - MT.ROWS))
   for i, row in ipairs(f.rows) do paintRow(row, found[MT.offset + i]) end
   f.count:SetText(countText(#found))
-  f.filterButton.text:SetText(MT.filter)
+  f.filterButton.text:SetText(MT.FILTER_NAMES[MT.filter])
   MT.PaintEmpty(#found)
 end
 
@@ -395,7 +399,7 @@ end
 function MT.PaintEmpty(found)
   local total = type(GetInboxNumItems) == "function" and ns.PlainNumber((GetInboxNumItems())) or 0
   MT.frame.empty:SetShown(found == 0)
-  MT.frame.empty:SetText(total == 0 and "Your inbox is empty." or "No mail matches.")
+  MT.frame.empty:SetText(total == 0 and L["Your inbox is empty."] or L["No mail matches."])
 end
 
 -- A row's line of text, then its time left (small), left of its Take button.
@@ -413,7 +417,7 @@ local function buildRow(f, i)
   local r = W.Row(f, MT.ROW)
   r:SetPoint("TOPLEFT", MT.PAD, -ROWS_TOP - (i - 1) * MT.ROW)
   r:SetPoint("TOPRIGHT", -MT.PAD, -ROWS_TOP - (i - 1) * MT.ROW)
-  r.take = W.Button(r, "Take", function() if r.mail then MT.Take(r.mail) end end, 48)
+  r.take = W.Button(r, L["Take"], function() if r.mail then MT.Take(r.mail) end end, 48)
   r.take:SetPoint("RIGHT", 0, 0)
   rowText(r)
   return r
@@ -434,15 +438,15 @@ local function buildSearch(f)
   f.search = W.Input(f, 150)
   f.search:SetPoint("TOPLEFT", MT.PAD, -SEARCH_TOP)
   f.search:SetScript("OnTextChanged", ns.Guard("mail search", function(self) MT.query, MT.offset = self:GetText() or "", 0 MT.Paint() end))
-  f.filterButton = W.Button(f, MT.filter, function() MT.CycleFilter() end, 90)
+  f.filterButton = W.Button(f, MT.FILTER_NAMES[MT.filter], function() MT.CycleFilter() end, 90)
   f.filterButton:SetPoint("LEFT", f.search, "RIGHT", T.SPACE.gap, 0)
 end
 
 -- Take all and Return all above the preset buttons (both act on every match, those past the rows too).
 local function buildBulk(f)
-  f.takeAll = W.Button(f, "Take all", function() MT.TakeAll() end, 100)
+  f.takeAll = W.Button(f, L["Take all"], function() MT.TakeAll() end, 100)
   f.takeAll:SetPoint("BOTTOMLEFT", MT.PAD, MT.PAD + T.BUTTON_H + T.SPACE.gap)
-  f.returnAll = W.Button(f, "Return all", function() MT.ReturnAll() end, 100)
+  f.returnAll = W.Button(f, L["Return all"], function() MT.ReturnAll() end, 100)
   f.returnAll:SetPoint("LEFT", f.takeAll, "RIGHT", T.SPACE.gap, 0)
 end
 
@@ -454,7 +458,7 @@ end
 -- Preset button i: a click sends its preset, a right-click asks to remove it; pointing at it says what it sends.
 local function presetButton(f, i)
   local b
-  b = W.Button(f, "Preset", function(_, button) MT.PresetClick(b.preset, button) end, PRESET_W)
+  b = W.Button(f, L["Preset"], function(_, button) MT.PresetClick(b.preset, button) end, PRESET_W)
   b:RegisterForClicks("LeftButtonUp", "RightButtonUp")
   b:SetPoint("BOTTOMLEFT", slot(i), MT.PAD)
   b:HookScript("OnEnter", ns.Guard("mail preset tip", function(self) MT.PresetTip(self) end))
@@ -467,7 +471,7 @@ end
 local function buildPresets(f)
   f.presets = {}
   for i = 1, MT.BUTTONS do f.presets[i] = presetButton(f, i) end
-  f.addPreset = W.Button(f, "+ Add", function() MT.AskPreset() end, PRESET_W)
+  f.addPreset = W.Button(f, L["+ Add"], function() MT.AskPreset() end, PRESET_W)
   f.hint:SetPoint("LEFT", f.addPreset, "RIGHT", T.SPACE.gap, 0)
 end
 
@@ -475,13 +479,13 @@ end
 -- with the count beside its title, the empty-state line (label muted) and the hint shown while
 -- there are no presets (a note: small muted).
 local function heading(f)
-  f.count = ns.WindowTitle(f, "Find mail", { kind = "card", count = "" }).count
+  f.count = ns.WindowTitle(f, L["Find mail"], { kind = "card", count = "" }).count
   f.empty = T.Text(f:CreateFontString(nil, "OVERLAY"), "label", "muted")
   f.empty:SetPoint("TOP", 0, -ROWS_TOP - MT.ROW)
   f.hint = T.Text(f:CreateFontString(nil, "OVERLAY"), "small", "muted")
   f.hint:SetWidth(MT.WIDTH - 2 * MT.PAD - PRESET_W - T.SPACE.gap)
   f.hint:SetJustifyH("LEFT")
-  f.hint:SetText("No presets yet.")
+  f.hint:SetText(L["No presets yet."])
 end
 
 -- The panel, built when the mailbox first opens with the tools on: right of the mail window.
@@ -534,7 +538,7 @@ end
 local function removePreset(name)
   local _, at = preset(name)
   if at then table.remove(MT.settings.presets, at) end
-  ns.Chat(at and ("Preset " .. name .. " removed.") or ("No preset called " .. name .. "."))
+  ns.Chat(ns.Format(at and L["Preset {name} removed."] or L["No preset called {name}."], { name = name }))
 end
 
 -- A preset button's click: the left button sends its preset, the right one asks to remove it.
@@ -546,7 +550,7 @@ end
 
 -- Asks, then removes a preset and its button.
 function MT.AskRemove(name)
-  ns.Ask(string.format("Remove the preset %s?", name), "Remove", function() removePreset(name) MT.PaintPresets() end, nil, "danger")
+  ns.Ask(ns.Format(L["Remove the preset {name}?"], { name = name }), L["Remove"], function() removePreset(name) MT.PaintPresets() end, nil, "danger")
 end
 
 -- The tooltip on a preset button: what it sends to whom, and how to remove it.
@@ -555,8 +559,9 @@ function MT.PresetTip(b)
   if not p then return end
   GameTooltip:SetOwner(b, "ANCHOR_TOP")
   GameTooltip:SetText(p.name, T.RGB("text"))
-  GameTooltip:AddLine(string.format("Sends %s to %s.", p.words ~= "" and ("items named " .. p.words) or "every item", p.to), T.RGB("muted"))
-  GameTooltip:AddLine("Right-click to remove.", T.RGB("muted"))
+  local sends = p.words ~= "" and L["Sends items named {words} to {to}."] or L["Sends every item to {to}."]
+  GameTooltip:AddLine(ns.Format(sends, { words = p.words, to = p.to }), T.RGB("muted"))
+  GameTooltip:AddLine(L["Right-click to remove."], T.RGB("muted"))
   GameTooltip:Show()
 end
 
@@ -567,13 +572,13 @@ end
 
 -- + Add: asks for the preset's name, character and words in the text box.
 function MT.AskPreset()
-  ns.AskText("New preset: a name, the character, then words in the items' names (none: every item)", MT.AddTyped, "Add")
+  ns.AskText(L["New preset: a name, the character, then words in the items' names (none: every item)"], MT.AddTyped, L["Add"])
 end
 
 -- Adds the preset typed in the text box and closes it; without a name and a character, says what it needs.
 function MT.AddTyped(text)
   local name, to, words = parsePreset(text)
-  if not name then return ns.Chat("A preset needs a name and a character, such as: Smith Bobalt iron") end
+  if not name then return ns.Chat(L["A preset needs a name and a character, such as: Smith Bobalt iron"]) end
   MT.AddPreset(name, to, words)
   MT.PaintPresets()
   ns.HideText()
@@ -581,15 +586,15 @@ end
 
 -- Lists the presets.
 local function listPresets()
-  for _, p in ipairs(MT.settings.presets) do ns.Chat(string.format("%s: to %s, %s", p.name, p.to, p.words ~= "" and p.words or "every item")) end
-  if #MT.settings.presets == 0 then ns.Chat("No presets yet. /vg mail preset add <name> <character> [words]") end
+  for _, p in ipairs(MT.settings.presets) do ns.Chat(ns.Format(L["{preset}: to {to}, {words}"], { preset = p.name, to = p.to, words = p.words ~= "" and p.words or L["every item"] })) end
+  if #MT.settings.presets == 0 then ns.Chat(L["No presets yet. /vg mail preset add <name> <character> [words]"]) end
 end
 
 -- /vg mail preset [add <name> <character> [words]|remove <name>]: lists, adds or removes.
 function MT.PresetCommand(arg)
   local verb, rest = arg:match("^(%S*)%s*(.-)$")
   local name, to, words = parsePreset(rest)
-  if verb == "add" and not name then ns.Chat("/vg mail preset add <name> <character> [words the item's name holds]")
+  if verb == "add" and not name then ns.Chat(L["/vg mail preset add <name> <character> [words the item's name holds]"])
   elseif verb == "add" then MT.AddPreset(name, to, words)
   elseif verb == "remove" then removePreset(rest)
   else listPresets() end
@@ -599,15 +604,15 @@ end
 -- Prints the inbox mails matching the words, up to the panel's rows.
 function MT.Search(words)
   local found = MT.Find(words)
-  if #found == 0 then return ns.Chat("No mail matches.") end
+  if #found == 0 then return ns.Chat(L["No mail matches."]) end
   for i = 1, math.min(#found, MT.ROWS) do ns.Chat(string.format("%d. %s", found[i].index, describe(found[i]))) end
-  if #found > MT.ROWS then ns.Chat(string.format("+%d more.", #found - MT.ROWS)) end
+  if #found > MT.ROWS then ns.Chat(ns.Format(L["+{count} more."], { count = #found - MT.ROWS })) end
 end
 
 -- /vg mail [words]|preset ...|send <name>|takeall|returnall.
 function MT.Command(rest)
   rest = rest or ""
-  if not MT.settings or not MT.settings.on then return ns.Chat("The mail tools are off (/vg > Town and gear > Mail tools).") end
+  if not MT.settings or not MT.settings.on then return ns.Chat(L["The mail tools are off (/vg > Town and gear > Mail tools)."]) end
   local word, arg = rest:match("^(%S*)%s*(.-)$")
   if word == "preset" then return MT.PresetCommand(arg) end
   if word == "send" then return MT.Send(arg) end
