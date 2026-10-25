@@ -125,9 +125,8 @@ end
 
 -- The threat strip color for a unit, or nil when it has no aggro (or its threat is hidden).
 function RH.ThreatColor(unit)
-  local status = ask(UnitThreatSituation, unit)
-  if ns.IsSecret(status) or type(status) ~= "number" or status < 1 then return nil end
-  return T.TOKENS["threat" .. math.min(status, 3)]
+  local level = ns.ThreatLevel(unit)
+  return level and T.TOKENS["threat" .. level]
 end
 
 -- Buff watch -------------------------------------------------------------------------------

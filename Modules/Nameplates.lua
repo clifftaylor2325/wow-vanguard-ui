@@ -84,9 +84,8 @@ end
 
 -- Your threat color on a unit, or nil when you have none (or it is hidden).
 function NP.ThreatColor(unit)
-  local status = type(UnitThreatSituation) == "function" and UnitThreatSituation("player", unit) or nil
-  if ns.IsSecret(status) or type(status) ~= "number" or status < 1 then return nil end
-  return T.TOKENS["threat" .. math.min(status, 3)]
+  local level = ns.ThreatLevel("player", unit)
+  return level and T.TOKENS["threat" .. level]
 end
 
 -- The bar color: grey on a mob another player has tagged (while the tag marks are on), else threat

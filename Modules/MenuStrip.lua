@@ -375,7 +375,7 @@ end
 -- the mouse) one level under the button (so the button's art and alerts draw
 -- over it), centered on it.
 local function addSlot(b, row)
-  local slot = T.Slot(CreateFrame("Frame", nil, b), { quiet = true, well = true })
+  local slot = T.Slot(CreateFrame("Frame", nil, b), { quiet = true, well = true, noSurface = true })
   slot:SetPoint("CENTER", b, "CENTER")
   slot:SetFrameLevel(math.max(0, b:GetFrameLevel() - 1))
   vgSlot[b], vgRow[b] = slot, row

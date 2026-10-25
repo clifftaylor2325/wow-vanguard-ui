@@ -74,13 +74,14 @@ local function surface(frame)
   return t
 end
 
--- Draws the panel texture over a painted window's fill (one with a shadow, or opts.gradient), or
--- hides the one it drew when the setting goes back to flat. Core/Theme.lua calls it on every repaint.
+-- Draws the panel texture over a painted window's fill (one with a shadow, or opts.gradient, and
+-- without opts.noSurface: the HUD's panels and slots), or hides the one it drew when the setting goes
+-- back to flat. Core/Theme.lua calls it on every repaint.
 ---@param frame table a painted frame
 ---@param entry table its paint entry: opts, and the radius it was painted at
 function T.PaintPanelSurface(frame, entry)
   local opts, path, alpha = entry.opts, T.PanelSurface()
-  if not (opts.shadow or opts.gradient) or not (path or surfaceOf[frame]) then return end
+  if opts.noSurface or not (opts.shadow or opts.gradient) or not (path or surfaceOf[frame]) then return end
   local t = surface(frame)
   t:SetShown(path ~= nil)
   if not path then return end

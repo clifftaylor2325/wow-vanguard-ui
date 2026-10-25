@@ -167,7 +167,7 @@ end
 
 -- The slot tile (a level under the button, so the game's count text draws over it) and the icon on it, made once.
 local function addSlot(obj, icon, glyph)
-  vgSlot[obj] = T.Slot(CreateFrame("Frame", nil, obj))
+  vgSlot[obj] = T.Slot(CreateFrame("Frame", nil, obj), { noSurface = true })
   vgSlot[obj]:SetAllPoints(obj)
   vgSlot[obj]:SetFrameLevel(math.max(0, obj:GetFrameLevel() - 1))
   vgGlyph[obj] = T.Snap(vgSlot[obj]:CreateTexture(nil, "OVERLAY"))

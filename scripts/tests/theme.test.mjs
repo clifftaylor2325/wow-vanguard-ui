@@ -1,7 +1,7 @@
 // theme: Vanguard's real Lua in the TEST-ONLY headless client (scripts/lib/lua-harness.mjs).
 
 import { expect, it } from "vitest";
-import { CLICK_LUA, borderOf, button, chatHas, isTok, loggedIn, px, setCombat, tok, UNITS_ENV } from "./helpers.mjs";
+import { CLICK_LUA, MICRO_ENV, TIDY_ENV, UI_ENV, borderOf, button, chatHas, isTok, loggedIn, px, setCombat, tok, UNITS_ENV } from "./helpers.mjs";
 
 it("theme", () => {
   const addon = loggedIn();
@@ -1258,6 +1258,21 @@ it("panel texture (#647): flat by default; a pick draws its surface over floatin
   addon.slash("variant default");
   addon.eval('ns.Theme.Settings().panelTexture = "flat" ns.Theme.Refresh()');
   expect([surfaceOf(addon, "__win"), addon.eval("return VanguardDB.profiles.Default.theme.panelTexture")], "Flat hides it again; the pick is kept in the profile").toEqual([false, "flat"]);
+});
+
+it("panel texture: never on the HUD: a HUD panel with Soft shadows under frames on, and a HUD slot, stay flat", () => {
+  const addon = loggedIn(`ns.Theme.Settings().hudShadow = true ns.Theme.Settings().panelTexture = "stone"
+    __hud = ns.Theme.HudPanel(CreateFrame("Frame", nil, UIParent)) __hudSlot = ns.Theme.Slot(CreateFrame("Frame", nil, UIParent), { noSurface = true })
+    __slot = ns.Theme.Slot(CreateFrame("Frame", nil, UIParent)) ns.Theme.Refresh()`);
+  expect(addon.eval("return ns.Theme.Settings().hudShadow"), "Soft shadows under frames is on").toBe(true);
+  expect([surfaceOf(addon, "__hud"), surfaceOf(addon, "__hudSlot")], "the HUD panel and the HUD slot draw no surface").toEqual([false, false]);
+  expect(surfaceOf(addon, "__slot")[0], "a slot inside a window keeps it").toBe("PanelStone");
+});
+
+it("panel texture: the minimap's button slots and the menu strip's wells stay flat under a pick", () => {
+  const addon = loggedIn(UI_ENV + TIDY_ENV + MICRO_ENV);
+  addon.eval('ns.Theme.Settings().panelTexture = "stone" ns.Theme.Refresh() __mapSlot = ns.FrameState("vgSlot")[MinimapCluster.Tracking] __well = ns.FrameState("vgSlot")[CharacterMicroButton]');
+  expect([surfaceOf(addon, "__mapSlot"), surfaceOf(addon, "__well")], "no surface on either").toEqual([false, false]);
 });
 
 it("panel texture: the picker lists Vanguard's, the game's and other addons' backgrounds, and a name no longer shared draws flat", () => {

@@ -91,6 +91,17 @@ function ns.PlainNumber(value)
   return value
 end
 
+-- A threat level (1 to 3) from UnitThreatSituation with these arguments, or nil when there is no
+-- aggro, the client hides threat (the raw result may be secret, so it is never truth-tested) or the
+-- client lacks the call.
+---@return number|nil
+function ns.ThreatLevel(...)
+  if type(UnitThreatSituation) ~= "function" then return nil end
+  local status = ns.PlainNumber(UnitThreatSituation(...))
+  if status == nil or status < 1 then return nil end
+  return math.min(status, 3)
+end
+
 -- The value if it's a plain, non-empty string; nil for a hidden value, a non-string or "".
 ---@param value any
 ---@return string|nil
