@@ -256,6 +256,13 @@ it("group board: a Trade line naming a dungeon the list lacks still shows as 'An
   expect(chatHas(addon, /Last line that was not a post: LFW/), "the probe quotes the last miss").toBe(true);
 });
 
+it("group board: the probe's last line keeps its first 80 characters whole, never half of one", () => {
+  const addon = board();
+  post(addon, "a" + "é".repeat(100), "Crafty-Ruleset");
+  addon.slash("lfg probe");
+  expect(chatHas(addon, new RegExp("Last line that was not a post: aé{79}$")), "79 whole é after the a, no stray byte").toBe(true);
+});
+
 // The theme numbers the board is laid out with: pad, gap, row height, button height, dialog alpha, the close
 // button's inset, and the title and small role sizes.
 const tokens = (addon) => addon.eval(`local T = ns.Theme
