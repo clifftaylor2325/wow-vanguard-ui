@@ -319,6 +319,9 @@ it("slash commands for frames, accent, grid, theme, modules, skins, profile and 
   // TEST-ONLY module name that does not exist.
   addon.slash("enable NoSuch");
   expect(chatHas(addon, /No module called NoSuch/), "an unknown module is refused").toBeTruthy();
+  addon.slash("enable");
+  addon.slash("disable");
+  expect([chatHas(addon, /Usage: \/vg enable <module>\. \/vg modules lists them\.$/), chatHas(addon, /Usage: \/vg disable <module>\./), chatHas(addon, /No module called \./)], "no name: the usage line, not an empty name").toEqual([true, true, false]);
   addon.slash("skins TESTONLY on");
   expect(chatHas(addon, /Skin for TESTONLY on/), "/vg skins on stores the choice").toBeTruthy();
   addon.slash("skins testonly OFF");
