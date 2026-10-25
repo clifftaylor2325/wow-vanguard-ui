@@ -434,6 +434,13 @@ it("a partial string merges into the profile: what it carries wins, what it does
   expect(dst.eval("local o = ns.Settings('Situations').overrides return { o.raid.settings == nil, o.raid.positions.minimap.alpha, o.party.positions.minimap.scale }"), "a situation's override is replaced whole; the others stay").toEqual([true, 0.5, 2]);
   expect(imports(dst, encoded(dst, "parts", "{ format = 2 }")).m, "a string that names no parts still says where it went").toBe("Imported its settings into profile Default.");
 });
+it("a partial string that carries the theme keeps this player's own Pixel-perfect switch and multiple", () => {
+  const src = loggedIn("", { savedVariables: "VanguardDB.profiles.Default = { theme = { pixelScale = true, pixelMultiple = 2, reduceMotion = true } }\n" });
+  const global = src.eval('return ns.ExportProfile("global")');
+  const dst = loggedIn();
+  expect(imports(dst, global).m, "the Global settings part imports into the profile in use").toMatch(/^Imported .* into profile Default\.$/);
+  expect(dst.eval("local t = ns.Theme.Settings() return { t.pixelScale, t.pixelMultiple, t.reduceMotion }"), "the string's theme, without the other screen's pixel-perfect scale").toEqual([false, 0, true]);
+});
 it("export with Include parts: /vg export <part ...>, and the export panel's switches", () => {
   const addon = loggedIn();
   addon.eval('ns.Profile().positions = { uf_player = { point = "TOP", relPoint = "TOP", x = 1, y = -2 } }');

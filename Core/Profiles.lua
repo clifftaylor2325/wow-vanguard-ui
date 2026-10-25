@@ -220,8 +220,10 @@ local function importWhole(data, result)
   return "Imported as profile " .. name .. "; this character will use it after a reload."
 end
 
--- A partial string: its tables merge into the active profile, key by key.
+-- A partial string: its tables merge into the active profile, key by key; a theme it carries keeps
+-- this player's own pixel-perfect switch and multiple, as a whole profile does (ownPixelScale).
 local function importParts(data)
+  if type(data.theme) == "table" then ownPixelScale(data) end
   ns.MergeParts(ns.Profile(), data)
   return "Imported " .. ns.PartsText(data) .. " settings into profile " .. ns.ProfileName() .. "."
 end
