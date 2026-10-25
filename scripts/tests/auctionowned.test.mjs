@@ -416,6 +416,16 @@ it("disenchant values: the switch is on for enchanters until set, in the Auction
   addon.eval("C_SkillInfo = nil");
   expect(addon.eval("return ns.AuctionPrices.HasEnchanting()"), "a client that can't say: not an enchanter").toBe(false);
 });
+it("disenchant values: the switch's reset dot puts it back to following Enchanting", () => {
+  const addon = loggedIn(AH_ENV + GEAR + CLICK_LUA);
+  addon.eval(MATS);
+  addon.eval('ns.Options.Show("town")');
+  addon.eval('__click("Disenchant values in tooltips")');
+  addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.reset and w.reset:IsShown() then w.reset:GetScript("OnClick")(w.reset) end end`);
+  expect([addon.eval("return ns.Settings('AuctionHelper').disenchant"), tipOf(addon, 9101)], "reset: not set, so off for a non-enchanter").toEqual([null, []]);
+  addon.eval(ENCHANTER);
+  expect(tipOf(addon, 9101), "learning Enchanting later turns it on").toEqual(["Disenchant: ~4s 87c"]);
+});
 // Deals ----------------------------------------------------------------------------------------
 
 // Today, as the price store counts days, at the TEST-ONLY clock.

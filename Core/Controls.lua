@@ -592,14 +592,14 @@ local function addTrack(r)
   wireDrag(r)
 end
 
--- Clicking the caption steps up, wrapping to the minimum after the maximum.
+-- Clicking the caption steps up, wrapping to the minimum after the maximum: the slider's, or the setting's
+-- own where it keeps to a narrower range (a frame's size), so a step up there changes nothing.
 local function stepOrWrap(r)
-  if r.get() >= r.max then
-    r.set(r.min)
-    r:Refresh()
-  else
-    stepBy(r, 1)
-  end
+  local before = r.get()
+  if before < r.max then stepBy(r, 1) end
+  if r.get() ~= before then return end
+  r.set(r.min)
+  r:Refresh()
 end
 
 -- A locked slider's tooltip: why it's locked, and how to unlock it.

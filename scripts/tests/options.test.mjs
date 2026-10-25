@@ -187,6 +187,32 @@ it("options: Delete, Copy here, Reset profile and Start over say what they lose;
   expect(chatHas(addon, /Profile Default as it was is saved as profile Default backup\./), "and says where the copy went").toBe(true);
 });
 
+it("options: after Copy here or Reset profile on the profile in use, the footer says to reload before changing more", () => {
+  // The footer's reload notice: shown, and its text.
+  const notice = (addon) => addon.eval("return { Vanguard_Options.notice:IsShown(), Vanguard_Options.notice:GetText() }");
+  const staged = loggedIn(CLICK_LUA);
+  staged.eval('ns.NewProfile("TEST-ONLY Healer") ns.NewProfile("TEST-ONLY Tank") ns.Options.Show("profiles")');
+  profileButton(staged, "TEST-ONLY Tank", "use");
+  profileButton(staged, "TEST-ONLY Healer", "copy");
+  profileButton(staged, "TEST-ONLY Healer", "copy");
+  expect(notice(staged), "Copy here into the staged profile leaves the profile on screen alone: the usual notice").toEqual([true, "Some changes need a reload"]);
+  const copied = loggedIn(CLICK_LUA);
+  copied.eval('ns.NewProfile("TEST-ONLY Healer") ns.Options.Show("profiles")');
+  profileButton(copied, "TEST-ONLY Healer", "copy");
+  profileButton(copied, "TEST-ONLY Healer", "copy");
+  expect(notice(copied), "Copy here into the profile in use: the modules keep its old settings until the reload").toEqual([true, "Profile replaced: reload before you change more"]);
+  const reset = loggedIn(CLICK_LUA);
+  reset.eval('ns.Options.Show("profiles") __click("Reset profile") Vanguard_Question.confirm:GetScript("OnClick")(Vanguard_Question.confirm)');
+  expect(notice(reset), "Reset profile says the same").toEqual([true, "Profile replaced: reload before you change more"]);
+  const startOver = loggedIn(CLICK_LUA);
+  startOver.eval('ns.Options.Show("profiles") __click("Start over: reset and run setup") Vanguard_Question.confirm:GetScript("OnClick")(Vanguard_Question.confirm)');
+  expect(notice(startOver), "so does Start over").toEqual([true, "Profile replaced: reload before you change more"]);
+  const typed = loggedIn(CLICK_LUA);
+  typed.eval('ns.NewProfile("TEST-ONLY Healer")');
+  typed.slash("profile copy TEST-ONLY Healer");
+  typed.eval('ns.Options.Show("profiles")');
+  expect(notice(typed), "and /vg profile copy, the window opened after it").toEqual([true, "Profile replaced: reload before you change more"]);
+});
 it("options: profiles in the window", () => {
   const addon = loggedIn(CLICK_LUA);
   addon.eval('ns.NewProfile("TEST-ONLY Healer") ns.NewProfile("TEST-ONLY Tank") ns.Options.Show("profiles")');

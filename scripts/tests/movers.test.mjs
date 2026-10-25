@@ -297,6 +297,16 @@ const sliderRow = (text) => `(function() for _, w in ipairs(__wfgStub.frames) do
 // The default tooltip's lines' text.
 const tipLines = (addon) => addon.eval("local out = {} for i, l in ipairs(GameTooltip.__lines or {}) do out[i] = l.text end return out");
 
+it("a frame's size slider: a caption click at the frame's own maximum wraps to its minimum", () => {
+  const addon = loggedIn(BOX);
+  addon.eval('ns.Options.Show("general")');
+  addon.eval('for _, w in ipairs(__wfgStub.frames) do if w.dropdown and w.caption == "Frame to size" then w.dropdown.set("xpbar") end end');
+  addon.eval(`local r = ${sliderRow("Its height")} r.set(40) r:Refresh()`);
+  addon.eval(`local r = ${sliderRow("Its height")} r:GetScript("OnClick")(r)`);
+  expect(sizes(addon)[3], "the XP bar's height is 2 to 40 (the slider goes to 80): from 40 the click wraps").toBe(2);
+  addon.eval(`local r = ${sliderRow("Its height")} r:GetScript("OnClick")(r)`);
+  expect(sizes(addon)[3], "and the next click steps up again").toBe(3);
+});
 it("a frame's own size under General → Layout: set for a frame Vanguard sizes, locked with why while matched or for one that sizes itself", () => {
   const addon = loggedIn(BOX);
   addon.eval('ns.Options.Show("general")');

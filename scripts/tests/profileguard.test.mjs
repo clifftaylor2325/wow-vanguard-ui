@@ -95,6 +95,17 @@ it("settings-loss guard: a pasted whole profile answers the loss at logout", () 
   lost.fire("PLAYER_LOGOUT");
   expect(lost.eval("return VanguardCharDB.guard.stamp ~= 5 and VanguardDB.guard.chars['Tester-ForeverTest'].profile"), "so logout stamps both files, noting the imported profile").toBe("Imported");
 });
+it("settings-loss guard: a pasted whole profile that matches the profile in use answers the loss too", () => {
+  const lost = relog(loggedIn(CLICK_LUA), { char: "{ guard = { stamp = 9999999999 } }" });
+  expect(lost.eval("return ns.SettingsGuard.Lost()"), "the account file is older than this character's stamp").toBe("account");
+  const text = lost.eval("return ns.ExportProfile()");
+  answer(lost, true);
+  lost.eval(`Vanguard_TextEdit:SetText(${JSON.stringify(text)}) Vanguard_TextDialog.primary:GetScript("OnClick")(Vanguard_TextDialog.primary)`);
+  expect(chatHas(lost, /matches profile Default, which this character already uses/), "the string is the profile in use: nothing is staged").toBe(true);
+  expect([lost.eval("return ns.SettingsGuard.Lost()"), lost.eval("return ns.PendingProfileName()")], "the loss is answered all the same").toEqual([null, null]);
+  lost.fire("PLAYER_LOGOUT");
+  expect(lost.eval("return VanguardCharDB.guard.stamp ~= 9999999999 and VanguardDB.guard.chars['Tester-ForeverTest'].profile"), "so logout stamps both files").toBe("Default");
+});
 it("settings-loss guard: a backup that can't be read says so; a damaged guard and a name that isn't a profile name", () => {
   const broken = relog(loggedIn(CLICK_LUA), { account: '{ guard = "TEST-ONLY" }', char: '{ guard = { stamp = 5, profile = "TEST-ONLY/bad", backup = "TEST-ONLY" } }' });
   expect(question(broken), "a damaged account guard counts as blank; a bad name restores as Restored").toBe("Vanguard's saved settings didn't load. Restore profile Restored from this character's backup?");

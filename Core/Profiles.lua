@@ -209,9 +209,11 @@ end
 -- A whole imported profile: saved under a free name (without its display block, which goes
 -- in the result, and with this player's pixel-perfect scale), and this character switches to it
 -- on reload; one that matches a profile this account has uses that profile instead of making another copy.
+-- Either way it answers a settings loss (Core/SettingsGuard.lua).
 local function importWhole(data, result)
   result.display = takeDisplay(data)
   ownPixelScale(data)
+  ns.SettingsGuard.Imported()
   local match = ns.MatchingProfile(ns.StripPayload(data))
   if match then return importMatch(match, result) end
   local name = freeName("Imported")
@@ -220,8 +222,10 @@ local function importWhole(data, result)
   return "Imported as profile " .. name .. "; this character will use it after a reload."
 end
 
--- A partial string: its tables merge into the active profile, key by key.
+-- A partial string: its tables merge into the active profile, key by key; a theme it carries keeps
+-- this player's own pixel-perfect switch and multiple, as a whole profile does (ownPixelScale).
 local function importParts(data)
+  if type(data.theme) == "table" then ownPixelScale(data) end
   ns.MergeParts(ns.Profile(), data)
   return "Imported " .. ns.PartsText(data) .. " settings into profile " .. ns.ProfileName() .. "."
 end

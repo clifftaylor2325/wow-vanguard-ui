@@ -401,6 +401,7 @@ local PROFILE_ACTIONS = {
   copy = function(name)
     local into = ns.CopyProfile(name)
     if not into then return chat("No other profile called " .. name .. ".") end
+    ns.Options.ProfileCopied(into)
     ns.OfferReload("Copied " .. name .. " into " .. into .. ".")
   end,
   -- /vg profile delete <name>
