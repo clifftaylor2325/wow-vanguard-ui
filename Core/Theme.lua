@@ -1296,7 +1296,8 @@ end
 -- top. opts: inset (darker) or raised (lighter), accent (accent border),
 -- alpha (fill opacity), shadow (soft drop shadow, for floating windows),
 -- pad (draw it all that many units out past the frame's edges: room around
--- a game window's contents), gradient (the panel gradient without a shadow), noBorder, noBg, noSheen.
+-- a game window's contents), gradient (the panel gradient without a shadow), noBorder, noBg, noSheen,
+-- noSurface (never the panel texture: the HUD).
 function T.Panel(frame, opts)
   local entry = base(frame, "panel", opts)
   repaint(frame, entry)
@@ -1305,11 +1306,11 @@ end
 
 -- A panel for the HUD (unit frames, bars, the minimap...): T.Panel without
 -- the sheen, and with a soft shadow only when "Soft shadows under frames" is
--- on, so the screen stays calm. Floating windows use T.Panel's shadow.
+-- on, so the screen stays calm. Floating windows use T.Panel's shadow. Never the panel texture.
 function T.HudPanel(frame, opts)
   local o = {}
   for k, v in pairs(opts or {}) do o[k] = v end
-  o.noSheen, o.shadow = true, T.Settings().hudShadow == true
+  o.noSheen, o.shadow, o.noSurface = true, T.Settings().hudShadow == true, true
   return T.Panel(frame, o)
 end
 
@@ -1582,12 +1583,13 @@ end
 -- A well's fill and border (T.Slot with opts.well): darker than the slate, ringed in a lighter line.
 T.SLOT_WELL = { fill = "void", border = "darkBar" }
 
--- A slot's painting options from T.Slot's opts (quiet, well).
+-- A slot's painting options from T.Slot's opts (quiet, well, noSurface).
 local function slotOpts(opts)
   local well = opts ~= nil and opts.well == true
   return {
     raised = not well, fill = well and T.SLOT_WELL.fill or nil, border = well and { T.RGB(T.SLOT_WELL.border) } or nil, well = well,
     noSheen = true, noBevel = true, shadow = T.SLOT_SHADOW, quiet = opts ~= nil and opts.quiet == true,
+    noSurface = opts ~= nil and opts.noSurface == true,
   }
 end
 
@@ -1597,7 +1599,8 @@ end
 -- soft shadow. The accent edge follows the accent and T.SlotState; with
 -- opts.quiet it stays hidden until the slot has a state (the mouse over it, or held).
 -- With opts.well it is a dark well instead (T.SLOT_WELL, no bevel), for art
--- that isn't a full square icon to stand out on.
+-- that isn't a full square icon to stand out on. A slot on the HUD passes
+-- opts.noSurface, so the panel texture stays off it.
 function T.Slot(frame, opts)
   local entry = painted[frame]
   if not entry then
