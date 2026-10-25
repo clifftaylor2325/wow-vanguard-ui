@@ -7,6 +7,7 @@
 -- (its canvas isn't the zone the map names, so a pin would land in the wrong spot).
 
 local ADDON, ns = ...
+local L = ns.L
 
 local T = ns.Theme
 local QP = ns.QuestParts
@@ -60,17 +61,17 @@ function QG.PinTooltip(pin)
   local tip = GameTooltip
   if not tip or not pin.start then return end
   tip:SetOwner(pin, "ANCHOR_RIGHT")
-  tip:SetText(pin.start.name or "Quest start")
+  tip:SetText(pin.start.name or L["Quest start"])
   local level, repeats = startFacts(pin.start.questID)
-  if level then tip:AddLine("Level " .. level, QP.LevelColor(level)) end
-  if repeats then tip:AddLine(T.Paint("Repeatable", "text2")) end
-  tip:AddLine(T.Paint("Quest starts here. Click: point the arrow here", "text2"))
+  if level then tip:AddLine(ns.Format(L["Level {level}"], { level = level }), QP.LevelColor(level)) end
+  if repeats then tip:AddLine(T.Paint(L["Repeatable"], "text2")) end
+  tip:AddLine(T.Paint(L["Quest starts here. Click: point the arrow here"], "text2"))
   tip:Show()
 end
 
 -- A click on a pin: a map waypoint on it, which the arrow points at.
 function QG.OnPin(pin)
-  if ns.GetModule("Waypoints").Set(pin.mapID, pin.start.x, pin.start.y) then ns.Chat("Arrow: " .. (pin.start.name or "quest start") .. ".") end
+  if ns.GetModule("Waypoints").Set(pin.mapID, pin.start.x, pin.start.y) then ns.Chat(ns.Format(L["Arrow: {quest}."], { quest = pin.start.name or L["quest start"] })) end
 end
 
 -- A pin on the map's canvas: Vanguard's gold quest-start "!" (the quest dialog's mark) on a small inset square.

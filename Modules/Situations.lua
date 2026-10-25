@@ -18,14 +18,15 @@
 -- saved and exported with its own values, never an override's.
 
 local ADDON, ns = ...
+local L = ns.L
 
 local SI = ns.Module("Situations", { defaults = { enabled = true, overrides = {} } })
 
 -- The situations, in precedence order (the first that holds is the one you're in), and their names.
 SI.NAMES = { "pvp", "instance", "raid", "party", "resting", "solo" }
-SI.LABELS = { pvp = "PvP", instance = "Instance", raid = "Raid", party = "Party", resting = "Resting", solo = "Solo" }
+SI.LABELS = { pvp = L["PvP"], instance = L["Instance"], raid = L["Raid"], party = L["Party"], resting = L["Resting"], solo = L["Solo"] }
 -- The options' Record for choices.
-SI.CHOICES = { { "off", "Off" }, { "solo", "Solo" }, { "party", "Party" }, { "raid", "Raid" }, { "pvp", "PvP" }, { "instance", "Instance" }, { "resting", "Resting" } }
+SI.CHOICES = { { "off", L["Off"] }, { "solo", SI.LABELS.solo }, { "party", SI.LABELS.party }, { "raid", SI.LABELS.raid }, { "pvp", SI.LABELS.pvp }, { "instance", SI.LABELS.instance }, { "resting", SI.LABELS.resting } }
 -- The client's instance types (ns.Where) that are a situation of their own.
 SI.KINDS = { pvp = "pvp", arena = "pvp", party = "instance", raid = "instance" }
 -- The settings an override may hold: each module's keys that its apply functions
@@ -39,7 +40,7 @@ SI.LIVE = {
 }
 -- The live modules in the order the status line names them, and the names it uses.
 SI.ORDER = { "InfoStrip", "MenuStrip", "DataBars", "Nameplates", "UnitFrames" }
-SI.MODULE_LABELS = { InfoStrip = "info strip", MenuStrip = "menu bar", DataBars = "XP bars", Nameplates = "nameplates", UnitFrames = "unit frames" }
+SI.MODULE_LABELS = { InfoStrip = L["info strip"], MenuStrip = L["menu bar"], DataBars = L["XP bars"], Nameplates = L["nameplates"], UnitFrames = L["unit frames"] }
 -- The events after which you may be somewhere else.
 SI.EVENTS = { "GROUP_ROSTER_UPDATE", "PLAYER_ENTERING_WORLD", "ZONE_CHANGED_NEW_AREA", "PLAYER_UPDATE_RESTING" }
 
@@ -218,7 +219,7 @@ end
 function SI.Count(ov)
   local frames, parts = 0, {}
   for _ in pairs(tbl(ov.positions)) do frames = frames + 1 end
-  if frames > 0 then parts[1] = frames == 1 and "1 frame" or frames .. " frames" end
+  if frames > 0 then parts[1] = frames == 1 and L["1 frame"] or ns.Format(L["{count} frames"], { count = frames }) end
   local n = frames
   for _, module in ipairs(SI.ORDER) do
     local c = countSettings(ov, module)
@@ -235,9 +236,9 @@ end
 
 -- "3 overrides (2 frames, info strip)", or "no overrides".
 function SI.Describe(ov)
-  if not ov then return "no overrides" end
+  if not ov then return L["no overrides"] end
   local n, parts = SI.Count(ov)
-  return string.format("%d override%s (%s)", n, n == 1 and "" or "s", table.concat(parts, ", "))
+  return ns.Format(n == 1 and L["1 override ({changes})"] or L["{count} overrides ({changes})"], { count = n, changes = table.concat(parts, ", ") })
 end
 
 -- Applying -------------------------------------------------------------------------------------
@@ -345,7 +346,7 @@ function SI.StartRecording(name)
   SI.RestoreBase()
   SI.applied, SI.base, SI.recording = nil, SI.Snapshot(), name
   write(tbl(tbl(db().overrides)[name]))
-  ns.SetMoverSuffix(" · recording " .. SI.LABELS[name])
+  ns.SetMoverSuffix(ns.Format(L[" · recording {situation}"], { situation = SI.LABELS[name] }))
   return true
 end
 
@@ -391,16 +392,16 @@ ns.OnProfileChanged(SI.ProfileChanged)
 -- Commands and options ---------------------------------------------------------------------------
 
 -- The page's status line while the module is off under Modules.
-SI.OFF_TEXT = "Situations is off under Modules: overrides don't apply."
+SI.OFF_TEXT = L["Situations is off under Modules: overrides don't apply."]
 
 -- The page's status line: the situation you're in and what its override changes, or what's being recorded.
 function SI.StatusText()
   if not SI.settings then return SI.OFF_TEXT end
   if SI.recording then
-    return "Recording for " .. SI.LABELS[SI.recording] .. ": move frames and change settings, then stop recording."
+    return ns.Format(L["Recording for {situation}: move frames and change settings, then stop recording."], { situation = SI.LABELS[SI.recording] })
   end
   local name = SI.Where()
-  return "Now: " .. SI.LABELS[name] .. " · " .. SI.Describe(SI.Override(name))
+  return ns.Format(L["Now: {situation} · {overrides}"], { situation = SI.LABELS[name], overrides = SI.Describe(SI.Override(name)) })
 end
 
 -- Prints where you are and every situation's override.
@@ -413,13 +414,13 @@ function SI.List()
 end
 
 -- What a command with an unknown situation says.
-SI.UNKNOWN = "Situations: solo, party, raid, pvp, instance or resting."
+SI.UNKNOWN = L["Situations: solo, party, raid, pvp, instance or resting."]
 
 -- Starts recording from a command or the options, and says how it went.
 local function record(name)
   if not SI.LABELS[name] then return ns.Chat(SI.UNKNOWN) end
-  if not SI.StartRecording(name) then return ns.Chat("Recording waits until combat ends.") end
-  ns.Chat("Recording for " .. SI.LABELS[name] .. ": move frames (/vg unlock) and change settings, then /vg situation stop.")
+  if not SI.StartRecording(name) then return ns.Chat(L["Recording waits until combat ends."]) end
+  ns.Chat(ns.Format(L["Recording for {situation}: move frames (/vg unlock) and change settings, then /vg situation stop."], { situation = SI.LABELS[name] }))
   ns.Options.RebuildPage("situations")
 end
 
@@ -427,8 +428,8 @@ end
 local function stop()
   local name = SI.recording
   local stopped, ov = SI.StopRecording()
-  if not stopped then return ns.Chat("Not recording.") end
-  ns.Chat(SI.LABELS[name] .. ": " .. SI.Describe(ov and SI.Override(name)) .. " saved.")
+  if not stopped then return ns.Chat(L["Not recording."]) end
+  ns.Chat(ns.Format(L["{situation}: {overrides} saved."], { situation = SI.LABELS[name], overrides = SI.Describe(ov and SI.Override(name)) }))
   ns.Options.RebuildPage("situations")
 end
 
@@ -437,7 +438,7 @@ local function clear(name)
   name = name ~= "" and name or SI.Where()
   if not SI.LABELS[name] then return ns.Chat(SI.UNKNOWN) end
   SI.Clear(name)
-  ns.Chat("Cleared the overrides for " .. SI.LABELS[name] .. ".")
+  ns.Chat(ns.Format(L["Cleared the overrides for {situation}."], { situation = SI.LABELS[name] }))
 end
 
 -- /vg situation [record <name> | stop | clear [name] | list].
@@ -447,7 +448,7 @@ function SI.Command(rest)
   if verb == "stop" then return stop() end
   if verb == "clear" then return clear(arg) end
   if verb == "" or verb == "list" then return SI.List() end
-  ns.Chat("Usage: /vg situation [record <name> | stop | clear [name] | list]")
+  ns.Chat(L["Usage: /vg situation [record <name> | stop | clear [name] | list]"])
 end
 
 -- The Record for choice: the situation being recorded, or "off".
@@ -461,27 +462,25 @@ function SI.SetRecording(name)
 end
 
 -- What the page says first, as one note.
-SI.INTRO = "Overrides for Solo, Party, Raid, PvP, Instance and Resting: frame spots, scale, opacity, visibility, "
-  .. "info strip blocks and nameplate switches, applied out of combat. A change to something the active override "
-  .. "sets lasts until you leave the situation."
+SI.INTRO = L["Overrides for Solo, Party, Raid, PvP, Instance and Resting: frame spots, scale, opacity, visibility, info strip blocks and nameplate switches, applied out of combat. A change to something the active override sets lasts until you leave the situation."]
 -- What the Your situations card says with no override yet.
-SI.EMPTY = "No overrides yet. Pick Record for to make one."
+SI.EMPTY = L["No overrides yet. Pick Record for to make one."]
 
 -- What an override can hold, in plain words: each live module's settings (SI.ORDER), after frames.
 SI.HOLDS = {
-  InfoStrip = "Info strip: when it shows, and each of its blocks.",
-  MenuStrip = "Menu bar: when it shows.",
-  DataBars = "XP bars: when they show.",
-  Nameplates = "Nameplates: levels, threat colors, target border and quest marks.",
-  UnitFrames = "Unit frames: the Calm HUD.",
+  InfoStrip = L["Info strip: when it shows, and each of its blocks."],
+  MenuStrip = L["Menu bar: when it shows."],
+  DataBars = L["XP bars: when they show."],
+  Nameplates = L["Nameplates: levels, threat colors, target border and quest marks."],
+  UnitFrames = L["Unit frames: the Calm HUD."],
 }
 -- What the page says about every other setting.
-SI.ELSEWHERE = "Everything else, including any setting that needs a reload, changes your base profile even while recording. While recording, most of them are dimmed and say so when you point at them."
+SI.ELSEWHERE = L["Everything else, including any setting that needs a reload, changes your base profile even while recording. While recording, most of them are dimmed and say so when you point at them."]
 
 -- Adds the card that says what an override can hold, and what it can't, to a page's rows; returns them.
 function SI.HoldRows(rows)
-  rows[#rows + 1] = { "header", "What an override holds" }
-  rows[#rows + 1] = { "text", "Frame spots, scale and opacity (move frames with /vg unlock)." }
+  rows[#rows + 1] = { "header", L["What an override holds"] }
+  rows[#rows + 1] = { "text", L["Frame spots, scale and opacity (move frames with /vg unlock)."] }
   for _, module in ipairs(SI.ORDER) do rows[#rows + 1] = { "text", SI.HOLDS[module] } end
   rows[#rows + 1] = { "text", SI.ELSEWHERE }
   return rows
@@ -495,15 +494,15 @@ end
 -- One situation's override on the Your situations card: "Raid (now): 2 overrides (...)", then its Clear.
 -- (The page is built again when you move between situations, record, stop or clear.)
 local function situationRows(rows, name, ov, now)
-  local label = SI.LABELS[name] .. (name == now and " (now)" or "")
+  local label = name == now and ns.Format(L["{situation} (now)"], { situation = SI.LABELS[name] }) or SI.LABELS[name]
   rows[#rows + 1] = { "text", label .. ": " .. SI.Describe(ov) }
-  rows[#rows + 1] = { "button", "Clear " .. SI.LABELS[name], function() clear(name) end, function() return clearable(name) end }
+  rows[#rows + 1] = { "button", ns.Format(L["Clear {situation}"], { situation = SI.LABELS[name] }), function() clear(name) end, function() return clearable(name) end }
 end
 
 -- The Your situations card: every situation with an override, in precedence order, or a line saying there are none.
 local function yourRows(rows)
   local before, now = #rows, SI.Where()
-  rows[#rows + 1] = { "header", "Your situations" }
+  rows[#rows + 1] = { "header", L["Your situations"] }
   for _, name in ipairs(SI.NAMES) do
     local ov = SI.Override(name)
     if ov then situationRows(rows, name, ov, now) end
@@ -515,15 +514,15 @@ end
 -- The Situations page's rows.
 function SI.Rows()
   return SI.HoldRows(yourRows({
-    { "header", "Situations" }, { "text", SI.INTRO, "note" },
-    { "check", "Apply situation overrides", function() return db().enabled end, function(v) db().enabled = v SI.Refresh() end, true },
+    { "header", L["Situations"] }, { "text", SI.INTRO, "note" },
+    { "check", L["Apply situation overrides"], function() return db().enabled end, function(v) db().enabled = v SI.Refresh() end, true },
     { "text", SI.StatusText },
-    { "cycle", "Record for", SI.CHOICES, SI.GetRecording, SI.SetRecording, "off" },
-    { "button", "Stop recording and save", stop, function() return SI.recording ~= nil end },
+    { "cycle", L["Record for"], SI.CHOICES, SI.GetRecording, SI.SetRecording, "off" },
+    { "button", L["Stop recording and save"], stop, function() return SI.recording ~= nil end },
   }))
 end
 
-ns.Options.AddPage({ key = "situations", title = "Situations", icon = "NavSituations", order = 86, rows = SI.Rows })
+ns.Options.AddPage({ key = "situations", title = L["Situations"], icon = "NavSituations", order = 86, rows = SI.Rows })
 
 -- Module entry point (Core/Modules.lua): follows where you are, and applies the override for it.
 function SI.Enable(settings)

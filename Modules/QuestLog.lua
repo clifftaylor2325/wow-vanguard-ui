@@ -7,6 +7,7 @@
 -- tracker's titles open it on that quest.
 
 local ADDON, ns = ...
+local L = ns.L
 
 local QL = ns.Module("QuestLog", { defaults = { own = true, xp = true } })
 
@@ -116,12 +117,19 @@ end
 
 -- Actions ----------------------------------------------------------------------------------------
 
+-- What chat says when the game didn't change a quest's watch, by whether it was watched.
+local UNCHANGED = {
+  [true] = L["The game didn't untrack {quest} ({count} quests tracked)."],
+  [false] = L["The game didn't track {quest} ({count} quests tracked)."],
+}
+
 -- Starts or stops watching the chosen quest, then redraws it so the button shows what the game now says;
 -- says so in chat when the game didn't change it (at its watch limit, say).
 function QL.ToggleTrack(d)
   if d.watched then questLog("RemoveQuestWatch", d.id) else questLog("AddQuestWatch", d.id) end
   if QL.IsWatched(d.id) == d.watched then
-    ns.Chat(("The game didn't %s %s (%d quests tracked)."):format(d.watched and "untrack" or "track", ns.QuestParts.Plain(d.title), #ns.GetModule("QuestTracker").Watched()))
+    local values = { quest = ns.QuestParts.Plain(d.title), count = #ns.GetModule("QuestTracker").Watched() }
+    ns.Chat(ns.Format(UNCHANGED[d.watched == true], values))
   end
   QL.Select(d.id)
 end
@@ -182,14 +190,14 @@ local function abandonAll(list)
     questLog("AbandonQuest")
   end
   QL.marked = {}
-  ns.Chat(string.format("Abandoned %d quest(s).", #list))
+  ns.Chat(ns.Format(L["Abandoned {count} quest(s)."], { count = #list }))
   QL.Refresh()
 end
 
 -- A marked quest's line in the abandon question: its title, and the items abandoning it destroys.
 local function markedLine(e)
   local title, items = ns.QuestParts.Plain(e.title), pickToAbandon(e.id)
-  return items and string.format("%s (destroys %s)", title, items) or title
+  return items and ns.Format(L["{quest} (destroys {items})"], { quest = title, items = items }) or title
 end
 
 -- Asks, naming the marked quests (and the items they destroy), then abandons them all.
@@ -197,12 +205,13 @@ function QL.AbandonMarked()
   local list, names = QL.MarkedQuests(), {}
   for i, e in ipairs(list) do names[i] = markedLine(e) end
   if #list == 0 then return end
-  ns.Ask(string.format("Abandon %d quest(s)?\n%s", #list, table.concat(names, "\n")), "Abandon", function() abandonAll(list) end, nil, "danger")
+  local question = ns.Format(L["Abandon {count} quest(s)?\n{quests}"], { count = #list, quests = table.concat(names, "\n") })
+  ns.Ask(question, L["Abandon"], function() abandonAll(list) end, nil, "danger")
 end
 
 -- Shows the chosen quest on the game's map.
 function QL.ShowOnMap(d)
-  if ns.WindowWaitsForCombat("The world map") then return end
+  if ns.WindowWaitsForCombat(L["The world map"]) then return end
   ns.CallIf(_G, "QuestMapFrame_OpenToQuestDetails", d.id)
 end
 

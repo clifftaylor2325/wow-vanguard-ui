@@ -10,13 +10,14 @@
 -- quests, to find the flag in game.
 
 local ADDON, ns = ...
+local L = ns.L
 
 local T = ns.Theme
 
 local QG = ns.Module("QuestGuide", { defaults = { newMark = true, pins = true, arrow = "quest", stepLine = true } })
 ns.QuestGuide = QG
 
-ns.Options.MODULE_INFO.QuestGuide = { "Quest guidance", "A New mark on quests new in WoW Forever (when the client flags them), quest-start pins on the world map, and the arrow on a tracked quest's next step." }
+ns.Options.MODULE_INFO.QuestGuide = { L["Quest guidance"], L["A New mark on quests new in WoW Forever (when the client flags them), quest-start pins on the world map, and the arrow on a tracked quest's next step."] }
 
 -- The names a new-quest flag would have in the client's enums (lower-case patterns).
 QG.FLAG_NAMES = { "forever", "^new" }
@@ -62,7 +63,7 @@ end
 -- "  New" in the accent after a quest's title, or "" (not new, mark off, or the module off).
 function QG.Mark(questID)
   if not (QG.settings and QG.settings.newMark) or not QG.IsNew(questID) then return "" end
-  return "  " .. T.Paint("New", "accent")
+  return "  " .. T.Paint(L["New"], "accent")
 end
 
 -- The arrow --------------------------------------------------------------------------------------
@@ -93,7 +94,7 @@ end
 -- The quest's title for chat, or "that quest".
 local function titleOf(questID)
   local title = ns.CallIf(C_QuestLog, "GetTitleForQuestID", questID)
-  return (not ns.IsSecret(title) and type(title) == "string") and title or "that quest"
+  return (not ns.IsSecret(title) and type(title) == "string") and title or L["that quest"]
 end
 
 -- Shift-click on a tracked quest: the arrow points at its next step, the game's quest arrow or a
@@ -103,9 +104,9 @@ function QG.Point(questID)
   local first, second = questArrow, waypointArrow
   if QG.settings.arrow == "waypoint" then first, second = waypointArrow, questArrow end
   if first(questID) or second(questID) then
-    ns.Chat("Arrow: " .. titleOf(questID) .. ".")
+    ns.Chat(ns.Format(L["Arrow: {quest}."], { quest = titleOf(questID) }))
   else
-    ns.Chat("The game can't point the arrow at " .. titleOf(questID) .. " from here.")
+    ns.Chat(ns.Format(L["The game can't point the arrow at {quest} from here."], { quest = titleOf(questID) }))
   end
   QG.StepsChanged()
 end
@@ -207,10 +208,10 @@ end
 -- there is Vanguard's panel only; the game's own is its quest marker.
 function QG.Rows()
   return {
-    { "cycle", "Shift-click points", { { "quest", "The game's quest marker" }, { "waypoint", "A map waypoint" } }, setting("arrow", function() end) },
-    { "check", "The followed quest's next step in the tracker", setting("stepLine", QG.StepsChanged) },
-    { "check", "Quest-start pins on the world map", setting("pins", function() QG.MapChanged() end) },
-    { "check", "New mark on quests new in WoW Forever (when the client flags them)", setting("newMark", QG.StepsChanged) },
+    { "cycle", L["Shift-click points"], { { "quest", L["The game's quest marker"] }, { "waypoint", L["A map waypoint"] } }, setting("arrow", function() end) },
+    { "check", L["The followed quest's next step in the tracker"], setting("stepLine", QG.StepsChanged) },
+    { "check", L["Quest-start pins on the world map"], setting("pins", function() QG.MapChanged() end) },
+    { "check", L["New mark on quests new in WoW Forever (when the client flags them)"], setting("newMark", QG.StepsChanged) },
   }
 end
 

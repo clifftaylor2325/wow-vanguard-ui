@@ -5,6 +5,7 @@
 -- (ns.ScrollView), and the chosen quest's line shows the one selected look (W.Row).
 
 local ADDON, ns = ...
+local L = ns.L
 
 local T, W = ns.Theme, ns.Widgets
 local QP = ns.QuestParts
@@ -12,7 +13,7 @@ local QL = ns.GetModule("QuestLog")
 
 QL.W, QL.H, QL.LIST_W, QL.PER_ROW = 640, 440, 230, 2
 -- What the list says when you have no quests, pointing to where they come from.
-QL.EMPTY = "No quests yet. Quest givers show a ! over their heads."
+QL.EMPTY = L["No quests yet. Quest givers show a ! over their heads."]
 
 -- The gaps on the details side: under the title, under the text, above the reward cards, around the money line.
 local TITLE_GAP, TEXT_GAP, REWARDS_GAP, MONEY_GAP = T.SPACE.gap, T.SPACE.col, T.SPACE.col, T.SPACE.gap
@@ -46,7 +47,7 @@ end
 -- The title with the quest count and the close button along the top (Escape closes the window too), the corner
 -- brackets, and the crest behind the top-right corner.
 local function addTop(f)
-  f.count = ns.WindowTitle(f, "Quest log", { count = "", onClose = function() f:Hide() end, escape = true }).count
+  f.count = ns.WindowTitle(f, L["Quest log"], { count = "", onClose = function() f:Hide() end, escape = true }).count
   T.Ornament(f, "corners")
   QP.Watermark(f)
 end
@@ -109,7 +110,7 @@ local function addDetails(f)
 end
 
 -- The buttons along the bottom of the details side.
-QL.BUTTONS = { { "track", "Track", QL.ToggleTrack }, { "share", "Share", QL.Share }, { "abandon", "Abandon", QL.Abandon }, { "map", "Map", QL.ShowOnMap } }
+QL.BUTTONS = { { "track", L["Track"], QL.ToggleTrack }, { "share", L["Share"], QL.Share }, { "abandon", L["Abandon"], QL.Abandon }, { "map", L["Map"], QL.ShowOnMap } }
 
 -- The details buttons' gap and width: all of them span the details column exactly.
 QL.BUTTON_GAP = T.SPACE.gap
@@ -147,7 +148,7 @@ function QL.Build()
   local f = T.Panel(CreateFrame("Frame", "Vanguard_QuestLog", UIParent), { alpha = T.ALPHA.opaque, shadow = true })
   f:SetSize(QL.W, QL.H)
   f:SetFrameStrata("HIGH")
-  ns.Mover(f, "questlog", "Quest log", { "CENTER", "CENTER", -200, 40 })
+  ns.Mover(f, "questlog", L["Quest log"], { "CENTER", "CENTER", -200, 40 })
   addTop(f)
   addList(f)
   addDetails(f)
@@ -234,7 +235,7 @@ end
 -- Redraws the list, and shows the chosen quest (the first one when none is chosen yet).
 function QL.Refresh()
   local f, entries = QL.frame, QL.Entries()
-  f.count:SetText(QL.Count() .. " quests")
+  f.count:SetText(ns.Format(L["{count} quests"], { count = QL.Count() }))
   f.empty:SetShown(#entries == 0)
   f.lines.Reset()
   f.zones.Reset()
@@ -295,7 +296,7 @@ end
 -- The objectives' header: "Objectives" over their rows, "Failed" in the danger colour for a quest that failed
 -- (its rows left out), nothing for a quest without objectives.
 local function objectivesHeader(f, d, rows)
-  f.objectives:SetText(d.failed and "Failed" or rows > 0 and "Objectives" or "")
+  f.objectives:SetText(d.failed and L["Failed"] or rows > 0 and L["Objectives"] or "")
   T.Color(f.objectives, d.failed and "bad" or "text2")
 end
 
@@ -325,9 +326,9 @@ end
 local function renderButtons(f, d)
   for _, b in pairs(f.buttons) do b:SetShown(d ~= nil) end
   if not d then return end
-  f.buttons.track.text:SetText(d.watched and "Untrack" or "Track")
+  f.buttons.track.text:SetText(d.watched and L["Untrack"] or L["Track"])
   local marked = QL.MarkedCount()
-  f.buttons.abandon.text:SetText(marked > 0 and ("Abandon " .. marked) or "Abandon")
+  f.buttons.abandon.text:SetText(marked > 0 and ns.Format(L["Abandon {count}"], { count = marked }) or L["Abandon"])
   if d.shareable then f.buttons.share:Enable() else f.buttons.share:Disable() end
 end
 

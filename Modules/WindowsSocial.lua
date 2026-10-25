@@ -3,6 +3,7 @@
 -- GW.Add (Modules/Windows.lua) at file scope, so the windows are watched at login.
 
 local ADDON, ns = ...
+local L = ns.L
 
 -- Per-frame state kept off the game's frames (Core/Events.lua, ns.FrameState).
 local vgSocialSide = ns.FrameState("vgSocialSide")
@@ -225,7 +226,7 @@ local function hookRoster(list)
 end
 
 -- The note the Guild Info page shows in its Guild Information box while the guild has none.
-GW.GUILD_INFO_EMPTY = "No guild information yet."
+GW.GUILD_INFO_EMPTY = L["No guild information yet."]
 
 -- Vanguard's note in the Guild Information box (made once, where the game draws the text).
 local function emptyNote(info, child, details)

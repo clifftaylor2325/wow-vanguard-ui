@@ -7,6 +7,7 @@
 -- GW.settings.tabs; a window whose own group is switched off stays the game's, tabs and all.
 
 local ADDON, ns = ...
+local L = ns.L
 
 -- Per-frame state kept off the game's frames (Core/Events.lua, ns.FrameState).
 local vgTabPadded = ns.FrameState("vgTabPadded")
@@ -630,7 +631,7 @@ end
 GW.PANE_HOSTS = { "LeftPaneHost", "RightPaneHost" }
 
 -- What the currency list says while it holds nothing (the game has no line of its own for that).
-GW.CURRENCY_EMPTY = "You have no currencies yet."
+GW.CURRENCY_EMPTY = L["You have no currencies yet."]
 
 -- A pane host's art faded: its own textures and those of the frames it holds (the right one's divider line).
 local function fadeHost(host)
@@ -895,7 +896,7 @@ end
 
 -- What the appearances grid says while it shows nothing (on Forever it lists only collected appearances, so a
 -- slot can be empty; the game has no line of its own for that).
-GW.APPEARANCES_EMPTY = "No appearances to show for this slot."
+GW.APPEARANCES_EMPTY = L["No appearances to show for this slot."]
 
 -- The appearances grid's empty note: shown while the game's filtered list for the slot and search is empty
 -- (not before the game has made that list).

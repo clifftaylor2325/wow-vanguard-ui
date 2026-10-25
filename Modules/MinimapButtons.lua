@@ -9,6 +9,7 @@
 -- as LibDBIcon makes it; a protected button is never taken.
 
 local ADDON, ns = ...
+local L = ns.L
 
 -- Per-frame state kept off the game's frames (Core/Events.lua, ns.FrameState).
 local vgGathered = ns.FrameState("vgGathered")
@@ -134,7 +135,7 @@ end
 -- The toggle's tooltip: how many addon buttons the drawer holds.
 function MB.ToggleTip(t)
   GameTooltip:SetOwner(t, "ANCHOR_LEFT")
-  GameTooltip:SetText("Addon buttons (" .. #MB.buttons .. ")", T.RGB("text"))
+  GameTooltip:SetText(ns.Format(L["Addon buttons ({count})"], { count = #MB.buttons }), T.RGB("text"))
   GameTooltip:Show()
 end
 

@@ -14,6 +14,7 @@
 -- trait API under pcall; a client without it builds the bar and marks nothing.
 
 local ADDON, ns = ...
+local L = ns.L
 
 -- Per-frame state kept off the game's frames (Core/Events.lua, ns.FrameState).
 local vgPlanner = ns.FrameState("vgPlanner")
@@ -43,7 +44,7 @@ TP.RING = 6
 TP.BAR_WIDTH, TP.BAR_HEIGHT, TP.BAR_X, TP.BAR_Y, TP.SWITCH_WIDTH, TP.SPEND_WIDTH = 520, 24, 14, 10, 100, 110
 -- The summary's room: how far short of the game's Apply Changes button it ends, and its lines at most.
 TP.APPLY_GAP, TP.SUMMARY_LINES = 12, 2
-TP.UNREACHABLE_NOTE = "Unreachable: a talent or row it needs is not in the plan."
+TP.UNREACHABLE_NOTE = L["Unreachable: a talent or row it needs is not in the plan."]
 -- How long after a level-up the points are read (the game fills the new point in a moment).
 TP.LEVEL_DELAY = 1
 
@@ -169,12 +170,18 @@ function TP.ReadTree()
   return tree
 end
 
+-- one for a count of 1, else many with {count} filled in: a whole sentence for each, so a translation
+-- can word its singular and plural as its language does.
+function TP.Plural(count, one, many)
+  return ns.Format(count == 1 and one or many, { count = count })
+end
+
 -- A talent's name from its spell, else "talent <id>".
 function TP.NodeName(node)
   local get = type(C_Spell) == "table" and C_Spell.GetSpellName
   local name = node.spell and type(get) == "function" and get(node.spell)
   if type(name) == "string" and not ns.IsSecret(name) then return name end
-  return "talent " .. node.nodeID
+  return ns.Format(L["talent {id}"], { id = node.nodeID })
 end
 
 -- The plan ----------------------------------------------------------------------------------------
@@ -204,7 +211,7 @@ function TP.Reconcile(tree, plan)
     local node = tree.nodes[id]
     if not node then plan.ranks[id] = nil dropped = dropped + 1 elseif rank > node.max then plan.ranks[id] = node.max end
   end
-  if plan.hash and dropped > 0 then ns.Chat(string.format("Talent planner: the talent tree changed since your plan was made; dropped %d planned talent%s it no longer has.", dropped, dropped == 1 and "" or "s")) end
+  if plan.hash and dropped > 0 then ns.Chat(TP.Plural(dropped, L["Talent planner: the talent tree changed since your plan was made; dropped 1 planned talent it no longer has."], L["Talent planner: the talent tree changed since your plan was made; dropped {count} planned talents it no longer has."])) end
   plan.hash = tree.hash
   return plan
 end
@@ -350,8 +357,8 @@ end
 
 -- The plan's line for a talent in its tooltip.
 local function planLine(node, planned)
-  if planned and planned > node.rank then return string.format("Planned: %d of %d (%d bought)", planned, node.max, node.rank) end
-  return string.format("Not in your plan (%d of %d bought)", node.rank, node.max)
+  if planned and planned > node.rank then return ns.Format(L["Planned: {planned} of {max} ({bought} bought)"], { planned = planned, max = node.max, bought = node.rank }) end
+  return ns.Format(L["Not in your plan ({bought} of {max} bought)"], { bought = node.rank, max = node.max })
 end
 
 -- Adds the plan's lines for a talent to the tooltip: its planned rank (in the accent while it has one) and how to change it.
@@ -360,7 +367,7 @@ local function addPlanLines(node)
   local r, g, b = T.RGB(planned and "accentText" or "text2")
   GameTooltip:AddLine(planLine(node, planned), r, g, b)
   local hr, hg, hb = T.RGB("text2")
-  GameTooltip:AddLine("Left-click plans a point, right-click takes one back.", hr, hg, hb)
+  GameTooltip:AddLine(L["Left-click plans a point, right-click takes one back."], hr, hg, hb)
 end
 
 -- The tooltip for a marked talent: the talent's spell, then the plan's lines for it.
@@ -443,11 +450,11 @@ end
 function TP.Summary(tree, result)
   local stuck = 0
   for _ in pairs(result.stuck) do stuck = stuck + 1 end
-  local text = string.format("%d planned, %d bought, %d to buy", result.planned, result.spent, result.planned - result.spent)
-  if result.order[1] then text = text .. "; next: " .. TP.NodeName(tree.nodes[result.order[1]]) end
-  if stuck > 0 then text = text .. string.format("; %d unreachable", stuck) end
-  if tree.points > 0 then text = text .. string.format("; %d point%s to spend", tree.points, tree.points == 1 and "" or "s") end
-  return text
+  local parts = { ns.Format(L["{planned} planned, {bought} bought, {left} to buy"], { planned = result.planned, bought = result.spent, left = result.planned - result.spent }) }
+  if result.order[1] then parts[#parts + 1] = ns.Format(L["next: {talent}"], { talent = TP.NodeName(tree.nodes[result.order[1]]) }) end
+  if stuck > 0 then parts[#parts + 1] = ns.Format(L["{count} unreachable"], { count = stuck }) end
+  if tree.points > 0 then parts[#parts + 1] = TP.Plural(tree.points, L["1 point to spend"], L["{count} points to spend"]) end
+  return table.concat(parts, "; ")
 end
 
 -- Puts the summary on the bar and makes Spend planned usable when there is something to spend (out of combat).
@@ -472,7 +479,7 @@ local function showSummaryTip(area)
   local text = TP.bar.summary:GetText()
   if not text or text == "" then return end
   GameTooltip:SetOwner(area, "ANCHOR_TOP")
-  GameTooltip:SetText("Talent plan", T.RGB("text"))
+  GameTooltip:SetText(L["Talent plan"], T.RGB("text"))
   local r, g, b = T.RGB("text2")
   GameTooltip:AddLine(text, r, g, b, true)
   if TP.result and next(TP.result.stuck) then GameTooltip:AddLine(TP.UNREACHABLE_NOTE, r, g, b, true) end
@@ -504,10 +511,10 @@ end
 
 -- The bar's controls: the Plan switch, Spend planned, and the summary after them.
 local function barControls(bar, frame)
-  bar.plan = W.Check(bar, "Plan", function() return TP.planning == true end, TP.SetPlanning, TP.SWITCH_WIDTH)
+  bar.plan = W.Check(bar, L["Plan"], function() return TP.planning == true end, TP.SetPlanning, TP.SWITCH_WIDTH)
   bar.plan:SetHeight(TP.BAR_HEIGHT)
   bar.plan:SetPoint("LEFT", 0, 0)
-  bar.spend = W.Button(bar, "Spend planned", function() TP.SpendPlanned() end, TP.SPEND_WIDTH)
+  bar.spend = W.Button(bar, L["Spend planned"], function() TP.SpendPlanned() end, TP.SPEND_WIDTH)
   bar.spend:SetHeight(TP.BAR_HEIGHT - 4)
   bar.spend:SetPoint("LEFT", bar.plan, "RIGHT", 8, 0)
   barSummary(bar, frame)
@@ -568,7 +575,7 @@ function TP.Commit(configID)
   else
     done = ask("C_Traits", "CommitConfig", configID)
   end
-  if done == false then ns.Chat("Talent planner: the game refused to apply talents just now; try again in a moment.") end
+  if done == false then ns.Chat(L["Talent planner: the game refused to apply talents just now; try again in a moment."]) end
   TP.Schedule()
 end
 
@@ -594,19 +601,20 @@ end
 
 -- Says what a spend bought, and names the pick the game refused when it stopped short of wanted.
 local function reportSpend(tree, order, bought, wanted)
-  if bought > 0 then ns.Chat(string.format("Talent planner: spent %d point%s on %s.", bought, bought == 1 and "" or "s", pickNames(tree, order, bought))) end
-  if bought < wanted then ns.Chat(string.format("Talent planner: the game refused %s; nothing after it was bought.", TP.NodeName(tree.nodes[order[bought + 1]]))) end
+  local spent = TP.Plural(bought, L["Talent planner: spent 1 point on {talents}."], L["Talent planner: spent {count} points on {talents}."])
+  if bought > 0 then ns.Chat(ns.Format(spent, { talents = pickNames(tree, order, bought) })) end
+  if bought < wanted then ns.Chat(ns.Format(L["Talent planner: the game refused {talent}; nothing after it was bought."], { talent = TP.NodeName(tree.nodes[order[bought + 1]]) })) end
 end
 
 -- Buys the next n planned ranks (all the points you have when n is nil) in the plan's order and applies
 -- what was bought. Nothing in combat, without points, or with nothing planned to buy; chat says which.
 function TP.SpendPlanned(n)
-  if ns.InCombat() then return ns.Chat("Talents can't be changed in combat.") end
+  if ns.InCombat() then return ns.Chat(L["Talents can't be changed in combat."]) end
   local tree = TP.ReadTree()
-  if not tree then return ns.Chat("Talent planner: no talent tree to spend in.") end
+  if not tree then return ns.Chat(L["Talent planner: no talent tree to spend in."]) end
   local result = TP.Resolve(tree, TP.Plan())
   local count = math.min(tree.points, #result.order, n or #result.order)
-  if count <= 0 then return ns.Chat(tree.points > 0 and "Talent planner: nothing planned that can be bought now." or "Talent planner: no points to spend.") end
+  if count <= 0 then return ns.Chat(tree.points > 0 and L["Talent planner: nothing planned that can be bought now."] or L["Talent planner: no points to spend."]) end
   local bought = buyRanks(tree, result.order, count)
   reportSpend(tree, result.order, bought, count)
   if bought > 0 then TP.Commit(tree.configID) end
@@ -619,8 +627,9 @@ function TP.Prompt()
   local result = TP.Resolve(tree, TP.Plan())
   if #result.order == 0 then return end
   if TP.settings.autoSpend then return TP.SpendPlanned() end
-  ns.Chat(string.format("%d talent point%s to spend; your plan's next pick is %s (/vg talents spend buys it).",
-    tree.points, tree.points == 1 and "" or "s", TP.NodeName(tree.nodes[result.order[1]])))
+  local line = TP.Plural(tree.points, L["1 talent point to spend; your plan's next pick is {talent} (/vg talents spend buys it)."],
+    L["{count} talent points to spend; your plan's next pick is {talent} (/vg talents spend buys it)."])
+  ns.Chat(ns.Format(line, { talent = TP.NodeName(tree.nodes[result.order[1]]) }))
 end
 
 -- You gained a level: in a moment (the point lands first), after combat, the prompt or the spend, when either is on.
@@ -658,7 +667,7 @@ end
 -- This spec group's plan as a string to share: your class, the tree's hash and the ranks; nil and why when it is empty.
 function TP.Export()
   local plan = TP.Plan()
-  if not next(plan.ranks) then return nil, "this spec's plan is empty" end
+  if not next(plan.ranks) then return nil, L["this spec's plan is empty"] end
   local _, class = UnitClass("player")
   return ns.Serialize.Encode("talents", { class = not ns.IsSecret(class) and class or nil, hash = plan.hash, ranks = plan.ranks })
 end
@@ -668,9 +677,9 @@ end
 function TP.Import(text)
   local scope, data = ns.Serialize.Decode(text)
   if not scope then return false, data end
-  if scope ~= "talents" or type(data) ~= "table" or type(data.ranks) ~= "table" then return false, "that is not a talent plan" end
+  if scope ~= "talents" or type(data) ~= "table" or type(data.ranks) ~= "table" then return false, L["that is not a talent plan"] end
   local _, class = UnitClass("player")
-  if type(data.class) == "string" and type(class) == "string" and data.class ~= class then return false, "that plan is for a " .. classWord(data.class) end
+  if type(data.class) == "string" and type(class) == "string" and data.class ~= class then return false, ns.Format(L["that plan is for a {class}"], { class = classWord(data.class) }) end
   local plan = TP.Plan()
   plan.ranks, plan.hash = cleanRanks(data.ranks), type(data.hash) == "string" and data.hash or nil
   TP.Refresh()
@@ -680,17 +689,17 @@ end
 -- /vg talents export, and the options button: the plan as a string in a box to copy.
 function TP.ExportDialog()
   local text, err = TP.Export()
-  if not text then return ns.Chat("Nothing to export: " .. err .. ".") end
-  ns.ShowText("Vanguard talent plan  Ctrl+C to copy", text)
+  if not text then return ns.Chat(ns.Format(L["Nothing to export: {reason}."], { reason = err })) end
+  ns.ShowText(L["Vanguard talent plan  Ctrl+C to copy"], text)
 end
 
 -- /vg talents import, and the options button: a box to paste a plan into.
 function TP.ImportDialog()
-  ns.AskText("Paste a talent plan, then Import", function(text)
+  ns.AskText(L["Paste a talent plan, then Import"], function(text)
     local ok, detail = TP.Import(text)
-    if not ok then return ns.Chat("Import failed: " .. detail .. ".") end
+    if not ok then return ns.Chat(ns.Format(L["Import failed: {reason}."], { reason = detail })) end
     ns.HideText()
-    ns.Chat(string.format("Talent plan imported: %d point%s.", detail, detail == 1 and "" or "s"))
+    ns.Chat(TP.Plural(detail, L["Talent plan imported: 1 point."], L["Talent plan imported: {count} points."]))
   end)
 end
 
@@ -698,14 +707,14 @@ end
 function TP.Clear()
   TP.Plan().ranks = {}
   TP.Refresh()
-  ns.Chat("Talent plan cleared.")
+  ns.Chat(L["Talent plan cleared."])
 end
 
 -- /vg talents clear and Clear this spec's plan: asks first (a "danger" question: it can't be undone), then empties it.
 function TP.AskClear()
   local points = countRanks(TP.Plan().ranks)
-  local question = string.format("Clear this spec's talent plan (%d point%s planned)? This can't be undone.", points, points == 1 and "" or "s")
-  ns.Ask(question, "Clear", TP.Clear, nil, "danger")
+  local question = TP.Plural(points, L["Clear this spec's talent plan (1 point planned)? This can't be undone."], L["Clear this spec's talent plan ({count} points planned)? This can't be undone."])
+  ns.Ask(question, L["Clear"], TP.Clear, nil, "danger")
 end
 
 -- Commands and options ------------------------------------------------------------------------------
@@ -713,14 +722,14 @@ end
 -- /vg talents: the plan's summary in chat.
 local function summaryCommand()
   local tree = TP.ReadTree()
-  if not tree then return ns.Chat("Talent planner: this client has no talent tree to read.") end
-  ns.Chat("Talent plan: " .. TP.Summary(tree, TP.Resolve(tree, TP.Reconcile(tree, TP.Plan()))) .. ".")
+  if not tree then return ns.Chat(L["Talent planner: this client has no talent tree to read."]) end
+  ns.Chat(ns.Format(L["Talent plan: {summary}."], { summary = TP.Summary(tree, TP.Resolve(tree, TP.Reconcile(tree, TP.Plan()))) }))
 end
 
 -- /vg talents plan: plan mode on or off, said in chat.
 local function planCommand()
   TP.SetPlanning(not TP.planning)
-  ns.Chat("Plan mode " .. (TP.planning and "on: click talents on the talents window to plan them." or "off."))
+  ns.Chat(TP.planning and L["Plan mode on: click talents on the talents window to plan them."] or L["Plan mode off."])
 end
 
 -- /vg talents spend: the planned points bought.
@@ -733,7 +742,7 @@ TP.COMMANDS = { plan = planCommand, spend = spendCommand, clear = TP.AskClear, e
 
 -- /vg talents [plan|spend|clear|export|import]: the plan's summary, or one of those.
 function TP.Command(rest)
-  if not TP.settings then return ns.Chat("The Talent planner is off (/vg > Modules).") end
+  if not TP.settings then return ns.Chat(L["The Talent planner is off (/vg > Modules)."]) end
   local sub = TP.COMMANDS[(rest or ""):match("^(%a*)"):lower()]
   if sub then return sub() end
   summaryCommand()
@@ -747,17 +756,17 @@ end
 -- The Talents page: how to plan, the level-up switches, and the plan's export, import and clear.
 local function rows()
   return {
-    { "header", "Talent planner" },
-    { "text", "On the talents window, switch Plan on and click talents to set the ranks you want (right-click takes one back). The planned rank sits on each talent, the next point to buy wears a ring, and Spend planned buys the next picks in order. Plans are kept per character and spec." },
-    { "check", "At a level-up, say what the plan picks next", setting("levelPrompt") },
-    { "check", "Spend planned points by itself at a level-up (buys and applies them, no asking)", setting("autoSpend") },
-    { "button", "Export this spec's plan", TP.ExportDialog },
-    { "button", "Import a plan", TP.ImportDialog },
-    { "button", "Clear this spec's plan", TP.AskClear },
+    { "header", L["Talent planner"] },
+    { "text", L["On the talents window, switch Plan on and click talents to set the ranks you want (right-click takes one back). The planned rank sits on each talent, the next point to buy wears a ring, and Spend planned buys the next picks in order. Plans are kept per character and spec."] },
+    { "check", L["At a level-up, say what the plan picks next"], setting("levelPrompt") },
+    { "check", L["Spend planned points by itself at a level-up (buys and applies them, no asking)"], setting("autoSpend") },
+    { "button", L["Export this spec's plan"], TP.ExportDialog },
+    { "button", L["Import a plan"], TP.ImportDialog },
+    { "button", L["Clear this spec's plan"], TP.AskClear },
   }
 end
 
-ns.Options.AddPage({ key = "talents", title = "Talents", icon = "NavTalents", order = 47, rows = rows })
+ns.Options.AddPage({ key = "talents", title = L["Talents"], icon = "NavTalents", order = 47, rows = rows })
 
 -- Module entry point (Core/Modules.lua): the window hooked now or when its part of the game loads,
 -- repaints on tree changes, and the level-up prompt.

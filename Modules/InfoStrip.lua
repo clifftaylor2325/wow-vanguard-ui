@@ -14,6 +14,7 @@
 -- says otherwise (Core/Visibility.lua): on mouseover, in combat, hidden, or on a checklist.
 
 local ADDON, ns = ...
+local L = ns.L
 
 local T = ns.Theme
 local V = ns.Visibility
@@ -114,24 +115,24 @@ end
 
 -- Copper as "12g 34s 7c" (no gold part under a gold).
 function IS.Money(copper)
-  local g, s, c = math.floor(copper / 10000), math.floor(copper / 100) % 100, copper % 100
-  if g > 0 then return string.format("%dg %ds %dc", g, s, c) end
-  return string.format("%ds %dc", s, c)
+  local g, s, c = math.floor(copper / 10000), math.floor(copper / 100) % 100, math.floor(copper % 100)
+  if g > 0 then return ns.Format(L["{gold}g {silver}s {copper}c"], { gold = g, silver = s, copper = c }) end
+  return ns.Format(L["{silver}s {copper}c"], { silver = s, copper = c })
 end
 
 -- Copper in its two biggest parts: "2g 5s", "5s 7c", "7c" (fits the leveling row).
 function IS.ShortMoney(copper)
-  local g, sv, c = math.floor(copper / 10000), math.floor(copper / 100) % 100, copper % 100
-  if g > 0 then return string.format("%dg %ds", g, sv) end
-  if sv > 0 then return string.format("%ds %dc", sv, c) end
-  return c .. "c"
+  local g, sv, c = math.floor(copper / 10000), math.floor(copper / 100) % 100, math.floor(copper % 100)
+  if g > 0 then return ns.Format(L["{gold}g {silver}s"], { gold = g, silver = sv }) end
+  if sv > 0 then return ns.Format(L["{silver}s {copper}c"], { silver = sv, copper = c }) end
+  return ns.Format(L["{copper}c"], { copper = c })
 end
 
 -- Seconds as "42m" (at least 1m) or "1h 05m".
 function IS.Duration(seconds)
   local minutes = math.max(1, math.ceil(seconds / 60))
-  if minutes < 60 then return minutes .. "m" end
-  return string.format("%dh %02dm", math.floor(minutes / 60), minutes % 60)
+  if minutes < 60 then return ns.Format(L["{minutes}m"], { minutes = minutes }) end
+  return ns.Format(L["{hours}h {minutes}m"], { hours = math.floor(minutes / 60), minutes = string.format("%02d", minutes % 60) })
 end
 
 -- Session --------------------------------------------------------------------------------------
@@ -332,13 +333,13 @@ IS.TEXT = {}
 -- Durability, colored as it wears down.
 function IS.TEXT.durability()
   local p = IS.Durability()
-  if p then return p .. "% durability", IS.DurabilityColor(p) end
+  if p then return ns.Format(L["{percent}% durability"], { percent = p }), IS.DurabilityColor(p) end
 end
 
 -- Free bag slots, toned as the backpack's count (amber when few, red when full).
 function IS.TEXT.bags()
   local n = IS.FreeSlots()
-  if n then return n .. " free", ns.GetModule("MenuStrip").FreeTone(n) end
+  if n then return ns.Format(L["{count} free"], { count = n }), ns.GetModule("MenuStrip").FreeTone(n) end
 end
 
 -- Frame rate and latency.
@@ -346,7 +347,7 @@ function IS.TEXT.system()
   local fps = ns.PlainNumber(ask("GetFramerate"))
   local _, _, home, world = ask("GetNetStats")
   local ms = ns.PlainNumber(world) or ns.PlainNumber(home)
-  if fps and ms then return string.format("%d fps · %d ms", math.floor(fps), ms), "text2" end
+  if fps and ms then return ns.Format(L["{fps} fps · {ms} ms"], { fps = math.floor(fps), ms = math.floor(ms) }), "text2" end
 end
 
 -- Your gold.
@@ -371,7 +372,7 @@ function IS.TEXT.ammo()
   local needed = IS.AmmoNeeded()
   if needed == false or ns.IsSecret(class) or (needed == nil and not IS.AMMO_CLASSES[class]) then return nil end
   local n = ns.PlainNumber(ask("GetInventoryItemCount", "player", IS.AMMO_SLOT)) or 0
-  if n > 0 or needed or class == "HUNTER" then return "ammo " .. n, n == 0 and "bad" or "text" end
+  if n > 0 or needed or class == "HUNTER" then return ns.Format(L["ammo {count}"], { count = n }), n == 0 and "bad" or "text" end
 end
 
 -- Your soul shards, for warlocks (none is red).
@@ -379,7 +380,7 @@ function IS.TEXT.shards()
   local _, class = UnitClass("player")
   if ns.IsSecret(class) or class ~= "WARLOCK" then return nil end
   local n = IS.SoulShards()
-  if n then return "shards " .. n, n == 0 and "bad" or "text" end
+  if n then return ns.Format(L["shards {count}"], { count = n }), n == 0 and "bad" or "text" end
 end
 
 -- The time as the game's clock shows it (realm or local time, 12 or 24 hours, as set in the game's
@@ -390,8 +391,8 @@ function IS.TEXT.clock()
 end
 
 -- Day and month names for the realm's date, as date("%a %d %b") writes the computer's.
-IS.WEEKDAYS = { "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat" }
-IS.MONTHS = { "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec" }
+IS.WEEKDAYS = { L["Sun"], L["Mon"], L["Tue"], L["Wed"], L["Thu"], L["Fri"], L["Sat"] }
+IS.MONTHS = { L["Jan"], L["Feb"], L["Mar"], L["Apr"], L["May"], L["Jun"], L["Jul"], L["Aug"], L["Sep"], L["Oct"], L["Nov"], L["Dec"] }
 
 -- The realm's date ("Tue 13 Oct", C_DateAndTime) while the game's clock shows realm time, so the date beside
 -- the time is that time's day; nil while it shows local time or on a client without these helpers.
@@ -412,13 +413,13 @@ end
 -- XP per hour this session (the XP bar shows rested XP).
 function IS.TEXT.xprate()
   local rate = not atMaxLevel() and IS.XPRate()
-  if rate then return ns.GetModule("DataBars").Short(math.floor(rate)) .. " xp/h", "text" end
+  if rate then return ns.Format(L["{xp} xp/h"], { xp = ns.GetModule("DataBars").Short(math.floor(rate)) }), "text" end
 end
 
 -- Time to the next level at this session's pace.
 function IS.TEXT.leveltime()
   local rate, cur, max = not atMaxLevel() and IS.XPRate(), xpNow()
-  if rate and cur then return "lvl " .. IS.Duration((max - cur) * 3600 / rate), "text2" end
+  if rate and cur then return ns.Format(L["lvl {time}"], { time = IS.Duration((max - cur) * 3600 / rate) }), "text2" end
 end
 
 -- Gold per hour this session (red while you're spending).
@@ -426,25 +427,25 @@ function IS.TEXT.goldrate()
   local rate = IS.GoldRate()
   if not rate then return nil end
   local sign = rate < 0 and "-" or "+"
-  return sign .. IS.ShortMoney(math.floor(math.abs(rate))) .. "/h", rate < 0 and "bad" or "gold"
+  return ns.Format(L["{money}/h"], { money = sign .. IS.ShortMoney(math.floor(math.abs(rate))) }), rate < 0 and "bad" or "gold"
 end
 
 -- Your damage per second in the last fight (it updates when the fight ends).
 function IS.TEXT.dps()
   local dps = IS.DPS()
-  if dps and dps > 0 then return ns.GetModule("DataBars").Short(math.floor(dps)) .. " dps", "text" end
+  if dps and dps > 0 then return ns.Format(L["{dps} dps"], { dps = ns.GetModule("DataBars").Short(math.floor(dps)) }), "text" end
 end
 
 -- Your place in the last fight's damage, in a group ("#2 of 5"; gold at the top).
 function IS.TEXT.rank()
   local place, count = IS.Rank()
-  if place and count > 1 then return string.format("#%d of %d", place, count), place == 1 and "gold" or "text2" end
+  if place and count > 1 then return ns.Format(L["#{place} of {count}"], { place = place, count = count }), place == 1 and "gold" or "text2" end
 end
 
 -- What your auction sales noted this session came to ("AH +12g 5s"; the sales ledger, Modules/AuctionLedger.lua).
 function IS.TEXT.ahgold()
   local copper = ns.AuctionLedger.SessionSales()
-  if copper > 0 then return "AH +" .. IS.ShortMoney(copper), "gold" end
+  if copper > 0 then return ns.Format(L["AH +{money}"], { money = IS.ShortMoney(copper) }), "gold" end
 end
 
 -- Showing -----------------------------------------------------------------------------------
@@ -546,7 +547,7 @@ end
 
 -- Opens the calendar, unless a fight is on (the game refuses Vanguard there).
 local function openCalendar()
-  if ns.WindowWaitsForCombat("The calendar") then return end
+  if ns.WindowWaitsForCombat(L["The calendar"]) then return end
   if type(ToggleCalendar) == "function" then ToggleCalendar() end
 end
 
@@ -559,10 +560,10 @@ end
 -- The calendar button's tooltip: "Calendar", and how many invites wait.
 function IS.CalendarTip(b)
   GameTooltip:SetOwner(b, "ANCHOR_LEFT")
-  GameTooltip:SetText("Calendar", T.RGB("text"))
+  GameTooltip:SetText(L["Calendar"], T.RGB("text"))
   local n = IS.PendingInvites()
   local r, g, bl = T.RGB("text2")
-  if n > 0 then GameTooltip:AddLine(n == 1 and "1 invite waiting" or n .. " invites waiting", r, g, bl) end
+  if n > 0 then GameTooltip:AddLine(n == 1 and L["1 invite waiting"] or ns.Format(L["{count} invites waiting"], { count = n }), r, g, bl) end
   GameTooltip:Show()
 end
 
@@ -614,18 +615,18 @@ function IS.ClockClick()
 end
 
 -- The time tooltip's lines: a label and the game's helper that gives that time in the clock's format.
-IS.CLOCK_TIMES = { { "Realm time", "GameTime_GetGameTime" }, { "Local time", "GameTime_GetLocalTime" } }
+IS.CLOCK_TIMES = { { L["Realm time"], "GameTime_GetGameTime" }, { L["Local time"], "GameTime_GetLocalTime" } }
 
 -- The time's tooltip: realm and local time (with AM/PM in 12-hour mode), and what a click does.
 function IS.ClockTip(b)
   GameTooltip:SetOwner(b, "ANCHOR_LEFT")
-  GameTooltip:SetText("Time", T.RGB("text"))
+  GameTooltip:SetText(L["Time"], T.RGB("text"))
   local r, g, bl = T.RGB("text2")
   for _, line in ipairs(IS.CLOCK_TIMES) do
     local t = ask(line[2], true)
     if type(t) == "string" then GameTooltip:AddDoubleLine(line[1], t, r, g, bl, T.RGB("text")) end
   end
-  GameTooltip:AddLine("Click: the game's clock and alarm", r, g, bl)
+  GameTooltip:AddLine(L["Click: the game's clock and alarm"], r, g, bl)
   GameTooltip:Show()
 end
 
@@ -643,11 +644,11 @@ end
 
 -- The worn slots durability reads, by inventory slot, with the names the tooltip gives them.
 IS.SLOT_NAMES = {
-  [1] = "Head", [3] = "Shoulders", [5] = "Chest", [6] = "Waist", [7] = "Legs", [8] = "Feet", [9] = "Wrists",
-  [10] = "Hands", [16] = "Main hand", [17] = "Off hand", [18] = "Ranged",
+  [1] = L["Head"], [3] = L["Shoulders"], [5] = L["Chest"], [6] = L["Waist"], [7] = L["Legs"], [8] = L["Feet"], [9] = L["Wrists"],
+  [10] = L["Hands"], [16] = L["Main hand"], [17] = L["Off hand"], [18] = L["Ranged"],
 }
 -- What a bag that holds one kind of thing is called, by the game's bag family number; any other family is a "special bag".
-IS.BAG_KINDS = { [1] = "quiver", [2] = "ammo pouch", [4] = "soul bag" }
+IS.BAG_KINDS = { [1] = L["quiver"], [2] = L["ammo pouch"], [4] = L["soul bag"] }
 
 -- Each worn item under full durability, most worn first: { name, percent }.
 function IS.WornSlots()
@@ -671,14 +672,14 @@ local function durabilityTip(tt)
   local worn = IS.WornSlots()
   for _, item in ipairs(worn) do tipLine(tt, item[1], item[2] .. "%", IS.DurabilityColor(item[2])) end
   local r, g, b = T.RGB("text2")
-  if #worn == 0 then tt:AddLine("Everything at 100%", r, g, b) end
+  if #worn == 0 then tt:AddLine(L["Everything at 100%"], r, g, b) end
 end
 
 -- A bag's name in the tooltip: the backpack, or "Bag 3", with what it holds when it takes only one kind of thing.
 local function bagName(bag, family)
-  local name = bag == 0 and "Backpack" or "Bag " .. bag
+  local name = bag == 0 and L["Backpack"] or ns.Format(L["Bag {number}"], { number = bag })
   if family == 0 then return name end
-  return name .. " (" .. (IS.BAG_KINDS[family] or "special bag") .. ")"
+  return ns.Format(L["{bag} ({kind})"], { bag = name, kind = IS.BAG_KINDS[family] or L["special bag"] })
 end
 
 -- Free space's tooltip: each bag's slots used of its total (a soul bag or quiver named as such).
@@ -688,7 +689,7 @@ local function bagsTip(tt)
     local total, free = MS.BagSpace(bag)
     if total and total > 0 then
       local _, family = C_Container.GetContainerNumFreeSlots(bag)
-      tipLine(tt, bagName(bag, ns.PlainNumber(family) or 0), (total - free) .. " / " .. total .. " used")
+      tipLine(tt, bagName(bag, ns.PlainNumber(family) or 0), ns.Format(L["{used} / {total} used"], { used = total - free, total = total }))
     end
   end
 end
@@ -696,8 +697,8 @@ end
 -- Gold's tooltip: what came in and went out since you logged in.
 local function goldTip(tt)
   local s = IS.session or {}
-  tipLine(tt, "Earned this session", IS.Money(s.earned or 0), "gold")
-  tipLine(tt, "Spent this session", IS.Money(s.spent or 0), "gold")
+  tipLine(tt, L["Earned this session"], IS.Money(s.earned or 0), "gold")
+  tipLine(tt, L["Spent this session"], IS.Money(s.spent or 0), "gold")
 end
 
 -- How often the tooltip reads Vanguard's memory at most: the read walks every loaded addon's memory.
@@ -716,49 +717,50 @@ end
 local function systemTip(tt)
   local _, _, home, world = ask("GetNetStats")
   home, world = ns.PlainNumber(home), ns.PlainNumber(world)
-  if home then tipLine(tt, "Home latency", home .. " ms") end
-  if world then tipLine(tt, "World latency", world .. " ms") end
+  if home then tipLine(tt, L["Home latency"], ns.Format(L["{ms} ms"], { ms = home })) end
+  if world then tipLine(tt, L["World latency"], ns.Format(L["{ms} ms"], { ms = world })) end
   local kb = IS.Memory()
-  if kb then tipLine(tt, "Vanguard's memory", string.format("%.1f MB", kb / 1024)) end
+  if kb then tipLine(tt, L["Vanguard's memory"], ns.Format(L["{mb} MB"], { mb = string.format("%.1f", kb / 1024) })) end
 end
 
 -- The session rates' tooltip: how long the session has run, the XP gained and the gold made or spent in it.
 local function ratesTip(tt)
   local s = IS.session or {}
-  tipLine(tt, "Session", IS.Duration((ask("GetTime") or 0) - (s.start or 0)))
-  tipLine(tt, "XP gained", ns.GetModule("DataBars").Short(s.gained or 0))
+  tipLine(tt, L["Session"], IS.Duration((ask("GetTime") or 0) - (s.start or 0)))
+  tipLine(tt, L["XP gained"], ns.GetModule("DataBars").Short(s.gained or 0))
   local now, start = ns.PlainNumber(ask("GetMoney")), s.money
-  if now and start then tipLine(tt, "Gold", (now < start and "-" or "+") .. IS.ShortMoney(math.abs(now - start)), now < start and "bad" or "gold") end
+  if now and start then tipLine(tt, L["Gold"], (now < start and "-" or "+") .. IS.ShortMoney(math.abs(now - start)), now < start and "bad" or "gold") end
 end
 
 -- A fight's length: "42s", or "3m 05s".
 function IS.FightLength(seconds)
   local whole = math.floor(seconds + 0.5)
-  if whole < 60 then return whole .. "s" end
-  return string.format("%dm %02ds", math.floor(whole / 60), whole % 60)
+  if whole < 60 then return ns.Format(L["{seconds}s"], { seconds = whole }) end
+  return ns.Format(L["{minutes}m {seconds}s"], { minutes = math.floor(whole / 60), seconds = string.format("%02d", whole % 60) })
 end
 
 -- The last fight's tooltip (DPS and place): how long it lasted; in a fight, that the figure waits for its end.
 local function fightTip(tt)
   local seconds = IS.FightSeconds()
-  if seconds then tipLine(tt, "Fight length", IS.FightLength(seconds)) end
+  if seconds then tipLine(tt, L["Fight length"], IS.FightLength(seconds)) end
   local r, g, b = T.RGB("text2")
-  if ns.InCombat() then tt:AddLine("Updates when this fight ends", r, g, b) end
+  if ns.InCombat() then tt:AddLine(L["Updates when this fight ends"], r, g, b) end
 end
 
 -- Each block's tooltip: its title, and the function that adds its lines.
 IS.TIPS = {
-  durability = { "Durability", durabilityTip }, bags = { "Bag space", bagsTip }, gold = { "Gold", goldTip },
-  system = { "Frame rate and latency", systemTip },
-  xprate = { "This session", ratesTip }, leveltime = { "This session", ratesTip }, goldrate = { "This session", ratesTip },
-  dps = { "Last fight", fightTip }, rank = { "Last fight", fightTip },
+  durability = { L["Durability"], durabilityTip }, bags = { L["Bag space"], bagsTip }, gold = { L["Gold"], goldTip },
+  system = { L["Frame rate and latency"], systemTip },
+  xprate = { L["This session"], ratesTip }, leveltime = { L["This session"], ratesTip }, goldrate = { L["This session"], ratesTip },
+  dps = { L["Last fight"], fightTip }, rank = { L["Last fight"], fightTip },
 }
 
--- What a left-click on a block opens, out of a fight: the window's name (for the hint and the in-a-fight
--- line), the game's function and its argument.
+-- What a left-click on a block opens, out of a fight: the window's name (for the in-a-fight line), the
+-- game's function and its argument, and the tooltip's hint.
 IS.CLICKS = {
-  durability = { "The character window", "ToggleCharacter", "PaperDollFrame" },
-  bags = { "The bag window", "ToggleAllBags" }, gold = { "The bag window", "ToggleAllBags" },
+  durability = { L["The character window"], "ToggleCharacter", "PaperDollFrame", hint = L["Click: the character window"] },
+  bags = { L["The bag window"], "ToggleAllBags", hint = L["Click: the bag window"] },
+  gold = { L["The bag window"], "ToggleAllBags", hint = L["Click: the bag window"] },
 }
 -- The blocks a right-click starts counting again from now (the session's rates).
 IS.RESTARTS = { xprate = true, leveltime = true, goldrate = true }
@@ -766,8 +768,9 @@ IS.RESTARTS = { xprate = true, leveltime = true, goldrate = true }
 -- The muted hint lines at a tooltip's end: what a click opens (not in a fight), and the restart.
 local function clickHints(tt, key)
   local click, r, g, b = IS.CLICKS[key], T.RGB("text2")
-  if click then tt:AddLine("Click: " .. click[1]:lower() .. (ns.InCombat() and " (not in a fight)" or ""), r, g, b) end
-  if IS.RESTARTS[key] then tt:AddLine("Right-click: start counting again", r, g, b) end
+  local hint = click and (ns.InCombat() and ns.Format(L["{hint} (not in a fight)"], { hint = click.hint }) or click.hint)
+  if hint then tt:AddLine(hint, r, g, b) end
+  if IS.RESTARTS[key] then tt:AddLine(L["Right-click: start counting again"], r, g, b) end
 end
 
 -- Shows a block's tooltip, beside the strip.
@@ -866,7 +869,7 @@ local function build()
   local f = T.HudPanel(CreateFrame("Frame", "Vanguard_InfoStrip", UIParent))
   IS.frame = f
   f:SetSize(IS.Width(), IS.Row() * 2 + IS.EDGE)
-  ns.Mover(f, "infostrip", "Info strip", IS.HOME)
+  ns.Mover(f, "infostrip", L["Info strip"], IS.HOME)
   IS.fonts = {}
   for key in pairs(IS.BLOCKS) do IS.fonts[key] = addText(key) end
   addButtons(f)

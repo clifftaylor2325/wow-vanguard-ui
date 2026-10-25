@@ -3,6 +3,7 @@
 -- GW.Add (Modules/Windows.lua) at file scope, so the windows are watched at login.
 
 local ADDON, ns = ...
+local L = ns.L
 
 -- Per-frame state kept off the game's frames (Core/Events.lua, ns.FrameState).
 local vgGlyph = ns.FrameState("vgGlyph")
@@ -691,7 +692,7 @@ GW.LEGACY_PAGE_ART = { "Background" }
 GW.LEGACY_PANES = { "CategoryList", "DetailPane" }
 -- What the challenge list (the detail pane) says while it is empty: a prompt until a category is picked (the game
 -- has no line for that), then the game's own no-challenges line (LEGACY_NO_CHALLENGES, its category list's), or ours.
-GW.LEGACY_EMPTY = { pick = "Select a category to view its challenges.", none = "No challenges to show here." }
+GW.LEGACY_EMPTY = { pick = L["Select a category to view its challenges."], none = L["No challenges to show here."] }
 
 -- The detail pane's empty note, by whether a category is picked (the game keeps the picked one as the pane's info).
 local function challengeNote(pane)

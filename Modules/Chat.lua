@@ -17,6 +17,7 @@
 -- addons, so this module only skins.
 
 local ADDON, ns = ...
+local L = ns.L
 
 local T = ns.Theme
 
@@ -74,7 +75,7 @@ end
 
 -- Chat text sizes before the Text size setting; 0 keeps each window's own size (a number, as the
 -- setting's default is: a saved value of another type is put back to the default at login).
-CH.SIZES = { { 10, "Small" }, { 12, "Medium" }, { 14, "Large" }, { 0, "The game's chat setting" } }
+CH.SIZES = { { 10, L["Small"] }, { 12, L["Medium"] }, { 14, L["Large"] }, { 0, L["The game's chat setting"] } }
 
 -- The chat window count on this client.
 local function windowCount()
@@ -123,7 +124,7 @@ end
 
 -- The Chat text fades choices (the Chat page's row, Core/OptionsChat.lua): how long a line stays
 -- before it fades (seconds; 0 never fades).
-CH.LINE_FADES = { { 0, "Never" }, { 60, "After 60 seconds" }, { 10, "After 10 seconds" } }
+CH.LINE_FADES = { { 0, L["Never"] }, { 60, L["After 60 seconds"] }, { 10, L["After 10 seconds"] } }
 
 -- How long a line takes to fade once its time is up: the theme's, at most T.COMBAT_FADE in a fight,
 -- none under Reduce motion (the line goes at once).
@@ -302,8 +303,8 @@ end
 
 -- The bar's buttons by label: the glyph on each one's tile and its slot from the bar's right end
 -- (Copy at the end, Find left of it), so their order is fixed here and not by which module asks
--- first. A label not listed takes the slot after them.
-CH.BAR_BUTTONS = { Copy = { icon = "Copy", slot = 1 }, Find = { icon = "Search", slot = 2 } }
+-- first. A label not listed takes the slot after them. Each one's tip is its tooltip.
+CH.BAR_BUTTONS = { Copy = { icon = "Copy", slot = 1, tip = L["Copy"] }, Find = { icon = "Search", slot = 2, tip = L["Find"] } }
 
 -- How far a bar button's slot sits in from the bar's right end: a gap, then a tile and a gap per slot before it.
 local function slotInset(slot)
@@ -354,7 +355,7 @@ function CH.AddBarButton(frame, label, where, onClick)
   local bar = CH.settings and CH.Bar(frame) or nil
   local look = CH.BAR_BUTTONS[label] or { icon = "Right", slot = 3 }
   local button = T.WindowControl(CreateFrame("Button", nil, bar or frame), look.icon)
-  tipButton(button, label)
+  tipButton(button, look.tip or label)
   button:SetScript("OnClick", ns.Guard(where, onClick))
   if not bar then placeLooseButton(button, frame, look.slot) return button end
   vgBarTiles[frame] = vgBarTiles[frame] or {}
@@ -951,12 +952,12 @@ end
 function CH.Place()
   local frame = _G.ChatFrame1
   if not CH.settings.place or type(frame) ~= "table" then return end
-  ns.Mover(frame, "chat", "Chat", { "BOTTOMLEFT", "BOTTOMLEFT", CH.SPOT[1], CH.SPOT[2] })
+  ns.Mover(frame, "chat", L["Chat"], { "BOTTOMLEFT", "BOTTOMLEFT", CH.SPOT[1], CH.SPOT[2] })
   pinChat(frame)
 end
 
 -- The Chat window size choices: the default size times 1, 1.5 or 2.
-CH.WINDOW_SCALES = { { 1, "Default" }, { 1.5, "Larger" }, { 2, "Largest" } }
+CH.WINDOW_SCALES = { { 1, L["Default"] }, { 1.5, L["Larger"] }, { 2, L["Largest"] } }
 
 -- Sets the main chat window to the default size times the Chat window size choice.
 function CH.ApplySize()
