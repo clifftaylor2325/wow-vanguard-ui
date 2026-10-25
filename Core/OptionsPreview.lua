@@ -5,6 +5,8 @@
 
 local ADDON, ns = ...
 
+local L = ns.L
+
 local T, W, O = ns.Theme, ns.Widgets, ns.Options
 
 -- The rows' heights.
@@ -23,7 +25,7 @@ local function accentRow(parent, width)
   r:SetSize(width, SWATCHES_H)
   r.label = T.Text(r:CreateFontString(nil, "OVERLAY"), "label")
   r.label:SetPoint("LEFT", 8, 0)
-  r.label:SetText("Accent")
+  r.label:SetText(L["Accent"])
   r.hex = W.Input(r, 74)
   r.hex:SetPoint("RIGHT", -8, 0)
   r.hex:SetScript("OnEnterPressed", ns.Guard("apply the accent hex", applyHex))
@@ -110,7 +112,7 @@ end
 -- The sample unit's name: the player's own, or "You" when the client hides it or gives none.
 local function playerName()
   local name = UnitName("player")
-  if ns.IsSecret(name) or type(name) ~= "string" then return "You" end
+  if ns.IsSecret(name) or type(name) ~= "string" then return L["You"] end
   return name
 end
 

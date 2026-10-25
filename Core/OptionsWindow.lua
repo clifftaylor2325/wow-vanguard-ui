@@ -7,6 +7,8 @@
 
 local ADDON, ns = ...
 
+local L = ns.L
+
 local T, W, O = ns.Theme, ns.Widgets, ns.Options
 
 local WIDTH, HEIGHT, NAV_WIDTH = 780, 600, 176
@@ -44,7 +46,7 @@ local pages, widgets = {}, {}
 local rowCache = {}
 local needsReload = false
 -- What the footer's notice says while a change waits for the reload (O.ProfileReplaced words it more strongly).
-local reloadNotice = "Some changes need a reload"
+local reloadNotice = L["Some changes need a reload"]
 -- True while every row is being refreshed at once (the nav's dots are marked once after).
 local quiet = false
 
@@ -145,8 +147,8 @@ end
 local function dotTooltip(d)
   if not GameTooltip then return end
   GameTooltip:SetOwner(d, "ANCHOR_RIGHT")
-  GameTooltip:SetText("Changed from the default. Click to put it back.")
-  GameTooltip:AddLine("Default: " .. d.defaultText, T.RGB("text2"))
+  GameTooltip:SetText(L["Changed from the default. Click to put it back."])
+  GameTooltip:AddLine(ns.Format(L["Default: {value}"], { value = d.defaultText }), T.RGB("text2"))
   GameTooltip:Show()
 end
 
@@ -159,7 +161,7 @@ end
 
 -- A row's default as the row shows values: On or Off, the slider's text, or the choice's label.
 local function defaultText(w, kind, initial)
-  if kind == "check" then return initial and "On" or "Off" end
+  if kind == "check" then return initial and L["On"] or L["Off"] end
   if kind == "slider" then return w.format(initial) end
   return choiceLabel(w.choices, initial) or tostring(initial)
 end
@@ -280,7 +282,7 @@ end
 
 -- The tag a row whose setting applies on reload wears after its caption, by row kind (a module's switch, which never
 -- builds or unbuilds a module until the reload, has room to say so in full), and the line its tip gains.
-local RELOAD_TAG, RELOAD_TIP = { module = "Reload to apply", setting = "reload" }, "Takes effect after /reload."
+local RELOAD_TAG, RELOAD_TIP = { module = L["Reload to apply"], setting = L["reload"] }, L["Takes effect after /reload."]
 
 -- Gives a row whose setting applies on reload a small muted tag just after its caption (a wrapping caption gives up the
 -- tag's room), and a line in its tip.
@@ -369,14 +371,28 @@ local function placeCards(view, rows)
   view:Fit(y - PAD)
 end
 
--- A caption's trailing " (reload)": the window shows it as a tag beside the caption instead.
+-- A caption whose English ends in " (reload)": the window shows that as a tag beside the caption instead.
 local RELOAD_SUFFIX = " (reload)"
+-- What a reload caption keeps before its last bracket, half-width or full-width (Chinese, Korean): a translation
+-- keeps the reload words in a bracket at its end.
+local LAST_BRACKET = { "^(.*)%(.-%)$", "^(.*)（.-）$" }
 
--- Moves a setting row's " (reload)" from its caption to row.reload (the tag).
+-- The caption without its last bracket (the reload words, in any language), or as it is when no bracket ends it.
+local function withoutReload(caption)
+  for _, pattern in ipairs(LAST_BRACKET) do
+    local kept = caption:match(pattern)
+    if kept then return (kept:gsub("%s+$", "")) end
+  end
+  return caption
+end
+
+-- Notes a row's English caption (row.english, for the search) and moves a setting row's reload bracket from its
+-- caption to row.reload (the tag). The English says whether it has one, so a translated caption loses its bracket too.
 local function moveReload(row)
-  local caption = row[2]
-  if setterOf(row) and type(caption) == "string" and caption:sub(-#RELOAD_SUFFIX) == RELOAD_SUFFIX then
-    row[2], row.reload = caption:sub(1, -#RELOAD_SUFFIX - 1), true
+  if type(row[2]) ~= "string" then return end
+  row.english = ns.English(row[2])
+  if setterOf(row) and row.english:sub(-#RELOAD_SUFFIX) == RELOAD_SUFFIX then
+    row[2], row.english, row.reload = withoutReload(row[2]), row.english:sub(1, -#RELOAD_SUFFIX - 1), true
   end
 end
 
@@ -395,9 +411,9 @@ end
 
 -- The "Reset this page" button row: after asking, every changed setting on the page goes back to its default.
 local function resetPageRow(page, rows)
-  local ask = "Put the settings on the %s page back to their defaults?"
-  return { "button", "Reset this page", function()
-    ns.Ask(string.format(ask, page.title), "Reset", function() resetRows(rows) end, function() end)
+  local ask = ns.Format(L["Put the settings on the {page} page back to their defaults?"], { page = page.title })
+  return { "button", L["Reset this page"], function()
+    ns.Ask(ask, L["Reset"], function() resetRows(rows) end, function() end)
   end, function() return anyChanged(rows) end, isReset = true }
 end
 
@@ -420,7 +436,7 @@ local function preparedRows(page)
   local rows, defaults = copiedRows(page), false
   for _, row in ipairs(rows) do defaults = defaults or hasDefault(row) end
   if defaults then
-    rows[#rows + 1] = { "header", "This page" }
+    rows[#rows + 1] = { "header", L["This page"] }
     rows[#rows + 1] = resetPageRow(page, rows)
   end
   return rows
@@ -463,7 +479,7 @@ local PROFILE_WIDTH = 150
 -- Every profile as a dropdown choice.
 local function profileChoices()
   local out = {}
-  for _, n in ipairs(ns.ProfileNames()) do out[#out + 1] = { n, "Profile: " .. n } end
+  for _, n in ipairs(ns.ProfileNames()) do out[#out + 1] = { n, ns.Format(L["Profile: {profile}"], { profile = n }) } end
   return out
 end
 
@@ -508,7 +524,7 @@ local SEARCH_WIDTH = 190
 local function addHeaderControls(f)
   f.profile = profileDropdown(f.header)
   f.profile:SetPoint("RIGHT", f.close, "LEFT", -T.SPACE.gap, 0)
-  f.search = W.Search(f.header, SEARCH_WIDTH, "Search settings", function(text) O.Search(text) end)
+  f.search = W.Search(f.header, SEARCH_WIDTH, L["Search settings"], function(text) O.Search(text) end)
   f.search:SetPoint("RIGHT", f.profile, "LEFT", -T.SPACE.gap, 0)
   f.search:SetScript("OnEnterPressed", ns.Guard("search enter", searchEnter))
   T.Ornament(f, "rule", f.header)
@@ -526,7 +542,7 @@ local function addFooter(f)
   f.version = T.Text(f.footer:CreateFontString(nil, "OVERLAY"), "small", "muted")
   f.version:SetPoint("LEFT", T.SPACE.pad, 0)
   f.version:SetText(version() and ("Vanguard " .. version() .. "  ·  /vg") or "Vanguard  ·  /vg")
-  f.reload = ns.ReloadButton(W.Primary(f.footer, "Reload now"))
+  f.reload = ns.ReloadButton(W.Primary(f.footer, L["Reload now"]))
   f.reload:SetPoint("RIGHT", -T.SPACE.pad, 0)
   f.notice = T.Text(f.footer:CreateFontString(nil, "OVERLAY"), "label", "warn")
   f.notice:SetPoint("RIGHT", f.reload, "LEFT", -T.SPACE.col, 0)
@@ -775,7 +791,7 @@ end
 -- The profile in use had its settings replaced (Copy here, Reset profile): the running modules keep the
 -- tables they read at login until the reload, so a setting changed before it does nothing yet, and the notice says so.
 function O.ProfileReplaced()
-  reloadNotice = "Profile replaced: reload before you change more"
+  reloadNotice = L["Profile replaced: reload before you change more"]
   O.NeedReload()
 end
 
@@ -870,13 +886,19 @@ function O.MarkChanged(key)
   end
 end
 
--- Whether a page's title or any row's caption (a card title is no row's) contains the (lower-case) text, or the
--- search lists one of its rows (O.RowMatches: keywords, choice names, a note), so the nav never dims a hit's page.
+-- Whether a row's caption, as shown or in English (row.english), contains the (lower-case) text.
+local function captionHas(row, text)
+  return type(row[2]) == "string" and (row[2] .. " " .. (row.english or "")):lower():find(text, 1, true) ~= nil
+end
+
+-- Whether a page's title (or its English) or any row's caption (a card title is no row's) contains the (lower-case)
+-- text, or the search lists one of its rows (O.RowMatches: keywords, choice names, a note), so the nav never dims a
+-- hit's page.
 local function pageMatches(page, text)
-  if page.title:lower():find(text, 1, true) then return true end
+  if O.BothTongues(page.title):lower():find(text, 1, true) then return true end
   local rows = rowsOf(page)
   for i, row in ipairs(rows) do
-    if row[1] ~= "header" and type(row[2]) == "string" and row[2]:lower():find(text, 1, true) then return true end
+    if row[1] ~= "header" and captionHas(row, text) then return true end
     if O.RowMatches(rows, i, text) then return true end
   end
   return false
@@ -906,10 +928,10 @@ function O.RebuildPage(key)
   if pages[key] then pages[key]:ScrollTo(scroll) end
 end
 
--- The first row on a page whose caption has the (lower-case) text.
+-- The first row on a page whose caption, as shown or in English, has the (lower-case) text.
 local function firstRow(view, text)
   for _, w in ipairs(widgets) do
-    if w.card and w.card.child == view.child and type(w.caption) == "string" and w.caption:lower():find(text, 1, true) then return w end
+    if w.card and w.card.child == view.child and captionHas(w.source, text) then return w end
   end
 end
 

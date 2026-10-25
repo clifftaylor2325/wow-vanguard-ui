@@ -5,6 +5,8 @@
 
 local ADDON, ns = ...
 
+local L = ns.L
+
 local T, W, O = ns.Theme, ns.Widgets, ns.Options
 
 -- A profile's row is a list row (T.ROW.height); its buttons are SMALL wide (units), narrower than the usual 120.
@@ -34,7 +36,7 @@ function W.Danger(parent, text, onClick, width, warn)
   b:HookScript("OnLeave", ns.Guard("hide danger tooltip", function() if GameTooltip then GameTooltip:Hide() end end))
   -- Asks first, then acts.
   b:SetScript("OnClick", ns.Guard("click danger button", function(self)
-    if not self.armed then self.armed = true return self.text:SetText("Sure?") end
+    if not self.armed then self.armed = true return self.text:SetText(L["Sure?"]) end
     onClick()
   end))
   return b
@@ -44,11 +46,11 @@ end
 
 -- Delete and Copy here, right to left: they change settings for good, so they ask first and say what they lose.
 local function addEditButtons(r, name)
-  local lost = "Deletes profile " .. name .. " for every character on this account. It can't be undone."
-  r.delete = W.Danger(r, "Delete", function() ns.DeleteProfile(name) O.RebuildPage("profiles") end, SMALL, lost)
+  local lost = ns.Format(L["Deletes profile {profile} for every character on this account. It can't be undone."], { profile = name })
+  r.delete = W.Danger(r, L["Delete"], function() ns.DeleteProfile(name) O.RebuildPage("profiles") end, SMALL, lost)
   r.delete:SetPoint("RIGHT", -T.SPACE.gap, 0)
-  lost = string.format("Replaces every setting in profile %s with profile %s's. It can't be undone.", ns.SelectedProfileName(), name)
-  r.copy = W.Danger(r, "Copy here", function() O.ProfileCopied(ns.CopyProfile(name)) O.RebuildPage("profiles") end, SMALL, lost)
+  lost = ns.Format(L["Replaces every setting in profile {into} with profile {from}'s. It can't be undone."], { into = ns.SelectedProfileName(), from = name })
+  r.copy = W.Danger(r, L["Copy here"], function() O.ProfileCopied(ns.CopyProfile(name)) O.RebuildPage("profiles") end, SMALL, lost)
   r.copy:SetPoint("RIGHT", r.delete, "LEFT", -T.SPACE.gap, 0)
 end
 
@@ -58,7 +60,7 @@ end
 local function addProfileButtons(r, name)
   if name == ns.SelectedProfileName() then return end
   if name ~= ns.ProfileName() then addEditButtons(r, name) end
-  r.use = W.Button(r, "Use", function() ns.UseProfile(name) O.NeedReload() O.RebuildPage("profiles") end, SMALL)
+  r.use = W.Button(r, L["Use"], function() ns.UseProfile(name) O.NeedReload() O.RebuildPage("profiles") end, SMALL)
   if r.copy then r.use:SetPoint("RIGHT", r.copy, "LEFT", -T.SPACE.gap, 0) else r.use:SetPoint("RIGHT", -T.SPACE.gap, 0) end
 end
 
@@ -74,9 +76,10 @@ end
 
 -- A profile's name, marked when it is in use, in use until the reload, or the one that takes over then.
 local function profileLabel(name)
-  if name == ns.PendingProfileName() then return name .. "  (after reload)" end
+  if name == ns.PendingProfileName() then return ns.Format(L["{profile}  (after reload)"], { profile = name }) end
   if name ~= ns.ProfileName() then return name end
-  return name .. (ns.PendingProfileName() and "  (in use until reload)" or "  (in use)")
+  local mark = ns.PendingProfileName() and L["{profile}  (in use until reload)"] or L["{profile}  (in use)"]
+  return ns.Format(mark, { profile = name })
 end
 
 -- One profile: its name (marked when it's the one in use) and its buttons.
@@ -93,7 +96,7 @@ end
 local function create(r)
   local name = r.input:GetText()
   if not ns.NewProfile(name) then
-    r.label:SetText("Name taken or not allowed")
+    r.label:SetText(L["Name taken or not allowed"])
     return T.Color(r.label, "bad")
   end
   ns.UseProfile(name)
@@ -103,11 +106,11 @@ end
 
 -- The new-profile row: a name box and Create (Enter creates too).
 local function newProfileRow(parent, _, width)
-  local r = captioned(parent, width, "New profile", "text2")
+  local r = captioned(parent, width, L["New profile"], "text2")
   r.input = W.Input(r, 160)
   r.input:SetPoint("RIGHT", -(SMALL + 2 * T.SPACE.gap), 0)
   r.input:SetScript("OnEnterPressed", ns.Guard("create profile from the box", function() create(r) end))
-  r.create = W.Primary(r, "Create", function() create(r) end, SMALL)
+  r.create = W.Primary(r, L["Create"], function() create(r) end, SMALL)
   r.create:SetPoint("RIGHT", -T.SPACE.gap, 0)
   return r
 end

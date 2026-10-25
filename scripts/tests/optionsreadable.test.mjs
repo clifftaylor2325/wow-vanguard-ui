@@ -98,6 +98,45 @@ it("options: search lists the settings that match under the box, opens one, and 
   expect(addon.eval("return Vanguard_Options.results:IsShown()"), "closing the window closes the list").toBe(false);
 });
 
+// Fills in TEST-ONLY translations (English key -> text) before the window first opens, as a locale file would.
+const translate = (addon, texts) => addon.eval(Object.entries(texts).map(([key, text]) => `ns.L[${JSON.stringify(key)}] = ${JSON.stringify(text)}`).join(" "));
+// Types into the search box, then reads the results list's lines ("caption|page").
+const searched = (addon, text) => addon.eval(`local s = Vanguard_Options.search s:SetText(${JSON.stringify(text)}) s:GetScript("OnTextChanged")(s)
+  local out = {} for _, l in ipairs(Vanguard_Options.results.lines) do if l:IsShown() then out[#out + 1] = l.caption.__text .. "|" .. l.page.__text end end return out`);
+
+it("options: a translated reload caption gives its last bracket to the reload tag, half-width or full-width", () => {
+  const addon = loggedIn(CLICK_LUA);
+  translate(addon, { "Coordinates on the world map (reload)": "TEST-ONLY 世界地图坐标（重新加载）", "Gather addon minimap buttons into a drawer (reload)": "TEST-ONLY Knöpfe (Minikarte) (Neu laden)", "Tracking, mail and difficulty on the minimap's corners (reload)": "TEST-ONLY ohne Klammer" });
+  addon.eval('ns.Options.Show("map")');
+  // The shown row with this caption: whether it is there and its tag's words.
+  const row = (caption) => addon.eval(`${FIND(caption)} return { w ~= nil, w and w.tag and w.tag.__text }`);
+  expect(row("TEST-ONLY 世界地图坐标"), "a full-width bracket goes to the tag").toEqual([true, "reload"]);
+  expect(row("TEST-ONLY Knöpfe (Minikarte)"), "only the last bracket goes; one inside the caption stays").toEqual([true, "reload"]);
+  expect(row("TEST-ONLY ohne Klammer"), "a translation with no bracket at its end keeps its words and still wears the tag").toEqual([true, "reload"]);
+});
+
+it("options: search finds a translated setting by its translation, its English caption and either language's keywords", () => {
+  const addon = loggedIn(CLICK_LUA);
+  const words = addon.eval('return ns.Options.KEYWORDS["safer colours"]');
+  translate(addon, { "Safer colours (reload)": "TEST-ONLY Sicherere Farben (Neu laden)", [words]: "TEST-ONLY farbenblind" });
+  addon.eval(`ns.Options.KEYWORDS["safer colours"] = "TEST-ONLY farbenblind"`);
+  addon.slash("");
+  const hit = ["TEST-ONLY Sicherere Farben|General"];
+  expect(Object.values(searched(addon, "sicherere farben")), "by the translation").toEqual(hit);
+  expect(Object.values(searched(addon, "safer colours")), "by the English caption").toContain(hit[0]);
+  expect(Object.values(searched(addon, "farbenblind")), "by a translated keyword").toEqual(hit);
+  expect(Object.values(searched(addon, "colorblind")), "by the English keyword").toEqual(hit);
+});
+
+it("options: the nav keeps a translated page lit for its English title, and the translated word for changed lists the changed settings", () => {
+  const addon = loggedIn(CLICK_LUA);
+  translate(addon, { changed: "TEST-ONLY geaendert", Modules: "TEST-ONLY Module" });
+  addon.eval(`ns.Options.PAGES[2].title = "TEST-ONLY Module" ns.Options.Show("chat") __click("Copy button in the chat's tab bar")`);
+  addon.eval('ns.Options.Search("modules")');
+  expect(addon.eval("return ns.Options.matched.modules == true"), "the English title still matches the page").toBe(true);
+  expect(Object.values(searched(addon, "test-only geaendert")).some((l) => l.startsWith("Copy button in the chat's tab bar|")), "the translated word lists what differs from the default").toBe(true);
+});
+
 it("options: every search keyword belongs to a real caption", () => {
   const addon = loggedIn(CLICK_LUA);
   const gone = addon.eval(`local have = {}

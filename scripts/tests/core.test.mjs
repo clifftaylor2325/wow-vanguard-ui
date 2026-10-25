@@ -673,6 +673,12 @@ it("string table: a text with no translation reads as its English key; a locale'
   expect(english.eval('return { ns.Locale(), ns.NewLocale("deDE") == nil }'), "a client that can't say its locale counts as enUS").toEqual(["enUS", true]);
 });
 
+it("string table: ns.English gives back the English key of a translation, and any other text as it is", () => {
+  const addon = loggedIn('GetLocale = function() return "deDE" end');
+  addon.eval('local L = ns.NewLocale("deDE") L["TEST-ONLY Bags"] = "TEST-ONLY Taschen"');
+  expect(addon.eval('return { ns.English("TEST-ONLY Taschen"), ns.English("TEST-ONLY Bags"), ns.English("TEST-ONLY anything") }')).toEqual(["TEST-ONLY Bags", "TEST-ONLY Bags", "TEST-ONLY anything"]);
+});
+
 it("string table: ns.Format fills each {name} from its values, in any order, and leaves an unknown name as written", () => {
   const addon = loggedIn();
   expect(addon.eval('return ns.Format("{count} items sold for {money}", { count = 3, money = "1g" })')).toBe("3 items sold for 1g");

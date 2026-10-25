@@ -4,6 +4,8 @@
 
 local ADDON, ns = ...
 
+local L = ns.L
+
 local O = ns.Options
 local setting, reloadSetting, liveSetting, liveMethod, check, append = O.Setting, O.ReloadSetting, O.LiveSetting, O.LiveMethod, O.Check, O.Append
 
@@ -15,21 +17,21 @@ end
 -- The game's alerts (Modules/GameAlerts.lua) and the low-health vignette.
 local function alertRows()
   return {
-    check("Loss of control in the Vanguard look, above your character (reload)", reloadSetting("GameAlerts", "lossOfControl")),
-    { "cycle", "Talking head (reload)", { { "move", "Vanguard look, top left" }, { "hide", "Hidden" }, { "game", "The game's" } }, reloadSetting("GameAlerts", "talkingHead") },
-    check("Hardcore death notices in the Vanguard look (reload)", reloadSetting("GameAlerts", "hardcore")),
-    check("A rare nearby: a sound and a chat line, out of combat", setting("GameAlerts", "rares")),
-    check("Low health: a soft tint round the screen edge that grows as your health drops (no pulse)", liveSetting("GameAlerts", "vignette", applyVignette)),
+    check(L["Loss of control in the Vanguard look, above your character (reload)"], reloadSetting("GameAlerts", "lossOfControl")),
+    { "cycle", L["Talking head (reload)"], { { "move", L["Vanguard look, top left"] }, { "hide", L["Hidden"] }, { "game", L["The game's"] } }, reloadSetting("GameAlerts", "talkingHead") },
+    check(L["Hardcore death notices in the Vanguard look (reload)"], reloadSetting("GameAlerts", "hardcore")),
+    check(L["A rare nearby: a sound and a chat line, out of combat"], setting("GameAlerts", "rares")),
+    check(L["Low health: a soft tint round the screen edge that grows as your health drops (no pulse)"], liveSetting("GameAlerts", "vignette", applyVignette)),
   }
 end
 
 -- The game's own tools: the damage meter and the alerts (the Cooldown Manager is on the Cooldowns page).
 local function gameToolRows()
   return append({
-    { "header", "The game's tools" },
-    { "text", "The Cooldown Manager, the gaps row and the buff glow are on the Cooldowns page.", "note" },
-    check("Damage meter in the Vanguard look (reload)", reloadSetting("GameTools", "meter")),
-    check("Place them to fit the layout; off leaves them to Edit Mode (reload)", reloadSetting("GameTools", "place")),
+    { "header", L["The game's tools"] },
+    { "text", L["The Cooldown Manager, the gaps row and the buff glow are on the Cooldowns page."], "note" },
+    check(L["Damage meter in the Vanguard look (reload)"], reloadSetting("GameTools", "meter")),
+    check(L["Place them to fit the layout; off leaves them to Edit Mode (reload)"], reloadSetting("GameTools", "place")),
   }, alertRows())
 end
 
@@ -37,17 +39,17 @@ end
 local function bossDockRows()
   local BD = ns.GetModule("BossDocks")
   if not (BD.HasDBM() or BD.HasBigWigs()) then return {} end
-  return { { "header", "Boss mods" }, { "button", "Line up boss mod bars with the Boss timers spots", BD.Command },
-    { "text", "Move the Boss timers spots with /vg unlock first. Deadly Boss Mods' bars move at once; for BigWigs, chat says where to drag them." } }
+  return { { "header", L["Boss mods"] }, { "button", L["Line up boss mod bars with the Boss timers spots"], BD.Command },
+    { "text", L["Move the Boss timers spots with /vg unlock first. Deadly Boss Mods' bars move at once; for BigWigs, chat says where to drag them."] } }
 end
 
 -- Fight history under the damage meter: its switch (applied at once) and its visibility.
 local function fightRows()
-  local fightVisibility, fightWhen = O.VisibilityRows("Fight history visibility", "FightHistory", "visibility", "showWhen")
+  local fightVisibility, fightWhen = O.VisibilityRows(L["Fight history visibility"], "FightHistory", "visibility", "showWhen")
   return {
-    { "header", "Fight history" },
-    check("Sparkline of your DPS in the last 20 fights, under the damage meter", liveMethod("FightHistory", "strip", "Paint")),
-    check("Recap in chat after each fight: interrupts, dispels, damage taken, deaths (/vg recap)", setting("FightHistory", "recap")),
+    { "header", L["Fight history"] },
+    check(L["Sparkline of your DPS in the last 20 fights, under the damage meter"], liveMethod("FightHistory", "strip", "Paint")),
+    check(L["Recap in chat after each fight: interrupts, dispels, damage taken, deaths (/vg recap)"], setting("FightHistory", "recap")),
     fightVisibility, fightWhen,
   }
 end
@@ -74,23 +76,23 @@ end
 local function meterButtons()
   local MT = ns.GetModule("Meter")
   return {
-    check("Show each line's share of the total (45%) when the game gives plain figures", liveSetting("Meter", "percent", paint)),
-    { "cycle", "Report the meter to", { { "chat", "Your chat" }, { "say", "Say" }, { "party", "Party" }, { "raid", "Raid" }, { "instance", "Instance" }, { "guild", "Guild" } }, liveSetting("Meter", "reportTo", paint) },
-    { "button", "Report the meter's top lines (also the Report button on the meter)", MT.ReportClick, function() return MT.settings ~= nil end },
-    { "button", "Reset the game's damage meter", MT.Reset },
+    check(L["Show each line's share of the total (45%) when the game gives plain figures"], liveSetting("Meter", "percent", paint)),
+    { "cycle", L["Report the meter to"], { { "chat", L["Your chat"] }, { "say", L["Say"] }, { "party", L["Party"] }, { "raid", L["Raid"] }, { "instance", L["Instance"] }, { "guild", L["Guild"] } }, liveSetting("Meter", "reportTo", paint) },
+    { "button", L["Report the meter's top lines (also the Report button on the meter)"], MT.ReportClick, function() return MT.settings ~= nil end },
+    { "button", L["Reset the game's damage meter"], MT.Reset },
   }
 end
 
 -- Vanguard's own damage and healing meter: its switches (applied at once) and its visibility.
 local function meterRows()
   local MT = ns.GetModule("Meter")
-  local meterVisibility, meterWhen = O.VisibilityRows("Vanguard meter visibility", "Meter", "visibility", "showWhen")
+  local meterVisibility, meterWhen = O.VisibilityRows(L["Vanguard meter visibility"], "Meter", "visibility", "showWhen")
   return {
-    { "header", "Vanguard meter" },
-    check("Vanguard's own damage and healing meter: the top lines of the game's meter (/vg meter)", liveSetting("Meter", "on", paint)),
-    meterCycle("Meter shows", "kind", MT.KIND_ORDER, MT.KINDS, paint),
-    meterCycle("Meter segment", "session", MT.SESSION_ORDER, MT.SESSIONS, paint),
-    { "slider", "Lines in the meter", { min = 3, max = MT.MAXROWS, step = 1 }, liveSetting("Meter", "rows", paint) },
+    { "header", L["Vanguard meter"] },
+    check(L["Vanguard's own damage and healing meter: the top lines of the game's meter (/vg meter)"], liveSetting("Meter", "on", paint)),
+    meterCycle(L["Meter shows"], "kind", MT.KIND_ORDER, MT.KINDS, paint),
+    meterCycle(L["Meter segment"], "session", MT.SESSION_ORDER, MT.SESSIONS, paint),
+    { "slider", L["Lines in the meter"], { min = 3, max = MT.MAXROWS, step = 1 }, liveSetting("Meter", "rows", paint) },
     meterVisibility, meterWhen,
   }
 end
@@ -98,13 +100,13 @@ end
 -- The roll tracker: its switches (applied at once) and its visibility.
 local function rollRows()
   local R = ns.GetModule("Rolls")
-  local rollVisibility, rollWhen = O.VisibilityRows("Roll tracker visibility", "Rolls", "visibility", "showWhen")
+  local rollVisibility, rollWhen = O.VisibilityRows(L["Roll tracker visibility"], "Rolls", "visibility", "showWhen")
   -- Draws the panel again (when the module is on).
   local function repaint() if R.enabled then R.Paint() end end
   return {
-    { "header", "Roll tracker" },
-    check("Show the group's /roll results in a small panel", liveSetting("Rolls", "show", repaint)),
-    check("Show loot rolls (who rolled what) where the client has them", liveMethod("Rolls", "loot", "ReadLoot")),
+    { "header", L["Roll tracker"] },
+    check(L["Show the group's /roll results in a small panel"], liveSetting("Rolls", "show", repaint)),
+    check(L["Show loot rolls (who rolled what) where the client has them"], liveMethod("Rolls", "loot", "ReadLoot")),
     rollVisibility, rollWhen,
   }
 end
@@ -115,4 +117,4 @@ local function toolsPageRows()
   return append(append(append(append(rows, fightRows()), meterRows()), meterButtons()), rollRows())
 end
 
-O.AddPage({ key = "tools", title = "Combat tools", icon = "NavTools", order = 84, rows = toolsPageRows })
+O.AddPage({ key = "tools", title = L["Combat tools"], icon = "NavTools", order = 84, rows = toolsPageRows })

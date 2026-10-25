@@ -54,7 +54,7 @@ node scripts/i18n.mjs export deDE deDE.csv    # key, english, translation, conte
 node scripts/i18n.mjs import deDE deDE.csv    # writes Locales/deDE.lua from the reviewed rows
 ```
 
-A row whose note says `machine` is a draft and is not imported: a translation ships only once a native speaker has reviewed it. Volunteers translate through the Localization tab of the CurseForge project; its export comes back as a CSV for the same import. `scripts/i18n.test.mjs` fails when a locale file was edited by hand, keeps a key the code no longer uses, or loses a `{placeholder}`; `scripts/tests/options.test.mjs` logs in under every locale, so each file's lines run under the coverage floor. Changing a key's English orphans its translations: `status` lists them, and the next import drops them.
+A row whose note says `machine` is a draft and is not imported: a translation ships only once a native speaker has reviewed it. Volunteers translate through the Localization tab of the CurseForge project; its export comes back as a CSV for the same import. `scripts/i18n.test.mjs` fails when a locale file was edited by hand, keeps a key the code no longer uses, or loses a `{placeholder}`; `scripts/tests/options.test.mjs` logs in under every locale, so each file's lines run under the coverage floor. Changing a key's English orphans its translations: `status` lists them, and the next import drops them. An options caption whose English ends in ` (reload)` keeps its reload words in a bracket at the end of its translation (half-width or full-width): the options window moves that last bracket into the row's reload tag.
 
 ## Releases on CurseForge
 

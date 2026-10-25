@@ -6,6 +6,8 @@
 
 local ADDON, ns = ...
 
+local L = ns.L
+
 local T, W = ns.Theme, ns.Widgets
 
 local O = ns.Options
@@ -40,31 +42,31 @@ end
 -- The game's manager switches, by name.
 local function managerRows()
   return {
-    show = tip(check("Show the game's manager", cooldownManagerSetting()), "Turns the game's Cooldown Manager on (off again when unticked). Its essential row sits between your frames; /vg unlock moves it."),
-    look = tip(check("Vanguard look (reload)", reloadSetting("GameTools", "cooldowns")), "Square icons in thin borders, the theme font and timer font on the game's Cooldown Manager."),
+    show = tip(check(L["Show the game's manager"], cooldownManagerSetting()), L["Turns the game's Cooldown Manager on (off again when unticked). Its essential row sits between your frames; /vg unlock moves it."]),
+    look = tip(check(L["Vanguard look (reload)"], reloadSetting("GameTools", "cooldowns")), L["Square icons in thin borders, the theme font and timer font on the game's Cooldown Manager."]),
   }
 end
 
 -- The gaps row switches, by name.
 local function gapRows()
   return {
-    gaps = tip(check("Gaps row (reload)", reloadSetting("CooldownGaps", "on")), "A row of icons for what the game's manager misses: on-use trinkets, items and spells you choose (in the list below), pet abilities and totems."),
-    tracked = tip(check("Add the manager's cooldowns (reload)", reloadSetting("CooldownGaps", "tracked")), "Also draws the spells the manager tracks in its essential and utility rows as Vanguard icons in the gaps row."),
+    gaps = tip(check(L["Gaps row (reload)"], reloadSetting("CooldownGaps", "on")), L["A row of icons for what the game's manager misses: on-use trinkets, items and spells you choose (in the list below), pet abilities and totems."]),
+    tracked = tip(check(L["Add the manager's cooldowns (reload)"], reloadSetting("CooldownGaps", "tracked")), L["Also draws the spells the manager tracks in its essential and utility rows as Vanguard icons in the gaps row."]),
   }
 end
 
 -- The glow switch and share (Modules/CooldownGlow.lua), applied at once.
 local function glowRows()
   return {
-    glow = tip(check("Glow a buff near its end", liveSetting("CooldownGlow", "glow", applyGlow)), "Glows a Cooldown Manager buff in its last part, where the game's own flag is missing."),
-    percent = tip({ "slider", "Glow when this much is left", glowPercentSlider(), liveSetting("CooldownGlow", "percent", applyGlow) }, "The share of the buff's time left under which its icon glows."),
+    glow = tip(check(L["Glow a buff near its end"], liveSetting("CooldownGlow", "glow", applyGlow)), L["Glows a Cooldown Manager buff in its last part, where the game's own flag is missing."]),
+    percent = tip({ "slider", L["Glow when this much is left"], glowPercentSlider(), liveSetting("CooldownGlow", "percent", applyGlow) }, L["The share of the buff's time left under which its icon glows."]),
   }
 end
 
 -- The key text switch (Modules/CooldownKeys.lua), applied at once.
 local function keyRows()
   return {
-    keys = tip(check("Key text on the manager's icons", liveMethod("CooldownKeys", "keys", "Refresh")), "Shows the key you press for each spell in the manager's essential and utility rows, read from Vanguard's action bars. An icon whose spell isn't on a Vanguard bar shows none."),
+    keys = tip(check(L["Key text on the manager's icons"], liveMethod("CooldownKeys", "keys", "Refresh")), L["Shows the key you press for each spell in the manager's essential and utility rows, read from Vanguard's action bars. An icon whose spell isn't on a Vanguard bar shows none."]),
   }
 end
 
@@ -81,12 +83,12 @@ end
 -- (Modules/CooldownGaps.lua draws that list), the glow and the key text, each in its own card.
 local function pageRows()
   local d = defs()
-  local top = { { "button", "Set up cooldowns", function() WZ.Open() end }, { "header", "The game's manager" }, d.show, d.look, { "header", "Gaps row" }, d.gaps, d.tracked }
-  local rest = { { "header", "Buff glow" }, d.glow, d.percent, { "header", "Key text" }, d.keys }
+  local top = { { "button", L["Set up cooldowns"], function() WZ.Open() end }, { "header", L["The game's manager"] }, d.show, d.look, { "header", L["Gaps row"] }, d.gaps, d.tracked }
+  local rest = { { "header", L["Buff glow"] }, d.glow, d.percent, { "header", L["Key text"] }, d.keys }
   return append(append(top, ns.GetModule("CooldownGaps").CardRows()), rest)
 end
 
-O.AddPage({ key = "cooldowns", title = "Cooldowns", icon = "Legacy", order = 83.5, rows = pageRows })
+O.AddPage({ key = "cooldowns", title = L["Cooldowns"], icon = "Legacy", order = 83.5, rows = pageRows })
 
 -- The wizard ----------------------------------------------------------------------------
 
@@ -96,9 +98,9 @@ WZ.TOP = ns.DIALOG.head + 16
 WZ.BODY = WZ.TOP + 64
 -- The steps in order: caption name, the note under it, and the rows each shows (names from defs).
 WZ.STEPS = {
-  { name = "Show it", note = "The game's Cooldown Manager keeps its essential row between your frames. Show it, and choose how it looks.", keys = { "show", "look" } },
-  { name = "Gaps row", note = "A row of icons for what the manager misses. Choose its items and spells on the Cooldowns page.", keys = { "gaps", "tracked" } },
-  { name = "Buff glow", note = "Glow a manager buff when it is nearly over.", keys = { "glow", "percent" } },
+  { name = L["Show it"], note = L["The game's Cooldown Manager keeps its essential row between your frames. Show it, and choose how it looks."], keys = { "show", "look" } },
+  { name = L["Gaps row"], note = L["A row of icons for what the manager misses. Choose its items and spells on the Cooldowns page."], keys = { "gaps", "tracked" } },
+  { name = L["Buff glow"], note = L["Glow a manager buff when it is nearly over."], keys = { "glow", "percent" } },
 }
 
 -- Builds one row's widget on the window (a switch or a slider), hidden until its step shows.
@@ -130,9 +132,9 @@ end
 -- The note, the caption and the buttons for step n.
 function WZ.Decorate(f, n, step)
   f.note:SetText(step.note)
-  f.caption:SetText(string.format("Step %d of %d · %s", n, #WZ.STEPS, step.name))
+  f.caption:SetText(ns.Format(L["Step {step} of {steps} · {name}"], { step = n, steps = #WZ.STEPS, name = step.name }))
   f.back:SetShown(n > 1)
-  f.next.text:SetText(n == #WZ.STEPS and "Done" or "Next")
+  f.next.text:SetText(n == #WZ.STEPS and L["Done"] or L["Next"])
 end
 
 -- Next: the following step; on the last it is Done and closes the window.
@@ -148,15 +150,15 @@ end
 
 -- The footer: Back and Next or Done (the window applies as you go, so it ends in Done).
 local function footer(f)
-  f.next = W.Primary(f, "Next", function() WZ.Next() end)
+  f.next = W.Primary(f, L["Next"], function() WZ.Next() end)
   f.next:SetPoint("BOTTOMRIGHT", -WZ.PAD, WZ.PAD)
-  f.back = W.Button(f, "Back", function() WZ.Back() end)
+  f.back = W.Button(f, L["Back"], function() WZ.Back() end)
   f.back:SetPoint("RIGHT", f.next, "LEFT", -T.SPACE.gap, 0)
 end
 
 -- The title, the step caption (a note) and the step's note text.
 local function labels(f)
-  f.title:SetText("Set up cooldowns")
+  f.title:SetText(L["Set up cooldowns"])
   f.caption = T.Text(f:CreateFontString(nil, "OVERLAY"), "small", "muted")
   f.caption:SetPoint("TOPLEFT", WZ.PAD, -ns.DIALOG.head)
   f.note = T.Text(f:CreateFontString(nil, "OVERLAY"), "label")
