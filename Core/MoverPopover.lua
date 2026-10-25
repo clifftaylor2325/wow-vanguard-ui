@@ -5,17 +5,18 @@
 -- can't be is refused, and the popover says why.
 
 local ADDON, ns = ...
+local L = ns.L
 
 local T, W = ns.Theme, ns.Widgets
 
 -- Anchor points, as { value, label }, in reading order.
 local POINTS = {
-  { "TOPLEFT", "Top left" }, { "TOP", "Top" }, { "TOPRIGHT", "Top right" },
-  { "LEFT", "Left" }, { "CENTER", "Center" }, { "RIGHT", "Right" },
-  { "BOTTOMLEFT", "Bottom left" }, { "BOTTOM", "Bottom" }, { "BOTTOMRIGHT", "Bottom right" },
+  { "TOPLEFT", L["Top left"] }, { "TOP", L["Top"] }, { "TOPRIGHT", L["Top right"] },
+  { "LEFT", L["Left"] }, { "CENTER", L["Center"] }, { "RIGHT", L["Right"] },
+  { "BOTTOMLEFT", L["Bottom left"] }, { "BOTTOM", L["Bottom"] }, { "BOTTOMRIGHT", L["Bottom right"] },
 }
 -- The sides of another frame a frame can be anchored to.
-local SIDES = { { "LEFT", "Left" }, { "RIGHT", "Right" }, { "TOP", "Top" }, { "BOTTOM", "Bottom" } }
+local SIDES = { { "LEFT", L["Left"] }, { "RIGHT", L["Right"] }, { "TOP", L["Top"] }, { "BOTTOM", L["Bottom"] } }
 
 local popover
 
@@ -40,7 +41,7 @@ end
 local function refreshAnchor(to)
   popover.anchor:SetShown(not to)
   popover.side:SetShown(to ~= nil)
-  popover.pointCaption:SetText(to and "Side" or "Anchor")
+  popover.pointCaption:SetText(to and L["Side"] or L["Anchor"])
   for _, d in ipairs(popover.dropdowns) do d:Refresh() end
 end
 
@@ -159,21 +160,21 @@ end
 
 -- The rows that place the frame: what it's anchored to, the point or side, and X and Y offsets.
 local function addPlaceRows()
-  caption("Anchor to", rowY(1))
-  popover.target = dropdown(others({ "", "Screen" }), function() return ns.MoverAnchor(popover.key) or "" end, applyTarget, rowY(1))
-  popover.pointCaption = caption("Anchor", rowY(2))
+  caption(L["Anchor to"], rowY(1))
+  popover.target = dropdown(others({ "", L["Screen"] }), function() return ns.MoverAnchor(popover.key) or "" end, applyTarget, rowY(1))
+  popover.pointCaption = caption(L["Anchor"], rowY(2))
   popover.anchor = dropdown(POINTS, function() return (ns.MoverPoint(popover.key)) end, applyPoint, rowY(2))
   popover.side = dropdown(SIDES, function() return select(2, ns.MoverAnchor(popover.key)) end, applySide, rowY(2))
-  caption("X offset", rowY(3))
+  caption(L["X offset"], rowY(3))
   popover.x = numberBox(rowY(3), applyOffset)
-  caption("Y offset", rowY(4))
+  caption(L["Y offset"], rowY(4))
   popover.y = numberBox(rowY(4), applyOffset)
 end
 
 -- A Match width or Match height row at y: None, or another frame whose size it takes.
 local function matchRow(dim, text, y)
   caption(text, y)
-  return dropdown(others({ "", "None" }), function() return ns.MoverMatch(popover.key, dim) or "" end,
+  return dropdown(others({ "", L["None"] }), function() return ns.MoverMatch(popover.key, dim) or "" end,
     function(source) answer(ns.SetMoverMatch(popover.key, dim, source)) end, y)
 end
 
@@ -181,10 +182,10 @@ end
 local function addRows()
   popover.dropdowns = {}
   addPlaceRows()
-  popover.scale = percentBox("Scale %", rowY(5), ns.SetMoverScale)
-  popover.alpha = percentBox("Opacity %", rowY(6), ns.SetMoverAlpha)
-  popover.matchWidth = matchRow("width", "Match width", rowY(7))
-  popover.matchHeight = matchRow("height", "Match height", rowY(8))
+  popover.scale = percentBox(L["Scale %"], rowY(5), ns.SetMoverScale)
+  popover.alpha = percentBox(L["Opacity %"], rowY(6), ns.SetMoverAlpha)
+  popover.matchWidth = matchRow("width", L["Match width"], rowY(7))
+  popover.matchHeight = matchRow("height", L["Match height"], rowY(8))
   popover.why = T.Text(popover:CreateFontString(nil, "OVERLAY"), "small", "warn")
   popover.why:SetPoint("TOPLEFT", T.SPACE.col, -(rowY(8) + T.ROW.height / 2 + T.SPACE.tight))
   popover.why:SetWidth(WIDTH - 2 * T.SPACE.col)
@@ -193,9 +194,9 @@ end
 -- Reset (to the frame's default place, scale, opacity and size, unlinked) and Done (the popover is a form that
 -- applies as you go, so it ends in Done, which closes it as its X does).
 local function addButtons()
-  popover.done = W.Primary(popover, "Done", function() ns.CloseMoverPopover() end)
+  popover.done = W.Primary(popover, L["Done"], function() ns.CloseMoverPopover() end)
   popover.done:SetPoint("BOTTOMRIGHT", -T.SPACE.pad, T.SPACE.pad)
-  popover.reset = W.Button(popover, "Reset", function() ns.ResetMovers(popover.key) answer(true) end)
+  popover.reset = W.Button(popover, L["Reset"], function() ns.ResetMovers(popover.key) answer(true) end)
   popover.reset:SetPoint("RIGHT", popover.done, "LEFT", -T.SPACE.gap, 0)
 end
 
@@ -203,7 +204,7 @@ end
 -- anchored (refresh sets it), on one line short of the X. The X closes it as Done does; so does Escape, which
 -- also puts an open dropdown away.
 local function addChrome()
-  local parts = ns.WindowTitle(popover, "Position", { kind = "card", onClose = ns.CloseMoverPopover, escape = true })
+  local parts = ns.WindowTitle(popover, L["Position"], { kind = "card", onClose = ns.CloseMoverPopover, escape = true })
   parts.title:SetWidth(WIDTH - 3 * T.SPACE.gap - T.CONTROL.tile)
   parts.title:SetWordWrap(false)
   popover:HookScript("OnHide", ns.Guard("close mover menu", W.CloseMenu))

@@ -13,6 +13,7 @@
 -- its own stack of open tables rather than recursing, so it can stop anywhere.
 
 local ADDON, ns = ...
+local L = ns.L
 
 local S = {}
 ns.Serialize = S
@@ -233,8 +234,8 @@ end
 
 -- After the checksum: true when the body checks out and is base64, else nil and why not.
 local function checkedBody(d)
-  if string.format("%04x", d.sum) ~= d.want then return nil, "the string is incomplete (was it cut off when pasting?)" end
-  if #d.body % 4 ~= 0 or d.body:find("[^%w%+/=]") then return nil, "the string is damaged" end
+  if string.format("%04x", d.sum) ~= d.want then return nil, L["the string is incomplete (was it cut off when pasting?)"] end
+  if #d.body % 4 ~= 0 or d.body:find("[^%w%+/=]") then return nil, L["the string is damaged"] end
   return true
 end
 
@@ -248,7 +249,7 @@ end
 
 -- What reading gave: the settings table, or nil and why not.
 local function settingsRead(root)
-  if type(root) ~= "table" then return nil, "the settings in it can't be read" end
+  if type(root) ~= "table" then return nil, L["the settings in it can't be read"] end
   return root
 end
 
@@ -314,7 +315,7 @@ end
 -- A decode's state for the pasted text, or nil and why not when it isn't a Vanguard string.
 local function start(text)
   local scope, sum, body = pasted(text):match("^VG1:([%w_]+):(%x%x%x%x):(.+)$")
-  if not scope then return nil, "not a Vanguard profile string" end
+  if not scope then return nil, L["not a Vanguard profile string"] end
   return { scope = scope, want = sum, body = body, i = 1, sum = 0, progress = 0, phase = sumPhase }
 end
 
@@ -348,6 +349,6 @@ end
 -- older), or nil and why not when it is newer than `newest`, the newest this version reads.
 function S.Format(data, newest)
   local format = tonumber(data.format) or 1
-  if format > newest then return nil, "it was made by a newer version of Vanguard: update Vanguard, then import it again" end
+  if format > newest then return nil, L["it was made by a newer version of Vanguard: update Vanguard, then import it again"] end
   return format
 end

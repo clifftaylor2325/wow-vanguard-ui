@@ -6,6 +6,7 @@
 -- Read it inside functions only: FactionArt loads later in the TOC.
 
 local ADDON, ns = ...
+local L = ns.L
 
 local H = {}
 ns.Home = H
@@ -72,7 +73,7 @@ end
 function H.OnRules()
   local before = H.last
   local now = H.Key()
-  if before and before ~= now then ns.Chat("The game's rules changed: Vanguard now keeps prices and characters under " .. now .. ".") end
+  if before and before ~= now then ns.Chat(ns.Format(L["The game's rules changed: Vanguard now keeps prices and characters under {key}."], { key = now })) end
 end
 ns.On("GAME_RULES_CHANGED", ns.Guard("game rules", H.OnRules))
 
@@ -285,28 +286,33 @@ function H.ClearBeta()
   return countsOf(found)
 end
 
+-- How each kind of beta data is counted in a sentence.
+local BETA_KINDS = { { "prices", L["{count} prices"] }, { "sales", L["{count} sales"] }, { "characters", L["{count} characters"] } }
+
 -- "12 prices, 3 sales, 2 characters" (the ones there are), or nil when there are none.
 local function betaText(n)
   local parts = {}
-  for _, kind in ipairs({ "prices", "sales", "characters" }) do
-    if n[kind] > 0 then parts[#parts + 1] = n[kind] .. " " .. kind end
+  for _, kind in ipairs(BETA_KINDS) do
+    if n[kind[1]] > 0 then parts[#parts + 1] = ns.Format(kind[2], { count = n[kind[1]] }) end
   end
   return #parts > 0 and table.concat(parts, ", ") or nil
 end
 
 -- /vg launch [clear]: what is saved from before launch, or (clear, once launch has passed) removes it.
 function H.Launch(arg)
-  if arg == "clear" and not H.Launched() then return ns.Chat("Launch is on 4 November 2026; nothing is cleared before then.") end
+  if arg == "clear" and not H.Launched() then return ns.Chat(L["Launch is on 4 November 2026; nothing is cleared before then."]) end
   local text = betaText(arg == "clear" and H.ClearBeta() or H.Beta())
-  if not text then return ns.Chat("No prices, sales or characters saved from before launch.") end
-  ns.Chat(arg == "clear" and ("Cleared what was saved from before launch: " .. text .. ".") or ("Saved from before launch (the beta): " .. text .. ". /vg launch clear removes them."))
+  if not text then return ns.Chat(L["No prices, sales or characters saved from before launch."]) end
+  local said = arg == "clear" and L["Cleared what was saved from before launch: {saved}."] or L["Saved from before launch (the beta): {saved}. /vg launch clear removes them."]
+  ns.Chat(ns.Format(said, { saved = text }))
 end
 
 -- The Clear button on the Town and gear page: asks first, naming what would go.
 function H.AskClear()
   local text = betaText(H.Beta())
-  if not text then return ns.Chat("No prices, sales or characters saved from before launch.") end
-  ns.Ask("Clear what was saved before launch (" .. text .. ")? Prices, sales and characters you saw after launch stay.", "Clear", function() H.Launch("clear") end, function() end)
+  if not text then return ns.Chat(L["No prices, sales or characters saved from before launch."]) end
+  local question = ns.Format(L["Clear what was saved before launch ({saved})? Prices, sales and characters you saw after launch stay."], { saved = text })
+  ns.Ask(question, L["Clear"], function() H.Launch("clear") end, function() end)
 end
 
 -- Once per account, after launch: says when beta data is still saved and where to clear it.
@@ -314,6 +320,6 @@ function H.LaunchNotice()
   if not H.Launched() or type(VanguardDB) ~= "table" or VanguardDB.launchNoticed then return end
   VanguardDB.launchNoticed = true
   local text = betaText(H.Beta())
-  if text then ns.Chat("Still saved from the beta: " .. text .. ". Clear them under /vg > Town and gear if the live game starts fresh.") end
+  if text then ns.Chat(ns.Format(L["Still saved from the beta: {saved}. Clear them under /vg > Town and gear if the live game starts fresh."], { saved = text })) end
 end
 ns.On("PLAYER_LOGIN", ns.Guard("launch notice", H.LaunchNotice))

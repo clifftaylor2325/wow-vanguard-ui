@@ -14,7 +14,8 @@ local ADDON, ns = ...
 local vgFading = ns.FrameState("vgFading")
 
 local T = ns.Theme
-local L = ns.Layout
+local LY = ns.Layout
+local L = ns.L
 
 local DEFAULTS = { grid = true, gridSize = 32, snap = true, editMode = true }
 local NUDGE = { UP = { 0, 1 }, DOWN = { 0, -1 }, LEFT = { -1, 0 }, RIGHT = { 1, 0 } }
@@ -57,7 +58,7 @@ ns.MOVER_ALPHA = { min = 0.1, max = 1 }
 -- A saved scale or opacity kept to its range; 1 when it isn't a number (a hand-edited profile string).
 local function within(v, range)
   v = tonumber(v)
-  return v and L.Within(v, range.min, range.max) or 1
+  return v and LY.Within(v, range.min, range.max) or 1
 end
 
 -- A mover's saved scale and opacity: 1 and 1 unless set.
@@ -269,7 +270,7 @@ end
 -- Edit Mode ---------------------------------------------------------------------------
 
 -- Vanguard's frames move with their own handles, so Edit Mode shows those too.
-ns.EDIT_NOTE = "The labeled handles are Vanguard's frames: drag them here too (right-click one for more)."
+ns.EDIT_NOTE = L["The labeled handles are Vanguard's frames: drag them here too (right-click one for more)."]
 
 -- The note under Edit Mode's window, made on first use (it shows and hides with that window). Edit Mode's window
 -- resizes itself from every child frame, so the note is marked ignoreInLayout: hung below the window, it would
@@ -370,8 +371,8 @@ end
 local function dropPosition(h, r)
   local screen = { w = UIParent:GetWidth() or 0, h = UIParent:GetHeight() or 0 }
   local rect = r
-  if ns.MoverOptions().snap then rect = L.Snap(r, otherRects(h.mover), screen) end
-  local point, x, y = L.Anchor(rect, screen)
+  if ns.MoverOptions().snap then rect = LY.Snap(r, otherRects(h.mover), screen) end
+  local point, x, y = LY.Anchor(rect, screen)
   return point, point, x, y
 end
 
@@ -510,7 +511,7 @@ end
 local function setLook(key, field, value, range)
   local m = movers[key]
   if not m or type(value) ~= "number" then return end
-  value = L.Within(math.floor(value * 100 + 0.5) / 100, range.min, range.max)
+  value = LY.Within(math.floor(value * 100 + 0.5) / 100, range.min, range.max)
   entry(key)[field] = value ~= 1 and value or nil
   place(m)
   if m.handle then handleFor(m) end
@@ -611,6 +612,6 @@ end
 ns.On("PLAYER_REGEN_DISABLED", function()
   if unlocked then
     ns.Lock()
-    ns.Chat("Locked for combat. /vg unlock again afterwards.")
+    ns.Chat(L["Locked for combat. /vg unlock again afterwards."])
   end
 end)

@@ -2,6 +2,7 @@
 -- instead of creating their own frames.
 
 local ADDON, ns = ...
+local L = ns.L
 
 -- "Vanguard:" in the accent color (plain until the theme has loaded).
 local function chatPrefix()
@@ -183,7 +184,7 @@ local function record(where, err, level)
   local e = byText[text] or keep(text, stack(level))
   if not printed[text] then
     printed[text] = true
-    ns.Chat(text .. "  (once per error; /vg errors has the stack)")
+    ns.Chat(ns.Format(L["{error}  (once per error; /vg errors has the stack)"], { error = text }))
   end
   e.count = e.count + 1
   return text

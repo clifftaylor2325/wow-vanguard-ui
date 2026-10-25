@@ -24,14 +24,15 @@ it("docs/COMMANDS.md's tables only list commands its reference or the feature pa
   expect(unknown, "commands missing from the reference and the feature pages").toEqual([]);
 });
 
-// The command words /vg help lists (the first word of each HELP line in Core/Slash.lua).
+// The command words /vg help lists (the first word of each HELP entry's syntax in Core/Slash.lua: { "setup", L[…] }).
 const helpWords = () => {
   const block = read("Core/Slash.lua").split(/\nlocal HELP = \{\n/)[1].split(/\n\}\n/)[0];
-  return [...block.matchAll(/^ {2}"([a-z]+)[ ",]/gm)].map((m) => m[1]);
+  return [...block.matchAll(/^ {2}\{ "([a-z]+)[ ",]/gm)].map((m) => m[1]);
 };
 
 it("docs/COMMANDS.md lists every command /vg help lists", () => {
   const listed = commandWords(read("docs/COMMANDS.md"));
+  expect(helpWords().length, "the HELP table was read").toBeGreaterThan(50);
   const missing = helpWords().filter((w) => !listed.has(w));
   expect(missing, "commands missing from docs/COMMANDS.md").toEqual([]);
 });

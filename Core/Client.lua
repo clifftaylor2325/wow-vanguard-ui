@@ -7,6 +7,7 @@
 -- only: files before this one in the TOC load first.
 
 local ADDON, ns = ...
+local L = ns.L
 
 local C = { has = {} }
 ns.Client = C
@@ -144,7 +145,7 @@ end
 
 -- The one chat line when snippets are off, with the probe's error when it threw.
 local function warnNoSnippets(err)
-  ns.Chat("This client can't run secure snippets: hover keys are off; bar 1 pages and the raid frames are set up without them." .. (err and ("  (probe: " .. err .. ")") or ""))
+  ns.Chat(L["This client can't run secure snippets: hover keys are off; bar 1 pages and the raid frames are set up without them."] .. (err and ("  (probe: " .. err .. ")") or ""))
 end
 
 -- Functions waiting for the probe's answer (C.WhenSnippetsKnown).

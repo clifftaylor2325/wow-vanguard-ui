@@ -5,6 +5,7 @@
 -- /vg errors clear; with no errors there is no badge.
 
 local ADDON, ns = ...
+local L = ns.L
 
 local T = ns.Theme
 
@@ -12,9 +13,10 @@ local BADGE_H, BADGE_PAD = 14, 8
 local EB = {}
 ns.ErrorBadge = EB
 
--- "1 error" or "3 errors".
-local function errorsText(n)
-  return n == 1 and "1 error" or (n .. " errors")
+-- The footer line: "1 error caught this session: …" or "3 errors caught this session: …".
+local function footerText(n)
+  if n == 1 then return L["1 error caught this session: click to list them"] end
+  return ns.Format(L["{count} errors caught this session: click to list them"], { count = n })
 end
 
 -- The count just left of the addons button, level with it (a capsule in the accent, the count in void): beside the
@@ -42,7 +44,7 @@ end
 function EB.Update()
   local n = #ns.errors
   show(EB.button, n, n > 99 and "99+" or tostring(n))
-  show(EB.footer, n, errorsText(n) .. " caught this session: click to list them")
+  show(EB.footer, n, footerText(n))
 end
 
 -- The footer line, right of the version: the count in the bad color; a click lists the errors in chat (/vg errors).

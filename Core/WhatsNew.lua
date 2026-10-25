@@ -5,6 +5,7 @@
 -- end. It never opens by itself in combat. /vg whatsnew and the General page open it again.
 
 local ADDON, ns = ...
+local L = ns.L
 
 local T, W = ns.Theme, ns.Widgets
 
@@ -71,7 +72,7 @@ end
 -- The title, centred across the window, with the hint under it, the close button and Escape (ns.WindowTitle);
 -- fill() puts the version in the title.
 local function addTitle(f)
-  local parts = ns.WindowTitle(f, "What's new", { align = "center", count = "Click a line to open its setting.",
+  local parts = ns.WindowTitle(f, L["What's new"], { align = "center", count = L["Click a line to open its setting."],
     onClose = function(window) window:Hide() end, escape = true })
   f.hint = parts.count
 end
@@ -106,7 +107,7 @@ end
 
 -- An item's words, with "(off by default)" after a thing that starts off.
 local function itemText(item)
-  return item.off and (item.text .. "  " .. T.Paint("(off by default)", "warn")) or item.text
+  return item.off and (item.text .. "  " .. T.Paint(L["(off by default)"], "warn")) or item.text
 end
 
 -- Makes a line a link: a click opens its setting (the row already has its wash under the mouse).
@@ -167,7 +168,7 @@ local function fill(entry)
   frame.hint:SetShown(hasLink(entry))
   frame.view:Fit(y - GROUP_GAP - LINE_GAP)
   frame.lines, frame.version = child.lines, entry.version
-  frame.title:SetText("What's new in Vanguard " .. entry.version)
+  frame.title:SetText(ns.Format(L["What's new in Vanguard {version}"], { version = entry.version }))
   frame.view:ScrollTo(0)
 end
 
@@ -187,7 +188,7 @@ end
 -- /vg whatsnew and the General page: the newest notes up to this version, or a line saying there are none.
 function WN.Open()
   local entry = WN.Latest(ns.AddonVersion())
-  if not entry then return ns.Chat("This version of Vanguard has no release notes.") end
+  if not entry then return ns.Chat(L["This version of Vanguard has no release notes."]) end
   WN.Show(entry)
 end
 

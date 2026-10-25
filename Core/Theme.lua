@@ -166,7 +166,7 @@ T.VARIANT_ORDER = { "default", "contrast", "vellum", "classic", "midnight", "obs
 T.VARIANTS = {
   -- High Contrast: opaque near-black panels, white text, no sheen, full-saturation states.
   contrast = {
-    label = "High contrast", assist = true, ring = 2, flat = true,
+    label = ns.L["High contrast"], assist = true, ring = 2, flat = true,
     tokens = {
       panel = "0a0b0e", inset = "050608", raised = "14161b", raisedHover = "22262d", divider = "3a414c", borderHi = "5a6270",
       sheen = { "ffffff", 0 },
@@ -177,7 +177,7 @@ T.VARIANTS = {
   -- Classic (#218): dark leather and bronze, gold-cream text, a bronze border, the window ornaments on.
   -- Own colours only; nothing from the game's art.
   classic = {
-    label = "Classic look", ornaments = true, minimapRound = true, barBacking = true,
+    label = ns.L["Classic look"], ornaments = true, minimapRound = true, barBacking = true,
     tokens = {
       panel = { "1c1610", 0.96 }, inset = { "120d09", 0.96 }, raised = "2b2117", divider = "4a3a24", edge = "6b5230",
       sheen = { "ffd27a", 0.08 }, text = "f2e2b6", text2 = "d4bf8c", muted = "9c8a62",
@@ -185,7 +185,7 @@ T.VARIANTS = {
   },
   -- Vellum & Ink: a warm dark with cream text and brass.
   vellum = {
-    label = "Vellum and ink",
+    label = ns.L["Vellum and ink"],
     tokens = {
       panel = { "1a1612", 0.94 }, inset = { "100d0a", 0.95 }, raised = "241f19", divider = "3a3226",
       text = "efe6d2", text2 = "d2c6ad", muted = "9a8f78",
@@ -193,7 +193,7 @@ T.VARIANTS = {
   },
   -- Midnight: a cold navy-black with steel-blue dividers and ice-blue text.
   midnight = {
-    label = "Midnight",
+    label = ns.L["Midnight"],
     tokens = {
       panel = { "0d1220", 0.94 }, inset = { "080c16", 0.95 }, raised = "151c2e", divider = "2a3550",
       text = "e6eefc", text2 = "c3cfe6", muted = "9aa8c4",
@@ -201,7 +201,7 @@ T.VARIANTS = {
   },
   -- Obsidian: neutral charcoal with no warm or cold tint, light grey text and a thin silver edge.
   obsidian = {
-    label = "Obsidian",
+    label = ns.L["Obsidian"],
     tokens = {
       panel = { "141414", 0.94 }, inset = { "0c0c0c", 0.95 }, raised = "1e1e1e", divider = "343434", edge = "5c5c5c",
       text = "ececec", text2 = "cfcfcf", muted = "a8a8a8",
@@ -209,7 +209,7 @@ T.VARIANTS = {
   },
   -- Moss: a dark forest green with mossy dividers and pale sage text.
   moss = {
-    label = "Moss",
+    label = ns.L["Moss"],
     tokens = {
       panel = { "101a14", 0.94 }, inset = { "0a110d", 0.95 }, raised = "18261d", divider = "2c4232",
       text = "e4eee6", text2 = "c3d4c7", muted = "98ad9e",
@@ -217,7 +217,7 @@ T.VARIANTS = {
   },
   -- Ash and ember: smoky grey with a dim rust edge and dividers, warm grey text.
   ember = {
-    label = "Ash and ember",
+    label = ns.L["Ash and ember"],
     tokens = {
       panel = { "1a1718", 0.94 }, inset = { "110f10", 0.95 }, raised = "262223", divider = "4a2e2a", edge = "5a2c24",
       text = "ebe4e2", text2 = "cfc5c2", muted = "a89c98",
@@ -1646,7 +1646,7 @@ T.ALPHA = { opaque = 1, dialog = 0.98, overlay = 0.94, alert = 0.92, calm = 0.35
 T.ROW = { height = 28 }
 -- The chat background (Modules/Chat.lua, the panel's fill): the strengths the Chat background
 -- strength setting offers, as the fill's opacity.
-T.CHAT_BACKDROP = { levels = { { 0.55, "Light" }, { 0.75, "Medium" }, { 0.9, "Dark" } } }
+T.CHAT_BACKDROP = { levels = { { 0.55, ns.L["Light"] }, { 0.75, ns.L["Medium"] }, { 0.9, ns.L["Dark"] } } }
 -- The scrim behind chat with the background off (Modules/Chat.lua): a panel-coloured band at the
 -- Light strength, clear to full over `left` units at the left edge, full across the middle, full to
 -- clear over `right` units at the right (the glass chat look: solid behind the lines, soft at their ends).
