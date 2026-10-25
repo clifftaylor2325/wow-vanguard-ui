@@ -342,9 +342,10 @@ local function matchName(names, text)
   end
 end
 
--- /vg enable|disable <module>: the module's name may be typed in any case.
+-- /vg enable|disable <module>: the module's name may be typed in any case; with no name, the usage line.
 local function setModule(on)
   return function(rest)
+    if rest == "" then return chat(string.format("Usage: /vg %s <module>. /vg modules lists them.", on and "enable" or "disable")) end
     local name = matchName(ns.ModuleNames(), rest)
     if not name then
       return chat("No module called " .. rest .. ". /vg modules lists them.")

@@ -217,11 +217,13 @@ function IS.CountMoney()
   s.last = now
 end
 
--- Counts the XP gained since the last update; after a level-up, the old level's rest too.
+-- Counts the XP gained since the last update; after a level-up, the old level's rest too. A new level
+-- shows as a new level total, even when one big gain lands at or above the old XP.
 function IS.CountXP()
   local s, cur, max = IS.session, xpNow()
   if not (s and cur and s.xp) then return end
-  if cur >= s.xp then s.gained = s.gained + cur - s.xp
+  local sameLevel = max == s.max
+  if sameLevel and cur >= s.xp then s.gained = s.gained + cur - s.xp
   else s.gained = s.gained + (s.max - s.xp) + cur end
   s.xp, s.max = cur, max
 end

@@ -153,10 +153,12 @@ end
 
 local paint = MT.Paint
 
--- The meter's repaint also repaints the panel.
+-- The meter's repaint also repaints the panel, or closes it once the meter is off or hidden.
 function MT.Paint()
   paint()
-  MT.PaintDetail()
+  local meterShown = MT.frame and MT.frame:IsShown()
+  if meterShown then return MT.PaintDetail() end
+  MT.CloseDetail()
 end
 
 -- Report ---------------------------------------------------------------------------------------

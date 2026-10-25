@@ -272,9 +272,16 @@ function MT.Reset()
   ns.Chat(pcall(reset) and "The game's damage meter was reset." or "The game's damage meter can't be reset now.")
 end
 
+-- Why /vg meter can't answer before the module has started: it is switched off under Modules, or it was
+-- switched on there this session and starts at the next reload.
+function MT.SayNotStarted()
+  if ns.ModuleEnabled("Meter") then return ns.Chat("Vanguard's meter starts after a /reload.") end
+  ns.Chat("Vanguard's meter is switched off under Modules (/vg > Modules).")
+end
+
 -- /vg meter [on|off|<kind>|<segment>|reset|report ...]: switch it, or say how it stands.
 function MT.Command(rest)
-  if not MT.settings then return ns.Chat("Vanguard's meter is switched off under Modules (/vg > Modules).") end
+  if not MT.settings then return MT.SayNotStarted() end
   local word, arg = (rest or ""):lower():match("^%s*(%S*)%s*(.-)%s*$")
   if word == "reset" then return MT.Reset() end
   if word == "report" then return MT.Report(arg) end

@@ -261,9 +261,10 @@ function MC.BuyNext(run)
   if run.bought > 0 then ns.Chat(string.format("Bought %d × %s for %s.", run.bought, itemName(run.id or 0), money(run.spent))) end
 end
 
--- Starts buying packs of merchant item index; one run at a time.
+-- Starts buying packs of merchant item index; one run at a time, so an order during a run says to wait.
 function MC.Buy(index, packs)
-  if MC.buying or packs <= 0 or not trading() then return end
+  if packs <= 0 or not trading() then return end
+  if MC.buying then return ns.Chat("Nothing bought: still buying the last order; try again when it is done.") end
   local _, quantity = wares(index)
   local id = MC.ItemID(ask("GetMerchantItemLink", index))
   MC.buying = { index = index, id = id, packs = packs, bought = 0, spent = 0, quantity = quantity }

@@ -84,9 +84,9 @@ local function ownRefresh(base, i)
   end
 end
 
--- Takes the number typed in a slider's box (any number, past the slider's ends too); anything else puts the weight back.
+-- Takes the number typed in a slider's box (any finite number, past the slider's ends too); anything else puts the weight back.
 local function typed(r)
-  local n = tonumber(r.box:GetText())
+  local n = UP.ParseWeight(r.box:GetText())
   if n then r.set(n) end
   r.box:ClearFocus()
   r:Refresh()
@@ -143,9 +143,16 @@ local function build()
   addButtons()
 end
 
+-- Why the wizard can't open before Gear upgrades has started: it is switched off under Modules, or it was
+-- switched on there this session and starts at the next reload.
+function WZ.SayNotStarted()
+  if ns.ModuleEnabled("Upgrades") then return ns.Chat("Gear upgrades starts after a /reload.") end
+  ns.Chat("Gear upgrades is switched off: turn it on under Modules first.")
+end
+
 -- Opens the wizard with the weights this profile uses now.
 function WZ.Open()
-  if not UP.settings then return ns.Chat("Gear upgrades is switched off: turn it on under Modules first.") end
+  if not UP.settings then return WZ.SayNotStarted() end
   if not frame then build() end
   loadWeights()
   refresh()

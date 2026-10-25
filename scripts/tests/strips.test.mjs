@@ -532,6 +532,12 @@ it("the info strip: XP and gold per hour, and time to level", () => {
   expect(rates(), "hidden XP: the rate so far stays, the time to level hides").toEqual([true, false, false]);
   expect(addon.eval('local IS = ns.GetModule("InfoStrip") return { IS.ShortMoney(5), IS.ShortMoney(507), IS.Duration(30) }'), "short money and times").toEqual(["5c", "5s 7c", "1m"]);
 });
+it("the info strip counts a whole level gained in one update, landing at or above the old XP", () => {
+  const addon = loggedIn(UNITS_ENV + STRIP_ENV + LEVEL_ENV);
+  addon.eval("__xp, __xpmax = 1200, 6000");
+  addon.fire("PLAYER_XP_UPDATE", "player");
+  expect(addon.eval('return ns.GetModule("InfoStrip").session.gained'), "4000 to finish level 10, then 1200 into level 11").toBe(5200);
+});
 it("the info strip's rates carry on through a /reload, start again on a new login, and can be started again from now", () => {
   const addon = loggedIn(UNITS_ENV + STRIP_ENV + LEVEL_ENV);
   addon.eval("__xp = 1900");

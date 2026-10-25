@@ -171,7 +171,7 @@ function GB.OnChat(event, text, sender)
   st.events[event] = (st.events[event] or 0) + 1
   if why then st[why] = st[why] + 1 return end
   local e = GB.Parse(text)
-  if not e then st.plain, st.lastPlain = st.plain + 1, text:sub(1, 80) return end
+  if not e then st.plain, st.lastPlain = st.plain + 1, ns.TextPrefix(text, 80) return end
   st.posts = st.posts + 1
   e.sender, e.time = sender, GetTime()
   GB.Add(e)

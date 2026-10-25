@@ -178,6 +178,10 @@ it("with the Meter module switched off, /vg meter says so instead of failing", (
   const addon = loggedIn(METER_ENV, { savedVariables: "VanguardDB.profiles = { Default = { modules = { Meter = false } } }" });
   addon.slash("meter on");
   expect([chatHas(addon, /meter is switched off under Modules/), addon.eval("return #ns.errors"), addon.eval("return Vanguard_Meter == nil")], "a message, no error, no panel").toEqual([true, 0, true]);
+  addon.clearChat();
+  addon.eval("ns.SetModuleEnabled('Meter', true)");
+  addon.slash("meter on");
+  expect([chatHas(addon, /Vanguard's meter starts after a \/reload\./), chatHas(addon, /switched off/)], "switched on under Modules but not reloaded yet: it says it starts after a reload").toEqual([true, false]);
 });
 
 it("the title is a card's heading on the click-to-switch button, the room above the bars fits it, and the empty line is label text2", () => {
@@ -286,6 +290,10 @@ it("a click on a line opens that player's spells, in the game's order; again or 
   addon.eval("C_DamageMeter.GetCombatSessionSourceFromType = function() error('x') end");
   addon.advance(1);
   expect(addon.eval("return #ns.errors"), "no error from a refused call").toBe(0);
+  click(2);
+  expect(panel()[0], "a line opens the panel again").toBe(true);
+  addon.slash("meter off");
+  expect(panel()[0], "turning the meter off closes the panel too").toBe(false);
 });
 
 it("spell lists fall back safely: no call, hidden list, hidden spells, unknown names", () => {
