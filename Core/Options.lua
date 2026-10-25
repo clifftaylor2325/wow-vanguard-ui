@@ -537,13 +537,13 @@ end
 
 -- Reset profile: after asking, the profile back to defaults (backed up first), applied on reload.
 local function resetProfile()
-  confirmReset("Reset this profile?", "Reset", O.NeedReload)
+  confirmReset("Reset this profile?", "Reset", O.ProfileReplaced)
 end
 O.AskResetProfile = resetProfile
 
 -- Start over: after asking, the profile back to defaults (backed up first), and setup opens after the reload that applies it.
 local function startOver()
-  confirmReset("Start over?", "Start over", function() VanguardCharDB.setupDone = false O.NeedReload() end)
+  confirmReset("Start over?", "Start over", function() VanguardCharDB.setupDone = false O.ProfileReplaced() end)
 end
 
 -- Profiles, part one: which profile, export/import, reset.

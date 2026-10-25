@@ -43,6 +43,8 @@ local pages, widgets = {}, {}
 -- Each page's rows as the search reads them, kept while the window is open (O.RebuildPage drops a page's).
 local rowCache = {}
 local needsReload = false
+-- What the footer's notice says while a change waits for the reload (O.ProfileReplaced words it more strongly).
+local reloadNotice = "Some changes need a reload"
 -- True while every row is being refreshed at once (the nav's dots are marked once after).
 local quiet = false
 
@@ -520,7 +522,7 @@ local function addFooter(f)
   f.reload:SetPoint("RIGHT", -T.SPACE.pad, 0)
   f.notice = T.Text(f.footer:CreateFontString(nil, "OVERLAY"), "label", "warn")
   f.notice:SetPoint("RIGHT", f.reload, "LEFT", -T.SPACE.col, 0)
-  f.notice:SetText("Some changes need a reload")
+  f.notice:SetText(reloadNotice)
 end
 
 -- One nav entry (h tall): a list row (W.Row), one pixel in from the nav's edge; the current page wears its selected look.
@@ -759,7 +761,20 @@ end
 -- Marks a change that applies on reload, and shows the reload notice.
 function O.NeedReload()
   needsReload = true
-  if window then window.reload:SetShown(true) window.notice:SetShown(true) end
+  if window then window.reload:SetShown(true) window.notice:SetShown(true) window.notice:SetText(reloadNotice) end
+end
+
+-- The profile in use had its settings replaced (Copy here, Reset profile): the running modules keep the
+-- tables they read at login until the reload, so a setting changed before it does nothing yet, and the notice says so.
+function O.ProfileReplaced()
+  reloadNotice = "Profile replaced: reload before you change more"
+  O.NeedReload()
+end
+
+-- After ns.CopyProfile copied into `into`: the profile in use replaced (O.ProfileReplaced), or a staged one (O.NeedReload).
+function O.ProfileCopied(into)
+  if into == ns.ProfileName() then return O.ProfileReplaced() end
+  O.NeedReload()
 end
 
 -- Re-reads every widget's value (after a change elsewhere, e.g. a profile switch), then marks the nav's dots.

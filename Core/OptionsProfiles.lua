@@ -48,7 +48,7 @@ local function addEditButtons(r, name)
   r.delete = W.Danger(r, "Delete", function() ns.DeleteProfile(name) O.RebuildPage("profiles") end, SMALL, lost)
   r.delete:SetPoint("RIGHT", -T.SPACE.gap, 0)
   lost = string.format("Replaces every setting in profile %s with profile %s's. It can't be undone.", ns.SelectedProfileName(), name)
-  r.copy = W.Danger(r, "Copy here", function() ns.CopyProfile(name) O.NeedReload() O.RebuildPage("profiles") end, SMALL, lost)
+  r.copy = W.Danger(r, "Copy here", function() O.ProfileCopied(ns.CopyProfile(name)) O.RebuildPage("profiles") end, SMALL, lost)
   r.copy:SetPoint("RIGHT", r.delete, "LEFT", -T.SPACE.gap, 0)
 end
 
