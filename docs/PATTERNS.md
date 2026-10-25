@@ -90,6 +90,16 @@ ns.Soon("layout", relayout)                                      -- once, on the
 
 No module makes its own event frame or its own `OnUpdate` loop. An event the client lacks is skipped and reported, not raised.
 
+## Text a player reads
+
+```lua
+local L = ns.L                                                   -- once per file, beside `local ADDON, ns = ...`
+fs:SetText(L["Experience bar"])                                  -- the English is the key; untranslated, it reads as itself
+ns.Chat(ns.Format(L["{count} items sold for {money}"], { count = n, money = m })) -- named slots, never "..." .. n .. "..."
+```
+
+Every label, tooltip line, chat line and dialog text goes through `L[…]`, one whole sentence per key, so a translator can reorder it. Names the game supplies (spells, items, zones, classes) come from the client already translated and never go through `L`; nor do slash command verbs, saved-variable keys, profile strings or `/vg probe` and `/vg perf` output. Translations live in `Locales/<locale>.lua`, written by `node scripts/i18n.mjs import` from a reviewed CSV, never by hand.
+
 ## A setting that changes shape
 
 ```lua

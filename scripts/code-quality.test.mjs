@@ -485,14 +485,41 @@ describe(
   },
 );
 
+const UNWRAPPED = "unwrapped-text";
+
+// An English literal handed to a widget, tooltip, chat or option row is reported with its line, and does not block.
+function unwrappedBare() {
+  const src = inFn('fs:SetText("Experience bar")\n  ns.Chat("Errors cleared.")\n  check("Show the bar", "xp")');
+  expect(reported(src)).toEqual([UNWRAPPED, UNWRAPPED, UNWRAPPED]);
+  expect(reportSource("Modules/t.lua", src)[0]).toMatchObject({ line: 3, message: 'English text not in L[…]: "Experience bar"' });
+  expect(problems("Modules/t.lua", src)).toBe("");
+}
+
+// Wrapped text, paths, icons, symbols, variables and files outside Core and Modules pass.
+function unwrappedPasses() {
+  expect(reported(inFn('fs:SetText(L["Experience bar"])\n  ns.Chat(ns.Format(L["{n} sold"], { n = 1 }))'))).toEqual([]);
+  expect(reported(inFn('fs:SetText("|TInterface\\\\Icons\\\\X:0|t")\n  fs:SetText("·")\n  fs:SetText("")\n  fs:SetText(name)'))).toEqual([]);
+  expect(reported(inFn('fs:SetText("Experience bar")'), "scripts/lib/t.lua")).toEqual([]);
+}
+
+describe(
+  "code quality, report-only",
+  // Text a player reads goes through the string table.
+  () => {
+    it("unwrapped text: a literal in a text sink is reported, and does not block", unwrappedBare);
+    it("unwrapped text: wrapped text, paths, symbols and other folders pass", unwrappedPasses);
+  },
+);
+
 it("baseline: a count above fails, below asks to lower it, a missing rule counts as 0", () => {
   const rows = compareToBaseline({ [SECURE]: 3, [ONUPDATE]: 1 }, { [SECURE]: 2 });
   expect(rows).toEqual([
     { rule: SECURE, count: 3, baseline: 2, status: "above" },
     { rule: ONUPDATE, count: 1, baseline: 0, status: "above" },
     { rule: HANDLER, count: 0, baseline: 0, status: "at" },
+    { rule: UNWRAPPED, count: 0, baseline: 0, status: "at" },
   ]);
-  expect(compareToBaseline({ [SECURE]: 1 }, { [SECURE]: 2, [ONUPDATE]: 0, [HANDLER]: 0 }).map((r) => r.status)).toEqual(["below", "at", "at"]);
+  expect(compareToBaseline({ [SECURE]: 1 }, { [SECURE]: 2, [ONUPDATE]: 0, [HANDLER]: 0 }).map((r) => r.status)).toEqual(["below", "at", "at", "at"]);
 });
 
 it("baseline: the committed file lists every report-only rule as a whole number", () => {

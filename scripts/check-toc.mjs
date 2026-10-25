@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Checks Vanguard.toc against the files on disk and against .luacheckrc. It
 // fails (exit 1) when:
-//   - a .lua file under Core/ or Modules/ is not listed in the TOC (an orphan:
+//   - a .lua file under Core/, Modules/ or Locales/ is not listed in the TOC (an orphan:
 //     the game never loads it, and neither do the test harness and the
 //     coverage floor, which both walk the TOC);
 //   - a file is listed twice;
@@ -23,7 +23,7 @@ export const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "
 
 // The Interface values the TOC must list: WoW Forever, the 12.1.5 client (the live number the wiki gives, so the release does not show as out of date), then the 12.0.7 build the harness models as Retail.
 export const EXPECTED_INTERFACE = ["16001", "120105", "120007"];
-const ORPHAN_SCOPE = ["Core", "Modules"];
+const ORPHAN_SCOPE = ["Core", "Modules", "Locales"];
 const LIBS = "Libs/";
 const SAVED_KEYS = ["SavedVariables", "SavedVariablesPerCharacter"];
 
@@ -63,7 +63,7 @@ export function luacheckGlobals(text) {
   return new Set([...quoted, ...keyed]);
 }
 
-// Every .lua file under Core/ and Modules/ of a checkout, as repo paths with forward slashes.
+// Every .lua file under Core/, Modules/ and Locales/ of a checkout, as repo paths with forward slashes.
 export function luaFilesOnDisk(dir) {
   return ORPHAN_SCOPE.flatMap((folder) => {
     const base = path.join(dir, folder);
@@ -96,7 +96,7 @@ function duplicateProblems(files, toc) {
   return out;
 }
 
-// .lua files under Core/ and Modules/ that the TOC does not list.
+// .lua files under Core/, Modules/ and Locales/ that the TOC does not list.
 function orphanProblems(files, disk, toc) {
   const listed = new Set(files.map((f) => f.path));
   const orphans = disk.filter((f) => !listed.has(f));
@@ -145,7 +145,7 @@ function main() {
   const problems = checkCheckout(at >= 0 ? path.resolve(process.argv[at + 1]) : root);
   for (const p of problems) console.error(p);
   if (problems.length) process.exit(1);
-  console.log("OK  the TOC lists every Lua file under Core/ and Modules/ once, libraries first; Interface, Title, Version and SavedVariables check out");
+  console.log("OK  the TOC lists every Lua file under Core/, Modules/ and Locales/ once, libraries first; Interface, Title, Version and SavedVariables check out");
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) main();
