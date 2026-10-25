@@ -161,9 +161,15 @@ function G.Restore()
   ns.OfferReload("Restored profile " .. name .. " from this character's backup.")
 end
 
--- Pastes a profile string (the import box); a whole profile staged by it answers the loss at logout.
+-- Pastes a profile string (the import box); a whole profile imported from it answers the loss (G.Imported).
 function G.Paste()
   ns.ImportDialog()
+end
+
+-- A whole profile was imported (Core/Profiles.lua): it answers an unanswered loss, a string that matches
+-- the profile in use too (nothing is staged then), so the notice goes and logout stamps both files again.
+function G.Imported()
+  if G.lost then G.Resolve() end
 end
 
 -- Start fresh: the loss is answered and setup runs, out of the options' way.
