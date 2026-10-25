@@ -24,7 +24,7 @@ The first time you log in on an account, a four-step wizard asks for a layout (D
 
 ## Language
 
-Vanguard's own text (the options window, setup, chat lines and tooltips) is in English for now; it loads on every client language, and names the game supplies (spells, items, zones) stay in your client's language. On Korean and Chinese clients it uses the game's font, since its bundled font has no Hangul or Han, and on a Russian client the faction look keeps Fira Sans for headings, since the faction fonts have no Cyrillic. Known gap until the first 0.8.x update: on a non-English client, click casting's spell groups and starter layouts, the instance prep buff checks and raid healing's class buff list look for the game's English names, so they can find nothing or list a buff you have as missing.
+Vanguard's own text (the options window, setup, chat lines and tooltips) is in English for now, and translations into every client language are on the way: a language shows once a native speaker has reviewed it, and any text not yet translated stays in English. Vanguard loads on every client language, and names the game supplies (spells, items, zones) stay in your client's language. On Korean and Chinese clients it uses the game's font, since its bundled font has no Hangul or Han, and on a Russian client the faction look keeps Fira Sans for headings, since the faction fonts have no Cyrillic. Known gap until a coming update: on a non-English client, click casting's spell groups and starter layouts, the instance prep buff checks and raid healing's class buff list look for the game's English names, so they can find nothing or list a buff you have as missing.
 
 ## Settings guard
 

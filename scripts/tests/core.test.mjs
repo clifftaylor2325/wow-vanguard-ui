@@ -664,3 +664,18 @@ it("the reload dialog: the reason is the title and the dialog grows to fit it; t
   addon.click(`${name}.chrome.close`);
   expect([addon.frame(name).visible, addon.eval(`return ${name}.accept.reloadOverlay:IsShown()`)], "the X hides it and the overlay with it").toEqual([false, false]);
 });
+
+it("string table: a text with no translation reads as its English key; a locale's file fills in only on that client", () => {
+  const addon = loggedIn('GetLocale = function() return "deDE" end');
+  expect(addon.eval('return { ns.L["Experience bar"], ns.Locale() }'), "no translation: the English key").toEqual(["Experience bar", "deDE"]);
+  expect(addon.eval('local L = ns.NewLocale("deDE") L["TEST-ONLY Bags"] = "TEST-ONLY Taschen" return { ns.L["TEST-ONLY Bags"], ns.NewLocale("frFR") == nil }'), "the client's own locale gets the table, another locale nothing").toEqual(["TEST-ONLY Taschen", true]);
+  const english = loggedIn('GetLocale = nil');
+  expect(english.eval('return { ns.Locale(), ns.NewLocale("deDE") == nil }'), "a client that can't say its locale counts as enUS").toEqual(["enUS", true]);
+});
+
+it("string table: ns.Format fills each {name} from its values, in any order, and leaves an unknown name as written", () => {
+  const addon = loggedIn();
+  expect(addon.eval('return ns.Format("{count} items sold for {money}", { count = 3, money = "1g" })')).toBe("3 items sold for 1g");
+  expect(addon.eval('return ns.Format("für {money}: {count}", { count = 3, money = "1g" })'), "a translation may reorder the slots").toBe("für 1g: 3");
+  expect(addon.eval('return ns.Format("{count} of {total}", { count = 0 })'), "a value missing stays as its slot; false and 0 fill in").toBe("0 of {total}");
+});
