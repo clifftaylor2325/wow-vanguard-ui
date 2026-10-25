@@ -11,6 +11,7 @@
 -- masked to it, the corner diamonds are left off and the buttons sit on the rim.
 
 local ADDON, ns = ...
+local L = ns.L
 
 -- Per-frame state kept off the game's frames (Core/Events.lua, ns.FrameState).
 local vgGlyph = ns.FrameState("vgGlyph")
@@ -61,8 +62,8 @@ local ZONE_COLORS = {
 
 -- What the zone tooltip says of each PvP type.
 local PVP_WORDS = {
-  sanctuary = "Sanctuary", friendly = "Friendly territory", hostile = "Hostile territory",
-  contested = "Contested territory", combat = "Combat zone", arena = "Free-for-all territory",
+  sanctuary = L["Sanctuary"], friendly = L["Friendly territory"], hostile = L["Hostile territory"],
+  contested = L["Contested territory"], combat = L["Combat zone"], arena = L["Free-for-all territory"],
 }
 
 -- Minimap art this module fades out, by path under the global table.
@@ -257,7 +258,7 @@ local function rgb(name)
 end
 
 -- The zone tooltip's closing hints: what a click and the wheel do on the zone name.
-MM.ZONE_HINTS = { "Click: world map", "Wheel: zoom" }
+MM.ZONE_HINTS = { L["Click: world map"], L["Wheel: zoom"] }
 
 -- Fills the tooltip for the zone band: the zone, its subzone when it has
 -- one, and whose territory it is, in the zone text's color; then what a click and the wheel do.
@@ -352,7 +353,7 @@ local function createHolder(size)
   MM.holder = holder
   holder:SetSize(size + 2, size + 2 + (MM.round and MM.BAND.top or 0))
   if MM.round then roundBacking(holder, size) else T.HudPanel(holder) end
-  ns.Mover(holder, "minimap", "Minimap", { "TOPRIGHT", "TOPRIGHT", -12, -12 })
+  ns.Mover(holder, "minimap", L["Minimap"], { "TOPRIGHT", "TOPRIGHT", -12, -12 })
   return holder
 end
 
@@ -477,7 +478,7 @@ end
 
 -- Opens or closes the world map, unless a fight is on (the game refuses Vanguard there).
 local function toggleWorldMap()
-  if ns.WindowWaitsForCombat("The world map") then return end
+  if ns.WindowWaitsForCombat(L["The world map"]) then return end
   if type(ToggleWorldMap) == "function" then ToggleWorldMap() end
 end
 

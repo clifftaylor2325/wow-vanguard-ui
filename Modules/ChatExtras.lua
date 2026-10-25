@@ -13,6 +13,7 @@
 -- changed: those lines pass through as they are and are left out of the copy.
 
 local ADDON, ns = ...
+local L = ns.L
 
 -- Per-frame state kept off the game's frames (Core/Events.lua, ns.FrameState).
 local vgWatched = ns.FrameState("vgWatched")
@@ -128,7 +129,7 @@ end
 -- A link was clicked: an address of ours opens in the copy box.
 function CX.OnLink(_, link)
   if type(link) ~= "string" or link:sub(1, #PREFIX) ~= PREFIX then return end
-  ns.ShowText("Copy the address (Ctrl+C)", link:sub(#PREFIX + 1))
+  ns.ShowText(L["Copy the address (Ctrl+C)"], link:sub(#PREFIX + 1))
 end
 
 -- Links addresses in chat, where the game hands addon links back to addons.
@@ -234,14 +235,14 @@ end
 -- The copy box's title, naming the tab ("Copy Trade (Ctrl+C)"), or "Copy chat" when the game gives no plain name.
 local function copyTitle(frame)
   local name = type(frame.GetID) == "function" and type(GetChatWindowInfo) == "function" and GetChatWindowInfo(frame:GetID())
-  if ns.IsSecret(name) or type(name) ~= "string" or name == "" then name = "chat" end
-  return "Copy " .. name .. " (Ctrl+C)"
+  if ns.IsSecret(name) or type(name) ~= "string" or name == "" then return L["Copy chat (Ctrl+C)"] end
+  return ns.Format(L["Copy {tab} (Ctrl+C)"], { tab = name })
 end
 
 -- Opens the recent chat of the shown tab in the copy box, at its newest line.
 function CX.ShowCopy()
   local frame = shownWindow()
-  if not isChatWindow(frame) then return ns.Chat("This client can't read the chat back.") end
+  if not isChatWindow(frame) then return ns.Chat(L["This client can't read the chat back."]) end
   ns.ShowTextAtEnd(copyTitle(frame), CX.RecentText(frame))
 end
 
@@ -369,7 +370,7 @@ end
 
 -- The choices for the game's chat timestamps: off, then each format this client has.
 function CX.TimestampChoices()
-  local out = { { "none", "Off" } }
+  local out = { { "none", L["Off"] } }
   for _, key in ipairs(TIMESTAMP_FORMATS) do
     local format = _G["TIMESTAMP_FORMAT_" .. key]
     if type(format) == "string" then out[#out + 1] = { format, sampleText(format) } end

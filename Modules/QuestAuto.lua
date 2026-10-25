@@ -12,6 +12,7 @@
 -- so a page that's about to be answered for you isn't shown.
 
 local ADDON, ns = ...
+local L = ns.L
 
 local QA = ns.Module("QuestAuto", { defaults = { accept = false, acceptShared = false, turnIn = false, bestReward = false, skipGossip = false } })
 
@@ -138,9 +139,15 @@ local function awaitAccept(line)
   ns.On("QUEST_ACCEPTED", confirmAccept)
 end
 
+-- The accept line: the quest, and who shared it when a player did.
+local function acceptLine()
+  if not fromPlayer() then return ns.Format(L["Accepted: {quest}"], { quest = title() }) end
+  return ns.Format(L["Accepted: {quest} (shared by {name})"], { quest = title(), name = ns.QuestParts.Plain(ns.CallIf(_G, "UnitName", "npc")) })
+end
+
 -- Accepts the offered quest (or acknowledges one the game accepted already, said at once).
 function QA.Accept()
-  local line = "Accepted: " .. title() .. (fromPlayer() and (" (shared by " .. ns.QuestParts.Plain(ns.CallIf(_G, "UnitName", "npc")) .. ")") or "")
+  local line = acceptLine()
   if ns.CallIf(_G, "QuestGetAutoAccept") == true then
     ns.CallIf(_G, "AcknowledgeAutoAcceptQuest")
     return ns.Chat(line)
@@ -160,7 +167,10 @@ function QA.Finish()
   local choice = QA.RewardChoice()
   local name = choice > 0 and ns.QuestParts.Plain((ns.CallIf(_G, "GetQuestItemInfo", "choice", choice)))
   ns.CallIf(_G, "GetQuestReward", choice > 0 and choice or nil)
-  ns.Chat("Turned in: " .. title() .. (count(ns.CallIf(_G, "GetNumQuestChoices")) > 1 and name and (" (took " .. name .. ": sells for most)") or ""))
+  if count(ns.CallIf(_G, "GetNumQuestChoices")) > 1 and name then
+    return ns.Chat(ns.Format(L["Turned in: {quest} (took {reward}: sells for most)"], { quest = title(), reward = name }))
+  end
+  ns.Chat(ns.Format(L["Turned in: {quest}"], { quest = title() }))
 end
 
 -- Module entry point (Core/Modules.lua): each switch is read when its event comes. A new quest offer first

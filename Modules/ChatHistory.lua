@@ -7,6 +7,7 @@
 -- from addons (in instances) is never read, so those lines are not kept.
 
 local ADDON, ns = ...
+local L = ns.L
 
 local T = ns.Theme
 
@@ -18,8 +19,8 @@ local CHH = ns.Module("ChatHistory", {
 })
 
 -- Choices for the options: lines kept per window, and how many days they are kept.
-CHH.LINE_CHOICES = { { 100, "100 lines" }, { 200, "200 lines" }, { 500, "500 lines" } }
-CHH.DAY_CHOICES = { { 1, "1 day" }, { 3, "3 days" }, { 7, "A week" }, { 30, "A month" } }
+CHH.LINE_CHOICES = { { 100, L["100 lines"] }, { 200, L["200 lines"] }, { 500, L["500 lines"] } }
+CHH.DAY_CHOICES = { { 1, L["1 day"] }, { 3, L["3 days"] }, { 7, L["A week"] }, { 30, L["A month"] } }
 -- A longer line is not kept; a window is trimmed once it is this many over its limit.
 CHH.MAX_LENGTH, CHH.SLACK = 600, 50
 -- Seconds in a day (the days setting counts in these).
@@ -169,12 +170,12 @@ local function restoreWindow(index, list)
   local frame = _G["ChatFrame" .. index]
   if type(frame) ~= "table" or type(frame.AddMessage) ~= "function" or #list == 0 or CHH.Skipped(index) then return end
   local newest = CHH.Unpack(list[#list])
-  frame:AddMessage(rule(string.format("Chat from your last session (%d lines, until %s)", #list, when(newest))))
+  frame:AddMessage(rule(ns.Format(L["Chat from your last session ({count} lines, until {time})"], { count = #list, time = when(newest) })))
   for _, line in ipairs(list) do
     local _, r, g, b, text = CHH.Unpack(line)
     frame:AddMessage(text, r, g, b)
   end
-  frame:AddMessage(rule("End of the earlier chat"))
+  frame:AddMessage(rule(L["End of the earlier chat"]))
 end
 
 -- Puts every window's saved lines back (old ones are dropped first).
@@ -201,30 +202,43 @@ end
 -- Forgets every saved line; says so (the answer Yes to CHH.AskClear).
 function CHH.Clear()
   if type(VanguardCharDB) == "table" then VanguardCharDB.chatHistory = {} end
-  ns.Chat("Saved chat history cleared.")
+  ns.Chat(L["Saved chat history cleared."])
 end
 
 -- /vg history clear and Clear saved chat: asks first (a "danger" question: it can't be undone), then forgets it all.
 function CHH.AskClear()
-  local question = string.format("Forget the %d saved chat lines in %d windows? This can't be undone.", CHH.Counts())
-  ns.Ask(question, "Clear", CHH.Clear, nil, "danger")
+  local lines, windows = CHH.Counts()
+  local question = ns.Format(L["Forget the {lines} saved chat lines in {windows} windows? This can't be undone."], { lines = lines, windows = windows })
+  ns.Ask(question, L["Clear"], CHH.Clear, nil, "danger")
 end
+
+-- The status line by whether history is on, then whether whispers are kept: whole sentences to translate.
+local STATUS = {
+  [true] = {
+    [true] = L["Chat history is on: up to {lines} lines per window for {days} days; whispers are kept."],
+    [false] = L["Chat history is on: up to {lines} lines per window for {days} days; whispers are not kept."],
+  },
+  [false] = {
+    [true] = L["Chat history is off: up to {lines} lines per window for {days} days; whispers are kept."],
+    [false] = L["Chat history is off: up to {lines} lines per window for {days} days; whispers are not kept."],
+  },
+}
 
 -- Prints whether history is on, its limits, whether whispers are kept and what is saved.
 local function status()
   local s, lines, windows = ns.Settings("ChatHistory", CHH.defaults), CHH.Counts()
-  ns.Chat(string.format("Chat history is %s: up to %d lines per window for %d days; whispers %s.", s.on and "on" or "off", s.lines, s.days, s.whispers and "are kept" or "are not kept"))
-  ns.Chat(string.format("%d lines saved in %d windows.", lines, windows))
+  ns.Chat(ns.Format(STATUS[s.on == true][s.whispers == true], { lines = s.lines, days = s.days }))
+  ns.Chat(ns.Format(L["{lines} lines saved in {windows} windows."], { lines = lines, windows = windows }))
 end
 
 -- /vg history [on | off | whispers | nowhispers | clear].
 function CHH.Command(rest)
   local verb, s = (rest or ""):match("^(%S*)"), ns.Settings("ChatHistory", CHH.defaults)
-  if verb == "on" or verb == "off" then s.on = verb == "on" return ns.Chat(s.on and "Chat history on. Your chat comes back after a reload or the next login." or "Chat history off. What is saved stays until it ages out or you clear it.") end
-  if verb == "whispers" or verb == "nowhispers" then s.whispers = verb == "whispers" return ns.Chat(s.whispers and "Whispers are kept too." or "Whispers are not kept.") end
+  if verb == "on" or verb == "off" then s.on = verb == "on" return ns.Chat(s.on and L["Chat history on. Your chat comes back after a reload or the next login."] or L["Chat history off. What is saved stays until it ages out or you clear it."]) end
+  if verb == "whispers" or verb == "nowhispers" then s.whispers = verb == "whispers" return ns.Chat(s.whispers and L["Whispers are kept too."] or L["Whispers are not kept."]) end
   if verb == "clear" then return CHH.AskClear() end
   if verb == "" then return status() end
-  ns.Chat("Usage: /vg history [on | off | whispers | nowhispers | clear]")
+  ns.Chat(L["Usage: /vg history [on | off | whispers | nowhispers | clear]"])
 end
 
 -- Logout: the old and surplus lines go before the file is written.

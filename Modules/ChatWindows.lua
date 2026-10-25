@@ -6,6 +6,7 @@
 -- save. Messages are never touched.
 
 local ADDON, ns = ...
+local L = ns.L
 
 local CW = ns.Module("ChatWindows", { defaults = { movers = false, find = true } })
 
@@ -118,7 +119,7 @@ local function floatingMover(window)
   local frame, key = window.frame, "chat" .. window.index
   local point, _, relPoint, x, y = frame:GetPoint(1)
   if not point then return end
-  ns.Mover(frame, key, "Chat: " .. window.name, { point, relPoint, x, y })
+  ns.Mover(frame, key, ns.Format(L["Chat: {tab}"], { tab = window.name }), { point, relPoint, x, y })
   pinTo(frame, key)
 end
 
@@ -126,8 +127,8 @@ end
 
 -- The message groups a tab can show or hide, as the game names them.
 CW.GROUPS = {
-  { "SAY", "Say" }, { "YELL", "Yell" }, { "GUILD", "Guild" }, { "PARTY", "Party" }, { "RAID", "Raid" },
-  { "WHISPER", "Whispers" }, { "LOOT", "Loot" }, { "SYSTEM", "System messages" }, { "OFFICER", "Officer" }, { "EMOTE", "Emotes" },
+  { "SAY", L["Say"] }, { "YELL", L["Yell"] }, { "GUILD", L["Guild"] }, { "PARTY", L["Party"] }, { "RAID", L["Raid"] },
+  { "WHISPER", L["Whispers"] }, { "LOOT", L["Loot"] }, { "SYSTEM", L["System messages"] }, { "OFFICER", L["Officer"] }, { "EMOTE", L["Emotes"] },
 }
 -- The longest tab name.
 CW.MAX_NAME = 16
@@ -188,8 +189,8 @@ end
 -- for editing.
 function CW.New(text)
   local name = CW.CleanName(text)
-  if not name then return ns.Chat("Type a name for the new tab.") end
-  if type(FCF_OpenNewWindow) ~= "function" then return ns.Chat("This client can't make a chat tab.") end
+  if not name then return ns.Chat(L["Type a name for the new tab."]) end
+  if type(FCF_OpenNewWindow) ~= "function" then return ns.Chat(L["This client can't make a chat tab."]) end
   ns.OutOfCombat(function()
     local frame = FCF_OpenNewWindow(name)
     CW.editing = frame and tonumber((frame:GetName() or ""):match("(%d+)$")) or CW.editing
@@ -201,7 +202,7 @@ end
 -- Renames the edited tab.
 function CW.Rename(text)
   local name, _, frame = CW.CleanName(text), CW.Editing()
-  if not (name and frame and type(FCF_SetWindowName) == "function") then return ns.Chat("Type a name for the tab.") end
+  if not (name and frame and type(FCF_SetWindowName) == "function") then return ns.Chat(L["Type a name for the tab."]) end
   FCF_SetWindowName(frame, name)
   ns.HideText()
   ns.Options.RebuildPage("chat")
@@ -210,7 +211,7 @@ end
 -- Closes the edited tab (never the main one), out of combat (each tab closed in a fight is closed after it).
 function CW.Close()
   local index, frame = CW.Editing()
-  if not frame or index == 1 or type(FCF_Close) ~= "function" then return ns.Chat("The main chat tab can't be closed.") end
+  if not frame or index == 1 or type(FCF_Close) ~= "function" then return ns.Chat(L["The main chat tab can't be closed."]) end
   ns.OutOfCombat(function() FCF_Close(frame) CW.editing = nil ns.Options.RebuildPage("chat") end, "chat close tab " .. index)
 end
 
@@ -272,17 +273,17 @@ end
 -- gives nothing (the box keeps its last lines).
 function CW.Find(query)
   local needle = (type(query) == "string" and query or ""):match("^%s*(.-)%s*$"):lower()
-  if needle == "" then ns.Chat("Type something to find.") return end
+  if needle == "" then ns.Chat(L["Type something to find."]) return end
   local found = CW.Search(needle)
   local CX = ns.GetModule("ChatExtras")
   local patterns = { CX.Escape(needle) }
   for i, line in ipairs(found) do found[i] = CX.Marked(line, patterns) end
-  return string.format("Chat: %d lines with \"%s\"", #found, needle), table.concat(found, "\n")
+  return ns.Format(L['Chat: {count} lines with "{word}"'], { count = #found, word = needle }), table.concat(found, "\n")
 end
 
 -- Opens the find box (Core/Dialog.lua): the word goes in the field at its top, the lines found under it.
 function CW.AskFind()
-  ns.ShowFind("Find in chat", CW.Find)
+  ns.ShowFind(L["Find in chat"], CW.Find)
 end
 
 -- A small Find button in the main chat window's tab bar, left of the Copy button.

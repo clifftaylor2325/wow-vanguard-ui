@@ -16,6 +16,7 @@
 -- there are never two.
 
 local ADDON, ns = ...
+local L = ns.L
 
 local QT = ns.Module("QuestTracker", { defaults = { own = true, order = "game", withQuestie = "questie", xp = true, levelXp = true, autoTrack = true, expanded = false } })
 
@@ -149,7 +150,7 @@ function QT.LevelLine()
   local DB = ns.GetModule("DataBars")
   local need, total = DB.XPToLevel(), DB.LogXP()
   if not need or total <= 0 then return nil end
-  return string.format("Quests: %d%% of the XP to level", math.floor(total / need * 100))
+  return ns.Format(L["Quests: {percent}% of the XP to level"], { percent = math.floor(total / need * 100) })
 end
 
 -- A quest was accepted: watch it unless it is watched already (the game may have; adding is safe either way,
@@ -258,8 +259,8 @@ end
 function QT.Rows(quests)
   local rows = {}
   for _, q in ipairs(quests) do rows[#rows + 1] = q end
-  addSection(rows, "Legacy challenges", QT.Achievements())
-  addSection(rows, "Recipes", QT.Recipes())
+  addSection(rows, L["Legacy challenges"], QT.Achievements())
+  addSection(rows, L["Recipes"], QT.Recipes())
   return rows
 end
 
@@ -273,7 +274,7 @@ function QT.OnTitle(id, button)
   if IsShiftKeyDown() and guide.settings then return guide.Point(id) end
   local log = ns.GetModule("QuestLog")
   if log and log.Open and log.frame then return log.Open(id) end
-  if ns.WindowWaitsForCombat("The world map") then return end
+  if ns.WindowWaitsForCombat(L["The world map"]) then return end
   if type(QuestMapFrame_OpenToQuestDetails) == "function" then QuestMapFrame_OpenToQuestDetails(id) end
 end
 
