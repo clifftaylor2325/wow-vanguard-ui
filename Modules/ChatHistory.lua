@@ -198,10 +198,16 @@ function CHH.Counts()
   return lines, windows
 end
 
--- Forgets every saved line; says so.
+-- Forgets every saved line; says so (the answer Yes to CHH.AskClear).
 function CHH.Clear()
   if type(VanguardCharDB) == "table" then VanguardCharDB.chatHistory = {} end
   ns.Chat("Saved chat history cleared.")
+end
+
+-- /vg history clear and Clear saved chat: asks first (a "danger" question: it can't be undone), then forgets it all.
+function CHH.AskClear()
+  local question = string.format("Forget the %d saved chat lines in %d windows? This can't be undone.", CHH.Counts())
+  ns.Ask(question, "Clear", CHH.Clear, nil, "danger")
 end
 
 -- Prints whether history is on, its limits, whether whispers are kept and what is saved.
@@ -216,7 +222,7 @@ function CHH.Command(rest)
   local verb, s = (rest or ""):match("^(%S*)"), ns.Settings("ChatHistory", CHH.defaults)
   if verb == "on" or verb == "off" then s.on = verb == "on" return ns.Chat(s.on and "Chat history on. Your chat comes back after a reload or the next login." or "Chat history off. What is saved stays until it ages out or you clear it.") end
   if verb == "whispers" or verb == "nowhispers" then s.whispers = verb == "whispers" return ns.Chat(s.whispers and "Whispers are kept too." or "Whispers are not kept.") end
-  if verb == "clear" then return CHH.Clear() end
+  if verb == "clear" then return CHH.AskClear() end
   if verb == "" then return status() end
   ns.Chat("Usage: /vg history [on | off | whispers | nowhispers | clear]")
 end

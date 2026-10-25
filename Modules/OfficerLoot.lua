@@ -214,9 +214,15 @@ function OL.CmdFocus(arg)
   ns.Chat(OL.focus and ("Rolls are flagged for " .. (OL.Item(arg) or {}).name .. ".") or "Rolls follow the item the loot history says is rolling.")
 end
 
--- /vg loot clear.
+-- Forgets every reserve and says how many (the answer Yes to OL.AskClear).
 function OL.CmdClear()
   ns.Chat("Forgot " .. OL.Clear() .. " reserve(s).")
+end
+
+-- /vg loot clear and Clear every reserve: asks first (a "danger" question: it can't be undone), then forgets them.
+function OL.AskClear()
+  local question = string.format("Forget all %d reserve(s) on this character? This can't be undone.", #OL.Store())
+  ns.Ask(question, "Clear", OL.CmdClear, nil, "danger")
 end
 
 -- /vg loot with nothing, or with something it doesn't know: how to use it.
@@ -226,7 +232,7 @@ end
 
 -- The subcommands, by name.
 OL.SUB = {
-  add = OL.CmdAdd, remove = OL.CmdRemove, list = OL.Print, clear = OL.CmdClear, focus = OL.CmdFocus,
+  add = OL.CmdAdd, remove = OL.CmdRemove, list = OL.Print, clear = OL.AskClear, focus = OL.CmdFocus,
   roster = function() OL.ToggleRoster() end,
 }
 
@@ -261,7 +267,7 @@ function OL.ShareRows()
     { "button", "Print the reserve list to my chat", OL.Print },
     { "button", "Put the list in the chat box for the party", function() OL.Share("/p ") end },
     { "button", "Put the list in the chat box for the raid", function() OL.Share("/raid ") end },
-    { "button", "Clear every reserve", OL.CmdClear },
+    { "button", "Clear every reserve", OL.AskClear },
   }
 end
 

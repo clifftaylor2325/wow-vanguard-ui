@@ -18,6 +18,8 @@ const session = (on = true) => {
 };
 // The main window's and the second window's lines.
 const lines = (addon, i = 1) => Object.values(addon.eval(`return ChatFrame${i}.__messages or {}`));
+// The yes/no question: whether it shows, and its text.
+const question = (addon) => addon.eval("local f = Vanguard_Question return { f:IsShown(), f.title:GetText() }");
 // The saved lines, window -> list.
 const saved = (addon) => addon.eval("return VanguardCharDB.chatHistory");
 
@@ -131,7 +133,12 @@ it("chat history: /vg history says what is kept, clears it, and turns it on and 
   addon.slash("history");
   expect(chatHas(addon, /Chat history is on: up to 200 lines per window for 3 days; whispers are not kept\./) && chatHas(addon, /2 lines saved in 2 windows\./), "status").toBe(true);
   addon.slash("history clear");
-  expect([chatHas(addon, /Saved chat history cleared\./), saved(addon)], "clear forgets it").toEqual([true, {}]);
+  expect(question(addon), "clear asks first, naming what goes").toEqual([true, "Forget the 2 saved chat lines in 2 windows? This can't be undone."]);
+  addon.click("Vanguard_Question.no");
+  expect(Object.keys(saved(addon)).length, "No keeps it").toBe(2);
+  addon.slash("history clear");
+  addon.click("Vanguard_Question.confirm");
+  expect([chatHas(addon, /Saved chat history cleared\./), saved(addon)], "Clear forgets it").toEqual([true, {}]);
   addon.slash("history off");
   addon.eval(`ChatFrame1:AddMessage("after off")`);
   expect([chatHas(addon, /Chat history off\./), saved(addon)], "off saves nothing more").toEqual([true, {}]);
@@ -148,7 +155,9 @@ it("chat history: the Chat page has its switch, limits, whispers and Clear butto
   expect(rows.filter((t) => /history|Lines kept|Keep lines|Keep whispers|Clear saved chat/.test(t)), "the rows").toEqual(["Chat history", "Keep chat history", "Lines kept per chat window", "Keep lines for", "Keep whispers", "Clear saved chat"]);
   addon.slash("history on");
   addon.eval(`ChatFrame1:AddMessage("cleared by the button") ${PAGE} for _, row in ipairs(page.rows()) do if row[2] == "Clear saved chat" then row[3]() end end`);
-  expect(saved(addon), "the Clear button forgets it").toEqual({});
+  expect([question(addon)[0], Object.keys(saved(addon)).length], "the Clear button asks first").toEqual([true, 1]);
+  addon.click("Vanguard_Question.confirm");
+  expect(saved(addon), "Clear forgets it").toEqual({});
   addon.eval(`ns.GetModule("ChatHistory").Disable() ChatFrame1:AddMessage("after disable")`);
   expect(saved(addon), "a module switched off saves nothing").toEqual({});
 });

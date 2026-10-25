@@ -164,7 +164,7 @@ local function chatHistoryRows()
     { "cycle", "Lines kept per chat window", CHH.LINE_CHOICES, setting("ChatHistory", "lines") },
     { "cycle", "Keep lines for", CHH.DAY_CHOICES, setting("ChatHistory", "days") },
     check("Keep whispers", setting("ChatHistory", "whispers")),
-    { "button", "Clear saved chat", CHH.Clear },
+    { "button", "Clear saved chat", CHH.AskClear },
   }
 end
 
