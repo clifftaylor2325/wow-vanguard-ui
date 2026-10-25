@@ -192,6 +192,7 @@ it("a run stops when the merchant closes, combat starts or the gold runs out; on
   addon.eval(`${MC}.Buy(1, 8)`);
   addon.eval(`${MC}.Buy(1, 8)`);
   expect(bought(addon), "the first chunk went at once; a second run didn't start beside it").toEqual([[1, 20]]);
+  expect(chatHas(addon, /Nothing bought: still buying the last order; try again when it is done\./), "and chat says why").toBe(true);
   addon.fire("MERCHANT_CLOSED");
   addon.eval("__later[1]()");
   expect([bought(addon).length, chatHas(addon, /Bought 20 × TEST-ONLY Water for 0s 40c\./)], "closed merchant: the run ends and says what it did").toEqual([1, true]);
