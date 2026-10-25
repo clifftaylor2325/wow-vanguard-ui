@@ -235,9 +235,19 @@ local function statNames()
   return table.concat(out, ", ")
 end
 
+-- A typed weight as a number, or nil for text that isn't one. Lua reads "nan", "inf" and "1e400" as numbers
+-- that would turn every score into nan or inf, so only finite numbers count.
+---@param text any
+---@return number|nil
+function UP.ParseWeight(text)
+  local n = tonumber(text)
+  local finite = n and n == n and n > -math.huge and n < math.huge
+  if finite then return n end
+end
+
 -- Sets one weight for the kind in use ("set STR 1.2"); 0 makes a stat worthless.
 local function setWeight(stat, value)
-  local short, n = (stat or ""):upper(), tonumber(value)
+  local short, n = (stat or ""):upper(), UP.ParseWeight(value)
   if not W.STATS[short] or not n then return ns.Chat("Use /vg weights set <stat> <number>; stats: " .. statNames() .. ".") end
   UP.settings.weights[UP.kind] = UP.settings.weights[UP.kind] or {}
   UP.settings.weights[UP.kind][short] = n

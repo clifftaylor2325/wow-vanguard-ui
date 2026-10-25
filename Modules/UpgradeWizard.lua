@@ -84,9 +84,9 @@ local function ownRefresh(base, i)
   end
 end
 
--- Takes the number typed in a slider's box (any number, past the slider's ends too); anything else puts the weight back.
+-- Takes the number typed in a slider's box (any finite number, past the slider's ends too); anything else puts the weight back.
 local function typed(r)
-  local n = tonumber(r.box:GetText())
+  local n = UP.ParseWeight(r.box:GetText())
   if n then r.set(n) end
   r.box:ClearFocus()
   r:Refresh()

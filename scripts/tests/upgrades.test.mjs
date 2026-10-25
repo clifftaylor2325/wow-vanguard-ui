@@ -57,6 +57,12 @@ it("upgrades: the role picks the weights, and /vg weights shows and changes them
   expect([chatHas(addon, /STR is worth 2 for strength now\./), addon.eval("return (ns.GetModule('Upgrades').Current()).STR")], "one weight changed, and used").toEqual([true, 2]);
   addon.slash("weights set luck 1");
   expect(chatHas(addon, /Use \/vg weights set <stat> <number>; stats: AGI, AP, ARMOR, ARP, BLOCK, BLOCKVALUE, CRIT, DEF, DODGE, DPS, EXP, HASTE, HIT, INT, MP5, PARRY, RAP, SP, SPI, STA, STR\./), "an unknown stat lists the ones there are").toBe(true);
+  // How many usage lines chat has had.
+  const usage = () => Array.from(addon.chat()).filter((line) => /Use \/vg weights set <stat> <number>/.test(line)).length;
+  const before = usage();
+  addon.slash("weights set str nan");
+  addon.slash("weights set str 1e400");
+  expect([usage() - before, addon.eval("return (ns.GetModule('Upgrades').Current()).STR")], "nan and an overflow to inf are refused with the usage line; STR stays").toEqual([2, 2]);
   addon.slash("weights reset");
   expect([chatHas(addon, /back to the defaults/), addon.eval("return (ns.GetModule('Upgrades').Current()).STR")], "reset").toEqual([true, 1]);
   addon.eval("__wfgWorld.units.player.role = 'TANK'");
@@ -140,6 +146,8 @@ it("upgrades: the weights wizard has a slider for every stat, and saves only on 
   lua("local r = Vanguard_WeightsWizard.rows[3] r.box:SetText('4.25') r.box:GetScript('OnEnterPressed')(r.box)");
   lua("local r = Vanguard_WeightsWizard.rows[4] r.box:SetText('lots') r.box:GetScript('OnEditFocusLost')(r.box)");
   expect(lua("local f = Vanguard_WeightsWizard return { f.rows[3].get(), f.rows[3].box:GetText(), f.rows[4].box:GetText() }"), "a box takes an exact weight past the slider's end; anything else puts it back").toEqual([4.25, "4.25", "0.8"]);
+  lua("local r = Vanguard_WeightsWizard.rows[4] r.box:SetText('1e400') r.box:GetScript('OnEnterPressed')(r.box)");
+  expect(lua("local r = Vanguard_WeightsWizard.rows[4] return { r.get(), r.box:GetText() }"), "a number too big to be finite puts it back too").toEqual([0.8, "0.8"]);
   click("Vanguard_WeightsWizard.save");
   expect([lua("return Vanguard_WeightsWizard:IsShown()"), stat(), chatHas(addon, /Stat weights saved for strength \(role damage\)\./)], "Save keeps the change and closes").toEqual([false, 2, true]);
   expect(lua("return ns.GetModule('Upgrades').settings.weights.strength"), "only what differs from the defaults is kept").toEqual({ STR: 2, SPI: 0.5, HIT: 4.25 });
