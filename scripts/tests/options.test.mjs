@@ -1428,8 +1428,8 @@ it("Modules page: every module it groups has a name and a line saying what it do
   expect(missing, "modules shown by their code name with no description").toEqual({});
 });
 
-// One test per client language, so each stays inside the time limit under coverage.
-for (const locale of ["deDE", "ruRU", "koKR"]) {
+// One test per client language Vanguard translates into (each runs its Locales/ file), so each stays inside the time limit under coverage.
+for (const locale of ["deDE", "frFR", "esES", "esMX", "itIT", "ptBR", "ruRU", "koKR", "zhCN", "zhTW"]) {
   it(`options: on a ${locale} client Vanguard loads and the options window opens and every page builds its rows with no error (its own text stays English)`, () => {
     const addon = loggedIn(CLICK_LUA + `GetLocale = function() return "${locale}" end`);
     // Opens the window, then builds every page's rows and counts the errors caught along the way.

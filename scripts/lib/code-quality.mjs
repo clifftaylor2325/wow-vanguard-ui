@@ -505,7 +505,7 @@ export function checkSource(file, src) {
 //     that is not an ns.Guard(...) call, so its error reaches the game's popup but never
 //     /vg errors. OnClick on SetScript is the blocking rule above; OnUpdate has its own rule.
 
-export const REPORT_RULES = ["secure-outside-combat-guard", "unbounded-onupdate", "unguarded-script-handler"];
+export const REPORT_RULES = ["secure-outside-combat-guard", "unbounded-onupdate", "unguarded-script-handler", "unwrapped-text"];
 
 // Calls the client refuses on protected frames, or for bindings, while in combat.
 const SECURE_CALLS = new Set([
@@ -662,10 +662,26 @@ function unguardedScriptHandlers(file, src) {
   return loose.map((c) => ({ rule: REPORT_RULES[2], line: line(tokens[c.at].start), message: `${c.script} handler is not an ns.Guard(where, fn) call, so its errors never reach /vg errors` }));
 }
 
+// The calls whose first argument is text a player reads: widget text, tooltip lines, chat,
+// option rows and dialogs. A literal there is English the string table can't translate.
+const TEXT_SINKS = new Set(["SetText", "AddLine", "AddDoubleLine", "Chat", "check", "header", "cycle", "slider", "OfferReload", "ShowText"]);
+
+// True when a string token is words a player reads: it has a letter, and no backslash (a path).
+const isWords = (text) => /[A-Za-z]/.test(text) && !text.includes("\\") && !text.startsWith('"|T');
+
+// English literals handed straight to a text sink, not through L["…"]: [{ rule, line, message }].
+function unwrappedText(file, src) {
+  if (!COLOR_SCOPE.test(file)) return [];
+  const tokens = codeTokens(src);
+  const line = lineIndex(src);
+  const hits = tokens.filter((t, i) => t.kind === "string" && tokens[i - 1]?.text === "(" && TEXT_SINKS.has(tokens[i - 2]?.text) && isWords(t.text));
+  return hits.map((t) => ({ rule: REPORT_RULES[3], line: line(t.start), message: `English text not in L[…]: ${t.text.slice(0, 48)}` }));
+}
+
 // Report-only findings in one file: [{ rule, line, message }]. They never fail on their own.
 export function reportSource(file, src) {
   if (!file.endsWith(".lua")) return [];
-  return unguardedSecureCalls(file, src).concat(unboundedOnUpdates(file, src), unguardedScriptHandlers(file, src));
+  return unguardedSecureCalls(file, src).concat(unboundedOnUpdates(file, src), unguardedScriptHandlers(file, src), unwrappedText(file, src));
 }
 
 // Each report-only rule's count against its baseline (a missing baseline is 0):
