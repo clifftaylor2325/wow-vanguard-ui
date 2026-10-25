@@ -694,11 +694,18 @@ function TP.ImportDialog()
   end)
 end
 
--- Empties this spec group's plan.
+-- Empties this spec group's plan (the answer Yes to TP.AskClear).
 function TP.Clear()
   TP.Plan().ranks = {}
   TP.Refresh()
   ns.Chat("Talent plan cleared.")
+end
+
+-- /vg talents clear and Clear this spec's plan: asks first (a "danger" question: it can't be undone), then empties it.
+function TP.AskClear()
+  local points = countRanks(TP.Plan().ranks)
+  local question = string.format("Clear this spec's talent plan (%d point%s planned)? This can't be undone.", points, points == 1 and "" or "s")
+  ns.Ask(question, "Clear", TP.Clear, nil, "danger")
 end
 
 -- Commands and options ------------------------------------------------------------------------------
@@ -722,7 +729,7 @@ local function spendCommand()
 end
 
 -- /vg talents <word>: what each word does.
-TP.COMMANDS = { plan = planCommand, spend = spendCommand, clear = TP.Clear, export = TP.ExportDialog, import = TP.ImportDialog }
+TP.COMMANDS = { plan = planCommand, spend = spendCommand, clear = TP.AskClear, export = TP.ExportDialog, import = TP.ImportDialog }
 
 -- /vg talents [plan|spend|clear|export|import]: the plan's summary, or one of those.
 function TP.Command(rest)
@@ -746,7 +753,7 @@ local function rows()
     { "check", "Spend planned points by itself at a level-up (buys and applies them, no asking)", setting("autoSpend") },
     { "button", "Export this spec's plan", TP.ExportDialog },
     { "button", "Import a plan", TP.ImportDialog },
-    { "button", "Clear this spec's plan", TP.Clear },
+    { "button", "Clear this spec's plan", TP.AskClear },
   }
 end
 

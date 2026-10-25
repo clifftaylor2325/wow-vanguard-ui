@@ -184,6 +184,24 @@ it("talent planner: export and import share a plan as a string, for your class; 
   expect(chatHas(addon, /Nothing to export: this spec's plan is empty\./), "an empty plan has nothing to export").toBe(true);
 });
 
+it("talent planner: /vg talents clear and the Talents page's Clear button ask first; No keeps the plan", () => {
+  const addon = open();
+  // The yes/no question: whether it shows, and its text.
+  const question = () => addon.eval("local f = Vanguard_Question return { f:IsShown(), f.title:GetText() }");
+  // The ranks planned on talent 101 (0 when none).
+  const planned = () => addon.eval("return VanguardCharDB.talentPlans[1].ranks[101] or 0");
+  addon.eval(`VanguardCharDB.talentPlans = { { ranks = { [101] = 5, [103] = 2 }, hash = "1-2-3" } } ${TP}.Refresh()`);
+  addon.slash("talents clear");
+  expect(question(), "the command asks, naming what goes").toEqual([true, "Clear this spec's talent plan (7 points planned)? This can't be undone."]);
+  addon.click("Vanguard_Question.no");
+  expect(planned(), "No keeps the plan").toBe(5);
+  addon.eval(`VanguardCharDB.talentPlans[1].ranks = { [101] = 1 } local page for _, p in ipairs(ns.Options.PAGES) do if p.key == "talents" then page = p end end
+    for _, row in ipairs(page.rows()) do if row[2] == "Clear this spec's plan" then row[3]() end end`);
+  expect([question()[1], planned()], "the button asks too (one point), and nothing is cleared yet").toEqual(["Clear this spec's talent plan (1 point planned)? This can't be undone.", 1]);
+  addon.click("Vanguard_Question.confirm");
+  expect([planned(), chatHas(addon, /Talent plan cleared\./)], "Clear empties it").toEqual([0, true]);
+});
+
 it("talent planner: a plan made on another tree keeps the talents still there and says what was dropped", () => {
   const addon = open();
   addon.eval(`VanguardCharDB.talentPlans = { { ranks = { [101] = 9, [104] = 1, [999] = 2 }, hash = "old" } } ${TP}.Refresh()`);
