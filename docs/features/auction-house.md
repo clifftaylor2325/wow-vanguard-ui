@@ -20,7 +20,7 @@ A shopping list item with a max price (right-click its row, **Filters...**) can 
 
 ## Disenchant values
 
-Weapons and armour of green quality or better get a tooltip line under the auction price, "Disenchant: ~1g 20s": what disenchanting it is worth on average, from vanilla's disenchanting tables (the dust, essences, shards and crystals each quality and item level gives, how often and how many) and each material's market value (else its cheapest price) from your scans and searches on this realm and faction. Gear whose materials have no price yet gets no line. It is on for characters who know Enchanting (read from your professions, or from your skills where the client has no profession list) and off for the rest until you choose, under Town and gear (Auction house). The tables are written from vanilla's and still to be checked in the game.
+Weapons and armour of green quality or better get a tooltip line under the auction price, "Disenchant: ~1g 20s": what disenchanting it is worth on average, from vanilla's disenchanting tables (the dust, essences, shards and crystals each quality and item level gives, how often and how many) and each material's market value (else its cheapest price) from your scans and searches on this realm and faction. Gear whose materials have no price yet gets no line. It is on for characters who know Enchanting (read from your professions, or from your skills where the client has no profession list) and off for the rest until you choose, under Town and gear (Auction house); setting it back to what your professions give (its reset dot, say) is no choice, so it follows Enchanting again. The tables are written from vanilla's and still to be checked in the game.
 
 ## Sales ledger
 

@@ -446,9 +446,16 @@ function AP.DisenchantOn()
   return on
 end
 
+-- Saves the disenchant switch. The value Enchanting gives is no choice (the reset dot and Reset this page
+-- write it), so it is saved as unset and the switch follows Enchanting again.
+local function setDisenchant(v)
+  if v == AP.HasEnchanting() then v = nil end
+  ns.Settings("AuctionHelper").disenchant = v
+end
+
 -- get/set for the options' disenchant switch, and its default (on for an enchanter).
 function AP.DisenchantSetting()
-  return AP.DisenchantOn, function(v) ns.Settings("AuctionHelper").disenchant = v end, AP.HasEnchanting()
+  return AP.DisenchantOn, setDisenchant, AP.HasEnchanting()
 end
 
 -- Copper as a rough figure, for an estimate: "1g 20s" once there's gold (no copper), else as AP.Money.
