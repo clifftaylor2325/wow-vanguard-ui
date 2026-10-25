@@ -286,6 +286,10 @@ it("a click on a line opens that player's spells, in the game's order; again or 
   addon.eval("C_DamageMeter.GetCombatSessionSourceFromType = function() error('x') end");
   addon.advance(1);
   expect(addon.eval("return #ns.errors"), "no error from a refused call").toBe(0);
+  click(2);
+  expect(panel()[0], "a line opens the panel again").toBe(true);
+  addon.slash("meter off");
+  expect(panel()[0], "turning the meter off closes the panel too").toBe(false);
 });
 
 it("spell lists fall back safely: no call, hidden list, hidden spells, unknown names", () => {
