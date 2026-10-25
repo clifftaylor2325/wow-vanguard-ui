@@ -2,7 +2,7 @@
 
 import { readFileSync } from "node:fs";
 import { expect, it } from "vitest";
-import { CLICK_LUA, DATA_ENV, RETAIL, UI_ENV, UNITS_ENV, bars, borderOf, button, calls, chatHas, expectErrors, isTok, key, loggedIn, marks, px, setCombat, tok, tooltip } from "./helpers.mjs";
+import { BUFF_NAMES, CLICK_LUA, DATA_ENV, RETAIL, UI_ENV, UNITS_ENV, bars, borderOf, button, calls, chatHas, expectErrors, isTok, key, loggedIn, marks, px, setCombat, spellNames, tok, tooltip } from "./helpers.mjs";
 
 it("options window", () => {
   const addon = loggedIn(RETAIL + CLICK_LUA + DATA_ENV + "GetSpecialization = function() return 1 end");
@@ -725,7 +725,7 @@ it("text that fits: chat size, tooltip fonts, the status line, name width", () =
 const BUFF_EDITOR = "for _, w in ipairs(__wfgStub.frames) do if w.input and w.save and w:IsVisible() then __editor = w end end";
 
 it("options: the Healing page opens and saves its buff list with the raid heals module switched off", () => {
-  const addon = loggedIn("", { savedVariables: "VanguardDB.profiles.Default = { modules = { RaidHealing = false } }" });
+  const addon = loggedIn(spellNames(BUFF_NAMES), { savedVariables: "VanguardDB.profiles.Default = { modules = { RaidHealing = false } }" });
   addon.eval('ns.Options.Show("healing")');
   addon.eval(BUFF_EDITOR);
   expect(addon.eval("return __editor.input:GetText()"), "the buff list shows the mage's usual buffs").toBe("Arcane Intellect, Arcane Brilliance");

@@ -155,6 +155,14 @@ it("trainer memory keeps what a trainer teaches and at what level, and /vg train
   expect(count(addon, /Level 8: TEST-ONLY Frostbolt/), "a service more than five levels ahead is left out").toBe(1);
 });
 
+it("on a German client the trainer's rank text is kept by its number, not the English word; a texture path is no rank", () => {
+  const addon = mage();
+  addon.eval('__wfgWorld.locale = "deDE"');
+  addon.eval(TRAINER.replace('"Rank 3"', '"Rang 3"').replace('"Rank 4"', '"Interface\\\\Icons\\\\Spell_Frost_02"'));
+  visit(addon);
+  expect(remembered(addon).map((s) => s.slice(0, 2)), "Rang 3 is the rank; the path is not").toEqual([["TEST-ONLY Fireball", "Rang 3"], ["TEST-ONLY Frostbolt", false]]);
+});
+
 it("a level-up says what the trainers teach from that level; clear forgets", () => {
   const addon = mage();
   addon.eval(TRAINER.replace("{ __secret = true, \"available\", 1, 5 }", '{ "TEST-ONLY Late", "unavailable", 1, 30 }'));

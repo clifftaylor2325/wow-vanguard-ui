@@ -467,7 +467,7 @@ it("WoW Forever client: interface, hidden auras, no specializations", () => {
   addon.eval('ns.Options.Show("profiles")');
   expect(shownText(addon, "YOUR PROFILES") && !shownText(addon, "SPECIALIZATION"), "the Profiles page has no spec section").toBeTruthy();
   // The names are read once per login (or list change), so a paladin is a new login here.
-  addon.eval('UnitClass = function() return "Paladin", "PALADIN" end ns.GetModule("RaidHealing").Forget()');
+  addon.eval('__names[25898] = "Greater Blessing of Kings" UnitClass = function() return "Paladin", "PALADIN" end ns.GetModule("RaidHealing").Forget()');
   expect(addon.eval('for _, n in ipairs(ns.GetModule("RaidHealing").BuffNames()) do if n == "Greater Blessing of Kings" then return true end end'), "any blessing counts for a paladin").toBeTruthy();
 });
 // TEST-ONLY restriction calls as Forever documents them: the six kinds and three states, each kind's state in __restricted by number.

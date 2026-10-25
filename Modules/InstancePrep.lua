@@ -44,7 +44,8 @@ PR.LAST_BAG = 5
 -- What /vg prep want can set.
 PR.WANTS = { food = true, bandages = true, potions = true, ammo = true, shards = true }
 
--- Class reagents: { itemID, want, name, minLevel, maxLevel }. A row shows
+-- Class reagents: { itemID, want, English name, minLevel, maxLevel }; the row is counted by the id and named
+-- by the client (the English name only until the client has the item's data). A row shows
 -- from minLevel (the level that learns the spell using it) up to maxLevel,
 -- when there is one (a higher rank's reagent takes over). Warlocks get the
 -- soul shard row and hunters the ammo row instead.
@@ -127,6 +128,12 @@ PR.You = you
 -- The supply each class keeps: ammo for hunters, soul shards for warlocks (the wizard's class page).
 PR.CLASS_KEYS = { HUNTER = { "ammo" }, WARLOCK = { "shards" } }
 
+-- A class reagent's name in the client's language (once the client has the item's data), else the English one.
+local function reagentName(r)
+  local name = C_Item and type(C_Item.GetItemInfo) == "function" and ns.PlainText((C_Item.GetItemInfo(r[1])))
+  return name or r[3]
+end
+
 -- The class rows: ammo for hunters, soul shards for warlocks, then the class's reagents at your level.
 function PR.ReagentRows()
   local rows, class, level = {}, you()
@@ -134,7 +141,7 @@ function PR.ReagentRows()
   if class == "HUNTER" then rows[#rows + 1] = short("Ammo", ask("GetInventoryItemCount", "player", IS.AMMO_SLOT), want.ammo) end
   if class == "WARLOCK" then rows[#rows + 1] = short("Soul shards", IS.SoulShards(), want.shards) end
   for _, r in ipairs(PR.REAGENTS[class] or {}) do
-    if level >= r[4] and level <= (r[5] or level) then rows[#rows + 1] = short(r[3], count(r[1]), r[2], r[1]) end
+    if level >= r[4] and level <= (r[5] or level) then rows[#rows + 1] = short(reagentName(r), count(r[1]), r[2], r[1]) end
   end
   return rows
 end

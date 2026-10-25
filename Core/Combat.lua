@@ -110,6 +110,28 @@ function ns.PlainText(value)
   return value
 end
 
+-- A spell's name from its id, in the client's own language (C_Spell, else the old global), or nil when the
+-- client doesn't know the id or hides the name. Match game spells and auras through this, never by an
+-- English name: a German client calls Power Word: Fortitude "Machtwort: Seelenstärke".
+---@param id number
+---@return string|nil
+function ns.SpellName(id)
+  if C_Spell and type(C_Spell.GetSpellName) == "function" then return ns.PlainText(C_Spell.GetSpellName(id)) end
+  return type(GetSpellInfo) == "function" and ns.PlainText((GetSpellInfo(id))) or nil
+end
+
+-- The client's names for a list of spell ids, in order, leaving out the ids it doesn't know.
+---@param ids number[]
+---@return string[]
+function ns.SpellNames(ids)
+  local names = {}
+  for _, id in ipairs(ids) do
+    local name = ns.SpellName(id)
+    if name then names[#names + 1] = name end
+  end
+  return names
+end
+
 -- True only for a plain true from the client; a hidden value counts as no.
 ---@param value any
 ---@return boolean

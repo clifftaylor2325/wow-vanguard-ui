@@ -177,11 +177,12 @@
     ],
     "scripts/tests/prep.test.mjs": [
       "prep buffs: /vg prep buffs lists your buffs with the check each counts for, out of combat",
-      "prep buffs: a Forever variant of a classic name still counts, an unrelated buff does not",
+      "prep buffs: a buff holding a check's name counts (a camp variant), an unrelated buff does not",
       "prep buffs: a packed character with buffs missing walks into a dungeon and the door card stays away",
       "prep buffs: a ready check lists the flask, food, enchants and raid buffs you lack",
       "prep buffs: nothing is guessed when the client hides auras or can't list them",
       "prep buffs: off until switched on",
+      "prep buffs: on a German client the checks find the German names",
       "prep buffs: world buffs only when asked for, an off hand only when it holds a weapon",
       "prep: /vg prep want sets the wanted amounts; the options page has the section",
       "prep: Keep-stocked items under their count, and worn gear, are on the card",
@@ -249,6 +250,7 @@
       "status chip: a client without the aura lookup says nothing, and the switch is on the Unit frames page",
       "status chip: gone in a fight and while aura values are hidden or you are dead; back after",
       "status chip: off until switched on, then it names eating, drinking and being well fed with the buff's icon",
+      "status chip: on a German client it knows eating, drinking and Well Fed by the client's names",
       "status chip: with Instance prep's buff checks on it says what is missing, in a warning, with a glyph"
     ],
     "scripts/tests/strips.test.mjs": [],
