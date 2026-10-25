@@ -57,17 +57,24 @@ local function addDescription(r, text, width)
   r.desc:SetText(text)
 end
 
+-- Places the own-switch note just after the row's reload tag (dressRow adds it once the row is built), or just after
+-- the name as it measures now (a font change moves it) while there is no tag yet.
+local function placeOwnSwitch(r)
+  if r.tag then r.ownSwitch:SetPoint("LEFT", r.tag, "RIGHT", T.SPACE.gap, 0) return end
+  r.ownSwitch:SetPoint("LEFT", r.label, "LEFT", r.label:GetStringWidth() + T.SPACE.gap, 0)
+end
+
 -- Beside a module's name, a quiet note while the module is on but its own switch inside is off (O.OwnSwitchNote).
 local function addOwnSwitchNote(r, name)
   if not O.MODULE_LINKS[name] then return end
   r.ownSwitch = T.Text(r:CreateFontString(nil, "OVERLAY"), "small", "muted")
   local refresh = r.Refresh
-  -- The switch's own refresh, then the note, read again each time (the own switch is on another page), placed just
-  -- after the name as it measures now (a font change moves it).
+  -- The switch's own refresh, then the note, read again each time (the own switch is on another page), placed after
+  -- the name and its tag.
   r.Refresh = function(self)
     refresh(self)
     self.ownSwitch:SetText(O.OwnSwitchNote(name) or "")
-    self.ownSwitch:SetPoint("LEFT", self.label, "LEFT", self.label:GetStringWidth() + T.SPACE.gap, 0)
+    placeOwnSwitch(self)
   end
   r:Refresh()
 end
@@ -269,15 +276,16 @@ local function addTip(w, row)
   w:HookScript("OnLeave", ns.Guard("hide row tip", hideNote))
 end
 
--- The tag a row whose setting applies on reload wears after its caption, and the line its tip gains.
-local RELOAD_TAG, RELOAD_TIP = "reload", "Takes effect after /reload."
+-- The tag a row whose setting applies on reload wears after its caption, by row kind (a module's switch, which never
+-- builds or unbuilds a module until the reload, has room to say so in full), and the line its tip gains.
+local RELOAD_TAG, RELOAD_TIP = { module = "Reload to apply", setting = "reload" }, "Takes effect after /reload."
 
 -- Gives a row whose setting applies on reload a small muted tag just after its caption (a wrapping caption gives up the
 -- tag's room), and a line in its tip.
 local function addReloadTag(w, row)
   if not (row.reload and w.label) then return end
   w.tag = T.Text(w:CreateFontString(nil, "OVERLAY"), "small", "muted")
-  w.tag:SetText(RELOAD_TAG)
+  w.tag:SetText(RELOAD_TAG[row[1]] or RELOAD_TAG.setting)
   local room = w.tag:GetStringWidth() + T.SPACE.gap
   if w.fixedLabel then w.label:SetWidth(w.label:GetWidth() - room) end
   w.tag:SetPoint("LEFT", w.label, "LEFT", math.min(w.label:GetStringWidth(), w.label:GetWidth()) + T.SPACE.gap, 0)

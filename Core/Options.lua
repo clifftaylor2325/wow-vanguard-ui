@@ -428,11 +428,12 @@ function O.OwnSwitchNote(name)
   return string.format("On, but its own switch is off (%s)", pageTitle(link.page))
 end
 
--- One module's switch, with its name and what it does (applies on reload).
+-- One module's switch, with its name and what it does; it applies on reload (Core/Modules.lua builds modules at login),
+-- so it wears the reload tag.
 local function moduleRow(name)
   local info = O.MODULE_INFO[name] or { name, "" }
   return { "module", info[1], function() return ns.ModuleEnabled(name) end,
-    function(v) ns.SetModuleEnabled(name, v); O.NeedReload() end, nil, info[2], name }
+    function(v) ns.SetModuleEnabled(name, v); O.NeedReload() end, nil, info[2], name, reload = true }
 end
 
 -- The Modules page's groups, in the nav's order: a title and the modules under it (a module in none is under "More").
