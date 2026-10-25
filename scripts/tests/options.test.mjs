@@ -1427,3 +1427,13 @@ it("Modules page: every module it groups has a name and a line saying what it do
     return out`);
   expect(missing, "modules shown by their code name with no description").toEqual({});
 });
+
+// One test per client language, so each stays inside the time limit under coverage.
+for (const locale of ["deDE", "ruRU", "koKR"]) {
+  it(`options: on a ${locale} client Vanguard loads and the options window opens and every page builds its rows with no error (its own text stays English)`, () => {
+    const addon = loggedIn(CLICK_LUA + `GetLocale = function() return "${locale}" end`);
+    // Opens the window, then builds every page's rows and counts the errors caught along the way.
+    const opened = addon.eval('ns.Options.Show("general") local n = 0 for _, p in ipairs(ns.Options.PAGES) do if #p.rows() > 0 then n = n + 1 end end return { n, #ns.errors, Vanguard_Options:IsShown() }');
+    expect(opened, `${locale}: all 20 pages build rows, no error caught, the window is up`).toEqual([20, 0, true]);
+  });
+}
