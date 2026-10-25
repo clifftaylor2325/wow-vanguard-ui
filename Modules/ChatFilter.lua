@@ -9,6 +9,7 @@
 -- (in instances) is never read: those lines pass through as they are.
 
 local ADDON, ns = ...
+local L = ns.L
 
 local CF = ns.Module("ChatFilter", {
   defaults = { on = false, mode = "tab", gold = true, boosting = true, recruiting = true, repeats = true, keywords = {} },
@@ -19,7 +20,8 @@ CF.MAX_KEYWORDS, CF.MAX_LENGTH = 30, 40
 -- How long (seconds) an exact repeat from one sender is filtered, how many lines are remembered,
 -- and the least length of a line (as plain text) that counts as a repeat ("inv", "+1" never do).
 CF.REPEAT, CF.MAX_RECENT, CF.MIN_REPEAT = 60, 200, 12
--- The tab's name in the game's chat settings.
+-- The tab's name in the game's chat settings. It stays English: the tab is found again by this name,
+-- so a translation would leave a player's existing tab behind and make a second one.
 CF.TAB = "Filtered"
 -- The chat events that are filtered.
 CF.EVENTS = { "CHAT_MSG_CHANNEL", "CHAT_MSG_SAY", "CHAT_MSG_YELL" }
@@ -28,13 +30,13 @@ local PREFIX = "addon:Vanguard:allow:"
 
 -- A line is in a category when it holds a word from each of the category's groups.
 CF.CATEGORIES = {
-  { key = "gold", label = "Gold selling", groups = {
+  { key = "gold", label = L["Gold selling"], groups = {
     { "gold", "coins" },
     { "www.", "http", ".com", ".net", "paypal", "usd", "$", "\226\130\172", "fast delivery" } } },
-  { key = "boosting", label = "Boosting", groups = {
+  { key = "boosting", label = L["Boosting"], groups = {
     { "boost", "power level", "powerlevel" },
     { "wts", "selling", "service", "cheap", "price", "discount", "gold", "usd", "$", "pm me", "whisper me" } } },
-  { key = "recruiting", label = "Recruiting", groups = {
+  { key = "recruiting", label = L["Recruiting"], groups = {
     { "recruiting", "looking for new members", "accepting applications", "join our guild" },
     { "guild", "raid team", "casual", "social", "community" } } },
 }
@@ -92,8 +94,8 @@ end
 function CF.Reason(text, sender, now)
   local line = ns.GetModule("ChatExtras").Matchable(text)
   local why = CF.Category(line)
-  if not why and holdsAny(line, CF.settings.keywords) then why = "Your word" end
-  if not why and CF.settings.repeats and #line >= CF.MIN_REPEAT and repeated(sender, line, now) then why = "Repeat" end
+  if not why and holdsAny(line, CF.settings.keywords) then why = L["Your word"] end
+  if not why and CF.settings.repeats and #line >= CF.MIN_REPEAT and repeated(sender, line, now) then why = L["Repeat"] end
   return why
 end
 
@@ -200,7 +202,7 @@ function CF.OnLink(_, link)
   if type(link) ~= "string" or link:sub(1, #PREFIX) ~= PREFIX then return end
   local sender = link:sub(#PREFIX + 1)
   CF.allowed[sender] = true
-  ns.Chat(string.format("%s's lines show in chat again until you log out.", ns.Home.Display(sender)))
+  ns.Chat(ns.Format(L["{name}'s lines show in chat again until you log out."], { name = ns.Home.Display(sender) }))
 end
 
 -- What it caught -----------------------------------------------------------------------------
@@ -208,19 +210,19 @@ end
 -- What the filter caught this session, for its card: "Caught this session: 12 (Gold selling 5, Repeat 7)", the
 -- reasons in a fixed order (the categories, your words, repeats).
 function CF.CaughtText()
-  if CF.count == 0 then return "Nothing caught this session." end
+  if CF.count == 0 then return L["Nothing caught this session."] end
   local parts = {}
   for _, why in ipairs(CF.Reasons()) do
     if CF.counts[why] then parts[#parts + 1] = string.format("%s %d", why, CF.counts[why]) end
   end
-  return string.format("Caught this session: %d (%s)", CF.count, table.concat(parts, ", "))
+  return ns.Format(L["Caught this session: {count} ({reasons})"], { count = CF.count, reasons = table.concat(parts, ", ") })
 end
 
 -- Every reason a line can be caught for, in the card's order.
 function CF.Reasons()
   local out = {}
   for _, cat in ipairs(CF.CATEGORIES) do out[#out + 1] = cat.label end
-  out[#out + 1], out[#out + 2] = "Your word", "Repeat"
+  out[#out + 1], out[#out + 2] = L["Your word"], L["Repeat"]
   return out
 end
 
@@ -230,22 +232,22 @@ function CF.LetThroughText()
   local seen, names = {}, {}
   for sender in pairs(CF.allowed) do seen[ns.Home.Display(sender)] = true end
   for name in pairs(seen) do names[#names + 1] = name end
-  if #names == 0 then return "Nobody let through this session." end
+  if #names == 0 then return L["Nobody let through this session."] end
   table.sort(names)
-  return "Let through: " .. table.concat(names, ", ")
+  return ns.Format(L["Let through: {names}"], { names = table.concat(names, ", ") })
 end
 
 -- Filters the senders let through again (the card's Filter them again button); says so.
 function CF.FilterAgain()
   CF.allowed = {}
   ns.Options.Refresh()
-  ns.Chat("Every sender is filtered again.")
+  ns.Chat(L["Every sender is filtered again."])
 end
 
 -- The card's hint while caught lines are hidden (they can't be seen or let through), else nothing.
 function CF.HiddenHint()
   if ns.Settings("ChatFilter", CF.defaults).mode ~= "hide" then return "" end
-  return "Hidden lines can't be seen or let through: set Caught lines to the Filtered tab for that."
+  return L["Hidden lines can't be seen or let through: set Caught lines to the Filtered tab for that."]
 end
 
 -- Keywords ------------------------------------------------------------------------------------
@@ -257,11 +259,11 @@ end
 
 -- Why a keyword can't be added, or nil when it can.
 local function refusal(word, list)
-  if word == "" then return "Type a word to filter." end
-  if #word > CF.MAX_LENGTH then return string.format("A word can be at most %d characters.", CF.MAX_LENGTH) end
-  if #list >= CF.MAX_KEYWORDS then return string.format("Chat filter keeps at most %d words; remove one first.", CF.MAX_KEYWORDS) end
+  if word == "" then return L["Type a word to filter."] end
+  if #word > CF.MAX_LENGTH then return ns.Format(L["A word can be at most {max} characters."], { max = CF.MAX_LENGTH }) end
+  if #list >= CF.MAX_KEYWORDS then return ns.Format(L["Chat filter keeps at most {max} words; remove one first."], { max = CF.MAX_KEYWORDS }) end
   for _, w in ipairs(list) do
-    if w == word then return string.format('Already filtering "%s".', word) end
+    if w == word then return ns.Format(L['Already filtering "{word}".'], { word = word }) end
   end
 end
 
@@ -276,7 +278,7 @@ function CF.Add(text)
   local why = refusal(word, list)
   if why then ns.Chat(why) return false end
   list[#list + 1] = word
-  ns.Chat(string.format('Filtering lines with "%s".', word))
+  ns.Chat(ns.Format(L['Filtering lines with "{word}".'], { word = word }))
   ns.Options.RebuildPage("chat")
   return true
 end
@@ -284,9 +286,9 @@ end
 -- Stops filtering a keyword; says in chat what happened.
 function CF.Remove(text)
   local word = clean(text)
-  if not ns.GetModule("ChatExtras").RemoveValue(keywords(), word) then return ns.Chat(string.format('Not filtering "%s".', word)) end
+  if not ns.GetModule("ChatExtras").RemoveValue(keywords(), word) then return ns.Chat(ns.Format(L['Not filtering "{word}".'], { word = word })) end
   ns.Options.RebuildPage("chat")
-  ns.Chat(string.format('No longer filtering "%s".', word))
+  ns.Chat(ns.Format(L['No longer filtering "{word}".'], { word = word }))
 end
 
 -- The options' Add a word dialog: adds what was typed, and closes once it's added.
@@ -300,28 +302,40 @@ end
 function CF.SetOn(on)
   ns.Settings("ChatFilter", CF.defaults).on = on
   CF.Prepare()
-  ns.Chat(on and "Chat filter on." or "Chat filter off.")
+  ns.Chat(on and L["Chat filter on."] or L["Chat filter off."])
 end
 
 -- Sets where caught lines go ("tab" or "hide"); says so.
 function CF.SetMode(mode)
   ns.Settings("ChatFilter", CF.defaults).mode = mode
   CF.Changed()
-  ns.Chat(mode == "tab" and "Caught lines go to the Filtered tab." or "Caught lines are hidden.")
+  ns.Chat(mode == "tab" and L["Caught lines go to the Filtered tab."] or L["Caught lines are hidden."])
 end
+
+-- The status line by whether the filter is on, then where caught lines go: whole sentences to translate.
+local STATUS = {
+  [true] = {
+    tab = L["Chat filter is on; caught lines go to the Filtered tab; {count} caught this session."],
+    hide = L["Chat filter is on; caught lines are hidden; {count} caught this session."],
+  },
+  [false] = {
+    tab = L["Chat filter is off; caught lines go to the Filtered tab; {count} caught this session."],
+    hide = L["Chat filter is off; caught lines are hidden; {count} caught this session."],
+  },
+}
 
 -- Prints whether the filter is on, where lines go, how many it caught and the keywords.
 local function status()
   local s = ns.Settings("ChatFilter", CF.defaults)
-  ns.Chat(string.format("Chat filter is %s; caught lines %s; %d caught this session.", s.on and "on" or "off", s.mode == "tab" and "go to the Filtered tab" or "are hidden", CF.count))
-  if #s.keywords > 0 then ns.Chat("Your words: " .. table.concat(s.keywords, ", ")) end
+  ns.Chat(ns.Format(STATUS[s.on == true][s.mode == "tab" and "tab" or "hide"], { count = CF.count }))
+  if #s.keywords > 0 then ns.Chat(ns.Format(L["Your words: {words}"], { words = table.concat(s.keywords, ", ") })) end
 end
 
 -- Forgets every keyword; says so.
 function CF.ClearWords()
   ns.Settings("ChatFilter", CF.defaults).keywords = {}
   ns.Options.RebuildPage("chat")
-  ns.Chat("Chat filter has no words now.")
+  ns.Chat(L["Chat filter has no words now."])
 end
 
 -- What each /vg filter verb does with the rest of the line; no verb at all prints the status.
@@ -344,7 +358,7 @@ local VERBS = {
 function CF.Command(rest)
   local verb, arg = (rest or ""):match("^(%S*)%s*(.-)$")
   local run = VERBS[verb]
-  if not run then return ns.Chat("Usage: /vg filter [on | off | tab | hide | add <word> | remove <word> | clear]") end
+  if not run then return ns.Chat(L["Usage: /vg filter [on | off | tab | hide | add <word> | remove <word> | clear]"]) end
   return run(arg)
 end
 

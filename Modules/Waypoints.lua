@@ -23,6 +23,7 @@
 -- percent, as the game's map shows them.
 
 local ADDON, ns = ...
+local L = ns.L
 
 local T = ns.Theme
 
@@ -89,14 +90,15 @@ local function mapFor(zone)
   return id and tonumber(id) or mapNamed(zone)
 end
 
--- A /way line as mapID, x and y (0 to 1) and title; nil and the reason when it can't be read.
+-- A /way line as mapID, x and y (0 to 1) and title; nil and what chat says when it can't be read.
 function WP.Parse(text)
   local list = words(text)
   local at = coordsAt(list)
-  if not at then return nil, "give the coordinates as x y, e.g. /way 45.2 61.8" end
+  if not at then return nil, L["Can't set that waypoint: give the coordinates as x y, e.g. /way 45.2 61.8."] end
   local zone = table.concat(list, " ", 1, at - 1)
   local mapID = mapFor(zone)
-  if not mapID then return nil, zone == "" and "the game won't say which map you're on here" or ("no zone called " .. zone) end
+  if zone == "" and not mapID then return nil, L["Can't set that waypoint: the game won't say which map you're on here."] end
+  if not mapID then return nil, ns.Format(L["Can't set that waypoint: no zone called {zone}."], { zone = zone }) end
   return mapID, percent(list[at]) / 100, percent(list[at + 1]) / 100, table.concat(list, " ", at + 2)
 end
 
@@ -105,7 +107,7 @@ end
 -- A map's name, or "map <id>".
 local function mapName(mapID)
   local info = C_Map.GetMapInfo and C_Map.GetMapInfo(mapID)
-  return info and info.name or ("map " .. mapID)
+  return info and info.name or ns.Format(L["map {id}"], { id = mapID })
 end
 
 -- Puts the waypoint on mapID at x, y (0 to 1) and points the game's arrow at it; false when that map can't hold one.
@@ -183,9 +185,9 @@ end
 -- Goes back to the nth recent waypoint; says why when there is none or the map can't hold one.
 function WP.Recall(n)
   local w = recentList()[n]
-  if not w then return ns.Chat("No recent waypoint " .. n .. ".") end
-  if not WP.Set(w.map, w.x, w.y) then return ns.Chat("Can't put a waypoint on " .. mapName(w.map) .. ".") end
-  ns.Chat("Waypoint: " .. WP.Describe(w) .. ".")
+  if not w then return ns.Chat(ns.Format(L["No recent waypoint {number}."], { number = n })) end
+  if not WP.Set(w.map, w.x, w.y) then return ns.Chat(ns.Format(L["Can't put a waypoint on {map}."], { map = mapName(w.map) })) end
+  ns.Chat(ns.Format(L["Waypoint: {spot}."], { spot = WP.Describe(w) }))
 end
 
 -- Takes the waypoint away and the arrow with it.
@@ -198,7 +200,7 @@ end
 function WP.RecentCommand(n)
   local list = recentList()
   if n ~= "" then return WP.Recall(tonumber(n)) end
-  if #list == 0 then return ns.Chat("No recent waypoints yet.") end
+  if #list == 0 then return ns.Chat(L["No recent waypoints yet."]) end
   for i, w in ipairs(list) do ns.Chat(i .. ". " .. WP.Describe(w)) end
 end
 
@@ -215,18 +217,24 @@ local function setTitled(mapID, x, y, title)
   return false
 end
 
--- /way and /vg way: "clear", or [zone] x y [title]. The second value from WP.Parse is the reason when it fails.
+-- Says in chat where the waypoint went: "Waypoint: Elwynn Forest 45.2, 61.8 (Mine)."
+local function sayWaypoint(mapID, x, y, title)
+  local spot = string.format("%s %.1f, %.1f", mapName(mapID), x * 100, y * 100)
+  if title == "" then return ns.Chat(ns.Format(L["Waypoint: {spot}."], { spot = spot })) end
+  ns.Chat(ns.Format(L["Waypoint: {spot} ({title})."], { spot = spot, title = title }))
+end
+
+-- /way and /vg way: "clear", or [zone] x y [title]. The second value from WP.Parse is what chat says when it fails.
 function WP.Command(rest)
   rest = rest or ""
-  if not canWaypoint() then return ns.Chat("This client has no map waypoints.") end
-  if rest:lower():match("^%s*clear%s*$") then WP.Clear() return ns.Chat("Waypoint cleared.") end
+  if not canWaypoint() then return ns.Chat(L["This client has no map waypoints."]) end
+  if rest:lower():match("^%s*clear%s*$") then WP.Clear() return ns.Chat(L["Waypoint cleared."]) end
   local recent = rest:lower():match("^%s*recent%s*(%d*)%s*$")
   if recent then return WP.RecentCommand(recent) end
   local mapID, x, y, title = WP.Parse(rest)
-  if not mapID then return ns.Chat("Can't set that waypoint: " .. x .. ".") end
-  if not setTitled(mapID, x, y, title) then return ns.Chat("Can't put a waypoint on " .. mapName(mapID) .. ".") end
-  local named = title ~= "" and (" (" .. title .. ")") or ""
-  ns.Chat(string.format("Waypoint: %s %.1f, %.1f%s.", mapName(mapID), x * 100, y * 100, named))
+  if not mapID then return ns.Chat(x) end
+  if not setTitled(mapID, x, y, title) then return ns.Chat(ns.Format(L["Can't put a waypoint on {map}."], { map = mapName(mapID) })) end
+  sayWaypoint(mapID, x, y, title)
 end
 
 -- Takes /way unless another addon (TomTom) has it; true when it did.
@@ -245,7 +253,7 @@ end
 -- jiforever (CurseForge project owner jigrobbulus); Vanguard only checks whether it is loaded and holds none
 -- of its code, data or art.
 WP.OPEN_MAP = "OpenMap"
-WP.OPEN_MAP_CREDIT = "OpenMap is by jiforever (on CurseForge, jigrobbulus). Vanguard works alongside it and holds none of its code."
+WP.OPEN_MAP_CREDIT = L["OpenMap is by jiforever (on CurseForge, jigrobbulus). Vanguard works alongside it and holds none of its code."]
 
 -- Whether OpenMap is loaded and drawing the world map (no when the client can't say).
 function WP.OpenMapDraws()
@@ -270,8 +278,8 @@ function WP.MapText(map)
   local you = mapID and ns.GetModule("Minimap").CoordsText(mapID) or ""
   local cursor = WP.OpenMapDraws() and "" or cursorText(map)
   local parts = {}
-  if you ~= "" then parts[#parts + 1] = "You " .. you end
-  if cursor ~= "" then parts[#parts + 1] = "Cursor " .. cursor end
+  if you ~= "" then parts[#parts + 1] = ns.Format(L["You {coords}"], { coords = you }) end
+  if cursor ~= "" then parts[#parts + 1] = ns.Format(L["Cursor {coords}"], { coords = cursor }) end
   return table.concat(parts, "     ")
 end
 
@@ -287,7 +295,7 @@ local function buildMapLine(map)
   holder:SetAllPoints(map.ScrollContainer or map)
   WP.mapLine = T.Text(holder:CreateFontString(nil, "OVERLAY"), "small", "text2")
   WP.mapLine:SetPoint("BOTTOM", holder, "BOTTOM", 0, 6)
-  WP.clearButton = ns.DialogButton(holder, "Clear waypoint", 110)
+  WP.clearButton = ns.DialogButton(holder, L["Clear waypoint"], 110)
   WP.clearButton:SetPoint("BOTTOMRIGHT", holder, "BOTTOMRIGHT", -8, 6)
   WP.clearButton:SetScript("OnClick", ns.Guard("clear waypoint", WP.Clear))
   ns.Every("world map coords", WP.MAP_INTERVAL, WP.PaintMapLine, holder, true)
@@ -355,9 +363,9 @@ end
 local function recentRows()
   local rows = {}
   for i, w in ipairs(recentList()) do
-    rows[#rows + 1] = { "button", "Go to " .. WP.Describe(w), function() WP.Recall(i) end }
+    rows[#rows + 1] = { "button", ns.Format(L["Go to {spot}"], { spot = WP.Describe(w) }), function() WP.Recall(i) end }
   end
-  if #rows == 0 then rows[1] = { "text", "No recent waypoints yet. Ctrl-click the world map or use /way to make one." } end
+  if #rows == 0 then rows[1] = { "text", L["No recent waypoints yet. Ctrl-click the world map or use /way to make one."] } end
   return rows
 end
 
@@ -367,15 +375,15 @@ local function addOpenMapRows(rows)
   rows[#rows + 1] = { "header", "OpenMap" }
   rows[#rows + 1] = { "text", WP.OPEN_MAP_CREDIT }
   if WP.OpenMapDraws() then
-    rows[#rows + 1] = { "text", "OpenMap is drawing the world map. Vanguard keeps the map's frame in its look and leaves the cursor's coordinates and quest-start pins to OpenMap." }
+    rows[#rows + 1] = { "text", L["OpenMap is drawing the world map. Vanguard keeps the map's frame in its look and leaves the cursor's coordinates and quest-start pins to OpenMap."] }
   end
 end
 
 -- The waypoint card on the Map page.
 function WP.Rows()
-  local rows = { { "header", "Waypoints" }, { "text", "Shift-click the pin on the map to share it." },
-    { "check", "Point the arrow at a waypoint you Ctrl-click on the map", followSetting() },
-    { "button", "Clear waypoint", WP.Clear }, { "header", "Recent waypoints" } }
+  local rows = { { "header", L["Waypoints"] }, { "text", L["Shift-click the pin on the map to share it."] },
+    { "check", L["Point the arrow at a waypoint you Ctrl-click on the map"], followSetting() },
+    { "button", L["Clear waypoint"], WP.Clear }, { "header", L["Recent waypoints"] } }
   for _, row in ipairs(recentRows()) do rows[#rows + 1] = row end
   addOpenMapRows(rows)
   return rows

@@ -9,13 +9,14 @@
 -- than guessed. Nothing here is protected (the marks are Vanguard's own textures over the minimap).
 
 local ADDON, ns = ...
+local L = ns.L
 
 local T = ns.Theme
 
 local QM = ns.Module("QuestMinimap", { defaults = { show = true } })
 ns.QuestMinimap = QM
 
-ns.Options.MODULE_INFO.QuestMinimap = { "Quest spots on the minimap", "A mark on the minimap where each quest in your log has its spot on the map you're on." }
+ns.Options.MODULE_INFO.QuestMinimap = { L["Quest spots on the minimap"], L["A mark on the minimap where each quest in your log has its spot on the map you're on."] }
 
 -- Seconds between redraws; seconds between reads of the quest spots; the largest mark's size (a followed ?, UI
 -- units: every mark stays inside the minimap's edge); the most marks drawn.
@@ -150,7 +151,7 @@ end
 
 -- The switch on the Quests page's "Finding your way" card (Core/OptionsQuests.lua places it).
 function QM.Rows()
-  return { { "check", "Quest spots on the minimap", getShow, setShow, QM.defaults.show } }
+  return { { "check", L["Quest spots on the minimap"], getShow, setShow, QM.defaults.show } }
 end
 
 -- Module entry point (Core/Modules.lua): the marks' layer over the minimap, the spots read each second and

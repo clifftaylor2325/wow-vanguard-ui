@@ -13,6 +13,7 @@
 -- skipped before anything reads it, so nothing matches and nothing errors.
 
 local ADDON, ns = ...
+local L = ns.L
 
 local T = ns.Theme
 
@@ -160,7 +161,7 @@ function CW.PriceText(text)
   local prices = ns.AuctionPrices.House().prices
   for id in text:gmatch("|Hitem:(%d+)") do
     local p = prices[tonumber(id)]
-    if p then return "AH " .. ns.AuctionPrices.Money(p.min) end
+    if p then return ns.Format(L["AH {price}"], { price = ns.AuctionPrices.Money(p.min) }) end
   end
 end
 
@@ -250,7 +251,7 @@ local function buildToast()
   toastPrice(f)
   f:Hide()
   CW.toast = f
-  ns.Mover(f, "chatwatch", "Chat alert", { "TOP", "TOP", 0, -216 })
+  ns.Mover(f, "chatwatch", L["Chat alert"], { "TOP", "TOP", 0, -216 })
 end
 
 -- Rings and shows another module's alert on the toast.
@@ -285,12 +286,12 @@ end
 
 -- Why a phrase can't be added, or nil when it can.
 local function refusal(phrase, list)
-  if phrase == "" then return "Type a phrase to watch for." end
-  if phrase:find("|", 1, true) then return "A phrase can't hold the | character." end
-  if #phrase > CW.MAX_LENGTH then return string.format("A phrase can be at most %d characters.", CW.MAX_LENGTH) end
-  if #list >= CW.MAX_PHRASES then return string.format("Chat watch keeps at most %d phrases; remove one first.", CW.MAX_PHRASES) end
+  if phrase == "" then return L["Type a phrase to watch for."] end
+  if phrase:find("|", 1, true) then return L["A phrase can't hold the | character."] end
+  if #phrase > CW.MAX_LENGTH then return ns.Format(L["A phrase can be at most {max} characters."], { max = CW.MAX_LENGTH }) end
+  if #list >= CW.MAX_PHRASES then return ns.Format(L["Chat watch keeps at most {max} phrases; remove one first."], { max = CW.MAX_PHRASES }) end
   for _, p in ipairs(list) do
-    if p == phrase then return string.format('Already watching for "%s".', phrase) end
+    if p == phrase then return ns.Format(L['Already watching for "{phrase}".'], { phrase = phrase }) end
   end
 end
 
@@ -300,7 +301,7 @@ function CW.Add(text)
   local why = refusal(phrase, list)
   if why then ns.Chat(why) return false end
   list[#list + 1] = phrase
-  ns.Chat(string.format('Watching chat for "%s".', phrase))
+  ns.Chat(ns.Format(L['Watching chat for "{phrase}".'], { phrase = phrase }))
   phrasesChanged()
   return true
 end
@@ -308,9 +309,9 @@ end
 -- Stops watching for a phrase (any case); says in chat what happened.
 function CW.Remove(text)
   local phrase = (type(text) == "string" and text or ""):match("^%s*(.-)%s*$"):lower()
-  if not ns.GetModule("ChatExtras").RemoveValue(phrases(), phrase) then return ns.Chat(string.format('Not watching for "%s".', phrase)) end
+  if not ns.GetModule("ChatExtras").RemoveValue(phrases(), phrase) then return ns.Chat(ns.Format(L['Not watching for "{phrase}".'], { phrase = phrase })) end
   phrasesChanged()
-  ns.Chat(string.format('No longer watching for "%s".', phrase))
+  ns.Chat(ns.Format(L['No longer watching for "{phrase}".'], { phrase = phrase }))
 end
 
 -- The options' Add a phrase dialog: adds what was typed, and closes once it's added.
@@ -321,8 +322,8 @@ end
 -- Prints the watched phrases.
 local function list()
   local all = phrases()
-  if #all == 0 then return ns.Chat("Chat watch has no phrases. /vg watch add <phrase> adds one.") end
-  ns.Chat("Watching chat for: " .. table.concat(all, ", "))
+  if #all == 0 then return ns.Chat(L["Chat watch has no phrases. /vg watch add <phrase> adds one."]) end
+  ns.Chat(ns.Format(L["Watching chat for: {phrases}"], { phrases = table.concat(all, ", ") }))
 end
 
 -- /vg watch [add <phrase> | remove <phrase> | list | clear].
@@ -330,9 +331,9 @@ function CW.Command(rest)
   local verb, arg = (rest or ""):match("^(%S*)%s*(.-)$")
   if verb == "add" then return CW.Add(arg) end
   if verb == "remove" then return CW.Remove(arg) end
-  if verb == "clear" then ns.Settings("ChatWatch", CW.defaults).phrases = {} phrasesChanged() return ns.Chat("Chat watch has no phrases now.") end
+  if verb == "clear" then ns.Settings("ChatWatch", CW.defaults).phrases = {} phrasesChanged() return ns.Chat(L["Chat watch has no phrases now."]) end
   if verb == "" or verb == "list" then return list() end
-  ns.Chat("Usage: /vg watch [add <phrase> | remove <phrase> | list | clear]")
+  ns.Chat(L["Usage: /vg watch [add <phrase> | remove <phrase> | list | clear]"])
 end
 
 -- get/set (and the default) for one channel switch; more keys follow the first (Party and raid).

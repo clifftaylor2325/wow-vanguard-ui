@@ -4,6 +4,7 @@
 -- quality color, and the faint crest behind a reading window's corner.
 
 local ADDON, ns = ...
+local L = ns.L
 
 local T, W = ns.Theme, ns.Widgets
 
@@ -52,7 +53,7 @@ end
 function QP.XPText(xp)
   local s, n = tostring(math.floor(xp)), 1
   while n > 0 do s, n = s:gsub("^(-?%d+)(%d%d%d)", "%1,%2") end
-  return s .. " XP"
+  return ns.Format(L["{xp} XP"], { xp = s })
 end
 
 -- The money and XP a quest gives as text ("+1g 20s 0c  ·  1,250 XP"), then any extra parts; "" for none.
@@ -294,7 +295,7 @@ end
 local function moneyPart(copper)
   if copper <= 0 then return nil, false end
   local have = ns.PlainNumber(type(GetMoney) == "function" and GetMoney() or nil)
-  local text = (caption("REQUIRED_MONEY") or "Needs") .. " " .. ns.GetModule("InfoStrip").Money(copper)
+  local text = (caption("REQUIRED_MONEY") or L["Needs"]) .. " " .. ns.GetModule("InfoStrip").Money(copper)
   return text, have ~= nil and have < copper
 end
 

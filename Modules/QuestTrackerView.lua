@@ -6,6 +6,7 @@
 -- its cooldown, a red tint out of range and the game's tooltip.
 
 local ADDON, ns = ...
+local L = ns.L
 
 local T, W = ns.Theme, ns.Widgets
 local QP = ns.QuestParts
@@ -30,7 +31,7 @@ end
 
 -- "QUESTS", the quest count after it and a fold chevron (a W.SectionHeader), and a brass line under them.
 local function addHeader(f)
-  f.header = W.SectionHeader(f, "Quests", { collapsible = true, count = "", width = QT.W, onToggle = QT.Fold })
+  f.header = W.SectionHeader(f, L["Quests"], { collapsible = true, count = "", width = QT.W, onToggle = QT.Fold })
   f.header:SetPoint("TOPLEFT", f, "TOPLEFT", 0, 0)
   f.count = f.header.count
   f.rule = T.Tint(T.Snap(f:CreateTexture(nil, "ARTWORK"), "divider"), "accent")
@@ -71,10 +72,10 @@ end
 
 -- What a click does on each kind of row, for its tooltip (a quest's Shift-click only while Quest guidance is on).
 QT.CLICKS = {
-  quest = "Click: open · Shift-click: point the arrow · Right-click: stop watching",
-  questNoGuide = "Click: open · Right-click: stop watching",
-  achievement = "Right-click: stop tracking",
-  recipe = "Click: open · Right-click: stop tracking",
+  quest = L["Click: open · Shift-click: point the arrow · Right-click: stop watching"],
+  questNoGuide = L["Click: open · Right-click: stop watching"],
+  achievement = L["Right-click: stop tracking"],
+  recipe = L["Click: open · Right-click: stop tracking"],
 }
 
 -- The clicks line for a row.
@@ -158,7 +159,7 @@ end
 local function ownSpot()
   local spot = CreateFrame("Frame", "Vanguard_QuestTracker", UIParent)
   spot:SetSize(QT.W, QT.H)
-  ns.Mover(spot, "questtracker", "Quest tracker", ns.GetModule("InfoStrip").TrackerPoint())
+  ns.Mover(spot, "questtracker", L["Quest tracker"], ns.GetModule("InfoStrip").TrackerPoint())
   return spot
 end
 
@@ -190,8 +191,8 @@ end
 -- The lines for a quest's state: "Failed" (a timed quest run out, an escort lost), "Ready to turn in" (an
 -- achievement: "Complete"), or its objectives.
 function QT.StateLines(q)
-  if q.failed then return { { "Failed", "bad" } } end
-  if q.ready then return { { q.achievement and "Complete" or "Ready to turn in", "good" } } end
+  if q.failed then return { { L["Failed"], "bad" } } end
+  if q.ready then return { { q.achievement and L["Complete"] or L["Ready to turn in"], "good" } } end
   local out = {}
   for _, o in ipairs(q.objectives) do out[#out + 1] = objectiveSpec(o) end
   return out
@@ -203,7 +204,7 @@ end
 -- or XP: its criteria or reagents only.
 function QT.LineSpecs(q)
   local out = (q.achievement or q.recipe) and {} or { ns.QuestGuide.StepLine(q.id) }
-  if q.timer then out[#out + 1] = { "Time left " .. QT.Clock(q.timer), "text2" } end
+  if q.timer then out[#out + 1] = { ns.Format(L["Time left {time}"], { time = QT.Clock(q.timer) }), "text2" } end
   for _, line in ipairs(QT.StateLines(q)) do out[#out + 1] = line end
   if (q.xp or 0) > 0 then out[#out + 1] = { QP.XPText(q.xp), "text2" } end
   return out
@@ -347,10 +348,10 @@ end
 local function showMore(f, quests, shown, y, levelText)
   local hidden = countRows(quests, #shown + 1)
   local fewer = QT.settings.expanded and #quests > fitCount(quests, f.body:GetHeight() - reserved(levelText))
-  local more = hidden > 0 and ("+" .. hidden .. " more") or nil
+  local more = hidden > 0 and ns.Format(L["+{count} more"], { count = hidden }) or nil
   f.moreBtn:SetShown(more ~= nil or fewer)
   f.more:SetShown(more ~= nil or fewer)
-  f.more:SetText(fewer and (more and ("Show fewer  ·  " .. more) or "Show fewer") or more or "")
+  f.more:SetText(fewer and (more and ns.Format(L["Show fewer  ·  {more}"], { more = more }) or L["Show fewer"]) or more or "")
   f.moreBtn:SetPoint("TOPLEFT", f.body, "TOPLEFT", 0, -y)
 end
 

@@ -10,6 +10,7 @@
 -- (by hand, or for combat).
 
 local ADDON, ns = ...
+local L = ns.L
 
 local T, W, O = ns.Theme, ns.Widgets, ns.Options
 local SI = ns.GetModule("Situations")
@@ -22,14 +23,13 @@ local HEIGHT, BUTTON_WIDTH = 30, 110
 
 -- What the banner says while recording a situation (one of SI.NAMES).
 function B.Text(name)
-  local label = SI.LABELS[name]
-  return "Editing as: " .. label .. " · changes apply only in " .. label
+  return ns.Format(L["Editing as: {situation} · changes apply only in {situation}"], { situation = SI.LABELS[name] })
 end
 
 -- What a setting row an override can't hold says while recording, or nil (not recording, or one it can hold).
 function O.SettingNote(module, key)
   if not SI.recording or SI.Holds(module, key) then return nil end
-  return "Not recorded for " .. SI.LABELS[SI.recording] .. ": this setting changes your base profile."
+  return ns.Format(L["Not recorded for {situation}: this setting changes your base profile."], { situation = SI.LABELS[SI.recording] })
 end
 
 -- The button: stops recording and saves it (the chat says what was kept), out of combat. Its own queue key:
@@ -44,7 +44,7 @@ local function strip(parent)
   f:SetHeight(HEIGHT)
   f.text = T.Text(f:CreateFontString(nil, "OVERLAY"), "label")
   f.text:SetPoint("LEFT", 10, 0)
-  f.button = W.Button(f, "Stop and save", stopAndSave, BUTTON_WIDTH)
+  f.button = W.Button(f, L["Stop and save"], stopAndSave, BUTTON_WIDTH)
   f.button:SetPoint("RIGHT", -4, 0)
   f:Hide()
   return f

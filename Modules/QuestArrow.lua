@@ -11,13 +11,14 @@
 -- distance reads "no direction" instead of a guess. Nothing here is protected, so it updates in combat too.
 
 local ADDON, ns = ...
+local L = ns.L
 
 local T = ns.Theme
 
 local QA = ns.Module("QuestArrow", { defaults = { show = true, auto = true } })
 ns.QuestArrow = QA
 
-ns.Options.MODULE_INFO.QuestArrow = { "Quest arrow", "A movable arrow on screen that turns toward the nearest unfinished quest objective, with its distance." }
+ns.Options.MODULE_INFO.QuestArrow = { L["Quest arrow"], L["A movable arrow on screen that turns toward the nearest unfinished quest objective, with its distance."] }
 
 -- The frame's size; seconds between redraws of the turn and distance; seconds between picks of the quest.
 QA.WIDTH, QA.HEIGHT, QA.DRAW, QA.PICK = 190, 44, 0.1, 1
@@ -78,7 +79,7 @@ end
 
 -- The quest title for the arrow, or "Quest".
 local function titleOf(id)
-  return ns.PlainText(ns.CallIf(C_QuestLog, "GetTitleForQuestID", id)) or "Quest"
+  return ns.PlainText(ns.CallIf(C_QuestLog, "GetTitleForQuestID", id)) or L["Quest"]
 end
 
 -- The quest to follow and whether the arrow holds it as a pin: the Shift-clicked quest (with "Follow the
@@ -108,7 +109,7 @@ function QA.Pick()
   QA.current, QA.held = follow(old)
   QA.ready = QA.current ~= nil and readyToTurnIn(QA.current)
   QA.target = QA.current and { ns.QuestGuide.Target(QA.current) } or nil
-  if old and QA.current and old ~= QA.current and finished(old) and not ns.InCombat() then ns.Chat("Arrow: " .. titleOf(QA.current) .. ".") end
+  if old and QA.current and old ~= QA.current and finished(old) and not ns.InCombat() then ns.Chat(ns.Format(L["Arrow: {quest}."], { quest = titleOf(QA.current) })) end
   paintPick(QA.frame)
   QA.Draw()
   if old ~= QA.current then ns.GetModule("QuestTracker").Redraw() end
@@ -162,11 +163,16 @@ local function yards(id)
   return sq and math.floor(math.sqrt(sq) + 0.5)
 end
 
+-- The distance lines by whether the arrow has a turn, then whether the quest is ready to turn in.
+local DISTANCE = {
+  [true] = { [false] = L["{yards} yd"], [true] = L["Turn in · {yards} yd"] },
+  [false] = { [false] = L["{yards} yd, no direction"], [true] = L["Turn in · {yards} yd, no direction"] },
+}
+
 -- The distance line: "230 yd" ("Turn in · 230 yd" for a finished quest), or why there is none.
 local function distanceText(d, turn, ready)
-  if not d then return "No direction" end
-  local text = turn and (d .. " yd") or (d .. " yd, no direction")
-  return ready and ("Turn in · " .. text) or text
+  if not d then return L["No direction"] end
+  return ns.Format(DISTANCE[not not turn][not not ready], { yards = d })
 end
 
 -- Whether you're there: within QA.HERE yards and not on a flight, which passes over spots without
@@ -210,7 +216,7 @@ local function paintState(f, id, turn)
   local d = yards(id)
   local spot = QA.target ~= nil and QA.target[1] ~= nil
   local here = spot and arrived(d)
-  f.dist:SetText((not spot and "No spot from the game") or (here and "Here") or distanceText(d, turn, QA.ready))
+  f.dist:SetText((not spot and L["No spot from the game"]) or (here and L["Here"]) or distanceText(d, turn, QA.ready))
   T.Color(f.dist, here and "good" or "text2")
   f.arrow:SetAlpha(turn and not here and 1 or QA.FAINT)
 end
@@ -229,7 +235,7 @@ end
 -- The Pin button: back to the nearest quest (or, with "Follow the nearest quest" off, no arrow until the next pin).
 function QA.Unpin()
   ns.QuestGuide.Unpin()
-  ns.Chat(QA.settings.auto and "Arrow: nearest quest." or "Arrow: off until you Shift-click a quest in the tracker.")
+  ns.Chat(QA.settings.auto and L["Arrow: nearest quest."] or L["Arrow: off until you Shift-click a quest in the tracker."])
   QA.Pick()
 end
 
@@ -238,8 +244,8 @@ function QA.PinTooltip(b)
   local tip = GameTooltip
   if not tip then return end
   tip:SetOwner(b, "ANCHOR_BOTTOM")
-  tip:SetText("Pinned (Shift-click in the tracker)", T.RGB("text"))
-  tip:AddLine(QA.settings.auto and "Click: follow the nearest quest." or "Click: let it go. Follow the nearest quest is off, so the arrow hides.", T.RGB("text2"))
+  tip:SetText(L["Pinned (Shift-click in the tracker)"], T.RGB("text"))
+  tip:AddLine(QA.settings.auto and L["Click: follow the nearest quest."] or L["Click: let it go. Follow the nearest quest is off, so the arrow hides."], T.RGB("text2"))
   tip:Show()
 end
 
@@ -281,7 +287,7 @@ local function build()
   pinButton(f)
   f:Hide()
   QA.frame = f
-  ns.Mover(f, "questarrow", "Quest arrow", { "TOP", "TOP", 0, -150 })
+  ns.Mover(f, "questarrow", L["Quest arrow"], { "TOP", "TOP", 0, -150 })
 end
 
 -- Options ----------------------------------------------------------------------------------------
@@ -301,8 +307,8 @@ end
 -- The arrow's rows on the Quests page's "Finding your way" card (Core/OptionsQuests.lua places them).
 function QA.Rows()
   return {
-    { "check", "Show the quest arrow", setting("show", showChanged) },
-    { "check", "Follow the nearest quest (off: only the one you pinned)", setting("auto", QA.Pick) },
+    { "check", L["Show the quest arrow"], setting("show", showChanged) },
+    { "check", L["Follow the nearest quest (off: only the one you pinned)"], setting("auto", QA.Pick) },
   }
 end
 

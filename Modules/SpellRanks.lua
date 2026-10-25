@@ -12,6 +12,7 @@
 -- name, rank or level the client hides is skipped.
 
 local ADDON, ns = ...
+local L = ns.L
 
 local SR = ns.Module("SpellRanks", { defaults = { barNotice = false, trainerMemory = false } })
 
@@ -54,14 +55,14 @@ end
 -- (a page bar 1 isn't on, a bar that is off, or Vanguard's bars off).
 local function slotLabel(slot)
   for _, b in ipairs(ns.GetModule("ActionBars").buttons) do
-    if b.action == slot then return string.format("Bar %d button %d", b.vgBar.vgIndex, b:GetAttribute("index")) end
+    if b.action == slot then return ns.Format(L["Bar {bar} button {button}"], { bar = b.vgBar.vgIndex, button = b:GetAttribute("index") }) end
   end
-  return string.format("Action slot %d", slot)
+  return ns.Format(L["Action slot {slot}"], { slot = slot })
 end
 
 -- "Bar 2 button 5: Frostbolt Rank 2 -> Rank 4".
 function SR.Describe(s)
-  return string.format("%s: %s Rank %d -> Rank %d", slotLabel(s.slot), s.name, s.old, s.new)
+  return ns.Format(L["{button}: {spell} Rank {old} -> Rank {new}"], { button = slotLabel(s.slot), spell = s.name, old = s.old, new = s.new })
 end
 
 -- Picks the spell up onto the cursor; whether the cursor holds a spell now.
@@ -82,20 +83,20 @@ end
 
 -- /vg ranks swap: every older rank on the bars becomes the newest, out of combat.
 function SR.Swap()
-  if ns.InCombat() then return ns.Chat("Bars can't change in combat. Try again after the fight.") end
+  if ns.InCombat() then return ns.Chat(L["Bars can't change in combat. Try again after the fight."]) end
   local done = 0
   for _, s in ipairs(SR.Stale()) do
     if place(s.slot, s.to) then done = done + 1 end
   end
-  ns.Chat(done > 0 and string.format("Put the newest rank on %d button(s).", done) or "No button changed.")
+  ns.Chat(done > 0 and ns.Format(L["Put the newest rank on {count} button(s)."], { count = done }) or L["No button changed."])
 end
 
 -- /vg ranks: the buttons with an older rank and what each would become; nothing changes.
 function SR.List()
   local stale = SR.Stale()
-  if #stale == 0 then return ns.Chat("Every spell on your bars is at your newest rank.") end
+  if #stale == 0 then return ns.Chat(L["Every spell on your bars is at your newest rank."]) end
   for _, s in ipairs(stale) do ns.Chat(SR.Describe(s)) end
-  ns.Chat("/vg ranks swap puts the newest rank on each (out of combat).")
+  ns.Chat(L["/vg ranks swap puts the newest rank on each (out of combat)."])
 end
 
 -- Says once (until the list changes) that buttons hold older ranks.
@@ -105,7 +106,7 @@ function SR.Notice()
   local same = key == SR.noticed
   SR.noticed = key
   if not key or same then return end
-  ns.Chat(string.format("%d button(s) on your bars hold an older spell rank. /vg ranks lists them, /vg ranks swap fixes them.", #stale))
+  ns.Chat(ns.Format(L["{count} button(s) on your bars hold an older spell rank. /vg ranks lists them, /vg ranks swap fixes them."], { count = #stale }))
 end
 
 -- Trainer memory -----------------------------------------------------------------------------
@@ -195,7 +196,8 @@ function SR.Text(s)
   elseif s.trainer then
     from = string.format(" (%s)", s.trainer)
   end
-  return string.format("Level %d: %s%s%s", s.level, s.name, s.rank and (" " .. s.rank) or "", from)
+  local taught = s.name .. (s.rank and (" " .. s.rank) or "") .. from
+  return ns.Format(L["Level {level}: {service}"], { level = s.level, service = taught })
 end
 
 -- Says the upcoming services after fromLevel, up to SR.LINES of them; header first.
@@ -210,7 +212,7 @@ end
 -- A level-up: what the trainers you've visited teach in the next few levels.
 local function onLevelUp(_, level)
   if settings().trainerMemory and ns.PlainNumber(level) then
-    sayUpcoming(ns.PlainNumber(level) - 1, "Trainers you've visited teach, from this level:")
+    sayUpcoming(ns.PlainNumber(level) - 1, L["Trainers you've visited teach, from this level:"])
   end
 end
 
@@ -224,12 +226,12 @@ end
 
 -- /vg trainers [next|clear]: what's remembered, what the next levels bring, or forget it all.
 function SR.TrainersCommand(rest)
-  if rest == "clear" then VanguardDB.trainers = nil return ns.Chat("Forgot every trainer.") end
+  if rest == "clear" then VanguardDB.trainers = nil return ns.Chat(L["Forgot every trainer."]) end
   if rest == "next" then
     local level = ns.PlainNumber(ns.Client.Call("UnitLevel", "player")) or 1
-    return sayUpcoming(level, "Trainers you've visited teach, in the next levels:") or ns.Chat("Nothing remembered for the next levels. Visit your trainer with Trainer memory on (/vg > Town and gear).")
+    return sayUpcoming(level, L["Trainers you've visited teach, in the next levels:"]) or ns.Chat(L["Nothing remembered for the next levels. Visit your trainer with Trainer memory on (/vg > Town and gear)."])
   end
-  ns.Chat(string.format("%d trainer service(s) remembered for your class. /vg trainers next lists the next levels; clear forgets them.", remembered()))
+  ns.Chat(ns.Format(L["{count} trainer service(s) remembered for your class. /vg trainers next lists the next levels; clear forgets them."], { count = remembered() }))
 end
 
 -- /vg ranks [swap]: the older ranks on your bars, or put the newest on them.

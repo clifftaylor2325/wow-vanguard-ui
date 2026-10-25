@@ -9,6 +9,7 @@
 -- a name the client hides is skipped.
 
 local ADDON, ns = ...
+local L = ns.L
 
 local T = ns.Theme
 
@@ -96,7 +97,7 @@ end
 local function clientLine(questID)
   local api = type(C_QuestLog) == "table" and C_QuestLog.IsQuestFlaggedCompleted
   local done = QH.On() and type(questID) == "number" and type(api) == "function" and api(questID)
-  return ns.IsTrue(done) and "Done on this character" or nil
+  return ns.IsTrue(done) and L["Done on this character"] or nil
 end
 
 -- "Done on Thrall-Forever · 3 days ago" (on this character's own name: "Done on this character"); with no
@@ -104,8 +105,8 @@ end
 function QH.Line(questID)
   local rec = QH.Get(questID)
   if not rec then return clientLine(questID) end
-  local me = QH.Me()
-  return string.format("Done on %s · %s", rec.who == me and "this character" or rec.who, QH.Ago(rec.t))
+  if rec.who == QH.Me() then return ns.Format(L["Done on this character · {ago}"], { ago = QH.Ago(rec.t) }) end
+  return ns.Format(L["Done on {character} · {ago}"], { character = rec.who, ago = QH.Ago(rec.t) })
 end
 
 -- The same line in the muted color, for a text that holds more (nil for none).
@@ -132,16 +133,17 @@ end
 
 -- One chat line: "Wolves · Thrall-Forever · 3 days ago".
 local function listLine(id, rec)
-  return string.format("%s · %s · %s", rec.title or titleOf(id) or ("Quest " .. id), rec.who, QH.Ago(rec.t))
+  local title = rec.title or titleOf(id) or ns.Format(L["Quest {id}"], { id = id })
+  return string.format("%s · %s · %s", title, rec.who, QH.Ago(rec.t))
 end
 
 -- /vg quests history [n]: the latest turn-ins from every character.
 function QH.Command(rest)
-  if not QH.On() then return ns.Chat("Quest history is off (/vg > Quests).") end
+  if not QH.On() then return ns.Chat(L["Quest history is off (/vg > Quests)."]) end
   local n = math.max(1, math.min(tonumber(rest:match("(%d+)")) or QH.LIST, QH.LIST_MAX))
   local list = QH.Latest(n)
-  if #list == 0 then return ns.Chat("No turn-ins remembered yet.") end
-  ns.Chat(string.format("Latest %d quest turn-in(s), of %d remembered:", #list, QH.Store().count))
+  if #list == 0 then return ns.Chat(L["No turn-ins remembered yet."]) end
+  ns.Chat(ns.Format(L["Latest {count} quest turn-in(s), of {total} remembered:"], { count = #list, total = QH.Store().count }))
   for _, e in ipairs(list) do ns.Chat(listLine(e[1], e[2])) end
 end
 

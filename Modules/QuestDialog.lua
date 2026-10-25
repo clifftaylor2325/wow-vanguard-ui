@@ -10,6 +10,7 @@
 -- for everything it does. Text the client hides shows as "…".
 
 local ADDON, ns = ...
+local L = ns.L
 
 local QP = ns.QuestParts
 
@@ -119,7 +120,7 @@ local function spellRewards(info, questID)
   local out = {}
   for _, spellID in ipairs(ns.CallIf(info, "GetQuestRewardSpells", questID) or {}) do
     local spell = ns.CallIf(info, "GetQuestRewardSpellInfo", questID, spellID)
-    if type(spell) == "table" and spell.name then out[#out + 1] = "Teaches: " .. QP.Plain(spell.name) end
+    if type(spell) == "table" and spell.name then out[#out + 1] = ns.Format(L["Teaches: {spell}"], { spell = QP.Plain(spell.name) }) end
   end
   return out
 end
@@ -167,7 +168,7 @@ end
 -- Pages ----------------------------------------------------------------------------------------
 
 -- Goodbye: the button that leaves, alone at the far left of the dialog.
-local GOODBYE = { "Goodbye", function() QD.Close() end }
+local GOODBYE = { L["Goodbye"], function() QD.Close() end }
 
 -- Each page: what it shows, from the game's current quest or gossip.
 QD.PAGES = {
@@ -191,22 +192,22 @@ function QD.DetailPage()
     needs = QP.Needs(0, ns.CallIf(_G, "GetSuggestedGroupSize")),
     done = ns.GetModule("QuestHistory").Line(ns.PlainNumber(ns.CallIf(_G, "GetQuestID"))),
     choices = QD.Items("choice", ns.CallIf(_G, "GetNumQuestChoices")), rewards = QD.Items("reward", ns.CallIf(_G, "GetNumQuestRewards")), money = QD.MoneyLine(),
-    primary = auto and { "OK", function() ns.CallIf(_G, "AcknowledgeAutoAcceptQuest") end } or { "Accept", function() ns.CallIf(_G, "AcceptQuest") end },
-    secondary = not auto and { "Decline", function() ns.CallIf(_G, "DeclineQuest") end } or nil,
+    primary = auto and { L["OK"], function() ns.CallIf(_G, "AcknowledgeAutoAcceptQuest") end } or { L["Accept"], function() ns.CallIf(_G, "AcceptQuest") end },
+    secondary = not auto and { L["Decline"], function() ns.CallIf(_G, "DeclineQuest") end } or nil,
   }
 end
 
 -- What the quest asks for to hand it in, as "Costs 5g 0s 0c" ("" for nothing).
 function QD.CostLine()
   local cost = QP.Cost()
-  return cost > 0 and "Costs " .. ns.GetModule("InfoStrip").Money(cost) or ""
+  return cost > 0 and ns.Format(L["Costs {money}"], { money = ns.GetModule("InfoStrip").Money(cost) }) or ""
 end
 
 -- A quest you're turning in: what it still needs (items, and the money it costs), and Continue once you have it.
 function QD.ProgressPage()
   return {
     title = ns.CallIf(_G, "GetTitleText"), text = ns.CallIf(_G, "GetProgressText"), rewards = QD.Items("required", ns.CallIf(_G, "GetNumQuestItems")), money = QD.CostLine(),
-    primary = { "Continue", function() ns.CallIf(_G, "CompleteQuest") end, ns.CallIf(_G, "IsQuestCompletable") == true }, escape = GOODBYE,
+    primary = { L["Continue"], function() ns.CallIf(_G, "CompleteQuest") end, ns.CallIf(_G, "IsQuestCompletable") == true }, escape = GOODBYE,
   }
 end
 
@@ -215,7 +216,7 @@ function QD.CompletePage()
   local choices = QD.Items("choice", ns.CallIf(_G, "GetNumQuestChoices"))
   return {
     title = ns.CallIf(_G, "GetTitleText"), text = ns.CallIf(_G, "GetRewardText"), choices = choices, rewards = QD.Items("reward", ns.CallIf(_G, "GetNumQuestRewards")),
-    money = QD.MoneyLine(), primary = { "Complete", QD.Complete, #choices <= 1 }, pick = #choices > 1,
+    money = QD.MoneyLine(), primary = { L["Complete"], QD.Complete, #choices <= 1 }, pick = #choices > 1,
   }
 end
 
@@ -226,8 +227,8 @@ function QD.Complete()
   -- Pays (when it costs) and takes the reward.
   local function take() ns.CallIf(_G, "GetQuestReward", choice) end
   if cost <= 0 then return take() end
-  local text = "Completing " .. QP.Plain(ns.CallIf(_G, "GetTitleText")) .. " costs " .. ns.GetModule("InfoStrip").Money(cost) .. ". Complete it?"
-  ns.Ask(text, "Complete", take, function() ns.CallIf(_G, "DeclineQuest") end)
+  local text = ns.Format(L["Completing {quest} costs {money}. Complete it?"], { quest = QP.Plain(ns.CallIf(_G, "GetTitleText")), money = ns.GetModule("InfoStrip").Money(cost) })
+  ns.Ask(text, L["Complete"], take, function() ns.CallIf(_G, "DeclineQuest") end)
 end
 
 -- Showing --------------------------------------------------------------------------------------

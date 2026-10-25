@@ -6,6 +6,7 @@
 -- press the main button, Escape says goodbye.
 
 local ADDON, ns = ...
+local L = ns.L
 
 local T = ns.Theme
 local QP = ns.QuestParts
@@ -117,7 +118,7 @@ function QD.Build()
   local f = T.Panel(CreateFrame("Frame", "Vanguard_QuestDialog", UIParent), { alpha = T.ALPHA.dialog, shadow = true })
   f:SetSize(QD.W, QD.MAX_H)
   f:SetFrameStrata("DIALOG")
-  ns.Mover(f, "questdialog", "Quest dialog", QD.DefaultPoint())
+  ns.Mover(f, "questdialog", L["Quest dialog"], QD.DefaultPoint())
   addHeader(f)
   addBody(f)
   addFooter(f)
@@ -181,7 +182,7 @@ end
 local function renderBody(f, p)
   f.text:SetText(QP.Plain(p.text))
   f.objectives:SetShown(p.objectives ~= nil)
-  f.objectives:SetText(p.objectives and ("Objectives:  " .. QP.Plain(p.objectives)) or "")
+  f.objectives:SetText(p.objectives and ns.Format(L["Objectives:  {objectives}"], { objectives = QP.Plain(p.objectives) }) or "")
   renderNeeds(f, p)
   renderHistory(f, p)
   renderLines(f, p.lines)
