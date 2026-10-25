@@ -21,6 +21,7 @@
 -- per auction); nothing writes into the game's frames.
 
 local ADDON, ns = ...
+local L = ns.L
 
 local T, W, AP = ns.Theme, ns.Widgets, ns.AuctionPrices
 local AH = ns.GetModule("AuctionHelper")
@@ -29,8 +30,8 @@ local AH = ns.GetModule("AuctionHelper")
 -- price column says (your price per unit, sold and the amount, expired and where the item is),
 -- and the room for a row's Cancel or Relist button.
 AH.OWNED_ROWS = 4
-AH.OWNED_COLUMNS = { { key = "price", title = "Your price", width = 120, side = "RIGHT", role = "number", color = "gold" },
-  { key = "action", title = "", width = 64, side = "RIGHT", role = "small", color = "text" }, name = "Item" }
+AH.OWNED_COLUMNS = { { key = "price", title = L["Your price"], width = 120, side = "RIGHT", role = "number", color = "gold" },
+  { key = "action", title = "", width = 64, side = "RIGHT", role = "small", color = "text" }, name = L["Item"] }
 -- A row's status by Enum.AuctionStatus (Active 0, Sold 1; AuctionHouseDocumentation.lua); an
 -- expired auction has no status of its own: AUCTION_HOUSE_AUCTIONS_EXPIRED says so.
 AH.STATUS = { [0] = "active", [1] = "sold" }
@@ -256,7 +257,7 @@ end
 -- An auction's item name ("item 123" until the client knows it) and icon.
 local function itemLook(key)
   local info = C_AuctionHouse.GetItemKeyInfo(key)
-  return info and info.itemName or ("item " .. key.itemID), info and info.iconFileID or AH.UNKNOWN_ICON
+  return info and info.itemName or ns.Format(L["item {id}"], { id = key.itemID }), info and info.iconFileID or AH.UNKNOWN_ICON
 end
 
 -- A tooltip on b: what a click does, and what cancelling auction id costs (when the game says).
@@ -264,26 +265,26 @@ local function costTip(b, title, id)
   local cost = ns.PlainNumber(C_AuctionHouse.GetCancelCost(id))
   GameTooltip:SetOwner(b, "ANCHOR_RIGHT")
   GameTooltip:SetText(title)
-  if cost then GameTooltip:AddLine("Costs " .. AP.Money(cost), T.RGB("text2")) end
+  if cost then GameTooltip:AddLine(ns.Format(L["Costs {money}"], { money = AP.Money(cost) }), T.RGB("text2")) end
   GameTooltip:Show()
 end
 
 -- Cancel's tooltip: what cancelling costs.
 local function cancelTip(b)
-  costTip(b, "Cancel this auction", b:GetParent().id)
+  costTip(b, L["Cancel this auction"], b:GetParent().id)
 end
 
 -- Cancel next undercut's tooltip: the auction it cancels next, and what that costs.
 local function nextTip(b)
   local a = AH.NextUndercut()
-  if a then costTip(b, "Cancel " .. (itemLook(a.key)), a.id) end
+  if a then costTip(b, ns.Format(L["Cancel {item}"], { item = (itemLook(a.key)) }), a.id) end
 end
 
 -- What a row's price column says, and in which color: your price per unit while up, "sold" and
 -- the amount, or "expired" and where the item is (coming back by mail, or in the bags).
 local function statusText(a, home)
-  if a.status == "sold" then return "sold · " .. AP.Money(a.amount), "good" end
-  if a.status == "expired" then return home and "expired · in bags" or "expired · by mail", "text2" end
+  if a.status == "sold" then return ns.Format(L["sold · {money}"], { money = AP.Money(a.amount) }), "good" end
+  if a.status == "expired" then return home and L["expired · in bags"] or L["expired · by mail"], "text2" end
   return AP.Money(a.unit), "gold"
 end
 
@@ -320,9 +321,9 @@ end
 -- The toolbar's line: nothing before a check, "checking..." while one runs, then how many are undercut.
 local function summaryText(checked, busy, undercutCount)
   if not checked then return "" end
-  if busy then return "checking..." end
-  if undercutCount > 0 then return undercutCount .. " undercut" end
-  return "none undercut"
+  if busy then return L["checking..."] end
+  if undercutCount > 0 then return ns.Format(L["{count} undercut"], { count = undercutCount }) end
+  return L["none undercut"]
 end
 
 -- The toolbar's line once you've checked (see summaryText), and
@@ -339,7 +340,7 @@ end
 -- undercuts does, or that none are up.
 local function ownedStatus()
   if #AH.owned > 0 then return "" end
-  return AH.checked and "No auctions of yours are up." or "Check undercuts lists your auctions and marks the ones someone asks less for.", true
+  return AH.checked and L["No auctions of yours are up."] or L["Check undercuts lists your auctions and marks the ones someone asks less for."], true
 end
 
 -- Your auctions from the table's scroll offset, and the toolbar's line and button.
@@ -362,18 +363,18 @@ end
 
 -- An auction row's buttons, at its right: Cancel (its cost on hover) and Relist in the same place.
 local function ownedButtons(r)
-  r.cancel = costButton(r, "Cancel", function(self) AH.Cancel(self:GetParent().id) end, 60, cancelTip)
-  r.relist = W.Button(r, "Relist", function(self) AH.Relist(self:GetParent().id) end, 60)
+  r.cancel = costButton(r, L["Cancel"], function(self) AH.Cancel(self:GetParent().id) end, 60, cancelTip)
+  r.relist = W.Button(r, L["Relist"], function(self) AH.Relist(self:GetParent().id) end, 60)
   for _, b in ipairs({ r.cancel, r.relist }) do b:SetHeight(T.CONTROL_H) b:SetPoint("RIGHT", 0, 0) end
 end
 
 -- The card's toolbar: Check undercuts at the right, Cancel next undercut (what it cancels next
 -- and the cost on hover) left of it, and the line beside the heading.
 local function toolbar(c)
-  c.check = W.Button(c, "Check undercuts", function() AH.CheckUndercuts() end, 120)
+  c.check = W.Button(c, L["Check undercuts"], function() AH.CheckUndercuts() end, 120)
   c.check:SetHeight(T.CONTROL_H)
   c.check:SetPoint("TOPRIGHT", 0, 2)
-  c.cancelNext = costButton(c, "Cancel next undercut", function() AH.CancelNext() end, 140, nextTip)
+  c.cancelNext = costButton(c, L["Cancel next undercut"], function() AH.CancelNext() end, 140, nextTip)
   c.cancelNext:SetPoint("RIGHT", c.check, "LEFT", -T.SPACE.tight, 0)
   c.summary = T.Text(c:CreateFontString(nil, "OVERLAY"), "small", "text2")
   c.summary:SetPoint("LEFT", c.title, "RIGHT", T.SPACE.gap, 0)
@@ -382,7 +383,7 @@ end
 -- The Your auctions card on a column, from y (h tall): the toolbar, and the rows as a table
 -- (the undercut flag in red, each row's Cancel or Relist at its right; the wheel scrolls).
 function AH.BuildOwned(column, y, h)
-  local c = AH.Card(column, "Your auctions", y, h)
+  local c = AH.Card(column, L["Your auctions"], y, h)
   AH.ownedCard = c
   toolbar(c)
   c.table = AH.Table(c, AH.OWNED_COLUMNS, AH.OWNED_ROWS, { flag = "bad", paintRow = paintOwnedRow })

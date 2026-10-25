@@ -26,6 +26,7 @@
 -- past ns.IsSecret before it is compared or added up.
 
 local ADDON, ns = ...
+local L = ns.L
 
 local T, W, AP = ns.Theme, ns.Widgets, ns.AuctionPrices
 local AH = ns.GetModule("AuctionHelper")
@@ -300,19 +301,22 @@ end
 
 -- Your history on the Up now card ------------------------------------------------------------
 
+-- What a record that didn't sell says in the price column, by its kind.
+AL.ENDINGS = { expired = L["expired"], cancelled = L["cancelled"] }
+
 -- The history's columns: a sale's price each (else what became of it), how many, and when.
-AH.HISTORY_COLUMNS = { { key = "price", title = "Price each", width = 100, side = "RIGHT", role = "number", color = "gold" },
-  { key = "qty", title = "Qty", width = 60, side = "RIGHT", role = "small", color = "text2" },
-  { key = "time", title = "When", width = 90, side = "LEFT", role = "small", color = "text2" } }
+AH.HISTORY_COLUMNS = { { key = "price", title = L["Price each"], width = 100, side = "RIGHT", role = "number", color = "gold" },
+  { key = "qty", title = L["Qty"], width = 60, side = "RIGHT", role = "small", color = "text2" },
+  { key = "time", title = L["When"], width = 90, side = "LEFT", role = "small", color = "text2" } }
 
 -- The history's line: how many of the item's auctions sold of those that sold or ran out, and the
 -- average price each; or that there is nothing yet, or no item.
 local function summaryText(s, records)
-  if not s then return "Put an item on the Sell card to see how it sold." end
+  if not s then return L["Put an item on the Sell card to see how it sold."] end
   local n, avg = AL.Summary(records)
-  if n.sold + n.expired == 0 then return "No sales or expiries of this item yet." end
-  local text = string.format("sold %d of %d", n.sold, n.sold + n.expired)
-  return avg and (text .. " · avg " .. AP.Money(avg)) or text
+  if n.sold + n.expired == 0 then return L["No sales or expiries of this item yet."] end
+  local text = ns.Format(L["sold {sold} of {total}"], { sold = n.sold, total = n.sold + n.expired })
+  return avg and ns.Format(L["{sold} · avg {money}"], { sold = text, money = AP.Money(avg) }) or text
 end
 
 -- A history row: a sale's price each (in gold), else what became of it; how many, and when (the
@@ -321,8 +325,8 @@ local function paintRecord(r, rec)
   local sold = rec.kind == "sold"
   r.icon:SetTexture(nil)
   r.name:SetText("")
-  T.Color(r.cells.price, sold and "gold" or "text2"):SetText(sold and AP.Money(math.floor(rec.amount / rec.qty)) or rec.kind)
-  r.cells.qty:SetText("x " .. rec.qty)
+  T.Color(r.cells.price, sold and "gold" or "text2"):SetText(sold and AP.Money(math.floor(rec.amount / rec.qty)) or AL.ENDINGS[rec.kind])
+  r.cells.qty:SetText(ns.Format(L["x {count}"], { count = rec.qty }))
   r.cells.time:SetText(AP.Ago(rec.t))
 end
 
@@ -334,7 +338,7 @@ function AH.PaintHistory(c, s)
   local records = on and s and AL.History(s.id) or {}
   c.table:SetShown(not on)
   c.history:SetShown(on)
-  c.historyToggle.text:SetText(on and "Up now" or "Your history")
+  c.historyToggle.text:SetText(on and L["Up now"] or L["Your history"])
   c.summary:SetText(on and summaryText(s, records) or "")
   c.history:SetItems(records)
 end
@@ -358,7 +362,7 @@ function AH.BuildHistory(c)
   c.history:Hide()
   c.summary = T.Text(c:CreateFontString(nil, "OVERLAY"), "small", "text2")
   c.summary:SetPoint("LEFT", c.title, "RIGHT", 8, 0)
-  c.historyToggle = W.Button(c, "Your history", function() AH.ToggleHistory() end, 90)
+  c.historyToggle = W.Button(c, L["Your history"], function() AH.ToggleHistory() end, 90)
   c.historyToggle:SetHeight(18)
   c.historyToggle:SetPoint("TOPRIGHT", 0, 2)
 end

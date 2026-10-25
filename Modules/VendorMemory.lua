@@ -7,6 +7,7 @@
 -- zone the client hides is skipped.
 
 local ADDON, ns = ...
+local L = ns.L
 
 local T = ns.Theme
 
@@ -107,8 +108,8 @@ end
 function VM.Lines(tt, link)
   if not VM.settings.tooltip then return end
   for _, entry in ipairs(VM.Where(tonumber(link:match("item:(%d+)"))) or {}) do
-    local stock = entry.l and T.Paint(" · limited stock", "warn") or ""
-    tt:AddLine("Sold by " .. VM.Text(entry) .. stock, T.RGB("text2"))
+    local stock = entry.l and T.Paint(" · " .. L["limited stock"], "warn") or ""
+    tt:AddLine(ns.Format(L["Sold by {merchant}"], { merchant = VM.Text(entry) }) .. stock, T.RGB("text2"))
   end
 end
 
@@ -126,9 +127,9 @@ end
 
 -- /vg vendors [clear]: how many merchants are remembered, or forget them all.
 function VM.Command(rest)
-  if rest == "clear" then VanguardDB.vendors = nil return ns.Chat("Forgot every merchant.") end
+  if rest == "clear" then VanguardDB.vendors = nil return ns.Chat(L["Forgot every merchant."]) end
   local store = VM.Store()
-  ns.Chat(string.format("%d merchant(s) remembered, selling %d item(s). /vg vendors clear forgets them.", merchantCount(store), store.count))
+  ns.Chat(ns.Format(L["{merchants} merchant(s) remembered, selling {items} item(s). /vg vendors clear forgets them."], { merchants = merchantCount(store), items = store.count }))
 end
 
 -- A merchant opened or its list changed: remember it once the burst of events is over.

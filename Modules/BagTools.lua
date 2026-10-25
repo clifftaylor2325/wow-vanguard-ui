@@ -4,6 +4,7 @@
 -- one to the bank, moves it first or deletes it. Everything they do is what /vg bag does; they are the way in, the command the extra.
 
 local ADDON, ns = ...
+local L = ns.L
 
 local T, W = ns.Theme, ns.Widgets
 local BG = ns.GetModule("Bags")
@@ -14,8 +15,8 @@ local GAP, MENU_W, CHROME = 6, 210, 34
 
 -- The ready-made searches: { search text, label }.
 local SEARCHES = {
-  { "", "Show everything" }, { "q>=3", "Rare or better" }, { "q>=4", "Epic or better" },
-  { "bind:boe", "Bind on equip" }, { "type:armor", "Armor" }, { "type:weapon", "Weapons" },
+  { "", L["Show everything"] }, { "q>=3", L["Rare or better"] }, { "q>=4", L["Epic or better"] },
+  { "bind:boe", L["Bind on equip"] }, { "type:armor", L["Armor"] }, { "type:weapon", L["Weapons"] },
 }
 
 -- The Filter menu: the ready-made searches, then one per group of yours.
@@ -23,7 +24,7 @@ local function filterChoices()
   local out = {}
   for _, s in ipairs(SEARCHES) do out[#out + 1] = s end
   for _, section in ipairs(BG.CategorySections()) do
-    out[#out + 1] = { "cat:" .. section.label:lower(), "Group: " .. section.label }
+    out[#out + 1] = { "cat:" .. section.label:lower(), ns.Format(L["Group: {name}"], { name = section.label }) }
   end
   return out
 end
@@ -39,26 +40,26 @@ end
 
 -- What can be done with one group of yours, added to the Groups menu.
 local function addGroupRows(out, name)
-  out[#out + 1] = { "add:" .. name, "Put held item in " .. name }
-  out[#out + 1] = { "deposit:" .. name, "Send " .. name .. " to the bank" }
-  out[#out + 1] = { "top:" .. name, "Make " .. name .. " first" }
-  out[#out + 1] = { "delete:" .. name, "Delete " .. name }
+  out[#out + 1] = { "add:" .. name, ns.Format(L["Put held item in {name}"], { name = name }) }
+  out[#out + 1] = { "deposit:" .. name, ns.Format(L["Send {name} to the bank"], { name = name }) }
+  out[#out + 1] = { "top:" .. name, ns.Format(L["Make {name} first"], { name = name }) }
+  out[#out + 1] = { "delete:" .. name, ns.Format(L["Delete {name}"], { name = name }) }
 end
 
 -- The Groups menu: a new group, then for each group of yours what can be done with it, and (with any
 -- group) taking the held item out of its group.
 local function groupChoices()
-  local out = { { "new:", "New group..." } }
+  local out = { { "new:", L["New group..."] } }
   local sections = BG.CategorySections()
   for _, section in ipairs(sections) do addGroupRows(out, section.label) end
-  if #sections > 0 then out[#out + 1] = { "remove:", "Take held item out of its group" } end
+  if #sections > 0 then out[#out + 1] = { "remove:", L["Take held item out of its group"] } end
   return out
 end
 
 -- Does what a Groups menu row says.
 local function groupAct(value)
   local verb, name = value:match("^(%a+):(.*)$")
-  if verb == "new" then return ns.AskText("New group name", BG.NewGroup, "Create") end
+  if verb == "new" then return ns.AskText(L["New group name"], BG.NewGroup, L["Create"]) end
   if verb == "add" then return BG.AddHeld(name) end
   if verb == "remove" then return BG.RemoveHeld() end
   BG.GroupAction(verb, name)
@@ -86,8 +87,8 @@ end
 function BG.AddTools(frame)
   local box = _G.BagItemSearchBox
   if BG.tools or type(box) ~= "table" or not BG.sort then return end
-  local filter = toolButton(frame, "Filter", filterChoices, search)
-  local groups = toolButton(frame, "Groups", groupChoices, groupAct)
+  local filter = toolButton(frame, L["Filter"], filterChoices, search)
+  local groups = toolButton(frame, L["Groups"], groupChoices, groupAct)
   filter:SetPoint("LEFT", box, "RIGHT", GAP, 0)
   groups:SetPoint("LEFT", filter, "RIGHT", GAP, 0)
   BG.sort:ClearAllPoints()

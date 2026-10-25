@@ -15,6 +15,7 @@
 -- craft you finish (your own cast of the recipe's spell, out of combat) comes off the queue.
 
 local ADDON, ns = ...
+local L = ns.L
 
 local AH = ns.GetModule("AuctionHelper")
 local AP, CR = ns.AuctionPrices, AH.Crafting
@@ -63,6 +64,11 @@ end
 
 -- The queue ----------------------------------------------------------------------------------
 
+-- A queued recipe's name ("recipe 123" while the client hasn't it).
+local function recipeName(e)
+  return e.name or ns.Format(L["recipe {id}"], { id = e.id })
+end
+
 -- Queues n crafts of a recipe (joining the entry it has) and says so.
 function CQ.Add(id, n, name)
   local queue = CQ.Mine().queue
@@ -70,13 +76,13 @@ function CQ.Add(id, n, name)
   for _, e in ipairs(queue) do if e.id == id then entry = e end end
   if not entry then entry = { id = id, n = 0, name = name } queue[#queue + 1] = entry end
   entry.n = entry.n + n
-  ns.Chat(string.format("Queued: %d x %s (%d in the queue).", entry.n, entry.name or "recipe " .. id, #queue))
+  ns.Chat(ns.Format(L["Queued: {count} x {recipe} ({queued} in the queue)."], { count = entry.n, recipe = recipeName(entry), queued = #queue }))
 end
 
 -- /vg craft add [n]: queues the recipe on display.
 function CQ.AddShown(arg)
   local id, n = CR.recipe, math.max(1, math.floor(tonumber(arg) or 1))
-  if not id or not CR.Form() or not CR.Form():IsVisible() then return ns.Chat("Open a recipe in the profession window first, then /vg craft add [number].") end
+  if not id or not CR.Form() or not CR.Form():IsVisible() then return ns.Chat(L["Open a recipe in the profession window first, then /vg craft add [number]."]) end
   local data = CR.Read(id)
   CQ.Add(id, n, data and data.name)
 end
@@ -104,12 +110,12 @@ end
 -- /vg craft: the queue and what it is short of.
 function CQ.List()
   local queue = CQ.Mine().queue
-  if #queue == 0 then return ns.Chat("The craft queue is empty. Open a recipe in the profession window and /vg craft add.") end
-  for i, e in ipairs(queue) do ns.Chat(string.format("%d. %d x %s", i, e.n, e.name or "recipe " .. e.id)) end
+  if #queue == 0 then return ns.Chat(L["The craft queue is empty. Open a recipe in the profession window and /vg craft add."]) end
+  for i, e in ipairs(queue) do ns.Chat(string.format("%d. %d x %s", i, e.n, recipeName(e))) end
   local short = {}
   local itemName = ns.GetModule("Errands").ItemName
   for _, s in ipairs(CQ.Short()) do short[#short + 1] = string.format("%s x%d", itemName(s.id), s.short) end
-  ns.Chat(#short == 0 and "You have every reagent." or ("Short of: " .. table.concat(short, ", ") .. "."))
+  ns.Chat(#short == 0 and L["You have every reagent."] or ns.Format(L["Short of: {reagents}."], { reagents = table.concat(short, ", ") }))
 end
 
 -- Takes one craft off the first entry (the whole entry when it is the last craft); says what is left.
@@ -119,29 +125,29 @@ function CQ.Done(id)
   if not entry or (id and entry.id ~= id) then return end
   entry.n = entry.n - 1
   if entry.n <= 0 then table.remove(queue, 1) end
-  ns.Chat(string.format("Crafted %s. %d left in the queue.", entry.name or "a recipe", #queue))
+  ns.Chat(ns.Format(L["Crafted {recipe}. {count} left in the queue."], { recipe = entry.name or L["a recipe"], count = #queue }))
 end
 
 -- /vg craft next: the first recipe opened in the profession window with its count typed in.
 function CQ.Next()
   local e = CQ.Mine().queue[1]
-  if not e then return ns.Chat("The craft queue is empty.") end
+  if not e then return ns.Chat(L["The craft queue is empty."]) end
   local open = type(C_TradeSkillUI) == "table" and C_TradeSkillUI.OpenRecipe
   if type(open) == "function" then open(e.id) end
   if CR.frame then CR.frame.crafts:SetText(tostring(e.n)) end
-  ns.Chat(string.format("Next: %d x %s. Press Create in the profession window.", e.n, e.name or "recipe " .. e.id))
+  ns.Chat(ns.Format(L["Next: {count} x {recipe}. Press Create in the profession window."], { count = e.n, recipe = recipeName(e) }))
 end
 
 -- /vg craft stock: Keep stocked raised to what the queue needs, then the Restock list (a shopping list of the
 -- Auction helper's, so only while that is on, as /vg ah restock and Instance prep's Buy list check too).
 function CQ.Stock()
   local ER = ns.GetModule("Errands")
-  if not ER.settings then return ns.Chat("Keep stocked is part of Errands, which is off (/vg > Modules).") end
+  if not ER.settings then return ns.Chat(L["Keep stocked is part of Errands, which is off (/vg > Modules)."]) end
   local list = ER.StockList()
   for id, qty in pairs(needs()) do list[id] = math.max(list[id] or 0, qty) end
   ER.StockWindow.Refresh()
-  ns.Chat("Keep stocked now covers the queue.")
-  if not AH.settings then return ns.Chat("The auction helper is off (/vg > Modules).") end
+  ns.Chat(L["Keep stocked now covers the queue."])
+  if not AH.settings then return ns.Chat(L["The auction helper is off (/vg > Modules)."]) end
   AH.Restock()
 end
 
@@ -169,7 +175,7 @@ end
 local function noteCooldown(cooldowns, id)
   local left = cooldownOf(id)
   local s = C_TradeSkillUI.GetRecipeSchematic(id)
-  cooldowns[id] = left > 0 and { name = type(s) == "table" and s.name or ("recipe " .. id), ready = now() + left } or nil
+  cooldowns[id] = left > 0 and { name = type(s) == "table" and s.name or ns.Format(L["recipe {id}"], { id = id }), ready = now() + left } or nil
 end
 
 -- Reads the open profession's recipe cooldowns (out of combat, while the tracker is on).
@@ -181,11 +187,11 @@ end
 
 -- "ready", or how long is left, as "2h 5m", "3d 4h" or "<1m" (not "0m", which reads as ready).
 local function remaining(seconds)
-  if seconds <= 0 then return "ready" end
-  if seconds < 60 then return "<1m" end
-  local d, h, m = math.floor(seconds / 86400), math.floor(seconds % 86400 / 3600), math.floor(seconds % 3600 / 60)
-  if d > 0 then return string.format("%dd %dh", d, h) end
-  return h > 0 and string.format("%dh %dm", h, m) or string.format("%dm", m)
+  if seconds <= 0 then return L["ready"] end
+  if seconds < 60 then return L["<1m"] end
+  local time = { days = math.floor(seconds / 86400), hours = math.floor(seconds % 86400 / 3600), minutes = math.floor(seconds % 3600 / 60) }
+  if time.days > 0 then return ns.Format(L["{days}d {hours}h"], time) end
+  return ns.Format(time.hours > 0 and L["{hours}h {minutes}m"] or L["{minutes}m"], time)
 end
 
 -- Orders cooldown rows by character, then by recipe name.
@@ -212,7 +218,7 @@ function CQ.Cooldowns()
   if not listCall() then CQ.Scan() end
   local rows = cooldownRows()
   for _, row in ipairs(rows) do ns.Chat(row.line) end
-  if #rows == 0 then ns.Chat("No profession cooldowns noted yet. Open a profession that has one and select its recipe.") end
+  if #rows == 0 then ns.Chat(L["No profession cooldowns noted yet. Open a profession that has one and select its recipe."]) end
 end
 
 -- Ranking ------------------------------------------------------------------------------------
@@ -222,7 +228,7 @@ function CQ.Ranked()
   local out = {}
   for _, id in ipairs(recipeIDs()) do
     local d = CR.Read(id)
-    if d and d.worth and d.unpriced == 0 then out[#out + 1] = { name = d.name or ("recipe " .. id), profit = d.worth - d.cost } end
+    if d and d.worth and d.unpriced == 0 then out[#out + 1] = { name = d.name or ns.Format(L["recipe {id}"], { id = id }), profit = d.worth - d.cost } end
   end
   table.sort(out, function(a, b) return a.profit > b.profit end)
   return out
@@ -231,10 +237,11 @@ end
 -- /vg craft top: the best few, per craft and per hour at the pace set (seconds per craft).
 function CQ.Top()
   local ranked = CQ.Ranked()
-  if #ranked == 0 then return ns.Chat("Nothing to rank: open a profession, and the recipes need prices (visit the auction house).") end
+  if #ranked == 0 then return ns.Chat(L["Nothing to rank: open a profession, and the recipes need prices (visit the auction house)."]) end
   for i = 1, math.min(CQ.TOP, #ranked) do
     local r = ranked[i]
-    ns.Chat(string.format("%d. %s: %s a craft, %s an hour at %ds a craft", i, r.name, AP.Money(r.profit), AP.Money(math.floor(r.profit * 3600 / CQ.settings.secs)), CQ.settings.secs))
+    local values = { rank = i, recipe = r.name, profit = AP.Money(r.profit), hourly = AP.Money(math.floor(r.profit * 3600 / CQ.settings.secs)), secs = CQ.settings.secs }
+    ns.Chat(ns.Format(L["{rank}. {recipe}: {profit} a craft, {hourly} an hour at {secs}s a craft"], values))
   end
 end
 
@@ -246,9 +253,9 @@ local PLAIN = { next = "Next", stock = "Stock", cd = "Cooldowns", top = "Top", d
 -- /vg craft [add [n]|next|stock|cd|top|done|clear].
 function CQ.Command(rest)
   local word, arg = (rest or ""):match("^(%S*)%s*(.-)$")
-  if not CQ.settings or not CQ.settings.on then return ns.Chat("The craft queue is off (/vg > Town and gear > Craft queue).") end
+  if not CQ.settings or not CQ.settings.on then return ns.Chat(L["The craft queue is off (/vg > Town and gear > Craft queue)."]) end
   if word == "add" then return CQ.AddShown(arg) end
-  if word == "clear" then CQ.Mine().queue = {} return ns.Chat("Craft queue emptied.") end
+  if word == "clear" then CQ.Mine().queue = {} return ns.Chat(L["Craft queue emptied."]) end
   if PLAIN[word] then return CQ[PLAIN[word]]() end
   CQ.List()
 end

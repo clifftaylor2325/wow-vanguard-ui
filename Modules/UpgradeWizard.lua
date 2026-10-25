@@ -6,6 +6,7 @@
 -- its set, reset, export and import stay.
 
 local ADDON, ns = ...
+local L = ns.L
 
 local T, W, UW = ns.Theme, ns.Widgets, ns.UpgradeWeights
 local UP = ns.GetModule("Upgrades")
@@ -20,11 +21,12 @@ local ROW_WIDTH = WIDTH - 2 * T.SPACE.pad - T.SPACE.col
 local SLIDER_WIDTH = ROW_WIDTH - BOX_WIDTH - T.SPACE.gap
 -- What the wizard calls each stat (the keys of ns.UpgradeWeights.STATS).
 WZ.LABELS = {
-  STR = "Strength", AGI = "Agility", STA = "Stamina", INT = "Intellect", SPI = "Spirit", ARMOR = "Armor",
-  AP = "Attack power", RAP = "Ranged attack power", SP = "Spell power", MP5 = "Mana per 5 seconds",
-  CRIT = "Crit rating", HIT = "Hit rating", HASTE = "Haste rating", EXP = "Expertise", ARP = "Armor penetration",
-  DEF = "Defense", DODGE = "Dodge", PARRY = "Parry", BLOCK = "Block rating", BLOCKVALUE = "Block value", DPS = "Weapon damage per second",
+  STR = L["Strength"], AGI = L["Agility"], STA = L["Stamina"], INT = L["Intellect"], SPI = L["Spirit"], ARMOR = L["Armor"],
+  AP = L["Attack power"], RAP = L["Ranged attack power"], SP = L["Spell power"], MP5 = L["Mana per 5 seconds"],
+  CRIT = L["Crit rating"], HIT = L["Hit rating"], HASTE = L["Haste rating"], EXP = L["Expertise"], ARP = L["Armor penetration"],
+  DEF = L["Defense"], DODGE = L["Dodge"], PARRY = L["Parry"], BLOCK = L["Block rating"], BLOCKVALUE = L["Block value"], DPS = L["Weapon damage per second"],
 }
+
 local frame
 -- kind: the kind of character the weights are for; draft: stat -> weight; stats: every stat, in slider order.
 local state = { kind = "strength", draft = {}, stats = {} }
@@ -59,18 +61,23 @@ local function round(n)
   return math.floor(n * 100 + 0.5) / 100
 end
 
+-- Who the weights are for, as the lines name them: { kind, role }.
+local function whom()
+  return { kind = UP.Word(state.kind), role = UP.Word(UP.Role()) }
+end
+
 -- Saves the draft: the weights that differ from the kind's defaults (none: the defaults).
 function WZ.Save()
   local changed = {}
   for short, n in pairs(state.draft) do if n ~= (UW.KINDS[state.kind][short] or 0) then changed[short] = n end end
   UP.settings.weights[state.kind] = next(changed) and changed or nil
   UP.Changed()
-  ns.Chat(string.format("Stat weights saved for %s (role %s).", state.kind, UP.Role()))
+  ns.Chat(ns.Format(L["Stat weights saved for {kind} (role {role})."], whom()))
 end
 
 -- Re-reads every slider and the line naming who the weights are for.
 local function refresh()
-  frame.caption:SetText(string.format("Weights for %s (role %s). The Weigh stats for choice under Gear upgrades picks the role; 0 makes a stat worthless.", state.kind, UP.Role()))
+  frame.caption:SetText(ns.Format(L["Weights for {kind} (role {role}). The Weigh stats for choice under Gear upgrades picks the role; 0 makes a stat worthless."], whom()))
   for _, r in ipairs(frame.rows) do r:Refresh() end
 end
 
@@ -123,18 +130,18 @@ end
 
 -- The buttons along the foot: Defaults on the left, Cancel and Save on the right.
 local function addButtons()
-  frame.save = W.Primary(frame, "Save", function() WZ.Save(); frame:Hide() end)
+  frame.save = W.Primary(frame, L["Save"], function() WZ.Save(); frame:Hide() end)
   frame.save:SetPoint("BOTTOMRIGHT", -T.SPACE.pad, T.SPACE.pad)
-  frame.cancel = W.Button(frame, "Cancel", function() frame:Hide() end)
+  frame.cancel = W.Button(frame, L["Cancel"], function() frame:Hide() end)
   frame.cancel:SetPoint("RIGHT", frame.save, "LEFT", -T.SPACE.gap, 0)
-  frame.defaults = W.Button(frame, "Defaults", function() loadDefaults(); refresh() end)
+  frame.defaults = W.Button(frame, L["Defaults"], function() loadDefaults(); refresh() end)
   frame.defaults:SetPoint("BOTTOMLEFT", T.SPACE.pad, T.SPACE.pad)
 end
 
 -- Builds the dialog once: title, the line saying who it's for, the sliders and the buttons.
 local function build()
   frame = ns.Dialog("Vanguard_WeightsWizard", WIDTH, HEIGHT)
-  frame.title:SetText("Stat weights")
+  frame.title:SetText(L["Stat weights"])
   frame.rows = {}
   frame.caption = T.Text(W.Text(frame, ""), "small", "muted")
   frame.caption:SetPoint("TOPLEFT", T.SPACE.pad, -ns.DIALOG.head)
@@ -146,8 +153,8 @@ end
 -- Why the wizard can't open before Gear upgrades has started: it is switched off under Modules, or it was
 -- switched on there this session and starts at the next reload.
 function WZ.SayNotStarted()
-  if ns.ModuleEnabled("Upgrades") then return ns.Chat("Gear upgrades starts after a /reload.") end
-  ns.Chat("Gear upgrades is switched off: turn it on under Modules first.")
+  if ns.ModuleEnabled("Upgrades") then return ns.Chat(L["Gear upgrades starts after a /reload."]) end
+  ns.Chat(L["Gear upgrades is switched off: turn it on under Modules first."])
 end
 
 -- Opens the wizard with the weights this profile uses now.

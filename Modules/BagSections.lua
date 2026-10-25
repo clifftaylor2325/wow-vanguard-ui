@@ -9,6 +9,7 @@
 -- it to end. A switch under Bars and bags gives back the game's plain grid.
 
 local ADDON, ns = ...
+local L = ns.L
 
 -- Per-frame state kept off the game's frames (Core/Events.lua, ns.FrameState).
 local vgSections = ns.FrameState("vgSections")
@@ -29,9 +30,9 @@ local ABOVE_MONEY = 4
 
 -- The sections, in the order they're shown.
 BG.SECTIONS = {
-  { key = "quest", label = "Quest items" }, { key = "equipment", label = "Equipment" },
-  { key = "consumables", label = "Consumables" }, { key = "trade", label = "Trade goods" },
-  { key = "other", label = "Other" }, { key = "junk", label = "Junk" }, { key = "empty", label = "Empty" },
+  { key = "quest", label = L["Quest items"] }, { key = "equipment", label = L["Equipment"] },
+  { key = "consumables", label = L["Consumables"] }, { key = "trade", label = L["Trade goods"] },
+  { key = "other", label = L["Other"] }, { key = "junk", label = L["Junk"] }, { key = "empty", label = L["Empty"] },
 }
 
 -- Item classes (Enum.ItemClass: Consumable 0, Weapon 2, Armor 4, Reagent 5,

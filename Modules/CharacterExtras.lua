@@ -9,15 +9,16 @@
 -- is a weapon or a shield, and only gear of uncommon quality or better is marked.
 
 local ADDON, ns = ...
+local L = ns.L
 
 local T = ns.Theme
 
 local CE = ns.Module("CharacterExtras", { defaults = { itemLevel = true, enchant = false } })
 
-ns.Options.MODULE_INFO.CharacterExtras = { "Character sheet extras", "Item level on each gear slot of the character pane, optional marks for missing enchants, and /vg gear." }
+ns.Options.MODULE_INFO.CharacterExtras = { L["Character sheet extras"], L["Item level on each gear slot of the character pane, optional marks for missing enchants, and /vg gear."] }
 
 -- The worn slots that can carry an enchant (inventory slot ids), by the name /vg gear gives them.
-CE.ENCHANTABLE = { [5] = "Chest", [7] = "Legs", [8] = "Feet", [9] = "Wrist", [10] = "Hands", [15] = "Back", [16] = "Main hand", [17] = "Off hand" }
+CE.ENCHANTABLE = { [5] = L["Chest"], [7] = L["Legs"], [8] = L["Feet"], [9] = L["Wrist"], [10] = L["Hands"], [15] = L["Back"], [16] = L["Main hand"], [17] = L["Off hand"] }
 -- The off-hand slot, which takes an enchant only as a weapon or a shield (not a held item).
 CE.OFF_HAND = 17
 -- The item types (the client's equip locations) of an off-hand piece that takes an enchant: the weapons and the shield.
@@ -119,14 +120,21 @@ end
 
 -- /vg gear ----------------------------------------------------------------------------------------------
 
+-- The melee line /vg gear prints: damage per second and swing time, and the off hand's damage per second when one is worn.
+local function meleeLine(main, speed, off)
+  local values = { dps = string.format("%.1f", main), speed = string.format("%.1f", speed), off = off and string.format("%.1f", off) }
+  if off then return ns.Format(L["Melee {dps} damage per second ({speed} s swing), off hand {off}."], values) end
+  return ns.Format(L["Melee {dps} damage per second ({speed} s swing)."], values)
+end
+
 -- The lines /vg gear prints.
 function CE.Lines()
   local lines, avg, n = {}, CE.Average()
-  lines[1] = avg and string.format("Average item level %d (%d pieces).", avg, n) or "No item levels known yet."
+  lines[1] = avg and ns.Format(L["Average item level {level} ({count} pieces)."], { level = avg, count = n }) or L["No item levels known yet."]
   local main, speed, off = CE.Melee()
-  if main then lines[#lines + 1] = string.format("Melee %.1f damage per second (%.1f s swing)%s.", main, speed, off and string.format(", off hand %.1f", off) or "") end
+  if main then lines[#lines + 1] = meleeLine(main, speed, off) end
   local missing = CE.Missing()
-  lines[#lines + 1] = #missing > 0 and ("Missing an enchant: " .. table.concat(missing, ", ") .. ".") or "No worn piece is missing an enchant."
+  lines[#lines + 1] = #missing > 0 and ns.Format(L["Missing an enchant: {slots}."], { slots = table.concat(missing, ", ") }) or L["No worn piece is missing an enchant."]
   return lines
 end
 
@@ -146,10 +154,10 @@ end
 -- The module's card on the Game windows page.
 function CE.Rows()
   return {
-    { "header", "Character sheet extras" },
-    { "check", "Item level on each gear slot of the character pane", setting("itemLevel") },
-    { "check", "Mark worn pieces missing an enchant with a !", setting("enchant") },
-    { "button", "Show my gear summary in chat", CE.Command },
+    { "header", L["Character sheet extras"] },
+    { "check", L["Item level on each gear slot of the character pane"], setting("itemLevel") },
+    { "check", L["Mark worn pieces missing an enchant with a !"], setting("enchant") },
+    { "button", L["Show my gear summary in chat"], CE.Command },
   }
 end
 ns.Options.AddRows("windows", CE.Rows)

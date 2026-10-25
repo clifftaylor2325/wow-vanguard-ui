@@ -13,6 +13,7 @@
 -- The tooltip's text is never read.
 
 local ADDON, ns = ...
+local L = ns.L
 
 -- Per-frame state kept off the game's frames (Core/Events.lua, ns.FrameState).
 local vgUpgrade = ns.FrameState("vgUpgrade")
@@ -42,6 +43,19 @@ UP.SLOTS = {
 function UP.Role()
   if UP.settings.role ~= "auto" then return UP.settings.role end
   return ns.PlayerRole()
+end
+
+-- What the lines call each kind of character and each role (the keys of ns.UpgradeWeights.KINDS and of a class's roles).
+UP.WORDS = {
+  strength = L["strength"], agility = L["agility"], caster = L["caster"],
+  damage = L["damage"], tank = L["tank"], healer = L["healer"],
+}
+
+-- A kind or a role as the lines name it (the key itself for one not listed).
+---@param key string
+---@return string
+function UP.Word(key)
+  return UP.WORDS[key] or key
 end
 
 -- The weights in use (the defaults with this profile's changes) and the kind of character they're for.
@@ -155,10 +169,12 @@ end
 function UP.AddLine(tt, link)
   if not UP.settings.tooltip then return end
   local pct, empty, worn = UP.Compare(link)
-  if empty then return tt:AddLine("Upgrade: fills an empty slot", T.RGB("good")) end
+  if empty then return tt:AddLine(L["Upgrade: fills an empty slot"], T.RGB("good")) end
   if not pct or math.abs(pct) < UP.MIN_PCT then return end
   local vs = worn and worn:match("%[(.-)%]")
-  local text = string.format("%s %+.0f%% (estimate)", pct > 0 and "Upgrade" or "Downgrade", pct) .. (vs and (" vs " .. vs) or "")
+  local change = pct > 0 and L["Upgrade {change} (estimate)"] or L["Downgrade {change} (estimate)"]
+  local text = ns.Format(change, { change = string.format("%+.0f%%", pct) })
+  if vs then text = ns.Format(L["{line} vs {item}"], { line = text, item = vs }) end
   tt:AddLine(text, T.RGB(pct > 0 and "good" or "bad"))
 end
 
@@ -248,10 +264,10 @@ end
 -- Sets one weight for the kind in use ("set STR 1.2"); 0 makes a stat worthless.
 local function setWeight(stat, value)
   local short, n = (stat or ""):upper(), UP.ParseWeight(value)
-  if not W.STATS[short] or not n then return ns.Chat("Use /vg weights set <stat> <number>; stats: " .. statNames() .. ".") end
+  if not W.STATS[short] or not n then return ns.Chat(ns.Format(L["Use /vg weights set <stat> <number>; stats: {stats}."], { stats = statNames() })) end
   UP.settings.weights[UP.kind] = UP.settings.weights[UP.kind] or {}
   UP.settings.weights[UP.kind][short] = n
-  ns.Chat(string.format("%s is worth %s for %s now.", short, n, UP.kind))
+  ns.Chat(ns.Format(L["{stat} is worth {weight} for {kind} now."], { stat = short, weight = n, kind = UP.Word(UP.kind) }))
   UP.Changed()
 end
 
@@ -260,14 +276,14 @@ local function resetWeights()
   local kind = UP.kind
   UP.settings.weights[kind] = nil
   UP.Changed()
-  ns.Chat("Weights for " .. kind .. " are back to the defaults.")
+  ns.Chat(ns.Format(L["Weights for {kind} are back to the defaults."], { kind = UP.Word(kind) }))
 end
 
 -- Applies a pasted weights string to the kind it was made for; false and why when it can't.
 function UP.Import(text)
   local scope, data = ns.Serialize.Decode(text)
   if not scope then return false, data end
-  if scope ~= "weights" or not W.KINDS[data.kind] or type(data.weights) ~= "table" then return false, "not a weights string" end
+  if scope ~= "weights" or not W.KINDS[data.kind] or type(data.weights) ~= "table" then return false, L["not a weights string"] end
   local clean = {}
   for short, n in pairs(data.weights) do if W.STATS[short] and type(n) == "number" then clean[short] = n end end
   UP.settings.weights[data.kind] = clean
@@ -277,11 +293,11 @@ end
 
 -- The import box: paste a string from /vg weights export.
 local function importDialog()
-  ns.AskText("Paste a Vanguard weights string, then Import", function(text)
+  ns.AskText(L["Paste a Vanguard weights string, then Import"], function(text)
     local done, detail = UP.Import(text)
-    if not done then return ns.Chat("Import failed: " .. detail .. ".") end
+    if not done then return ns.Chat(ns.Format(L["Import failed: {why}."], { why = detail })) end
     ns.HideText()
-    ns.Chat("Imported weights for " .. detail .. ".")
+    ns.Chat(ns.Format(L["Imported weights for {kind}."], { kind = UP.Word(detail) }))
   end)
 end
 
@@ -293,9 +309,9 @@ function UP.Command(rest)
   UP.Current()
   if word == "set" then return setWeight(a, b) end
   if word == "reset" then return resetWeights() end
-  if word == "export" then return ns.ShowText("Vanguard weights (" .. UP.kind .. ")  Ctrl+C to copy", ns.Serialize.Encode("weights", { kind = UP.kind, weights = UP.current })) end
+  if word == "export" then return ns.ShowText(ns.Format(L["Vanguard weights ({kind})  Ctrl+C to copy"], { kind = UP.Word(UP.kind) }), ns.Serialize.Encode("weights", { kind = UP.kind, weights = UP.current })) end
   if word == "import" then return importDialog() end
-  ns.Chat(string.format("Weights for %s (role %s): %s", UP.kind, UP.Role(), weightsText(UP.current)))
+  ns.Chat(ns.Format(L["Weights for {kind} (role {role}): {weights}"], { kind = UP.Word(UP.kind), role = UP.Word(UP.Role()), weights = weightsText(UP.current) }))
 end
 
 -- Module entry point (Core/Modules.lua).

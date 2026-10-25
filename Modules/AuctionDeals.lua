@@ -20,6 +20,7 @@
 -- buys, and nothing writes into the game's auction frames.
 
 local ADDON, ns = ...
+local L = ns.L
 
 local T, AP = ns.Theme, ns.AuctionPrices
 local AH = ns.GetModule("AuctionHelper")
@@ -31,9 +32,9 @@ AH.MARKET_DAYS = 2
 -- The Deals entry's pane key (no list name can have it), and its columns: the price per unit,
 -- how far under, and what the price was judged against.
 AH.DEALS = "deals"
-AH.DEAL_COLUMNS = { { key = "price", title = "Unit price", width = 90, side = "RIGHT", role = "number", color = "gold" },
-  { key = "off", title = "Under by", width = 56, side = "RIGHT", role = "small", color = "good" },
-  { key = "basis", title = "Judged against", width = 150, side = "LEFT", role = "small", color = "text2" }, name = "Item" }
+AH.DEAL_COLUMNS = { { key = "price", title = L["Unit price"], width = 90, side = "RIGHT", role = "number", color = "gold" },
+  { key = "off", title = L["Under by"], width = 56, side = "RIGHT", role = "small", color = "good" },
+  { key = "basis", title = L["Judged against"], width = 150, side = "LEFT", role = "small", color = "text2" }, name = L["Item"] }
 -- The Deals entry's switch (Town and gear > Auction house): on, as the auction plan's Deals list
 -- is part of the tabs; it only reads prices the tabs' searches and scans already bring.
 AH.defaults.deals = true
@@ -72,9 +73,9 @@ end
 -- lowest price before today (a deal under it), each with its share and its name; nil without either.
 local function reference(itemID, now)
   local market = AH.Market7(itemID, now)
-  if market then return market, AH.DEAL_PCT, "7-day market" end
+  if market then return market, AH.DEAL_PCT, L["7-day market"] end
   local low = AH.LowBefore(itemID, now)
-  if low then return low, 100, "Prior 6-day low" end
+  if low then return low, 100, L["Prior 6-day low"] end
 end
 
 -- A listing of an item at a price per unit as a deal, or nil: under the vendor's price, or under
@@ -141,12 +142,13 @@ function AH.FoundCount(items)
   local oldest = AP.Now()
   for _, row in ipairs(items) do oldest = math.min(oldest, row.found) end
   local minutes = AH.MinutesSince(oldest)
-  return minutes > 0 and string.format("%d found, the oldest %d min ago", #items, minutes) or (#items .. " found")
+  local values = { count = #items, minutes = minutes }
+  return ns.Format(minutes > 0 and L["{count} found, the oldest {minutes} min ago"] or L["{count} found"], values)
 end
 
 -- A found row's tooltip line: "Found 12 min ago."
 function AH.FoundLine(row)
-  GameTooltip:AddLine(string.format("Found %d min ago.", AH.MinutesSince(row.found)), T.RGB("text2"))
+  GameTooltip:AddLine(ns.Format(L["Found {minutes} min ago."], { minutes = AH.MinutesSince(row.found) }), T.RGB("text2"))
 end
 
 -- The Deals entry's events: each price recorded is judged, and closing the house starts keeping what was
@@ -160,13 +162,13 @@ end
 
 -- How far under a deal is: "< vendor" under the vendor's price, else "-35 %".
 local function underText(d)
-  if d.vendor then return "< vendor" end
+  if d.vendor then return L["< vendor"] end
   return string.format("-%d %%", d.off)
 end
 
 -- What a deal was judged against, with that price: the vendor's, else its reference's.
 local function basisText(d)
-  if d.vendor then return "Vendor price " .. AP.Money(d.vendor) end
+  if d.vendor then return ns.Format(L["Vendor price {money}"], { money = AP.Money(d.vendor) }) end
   return d.basis .. " " .. AP.Money(d.ref)
 end
 
@@ -191,22 +193,22 @@ local function dealTip(r)
   GameTooltip:SetOwner(r, "ANCHOR_RIGHT")
   GameTooltip:SetText((AH.EntryLook(d.id, d)))
   if d.ref then GameTooltip:AddLine(d.basis .. ": " .. AP.Money(d.ref), T.RGB("text2")) end
-  if d.vendor then GameTooltip:AddLine("Vendor price: " .. AP.Money(d.vendor), T.RGB("text2")) end
+  if d.vendor then GameTooltip:AddLine(ns.Format(L["Vendor price: {money}"], { money = AP.Money(d.vendor) }), T.RGB("text2")) end
   AH.FoundLine(d)
-  GameTooltip:AddLine("Click to show it in the auction house's list.", T.RGB("text2"))
+  GameTooltip:AddLine(L["Click to show it in the auction house's list."], T.RGB("text2"))
   GameTooltip:Show()
 end
 
 -- The pane's Deals entry with this visit's count, while the switch is on.
 local function paneEntry()
-  if AH.settings.deals then return { key = AH.DEALS, name = "Deals", count = #AH.SortedDeals() } end
+  if AH.settings.deals then return { key = AH.DEALS, name = L["Deals"], count = #AH.SortedDeals() } end
 end
 AH.PANE_EXTRAS[#AH.PANE_EXTRAS + 1] = paneEntry
 
 -- What the card shows for Deals: the columns, this visit's deals best first, the count beside the
 -- heading, and the line shown while there are none.
-AH.Sources[AH.DEALS] = { name = "Deals", columns = AH.DEAL_COLUMNS, items = AH.SortedDeals, paint = paintDeal, click = AH.OpenDeal, enter = dealTip,
-  count = AH.FoundCount, status = function(items) return #items == 0 and "None yet: a scan or a search finds them." or "" end }
+AH.Sources[AH.DEALS] = { name = L["Deals"], columns = AH.DEAL_COLUMNS, items = AH.SortedDeals, paint = paintDeal, click = AH.OpenDeal, enter = dealTip,
+  count = AH.FoundCount, status = function(items) return #items == 0 and L["None yet: a scan or a search finds them."] or "" end }
 
 -- The Deals entry painted: its count in the pane and, while it is the entry shown, its rows (the
 -- entry gives way to no list when its switch goes off).

@@ -15,6 +15,7 @@
 -- search is the toast click's, through AH.Queue; nothing buys.
 
 local ADDON, ns = ...
+local L = ns.L
 
 local W, AP = ns.Widgets, ns.AuctionPrices
 local AH = ns.GetModule("AuctionHelper")
@@ -26,7 +27,7 @@ AH.alerted, AH.ringing = {}, {}
 -- The filter dialog's alert switch, under its max price (Modules/AuctionShop.lua builds the dialog;
 -- Save keeps the switch only with a max price).
 function AH.AlertRow(d)
-  d.alert = W.Check(d, "Alert at or under the max price", function() return d.draft.alert end, function(v) d.draft.alert = v end, AH.FILTER_W - 24)
+  d.alert = W.Check(d, L["Alert at or under the max price"], function() return d.draft.alert end, function(v) d.draft.alert = v end, AH.FILTER_W - 24)
   d.alert:SetPoint("TOPLEFT", 12, -156)
 end
 
@@ -108,9 +109,9 @@ end
 -- alerts' count and items.
 local function toastText(list)
   local a, names = list[1], {}
-  if #list == 1 then return "Price alert", string.format("%s (max %s)", AH.EntryLook(a.id), AP.Money(a.max)), AP.Money(a.price) end
+  if #list == 1 then return L["Price alert"], ns.Format(L["{item} (max {price})"], { item = AH.EntryLook(a.id), price = AP.Money(a.max) }), AP.Money(a.price) end
   for i, x in ipairs(list) do names[i] = (AH.EntryLook(x.id)) end
-  return string.format("%d price alerts", #list), table.concat(names, ", ")
+  return ns.Format(L["{count} price alerts"], { count = #list }), table.concat(names, ", ")
 end
 
 -- The alerts waiting ring once, by item ID: the alert sound and Chat watch's toast; a click on it

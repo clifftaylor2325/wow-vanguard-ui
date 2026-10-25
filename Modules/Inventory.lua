@@ -15,6 +15,7 @@
 -- included), and C_Bank's bought tabs for the bank (Forever's bank holds bags).
 
 local ADDON, ns = ...
+local L = ns.L
 
 local T = ns.Theme
 
@@ -134,7 +135,7 @@ end
 local function holding(name, record, id)
   local bags, bank = (record.bags or {})[id] or 0, (record.bank or {})[id] or 0
   if bags + bank == 0 then return nil end
-  local text = bank > 0 and string.format("%d (bank %d)", bags + bank, bank) or tostring(bags)
+  local text = bank > 0 and ns.Format(L["{count} (bank {bank})"], { count = bags + bank, bank = bank }) or tostring(bags)
   return { name = name, class = record.class, total = bags + bank, text = text }
 end
 
@@ -171,9 +172,9 @@ function IV.AddLines(tt, link)
   local _, owned = ns.GetModule("Tooltips").Owned(link)
   local total = owned or 0
   for i, row in ipairs(rows) do total = total + row.total if i <= IV.MAX_NAMES then addRow(tt, row) end end
-  if #rows > IV.MAX_NAMES then tt:AddLine(string.format("+%d more", #rows - IV.MAX_NAMES), T.RGB("text2")) end
+  if #rows > IV.MAX_NAMES then tt:AddLine(ns.Format(L["+{count} more"], { count = #rows - IV.MAX_NAMES }), T.RGB("text2")) end
   local r, g, b = T.RGB("text2")
-  tt:AddDoubleLine("Total", tostring(total), r, g, b, T.RGB("text"))
+  tt:AddDoubleLine(L["Total"], tostring(total), r, g, b, T.RGB("text"))
 end
 
 -- /vg inventory -----------------------------------------------------------------------------
@@ -196,16 +197,16 @@ end
 local function forget(name)
   local chars = IV.Characters()
   for known in pairs(chars) do
-    if sameName(known, name) then chars[known] = nil return ns.Chat("Forgot " .. known .. "'s bags and bank.") end
+    if sameName(known, name) then chars[known] = nil return ns.Chat(ns.Format(L["Forgot {name}'s bags and bank."], { name = known })) end
   end
-  ns.Chat("No character called " .. name .. " is remembered here.")
+  ns.Chat(ns.Format(L["No character called {name} is remembered here."], { name = name }))
 end
 
 -- "<name>: bags read today" (or how many days ago).
 local function readLine(name)
   local record = IV.Characters()[name]
   local updated = type(record) == "table" and record.updated or 0
-  return name .. ": bags read " .. ns.AuctionPrices.Ago(updated)
+  return ns.Format(L["{name}: bags read {when}"], { name = name, when = ns.AuctionPrices.Ago(updated) })
 end
 
 -- /vg inventory: each character remembered here and when their bags were last read;
@@ -213,10 +214,10 @@ end
 function IV.Command(rest)
   local word, name = (rest or ""):match("^%s*(%S*)%s*(.-)%s*$")
   word = word:lower()
-  if word == "clear" then VanguardDB.inventory = nil return ns.Chat("Forgot every character's bags and bank.") end
+  if word == "clear" then VanguardDB.inventory = nil return ns.Chat(L["Forgot every character's bags and bank."]) end
   if word == "forget" and name ~= "" then return forget(name) end
   local list = names()
-  ns.Chat(#list == 0 and "No characters remembered here yet." or ("Characters remembered here: " .. #list .. "."))
+  ns.Chat(#list == 0 and L["No characters remembered here yet."] or ns.Format(L["Characters remembered here: {count}."], { count = #list }))
   for _, n in ipairs(list) do ns.Chat(readLine(n)) end
 end
 
@@ -225,15 +226,15 @@ end
 -- "3d 4h", or "5h" under a day, from seconds.
 local function span(seconds)
   local days, hours = math.floor(seconds / 86400), math.floor(seconds % 86400 / 3600)
-  return days > 0 and string.format("%dd %dh", days, hours) or string.format("%dh", hours)
+  return days > 0 and ns.Format(L["{days}d {hours}h"], { days = days, hours = hours }) or ns.Format(L["{count}h"], { count = hours })
 end
 
 -- One character's overview line: "Alpha: level 12, 3g 4s 5c, 40% rested, played 3d 4h" (what is known).
 local function altLine(name, r)
-  local parts = { "level " .. (r.level or "?") }
+  local parts = { ns.Format(L["level {level}"], { level = r.level or "?" }) }
   if r.money then parts[#parts + 1] = ns.GetModule("InfoStrip").Money(r.money) end
-  if r.rested then parts[#parts + 1] = r.rested .. "% rested" end
-  if r.played then parts[#parts + 1] = "played " .. span(r.played) end
+  if r.rested then parts[#parts + 1] = ns.Format(L["{percent}% rested"], { percent = r.rested }) end
+  if r.played then parts[#parts + 1] = ns.Format(L["played {time}"], { time = span(r.played) }) end
   return name .. ": " .. table.concat(parts, ", ")
 end
 
@@ -247,7 +248,7 @@ function IV.AltLines()
       total = total + (r.money or 0)
     end
   end
-  lines[#lines + 1] = "All together: " .. ns.GetModule("InfoStrip").Money(total)
+  lines[#lines + 1] = ns.Format(L["All together: {money}"], { money = ns.GetModule("InfoStrip").Money(total) })
   return lines
 end
 
@@ -275,7 +276,7 @@ end
 -- One character's bags and bank, the biggest stacks first (at most 15 lines).
 local function contents(name, r)
   local totals, ids = tally(r)
-  ns.Chat(string.format("%s carries %d kind(s) of item.", name, #ids))
+  ns.Chat(ns.Format(L["{name} carries {count} kind(s) of item."], { name = name, count = #ids }))
   for i = 1, math.min(#ids, 15) do ns.Chat(string.format("%d × %s", totals[ids[i]], itemName(ids[i]))) end
 end
 
@@ -286,7 +287,7 @@ function IV.AltsCommand(rest)
   for name, r in pairs(IV.Characters()) do
     if type(r) == "table" and sameName(name, rest) then return contents(name, r) end
   end
-  ns.Chat("No character called " .. rest .. " is remembered here.")
+  ns.Chat(ns.Format(L["No character called {name} is remembered here."], { name = rest }))
 end
 
 -- Module entry point (Core/Modules.lua): reads the bags at login, then as they change.

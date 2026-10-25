@@ -22,6 +22,7 @@
 -- frame apart; the only search is a click's, through AH.Queue; nothing buys.
 
 local ADDON, ns = ...
+local L = ns.L
 
 local T, AP = ns.Theme, ns.AuctionPrices
 local AH = ns.GetModule("AuctionHelper")
@@ -29,17 +30,17 @@ local AH = ns.GetModule("AuctionHelper")
 -- The Upgrades entry's pane key (no list name can have it), and its columns: the slot, the gain
 -- and the price per unit.
 AH.UPGRADES = "\1upgrades"
-AH.UPGRADE_COLUMNS = { { key = "slot", title = "Slot", width = 80, side = "LEFT", role = "small", color = "text2" },
-  { key = "gain", title = "Gain", width = 80, side = "RIGHT", role = "small", color = "good" },
-  { key = "price", title = "Unit price", width = 100, side = "RIGHT", role = "number", color = "gold" }, name = "Item" }
+AH.UPGRADE_COLUMNS = { { key = "slot", title = L["Slot"], width = 80, side = "LEFT", role = "small", color = "text2" },
+  { key = "gain", title = L["Gain"], width = 80, side = "RIGHT", role = "small", color = "good" },
+  { key = "price", title = L["Unit price"], width = 100, side = "RIGHT", role = "number", color = "gold" }, name = L["Item"] }
 -- How many of a scan's gear listings are judged a frame.
 AH.JUDGE_ROWS = 100
 -- The slots' names when the client has none (INVTYPE_HEAD and the rest are the game's own strings).
-AH.SLOT_NAMES = { INVTYPE_HEAD = "Head", INVTYPE_NECK = "Neck", INVTYPE_SHOULDER = "Shoulder", INVTYPE_CHEST = "Chest", INVTYPE_ROBE = "Chest",
-  INVTYPE_WAIST = "Waist", INVTYPE_LEGS = "Legs", INVTYPE_FEET = "Feet", INVTYPE_WRIST = "Wrist", INVTYPE_HAND = "Hands",
-  INVTYPE_FINGER = "Finger", INVTYPE_TRINKET = "Trinket", INVTYPE_CLOAK = "Back", INVTYPE_WEAPON = "One-Hand",
-  INVTYPE_WEAPONMAINHAND = "Main Hand", INVTYPE_2HWEAPON = "Two-Hand", INVTYPE_WEAPONOFFHAND = "Off Hand", INVTYPE_SHIELD = "Off Hand",
-  INVTYPE_HOLDABLE = "Held In Off-hand", INVTYPE_RANGED = "Ranged", INVTYPE_RANGEDRIGHT = "Ranged", INVTYPE_THROWN = "Thrown", INVTYPE_RELIC = "Relic" }
+AH.SLOT_NAMES = { INVTYPE_HEAD = L["Head"], INVTYPE_NECK = L["Neck"], INVTYPE_SHOULDER = L["Shoulder"], INVTYPE_CHEST = L["Chest"], INVTYPE_ROBE = L["Chest"],
+  INVTYPE_WAIST = L["Waist"], INVTYPE_LEGS = L["Legs"], INVTYPE_FEET = L["Feet"], INVTYPE_WRIST = L["Wrist"], INVTYPE_HAND = L["Hands"],
+  INVTYPE_FINGER = L["Finger"], INVTYPE_TRINKET = L["Trinket"], INVTYPE_CLOAK = L["Back"], INVTYPE_WEAPON = L["One-Hand"],
+  INVTYPE_WEAPONMAINHAND = L["Main Hand"], INVTYPE_2HWEAPON = L["Two-Hand"], INVTYPE_WEAPONOFFHAND = L["Off Hand"], INVTYPE_SHIELD = L["Off Hand"],
+  INVTYPE_HOLDABLE = L["Held In Off-hand"], INVTYPE_RANGED = L["Ranged"], INVTYPE_RANGEDRIGHT = L["Ranged"], INVTYPE_THROWN = L["Thrown"], INVTYPE_RELIC = L["Relic"] }
 -- The Upgrades entry's switch (Town and gear > Auction house): on, as Deals is.
 AH.defaults.upgrades = true
 -- The upgrades found lately by link: { link, id, key, price, pct, empty, slot, score, found (when) }; and every
@@ -250,7 +251,7 @@ end
 
 -- An upgrade's gain: "+12 %", or "empty slot" for one that fills a slot.
 local function gainText(u)
-  if u.empty then return "empty slot" end
+  if u.empty then return L["empty slot"] end
   return string.format("+%d %%", math.floor(u.pct))
 end
 
@@ -274,26 +275,26 @@ local function upgradeTip(r)
   GameTooltip:SetOwner(r, "ANCHOR_RIGHT")
   GameTooltip:SetHyperlink(r.item.link)
   AH.FoundLine(r.item)
-  GameTooltip:AddLine("Click to show it in the auction house's list.", T.RGB("text2"))
+  GameTooltip:AddLine(L["Click to show it in the auction house's list."], T.RGB("text2"))
   GameTooltip:Show()
 end
 
 -- The line shown while there are no upgrades: how they are found, or that Gear upgrades is off.
 local function upgradeStatus(items)
   if #items > 0 then return "" end
-  if not ns.GetModule("Upgrades").settings then return "Turn on Gear upgrades (Town and gear) to judge gear." end
-  return "None yet: a scan or an item search finds armor and weapons that beat what you wear."
+  if not ns.GetModule("Upgrades").settings then return L["Turn on Gear upgrades (Town and gear) to judge gear."] end
+  return L["None yet: a scan or an item search finds armor and weapons that beat what you wear."]
 end
 
 -- The pane's Upgrades entry with this visit's count, while the switch is on.
 local function paneEntry()
-  if AH.settings.upgrades then return { key = AH.UPGRADES, name = "Upgrades", count = #AH.SortedUpgrades() } end
+  if AH.settings.upgrades then return { key = AH.UPGRADES, name = L["Upgrades"], count = #AH.SortedUpgrades() } end
 end
 AH.PANE_EXTRAS[#AH.PANE_EXTRAS + 1] = paneEntry
 
 -- What the card shows for Upgrades: the columns, this visit's upgrades best first, the count
 -- beside the heading, and the line shown while there are none.
-AH.Sources[AH.UPGRADES] = { name = "Upgrades", columns = AH.UPGRADE_COLUMNS, items = AH.SortedUpgrades, paint = paintUpgrade, click = AH.OpenUpgrade,
+AH.Sources[AH.UPGRADES] = { name = L["Upgrades"], columns = AH.UPGRADE_COLUMNS, items = AH.SortedUpgrades, paint = paintUpgrade, click = AH.OpenUpgrade,
   enter = upgradeTip, status = upgradeStatus, count = AH.FoundCount }
 
 -- The Upgrades entry painted: the listings judged again if the weights changed, its count in the

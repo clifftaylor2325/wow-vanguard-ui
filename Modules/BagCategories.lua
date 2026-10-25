@@ -3,6 +3,7 @@
 -- in more than one category, the one higher in the list wins. /vg bag adds, removes and orders them.
 
 local ADDON, ns = ...
+local L = ns.L
 
 local BG = ns.GetModule("Bags")
 
@@ -42,12 +43,12 @@ local itemName = ns.ItemName
 
 -- Prints each category and its items.
 local function show()
-  if #list() == 0 then return ns.Chat("No bag categories. /vg bag add <name> <shift-click an item> makes one.") end
+  if #list() == 0 then return ns.Chat(L["No bag categories. /vg bag add <name> <shift-click an item> makes one."]) end
   for _, cat in ipairs(list()) do
     local names = {}
     for id in pairs(cat.items) do names[#names + 1] = itemName(id) end
     table.sort(names)
-    ns.Chat(cat.name .. ": " .. (#names > 0 and table.concat(names, ", ") or "no items"))
+    ns.Chat(cat.name .. ": " .. (#names > 0 and table.concat(names, ", ") or L["no items"]))
   end
 end
 
@@ -62,16 +63,16 @@ local function add(name, id)
   if not at then table.insert(list(), { name = name, items = {} }) at = #list() end
   release(id)
   list()[at].items[id] = true
-  ns.Chat(itemName(id) .. " is in " .. list()[at].name .. ".")
+  ns.Chat(ns.Format(L["{item} is in {group}."], { item = itemName(id), group = list()[at].name }))
 end
 
 -- Deletes a category, or moves it to the top of the list.
 local function change(verb, name)
   local at = find(name)
-  if not at then return ns.Chat("No bag category called " .. name .. ".") end
+  if not at then return ns.Chat(ns.Format(L["No bag category called {name}."], { name = name })) end
   local cat = table.remove(list(), at)
   if verb == "top" then table.insert(list(), 1, cat) end
-  ns.Chat(cat.name .. (verb == "top" and " is first." or " is gone."))
+  ns.Chat(ns.Format(verb == "top" and L["{group} is first."] or L["{group} is gone."], { group = cat.name }))
 end
 
 -- Whether the bank window is open.
@@ -95,11 +96,11 @@ end
 -- /vg bag deposit <name>: sends every stack of the category to the open bank, out of combat.
 local function deposit(name)
   local at = find(name)
-  if not at then return ns.Chat("No bag category called " .. name .. ".") end
-  if ns.InCombat() or not bankOpen() then return ns.Chat("Open the bank first (not in a fight).") end
+  if not at then return ns.Chat(ns.Format(L["No bag category called {name}."], { name = name })) end
+  if ns.InCombat() or not bankOpen() then return ns.Chat(L["Open the bank first (not in a fight)."]) end
   local stacks = stacksIn(list()[at])
   for _, spot in ipairs(stacks) do C_Container.UseContainerItem(spot[1], spot[2]) end
-  ns.Chat("Sent " .. #stacks .. " stack(s) of " .. list()[at].name .. " to the bank.")
+  ns.Chat(ns.Format(L["Sent {count} stack(s) of {group} to the bank."], { count = #stacks, group = list()[at].name }))
 end
 
 -- A group name from typed text: one word (spaces become dashes), or nil for none.
@@ -112,21 +113,21 @@ end
 function BG.NewGroup(text)
   local name = cleanName(text)
   if not name then return end
-  if find(name) then return ns.Chat(name .. " already exists.") end
+  if find(name) then return ns.Chat(ns.Format(L["{group} already exists."], { group = name })) end
   table.insert(list(), { name = name, items = {} })
-  ns.Chat("Group " .. name .. " made. Pick an item up, then choose it under Groups.")
+  ns.Chat(ns.Format(L["Group {group} made. Pick an item up, then choose it under Groups."], { group = name }))
 end
 
--- The item on the cursor's ID, or nil (and the player told to pick one up, with the hint) when it holds no item.
-local function heldItem(hint)
+-- The item on the cursor's ID, or nil (and chat says `ask`, telling the player to pick one up) when it holds no item.
+local function heldItem(ask)
   local kind, id = GetCursorInfo()
   if kind == "item" and ns.PlainNumber(id) then return id end
-  ns.Chat("Pick an item up first, then " .. hint .. ".")
+  ns.Chat(ask)
 end
 
 -- Puts the item on the cursor in the group (the bag buttons' "Put held item in").
 function BG.AddHeld(name)
-  local id = heldItem("choose the group")
+  local id = heldItem(L["Pick an item up first, then choose the group."])
   if not id then return end
   add(name, id)
   ClearCursor()
@@ -140,19 +141,19 @@ function BG.GroupAction(verb, name)
 end
 
 -- The usage line.
-local USAGE = "Usage: /vg bag [add <name> <item> | remove <item> | delete <name> | top <name> | deposit <name>]"
+local USAGE = L["Usage: /vg bag [add <name> <item> | remove <item> | delete <name> | top <name> | deposit <name>]"]
 
 -- Takes the item out of its category, and says so.
 local function drop(id)
   release(id)
-  ns.Chat(itemName(id) .. " is in no category.")
+  ns.Chat(ns.Format(L["{item} is in no category."], { item = itemName(id) }))
 end
 
 -- Takes the item on the cursor out of its group (the bag buttons' "Take held item out of its group").
 function BG.RemoveHeld()
-  local id = heldItem("take it out of its group")
+  local id = heldItem(L["Pick an item up first, then take it out of its group."])
   if not id then return end
-  if not BG.CategoryOf(id) then return ns.Chat(itemName(id) .. " is in no group.") end
+  if not BG.CategoryOf(id) then return ns.Chat(ns.Format(L["{item} is in no group."], { item = itemName(id) })) end
   drop(id)
   ClearCursor()
   BG.SectionsChanged()

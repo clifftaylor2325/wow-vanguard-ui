@@ -15,6 +15,7 @@
 -- arithmetic; your own units are left out (you can't buy them); nothing buys.
 
 local ADDON, ns = ...
+local L = ns.L
 
 local T, AP = ns.Theme, ns.AuctionPrices
 local AH = ns.GetModule("AuctionHelper")
@@ -58,12 +59,12 @@ end
 -- top); nil when nothing you can buy is short, false when there's no room for another list.
 function AH.MakeRestock()
   local rows, store = ns.GetModule("InstancePrep").BuyRows(), AP.Store()
-  if #rows == 0 then return ns.Chat("Nothing to restock: your class's reagents and your Keep-stocked items (/vg stock) are all in your bags.") end
+  if #rows == 0 then return ns.Chat(L["Nothing to restock: your class's reagents and your Keep-stocked items (/vg stock) are all in your bags."]) end
   local entries = restockEntries(rows, store.lists[AH.RESTOCK] or {})
   if not AH.NewList(AH.RESTOCK) then return false end
   store.lists[AH.RESTOCK] = entries
   AH.ShopTop()
-  ns.Chat(string.format("Shopping list %s: %s.", AH.RESTOCK, restockText(entries)))
+  ns.Chat(ns.Format(L["Shopping list {name}: {entries}."], { name = AH.RESTOCK, entries = restockText(entries) }))
   AH.PaintShop()
   return true
 end
@@ -73,7 +74,7 @@ end
 function AH.Restock()
   if not AH.MakeRestock() then return end
   if AH.open then return AH.SearchList() end
-  ns.Chat("At the auction house, Search list on the " .. AH.TAB_NAMES[1] .. " tab shows what the cheapest of each come to.")
+  ns.Chat(ns.Format(L["At the auction house, Search list on the {tab} tab shows what the cheapest of each come to."], { tab = AH.TAB_NAMES[1] }))
 end
 
 -- /vg ah restock: the Restock list made (and searched at the auction house).
@@ -159,8 +160,8 @@ end
 -- fewer are up; "none up" when none of the listings can be bought.
 local function paintPriced(r, found, want)
   T.Color(r.cells.qty, found.got < want and "warn" or "text2")
-  r.cells.qty:SetText(found.got > 0 and (found.got .. " for") or "")
-  r.cells.price:SetText(found.got > 0 and AP.Money(found.total) or "none up")
+  r.cells.qty:SetText(found.got > 0 and ns.Format(L["{count} for"], { count = found.got }) or "")
+  r.cells.price:SetText(found.got > 0 and AP.Money(found.total) or L["none up"])
 end
 
 -- A list row's wanted amount (after the row is painted): "need 8" before its search, what the
@@ -171,10 +172,10 @@ function AH.PaintCost(r, entry)
   T.Color(r.cells.qty, "text2")
   if not want then return end
   if found and found.got then return paintPriced(r, found, want) end
-  if found == nil then r.cells.qty:SetText("need " .. want) end
+  if found == nil then r.cells.qty:SetText(ns.Format(L["need {count}"], { count = want })) end
 end
 
 -- The Shopping card's Restock button, left of Search list on the toolbar: the Restock list made and searched.
 function AH.BuildRestock(c)
-  c.restock = AH.ToolButton(c, "Restock", function() AH.Restock() end, 70, c.search)
+  c.restock = AH.ToolButton(c, L["Restock"], function() AH.Restock() end, 70, c.search)
 end

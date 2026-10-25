@@ -17,12 +17,13 @@
 -- item (each auction one item) with a buyout and an optional bid.
 
 local ADDON, ns = ...
+local L = ns.L
 
 local T, W, AP = ns.Theme, ns.Widgets, ns.AuctionPrices
 local AH = ns.GetModule("AuctionHelper")
 
 -- The sell card's lines, and the sell slot's size (an item's icon and its border).
-AH.SELL_LINES = { "Cheapest now", "7-day low", "Deposit", "Your price" }
+AH.SELL_LINES = { L["Cheapest now"], L["7-day low"], L["Deposit"], L["Your price"] }
 local SLOT = 36
 -- The form: where its rows start (down from the card's top), how far apart they are (an inline control,
 -- T.CONTROL_H, and 6 of air), and the width of the label column before its boxes.
@@ -30,9 +31,9 @@ AH.FORM_Y, AH.FORM_ROW, AH.LABEL_W = -110, T.CONTROL_H + 6, 60
 -- The Up now card (the listings up for the item on the sell card): its rows (how many, until
 -- AH.Build counts them) and its columns: the price each, how many, and the time left.
 AH.LIST_ROWS = 4
-AH.UP_COLUMNS = { { key = "price", title = "Price each", width = 100, side = "RIGHT", role = "number", color = "gold" },
-  { key = "qty", title = "Qty", width = 60, side = "RIGHT", role = "small", color = "text2" },
-  { key = "time", title = "Time left", width = 90, side = "LEFT", role = "small", color = "text2" } }
+AH.UP_COLUMNS = { { key = "price", title = L["Price each"], width = 100, side = "RIGHT", role = "number", color = "gold" },
+  { key = "qty", title = L["Qty"], width = 60, side = "RIGHT", role = "small", color = "text2" },
+  { key = "time", title = L["Time left"], width = 90, side = "LEFT", role = "small", color = "text2" } }
 -- The sell card's settings: the auction length a new item starts with ("last": the last one
 -- used; or "1" to "3"), and lastDuration, the last one picked on the card (none at first).
 AH.defaults.duration = "last"
@@ -43,7 +44,7 @@ AH.defaults.vendorFloor = true
 -- names for the three auction lengths (AUCTION_DURATION_ONE...).
 AH.ITEM, AH.COMMODITY, AH.DURATIONS = 1, 2, { "ONE", "TWO", "THREE" }
 -- The undercut rules as the sell card's segments.
-AH.UNDERCUT_CHOICES = { { "copper", "1c" }, { "silver", "1s" }, { "percent", "1%" }, { "match", "Match" } }
+AH.UNDERCUT_CHOICES = { { "copper", "1c" }, { "silver", "1s" }, { "percent", "1%" }, { "match", L["Match"] } }
 
 -- Stack presets for vanilla: how many units go up in one auction by default, by item class and
 -- subclass ("class:subclass", as C_Item.GetItemInfoInstant gives them; Enum.ItemClass and
@@ -115,7 +116,7 @@ end
 
 -- The game's name for auction length d (AUCTION_DURATION_ONE...), or "duration d" without one.
 function AH.DurationName(d)
-  return _G["AUCTION_DURATION_" .. AH.DURATIONS[d]] or ("duration " .. d)
+  return _G["AUCTION_DURATION_" .. AH.DURATIONS[d]] or ns.Format(L["duration {n}"], { n = d })
 end
 
 -- The three auction lengths as the card's choices (1 to 3), by the game's names.
@@ -128,7 +129,7 @@ end
 -- The Auction length setting's choices: "Last used", then the three lengths saved as text ("1" to "3"),
 -- the type of the setting's default, so a fixed length is not put back to Last used at the next login.
 function AH.DurationSettingChoices()
-  local out = { { "last", "Last used" } }
+  local out = { { "last", L["Last used"] } }
   for d = 1, 3 do out[#out + 1] = { tostring(d), AH.DurationName(d) } end
   return out
 end
@@ -236,7 +237,7 @@ end
 -- names it (AH.BandText: the game's words, TIME_LEFT_SHORT...), else nothing.
 function AH.TimeLeft(r)
   local secs = ns.PlainNumber(r.timeLeftSeconds)
-  if secs then return secs >= 3600 and math.floor(secs / 3600) .. " h" or math.max(1, math.ceil(secs / 60)) .. " min" end
+  if secs then return secs >= 3600 and ns.Format(L["{count} h"], { count = math.floor(secs / 3600) }) or ns.Format(L["{count} min"], { count = math.max(1, math.ceil(secs / 60)) }) end
   return AH.BandText(ns.PlainNumber(r.timeLeft))
 end
 
@@ -390,12 +391,12 @@ end
 -- Why Post can't put the next stack up, by the key AH.PostCheck gives: shown on the card's count
 -- line while Post is off, and in chat when a click comes too soon (the game busy since the paint).
 AH.POST_REASONS = {
-  price = "no price yet: wait for the price check, or type one",
-  bid = "the bid must be under the buyout",
-  bags = "the item isn't in your bags",
-  vendor = "under the vendor price",
-  money = "not enough money for the deposit",
-  busy = "waiting for the auction house",
+  price = L["no price yet: wait for the price check, or type one"],
+  bid = L["the bid must be under the buyout"],
+  bags = L["the item isn't in your bags"],
+  vendor = L["under the vendor price"],
+  money = L["not enough money for the deposit"],
+  busy = L["waiting for the auction house"],
 }
 
 -- A bid as the game takes it (rounded up to silver without copper prices, as the price is), or nil.
@@ -432,11 +433,16 @@ function AH.PostCheck(s)
   return nil, price, loc
 end
 
+-- The sale's count as the card's line says it: "posted 3 of 10".
+function AH.PostedText(s)
+  return ns.Format(L["posted {posted} of {stacks}"], { posted = s.posted, stacks = AH.StackCount(s) })
+end
+
 -- A stack went up, or was skipped: on to the next; after the last, the card empties and its line
 -- keeps the count.
 function AH.NextStack(s, n)
   s.passed, s.done, s.pending = s.passed + 1, s.done + n, nil
-  AH.sellStatus = string.format("posted %d of %d", s.posted, AH.StackCount(s))
+  AH.sellStatus = AH.PostedText(s)
   if s.done >= s.qty then AH.sell = nil end
   AH.PaintSell()
 end
@@ -444,20 +450,20 @@ end
 -- A click on Post that can't post (the game went busy after the card was painted): chat says why,
 -- and the card is painted again, so Post shows off until it can.
 local function refused(why)
-  if AH.POST_REASONS[why] then ns.Chat("Can't post yet: " .. AH.POST_REASONS[why] .. ".") end
+  if AH.POST_REASONS[why] then ns.Chat(ns.Format(L["Can't post yet: {why}."], { why = AH.POST_REASONS[why] })) end
   AH.PaintSell()
 end
 
 -- What the game answers to a post, as chat says it (AH.OnPostAnswer): by event, the text, which of
--- the event's values goes in its %s, and whether the first value must name this addon.
+-- the event's values goes in its {value}, and whether the first value must name this addon.
 AH.POST_ANSWERS = {
-  AUCTION_HOUSE_POST_ERROR = { "the auction house refused it" },
-  AUCTION_HOUSE_POST_WARNING = { "the game wants it confirmed" },
-  AUCTION_HOUSE_SHOW_ERROR = { "the auction house sent error %s", 1, nil, "ErrorName" },
-  AUCTION_HOUSE_THROTTLED_MESSAGE_DROPPED = { "the game dropped it (too many messages at once)" },
-  UI_ERROR_MESSAGE = { "the game said \"%s\"", 2 },
-  ADDON_ACTION_BLOCKED = { "the game blocked %s", 2, true },
-  ADDON_ACTION_FORBIDDEN = { "the game blocked %s", 2, true },
+  AUCTION_HOUSE_POST_ERROR = { L["the auction house refused it"] },
+  AUCTION_HOUSE_POST_WARNING = { L["the game wants it confirmed"] },
+  AUCTION_HOUSE_SHOW_ERROR = { L["the auction house sent error {value}"], 1, nil, "ErrorName" },
+  AUCTION_HOUSE_THROTTLED_MESSAGE_DROPPED = { L["the game dropped it (too many messages at once)"] },
+  UI_ERROR_MESSAGE = { L["the game said \"{value}\""], 2 },
+  ADDON_ACTION_BLOCKED = { L["the game blocked {value}"], 2, true },
+  ADDON_ACTION_FORBIDDEN = { L["the game blocked {value}"], 2, true },
 }
 -- Seconds after a click on Post that the game's answers above count as answers to it.
 AH.POST_ANSWER_TIME = 3
@@ -479,15 +485,16 @@ function AH.OnPostAnswer(e, ...)
   if a[3] and (...) ~= ADDON then return end
   local v = a[2] and select(a[2], ...)
   if ns.IsSecret(v) then v = "?" end
-  local text = string.format(a[1], a[4] and not ns.IsSecret(v) and AH[a[4]](v) or tostring(v))
-  ns.Chat("Post: " .. text .. ".")
+  local text = ns.Format(a[1], { value = a[4] and not ns.IsSecret(v) and AH[a[4]](v) or tostring(v) })
+  ns.Chat(ns.Format(L["Post: {answer}."], { answer = text }))
   if AH.sell then AH.sell.answer = text AH.PaintSell() end
 end
 
 -- Chat says what a click on Post sends, before the game sees it: the stack's place in the sale,
 -- how many, the unit price and the length. The game's last answer is forgotten.
 local function sending(s, n, price, d)
-  ns.Chat(string.format("Post: sending stack %d of %d (%d at %s each, %s).", s.passed + 1, AH.StackCount(s), n, AP.Money(price), AH.DurationName(d)))
+  local values = { stack = s.passed + 1, stacks = AH.StackCount(s), count = n, money = AP.Money(price), length = AH.DurationName(d) }
+  ns.Chat(ns.Format(L["Post: sending stack {stack} of {stacks} ({count} at {money} each, {length})."], values))
   AH.postAt, s.answer = GetTime(), nil
 end
 
@@ -508,7 +515,7 @@ end
 -- The game wants the post confirmed: the card keeps it and asks, and Post becomes Confirm.
 local function askConfirm(s, kind, args)
   s.pending = { kind = kind, args = args }
-  ns.Chat("Post: the game asks you to confirm this price; click Confirm to list it.")
+  ns.Chat(L["Post: the game asks you to confirm this price; click Confirm to list it."])
   AH.PaintSell()
 end
 
@@ -554,7 +561,7 @@ end
 -- Stop: the sale ends here; the card empties and its line keeps the count.
 function AH.StopSelling()
   local s = AH.sell
-  if s then AH.sellStatus = string.format("posted %d of %d", s.posted, AH.StackCount(s)) end
+  if s then AH.sellStatus = AH.PostedText(s) end
   AH.sell = nil
   AH.PaintSell()
 end
@@ -571,8 +578,8 @@ end
 local function sellValues(s)
   local d, label = AH.Duration(s)
   local price, dep = AH.SellPrice(s), deposit(s, d, AH.SellLocation(s))
-  local now = money(s.cheapest, s.searched and "none up" or "...")
-  return { now, money(AP.Low7(s.id), "none"), dep and (AP.Money(dep) .. " · " .. label) or "", money(price, "") }
+  local now = money(s.cheapest, s.searched and L["none up"] or "...")
+  return { now, money(AP.Low7(s.id), L["none"]), dep and (AP.Money(dep) .. " · " .. label) or "", money(price, "") }
 end
 
 -- A button on or off.
@@ -600,14 +607,14 @@ end
 -- The count line: "posted 3 of 10" (kept after the last stack or Stop; the guide says the rest).
 local function statusText(s)
   if not s then return AH.sellStatus or "" end
-  return string.format("posted %d of %d", s.posted, AH.StackCount(s))
+  return AH.PostedText(s)
 end
 
 -- The form for the sale s (or nil): its boxes, the toggle, the length, the count line, and Skip
 -- and Stop while there is a sale.
 local function paintForm(c, s)
   paintBoxes(c, s)
-  c.perStack.text:SetText(AH.perStack and "per stack" or "per unit")
+  c.perStack.text:SetText(AH.perStack and L["per stack"] or L["per unit"])
   c.length:Refresh()
   c.status:SetText(statusText(s))
   enable(c.skip, s ~= nil)
@@ -617,48 +624,48 @@ end
 -- The posting guide under the Post line: its steps, and for each state of the sale (AH.GuideState)
 -- the step it is on, the line saying what to do or what is happening, and whether something is in
 -- the way (that line in the warn colour).
-AH.GUIDE_STEPS = { "Item", "Price", "Post", "Listed" }
+AH.GUIDE_STEPS = { L["Item"], L["Price"], L["Post"], L["Listed"] }
 AH.GUIDE = {
-  empty = { 1, "Drop an item on the slot, or click one in your bags." },
-  done = { 4, "Finished: %s. Drop the next item to sell more." },
-  checking = { 2, "Checking what it sells for..." },
-  price = { 2, "No price found: type one in Price.", true },
-  bid = { 2, "Lower the bid: it must be under the buyout.", true },
-  vendor = { 2, "Raise the price: it's under what a vendor pays.", true },
-  bags = { 1, "It isn't in your bags now: put it on the card again.", true },
-  money = { 3, "You don't have the money for the deposit.", true },
-  busy = { 3, "Waiting for the auction house to be ready..." },
-  sent = { 3, "Stack %d sent: waiting for the auction house..." },
-  ready = { 3, "Click Post to list stack %d of %d." },
-  confirm = { 3, "The game asks you to confirm this price: click Confirm.", true },
-  answer = { 3, "%s.", true },
+  empty = { 1, L["Drop an item on the slot, or click one in your bags."] },
+  done = { 4, L["Finished: {status}. Drop the next item to sell more."] },
+  checking = { 2, L["Checking what it sells for..."] },
+  price = { 2, L["No price found: type one in Price."], true },
+  bid = { 2, L["Lower the bid: it must be under the buyout."], true },
+  vendor = { 2, L["Raise the price: it's under what a vendor pays."], true },
+  bags = { 1, L["It isn't in your bags now: put it on the card again."], true },
+  money = { 3, L["You don't have the money for the deposit."], true },
+  busy = { 3, L["Waiting for the auction house to be ready..."] },
+  sent = { 3, L["Stack {stack} sent: waiting for the auction house..."] },
+  ready = { 3, L["Click Post to list stack {stack} of {stacks}."] },
+  confirm = { 3, L["The game asks you to confirm this price: click Confirm."], true },
+  answer = { 3, "{answer}.", true },
 }
 
 -- Where the sale s stands for the guide (why: AH.PostCheck's answer): an AH.GUIDE key and the
--- values its line shows.
+-- values its line's {slots} take (nil for a line without any).
 function AH.GuideState(s, why)
-  if not s then return AH.sellStatus and "done" or "empty", AH.sellStatus end
+  if not s then return AH.sellStatus and "done" or "empty", { status = AH.sellStatus } end
   if AH.Pending(s) then return "confirm" end
-  if s.answer then return "answer", (s.answer:gsub("^%l", string.upper)) end
+  if s.answer then return "answer", { answer = (s.answer:gsub("^%l", string.upper)) } end
   if why == "price" and not s.searched then return "checking" end
-  if why == "busy" and s.posted > 0 then return "sent", s.posted end
+  if why == "busy" and s.posted > 0 then return "sent", { stack = s.posted } end
   if AH.GUIDE[why] then return why end
-  return "ready", s.passed + 1, AH.StackCount(s)
+  return "ready", { stack = s.passed + 1, stacks = AH.StackCount(s) }
 end
 
 -- The guide: the steps done, the one the sale is on (lit) and those to come, and its line.
 local function paintGuide(c, s, why)
-  local key, a, b = AH.GuideState(s, why)
+  local key, values = AH.GuideState(s, why)
   local g = AH.GUIDE[key]
   for i, step in ipairs(c.steps) do T.Color(step, i == g[1] and "accentText" or i < g[1] and "text" or "muted") end
-  c.guide:SetText(string.format(g[2], a, b))
+  c.guide:SetText(ns.Format(g[2], values or {}))
   T.Color(c.guide, g[3] and "warn" or "text")
 end
 
 -- The price line: in red, and saying so, while the price is under the item's vendor sell price.
 local function paintPriceLine(c, s)
   local line, under = c.lines[#c.lines], s ~= nil and AH.UnderVendor(s, AH.SellPrice(s))
-  line:SetText(under and "Under vendor price" or AH.SELL_LINES[#AH.SELL_LINES])
+  line:SetText(under and L["Under vendor price"] or AH.SELL_LINES[#AH.SELL_LINES])
   T.Color(line, under and "bad" or "text2")
   T.Color(line.value, under and "bad" or "accentText")
 end
@@ -669,7 +676,7 @@ local function paintListing(r, l)
   r.icon:SetTexture(nil)
   r.name:SetText("")
   r.cells.price:SetText(AP.Money(l.unit))
-  r.cells.qty:SetText("x " .. l.qty)
+  r.cells.qty:SetText(ns.Format(L["x {count}"], { count = l.qty }))
   r.cells.time:SetText(l.time)
   r.flag:SetShown(l.mine)
 end
@@ -677,9 +684,9 @@ end
 -- The Up now card's status line: what to do without a sale (an empty-state line: the table's second
 -- return), "searching..." until its price check answers, "none up" when it found nothing.
 local function upStatus(s)
-  if not s then return "Put an item on the Sell card to see what's up now.", true end
+  if not s then return L["Put an item on the Sell card to see what's up now."], true end
   if #(s.rows or {}) > 0 then return "" end
-  return s.searched and "none up" or "searching..."
+  return s.searched and L["none up"] or L["searching..."]
 end
 
 -- The listings up now for the sale (none without one), from the table's scroll offset.
@@ -700,7 +707,7 @@ end
 -- Post: on when the next stack can go up (why nil), or as Confirm while the game asks to confirm one.
 local function paintPost(c, s, why)
   local asking = AH.Pending(s) ~= nil
-  c.post.text:SetText(asking and "Confirm" or "Post")
+  c.post.text:SetText(asking and L["Confirm"] or L["Post"])
   enable(c.post, why == nil or asking)
 end
 
@@ -748,7 +755,7 @@ end
 
 -- The undercut rule (live), and the card repainted with it.
 local function undercutRow(c)
-  c.undercut = W.Choice(c, "Undercut by", AH.UNDERCUT_CHOICES, function() return AH.settings.undercut end,
+  c.undercut = W.Choice(c, L["Undercut by"], AH.UNDERCUT_CHOICES, function() return AH.settings.undercut end,
     function(v) AH.settings.undercut = v AH.PaintSell() end, AH.WIDTH - 2 * AH.PAD - 2 * AH.INSET)
   c.undercut:SetPoint("TOPLEFT", 0, -78)
 end
@@ -767,7 +774,7 @@ end
 
 -- A Max button after the form's box `name`, as tall as the box (T.CONTROL_H).
 local function maxButton(c, name)
-  local b = W.Button(c, "Max", function() AH.TypeForm(name, nil, true) end, 36)
+  local b = W.Button(c, L["Max"], function() AH.TypeForm(name, nil, true) end, 36)
   b:SetHeight(T.CONTROL_H)
   b:SetPoint("LEFT", c[name], "RIGHT", T.SPACE.tight, 0)
   c[name .. "Max"] = b
@@ -777,14 +784,14 @@ end
 -- number of stacks, with the bid beside it (an item's only, so a commodity leaves no empty row);
 -- the price with its per unit / per stack toggle.
 local function sellForm(c)
-  field(c, "qty", "Quantity", 0, 1, AH.LABEL_W, 60)
+  field(c, "qty", L["Quantity"], 0, 1, AH.LABEL_W, 60)
   maxButton(c, "qty")
-  field(c, "stack", "Stack", 0, 2, AH.LABEL_W, 60)
+  field(c, "stack", L["Stack"], 0, 2, AH.LABEL_W, 60)
   maxButton(c, "stack")
-  field(c, "stacks", "Stacks", 0, 3, AH.LABEL_W, 60)
-  field(c, "bid", "Bid", 128, 3, 28, 100)
-  field(c, "price", "Price", 0, 4, AH.LABEL_W, 110)
-  c.perStack = W.Button(c, "per unit", function() AH.TogglePerStack() end, 70)
+  field(c, "stacks", L["Stacks"], 0, 3, AH.LABEL_W, 60)
+  field(c, "bid", L["Bid"], 128, 3, 28, 100)
+  field(c, "price", L["Price"], 0, 4, AH.LABEL_W, 110)
+  c.perStack = W.Button(c, L["per unit"], function() AH.TogglePerStack() end, 70)
   c.perStack:SetHeight(T.CONTROL_H)
   c.perStack:SetPoint("LEFT", c.price, "RIGHT", T.SPACE.tight, 0)
 end
@@ -807,11 +814,11 @@ end
 -- item's history line (Modules/AuctionLedger.lua) under that.
 local function postRow(c)
   local y = AH.FORM_Y - 4 * AH.FORM_ROW - 32
-  c.post = W.Primary(c, "Post", function() AH.Post() end, 60)
+  c.post = W.Primary(c, L["Post"], function() AH.Post() end, 60)
   c.post:SetPoint("TOPRIGHT", 0, y)
-  c.stop = W.Button(c, "Stop", function() AH.StopSelling() end, 44)
+  c.stop = W.Button(c, L["Stop"], function() AH.StopSelling() end, 44)
   c.stop:SetPoint("RIGHT", c.post, "LEFT", -T.SPACE.tight, 0)
-  c.skip = W.Button(c, "Skip", function() AH.SkipStack() end, 44)
+  c.skip = W.Button(c, L["Skip"], function() AH.SkipStack() end, 44)
   c.skip:SetPoint("RIGHT", c.stop, "LEFT", -T.SPACE.tight, 0)
   c.status, c.historyLine = smallLine(c, y - 6), smallLine(c, y - 30)
 end
@@ -838,7 +845,7 @@ end
 -- (yours flagged in the accent; a click takes a price; the wheel scrolls, and near the end the
 -- next page is asked for), with Your history in its place on a toggle (Modules/AuctionLedger.lua).
 function AH.BuildUp(column, h)
-  local c = AH.Card(column, "Up now", -AH.PAD, h)
+  local c = AH.Card(column, L["Up now"], -AH.PAD, h)
   AH.upCard = c
   c.table = AH.Table(c, AH.UP_COLUMNS, AH.LIST_ROWS, { flag = "accent", paintRow = paintListing, onClick = AH.ClickListing, onNear = moreListings })
   AH.TableUnder(c.table, c)
@@ -848,7 +855,7 @@ end
 -- The sell card (h tall): the slot, its lines, the undercut rule, the form, the length, the
 -- posting line and the history line.
 function AH.BuildSell(f, h)
-  local c = AH.Card(f, "Sell", -AH.PAD, h)
+  local c = AH.Card(f, L["Sell"], -AH.PAD, h)
   AH.sellCard = c
   sellSlot(c)
   sellLines(c)

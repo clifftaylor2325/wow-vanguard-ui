@@ -5,6 +5,7 @@
 -- (Errands.lua): this window only edits the list, so it works in a fight as well as out of one.
 
 local ADDON, ns = ...
+local L = ns.L
 
 local T, W = ns.Theme, ns.Widgets
 
@@ -22,9 +23,9 @@ SW.AMOUNT_W, SW.REMOVE_W, SW.ICON = 64, 88, 32
 SW.LINE_H, SW.SLOT_H = 18, 48
 -- What a dragged item is added with when the client doesn't know its stack size yet.
 SW.DEFAULT_AMOUNT = 20
-SW.NOTE = "Bought from merchants up to these amounts when you visit one. This character only."
-SW.EMPTY = "Nothing on your list yet. Drag an item onto the slot below."
-SW.NOT_SEEN = "where to buy: not seen yet"
+SW.NOTE = L["Bought from merchants up to these amounts when you visit one. This character only."]
+SW.EMPTY = L["Nothing on your list yet. Drag an item onto the slot below."]
+SW.NOT_SEEN = L["where to buy: not seen yet"]
 
 -- The list's width: the window's less its pads and the thumb's room.
 local LIST_W = SW.WIDTH - 2 * SW.PAD - SW.THUMB_ROOM
@@ -100,7 +101,7 @@ end
 
 -- A row's Remove button, at its right edge.
 local function removeButton(row)
-  row.remove = ns.DialogButton(row, "Remove", SW.REMOVE_W)
+  row.remove = ns.DialogButton(row, L["Remove"], SW.REMOVE_W)
   row.remove:SetPoint("RIGHT", -T.SPACE.tight, 0)
   row.remove:SetScript("OnClick", ns.Guard("click stock remove", function(self) SW.Remove(self:GetParent().id) end))
 end
@@ -162,9 +163,9 @@ local function labels(f)
   f.note = note(f, SW.NOTE, "label", SW.PAD, ns.DIALOG.head)
   f.note:SetWidth(SW.WIDTH - 2 * SW.PAD)
   f.note:SetJustifyH("LEFT")
-  note(f, "Item", "small", SW.PAD + SW.ICON + T.SPACE.tight + T.SPACE.gap, ns.DIALOG.head + SW.LINE_H)
+  note(f, L["Item"], "small", SW.PAD + SW.ICON + T.SPACE.tight + T.SPACE.gap, ns.DIALOG.head + SW.LINE_H)
   local carry = LIST_W - T.SPACE.tight - SW.REMOVE_W - T.SPACE.gap - SW.AMOUNT_W
-  note(f, "Carry", "small", SW.PAD + carry, ns.DIALOG.head + SW.LINE_H)
+  note(f, L["Carry"], "small", SW.PAD + carry, ns.DIALOG.head + SW.LINE_H)
 end
 
 -- The scrolling rows (made as they are needed) and the line an empty list shows instead.
@@ -193,30 +194,30 @@ end
 local function slotText(f)
   f.slotText = T.Text(f:CreateFontString(nil, "OVERLAY"), "label", "text")
   f.slotText:SetPoint("TOPLEFT", f.slot, "TOPRIGHT", T.SPACE.col, -T.SPACE.tight)
-  f.slotText:SetText("Add an item: drag one from your bags onto this slot")
+  f.slotText:SetText(L["Add an item: drag one from your bags onto this slot"])
   f.slotHint = T.Text(f:CreateFontString(nil, "OVERLAY"), "small", "muted")
   f.slotHint:SetPoint("BOTTOMLEFT", f.slot, "BOTTOMRIGHT", T.SPACE.col, T.SPACE.tight)
-  f.slotHint:SetText(string.format("It is added with one stack (or %d); change the amount in its row.", SW.DEFAULT_AMOUNT))
+  f.slotHint:SetText(ns.Format(L["It is added with one stack (or {count}); change the amount in its row."], { count = SW.DEFAULT_AMOUNT }))
 end
 
 -- Clear list asks first (it can't be undone), then empties the list.
 function SW.AskClear()
   if next(ER.StockList()) == nil then return end
-  ns.Ask("Clear your Keep stocked list?", "Clear list", ER.ClearStock, nil, "danger")
+  ns.Ask(L["Clear your Keep stocked list?"], L["Clear list"], ER.ClearStock, nil, "danger")
 end
 
 -- The footer: Clear list at the far left, Done (the list saves as you go) at the right.
 local function footer(f)
-  f.clear = ns.DialogButton(f, "Clear list", nil, "danger")
+  f.clear = ns.DialogButton(f, L["Clear list"], nil, "danger")
   f.clear:SetPoint("BOTTOMLEFT", SW.PAD, SW.PAD)
   f.clear:SetScript("OnClick", ns.Guard("click stock clear", SW.AskClear))
-  f.done = W.Primary(f, "Done", function() f:Hide() end)
+  f.done = W.Primary(f, L["Done"], function() f:Hide() end)
   f.done:SetPoint("BOTTOMRIGHT", -SW.PAD, SW.PAD)
 end
 
 -- Builds the window once: a dialog (its X and Escape close it).
 local function build()
-  local f = ns.Dialog("Vanguard_StockList", SW.WIDTH, SW.HEIGHT, "Keep stocked")
+  local f = ns.Dialog("Vanguard_StockList", SW.WIDTH, SW.HEIGHT, L["Keep stocked"])
   labels(f)
   rows(f)
   addSlot(f)
@@ -232,7 +233,7 @@ end
 
 -- Opens the window (Errands must be on), built on first use.
 function SW.Open()
-  if not ER.settings then return ns.Chat("Errands is off (/vg > Modules).") end
+  if not ER.settings then return ns.Chat(L["Errands is off (/vg > Modules)."]) end
   if not SW.frame then
     SW.frame = build()
     ns.On("GET_ITEM_INFO_RECEIVED", refreshSoon)
