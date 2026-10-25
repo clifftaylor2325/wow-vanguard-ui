@@ -29,6 +29,8 @@ const LOOT = (done) => `
 const rows = (addon) => addon.eval(`local out = {} for i, r in ipairs(ns.GetModule("OfficerLoot").Rows()) do out[i] = { r[1], r[2] } end return out`);
 // Presses the card's button with this label.
 const press = (addon, label) => addon.eval(`for _, r in ipairs(ns.GetModule("OfficerLoot").Rows()) do if r[2] == ${JSON.stringify(label)} then r[3]() end end`);
+// The yes/no question: whether it shows, and its text.
+const question = (addon) => addon.eval("local f = Vanguard_Question return { f:IsShown(), f.title:GetText() }");
 // The names on the roll tracker's lines.
 const names = (addon) => lines(addon).map((x) => x[0]);
 
@@ -54,7 +56,13 @@ it("add, list, remove and clear keep reserves on the character, by name or item 
   expect(addon.eval("return #VanguardCharDB.lootReserves"), "kept on the character").toBe(3);
   expect(say(addon, "loot remove Jaina cloak")).toMatch(/Removed/);
   expect(say(addon, "loot remove Nobody cloak")).toMatch(/No such reserve/);
-  expect(say(addon, "loot clear")).toMatch(/Forgot 2/);
+  say(addon, "loot clear");
+  expect(question(addon), "clear asks first, naming what goes").toEqual([true, "Forget all 2 reserve(s) on this character? This can't be undone."]);
+  addon.click("Vanguard_Question.no");
+  expect(addon.eval("return #VanguardCharDB.lootReserves"), "No keeps them").toBe(2);
+  say(addon, "loot clear");
+  addon.click("Vanguard_Question.confirm");
+  expect(chatHas(addon, /Forgot 2/), "Clear forgets them").toBe(true);
   expect(say(addon, "loot list"), "empty").toMatch(/No reserves yet/);
   expect(addon.eval("return ns.GetModule('OfficerLoot').Item('   ') == nil"), "blank item").toBe(true);
   expect(addon.eval("return ns.GetModule('OfficerLoot').Remove('x', '  ')"), "blank item removes nothing").toBe(0);
@@ -110,6 +118,8 @@ it("the list goes in the chat box for the party or raid on a click, in parts, an
   expect(chatHas(bare, /Soft reserves: Boots: Thrall/), "printed instead").toBe(true);
   press(bare, "Print the reserve list to my chat");
   press(bare, "Clear every reserve");
+  expect([question(bare)[0], chatHas(bare, /Forgot 1/)], "the button asks first").toEqual([true, false]);
+  bare.click("Vanguard_Question.confirm");
   expect(chatHas(bare, /Forgot 1/)).toBe(true);
 });
 
