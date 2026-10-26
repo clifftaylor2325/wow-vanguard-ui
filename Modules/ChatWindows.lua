@@ -120,7 +120,8 @@ local function floatingMover(window)
   local frame, key = window.frame, "chat" .. window.index
   local point, _, relPoint, x, y = frame:GetPoint(1)
   if not point then return end
-  ns.Mover(frame, key, ns.Format(L["Chat: {tab}"], { tab = window.name }), { point, relPoint, x, y })
+  local m = ns.Mover(frame, key, ns.Format(L["Chat: {tab}"], { tab = window.name }), { point, relPoint, x, y })
+  m.insets = ns.GetModule("Chat").ClampInsets(frame)
   pinTo(frame, key)
 end
 

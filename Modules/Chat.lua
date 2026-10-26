@@ -219,6 +219,15 @@ local function topInset(frame)
   return type(strip) == "table" and ns.PlainNumber(strip:GetHeight()) or 0
 end
 
+-- The clamp insets for a chat window's unlock handle (left, right, top, bottom): the side buttons' or the
+-- minimize column's room to the left; to the right the scroll column and the button stack's room (the
+-- game moves the buttons right when the window is nearer that edge); above, the bar and the Combat
+-- Log's filter strip; below, the edit box (a gap, then its height, under the window's gap).
+function CH.ClampInsets(frame)
+  local tight = T.SPACE.tight
+  return { -(tight + CH.STACK_ROOM), CH.SIDE_COLUMN + tight + CH.STACK_ROOM, CH.BAR + topInset(frame), -(CH.BAR + 2 * tight) }
+end
+
 -- Anchors a frame to the panel's footprint round a chat window: a gap out, the bar's height (and the
 -- filter strip's, on the Combat Log) above, the scroll column to the right.
 local function pinFootprint(f, frame)
@@ -966,9 +975,7 @@ function CH.Place()
   local frame = _G.ChatFrame1
   if not CH.settings.place or type(frame) ~= "table" then return end
   local m = ns.Mover(frame, "chat", L["Chat"], { "BOTTOMLEFT", "BOTTOMLEFT", CH.SPOT[1], CH.SPOT[2] })
-  -- The handle's clamp reaches over the side buttons, the scroll column, the tab bar and the edit box, so a
-  -- drag to an edge keeps them on the screen.
-  m.insets = { -(T.SPACE.tight + CH.STACK_ROOM), CH.SIDE_COLUMN + T.SPACE.tight, CH.BAR, -(CH.BAR + T.SPACE.tight) }
+  m.insets = CH.ClampInsets(frame)
   pinChat(frame)
 end
 

@@ -2522,6 +2522,12 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: Check undercuts is as wide as its label; Cancel next undercut takes the room between the line beside the heading and Check undercuts, its label shrinking a little in a long language, never over the line; the Lists pane's six buttons are two to a row in three rows and show Umbenennen, Переименовать and Копировать whole; the pane lists two fewer entries than before; the filter dialog is a little wider and "Quality" is one line beside its dropdown; + Add shows its whole label in every place along the mail panel's bottom (the preset buttons are a little narrower) and stays inside the panel. [Needs in-game check: all of it.]
 - If it fails, paste: a screenshot of the toolbar, pane, dialog or panel, the game's language, and `/vg errors`.
 
+### 33.76 Chat handles at the screen's edges
+
+- Do: `/vg unlock`, drag the chat handle against the bottom edge, then into the bottom-right corner and `/reload`. Turn on Chat → Move floating windows with /vg unlock (reload), pull the Combat Log (or a Loot window) out of the dock, and drag its handle to the top-left corner.
+- Expect: at the bottom edge the handle stops with the edit box's bottom on the screen's edge (press Enter to see it); parked at the right, the side buttons the game moves to the right of the window stay in view after the reload; a floating window's tab bar (and the Combat Log's filter strip above it) and its minimize tile stay on the screen at the top and left edges. [Needs in-game check: that the handle stops there, in the direction the insets use (negative left and bottom, positive right and top).]
+- If it fails, paste: a screenshot with the handle at the edge, and `/vg errors`.
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ## When you are done

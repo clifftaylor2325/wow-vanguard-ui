@@ -643,7 +643,8 @@ it("chat's unlock handle is clamped past the window, so a drag to an edge keeps 
     ns.PlaceMover("chat")`);
   const CH = addon.eval("local CH, T = ns.GetModule('Chat'), ns.Theme return { CH.STACK_ROOM, CH.SIDE_COLUMN, CH.BAR, T.SPACE.tight }");
   const [stack, column, bar, tight] = CH;
-  expect(addon.eval("return __h.__testInsets"), "left past the side buttons, right past the scroll column, up past the tab bar, down past the edit box").toEqual([-(tight + stack), column + tight, bar, -(bar + tight)]);
+  expect(addon.eval("return __h.__testInsets"), "left past the side buttons, right past the scroll column and the stack the game puts there when the window is nearer that edge, up past the tab bar, down past the edit box (its gap, then its height, under the window's gap)").toEqual([-(tight + stack), column + tight + stack, bar, -(bar + 2 * tight)]);
+  expect(addon.eval("return ns.GetModule('Chat').ClampInsets(ChatFrame1)"), "the same table comes from CH.ClampInsets").toEqual([-(tight + stack), column + tight + stack, bar, -(bar + 2 * tight)]);
 });
 it("chat is a mover: placed once, sized once, kept where the player put it", () => {
   const addon = loggedIn(UI_ENV + TIDY_ENV);
