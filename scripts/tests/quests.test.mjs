@@ -123,6 +123,14 @@ it("quest dialog: a long greeting or quest text scrolls, a short one does not", 
   addon.fire("QUEST_DETAIL");
   expect([panelHeights(addon), bodyScroll(addon)], "a quest's text and its objectives (24 + 14 px lines) count too; the choices' row and the reward's row (8 + 36 + 8 + 36 px) leave the body 158 px").toEqual([[360, 158], [278, 120, 0]]);
 });
+it("quest dialog: on a short screen its default spot stops it growing above the top", () => {
+  const addon = loggedIn(QUEST_ENV + "__wfgStub.setScreen(835, 668)");
+  addon.eval('__greeting = "TEST-ONLY " .. string.rep("word ", 400)');
+  addon.fire("GOSSIP_SHOW");
+  const rect = addon.frame("Vanguard_QuestDialog").rect;
+  expect(rect.top, "the header is not above the screen's top (668)").toBeLessThanOrEqual(668);
+  expect(rect.height, "it still grows past its least height").toBeGreaterThan(160);
+});
 it("quest dialog: sized to its page, above the cast bars, cards under the text, a quest mark without a portrait", () => {
   const addon = loggedIn(QUEST_ENV);
   addon.fire("QUEST_DETAIL");
