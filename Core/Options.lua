@@ -584,8 +584,13 @@ local function openFeedback(kind)
   return function() O.Hide(); ns.Feedback.Open(kind) end
 end
 
--- Feedback: the in-game form for a bug or an idea, and the plain /vg report.
-local function feedbackRows()
+-- Shows one of Vanguard's community links (ns.Feedback.COMMUNITY) in the copy box, titled with how to use it.
+local function copyLink(title, key)
+  return function() ns.ShowText(title, ns.Feedback.COMMUNITY[key]) end
+end
+
+-- Feedback: the in-game form for a bug or an idea and the plain /vg report.
+local function feedbackFormRows()
   return {
     { "header", L["Feedback"] },
     { "text", L["A bug or an idea? The form asks what vanguardui.com/feedback asks, then makes one block to paste there; the site's form fills itself from it (/vg feedback does the same)."] },
@@ -595,6 +600,21 @@ local function feedbackRows()
     { "text", L["What /vg status and /vg errors say, in one block to paste into the site's report box by hand (/vg report)."] },
     { "button", L["Copy a report"], function() SlashCmdList.VANGUARD("report") end },
   }
+end
+
+-- Feedback, part two: the Discord server and the X account, each copied to paste into a browser.
+local function communityRows()
+  return {
+    { "header", L["Community"] },
+    { "text", ns.Format(L["News, help and other players: Vanguard's Discord server, and {handle} on X. Copy a link, then paste it into your browser."], { handle = ns.Feedback.COMMUNITY.handle }) },
+    { "button", L["Copy Discord invite"], copyLink(L["Vanguard on Discord: Ctrl+C, then paste into your browser"], "discord") },
+    { "button", L["Copy X link"], copyLink(L["Vanguard on X: Ctrl+C, then paste into your browser"], "x") },
+  }
+end
+
+-- Feedback: the form and the report, then the community links.
+local function feedbackRows()
+  return append(feedbackFormRows(), communityRows())
 end
 
 -- Pages: key, title, nav icon (Media/Icons) and order in the nav (groups: under 30, under 90, the rest).

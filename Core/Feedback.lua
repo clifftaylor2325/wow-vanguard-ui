@@ -17,6 +17,10 @@ ns.Feedback = FB
 FB.START, FB.END = "### Vanguard feedback v1 ###", "### end feedback ###"
 FB.TITLE = L["Vanguard feedback: Ctrl+C, then paste at vanguardui.com/feedback"]
 
+-- Where players find Vanguard outside the game: the Discord server's permanent invite and the X account.
+-- An addon can't open a web page, so the options window's Feedback page puts each in the copy box.
+FB.COMMUNITY = { discord = "https://discord.gg/8ChnJfyww", x = "https://x.com/WowVanguardUI", handle = "@WowVanguardUI" }
+
 -- The site's limits: field -> { least, most } characters (least 0: optional).
 local LIMITS = { title = { 8, 100 }, did = { 1, 2000 }, expected = { 0, 1000 }, happened = { 1, 2000 }, want = { 1, 2000 }, why = { 1, 2000 } }
 -- The texts each kind checks, in the site's order, with the name its messages use.
