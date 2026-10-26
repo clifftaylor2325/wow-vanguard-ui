@@ -92,7 +92,9 @@ local TILE_W, TILE_H, TILE_GAP = 100, 48, 16
 -- The look step's rows, down the page from its top (negative), and the steps between them: the switches stack
 -- one check row apart (W.ROW_HEIGHT), the swatches sit this far apart across, and the move step's lines a gap apart.
 local LOOK_Y = { swatches = -20, styleCaption = -62, tiles = -82, switches = -154 }
-local STEP = { swatchAcross = 34, switchDown = W.ROW_HEIGHT, moveLineGap = T.SPACE.gap }
+-- skipWidth: the room left of Back on the footer (120 is a dialog button's default width), so a long Skip label fits.
+local STEP = { swatchAcross = 34, switchDown = W.ROW_HEIGHT, moveLineGap = T.SPACE.gap,
+  skipWidth = PAGE_W - 2 * 120 - 2 * T.SPACE.gap }
 
 local frame
 -- Functions run each time setup ends, after it has locked the frames and saved (What's new waits for it).
@@ -754,7 +756,7 @@ local function controls(f)
   f.next:SetPoint("BOTTOMRIGHT", -PAD, PAD)
   f.back = W.Button(f, L["Back"], function() S.Back() end)
   f.back:SetPoint("RIGHT", f.next, "LEFT", -T.SPACE.gap, 0)
-  f.skip = W.Button(f, L["Skip setup"], function() complete(false) end)
+  f.skip = W.Button(f, L["Skip setup"], function() complete(false) end, STEP.skipWidth)
   f.skip:SetPoint("BOTTOMLEFT", PAD, PAD)
 end
 
