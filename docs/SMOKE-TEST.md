@@ -2522,6 +2522,12 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: Check undercuts is as wide as its label; Cancel next undercut takes the room between the line beside the heading and Check undercuts, its label shrinking a little in a long language, never over the line; the Lists pane's six buttons are two to a row in three rows and show Umbenennen, Переименовать and Копировать whole; the pane lists two fewer entries than before; the filter dialog is a little wider and "Quality" is one line beside its dropdown; + Add shows its whole label in every place along the mail panel's bottom (the preset buttons are a little narrower) and stays inside the panel. [Needs in-game check: all of it.]
 - If it fails, paste: a screenshot of the toolbar, pane, dialog or panel, the game's language, and `/vg errors`.
 
+### 33.64 Options: the own-switch note sits on the module name's line
+
+- Do: open `/vg` → Modules, switch on a module that has a switch of its own inside (Party pets and targets, Group threat, Chat history) and leave that inner switch off, in any language, and look at where the note sits in the row.
+- Expect: the note ("On, but its own switch is off (...)") is on the same line as the module's name, just after the name (or its "Reload to apply" tag), and the description stays free under it, never covered. [Needs in-game check: which of its two anchors the real client honours; the harness always follows the left one.]
+- If it fails, paste: a screenshot of the row, the game's language, and `/vg errors`.
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ## When you are done
