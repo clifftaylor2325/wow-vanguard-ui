@@ -3,7 +3,8 @@
 // cheapest of the wanted amount come to, at the TEST-ONLY auction house of the headless client.
 
 import { expect, it } from "vitest";
-import { chatHas, isTok, loggedIn } from "./helpers.mjs";
+import { createAddon } from "../lib/lua-harness.mjs";
+import { SETUP_DONE, chatHas, isTok, loggedIn } from "./helpers.mjs";
 
 // TEST-ONLY: a wall clock, a mage's runes and powder (Arcane Powder a commodity), Linen Cloth a
 // commodity, a TEST-ONLY blade (an item), and __carry(itemID, count) into bag 0.
@@ -185,4 +186,31 @@ it("a search that never answers still counts; a plain entry has no wanted amount
   expect(addon.eval(`return #${HELPER}.queue`), "nothing to price").toBe(queued);
   addon.slash("ah");
   expect(chatHas(addon, /prices clear, restock\./), "the help names restock").toBe(true);
+});
+
+it("the prep card's Buy list shows its whole label in real translations, and the title ends before it (B10-6)", () => {
+  for (const locale of ["enUS", "deDE", "frFR", "ruRU", "esES", "itIT", "ptBR"]) {
+    const addon = createAddon({ textFit: true, client: `__wfgWorld.locale = "${locale}"`, savedVariables: SETUP_DONE });
+    addon.eval(RESTOCK_ENV);
+    addon.login();
+    addon.world.setUnit("player", { class: "MAGE", level: 60 });
+    addon.slash("prep");
+    const card = `${PREP}.card`;
+    const label = addon.eval(`return ${card}.buy.text:GetText()`);
+    expect(addon.textFit(card).filter((f) => f.text === label), `${locale}: Buy list is not cut`).toEqual([]);
+    const place = addon.eval(`local c = ${card} return { c.buy:IsShown(), c.title:GetRight() <= c.buy:GetLeft(), c.buy:GetRight() <= c.close:GetLeft(), c.buy:GetLeft() > c:GetLeft() }`);
+    expect(place, `${locale}: the title ends before Buy list, which ends before the X, inside the card`).toEqual([true, true, true, true]);
+    const title = addon.eval(`return ${card}.title:GetText()`);
+    expect(addon.textFit(card).filter((f) => f.text === title && f.kind !== "cut"), `${locale}: the title only ever ends in an ellipsis`).toEqual([]);
+  }
+});
+
+it("the prep card's title keeps the room up to the X when Buy list is not offered (B10-6)", () => {
+  const off = createAddon({ savedVariables: SETUP_DONE + "VanguardDB.profiles = { Default = { modules = { AuctionHelper = false } } }" });
+  off.eval(RESTOCK_ENV);
+  off.login();
+  off.world.setUnit("player", { class: "MAGE", level: 60 });
+  off.slash("prep");
+  const card = `${PREP}.card`;
+  expect(off.eval(`local c = ${card} return { c.buy:IsShown(), math.abs(c.title:GetRight() - (c.close:GetLeft() - ns.Theme.SPACE.gap)) < 1 }`), "no Buy list: the title may run to the X").toEqual([false, true]);
 });

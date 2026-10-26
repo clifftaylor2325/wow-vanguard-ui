@@ -2630,6 +2630,12 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: at 100% the four steps (1 Item, 2 Preis, 3 Post, 4 Eingestellt) stand in one row; at the larger sizes the step that no longer fits starts a second row at the card's left, nothing runs past the card's right edge, and the line saying what to do next sits under the last row, clear of Your auctions. [Needs in-game check: the real font widths decide at which size each language wraps.]
 - If it fails, paste: a screenshot of the Sell card at 130%, and `/vg errors`.
 
+### 33.89 Instance prep card: Buy list in a long language
+
+- Do: set the game's language to Russian, then Spanish or French; carry less than the card asks of a reagent your class needs (with the Auction helper on) and type `/vg prep`.
+- Expect: Buy list shows its whole word beside the X, as wide as it needs; the title "Instance prep" in its translation ends before the button, with "..." where it does not fit, and never runs under it. [Needs in-game check: the real font widths of the title and the label.]
+- If it fails, paste: a screenshot of the card, and `/vg errors`.
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ## When you are done
