@@ -1593,3 +1593,19 @@ it("options: a nav entry's title stops short of the changed-setting dot and neve
   end return out`);
   expect(Object.values(bad), "every title is bound on the right by the dot").toEqual([]);
 });
+
+it("options: in Russian a module's own-switch note ends before its switch, in one line, and the tooltip says it in full (P2-4)", () => {
+  const addon = createAddon({ savedVariables: SETUP_DONE, textFit: true, client: '__wfgWorld.locale = "ruRU" __wfgStub.setScreen(835, 668)' });
+  addon.login();
+  addon.eval('ns.Options.Show("modules")');
+  // Every shown own-switch note that is not empty: its right edge against the switch's left edge, and whether it wraps.
+  const notes = addon.eval(`local out = {} for _, w in ipairs(__wfgStub.frames) do
+    if w.ownSwitch and w:IsVisible() and (w.ownSwitch.__text or "") ~= "" then
+      out[#out + 1] = { w.ownSwitch:GetRight() <= w.track:GetLeft() - ns.Theme.SPACE.gap + 0.5, w.ownSwitch.__noWrap == true } end end return out`);
+  expect(notes.length, "some linked module is on with its own switch off").toBeGreaterThan(0);
+  expect(notes.filter((n) => !n[0] || !n[1]), "no note reaches its switch, and none wraps").toEqual([]);
+  const tip = addon.eval(`for _, w in ipairs(__wfgStub.frames) do
+    if w.ownSwitch and w:IsVisible() and (w.ownSwitch.__text or "") ~= "" then
+      w.__scripts.OnEnter(w) local l = GameTooltip.__lines[2] and GameTooltip.__lines[2].text w.__scripts.OnLeave(w) return l == w.ownSwitch.__text end end`);
+  expect(tip, "the tooltip's second line is the whole note").toBe(true);
+});

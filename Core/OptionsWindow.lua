@@ -61,24 +61,34 @@ local function addDescription(r, text, width)
   r.desc:SetText(text)
 end
 
--- Places the own-switch note just after the row's reload tag (dressRow adds it once the row is built), or just after
--- the name as it measures now (a font change moves it) while there is no tag yet.
+-- Places the own-switch note's box just after the row's reload tag (dressRow adds it once the row is built), or just
+-- after the name as it measures now (a font change moves it) while there is no tag yet. The box ends a gap short of
+-- the switch, so the note (T.FitText) shrinks, then ends in "..." there (the row's tooltip says it in full).
 local function placeOwnSwitch(r)
-  if r.tag then r.ownSwitch:SetPoint("LEFT", r.tag, "RIGHT", T.SPACE.gap, 0) return end
-  r.ownSwitch:SetPoint("LEFT", r.label, "LEFT", r.label:GetStringWidth() + T.SPACE.gap, 0)
+  r.ownSwitchBox:SetPoint("RIGHT", r.track, "LEFT", -T.SPACE.gap, 0)
+  if r.tag then r.ownSwitchBox:SetPoint("LEFT", r.tag, "RIGHT", T.SPACE.gap, 0) return end
+  r.ownSwitchBox:SetPoint("LEFT", r.label, "LEFT", r.label:GetStringWidth() + T.SPACE.gap, 0)
+end
+
+-- The own-switch note: quiet small text on one line in a box that placeOwnSwitch keeps clear of the switch.
+local function makeOwnSwitch(r)
+  r.ownSwitchBox = CreateFrame("Frame", nil, r)
+  r.ownSwitchBox:SetHeight(1)
+  r.ownSwitch = T.FitText(T.Text(r:CreateFontString(nil, "OVERLAY"), "small", "muted"), r.ownSwitchBox, 0)
+  r.ownSwitch:SetJustifyH("LEFT")
 end
 
 -- Beside a module's name, a quiet note while the module is on but its own switch inside is off (O.OwnSwitchNote).
 local function addOwnSwitchNote(r, name)
   if not O.MODULE_LINKS[name] then return end
-  r.ownSwitch = T.Text(r:CreateFontString(nil, "OVERLAY"), "small", "muted")
+  makeOwnSwitch(r)
   local refresh = r.Refresh
   -- The switch's own refresh, then the note, read again each time (the own switch is on another page), placed after
-  -- the name and its tag.
+  -- the name and its tag (before the text, which is fitted to the box as it is placed).
   r.Refresh = function(self)
     refresh(self)
-    self.ownSwitch:SetText(O.OwnSwitchNote(name) or "")
     placeOwnSwitch(self)
+    self.ownSwitch:SetText(O.OwnSwitchNote(name) or "")
   end
   r:Refresh()
 end
@@ -295,15 +305,21 @@ local function addNote(w, row)
   w:Refresh()
 end
 
+-- Shows a row's tip, then its own-switch note (while it has one) as a second line: the note on the row may be cut
+-- short beside a long name, and here it reads in full.
+local function showRowTip(w, row)
+  if not GameTooltip then return end
+  GameTooltip:SetOwner(w, "ANCHOR_RIGHT")
+  GameTooltip:SetText(row.tip, nil, nil, nil, nil, true)
+  local note = w.ownSwitch and w.ownSwitch:GetText() or ""
+  if note ~= "" then GameTooltip:AddLine(note, T.RGB("text2")) end
+  GameTooltip:Show()
+end
+
 -- Gives a row that carries a tip (row.tip) that tip as its tooltip on hover.
 local function addTip(w, row)
   if not row.tip then return end
-  w:HookScript("OnEnter", ns.Guard("show row tip", function()
-    if not GameTooltip then return end
-    GameTooltip:SetOwner(w, "ANCHOR_RIGHT")
-    GameTooltip:SetText(row.tip, nil, nil, nil, nil, true)
-    GameTooltip:Show()
-  end))
+  w:HookScript("OnEnter", ns.Guard("show row tip", function() showRowTip(w, row) end))
   w:HookScript("OnLeave", ns.Guard("hide row tip", hideNote))
 end
 

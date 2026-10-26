@@ -24,7 +24,7 @@ it("options: a module's switch wears a Reload to apply tag, with the own-switch 
   addon.eval('ns.Options.Show("modules")');
   const tagged = addon.eval(`${FIND("Chat history")} return { w ~= nil, w.tag and w.tag.__text, w.tag and w.tag:IsShown() }`);
   expect(tagged, "the switch says it needs a reload").toEqual([true, "Reload to apply", true]);
-  const note = addon.eval(`${FIND("Chat history")} local p = w.ownSwitch.__points.LEFT return { p.rel == w.tag, p.relPoint }`);
+  const note = addon.eval(`${FIND("Chat history")} local p = w.ownSwitchBox.__points.LEFT return { p.rel == w.tag, p.relPoint }`);
   expect(note, "the own-switch note sits after the tag, not over it").toEqual([true, "RIGHT"]);
   const tip = addon.eval(`${FIND("Chat history")} w.__scripts.OnEnter(w) local t = GameTooltip.__lines[1] and GameTooltip.__lines[1].text w.__scripts.OnLeave(w) return t`);
   expect(tip, "hovering the switch says when it takes effect").toBe("Takes effect after /reload.");
