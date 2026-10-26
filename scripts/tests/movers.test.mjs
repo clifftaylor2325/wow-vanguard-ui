@@ -120,21 +120,33 @@ it("per-frame scale: dragging a scaled handle, and combat", () => {
   addon.slash("unlock");
   addon.slash("snap off");
   addon.eval('for _, w in ipairs(__wfgStub.frames) do if w.mover and w.mover.key == "box" then __h = w end end');
-  expect(addon.eval("return { __h:GetScale(), __h:GetWidth() }"), "the handle takes the frame's scale and size").toEqual([2, 200]);
+  expect(addon.eval("return { __h:GetScale(), __h:GetWidth(), __h:GetHeight() }"), "the handle stays at UIParent's scale, as big as the frame is on screen").toEqual([1, 400, 80]);
   addon.eval('__h:GetScript("OnDragStart")(__h) __h:ClearAllPoints() __h:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 10, -20) __h:GetScript("OnDragStop")(__h)');
-  expect(addon.eval("return { ns.MoverPoint('box') }"), "a drop is saved in screen units (twice the handle's own)").toEqual(["TOPLEFT", "TOPLEFT", 20, -40]);
-  expect([addon.frame("TESTONLY_Box").rect.left, addon.frame("TESTONLY_Box").rect.top], "and the frame lands where the handle was dropped").toEqual([20, 1040]);
+  expect(addon.eval("return { ns.MoverPoint('box') }"), "a drop is saved as dropped").toEqual(["TOPLEFT", "TOPLEFT", 10, -20]);
+  expect([addon.frame("TESTONLY_Box").rect.left, addon.frame("TESTONLY_Box").rect.top], "and the frame lands where the handle was dropped").toEqual([10, 1060]);
   addon.eval("__h.GetLeft = function() return nil end");
   addon.eval('__h:GetScript("OnDragStart")(__h) __h:ClearAllPoints() __h:SetPoint("TOP", UIParent, "TOP", 5, -10) __h:GetScript("OnDragStop")(__h)');
-  expect(addon.eval("return { ns.MoverPoint('box') }"), "without geometry, the client's point is scaled to screen units too").toEqual(["TOP", "TOP", 10, -20]);
+  expect(addon.eval("return { ns.MoverPoint('box') }"), "without geometry, the client's point is saved as it is").toEqual(["TOP", "TOP", 5, -10]);
   addon.eval('ns.SetMoverScale("box", 1.5)');
-  expect(addon.eval("return __h:GetScale()"), "a new scale rescales the handle").toBe(1.5);
+  expect(addon.eval("return { __h:GetScale(), __h:GetWidth() }"), "a new scale resizes the handle, not rescales it").toEqual([1, 300]);
   addon.slash("lock");
   setCombat(addon, true);
   addon.eval('ns.SetMoverScale("box", 0.5)');
   expect([addon.eval("return __box:GetScale()"), addon.eval("return (ns.MoverLook('box'))")], "in combat the scale is saved and waits").toEqual([1.5, 0.5]);
   setCombat(addon, false);
   expect(addon.eval("return __box:GetScale()"), "and applies when combat ends").toBe(0.5);
+});
+
+it("handles stay readable and grabbable at any Scale %: their label keeps its size and a thin frame's handle its 40 x 14 minimum", () => {
+  const addon = loggedIn(BOX + "__thin = CreateFrame('Frame', 'TESTONLY_Thin', UIParent) __thin:SetSize(240, 10) ns.Mover(__thin, 'thin', 'TEST-ONLY thin', { 'BOTTOM', 'BOTTOM', 0, 300 })");
+  addon.eval('ns.SetMoverScale("box", 0.5) ns.SetMoverScale("thin", 0.5)');
+  addon.slash("unlock");
+  // A handle's scale against UIParent's, its width and height, and its label's scale against UIParent's.
+  const handle = (key) => addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.mover and w.mover.key == "${key}" then return { w:GetEffectiveScale() / UIParent:GetEffectiveScale(), w:GetWidth(), w:GetHeight(), w.label:GetEffectiveScale() / UIParent:GetEffectiveScale() } end end`);
+  expect(handle("box"), "50%: drawn at UIParent's scale, as big as the frame is on screen (100 x 20), the label at full size").toEqual([1, 100, 20, 1]);
+  expect(handle("thin"), "a 120 x 5 frame's handle is still 120 wide and at least 14 tall").toEqual([1, 120, 14, 1]);
+  addon.eval('ns.SetMoverScale("box", 2)');
+  expect(handle("box"), "200%: the label is not doubled").toEqual([1, 400, 80, 1]);
 });
 
 it("a damaged saved position (a hand-edited profile string) falls back to the default spot instead of failing the module", () => {
