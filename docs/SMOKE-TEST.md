@@ -2546,6 +2546,12 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: the last quest and the "Show fewer" button end above the menu strip's top (and above action bars 1 to 3 on the narrow window), none drawn under the bags or the micro buttons, and clicking "Show fewer" works; hide the strip (Menu strip off) and the list runs lower again. [Needs in-game check: the real micro menu's width and that no menu button covers the "Show fewer" line.]
 - If it fails, paste: a screenshot of the tracker and strip, and `/vg errors`.
 
+### 33.80 Quest arrow: title over the distance at larger Text sizes
+
+- Do: with the quest arrow showing, look at it at Text size 100%, 125% and 150%, pinned (Shift-click a quest in the tracker) and free.
+- Expect: the quest title stands on the panel's middle line and the distance line hangs under it, with a clear gap at every size and both inside the panel; pinned, the title still stops short of the Pin button. [Needs in-game check: whether the two lines were already drawn over each other at 100% before this change, and how they sit now.]
+- If it fails, paste: a screenshot of the arrow at 100% and 150%, and `/vg errors`.
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ## When you are done
