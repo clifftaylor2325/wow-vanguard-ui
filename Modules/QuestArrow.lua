@@ -21,7 +21,7 @@ ns.QuestArrow = QA
 ns.Options.MODULE_INFO.QuestArrow = { L["Quest arrow"], L["A movable arrow on screen that turns toward the nearest unfinished quest objective, with its distance."] }
 
 -- The frame's size; seconds between redraws of the turn and distance; seconds between picks of the quest.
-QA.WIDTH, QA.HEIGHT, QA.DRAW, QA.PICK = 190, 44, 0.1, 1
+QA.WIDTH, QA.HEIGHT, QA.DRAW, QA.PICK = 212, 44, 0.1, 1
 -- A finished quest's distance (squared) is multiplied by this, so a turn-in outranks a near objective.
 QA.READY_BIAS = 0.25
 -- A challenger replaces the current quest only when its distance (squared) is under this share of the current one's.

@@ -57,6 +57,8 @@ GW.MOVE_PAGES = { LFGParentFrame = { "LFGListingFrame", "LFGBrowseFrame", "LFGWh
 -- there); a window without a title bar gets a strip `height` tall along its top, `left` in from its left
 -- edge (the portrait and its button) and `right` in from its right edge.
 GW.MOVE_STRIP = { trim = 40, height = 24, left = 58, right = 64 }
+-- How far (units) a bottom tab hangs below its window: the height of a PanelTabButtonTemplate tab.
+GW.MOVE_TAB_HANG = 32
 -- The game's calls that place its windows again; every moved window is put back after each.
 GW.MOVE_LAYOUTS = { "UpdateUIPanelPositions", "UpdateContainerFrameAnchors" }
 -- The windows the game lays out with a call of their own (not the panel manager's), by window.
@@ -294,10 +296,12 @@ local function dropHidden(frame)
   endDrag(frame)
 end
 
--- Makes a window movable and kept on the screen, dragged by its top edge.
+-- Makes a window movable and kept on the screen, dragged by its top edge. The clamp counts the panel Vanguard
+-- paints GW.PAD past every side and the tabs that hang below, so neither is dragged off the screen.
 local function makeMovable(frame, name)
   frame:SetMovable(true)
   frame:SetClampedToScreen(true)
+  frame:SetClampRectInsets(-GW.PAD, GW.PAD, GW.PAD, -(GW.PAD + GW.MOVE_TAB_HANG))
   frame:HookScript("OnMouseDown", ns.Guard("press " .. name, pressTop))
   frame:HookScript("OnMouseUp", ns.Guard("release " .. name, releaseTop))
   frame:HookScript("OnHide", ns.Guard("release " .. name, dropHidden))

@@ -175,6 +175,20 @@ it("quest guidance: quest-start pins on the world map, unless the game shows its
   expect(addon.eval("return ns.QuestGuide.pins.used"), "the map closed: nothing redrawn").toBe(0);
 });
 
+it("quest guidance: quest-start pins keep their size as the world map zooms, and follow a zoom", () => {
+  const zoom = "__scale = 2 WorldMapFrame.GetCanvasScale = function() return __scale end WorldMapFrame.OnCanvasScaleChanged = function() end";
+  const addon = loggedIn(QUESTS_ENV + ARROW_ENV + MAP_ENV + CLICK_LUA + zoom);
+  addon.eval("WorldMapFrame:Show()");
+  addon.update(0);
+  expect([addon.eval("return ns.QuestGuide.pins[1]:GetScale()"), pins(addon)[0]], "zoomed in twice: the pin is half its scale and its offset doubled, so it is the same size and spot").toEqual([0.5, [90071, 1000, -350]]);
+  addon.eval("__scale = 0.5 WorldMapFrame:OnCanvasScaleChanged()");
+  addon.update(0);
+  expect([addon.eval("return ns.QuestGuide.pins[1]:GetScale()"), pins(addon)[0]], "zoomed out: redrawn at once").toEqual([2, [90071, 250, -87.5]]);
+  addon.eval("__scale = { __secret = true } WorldMapFrame:OnCanvasScaleChanged()");
+  addon.update(0);
+  expect(addon.eval("return ns.QuestGuide.pins[1]:GetScale()"), "a scale the client hides counts as 1").toBe(1);
+});
+
 it("quest guidance: the quest-line answer and quest log changes redraw the pins without asking again", () => {
   const addon = loggedIn(QUESTS_ENV + ARROW_ENV + MAP_ENV + CLICK_LUA);
   addon.eval("WorldMapFrame:Show()");
