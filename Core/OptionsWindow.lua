@@ -592,17 +592,25 @@ local function navItem(nav, y, h)
   return b
 end
 
+-- A nav entry's changed-setting dot at its right edge, and its title between the icon and the dot (never past it).
+local function navTitle(b, title)
+  b.changed = W.Flat(b, "OVERLAY", "accent")
+  b.changed:SetSize(DOT, DOT)
+  b.changed:SetPoint("RIGHT", -T.SPACE.col, 0)
+  b.text = T.Text(b:CreateFontString(nil, "OVERLAY"), "label", "text2")
+  b.text:SetPoint("LEFT", b.icon, "RIGHT", T.SPACE.gap, 0)
+  b.text:SetPoint("RIGHT", b.changed, "LEFT", -T.SPACE.tight, 0)
+  b.text:SetJustifyH("LEFT")
+  b.text:SetWordWrap(false)
+  b.text:SetText(title)
+end
+
 -- Fills a nav entry with the page's icon and title; clicking opens the page.
 local function fillNavItem(b, page)
   b.icon = W.IconTexture(b, page.icon or "NavGeneral", NAV_ICON, "text2")
   b.icon:SetPoint("LEFT", T.SPACE.pad, 0)
-  b.text = T.Text(b:CreateFontString(nil, "OVERLAY"), "label", "text2")
-  b.text:SetPoint("LEFT", b.icon, "RIGHT", T.SPACE.gap, 0)
-  b.text:SetText(page.title)
+  navTitle(b, page.title)
   b:SetScript("OnClick", ns.Guard("click options page", function() O.Show(page.key) end))
-  b.changed = W.Flat(b, "OVERLAY", "accent")
-  b.changed:SetSize(DOT, DOT)
-  b.changed:SetPoint("RIGHT", -T.SPACE.col, 0)
 end
 
 -- Pages in nav order.

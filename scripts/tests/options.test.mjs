@@ -1534,3 +1534,13 @@ it("options: a switch whose caption wraps takes the whole row, so the caption an
   const tall = addon.eval(`local n = 0 for _, w in ipairs(__wfgStub.frames) do if w.source and w.source[1] == "check" and w:IsVisible() and w:GetHeight() > ns.Theme.ROW.height then n = n + 1 end end return n`);
   expect(tall, "a wrapped caption's row is taller than a one-line row").toBeGreaterThan(0);
 });
+
+it("options: a nav entry's title stops short of the changed-setting dot and never wraps", () => {
+  const addon = fitOptions();
+  addon.eval('ns.Options.Show("general")');
+  const bad = addon.eval(`local out = {} for key, b in pairs(Vanguard_Options.nav) do
+    local p = b.text.__points.RIGHT
+    if not (p and p.rel == b.changed and p.relPoint == "LEFT" and b.text.__noWrap and b.text:GetRight() <= b.changed:GetLeft()) then out[#out + 1] = key end
+  end return out`);
+  expect(Object.values(bad), "every title is bound on the right by the dot").toEqual([]);
+});
