@@ -184,13 +184,15 @@ local function applyLook(m)
   fade(m)
 end
 
--- Puts a mover's frame at its point, scale, size (one Vanguard may size) and opacity;
--- protected frames wait for combat to end.
+-- Puts a mover's frame at its point, scale, size (one Vanguard may size) and opacity, kept on the screen (a spot
+-- saved on a wider screen would otherwise leave it off the edge, away from its handle); protected frames wait
+-- for combat to end.
 local function place(m)
   ns.OutOfCombat(function()
     applyLook(m)
     ns.MoverLinks.Size(m)
     ns.MoverLinks.Remember(m.key, saved()[m.key])
+    m.frame:SetClampedToScreen(true)
     anchor(m.frame, m)
   end)
 end

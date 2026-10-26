@@ -409,3 +409,14 @@ it("narrow canvases: your buffs wrap in fewer columns, clear of the main tanks a
   expect([moved.perRow, moved.left], "dragged elsewhere, the block keeps its 12 to a row").toEqual([12, 20]);
 });
 
+it("a mover's frame is kept on the screen, so a spot saved on a wider screen can't leave it off the edge", () => {
+  const addon = loggedIn(`
+    __f = CreateFrame("Frame", nil, UIParent)
+    __f:SetSize(200, 40)
+    function __f:SetClampedToScreen(on) self.__testClamped = on end
+    ns.Mover(__f, "box", "TEST-ONLY box", { "CENTER", "CENTER", 0, 0 })
+  `);
+  expect(addon.eval("return __f.__testClamped"), "clamped when it is placed").toBe(true);
+  addon.eval("__f.__testClamped = nil ns.SetMoverPoint('box', 'LEFT', 'LEFT', 1150, 0)");
+  expect(addon.eval("return __f.__testClamped"), "and again when it moves").toBe(true);
+});
