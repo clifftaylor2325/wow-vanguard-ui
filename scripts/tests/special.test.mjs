@@ -33,6 +33,24 @@ it("special bars", () => {
   expect(addon.eval("local out = {} for _, m in ipairs(ns.MoverList()) do out[m.key] = true end return out.vehicleexit") === true, "it is movable").toBeTruthy();
 });
 
+it("pet and stance buttons take the theme's small font on their hotkey and count, as the action bars do", () => {
+  const addon = createAddon();
+  addon.eval(ACTIONS_ENV + BUTTONS_ENV + `
+    for _, b in ipairs({ PetActionButton3, StanceButton1 }) do
+      b.HotKey, b.Count = b:CreateFontString(), b:CreateFontString()
+    end
+    PetActionButton4.HotKey = "not a font string"`);
+  addon.login();
+  const look = addon.eval(`local out = {}
+    for i, b in ipairs({ PetActionButton3, StanceButton1 }) do
+      out[i] = { b.HotKey.__font[1], b.HotKey.__font[2], b.Count.__font[2], b.HotKey.__textColor ~= nil, b.Count.__textColor ~= nil }
+    end
+    return out`);
+  const small = addon.eval('return ns.Theme.RoleSize("small")');
+  expect(look.map((l) => [l[0].includes("Fira"), l[1], l[2], l[3], l[4]]), "both buttons: the theme font at the small role's size, coloured").toEqual([[true, small, small, true, true], [true, small, small, true, true]]);
+  expect(addon.eval("return ns.FrameState('vgSkinned')[PetActionButton4]"), "a button whose hotkey is no font string is still restyled").toBe(true);
+});
+
 it("pet and stance buttons keep the textures the client shows by state", () => {
   const addon = createAddon();
   addon.eval(ACTIONS_ENV + BUTTONS_ENV);

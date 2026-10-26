@@ -406,6 +406,10 @@ it("action bar cooldown numbers in the theme's font", () => {
   const addon = loggedIn(UNITS_ENV + ACTIONS_ENV);
   const cd = addon.eval(`local cd = Vanguard_Bar1Button1.cooldown local fs = cd:GetCountdownFontString() return { font = fs.__font, color = fs.__textColor }`);
   expect(cd.font[0].includes("SemiBold") && cd.font[1] === 14, "the client's countdown numbers use the theme's bold font").toBeTruthy();
+  const small = loggedIn(UNITS_ENV + ACTIONS_ENV, { savedVariables: "VanguardDB.profiles = { Default = { ActionBars = { size = 24 } } }" });
+  expect(small.eval("return Vanguard_Bar1Button1.cooldown:GetCountdownFontString().__font[2]"), "and on a 24 button, the aura timers' small 10 size").toBe(10);
+  small.eval('local AB = ns.GetModule("ActionBars") AB.settings.size = 36 AB.Layout(1)');
+  expect(small.eval("return Vanguard_Bar1Button1.cooldown:GetCountdownFontString().__font[2]"), "a bigger size puts the 14 back").toBe(14);
 });
 
 // TEST-ONLY: a client whose secure snippets fail to compile (the probe's call throws).

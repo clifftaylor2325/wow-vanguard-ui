@@ -562,6 +562,19 @@ it("a released player reads Ghost and a feigning hunter reads alive", () => {
   expect(text(), "feigning (the client calls it dead): the health shows").toBe("0");
 });
 
+it("an offline or dead unit's health bar goes dark, an online one keeps its class colour", () => {
+  const addon = loggedIn(UNITS_ENV + "__units.party1.dead = nil __units.party1.hp = 500 UnitIsConnected = function(unit) return unit ~= 'party1' end", NO_RAID);
+  // The party frame's health bar colour.
+  const color = () => ufState(addon, "party1").color;
+  expect(isTok(addon, color(), "darkBar"), "offline: the dark bar").toBe(true);
+  addon.eval("UnitIsConnected = function() return true end");
+  addon.fire("UNIT_CONNECTION", "party1");
+  expect(color()[0], "back online: the rogue's colour").toBe(1);
+  addon.eval("__units.party1.dead = true");
+  addon.fire("UNIT_HEALTH", "party1");
+  expect(isTok(addon, color(), "darkBar"), "dead: the dark bar").toBe(true);
+});
+
 it("a raid target icon sits on every unit frame's top edge, following the Raid target icons switch", () => {
   const addon = loggedIn(CLICK_LUA + UNITS_ENV + "__marks = { target = 8, party1 = 1 } GetRaidTargetIndex = function(unit) return __marks[unit] end", NO_RAID);
   // The raid icon on a unit frame: shown, its sheet cell, and where it sits.
