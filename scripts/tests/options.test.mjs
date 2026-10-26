@@ -1483,8 +1483,9 @@ it("options: a button label too long for its card is held to the card's inside w
   const addon = loggedIn(CLICK_LUA + `ns.Options.AddRows("tools", function() return { { "header", "TEST-ONLY" }, { "button", "${long}", function() end } } end)`);
   addon.eval('ns.Options.Show("tools")');
   const sized = addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.card and w.text and w.text.__text == "${long}" then
-    return { w:GetWidth(), w.text:GetWidth(), w.text.__noWrap, w.card:GetWidth() } end end`);
-  expect(sized, "the button spans the card less its inset each side; the label, 12 less each side, on one line").toEqual([sized[3] - 2 * addon.eval("return ns.Theme.SPACE.col"), sized[0] - 24, true, sized[3]]);
+    return { w:GetWidth(), w.text:GetWidth(), w.text.__noWrap, w.card:GetWidth(), w.text:GetTextScale() } end end`);
+  expect(sized, "the button spans the card less its inset each side; the label, 12 less each side, on one line, shrunk to the floor, then cut")
+    .toEqual([sized[3] - 2 * addon.eval("return ns.Theme.SPACE.col"), sized[0] - 24, true, sized[3], addon.eval("return ns.Theme.FIT_FLOOR")]);
 });
 
 it("options: a dropdown's menu widens to its longest choice and keeps the dropdown's width when every choice fits", () => {

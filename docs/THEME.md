@@ -111,6 +111,8 @@ Vanguard shares its own fonts through LibSharedMedia as "Vanguard Fira Sans" and
 
 `T.Text(fs, role, color)` sets the font, size, shadow or outline, and a colour token (`text` unless given; `false` keeps the colour). Sizes are at Text size 100 %; the Text size slider (General → Look, 70 % to 130 % in steps of 5 %, also set by the setup wizard's screen presets) multiplies them, rounded to whole points (`T.ScaledSize`). Roles without an outline get a 1 px drop shadow in `textShadow`; outlined roles get no shadow. `T.TextSize(fs, size)` draws a styled string at a size of its own, worked out from the roles' sizes (`T.RoleSize`), and keeps it when text is refreshed (raid tile deficits follow the tile's scale this way, never below `tiny`).
 
+`T.FitText(fs, box, inset)` fits a label on one line across a frame, `inset` in from each side (`T.SPACE.gap` unless given): while its text is wider than that (a translation, Larger text), it shrinks, down to `T.FIT_FLOOR` (84 %, a 12-point label to 10), and only past that does the client cut it short with an ellipsis. It fits again after every new text, a resize of the frame and a text size change. Every dialog button's label (`ns.DialogButton`, so `W.Button`, `W.Primary` and `W.KeyCapture`) is fitted this way. `scripts/tests/textfit.test.mjs` is the check that text fits (see [DEVELOPMENT.md](DEVELOPMENT.md)).
+
 | Role | Size (70 % - 130 %) | Weight | Outline | Used for |
 | --- | --- | --- | --- | --- |
 | `title` | 15 (11 - 20) | SemiBold | - | Window titles: every `ns.WindowTitle` window (dialogs, setup, What's new, the quest log, the group board, the feedback form) and the options window's title, the quest dialog's NPC name, the AFK card, alerts. A display role: takes the faction look's font. |

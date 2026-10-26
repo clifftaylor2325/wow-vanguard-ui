@@ -104,18 +104,18 @@ local BUTTON = { width = 220, air = 12 }
 
 -- The width a button's label takes as drawn (it follows the font and the text size), with its air each side.
 local function labelNeed(b)
-  return math.ceil(b.text:GetUnboundedStringWidth()) + 2 * BUTTON.air
+  return math.ceil(T.FullWidth(b.text)) + 2 * BUTTON.air
 end
 
 -- Gives every button row in a card one width: BUTTON.width, or what its widest label needs, never past the card's
--- inside width. Each label is held to its button, so one too long even for that is cut short instead of spilling.
+-- inside width. Each label is fitted to its button (T.FitText), so one too long even for that shrinks, then is cut short.
 local function fitCardButtons(card)
   local width = BUTTON.width
   for _, b in ipairs(card.buttons) do width = math.max(width, labelNeed(b)) end
   width = math.min(width, INNER)
   for _, b in ipairs(card.buttons) do
     b:SetWidth(width)
-    b.text:SetWidth(width - 2 * BUTTON.air)
+    T.Refit(b.text)
   end
 end
 
@@ -130,7 +130,7 @@ end
 -- keeps its buttons, which share one width that fits their labels (each new one fits them all again).
 local function buttonRow(c, r)
   local b = W.Button(c, r[2], r[3], BUTTON.width)
-  b.text:SetWordWrap(false)
+  T.FitText(b.text, b, BUTTON.air)
   b.card, b.enabled, b.Refresh = c, r[4], refitButton
   c.buttons = c.buttons or {}
   c.buttons[#c.buttons + 1] = b

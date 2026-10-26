@@ -1,4 +1,4 @@
-// Tests for the TEST-ONLY headless client itself (scripts/lib/wow-stub.lua,
+// Tests for the TEST-ONLY headless client itself (scripts/lib/wow-stub.lua, wow-text.lua, wow-textfit.lua,
 // wow-layout.lua, wow-world.lua, wow-inspect.lua and lua-harness.mjs): Lua
 // 5.1 fidelity, layout, the world's events, timers, input and inspectors.
 // Each case loads the addon, as every scenario does.
@@ -386,4 +386,59 @@ it("taint: secret geometry, derived: a secret fill, secret text and what anchors
   expect(() => addon.world.secretGeometry("TEST-ONLY"), "an unknown mode is refused").toThrow(/derived, strict or off/);
   addon.world.secretGeometry(null);
   expect(secrets(), "and off again").toEqual([false, false, false, false, false, false]);
+});
+
+// Lua that makes a 100 x 26 button on UIParent (`b`) with a font string (`fs`) in the theme font at `size`.
+const FIT_BOX = (size) => `
+  local b = CreateFrame("Button", nil, UIParent) b:SetSize(100, 26) b:SetPoint("CENTER")
+  local fs = b:CreateFontString(nil, "OVERLAY") fs:SetFont(ns.Theme.FONTS.regular, ${size}) fs:SetPoint("CENTER")
+`;
+
+it("text metrics: rough by default; with textFit, the theme font's own widths, by size, wrapped at the string's width", () => {
+  const rough = createAddon();
+  expect(rough.eval(`${FIT_BOX(12)} fs:SetText("Hello") fs:SetWidth(200) return { fs:GetStringWidth(), fs:GetUnboundedStringWidth(), fs:GetStringHeight() }`), "rough: 6 a character, 14 a line, as before").toEqual([200, 30, 14]);
+  const addon = createAddon({ textFit: true });
+  const widths = addon.eval(`${FIT_BOX(12)} fs:SetText("Hello world") local at12 = fs:GetStringWidth()
+    fs:SetFont(ns.Theme.FONTS.regular, 24) local at24 = fs:GetStringWidth() fs:SetTextScale(0.5) return { at12, at24, fs:GetStringWidth(), fs:GetTextScale() }`);
+  expect(widths[0], "Fira Sans Condensed is narrower than 6 a character at 12").toBeLessThan(11 * 6);
+  expect([widths[1] / widths[0], widths[2]], "width scales with the size and the text scale").toEqual([2, widths[0]]);
+  const wrapped = addon.eval(`${FIT_BOX(12)} fs:SetText("one two three four five six seven eight") fs:SetWidth(60) fs:SetSpacing(2)
+    local lines, all = __wfgStub.textLineCount(fs, 60) local h = fs:GetStringHeight() fs:SetMaxLines(2) return { lines, h, (__wfgStub.textLineCount(fs, 60)), fs:GetMaxLines(), fs:GetLineHeight() }`);
+  expect(wrapped, "wrapped word by word at the width, 12 a line plus the spacing; max lines caps what draws").toEqual([4, 4 * 12 + 3 * 2, 2, 2, 12]);
+  expect(addon.eval(`${FIT_BOX(12)} fs:SetText("|cffff0000Red|r |TInterface\\\\Icons\\\\X:0|t") local a = fs:GetStringWidth() fs:SetText("Red ") return { a > fs:GetStringWidth(), __wfgStub.drawnText("a||b|nc") }`), "colour codes draw nothing, an icon a square, || one bar, |n a new line")
+    .toEqual([true, "a|b\nc"]);
+});
+
+it("text fit: a pseudo-locale makes every string a third longer, padded with its own letters, and finds its English", () => {
+  const addon = createAddon({ textFit: true });
+  expect(addon.eval('return { ns.L["Save"], ns.L["Open the map"], ns.L["%d"], ns.English(ns.L["Save"]) }')).toEqual(["SaveSa", "Open the mapOpent", "%ddd", "Save"]);
+  expect(addon.eval('return __wfgPseudoKeys[ns.L["Save"]]'), "the audit names it by its English").toBe("Save");
+});
+
+it("text fit: the audit finds text cut short, text running out of its frame and text over a control, and passes text that fits", () => {
+  const addon = createAddon({ textFit: true });
+  addon.eval(FIT_BOX(12).replace("local b", "__b").replace(/\bb([:.])/g, "__b$1").replace("local fs", "__fs").replace(/\bfs([:.])/g, "__fs$1"));
+  // The audit of the button after some Lua, as "kind:other" lines.
+  const audit = (lua) => Object.values(addon.eval(`${lua} local out = {} for _, f in ipairs(__wfgTextFit(__b)) do out[#out + 1] = f.kind .. ":" .. tostring(f.other) end return out`));
+  expect(audit('__fs:SetText("Fits")'), "short text in its button").toEqual([]);
+  expect(audit('__fs:SetText("A caption much wider than its button")'), "a centred label wider than its button spills both ways").toEqual(["spill:nil"]);
+  expect(audit('__fs:SetPoint("LEFT", 4, 0) __fs:SetPoint("RIGHT", -4, 0) __fs:SetWordWrap(false)'), "pinned across it with no wrap, the client cuts it").toEqual(["cut:wider than its box"]);
+  expect(audit('__fs:SetWordWrap(true) __fs:SetMaxLines(2)'), "two lines are not enough either").toEqual(["cut:more lines than it may draw"]);
+  expect(audit('__fs:SetMaxLines(0) __fs:SetHeight(20)'), "wrapped into a fixed height").toEqual(["cut:taller than its box"]);
+  const over = audit(`__fs:SetHeight(nil) __fs.__height = nil __fs:ClearAllPoints() __fs:SetPoint("LEFT", 4, 0) __fs:SetText("Label")
+    local s = CreateFrame("Button", nil, __b) s:SetSize(30, 20) s:SetPoint("LEFT", 10, 0) local t = s:CreateTexture() t:SetColorTexture(1, 1, 1)
+    local o = __b:CreateFontString(nil, "OVERLAY") o:SetFont(ns.Theme.FONTS.regular, 12) o:SetPoint("LEFT", 8, 0) o:SetText("Over")`);
+  expect(over, "text drawn over another text, and both over a control that isn't theirs").toEqual(["overlap:Over", "overlap:Button", "overlap:Button"]);
+  expect(audit('__b:SetAlpha(0)'), "a faded-out frame's text draws nothing").toEqual([]);
+});
+
+it("text fit: a caption beside its frame, an invisible click area and clipped text are not findings", () => {
+  const addon = createAddon({ textFit: true });
+  const findings = addon.eval(`${FIT_BOX(12)} fs:ClearAllPoints() fs:SetPoint("LEFT", b, "RIGHT", 4, 0) fs:SetText("A caption beside the box")
+    local area = CreateFrame("Button", nil, b) area:SetAllPoints()
+    local clip = CreateFrame("Frame", nil, b) clip:SetSize(10, 10) clip:SetPoint("TOPLEFT") clip:SetClipsChildren(true)
+    local hidden = clip:CreateFontString(nil, "OVERLAY") hidden:SetFont(ns.Theme.FONTS.regular, 12) hidden:SetPoint("TOPLEFT", clip, "BOTTOMRIGHT", 50, -50) hidden:SetText("Out of view")
+    return __wfgTextFit(b)`);
+  expect(findings).toEqual({});
+  expect(addon.eval(`${FIT_BOX(12)} fs:SetText("Wider than the box it sits in") return __wfgTextFit(b)[1].place`), "an unnamed frame's place is the top level").toBe("top level");
 });

@@ -2735,6 +2735,7 @@ function T.ApplyRole(fs, role)
   fs:SetFont(path, sizes[fs] or roleSize(r), T.FontFlags(r.outline or outline, r.outline ~= nil))
   fs:SetShadowOffset(r.outline and 0 or 1, r.outline and 0 or -1)
   fs:SetShadowColor(T.RGB("textShadow"))
+  T.Refit(fs)
 end
 
 -- Draws a font string styled with a role at a size of its own, which the
@@ -2743,6 +2744,56 @@ end
 function T.TextSize(fs, size)
   sizes[fs] = size
   T.ApplyRole(fs, styled[fs])
+end
+
+-- Fitting text: a label kept on one line inside its box, shrunk a little when its text runs wider (a translation,
+-- Larger text), so it never runs out over the edge. Below the floor the client cuts it short with an ellipsis.
+do
+  -- The least share of its size fitted text shrinks to: a 12 label to 10, #258's smallest role.
+  T.FIT_FLOOR = 0.84
+  -- Every fitted font string -> { box = the frame it fits in, inset = the room kept each side }. Weak.
+  local fitted = setmetatable({}, { __mode = "k" })
+
+  -- The width a font string's text takes on one line at its full size, whatever shrink T.Refit gave it (for sizing
+  -- a button to its label): measured at text scale 1, then the scale put back. 0 for text a secret value hides.
+  function T.FullWidth(fs)
+    local scale = fs:GetTextScale()
+    fs:SetTextScale(1)
+    local width = ns.PlainNumber(fs:GetUnboundedStringWidth()) or 0
+    fs:SetTextScale(scale)
+    return width
+  end
+
+  -- Shrinks a fitted font string until its text fits its box's width less the inset each side (no smaller than
+  -- T.FIT_FLOOR of its size), or puts it back to full size when it fits; leaves any other string alone.
+  function T.Refit(fs)
+    local fit = fitted[fs]
+    if not fit then return end
+    local room, natural = fit.box:GetWidth() - 2 * fit.inset, T.FullWidth(fs)
+    fs:SetTextScale(room > 0 and natural > room and math.max(T.FIT_FLOOR, room / natural) or 1)
+  end
+
+  -- Refits a string after each change of its text or its box's size (T.ApplyRole refits it after a text size change);
+  -- a client without hooksecurefunc fits it as it is made and on a resize only.
+  local function watchFit(fs, box)
+    box:HookScript("OnSizeChanged", ns.Guard("fit text", function() T.Refit(fs) end))
+    if type(hooksecurefunc) ~= "function" then return end
+    hooksecurefunc(fs, "SetText", ns.Guard("fit text", T.Refit))
+    hooksecurefunc(fs, "SetFormattedText", ns.Guard("fit text", T.Refit))
+  end
+
+  -- Fits a font string on one line across box, inset units in from each side (T.SPACE.gap unless given): its text
+  -- shrinks while it is wider than that (T.Refit), now and after every change. Returns the string.
+  function T.FitText(fs, box, inset)
+    if not fitted[fs] then watchFit(fs, box) end
+    fitted[fs] = { box = box, inset = inset or T.SPACE.gap }
+    fs:ClearAllPoints()
+    fs:SetPoint("LEFT", box, "LEFT", fitted[fs].inset, 0)
+    fs:SetPoint("RIGHT", box, "RIGHT", -fitted[fs].inset, 0)
+    fs:SetWordWrap(false)
+    T.Refit(fs)
+    return fs
+  end
 end
 
 -- The shadow under text coloured by token: none under the dark void text that sits on an accent fill
