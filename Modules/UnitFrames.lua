@@ -312,13 +312,14 @@ end
 UF.RAID_ICON = 16
 
 -- Frames shorter than this (the 24-26 tall target of target, pet and boss frames) lift their raid target icon
--- until its bottom clears the top of the name; taller ones keep it centred on the top edge.
+-- until its bottom clears the top of the name; taller ones keep it centred on the top edge. Boss frames stack only
+-- 6 apart, so a lifted mark would cover the power bar of the frame above: they keep it centred (B4-3).
 UF.RAID_ICON_SHORT = 30
 
 -- How far the raid target icon's centre sits above the top edge of a frame h tall: on a short frame, enough for its
 -- bottom to clear the top of the name (centred on the health bar, which stops over the power bar); else 0.
 local function raidIconLift(f, h)
-  if h >= UF.RAID_ICON_SHORT then return 0 end
+  if h >= UF.RAID_ICON_SHORT or f.key:match("^boss%d$") then return 0 end
   local px = T.Pixel(f)
   local health = h - UF.settings.powerHeight - 3 * px
   local nameGap = px + (health - f.name:GetLineHeight()) / 2
