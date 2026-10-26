@@ -639,7 +639,7 @@ it("quest tracker: nearest first, collapsing, too many quests, and switched off"
 });
 it("quest tracker: a long quest title stays on one line, so it can't draw over the first objective", () => {
   const addon = loggedIn(UNITS_ENV + TRACK_ENV);
-  addon.eval(`__quests[90051].title = "TEST-ONLY Die Suche nach dem verschollenen Zwergenarchaeologen und seinem Gefolge" ns.GetModule("QuestTracker").Refresh()`);
+  addon.eval(`__quests[90051].title = "TEST-ONLY The Search for the Lost Dwarven Archaeologist and All of His Companions" ns.GetModule("QuestTracker").Refresh()`);
   addon.update(0);
   expect(addon.eval("local f = Vanguard_QuestTrackerFrame return f.blocks[1].title:CanWordWrap()"), "the title ends in an ellipsis instead of wrapping").toBe(false);
 });
