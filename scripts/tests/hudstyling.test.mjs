@@ -107,6 +107,16 @@ it("B6-4: the keybind banner widens to its instruction line above 100% Text size
   expect(addon.eval("return Vanguard_KeybindMode:GetWidth()"), "never wider than the screen less a margin each side").toBe(452);
 });
 
+it("B6-5: the vehicle exit button widens to a long label at larger Text sizes (German 'Verlassen' at 115%)", () => {
+  const addon = fitClient();
+  addon.eval(`ns.Theme.Settings().textScale = 1.15 Vanguard_VehicleExit.label:SetText(${JSON.stringify(realText("deDE", "Exit"))}) ns.Theme.Refresh()`);
+  const widths = addon.eval("local b = Vanguard_VehicleExit return { ns.Theme.FullWidth(b.label), b:GetWidth(), b:GetHeight(), b.label:GetTextScale() }");
+  expect(widths[1], "the button is wider than its square").toBeGreaterThan(36);
+  expect(widths[0], "and holds the label whole, a unit each side").toBeLessThanOrEqual(widths[1] - 2);
+  expect([widths[2], widths[3]], "still 36 tall, the label at full size").toEqual([36, 1]);
+  expect(addon.textFit("Vanguard_VehicleExit"), "nothing cut").toEqual([]);
+});
+
 // A TEST-ONLY LibDataBroker-1.1 with one long feed, picked for the strip.
 const LONG_FEED_ENV = `
   local ldb = LibStub:NewLibrary("LibDataBroker-1.1", 4)

@@ -112,14 +112,32 @@ local function addLabel(b, text)
   T.Color(b.label, "text")
 end
 
+-- The vehicle exit's side, and the room its label keeps each side inside it.
+SB.EXIT_SIZE = 36
+SB.EXIT_INSET = 1
+
+-- Widens the exit button to its label at the current Text size (never under its square), so a long
+-- translation shows whole. Out of combat only: the button is a secure frame, so its size is protected.
+function SB.WidenExit(b)
+  b:SetWidth(math.max(SB.EXIT_SIZE, math.ceil(T.FullWidth(b.label)) + 2 * SB.EXIT_INSET))
+  T.Refit(b.label)
+end
+
+-- Sizes the exit button to its label now and after every Text size change.
+local function keepExitFitted(b)
+  SB.WidenExit(b)
+  T.OnChanged(function() ns.OutOfCombat(function() SB.WidenExit(b) end) end)
+end
+
 -- The vehicle exit: a secure /leavevehicle button the client shows only while you can leave.
 local function vehicleExit()
   local b = T.Button(CreateFrame("Button", "Vanguard_VehicleExit", UIParent, "SecureActionButtonTemplate"))
-  b:SetSize(36, 36)
+  b:SetSize(SB.EXIT_SIZE, SB.EXIT_SIZE)
   b:SetAttribute("type", "macro")
   b:SetAttribute("macrotext", "/leavevehicle")
   b:RegisterForClicks("AnyUp", "AnyDown")
   addLabel(b, L["Exit"])
+  keepExitFitted(b)
   RegisterStateDriver(b, "visibility", "[canexitvehicle] show; hide")
   ns.Mover(b, "vehicleexit", L["Vehicle exit"], { "BOTTOM", "BOTTOM", 260, 114 })
   return b
