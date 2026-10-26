@@ -31,8 +31,9 @@ MT.RECEIVE = 16
 -- Under this many days left a mail's time is in the warning colour; the first match the rows show (the wheel moves it).
 MT.WARN_DAYS, MT.offset = 3, 0
 -- Where the search line (the box, with the filter button on its middle) and the first row start, down from the top:
--- under the heading; the room along the bottom for the preset buttons; and a preset button's width.
-local SEARCH_TOP, ROWS_TOP, PRESET_W = 30, 64, 60
+-- under the heading; the room along the bottom for the preset buttons; and a preset button's width (56, so + Add in the
+-- fourth place has 74 left of the panel, room for "+ Hinzufügen" with its label shrunk a little).
+local SEARCH_TOP, ROWS_TOP, PRESET_W = 30, 64, 56
 -- The room along the bottom: the preset buttons, and above them the Take all and Return all buttons.
 local FOOT = 2 * (T.SPACE.gap + T.BUTTON_H) + T.SPACE.gap
 -- The filters in the order the button cycles them; the one in use and the words typed.
@@ -523,14 +524,27 @@ function MT.PaintPresets()
   MT.PaintAdd()
 end
 
+-- How wide + Add wants to be: its label at full size with air each side, never under a preset button's width.
+local function addWidth(add)
+  return math.max(PRESET_W, math.ceil(T.FullWidth(add.text)) + 2 * T.SPACE.gap)
+end
+
+-- Puts + Add at x along the bottom, as wide as its label wants but no wider than the panel's inside has room for from
+-- there; the hint beside it takes the rest of the line.
+local function placeAdd(f, x)
+  f.addPreset:ClearAllPoints()
+  f.addPreset:SetPoint("BOTTOMLEFT", x, MT.PAD)
+  f.addPreset:SetWidth(math.min(addWidth(f.addPreset), MT.WIDTH - MT.PAD - x))
+  f.hint:SetWidth(MT.WIDTH - MT.PAD - x - f.addPreset:GetWidth() - T.SPACE.gap - MT.PAD)
+end
+
 -- + Add in the first free place along the bottom (hidden once every place holds a preset), and the hint
 -- beside it while there are none.
 function MT.PaintAdd()
-  local add, n = MT.frame.addPreset, #MT.settings.presets
-  MT.frame.hint:SetShown(n == 0)
-  add:SetShown(n < MT.BUTTONS)
-  add:ClearAllPoints()
-  add:SetPoint("BOTTOMLEFT", slot(math.min(n, MT.BUTTONS - 1) + 1), MT.PAD)
+  local f, n = MT.frame, #MT.settings.presets
+  f.hint:SetShown(n == 0)
+  f.addPreset:SetShown(n < MT.BUTTONS)
+  placeAdd(f, slot(math.min(n, MT.BUTTONS - 1) + 1))
 end
 
 -- The command ---------------------------------------------------------------------------------
