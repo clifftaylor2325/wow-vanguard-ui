@@ -167,6 +167,22 @@ it("quest dialog: sized to its page, above the cast bars, cards under the text, 
   moved.fire("GOSSIP_SHOW");
   expect(moved.eval("local p, _, rp, x, y = Vanguard_QuestDialog:GetPoint() return { p, rp, x, y }"), "a spot the player saved stays").toEqual(["TOP", "TOP", 40, -120]);
 });
+it("quest dialog: held at the top of the screen it grows downward, so a long page after a short one keeps its full height and text", () => {
+  const top = (y) => y === null ? "" : `VanguardDB.profiles = { Default = { positions = { questdialog = { point = "TOP", relPoint = "TOP", x = 0, y = ${y} } } } }`;
+  const longText = 'GetQuestText = function() return "TEST-ONLY " .. string.rep("A long sentence of quest text. ", 12) end';
+  // The panel's height and its text view's height on the long detail page, after a short gossip page.
+  const longPage = (y, size) => {
+    const addon = loggedIn(QUEST_ENV + `__wfgStub.setScreen(${size}) ${longText}`, { savedVariables: top(y) });
+    addon.eval("__greeting = 'TEST-ONLY Hello.' __avail, __active, __options = {}, {}, { __options[1], __options[1] }");
+    addon.fire("GOSSIP_SHOW");
+    addon.fire("QUEST_DETAIL");
+    return addon.eval("return { Vanguard_QuestDialog:GetHeight(), Vanguard_QuestDialog.scroll:GetHeight() }");
+  };
+  const [tall, view] = longPage(-100, "1920, 1080");
+  expect(view, "the long page after a short gossip shows all its text, not a slit").toBeGreaterThanOrEqual(96);
+  expect([tall, view], "and is as tall as at the default spot, which grows upward").toEqual(longPage(null, "1920, 1080"));
+  expect(longPage(-60, "1365, 768")[1], "on a short screen the text view is never negative").toBeGreaterThanOrEqual(0);
+});
 it("quest dialog: the header sits at the window inset, the NPC's name in the window title's role and colour, no X, a dialog-opacity panel", () => {
   const addon = loggedIn(QUEST_ENV);
   addon.fire("QUEST_DETAIL");

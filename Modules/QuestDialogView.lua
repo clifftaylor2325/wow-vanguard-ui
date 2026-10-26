@@ -216,11 +216,21 @@ local function renderCards(f, p)
   return h > 0 and CARDS_GAP + h or 0
 end
 
--- The most the panel may grow: QD.MAX_H, or less when its spot leaves less room above its bottom edge.
+-- How far the panel may reach from where it is held, by the point it is anchored at: down from its top
+-- edge (a panel held there grows downward), up from its bottom edge, both ways about its middle.
+local function roomFor(f, screen)
+  local point = f:GetPoint(1) or ""
+  if point:find("TOP") then return f:GetTop() end
+  if point:find("BOTTOM") then return screen - f:GetBottom() end
+  local middle = (f:GetTop() + f:GetBottom()) / 2
+  return 2 * math.min(middle, screen - middle)
+end
+
+-- The most the panel may grow: QD.MAX_H, or less when its spot leaves less room on the side it grows towards.
 local function maxHeight(f)
   local screen, bottom = UIParent:GetHeight(), f:GetBottom()
-  if not (screen and bottom) or screen <= 0 then return QD.MAX_H end
-  local room = screen / (f:GetScale() or 1) - bottom - T.SPACE.pad
+  if not (screen and bottom and f:GetTop()) or screen <= 0 then return QD.MAX_H end
+  local room = roomFor(f, screen / (f:GetScale() or 1)) - T.SPACE.pad
   return math.max(QD.MIN_H, math.min(QD.MAX_H, room))
 end
 
@@ -229,7 +239,7 @@ end
 -- height while the panel stays under its greatest), and the wheel scrolls the rest.
 local function fitPanel(f, content, cards)
   local fixed = HEADER_H + cards + FOOTER_H
-  local view = math.max(QD.MIN_H - fixed, math.min(content, maxHeight(f) - fixed))
+  local view = math.max(0, QD.MIN_H - fixed, math.min(content, maxHeight(f) - fixed))
   f.scroll:SetHeight(view)
   f.scroll:Fit(content)
   f:SetHeight(fixed + view)
