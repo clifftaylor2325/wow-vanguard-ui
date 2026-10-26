@@ -189,11 +189,29 @@ end
 
 -- Building ----------------------------------------------------------------------------------
 
--- The movable holder, centered above your cast bar, and a row per swing type.
+-- How far above your cast bar the swing rows start (170 over the default three bars on a 1080p screen).
+SW.ABOVE_CAST = 11
+-- Where the holder sits while Vanguard's action bars are off and your cast bar stays at its layout spot.
+SW.FREE_Y = 170
+
+-- The holder's default point: SW.ABOVE_CAST over your cast bar, which rides the action bars' stack.
+function SW.Point()
+  if not ns.ModuleEnabled("ActionBars") then return { "BOTTOM", "BOTTOM", 0, SW.FREE_Y } end
+  return { "BOTTOM", "BOTTOM", 0, CB.PlayerPoint()[4] + CB.LAYOUT.player.h + SW.ABOVE_CAST }
+end
+
+-- Moves the holder's default point with your cast bar (a position you dragged it to still wins).
+function SW.FitMover()
+  ns.SetMoverDefault("swing", SW.Point())
+end
+
+-- The movable holder, centered above your cast bar, and a row per swing type. It follows the cast bar
+-- up when the bar stack grows (a position you dragged it to still wins).
 local function build()
   SW.holder = CreateFrame("Frame", "Vanguard_SwingTimer", UIParent)
   SW.holder:SetSize(SW.WIDTH, 3 * SW.ROW + 2 * SW.GAP)
-  ns.Mover(SW.holder, "swing", L["Swing timer"], { "BOTTOM", "BOTTOM", 0, 170 })
+  ns.Mover(SW.holder, "swing", L["Swing timer"], SW.Point())
+  hooksecurefunc(CB, "FitPlayer", ns.Guard("fit swing timer", SW.FitMover))
   SW.rows = {}
   for i, kind in ipairs(SW.KINDS) do
     local id = Enum.PlayerSwingType[kind[1]]
