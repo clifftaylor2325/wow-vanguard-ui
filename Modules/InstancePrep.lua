@@ -289,11 +289,13 @@ local function buyButton(f)
   f.buy:Hide()
 end
 
--- The card: a floating panel you can move (/vg unlock), hidden until called up.
+-- The card: a floating panel you can move (/vg unlock), hidden until called up. It is clamped to the screen, so
+-- a long list that grows it about its centre slides it down from the top edge instead of past it.
 local function buildCard()
   local f = CreateFrame("Frame", "Vanguard_PrepCard", UIParent)
   T.Panel(f, { shadow = true })
   f:SetSize(PR.WIDTH, PR.TOP + PR.ROW + PR.PAD)
+  f:SetClampedToScreen(true)
   f.rows, f.info = {}, {}
   cardParts(f)
   buyButton(f)

@@ -2413,6 +2413,12 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: the low dropdown's menu opens above it (its bottom edge on the dropdown's top), scrolls as before, never covers the dropdown's own value, and a second click on the dropdown closes it; the higher one opens below as before. The Add key button reads "Touche, clic ou molette…" in full while it waits. The search box shows "Rechercher dans les réglages" cut short with an ellipsis if it does not fit, never past the box's right edge or over the profile picker.
 - If it fails, paste: a screenshot of the menu, the button or the header and `/vg errors`.
 
+### 33.44 Trade windows in a long language, and the Instance prep card at the top
+
+- Do: set the game's language to German, Russian or French (or run a client in one). Open your combined bag; open the auction house on the Posting tab with an item dropped on the sell card, then the Lists tab (after a scan, so the button counts down); open a mailbox with Mail tools on. Then, at the largest UI scale, add a dozen Keep-stocked items you lack (`/vg stock <itemID> 10`) and type `/vg prep`.
+- Expect: the bag's Sort button, the sell card's Post, Stop, Skip and Max buttons, the Restock button on the Lists toolbar, the scan button's countdown and each mail row's Take button show their whole label (the search box beside Sort is a little narrower; the guide's four steps follow one another with a gap, none over the next). The Instance prep card's title and close button stay on the screen however long the list grows: the card slides down from the top edge instead. [Needs in-game check: all of it, and whether the clamp moves the card down.] The + Add button in the mail panel's bottom row may still cut its label in German, Russian and Portuguese (known).
+- If it fails, paste: a screenshot of the button or card, the game's language, and `/vg errors`.
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ## When you are done

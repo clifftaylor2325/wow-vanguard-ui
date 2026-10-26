@@ -3,7 +3,8 @@
 // raid's door, on a ready check, or with /vg prep.
 
 import { expect, it } from "vitest";
-import { BUFF_NAMES, BUFF_NAMES_DE, CLICK_LUA, chatHas, isTok, loggedIn, setCombat, spellNames } from "./helpers.mjs";
+import { createAddon } from "../lib/lua-harness.mjs";
+import { BUFF_NAMES, BUFF_NAMES_DE, CLICK_LUA, SETUP_DONE, chatHas, isTok, loggedIn, setCombat, spellNames } from "./helpers.mjs";
 import { alphaOf, closeOf, insets } from "./dialogs.mjs";
 
 // TEST-ONLY instance, ammo and items: an apple (food), a bandage, a potion and
@@ -392,4 +393,15 @@ it("prep buffs: the options page has the switches", () => {
   expect(addon.eval("return ns.Settings('InstancePrep').buffs"), "a switch sets the profile").toBe(true);
   addon.eval('__click("World buffs among them")');
   expect(addon.eval("return ns.Settings('InstancePrep').worldBuffs"), "and the other").toBe(true);
+});
+
+it("prep: the card is clamped to the screen, so a long list never pushes its title past the top", () => {
+  const addon = createAddon({ savedVariables: SETUP_DONE });
+  addon.eval(PREP_ENV + "__wfgStub.methods.SetClampedToScreen = function(self, on) self.__testClamped = on end");
+  addon.login();
+  addon.world.setUnit("player", { class: "MAGE", level: 60 });
+  for (let id = 2589; id < 2601; id++) addon.slash(`stock ${id} 10`);
+  addon.slash("prep");
+  expect(rows(addon).length, "a dozen Keep-stocked items short").toBeGreaterThanOrEqual(12);
+  expect(addon.eval("return ns.GetModule('InstancePrep').card.__testClamped"), "the card keeps itself on the screen").toBe(true);
 });

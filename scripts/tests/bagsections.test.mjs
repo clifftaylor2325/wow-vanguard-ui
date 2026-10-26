@@ -1,7 +1,8 @@
 // bagsections: Vanguard's real Lua in the TEST-ONLY headless client (scripts/lib/lua-harness.mjs).
 
 import { expect, it } from "vitest";
-import { CLICK_LUA, UI_ENV, borderOf, isTok, loggedIn, setCombat } from "./helpers.mjs";
+import { createAddon } from "../lib/lua-harness.mjs";
+import { CLICK_LUA, SETUP_DONE, UI_ENV, borderOf, isTok, loggedIn, setCombat } from "./helpers.mjs";
 
 // TEST-ONLY bags: the backpack (8 slots) holds a Hearthstone, 5 waters, 12
 // linen, a sword, a gray item, a quest letter and an item the client hasn't
@@ -680,4 +681,16 @@ it("the Junk value counts a gray item filed in a group, and Junk is wide enough 
   expect(junkValue(addon), "the filed gray still sells: 3c + 3c").toBe("· 6c");
   addon.eval("__wfgWorld.items[90002].sellPrice = 123456 ContainerFrameCombinedBags:UpdateItems()");
   expect(junkValue(addon), "a value too wide for Junk's narrow header is left off, not drawn over the next header").toBe("");
+});
+
+it("Sort shows its whole label in German, Russian and Portuguese, and the search box gives up the room", () => {
+  for (const locale of ["deDE", "ruRU", "ptBR"]) {
+    const addon = createAddon({ textFit: true, client: `__wfgWorld.locale = "${locale}"`, savedVariables: SETUP_DONE });
+    addon.eval(BAG_ENV);
+    addon.login();
+    addon.eval("__openBag()");
+    expect(addon.textFit("ns.GetModule('Bags').sort"), `${locale}: nothing cut`).toEqual([]);
+    const gap = addon.eval("return ns.GetModule('Bags').sort:GetLeft() - BagItemSearchBox:GetRight()");
+    expect(gap, `${locale}: the search box ends before Sort`).toBeGreaterThanOrEqual(0);
+  }
 });
