@@ -99,6 +99,18 @@ it("text fits: the dialogs", () => {
   expectFits("dialogs", findings);
 });
 
+it("text fits: the find box after a search with a long query keeps its title on one line above the query (P1-2, P8-5)", () => {
+  const addon = fitClient();
+  const query = "the dungeon group is looking for a healer tonight at eight";
+  addon.eval(`ns.ShowFind(ns.L["Find"], function(q) return 'Chat: 9 lines with "' .. q .. '"', "text" end)
+    Vanguard_FindDialog.query:SetText("${query}") Vanguard_FindDialog.go.__scripts.OnClick(Vanguard_FindDialog.go)`);
+  expect(addon.eval("return Vanguard_FindDialog.title:GetText()")).toContain(query);
+  expect(addon.eval("return Vanguard_FindDialog.title:GetMaxLines()"), "the title is one line").toBe(1);
+  // A long summary is cut short on purpose (an ellipsis); what must not happen is drawing over the query row.
+  const kinds = addon.textFit("Vanguard_FindDialog").map((finding) => finding.kind);
+  expect(kinds.filter((kind) => kind !== "cut"), "the title overlaps nothing in the find box").toEqual([]);
+});
+
 // The preview's scenes (scripts/lib/preview-scenes.mjs) that open a window, and the frames each one audits.
 const SCENE_WINDOWS = [
   ["vanguard-stock-list", ["Vanguard_StockList"]],
