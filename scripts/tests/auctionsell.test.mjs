@@ -553,3 +553,13 @@ it("the sell card's Post, Stop, Skip and Max buttons and the guide's steps fit i
     expect(steps, `${locale}: each guide step ends before the next`).toEqual([true, true, true]);
   }
 });
+
+it("the scan button holds its countdown in Russian, French and Portuguese", () => {
+  for (const locale of ["ruRU", "frFR", "ptBR"]) {
+    const addon = postingTab(locale);
+    addon.eval(`${HELPER}.refusedAt = ns.AuctionPrices.Now() ${HELPER}.PaintScan()`);
+    expect(addon.eval(`return ${HELPER}.scanCard.scan.text:GetText():find('15') ~= nil`), `${locale}: the countdown is on the button`).toBe(true);
+    addon.eval("__wfgStub.click(AuctionHouseFrame.Tabs[4])");
+    expect(addon.textFit(`${HELPER}.scanCard`), `${locale}: the countdown is not cut`).toEqual([]);
+  }
+});
