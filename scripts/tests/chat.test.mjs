@@ -666,6 +666,7 @@ it("chat is a mover: placed once, sized once, kept where the player put it", () 
 it("chat keeps its spot when the mover's Scale is not 100 %: the pin divides the offsets by the window's scale", () => {
   const addon = loggedIn(UI_ENV + TIDY_ENV);
   addon.eval("ns.SetMoverScale('chat', 2)");
+  // The window put at a mover Scale and pushed away by the game: its scale, pin offsets and screen position.
   const at = (scale) => addon.eval(`ns.SetMoverScale('chat', ${scale}) ChatFrame1:ClearAllPoints() ChatFrame1:SetPoint('CENTER')
     local p = ChatFrame1.__points.BOTTOMLEFT return { ChatFrame1:GetScale(), p.x, p.y, ChatFrame1:GetLeft() * ChatFrame1:GetScale(), ChatFrame1:GetBottom() * ChatFrame1:GetScale() }`);
   expect(at(2), "at 200 % the pin is 20, 10 in frame units: 40, 20 in UIParent's").toEqual([2, 20, 10, 40, 20]);
@@ -707,6 +708,7 @@ it("chat dock: the overflow arrow is a window control at the dock's right end an
     GENERAL_CHAT_DOCK.overflowButton.list.buttons = { row }
     function FCFDockOverflowList_Update(list, dock) end`;
   const addon = loggedIn(UI_ENV + CHAT_DOCK_ENV + overflow);
+  // The overflow arrow: its size, anchor at the dock's right end, whether it is a window control, and the list's faded art.
   const arrow = () => addon.eval(`local b = GENERAL_CHAT_DOCK.overflowButton local p = b.__points.RIGHT
     return { b:GetWidth(), b:GetHeight(), p ~= nil and p.rel == GENERAL_CHAT_DOCK, b.__points.BOTTOMRIGHT == nil, ns.Theme.ControlGlyph(b) ~= nil, b.list.NineSlice.__alpha == 0 }`);
   expect(arrow(), "the arrow keeps its 16 x 16, sits at the dock's right end instead of its bottom, and is dressed; the list is a themed box").toEqual([16, 16, true, true, true, true]);

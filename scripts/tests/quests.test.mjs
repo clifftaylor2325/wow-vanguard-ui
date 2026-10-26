@@ -169,6 +169,7 @@ it("quest dialog: sized to its page, above the cast bars, cards under the text, 
   expect(moved.eval("local p, _, rp, x, y = Vanguard_QuestDialog:GetPoint() return { p, rp, x, y }"), "a spot the player saved stays").toEqual(["TOP", "TOP", 40, -120]);
 });
 it("quest dialog: held at the top of the screen it grows downward, so a long page after a short one keeps its full height and text", () => {
+  // A profile with the quest dialog held at the top of the screen, y down (none for the default spot).
   const top = (y) => y === null ? "" : `VanguardDB.profiles = { Default = { positions = { questdialog = { point = "TOP", relPoint = "TOP", x = 0, y = ${y} } } } }`;
   const longText = 'GetQuestText = function() return "TEST-ONLY " .. string.rep("A long sentence of quest text. ", 12) end';
   // The panel's height and its text view's height on the long detail page, after a short gossip page.
