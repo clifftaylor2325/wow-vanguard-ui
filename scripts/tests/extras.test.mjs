@@ -732,3 +732,12 @@ it("A-13 a ready check or a popup puts the AFK screen away at once, so the first
   addon.eval("__finishFades() StaticPopupSpecial_Show(CreateFrame('Frame', 'TEST-ONLY_RolePoll', UIParent))");
   expect(addon.eval("return Vanguard_AfkScreen:IsShown()"), "a prompt frame of its own: gone").toBe(false);
 });
+it("the AFK screen: a long zone line wraps clear of the faction crest and above the away row", () => {
+  const addon = loggedIn(UNITS_ENV + AFK_ENV + "__wfgStub.setScreen(1920, 1080) GetRealZoneText = function() return 'TEST-ONLY Östliche Pestländer' end GetSubZoneText = function() return 'TEST-ONLY Kapelle des Hoffnungsvollen Lichts' end");
+  addon.eval("__afk = true");
+  addon.fire("PLAYER_FLAGS_CHANGED", "player");
+  const [where, crest, away] = ["where", "crest", "away"].map((key) => addon.frame(`Vanguard_AfkScreen.${key}`).rect);
+  expect(where.left, "the zone line starts right of the crest").toBeGreaterThanOrEqual(crest.right);
+  expect(where.bottom, "and its second line stays above the away row").toBeGreaterThanOrEqual(away.top);
+  expect(addon.eval("return Vanguard_AfkScreen.where:GetMaxLines()"), "at most two lines").toBe(2);
+});

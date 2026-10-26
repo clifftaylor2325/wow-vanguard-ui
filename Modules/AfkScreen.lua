@@ -18,6 +18,8 @@ local L = ns.L
 local AFK = ns.Module("AfkScreen", { defaults = {} })
 
 AFK.CARD_W, AFK.CARD_H, AFK.BAR_H = 380, 132, 10
+-- How far (units) in from each side the zone line stays, clear of the crest (14 in, 44 wide, 8 gap).
+AFK.CREST_CLEAR = 66
 -- The passage under the card, in your faction's heading font: how wide it wraps, its size over the title's.
 AFK.PASSAGE_W, AFK.PASSAGE_UP = 640, 3
 -- Kept shut while you cast; tried again once this many seconds later.
@@ -194,11 +196,19 @@ local function line(card, role, color, anchor, gap)
   return fs
 end
 
+-- Keeps the zone line clear of the crest: a long zone and spot wrap to a second line, centered, not under it.
+local function boundWhere(fs)
+  fs:SetWidth(AFK.CARD_W - 2 * AFK.CREST_CLEAR)
+  fs:SetJustifyH("CENTER")
+  fs:SetMaxLines(2)
+end
+
 -- The card's texts: name, who, where, and the time away and the clock along its bottom.
 local function addTexts(f, card)
   f.name = line(card, "title", false, card, 14)
   f.who = line(card, "label", "text2", f.name, 4)
   f.where = line(card, "label", "text", f.who, 8)
+  boundWhere(f.where)
   f.away = T.Text(card:CreateFontString(nil, "OVERLAY"), "small", "text2")
   f.away:SetPoint("BOTTOMLEFT", card, "BOTTOMLEFT", 12, AFK.BAR_H + 16)
   f.clock = T.Text(card:CreateFontString(nil, "OVERLAY"), "small", "text2")
