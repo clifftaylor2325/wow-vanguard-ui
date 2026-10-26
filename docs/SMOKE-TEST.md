@@ -2636,6 +2636,12 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: Buy list shows its whole word beside the X, as wide as it needs; the title "Instance prep" in its translation ends before the button, with "..." where it does not fit, and never runs under it. [Needs in-game check: the real font widths of the title and the label.]
 - If it fails, paste: a screenshot of the card, and `/vg errors`.
 
+### 33.90 Merchant quantity window: the panel under Stack, Max and the cost line
+
+- Do: at a vendor that sells stackable goods (a reagent or food vendor), with Town and gear, Merchants, "Stack and Max buttons on a merchant item's quantity window" on, shift-click an item in the middle of the list, then one at the top and one at the bottom; also try it with the item on the second column.
+- Expect: the game's quantity window opens with a dark panel hung from its bottom left holding Stack, Max and the "Max N for <money>" line, all inside the panel and nothing drawn bare over the merchant's rows; the panel covers the clicked row and the one below it (so you cannot click through to them) and closes with the window; shift-clicking an item in your bags shows no panel. [Needs in-game check: where the game puts the window (its bottom left on the clicked item), how much of the list the panel covers, and whether the panel is wide enough for the real window.]
+- If it fails, paste: a screenshot with the window open on the middle row, and `/vg errors`.
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ## When you are done

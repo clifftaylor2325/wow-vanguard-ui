@@ -16,6 +16,9 @@ local W = ns.Widgets
 local MC = ns.GetModule("Merchant")
 
 MC.BUY_EVERY, MC.LIST_SHOWN = 0.2, 5
+-- The drawer under the quantity window (Stack, Max and the cost line): at least this wide, two 60-wide buttons
+-- and three gaps.
+MC.DRAWER_W = 2 * 60 + 3 * T.SPACE.gap
 local vgSplit = ns.FrameState("vgSplitBulk")
 
 -- Helpers ------------------------------------------------------------------------------------
@@ -318,25 +321,45 @@ local function costLine(entry, index)
   entry.line:SetText(packs > 0 and ns.Format(L["Max {count} for {money}"], { count = packs * quantity, money = money(packs * price) }) or L["Can't afford one"])
 end
 
--- The window's Stack and Max buttons and the cost line, made once.
+-- The drawer that holds Stack, Max and the cost line, hung under the quantity window: a panel, so they read as
+-- part of the window and the cost line is not drawn bare over the merchant's rows beneath. The game opens the
+-- window with its bottom left on the clicked item, so this covers the rows below it; it takes their clicks too.
+local function makeDrawer(frame)
+  local drawer = T.Panel(CreateFrame("Frame", nil, frame), { inset = true })
+  local height = 3 * T.SPACE.gap + T.BUTTON_H + math.ceil(T.RoleSize("barSmall")) + T.SPACE.tight
+  drawer:SetSize(math.max(frame:GetWidth(), MC.DRAWER_W), height)
+  drawer:SetPoint("TOPLEFT", frame, "BOTTOMLEFT", 0, 0)
+  drawer:EnableMouse(true)
+  return drawer
+end
+
+-- The cost line under the buttons, on one line inside the drawer (shrunk a little when it runs long).
+local function costText(drawer, stack)
+  local line = T.Text(drawer:CreateFontString(nil, "OVERLAY"), "barSmall", "muted")
+  line:SetPoint("TOPLEFT", stack, "BOTTOMLEFT", 0, -T.SPACE.gap)
+  line:SetPoint("TOPRIGHT", drawer, "TOPRIGHT", -T.SPACE.gap, -(2 * T.SPACE.gap + T.BUTTON_H))
+  return T.FitText(ns.SingleLine(line), drawer)
+end
+
+-- The window's drawer with its Stack and Max buttons and the cost line, made once.
 local function makeBulk(frame)
-  local entry = { line = T.Text(frame:CreateFontString(nil, "OVERLAY"), "barSmall", "muted") }
-  entry.stack = W.Button(frame, L["Stack"], function() MC.Order(entry.index, MC.StackPacks(entry.index), frame) end, 60)
-  entry.max = W.Button(frame, L["Max"], function() MC.Order(entry.index, MC.MaxPacks(entry.index), frame) end, 60)
-  entry.stack:SetPoint("TOPLEFT", frame, "BOTTOMLEFT", 0, -T.SPACE.gap)
+  local entry = { drawer = makeDrawer(frame) }
+  entry.stack = W.Button(entry.drawer, L["Stack"], function() MC.Order(entry.index, MC.StackPacks(entry.index), frame) end, 60)
+  entry.max = W.Button(entry.drawer, L["Max"], function() MC.Order(entry.index, MC.MaxPacks(entry.index), frame) end, 60)
+  entry.stack:SetPoint("TOPLEFT", entry.drawer, "TOPLEFT", T.SPACE.gap, -T.SPACE.gap)
   entry.max:SetPoint("LEFT", entry.stack, "RIGHT", T.SPACE.gap, 0)
-  entry.line:SetPoint("TOPLEFT", entry.stack, "BOTTOMLEFT", 0, -T.SPACE.gap)
+  entry.line = costText(entry.drawer, entry.stack)
   return entry
 end
 
--- The quantity window opened: for a merchant's item show Stack, Max and the cost line; else hide them.
+-- The quantity window opened: for a merchant's item show the drawer with Stack, Max and the cost line; else hide them.
 function MC.OnSplitShow(frame)
   local entry, index = vgSplit[frame], MC.SplitIndex(frame)
   local on = MC.settings and MC.settings.bulkBuy and index ~= nil and trading() and wares(index) ~= nil
   if on and not entry then entry = makeBulk(frame) vgSplit[frame] = entry end
   if not entry then return end
   entry.index = index
-  for _, part in ipairs({ entry.stack, entry.max, entry.line }) do part:SetShown(on) end
+  for _, part in ipairs({ entry.drawer, entry.stack, entry.max, entry.line }) do part:SetShown(on) end
   if on then costLine(entry, index) end
 end
 

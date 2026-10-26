@@ -258,6 +258,19 @@ it("a running buy stops when the merchant swaps what it sells at that place", ()
   expect([bought(addon), chatHas(addon, /Bought 20 × TEST-ONLY Water/)], "the first chunk only, and it says what it bought").toEqual([[[1, 20]], true]);
 });
 
+it("Stack, Max and the cost line sit on a panel under the quantity window, wide enough for both buttons (B10-10)", () => {
+  const addon = loggedIn(BUY_ENV);
+  addon.fire("MERCHANT_SHOW");
+  addon.eval("StackSplitFrame:Show()");
+  const place = addon.eval(`local e = ns.FrameState("vgSplitBulk")[StackSplitFrame] local d = e.drawer
+    return { d:GetParent() == StackSplitFrame, d:IsShown(), d:GetTop() == StackSplitFrame:GetBottom(), d:GetLeft() == StackSplitFrame:GetLeft(),
+      e.stack:GetParent() == d, e.max:GetParent() == d, e.stack:GetLeft() >= d:GetLeft(), e.max:GetRight() <= d:GetRight(), e.line:GetRight() <= d:GetRight(),
+      e.line:GetBottom() >= d:GetBottom(), e.stack:GetTop() <= d:GetTop(), d:GetWidth() >= ns.GetModule("Merchant").DRAWER_W }`);
+  expect(place, "the panel hangs from the window's bottom left; the buttons and the line are children of it, inside it").toEqual(Array(12).fill(true));
+  addon.eval("__owner('ContainerFrame1Item1', 1) StackSplitFrame:Hide() StackSplitFrame:Show()");
+  expect(addon.eval(`return ns.FrameState("vgSplitBulk")[StackSplitFrame].drawer:IsShown()`), "an item in your bags: the panel goes too").toBe(false);
+});
+
 it("the tenth item on a merchant page gets Stack and Max too", () => {
   const water = `{ itemID = 159, name = "TEST-ONLY Water", price = 10, stack = 5, maxStack = 20 }`;
   const addon = loggedIn(BUY_ENV + `__wfgWorld.merchant = { items = { ${Array(10).fill(water).join(", ")} } } __owner("MerchantItem10ItemButton", 10)`);
