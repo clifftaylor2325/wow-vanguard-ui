@@ -67,8 +67,8 @@ it("P4-9: the Versus deck stays a pad above a taller target frame", () => {
 });
 
 // A logged-in addon in the text-fit client (real font widths, every string a third longer, as a translation runs).
-function fitClient(extra = "") {
-  const addon = createAddon({ savedVariables: SETUP_DONE, textFit: true });
+function fitClient(extra = "", saved = "") {
+  const addon = createAddon({ savedVariables: SETUP_DONE + saved, textFit: true });
   if (extra) addon.eval(extra);
   addon.login();
   return addon;
@@ -133,4 +133,17 @@ it("P6-2: bar 5 keeps clear of bar 4 at big button sizes and when bar 4 gets wid
   dflt.eval("ns.SetMoverPoint('bar5', 'RIGHT', 'RIGHT', -300, 0)");
   dflt.eval('local AB = ns.GetModule("ActionBars") AB.settings.bars[4].perRow = 12 AB.Layout(4)');
   expect(dflt.eval("return Vanguard_Bar5.__points.RIGHT.x"), "a spot you dragged bar 5 to stays").toBe(-300);
+});
+
+// TEST-ONLY: the client's damage meter enums, and a meter switched on.
+const METER_ENV = "Enum.DamageMeterSessionType = { Current = 1 } Enum.DamageMeterType = { Dps = 1, Hps = 3 }\n";
+const METER_ON = "VanguardDB.profiles = { Default = { Meter = { on = true } } }\n";
+
+it("P5-5: the meter title ends before the Report and Reset buttons, at any width", () => {
+  const addon = fitClient(METER_ENV, METER_ON);
+  for (const width of [200, 300]) {
+    addon.eval(`ns.SetMoverSize("meter", "width", ${width}) Vanguard_Meter.title:SetText("Schaden pro Sekunde · Vorheriger Kampf")`);
+    const overlaps = addon.textFit("Vanguard_Meter").filter((f) => f.kind === "overlap");
+    expect(overlaps, `width ${width}: the title overlaps no button`).toEqual([]);
+  }
 });

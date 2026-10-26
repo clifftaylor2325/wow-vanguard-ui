@@ -192,7 +192,7 @@ it("the title is a card's heading on the click-to-switch button, the room above 
   expect([title.text, title.font.size, isTok(addon, title.textColor, "text"), title.rect.left - panel.rect.left, panel.rect.top - title.rect.top],
     "the heading role in text, T.SPACE.gap in and down from the card's corner").toEqual(["Damage per second", headingSize, true, gap, gap]);
   const button = addon.eval(`local b = Vanguard_Meter.title:GetParent() return { b:GetObjectType(), b:GetHeight(), b:GetWidth(), b.__scripts.OnClick ~= nil }`);
-  expect(button, "the string rides a full-width button head tall that takes the click").toEqual(["Button", head, 300, true]);
+  expect(button, "the string rides a button head tall, as wide as the panel less the Report and Reset buttons, that takes the click").toEqual(["Button", head, 300 - 2 * (52 + 1) - gap, true]);
   expect([title.rect.bottom >= bar.rect.top, panel.rect.top - bar.rect.top], "the heading ends above the first bar, which starts a head down").toEqual([true, head]);
   expect([empty.visible, empty.text, empty.font.size, isTok(addon, empty.textColor, "muted")], "the empty-state line: label muted").toEqual([true, "No damage yet this fight", labelSize, true]);
 });

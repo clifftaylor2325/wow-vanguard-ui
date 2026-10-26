@@ -331,16 +331,19 @@ function MT.TitleClick(_, button)
   if button == "RightButton" then MT.ToggleSession() else MT.ToggleKind() end
 end
 
--- The title: a button across the panel's top that switches damage and healing. Its text is a card's heading
--- (ns.WindowTitle on the button), so a click anywhere along the top switches.
+-- The title: a button across the panel's top, up to the header buttons, that switches damage and healing. Its
+-- text is a card's heading (ns.WindowTitle on the button) that ends in "..." before them, so a click anywhere
+-- along the title switches.
 local function addTitle(f)
   local title = CreateFrame("Button", nil, f)
   title:SetPoint("TOPLEFT", f, "TOPLEFT", 0, 0)
-  title:SetPoint("TOPRIGHT", f, "TOPRIGHT", 0, 0)
+  title:SetPoint("TOPRIGHT", f, "TOPRIGHT", -(2 * (MT.BUTTON_W + MT.GAP) + T.SPACE.gap), 0)
   title:SetHeight(MT.HEAD)
   title:RegisterForClicks("LeftButtonUp", "RightButtonUp")
   title:SetScript("OnClick", ns.Guard("click meter title", MT.TitleClick))
   f.title = ns.WindowTitle(title, MT.KINDS[MT.settings.kind] or MT.KINDS.Dps, { kind = "card" }).title
+  f.title:SetPoint("TOPRIGHT", title, "TOPRIGHT", 0, -T.SPACE.gap)
+  ns.SingleLine(f.title)
 end
 
 -- The note shown while the meter has nothing to list: an empty-state line (label muted) that says what fills it.
