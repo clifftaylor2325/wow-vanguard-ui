@@ -340,11 +340,13 @@ local function addReloadTag(w, row)
 end
 
 -- Gives a row its reset dot (a setting with a default), its reload tag, its tip and its note (a tagged setting; last,
--- so it is the tooltip that shows).
+-- so it is the tooltip that shows). A choice row's dropdown widens into the caption's spare room once the tag has
+-- taken its own.
 local function dressRow(w, row)
   if row.isReset then w.card.child.resetButton = w end
   markChanges(w, row)
   addReloadTag(w, row)
+  W.WidenDropdown(w)
   addTip(w, row)
   addNote(w, row)
 end

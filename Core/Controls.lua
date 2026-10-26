@@ -276,6 +276,11 @@ local function addSegments(r, choices, set)
   layoutSegments(r)
 end
 
+-- A dropdown's text inset from its left, its arrow's size and inset from its right, and the gap between them (units).
+local DROPDOWN_TEXT = { left = 8, arrow = 12, edge = 6, gap = 4 }
+-- What the text's room each side adds up to: everything in the box but the text.
+DROPDOWN_TEXT.room = DROPDOWN_TEXT.left + DROPDOWN_TEXT.gap + DROPDOWN_TEXT.arrow + DROPDOWN_TEXT.edge
+
 -- A dropdown on the right of a choice row; its Refresh is the row's.
 local function addDropdown(r, choices, get, set)
   r.dropdown = W.Dropdown(r, choices, get, function(v) set(v); r:Refresh() end, W.COLUMN)
@@ -300,6 +305,34 @@ local function addControl(r, choices, get, set, width)
   r.segments = nil
   addDropdown(r, choices, get, set)
   fitCaption(r, width)
+end
+
+-- The width the longest of a dropdown's choices takes at full size (each is set on its text in turn, then the
+-- current one put back).
+local function longestChoice(d)
+  local choices = type(d.choices) == "function" and d.choices() or d.choices
+  local widest = 0
+  for _, c in ipairs(choices) do
+    d.text:SetText(c[2])
+    widest = math.max(widest, T.FullWidth(d.text))
+  end
+  d:Refresh()
+  return math.ceil(widest)
+end
+
+-- Widens a choice row's dropdown to hold its longest choice at full size, as far as the room its caption leaves spare
+-- (the caption keeps the width it draws at on one line; a caption that wraps already leaves none). Call it once the
+-- caption's width is settled (the options window takes a reload tag's room first); a row with segments is left alone.
+---@param r table  a row from W.Choice
+---@return table r
+function W.WidenDropdown(r)
+  if not r.dropdown then return r end
+  local spare = r.label:GetWidth() - math.ceil(T.FullWidth(r.label))
+  local more = math.min(spare, longestChoice(r.dropdown) + DROPDOWN_TEXT.room - r.dropdown:GetWidth())
+  if more <= 0 then return r end
+  r.dropdown:SetWidth(r.dropdown:GetWidth() + more)
+  r.label:SetWidth(r.label:GetWidth() - more)
+  return r
 end
 
 -- A choice row: segments when they fit, else a dropdown. Clicking the caption steps to the next choice.
@@ -513,9 +546,6 @@ local function refreshDropdown(d)
   d.text:SetText(currentText(choices, d.get()))
 end
 
--- A dropdown's text inset from its left, its arrow's size and inset from its right, and the gap between them (units).
-local DROPDOWN_TEXT = { left = 8, arrow = 12, edge = 6, gap = 4 }
-
 -- The dropdown's arrow at its right edge, and the current choice on one line
 -- between the left edge and the arrow; a choice too long for the box shrinks a little, then ends in "...".
 local function addDropdownText(d)
@@ -523,8 +553,7 @@ local function addDropdownText(d)
   d.arrow:SetPoint("RIGHT", -DROPDOWN_TEXT.edge, 0)
   -- T.FitText shrinks the text to the box less an equal inset each side; the text's own room (DROPDOWN_TEXT.left
   -- in, and the arrow's room at the right) adds up to the same, so it is anchored there after.
-  local room = DROPDOWN_TEXT.left + DROPDOWN_TEXT.gap + DROPDOWN_TEXT.arrow + DROPDOWN_TEXT.edge
-  d.text = T.FitText(T.Text(d:CreateFontString(nil, "OVERLAY"), "label"), d, room / 2)
+  d.text = T.FitText(T.Text(d:CreateFontString(nil, "OVERLAY"), "label"), d, DROPDOWN_TEXT.room / 2)
   d.text:ClearAllPoints()
   d.text:SetPoint("LEFT", DROPDOWN_TEXT.left, 0)
   d.text:SetPoint("RIGHT", d.arrow, "LEFT", -DROPDOWN_TEXT.gap, 0)
