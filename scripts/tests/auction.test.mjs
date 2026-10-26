@@ -297,7 +297,7 @@ it("two tabs join the window after the game's three; each shows its page over th
   const page = addon.frame("Vanguard_AuctionShopping");
   expect([page.visible, page.rect.left, page.rect.top, page.rect.width, page.rect.height, title(addon), addon.eval("return AuctionHouseFrame.selectedTab")], "Lists: its page over the content area (under the title, above the money line), the title named, the tab selected").toEqual([true, window.rect.left + 4, window.rect.top - 30, 792, 478, "Lists", 4]);
   const rows = addon.eval(`local AH = ${HELPER} return { AH.SHOP_ROWS, AH.VIEW_ROWS, AH.PANE_ROWS, AH.LIST_ROWS, AH.OWNED_ROWS }`);
-  expect(rows, "the rows fill the room their boxes leave: 20 list and view rows, 14 pane entries, 8 listings up now, 8 of your auctions").toEqual([20, 20, 14, 8, 8]);
+  expect(rows, "the rows fill the room their boxes leave: 20 list and view rows, 12 pane entries (three rows of action buttons under them), 8 listings up now, 8 of your auctions").toEqual([20, 20, 12, 8, 8]);
   const fits = addon.eval(`local AH, out = ${HELPER}, {}
     for i, c in ipairs({ AH.pane, AH.scanCard, AH.shopCard, AH.sellCard, AH.ownedCard, AH.shopCard.body.table, AH.pane.actions[6], AH.upCard, AH.upCard.table, AH.ownedCard.table }) do out[i] = { c:GetLeft(), c:GetRight(), c:GetTop(), c:GetBottom() } end return out`);
   const [l, r, t, b] = [page.rect.left, page.rect.right, page.rect.top, page.rect.bottom];

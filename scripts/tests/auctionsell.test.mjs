@@ -578,6 +578,17 @@ it("the Your auctions toolbar holds Check undercuts and Cancel next undercut in 
   }
 });
 
+it("the Lists pane's action buttons hold their labels in German and Russian, two to a row in three rows (P10-6)", () => {
+  for (const locale of ["deDE", "ruRU"]) {
+    const addon = postingTab(locale);
+    addon.eval("__wfgStub.click(AuctionHouseFrame.Tabs[4])");
+    const labels = addon.eval(`local out = {} for i, b in ipairs(${HELPER}.pane.actions) do out[i] = b.text:GetText() end return out`);
+    expect(addon.textFit(`${HELPER}.pane`).filter((f) => labels.includes(f.text)), `${locale}: no action label is cut`).toEqual([]);
+    const grid = addon.eval(`local a = ${HELPER}.pane.actions return { a[1]:GetLeft() == a[3]:GetLeft(), a[2]:GetLeft() > a[1]:GetRight(), a[3]:GetTop() < a[1]:GetBottom(), a[5]:GetTop() < a[3]:GetBottom(), a[6]:GetRight() <= ${HELPER}.pane:GetRight() }`);
+    expect(grid, `${locale}: columns line up, rows step down, the last button stays inside the pane`).toEqual([true, true, true, true, true]);
+  }
+});
+
 it("the Lists toolbar buttons hold their labels in French and German", () => {
   for (const locale of ["frFR", "deDE"]) {
     const addon = postingTab(locale);
