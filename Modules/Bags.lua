@@ -270,8 +270,9 @@ function BG.AddSort(frame)
 end
 
 -- The combined bag's sections and its search words, and the bank's search words (Modules/BagSections.lua,
--- Modules/BagSearch.lua).
+-- Modules/BagSearch.lua), and the search row's buttons refitted after a live Text size change.
 local function watchLayout(frame)
+  T.OnChanged(ns.Guard("resize bag tools", function() BG.ResizeTools(frame) end))
   BG.WatchSections(frame)
   BG.WatchSearch(frame)
   if type(_G.BankPanel) == "table" then BG.WatchBankSearch(_G.BankPanel) end

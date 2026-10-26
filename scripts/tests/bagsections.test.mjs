@@ -707,6 +707,21 @@ it("a section of one or two items is as wide as its translated header, so no hea
   }
 });
 
+it("Filter, Groups and Sort refit when the Text size changes while the bag is open (B10-9)", () => {
+  for (const locale of ["ruRU", "deDE"]) {
+    const addon = createAddon({ textFit: true, client: `__wfgWorld.locale = "${locale}"`, savedVariables: SETUP_DONE });
+    addon.eval(BAG_ENV);
+    addon.login();
+    addon.eval("__openBag()");
+    addon.eval("ns.Theme.Settings().textScale = 1.5 ns.Theme.Refresh()");
+    const BG = "ns.GetModule('Bags')";
+    const cut = ["filter", "groups"].flatMap((name) => addon.textFit(`${BG}.tools.${name}`)).concat(addon.textFit(`${BG}.sort`));
+    expect(cut, `${locale}: Filter, Groups and Sort show their whole labels at 150%`).toEqual([]);
+    const gap = addon.eval(`return ${BG}.tools.filter:GetLeft() - BagItemSearchBox:GetRight()`);
+    expect(gap, `${locale}: the search box still ends before Filter`).toBeGreaterThanOrEqual(0);
+  }
+});
+
 it("the sectioned combined bag is clamped to the screen, so a bag taller than a short canvas keeps its title and Sort button; a plain bag is left alone", () => {
   // TEST-ONLY: frames record the clamp they are given (the stub's SetClampedToScreen keeps nothing); the game windows'
   // own clamp (Drag game windows by their title bar) is off, so only the sections' clamp is seen.
