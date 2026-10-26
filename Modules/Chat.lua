@@ -963,7 +963,10 @@ end
 function CH.Place()
   local frame = _G.ChatFrame1
   if not CH.settings.place or type(frame) ~= "table" then return end
-  ns.Mover(frame, "chat", L["Chat"], { "BOTTOMLEFT", "BOTTOMLEFT", CH.SPOT[1], CH.SPOT[2] })
+  local m = ns.Mover(frame, "chat", L["Chat"], { "BOTTOMLEFT", "BOTTOMLEFT", CH.SPOT[1], CH.SPOT[2] })
+  -- The handle's clamp reaches over the side buttons, the scroll column, the tab bar and the edit box, so a
+  -- drag to an edge keeps them on the screen.
+  m.insets = { -(T.SPACE.tight + CH.STACK_ROOM), CH.SIDE_COLUMN + T.SPACE.tight, CH.BAR, -(CH.BAR + T.SPACE.tight) }
   pinChat(frame)
 end
 

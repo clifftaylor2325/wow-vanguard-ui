@@ -2450,6 +2450,24 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: the card's line names @WowVanguardUI on X; each button opens the copy box with its address selected (`https://discord.gg/8ChnJfyww`, then `https://x.com/WowVanguardUI`), the box's title says to press Ctrl+C and paste into the browser, and the pasted invite opens the Vanguard server; in the long language both button labels fit. `/vg errors` is empty.
 - If it fails, paste: a screenshot of the card or the box, and `/vg errors`.
 
+### 33.47 Narrow screens: adapted default spots and setup's Fit
+
+- Do: on a 4:3 or 5:4 screen, or a 1024x768 window, with the game's UI scale at 100 % and a fresh profile, look at the frames around your character with a target that has a target, at your buffs with a dozen of them on, at Boss timers and the talking head in `/vg unlock`, and (in a party, Party pets and targets on under Unit frames) at the party pets column with the UI scale at 115 %. Then run `/vg setup` and go to the Screen step. On a 16:9 screen at 100 % or below, look at the same frames.
+- Expect: on the narrow screen the target of target sits just above the target's cast bar at the target's inner end, on the screen and clear of the tooltip corner; your buffs wrap in fewer columns (five on a 1024-wide canvas) and leave the main tanks' spot clear; the Boss timers handle sits left of the quest tracker; the talking head's handle is clear of the minimap; at 115 % the party pets column sits right of the party column with its top on the screen. The Screen step shows "Fit my screen: UI scale N%  ·  suggested" just above Keep (90 % on 16:10, 75 % on 4:3, 70 % on 5:4); picking it and finishing sets the game's UI Scale slider there and changes no button, tile or text size. On the 16:9 screen every frame is where it was before and there is no Fit choice. [Needs in game: all of it, the spots at the real UI scale.]
+- If it fails, paste: a screenshot of the HUD and the Screen step, your resolution and UI scale, and `/vg errors`.
+
+### 33.48 Frames kept on the screen, and chat dragged to an edge
+
+- Do: `/vg unlock`, drag your player frame against the right edge and lock; set the game's UI scale from 65 % to 115 % (or load a profile saved on an ultrawide screen on a narrower one). Then `/vg unlock` and drag the chat handle hard against the left edge, then the top-right corner, and lock.
+- Expect: the player frame stays wholly on the screen after the scale change, and in unlock mode its handle sits over it. The chat handle stops short of each edge: with the chat on the left edge its column of side buttons is still on the screen; in the top-right corner the tab bar and its Copy and Find tiles are under the screen's top, the scroll column inside the right edge, and the edit box (press Enter) on the screen. [Needs in game: whether the client's clamp keeps protected frames on the screen, and that SetClampRectInsets grows the chat handle's clamp in the direction used (negative left and bottom, positive right and top).]
+- If it fails, paste: a screenshot with the handles showing, `/vg frame ChatFrame1` and `/vg errors`.
+
+### 33.49 Raid mark on the short frames
+
+- Do: in a group, mark your target's target and your pet (or a boss) with a raid target icon (Raid target icons on, under Raid frames), with long names on them.
+- Expect: on the target of target, pet and boss frames the mark sits a little higher than on the player and target frames, its bottom just over the top of the name, which stays readable; on the target, player and focus frames it is centred on the top edge as before. [Needs in game: the name's real height against the lifted mark.]
+- If it fails, paste: a screenshot of the frames and `/vg errors`.
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ## When you are done

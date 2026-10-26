@@ -126,6 +126,22 @@ function L.Clamp(r, sw, sh)
   return { left = left, bottom = bottom, w = r.w, h = r.h }
 end
 
+-- How far a rect's low edge v (size long) moves to sit within lo..hi: 0 when it is inside already, or when
+-- it is too big to fit (a frame taller than the screen keeps its top where its anchor puts it).
+local function shiftInto(v, size, lo, hi)
+  if size > hi - lo then return 0 end
+  return math.max(lo, math.min(v, hi - size)) - v
+end
+
+-- The shift dx, dy that moves a rect ({ left, bottom, w, h }) as little as it takes onto a screen ({ w, h })
+-- less its room ({ left, right, bottom, top }: room kept clear at those edges, each may be missing).
+function L.FitShift(r, screen, room)
+  room = room or {}
+  local dx = shiftInto(r.left, r.w, room.left or 0, screen.w - (room.right or 0))
+  local dy = shiftInto(r.bottom, r.h, room.bottom or 0, screen.h - (room.top or 0))
+  return dx, dy
+end
+
 -- The side of rect t ("LEFT", "RIGHT", "TOP" or "BOTTOM") that rect r is nearest to.
 function L.NearestSide(r, t)
   local dx = (r.left + r.w / 2) - (t.left + t.w / 2)

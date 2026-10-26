@@ -233,6 +233,7 @@
       "setup layouts: Versus deck is your role's centered layout with the deck on; another layout takes it off",
       "setup layouts: each role sizes the frames its own way: a taller target for damage and more for tanking, a larger raid and smaller own frames for healing",
       "setup layouts: nothing overlaps or leaves the screen, solo to 40-man, at UI scale 1 and pixel-perfect",
+      "setup layouts: on canvases narrower than 1365 the adapted default spots stay on screen and clear, solo to 40-man",
       "setup screen: picking Pixel-perfect turns on Vanguard's pixel-perfect scale and leaves the game's UI scale alone (#225)",
       "setup screen: this screen's preset is picked; Keep changes nothing; a preset sets the UI scale, buttons, tiles and text",
       "setup screens: with each screen preset, nothing overlaps or leaves its own screen, in every layout, solo to 40-man"
@@ -266,6 +267,7 @@
       "Versus deck: one rounded panel behind the player and target, the crest at the seam, the target's bars mirrored",
       "a ?? (boss or far higher) level reads in the hardest difficulty color, not the easiest",
       "a creature someone else tagged is grey on the unit frames, as on the game's frames",
+      "a raid target icon on a short frame (target of target, pet, boss) is lifted so its bottom clears the name",
       "a raid target icon sits on every unit frame's top edge, following the Raid target icons switch",
       "a released player reads Ghost and a feigning hunter reads alive",
       "class bars: a right-click on a totem cell destroys it, with key-down casting on or off",

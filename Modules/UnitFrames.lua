@@ -27,10 +27,13 @@ local CLASSIFICATION = { elite = "gold", rareelite = "accent", rare = "text2", w
 -- line, the pet sits over the player frame's right end (combo points take its
 -- left end, and the chat reaches up beside the frame), and the focus sits
 -- above the player (its debuffs under it, its cast bar over it; Modules/CastBars.lua).
+-- On a canvas under 1365 wide the target of target would reach the tooltip's corner (and past the
+-- edge under 972), so there it sits over the target's cast bar instead, at the target's inner end.
 local LAYOUT = {
   { key = "player", w = 240, h = 36, label = L["Player"], point = { "BOTTOM", "BOTTOM", -240, 196 } },
   { key = "target", w = 240, h = 36, label = L["Target"], point = { "BOTTOM", "BOTTOM", 240, 196 } },
-  { key = "targettarget", w = 120, h = 24, label = L["Target of target"], point = { "BOTTOM", "BOTTOM", 426, 196 } },
+  { key = "targettarget", w = 120, h = 24, label = L["Target of target"], point = { "BOTTOM", "BOTTOM", 426, 196,
+    narrow = { w = 1365, spot = { "BOTTOM", "BOTTOM", 180, 280 } } } },
   { key = "focus", w = 160, h = 30, label = L["Focus"], point = { "BOTTOM", "BOTTOM", -270, 290 } },
   { key = "pet", w = 120, h = 24, label = L["Pet"], point = { "BOTTOM", "BOTTOM", -184, 240 } },
 }
@@ -298,11 +301,25 @@ end
 -- The raid target icon's size: the raid tiles' 12 grown to the unit frames' scale.
 UF.RAID_ICON = 16
 
--- The raid target icon, centred on the frame's top edge (hidden until UF.UpdateRaidIcon paints it).
-local function addRaidIcon(f)
+-- Frames shorter than this (the 24-26 tall target of target, pet and boss frames) lift their raid target icon
+-- until its bottom clears the top of the name; taller ones keep it centred on the top edge.
+UF.RAID_ICON_SHORT = 30
+
+-- How far the raid target icon's centre sits above the top edge of a frame h tall: on a short frame, enough for its
+-- bottom to clear the top of the name (centred on the health bar, which stops over the power bar); else 0.
+local function raidIconLift(f, h)
+  if h >= UF.RAID_ICON_SHORT then return 0 end
+  local px = T.Pixel(f)
+  local health = h - UF.settings.powerHeight - 3 * px
+  local nameGap = px + (health - f.name:GetLineHeight()) / 2
+  return math.max(0, UF.RAID_ICON / 2 - nameGap)
+end
+
+-- The raid target icon on the frame's top edge, lifted on a short frame (hidden until UF.UpdateRaidIcon paints it).
+local function addRaidIcon(f, h)
   f.raidIcon = f.health:CreateTexture(nil, "OVERLAY")
   f.raidIcon:SetSize(UF.RAID_ICON, UF.RAID_ICON)
-  f.raidIcon:SetPoint("CENTER", f, "TOP")
+  f.raidIcon:SetPoint("CENTER", f, "TOP", 0, raidIconLift(f, h))
   f.raidIcon:Hide()
 end
 
@@ -339,7 +356,7 @@ local function createUnitFrame(key, w, h)
   T.HudPanel(f, { shield = true })
   addBars(f, UF.settings)
   addTexts(f, UF.settings)
-  addRaidIcon(f)
+  addRaidIcon(f, h)
   return f
 end
 

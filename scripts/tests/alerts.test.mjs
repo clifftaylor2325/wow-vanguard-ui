@@ -24,6 +24,16 @@ const ALERTS_ENV = `
   TalkingHeadFrame.MainFrame.Name = TalkingHeadFrame.MainFrame:CreateFontString()
   TalkingHeadFrame.MainFrame.Text = TalkingHeadFrame.MainFrame:CreateFontString()
 `;
+it("game alerts: on a canvas under 962 wide the talking head moves left, clear of the minimap and info strip", () => {
+  // The talking head's spot on a w x h canvas: its left and right edges, and the minimap's left edge.
+  const at = (w, h) => {
+    const addon = loggedIn(ALERTS_ENV + `__wfgStub.setScreen(${w}, ${h})`);
+    const r = addon.frame("Vanguard_TalkingHeadFrameSpot").rect;
+    return [r.left, r.left + r.width <= addon.frame("Vanguard_Minimap").rect.left];
+  };
+  expect(at(1024, 768), "1024 wide: 186 in from the left, as before, clear of the minimap").toEqual([186, true]);
+  expect(at(835, 668), "835 wide: moved left until it clears the minimap's column").toEqual([835 - 206 - 570, true]);
+});
 it("game alerts: loss of control and the talking head, styled and placed (or hidden)", () => {
   const addon = loggedIn(ALERTS_ENV);
   const loc = addon.eval(`local f = LossOfControlFrame

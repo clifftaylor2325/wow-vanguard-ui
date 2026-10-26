@@ -165,11 +165,11 @@ function layoutProblems(rects, sw, sh) {
   keys.forEach((k) => { const r = rects[k]; if (r.l < 0 || r.b < 0 || r.r > sw || r.t > sh) bad.push(`${k} off screen`); });
   return bad;
 }
-// The whole HUD logged in on a new account, party pets and targets on, the info strip
-// at its tallest (with the leveling and DPS rows), the roll tracker at its most lines and the bag and
-// menu bar at its laid-out size (404 wide, 68 tall: the bags row over the menu row's 14 slots).
-function wholeHud() {
-  const addon = loggedIn(UI_ENV + ACTIONS_ENV + UNITS_ENV + RAID_ENV + SWING_ENV + TOOLS_ENV + TIDY_ENV + MICRO_ENV + STRIPS_ENV + SPECIAL_BARS_ENV + "TakeTaxiNode = function() end", { firstRun: true, savedVariables: "VanguardDB = { profiles = { Default = { PartyExtras = { show = true } } } }" });
+// The whole HUD logged in on a new account (on the screen `screen`'s Lua sets, else the harness's 1920 x 1080),
+// party pets and targets on, the info strip at its tallest (with the leveling and DPS rows), the roll tracker at its
+// most lines and the bag and menu bar at its laid-out size (404 wide, 68 tall: the bags row over the menu row's 14 slots).
+function wholeHud(screen = "") {
+  const addon = loggedIn(screen + UI_ENV + ACTIONS_ENV + UNITS_ENV + RAID_ENV + SWING_ENV + TOOLS_ENV + TIDY_ENV + MICRO_ENV + STRIPS_ENV + SPECIAL_BARS_ENV + "TakeTaxiNode = function() end", { firstRun: true, savedVariables: "VanguardDB = { profiles = { Default = { PartyExtras = { show = true } } } }" });
   addon.eval("Vanguard_InfoStrip:SetHeight(68)");
   addon.eval('local R = ns.GetModule("Rolls") Vanguard_Rolls:SetHeight(R.LINES * R.LINE + 2 * R.PAD)');
   addon.eval("MicroMenuContainer:Layout() BagsBar:Layout()");
@@ -219,6 +219,25 @@ it("setup screens: with each screen preset, nothing overlaps or leaves its own s
   }
   expect(addon.eval("return { ns.GetModule('ActionBars').settings.size, ns.GetModule('RaidFrames').settings.width, ns.Theme.Settings().textScale }"), "the last preset (ultrawide) set the buttons, tiles and text").toEqual([38, 110, 1.05]);
 });
+// The frames whose default spots adapt to a canvas narrower than 1365 or shorter than 768 (P3-3 and the
+// narrow-screen fixes): on the canvases below, each is on screen and clear of the rest of the centered layout.
+const NARROW_FRAMES = ["uf_targettarget", "playerauras", "partyextras"];
+// What the narrow canvases still have that these frames don't answer for: the raid grid's own spots (Modules/RaidFrames.lua);
+// on a canvas 668 tall the quest tracker and the 360 tall quest dialog reach into the HUD; under 1020 wide your
+// buffs' shortest row (five) meets the main tanks' spot, shown only in a raid.
+const narrowExcused = (p, sw, sh) => / raid\b|raid off screen/.test(p) || (sh < 700 && /questtracker|questdialog/.test(p))
+  || (sw < 1020 && /playerauras \/ maintanks/.test(p));
+it("setup layouts: on canvases narrower than 1365 the adapted default spots stay on screen and clear, solo to 40-man", () => {
+  for (const [sw, sh] of [[1280, 800], [1229, 768], [1024, 768], [835, 668]]) {
+    const addon = wholeHud(`__wfgStub.setScreen(${sw}, ${sh}) `);
+    expect(NARROW_FRAMES.filter((k) => !moverSpots(addon)[k]), `${sw} x ${sh}: every adapted frame is built`).toEqual([]);
+    for (const layout of ["damage", "tank", "healing", "versus"]) {
+      addon.eval(`ns.Setup.ApplyLayout("${layout}")`);
+      const mine = problemsAt(addon, layout, sw, sh, `${layout}, ${sw}x${sh}`).filter((p) => (/off screen/.test(p) || NARROW_FRAMES.some((k) => p.includes(k))) && !narrowExcused(p, sw, sh));
+      expect(mine).toEqual([]);
+    }
+  }
+});
 // The screen step's choices (their labels) and the hint under them.
 const screenPage = (addon) => addon.eval("local p = Vanguard_Setup.pages.screen local out = {} for i, b in ipairs(p.choices) do out[i] = b.text:GetText() end return { out, p.hint:GetText() }");
 // What the screen presets set: the UI scale settings, the shared button size, bar 1's buttons, the raid tile size, the text size and pixel-perfect scale.
@@ -245,6 +264,23 @@ it("setup screen: this screen's preset is picked; Keep changes nothing; a preset
   setupClick(addon, "next");
   addon.eval('Vanguard_Question.no:GetScript("OnClick")(Vanguard_Question.no)');
   expect(addon.eval("return Vanguard_Reload:IsShown() and Vanguard_Reload.title:GetText()"), "new tile sizes offer a reload at the end").toMatch(/^The new raid tile size shows after a reload/);
+});
+it("setup screen: on a canvas narrower than 1365 the step suggests the UI scale that gives the layout its room", () => {
+  const addon = loggedIn(ACTIONS_ENV + UNITS_ENV + RAID_ENV + CLICK_LUA + "__wfgStub.setScreen(1229, 768)", { firstRun: true });
+  setupClick(addon, "next");
+  const [labels] = screenPage(addon);
+  expect(labels.slice(-2), "Fit, suggested, just above Keep").toEqual(["Fit my screen: UI scale 90%  ·  suggested", "Keep my current sizes"]);
+  addon.eval('__click("Fit my screen: UI scale 90%  ·  suggested")');
+  expect(screenPage(addon)[1], "it moves the game's slider and keeps every size").toBe("Moves the game's UI Scale slider to 90% (Vanguard's pixel-perfect scale goes off); action buttons 38 px, raid tiles 100 x 48, text 100%.");
+  setupClick(addon, "next");
+  expect(Number(addon.eval("return GetCVar('uiScale')")), "the UI scale that makes the canvas 1365 wide").toBeCloseTo(1229 / 1365, 6);
+  expect(loggedIn("__wfgStub.setScreen(1365, 768)", { firstRun: true }).eval("return ns.Setup.OfferFit()"), "1365 wide: no suggestion").toBe(false);
+});
+it("setup screen: a preset on a 5:4 or 4:3 screen sets a UI scale no higher than the one that keeps the canvas 1365 wide", () => {
+  const addon = loggedIn("__wfgStub.setScreen(1280, 1024)", { firstRun: true });
+  expect([addon.eval("return ns.Setup.DetectScreen()"), addon.eval("return ns.Setup.PresetScale(ns.Setup.ScreenPreset('1080'))")], "1280 x 1024: the 1080p preset, at 70% rather than 80%").toEqual(["1080", 768 * 1.25 / 1365]);
+  addon.eval("__wfgStub.setScreen(1920, 1080)");
+  expect(addon.eval("return ns.Setup.PresetScale(ns.Setup.ScreenPreset('1080'))"), "a 16:9 screen keeps the preset's 80%").toBe(0.8);
 });
 // What Pixel-perfect sets on a w x h screen: { ui, pixel, button, tile, textScale }.
 const pixelPreset = (addon, w, h) => addon.eval(`__wfgStub.setScreen(${w}, ${h}) local p = ns.Setup.PixelPreset()

@@ -77,6 +77,17 @@ it("party pets and targets: small tiles above the party, only in a party, when s
   addon.eval('__click("Unit frames")');
   expect(addon.eval('return __click("Party pets and targets, above the party") and VanguardDB.profiles.Default.PartyExtras.show'), "the switch is under Unit frames").toBe(false);
 });
+it("party pets and targets: on a canvas under 676 tall the column sits right of the party, on screen", () => {
+  // The column's spot and rect on a w x h canvas, with the raid frames' party column's right edge.
+  const at = (w, h) => {
+    const addon = loggedIn(UNITS_ENV + GROUP_EXTRAS_ENV + `__wfgStub.setScreen(${w}, ${h})`, { savedVariables: "VanguardDB.profiles = { Default = { PartyExtras = { show = true } } }" });
+    const r = addon.frame("Vanguard_PartyExtras").rect, party = addon.frame("Vanguard_RaidHolder").rect;
+    return { spot: addon.eval("return { ns.MoverPoint('partyextras') }"), top: r.bottom + r.height, left: r.left, partyRight: party.left + party.width };
+  };
+  expect(at(1365, 768).spot, "768 tall: just above the party, as before").toEqual(["BOTTOM", "BOTTOM", -240, 606]);
+  const short = at(835, 668);
+  expect([short.spot, short.top <= 668, short.left > short.partyRight], "668 tall (UI scale 1.15): right of the party column, its top on the screen").toEqual([["BOTTOMLEFT", "BOTTOM", -66, 396], true, true]);
+});
 it("/vg factionart: which of the game's own faction pictures the client has", () => {
   const addon = loggedIn(`C_Texture = { GetAtlasInfo = function(name) if name:find("MountJournal") then return { width = 64 } end end }
     UnitFactionGroup = function() return "Horde" end`);
