@@ -71,7 +71,7 @@ export const placeholders = (text) => [...text.matchAll(/\{(\w+)\}/g)].map((m) =
 // A locale file's Lua text holding entries (Map key -> translation), keys sorted so diffs stay small.
 export function writeLocale(locale, entries) {
   const head = [`-- ${LOCALES[locale]} (${locale}) translations, written by \`node scripts/i18n.mjs import ${locale} <file.csv>\`:`,
-    "-- never edit by hand. Only reviewed rows land here; a text missing here shows in English.", "", "local ADDON, ns = ..."];
+    "-- never edit by hand. A text missing here shows in English.", "", "local ADDON, ns = ..."];
   const keys = [...entries.keys()].sort();
   if (keys.length === 0) return [...head, `ns.NewLocale("${locale}")`, ""].join("\n");
   const lines = keys.map((k) => `L[${luaQuote(k)}] = ${luaQuote(entries.get(k))}`);
@@ -119,11 +119,12 @@ export function parseCsv(text) {
   return rows.filter((r) => r.length > 1 || (r[0] ?? "") !== "");
 }
 
-// The reviewed translations in a CSV: Map key -> translation. A row whose note says
-// "machine" is an unreviewed draft and stays out (D6: native review before a text ships).
+// The translations in a CSV: Map key -> translation, every row that has one. The note
+// column is for translators and reviewers; machine drafts ship too (Cliff, 2026-10-26:
+// translations ship as drafted and players' feedback corrects them).
 export function importCsv(text) {
   const [head, ...rows] = parseCsv(text);
   const col = Object.fromEntries(CSV_HEAD.map((name) => [name, head.indexOf(name)]));
-  const reviewed = rows.filter((r) => (r[col.translation] ?? "").trim() !== "" && !/machine/i.test(r[col.note] ?? ""));
-  return new Map(reviewed.map((r) => [r[col.key], r[col.translation]]));
+  const filled = rows.filter((r) => (r[col.translation] ?? "").trim() !== "");
+  return new Map(filled.map((r) => [r[col.key], r[col.translation]]));
 }
