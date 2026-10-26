@@ -75,18 +75,12 @@ local function bindingIcon(parent, size)
   return f
 end
 
--- A spell's name from its id, through C_Spell or the old global; nil when the client doesn't know it.
-local function spellName(id)
-  if C_Spell and type(C_Spell.GetSpellName) == "function" then return C_Spell.GetSpellName(id) end
-  return type(GetSpellInfo) == "function" and (GetSpellInfo(id)) or nil
-end
-
 -- Binds the spell on the cursor (dragged from the spellbook or a bar) to a key; true when it did.
 local function dropSpell(key)
   local kind, _, _, id = GetCursorInfo()
   if kind ~= "spell" then return false end
-  local name = spellName(id)
-  if type(name) ~= "string" then return false end
+  local name = ns.SpellName(id)
+  if not name then return false end
   CC.Add(key, "spell", name, id)
   ClearCursor()
   return true

@@ -3,7 +3,7 @@
 // raid's door, on a ready check, or with /vg prep.
 
 import { expect, it } from "vitest";
-import { CLICK_LUA, chatHas, isTok, loggedIn, setCombat } from "./helpers.mjs";
+import { BUFF_NAMES, BUFF_NAMES_DE, CLICK_LUA, chatHas, isTok, loggedIn, setCombat, spellNames } from "./helpers.mjs";
 import { alphaOf, closeOf, insets } from "./dialogs.mjs";
 
 // TEST-ONLY instance, ammo and items: an apple (food), a bandage, a potion and
@@ -84,10 +84,10 @@ it("prep: nothing short keeps the card away at the door; /vg prep says everythin
 it("prep: class reagents follow your level", () => {
   const addon = character("SHAMAN", 25);
   addon.slash("prep");
-  expect(rows(addon).map((r) => r[0]), "a level 25 shaman: no Ankh row yet (Reincarnation is at 30)").toEqual(["Shiny Fish Scales"]);
+  expect(rows(addon).map((r) => r[0]), "a level 25 shaman: no Ankh row yet (Reincarnation is at 30)").toEqual(["TEST-ONLY Fish Scales"]);
   addon.world.setUnit("player", { level: 30 });
   addon.slash("prep");
-  expect(rows(addon), "at 30 with no ankhs").toEqual([["Ankh", "0 / 5"], ["Shiny Fish Scales", "0 / 5"], ["Fish Oil", "0 / 5"]]);
+  expect(rows(addon), "at 30 with no ankhs, each named as the client names it").toEqual([["TEST-ONLY Ankh", "0 / 5"], ["TEST-ONLY Fish Scales", "0 / 5"], ["TEST-ONLY Fish Oil", "0 / 5"]]);
   addon.eval("__carry(17030, 5) __carry(17057, 5) __carry(17058, 9)");
   addon.slash("prep");
   expect(rows(addon), "carrying enough").toEqual([]);
@@ -228,7 +228,11 @@ it("prep: a client without the bag, item or instance calls checks what it can", 
   const addon = character("SHAMAN", 30, { extra: "C_Container = nil GetInstanceInfo = nil" });
   addon.eval("C_Item.GetItemInfoInstant = nil");
   addon.slash("prep");
-  expect(rows(addon).map((r) => r[0]), "no bag scan: reagents only").toEqual(["Ankh", "Shiny Fish Scales", "Fish Oil"]);
+  expect(rows(addon).map((r) => r[0]), "no bag scan: reagents only").toEqual(["TEST-ONLY Ankh", "TEST-ONLY Fish Scales", "TEST-ONLY Fish Oil"]);
+  addon.eval("local info = C_Item.GetItemInfo C_Item.GetItemInfo = function() return nil end __info = info");
+  addon.slash("prep");
+  expect(rows(addon).map((r) => r[0]), "items the client has no data for yet keep their English names").toEqual(["Ankh", "Shiny Fish Scales", "Fish Oil"]);
+  addon.eval("C_Item.GetItemInfo = __info");
   addon.eval("C_Item.GetItemCount = nil C_Item.GetItemInfo = nil");
   addon.slash("stock 2589 10");
   addon.slash("prep");
@@ -242,8 +246,9 @@ it("prep: a client without the bag, item or instance calls checks what it can", 
   expect(rows(noClient).length, "an empty slot is skipped").toBe(3);
 });
 
-// TEST-ONLY weapons worn (item class 2) and their timed enchants as the client lists them per weapon slot.
-const BUFF_ENV = `
+// TEST-ONLY weapons worn (item class 2) and their timed enchants as the client lists them per weapon slot,
+// and the names the client gives the buff ids the checks look for.
+const BUFF_ENV = spellNames(BUFF_NAMES) + `
   __wfgWorld.items[2000] = { name = "TEST-ONLY Sword", classID = 2, subClassID = 7 }
   __wfgWorld.items[2001] = { name = "TEST-ONLY Shield", classID = 4, subClassID = 6 }
   __wfgWorld.worn[16] = "|cffffffff|Hitem:2000|h[TEST-ONLY Sword]|h|r"
@@ -304,17 +309,43 @@ it("prep buffs: world buffs only when asked for, an off hand only when it holds 
   expect(addon.texts("Everything's packed.").length, "one is enough").toBe(1);
 });
 
-it("prep buffs: a Forever variant of a classic name still counts, an unrelated buff does not", () => {
+it("prep buffs: a buff holding a check's name counts (a camp variant), an unrelated buff does not", () => {
   const addon = buffed();
-  // The labels of the aura rows now.
-  const labels = () => addon.eval("local out = {} for i, r in ipairs(ns.GetModule('InstancePrep').AuraRows()) do out[i] = r.label end return out");
+  // The labels of the aura rows now (an empty Lua table comes back as an object).
+  const labels = () => {
+    const out = addon.eval("local out = {} for i, r in ipairs(ns.GetModule('InstancePrep').AuraRows()) do out[i] = r.label end return out");
+    return Array.isArray(out) ? out : [];
+  };
   ["Haste of the Camp", "Flask of Forever Fortitude"].forEach((n) => buff(addon, n));
-  expect(labels(), "a flask under a new name and the fortitude inside it count; the unrelated buff counts for nothing").toEqual(["Food buff", "Mark of the Wild", "Arcane Intellect"]);
+  expect(labels(), "a buff named like no check counts for nothing: a flask the client calls something else is no flask").toEqual(["Flask", "Food buff", "Fortitude", "Mark of the Wild", "Arcane Intellect"]);
   buff(addon, "Camp Well Fed Feast");
   buff(addon, "Gift of the Wild (camp)");
-  expect(labels(), "a camp food and a camp class buff count too").toEqual(["Arcane Intellect"]);
+  expect(labels(), "a camp food and a camp class buff holding the client's names count").toEqual(["Flask", "Fortitude", "Arcane Intellect"]);
   addon.eval("C_UnitAuras.GetAuraDataByIndex = nil");
   expect(labels(), "without the index read only the exact names count: back to missing").toEqual(["Flask", "Food buff", "Fortitude", "Mark of the Wild", "Arcane Intellect"]);
+  addon.eval("C_Spell.GetSpellName = nil GetSpellInfo = nil");
+  expect(labels(), "a client that names none of a check's spells makes no row for it: never a guess").toEqual([]);
+  addon.slash("prep buffs");
+  expect(chatHas(addon, /Flask: none this client knows, so no row; Food buff: none/), "and the buff report says so").toBe(true);
+});
+
+it("prep buffs: on a German client the checks find the German names", () => {
+  const addon = buffed(`__wfgWorld.locale = "deDE" ${spellNames(BUFF_NAMES_DE)}`);
+  // The labels of the aura rows now (an empty Lua table comes back as an object).
+  const labels = () => {
+    const out = addon.eval("local out = {} for i, r in ipairs(ns.GetModule('InstancePrep').AuraRows()) do out[i] = r.label end return out");
+    return Array.isArray(out) ? out : [];
+  };
+  ["Flask of the Titans", "Well Fed", "Power Word: Fortitude"].forEach((n) => buff(addon, n));
+  expect(labels(), "the English names count for nothing on a German client").toEqual(["Flask", "Food buff", "Fortitude", "Mark of the Wild", "Arcane Intellect"]);
+  ["Fläschchen der Titanen", "Satt", "Gebet der Seelenstärke", "Gabe der Wildnis", "Arkane Intelligenz"].forEach((n) => buff(addon, n));
+  expect(labels(), "the German flask, food and raid buffs count").toEqual([]);
+  addon.eval("ns.GetModule('InstancePrep').settings.worldBuffs = true");
+  expect(labels(), "no world buff yet").toEqual(["World buffs"]);
+  buff(addon, "Liedblumenserenade");
+  expect(labels(), "Songflower under its German name counts").toEqual([]);
+  addon.slash("prep buffs");
+  expect(chatHas(addon, /Fläschchen der Titanen -> Flask/), "the buff report names the German flask's check").toBe(true);
 });
 
 it("prep buffs: /vg prep buffs lists your buffs with the check each counts for, out of combat", () => {
@@ -324,7 +355,7 @@ it("prep buffs: /vg prep buffs lists your buffs with the check each counts for, 
   expect(chatHas(addon, /Your 2 buff\(s\), and the Instance prep check each counts for:/), "the count").toBe(true);
   expect(chatHas(addon, /Flask of the Titans -> Flask/), "a flask counts for the Flask row").toBe(true);
   expect(chatHas(addon, /Haste of the Camp -> no check/), "another buff counts for none").toBe(true);
-  expect(chatHas(addon, /The checks look for: Flask Flask of the Titans, .*; Food buff Well Fed; or any buff with Flask of, Well Fed/), "and what the checks expect").toBe(true);
+  expect(chatHas(addon, /The checks count any buff with one of these names in its name: Flask: Flask of the Titans, .*; Food buff: Well Fed; Fortitude: Power Word: Fortitude, Prayer of Fortitude; .*World buffs: Rallying Cry of the Dragonslayer/), "and what the checks expect, in the client's names").toBe(true);
   setCombat(addon, true);
   addon.slash("prep buffs");
   expect(chatHas(addon, /Buffs are listed out of combat, and not while the game hides aura values\./), "in combat it waits").toBe(true);

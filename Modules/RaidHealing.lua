@@ -7,8 +7,9 @@
 -- missing one just switches that feature off. Heal prediction uses the
 -- client's calculator where it has one (it may hand back hidden values,
 -- which go straight to the bars), else the older incoming-heals call.
--- Buffs are watched by name: defaults per class, editable in /vg > Healing
--- (check the defaults against your client's spell names).
+-- Buffs are watched by the client's name for them: defaults per class, listed
+-- by spell id and named by the client (so they hold on every client language),
+-- editable in /vg > Healing.
 
 local ADDON, ns = ...
 
@@ -19,22 +20,20 @@ local RH = ns.Module("RaidHealing", {
   defaults = { healPrediction = true, absorbs = true, aggro = true, buffWatch = true, buffs = "" },
 })
 
--- Buffs each class can give, by name (the single and group versions count alike).
+-- Buffs each class can give, by spell id (the single and group versions count alike); the client names
+-- each, and every rank shares that name. The ids are ALL_BUFFS' below.
 RH.CLASS_BUFFS = {
-  PRIEST = { "Power Word: Fortitude", "Prayer of Fortitude" },
-  MAGE = { "Arcane Intellect", "Arcane Brilliance" },
-  DRUID = { "Mark of the Wild", "Gift of the Wild" },
-  WARRIOR = { "Battle Shout" },
+  PRIEST = { 1243, 21562 },
+  MAGE = { 1459, 23028 },
+  DRUID = { 1126, 21849 },
+  WARRIOR = { 6673 },
   -- Any blessing, normal or greater, counts: a paladin gives one per player.
-  PALADIN = {
-    "Blessing of Might", "Blessing of Wisdom", "Blessing of Kings", "Blessing of Salvation", "Blessing of Light",
-    "Greater Blessing of Might", "Greater Blessing of Wisdom", "Greater Blessing of Kings",
-    "Greater Blessing of Salvation", "Greater Blessing of Light",
-  },
+  PALADIN = { 19740, 19742, 20217, 1038, 19977, 25782, 25894, 25898, 25895, 25890 },
 }
 
--- Every class's group buffs for the options list, by class, as { name, spellID }.
--- The id finds the icon even for spells you haven't learned (the client can't look those up by name).
+-- Every class's group buffs for the options list, by class, as { English name, spellID }. The row shows
+-- the client's name for the id; the English one only where the client has none. The id also finds the
+-- icon for spells you haven't learned (the client can't look those up by name).
 RH.ALL_BUFFS = {
   { "PRIEST", { { "Power Word: Fortitude", 1243 }, { "Prayer of Fortitude", 21562 }, { "Divine Spirit", 14752 },
     { "Prayer of Spirit", 27681 }, { "Shadow Protection", 976 }, { "Prayer of Shadow Protection", 27683 } } },
@@ -49,37 +48,37 @@ RH.ALL_BUFFS = {
   { "WARLOCK", { { "Unending Breath", 5697 }, { "Detect Invisibility", 2970 } } },
 }
 
--- Static icons by buff name, used when the client has none for the name or spell id (never a question mark).
+-- Static icons by spell id, used when the client has none for the name or id (never a question mark).
 RH.FALLBACK_ICONS = {
-  ["Power Word: Fortitude"] = "Interface\\Icons\\Spell_Holy_WordFortitude",
-  ["Prayer of Fortitude"] = "Interface\\Icons\\Spell_Holy_PrayerOfFortitude",
-  ["Divine Spirit"] = "Interface\\Icons\\Spell_Holy_DivineSpirit",
-  ["Prayer of Spirit"] = "Interface\\Icons\\Spell_Holy_PrayerofSpirit",
-  ["Shadow Protection"] = "Interface\\Icons\\Spell_Shadow_AntiShadow",
-  ["Prayer of Shadow Protection"] = "Interface\\Icons\\Spell_Holy_PrayerofShadowProtection",
-  ["Arcane Intellect"] = "Interface\\Icons\\Spell_Holy_MagicalSentry",
-  ["Arcane Brilliance"] = "Interface\\Icons\\Spell_Holy_ArcaneIntellect",
-  ["Amplify Magic"] = "Interface\\Icons\\Spell_Holy_FlashHeal",
-  ["Dampen Magic"] = "Interface\\Icons\\Spell_Nature_AbolishMagic",
-  ["Mark of the Wild"] = "Interface\\Icons\\Spell_Nature_Regeneration",
-  ["Gift of the Wild"] = "Interface\\Icons\\Spell_Nature_Regeneration",
-  ["Thorns"] = "Interface\\Icons\\Spell_Nature_Thorns",
-  ["Blessing of Might"] = "Interface\\Icons\\Spell_Holy_FistOfJustice",
-  ["Blessing of Wisdom"] = "Interface\\Icons\\Spell_Holy_SealOfWisdom",
-  ["Blessing of Kings"] = "Interface\\Icons\\Spell_Magic_MageArmor",
-  ["Blessing of Salvation"] = "Interface\\Icons\\Spell_Holy_SealOfSalvation",
-  ["Blessing of Light"] = "Interface\\Icons\\Spell_Holy_PrayerOfHealing02",
-  ["Blessing of Sanctuary"] = "Interface\\Icons\\Spell_Nature_LightningShield",
-  ["Greater Blessing of Might"] = "Interface\\Icons\\Spell_Holy_GreaterBlessingofKings",
-  ["Greater Blessing of Wisdom"] = "Interface\\Icons\\Spell_Holy_GreaterBlessingofWisdom",
-  ["Greater Blessing of Kings"] = "Interface\\Icons\\Spell_Holy_GreaterBlessingofKings",
-  ["Greater Blessing of Salvation"] = "Interface\\Icons\\Spell_Holy_GreaterBlessingofSalvation",
-  ["Greater Blessing of Light"] = "Interface\\Icons\\Spell_Holy_GreaterBlessingofLight",
-  ["Greater Blessing of Sanctuary"] = "Interface\\Icons\\Spell_Holy_GreaterBlessingofSanctuary",
-  ["Battle Shout"] = "Interface\\Icons\\Ability_Warrior_BattleShout",
-  ["Trueshot Aura"] = "Interface\\Icons\\Ability_TrueShot",
-  ["Unending Breath"] = "Interface\\Icons\\Spell_Shadow_DemonBreath",
-  ["Detect Invisibility"] = "Interface\\Icons\\Spell_Shadow_DetectInvisibility",
+  [1243] = "Interface\\Icons\\Spell_Holy_WordFortitude", -- Power Word: Fortitude
+  [21562] = "Interface\\Icons\\Spell_Holy_PrayerOfFortitude", -- Prayer of Fortitude
+  [14752] = "Interface\\Icons\\Spell_Holy_DivineSpirit", -- Divine Spirit
+  [27681] = "Interface\\Icons\\Spell_Holy_PrayerofSpirit", -- Prayer of Spirit
+  [976] = "Interface\\Icons\\Spell_Shadow_AntiShadow", -- Shadow Protection
+  [27683] = "Interface\\Icons\\Spell_Holy_PrayerofShadowProtection", -- Prayer of Shadow Protection
+  [1459] = "Interface\\Icons\\Spell_Holy_MagicalSentry", -- Arcane Intellect
+  [23028] = "Interface\\Icons\\Spell_Holy_ArcaneIntellect", -- Arcane Brilliance
+  [1008] = "Interface\\Icons\\Spell_Holy_FlashHeal", -- Amplify Magic
+  [604] = "Interface\\Icons\\Spell_Nature_AbolishMagic", -- Dampen Magic
+  [1126] = "Interface\\Icons\\Spell_Nature_Regeneration", -- Mark of the Wild
+  [21849] = "Interface\\Icons\\Spell_Nature_Regeneration", -- Gift of the Wild
+  [467] = "Interface\\Icons\\Spell_Nature_Thorns", -- Thorns
+  [19740] = "Interface\\Icons\\Spell_Holy_FistOfJustice", -- Blessing of Might
+  [19742] = "Interface\\Icons\\Spell_Holy_SealOfWisdom", -- Blessing of Wisdom
+  [20217] = "Interface\\Icons\\Spell_Magic_MageArmor", -- Blessing of Kings
+  [1038] = "Interface\\Icons\\Spell_Holy_SealOfSalvation", -- Blessing of Salvation
+  [19977] = "Interface\\Icons\\Spell_Holy_PrayerOfHealing02", -- Blessing of Light
+  [20911] = "Interface\\Icons\\Spell_Nature_LightningShield", -- Blessing of Sanctuary
+  [25782] = "Interface\\Icons\\Spell_Holy_GreaterBlessingofKings", -- Greater Blessing of Might
+  [25894] = "Interface\\Icons\\Spell_Holy_GreaterBlessingofWisdom", -- Greater Blessing of Wisdom
+  [25898] = "Interface\\Icons\\Spell_Holy_GreaterBlessingofKings", -- Greater Blessing of Kings
+  [25895] = "Interface\\Icons\\Spell_Holy_GreaterBlessingofSalvation", -- Greater Blessing of Salvation
+  [25890] = "Interface\\Icons\\Spell_Holy_GreaterBlessingofLight", -- Greater Blessing of Light
+  [25899] = "Interface\\Icons\\Spell_Holy_GreaterBlessingofSanctuary", -- Greater Blessing of Sanctuary
+  [6673] = "Interface\\Icons\\Ability_Warrior_BattleShout", -- Battle Shout
+  [19506] = "Interface\\Icons\\Ability_TrueShot", -- Trueshot Aura
+  [5697] = "Interface\\Icons\\Spell_Shadow_DemonBreath", -- Unending Breath
+  [2970] = "Interface\\Icons\\Spell_Shadow_DetectInvisibility", -- Detect Invisibility
 }
 
 -- Values -----------------------------------------------------------------------------------
@@ -140,7 +139,7 @@ local function readNames()
   end
   if #names > 0 then return names end
   local _, class = UnitClass("player")
-  return RH.CLASS_BUFFS[class] or {}
+  return ns.SpellNames(RH.CLASS_BUFFS[class] or {})
 end
 
 -- The watched buff names, read once and kept until the list changes (RH.Forget).
@@ -403,12 +402,14 @@ local function classOrder()
   return out
 end
 
--- Appends a class's name and a row per buff it gives, marking each name seen.
+-- Appends a class's name and a row per buff it gives (named by the client; one row per name, as a newer
+-- client may give two ids one name), marking each name seen.
 local function addClass(rows, seen, c)
   rows[#rows + 1] = { "header", className(c[1]) }
   for _, b in ipairs(c[2]) do
-    seen[b[1]] = true
-    rows[#rows + 1] = { "buffpick", b[1], b[2] }
+    local name = ns.SpellName(b[2]) or b[1]
+    if not seen[name] then rows[#rows + 1] = { "buffpick", name, b[2] } end
+    seen[name] = true
   end
 end
 
@@ -453,7 +454,7 @@ local function buffIcon(name, id)
   if s and s.icon then return s.icon end
   local get = C_Spell and type(C_Spell.GetSpellTexture) == "function" and C_Spell.GetSpellTexture
   local live = get and (get(name) or (id and get(id)))
-  return live or RH.FALLBACK_ICONS[name] or 134400
+  return live or RH.FALLBACK_ICONS[id] or 134400
 end
 
 -- One buff's row: its icon and name, and a switch that watches it. Inset like the

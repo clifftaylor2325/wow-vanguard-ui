@@ -2,7 +2,10 @@
 // The status chip above the player frame (Modules/UnitExtras.lua): Eating, Drinking, Well Fed, and a missing-buff hint.
 
 import { expect, it } from "vitest";
-import { expectErrors, isTok, loggedIn, setCombat } from "./helpers.mjs";
+import { BUFF_NAMES, BUFF_NAMES_DE, expectErrors, isTok, loggedIn, setCombat, spellNames } from "./helpers.mjs";
+
+// The names the client gives the food, drink and buff ids the chip and Instance prep look for.
+const NAMES = spellNames(BUFF_NAMES) + "\n";
 
 const CHIP = "VanguardDB.profiles = { Default = { UnitExtras = { chip = true } } }";
 const CHIP_AND_PREP = "VanguardDB.profiles = { Default = { UnitExtras = { chip = true }, InstancePrep = { buffs = true } } }";
@@ -20,7 +23,7 @@ it("status chip: off until switched on, then it names eating, drinking and being
   const off = loggedIn("");
   gain(off, "Food");
   expect(chip(off), "off by default: no chip is made").toBeNull();
-  const addon = loggedIn("", { savedVariables: CHIP });
+  const addon = loggedIn(NAMES, { savedVariables: CHIP });
   expect(chip(addon).shown, "nothing to say: hidden").toBe(false);
   gain(addon, "Food");
   expect(chip(addon), "eating: its text, the buff's own icon, above the player frame's corner").toMatchObject({ shown: true, text: "Eating", icon: "TEST-ONLY-ICON-Food", above: true });
@@ -36,7 +39,7 @@ it("status chip: off until switched on, then it names eating, drinking and being
 });
 
 it("status chip: with Instance prep's buff checks on it says what is missing, in a warning, with a glyph", () => {
-  const addon = loggedIn("", { savedVariables: CHIP_AND_PREP });
+  const addon = loggedIn(NAMES, { savedVariables: CHIP_AND_PREP });
   addon.advance(1);
   const first = chip(addon);
   expect([first.shown, /^Missing: Flask \+\d$/.test(first.text), first.icon], "the first missing buff and how many more, with the warning glyph").toEqual([true, true, addon.eval("return ns.Theme.Icon('Warn')")]);
@@ -49,16 +52,16 @@ it("status chip: with Instance prep's buff checks on it says what is missing, in
   expect(chip(addon).text, "the food gone: its hint again").toBe("Missing: Food buff");
   lose(addon, "Flask of the Titans");
   expect(chip(addon).text, "the flask gone too: both, and the rest still counted").toBe("Missing: Flask +1");
-  const noChecks = loggedIn("", { savedVariables: CHIP });
+  const noChecks = loggedIn(NAMES, { savedVariables: CHIP });
   noChecks.advance(1);
   expect(chip(noChecks).shown, "with the buff checks off there is no hint").toBe(false);
-  const noPrep = loggedIn("", { savedVariables: "VanguardDB.profiles = { Default = { UnitExtras = { chip = true }, modules = { InstancePrep = false } } }" });
+  const noPrep = loggedIn(NAMES, { savedVariables: "VanguardDB.profiles = { Default = { UnitExtras = { chip = true }, modules = { InstancePrep = false } } }" });
   noPrep.advance(1);
   expect(chip(noPrep).shown, "with Instance prep off there is no hint").toBe(false);
 });
 
 it("status chip: gone in a fight and while aura values are hidden or you are dead; back after", () => {
-  const addon = loggedIn("", { savedVariables: CHIP_AND_PREP });
+  const addon = loggedIn(NAMES, { savedVariables: CHIP_AND_PREP });
   gain(addon, "Well Fed");
   expect(chip(addon).shown, "shown out of combat").toBe(true);
   addon.fire("PLAYER_REGEN_DISABLED");
@@ -85,14 +88,26 @@ it("status chip: gone in a fight and while aura values are hidden or you are dea
 });
 
 it("status chip: a client without the aura lookup says nothing, and the switch is on the Unit frames page", () => {
-  const addon = loggedIn("C_UnitAuras.GetAuraDataBySpellName = nil", { savedVariables: CHIP });
+  const addon = loggedIn(NAMES + "C_UnitAuras.GetAuraDataBySpellName = nil", { savedVariables: CHIP });
   addon.world.addAura("player", { name: "Food", duration: 60 });
   addon.advance(1);
   expect(chip(addon).shown, "no lookup: nothing to say").toBe(false);
-  const on = loggedIn("", { savedVariables: CHIP });
+  const on = loggedIn(NAMES, { savedVariables: CHIP });
   on.eval("__wfgWorld.units.player.auras = { { name = 'Food', icon = { __secret = true }, auraInstanceID = 1, isHelpful = true } }");
   on.fire("UNIT_AURA", "player");
   on.advance(1);
   expect([chip(on).shown, chip(on).text], "a hidden icon still names the state, with the warning glyph").toEqual([true, "Eating"]);
   expect(loggedIn("").eval("return ns.GetModule('UnitExtras').settings.chip"), "off by default").toBe(false);
+});
+
+it("status chip: on a German client it knows eating, drinking and Well Fed by the client's names", () => {
+  const addon = loggedIn(`__wfgWorld.locale = "deDE" ${spellNames(BUFF_NAMES_DE)}`, { savedVariables: CHIP });
+  gain(addon, "Food");
+  expect(chip(addon).shown, "the English name means nothing on a German client").toBe(false);
+  lose(addon, "Food");
+  gain(addon, "Essen");
+  expect(chip(addon), "Essen is eating").toMatchObject({ shown: true, text: "Eating" });
+  lose(addon, "Essen");
+  gain(addon, "Satt");
+  expect(chip(addon).text, "Satt is Well Fed").toBe("Well Fed");
 });

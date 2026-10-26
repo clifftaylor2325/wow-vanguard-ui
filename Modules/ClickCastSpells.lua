@@ -1,9 +1,12 @@
 -- What this character can click-cast: the spellbook read into a catalog of
 -- spells (ranks folded under one name), sorted into groups a healer thinks in
 -- (Heals, Protect & cleanse, Buffs, Other), plus a starter layout per class.
--- Grouping and layouts go by spell name, so they hold across clients; exact
--- ranks come from the spellbook itself. The catalog is rebuilt when spells
--- change. Everything the client may lack is checked before use.
+-- Groups and layouts list spells by id and take each name from the client, so
+-- they hold on every client language; any rank of a spell shares its name, so
+-- one id stands for them all, and exact ranks come from the spellbook itself.
+-- Later expansions' spells are listed too, for the newer clients the addon loads
+-- on; a client that doesn't know an id just leaves it out. The catalog is
+-- rebuilt when spells change. Everything the client may lack is checked before use.
 
 local ADDON, ns = ...
 
@@ -13,34 +16,58 @@ ns.ClickCastSpells = CS
 CS.GROUPS = { "heals", "cleanse", "buffs", "other" }
 CS.GROUP_NAMES = { heals = "Heals", cleanse = "Protect & cleanse", buffs = "Buffs", other = "Other" }
 
--- Per class: the spells of each group, and the starter layout (mouse button -> spell or action).
-local CLASSES = {
+-- Per class: the spell ids of each group, and the starter layout (mouse button -> spell id).
+-- The names in the comments are the English client's, for reading only: the client names each id.
+-- UNVERIFIED on a Forever client: the ids are the classic database's; check them in the click-casting picker.
+CS.CLASSES = {
   PRIEST = {
-    heals = { "Lesser Heal", "Heal", "Greater Heal", "Flash Heal", "Renew", "Prayer of Healing", "Holy Nova", "Circle of Healing", "Prayer of Mending", "Binding Heal", "Penance" },
-    cleanse = { "Power Word: Shield", "Dispel Magic", "Cure Disease", "Abolish Disease", "Fear Ward", "Pain Suppression", "Guardian Spirit" },
-    buffs = { "Power Word: Fortitude", "Divine Spirit", "Shadow Protection", "Prayer of Fortitude", "Prayer of Spirit", "Prayer of Shadow Protection", "Levitate", "Mind Vision" },
-    layout = { BUTTON2 = "Flash Heal", ["shift-BUTTON1"] = "Greater Heal", ["shift-BUTTON2"] = "Renew", ["ctrl-BUTTON1"] = "Dispel Magic", ["ctrl-BUTTON2"] = "Cure Disease", ["alt-BUTTON1"] = "Power Word: Shield", ["alt-BUTTON2"] = "Resurrection" },
+    -- Lesser Heal, Heal, Greater Heal, Flash Heal, Renew, Prayer of Healing, Holy Nova, Circle of Healing,
+    -- Prayer of Mending, Binding Heal, Penance.
+    heals = { 2050, 2054, 2060, 2061, 139, 596, 15237, 34861, 33076, 32546, 47540 },
+    -- Power Word: Shield, Dispel Magic, Cure Disease, Abolish Disease, Fear Ward, Pain Suppression, Guardian Spirit.
+    cleanse = { 17, 527, 528, 552, 6346, 33206, 47788 },
+    -- Power Word: Fortitude, Divine Spirit, Shadow Protection, Prayer of Fortitude, Prayer of Spirit,
+    -- Prayer of Shadow Protection, Levitate, Mind Vision.
+    buffs = { 1243, 14752, 976, 21562, 27681, 27683, 1706, 2096 },
+    -- Flash Heal, Greater Heal, Renew, Dispel Magic, Cure Disease, Power Word: Shield, Resurrection.
+    layout = { BUTTON2 = 2061, ["shift-BUTTON1"] = 2060, ["shift-BUTTON2"] = 139, ["ctrl-BUTTON1"] = 527, ["ctrl-BUTTON2"] = 528, ["alt-BUTTON1"] = 17, ["alt-BUTTON2"] = 2006 },
   },
   DRUID = {
-    heals = { "Healing Touch", "Regrowth", "Rejuvenation", "Tranquility", "Swiftmend", "Lifebloom", "Nourish", "Wild Growth" },
-    cleanse = { "Remove Curse", "Cure Poison", "Abolish Poison", "Remove Corruption", "Nature's Cure" },
-    buffs = { "Mark of the Wild", "Gift of the Wild", "Thorns", "Innervate" },
-    layout = { BUTTON2 = "Rejuvenation", ["shift-BUTTON1"] = "Healing Touch", ["shift-BUTTON2"] = "Regrowth", ["ctrl-BUTTON1"] = "Remove Curse", ["ctrl-BUTTON2"] = "Abolish Poison", ["alt-BUTTON1"] = "Swiftmend", ["alt-BUTTON2"] = "Rebirth" },
+    -- Healing Touch, Regrowth, Rejuvenation, Tranquility, Swiftmend, Lifebloom, Nourish, Wild Growth.
+    heals = { 5185, 8936, 774, 740, 18562, 33763, 50464, 48438 },
+    -- Remove Curse (Remove Corruption on later clients), Cure Poison, Abolish Poison, Nature's Cure.
+    cleanse = { 2782, 8946, 2893, 88423 },
+    -- Mark of the Wild, Gift of the Wild, Thorns, Innervate.
+    buffs = { 1126, 21849, 467, 29166 },
+    -- Rejuvenation, Healing Touch, Regrowth, Remove Curse, Abolish Poison, Swiftmend, Rebirth.
+    layout = { BUTTON2 = 774, ["shift-BUTTON1"] = 5185, ["shift-BUTTON2"] = 8936, ["ctrl-BUTTON1"] = 2782, ["ctrl-BUTTON2"] = 2893, ["alt-BUTTON1"] = 18562, ["alt-BUTTON2"] = 20484 },
   },
   PALADIN = {
-    heals = { "Holy Light", "Flash of Light", "Lay on Hands", "Holy Shock", "Word of Glory", "Light of Dawn" },
-    cleanse = { "Cleanse", "Purify", "Blessing of Protection", "Blessing of Freedom", "Blessing of Sacrifice", "Divine Intervention", "Hand of Protection", "Hand of Freedom", "Hand of Sacrifice" },
-    buffs = { "Blessing of Might", "Blessing of Wisdom", "Blessing of Kings", "Blessing of Salvation", "Blessing of Light", "Blessing of Sanctuary", "Greater Blessing of Might", "Greater Blessing of Wisdom", "Greater Blessing of Kings", "Greater Blessing of Salvation", "Greater Blessing of Light", "Greater Blessing of Sanctuary" },
-    layout = { BUTTON2 = "Flash of Light", ["shift-BUTTON1"] = "Holy Light", ["shift-BUTTON2"] = "Blessing of Protection", ["ctrl-BUTTON1"] = "Cleanse", ["ctrl-BUTTON2"] = "Purify", ["alt-BUTTON1"] = "Lay on Hands", ["alt-BUTTON2"] = "Redemption" },
+    -- Holy Light, Flash of Light, Lay on Hands, Holy Shock, Word of Glory, Light of Dawn.
+    heals = { 635, 19750, 633, 20473, 85673, 85222 },
+    -- Cleanse, Purify, Blessing of Protection, Blessing of Freedom, Blessing of Sacrifice (the three Hand of ...
+    -- on later clients), Divine Intervention.
+    cleanse = { 4987, 1152, 1022, 1044, 6940, 19752 },
+    -- Blessing of Might, Wisdom, Kings, Salvation, Light, Sanctuary, then the Greater Blessing of each.
+    buffs = { 19740, 19742, 20217, 1038, 19977, 20911, 25782, 25894, 25898, 25895, 25890, 25899 },
+    -- Flash of Light, Holy Light, Blessing of Protection, Cleanse, Purify, Lay on Hands, Redemption.
+    layout = { BUTTON2 = 19750, ["shift-BUTTON1"] = 635, ["shift-BUTTON2"] = 1022, ["ctrl-BUTTON1"] = 4987, ["ctrl-BUTTON2"] = 1152, ["alt-BUTTON1"] = 633, ["alt-BUTTON2"] = 7328 },
   },
   SHAMAN = {
-    heals = { "Healing Wave", "Lesser Healing Wave", "Chain Heal", "Riptide", "Healing Surge", "Earth Shield" },
-    cleanse = { "Cure Poison", "Cure Disease", "Cure Toxins", "Cleanse Spirit", "Purify Spirit" },
-    buffs = { "Water Walking", "Water Breathing" },
-    layout = { BUTTON2 = "Lesser Healing Wave", ["shift-BUTTON1"] = "Healing Wave", ["shift-BUTTON2"] = "Chain Heal", ["ctrl-BUTTON1"] = "Cure Poison", ["ctrl-BUTTON2"] = "Cure Disease", ["alt-BUTTON1"] = "Ancestral Spirit", ["alt-BUTTON2"] = "Nature's Swiftness" },
+    -- Healing Wave, Lesser Healing Wave (Healing Surge on later clients), Chain Heal, Riptide, Earth Shield.
+    heals = { 331, 8004, 1064, 61295, 974 },
+    -- Cure Poison (Cure Toxins on later clients), Cure Disease, Cleanse Spirit, Purify Spirit.
+    cleanse = { 526, 2870, 51886, 77130 },
+    -- Water Walking, Water Breathing.
+    buffs = { 546, 131 },
+    -- Lesser Healing Wave, Healing Wave, Chain Heal, Cure Poison, Cure Disease, Ancestral Spirit, Nature's Swiftness.
+    layout = { BUTTON2 = 8004, ["shift-BUTTON1"] = 331, ["shift-BUTTON2"] = 1064, ["ctrl-BUTTON1"] = 526, ["ctrl-BUTTON2"] = 2870, ["alt-BUTTON1"] = 2008, ["alt-BUTTON2"] = 16188 },
   },
-  MAGE = { heals = {}, cleanse = { "Remove Lesser Curse", "Remove Curse" }, buffs = { "Arcane Intellect", "Arcane Brilliance", "Dampen Magic", "Amplify Magic", "Slow Fall" }, layout = { ["shift-BUTTON1"] = "Arcane Intellect", ["ctrl-BUTTON1"] = "Remove Lesser Curse" } },
-  WARLOCK = { heals = {}, cleanse = {}, buffs = { "Unending Breath", "Detect Invisibility", "Detect Lesser Invisibility", "Detect Greater Invisibility" }, layout = { ["shift-BUTTON1"] = "Unending Breath" } },
+  -- Remove Lesser Curse (Remove Curse on later clients); Arcane Intellect, Arcane Brilliance, Dampen Magic, Amplify Magic,
+  -- Slow Fall; the layout: Arcane Intellect, Remove Lesser Curse.
+  MAGE = { heals = {}, cleanse = { 475 }, buffs = { 1459, 23028, 604, 1008, 130 }, layout = { ["shift-BUTTON1"] = 1459, ["ctrl-BUTTON1"] = 475 } },
+  -- Unending Breath, Detect Invisibility, Detect Lesser Invisibility, Detect Greater Invisibility; the layout: Unending Breath.
+  WARLOCK = { heals = {}, cleanse = {}, buffs = { 5697, 2970, 132, 11743 }, layout = { ["shift-BUTTON1"] = 5697 } },
 }
 
 -- Every layout targets by plain left click and opens the unit menu on middle click.
@@ -156,15 +183,15 @@ end
 
 -- The class table for the player's class (empty for classes without one).
 local function classData()
-  return CLASSES[CS.PlayerClass() or ""] or { heals = {}, cleanse = {}, buffs = {}, layout = {} }
+  return CS.CLASSES[CS.PlayerClass() or ""] or { heals = {}, cleanse = {}, buffs = {}, layout = {} }
 end
 
--- A set of the names in each named group of the class table.
+-- A set of the client's names for the spells in each named group of the class table.
 local function groupSets(data)
   local sets = {}
   for _, g in ipairs(CS.GROUPS) do
     sets[g] = {}
-    for _, name in ipairs(data[g] or {}) do sets[g][name] = true end
+    for _, name in ipairs(ns.SpellNames(data[g] or {})) do sets[g][name] = true end
   end
   return sets
 end
@@ -198,12 +225,16 @@ end
 
 -- Layouts ---------------------------------------------------------------------------------------
 
--- The starter layout for the player's class as { key = { action, value } }: a spell by name
--- (max rank, inert until learned) or an action, plus target and menu on the plain buttons.
+-- The starter layout for the player's class as { key = { action, value } }: a spell by the client's
+-- name for it (max rank, inert until learned) or an action, plus target and menu on the plain buttons.
+-- A spell the client has no name for is left out.
 function CS.Layout()
   local out = {}
   for key, b in pairs(COMMON_LAYOUT) do out[key] = { action = b.action } end
-  for key, name in pairs(classData().layout) do out[key] = { action = "spell", value = name } end
+  for key, id in pairs(classData().layout) do
+    local name = ns.SpellName(id)
+    if name then out[key] = { action = "spell", value = name } end
+  end
   return out
 end
 

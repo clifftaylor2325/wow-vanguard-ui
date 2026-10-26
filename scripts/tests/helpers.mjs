@@ -280,6 +280,29 @@ export const raidButton = (addon, i) => addon.eval(`local b = Vanguard_RaidUnitB
   return { hp = b.health.__value, max = b.health.__max, color = b.health.__barColor, name = b.name:GetText(), role = b.role:IsShown() and b.role.__texture,
     roleW = b.role.__width, nameAfter = b.name.__points.TOPLEFT.rel == b.role, status = b.status:GetText() }`);
 
+// TEST-ONLY spell names by id, as an English client gives them: the buffs, flasks, food and drink Vanguard
+// lists by id (Instance prep, the status chip, Raid healing).
+export const BUFF_NAMES = {
+  1243: "Power Word: Fortitude", 21562: "Prayer of Fortitude", 1126: "Mark of the Wild", 21849: "Gift of the Wild",
+  1459: "Arcane Intellect", 23028: "Arcane Brilliance", 17626: "Flask of the Titans", 17627: "Flask of Distilled Wisdom",
+  17628: "Flask of Supreme Power", 17629: "Flask of Chromatic Resistance", 19705: "Well Fed", 433: "Food", 430: "Drink",
+  22888: "Rallying Cry of the Dragonslayer", 24425: "Spirit of Zandalar", 15366: "Songflower Serenade", 16609: "Warchief's Blessing",
+  22817: "Fengus' Ferocity", 22820: "Slip'kik's Savvy", 22818: "Mol'dar's Moxie",
+};
+
+// TEST-ONLY: the same ids under German names (faked for a deDE client; only their being different matters).
+export const BUFF_NAMES_DE = {
+  1243: "Machtwort: Seelenstärke", 21562: "Gebet der Seelenstärke", 1126: "Mal der Wildnis", 21849: "Gabe der Wildnis",
+  1459: "Arkane Intelligenz", 23028: "Arkane Brillanz", 17626: "Fläschchen der Titanen", 17627: "Fläschchen der destillierten Weisheit",
+  17628: "Fläschchen der obersten Macht", 17629: "Fläschchen des chromatischen Widerstands", 19705: "Satt", 433: "Essen", 430: "Trinken",
+  22888: "Sammelruf des Drachentöters", 24425: "Geist von Zandalar", 15366: "Liedblumenserenade", 16609: "Segen des Kriegshäuptlings",
+  22817: "Fengus' Wildheit", 22820: "Slip'kiks Scharfsinn", 22818: "Mol'dars Mut",
+};
+
+// Lua that puts spell names into the TEST-ONLY world's spell database (what the client names an id).
+export const spellNames = (names) => Object.entries(names)
+  .map(([id, name]) => `__wfgWorld.spells[${id}] = { name = ${JSON.stringify(name)}, icon = "TEST-ONLY-SPELL-ICON" }`).join("\n");
+
 // TEST-ONLY healing data: a prediction calculator, threat, known spells and buffs.
 export const HEALING_ENV = `
   __pred = { raid1 = { max = 1000, heals = 200, shields = 150 }, raid2 = { max = 900, heals = { __secret = true }, shields = 0 }, raid3 = { max = 800, heals = 0, shields = 0 } }
@@ -297,7 +320,9 @@ export const HEALING_ENV = `
   __threat = { raid1 = 3, raid2 = { __secret = true } }
   UnitThreatSituation = function(unit) return __threat[unit] end
   __known = { ["Arcane Brilliance"] = true, ["Arcane Intellect"] = true }
-  C_Spell = { GetSpellInfo = function(name) return __known[name] and {} or nil end, GetSpellTexture = function(name) return "TEST-ONLY-ICON-" .. name end }
+  __names = { [1459] = "Arcane Intellect", [23028] = "Arcane Brilliance" }
+  C_Spell = { GetSpellInfo = function(name) return __known[name] and {} or nil end, GetSpellTexture = function(name) return "TEST-ONLY-ICON-" .. name end,
+    GetSpellName = function(id) return __names[id] end }
   __buffs = { raid2 = { ["Arcane Brilliance"] = true } }
   C_UnitAuras = { GetAuraDataBySpellName = function(unit, name) return (__buffs[unit] or {})[name] and {} or nil end }
 `;

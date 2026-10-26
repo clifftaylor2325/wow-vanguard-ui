@@ -5,38 +5,39 @@
 -- ask for it, any world buff. A row says "missing" in red. They are read from
 -- your own auras and your weapons, out of combat only; while the client hides
 -- aura values nothing is checked and no row is made, never a guess.
--- UNVERIFIED: the buff names are from the classic game; none is checked against
--- a Forever client. So a row also counts as met when any buff on you has one of a few
--- key words in its name (PR.WORDS): a Forever variant of a classic name, or a camp buff
--- that stands in for a class buff, must not make the card cry wolf. /vg prep buffs lists
--- your buffs against what each check counts, to check the names in game.
+-- Each check lists spells by id and asks the client for their names, so it holds on
+-- every client language: every rank of a buff, and every food's Well Fed, shares the
+-- one name. A buff whose name holds one of those names counts too (a camp's "Gift of
+-- the Wild" variant), and a check whose ids the client can't name makes no row.
+-- UNVERIFIED: the ids are from the classic database, not checked against a Forever
+-- client. /vg prep buffs lists your buffs against what each check counts, to check them in game.
 
 local ADDON, ns = ...
 
 local PR = ns.GetModule("InstancePrep")
 
--- Buff groups: row label -> the aura names that count (any one of them).
-PR.FLASKS = { "Flask of the Titans", "Flask of Supreme Power", "Flask of Distilled Wisdom", "Flask of Chromatic Resistance" }
-PR.FOOD = { "Well Fed" }
+-- Buff groups by spell id (any one of them counts). The names in the comments are the English client's.
+-- Flask of the Titans, Flask of Distilled Wisdom, Flask of Supreme Power, Flask of Chromatic Resistance.
+PR.FLASKS = { 17626, 17627, 17628, 17629 }
+-- Well Fed: one food's buff names them all.
+PR.FOOD = { 19705 }
+-- Row label -> Power Word: Fortitude, Prayer of Fortitude; Mark of the Wild, Gift of the Wild; Arcane Intellect, Arcane Brilliance.
 PR.RAID_BUFFS = {
-  { "Fortitude", { "Power Word: Fortitude", "Prayer of Fortitude" } },
-  { "Mark of the Wild", { "Mark of the Wild", "Gift of the Wild" } },
-  { "Arcane Intellect", { "Arcane Intellect", "Arcane Brilliance" } },
+  { "Fortitude", { 1243, 21562 } },
+  { "Mark of the Wild", { 1126, 21849 } },
+  { "Arcane Intellect", { 1459, 23028 } },
 }
-PR.WORLD_BUFFS = { "Rallying Cry of the Dragonslayer", "Spirit of Zandalar", "Songflower Serenade", "Warchief's Blessing", "Fengus' Ferocity", "Slip'kik's Savvy", "Mol'dar's Moxie" }
+-- Rallying Cry of the Dragonslayer, Spirit of Zandalar, Songflower Serenade, Warchief's Blessing, Fengus' Ferocity,
+-- Slip'kik's Savvy, Mol'dar's Moxie.
+PR.WORLD_BUFFS = { 22888, 24425, 15366, 16609, 22817, 22820, 22818 }
 -- Item class Weapon (Enum.ItemClass.Weapon), and the weapon slots checked (main hand 16, off hand 17) with their row labels.
 PR.WEAPON = 2
 PR.ENCHANT_SLOTS = { { 16, "Weapon oil or poison" }, { 17, "Off-hand oil or poison" } }
 
--- Key words by row label: a buff whose name holds one of them counts for that row (plain text, case matters).
-PR.WORDS = {
-  Flask = { "Flask of" }, ["Food buff"] = { "Well Fed" }, Fortitude = { "Fortitude" },
-  ["Mark of the Wild"] = { "Mark of the Wild", "Gift of the Wild" }, ["Arcane Intellect"] = { "Arcane Intellect", "Arcane Brilliance" },
-}
--- How many of your buffs are read for the key words (the game shows 32 at most).
+-- How many of your buffs are read for the names (the game shows 32 at most).
 PR.SCAN = 40
 
--- Whether a buff's name is plain text holding one of the words.
+-- Whether a buff's name is plain text holding one of the words (names).
 local function nameHas(name, words)
   if type(name) ~= "string" or ns.IsSecret(name) then return false end
   for _, w in ipairs(words) do
@@ -56,7 +57,7 @@ function PR.BuffNames()
   return names
 end
 
--- Whether any buff on you has one of the words in its name.
+-- Whether any buff on you has one of these names in its name.
 local function hasWord(words)
   for _, name in ipairs(PR.BuffNames()) do
     if nameHas(name, words) then return true end
@@ -74,9 +75,10 @@ local function hasAny(names)
   return false
 end
 
--- A "missing" row for a buff group you lack, or nil.
-local function missing(label, names)
-  if hasAny(names) == false and not hasWord(PR.WORDS[label] or {}) then return { label = label, value = "missing" } end
+-- A "missing" row for a buff group (spell ids) you lack, or nil: also when the client names none of them.
+local function missing(label, ids)
+  local names = ns.SpellNames(ids)
+  if #names > 0 and hasAny(names) == false and not hasWord(names) then return { label = label, value = "missing" } end
 end
 
 -- Whether the item in a slot is a weapon (item class Weapon).
@@ -114,14 +116,31 @@ local function push(rows, row)
   if row then rows[#rows + 1] = row end
 end
 
+-- The buff checks always made, in the card's order, as { label, spell ids }: flask, food, the raid buffs.
+function PR.Checks()
+  local checks = { { "Flask", PR.FLASKS }, { "Food buff", PR.FOOD } }
+  for _, b in ipairs(PR.RAID_BUFFS) do checks[#checks + 1] = b end
+  return checks
+end
+
+-- The world buffs' check, made only when you ask for it.
+local function worldCheck()
+  return { "World buffs", PR.WORLD_BUFFS }
+end
+
 -- The aura rows: flask, food and the raid buffs you lack, then "World buffs" when you ask for them and have none.
 function PR.AuraRows()
   local rows = {}
-  push(rows, missing("Flask", PR.FLASKS))
-  push(rows, missing("Food buff", PR.FOOD))
-  for _, b in ipairs(PR.RAID_BUFFS) do push(rows, missing(b[1], b[2])) end
-  if PR.settings.worldBuffs then push(rows, missing("World buffs", PR.WORLD_BUFFS)) end
+  for _, c in ipairs(PR.Checks()) do push(rows, missing(c[1], c[2])) end
+  if PR.settings.worldBuffs then push(rows, missing(unpack(worldCheck()))) end
   return rows
+end
+
+-- Every check, the world buffs' too, for the buff report.
+local function allChecks()
+  local checks = PR.Checks()
+  checks[#checks + 1] = worldCheck()
+  return checks
 end
 
 -- Every buff row (flask, food, weapon enchants, raid buffs, world buffs), or none: when the setting
@@ -133,11 +152,24 @@ function PR.BuffRows()
   return rows
 end
 
--- The row each of your buffs counts for, by name or key word (nil for none).
+-- The check one of your buffs counts for, by the client's names for its spells (nil for none).
 local function countsFor(name)
-  for label, words in pairs(PR.WORDS) do
-    if nameHas(name, words) then return label end
+  for _, c in ipairs(allChecks()) do
+    if nameHas(name, ns.SpellNames(c[2])) then return c[1] end
   end
+end
+
+-- What one check looks for, as "Flask: a, b" in the client's names, or says it is off when the client names none.
+local function lookingFor(check)
+  local names = ns.SpellNames(check[2])
+  return check[1] .. ": " .. (#names > 0 and table.concat(names, ", ") or "none this client knows, so no row")
+end
+
+-- What each check looks for, as "Flask: a, b; Food buff: c; ...".
+local function lookFor()
+  local parts = {}
+  for _, c in ipairs(allChecks()) do parts[#parts + 1] = lookingFor(c) end
+  return table.concat(parts, "; ")
 end
 
 -- /vg prep buffs: your buffs one per line with the check each counts for, then what each check expects,
@@ -147,5 +179,5 @@ function PR.BuffReport()
   local names = PR.BuffNames()
   ns.Chat(string.format("Your %d buff(s), and the Instance prep check each counts for:", #names))
   for _, name in ipairs(names) do ns.Chat(string.format("  %s -> %s", name, countsFor(name) or "no check")) end
-  ns.Chat("The checks look for: Flask " .. table.concat(PR.FLASKS, ", ") .. "; Food buff " .. table.concat(PR.FOOD, ", ") .. "; or any buff with " .. "Flask of, Well Fed, Fortitude, Mark of the Wild, Gift of the Wild, Arcane Intellect or Arcane Brilliance in its name.")
+  ns.Chat("The checks count any buff with one of these names in its name: " .. lookFor() .. ".")
 end

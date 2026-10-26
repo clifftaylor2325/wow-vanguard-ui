@@ -99,8 +99,9 @@ end
 
 -- The chip's icon size and its padding, and the gap between its icon and its text (units).
 UX.CHIP_ICON, UX.CHIP_PAD, UX.CHIP_GAP, UX.CHIP_HEIGHT = 14, 4, 4, 20
--- The buffs eating and drinking give (the classic names; UNVERIFIED on a Forever client: check with the chip in game).
-UX.EATING, UX.DRINKING = { "Food" }, { "Drink" }
+-- The buffs eating and drinking give, by spell id: Food and Drink (every food and drink shares the one name the
+-- client gives these ids). UNVERIFIED on a Forever client: check with the chip in game.
+UX.EATING, UX.DRINKING = { 433 }, { 430 }
 -- The events that can change what the chip says besides your auras and your gear: the fight ending, a new zone, death and rising.
 UX.CHIP_EVENTS = { "PLAYER_REGEN_ENABLED", "PLAYER_ENTERING_WORLD", "PLAYER_DEAD", "PLAYER_ALIVE", "PLAYER_UNGHOST" }
 
@@ -109,11 +110,12 @@ function UX.States()
   return { { "Eating", UX.EATING, "text" }, { "Drinking", UX.DRINKING, "text" }, { "Well Fed", ns.GetModule("InstancePrep").FOOD, "good" } }
 end
 
--- The first of your buffs among these names, as the client's aura data, or nil (none, or the client can't say).
-function UX.Aura(names)
+-- The first of your buffs named as these spell ids are (by the client), as its aura data, or nil (none, or the
+-- client can't say).
+function UX.Aura(ids)
   local get = C_UnitAuras and C_UnitAuras.GetAuraDataBySpellName
   if type(get) ~= "function" then return nil end
-  for _, name in ipairs(names) do
+  for _, name in ipairs(ns.SpellNames(ids)) do
     local aura = get("player", name, "HELPFUL")
     if type(aura) == "table" then return aura end
   end

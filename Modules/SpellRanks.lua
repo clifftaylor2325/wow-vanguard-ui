@@ -122,12 +122,14 @@ local function classToken()
   return ns.ClickCastSpells.PlayerClass()
 end
 
--- A trainer service's rank text ("Rank 3"): the client puts it among the later returns, by client.
+-- A trainer service's rank text ("Rank 3", "Rang 3" on a German client): the client puts it among the later
+-- returns, by client, so it is the one text there that holds a number and is no texture path (the service's
+-- kind, "available", holds none). Never matched by the English word.
 local function rankText(i)
   local info = { ns.Client.Call("GetTrainerServiceInfo", i) }
   for k = 2, 6 do
     local v = ns.PlainText(info[k])
-    if v and v:match("^Rank %d+") then return v end
+    if v and v:find("%d") and not v:find("[\\/_]") then return v end
   end
 end
 

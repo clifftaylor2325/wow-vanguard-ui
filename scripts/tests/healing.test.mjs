@@ -94,8 +94,26 @@ it("healing fallbacks and options", () => {
 it("every healing buff has a static icon, so none shows a question mark", () => {
   const addon = loggedIn(UNITS_ENV + RAID_ENV + CLICK_LUA + HEALING_ENV);
   expect(addon.eval(`local RH = ns.GetModule("RaidHealing") for _, c in ipairs(RH.ALL_BUFFS) do for _, b in ipairs(c[2]) do
-    if not RH.FALLBACK_ICONS[b[1]] then return b[1] end end end return "ok"`), "each listed buff has a fallback icon").toBe("ok");
+    if not RH.FALLBACK_ICONS[b[2]] then return b[1] end end end return "ok"`), "each listed buff has a fallback icon").toBe("ok");
   addon.eval("C_Spell.GetSpellTexture = function() return nil end");
   addon.eval('ns.Options.Show("healing")');
   expect(addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.icon and w.label and w.label:GetText() == "Blessing of Sanctuary" then return w.icon:GetTexture() end end`), "an unknown spell falls back to its static icon").toBe("Interface\\Icons\\Spell_Nature_LightningShield");
+});
+
+it("on a German client the class buffs are watched and listed under the client's names", () => {
+  const addon = loggedIn(UNITS_ENV + RAID_ENV + CLICK_LUA + HEALING_ENV + `__wfgWorld.locale = "deDE"
+    __names = { [1459] = "Arkane Intelligenz", [23028] = "Arkane Brillanz", [1243] = "Machtwort: Seelenstärke", [21562] = "Machtwort: Seelenstärke" }
+    __known = { ["Arkane Intelligenz"] = true } __buffs = { raid2 = { ["Arkane Brillanz"] = true } }`);
+  addon.eval('__spawn(1, "raid1"); __spawn(2, "raid2")');
+  expect(addon.eval('return table.concat(ns.GetModule("RaidHealing").BuffNames(), ", ")'), "the mage's usual buffs, named by the client").toBe("Arkane Intelligenz, Arkane Brillanz");
+  expect(healing(addon, 1).missing, "a player without them is marked with the buff you know").toBe("TEST-ONLY-ICON-Arkane Intelligenz");
+  expect(healing(addon, 2).missing, "the German group buff counts").toBe(false);
+  addon.eval('ns.Options.Show("healing")');
+  // The icon of the buff row whose label reads `label`, or nil.
+  const rowIcon = (label) => addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.icon and w.label and w.label:GetText() == "${label}" then return w.icon:GetTexture() end end`);
+  expect(rowIcon("Arkane Brillanz"), "the options row shows the client's name").toBe("TEST-ONLY-ICON-Arkane Brillanz");
+  expect(rowIcon("Arcane Brilliance"), "not the English one").toBe(null);
+  expect(rowIcon("Divine Spirit"), "a buff the client can't name keeps its English label").toBe("TEST-ONLY-ICON-Divine Spirit");
+  expect(addon.eval('local n = 0 for _, w in ipairs(__wfgStub.frames) do if w.icon and w.label and w.label:GetText() == "Machtwort: Seelenstärke" then n = n + 1 end end return n'),
+    "two ids the client names alike make one row").toBe(1);
 });

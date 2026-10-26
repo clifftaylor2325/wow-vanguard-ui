@@ -91,6 +91,50 @@ it("the spell catalog folds ranks and sorts the spellbook into healer groups", (
   expect(addon.eval(`return ${CS}.PlayerClass()`), "a non-string class token is ignored").toBe(null);
 });
 
+// TEST-ONLY: the priest's spellbook on a German client (names faked; only their being different matters).
+const PRIEST_DE = [
+  [2061, { name: "Blitzheilung", rank: 1, helpful: true }], [139, { name: "Erneuerung", rank: 1, helpful: true }],
+  [17, { name: "Machtwort: Schild", rank: 1, helpful: true }], [527, { name: "Magiebannung", rank: 1, helpful: true }],
+  [1243, { name: "Machtwort: Seelenstärke", rank: 1, helpful: true }], [2006, { name: "Auferstehung", rank: 1, helpful: true }],
+  [2060, { name: "Große Heilung", rank: 1, helpful: true }], [528, { name: "Krankheit heilen", rank: 1, helpful: true }],
+  [585, { name: "Göttliche Pein", rank: 1, helpful: false }],
+];
+
+it("on a German client the groups and the starter layout find the spells by id, under the client's names", () => {
+  const addon = loggedIn(CLICK_LUA + '__wfgWorld.locale = "deDE"');
+  addon.eval('__wfgWorld.units.player.class = "PRIEST" __wfgWorld.units.player.className = "Priester"');
+  for (const [id, fields] of PRIEST_DE) addon.world.learn(id, fields);
+  const groups = addon.eval(`local g, out = ${CS}.Groups(), {} for name, list in pairs(g) do out[name] = {} for i, s in ipairs(list) do out[name][i] = s.name end end return out`);
+  expect(groups.heals, "the heals by their German names").toEqual(["Blitzheilung", "Erneuerung", "Große Heilung"]);
+  expect(groups.cleanse).toEqual(["Machtwort: Schild", "Magiebannung", "Krankheit heilen"]);
+  expect(groups.buffs).toEqual(["Machtwort: Seelenstärke"]);
+  expect(groups.other, "Resurrection is in no class group; the damage spell is left out").toEqual(["Auferstehung"]);
+  const layout = addon.eval(`local l, out = ${CS}.Layout(), {} for k, b in pairs(l) do out[k] = b.action .. ":" .. tostring(b.value) end return out`);
+  expect(layout, "the layout binds the German names").toMatchObject({ BUTTON2: "spell:Blitzheilung", "shift-BUTTON1": "spell:Große Heilung", "alt-BUTTON2": "spell:Auferstehung" });
+  expect(addon.eval(`return ${CS}.ClassName()`), "the button names the class as the client does").toBe("Priester");
+  addon.eval(`${CC}.ApplyLayout(${CS}.Layout())`);
+  expect(bindings(addon).BUTTON2, "applied, it binds the spell's German name and its id").toBe("spell:Blitzheilung:2061:nil");
+});
+
+it("a layout spell the client can't name is left out, not bound under an English name", () => {
+  const addon = priest();
+  addon.eval("__wfgWorld.spells[2061] = nil");
+  const layout = addon.eval(`local l, out = ${CS}.Layout(), {} for k, b in pairs(l) do out[k] = b.action .. ":" .. tostring(b.value) end return out`);
+  expect([layout.BUTTON2, layout["alt-BUTTON2"]], "Flash Heal unknown: no right-click binding; the rest stay").toEqual([undefined, "spell:Resurrection"]);
+});
+
+it("ns.SpellName: the client's name for an id through C_Spell, else the old global; nil when hidden or unknown", () => {
+  const addon = priest();
+  // Runs setup, then asks for Renew's name.
+  const name = (setup) => addon.eval(`${setup} return ns.SpellName(139)`);
+  expect(name(""), "through C_Spell").toBe("Renew");
+  expect(name("C_Spell.GetSpellName = function() return __wfgWorld.secret('Renew') end"), "a hidden name is no name").toBe(null);
+  expect(name("C_Spell.GetSpellName = nil"), "the old global without C_Spell's call").toBe("Renew");
+  expect(name("GetSpellInfo = function() return __wfgWorld.secret('Renew') end"), "a hidden name from the old global is none either").toBe(null);
+  expect(name("GetSpellInfo = nil"), "a client with neither").toBe(null);
+  expect(addon.eval("C_Spell = nil return ns.SpellNames({ 139, 2061 })"), "the list form leaves out what the client can't name").toEqual({});
+});
+
 it("the spell catalog listens for new spells by an event Forever has, so login reports no error", () => {
   const addon = priest();
   expect(addon.eval('local out = "" for _, e in ipairs(ns.errors) do out = out .. e.text .. ";" end return out'), "no 'not on this client' report at login").toBe("");
