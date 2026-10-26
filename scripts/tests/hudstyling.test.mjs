@@ -28,6 +28,7 @@ it("P4-3: the swing timer rides above the cast bar when the action bar stack gro
 
 it("P4-3: the swing timer follows a stack that grows after login, and stays at its spot with the action bars off", () => {
   const live = loggedIn(SWING, { savedVariables: profile(SWING_ALWAYS) });
+  // The swing holder's default y.
   const swingY = () => live.eval('local _, _, _, y = ns.MoverPoint("swing") return y');
   const before = swingY();
   live.eval('local AB = ns.GetModule("ActionBars") AB.settings.bars[3].perRow = 6 AB.SettingChanged(3, "perRow")');
@@ -123,6 +124,7 @@ it("P6-5: a long broker feed stays on one line inside the strip", () => {
 const rightBars = (size) => profile(`ActionBars = { size = ${size}, bars = { [4] = { enabled = true, visibility = "always", buttons = 12, perRow = 1 }, [5] = { enabled = true, visibility = "always", buttons = 12, perRow = 1 } } }`);
 
 it("P6-2: bar 5 keeps clear of bar 4 at big button sizes and when bar 4 gets wider", () => {
+  // The space between bar 4's left edge and bar 5's right edge.
   const gap = (addon) => addon.eval("return Vanguard_Bar4:GetLeft() - Vanguard_Bar5:GetRight()");
   const big = loggedIn("", { savedVariables: rightBars(48) });
   expect(gap(big), "at size 48 bar 5 ends before bar 4 starts").toBeGreaterThanOrEqual(0);
