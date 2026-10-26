@@ -164,7 +164,7 @@ end
 function LG.Command(rest)
   local word, tail = (rest or ""):match("^%s*(%S*)%s*(.-)%s*$")
   if word == "probe" then return LG.Probe() end
-  if word ~= "plan" then return ns.Chat(L["Legacy: /vg legacy probe lists what the client has for the Legacy system; /vg legacy plan [add <points> <name>|remove <name>|clear] plans the perk tree's 16 points."]) end
+  if word ~= "plan" then return ns.Chat(ns.Literal(L["Legacy: /vg legacy probe lists what the client has for the Legacy system; /vg legacy plan [add <points> <name>|remove <name>|clear] plans the perk tree's 16 points."])) end
   if not ns.Settings("Legacy", LG.defaults).planner then return ns.Chat(L["The Legacy perk planner is off: switch it on under Town and gear."]) end
   LG.PlanCommand(tail)
 end

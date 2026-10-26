@@ -191,7 +191,7 @@ it("pins: any number of game moves in combat leave one pending pin", () => {
 it("slash", () => {
   const addon = loggedIn();
   addon.slash("help");
-  expect(chatHas(addon, /unlock \| lock/), "/vg help lists commands").toBeTruthy();
+  expect(chatHas(addon, /unlock \|\| lock/), "/vg help lists commands").toBeTruthy();
   addon.slash("status");
   expect(chatHas(addon, /profile Default/), "/vg status shows the profile").toBeTruthy();
   addon.slash("profile Raid");
@@ -684,4 +684,15 @@ it("string table: ns.Format fills each {name} from its values, in any order, and
   expect(addon.eval('return ns.Format("{count} items sold for {money}", { count = 3, money = "1g" })')).toBe("3 items sold for 1g");
   expect(addon.eval('return ns.Format("für {money}: {count}", { count = 3, money = "1g" })'), "a translation may reorder the slots").toBe("für 1g: 3");
   expect(addon.eval('return ns.Format("{count} of {total}", { count = 0 })'), "a value missing stays as its slot; false and 0 fill in").toBe("0 of {total}");
+});
+
+it("command syntax in chat doubles its pipes, so the chat frame doesn't eat |r, |c or |t (\"<name>|remove\" printed as \"<name>emove\")", () => {
+  const addon = loggedIn();
+  expect(addon.eval('return ns.Literal("a|b||c")'), "every pipe doubled, already-doubled ones too").toBe("a||b||||c");
+  addon.slash("help");
+  const lines = Array.from(addon.chat());
+  expect(lines.some((l) => l.includes("watch [add||remove <phrase>||list||clear]")), "/vg help's syntax column").toBe(true);
+  expect(lines.some((l) => /\|[a-z<[]/.test(l.replace(/\|\|/g, "").replace(/\|c[0-9a-fA-F]{8}|\|r/g, ""))), "no bare pipe left before a letter in /vg help").toBe(false);
+  addon.slash("corners sideways");
+  expect(chatHas(addon, /Usage: \/vg corners square\|\|rounded/), "a usage line too").toBe(true);
 });

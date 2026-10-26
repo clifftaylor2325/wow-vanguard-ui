@@ -327,7 +327,7 @@ it("slash commands for frames, accent, grid, theme, modules, skins, profile and 
   addon.slash("skins testonly OFF");
   expect([chatHas(addon, /Skin for TESTONLY off/), addon.eval("return ns.Settings('skins').TESTONLY")], "the skin's name and on|off are read in any case").toEqual([true, false]);
   addon.slash("skins TESTONLY maybe");
-  expect([chatHas(addon, /Usage: \/vg skins TESTONLY on\|off/), addon.eval("return ns.Settings('skins').TESTONLY")], "a word that isn't on or off changes nothing").toEqual([true, false]);
+  expect([chatHas(addon, /Usage: \/vg skins TESTONLY on\|\|off/), addon.eval("return ns.Settings('skins').TESTONLY")], "a word that isn't on or off changes nothing").toEqual([true, false]);
   addon.slash("skins NoSuchSkin on");
   expect([chatHas(addon, /No skin called NoSuchSkin/), addon.eval("return ns.Settings('skins').NoSuchSkin")], "a skin nobody registered is refused and not stored").toEqual([true, null]);
   addon.slash("disable unitframes");

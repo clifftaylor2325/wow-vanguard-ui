@@ -104,7 +104,7 @@ end
 -- /vg help: the intro, then each command and what it does, the commands in one column.
 local function helpCommand()
   chat(HELP_INTRO)
-  for _, entry in ipairs(HELP) do chat(string.format("%-20s %s", entry[1], entry[2])) end
+  for _, entry in ipairs(HELP) do chat(ns.Literal(string.format("%-20s %s", entry[1], entry[2]))) end
 end
 
 -- "on" / "off" in green / gray.
@@ -204,7 +204,7 @@ end
 local function switchCommand(spec)
   return function(rest)
     local on = toggleWord(rest, spec.read())
-    if on == nil then return chat(spec.usage) end
+    if on == nil then return chat(ns.Literal(spec.usage)) end
     spec.write(on)
     if spec.after then spec.after() end
     chat(on and spec.onText or spec.offText)
@@ -242,7 +242,7 @@ local function cdmGlowCommand(rest)
   local percent = tonumber(rest)
   if percent then CG.SetPercent(percent) end
   local on = percent ~= nil or toggleWord(rest, CG.settings.glow)
-  if on == nil then return chat(L["Usage: /vg cdmglow [on|off|<percent>]"]) end
+  if on == nil then return chat(ns.Literal(L["Usage: /vg cdmglow [on|off|<percent>]"])) end
   CG.SetGlow(on)
   chat(CG.settings.glow and ns.Format(L["Cooldown Manager glow on: under {percent} percent left."], { percent = CG.settings.percent }) or L["Cooldown Manager glow off."])
 end
@@ -296,7 +296,7 @@ local iconsCommand = switchCommand({
 -- /vg variant [name]: a theme variant (#237), repainted at once.
 local function variantCommand(rest)
   if rest == "" then rest = T.Settings().variant end
-  if rest ~= "default" and not T.VARIANTS[rest] then return chat(L["Usage: /vg variant default|contrast|vellum|classic|midnight|obsidian|moss|ember"]) end
+  if rest ~= "default" and not T.VARIANTS[rest] then return chat(ns.Literal(L["Usage: /vg variant default|contrast|vellum|classic|midnight|obsidian|moss|ember"])) end
   T.Settings().variant = rest
   T.Refresh()
   chat(ns.Format(L["Theme variant: {variant}."], { variant = T.VARIANTS[rest] and T.VARIANTS[rest].label or L["Slate and brass"] }))
@@ -305,7 +305,7 @@ end
 -- /vg corners [square|rounded]: panel corners on every theme, repainted at once (no argument shows the current one).
 local function cornersCommand(rest)
   if rest == "" then rest = T.Settings().corners end
-  if rest ~= "square" and rest ~= "rounded" then return chat(L["Usage: /vg corners square|rounded"]) end
+  if rest ~= "square" and rest ~= "rounded" then return chat(ns.Literal(L["Usage: /vg corners square|rounded"])) end
   T.Settings().corners = rest
   T.Refresh()
   chat(ns.Format(L["Corners: {corners}."], { corners = rest }))
@@ -339,7 +339,7 @@ end
 -- /vg modules
 local function modulesCommand()
   local names = ns.ModuleNames()
-  chat(#names == 0 and L["No modules yet."] or L["Modules (enable|disable <module>, then /reload):"])
+  chat(#names == 0 and L["No modules yet."] or ns.Literal(L["Modules (enable|disable <module>, then /reload):"]))
   for _, name in ipairs(names) do
     chat(string.format("  %s  %s", name, onOff(ns.ModuleEnabled(name))))
   end
@@ -389,7 +389,7 @@ local function skinsCommand(rest)
   end
   local name, on = matchName(skinNames(), typed), state:lower()
   if not name then return chat(ns.Format(L["No skin called {name}. /vg skins lists them."], { name = typed })) end
-  if on ~= "on" and on ~= "off" then return chat(ns.Format(L["Usage: /vg skins {addon} on|off"], { addon = name })) end
+  if on ~= "on" and on ~= "off" then return chat(ns.Literal(ns.Format(L["Usage: /vg skins {addon} on|off"], { addon = name }))) end
   ns.Settings("skins")[name] = on == "on"
   chat(ns.Format(on == "on" and L["Skin for {addon} on. /reload to apply."] or L["Skin for {addon} off. /reload to apply."], { addon = name }))
 end
