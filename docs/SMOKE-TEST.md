@@ -233,7 +233,7 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 ### 3.2b Move frames from the options, and back
 
 - Do: `/vg` → General → **Move frames**. Read the bar at the top, move a frame, click **Save and lock**. Again **Move frames**, then **Exit without saving**. Again **Move frames**, then `/vg lock`.
-- Expect: the bar's note reads in full ("Drag to move · right-click for anchor, scale, opacity · arrows nudge (Shift ×10)") with nothing over the buttons at your resolution; Save and lock and Exit without saving each lock and open `/vg` again on General; `/vg lock` just locks. [Needs in game: the bar's width at your resolution.]
+- Expect: the bar's note reads in full ("Drag to move · right-click for anchor, scale, opacity · arrows nudge (Shift ×10)") with nothing over the buttons at your resolution (on a 4:3 or 5:4 screen, or at 130% text, the note wraps onto a second line and the bar stays on screen); Save and lock and Exit without saving each lock and open `/vg` again on General; `/vg lock` just locks. [Needs in game: the bar's width at your resolution.]
 - If it fails, paste: a screenshot of the bar and `/vg errors`.
 
 ### 3.3 Combat while unlocked

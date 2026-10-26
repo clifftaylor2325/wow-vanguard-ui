@@ -331,3 +331,12 @@ it("the note under Edit Mode's window grows with its text, so it keeps both line
   expect(addon.textFit("Vanguard_EditModeNote"), "nothing in the note is cut").toEqual([]);
   expect(addon.eval("return Vanguard_EditModeNote:GetHeight() > 36"), "the note is taller than its 36 at 100%").toBe(true);
 });
+
+it("the unlock bar stays on a small screen at large text, its long note wrapping", () => {
+  const addon = fitClient(835, 668, 1.3);
+  addon.eval("ns.Unlock()");
+  const bar = addon.frame("Vanguard_UnlockBar").rect;
+  expect([bar.left >= 0, bar.left + bar.width <= 835], "the bar is inside the screen, both ends").toEqual([true, true]);
+  expect(addon.eval("return Vanguard_UnlockBar:GetHeight() > 36"), "the note took a second line, so the bar is taller").toBe(true);
+  expect(addon.textFit("Vanguard_UnlockBar").filter((f) => f.text.startsWith("Drag")), "the note is not cut or covered").toEqual([]);
+});
