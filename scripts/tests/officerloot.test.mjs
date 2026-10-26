@@ -197,3 +197,20 @@ it("the roster: T.SPACE.gap in from the panel's edge on every side (a HUD card's
   expect([name.left - panel.left, panel.top - name.top, note[0], note[1]], "the heading a gap in from the left and top, its note a gap in from the right").toEqual([gap, gap, -gap, true]);
   expect(addon.eval("return Vanguard_OfficerRoster:GetHeight() - 3 * ns.GetModule('OfficerLoot').RLINE"), "three lines (the heading, you and Pal) and two gaps").toBe(2 * gap);
 });
+
+it("the roster of 40 stays on the screen: the lines are cut to the room under its top, the last one counting the members left out", () => {
+  // The roster's bottom edge, its drawn lines' texts and the screen's height with 40 raid members on a w x h canvas.
+  const full = (w, h) => {
+    const addon = loggedIn(`__wfgStub.setScreen(${w}, ${h})`, ON);
+    for (let i = 1; i <= 40; i += 1) addon.world.setUnit(`raid${i}`, { name: `Pal${String(i).padStart(2, "0")}`, class: "MAGE", className: "Mage", isPlayer: true, role: "DAMAGER" });
+    say(addon, "loot roster");
+    return [addon.eval("return Vanguard_OfficerRoster:GetBottom()"), roster(addon)[1].map((x) => x[0])];
+  };
+  const [bottom768, at768] = full(1365, 768);
+  expect(bottom768, "1365x768: the bottom edge is on the screen").toBeGreaterThanOrEqual(0);
+  expect([at768.length, at768[0], at768[at768.length - 1]], "39 lines: the heading, 37 members and the count of the 3 left out").toEqual([39, "Roster 40", "+3 more"]);
+  const [bottom668, at668] = full(835, 668);
+  expect([bottom668 >= 0, at668.length, at668[at668.length - 1]], "835x668: cut shorter still").toEqual([true, 32, "+10 more"]);
+  const [bottom1080, at1080] = full(1920, 1080);
+  expect([bottom1080 >= 0, at1080.length, at1080[at1080.length - 1]], "a tall screen: every member, and no count line").toEqual([true, 41, "Pal40"]);
+});

@@ -455,3 +455,26 @@ it("a client without C_ChatInfo.SendChatMessage sends the report through the old
   addon.slash("meter report raid 1");
   expect(addon.eval("return __sent"), "sent to the raid").toBe("RAID: Damage per second: 1. Tess 300");
 });
+
+it("the meter's default spot clears the action bars on any canvas: today's spot where it fits, the game meter's spot where it does not", () => {
+  // The meter's spot and whether its panel overlaps bar 1, 2 or 3 or the bags and menu bar, on a w x h canvas.
+  const onCanvas = (w, h) => {
+    const addon = loggedIn(METER_ENV + `__wfgStub.setScreen(${w}, ${h})`, METER_ON);
+    const hit = addon.eval(`local m = Vanguard_Meter local out = {}
+      for _, key in ipairs({ "bar1", "bar2", "bar3", "menustrip" }) do
+        local f = ns.MoverFrame(key)
+        if f and m:GetLeft() < f:GetRight() and f:GetLeft() < m:GetRight() and m:GetBottom() < f:GetTop() and f:GetBottom() < m:GetTop() then out[#out + 1] = key end
+      end
+      return { table.concat(out, ","), m:GetRight() <= UIParent:GetWidth() and m:GetTop() <= UIParent:GetHeight() }`);
+    return [addon.eval("return { ns.MoverPoint('meter') }"), hit];
+  };
+  for (const [w, h] of [[835, 668], [1024, 768], [1229, 768], [1280, 800], [1365, 768], [1600, 900]]) {
+    const [spot, [hit, onScreen]] = onCanvas(w, h);
+    expect(spot, `${w}x${h}: the game meter's spot, above the bags and menu bar`).toEqual(["BOTTOMRIGHT", "BOTTOMRIGHT", -16, 118]);
+    expect([hit, onScreen], `${w}x${h}: clear of the action bars, and on screen`).toEqual(["", true]);
+  }
+  for (const [w, h] of [[1920, 1080], [2560, 1440]]) {
+    const [spot, [hit]] = onCanvas(w, h);
+    expect([spot, hit.replace(/,?menustrip/, "")], `${w}x${h}: where it always was, left of the bags and menu bar, clear of the bars`).toEqual([["BOTTOMRIGHT", "BOTTOMRIGHT", -372, 14], ""]);
+  }
+});

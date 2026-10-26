@@ -158,3 +158,26 @@ it("the threat panel is a HUD card: no sheen, and no shadow while Soft shadows u
     return out`);
   expect(parts, "a floating window's sheen and forced shadow do not belong on a HUD list").toEqual({ shadow: 0, sheen: 0 });
 });
+
+it("group threat: the default spot stays clear of a 40-player raid grid on every canvas, top left where it always was on 1365 and wider", () => {
+  // The panel at its tallest (five rows) and the 40-player grid on a w x h canvas: the panel's spot, and whether they overlap or leave the screen.
+  const onCanvas = (w, h) => {
+    const addon = loggedIn(CLICK_LUA + `__wfgStub.setScreen(${w}, ${h})`, ON);
+    const hit = addon.eval(`local RF, GT = ns.GetModule("RaidFrames"), ns.GetModule("GroupThreat")
+      RF.PlaceFor(40) GT.panel:SetHeight(2 * GT.PAD + GT.MAX * GT.ROW)
+      local g, p = Vanguard_RaidHolder:GetLeft(), GT.panel
+      local gridRight, gridTop = g + 516 * RF.Scale(40), 344 + (8 * 48 + 7 * 4) * RF.Scale(40)
+      return { p:GetLeft() < gridRight and g < p:GetRight() and p:GetBottom() < gridTop and 344 < p:GetTop(), p:GetLeft() >= 0 and p:GetRight() <= UIParent:GetWidth() and p:GetTop() <= UIParent:GetHeight() }`);
+    return [addon.eval("return { ns.MoverPoint('groupthreat') }"), hit];
+  };
+  for (const [w, h] of [[835, 668], [1024, 768], [1229, 768], [1280, 800]]) {
+    const [spot, hit] = onCanvas(w, h);
+    expect(spot, `${w}x${h}: right of the screen, left of the minimap`).toEqual(["TOPRIGHT", "TOPRIGHT", -206, -130]);
+    // At 835x668 the 40-player grid (148 to 520) still meets the panel's left 41 units: the minimap leaves no room further right.
+    expect(hit, `${w}x${h}: not over the grid, and on screen`).toEqual([w === 835, true]);
+  }
+  for (const [w, h] of [[1365, 768], [1920, 1080]]) {
+    const [spot, hit] = onCanvas(w, h);
+    expect([spot, hit], `${w}x${h}: top left as always, clear of the grid`).toEqual([["TOPLEFT", "TOPLEFT", 20, -186], [false, true]]);
+  }
+});
