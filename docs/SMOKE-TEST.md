@@ -2438,6 +2438,12 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: the bag's Sort button, the sell card's Post, Stop, Skip and Max buttons, the Restock button on the Lists toolbar, the scan button's countdown and each mail row's Take button show their whole label (the search box beside Sort is a little narrower; the guide's four steps follow one another with a gap, none over the next). The Instance prep card's title and close button stay on the screen however long the list grows: the card slides down from the top edge instead. [Needs in-game check: all of it, and whether the clamp moves the card down.] The + Add button in the mail panel's bottom row may still cut its label in German, Russian and Portuguese (known).
 - If it fails, paste: a screenshot of the button or card, the game's language, and `/vg errors`.
 
+### 33.45 HUD spacing: swing timer, hunter pet, bar 5, rolls, meter title
+
+- Do: as a warrior, rogue or hunter, switch on a 4th stacked action bar (bar 6) under `/vg` → Action bars, swing at a mob, and look at the swing rows against your cast bar and bar 1. As a hunter with a pet and the pet's happiness glyph on, look at the pet frame's health text. Turn on bars 4 and 5 at button size 46 or 48. Make the Vanguard meter 200 wide (`/vg unlock`, right-click its handle, or General → Layout) and make a roll in a group (`/roll 1000`) so the roll tracker shows. If you play in German or French, open `/vg lfg`, `/vg keybind` and look at a vehicle exit button; with Numbers set to always on the XP and reputation bars, raise Text size to 130% and watch a long faction name.
+- Expect: the swing rows sit just over the cast bar, above bar 1, with the 4th bar on; the pet's health text ends left of the mood glyph; bar 5 is a column clear of bar 4; the meter title ends in "..." before Report and Reset; a roll's name ends in "..." before its figures and never draws over them; the group board's hint wraps inside the window; the keybind banner shows its whole last sentence; the vehicle exit label stays inside its button; the XP text stays in the bar's left half and the reputation text in its right half; and, on a German client, say whether "Fehlgeschlagen" is cut on a failed pet cast (no change was made for it: it needs this look first).
+- If it fails, paste: a screenshot of the part and `/vg errors`.
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ## When you are done

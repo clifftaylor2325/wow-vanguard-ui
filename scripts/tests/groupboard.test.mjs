@@ -309,15 +309,15 @@ it("group board: the rows are W.Rows T.ROW.height tall, the buttons T.BUTTON_H, 
   expect(hint.rect.top < body.bottom, "the hint sits under the rows").toBe(true);
 });
 
-it("group board: the note's two lines and the hint's line fit the board's height, a gap between them and a tight gap under the rows", () => {
+it("group board: the note's two lines and the hint's two lines fit the board's height, a gap between them and a tight gap under the rows", () => {
   const addon = board();
   addon.slash("lfg");
   const [, gap, , , , , , smallSize] = tokens(addon);
   const tight = addon.eval("return ns.Theme.SPACE.tight");
   // The harness measures a line at 14; the game's small text is two units taller than its size, and the board reserves
-  // two lines for the note (an empty board says why, in two lines at most) and one for the hint.
+  // two lines for the note (an empty board says why, in two lines at most) and two for the hint (a translation wraps).
   const [note, hint] = ["note", "hint"].map((part) => addon.frame(`Vanguard_GroupBoard.${part}`).id);
-  addon.eval(`__wfgStub.stringHeights = { [${note}] = ${2 * (smallSize + 2)}, [${hint}] = ${smallSize + 2} } __wfgStub.layoutGen = __wfgStub.layoutGen + 1`);
+  addon.eval(`__wfgStub.stringHeights = { [${note}] = ${2 * (smallSize + 2)}, [${hint}] = ${2 * (smallSize + 2)} } __wfgStub.layoutGen = __wfgStub.layoutGen + 1`);
   const [n, h, body] = ["note", "hint", "body"].map((part) => addon.frame(`Vanguard_GroupBoard.${part}`).rect);
   expect([body.bottom - n.top, n.bottom - h.top], "the note a tight gap under the rows; a gap between its second line and the hint, so the board is tall enough").toEqual([tight, gap]);
   addon.eval("__wfgStub.stringHeights = nil");

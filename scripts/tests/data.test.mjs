@@ -35,6 +35,17 @@ it("data bar texts: on thin bars the XP text goes to the left end and the reputa
   expect(textPlace(addon)[0], "a larger text size than the bar: back to its end").toEqual(["LEFT", "LEFT", 4]);
 });
 
+it("data bar texts: long texts at a large text size stay in their half of the bar, on one line", () => {
+  const addon = loggedIn(DATA_ENV, { savedVariables: "VanguardDB.profiles = { Default = { DataBars = { text = 'always' } } }" });
+  addon.eval("ns.Theme.Settings().textScale = 1.3 ns.Theme.Refresh()");
+  addon.eval("Vanguard_xpbar.text:SetText('Level 59  123.4K / 209.8K (58%)  rested 104.9K') Vanguard_repbar.text:SetText('Hydraxian Waterlords  Honored  1.2K / 6.0K (20%)')");
+  const [xp, rep] = ["Vanguard_xpbar", "Vanguard_repbar"].map((name) => addon.frame(`${name}.text`).rect);
+  expect(xp.right, "the XP text ends before the reputation text starts").toBeLessThanOrEqual(rep.left);
+  expect(addon.eval("return Vanguard_xpbar.text:GetStringHeight() == Vanguard_xpbar.text:GetHeight()"), "and stays on one line").toBe(true);
+  addon.eval("ns.SetMoverSize('xpbar', 'height', 20) Vanguard_xpbar.text:SetText('Level 59  123.4K / 209.8K (58%)  rested 104.9K')");
+  expect(addon.eval("local w = Vanguard_xpbar.text:GetWidth() return w == 0 or w > 239"), "a text centred again on a taller bar is not held to half the bar").toBe(true);
+});
+
 // The game's standing words (GlobalStrings), and a female form for one, as GetText gives them.
 const STANDINGS_ENV = `
   for i, w in ipairs({ "Hated", "Hostile", "Unfriendly", "Neutral", "Friendly", "Honored", "Revered", "Exalted" }) do _G["FACTION_STANDING_LABEL" .. i] = w end

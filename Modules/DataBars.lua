@@ -262,15 +262,27 @@ DB.SIZES = { width = { 60, 1600 }, height = { 2, 40 } }
 -- gap in (the sign is the direction in from that end).
 DB.TEXT_SIDE = { xpbar = { "LEFT", 1 }, repbar = { "RIGHT", -1 } }
 
--- Places a bar's text: centred while the bar is at least as tall as its font (or its height is hidden),
--- else at the bar's own end.
+-- Puts a bar's text at the bar's own end, in half the bar's width less a cell gap, so the two bars' texts
+-- never meet: it is cut short with an ellipsis in that room.
+local function sideText(bar, side)
+  local half = (ns.PlainNumber(bar:GetWidth()) or 0) / 2
+  bar.text:SetWidth(math.max(0, half - T.SPACE.tight))
+  bar.text:SetJustifyH(side[1])
+  bar.text:SetPoint(side[1], bar, side[1], side[2] * T.SPACE.tight, 0)
+end
+
+-- Places a bar's text on one line: centred while the bar is at least as tall as its font (or its height is
+-- hidden), else at the bar's own end.
 function DB.PlaceText(bar)
   local _, size = bar.text:GetFont()
   local height = ns.PlainNumber(bar:GetHeight())
   local side = height and height < (size or 0) and DB.TEXT_SIDE[bar.vgKey]
   bar.text:ClearAllPoints()
-  if not side then return bar.text:SetPoint("CENTER") end
-  bar.text:SetPoint(side[1], bar, side[1], side[2] * T.SPACE.tight, 0)
+  bar.text:SetWordWrap(false)
+  if side then return sideText(bar, side) end
+  bar.text:SetWidth(0)
+  bar.text:SetJustifyH("CENTER")
+  bar.text:SetPoint("CENTER")
 end
 
 -- The bar's text, shown as the text setting says (always, or on hover).

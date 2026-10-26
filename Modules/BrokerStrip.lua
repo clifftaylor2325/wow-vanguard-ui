@@ -121,6 +121,7 @@ local function makeSlot(i)
   b.text = T.Text(b:CreateFontString(nil, "OVERLAY"), "small", "text")
   b.text:SetPoint("LEFT", b.icon, "RIGHT", 2 * BS.PAD, 0)
   b.text:SetPoint("RIGHT", b, "RIGHT", -BS.PAD, 0)
+  b.text:SetWordWrap(false)
   return b
 end
 

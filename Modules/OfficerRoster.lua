@@ -88,11 +88,19 @@ end
 
 -- Drawing -------------------------------------------------------------------------------------------
 
+-- Ends a line's name before its note, or at the panel's edge when it has none (an empty text takes no
+-- room, so nothing is laid out for the name to follow).
+local function endName(row, note)
+  if note == "" then return row.left:SetPoint("RIGHT", row.left:GetParent(), "RIGHT", -OL.RPAD, 0) end
+  row.left:SetPoint("RIGHT", row.right, "LEFT", -T.SPACE.tight, 0)
+end
+
 -- The name's color: the class color, gray when offline; the note red when dead.
 local function paintLine(row, line)
   local m = line[3]
   row.left:SetText(line[1])
   row.right:SetText(line[2])
+  endName(row, line[2])
   local c = m and m.class and RAID_CLASS_COLORS and RAID_CLASS_COLORS[m.class]
   if m and not m.online then T.Color(row.left, "disabled") elseif c then T.Color(row.left, c.r, c.g, c.b) else T.Color(row.left, m and "text2" or "text") end
   T.Color(row.right, m and m.dead and "bad" or (m and "text2" or "muted"))
@@ -103,7 +111,7 @@ local function addRow(f, i)
   local y = -OL.RPAD - (i - 1) * OL.RLINE
   local left = T.Text(f:CreateFontString(nil, "OVERLAY"), "small")
   local right = T.Text(f:CreateFontString(nil, "OVERLAY"), "small")
-  left:SetPoint("TOPLEFT", f, "TOPLEFT", OL.RPAD, y) left:SetPoint("RIGHT", f, "RIGHT", -80, 0)
+  left:SetPoint("TOPLEFT", f, "TOPLEFT", OL.RPAD, y) left:SetPoint("RIGHT", f, "RIGHT", -OL.RPAD, 0)
   right:SetPoint("TOPRIGHT", f, "TOPRIGHT", -OL.RPAD, y)
   left:SetJustifyH("LEFT") left:SetWordWrap(false) right:SetJustifyH("RIGHT")
   return { left = left, right = right }

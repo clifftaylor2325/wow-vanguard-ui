@@ -511,6 +511,26 @@ local function barHeight(settings, barSettings, k)
   return (math.ceil(barSettings.buttons / barSettings.perRow) * (size + gap) - gap) * scale
 end
 
+-- Width of bar k's button grid in UIParent's units, rounded and scaled as barHeight is: its columns
+-- (the buttons it has, at most its buttons per row) of its own button size.
+local function barWidth(settings, barSettings, k)
+  local f = AB.bars[k] or UIParent
+  local size, gap = T.PixelRound(f, barSettings.size or settings.size), T.PixelRound(f, settings.spacing)
+  local columns = math.min(barSettings.buttons, barSettings.perRow)
+  return (columns * (size + gap) - gap) * ns.MoverLook("bar" .. k)
+end
+
+-- The room between the right-edge bars and the screen's edge, and between the two.
+AB.RIGHT_GAP = 4
+
+-- The default point of a bar that is not in the bottom stack: its own spot, except bar 5, which sits
+-- one bar 4's width (and a gap) inside bar 4 while that bar is on, whatever its button size or rows.
+local function rightPoint(n, settings)
+  local bar4 = settings.bars[4]
+  if n ~= 5 or not (bar4 and bar4.enabled) then return BARS[n].point end
+  return { "RIGHT", "RIGHT", -(2 * AB.RIGHT_GAP + barWidth(settings, bar4, 4)), 0 }
+end
+
 -- Default point for stacked bar n: every enabled stacked bar with a higher
 -- number sits below it, so bar 1 is always the top row.
 function AB.StackPoint(n, settings)
@@ -532,12 +552,22 @@ function AB.StackTop(settings)
   return AB.StackPoint(0, settings)[4] - BAR_GAP
 end
 
--- Gives stacked bar n its default point now, unless that is where it was last stacked; says whether it
--- moved. The bar moves there unless you dragged it somewhere (a saved position wins).
+-- The coordinate that changes when a bar's default point does: a bottom bar's y, a right-edge bar's x.
+local function moveKey(point)
+  return point[1] == "RIGHT" and point[3] or point[4]
+end
+
+-- Bar n's default point now: its place in the bottom stack, or its spot on the right edge.
+local function defaultPoint(n, settings)
+  return BARS[n].stack and AB.StackPoint(n, settings) or rightPoint(n, settings)
+end
+
+-- Gives bar n its default point now, unless that is where it was last put; says whether it moved.
+-- The bar moves there unless you dragged it somewhere (a saved position wins).
 local function restackBar(n)
-  local point = BARS[n].stack and AB.StackPoint(n, AB.settings)
-  if not point or point[4] == AB.stacked[n] then return false end
-  AB.stacked[n] = point[4]
+  local point = defaultPoint(n, AB.settings)
+  if moveKey(point) == AB.stacked[n] then return false end
+  AB.stacked[n] = moveKey(point)
   ns.SetMoverDefault("bar" .. n, point)
   return true
 end
@@ -756,10 +786,9 @@ local EVENTS = {
 
 -- The point bar n is built at: its place in the bottom stack (remembered, so the re-stack after the
 -- build moves only what the built bars' own rounding changed) or its own default spot.
-local function buildPoint(n, def, settings)
-  if not def.stack then return def.point end
-  local point = AB.StackPoint(n, settings)
-  AB.stacked[n] = point[4]
+local function buildPoint(n, settings)
+  local point = defaultPoint(n, settings)
+  AB.stacked[n] = moveKey(point)
   return point
 end
 
@@ -768,7 +797,7 @@ end
 local function build(settings)
   for n, def in ipairs(BARS) do
     local barSettings = settings.bars[n]
-    if barSettings and barSettings.enabled then createBar(n, def, buildPoint(n, def, settings)) end
+    if barSettings and barSettings.enabled then createBar(n, def, buildPoint(n, settings)) end
   end
   AB.RestackMoved()
   if settings.hideBlizzard then hideBlizzardBars() end

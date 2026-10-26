@@ -104,10 +104,10 @@ local function placeBar(spot)
   ns.Pin(bar, function(f) seat(f, holder) end)
 end
 
--- A centered label in the theme font.
+-- A label in the theme font, centered and fitted to the button (shrunk a little when a translation runs wider).
 local function addLabel(b, text)
   b.label = T.Text(b:CreateFontString(nil, "OVERLAY"), "small")
-  b.label:SetPoint("CENTER")
+  T.FitText(b.label, b, 1)
   b.label:SetText(text)
   T.Color(b.label, "text")
 end
