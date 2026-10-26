@@ -13,7 +13,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterAll, expect, it } from "vitest";
 import { createAddon } from "../lib/lua-harness.mjs";
-import { SETUP_DONE } from "./helpers.mjs";
+import { SETUP_DONE, expectErrors } from "./helpers.mjs";
 import { SCENES, buildScene } from "../lib/preview-scenes.mjs";
 
 const BASELINE = path.join(path.dirname(fileURLToPath(import.meta.url)), "textfit-baseline.json");
@@ -108,6 +108,17 @@ it("text fits: the key-capture prompt on a French client is not cut short (P1-4)
   expect(addon.textFit("TEST_KeyCapture"), "the prompt fits its 220-wide button").toEqual([]);
 });
 
+it("text fits: the key-capture prompt is not cut short in any language at the largest Text size (B1-5)", () => {
+  for (const locale of ["deDE", "esES", "esMX", "ruRU"]) {
+    const addon = createAddon({ savedVariables: SETUP_DONE, textFit: true, client: `GetLocale = function() return "${locale}" end` });
+    addon.login();
+    addon.eval(`ns.Theme.Settings().textScale = 1.3 ns.Theme.Refresh()
+      TEST_KeyCapture = ns.Widgets.KeyCapture(UIParent, ns.L["Add key"], function() end)
+      TEST_KeyCapture:SetPoint("CENTER") TEST_KeyCapture.__scripts.OnClick(TEST_KeyCapture)`);
+    expect(addon.textFit("TEST_KeyCapture"), `${locale}: the prompt fits its 220-wide button at Text size 130%`).toEqual([]);
+  }
+});
+
 it("text fits: the find box after a search with a long query keeps its title on one line above the query (P1-2, P8-5)", () => {
   const addon = fitClient();
   const query = "the dungeon group is looking for a healer tonight at eight";
@@ -140,4 +151,55 @@ it("text fits: the town, quest, auction and group windows of the preview's scene
     for (const frame of frames) findings.push(...addon.textFit(frame));
   }
   expectFits("preview scenes' windows", findings);
+});
+
+it("text fits: the errors window's Report a bug button is as wide as its label, and Import gets the usual width back (B1-6)", () => {
+  const addon = createAddon({ savedVariables: SETUP_DONE, textFit: true, client: 'GetLocale = function() return "ruRU" end' });
+  addon.login();
+  addon.eval(`ns.Theme.Settings().textScale = 1.3 ns.Theme.Refresh() ns.ShowErrors("Errors", "none")`);
+  const label = addon.eval('return ns.L["Report a bug"]');
+  const cut = addon.textFit("Vanguard_TextDialog").filter((finding) => finding.text === label);
+  expect(cut, "the label of Report a bug is whole at Text size 130%").toEqual([]);
+  expect(addon.eval("return Vanguard_TextDialog.primary:GetWidth()"), "the button grew past the usual 120").toBeGreaterThan(120);
+  addon.eval(`ns.AskText("Import", function() end)`);
+  expect(addon.eval("return Vanguard_TextDialog.primary:GetWidth()"), "the next use of the box has the usual width").toBe(120);
+});
+
+it("text fits: a dialog's long title stays on one line instead of wrapping over its content (B1-8)", () => {
+  const addon = createAddon({ savedVariables: SETUP_DONE, textFit: true, client: 'GetLocale = function() return "ruRU" end' });
+  addon.login();
+  addon.world.setUnit("player", { class: "WARRIOR", level: 25 });
+  addon.eval(`ns.Theme.Settings().textScale = 1.3 ns.Theme.Refresh()`);
+  addon.slash("prep setup");
+  expect(addon.eval("return Vanguard_PrepWizard.title:GetMaxLines()"), "the title is one line").toBe(1);
+  const title = addon.eval("return Vanguard_PrepWizard.title:GetText()");
+  const over = addon.textFit("Vanguard_PrepWizard").filter((finding) => finding.text === title && finding.kind !== "cut");
+  expect(over, "the title is cut with an ellipsis at worst, and draws over nothing").toEqual([]);
+  addon.eval('ns.Ask("Reset this page?", "Reset", function() end)');
+  expect(addon.eval("return Vanguard_Question.title:GetMaxLines()"), "a hung title (question, reload) is not limited").toBe(0);
+});
+
+// The options footer with 12 caught errors and a reload waiting, in a language at Text size 130%:
+// [error line's right edge, notice's left edge, the error text's right edge, reload button's whole-label cuts].
+function footerAt(locale, replaced) {
+  const addon = createAddon({ savedVariables: SETUP_DONE, textFit: true, client: `GetLocale = function() return "${locale}" end` });
+  addon.login();
+  addon.eval(`ns.Theme.Settings().textScale = 1.3 ns.Theme.Refresh()
+    for i = 1, 12 do ns.Report("TEST-ONLY site", "failure " .. i) end`);
+  addon.advance(0.5);
+  addon.eval(`ns.Options.${replaced ? "ProfileReplaced" : "NeedReload"}() ns.Options.Show()`);
+  const label = addon.eval('return ns.L["Reload now"]');
+  const cuts = addon.textFit("Vanguard_Options").filter((finding) => finding.text === label);
+  return addon.eval("return { Vanguard_OptionsErrors:GetRight(), Vanguard_Options.notice:GetLeft(), Vanguard_OptionsErrors.text:GetRight(), Vanguard_Options.reload:GetLeft() }").concat([cuts.length]);
+}
+
+it("text fits: the options footer's error line stops short of the reload notice, and Reload now shows whole (B1-7, B2-2)", () => {
+  expectErrors(/^TEST-ONLY site: failure \d+$/);
+  for (const [locale, replaced] of [["enUS", true], ["deDE", false], ["deDE", true], ["frFR", true], ["ruRU", false]]) {
+    const [errorsRight, noticeLeft, textRight, reloadLeft, cuts] = footerAt(locale, replaced);
+    expect(errorsRight, `${locale}: the error line ends before the notice`).toBeLessThanOrEqual(noticeLeft + 1e-6);
+    expect(textRight, `${locale}: and its text stays inside its click area`).toBeLessThanOrEqual(errorsRight + 1e-6);
+    expect(noticeLeft, `${locale}: the notice ends at the Reload now button`).toBeLessThan(reloadLeft);
+    expect(cuts, `${locale}: Reload now is not cut`).toBe(0);
+  }
 });
