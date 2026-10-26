@@ -57,8 +57,15 @@ end
 -- The Masque group of the pet, stance and extra buttons, when Masque is loaded.
 SB.MASQUE = "Pet, stance and extra buttons"
 
+-- The game's hotkey and count texts on a button in the theme's small font and the action bars' colours
+-- (the hotkey light grey, the count white), where the template has them.
+local function themeTexts(b)
+  if type(b.HotKey) == "table" and b.HotKey.SetFont then T.Text(b.HotKey, "small", "text2") end
+  if type(b.Count) == "table" and b.Count.SetFont then T.Text(b.Count, "small", "white") end
+end
+
 -- Restyles one client button: art faded (state textures kept), icon cropped,
--- themed border; or hands it to Masque (which finds the game button's regions).
+-- themed border and texts; or hands it to Masque (which finds the game button's regions).
 function SB.Skin(b)
   if type(b) ~= "table" or vgSkinned[b] then return end
   vgSkinned[b] = true
@@ -67,6 +74,7 @@ function SB.Skin(b)
   T.FadeRegions(b, SB.KeepSet(b))
   if icon and icon.SetTexCoord then T.Crop(icon) end
   T.Panel(b, { noBg = true })
+  themeTexts(b)
 end
 
 -- Restyles every button of the bars switched on.
