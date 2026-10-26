@@ -33,7 +33,7 @@ local INNER = CARD_WIDTH - 2 * PAD
 local AIR, LINE, JUMP_ABOVE = 6, 20, 40
 -- Height of each row kind (Core/OptionsPreview.lua and modules add theirs with O.AddRowKind): a check, cycle or
 -- slider row is a list row (T.ROW.height); a button row has a standalone button (T.BUTTON_H) with 3 units of air
--- each side; a module row two lines.
+-- each side; a module row two lines, or taller when its description wraps further.
 local ROW_HEIGHT = { check = T.ROW.height, cycle = T.ROW.height, slider = T.ROW.height, button = T.BUTTON_H + 6, text = LINE, module = 54 }
 -- Row kinds laid out edge to edge in a card (the rest are indented).
 local FULL_WIDTH = { check = true, cycle = true, slider = true, swatches = true, module = true }
@@ -90,6 +90,8 @@ local function moduleRow(parent, row, width)
   r.label:ClearAllPoints()
   r.label:SetPoint("TOPLEFT", T.SPACE.gap, -AIR)
   addDescription(r, row[6], width)
+  r.grownHeight = 2 * AIR + r.label:GetStringHeight() + T.SPACE.tight + r.desc:GetStringHeight()
+  r:SetHeight(math.max(ROW_HEIGHT.module, r.grownHeight))
   addOwnSwitchNote(r, row[7])
   return r
 end
@@ -360,6 +362,13 @@ local function rowHeight(w, kind)
   return ROW_HEIGHT[kind] or T.ROW.height
 end
 
+-- A row's height, also given to a switch row, so a wrapped caption and its switch centre in the room the row takes.
+local function placeHeight(w, kind)
+  local h = rowHeight(w, kind)
+  if kind == "check" then w:SetHeight(h) end
+  return h
+end
+
 -- Builds a card's rows top to bottom from y; returns the y below them. Each
 -- row keeps its card, its caption and where it sits on the page (for search).
 local function placeRows(card, rows, y, cardY)
@@ -370,7 +379,7 @@ local function placeRows(card, rows, y, cardY)
     dressRow(w, row)
     w:SetPoint("TOPLEFT", card, "TOPLEFT", full and T.SPACE.tight or PAD, -y)
     widgets[#widgets + 1] = w
-    y = y + rowHeight(w, row[1])
+    y = y + placeHeight(w, row[1])
   end
   return y
 end
@@ -484,7 +493,7 @@ local function buildPage(page)
   local view = ns.ScrollView(window, { width = CARD_WIDTH })
   view:SetPoint("TOPLEFT", NAV_WIDTH + T.SPACE.col, -(HEAD + T.SPACE.col))
   view:SetPoint("BOTTOMRIGHT", -VIEW_RIGHT, FOOT + T.SPACE.col)
-  view.child.pageKey = page.key
+  view.child.pageKey, view.textScale = page.key, T.Settings().textScale
   placeCards(view, rowsOf(page))
   return view
 end
@@ -583,17 +592,25 @@ local function navItem(nav, y, h)
   return b
 end
 
+-- A nav entry's changed-setting dot at its right edge, and its title between the icon and the dot (never past it).
+local function navTitle(b, title)
+  b.changed = W.Flat(b, "OVERLAY", "accent")
+  b.changed:SetSize(DOT, DOT)
+  b.changed:SetPoint("RIGHT", -T.SPACE.col, 0)
+  b.text = T.Text(b:CreateFontString(nil, "OVERLAY"), "label", "text2")
+  b.text:SetPoint("LEFT", b.icon, "RIGHT", T.SPACE.gap, 0)
+  b.text:SetPoint("RIGHT", b.changed, "LEFT", -T.SPACE.tight, 0)
+  b.text:SetJustifyH("LEFT")
+  b.text:SetWordWrap(false)
+  b.text:SetText(title)
+end
+
 -- Fills a nav entry with the page's icon and title; clicking opens the page.
 local function fillNavItem(b, page)
   b.icon = W.IconTexture(b, page.icon or "NavGeneral", NAV_ICON, "text2")
   b.icon:SetPoint("LEFT", T.SPACE.pad, 0)
-  b.text = T.Text(b:CreateFontString(nil, "OVERLAY"), "label", "text2")
-  b.text:SetPoint("LEFT", b.icon, "RIGHT", T.SPACE.gap, 0)
-  b.text:SetText(page.title)
+  navTitle(b, page.title)
   b:SetScript("OnClick", ns.Guard("click options page", function() O.Show(page.key) end))
-  b.changed = W.Flat(b, "OVERLAY", "accent")
-  b.changed:SetSize(DOT, DOT)
-  b.changed:SetPoint("RIGHT", -T.SPACE.col, 0)
 end
 
 -- Pages in nav order.
@@ -849,8 +866,27 @@ local function markNav(key)
   end
 end
 
+-- Drops a thrown-away page's rows from the widget list (so they're no longer refreshed or searched).
+local function forgetRows(view)
+  for i = #widgets, 1, -1 do
+    if widgets[i].card.child == view.child then table.remove(widgets, i) end
+  end
+end
+
+-- Throws a page built at another Text size away (its rows and reload tags were laid out for that size), so it is built
+-- again when next shown; the page being dragged on is never rebuilt mid-drag.
+local function dropStale(key)
+  local view = pages[key]
+  if not view or view.textScale == T.Settings().textScale then return end
+  rowCache[key] = nil
+  forgetRows(view)
+  view:Hide()
+  pages[key] = nil
+end
+
 -- Builds the current page on first view and shows only it.
 local function showPage()
+  dropStale(O.current)
   for _, page in ipairs(O.PAGES) do
     if page.key == O.current and not pages[page.key] then pages[page.key] = buildPage(page) end
     if pages[page.key] then pages[page.key]:SetShown(page.key == O.current) end
@@ -929,13 +965,6 @@ local function pageMatches(page, text)
     if O.RowMatches(rows, i, text) then return true end
   end
   return false
-end
-
--- Drops a thrown-away page's rows from the widget list (so they're no longer refreshed or searched).
-local function forgetRows(view)
-  for i = #widgets, 1, -1 do
-    if widgets[i].card.child == view.child then table.remove(widgets, i) end
-  end
 end
 
 -- The window's frame (Vanguard_Options), or nil until it is first opened.
