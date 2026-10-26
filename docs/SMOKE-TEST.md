@@ -2450,6 +2450,54 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: the card's line names @WowVanguardUI on X; each button opens the copy box with its address selected (`https://discord.gg/8ChnJfyww`, then `https://x.com/WowVanguardUI`), the box's title says to press Ctrl+C and paste into the browser, and the pasted invite opens the Vanguard server; in the long language both button labels fit. `/vg errors` is empty.
 - If it fails, paste: a screenshot of the card or the box, and `/vg errors`.
 
+### 33.47 Narrow screens: adapted default spots and setup's Fit
+
+- Do: on a 4:3 or 5:4 screen, or a 1024x768 window, with the game's UI scale at 100 % and a fresh profile, look at the frames around your character with a target that has a target, at your buffs with a dozen of them on, at Boss timers and the talking head in `/vg unlock`, and (in a party, Party pets and targets on under Unit frames) at the party pets column with the UI scale at 115 %. Then run `/vg setup` and go to the Screen step. On a 16:9 screen at 100 % or below, look at the same frames.
+- Expect: on the narrow screen the target of target sits just above the target's cast bar at the target's inner end, on the screen and clear of the tooltip corner; your buffs wrap in fewer columns (five on a 1024-wide canvas) and leave the main tanks' spot clear; the Boss timers handle sits left of the quest tracker; the talking head's handle is clear of the minimap; at 115 % the party pets column sits right of the party column with its top on the screen. The Screen step shows "Fit my screen: UI scale N%  ·  suggested" just above Keep (90 % on 16:10, 75 % on 4:3, 70 % on 5:4); picking it and finishing sets the game's UI Scale slider there and changes no button, tile or text size. On the 16:9 screen every frame is where it was before and there is no Fit choice. [Needs in game: all of it, the spots at the real UI scale.]
+- If it fails, paste: a screenshot of the HUD and the Screen step, your resolution and UI scale, and `/vg errors`.
+
+### 33.48 Frames kept on the screen, and chat dragged to an edge
+
+- Do: `/vg unlock`, drag your player frame against the right edge and lock; set the game's UI scale from 65 % to 115 % (or load a profile saved on an ultrawide screen on a narrower one). Then `/vg unlock` and drag the chat handle hard against the left edge, then the top-right corner, and lock.
+- Expect: the player frame stays wholly on the screen after the scale change, and in unlock mode its handle sits over it. The chat handle stops short of each edge: with the chat on the left edge its column of side buttons is still on the screen; in the top-right corner the tab bar and its Copy and Find tiles are under the screen's top, the scroll column inside the right edge, and the edit box (press Enter) on the screen. [Needs in game: whether the client's clamp keeps protected frames on the screen, and that SetClampRectInsets grows the chat handle's clamp in the direction used (negative left and bottom, positive right and top).]
+- If it fails, paste: a screenshot with the handles showing, `/vg frame ChatFrame1` and `/vg errors`.
+
+### 33.49 Raid mark on the short frames
+
+- Do: in a group, mark your target's target and your pet (or a boss) with a raid target icon (Raid target icons on, under Raid frames), with long names on them.
+- Expect: on the target of target, pet and boss frames the mark sits a little higher than on the player and target frames, its bottom just over the top of the name, which stays readable; on the target, player and focus frames it is centred on the top edge as before. [Needs in game: the name's real height against the lifted mark.]
+- If it fails, paste: a screenshot of the frames and `/vg errors`.
+
+### 33.50 Raid grid on a narrow screen, and the status on a big grid
+
+- Do: in a raid of 25 or 40 (or `/vg preview 40`) with the raid frames at their default spot (`/vg reset raid` first), on a 5:4 or 4:3 screen, or at a UI scale that makes the UI narrower than 1296 units (the game's Options -> Graphics -> UI Scale, about 110% on a 1080p screen). Have a roll going (`/roll 1000` in a group) so the roll tracker shows at the left edge. Then look at a tile whose player is offline or dead, and at one with a big missing-health figure.
+- Expect: the grid starts right of the roll tracker (its left edge 148 units in from the screen's edge) and ends on the screen; on a screen 1296 units wide or more it is where it always was, left of the middle. The tile's status (Offline, Dead, Ghost or the missing health, such as -12000) sits at the right of the name row on one line; it is not cut on English text, and a longer translation ends in "..." rather than wrapping down into the buff icons. [Needs in-game check: all of it, and how "Offline" at 40 players looks against the name.]
+- If it fails, paste: a screenshot of the grid and `/vg frame raid deep`.
+
+### 33.51 Vanguard meter on a narrow screen
+
+- Do: on a screen narrower than about 1840 UI units (1920 x 1080 at the game's UI scale 100% is 1366 units wide; a 4:3 monitor is narrower), switch the meter on (`/vg meter on`) with the Action bars on and the game's own meter off, then fight a target dummy or look at the empty panel.
+- Expect: the panel sits at the bottom right, 16 in from the right edge and above the bags and menu bar, where the game's own meter sits; it does not cover bars 1 to 3. On a wider screen (a 2560 x 1440 monitor at 100%) it sits where it always did, left of the bags and menu bar. [Needs in-game check: the panel's top against the tooltip corner and the quest tracker on a 1365-wide screen.]
+- If it fails, paste: a screenshot of the corner and `/vg frame Vanguard_Meter`.
+
+### 33.52 Officer roster in a 40-player raid on a short screen
+
+- Do: with Officer loot tools on (`/vg loot on`), in a raid of 40 on a screen 768 units tall or less (1920 x 1080 at the game's UI scale 100% is 768 tall), open the roster (`/vg loot roster`).
+- Expect: the panel ends above the bottom edge of the screen and its last line reads "+3 more" (or the number of members it had no room for); on a taller screen every member is listed with no count line. [Needs in-game check: the count at your screen's height, and the panel against the roll tracker at the left edge, which it still overlaps.]
+- If it fails, paste: a screenshot and `/vg frame Vanguard_OfficerRoster`.
+
+### 33.53 Group threat panel on a narrow screen
+
+- Do: switch Group threat on (`/vg` -> Unit frames, then reload), join a group (or a raid of 25 or 40 and a hostile target), on a screen narrower than 1365 UI units (a 4:3 or 5:4 monitor, or a UI scale above about 1.07 on 1080p).
+- Expect: the panel sits at the right, left of the minimap and under your buffs, clear of the raid grid; on a wider screen it is at the top left, as before. [Needs in-game check: the panel against the quest tracker and your buffs, and, on a 1365-wide screen with the "Like the game's" layout, whether it still covers the party tiles (it does not move there).]
+- If it fails, paste: a screenshot and `/vg frame Vanguard_GroupThreat`.
+
+### 33.54 A full sectioned bag on a short screen, and the crafting cost panel on a narrow one
+
+- Do: raise the game's UI scale to 115% (or use a 4:3 monitor) so the screen is about 668 UI units tall, carry a nearly full set of large bags (16 + 4 x 18 slots) with Combined bag in sections on and Drag game windows by their title bar off, and open the bag. Then open a profession window with the Auction helper on and pick a recipe on a screen narrower than about 1020 UI units (5:4 or 4:3, or UI scale above 1.07).
+- Expect: the bag's title, search box, Sort and close button are all on the screen, the bag sitting lower than usual if it must. The Crafting cost panel is left of the profession window (its right edge against the window's left edge) when there is no room at the right; on a wide screen it is still at the right, past the side tabs. [Needs in-game check: both, and whether the game already kept the bag on the screen before the clamp; the real profession window's width decides where the panel flips.]
+- If it fails, paste: a screenshot, `/vg frame ContainerFrameCombinedBags`, `/vg frame Vanguard_CraftingPanel`.
+
 ### 33.55 Options: the own-switch note, wide choices and capital headings
 
 - Do: set the game to Russian, French, Spanish or Portuguese (or run a client in one). Open `/vg` → Modules, switch on a module that has a switch of its own inside (the meter, mail tools, chat history) and leave that inner switch off, then point at the module's row. Open `/vg` → Chat and General → Tools and look at the choices with long values ("Class-colored names" in French, "Vanguard look" in Spanish). In German or Russian, open the bags with section headers on.

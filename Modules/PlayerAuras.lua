@@ -28,12 +28,30 @@ PA.BLIZZARD = { "BuffFrame", "DebuffFrame", "ExternalDefensivesFrame", "DeadlyDe
 -- Weapon slot name (Enum.WeaponSlot) and inventory slot, in cell order from the right.
 PA.WEAPONS = { { "MainHand", 16 }, { "OffHand", 17 }, { "Ranged", 18 } }
 
+-- The default spot, left of the minimap, and the room it keeps clear on its left: the main tanks' right
+-- edge (TOPLEFT 400, 236 wide; Modules/MainTanks.lua) and a gap.
+PA.SPOT = { "TOPRIGHT", "TOPRIGHT", -210, -14 }
+PA.LEFT_CLEAR = 640
+-- Never fewer buffs in a row than this, so the block doesn't run down the screen: 32 buffs take 7 rows. Under
+-- 1020 wide that row reaches the main tanks' spot (shown only in a raid).
+PA.MIN_PER_ROW = 5
+
 -- The container -----------------------------------------------------------------------------
+
+-- Buffs in a row: the setting, or fewer (down to PA.MIN_PER_ROW) on a canvas too narrow for a whole row between
+-- the main tanks and the default spot (under 1254 wide at the default 12), so the block grows down instead of
+-- over them; the setting as it is once your buffs have a spot of their own.
+function PA.PerRow(s)
+  local w = ns.PlainNumber(UIParent:GetWidth())
+  if ns.MoverSaved("playerauras") or not w or w == 0 then return s.perRow end
+  local fit = math.floor((w + PA.SPOT[3] - PA.LEFT_CLEAR) / (s.size + PA.GAP))
+  return math.min(s.perRow, math.max(PA.MIN_PER_ROW, fit))
+end
 
 -- Buffs from the top-right corner, growing left and down; debuffs start a new row after them.
 function PA.Spec(holder, s)
   return { point = { "TOPRIGHT", holder, "TOPRIGHT", 0, 0 }, grow = "LEFT", growY = "DOWN",
-    lineSize = s.perRow * (s.size + PA.GAP), gap = PA.GAP, timer = s.timers, cancel = true, masque = PA.MASQUE,
+    lineSize = PA.PerRow(s) * (s.size + PA.GAP), gap = PA.GAP, timer = s.timers, cancel = true, masque = PA.MASQUE,
     groups = { { filter = "HELPFUL", max = s.buffs, size = s.size },
       { filter = "HARMFUL", max = s.debuffs, size = s.size, debuff = true, newLine = true } } }
 end
@@ -145,8 +163,8 @@ end
 -- The movable holder left of the minimap, the container and the enchant cells.
 local function build(s)
   PA.holder = CreateFrame("Frame", "Vanguard_PlayerAuras", UIParent)
-  PA.holder:SetSize(s.perRow * (s.size + PA.GAP), s.size)
-  ns.Mover(PA.holder, "playerauras", L["Your buffs and debuffs"], { "TOPRIGHT", "TOPRIGHT", -210, -14 })
+  PA.holder:SetSize(PA.PerRow(s) * (s.size + PA.GAP), s.size)
+  ns.Mover(PA.holder, "playerauras", L["Your buffs and debuffs"], PA.SPOT)
   PA.auras = A.Container(PA.holder, PA.Spec(PA.holder, s), "player")
   PA.cells = {}
   for i = 1, #PA.WEAPONS do PA.cells[i] = enchantCell(PA.holder, i, s.size) end

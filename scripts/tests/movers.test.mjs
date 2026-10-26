@@ -355,3 +355,68 @@ it("a frame anchored to another follows it when the screen size or UI scale chan
   addon.advance(2);
   expect(lefts(), "a's centre moved 320 right, and b and its handle followed it").toEqual([1180, 1240, 1240]);
 });
+
+it("layout: the shift that fits a rect onto the screen less the room kept at its edges", () => {
+  const addon = loggedIn();
+  // ns.Layout.FitShift of a w x h rect at left, bottom on a 1000 x 600 screen, with room as Lua.
+  const shift = (l, b, w, h, room = "nil") => addon.eval(`return { ns.Layout.FitShift({ left = ${l}, bottom = ${b}, w = ${w}, h = ${h} }, { w = 1000, h = 600 }, ${room}) }`);
+  expect(shift(100, 100, 200, 50), "a rect on the screen stays where it is").toEqual([0, 0]);
+  expect(shift(900, -20, 200, 50), "one past the right and bottom edges moves back on").toEqual([-100, 20]);
+  expect(shift(500, 100, 300, 50, "{ right = 250 }"), "one in the room kept at the right moves out of it").toEqual([-50, 0]);
+  expect(shift(-50, 500, 1200, 900), "one bigger than the screen is left where its anchor puts it").toEqual([0, 0]);
+});
+
+// Every mover's point (ns.MoverPoint) on a w x h canvas.
+const spotsAt = (addon, w, h) => addon.eval(`__wfgStub.setScreen(${w}, ${h}) local out = {}
+  for _, m in ipairs(ns.MoverList()) do out[m.key] = { ns.MoverPoint(m.key) } end
+  return out`);
+
+it("at 1365 x 768 and wider every default spot is where it always was: only narrower or shorter canvases adapt", () => {
+  const addon = loggedIn("", { savedVariables: "VanguardDB = { profiles = { Default = { PartyExtras = { show = true } } } }" });
+  // On a canvas far bigger than any screen nothing is narrow or off the edge: each default as given.
+  const given = spotsAt(addon, 8000, 4000);
+  expect(given.uf_targettarget, "the target of target's default as given").toEqual(["BOTTOM", "BOTTOM", 426, 196]);
+  for (const [w, h] of [[1365, 768], [1366, 768], [1600, 900], [1920, 1080], [2743, 1543], [4914, 2057]]) {
+    expect(spotsAt(addon, w, h), `${w} x ${h}`).toEqual(given);
+  }
+});
+
+it("narrow canvases: the target of target sits over the target's cast bar, on screen and clear of the target and the tooltip", () => {
+  for (const [w, h] of [[1280, 800], [1229, 768], [1024, 768], [835, 668]]) {
+    const addon = loggedIn(`__wfgStub.setScreen(${w}, ${h})`);
+    const [tot, target, cast, tip] = ["Vanguard_targettarget", "Vanguard_target", "Vanguard_CastBar_target", "Vanguard_TooltipAnchor"].map((n) => addon.frame(n).rect);
+    expect(addon.eval("return { ns.MoverPoint('uf_targettarget') }"), `${w} x ${h}: over the target's inner end`).toEqual(["BOTTOM", "BOTTOM", 180, 280]);
+    expect(tot.left >= 0 && tot.left + tot.width <= w, `${w} x ${h}: on screen`).toBe(true);
+    expect(tot.bottom >= target.bottom + target.height && tot.bottom >= cast.bottom + cast.height, `${w} x ${h}: above the target and its cast bar`).toBe(true);
+    expect(tot.left + tot.width <= tip.left || tot.bottom >= tip.bottom + tip.height, `${w} x ${h}: clear of the tooltip's corner`).toBe(true);
+  }
+});
+
+it("narrow canvases: your buffs wrap in fewer columns, clear of the main tanks and raid tools; a moved block keeps its row", () => {
+  // Your buffs' block on a w x h canvas: its left edge, width and buffs to a row, and the main tanks' right edge.
+  const block = (w, h, saved = "") => {
+    const addon = loggedIn(`__wfgStub.setScreen(${w}, ${h})`, { savedVariables: saved });
+    const r = addon.frame("Vanguard_PlayerAuras").rect, tanks = addon.frame("Vanguard_MainTanksHolder").rect;
+    return { left: r.left, perRow: Math.round(r.width / 34), tanksRight: tanks.left + tanks.width };
+  };
+  expect(block(1365, 768).perRow, "1365 wide: a full row of 12").toBe(12);
+  for (const [w, h, n] of [[1229, 768, 11], [1024, 768, 5]]) {
+    const b = block(w, h);
+    expect([b.perRow, b.left >= b.tanksRight], `${w} x ${h}: ${n} to a row, left of it the main tanks' spot is clear`).toEqual([n, true]);
+  }
+  expect(block(835, 668).perRow, "835 wide: never fewer than five to a row (clear of the raid tools; the main tanks meet it)").toBe(5);
+  const moved = block(1229, 768, "VanguardDB = { profiles = { Default = { positions = { playerauras = { point = 'TOPLEFT', relPoint = 'TOPLEFT', x = 20, y = -300 } } } } }");
+  expect([moved.perRow, moved.left], "dragged elsewhere, the block keeps its 12 to a row").toEqual([12, 20]);
+});
+
+it("a mover's frame is kept on the screen, so a spot saved on a wider screen can't leave it off the edge", () => {
+  const addon = loggedIn(`
+    __f = CreateFrame("Frame", nil, UIParent)
+    __f:SetSize(200, 40)
+    function __f:SetClampedToScreen(on) self.__testClamped = on end
+    ns.Mover(__f, "box", "TEST-ONLY box", { "CENTER", "CENTER", 0, 0 })
+  `);
+  expect(addon.eval("return __f.__testClamped"), "clamped when it is placed").toBe(true);
+  addon.eval("__f.__testClamped = nil ns.SetMoverPoint('box', 'LEFT', 'LEFT', 1150, 0)");
+  expect(addon.eval("return __f.__testClamped"), "and again when it moves").toBe(true);
+});

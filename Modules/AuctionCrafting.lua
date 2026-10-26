@@ -130,7 +130,7 @@ function CR.Paint()
   local data = AH.settings.crafting and CR.recipe and form and form:IsVisible() and CR.Read(CR.recipe) or nil
   if CR.frame then CR.frame:SetShown(data ~= nil) end
   if not data then return end
-  local f = CR.frame or CR.Build()
+  local f = CR.Place(CR.frame or CR.Build())
   CR.data = data
   f.title:SetText(data.name or L["Crafting cost"])
   for i, r in ipairs(f.rows) do paintReagent(r, data.reagents[i]) end
@@ -210,12 +210,33 @@ local function heading(f)
   f.title:SetWordWrap(false)
 end
 
--- The panel, built the first time a recipe is priced: right of the profession window, past its side
--- tabs, with the recipe's name, a row per reagent (CR.ROWS at most), the totals and Add reagents.
+-- The profession window's left and right edges in UIParent's units (its own scale taken out).
+local function windowEdges()
+  local scale = ProfessionsFrame:GetEffectiveScale() / UIParent:GetEffectiveScale()
+  return (ProfessionsFrame:GetLeft() or 0) * scale, (ProfessionsFrame:GetRight() or 0) * scale
+end
+
+-- Places the panel right of the profession window, past its side tabs; when that runs past the screen's right
+-- edge and the room left of the window holds the panel, left of the window instead. Otherwise it stays at the
+-- right (the screen's clamp keeps it on the screen). Again each time it is painted: the window may have moved.
+-- Returns the panel.
+function CR.Place(f)
+  local left, right = windowEdges()
+  local atRight = right + CR.GAP + CR.WIDTH <= (UIParent:GetRight() or UIParent:GetWidth())
+  f:ClearAllPoints()
+  if atRight or left - T.SPACE.gap - CR.WIDTH < 0 then
+    f:SetPoint("TOPLEFT", ProfessionsFrame, "TOPRIGHT", CR.GAP, 0)
+  else
+    f:SetPoint("TOPRIGHT", ProfessionsFrame, "TOPLEFT", -T.SPACE.gap, 0)
+  end
+  return f
+end
+
+-- The panel, built the first time a recipe is priced (placed by CR.Place), with the recipe's name,
+-- a row per reagent (CR.ROWS at most), the totals and Add reagents.
 function CR.Build()
   local f = T.Panel(CreateFrame("Frame", "Vanguard_CraftingPanel", UIParent), { shadow = true })
   f:SetWidth(CR.WIDTH)
-  f:SetPoint("TOPLEFT", ProfessionsFrame, "TOPRIGHT", CR.GAP, 0)
   heading(f)
   f.rows, f.lines = {}, {}
   for i = 1, CR.ROWS do f.rows[i] = reagentRow(f, i) end

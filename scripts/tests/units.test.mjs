@@ -581,6 +581,18 @@ it("a raid target icon sits on every unit frame's top edge, following the Raid t
   expect([addon.eval("return ns.Settings('RaidStatus').raidIcons"), icon("player")[0]], "the switch on the Raid frames page, off: no marks, at once").toEqual([false, false]);
 });
 
+it("a raid target icon on a short frame (target of target, pet, boss) is lifted so its bottom clears the name", () => {
+  const addon = loggedIn(CLICK_LUA + UNITS_ENV, NO_RAID);
+  // A frame's raid icon: how far its centre sits above the frame's top, and whether its bottom clears the name's top.
+  const icon = (key) => addon.eval(`local f = Vanguard_${key} local _, _, _, _, y = f.raidIcon:GetPoint()
+    local nameTop = (f.health:GetTop() + f.health:GetBottom()) / 2 + f.name:GetLineHeight() / 2
+    return { y, f:GetTop() + y - f.raidIcon:GetHeight() / 2 >= nameTop - 0.01 }`);
+  expect([icon("target")[0], icon("focus")[0]], "the 36 tall target and 30 tall focus: centred on their top edge").toEqual([0, 0]);
+  for (const key of ["targettarget", "pet", "boss1"]) {
+    const [lift, clear] = icon(key);
+    expect([lift > 0, clear], `${key}: lifted, its bottom over the name`).toEqual([true, true]);
+  }
+});
 it("threat is quiet solo: it shows in a group or with a pet", () => {
   const addon = loggedIn(UNITS_ENV + EXTRAS_ENV + "__grouped = false");
   // The threat text above the target frame.

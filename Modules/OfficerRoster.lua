@@ -12,6 +12,8 @@ local OL = ns.GetModule("OfficerLoot")
 
 -- The panel's width, a line's height and its padding (UI units; a HUD card's, T.SPACE.gap), and the most members listed.
 OL.RWIDTH, OL.RLINE, OL.RPAD, OL.RMAX = 190, 14, T.SPACE.gap, 40
+-- How far down from the screen's top the panel starts by default.
+OL.RTOP = 200
 -- A group role as the roster says it, and the order roles are listed in.
 OL.ROLES = { TANK = L["Tank"], HEALER = L["Healer"], DAMAGER = L["DPS"] }
 OL.ROLE_ORDER = { TANK = 1, HEALER = 2, DAMAGER = 3 }
@@ -86,6 +88,22 @@ function OL.RosterLines()
   return out
 end
 
+-- How many lines fit under the panel's top on this screen (at least the heading and one more).
+function OL.MaxLines()
+  local room = (UIParent:GetHeight() or 0) - OL.RTOP - 2 * OL.RPAD
+  return math.max(2, math.floor(room / OL.RLINE))
+end
+
+-- The lines cut to the room on this screen: past it, the last line says how many members are not listed.
+function OL.Fit(lines)
+  local max = OL.MaxLines()
+  if #lines <= max then return lines end
+  local out = {}
+  for i = 1, max - 1 do out[i] = lines[i] end
+  out[max] = { ns.Format(L["+{count} more"], { count = #lines - max + 1 }), "" }
+  return out
+end
+
 -- Drawing -------------------------------------------------------------------------------------------
 
 -- Ends a line's name before its note, or at the panel's edge when it has none (an empty text takes no
@@ -123,7 +141,7 @@ function OL.BuildRoster()
   OL.rframe = f
   f:SetSize(OL.RWIDTH, 2 * OL.RPAD + OL.RLINE)
   f:Hide()
-  ns.Mover(f, "officerroster", L["Officer roster"], { "TOPLEFT", "TOPLEFT", 6, -200 })
+  ns.Mover(f, "officerroster", L["Officer roster"], { "TOPLEFT", "TOPLEFT", 6, -OL.RTOP })
   f.rows = {}
   for i = 1, OL.RMAX + 1 do f.rows[i] = addRow(f, i) end
   return f
@@ -144,7 +162,7 @@ function OL.PaintRoster()
   local show = OL.On() and OL.rosterOpen == true
   f:SetShown(show)
   if not show then return end
-  local lines = OL.RosterLines()
+  local lines = OL.Fit(OL.RosterLines())
   f:SetHeight(#lines * OL.RLINE + 2 * OL.RPAD)
   OL.DrawRows(f, lines)
 end

@@ -50,3 +50,17 @@ it("boss docks: the options button shows only while a boss mod is loaded", () =>
   withDbm.eval('__click("Line up boss mod bars")');
   expect(withDbm.eval("return DBT.opts.TimerPoint"), "the button docks DBM's bars").toBe("CENTER");
 });
+
+it("boss docks: on a narrow canvas Boss timers stays on screen and left of the quest tracker's column; 1365 wide keeps its spot", () => {
+  // Boss timers' rect on a w x h canvas, and the quest tracker's left edge there.
+  const at = (w, h) => {
+    const addon = loggedIn(`__wfgStub.setScreen(${w}, ${h})`);
+    const r = addon.frame("Vanguard_bossbars").rect;
+    return { left: r.left, right: r.left + r.width, bottom: r.bottom, tracker: addon.frame("Vanguard_QuestTracker").rect.left };
+  };
+  expect(at(1365, 768).left, "1365 wide: 360 right of the middle, as before").toBe(1365 / 2 + 260);
+  for (const [w, h] of [[1229, 768], [1024, 768], [835, 668]]) {
+    const r = at(w, h);
+    expect([r.left >= 0, r.right <= r.tracker, r.bottom], `${w} x ${h}: on screen, left of the tracker, over the target of target`).toEqual([true, true, 304]);
+  }
+});

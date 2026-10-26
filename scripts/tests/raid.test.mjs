@@ -496,3 +496,39 @@ it("raid frames: the indicators are named by where they sit, with a note, and th
   expect(addon.eval('local out = {} for i, c in ipairs(ns.GetModule("RaidAuras").SOURCE_CHOICES) do out[i] = c[2] end return out'), "sentence case").toEqual(
     ["None", "External defensive", "Big defensive", "Important buff", "Your buffs", "Crowd control", "Dispellable debuff"]);
 });
+
+it("raid frames: a big raid's default spot keeps its grid on screen and right of the roll tracker on narrow canvases, and stays put on wide ones", () => {
+  // The raid holder's left edge and the grid's right edge with 40 players, on a w x h canvas.
+  const edges = (w, h) => {
+    const addon = loggedIn(UNITS_ENV + RAID_ENV + `__wfgStub.setScreen(${w}, ${h})`);
+    addon.eval("ns.GetModule('RaidFrames').PlaceFor(40)");
+    const left = addon.eval("return Vanguard_RaidHolder:GetLeft()");
+    return [left, left + 516 * addon.eval("return ns.GetModule('RaidFrames').Scale(40)")];
+  };
+  for (const [w, h] of [[835, 668], [960, 768], [1024, 768], [1229, 768], [1280, 800]]) {
+    const [left, right] = edges(w, h);
+    expect(left, `${w}x${h}: the grid starts right of the roll tracker (148)`).toBeGreaterThanOrEqual(148);
+    expect(right, `${w}x${h}: and ends on screen`).toBeLessThanOrEqual(w);
+  }
+  for (const [w, h] of [[1365, 768], [1920, 1080]]) expect(edges(w, h)[0], `${w}x${h}: the default spot is where it always was, 500 left of the middle`).toBe(w / 2 - 500);
+});
+
+it("raid frames: the narrow-canvas spot is one table per canvas, so the mover default is set once", () => {
+  const addon = loggedIn(UNITS_ENV + RAID_ENV + "__wfgStub.setScreen(1024, 768)");
+  addon.eval("local RF = ns.GetModule('RaidFrames') __sets = 0 local set = ns.SetMoverDefault ns.SetMoverDefault = function(...) __sets = __sets + 1 return set(...) end RF.PlaceFor(40) RF.PlaceFor(40) RF.PlaceFor(25)");
+  expect(addon.eval("return { __sets, ns.MoverPoint('raid') }"), "one change for a raid of 40, none for a second look or for 25").toEqual([1, "BOTTOMLEFT", "BOTTOM", -364, 344]);
+  addon.eval("__wfgStub.setScreen(0, 0) ns.GetModule('RaidFrames').PlaceFor(5) ns.GetModule('RaidFrames').PlaceFor(40)");
+  expect(addon.eval("return { ns.MoverPoint('raid') }"), "a canvas with no size keeps the wide default").toEqual(["BOTTOMLEFT", "BOTTOM", -500, 344]);
+});
+
+it("raid frames: on a big grid the tile's status takes 40 units on one line and the name keeps the rest", () => {
+  const addon = loggedIn(UNITS_ENV + RAID_ENV);
+  // The name's width, the status's left edge, width and justification in a w x h tile drawn at grid scale.
+  const zones = (w, h, grid) => addon.eval(`local z = ns.GetModule("RaidFrames").Zones(${w}, ${h}, ${grid}) return { z.name[3], z.status[1], z.status[3], z.status[5] }`);
+  expect(zones(100, 48, 0.8), "25 players: status 40 wide at the tile's right, the name before it").toEqual([36, 44, 40, "RIGHT"]);
+  expect(zones(100, 48, 0.72), "40 players: the same").toEqual([36, 44, 40, "RIGHT"]);
+  expect(zones(72, 36, 0.72), "a narrow tile gives the status no more than 40% of it, so the name keeps its room").toEqual([20, 28, 28, "RIGHT"]);
+  expect(zones(100, 48, 1)[3], "a full-size tile keeps the status under the name").toBe("CENTER");
+  addon.slash("preview 25");
+  expect(addon.eval("return Vanguard_RaidPreviewTile1.status.__noWrap"), "and the status is one line, ending in an ellipsis rather than wrapping into the icon strip").toBe(true);
+});
