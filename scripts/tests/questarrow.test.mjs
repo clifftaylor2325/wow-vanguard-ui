@@ -263,4 +263,10 @@ it("quest arrow: the longest real distance lines fit beside the arrow, also with
   addon.eval("ns.QuestGuide.pointed = 90061 ns.QuestArrow.Pick()");
   expect(addon.eval("return Vanguard_QuestArrow.pin:IsShown()"), "the arrow is held: the Pin button shows").toBe(true);
   expect(cut("Aucun endroit fourni par le jeu"), "the French no-spot reason while the Pin button shows").toEqual([]);
+  expect(cut("Consegna · 1240 m, nessuna direzione"), "the Italian line with no direction while the Pin button shows (P9-5)").toEqual([]);
+  addon.eval('Vanguard_QuestArrow.dist:SetText("Consegna · 1240 m, nessuna direzione")');
+  const overlaps = addon.textFit("Vanguard_QuestArrow").filter((f) => f.kind === "overlap");
+  expect(overlaps, "and the distance line does not run under the Pin button").toEqual([]);
+  const rows = addon.eval("local f = Vanguard_QuestArrow return { f.pin:GetBottom() >= f.dist:GetTop(), f.title:GetRight() <= f.pin:GetLeft(), f.dist:GetRight() > f.pin:GetLeft() }");
+  expect(rows, "the pin sits in the title's row, the title stops short of it, the distance line runs under it").toEqual([true, true, true]);
 });
