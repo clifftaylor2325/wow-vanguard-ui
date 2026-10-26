@@ -696,6 +696,28 @@ it("chat bar tiles follow the shown docked window: Copy and Find ride its bar wh
   expect(tiles("ChatFrame1"), "General shown again: they are back on its bar").toEqual([true, true, true, true, true, -28, true]);
   expect(addon.eval("FCFDock_SelectWindow(GENERAL_CHAT_DOCK, nil) FCFDock_SelectWindow(GENERAL_CHAT_DOCK, {}) return #ns.errors"), "a window Vanguard hasn't dressed is left alone").toBe(0);
 });
+it("chat dock: the overflow arrow is a window control at the dock's right end and its list is a themed box with the theme's label font on its rows", () => {
+  const overflow = `GENERAL_CHAT_DOCK.overflowButton = CreateFrame("Button", nil, GENERAL_CHAT_DOCK)
+    GENERAL_CHAT_DOCK.overflowButton:SetSize(16, 16)
+    GENERAL_CHAT_DOCK.overflowButton:SetPoint("BOTTOMRIGHT", GENERAL_CHAT_DOCK, "BOTTOMRIGHT")
+    GENERAL_CHAT_DOCK.overflowButton.list = CreateFrame("Frame", nil, GENERAL_CHAT_DOCK.overflowButton)
+    GENERAL_CHAT_DOCK.overflowButton.list.NineSlice = CreateFrame("Frame", nil, GENERAL_CHAT_DOCK.overflowButton.list)
+    local row = CreateFrame("Button", nil, GENERAL_CHAT_DOCK.overflowButton.list)
+    row:SetFontString(row:CreateFontString(nil, "OVERLAY"))
+    GENERAL_CHAT_DOCK.overflowButton.list.buttons = { row }
+    function FCFDockOverflowList_Update(list, dock) end`;
+  const addon = loggedIn(UI_ENV + CHAT_DOCK_ENV + overflow);
+  const arrow = () => addon.eval(`local b = GENERAL_CHAT_DOCK.overflowButton local p = b.__points.RIGHT
+    return { b:GetWidth(), b:GetHeight(), p ~= nil and p.rel == GENERAL_CHAT_DOCK, b.__points.BOTTOMRIGHT == nil, ns.Theme.ControlGlyph(b) ~= nil, b.list.NineSlice.__alpha == 0 }`);
+  expect(arrow(), "the arrow keeps its 16 x 16, sits at the dock's right end instead of its bottom, and is dressed; the list is a themed box").toEqual([16, 16, true, true, true, true]);
+  // The first row's font path (as the theme's font or not) and size beside the label role's.
+  const row = () => addon.eval(`local path, size = GENERAL_CHAT_DOCK.overflowButton.list.buttons[1]:GetFontString():GetFont() return { path == ns.Theme.Font(), size == ns.Theme.RoleSize("label") }`);
+  expect(row(), "a row is not in the theme's font until the game fills the list").toEqual([false, false]);
+  addon.eval("FCFDockOverflowList_Update(GENERAL_CHAT_DOCK.overflowButton.list, GENERAL_CHAT_DOCK)");
+  expect(row(), "its rows are in the theme's label font at the label role's size once it does").toEqual([true, true]);
+  expect(addon.eval("ns.GetModule('Chat').SkinOverflow() GENERAL_CHAT_DOCK.overflowButton.list.buttons = 1 FCFDockOverflowList_Update(GENERAL_CHAT_DOCK.overflowButton.list) FCFDockOverflowList_Update(nil) return #ns.errors"), "dressed once, and a list without rows is left alone").toBe(0);
+  expect(loggedIn(UI_ENV + CHAT_DOCK_ENV).eval("ns.GetModule('Chat').SkinOverflow() return #ns.errors"), "a dock without the arrow is left alone").toBe(0);
+});
 it("bags", () => {
   const addon = loggedIn(UI_ENV);
   expect(addon.eval("return __cvars.combinedBags") === "1", "combined bags are turned on").toBeTruthy();

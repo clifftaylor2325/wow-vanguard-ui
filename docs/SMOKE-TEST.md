@@ -2530,9 +2530,9 @@ The order is the order to play in: looks you can check quickly first, then the g
 
 ### 33.77 Chat tabs: label font, and the dock's overflow arrow and list
 
-- Do: set Text size to 130% (then back to 100%) and look at the chat's tab names against the chat lines; hover and click each tab. Then dock enough tabs (Combat Log, Trade, LFG, Loot, a whisper) that the bar cannot hold them all and look at the arrow at the bar's right end; click it.
-- Expect: the tab names are in the same face as the chat lines and grow with Text size, and stay that way after a hover or a click. [Needs in-game check: whether the label drops back to the game's face when the button repaints.] The overflow arrow and its list are covered by the second part of this step once it lands.
-- If it fails, paste: a screenshot of the bar at 100% and 130% Text size, and `/vg errors`.
+- Do: set Text size to 130% (then back to 100%) and look at the chat's tab names against the chat lines; hover and click each tab. Then dock enough tabs (Combat Log, Trade, LFG, Loot, a whisper) that the bar cannot hold them all, look at the arrow at the bar's right end, and click it.
+- Expect: the tab names are in the same face as the chat lines and grow with Text size, and stay that way after a hover or a click. The overflow arrow is the theme's small down-arrow tile at the dock's right end, level with the tabs (not the game's gold arrow), and its list is a themed box with the theme's font on its rows. [Needs in-game check: whether a tab's label drops back to the game's face when the button repaints; the glyph's fit on the 16-unit arrow; the list's rows and highlight, and that its rows are the buttons the code finds.]
+- If it fails, paste: a screenshot of the bar at 100% and 130% Text size and of the open overflow list, and `/vg errors`.
 
 ### 33.78 Chat Copy and Find tiles on every docked tab
 

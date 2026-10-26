@@ -937,6 +937,34 @@ function CH.UpdateTabs()
   end
 end
 
+-- The docks whose overflow arrow is dressed (ns.FrameState), so it is done once.
+local vgOverflow = ns.FrameState("vgOverflow")
+
+-- The dock's overflow arrow (shown when more tabs are docked than fit the bar) as a window control and
+-- its list as a themed tooltip box, once. The arrow keeps its 16 x 16 (the game reads its width for the
+-- scroll room) and sits at the dock's right end, level with the tabs.
+function CH.SkinOverflow()
+  local dock = _G.GENERAL_CHAT_DOCK
+  local arrow = type(dock) == "table" and dock.overflowButton
+  if type(arrow) ~= "table" or vgOverflow[dock] then return end
+  vgOverflow[dock] = true
+  T.WindowControl(arrow, "Down")
+  arrow:ClearAllPoints()
+  arrow:SetPoint("RIGHT", dock, "RIGHT")
+  if type(arrow.list) == "table" then T.Tooltip(arrow.list) end
+end
+
+-- The rows of the overflow list in the theme's label font after the game fills the list (its buttons
+-- are the game's, in GameFontNormalSmallLeft); a row's colour stays the game's.
+local function fontOverflowRows(list)
+  local rows = type(list) == "table" and list.buttons
+  if type(rows) ~= "table" then return end
+  for _, row in ipairs(rows) do
+    local text = type(row.GetFontString) == "function" and row:GetFontString()
+    if type(text) == "table" then T.Text(text, "label", false) end
+  end
+end
+
 -- Skins every chat window this client has, and the chat frame's side buttons, and has the dock lay
 -- its tabs out again for the theme's font.
 function CH.SkinAll()
@@ -944,6 +972,7 @@ function CH.SkinAll()
     skinNamed(name, CH.settings)
   end
   CH.SkinButtons()
+  CH.SkinOverflow()
   CH.UpdateTabs()
   CH.PlaceDock()
   relayoutDock()
@@ -1082,6 +1111,7 @@ local function hookLayout()
   after("FloatingChatFrame_UpdateBackgroundAnchors", placeFootprint)
   after("FCFDock_SetPrimary", CH.PlaceDock)
   after("FCFDock_SelectWindow", carryTiles)
+  after("FCFDockOverflowList_Update", fontOverflowRows)
   after("FCFDock_UpdateTabs", CH.PlaceEditBoxes)
   after("FCFTab_UpdateColors", restyleTab)
   after("FCF_SetTabPosition", placeFloatingTab)
