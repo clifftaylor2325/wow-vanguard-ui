@@ -1,7 +1,8 @@
 // cooldownspage: the Cooldowns options page and its setup wizard (Core/OptionsCooldowns.lua), in the TEST-ONLY headless client.
 
 import { expect, it } from "vitest";
-import { CLICK_LUA, TOOLS_ENV, UNITS_ENV, loggedIn, setCombat } from "./helpers.mjs";
+import { createAddon } from "../lib/lua-harness.mjs";
+import { CLICK_LUA, SETUP_DONE, TOOLS_ENV, UNITS_ENV, loggedIn, setCombat } from "./helpers.mjs";
 
 // TEST-ONLY: a client with the Cooldown Manager available.
 const CDM_ENV = "C_CooldownViewer = { IsCooldownViewerAvailable = function() return true end }\n";
@@ -84,4 +85,22 @@ it("cooldowns wizard: a switch in it is the page's switch, and in a fight it wai
   expect(addon.frame("Vanguard_CooldownWizard").visible, "in combat it stays closed").toBe(false);
   setCombat(addon, false);
   expect(addon.frame("Vanguard_CooldownWizard").visible, "and opens when the fight ends").toBe(true);
+});
+
+it("cooldowns wizard: in German at 130% its rows stack by their heights, so a wrapped caption never draws over the next (B2-4)", () => {
+  const addon = createAddon({ savedVariables: SETUP_DONE, textFit: true, client: '__wfgWorld.locale = "deDE"' });
+  addon.eval(UNITS_ENV + TOOLS_ENV + CDM_ENV + CLICK_LUA);
+  addon.login();
+  addon.eval("ns.Theme.Settings().textScale = 1.3 ns.Theme.Refresh()");
+  addon.slash("cooldowns setup");
+  addon.eval(`${WZ}.Next() ${WZ}.Next()`);
+  // For each row of the step: whether its caption is inside it, its height, and whether the next row starts at its bottom.
+  const rows = addon.eval(`local ws, out = ${WZ}.frame.steps[${WZ}.step], {}
+    for i, w in ipairs(ws) do
+      out[i] = { w.label:GetTop() <= w:GetTop() + 0.01 and w.label:GetBottom() >= w:GetBottom() - 0.01, w:GetHeight(), not ws[i + 1] or math.abs(ws[i + 1]:GetTop() - w:GetBottom()) < 0.01 }
+    end return out`);
+  expect(rows.length, "step 3 has its two rows").toBe(2);
+  expect(rows.map((r) => r[0]), "every caption sits inside its row").toEqual([true, true]);
+  expect(rows.map((r) => r[2]), "the second row starts where the first ends").toEqual([true, true]);
+  expect(Math.max(...rows.map((r) => r[1])), "a wrapped caption's row is taller than a one-line row").toBeGreaterThan(28);
 });

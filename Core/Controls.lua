@@ -163,6 +163,15 @@ function W.Check(parent, text, get, set, width)
   return r
 end
 
+-- A switch row grown to its wrapped caption (a little air), for lists that stack rows by their height; returns the height.
+---@param r table  a row from W.Check
+---@return number height
+function W.GrowRow(r)
+  local h = math.max(ROW_HEIGHT, r.label:GetStringHeight() + T.SPACE.col)
+  r:SetHeight(h)
+  return h
+end
+
 -- Choices ------------------------------------------------------------------------------------
 
 -- The position of the first choice (from a list of { value, text }) whose value is `value`; nil when none is.
