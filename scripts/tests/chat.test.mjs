@@ -681,6 +681,21 @@ it("chat tab labels are in the theme's label font and follow Text size, not the 
   const [bigFits, bigSize, bigRole] = fonts();
   expect([bigFits, bigSize > size, bigSize], "and it follows Text size").toEqual([true, true, bigRole]);
 });
+it("chat bar tiles follow the shown docked window: Copy and Find ride its bar when the game hides the main window, and come back with it", () => {
+  const select = `function FCFDock_SelectWindow(dock, frame)
+    for _, w in ipairs(dock.DOCKED_CHAT_FRAMES) do w:SetShown(w == frame) end
+  end`;
+  const addon = loggedIn(UI_ENV + CHAT_DOCK_ENV + select);
+  const bars = "local F = ns.GetModule('Chat').frames local CX, CW = ns.GetModule('ChatExtras'), ns.GetModule('ChatWindows')";
+  // Whether Copy and Find show, on which bar, and where the dock's right end is anchored.
+  const tiles = (frame) => addon.eval(`${bars} FCFDock_SelectWindow(GENERAL_CHAT_DOCK, ${frame})
+    local copy, find = CX.copyButton, CW.findButton
+    return { copy:IsVisible(), find:IsVisible(), copy:GetParent() == F[${frame}].bar, find:GetParent() == F[${frame}].bar,
+      copy.__points.RIGHT.rel == F[${frame}].bar, find.__points.RIGHT.x, GENERAL_CHAT_DOCK.__points.RIGHT.rel == find }`);
+  expect(tiles("ChatFrame2"), "another docked tab shown: both tiles are on its bar, Find a tile and a gap left of Copy, and the dock ends before Find").toEqual([true, true, true, true, true, -28, true]);
+  expect(tiles("ChatFrame1"), "General shown again: they are back on its bar").toEqual([true, true, true, true, true, -28, true]);
+  expect(addon.eval("FCFDock_SelectWindow(GENERAL_CHAT_DOCK, nil) FCFDock_SelectWindow(GENERAL_CHAT_DOCK, {}) return #ns.errors"), "a window Vanguard hasn't dressed is left alone").toBe(0);
+});
 it("bags", () => {
   const addon = loggedIn(UI_ENV);
   expect(addon.eval("return __cvars.combinedBags") === "1", "combined bags are turned on").toBeTruthy();

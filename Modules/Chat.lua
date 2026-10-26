@@ -337,14 +337,14 @@ local function tileSlots(tiles)
   return slots
 end
 
--- Lays a window's shown bar tiles out from the bar's right end in slot order with no gaps (a hidden
--- tile leaves none), and puts the dock's right end before the furthest one (CH.PlaceDock).
+-- Lays a window's shown bar tiles out from the right end of the bar they ride on in slot order with no
+-- gaps (a hidden tile leaves none), and puts the dock's right end before the furthest one (CH.PlaceDock).
 function CH.PlaceBarButtons(frame)
   local parts, tiles, n = CH.frames and CH.frames[frame], vgBarTiles[frame] or {}, 0
   if not parts then return end
   for _, slot in ipairs(tileSlots(tiles)) do
     local button = tiles[slot]
-    if button:IsShown() then n = n + 1 button:ClearAllPoints() button:SetPoint("RIGHT", parts.bar, "RIGHT", -slotInset(n), 0) end
+    if button:IsShown() then n = n + 1 button:ClearAllPoints() button:SetPoint("RIGHT", button:GetParent(), "RIGHT", -slotInset(n), 0) end
   end
   CH.PlaceDock()
 end
@@ -1064,12 +1064,24 @@ local function hookAlertFlash()
   after("FCF_StopAlertFlash", function(frame) setAlerting(frame, false) end)
 end
 
+-- Carries the main window's bar tiles onto the shown docked window's bar and lays them out there: the
+-- game hides every docked window but the selected one, the main window too, and its tiles with it.
+local function carryTiles(_, selected)
+  local main = _G.ChatFrame1
+  local parts = type(selected) == "table" and CH.frames and CH.frames[selected]
+  local tiles = vgBarTiles[main]
+  if not (parts and tiles) then return end
+  for _, tile in pairs(tiles) do tile:SetParent(parts.bar) end
+  CH.PlaceBarButtons(main)
+end
+
 -- Follows the game's anchoring of the dock, the edit boxes (its dock layout), a tab, the side
 -- buttons and a window's background (the Combat Log's band), and its colouring of a tab: each is
 -- put right after it.
 local function hookLayout()
   after("FloatingChatFrame_UpdateBackgroundAnchors", placeFootprint)
   after("FCFDock_SetPrimary", CH.PlaceDock)
+  after("FCFDock_SelectWindow", carryTiles)
   after("FCFDock_UpdateTabs", CH.PlaceEditBoxes)
   after("FCFTab_UpdateColors", restyleTab)
   after("FCF_SetTabPosition", placeFloatingTab)

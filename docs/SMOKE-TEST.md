@@ -2534,6 +2534,12 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: the tab names are in the same face as the chat lines and grow with Text size, and stay that way after a hover or a click. [Needs in-game check: whether the label drops back to the game's face when the button repaints.] The overflow arrow and its list are covered by the second part of this step once it lands.
 - If it fails, paste: a screenshot of the bar at 100% and 130% Text size, and `/vg errors`.
 
+### 33.78 Chat Copy and Find tiles on every docked tab
+
+- Do: with General docked, click the Combat Log tab, then Trade (or a whisper tab), then General again. Hover the tiles at the bar's right end and click Copy on a tab other than General.
+- Expect: Copy and Find stay in the bar's right end on every tab, the tabs end before them, and the Copy window is titled with the shown tab's name ("Copy Trade (Ctrl+C)"). [Needs in-game check: that the tiles show on the other tabs' bars and are not drawn under them.]
+- If it fails, paste: a screenshot of the bar on the Combat Log tab, and `/vg errors`.
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ## When you are done
