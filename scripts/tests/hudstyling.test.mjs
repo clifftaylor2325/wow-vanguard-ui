@@ -2,7 +2,8 @@
 // their extras), kept in one file so they never need an entry in login-scope.json.
 
 import { expect, it } from "vitest";
-import { NO_RAID, UNITS_ENV, loggedIn } from "./helpers.mjs";
+import { createAddon } from "../lib/lua-harness.mjs";
+import { NO_RAID, SETUP_DONE, UNITS_ENV, loggedIn } from "./helpers.mjs";
 
 // TEST-ONLY pet mood: a content cat.
 const HAPPY_ENV = "GetPetHappiness = function() return 2, 0, 0 end\n";
@@ -63,4 +64,27 @@ it("P4-9: the Versus deck stays a pad above a taller target frame", () => {
   expect(pad(), "a 44 tall target is inside the deck with the full 6 unit pad").toBeCloseTo(6, 0);
   addon.eval("local UF = ns.GetModule('UnitFrames') UF.settings.targetHeight = 36 UF.ApplySizes()");
   expect(pad(), "and a target as tall as the player frame leaves the same pad").toBeCloseTo(6, 0);
+});
+
+// A logged-in addon in the text-fit client (real font widths, every string a third longer, as a translation runs).
+function fitClient(extra = "") {
+  const addon = createAddon({ savedVariables: SETUP_DONE, textFit: true });
+  if (extra) addon.eval(extra);
+  addon.login();
+  return addon;
+}
+
+it("P6-3: the keybind banner shows its whole instruction line in German and French", () => {
+  // The real deDE and frFR texts of the banner's instruction line (Locales/deDE.lua, Locales/frFR.lua).
+  const lines = [
+    "Fahre über einen Knopf und drücke dann eine Taste, eine seitliche Maustaste oder das Mausrad. Rücktaste leert, Escape verlässt.",
+    "Survolez un bouton, puis appuyez sur une touche, un bouton latéral de souris ou la molette. Retour arrière efface, Échap quitte.",
+  ];
+  const addon = fitClient();
+  addon.slash("keybind");
+  for (const text of lines) {
+    addon.eval(`Vanguard_KeybindMode.text:SetText(${JSON.stringify(text)})`);
+    expect(addon.textFit("Vanguard_KeybindMode"), `${text.slice(0, 12)}: nothing in the banner is cut`).toEqual([]);
+  }
+  expect(addon.eval("return Vanguard_KeybindMode:GetWidth() < UIParent:GetWidth()"), "and the banner fits the screen").toBe(true);
 });

@@ -33,8 +33,8 @@ AB.MODIFIER_KEYS = { LSHIFT = true, RSHIFT = true, LCTRL = true, RCTRL = true, L
 AB.CLEAR_KEYS = { BACKSPACE = true, DELETE = true }
 -- Mouse buttons as binding keys; left and right click (the game's own) bind nothing.
 AB.MOUSE_KEYS = { MiddleButton = "BUTTON3", Button4 = "BUTTON4", Button5 = "BUTTON5" }
--- The banner's size, and the width of its Done button.
-AB.BANNER = { w = 640, h = 76, done = 84 }
+-- The banner's size, and the width of its Done button. 720 keeps the how-to-leave line whole in German and French.
+AB.BANNER = { w = 720, h = 76, done = 84 }
 
 -- A key as a binding with the modifiers held, in the game's order ("ALT-CTRL-SHIFT-Q").
 function AB.KeyChord(key)
