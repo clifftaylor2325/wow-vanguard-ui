@@ -146,3 +146,15 @@ it("group threat: T.SPACE.gap in from the panel's edge on every side (a HUD card
   expect([first[0], first[1], first[2], last[3]], "the first row a gap in from the left, top and right; the last row a gap above the bottom").toEqual([gap, gap, gap, gap]);
   expect(addon.eval("local GT = ns.GetModule('GroupThreat') return GT.panel:GetHeight() - 3 * GT.panel.rows[1]:GetHeight()"), "two gaps and three rows").toBe(2 * gap);
 });
+
+it("the threat panel is a HUD card: no sheen, and no shadow while Soft shadows under frames is off", () => {
+  const addon = party();
+  // The panel's shadow pieces and its sheen (a BORDER texture one pixel inside its top edge).
+  const parts = addon.eval(`local f, out = ns.GetModule("GroupThreat").panel, { shadow = 0, sheen = 0 }
+    for _, w in ipairs(__wfgStub.frames) do
+      if w.__parent == f and w.__texture and w.__texture:find("Shadow") then out.shadow = out.shadow + 1 end
+      if w.__parent == f and w.__layer == "BORDER" and w.__points.TOPLEFT and w.__points.TOPLEFT.y ~= 0 then out.sheen = out.sheen + 1 end
+    end
+    return out`);
+  expect(parts, "a floating window's sheen and forced shadow do not belong on a HUD list").toEqual({ shadow: 0, sheen: 0 });
+});

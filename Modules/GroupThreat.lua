@@ -112,8 +112,7 @@ end
 
 -- The movable panel, hidden until there is something to show.
 local function build()
-  local f = CreateFrame("Frame", "Vanguard_GroupThreat", UIParent)
-  T.Panel(f, { shadow = true })
+  local f = T.HudPanel(CreateFrame("Frame", "Vanguard_GroupThreat", UIParent))
   f:SetSize(GT.WIDTH, 2 * GT.PAD + GT.ROW)
   f.rows = {}
   f:Hide()
