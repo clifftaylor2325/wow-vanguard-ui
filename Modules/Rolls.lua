@@ -246,10 +246,18 @@ end
 -- The name in the theme for a line's kind: the winner in the accent, a heading bright, the rest gray.
 local KIND_COLOR = { head = "text", win = "accent", row = "text2" }
 
+-- Ends a line's name before its figures, or at the panel's edge when it has none (an empty text takes no
+-- room, so nothing is laid out for the name to follow).
+local function endName(row, text)
+  if text == "" then return row.left:SetPoint("RIGHT", row.left:GetParent(), "RIGHT", -R.PAD, 0) end
+  row.left:SetPoint("RIGHT", row.right, "LEFT", -T.SPACE.tight, 0)
+end
+
 -- Draws one line into its pair of font strings.
 local function paintLine(row, line)
   row.left:SetText(line[1])
   row.right:SetText(line[2])
+  endName(row, line[2])
   T.Color(row.left, KIND_COLOR[line[3]])
   T.Color(row.right, KIND_COLOR[line[3]])
 end
@@ -274,7 +282,7 @@ local function addRow(f, i)
   local y = -R.PAD - (i - 1) * R.LINE
   local left = T.Text(f:CreateFontString(nil, "OVERLAY"), "small")
   local right = T.Text(f:CreateFontString(nil, "OVERLAY"), "small")
-  left:SetPoint("TOPLEFT", f, "TOPLEFT", R.PAD, y) left:SetPoint("RIGHT", f, "RIGHT", -52, 0)
+  left:SetPoint("TOPLEFT", f, "TOPLEFT", R.PAD, y) left:SetPoint("RIGHT", f, "RIGHT", -R.PAD, 0)
   right:SetPoint("TOPRIGHT", f, "TOPRIGHT", -R.PAD, y)
   left:SetJustifyH("LEFT") left:SetWordWrap(false) right:SetJustifyH("RIGHT")
   return { left = left, right = right }

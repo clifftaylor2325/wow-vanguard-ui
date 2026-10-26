@@ -147,3 +147,21 @@ it("P5-5: the meter title ends before the Report and Reset buttons, at any width
     expect(overlaps, `width ${width}: the title overlaps no button`).toEqual([]);
   }
 });
+
+it("P5-6: the roll tracker's names stop before their figures, however long the figures run", () => {
+  const addon = fitClient('RANDOM_ROLL_RESULT = "%s rolls %d (%d-%d)"');
+  addon.fire("CHAT_MSG_SYSTEM", "Alexandrina-Elsewhere rolls 87 (1-1000)");
+  const name = rectOf(addon, "Vanguard_Rolls.rows[2].left");
+  const figures = addon.eval("local f = Vanguard_Rolls.rows[2].right return { f:GetLeft(), f:GetText() }");
+  expect(figures[1], "the figures are '87 (1-1000)'").toBe("87 (1-1000)");
+  expect(name.right, "the name ends before them").toBeLessThanOrEqual(figures[0]);
+});
+
+it("P5-6: the officer roster's names stop before their notes", () => {
+  const addon = fitClient("", "VanguardDB.profiles = { Default = { OfficerLoot = { on = true } } }\n");
+  addon.world.setUnit("raid1", { name: "Alexandrina", class: "PRIEST", className: "Priest", role: "HEALER", leader: true, connected: false, isPlayer: true });
+  addon.slash("loot roster");
+  const name = rectOf(addon, "Vanguard_OfficerRoster.rows[2].left");
+  const note = addon.eval("local f = Vanguard_OfficerRoster.rows[2].right return { f:GetLeft(), f:GetText() }");
+  expect(name.right, "the name ends before it").toBeLessThanOrEqual(note[0]);
+});
