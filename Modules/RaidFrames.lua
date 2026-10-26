@@ -387,6 +387,10 @@ local function strip(w, h)
   return icon, per, h - 1 - RF.POWER - 1 - icon
 end
 
+-- The widest the status gets when it sits at the right of the name row (about "Offline" at 10 px on screen), and the
+-- most of a narrow tile it takes, so the name keeps the rest.
+RF.STATUS_W, RF.STATUS_SHARE = 40, 0.4
+
 -- The name row and status line (its text `size` tall, a pixel of air each
 -- side): status under the name when it fits above the icon strip, else at the
 -- right of the name row, no taller than the room above the strip. The fifth
@@ -397,7 +401,8 @@ local function textZones(z, w, top, size)
     z.name, z.status = { 4, 4, w - 20, nameH }, { 4, 4 + nameH, w - 8, size + 2, "CENTER" }
   else
     size = math.min(size, top - 6)
-    z.name, z.status = { 4, 4, w - 52, nameH }, { w - 44, 4, 28, size + 2, "RIGHT" }
+    local room = math.min(RF.STATUS_W, math.floor(w * RF.STATUS_SHARE))
+    z.name, z.status = { 4, 4, w - 24 - room, nameH }, { w - 16 - room, 4, room, size + 2, "RIGHT" }
   end
   z.statusSize = size
 end
@@ -475,7 +480,7 @@ RF.PlaceTexts = placeTexts
 -- missing health) and the top line, laid out in their zones.
 local function addTexts(b, z)
   addTopRow(b, z)
-  b.status = T.Text(b.texts:CreateFontString(nil, "OVERLAY"), "barSmall", "text2")
+  b.status = ns.SingleLine(T.Text(b.texts:CreateFontString(nil, "OVERLAY"), "barSmall", "text2"))
   addTopLine(b)
   placeTexts(b, z)
 end

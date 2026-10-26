@@ -2444,6 +2444,12 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: the swing rows sit just over the cast bar, above bar 1, with the 4th bar on; the pet's health text ends left of the mood glyph; bar 5 is a column clear of bar 4; the meter title ends in "..." before Report and Reset; a roll's name ends in "..." before its figures and never draws over them; the group board's hint wraps inside the window; the keybind banner shows its whole last sentence; the vehicle exit label stays inside its button; the XP text stays in the bar's left half and the reputation text in its right half; and, on a German client, say whether "Fehlgeschlagen" is cut on a failed pet cast (no change was made for it: it needs this look first).
 - If it fails, paste: a screenshot of the part and `/vg errors`.
 
+### 33.50 Raid grid on a narrow screen, and the status on a big grid
+
+- Do: in a raid of 25 or 40 (or `/vg preview 40`) with the raid frames at their default spot (`/vg reset raid` first), on a 5:4 or 4:3 screen, or at a UI scale that makes the UI narrower than 1296 units (the game's Options -> Graphics -> UI Scale, about 110% on a 1080p screen). Have a roll going (`/roll 1000` in a group) so the roll tracker shows at the left edge. Then look at a tile whose player is offline or dead, and at one with a big missing-health figure.
+- Expect: the grid starts right of the roll tracker (its left edge 148 units in from the screen's edge) and ends on the screen; on a screen 1296 units wide or more it is where it always was, left of the middle. The tile's status (Offline, Dead, Ghost or the missing health, such as -12000) sits at the right of the name row on one line; it is not cut on English text, and a longer translation ends in "..." rather than wrapping down into the buff icons. [Needs in-game check: all of it, and how "Offline" at 40 players looks against the name.]
+- If it fails, paste: a screenshot of the grid and `/vg frame raid deep`.
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ## When you are done

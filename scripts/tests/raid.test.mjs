@@ -520,3 +520,15 @@ it("raid frames: the narrow-canvas spot is one table per canvas, so the mover de
   addon.eval("__wfgStub.setScreen(0, 0) ns.GetModule('RaidFrames').PlaceFor(5) ns.GetModule('RaidFrames').PlaceFor(40)");
   expect(addon.eval("return { ns.MoverPoint('raid') }"), "a canvas with no size keeps the wide default").toEqual(["BOTTOMLEFT", "BOTTOM", -500, 344]);
 });
+
+it("raid frames: on a big grid the tile's status takes 40 units on one line and the name keeps the rest", () => {
+  const addon = loggedIn(UNITS_ENV + RAID_ENV);
+  // The name's width, the status's left edge, width and justification in a w x h tile drawn at grid scale.
+  const zones = (w, h, grid) => addon.eval(`local z = ns.GetModule("RaidFrames").Zones(${w}, ${h}, ${grid}) return { z.name[3], z.status[1], z.status[3], z.status[5] }`);
+  expect(zones(100, 48, 0.8), "25 players: status 40 wide at the tile's right, the name before it").toEqual([36, 44, 40, "RIGHT"]);
+  expect(zones(100, 48, 0.72), "40 players: the same").toEqual([36, 44, 40, "RIGHT"]);
+  expect(zones(72, 36, 0.72), "a narrow tile gives the status no more than 40% of it, so the name keeps its room").toEqual([20, 28, 28, "RIGHT"]);
+  expect(zones(100, 48, 1)[3], "a full-size tile keeps the status under the name").toBe("CENTER");
+  addon.slash("preview 25");
+  expect(addon.eval("return Vanguard_RaidPreviewTile1.status.__noWrap"), "and the status is one line, ending in an ellipsis rather than wrapping into the icon strip").toBe(true);
+});
