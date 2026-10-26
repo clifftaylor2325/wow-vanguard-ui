@@ -346,3 +346,17 @@ it("the position popover's captions clear its dropdowns at 130% text", () => {
   openPopover(addon, "cast_player");
   expect(addon.textFit("Vanguard_MoverPopover"), "no caption runs under a dropdown").toEqual([]);
 });
+
+it("the position popover grows to hold the refusal line, clear of Reset and Done at 130% text", () => {
+  const addon = fitClient(1920, 1080, 1.3);
+  openPopover(addon, "uf_player");
+  addon.eval("ns.SetMoverAnchor('cast_player', 'uf_player')");
+  // The pseudo-locale lengthens every label, so the item is found by its start.
+  addon.eval(`local d = Vanguard_MoverPopover.target d:GetScript("OnClick")(d)
+    for _, b in ipairs(Vanguard_Menu.items) do if b:IsShown() and b.text:GetText():find("^Player cast bar") then b:GetScript("OnClick")(b) break end end`);
+  expect(addon.eval("return #Vanguard_MoverPopover.why:GetText()"), "the circle is refused, with its long message").toBeGreaterThan(80);
+  expect(addon.textFit("Vanguard_MoverPopover"), "the line is clear of Reset and Done").toEqual([]);
+  expect(addon.eval("return Vanguard_MoverPopover:GetHeight() > 372"), "the popover grew").toBe(true);
+  addon.eval("Vanguard_MoverPopover.reset:GetScript('OnClick')(Vanguard_MoverPopover.reset)");
+  expect(addon.eval("return Vanguard_MoverPopover:GetHeight()"), "and shrinks back once nothing is refused").toBe(372);
+});

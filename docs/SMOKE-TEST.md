@@ -263,6 +263,9 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 Then, with the cast bar still anchored to the player frame, change the game's UI scale slider (or turn **Pixel-perfect** on under `/vg` → General).
 - Expect: the cast bar stays against the player frame's bottom edge (it used to stay at its old screen spot). [Needs in-game check: the client moving the player frame when the canvas changes.]
 
+Then, at 130% text, make the popover refuse a link (set the Player frame's **Anchor to** the Player cast bar).
+- Expect: the red line saying it would go round in a circle sits clear of the Reset and Done buttons, the popover having grown taller to hold it. [Needs in-game check: the line's height against the client's font.]
+
 ### 3.7 Exit without saving
 
 - Do: type `/vg unlock`, drag two frames somewhere new, then click **Exit without saving** on the bar at the top of the screen.
