@@ -1657,6 +1657,19 @@ it("options: in German at 130% a choice or slider row whose caption wraps grows 
     expect(Object.values(found).filter((v) => typeof v === "string"), `${page}: no caption runs past its row`).toEqual([]);
   }
 });
+it("options: a module's own-switch note shares the name's line at both ends and still ends before the switch (B2-6)", () => {
+  const addon = fitOptions();
+  addon.eval('ns.Options.Show("modules")');
+  // For each shown note's box: its two anchors' targets and offsets, and its right edge against the switch.
+  const boxes = addon.eval(`local out = {} for _, w in ipairs(__wfgStub.frames) do
+    if w.ownSwitchBox and w:IsVisible() then
+      local p = w.ownSwitchBox.__points
+      out[#out + 1] = { p.RIGHT.rel == w.label, p.RIGHT.y, p.LEFT.y, w.ownSwitchBox:GetRight(), w.track:GetLeft() - ns.Theme.SPACE.gap } end end return out`);
+  expect(boxes.length, "some linked modules show").toBeGreaterThan(0);
+  expect(boxes.filter((b) => !b[0] || b[1] !== 0 || b[2] !== 0), "the right end is on the name's line, as the left end is").toEqual([]);
+  expect(boxes.filter((b) => Math.abs(b[3] - b[4]) > 0.5), "the box ends a gap short of the switch").toEqual([]);
+});
+
 it("options: profile rows and the click casting rows sit inside their card by a gap, as a switch does (B2-5)", () => {
   const addon = loggedIn(CLICK_LUA);
   // The kinds of shown rows that run past their card's edge less than the inset a switch keeps (T.SPACE.tight).

@@ -64,10 +64,13 @@ local function addDescription(r, text, width)
 end
 
 -- Places the own-switch note's box just after the row's reload tag (dressRow adds it once the row is built), or just
--- after the name as it measures now (a font change moves it) while there is no tag yet. The box ends a gap short of
--- the switch, so the note (T.FitText) shrinks, then ends in "..." there (the row's tooltip says it in full).
+-- after the name as it measures now (a font change moves it) while there is no tag yet. Both ends sit on the name's
+-- line (the tag took room from the name, so the right end gives it back): the box ends where the caption's full room
+-- ends, a gap short of the switch, so the note (T.FitText) shrinks, then ends in "..." there (the row's tooltip says it
+-- in full).
 local function placeOwnSwitch(r)
-  r.ownSwitchBox:SetPoint("RIGHT", r.track, "LEFT", -T.SPACE.gap, 0)
+  local room = r.tag and (r.tag:GetStringWidth() + T.SPACE.gap) or 0
+  r.ownSwitchBox:SetPoint("RIGHT", r.label, "RIGHT", room, 0)
   if r.tag then r.ownSwitchBox:SetPoint("LEFT", r.tag, "RIGHT", T.SPACE.gap, 0) return end
   r.ownSwitchBox:SetPoint("LEFT", r.label, "LEFT", r.label:GetStringWidth() + T.SPACE.gap, 0)
 end
