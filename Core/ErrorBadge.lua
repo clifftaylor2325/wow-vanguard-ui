@@ -50,10 +50,12 @@ end
 -- The footer line, right of the version: the count in the bad color; a click lists the errors in chat (/vg errors).
 function EB.Footer(window)
   local b = CreateFrame("Button", "Vanguard_OptionsErrors", window.footer)
-  b:SetSize(260, 20)
+  b:SetHeight(20)
   b:SetPoint("LEFT", window.version, "RIGHT", 16, 0)
+  b:SetPoint("RIGHT", window.notice, "LEFT", -T.SPACE.col, 0)
   b.text = T.Text(b:CreateFontString(nil, "OVERLAY"), "small", "bad")
   b.text:SetPoint("LEFT")
+  ns.EndAt(b.text, b, 0)
   b:SetScript("OnClick", ns.Guard("click list errors", function() SlashCmdList.VANGUARD("errors") end))
   EB.footer = b
   EB.Update()
