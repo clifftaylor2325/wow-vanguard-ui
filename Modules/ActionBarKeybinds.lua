@@ -248,6 +248,13 @@ local function canStart()
   return true
 end
 
+-- Widens the banner to its instruction line at the current Text size (never narrower than AB.BANNER.w,
+-- never wider than the screen less a margin each side). No T.FitText: the line is the one to read whole.
+local function fitBanner(f)
+  local line = math.ceil(T.FullWidth(f.text)) + 2 * T.SPACE.pad
+  f:SetWidth(math.min(UIParent:GetWidth() - 2 * T.SPACE.section, math.max(AB.BANNER.w, line)))
+end
+
 -- Turns keybind mode on or off (on only out of combat, with the bars built).
 function AB.KeybindMode(on)
   if on and not canStart() then return end
@@ -257,6 +264,7 @@ function AB.KeybindMode(on)
   setCatchers(on)
   AB.binding = on
   AB.binder:SetShown(on)
+  if on then fitBanner(AB.binder) end
   AB.SetGrid(on)
   if not on then ns.Chat(L["Keybind mode off."]) end
 end

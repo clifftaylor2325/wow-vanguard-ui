@@ -96,6 +96,17 @@ it("P6-3: the keybind banner shows its whole instruction line in German and Fren
   expect(addon.eval("return Vanguard_KeybindMode:GetWidth() < UIParent:GetWidth()"), "and the banner fits the screen").toBe(true);
 });
 
+it("B6-4: the keybind banner widens to its instruction line above 100% Text size, within the screen", () => {
+  const key = "Hover a button, then press a key, a side mouse button or the wheel. Backspace clears, Escape leaves.";
+  const german = realText("deDE", key);
+  const addon = fitClient();
+  addon.eval(`ns.Theme.Settings().textScale = 1.05 ns.Theme.Refresh() local AB = ns.GetModule("ActionBars") AB.KeybindMode(true) Vanguard_KeybindMode.text:SetText(${JSON.stringify(german)}) AB.KeybindMode(false) AB.KeybindMode(true)`);
+  expect(addon.textFit("Vanguard_KeybindMode"), "German at 105%: the instruction is whole").toEqual([]);
+  expect(addon.eval("return Vanguard_KeybindMode:GetWidth() > 720"), "the banner grew past its 720 base").toBe(true);
+  addon.eval("UIParent:SetSize(500, 400) ns.GetModule('ActionBars').KeybindMode(false) ns.GetModule('ActionBars').KeybindMode(true)");
+  expect(addon.eval("return Vanguard_KeybindMode:GetWidth()"), "never wider than the screen less a margin each side").toBe(452);
+});
+
 // A TEST-ONLY LibDataBroker-1.1 with one long feed, picked for the strip.
 const LONG_FEED_ENV = `
   local ldb = LibStub:NewLibrary("LibDataBroker-1.1", 4)
