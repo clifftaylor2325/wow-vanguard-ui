@@ -442,6 +442,13 @@ end
 -- only a repaint.
 local vgChatTab = ns.FrameState("vgChatTab")
 
+-- A tab's label in the theme's label role: the game's tab template draws it in GameFontNormalSmall at
+-- 10, which ignores the theme font and Text size. The colour stays T.Tab's.
+local function fontTab(tab)
+  local text = tab.Text
+  if type(text) == "table" and type(text.SetFont) == "function" then T.Text(text, "label", false) end
+end
+
 -- A tab as the theme's flat tab (raised with a lit top edge when selected, just its label on the bar
 -- otherwise, a faint hover, rounded) with its own art gone and its alert glow in the accent colour;
 -- the game's flash animation still drives the glow's alpha.
@@ -451,6 +458,7 @@ local function skinTab(tab)
   T.FadeRegions(tab, { [tab.Text or false] = true, [tabGlow(tab) or false] = true })
   local glow = tabGlow(tab)
   if glow then T.Tint(glow, "accent") end
+  fontTab(tab)
   sizeTab(tab)
   vgChatTab[tab] = true
 end

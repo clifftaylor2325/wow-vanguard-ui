@@ -2528,6 +2528,12 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: at the bottom edge the handle stops with the edit box's bottom on the screen's edge (press Enter to see it); parked at the right, the side buttons the game moves to the right of the window stay in view after the reload; a floating window's tab bar (and the Combat Log's filter strip above it) and its minimize tile stay on the screen at the top and left edges. [Needs in-game check: that the handle stops there, in the direction the insets use (negative left and bottom, positive right and top).]
 - If it fails, paste: a screenshot with the handle at the edge, and `/vg errors`.
 
+### 33.77 Chat tabs: label font, and the dock's overflow arrow and list
+
+- Do: set Text size to 130% (then back to 100%) and look at the chat's tab names against the chat lines; hover and click each tab. Then dock enough tabs (Combat Log, Trade, LFG, Loot, a whisper) that the bar cannot hold them all and look at the arrow at the bar's right end; click it.
+- Expect: the tab names are in the same face as the chat lines and grow with Text size, and stay that way after a hover or a click. [Needs in-game check: whether the label drops back to the game's face when the button repaints.] The overflow arrow and its list are covered by the second part of this step once it lands.
+- If it fails, paste: a screenshot of the bar at 100% and 130% Text size, and `/vg errors`.
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ## When you are done

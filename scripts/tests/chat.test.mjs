@@ -671,6 +671,16 @@ it("chat keeps its spot when the mover's Scale is not 100 %: the pin divides the
   expect(at(2), "at 200 % the pin is 20, 10 in frame units: 40, 20 in UIParent's").toEqual([2, 20, 10, 40, 20]);
   expect(at(0.5), "at 50 % it is 80, 40 in frame units").toEqual([0.5, 80, 40, 40, 20]);
 });
+it("chat tab labels are in the theme's label font and follow Text size, not the template's GameFontNormalSmall", () => {
+  const addon = loggedIn(UI_ENV);
+  // The first tab label's font path and size beside the theme's.
+  const fonts = () => addon.eval(`local path, size = ChatFrame1Tab.Text:GetFont() local T = ns.Theme return { path == T.Font(), size, T.RoleSize("label") }`);
+  const [fits, size, role] = fonts();
+  expect([fits, size], "the tab label takes the theme font at the label role's size").toEqual([true, role]);
+  addon.eval("ns.Theme.Settings().textScale = 1.5 ns.Theme.Refresh()");
+  const [bigFits, bigSize, bigRole] = fonts();
+  expect([bigFits, bigSize > size, bigSize], "and it follows Text size").toEqual([true, true, bigRole]);
+});
 it("bags", () => {
   const addon = loggedIn(UI_ENV);
   expect(addon.eval("return __cvars.combinedBags") === "1", "combined bags are turned on").toBeTruthy();
