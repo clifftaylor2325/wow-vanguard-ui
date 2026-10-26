@@ -45,3 +45,13 @@ it("P4-4: the pet's health text ends left of the happiness glyph", () => {
   const glyph = addon.eval("local g = ns.GetModule('UnitExtras').happy return { g:GetLeft(), g:GetRight() }");
   expect(text.right, "the last digit sits left of the glyph").toBeLessThanOrEqual(glyph[0]);
 });
+
+it("P4-7: the health text of the target, focus and boss frames ends left of the class diamond", () => {
+  const addon = loggedIn(UNITS_ENV, NO_RAID);
+  for (const key of ["target", "focus", "boss1", "boss2"]) {
+    addon.eval(`Vanguard_${key}:Show() Vanguard_${key}.class:Show() Vanguard_${key}.healthText:SetText("640")`);
+    const text = rectOf(addon, `Vanguard_${key}.healthText`);
+    const diamond = rectOf(addon, `Vanguard_${key}.class`);
+    expect(text.right, `${key}: the health text clears the diamond`).toBeLessThanOrEqual(diamond.left);
+  }
+});

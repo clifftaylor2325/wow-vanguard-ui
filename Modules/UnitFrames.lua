@@ -272,13 +272,19 @@ local function addLevel(f)
   f.name:SetPoint("LEFT", f.level, "RIGHT", 4, 0)
 end
 
--- A small diamond (the Vanguard mark) over the top-right corner: elite, rare or boss.
+-- How far from the right edge the health text ends on a frame with the diamond, so it stays clear.
+UF.CLASS_MARK_ROOM = 10
+
+-- A small diamond (the Vanguard mark) over the top-right corner: elite, rare or boss. The health text
+-- ends left of it.
 local function addClassMark(f)
   f.class = T.Snap(f.health:CreateTexture(nil, "OVERLAY"))
   f.class:SetTexture(T.Texture("LogoLeft"))
   f.class:SetSize(14, 14)
   f.class:SetPoint("CENTER", f, "TOPRIGHT", -2, -2)
   f.class:Hide()
+  f.healthText:ClearAllPoints()
+  f.healthText:SetPoint("RIGHT", f.health, "RIGHT", -UF.CLASS_MARK_ROOM, 0)
 end
 
 -- A small tag mark left of the classification diamond (UF.TAG_LOOK: whose tag the target carries).
