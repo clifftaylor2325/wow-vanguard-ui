@@ -150,3 +150,26 @@ it("the options have the switch", () => {
   addon.eval('ns.Options.Show("town")');
   expect(addon.find("^Crafting costs and profit beside the profession window").text, "under Auction house").toMatch(/^Crafting costs/);
 });
+
+it("the panel goes left of the profession window when the screen has no room at the right and the left has", () => {
+  // The panel's left and right edges and the window's, on a w x h canvas, with the window's left edge at x (16, the default, when not given).
+  const edges = (w, x) => {
+    const addon = crafter(`__wfgStub.setScreen(${w}, 768)`);
+    addon.world.openProfession(100);
+    if (x) addon.eval(`ProfessionsFrame:ClearAllPoints() ProfessionsFrame:SetPoint("TOPLEFT", UIParent, "TOPLEFT", ${x}, -116) ${CR}.Paint()`);
+    const [p, win] = [addon.frame("Vanguard_CraftingPanel").rect, addon.frame("ProfessionsFrame").rect];
+    return { gapRight: p.left - win.right, gapLeft: win.left - (p.left + p.width), right: p.left + p.width };
+  };
+  expect(edges(1365).gapRight, "room at the right: past the side tabs, as always").toBe(52);
+  expect(edges(1024).gapRight, "the narrowest canvas the right side still fits (1021)").toBe(52);
+  const left = edges(1229, 450);
+  expect([left.gapLeft, left.right <= 450], "no room at the right, room at the left: against the window's left edge, a gap off it").toEqual([8, true]);
+  expect(edges(1229, 450).gapRight, "and it is not also at the right").toBeLessThan(0);
+  const none = edges(835);
+  expect([none.gapRight, none.gapLeft < 0], "no room on either side (the window is at the screen's left edge): at the right, the screen's clamp keeps it on").toEqual([52, true]);
+  const back = crafter("__wfgStub.setScreen(1229, 768)");
+  back.world.openProfession(100);
+  back.eval(`ProfessionsFrame:ClearAllPoints() ProfessionsFrame:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 450, -116) ${CR}.Paint() ProfessionsFrame:ClearAllPoints() ProfessionsFrame:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 16, -116) ${CR}.Paint()`);
+  const [p, w] = [back.frame("Vanguard_CraftingPanel").rect, back.frame("ProfessionsFrame").rect];
+  expect(p.left - w.right, "the window moved back: the panel returns to the right").toBe(52);
+});
