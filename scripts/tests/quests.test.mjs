@@ -1,7 +1,8 @@
 // quests: Vanguard's real Lua in the TEST-ONLY headless client (scripts/lib/lua-harness.mjs).
 
 import { expect, it } from "vitest";
-import { CLICK_LUA, DATA_ENV, strips, PANEL_OPENERS, PLATE_ENV, QUEST_ENV, TIDY_ENV, UI_ENV, UNITS_ENV, borderOf, calls, chatHas, isTok, key, loggedIn, px, setCombat, WINDOWS_ENV } from "./helpers.mjs";
+import { createAddon } from "../lib/lua-harness.mjs";
+import { CLICK_LUA, DATA_ENV, strips, PANEL_OPENERS, PLATE_ENV, QUEST_ENV, SETUP_DONE, TIDY_ENV, UI_ENV, UNITS_ENV, borderOf, calls, chatHas, isTok, key, loggedIn, px, setCombat, WINDOWS_ENV } from "./helpers.mjs";
 
 // The theme's layout numbers the quest windows are built on: { inset, pad, col, gap, tight, buttonH, rowH, watermark, wash }.
 const layout = (addon) => addon.eval(`local T = ns.Theme
@@ -182,6 +183,16 @@ it("quest dialog: held at the top of the screen it grows downward, so a long pag
   expect(view, "the long page after a short gossip shows all its text, not a slit").toBeGreaterThanOrEqual(96);
   expect([tall, view], "and is as tall as at the default spot, which grows upward").toEqual(longPage(null, "1920, 1080"));
   expect(longPage(-60, "1365, 768")[1], "on a short screen the text view is never negative").toBeGreaterThanOrEqual(0);
+});
+it("quest dialog: a long reward name takes two lines of its card at Text size 150%, over nothing", () => {
+  const addon = createAddon({ textFit: true, client: QUEST_ENV, savedVariables: SETUP_DONE });
+  addon.login();
+  addon.eval(`ns.Theme.Settings().textScale = 1.5 ns.Theme.Refresh()
+    __choices[1][1] = "TEST-ONLY Gebrochene Armschienen des Schattenwebers" __choices[2][1] = "TEST-ONLY Dark Iron Pulverizer's Gauntlets"`);
+  addon.fire("QUEST_COMPLETE");
+  const card = addon.eval("local c = Vanguard_QuestDialog.cards[1] return { c.name:GetHeight(), c:GetHeight() }");
+  expect(card[0], "the name is no taller than its card").toBeLessThanOrEqual(card[1]);
+  expect(addon.textFit("Vanguard_QuestDialog").filter((f) => f.kind !== "more lines than it may draw" && f.kind !== "cut"), "nothing is drawn over the card below or the caption").toEqual([]);
 });
 it("quest dialog: the header sits at the window inset, the NPC's name in the window title's role and colour, no X, a dialog-opacity panel", () => {
   const addon = loggedIn(QUEST_ENV);

@@ -152,6 +152,14 @@ local function addCrown(c)
   return c
 end
 
+-- A card's name beside its icon: small text, at most two lines, ending a gap short of the card's right edge.
+local function cardName(c)
+  c.name = T.Text(c:CreateFontString(nil, "OVERLAY"), "small", "text")
+  c.name:SetPoint("LEFT", c.icon, "RIGHT", 6, 0)
+  c.name:SetPoint("RIGHT", c, "RIGHT", -T.SPACE.tight, 0)
+  c.name:SetMaxLines(2)
+end
+
 -- A reward card: the icon (cropped, with its count), the name beside it, a border for its quality.
 function QP.Card(parent)
   local c = T.Button(CreateFrame("Button", nil, parent))
@@ -160,9 +168,7 @@ function QP.Card(parent)
   c.icon:SetPoint("LEFT", c, "LEFT", 3, 0)
   c.count = T.Text(c:CreateFontString(nil, "OVERLAY"), "auraCount", "text")
   c.count:SetPoint("BOTTOMRIGHT", c.icon, "BOTTOMRIGHT", -1, 1)
-  c.name = T.Text(c:CreateFontString(nil, "OVERLAY"), "small", "text")
-  c.name:SetPoint("LEFT", c.icon, "RIGHT", 6, 0)
-  c.name:SetPoint("RIGHT", c, "RIGHT", -T.SPACE.tight, 0)
+  cardName(c)
   return QP.WireTooltip(addCrown(c))
 end
 
