@@ -485,6 +485,18 @@ it("the Take buttons hold their label in German and French, the mail's line givi
   }
 });
 
+it("the heading's count ends inside the panel in French and German, cut short with an ellipsis (B10-8)", () => {
+  for (const locale of ["frFR", "deDE"]) {
+    const addon = createAddon({ textFit: true, client: `__wfgWorld.locale = "${locale}"`, savedVariables: SETUP_DONE + ON });
+    addon.eval(ENV + "__wfgWorld.mail = {} for i = 1, 50 do __wfgWorld.mail[i] = { sender = 'Alt' .. i, subject = 'Gold', money = 100, itemCount = 0 } end __wfgWorld.mailOnServer = 120");
+    addon.login();
+    addon.world.openMailWindow();
+    const [text, inside] = addon.eval("local f = Vanguard_MailTools return { f.count:GetText(), f.count:GetRight() <= f:GetRight() - ns.GetModule('MailTools').PAD }");
+    expect(inside, `${locale}: '${text}' ends before the panel's padding`).toBe(true);
+    expect(addon.textFit("Vanguard_MailTools").filter((f) => f.text !== text || f.kind !== "cut"), `${locale}: nothing spills or overlaps; the count may end in an ellipsis`).toEqual([]);
+  }
+});
+
 it("+ Add holds its label in German, Russian and Portuguese in every place along the bottom, and stays inside the panel (P10-9)", () => {
   for (const locale of ["deDE", "ruRU", "ptBR", "frFR", "esES"]) {
     const addon = createAddon({ textFit: true, client: `__wfgWorld.locale = "${locale}"`, savedVariables: SETUP_DONE + ON });
