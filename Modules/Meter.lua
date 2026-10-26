@@ -251,7 +251,7 @@ end
 -- Says how the meter stands and what to type.
 local function status()
   local state = MT.settings.on and ns.Format(L["Vanguard's meter is on, showing {meter}."], { meter = MT.TitleText():lower() }) or L["Vanguard's meter is off."]
-  ns.Chat(state .. " " .. L["/vg meter on|off|dps|hps|damage|healing|taken|interrupts|dispels|deaths|this|overall|previous|reset|report. Click the title for the next kind, right-click it for the next segment. The game's own meter stays until you turn it off in the game's settings."])
+  ns.Chat(state .. " " .. ns.Literal(L["/vg meter on|off|dps|hps|damage|healing|taken|interrupts|dispels|deaths|this|overall|previous|reset|report. Click the title for the next kind, right-click it for the next segment. The game's own meter stays until you turn it off in the game's settings."]))
 end
 
 -- The words that pick a kind and a segment.

@@ -640,7 +640,7 @@ function P.Command(rest)
   if word == "fight" then return P.Fight() end
   if word == "last" then return P.Last() end
   if word == "" or word == "chat" then return P.Run(word == "chat") end
-  ns.Chat("Usage: /vg probe [chat|fight|last]  (one run asks the client the open questions and saves the answers)")
+  ns.Chat(ns.Literal("Usage: /vg probe [chat|fight|last]  (one run asks the client the open questions and saves the answers)"))
 end
 
 -- A new id for this session, so a saved record from an earlier one can be told apart.

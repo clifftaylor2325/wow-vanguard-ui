@@ -165,7 +165,7 @@ it("/vg probe fight: an unarmed fight records nothing", () => {
 it("/vg probe: anything else prints the usage", () => {
   const addon = loggedIn();
   addon.slash("probe now");
-  expect(chatHas(addon, /Usage: \/vg probe \[chat\|fight\|last\]/), "the usage line").toBe(true);
+  expect(chatHas(addon, /Usage: \/vg probe \[chat\|\|fight\|\|last\]/), "the usage line").toBe(true);
 });
 
 // TEST-ONLY quest reads and a log with two quests, one selected.

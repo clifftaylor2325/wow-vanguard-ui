@@ -385,7 +385,7 @@ end
 -- /vg prep want <key> <n>: how many of food, bandages, potions, ammo or shards to carry.
 local function setWant(rest)
   local key, n = rest:match("^want%s+(%a+)%s+(%d+)%s*$")
-  if not (key and PR.WANTS[key]) then return ns.Chat(L["Usage: /vg prep want <food|bandages|potions|ammo|shards> <n>"]) end
+  if not (key and PR.WANTS[key]) then return ns.Chat(ns.Literal(L["Usage: /vg prep want <food|bandages|potions|ammo|shards> <n>"])) end
   PR.settings.want[key] = tonumber(n)
   ns.Chat(ns.Format(L["Instance prep wants {count} {kind}."], { count = tonumber(n), kind = key }))
 end
