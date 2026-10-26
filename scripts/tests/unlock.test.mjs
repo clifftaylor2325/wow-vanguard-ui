@@ -284,3 +284,11 @@ it("A-10 unlock from the options window: Save and lock and Exit without saving e
   addon.eval("Vanguard_UnlockBar.save:GetScript('OnClick')(Vanguard_UnlockBar.save)");
   expect(addon.eval("return ns.Options.current"), "the window opened again meanwhile: it stays on its page").toBe("situations");
 });
+
+it("grid lines are one screen pixel thick, not one UI unit, at a UI scale that isn't pixel-perfect", () => {
+  const addon = loggedIn("UIParent:SetSize(1920, 1080) UIParent:SetScale(0.64)");
+  addon.eval("ns.ShowGrid(32)");
+  const widths = addon.eval("local out = {} for _, w in ipairs(__wfgStub.frames) do if w.__kind == 'Texture' and w:IsVisible() and w:GetHeight() == UIParent:GetHeight() then out[#out + 1] = w:GetWidth() end end return { out[1], ns.Theme.Pixel(UIParent) }");
+  expect(widths[0], "a vertical line is T.Pixel wide").toBe(widths[1]);
+  expect(widths[0], "which is not the 1 unit it was").not.toBe(1);
+});
