@@ -3,6 +3,7 @@
 // PvP, instance and resting, recorded with the frames' and settings' own
 // controls and applied out of combat as you move between situations.
 
+import fs from "node:fs";
 import { expect, it } from "vitest";
 import { CLICK_LUA, chatHas, isTok, loggedIn, setCombat } from "./helpers.mjs";
 
@@ -366,6 +367,22 @@ it("situations: while recording, a banner over the options window and the unlock
   expect(addon.texts("Editing as: Party · changes apply only in Party").length, "another recording: both banners name it").toBe(2);
   addon.click(OPTIONS_STRIP + ".button");
   expect([addon.eval("return ns.GetModule('Situations').recording"), stripShown(addon, SCREEN_STRIP)], "the window's button ends it too").toEqual([null, false]);
+});
+
+it("situations: the Stop and save button widens to its German label on both strips, so the label is not cut", () => {
+  const addon = situated();
+  const line = fs.readFileSync(new URL("../../Locales/deDE.lua", import.meta.url), "utf8").split("\n").find((l) => l.startsWith('L["Stop and save"] = '));
+  addon.eval(`ns.L["Stop and save"] = ${line.slice(line.indexOf("] = ") + 4)}`);
+  addon.slash("situation record raid");
+  addon.slash("");
+  addon.slash("unlock");
+  for (const strip of [OPTIONS_STRIP, SCREEN_STRIP]) {
+    const button = addon.eval(`local b = ${strip}.button return { b.text:GetText(), b:GetWidth(), ns.Theme.FullWidth(b.text), b.text:GetTextScale() }`);
+    expect(button[0], "the German label").toBe("Beenden und speichern");
+    expect([button[1] >= button[2] + 16, button[3]], "the button holds the whole label with air each side, at full size").toEqual([true, 1]);
+  }
+  const screen = addon.eval(`local f = ${SCREEN_STRIP} return { f:GetWidth(), f.text:GetStringWidth() + f.button:GetWidth() + 24 }`);
+  expect(screen[0], "and the screen strip grows with the button").toBe(screen[1]);
 });
 
 it("situations: the banner clears when the frames lock (by hand or for combat), on a profile change and at logout", () => {
