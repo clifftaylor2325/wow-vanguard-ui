@@ -563,3 +563,12 @@ it("the scan button holds its countdown in Russian, French and Portuguese", () =
     expect(addon.textFit(`${HELPER}.scanCard`), `${locale}: the countdown is not cut`).toEqual([]);
   }
 });
+
+it("the Lists toolbar buttons hold their labels in French and German", () => {
+  for (const locale of ["frFR", "deDE"]) {
+    const addon = postingTab(locale);
+    addon.eval("__wfgStub.click(AuctionHouseFrame.Tabs[4])");
+    const toolbar = addon.textFit(`${HELPER}.shopCard`);
+    expect(toolbar, `${locale}: nothing on the shopping card is cut`).toEqual([]);
+  }
+});
