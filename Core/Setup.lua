@@ -16,8 +16,10 @@ local T, W = ns.Theme, ns.Widgets
 local S = {}
 ns.Setup = S
 
--- The window's size and its inner margin (a dialog's: T.SPACE.pad).
-local WIDTH, HEIGHT, PAD = 440, 362, T.SPACE.pad
+-- The window's width and its inner margin (a dialog's: T.SPACE.pad); its height fits its tallest page.
+local WIDTH, PAD = 440, T.SPACE.pad
+-- A page's width: the window's, inside its margins.
+local PAGE_W = WIDTH - 2 * PAD
 -- Where the pages start: the title line (T.CONTROL.inset), the title and the step caption under it (about 36
 -- units), and a column gap. And where they stop: the footer's pad, button and the gap over it.
 local TOP = T.CONTROL.inset + 36 + T.SPACE.col
@@ -88,9 +90,9 @@ S.STYLES = { { "soft", L["Class colors, softened"], L["Softened"] }, { "dark", L
 -- The style tiles on the Look step: a raid tile's default size, side by side this far apart.
 local TILE_W, TILE_H, TILE_GAP = 100, 48, 16
 -- The look step's rows, down the page from its top (negative), and the steps between them: the switches stack
--- one check row apart (W.ROW_HEIGHT), the swatches sit this far apart across, and the move step's lines 22 apart.
+-- one check row apart (W.ROW_HEIGHT), the swatches sit this far apart across, and the move step's lines a gap apart.
 local LOOK_Y = { swatches = -20, styleCaption = -62, tiles = -82, switches = -154 }
-local STEP = { swatchAcross = 34, switchDown = W.ROW_HEIGHT, moveLineDown = 22 }
+local STEP = { swatchAcross = 34, switchDown = W.ROW_HEIGHT, moveLineGap = T.SPACE.gap }
 
 local frame
 -- Functions run each time setup ends, after it has locked the frames and saved (What's new waits for it).
@@ -463,11 +465,16 @@ local function isAccent(rgb)
   return r == rgb[1] and g == rgb[2] and b == rgb[3]
 end
 
--- Marks the chosen button on a page of choices and shows its hint (a function's answer, for one that changes).
+-- A choice's hint: its text, or a function's answer for one that changes.
+local function hintText(b)
+  return type(b.hint) == "function" and b.hint() or b.hint
+end
+
+-- Marks the chosen button on a page of choices and shows its hint.
 local function markChoice(page, value)
   for _, b in ipairs(page.choices) do
     mark(b, b.value == value)
-    if b.value == value then page.hint:SetText(type(b.hint) == "function" and b.hint() or b.hint) end
+    if b.value == value then page.hint:SetText(hintText(b)) end
   end
 end
 
@@ -485,8 +492,48 @@ local function paintTile(b)
   T.Color(b.name, "text")
 end
 
--- Re-marks the chosen profile, layout and screen (and shows their hints), accent and style (its tiles redrawn).
+-- Fitting ---------------------------------------------------------------------------------
+
+-- How tall a page of choices stands: its question, its rows, and the tallest of its hints under them (each
+-- is set in turn to measure it; the chosen one's goes back when the page is marked).
+local function choiceHeight(page)
+  local tallest = 0
+  for _, b in ipairs(page.choices) do
+    page.hint:SetText(hintText(b))
+    tallest = math.max(tallest, page.hint:GetStringHeight())
+  end
+  local rows = #page.choices * (T.BUTTON_H + T.SPACE.tight)
+  return page.question:GetStringHeight() + T.SPACE.gap + rows + tallest
+end
+
+-- How tall the look step stands: down to the bottom of its last switch.
+local function lookHeight(page)
+  return -LOOK_Y.switches + 2 * STEP.switchDown + page.assist:GetHeight()
+end
+
+-- How tall the move step stands: its lines, a gap apart.
+local function moveHeight(page)
+  local h = (#page.lines - 1) * STEP.moveLineGap
+  for _, line in ipairs(page.lines) do h = h + line:GetStringHeight() end
+  return h
+end
+
+-- How tall each step's page stands, by key.
+local HEIGHTS = { profile = choiceHeight, layout = choiceHeight, screen = choiceHeight, look = lookHeight, move = moveHeight }
+
+-- Sizes the window to the tallest of this run's pages, so no hint or line reaches the buttons however long a
+-- translation runs or however large the text is (it fits again on each step and pick, so after Larger text too).
+-- It stays centred, growing up and down alike.
+local function fit()
+  local tallest = 0
+  for _, key in ipairs(state.order) do tallest = math.max(tallest, HEIGHTS[key](frame.pages[key])) end
+  T.PixelSize(frame, WIDTH, TOP + math.ceil(tallest) + FOOT, true)
+end
+
+-- Fits the window, then re-marks the chosen profile, layout and screen (and shows their hints), accent and style
+-- (its tiles redrawn).
 local function refresh()
+  fit()
   local look = frame.pages.look
   markChoice(frame.pages.profile, state.profile)
   markChoice(frame.pages.layout, state.layout)
@@ -500,35 +547,46 @@ end
 
 -- Building ------------------------------------------------------------------------------
 
--- A full-width choice row at y (a negative offset down the page); value is what it picks. It rests flat
--- and lifts under the mouse; the chosen one wears the selected look.
-local function choice(page, label, value, y, onClick)
-  local b = W.Row(page, T.BUTTON_H, { width = WIDTH - 2 * PAD })
+-- A label as wide as the page, wrapping onto more lines rather than running past the window's edge.
+local function pageLabel(page, text, role, color)
+  local fs = W.Label(page, text, role, color)
+  fs:SetWidth(PAGE_W)
+  return fs
+end
+
+-- A full-width choice row; value is what it picks. It rests flat and lifts under the mouse; the chosen one
+-- wears the selected look. A label too long for the row (a long profile name, a translation) is cut short.
+local function choice(page, label, value, onClick)
+  local b = W.Row(page, T.BUTTON_H, { width = PAGE_W })
   b.text = W.Label(b, label, "label", "text")
   b.text:SetPoint("LEFT", T.SPACE.section, 0)
+  b.text:SetPoint("RIGHT", -T.SPACE.section, 0)
+  b.text:SetWordWrap(false)
   b:SetScript("OnClick", ns.Guard(W.ClickLabel(label), onClick))
-  b:SetPoint("TOPLEFT", 0, y)
   b.value = value
   return b
 end
 
--- How far down a page the i-th choice sits: under the question, a button and a tight gap apart.
-local function choiceY(i)
-  return -(T.SPACE.section + (i - 1) * (T.BUTTON_H + T.SPACE.tight))
+-- The rows of a page of choices, a gap under the question and a tight gap apart; picking one sets state[field].
+local function choiceRows(page, list, field)
+  local above, gap = page.question, T.SPACE.gap
+  for i, l in ipairs(list) do
+    page.choices[i] = choice(page, l.text, l.key, function() state[field] = l.key; refresh() end)
+    page.choices[i]:SetPoint("TOPLEFT", above, "BOTTOMLEFT", 0, -gap)
+    page.choices[i].hint = l.hint or ""
+    above, gap = page.choices[i], T.SPACE.tight
+  end
 end
 
--- A page of choices under a question: a button per { key, text, hint }; picking one
--- sets state[field]. The chosen one's hint shows under them.
+-- A page of choices under a question (it wraps): a button per { key, text, hint }; picking one
+-- sets state[field]. The chosen one's hint shows a tight gap under them.
 local function choicePage(page, question, list, field)
-  W.Label(page, question, "label", "text2"):SetPoint("TOPLEFT")
+  page.question = pageLabel(page, question, "label", "text2")
+  page.question:SetPoint("TOPLEFT")
   page.choices = {}
-  for i, l in ipairs(list) do
-    page.choices[i] = choice(page, l.text, l.key, choiceY(i), function() state[field] = l.key; refresh() end)
-    page.choices[i].hint = l.hint or ""
-  end
-  page.hint = W.Label(page, "", "small", "text2")
-  page.hint:SetPoint("TOPLEFT", 0, choiceY(#list + 1))
-  page.hint:SetWidth(WIDTH - 2 * PAD)
+  choiceRows(page, list, field)
+  page.hint = pageLabel(page, "", "small", "text2")
+  page.hint:SetPoint("TOPLEFT", page.choices[#list], "BOTTOMLEFT", 0, -T.SPACE.tight)
 end
 
 -- The profile choices for a new character: share the profile it loaded with, or one of its own.
@@ -629,11 +687,11 @@ end
 
 -- The Calm HUD switch and the two readability switches (larger text, safer colours) under the style tiles.
 local function lookSwitches(page)
-  page.calm = W.Check(page, L["Calm HUD: dim your frames out of combat"], S.Calm, S.SetCalm, WIDTH - 2 * PAD)
+  page.calm = W.Check(page, L["Calm HUD: dim your frames out of combat"], S.Calm, S.SetCalm, PAGE_W)
   page.calm:SetPoint("TOPLEFT", 0, LOOK_Y.switches)
-  page.larger = W.Check(page, L["Larger text (115%)"], S.Larger, S.SetLarger, WIDTH - 2 * PAD)
+  page.larger = W.Check(page, L["Larger text (115%)"], S.Larger, S.SetLarger, PAGE_W)
   page.larger:SetPoint("TOPLEFT", 0, LOOK_Y.switches - STEP.switchDown)
-  page.assist = W.Check(page, L["Colour vision: Safer colours (colour blindness)"], S.Assist, S.SetAssist, WIDTH - 2 * PAD)
+  page.assist = W.Check(page, L["Colour vision: Safer colours (colour blindness)"], S.Assist, S.SetAssist, PAGE_W)
   page.assist:SetPoint("TOPLEFT", 0, LOOK_Y.switches - 2 * STEP.switchDown)
 end
 
@@ -648,13 +706,17 @@ local function lookPage(page)
   lookSwitches(page)
 end
 
--- The last step: how to move frames (they are unlocked while this step shows).
+-- The last step: how to move frames (they are unlocked while this step shows), a line each, a gap apart
+-- (a line too long for the page wraps).
 local function movePage(page)
-  local lines = { L["Your frames are unlocked: drag a handle to move that frame."],
+  local texts = { L["Your frames are unlocked: drag a handle to move that frame."],
     L["Click a handle, then the arrow keys nudge it (Shift ×10)."], L["Right-click a frame for its anchor, scale and opacity."],
     L["The bar at the top: Save and lock, or Exit without saving."], L["Done locks them. /vg unlock moves them any time."] }
-  for i, line in ipairs(lines) do
-    W.Label(page, line, "label", i == 1 and "text" or "text2"):SetPoint("TOPLEFT", 0, -(i - 1) * STEP.moveLineDown)
+  page.lines = { pageLabel(page, texts[1], "label", "text") }
+  page.lines[1]:SetPoint("TOPLEFT")
+  for i = 2, #texts do
+    page.lines[i] = pageLabel(page, texts[i], "label", "text2")
+    page.lines[i]:SetPoint("TOPLEFT", page.lines[i - 1], "BOTTOMLEFT", 0, -STEP.moveLineGap)
   end
 end
 
@@ -671,7 +733,6 @@ end
 -- The window: a floating panel at the dialog alpha with a title and the step caption.
 local function window()
   local f = T.Panel(CreateFrame("Frame", "Vanguard_Setup", UIParent), { alpha = T.ALPHA.dialog, shadow = true })
-  T.PixelSize(f, WIDTH, HEIGHT, true)
   f:SetPoint("CENTER")
   -- Above the unlock handles (DIALOG), so their labels and grid never draw over the steps.
   f:SetFrameStrata("FULLSCREEN_DIALOG")
