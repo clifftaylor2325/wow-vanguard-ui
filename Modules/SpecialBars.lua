@@ -129,17 +129,48 @@ local function keepExitFitted(b)
   T.OnChanged(function() ns.OutOfCombat(function() SB.WidenExit(b) end) end)
 end
 
+-- The exit button's room beside bar 1 (it sits one half width of bar 1, plus this, from the centre) and its
+-- least distance from the centre: 260 is half of bar 1 at the default button size of 38, plus the 21.
+SB.EXIT_OFFSET = 21
+SB.EXIT_MIN_X = 260
+
+-- The exit's default point for a bar 1 of this half width: today's spot, or clear of bar 1's right end.
+function SB.ExitPoint(halfWidth)
+  return { "BOTTOM", "BOTTOM", math.max(SB.EXIT_MIN_X, halfWidth + SB.EXIT_OFFSET), 114 }
+end
+
+-- Moves the exit's default spot to bar 1's current width (ActionBars calls it as the bars restack), only when
+-- that moved it: placing a frame rounds the pixel-sized frames again, which restacks the bars again.
+function SB.FitExit(halfWidth)
+  local point = SB.ExitPoint(halfWidth)
+  if not SB.exit or point[3] == SB.exitX then return end
+  SB.exitX = point[3]
+  ns.SetMoverDefault("vehicleexit", point)
+end
+
+-- The exit's first default spot, remembered so SB.FitExit moves it only when bar 1's width changes it.
+local function exitSpot()
+  local point = SB.ExitPoint(ns.GetModule("ActionBars").Bar1HalfWidth())
+  SB.exitX = point[3]
+  return point
+end
+
+-- Makes the button run /leavevehicle on a click.
+local function addLeaveMacro(b)
+  b:SetAttribute("type", "macro")
+  b:SetAttribute("macrotext", "/leavevehicle")
+  b:RegisterForClicks("AnyUp", "AnyDown")
+end
+
 -- The vehicle exit: a secure /leavevehicle button the client shows only while you can leave.
 local function vehicleExit()
   local b = T.Button(CreateFrame("Button", "Vanguard_VehicleExit", UIParent, "SecureActionButtonTemplate"))
   b:SetSize(SB.EXIT_SIZE, SB.EXIT_SIZE)
-  b:SetAttribute("type", "macro")
-  b:SetAttribute("macrotext", "/leavevehicle")
-  b:RegisterForClicks("AnyUp", "AnyDown")
+  addLeaveMacro(b)
   addLabel(b, L["Exit"])
   keepExitFitted(b)
   RegisterStateDriver(b, "visibility", "[canexitvehicle] show; hide")
-  ns.Mover(b, "vehicleexit", L["Vehicle exit"], { "BOTTOM", "BOTTOM", 260, 114 })
+  ns.Mover(b, "vehicleexit", L["Vehicle exit"], exitSpot())
   return b
 end
 

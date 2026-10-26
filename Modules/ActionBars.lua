@@ -520,6 +520,19 @@ local function barWidth(settings, barSettings, k)
   return (columns * (size + gap) - gap) * ns.MoverLook("bar" .. k)
 end
 
+-- Half of bar 1's width in UIParent's units (0 while bar 1 is off or the module is): the vehicle exit button
+-- sits beside it.
+function AB.Bar1HalfWidth()
+  local bar1 = AB.settings and AB.settings.bars[1]
+  if not (bar1 and bar1.enabled) then return 0 end
+  return barWidth(AB.settings, bar1, 1) / 2
+end
+
+-- Moves the vehicle exit button's default spot to clear bar 1's current width.
+local function fitVehicleExit()
+  ns.GetModule("SpecialBars").FitExit(AB.Bar1HalfWidth())
+end
+
 -- The room between the right-edge bars and the screen's edge, and between the two.
 AB.RIGHT_GAP = 4
 
@@ -578,6 +591,7 @@ function AB.Restack()
   for n in pairs(AB.bars) do restackBar(n) end
   AB.stackedTop = AB.StackTop(AB.settings)
   ns.GetModule("CastBars").FitPlayer()
+  fitVehicleExit()
 end
 
 -- Re-stacks after a scale change only what the bars' new rounded heights moved, the cast bar following
@@ -587,6 +601,7 @@ end
 function AB.RestackMoved()
   if not AB.settings then return end
   for n in pairs(AB.bars) do restackBar(n) end
+  fitVehicleExit()
   local top = AB.StackTop(AB.settings)
   if top == AB.stackedTop then return end
   AB.stackedTop = top

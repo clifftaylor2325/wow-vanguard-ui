@@ -117,6 +117,17 @@ it("B6-5: the vehicle exit button widens to a long label at larger Text sizes (G
   expect(addon.textFit("Vanguard_VehicleExit"), "nothing cut").toEqual([]);
 });
 
+it("B6-6: the vehicle exit button keeps clear of action bar 1 at big button sizes, and keeps its spot at 38 and below", () => {
+  // How far the exit's left edge stands right of bar 1's right edge.
+  const clear = (addon) => addon.eval("return Vanguard_VehicleExit:GetLeft() - Vanguard_Bar1:GetRight()");
+  const big = loggedIn("", { savedVariables: profile("ActionBars = { size = 40 }") });
+  expect(clear(big), "at size 40 the exit starts after bar 1 ends").toBeGreaterThanOrEqual(0);
+  const dflt = loggedIn("", { savedVariables: profile("ActionBars = { size = 38 }") });
+  expect(dflt.eval("return select(4, Vanguard_VehicleExit:GetPoint())"), "at 38 it stays at 260").toBe(260);
+  dflt.eval('local AB = ns.GetModule("ActionBars") AB.settings.size = 48 for n in pairs(AB.bars) do AB.Layout(n) end');
+  expect(clear(dflt), "a size change while playing moves it too").toBeGreaterThanOrEqual(0);
+});
+
 // A TEST-ONLY LibDataBroker-1.1 with one long feed, picked for the strip.
 const LONG_FEED_ENV = `
   local ldb = LibStub:NewLibrary("LibDataBroker-1.1", 4)
