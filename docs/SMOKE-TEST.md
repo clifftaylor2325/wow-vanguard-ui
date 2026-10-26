@@ -2624,6 +2624,12 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: each pin's gold "!" sits on a small square whose edge stays one crisp pixel at every zoom, the same size throughout. [Needs in-game check: the client's real canvas scales and how the edge looks at them.]
 - If it fails, paste: a screenshot of the pins zoomed in and out, and `/vg errors`.
 
+### 33.76 Scroll lists' soft edges over a panel texture
+
+- Do: General → Look → Panel texture "Carved stone" (then "Fine grain"); open the options window on a long page and scroll it a little down, then look at the strip under the header and over the bottom edge; do the same in What's new and the quest log.
+- Expect: the fade at each scrolled end blends into the window; no plainer, darker, untextured band about 24 units tall stands out from the textured panel beside it. [Needs in-game check: the harness can't composite alpha. If the band shows clearly, turn the soft edges off while a texture is drawn (B1-9 option a).]
+- If it fails, paste: a screenshot of the options window scrolled, with the texture name, and `/vg errors`.
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ## When you are done
