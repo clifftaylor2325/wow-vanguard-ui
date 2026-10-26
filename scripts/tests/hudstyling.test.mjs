@@ -89,6 +89,17 @@ it("P6-3: the keybind banner shows its whole instruction line in German and Fren
   expect(addon.eval("return Vanguard_KeybindMode:GetWidth() < UIParent:GetWidth()"), "and the banner fits the screen").toBe(true);
 });
 
+// A TEST-ONLY LibDataBroker-1.1 with one long feed, picked for the strip.
+const LONG_FEED_ENV = `
+  local ldb = LibStub:NewLibrary("LibDataBroker-1.1", 4)
+  ldb.callbacks = LibStub("CallbackHandler-1.0"):New(ldb)
+  ldb.objs = {}
+  function ldb:NewDataObject(name, obj) self.objs[name] = obj self.callbacks:Fire("LibDataBroker_DataObjectCreated", name, obj) return obj end
+  function ldb:DataObjectIterator() return pairs(self.objs) end
+  function ldb:GetDataObjectByName(name) return self.objs[name] end
+  ldb:NewDataObject("TEST-ONLY Social", { type = "data source", text = "Guild: 42 online  Friends: 7 online  (Battle.net 3)" })
+`;
+
 it("P6-4: the vehicle exit label shrinks to fit its button when a translation runs long", () => {
   const addon = fitClient();
   addon.eval('Vanguard_VehicleExit:Show() Vanguard_VehicleExit.label:SetText("Verlassen")');
@@ -97,4 +108,13 @@ it("P6-4: the vehicle exit label shrinks to fit its button when a translation ru
   expect(label.left, "the label starts inside the button").toBeGreaterThanOrEqual(box.left);
   expect(label.right, "and ends inside it").toBeLessThanOrEqual(box.right);
   expect(addon.textFit("Vanguard_VehicleExit"), "nothing spills over the border").toEqual([]);
+});
+
+it("P6-5: a long broker feed stays on one line inside the strip", () => {
+  const addon = fitClient(LONG_FEED_ENV);
+  addon.eval('ns.GetModule("BrokerStrip").Choose("TEST-ONLY Social", true)');
+  const text = rectOf(addon, "Vanguard_BrokerSlot1.text");
+  const slot = rectOf(addon, "Vanguard_BrokerSlot1");
+  expect(text.top, "the text stays under the slot's top edge").toBeLessThanOrEqual(slot.top);
+  expect(text.bottom, "and over its bottom edge").toBeGreaterThanOrEqual(slot.bottom);
 });
