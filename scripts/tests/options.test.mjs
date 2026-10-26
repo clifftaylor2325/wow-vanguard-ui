@@ -2,7 +2,8 @@
 
 import { readFileSync } from "node:fs";
 import { expect, it } from "vitest";
-import { BUFF_NAMES, CLICK_LUA, DATA_ENV, RETAIL, UI_ENV, UNITS_ENV, bars, borderOf, button, calls, chatHas, expectErrors, isTok, key, loggedIn, marks, px, setCombat, spellNames, tok, tooltip } from "./helpers.mjs";
+import { createAddon } from "../lib/lua-harness.mjs";
+import { BUFF_NAMES, CLICK_LUA, DATA_ENV, RETAIL, UI_ENV, UNITS_ENV, bars, borderOf, button, calls, chatHas, expectErrors, isTok, key, loggedIn, marks, px, setCombat, spellNames, tok, tooltip, SETUP_DONE } from "./helpers.mjs";
 
 it("options window", () => {
   const addon = loggedIn(RETAIL + CLICK_LUA + DATA_ENV + "GetSpecialization = function() return 1 end");
@@ -1504,4 +1505,32 @@ it("options: a dropdown's menu widens to its longest choice and keeps the dropdo
   addon.eval("ns.Widgets.CloseMenu()");
   const [menu, dropdown] = open("Midnight");
   expect(menu, "a short list keeps the dropdown's width").toBe(dropdown);
+});
+
+// The options window in the text-fit client (every string a third longer, as a translation might run), at this Text size.
+function fitOptions(textScale) {
+  const addon = createAddon({ savedVariables: SETUP_DONE, textFit: true });
+  addon.login();
+  if (textScale) addon.eval(`ns.Theme.Settings().textScale = ${textScale} ns.Theme.Refresh()`);
+  return addon;
+}
+
+it("options: a module row grows to hold a description that wraps past two lines, so it never runs into the next row", () => {
+  const addon = fitOptions(1.3);
+  addon.eval('ns.Options.Show("modules")');
+  const short = addon.eval(`local out = {} for _, w in ipairs(__wfgStub.frames) do
+    if w.desc and w.label and w:IsVisible() and w:GetHeight() < 12 + w.label:GetStringHeight() + ns.Theme.SPACE.tight + w.desc:GetStringHeight() then out[#out + 1] = w.label.__text end end return out`);
+  expect(Object.values(short), "every module row is tall enough for its name and its whole description").toEqual([]);
+  const tall = addon.eval(`local n = 0 for _, w in ipairs(__wfgStub.frames) do if w.desc and w:IsVisible() and w:GetHeight() > 54 then n = n + 1 end end return n`);
+  expect(tall, "at least one description wraps past the 54 units a row used to have").toBeGreaterThan(0);
+});
+
+it("options: a switch whose caption wraps takes the whole row, so the caption and its switch centre in it", () => {
+  const addon = fitOptions(1.3);
+  addon.eval('ns.Options.Show("unitframes")');
+  const poking = addon.eval(`local out = {} for _, w in ipairs(__wfgStub.frames) do
+    if w.card and w.label and w.source and w.source[1] == "check" and w:IsVisible() and w.label:GetTop() > w:GetTop() + 0.01 then out[#out + 1] = w.caption end end return out`);
+  expect(Object.values(poking), "no caption starts above its row").toEqual([]);
+  const tall = addon.eval(`local n = 0 for _, w in ipairs(__wfgStub.frames) do if w.source and w.source[1] == "check" and w:IsVisible() and w:GetHeight() > ns.Theme.ROW.height then n = n + 1 end end return n`);
+  expect(tall, "a wrapped caption's row is taller than a one-line row").toBeGreaterThan(0);
 });

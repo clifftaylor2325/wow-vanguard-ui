@@ -33,7 +33,7 @@ local INNER = CARD_WIDTH - 2 * PAD
 local AIR, LINE, JUMP_ABOVE = 6, 20, 40
 -- Height of each row kind (Core/OptionsPreview.lua and modules add theirs with O.AddRowKind): a check, cycle or
 -- slider row is a list row (T.ROW.height); a button row has a standalone button (T.BUTTON_H) with 3 units of air
--- each side; a module row two lines.
+-- each side; a module row two lines, or taller when its description wraps further.
 local ROW_HEIGHT = { check = T.ROW.height, cycle = T.ROW.height, slider = T.ROW.height, button = T.BUTTON_H + 6, text = LINE, module = 54 }
 -- Row kinds laid out edge to edge in a card (the rest are indented).
 local FULL_WIDTH = { check = true, cycle = true, slider = true, swatches = true, module = true }
@@ -90,6 +90,8 @@ local function moduleRow(parent, row, width)
   r.label:ClearAllPoints()
   r.label:SetPoint("TOPLEFT", T.SPACE.gap, -AIR)
   addDescription(r, row[6], width)
+  r.grownHeight = 2 * AIR + r.label:GetStringHeight() + T.SPACE.tight + r.desc:GetStringHeight()
+  r:SetHeight(math.max(ROW_HEIGHT.module, r.grownHeight))
   addOwnSwitchNote(r, row[7])
   return r
 end
@@ -360,6 +362,13 @@ local function rowHeight(w, kind)
   return ROW_HEIGHT[kind] or T.ROW.height
 end
 
+-- A row's height, also given to a switch row, so a wrapped caption and its switch centre in the room the row takes.
+local function placeHeight(w, kind)
+  local h = rowHeight(w, kind)
+  if kind == "check" then w:SetHeight(h) end
+  return h
+end
+
 -- Builds a card's rows top to bottom from y; returns the y below them. Each
 -- row keeps its card, its caption and where it sits on the page (for search).
 local function placeRows(card, rows, y, cardY)
@@ -370,7 +379,7 @@ local function placeRows(card, rows, y, cardY)
     dressRow(w, row)
     w:SetPoint("TOPLEFT", card, "TOPLEFT", full and T.SPACE.tight or PAD, -y)
     widgets[#widgets + 1] = w
-    y = y + rowHeight(w, row[1])
+    y = y + placeHeight(w, row[1])
   end
   return y
 end
