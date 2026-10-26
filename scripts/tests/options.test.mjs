@@ -1535,6 +1535,19 @@ it("options: a switch whose caption wraps takes the whole row, so the caption an
   expect(tall, "a wrapped caption's row is taller than a one-line row").toBeGreaterThan(0);
 });
 
+it("options: pages built at another Text size are built again the next time they open, so reload tags clear their captions", () => {
+  const addon = fitOptions();
+  for (const page of ["unitframes", "tools", "town"]) addon.eval(`ns.Options.Show("${page}")`);
+  addon.eval('ns.Theme.Settings().textScale = 1.3 ns.Theme.Refresh()');
+  // Opens the page and lists the captions whose reload tag starts before the caption ends.
+  const crowded = (page) => addon.eval(`ns.Options.Show("${page}") local out = {}
+    for _, w in ipairs(__wfgStub.frames) do
+      if w.tag and w.label and w:IsVisible() and w.tag:GetLeft() < w.label:GetLeft() + math.min(w.label:GetStringWidth(), w.label:GetWidth()) then out[#out + 1] = w.caption end
+    end return out`);
+  for (const page of ["unitframes", "tools", "town"]) expect(Object.values(crowded(page)), `${page}: no reload tag sits over its caption`).toEqual([]);
+  expect(addon.eval("return ns.Options.current"), "the page opened is the one asked for").toBe("town");
+});
+
 it("options: a nav entry's title stops short of the changed-setting dot and never wraps", () => {
   const addon = fitOptions();
   addon.eval('ns.Options.Show("general")');

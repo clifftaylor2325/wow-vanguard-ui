@@ -493,7 +493,7 @@ local function buildPage(page)
   local view = ns.ScrollView(window, { width = CARD_WIDTH })
   view:SetPoint("TOPLEFT", NAV_WIDTH + T.SPACE.col, -(HEAD + T.SPACE.col))
   view:SetPoint("BOTTOMRIGHT", -VIEW_RIGHT, FOOT + T.SPACE.col)
-  view.child.pageKey = page.key
+  view.child.pageKey, view.textScale = page.key, T.Settings().textScale
   placeCards(view, rowsOf(page))
   return view
 end
@@ -866,8 +866,27 @@ local function markNav(key)
   end
 end
 
+-- Drops a thrown-away page's rows from the widget list (so they're no longer refreshed or searched).
+local function forgetRows(view)
+  for i = #widgets, 1, -1 do
+    if widgets[i].card.child == view.child then table.remove(widgets, i) end
+  end
+end
+
+-- Throws a page built at another Text size away (its rows and reload tags were laid out for that size), so it is built
+-- again when next shown; the page being dragged on is never rebuilt mid-drag.
+local function dropStale(key)
+  local view = pages[key]
+  if not view or view.textScale == T.Settings().textScale then return end
+  rowCache[key] = nil
+  forgetRows(view)
+  view:Hide()
+  pages[key] = nil
+end
+
 -- Builds the current page on first view and shows only it.
 local function showPage()
+  dropStale(O.current)
   for _, page in ipairs(O.PAGES) do
     if page.key == O.current and not pages[page.key] then pages[page.key] = buildPage(page) end
     if pages[page.key] then pages[page.key]:SetShown(page.key == O.current) end
@@ -946,13 +965,6 @@ local function pageMatches(page, text)
     if O.RowMatches(rows, i, text) then return true end
   end
   return false
-end
-
--- Drops a thrown-away page's rows from the widget list (so they're no longer refreshed or searched).
-local function forgetRows(view)
-  for i = #widgets, 1, -1 do
-    if widgets[i].card.child == view.child then table.remove(widgets, i) end
-  end
 end
 
 -- The window's frame (Vanguard_Options), or nil until it is first opened.
