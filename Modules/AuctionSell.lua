@@ -708,6 +708,7 @@ end
 local function paintPost(c, s, why)
   local asking = AH.Pending(s) ~= nil
   c.post.text:SetText(asking and L["Confirm"] or L["Post"])
+  ns.WidenToLabel(c.post)
   enable(c.post, why == nil or asking)
 end
 
@@ -777,7 +778,7 @@ local function maxButton(c, name)
   local b = W.Button(c, L["Max"], function() AH.TypeForm(name, nil, true) end, 36)
   b:SetHeight(T.CONTROL_H)
   b:SetPoint("LEFT", c[name], "RIGHT", T.SPACE.tight, 0)
-  c[name .. "Max"] = b
+  c[name .. "Max"] = ns.WidenToLabel(b)
 end
 
 -- The form under the undercut rule, a field a row: quantity and stack size, each with Max; the
@@ -810,6 +811,11 @@ local function smallLine(c, y)
   return fs
 end
 
+-- Each of these buttons widened to its label when a translation runs longer than the English.
+local function widenAll(...)
+  for _, b in ipairs({ ... }) do ns.WidenToLabel(b) end
+end
+
 -- The posting line: Skip, Stop and Post on the right, the count on the left under them, and the
 -- item's history line (Modules/AuctionLedger.lua) under that.
 local function postRow(c)
@@ -820,7 +826,16 @@ local function postRow(c)
   c.stop:SetPoint("RIGHT", c.post, "LEFT", -T.SPACE.tight, 0)
   c.skip = W.Button(c, L["Skip"], function() AH.SkipStack() end, 44)
   c.skip:SetPoint("RIGHT", c.stop, "LEFT", -T.SPACE.tight, 0)
+  widenAll(c.post, c.stop, c.skip)
   c.status, c.historyLine = smallLine(c, y - 6), smallLine(c, y - 30)
+end
+
+-- A guide step after the one before it, a column gap on (a translated step can run wider than a fixed pitch
+-- allows); the first step stays where smallLine put it.
+local function chainStep(step, before)
+  if not before then return end
+  step:ClearAllPoints()
+  step:SetPoint("TOPLEFT", before, "TOPRIGHT", T.SPACE.col, 0)
 end
 
 -- The posting guide under the history line: its numbered steps in a row, and the line under them.
@@ -829,7 +844,7 @@ local function guideRow(c)
   c.steps = {}
   for i, name in ipairs(AH.GUIDE_STEPS) do
     c.steps[i] = smallLine(c, y)
-    c.steps[i]:SetPoint("TOPLEFT", (i - 1) * 64, y)
+    chainStep(c.steps[i], c.steps[i - 1])
     c.steps[i]:SetText(i .. "  " .. name)
   end
   c.guide = smallLine(c, y - 18)

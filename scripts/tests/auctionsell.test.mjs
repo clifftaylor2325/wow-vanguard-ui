@@ -2,7 +2,8 @@
 // (Modules/AuctionPrices.lua), at the TEST-ONLY auction house of the headless client.
 
 import { expect, it } from "vitest";
-import { chatHas, isTok, loggedIn } from "./helpers.mjs";
+import { createAddon } from "../lib/lua-harness.mjs";
+import { SETUP_DONE, chatHas, isTok, loggedIn } from "./helpers.mjs";
 import { luaValue } from "../lib/lua-emit.mjs";
 
 // TEST-ONLY: a wall clock (a test moves __now), the tooltip data API the Tooltips module
@@ -532,4 +533,23 @@ it("undercut check marks the undercut auction and Cancel is per click", () => {
   expect(restrictedLog(addon), "cancelled once, from the click").toEqual([["CancelAuction", true, 501, "nil", "nil", "nil", "nil"]]);
   addon.fire("AUCTION_CANCELED", 501);
   expect([ownedRow(addon, 1)[1], ownedRow(addon, 2)[2], ownedRow(addon, 3)[0]], "its row goes").toEqual(["TEST-ONLY Blade", "sold · 40s 0c", false]);
+});
+
+// The addon on a client of `locale` with the text-fit audit, the Posting tab shown (a stack of dust in bag 0 slot 1).
+function postingTab(locale) {
+  const addon = createAddon({ textFit: true, client: `__wfgWorld.locale = "${locale}"`, savedVariables: SETUP_DONE });
+  addon.eval(AH_ENV + "__wfgWorld.items[10940] = { name = 'Strange Dust', icon = 'TEST-ONLY-DUST', commodity = true }");
+  addon.login();
+  addon.world.openAuctionHouse();
+  addon.update(0);
+  addon.eval("__wfgStub.click(AuctionHouseFrame.Tabs[5])");
+  return addon;
+}
+it("the sell card's Post, Stop, Skip and Max buttons and the guide's steps fit in real translations", () => {
+  for (const locale of ["frFR", "deDE", "ruRU", "itIT", "esES"]) {
+    const addon = postingTab(locale);
+    expect(addon.textFit(CARD), `${locale}: nothing on the sell card is cut or overlaps`).toEqual([]);
+    const steps = addon.eval(`local s = ${CARD}.steps return { s[1]:GetRight() < s[2]:GetLeft(), s[2]:GetRight() < s[3]:GetLeft(), s[3]:GetRight() < s[4]:GetLeft() }`);
+    expect(steps, `${locale}: each guide step ends before the next`).toEqual([true, true, true]);
+  }
 });
