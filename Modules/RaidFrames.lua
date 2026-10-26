@@ -33,9 +33,14 @@ RF.BIG_RAID = 10
 -- Where the grid starts by default: a party or a raid of 10 right over your player frame; a bigger raid
 -- (with Stack big raids on) left of your character, as healers keep it, so the boss and your own frames stay in
 -- view, its left edge 500 units left of the screen's middle, 344 up and clear of the frames around your character
--- and, on a 1365-wide UI, of the roll tracker and the boss column at the left edge.
+-- and, on a UI 1296 wide or more, of the roll tracker and the boss column at the left edge. On a narrower UI the
+-- left edge stays at RF.CLEAR_LEFT instead (RF.BigSpotFor), so the grid keeps on screen and clear of the roll tracker.
 RF.SPOT = { "BOTTOM", "BOTTOM", -240, 344 }
 RF.SPOT_BIG = { "BOTTOMLEFT", "BOTTOM", -500, 344 }
+-- How far from the screen's left edge a big raid's grid may start: the roll tracker's 6 + 136 + 6 units.
+RF.CLEAR_LEFT = 148
+-- The big-raid spots made for narrow canvases, by their x, so the same canvas gets the same table (RF.PlaceFor compares them).
+RF.narrowSpots = {}
 -- How large the grid is drawn now (RF.Fit sets it).
 RF.tileScale = 1
 
@@ -611,9 +616,19 @@ function RF.LayoutFor(n)
   return (RF.settings.layout == "rows" or big(n)) and "rows" or "columns"
 end
 
+-- The big-raid spot on a canvas `width` wide: RF.SPOT_BIG, or on a canvas too narrow for it (the grid's left edge
+-- would pass the roll tracker, or leave the screen) the same spot moved right so the edge sits at RF.CLEAR_LEFT.
+function RF.BigSpotFor(width)
+  if type(width) ~= "number" or width <= 0 then return RF.SPOT_BIG end
+  local x = math.ceil(RF.CLEAR_LEFT - width / 2)
+  if x <= RF.SPOT_BIG[3] then return RF.SPOT_BIG end
+  RF.narrowSpots[x] = RF.narrowSpots[x] or { RF.SPOT_BIG[1], RF.SPOT_BIG[2], x, RF.SPOT_BIG[4] }
+  return RF.narrowSpots[x]
+end
+
 -- The grid's default spot for n players (a saved spot wins over it).
 function RF.SpotFor(n)
-  return big(n) and RF.SPOT_BIG or RF.SPOT
+  return big(n) and RF.BigSpotFor(UIParent:GetWidth()) or RF.SPOT
 end
 
 -- Layout attributes: groups of five (or sorted by role), as columns or rows (kind).
