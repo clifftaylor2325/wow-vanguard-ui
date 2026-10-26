@@ -93,11 +93,11 @@ S.STYLES = { { "soft", L["Class colors, softened"], L["Softened"] }, { "dark", L
   { "class", L["Class colors, bright"], L["Bright"] } }
 -- The style tiles on the Look step: a raid tile's default size, side by side this far apart.
 local TILE_W, TILE_H, TILE_GAP = 100, 48, 16
--- The look step's rows, down the page from its top (negative), and the steps between them: the switches stack
--- one check row apart (W.ROW_HEIGHT), the swatches sit this far apart across, and the move step's lines a gap apart.
+-- The look step's rows, down the page from its top (negative); the swatches sit this far apart across, and the move
+-- step's lines a gap apart (the switches stack by their own heights).
 local LOOK_Y = { swatches = -20, styleCaption = -62, tiles = -82, switches = -154 }
 -- skipWidth: the room left of Back on the footer (120 is a dialog button's default width), so a long Skip label fits.
-local STEP = { swatchAcross = 34, switchDown = W.ROW_HEIGHT, moveLineGap = T.SPACE.gap,
+local STEP = { swatchAcross = 34, moveLineGap = T.SPACE.gap,
   skipWidth = PAGE_W - 2 * 120 - 2 * T.SPACE.gap }
 
 local frame
@@ -543,9 +543,15 @@ local function choiceHeight(page)
   return page.question:GetStringHeight() + T.SPACE.gap + rows + tallest
 end
 
+-- Grows the look step's three switch rows to their captions (they stack under one another, so the rest follow); a
+-- caption wraps at a large Text size or in a long translation.
+local function growSwitches(page)
+  for _, row in ipairs({ page.calm, page.larger, page.assist }) do W.GrowRow(row) end
+end
+
 -- How tall the look step stands: down to the bottom of its last switch.
 local function lookHeight(page)
-  return -LOOK_Y.switches + 2 * STEP.switchDown + page.assist:GetHeight()
+  return -LOOK_Y.switches + page.calm:GetHeight() + page.larger:GetHeight() + page.assist:GetHeight()
 end
 
 -- How tall the move step stands: its lines, a gap apart.
@@ -563,6 +569,7 @@ local HEIGHTS = { profile = choiceHeight, layout = choiceHeight, screen = choice
 -- It stays centred, growing up and down alike.
 local function fit()
   local tallest = 0
+  growSwitches(frame.pages.look)
   for _, key in ipairs(state.order) do tallest = math.max(tallest, HEIGHTS[key](frame.pages[key])) end
   T.PixelSize(frame, WIDTH, TOP + math.ceil(tallest) + FOOT, true)
 end
@@ -734,9 +741,10 @@ local function lookSwitches(page)
   page.calm = W.Check(page, L["Calm HUD: dim your frames out of combat"], S.Calm, S.SetCalm, PAGE_W)
   page.calm:SetPoint("TOPLEFT", 0, LOOK_Y.switches)
   page.larger = W.Check(page, L["Larger text (115%)"], S.Larger, S.SetLarger, PAGE_W)
-  page.larger:SetPoint("TOPLEFT", 0, LOOK_Y.switches - STEP.switchDown)
+  page.larger:SetPoint("TOPLEFT", page.calm, "BOTTOMLEFT", 0, 0)
   page.assist = W.Check(page, L["Colour vision: Safer colours (colour blindness)"], S.Assist, S.SetAssist, PAGE_W)
-  page.assist:SetPoint("TOPLEFT", 0, LOOK_Y.switches - 2 * STEP.switchDown)
+  page.assist:SetPoint("TOPLEFT", page.larger, "BOTTOMLEFT", 0, 0)
+  growSwitches(page)
 end
 
 -- The look step: the accent presets, the raid frame style, then Calm HUD and the readability switches.

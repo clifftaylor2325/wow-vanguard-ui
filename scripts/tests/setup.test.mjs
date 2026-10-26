@@ -356,3 +356,21 @@ it("the setup wizard's Skip button widens to its label when the first step shows
   expect(width, "wider than it was at 100%").toBeGreaterThan(normal);
   expect(clear, "into Back's empty slot, short of Next").toBe(true);
 });
+it("the setup look step's switch rows grow to a wrapped caption and stack by their heights, so captions never crowd (B2-4)", () => {
+  const addon = createAddon({ textFit: true, client: '__wfgWorld.locale = "deDE" UISpecialFrames = {}' });
+  addon.login();
+  addon.eval("ns.Theme.Settings().textScale = 1.3 ns.Theme.Refresh()");
+  setupClick(addon, "next");
+  setupClick(addon, "next");
+  // For each of the three rows: whether its caption is inside it, its height, and whether the next row starts at its bottom.
+  const rows = addon.eval(`local p = Vanguard_Setup.pages.look local out = {}
+    local keys = { "calm", "larger", "assist" }
+    for i, key in ipairs(keys) do
+      local r, nextRow = p[key], keys[i + 1] and p[keys[i + 1]]
+      out[i] = { r.label:GetTop() <= r:GetTop() + 0.01 and r.label:GetBottom() >= r:GetBottom() - 0.01, r:GetHeight(), not nextRow or math.abs(nextRow:GetTop() - r:GetBottom()) < 0.01 }
+    end return out`);
+  expect(rows.map((r) => r[0]), "every caption sits inside its row").toEqual([true, true, true]);
+  expect(rows.map((r) => r[2]), "each row starts where the one above ends").toEqual([true, true, true]);
+  expect(Math.max(...rows.map((r) => r[1])), "a wrapped caption's row is taller than a one-line row").toBeGreaterThan(28);
+  expect(addon.eval("local f = Vanguard_Setup return f.pages.look.assist:GetBottom() >= f.pages.look:GetBottom() - 0.01"), "and the page is as tall as its last switch").toBe(true);
+});

@@ -3,7 +3,7 @@
 import { expect, it } from "vitest";
 import { createAddon } from "../lib/lua-harness.mjs";
 import { luaValue } from "../lib/lua-emit.mjs";
-import { CLICK_LUA, RETAIL, UI_ENV, chatHas, expectErrors, isTok, loggedIn, px, setCombat } from "./helpers.mjs";
+import { CLICK_LUA, RETAIL, SETUP_DONE, UI_ENV, chatHas, expectErrors, isTok, loggedIn, px, setCombat } from "./helpers.mjs";
 import { alphaOf, buttonOf, closeOf, escapes, insets, pressEscape, thumbOf, titleOf, titleSize } from "./dialogs.mjs";
 
 it("profile strings", () => {
@@ -622,3 +622,19 @@ function relog(addon, { account, char, extra = CLICK_LUA } = {}) {
   next.login();
   return next;
 }
+
+it("export panel: in Spanish at 130% its rows stack by their heights and None holds its label (B2-4)", () => {
+  const addon = createAddon({ savedVariables: SETUP_DONE, textFit: true, client: '__wfgWorld.locale = "esES"' });
+  addon.login();
+  addon.eval("ns.Theme.Settings().textScale = 1.3 ns.Theme.Refresh() ns.ExportDialog()");
+  // For each shown switch: whether its caption is inside it, its height, and whether the next one starts at its bottom.
+  const rows = addon.eval(`local rows, out = Vanguard_ExportDialog.rows, {}
+    for i, r in ipairs(rows) do
+      if r:IsShown() then out[#out + 1] = { r.label:GetTop() <= r:GetTop() + 0.01 and r.label:GetBottom() >= r:GetBottom() - 0.01, r:GetHeight(),
+        not (rows[i + 1] and rows[i + 1]:IsShown()) or math.abs(rows[i + 1]:GetTop() - r:GetBottom()) < 0.01 } end
+    end return out`);
+  expect(rows.filter((r) => !r[0] || !r[2]), "every caption sits inside its row, and the next row starts where it ends").toEqual([]);
+  expect(Math.max(...rows.map((r) => r[1])), "a wrapped caption's row is taller than a one-line row").toBeGreaterThan(28);
+  const cut = addon.textFit("Vanguard_ExportDialog").filter((f) => f.text === "None" || f.text === "All");
+  expect(cut, "All and None are not cut short").toEqual([]);
+});
