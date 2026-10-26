@@ -598,6 +598,21 @@ it("quest tracker: an item shows its cooldown and range, and the game's tooltip"
   addon.eval("Vanguard_QuestItem1.questID = 90051 GameTooltip.SetQuestLogSpecialItem = nil Vanguard_QuestItem1.__scripts.OnEnter(Vanguard_QuestItem1)");
   expect(addon.eval("return GameTooltip.__special"), "a client without the tooltip call shows none").toBeFalsy();
 });
+it("quest tracker: a first quest taller than the compact room is drawn, its lines cut at the room, and the block ends inside it (P9-6)", () => {
+  const addon = loggedIn(TRACK_ENV);
+  const nine = Array.from({ length: 9 }, (_, i) => `{ text = "0/1 TEST-ONLY Goal ${i + 1}", finished = false }`).join(", ");
+  addon.eval(`__watches = { 90051 } __quests[90051].objectives = { ${nine} } __quests[90051].xp = nil`);
+  addon.fire("QUEST_WATCH_LIST_CHANGED");
+  addon.update(0);
+  const t = tracker(addon);
+  expect([t.blocks.length, t.blocks[0][1].length, t.more], "the quest shows with the lines that fit, not just \"+1 more\"").toEqual([1, 8, false]);
+  const edge = addon.eval("local f = Vanguard_QuestTrackerFrame local b = f.blocks[1] return { b:GetHeight() <= f.body:GetHeight(), b:GetBottom() >= f.body:GetBottom() }");
+  expect(edge, "the cut block stays inside the tracker's body").toEqual([true, true]);
+  addon.eval(`__watches = { 90051, 90052 }`);
+  addon.fire("QUEST_WATCH_LIST_CHANGED");
+  addon.update(0);
+  expect([tracker(addon).blocks.length, tracker(addon).more], "a second quest still waits behind \"+1 more\"").toEqual([1, "+1 more"]);
+});
 it("quest tracker: nearest first, collapsing, too many quests, and switched off", () => {
   const addon = loggedIn(UNITS_ENV + TRACK_ENV, { savedVariables: "VanguardDB.profiles = { Default = { QuestTracker = { order = 'nearest' } } }" });
   addon.eval("__wfgStub.advance(1.25)");
