@@ -1,11 +1,36 @@
 -- Window chrome shared by every Vanguard window and card: the title line with its count and
 -- close button (ns.WindowTitle), the one scroll view with the T.SCROLL thumb (ns.ScrollView),
--- a section header (W.SectionHeader) and a list row with the one selected look (W.Row).
+-- a section header (W.SectionHeader), a list row with the one selected look (W.Row) and a one-line
+-- text that stays inside its room (ns.SingleLine, ns.EndAt).
 -- Nothing here paints a panel: a window paints itself, then asks for its chrome.
 
 local ADDON, ns = ...
 
 local T, W = ns.Theme, ns.Widgets
+
+-- Text ----------------------------------------------------------------------------------------
+
+-- Keeps a font string on one line, left-aligned: a text longer than the room its anchors give it (a translation
+-- often runs longer than the English) is cut short with "..." instead of wrapping into what sits under it.
+---@param fs table
+---@return table fs
+function ns.SingleLine(fs)
+  fs:SetJustifyH("LEFT")
+  fs:SetWordWrap(false)
+  return fs
+end
+
+-- Ends a font string `right` units in from a frame's right edge, on one line (ns.SingleLine), so a long text
+-- stops there instead of running past the frame or under what sits at its right. The font string keeps the
+-- anchors it has for its left and height.
+---@param fs table
+---@param frame table
+---@param right number
+---@return table fs
+function ns.EndAt(fs, frame, right)
+  fs:SetPoint("RIGHT", frame, "RIGHT", -right, 0)
+  return ns.SingleLine(fs)
+end
 
 -- Titles --------------------------------------------------------------------------------------
 
@@ -294,7 +319,9 @@ end
 -- A section header: an HEADER_H band with its text in small muted capitals (the options cards' style).
 -- opts.collapsible adds a chevron (Down open, Right folded), header:SetCollapsed(on) and a click calling
 -- opts.onToggle(collapsed); opts.count a small text2 count after the text (header.count); opts.width its
--- width. header:SetText(text) changes the text.
+-- width. header:SetText(text) changes the text. A header without a count keeps its text inside it on one line,
+-- cut short when the header is narrower (a translation often runs longer); a count follows the text, and the
+-- header's owner makes room for it.
 function W.SectionHeader(parent, text, opts)
   opts = opts or {}
   local header = CreateFrame("Button", nil, parent)
@@ -302,7 +329,7 @@ function W.SectionHeader(parent, text, opts)
   if opts.width then header:SetWidth(opts.width) end
   addHeaderText(header, text)
   if opts.collapsible then addChevron(header, text, opts.onToggle) end
-  if opts.count then header.count = addHeaderCount(header, opts.count) end
+  if opts.count then header.count = addHeaderCount(header, opts.count) else ns.EndAt(header.text, header, 0) end
   return header
 end
 

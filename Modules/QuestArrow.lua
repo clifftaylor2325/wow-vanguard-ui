@@ -93,11 +93,13 @@ local function follow(old)
   return QA.settings.auto and QA.Choose(old) or pin, false
 end
 
--- The look that changes only with the pick: the Pin button while the arrow holds a pinned quest (the title
--- then stops short of it), and the arrow gold for a turn-in, else the accent.
+-- The look that changes only with the pick: the Pin button while the arrow holds a pinned quest (the title and
+-- the distance then stop short of it), and the arrow gold for a turn-in, else the accent.
 local function paintPick(f)
   f.pin:SetShown(QA.held == true)
-  if QA.held then f.title:SetPoint("RIGHT", f.pin, "LEFT", -T.SPACE.tight, 0) else f.title:SetPoint("RIGHT", f, "RIGHT", -QA.PAD, 0) end
+  for _, fs in ipairs({ f.title, f.dist }) do
+    if QA.held then fs:SetPoint("RIGHT", f.pin, "LEFT", -T.SPACE.tight, 0) else fs:SetPoint("RIGHT", f, "RIGHT", -QA.PAD, 0) end
+  end
   T.Tint(f.arrow, QA.ready and "gold" or "accent")
 end
 
@@ -282,7 +284,7 @@ local function build()
   T.Panel(f, { shadow = true })
   f:SetSize(QA.WIDTH, QA.HEIGHT)
   fill(f)
-  f.dist = T.Text(f:CreateFontString(nil, "OVERLAY"), "small", "text2")
+  f.dist = ns.EndAt(T.Text(f:CreateFontString(nil, "OVERLAY"), "small", "text2"), f, QA.PAD)
   f.dist:SetPoint("BOTTOMLEFT", f.arrow, "BOTTOMRIGHT", QA.PAD, 2)
   pinButton(f)
   f:Hide()

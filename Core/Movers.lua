@@ -463,15 +463,15 @@ end
 
 -- Builds the handle for a mover: accent-bordered panel with its label, well over
 -- its frame's level, so a window's scroll views and their thumbs and fade edges (a dozen levels up) stay under
--- it too.
+-- it too. The label wraps inside the handle, so a small frame's (the vehicle exit's) stays over its own handle.
 local function createHandle(m)
   local h = T.Panel(CreateFrame("Frame", nil, UIParent), { accent = true })
   h.mover = m
   h:SetFrameLevel((m.frame:GetFrameLevel() or 0) + 50)
   wire(h)
-  h.label = h:CreateFontString(nil, "OVERLAY")
-  h.label:SetPoint("CENTER")
-  T.Text(h.label, "small")
+  h.label = T.Text(h:CreateFontString(nil, "OVERLAY"), "small")
+  h.label:SetPoint("LEFT", T.SPACE.tight / 2, 0)
+  h.label:SetPoint("RIGHT", -T.SPACE.tight / 2, 0)
   h.label:SetText(m.label .. suffix)
   return h
 end

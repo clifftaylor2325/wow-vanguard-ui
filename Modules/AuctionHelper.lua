@@ -263,7 +263,7 @@ local function buildScan(column, y)
   local c = AH.Card(column, L["Scan"], y, AH.SCAN_H)
   c.scan = W.Button(c, L["Scan the auction house"], function() AH.StartScan() end, 150)
   c.scan:SetPoint("TOPLEFT", 0, -20)
-  c.last = T.Text(c:CreateFontString(nil, "OVERLAY"), "small", "text2")
+  c.last = ns.EndAt(T.Text(c:CreateFontString(nil, "OVERLAY"), "small", "text2"), c, 0)
   c.last:SetPoint("TOPLEFT", 0, -50)
   c:SetScript("OnShow", ns.Guard("show scan card", function() AH.PaintScan() end))
   AH.scanCard = c

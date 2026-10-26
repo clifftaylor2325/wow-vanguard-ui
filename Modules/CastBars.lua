@@ -218,6 +218,10 @@ end
 
 -- Building ---------------------------------------------------------------------------
 
+-- How far the text sits in from a bar's ends, and the room the seconds left keep at its right (units): a long
+-- spell name (a translation runs longer) stops short of it, cut on one line, instead of running under it.
+CB.TEXT_INSET, CB.TIME_ROOM = 4, 30
+
 -- The icon to the left, the spell name on the bar and the seconds left at its right.
 local function addParts(bar, h)
   bar.icon = T.Snap(T.Crop(bar:CreateTexture(nil, "ARTWORK")))
@@ -225,9 +229,10 @@ local function addParts(bar, h)
   bar.icon:SetPoint("RIGHT", bar, "LEFT", -3, 0)
   local role = h >= 18 and "label" or "small"
   bar.text = T.Text(bar:CreateFontString(nil, "OVERLAY"), role)
-  bar.text:SetPoint("LEFT", 4, 0)
+  bar.text:SetPoint("LEFT", CB.TEXT_INSET, 0)
+  ns.EndAt(bar.text, bar, CB.TEXT_INSET + CB.TIME_ROOM)
   bar.time = T.Text(bar:CreateFontString(nil, "OVERLAY"), role, "text2")
-  bar.time:SetPoint("RIGHT", -4, 0)
+  bar.time:SetPoint("RIGHT", -CB.TEXT_INSET, 0)
 end
 
 -- A soft spark riding the fill's edge, and the latency shade at the bar's end.

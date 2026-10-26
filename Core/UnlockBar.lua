@@ -65,10 +65,11 @@ local function addHint()
   bar.text:SetText(BAR.hint)
 end
 
--- Makes the bar as wide as its note and buttons need, at the text size in use now.
+-- Makes the bar as wide as its note and buttons need, at the text size in use now (a button is wider than
+-- its BAR width when its label needs it).
 local function fitBar()
   local u = BAR
-  bar:SetSize(u.pad + bar.text:GetStringWidth() + u.pad + u.exit + u.gap + u.save + u.edge, u.height)
+  bar:SetSize(u.pad + bar.text:GetStringWidth() + u.pad + bar.exit:GetWidth() + u.gap + bar.save:GetWidth() + u.edge, u.height)
 end
 
 -- The bar, built once: a raised panel at the top center, over the handles, with its note and buttons.

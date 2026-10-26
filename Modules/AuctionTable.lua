@@ -22,6 +22,10 @@ local AH = ns.GetModule("AuctionHelper")
 -- The header line's height, the most columns a table has beside the name, and the room between two
 -- columns (the theme's gutter between columns, T.SPACE.col).
 AH.TABLE_HEAD, AH.TABLE_CELLS, AH.TABLE_GAP = 16, 4, T.SPACE.col
+-- The sort arrow's size, and the room a heading keeps beside its text: the inset at the column's side, the
+-- arrow and the gap before it.
+AH.TABLE_ARROW = 10
+AH.TABLE_HEAD_ROOM = 2 + 2 + AH.TABLE_ARROW
 
 -- How many rows fit in h units with the header (one at least).
 function AH.TableRows(h)
@@ -30,11 +34,22 @@ end
 
 -- Columns --------------------------------------------------------------------------------------
 
+-- Each column's width: its own, or wider when its heading needs more (a translation often runs longer than the
+-- English), with the sort arrow's room beside it.
+local function widthsOf(t, columns)
+  local widths = {}
+  for i, col in ipairs(columns) do
+    t.heads[i].text:SetText(col.title)
+    widths[i] = math.max(col.width, math.ceil(t.heads[i].text:GetStringWidth()) + AH.TABLE_HEAD_ROOM)
+  end
+  return widths
+end
+
 -- Where the columns sit: each one's right edge from the table's right (the last at the edge, each
 -- before it further in, AH.TABLE_GAP apart), and where the name column ends.
-local function place(columns)
+local function place(widths)
   local xs, x = {}, 0
-  for i = #columns, 1, -1 do xs[i], x = x, x + columns[i].width + AH.TABLE_GAP end
+  for i = #widths, 1, -1 do xs[i], x = x, x + widths[i] + AH.TABLE_GAP end
   return xs, x
 end
 
@@ -44,18 +59,17 @@ local function placeHead(t, i, col, x)
   h.key, h.side = col.key, col.side
   h:ClearAllPoints()
   h:SetPoint("TOPRIGHT", t, "TOPRIGHT", -x, 0)
-  h:SetWidth(col.width)
+  h:SetWidth(t.widths[i])
   h.text:ClearAllPoints()
   h.text:SetPoint(col.side, col.side == "RIGHT" and -2 or 2, 0)
-  h.text:SetText(col.title)
   h:Show()
 end
 
 -- A row's cell i at its column: in the column's text role and color, kept to its side.
-local function placeCell(r, i, col, x)
-  local fs = T.Text(r.cells[i], col.role or "small", col.color or "text")
+local function placeCell(t, r, i, col)
+  local fs, x = T.Text(r.cells[i], col.role or "small", col.color or "text"), t.xs[i]
   fs:ClearAllPoints()
-  if col.side == "RIGHT" then fs:SetPoint("RIGHT", r, "RIGHT", -(x + 2), 0) else fs:SetPoint("LEFT", r, "RIGHT", 2 - x - col.width, 0) end
+  if col.side == "RIGHT" then fs:SetPoint("RIGHT", r, "RIGHT", -(x + 2), 0) else fs:SetPoint("LEFT", r, "RIGHT", 2 - x - t.widths[i], 0) end
   r.cells[col.key] = fs
   fs:Show()
 end
@@ -66,7 +80,7 @@ local function placeCells(t, r)
   for k in pairs(r.cells) do if type(k) == "string" then r.cells[k] = nil end end
   for i = 1, AH.TABLE_CELLS do
     local col = t.columns[i]
-    if col then placeCell(r, i, col, t.xs[i]) else r.cells[i]:Hide() r.cells[i]:SetText("") end
+    if col then placeCell(t, r, i, col) else r.cells[i]:Hide() r.cells[i]:SetText("") end
   end
   r.name:SetPoint("RIGHT", r, "RIGHT", -(t.nameEnd + T.SPACE.tight), 0)
 end
@@ -97,8 +111,8 @@ end
 -- LEFT), role, color } (and name, the name column's heading, when its rows name an item): the
 -- headings and every row's cells laid out again, nothing sorted.
 local function setColumns(t, columns)
-  t.columns = columns
-  t.xs, t.nameEnd = place(columns)
+  t.columns, t.widths = columns, widthsOf(t, columns)
+  t.xs, t.nameEnd = place(t.widths)
   t.nameHead:SetText(columns.name or "")
   for i = 1, AH.TABLE_CELLS do
     if columns[i] then placeHead(t, i, columns[i], t.xs[i]) else t.heads[i]:Hide() t.heads[i].key = nil end
@@ -280,7 +294,7 @@ local function parts(t, n)
   for i = 1, AH.TABLE_CELLS do t.heads[i] = head(t) end
   t.nameHead = T.Text(t:CreateFontString(nil, "OVERLAY"), "small", "text2")
   t.nameHead:SetPoint("TOPLEFT", T.SPACE.tight, -2)
-  t.arrow = W.IconTexture(t, "Down", 10, "accent")
+  t.arrow = W.IconTexture(t, "Down", AH.TABLE_ARROW, "accent")
   statusLine(t)
   for i = 1, n do t.rows[i] = row(t, i) end
 end

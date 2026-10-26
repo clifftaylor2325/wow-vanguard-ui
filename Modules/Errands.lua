@@ -468,14 +468,17 @@ function ER.PollFlight()
   if now - f.picked > ER.TAKEOFF_WAIT then ER.flight = nil end
 end
 
--- A movable timer bar at the travel spot, hidden until a route: the frame's name, its mover's key and label.
+-- A movable timer bar at the travel spot, hidden until a route: the frame's name, its mover's key and label. Its
+-- text is centred on one line inside the bar, cut short when a long destination's name runs past it.
 function ER.TimerBar(frameName, moverKey, label)
   local bar = T.BarColor(T.StyleBar(CreateFrame("StatusBar", frameName, UIParent)), "accent")
   T.HudPanel(bar)
   bar:SetSize(ER.BAR_W, ER.BAR_H)
   ns.Mover(bar, moverKey, label, ER.TRAVEL_SPOT)
   bar.text = T.Text(bar:CreateFontString(nil, "OVERLAY"), "barSmall")
-  bar.text:SetPoint("CENTER")
+  bar.text:SetPoint("LEFT", T.SPACE.tight, 0)
+  bar.text:SetPoint("RIGHT", -T.SPACE.tight, 0)
+  bar.text:SetWordWrap(false)
   bar:Hide()
   return bar
 end
