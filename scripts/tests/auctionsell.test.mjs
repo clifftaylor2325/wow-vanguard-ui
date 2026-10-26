@@ -578,17 +578,40 @@ it("the scan button holds its countdown in Russian, French and Portuguese", () =
   }
 });
 
-it("the Your auctions toolbar holds Check undercuts and Cancel next undercut in real translations, clear of the summary (P10-5)", () => {
-  for (const locale of ["frFR", "deDE", "ruRU", "itIT", "esES", "ptBR"]) {
-    const addon = postingTab(locale);
-    expect(addon.eval(`return ${OWNED_CARD}.cancelNext:GetLeft() ~= nil`), `${locale}: before a check (no line yet) Cancel next undercut still has its place`).toBe(true);
-    addon.eval(`${HELPER}.checked = true ${HELPER}.PaintOwned()`);
-    expect(addon.eval(`return ${OWNED_CARD}.summary:GetText()`), `${locale}: the line beside the heading is up`).not.toBe("");
+// The Posting tab under a locale, one auction up (undercut when asked) and checked: the Your auctions card.
+function checkedOwned(locale, undercut) {
+  const addon = postingTab(locale);
+  addon.eval(`${HELPER}.checked = true ${HELPER}.owned = { { id = 1, status = "up", unit = 10, key = { itemID = 10940 }, undercut = ${undercut} } } ${HELPER}.PaintOwned()`);
+  return addon;
+}
+
+it("the Your auctions toolbar holds Check undercuts and Cancel next undercut, and the summary shows in the heading, in real translations (P10-5, B10-1)", () => {
+  for (const locale of ["enUS", "frFR", "ptBR", "deDE", "ruRU"]) {
+    const addon = checkedOwned(locale, true);
+    const count = addon.eval(`return ${OWNED_CARD}.count:GetText()`);
+    expect(count, `${locale}: the heading says how many are listed, then the summary`).toMatch(/^1 · \S/);
     const labels = addon.eval(`local c = ${OWNED_CARD} return { c.check.text:GetText(), c.cancelNext.text:GetText() }`);
-    const cut = addon.textFit(OWNED_CARD).filter((f) => labels.includes(f.text));
-    expect(cut, `${locale}: neither label is cut`).toEqual([]);
-    const room = addon.eval(`local c = ${OWNED_CARD} return { c.summary:GetRight() <= c.cancelNext:GetLeft(), c.cancelNext:GetRight() <= c.check:GetLeft(), c.check:GetRight() <= c:GetRight() }`);
-    expect(room, `${locale}: summary, Cancel next, Check undercuts in a row inside the card`).toEqual([true, true, true]);
+    expect(addon.textFit(OWNED_CARD).filter((f) => labels.includes(f.text)), `${locale}: neither button label is cut`).toEqual([]);
+    const room = addon.eval(`local c = ${OWNED_CARD} return { c.title:GetRight() < c.count:GetLeft(), c.count:GetWidth() > 1, c.count:GetRight() <= c.cancelNext:GetLeft(), c.cancelNext:GetRight() <= c.check:GetLeft(), c.check:GetRight() <= c:GetRight() }`);
+    expect(room, `${locale}: heading, count, Cancel next, Check undercuts in a row inside the card, the count with room to be drawn`).toEqual([true, true, true, true, true]);
+    const other = addon.textFit(OWNED_CARD).filter((f) => f.text === count && f.kind !== "cut");
+    expect(other, `${locale}: the count only ever ends in an ellipsis, never runs over its neighbours`).toEqual([]);
+  }
+});
+
+it("the count in the Your auctions heading is empty before a check, and shows in full where there is room (B10-1)", () => {
+  const addon = postingTab("enUS");
+  expect(addon.eval(`return ${OWNED_CARD}.count:GetText()`), "nothing listed yet: no count").toBe("");
+  addon.eval(`${HELPER}.checked = true ${HELPER}.owned = { { id = 1, status = "up", unit = 10, key = { itemID = 10940 }, undercut = true } } ${HELPER}.PaintOwned()`);
+  expect(addon.textFit(OWNED_CARD).filter((f) => f.text.startsWith("1 · ")), "the short summary fits whole beside the buttons").toEqual([]);
+});
+
+it("the Your auctions toolbar buttons keep their labels with the long summary too (B10-1)", () => {
+  for (const locale of ["frFR", "ptBR"]) {
+    const addon = checkedOwned(locale, false);
+    const labels = addon.eval(`local c = ${OWNED_CARD} return { c.check.text:GetText(), c.cancelNext.text:GetText() }`);
+    expect(addon.textFit(OWNED_CARD).filter((f) => labels.includes(f.text)), `${locale}: neither button label is cut`).toEqual([]);
+    expect(addon.eval(`return ${OWNED_CARD}.count:GetText()`), `${locale}: the summary is in the heading`).toMatch(/^1 · \S/);
   }
 });
 

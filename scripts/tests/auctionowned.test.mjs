@@ -174,8 +174,13 @@ it("your auctions' line, while there are none to list, is an empty-state line (l
   expect(ownedTier(addon)[0], "an auction listed: nothing to say").toBe("");
 });
 const CANCEL_NEXT = `${OWNED_CARD}.cancelNext`;
-// The line under your auctions, and whether Cancel next undercut works.
-const nextState = (addon) => addon.eval(`local c = ${OWNED_CARD} return { c.summary:GetText(), c.cancelNext:IsEnabled() }`);
+// The heading's count less the number of auctions in front (B10-1): the summary of the check, and whether Cancel next undercut works.
+const nextState = (addon) => {
+  const [text, enabled] = addon.eval(`local c = ${OWNED_CARD} return { c.count:GetText(), c.cancelNext:IsEnabled() }`);
+  return [text.replace(/^\d+( · )?/, ""), enabled];
+};
+// The Your auctions heading's count, as drawn.
+const countText = (addon) => addon.eval(`return ${OWNED_CARD}.count:GetText()`);
 // The tooltip's lines.
 const tipLines = (addon) => addon.eval("local out = {} for i, l in ipairs(GameTooltip.__lines) do out[i] = l.text end return out");
 it("Cancel next undercut cancels one undercut auction per click, then says none are left", () => {
@@ -207,6 +212,23 @@ it("Cancel next undercut cancels one undercut auction per click, then says none 
   expect(restrictedLog(addon).length, "a click on it disabled, timers and every auction house event: nothing more").toBe(2);
   expect([ownedRow(addon, 1)[1], ownedRow(addon, 3).slice(1), nextState(addon)], "the blade and the dust at 1s 10c are left (and the sold blade)").toEqual(["TEST-ONLY Blade", ["Strange Dust", "1s 10c", false], ["none undercut", false]]);
   expect(addon.eval("local n = 0 for _, c in ipairs(__wfgWorld.ah.restricted) do if c.path:find('AuctionOwned.lua') then n = n + 1 end end return n"), "both made by the button").toBe(2);
+});
+it("the heading's count says how many auctions are listed, then how many are undercut (B10-1)", () => {
+  const addon = atAuctionHouse(BAGS + OWNED + MORE_DUST);
+  expect(countText(addon), "before a check nothing is listed yet, so the heading has no count").toBe("");
+  addon.click(`${OWNED_CARD}.check`);
+  expect(countText(addon), "asking for your auctions: none listed yet").toBe("checking...");
+  addon.fire("OWNED_AUCTIONS_UPDATED");
+  addon.advance(1);
+  addon.fire("COMMODITY_SEARCH_RESULTS_UPDATED", 10940);
+  addon.advance(1);
+  addon.fire("ITEM_SEARCH_RESULTS_UPDATED", { itemID: 9999 });
+  expect(countText(addon), "checked").toMatch(/^\d+ · 2 undercut$/);
+  addon.eval("__wfgWorld.ah.owned = {}");
+  addon.click(`${OWNED_CARD}.check`);
+  addon.advance(1);
+  addon.fire("OWNED_AUCTIONS_UPDATED");
+  expect(countText(addon), "no auctions: only the summary").toBe("none undercut");
 });
 it("Cancel next undercut offers an auction again once its cancel did not go through", () => {
   const addon = atAuctionHouse(BAGS + OWNED + MORE_DUST);

@@ -2329,6 +2329,7 @@ L["{count} talent points to spend; your plan's next pick is {talent} (/vg talent
 L["{count} trainer service(s) remembered for your class. /vg trainers next lists the next levels; clear forgets them."] = "{count} servicio(s) de instructor recordado(s) para tu clase. /vg trainers next muestra los próximos niveles; clear los olvida."
 L["{count} undercut"] = "{count} rebajadas"
 L["{count} unreachable"] = "{count} inalcanzables"
+L["{count} · {note}"] = "{count} · {note}"
 L["{count}d"] = "{count} d"
 L["{count}h"] = "{count} h"
 L["{days}d {hours}h"] = "{days} d {hours} h"

@@ -318,7 +318,7 @@ local function paintLater()
   C_Timer.After(AH.SEND_GAP, ns.Guard("timer repaint owned", function() AH.paintWait = false AH.PaintOwned() end))
 end
 
--- The toolbar's line: nothing before a check, "checking..." while one runs, then how many are undercut.
+-- The summary of a check: nothing before one, "checking..." while one runs, then how many are undercut.
 local function summaryText(checked, busy, undercutCount)
   if not checked then return "" end
   if busy then return L["checking..."] end
@@ -326,21 +326,20 @@ local function summaryText(checked, busy, undercutCount)
   return L["none undercut"]
 end
 
--- Sets the toolbar's line and sizes it to its text, at least 1 wide (and as high as the buttons beside it): Cancel
--- next undercut hangs from its right edge, and the client gives an empty, zero-sized font string no edge, so the
--- button would not be drawn.
-local function setSummary(c, text)
-  c.summary:SetText(text)
-  c.summary:SetHeight(T.CONTROL_H)
-  c.summary:SetWidth(math.max(1, math.ceil(c.summary:GetStringWidth())))
+-- The heading's count: how many auctions are listed, then the check's summary (summaryText) once you've
+-- checked: "12 · 1 undercut".
+local function countText(total, summary)
+  if total == 0 then return summary end
+  if summary == "" then return tostring(total) end
+  return ns.Format(L["{count} · {note}"], { count = total, note = summary })
 end
 
--- The toolbar's line once you've checked (see summaryText), and
+-- The heading's count once you've checked (see countText), and
 -- Cancel next undercut, which works while an undercut auction is left to cancel.
 local function paintNext(c)
   local busy, n, nextOne = checking(), #undercuts(), AH.NextUndercut()
   if busy then paintLater() end
-  setSummary(c, summaryText(AH.checked, busy, n))
+  c.count:SetText(countText(#AH.owned, summaryText(AH.checked, busy, n)))
   if nextOne then c.cancelNext:Enable() else c.cancelNext:Disable() end
   T.Color(c.cancelNext.text, nextOne and "text" or "disabled")
 end
@@ -377,25 +376,35 @@ local function ownedButtons(r)
   for _, b in ipairs({ r.cancel, r.relist }) do b:SetHeight(T.CONTROL_H) b:SetPoint("RIGHT", 0, 0) end
 end
 
--- The card's toolbar: Check undercuts at the right (as wide as its label needs), the line beside the heading, and
--- Cancel next undercut (what it cancels next and the cost on hover) taking the room between them, its label fitted.
+-- The heading's count fills the room between the heading and Cancel next undercut, fitted to it on one line (a long
+-- translation shrinks, then ends in "..."): the buttons beside it keep their whole labels.
+local function countRoom(c)
+  local room = CreateFrame("Frame", nil, c.box)
+  room:SetHeight(T.CONTROL_H)
+  room:SetPoint("LEFT", c.title, "RIGHT", T.SPACE.gap, 0)
+  room:SetPoint("RIGHT", c.cancelNext, "LEFT", -T.SPACE.gap, 0)
+  c.count:ClearAllPoints()
+  c.count:SetHeight(T.CONTROL_H)
+  c.count:SetPoint("LEFT", room, "LEFT")
+  c.count:SetPoint("RIGHT", room, "RIGHT")
+  T.FitText(ns.SingleLine(c.count), room, 0)
+end
+
+-- The card's toolbar: Check undercuts at the right and Cancel next undercut (what it cancels next and the cost on
+-- hover) before it, each as wide as its label needs; the heading's count (c.count) takes what room is left.
 local function toolbar(c)
   c.check = ns.WidenToLabel(W.Button(c, L["Check undercuts"], function() AH.CheckUndercuts() end, 120))
   c.check:SetHeight(T.CONTROL_H)
   c.check:SetPoint("TOPRIGHT", 0, 2)
-  c.summary = T.Text(c:CreateFontString(nil, "OVERLAY"), "small", "text2")
-  c.summary:SetWordWrap(false)
-  c.summary:SetPoint("LEFT", c.title, "RIGHT", T.SPACE.gap, 0)
-  setSummary(c, "")
-  c.cancelNext = costButton(c, L["Cancel next undercut"], function() AH.CancelNext() end, 140, nextTip)
+  c.cancelNext = ns.WidenToLabel(costButton(c, L["Cancel next undercut"], function() AH.CancelNext() end, 140, nextTip))
   c.cancelNext:SetPoint("RIGHT", c.check, "LEFT", -T.SPACE.tight, 0)
-  c.cancelNext:SetPoint("LEFT", c.summary, "RIGHT", T.SPACE.gap, 0)
+  countRoom(c)
 end
 
 -- The Your auctions card on a column, from y (h tall): the toolbar, and the rows as a table
 -- (the undercut flag in red, each row's Cancel or Relist at its right; the wheel scrolls).
 function AH.BuildOwned(column, y, h)
-  local c = AH.Card(column, L["Your auctions"], y, h)
+  local c = AH.Card(column, L["Your auctions"], y, h, "")
   AH.ownedCard = c
   toolbar(c)
   c.table = AH.Table(c, AH.OWNED_COLUMNS, AH.OWNED_ROWS, { flag = "bad", paintRow = paintOwnedRow })
