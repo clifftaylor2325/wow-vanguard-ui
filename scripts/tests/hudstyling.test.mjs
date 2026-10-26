@@ -118,3 +118,19 @@ it("P6-5: a long broker feed stays on one line inside the strip", () => {
   expect(text.top, "the text stays under the slot's top edge").toBeLessThanOrEqual(slot.top);
   expect(text.bottom, "and over its bottom edge").toBeGreaterThanOrEqual(slot.bottom);
 });
+
+// ActionBars settings text with bars 4 and 5 on, at a button size.
+const rightBars = (size) => profile(`ActionBars = { size = ${size}, bars = { [4] = { enabled = true, visibility = "always", buttons = 12, perRow = 1 }, [5] = { enabled = true, visibility = "always", buttons = 12, perRow = 1 } } }`);
+
+it("P6-2: bar 5 keeps clear of bar 4 at big button sizes and when bar 4 gets wider", () => {
+  const gap = (addon) => addon.eval("return Vanguard_Bar4:GetLeft() - Vanguard_Bar5:GetRight()");
+  const big = loggedIn("", { savedVariables: rightBars(48) });
+  expect(gap(big), "at size 48 bar 5 ends before bar 4 starts").toBeGreaterThanOrEqual(0);
+  const dflt = loggedIn("", { savedVariables: rightBars(38) });
+  expect(gap(dflt), "at the default size they sit 4 units apart, as before").toBeCloseTo(4, 0);
+  dflt.eval('local AB = ns.GetModule("ActionBars") AB.settings.bars[4].perRow = 6 AB.Layout(4)');
+  expect(gap(dflt), "two columns on bar 4 push bar 5 over, live").toBeCloseTo(4, 0);
+  dflt.eval("ns.SetMoverPoint('bar5', 'RIGHT', 'RIGHT', -300, 0)");
+  dflt.eval('local AB = ns.GetModule("ActionBars") AB.settings.bars[4].perRow = 12 AB.Layout(4)');
+  expect(dflt.eval("return Vanguard_Bar5.__points.RIGHT.x"), "a spot you dragged bar 5 to stays").toBe(-300);
+});
