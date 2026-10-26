@@ -146,11 +146,13 @@ local function titleText(f, text)
 end
 
 -- Puts text in the text dialog's box and shows its start (the thumb follows the new height as the client grows it).
--- The errors window's Clear goes, so a window opened over it shows only its own buttons.
+-- The errors window's Clear goes and its widened primary is back to the usual width, so a window opened over
+-- it shows only its own buttons (the find box has no primary).
 local function boxText(f, text)
   f.edit:SetText(text)
   f.view:ScrollTo(0)
   if f.clear then f.clear:Hide() end
+  if f.primary then f.primary:SetWidth(BUTTON_W) end
 end
 
 -- The text dialog's buttons: the primary at the bottom right and, left of it, the one that closes the box.
@@ -221,6 +223,7 @@ function ns.ShowErrors(title, text)
   ns.ShowText(title, text)
   local f = box
   f.primary.text:SetText(L["Report a bug"])
+  ns.WidenToLabel(f.primary)
   f.primary:SetScript("OnClick", ns.Guard("click report a bug", function() f:Hide() ns.Feedback.Open("bug") end))
   f.primary:Show()
   clearButton(f):Show()

@@ -152,3 +152,15 @@ it("text fits: the town, quest, auction and group windows of the preview's scene
   }
   expectFits("preview scenes' windows", findings);
 });
+
+it("text fits: the errors window's Report a bug button is as wide as its label, and Import gets the usual width back (B1-6)", () => {
+  const addon = createAddon({ savedVariables: SETUP_DONE, textFit: true, client: 'GetLocale = function() return "ruRU" end' });
+  addon.login();
+  addon.eval(`ns.Theme.Settings().textScale = 1.3 ns.Theme.Refresh() ns.ShowErrors("Errors", "none")`);
+  const label = addon.eval('return ns.L["Report a bug"]');
+  const cut = addon.textFit("Vanguard_TextDialog").filter((finding) => finding.text === label);
+  expect(cut, "the label of Report a bug is whole at Text size 130%").toEqual([]);
+  expect(addon.eval("return Vanguard_TextDialog.primary:GetWidth()"), "the button grew past the usual 120").toBeGreaterThan(120);
+  addon.eval(`ns.AskText("Import", function() end)`);
+  expect(addon.eval("return Vanguard_TextDialog.primary:GetWidth()"), "the next use of the box has the usual width").toBe(120);
+});
