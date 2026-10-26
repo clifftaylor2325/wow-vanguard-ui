@@ -66,10 +66,11 @@ end
 -- The first-time size of the main chat window on a screen `width` units wide (UIParent's by
 -- default): the full height and as wide as the room left of the player frame allows, up to the
 -- widest (524 at 1920 units wide, 416 at 1707, a 1080p screen at setup's 80 % scale), or the small
--- size on a narrow screen.
+-- size on a narrow screen or where the room left of the player frame is shorter than the small width
+-- (1600 to 1615 units wide), so the panel never touches the frame.
 function CH.DefaultSize(width)
   width = width or ns.PlainNumber(UIParent:GetWidth()) or CH.SMALL_WIDTH
-  if width < CH.SMALL_WIDTH then return CH.SMALL[1], CH.SMALL[2] end
+  if width < CH.SMALL_WIDTH or roomWidth(width) < CH.SMALL[1] then return CH.SMALL[1], CH.SMALL[2] end
   return math.max(CH.SMALL[1], math.min(CH.SPOT[3], roomWidth(width))), CH.SPOT[4]
 end
 

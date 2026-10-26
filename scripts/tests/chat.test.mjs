@@ -628,7 +628,7 @@ it("chat window size: a window left at an earlier first size is set to the new o
   expect(size(), "a size the player set stays").toEqual([600, 300]);
   addon.eval("ns.GetModule('Chat').settings.windowScale = 1.5 ns.GetModule('Chat').ApplySize()");
   expect(size(), "Larger is one and a half times the default").toEqual([786, 300]);
-  expect(addon.eval("local CH = ns.GetModule('Chat') return { { CH.DefaultSize(1707) }, { CH.DefaultSize(1365) }, { CH.DefaultSize(2560) }, { CH.DefaultSize(1600) } }"), "the first size fills the room left of the player frame, up to 524: 416 on a 1080p screen at setup's 80 % scale; under 1600 units it tucks under the frame at 372 x 144").toEqual([[416, 200], [372, 144], [524, 200], [372, 200]]);
+  expect(addon.eval("local CH = ns.GetModule('Chat') return { { CH.DefaultSize(1707) }, { CH.DefaultSize(1365) }, { CH.DefaultSize(2560) }, { CH.DefaultSize(1600) }, { CH.DefaultSize(1615) }, { CH.DefaultSize(1616) } }"), "the first size fills the room left of the player frame, up to 524: 416 on a 1080p screen at setup's 80 % scale; under 1616 units (where the room left of the player frame is short of 372) it tucks under the frame at 372 x 144").toEqual([[416, 200], [372, 144], [524, 200], [372, 144], [372, 144], [372, 200]]);
   addon.eval("ns.GetModule('Chat').settings.windowScale = 'x' ns.GetModule('Chat').ApplySize() ChatFrame1 = nil ns.GetModule('Chat').ApplySize()");
 });
 it("chat is a mover: placed once, sized once, kept where the player put it", () => {
