@@ -2450,6 +2450,12 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: the grid starts right of the roll tracker (its left edge 148 units in from the screen's edge) and ends on the screen; on a screen 1296 units wide or more it is where it always was, left of the middle. The tile's status (Offline, Dead, Ghost or the missing health, such as -12000) sits at the right of the name row on one line; it is not cut on English text, and a longer translation ends in "..." rather than wrapping down into the buff icons. [Needs in-game check: all of it, and how "Offline" at 40 players looks against the name.]
 - If it fails, paste: a screenshot of the grid and `/vg frame raid deep`.
 
+### 33.51 Vanguard meter on a narrow screen
+
+- Do: on a screen narrower than about 1840 UI units (1920 x 1080 at the game's UI scale 100% is 1366 units wide; a 4:3 monitor is narrower), switch the meter on (`/vg meter on`) with the Action bars on and the game's own meter off, then fight a target dummy or look at the empty panel.
+- Expect: the panel sits at the bottom right, 16 in from the right edge and above the bags and menu bar, where the game's own meter sits; it does not cover bars 1 to 3. On a wider screen (a 2560 x 1440 monitor at 100%) it sits where it always did, left of the bags and menu bar. [Needs in-game check: the panel's top against the tooltip corner and the quest tracker on a 1365-wide screen.]
+- If it fails, paste: a screenshot of the corner and `/vg frame Vanguard_Meter`.
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ## When you are done

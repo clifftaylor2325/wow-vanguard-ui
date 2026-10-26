@@ -391,13 +391,25 @@ local function addChrome(f)
   addEmpty(f)
 end
 
--- The movable panel, left of the bags and menu bar (about 345 wide, 16 in from the edge) so the tooltip corner above them stays clear. Built when
+-- Where the panel starts: just left of the bags and menu bar, when the canvas is wide enough for that to clear the
+-- three action bars (half their width, 239, past the screen's middle, and a gap); on a narrower canvas it takes
+-- the game meter's spot instead (16 in from the right edge, above the bags and menu bar), which this panel replaces in practice.
+MT.SPOT, MT.SPOT_NARROW, MT.BARS_HALF = { "BOTTOMRIGHT", "BOTTOMRIGHT", -372, 14 }, { "BOTTOMRIGHT", "BOTTOMRIGHT", -16, 118 }, 239
+
+-- The default spot on a canvas `width` wide (the wide spot when the canvas size is not known).
+function MT.SpotFor(width)
+  if type(width) ~= "number" or width <= 0 then return MT.SPOT end
+  local left = width + MT.SPOT[3] - MT.WIDTH
+  return left >= width / 2 + MT.BARS_HALF + T.SPACE.gap and MT.SPOT or MT.SPOT_NARROW
+end
+
+-- The movable panel, placed by MT.SpotFor so it clears the action bars. Built when
 -- first needed, so an unused meter has no mover.
 function build()
   local f = T.HudPanel(CreateFrame("Frame", "Vanguard_Meter", UIParent))
   MT.frame = f
   f:SetSize(MT.WIDTH, MT.HEAD)
-  ns.Mover(f, "meter", L["Vanguard meter"], { "BOTTOMRIGHT", "BOTTOMRIGHT", -372, 14 })
+  ns.Mover(f, "meter", L["Vanguard meter"], MT.SpotFor(UIParent:GetWidth()))
   addChrome(f)
   f.rows = {}
   for i = 1, MT.MAXROWS do f.rows[i] = clickable(addRow(f, i)) end
