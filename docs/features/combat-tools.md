@@ -4,7 +4,7 @@ What Vanguard does here, in full. This page is part of the behaviour spec; the [
 
 ## Boss mod docks
 
-Two spots for boss mods' timer bars, Boss timers (the normal bars, right of center above the action bars; on a screen under 1365 UI units wide, kept left of the quest tracker and on the screen) and Boss timers, soon (the big bars a timer moves to as it runs out, top center), shown as handles in unlock mode so you can move them with the rest of the layout. `/vg dock`, or the button under Combat tools → Boss mods (there while one is loaded), lines Deadly Boss Mods' bars up with them through DBM's own settings; for BigWigs, which has no such setting, chat says where the spots are so you can drag its anchors there. Nothing moves on its own, and nothing moves in combat.
+Two spots for boss mods' timer bars, Boss timers (the normal bars, right of center above the action bars; on a screen under 1365 UI units wide, kept left of the quest tracker and on the screen) and Boss timers, soon (the big bars a timer moves to as it runs out, top center), shown as handles in unlock mode so you can move them with the rest of the layout. `/vg dock`, or the button under Combat tools → Boss mods (there while one is loaded), lines Deadly Boss Mods' bars up with them through DBM's own settings; for BigWigs, which has no such setting, chat says where the spots are so you can drag its anchors there. Nothing moves on its own, and nothing moves in combat. On a canvas under 768 tall the two docks share some room at their default spots (the normal dock reaches into the "soon" dock's column); drag one of them with `/vg unlock` if that bothers you.
 
 ## Fight history
 
