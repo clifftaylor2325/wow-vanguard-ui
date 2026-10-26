@@ -2540,6 +2540,12 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: Copy and Find stay in the bar's right end on every tab, the tabs end before them, and the Copy window is titled with the shown tab's name ("Copy Trade (Ctrl+C)"). [Needs in-game check: that the tiles show on the other tabs' bars and are not drawn under them.]
 - If it fails, paste: a screenshot of the bar on the Combat Log tab, and `/vg errors`.
 
+### 33.79 Expanded quest tracker over the bags and menu strip
+
+- Do: watch seven or more quests (two or more objectives each), click the tracker's "+N more" to expand it, with the menu strip (bags and micro menu) shown, at 1365x768 and at 1920x1080; also on a window about 835 wide.
+- Expect: the last quest and the "Show fewer" button end above the menu strip's top (and above action bars 1 to 3 on the narrow window), none drawn under the bags or the micro buttons, and clicking "Show fewer" works; hide the strip (Menu strip off) and the list runs lower again. [Needs in-game check: the real micro menu's width and that no menu button covers the "Show fewer" line.]
+- If it fails, paste: a screenshot of the tracker and strip, and `/vg errors`.
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ## When you are done

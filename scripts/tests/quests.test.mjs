@@ -1,7 +1,7 @@
 // quests: Vanguard's real Lua in the TEST-ONLY headless client (scripts/lib/lua-harness.mjs).
 
 import { expect, it } from "vitest";
-import { CLICK_LUA, DATA_ENV, PANEL_OPENERS, PLATE_ENV, QUEST_ENV, TIDY_ENV, UI_ENV, UNITS_ENV, borderOf, calls, chatHas, isTok, key, loggedIn, px, setCombat, WINDOWS_ENV } from "./helpers.mjs";
+import { CLICK_LUA, DATA_ENV, strips, PANEL_OPENERS, PLATE_ENV, QUEST_ENV, TIDY_ENV, UI_ENV, UNITS_ENV, borderOf, calls, chatHas, isTok, key, loggedIn, px, setCombat, WINDOWS_ENV } from "./helpers.mjs";
 
 // The theme's layout numbers the quest windows are built on: { inset, pad, col, gap, tight, buttonH, rowH, watermark, wash }.
 const layout = (addon) => addon.eval(`local T = ns.Theme
@@ -667,6 +667,18 @@ it("quest tracker: expanded on a short screen, the list stops above the screen's
   expect(t.blocks.length, "fewer than all nine fit under the spot").toBeLessThan(9);
   expect(t.more, "with the way back").toMatch(/^Show fewer/);
   expect(addon.frame("Vanguard_QuestTrackerFrame.moreBtn").rect.bottom, "the Show fewer button is on the screen").toBeGreaterThanOrEqual(0);
+});
+it("quest tracker: expanded, the list stops above the menu strip (the bags and micro menu) and Show fewer is not under it", () => {
+  const manyQuests = `for i = 1, 20 do local id = 90070 + i __quests[id] = { index = 10 + i, title = "TEST-ONLY Many " .. i, level = 5, dist = i, objectives = { { text = "a" }, { text = "b" } } } __watches[#__watches + 1] = id end`;
+  const addon = strips(UNITS_ENV + TRACK_ENV + "__wfgStub.setScreen(1365, 768)", { savedVariables: "VanguardDB.profiles = { Default = { QuestTracker = { expanded = true } } }" });
+  addon.eval(manyQuests);
+  addon.fire("QUEST_WATCH_LIST_CHANGED");
+  addon.update(0);
+  const strip = addon.frame("Vanguard_MenuStrip").rect;
+  const more = addon.frame("Vanguard_QuestTrackerFrame.moreBtn").rect;
+  expect(more.bottom, "the Show fewer button is above the strip's top").toBeGreaterThanOrEqual(strip.top);
+  expect(tracker(addon).more, "with some quests still shown and the way back").toMatch(/^Show fewer/);
+  expect(addon.eval("local QT = ns.GetModule('QuestTracker') Vanguard_MenuStrip:Hide() QT.Refresh() return Vanguard_QuestTrackerFrame.moreBtn:GetBottom()"), "with the strip hidden the stack is allowed to run lower").toBeLessThan(more.bottom);
 });
 it("quest tracker: the Quests header is a collapsible section header with the count after it and the brass rule under it; \"+n more\" is a status line", () => {
   const addon = loggedIn(TRACK_ENV);
