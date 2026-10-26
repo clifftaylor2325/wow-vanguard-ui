@@ -108,6 +108,17 @@ it("text fits: the key-capture prompt on a French client is not cut short (P1-4)
   expect(addon.textFit("TEST_KeyCapture"), "the prompt fits its 220-wide button").toEqual([]);
 });
 
+it("text fits: the key-capture prompt is not cut short in any language at the largest Text size (B1-5)", () => {
+  for (const locale of ["deDE", "esES", "esMX", "frFR", "itIT", "ptBR", "ruRU"]) {
+    const addon = createAddon({ savedVariables: SETUP_DONE, textFit: true, client: `GetLocale = function() return "${locale}" end` });
+    addon.login();
+    addon.eval(`ns.Theme.Settings().textScale = 1.3 ns.Theme.Refresh()
+      TEST_KeyCapture = ns.Widgets.KeyCapture(UIParent, ns.L["Add key"], function() end)
+      TEST_KeyCapture:SetPoint("CENTER") TEST_KeyCapture.__scripts.OnClick(TEST_KeyCapture)`);
+    expect(addon.textFit("TEST_KeyCapture"), `${locale}: the prompt fits its 220-wide button at Text size 130%`).toEqual([]);
+  }
+});
+
 it("text fits: the find box after a search with a long query keeps its title on one line above the query (P1-2, P8-5)", () => {
   const addon = fitClient();
   const query = "the dungeon group is looking for a healer tonight at eight";
