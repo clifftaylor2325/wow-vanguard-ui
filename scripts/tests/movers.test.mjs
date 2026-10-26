@@ -420,3 +420,21 @@ it("a mover's frame is kept on the screen, so a spot saved on a wider screen can
   addon.eval("__f.__testClamped = nil ns.SetMoverPoint('box', 'LEFT', 'LEFT', 1150, 0)");
   expect(addon.eval("return __f.__testClamped"), "and again when it moves").toBe(true);
 });
+
+it("a canvas change while playing works the unsaved default spots out again, as a fresh login on that canvas would", () => {
+  const meterOn = { savedVariables: "VanguardDB.profiles = { Default = { Meter = { on = true } } }" };
+  const env = "Enum.DamageMeterSessionType = { Current = 1 } Enum.DamageMeterType = { Dps = 1, Hps = 3 }\n";
+  // The target of target's and the meter's rectangles.
+  const rects = (addon) => ["Vanguard_targettarget", "Vanguard_Meter"].map((name) => rectOf(addon, name));
+  const resize = (addon, w, h) => { addon.eval(`__wfgStub.setScreen(${w}, ${h})`); addon.fire("UI_SCALE_CHANGED"); addon.fire("DISPLAY_SIZE_CHANGED"); addon.advance(1); };
+  const addon = loggedIn(env, meterOn);
+  resize(addon, 1229, 768);
+  expect(rects(addon), "1920 down to 1229 wide: where a login at 1229 puts them").toEqual(rects(loggedIn(env + "__wfgStub.setScreen(1229, 768)", meterOn)));
+  expect(addon.eval("return { ns.MoverPoint('uf_targettarget') }"), "the narrow spot over the target's cast bar").toEqual(["BOTTOM", "BOTTOM", 180, 280]);
+  resize(addon, 1920, 1080);
+  expect(rects(addon), "and back up: the wide spots again").toEqual(rects(loggedIn(env, meterOn)));
+  addon.eval("ns.SetMoverPoint('uf_targettarget', 'TOPLEFT', 'TOPLEFT', 50, -50)");
+  resize(addon, 1229, 768);
+  const [left, bottom, , height] = rectOf(addon, "Vanguard_targettarget");
+  expect([left, bottom + height], "a spot you saved stays 50 in from the top left corner, not moved to a default").toEqual([50, 718]);
+});
