@@ -2642,6 +2642,12 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: the totem row stands just above the player frame, over its left half, clear of the chat's tab bar and the Find and Copy tiles; both tiles open on a click and the right-click still destroys a totem; the cast bar, raid mark and pet frame are not covered by the row. [Needs in-game check: that nothing of the real client (the player's raid mark, the lifted cast bar) meets the row, and the Versus deck's top border.]
 - If it fails, paste: a screenshot of the player frame and chat with totems down, and `/vg errors`.
 
+### 33.79 Aura icons: timer at the bottom, stack count top right, smaller type badge
+
+- Do: get a Magic, Curse, Disease or Poison debuff on yourself with timers on (the default for your own debuffs) and look at its icon; then look at a stacking debuff (Sunder Armor x5) on an enemy nameplate target at Text size 100% and 130%; also a buff with a timer on your player frame's row.
+- Expect: the timer digits sit on the icon's bottom edge, the stack count in its top right corner, and the small type letter in the top left corner is unhidden by either; on the 18-unit nameplate icons the count and the timer may still touch at 115% and up. [Needs in-game check: how much of the letter glyph and the digits is readable, and that the fallback icons' countdown numbers (made while in combat) also sit on the bottom edge.]
+- If it fails, paste: a screenshot of the icons at Text size 100% and 130%, and `/vg errors`.
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ## When you are done
