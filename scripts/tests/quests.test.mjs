@@ -764,6 +764,17 @@ it("quest log: zones, a quest's details, and its buttons", () => {
   addon.update(0);
   expect(questLog(addon).title, "the log's next update chooses the first quest showing").toBe("[3] TEST-ONLY Far");
 });
+it("quest log: hovering a list line shows the quest's whole title, leaving hides it, and a fight shows none (P9-7)", () => {
+  const addon = loggedIn(TRACK_ENV + QLOG_ENV);
+  addon.eval("Vanguard_QuestLogToggle.__scripts.OnClick(Vanguard_QuestLogToggle)");
+  addon.eval("local b = Vanguard_QuestLog.lines[1] b.__scripts.OnEnter(b)");
+  expect(addon.eval("return { GameTooltip.__lines[1].text, GameTooltip:IsShown(), GameTooltip:GetOwner() == Vanguard_QuestLog.lines[1] }"), "the line's title in full, by its line").toEqual(["[8] TEST-ONLY Wolves", true, true]);
+  addon.eval("local b = Vanguard_QuestLog.lines[1] b.__scripts.OnLeave(b)");
+  expect(addon.eval("return GameTooltip:IsShown()"), "leaving hides it").toBe(false);
+  addon.eval("__wfgStub.inCombat = true local b = Vanguard_QuestLog.lines[2] b.__scripts.OnEnter(b)");
+  expect(addon.eval("return GameTooltip:IsShown()"), "in a fight there is none").toBe(false);
+  addon.eval("__wfgStub.inCombat = false local g = GameTooltip GameTooltip = nil local b = Vanguard_QuestLog.lines[2] b.__scripts.OnEnter(b) b.__scripts.OnLeave(b) GameTooltip = g");
+});
 it("quest log: hovering a reward card shows its item, leaving hides it", () => {
   const addon = loggedIn(TRACK_ENV + QLOG_ENV);
   addon.eval("Vanguard_QuestLogToggle.__scripts.OnClick(Vanguard_QuestLogToggle)");

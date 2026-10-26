@@ -132,10 +132,28 @@ local function makeZone(parent)
   return zone
 end
 
+-- A quest line's tooltip: its title in full, which the line cuts short beside the XP. None in a fight, where it would
+-- cover the screen mid-pull (as the tracker's).
+local function showTitleTip(b)
+  if not GameTooltip or ns.InCombat() then return end
+  local r, g, bl = T.RGB("text")
+  GameTooltip:SetOwner(b, "ANCHOR_RIGHT")
+  GameTooltip:SetText(b.text:GetText(), r, g, bl, 1, true)
+  GameTooltip:Show()
+end
+
+-- A quest line made on demand: a QP.Line that shows its title in full on hover.
+local function makeLine(parent)
+  local b = QP.Line(parent)
+  b:HookScript("OnEnter", ns.Guard("quest log title tooltip", showTitleTip))
+  b:HookScript("OnLeave", ns.Guard("quest log title tooltip", function() if GameTooltip then GameTooltip:Hide() end end))
+  return b
+end
+
 -- The quest list's scroll area, its line and zone pools, and the line an empty log shows instead.
 local function addList(f)
   f.listScroll, f.list = scrollArea(f, LIST_X, QL.LIST_W, LIST_H)
-  f.lines, f.zones, f.buttons = QP.Pool(f.list, QP.Line), QP.Pool(f.list, makeZone), {}
+  f.lines, f.zones, f.buttons = QP.Pool(f.list, makeLine), QP.Pool(f.list, makeZone), {}
   f.empty = T.Text(f.list:CreateFontString(nil, "OVERLAY"), "label", "muted")
   f.empty:SetPoint("TOPLEFT", f.list, "TOPLEFT", 0, 0)
   f.empty:SetWidth(QL.LIST_W)
