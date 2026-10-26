@@ -2462,6 +2462,12 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: the panel ends above the bottom edge of the screen and its last line reads "+3 more" (or the number of members it had no room for); on a taller screen every member is listed with no count line. [Needs in-game check: the count at your screen's height, and the panel against the roll tracker at the left edge, which it still overlaps.]
 - If it fails, paste: a screenshot and `/vg frame Vanguard_OfficerRoster`.
 
+### 33.53 Group threat panel on a narrow screen
+
+- Do: switch Group threat on (`/vg` -> Unit frames, then reload), join a group (or a raid of 25 or 40 and a hostile target), on a screen narrower than 1365 UI units (a 4:3 or 5:4 monitor, or a UI scale above about 1.07 on 1080p).
+- Expect: the panel sits at the right, left of the minimap and under your buffs, clear of the raid grid; on a wider screen it is at the top left, as before. [Needs in-game check: the panel against the quest tracker and your buffs, and, on a 1365-wide screen with the "Like the game's" layout, whether it still covers the party tiles (it does not move there).]
+- If it fails, paste: a screenshot and `/vg frame Vanguard_GroupThreat`.
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ## When you are done
