@@ -248,6 +248,7 @@
     "scripts/tests/status.test.mjs": [],
     "scripts/tests/statuschip.test.mjs": [
       "status chip: a client without the aura lookup says nothing, and the switch is on the Unit frames page",
+      "status chip: a long hint sits left of the player frame, clear of the pet frame, and stays on the screen (P4-5)",
       "status chip: gone in a fight and while aura values are hidden or you are dead; back after",
       "status chip: off until switched on, then it names eating, drinking and being well fed with the buff's icon",
       "status chip: on a German client it knows eating, drinking and Well Fed by the client's names",

@@ -198,7 +198,15 @@ local function addHappiness(pet)
   UX.UpdateHappiness()
 end
 
--- The status chip above the player frame's top-left corner, following your auras, your gear and the fight.
+-- Puts the chip level with the player frame, a gap to its left, kept on the screen.
+local function placeChip(chip, player)
+  chip:SetPoint("RIGHT", player, "LEFT", -T.SPACE.gap, 0)
+  chip:SetClampedToScreen(true)
+end
+
+-- The status chip left of the player frame (clear of the pet frame, its cast bar and the combo points above it),
+-- following your auras, your gear and the fight; kept on the screen, so on a narrow canvas it slides over the frame
+-- rather than off the edge.
 local function addChip(player)
   local f = CreateFrame("Frame", "Vanguard_StatusChip", UIParent)
   T.HudPanel(f, { alpha = 0.9 })
@@ -207,7 +215,7 @@ local function addChip(player)
   f.icon:SetPoint("LEFT", f, "LEFT", UX.CHIP_PAD, 0)
   f.text = T.Text(f:CreateFontString(nil, "OVERLAY"), "small", "text")
   f.text:SetPoint("LEFT", f.icon, "RIGHT", UX.CHIP_GAP, 0)
-  f:SetPoint("BOTTOMLEFT", player, "TOPLEFT", 12, 3)
+  placeChip(f, player)
   UX.chip = f
   UX.WatchChip()
 end
