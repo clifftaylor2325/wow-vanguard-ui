@@ -1657,3 +1657,13 @@ it("options: in German at 130% a choice or slider row whose caption wraps grows 
     expect(Object.values(found).filter((v) => typeof v === "string"), `${page}: no caption runs past its row`).toEqual([]);
   }
 });
+it("options: profile rows and the click casting rows sit inside their card by a gap, as a switch does (B2-5)", () => {
+  const addon = loggedIn(CLICK_LUA);
+  // The kinds of shown rows that run past their card's edge less than the inset a switch keeps (T.SPACE.tight).
+  const tight = (page) => addon.eval(`ns.Options.Show("${page}") local out = {}
+    for _, w in ipairs(__wfgStub.frames) do
+      if w.card and w.source and w:IsVisible() and w:GetRight() > w.card:GetRight() - ns.Theme.SPACE.tight + 0.01 then out[#out + 1] = w.source[1] end
+    end return out`);
+  expect(Object.values(tight("profiles")), "the profile list and the New profile row").toEqual([]);
+  expect(Object.values(tight("clickcast")), "the toolbar, the grid, the keys and the sharing rows").toEqual([]);
+});

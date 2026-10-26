@@ -36,7 +36,7 @@ local AIR, LINE, JUMP_ABOVE = 6, 20, 40
 -- each side; a module row two lines, or taller when its name or description wraps further (see rowHeight).
 local ROW_HEIGHT = { check = T.ROW.height, cycle = T.ROW.height, slider = T.ROW.height, button = T.BUTTON_H + 6, text = LINE, module = 54 }
 -- Row kinds laid out edge to edge in a card (the rest are indented).
-local FULL_WIDTH = { check = true, cycle = true, slider = true, swatches = true, module = true }
+local FULL_WIDTH = { check = true, cycle = true, slider = true, swatches = true, module = true, profile = true, newprofile = true }
 -- Row kinds that take the height of their wrapped caption (a module row, its description too).
 local GROWS = { check = true, cycle = true, slider = true, module = true }
 -- Where a row kind keeps its setter; the setting's default, if the row has one, comes right after it.
@@ -172,10 +172,12 @@ local BUILDERS = {
   module = moduleRow,
 }
 
--- Adds a row kind: builder(parent, row, width) returns the widget; height is its row height.
-function O.AddRowKind(kind, builder, height)
+-- Adds a row kind: builder(parent, row, width) returns the widget; height is its row height; full (optional) lays it
+-- edge to edge in its card, as a switch is, instead of indented (a kind re-added without it keeps what it had).
+function O.AddRowKind(kind, builder, height, full)
   BUILDERS[kind] = builder
   ROW_HEIGHT[kind] = height
+  if full then FULL_WIDTH[kind] = true end
 end
 
 -- Changed from the default ------------------------------------------------------------------

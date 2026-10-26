@@ -801,11 +801,11 @@ local function setUnitFrames(on)
   O.NeedReload()
 end
 
-O.AddRowKind("bindlayout", layoutBuilder, 36)
-O.AddRowKind("bindgrid", gridBuilder, 18 + #MOUSE * CELL_H + 8)
-O.AddRowKind("bindkeys", keysBuilder, KEYS_HEIGHT + T.SPACE.tight)
-O.AddRowKind("bindtest", testBuilder, 64)
-O.AddRowKind("bindshare", shareBuilder, 36)
+O.AddRowKind("bindlayout", layoutBuilder, 36, true)
+O.AddRowKind("bindgrid", gridBuilder, 18 + #MOUSE * CELL_H + 8, true)
+O.AddRowKind("bindkeys", keysBuilder, KEYS_HEIGHT + T.SPACE.tight, true)
+O.AddRowKind("bindtest", testBuilder, 64, true)
+O.AddRowKind("bindshare", shareBuilder, 36, true)
 
 -- The page's rows: the grid and its tools, the hover keys, the test tile, sharing, the unit-frame switch.
 local ROWS = {
