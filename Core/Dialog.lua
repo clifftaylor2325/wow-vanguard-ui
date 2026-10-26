@@ -25,8 +25,6 @@ local CLOSE_ROOM = T.CONTROL.inset + T.CONTROL.tile / 2 + T.SPACE.gap
 local TEXT_W, TEXT_H, ASK_W = 520, 320, 400
 -- How wide a dialog button is unless told otherwise (a label of a dozen letters fits).
 local BUTTON_W = 120
--- The room a dialog button keeps either side of its label when the label is longer than the button (units).
-local LABEL_PAD = T.SPACE.gap
 -- The text's inset from an edit box's border (W.Input's).
 local TEXT_INSET = T.SPACE.gap
 
@@ -34,31 +32,17 @@ local TEXT_INSET = T.SPACE.gap
 -- is a SemiBold `void` label on the accent fill; danger is a secondary with a `bad` label.
 local KIND_LABELS = { secondary = { "label", "text" }, primary = { "name", "void" }, danger = { "label", "bad" } }
 
--- Widens a dialog button whose label has outgrown it (a translation often runs longer than the English, and
--- a label can gain a count); it never narrows, so a row of buttons keeps still as a label changes back.
-local function fitLabel(b)
-  local need = math.ceil(b.text:GetStringWidth()) + 2 * LABEL_PAD
-  if need > b:GetWidth() then b:SetWidth(need) end
-end
-
--- A dialog button's centred label in its kind's look, the button refitted to it whenever its text or its font
--- (the text size setting) changes.
-local function addLabel(b, label, look)
-  b.text = T.Text(b:CreateFontString(nil, "OVERLAY"), look[1])
-  b.text:SetPoint("CENTER")
-  for _, method in ipairs({ "SetText", "SetFont" }) do hooksecurefunc(b.text, method, ns.Guard("fit button label", function() fitLabel(b) end)) end
-  b.text:SetText(label)
-  T.Color(b.text, look[2])
-end
-
--- A themed button on a dialog: T.BUTTON_H tall, 120 wide unless told otherwise (wider when its label needs
--- it), of a kind ("secondary" unless given, "primary" or "danger").
+-- A themed button on a dialog: T.BUTTON_H tall, 120 wide unless told otherwise, of a kind ("secondary"
+-- unless given, "primary" or "danger"). Its label fits across it (T.FitText), shrinking when it runs long.
 local function button(parent, label, width, kind)
+  local look = KIND_LABELS[kind or "secondary"]
   local b = T.Button(CreateFrame("Button", nil, parent), kind == "primary" and "primary" or nil)
   b:SetSize(width or BUTTON_W, T.BUTTON_H)
   b.kind = kind or "secondary"
   if kind == "primary" then b.fill = T.FillParts(b, "BACKGROUND", 1, "accent") end
-  addLabel(b, label, KIND_LABELS[b.kind])
+  b.text = T.FitText(T.Text(b:CreateFontString(nil, "OVERLAY"), look[1]), b)
+  b.text:SetText(label)
+  T.Color(b.text, look[2])
   return b
 end
 ns.DialogButton = button

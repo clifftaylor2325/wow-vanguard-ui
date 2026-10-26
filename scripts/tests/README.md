@@ -23,6 +23,8 @@ Everything here is TEST-ONLY: nothing in `scripts/lib/wow-*.lua` ships in game.
 | `scripts/lib/lua-harness.mjs` | Loads the client and the addon into a Lua state; the JS scenario API below. |
 | `scripts/lib/wow-widget-api.lua` | The allowlist of widget methods (anything else errors, as a wrong method would in game). |
 | `scripts/lib/wow-stub.lua` | Frames, regions, scripts, events, the clock, Lua 5.1 shims, and the input drivers. |
+| `scripts/lib/wow-text.lua` | Text metrics: rough (6 px a character, 14 a line) unless a test asks for the fonts' real widths. |
+| `scripts/lib/wow-textfit.lua` | The text-fit audit and the pseudo-locale (see "Text fit" below). |
 | `scripts/lib/wow-layout.lua` | Anchors, sizes and scale resolved to screen rects (1920x1080, origin bottom-left). |
 | `scripts/lib/wow-world.lua` | The world: units, auras, actions, spells, quests, bags, the map, timers, Blizzard frames. |
 | `scripts/lib/wow-taint.lua` | Taint and combat rules: who owns each frame, field writes on the game's frames, protected calls blocked in combat, secret arguments to aura calls, secret geometry. |
@@ -92,6 +94,27 @@ full one.
   without testing anything. Coverage catches the lines this hides:
   `npm run coverage` must stay at 100%, and a line only a scoped case used to
   reach goes back on the full login through `FULL_CASES`.
+
+### Text fit
+
+`createAddon({ textFit: true })` is a client for checking that text fits: font strings are measured with the
+real advance widths of the addon's fonts (read from `Media/Fonts`) at their size and text scale, wrapped word by
+word at their width, a line as tall as the font's size; and `ns.L` is a pseudo-locale, so every text it hands
+out is a third longer (at least two more letters, padded with its own letters). Other clients keep the rough
+metrics, so no other test changes.
+
+`addon.textFit(ref)` audits the shown font strings under a frame (every frame the addon made, given `null`) and
+returns what does not fit, `{ kind, text, place, other, size }` each (`text` in English):
+
+- `cut`: pinned across its box (a width, or anchors on both sides), the text is wider than one line it can't
+  wrap, needs more lines than its max lines, or is taller than a fixed height: the client cuts it short.
+- `spill`: the text is partly inside its parent frame and runs out over an edge (a caption wholly outside, beside
+  a check box, is fine).
+- `overlap`: the text draws over another text or a control (a button, check box, edit box or slider that shows
+  something) in the same window and scroll view, other than its own.
+
+Text faded out, hidden, or outside a frame that clips its children is skipped; a scroll frame's content counts
+wherever it sits. `scripts/tests/textfit.test.mjs` is the suite's check; a new window goes in it as a case.
 
 ### Timing and profiling
 
