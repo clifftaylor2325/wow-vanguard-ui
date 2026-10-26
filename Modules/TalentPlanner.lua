@@ -41,7 +41,7 @@ TP.LEVEL_ABOVE = 5
 -- The next pick's ring, units wide.
 TP.RING = 6
 -- The bar: its size, where it sits from the window's bottom left, the Plan switch's and Spend planned's widths.
-TP.BAR_WIDTH, TP.BAR_HEIGHT, TP.BAR_X, TP.BAR_Y, TP.SWITCH_WIDTH, TP.SPEND_WIDTH = 520, 24, 14, 10, 100, 110
+TP.BAR_WIDTH, TP.BAR_HEIGHT, TP.BAR_X, TP.BAR_Y, TP.SWITCH_WIDTH, TP.SPEND_WIDTH = 520, 24, 14, 10, 120, 110
 -- The summary's room: how far short of the game's Apply Changes button it ends, and its lines at most.
 TP.APPLY_GAP, TP.SUMMARY_LINES = 12, 2
 TP.UNREACHABLE_NOTE = L["Unreachable: a talent or row it needs is not in the plan."]
