@@ -2522,6 +2522,12 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: Check undercuts is as wide as its label; Cancel next undercut takes the room between the line beside the heading and Check undercuts, its label shrinking a little in a long language, never over the line; the Lists pane's six buttons are two to a row in three rows and show Umbenennen, Переименовать and Копировать whole; the pane lists two fewer entries than before; the filter dialog is a little wider and "Quality" is one line beside its dropdown; + Add shows its whole label in every place along the mail panel's bottom (the preset buttons are a little narrower) and stays inside the panel. [Needs in-game check: all of it.]
 - If it fails, paste: a screenshot of the toolbar, pane, dialog or panel, the game's language, and `/vg errors`.
 
+### 33.60 A held primary button darkens
+
+- Do: find a primary (brass) button (the options footer's Reload now once a change waits for a reload, or a question's Yes), put the mouse on it and hold the left button down without letting go; then move off and let go.
+- Expect: while held, the brass button darkens by a visible shade (not only a label that sinks a pixel), and it goes back to normal on release. [Needs in-game check: the client decides the draw order of textures on one layer; the press shade now has a layer of its own above the fill and the hover.]
+- If it fails, paste: a screenshot of the held button and `/vg errors`.
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ## When you are done

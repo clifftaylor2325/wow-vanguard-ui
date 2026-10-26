@@ -1488,7 +1488,7 @@ end
 -- corners), and hooks on the mouse and on its state (pcall: a widget without OnEnable/OnDisable can't
 -- have them hooked).
 local function stateParts(button)
-  local fill = T.FillParts(button, "BACKGROUND", 2, T.PRESS.token, T.PRESS.alpha)
+  local fill = T.FillParts(button, "BACKGROUND", 3, T.PRESS.token, T.PRESS.alpha)
   T.ShowFill(fill, false)
   pressOf[button] = { overlay = fill.bg, fill = fill }
   button:HookScript("OnMouseDown", ns.Guard("button press", function(b) T.PressButton(b, true) end))
