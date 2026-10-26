@@ -1,7 +1,8 @@
 // whatsnew: Vanguard's real Lua in the TEST-ONLY headless client (scripts/lib/lua-harness.mjs).
 
 import { expect, it } from "vitest";
-import { chatHas, isTok, loggedIn, setCombat, tok } from "./helpers.mjs";
+import { createAddon } from "../lib/lua-harness.mjs";
+import { SETUP_DONE, chatHas, isTok, loggedIn, setCombat, tok } from "./helpers.mjs";
 
 // TEST-ONLY notes for two versions, and the running version set to the newer one.
 const NOTES = `
@@ -174,4 +175,17 @@ it("what's new: the hint to click a line shows only for notes that have a line w
   expect(addon.eval("return Vanguard_WhatsNew.hint:IsShown()"), "9.9.9 has setting lines").toBe(true);
   addon.eval("ns.WhatsNew.Show(ns.WHATS_NEW[2])");
   expect(addon.eval("return Vanguard_WhatsNew.hint:IsShown()"), "9.8.0 has only plain lines").toBe(false);
+});
+
+it("what's new: a Text size change after the first fill lays the lines out again, so wrapped lines never overlap", () => {
+  const addon = createAddon({ savedVariables: SETUP_DONE, textFit: true });
+  addon.login();
+  addon.eval(ENV);
+  addon.eval("ns.WhatsNew.Show(ns.WHATS_NEW[1])");
+  addon.eval("__firstLine = Vanguard_WhatsNew.lines[1]");
+  addon.eval("ns.Theme.Settings().textScale = 1.3 ns.Theme.Refresh() ns.WhatsNew.Show(ns.WHATS_NEW[1])");
+  expect(addon.eval("return Vanguard_WhatsNew.lines[1] ~= __firstLine"), "the lines were built again").toBe(true);
+  expect(addon.eval("local f = Vanguard_WhatsNew return f.textScale"), "the fill is stamped with the Text size it was laid out at").toBe(1.3);
+  const heights = addon.eval(`local out = {} for _, l in ipairs(Vanguard_WhatsNew.lines) do out[#out + 1] = l:GetHeight() == l.text:GetStringHeight() end return out`);
+  expect(heights.length > 0 && heights.every(Boolean), "each line is as tall as its text at the new size").toBe(true);
 });
