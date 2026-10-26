@@ -20,10 +20,13 @@ local COLUMN_INSET = 8
 -- A slider's track: the column less the value slot and a gap.
 local TRACK_WIDTH = W.COLUMN - W.VALUE_SLOT - COLUMN_INSET
 
--- Limits a caption to the room left of the control column (it wraps there), left-aligned.
+-- Limits a caption to the room left of the control column, less a gap (it wraps there), left-aligned. A row so
+-- narrow that the gap would leave the caption under a value slot's width keeps all its room.
 -- row.fixedLabel says its width was set (the options window narrows it to make room for a tag).
 local function fitCaption(r, width)
-  r.label:SetWidth((width or 400) - W.COLUMN - 2 * COLUMN_INSET)
+  local room = (width or 400) - W.COLUMN - 2 * COLUMN_INSET
+  if room - T.SPACE.gap >= W.VALUE_SLOT then room = room - T.SPACE.gap end
+  r.label:SetWidth(room)
   r.label:SetJustifyH("LEFT")
   r.fixedLabel = true
 end

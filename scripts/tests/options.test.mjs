@@ -1178,7 +1178,21 @@ it("buttons: kinds share one shape (primary accent fill without bevel or sheen, 
   expect(out.slice(0, 3), "the labels: text, void, bad").toEqual([tok(addon, "text"), tok(addon, "void"), tok(addon, "bad")]);
   expect(out.slice(3, 5), "a primary hovers to accentText, a secondary to raisedHover").toEqual(["accentText", "raisedHover"]);
   expect(out.slice(5, 9), "the column, the value slot, the track (column less slot and gap) and the value text").toEqual([200, 60, 132, 60]);
-  expect(out[9], "a caption stops short of the column").toBe(400 - 200 - 16);
+  expect(out[9], "a caption stops a gap short of the column").toBe(400 - 200 - 16 - 8);
+});
+
+it("a wrapped caption keeps a gap from the dropdown and the slider track it sits beside (P3-5)", () => {
+  const addon = loggedIn();
+  // How far a row's caption ends from its control's left edge (the dropdown, or else the slider track), in screen units.
+  const gap = (make) => addon.eval(`local W = ns.Widgets
+    local r = ${make}
+    r:SetPoint("CENTER")
+    local control = r.dropdown or r.track
+    return control:GetLeft() - (r.label:GetLeft() + r.label:GetWidth())`);
+  const many = Array.from({ length: 12 }, (_, i) => `{ ${i}, "Choice number ${i}" }`).join(", ");
+  expect(gap('W.Slider(UIParent, "Size", { min = 0, max = 10, step = 1 }, function() return 5 end, print, 400)'), "slider").toBe(8);
+  expect(gap(`W.Choice(UIParent, "A caption", { ${many} }, function() return 1 end, print, 400)`), "dropdown").toBe(8);
+  expect(addon.eval(`return ns.Widgets.Slider(UIParent, "Q", { min = 0, max = 10, step = 1 }, function() return 5 end, print, 248).label:GetWidth()`), "a row too narrow to spare the gap keeps its caption's room").toBe(32);
 });
 
 // 8.7 states, keyboard and menus -------------------------------------------------------------------
