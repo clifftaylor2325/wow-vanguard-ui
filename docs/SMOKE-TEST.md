@@ -245,7 +245,7 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 ### 3.4 Edit Mode
 
 - Do: make sure the frames are locked (`/vg lock`), press Escape, click Edit Mode, look, close Edit Mode. (If `/vg unlock` had the handles up already, closing Edit Mode leaves them up; that is intended.)
-- Expect: Vanguard's labelled handles appear too, with a note under the Edit Mode window reading `The labeled handles are Vanguard's frames: drag them here too (right-click one for more).` Edit Mode's window and its settings dialog stay on top of every handle (the quest dialog's too: try the layout dropdown over it): drag the window over a handle and it covers the handle, never the other way round. On closing, the handles hide and the Blizzard frames Vanguard pins (minimap, strips, tracker) return to their Vanguard spots.
+- Expect: Vanguard's labelled handles appear too, with a note under the Edit Mode window reading `The labeled handles are Vanguard's frames: drag them here too (right-click one for more).` Edit Mode's window and its settings dialog stay on top of every handle (the quest dialog's too: try the layout dropdown over it): drag the window over a handle and it covers the handle, never the other way round. On closing, the handles hide and the Blizzard frames Vanguard pins (minimap, strips, tracker) return to their Vanguard spots. With Text size at 130% (`/vg` → General) the note under the window still shows both lines of its text. [Needs in-game check: the note's height against the client's line height.]
 - If it fails, paste: a screenshot while Edit Mode is open and `/vg errors`.
 
 ### 3.5 Reset

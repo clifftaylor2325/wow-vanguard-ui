@@ -1,7 +1,8 @@
 // unlock: Vanguard's real Lua in the TEST-ONLY headless client (scripts/lib/lua-harness.mjs).
 
 import { expect, it } from "vitest";
-import { CLICK_LUA, UI_ENV, UP, chatHas, gridLines, isTok, key, loggedIn, px, setCombat } from "./helpers.mjs";
+import { createAddon } from "../lib/lua-harness.mjs";
+import { CLICK_LUA, SETUP_DONE, UI_ENV, UP, chatHas, gridLines, isTok, key, loggedIn, px, setCombat } from "./helpers.mjs";
 import { alphaOf, buttonOf, closeOf, escapes, insets, pressEscape, titleOf } from "./dialogs.mjs";
 
 it("unlock mode", () => {
@@ -308,4 +309,25 @@ it("a selected handle shows its point and offsets inside itself: on a second lin
   expect(selected("tall"), "a handle two lines tall shows the coordinates on a second line").toBe("tall\nCENTER 0, 0");
   expect(selected("thin"), "a thin one puts them on the label's line").toBe("thin  \u00b7  CENTER 0, 0");
   expect(selected("narrow"), "a narrow one shows its label only").toBe("narrow");
+});
+
+// An addon in the text-fit client (the real fonts' widths, every string a third longer) at this screen size and text
+// scale, with Edit Mode's window made, logged in.
+function fitClient(width, height, textScale) {
+  const addon = createAddon({ savedVariables: `${SETUP_DONE}VanguardDB.profiles = { Default = { theme = { textScale = ${textScale} } } }`, textFit: true });
+  addon.eval(`__wfgStub.setScreen(${width}, ${height}) ${UI_ENV}
+    EditModeManagerFrame = CreateFrame("Frame", "EditModeManagerFrame", UIParent) EditModeManagerFrame:SetSize(600, 400)
+    EditModeManagerFrame:SetPoint("CENTER") EditModeManagerFrame:Hide()`);
+  addon.login();
+  return addon;
+}
+
+// Opens the popover of mover `key` through its handle's right-click.
+const openPopover = (addon, key) => addon.eval(`ns.Unlock() for _, w in ipairs(__wfgStub.frames) do if w.mover and w.mover.key == "${key}" then w:GetScript("OnMouseDown")(w, "RightButton") end end`);
+
+it("the note under Edit Mode's window grows with its text, so it keeps both lines at 130% text", () => {
+  const addon = fitClient(1920, 1080, 1.3);
+  addon.eval("EditModeManagerFrame:Show()");
+  expect(addon.textFit("Vanguard_EditModeNote"), "nothing in the note is cut").toEqual([]);
+  expect(addon.eval("return Vanguard_EditModeNote:GetHeight() > 36"), "the note is taller than its 36 at 100%").toBe(true);
 });

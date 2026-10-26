@@ -296,17 +296,19 @@ local function editNote(edit)
   note:SetSize(320, 36)
   note:SetPoint("TOP", edit, "BOTTOM", 0, -6)
   note.text = T.Text(note:CreateFontString(nil, "OVERLAY"), "small")
-  note.text:SetPoint("TOPLEFT", 8, -6) note.text:SetPoint("BOTTOMRIGHT", -8, 6)
+  note.text:SetPoint("TOPLEFT", 8, -T.SPACE.tight) note.text:SetPoint("TOPRIGHT", -8, -T.SPACE.tight)
   note.text:SetText(ns.EDIT_NOTE)
   editModeNote = note
   return note
 end
 
 -- Edit Mode opened: Vanguard's handles show too (without the grid: the game
--- draws its own), with the note, unless that's switched off.
+-- draws its own), with the note (as tall as its text needs at this text size), unless that's switched off.
 function ns.EditModeOpened(edit)
   if not unlocked and ns.MoverOptions().editMode then editUnlocked = ns.UnlockForEditMode() end
-  editNote(edit):SetShown(unlocked)
+  local note = editNote(edit)
+  note:SetHeight(note.text:GetStringHeight() + 2 * T.SPACE.tight)
+  note:SetShown(unlocked)
 end
 
 -- Edit Mode closed: its handles hide with the note, unless /vg unlock had them up already.
