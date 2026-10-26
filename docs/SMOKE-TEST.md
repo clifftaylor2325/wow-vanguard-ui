@@ -2444,31 +2444,31 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: the swing rows sit just over the cast bar, above bar 1, with the 4th bar on; the pet's health text ends left of the mood glyph; bar 5 is a column clear of bar 4; the meter title ends in "..." before Report and Reset; a roll's name ends in "..." before its figures and never draws over them; the group board's hint wraps inside the window; the keybind banner shows its whole last sentence; the vehicle exit label stays inside its button; the XP text stays in the bar's left half and the reputation text in its right half; and, on a German client, say whether "Fehlgeschlagen" is cut on a failed pet cast (no change was made for it: it needs this look first).
 - If it fails, paste: a screenshot of the part and `/vg errors`.
 
-### 33.50 Raid grid on a narrow screen, and the status on a big grid
+### 33.49 Raid grid on a narrow screen, and the status on a big grid
 
 - Do: in a raid of 25 or 40 (or `/vg preview 40`) with the raid frames at their default spot (`/vg reset raid` first), on a 5:4 or 4:3 screen, or at a UI scale that makes the UI narrower than 1296 units (the game's Options -> Graphics -> UI Scale, about 110% on a 1080p screen). Have a roll going (`/roll 1000` in a group) so the roll tracker shows at the left edge. Then look at a tile whose player is offline or dead, and at one with a big missing-health figure.
 - Expect: the grid starts right of the roll tracker (its left edge 148 units in from the screen's edge) and ends on the screen; on a screen 1296 units wide or more it is where it always was, left of the middle. The tile's status (Offline, Dead, Ghost or the missing health, such as -12000) sits at the right of the name row on one line; it is not cut on English text, and a longer translation ends in "..." rather than wrapping down into the buff icons. [Needs in-game check: all of it, and how "Offline" at 40 players looks against the name.]
 - If it fails, paste: a screenshot of the grid and `/vg frame raid deep`.
 
-### 33.51 Vanguard meter on a narrow screen
+### 33.50 Vanguard meter on a narrow screen
 
 - Do: on a screen narrower than about 1840 UI units (1920 x 1080 at the game's UI scale 100% is 1366 units wide; a 4:3 monitor is narrower), switch the meter on (`/vg meter on`) with the Action bars on and the game's own meter off, then fight a target dummy or look at the empty panel.
 - Expect: the panel sits at the bottom right, 16 in from the right edge and above the bags and menu bar, where the game's own meter sits; it does not cover bars 1 to 3. On a wider screen (a 2560 x 1440 monitor at 100%) it sits where it always did, left of the bags and menu bar. [Needs in-game check: the panel's top against the tooltip corner and the quest tracker on a 1365-wide screen.]
 - If it fails, paste: a screenshot of the corner and `/vg frame Vanguard_Meter`.
 
-### 33.52 Officer roster in a 40-player raid on a short screen
+### 33.51 Officer roster in a 40-player raid on a short screen
 
 - Do: with Officer loot tools on (`/vg loot on`), in a raid of 40 on a screen 768 units tall or less (1920 x 1080 at the game's UI scale 100% is 768 tall), open the roster (`/vg loot roster`).
 - Expect: the panel ends above the bottom edge of the screen and its last line reads "+3 more" (or the number of members it had no room for); on a taller screen every member is listed with no count line. [Needs in-game check: the count at your screen's height, and the panel against the roll tracker at the left edge, which it still overlaps.]
 - If it fails, paste: a screenshot and `/vg frame Vanguard_OfficerRoster`.
 
-### 33.53 Group threat panel on a narrow screen
+### 33.52 Group threat panel on a narrow screen
 
 - Do: switch Group threat on (`/vg` -> Unit frames, then reload), join a group (or a raid of 25 or 40 and a hostile target), on a screen narrower than 1365 UI units (a 4:3 or 5:4 monitor, or a UI scale above about 1.07 on 1080p).
 - Expect: the panel sits at the right, left of the minimap and under your buffs, clear of the raid grid; on a wider screen it is at the top left, as before. [Needs in-game check: the panel against the quest tracker and your buffs, and, on a 1365-wide screen with the "Like the game's" layout, whether it still covers the party tiles (it does not move there).]
 - If it fails, paste: a screenshot and `/vg frame Vanguard_GroupThreat`.
 
-### 33.54 A full sectioned bag on a short screen, and the crafting cost panel on a narrow one
+### 33.53 A full sectioned bag on a short screen, and the crafting cost panel on a narrow one
 
 - Do: raise the game's UI scale to 115% (or use a 4:3 monitor) so the screen is about 668 UI units tall, carry a nearly full set of large bags (16 + 4 x 18 slots) with Combined bag in sections on and Drag game windows by their title bar off, and open the bag. Then open a profession window with the Auction helper on and pick a recipe on a screen narrower than about 1020 UI units (5:4 or 4:3, or UI scale above 1.07).
 - Expect: the bag's title, search box, Sort and close button are all on the screen, the bag sitting lower than usual if it must. The Crafting cost panel is left of the profession window (its right edge against the window's left edge) when there is no room at the right; on a wide screen it is still at the right, past the side tabs. [Needs in-game check: both, and whether the game already kept the bag on the screen before the clamp; the real profession window's width decides where the panel flips.]
