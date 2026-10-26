@@ -1478,10 +1478,10 @@ function T.DisabledLook(button, disabled)
   local fs = type(button.text) == "table" and button.text or button.GetFontString and button:GetFontString()
   if disabled then T.EaseHover(button, false, true) T.PressButton(button, false) end
   if not (fs and fs.GetTextColor) then return end
-  if disabled then labelBefore[button] = labelBefore[button] or { fs:GetTextColor() } return T.Color(fs, "disabled") end
+  if disabled then labelBefore[button] = labelBefore[button] or { token = T.ColorToken(fs), fs:GetTextColor() } return T.Color(fs, "disabled") end
   local c = labelBefore[button]
   labelBefore[button] = nil
-  if c then T.ColorRGB(fs, c[1], c[2], c[3]) end
+  if c and c.token then T.Color(fs, c.token) elseif c then T.ColorRGB(fs, c[1], c[2], c[3]) end
 end
 
 -- A button's press and disabled looks (#257): the hidden overlay (T.FillParts, so it follows rounded
@@ -2847,6 +2847,9 @@ function T.Color(fs, r, g, b)
   shadowFor(fs, token)
   return fs
 end
+
+-- The colour token a font string was coloured with (T.Color), or nil.
+function T.ColorToken(fs) return colored[fs] end
 
 -- Colors a font string r, g, b (0-1 components). Forgotten: T.RefreshText does not repaint it.
 function T.ColorRGB(fs, r, g, b)
