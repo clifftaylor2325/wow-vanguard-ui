@@ -883,6 +883,12 @@ end
 
 -- Steps -----------------------------------------------------------------------------------
 
+-- Skip shows on the first step only (Back's slot is empty there), as wide as its label needs (German at 130%).
+local function showSkip(n)
+  frame.skip:SetShown(n == 1)
+  if n == 1 then ns.WidenToLabel(frame.skip) end
+end
+
 -- Shows step n: its page, caption and buttons. The last step (move things) unlocks the frames.
 local function showStep(n)
   local key, last = state.order[n], #state.order
@@ -891,7 +897,7 @@ local function showStep(n)
   for k, page in pairs(frame.pages) do page:SetShown(k == key) end
   frame.caption:SetText(ns.Format(L["Step {step} of {count} · {name}"], { step = n, count = last, name = NAMES[key] }))
   frame.back:SetShown(n > state.floor)
-  frame.skip:SetShown(n == 1)
+  showSkip(n)
   frame.next.text:SetText(n == last and L["Done"] or L["Next"])
   if n == last then ns.Unlock() elseif ns.Unlocked() then ns.Lock() end
   refresh()

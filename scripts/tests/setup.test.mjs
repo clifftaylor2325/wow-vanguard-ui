@@ -1,6 +1,7 @@
 // setup: Vanguard's real Lua in the TEST-ONLY headless client (scripts/lib/lua-harness.mjs).
 
 import { expect, it } from "vitest";
+import { createAddon } from "../lib/lua-harness.mjs";
 import { ACTIONS_ENV, CLICK_LUA, RAID_ENV, UNITS_ENV, borderOf, chatHas, loggedIn, setCombat, tok } from "./helpers.mjs";
 
 // Clicks one of the setup wizard's buttons (next, back or close) as the player would.
@@ -341,4 +342,17 @@ it("setup: a new character's profile step fits, and a choice's label stays on on
   expect(overflow(addon), "the profile step").toBe("");
   const row = addon.eval("local b = Vanguard_Setup.pages.profile.choices[1] return { b.text:GetRight() <= b:GetRight(), b.text.__noWrap == true }");
   expect(row, "a choice's label ends inside its row, on one line").toEqual([true, true]);
+});
+it("the setup wizard's Skip button widens to its label when the first step shows, so German at 130% is not cut (B2-7)", () => {
+  const addon = createAddon({ textFit: true, client: '__wfgWorld.locale = "deDE" UISpecialFrames = {}' });
+  addon.login();
+  const skip = () => addon.eval("local f = Vanguard_Setup return { f.skip:GetWidth(), math.ceil(ns.Theme.FullWidth(f.skip.text)) + 2 * ns.Theme.SPACE.gap, f.skip:GetRight() < f.next:GetLeft() and not f.back:IsShown() }");
+  const [normal] = skip();
+  addon.eval("ns.Theme.Settings().textScale = 1.3 ns.Theme.Refresh()");
+  setupClick(addon, "next");
+  setupClick(addon, "back");
+  const [width, need, clear] = skip();
+  expect(width, "Skip is as wide as its label at full size and a gap each side").toBeGreaterThanOrEqual(need);
+  expect(width, "wider than it was at 100%").toBeGreaterThan(normal);
+  expect(clear, "into Back's empty slot, short of Next").toBe(true);
 });
