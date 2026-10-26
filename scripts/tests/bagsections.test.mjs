@@ -694,3 +694,14 @@ it("Sort shows its whole label in German, Russian and Portuguese, and the search
     expect(gap, `${locale}: the search box ends before Sort`).toBeGreaterThanOrEqual(0);
   }
 });
+
+it("the sectioned combined bag is clamped to the screen, so a bag taller than a short canvas keeps its title and Sort button; a plain bag is left alone", () => {
+  // TEST-ONLY: frames record the clamp they are given (the stub's SetClampedToScreen keeps nothing); the game windows'
+  // own clamp (Drag game windows by their title bar) is off, so only the sections' clamp is seen.
+  const record = "__wfgStub.methods.SetClampedToScreen = function(self, on) self.__testClamped = on end\n";
+  const unmovable = { savedVariables: "VanguardDB.profiles = { Default = { Windows = { movable = false } } }" };
+  // Whether the combined bag was given a clamp to the screen, with this Lua run before login.
+  const clamp = (extra) => loggedIn(record + BAG_ENV + extra, unmovable).eval("return ContainerFrameCombinedBags.__testClamped");
+  expect(clamp("__wfgStub.setScreen(1188, 668)"), "clamped once the sections watch it").toBe(true);
+  expect(clamp("C_Item.GetItemInfoInstant = nil"), "a client that can't section keeps the game's frame as it is").toBeNull();
+});

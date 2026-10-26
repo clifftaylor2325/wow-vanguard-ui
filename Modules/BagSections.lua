@@ -344,12 +344,20 @@ local function canSection(frame)
   return true
 end
 
+-- Keeps the sectioned bag on the screen: the sections can make it taller than the game's smallest scale (0.75)
+-- fits on a short canvas, which would push its title and Sort button past the top. A call on the game's frame,
+-- once (not in fitWindow, which runs on every layout), out of combat.
+function BG.KeepOnScreen(frame)
+  ns.OutOfCombat(function() frame:SetClampedToScreen(true) end, "bag clamp")
+end
+
 -- Sections in the combined bag window (Bags.Enable): after the game lays out
 -- its grid or fills its slots, and when an item's info arrives, the sections are
 -- laid out again; when the game puts its money line back, it gets the padding again.
 function BG.WatchSections(frame)
   if not canSection(frame) then return end
   BG.sectionFrame = frame
+  BG.KeepOnScreen(frame)
   hooksecurefunc(frame, "UpdateItemLayout", ns.Guard("hook UpdateItemLayout", BG.AfterGameLayout))
   hooksecurefunc(frame, "UpdateItems", ns.Guard("hook UpdateItems", BG.QueueSections))
   hooksecurefunc(frame, "UpdateCurrencyFrames", ns.Guard("hook UpdateCurrencyFrames", BG.PadMoney))

@@ -2468,6 +2468,12 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: the panel sits at the right, left of the minimap and under your buffs, clear of the raid grid; on a wider screen it is at the top left, as before. [Needs in-game check: the panel against the quest tracker and your buffs, and, on a 1365-wide screen with the "Like the game's" layout, whether it still covers the party tiles (it does not move there).]
 - If it fails, paste: a screenshot and `/vg frame Vanguard_GroupThreat`.
 
+### 33.54 A full sectioned bag on a short screen, and the crafting cost panel on a narrow one
+
+- Do: raise the game's UI scale to 115% (or use a 4:3 monitor) so the screen is about 668 UI units tall, carry a nearly full set of large bags (16 + 4 x 18 slots) with Combined bag in sections on and Drag game windows by their title bar off, and open the bag. Then open a profession window with the Auction helper on and pick a recipe on a screen narrower than about 1020 UI units (5:4 or 4:3, or UI scale above 1.07).
+- Expect: the bag's title, search box, Sort and close button are all on the screen, the bag sitting lower than usual if it must. The Crafting cost panel is left of the profession window (its right edge against the window's left edge) when there is no room at the right; on a wide screen it is still at the right, past the side tabs. [Needs in-game check: both, and whether the game already kept the bag on the screen before the clamp; the real profession window's width decides where the panel flips.]
+- If it fails, paste: a screenshot, `/vg frame ContainerFrameCombinedBags`, `/vg frame Vanguard_CraftingPanel`.
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ## When you are done
