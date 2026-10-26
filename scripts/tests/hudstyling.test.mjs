@@ -2,7 +2,10 @@
 // their extras), kept in one file so they never need an entry in login-scope.json.
 
 import { expect, it } from "vitest";
-import { loggedIn } from "./helpers.mjs";
+import { NO_RAID, UNITS_ENV, loggedIn } from "./helpers.mjs";
+
+// TEST-ONLY pet mood: a content cat.
+const HAPPY_ENV = "GetPetHappiness = function() return 2, 0, 0 end\n";
 
 // TEST-ONLY client with the swing timer, shown whatever your class.
 const SWING = `C_SwingTimer = {} Enum = Enum or {} Enum.PlayerSwingType = { MainHand = 0, OffHand = 1, Ranged = 2 }`;
@@ -30,4 +33,15 @@ it("P4-3: the swing timer follows a stack that grows after login, and stays at i
   expect(swingY() - before, "a second row on bar 3 lifts the swing rows by that row's height").toBeGreaterThan(30);
   const off = loggedIn(SWING, { savedVariables: profile(`${SWING_ALWAYS}, modules = { ActionBars = false }`) });
   expect(off.eval('local _, _, _, y = ns.MoverPoint("swing") return y'), "with the action bars off it sits at its fixed spot").toBe(170);
+});
+
+// A rect (left, right, top, bottom) of a frame, font string or texture by ref.
+const rectOf = (addon, ref) => addon.frame(ref)?.rect;
+
+it("P4-4: the pet's health text ends left of the happiness glyph", () => {
+  const addon = loggedIn(UNITS_ENV + HAPPY_ENV + `__units.pet = { name = "TEST-ONLY Cat", hp = 640, maxhp = 800, power = 0, maxpower = 0, ptype = "FOCUS", reaction = 5 }`);
+  addon.fire("UNIT_PET", "player");
+  const text = rectOf(addon, "Vanguard_pet.healthText");
+  const glyph = addon.eval("local g = ns.GetModule('UnitExtras').happy return { g:GetLeft(), g:GetRight() }");
+  expect(text.right, "the last digit sits left of the glyph").toBeLessThanOrEqual(glyph[0]);
 });
