@@ -2,8 +2,10 @@
 // Modules/CooldownGaps.lua: a display-only row for the items, pet abilities and totems the
 // game's Cooldown Manager misses; hidden cooldown values show nothing.
 
+import fs from "node:fs";
 import { expect, it } from "vitest";
-import { CLICK_LUA, chatHas, loggedIn, setCombat } from "./helpers.mjs";
+import { createAddon } from "../lib/lua-harness.mjs";
+import { CLICK_LUA, SETUP_DONE, chatHas, loggedIn, setCombat } from "./helpers.mjs";
 
 // Saved settings with the row on and the chosen items given.
 const saved = (items) => `VanguardDB.profiles = { Default = { CooldownGaps = { on = true, items = '${items}' } } }`;
@@ -321,4 +323,28 @@ it("the Gaps card's add row takes a dragged item or spell, or a typed name", () 
 it("the Gaps card says to switch the row on while it is off", () => {
   const addon = loggedIn(GAPS_ENV);
   expect(cardRows(addon), "only the note: the chosen lists load with the row").toEqual([["text", "The gaps row is off. Tick Gaps row and reload to choose its items and spells."]]);
+});
+
+// A string's real translation, read from Locales/<locale>.lua (the line `L["key"] = "text"`).
+function realText(locale, key) {
+  const source = fs.readFileSync(new URL(`../../Locales/${locale}.lua`, import.meta.url), "utf8");
+  const line = source.split("\n").find((l) => l.startsWith(`L[${JSON.stringify(key)}] = `));
+  return JSON.parse(line.slice(line.indexOf("] = ") + 4));
+}
+
+it("the Gaps card's add row shows its buttons whole in German and Russian, and the box takes the room left", () => {
+  const keys = ["Add spell", "Add item", "Drag here, or type"];
+  for (const [locale, scale] of [["deDE", 1], ["deDE", 1.3], ["ruRU", 1.3]]) {
+    const addon = createAddon({ savedVariables: SETUP_DONE + saved(""), textFit: true });
+    addon.eval(GAPS_ENV + SPELLS_ENV + CLICK_LUA + CARD_LUA);
+    addon.eval(keys.map((key) => `ns.L[${JSON.stringify(key)}] = ${JSON.stringify(realText(locale, key))}`).join(" "));
+    addon.login();
+    addon.eval(`ns.Theme.Settings().textScale = ${scale} ns.Theme.Refresh() ns.Options.Show("cooldowns")`);
+    const row = addon.eval(`local r = __addRow() return { r.label:GetRight(), r.input:GetLeft(), r.input:GetRight(), r.item:GetLeft(), r.input:GetWidth() }`);
+    expect(row[1], `${locale} ${scale}: the box starts after the label`).toBeGreaterThanOrEqual(row[0]);
+    expect(row[2], `${locale} ${scale}: and ends before the buttons`).toBeLessThanOrEqual(row[3]);
+    const mine = [...keys, ...keys.map((key) => realText(locale, key))];
+    const cut = addon.textFit(null).filter((f) => mine.includes(f.text));
+    expect(cut, `${locale} ${scale}: nothing on the add row is cut or overlapping`).toEqual([]);
+  }
 });
