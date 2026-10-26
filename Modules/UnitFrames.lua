@@ -362,13 +362,20 @@ end
 
 -- Updating ------------------------------------------------------------------------------
 
+-- The health bar's colour: the dark bar for an offline or dead unit (as on the raid
+-- tiles), else its class or reaction colour.
+function UF.PaintHealth(f)
+  if UF.DownState(f.unit) then return T.BarColor(f.health, "darkBar") end
+  f.health:SetStatusBarColor(UF.HealthColor(f.unit))
+end
+
 -- Health bar value, color and text. Raw values go straight to the bar; the
 -- text may be secret, so it goes to the font string untested.
 function UF.UpdateHealth(f)
   local unit = f.unit
   f.health:SetMinMaxValues(0, UnitHealthMax(unit))
   T.SetBarValue(f.health, UnitHealth(unit))
-  f.health:SetStatusBarColor(UF.HealthColor(unit))
+  UF.PaintHealth(f)
   if UF.settings.healthText then f.healthText:SetText(UF.HealthText(unit)) else f.healthText:SetText("") end
 end
 
