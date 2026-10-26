@@ -65,6 +65,13 @@ local function groupAct(value)
   BG.GroupAction(verb, name)
 end
 
+-- A tool button as wide as its label at full size (T.FullWidth: not what a shrunk or bounded string reads) and the
+-- button's chrome.
+local function sizeTool(d)
+  d:SetWidth(math.ceil(T.FullWidth(d.text)) + CHROME)
+  T.Refit(d.text)
+end
+
 -- A tool button: a dropdown that always reads its own label, not the choice made.
 local function toolButton(frame, label, choices, act)
   local d = W.Dropdown(frame, choices, function() return nil end, act)
@@ -73,8 +80,19 @@ local function toolButton(frame, label, choices, act)
   -- Shows the button's label, whatever was picked last.
   d.Refresh = function(self) self.text:SetText(label) end
   d:Refresh()
-  d:SetWidth(math.ceil(d.text:GetStringWidth()) + CHROME)
+  sizeTool(d)
   return d
+end
+
+-- Sizes Filter, Groups and Sort to their labels again and fits the search box to the room they leave: the labels
+-- change size with the Text size setting, which T.Refresh re-fonts but never re-widens.
+function BG.ResizeTools(frame)
+  local tools = BG.tools
+  if not tools then return end
+  sizeTool(tools.filter)
+  sizeTool(tools.groups)
+  ns.WidenToLabel(BG.sort)
+  BG.FitSearch(frame)
 end
 
 -- How much of the search row the two buttons take (zero before they exist).
