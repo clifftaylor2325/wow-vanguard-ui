@@ -1247,6 +1247,18 @@ it("a dropdown keeps its hover fill while its menu is open, and lets go when the
   expect([lit(), addon.eval("return ns.Theme.HoverParts(__two)[2]:GetAlpha()")], "opening another dropdown passes the hold on").toEqual([0, 1]);
 });
 
+it("a dropdown menu opens above its dropdown when the screen's bottom is nearer than the menu is tall, and below it otherwise (P1-3)", () => {
+  const addon = loggedIn("__wfgStub.setScreen(835, 668)");
+  openDropdown(addon, 17);
+  // Where the open menu hangs: its point, the point it hangs from and the y offset.
+  const hang = (bottom) => {
+    addon.eval(`ns.Widgets.CloseMenu() __dd:ClearAllPoints() __dd:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", 100, ${bottom}) __dd.__scripts.OnClick(__dd)`);
+    return addon.eval("local p, rel, rp, x, y = Vanguard_Menu:GetPoint() return { p, rel == __dd, rp, y }");
+  };
+  expect(hang(188), "17 choices (322 tall) with 188 units below: over the dropdown").toEqual(["BOTTOMLEFT", true, "TOPLEFT", 2]);
+  expect(hang(400), "room for the menu: under it as before").toEqual(["TOPLEFT", true, "BOTTOMLEFT", -2]);
+});
+
 it("a menu of more than 16 rows shows the 4 px thumb at the rest alpha and moves it as the list scrolls; a short one has none", () => {
   const addon = loggedIn();
   openDropdown(addon, 4);

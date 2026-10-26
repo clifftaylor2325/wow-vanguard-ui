@@ -474,10 +474,19 @@ local function raiseMenu()
   menu.catcher:SetFrameLevel(math.max(0, menu:GetFrameLevel() - 1))
 end
 
--- Puts the menu under a dropdown and shows it, over everything.
+-- How many units of the menu's scale lie between a dropdown's bottom edge and the screen's (nil when it has no spot yet).
+local function roomBelow(d)
+  local bottom = d:GetBottom()
+  return bottom and bottom * d:GetEffectiveScale() / menu:GetEffectiveScale()
+end
+
+-- Puts the menu under a dropdown and shows it, over everything; above the dropdown instead when the screen's
+-- bottom edge is nearer than the menu is tall (the clamp would otherwise slide it up over the dropdown).
 local function showMenuUnder(d)
+  local room = roomBelow(d)
   menu:ClearAllPoints()
-  menu:SetPoint("TOPLEFT", d, "BOTTOMLEFT", 0, -2)
+  if room and room < menu:GetHeight() + 2 then menu:SetPoint("BOTTOMLEFT", d, "TOPLEFT", 0, 2)
+  else menu:SetPoint("TOPLEFT", d, "BOTTOMLEFT", 0, -2) end
   menu:Show()
   raiseMenu()
 end
