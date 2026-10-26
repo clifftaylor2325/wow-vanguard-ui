@@ -28,7 +28,8 @@ it("the setup wizard's title block: the title sits on the window's 24 line (the 
   expect([colors[0], colors[1]], "the title in the text colour, the caption in text2").toEqual([tok(addon, "text").slice(0, 3).concat(1), tok(addon, "text2").slice(0, 3).concat(1)]);
   expect(addon.eval("local f = Vanguard_Setup return f.crest:GetLeft() >= f.title:GetRight() and math.abs((f.crest:GetTop() + f.crest:GetBottom()) / 2 - (f.title:GetTop() + f.title:GetBottom()) / 2) < 1"), "the crest sits right of the title, centred on its line").toBe(true);
   const foot = addon.eval("local f = Vanguard_Setup return { f.next.__points.BOTTOMRIGHT.x, f.next.__points.BOTTOMRIGHT.y, f.back:GetWidth(), f.skip:GetWidth(), f.skip.__points.BOTTOMLEFT.x }");
-  expect(foot, "Next sits T.SPACE.pad from the corner; Back and Skip are the usual 120 wide, Skip a pad in").toEqual([-pad, pad, 120, 120, pad]);
+  expect(foot, "Next sits T.SPACE.pad from the corner; Back is the usual 120 wide, Skip a pad in and as wide as the room left of Back").toEqual([-pad, pad, 120, 440 - 2 * pad - 240 - 2 * gap, pad]);
+  expect(addon.eval("local f = Vanguard_Setup return f.skip:GetRight() < f.back:GetLeft()"), "Skip stops short of Back (a gap between), so a long label (German) has room").toBe(true);
 });
 it("the setup wizard is a dialog: the dialog alpha, the shared X at the window offset closes it, and Escape is wired", () => {
   const addon = loggedIn("UISpecialFrames = {}", { firstRun: true });

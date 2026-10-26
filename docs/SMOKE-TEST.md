@@ -171,6 +171,12 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Expect: the window is about three quarters of your screen tall (at least as tall as before). The dot's tooltip has a second line, "Default: 100%" or the like. "move frames" lists Move frames, and clicking that line only marks the button (frames do not unlock). "square" lists Corners. "a" lists eight and ends with "N more: type more words". Vanguard meter says "On, but its own switch is off (Combat tools)" beside its name until you switch the meter on under Combat tools. After the UI scale change the window is still tall and fits the screen.
 - If it fails, paste: a screenshot of the window, your screen resolution and UI scale, and `/vg errors`.
 
+### 2.1f2 The options list's long page names and Text size changes
+
+- Do: in a non-English client (Italian, Spanish, Portuguese or Russian) type `/vg` and look at the list of pages on the left, changing a setting on a page with a long name (Combat tools, Town and gear) so its dot shows. Then open Modules, Unit frames and Combat tools, set Text size to 130% under General, and open those pages again.
+- Expect: each page name ends before the page's dot and the list's edge (a name too long is cut short), never over them. After the Text size change, each page you reopen is laid out for the new size: a module's description sits wholly inside its row, a "reload" tag sits after its caption without touching it, and a switch with a wrapped caption has the switch centred on the caption. [Needs in-game check: how far a real translation runs depends on the font's real widths.]
+- If it fails, paste: a screenshot of the list and the page, the client language, and `/vg errors`.
+
 ### 2.1g The addons button's tooltip and the AddOns list heading
 
 - Do: point at the addons button by the minimap without clicking. Then open the game's AddOns list from the character select screen or the game menu.
@@ -2400,6 +2406,12 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Do: with two chat tabs, move the mouse away from the chat and wait a few seconds; then untick `/vg` → Chat → Keep chat tabs visible, wait again, and tick it back. Tick Hide the tab bar until the mouse is over the chat (under Chat), move the mouse away for five seconds, bring it back over the chat, then away again while a friend says something into the other tab; untick it. Look at the column of buttons beside the chat, with voice chat on and off (Options → Voice), and when a Quick Join toast shows.
 - Expect: both tabs stay at full strength with the mouse away; with Hide the tab bar ticked, the bar's rule and the Find and Copy tiles fade away about four seconds after the mouse leaves the chat and the tabs go with them (the tabs at the game's own pace), all back the moment the mouse is over the chat again, and the bar stays while the other tab flashes; unticked, the bar is back at once and stays; unticked, the tab you are not reading dims after a moment but stays readable (about 60 %, not the game's near-invisible 20 %), comes to full under the mouse, and the ticked switch brings it back at once; the side buttons stack down from the tab bar's top (chat menu, Quick Join, voice channel, deafen, mute, text to speech, each only when the client shows it), a tile's width apart, and close up when the voice buttons go; a Quick Join toast leaves the stack where it was. `/vg errors` is empty.
 - If it fails, paste: a screenshot of the chat's left column and tab bar, and `/vg errors`.
+
+### 33.43 Dropdown menus near the bottom, the French key prompt, the options search hint
+
+- Do: on a small screen (1024x768 or a window about 835 units tall), open `/vg` → General and click the Panel texture dropdown near the bottom of the page, then one higher up the page; click the first one again. Set the game to French (frFR), open `/vg` → Click casting, click Add key. Still in French, set General → Text size to 115 % and then 130 % and look at the search box in the options header.
+- Expect: the low dropdown's menu opens above it (its bottom edge on the dropdown's top), scrolls as before, never covers the dropdown's own value, and a second click on the dropdown closes it; the higher one opens below as before. The Add key button reads "Touche, clic ou molette…" in full while it waits. The search box shows "Rechercher dans les réglages" cut short with an ellipsis if it does not fit, never past the box's right edge or over the profile picker.
+- If it fails, paste: a screenshot of the menu, the button or the header and `/vg errors`.
 
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 

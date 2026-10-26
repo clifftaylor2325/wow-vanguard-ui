@@ -167,7 +167,7 @@ local function fill(entry)
   for _, group in ipairs(entry.groups) do y = addGroup(child, group, y) end
   frame.hint:SetShown(hasLink(entry))
   frame.view:Fit(y - GROUP_GAP - LINE_GAP)
-  frame.lines, frame.version = child.lines, entry.version
+  frame.lines, frame.version, frame.textScale = child.lines, entry.version, T.Settings().textScale
   frame.title:SetText(ns.Format(L["What's new in Vanguard {version}"], { version = entry.version }))
   frame.view:ScrollTo(0)
 end
@@ -178,7 +178,7 @@ end
 -- running version count as seen.
 function WN.Show(entry)
   if not frame then build() end
-  if frame.version ~= entry.version then fill(entry) end
+  if frame.version ~= entry.version or frame.textScale ~= T.Settings().textScale then fill(entry) end
   for _, fs in ipairs(accented) do T.Color(fs, "accent") end
   if entry.version == ns.AddonVersion() then VanguardDB.whatsNewSeen = entry.version end
   T.FadeIn(frame)
