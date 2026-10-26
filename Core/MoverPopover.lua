@@ -227,12 +227,23 @@ local function build()
   addButtons()
 end
 
--- Opens the popover for a mover, beside its handle.
+-- Where the popover goes beside a handle: the popover's point, the handle's point and the offset. Its left edge at
+-- the handle's right, or, when that would put it past the screen's edge (the client would clamp it back over the
+-- handle), its right edge at the handle's left.
+local function besideHandle(h)
+  local right = (h:GetRight() or 0) * h:GetEffectiveScale() / UIParent:GetEffectiveScale()
+  if right + T.SPACE.gap + WIDTH <= (UIParent:GetWidth() or math.huge) then return "TOPLEFT", "TOPRIGHT", T.SPACE.gap end
+  return "TOPRIGHT", "TOPLEFT", -T.SPACE.gap
+end
+
+-- Opens the popover for a mover, beside its handle on the side with room.
 function ns.MoverPopover(m)
   if not popover then build() end
   popover.key, popover.label = m.key, m.label
+  local to = m.handle or UIParent
+  local point, relPoint, x = besideHandle(to)
   popover:ClearAllPoints()
-  popover:SetPoint("TOPLEFT", m.handle or UIParent, "TOPRIGHT", T.SPACE.gap, 0)
+  popover:SetPoint(point, to, relPoint, x, 0)
   answer(true)
   T.FadeIn(popover)
 end

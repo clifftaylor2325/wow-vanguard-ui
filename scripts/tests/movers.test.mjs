@@ -450,3 +450,21 @@ it("a canvas change while playing works the unsaved default spots out again, as 
   const [left, bottom, , height] = rectOf(addon, "Vanguard_targettarget");
   expect([left, bottom + height], "a spot you saved stays 50 in from the top left corner, not moved to a default").toEqual([50, 718]);
 });
+
+it("the position popover opens on the side of a handle that has room, so it never covers the handle it belongs to", () => {
+  const addon = loggedIn("__wfgStub.setScreen(1365, 768)");
+  addon.slash("unlock");
+  // Right-clicks a mover's handle, as the player does, and gives the handle's and the popover's rects.
+  const open = (key) => {
+    addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.mover and w.mover.key == "${key}" then w:GetScript("OnMouseDown")(w, "RightButton") end end`);
+    const handle = addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.mover and w.mover.key == "${key}" then return { w:GetLeft(), w:GetRight() } end end`);
+    const popover = addon.frame("Vanguard_MoverPopover").rect;
+    return { handleLeft: handle[0], handleRight: handle[1], left: popover.left, right: popover.left + popover.width };
+  };
+  const minimap = open("minimap");
+  expect(minimap.right, "a right-edge frame: the popover ends at its handle's left edge").toBeLessThanOrEqual(minimap.handleLeft);
+  expect(minimap.left, "and starts on the screen").toBeGreaterThanOrEqual(0);
+  const chat = open("chat");
+  expect(chat.left, "a frame with room on its right: the popover starts right of its handle, as before").toBeGreaterThanOrEqual(chat.handleRight);
+  expect(chat.right, "and stays on the screen").toBeLessThanOrEqual(1365);
+});
