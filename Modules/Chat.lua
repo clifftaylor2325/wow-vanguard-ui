@@ -949,12 +949,14 @@ function CH.Refresh()
 end
 
 -- Keeps the main chat window where its mover put it: the game's Edit Mode
--- re-anchors it whenever a layout is applied.
+-- re-anchors it whenever a layout is applied. The offsets are in UIParent's units, so a scaled
+-- window divides them by its scale, as the mover does.
 local function pinChat(frame)
   ns.Pin(frame, function(f)
     local point, relPoint, x, y = ns.MoverPoint("chat")
+    local scale = f:GetScale() or 1
     f:ClearAllPoints()
-    f:SetPoint(point, UIParent, relPoint, x, y)
+    f:SetPoint(point, UIParent, relPoint, x / scale, y / scale)
   end)
 end
 

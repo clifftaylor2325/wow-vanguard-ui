@@ -662,6 +662,14 @@ it("chat is a mover: placed once, sized once, kept where the player put it", () 
   expect(addon.eval('return ns.ResetMovers("chat")'), "/vg reset chat puts it back").toBe(1);
   expect(spot().slice(0, 3), "at the bottom-left").toEqual(["BOTTOMLEFT", 40, 20]);
 });
+it("chat keeps its spot when the mover's Scale is not 100 %: the pin divides the offsets by the window's scale", () => {
+  const addon = loggedIn(UI_ENV + TIDY_ENV);
+  addon.eval("ns.SetMoverScale('chat', 2)");
+  const at = (scale) => addon.eval(`ns.SetMoverScale('chat', ${scale}) ChatFrame1:ClearAllPoints() ChatFrame1:SetPoint('CENTER')
+    local p = ChatFrame1.__points.BOTTOMLEFT return { ChatFrame1:GetScale(), p.x, p.y, ChatFrame1:GetLeft() * ChatFrame1:GetScale(), ChatFrame1:GetBottom() * ChatFrame1:GetScale() }`);
+  expect(at(2), "at 200 % the pin is 20, 10 in frame units: 40, 20 in UIParent's").toEqual([2, 20, 10, 40, 20]);
+  expect(at(0.5), "at 50 % it is 80, 40 in frame units").toEqual([0.5, 80, 40, 40, 20]);
+});
 it("bags", () => {
   const addon = loggedIn(UI_ENV);
   expect(addon.eval("return __cvars.combinedBags") === "1", "combined bags are turned on").toBeTruthy();

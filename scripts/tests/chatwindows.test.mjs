@@ -52,6 +52,12 @@ it("chat windows: the floating window becomes a mover and stays where it was put
   expect(addon.eval("return #ns.errors") + docked.eval("return #ns.errors"), "no errors").toBe(0);
 });
 
+it("chat windows: a floating window with a mover Scale keeps its spot (the pin divides the offsets by its scale)", () => {
+  const addon = loggedIn(ENV, { savedVariables: 'VanguardDB.profiles = { Default = { ChatWindows = { movers = true } } }' });
+  addon.eval("ns.SetMoverPoint('chat2', 'TOPLEFT', 'TOPLEFT', 90, -70) ns.SetMoverScale('chat2', 2) ChatFrame2:ClearAllPoints() ChatFrame2:SetPoint('CENTER') local p, _, r, x, y = ChatFrame2:GetPoint(1) __p = { x, y, ChatFrame2:GetScale() }");
+  expect(addon.eval("return __p"), "at 200 % the offsets are half in frame units, so the window stays under its handle").toEqual([45, -35, 2]);
+});
+
 it("chat windows: nothing happens without the movers switch, and a client without the layout calls or windows is fine", () => {
   const off = loggedIn(ENV);
   expect(off.eval("return ns.MoverPoint('chat2')"), "off: no mover").toBeFalsy();
