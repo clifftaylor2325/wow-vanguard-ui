@@ -809,7 +809,7 @@ it("options: the pages, their nav order and each page's row count stay as they w
   expect(pages, "the page list and each page's row count (a new row is one more on its page)").toEqual([
     "general|General|10|40", "modules|Modules|20|88", "unitframes|Unit frames|30|34", "raid|Raid frames|40|26",
     "actionbars|Action bars|60|74", "quests|Quests|70|29", "bars|Bars and bags|80|17", "map|Map|81|36", "chat|Chat|82|82", "windows|Game windows|83|47", "cooldowns|Cooldowns|83.5|13", "tools|Combat tools|84|39", "town|Town and gear|85|57", "profiles|Profiles|90|22",
-    "feedback|Feedback|100|7", "healing|Healing|45|44", "talents|Talents|47|7", "nameplates|Nameplates|65|18",
+    "feedback|Feedback|100|11", "healing|Healing|45|44", "talents|Talents|47|7", "nameplates|Nameplates|65|18",
     "situations|Situations|86|16", "clickcast|Click casting|46|11",
   ]);
   addon.eval('ns.Options.Show("general")');

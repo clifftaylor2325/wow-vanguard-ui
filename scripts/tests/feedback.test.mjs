@@ -170,6 +170,18 @@ it("the options window's last page, Feedback, opens the form on a bug or a featu
   expect(addon.eval('return __click("Copy a report")') && addon.eval("return Vanguard_TextDialog:IsShown() and Vanguard_TextDialog.title:GetText()"), "Copy a report shows /vg report's box").toBe("Vanguard report: Ctrl+C, then paste at vanguardui.com/feedback");
 });
 
+it("the Feedback page's Community card copies the Discord invite and the X address, naming the handle", () => {
+  const addon = loggedIn(CLICK_LUA);
+  // Clicks a button and reads the copy box's title and text.
+  const copied = (label) => addon.eval(`return __click("${label}") and { Vanguard_TextDialog.title:GetText(), Vanguard_TextDialog.edit:GetText() }`);
+  addon.slash("");
+  addon.eval('__click("Feedback")');
+  const line = "for _, p in ipairs(ns.Options.PAGES) do if p.key == 'feedback' then for _, r in ipairs(p.rows()) do if r[1] == 'text' and r[2]:find('@WowVanguardUI', 1, true) then return r[2] end end end end";
+  expect(addon.eval(line), "the card's line names the X handle").toContain("@WowVanguardUI on X");
+  expect(copied("Copy Discord invite"), "the permanent invite in the copy box").toEqual(["Vanguard on Discord: Ctrl+C, then paste into your browser", "https://discord.gg/8ChnJfyww"]);
+  expect(copied("Copy X link"), "the X profile in the copy box").toEqual(["Vanguard on X: Ctrl+C, then paste into your browser", "https://x.com/WowVanguardUI"]);
+});
+
 it("the feedback form: a window title with its X and Escape at the dialog alpha, T.SPACE.pad insets, one thumb on each text area that overflows", () => {
   const addon = loggedIn("__view = function(edit) return __wfgStub.scrollOwners[edit] end");
   open(addon);
