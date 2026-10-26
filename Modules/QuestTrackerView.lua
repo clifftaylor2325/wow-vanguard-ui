@@ -176,6 +176,7 @@ function QT.Build(spot)
   addHeader(f)
   addBody(f)
   f.levelXp = T.Text(f.body:CreateFontString(nil, "OVERLAY"), "small", "text2")
+  ns.SingleLine(f.levelXp):SetWidth(QT.W)
   QT.frame = f
 end
 

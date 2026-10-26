@@ -1771,6 +1771,13 @@ it("quest tracker: kill XP redraws the XP-to-level line", () => {
   expect(levelLine(addon)).toBe("Quests: 100% of the XP to level");
 });
 
+it("quest tracker: the XP-to-level line ends inside the tracker's width, on one line, however long its text", () => {
+  const addon = halfwayToLevel();
+  addon.eval("Vanguard_QuestTrackerFrame.levelXp:SetText(string.rep('Missioni: 315% dell esperienza per salire di livello ', 2))");
+  const line = addon.eval("local f = Vanguard_QuestTrackerFrame return { f.levelXp:GetRight() <= f.body:GetRight(), f.levelXp:GetWidth(), f.levelXp:CanWordWrap() }");
+  expect(line, "the line is as wide as the tracker, at most, and does not wrap").toEqual([true, 260, false]);
+});
+
 it("quest tracker: a level-up redraws the XP-to-level line", () => {
   const addon = halfwayToLevel();
   addon.fire("PLAYER_LEVEL_UP", 9);
