@@ -320,3 +320,11 @@ for (const [locale, textScale] of [["frFR", 1], ["frFR", 1.3], ["deDE", 1.3]]) {
     expect(labelHeight, "the Plan caption is one line: shorter than the 24-tall bar, which two lines fill").toBeLessThan(barHeight);
   });
 }
+
+for (const [locale, textScale] of [["deDE", 1.3], ["esES", 1.3], ["ruRU", 1], ["ruRU", 1.3]]) {
+  it(`talent planner: in ${locale} at Text size ${textScale * 100}% Spend planned shows its whole label (B7-2)`, () => {
+    const addon = barIn(locale, textScale);
+    const [natural, room] = addon.eval("local b = Vanguard_TalentPlan.spend return { ns.Theme.FullWidth(b.text), b:GetWidth() - 2 * ns.Theme.SPACE.gap }");
+    expect(natural, "the label at full size fits inside the button").toBeLessThanOrEqual(room + 1e-6);
+  });
+}
