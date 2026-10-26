@@ -2528,6 +2528,12 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: the tile's one-pixel border and the one-pixel inset of the health bar inside it stay one sharp line each, the same thickness at 25 and at 40 players; none is blurred, doubled or missing. [Needs in-game check: whether a fractional edge blurs or drops a line is for the real client.]
 - If it fails, paste: a zoomed screenshot, the group size, the UI scale, and `/vg errors`.
 
+### 33.74 Incoming heals over the mana strip
+
+- Do: in a raid with power bars on the raid tiles, have a healer cast on a member who has a mana bar (and, if you can, a shield on them), and look at that tile's bottom edge while the heal is incoming.
+- Expect: the thin power strip along the bottom of the tile keeps its own colour for its whole width; the heal and shield tints end above it and never cover or tint it. [Needs in-game check: draw order between sibling frames is the client's.]
+- If it fails, paste: a zoomed screenshot of the tile and `/vg errors`.
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ## When you are done
