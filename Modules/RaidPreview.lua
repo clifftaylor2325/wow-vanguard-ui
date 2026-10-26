@@ -140,6 +140,13 @@ local function lay(k, s, z)
   b:Show()
 end
 
+-- Sets the preview's scale; when it changed, borders and pixel sizes are worked out again for it.
+local function setScale(frame, scale)
+  if frame:GetScale() == scale then return end
+  frame:SetScale(scale)
+  T.Rescale()
+end
+
 -- The preview's frame, sized for n tiles, drawn as large as the real grid for n
 -- players, and pinned to the raid frames' holder as their header is (the holder moves to the spot
 -- the real grid would take for n players, which RF.Fit puts back when the preview ends).
@@ -147,7 +154,7 @@ local function fit(n)
   RF.PlaceFor(n)
   local point = RF.HeaderPoint()
   RP.frame = RP.frame or CreateFrame("Frame", "Vanguard_RaidPreview", UIParent)
-  RP.frame:SetScale(RF.Scale(n))
+  setScale(RP.frame, RF.Scale(n))
   RP.frame:SetSize(gridSize(n, RF.settings))
   RP.frame:ClearAllPoints()
   RP.frame:SetPoint(point, RF.holder, point)

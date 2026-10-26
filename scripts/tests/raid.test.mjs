@@ -100,6 +100,35 @@ it("a 25 or 40 raid at its default spot on a 1365 x 768 UI clears the roll track
   }
 });
 
+it("raid frames: growing the grid within one spot (25 to 40) works the tiles' borders and health inset out again for the new scale", () => {
+  const addon = loggedIn(UNITS_ENV + RAID_ENV + "__members = 0 GetNumGroupMembers = function() return __members end");
+  addon.eval(`__spawn(1, "raid1")`);
+  addon.eval("__rescales = 0 local rescale = ns.Theme.Rescale ns.Theme.Rescale = function(...) __rescales = __rescales + 1 return rescale(...) end");
+  // The first tile's health inset against the screen pixel at its scale now: [offset, one pixel].
+  const inset = () => addon.eval("local b = Vanguard_RaidUnitButton1 local _, _, _, x = b.health:GetPoint(1) return { math.abs(x), ns.Theme.Pixel(b) }");
+  // The group grows (or shrinks) to n players, with the repaint count started again.
+  const grow = (n) => {
+    addon.eval(`__members, __rescales = ${n}, 0`);
+    addon.fire("GROUP_ROSTER_UPDATE");
+  };
+  grow(25);
+  grow(40);
+  const [x, pixel] = inset();
+  expect([addon.eval("return Vanguard_Raid:GetScale()"), x, addon.eval("return __rescales")], "25 to 40 at one spot: scaled, the inset one screen pixel, pixel sizes worked out again once").toEqual([0.72, pixel, 1]);
+  grow(40);
+  expect(addon.eval("return __rescales"), "a roster change that leaves the scale alone repaints nothing").toBe(0);
+});
+
+it("raid preview: stepping from 25 to 40 sample players works the tiles' borders out again for the new scale, once", () => {
+  const addon = loggedIn(UNITS_ENV + RAID_ENV + CLICK_LUA);
+  addon.slash("preview 25");
+  addon.eval("__rescales = 0 local rescale = ns.Theme.Rescale ns.Theme.Rescale = function(...) __rescales = __rescales + 1 return rescale(...) end");
+  addon.slash("preview 40");
+  expect([addon.eval("return Vanguard_RaidPreview:GetScale()"), addon.eval("return __rescales")], "scaled to 72% and pixel sizes worked out again").toEqual([0.72, 1]);
+  addon.slash("preview 40");
+  expect(addon.eval("return __rescales"), "drawn again at the same scale, nothing more").toBe(1);
+});
+
 it("raid role mark: a hidden role shows no mark, no role call or NONE shows none, a healer gets the cross", () => {
   const addon = loggedIn(UNITS_ENV + RAID_ENV);
   // The role mark RaidFrames gives raid1 after setup: [there is an icon, its color].

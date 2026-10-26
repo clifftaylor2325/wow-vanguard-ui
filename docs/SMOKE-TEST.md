@@ -2522,6 +2522,12 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: Check undercuts is as wide as its label; Cancel next undercut takes the room between the line beside the heading and Check undercuts, its label shrinking a little in a long language, never over the line; the Lists pane's six buttons are two to a row in three rows and show Umbenennen, Переименовать and Копировать whole; the pane lists two fewer entries than before; the filter dialog is a little wider and "Quality" is one line beside its dropdown; + Add shows its whole label in every place along the mail panel's bottom (the preset buttons are a little narrower) and stays inside the panel. [Needs in-game check: all of it.]
 - If it fails, paste: a screenshot of the toolbar, pane, dialog or panel, the game's language, and `/vg errors`.
 
+### 33.73 Raid tile edges after the grid changes size
+
+- Do: with Raid frames on (or `/vg preview 25`), step the group or the preview from 25 to 40 players at the same spot, at a UI scale other than 1 (and at 1), and look at the edges of a tile with a zoomed screenshot.
+- Expect: the tile's one-pixel border and the one-pixel inset of the health bar inside it stay one sharp line each, the same thickness at 25 and at 40 players; none is blurred, doubled or missing. [Needs in-game check: whether a fractional edge blurs or drops a line is for the real client.]
+- If it fails, paste: a zoomed screenshot, the group size, the UI scale, and `/vg errors`.
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ## When you are done
