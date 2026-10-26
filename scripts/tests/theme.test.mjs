@@ -880,7 +880,7 @@ it("a removed variant (Frost): /vg variant frost is refused, and a profile that 
   const addon = loggedIn(undefined, { savedVariables: 'VanguardDB = { profiles = { Default = { theme = { variant = "frost" } } } }' });
   expect([addon.eval("return ns.Theme.Settings().variant"), addon.eval("return ns.Theme.VARIANTS.frost == nil"), tok(addon, "text").slice(0, 3)], "the saved frost is migrated away; the default text colour").toEqual(["default", true, [232 / 255, 234 / 255, 238 / 255]]);
   addon.slash("variant frost");
-  expect([chatHas(addon, /Usage: \/vg variant default\|contrast\|vellum\|classic\|midnight\|obsidian\|moss\|ember$/), addon.eval("return ns.Theme.Settings().variant")], "refused, and the setting is left alone").toEqual([true, "default"]);
+  expect([chatHas(addon, /Usage: \/vg variant default\|\|contrast\|\|vellum\|\|classic\|\|midnight\|\|obsidian\|\|moss\|\|ember$/), addon.eval("return ns.Theme.Settings().variant")], "refused, and the setting is left alone").toEqual([true, "default"]);
   expect(addon.eval("return ns.Theme.VARIANT_ORDER")).toEqual(["default", "contrast", "vellum", "classic", "midnight", "obsidian", "moss", "ember"]);
 });
 
@@ -1209,14 +1209,14 @@ it("switch commands: on and off in any case set the switch, a mistyped word chan
     addon.slash(`${cmd} On`);
     if (addon.eval(`return ns.Theme.Settings().${key}`) !== true) wrong.push(`${cmd} ON twice is not on`);
     addon.slash(`${cmd} yes`);
-    if (addon.eval(`return ns.Theme.Settings().${key}`) !== true || !chatHas(addon, new RegExp(`Usage: /vg ${cmd} \\[on\\|off\\]`))) wrong.push(`${cmd} yes is not refused`);
+    if (addon.eval(`return ns.Theme.Settings().${key}`) !== true || !chatHas(addon, new RegExp(`Usage: /vg ${cmd} \\[on\\|\\|off\\]`))) wrong.push(`${cmd} yes is not refused`);
     addon.slash(`${cmd} OFF`);
     if (addon.eval(`return ns.Theme.Settings().${key}`) !== false) wrong.push(`${cmd} OFF is not off`);
   }
   addon.eval("ns.MoverOptions().snap = true");
   addon.slash("snap On");
   addon.slash("snap of");
-  if (addon.eval("return ns.MoverOptions().snap") !== true || !chatHas(addon, /Usage: \/vg snap \[on\|off\]/)) wrong.push("snap");
+  if (addon.eval("return ns.MoverOptions().snap") !== true || !chatHas(addon, /Usage: \/vg snap \[on\|\|off\]/)) wrong.push("snap");
   expect(wrong).toEqual([]);
 });
 it("switch commands: cdmglow and cdmkeys take on and off in any case and refuse a mistyped word", () => {
@@ -1232,7 +1232,7 @@ it("switch commands: cdmglow and cdmkeys take on and off in any case and refuse 
   expect([glow(), keys()], "on in capitals").toEqual([true, true]);
   addon.slash("cdmglow x");
   addon.slash("cdmkeys x");
-  expect([glow(), keys(), chatHas(addon, /Usage: \/vg cdmglow \[on\|off\|<percent>\]/), chatHas(addon, /Usage: \/vg cdmkeys \[on\|off\]/)], "a mistyped word changes nothing").toEqual([true, true, true, true]);
+  expect([glow(), keys(), chatHas(addon, /Usage: \/vg cdmglow \[on\|\|off\|\|<percent>\]/), chatHas(addon, /Usage: \/vg cdmkeys \[on\|\|off\]/)], "a mistyped word changes nothing").toEqual([true, true, true, true]);
 });
 
 // The panel texture surface on a painted frame (TEST-ONLY read): its art's file name, alpha, inset from the

@@ -18,6 +18,15 @@ function ns.Chat(msg)
   end
 end
 
+-- Text that holds no escapes but may hold a "|" (command syntax such as on|off), made safe
+-- to print: every "|" is doubled, since chat and font strings read "|r", "|c", "|t", "|n"
+-- and the like as escapes and eat them ("<name>|remove" would print "<name>emove").
+---@param text string
+---@return string
+function ns.Literal(text)
+  return (text:gsub("|", "||"))
+end
+
 -- Sends a message to a chat channel ("PARTY", "RAID", ...) for other players to read, through
 -- C_ChatInfo.SendChatMessage; the old SendChatMessage global is only a deprecation fallback on
 -- Forever (Blizzard_DeprecatedChatInfo, gone when the game drops its fallbacks), so it is used
