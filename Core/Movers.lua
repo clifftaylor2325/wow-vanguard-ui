@@ -412,16 +412,29 @@ end
 
 -- Selection and keys ------------------------------------------------------------------
 
+-- Handles narrower than this show no coordinates when selected (the vehicle exit's, 40 wide): they would wrap
+-- into a tall column over the frames around, and the popover shows the numbers.
+local COORDS_MIN_WIDTH = 120
+
+-- A selected handle's text: its label, then the point and offsets after a line break; on the label's own line
+-- when the handle is under two lines tall (a thin bar), so the text stays inside it; just the label when narrow.
+local function selectedText(m, label)
+  local h = m.handle
+  if h:GetWidth() < COORDS_MIN_WIDTH then return label end
+  local point, _, x, y = pointFor(m)
+  local where, rx, ry = ns.MoverLinks.Where(m.key)
+  local thin = h:GetHeight() < 2 * h.label:GetLineHeight() + T.SPACE.tight
+  return string.format(thin and "%s  ·  %s %d, %d" or "%s\n%s %d, %d", label, where or point, rx or x, ry or y)
+end
+
 -- Shows the selected handle's point and offsets on it (for an anchored frame, the
 -- side it's anchored to and its offsets from it); others show their label.
 function ns.ShowCoords(m)
   if not m.handle then
     return
   end
-  local point, _, x, y = pointFor(m)
-  local where, rx, ry = ns.MoverLinks.Where(m.key)
   local label = m.label .. suffix
-  m.handle.label:SetText(m == selected and string.format("%s\n%s %d, %d", label, where or point, rx or x, ry or y) or label)
+  m.handle.label:SetText(m == selected and selectedText(m, label) or label)
 end
 
 -- Selects a handle for arrow-key nudging (and deselects the previous one).

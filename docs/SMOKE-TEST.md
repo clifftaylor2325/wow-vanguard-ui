@@ -214,6 +214,8 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 
 - Do: type `/vg unlock`, then `/vg frames`.
 - Expect: the chat line `Unlocked: drag the handles. /vg lock when done.`, labelled handles on the Vanguard frames, and `/vg frames` listing keys such as `minimap`, `infostrip`, `menustrip`, `bagstrip`, `raid` and `questtracker`.
+- Then click the XP bar's handle (a thin one) and a taller handle (the minimap's), and the vehicle exit's handle if it shows.
+- Expect: the selected thin handle shows its name and point and offsets on one line, inside itself; the taller one shows them on two lines; the vehicle exit's (40 wide) shows its name only. Nothing spills out of a handle. [Needs in-game check: the text's size against the handle.]
 - If it fails, paste: the chat output and a screenshot.
 
 ### 3.2 Drag two frames and keep them

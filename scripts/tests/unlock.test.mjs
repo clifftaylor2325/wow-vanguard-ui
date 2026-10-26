@@ -32,7 +32,7 @@ it("unlock mode", () => {
   expect(JSON.stringify(saved()) === JSON.stringify(["TOP", -311, -160]), "the arrow keys nudge the selected handle 1 px").toBeTruthy();
   addon.eval(`IsShiftKeyDown = function() return true end; local h = ns.MoverHandleForTest("a"); h:GetScript("OnKeyDown")(h, "UP")`);
   expect(JSON.stringify(saved()) === JSON.stringify(["TOP", -311, -150]), "Shift nudges 10 px").toBeTruthy();
-  expect(/TOP -311, -150/.test(addon.eval(`return ns.MoverHandleForTest("a").label:GetText()`)), "the selected handle shows its point and offsets").toBeTruthy();
+  expect(addon.eval(`return ns.MoverHandleForTest("a").label:GetText()`), "a selected handle under 120 wide keeps to its label (the popover shows the numbers)").toBe("A");
   addon.slash("grid 64");
   expect(gridLines(addon) === 48, "/vg grid 64 redraws the grid (31 + 17)").toBeTruthy();
   addon.slash("grid off");
@@ -150,7 +150,7 @@ it("unlock popover: anchored to another frame's side, offsets from it, matched s
   expect(state(), "a side puts it flush under the minimap; the popover shows the side and its offsets").toEqual(["Player cast bar  ·  Below Minimap", false, true, "0", "0", ""]);
   addon.eval('local p = Vanguard_MoverPopover p.x:SetText("-40") p.x:GetScript("OnEnterPressed")(p.x)');
   expect(addon.eval("return { ns.MoverAnchor('cast_player') }"), "an X offset is from the side it's anchored to").toEqual(["minimap", "BOTTOM", -40, 0]);
-  expect(addon.eval("return __h.label:GetText()"), "and the handle says so").toBe("Player cast bar\nBelow Minimap -40, 0");
+  expect(addon.eval("return __h.label:GetText()"), "and the handle says so, on one line as it is a thin bar").toBe("Player cast bar  ·  Below Minimap -40, 0");
   addon.slash("snap off");
   addon.eval('local h = __h h.__left, h.__bottom = h:GetLeft() + 3, h:GetBottom() - 8 h:GetScript("OnDragStop")(h)');
   expect(addon.eval("return { ns.MoverAnchor('cast_player') }").slice(2), "a drag keeps the link, with new offsets").toEqual([-37, -8]);
@@ -291,4 +291,21 @@ it("grid lines are one screen pixel thick, not one UI unit, at a UI scale that i
   const widths = addon.eval("local out = {} for _, w in ipairs(__wfgStub.frames) do if w.__kind == 'Texture' and w:IsVisible() and w:GetHeight() == UIParent:GetHeight() then out[#out + 1] = w:GetWidth() end end return { out[1], ns.Theme.Pixel(UIParent) }");
   expect(widths[0], "a vertical line is T.Pixel wide").toBe(widths[1]);
   expect(widths[0], "which is not the 1 unit it was").not.toBe(1);
+});
+
+it("a selected handle shows its point and offsets inside itself: on a second line, on the label's line when thin, not at all when narrow", () => {
+  const addon = loggedIn(`
+    __wfgStub.setScreen(1920, 1080)
+    __frames = {}
+    for key, size in pairs({ tall = { 300, 60 }, thin = { 478, 14 }, narrow = { 40, 36 } }) do
+      __frames[key] = CreateFrame("Frame", nil, UIParent) __frames[key]:SetSize(size[1], size[2])
+      ns.Mover(__frames[key], key, key, { "CENTER", "CENTER", 0, 0 })
+    end
+  `);
+  addon.slash("unlock");
+  // Clicks the handle of mover `key` (selecting it) and reads its text.
+  const selected = (key) => addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.mover and w.mover.key == "${key}" then w:GetScript("OnMouseDown")(w) return w.label:GetText() end end`);
+  expect(selected("tall"), "a handle two lines tall shows the coordinates on a second line").toBe("tall\nCENTER 0, 0");
+  expect(selected("thin"), "a thin one puts them on the label's line").toBe("thin  \u00b7  CENTER 0, 0");
+  expect(selected("narrow"), "a narrow one shows its label only").toBe("narrow");
 });
