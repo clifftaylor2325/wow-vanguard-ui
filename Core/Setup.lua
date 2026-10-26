@@ -80,6 +80,10 @@ S.SCREENS = {
 }
 -- The client's UI scale range (its Graphics settings slider).
 S.UI_SCALE = { min = 0.65, max = 1.15 }
+-- The narrowest canvas (UI units across) Vanguard's default layout is laid out for; narrower, its default spots
+-- adapt where they can, and the screen step suggests the UI scale that gets there (S.FIT).
+S.MIN_CANVAS_W = 1365
+S.FIT = { key = "fit" }
 -- The Pixel-perfect choice beside the presets: one UI unit is a whole number of screen pixels, so
 -- every line and glyph lands on real pixels; Vanguard's own sizes make up for the smaller scale.
 S.PIXEL = { key = "pixel", text = L["Pixel-perfect (sharpest)"] }
@@ -339,9 +343,40 @@ function S.DetectScreen()
   return h >= 1300 and "1440" or "1080"
 end
 
--- A screen preset by key (S.PIXEL's for "pixel"), or nil ("keep").
+-- The UI scale that makes this screen's canvas S.MIN_CANVAS_W wide (768 units tall at scale 1), kept to the
+-- slider's range; nil when the client can't say the screen's size.
+function S.FitScale()
+  local w, h = screenSize()
+  if w <= 0 or h <= 0 then return nil end
+  return math.max(S.UI_SCALE.min, math.min(S.UI_SCALE.max, 768 * w / h / S.MIN_CANVAS_W))
+end
+
+-- A preset's UI scale: its own, or lower on a screen whose canvas would be narrower than S.MIN_CANVAS_W at it
+-- (a 4:3 or 5:4 screen); Pixel-perfect's stays whole pixels.
+function S.PresetScale(p)
+  if p.pixel then return p.ui end
+  return math.min(p.ui, S.FitScale() or p.ui)
+end
+
+-- Whether the screen step offers Fit: the canvas now is narrower than the layout is made for, and the fit scale
+-- would widen it.
+function S.OfferFit()
+  local now, fit, w, h = ns.PlainNumber(UIParent:GetWidth()) or 0, S.FitScale(), screenSize()
+  if not fit or now >= S.MIN_CANVAS_W then return false end
+  return 768 * w / h / fit > now + 0.5
+end
+
+-- Fit: the fit scale with every size as it is now (action buttons, raid tiles, text).
+function S.FitPreset()
+  local raid = raidSettings()
+  return { key = S.FIT.key, ui = S.FitScale(), button = moduleSettings("ActionBars").size, tile = { raid.width, raid.height },
+    textScale = T.Settings().textScale }
+end
+
+-- A screen preset by key (S.PIXEL's for "pixel", S.FIT's for "fit"), or nil ("keep").
 function S.ScreenPreset(key)
   if key == S.PIXEL.key then return S.PixelPreset() end
+  if key == S.FIT.key then return S.FitPreset() end
   for _, p in ipairs(S.SCREENS) do
     if p.key == key then return p end
   end
@@ -396,7 +431,7 @@ end
 -- Sets a screen preset's scale: Pixel-perfect's whole multiple with Vanguard's pixel-perfect scale,
 -- else the game's UI scale (which turns pixel-perfect off).
 local function setScale(p)
-  if not p.pixel then return ns.SetUIScale(p.ui) end
+  if not p.pixel then return ns.SetUIScale(S.PresetScale(p)) end
   T.Settings().pixelMultiple = p.pixel
   T.SetPixelScale(true)
 end
@@ -447,7 +482,7 @@ local function screenHint(p)
   if not p then return ns.Format(L["Changes nothing: your UI scale stays with {owner}, your sizes as they are."], { owner = S.ScaleOwner() }) end
   local text = p.pixel and L["Sharpest: every line on whole screen pixels. Vanguard's pixel-perfect scale at {scale}%; action buttons {button} px, raid tiles {width} x {height}, text {text}%."]
     or L["Moves the game's UI Scale slider to {scale}% (Vanguard's pixel-perfect scale goes off); action buttons {button} px, raid tiles {width} x {height}, text {text}%."]
-  return ns.Format(text, { scale = percent(p.ui), button = p.button, width = p.tile[1], height = p.tile[2], text = percent(p.textScale) })
+  return ns.Format(text, { scale = percent(S.PresetScale(p)), button = p.button, width = p.tile[1], height = p.tile[2], text = percent(p.textScale) })
 end
 
 -- Marks -----------------------------------------------------------------------------------
@@ -627,7 +662,13 @@ local function layoutPage(page)
   choicePage(page, L["How do you mostly play? You can change it all later in /vg."], layoutChoices(), "layout")
 end
 
--- The screen choices: each preset (the one for this screen marked), then Keep.
+-- The Fit choice for a narrow canvas: the UI scale that gives the layout its room, suggested.
+local function fitChoice()
+  local p = S.FitPreset()
+  return { key = p.key, hint = screenHint(p), text = ns.Format(L["Fit my screen: UI scale {scale}%  ·  suggested"], { scale = percent(p.ui) }) }
+end
+
+-- The screen choices: each preset (the one for this screen marked), Pixel-perfect, Fit on a narrow screen, then Keep.
 local function screenChoices()
   local detected, out = S.DetectScreen(), {}
   for i, p in ipairs(S.SCREENS) do
@@ -635,6 +676,7 @@ local function screenChoices()
     out[i] = { key = p.key, hint = screenHint(p), text = ns.Format(text, { screen = p.text, width = p.w, height = p.h }) }
   end
   out[#out + 1] = { key = S.PIXEL.key, text = S.PIXEL.text, hint = screenHint(S.PixelPreset()) }
+  if S.OfferFit() then out[#out + 1] = fitChoice() end
   out[#out + 1] = { key = "keep", text = L["Keep my current sizes"], hint = function() return screenHint(nil) end }
   return out
 end
