@@ -302,6 +302,9 @@ local menu
 local MENU_ROWS = 16
 -- How tall a menu item is: an inline control's height.
 local MENU_ROW = T.CONTROL_H
+-- A menu item's text inset from its left, the check mark's size and inset from its right, and the gap kept between a
+-- label and the check (units).
+local MENU_ITEM = { text = 8, check = 12, edge = 6, gap = 4 }
 
 -- Hides the open dropdown menu.
 function W.CloseMenu()
@@ -321,9 +324,9 @@ local function menuItem(i)
   b:SetPoint("TOPRIGHT", -1, -1 - (i - 1) * MENU_ROW)
   flat(b, "HIGHLIGHT", "hover"):SetAllPoints()
   b.text = T.Text(b:CreateFontString(nil, "OVERLAY"), "label")
-  b.text:SetPoint("LEFT", 8, 0)
-  b.check = icon(b, "Check", 12, "accent")
-  b.check:SetPoint("RIGHT", -6, 0)
+  b.text:SetPoint("LEFT", MENU_ITEM.text, 0)
+  b.check = icon(b, "Check", MENU_ITEM.check, "accent")
+  b.check:SetPoint("RIGHT", -MENU_ITEM.edge, 0)
   return b
 end
 
@@ -355,8 +358,19 @@ local function fillMenu()
   local d, shown = menu.owner, math.min(#menu.choices, MENU_ROWS)
   for i = 1, shown do fillItem(i, menu.choices[menu.offset + i], d.get(), d.set) end
   for i = shown + 1, #menu.items do menu.items[i]:Hide() end
-  menu:SetSize(d.menuWidth or d:GetWidth(), shown * MENU_ROW + 2)
+  menu:SetSize(menu.width, shown * MENU_ROW + 2)
   placeMenuThumb(shown)
+end
+
+-- The menu's width for a dropdown: the dropdown's (or the width it asks for), wider when a choice's label as drawn
+-- needs more (its inset, then the gap and the check mark), so no label runs past the edge or under the check.
+local function menuWidth(d)
+  local room, width = MENU_ITEM.text + MENU_ITEM.gap + MENU_ITEM.check + MENU_ITEM.edge, d.menuWidth or d:GetWidth()
+  for _, choice in ipairs(menu.choices) do
+    menu.measure:SetText(choice[2])
+    width = math.max(width, math.ceil(menu.measure:GetUnboundedStringWidth()) + room)
+  end
+  return width
 end
 
 -- Scrolls a long menu one item per wheel step, within its list.
@@ -410,6 +424,12 @@ local function addMenuThumb()
   menu.thumb:SetAlpha(T.SCROLL.rest)
 end
 
+-- A hidden label on the menu that measures each choice as an item would draw it (menuWidth).
+local function addMeasure()
+  menu.measure = T.Text(menu:CreateFontString(nil, "OVERLAY"), "label")
+  menu.measure:Hide()
+end
+
 -- The shared menu frame, built once: a raised panel above everything, closed by Escape, a click outside or a pick.
 local function menuFrame()
   if menu then return menu end
@@ -419,7 +439,7 @@ local function menuFrame()
   menu:SetClampedToScreen(true)
   menu:EnableMouseWheel(true)
   menu:SetScript("OnMouseWheel", scrollMenu)
-  for _, add in ipairs({ addMenuThumb, addCatcher, wireMenuState }) do add() end
+  for _, add in ipairs({ addMenuThumb, addMeasure, addCatcher, wireMenuState }) do add() end
   menu:Hide()
   return menu
 end
@@ -453,6 +473,7 @@ local function openMenu(d)
   T.HoldHover(d, true)
   menu.choices = type(d.choices) == "function" and d.choices() or d.choices
   menu.offset = startOffset(menu.choices, d.get())
+  menu.width = menuWidth(d)
   fillMenu()
   showMenuUnder(d)
 end

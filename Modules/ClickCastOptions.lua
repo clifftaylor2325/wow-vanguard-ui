@@ -679,15 +679,22 @@ local function refreshTile(r)
   r.tile.name:SetText(playerName())
 end
 
+-- The line right of the tile saying what the last press would do; it wraps short of the row's right edge.
+local function addResultLine(r)
+  r.tile.result = T.Text(r:CreateFontString(nil, "OVERLAY"), "label", "text2")
+  r.tile.result:SetPoint("LEFT", r.tile, "RIGHT", T.SPACE.col, 0)
+  r.tile.result:SetPoint("RIGHT", r, "RIGHT", -T.SPACE.gap, 0)
+  r.tile.result:SetJustifyH("LEFT")
+  r.tile.result:SetText("Hover the tile, then press a key or click: it says what would happen. Nothing is cast.")
+end
+
 -- The test row kind: the tile, and the line saying what the last press would do.
 local function testBuilder(parent, _, width)
   local r = CreateFrame("Frame", nil, parent)
   r:SetSize(width, 60)
   r.tile = sampleTile(r)
   r.tile:SetPoint("LEFT", T.SPACE.gap, 0)
-  r.tile.result = T.Text(r:CreateFontString(nil, "OVERLAY"), "label", "text2")
-  r.tile.result:SetPoint("LEFT", r.tile, "RIGHT", T.SPACE.col, 0)
-  r.tile.result:SetText("Hover the tile, then press a key or click: it says what would happen. Nothing is cast.")
+  addResultLine(r)
   wireTile(r.tile)
   r.Refresh = refreshTile
   return r
