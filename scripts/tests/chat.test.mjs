@@ -634,6 +634,17 @@ it("chat window size: a window left at an earlier first size is set to the new o
   expect(addon.eval("local CH = ns.GetModule('Chat') return { { CH.DefaultSize(1707) }, { CH.DefaultSize(1365) }, { CH.DefaultSize(2560) }, { CH.DefaultSize(1600) }, { CH.DefaultSize(1615) }, { CH.DefaultSize(1616) } }"), "the first size fills the room left of the player frame, up to 524: 416 on a 1080p screen at setup's 80 % scale; under 1616 units (where the room left of the player frame is short of 372) it tucks under the frame at 372 x 144").toEqual([[416, 200], [372, 144], [524, 200], [372, 144], [372, 144], [372, 200]]);
   addon.eval("ns.GetModule('Chat').settings.windowScale = 'x' ns.GetModule('Chat').ApplySize() ChatFrame1 = nil ns.GetModule('Chat').ApplySize()");
 });
+it("chat's unlock handle is clamped past the window, so a drag to an edge keeps its side buttons, column, tabs and edit box on screen", () => {
+  const addon = loggedIn(UI_ENV + TIDY_ENV);
+  addon.slash("unlock");
+  // The chat handle, with its clamp insets recorded as the handle is laid out again.
+  addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.mover and w.mover.key == "chat" then __h = w end end
+    function __h:SetClampRectInsets(...) self.__testInsets = { ... } end
+    ns.PlaceMover("chat")`);
+  const CH = addon.eval("local CH, T = ns.GetModule('Chat'), ns.Theme return { CH.STACK_ROOM, CH.SIDE_COLUMN, CH.BAR, T.SPACE.tight }");
+  const [stack, column, bar, tight] = CH;
+  expect(addon.eval("return __h.__testInsets"), "left past the side buttons, right past the scroll column, up past the tab bar, down past the edit box").toEqual([-(tight + stack), column + tight, bar, -(bar + tight)]);
+});
 it("chat is a mover: placed once, sized once, kept where the player put it", () => {
   const addon = loggedIn(UI_ENV + TIDY_ENV);
   // Chat's anchor point, offsets and size.

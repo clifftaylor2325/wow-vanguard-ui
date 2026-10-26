@@ -2444,6 +2444,12 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: the swing rows sit just over the cast bar, above bar 1, with the 4th bar on; the pet's health text ends left of the mood glyph; bar 5 is a column clear of bar 4; the meter title ends in "..." before Report and Reset; a roll's name ends in "..." before its figures and never draws over them; the group board's hint wraps inside the window; the keybind banner shows its whole last sentence; the vehicle exit label stays inside its button; the XP text stays in the bar's left half and the reputation text in its right half; and, on a German client, say whether "Fehlgeschlagen" is cut on a failed pet cast (no change was made for it: it needs this look first).
 - If it fails, paste: a screenshot of the part and `/vg errors`.
 
+### 33.47 Frames kept on the screen, and chat dragged to an edge
+
+- Do: `/vg unlock`, drag your player frame against the right edge and lock; set the game's UI scale from 65 % to 115 % (or load a profile saved on an ultrawide screen on a narrower one). Then `/vg unlock` and drag the chat handle hard against the left edge, then the top-right corner, and lock.
+- Expect: the player frame stays wholly on the screen after the scale change, and in unlock mode its handle sits over it. The chat handle stops short of each edge: with the chat on the left edge its column of side buttons is still on the screen; in the top-right corner the tab bar and its Copy and Find tiles are under the screen's top, the scroll column inside the right edge, and the edit box (press Enter) on the screen. [Needs in game: whether the client's clamp keeps protected frames on the screen, and that SetClampRectInsets grows the chat handle's clamp in the direction used (negative left and bottom, positive right and top).]
+- If it fails, paste: a screenshot with the handles showing, `/vg frame ChatFrame1` and `/vg errors`.
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ## When you are done

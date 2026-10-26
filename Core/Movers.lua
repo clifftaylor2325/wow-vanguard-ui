@@ -559,12 +559,15 @@ function ns.SetMoverSuffix(text)
 end
 
 -- The handle for a mover, created on first use; sized and placed over its frame (at least 40 x 14, so a thin bar
--- can still be grabbed without its handle spilling onto the frame above it).
+-- can still be grabbed without its handle spilling onto the frame above it). A mover whose frame draws past its own
+-- rect sets m.insets (SetClampRectInsets' left, right, top, bottom), so the handle can't be dropped where that part
+-- would leave the screen.
 local function handleFor(m)
   m.handle = m.handle or createHandle(m)
   local f = m.frame
   m.handle:SetScale(f:GetScale() or 1)
   m.handle:SetSize(math.max(f:GetWidth() or 0, 40), math.max(f:GetHeight() or 0, 14))
+  if m.insets then m.handle:SetClampRectInsets(unpack(m.insets)) end
   anchor(m.handle, m)
   return m.handle
 end
