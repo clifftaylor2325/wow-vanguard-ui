@@ -18,7 +18,9 @@ local T = ns.Theme
 
 local MB = ns.Module("MinimapButtons", { defaults = { drawer = true } })
 
-MB.SIZE, MB.GAP, MB.PER_ROW, MB.PAD = 26, 2, 4, T.SPACE.tight
+-- A cell is 31 wide, the size LibDBIcon builds its buttons at, so each icon and its tracking ring keep the
+-- places the library gave them.
+MB.SIZE, MB.GAP, MB.PER_ROW, MB.PAD = 31, 2, 4, T.SPACE.tight
 -- Addon minimap buttons are named after the library that makes them.
 MB.NAME = "^LibDBIcon10_"
 -- A second look shortly after login, for addons that make their buttons late.
