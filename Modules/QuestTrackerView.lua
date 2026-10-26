@@ -176,6 +176,7 @@ function QT.Build(spot)
   addHeader(f)
   addBody(f)
   f.levelXp = T.Text(f.body:CreateFontString(nil, "OVERLAY"), "small", "text2")
+  ns.SingleLine(f.levelXp):SetWidth(QT.W)
   QT.frame = f
 end
 
@@ -303,11 +304,33 @@ end
 -- it keeps clear above the screen's bottom edge.
 QT.EXPANDED_SHARE, QT.FALLBACK_SCREEN_HEIGHT, QT.FOOT_CLEAR = 0.7, 768, T.SPACE.section
 
--- The room under the body's top down to the foot's clearance (the body's own units, so a mover scale holds).
+-- The frames that can sit under the tracker's foot: the menu strip (the bags and the micro menu), and the
+-- first three bars, which reach the tracker's columns only on the narrowest screens.
+QT.FLOOR_FRAMES = { "Vanguard_MenuStrip", "Vanguard_Bar1", "Vanguard_Bar2", "Vanguard_Bar3" }
+
+-- Whether a frame shows under the tracker: its columns cross the tracker's.
+local function underColumns(o, f)
+  if not (o and o:IsShown() and o:GetLeft() and f:GetLeft()) then return false end
+  local k = o:GetEffectiveScale() / f:GetEffectiveScale()
+  return o:GetLeft() * k < f:GetRight() and o:GetRight() * k > f:GetLeft()
+end
+
+-- The top of the highest of QT.FLOOR_FRAMES under the tracker's columns, in the tracker's units; 0 with none.
+local function floorUnder(f)
+  local floor = 0
+  for _, name in ipairs(QT.FLOOR_FRAMES) do
+    local o = _G[name]
+    if underColumns(o, f) then floor = math.max(floor, o:GetTop() * o:GetEffectiveScale() / f:GetEffectiveScale()) end
+  end
+  return floor
+end
+
+-- The room under the body's top down to the foot's clearance over whatever sits under the tracker (the
+-- body's own units, so a mover scale holds).
 local function roomBelow(f, levelText)
   local top = f.body:GetTop()
   if not top then return math.huge end
-  return top - reserved(levelText) - QT.FOOT_CLEAR
+  return top - reserved(levelText) - QT.FOOT_CLEAR - floorUnder(f)
 end
 
 -- How tall the quests may stack: the spot's body, or most of the screen when expanded (never past its bottom).

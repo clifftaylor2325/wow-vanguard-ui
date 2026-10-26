@@ -52,6 +52,26 @@ it("chat windows: the floating window becomes a mover and stays where it was put
   expect(addon.eval("return #ns.errors") + docked.eval("return #ns.errors"), "no errors").toBe(0);
 });
 
+it("chat windows: a floating window's unlock handle has the main chat's clamp insets, with the Combat Log's filter strip above", () => {
+  const strip = "ChatFrame2.CombatLogQuickButtonFrame = CreateFrame('Frame') ChatFrame2.CombatLogQuickButtonFrame:SetHeight(24)";
+  const addon = loggedIn(ENV + strip, { savedVariables: 'VanguardDB.profiles = { Default = { ChatWindows = { movers = true } } }' });
+  addon.slash("unlock");
+  addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.mover and w.mover.key == "chat2" then __h = w end end
+    function __h:SetClampRectInsets(...) self.__testInsets = { ... } end
+    ns.PlaceMover("chat2")`);
+  const main = addon.eval("return ns.GetModule('Chat').ClampInsets(ChatFrame1)");
+  const log = addon.eval("return __h.__testInsets");
+  expect(log, "the handle's insets are CH.ClampInsets(window)").toEqual(addon.eval("return ns.GetModule('Chat').ClampInsets(ChatFrame2)"));
+  expect([log[0], log[1], log[3], log[2] - main[2]], "the same sides as the main window, and the strip's 24 on top of the bar's 24").toEqual([main[0], main[1], main[3], 24]);
+  expect(log[2], "48 above the Combat Log").toBe(48);
+});
+
+it("chat windows: a floating window with a mover Scale keeps its spot (the pin divides the offsets by its scale)", () => {
+  const addon = loggedIn(ENV, { savedVariables: 'VanguardDB.profiles = { Default = { ChatWindows = { movers = true } } }' });
+  addon.eval("ns.SetMoverPoint('chat2', 'TOPLEFT', 'TOPLEFT', 90, -70) ns.SetMoverScale('chat2', 2) ChatFrame2:ClearAllPoints() ChatFrame2:SetPoint('CENTER') local p, _, r, x, y = ChatFrame2:GetPoint(1) __p = { x, y, ChatFrame2:GetScale() }");
+  expect(addon.eval("return __p"), "at 200 % the offsets are half in frame units, so the window stays under its handle").toEqual([45, -35, 2]);
+});
+
 it("chat windows: nothing happens without the movers switch, and a client without the layout calls or windows is fine", () => {
   const off = loggedIn(ENV);
   expect(off.eval("return ns.MoverPoint('chat2')"), "off: no mover").toBeFalsy();
