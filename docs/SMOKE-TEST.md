@@ -214,9 +214,13 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 
 - Do: type `/vg unlock`, then `/vg frames`.
 - Expect: the chat line `Unlocked: drag the handles. /vg lock when done.`, labelled handles on the Vanguard frames, and `/vg frames` listing keys such as `minimap`, `infostrip`, `menustrip`, `bagstrip`, `raid` and `questtracker`.
-- Then click the XP bar's handle (a thin one) and a taller handle (the minimap's), and the vehicle exit's handle if it shows.
-- Expect: the selected thin handle shows its name and point and offsets on one line, inside itself; the taller one shows them on two lines; the vehicle exit's (40 wide) shows its name only. Nothing spills out of a handle. [Needs in-game check: the text's size against the handle.]
 - If it fails, paste: the chat output and a screenshot.
+
+### 3.1b A selected handle's numbers
+
+- Do: type `/vg unlock`, then click the XP bar's handle (a thin one), a taller handle (the minimap's), and the vehicle exit's handle if it shows.
+- Expect: the selected thin handle shows its name and point and offsets on one line, inside itself; the taller one shows them on two lines; the vehicle exit's (40 wide) shows its name only. Nothing spills out of a handle. [Needs in-game check: the text's size against the handle.]
+- If it fails, paste: a screenshot of each handle.
 
 ### 3.2 Drag two frames and keep them
 
@@ -260,11 +264,17 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Expect: the popover title reads `Player cast bar  ·  Below Player`, the cast bar sits 4 px under the player frame's bottom edge and stays there after the spec change and the reload; with Unit frames off it stays where it was (on screen), and with them on again it is under the player frame. No error.
 - If it fails, paste: a screenshot of each step that went wrong and `/vg errors`.
 
-Then, with the cast bar still anchored to the player frame, change the game's UI scale slider (or turn **Pixel-perfect** on under `/vg` → General).
-- Expect: the cast bar stays against the player frame's bottom edge (it used to stay at its old screen spot). [Needs in-game check: the client moving the player frame when the canvas changes.]
+### 3.6b The anchored cast bar after a UI scale change
 
-Then, at 130% text, make the popover refuse a link (set the Player frame's **Anchor to** the Player cast bar).
+- Do: with the cast bar still anchored to the player frame (3.6), change the game's UI scale slider (or turn **Pixel-perfect** on under `/vg` → General).
+- Expect: the cast bar stays against the player frame's bottom edge (it used to stay at its old screen spot). [Needs in-game check: the client moving the player frame when the canvas changes.]
+- If it fails, paste: a screenshot of the cast bar and the player frame, and `/vg errors`.
+
+### 3.6c The popover's refusal line at a large text size
+
+- Do: at 130% text, `/vg unlock`, right-click the Player frame's handle and set its **Anchor to** to the Player cast bar (still anchored to the player frame, so the popover refuses the circle).
 - Expect: the red line saying it would go round in a circle sits clear of the Reset and Done buttons, the popover having grown taller to hold it. [Needs in-game check: the line's height against the client's font.]
+- If it fails, paste: a screenshot of the popover.
 
 ### 3.7 Exit without saving
 
