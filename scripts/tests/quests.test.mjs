@@ -623,6 +623,12 @@ it("quest tracker: nearest first, collapsing, too many quests, and switched off"
   const off = loggedIn(TRACK_ENV, { savedVariables: "VanguardDB.profiles = { Default = { QuestTracker = { own = false } } }" });
   expect(off.eval("return { Vanguard_QuestTrackerFrame == nil, ObjectiveTrackerFrame:IsShown() }"), "switched off: the game's tracker").toEqual([true, true]);
 });
+it("quest tracker: a long quest title stays on one line, so it can't draw over the first objective", () => {
+  const addon = loggedIn(UNITS_ENV + TRACK_ENV);
+  addon.eval(`__quests[90051].title = "TEST-ONLY Die Suche nach dem verschollenen Zwergenarchaeologen und seinem Gefolge" ns.GetModule("QuestTracker").Refresh()`);
+  addon.update(0);
+  expect(addon.eval("local f = Vanguard_QuestTrackerFrame return f.blocks[1].title:CanWordWrap()"), "the title ends in an ellipsis instead of wrapping").toBe(false);
+});
 it("quest tracker: expanded on a short screen, the list stops above the screen's bottom and Show fewer stays on it", () => {
   const addon = loggedIn(UNITS_ENV + TRACK_ENV + "__wfgStub.setScreen(835, 668)", { savedVariables: "VanguardDB.profiles = { Default = { QuestTracker = { expanded = true } } }" });
   addon.eval(`for i = 1, 9 do local id = 90070 + i __quests[id] = { index = 10 + i, title = "TEST-ONLY Many " .. i, level = 5, dist = i, objectives = { { text = "a" }, { text = "b" }, { text = "c" } } } __watches[#__watches + 1] = id end`);
