@@ -2648,6 +2648,12 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: the timer digits sit on the icon's bottom edge, the stack count in its top right corner, and the small type letter in the top left corner is unhidden by either; on the 18-unit nameplate icons the count and the timer may still touch at 115% and up. [Needs in-game check: how much of the letter glyph and the digits is readable, and that the fallback icons' countdown numbers (made while in combat) also sit on the bottom edge.]
 - If it fails, paste: a screenshot of the icons at Text size 100% and 130%, and `/vg errors`.
 
+### 33.80 Round minimap: info strip and quest tracker under its band
+
+- Do: pick the Classic look (General → Look → Theme variant), reload, and look at the minimap's top right corner on 1365x768 and 1920x1080; then set Minimap shape to Square and reload again.
+- Expect: with the round map, the info strip starts below the map's bottom band (the coordinates text sits clear of the durability row) and the quest tracker follows under the strip; with the square map the strip sits right under the map as before. [Needs in-game check: the real round map's bottom band against the strip's first row.]
+- If it fails, paste: a screenshot of the minimap and strip, and `/vg errors`.
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ## When you are done
