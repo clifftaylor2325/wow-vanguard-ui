@@ -1241,6 +1241,16 @@ it("the search box shows a clear glyph only while it has text; clicking it empti
   expect(addon.eval("return { __s:GetText(), __s.clear:IsShown(), __seen[#__seen] }"), "a click empties it and tells onChange").toEqual(["", false, ""]);
 });
 
+it("a search box's hint stays inside the box, on one line, when a translation at a large text size is longer than the box (P2-7)", () => {
+  const addon = loggedIn("", { client: 'GetLocale = function() return "frFR" end' });
+  addon.eval(`ns.Theme.Settings().textScale = 1.3
+    __box = ns.Widgets.Search(UIParent, 190, "Rechercher dans les réglages", function() end) __box:SetPoint("CENTER")`);
+  const out = addon.eval(`local T, h = ns.Theme, __box.hint
+    return { h:GetRight() <= __box:GetRight() - T.CONTROL_H, h:GetUnboundedStringWidth() > __box:GetWidth() - T.SEARCH_INSET - T.CONTROL_H, h:CanWordWrap(), h.__justifyH }`);
+  expect(out[1], "the hint is longer than the room it has, so the test means something").toBe(true);
+  expect([out[0], out[2], out[3]], "it ends where the clear glyph's room begins, on one line, left-aligned").toEqual([true, false, "LEFT"]);
+});
+
 // Opens a dropdown of n choices (value 1 current) and returns nothing; the menu is Vanguard_Menu.
 const openDropdown = (addon, n) => addon.eval(`local list = {} for i = 1, ${n} do list[i] = { i, "Choice " .. i } end
   __dd = ns.Widgets.Dropdown(UIParent, list, function() return 1 end, function(v) __picked = v end, 160)

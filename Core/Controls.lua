@@ -736,15 +736,24 @@ local function addClear(e)
   e.clear:Hide()
 end
 
+-- A search box's hint: one line between the magnifier and the clear glyph's room, cut at the right
+-- (a longer translation or a larger text size must not run past the box).
+local function addHint(e, hint)
+  e.hint = T.Text(e:CreateFontString(nil, "OVERLAY"), "label", "disabled")
+  e.hint:SetPoint("LEFT", T.SEARCH_INSET, 0)
+  e.hint:SetPoint("RIGHT", -T.CONTROL_H, 0)
+  e.hint:SetJustifyH("LEFT")
+  e.hint:SetWordWrap(false)
+  e.hint:SetText(hint)
+end
+
 -- A search box with a magnifier and a hint; onChange(text) runs as you type.
 function W.Search(parent, width, hint, onChange)
   local e = W.Input(parent, width)
   e:SetTextInsets(T.SEARCH_INSET, T.CONTROL_H, 0, 0)
   e.glass = icon(e, "Search", T.SEARCH_ICON, "text2")
   e.glass:SetPoint("LEFT", T.SPACE.gap, 0)
-  e.hint = T.Text(e:CreateFontString(nil, "OVERLAY"), "label", "disabled")
-  e.hint:SetPoint("LEFT", T.SEARCH_INSET, 0)
-  e.hint:SetText(hint)
+  addHint(e, hint)
   addClear(e)
   e:SetScript("OnTextChanged", function(self) refreshHint(self); onChange(self:GetText() or "") end)
   return e
