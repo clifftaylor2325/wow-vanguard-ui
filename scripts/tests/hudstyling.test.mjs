@@ -55,3 +55,12 @@ it("P4-7: the health text of the target, focus and boss frames ends left of the 
     expect(text.right, `${key}: the health text clears the diamond`).toBeLessThanOrEqual(diamond.left);
   }
 });
+
+it("P4-9: the Versus deck stays a pad above a taller target frame", () => {
+  const addon = loggedIn(UNITS_ENV, { savedVariables: profile("UnitFrames = { deck = true, targetHeight = 44 }") });
+  // How far the deck's top edge stands above the taller of the player and target frames.
+  const pad = () => addon.eval("local d, p, t = ns.GetModule('UnitFrames').deck, Vanguard_player, Vanguard_target return d:GetTop() - math.max(p:GetTop(), t:GetTop())");
+  expect(pad(), "a 44 tall target is inside the deck with the full 6 unit pad").toBeCloseTo(6, 0);
+  addon.eval("local UF = ns.GetModule('UnitFrames') UF.settings.targetHeight = 36 UF.ApplySizes()");
+  expect(pad(), "and a target as tall as the player frame leaves the same pad").toBeCloseTo(6, 0);
+});

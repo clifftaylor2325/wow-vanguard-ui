@@ -666,11 +666,22 @@ function UF.TargetHeight()
   return tonumber(UF.settings.targetHeight) or UF.LAYOUT_BY_KEY.target.h
 end
 
--- Sizes the target frame to UF.TargetHeight (out of combat: it is a secure button).
+-- Lifts the deck's top edge by however far the target frame stands taller than the player frame, so
+-- the panel keeps its UF.DECK.pad above the taller of the two. The deck's other corner stays anchored.
+local function fitDeckTop(player)
+  if not UF.deck then return end
+  local taller = math.max(0, UF.TargetHeight() - UF.LAYOUT_BY_KEY.player.h)
+  UF.deck:SetPoint("TOPLEFT", player, "TOPLEFT", -UF.DECK.pad, UF.DECK.pad + taller)
+end
+
+-- Sizes the target frame to UF.TargetHeight (out of combat: it is a secure button) and the deck with it.
 function UF.ApplySizes()
   local target = UF.frames.target
   if not target then return end
-  ns.OutOfCombat(function() T.PixelSize(target, UF.LAYOUT_BY_KEY.target.w, UF.TargetHeight()) end)
+  ns.OutOfCombat(function()
+    T.PixelSize(target, UF.LAYOUT_BY_KEY.target.w, UF.TargetHeight())
+    fitDeckTop(UF.frames.player)
+  end)
 end
 
 -- Applies the Versus deck setting: now, or when combat ends (a new deck joins the Calm HUD).
