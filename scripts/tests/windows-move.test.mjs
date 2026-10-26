@@ -16,6 +16,7 @@ const MOVE_ENV = `${WINDOWS_ENV}
   for _, f in ipairs({ c, b }) do
     f.SetMovable = function(self, on) self.__testMovable = on end
     f.SetClampedToScreen = function(self, on) self.__testClamped = on end
+    f.SetClampRectInsets = function(self, ...) self.__testInsets = { ... } end
     f.SetUserPlaced = function(self, on) self.__testUserPlaced = on end
   end
   local cal = CreateFrame("Frame", "CalendarFrame", UIParent) cal:SetSize(540, 420) cal:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 100, -100) cal:Hide()
@@ -55,6 +56,7 @@ it("#201 the character pane: dragged by its title bar, its place is saved and pu
   addon.eval("__open(CharacterFrame)");
   expect(corner(addon, "CharacterFrame"), "opened where the panel manager puts it").toEqual([16, 964]);
   expect(addon.eval("return { CharacterFrame.__testMovable, CharacterFrame.__testClamped }"), "made movable and kept on the screen").toEqual([true, true]);
+  expect(addon.eval("return CharacterFrame.__testInsets"), "the clamp leaves room for the panel's border and the bottom tabs").toEqual([-12, 12, 12, -44]);
   const h = addon.frame("ns.FrameState('vgMoveHandle')[CharacterFrame]");
   expect([h.mouse, Math.round(h.rect.left), Math.round(h.rect.right), Math.round(h.rect.height)], "the drag area over the title bar, short of the close button").toEqual([true, 16 + 58, 16 + 384 - 24 - 40, 20]);
   expect(drag(addon, "CharacterFrame", 500, 700), "a drag moves it").toBe(true);

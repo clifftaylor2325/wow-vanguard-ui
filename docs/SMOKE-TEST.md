@@ -228,6 +228,12 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Expect: the window is gone while you drag, nothing sticks to the mouse, and the next time it opens it is where it was let go; after the second drag it comes back at the new spot every time, also after another window opens and shuffles the panels. `/vg errors` is empty. [Needs in-game check: whether the client sends the drag's end to a drag area that is hidden mid-drag; Vanguard now ends the drag itself when the window hides.]
 - If it fails, paste: which window, where it came back, and `/vg errors`.
 
+### 3.2c A dragged window at the screen's edge
+
+- Do: out of combat, open the merchant (or the mailbox, with its Inbox and Send Mail tabs under it) and drag it by its title bar as far down and to the left as it goes. Then open the combined bag and drag it to each edge too.
+- Expect: the window stops about 12 units short of the left, right and top edges, so its panel border shows whole, and about 44 units short of the bottom edge, so the page tabs under it stay in view; the combined bag still opens at its spot and nothing in `/vg errors`. [Needs in-game check: that the sign of the clamp insets keeps the window inside, and that no listed window (the combined bag especially) sets insets of its own that this replaces.]
+- If it fails, paste: which window, which edge, and where its edge ended.
+
 ### 3.2b Move frames from the options, and back
 
 - Do: `/vg` → General → **Move frames**. Read the bar at the top, move a frame, click **Save and lock**. Again **Move frames**, then **Exit without saving**. Again **Move frames**, then `/vg lock`.
