@@ -22,8 +22,6 @@ local MOUSE = { L["Left click"], L["Right click"], L["Middle click"], L["Button 
 local MODS = { { "", L["Plain"] }, { "shift-", L["Shift"] }, { "ctrl-", L["Ctrl"] }, { "alt-", L["Alt"] } }
 local MORE_MODS = { { "ctrl-shift-", L["Ctrl + Shift"] }, { "alt-shift-", L["Alt + Shift"] }, { "alt-ctrl-", L["Alt + Ctrl"] } }
 local CELL_H, LABEL_W, MAX_KEYS, PICKER_ROWS, ICON_SIZE = 40, 92, 8, 12, 24
--- How far down its cell a grid row's label sits, to be about centred in it (units).
-local LABEL_DROP = 12
 -- The picker's and the hover-key list's rows are list rows.
 local ROW_H = T.ROW.height
 -- The hover-key list's top line (Add key, a standalone button, with a tight gap over and under it): its height
@@ -441,12 +439,20 @@ local function gridHeaders(grid, cols, cellW)
   end
 end
 
+-- A grid row's mouse button name, y down the grid: centred down its row and wrapping inside the label column (a
+-- translation often runs longer than the English).
+local function gridLabel(grid, row, y)
+  local l = T.Text(grid:CreateFontString(nil, "OVERLAY"), "label")
+  l:SetPoint("LEFT", grid, "TOPLEFT", T.SPACE.gap, y - CELL_H / 2)
+  l:SetWidth(LABEL_W - T.SPACE.gap - T.SPACE.tight)
+  l:SetJustifyH("LEFT")
+  l:SetText(MOUSE[row])
+end
+
 -- One grid row: the mouse button's name and a cell per column.
 local function gridRow(grid, row, cols, cellW)
   local y = -(18 + (row - 1) * CELL_H)
-  local l = T.Text(grid:CreateFontString(nil, "OVERLAY"), "label")
-  l:SetPoint("TOPLEFT", T.SPACE.gap, y - LABEL_DROP)
-  l:SetText(MOUSE[row])
+  gridLabel(grid, row, y)
   for i, col in ipairs(cols) do
     local c = cell(grid, col[1] .. "BUTTON" .. row, cellW)
     c:SetPoint("TOPLEFT", LABEL_W + (i - 1) * cellW + 2, y - 2)

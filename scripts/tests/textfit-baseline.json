@@ -1,22 +1,10 @@
 {
   "dialogs": [],
-  "options window, pages 1-10": [
-    "cut | Vanguard_Options | As the game orders them | wider than its box",
-    "cut | Vanguard_Options | Melee classes and hunters | wider than its box",
-    "cut | Vanguard_Options | The game's quest marker | wider than its box",
-    "overlap | Vanguard_Options | Show when | Combat",
-    "overlap | Vanguard_Options | Show when | Mouseover"
+  "options window, pages 1-10": [],
+  "options window, pages 11 on": [],
+  "preview scenes' windows": [
+    "cut | Vanguard_StockList | sold by TEST-ONLY Thomas Miller (TEST-ONLY Goldshire)soldbys | wider than its box"
   ],
-  "options window, pages 11 on": [
-    "overlap | Vanguard_Options | Button 4 click | -",
-    "overlap | Vanguard_Options | Button 5 click | -",
-    "overlap | Vanguard_Options | Middle click | -",
-    "overlap | Vanguard_Options | Show when | Combat",
-    "overlap | Vanguard_Options | Show when | Mouseover"
-  ],
-  "screen": [
-    "spill | top level | Bags and game menu",
-    "spill | top level | Vehicle exit"
-  ],
+  "screen": [],
   "setup wizard": []
 }

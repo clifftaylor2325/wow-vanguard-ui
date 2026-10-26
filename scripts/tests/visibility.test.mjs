@@ -69,6 +69,27 @@ it("action bars: the checklist row in the options sets a bar's conditions, and t
   expect(bar(addon).now, "other attributes leave the state alone").toBe("fade");
 });
 
+it("action bars: chips too wide to sit beside the caption go on lines under it, and the row grows to hold them", () => {
+  const addon = loggedIn(ACTIONS_ENV);
+  addon.eval('for _, c in ipairs(ns.Visibility.CONDITIONS) do c[2] = "TEST-ONLY a long translated " .. c[2] end');
+  addon.eval('ns.Options.Show("actionbars")');
+  const row = addon.eval(`
+    for _, w in ipairs(__wfgStub.frames) do
+      if w.chips and w.acc.tbl() == VanguardDB.profiles.Default.ActionBars.bars[2] then
+        local tops, rowTop, last = {}, w:GetTop(), w.chips[#w.chips]
+        for _, s in ipairs(w.chips) do tops[s:GetTop()] = true end
+        local lines = 0 for _ in pairs(tops) do lines = lines + 1 end
+        return { lines = lines, grown = w.grownHeight, height = w:GetHeight(), below = rowTop - w.chips[1]:GetTop(),
+          inside = last:GetBottom() >= w:GetBottom() and last:GetRight() <= w:GetRight(), label = rowTop - w.label:GetTop() }
+      end
+    end`);
+  expect(row.lines, "the chips take more than one line").toBeGreaterThan(1);
+  expect(row.height, "the row is as tall as its lines").toBe(row.grown);
+  expect(row.below, "the first line starts under the caption's line").toBeGreaterThanOrEqual(20);
+  expect(row.inside, "the last chip stays inside the row").toBe(true);
+  expect(row.label, "the caption stays on the row's first line").toBeLessThan(20);
+});
+
 it("action bars: a bar shown on a checklist shows while you drag a spell, and follows instances on zone changes", () => {
   const addon = loggedIn(ACTIONS_ENV + "IsInInstance = function() return __inside == true, 'none' end",
     { savedVariables: 'VanguardDB.profiles.Default = { ActionBars = { bars = { [2] = { enabled = true, buttons = 12, perRow = 12, visibility = "custom", showWhen = { instance = true, raid = true } } } } }' });

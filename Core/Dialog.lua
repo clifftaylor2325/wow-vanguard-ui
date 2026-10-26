@@ -47,6 +47,18 @@ local function button(parent, label, width, kind)
 end
 ns.DialogButton = button
 
+-- Widens a dialog button to its label at full size (T.FullWidth) with T.SPACE.gap of air each side when the label
+-- needs more than the button has (a translation often runs longer than the English, a label can gain a count);
+-- it never narrows. For a button with room beside it; a label that still doesn't fit shrinks (T.FitText).
+---@param b table  a button from ns.DialogButton
+---@return table b
+function ns.WidenToLabel(b)
+  local need = math.ceil(T.FullWidth(b.text)) + 2 * T.SPACE.gap
+  if need > b:GetWidth() then b:SetWidth(need) end
+  T.Refit(b.text)
+  return b
+end
+
 -- Hides a dialog: what its close button does.
 local function hide(frame)
   frame:Hide()

@@ -230,31 +230,33 @@ local function canBuy(rows)
   return false
 end
 
--- Line i of the dungeon card (Modules/DungeonCard.lua), under the rows.
+-- Line i of the dungeon card (Modules/DungeonCard.lua), under the rows. A long line (a dungeon's keys, a
+-- translation) wraps inside the card.
 local function infoLine(i)
   local fs = PR.card:CreateFontString(nil, "OVERLAY")
   fs:SetWidth(PR.WIDTH - 2 * PR.PAD)
   fs:SetJustifyH("LEFT")
-  fs:SetWordWrap(false)
   PR.card.info[i] = fs
   return fs
 end
 
--- Shows one dungeon card line on its font string at row i under `top`, or hides the font string when there is none.
-local function paintLine(fs, line, i, top)
+-- Shows one dungeon card line on its font string y units down the card, or hides the font string when there is
+-- none; returns the height the line takes (a row's, or more when it wraps).
+local function paintLine(fs, line, y)
   fs:SetShown(line ~= nil)
-  if not line then return end
+  if not line then return 0 end
   T.Text(fs, line[2] == "head" and "heading" or "label", line[2] == "head" and "text" or "text2")
   fs:SetText(line[1])
-  fs:SetPoint("TOPLEFT", PR.PAD, -(top + (i - 1) * PR.ROW))
+  fs:SetPoint("TOPLEFT", PR.PAD, -y)
+  return math.max(PR.ROW, math.ceil(fs:GetStringHeight()) + T.SPACE.tight)
 end
 
 -- Shows the dungeon card's lines under the first `top` of the card; returns the height they take (with padding).
 local function paintInfo(lines, top)
-  local card = PR.card
+  local card, y = PR.card, top
   for i = #card.info + 1, #lines do infoLine(i) end
-  for i, fs in ipairs(card.info) do paintLine(fs, lines[i], i, top) end
-  return #lines > 0 and #lines * PR.ROW + PR.PAD or 0
+  for i, fs in ipairs(card.info) do y = y + paintLine(fs, lines[i], y) end
+  return #lines > 0 and y - top + PR.PAD or 0
 end
 
 -- Puts rows on the card ("Everything's packed." when there are none), with Buy list when one

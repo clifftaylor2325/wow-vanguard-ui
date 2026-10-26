@@ -60,7 +60,7 @@ it("beside the profession window, a recipe's reagents, what they cost, what it s
   expect(panel(addon)[3], "a new price repaints it").toEqual([["Reagents", "50c"], ["Sells for", "5s 0c"], ["Profit", "4s 50c"]]);
   expect(lineIs(addon, 3, "good"), "a profit in green").toBe(true);
   const [p, w] = [addon.frame("Vanguard_CraftingPanel").rect, addon.frame("ProfessionsFrame").rect];
-  expect([p.left - w.right, p.top, p.width], "right of the window, past its side tabs, from its top").toEqual([52, w.top, 240]);
+  expect([p.left - w.right, p.top, p.width], "right of the window, past its side tabs, from its top").toEqual([52, w.top, 280]);
 });
 
 it("the panel is a card: its heading is the card title in its corner, its padding the HUD card's gap, its controls on the control scale", () => {
@@ -72,7 +72,7 @@ it("the panel is a card: its heading is the card title in its corner, its paddin
   const at = addon.eval(`local f = Vanguard_CraftingPanel local t = f.title
     return { t:GetLeft() - f:GetLeft(), f:GetTop() - t:GetTop(), t:GetWidth(), f.add:GetHeight(), f.crafts:GetHeight(), f:GetRight() - f.add:GetRight(), f.add:GetBottom() - f:GetBottom(),
       f.crafts:GetLeft() - f.craftsLabel:GetRight(), f.add:GetLeft() - f.crafts:GetRight(), f.lines[3].label:GetBottom() - f.add:GetTop(), f.rows[1]:GetHeight(), ${CR}.PAD }`);
-  expect(at.slice(0, 7), "the title at the corner (T.SPACE.gap in, one line the panel's width less the padding), the button and the box on the control scale, the button a gap from the corner").toEqual([gap, gap, 240 - 2 * gap, buttonH, controlH, gap, gap]);
+  expect(at.slice(0, 7), "the title at the corner (T.SPACE.gap in, one line the panel's width less the padding), the button and the box on the control scale, the button a gap from the corner").toEqual([gap, gap, 280 - 2 * gap, buttonH, controlH, gap, gap]);
   expect(at.slice(7, 9), "the label T.SPACE.tight left of the box, the box a gap left of the button").toEqual([tight, gap]);
   expect([at[9] >= gap, at[10], at[11]], "the totals end a gap above the button; reagent rows as tall as the shop's; the padding the gap").toEqual([true, addon.eval("return ns.GetModule('AuctionHelper').ROW_H"), gap]);
 });

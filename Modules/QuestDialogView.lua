@@ -100,8 +100,7 @@ local function addFooter(f)
   f.rewards:SetPoint("TOPLEFT", f.scroll, "BOTTOMLEFT", 0, -CARDS_GAP)
   f.rewards:SetSize(QD.PER_ROW * (QP.CARD_W + QP.GAP) - QP.GAP, QP.CARD_H)
   f.lines, f.cards, f.captions = QP.Pool(f.child, QP.Line), QP.Pool(f.rewards, QP.Card), QP.Pool(f.rewards, QP.Caption)
-  f.money = T.Text(f:CreateFontString(nil, "OVERLAY"), "label", "gold")
-  f.money:SetPoint("LEFT", f, "BOTTOMLEFT", T.SPACE.pad, T.SPACE.pad + T.BUTTON_H / 2)
+  f.money = ns.SingleLine(T.Text(f:CreateFontString(nil, "OVERLAY"), "label", "gold"))
   addButtons(f)
 end
 
@@ -246,6 +245,16 @@ local function paintPortrait(f)
   T.Tint(f.placeholder, "accent")
 end
 
+-- The money line on the buttons' row: after Goodbye when the page shows it (a quest that costs money to hand
+-- in), else at the left edge, and ending short of the buttons at the right (cut short when it runs longer).
+local function paintMoney(f, text)
+  local m = f.money
+  m:SetText(text or "")
+  m:ClearAllPoints()
+  if f.escape:IsShown() then m:SetPoint("LEFT", f.escape, "RIGHT", T.SPACE.gap, 0) else m:SetPoint("LEFT", f, "BOTTOMLEFT", T.SPACE.pad, T.SPACE.pad + T.BUTTON_H / 2) end
+  m:SetPoint("RIGHT", f.secondary:IsShown() and f.secondary or f.primary, "LEFT", -T.SPACE.gap, 0)
+end
+
 -- Everything on a page, the panel sized to it.
 function QD.Render(p)
   local f = QD.frame
@@ -254,10 +263,10 @@ function QD.Render(p)
   f.title:SetText(QP.Plain(p.title))
   local content = renderBody(f, p)
   fitPanel(f, content, renderCards(f, p))
-  f.money:SetText(p.money or "")
   renderButton(f.primary, p.primary)
   renderButton(f.secondary, p.secondary)
   renderButton(f.escape, p.escape)
+  paintMoney(f, p.money)
 end
 
 -- Choosing -------------------------------------------------------------------------------------

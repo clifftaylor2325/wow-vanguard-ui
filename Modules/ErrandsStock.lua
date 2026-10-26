@@ -89,14 +89,22 @@ local function amountBox(row)
   return box
 end
 
+-- One line of a row's text, in its band between the icon and the amount box (at the icon's top or bottom): it fits
+-- the band on one line (T.FitText), shrinking a little when long (a merchant's name, a translation), then cut short.
+local function rowLine(row, edge, y, role, color)
+  local band = CreateFrame("Frame", nil, row)
+  band:SetHeight(SW.LINE_H)
+  band:SetPoint(edge .. "LEFT", row.icon, edge .. "RIGHT", T.SPACE.gap, y)
+  band:SetPoint("RIGHT", row.amount, "LEFT", -T.SPACE.gap, 0)
+  local fs = T.FitText(T.Text(row:CreateFontString(nil, "OVERLAY"), role, color), band, 0)
+  fs:SetJustifyH("LEFT")
+  return fs
+end
+
 -- The text side of a row: the item's name over where to buy it, between the icon and the amount box.
 local function rowText(row)
-  row.name = T.Text(row:CreateFontString(nil, "OVERLAY"), "label", "text")
-  row.name:SetPoint("TOPLEFT", row.icon, "TOPRIGHT", T.SPACE.gap, -1)
-  row.name:SetPoint("RIGHT", row.amount, "LEFT", -T.SPACE.gap, 0)
-  row.where = T.Text(row:CreateFontString(nil, "OVERLAY"), "small", "muted")
-  row.where:SetPoint("BOTTOMLEFT", row.icon, "BOTTOMRIGHT", T.SPACE.gap, 1)
-  row.where:SetPoint("RIGHT", row.amount, "LEFT", -T.SPACE.gap, 0)
+  row.name = rowLine(row, "TOP", 2, "label", "text")
+  row.where = rowLine(row, "BOTTOM", -2, "small", "muted")
 end
 
 -- A row's Remove button, at its right edge.
@@ -145,8 +153,10 @@ end
 
 -- The window -----------------------------------------------------------------------------------
 
--- Where the list starts, down from the top: the dialog's head, the note and the column header.
-local LIST_TOP = ns.DIALOG.head + 2 * SW.LINE_H
+-- Where the list starts, down from the top: under the column header, which sits under the note.
+local function listTop(f)
+  return f.top + SW.LINE_H
+end
 -- How tall the list is: SW.SHOWN rows with their gaps.
 local LIST_H = SW.SHOWN * (SW.ROW_H + SW.ROW_GAP)
 
@@ -158,30 +168,34 @@ local function note(f, text, role, x, y)
   return fs
 end
 
--- The note under the title and the Item and Carry column labels over the rows.
+-- The note under the title and the Item and Carry column labels over the rows, under the note however many
+-- lines it wraps to (a translation often runs longer): f.top is where the labels sit.
 local function labels(f)
   f.note = note(f, SW.NOTE, "label", SW.PAD, ns.DIALOG.head)
   f.note:SetWidth(SW.WIDTH - 2 * SW.PAD)
   f.note:SetJustifyH("LEFT")
-  note(f, L["Item"], "small", SW.PAD + SW.ICON + T.SPACE.tight + T.SPACE.gap, ns.DIALOG.head + SW.LINE_H)
+  f.top = ns.DIALOG.head + math.max(SW.LINE_H, math.ceil(f.note:GetStringHeight()) + T.SPACE.tight)
+  note(f, L["Item"], "small", SW.PAD + SW.ICON + T.SPACE.tight + T.SPACE.gap, f.top)
   local carry = LIST_W - T.SPACE.tight - SW.REMOVE_W - T.SPACE.gap - SW.AMOUNT_W
-  note(f, L["Carry"], "small", SW.PAD + carry, ns.DIALOG.head + SW.LINE_H)
+  note(f, L["Carry"], "small", SW.PAD + carry, f.top)
 end
 
 -- The scrolling rows (made as they are needed) and the line an empty list shows instead.
 local function rows(f)
   f.list = ns.ScrollView(f, { width = LIST_W })
-  f.list:SetPoint("TOPLEFT", SW.PAD, -LIST_TOP)
+  f.list:SetPoint("TOPLEFT", SW.PAD, -listTop(f))
   f.list:SetSize(LIST_W, LIST_H)
   f.rows = ns.QuestParts.Pool(f.list.child, makeRow)
-  f.empty = note(f, SW.EMPTY, "label", SW.PAD, LIST_TOP + T.SPACE.gap)
+  f.empty = note(f, SW.EMPTY, "label", SW.PAD, listTop(f) + T.SPACE.gap)
+  f.empty:SetWidth(LIST_W)
+  f.empty:SetJustifyH("LEFT")
 end
 
 -- The add slot under the list: a slot an item is dragged onto (or clicked with one held), and what it does.
 local function addSlot(f)
   local slot = T.Slot(CreateFrame("Button", nil, f))
   slot:SetSize(SW.SLOT_H - T.SPACE.gap, SW.SLOT_H - T.SPACE.gap)
-  slot:SetPoint("TOPLEFT", SW.PAD + T.SPACE.tight, -(LIST_TOP + LIST_H + T.SPACE.gap + T.SPACE.tight))
+  slot:SetPoint("TOPLEFT", SW.PAD + T.SPACE.tight, -(listTop(f) + LIST_H + T.SPACE.gap + T.SPACE.tight))
   slot:SetScript("OnReceiveDrag", ns.Guard("drop on stock slot", SW.TakeCursor))
   slot:SetScript("OnClick", ns.Guard("click stock slot", SW.TakeCursor))
   slot.plus = T.Text(slot:CreateFontString(nil, "OVERLAY"), "heading", "accentText")
@@ -190,7 +204,7 @@ local function addSlot(f)
   f.slot = slot
 end
 
--- The add slot's two lines beside it.
+-- The add slot's two lines beside it, each ending short of the window's edge on one line.
 local function slotText(f)
   f.slotText = T.Text(f:CreateFontString(nil, "OVERLAY"), "label", "text")
   f.slotText:SetPoint("TOPLEFT", f.slot, "TOPRIGHT", T.SPACE.col, -T.SPACE.tight)
@@ -198,6 +212,7 @@ local function slotText(f)
   f.slotHint = T.Text(f:CreateFontString(nil, "OVERLAY"), "small", "muted")
   f.slotHint:SetPoint("BOTTOMLEFT", f.slot, "BOTTOMRIGHT", T.SPACE.col, T.SPACE.tight)
   f.slotHint:SetText(ns.Format(L["It is added with one stack (or {count}); change the amount in its row."], { count = SW.DEFAULT_AMOUNT }))
+  for _, fs in ipairs({ f.slotText, f.slotHint }) do ns.EndAt(fs, f, SW.PAD) end
 end
 
 -- Clear list asks first (it can't be undone), then empties the list.
@@ -219,6 +234,7 @@ end
 local function build()
   local f = ns.Dialog("Vanguard_StockList", SW.WIDTH, SW.HEIGHT, L["Keep stocked"])
   labels(f)
+  f:SetHeight(SW.HEIGHT + f.top - (ns.DIALOG.head + SW.LINE_H))
   rows(f)
   addSlot(f)
   slotText(f)

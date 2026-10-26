@@ -49,6 +49,8 @@ IS.BLOCKS = {
 -- The calendar button beside the date: its side and icon size (UI units) and the gap to the strip's edge.
 IS.CALENDAR, IS.CALENDAR_GLYPH, IS.CALENDAR_GAP = 18, 14, 3
 IS.DATE_GAP = 8
+-- How far a row's blocks sit in from the strip's sides (units).
+IS.SIDE = 6
 IS.CALENDAR_ICON = { slot = "Calendar" }
 -- The session's rates wait this long (seconds) before showing: early numbers jump about.
 IS.SETTLE = 60
@@ -480,12 +482,32 @@ local function rowsShown()
   return rows
 end
 
+-- How wide each row's shown blocks are side by side (units, by row): the edges' insets, each block's text and
+-- the gap between two, and the calendar button on the date's row.
+local function rowNeeds()
+  local need = { [IS.BLOCKS.date[1]] = IS.CALENDAR + IS.CALENDAR_GAP }
+  for key, fs in pairs(IS.fonts) do
+    local row = IS.BLOCKS[key][1]
+    if fs:IsShown() then need[row] = (need[row] or 0) + fs:GetStringWidth() + IS.DATE_GAP end
+  end
+  return need
+end
+
+-- How wide the strip is: its width for the text size, or wider when a row's blocks need more (a translation
+-- often runs longer than the English), so a row's left and right blocks never run into each other.
+local function stripWidth()
+  local widest = 0
+  for _, w in pairs(rowNeeds()) do widest = math.max(widest, w) end
+  return math.max(IS.Width(), math.ceil(widest + 2 * IS.SIDE - IS.DATE_GAP))
+end
+
 -- Hides the strip while it has nothing to show (no empty box on screen) or its
--- visibility hides it, and grows it to a third (or fourth) row only while a block there shows.
+-- visibility hides it, and grows it to a third (or fourth) row only while a block there shows, and wider when
+-- a row needs it.
 local function fitRows()
   local rows = rowsShown()
   IS.frame:SetShown(rows > 0 and V.Shows(IS.frame))
-  IS.frame:SetHeight(IS.Row() * math.max(rows, 2) + IS.EDGE)
+  IS.frame:SetSize(stripWidth(), IS.Row() * math.max(rows, 2) + IS.EDGE)
 end
 
 -- Sits the date right after the time, or at the row's left edge while the time is off.
@@ -493,7 +515,7 @@ function IS.PlaceDate()
   local date, clock = IS.fonts.date, IS.fonts.clock
   date:ClearAllPoints()
   if clock:IsShown() then date:SetPoint("LEFT", clock, "RIGHT", IS.DATE_GAP, 0)
-  else date:SetPoint("LEFT", IS.frame, "TOPLEFT", 6, rowY(IS.BLOCKS.date[1])) end
+  else date:SetPoint("LEFT", IS.frame, "TOPLEFT", IS.SIDE, rowY(IS.BLOCKS.date[1])) end
 end
 
 -- The button that goes with a block, by its key on IS: the calendar with the date, the clock's hit area with the time.
@@ -531,11 +553,11 @@ end
 
 -- Building ----------------------------------------------------------------------------------
 
--- Sets a block's text at its side of its row (left blocks 6 in from the left edge, right ones 6 from the right).
+-- Sets a block's text at its side of its row (IS.SIDE in from that edge).
 local function placeText(fs, key)
   local row, point = IS.BLOCKS[key][1], IS.BLOCKS[key][2]
   fs:ClearAllPoints()
-  fs:SetPoint(point, IS.frame, "TOP" .. point, point == "LEFT" and 6 or -6, rowY(row))
+  fs:SetPoint(point, IS.frame, "TOP" .. point, point == "LEFT" and IS.SIDE or -IS.SIDE, rowY(row))
 end
 
 -- One block's text, in its place.

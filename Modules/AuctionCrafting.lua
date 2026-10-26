@@ -29,10 +29,10 @@ AH.Crafting = CR
 -- The panel shows unless switched off (Town and gear: Auction house).
 AH.defaults.crafting = true
 
--- The panel's width, padding (a card's inset, T.SPACE.gap), row height (reagents: the shop's rows, AH.ROW_H)
--- and line height (totals); its gap from the window, wide enough to clear the window's side tabs; where
--- the reagent rows start (under the heading).
-CR.WIDTH, CR.PAD, CR.ROW, CR.LINE, CR.GAP, CR.TOP = 240, T.SPACE.gap, AH.ROW_H, 18, 52, -30
+-- The panel's width (room for a reagent's name beside its count and price), padding (a card's inset,
+-- T.SPACE.gap), row height (reagents: the shop's rows, AH.ROW_H) and line height (totals); its gap from the
+-- window, wide enough to clear the window's side tabs; where the reagent rows start (under the heading).
+CR.WIDTH, CR.PAD, CR.ROW, CR.LINE, CR.GAP, CR.TOP = 280, T.SPACE.gap, AH.ROW_H, 18, 52, -30
 -- Reagent rows at most (vanilla recipes have up to six reagents).
 CR.ROWS = 8
 -- Enum.CraftingReagentType.Basic (ProfessionConstantsDocumentation.lua), for a client without the Enum.

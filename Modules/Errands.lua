@@ -115,11 +115,13 @@ local function trainTip(b)
   GameTooltip:Show()
 end
 
--- The button's label (how many one click learns; the tooltip has the cost); it's off while nothing is affordable.
+-- The button's label (how many one click learns; the tooltip has the cost), the button growing left to hold it;
+-- it's off while nothing is affordable.
 function ER.UpdateTrainButton()
   local b, plan = ER.trainButton, ER.TrainPlan()
   if not b then return end
   b.text:SetText(plan.count > 0 and ns.Format(L["Train all ({count})"], { count = plan.count }) or L["Train all"])
+  ns.WidenToLabel(b)
   if plan.count > 0 then b:Enable() else b:Disable() end
   b:SetShown(ER.settings.trainAll)
 end
@@ -468,14 +470,17 @@ function ER.PollFlight()
   if now - f.picked > ER.TAKEOFF_WAIT then ER.flight = nil end
 end
 
--- A movable timer bar at the travel spot, hidden until a route: the frame's name, its mover's key and label.
+-- A movable timer bar at the travel spot, hidden until a route: the frame's name, its mover's key and label. Its
+-- text is centred on one line inside the bar, cut short when a long destination's name runs past it.
 function ER.TimerBar(frameName, moverKey, label)
   local bar = T.BarColor(T.StyleBar(CreateFrame("StatusBar", frameName, UIParent)), "accent")
   T.HudPanel(bar)
   bar:SetSize(ER.BAR_W, ER.BAR_H)
   ns.Mover(bar, moverKey, label, ER.TRAVEL_SPOT)
   bar.text = T.Text(bar:CreateFontString(nil, "OVERLAY"), "barSmall")
-  bar.text:SetPoint("CENTER")
+  bar.text:SetPoint("LEFT", T.SPACE.tight, 0)
+  bar.text:SetPoint("RIGHT", -T.SPACE.tight, 0)
+  bar.text:SetWordWrap(false)
   bar:Hide()
   return bar
 end

@@ -310,26 +310,58 @@ local function refreshChips(r)
   end
 end
 
--- One condition's chip: its label, an accent fill while checked; a click flips it.
+-- A chip's height, its least width and the air either side of its label, and the room the row keeps at its
+-- right (the same 8 as every other row's control, so the last chip stays clear of the card's border).
+local CHIP = { h = 20, min = 44, air = 8, edge = 8 }
+
+-- One condition's chip: its label, an accent fill while checked, as wide as its label as drawn; a click flips it.
 local function chip(r, c)
   local s = T.Button(CreateFrame("Button", nil, r))
-  s:SetSize(math.max(44, #c[2] * 7 + 16), 20)
   s.key, s.fill = c[1], W.Flat(s, "ARTWORK", "accent")
   s.fill:SetAllPoints()
   s.text = T.Text(s:CreateFontString(nil, "OVERLAY"), "small")
   s.text:SetPoint("CENTER")
   s.text:SetText(c[2])
+  s:SetSize(math.max(CHIP.min, math.ceil(s.text:GetStringWidth()) + 2 * CHIP.air), CHIP.h)
   s:SetScript("OnClick", ns.Guard("click visibility chip", function() V.Toggle(r.acc, c[1]) T.Sound("on") ns.Options.Refresh() end))
   return s
 end
 
--- Lines the chips up one pixel apart from the row's right edge, inset by the
--- same 8 as every other row's control, so the last one stays clear of the card's border.
-local function placeChips(r)
+-- How wide the chips are side by side, one pixel apart.
+local function chipsWidth(r)
+  local width = -1
+  for _, s in ipairs(r.chips) do width = width + s:GetWidth() + 1 end
+  return width
+end
+
+-- Lines the chips up one pixel apart from the row's right edge, CHIP.edge in, beside the caption.
+local function chipsBeside(r)
   for i, s in ipairs(r.chips) do
     local after = r.chips[i + 1]
-    if after then s:SetPoint("RIGHT", after, "LEFT", -1, 0) else s:SetPoint("RIGHT", r, "RIGHT", -8, 0) end
+    if after then s:SetPoint("RIGHT", after, "LEFT", -1, 0) else s:SetPoint("RIGHT", r, "RIGHT", -CHIP.edge, 0) end
   end
+end
+
+-- Lays the chips in lines under the caption, left to right, a new line when the next one would pass the row's
+-- right edge; returns how far down the last line ends.
+local function chipsUnder(r)
+  local x, y, room = 0, -W.ROW_HEIGHT, r:GetWidth() - CHIP.edge
+  for _, s in ipairs(r.chips) do
+    if x > 0 and x + s:GetWidth() > room then x, y = 0, y - CHIP.h - 1 end
+    s:SetPoint("TOPLEFT", r, "TOPLEFT", x, y)
+    x = x + s:GetWidth() + 1
+  end
+  return CHIP.h - y
+end
+
+-- Places the chips: beside the caption when they fit there, else in lines under it (a translation often runs
+-- longer than the English), the caption then on the first line and the row as tall as they need (row.grownHeight).
+local function placeChips(r)
+  if r.label:GetStringWidth() + T.SPACE.gap + chipsWidth(r) + CHIP.edge <= r:GetWidth() then return chipsBeside(r) end
+  r.grownHeight = chipsUnder(r) + T.SPACE.tight
+  r:SetHeight(r.grownHeight)
+  r.label:ClearAllPoints()
+  r.label:SetPoint("LEFT", r, "TOPLEFT", 0, -W.ROW_HEIGHT / 2)
 end
 
 -- The checklist row: its caption, then a chip per condition along the right edge.
