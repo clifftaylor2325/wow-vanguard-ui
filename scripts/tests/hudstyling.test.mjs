@@ -2,6 +2,7 @@
 // their extras), kept in one file so they never need an entry in login-scope.json.
 
 import { expect, it } from "vitest";
+import fs from "node:fs";
 import { createAddon } from "../lib/lua-harness.mjs";
 import { NO_RAID, SETUP_DONE, UNITS_ENV, loggedIn } from "./helpers.mjs";
 
@@ -67,6 +68,13 @@ it("P4-9: the Versus deck stays a pad above a taller target frame", () => {
   expect(pad(), "and a target as tall as the player frame leaves the same pad").toBeCloseTo(6, 0);
 });
 
+// A string's real translation, read from Locales/<locale>.lua (the line `L["key"] = "text"`).
+function realText(locale, key) {
+  const source = fs.readFileSync(new URL(`../../Locales/${locale}.lua`, import.meta.url), "utf8");
+  const line = source.split("\n").find((l) => l.startsWith(`L[${JSON.stringify(key)}] = `));
+  return JSON.parse(line.slice(line.indexOf("] = ") + 4));
+}
+
 // A logged-in addon in the text-fit client (real font widths, every string a third longer, as a translation runs).
 function fitClient(extra = "", saved = "") {
   const addon = createAddon({ savedVariables: SETUP_DONE + saved, textFit: true });
@@ -77,10 +85,8 @@ function fitClient(extra = "", saved = "") {
 
 it("P6-3: the keybind banner shows its whole instruction line in German and French", () => {
   // The real deDE and frFR texts of the banner's instruction line (Locales/deDE.lua, Locales/frFR.lua).
-  const lines = [
-    "Fahre über einen Knopf und drücke dann eine Taste, eine seitliche Maustaste oder das Mausrad. Rücktaste leert, Escape verlässt.",
-    "Survolez un bouton, puis appuyez sur une touche, un bouton latéral de souris ou la molette. Retour arrière efface, Échap quitte.",
-  ];
+  const key = "Hover a button, then press a key, a side mouse button or the wheel. Backspace clears, Escape leaves.";
+  const lines = ["deDE", "frFR"].map((locale) => realText(locale, key));
   const addon = fitClient();
   addon.slash("keybind");
   for (const text of lines) {
@@ -170,10 +176,8 @@ it("P5-6: the officer roster's names stop before their notes", () => {
 
 it("P5-9: the group board's hint wraps inside the window in French and German", () => {
   // The real frFR and deDE hints (Locales/frFR.lua, Locales/deDE.lua), 571 and 547 wide on one line.
-  const hints = [
-    "Cliquez sur une annonce pour ouvrir un chuchotement avec un message prérempli. Rien n’est envoyé avant que vous appuyiez sur Entrée.",
-    "Klicke auf einen Beitrag, um ein Flüsterfenster mit vorausgefüllter Nachricht zu öffnen. Nichts wird gesendet, bis du Eingabe drückst.",
-  ];
+  const key = "Click a post to open a whisper with a message filled in. Nothing is sent until you press Enter.";
+  const hints = ["frFR", "deDE"].map((locale) => realText(locale, key));
   const addon = fitClient();
   addon.slash("lfg");
   for (const hint of hints) {
