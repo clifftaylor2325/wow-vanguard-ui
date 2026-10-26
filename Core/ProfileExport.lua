@@ -18,9 +18,10 @@ local SMALL_BUTTON = 60
 local TITLE = L["Export: what to include"]
 local panel
 
--- What the panel calls a part: a group part's label, else the module's name.
+-- What the panel calls a part: a group part's label, else the module's name as the Modules page shows it (its key
+-- when it has none).
 local function partLabel(part)
-  return ns.PART_LABELS[part] or part
+  return ns.PART_LABELS[part] or (ns.Options.MODULE_INFO[part] or {})[1] or part
 end
 
 -- The switch for the panel's i-th part, made once and reused as the parts change.

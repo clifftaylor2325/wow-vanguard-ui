@@ -443,7 +443,7 @@ it("a partial string that carries the theme keeps this player's own Pixel-perfec
 });
 it("export with Include parts: /vg export <part ...>, and the export panel's switches", () => {
   const addon = loggedIn();
-  addon.eval('ns.Profile().positions = { uf_player = { point = "TOP", relPoint = "TOP", x = 1, y = -2 } }');
+  addon.eval('ns.Profile().positions = { uf_player = { point = "TOP", relPoint = "TOP", x = 1, y = -2 } } ns.Profile().ActionBars = { backing = "on" }');
   const parts = addon.eval("return ns.ProfileParts()");
   expect(parts.slice(0, 3), "the parts: layout, situations overrides and global settings first").toEqual(["layout", "situations", "global"]);
   expect(parts.slice(3), "then each module with saved settings, by name").toEqual([...parts.slice(3)].sort());
@@ -465,6 +465,9 @@ it("export with Include parts: /vg export <part ...>, and the export panel's swi
   const opened = panel();
   expect([opened.title, opened.shown, opened.rows.length], "/vg export pick opens the panel with a switch per part").toEqual(["Export: what to include", true, parts.length]);
   expect(opened.rows.slice(0, 3), "named for the player, every one on").toEqual([["Layout (positions and movers)", true], ["Situations overrides", true], ["Global settings (theme, modules list, skins)", true]]);
+  // The label of the row for this part, when the profile has it.
+  const labelOf = (part) => addon.eval(`for i, p in ipairs(ns.ProfileParts()) do if p == "${part}" then return Vanguard_ExportDialog.rows[i].label:GetText() end end`);
+  expect(labelOf("ActionBars"), "a module row reads as the Modules page names it, not by its key (B2-8)").toBe("Action bars");
   const dialog = "Vanguard_ExportDialog";
   expect(titleOf(addon, dialog), "a window title: the title role in the text colour, T.SPACE.pad in, on the close button's line").toEqual({ size: titleSize(addon), text: true, left: 16, mid: -24 });
   expect(closeOf(addon, dialog), "with the X where every window has it").toEqual([px(addon, 24), px(addon, 24), true]);
