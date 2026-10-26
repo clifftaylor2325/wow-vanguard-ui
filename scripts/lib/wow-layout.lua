@@ -14,11 +14,6 @@ local methods = stub.methods
 stub.layoutGen = 0
 stub.rectCache = {}
 
--- Rough text metrics (the client measures the rendered font): 6 px per
--- character, 14 px per line, the same as GetStringHeight's estimate.
-local CHAR_WIDTH = 6
-local LINE_HEIGHT = 14
-
 -- The default screen, and UIParent's size, until a test sets another.
 stub.screen = { width = 1920, height = 1080 }
 UIParent:SetSize(stub.screen.width, stub.screen.height)
@@ -57,33 +52,25 @@ end
 
 local rectOf
 
--- The width a font string's text takes on its longest line, whatever width the string is held to.
-local function unboundedWidth(w)
-  local text = tostring(w.__text or "")
-  local longest = 0
-  for line in (text .. "\n"):gmatch("(.-)\n") do
-    longest = math.max(longest, #line)
-  end
-  return longest * CHAR_WIDTH
-end
+-- The width a font string's text takes (its set width when it has one; scripts/lib/wow-text.lua measures it).
+local textWidth = stub.textWidth
 
--- The width a font string's text takes (its set width when it has one).
-local function textWidth(w)
-  return w.__width or unboundedWidth(w)
-end
-
--- The height a font string's text takes (its set height when it has one).
-local function textHeight(w)
+-- The height a font string's text takes (its set height when it has one), wrapped at width units.
+local function textHeight(w, width)
   if w.__height then return w.__height end
-  local text = tostring(w.__text or "")
-  if text == "" then return 0 end
-  return w:GetStringHeight()
+  return stub.textHeight(w, width)
 end
 
--- The size a widget asks for, in its own units.
-local function askedSize(w)
-  if w.__kind == "FontString" then return textWidth(w), textHeight(w) end
-  return w.__width or 0, w.__height or 0
+-- The width a widget asks for, in its own units.
+local function askedWidth(w)
+  if w.__kind == "FontString" then return textWidth(w) end
+  return w.__width or 0
+end
+
+-- The height a widget asks for in its own units; a font string's text wraps at width units (as laid out).
+local function askedHeight(w, width)
+  if w.__kind == "FontString" then return textHeight(w, width) end
+  return w.__height or 0
 end
 
 -- Screen position of a named point (TOPLEFT, CENTER...) on a rect.
@@ -167,9 +154,8 @@ local function anchoredRect(w)
   local scale = w:GetEffectiveScale()
   local edges = {}
   for i, p in ipairs(anchorsOf(w)) do edges[i] = anchorEdges(w, p, scale) end
-  local aw, ah = askedSize(w)
-  local left, width = solve(edges, "x", aw * scale, "L", "R")
-  local bottom, height = solve(edges, "y", ah * scale, "B", "T")
+  local left, width = solve(edges, "x", askedWidth(w) * scale, "L", "R")
+  local bottom, height = solve(edges, "y", askedHeight(w, width / scale) * scale, "B", "T")
   return { left = left, bottom = bottom, width = width, height = height }
 end
 
@@ -268,11 +254,13 @@ end
 -- Width and height together.
 function methods:GetSize() return self:GetWidth(), self:GetHeight() end
 
--- The width of a font string's text (rough).
-function methods:GetStringWidth() return textWidth(self) end
-
--- The width its text takes, whatever width the string is held to (rough).
-function methods:GetUnboundedStringWidth() return unboundedWidth(self) end
+-- The width of a font string's text: rough mode, as the layout sizes it; font mode, its longest line
+-- as drawn (no wider than its set width).
+function methods:GetStringWidth()
+  if stub.textMetrics ~= "font" then return textWidth(self) end
+  local natural = self:GetUnboundedStringWidth()
+  return self.__width and math.min(natural, self.__width) or natural
+end
 
 -- Whether the client would have a rect for this widget.
 function methods:IsRectValid() return laidOut(self) end

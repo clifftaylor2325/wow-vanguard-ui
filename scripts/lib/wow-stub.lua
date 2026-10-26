@@ -498,9 +498,6 @@ function methods:SetZoom(z) self.__zoom = z end
 function methods:GetZoom() return self.__zoom or 0 end
 function methods:GetZoomLevels() return self.__zoomLevels or 6 end
 
--- Word wrap on a font string (the preview reads it).
-function methods:SetWordWrap(on) self.__noWrap = not on end
-
 -- A frame's regions: its textures and font strings, in creation order.
 function methods:GetRegions()
   local out = {}
@@ -577,26 +574,6 @@ function methods:SetScrollChild(child)
 end
 -- Records whether a frame clips its children.
 function methods:SetClipsChildren(on) self.__clips = on == true end
-
--- A rough rendered height: 14 px per wrapped line at ~6 px per character.
-local function estimatedHeight(text, width)
-  local lines = 0
-  for line in (text .. "\n"):gmatch("(.-)\n") do
-    lines = lines + math.max(1, math.ceil(#line * 6 / width))
-  end
-  return lines * 14
-end
-
--- Real clients measure the rendered text. The preview feeds measured heights
--- back in through stub.stringHeights; tests get a rough estimate.
-function methods:GetStringHeight()
-  local measured = stub.stringHeights and stub.stringHeights[self.__id]
-  if measured then
-    return measured
-  end
-  local text = self.__text or ""
-  return text == "" and 0 or estimatedHeight(text, self.__width or 300)
-end
 
 -- Runs a script on each shown frame under a widget: the client fires OnShow and
 -- OnHide down the tree when a frame's visibility changes (a dialog's buttons too).

@@ -57,3 +57,21 @@ export function fontFacts(file) {
   const gid = (ch) => glyphId(buf, sub, ch.codePointAt(0));
   return { digits: [..."0123456789"].map((d) => advance(buf, t, gid(d))), letters: [..."AéŁЖΩ€"].map(gid) };
 }
+
+// The code points the test harness measures text in: printable ASCII, Latin-1 and Latin Extended-A, Cyrillic, and "…".
+const MEASURED = [[32, 126], [160, 383], [1024, 1119], [8230, 8230]];
+
+// Each measured code point's advance width in ems ({ [code]: ems }), leaving out the glyphs the font
+// lacks: the harness's text widths (scripts/lib/wow-text.lua).
+export function advanceEms(file) {
+  const buf = fs.readFileSync(file);
+  const t = tables(buf);
+  const sub = unicodeCmap(buf, t.cmap);
+  const unitsPerEm = buf.readUInt16BE(t.head + 18);
+  const out = {};
+  for (const code of MEASURED.flatMap(([lo, hi]) => Array.from({ length: hi - lo + 1 }, (_, i) => lo + i))) {
+    const gid = glyphId(buf, sub, code);
+    if (gid) out[code] = advance(buf, t, gid) / unitsPerEm;
+  }
+  return out;
+}

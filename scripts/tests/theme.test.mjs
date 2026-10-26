@@ -1,6 +1,7 @@
 // theme: Vanguard's real Lua in the TEST-ONLY headless client (scripts/lib/lua-harness.mjs).
 
 import { expect, it } from "vitest";
+import { createAddon } from "../lib/lua-harness.mjs";
 import { CLICK_LUA, MICRO_ENV, TIDY_ENV, UI_ENV, borderOf, button, chatHas, isTok, loggedIn, px, setCombat, tok, UNITS_ENV } from "./helpers.mjs";
 
 it("theme", () => {
@@ -1286,4 +1287,18 @@ it("panel texture: the picker lists Vanguard's, the game's and other addons' bac
   expect(surfaceOf(addon, "__win").slice(0, 2), "a shared background is drawn faint").toEqual(["Cloth", addon.eval("return ns.Theme.PANEL_SURFACE.sharedAlpha")]);
   addon.eval('ns.Theme.Settings().panelTexture = "TEST-ONLY Gone" ns.Theme.Refresh()');
   expect(surfaceOf(addon, "__win"), "a name nothing shares any more draws flat").toBe(false);
+});
+
+it("theme: a fitted label (every dialog button's) shrinks to fit its button, no smaller than the floor, and grows back", () => {
+  const addon = createAddon({ textFit: true });
+  // The label's text scale after some Lua (`__b` is the button).
+  const scale = (lua) => addon.eval(`${lua} return __b.text:GetTextScale()`);
+  const floor = addon.eval("return ns.Theme.FIT_FLOOR");
+  expect(scale('__b = ns.DialogButton(UIParent, "OK", 120) __b:SetPoint("CENTER")'), "a short caption keeps its size").toBe(1);
+  const shrunk = scale('__b.text:SetText("A longer caption here")');
+  expect(shrunk > floor && shrunk < 1, "a caption a little too wide shrinks just enough").toBe(true);
+  expect(addon.eval("return __wfgTextFit(__b)"), "and then fits").toEqual({});
+  expect(scale('__b.text:SetText("A caption far too long for any button of this width")'), "a much longer one stops at the floor").toBe(floor);
+  expect(scale("__b:SetWidth(600) __b.__scripts.OnSizeChanged(__b, 600, 26)"), "a wider button gives it its size back").toBe(1);
+  expect(scale("__b:SetWidth(120) ns.Theme.RefreshText()"), "a text size change fits it again").toBe(floor);
 });

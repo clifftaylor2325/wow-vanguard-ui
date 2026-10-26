@@ -33,15 +33,14 @@ local TEXT_INSET = T.SPACE.gap
 local KIND_LABELS = { secondary = { "label", "text" }, primary = { "name", "void" }, danger = { "label", "bad" } }
 
 -- A themed button on a dialog: T.BUTTON_H tall, 120 wide unless told otherwise, of a kind ("secondary"
--- unless given, "primary" or "danger").
+-- unless given, "primary" or "danger"). Its label fits across it (T.FitText), shrinking when it runs long.
 local function button(parent, label, width, kind)
   local look = KIND_LABELS[kind or "secondary"]
   local b = T.Button(CreateFrame("Button", nil, parent), kind == "primary" and "primary" or nil)
   b:SetSize(width or BUTTON_W, T.BUTTON_H)
   b.kind = kind or "secondary"
   if kind == "primary" then b.fill = T.FillParts(b, "BACKGROUND", 1, "accent") end
-  b.text = T.Text(b:CreateFontString(nil, "OVERLAY"), look[1])
-  b.text:SetPoint("CENTER")
+  b.text = T.FitText(T.Text(b:CreateFontString(nil, "OVERLAY"), look[1]), b)
   b.text:SetText(label)
   T.Color(b.text, look[2])
   return b

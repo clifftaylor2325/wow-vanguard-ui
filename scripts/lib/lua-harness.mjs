@@ -19,6 +19,7 @@ import lstring from "fengari/src/lstring.js";
 import { LuaSource, luaString, luaValue } from "./lua-emit.mjs";
 import { lineHook } from "./lua-coverage.mjs";
 import { profileSampler } from "./lua-profile.mjs";
+import { advanceEms } from "./truetype.mjs";
 
 const { lua, lauxlib, lualib, to_luastring, to_jsstring } = fengari;
 
@@ -294,6 +295,29 @@ function newUserdata(L) {
   return 1;
 }
 
+// The Lua fontEmsLua builds, once per worker.
+let fontEms;
+
+// Lua that sets __wfgFontEms: each of the addon's fonts (Media/Fonts, by file name) as its characters'
+// advance widths in ems, for the text metrics (wow-text.lua).
+function fontEmsLua() {
+  if (fontEms) return fontEms;
+  const dir = path.join(root, "Media/Fonts");
+  const fonts = fs.readdirSync(dir).filter((f) => f.endsWith(".ttf")).map((f) => {
+    const ems = Object.entries(advanceEms(path.join(dir, f))).map(([code, em]) => `[${code}]=${em}`);
+    return `[${luaString(f.replace(/\.ttf$/, ""))}]={${ems.join(",")}}`;
+  });
+  fontEms = `__wfgFontEms = {${fonts.join(",")}}`;
+  return fontEms;
+}
+
+// Loads the fonts' advance widths, the text metrics (between the stub and its layout) and the text-fit audit.
+function loadText(L) {
+  run(L, fontEmsLua(), "=fonts", false, 0);
+  runLib(L, "wow-text.lua");
+  runLib(L, "wow-textfit.lua");
+}
+
 // Loads the widget API list, the WoW stub, its layout, the world, the taint rules, and an empty addon namespace.
 function loadStub(L) {
   lua.lua_pushjsfunction(L, newUserdata);
@@ -301,16 +325,25 @@ function loadStub(L) {
   runLib(L, "wow-widget-api.lua", 1);
   lua.lua_setglobal(L, to_luastring("__wfgWidgetApi"));
   runLib(L, "wow-stub.lua");
+  loadText(L);
   runLib(L, "wow-layout.lua");
   runLib(L, "wow-world.lua");
   runLib(L, "wow-taint.lua");
   run(L, "__wfgNs = {}; __wfgStub.firstAddonFrame = #__wfgStub.frames", "=ns", false, 0);
 }
 
-// Loads every TOC file in order, then the SavedVariables source if any.
-function loadAddon(L, savedVariables) {
+// Runs the client Lua before the addon's files load, with the font metrics on for the text-fit audit.
+function startClient(L, client, textFit) {
+  if (textFit) run(L, '__wfgStub.textMetrics = "font"', "=textFit", false, 0);
+  if (client) run(L, client, "=client", false, 0);
+}
+
+// Loads every TOC file in order (the string table made a pseudo-locale as soon as
+// it exists, when pseudoLocale), then the SavedVariables source if any.
+function loadAddon(L, savedVariables, pseudoLocale) {
   for (const file of tocFiles()) {
     runFile(L, path.join(root, file), `@${file}`, true, 0);
+    if (pseudoLocale && file === "Core/Locale.lua") evalIn(L, "__wfgPseudoLocale(ns.L)");
   }
   if (savedVariables) run(L, savedVariables, "=SavedVariables", false, 0);
 }
@@ -424,6 +457,8 @@ function inspectors(addon) {
     frames: (predicate = "true") => list(addon.eval(`return __wfgInspectAll(function(w) return ${predicate} end)`)),
     // The visible top-level frames (anchored, not the game's), with their rects, for overlap checks.
     screen: () => list(addon.eval("return __wfgScreen()")),
+    // The text that does not fit under a frame (every frame the addon made when null): wow-textfit.lua.
+    textFit: (ref) => list(addon.eval(`return __wfgTextFit(${ref == null ? "nil" : frameRef(ref)})`)),
     // Every visible font string that reads exactly `text`, else [].
     texts: (text) => list(addon.eval(`return __wfgInspectAll(function(w) return w.__kind == "FontString" and w:IsVisible() and w.__text == ${luaString(text)} end)`)),
     // The first visible frame whose name or text matches a pattern.
@@ -485,13 +520,15 @@ function track(addon) {
 // ADDON_LOADED, which is when WoW restores SavedVariables. client: Lua run
 // after the client is up and before the addon's files load (the client the
 // addon finds as it loads, e.g. RETAIL_CLIENT). instructionBudget: the most
-// instructions one call from the tests may run (see Hooks above).
-export function createAddon({ savedVariables = "", client = "", instructionBudget = DEFAULT_BUDGET } = {}) {
+// instructions one call from the tests may run (see Hooks above). textFit: the
+// text-fit audit's client, with the fonts' real widths and every string a third
+// longer, as a translation might be (wow-text.lua, wow-textfit.lua).
+export function createAddon({ savedVariables = "", client = "", instructionBudget = DEFAULT_BUDGET, textFit = false } = {}) {
   const L = newState();
   attachHooks(L, instructionBudget);
   loadStub(L);
-  if (client) run(L, client, "=client", false, 0);
-  loadAddon(L, savedVariables);
+  startClient(L, client, textFit);
+  loadAddon(L, savedVariables, textFit);
   // Runs Lua with `ADDON, ns` in scope and returns the first result as JS.
   const addon = { L, eval: (source) => evalIn(L, source) };
   Object.assign(addon, drivers(addon), lifecycle(addon), inspectors(addon), input(addon));

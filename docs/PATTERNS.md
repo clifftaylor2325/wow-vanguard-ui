@@ -100,6 +100,8 @@ ns.Chat(ns.Format(L["{count} items sold for {money}"], { count = n, money = m })
 
 Every label, tooltip line, chat line and dialog text goes through `L[…]`, one whole sentence per key, so a translator can reorder it. Names the game supplies (spells, items, zones, classes) come from the client already translated and never go through `L`; nor do slash command verbs (a `/vg help` entry is `{ "syntax", L["what it does"] }`), saved-variable keys and the names saved under them (profile and preset names), profile strings, or the diagnostics pasted into a bug report: `/vg probe`, `/vg perf`, `/vg mem`, `/vg status`, `/vg report`, the `/vg errors` text, `/vg frame`, `/vg realm` and `/vg factionart`. Translations live in `Locales/<locale>.lua`, written by `node scripts/i18n.mjs import` from a reviewed CSV, never by hand.
 
+Leave room for a translation about a third longer than the English. A label on a button is fitted (`T.FitText(fs, button)`: one line, shrinking a little when it runs long); a line in a window either has a width and wraps, with room kept below it for the lines it may take, or sits where nothing is beside it. `scripts/tests/textfit.test.mjs` opens the windows with every string a third longer and fails on text cut short, running out of its frame, or drawn over other text or a control.
+
 ## A setting that changes shape
 
 ```lua
