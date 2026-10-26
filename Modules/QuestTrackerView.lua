@@ -127,7 +127,7 @@ local function makeBlock(parent)
   b.title = T.Text(b:CreateFontString(nil, "OVERLAY"), "label", "text")
   b.title:SetPoint("TOPLEFT", b, "TOPLEFT", 0, 0)
   b.title:SetWidth(QT.W)
-  b.title:SetJustifyH("LEFT")
+  ns.SingleLine(b.title)
   b.lines = QP.Pool(b, objectiveLine)
   addEdge(b)
   wireBlock(b)
@@ -293,12 +293,22 @@ local function reserved(levelText)
   return QT.LINE * (levelText and 2 or 1)
 end
 
--- The expanded tracker's share of the screen's height, and the height assumed when the client gives none.
-QT.EXPANDED_SHARE, QT.FALLBACK_SCREEN_HEIGHT = 0.7, 768
+-- The expanded tracker's share of the screen's height, the height assumed when the client gives none, and what
+-- it keeps clear above the screen's bottom edge.
+QT.EXPANDED_SHARE, QT.FALLBACK_SCREEN_HEIGHT, QT.FOOT_CLEAR = 0.7, 768, T.SPACE.section
 
--- How tall the quests may stack: the spot's body, or most of the screen when expanded.
+-- The room under the body's top down to the foot's clearance (the body's own units, so a mover scale holds).
+local function roomBelow(f, levelText)
+  local top = f.body:GetTop()
+  if not top then return math.huge end
+  return top - reserved(levelText) - QT.FOOT_CLEAR
+end
+
+-- How tall the quests may stack: the spot's body, or most of the screen when expanded (never past its bottom).
 local function roomFor(f, levelText)
-  if QT.settings.expanded then return (UIParent:GetHeight() or QT.FALLBACK_SCREEN_HEIGHT) * QT.EXPANDED_SHARE end
+  if QT.settings.expanded then
+    return math.min((UIParent:GetHeight() or QT.FALLBACK_SCREEN_HEIGHT) * QT.EXPANDED_SHARE, roomBelow(f, levelText))
+  end
   return f.body:GetHeight() - reserved(levelText)
 end
 

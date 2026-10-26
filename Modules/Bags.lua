@@ -245,7 +245,7 @@ function BG.FitSearch(frame)
   if not BG.sort or type(box) ~= "table" or box:GetParent() ~= frame then return end
   alignSearch(frame, box)
   local _, _, _, left = box:GetPoint(1)
-  box:SetWidth(frame:GetWidth() - rightRoom(frame) - SORT_W - SORT_GAP - BG.ToolsWidth() - (left or 0))
+  box:SetWidth(frame:GetWidth() - rightRoom(frame) - BG.sort:GetWidth() - SORT_GAP - BG.ToolsWidth() - (left or 0))
 end
 
 -- The search box fitted each time the game sets up the bag's search row (it
@@ -259,7 +259,7 @@ end
 function BG.AddSort(frame)
   local sort = C_Container and C_Container.SortBags
   if type(sort) ~= "function" or BG.sort then return end
-  BG.sort = ns.DialogButton(frame, L["Sort"], SORT_W)
+  BG.sort = ns.WidenToLabel(ns.DialogButton(frame, L["Sort"], SORT_W))
   BG.sort:SetHeight(T.CONTROL_H)
   placeSort(frame)
   BG.sort:SetScript("OnClick", ns.Guard("click sort bags", function() sort() end))

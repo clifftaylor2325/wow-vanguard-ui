@@ -171,6 +171,12 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Expect: the window is about three quarters of your screen tall (at least as tall as before). The dot's tooltip has a second line, "Default: 100%" or the like. "move frames" lists Move frames, and clicking that line only marks the button (frames do not unlock). "square" lists Corners. "a" lists eight and ends with "N more: type more words". Vanguard meter says "On, but its own switch is off (Combat tools)" beside its name until you switch the meter on under Combat tools. After the UI scale change the window is still tall and fits the screen.
 - If it fails, paste: a screenshot of the window, your screen resolution and UI scale, and `/vg errors`.
 
+### 2.1f2 The options list's long page names and Text size changes
+
+- Do: in a non-English client (Italian, Spanish, Portuguese or Russian) type `/vg` and look at the list of pages on the left, changing a setting on a page with a long name (Combat tools, Town and gear) so its dot shows. Then open Modules, Unit frames and Combat tools, set Text size to 130% under General, and open those pages again.
+- Expect: each page name ends before the page's dot and the list's edge (a name too long is cut short), never over them. After the Text size change, each page you reopen is laid out for the new size: a module's description sits wholly inside its row, a "reload" tag sits after its caption without touching it, and a switch with a wrapped caption has the switch centred on the caption. [Needs in-game check: how far a real translation runs depends on the font's real widths.]
+- If it fails, paste: a screenshot of the list and the page, the client language, and `/vg errors`.
+
 ### 2.1g The addons button's tooltip and the AddOns list heading
 
 - Do: point at the addons button by the minimap without clicking. Then open the game's AddOns list from the character select screen or the game menu.
@@ -216,6 +222,12 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Expect: the chat line `Unlocked: drag the handles. /vg lock when done.`, labelled handles on the Vanguard frames, and `/vg frames` listing keys such as `minimap`, `infostrip`, `menustrip`, `bagstrip`, `raid` and `questtracker`.
 - If it fails, paste: the chat output and a screenshot.
 
+### 3.1b A selected handle's numbers
+
+- Do: type `/vg unlock`, then click the XP bar's handle (a thin one), a taller handle (the minimap's), and the vehicle exit's handle if it shows.
+- Expect: the selected thin handle shows its name and point and offsets on one line, inside itself; the taller one shows them on two lines; the vehicle exit's (40 wide) shows its name only. Nothing spills out of a handle. [Needs in-game check: the text's size against the handle.]
+- If it fails, paste: a screenshot of each handle.
+
 ### 3.2 Drag two frames and keep them
 
 - Do: drag the Minimap and Info strip handles somewhere new, type `/vg lock`, then `/reload`.
@@ -228,10 +240,16 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Expect: the window is gone while you drag, nothing sticks to the mouse, and the next time it opens it is where it was let go; after the second drag it comes back at the new spot every time, also after another window opens and shuffles the panels. `/vg errors` is empty. [Needs in-game check: whether the client sends the drag's end to a drag area that is hidden mid-drag; Vanguard now ends the drag itself when the window hides.]
 - If it fails, paste: which window, where it came back, and `/vg errors`.
 
+### 3.2c A dragged window at the screen's edge
+
+- Do: out of combat, open the merchant (or the mailbox, with its Inbox and Send Mail tabs under it) and drag it by its title bar as far down and to the left as it goes. Then open the combined bag and drag it to each edge too.
+- Expect: the window stops about 12 units short of the left, right and top edges, so its panel border shows whole, and about 44 units short of the bottom edge, so the page tabs under it stay in view; the combined bag still opens at its spot and nothing in `/vg errors`. [Needs in-game check: that the sign of the clamp insets keeps the window inside, and that no listed window (the combined bag especially) sets insets of its own that this replaces.]
+- If it fails, paste: which window, which edge, and where its edge ended.
+
 ### 3.2b Move frames from the options, and back
 
 - Do: `/vg` → General → **Move frames**. Read the bar at the top, move a frame, click **Save and lock**. Again **Move frames**, then **Exit without saving**. Again **Move frames**, then `/vg lock`.
-- Expect: the bar's note reads in full ("Drag to move · right-click for anchor, scale, opacity · arrows nudge (Shift ×10)") with nothing over the buttons at your resolution; Save and lock and Exit without saving each lock and open `/vg` again on General; `/vg lock` just locks. [Needs in game: the bar's width at your resolution.]
+- Expect: the bar's note reads in full ("Drag to move · right-click for anchor, scale, opacity · arrows nudge (Shift ×10)") with nothing over the buttons at your resolution (on a 4:3 or 5:4 screen, or at 130% text, the note wraps onto a second line and the bar stays on screen); Save and lock and Exit without saving each lock and open `/vg` again on General; `/vg lock` just locks. [Needs in game: the bar's width at your resolution.]
 - If it fails, paste: a screenshot of the bar and `/vg errors`.
 
 ### 3.3 Combat while unlocked
@@ -243,7 +261,7 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 ### 3.4 Edit Mode
 
 - Do: make sure the frames are locked (`/vg lock`), press Escape, click Edit Mode, look, close Edit Mode. (If `/vg unlock` had the handles up already, closing Edit Mode leaves them up; that is intended.)
-- Expect: Vanguard's labelled handles appear too, with a note under the Edit Mode window reading `The labeled handles are Vanguard's frames: drag them here too (right-click one for more).` Edit Mode's window and its settings dialog stay on top of every handle (the quest dialog's too: try the layout dropdown over it): drag the window over a handle and it covers the handle, never the other way round. On closing, the handles hide and the Blizzard frames Vanguard pins (minimap, strips, tracker) return to their Vanguard spots.
+- Expect: Vanguard's labelled handles appear too, with a note under the Edit Mode window reading `The labeled handles are Vanguard's frames: drag them here too (right-click one for more).` Edit Mode's window and its settings dialog stay on top of every handle (the quest dialog's too: try the layout dropdown over it): drag the window over a handle and it covers the handle, never the other way round. On closing, the handles hide and the Blizzard frames Vanguard pins (minimap, strips, tracker) return to their Vanguard spots. With Text size at 130% (`/vg` → General) the note under the window still shows both lines of its text. [Needs in-game check: the note's height against the client's line height.]
 - If it fails, paste: a screenshot while Edit Mode is open and `/vg errors`.
 
 ### 3.5 Reset
@@ -257,6 +275,18 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Do: type `/vg unlock`, right-click the Player cast bar handle, set **Anchor to** to Player and **Side** to Bottom, type `-4` in Y offset and press Enter, click **Save and lock** on the bar at the top. Change spec (if your character has one), `/reload`, then turn Unit frames off under `/vg` → Modules, `/reload`, turn them on again and `/reload`.
 - Expect: the popover title reads `Player cast bar  ·  Below Player`, the cast bar sits 4 px under the player frame's bottom edge and stays there after the spec change and the reload; with Unit frames off it stays where it was (on screen), and with them on again it is under the player frame. No error.
 - If it fails, paste: a screenshot of each step that went wrong and `/vg errors`.
+
+### 3.6b The anchored cast bar after a UI scale change
+
+- Do: with the cast bar still anchored to the player frame (3.6), change the game's UI scale slider (or turn **Pixel-perfect** on under `/vg` → General).
+- Expect: the cast bar stays against the player frame's bottom edge (it used to stay at its old screen spot). [Needs in-game check: the client moving the player frame when the canvas changes.]
+- If it fails, paste: a screenshot of the cast bar and the player frame, and `/vg errors`.
+
+### 3.6c The popover's refusal line at a large text size
+
+- Do: at 130% text, `/vg unlock`, right-click the Player frame's handle and set its **Anchor to** to the Player cast bar (still anchored to the player frame, so the popover refuses the circle).
+- Expect: the red line saying it would go round in a circle sits clear of the Reset and Done buttons, the popover having grown taller to hold it. [Needs in-game check: the line's height against the client's font.]
+- If it fails, paste: a screenshot of the popover.
 
 ### 3.7 Exit without saving
 
@@ -616,6 +646,12 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Expect: Vanguard's log, titled `Quest log` with your quest count (`12 quests`) beside the title, with quests under their zones (each zone a small grey capitals header with a chevron, down while open and right while folded: click it to fold the zone), `[12] Title` lines in difficulty colours, the chosen quest marked by an accent bar along its left edge and a faint wash, a thin scroll thumb beside a list or quest text longer than its column, and Track or Untrack, Share and Map along the right, and Abandon (red label) alone at the far left, for the chosen quest. Click Track or Untrack, then Shift-click another quest: the button flips each time and the tracker follows; if the game refuses, chat says `The game didn't track ...` with the count tracked. Hover a reward card (a quest with an item reward): the item's tooltip shows beside it and goes when you leave. [Needs in game: the tooltip must show for both choices and fixed rewards.] Ctrl-click two quests: both look chosen and the red button reads `Abandon 2`; Ctrl-click one again to unmark it. Click Abandon: a question names the marked quests; No leaves them, Abandon removes them from the log. Abandon a quest that gave you a quest item (a sack or a letter you carry): the game's confirmation names that item. [Needs in game: that C_QuestLog.AbandonQuest exists and works after SetAbandonQuest, several in a row, and that `C_QuestLog.GetAbandonQuestItems` lists a vanilla quest's items on Forever.] If it is off, `/vg quests` says `Vanguard's quest log is off (/vg > Quests).`
 - Also (objective rows): choose a quest with a counted objective (kill or collect) and one without a count (explore, talk to). Expect an `Objectives` header and one 28 px row each: a count at the right edge (`3/8`) with a thin accent bar under the row while it is open; a plain objective with no count and no bar; a done one with a check mark and muted text. Kill one more and the count and bar follow. [Needs in game: that objective text ends or starts with `x/y` on Forever; if it reads another way the row shows the whole text and no count.]
 - If it fails, paste: a screenshot and `/vg errors`.
+
+### 8.3b Quest log on a narrow window
+
+- Do: with the game in a windowed or 4:3 resolution under 1040 units wide (for instance 1024x768 at UI scale 1), open the quest log with `/vg quests` without having moved it.
+- Expect: the whole window is on the screen, its quest list column included (nothing cut at the left edge). [Needs in-game check: that the client moves the clamped, centre-anchored window fully on screen.]
+- If it fails, paste: a screenshot and `/vg frame Vanguard_QuestLog`.
 
 ### 8.3a Quest history
 
@@ -1325,6 +1361,12 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 - Expect: every one of those buttons sits on a small flat slate tile instead of the game's round art, the stack starting level with the tab bar's top, a tile's width apart, with no gap where a hidden button would be (no voice chat: text to speech follows Quick Join); the chat menu, minimize box and Quick Join show a quiet glyph that turns white on an accent tile under the mouse; the voice and text-to-speech buttons keep their own icon on the tile; scrolled up, a down-arrow glyph on a tile appears at the window's bottom-right, a thin accent-coloured edge round the tile while the game flashes it for a new line below (gone once you are back at the bottom), and a click on it returns to the newest line; the chat menu still opens and the floating window's minimize box still collapses it. [Needs in game: that the stack holds after a Quick Join toast and after the chat menu's Move buttons to the right, which mirrors it to the panel's right edge.]
 - If it fails, paste: a screenshot of the chat column and `/vg errors`.
 
+### 14.7.6a Chat typing box channel name
+
+- Do: press Enter to type in chat, then switch channel with `/g` (or `/1` for a numbered channel), and set Chat text size to Small and Large in turn.
+- Expect: the channel name before your text (`Guild:`, `1. General:`) is in the same face as the text you type, in the channel's colour; your text still starts clear of it. [Needs in-game check: the header's size against the typed text (both use the chat role's size, not the Chat text size), and that no overlap appears with a long channel name.]
+- If it fails, paste: a screenshot of the box and `/vg errors`.
+
 ### 14.7.7 Chat bubbles
 
 - Do: with chat bubbles on in the game's options (Options → Interface → Social → Chat Bubbles), say something in /say out in the world, then have a party or raid member or an NPC speak near you; then enter a dungeon and say something there. Afterwards tick Text-only bubbles (reload) under `/vg` → Chat, reload, and say something in the world again.
@@ -1738,6 +1780,7 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 - Expect: the first chat line says `New-quest flag: none on this client (...)` or names one; the lines for the two quests differ in some field (that field is the flag to use; a New mark on the new quest means Vanguard found it). Pins sit on quest givers, or Vanguard draws none because the game's own map shows its quest offers there (either is fine; two "!" on one spot is a finding). The click puts a waypoint there and the game's arrow points at it. Shift-click says `Arrow: <quest>.` and the game's arrow follows the quest; with the waypoint setting the arrow points at its next waypoint or objective area. When the game gives a next step, the tracker shows it in the accent above the objectives.
 - Also expect (the Quests page): `/vg` → Quests shows its cards in this order: Quest windows, Quest tracker, Finding your way (the arrow, Shift-click points, the step line, quest-start pins, the New mark and quest spots on the minimap, under one note), Quest history, Automation; Shift-click points offers "The game's quest marker" and "A map waypoint".
 - Also expect (pin tooltips): hover a quest-start pin: under its name, `Level 24` in the quest's difficulty colour, and `Repeatable` for a quest that repeats. [Needs in game: that `C_QuestLog.GetQuestDifficultyLevel` and `IsRepeatableQuest` answer for a quest you haven't taken.]
+- Also expect (pin size): open the world map windowed, then maximized, then scroll-zoom into a zone: the quest-start `!` pins stay the same small size and stay on their spots at every zoom, and a pin's tooltip and click still work. [Needs in game: that the canvas's scale is what `GetCanvasScale` reports and that the pin's offset keeps its spot (if a pin drifts when zoomed, the offset scaling is wrong).]
 - If it fails, paste: the whole `/vg questdata` output for both quests, a screenshot of the map and the tracker, and `/vg errors`.
 
 ### 18.4 /way and the floating waypoint pin
@@ -2382,6 +2425,18 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Do: with two chat tabs, move the mouse away from the chat and wait a few seconds; then untick `/vg` → Chat → Keep chat tabs visible, wait again, and tick it back. Tick Hide the tab bar until the mouse is over the chat (under Chat), move the mouse away for five seconds, bring it back over the chat, then away again while a friend says something into the other tab; untick it. Look at the column of buttons beside the chat, with voice chat on and off (Options → Voice), and when a Quick Join toast shows.
 - Expect: both tabs stay at full strength with the mouse away; with Hide the tab bar ticked, the bar's rule and the Find and Copy tiles fade away about four seconds after the mouse leaves the chat and the tabs go with them (the tabs at the game's own pace), all back the moment the mouse is over the chat again, and the bar stays while the other tab flashes; unticked, the bar is back at once and stays; unticked, the tab you are not reading dims after a moment but stays readable (about 60 %, not the game's near-invisible 20 %), comes to full under the mouse, and the ticked switch brings it back at once; the side buttons stack down from the tab bar's top (chat menu, Quick Join, voice channel, deafen, mute, text to speech, each only when the client shows it), a tile's width apart, and close up when the voice buttons go; a Quick Join toast leaves the stack where it was. `/vg errors` is empty.
 - If it fails, paste: a screenshot of the chat's left column and tab bar, and `/vg errors`.
+
+### 33.43 Dropdown menus near the bottom, the French key prompt, the options search hint
+
+- Do: on a small screen (1024x768 or a window about 835 units tall), open `/vg` → General and click the Panel texture dropdown near the bottom of the page, then one higher up the page; click the first one again. Set the game to French (frFR), open `/vg` → Click casting, click Add key. Still in French, set General → Text size to 115 % and then 130 % and look at the search box in the options header.
+- Expect: the low dropdown's menu opens above it (its bottom edge on the dropdown's top), scrolls as before, never covers the dropdown's own value, and a second click on the dropdown closes it; the higher one opens below as before. The Add key button reads "Touche, clic ou molette…" in full while it waits. The search box shows "Rechercher dans les réglages" cut short with an ellipsis if it does not fit, never past the box's right edge or over the profile picker.
+- If it fails, paste: a screenshot of the menu, the button or the header and `/vg errors`.
+
+### 33.44 Trade windows in a long language, and the Instance prep card at the top
+
+- Do: set the game's language to German, Russian or French (or run a client in one). Open your combined bag; open the auction house on the Posting tab with an item dropped on the sell card, then the Lists tab (after a scan, so the button counts down); open a mailbox with Mail tools on. Then, at the largest UI scale, add a dozen Keep-stocked items you lack (`/vg stock <itemID> 10`) and type `/vg prep`.
+- Expect: the bag's Sort button, the sell card's Post, Stop, Skip and Max buttons, the Restock button on the Lists toolbar, the scan button's countdown and each mail row's Take button show their whole label (the search box beside Sort is a little narrower; the guide's four steps follow one another with a gap, none over the next). The Instance prep card's title and close button stay on the screen however long the list grows: the card slides down from the top edge instead. [Needs in-game check: all of it, and whether the clamp moves the card down.] The + Add button in the mail panel's bottom row may still cut its label in German, Russian and Portuguese (known).
+- If it fails, paste: a screenshot of the button or card, the game's language, and `/vg errors`.
 
 ### 33.45 HUD spacing: swing timer, hunter pet, bar 5, rolls, meter title
 

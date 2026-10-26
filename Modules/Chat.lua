@@ -66,10 +66,11 @@ end
 -- The first-time size of the main chat window on a screen `width` units wide (UIParent's by
 -- default): the full height and as wide as the room left of the player frame allows, up to the
 -- widest (524 at 1920 units wide, 416 at 1707, a 1080p screen at setup's 80 % scale), or the small
--- size on a narrow screen.
+-- size on a narrow screen or where the room left of the player frame is shorter than the small width
+-- (1600 to 1615 units wide), so the panel never touches the frame.
 function CH.DefaultSize(width)
   width = width or ns.PlainNumber(UIParent:GetWidth()) or CH.SMALL_WIDTH
-  if width < CH.SMALL_WIDTH then return CH.SMALL[1], CH.SMALL[2] end
+  if width < CH.SMALL_WIDTH or roomWidth(width) < CH.SMALL[1] then return CH.SMALL[1], CH.SMALL[2] end
   return math.max(CH.SMALL[1], math.min(CH.SPOT[3], roomWidth(width))), CH.SPOT[4]
 end
 
@@ -542,12 +543,22 @@ local function editRail(box)
   return rail
 end
 
+-- Puts the game's channel header ("Say:") and its suffix (the channel's name) in the chat text role, so they
+-- match the typed text; colour is left alone, as the game sets it for the channel.
+local function fontHeaders(box)
+  for _, suffix in ipairs({ "Header", "HeaderSuffix" }) do
+    local fs = _G[(box:GetName() or "") .. suffix]
+    if type(fs) == "table" and type(fs.SetFont) == "function" then T.Text(fs, "chat", false) end
+  end
+end
+
 -- The edit box as part of the frame: a themed, rounded input under the panel in the chat text role,
 -- with a channel-coloured rail down its left edge; the game's header ("Say:") keeps its colour.
 local function skinEditBox(box, outline)
   T.EditBox(box)
   T.SetRound(box, true)
   T.Text(box, "chat")
+  fontHeaders(box)
   placeEditBox(box, outline)
   placeRail(editRail(box), box)
   tintRail(box)

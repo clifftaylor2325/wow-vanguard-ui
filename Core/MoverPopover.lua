@@ -21,20 +21,30 @@ local SIDES = { { "LEFT", L["Left"] }, { "RIGHT", L["Right"] }, { "TOP", L["Top"
 local popover
 
 -- The popover's size, and the width of its right column: the dropdowns and the number boxes alike, so the column
--- has one edge.
-local WIDTH, HEIGHT, FIELD_W = 280, 372, 150
+-- has one edge. The captions get what is left of WIDTH, enough for the longest German and Russian ones at 130% text.
+local WIDTH, HEIGHT, FIELD_W = 320, 372, 150
 -- Where the first row's middle is (down from the top, past the title line), and how far apart the rows are:
 -- a row (T.ROW.height) and a gap between.
 local ROWS_TOP, ROW_STEP = 56, T.ROW.height + T.SPACE.tight
+
+-- The middle of the popover's i-th row, down from its top.
+local function rowY(i)
+  return ROWS_TOP + (i - 1) * ROW_STEP
+end
+
+-- Where the line that says why a change was refused starts (down from the top): under the last row.
+local WHY_TOP = rowY(8) + T.ROW.height / 2 + T.SPACE.tight
 
 -- A number rounded to a whole one, as text.
 local function whole(v)
   return tostring(math.floor(v + 0.5))
 end
 
--- Says why the last change was refused, or clears it (nil).
+-- Says why the last change was refused, or clears it (nil). The popover grows to hold the line, so it never runs
+-- over the Reset and Done buttons (they hang from the bottom and move down with it).
 local function note(why)
   popover.why:SetText(why or "")
+  popover:SetHeight(math.max(HEIGHT, WHY_TOP + popover.why:GetStringHeight() + T.SPACE.gap + T.SPACE.pad + T.BUTTON_H))
 end
 
 -- Fills the anchor rows: the point dropdown for a frame anchored to the screen, the side one for a frame anchored to another.
@@ -121,11 +131,6 @@ local function others(first)
   end
 end
 
--- The middle of the popover's i-th row, down from its top.
-local function rowY(i)
-  return ROWS_TOP + (i - 1) * ROW_STEP
-end
-
 -- A caption on the left of a popover row (its middle y down from the top).
 local function caption(text, y)
   local fs = T.Text(popover:CreateFontString(nil, "OVERLAY"), "label", "text2")
@@ -187,7 +192,7 @@ local function addRows()
   popover.matchWidth = matchRow("width", L["Match width"], rowY(7))
   popover.matchHeight = matchRow("height", L["Match height"], rowY(8))
   popover.why = T.Text(popover:CreateFontString(nil, "OVERLAY"), "small", "warn")
-  popover.why:SetPoint("TOPLEFT", T.SPACE.col, -(rowY(8) + T.ROW.height / 2 + T.SPACE.tight))
+  popover.why:SetPoint("TOPLEFT", T.SPACE.col, -WHY_TOP)
   popover.why:SetWidth(WIDTH - 2 * T.SPACE.col)
 end
 

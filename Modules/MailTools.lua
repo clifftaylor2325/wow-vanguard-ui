@@ -419,6 +419,7 @@ local function buildRow(f, i)
   r:SetPoint("TOPRIGHT", -MT.PAD, -ROWS_TOP - (i - 1) * MT.ROW)
   r.take = W.Button(r, L["Take"], function() if r.mail then MT.Take(r.mail) end end, 48)
   r.take:SetPoint("RIGHT", 0, 0)
+  ns.WidenToLabel(r.take)
   rowText(r)
   return r
 end

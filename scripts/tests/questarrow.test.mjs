@@ -3,7 +3,8 @@
 // of the watched quests, with the quest's title and distance.
 
 import { expect, it } from "vitest";
-import { chatHas, isTok, loggedIn, setCombat } from "./helpers.mjs";
+import { createAddon } from "../lib/lua-harness.mjs";
+import { SETUP_DONE, chatHas, isTok, loggedIn, setCombat } from "./helpers.mjs";
 
 // TEST-ONLY world: the player at (0.5, 0.5) on map 10 (1000 x 1000 yards) facing north. Quest 90061
 // is 100 yards away with its spot due east, 90062 is 300 yards away with its spot to the north-west.
@@ -246,4 +247,20 @@ it("quest arrow: the tracker draws an accent line down the left edge of the ques
   expect(edges(addon), "with the arrow hidden (its switch) its pick marks nothing").toEqual({});
   addon.eval("ns.QuestGuide.pointed = 90061 ns.GetModule('QuestTracker').Refresh()");
   expect(edges(addon), "the quest you Shift-clicked has it, as its step line does").toEqual(["[8] TEST-ONLY Near"]);
+});
+
+it("quest arrow: the longest real distance lines fit beside the arrow, also with the Pin button showing", () => {
+  const addon = createAddon({ savedVariables: SETUP_DONE, textFit: true });
+  addon.eval(ARROW_ENV);
+  addon.login();
+  addon.update(0);
+  // The text-fit audit's cut-short findings for the arrow with this distance text.
+  const cut = (text) => {
+    addon.eval(`Vanguard_QuestArrow.dist:SetText("${text}")`);
+    return addon.textFit("Vanguard_QuestArrow").filter((f) => f.kind === "cut");
+  };
+  expect(cut("Consegna · 1240 m, nessuna direzione"), "the Italian turn-in line with no direction, arrow alone").toEqual([]);
+  addon.eval("ns.QuestGuide.pointed = 90061 ns.QuestArrow.Pick()");
+  expect(addon.eval("return Vanguard_QuestArrow.pin:IsShown()"), "the arrow is held: the Pin button shows").toBe(true);
+  expect(cut("Aucun endroit fourni par le jeu"), "the French no-spot reason while the Pin button shows").toEqual([]);
 });

@@ -88,11 +88,20 @@ local function makePin(canvas)
   return p
 end
 
--- Puts a pin on the canvas at the start's spot (fractions of the map, from its top left).
-local function placePin(p, canvas, mapID, start)
+-- The world map canvas's zoom (1 when the map won't say): a pin on the canvas is scaled by it, so it undoes it.
+local function canvasScale(map)
+  local scale = type(map.GetCanvasScale) == "function" and ns.PlainNumber(map:GetCanvasScale())
+  return (scale and scale > 0) and scale or 1
+end
+
+-- Puts a pin on the map's canvas at the start's spot (fractions of the map, from its top left), at a steady size:
+-- scaled against the canvas's zoom, and its offset (in the pin's own, scaled units) made up for.
+local function placePin(p, map, mapID, start)
   p.start, p.mapID = start, mapID
+  local canvas, scale = map:GetCanvas(), canvasScale(map)
   p:ClearAllPoints()
-  p:SetPoint("CENTER", canvas, "TOPLEFT", start.x * canvas:GetWidth(), -start.y * canvas:GetHeight())
+  p:SetScale(1 / scale)
+  p:SetPoint("CENTER", canvas, "TOPLEFT", start.x * canvas:GetWidth() * scale, -start.y * canvas:GetHeight() * scale)
   p:SetFrameLevel(canvas:GetFrameLevel() + 20)
   p:Show()
 end
@@ -104,9 +113,8 @@ function QG.RefreshPins()
   QG.pins.Reset()
   local mapID = ns.PlainNumber(map:GetMapID())
   if not mapID or not QG.DrawsPins(map) then return end
-  local canvas = map:GetCanvas()
   for i, start in ipairs(QG.Starts(mapID)) do
-    if i <= QG.MAX_PINS then placePin(QG.pins.Next(), canvas, mapID, start) end
+    if i <= QG.MAX_PINS then placePin(QG.pins.Next(), map, mapID, start) end
   end
 end
 
@@ -131,6 +139,7 @@ local function followMap(map)
   if not (map.GetCanvas and map.GetMapID) then return end
   QG.pins = QP.Pool(map:GetCanvas(), makePin)
   if type(map.OnMapChanged) == "function" then hooksecurefunc(map, "OnMapChanged", ns.Guard("hook world map changed", QG.MapChanged)) end
+  if type(map.OnCanvasScaleChanged) == "function" then hooksecurefunc(map, "OnCanvasScaleChanged", ns.Guard("hook world map zoom", QG.ListsChanged)) end
   map:HookScript("OnShow", ns.Guard("hook world map shown", QG.MapChanged))
   for _, event in ipairs({ "QUESTLINE_UPDATE", "QUEST_LOG_UPDATE", "QUEST_POI_UPDATE" }) do ns.On(event, QG.ListsChanged) end
 end

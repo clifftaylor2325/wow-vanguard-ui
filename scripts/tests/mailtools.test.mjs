@@ -3,7 +3,8 @@
 // TEST-ONLY mail window of the headless client.
 
 import { expect, it } from "vitest";
-import { chatHas, isTok, loggedIn } from "./helpers.mjs";
+import { createAddon } from "../lib/lua-harness.mjs";
+import { SETUP_DONE, chatHas, isTok, loggedIn } from "./helpers.mjs";
 import { alphaOf, insets } from "./dialogs.mjs";
 
 // TEST-ONLY: three mails (a sale with money, a letter with an item, a plain letter), and bag items.
@@ -469,4 +470,17 @@ it("Take on a row takes the first attachment slot that still holds an item", () 
   addon.world.openMailWindow();
   addon.eval("Vanguard_MailTools.rows[2].take:Click()");
   expect(taken(addon), "slots 1 and 2 were already taken: slot 3").toEqual([["item", 2, 3]]);
+});
+
+it("the Take buttons hold their label in German and French, the mail's line giving up the room", () => {
+  for (const locale of ["deDE", "frFR"]) {
+    const addon = createAddon({ textFit: true, client: `__wfgWorld.locale = "${locale}"`, savedVariables: SETUP_DONE + ON });
+    addon.eval(ENV);
+    addon.login();
+    addon.world.openMailWindow();
+    const cut = addon.textFit("Vanguard_MailTools").filter((f) => f.text === (locale === "deDE" ? "Nehmen" : "Prendre"));
+    expect(cut, `${locale}: Take is not cut`).toEqual([]);
+    const gap = addon.eval("local r = Vanguard_MailTools.rows[1] return r.days:GetRight() <= r.take:GetLeft()");
+    expect(gap, `${locale}: the time left ends before Take`).toBe(true);
+  }
 });

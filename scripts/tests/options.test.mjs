@@ -2,7 +2,8 @@
 
 import { readFileSync } from "node:fs";
 import { expect, it } from "vitest";
-import { BUFF_NAMES, CLICK_LUA, DATA_ENV, RETAIL, UI_ENV, UNITS_ENV, bars, borderOf, button, calls, chatHas, expectErrors, isTok, key, loggedIn, marks, px, setCombat, spellNames, tok, tooltip } from "./helpers.mjs";
+import { createAddon } from "../lib/lua-harness.mjs";
+import { BUFF_NAMES, CLICK_LUA, DATA_ENV, RETAIL, UI_ENV, UNITS_ENV, bars, borderOf, button, calls, chatHas, expectErrors, isTok, key, loggedIn, marks, px, setCombat, spellNames, tok, tooltip, SETUP_DONE } from "./helpers.mjs";
 
 it("options window", () => {
   const addon = loggedIn(RETAIL + CLICK_LUA + DATA_ENV + "GetSpecialization = function() return 1 end");
@@ -1178,7 +1179,21 @@ it("buttons: kinds share one shape (primary accent fill without bevel or sheen, 
   expect(out.slice(0, 3), "the labels: text, void, bad").toEqual([tok(addon, "text"), tok(addon, "void"), tok(addon, "bad")]);
   expect(out.slice(3, 5), "a primary hovers to accentText, a secondary to raisedHover").toEqual(["accentText", "raisedHover"]);
   expect(out.slice(5, 9), "the column, the value slot, the track (column less slot and gap) and the value text").toEqual([200, 60, 132, 60]);
-  expect(out[9], "a caption stops short of the column").toBe(400 - 200 - 16);
+  expect(out[9], "a caption stops a gap short of the column").toBe(400 - 200 - 16 - 8);
+});
+
+it("a wrapped caption keeps a gap from the dropdown and the slider track it sits beside (P3-5)", () => {
+  const addon = loggedIn();
+  // How far a row's caption ends from its control's left edge (the dropdown, or else the slider track), in screen units.
+  const gap = (make) => addon.eval(`local W = ns.Widgets
+    local r = ${make}
+    r:SetPoint("CENTER")
+    local control = r.dropdown or r.track
+    return control:GetLeft() - (r.label:GetLeft() + r.label:GetWidth())`);
+  const many = Array.from({ length: 12 }, (_, i) => `{ ${i}, "Choice number ${i}" }`).join(", ");
+  expect(gap('W.Slider(UIParent, "Size", { min = 0, max = 10, step = 1 }, function() return 5 end, print, 400)'), "slider").toBe(8);
+  expect(gap(`W.Choice(UIParent, "A caption", { ${many} }, function() return 1 end, print, 400)`), "dropdown").toBe(8);
+  expect(addon.eval(`return ns.Widgets.Slider(UIParent, "Q", { min = 0, max = 10, step = 1 }, function() return 5 end, print, 248).label:GetWidth()`), "a row too narrow to spare the gap keeps its caption's room").toBe(32);
 });
 
 // 8.7 states, keyboard and menus -------------------------------------------------------------------
@@ -1227,6 +1242,16 @@ it("the search box shows a clear glyph only while it has text; clicking it empti
   expect(addon.eval("return { __s:GetText(), __s.clear:IsShown(), __seen[#__seen] }"), "a click empties it and tells onChange").toEqual(["", false, ""]);
 });
 
+it("a search box's hint stays inside the box, on one line, when a translation at a large text size is longer than the box (P2-7)", () => {
+  const addon = loggedIn("", { client: 'GetLocale = function() return "frFR" end' });
+  addon.eval(`ns.Theme.Settings().textScale = 1.3
+    __box = ns.Widgets.Search(UIParent, 190, "Rechercher dans les réglages", function() end) __box:SetPoint("CENTER")`);
+  const out = addon.eval(`local T, h = ns.Theme, __box.hint
+    return { h:GetRight() <= __box:GetRight() - T.CONTROL_H, h:GetUnboundedStringWidth() > __box:GetWidth() - T.SEARCH_INSET - T.CONTROL_H, h:CanWordWrap(), h.__justifyH }`);
+  expect(out[1], "the hint is longer than the room it has, so the test means something").toBe(true);
+  expect([out[0], out[2], out[3]], "it ends where the clear glyph's room begins, on one line, left-aligned").toEqual([true, false, "LEFT"]);
+});
+
 // Opens a dropdown of n choices (value 1 current) and returns nothing; the menu is Vanguard_Menu.
 const openDropdown = (addon, n) => addon.eval(`local list = {} for i = 1, ${n} do list[i] = { i, "Choice " .. i } end
   __dd = ns.Widgets.Dropdown(UIParent, list, function() return 1 end, function(v) __picked = v end, 160)
@@ -1245,6 +1270,18 @@ it("a dropdown keeps its hover fill while its menu is open, and lets go when the
   openDropdown(addon, 4);
   addon.eval(`__two = ns.Widgets.Dropdown(UIParent, { { 1, "A" } }, function() return 1 end, function() end, 160) __two.__scripts.OnClick(__two)`);
   expect([lit(), addon.eval("return ns.Theme.HoverParts(__two)[2]:GetAlpha()")], "opening another dropdown passes the hold on").toEqual([0, 1]);
+});
+
+it("a dropdown menu opens above its dropdown when the screen's bottom is nearer than the menu is tall, and below it otherwise (P1-3)", () => {
+  const addon = loggedIn("__wfgStub.setScreen(835, 668)");
+  openDropdown(addon, 17);
+  // Where the open menu hangs: its point, the point it hangs from and the y offset.
+  const hang = (bottom) => {
+    addon.eval(`ns.Widgets.CloseMenu() __dd:ClearAllPoints() __dd:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", 100, ${bottom}) __dd.__scripts.OnClick(__dd)`);
+    return addon.eval("local p, rel, rp, x, y = Vanguard_Menu:GetPoint() return { p, rel == __dd, rp, y }");
+  };
+  expect(hang(188), "17 choices (322 tall) with 188 units below: over the dropdown").toEqual(["BOTTOMLEFT", true, "TOPLEFT", 2]);
+  expect(hang(400), "room for the menu: under it as before").toEqual(["TOPLEFT", true, "BOTTOMLEFT", -2]);
 });
 
 it("a menu of more than 16 rows shows the 4 px thumb at the rest alpha and moves it as the list scrolls; a short one has none", () => {
@@ -1504,4 +1541,55 @@ it("options: a dropdown's menu widens to its longest choice and keeps the dropdo
   addon.eval("ns.Widgets.CloseMenu()");
   const [menu, dropdown] = open("Midnight");
   expect(menu, "a short list keeps the dropdown's width").toBe(dropdown);
+});
+
+// The options window in the text-fit client (every string a third longer, as a translation might run), at this Text size.
+function fitOptions(textScale) {
+  const addon = createAddon({ savedVariables: SETUP_DONE, textFit: true });
+  addon.login();
+  if (textScale) addon.eval(`ns.Theme.Settings().textScale = ${textScale} ns.Theme.Refresh()`);
+  return addon;
+}
+
+it("options: a module row grows to hold a description that wraps past two lines, so it never runs into the next row", () => {
+  const addon = fitOptions(1.3);
+  addon.eval('ns.Options.Show("modules")');
+  const short = addon.eval(`local out = {} for _, w in ipairs(__wfgStub.frames) do
+    if w.desc and w.label and w:IsVisible() and w:GetHeight() < 12 + w.label:GetStringHeight() + ns.Theme.SPACE.tight + w.desc:GetStringHeight() then out[#out + 1] = w.label.__text end end return out`);
+  expect(Object.values(short), "every module row is tall enough for its name and its whole description").toEqual([]);
+  const tall = addon.eval(`local n = 0 for _, w in ipairs(__wfgStub.frames) do if w.desc and w:IsVisible() and w:GetHeight() > 54 then n = n + 1 end end return n`);
+  expect(tall, "at least one description wraps past the 54 units a row used to have").toBeGreaterThan(0);
+});
+
+it("options: a switch whose caption wraps takes the whole row, so the caption and its switch centre in it", () => {
+  const addon = fitOptions(1.3);
+  addon.eval('ns.Options.Show("unitframes")');
+  const poking = addon.eval(`local out = {} for _, w in ipairs(__wfgStub.frames) do
+    if w.card and w.label and w.source and w.source[1] == "check" and w:IsVisible() and w.label:GetTop() > w:GetTop() + 0.01 then out[#out + 1] = w.caption end end return out`);
+  expect(Object.values(poking), "no caption starts above its row").toEqual([]);
+  const tall = addon.eval(`local n = 0 for _, w in ipairs(__wfgStub.frames) do if w.source and w.source[1] == "check" and w:IsVisible() and w:GetHeight() > ns.Theme.ROW.height then n = n + 1 end end return n`);
+  expect(tall, "a wrapped caption's row is taller than a one-line row").toBeGreaterThan(0);
+});
+
+it("options: pages built at another Text size are built again the next time they open, so reload tags clear their captions", () => {
+  const addon = fitOptions();
+  for (const page of ["unitframes", "tools", "town"]) addon.eval(`ns.Options.Show("${page}")`);
+  addon.eval('ns.Theme.Settings().textScale = 1.3 ns.Theme.Refresh()');
+  // Opens the page and lists the captions whose reload tag starts before the caption ends.
+  const crowded = (page) => addon.eval(`ns.Options.Show("${page}") local out = {}
+    for _, w in ipairs(__wfgStub.frames) do
+      if w.tag and w.label and w:IsVisible() and w.tag:GetLeft() < w.label:GetLeft() + math.min(w.label:GetStringWidth(), w.label:GetWidth()) then out[#out + 1] = w.caption end
+    end return out`);
+  for (const page of ["unitframes", "tools", "town"]) expect(Object.values(crowded(page)), `${page}: no reload tag sits over its caption`).toEqual([]);
+  expect(addon.eval("return ns.Options.current"), "the page opened is the one asked for").toBe("town");
+});
+
+it("options: a nav entry's title stops short of the changed-setting dot and never wraps", () => {
+  const addon = fitOptions();
+  addon.eval('ns.Options.Show("general")');
+  const bad = addon.eval(`local out = {} for key, b in pairs(Vanguard_Options.nav) do
+    local p = b.text.__points.RIGHT
+    if not (p and p.rel == b.changed and p.relPoint == "LEFT" and b.text.__noWrap and b.text:GetRight() <= b.changed:GetLeft()) then out[#out + 1] = key end
+  end return out`);
+  expect(Object.values(bad), "every title is bound on the right by the dot").toEqual([]);
 });

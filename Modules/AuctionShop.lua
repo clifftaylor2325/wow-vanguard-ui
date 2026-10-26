@@ -1013,12 +1013,13 @@ function AH.TableUnder(t, parent)
   t:SetPoint("TOPRIGHT", parent, "TOPRIGHT", 0, -AH.TOOLBAR_H)
 end
 
--- A toolbar button, T.CONTROL_H high (level with the heading), right of the last one (or at the card's top right).
+-- A toolbar button, T.CONTROL_H high (level with the heading), right of the last one (or at the card's top right),
+-- widened to its label when a translation runs longer (the buttons after it, to its left, move over).
 function AH.ToolButton(c, text, onClick, width, after)
   local b = W.Button(c.body, text, onClick, width)
   b:SetHeight(T.CONTROL_H)
   if after then b:SetPoint("RIGHT", after, "LEFT", -T.SPACE.tight, 0) else b:SetPoint("TOPRIGHT", 0, 2) end
-  return b
+  return ns.WidenToLabel(b)
 end
 
 -- The card's toolbar: the count or progress beside the heading, and the list buttons on the right:

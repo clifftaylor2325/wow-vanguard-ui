@@ -123,6 +123,20 @@ it("quest dialog: a long greeting or quest text scrolls, a short one does not", 
   addon.fire("QUEST_DETAIL");
   expect([panelHeights(addon), bodyScroll(addon)], "a quest's text and its objectives (24 + 14 px lines) count too; the choices' row and the reward's row (8 + 36 + 8 + 36 px) leave the body 158 px").toEqual([[360, 158], [278, 120, 0]]);
 });
+it("quest log: kept on the screen, so its default spot on a narrow canvas cannot hide the quest list", () => {
+  // TEST-ONLY: frames record the clamp they are given (the stub's SetClampedToScreen keeps nothing).
+  const record = "__wfgStub.methods.SetClampedToScreen = function(self, on) self.__testClamped = on end";
+  const addon = loggedIn(QUEST_ENV + record);
+  expect(addon.eval("return Vanguard_QuestLog.__testClamped"), "the window is clamped to the screen").toBe(true);
+});
+it("quest dialog: on a short screen its default spot stops it growing above the top", () => {
+  const addon = loggedIn(QUEST_ENV + "__wfgStub.setScreen(835, 668)");
+  addon.eval('__greeting = "TEST-ONLY " .. string.rep("word ", 400)');
+  addon.fire("GOSSIP_SHOW");
+  const rect = addon.frame("Vanguard_QuestDialog").rect;
+  expect(rect.top, "the header is not above the screen's top (668)").toBeLessThanOrEqual(668);
+  expect(rect.height, "it still grows past its least height").toBeGreaterThan(160);
+});
 it("quest dialog: sized to its page, above the cast bars, cards under the text, a quest mark without a portrait", () => {
   const addon = loggedIn(QUEST_ENV);
   addon.fire("QUEST_DETAIL");
@@ -622,6 +636,22 @@ it("quest tracker: nearest first, collapsing, too many quests, and switched off"
   expect(own.eval("return { Vanguard_QuestTrackerFrame:GetParent():GetName(), (ns.MoverPoint('questtracker')) }"), "with the menu strip's spot off, it makes its own").toEqual(["Vanguard_QuestTracker", "TOPRIGHT"]);
   const off = loggedIn(TRACK_ENV, { savedVariables: "VanguardDB.profiles = { Default = { QuestTracker = { own = false } } }" });
   expect(off.eval("return { Vanguard_QuestTrackerFrame == nil, ObjectiveTrackerFrame:IsShown() }"), "switched off: the game's tracker").toEqual([true, true]);
+});
+it("quest tracker: a long quest title stays on one line, so it can't draw over the first objective", () => {
+  const addon = loggedIn(UNITS_ENV + TRACK_ENV);
+  addon.eval(`__quests[90051].title = "TEST-ONLY The Search for the Lost Dwarven Archaeologist and All of His Companions" ns.GetModule("QuestTracker").Refresh()`);
+  addon.update(0);
+  expect(addon.eval("local f = Vanguard_QuestTrackerFrame return f.blocks[1].title:CanWordWrap()"), "the title ends in an ellipsis instead of wrapping").toBe(false);
+});
+it("quest tracker: expanded on a short screen, the list stops above the screen's bottom and Show fewer stays on it", () => {
+  const addon = loggedIn(UNITS_ENV + TRACK_ENV + "__wfgStub.setScreen(835, 668)", { savedVariables: "VanguardDB.profiles = { Default = { QuestTracker = { expanded = true } } }" });
+  addon.eval(`for i = 1, 9 do local id = 90070 + i __quests[id] = { index = 10 + i, title = "TEST-ONLY Many " .. i, level = 5, dist = i, objectives = { { text = "a" }, { text = "b" }, { text = "c" } } } __watches[#__watches + 1] = id end`);
+  addon.fire("QUEST_WATCH_LIST_CHANGED");
+  addon.update(0);
+  const t = tracker(addon);
+  expect(t.blocks.length, "fewer than all nine fit under the spot").toBeLessThan(9);
+  expect(t.more, "with the way back").toMatch(/^Show fewer/);
+  expect(addon.frame("Vanguard_QuestTrackerFrame.moreBtn").rect.bottom, "the Show fewer button is on the screen").toBeGreaterThanOrEqual(0);
 });
 it("quest tracker: the Quests header is a collapsible section header with the count after it and the brass rule under it; \"+n more\" is a status line", () => {
   const addon = loggedIn(TRACK_ENV);

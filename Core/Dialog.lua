@@ -292,12 +292,19 @@ local function addQuery(f)
   f.query:SetScript("OnEscapePressed", ns.Guard("find box escape", function() f:Hide() end))
 end
 
+-- The find dialog's title: one line, as the summary carries the query, so a long one is cut short with an
+-- ellipsis by the client instead of wrapping down over the query line.
+local function limitFindTitle(f)
+  hangTitle(f)
+  f.title:SetMaxLines(1)
+end
+
 -- Builds the find dialog once: the query line at the top, the lines found under it (a text area like the
 -- text dialog's, read for copying) and Close at the foot.
 local function findBox()
   if find then return find end
   find = dialog("Vanguard_FindDialog", TEXT_W, TEXT_H)
-  hangTitle(find)
+  limitFindTitle(find)
   addQuery(find)
   addEditBox(find, "Vanguard_FindEdit", FIND_TOP)
   find.close = button(find, L["Close"])
