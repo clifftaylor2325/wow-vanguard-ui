@@ -564,6 +564,20 @@ it("the scan button holds its countdown in Russian, French and Portuguese", () =
   }
 });
 
+it("the Your auctions toolbar holds Check undercuts and Cancel next undercut in real translations, clear of the summary (P10-5)", () => {
+  for (const locale of ["frFR", "deDE", "ruRU", "itIT", "esES", "ptBR"]) {
+    const addon = postingTab(locale);
+    expect(addon.eval(`return ${OWNED_CARD}.cancelNext:GetLeft() ~= nil`), `${locale}: before a check (no line yet) Cancel next undercut still has its place`).toBe(true);
+    addon.eval(`${HELPER}.checked = true ${HELPER}.PaintOwned()`);
+    expect(addon.eval(`return ${OWNED_CARD}.summary:GetText()`), `${locale}: the line beside the heading is up`).not.toBe("");
+    const labels = addon.eval(`local c = ${OWNED_CARD} return { c.check.text:GetText(), c.cancelNext.text:GetText() }`);
+    const cut = addon.textFit(OWNED_CARD).filter((f) => labels.includes(f.text));
+    expect(cut, `${locale}: neither label is cut`).toEqual([]);
+    const room = addon.eval(`local c = ${OWNED_CARD} return { c.summary:GetRight() <= c.cancelNext:GetLeft(), c.cancelNext:GetRight() <= c.check:GetLeft(), c.check:GetRight() <= c:GetRight() }`);
+    expect(room, `${locale}: summary, Cancel next, Check undercuts in a row inside the card`).toEqual([true, true, true]);
+  }
+});
+
 it("the Lists toolbar buttons hold their labels in French and German", () => {
   for (const locale of ["frFR", "deDE"]) {
     const addon = postingTab(locale);
