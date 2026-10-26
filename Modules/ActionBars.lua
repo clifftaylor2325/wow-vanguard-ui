@@ -410,12 +410,20 @@ local function addTexts(b)
   T.Color(b.hotkey, "text2")
 end
 
--- The client's cooldown numbers in the theme's font (they show when the game's
--- "Show numbers for cooldowns" option is on), not for the last second and a half.
-local function themeCountdown(cd)
-  local fs = ns.Client.Has("countdownText") and cd:GetCountdownFontString()
-  if fs then T.Text(fs, "cooldown", "white") end
+-- The client's cooldown numbers keep off the last second and a half.
+local function skipShortCountdown(cd)
   if ns.Client.Has("cooldownMin") then cd:SetMinimumCountdownDuration(1500) end
+end
+
+-- A button under this many units wide gets the aura timers' small countdown font: the plain one is
+-- wider than its icon with minute values.
+AB.SMALL_BUTTON = 30
+
+-- The client's cooldown numbers on a button in the theme's font (they show when the game's "Show numbers
+-- for cooldowns" option is on), sized to the button: the small timer font on a small one.
+function AB.ThemeCountdown(b, size)
+  local fs = ns.Client.Has("countdownText") and b.cooldown:GetCountdownFontString()
+  if fs then T.Text(fs, size < AB.SMALL_BUTTON and "auraTimerSmall" or "cooldown", "white") end
 end
 
 -- The icon, count, hotkey, cooldown and checked highlight on a button.
@@ -424,7 +432,7 @@ local function addRegions(b)
   addTexts(b)
   b.cooldown = CreateFrame("Cooldown", nil, b, "CooldownFrameTemplate")
   b.cooldown:SetAllPoints(b.icon)
-  themeCountdown(b.cooldown)
+  skipShortCountdown(b.cooldown)
   b.glow = T.Glow(b, 6)
   b:SetCheckedTexture(T.WHITE)
   T.Tint(b:GetCheckedTexture(), "checked")

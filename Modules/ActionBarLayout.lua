@@ -53,6 +53,7 @@ end
 local function layoutButtons(bar, s, size, gap)
   for i, b in ipairs(bar.vgButtons) do
     b:SetSize(size, size)
+    AB.ThemeCountdown(b, size)
     placeButton(b, i, s.perRow, size + gap)
     b:SetShown(i <= s.buttons)
   end
