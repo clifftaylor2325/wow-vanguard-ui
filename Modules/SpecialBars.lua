@@ -22,6 +22,7 @@ local ADDON, ns = ...
 local vgSkinned = ns.FrameState("vgSkinned")
 
 local T = ns.Theme
+local L = ns.L
 
 local SB = ns.Module("SpecialBars", {
   defaults = { skinPet = true, skinStance = true, skinPossess = true, skinExtra = true, vehicleExit = true, place = true },
@@ -82,8 +83,8 @@ end
 -- the Centered layout has room) and the spot's size: a row of ten 30-unit
 -- buttons for the pet, about six forms for the stance bar (it grows to the right).
 SB.SPOTS = {
-  { "PetActionBar", "petbar", "Pet bar", { "BOTTOMLEFT", "BOTTOMLEFT", 8, 250 }, 320, 32 },
-  { "StanceBar", "stancebar", "Stance bar", { "BOTTOMLEFT", "BOTTOMLEFT", 8, 288 }, 200, 32 },
+  { "PetActionBar", "petbar", L["Pet bar"], { "BOTTOMLEFT", "BOTTOMLEFT", 8, 250 }, 320, 32 },
+  { "StanceBar", "stancebar", L["Stance bar"], { "BOTTOMLEFT", "BOTTOMLEFT", 8, 288 }, 200, 32 },
 }
 
 -- Puts one of the game's bars on its spot, its bottom left corner on the spot's.
@@ -118,9 +119,9 @@ local function vehicleExit()
   b:SetAttribute("type", "macro")
   b:SetAttribute("macrotext", "/leavevehicle")
   b:RegisterForClicks("AnyUp", "AnyDown")
-  addLabel(b, "Exit")
+  addLabel(b, L["Exit"])
   RegisterStateDriver(b, "visibility", "[canexitvehicle] show; hide")
-  ns.Mover(b, "vehicleexit", "Vehicle exit", { "BOTTOM", "BOTTOM", 260, 114 })
+  ns.Mover(b, "vehicleexit", L["Vehicle exit"], { "BOTTOM", "BOTTOM", 260, 114 })
   return b
 end
 

@@ -30,14 +30,17 @@
 
 local ADDON, ns = ...
 
+local L = ns.L
+
 local CC = ns.Module("ClickCast", {
   defaults = { unitFrames = false, useGame = false },
 })
 
-local MOUSE_NAMES = { "Left click", "Right click", "Middle click", "Button 4", "Button 5" }
+local MOUSE_NAMES = { L["Left click"], L["Right click"], L["Middle click"], L["Button 4"], L["Button 5"] }
 local ACTIONS = { spell = true, macro = true, target = true, menu = true, focus = true, assist = true }
-local ACTION_NAMES = { target = "Target", menu = "Unit menu", focus = "Focus", assist = "Assist" }
+local ACTION_NAMES = { target = L["Target"], menu = L["Unit menu"], focus = L["Focus"], assist = L["Assist"] }
 local MODIFIER_ORDER = { "alt", "ctrl", "shift" }
+local MODIFIER_NAMES = { alt = L["Alt"], ctrl = L["Ctrl"], shift = L["Shift"] }
 
 CC.frames = {}
 CC.ACTION_NAMES = ACTION_NAMES
@@ -84,10 +87,10 @@ end
 
 -- Why a binding can't be added, or nil if it can.
 local function problem(key, action, value)
-  if type(key) ~= "string" or key == "" then return "press a key or click first" end
-  if not ACTIONS[action] then return "unknown action" end
+  if type(key) ~= "string" or key == "" then return L["press a key or click first"] end
+  if not ACTIONS[action] then return L["unknown action"] end
   if (action == "spell" or action == "macro") and (type(value) ~= "string" or value:match("^%s*$")) then
-    return action == "spell" and "pick a spell" or "type the macro text"
+    return action == "spell" and L["pick a spell"] or L["type the macro text"]
   end
   return nil
 end
@@ -187,11 +190,13 @@ end
 local function importable(list)
   local out = {}
   for i, b in ipairs(list) do
-    if i > CC.MAX_IMPORT then return nil, "more than " .. CC.MAX_IMPORT .. " bindings" end
-    if type(b) == "table" and type(b.value) == "string" and #b.value > CC.MAX_TEXT then return nil, "a text is longer than " .. CC.MAX_TEXT .. " characters" end
+    if i > CC.MAX_IMPORT then return nil, ns.Format(L["more than {count} bindings"], { count = CC.MAX_IMPORT }) end
+    if type(b) == "table" and type(b.value) == "string" and #b.value > CC.MAX_TEXT then
+      return nil, ns.Format(L["a text is longer than {count} characters"], { count = CC.MAX_TEXT })
+    end
     if wellFormed(b) then out[#out + 1] = b end
   end
-  if #out == 0 then return nil, "no usable bindings in it" end
+  if #out == 0 then return nil, L["no usable bindings in it"] end
   return out
 end
 
@@ -211,7 +216,7 @@ end
 function CC.Import(text)
   local scope, data = ns.Serialize.Decode(text)
   if not scope then return nil, data end
-  if scope ~= "clickcast" or type(data.bindings) ~= "table" then return nil, "not a click-casting string" end
+  if scope ~= "clickcast" or type(data.bindings) ~= "table" then return nil, L["not a click-casting string"] end
   local list, why = importable(data.bindings)
   if not list then return nil, why end
   replaceAll(list)
@@ -224,7 +229,7 @@ end
 local function modifierText(mods)
   local out = {}
   for _, m in ipairs(MODIFIER_ORDER) do
-    if mods:lower():find(m .. "-", 1, true) then out[#out + 1] = m:sub(1, 1):upper() .. m:sub(2) end
+    if mods:lower():find(m .. "-", 1, true) then out[#out + 1] = MODIFIER_NAMES[m] end
   end
   return #out > 0 and (table.concat(out, " + ") .. " + ") or ""
 end
@@ -239,20 +244,27 @@ local function splitKey(key)
   return mods, base
 end
 
--- A binding key for people: "Ctrl + Right click", "Shift + Q (hover)".
-function CC.KeyText(key)
+-- A binding key's name for people: "Ctrl + Right click", "Shift + Q".
+function CC.KeyName(key)
   local prefix, n = CC.MouseParts(key)
   if prefix then return modifierText(prefix) .. MOUSE_NAMES[n] end
   local mods, base = splitKey(key)
-  local names = { MOUSEWHEELUP = "Wheel up", MOUSEWHEELDOWN = "Wheel down" }
-  return modifierText(mods) .. (names[base] or base) .. " (hover)"
+  local names = { MOUSEWHEELUP = L["Wheel up"], MOUSEWHEELDOWN = L["Wheel down"] }
+  return modifierText(mods) .. (names[base] or base)
+end
+
+-- A binding key for people, a hover key marked as one: "Ctrl + Right click", "Shift + Q (hover)".
+function CC.KeyText(key)
+  if CC.MouseParts(key) then return CC.KeyName(key) end
+  return ns.Format(L["{key} (hover)"], { key = CC.KeyName(key) })
 end
 
 -- What a binding does: the spell name (with its rank when one was picked), "Macro: ...", "Target", "Unit menu"...
 function CC.ActionText(b)
-  if b.action == "spell" then return b.value .. (b.rank and (" (Rank " .. b.rank .. ")") or "") end
-  if b.action == "macro" then return "Macro: " .. b.value end
-  return ACTION_NAMES[b.action] or "Unit menu"
+  if b.action == "spell" and b.rank then return ns.Format(L["{spell} (Rank {rank})"], { spell = b.value, rank = b.rank }) end
+  if b.action == "spell" then return b.value end
+  if b.action == "macro" then return ns.Format(L["Macro: {text}"], { text = b.value }) end
+  return ACTION_NAMES[b.action] or ACTION_NAMES.menu
 end
 
 -- What a hover key does off the frames ("Action bar 1 slot 2"), or nil when it's free or the client can't say.
@@ -261,17 +273,17 @@ function CC.Collision(key)
   local action = GetBindingAction(key)
   if type(action) ~= "string" or action == "" then return nil end
   local bar, slot = action:match("^MULTIACTIONBAR(%d)BUTTON(%d+)$")
-  if bar then return "Action bar " .. (bar + 1) .. " slot " .. slot end
+  if bar then return ns.Format(L["Action bar {bar} slot {slot}"], { bar = bar + 1, slot = slot }) end
   slot = action:match("^ACTIONBUTTON(%d+)$")
-  return slot and ("Action bar 1 slot " .. slot) or action:lower():gsub("_", " ")
+  return slot and ns.Format(L["Action bar {bar} slot {slot}"], { bar = 1, slot = slot }) or action:lower():gsub("_", " ")
 end
 
 -- The actions the units' click handler (SecureUnitButton_OnClick) runs only on a click the game's own click
 -- bindings cover, and why such a binding does nothing, by where it is (player words, read after "does nothing: ").
 local GAME_GATED = { target = true, menu = true }
 local WONT_RUN = {
-  key = "the game won't run it from a key",
-  click = "the game runs it only on a click its own Click Casting window binds",
+  key = L["the game won't run it from a key"],
+  click = L["the game runs it only on a click its own Click Casting window binds"],
 }
 -- A mouse button's number from the game's name for it (its profile may use either name).
 local GAME_BUTTONS = { LeftButton = 1, RightButton = 2, MiddleButton = 3, Button1 = 1, Button2 = 2, Button3 = 3, Button4 = 4, Button5 = 5 }

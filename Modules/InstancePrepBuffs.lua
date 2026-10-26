@@ -14,6 +14,8 @@
 
 local ADDON, ns = ...
 
+local L = ns.L
+
 local PR = ns.GetModule("InstancePrep")
 
 -- Buff groups by spell id (any one of them counts). The names in the comments are the English client's.
@@ -23,16 +25,16 @@ PR.FLASKS = { 17626, 17627, 17628, 17629 }
 PR.FOOD = { 19705 }
 -- Row label -> Power Word: Fortitude, Prayer of Fortitude; Mark of the Wild, Gift of the Wild; Arcane Intellect, Arcane Brilliance.
 PR.RAID_BUFFS = {
-  { "Fortitude", { 1243, 21562 } },
-  { "Mark of the Wild", { 1126, 21849 } },
-  { "Arcane Intellect", { 1459, 23028 } },
+  { L["Fortitude"], { 1243, 21562 } },
+  { L["Mark of the Wild"], { 1126, 21849 } },
+  { L["Arcane Intellect"], { 1459, 23028 } },
 }
 -- Rallying Cry of the Dragonslayer, Spirit of Zandalar, Songflower Serenade, Warchief's Blessing, Fengus' Ferocity,
 -- Slip'kik's Savvy, Mol'dar's Moxie.
 PR.WORLD_BUFFS = { 22888, 24425, 15366, 16609, 22817, 22820, 22818 }
 -- Item class Weapon (Enum.ItemClass.Weapon), and the weapon slots checked (main hand 16, off hand 17) with their row labels.
 PR.WEAPON = 2
-PR.ENCHANT_SLOTS = { { 16, "Weapon oil or poison" }, { 17, "Off-hand oil or poison" } }
+PR.ENCHANT_SLOTS = { { 16, L["Weapon oil or poison"] }, { 17, L["Off-hand oil or poison"] } }
 
 -- How many of your buffs are read for the names (the game shows 32 at most).
 PR.SCAN = 40
@@ -78,7 +80,7 @@ end
 -- A "missing" row for a buff group (spell ids) you lack, or nil: also when the client names none of them.
 local function missing(label, ids)
   local names = ns.SpellNames(ids)
-  if #names > 0 and hasAny(names) == false and not hasWord(names) then return { label = label, value = "missing" } end
+  if #names > 0 and hasAny(names) == false and not hasWord(names) then return { label = label, value = L["missing"] } end
 end
 
 -- Whether the item in a slot is a weapon (item class Weapon).
@@ -106,7 +108,7 @@ end
 function PR.EnchantRows()
   local rows, have = {}, canListEnchants() and enchanted()
   for _, w in ipairs(PR.ENCHANT_SLOTS) do
-    if have and not have[w[1]] and isWeapon(w[1]) then rows[#rows + 1] = { label = w[2], value = "missing" } end
+    if have and not have[w[1]] and isWeapon(w[1]) then rows[#rows + 1] = { label = w[2], value = L["missing"] } end
   end
   return rows
 end
@@ -118,14 +120,14 @@ end
 
 -- The buff checks always made, in the card's order, as { label, spell ids }: flask, food, the raid buffs.
 function PR.Checks()
-  local checks = { { "Flask", PR.FLASKS }, { "Food buff", PR.FOOD } }
+  local checks = { { L["Flask"], PR.FLASKS }, { L["Food buff"], PR.FOOD } }
   for _, b in ipairs(PR.RAID_BUFFS) do checks[#checks + 1] = b end
   return checks
 end
 
 -- The world buffs' check, made only when you ask for it.
 local function worldCheck()
-  return { "World buffs", PR.WORLD_BUFFS }
+  return { L["World buffs"], PR.WORLD_BUFFS }
 end
 
 -- The aura rows: flask, food and the raid buffs you lack, then "World buffs" when you ask for them and have none.

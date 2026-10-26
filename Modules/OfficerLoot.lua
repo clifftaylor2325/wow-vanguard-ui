@@ -10,9 +10,11 @@
 
 local ADDON, ns = ...
 
+local L = ns.L
+
 local OL = ns.Module("OfficerLoot", { defaults = { on = false } })
 
-ns.Options.MODULE_INFO.OfficerLoot = { "Officer loot tools", "A soft-reserve list shown next to the roll tracker, and a roster of the group; shared by hand, never synced (off until switched on)." }
+ns.Options.MODULE_INFO.OfficerLoot = { L["Officer loot tools"], L["A soft-reserve list shown next to the roll tracker, and a roster of the group; shared by hand, never synced (off until switched on)."] }
 
 -- The longest chat line the game takes, kept under with room for the /p or /raid prefix.
 OL.CHUNK = 230
@@ -141,7 +143,7 @@ end
 
 -- A shared line's head: "Item: " on an item's first line, "Item (cont.): " on the lines after it.
 local function lineHead(item, n)
-  return (n == 1 and item or item .. " (cont.)") .. ": "
+  return ns.Format(n == 1 and L["{item}: "] or L["{item} (cont.): "], { item = item })
 end
 
 -- One item's reserves as lines of at most OL.CHUNK bytes, cut between names (many reserves on one
@@ -163,7 +165,7 @@ function OL.Chunks()
   for _, g in ipairs(OL.Groups()) do
     for _, line in ipairs(groupLines(g)) do
       if now ~= "" and #now + #OL.PART_SEP + #line > OL.CHUNK then parts[#parts + 1] = now now = "" end
-      now = now == "" and (#parts == 0 and "Soft reserves: " or "") .. line or now .. OL.PART_SEP .. line
+      now = now == "" and (#parts == 0 and L["Soft reserves: "] or "") .. line or now .. OL.PART_SEP .. line
     end
   end
   if now ~= "" then parts[#parts + 1] = now end
@@ -174,19 +176,19 @@ end
 -- Without the game's call to open the chat box it prints the part to your own chat instead.
 function OL.Share(prefix)
   local parts = OL.Chunks()
-  if #parts == 0 then return ns.Chat("No reserves to share.") end
+  if #parts == 0 then return ns.Chat(L["No reserves to share."]) end
   OL.part = (OL.part or 0) % #parts + 1
   local open = type(ChatFrameUtil) == "table" and ChatFrameUtil.OpenChat
   if type(open) ~= "function" then return ns.Chat(parts[OL.part]) end
   open(prefix .. parts[OL.part])
-  if #parts > 1 then ns.Chat("Part " .. OL.part .. " of " .. #parts .. " is in the chat box; click again for the next.") end
+  if #parts > 1 then ns.Chat(ns.Format(L["Part {part} of {count} is in the chat box; click again for the next."], { part = OL.part, count = #parts })) end
 end
 
 -- Prints the list to your own chat.
 function OL.Print()
   local lines = OL.Lines()
-  if #lines == 0 then return ns.Chat("No reserves yet. /vg loot add <player> <item>") end
-  ns.Chat("Soft reserves:")
+  if #lines == 0 then return ns.Chat(L["No reserves yet. /vg loot add <player> <item>"]) end
+  ns.Chat(L["Soft reserves:"])
   for _, line in ipairs(lines) do ns.Chat(line) end
 end
 
@@ -196,38 +198,39 @@ end
 function OL.CmdAdd(arg)
   local player, item = arg:match("^(%S+)%s+(.+)$")
   local entry, had = OL.Add(player, item)
-  if not entry then return ns.Chat("Use /vg loot add <player> <item or item link>.") end
-  ns.Chat(had and (entry.player .. " already reserves " .. entry.item .. ".") or ("Reserved: " .. entry.item .. " for " .. entry.player .. "."))
+  if not entry then return ns.Chat(L["Use /vg loot add <player> <item or item link>."]) end
+  local said = had and L["{player} already reserves {item}."] or L["Reserved: {item} for {player}."]
+  ns.Chat(ns.Format(said, { player = entry.player, item = entry.item }))
 end
 
 -- /vg loot remove <player> <item>.
 function OL.CmdRemove(arg)
   local player, item = arg:match("^(%S+)%s+(.+)$")
   local gone = player and OL.Remove(player, item) or 0
-  ns.Chat(gone > 0 and ("Removed the reserve for " .. player .. ".") or "No such reserve. /vg loot list shows them.")
+  ns.Chat(gone > 0 and ns.Format(L["Removed the reserve for {player}."], { player = player }) or L["No such reserve. /vg loot list shows them."])
 end
 
 -- /vg loot focus <item>: the item the roll tracker flags reserves for; with nothing, goes back to following the loot history.
 function OL.CmdFocus(arg)
   OL.focus = arg ~= "" and arg or nil
   OL.Changed()
-  ns.Chat(OL.focus and ("Rolls are flagged for " .. (OL.Item(arg) or {}).name .. ".") or "Rolls follow the item the loot history says is rolling.")
+  ns.Chat(OL.focus and ns.Format(L["Rolls are flagged for {item}."], { item = (OL.Item(arg) or {}).name }) or L["Rolls follow the item the loot history says is rolling."])
 end
 
 -- Forgets every reserve and says how many (the answer Yes to OL.AskClear).
 function OL.CmdClear()
-  ns.Chat("Forgot " .. OL.Clear() .. " reserve(s).")
+  ns.Chat(ns.Format(L["Forgot {count} reserve(s)."], { count = OL.Clear() }))
 end
 
 -- /vg loot clear and Clear every reserve: asks first (a "danger" question: it can't be undone), then forgets them.
 function OL.AskClear()
-  local question = string.format("Forget all %d reserve(s) on this character? This can't be undone.", #OL.Store())
-  ns.Ask(question, "Clear", OL.CmdClear, nil, "danger")
+  local question = ns.Format(L["Forget all {count} reserve(s) on this character? This can't be undone."], { count = #OL.Store() })
+  ns.Ask(question, L["Clear"], OL.CmdClear, nil, "danger")
 end
 
 -- /vg loot with nothing, or with something it doesn't know: how to use it.
 function OL.Usage()
-  ns.Chat("Officer loot tools are on. /vg loot add <player> <item>, remove <player> <item>, list, clear, focus [item], roster, off.")
+  ns.Chat(L["Officer loot tools are on. /vg loot add <player> <item>, remove <player> <item>, list, clear, focus [item], roster, off."])
 end
 
 -- The subcommands, by name.
@@ -238,10 +241,10 @@ OL.SUB = {
 
 -- Switches the tools on or off (the roster goes with them).
 function OL.SetOn(on)
-  if not OL.enabled then return ns.Chat("Officer loot tools are off in /vg > Modules.") end
+  if not OL.enabled then return ns.Chat(L["Officer loot tools are off in /vg > Modules."]) end
   OL.settings.on = on
   OL.Apply()
-  ns.Chat(on and "Officer loot tools on. /vg loot for what they do." or "Officer loot tools off.")
+  ns.Chat(on and L["Officer loot tools on. /vg loot for what they do."] or L["Officer loot tools off."])
 end
 
 -- /vg loot ...
@@ -249,7 +252,7 @@ function OL.Command(rest)
   local sub, arg = (rest or ""):match("^(%S*)%s*(.-)%s*$")
   sub = sub:lower()
   if sub == "on" or sub == "off" then return OL.SetOn(sub == "on") end
-  if not OL.On() then return ns.Chat("Officer loot tools are off. /vg loot on switches them on.") end
+  if not OL.On() then return ns.Chat(L["Officer loot tools are off. /vg loot on switches them on."]) end
   local fn = OL.SUB[sub] or OL.Usage
   fn(arg)
 end
@@ -258,16 +261,16 @@ end
 
 -- Asks for "<player> <item>" in a box and adds it.
 function OL.AskAdd()
-  ns.AskText("Reserve: player, then item (or shift-click a link)", OL.CmdAdd, "Add")
+  ns.AskText(L["Reserve: player, then item (or shift-click a link)"], OL.CmdAdd, L["Add"])
 end
 
 -- The share and clear buttons of the card.
 function OL.ShareRows()
   return {
-    { "button", "Print the reserve list to my chat", OL.Print },
-    { "button", "Put the list in the chat box for the party", function() OL.Share("/p ") end },
-    { "button", "Put the list in the chat box for the raid", function() OL.Share("/raid ") end },
-    { "button", "Clear every reserve", OL.AskClear },
+    { "button", L["Print the reserve list to my chat"], OL.Print },
+    { "button", L["Put the list in the chat box for the party"], function() OL.Share("/p ") end },
+    { "button", L["Put the list in the chat box for the raid"], function() OL.Share("/raid ") end },
+    { "button", L["Clear every reserve"], OL.AskClear },
   }
 end
 
@@ -275,11 +278,11 @@ end
 function OL.Rows()
   local get, set, default = ns.Options.LiveSetting("OfficerLoot", "on", function() OL.Apply() end)
   local rows = {
-    { "header", "Officer loot tools" },
-    { "text", "A soft-reserve list next to the roll tracker and a roster of the group, for a raid leader or officer. Kept on this character and shared by hand; nothing is synced, sent or rolled for you (/vg loot)." },
-    { "check", "Turn on the soft-reserve list and the roster", get, set, default },
-    { "button", "Add a reserve", OL.AskAdd },
-    { "button", "Show or hide the roster", function() OL.ToggleRoster() end },
+    { "header", L["Officer loot tools"] },
+    { "text", L["A soft-reserve list next to the roll tracker and a roster of the group, for a raid leader or officer. Kept on this character and shared by hand; nothing is synced, sent or rolled for you (/vg loot)."] },
+    { "check", L["Turn on the soft-reserve list and the roster"], get, set, default },
+    { "button", L["Add a reserve"], OL.AskAdd },
+    { "button", L["Show or hide the roster"], function() OL.ToggleRoster() end },
   }
   return ns.Options.Append(rows, OL.ShareRows())
 end

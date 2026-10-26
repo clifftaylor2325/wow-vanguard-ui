@@ -24,6 +24,7 @@
 local ADDON, ns = ...
 
 local T = ns.Theme
+local L = ns.L
 local AB = ns.GetModule("ActionBars")
 
 -- Keys that are only modifiers: pressed alone they bind nothing.
@@ -45,13 +46,13 @@ end
 
 -- "Bar 2 button 5" for a button.
 local function buttonLabel(b)
-  return string.format("Bar %d button %d", b.vgBar.vgIndex, b:GetAttribute("index"))
+  return ns.Format(L["Bar {bar} button {button}"], { bar = b.vgBar.vgIndex, button = b:GetAttribute("index") })
 end
 
 -- A button's keys, joined ("Q, SHIFT-Q"), or "no key".
 local function keysText(b)
   local keys = { GetBindingKey(b.binding) }
-  return #keys > 0 and table.concat(keys, ", ") or "no key"
+  return #keys > 0 and table.concat(keys, ", ") or L["no key"]
 end
 
 -- What a key does now, for the chat line: one of Vanguard's buttons by its
@@ -70,9 +71,9 @@ end
 local function showTip(b)
   GameTooltip_SetDefaultAnchor(GameTooltip, b)
   GameTooltip:SetText(buttonLabel(b))
-  GameTooltip:AddLine("Keys: " .. keysText(b), T.RGB("text"))
+  GameTooltip:AddLine(ns.Format(L["Keys: {keys}"], { keys = keysText(b) }), T.RGB("text"))
   local r, g, bl = T.RGB("text2")
-  GameTooltip:AddLine("Press a key, the middle or a side mouse button, or roll the wheel to bind it (with Shift, Ctrl or Alt held, if you like). Backspace clears.", r, g, bl, true)
+  GameTooltip:AddLine(L["Press a key, the middle or a side mouse button, or roll the wheel to bind it (with Shift, Ctrl or Alt held, if you like). Backspace clears."], r, g, bl, true)
   GameTooltip:Show()
 end
 
@@ -107,7 +108,7 @@ function AB.BindKey(b, key)
   dropKeys(b)
   SetBinding(key, b.binding)
   saved(b)
-  AB.ShowResult(string.format("%s bound to %s%s.", key, buttonLabel(b), owner and (", taken from " .. owner) or ""), owner and "warn")
+  AB.ShowResult(ns.Format(owner and L["{key} bound to {button}, taken from {owner}."] or L["{key} bound to {button}."], { key = key, button = buttonLabel(b), owner = owner }), owner and "warn")
   return true
 end
 
@@ -115,11 +116,11 @@ end
 -- of combat only, and only when it has a key; false otherwise.
 function AB.ClearKeys(b)
   if ns.InCombat() then return false end
-  if not GetBindingKey(b.binding) then AB.ShowResult(buttonLabel(b) .. " has no key.") return false end
+  if not GetBindingKey(b.binding) then AB.ShowResult(ns.Format(L["{button} has no key."], { button = buttonLabel(b) })) return false end
   local had = keysText(b)
   dropKeys(b)
   saved(b)
-  AB.ShowResult(string.format("%s unbound (was %s).", buttonLabel(b), had))
+  AB.ShowResult(ns.Format(L["{button} unbound (was {keys})."], { button = buttonLabel(b), keys = had }))
   return true
 end
 
@@ -204,7 +205,7 @@ local function addBannerText(f)
   f.text:SetPoint("TOPLEFT", T.SPACE.pad, -T.SPACE.pad)
   f.text:SetPoint("TOPRIGHT", -T.SPACE.pad, -T.SPACE.pad)
   f.text:SetWordWrap(false)
-  f.text:SetText("Hover a button, then press a key, a side mouse button or the wheel. Backspace clears, Escape leaves.")
+  f.text:SetText(L["Hover a button, then press a key, a side mouse button or the wheel. Backspace clears, Escape leaves."])
   f.result = T.Text(f:CreateFontString(nil, "OVERLAY"), "label", "text2")
   f.result:SetPoint("BOTTOMLEFT", T.SPACE.pad, T.SPACE.pad)
   f.result:SetPoint("RIGHT", f.done, "LEFT", -T.SPACE.gap, 0)
@@ -215,7 +216,7 @@ end
 -- Done, at the banner's bottom right: leaves the mode, keeping every key bound (each saved as it was bound).
 -- The banner takes keys, not mouse buttons, so a click on it never becomes a bind.
 local function addDone(f)
-  f.done = ns.DialogButton(f, "Done", AB.BANNER.done)
+  f.done = ns.DialogButton(f, L["Done"], AB.BANNER.done)
   f.done:SetPoint("BOTTOMRIGHT", -T.SPACE.pad, T.SPACE.gap)
   f.done:SetScript("OnClick", ns.Guard("click keybind Done", function() AB.KeybindMode(false) end))
 end
@@ -242,8 +243,8 @@ end
 
 -- Whether the mode can start now; says why not in chat.
 local function canStart()
-  if #AB.buttons == 0 then ns.Chat("Keybind mode needs Vanguard's action bars (/vg > Modules).") return false end
-  if ns.InCombat() then ns.Chat("Keybind mode waits until you're out of combat.") return false end
+  if #AB.buttons == 0 then ns.Chat(L["Keybind mode needs Vanguard's action bars (/vg > Modules)."]) return false end
+  if ns.InCombat() then ns.Chat(L["Keybind mode waits until you're out of combat."]) return false end
   return true
 end
 
@@ -251,13 +252,13 @@ end
 function AB.KeybindMode(on)
   if on and not canStart() then return end
   AB.binder = AB.binder or build()
-  AB.binder.result:SetText(on and "Nothing bound yet." or "")
+  AB.binder.result:SetText(on and L["Nothing bound yet."] or "")
   T.Color(AB.binder.result, "text2")
   setCatchers(on)
   AB.binding = on
   AB.binder:SetShown(on)
   AB.SetGrid(on)
-  if not on then ns.Chat("Keybind mode off.") end
+  if not on then ns.Chat(L["Keybind mode off."]) end
 end
 
 -- /vg keybind: on, or off again.

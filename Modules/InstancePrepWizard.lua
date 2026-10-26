@@ -7,6 +7,8 @@
 
 local ADDON, ns = ...
 
+local L = ns.L
+
 local T, W = ns.Theme, ns.Widgets
 
 local PR = ns.GetModule("InstancePrep")
@@ -19,8 +21,8 @@ local CAPTION_H = 16
 WZ.TOP = ns.DIALOG.head + CAPTION_H
 -- Each amount's label and slider range: { label, min, max, step }.
 WZ.AMOUNTS = {
-  food = { "Food & drink", 0, 100, 5 }, bandages = { "Bandages", 0, 60, 5 }, potions = { "Potions", 0, 20, 1 },
-  ammo = { "Ammo", 0, 2000, 100 }, shards = { "Soul shards", 0, 30, 1 },
+  food = { L["Food & drink"], 0, 100, 5 }, bandages = { L["Bandages"], 0, 60, 5 }, potions = { L["Potions"], 0, 20, 1 },
+  ammo = { L["Ammo"], 0, 2000, 100 }, shards = { L["Soul shards"], 0, 30, 1 },
 }
 -- The amounts on each page (the class page depends on your class: WZ.ClassKeys).
 WZ.SUPPLIES = { "food", "bandages", "potions" }
@@ -72,11 +74,11 @@ end
 
 -- The review text: what you'll carry, and what is short right now (in the card's words).
 function WZ.ReviewText()
-  local lines = { "You'll be told when you carry fewer than:" }
+  local lines = { L["You'll be told when you carry fewer than:"] }
   amountLines(lines)
   local _, short = PR.LowSupplies()
-  lines[#lines + 1] = #short > 0 and ("Short right now: " .. #short .. " (/vg prep shows them).") or "Nothing is short right now."
-  lines[#lines + 1] = "Keep-stocked items are changed with /vg stock; class reagents follow your level."
+  lines[#lines + 1] = #short > 0 and ns.Format(L["Short right now: {count} (/vg prep shows them)."], { count = #short }) or L["Nothing is short right now."]
+  lines[#lines + 1] = L["Keep-stocked items are changed with /vg stock; class reagents follow your level."]
   return table.concat(lines, "\n")
 end
 
@@ -100,7 +102,7 @@ function WZ.Show(n)
   f.review:SetShown(page == "review")
   f.suggest:SetShown(n == 1)
   f.back:SetShown(n > 1)
-  f.next.text:SetText(n == #WZ.pages and "Done" or "Next")
+  f.next.text:SetText(n == #WZ.pages and L["Done"] or L["Next"])
   WZ.Refresh()
 end
 
@@ -109,7 +111,7 @@ function WZ.Refresh()
   local f = WZ.frame
   for _, s in pairs(f.sliders) do s:Refresh() end
   f.review:SetText(WZ.ReviewText())
-  f.caption:SetText(string.format("Step %d of %d", WZ.step, #WZ.pages))
+  f.caption:SetText(ns.Format(L["Step {step} of {count}"], { step = WZ.step, count = #WZ.pages }))
 end
 
 -- One slider for an amount: moves PR.settings.want[key] as it is dragged.
@@ -123,17 +125,17 @@ end
 
 -- The footer: Use suggested (first page), Back and Next or Done (the window applies as you go, so it ends in Done).
 local function footer(f)
-  f.suggest = W.Button(f, "Use suggested", WZ.UseSuggested)
+  f.suggest = W.Button(f, L["Use suggested"], WZ.UseSuggested)
   f.suggest:SetPoint("BOTTOMLEFT", WZ.PAD, WZ.PAD)
-  f.next = W.Primary(f, "Next", function() WZ.Next() end)
+  f.next = W.Primary(f, L["Next"], function() WZ.Next() end)
   f.next:SetPoint("BOTTOMRIGHT", -WZ.PAD, WZ.PAD)
-  f.back = W.Button(f, "Back", function() WZ.Show(WZ.step - 1) end)
+  f.back = W.Button(f, L["Back"], function() WZ.Show(WZ.step - 1) end)
   f.back:SetPoint("RIGHT", f.next, "LEFT", -T.SPACE.gap, 0)
 end
 
 -- The title, the step caption (a note) and the review text; the window's close button comes with ns.Dialog.
 local function labels(f)
-  f.title:SetText("Instance prep: wanted amounts")
+  f.title:SetText(L["Instance prep: wanted amounts"])
   f.caption = T.Text(f:CreateFontString(nil, "OVERLAY"), "small", "muted")
   f.caption:SetPoint("TOPLEFT", WZ.PAD, -ns.DIALOG.head)
   f.review = T.Text(f:CreateFontString(nil, "OVERLAY"), "label")
@@ -160,7 +162,7 @@ end
 
 -- Opens the window on its first page (Instance prep must be on; out of combat only, since it has no use in a fight).
 function WZ.Open()
-  if not PR.settings then return ns.Chat("Instance prep is off (/vg > Modules).") end
+  if not PR.settings then return ns.Chat(L["Instance prep is off (/vg > Modules)."]) end
   if ns.InCombat() then return ns.OutOfCombat(WZ.Open, "prep wizard") end
   WZ.frame = WZ.frame or build()
   WZ.pages = WZ.Pages()

@@ -9,12 +9,20 @@
 
 local ADDON, ns = ...
 
+local L = ns.L
+
 local BD = ns.Module("BossDocks", { defaults = {} })
 
--- The spots: mover key and label, default point, size, DBM's option prefix and BigWigs' bar kind.
+-- The spots: mover key and label, default point, size, DBM's option prefix and where to drag BigWigs' bars of that kind.
 BD.SPOTS = {
-  { key = "bossbars", label = "Boss timers", default = { "BOTTOM", "BOTTOM", 360, 300 }, w = 200, h = 120, dbm = "Timer", bigwigs = "normal" },
-  { key = "bossbarssoon", label = "Boss timers, soon", default = { "TOP", "TOP", 0, -264 }, w = 240, h = 80, dbm = "HugeTimer", bigwigs = "emphasized" },
+  {
+    key = "bossbars", label = L["Boss timers"], default = { "BOTTOM", "BOTTOM", 360, 300 }, w = 200, h = 120, dbm = "Timer",
+    bigwigs = L["BigWigs: drag its normal bars' anchor to {spot} ({x}, {y} from the middle of the screen)."],
+  },
+  {
+    key = "bossbarssoon", label = L["Boss timers, soon"], default = { "TOP", "TOP", 0, -264 }, w = 240, h = 80, dbm = "HugeTimer",
+    bigwigs = L["BigWigs: drag its emphasized bars' anchor to {spot} ({x}, {y} from the middle of the screen)."],
+  },
 }
 
 -- Whether Deadly Boss Mods' bars (DBM-StatusBarTimers' DBT) are loaded.
@@ -50,23 +58,23 @@ end
 local function dockAllDBM()
   for _, s in ipairs(BD.SPOTS) do dockDBM(s.dbm, BD.frames[s.key]) end
   if type(_G.DBT.Rearrange) == "function" then _G.DBT:Rearrange() end
-  ns.Chat("Lined up Deadly Boss Mods' bars with the Boss timers spots.")
+  ns.Chat(L["Lined up Deadly Boss Mods' bars with the Boss timers spots."])
 end
 
 -- Says where the spots are, for dragging BigWigs' anchors there.
 local function sayWhere()
   for _, s in ipairs(BD.SPOTS) do
     local x, y = BD.Offset(BD.frames[s.key])
-    ns.Chat(string.format("BigWigs: drag its %s bars' anchor to %s (%s, %s from the middle of the screen).", s.bigwigs, s.label, tostring(x), tostring(y)))
+    ns.Chat(ns.Format(s.bigwigs, { spot = s.label, x = tostring(x), y = tostring(y) }))
   end
 end
 
 -- /vg dock: Deadly Boss Mods' bars onto the spots; where they are, for BigWigs.
 function BD.Command()
-  if not BD.frames then return ns.Chat("Vanguard's boss docks are off (/vg > Modules).") end
-  if ns.InCombat() then return ns.Chat("After the fight: boss bars aren't moved in combat.") end
+  if not BD.frames then return ns.Chat(L["Vanguard's boss docks are off (/vg > Modules)."]) end
+  if ns.InCombat() then return ns.Chat(L["After the fight: boss bars aren't moved in combat."]) end
   local dbm, bigwigs = BD.HasDBM(), BD.HasBigWigs()
-  if not dbm and not bigwigs then return ns.Chat("Neither Deadly Boss Mods nor BigWigs is loaded.") end
+  if not dbm and not bigwigs then return ns.Chat(L["Neither Deadly Boss Mods nor BigWigs is loaded."]) end
   if dbm then dockAllDBM() end
   if bigwigs then sayWhere() end
 end

@@ -31,6 +31,7 @@ local vgStacked = ns.FrameState("vgStacked")
 local vgPlate = ns.FrameState("vgPlate")
 
 local T = ns.Theme
+local L = ns.L
 local CB = ns.GetModule("CastBars")
 local RS = ns.GetModule("RaidStatus")
 local UF = ns.GetModule("UnitFrames")
@@ -779,7 +780,9 @@ end
 -- /vg plates enemies on|off: the game's own enemy plate setting, once out of combat.
 local function setEnemies(on)
   setGameSetting("nameplateShowEnemies", on)
-  ns.Chat("Enemy nameplates " .. (on and "on" or "off") .. (ns.InCombat() and " after the fight." or "."))
+  local said = on and L["Enemy nameplates on."] or L["Enemy nameplates off."]
+  if ns.InCombat() then said = on and L["Enemy nameplates on after the fight."] or L["Enemy nameplates off after the fight."] end
+  ns.Chat(said)
 end
 
 -- Turns the game's enemy plates on once per character (#377: the game ships them off, so
@@ -803,7 +806,7 @@ function NP.Command(rest)
   ns.Chat(("Plates: %d drawn, %d of them units you can attack. Game's Enemy nameplates %s, Friendly players %s, Friendly NPCs %s, Show all %s."):format(total, enemies,
     cvarState("nameplateShowEnemies"), cvarState("nameplateShowFriendlyPlayers"), cvarState("nameplateShowFriendlyNPCs"), cvarState("nameplateShowAll")))
   if cvarState("nameplateShowEnemies") == "off" then
-    ns.Chat("The game draws no enemy plates, so there is nothing to dress. Turn on Enemy nameplates in /vg > Nameplates, or press V.")
+    ns.Chat(L["The game draws no enemy plates, so there is nothing to dress. Turn on Enemy nameplates in /vg > Nameplates, or press V."])
   end
 end
 
@@ -841,28 +844,28 @@ end
 -- The game's own plate settings Vanguard mirrors: which plates it draws (the V and Shift-V keys)
 -- and, where the client has them, the Info display's health numbers.
 function NP.GameRows()
-  local rows = { { "check", "Enemy nameplates (the game's setting, the V key)", NP.GameSetting("nameplateShowEnemies") }, { "check", "Friendly players' nameplates (the game's setting)", NP.GameSetting("nameplateShowFriendlyPlayers") }, { "check", "Friendly NPCs' nameplates (the game's setting)", NP.GameSetting("nameplateShowFriendlyNPCs") } }
+  local rows = { { "check", L["Enemy nameplates (the game's setting, the V key)"], NP.GameSetting("nameplateShowEnemies") }, { "check", L["Friendly players' nameplates (the game's setting)"], NP.GameSetting("nameplateShowFriendlyPlayers") }, { "check", L["Friendly NPCs' nameplates (the game's setting)"], NP.GameSetting("nameplateShowFriendlyNPCs") } }
   if not hasInfoDisplay() then return rows end
-  rows[#rows + 1] = { "check", "Health percent on enemy plates (the game's setting)", NP.InfoSetting("CurrentHealthPercent") }
-  rows[#rows + 1] = { "check", "Health value on enemy plates (the game's setting)", NP.InfoSetting("CurrentHealthValue") }
+  rows[#rows + 1] = { "check", L["Health percent on enemy plates (the game's setting)"], NP.InfoSetting("CurrentHealthPercent") }
+  rows[#rows + 1] = { "check", L["Health value on enemy plates (the game's setting)"], NP.InfoSetting("CurrentHealthValue") }
   return rows
 end
 
 -- This module's own rows: looks first, then debuffs, buffs and size (after a reload).
 local function lookRows()
   return {
-    { "check", "Levels, colored by how hard the unit is for you", setting("level", NP.RefreshAll) },
-    { "check", "Threat colors while you have aggro", setting("threat", NP.RefreshAll) },
-    { "check", "Accent border, glow and marker on your target", setting("targetBorder", NP.RefreshAll) }, { "check", "Cast bar", setting("castBar", ns.Options.NeedReload) },
-    { "check", "A gold ! by units your quests need", setting("questMarks", NP.RefreshAll) }, { "check", "Tag marks: a green check on mobs you tagged, a grey X and grey bar on another player's", setting("tagMarks", NP.RefreshAll) },
-    { "cycle", "Your debuffs shown", { { 0, "none" }, { 4, "4" }, { 6, "6" } }, setting("debuffs", ns.Options.NeedReload) }, { "cycle", "Buffs on players (defensives, and yours on friends)", { { 0, "none" }, { 3, "3" }, { 5, "5" } }, setting("buffs", ns.Options.NeedReload) },
-    { "check", "Timer numbers on your debuffs (reload)", setting("timers", ns.Options.NeedReload) },
-    { "cycle", "Width", { { 110, "110" }, { 130, "130" }, { 160, "160" } }, setting("width", ns.Options.NeedReload) }, { "cycle", "Height", { { 8, "8" }, { 10, "10" }, { 14, "14" } }, setting("height", ns.Options.NeedReload) } }
+    { "check", L["Levels, colored by how hard the unit is for you"], setting("level", NP.RefreshAll) },
+    { "check", L["Threat colors while you have aggro"], setting("threat", NP.RefreshAll) },
+    { "check", L["Accent border, glow and marker on your target"], setting("targetBorder", NP.RefreshAll) }, { "check", L["Cast bar"], setting("castBar", ns.Options.NeedReload) },
+    { "check", L["A gold ! by units your quests need"], setting("questMarks", NP.RefreshAll) }, { "check", L["Tag marks: a green check on mobs you tagged, a grey X and grey bar on another player's"], setting("tagMarks", NP.RefreshAll) },
+    { "cycle", L["Your debuffs shown"], { { 0, L["none"] }, { 4, "4" }, { 6, "6" } }, setting("debuffs", ns.Options.NeedReload) }, { "cycle", L["Buffs on players (defensives, and yours on friends)"], { { 0, L["none"] }, { 3, "3" }, { 5, "5" } }, setting("buffs", ns.Options.NeedReload) },
+    { "check", L["Timer numbers on your debuffs (reload)"], setting("timers", ns.Options.NeedReload) },
+    { "cycle", L["Width"], { { 110, "110" }, { 130, "130" }, { 160, "160" } }, setting("width", ns.Options.NeedReload) }, { "cycle", L["Height"], { { 8, "8" }, { 10, "10" }, { 14, "14" } }, setting("height", ns.Options.NeedReload) } }
 end
 
 -- The Nameplates page: the game's plate settings it mirrors, then this module's own.
 function NP.OptionRows()
-  local rows = { { "header", "Nameplates" }, { "text", "Turn the whole module off under Modules to keep the default plates." } }
+  local rows = { { "header", L["Nameplates"] }, { "text", L["Turn the whole module off under Modules to keep the default plates."] } }
   for _, row in ipairs(NP.GameRows()) do rows[#rows + 1] = row end
   for _, row in ipairs(lookRows()) do rows[#rows + 1] = row end
   return rows
@@ -870,7 +873,7 @@ end
 
 ns.Options.AddPage({
   key = "nameplates",
-  title = "Nameplates",
+  title = L["Nameplates"],
   icon = "NavNameplates",
   order = 65,
   rows = function() return NP.OptionRows() end,

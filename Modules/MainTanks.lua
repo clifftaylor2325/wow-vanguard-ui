@@ -8,6 +8,7 @@
 local ADDON, ns = ...
 
 local T = ns.Theme
+local L = ns.L
 
 local MT = ns.Module("MainTanks", { defaults = {} })
 
@@ -135,7 +136,7 @@ end
 local function build()
   local holder = CreateFrame("Frame", "Vanguard_MainTanksHolder", UIParent)
   holder:SetSize(MT.W + 6 + MT.TARGET_W, MT.MAX * (MT.H + MT.GAP) - MT.GAP)
-  ns.Mover(holder, "maintanks", "Main tanks", { "TOPLEFT", "TOPLEFT", 400, -20 })
+  ns.Mover(holder, "maintanks", L["Main tanks"], { "TOPLEFT", "TOPLEFT", 400, -20 })
   MT.holder, MT.header = holder, createHeader()
   MT.header:SetPoint("TOPLEFT", holder, "TOPLEFT")
   MT.FollowHolder()

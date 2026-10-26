@@ -18,6 +18,7 @@
 local ADDON, ns = ...
 
 local T = ns.Theme
+local L = ns.L
 
 local RF = ns.Module("RaidFrames", {
   defaults = { width = 100, height = 48, spacing = 4, showInParty = true, showPlayer = true, sortByRole = false, hideBlizzard = true, look = "soft", showPower = true, compact = true, layout = "columns", stackBig = true },
@@ -198,7 +199,7 @@ end
 function RF.PaintStatus(b, down, deficit)
   b.down = down ~= nil
   b.status:SetText(down or deficit)
-  T.Color(b.status, (down == "Dead" or down == "Ghost") and "bad" or "text2")
+  T.Color(b.status, (down == L["Dead"] or down == L["Ghost"]) and "bad" or "text2")
 end
 
 -- Dead / Offline, else the missing health, on the status line.
@@ -761,7 +762,7 @@ local function holder(s)
   local f = CreateFrame("Frame", "Vanguard_RaidHolder", UIParent)
   RF.SizeHolder(f, s, RF.LayoutFor(0))
   RF.spot = RF.SPOT
-  ns.Mover(f, "raid", "Raid frames", RF.SPOT)
+  ns.Mover(f, "raid", L["Raid frames"], RF.SPOT)
   return f
 end
 

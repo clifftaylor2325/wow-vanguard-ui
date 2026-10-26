@@ -8,6 +8,8 @@
 
 local ADDON, ns = ...
 
+local L = ns.L
+
 local T, V, W = ns.Theme, ns.Visibility, ns.Widgets
 
 local MT = ns.Module("Meter", { defaults = { on = false, kind = "Dps", session = "Current", reportTo = "chat", percent = true, rows = 8, visibility = "always", showWhen = {} } })
@@ -17,17 +19,17 @@ local MT = ns.Module("Meter", { defaults = { on = false, kind = "Dps", session =
 MT.WIDTH, MT.ROW, MT.HEAD, MT.GAP, MT.EVERY = 300, 18, T.SPACE.gap + T.CONTROL_H, 1, 0.5
 -- The kinds of meter shown: the Enum.DamageMeterType key and the title, in the order a click on the title steps through them.
 MT.KINDS = {
-  Dps = "Damage per second", Hps = "Healing per second", DamageDone = "Damage done", HealingDone = "Healing done",
-  DamageTaken = "Damage taken", Interrupts = "Interrupts", Dispels = "Dispels", Deaths = "Deaths",
+  Dps = L["Damage per second"], Hps = L["Healing per second"], DamageDone = L["Damage done"], HealingDone = L["Healing done"],
+  DamageTaken = L["Damage taken"], Interrupts = L["Interrupts"], Dispels = L["Dispels"], Deaths = L["Deaths"],
 }
 MT.KIND_ORDER = { "Dps", "Hps", "DamageDone", "HealingDone", "DamageTaken", "Interrupts", "Dispels", "Deaths" }
 -- The kinds whose lines show a per-second figure (the rest show the total).
 MT.RATE = { Dps = true, Hps = true }
 -- The segments (Enum.DamageMeterSessionType keys) in the order a right click steps through them, with their words.
 MT.SESSION_ORDER = { "Current", "Overall", "Expired" }
-MT.SESSIONS = { Current = "This fight", Overall = "Overall", Expired = "Previous fight" }
+MT.SESSIONS = { Current = L["This fight"], Overall = L["Overall"], Expired = L["Previous fight"] }
 -- The empty-state line by kind: what would fill the panel.
-MT.EMPTY = { Dps = "No damage yet this fight", Hps = "No healing yet this fight" }
+MT.EMPTY = { Dps = L["No damage yet this fight"], Hps = L["No healing yet this fight"] }
 -- The most rows the setting allows.
 MT.MAXROWS = 10
 -- The widths the panel may be set to (General → Layout → Its width, or the unlock popover).
@@ -177,7 +179,7 @@ end
 
 -- The empty-state line: what would fill the panel (kinds without their own say "Nothing yet").
 function MT.EmptyText()
-  return MT.EMPTY[MT.settings.kind] or "Nothing yet"
+  return MT.EMPTY[MT.settings.kind] or L["Nothing yet"]
 end
 
 -- Shows the panel while it's on and its visibility shows it, sized to its rows, and paints each row.
@@ -248,8 +250,8 @@ end
 
 -- Says how the meter stands and what to type.
 local function status()
-  local words = MT.settings.on and ("on, showing " .. MT.TitleText():lower()) or "off"
-  ns.Chat("Vanguard's meter is " .. words .. ". /vg meter on|off|dps|hps|damage|healing|taken|interrupts|dispels|deaths|this|overall|previous|reset|report. Click the title for the next kind, right-click it for the next segment. The game's own meter stays until you turn it off in the game's settings.")
+  local state = MT.settings.on and ns.Format(L["Vanguard's meter is on, showing {meter}."], { meter = MT.TitleText():lower() }) or L["Vanguard's meter is off."]
+  ns.Chat(state .. " " .. L["/vg meter on|off|dps|hps|damage|healing|taken|interrupts|dispels|deaths|this|overall|previous|reset|report. Click the title for the next kind, right-click it for the next segment. The game's own meter stays until you turn it off in the game's settings."])
 end
 
 -- The words that pick a kind and a segment.
@@ -268,15 +270,15 @@ end
 -- Clears the game's segments (what its own meter shows too); not in combat.
 function MT.Reset()
   local reset = C_DamageMeter and C_DamageMeter.ResetAllCombatSessions
-  if ns.InCombat() or type(reset) ~= "function" then return ns.Chat("The game's damage meter can't be reset now.") end
-  ns.Chat(pcall(reset) and "The game's damage meter was reset." or "The game's damage meter can't be reset now.")
+  if ns.InCombat() or type(reset) ~= "function" then return ns.Chat(L["The game's damage meter can't be reset now."]) end
+  ns.Chat(pcall(reset) and L["The game's damage meter was reset."] or L["The game's damage meter can't be reset now."])
 end
 
 -- Why /vg meter can't answer before the module has started: it is switched off under Modules, or it was
 -- switched on there this session and starts at the next reload.
 function MT.SayNotStarted()
-  if ns.ModuleEnabled("Meter") then return ns.Chat("Vanguard's meter starts after a /reload.") end
-  ns.Chat("Vanguard's meter is switched off under Modules (/vg > Modules).")
+  if ns.ModuleEnabled("Meter") then return ns.Chat(L["Vanguard's meter starts after a /reload."]) end
+  ns.Chat(L["Vanguard's meter is switched off under Modules (/vg > Modules)."])
 end
 
 -- /vg meter [on|off|<kind>|<segment>|reset|report ...]: switch it, or say how it stands.
@@ -357,8 +359,8 @@ end
 
 -- The title row's buttons: Report (to chat, or the channel picked in the options) and Reset (the game's meter).
 local function addHeaderButtons(f)
-  f.report = headerButton(f, "Report", 2, MT.ReportClick)
-  f.reset = headerButton(f, "Reset", 1, MT.Reset)
+  f.report = headerButton(f, L["Report"], 2, MT.ReportClick)
+  f.reset = headerButton(f, L["Reset"], 1, MT.Reset)
 end
 
 -- Applies the panel's visibility setting: now, or when combat ends.
@@ -392,7 +394,7 @@ function build()
   local f = T.HudPanel(CreateFrame("Frame", "Vanguard_Meter", UIParent))
   MT.frame = f
   f:SetSize(MT.WIDTH, MT.HEAD)
-  ns.Mover(f, "meter", "Vanguard meter", { "BOTTOMRIGHT", "BOTTOMRIGHT", -372, 14 })
+  ns.Mover(f, "meter", L["Vanguard meter"], { "BOTTOMRIGHT", "BOTTOMRIGHT", -372, 14 })
   addChrome(f)
   f.rows = {}
   for i = 1, MT.MAXROWS do f.rows[i] = clickable(addRow(f, i)) end

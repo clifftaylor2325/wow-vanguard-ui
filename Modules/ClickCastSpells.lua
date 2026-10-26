@@ -10,11 +10,13 @@
 
 local ADDON, ns = ...
 
+local L = ns.L
+
 local CS = {}
 ns.ClickCastSpells = CS
 
 CS.GROUPS = { "heals", "cleanse", "buffs", "other" }
-CS.GROUP_NAMES = { heals = "Heals", cleanse = "Protect & cleanse", buffs = "Buffs", other = "Other" }
+CS.GROUP_NAMES = { heals = L["Heals"], cleanse = L["Protect & cleanse"], buffs = L["Buffs"], other = L["Other"] }
 
 -- Per class: the spell ids of each group, and the starter layout (mouse button -> spell id).
 -- The names in the comments are the English client's, for reading only: the client names each id.

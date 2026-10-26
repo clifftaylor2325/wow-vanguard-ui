@@ -12,6 +12,7 @@
 local ADDON, ns = ...
 
 local T = ns.Theme
+local L = ns.L
 
 local RT = ns.Module("RaidTools", { defaults = {} })
 
@@ -47,10 +48,10 @@ RT.PULL_SECONDS = 10
 
 -- Each text button: label, what a click does, and the client call it needs.
 RT.ACTIONS = {
-  { "Ready", function() party("DoReadyCheck") end, "DoReadyCheck" },
-  { "Pull", function(_, button) party("DoCountdown", button == "RightButton" and 0 or RT.PULL_SECONDS) end, "DoCountdown" },
-  { "Roles", function() _G.InitiateRolePoll() end, "InitiateRolePoll" },
-  { "Raid", function() party("ConvertToRaid") end, "ConvertToRaid" },
+  { L["Ready"], function() party("DoReadyCheck") end, "DoReadyCheck" },
+  { L["Pull"], function(_, button) party("DoCountdown", button == "RightButton" and 0 or RT.PULL_SECONDS) end, "DoCountdown" },
+  { L["Roles"], function() _G.InitiateRolePoll() end, "InitiateRolePoll" },
+  { L["Raid"], function() party("ConvertToRaid") end, "ConvertToRaid" },
 }
 
 -- True when this client has the call a button needs.
@@ -58,13 +59,13 @@ local function hasCall(name)
   return type(C_PartyInfo and C_PartyInfo[name]) == "function" or type(_G[name]) == "function"
 end
 
--- One text button { label, click, call } on the first row.
+-- One text button { label, click, call } on the first row, kept by its call's name.
 local function actionButton(bar, spec)
   local b = ns.DialogButton(bar, spec[1], 44)
   b:SetHeight(RT.ICON)
   b:RegisterForClicks("AnyUp")
   b:SetScript("OnClick", ns.Guard("click raid tools button", spec[2]))
-  bar.actions[spec[1]] = b
+  bar.actions[spec[3]] = b
   RT.Place(bar, b, 1, #bar.list)
 end
 
@@ -140,7 +141,7 @@ end
 -- once however many group events come in the fight.
 function RT.Update()
   ns.OutOfCombat(function()
-    local raid = RT.bar.actions.Raid
+    local raid = RT.bar.actions.ConvertToRaid
     RT.bar:SetShown(RT.CanLead())
     if raid then raid:SetShown(not globalTrue("IsInRaid") and globalTrue("UnitIsGroupLeader", "player")) end
   end, "raidtools")
@@ -151,7 +152,7 @@ local function build()
   local bar = T.HudPanel(CreateFrame("Frame", "Vanguard_RaidTools", UIParent))
   bar.list = {}
   bar:SetSize(2 * RT.PAD + 9 * RT.ICON + 8 * RT.GAP, 2 * RT.PAD + 3 * RT.ICON + 2 * RT.GAP)
-  ns.Mover(bar, "raidtools", "Raid tools", { "TOPLEFT", "TOPLEFT", 186, -20 })
+  ns.Mover(bar, "raidtools", L["Raid tools"], { "TOPLEFT", "TOPLEFT", 186, -20 })
   addActions(bar)
   addTargetIcons(bar)
   addMarkers(bar)
