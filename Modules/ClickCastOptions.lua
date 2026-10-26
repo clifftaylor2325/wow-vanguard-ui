@@ -13,13 +13,14 @@
 local ADDON, ns = ...
 
 local T, W = ns.Theme, ns.Widgets
+local L = ns.L
 local CC, CS = ns.GetModule("ClickCast"), ns.ClickCastSpells
 local O = ns.Options
 
 local PAGE = "clickcast"
-local MOUSE = { "Left", "Right", "Middle", "Button 4", "Button 5" }
-local MODS = { { "", "Plain" }, { "shift-", "Shift" }, { "ctrl-", "Ctrl" }, { "alt-", "Alt" } }
-local MORE_MODS = { { "ctrl-shift-", "Ctrl + Shift" }, { "alt-shift-", "Alt + Shift" }, { "alt-ctrl-", "Alt + Ctrl" } }
+local MOUSE = { L["Left click"], L["Right click"], L["Middle click"], L["Button 4 click"], L["Button 5 click"] }
+local MODS = { { "", L["Plain"] }, { "shift-", L["Shift"] }, { "ctrl-", L["Ctrl"] }, { "alt-", L["Alt"] } }
+local MORE_MODS = { { "ctrl-shift-", L["Ctrl + Shift"] }, { "alt-shift-", L["Alt + Shift"] }, { "alt-ctrl-", L["Alt + Ctrl"] } }
 local CELL_H, LABEL_W, MAX_KEYS, PICKER_ROWS, ICON_SIZE = 40, 92, 8, 12, 24
 -- How far down its cell a grid row's label sits, to be about centred in it (units).
 local LABEL_DROP = 12
@@ -31,7 +32,7 @@ local KEYS_TOP = T.BUTTON_H + 2 * T.SPACE.tight
 local KEYS_HEIGHT = KEYS_TOP + MAX_KEYS * ROW_H + T.SPACE.gap
 -- The spell picker's width, and where its rows start: the search box (T.CONTROL_H) with a gap over and under it.
 local PICKER_W, PICKER_TOP = 280, T.CONTROL_H + 2 * T.SPACE.gap
-local PLAIN_ACTIONS = { { "target", "Target" }, { "menu", "Unit menu" }, { "focus", "Focus" }, { "assist", "Assist" } }
+local PLAIN_ACTIONS = { { "target", L["Target"] }, { "menu", L["Unit menu"] }, { "focus", L["Focus"] }, { "assist", L["Assist"] } }
 
 -- Page state: whether the extra modifier columns show, and the key the picker is for.
 local state = { more = false, pickKey = nil }
@@ -134,10 +135,10 @@ end
 
 -- Appends the plain actions, the macro and the typed-name entries.
 local function actionItems(items)
-  items[#items + 1] = { header = "Actions" }
+  items[#items + 1] = { header = L["Actions"] }
   for _, a in ipairs(PLAIN_ACTIONS) do items[#items + 1] = { action = a[1], text = a[2] } end
-  items[#items + 1] = { action = "macro", text = "Macro..." }
-  items[#items + 1] = { action = "typed", text = "Type a spell name..." }
+  items[#items + 1] = { action = "macro", text = L["Macro..."] }
+  items[#items + 1] = { action = "typed", text = L["Type a spell name..."] }
 end
 
 -- The picker's items: headers, spells (with their ranks when open) and actions, filtered by the search text.
@@ -168,10 +169,10 @@ end
 
 -- Asks for a macro's text or a spell's name in the text dialog; Bind adds it to the key.
 local function askText(key, action)
-  local what = action == "macro" and "Macro for " or "Spell for "
-  ns.AskText(what .. CC.KeyText(key), function(text)
+  local what = action == "macro" and L["Macro for {key}"] or L["Spell for {key}"]
+  ns.AskText(ns.Format(what, { key = CC.KeyText(key) }), function(text)
     if CC.Add(key, action, trim(text)) then ns.HideText() changed() end
-  end, "Bind")
+  end, L["Bind"])
 end
 
 -- Binds a plain action to the picker's key, or asks for the macro text or spell name.
@@ -222,7 +223,7 @@ end
 -- A row's text: nothing for a header (its section header shows the name), "Rank n" for a rank, else the action or spell name.
 local function rowText(item)
   if item.header then return "" end
-  if item.rank then return "Rank " .. item.rank.rank end
+  if item.rank then return ns.Format(L["Rank {rank}"], { rank = item.rank.rank }) end
   return item.text or item.spell.name
 end
 
@@ -242,7 +243,7 @@ local function fillRow(b, item)
   b.icon.icon:SetTexture(item.spell and item.spell.icon or nil)
   placeRowText(b, item)
   b.chevron:SetShown(item.spell ~= nil and not item.rank and #item.spell.ranks > 1)
-  b.chevron.text:SetText(item.spell and picker.open[item.spell.name] and "Ranks ^" or "Ranks v")
+  b.chevron.text:SetText(item.spell and picker.open[item.spell.name] and L["Ranks ^"] or L["Ranks v"])
 end
 
 -- Fills the visible rows from the scroll offset; hides the rest.
@@ -254,7 +255,7 @@ local function refreshPicker()
     picker.rows[i]:SetShown(item ~= nil)
     if item then fillRow(picker.rows[i], item) end
   end
-  picker.more:SetText(#picker.items > picker.offset + PICKER_ROWS and "scroll for more" or "")
+  picker.more:SetText(#picker.items > picker.offset + PICKER_ROWS and L["scroll for more"] or "")
 end
 
 -- The spell a row's tooltip shows: the rank picked, else the spell's highest rank.
@@ -273,7 +274,7 @@ end
 
 -- The picker's search box and the "more" line under the rows.
 local function pickerParts()
-  picker.search = W.Search(picker, PICKER_W - 2 * T.SPACE.gap, "Search your spells", function() picker.offset = 0 picker:Refresh() end)
+  picker.search = W.Search(picker, PICKER_W - 2 * T.SPACE.gap, L["Search your spells"], function() picker.offset = 0 picker:Refresh() end)
   picker.search:SetPoint("TOPLEFT", T.SPACE.gap, -T.SPACE.gap)
   picker.more = T.Text(picker:CreateFontString(nil, "OVERLAY"), "small", "muted")
   picker.more:SetPoint("BOTTOMLEFT", T.SPACE.gap, T.SPACE.tight)
@@ -386,7 +387,7 @@ local function wontRunTooltip(f, b, why)
   GameTooltip:SetOwner(f, "ANCHOR_RIGHT")
   GameTooltip:SetText(CC.ActionText(b), T.RGB("text"))
   local r, g, bl = T.RGB("warn")
-  GameTooltip:AddLine("Does nothing: " .. why .. ".", r, g, bl, true)
+  GameTooltip:AddLine(ns.Format(L["Does nothing: {why}."], { why = why }), r, g, bl, true)
   GameTooltip:Show()
 end
 
@@ -445,7 +446,7 @@ local function gridRow(grid, row, cols, cellW)
   local y = -(18 + (row - 1) * CELL_H)
   local l = T.Text(grid:CreateFontString(nil, "OVERLAY"), "label")
   l:SetPoint("TOPLEFT", T.SPACE.gap, y - LABEL_DROP)
-  l:SetText(MOUSE[row] .. " click")
+  l:SetText(MOUSE[row])
   for i, col in ipairs(cols) do
     local c = cell(grid, col[1] .. "BUTTON" .. row, cellW)
     c:SetPoint("TOPLEFT", LABEL_W + (i - 1) * cellW + 2, y - 2)
@@ -500,28 +501,23 @@ local function keyRow(list, i)
   local row = W.Row(list, ROW_H, { width = list:GetWidth() - 2 * T.SPACE.tight })
   row:SetPoint("TOPLEFT", T.SPACE.tight, -(KEYS_TOP + (i - 1) * ROW_H))
   keyRowTexts(row)
-  row.remove = W.Button(row, "Remove", function() CC.Remove(row.key) changed() end, 80)
+  row.remove = W.Button(row, L["Remove"], function() CC.Remove(row.key) changed() end, 80)
   row.remove:SetPoint("RIGHT")
   return row
-end
-
--- A key's name without the "(hover)" tail.
-local function keyName(key)
-  return (CC.KeyText(key):gsub(" %(hover%)$", ""))
 end
 
 -- A hover-key row's note: why the binding does nothing (in the warning colour) when the game won't run it,
 -- else what the key also does off the frames, else nothing.
 local function keyNote(row, b)
   local why, hit = CC.WontRun(b), CC.Collision(b.key)
-  row.note:SetText(why and ("does nothing: " .. why) or hit and ("also " .. hit) or "")
+  row.note:SetText(why and ns.Format(L["does nothing: {why}"], { why = why }) or hit and ns.Format(L["also {action}"], { action = hit }) or "")
   T.Color(row.note, why and "warn" or "muted")
 end
 
 -- Fills a hover-key row from its binding.
 local function fillKeyRow(row, b)
   row.key = b.key
-  row.keyText:SetText(keyName(b.key))
+  row.keyText:SetText(CC.KeyName(b.key))
   row.iconFrame:Set(b)
   row.text:SetText(CC.ActionText(b))
   keyNote(row, b)
@@ -530,7 +526,7 @@ end
 -- The count beside the Add key button: how many more keys there are than rows, or nothing.
 local function keysNote(count)
   local extra = count - MAX_KEYS
-  return extra > 0 and ("+" .. extra .. " more (/vg binds)") or ""
+  return extra > 0 and ns.Format(L["+{count} more (/vg binds)"], { count = extra }) or ""
 end
 
 -- The top line's texts: the empty-state line while there are no keys (and keys can be made), the count after it.
@@ -557,7 +553,7 @@ end
 local function keyCaptured(list, key)
   if CC.MouseParts(key) then
     list.empty:Hide()
-    list.more:SetText("That's a mouse button: it lives in the grid above.")
+    list.more:SetText(L["That's a mouse button: it lives in the grid above."])
     return
   end
   openPicker(list.add, key)
@@ -576,15 +572,15 @@ end
 -- page is scrolled): the Add key capture with, beside it, the empty-state line (label text2) while there are no
 -- keys, or the count (small text2); or the no-snippets note (small muted) in their place.
 local function keysHead(list)
-  list.add = W.KeyCapture(list, "Add key", function(key) keyCaptured(list, key) end)
+  list.add = W.KeyCapture(list, L["Add key"], function(key) keyCaptured(list, key) end)
   list.add:SetPoint("TOPLEFT", T.SPACE.tight, -T.SPACE.tight)
   list.empty = headLine(list, "label")
-  list.empty:SetText("No hover keys yet. Add one, press the key, pick the spell.")
+  list.empty:SetText(L["No hover keys yet. Add one, press the key, pick the spell."])
   list.more = headLine(list, "small")
   list.off = T.Text(list:CreateFontString(nil, "OVERLAY"), "small", "muted")
   list.off:SetPoint("TOPLEFT", T.SPACE.gap, -T.SPACE.gap)
   list.off:SetPoint("RIGHT", list, "RIGHT", -T.SPACE.gap, 0)
-  list.off:SetText("This client can't compile the secure code hover keys need; mouse bindings still work.")
+  list.off:SetText(L["This client can't compile the secure code hover keys need; mouse bindings still work."])
 end
 
 -- The hover-key list row kind: the Add key capture and its line on top, then the rows.
@@ -603,14 +599,14 @@ end
 -- The player's name, or "you" where the client can't say.
 local function playerName()
   local name = type(UnitName) == "function" and UnitName("player")
-  return type(name) == "string" and name or "you"
+  return type(name) == "string" and name or L["you"]
 end
 
 -- What a key or click would do on the tile: "Shift + Right click -> Renew on Tester", or that nothing is bound.
 local function describe(key)
   local b = CC.Binding(key)
-  if not b then return keyName(key) .. " -> nothing bound" end
-  return keyName(b.key) .. " -> " .. CC.ActionText(b) .. " on " .. playerName()
+  if not b then return ns.Format(L["{key} -> nothing bound"], { key = CC.KeyName(key) }) end
+  return ns.Format(L["{key} -> {action} on {name}"], { key = CC.KeyName(b.key), action = CC.ActionText(b), name = playerName() })
 end
 
 -- A key on the tile, as the binding it would be. A key the tile reads is kept from the game (so testing 1 casts
@@ -629,7 +625,7 @@ end
 -- The pointer is over the tile: it reads keys until the pointer leaves.
 local function tileEnter(tile)
   tile:EnableKeyboard(true)
-  tile.result:SetText("Press a key or click...")
+  tile.result:SetText(L["Press a key or click..."])
 end
 
 -- The pointer left the tile: it stops reading keys, so the game has them all again.
@@ -687,7 +683,7 @@ local function testBuilder(parent, _, width)
   r.tile:SetPoint("LEFT", T.SPACE.gap, 0)
   r.tile.result = T.Text(r:CreateFontString(nil, "OVERLAY"), "label", "text2")
   r.tile.result:SetPoint("LEFT", r.tile, "RIGHT", T.SPACE.col, 0)
-  r.tile.result:SetText("Hover the tile, then press a key or click: it says what would happen. Nothing is cast.")
+  r.tile.result:SetText(L["Hover the tile, then press a key or click: it says what would happen. Nothing is cast."])
   wireTile(r.tile)
   r.Refresh = refreshTile
   return r
@@ -712,12 +708,12 @@ end
 local function layoutBuilder(parent, _, width)
   local r = CreateFrame("Frame", nil, parent)
   r:SetSize(width, 32)
-  r.layout = W.Button(r, CS.ClassName() .. " healing layout", applyLayout, 200)
+  r.layout = W.Button(r, ns.Format(L["{class} healing layout"], { class = CS.ClassName() }), applyLayout, 200)
   r.layout:SetPoint("LEFT", T.SPACE.gap, 0)
   r.layout:SetShown(CS.HasLayout())
-  r.clear = W.Button(r, "Clear all", function() CC.Clear() changed() end)
+  r.clear = W.Button(r, L["Clear all"], function() CC.Clear() changed() end)
   r.clear:SetPoint("LEFT", r.layout, "RIGHT", T.SPACE.gap, 0)
-  r.more = W.Button(r, state.more and "Fewer modifiers" or "More modifiers", toggleMore, 140)
+  r.more = W.Button(r, state.more and L["Fewer modifiers"] or L["More modifiers"], toggleMore, 140)
   r.more:SetPoint("RIGHT", -T.SPACE.gap, 0)
   return r
 end
@@ -725,7 +721,7 @@ end
 -- Imports a bindings string from the text dialog, saying how it went in chat.
 local function importText(text)
   local n, err = CC.Import(text)
-  ns.Chat(n and ("Imported " .. n .. " click-casting bindings.") or ("Can't import: " .. err .. "."))
+  ns.Chat(n and ns.Format(L["Imported {count} click-casting bindings."], { count = n }) or ns.Format(L["Can't import: {why}."], { why = err }))
   if n then ns.HideText() changed() end
 end
 
@@ -733,7 +729,7 @@ end
 local function otherSpecs()
   local out, n = {}, type(GetNumSpecializations) == "function" and GetNumSpecializations() or 0
   for i = 1, n do
-    if i ~= ns.SpecIndex() then out[#out + 1] = { i, "Copy to spec " .. i } end
+    if i ~= ns.SpecIndex() then out[#out + 1] = { i, ns.Format(L["Copy to spec {spec}"], { spec = i }) } end
   end
   return out
 end
@@ -741,12 +737,12 @@ end
 -- Copies the bindings to another spec and says so.
 local function copyToSpec(spec)
   CC.CopyToSpec(spec)
-  ns.Chat("Click-casting bindings copied to spec " .. spec .. ".")
+  ns.Chat(ns.Format(L["Click-casting bindings copied to spec {spec}."], { spec = spec }))
 end
 
 -- Shows the copy dropdown's caption, and the dropdown only while there is another spec.
 local function refreshCopy(d)
-  d.text:SetText("Copy to spec...")
+  d.text:SetText(L["Copy to spec..."])
   d:SetShown(#otherSpecs() > 0)
 end
 
@@ -761,9 +757,9 @@ end
 local function shareBuilder(parent, _, width)
   local r = CreateFrame("Frame", nil, parent)
   r:SetSize(width, 32)
-  r.export = W.Button(r, "Export", function() ns.ShowText("Click-casting bindings", CC.Export()) end)
+  r.export = W.Button(r, L["Export"], function() ns.ShowText(L["Click-casting bindings"], CC.Export()) end)
   r.export:SetPoint("LEFT", T.SPACE.gap, 0)
-  r.import = W.Button(r, "Import", function() ns.AskText("Paste a click-casting string", importText) end)
+  r.import = W.Button(r, L["Import"], function() ns.AskText(L["Paste a click-casting string"], importText) end)
   r.import:SetPoint("LEFT", r.export, "RIGHT", T.SPACE.gap, 0)
   copyDropdown(r)
   -- The row re-reads through its dropdown (the buttons never change).
@@ -774,11 +770,11 @@ end
 
 -- The line over the grid: whose bindings, or the combat notice while a fight is on.
 local function title()
-  if ns.InCombat() then return "In combat: changes are kept and apply when the fight ends." end
-  if CC.UsesGame() then return "The game's click bindings are in use (below): these are kept for when you switch back." end
+  if ns.InCombat() then return L["In combat: changes are kept and apply when the fight ends."] end
+  if CC.UsesGame() then return L["The game's click bindings are in use (below): these are kept for when you switch back."] end
   local spec = ns.SpecIndex()
-  local whose = spec and ("spec " .. spec .. " on this character") or "this character"
-  return "Bindings for " .. whose .. ". Click a cell to pick a spell, right-click to clear, or drop a spell on it."
+  if not spec then return L["Bindings for this character. Click a cell to pick a spell, right-click to clear, or drop a spell on it."] end
+  return ns.Format(L["Bindings for spec {spec} on this character. Click a cell to pick a spell, right-click to clear, or drop a spell on it."], { spec = spec })
 end
 
 -- Whether click casting also covers the unit frames.
@@ -800,17 +796,17 @@ O.AddRowKind("bindshare", shareBuilder, 36)
 
 -- The page's rows: the grid and its tools, the hover keys, the test tile, sharing, the unit-frame switch.
 local ROWS = {
-  { "header", "Click casting" },
+  { "header", L["Click casting"] },
   { "text", title },
   { "bindlayout" },
   { "bindgrid" },
-  { "header", "Keys while hovering a frame" },
+  { "header", L["Keys while hovering a frame"] },
   { "bindkeys" },
-  { "header", "Try it" },
+  { "header", L["Try it"] },
   { "bindtest" },
-  { "header", "Share" },
+  { "header", L["Share"] },
   { "bindshare" },
-  { "check", "Also on your player, target and focus frames (reload)", unitFramesOn, setUnitFrames },
+  { "check", L["Also on your player, target and focus frames (reload)"], unitFramesOn, setUnitFrames },
 }
 
 -- Whether the game's click bindings are switched on.
@@ -826,8 +822,8 @@ end
 
 -- Opens the game's own Click Casting window (it loads on demand).
 local function openGameBindings()
-  if type(ToggleClickBindingFrame) ~= "function" then return ns.Chat("This client has no click bindings window.") end
-  if ns.WindowWaitsForCombat("The game's click bindings window") then return end
+  if type(ToggleClickBindingFrame) ~= "function" then return ns.Chat(L["This client has no click bindings window."]) end
+  if ns.WindowWaitsForCombat(L["The game's click bindings window"]) then return end
   O.Hide()
   ToggleClickBindingFrame()
 end
@@ -836,10 +832,10 @@ end
 local WITH_GAME = {}
 for _, row in ipairs(ROWS) do WITH_GAME[#WITH_GAME + 1] = row end
 for _, row in ipairs({
-  { "header", "The game's click bindings" },
-  { "text", "The game has click casting of its own (its Click Casting window). Switched on, it works on the raid and unit frames and Vanguard's bindings and hover keys above rest.", "note" },
-  { "check", "Use the game's click bindings instead", useGameOn, setUseGame, false },
-  { "button", "Open the game's click bindings", openGameBindings },
+  { "header", L["The game's click bindings"] },
+  { "text", L["The game has click casting of its own (its Click Casting window). Switched on, it works on the raid and unit frames and Vanguard's bindings and hover keys above rest."], "note" },
+  { "check", L["Use the game's click bindings instead"], useGameOn, setUseGame, false },
+  { "button", L["Open the game's click bindings"], openGameBindings },
 }) do WITH_GAME[#WITH_GAME + 1] = row end
 
 -- The page's rows (built again after the modifier columns change); the game's
@@ -848,7 +844,7 @@ local function rows()
   return type(C_ClickBindings) == "table" and WITH_GAME or ROWS
 end
 
-O.AddPage({ key = PAGE, title = "Click casting", icon = "NavClickCasting", order = 46, rows = rows })
+O.AddPage({ key = PAGE, title = L["Click casting"], icon = "NavClickCasting", order = 46, rows = rows })
 
 -- An open picker follows the bindings once they apply.
 local function pickerFollows()

@@ -14,6 +14,8 @@
 
 local ADDON, ns = ...
 
+local L = ns.L
+
 local T, V = ns.Theme, ns.Visibility
 
 local R = ns.Module("Rolls", { defaults = { show = true, loot = true, visibility = "always", showWhen = {} } })
@@ -23,7 +25,7 @@ R.MAX, R.ROUND, R.ITEMS, R.LINES = 40, 30, 4, 14
 -- The panel's width, a line's height and the panel's padding (UI units; a HUD card's, T.SPACE.gap).
 R.WIDTH, R.LINE, R.PAD = 136, 14, T.SPACE.gap
 -- A loot roll's choice, by the game's EncounterLootDropRollState.
-R.CHOICES = { [0] = "Need", [1] = "Offspec", [2] = "Transmog", [3] = "Greed", [4] = "No roll", [5] = "Pass" }
+R.CHOICES = { [0] = L["Need"], [1] = L["Offspec"], [2] = L["Transmog"], [3] = L["Greed"], [4] = L["No roll"], [5] = L["Pass"] }
 -- This session's rolls, oldest first: { name, roll, low, high, at }; and the last loot items rolled for, oldest first.
 R.rolls, R.items = {}, {}
 
@@ -97,8 +99,8 @@ end
 
 -- Whether this client has the loot history calls the tracker reads (Forever's encounter loot history).
 function R.HasLoot()
-  local L = C_LootHistory
-  return type(L) == "table" and type(L.GetAllEncounterInfos) == "function" and type(L.GetSortedDropsForEncounter) == "function"
+  local history = C_LootHistory
+  return type(history) == "table" and type(history.GetAllEncounterInfos) == "function" and type(history.GetSortedDropsForEncounter) == "function"
 end
 
 -- The table a loot history call returns; {} when it fails, hides its answer or answers with something else.
@@ -193,7 +195,7 @@ function R.ReservedLine(item)
   local OL = R.Reserves()
   local names = OL and OL.Holders(item) or {}
   if #names == 0 then return nil end
-  return { "Reserved: " .. table.concat(names, ", "), "", "row" }
+  return { ns.Format(L["Reserved: {players}"], { players = table.concat(names, ", ") }), "", "row" }
 end
 
 -- Listing ------------------------------------------------------------------------------------
@@ -207,14 +209,14 @@ end
 function R.RollLines()
   if #R.rolls == 0 then return {} end
   local round, item = R.Round(), R.RoundItem()
-  local out = { { "Rolls " .. round[1].low .. "-" .. round[1].high, "", "head" } }
+  local out = { { ns.Format(L["Rolls {low}-{high}"], { low = round[1].low, high = round[1].high }), "", "head" } }
   for _, r in ipairs(round) do out[#out + 1] = { ns.Home.Display(r.name) .. R.Flag(r.name, item), figures(r), r.roll == round[1].roll and "win" or "row" } end
   return out
 end
 
 -- One loot item as lines: its link, then each member's choice and roll; the winner marked "win".
 function R.ItemLines(item)
-  local out = { { item.link, item.done and "" or "rolling", "head" } }
+  local out = { { item.link, item.done and "" or L["rolling"], "head" } }
   out[2] = R.ReservedLine(item.link)
   for _, p in ipairs(item.players) do
     out[#out + 1] = { ns.Home.Display(p.name) .. R.Flag(p.name, item.link), p.choice .. (p.roll and (" " .. p.roll) or ""), p.winner and "win" or "row" }
@@ -233,9 +235,9 @@ end
 
 -- /vg rolls: this session's rolls, newest first.
 function R.Command(arg)
-  if arg == "clear" then R.rolls, R.items = {}, {} R.Paint() return ns.Chat("Rolls forgotten.") end
-  if #R.rolls == 0 then return ns.Chat("No rolls seen this session yet.") end
-  ns.Chat("Rolls this session, newest first:")
+  if arg == "clear" then R.rolls, R.items = {}, {} R.Paint() return ns.Chat(L["Rolls forgotten."]) end
+  if #R.rolls == 0 then return ns.Chat(L["No rolls seen this session yet."]) end
+  ns.Chat(L["Rolls this session, newest first:"])
   for i = #R.rolls, 1, -1 do ns.Chat(R.rolls[i].name .. "  " .. figures(R.rolls[i]) .. "  (" .. R.rolls[i].low .. "-" .. R.rolls[i].high .. ")") end
 end
 
@@ -297,7 +299,7 @@ local function build()
   R.frame = f
   f:SetSize(R.WIDTH, 2 * R.PAD + R.LINE)
   f:Hide()
-  ns.Mover(f, "rolls", "Roll tracker", { "BOTTOMLEFT", "BOTTOMLEFT", 6, 330 })
+  ns.Mover(f, "rolls", L["Roll tracker"], { "BOTTOMLEFT", "BOTTOMLEFT", 6, 330 })
   f.rows = {}
   for i = 1, R.LINES do f.rows[i] = addRow(f, i) end
   R.WatchVisibility(f)

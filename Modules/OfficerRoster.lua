@@ -7,12 +7,13 @@
 local ADDON, ns = ...
 
 local T = ns.Theme
+local L = ns.L
 local OL = ns.GetModule("OfficerLoot")
 
 -- The panel's width, a line's height and its padding (UI units; a HUD card's, T.SPACE.gap), and the most members listed.
 OL.RWIDTH, OL.RLINE, OL.RPAD, OL.RMAX = 190, 14, T.SPACE.gap, 40
 -- A group role as the roster says it, and the order roles are listed in.
-OL.ROLES = { TANK = "Tank", HEALER = "Healer", DAMAGER = "DPS" }
+OL.ROLES = { TANK = L["Tank"], HEALER = L["Healer"], DAMAGER = L["DPS"] }
 OL.ROLE_ORDER = { TANK = 1, HEALER = 2, DAMAGER = 3 }
 
 -- Reading the group -------------------------------------------------------------------------------
@@ -69,7 +70,7 @@ end
 
 -- What a member's right side says: role, Lead or Asst, then Offline or Dead.
 function OL.Note(m)
-  local parts = { OL.ROLES[m.role], m.rank == 2 and "Lead" or (m.rank == 1 and "Asst" or nil), (not m.online) and "Offline" or (m.dead and "Dead" or nil) }
+  local parts = { OL.ROLES[m.role], m.rank == 2 and L["Lead"] or (m.rank == 1 and L["Asst"] or nil), (not m.online) and L["Offline"] or (m.dead and L["Dead"] or nil) }
   local out = {}
   for i = 1, 3 do out[#out + 1] = parts[i] end
   return table.concat(out, " ")
@@ -80,7 +81,7 @@ function OL.RosterLines()
   local members = OL.Roster()
   local off = 0
   for _, m in ipairs(members) do if not m.online then off = off + 1 end end
-  local out = { { "Roster " .. #members, off > 0 and (off .. " offline") or "" } }
+  local out = { { ns.Format(L["Roster {count}"], { count = #members }), off > 0 and ns.Format(L["{count} offline"], { count = off }) or "" } }
   for _, m in ipairs(members) do out[#out + 1] = { m.name, OL.Note(m), m } end
   return out
 end
@@ -114,7 +115,7 @@ function OL.BuildRoster()
   OL.rframe = f
   f:SetSize(OL.RWIDTH, 2 * OL.RPAD + OL.RLINE)
   f:Hide()
-  ns.Mover(f, "officerroster", "Officer roster", { "TOPLEFT", "TOPLEFT", 6, -200 })
+  ns.Mover(f, "officerroster", L["Officer roster"], { "TOPLEFT", "TOPLEFT", 6, -200 })
   f.rows = {}
   for i = 1, OL.RMAX + 1 do f.rows[i] = addRow(f, i) end
   return f
@@ -142,7 +143,7 @@ end
 
 -- Opens or closes the roster (only while the tools are on).
 function OL.ToggleRoster()
-  if not OL.On() then return ns.Chat("Officer loot tools are off. /vg loot on switches them on.") end
+  if not OL.On() then return ns.Chat(L["Officer loot tools are off. /vg loot on switches them on."]) end
   OL.rframe = OL.rframe or OL.BuildRoster()
   OL.rosterOpen = not OL.rosterOpen
   OL.PaintRoster()

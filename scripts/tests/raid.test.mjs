@@ -340,7 +340,7 @@ it("raid tools: a burst of roster events in combat queues one update of the bar,
   for (let i = 0; i < 39; i++) addon.fire("GROUP_ROSTER_UPDATE");
   expect(addon.eval("return ns.QueuedCount()"), "the waiting work is no more after 40 events than after one").toBe(once);
   setCombat(addon, false);
-  expect([addon.eval("return __shows"), addon.eval("return Vanguard_RaidTools.actions.Raid:IsShown()")], "after the fight the bar is updated once, for the raid").toEqual([1, false]);
+  expect([addon.eval("return __shows"), addon.eval("return Vanguard_RaidTools.actions.ConvertToRaid:IsShown()")], "after the fight the bar is updated once, for the raid").toEqual([1, false]);
 });
 
 // TEST-ONLY: counts every attribute set on the raid header and its buttons from here on, so a test can show the preview never touches them.

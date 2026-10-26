@@ -10,6 +10,8 @@
 
 local ADDON, ns = ...
 
+local L = ns.L
+
 local A = ns.Auras
 local UF = ns.GetModule("UnitFrames")
 
@@ -144,7 +146,7 @@ end
 local function build(s)
   PA.holder = CreateFrame("Frame", "Vanguard_PlayerAuras", UIParent)
   PA.holder:SetSize(s.perRow * (s.size + PA.GAP), s.size)
-  ns.Mover(PA.holder, "playerauras", "Your buffs and debuffs", { "TOPRIGHT", "TOPRIGHT", -210, -14 })
+  ns.Mover(PA.holder, "playerauras", L["Your buffs and debuffs"], { "TOPRIGHT", "TOPRIGHT", -210, -14 })
   PA.auras = A.Container(PA.holder, PA.Spec(PA.holder, s), "player")
   PA.cells = {}
   for i = 1, #PA.WEAPONS do PA.cells[i] = enchantCell(PA.holder, i, s.size) end

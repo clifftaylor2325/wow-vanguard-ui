@@ -19,16 +19,17 @@ local ADDON, ns = ...
 local vgSkinned = ns.FrameState("vgSkinned")
 
 local T = ns.Theme
+local L = ns.L
 
 local GT = ns.Module("GameTools", { defaults = { cooldowns = true, meter = true, place = true, cdmHint = true, essential = false } })
 
 -- Each placed frame's mover: key, label, default point, and the spot's size
 -- (UI units; the rows fit the 240-unit gap between the unit frames).
 GT.SPOTS = {
-  EssentialCooldownViewer = { "cdm_essential", "Cooldowns", { "BOTTOM", "BOTTOM", 0, 210 }, 236, 32 },
-  UtilityCooldownViewer = { "cdm_utility", "Utility cooldowns", { "BOTTOM", "BOTTOM", 0, 248 }, 206, 24 },
-  BuffIconCooldownViewer = { "cdm_buffs", "Tracked buffs", { "BOTTOM", "BOTTOM", 0, 278 }, 206, 24 },
-  DamageMeter = { "damagemeter", "Damage meter", { "BOTTOMRIGHT", "BOTTOMRIGHT", -16, 118 }, 300, 78 },
+  EssentialCooldownViewer = { "cdm_essential", L["Cooldowns"], { "BOTTOM", "BOTTOM", 0, 210 }, 236, 32 },
+  UtilityCooldownViewer = { "cdm_utility", L["Utility cooldowns"], { "BOTTOM", "BOTTOM", 0, 248 }, 206, 24 },
+  BuffIconCooldownViewer = { "cdm_buffs", L["Tracked buffs"], { "BOTTOM", "BOTTOM", 0, 278 }, 206, 24 },
+  DamageMeter = { "damagemeter", L["Damage meter"], { "BOTTOMRIGHT", "BOTTOMRIGHT", -16, 118 }, 300, 78 },
 }
 -- The Cooldown Manager's rows, in the order they're placed (the buff bars are styled only).
 GT.VIEWERS = { "EssentialCooldownViewer", "UtilityCooldownViewer", "BuffIconCooldownViewer", "BuffBarCooldownViewer" }
@@ -245,7 +246,7 @@ local function watchMeter()
 end
 
 -- Where to turn the Cooldown Manager on, said once when it's off.
-GT.HINT = "The game's Cooldown Manager is off. Turn it on in Options > Gameplay Enhancements > Enable Cooldown Manager, and Vanguard places it between your frames."
+GT.HINT = L["The game's Cooldown Manager is off. Turn it on in Options > Gameplay Enhancements > Enable Cooldown Manager, and Vanguard places it between your frames."]
 
 -- True when this client has the Cooldown Manager but it's switched off.
 function GT.CooldownsOff()

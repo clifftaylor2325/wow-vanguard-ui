@@ -11,6 +11,7 @@
 local ADDON, ns = ...
 
 local T = ns.Theme
+local L = ns.L
 
 local GT = ns.Module("GroupThreat", { defaults = { show = false } })
 
@@ -117,7 +118,7 @@ local function build()
   f.rows = {}
   f:Hide()
   GT.panel = f
-  ns.Mover(f, "groupthreat", "Group threat", { "TOPLEFT", "TOPLEFT", 20, -186 })
+  ns.Mover(f, "groupthreat", L["Group threat"], { "TOPLEFT", "TOPLEFT", 20, -186 })
 end
 
 -- Module entry point (Core/Modules.lua): built, and listening, only when switched on.

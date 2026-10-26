@@ -8,15 +8,17 @@
 
 local ADDON, ns = ...
 
+local L = ns.L
+
 local FH = ns.GetModule("FightHistory")
 
--- The meters read: the line's key, the Enum.DamageMeterType key, and its words. Deaths counts the
--- lines the meter lists (one per member who died).
+-- The meters read: the line's key, the Enum.DamageMeterType key, and its words around the figure. Deaths
+-- counts the lines the meter lists (one per member who died).
 FH.RECAP = {
-  { key = "interrupts", meter = "Interrupts", label = "Interrupts" },
-  { key = "dispels", meter = "Dispels", label = "Dispels" },
-  { key = "taken", meter = "DamageTaken", label = "Damage taken" },
-  { key = "deaths", meter = "Deaths", label = "Deaths", count = true },
+  { key = "interrupts", meter = "Interrupts", label = L["Interrupts {value}"] },
+  { key = "dispels", meter = "Dispels", label = L["Dispels {value}"] },
+  { key = "taken", meter = "DamageTaken", label = L["Damage taken {value}"] },
+  { key = "deaths", meter = "Deaths", label = L["Deaths {value}"], count = true },
 }
 -- The channels /vg recap sends to, by the word typed.
 FH.CHANNELS = { say = "SAY", party = "PARTY", raid = "RAID", instance = "INSTANCE_CHAT", guild = "GUILD" }
@@ -53,7 +55,7 @@ end
 -- One part of the line: "Interrupts 3", with a short figure for the big ones.
 local function part(meter, value)
   local text = value >= 1000 and ns.GetModule("DataBars").Short(math.floor(value)) or tostring(value)
-  return meter.label .. " " .. text
+  return ns.Format(meter.label, { value = text })
 end
 
 -- The recap as one line, or nil when the meter gave nothing.
@@ -63,22 +65,23 @@ function FH.RecapText(recap)
     if recap[meter.key] then parts[#parts + 1] = part(meter, recap[meter.key]) end
   end
   if #parts == 0 then return nil end
-  return table.concat(parts, "  ·  ") .. (recap.died and " (you died)" or "")
+  local line = table.concat(parts, "  ·  ")
+  return recap.died and ns.Format(L["{recap} (you died)"], { recap = line }) or line
 end
 
 -- A fight was recorded: with the chat recap on, your own chat gets its line.
 function FH.Announce()
   local text = FH.settings.recap and FH.RecapText(FH.ReadRecap())
-  if text then ns.Chat("Fight recap: " .. text) end
+  if text then ns.Chat(ns.Format(L["Fight recap: {recap}"], { recap = text })) end
 end
 
 -- /vg recap [channel]: the last fight's recap in your chat, or sent to that channel.
 function FH.RecapCommand(rest)
   local word = (rest or ""):lower():match("^%s*(%S*)")
-  if ns.InCombat() then return ns.Chat("Not in combat: the game's damage meter is hidden until the fight is over.") end
+  if ns.InCombat() then return ns.Chat(L["Not in combat: the game's damage meter is hidden until the fight is over."]) end
   local text = FH.RecapText(FH.ReadRecap())
-  if not text then return ns.Chat("No recap to show: no fight yet, or the game's damage meter has nothing for it.") end
-  if word == "" then return ns.Chat("Fight recap: " .. text) end
-  if not FH.CHANNELS[word] then return ns.Chat("Send the recap to say, party, raid, instance or guild.") end
+  if not text then return ns.Chat(L["No recap to show: no fight yet, or the game's damage meter has nothing for it."]) end
+  if word == "" then return ns.Chat(ns.Format(L["Fight recap: {recap}"], { recap = text })) end
+  if not FH.CHANNELS[word] then return ns.Chat(L["Send the recap to say, party, raid, instance or guild."]) end
   ns.SendChat(text, FH.CHANNELS[word])
 end

@@ -15,6 +15,7 @@
 local ADDON, ns = ...
 
 local T = ns.Theme
+local L = ns.L
 
 local BS = ns.Module("BrokerStrip", { defaults = { feeds = {} } })
 
@@ -237,7 +238,7 @@ end
 function BS.Enable()
   BS.frame = T.HudPanel(CreateFrame("Frame", "Vanguard_BrokerStrip", UIParent))
   BS.frame:SetSize(BS.SLOT_W + 2 * BS.EDGE, BS.Height() + 2 * BS.PAD)
-  ns.Mover(BS.frame, "brokerstrip", "Broker strip", { "TOP", "TOP", -200, 0 })
+  ns.Mover(BS.frame, "brokerstrip", L["Broker strip"], { "TOP", "TOP", -200, 0 })
   BS.slots = {}
   for i = 1, BS.MAX do BS.slots[i] = wireSlot(makeSlot(i)) end
   BS.Layout()

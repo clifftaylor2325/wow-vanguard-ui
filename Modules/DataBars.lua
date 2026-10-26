@@ -10,6 +10,7 @@ local ADDON, ns = ...
 local vgSuppressed = ns.FrameState("vgSuppressed")
 
 local T = ns.Theme
+local L = ns.L
 local V = ns.Visibility
 
 local DB = ns.Module("DataBars", {
@@ -110,8 +111,9 @@ end
 
 -- "Level 42  12.3K / 40.0K (31%)  rested 5.0K"
 function DB.XPText(xp)
-  local text = string.format("Level %d  %s / %s (%d%%)", xp.level, DB.Short(xp.cur), DB.Short(xp.max), math.floor(xp.cur / xp.max * 100))
-  return xp.rested > 0 and (text .. "  rested " .. DB.Short(xp.rested)) or text
+  local values = { level = xp.level, cur = DB.Short(xp.cur), max = DB.Short(xp.max), percent = math.floor(xp.cur / xp.max * 100), rested = DB.Short(xp.rested) }
+  if xp.rested > 0 then return ns.Format(L["Level {level}  {cur} / {max} ({percent}%)  rested {rested}"], values) end
+  return ns.Format(L["Level {level}  {cur} / {max} ({percent}%)"], values)
 end
 
 -- "Valdrakken Accord  Honored  1.2K / 2.5K (48%)", or "Valdrakken Accord  Exalted" at the top standing.
@@ -188,11 +190,15 @@ end
 
 -- The tooltip's lines as { left, right }: what is left in the level, how far through, rested, kills.
 function DB.XPLines(xp)
-  local lines = { { "To next level", DB.Short(xp.max - xp.cur) }, { "Through this level", math.floor(xp.cur / xp.max * 100) .. "%" } }
-  if xp.rested > 0 then lines[#lines + 1] = { "Rested", DB.Short(xp.rested) .. " (" .. math.floor(xp.rested / xp.max * 100) .. "% of a level)" } end
-  if DB.killXP then lines[#lines + 1] = { "Kills to level", "about " .. math.ceil((xp.max - xp.cur) / DB.killXP) .. " (" .. DB.killXP .. " XP each)" } end
+  local lines = { { L["To next level"], DB.Short(xp.max - xp.cur) }, { L["Through this level"], math.floor(xp.cur / xp.max * 100) .. "%" } }
+  if xp.rested > 0 then
+    lines[#lines + 1] = { L["Rested"], ns.Format(L["{amount} ({percent}% of a level)"], { amount = DB.Short(xp.rested), percent = math.floor(xp.rested / xp.max * 100) }) }
+  end
+  if DB.killXP then
+    lines[#lines + 1] = { L["Kills to level"], ns.Format(L["about {count} ({xp} XP each)"], { count = math.ceil((xp.max - xp.cur) / DB.killXP), xp = DB.killXP }) }
+  end
   local waiting = DB.QuestXP()
-  if waiting > 0 then lines[#lines + 1] = { "XP in finished quests", DB.Short(waiting) } end
+  if waiting > 0 then lines[#lines + 1] = { L["XP in finished quests"], DB.Short(waiting) } end
   return lines
 end
 
@@ -201,7 +207,7 @@ function DB.ShowXPTooltip(bar)
   local xp = DB.settings.tooltip and DB.XP()
   if not xp then return end
   GameTooltip_SetDefaultAnchor(GameTooltip, bar)
-  GameTooltip:SetText("Level " .. xp.level, T.RGB("text"))
+  GameTooltip:SetText(ns.Format(L["Level {level}"], { level = xp.level }), T.RGB("text"))
   for _, l in ipairs(DB.XPLines(xp)) do GameTooltip:AddDoubleLine(l[1], l[2]) end
   GameTooltip:Show()
 end
@@ -209,11 +215,11 @@ end
 -- The reputation tooltip's lines as { left, right }: the standing, and (below the top) what the next one needs.
 function DB.ReputationLines(rep)
   local word, lines = DB.StandingName(rep.standing), {}
-  if word then lines[1] = { "Standing", word } end
+  if word then lines[1] = { L["Standing"], word } end
   if rep.noNumbers then return lines end
   local nextWord = rep.standing and DB.StandingName(rep.standing + 1)
-  lines[#lines + 1] = { nextWord and "To " .. nextWord or "To the next standing", DB.Short(rep.max - rep.cur) }
-  lines[#lines + 1] = { "Through this standing", math.floor(rep.cur / rep.max * 100) .. "%" }
+  lines[#lines + 1] = { nextWord and ns.Format(L["To {standing}"], { standing = nextWord }) or L["To the next standing"], DB.Short(rep.max - rep.cur) }
+  lines[#lines + 1] = { L["Through this standing"], math.floor(rep.cur / rep.max * 100) .. "%" }
   return lines
 end
 
@@ -225,13 +231,13 @@ function DB.ShowReputationTooltip(bar)
   GameTooltip:SetText(rep.name, T.RGB("text"))
   for _, l in ipairs(DB.ReputationLines(rep)) do GameTooltip:AddDoubleLine(l[1], l[2]) end
   local r, g, b = T.RGB("text2")
-  GameTooltip:AddLine("Click: the reputation list" .. (ns.InCombat() and " (not in a fight)" or ""), r, g, b)
+  GameTooltip:AddLine(ns.InCombat() and L["Click: the reputation list (not in a fight)"] or L["Click: the reputation list"], r, g, b)
   GameTooltip:Show()
 end
 
 -- A left-click on the reputation bar opens the game's reputation list, out of a fight (it is a protected panel).
 function DB.OpenReputation(_, button)
-  if button ~= "LeftButton" or ns.WindowWaitsForCombat("The reputation list") then return end
+  if button ~= "LeftButton" or ns.WindowWaitsForCombat(L["The reputation list"]) then return end
   if type(ToggleCharacter) == "function" then ToggleCharacter("ReputationFrame") end
 end
 
@@ -358,7 +364,7 @@ end
 
 -- The XP bar with its rested overlay, kept current.
 local function enableXP(settings)
-  DB.xpBar = createBar("xpbar", "Experience", DB.POINTS.xpbar, settings)
+  DB.xpBar = createBar("xpbar", L["Experience"], DB.POINTS.xpbar, settings)
   DB.xpBar.vgOnState = DB.UpdateXP
   addRested(DB.xpBar)
   for _, e in ipairs({ "PLAYER_XP_UPDATE", "PLAYER_LEVEL_UP", "UPDATE_EXHAUSTION", "PLAYER_ENTERING_WORLD" }) do ns.On(e, DB.UpdateXP) end
@@ -371,7 +377,7 @@ end
 -- The reputation bar for the watched faction, kept current, with its tooltip and a click to the reputation list.
 local function enableReputation(settings)
   DB.repPoint = DB.RepPoint(DB.XP())
-  DB.repBar = createBar("repbar", "Reputation", DB.repPoint, settings)
+  DB.repBar = createBar("repbar", L["Reputation"], DB.repPoint, settings)
   DB.repBar.vgOnState = DB.UpdateReputation
   hoverTip(DB.repBar, "show reputation tooltip", DB.ShowReputationTooltip)
   DB.repBar:HookScript("OnMouseUp", ns.Guard("open reputation list", DB.OpenReputation))

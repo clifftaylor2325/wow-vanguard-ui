@@ -4,10 +4,12 @@
 
 local ADDON, ns = ...
 
+local L = ns.L
+
 local QU = ns.Module("Quiet", { defaults = { errors = false, zoneText = false, camera = 0 } })
 
 -- The furthest-zoom choices (the game's cameraDistanceMaxZoomFactor); 0 is the game's own setting.
-QU.CAMERA = { { 0, "The game's setting" }, { 1.5, "1.5 x" }, { 2, "2 x" }, { 2.6, "2.6 x (furthest)" } }
+QU.CAMERA = { { 0, L["The game's setting"] }, { 1.5, "1.5 x" }, { 2, "2 x" }, { 2.6, L["2.6 x (furthest)"] } }
 
 -- Hides a frame the game just showed, while `key` is switched on.
 local function quiet(frame, key)

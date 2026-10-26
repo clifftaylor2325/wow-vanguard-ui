@@ -11,6 +11,8 @@
 
 local ADDON, ns = ...
 
+local L = ns.L
+
 local AA = ns.Module("AutoAccept", { defaults = { summons = false, resurrect = false, duels = false, loot = false, guildInvites = false, strangerGroups = false, friendRequests = false, pvpRelease = false } })
 
 -- Seconds a decline stays quiet after its first chat line, per kind and sender.
@@ -68,10 +70,10 @@ end
 -- would let you (otherwise its prompt stays up), and says from whom and to where.
 function AA.AcceptSummon()
   if not AA.settings.summons or not summonWaiting() or not alive() or not canTeleport() then return end
-  local who, where = plain(summon("GetSummonConfirmSummoner"), "someone"), plain(summon("GetSummonConfirmAreaName"), "somewhere")
+  local who, where = plain(summon("GetSummonConfirmSummoner"), L["someone"]), plain(summon("GetSummonConfirmAreaName"), L["somewhere"])
   summon("ConfirmSummon")
   closePrompt("CONFIRM_SUMMON")
-  ns.Chat(string.format("Accepted a summon from %s to %s.", who, where))
+  ns.Chat(ns.Format(L["Accepted a summon from {who} to {place}."], { who = who, place = where }))
 end
 
 -- A summon is offered: take it now, or, in a fight, once the fight ends (the game doesn't ask again).
@@ -86,7 +88,7 @@ function AA.OnResurrect(_, who)
   closePrompt("RESURRECT")
   closePrompt("RESURRECT_NO_SICKNESS")
   closePrompt("RESURRECT_NO_TIMER")
-  ns.Chat("Accepted a resurrection from " .. plain(who, "someone") .. ".")
+  ns.Chat(ns.Format(L["Accepted a resurrection from {who}."], { who = plain(who, L["someone"]) }))
 end
 
 -- When each decline line was last said, by kind and sender.
@@ -113,8 +115,8 @@ function AA.OnDuel(_, who)
   if not AA.settings.duels or type(CancelDuel) ~= "function" then return end
   CancelDuel()
   closePrompt("DUEL_REQUESTED")
-  who = plain(who, "someone")
-  sayOnce("duel", who, "Declined a duel from " .. who .. ".")
+  who = plain(who, L["someone"])
+  sayOnce("duel", who, ns.Format(L["Declined a duel from {who}."], { who = who }))
 end
 
 -- Takes one loot slot, unless the game has locked it (an item still being rolled
@@ -144,8 +146,8 @@ end
 function AA.OnGuildInvite(_, who)
   if not AA.settings.guildInvites or type(DeclineGuild) ~= "function" then return end
   ns.Soon("decline guild invite", declineGuild)
-  who = plain(who, "someone")
-  sayOnce("guild", who, "Declined a guild invite from " .. who .. ".")
+  who = plain(who, L["someone"])
+  sayOnce("guild", who, ns.Format(L["Declined a guild invite from {who}."], { who = who }))
 end
 
 -- True when the game can tell the inviter is a friend, a Battle.net friend or in your guild (or hides who).
@@ -170,15 +172,15 @@ end
 function AA.OnGroupInvite(_, who, _, _, _, _, _, guid)
   if not AA.settings.strangerGroups or type(DeclineGroup) ~= "function" or knownPlayer(guid) then return end
   ns.Soon("decline group invite", declineGroup)
-  who = plain(who, "someone")
-  sayOnce("group", who, "Declined a group invite from " .. who .. ".")
+  who = plain(who, L["someone"])
+  sayOnce("group", who, ns.Format(L["Declined a group invite from {who}."], { who = who }))
 end
 
 -- A Battle.net friend request arrives: decline it (one line in a while: the request carries no name).
 function AA.OnFriendRequest(_, inviteID)
   if not AA.settings.friendRequests or type(BNDeclineFriendInvite) ~= "function" then return end
   BNDeclineFriendInvite(inviteID)
-  sayOnce("friend", "", "Declined a Battle.net friend request.")
+  sayOnce("friend", "", L["Declined a Battle.net friend request."])
 end
 
 -- Whether you can bring yourself back (a soulstone, Reincarnation): any option the game's death dialog

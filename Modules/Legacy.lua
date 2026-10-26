@@ -11,6 +11,8 @@
 
 local ADDON, ns = ...
 
+local L = ns.L
+
 local LG = ns.Module("Legacy", { defaults = { planner = false } })
 
 -- Points in the perk tree, the most globals the probe lists, and the most keys it shows of a frame.
@@ -44,10 +46,10 @@ end
 -- Plans points for a perk (a new perk, or a new count for one already listed). Returns
 -- true, or false and why: the points must be whole and 1 or more, and all of them fit the budget.
 function LG.Add(name, points)
-  if name == "" or not points or points < 1 or points ~= math.floor(points) then return false, "Give a whole number of points (1 or more) and a perk name." end
+  if name == "" or not points or points < 1 or points ~= math.floor(points) then return false, L["Give a whole number of points (1 or more) and a perk name."] end
   local at = find(name)
   local others = LG.Spent() - (at and LG.Plan()[at].points or 0)
-  if others + points > LG.BUDGET then return false, string.format("That makes %d points; the tree has %d.", others + points, LG.BUDGET) end
+  if others + points > LG.BUDGET then return false, ns.Format(L["That makes {points} points; the tree has {budget}."], { points = others + points, budget = LG.BUDGET }) end
   if at then LG.Plan()[at].points = points else table.insert(LG.Plan(), { name = name, points = points }) end
   return true
 end
@@ -63,7 +65,7 @@ end
 function LG.Lines()
   local out = {}
   for _, perk in ipairs(LG.Plan()) do out[#out + 1] = string.format("%d  %s", perk.points, perk.name) end
-  out[#out + 1] = string.format("%d of %d points planned.", LG.Spent(), LG.BUDGET)
+  out[#out + 1] = ns.Format(L["{spent} of {budget} points planned."], { spent = LG.Spent(), budget = LG.BUDGET })
   return out
 end
 
@@ -71,8 +73,8 @@ end
 function LG.PlanCommand(rest)
   local word, tail = rest:match("^(%S*)%s*(.-)$")
   if word == "add" then return LG.AddCommand(tail) end
-  if word == "remove" then return ns.Chat(LG.Remove(tail) and "Perk dropped." or "No such perk in the plan.") end
-  if word == "clear" then VanguardDB.legacyPlan = {} return ns.Chat("Legacy plan cleared.") end
+  if word == "remove" then return ns.Chat(LG.Remove(tail) and L["Perk dropped."] or L["No such perk in the plan."]) end
+  if word == "clear" then VanguardDB.legacyPlan = {} return ns.Chat(L["Legacy plan cleared."]) end
   for _, line in ipairs(LG.Lines()) do ns.Chat(line) end
 end
 
@@ -80,7 +82,7 @@ end
 function LG.AddCommand(tail)
   local points, name = tail:match("^(%d+)%s+(.+)$")
   local ok, why = LG.Add(name or "", tonumber(points))
-  ns.Chat(ok and "Planned." or why)
+  ns.Chat(ok and L["Planned."] or why)
 end
 
 -- Probing -------------------------------------------------------------------------------------
@@ -162,8 +164,8 @@ end
 function LG.Command(rest)
   local word, tail = (rest or ""):match("^%s*(%S*)%s*(.-)%s*$")
   if word == "probe" then return LG.Probe() end
-  if word ~= "plan" then return ns.Chat("Legacy: /vg legacy probe lists what the client has for the Legacy system; /vg legacy plan [add <points> <name>|remove <name>|clear] plans the perk tree's 16 points.") end
-  if not ns.Settings("Legacy", LG.defaults).planner then return ns.Chat("The Legacy perk planner is off: switch it on under Town and gear.") end
+  if word ~= "plan" then return ns.Chat(L["Legacy: /vg legacy probe lists what the client has for the Legacy system; /vg legacy plan [add <points> <name>|remove <name>|clear] plans the perk tree's 16 points."]) end
+  if not ns.Settings("Legacy", LG.defaults).planner then return ns.Chat(L["The Legacy perk planner is off: switch it on under Town and gear."]) end
   LG.PlanCommand(tail)
 end
 

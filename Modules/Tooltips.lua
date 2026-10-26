@@ -17,6 +17,7 @@ local ADDON, ns = ...
 local vgSkinned = ns.FrameState("vgSkinned")
 
 local T = ns.Theme
+local L = ns.L
 
 local TT = ns.Module("Tooltips", {
   defaults = { anchor = "corner", classBorder = true, targetLine = true, hideInCombat = false, sellPrice = true, itemCount = true, itemID = false },
@@ -88,7 +89,7 @@ local function addTarget(tt, unit)
   if not UnitExists(target) then return end
   local name = UnitName(target)
   if ns.IsSecret(name) or type(name) ~= "string" then return end
-  tt:AddLine("Target: " .. name, unitColor(target))
+  tt:AddLine(ns.Format(L["Target: {name}"], { name = name }), unitColor(target))
 end
 
 -- Colors the name line and border, and adds the target line.
@@ -155,7 +156,7 @@ local function addPrice(tt, link)
   local price = not TT.ShowsPrice(tt) and TT.SellPrice(link)
   if not price then return end
   local r, g, b = T.RGB("text2")
-  tt:AddDoubleLine("Sells for", ns.GetModule("InfoStrip").Money(price * TT.StackOf(tt)), r, g, b, T.RGB("gold"))
+  tt:AddDoubleLine(L["Sells for"], ns.GetModule("InfoStrip").Money(price * TT.StackOf(tt)), r, g, b, T.RGB("gold"))
 end
 
 -- How many you have (in your bags and bank), or nil when none or the client can't say.
@@ -170,14 +171,15 @@ end
 local function addCount(tt, link)
   local bags, all = TT.Owned(link)
   if not all then return end
-  local text = "You have " .. all .. (all > bags and string.format(" (%d in the bank)", all - bags) or "")
+  local text = ns.Format(L["You have {count}"], { count = all })
+  if all > bags then text = ns.Format(L["You have {count} ({bank} in the bank)"], { count = all, bank = all - bags }) end
   tt:AddLine(text, T.RGB("text2"))
 end
 
 -- The item's ID, for players who look items up.
 local function addID(tt, link)
   local id = link:match("item:(%d+)")
-  if id then tt:AddLine("Item ID " .. id, T.RGB("text2")) end
+  if id then tt:AddLine(ns.Format(L["Item ID {id}"], { id = id }), T.RGB("text2")) end
 end
 
 -- Other modules' item lines, each fn(tt, link), run in the order added after the tooltip's own.
@@ -256,7 +258,7 @@ end
 local function buildCorner()
   TT.corner = CreateFrame("Frame", "Vanguard_TooltipAnchor", UIParent)
   TT.corner:SetSize(180, 56)
-  ns.Mover(TT.corner, "tooltip", "Tooltip", { "BOTTOMRIGHT", "BOTTOMRIGHT", -16, 200 })
+  ns.Mover(TT.corner, "tooltip", L["Tooltip"], { "BOTTOMRIGHT", "BOTTOMRIGHT", -16, 200 })
 end
 
 -- Module entry point (Core/Modules.lua).

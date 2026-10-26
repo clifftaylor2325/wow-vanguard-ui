@@ -9,6 +9,8 @@
 
 local ADDON, ns = ...
 
+local L = ns.L
+
 local T, V = ns.Theme, ns.Visibility
 
 local UF = ns.Module("UnitFrames", {
@@ -26,11 +28,11 @@ local CLASSIFICATION = { elite = "gold", rareelite = "accent", rare = "text2", w
 -- left end, and the chat reaches up beside the frame), and the focus sits
 -- above the player (its debuffs under it, its cast bar over it; Modules/CastBars.lua).
 local LAYOUT = {
-  { key = "player", w = 240, h = 36, label = "Player", point = { "BOTTOM", "BOTTOM", -240, 196 } },
-  { key = "target", w = 240, h = 36, label = "Target", point = { "BOTTOM", "BOTTOM", 240, 196 } },
-  { key = "targettarget", w = 120, h = 24, label = "Target of target", point = { "BOTTOM", "BOTTOM", 426, 196 } },
-  { key = "focus", w = 160, h = 30, label = "Focus", point = { "BOTTOM", "BOTTOM", -270, 290 } },
-  { key = "pet", w = 120, h = 24, label = "Pet", point = { "BOTTOM", "BOTTOM", -184, 240 } },
+  { key = "player", w = 240, h = 36, label = L["Player"], point = { "BOTTOM", "BOTTOM", -240, 196 } },
+  { key = "target", w = 240, h = 36, label = L["Target"], point = { "BOTTOM", "BOTTOM", 240, 196 } },
+  { key = "targettarget", w = 120, h = 24, label = L["Target of target"], point = { "BOTTOM", "BOTTOM", 426, 196 } },
+  { key = "focus", w = 160, h = 30, label = L["Focus"], point = { "BOTTOM", "BOTTOM", -270, 290 } },
+  { key = "pet", w = 120, h = 24, label = L["Pet"], point = { "BOTTOM", "BOTTOM", -184, 240 } },
 }
 UF.LAYOUT = LAYOUT
 -- The same rows by key (the target's size, for one).
@@ -39,9 +41,9 @@ for _, def in ipairs(LAYOUT) do UF.LAYOUT_BY_KEY[def.key] = def end
 local PARTY_SIZE = 4
 -- Party 1 at the top of a column that ends 344 up, just above your player frame and centered on it
 -- (where the raid frames sit too).
-local PARTY = { w = 160, h = 32, gap = 10, label = "Party", point = { "BOTTOM", "BOTTOM", -240, 470 } }
+local PARTY = { w = 160, h = 32, gap = 10, label = L["Party"], point = { "BOTTOM", "BOTTOM", -240, 470 } }
 -- Boss 1-5 in a column down from the empty top-left corner (clear of party and raid below).
-UF.BOSS = { count = 5, w = 150, h = 26, gap = 6, label = "Boss frames", point = { "TOPLEFT", "TOPLEFT", 20, -20 } }
+UF.BOSS = { count = 5, w = 150, h = 26, gap = 6, label = L["Boss frames"], point = { "TOPLEFT", "TOPLEFT", 20, -20 } }
 
 -- Blizzard frames replaced when hideBlizzard is on (only those this client has).
 local BLIZZARD_FRAMES = { "PlayerFrame", "TargetFrame", "FocusFrame", "PetFrame", "PartyFrame" }
@@ -130,13 +132,13 @@ end
 -- feigning death (the client calls them dead too). A hidden answer counts as no.
 local function deathWord(unit)
   if ns.PlainCall("UnitIsFeignDeath", unit) == true or not ns.IsTrue(UnitIsDeadOrGhost(unit)) then return nil end
-  return ns.PlainCall("UnitIsGhost", unit) == true and "Ghost" or "Dead"
+  return ns.PlainCall("UnitIsGhost", unit) == true and L["Ghost"] or L["Dead"]
 end
 
 -- "Dead", "Ghost", "Offline", or nil when the unit is none of them. Safe with secret
 -- values: they count as none, and nothing secret is compared.
 function UF.DownState(unit)
-  return deathWord(unit) or (isOffline(unit) and "Offline" or nil)
+  return deathWord(unit) or (isOffline(unit) and L["Offline"] or nil)
 end
 
 -- Health as a percent ("84%"), from the client's own percent with its 0-100

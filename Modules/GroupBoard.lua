@@ -12,6 +12,8 @@
 
 local ADDON, ns = ...
 
+local L = ns.L
+
 local GB = ns.Module("GroupBoard", {
   defaults = { role = "auto", minutes = 10, mine = true, channels = { channel = true, yell = true, say = false, guild = false } },
 })
@@ -24,7 +26,7 @@ ns.Migrate("GroupBoard", function(saved)
   saved.autoRole = true
 end)
 
-ns.Options.MODULE_INFO.GroupBoard = { "Group board", "Looking-for-more and looking-for-group posts from chat in one list by dungeon, role and level; a click opens a whisper you send yourself." }
+ns.Options.MODULE_INFO.GroupBoard = { L["Group board"], L["Looking-for-more and looking-for-group posts from chat in one list by dungeon, role and level; a click opens a whisper you send yourself."] }
 
 -- At most this many posts are kept (the oldest goes first).
 GB.MAX = 40
@@ -36,7 +38,7 @@ GB.LFG = { "lfg", "looking for group", "lf group", "lf grp" }
 -- The roles, in the order a row shows them, and the words that name each.
 GB.ROLE_ORDER = { "tank", "healer", "dps" }
 GB.ROLE_WORDS = { tank = { "tank", "tanks", "mt" }, healer = { "heal", "heals", "healer", "healers", "healz" }, dps = { "dps", "dd" } }
-GB.ROLE_NAMES = { tank = "Tank", healer = "Healer", dps = "DPS" }
+GB.ROLE_NAMES = { tank = L["Tank"], healer = L["Healer"], dps = L["DPS"] }
 -- Your group role (ns.PlayerRole) -> the board's name for it, for the Automatic whisper role.
 GB.AUTO_ROLES = { tank = "tank", healer = "healer", damage = "dps" }
 
@@ -181,9 +183,9 @@ end
 function GB.Summary()
   local st, heard = GB.stats, 0
   for _, n in pairs(st.events) do heard = heard + n end
-  if heard == 0 then return "No chat lines reached the board since login." end
-  return string.format("%d chat lines since login: %d posts, %d other, %d hidden by the game, %d from channels that are off, %d yours.",
-    heard, st.posts, st.plain, st.secret + st.missing, st.off, st.own)
+  if heard == 0 then return L["No chat lines reached the board since login."] end
+  return ns.Format(L["{heard} chat lines since login: {posts} posts, {other} other, {hidden} hidden by the game, {off} from channels that are off, {own} yours."],
+    { heard = heard, posts = st.posts, other = st.plain, hidden = st.secret + st.missing, off = st.off, own = st.own })
 end
 
 -- The numbered channels you are in, "1 General, 2 Trade", or "none" (the game's list; a client without it says so).
@@ -281,17 +283,17 @@ end
 -- "Level 24 Mage", as much of it as the client says plainly.
 local function whoAmI()
   local level, class, parts = GB.Level(), UnitClass("player"), {}
-  if level then parts[#parts + 1] = "Level " .. level end
+  if level then parts[#parts + 1] = ns.Format(L["Level {level}"], { level = level }) end
   if not ns.IsSecret(class) and type(class) == "string" then parts[#parts + 1] = class end
-  return #parts > 0 and table.concat(parts, " ") or "A player"
+  return #parts > 0 and table.concat(parts, " ") or L["A player"]
 end
 
 -- What the whisper says: to a group looking for more, you and your role; to a player looking for one, an invitation.
 function GB.Template(e)
   local where = e.dungeon and e.dungeon.name or nil
-  if e.kind == "LFG" then return string.format("Hi! We're forming %s, want to join?", where or "a group") end
+  if e.kind == "LFG" then return ns.Format(L["Hi! We're forming {dungeon}, want to join?"], { dungeon = where or L["a group"] }) end
   local role = GB.ROLE_NAMES[GB.MyRole()] or GB.ROLE_NAMES.dps
-  return string.format("Hi! %s (%s) for %s, if you still need one.", whoAmI(), role, where or "your group")
+  return ns.Format(L["Hi! {who} ({role}) for {dungeon}, if you still need one."], { who = whoAmI(), role = role, dungeon = where or L["your group"] })
 end
 
 -- Opens a whisper to the post's sender with the message filled in (the game's own call, from a
@@ -319,13 +321,13 @@ end
 -- The board's card on the Chat page.
 function GB.Rows()
   return {
-    { "header", "Group board" },
-    { "text", "Looking-for-more and looking-for-group posts from chat, by dungeon, role and level (/vg lfg). A click opens a whisper you send yourself." },
-    { "button", "Open the group board", function() GB.Toggle() end },
-    { "cycle", "Your role, for the whisper", { { "auto", "Automatic" }, { "tank", "Tank" }, { "healer", "Healer" }, { "dps", "DPS" } }, setting("role") },
-    { "cycle", "Keep posts for", { { 5, "5 minutes" }, { 10, "10 minutes" }, { 20, "20 minutes" } }, setting("minutes") },
-    { "check", "Numbered channels (General, Trade, LookingForGroup)", channel("channel") },
-    { "check", "Yell", channel("yell") }, { "check", "Say", channel("say") }, { "check", "Guild", channel("guild") },
+    { "header", L["Group board"] },
+    { "text", L["Looking-for-more and looking-for-group posts from chat, by dungeon, role and level (/vg lfg). A click opens a whisper you send yourself."] },
+    { "button", L["Open the group board"], function() GB.Toggle() end },
+    { "cycle", L["Your role, for the whisper"], { { "auto", L["Automatic"] }, { "tank", L["Tank"] }, { "healer", L["Healer"] }, { "dps", L["DPS"] } }, setting("role") },
+    { "cycle", L["Keep posts for"], { { 5, L["5 minutes"] }, { 10, L["10 minutes"] }, { 20, L["20 minutes"] } }, setting("minutes") },
+    { "check", L["Numbered channels (General, Trade, LookingForGroup)"], channel("channel") },
+    { "check", L["Yell"], channel("yell") }, { "check", L["Say"], channel("say") }, { "check", L["Guild"], channel("guild") },
   }
 end
 ns.Options.AddRows("chat", GB.Rows)

@@ -14,6 +14,7 @@ local ADDON, ns = ...
 local vgSkinned = ns.FrameState("vgSkinned")
 
 local T = ns.Theme
+local L = ns.L
 local CB = ns.GetModule("CastBars")
 local UF = ns.GetModule("UnitFrames")
 
@@ -192,7 +193,7 @@ end
 local function build()
   SW.holder = CreateFrame("Frame", "Vanguard_SwingTimer", UIParent)
   SW.holder:SetSize(SW.WIDTH, 3 * SW.ROW + 2 * SW.GAP)
-  ns.Mover(SW.holder, "swing", "Swing timer", { "BOTTOM", "BOTTOM", 0, 170 })
+  ns.Mover(SW.holder, "swing", L["Swing timer"], { "BOTTOM", "BOTTOM", 0, 170 })
   SW.rows = {}
   for i, kind in ipairs(SW.KINDS) do
     local id = Enum.PlayerSwingType[kind[1]]

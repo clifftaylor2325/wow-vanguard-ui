@@ -6,6 +6,8 @@
 
 local ADDON, ns = ...
 
+local L = ns.L
+
 local PX = ns.Module("PartyExtras", { defaults = { show = false } })
 
 PX.W, PX.H, PX.GAP, PX.ROWS = 90, 16, 2, 4
@@ -28,7 +30,7 @@ end
 local function build()
   local holder = CreateFrame("Frame", "Vanguard_PartyExtras", UIParent, "SecureHandlerStateTemplate")
   holder:SetSize(2 * PX.W + PX.COL_GAP, PX.ROWS * (PX.H + PX.GAP) - PX.GAP)
-  ns.Mover(holder, "partyextras", "Party pets and targets", { "BOTTOM", "BOTTOM", -240, 606 })
+  ns.Mover(holder, "partyextras", L["Party pets and targets"], { "BOTTOM", "BOTTOM", -240, 606 })
   PX.tiles = {}
   for i = 1, PX.ROWS do
     PX.tiles[#PX.tiles + 1] = tile(holder, "partypet" .. i, i, 0)

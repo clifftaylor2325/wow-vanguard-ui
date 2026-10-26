@@ -38,6 +38,7 @@ local vgRow = ns.FrameState("vgRow")
 local vgSlot = ns.FrameState("vgSlot")
 
 local T = ns.Theme
+local L = ns.L
 local V = ns.Visibility
 
 local MS = ns.Module("MenuStrip", { defaults = { menu = "always", tracker = true, glyphs = true, trackerLook = true } })
@@ -568,7 +569,7 @@ function MS.BagLine(tt)
   if not (b and vgFill[b]) or b == _G.MainMenuBarBackpackButton then return end
   local total, free = MS.BagSpace(b:GetBagID())
   local r, g, bl = T.RGB("text2")
-  if total and total > 0 then tt:AddLine(string.format("%d of %d free", free, total), r, g, bl) end
+  if total and total > 0 then tt:AddLine(ns.Format(L["{free} of {total} free"], { free = free, total = total }), r, g, bl) end
 end
 
 -- The backpack's free count: small, in the icon's corner, over a dark backing
@@ -643,7 +644,7 @@ end
 local function makeStrip()
   local strip = T.HudPanel(CreateFrame("Frame", "Vanguard_MenuStrip", UIParent), { inset = true })
   strip:SetSize(2 * MS.MARGIN, MS.HEIGHT)
-  ns.Mover(strip, "menustrip", "Bags and game menu", { "BOTTOMRIGHT", "BOTTOMRIGHT", -16, 20 })
+  ns.Mover(strip, "menustrip", L["Bags and game menu"], { "BOTTOMRIGHT", "BOTTOMRIGHT", -16, 20 })
   addDivider(strip)
   return strip
 end
@@ -675,7 +676,7 @@ end
 local function buildTracker()
   MS.trackerSpot = CreateFrame("Frame", "Vanguard_QuestTracker", UIParent)
   MS.trackerSpot:SetSize(MS.TRACKER_W, MS.TRACKER_H)
-  ns.Mover(MS.trackerSpot, "questtracker", "Quest tracker", ns.GetModule("InfoStrip").TrackerPoint())
+  ns.Mover(MS.trackerSpot, "questtracker", L["Quest tracker"], ns.GetModule("InfoStrip").TrackerPoint())
   local tracker = _G.ObjectiveTrackerFrame
   if MS.OwnTracker() or type(tracker) ~= "table" or not tracker.SetPoint then return end
   ns.Pin(tracker, function(f)

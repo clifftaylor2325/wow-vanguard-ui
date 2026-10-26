@@ -13,6 +13,7 @@
 local ADDON, ns = ...
 
 local T = ns.Theme
+local L = ns.L
 
 local AFK = ns.Module("AfkScreen", { defaults = {} })
 
@@ -29,12 +30,12 @@ AFK.PROMPTS = { "StaticPopup_Show", "StaticPopupSpecial_Show" }
 -- The backdrop passage for each faction (shown while the faction look is on).
 AFK.PASSAGES = {
   Alliance = {
-    text = "My son, a terrible darkness has returned to our world. As before, it seeks to annihilate everything that we hold dear. I go to face it, knowing I may not return. All my life I have lived by the sword. I've seen kingdoms burn, and watched brave heroes die in vain. It's been difficult for me to trust after losing so much. But from you I have learned patience, tolerance, and faith. Anduin, I now believe as you do, that peace is the noblest aspiration. But to preserve it, you must be willing to fight!",
-    by = "Varian Wrynn, to his son Anduin",
+    text = L["My son, a terrible darkness has returned to our world. As before, it seeks to annihilate everything that we hold dear. I go to face it, knowing I may not return. All my life I have lived by the sword. I've seen kingdoms burn, and watched brave heroes die in vain. It's been difficult for me to trust after losing so much. But from you I have learned patience, tolerance, and faith. Anduin, I now believe as you do, that peace is the noblest aspiration. But to preserve it, you must be willing to fight!"],
+    by = L["Varian Wrynn, to his son Anduin"],
   },
   Horde = {
-    text = "Lok'tar ogar! Victory or death - it is these words that bind me to the Horde. For they are the most sacred and fundamental of truths to any warrior of the Horde. I give my flesh and blood freely to the Warchief. I am the instrument of my Warchief's desire. I am a weapon of my Warchief's command. From this moment until the end of days I live and die - For the Horde!",
-    by = "The Blood Oath of the Horde",
+    text = L["Lok'tar ogar! Victory or death - it is these words that bind me to the Horde. For they are the most sacred and fundamental of truths to any warrior of the Horde. I give my flesh and blood freely to the Warchief. I am the instrument of my Warchief's desire. I am a weapon of my Warchief's command. From this moment until the end of days I live and die - For the Horde!"],
+    by = L["The Blood Oath of the Horde"],
   },
 }
 
@@ -58,8 +59,8 @@ end
 -- "Level 42 Warrior" (either part left out when the client can't say).
 function AFK.Who()
   local level, class = ns.PlainNumber(ask("UnitLevel", "player")), plain((ask("UnitClass", "player")))
-  local text = (level and ("Level " .. level .. " ") or "") .. class
-  return (text:gsub("%s+$", ""))
+  if not level then return class end
+  return (ns.Format(L["Level {level} {class}"], { level = level, class = class }):gsub("%s+$", ""))
 end
 
 -- The zone, with the spot within it when there is one: "Elwynn Forest  ·  Goldshire".
@@ -72,8 +73,9 @@ end
 -- How long you've been away, as "Away 3:07" or "Away 1:03:07".
 function AFK.AwayText(seconds)
   local s = math.floor(seconds)
-  if s < 3600 then return string.format("Away %d:%02d", math.floor(s / 60), s % 60) end
-  return string.format("Away %d:%02d:%02d", math.floor(s / 3600), math.floor(s / 60) % 60, s % 60)
+  local time = string.format("%d:%02d:%02d", math.floor(s / 3600), math.floor(s / 60) % 60, s % 60)
+  if s < 3600 then time = string.format("%d:%02d", math.floor(s / 60), s % 60) end
+  return ns.Format(L["Away {time}"], { time = time })
 end
 
 -- Your class color (r, g, b), or the accent when the client can't say.

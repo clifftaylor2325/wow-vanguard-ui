@@ -28,22 +28,23 @@ local ADDON, ns = ...
 local vgSkinned = ns.FrameState("vgSkinned")
 
 local T = ns.Theme
+local L = ns.L
 
 local CB = ns.Module("CastBars", {
   defaults = { player = true, target = true, focus = true, hideBlizzard = true, interruptMark = true, ring = false },
 })
 
--- Unit -> size and default point (the Centered layout; Modules/UnitFrames.lua).
+-- Unit -> mover label, size and default point (the Centered layout; Modules/UnitFrames.lua).
 local LAYOUT = {
   -- Yours: centered just above the action bars, between the player and target frames (CB.PlayerPoint
   -- moves it up with the bars' stack; this is its spot over the default three bars).
-  player = { w = 220, h = 18, point = { "BOTTOM", "BOTTOM", 0, 146 } },
+  player = { label = L["Player cast bar"], w = 220, h = 18, point = { "BOTTOM", "BOTTOM", 0, 146 } },
   -- The target's sits over its buff row (Modules/FrameAuras.lua), the focus's over the focus frame.
-  target = { w = 240, h = 16, point = { "BOTTOM", "BOTTOM", 240, 262 } },
-  focus = { w = 160, h = 14, point = { "BOTTOM", "BOTTOM", -270, 324 } },
+  target = { label = L["Target cast bar"], w = 240, h = 16, point = { "BOTTOM", "BOTTOM", 240, 262 } },
+  focus = { label = L["Focus cast bar"], w = 160, h = 14, point = { "BOTTOM", "BOTTOM", -270, 324 } },
   -- Your pet's, small, just left of the pet frame, between the combo points and the focus's debuffs
   -- (built only while the game's bars are put away).
-  pet = { w = 100, h = 10, point = { "BOTTOM", "BOTTOM", -300, 252 } },
+  pet = { label = L["Pet cast bar"], w = 100, h = 10, point = { "BOTTOM", "BOTTOM", -300, 252 } },
 }
 -- The bars that get the interrupt mark: casts you might interrupt (never yours or your pet's).
 CB.MARKED = { target = true, focus = true }
@@ -390,7 +391,7 @@ local function createBar(unit)
   bar.unit = unit
   bar:SetFrameStrata("HIGH")
   if CB.MARKED[unit] and ns.Client.Has("cooldownObject") then addMark(bar, def.h) end
-  ns.Mover(bar, "cast_" .. unit, unit:sub(1, 1):upper() .. unit:sub(2) .. " cast bar", unit == "player" and CB.PlayerPoint() or def.point)
+  ns.Mover(bar, "cast_" .. unit, def.label, unit == "player" and CB.PlayerPoint() or def.point)
   ns.MoverSizable("cast_" .. unit, { width = CB.WIDTHS })
   return bar
 end
@@ -567,14 +568,14 @@ end
 -- Events that end a cast, and how the bar says so.
 local FINISH = {
   UNIT_SPELLCAST_STOP = "good", UNIT_SPELLCAST_CHANNEL_STOP = "good",
-  UNIT_SPELLCAST_INTERRUPTED = "Interrupted", UNIT_SPELLCAST_FAILED = "Failed",
+  UNIT_SPELLCAST_INTERRUPTED = L["Interrupted"], UNIT_SPELLCAST_FAILED = L["Failed"],
 }
 
 -- How an ending event says the cast went. A channel's stop names who interrupted
 -- it (nil when it ran its course; a hidden name is still someone), as the
 -- client's own cast bar reads it (CastingBarFrame.lua, UNIT_SPELLCAST_CHANNEL_STOP).
 local function finishReason(event, interruptedBy)
-  if event == "UNIT_SPELLCAST_CHANNEL_STOP" and type(interruptedBy) ~= "nil" then return "Interrupted" end
+  if event == "UNIT_SPELLCAST_CHANNEL_STOP" and type(interruptedBy) ~= "nil" then return L["Interrupted"] end
   return FINISH[event]
 end
 

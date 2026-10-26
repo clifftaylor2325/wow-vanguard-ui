@@ -8,6 +8,7 @@
 local ADDON, ns = ...
 
 local T = ns.Theme
+local L = ns.L
 local MT = ns.GetModule("Meter")
 
 -- The channels /vg meter report sends to, by the word typed; the lines a report holds at most and by default.
@@ -83,7 +84,7 @@ end
 local function addDetailEmpty(d)
   d.empty = T.Text(d:CreateFontString(nil, "OVERLAY"), "label", "muted")
   d.empty:SetPoint("CENTER", d, "CENTER", 0, -MT.HEAD / 2)
-  d.empty:SetText("No spell detail yet")
+  d.empty:SetText(L["No spell detail yet"])
 end
 
 -- Built the first time a line is clicked: a panel beside the meter, its rows the meter's own look; Escape closes it.
@@ -111,7 +112,7 @@ end
 -- On the Deaths view, a click also puts the game's recap link for that death in your chat (click it to open the recap).
 function MT.SayRecap(src)
   local link = MT.settings.kind == "Deaths" and MT.RecapLink(src)
-  if link then ns.Chat("Death recap: " .. link) end
+  if link then ns.Chat(ns.Format(L["Death recap: {link}"], { link = link })) end
 end
 
 -- A meter line's source as a plain key ("GUID:creature ID"), or nil when the client hides either.
@@ -190,10 +191,10 @@ end
 function MT.Report(arg)
   local word, count = (arg or ""):match("^(%a*)%s*(%d*)")
   local n = math.min(tonumber(count) or MT.REPORT_DEFAULT, MT.REPORT_MAX)
-  if ns.InCombat() then return ns.Chat("Not in combat: the game's damage meter is hidden until the fight is over.") end
+  if ns.InCombat() then return ns.Chat(L["Not in combat: the game's damage meter is hidden until the fight is over."]) end
   local text = n > 0 and MT.ReportText(n)
-  if not text then return ns.Chat("No report to show: the meter has no plain figures yet.") end
+  if not text then return ns.Chat(L["No report to show: the meter has no plain figures yet."]) end
   if word == "" then return ns.Chat(text) end
-  if not MT.CHANNELS[word] then return ns.Chat("Send the report to say, party, raid, instance or guild.") end
+  if not MT.CHANNELS[word] then return ns.Chat(L["Send the report to say, party, raid, instance or guild."]) end
   ns.SendChat(text, MT.CHANNELS[word])
 end

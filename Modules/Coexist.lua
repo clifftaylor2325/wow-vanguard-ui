@@ -14,6 +14,8 @@
 
 local ADDON, ns = ...
 
+local L = ns.L
+
 local CX = ns.Module("Coexist", { defaults = { answered = {}, told = {}, off = {} } })
 
 -- Addon folder name -> { the Vanguard module it overlaps, what both do }, plus optional
@@ -21,32 +23,32 @@ local CX = ns.Module("Coexist", { defaults = { answered = {}, told = {}, off = {
 -- of a list on the module's table, read at click time), reload (those keys apply only after
 -- a reload) and also (one more sentence for the card). One place for the list.
 CX.OVERLAPS = {
-  Bagnon = { "Bags", "bags" }, AdiBags = { "Bags", "bags" }, ArkInventory = { "Bags", "bags" },
-  BetterBags = { "Bags", "bags" }, Baganator = { "Bags", "bags" }, Sorted = { "Bags", "bags" },
-  Plater = { "Nameplates", "nameplates" }, Kui_Nameplates = { "Nameplates", "nameplates" },
-  TidyPlates_ThreatPlates = { "Nameplates", "nameplates" }, Platynator = { "Nameplates", "nameplates" },
-  Bartender4 = { "ActionBars", "action bars" }, Dominos = { "ActionBars", "action bars" },
-  ShadowedUnitFrames = { "UnitFrames", "unit frames" }, PitBull4 = { "UnitFrames", "unit frames" },
-  Grid2 = { "RaidFrames", "raid frames" }, VuhDo = { "RaidFrames", "raid frames" }, Cell = { "RaidFrames", "raid frames" },
-  Clique = { "ClickCast", "click casting" }, Quartz = { "CastBars", "cast bars" },
-  EllesmereUIUnitFrames = { "UnitFrames", "unit frames" }, EllesmereUIActionBars = { "ActionBars", "action bars" },
-  EllesmereUINameplates = { "Nameplates", "nameplates" }, EllesmereUIRaidFrames = { "RaidFrames", "raid frames" },
-  SexyMap = { "Minimap", "the minimap" }, TipTac = { "Tooltips", "tooltips" },
-  ["Prat-3.0"] = { "Chat", "chat" }, Chattynator = { "Chat", "chat" }, Glass = { "Chat", "chat" },
-  ElvUI = { "ActionBars", "action bars" }, Tukui = { "ActionBars", "action bars" },
-  Auctionator = { "AuctionHelper", "auction house shopping and posting" },
-  TradeSkillMaster = { "AuctionHelper", "auction house shopping and posting" },
+  Bagnon = { "Bags", L["bags"] }, AdiBags = { "Bags", L["bags"] }, ArkInventory = { "Bags", L["bags"] },
+  BetterBags = { "Bags", L["bags"] }, Baganator = { "Bags", L["bags"] }, Sorted = { "Bags", L["bags"] },
+  Plater = { "Nameplates", L["nameplates"] }, Kui_Nameplates = { "Nameplates", L["nameplates"] },
+  TidyPlates_ThreatPlates = { "Nameplates", L["nameplates"] }, Platynator = { "Nameplates", L["nameplates"] },
+  Bartender4 = { "ActionBars", L["action bars"] }, Dominos = { "ActionBars", L["action bars"] },
+  ShadowedUnitFrames = { "UnitFrames", L["unit frames"] }, PitBull4 = { "UnitFrames", L["unit frames"] },
+  Grid2 = { "RaidFrames", L["raid frames"] }, VuhDo = { "RaidFrames", L["raid frames"] }, Cell = { "RaidFrames", L["raid frames"] },
+  Clique = { "ClickCast", L["click casting"] }, Quartz = { "CastBars", L["cast bars"] },
+  EllesmereUIUnitFrames = { "UnitFrames", L["unit frames"] }, EllesmereUIActionBars = { "ActionBars", L["action bars"] },
+  EllesmereUINameplates = { "Nameplates", L["nameplates"] }, EllesmereUIRaidFrames = { "RaidFrames", L["raid frames"] },
+  SexyMap = { "Minimap", L["the minimap"] }, TipTac = { "Tooltips", L["tooltips"] },
+  ["Prat-3.0"] = { "Chat", L["chat"] }, Chattynator = { "Chat", L["chat"] }, Glass = { "Chat", L["chat"] },
+  ElvUI = { "ActionBars", L["action bars"] }, Tukui = { "ActionBars", L["action bars"] },
+  Auctionator = { "AuctionHelper", L["auction house shopping and posting"] },
+  TradeSkillMaster = { "AuctionHelper", L["auction house shopping and posting"] },
   -- Window skinners restyle popups, menus and tabs too, so every look group goes; durability and moving stay.
-  Aurora = { "Windows", "window looks", keys = "GROUPS", reload = true },
-  ForevermoreClassicUI = { "Windows", "window looks", keys = "GROUPS", reload = true },
-  BlizzMove = { "Windows", "window moving", keys = { "movable" }, reload = true },
-  MoveAny = { "Windows", "window moving", keys = { "movable" }, reload = true },
-  MovableWindowsForever = { "Windows", "window moving", keys = { "movable" }, reload = true },
+  Aurora = { "Windows", L["window looks"], keys = "GROUPS", reload = true },
+  ForevermoreClassicUI = { "Windows", L["window looks"], keys = "GROUPS", reload = true },
+  BlizzMove = { "Windows", L["window moving"], keys = { "movable" }, reload = true },
+  MoveAny = { "Windows", L["window moving"], keys = { "movable" }, reload = true },
+  MovableWindowsForever = { "Windows", L["window moving"], keys = { "movable" }, reload = true },
   -- The social group: friends, guild, chat channels, the raid tab, letters and the social toasts.
-  BetterFriendlist = { "Windows", "social window looks", keys = { "social" }, reload = true },
+  BetterFriendlist = { "Windows", L["social window looks"], keys = { "social" }, reload = true },
 }
 
-ns.Options.MODULE_INFO.Coexist = { "Other addons", "At login, notices addons that do a job a Vanguard module also does, and offers to turn that part of Vanguard off." }
+ns.Options.MODULE_INFO.Coexist = { L["Other addons"], L["At login, notices addons that do a job a Vanguard module also does, and offers to turn that part of Vanguard off."] }
 
 -- Whether the client says the addon is loaded (a client without the call: no).
 local function loaded(name)
@@ -143,14 +145,14 @@ end
 
 -- What the buttons name: the module by its Modules page name, or for a keys row "Vanguard's <what>".
 local function targetName(o)
-  if o.keys then return "Vanguard's " .. o.what end
+  if o.keys then return ns.Format(L["Vanguard's {part}"], { part = o.what }) end
   return moduleName(o.module)
 end
 
 -- The target as the sentences say it, always with "Vanguard's".
 local function ownName(o)
   if o.keys then return targetName(o) end
-  return "Vanguard's " .. moduleName(o.module)
+  return ns.Format(L["Vanguard's {part}"], { part = moduleName(o.module) })
 end
 
 -- Records the answer and builds the Modules page again (the card shows the new answer).
@@ -176,7 +178,7 @@ end
 function CX.TurnOff(o)
   if o.keys then turnKeysOff(o) else ns.SetModuleEnabled(o.module, false) end
   answer(o, "off")
-  offerReload(o, string.format("Turned off %s; %s does that now.", ownName(o), o.addon))
+  offerReload(o, ns.Format(L["Turned off {part}; {addon} does that now."], { part = ownName(o), addon = o.addon }))
 end
 
 -- Turns back on the keys this card turned off (all the row's keys if it doesn't know which).
@@ -190,7 +192,7 @@ end
 function CX.TurnBackOn(o)
   if o.keys then turnKeysOn(o) else ns.SetModuleEnabled(o.module, true) end
   answer(o, "kept")
-  offerReload(o, string.format("Turned %s back on beside %s.", ownName(o), o.addon))
+  offerReload(o, ns.Format(L["Turned {part} back on beside {addon}."], { part = ownName(o), addon = o.addon }))
 end
 
 -- Keeps both running; the question doesn't come back.
@@ -200,9 +202,9 @@ end
 
 -- The card's sentence for one overlap: what both do, or the answer given, then the row's extra sentence.
 local function overlapText(o)
-  local said = string.format("%s is loaded and also does %s.", o.addon, o.what)
-  if o.answer == "off" then said = string.format("%s is loaded; you turned off %s.", o.addon, ownName(o)) end
-  if o.answer == "kept" then said = said .. " You kept both." end
+  local said = ns.Format(L["{addon} is loaded and also does {what}."], { addon = o.addon, what = o.what })
+  if o.answer == "off" then said = ns.Format(L["{addon} is loaded; you turned off {part}."], { addon = o.addon, part = ownName(o) }) end
+  if o.answer == "kept" then said = ns.Format(L["{addon} is loaded and also does {what}. You kept both."], { addon = o.addon, what = o.what }) end
   return o.also and said .. " " .. o.also or said
 end
 
@@ -210,18 +212,18 @@ end
 local function overlapRows(o, rows)
   rows[#rows + 1] = { "text", overlapText(o) }
   if o.answer == "off" then
-    rows[#rows + 1] = { "button", "Turn " .. targetName(o) .. " back on", function() CX.TurnBackOn(o) end }
+    rows[#rows + 1] = { "button", ns.Format(L["Turn {part} back on"], { part = targetName(o) }), function() CX.TurnBackOn(o) end }
     return
   end
-  rows[#rows + 1] = { "button", "Turn off " .. targetName(o), function() CX.TurnOff(o) end }
-  if not o.answer then rows[#rows + 1] = { "button", "Keep both", function() CX.Keep(o) end } end
+  rows[#rows + 1] = { "button", ns.Format(L["Turn off {part}"], { part = targetName(o) }), function() CX.TurnOff(o) end }
+  if not o.answer then rows[#rows + 1] = { "button", L["Keep both"], function() CX.Keep(o) end } end
 end
 
 -- The Modules page's "Other addons" card, first on the page; nothing when no loaded addon applies.
 function CX.Rows()
   local shown, rows = collect(), {}
   if #shown == 0 then return rows end
-  rows[1] = { "header", "Other addons" }
+  rows[1] = { "header", L["Other addons"] }
   for _, o in ipairs(shown) do overlapRows(o, rows) end
   return rows
 end
@@ -233,7 +235,7 @@ function CX.Tell()
   for _, o in ipairs(CX.Pending()) do
     if not told[o.addon] then
       told[o.addon] = true
-      ns.Chat(string.format("%s also does %s. Choose which one does under /vg > Modules (nothing changes until you do).", o.addon, o.what))
+      ns.Chat(ns.Format(L["{addon} also does {what}. Choose which one does under /vg > Modules (nothing changes until you do)."], { addon = o.addon, what = o.what }))
     end
   end
 end
