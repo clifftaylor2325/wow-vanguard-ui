@@ -1349,3 +1349,15 @@ it("a button disabled and enabled again keeps its colour token: its label follow
   expect(addon.eval("return TEST_Primary.text.__shadowColor[4]"), "a primary's void label has no shadow after the cycle").toBe(0);
   expect(addon.eval("return ns.Theme.ColorToken(TEST_Plain.text)"), "the token is remembered again").toBe("text");
 });
+
+it("a selected row's rail is sized again after a UI scale change, two screen pixels wide (B1-4)", () => {
+  const addon = loggedIn("GetPhysicalScreenSize = function() return 2560, 1440 end");
+  addon.eval(`TEST_Row = ns.Widgets.Row(CreateFrame("Frame", nil, UIParent), nil, { width = 300 }) ns.Theme.SelectRow(TEST_Row, true)`);
+  // The rail's width in screen pixels now.
+  const railPixels = () => addon.eval("return ns.Theme.RowParts(TEST_Row).rail:GetWidth() * TEST_Row:GetEffectiveScale() * 1440 / 768");
+  expect(railPixels(), "two pixels at UI scale 1").toBeCloseTo(2, 9);
+  addon.eval("UIParent:SetScale(0.533)");
+  addon.fire("UI_SCALE_CHANGED");
+  addon.update(0.1);
+  expect(railPixels(), "still two pixels after the UI scale drops").toBeCloseTo(2, 9);
+});

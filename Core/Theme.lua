@@ -2428,6 +2428,12 @@ local function rowRail(row)
   return rail
 end
 
+-- Sizes every row's rail to T.SELECT.rail screen pixels again (after a UI, screen or frame scale change).
+function T.SizeRails()
+  for row, s in pairs(rowOf) do s.rail:SetWidth(T.SELECT.rail * T.Pixel(row)) end
+end
+T.OnScale(T.SizeRails)
+
 -- A row's layers, bottom to top: the selected fill, the hover wash, the press shade and the rail.
 local function rowParts(row)
   local fill = rowLayer(row, -1, T.SELECT.fill)
