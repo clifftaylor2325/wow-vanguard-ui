@@ -2444,6 +2444,12 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: the swing rows sit just over the cast bar, above bar 1, with the 4th bar on; the pet's health text ends left of the mood glyph; bar 5 is a column clear of bar 4; the meter title ends in "..." before Report and Reset; a roll's name ends in "..." before its figures and never draws over them; the group board's hint wraps inside the window; the keybind banner shows its whole last sentence; the vehicle exit label stays inside its button; the XP text stays in the bar's left half and the reputation text in its right half; and, on a German client, say whether "Fehlgeschlagen" is cut on a failed pet cast (no change was made for it: it needs this look first).
 - If it fails, paste: a screenshot of the part and `/vg errors`.
 
+### 33.46 Discord and X links on the Feedback page
+
+- Do: open `/vg` → Feedback and scroll to the Community card. Click Copy Discord invite, press Ctrl+C, close the box and paste into a browser's address bar; then do the same with Copy X link. Look at the card once more in German or Russian.
+- Expect: the card's line names @WowVanguardUI on X; each button opens the copy box with its address selected (`https://discord.gg/8ChnJfyww`, then `https://x.com/WowVanguardUI`), the box's title says to press Ctrl+C and paste into the browser, and the pasted invite opens the Vanguard server; in the long language both button labels fit. `/vg errors` is empty.
+- If it fails, paste: a screenshot of the card or the box, and `/vg errors`.
+
 ### 33.46 Narrow screens: adapted default spots and setup's Fit
 
 - Do: on a 4:3 or 5:4 screen, or a 1024x768 window, with the game's UI scale at 100 % and a fresh profile, look at the frames around your character with a target that has a target, at your buffs with a dozen of them on, at Boss timers and the talking head in `/vg unlock`, and (in a party, Party pets and targets on under Unit frames) at the party pets column with the UI scale at 115 %. Then run `/vg setup` and go to the Screen step. On a 16:9 screen at 100 % or below, look at the same frames.
