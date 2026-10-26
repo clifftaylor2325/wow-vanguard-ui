@@ -13,10 +13,13 @@ local L = ns.L
 
 local BD = ns.Module("BossDocks", { defaults = {} })
 
+-- On a canvas under 1365 wide the normal bars' spot keeps left of the quest tracker's column (260 wide, 12 in
+-- from the edge, and a gap) and just above the target of target's spot there (Modules/UnitFrames.lua).
+BD.NARROW = { w = 1365, spot = { "BOTTOM", "BOTTOM", 360, 304, room = { right = 278 } } }
 -- The spots: mover key and label, default point, size, DBM's option prefix and where to drag BigWigs' bars of that kind.
 BD.SPOTS = {
   {
-    key = "bossbars", label = L["Boss timers"], default = { "BOTTOM", "BOTTOM", 360, 300 }, w = 200, h = 120, dbm = "Timer",
+    key = "bossbars", label = L["Boss timers"], default = { "BOTTOM", "BOTTOM", 360, 300, narrow = BD.NARROW }, w = 200, h = 120, dbm = "Timer",
     bigwigs = L["BigWigs: drag its normal bars' anchor to {spot} ({x}, {y} from the middle of the screen)."],
   },
   {
