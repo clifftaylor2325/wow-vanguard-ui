@@ -6,6 +6,7 @@
 -- action button overlay that runs a /reload macro (see ns.ReloadButton).
 
 local ADDON, ns = ...
+local L = ns.L
 
 local T = ns.Theme
 
@@ -143,9 +144,9 @@ end
 
 -- The text dialog's buttons: the primary at the bottom right and, left of it, the one that closes the box.
 local function addTextButtons(f)
-  f.primary = ns.Widgets.Primary(f, "Import")
+  f.primary = ns.Widgets.Primary(f, L["Import"])
   f.primary:SetPoint("BOTTOMRIGHT", -T.SPACE.pad, T.SPACE.pad)
-  f.close = button(f, "Close")
+  f.close = button(f, L["Close"])
   f.close:SetPoint("RIGHT", f.primary, "LEFT", -T.SPACE.gap, 0)
   f.close:SetScript("OnClick", ns.Guard("click close text box", function() f:Hide() end))
 end
@@ -186,7 +187,7 @@ function ns.ShowText(title, text)
   titleText(f, title)
   boxText(f, text)
   f.primary:Hide()
-  f.close.text:SetText("Close")
+  f.close.text:SetText(L["Close"])
   f:Show()
   f.edit:SetFocus()
   f.edit:HighlightText()
@@ -196,9 +197,9 @@ end
 -- text fills it, so only ns.ShowErrors shows it.
 local function clearButton(f)
   if f.clear then return f.clear end
-  f.clear = button(f, "Clear")
+  f.clear = button(f, L["Clear"])
   f.clear:SetPoint("RIGHT", f.close, "LEFT", -T.SPACE.gap, 0)
-  f.clear:SetScript("OnClick", ns.Guard("click clear errors", function() ns.ClearErrors() f:Hide() ns.Chat("Errors cleared.") end))
+  f.clear:SetScript("OnClick", ns.Guard("click clear errors", function() ns.ClearErrors() f:Hide() ns.Chat(L["Errors cleared."]) end))
   f:HookScript("OnHide", ns.Guard("hide errors clear", function() f.clear:Hide() end))
   return f.clear
 end
@@ -208,7 +209,7 @@ end
 function ns.ShowErrors(title, text)
   ns.ShowText(title, text)
   local f = box
-  f.primary.text:SetText("Report a bug")
+  f.primary.text:SetText(L["Report a bug"])
   f.primary:SetScript("OnClick", ns.Guard("click report a bug", function() f:Hide() ns.Feedback.Open("bug") end))
   f.primary:Show()
   clearButton(f):Show()
@@ -234,8 +235,8 @@ function ns.AskText(title, onImport, label)
   f.ownTitle = title
   titleText(f, title)
   boxText(f, "")
-  f.primary.text:SetText(label or "Import")
-  f.close.text:SetText("Cancel")
+  f.primary.text:SetText(label or L["Import"])
+  f.close.text:SetText(L["Cancel"])
   f.primary:Show()
   f.primary:SetScript("OnClick", ns.Guard("click text box primary", function() onImport(f.edit:GetText()) end))
   f:Show()
@@ -272,7 +273,7 @@ end
 -- The find dialog's query line across the top: a themed input with the Find button (the primary) at its
 -- right end; Enter in the field finds too, Escape closes the dialog.
 local function addQuery(f)
-  f.go = ns.Widgets.Primary(f, "Find", function() runFind(f) end)
+  f.go = ns.Widgets.Primary(f, L["Find"], function() runFind(f) end)
   f.go:SetPoint("TOPRIGHT", -T.SPACE.pad, -HEAD)
   f.query = ns.Widgets.Input(f, TEXT_W - 2 * T.SPACE.pad - BUTTON_W - T.SPACE.gap)
   f.query:SetPoint("RIGHT", f.go, "LEFT", -T.SPACE.gap, 0)
@@ -288,7 +289,7 @@ local function findBox()
   hangTitle(find)
   addQuery(find)
   addEditBox(find, "Vanguard_FindEdit", FIND_TOP)
-  find.close = button(find, "Close")
+  find.close = button(find, L["Close"])
   find.close:SetPoint("BOTTOMRIGHT", -T.SPACE.pad, T.SPACE.pad)
   find.close:SetScript("OnClick", ns.Guard("click close find box", function() find:Hide() end))
   ns.TabFocus(find, function() return { find.go, find.close } end)
@@ -349,10 +350,10 @@ end
 
 -- The question's buttons: the primary Yes and the danger Yes (one shows) at the bottom right, No left of them.
 local function addQuestionButtons(f)
-  f.yes, f.sure = button(f, "Yes", nil, "primary"), button(f, "Yes", nil, "danger")
+  f.yes, f.sure = button(f, L["Yes"], nil, "primary"), button(f, L["Yes"], nil, "danger")
   f.yes:SetPoint("BOTTOMRIGHT", -T.SPACE.pad, T.SPACE.pad)
   f.sure:SetPoint("BOTTOMRIGHT", -T.SPACE.pad, T.SPACE.pad)
-  f.no = button(f, "No")
+  f.no = button(f, L["No"])
   f.no:SetPoint("RIGHT", f.yes, "LEFT", -T.SPACE.gap, 0)
 end
 
@@ -449,7 +450,7 @@ end
 -- elsewhere ReloadUI() still works; on Forever, say how to reload by hand.
 local function reloadByHand()
   if ns.IsForever() or type(ReloadUI) ~= "function" then
-    ns.Chat("Type /reload in chat to apply the change (the game only lets addons reload out of combat).")
+    ns.Chat(L["Type /reload in chat to apply the change (the game only lets addons reload out of combat)."])
     return
   end
   ReloadUI()
@@ -469,9 +470,9 @@ local function reloadDialog()
   if reload then return reload end
   reload = dialog("Vanguard_Reload", ASK_W, 1)
   hangTitle(reload)
-  reload.accept = ns.ReloadButton(ns.Widgets.Primary(reload, "Reload"))
+  reload.accept = ns.ReloadButton(ns.Widgets.Primary(reload, L["Reload"]))
   reload.accept:SetPoint("BOTTOMRIGHT", -T.SPACE.pad, T.SPACE.pad)
-  reload.cancel = button(reload, "Later")
+  reload.cancel = button(reload, L["Later"])
   reload.cancel:SetPoint("RIGHT", reload.accept, "LEFT", -T.SPACE.gap, 0)
   reload.cancel:SetScript("OnClick", ns.Guard("click reload later", function() reload:Hide() end))
   ns.TabFocus(reload, function() return { reload.cancel, reload.accept } end)
@@ -481,7 +482,7 @@ end
 -- Offers a reload, for changes that apply after one; the dialog grows to fit its reason.
 function ns.OfferReload(why)
   local f = reloadDialog()
-  f.title:SetText(why .. " Reload the UI now to apply it?")
+  f.title:SetText(ns.Format(L["{why} Reload the UI now to apply it?"], { why = why }))
   fitTitle(f)
   f:Show()
 end

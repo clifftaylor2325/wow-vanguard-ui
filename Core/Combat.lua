@@ -4,6 +4,7 @@
 -- ("secrets"): they can be handed to widgets but not compared or computed with.
 
 local ADDON, ns = ...
+local L = ns.L
 
 -- The work waiting for combat to end, in order; keyed maps a key to its slot in queue.
 local queue, keyed = {}, {}
@@ -54,7 +55,7 @@ end
 ---@return boolean
 function ns.WindowWaitsForCombat(window)
   if not ns.InCombat() then return false end
-  ns.Chat(window .. " doesn't open from Vanguard in a fight. Try again after it.")
+  ns.Chat(ns.Format(L["{window} doesn't open from Vanguard in a fight. Try again after it."], { window = window }))
   return true
 end
 

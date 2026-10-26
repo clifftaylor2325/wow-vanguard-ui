@@ -16,15 +16,35 @@
 
 local ADDON, ns = ...
 
-local L = ns.Layout
+local LY = ns.Layout
+local L = ns.L
 local K = {}
 local vgLinkWatch = ns.FrameState("vgLinkWatch")
 ns.MoverLinks = K
 
 -- Width and height, and the saved field that holds each as the frame's own size.
 local DIMS = { width = "w", height = "h" }
--- How each side reads in unlock mode.
-local SIDE_NAMES = { LEFT = "Left of", RIGHT = "Right of", TOP = "Above", BOTTOM = "Below" }
+-- How each side reads in unlock mode, with the other frame's name.
+local SIDE_NAMES = { LEFT = L["Left of {frame}"], RIGHT = L["Right of {frame}"], TOP = L["Above {frame}"], BOTTOM = L["Below {frame}"] }
+-- The reasons that name a width or a height: one whole sentence for each, so each translates as a whole.
+local DIM_TEXT = {
+  width = {
+    range = L["{other} is {size} wide; {frame} can be {min} to {max}."],
+    sizesItself = L["{frame} sets its own width, so it can't match another frame's."],
+    itself = L["A frame can't match its own width."],
+    circle = L["{other} already matches the width of {frame}."],
+    matched = L["Matched to the width of {other}. To unmatch, right-click its handle in unlock mode (/vg unlock) and set Match width to None."],
+    locked = L["{frame} sets its own width."],
+  },
+  height = {
+    range = L["{other} is {size} tall; {frame} can be {min} to {max}."],
+    sizesItself = L["{frame} sets its own height, so it can't match another frame's."],
+    itself = L["A frame can't match its own height."],
+    circle = L["{other} already matches the height of {frame}."],
+    matched = L["Matched to the height of {other}. To unmatch, right-click its handle in unlock mode (/vg unlock) and set Match height to None."],
+    locked = L["{frame} sets its own height."],
+  },
+}
 -- Frames Vanguard may size: key -> { width = { min, max }, height = { min, max }, onSized, natural }.
 local sizable = {}
 -- Keys (and dim .. key) being worked out now, so a hand-edited loop falls back instead of going round.
@@ -73,7 +93,7 @@ end
 
 -- Why a key can't be used: there's no frame by that name.
 local function noFrame(key)
-  return string.format("There's no frame called %s here (is its module on?).", tostring(key))
+  return ns.Format(L["There's no frame called {name} here (is its module on?)."], { name = tostring(key) })
 end
 
 -- Rounds to the nearest whole number.
@@ -115,7 +135,7 @@ function K.Own(key, dim)
   local s, f = sizable[key], ns.MoverFrame(key)
   if not (s and s[dim]) then return frameSize(f, dim) end
   local own = tonumber((entryOf(key) or {})[DIMS[dim]])
-  return L.Within(matchedSize(key, dim) or own or s.natural[dim], s[dim][1], s[dim][2])
+  return LY.Within(matchedSize(key, dim) or own or s.natural[dim], s[dim][1], s[dim][2])
 end
 
 -- A mover's rect on screen ({ left, bottom, w, h } in UIParent's units), from where it goes and its size.
@@ -124,7 +144,7 @@ function K.RectOf(key)
   local s = scaleOf(key)
   local anchor = { point = point, relPoint = relPoint, x = x, y = y }
   local size = { w = K.Own(key, "width") * s, h = K.Own(key, "height") * s }
-  return L.Rect(anchor, size, screen())
+  return LY.Rect(anchor, size, screen())
 end
 
 -- Sizes a frame Vanguard may size (as K.Own works it out) and tells its module.
@@ -149,18 +169,18 @@ end
 
 -- The rect an anchored mover takes: its own point at the other frame's side, plus its offsets, on screen.
 local function anchoredRect(key, rel)
-  local own, theirs = L.SIDES[rel.side][1], L.SIDES[rel.side][2]
-  local tx, ty = L.PointAt(K.RectOf(rel.to), theirs)
+  local own, theirs = LY.SIDES[rel.side][1], LY.SIDES[rel.side][2]
+  local tx, ty = LY.PointAt(K.RectOf(rel.to), theirs)
   local s = scaleOf(key)
-  local r = L.RectAt(own, tx + (tonumber(rel.x) or 0), ty + (tonumber(rel.y) or 0), K.Own(key, "width") * s, K.Own(key, "height") * s)
+  local r = LY.RectAt(own, tx + (tonumber(rel.x) or 0), ty + (tonumber(rel.y) or 0), K.Own(key, "width") * s, K.Own(key, "height") * s)
   local sc = screen()
-  return L.Clamp(r, sc.w, sc.h)
+  return LY.Clamp(r, sc.w, sc.h)
 end
 
 -- Remembers where an anchored mover is as its saved spot (against the nearest screen edge):
 -- where it lands while the frame it's anchored to isn't there.
 local function remember(p, r)
-  local point, x, y = L.Anchor(r, screen())
+  local point, x, y = LY.Anchor(r, screen())
   p.point, p.relPoint, p.x, p.y = point, point, x, y
 end
 
@@ -168,7 +188,7 @@ end
 -- the frame it names isn't there, or a loop in a hand-edited profile leads back to it).
 local function linkedRect(key, p)
   local rel = part(p, "rel")
-  if not rel or not L.SIDES[rel.side] or not ns.MoverFrame(rel.to) or busy[key] then return nil end
+  if not rel or not LY.SIDES[rel.side] or not ns.MoverFrame(rel.to) or busy[key] then return nil end
   busy[key] = true
   local r = anchoredRect(key, rel)
   busy[key] = nil
@@ -181,8 +201,8 @@ end
 function K.Point(key, p)
   local r, rel = linkedRect(key, p)
   if not r then return nil end
-  local x, y = L.PointAt(r, L.SIDES[rel.side][1])
-  return L.SIDES[rel.side][1], "BOTTOMLEFT", x, y
+  local x, y = LY.PointAt(r, LY.SIDES[rel.side][1])
+  return LY.SIDES[rel.side][1], "BOTTOMLEFT", x, y
 end
 
 -- Keeps an anchored mover's saved spot where its link puts it now, so it still lands there while the
@@ -194,8 +214,8 @@ end
 
 -- Sets an anchored mover's offsets so the rect r is where it sits, from the side it's anchored to.
 local function offsetsFrom(rel, r)
-  local x, y = L.PointAt(r, L.SIDES[rel.side][1])
-  local tx, ty = L.PointAt(K.RectOf(rel.to), L.SIDES[rel.side][2])
+  local x, y = LY.PointAt(r, LY.SIDES[rel.side][1])
+  local tx, ty = LY.PointAt(K.RectOf(rel.to), LY.SIDES[rel.side][2])
   rel.x, rel.y = round(x - tx), round(y - ty)
 end
 
@@ -203,17 +223,17 @@ end
 -- becomes its offsets from the side it's anchored to, so the link holds.
 function K.Saved(key, p)
   local rel = part(p, "rel")
-  if not rel or not L.SIDES[rel.side] or not ns.MoverFrame(rel.to) then return end
+  if not rel or not LY.SIDES[rel.side] or not ns.MoverFrame(rel.to) then return end
   local s = scaleOf(key)
   local anchor = { point = p.point, relPoint = p.relPoint or p.point, x = tonumber(p.x) or 0, y = tonumber(p.y) or 0 }
   local size = { w = K.Own(key, "width") * s, h = K.Own(key, "height") * s }
-  offsetsFrom(rel, L.Rect(anchor, size, screen()))
+  offsetsFrom(rel, LY.Rect(anchor, size, screen()))
 end
 
 -- "Below", "Player frame", and the offsets, for an anchored mover's handle and popover; nil for one that isn't.
 function K.Where(key)
   local to, side, x, y = ns.MoverAnchor(key)
-  if to then return string.format("%s %s", SIDE_NAMES[side] or tostring(side), label(to)), x, y end
+  if to then return ns.Format(SIDE_NAMES[side] or (tostring(side) .. " {frame}"), { frame = label(to) }), x, y end
 end
 
 -- The frame a mover is anchored to, its side and offsets; nothing for one that isn't anchored.
@@ -290,11 +310,11 @@ end
 
 -- Why a mover can't be anchored to `to` on `side` (nil: it can).
 local function anchorRefusal(key, to, side)
-  if to == key then return "A frame can't be anchored to itself." end
+  if to == key then return L["A frame can't be anchored to itself."] end
   if not ns.MoverFrame(to) then return noFrame(to) end
-  if side ~= nil and not L.SIDES[side] then return "Pick a side: left, right, top or bottom." end
+  if side ~= nil and not LY.SIDES[side] then return L["Pick a side: left, right, top or bottom."] end
   if leadsTo(to, key, anchoredTo) then
-    return string.format("%s is anchored to %s already (or to a frame anchored to it), so that would go round in a circle.", label(to), label(key))
+    return ns.Format(L["{other} is anchored to {frame} already (or to a frame anchored to it), so that would go round in a circle."], { other = label(to), frame = label(key) })
   end
 end
 
@@ -315,7 +335,7 @@ function ns.SetMoverAnchor(key, to, side, x, y)
   local why = anchorRefusal(key, to, side)
   if why then return false, why end
   local now = K.RectOf(key)
-  local rel = { to = to, side = side or L.NearestSide(now, K.RectOf(to)) }
+  local rel = { to = to, side = side or LY.NearestSide(now, K.RectOf(to)) }
   if x and y then rel.x, rel.y = round(x), round(y) else offsetsFrom(rel, now) end
   entry(key).rel = rel
   watchSize(to)
@@ -328,17 +348,17 @@ end
 local function outOfRange(key, dim, source)
   local size, range = K.Own(source, dim) * scaleOf(source) / scaleOf(key), sizable[key][dim]
   if size >= range[1] and size <= range[2] then return nil end
-  return string.format("%s is %d %s; %s can be %d to %d.", label(source), round(size), dim == "width" and "wide" or "tall", label(key), range[1], range[2])
+  return ns.Format(DIM_TEXT[dim].range, { other = label(source), size = round(size), frame = label(key), min = range[1], max = range[2] })
 end
 
 -- Why a mover can't match source's width or height (dim); nil when it can (or when unmatching).
 local function matchRefusal(key, dim, source)
   if not ns.MoverFrame(key) then return noFrame(key) end
   if source == nil then return nil end
-  if not (sizable[key] and sizable[key][dim]) then return string.format("%s sets its own %s, so it can't match another frame's.", label(key), dim) end
-  if source == key then return string.format("A frame can't match its own %s.", dim) end
+  if not (sizable[key] and sizable[key][dim]) then return ns.Format(DIM_TEXT[dim].sizesItself, { frame = label(key) }) end
+  if source == key then return DIM_TEXT[dim].itself end
   if not ns.MoverFrame(source) then return noFrame(source) end
-  if leadsTo(source, key, matchOf(dim)) then return string.format("%s already matches the %s of %s.", label(source), dim, label(key)) end
+  if leadsTo(source, key, matchOf(dim)) then return ns.Format(DIM_TEXT[dim].circle, { other = label(source), frame = label(key) }) end
   return outOfRange(key, dim, source)
 end
 
@@ -371,8 +391,8 @@ end
 -- that sizes itself), or nil.
 function ns.MoverSizeLock(key, dim)
   local source = ns.MoverMatch(key, dim)
-  if source then return string.format("Matched to the %s of %s. To unmatch, right-click its handle in unlock mode (/vg unlock) and set Match %s to None.", dim, label(source), dim) end
-  if not (sizable[key] and sizable[key][dim]) then return string.format("%s sets its own %s.", label(key), dim) end
+  if source then return ns.Format(DIM_TEXT[dim].matched, { other = label(source) }) end
+  if not (sizable[key] and sizable[key][dim]) then return ns.Format(DIM_TEXT[dim].locked, { frame = label(key) }) end
 end
 
 -- Sets a mover's own width or height (dim), kept to its range; its size when it was made is saved as unset.
@@ -381,7 +401,7 @@ function ns.SetMoverSize(key, dim, value)
   local why = ns.MoverSizeLock(key, dim)
   if why or type(value) ~= "number" then return false, why end
   local s = sizable[key]
-  local v = L.Within(round(value), s[dim][1], s[dim][2])
+  local v = LY.Within(round(value), s[dim][1], s[dim][2])
   entry(key)[DIMS[dim]] = v ~= round(s.natural[dim]) and v or nil
   return settle(key)
 end

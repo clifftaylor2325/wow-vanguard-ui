@@ -1,93 +1,97 @@
 -- /vg (and /vanguard): unlock/lock, positions, theme, modules, profiles.
 
 local ADDON, ns = ...
+local L = ns.L
 
 local T = ns.Theme
 local chat = ns.Chat
 
+-- The line /vg help starts with.
+local HELP_INTRO = L["A from-scratch UI suite. /vg opens the options window; /vg <command>:"]
+
+-- /vg help: each command as it is typed (never translated) and what it does.
 local HELP = {
-  "A from-scratch UI suite. /vg opens the options window; /vg <command>:",
-  "setup                first-run setup again: layout, screen, look, then move things",
-  "whatsnew             what's new in this version of Vanguard; click a line to open its setting",
-  "unlock | lock        drag handles on every Vanguard frame; click one, then arrow keys nudge (Shift: 10 px)",
-  "reset <frame|all>    put a frame (or every frame) back at its default spot",
-  "frames               list the movable frames",
-  "grid [size|on|off]   the unlock-mode grid; snap on|off   snapping while dragging",
-  "texelsnap [on|off]   still borders, fills and lines snap to the pixel grid (a test; off by default)",
-  "slug [on|off]        world text (nameplates, floating numbers) drawn with the SLUG font flag, at once (a test; off by default)",
-  "framebuffer [on|off] windows drawn through a frame buffer while they open and close (a test; off by default)",
-  "nineslice [on|off]   shadows and glows as one nine-slice texture each, after a reload (a test; off by default)",
-  "icons [on|off]       menu strip icons drawn at their on-screen size, after a /reload (off by default)",
-  "cooldowns [setup]    the Cooldowns page (the game's Cooldown Manager, the gaps row, the buff glow); setup opens the step-by-step wizard",
-  "cdmkeys [on|off]  show the key for each Cooldown Manager spell on its icon (off by default)",
-  "cdmglow [on|off|<percent>]  glow a Cooldown Manager buff icon in its last part, 10 to 60 percent (off by default)",
-  "ornaments [on|off]   a brass rule or corner brackets on the options window, setup and quest log (off by default)",
-  "variant [default|contrast|vellum|classic|midnight|obsidian|moss|ember]  surfaces and text: Slate and brass, High contrast, Vellum and ink, Classic look, Midnight, Obsidian, Moss, Ash and ember",
-  "corners [square|rounded]  panel corners: square (default) or rounded, on every theme",
-  "gradient [on|off]    windows a shade lighter toward the top (off by default)",
-  "accent <rrggbb|name> set the accent color (brass, arcane, jade, orchid, copper); accent reset",
-  "theme reset          every theme setting back to default",
-  "modules              list modules; enable|disable <module> (then /reload)",
-  "skins                addons skinned through Vanguard.RegisterSkin; skins <addon> on|off",
-  "profile [name]       show profiles, or switch this character to one",
-  "profile new|copy|delete <name>, profile reset   manage profiles",
-  "export [part ...|pick]   copy the profile as a string, or only some parts of it: layout, situations, global or a module's name; pick opens a panel with a switch for each part",
-  "import               paste a string from /vg export: a whole profile becomes a new profile, a partial one merges into yours (backed up first)",
-  "preset [name]        presets on offer (Vanguard's healer, damage and tank, and any an addon registers); a name asks to apply it, backed up first",
-  "spec [profile|off]   use a profile whenever you're in this specialization",
-  "copy                 the recent chat of the shown tab as plain text, ready to copy",
-  "situation [record <name>|stop|clear [name]|list]   Situations: record a layout and settings for solo, party, raid, pvp, instance or resting",
-  "watch [add|remove <phrase>|list|clear]   Chat watch: phrases that ring a sound and show a toast when said in chat",
-  "filter [on|off|tab|hide|add|remove <word>|clear]   Chat filter: gold selling, boosting, recruiting and repeat lines go to a Filtered tab (or are hidden)",
-  "history [on|off|whispers|nowhispers|clear]   Chat history: your chat comes back after a reload or the next login (off until switched on)",
-  "quests [history [n]] open or close Vanguard's quest log (the game's quest log key does too); history lists the latest quests any of your characters turned in",
-  "probe [chat|fight|last]   one run out of combat asks the client the open questions (saved quest flag, threat secrecy, group listing, secure paging, realm format, secret predicates, restrictions, navigation, quest and map reads, party health and marks, bar defaults) and opens a copy box; in a fight it takes only the party, mark and boss reads; fight takes the secrecy reads in the next fight; last reopens the saved report",
-  "guide probe         what this client returns for the reads a levelling guide would use (chat only; changes nothing)",
-  "questdata [questID]  what the client says about a quest (or the quests an open NPC offers and those you track), and whether it flags quests new in WoW Forever",
-  "lfg [probe]          open or close the group board: looking-for-more and looking-for-group posts from chat by dungeon, role and level; probe says what chat it has heard",
-  "plates [enemies on|off] how many nameplates Vanguard drew and the game's enemy plate setting; enemies on|off sets it (out of combat)",
-  "stock [<item> <n>]   items to keep in your bags; a merchant tops them up (0 removes, clear empties)",
-  "junk [<item> | remove <item> | clear]   your sell list: items a merchant offers to buy from you with your grays (off until switched on under Town and gear, Merchants)",
-  "bag [add <name> <item>|remove <item>|delete <name>|top <name>|deposit <name>]   your own bag categories: a name and its items, shown under their own header above the built-in sections (first in the list wins)",
-  "sell <item>          at a merchant: sell every stack of an item in your bags, after a question",
-  "craft [add [n]|next|stock|cd|top|done|clear]   the craft queue: queue the recipe on display, open the next one, raise Keep stocked to fit, show cooldowns, rank recipes (off until switched on)",
-  "mail [words]|preset [add <name> <character> [words]|remove <name>]|send <name>|takeall|returnall   search the inbox; presets for sending items to your alts; take everything listed or return it (off until switched on)",
-  "pets                 your pets, out and stabled, with level, loyalty, happiness and progress to the next level",
-  "rolls [clear]        the group's /roll results this session, newest first; clear forgets them",
-  "loot [on|off|add|remove|list|clear|focus|roster]   officer loot tools (off until switched on): a soft-reserve list flagged in the roll tracker, and a group roster",
-  "fights               your DPS, length and place in each fight this session, newest first",
-  "meter [on|off|<kind>|<segment>|reset|report [channel] [lines]]   Vanguard's own meter: the top lines of the game's damage meter in a Vanguard panel (off until switched on); kinds dps hps damage healing taken interrupts dispels deaths, segments this overall previous",
-  "recap [say|party|raid|instance|guild]   the last fight's interrupts, dispels, damage taken and deaths from the game's damage meter, in your chat or sent to that channel",
-  "vendors [clear]      how many merchants Vanguard remembers (for tooltips and the stock list); clear forgets them",
-  "ranks [swap]         spell ranks: bar buttons holding an older rank than you know; swap puts the newest rank there (out of combat). Off until Spell ranks is switched on",
-  "trainers [next|clear]   what the trainers you've visited teach: how many services are remembered, what the next levels bring and where, or forget them (Trainer memory off until switched on)",
-  "gear                 your gear in chat: average item level, melee damage per second and the worn pieces missing an enchant (the character pane also shows item levels; see Game windows)",
-  "alts [<name>]        every character's level, money, rested XP and time played; with a name, that character's bags and bank",
-  "inventory [forget <name>|clear]   your characters remembered here and when their bags were read; forget drops one, clear forgets them all",
-  "weights [wizard|set <stat> <n>|reset|export|import]   the stat weights gear upgrades use for your class and role; the wizard walks you through them, or change one, go back to the defaults, or share them",
-  "prep [want <kind> <n>|setup|buffs] the Instance prep card now: what you're short of (with Dungeon card on: the dungeon's level range, your quests for it and your keys); want sets how many food, bandages, potions, ammo or shards; setup opens the wanted-amounts window; buffs lists your buffs and which buff check each counts for",
-  "legacy [probe|plan ...]   Legacy system: probe lists what the client has for it; plan [add <points> <name>|remove <name>|clear] keeps a list of perks for the tree's 16 points (planner off until switched on)",
-  "talents [plan|spend|clear|export|import]   Talent planner: the plan's summary; plan mode on or off, spend the planned points, clear the plan, share it as a string",
-  "ah [list <name>|add <list> <item>|rename <name>|duplicate|delete|export|import|recent|restock|scan|prices clear]  shopping lists (pick or make one, add an item: a link, an ID or a name; rename, copy, delete, export or import the list in use; recent: the last 20 items searched; restock: the list of what you're short of); scan the auction house (while it's open); forget the prices",
-  "way [zone] x y [title]   a waypoint on the map that the game's arrow points to (a zone by name, or #<map id>); way clear removes it; way recent lists the last eight and way recent <n> goes back to one",
-  "dock                 line up Deadly Boss Mods' bars with the Boss timers spots (move those with unlock); for BigWigs, where to drag its bars",
-  "preview [party|10|25|40|off]   the raid frames filled with sample players, to check them without a group (not saved)",
-  "binds                this spec's click-casting and hover-key bindings (set them in /vg > Click casting)",
-  "keybind              keybind mode: hover an action button and press a key, a side mouse button or the wheel to bind it; Backspace clears, Escape leaves",
-  "status               version, profile, modules, skins, work waiting on combat, what the client has, game restrictions",
-  "factionart           which of the game's own faction pictures this client has",
-  "launch               prices, sales and characters saved from before launch (the beta); launch clear removes them once the game has launched",
-  "realm                your realm, ruleset, game rules (preset, self-found, game mode) and side as the client gives them, and the key your prices, sales and characters are kept under",
-  "frame <name> [deep]  what the client says about a frame now: shown, alpha, scale, size, its rect (or none), anchors and its parents; deep adds its textures and child frames (for a frame that draws empty)",
-  "errors [clear]       opens the errors Vanguard caught this session, with stacks and counts, in the copy window (for a bug report); clear empties the list",
-  "report               one block to copy for a bug report: what /vg status and /vg errors say, ready to paste at vanguardui.com/feedback",
-  "feedback [bug|feature]   a bug report or feature request written here: the questions vanguardui.com/feedback asks, then one block to paste there (it fills the form)",
-  "gaps [add <item>|remove <item>|spell add <spell>|spell remove <spell>|clear]   Cooldown gaps (switch it on under Cooldowns): choose items such as a Healthstone or potion, and spells, to show beside trinkets, pet abilities and totems; no verb lists them",
-  "perf [cpu|watch|slow] Vanguard's CPU (ms a frame) and memory now; cpu turns the game's script profiling on or off (reload) for the busiest functions; watch prints them every minute; slow lists the slowest handlers (slow reset starts over)",
-  "mem                  prints the size of the saved files, then watches Vanguard's memory for a minute (out of combat), then says how much it grew and whether it kept any; again ends it early",
-  "graphics             checks this computer (the graphics card the game sees and the Graphics Quality the game recommends for it), your screen and your frame rate for 5 s (out of combat), then suggests a Graphics Quality and the sizes for your screen; again ends it early",
-  "graphics apply       sets what the check suggested (Graphics Quality as the game's slider does, render scale, your screen's sizes), out of combat",
-  "graphics undo        puts your graphics settings and UI scale back as they were before apply",
+  { "setup", L["first-run setup again: layout, screen, look, then move things"] },
+  { "whatsnew", L["what's new in this version of Vanguard; click a line to open its setting"] },
+  { "unlock | lock", L["drag handles on every Vanguard frame; click one, then arrow keys nudge (Shift: 10 px)"] },
+  { "reset <frame|all>", L["put a frame (or every frame) back at its default spot"] },
+  { "frames", L["list the movable frames"] },
+  { "grid [size|on|off]", L["the unlock-mode grid; snap on|off   snapping while dragging"] },
+  { "texelsnap [on|off]", L["still borders, fills and lines snap to the pixel grid (a test; off by default)"] },
+  { "slug [on|off]", L["world text (nameplates, floating numbers) drawn with the SLUG font flag, at once (a test; off by default)"] },
+  { "framebuffer [on|off]", L["windows drawn through a frame buffer while they open and close (a test; off by default)"] },
+  { "nineslice [on|off]", L["shadows and glows as one nine-slice texture each, after a reload (a test; off by default)"] },
+  { "icons [on|off]", L["menu strip icons drawn at their on-screen size, after a /reload (off by default)"] },
+  { "cooldowns [setup]", L["the Cooldowns page (the game's Cooldown Manager, the gaps row, the buff glow); setup opens the step-by-step wizard"] },
+  { "cdmkeys [on|off]", L["show the key for each Cooldown Manager spell on its icon (off by default)"] },
+  { "cdmglow [on|off|<percent>]", L["glow a Cooldown Manager buff icon in its last part, 10 to 60 percent (off by default)"] },
+  { "ornaments [on|off]", L["a brass rule or corner brackets on the options window, setup and quest log (off by default)"] },
+  { "variant [default|contrast|vellum|classic|midnight|obsidian|moss|ember]", L["surfaces and text: Slate and brass, High contrast, Vellum and ink, Classic look, Midnight, Obsidian, Moss, Ash and ember"] },
+  { "corners [square|rounded]", L["panel corners: square (default) or rounded, on every theme"] },
+  { "gradient [on|off]", L["windows a shade lighter toward the top (off by default)"] },
+  { "accent <rrggbb|name>", L["set the accent color (brass, arcane, jade, orchid, copper); accent reset"] },
+  { "theme reset", L["every theme setting back to default"] },
+  { "modules", L["list modules; enable|disable <module> (then /reload)"] },
+  { "skins", L["addons skinned through Vanguard.RegisterSkin; skins <addon> on|off"] },
+  { "profile [name]", L["show profiles, or switch this character to one"] },
+  { "profile new|copy|delete <name>, profile reset", L["manage profiles"] },
+  { "export [part ...|pick]", L["copy the profile as a string, or only some parts of it: layout, situations, global or a module's name; pick opens a panel with a switch for each part"] },
+  { "import", L["paste a string from /vg export: a whole profile becomes a new profile, a partial one merges into yours (backed up first)"] },
+  { "preset [name]", L["presets on offer (Vanguard's healer, damage and tank, and any an addon registers); a name asks to apply it, backed up first"] },
+  { "spec [profile|off]", L["use a profile whenever you're in this specialization"] },
+  { "copy", L["the recent chat of the shown tab as plain text, ready to copy"] },
+  { "situation [record <name>|stop|clear [name]|list]", L["Situations: record a layout and settings for solo, party, raid, pvp, instance or resting"] },
+  { "watch [add|remove <phrase>|list|clear]", L["Chat watch: phrases that ring a sound and show a toast when said in chat"] },
+  { "filter [on|off|tab|hide|add|remove <word>|clear]", L["Chat filter: gold selling, boosting, recruiting and repeat lines go to a Filtered tab (or are hidden)"] },
+  { "history [on|off|whispers|nowhispers|clear]", L["Chat history: your chat comes back after a reload or the next login (off until switched on)"] },
+  { "quests [history [n]]", L["open or close Vanguard's quest log (the game's quest log key does too); history lists the latest quests any of your characters turned in"] },
+  { "probe [chat|fight|last]", L["one run out of combat asks the client the open questions (saved quest flag, threat secrecy, group listing, secure paging, realm format, secret predicates, restrictions, navigation, quest and map reads, party health and marks, bar defaults) and opens a copy box; in a fight it takes only the party, mark and boss reads; fight takes the secrecy reads in the next fight; last reopens the saved report"] },
+  { "guide probe", L["what this client returns for the reads a levelling guide would use (chat only; changes nothing)"] },
+  { "questdata [questID]", L["what the client says about a quest (or the quests an open NPC offers and those you track), and whether it flags quests new in WoW Forever"] },
+  { "lfg [probe]", L["open or close the group board: looking-for-more and looking-for-group posts from chat by dungeon, role and level; probe says what chat it has heard"] },
+  { "plates [enemies on|off]", L["how many nameplates Vanguard drew and the game's enemy plate setting; enemies on|off sets it (out of combat)"] },
+  { "stock [<item> <n>]", L["items to keep in your bags; a merchant tops them up (0 removes, clear empties)"] },
+  { "junk [<item> | remove <item> | clear]", L["your sell list: items a merchant offers to buy from you with your grays (off until switched on under Town and gear, Merchants)"] },
+  { "bag [add <name> <item>|remove <item>|delete <name>|top <name>|deposit <name>]", L["your own bag categories: a name and its items, shown under their own header above the built-in sections (first in the list wins)"] },
+  { "sell <item>", L["at a merchant: sell every stack of an item in your bags, after a question"] },
+  { "craft [add [n]|next|stock|cd|top|done|clear]", L["the craft queue: queue the recipe on display, open the next one, raise Keep stocked to fit, show cooldowns, rank recipes (off until switched on)"] },
+  { "mail [words]|preset [add <name> <character> [words]|remove <name>]|send <name>|takeall|returnall", L["search the inbox; presets for sending items to your alts; take everything listed or return it (off until switched on)"] },
+  { "pets", L["your pets, out and stabled, with level, loyalty, happiness and progress to the next level"] },
+  { "rolls [clear]", L["the group's /roll results this session, newest first; clear forgets them"] },
+  { "loot [on|off|add|remove|list|clear|focus|roster]", L["officer loot tools (off until switched on): a soft-reserve list flagged in the roll tracker, and a group roster"] },
+  { "fights", L["your DPS, length and place in each fight this session, newest first"] },
+  { "meter [on|off|<kind>|<segment>|reset|report [channel] [lines]]", L["Vanguard's own meter: the top lines of the game's damage meter in a Vanguard panel (off until switched on); kinds dps hps damage healing taken interrupts dispels deaths, segments this overall previous"] },
+  { "recap [say|party|raid|instance|guild]", L["the last fight's interrupts, dispels, damage taken and deaths from the game's damage meter, in your chat or sent to that channel"] },
+  { "vendors [clear]", L["how many merchants Vanguard remembers (for tooltips and the stock list); clear forgets them"] },
+  { "ranks [swap]", L["spell ranks: bar buttons holding an older rank than you know; swap puts the newest rank there (out of combat). Off until Spell ranks is switched on"] },
+  { "trainers [next|clear]", L["what the trainers you've visited teach: how many services are remembered, what the next levels bring and where, or forget them (Trainer memory off until switched on)"] },
+  { "gear", L["your gear in chat: average item level, melee damage per second and the worn pieces missing an enchant (the character pane also shows item levels; see Game windows)"] },
+  { "alts [<name>]", L["every character's level, money, rested XP and time played; with a name, that character's bags and bank"] },
+  { "inventory [forget <name>|clear]", L["your characters remembered here and when their bags were read; forget drops one, clear forgets them all"] },
+  { "weights [wizard|set <stat> <n>|reset|export|import]", L["the stat weights gear upgrades use for your class and role; the wizard walks you through them, or change one, go back to the defaults, or share them"] },
+  { "prep [want <kind> <n>|setup|buffs]", L["the Instance prep card now: what you're short of (with Dungeon card on: the dungeon's level range, your quests for it and your keys); want sets how many food, bandages, potions, ammo or shards; setup opens the wanted-amounts window; buffs lists your buffs and which buff check each counts for"] },
+  { "legacy [probe|plan ...]", L["Legacy system: probe lists what the client has for it; plan [add <points> <name>|remove <name>|clear] keeps a list of perks for the tree's 16 points (planner off until switched on)"] },
+  { "talents [plan|spend|clear|export|import]", L["Talent planner: the plan's summary; plan mode on or off, spend the planned points, clear the plan, share it as a string"] },
+  { "ah [list <name>|add <list> <item>|rename <name>|duplicate|delete|export|import|recent|restock|scan|prices clear]", L["shopping lists (pick or make one, add an item: a link, an ID or a name; rename, copy, delete, export or import the list in use; recent: the last 20 items searched; restock: the list of what you're short of); scan the auction house (while it's open); forget the prices"] },
+  { "way [zone] x y [title]", L["a waypoint on the map that the game's arrow points to (a zone by name, or #<map id>); way clear removes it; way recent lists the last eight and way recent <n> goes back to one"] },
+  { "dock", L["line up Deadly Boss Mods' bars with the Boss timers spots (move those with unlock); for BigWigs, where to drag its bars"] },
+  { "preview [party|10|25|40|off]", L["the raid frames filled with sample players, to check them without a group (not saved)"] },
+  { "binds", L["this spec's click-casting and hover-key bindings (set them in /vg > Click casting)"] },
+  { "keybind", L["keybind mode: hover an action button and press a key, a side mouse button or the wheel to bind it; Backspace clears, Escape leaves"] },
+  { "status", L["version, profile, modules, skins, work waiting on combat, what the client has, game restrictions"] },
+  { "factionart", L["which of the game's own faction pictures this client has"] },
+  { "launch", L["prices, sales and characters saved from before launch (the beta); launch clear removes them once the game has launched"] },
+  { "realm", L["your realm, ruleset, game rules (preset, self-found, game mode) and side as the client gives them, and the key your prices, sales and characters are kept under"] },
+  { "frame <name> [deep]", L["what the client says about a frame now: shown, alpha, scale, size, its rect (or none), anchors and its parents; deep adds its textures and child frames (for a frame that draws empty)"] },
+  { "errors [clear]", L["opens the errors Vanguard caught this session, with stacks and counts, in the copy window (for a bug report); clear empties the list"] },
+  { "report", L["one block to copy for a bug report: what /vg status and /vg errors say, ready to paste at vanguardui.com/feedback"] },
+  { "feedback [bug|feature]", L["a bug report or feature request written here: the questions vanguardui.com/feedback asks, then one block to paste there (it fills the form)"] },
+  { "gaps [add <item>|remove <item>|spell add <spell>|spell remove <spell>|clear]", L["Cooldown gaps (switch it on under Cooldowns): choose items such as a Healthstone or potion, and spells, to show beside trinkets, pet abilities and totems; no verb lists them"] },
+  { "perf [cpu|watch|slow]", L["Vanguard's CPU (ms a frame) and memory now; cpu turns the game's script profiling on or off (reload) for the busiest functions; watch prints them every minute; slow lists the slowest handlers (slow reset starts over)"] },
+  { "mem", L["prints the size of the saved files, then watches Vanguard's memory for a minute (out of combat), then says how much it grew and whether it kept any; again ends it early"] },
+  { "graphics", L["checks this computer (the graphics card the game sees and the Graphics Quality the game recommends for it), your screen and your frame rate for 5 s (out of combat), then suggests a Graphics Quality and the sizes for your screen; again ends it early"] },
+  { "graphics apply", L["sets what the check suggested (Graphics Quality as the game's slider does, render scale, your screen's sizes), out of combat"] },
+  { "graphics undo", L["puts your graphics settings and UI scale back as they were before apply"] },
 }
 
 -- Prints each line.
@@ -97,37 +101,43 @@ local function printLines(lines)
   end
 end
 
+-- /vg help: the intro, then each command and what it does, the commands in one column.
+local function helpCommand()
+  chat(HELP_INTRO)
+  for _, entry in ipairs(HELP) do chat(string.format("%-20s %s", entry[1], entry[2])) end
+end
+
 -- "on" / "off" in green / gray.
 local function onOff(on)
-  return on and T.Paint("on", "good") or T.Paint("off", "muted")
+  return on and T.Paint(L["on"], "good") or T.Paint(L["off"], "muted")
 end
 
 -- /vg unlock
 local function unlockCommand()
   if ns.Unlock() then
-    chat("Unlocked: drag the handles. /vg lock when done.")
+    chat(L["Unlocked: drag the handles. /vg lock when done."])
   else
-    chat("In combat. Try again once combat ends.")
+    chat(L["In combat. Try again once combat ends."])
   end
 end
 
 -- /vg lock
 local function lockCommand()
   ns.Lock()
-  chat("Locked.")
+  chat(L["Locked."])
 end
 
 -- /vg reset <frame|all>
 local function resetCommand(rest)
   local key = rest ~= "" and rest or "all"
   local n = ns.ResetMovers(key)
-  chat(n > 0 and string.format("Reset %d frame(s).", n) or ("No frame called " .. key .. ". /vg frames lists them."))
+  chat(n > 0 and ns.Format(L["Reset {count} frame(s)."], { count = n }) or ns.Format(L["No frame called {name}. /vg frames lists them."], { name = key }))
 end
 
 -- /vg frames
 local function framesCommand()
   local list = ns.MoverList()
-  chat(#list == 0 and "No movable frames yet (enable a module)." or "Movable frames:")
+  chat(#list == 0 and L["No movable frames yet (enable a module)."] or L["Movable frames:"])
   for _, m in ipairs(list) do
     chat(string.format("  %s  (%s)", m.key, m.label))
   end
@@ -136,14 +146,14 @@ end
 -- /vg frame <name> [deep]
 local function frameCommand(rest)
   local name, deep = rest:match("^(%S+)%s*(%S*)$")
-  if not name then return chat("Usage: /vg frame <name> [deep]   (a global frame name; dots follow keys: MinimapCluster.Tracking; #3 is the third child frame)") end
+  if not name then return chat(L["Usage: /vg frame <name> [deep]   (a global frame name; dots follow keys: MinimapCluster.Tracking; #3 is the third child frame)"]) end
   printLines(ns.Inspect.Lines(name, deep:lower() == "deep"))
 end
 
 -- /vg accent reset
 local function resetAccent()
   T.ResetAccent()
-  chat("Accent back to default.")
+  chat(L["Accent back to default."])
 end
 
 -- /vg accent <rrggbb> | reset
@@ -153,10 +163,10 @@ local function accentCommand(rest)
   end
   local r, g, b = T.ParseColor(rest:lower())
   if not r then
-    return chat("Usage: /vg accent rrggbb | brass | arcane | jade | orchid | copper")
+    return chat(L["Usage: /vg accent rrggbb | brass | arcane | jade | orchid | copper"])
   end
   T.SetAccent(r, g, b)
-  chat("Accent set to " .. rest:lower() .. ".")
+  chat(ns.Format(L["Accent set to {accent}."], { accent = rest:lower() }))
 end
 
 -- Re-shows the grid with the current options while unlocked.
@@ -173,10 +183,10 @@ local function gridCommand(rest)
   elseif rest == "on" or rest == "off" or rest == "" then
     o.grid = rest == "on" or (rest == "" and not o.grid)
   else
-    return chat("Usage: /vg grid [8-256 | on | off]")
+    return chat(L["Usage: /vg grid [8-256 | on | off]"])
   end
   refreshGrid()
-  chat(o.grid and string.format("Grid on, every %d px.", o.gridSize) or "Grid off.")
+  chat(o.grid and ns.Format(L["Grid on, every {size} px."], { size = o.gridSize }) or L["Grid off."])
 end
 
 -- A switch command's word as the switch's new state: on, off (in any case), or nothing for the other of
@@ -203,51 +213,51 @@ end
 
 -- /vg snap on|off
 local snapCommand = switchCommand({
-  usage = "Usage: /vg snap [on|off]",
+  usage = L["Usage: /vg snap [on|off]"],
   read = function() return ns.MoverOptions().snap end,
   write = function(on) ns.MoverOptions().snap = on end,
-  onText = "Snapping on.", offText = "Snapping off.",
+  onText = L["Snapping on."], offText = L["Snapping off."],
 })
 
 -- /vg texelsnap [on|off]: pixel-grid snapping for still textures, for the A/B test (#226).
 local texelSnapCommand = switchCommand({
-  usage = "Usage: /vg texelsnap [on|off]",
+  usage = L["Usage: /vg texelsnap [on|off]"],
   read = function() return T.Settings().texelSnap end,
   write = function(on) T.SetTexelSnap(on) end,
-  onText = "Texel snapping on: borders, fills, dividers and sheens snap to the pixel grid.", offText = "Texel snapping off.",
+  onText = L["Texel snapping on: borders, fills, dividers and sheens snap to the pixel grid."], offText = L["Texel snapping off."],
 })
 
 -- /vg nineslice [on|off]: shadows and glows as one nine-slice texture each, after a reload (#236).
 local nineSliceCommand = switchCommand({
-  usage = "Usage: /vg nineslice [on|off]",
+  usage = L["Usage: /vg nineslice [on|off]"],
   read = function() return T.Settings().sliceRings end,
   write = function(on) T.Settings().sliceRings = on end,
-  onText = "Nine-slice shadows on after a /reload.", offText = "Nine-slice shadows off after a /reload.",
+  onText = L["Nine-slice shadows on after a /reload."], offText = L["Nine-slice shadows off after a /reload."],
 })
 
 -- /vg cdmglow [on|off|<percent>]: the Cooldown Manager refresh-window glow (#252), at once.
 local function cdmGlowCommand(rest)
   local CG = ns.GetModule("CooldownGlow")
-  if not CG.settings then return chat("Cooldown glow is off: turn the module on in the options first.") end
+  if not CG.settings then return chat(L["Cooldown glow is off: turn the module on in the options first."]) end
   local percent = tonumber(rest)
   if percent then CG.SetPercent(percent) end
   local on = percent ~= nil or toggleWord(rest, CG.settings.glow)
-  if on == nil then return chat("Usage: /vg cdmglow [on|off|<percent>]") end
+  if on == nil then return chat(L["Usage: /vg cdmglow [on|off|<percent>]"]) end
   CG.SetGlow(on)
-  chat(CG.settings.glow and ("Cooldown Manager glow on: under " .. CG.settings.percent .. " percent left.") or "Cooldown Manager glow off.")
+  chat(CG.settings.glow and ns.Format(L["Cooldown Manager glow on: under {percent} percent left."], { percent = CG.settings.percent }) or L["Cooldown Manager glow off."])
 end
 
 -- /vg cdmkeys [on|off]: key text on the Cooldown Manager's icons, at once.
 local cdmKeysSwitch = switchCommand({
-  usage = "Usage: /vg cdmkeys [on|off]",
+  usage = L["Usage: /vg cdmkeys [on|off]"],
   read = function() return ns.GetModule("CooldownKeys").settings.keys end,
   write = function(on) ns.GetModule("CooldownKeys").SetKeys(on) end,
-  onText = "Cooldown Manager keys on.", offText = "Cooldown Manager keys off.",
+  onText = L["Cooldown Manager keys on."], offText = L["Cooldown Manager keys off."],
 })
 
 -- /vg cdmkeys: the module must be on first (its settings exist only then).
 local function cdmKeysCommand(rest)
-  if not ns.GetModule("CooldownKeys").settings then return chat("The Cooldown Manager keys module is off. Turn it on under /vg > Modules, then /reload.") end
+  if not ns.GetModule("CooldownKeys").settings then return chat(L["The Cooldown Manager keys module is off. Turn it on under /vg > Modules, then /reload."]) end
   return cdmKeysSwitch(rest)
 end
 
@@ -259,77 +269,77 @@ end
 
 -- /vg gradient [on|off]: floating windows' fills a shade lighter toward the top, at once (#259).
 local gradientCommand = switchCommand({
-  usage = "Usage: /vg gradient [on|off]",
+  usage = L["Usage: /vg gradient [on|off]"],
   read = function() return T.Settings().panelGradient end,
   write = function(on) T.Settings().panelGradient = on end,
   after = function() T.Refresh() end,
-  onText = "Panel gradient on: windows run a shade lighter toward the top.", offText = "Panel gradient off.",
+  onText = L["Panel gradient on: windows run a shade lighter toward the top."], offText = L["Panel gradient off."],
 })
 
 -- /vg ornaments [on|off]: window ornaments, repainted at once (#238).
 local ornamentsCommand = switchCommand({
-  usage = "Usage: /vg ornaments [on|off]",
+  usage = L["Usage: /vg ornaments [on|off]"],
   read = function() return T.Settings().ornaments end,
   write = function(on) T.Settings().ornaments = on end,
   after = function() T.Refresh() end,
-  onText = "Window ornaments on.", offText = "Window ornaments off.",
+  onText = L["Window ornaments on."], offText = L["Window ornaments off."],
 })
 
 -- /vg icons [on|off]: line and menu icons baked at their on-screen size (#232), after a /reload.
 local iconsCommand = switchCommand({
-  usage = "Usage: /vg icons [on|off]",
+  usage = L["Usage: /vg icons [on|off]"],
   read = function() return T.Settings().sizedIcons end,
   write = function(on) T.Settings().sizedIcons = on end,
-  onText = "Sized icons on after a /reload.", offText = "Sized icons off after a /reload.",
+  onText = L["Sized icons on after a /reload."], offText = L["Sized icons off after a /reload."],
 })
 
 -- /vg variant [name]: a theme variant (#237), repainted at once.
 local function variantCommand(rest)
   if rest == "" then rest = T.Settings().variant end
-  if rest ~= "default" and not T.VARIANTS[rest] then return chat("Usage: /vg variant default|contrast|vellum|classic|midnight|obsidian|moss|ember") end
+  if rest ~= "default" and not T.VARIANTS[rest] then return chat(L["Usage: /vg variant default|contrast|vellum|classic|midnight|obsidian|moss|ember"]) end
   T.Settings().variant = rest
   T.Refresh()
-  chat("Theme variant: " .. (T.VARIANTS[rest] and T.VARIANTS[rest].label or "Slate and brass") .. ".")
+  chat(ns.Format(L["Theme variant: {variant}."], { variant = T.VARIANTS[rest] and T.VARIANTS[rest].label or L["Slate and brass"] }))
 end
 
 -- /vg corners [square|rounded]: panel corners on every theme, repainted at once (no argument shows the current one).
 local function cornersCommand(rest)
   if rest == "" then rest = T.Settings().corners end
-  if rest ~= "square" and rest ~= "rounded" then return chat("Usage: /vg corners square|rounded") end
+  if rest ~= "square" and rest ~= "rounded" then return chat(L["Usage: /vg corners square|rounded"]) end
   T.Settings().corners = rest
   T.Refresh()
-  chat("Corners: " .. rest .. ".")
+  chat(ns.Format(L["Corners: {corners}."], { corners = rest }))
 end
 
 -- /vg slug [on|off]: the SLUG font flag on world text, repainted at once (#239).
 local slugCommand = switchCommand({
-  usage = "Usage: /vg slug [on|off]",
+  usage = L["Usage: /vg slug [on|off]"],
   read = function() return T.Settings().slugText end,
   write = function(on) T.Settings().slugText = on end,
   after = function() T.RefreshText() end,
-  onText = "SLUG text on for world text.", offText = "SLUG text off.",
+  onText = L["SLUG text on for world text."], offText = L["SLUG text off."],
 })
 
 -- /vg framebuffer [on|off]: windows go through a frame buffer while they fade (#239).
 local frameBufferCommand = switchCommand({
-  usage = "Usage: /vg framebuffer [on|off]",
+  usage = L["Usage: /vg framebuffer [on|off]"],
   read = function() return T.Settings().frameBuffer end,
   write = function(on) T.Settings().frameBuffer = on end,
-  onText = "Frame buffers on while windows open and close.", offText = "Frame buffers off.",
+  onText = L["Frame buffers on while windows open and close."], offText = L["Frame buffers off."],
 })
 
 -- /vg theme reset
 local function themeCommand(rest)
   if rest ~= "reset" then
-    return chat("Usage: /vg theme reset")
+    return chat(L["Usage: /vg theme reset"])
   end
-  chat(ns.Options.ResetTheme() and "Theme back to defaults (reload to apply)." or "Theme back to defaults.")
+  chat(ns.Options.ResetTheme() and L["Theme back to defaults (reload to apply)."] or L["Theme back to defaults."])
 end
 
 -- /vg modules
 local function modulesCommand()
   local names = ns.ModuleNames()
-  chat(#names == 0 and "No modules yet." or "Modules (enable|disable <module>, then /reload):")
+  chat(#names == 0 and L["No modules yet."] or L["Modules (enable|disable <module>, then /reload):"])
   for _, name in ipairs(names) do
     chat(string.format("  %s  %s", name, onOff(ns.ModuleEnabled(name))))
   end
@@ -345,22 +355,22 @@ end
 -- /vg enable|disable <module>: the module's name may be typed in any case; with no name, the usage line.
 local function setModule(on)
   return function(rest)
-    if rest == "" then return chat(string.format("Usage: /vg %s <module>. /vg modules lists them.", on and "enable" or "disable")) end
+    if rest == "" then return chat(ns.Format(L["Usage: /vg {command} <module>. /vg modules lists them."], { command = on and "enable" or "disable" })) end
     local name = matchName(ns.ModuleNames(), rest)
     if not name then
-      return chat("No module called " .. rest .. ". /vg modules lists them.")
+      return chat(ns.Format(L["No module called {name}. /vg modules lists them."], { name = rest }))
     end
     ns.SetModuleEnabled(name, on)
-    chat(string.format("%s %s. /reload to apply.", name, on and "enabled" or "disabled"))
+    chat(ns.Format(on and L["{module} enabled. /reload to apply."] or L["{module} disabled. /reload to apply."], { module = name }))
   end
 end
 
 -- One line per registered skin.
 local function listSkins()
   local list = ns.SkinList()
-  chat(#list == 0 and "No addon has registered a skin." or "Skinned addons:")
+  chat(#list == 0 and L["No addon has registered a skin."] or L["Skinned addons:"])
   for _, s in ipairs(list) do
-    chat(string.format("  %s  %s%s", s.name, onOff(s.enabled), s.error and ("  error: " .. s.error) or ""))
+    chat(string.format("  %s  %s%s", s.name, onOff(s.enabled), s.error and ("  " .. ns.Format(L["error: {error}"], { error = s.error })) or ""))
   end
 end
 
@@ -378,35 +388,35 @@ local function skinsCommand(rest)
     return listSkins()
   end
   local name, on = matchName(skinNames(), typed), state:lower()
-  if not name then return chat("No skin called " .. typed .. ". /vg skins lists them.") end
-  if on ~= "on" and on ~= "off" then return chat("Usage: /vg skins " .. name .. " on|off") end
+  if not name then return chat(ns.Format(L["No skin called {name}. /vg skins lists them."], { name = typed })) end
+  if on ~= "on" and on ~= "off" then return chat(ns.Format(L["Usage: /vg skins {addon} on|off"], { addon = name })) end
   ns.Settings("skins")[name] = on == "on"
-  chat(string.format("Skin for %s %s. /reload to apply.", name, on))
+  chat(ns.Format(on == "on" and L["Skin for {addon} on. /reload to apply."] or L["Skin for {addon} off. /reload to apply."], { addon = name }))
 end
 
 -- /vg profile <name>: stage the switch, creating the profile if new, and offer the reload that applies it.
 local function useProfile(name)
   if not ns.ValidProfileName(name) then
-    return chat("Profile names are 1-32 letters, digits, spaces, - or _.")
+    return chat(L["Profile names are 1-32 letters, digits, spaces, - or _."])
   end
   ns.UseProfile(name)
-  if not ns.PendingProfileName() then return chat("This character already uses profile " .. name .. ".") end
-  ns.OfferReload("This character will use profile " .. name .. " after the reload.")
+  if not ns.PendingProfileName() then return chat(ns.Format(L["This character already uses profile {profile}."], { profile = name })) end
+  ns.OfferReload(ns.Format(L["This character will use profile {profile} after the reload."], { profile = name }))
 end
 
 -- profile subcommands: new, copy, delete, reset.
 local PROFILE_ACTIONS = {
   -- /vg profile new <name>
-  new = function(name) chat(ns.NewProfile(name) and ("Created profile " .. name .. ".") or "That name is taken or not allowed.") end,
+  new = function(name) chat(ns.NewProfile(name) and ns.Format(L["Created profile {profile}."], { profile = name }) or L["That name is taken or not allowed."]) end,
   -- /vg profile copy <from>
   copy = function(name)
     local into = ns.CopyProfile(name)
-    if not into then return chat("No other profile called " .. name .. ".") end
+    if not into then return chat(ns.Format(L["No other profile called {profile}."], { profile = name })) end
     ns.Options.ProfileCopied(into)
-    ns.OfferReload("Copied " .. name .. " into " .. into .. ".")
+    ns.OfferReload(ns.Format(L["Copied {from} into {profile}."], { from = name, profile = into }))
   end,
   -- /vg profile delete <name>
-  delete = function(name) chat(ns.DeleteProfile(name) and ("Deleted profile " .. name .. ".") or "Can't delete that one (missing, or in use).") end,
+  delete = function(name) chat(ns.DeleteProfile(name) and ns.Format(L["Deleted profile {profile}."], { profile = name }) or L["Can't delete that one (missing, or in use)."]) end,
   -- /vg profile reset: asks and backs up first, as the Profiles page's Reset profile does
   reset = function() ns.Options.AskResetProfile() end,
 }
@@ -414,8 +424,8 @@ local PROFILE_ACTIONS = {
 -- /vg profile [new|copy|delete <name> | reset | <name>]
 local function profileCommand(rest)
   if rest == "" then
-    local later = ns.PendingProfileName() and ("; " .. ns.PendingProfileName() .. " after a reload") or ""
-    return chat("Profile: " .. ns.ProfileName() .. later .. "   (all: " .. table.concat(ns.ProfileNames(), ", ") .. ")")
+    local text = ns.PendingProfileName() and L["Profile: {profile}; {next} after a reload   (all: {all})"] or L["Profile: {profile}   (all: {all})"]
+    return chat(ns.Format(text, { profile = ns.ProfileName(), next = ns.PendingProfileName(), all = table.concat(ns.ProfileNames(), ", ") }))
   end
   local action, name = rest:match("^(%S+)%s*(.-)$")
   local handler = PROFILE_ACTIONS[action:lower()]
@@ -435,13 +445,13 @@ end
 local function exportCommand(rest)
   if rest:lower() == "pick" then return ns.ExportDialog() end
   local text, err = ns.ExportProfile(rest ~= "" and words(rest) or nil)
-  if not text then return chat("Nothing to export: " .. err .. ".") end
-  ns.ShowText("Vanguard export (" .. (rest ~= "" and rest or "profile " .. ns.ProfileName()) .. ")  Ctrl+C to copy", text)
+  if not text then return chat(ns.Format(L["Nothing to export: {reason}."], { reason = err })) end
+  ns.ShowText(ns.ExportTitle(rest ~= "" and rest or nil), text)
 end
 
 -- The import box's progress while a large string is read: "Importing… 40%" in its title.
 local function importProgress(percent)
-  ns.TextProgress("Importing… " .. percent .. "%")
+  ns.TextProgress(ns.Format(L["Importing… {percent}%"], { percent = percent }))
 end
 
 -- The end of /vg import: why it failed (the box stays, to try again), or the notes (fonts and
@@ -450,7 +460,7 @@ end
 local function imported(done, detail)
   if not done then
     ns.TextProgress(nil)
-    return chat("Import failed: " .. detail .. ".")
+    return chat(ns.Format(L["Import failed: {reason}."], { reason = detail }))
   end
   ns.HideText()
   printLines(detail.notes)
@@ -461,8 +471,8 @@ end
 -- /vg import: a box to paste into. A large string is read a frame's work at a time, with
 -- its progress in the box's title (Core/ProfileStrings.lua's ns.StartImport).
 local function importCommand()
-  ns.AskText("Paste a Vanguard string, then Import", function(text)
-    if not ns.StartImport(text, importProgress, imported) then chat("Import failed: an import is still running.") end
+  ns.AskText(L["Paste a Vanguard string, then Import"], function(text)
+    if not ns.StartImport(text, importProgress, imported) then chat(L["Import failed: an import is still running."]) end
   end)
 end
 
@@ -473,14 +483,14 @@ ns.ImportDone = imported
 local function presetCommand(rest)
   local preset = ns.FindPreset(rest)
   if preset then return ns.AskPreset(preset) end
-  chat(rest == "" and "Presets (/vg preset <name> applies one):" or ("No preset called " .. rest .. ". Presets:"))
+  chat(rest == "" and L["Presets (/vg preset <name> applies one):"] or ns.Format(L["No preset called {name}. Presets:"], { name = rest }))
   for _, p in ipairs(Vanguard.GetPresets()) do chat("  " .. p.name .. (p.info ~= "" and ("  -  " .. p.info) or "")) end
 end
 
 -- One /vg binds line: the key, what it does, and (in the warning colour) why it does nothing when the game won't run it.
 local function bindLine(CC, b)
   local why = CC.WontRun(b)
-  local note = why and ("  " .. T.Paint("(does nothing: " .. why .. ")", "warn")) or ""
+  local note = why and ("  " .. T.Paint(ns.Format(L["(does nothing: {why})"], { why = why }), "warn")) or ""
   return "  " .. CC.KeyText(b.key) .. "  ->  " .. CC.ActionText(b) .. note
 end
 
@@ -488,22 +498,22 @@ end
 local function bindsCommand()
   local CC = ns.GetModule("ClickCast")
   local list = CC and CC.Bindings() or {}
-  if CC and CC.UsesGame() then chat("The game's click bindings are in use; Vanguard's below rest until you switch back.") end
-  chat(#list == 0 and "No click-casting bindings for this spec. /vg > Click casting to add some." or "Click casting (this spec):")
+  if CC and CC.UsesGame() then chat(L["The game's click bindings are in use; Vanguard's below rest until you switch back."]) end
+  chat(#list == 0 and L["No click-casting bindings for this spec. /vg > Click casting to add some."] or L["Click casting (this spec):"])
   for _, b in ipairs(list) do chat(bindLine(CC, b)) end
 end
 
 -- /vg spec [profile|off]
 local function specCommand(rest)
-  if not ns.HasSpecs() then return chat("This client has no specializations, so profiles don't switch by spec.") end
+  if not ns.HasSpecs() then return chat(L["This client has no specializations, so profiles don't switch by spec."]) end
   local spec = ns.SpecIndex()
-  if not spec then return chat("No specialization on this character yet.") end
+  if not spec then return chat(L["No specialization on this character yet."]) end
   if rest == "" then
-    return chat(string.format("Spec %d uses %s.", spec, ns.SpecProfile(spec) or "the character's profile (no spec profile set)"))
+    return chat(ns.Format(L["Spec {spec} uses {profile}."], { spec = spec, profile = ns.SpecProfile(spec) or L["the character's profile (no spec profile set)"] }))
   end
-  if rest ~= "off" and not VanguardDB.profiles[rest] then return chat("No profile called " .. rest .. ". /vg profile new " .. rest .. " first.") end
+  if rest ~= "off" and not VanguardDB.profiles[rest] then return chat(ns.Format(L["No profile called {profile}. /vg profile new {profile} first."], { profile = rest })) end
   ns.SetSpecProfile(rest ~= "off" and rest or nil, spec)
-  chat(rest == "off" and "This spec no longer switches profiles." or ("Spec " .. spec .. " now uses profile " .. rest .. "."))
+  chat(rest == "off" and L["This spec no longer switches profiles."] or ns.Format(L["Spec {spec} now uses profile {profile}."], { spec = spec, profile = rest }))
 end
 
 -- The addon version from the TOC (Core/WhatsNew.lua reads it).
@@ -607,10 +617,10 @@ end
 -- /vg errors [clear]: the errors Vanguard caught this session, newest last, in the
 -- copy window with the version, client and aura backend a bug report needs; clear empties the list.
 local function errorsCommand(rest)
-  if rest == "clear" then ns.ClearErrors() return chat("Cleared.") end
-  if #ns.errors == 0 then return chat("No errors caught this session.") end
-  chat(string.format("%d error(s), opened in the copy window.", #ns.errors))
-  ns.ShowErrors("Vanguard errors: Ctrl+C to copy", errorsText())
+  if rest == "clear" then ns.ClearErrors() return chat(L["Cleared."]) end
+  if #ns.errors == 0 then return chat(L["No errors caught this session."]) end
+  chat(ns.Format(L["{count} error(s), opened in the copy window."], { count = #ns.errors }))
+  ns.ShowErrors(L["Vanguard errors: Ctrl+C to copy"], errorsText())
 end
 
 -- /vg report ----------------------------------------------------------------------------
@@ -683,7 +693,7 @@ end
 
 -- /vg report: one block, selected for copying, to paste into the feedback form on vanguardui.com.
 local function reportCommand()
-  ns.ShowText("Vanguard report: Ctrl+C, then paste at vanguardui.com/feedback", ns.ReportText())
+  ns.ShowText(L["Vanguard report: Ctrl+C, then paste at vanguardui.com/feedback"], ns.ReportText())
 end
 
 -- /vg feedback [bug|feature]: the feedback form (Core/Feedback.lua), on that kind when one is given.
@@ -694,7 +704,7 @@ end
 -- /vg stock: the Errands module's stock list, which exists only while that module is on.
 local function stockCommand(rest)
   local ER = ns.GetModule("Errands")
-  if not ER.settings then return chat("Vanguard's Errands are off (/vg > Modules).") end
+  if not ER.settings then return chat(L["Vanguard's Errands are off (/vg > Modules)."]) end
   ER.StockCommand(rest)
 end
 
@@ -702,7 +712,7 @@ end
 local function merchantCommand(method)
   return function(rest)
     local MC = ns.GetModule("Merchant")
-    if not MC.settings then return chat("Vanguard's Merchant helpers are off (/vg > Modules).") end
+    if not MC.settings then return chat(L["Vanguard's Merchant helpers are off (/vg > Modules)."]) end
     MC[method](rest)
   end
 end
@@ -711,12 +721,12 @@ end
 local function questsCommand(rest)
   if rest:lower():match("^history") then return ns.GetModule("QuestHistory").Command(rest) end
   local QL = ns.GetModule("QuestLog")
-  if QL.frame then QL.Toggle() else chat("Vanguard's quest log is off (/vg > Quests).") end
+  if QL.frame then QL.Toggle() else chat(L["Vanguard's quest log is off (/vg > Quests)."]) end
 end
 
 local COMMANDS = {
   -- /vg help
-  help = function() printLines(HELP) end,
+  help = helpCommand,
   -- /vg preset [name]
   preset = presetCommand,
   -- /vg options (also /vg with nothing after it)
@@ -815,7 +825,7 @@ local function handleSlash(msg)
   if cmd == "" then
     return ns.Try("slash options", ns.Options.Toggle)
   end
-  local handler = COMMANDS[cmd:lower()] or function() chat("Unknown command. /vg help") end
+  local handler = COMMANDS[cmd:lower()] or function() chat(L["Unknown command. /vg help"]) end
   ns.Try("slash " .. cmd:lower(), handler, rest)
 end
 

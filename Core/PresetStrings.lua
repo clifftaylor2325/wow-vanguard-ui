@@ -6,6 +6,7 @@
 -- The strings are made here from the tables, so the two can't drift apart.
 
 local ADDON, ns = ...
+local L = ns.L
 
 -- What each role sets, by module. Healer: frames sorted by role with power bars, raid
 -- debuffs, HoTs, incoming heals, shields, a buff watch, and short debuff rows on nameplates
@@ -45,7 +46,7 @@ local function presetText(role)
 end
 
 ns.BUILTIN_PRESETS = {
-  { name = "Healer", info = "Raid frames sorted by role with power bars, raid debuffs, HoTs and incoming heals, short debuff rows and no buffs on players' nameplates.", text = presetText("Healer") },
-  { name = "Damage", info = "Compact raid frames without power bars or heal overlays, longer debuff rows, threat colours and no buffs on players' nameplates.", text = presetText("Damage") },
-  { name = "Tank", info = "Raid frames sorted by role with the aggro strip, threat colours, target border and buff rows on nameplates.", text = presetText("Tank") },
+  { name = "Healer", info = L["Raid frames sorted by role with power bars, raid debuffs, HoTs and incoming heals, short debuff rows and no buffs on players' nameplates."], text = presetText("Healer") },
+  { name = "Damage", info = L["Compact raid frames without power bars or heal overlays, longer debuff rows, threat colours and no buffs on players' nameplates."], text = presetText("Damage") },
+  { name = "Tank", info = L["Raid frames sorted by role with the aggro strip, threat colours, target border and buff rows on nameplates."], text = presetText("Tank") },
 }

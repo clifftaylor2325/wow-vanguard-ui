@@ -8,6 +8,7 @@
 -- and none of them reads a game value or touches a protected frame.
 
 local ADDON, ns = ...
+local L = ns.L
 
 local O = ns.Options
 
@@ -83,22 +84,22 @@ end
 
 -- Applies a preset's string like /vg import does, once the player has said yes; refused in combat.
 local function apply(preset)
-  if ns.InCombat() then return ns.Chat("Presets can't be applied in combat: try again after the fight.") end
+  if ns.InCombat() then return ns.Chat(L["Presets can't be applied in combat: try again after the fight."]) end
   local ok = ns.StartImport(preset.text, function() end, ns.ImportDone)
-  if not ok then ns.Chat("Import failed: an import is still running.") end
+  if not ok then ns.Chat(L["Import failed: an import is still running."]) end
 end
 
 -- Asks, then applies the preset.
 ---@param preset table
 function ns.AskPreset(preset)
-  ns.Ask("Apply preset " .. preset.name .. "? Your profile is backed up first.", "Apply", function() apply(preset) end, function() end)
+  ns.Ask(ns.Format(L["Apply preset {name}? Your profile is backed up first."], { name = preset.name }), L["Apply"], function() apply(preset) end, function() end)
 end
 
 -- The Profiles page's rows for the presets: a button each, with its info under it.
 local function presetRows()
-  local rows = { { "header", "Presets" }, { "text", "Settings other people made, applied like an import: a backup of this profile first, your layout and everything a preset leaves out kept." } }
+  local rows = { { "header", L["Presets"] }, { "text", L["Settings other people made, applied like an import: a backup of this profile first, your layout and everything a preset leaves out kept."] } }
   for _, p in ipairs(presets) do
-    rows[#rows + 1] = { "button", "Apply " .. p.name, function() ns.AskPreset(p) end }
+    rows[#rows + 1] = { "button", ns.Format(L["Apply {name}"], { name = p.name }), function() ns.AskPreset(p) end }
     if p.info ~= "" then rows[#rows + 1] = { "text", p.info } end
   end
   return rows

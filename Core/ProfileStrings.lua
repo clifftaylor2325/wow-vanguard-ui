@@ -7,6 +7,7 @@
 -- lacks, and a large string imported a frame's work at a time.
 
 local ADDON, ns = ...
+local L = ns.L
 
 local S = ns.Serialize
 
@@ -31,7 +32,7 @@ local CLIENT_STATE = { Graphics = { undo = true }, Bags = { applied = true, prio
 -- The group parts, in the export panel's order, and what it calls them. Every other
 -- table is a module's own part (its name), or global when no module goes by its name.
 local GROUPS = { "layout", "situations", "global" }
-ns.PART_LABELS = { layout = "Layout (positions and movers)", situations = "Situations overrides", global = "Global settings (theme, modules list, skins)" }
+ns.PART_LABELS = { layout = L["Layout (positions and movers)"], situations = L["Situations overrides"], global = L["Global settings (theme, modules list, skins)"] }
 -- The tables in the layout and situations parts.
 local KEY_PART = { positions = "layout", movers = "layout", editMode = "layout", Situations = "situations" }
 -- Core tables a module string from before format 2 may hold, besides a module's.
@@ -157,13 +158,13 @@ function ns.StripPayload(data)
   return data
 end
 
--- The parts a partial payload says it holds, as text ("layout, theme").
+-- The parts a partial payload says it holds, as text ("layout, theme"); nil when it names none.
 function ns.PartsText(data)
   local names = {}
   for _, p in ipairs(type(data.parts) == "table" and data.parts or {}) do
     if type(p) == "string" then names[#names + 1] = p end
   end
-  return #names > 0 and table.concat(names, ", ") or "its"
+  return #names > 0 and table.concat(names, ", ") or nil
 end
 
 -- Reading ----------------------------------------------------------------------------------
@@ -172,7 +173,7 @@ end
 -- that table, or nil and why not for another kind of Vanguard string (talents, weights...).
 local function moduleString(scope, data)
   if not (ns.GetModule(scope) or CORE[scope] or ns.Profile()[scope] ~= nil) then
-    return nil, "it's a " .. scope .. " string, not a profile string"
+    return nil, ns.Format(L["it's a {kind} string, not a profile string"], { kind = scope })
   end
   return "parts", { [scope] = data, parts = { scope } }
 end
@@ -225,9 +226,9 @@ end
 
 -- Each theme setting naming media a string may carry: its key, its check, and the line when this client lacks it.
 local MEDIA_CHECKS = {
-  { key = "font", missing = missingFont, line = "Font not found: %s (no addon here shares it). Vanguard uses its default font instead." },
-  { key = "barTexture", missing = missingBar, line = "Bar texture not found: %s (no addon here shares it). Vanguard uses its Vanguard bar texture instead." },
-  { key = "panelTexture", missing = missingPanel, line = "Panel texture not found: %s (no addon here shares it). Vanguard draws its windows flat instead." },
+  { key = "font", missing = missingFont, line = L["Font not found: {name} (no addon here shares it). Vanguard uses its default font instead."] },
+  { key = "barTexture", missing = missingBar, line = L["Bar texture not found: {name} (no addon here shares it). Vanguard uses its Vanguard bar texture instead."] },
+  { key = "panelTexture", missing = missingPanel, line = L["Panel texture not found: {name} (no addon here shares it). Vanguard draws its windows flat instead."] },
 }
 
 -- A line for each font, bar and panel texture the string's theme names that this client doesn't
@@ -235,7 +236,7 @@ local MEDIA_CHECKS = {
 function ns.MissingMedia(data)
   local theme, lines = type(data.theme) == "table" and data.theme or {}, {}
   for _, check in ipairs(MEDIA_CHECKS) do
-    if check.missing(theme[check.key]) then lines[#lines + 1] = check.line:format(theme[check.key]) end
+    if check.missing(theme[check.key]) then lines[#lines + 1] = ns.Format(check.line, { name = theme[check.key] }) end
   end
   return lines
 end
@@ -306,7 +307,7 @@ end
 -- Importing across frames ------------------------------------------------------------------
 
 -- Why an import ended early when a step of it failed (the error is in /vg errors).
-local STEP_FAILED = "something went wrong while importing it (see /vg errors)"
+local STEP_FAILED = L["something went wrong while importing it (see /vg errors)"]
 local running = false
 
 -- Ends the import, handing its outcome to the job's done.
