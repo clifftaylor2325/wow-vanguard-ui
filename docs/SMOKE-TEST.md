@@ -2444,6 +2444,12 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: the swing rows sit just over the cast bar, above bar 1, with the 4th bar on; the pet's health text ends left of the mood glyph; bar 5 is a column clear of bar 4; the meter title ends in "..." before Report and Reset; a roll's name ends in "..." before its figures and never draws over them; the group board's hint wraps inside the window; the keybind banner shows its whole last sentence; the vehicle exit label stays inside its button; the XP text stays in the bar's left half and the reputation text in its right half; and, on a German client, say whether "Fehlgeschlagen" is cut on a failed pet cast (no change was made for it: it needs this look first).
 - If it fails, paste: a screenshot of the part and `/vg errors`.
 
+### 33.46 Discord and X links on the Feedback page
+
+- Do: open `/vg` → Feedback and scroll to the Community card. Click Copy Discord invite, press Ctrl+C, close the box and paste into a browser's address bar; then do the same with Copy X link. Look at the card once more in German or Russian.
+- Expect: the card's line names @WowVanguardUI on X; each button opens the copy box with its address selected (`https://discord.gg/8ChnJfyww`, then `https://x.com/WowVanguardUI`), the box's title says to press Ctrl+C and paste into the browser, and the pasted invite opens the Vanguard server; in the long language both button labels fit. `/vg errors` is empty.
+- If it fails, paste: a screenshot of the card or the box, and `/vg errors`.
+
 ### 33.49 Raid grid on a narrow screen, and the status on a big grid
 
 - Do: in a raid of 25 or 40 (or `/vg preview 40`) with the raid frames at their default spot (`/vg reset raid` first), on a 5:4 or 4:3 screen, or at a UI scale that makes the UI narrower than 1296 units (the game's Options -> Graphics -> UI Scale, about 110% on a 1080p screen). Have a roll going (`/roll 1000` in a group) so the roll tracker shows at the left edge. Then look at a tile whose player is offline or dead, and at one with a big missing-health figure.
