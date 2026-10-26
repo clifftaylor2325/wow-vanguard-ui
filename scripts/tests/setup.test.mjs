@@ -294,3 +294,50 @@ it("the setup wizard takes Tab focus over the showing page's choices, then Skip 
   addon.eval("Vanguard_Setup:Hide()");
   expect(where(), "closing the wizard clears the ring").toBe("none");
 });
+
+// What runs past the showing page's room: each choice's hint (picked in turn) under the footer's top or past the
+// window's right margin, the question past that margin, and a move-step line under the footer's top (within a
+// pixel: the window's width is rounded to whole pixels, the text's isn't), as a list ("" when all fits).
+const overflow = (addon) => addon.eval(`local f, pad = Vanguard_Setup, ns.Theme.SPACE.pad
+  local floor, right, out = f.next:GetTop(), f:GetRight() - pad + 1, {}
+  local page
+  for _, p in pairs(f.pages) do if p:IsShown() then page = p end end
+  for _, b in ipairs(page.choices or {}) do
+    b:GetScript("OnClick")(b, "LeftButton")
+    if page.hint:GetBottom() < floor or page.hint:GetRight() > right then out[#out + 1] = b.value end
+  end
+  if page.question and page.question:GetRight() > right then out[#out + 1] = "question" end
+  for i, line in ipairs(page.lines or {}) do if line:GetBottom() < floor or line:GetRight() > right then out[#out + 1] = "line " .. i end end
+  return table.concat(out, ", ")`);
+it("setup: every layout's and screen preset's description, the questions and the move step's lines fit above the buttons and inside the window", () => {
+  const addon = loggedIn(UNITS_ENV + RAID_ENV, { firstRun: true });
+  expect(overflow(addon), "the layout step: Centered: healing's long description too").toBe("");
+  setupClick(addon, "next");
+  expect(overflow(addon), "the screen step: its question wraps inside the window").toBe("");
+  setupClick(addon, "next");
+  setupClick(addon, "next");
+  expect(overflow(addon), "the move step").toBe("");
+  expect(addon.eval("local p = Vanguard_Setup.pages.look return p.assist:GetBottom() >= p:GetBottom()"), "the look step's last switch stays inside its page").toBe(true);
+});
+it("setup: the screen step's question wraps under itself, and its first choice sits under the wrapped lines", () => {
+  const addon = loggedIn("", { firstRun: true });
+  setupClick(addon, "next");
+  const q = addon.eval("local p = Vanguard_Setup.pages.screen return { p.question:GetStringHeight() > 14, p.choices[1]:GetTop() <= p.question:GetBottom() - ns.Theme.SPACE.gap + 0.01 }");
+  expect(q, "the question takes two lines, and the rows start a gap under it").toEqual([true, true]);
+});
+it("setup: a longer description (a translation, say) grows the window instead of running onto the buttons", () => {
+  const plain = loggedIn("", { firstRun: true });
+  const long = loggedIn("local l = ns.Setup.LAYOUTS[3] l.hint = string.rep(l.hint .. ' ', 3)", { firstRun: true });
+  // The wizard's height.
+  const height = (addon) => addon.eval("return Vanguard_Setup:GetHeight()");
+  expect(height(long), "the window is taller").toBeGreaterThan(height(plain));
+  expect(overflow(long), "and every description still fits").toBe("");
+  setupClick(long, "next");
+  expect(overflow(long), "the screen step, in the same taller window").toBe("");
+});
+it("setup: a new character's profile step fits, and a choice's label stays on one line inside its row (a longer one is cut short)", () => {
+  const addon = loggedIn("", { firstRun: true, savedVariables: SET_UP_ACCOUNT });
+  expect(overflow(addon), "the profile step").toBe("");
+  const row = addon.eval("local b = Vanguard_Setup.pages.profile.choices[1] return { b.text:GetRight() <= b:GetRight(), b.text.__noWrap == true }");
+  expect(row, "a choice's label ends inside its row, on one line").toEqual([true, true]);
+});
