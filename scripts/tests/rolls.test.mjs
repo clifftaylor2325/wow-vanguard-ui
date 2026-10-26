@@ -160,6 +160,23 @@ it("loot rolls keep the newest 4 drops across encounters, skip hidden names and 
   expect(lines.some((l) => l[0] === "?"), "a hidden link reads '?'").toBe(true);
 });
 
+it("with more lines than fit, the panel keeps the newest items whole and drops the oldest, so the item being rolled on shows", () => {
+  const addon = loggedIn(ROLL_ENV + lootEnv(true, ['{ "Thrall", 3, 9, true }']));
+  addon.eval(`local template = C_LootHistory.GetSortedDropsForEncounter()[1]
+    local function drop(n, done)
+      local d = { lootListKey = n, itemHyperlink = "|cff0070dd[Item" .. n .. "]|r", startTime = 100 + n, allPassed = false, winner = done and {} or nil, rollInfos = {} }
+      for i = 1, 10 do d.rollInfos[i] = { playerName = "P" .. n .. "x" .. i, state = 3, roll = i, isWinner = false } end
+      return d
+    end
+    C_LootHistory.GetSortedDropsForEncounter = function() return { drop(1, true), drop(2, true), drop(3, true), drop(4, false) } end`);
+  addon.fire("LOOT_HISTORY_UPDATE_DROP", 7, 1);
+  const lines = panel(addon)[2];
+  expect(lines.length, "the newest item alone: its header and 10 rollers (the next item would not fit whole)").toBe(11);
+  expect(lines[0].slice(0, 2), "the newest item, still rolling, is shown with its header first").toEqual(["|cff0070dd[Item4]|r", "rolling"]);
+  expect(lines.some((l) => l[0] === "|cff0070dd[Item3]|r"), "an older item is dropped whole when it does not fit").toBe(false);
+  expect(lines.some((l) => l[0] === "|cff0070dd[Item1]|r"), "the oldest is gone").toBe(false);
+});
+
 it("a client without the loot history, one that errors or hides it, or with the switch off, leaves loot rolls off with no error", () => {
   const without = loggedIn(ROLL_ENV);
   without.fire("LOOT_HISTORY_UPDATE_DROP", 7, 1);
