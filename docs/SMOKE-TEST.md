@@ -2456,6 +2456,12 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: the panel sits at the bottom right, 16 in from the right edge and above the bags and menu bar, where the game's own meter sits; it does not cover bars 1 to 3. On a wider screen (a 2560 x 1440 monitor at 100%) it sits where it always did, left of the bags and menu bar. [Needs in-game check: the panel's top against the tooltip corner and the quest tracker on a 1365-wide screen.]
 - If it fails, paste: a screenshot of the corner and `/vg frame Vanguard_Meter`.
 
+### 33.52 Officer roster in a 40-player raid on a short screen
+
+- Do: with Officer loot tools on (`/vg loot on`), in a raid of 40 on a screen 768 units tall or less (1920 x 1080 at the game's UI scale 100% is 768 tall), open the roster (`/vg loot roster`).
+- Expect: the panel ends above the bottom edge of the screen and its last line reads "+3 more" (or the number of members it had no room for); on a taller screen every member is listed with no count line. [Needs in-game check: the count at your screen's height, and the panel against the roll tracker at the left edge, which it still overlaps.]
+- If it fails, paste: a screenshot and `/vg frame Vanguard_OfficerRoster`.
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ## When you are done
