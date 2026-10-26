@@ -4,10 +4,10 @@
 //   node scripts/i18n.mjs extract                 every key the code looks up, with where
 //   node scripts/i18n.mjs status                  per locale: translated, missing, orphaned
 //   node scripts/i18n.mjs export <locale> [file]  the CSV a translator fills in (stdout without file)
-//   node scripts/i18n.mjs import <locale> <file>  writes Locales/<locale>.lua from the CSV's reviewed rows
+//   node scripts/i18n.mjs import <locale> <file>  writes Locales/<locale>.lua from the CSV's translated rows
 //
-// The CSV columns are key, english, translation, context, note. A row whose note
-// says "machine" is a draft waiting on a native speaker and is not imported.
+// The CSV columns are key, english, translation, context, note. Every row with a
+// translation is imported; the note (such as "machine" for a draft) is for reviewers.
 
 import fs from "node:fs";
 import path from "node:path";
@@ -52,7 +52,7 @@ function exportLocale(keys, locale, file) {
   else process.stdout.write(csv);
 }
 
-// Writes one locale's file from a CSV's reviewed rows, keeping only rows the code still uses; exits 1 on a bad row.
+// Writes one locale's file from a CSV's translated rows, keeping only rows the code still uses; exits 1 on a bad row.
 function importLocale(keys, locale, file) {
   const entries = importCsv(fs.readFileSync(file, "utf8"));
   const problems = localeProblems(entries, keys).filter((p) => !p.startsWith("orphaned"));

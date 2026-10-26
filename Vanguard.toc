@@ -1,6 +1,16 @@
 ## Interface: 16001, 120105, 120007
 ## Title: Vanguard
 ## Notes: A from-scratch UI suite for WoW Forever: theme, movers, unit frames, action bars, minimap, chat, bags.
+## Notes-deDE: Eine von Grund auf neu gebaute UI-Suite für WoW Forever: Design, verschiebbare Rahmen, Einheitenfenster, Aktionsleisten, Minikarte, Chat, Taschen.
+## Notes-frFR: Une suite d’interface créée de zéro pour WoW Forever : thème, déplacement des cadres, cadres d’unité, barres d’action, minicarte, discussion, sacs.
+## Notes-esES: Un conjunto de interfaz hecho desde cero para WoW Forever: tema, marcos movibles, marcos de unidad, barras de acción, minimapa, chat, bolsas.
+## Notes-esMX: Un conjunto de interfaz hecho desde cero para WoW Forever: tema, marcos movibles, marcos de unidad, barras de acción, minimapa, chat, bolsas.
+## Notes-itIT: Una suite di interfaccia creata da zero per WoW Forever: tema, riquadri spostabili, riquadri delle unità, barre delle azioni, minimappa, chat, borse.
+## Notes-ptBR: Um conjunto de interface feito do zero para WoW Forever: tema, quadros móveis, quadros de unidade, barras de ação, minimapa, bate-papo, bolsas.
+## Notes-ruRU: Набор интерфейса, созданный с нуля для WoW Forever: оформление, перемещение рамок, рамки юнитов, панели команд, миникарта, чат, сумки.
+## Notes-koKR: WoW Forever를 위해 처음부터 새로 만든 UI 모음: 테마, 창 이동, 개체창, 행동 단축바, 미니맵, 대화창, 가방.
+## Notes-zhCN: 为 WoW Forever 从零打造的界面套件：主题、框体移动、单位框体、动作条、小地图、聊天、背包。
+## Notes-zhTW: 為 WoW Forever 從零打造的介面套件：主題、框架移動、單位框架、快捷列、小地圖、聊天、背包。
 ## Author: clifftaylor2325
 ## Version: 0.7.4
 ## SavedVariables: VanguardDB

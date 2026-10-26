@@ -9,11 +9,13 @@
 [files]
 # Vendored libraries (kept as upstream wrote them), generated media and the
 # art sources are not ours to spell-check; the lock file is generated too.
-extend-exclude = ["Libs/", "Media/", "art/", "package-lock.json"]
+# Locales/ is ten other languages, which an English spell checker can only misread.
+extend-exclude = ["Libs/", "Media/", "art/", "Locales/", "package-lock.json"]
 
 [default]
-# WoW's texture escape, |T<path>:<size>|t: the path is not prose.
-extend-ignore-re = ['\|T[^|\s]*\|t']
+# WoW's texture escape, |T<path>:<size>|t: the path is not prose. The TOC's
+# translated Notes lines (## Notes-deDE: …) are other languages.
+extend-ignore-re = ['\|T[^|\s]*\|t', '(?m)^## (Notes|Title)-[a-z]{2}[A-Z]{2}:.*$']
 
 [default.extend-words]
 # WoW vocabulary.
