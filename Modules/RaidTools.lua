@@ -69,12 +69,26 @@ local function actionButton(bar, spec)
   RT.Place(bar, b, 1, #bar.list)
 end
 
--- The row of text buttons this client can use.
+-- Gives the text buttons (the bar's first row, bar.list so far) one width: their usual, or what the widest label
+-- needs (a translation often runs longer than the English), placed again at it, and the bar the width the row then
+-- takes when that is more than its icon rows'.
+local function widenActions(bar)
+  local width = 0
+  for _, b in ipairs(bar.list) do width = math.max(width, ns.WidenToLabel(b):GetWidth()) end
+  for i, b in ipairs(bar.list) do
+    b:SetWidth(width)
+    b:SetPoint("TOPLEFT", bar, "TOPLEFT", RT.PAD + (i - 1) * (width + RT.GAP), -RT.PAD)
+  end
+  bar:SetWidth(math.max(bar:GetWidth(), 2 * RT.PAD + #bar.list * (width + RT.GAP) - RT.GAP))
+end
+
+-- The row of text buttons this client can use, as wide as their labels need.
 local function addActions(bar)
   bar.actions = {}
   for _, spec in ipairs(RT.ACTIONS) do
     if hasCall(spec[3]) then actionButton(bar, spec) end
   end
+  widenActions(bar)
 end
 
 -- Icon buttons ---------------------------------------------------------------------------

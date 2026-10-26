@@ -89,15 +89,22 @@ local function amountBox(row)
   return box
 end
 
+-- One line of a row's text, in its band between the icon and the amount box (at the icon's top or bottom): it fits
+-- the band on one line (T.FitText), shrinking a little when long (a merchant's name, a translation), then cut short.
+local function rowLine(row, edge, y, role, color)
+  local band = CreateFrame("Frame", nil, row)
+  band:SetHeight(SW.LINE_H)
+  band:SetPoint(edge .. "LEFT", row.icon, edge .. "RIGHT", T.SPACE.gap, y)
+  band:SetPoint("RIGHT", row.amount, "LEFT", -T.SPACE.gap, 0)
+  local fs = T.FitText(T.Text(row:CreateFontString(nil, "OVERLAY"), role, color), band, 0)
+  fs:SetJustifyH("LEFT")
+  return fs
+end
+
 -- The text side of a row: the item's name over where to buy it, between the icon and the amount box.
 local function rowText(row)
-  row.name = T.Text(row:CreateFontString(nil, "OVERLAY"), "label", "text")
-  row.name:SetPoint("TOPLEFT", row.icon, "TOPRIGHT", T.SPACE.gap, -1)
-  row.name:SetPoint("RIGHT", row.amount, "LEFT", -T.SPACE.gap, 0)
-  row.where = T.Text(row:CreateFontString(nil, "OVERLAY"), "small", "muted")
-  row.where:SetPoint("BOTTOMLEFT", row.icon, "BOTTOMRIGHT", T.SPACE.gap, 1)
-  row.where:SetPoint("RIGHT", row.amount, "LEFT", -T.SPACE.gap, 0)
-  for _, fs in ipairs({ row.name, row.where }) do ns.SingleLine(fs) end
+  row.name = rowLine(row, "TOP", 2, "label", "text")
+  row.where = rowLine(row, "BOTTOM", -2, "small", "muted")
 end
 
 -- A row's Remove button, at its right edge.

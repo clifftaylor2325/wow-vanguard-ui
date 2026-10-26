@@ -9,7 +9,8 @@ local L = ns.L
 
 local T, W, O = ns.Theme, ns.Widgets, ns.Options
 
--- A profile's row is a list row (T.ROW.height); its buttons are SMALL wide (units), narrower than the usual 120.
+-- A profile's row is a list row (T.ROW.height); its buttons are SMALL wide (units), narrower than the usual 120,
+-- or wider when a label needs it.
 local ROW, SMALL = T.ROW.height, 84
 
 -- Shows a danger button's warning (what it loses for good) in the game's tooltip, where the client has one.
@@ -49,9 +50,11 @@ local function addEditButtons(r, name)
   local lost = ns.Format(L["Deletes profile {profile} for every character on this account. It can't be undone."], { profile = name })
   r.delete = W.Danger(r, L["Delete"], function() ns.DeleteProfile(name) O.RebuildPage("profiles") end, SMALL, lost)
   r.delete:SetPoint("RIGHT", -T.SPACE.gap, 0)
+  ns.WidenToLabel(r.delete)
   lost = ns.Format(L["Replaces every setting in profile {into} with profile {from}'s. It can't be undone."], { into = ns.SelectedProfileName(), from = name })
   r.copy = W.Danger(r, L["Copy here"], function() O.ProfileCopied(ns.CopyProfile(name)) O.RebuildPage("profiles") end, SMALL, lost)
   r.copy:SetPoint("RIGHT", r.delete, "LEFT", -T.SPACE.gap, 0)
+  ns.WidenToLabel(r.copy)
 end
 
 -- Use, Copy here and Delete, right to left. None on the profile that will be in use after the reload;
@@ -60,7 +63,7 @@ end
 local function addProfileButtons(r, name)
   if name == ns.SelectedProfileName() then return end
   if name ~= ns.ProfileName() then addEditButtons(r, name) end
-  r.use = W.Button(r, L["Use"], function() ns.UseProfile(name) O.NeedReload() O.RebuildPage("profiles") end, SMALL)
+  r.use = ns.WidenToLabel(W.Button(r, L["Use"], function() ns.UseProfile(name) O.NeedReload() O.RebuildPage("profiles") end, SMALL))
   if r.copy then r.use:SetPoint("RIGHT", r.copy, "LEFT", -T.SPACE.gap, 0) else r.use:SetPoint("RIGHT", -T.SPACE.gap, 0) end
 end
 

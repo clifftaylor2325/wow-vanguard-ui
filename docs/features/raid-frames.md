@@ -29,4 +29,4 @@ Click casting (`/vg` → Click casting), set up without typing a spell:
 
 ## Raid tools
 
-For the group's leader and assistants, a small bar at the top left with a ready check, a 10-second pull timer (right-click cancels it), a role check and Raid (turns your party into a raid), the eight raid target icons (click to mark your target; the last button clears it) and the eight world markers (click to place or remove one; right-click clears it; the last button clears them all). It shows and hides out of combat.
+For the group's leader and assistants, a small bar at the top left with a ready check, a 10-second pull timer (right-click cancels it), a role check and Raid (turns your party into a raid), the eight raid target icons (click to mark your target; the last button clears it) and the eight world markers (click to place or remove one; right-click clears it; the last button clears them all). The four text buttons share one width, wide enough for the longest label, and the bar widens with them. It shows and hides out of combat.

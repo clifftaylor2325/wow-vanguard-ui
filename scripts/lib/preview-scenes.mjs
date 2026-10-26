@@ -546,9 +546,10 @@ export const SCENES = [
 // Setup has run on this TEST-ONLY account, so it only shows in the scenes that open it.
 const SAVED = "VanguardDB = { version = 2, profiles = {}, setupDone = true }";
 
-// The addon logged in to a scene and settled for a quarter second, as the preview draws it.
-export function buildScene(scene) {
-  const addon = createAddon({ savedVariables: SAVED });
+// The addon logged in to a scene and settled for a quarter second, as the preview draws it. textFit loads it in
+// the text-fit client (real font widths, every string a third longer: scripts/tests/textfit.test.mjs).
+export function buildScene(scene, { textFit = false } = {}) {
+  const addon = createAddon({ savedVariables: SAVED, textFit });
   addon.eval(UNITS + ACTIONS + WORLD + TOOLTIP + GROUP + "GetSpecialization = function() return 1 end");
   if (scene.before) addon.eval(scene.before);
   addon.login();

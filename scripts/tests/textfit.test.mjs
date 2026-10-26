@@ -14,6 +14,7 @@ import { fileURLToPath } from "node:url";
 import { afterAll, expect, it } from "vitest";
 import { createAddon } from "../lib/lua-harness.mjs";
 import { SETUP_DONE } from "./helpers.mjs";
+import { SCENES, buildScene } from "../lib/preview-scenes.mjs";
 
 const BASELINE = path.join(path.dirname(fileURLToPath(import.meta.url)), "textfit-baseline.json");
 const baseline = JSON.parse(fs.readFileSync(BASELINE, "utf8"));
@@ -96,4 +97,26 @@ it("text fits: the dialogs", () => {
   open('ns.ShowText(ns.L["Export profile"], "Vanguard:1:abc")', "Vanguard_TextDialog");
   open('ns.ShowFind(ns.L["Find"], function() return {} end)', "Vanguard_FindDialog");
   expectFits("dialogs", findings);
+});
+
+// The preview's scenes (scripts/lib/preview-scenes.mjs) that open a window, and the frames each one audits.
+const SCENE_WINDOWS = [
+  ["vanguard-stock-list", ["Vanguard_StockList"]],
+  ["vanguard-errands", ["ClassTrainerFrame", "Vanguard_FlightTimer"]],
+  ["vanguard-quest-gossip", ["Vanguard_QuestDialog"]],
+  ["vanguard-quest-detail", ["Vanguard_QuestDialog"]],
+  ["vanguard-auction", ["Vanguard_AuctionShopping"]],
+  ["vanguard-auction-selling", ["Vanguard_AuctionSelling"]],
+  ["vanguard-auction-alert", ["Vanguard_AuctionFilters"]],
+  ["vanguard-bosses", ["Vanguard_RaidTools"]],
+  ["vanguard-strip", ["Vanguard_InfoStrip"]],
+];
+
+it("text fits: the town, quest, auction and group windows of the preview's scenes", () => {
+  const findings = [];
+  for (const [name, frames] of SCENE_WINDOWS) {
+    const addon = buildScene(SCENES.find((s) => s.name === name), { textFit: true });
+    for (const frame of frames) findings.push(...addon.textFit(frame));
+  }
+  expectFits("preview scenes' windows", findings);
 });

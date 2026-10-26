@@ -115,11 +115,13 @@ local function trainTip(b)
   GameTooltip:Show()
 end
 
--- The button's label (how many one click learns; the tooltip has the cost); it's off while nothing is affordable.
+-- The button's label (how many one click learns; the tooltip has the cost), the button growing left to hold it;
+-- it's off while nothing is affordable.
 function ER.UpdateTrainButton()
   local b, plan = ER.trainButton, ER.TrainPlan()
   if not b then return end
   b.text:SetText(plan.count > 0 and ns.Format(L["Train all ({count})"], { count = plan.count }) or L["Train all"])
+  ns.WidenToLabel(b)
   if plan.count > 0 then b:Enable() else b:Disable() end
   b:SetShown(ER.settings.trainAll)
 end

@@ -99,7 +99,7 @@ end
 local function timerRows()
   return {
     { "header", L["Combat timers"] },
-    { "cycle", L["Swing timer (reload)"], { { "auto", L["Melee classes and hunters"] }, { "always", L["Always"] }, { "never", L["Never"] } }, reloadSetting("SwingTimer", "show") },
+    { "cycle", L["Swing timer (reload)"], { { "auto", L["Melee and hunters"] }, { "always", L["Always"] }, { "never", L["Never"] } }, reloadSetting("SwingTimer", "show") },
     check(L["Five-second rule spark on your mana bar"], sparkSetting("mana")),
     check(L["Energy tick spark on your energy bar"], sparkSetting("energy")),
   }
