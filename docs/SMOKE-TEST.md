@@ -2654,6 +2654,12 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: with the round map, the info strip starts below the map's bottom band (the coordinates text sits clear of the durability row) and the quest tracker follows under the strip; with the square map the strip sits right under the map as before. [Needs in-game check: the real round map's bottom band against the strip's first row.]
 - If it fails, paste: a screenshot of the minimap and strip, and `/vg errors`.
 
+### 33.81 Loss of control against the talking head on a 768-tall screen
+
+- Do: at 1365x768, get stunned or feared (a duel, a mob) while a talking head line plays (a quest giver's or an event's), and look at where the two panels meet; with `/vg unlock` note which of the loss-of-control and talking head handles is on top.
+- Expect: the loss-of-control panel (a little above your character) and the talking head (top left) touch by about 22 units and neither one's text is cut off. Which one draws on top is the thing to report: if the talking head covers the loss-of-control text, raise Loss of control's strata in `Modules/GameAlerts.lua`; if loss of control is already on top, leave it as it is. [Needs in-game check: the draw order of the two game frames, which the harness does not have.]
+- If it fails, paste: a screenshot of both panels, which one was on top, and `/vg errors`.
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ## When you are done
