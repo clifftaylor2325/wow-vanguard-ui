@@ -83,9 +83,45 @@ function ns.SaneOffset(v)
   return math.max(-ns.MAX_OFFSET, math.min(ns.MAX_OFFSET, v))
 end
 
+-- Default spots on small screens -----------------------------------------------------------
+
+-- The canvas: UIParent's size in its own units (0 x 0 while the client can't say).
+local function canvas()
+  return { w = ns.PlainNumber(UIParent:GetWidth()) or 0, h = ns.PlainNumber(UIParent:GetHeight()) or 0 }
+end
+
+-- A default's spot on a canvas: its narrow spot (default.narrow = { w, h, spot }) on a canvas narrower than w or
+-- shorter than h, else the default itself. Narrow spots name a canvas no bigger than 1365 x 768, so the screens
+-- the layout is made for keep every default as it is.
+local function spotOn(default, screen)
+  local n = default.narrow
+  if n and (screen.w < (n.w or 0) or screen.h < (n.h or 0)) then return n.spot end
+  return default
+end
+
+-- A frame's size on screen in UIParent's units (its own times its scale), or nil while the client hides it.
+local function sizeOnScreen(f)
+  local w, h = ns.PlainNumber(f:GetWidth()), ns.PlainNumber(f:GetHeight())
+  if not (w and h) then return nil end
+  local s = ns.PlainNumber(f:GetScale()) or 1
+  return { w = w * s, h = h * s }
+end
+
+-- A mover's default point on this canvas (spotOn), moved as little as it takes to keep its frame on the screen
+-- and out of the spot's room (spot.room: insets kept for frames beside it, the minimap's column for one).
+-- Worked out each time the frame is placed; a saved position never comes through here.
+local function defaultPoint(m)
+  local screen, size = canvas(), sizeOnScreen(m.frame)
+  local d = spotOn(m.default, screen)
+  if not size or screen.w == 0 then return d[1], d[2], d[3], d[4] end
+  local r = LY.Rect({ point = d[1], relPoint = d[2], x = d[3], y = d[4] }, size, screen)
+  local dx, dy = LY.FitShift(r, screen, d.room)
+  return d[1], d[2], d[3] + dx, d[4] + dy
+end
+
 -- The point to use for a mover: where its link puts it (anchored to a frame
 -- that is there), saved (when it names a real point; offsets that aren't
--- numbers read as 0, and none is more than ns.MAX_OFFSET away), else its default.
+-- numbers read as 0, and none is more than ns.MAX_OFFSET away), else its default for this canvas.
 local function pointFor(m)
   local p = saved()[m.key]
   if type(p) == "table" and p.rel ~= nil then
@@ -95,7 +131,7 @@ local function pointFor(m)
   if type(p) == "table" and POINTS[p.point] then
     return p.point, POINTS[p.relPoint] and p.relPoint or p.point, ns.SaneOffset(p.x), ns.SaneOffset(p.y)
   end
-  return m.default[1], m.default[2], m.default[3], m.default[4]
+  return defaultPoint(m)
 end
 
 -- Anchors a frame (or a mover handle) at the mover's point on UIParent. The offsets

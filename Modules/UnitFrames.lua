@@ -27,10 +27,13 @@ local CLASSIFICATION = { elite = "gold", rareelite = "accent", rare = "text2", w
 -- line, the pet sits over the player frame's right end (combo points take its
 -- left end, and the chat reaches up beside the frame), and the focus sits
 -- above the player (its debuffs under it, its cast bar over it; Modules/CastBars.lua).
+-- On a canvas under 1365 wide the target of target would reach the tooltip's corner (and past the
+-- edge under 972), so there it sits over the target's cast bar instead, at the target's inner end.
 local LAYOUT = {
   { key = "player", w = 240, h = 36, label = L["Player"], point = { "BOTTOM", "BOTTOM", -240, 196 } },
   { key = "target", w = 240, h = 36, label = L["Target"], point = { "BOTTOM", "BOTTOM", 240, 196 } },
-  { key = "targettarget", w = 120, h = 24, label = L["Target of target"], point = { "BOTTOM", "BOTTOM", 426, 196 } },
+  { key = "targettarget", w = 120, h = 24, label = L["Target of target"], point = { "BOTTOM", "BOTTOM", 426, 196,
+    narrow = { w = 1365, spot = { "BOTTOM", "BOTTOM", 180, 280 } } } },
   { key = "focus", w = 160, h = 30, label = L["Focus"], point = { "BOTTOM", "BOTTOM", -270, 290 } },
   { key = "pet", w = 120, h = 24, label = L["Pet"], point = { "BOTTOM", "BOTTOM", -184, 240 } },
 }
