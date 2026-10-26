@@ -32,6 +32,14 @@ local TEXT_INSET = T.SPACE.gap
 -- is a SemiBold `void` label on the accent fill; danger is a secondary with a `bad` label.
 local KIND_LABELS = { secondary = { "label", "text" }, primary = { "name", "void" }, danger = { "label", "bad" } }
 
+-- A primary's accent fill, which goes while the button is disabled (its label can't read on it) and comes back enabled.
+local function primaryFill(b)
+  local fill = T.FillParts(b, "BACKGROUND", 1, "accent")
+  b:HookScript("OnDisable", ns.Guard("primary fill", function() T.ShowFill(fill, false) end))
+  b:HookScript("OnEnable", ns.Guard("primary fill", function() T.ShowFill(fill, true) end))
+  return fill
+end
+
 -- A themed button on a dialog: T.BUTTON_H tall, 120 wide unless told otherwise, of a kind ("secondary"
 -- unless given, "primary" or "danger"). Its label fits across it (T.FitText), shrinking when it runs long.
 local function button(parent, label, width, kind)
@@ -39,7 +47,7 @@ local function button(parent, label, width, kind)
   local b = T.Button(CreateFrame("Button", nil, parent), kind == "primary" and "primary" or nil)
   b:SetSize(width or BUTTON_W, T.BUTTON_H)
   b.kind = kind or "secondary"
-  if kind == "primary" then b.fill = T.FillParts(b, "BACKGROUND", 1, "accent") end
+  if kind == "primary" then b.fill = primaryFill(b) end
   b.text = T.FitText(T.Text(b:CreateFontString(nil, "OVERLAY"), look[1]), b)
   b.text:SetText(label)
   T.Color(b.text, look[2])
