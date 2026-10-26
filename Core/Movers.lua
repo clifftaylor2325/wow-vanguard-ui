@@ -150,6 +150,20 @@ local function place(m)
   end)
 end
 
+-- After a UI scale or screen change: puts every anchored mover (and its handle) at its link's spot again, since
+-- the frame it follows moved with its edge of the screen. Not through place(): that rescales, which runs this again.
+local function reanchorLinked()
+  for _, key in ipairs(order) do
+    local m, p = movers[key], saved()[key]
+    if type(p) == "table" and p.rel ~= nil then
+      ns.MoverLinks.Remember(key, p)
+      anchor(m.frame, m)
+      if m.handle then anchor(m.handle, m) end
+    end
+  end
+end
+T.OnScale(reanchorLinked)
+
 -- Registers a placeable frame. default = { point, relPoint, x, y } on UIParent.
 function ns.Mover(frame, key, label, default)
   local m = { frame = frame, key = key, label = label or key, default = default }

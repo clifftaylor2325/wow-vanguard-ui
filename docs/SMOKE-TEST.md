@@ -258,6 +258,9 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Expect: the popover title reads `Player cast bar  ·  Below Player`, the cast bar sits 4 px under the player frame's bottom edge and stays there after the spec change and the reload; with Unit frames off it stays where it was (on screen), and with them on again it is under the player frame. No error.
 - If it fails, paste: a screenshot of each step that went wrong and `/vg errors`.
 
+Then, with the cast bar still anchored to the player frame, change the game's UI scale slider (or turn **Pixel-perfect** on under `/vg` → General).
+- Expect: the cast bar stays against the player frame's bottom edge (it used to stay at its old screen spot). [Needs in-game check: the client moving the player frame when the canvas changes.]
+
 ### 3.7 Exit without saving
 
 - Do: type `/vg unlock`, drag two frames somewhere new, then click **Exit without saving** on the bar at the top of the screen.
