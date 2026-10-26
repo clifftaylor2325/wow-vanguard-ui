@@ -168,8 +168,8 @@ function layoutProblems(rects, sw, sh) {
 // The whole HUD logged in on a new account (on the screen `screen`'s Lua sets, else the harness's 1920 x 1080),
 // party pets and targets on, the info strip at its tallest (with the leveling and DPS rows), the roll tracker at its
 // most lines and the bag and menu bar at its laid-out size (404 wide, 68 tall: the bags row over the menu row's 14 slots).
-function wholeHud(screen = "") {
-  const addon = loggedIn(screen + UI_ENV + ACTIONS_ENV + UNITS_ENV + RAID_ENV + SWING_ENV + TOOLS_ENV + TIDY_ENV + MICRO_ENV + STRIPS_ENV + SPECIAL_BARS_ENV + "TakeTaxiNode = function() end", { firstRun: true, savedVariables: "VanguardDB = { profiles = { Default = { PartyExtras = { show = true } } } }" });
+function wholeHud(screen = "", hud = "PartyExtras = { show = true }") {
+  const addon = loggedIn(screen + UI_ENV + ACTIONS_ENV + UNITS_ENV + RAID_ENV + SWING_ENV + TOOLS_ENV + TIDY_ENV + MICRO_ENV + STRIPS_ENV + SPECIAL_BARS_ENV + "TakeTaxiNode = function() end", { firstRun: true, savedVariables: `VanguardDB = { profiles = { Default = { ${hud} } } }` });
   addon.eval("Vanguard_InfoStrip:SetHeight(68)");
   addon.eval('local R = ns.GetModule("Rolls") Vanguard_Rolls:SetHeight(R.LINES * R.LINE + 2 * R.PAD)');
   addon.eval("MicroMenuContainer:Layout() BagsBar:Layout()");
@@ -237,6 +237,33 @@ it("setup layouts: on canvases narrower than 1365 the adapted default spots stay
       expect(mine).toEqual([]);
     }
   }
+});
+// B3-2: with the Vanguard meter on, target of target keeps its narrow spot up to the meter's wide-spot width (1838), so the
+// meter's narrow spot (BOTTOMRIGHT -16,118) leaves it alone on the common 1365 to 1833 canvases; nothing moves with the meter off.
+it("setup layouts: with the meter on, target of target stays clear of it from 1365 to 1833 wide, solo to 40-man", () => {
+  for (const [sw, sh] of [[1365, 768], [1440, 900], [1600, 900], [1680, 1050]]) {
+    const addon = wholeHud(`__wfgStub.setScreen(${sw}, ${sh}) `, "PartyExtras = { show = true }, Meter = { on = true }");
+    for (const layout of ["damage", "tank", "healing", "versus"]) {
+      addon.eval(`ns.Setup.ApplyLayout("${layout}")`);
+      const mine = problemsAt(addon, layout, sw, sh, `${layout}, ${sw}x${sh}`).filter((p) => /uf_targettarget/.test(p) && !/questlog/.test(p));
+      expect(mine).toEqual([]);
+    }
+  }
+});
+it("meter: target of target takes its narrow spot while the meter is on and goes back when it is off, under 1838 wide only", () => {
+  // Where target of target sits now.
+  const spot = (addon) => addon.eval("return { ns.MoverPoint('uf_targettarget') }");
+  const home = ["BOTTOM", "BOTTOM", 426, 196], narrow = ["BOTTOM", "BOTTOM", 180, 280];
+  const addon = loggedIn(UI_ENV + UNITS_ENV + "__wfgStub.setScreen(1600, 900)");
+  expect(spot(addon), "meter off: the default spot at 1600 wide").toEqual(home);
+  addon.slash("meter on");
+  expect(spot(addon), "meter on: the narrow spot, at once").toEqual(narrow);
+  addon.slash("meter off");
+  expect(spot(addon), "meter off again: the default spot").toEqual(home);
+  addon.slash("meter on");
+  addon.eval("__wfgStub.setScreen(1920, 1080)");
+  addon.eval("ns.PlaceMover('uf_targettarget')");
+  expect(spot(addon), "meter on at 1920 wide, where the meter sits at its wide spot: the default spot").toEqual(home);
 });
 // The screen step's choices (their labels) and the hint under them.
 const screenPage = (addon) => addon.eval("local p = Vanguard_Setup.pages.screen local out = {} for i, b in ipairs(p.choices) do out[i] = b.text:GetText() end return { out, p.hint:GetText() }");

@@ -2630,6 +2630,12 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: the fade at each scrolled end blends into the window; no plainer, darker, untextured band about 24 units tall stands out from the textured panel beside it. [Needs in-game check: the harness can't composite alpha. If the band shows clearly, turn the soft edges off while a texture is drawn (B1-9 option a).]
 - If it fails, paste: a screenshot of the options window scrolled, with the texture name, and `/vg errors`.
 
+### 33.77 Meter on: target of target, tooltip corner and quest tracker at 1365 to 1833 wide
+
+- Do: turn the Vanguard meter on (`/vg meter on`) at 1365x768, then at 1920x1080 at UI scale 1 (1440 wide or 1600 wide if you have it), with a target and a target of target, a quest tracker with a few quests, and a unit tooltip showing in its corner; turn the meter off and on again.
+- Expect: under 1838 wide target of target sits over the target's cast bar and the meter (bottom right, above the bags and menu bar) does not cover it; with the meter off target of target goes back to its spot outside the target at 1600 and wider. [Needs in-game check: the meter still meets the tooltip corner and the foot of the quest tracker at 1365 (the harness measured only target of target); say which draws on top.]
+- If it fails, paste: a screenshot at 1365x768 with the meter on, and `/vg errors`.
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ## When you are done

@@ -232,9 +232,11 @@
       "default sizes for a 1080p screen: 240 x 36 unit frames with 12 px names, 38 px buttons; a saved profile keeps its sizes",
       "setup layouts: Like the game's puts your frames at the top left; another layout puts them back",
       "setup layouts: Versus deck is your role's centered layout with the deck on; another layout takes it off",
+      "meter: target of target takes its narrow spot while the meter is on and goes back when it is off, under 1838 wide only",
       "setup layouts: each role sizes the frames its own way: a taller target for damage and more for tanking, a larger raid and smaller own frames for healing",
       "setup layouts: nothing overlaps or leaves the screen, solo to 40-man, at UI scale 1 and pixel-perfect",
       "setup layouts: on canvases narrower than 1365 the adapted default spots stay on screen and clear, solo to 40-man",
+      "setup layouts: with the meter on, target of target stays clear of it from 1365 to 1833 wide, solo to 40-man",
       "setup screen: picking Pixel-perfect turns on Vanguard's pixel-perfect scale and leaves the game's UI scale alone (#225)",
       "setup screen: this screen's preset is picked; Keep changes nothing; a preset sets the UI scale, buttons, tiles and text",
       "setup screens: with each screen preset, nothing overlaps or leaves its own screen, in every layout, solo to 40-man"
