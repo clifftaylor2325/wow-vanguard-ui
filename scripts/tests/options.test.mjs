@@ -1196,6 +1196,16 @@ it("a wrapped caption keeps a gap from the dropdown and the slider track it sits
   expect(addon.eval(`return ns.Widgets.Slider(UIParent, "Q", { min = 0, max = 10, step = 1 }, function() return 5 end, print, 248).label:GetWidth()`), "a row too narrow to spare the gap keeps its caption's room").toBe(32);
 });
 
+it("a choice row too narrow for a 200 wide dropdown gives the dropdown half the row and the caption the rest (B10-5)", () => {
+  const addon = loggedIn();
+  const many = Array.from({ length: 12 }, (_, i) => `{ ${i}, "Choice number ${i}" }`).join(", ");
+  const [dropdown, caption, clear] = addon.eval(`local r = ns.Widgets.Choice(UIParent, "Undercut by", { ${many} }, function() return 1 end, print, 268)
+    r:SetPoint("CENTER")
+    return { r.dropdown:GetWidth(), r.label:GetWidth(), r.label:GetLeft() + r.label:GetWidth() <= r.dropdown:GetLeft() }`);
+  expect([dropdown, caption > 100, clear], "half of 268, a caption wider than 100, and the caption ends before the dropdown").toEqual([134, true, true]);
+  expect(addon.eval(`return ns.Widgets.Choice(UIParent, "Wide", { ${many} }, function() return 1 end, print, 400).dropdown:GetWidth()`), "a 400 wide row keeps the 200 wide dropdown").toBe(200);
+});
+
 // 8.7 states, keyboard and menus -------------------------------------------------------------------
 
 it("a pressed switch drops its knob one pixel and never recolours its track; no control fades its whole alpha to look disabled", () => {
