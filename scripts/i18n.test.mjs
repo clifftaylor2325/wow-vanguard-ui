@@ -38,6 +38,7 @@ it("i18n: the CSV round-trips commas, quotes and line breaks; machine drafts and
   const keys = new Map([["a, b", "x.lua:1"], ['say "hi"', "x.lua:2"], ["two\nlines", "x.lua:3"]]);
   const csv = exportCsv(new Map([["a, b", "c, d"]]), keys);
   expect(parseCsv(csv)[0]).toEqual(["key", "english", "translation", "context", "note"]);
+  expect(parseCsv(csv).length, "a header and three rows, no empty row after the last line break").toBe(4);
   const filled = csv.replace('"say ""hi""",,x.lua:2,', '"say ""hi""","""hallo""",x.lua:2,machine').replace('"two\nlines",,', '"two\nlines","zwei\nZeilen",');
   expect(importCsv(filled)).toEqual(new Map([["a, b", "c, d"], ["two\nlines", "zwei\nZeilen"]]));
 });

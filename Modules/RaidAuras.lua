@@ -23,6 +23,7 @@
 local ADDON, ns = ...
 
 local T = ns.Theme
+local L = ns.L
 local RF = ns.GetModule("RaidFrames")
 
 local RA = ns.Module("RaidAuras", {
@@ -38,8 +39,8 @@ RA.SOURCES = {
   mine = "HELPFUL|PLAYER", cc = "HARMFUL|CROWD_CONTROL", dispel = RA.DISPELLABLE,
 }
 RA.SOURCE_CHOICES = {
-  { "none", "None" }, { "external", "External defensive" }, { "defensive", "Big defensive" }, { "important", "Important buff" },
-  { "mine", "Your buffs" }, { "cc", "Crowd control" }, { "dispel", "Dispellable debuff" },
+  { "none", L["None"] }, { "external", L["External defensive"] }, { "defensive", L["Big defensive"] }, { "important", L["Important buff"] },
+  { "mine", L["Your buffs"] }, { "cc", L["Crowd control"] }, { "dispel", L["Dispellable debuff"] },
 }
 -- An indicator icon's side, and how many slots there are.
 RA.IND_SIZE, RA.IND_SLOTS = 9, 3

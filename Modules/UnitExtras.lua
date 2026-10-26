@@ -16,6 +16,7 @@
 local ADDON, ns = ...
 
 local T = ns.Theme
+local L = ns.L
 local UF = ns.GetModule("UnitFrames")
 
 local UX = ns.Module("UnitExtras", { defaults = { threat = true, happiness = true, chip = false } })
@@ -68,7 +69,7 @@ function UX.Happiness()
 end
 
 -- Pet happiness -> the word the pet frame's tooltip line uses.
-UX.MOODS = { "Unhappy", "Content", "Happy" }
+UX.MOODS = { L["Unhappy"], L["Content"], L["Happy"] }
 
 -- The pet tooltip's mood line ("Happy: 125% damage") and its color token, or nil (no pet that has moods, or no answer).
 function UX.HappinessLine()
@@ -77,7 +78,8 @@ function UX.HappinessLine()
   local mood, damage = get()
   mood, damage = ns.PlainNumber(mood), ns.PlainNumber(damage)
   if not UX.MOODS[mood or 0] then return nil end
-  return UX.MOODS[mood] .. (damage and string.format(": %d%% damage", damage) or ""), UX.HAPPINESS[mood]
+  if not damage then return UX.MOODS[mood], UX.HAPPINESS[mood] end
+  return ns.Format(L["{mood}: {damage}% damage"], { mood = UX.MOODS[mood], damage = damage }), UX.HAPPINESS[mood]
 end
 
 -- Adds the mood line to the pet frame's tooltip, in the mood's color.
@@ -107,7 +109,7 @@ UX.CHIP_EVENTS = { "PLAYER_REGEN_ENABLED", "PLAYER_ENTERING_WORLD", "PLAYER_DEAD
 
 -- The states the chip names, in the order they win: text, the buff names that mean it, and its text color token.
 function UX.States()
-  return { { "Eating", UX.EATING, "text" }, { "Drinking", UX.DRINKING, "text" }, { "Well Fed", ns.GetModule("InstancePrep").FOOD, "good" } }
+  return { { L["Eating"], UX.EATING, "text" }, { L["Drinking"], UX.DRINKING, "text" }, { L["Well Fed"], ns.GetModule("InstancePrep").FOOD, "good" } }
 end
 
 -- The first of your buffs named as these spell ids are (by the client), as its aura data, or nil (none, or the
@@ -126,7 +128,8 @@ function UX.Missing()
   local PR = ns.GetModule("InstancePrep")
   local rows = PR.settings and PR.BuffRows and PR.BuffRows() or {}
   if #rows == 0 then return nil end
-  return "Missing: " .. rows[1].label .. (#rows > 1 and " +" .. (#rows - 1) or "")
+  if #rows > 1 then return ns.Format(L["Missing: {buff} +{more}"], { buff = rows[1].label, more = #rows - 1 }) end
+  return ns.Format(L["Missing: {buff}"], { buff = rows[1].label })
 end
 
 -- The chip's text, color token and icon (nil for the warning glyph): what you are doing or have, else what is missing.

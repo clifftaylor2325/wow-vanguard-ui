@@ -11,6 +11,8 @@
 
 local ADDON, ns = ...
 
+local L = ns.L
+
 local DC = {}
 ns.DungeonCard = DC
 
@@ -48,7 +50,8 @@ local function levelText(mapID)
   local low, high = call(C_Map, "GetMapLevels", mapID or 0)
   low, high = ns.PlainNumber(low), ns.PlainNumber(high)
   if not low or not high or low < 1 then return nil end
-  return low == high and ("level " .. low) or string.format("levels %d-%d", low, high)
+  if low == high then return ns.Format(L["level {level}"], { level = low }) end
+  return ns.Format(L["levels {low}-{high}"], { low = low, high = high })
 end
 
 -- The heading at a dungeon's door: "Ragefire Chasm · levels 13-18 · 5-player Normal", or nil outside one (outside, the client answers with the zone's name and type "none").
@@ -57,7 +60,8 @@ function DC.Heading()
   if not plainText(name) or (kind ~= "party" and kind ~= "raid") then return nil end
   local parts = { name, levelText(mapNow()) }
   local group = ns.PlainNumber(size)
-  if group and group > 0 then parts[#parts + 1] = string.format("%d-player%s", group, plainText(difficulty) and (" " .. difficulty) or "") end
+  local sized = plainText(difficulty) and L["{size}-player {difficulty}"] or L["{size}-player"]
+  if group and group > 0 then parts[#parts + 1] = ns.Format(sized, { size = group, difficulty = difficulty }) end
   return table.concat(parts, " · ")
 end
 
@@ -95,7 +99,9 @@ function DC.LastRun()
   local seen = id and visits()[id]
   if not now or type(seen) ~= "table" or type(seen.prior) ~= "number" then return nil end
   local days = math.max(0, math.floor((now - seen.prior) / DC.DAY))
-  return "Last run: " .. (days == 0 and "today" or days == 1 and "yesterday" or days .. " days ago")
+  if days == 0 then return L["Last run: today"] end
+  if days == 1 then return L["Last run: yesterday"] end
+  return ns.Format(L["Last run: {days} days ago"], { days = days })
 end
 
 -- Quests ---------------------------------------------------------------------------------------
@@ -157,7 +163,8 @@ end
 
 -- "[22] The Defias Brotherhood · done".
 function DC.QuestText(q)
-  return string.format("[%d] %s%s", q.level, q.title, q.done and " · done" or "")
+  if q.done then return ns.Format(L["[{level}] {quest} · done"], { level = q.level, quest = q.title }) end
+  return string.format("[%d] %s", q.level, q.title)
 end
 
 -- Keys ------------------------------------------------------------------------------------------
@@ -171,7 +178,7 @@ end
 -- The name of an item, "item 123" while the client hasn't cached it.
 local function nameOf(itemID)
   local name = call(C_Item, "GetItemInfo", itemID)
-  return plainText(name) or ("item " .. itemID)
+  return plainText(name) or ns.Format(L["item {id}"], { id = itemID })
 end
 
 -- The keys in your bags, by name, each once.
@@ -193,7 +200,7 @@ end
 local function questLines(inside)
   local quests, lines = DC.Quests(inside), {}
   for i = 1, math.min(#quests, DC.QUESTS) do lines[#lines + 1] = DC.QuestText(quests[i]) end
-  if #quests > DC.QUESTS then lines[#lines + 1] = string.format("and %d more", #quests - DC.QUESTS) end
+  if #quests > DC.QUESTS then lines[#lines + 1] = ns.Format(L["and {count} more"], { count = #quests - DC.QUESTS }) end
   return lines, #quests
 end
 
@@ -209,9 +216,9 @@ function DC.Lines()
   local out, heading = {}, DC.Heading()
   if heading then out = headLines(heading) end
   local quests, n = questLines(heading ~= nil)
-  if n > 0 then out[#out + 1] = { heading and "Your quests here" or "Dungeon quests in your log", "head" } end
+  if n > 0 then out[#out + 1] = { heading and L["Your quests here"] or L["Dungeon quests in your log"], "head" } end
   for _, text in ipairs(quests) do out[#out + 1] = { text } end
   local keys = DC.Keys()
-  if #keys > 0 then out[#out + 1] = { "Keys: " .. table.concat(keys, ", ") } end
+  if #keys > 0 then out[#out + 1] = { ns.Format(L["Keys: {keys}"], { keys = table.concat(keys, ", ") }) } end
   return out
 end

@@ -22,6 +22,7 @@ local ADDON, ns = ...
 local vgDeath = ns.FrameState("vgDeath")
 
 local T = ns.Theme
+local L = ns.L
 
 local GA = ns.Module("GameAlerts", { defaults = { lossOfControl = true, talkingHead = "move", hardcore = true, rares = false, vignette = false } })
 
@@ -29,8 +30,8 @@ local GA = ns.Module("GameAlerts", { defaults = { lossOfControl = true, talkingH
 -- character, under the Instance prep card; the talking head at the top left under the raid tools and main tanks,
 -- clear of the quest arrow, chat alert and boss timers in the top centre.
 GA.SPOTS = {
-  LossOfControlFrame = { "lossofcontrol", "Loss of control", { "CENTER", "CENTER", 0, 96 }, 256, 58 },
-  TalkingHeadFrame = { "talkinghead", "Talking head", { "TOPLEFT", "TOPLEFT", 186, -126 }, 570, 155 },
+  LossOfControlFrame = { "lossofcontrol", L["Loss of control"], { "CENTER", "CENTER", 0, 96 }, 256, 58 },
+  TalkingHeadFrame = { "talkinghead", L["Talking head"], { "TOPLEFT", "TOPLEFT", 186, -126 }, 570, 155 },
 }
 -- Loss of control's art that's hidden (the black band and its red lines).
 GA.LOC_ART = { "blackBg", "RedLineTop", "RedLineBottom" }
@@ -175,7 +176,7 @@ function GA.OnVignette(_, guid, onMinimap)
   if not name then return end
   GA.seenRares[guid] = true
   PlaySound(SOUNDKIT.RAID_WARNING)
-  ns.Chat("Rare nearby: " .. name)
+  ns.Chat(ns.Format(L["Rare nearby: {name}"], { name = name }))
 end
 
 -- Low-health vignette ----------------------------------------------------------------------------

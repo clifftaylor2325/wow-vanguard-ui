@@ -15,6 +15,7 @@
 local ADDON, ns = ...
 
 local T = ns.Theme
+local L = ns.L
 
 local AB = ns.Module("ActionBars", {
   defaults = {
@@ -604,7 +605,7 @@ local function createBar(n, def, point)
   if n == 1 then addPaging(bar) end
   AB.WatchHover(bar)
   AB.ApplyVisibility(n)
-  ns.Mover(bar, "bar" .. n, "Action bar " .. n, point)
+  ns.Mover(bar, "bar" .. n, ns.Format(L["Action bar {n}"], { n = n }), point)
   return bar
 end
 

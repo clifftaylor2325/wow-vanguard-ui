@@ -9,6 +9,8 @@
 
 local ADDON, ns = ...
 
+local L = ns.L
+
 local T, V, W = ns.Theme, ns.Visibility, ns.Widgets
 
 local FH = ns.Module("FightHistory", { defaults = { strip = false, recap = false, visibility = "always", showWhen = {} } })
@@ -105,8 +107,8 @@ end
 
 -- A fight's figures: "412 dps  #2 of 5" (the place only in a group), "no dps" when hidden.
 local function figures(fight)
-  local dps = fight.dps and (ns.GetModule("DataBars").Short(math.floor(fight.dps)) .. " dps") or "no dps"
-  if fight.rank and fight.sources and fight.sources > 1 then return string.format("%s  #%d of %d", dps, fight.rank, fight.sources) end
+  local dps = fight.dps and ns.Format(L["{dps} dps"], { dps = ns.GetModule("DataBars").Short(math.floor(fight.dps)) }) or L["no dps"]
+  if fight.rank and fight.sources and fight.sources > 1 then return ns.Format(L["{dps}  #{rank} of {count}"], { dps = dps, rank = fight.rank, count = fight.sources }) end
   return dps
 end
 
@@ -123,7 +125,7 @@ end
 -- The strip's tooltip: a title, then each fight, newest first.
 function FH.Tooltip(f)
   GameTooltip:SetOwner(f, "ANCHOR_TOP")
-  GameTooltip:SetText("Fight history", T.RGB("text"))
+  GameTooltip:SetText(L["Fight history"], T.RGB("text"))
   local r, g, b = T.RGB("text2")
   for _, line in ipairs(FH.Lines()) do GameTooltip:AddDoubleLine(line[1], line[2], r, g, b, T.RGB("text")) end
   GameTooltip:Show()
@@ -132,8 +134,8 @@ end
 -- /vg fights: each fight this session, newest first.
 function FH.Command()
   local lines = FH.Lines()
-  if #lines == 0 then return ns.Chat("No fights recorded this session yet.") end
-  ns.Chat("Your fights this session, newest first:")
+  if #lines == 0 then return ns.Chat(L["No fights recorded this session yet."]) end
+  ns.Chat(L["Your fights this session, newest first:"])
   for _, line in ipairs(lines) do ns.Chat(line[1] .. "  " .. line[2]) end
 end
 
@@ -177,7 +179,7 @@ local function build()
   local f = T.HudPanel(CreateFrame("Frame", "Vanguard_FightHistory", UIParent))
   FH.frame = f
   f:SetSize(FH.WIDTH, FH.HEIGHT)
-  ns.Mover(f, "fighthistory", "Fight history", { "BOTTOMRIGHT", "BOTTOMRIGHT", -16, 103 })
+  ns.Mover(f, "fighthistory", L["Fight history"], { "BOTTOMRIGHT", "BOTTOMRIGHT", -16, 103 })
   f.bars = {}
   for i = 1, FH.MAX do f.bars[i] = addBar(f, i) end
   watchMouse(f)

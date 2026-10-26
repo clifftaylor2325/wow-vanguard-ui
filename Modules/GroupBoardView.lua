@@ -8,6 +8,8 @@
 
 local ADDON, ns = ...
 
+local L = ns.L
+
 local T, W = ns.Theme, ns.Widgets
 local QP = ns.QuestParts
 local GB = ns.GetModule("GroupBoard")
@@ -26,8 +28,8 @@ GB.W, GB.ROW_H, GB.ROWS, GB.AGE_EVERY = SPAN + 2 * PAD, T.ROW.height, 10, 10
 GB.H = BODY_TOP + GB.ROWS * GB.ROW_H + T.SPACE.tight + NOTE_H + T.SPACE.gap + HINT_H + PAD
 -- The filter button's choices in order, and its caption for each.
 GB.FILTERS = {
-  all = { "LFM", "All posts" }, LFM = { "LFG", "Looking for more" }, LFG = { "role", "Looking for a group" },
-  role = { "all", "Needs my role" },
+  all = { "LFM", L["All posts"] }, LFM = { "LFG", L["Looking for more"] }, LFG = { "role", L["Looking for a group"] },
+  role = { "all", L["Needs my role"] },
 }
 -- The row's cells drawn in the text colour (the kind and the dungeon have colours of their own).
 GB.PLAIN_CELLS = { "roles", "sender", "age" }
@@ -57,14 +59,14 @@ end
 
 -- The title, the count and the close button along the top (ns.WindowTitle: a window's title; Escape closes the board).
 local function addTop(f)
-  f.count = ns.WindowTitle(f, "Group board", { count = "", onClose = function() f:Hide() end, escape = true }).count
+  f.count = ns.WindowTitle(f, L["Group board"], { count = "", onClose = function() f:Hide() end, escape = true }).count
 end
 
 -- The filter button and the "only for my level" switch under the title.
 local function addFilters(f)
   f.filter = W.Button(f, GB.FILTERS.all[2], function() GB.CycleFilter() end, 150)
   f.filter:SetPoint("TOPLEFT", f, "TOPLEFT", PAD, -FILTER_TOP)
-  f.mine = W.Check(f, "Only dungeons for my level", function() return GB.settings.mine end,
+  f.mine = W.Check(f, L["Only dungeons for my level"], function() return GB.settings.mine end,
     function(v) GB.settings.mine = v GB.Refresh() end, 250)
   f.mine:SetPoint("LEFT", f.filter, "RIGHT", T.SPACE.gap, 0)
 end
@@ -84,7 +86,7 @@ end
 local function addHint(f)
   f.hint = T.Text(f:CreateFontString(nil, "OVERLAY"), "small", "muted")
   f.hint:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", PAD, PAD)
-  f.hint:SetText("Click a post to open a whisper with a message filled in. Nothing is sent until you press Enter.")
+  f.hint:SetText(L["Click a post to open a whisper with a message filled in. Nothing is sent until you press Enter."])
 end
 
 -- Every few seconds while the board shows: the ages move on and old posts go.
@@ -100,7 +102,7 @@ function GB.Build()
   local f = T.Panel(CreateFrame("Frame", "Vanguard_GroupBoard", UIParent), { alpha = T.ALPHA.dialog, shadow = true })
   f:SetSize(GB.W, GB.H)
   f:SetFrameStrata("HIGH")
-  ns.Mover(f, "groupboard", "Group board", { "CENTER", "CENTER", 220, 60 })
+  ns.Mover(f, "groupboard", L["Group board"], { "CENTER", "CENTER", 220, 60 })
   addTop(f)
   addFilters(f)
   addBody(f)
@@ -120,12 +122,12 @@ end
 -- "now" under a minute, else "4m".
 function GB.Age(e, now)
   local minutes = math.floor((now - e.time) / 60)
-  return minutes < 1 and "now" or (minutes .. "m")
+  return minutes < 1 and L["now"] or ns.Format(L["{minutes}m"], { minutes = minutes })
 end
 
 -- "Shadowfang Keep 22-30", or "Any dungeon" for a post that names none.
 local function dungeonText(e)
-  if not e.dungeon then return "Any dungeon" end
+  if not e.dungeon then return L["Any dungeon"] end
   if e.dungeon.min == e.dungeon.max then return string.format("%s %d", e.dungeon.name, e.dungeon.min) end
   return string.format("%s %d-%d", e.dungeon.name, e.dungeon.min, e.dungeon.max)
 end
@@ -172,16 +174,16 @@ function GB.RowTooltip(b)
   tip:SetText(b.entry.sender)
   local r, g, bl = T.RGB("white")
   tip:AddLine(b.entry.text, r, g, bl, true)
-  tip:AddLine(T.Paint("Click: whisper with a message filled in", "text2"))
+  tip:AddLine(T.Paint(L["Click: whisper with a message filled in"], "text2"))
   tip:Show()
 end
 
 -- Under the rows: "+3 more" when they don't all fit, or why the board is empty.
 local function noteText(shown, total)
-  if shown > GB.ROWS then return "+" .. (shown - GB.ROWS) .. " more" end
+  if shown > GB.ROWS then return ns.Format(L["+{count} more"], { count = shown - GB.ROWS }) end
   if shown > 0 then return "" end
-  if total > 0 then return "No posts match. Show all posts, or turn off Only dungeons for my level." end
-  return "No posts yet. " .. GB.Summary() .. " More: /vg lfg probe."
+  if total > 0 then return L["No posts match. Show all posts, or turn off Only dungeons for my level."] end
+  return ns.Format(L["No posts yet. {summary} More: /vg lfg probe."], { summary = GB.Summary() })
 end
 
 -- The rows that fit, from the top.
@@ -201,7 +203,7 @@ function GB.Refresh()
   local now = GetTime()
   GB.Prune(now)
   local shown = GB.Shown()
-  f.count:SetText(#shown .. " posts")
+  f.count:SetText(ns.Format(L["{count} posts"], { count = #shown }))
   paintRows(f, shown, now)
   f.note:SetText(noteText(#shown, #GB.entries))
 end
@@ -220,7 +222,7 @@ end
 
 -- Opens or closes the board (built the first time); says so when the module is off.
 function GB.Toggle()
-  if not GB.settings then return ns.Chat("The group board is off (/vg > Modules).") end
+  if not GB.settings then return ns.Chat(L["The group board is off (/vg > Modules)."]) end
   if not GB.frame then GB.Build() end
   if GB.frame:IsShown() then return GB.frame:Hide() end
   GB.frame:Show()

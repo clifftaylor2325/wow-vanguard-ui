@@ -116,7 +116,7 @@ export function parseCsv(text) {
     if (m[2] !== ",") rows.push([]);
     if (m[2] === "") break;
   }
-  return rows.filter((r) => r.length > 1 || r[0] !== "");
+  return rows.filter((r) => r.length > 1 || (r[0] ?? "") !== "");
 }
 
 // The reviewed translations in a CSV: Map key -> translation. A row whose note says

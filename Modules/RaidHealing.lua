@@ -14,6 +14,7 @@
 local ADDON, ns = ...
 
 local T = ns.Theme
+local L = ns.L
 local RF = ns.GetModule("RaidFrames")
 
 local RH = ns.Module("RaidHealing", {
@@ -418,7 +419,7 @@ local function addOthers(rows, seen)
   local names = {}
   addNames(names, seen, bookBuffs())
   addNames(names, seen, RH.BuffNames())
-  if #names > 0 then rows[#rows + 1] = { "header", "Other" } end
+  if #names > 0 then rows[#rows + 1] = { "header", L["Other"] } end
   for _, name in ipairs(names) do rows[#rows + 1] = { "buffpick", name } end
 end
 
@@ -479,7 +480,7 @@ local function buffEditor(content)
   row:SetSize(480, 28)
   row.input = W.Input(row, 330)
   row.input:SetPoint("LEFT")
-  row.save = W.Button(row, "Save", function() saveBuffs(row.input) end, 80)
+  row.save = W.Button(row, L["Save"], function() saveBuffs(row.input) end, 80)
   row.save:SetPoint("LEFT", row.input, "RIGHT", 8, 0)
   -- Shows the saved list, or your class's defaults when you haven't set one.
   row.Refresh = function(self) self.input:SetText(table.concat(RH.BuffNames(), ", ")) end
@@ -493,12 +494,12 @@ ns.Options.AddRowKind("buffnames", buffEditor, 34)
 -- ending with the header the buff rows go under.
 local function switchRows()
   return {
-    { "header", "On the raid frames" },
-    { "check", "Incoming heals (green, past the health)", switch("healPrediction") },
-    { "check", "Shields (white, after incoming heals)", switch("absorbs") },
-    { "check", "Aggro strip along the top (yellow, orange, red)", switch("aggro") },
-    { "check", "Mark players missing a buff you can give", switch("buffWatch") },
-    { "header", "Buffs to watch" },
+    { "header", L["On the raid frames"] },
+    { "check", L["Incoming heals (green, past the health)"], switch("healPrediction") },
+    { "check", L["Shields (white, after incoming heals)"], switch("absorbs") },
+    { "check", L["Aggro strip along the top (yellow, orange, red)"], switch("aggro") },
+    { "check", L["Mark players missing a buff you can give"], switch("buffWatch") },
+    { "header", L["Buffs to watch"] },
   }
 end
 
@@ -506,9 +507,9 @@ end
 local function pageRows()
   local rows = switchRows()
   addBuffRows(rows)
-  rows[#rows + 1] = { "text", "Other buffs: names, separated by commas. None on = your class's usual buffs." }
+  rows[#rows + 1] = { "text", L["Other buffs: names, separated by commas. None on = your class's usual buffs."] }
   rows[#rows + 1] = { "buffnames" }
   return rows
 end
 
-ns.Options.AddPage({ key = "healing", title = "Healing", icon = "NavHealing", order = 45, rows = pageRows })
+ns.Options.AddPage({ key = "healing", title = L["Healing"], icon = "NavHealing", order = 45, rows = pageRows })

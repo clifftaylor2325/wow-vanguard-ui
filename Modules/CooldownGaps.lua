@@ -16,6 +16,8 @@
 
 local ADDON, ns = ...
 
+local L = ns.L
+
 local A = ns.Auras
 local T, W = ns.Theme, ns.Widgets
 
@@ -251,10 +253,18 @@ local function spellID(text)
   return type(info) == "table" and info.spellID or nil
 end
 
--- The two chosen lists: the setting each is kept in, how its text becomes an ID, and its words.
+-- The two chosen lists: the setting each is kept in, how its text becomes an ID, and its sentences.
 CG.KINDS = {
-  items = { read = itemID, word = "item", ask = "Say an item: a link, an ID, or a name the game knows. /vg gaps add <item>", after = " while you carry it" },
-  spells = { read = spellID, word = "spell", ask = "Say a spell: a link, an ID, or a name the game knows. /vg gaps spell add <spell>", after = "" },
+  items = {
+    read = itemID, ask = L["Say an item: a link, an ID, or a name the game knows. /vg gaps add <item>"],
+    already = L["Already showing item {id}."], added = L["Showing item {id} while you carry it."],
+    removed = L["No longer showing item {id}."], missing = L["Item {id} is not on the list."],
+  },
+  spells = {
+    read = spellID, ask = L["Say a spell: a link, an ID, or a name the game knows. /vg gaps spell add <spell>"],
+    already = L["Already showing spell {id}."], added = L["Showing spell {id}."],
+    removed = L["No longer showing spell {id}."], missing = L["Spell {id} is not on the list."],
+  },
 }
 
 -- Writes the chosen IDs of one kind back into the setting, repaints, and has the Cooldowns page's
@@ -271,10 +281,10 @@ function CG.Add(text, kind)
   local k = CG.KINDS[kind]
   local id, ids = k.read(text), CG.Chosen(CG.settings, kind)
   if not id then return ns.Chat(k.ask) end
-  for _, have in ipairs(ids) do if have == id then return ns.Chat("Already showing " .. k.word .. " " .. id .. ".") end end
+  for _, have in ipairs(ids) do if have == id then return ns.Chat(ns.Format(k.already, { id = id })) end end
   ids[#ids + 1] = id
   save(kind, ids)
-  ns.Chat("Showing " .. k.word .. " " .. id .. k.after .. ".")
+  ns.Chat(ns.Format(k.added, { id = id }))
 end
 
 -- Takes an item or a spell off the chosen list.
@@ -283,16 +293,16 @@ function CG.Remove(text, kind)
   local k = CG.KINDS[kind]
   local id, ids = k.read(text), CG.Chosen(CG.settings, kind)
   for i, have in ipairs(ids) do
-    if have == id then table.remove(ids, i) save(kind, ids) return ns.Chat("No longer showing " .. k.word .. " " .. id .. ".") end
+    if have == id then table.remove(ids, i) save(kind, ids) return ns.Chat(ns.Format(k.removed, { id = id })) end
   end
-  ns.Chat(k.word:gsub("^%l", string.upper) .. " " .. tostring(id or text) .. " is not on the list.")
+  ns.Chat(ns.Format(k.missing, { id = tostring(id or text) }))
 end
 
 -- Says what is chosen, items first, then spells when there are any.
 local function list()
   local s = CG.settings
-  ns.Chat("Chosen items: " .. (s.items ~= "" and s.items or "none") .. ". /vg gaps add <item> adds one.")
-  if s.spells ~= "" then ns.Chat("Chosen spells: " .. s.spells .. ". /vg gaps spell add <spell> adds one.") end
+  ns.Chat(ns.Format(L["Chosen items: {list}. /vg gaps add <item> adds one."], { list = s.items ~= "" and s.items or L["none"] }))
+  if s.spells ~= "" then ns.Chat(ns.Format(L["Chosen spells: {list}. /vg gaps spell add <spell> adds one."], { list = s.spells })) end
 end
 
 -- /vg gaps spell [add <spell> | remove <spell>]: the chosen spells.
@@ -300,17 +310,18 @@ local function spellCommand(rest)
   local verb, arg = rest:match("^(%S*)%s*(.-)$")
   if verb == "add" then return CG.Add(arg, "spells") end
   if verb == "remove" then return CG.Remove(arg, "spells") end
-  ns.Chat("Chosen spells: " .. (CG.settings.spells ~= "" and CG.settings.spells or "none") .. ". /vg gaps spell add <spell> adds one.")
+  local chosen = CG.settings.spells ~= "" and CG.settings.spells or L["none"]
+  ns.Chat(ns.Format(L["Chosen spells: {list}. /vg gaps spell add <spell> adds one."], { list = chosen }))
 end
 
 -- /vg gaps [add <item> | remove <item> | spell ... | list | clear].
 function CG.Command(rest)
   local verb, arg = (rest or ""):match("^(%S*)%s*(.-)$")
-  if not CG.settings then return ns.Chat("The cooldown gaps row is off. Tick Gaps row under /vg > Cooldowns, then /reload.") end
+  if not CG.settings then return ns.Chat(L["The cooldown gaps row is off. Tick Gaps row under /vg > Cooldowns, then /reload."]) end
   if verb == "add" then return CG.Add(arg) end
   if verb == "remove" then return CG.Remove(arg) end
   if verb == "spell" then return spellCommand(arg) end
-  if verb == "clear" then save("items", {}) save("spells", {}) return ns.Chat("Chosen items and spells forgotten.") end
+  if verb == "clear" then save("items", {}) save("spells", {}) return ns.Chat(L["Chosen items and spells forgotten."]) end
   list()
 end
 
@@ -331,7 +342,7 @@ function CG.Enable(settings)
   CG.settings = settings
   CG.holder = CreateFrame("Frame", "Vanguard_CooldownGaps", UIParent)
   CG.holder:SetSize(6 * (CG.SIZE + CG.GAP), CG.SIZE)
-  ns.Mover(CG.holder, "cdm_gaps", "Cooldown gaps", { "BOTTOM", "BOTTOM", 0, 306 })
+  ns.Mover(CG.holder, "cdm_gaps", L["Cooldown gaps"], { "BOTTOM", "BOTTOM", 0, 306 })
   for _, event in ipairs(CG.EVENTS) do ns.On(event, CG.Refresh) end
   for _, event in ipairs(CG.REREAD) do ns.On(event, CG.Reread) end
   CG.Rebuild()
@@ -340,16 +351,16 @@ end
 -- Options rows: the Cooldowns page's Gaps card ---------------------------------------------------
 
 -- The card's note with nothing chosen, and its note while the row is off (its settings load only then).
-CG.EMPTY = "Nothing chosen yet. Drag an item or spell here, or type its name."
-CG.OFF = "The gaps row is off. Tick Gaps row and reload to choose its items and spells."
+CG.EMPTY = L["Nothing chosen yet. Drag an item or spell here, or type its name."]
+CG.OFF = L["The gaps row is off. Tick Gaps row and reload to choose its items and spells."]
 -- A chosen entry's icon size, the name box's width and the small buttons' width on the card's rows.
 CG.ROW_ICON, CG.ROW_INPUT, CG.ROW_BUTTON = 20, 160, 84
 
 -- A chosen entry's icon and name; an item the client hasn't loaded yet reads "Item <id>".
 local function entryLook(kind, id)
-  if kind == "spells" then return C_Spell.GetSpellTexture(id), C_Spell.GetSpellName(id) or ("Spell " .. id) end
+  if kind == "spells" then return C_Spell.GetSpellTexture(id), C_Spell.GetSpellName(id) or ns.Format(L["Spell {id}"], { id = id }) end
   local name = C_Item.GetItemInfo(id)
-  return select(5, C_Item.GetItemInfoInstant(id)), name or ("Item " .. id)
+  return select(5, C_Item.GetItemInfoInstant(id)), name or ns.Format(L["Item {id}"], { id = id })
 end
 
 -- One row per chosen item, then per chosen spell: { "gapentry", name, kind =, id =, icon = }.
@@ -430,9 +441,9 @@ end
 
 -- The add row's box and its Add item and Add spell buttons, right to left.
 local function addControls(r)
-  r.spell = W.Button(r, "Add spell", function() addTyped(r, "spells") end, CG.ROW_BUTTON)
+  r.spell = W.Button(r, L["Add spell"], function() addTyped(r, "spells") end, CG.ROW_BUTTON)
   r.spell:SetPoint("RIGHT", -T.SPACE.gap, 0)
-  r.item = W.Button(r, "Add item", function() addTyped(r, "items") end, CG.ROW_BUTTON)
+  r.item = W.Button(r, L["Add item"], function() addTyped(r, "items") end, CG.ROW_BUTTON)
   r.item:SetPoint("RIGHT", r.spell, "LEFT", -T.SPACE.gap, 0)
   r.input = W.Input(r, CG.ROW_INPUT)
   r.input:SetPoint("RIGHT", r.item, "LEFT", -T.SPACE.gap, 0)
@@ -445,7 +456,7 @@ local function addRow(parent, _, width)
   r:EnableMouse(true)
   r:SetScript("OnReceiveDrag", ns.Guard("drop on gaps add row", onDrop))
   r:SetScript("OnMouseUp", ns.Guard("click-drop on gaps add row", onClickDrop))
-  r.label = W.Text(r, "Drag here, or type")
+  r.label = W.Text(r, L["Drag here, or type"])
   r.label:SetPoint("LEFT", T.SPACE.gap, 0)
   addControls(r)
   return r

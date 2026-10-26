@@ -16,6 +16,8 @@
 
 local ADDON, ns = ...
 
+local L = ns.L
+
 local T, W = ns.Theme, ns.Widgets
 
 local PR = ns.Module("InstancePrep", {
@@ -38,7 +40,7 @@ PR.DOORS = { party = true, raid = true }
 -- Fooddrink 5 (food and water share it), Bandage 7.
 PR.CONSUMABLE, PR.SUBCLASS = 0, { [1] = "potions", [5] = "food", [7] = "bandages" }
 -- The consumable rows in the card's order: their want key and label.
-PR.CONSUMABLES = { { "food", "Food & drink" }, { "bandages", "Bandages" }, { "potions", "Potions" } }
+PR.CONSUMABLES = { { "food", L["Food & drink"] }, { "bandages", L["Bandages"] }, { "potions", L["Potions"] } }
 -- The bags one scan reads: the backpack, four bags and the reagent bag.
 PR.LAST_BAG = 5
 -- What /vg prep want can set.
@@ -138,8 +140,8 @@ end
 function PR.ReagentRows()
   local rows, class, level = {}, you()
   local IS, want = ns.GetModule("InfoStrip"), PR.settings.want
-  if class == "HUNTER" then rows[#rows + 1] = short("Ammo", ask("GetInventoryItemCount", "player", IS.AMMO_SLOT), want.ammo) end
-  if class == "WARLOCK" then rows[#rows + 1] = short("Soul shards", IS.SoulShards(), want.shards) end
+  if class == "HUNTER" then rows[#rows + 1] = short(L["Ammo"], ask("GetInventoryItemCount", "player", IS.AMMO_SLOT), want.ammo) end
+  if class == "WARLOCK" then rows[#rows + 1] = short(L["Soul shards"], IS.SoulShards(), want.shards) end
   for _, r in ipairs(PR.REAGENTS[class] or {}) do
     if level >= r[4] and level <= (r[5] or level) then rows[#rows + 1] = short(reagentName(r), count(r[1]), r[2], r[1]) end
   end
@@ -162,7 +164,7 @@ end
 -- The durability row, when your most worn item is under the warning.
 local function durabilityRow()
   local p = ns.GetModule("InfoStrip").Durability()
-  if p and p < PR.settings.durability then return { label = "Durability", value = p .. "%" } end
+  if p and p < PR.settings.durability then return { label = L["Durability"], value = p .. "%" } end
 end
 
 -- Everything short, in the card's order: class rows, food, bandages, potions, durability, stock.
@@ -270,17 +272,17 @@ end
 -- The card's title and its close button (ns.WindowTitle: a card's; the button fades the card out; Escape
 -- closes it too), and the packed line.
 local function cardParts(f)
-  ns.WindowTitle(f, "Instance prep", { kind = "card", onClose = function() T.FadeOut(f) end, escape = true })
+  ns.WindowTitle(f, L["Instance prep"], { kind = "card", onClose = function() T.FadeOut(f) end, escape = true })
   f.packed = T.Text(f:CreateFontString(nil, "OVERLAY"), "label", "good")
   f.packed:SetPoint("TOPLEFT", PR.PAD, -PR.TOP - 2)
-  f.packed:SetText("Everything's packed.")
+  f.packed:SetText(L["Everything's packed."])
 end
 
 -- The card's Buy list button (T.BUTTON_H tall), left of the close button and level with its top: what's short
 -- that you can buy becomes the Auction helper's Restock shopping list (Modules/AuctionRestock.lua). Hidden
 -- until PR.Paint shows it.
 local function buyButton(f)
-  f.buy = W.Button(f, "Buy list", function() ns.GetModule("AuctionHelper").Restock() end, 64)
+  f.buy = W.Button(f, L["Buy list"], function() ns.GetModule("AuctionHelper").Restock() end, 64)
   f.buy:SetPoint("TOPRIGHT", f.close, "TOPLEFT", -T.SPACE.tight, 0)
   f.buy:Hide()
 end
@@ -295,7 +297,7 @@ local function buildCard()
   buyButton(f)
   f:Hide()
   PR.card = f
-  ns.Mover(f, "prepcard", "Instance prep", { "CENTER", "CENTER", 0, 164 })
+  ns.Mover(f, "prepcard", L["Instance prep"], { "CENTER", "CENTER", 0, 164 })
 end
 
 -- Showing ---------------------------------------------------------------------------------------
@@ -372,7 +374,7 @@ function PR.CheckSupplies()
   for _, key in ipairs(order) do
     if before and not before[key] then fresh[#fresh + 1] = low[key] end
   end
-  if #fresh > 0 then ns.Chat("Running low: " .. table.concat(fresh, ", ") .. ".") end
+  if #fresh > 0 then ns.Chat(ns.Format(L["Running low: {items}."], { items = table.concat(fresh, ", ") })) end
 end
 
 -- Bags changed (or you came into a world): look at the supplies on the next frame, once.
@@ -383,15 +385,15 @@ end
 -- /vg prep want <key> <n>: how many of food, bandages, potions, ammo or shards to carry.
 local function setWant(rest)
   local key, n = rest:match("^want%s+(%a+)%s+(%d+)%s*$")
-  if not (key and PR.WANTS[key]) then return ns.Chat("Usage: /vg prep want <food|bandages|potions|ammo|shards> <n>") end
+  if not (key and PR.WANTS[key]) then return ns.Chat(L["Usage: /vg prep want <food|bandages|potions|ammo|shards> <n>"]) end
   PR.settings.want[key] = tonumber(n)
-  ns.Chat(string.format("Instance prep wants %d %s.", tonumber(n), key))
+  ns.Chat(ns.Format(L["Instance prep wants {count} {kind}."], { count = tonumber(n), kind = key }))
 end
 
 -- /vg prep [want <key> <n>|setup]: the card now (after the fight, in one), a wanted amount, or the wanted-amounts window.
 function PR.Command(rest)
   rest = rest or ""
-  if not PR.settings then return ns.Chat("Instance prep is off (/vg > Modules).") end
+  if not PR.settings then return ns.Chat(L["Instance prep is off (/vg > Modules)."]) end
   if rest:match("^want") then return setWant(rest) end
   if rest:match("^setup") then return PR.Wizard.Open() end
   if rest:match("^buffs") then return PR.BuffReport() end

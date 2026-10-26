@@ -10,13 +10,14 @@
 local ADDON, ns = ...
 
 local T = ns.Theme
+local L = ns.L
 local RF = ns.GetModule("RaidFrames")
 
 local RP = { size = 0, tiles = {} }
 ns.RaidPreview = RP
 
 -- The preview's sizes as { players, label } (0 is off; 5 is a party on the raid tiles).
-RP.CHOICES = { { 0, "Off" }, { 5, "Party (5)" }, { 10, "Raid (10)" }, { 25, "Raid (25)" }, { 40, "Raid (40)" } }
+RP.CHOICES = { { 0, L["Off"] }, { 5, L["Party (5)"] }, { 10, L["Raid (10)"] }, { 25, L["Raid (25)"] }, { 40, L["Raid (40)"] } }
 -- /vg preview's words -> sizes.
 RP.WORDS = { off = 0, party = 5, ["5"] = 5, ["10"] = 10, ["25"] = 25, ["40"] = 40 }
 
@@ -31,7 +32,7 @@ local ROLE_ORDER = { TANK = 1, HEALER = 2, DAMAGER = 3 }
 -- The first group is the party preview, so it has the dead and the offline player.
 RP.ROSTER = {
   { "Aldren", "WARRIOR", "TANK", 0.64 }, { "Brielle", "PRIEST", "HEALER", 0.92 }, { "Corwyn", "ROGUE", "DAMAGER", 1 },
-  { "Dagny", "MAGE", "DAMAGER", 0, "Dead" }, { "Elowen", "HUNTER", "DAMAGER", 1, "Offline" },
+  { "Dagny", "MAGE", "DAMAGER", 0, L["Dead"] }, { "Elowen", "HUNTER", "DAMAGER", 1, L["Offline"] },
   { "Fennick", "WARRIOR", "TANK", 0.81 }, { "Galora", "DRUID", "HEALER", 1 }, { "Hesketh", "WARLOCK", "DAMAGER", 0.55 },
   { "Isolde", "MAGE", "DAMAGER", 1 }, { "Jorund", "SHAMAN", "HEALER", 0.88 },
   { "Kestra", "PALADIN", "HEALER", 0.97 }, { "Lorcan", "ROGUE", "DAMAGER", 0.73 }, { "Maelis", "PRIEST", "HEALER", 1 },
@@ -172,23 +173,24 @@ end
 
 -- Why the preview can't start now, or nil when it can.
 local function blocked()
-  if not RF.holder then return "The raid frames are off (/vg > Modules), so there is nothing to preview." end
-  if ns.InCombat() then return "In combat. Try the preview again once combat ends." end
-  if inGroup() then return "You're in a group: your real party or raid frames are showing." end
+  if not RF.holder then return L["The raid frames are off (/vg > Modules), so there is nothing to preview."] end
+  if ns.InCombat() then return L["In combat. Try the preview again once combat ends."] end
+  if inGroup() then return L["You're in a group: your real party or raid frames are showing."] end
 end
 
--- Turns the preview off: the sample frames hidden, refit() fits the real grid, then a chat line ending in why (when given).
-local function stop(why, refit)
+-- Turns the preview off: the sample frames hidden, refit() fits the real grid, then a chat line saying so
+-- (said, when given: one that says why).
+local function stop(said, refit)
   if RP.size == 0 then return end
   RP.size = 0
   RP.frame:Hide()
   refit()
-  ns.Chat("Raid frames preview off" .. (why and (": " .. why) or "."))
+  ns.Chat(said or L["Raid frames preview off."])
 end
 
 -- Turns the preview off and fits the real grid at once.
-function RP.Stop(why)
-  stop(why, RF.Fit)
+function RP.Stop(said)
+  stop(said, RF.Fit)
 end
 
 -- Fits the real grid once the fight ends (the combat handler runs before the lockdown starts).
@@ -197,8 +199,8 @@ local function fitAfterCombat()
 end
 
 -- Turns the preview off from the PLAYER_REGEN_DISABLED handler, and fits the real grid after the fight.
-function RP.StopAtCombatStart(why)
-  stop(why, fitAfterCombat)
+function RP.StopAtCombatStart(said)
+  stop(said, fitAfterCombat)
 end
 
 -- Shows the preview with n sample players (5: a party; 10, 25 or 40: a raid), or turns
@@ -207,7 +209,7 @@ function RP.Set(n)
   if n == 0 then return RP.Stop() end
   local why = blocked()
   if why then return ns.Chat(why) end
-  if RP.size == 0 then ns.Chat("Raid frames preview on, with sample players. /vg preview off, joining a group or combat ends it.") end
+  if RP.size == 0 then ns.Chat(L["Raid frames preview on, with sample players. /vg preview off, joining a group or combat ends it."]) end
   RP.size = n
   draw()
 end
@@ -222,13 +224,13 @@ function RP.Command(rest)
   local word = (rest or ""):lower()
   if word == "" then return RP.Set(RP.size > 0 and 0 or 10) end
   local n = RP.WORDS[word]
-  if not n then return ns.Chat("Usage: /vg preview [party | 10 | 25 | 40 | off]") end
+  if not n then return ns.Chat(L["Usage: /vg preview [party | 10 | 25 | 40 | off]"]) end
   RP.Set(n)
 end
 
 -- A roster change: once you're in a real group, the preview ends.
-ns.On("GROUP_ROSTER_UPDATE", function() if RP.size > 0 and inGroup() then RP.Stop("you joined a group.") end end)
+ns.On("GROUP_ROSTER_UPDATE", function() if RP.size > 0 and inGroup() then RP.Stop(L["Raid frames preview off: you joined a group."]) end end)
 -- Combat ends it at once.
-ns.On("PLAYER_REGEN_DISABLED", function() RP.StopAtCombatStart("combat started.") end)
+ns.On("PLAYER_REGEN_DISABLED", function() RP.StopAtCombatStart(L["Raid frames preview off: combat started."]) end)
 -- A new text size or UI scale: the preview is drawn again.
 T.OnChanged(RP.Refresh)
