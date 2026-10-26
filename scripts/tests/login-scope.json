@@ -158,7 +158,10 @@
       "without Masque (or without LibStub) nothing changes"
     ],
     "scripts/tests/merchantbulk.test.mjs": [],
-    "scripts/tests/meter.test.mjs": [],
+    "scripts/tests/meter.test.mjs": [
+      "the meter's default spot clears the action bars on any canvas 1110 wide or more: today's spot where it fits, the game meter's spot where it does not",
+      "the spell panel opens on the meter's side away from the screen's middle, else on the other side above the action bars"
+    ],
     "scripts/tests/motion.test.mjs": [],
     "scripts/tests/officerloot.test.mjs": [],
     "scripts/tests/options.test.mjs": [

@@ -30,6 +30,8 @@ export const FULL_CASES = [
   "scripts/tests/setup.test.mjs|the setup wizard sits above the unlock handles on the last step, so their labels never draw over it", // needs the handles of the bars
   "scripts/tests/setuplayouts.test.mjs|setup layouts: nothing overlaps or leaves the screen, solo to 40-man, at UI scale 1 and pixel-perfect", // the rects of every module's mover against each other; with a module off an overlap check passes vacuously
   "scripts/tests/setuplayouts.test.mjs|setup screens: with each screen preset, nothing overlaps or leaves its own screen, in every layout, solo to 40-man", // the same check at each screen preset
+  "scripts/tests/meter.test.mjs|the spell panel opens on the meter's side away from the screen's middle, else on the other side above the action bars", // needs bar 1's rect to lift above and to check against
+  "scripts/tests/meter.test.mjs|the meter's default spot clears the action bars on any canvas 1110 wide or more: today's spot where it fits, the game meter's spot where it does not", // with ActionBars off the overlap check passes vacuously
   "scripts/tests/units.test.mjs|threat and happiness only where the client and settings allow", // coverage: the only case that runs Modules/UnitExtras.lua:46 (it passes vacuously with UnitFrames off, since nothing is built)
 ];
 
