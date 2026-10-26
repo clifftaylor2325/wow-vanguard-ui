@@ -94,22 +94,47 @@ local function moduleRow(parent, row, width)
   return r
 end
 
--- Disables a button row (the themed button's disabled look) while its enabled() says false; re-read on every refresh.
-local function followEnabled(b, enabled)
-  -- Re-reads enabled(): the button works, or is disabled.
-  b.Refresh = function(self)
-    if enabled() == true then self:Enable() else self:Disable() end
-  end
-  b:Refresh()
+-- Disables a button row (the themed button's disabled look) while its enabled() says false.
+local function followEnabled(b)
+  if b.enabled() == true then b:Enable() else b:Disable() end
 end
 
--- The width of a button row's button (units).
-local BUTTON_WIDTH = 220
+-- A button row's button width (units) unless a label in its card needs more, and the air a label keeps each side.
+local BUTTON = { width = 220, air = 12 }
 
--- A button row: { "button", label, onClick, enabled }; enabled (optional) disables it while it says false.
+-- The width a button's label takes as drawn (it follows the font and the text size), with its air each side.
+local function labelNeed(b)
+  return math.ceil(b.text:GetUnboundedStringWidth()) + 2 * BUTTON.air
+end
+
+-- Gives every button row in a card one width: BUTTON.width, or what its widest label needs, never past the card's
+-- inside width. Each label is held to its button, so one too long even for that is cut short instead of spilling.
+local function fitCardButtons(card)
+  local width = BUTTON.width
+  for _, b in ipairs(card.buttons) do width = math.max(width, labelNeed(b)) end
+  width = math.min(width, INNER)
+  for _, b in ipairs(card.buttons) do
+    b:SetWidth(width)
+    b.text:SetWidth(width - 2 * BUTTON.air)
+  end
+end
+
+-- A button row's refresh: the card's buttons fit their labels again, then the row follows its enabled() (if any),
+-- read again each time.
+local function refitButton(b)
+  fitCardButtons(b.card)
+  if b.enabled then followEnabled(b) end
+end
+
+-- A button row: { "button", label, onClick, enabled }; enabled (optional) disables it while it says false. Its card
+-- keeps its buttons, which share one width that fits their labels (each new one fits them all again).
 local function buttonRow(c, r)
-  local b = W.Button(c, r[2], r[3], BUTTON_WIDTH)
-  if r[4] then followEnabled(b, r[4]) end
+  local b = W.Button(c, r[2], r[3], BUTTON.width)
+  b.text:SetWordWrap(false)
+  b.card, b.enabled, b.Refresh = c, r[4], refitButton
+  c.buttons = c.buttons or {}
+  c.buttons[#c.buttons + 1] = b
+  b:Refresh()
   return b
 end
 

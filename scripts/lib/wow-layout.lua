@@ -57,15 +57,19 @@ end
 
 local rectOf
 
--- The width a font string's text takes (its set width when it has one).
-local function textWidth(w)
-  if w.__width then return w.__width end
+-- The width a font string's text takes on its longest line, whatever width the string is held to.
+local function unboundedWidth(w)
   local text = tostring(w.__text or "")
   local longest = 0
   for line in (text .. "\n"):gmatch("(.-)\n") do
     longest = math.max(longest, #line)
   end
   return longest * CHAR_WIDTH
+end
+
+-- The width a font string's text takes (its set width when it has one).
+local function textWidth(w)
+  return w.__width or unboundedWidth(w)
 end
 
 -- The height a font string's text takes (its set height when it has one).
@@ -266,6 +270,9 @@ function methods:GetSize() return self:GetWidth(), self:GetHeight() end
 
 -- The width of a font string's text (rough).
 function methods:GetStringWidth() return textWidth(self) end
+
+-- The width its text takes, whatever width the string is held to (rough).
+function methods:GetUnboundedStringWidth() return unboundedWidth(self) end
 
 -- Whether the client would have a rect for this widget.
 function methods:IsRectValid() return laidOut(self) end

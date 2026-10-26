@@ -443,7 +443,7 @@ it("with the meter module off, the Combat tools Report button is greyed out", ()
   addon.eval('ns.Options.Show("tools")');
   const enabled = addon.eval(`for _, w in ipairs(__wfgStub.frames) do
       local fs = w.label or w.text
-      if w.IsEnabled and type(fs) == "table" and fs.__text == "Report the meter's top lines (also the Report button on the meter)" then return w:IsEnabled() end
+      if w.IsEnabled and type(fs) == "table" and fs.__text == "Report the meter's top lines" then return w:IsEnabled() end
     end`);
   expect(enabled, "nothing to report from: the button can't be pressed").toBe(false);
 });

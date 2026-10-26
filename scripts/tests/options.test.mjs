@@ -1437,3 +1437,69 @@ for (const locale of ["deDE", "frFR", "esES", "esMX", "itIT", "ptBR", "ruRU", "k
     expect(opened, `${locale}: all 20 pages build rows, no error caught, the window is up`).toEqual([20, 0, true]);
   });
 }
+
+// Every shown text on the options page now that runs past the left or right edge of the frame it sits on, as
+// "page | text". A module row's own-switch note is left out: it sits after its caption as measured, and the harness
+// measures a held caption at its full held width, which the client doesn't.
+const SPILLS_LUA = `function __spills(page)
+  local out = {}
+  local function shown(f) while f do if not f.__shown then return false end f = f.__parent end return true end
+  for _, w in ipairs(__wfgStub.frames) do
+    local p = w.__parent
+    if w.__kind == "FontString" and (w.__text or "") ~= "" and p and p.ownSwitch ~= w and shown(w) then
+      local l, r, pl, pr = w:GetLeft(), w:GetRight(), p:GetLeft(), p:GetRight()
+      if l < pl - 0.5 or r > pr + 0.5 or w:GetUnboundedStringWidth() > (w.__width or math.huge) + 0.5 and w.__noWrap then out[#out + 1] = page .. " | " .. w.__text end
+    end
+  end
+  return out
+end`;
+
+it("options: no text runs past the button, row or card it sits on, on any page", () => {
+  const addon = loggedIn(CLICK_LUA + DATA_ENV + SPILLS_LUA);
+  addon.slash("");
+  const spills = addon.eval(`local out = {}
+    for _, page in ipairs(ns.Options.NavOrder()) do
+      ns.Options.Show(page.key)
+      for _, line in ipairs(__spills(page.key)) do out[#out + 1] = line end
+    end
+    return out`);
+  expect(spills, "every label fits inside its control").toEqual({});
+});
+
+it("options: a card's buttons share one width, wide enough for its longest label (the officer loot tools), else 220", () => {
+  const addon = loggedIn(CLICK_LUA);
+  addon.eval('ns.Options.Show("tools")');
+  // The width of the shown button whose label starts so, and its label's width as drawn.
+  const width = (label) => addon.eval(`for _, w in ipairs(__wfgStub.frames) do
+    if w.text and w.card and w:IsVisible() and (w.text.__text or ""):sub(1, ${label.length}) == "${label}" then return { w:GetWidth(), w.text:GetUnboundedStringWidth() } end end`);
+  const [party, partyText] = width("Put the list in the chat box for the party");
+  expect(party, "the longest loot label sets its card's width, with 12 of air each side").toBe(partyText + 24);
+  expect(width("Clear every reserve")[0], "the card's short labels take the same width").toBe(party);
+  expect(width("Report the meter's top lines")[0], "the meter's buttons fit in the usual 220").toBe(220);
+});
+
+it("options: a button label too long for its card is held to the card's inside width and cut short there", () => {
+  const long = "A ".repeat(200);
+  const addon = loggedIn(CLICK_LUA + `ns.Options.AddRows("tools", function() return { { "header", "TEST-ONLY" }, { "button", "${long}", function() end } } end)`);
+  addon.eval('ns.Options.Show("tools")');
+  const sized = addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.card and w.text and w.text.__text == "${long}" then
+    return { w:GetWidth(), w.text:GetWidth(), w.text.__noWrap, w.card:GetWidth() } end end`);
+  expect(sized, "the button spans the card less its inset each side; the label, 12 less each side, on one line").toEqual([sized[3] - 2 * addon.eval("return ns.Theme.SPACE.col"), sized[0] - 24, true, sized[3]]);
+});
+
+it("options: a dropdown's menu widens to its longest choice and keeps the dropdown's width when every choice fits", () => {
+  const addon = loggedIn(CLICK_LUA);
+  addon.eval('ns.Options.Show("general")');
+  // Opens the shown dropdown holding a choice with this label; the menu's width, the dropdown's, and the longest label's.
+  const open = (label) => addon.eval(`for _, d in ipairs(__wfgStub.frames) do
+    if d.arrow and d.choices and d:IsVisible() then
+      local list, has, longest = type(d.choices) == "function" and d.choices() or d.choices, false, 0
+      for _, c in ipairs(list) do has = has or c[2] == "${label}" longest = math.max(longest, #c[2] * 6) end
+      if has then d.__scripts.OnClick(d) return { Vanguard_Menu:GetWidth(), d:GetWidth(), longest } end
+    end end`);
+  const [wide, , longest] = open("Blizzard Dialog Background Dark");
+  expect(wide, "the texture list: the longest name, its inset, the gap and the check mark").toBe(longest + 30);
+  addon.eval("ns.Widgets.CloseMenu()");
+  const [menu, dropdown] = open("Midnight");
+  expect(menu, "a short list keeps the dropdown's width").toBe(dropdown);
+});

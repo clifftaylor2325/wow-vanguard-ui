@@ -279,7 +279,7 @@ function OL.Rows()
   local get, set, default = ns.Options.LiveSetting("OfficerLoot", "on", function() OL.Apply() end)
   local rows = {
     { "header", L["Officer loot tools"] },
-    { "text", L["A soft-reserve list next to the roll tracker and a roster of the group, for a raid leader or officer. Kept on this character and shared by hand; nothing is synced, sent or rolled for you (/vg loot)."] },
+    { "text", L["A soft-reserve list next to the roll tracker and a roster of the group, for a raid leader or officer. Kept on this character and shared by hand; nothing is synced, sent or rolled for you.\nFrom the chat box: /vg loot"] },
     { "check", L["Turn on the soft-reserve list and the roster"], get, set, default },
     { "button", L["Add a reserve"], OL.AskAdd },
     { "button", L["Show or hide the roster"], function() OL.ToggleRoster() end },

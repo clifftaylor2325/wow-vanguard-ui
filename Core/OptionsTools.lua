@@ -78,7 +78,7 @@ local function meterButtons()
   return {
     check(L["Show each line's share of the total (45%) when the game gives plain figures"], liveSetting("Meter", "percent", paint)),
     { "cycle", L["Report the meter to"], { { "chat", L["Your chat"] }, { "say", L["Say"] }, { "party", L["Party"] }, { "raid", L["Raid"] }, { "instance", L["Instance"] }, { "guild", L["Guild"] } }, liveSetting("Meter", "reportTo", paint) },
-    { "button", L["Report the meter's top lines (also the Report button on the meter)"], MT.ReportClick, function() return MT.settings ~= nil end },
+    { "button", L["Report the meter's top lines"], MT.ReportClick, function() return MT.settings ~= nil end, tip = L["The same as the Report button on the meter."] },
     { "button", L["Reset the game's damage meter"], MT.Reset },
   }
 end
