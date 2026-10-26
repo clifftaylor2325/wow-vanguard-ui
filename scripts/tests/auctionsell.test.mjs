@@ -554,6 +554,28 @@ it("the sell card's Post, Stop, Skip and Max buttons and the guide's steps fit i
   }
 });
 
+it("the posting guide's steps wrap to a second row inside the card at larger text, and sit in one row at 100% (B10-4)", () => {
+  for (const [locale, scale] of [["frFR", 1.15], ["deDE", 1.3], ["ruRU", 1.3], ["esES", 1.3], ["ptBR", 1.3]]) {
+    const addon = postingTab(locale);
+    // [guide line below the steps, inside the card, then for each step: ends inside the card, its top].
+    const rows = () => addon.eval(`local c = ${CARD} local out = { c.guide:GetTop() < c.steps[1]:GetBottom(), c.guide:GetBottom() >= c:GetBottom() }
+      for i, s in ipairs(c.steps) do out[#out + 1] = s:GetRight() <= c:GetRight() out[#out + 1] = s:GetTop() end return out`);
+    // How many different rows the steps stand in.
+    const rowTops = (r) => new Set(r.slice(2).filter((_, i) => i % 2 === 1)).size;
+    addon.eval(`ns.Theme.Settings().textScale = ${scale} ns.Theme.Refresh()`);
+    const big = rows();
+    expect(big.slice(0, 2), `${locale} at ${Math.round(scale * 100)}%: the guide's line under its steps, inside the card`).toEqual([true, true]);
+    expect([big[2], big[4], big[6], big[8]], `${locale} at ${Math.round(scale * 100)}%: every step ends inside the card`).toEqual([true, true, true, true]);
+    expect(addon.textFit(CARD).filter((f) => /^\d {2}/.test(f.text)), `${locale} at ${Math.round(scale * 100)}%: no step is cut or spills`).toEqual([]);
+    addon.eval("ns.Theme.Settings().textScale = 1 ns.Theme.Refresh()");
+    expect(rowTops(rows()), `${locale} at 100%: all four steps in one row`).toBe(1);
+  }
+  const wrapped = postingTab("deDE");
+  wrapped.eval("ns.Theme.Settings().textScale = 1.3 ns.Theme.Refresh()");
+  const tops = wrapped.eval(`local c = ${CARD} return { c.steps[1]:GetTop(), c.steps[4]:GetTop(), c.steps[4]:GetLeft() - c:GetLeft() }`);
+  expect([tops[1] < tops[0], tops[2]], "deDE at 130%: step 4 starts a second row at the card's left").toEqual([true, 0]);
+});
+
 it("the sell card's count and history lines sit under the buttons and end inside the card in real translations (B10-2, B10-3)", () => {
   for (const locale of ["frFR", "deDE", "ruRU"]) {
     const addon = postingTab(locale);

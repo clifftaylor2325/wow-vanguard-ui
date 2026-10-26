@@ -28,6 +28,8 @@ local SLOT = 36
 -- The form: where its rows start (down from the card's top), how far apart they are (an inline control,
 -- T.CONTROL_H, and 6 of air), and the width of the label column before its boxes.
 AH.FORM_Y, AH.FORM_ROW, AH.LABEL_W = -110, T.CONTROL_H + 6, 60
+-- How far apart the posting guide's rows are (its steps wrap to a second row when they don't fit the card).
+AH.GUIDE_ROW = 18
 -- The Up now card (the listings up for the item on the sell card): its rows (how many, until
 -- AH.Build counts them) and its columns: the price each, how many, and the time left.
 AH.LIST_ROWS = 4
@@ -837,25 +839,38 @@ local function postRow(c)
   c.status, c.historyLine = wideLine(c, y - 32), wideLine(c, y - 56)
 end
 
--- A guide step after the one before it, a column gap on (a translated step can run wider than a fixed pitch
--- allows); the first step stays where smallLine put it.
-local function chainStep(step, before)
-  if not before then return end
-  step:ClearAllPoints()
-  step:SetPoint("TOPLEFT", before, "TOPRIGHT", T.SPACE.col, 0)
+-- The guide's steps along the card, each after the one before it (a column gap on): one that would end past the
+-- card's right edge starts the next row (AH.GUIDE_ROW lower), so a longer translation or larger text wraps
+-- instead of running out of the card. Returns how many rows it took.
+local function placeSteps(c, y)
+  local x, row, width = 0, 0, AH.WIDTH - 2 * AH.PAD - 2 * AH.INSET
+  for _, step in ipairs(c.steps) do
+    local need = math.ceil(T.FullWidth(step))
+    if x > 0 and x + need > width then x, row = 0, row + 1 end
+    step:ClearAllPoints()
+    step:SetPoint("TOPLEFT", x, y - row * AH.GUIDE_ROW)
+    x = x + need + T.SPACE.col
+  end
+  return row + 1
 end
 
--- The posting guide under the history line: its numbered steps in a row, and the line under them.
-local function guideRow(c)
+-- The guide's steps and the line under the last row of them, placed again after a text size change.
+local function layGuide(c)
   local y = AH.FORM_Y - 4 * AH.FORM_ROW - 110
+  c.guide:SetPoint("TOPLEFT", 0, y - placeSteps(c, y) * AH.GUIDE_ROW)
+end
+
+-- The posting guide under the history line: its numbered steps in rows, and the line under them.
+local function guideRow(c)
   c.steps = {}
   for i, name in ipairs(AH.GUIDE_STEPS) do
-    c.steps[i] = smallLine(c, y)
-    chainStep(c.steps[i], c.steps[i - 1])
+    c.steps[i] = smallLine(c, 0)
     c.steps[i]:SetText(i .. "  " .. name)
   end
-  c.guide = smallLine(c, y - 18)
+  c.guide = smallLine(c, 0)
   c.guide:SetPoint("RIGHT")
+  layGuide(c)
+  T.OnChanged(ns.Guard("lay out posting guide", function() layGuide(c) end))
 end
 
 -- Near the end of the listings on the Up now card, with more on the house: the next page is asked for.

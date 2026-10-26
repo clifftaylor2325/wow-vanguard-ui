@@ -2624,6 +2624,12 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: each pin's gold "!" sits on a small square whose edge stays one crisp pixel at every zoom, the same size throughout. [Needs in-game check: the client's real canvas scales and how the edge looks at them.]
 - If it fails, paste: a screenshot of the pins zoomed in and out, and `/vg errors`.
 
+### 33.88 Posting guide steps wrap at larger Text sizes
+
+- Do: open the auction house on the Posting tab with an item on the Sell card, in German (or French or Russian), and set Text size to 100%, then 115%, 130% and 150% with the card open.
+- Expect: at 100% the four steps (1 Item, 2 Preis, 3 Post, 4 Eingestellt) stand in one row; at the larger sizes the step that no longer fits starts a second row at the card's left, nothing runs past the card's right edge, and the line saying what to do next sits under the last row, clear of Your auctions. [Needs in-game check: the real font widths decide at which size each language wraps.]
+- If it fails, paste: a screenshot of the Sell card at 130%, and `/vg errors`.
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ## When you are done
