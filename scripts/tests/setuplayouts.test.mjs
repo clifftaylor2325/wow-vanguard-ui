@@ -71,7 +71,7 @@ it("setup layouts: Like the game's puts your frames at the top left; another lay
   const home = spots();
   expect(addon.eval('return __click("Like the game\'s") and Vanguard_Setup.pages.layout.hint:GetText()'), "picking it says what it does").toMatch(/top left as the game has them/);
   setupClick(addon, "next");
-  expect(spots(), "player at the top left, focus beside the target of target, party and raid down the left, bosses on the right").toEqual([["TOPLEFT", "TOPLEFT", 20, -40], ["TOPLEFT", "TOPLEFT", 520, -94], ["BOTTOMLEFT", "BOTTOMLEFT", 20, 330], ["TOPRIGHT", "TOPRIGHT", -290, -200]]);
+  expect(spots(), "player at the top left, focus beside the target of target, party and raid down the left, bosses on the right").toEqual([["TOPLEFT", "TOPLEFT", 20, -40], ["TOPLEFT", "TOPLEFT", 540, -94], ["BOTTOMLEFT", "BOTTOMLEFT", 20, 330], ["TOPRIGHT", "TOPRIGHT", -290, -200]]);
   expect(addon.eval("return VanguardDB.profiles.Default.positions.maintanks"), "frames not built yet get their spot saved for later").toEqual({ point: "TOP", relPoint: "TOP", x: 100, y: -196 });
   for (let i = 0; i < 3; i += 1) setupClick(addon, "next");
   addon.slash("setup");
@@ -79,6 +79,15 @@ it("setup layouts: Like the game's puts your frames at the top left; another lay
   setupClick(addon, "next");
   expect(spots().slice(0, 2).concat([spots()[3]]), "Healing puts the frames back first").toEqual([home[0], home[1], home[3]]);
   expect([addon.eval("return VanguardDB.profiles.Default.positions.uf_player.point == nil"), spots()[2]], "and then places nothing: the raid frames keep their default spot").toEqual([true, home[2]]);
+});
+it("setup layouts: Like the game's keeps the target cast bar's interrupt mark off the focus frame (B4-5)", () => {
+  const addon = loggedIn(CLICK_LUA + UNITS_ENV + RAID_ENV, { firstRun: true });
+  addon.eval('__click("Like the game\'s")');
+  setupClick(addon, "next");
+  expect(["uf_targettarget", "cast_focus", "uf_focus"].map((key) => addon.eval(`return { ns.MoverPoint('${key}') }`)), "target of target, the focus cast bar and the focus sit 20 right of where they were")
+    .toEqual([["TOPLEFT", "TOPLEFT", 540, -46], ["TOPLEFT", "TOPLEFT", 540, -76], ["TOPLEFT", "TOPLEFT", 540, -94]]);
+  const [markRight, focusLeft] = addon.eval("local m = Vanguard_CastBar_target.mark return { m:GetRight(), Vanguard_focus:GetLeft() }");
+  expect(markRight, "the mark ends well left of the focus frame").toBeLessThan(focusLeft - 8);
 });
 // Where a point name sits across and up a rect (0 = left or bottom, 1 = right or top).
 const ACROSS = (point) => (/LEFT/.test(point) ? 0 : /RIGHT/.test(point) ? 1 : 0.5);

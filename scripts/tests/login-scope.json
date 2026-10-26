@@ -230,6 +230,7 @@
     "scripts/tests/setuplayouts.test.mjs": [
       "Centered layout: compact raid grid, one-time migrations, a strip with nothing to show",
       "default sizes for a 1080p screen: 240 x 36 unit frames with 12 px names, 38 px buttons; a saved profile keeps its sizes",
+      "setup layouts: Like the game's keeps the target cast bar's interrupt mark off the focus frame (B4-5)",
       "setup layouts: Like the game's puts your frames at the top left; another layout puts them back",
       "setup layouts: Versus deck is your role's centered layout with the deck on; another layout takes it off",
       "meter: target of target takes its narrow spot while the meter is on and goes back when it is off, under 1838 wide only",
