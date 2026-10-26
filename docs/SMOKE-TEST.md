@@ -2383,6 +2383,12 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: both tabs stay at full strength with the mouse away; with Hide the tab bar ticked, the bar's rule and the Find and Copy tiles fade away about four seconds after the mouse leaves the chat and the tabs go with them (the tabs at the game's own pace), all back the moment the mouse is over the chat again, and the bar stays while the other tab flashes; unticked, the bar is back at once and stays; unticked, the tab you are not reading dims after a moment but stays readable (about 60 %, not the game's near-invisible 20 %), comes to full under the mouse, and the ticked switch brings it back at once; the side buttons stack down from the tab bar's top (chat menu, Quick Join, voice channel, deafen, mute, text to speech, each only when the client shows it), a tile's width apart, and close up when the voice buttons go; a Quick Join toast leaves the stack where it was. `/vg errors` is empty.
 - If it fails, paste: a screenshot of the chat's left column and tab bar, and `/vg errors`.
 
+### 33.43 Trade windows in a long language, and the Instance prep card at the top
+
+- Do: set the game's language to German, Russian or French (or run a client in one). Open your combined bag; open the auction house on the Posting tab with an item dropped on the sell card, then the Lists tab (after a scan, so the button counts down); open a mailbox with Mail tools on. Then, at the largest UI scale, add a dozen Keep-stocked items you lack (`/vg stock <itemID> 10`) and type `/vg prep`.
+- Expect: the bag's Sort button, the sell card's Post, Stop, Skip and Max buttons, the Restock button on the Lists toolbar, the scan button's countdown and each mail row's Take button show their whole label (the search box beside Sort is a little narrower; the guide's four steps follow one another with a gap, none over the next). The Instance prep card's title and close button stay on the screen however long the list grows: the card slides down from the top edge instead. [Needs in-game check: all of it, and whether the clamp moves the card down.] The + Add button in the mail panel's bottom row may still cut its label in German, Russian and Portuguese (known).
+- If it fails, paste: a screenshot of the button or card, the game's language, and `/vg errors`.
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ## When you are done
