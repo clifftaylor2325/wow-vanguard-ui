@@ -72,7 +72,7 @@ it("unlock popover: anchor, offsets, reset", () => {
   const pop = "Vanguard_MoverPopover";
   expect(titleOf(addon, pop), "a card's title: the heading role in the text colour, T.SPACE.gap in and down from its corner").toEqual({ size: addon.eval("return ns.Theme.RoleSize('heading')"), text: true, left: 8, mid: -15 });
   expect(closeOf(addon, pop, "close"), "with the X T.SPACE.gap in from the top-right corner").toEqual([8, 8, true]);
-  expect([escapes(addon, pop), alphaOf(addon, pop), addon.eval(`return ${pop}.title:GetWidth()`)], "Escape closes it; the dialog alpha (it has edit boxes); the title is kept short of the X").toEqual([true, 0.98, 236]);
+  expect([escapes(addon, pop), alphaOf(addon, pop), addon.eval(`return ${pop}.title:GetWidth()`)], "Escape closes it; the dialog alpha (it has edit boxes); the title is kept short of the X").toEqual([true, 0.98, 276]);
   const column = ["target", "anchor", "x", "y", "scale", "alpha", "matchWidth", "matchHeight"].map((field) => addon.eval(`local w = ${pop}.${field} return { w:GetWidth(), w:GetHeight(), ${pop}:GetRight() - w:GetRight() }`));
   expect(column, "the right column has one edge: dropdowns and number boxes alike 150 wide, an inline control (20) tall, T.SPACE.col in").toEqual(Array(8).fill([150, 20, 12]));
   // A widget's screen rect, and where its middle is up the screen.
@@ -339,4 +339,10 @@ it("the unlock bar stays on a small screen at large text, its long note wrapping
   expect([bar.left >= 0, bar.left + bar.width <= 835], "the bar is inside the screen, both ends").toEqual([true, true]);
   expect(addon.eval("return Vanguard_UnlockBar:GetHeight() > 36"), "the note took a second line, so the bar is taller").toBe(true);
   expect(addon.textFit("Vanguard_UnlockBar").filter((f) => f.text.startsWith("Drag")), "the note is not cut or covered").toEqual([]);
+});
+
+it("the position popover's captions clear its dropdowns at 130% text", () => {
+  const addon = fitClient(1920, 1080, 1.3);
+  openPopover(addon, "cast_player");
+  expect(addon.textFit("Vanguard_MoverPopover"), "no caption runs under a dropdown").toEqual([]);
 });

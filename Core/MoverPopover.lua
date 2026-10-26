@@ -21,8 +21,8 @@ local SIDES = { { "LEFT", L["Left"] }, { "RIGHT", L["Right"] }, { "TOP", L["Top"
 local popover
 
 -- The popover's size, and the width of its right column: the dropdowns and the number boxes alike, so the column
--- has one edge.
-local WIDTH, HEIGHT, FIELD_W = 280, 372, 150
+-- has one edge. The captions get what is left of WIDTH, enough for the longest German and Russian ones at 130% text.
+local WIDTH, HEIGHT, FIELD_W = 320, 372, 150
 -- Where the first row's middle is (down from the top, past the title line), and how far apart the rows are:
 -- a row (T.ROW.height) and a gap between.
 local ROWS_TOP, ROW_STEP = 56, T.ROW.height + T.SPACE.tight
