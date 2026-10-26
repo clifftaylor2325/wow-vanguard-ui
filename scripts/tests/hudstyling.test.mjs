@@ -88,3 +88,13 @@ it("P6-3: the keybind banner shows its whole instruction line in German and Fren
   }
   expect(addon.eval("return Vanguard_KeybindMode:GetWidth() < UIParent:GetWidth()"), "and the banner fits the screen").toBe(true);
 });
+
+it("P6-4: the vehicle exit label shrinks to fit its button when a translation runs long", () => {
+  const addon = fitClient();
+  addon.eval('Vanguard_VehicleExit:Show() Vanguard_VehicleExit.label:SetText("Verlassen")');
+  const box = rectOf(addon, "Vanguard_VehicleExit");
+  const label = rectOf(addon, "Vanguard_VehicleExit.label");
+  expect(label.left, "the label starts inside the button").toBeGreaterThanOrEqual(box.left);
+  expect(label.right, "and ends inside it").toBeLessThanOrEqual(box.right);
+  expect(addon.textFit("Vanguard_VehicleExit"), "nothing spills over the border").toEqual([]);
+});
