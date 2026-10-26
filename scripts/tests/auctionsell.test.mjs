@@ -589,6 +589,16 @@ it("the Lists pane's action buttons hold their labels in German and Russian, two
   }
 });
 
+it("the filter dialog's Quality caption sits on one line beside its dropdown in every language (leftover from P10-9's round)", () => {
+  for (const locale of ["enUS", "deDE", "ruRU", "ptBR", "frFR"]) {
+    const addon = postingTab(locale);
+    addon.eval(`${HELPER}.NewList("TEST-ONLY A") ${HELPER}.AddEntry("Strange Dust", "TEST-ONLY A") ${HELPER}.EditFilters("TEST-ONLY A", 1)`);
+    const caption = addon.eval("local q = Vanguard_AuctionFilters.quality return { q.label:GetText(), q.label:GetStringHeight() <= ns.Theme.RoleSize('label') * 1.5, q.label:GetRight() <= q.dropdown:GetLeft() }");
+    expect(caption.slice(1), `${locale}: ${caption[0]} is one line and ends before the dropdown`).toEqual([true, true]);
+    expect(addon.textFit("Vanguard_AuctionFilters").filter((f) => f.text === caption[0]), `${locale}: and is not cut`).toEqual([]);
+  }
+});
+
 it("the Lists toolbar buttons hold their labels in French and German", () => {
   for (const locale of ["frFR", "deDE"]) {
     const addon = postingTab(locale);

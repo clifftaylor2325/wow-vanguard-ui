@@ -56,8 +56,9 @@ AH.VIEW_COLUMNS = { { key = "price", title = L["Unit price"], width = 100, side 
 -- Enum.AuctionHouseTimeLeftBand (Short 0 ... VeryLong 3) as the game's names (TIME_LEFT_SHORT...) and
 -- ours when the client has none.
 AH.TIME_BANDS = { [0] = { "TIME_LEFT_SHORT", L["Short"] }, [1] = { "TIME_LEFT_MEDIUM", L["Medium"] }, [2] = { "TIME_LEFT_LONG", L["Long"] }, [3] = { "TIME_LEFT_VERY_LONG", L["Very long"] } }
--- A shop row's right-click menu; the filter dialog's width.
-AH.ROW_CHOICES, AH.FILTER_W = { { "filters", L["Filters..."] }, { "remove", L["Remove"] } }, 280
+-- A shop row's right-click menu; the filter dialog's width (wide enough for the Quality row's caption to sit beside its
+-- dropdown on one line in the longest translation, "Qualidade").
+AH.ROW_CHOICES, AH.FILTER_W = { { "filters", L["Filters..."] }, { "remove", L["Remove"] } }, 316
 -- Copper in one of each money unit typed into a max price.
 AH.MONEY_UNITS = { g = 10000, s = 100, c = 1 }
 -- The Recent pseudo-list: its pane key, and how many searched terms it keeps.
