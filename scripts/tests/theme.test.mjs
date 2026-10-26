@@ -1182,6 +1182,22 @@ it("T.SetText: a role with the upper flag (section) shows capitals, any other ro
   expect(out, "capitals only for the section role, which is the small size").toEqual(["QUEST ITEMS", "Quest items", true]);
 });
 
+it("T.SetText: a section header's capitals reach the Latin-1 and Cyrillic letters too, and leave ß, ÷ and other scripts alone (P10-12)", () => {
+  const addon = loggedIn();
+  // A section header's text after T.SetText, for this text.
+  const upper = (text) => addon.eval(`local T = ns.Theme
+    local head = T.Text(UIParent:CreateFontString(nil, "OVERLAY"), "section", "muted")
+    T.SetText(head, ${JSON.stringify(text)}) return head.__text`);
+  expect(upper("Questgegenstände"), "German: ä").toBe("QUESTGEGENSTÄNDE");
+  expect(upper("Verbrauchsgüter und Maß"), "German: ü, and ß stays").toBe("VERBRAUCHSGÜTER UND MAß");
+  expect(upper("Équipement à vendre"), "French: É and à").toBe("ÉQUIPEMENT À VENDRE");
+  expect(upper("Baño y niño"), "Spanish: ñ").toBe("BAÑO Y NIÑO");
+  expect(upper("Предметы для заданий"), "Russian: а-п and р-я").toBe("ПРЕДМЕТЫ ДЛЯ ЗАДАНИЙ");
+  expect(upper("Всё ёлка їжак"), "ё, and Ukrainian ї").toBe("ВСЁ ЁЛКА ЇЖАК");
+  expect(upper("a ÷ b × c 品质"), "the division sign, × and Chinese stay").toBe("A ÷ B × C 品质");
+  expect(upper("ÀÉ Ж"), "capitals stay capitals").toBe("ÀÉ Ж");
+});
+
 it("T.Slider: a game slider gets the pill look on its own geometry, a fill to the thumb, a knob on the thumb, a grey knob while disabled; vertical runs down; steppers become arrows", () => {
   const addon = loggedIn(`
     local function make(name, orientation)

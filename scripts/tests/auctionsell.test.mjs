@@ -564,6 +564,41 @@ it("the scan button holds its countdown in Russian, French and Portuguese", () =
   }
 });
 
+it("the Your auctions toolbar holds Check undercuts and Cancel next undercut in real translations, clear of the summary (P10-5)", () => {
+  for (const locale of ["frFR", "deDE", "ruRU", "itIT", "esES", "ptBR"]) {
+    const addon = postingTab(locale);
+    expect(addon.eval(`return ${OWNED_CARD}.cancelNext:GetLeft() ~= nil`), `${locale}: before a check (no line yet) Cancel next undercut still has its place`).toBe(true);
+    addon.eval(`${HELPER}.checked = true ${HELPER}.PaintOwned()`);
+    expect(addon.eval(`return ${OWNED_CARD}.summary:GetText()`), `${locale}: the line beside the heading is up`).not.toBe("");
+    const labels = addon.eval(`local c = ${OWNED_CARD} return { c.check.text:GetText(), c.cancelNext.text:GetText() }`);
+    const cut = addon.textFit(OWNED_CARD).filter((f) => labels.includes(f.text));
+    expect(cut, `${locale}: neither label is cut`).toEqual([]);
+    const room = addon.eval(`local c = ${OWNED_CARD} return { c.summary:GetRight() <= c.cancelNext:GetLeft(), c.cancelNext:GetRight() <= c.check:GetLeft(), c.check:GetRight() <= c:GetRight() }`);
+    expect(room, `${locale}: summary, Cancel next, Check undercuts in a row inside the card`).toEqual([true, true, true]);
+  }
+});
+
+it("the Lists pane's action buttons hold their labels in German and Russian, two to a row in three rows (P10-6)", () => {
+  for (const locale of ["deDE", "ruRU"]) {
+    const addon = postingTab(locale);
+    addon.eval("__wfgStub.click(AuctionHouseFrame.Tabs[4])");
+    const labels = addon.eval(`local out = {} for i, b in ipairs(${HELPER}.pane.actions) do out[i] = b.text:GetText() end return out`);
+    expect(addon.textFit(`${HELPER}.pane`).filter((f) => labels.includes(f.text)), `${locale}: no action label is cut`).toEqual([]);
+    const grid = addon.eval(`local a = ${HELPER}.pane.actions return { a[1]:GetLeft() == a[3]:GetLeft(), a[2]:GetLeft() > a[1]:GetRight(), a[3]:GetTop() < a[1]:GetBottom(), a[5]:GetTop() < a[3]:GetBottom(), a[6]:GetRight() <= ${HELPER}.pane:GetRight() }`);
+    expect(grid, `${locale}: columns line up, rows step down, the last button stays inside the pane`).toEqual([true, true, true, true, true]);
+  }
+});
+
+it("the filter dialog's Quality caption sits on one line beside its dropdown in every language (leftover from P10-9's round)", () => {
+  for (const locale of ["enUS", "deDE", "ruRU", "ptBR", "frFR"]) {
+    const addon = postingTab(locale);
+    addon.eval(`${HELPER}.NewList("TEST-ONLY A") ${HELPER}.AddEntry("Strange Dust", "TEST-ONLY A") ${HELPER}.EditFilters("TEST-ONLY A", 1)`);
+    const caption = addon.eval("local q = Vanguard_AuctionFilters.quality return { q.label:GetText(), q.label:GetStringHeight() <= ns.Theme.RoleSize('label') * 1.5, q.label:GetRight() <= q.dropdown:GetLeft() }");
+    expect(caption.slice(1), `${locale}: ${caption[0]} is one line and ends before the dropdown`).toEqual([true, true]);
+    expect(addon.textFit("Vanguard_AuctionFilters").filter((f) => f.text === caption[0]), `${locale}: and is not cut`).toEqual([]);
+  }
+});
+
 it("the Lists toolbar buttons hold their labels in French and German", () => {
   for (const locale of ["frFR", "deDE"]) {
     const addon = postingTab(locale);

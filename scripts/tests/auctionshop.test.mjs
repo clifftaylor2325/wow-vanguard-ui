@@ -163,10 +163,10 @@ it("shopping lists: the pane picks or makes one, + Add adds, and the caps hold",
   expect([shopRow(addon, 1)[1], paneRow(1)[2], heading(addon)], "picked back by a click on its row").toEqual(["Strange Dust", true, ["Shopping", ""]]);
   addon.eval(`for i = 3, 21 do ${HELPER}.NewList("TEST-ONLY " .. i) end for i = 1, 51 do ${HELPER}.AddEntry("x" .. i, "Shopping") end`);
   expect(addon.eval("local n = 0 for _ in pairs(VanguardDB.ah.lists) do n = n + 1 end return { n, #VanguardDB.ah.lists.Shopping }"), "20 lists, 50 entries").toEqual([20, 50]);
-  expect([paneRow(1)[0], paneRow(14)[0], addon.eval(`return ${HELPER}.pane.rows[15]`)], "fourteen entries fit the pane (the lists by name)").toEqual(["Shopping", "TEST-ONLY 4", null]);
-  addon.wheel(`${HELPER}.pane.rows[1]`, -9);
-  expect([paneRow(1)[0], paneRow(14)[0]], "the wheel scrolls the pane as far as its last entry (the 20 lists, Deals, Upgrades)").toEqual(["TEST-ONLY 17", "Upgrades"]);
-  addon.wheel(`${HELPER}.pane.rows[1]`, 9);
+  expect([paneRow(1)[0], paneRow(12)[0], addon.eval(`return ${HELPER}.pane.rows[13]`)], "twelve entries fit the pane, under three rows of action buttons (the lists by name)").toEqual(["Shopping", "TEST-ONLY 20", null]);
+  addon.wheel(`${HELPER}.pane.rows[1]`, -11);
+  expect([paneRow(1)[0], paneRow(12)[0]], "the wheel scrolls the pane as far as its last entry (the 20 lists, Deals, Upgrades)").toEqual(["TEST-ONLY 19", "Upgrades"]);
+  addon.wheel(`${HELPER}.pane.rows[1]`, 11);
   expect(paneRow(1)[0], "and back").toBe("Shopping");
   expect([chatHas(addon, /at most 20 shopping lists/), chatHas(addon, /holds at most 50 items/)], "says why").toEqual([true, true]);
   expect(addon.eval(`return ${HELPER}.NewList("   ")`), "no name, no list").toBe(false);

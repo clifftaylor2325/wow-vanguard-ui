@@ -598,6 +598,21 @@ it("quest tracker: an item shows its cooldown and range, and the game's tooltip"
   addon.eval("Vanguard_QuestItem1.questID = 90051 GameTooltip.SetQuestLogSpecialItem = nil Vanguard_QuestItem1.__scripts.OnEnter(Vanguard_QuestItem1)");
   expect(addon.eval("return GameTooltip.__special"), "a client without the tooltip call shows none").toBeFalsy();
 });
+it("quest tracker: a first quest taller than the compact room is drawn, its lines cut at the room, and the block ends inside it (P9-6)", () => {
+  const addon = loggedIn(TRACK_ENV);
+  const nine = Array.from({ length: 9 }, (_, i) => `{ text = "0/1 TEST-ONLY Goal ${i + 1}", finished = false }`).join(", ");
+  addon.eval(`__watches = { 90051 } __quests[90051].objectives = { ${nine} } __quests[90051].xp = nil`);
+  addon.fire("QUEST_WATCH_LIST_CHANGED");
+  addon.update(0);
+  const t = tracker(addon);
+  expect([t.blocks.length, t.blocks[0][1].length, t.more], "the quest shows with the lines that fit, not just \"+1 more\"").toEqual([1, 8, false]);
+  const edge = addon.eval("local f = Vanguard_QuestTrackerFrame local b = f.blocks[1] return { b:GetHeight() <= f.body:GetHeight(), b:GetBottom() >= f.body:GetBottom() }");
+  expect(edge, "the cut block stays inside the tracker's body").toEqual([true, true]);
+  addon.eval(`__watches = { 90051, 90052 }`);
+  addon.fire("QUEST_WATCH_LIST_CHANGED");
+  addon.update(0);
+  expect([tracker(addon).blocks.length, tracker(addon).more], "a second quest still waits behind \"+1 more\"").toEqual([1, "+1 more"]);
+});
 it("quest tracker: nearest first, collapsing, too many quests, and switched off", () => {
   const addon = loggedIn(UNITS_ENV + TRACK_ENV, { savedVariables: "VanguardDB.profiles = { Default = { QuestTracker = { order = 'nearest' } } }" });
   addon.eval("__wfgStub.advance(1.25)");
@@ -763,6 +778,17 @@ it("quest log: zones, a quest's details, and its buttons", () => {
   addon.fire("QUEST_LOG_UPDATE");
   addon.update(0);
   expect(questLog(addon).title, "the log's next update chooses the first quest showing").toBe("[3] TEST-ONLY Far");
+});
+it("quest log: hovering a list line shows the quest's whole title, leaving hides it, and a fight shows none (P9-7)", () => {
+  const addon = loggedIn(TRACK_ENV + QLOG_ENV);
+  addon.eval("Vanguard_QuestLogToggle.__scripts.OnClick(Vanguard_QuestLogToggle)");
+  addon.eval("local b = Vanguard_QuestLog.lines[1] b.__scripts.OnEnter(b)");
+  expect(addon.eval("return { GameTooltip.__lines[1].text, GameTooltip:IsShown(), GameTooltip:GetOwner() == Vanguard_QuestLog.lines[1] }"), "the line's title in full, by its line").toEqual(["[8] TEST-ONLY Wolves", true, true]);
+  addon.eval("local b = Vanguard_QuestLog.lines[1] b.__scripts.OnLeave(b)");
+  expect(addon.eval("return GameTooltip:IsShown()"), "leaving hides it").toBe(false);
+  addon.eval("__wfgStub.inCombat = true local b = Vanguard_QuestLog.lines[2] b.__scripts.OnEnter(b)");
+  expect(addon.eval("return GameTooltip:IsShown()"), "in a fight there is none").toBe(false);
+  addon.eval("__wfgStub.inCombat = false local g = GameTooltip GameTooltip = nil local b = Vanguard_QuestLog.lines[2] b.__scripts.OnEnter(b) b.__scripts.OnLeave(b) GameTooltip = g");
 });
 it("quest log: hovering a reward card shows its item, leaving hides it", () => {
   const addon = loggedIn(TRACK_ENV + QLOG_ENV);

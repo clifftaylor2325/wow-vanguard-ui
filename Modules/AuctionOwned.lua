@@ -326,12 +326,21 @@ local function summaryText(checked, busy, undercutCount)
   return L["none undercut"]
 end
 
+-- Sets the toolbar's line and sizes it to its text, at least 1 wide (and as high as the buttons beside it): Cancel
+-- next undercut hangs from its right edge, and the client gives an empty, zero-sized font string no edge, so the
+-- button would not be drawn.
+local function setSummary(c, text)
+  c.summary:SetText(text)
+  c.summary:SetHeight(T.CONTROL_H)
+  c.summary:SetWidth(math.max(1, math.ceil(c.summary:GetStringWidth())))
+end
+
 -- The toolbar's line once you've checked (see summaryText), and
 -- Cancel next undercut, which works while an undercut auction is left to cancel.
 local function paintNext(c)
   local busy, n, nextOne = checking(), #undercuts(), AH.NextUndercut()
   if busy then paintLater() end
-  c.summary:SetText(summaryText(AH.checked, busy, n))
+  setSummary(c, summaryText(AH.checked, busy, n))
   if nextOne then c.cancelNext:Enable() else c.cancelNext:Disable() end
   T.Color(c.cancelNext.text, nextOne and "text" or "disabled")
 end
@@ -368,16 +377,19 @@ local function ownedButtons(r)
   for _, b in ipairs({ r.cancel, r.relist }) do b:SetHeight(T.CONTROL_H) b:SetPoint("RIGHT", 0, 0) end
 end
 
--- The card's toolbar: Check undercuts at the right, Cancel next undercut (what it cancels next
--- and the cost on hover) left of it, and the line beside the heading.
+-- The card's toolbar: Check undercuts at the right (as wide as its label needs), the line beside the heading, and
+-- Cancel next undercut (what it cancels next and the cost on hover) taking the room between them, its label fitted.
 local function toolbar(c)
-  c.check = W.Button(c, L["Check undercuts"], function() AH.CheckUndercuts() end, 120)
+  c.check = ns.WidenToLabel(W.Button(c, L["Check undercuts"], function() AH.CheckUndercuts() end, 120))
   c.check:SetHeight(T.CONTROL_H)
   c.check:SetPoint("TOPRIGHT", 0, 2)
+  c.summary = T.Text(c:CreateFontString(nil, "OVERLAY"), "small", "text2")
+  c.summary:SetWordWrap(false)
+  c.summary:SetPoint("LEFT", c.title, "RIGHT", T.SPACE.gap, 0)
+  setSummary(c, "")
   c.cancelNext = costButton(c, L["Cancel next undercut"], function() AH.CancelNext() end, 140, nextTip)
   c.cancelNext:SetPoint("RIGHT", c.check, "LEFT", -T.SPACE.tight, 0)
-  c.summary = T.Text(c:CreateFontString(nil, "OVERLAY"), "small", "text2")
-  c.summary:SetPoint("LEFT", c.title, "RIGHT", T.SPACE.gap, 0)
+  c.cancelNext:SetPoint("LEFT", c.summary, "RIGHT", T.SPACE.gap, 0)
 end
 
 -- The Your auctions card on a column, from y (h tall): the toolbar, and the rows as a table

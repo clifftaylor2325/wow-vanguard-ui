@@ -29,6 +29,9 @@ QA.SWITCH = 0.5
 -- Within this many yards the arrow reads "Here"; the arrow's alpha while it can't point (or you're there); the
 -- panel's inner padding (units).
 QA.HERE, QA.FAINT, QA.PAD = 15, 0.35, 8
+-- How far the Pin button sits below the panel's top: it fills the title's row, so the distance line under it can run to the
+-- panel's right edge.
+QA.PIN_TOP = 2
 
 -- Choosing the quest ------------------------------------------------------------------------------
 
@@ -93,13 +96,11 @@ local function follow(old)
   return QA.settings.auto and QA.Choose(old) or pin, false
 end
 
--- The look that changes only with the pick: the Pin button while the arrow holds a pinned quest (the title and
--- the distance then stop short of it), and the arrow gold for a turn-in, else the accent.
+-- The look that changes only with the pick: the Pin button while the arrow holds a pinned quest (the title stops short
+-- of it; the distance line below it keeps the whole width), and the arrow gold for a turn-in, else the accent.
 local function paintPick(f)
   f.pin:SetShown(QA.held == true)
-  for _, fs in ipairs({ f.title, f.dist }) do
-    if QA.held then fs:SetPoint("RIGHT", f.pin, "LEFT", -T.SPACE.tight, 0) else fs:SetPoint("RIGHT", f, "RIGHT", -QA.PAD, 0) end
-  end
+  if QA.held then f.title:SetPoint("RIGHT", f.pin, "LEFT", -T.SPACE.tight, 0) else f.title:SetPoint("RIGHT", f, "RIGHT", -QA.PAD, 0) end
   T.Tint(f.arrow, QA.ready and "gold" or "accent")
 end
 
@@ -266,11 +267,11 @@ local function fill(f)
   f.title:SetWordWrap(false)
 end
 
--- The Pin button at the panel's right edge, the one part of the panel that takes the mouse (the rest lets
+-- The Pin button at the panel's top right, the one part of the panel that takes the mouse (the rest lets
 -- clicks and camera turns through): a ghost tile, as the window controls.
 local function pinButton(f)
   local b = T.WindowControl(CreateFrame("Button", nil, f), "Pin")
-  b:SetPoint("RIGHT", f, "RIGHT", -T.SPACE.tight, 0)
+  b:SetPoint("TOPRIGHT", f, "TOPRIGHT", -T.SPACE.tight, -QA.PIN_TOP)
   b:SetScript("OnClick", ns.Guard("unpin quest arrow", function() QA.Unpin() end))
   b:HookScript("OnEnter", ns.Guard("quest arrow pin tip", QA.PinTooltip))
   b:HookScript("OnLeave", ns.Guard("quest arrow pin tip", function() if GameTooltip then GameTooltip:Hide() end end))

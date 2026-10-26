@@ -32,9 +32,12 @@ AH.SHOP_ROWS = 6
 AH.LIST_COLUMNS = { { key = "price", title = L["Unit price"], width = 100, side = "RIGHT", role = "number", color = "gold" },
   { key = "qty", title = L["Up"], width = 60, side = "RIGHT", role = "small", color = "text2" },
   { key = "max", title = L["Max"], width = 80, side = "RIGHT", role = "small", color = "text2" }, name = L["Item"] }
--- The Lists pane: its rows (how many, from where), the height its action buttons take (two rows of
--- standalone buttons and the gap between), their width (three to a row), and the actions in order.
-AH.PANE_ROWS, AH.PANE_ROWS_Y, AH.ACTIONS_H, AH.ACTION_W = 6, -20, 2 * T.BUTTON_H + T.SPACE.tight, 66
+-- The Lists pane: its rows (how many, from where), its action buttons in columns and rows (two to a row, three rows
+-- for the six actions: a translated label needs more than a third of the pane), the height they take with the gaps
+-- between, and their width (the pane's inside, less the gap between a pair, shared).
+AH.PANE_ROWS, AH.PANE_ROWS_Y, AH.ACTION_COLS, AH.ACTION_ROWS = 6, -20, 2, 3
+AH.ACTIONS_H = AH.ACTION_ROWS * T.BUTTON_H + (AH.ACTION_ROWS - 1) * T.SPACE.tight
+AH.ACTION_W = (AH.PANE_W - 2 * AH.PAD - 2 * AH.INSET - (AH.ACTION_COLS - 1) * T.SPACE.tight) / AH.ACTION_COLS
 -- Shopping lists: how many, entries per list, the list "+ Add" starts, the New action's value.
 AH.MAX_LISTS, AH.MAX_ENTRIES, AH.DEFAULT_LIST, AH.NEW = 20, 50, "Shopping", "\1new"
 -- The other actions on the list in use (values no list name can have).
@@ -53,8 +56,9 @@ AH.VIEW_COLUMNS = { { key = "price", title = L["Unit price"], width = 100, side 
 -- Enum.AuctionHouseTimeLeftBand (Short 0 ... VeryLong 3) as the game's names (TIME_LEFT_SHORT...) and
 -- ours when the client has none.
 AH.TIME_BANDS = { [0] = { "TIME_LEFT_SHORT", L["Short"] }, [1] = { "TIME_LEFT_MEDIUM", L["Medium"] }, [2] = { "TIME_LEFT_LONG", L["Long"] }, [3] = { "TIME_LEFT_VERY_LONG", L["Very long"] } }
--- A shop row's right-click menu; the filter dialog's width.
-AH.ROW_CHOICES, AH.FILTER_W = { { "filters", L["Filters..."] }, { "remove", L["Remove"] } }, 280
+-- A shop row's right-click menu; the filter dialog's width (wide enough for the Quality row's caption to sit beside its
+-- dropdown on one line in the longest translation, "Qualidade").
+AH.ROW_CHOICES, AH.FILTER_W = { { "filters", L["Filters..."] }, { "remove", L["Remove"] } }, 316
 -- Copper in one of each money unit typed into a max price.
 AH.MONEY_UNITS = { g = 10000, s = 100, c = 1 }
 -- The Recent pseudo-list: its pane key, and how many searched terms it keeps.
@@ -789,13 +793,13 @@ local function paneRow(p, i)
   return r
 end
 
--- Action button i at the pane's bottom, three to a row, T.SPACE.tight between them: its action
+-- Action button i at the pane's bottom, AH.ACTION_COLS to a row, T.SPACE.tight between them: its action
 -- (AH.LIST_ACTIONS) on a click.
 local function actionButton(p, i, choice)
   local b = W.Button(p, choice[2], function() AH.LIST_ACTIONS[choice[1]]() end, AH.ACTION_W)
   b.action = choice[1]
-  local col, row = (i - 1) % 3, math.floor((i - 1) / 3)
-  b:SetPoint("BOTTOMLEFT", p, "BOTTOMLEFT", col * (AH.ACTION_W + T.SPACE.tight), (1 - row) * (T.BUTTON_H + T.SPACE.tight))
+  local col, row = (i - 1) % AH.ACTION_COLS, math.floor((i - 1) / AH.ACTION_COLS)
+  b:SetPoint("BOTTOMLEFT", p, "BOTTOMLEFT", col * (AH.ACTION_W + T.SPACE.tight), (AH.ACTION_ROWS - 1 - row) * (T.BUTTON_H + T.SPACE.tight))
   return b
 end
 

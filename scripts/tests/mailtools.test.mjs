@@ -484,3 +484,19 @@ it("the Take buttons hold their label in German and French, the mail's line givi
     expect(gap, `${locale}: the time left ends before Take`).toBe(true);
   }
 });
+
+it("+ Add holds its label in German, Russian and Portuguese in every place along the bottom, and stays inside the panel (P10-9)", () => {
+  for (const locale of ["deDE", "ruRU", "ptBR", "frFR", "esES"]) {
+    const addon = createAddon({ textFit: true, client: `__wfgWorld.locale = "${locale}"`, savedVariables: SETUP_DONE + ON });
+    addon.eval(ENV);
+    addon.login();
+    addon.world.openMailWindow();
+    for (let n = 0; n <= 3; n++) {
+      addon.eval(`${MT}.settings.presets = {} for i = 1, ${n} do ${MT}.settings.presets[i] = { name = "TEST-ONLY P" .. i, to = "Bobalt", words = "" } end ${MT}.Paint()`);
+      const label = addon.eval("return Vanguard_MailTools.addPreset.text:GetText()");
+      expect(addon.textFit("Vanguard_MailTools").filter((f) => f.text === label), `${locale}, ${n} presets: + Add is not cut`).toEqual([]);
+      const inside = addon.eval("local f = Vanguard_MailTools return f.addPreset:GetRight() <= f:GetRight() - ns.Theme.SPACE.gap");
+      expect(inside, `${locale}, ${n} presets: + Add ends inside the panel's padding`).toBe(true);
+    }
+  }
+});

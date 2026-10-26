@@ -225,10 +225,16 @@ local function paintLine(row, spec)
   row:Show()
 end
 
--- A block's lines under its title.
-local function paintLines(b, q)
+-- How many lines fit under a title in a block cut to cap tall (no limit without one).
+local function linesFit(cap)
+  return math.floor(((cap or math.huge) - QT.TITLE) / QT.LINE)
+end
+
+-- A block's lines under its title, as many as fit a block cut to cap tall.
+local function paintLines(b, q, cap)
   b.lines.Reset()
   for i, spec in ipairs(QT.LineSpecs(q)) do
+    if i > linesFit(cap) then break end
     local row = b.lines.Next()
     row:SetPoint("TOPLEFT", b, "TOPLEFT", T.SPACE.gap, -QT.TITLE - (i - 1) * QT.LINE)
     paintLine(row, spec)
@@ -268,17 +274,17 @@ local function followMouse(b, q)
   if q.section or ns.InCombat() then hideTooltip() else QT.TitleTooltip(b) end
 end
 
--- Fills a block: its title, then its lines (a section heading is its name alone); the followed quest has the
--- accent line down its left edge.
-function QT.PaintBlock(b, q)
+-- Fills a block: its title, then its lines (a section heading is its name alone), cut to cap tall when given; the
+-- followed quest has the accent line down its left edge.
+function QT.PaintBlock(b, q, cap)
   b.id, b.achievement, b.recipe, b.row = q.id, q.achievement, q.recipe, q
   b.edge:SetShown(QT.IsFollowed(q))
   followMouse(b, q)
   if q.section then paintSection(b, q) else
     paintTitle(b, q)
-    paintLines(b, q)
+    paintLines(b, q, cap)
   end
-  b:SetHeight(QT.BlockHeight(q))
+  b:SetHeight(math.min(QT.BlockHeight(q), cap or math.huge))
   b:Show()
 end
 
@@ -332,16 +338,39 @@ local function fitsAt(quests, i, shown, y, room)
   return y + QT.BlockHeight(q) + need <= room and #shown + slots <= QT.MAX_SHOWN
 end
 
+-- Whether nothing but section headings (or nothing) has been drawn yet.
+local function noQuestDrawn(shown)
+  for _, row in ipairs(shown) do
+    if not row.quest.section then return false end
+  end
+  return true
+end
+
+-- How tall row i may draw under y: as it is when it fits the room; else, while no quest is drawn yet, what is left
+-- of the room (the first quest is drawn cut short rather than leaving the tracker with just "+1 more"); nil when it
+-- waits behind the rows drawn.
+local function heightAllowed(quests, i, shown, y, room)
+  if fitsAt(quests, i, shown, y, room) then return math.huge end
+  if noQuestDrawn(shown) then return math.max(QT.TITLE, room - y) end
+end
+
+-- Draws row q at y, cut to cap tall; returns its block and where the next row starts.
+local function drawRow(f, q, y, cap)
+  local b = f.blocks.Next()
+  b:SetPoint("TOPLEFT", f.body, "TOPLEFT", 0, -y)
+  QT.PaintBlock(b, q, cap)
+  return b, y + b:GetHeight() + QT.GAP
+end
+
 -- Lays the rows out from the top until the room is full or QT.MAX_SHOWN are drawn; "+N more" for the rest.
 local function layout(f, quests, levelText)
   local y, shown, room = 0, {}, roomFor(f, levelText)
   for i, q in ipairs(quests) do
-    if not fitsAt(quests, i, shown, y, room) then break end
-    local b = f.blocks.Next()
-    b:SetPoint("TOPLEFT", f.body, "TOPLEFT", 0, -y)
-    QT.PaintBlock(b, q)
+    local cap = heightAllowed(quests, i, shown, y, room)
+    if not cap then break end
+    local b
+    b, y = drawRow(f, q, y, cap)
     shown[#shown + 1] = { block = b, quest = q }
-    y = y + QT.BlockHeight(q) + QT.GAP
   end
   return shown, y
 end
