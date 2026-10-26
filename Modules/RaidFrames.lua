@@ -387,9 +387,10 @@ local function strip(w, h)
   return icon, per, h - 1 - RF.POWER - 1 - icon
 end
 
--- The widest the status gets when it sits at the right of the name row (about "Offline" at 10 px on screen), and the
--- most of a narrow tile it takes, so the name keeps the rest.
-RF.STATUS_W, RF.STATUS_SHARE = 40, 0.4
+-- The widest the status gets when it sits at the right of the name row (about "Dead" or "-760" at 10 px on
+-- screen; "-1440" and "Offline" end in "..." on the smallest tiles), and the most of a narrow tile it takes,
+-- so the name keeps the rest: 31 units after the role mark on a 25 or 40 player tile, enough for a 7 letter name.
+RF.STATUS_W, RF.STATUS_SHARE = 32, 0.4
 
 -- The name row and status line (its text `size` tall, a pixel of air each
 -- side): status under the name when it fits above the icon strip, else at the
