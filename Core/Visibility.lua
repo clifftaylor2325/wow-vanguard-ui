@@ -15,6 +15,7 @@
 -- the driver is registered and again on every zone change (out of combat).
 
 local ADDON, ns = ...
+local L = ns.L
 
 -- Per-frame state kept off the game's frames (Core/Events.lua, ns.FrameState).
 local vgAutoHideCount = ns.FrameState("vgAutoHideCount")
@@ -29,15 +30,15 @@ ns.Visibility = V
 -- Each condition: its key in a checklist, its chip's label, and its macro
 -- condition (none for mouseover and instance, which are handled here).
 V.CONDITIONS = {
-  { "combat", "Combat", "[combat]" }, { "mouseover", "Mouseover" }, { "group", "Group", "[group]" },
-  { "raid", "Raid", "[group:raid]" }, { "instance", "Instance" }, { "vehicle", "Vehicle", "[vehicleui]" },
-  { "resting", "Resting", "[resting]" },
+  { "combat", L["Combat"], "[combat]" }, { "mouseover", L["Mouseover"] }, { "group", L["Group"], "[group]" },
+  { "raid", L["Raid"], "[group:raid]" }, { "instance", L["Instance"] }, { "vehicle", L["Vehicle"], "[vehicleui]" },
+  { "resting", L["Resting"], "[resting]" },
 }
 -- The choices of a visibility row; "custom" is the checklist.
-V.MODES = { { "always", "Always" }, { "mouseover", "On mouseover" }, { "combat", "In combat" }, { "hidden", "Hidden" }, { "custom", "When checked below" } }
+V.MODES = { { "always", L["Always"] }, { "mouseover", L["On mouseover"] }, { "combat", L["In combat"] }, { "hidden", L["Hidden"] }, { "custom", L["When checked below"] } }
 -- The menu bar's choices: those, and Auto-hide (shown at login and under the
 -- mouse, then faded V.LINGER seconds after the mouse leaves).
-V.MENU_MODES = { V.MODES[1], V.MODES[2], { "autohide", "Auto-hide after 10 s" }, V.MODES[3], V.MODES[4], V.MODES[5] }
+V.MENU_MODES = { V.MODES[1], V.MODES[2], { "autohide", L["Auto-hide after 10 s"] }, V.MODES[3], V.MODES[4], V.MODES[5] }
 -- The modes that are one condition of the checklist (Always is none; Hidden is
 -- not a checklist). Auto-hide is On mouseover with a linger.
 V.PRESETS = { mouseover = { mouseover = true }, combat = { combat = true }, autohide = { mouseover = true } }
@@ -295,7 +296,7 @@ end
 function V.Rows(opts)
   local tbl, modeKey, after = opts.tbl, opts.modeKey, opts.after
   return { "cycle", opts.caption, opts.modes or V.MODES, function() return V.Mode(tbl()[modeKey]) end,
-    function(v) tbl()[modeKey] = v after() end, opts.initial }, { "showwhen", "Show when", opts }
+    function(v) tbl()[modeKey] = v after() end, opts.initial }, { "showwhen", L["Show when"], opts }
 end
 
 -- Lights the chips of the conditions the setting shows on.

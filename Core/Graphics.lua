@@ -10,6 +10,7 @@
 -- settings it changes are kept, so /vg graphics undo puts them back.
 
 local ADDON, ns = ...
+local L = ns.L
 
 local G = {}
 ns.Graphics = G
@@ -105,17 +106,17 @@ end
 ---@param lowPower boolean
 ---@return string
 function G.Advice(avg, quality, recommended, lowPower)
-  if not quality then return "Graphics Quality can't be read on this client; if the game feels slow, lower it in Options → Graphics." end
+  if not quality then return L["Graphics Quality can't be read on this client; if the game feels slow, lower it in Options → Graphics."] end
   local q = G.Suggest(avg, quality, recommended, lowPower)
-  if q < quality then return string.format("Suggested: lower Graphics Quality to %d in Options → Graphics (the slider sets every detail for you).", q + 1) end
-  if q > quality then return string.format("Suggested: Graphics Quality %d in Options → Graphics; this computer has room for it.", q + 1) end
-  return "Your Graphics Quality suits this computer and screen."
+  if q < quality then return ns.Format(L["Suggested: lower Graphics Quality to {step} in Options → Graphics (the slider sets every detail for you)."], { step = q + 1 }) end
+  if q > quality then return ns.Format(L["Suggested: Graphics Quality {step} in Options → Graphics; this computer has room for it."], { step = q + 1 }) end
+  return L["Your Graphics Quality suits this computer and screen."]
 end
 
 -- A tip for a tall (4K) screen that runs slow: the render scale saves the most there.
 function G.RenderTip(avg, h, render)
   if avg >= G.LOW or (tonumber(h) or 0) < G.TALL or not render or render < 0.9 then return nil end
-  return "On a 4K screen, Render Scale 80% in Options → Graphics helps the frame rate most, with little change in sharpness."
+  return L["On a 4K screen, Render Scale 80% in Options → Graphics helps the frame rate most, with little change in sharpness."]
 end
 
 -- The screen's size in pixels, or 0, 0 when the client can't say.
@@ -130,8 +131,8 @@ end
 function G.ScreenLine()
   local S, w, h = ns.Setup, G.ScreenSize()
   local p = S.ScreenPreset(S.DetectScreen())
-  local suggest = p and string.format("the %s sizes (UI scale %d%%)", p.text, math.floor(p.ui * 100 + 0.5)) or "Pixel-perfect"
-  return string.format("Screen %d x %d: setup suggests %s; /vg setup, then Screen, applies it.", w, h, suggest)
+  local suggest = p and ns.Format(L["the {screen} sizes (UI scale {scale}%)"], { screen = p.text, scale = math.floor(p.ui * 100 + 0.5) }) or L["Pixel-perfect"]
+  return ns.Format(L["Screen {width} x {height}: setup suggests {sizes}; /vg setup, then Screen, applies it."], { width = w, height = h, sizes = suggest })
 end
 
 -- The average of a list of numbers.
@@ -143,14 +144,20 @@ end
 
 -- A Graphics Quality step (0 to 9) as the slider shows it (1 to 10), or "unknown".
 local function step(v)
-  return v and tostring(v + 1) or "unknown"
+  return v and tostring(v + 1) or L["unknown"]
+end
+
+-- The graphics card's name and kind ("Radeon 780M (built-in, low power)"), or "unknown".
+local function cardText(card)
+  if not card then return L["unknown"] end
+  return ns.Format(card.lowPower and L["{name} (built-in, low power)"] or L["{name} (dedicated)"], { name = card.name })
 end
 
 -- The computer line: the graphics card, the game's recommended Graphics Quality and the one in use, and the render scale.
 local function computerLine(card, quality, recommended, render)
-  local kind = card and (card.lowPower and " (built-in, low power)" or " (dedicated)") or ""
-  return string.format("Graphics card: %s%s. Graphics Quality %s of 10 (the game recommends %s for this computer), render scale %s.",
-    card and card.name or "unknown", kind, step(quality), step(recommended), render and math.floor(render * 100 + 0.5) .. "%" or "unknown")
+  local scale = render and (math.floor(render * 100 + 0.5) .. "%") or L["unknown"]
+  return ns.Format(L["Graphics card: {card}. Graphics Quality {quality} of 10 (the game recommends {recommended} for this computer), render scale {scale}."],
+    { card = cardText(card), quality = step(quality), recommended = step(recommended), scale = scale })
 end
 
 -- Keeps what the check suggests for /vg graphics apply: a Graphics Quality step (when it differs
@@ -164,13 +171,13 @@ end
 local function report(avg, n)
   local card, quality, recommended, render = G.Card(), G.Setting("graphicsQuality"), G.DefaultSetting("graphicsQuality"), G.Setting("renderScale")
   local lowPower, tip = card ~= nil and card.lowPower, G.RenderTip(avg, select(2, G.ScreenSize()), render)
-  ns.Chat(string.format("Frame rate: %d fps on average over %d s.", math.floor(avg + 0.5), n))
+  ns.Chat(ns.Format(L["Frame rate: {fps} fps on average over {seconds} s."], { fps = math.floor(avg + 0.5), seconds = n }))
   ns.Chat(computerLine(card, quality, recommended, render))
   ns.Chat(G.Advice(avg, quality, recommended, lowPower))
   ns.Chat(G.ScreenLine())
   if tip then ns.Chat(tip) end
   remember(avg, quality, recommended, lowPower, tip)
-  ns.Chat("/vg graphics apply sets these for you; /vg graphics undo puts your settings back.")
+  ns.Chat(L["/vg graphics apply sets these for you; /vg graphics undo puts your settings back."])
 end
 
 -- Ends the check and reports it (or says it has no readings).
@@ -178,7 +185,7 @@ local function finish()
   local r = run
   run = nil
   r.ticker:Cancel()
-  if #r.fps == 0 then return ns.Chat("Frame rate check: no readings (none are taken in combat). Try again out of combat.") end
+  if #r.fps == 0 then return ns.Chat(L["Frame rate check: no readings (none are taken in combat). Try again out of combat."]) end
   report(average(r.fps), #r.fps)
 end
 
@@ -257,18 +264,18 @@ end
 
 -- What apply changed, in one line.
 local function appliedLine(last, ok)
-  local q = last.quality and (ok and string.format("Graphics Quality %d", last.quality + 1) or "not Graphics Quality (the client refused it)")
-  local parts = { q or "Graphics Quality as it was", last.render and "Render Scale 80%" or nil }
-  if ns.Setup.ScreenPreset(last.screen) then parts[#parts + 1] = "your screen's sizes" end
-  return "Set " .. table.concat(parts, ", ") .. ". /vg graphics undo puts your settings back."
+  local q = last.quality and (ok and ns.Format(L["Graphics Quality {step}"], { step = last.quality + 1 }) or L["not Graphics Quality (the client refused it)"])
+  local parts = { q or L["Graphics Quality as it was"], last.render and L["Render Scale 80%"] or nil }
+  if ns.Setup.ScreenPreset(last.screen) then parts[#parts + 1] = L["your screen's sizes"] end
+  return ns.Format(L["Set {changes}. /vg graphics undo puts your settings back."], { changes = table.concat(parts, ", ") })
 end
 
 -- /vg graphics apply: sets what the last check suggested, out of combat, keeping the old settings for undo.
 function G.Apply()
   local last, set = G.last, setter()
-  if not last then return ns.Chat("Run /vg graphics first: apply sets what the check suggests.") end
-  if ns.InCombat() then return ns.Chat("Settings don't change in combat: try /vg graphics apply after the fight.") end
-  if not set then return ns.Chat("This client can't change its settings.") end
+  if not last then return ns.Chat(L["Run /vg graphics first: apply sets what the check suggests."]) end
+  if ns.InCombat() then return ns.Chat(L["Settings don't change in combat: try /vg graphics apply after the fight."]) end
+  if not set then return ns.Chat(L["This client can't change its settings."]) end
   local undo = undoTable()
   keep(undo, "useUiScale") keep(undo, "uiScale") keepPixel(undo)
   local ok = setAll(set, undo, last)
@@ -289,11 +296,11 @@ end
 -- /vg graphics undo: puts back what the last apply changed, out of combat.
 function G.Undo()
   local s, set = ns.Settings("Graphics"), setter()
-  if type(s.undo) ~= "table" or not set then return ns.Chat("Nothing to undo: /vg graphics apply hasn't changed anything.") end
-  if ns.InCombat() then return ns.Chat("Settings don't change in combat: try /vg graphics undo after the fight.") end
+  if type(s.undo) ~= "table" or not set then return ns.Chat(L["Nothing to undo: /vg graphics apply hasn't changed anything."]) end
+  if ns.InCombat() then return ns.Chat(L["Settings don't change in combat: try /vg graphics undo after the fight."]) end
   restore(set, s.undo)
   s.undo = nil
-  ns.Chat("Your graphics settings and UI scale are back as they were. If apply changed Vanguard's sizes, the backup profile it named in chat has the old ones.")
+  ns.Chat(L["Your graphics settings and UI scale are back as they were. If apply changed Vanguard's sizes, the backup profile it named in chat has the old ones."])
 end
 
 -- /vg graphics [apply | undo]: the check, setting what it suggested, or putting the old settings back.
@@ -301,16 +308,16 @@ function G.Command(rest)
   rest = (rest or ""):lower()
   if rest == "apply" then return G.Apply() end
   if rest == "undo" then return G.Undo() end
-  if rest ~= "" then return ns.Chat("Usage: /vg graphics [apply | undo]") end
+  if rest ~= "" then return ns.Chat(L["Usage: /vg graphics [apply | undo]"]) end
   G.Check()
 end
 
 -- /vg graphics: starts a check (not in combat), or ends the one under way early with what it has.
 function G.Check()
   if run then return finish() end
-  if ns.InCombat() then return ns.Chat("The check waits for the end of the fight: try /vg graphics again then.") end
-  if not (C_Timer and C_Timer.NewTicker) then return ns.Chat("This client has no timers to measure with.") end
+  if ns.InCombat() then return ns.Chat(L["The check waits for the end of the fight: try /vg graphics again then."]) end
+  if not (C_Timer and C_Timer.NewTicker) then return ns.Chat(L["This client has no timers to measure with."]) end
   run = { fps = {}, ticks = 0 }
   run.ticker = C_Timer.NewTicker(1, ns.Guard("timer graphics check", tick))
-  ns.Chat(string.format("Checking this computer and your frame rate for %d s: stand where you usually play (a city is slower than the open world). /vg graphics again ends it early.", G.TICKS))
+  ns.Chat(ns.Format(L["Checking this computer and your frame rate for {seconds} s: stand where you usually play (a city is slower than the open world). /vg graphics again ends it early."], { seconds = G.TICKS }))
 end

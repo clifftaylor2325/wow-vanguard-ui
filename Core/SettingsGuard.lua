@@ -14,6 +14,7 @@
 -- were (unless a profile was imported or picked), so the next login offers it again.
 
 local ADDON, ns = ...
+local L = ns.L
 
 local T, O = ns.Theme, ns.Options
 
@@ -21,13 +22,13 @@ local G = {}
 ns.SettingsGuard = G
 
 -- What chat says, and what the question asks, when the account's settings didn't load.
-G.LOST = "Vanguard's saved settings didn't load this session (the account file came back %s). This character kept a backup."
-G.LOST_NO_BACKUP = "Vanguard's saved settings didn't load this session (the account file came back %s). Paste a profile string you exported to get them back."
-G.ASK = "Vanguard's saved settings didn't load. Restore profile %s from this character's backup?"
-G.ASK_NO_BACKUP = "Vanguard's saved settings didn't load. Paste a profile string you exported?"
-G.LATER = "The General and Profiles pages in /vg can still restore them; Start fresh there runs setup instead."
+G.LOST = L["Vanguard's saved settings didn't load this session (the account file came back {how}). This character kept a backup."]
+G.LOST_NO_BACKUP = L["Vanguard's saved settings didn't load this session (the account file came back {how}). Paste a profile string you exported to get them back."]
+G.ASK = L["Vanguard's saved settings didn't load. Restore profile {profile} from this character's backup?"]
+G.ASK_NO_BACKUP = L["Vanguard's saved settings didn't load. Paste a profile string you exported?"]
+G.LATER = L["The General and Profiles pages in /vg can still restore them; Start fresh there runs setup instead."]
 -- The options' notice, one line.
-G.NOTICE = "Vanguard's saved settings didn't load this session."
+G.NOTICE = L["Vanguard's saved settings didn't load this session."]
 
 -- t when it is a table, else nil (a hand-edited file may hold anything).
 local function tbl(t)
@@ -99,8 +100,9 @@ end
 
 -- What chat says when this character's file came back blank and it goes back to `name`.
 local function characterLine(name, later)
-  local tail = later and ", after a reload." or "."
-  return "This character's saved Vanguard settings didn't load; it uses profile " .. name .. " again" .. tail
+  local text = later and L["This character's saved Vanguard settings didn't load; it uses profile {profile} again, after a reload."]
+    or L["This character's saved Vanguard settings didn't load; it uses profile {profile} again."]
+  return ns.Format(text, { profile = name })
 end
 
 -- This character's file came back blank: setup is not owed again, and the profile the account
@@ -112,7 +114,7 @@ local function restoreCharacter(known)
   ns.UseProfile(name)
   local later = ns.PendingProfileName() ~= nil
   ns.Chat(characterLine(name, later))
-  if later then ns.OfferReload("This character used profile " .. name .. ".") end
+  if later then ns.OfferReload(ns.Format(L["This character used profile {profile}."], { profile = name })) end
 end
 
 -- A lost account file ------------------------------------------------------------------------------
@@ -146,7 +148,7 @@ end
 -- refused) and without the string's own keys; else nil and why not.
 local function readBackup(text)
   local kind, payload = ns.ReadPayload(ns.Serialize.Decode(text))
-  if kind ~= "profile" then return nil, kind and "it isn't a whole profile" or payload end
+  if kind ~= "profile" then return nil, kind and L["it isn't a whole profile"] or payload end
   return ns.StripPayload(payload)
 end
 
@@ -154,11 +156,11 @@ end
 function G.Restore()
   local backup = G.Backup()
   local data, why = readBackup(backup and backup.backup or "")
-  if not data then return ns.Chat("The backup can't be restored: " .. tostring(why) .. ".") end
+  if not data then return ns.Chat(ns.Format(L["The backup can't be restored: {reason}."], { reason = tostring(why) })) end
   local name = restoreName(backup)
   putRestored(name, data)
   G.Resolve()
-  ns.OfferReload("Restored profile " .. name .. " from this character's backup.")
+  ns.OfferReload(ns.Format(L["Restored profile {profile} from this character's backup."], { profile = name }))
 end
 
 -- Pastes a profile string (the import box); a whole profile imported from it answers the loss (G.Imported).
@@ -187,14 +189,14 @@ end
 -- Asks once at login: restore from the backup, or paste a string when there is none.
 function G.Offer()
   local backup = G.Backup()
-  if backup then return ns.Ask(G.ASK:format(restoreName(backup)), "Restore", G.Restore, later) end
-  ns.Ask(G.ASK_NO_BACKUP, "Paste a string", G.Paste, later)
+  if backup then return ns.Ask(ns.Format(G.ASK, { profile = restoreName(backup) }), L["Restore"], G.Restore, later) end
+  ns.Ask(G.ASK_NO_BACKUP, L["Paste a string"], G.Paste, later)
 end
 
 -- The account's settings didn't load: chat says so (how the file came back), then the question.
 local function announce(how)
   local text = G.Backup() and G.LOST or G.LOST_NO_BACKUP
-  ns.Chat(text:format(how == "older" and "older than this character's last session" or "blank"))
+  ns.Chat(ns.Format(text, { how = how == "older" and L["older than this character's last session"] or L["blank"] }))
   G.Offer()
 end
 
@@ -264,17 +266,19 @@ O.AddRowKind("notice", noticeRow, 22)
 
 -- What the notice card explains under its line.
 local function explain()
-  if G.Backup() then return "This character kept a backup of profile " .. restoreName(G.Backup()) .. " from its last session. Restore it, paste a profile string you exported, or start fresh with setup." end
-  return "Paste a profile string you exported (/vg export), or start fresh with setup."
+  if G.Backup() then
+    return ns.Format(L["This character kept a backup of profile {profile} from its last session. Restore it, paste a profile string you exported, or start fresh with setup."], { profile = restoreName(G.Backup()) })
+  end
+  return L["Paste a profile string you exported (/vg export), or start fresh with setup."]
 end
 
 -- The rows the General and Profiles pages start with while the account's settings didn't load; none otherwise.
 function G.Rows()
   if not G.lost then return {} end
-  local rows = { { "header", "Saved settings didn't load" }, { "notice", G.NOTICE }, { "text", explain() } }
-  if G.Backup() then rows[#rows + 1] = { "button", "Restore the backup", G.Restore } end
-  rows[#rows + 1] = { "button", "Paste a profile string", G.Paste }
-  rows[#rows + 1] = { "button", "Start fresh: run setup", G.StartFresh }
+  local rows = { { "header", L["Saved settings didn't load"] }, { "notice", G.NOTICE }, { "text", explain() } }
+  if G.Backup() then rows[#rows + 1] = { "button", L["Restore the backup"], G.Restore } end
+  rows[#rows + 1] = { "button", L["Paste a profile string"], G.Paste }
+  rows[#rows + 1] = { "button", L["Start fresh: run setup"], G.StartFresh }
   return rows
 end
 
@@ -349,8 +353,8 @@ end
 
 -- What chat says after price homes were dropped for size (`still` when the file is still over).
 local function trimmedLine(dropped, still)
-  local text = string.format("Vanguard's saved data was too large: it dropped the auction prices of %d realm and side(s), oldest first (they fill again as you scan).", dropped)
-  return still and (text .. " It is still large; /vg mem lists what holds the most.") or text
+  local text = ns.Format(L["Vanguard's saved data was too large: it dropped the auction prices of {count} realm and side(s), oldest first (they fill again as you scan)."], { count = dropped })
+  return still and (text .. " " .. L["It is still large; /vg mem lists what holds the most."]) or text
 end
 
 -- Over the budget: drops the oldest price homes and says so. Nothing happens within it.
@@ -358,7 +362,7 @@ function G.Audit()
   local over = G.Bytes(VanguardDB) - G.BUDGET
   if over <= 0 then return end
   local dropped = G.Trim(over)
-  ns.Chat(dropped > 0 and trimmedLine(dropped, G.Bytes(VanguardDB) > G.BUDGET) or "Vanguard's saved data is over its size budget; /vg mem lists what holds the most.")
+  ns.Chat(dropped > 0 and trimmedLine(dropped, G.Bytes(VanguardDB) > G.BUDGET) or L["Vanguard's saved data is over its size budget; /vg mem lists what holds the most."])
 end
 
 -- A while after login, out of combat, the file's size is checked.
@@ -372,6 +376,7 @@ ns.On("PLAYER_LOGIN", scheduleAudit)
 function G.OnTooLarge(_, name)
   if name ~= ADDON or type(VanguardDB) ~= "table" then return end
   local dropped = G.Trim(G.Bytes(VanguardDB) - G.BUDGET / 2)
-  ns.Chat("The game says Vanguard's saved data is too large. " .. (dropped > 0 and trimmedLine(dropped) or "Vanguard has no price data left to drop; /vg mem lists what holds the most."))
+  local why = dropped > 0 and trimmedLine(dropped) or L["Vanguard has no price data left to drop; /vg mem lists what holds the most."]
+  ns.Chat(L["The game says Vanguard's saved data is too large."] .. " " .. why)
 end
 ns.On("SAVED_VARIABLES_TOO_LARGE", G.OnTooLarge)

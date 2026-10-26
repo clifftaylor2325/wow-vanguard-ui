@@ -6,6 +6,7 @@
 -- those parts into the profile it's imported into (Core/ProfileStrings.lua).
 
 local ADDON, ns = ...
+local L = ns.L
 
 local T, W = ns.Theme, ns.Widgets
 
@@ -14,7 +15,7 @@ local WIDTH, HEIGHT = 420, 440
 local ROW_WIDTH = WIDTH - 2 * T.SPACE.pad - T.SPACE.col
 -- The width of the All and None buttons (the foot's two small ones; Cancel and Export take the standard 120).
 local SMALL_BUTTON = 60
-local TITLE = "Export: what to include"
+local TITLE = L["Export: what to include"]
 local panel
 
 -- What the panel calls a part: a group part's label, else the module's name.
@@ -64,11 +65,11 @@ end
 -- none on, the title says so instead.
 local function export()
   local parts = ticked()
-  if #parts == 0 then return panel.title:SetText("Switch on at least one part to export.") end
+  if #parts == 0 then return panel.title:SetText(L["Switch on at least one part to export."]) end
   local whole = #parts == #panel.parts
   local text = ns.ExportProfile(not whole and parts or nil)
   panel:Hide()
-  ns.ShowText("Vanguard export (" .. (whole and "profile " .. ns.ProfileName() or table.concat(parts, ", ")) .. ")  Ctrl+C to copy", text)
+  ns.ShowText(ns.ExportTitle(not whole and table.concat(parts, ", ") or nil), text)
 end
 
 -- The scrolling list the switches sit in: a dialog scroll view under the note, over the buttons, with the
@@ -82,13 +83,13 @@ end
 
 -- The buttons along the foot: All and None on the left, Cancel and the Export primary on the right.
 local function addButtons(f)
-  f.export = W.Primary(f, "Export", export)
+  f.export = W.Primary(f, L["Export"], export)
   f.export:SetPoint("BOTTOMRIGHT", -T.SPACE.pad, T.SPACE.pad)
-  f.cancel = W.Button(f, "Cancel", function() f:Hide() end)
+  f.cancel = W.Button(f, L["Cancel"], function() f:Hide() end)
   f.cancel:SetPoint("RIGHT", f.export, "LEFT", -T.SPACE.gap, 0)
-  f.all = W.Button(f, "All", function() setAll(true) end, SMALL_BUTTON)
+  f.all = W.Button(f, L["All"], function() setAll(true) end, SMALL_BUTTON)
   f.all:SetPoint("BOTTOMLEFT", T.SPACE.pad, T.SPACE.pad)
-  f.none = W.Button(f, "None", function() setAll(false) end, SMALL_BUTTON)
+  f.none = W.Button(f, L["None"], function() setAll(false) end, SMALL_BUTTON)
   f.none:SetPoint("LEFT", f.all, "RIGHT", T.SPACE.gap, 0)
 end
 
@@ -96,7 +97,7 @@ end
 local function build()
   panel = ns.Dialog("Vanguard_ExportDialog", WIDTH, HEIGHT)
   panel.rows = {}
-  panel.note = T.Text(W.Text(panel, "Everything on exports the whole profile. With some parts off, importing the string changes only those parts of the profile it goes into."), "small", "muted")
+  panel.note = T.Text(W.Text(panel, L["Everything on exports the whole profile. With some parts off, importing the string changes only those parts of the profile it goes into."]), "small", "muted")
   panel.note:SetPoint("TOPLEFT", T.SPACE.pad, -ns.DIALOG.head)
   panel.note:SetWidth(WIDTH - 2 * T.SPACE.pad)
   addList(panel)

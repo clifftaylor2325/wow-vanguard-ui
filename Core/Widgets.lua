@@ -4,6 +4,7 @@
 -- to re-read its value.
 
 local ADDON, ns = ...
+local L = ns.L
 
 local T = ns.Theme
 
@@ -105,7 +106,7 @@ end
 function W.KeyCapture(parent, caption, onKey)
   local b = ns.DialogButton(parent, caption, 220)
   b.caption, b.onKey = caption, onKey
-  b:SetScript("OnClick", ns.Guard("click key capture", function(self) self.capturing = true; self:EnableKeyboard(true); self.text:SetText("Press a key, click or scroll...") end))
+  b:SetScript("OnClick", ns.Guard("click key capture", function(self) self.capturing = true; self:EnableKeyboard(true); self.text:SetText(L["Press a key, click or scroll..."]) end))
   b:SetScript("OnKeyDown", ns.Guard("key capture key", onKeyDown))
   b:SetScript("OnMouseDown", ns.Guard("key capture mouse", onMouseDown))
   b:EnableMouseWheel(true)

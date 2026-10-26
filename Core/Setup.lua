@@ -9,6 +9,7 @@
 -- ends with a reload.
 
 local ADDON, ns = ...
+local L = ns.L
 
 local T, W = ns.Theme, ns.Widgets
 
@@ -22,21 +23,21 @@ local WIDTH, HEIGHT, PAD = 440, 362, T.SPACE.pad
 local TOP = T.CONTROL.inset + 36 + T.SPACE.col
 local FOOT = T.SPACE.pad + T.BUTTON_H + T.SPACE.gap
 -- The pages in order, each with its caption name; a wizard shows STEPS, or PROFILE_STEPS for a new character.
-local NAMES = { profile = "Profile", layout = "Layout", screen = "Screen", look = "Look", move = "Move things" }
+local NAMES = { profile = L["Profile"], layout = L["Layout"], screen = L["Screen"], look = L["Look"], move = L["Move things"] }
 local STEPS = { "layout", "screen", "look", "move" }
 local PROFILE_STEPS = { "profile", "layout", "screen", "look", "move" }
 -- In chat when setup ends: after Done or Skip, and after closing it while it is still owed.
-local AGAIN = "Run setup again any time: /vg setup, or Run setup on the General page of /vg."
-local LATER = "Setup opens again at your next login. /vg setup opens it now; Skip setup on its first page turns it off."
+local AGAIN = L["Run setup again any time: /vg setup, or Run setup on the General page of /vg."]
+local LATER = L["Setup opens again at your next login. /vg setup opens it now; Skip setup on its first page turns it off."]
 
 -- Layout presets, in display order; Keep (the last) moves nothing and is picked when setup opens.
 S.LAYOUTS = {
-  { key = "damage", text = "Centered: damage", hint = "For damage dealers: your frames around your character, a taller target frame, compact raid frames without power bars or heal overlays, threat colours and longer debuff rows on nameplates." },
-  { key = "tank", text = "Centered: tanking", hint = "For tanks: the tallest target frame, raid frames sorted by role with the aggro strip, threat colours, the target border and buff rows on nameplates." },
-  { key = "healing", text = "Centered: healing", hint = "Party and raid above your frames, drawn larger (a big raid stacked at the left of your character), your own and your target's frames a little smaller, raid frames sorted by role with power bars, raid debuffs, HoTs and incoming heals, short debuff rows on nameplates, click casting on." },
-  { key = "versus", text = "Versus deck", hint = "Centered for your role, with your frame and your target's joined by one shield panel under your character, the crest between them and your cast bar in the middle." },
-  { key = "classic", text = "Like the game's", hint = "Your frames at the top left as the game has them, party and raid down the left side." },
-  { key = "keep", text = "Keep my current layout", hint = "Moves nothing: your frames stay where they are." },
+  { key = "damage", text = L["Centered: damage"], hint = L["For damage dealers: your frames around your character, a taller target frame, compact raid frames without power bars or heal overlays, threat colours and longer debuff rows on nameplates."] },
+  { key = "tank", text = L["Centered: tanking"], hint = L["For tanks: the tallest target frame, raid frames sorted by role with the aggro strip, threat colours, the target border and buff rows on nameplates."] },
+  { key = "healing", text = L["Centered: healing"], hint = L["Party and raid above your frames, drawn larger (a big raid stacked at the left of your character), your own and your target's frames a little smaller, raid frames sorted by role with power bars, raid debuffs, HoTs and incoming heals, short debuff rows on nameplates, click casting on."] },
+  { key = "versus", text = L["Versus deck"], hint = L["Centered for your role, with your frame and your target's joined by one shield panel under your character, the crest between them and your cast bar in the middle."] },
+  { key = "classic", text = L["Like the game's"], hint = L["Your frames at the top left as the game has them, party and raid down the left side."] },
+  { key = "keep", text = L["Keep my current layout"], hint = L["Moves nothing: your frames stay where they are."] },
 }
 -- Like the game's: player and target along the top left (the pet under the
 -- player, the target of target beside the target, the focus under that), the
@@ -73,17 +74,17 @@ S.SCREENS = {
   { key = "1080", text = "1080p", w = 1920, h = 1080, ui = 0.8, button = 38, tile = { 100, 48 }, textScale = 1 },
   { key = "1440", text = "1440p", w = 2560, h = 1440, ui = 0.7, button = 38, tile = { 110, 48 }, textScale = 1.05 },
   { key = "4k", text = "4K", w = 3840, h = 2160, ui = 0.65, button = 38, tile = { 110, 48 }, textScale = 1.1 },
-  { key = "ultrawide", text = "Ultrawide", w = 3440, h = 1440, ui = 0.7, button = 38, tile = { 110, 48 }, textScale = 1.05 },
+  { key = "ultrawide", text = L["Ultrawide"], w = 3440, h = 1440, ui = 0.7, button = 38, tile = { 110, 48 }, textScale = 1.05 },
 }
 -- The client's UI scale range (its Graphics settings slider).
 S.UI_SCALE = { min = 0.65, max = 1.15 }
 -- The Pixel-perfect choice beside the presets: one UI unit is a whole number of screen pixels, so
 -- every line and glyph lands on real pixels; Vanguard's own sizes make up for the smaller scale.
-S.PIXEL = { key = "pixel", text = "Pixel-perfect (sharpest)" }
+S.PIXEL = { key = "pixel", text = L["Pixel-perfect (sharpest)"] }
 
 -- Raid frame styles: the Raid page's Style choices, and the short name under each style's tile in setup.
-S.STYLES = { { "soft", "Class colors, softened", "Softened" }, { "dark", "Dark, class-colored names", "Dark" },
-  { "class", "Class colors, bright", "Bright" } }
+S.STYLES = { { "soft", L["Class colors, softened"], L["Softened"] }, { "dark", L["Dark, class-colored names"], L["Dark"] },
+  { "class", L["Class colors, bright"], L["Bright"] } }
 -- The style tiles on the Look step: a raid tile's default size, side by side this far apart.
 local TILE_W, TILE_H, TILE_GAP = 100, 48, 16
 -- The look step's rows, down the page from its top (negative), and the steps between them: the switches stack
@@ -114,7 +115,7 @@ end
 function S.Backup()
   if state.backup then return end
   state.backup = ns.BackupProfile()
-  ns.Chat(string.format("Profile %s as it was before setup is saved as profile %s.", ns.ProfileName(), state.backup))
+  ns.Chat(ns.Format(L["Profile {profile} as it was before setup is saved as profile {backup}."], { profile = ns.ProfileName(), backup = state.backup }))
 end
 
 -- Saves a frame's spot, moving it now (or after combat) when it is built; the
@@ -431,18 +432,18 @@ end
 
 -- Who sets the UI scale now: Vanguard's pixel-perfect scale while it is on, else the game's own slider.
 function S.ScaleOwner()
-  if T.Settings().pixelScale then return "Vanguard's pixel-perfect scale (General, Look)" end
-  return "the game's UI Scale slider (Options, Graphics)"
+  if T.Settings().pixelScale then return L["Vanguard's pixel-perfect scale (General, Look)"] end
+  return L["the game's UI Scale slider (Options, Graphics)"]
 end
 
 -- What a preset sets, under the choices: a preset moves the game's own UI Scale slider (and
 -- turns Vanguard's pixel-perfect scale off), Pixel-perfect turns that scale on, and Keep leaves
 -- the scale with whichever sets it now.
 local function screenHint(p)
-  if not p then return "Changes nothing: your UI scale stays with " .. S.ScaleOwner() .. ", your sizes as they are." end
-  local scale = p.pixel and "Sharpest: every line on whole screen pixels. Vanguard's pixel-perfect scale at %d%%"
-    or "Moves the game's UI Scale slider to %d%% (Vanguard's pixel-perfect scale goes off)"
-  return string.format(scale .. "; action buttons %d px, raid tiles %d x %d, text %d%%.", percent(p.ui), p.button, p.tile[1], p.tile[2], percent(p.textScale))
+  if not p then return ns.Format(L["Changes nothing: your UI scale stays with {owner}, your sizes as they are."], { owner = S.ScaleOwner() }) end
+  local text = p.pixel and L["Sharpest: every line on whole screen pixels. Vanguard's pixel-perfect scale at {scale}%; action buttons {button} px, raid tiles {width} x {height}, text {text}%."]
+    or L["Moves the game's UI Scale slider to {scale}% (Vanguard's pixel-perfect scale goes off); action buttons {button} px, raid tiles {width} x {height}, text {text}%."]
+  return ns.Format(text, { scale = percent(p.ui), button = p.button, width = p.tile[1], height = p.tile[2], text = percent(p.textScale) })
 end
 
 -- Marks -----------------------------------------------------------------------------------
@@ -533,14 +534,14 @@ end
 -- The profile choices for a new character: share the profile it loaded with, or one of its own.
 local function profileChoices()
   local shared = ns.ProfileName()
-  return { { key = "share", text = "Share profile " .. shared .. " with your other characters", hint = "Changes here change them too." },
-    { key = "new", text = "A profile of its own: " .. ns.ForkName(UnitName("player")),
-      hint = "Starts as a copy of " .. shared .. "; changes here stay on this character." } }
+  return { { key = "share", text = ns.Format(L["Share profile {profile} with your other characters"], { profile = shared }), hint = L["Changes here change them too."] },
+    { key = "new", text = ns.Format(L["A profile of its own: {profile}"], { profile = ns.ForkName(UnitName("player")) }),
+      hint = ns.Format(L["Starts as a copy of {profile}; changes here stay on this character."], { profile = shared }) } }
 end
 
 -- A new character's first step: which profile it uses.
 local function profilePage(page)
-  choicePage(page, "Vanguard is set up on this account. Profiles in /vg switches this later.", profileChoices(), "profile")
+  choicePage(page, L["Vanguard is set up on this account. Profiles in /vg switches this later."], profileChoices(), "profile")
 end
 
 -- Names the profile step's choices after the profile in use now (the page is built once, at setup's first open).
@@ -556,31 +557,31 @@ end
 local function layoutChoices()
   local mine, out = S.GuessLayout(), {}
   for i, l in ipairs(S.LAYOUTS) do
-    out[i] = { key = l.key, hint = l.hint, text = l.text .. (l.key == mine and "  ·  your role" or "") }
+    out[i] = { key = l.key, hint = l.hint, text = l.key == mine and ns.Format(L["{layout}  ·  your role"], { layout = l.text }) or l.text }
   end
   return out
 end
 
 -- The layout step: a button per layout, then the chosen one's hint.
 local function layoutPage(page)
-  choicePage(page, "How do you mostly play? You can change it all later in /vg.", layoutChoices(), "layout")
+  choicePage(page, L["How do you mostly play? You can change it all later in /vg."], layoutChoices(), "layout")
 end
 
 -- The screen choices: each preset (the one for this screen marked), then Keep.
 local function screenChoices()
   local detected, out = S.DetectScreen(), {}
   for i, p in ipairs(S.SCREENS) do
-    local mine = p.key == detected and "  ·  your screen" or ""
-    out[i] = { key = p.key, hint = screenHint(p), text = string.format("%s (%d x %d)%s", p.text, p.w, p.h, mine) }
+    local text = p.key == detected and L["{screen} ({width} x {height})  ·  your screen"] or L["{screen} ({width} x {height})"]
+    out[i] = { key = p.key, hint = screenHint(p), text = ns.Format(text, { screen = p.text, width = p.w, height = p.h }) }
   end
   out[#out + 1] = { key = S.PIXEL.key, text = S.PIXEL.text, hint = screenHint(S.PixelPreset()) }
-  out[#out + 1] = { key = "keep", text = "Keep my current sizes", hint = function() return screenHint(nil) end }
+  out[#out + 1] = { key = "keep", text = L["Keep my current sizes"], hint = function() return screenHint(nil) end }
   return out
 end
 
 -- The screen step: a button per screen preset and Keep, then the chosen one's hint.
 local function screenPage(page)
-  choicePage(page, "Sizes for your screen (yours is marked). /vg graphics checks your frame rate.", screenChoices(), "screen")
+  choicePage(page, L["Sizes for your screen (yours is marked). /vg graphics checks your frame rate."], screenChoices(), "screen")
 end
 
 -- A style tile's health bar, three quarters full, one pixel inside the border, with your name over it.
@@ -611,7 +612,7 @@ end
 
 -- The raid frame styles under the accent swatches: a tile drawn in each, side by side.
 local function stylePicker(page)
-  W.Label(page, "Raid frame style", "label", "text"):SetPoint("TOPLEFT", 0, LOOK_Y.styleCaption)
+  W.Label(page, L["Raid frame style"], "label", "text"):SetPoint("TOPLEFT", 0, LOOK_Y.styleCaption)
   page.styles = {}
   for i, s in ipairs(S.STYLES) do page.styles[i] = styleTile(page, i, s) end
 end
@@ -628,17 +629,17 @@ end
 
 -- The Calm HUD switch and the two readability switches (larger text, safer colours) under the style tiles.
 local function lookSwitches(page)
-  page.calm = W.Check(page, "Calm HUD: dim your frames out of combat", S.Calm, S.SetCalm, WIDTH - 2 * PAD)
+  page.calm = W.Check(page, L["Calm HUD: dim your frames out of combat"], S.Calm, S.SetCalm, WIDTH - 2 * PAD)
   page.calm:SetPoint("TOPLEFT", 0, LOOK_Y.switches)
-  page.larger = W.Check(page, "Larger text (115%)", S.Larger, S.SetLarger, WIDTH - 2 * PAD)
+  page.larger = W.Check(page, L["Larger text (115%)"], S.Larger, S.SetLarger, WIDTH - 2 * PAD)
   page.larger:SetPoint("TOPLEFT", 0, LOOK_Y.switches - STEP.switchDown)
-  page.assist = W.Check(page, "Colour vision: Safer colours (colour blindness)", S.Assist, S.SetAssist, WIDTH - 2 * PAD)
+  page.assist = W.Check(page, L["Colour vision: Safer colours (colour blindness)"], S.Assist, S.SetAssist, WIDTH - 2 * PAD)
   page.assist:SetPoint("TOPLEFT", 0, LOOK_Y.switches - 2 * STEP.switchDown)
 end
 
 -- The look step: the accent presets, the raid frame style, then Calm HUD and the readability switches.
 local function lookPage(page)
-  W.Label(page, "Accent", "label", "text"):SetPoint("TOPLEFT")
+  W.Label(page, L["Accent"], "label", "text"):SetPoint("TOPLEFT")
   page.swatches = {}
   for i, name in ipairs(T.PRESET_ORDER) do
     page.swatches[i] = swatch(page, i, T.PRESETS[name])
@@ -649,9 +650,9 @@ end
 
 -- The last step: how to move frames (they are unlocked while this step shows).
 local function movePage(page)
-  local lines = { "Your frames are unlocked: drag a handle to move that frame.",
-    "Click a handle, then the arrow keys nudge it (Shift ×10).", "Right-click a frame for its anchor, scale and opacity.",
-    "The bar at the top: Save and lock, or Exit without saving.", "Done locks them. /vg unlock moves them any time." }
+  local lines = { L["Your frames are unlocked: drag a handle to move that frame."],
+    L["Click a handle, then the arrow keys nudge it (Shift ×10)."], L["Right-click a frame for its anchor, scale and opacity."],
+    L["The bar at the top: Save and lock, or Exit without saving."], L["Done locks them. /vg unlock moves them any time."] }
   for i, line in ipairs(lines) do
     W.Label(page, line, "label", i == 1 and "text" or "text2"):SetPoint("TOPLEFT", 0, -(i - 1) * STEP.moveLineDown)
   end
@@ -660,7 +661,7 @@ end
 -- The title and the step caption under it, centred across the window (as the game's own titles are), with the
 -- close button and Escape (ns.WindowTitle), and your faction's crest (T.CREST.title) just right of the title.
 local function addTitle(f)
-  local parts = ns.WindowTitle(f, "Set up Vanguard", { align = "center", count = "", escape = true,
+  local parts = ns.WindowTitle(f, L["Set up Vanguard"], { align = "center", count = "", escape = true,
     onClose = function(window) window:Hide() end })
   f.caption = parts.count
   f.crest = T.Crest(f, T.CREST.title)
@@ -688,21 +689,21 @@ end
 
 -- The footer: Skip setup (first step only), then Back, then Next or Done, all the usual button width.
 local function controls(f)
-  f.next = W.Primary(f, "Next", function() S.Next() end)
+  f.next = W.Primary(f, L["Next"], function() S.Next() end)
   f.next:SetPoint("BOTTOMRIGHT", -PAD, PAD)
-  f.back = W.Button(f, "Back", function() S.Back() end)
+  f.back = W.Button(f, L["Back"], function() S.Back() end)
   f.back:SetPoint("RIGHT", f.next, "LEFT", -T.SPACE.gap, 0)
-  f.skip = W.Button(f, "Skip setup", function() complete(false) end)
+  f.skip = W.Button(f, L["Skip setup"], function() complete(false) end)
   f.skip:SetPoint("BOTTOMLEFT", PAD, PAD)
 end
 
 -- Why setup offers a reload: a module turned on, new raid tile sizes, or Done (setup always ends
 -- with one, so everything it set shows as it will from now on); nil otherwise.
 local function reloadReason()
-  if state.reload then return "Setup turned on a module that was off." end
-  if state.retile then return "The new raid tile size shows after a reload." end
-  if state.role then return "The layout's raid frame, raid aura and nameplate settings show after a reload." end
-  if state.complete and state.done then return "Setup is done." end
+  if state.reload then return L["Setup turned on a module that was off."] end
+  if state.retile then return L["The new raid tile size shows after a reload."] end
+  if state.role then return L["The layout's raid frame, raid aura and nameplate settings show after a reload."] end
+  if state.complete and state.done then return L["Setup is done."] end
 end
 
 -- Remembers that setup ran, on the account and for this character, and says how to run it again.
@@ -712,17 +713,17 @@ local function markDone()
 end
 
 -- After a first run's Done: the question that suggests keeping a profile string outside the game.
-S.EXPORT_ASK = "Keep a copy of these settings outside the game? Export a profile string and save it somewhere safe; /vg import brings it back."
+S.EXPORT_ASK = L["Keep a copy of these settings outside the game? Export a profile string and save it somewhere safe; /vg import brings it back."]
 
 -- Shows the whole profile's export string, selected to copy; with a reload owed, chat says to reload after.
 local function exportNow(why)
-  ns.ShowText("Vanguard export (profile " .. ns.ProfileName() .. ")  Ctrl+C to copy", ns.ExportProfile())
-  if why then ns.Chat(why .. " Type /reload once you've copied the string.") end
+  ns.ShowText(ns.ExportTitle(nil), ns.ExportProfile())
+  if why then ns.Chat(why .. " " .. L["Type /reload once you've copied the string."]) end
 end
 
 -- After a first run's Done: asks whether to export a profile string, then offers the reload (when one is owed) on Not now.
 local function suggestExport(why)
-  ns.Ask(S.EXPORT_ASK, "Export", function() exportNow(why) end, function() if why then ns.OfferReload(why) end end)
+  ns.Ask(S.EXPORT_ASK, L["Export"], function() exportNow(why) end, function() if why then ns.OfferReload(why) end end)
 end
 
 -- What follows the end of setup: the export question after a first run's Done, else the reload offer when one is owed.
@@ -783,10 +784,10 @@ local function showStep(n)
   state.step = n
   ns.FocusClear(frame)
   for k, page in pairs(frame.pages) do page:SetShown(k == key) end
-  frame.caption:SetText(string.format("Step %d of %d · %s", n, last, NAMES[key]))
+  frame.caption:SetText(ns.Format(L["Step {step} of {count} · {name}"], { step = n, count = last, name = NAMES[key] }))
   frame.back:SetShown(n > state.floor)
   frame.skip:SetShown(n == 1)
-  frame.next.text:SetText(n == last and "Done" or "Next")
+  frame.next.text:SetText(n == last and L["Done"] or L["Next"])
   if n == last then ns.Unlock() elseif ns.Unlocked() then ns.Lock() end
   refresh()
 end
@@ -821,7 +822,7 @@ end
 function S.Defer()
   if waiting then return end
   waiting = true
-  ns.Chat("Setup opens when combat ends.")
+  ns.Chat(L["Setup opens when combat ends."])
   ns.OutOfCombat(function() waiting = false; S.Open() end)
 end
 

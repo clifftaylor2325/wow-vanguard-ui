@@ -6,6 +6,7 @@
 -- contrast (a flat variant) keeps every panel flat.
 
 local ADDON, ns = ...
+local L = ns.L
 
 local T = ns.Theme
 
@@ -26,8 +27,8 @@ T.PANEL_TEXTURES = {
 
 -- The picker's built-ins, in display order.
 T.PANEL_TEXTURE_CHOICES = {
-  { "flat", "Flat" }, { "grain", "Fine grain" }, { "stone", "Carved stone" }, { "leather", "Dark leather" },
-  { "rock", "Rock (the game's)" }, { "marble", "Marble (the game's)" }, { "dialog", "Dialog (the game's)" },
+  { "flat", L["Flat"] }, { "grain", L["Fine grain"] }, { "stone", L["Carved stone"] }, { "leather", L["Dark leather"] },
+  { "rock", L["Rock (the game's)"] }, { "marble", L["Marble (the game's)"] }, { "dialog", L["Dialog (the game's)"] },
 }
 
 -- Backgrounds LibSharedMedia lists that the picker leaves out: no texture, a plain fill, the game's

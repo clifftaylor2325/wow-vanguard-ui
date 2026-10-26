@@ -7,6 +7,7 @@
 -- (its src/feedback/fields.js), so a block that passes here passes there.
 
 local ADDON, ns = ...
+local L = ns.L
 
 local T, W = ns.Theme, ns.Widgets
 
@@ -14,18 +15,18 @@ local FB = {}
 ns.Feedback = FB
 
 FB.START, FB.END = "### Vanguard feedback v1 ###", "### end feedback ###"
-FB.TITLE = "Vanguard feedback: Ctrl+C, then paste at vanguardui.com/feedback"
+FB.TITLE = L["Vanguard feedback: Ctrl+C, then paste at vanguardui.com/feedback"]
 
 -- The site's limits: field -> { least, most } characters (least 0: optional).
 local LIMITS = { title = { 8, 100 }, did = { 1, 2000 }, expected = { 0, 1000 }, happened = { 1, 2000 }, want = { 1, 2000 }, why = { 1, 2000 } }
 -- The texts each kind checks, in the site's order, with the name its messages use.
 local CHECKS = {
-  bug = { { "did", "What you did" }, { "expected", "What you expected" }, { "happened", "What happened instead" } },
-  feature = { { "want", "What you want" }, { "why", "Why it would help" } },
+  bug = { { "did", L["What you did"] }, { "expected", L["What you expected"] }, { "happened", L["What happened instead"] } },
+  feature = { { "want", L["What you want"] }, { "why", L["Why it would help"] } },
 }
 -- The "Part of Vanguard" choices after the modules (the site's FALLBACK_AREAS).
-local OTHER_AREAS = { { "command", "A command" }, { "setting", "A setting" }, { "new", "Something new" }, { "not-sure", "Not sure" } }
-local KINDS = { { "bug", "Report a bug" }, { "feature", "Request a feature" } }
+local OTHER_AREAS = { { "command", L["A command"] }, { "setting", L["A setting"] }, { "new", L["Something new"] }, { "not-sure", L["Not sure"] } }
+local KINDS = { { "bug", L["Report a bug"] }, { "feature", L["Request a feature"] } }
 
 -- Checks -------------------------------------------------------------------------------------
 
@@ -42,9 +43,9 @@ end
 -- The message when a text is missing, too short or too long, else nil.
 local function lengthError(field, value, label)
   local least, most, n = LIMITS[field][1], LIMITS[field][2], ns.TextLength(value)
-  if least > 0 and n == 0 then return label .. " is required." end
-  if n > 0 and n < least then return string.format("%s needs at least %s characters.", label, count(least)) end
-  if n > most then return string.format("%s can be at most %s characters (it has %s).", label, count(most), count(n)) end
+  if least > 0 and n == 0 then return ns.Format(L["{field} is required."], { field = label }) end
+  if n > 0 and n < least then return ns.Format(L["{field} needs at least {least} characters."], { field = label, least = count(least) }) end
+  if n > most then return ns.Format(L["{field} can be at most {most} characters (it has {count})."], { field = label, most = count(most), count = count(n) }) end
 end
 
 -- The fields cleaned: kind and area as given, every text trimmed.
@@ -56,7 +57,7 @@ end
 
 -- The "Part of Vanguard" choices: none, every module by its shown name, then the four general ones.
 function FB.Areas()
-  local out = { { "", "Choose one" } }
+  local out = { { "", L["Choose one"] } }
   for _, name in ipairs(ns.ModuleNames()) do
     local info = ns.Options.MODULE_INFO[name]
     out[#out + 1] = { name, info and info[1] or name }
@@ -75,14 +76,14 @@ end
 -- The first problem with the fields, in the site's words, or nil when they pass its checks.
 function FB.Check(fields)
   local f = cleaned(fields)
-  if not CHECKS[f.kind] then return "Choose Report a bug or Request a feature." end
-  local problem = lengthError("title", f.title, "The short summary")
+  if not CHECKS[f.kind] then return L["Choose Report a bug or Request a feature."] end
+  local problem = lengthError("title", f.title, L["The short summary"])
   if problem then return problem end
   for _, c in ipairs(CHECKS[f.kind]) do
     problem = lengthError(c[1], f[c[1]], c[2])
     if problem then return problem end
   end
-  if f.kind == "feature" and not FB.AreaLabel(f.area) then return "Choose the part of Vanguard it's about." end
+  if f.kind == "feature" and not FB.AreaLabel(f.area) then return L["Choose the part of Vanguard it's about."] end
 end
 
 -- The block ----------------------------------------------------------------------------------
@@ -188,25 +189,25 @@ end
 -- The bug fields: what you did, expected and got; the report goes in by itself.
 local function bugGroup(f)
   local g = group(f)
-  local y = addText(g, "did", "What did you do?", TALL, 0)
-  y = addText(g, "expected", "What did you expect? (optional)", SHORT, y)
-  y = addText(g, "happened", "What happened instead?", TALL, y)
+  local y = addText(g, "did", L["What did you do?"], TALL, 0)
+  y = addText(g, "expected", L["What did you expect? (optional)"], SHORT, y)
+  y = addText(g, "happened", L["What happened instead?"], TALL, y)
   g.note = T.Text(g:CreateFontString(nil, "OVERLAY"), "small", "muted")
   g.note:SetPoint("TOPLEFT", 0, -y)
   g.note:SetWidth(FIELD_W)
-  g.note:SetText("Your /vg report (version, client and the errors caught this session) goes in the block with your answers.")
+  g.note:SetText(L["Your /vg report (version, client and the errors caught this session) goes in the block with your answers."])
   return g
 end
 
 -- The feature fields: what you want, which part of Vanguard, and why.
 local function featureGroup(f)
   local g = group(f)
-  local y = addText(g, "want", "What do you want?", TALL, 0)
-  caption(g, "Part of Vanguard", y)
+  local y = addText(g, "want", L["What do you want?"], TALL, 0)
+  caption(g, L["Part of Vanguard"], y)
   g.area = W.Dropdown(g, FB.Areas, function() return f.area end, function(v) f.area = v end, PICK_W)
   g.area:SetPoint("TOPLEFT", 0, -(y + CAPTION))
   y = y + CAPTION + T.CONTROL_H + T.SPACE.gap
-  addText(g, "why", "Why would it help you?", TALL, y)
+  addText(g, "why", L["Why would it help you?"], TALL, y)
   return g
 end
 
@@ -251,8 +252,8 @@ end
 -- The summary line under the kind row: its caption and a one-line box of at most LIMITS.title[2] letters.
 local function addSummary(f)
   local top = ns.DIALOG.head + T.ROW.height + T.SPACE.gap
-  local range = string.format("%s to %s", count(LIMITS.title[1]), count(LIMITS.title[2]))
-  caption(f, "Short summary (" .. range .. " characters)", 0):SetPoint("TOPLEFT", T.SPACE.pad, -top)
+  local text = ns.Format(L["Short summary ({least} to {most} characters)"], { least = count(LIMITS.title[1]), most = count(LIMITS.title[2]) })
+  caption(f, text, 0):SetPoint("TOPLEFT", T.SPACE.pad, -top)
   f.summary = W.Input(f, FIELD_W)
   f.summary:SetMaxLetters(LIMITS.title[2])
   f.summary:SetPoint("TOPLEFT", T.SPACE.pad, -(top + CAPTION))
@@ -261,9 +262,9 @@ end
 
 -- The bottom of the form: Make report, Cancel, and the problem line above them.
 local function addButtons(f)
-  f.make = W.Primary(f, "Make report", FB.Make)
+  f.make = W.Primary(f, L["Make report"], FB.Make)
   f.make:SetPoint("BOTTOMRIGHT", -T.SPACE.pad, T.SPACE.pad)
-  f.cancel = ns.DialogButton(f, "Cancel")
+  f.cancel = ns.DialogButton(f, L["Cancel"])
   f.cancel:SetPoint("RIGHT", f.make, "LEFT", -T.SPACE.gap, 0)
   f.cancel:SetScript("OnClick", ns.Guard("click cancel feedback", function() f:Hide() end))
   f.problem = T.Text(f:CreateFontString(nil, "OVERLAY"), "label", "warn")
@@ -275,12 +276,12 @@ end
 -- The dialog frame: a centered themed panel (ns.Dialog: its title, X and Escape), a layer above the options
 -- window it opens from, hidden.
 local function frame()
-  return ns.Dialog("Vanguard_Feedback", WIDTH, HEIGHT, "Send feedback")
+  return ns.Dialog("Vanguard_Feedback", WIDTH, HEIGHT, L["Send feedback"])
 end
 
 -- The kind row at the top: Report a bug or Request a feature; picking one shows its fields.
 local function addKindRow(f)
-  f.kindRow = W.Choice(f, "What would you like to send?", KINDS, function() return f.kind end, function(v) f.kind = v; showKind() end, FIELD_W)
+  f.kindRow = W.Choice(f, L["What would you like to send?"], KINDS, function() return f.kind end, function(v) f.kind = v; showKind() end, FIELD_W)
   f.kindRow:SetPoint("TOPLEFT", T.SPACE.pad, -ns.DIALOG.head)
 end
 

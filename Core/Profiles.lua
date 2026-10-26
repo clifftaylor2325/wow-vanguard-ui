@@ -7,6 +7,7 @@
 -- before any module reads its settings.
 
 local ADDON, ns = ...
+local L = ns.L
 
 local S = ns.Serialize
 
@@ -86,7 +87,7 @@ local function encode(scope)
   local profile = ns.Profile()
   local parts, missing = ns.FindParts(scope, profile)
   if missing then
-    return nil, "nothing saved for " .. missing .. " yet"
+    return nil, ns.Format(L["nothing saved for {part} yet"], { part = missing })
   end
   if not parts then return S.Encode("profile", withDisplay(profile)) end
   return S.Encode("parts", ns.PartsPayload(profile, parts))
@@ -101,6 +102,14 @@ function ns.ExportProfile(scope)
   scope = scope or "profile"
   if ns.OwnValues then return ns.OwnValues(encode, scope) end
   return encode(scope)
+end
+
+-- The title of the box an export string shows in: the parts it holds ("layout, theme"), or (nil) the profile's name.
+---@param parts string|nil
+---@return string
+function ns.ExportTitle(parts)
+  if parts then return ns.Format(L["Vanguard export ({parts})  Ctrl+C to copy"], { parts = parts }) end
+  return ns.Format(L["Vanguard export (profile {profile})  Ctrl+C to copy"], { profile = ns.ProfileName() })
 end
 
 -- A profile name that isn't taken yet, from base ("Imported", "Imported 2", ...).
@@ -193,8 +202,8 @@ end
 local function importMatch(name, result)
   ns.UseProfile(name)
   result.reload = name ~= ns.ProfileName()
-  if result.reload then return "This string matches profile " .. name .. "; this character will use it after a reload." end
-  return "This string matches profile " .. name .. ", which this character already uses: nothing new to import."
+  if result.reload then return ns.Format(L["This string matches profile {profile}; this character will use it after a reload."], { profile = name }) end
+  return ns.Format(L["This string matches profile {profile}, which this character already uses: nothing new to import."], { profile = name })
 end
 
 -- Puts this player's own pixel-perfect switch and multiple in an imported profile's theme: like the
@@ -219,7 +228,7 @@ local function importWhole(data, result)
   local name = freeName("Imported")
   VanguardDB.profiles[name] = data
   ns.UseProfile(name)
-  return "Imported as profile " .. name .. "; this character will use it after a reload."
+  return ns.Format(L["Imported as profile {profile}; this character will use it after a reload."], { profile = name })
 end
 
 -- A partial string: its tables merge into the active profile, key by key; a theme it carries keeps
@@ -227,13 +236,15 @@ end
 local function importParts(data)
   if type(data.theme) == "table" then ownPixelScale(data) end
   ns.MergeParts(ns.Profile(), data)
-  return "Imported " .. ns.PartsText(data) .. " settings into profile " .. ns.ProfileName() .. "."
+  local parts = ns.PartsText(data)
+  if not parts then return ns.Format(L["Imported its settings into profile {profile}."], { profile = ns.ProfileName() }) end
+  return ns.Format(L["Imported {parts} settings into profile {profile}."], { parts = parts, profile = ns.ProfileName() })
 end
 
 -- The import's notes: each font or bar texture the string names that this client lacks, then where the backup is.
 local function importNotes(payload, backup)
   local notes = ns.MissingMedia(payload)
-  notes[#notes + 1] = "Profile " .. ns.ProfileName() .. " as it was before this import is saved as profile " .. backup .. "."
+  notes[#notes + 1] = ns.Format(L["Profile {profile} as it was before this import is saved as profile {backup}."], { profile = ns.ProfileName(), backup = backup })
   return notes
 end
 
@@ -259,18 +270,13 @@ function ns.ImportProfile(text)
   return ns.ApplyImport(S.Decode(text))
 end
 
--- " on a w x h screen" from a display block, or "" when it has no usable size.
-local function screenText(display)
-  local w, h = tonumber(display.width) or 0, tonumber(display.height) or 0
-  if w <= 0 or h <= 0 then return "" end
-  return string.format(" on a %d x %d screen", math.floor(w), math.floor(h))
-end
-
--- The question asked after importing a profile that carries its UI scale.
+-- The question asked after importing a profile that carries its UI scale, naming the screen it was made on when
+-- the block has a usable size.
 function ns.DisplayQuestion(display)
-  local screen, mine = screenText(display), ns.DisplayBlock()
-  return string.format("This profile was made at UI scale %d%%%s (yours: %d%%). Use its UI scale?",
-    math.floor(display.uiScale * 100 + 0.5), screen, math.floor(mine.uiScale * 100 + 0.5))
+  local w, h = math.floor(tonumber(display.width) or 0), math.floor(tonumber(display.height) or 0)
+  local values = { scale = math.floor(display.uiScale * 100 + 0.5), width = w, height = h, mine = math.floor(ns.DisplayBlock().uiScale * 100 + 0.5) }
+  if w <= 0 or h <= 0 then return ns.Format(L["This profile was made at UI scale {scale}% (yours: {mine}%). Use its UI scale?"], values) end
+  return ns.Format(L["This profile was made at UI scale {scale}% on a {width} x {height} screen (yours: {mine}%). Use its UI scale?"], values)
 end
 
 -- A staged profile's theme table (made when it has none yet): the settings cache only holds the
@@ -298,7 +304,7 @@ end
 -- scale (useDisplayScale), then runs after() either way.
 function ns.OfferDisplay(display, after)
   if not display then return after() end
-  ns.Ask(ns.DisplayQuestion(display), "Use it", function() useDisplayScale(display) after() end, after)
+  ns.Ask(ns.DisplayQuestion(display), L["Use it"], function() useDisplayScale(display) after() end, after)
 end
 
 -- Specialization -------------------------------------------------------------------------
@@ -389,7 +395,7 @@ ns.On("PLAYER_LOGIN", function() followSpec(true) end)
 -- On a spec change mid-session, stage the spec's profile and offer the reload that applies it.
 local function onSpecChanged()
   if followSpec(false) then
-    ns.OfferReload("Your specialization uses profile " .. ns.SelectedProfileName() .. ".")
+    ns.OfferReload(ns.Format(L["Your specialization uses profile {profile}."], { profile = ns.SelectedProfileName() }))
   end
 end
 
@@ -445,7 +451,7 @@ local function switchLayout(index, name)
   ns.OutOfCombat(function()
     switching = false
     C_EditMode.SetActiveLayout(index)
-    ns.Chat("Edit Mode layout " .. name .. ", from profile " .. ns.ProfileName() .. ".")
+    ns.Chat(ns.Format(L["Edit Mode layout {layout}, from profile {profile}."], { layout = name, profile = ns.ProfileName() }))
   end)
 end
 
@@ -473,7 +479,7 @@ local function onLayouts()
   local name = layoutToLoad()
   local index = name and layoutIndex(editModeManager(), name)
   if index then return switchLayout(index, name) end
-  if name then return ns.Chat("Profile " .. ns.ProfileName() .. " uses Edit Mode layout " .. name .. ", which this account doesn't have.") end
+  if name then return ns.Chat(ns.Format(L["Profile {profile} uses Edit Mode layout {layout}, which this account doesn't have."], { profile = ns.ProfileName(), layout = name })) end
   rememberLayout()
 end
 

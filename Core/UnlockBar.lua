@@ -7,6 +7,7 @@
 -- has its own buttons, and closing it keeps the changes.
 
 local ADDON, ns = ...
+local L = ns.L
 
 local T, W = ns.Theme, ns.Widgets
 
@@ -17,7 +18,7 @@ local before
 local fromPage
 
 -- The bar's note and its spacing (units): the gaps around the note and between the buttons.
-local BAR = { hint = "Drag to move · right-click for anchor, scale, opacity · arrows nudge (Shift ×10)",
+local BAR = { hint = L["Drag to move · right-click for anchor, scale, opacity · arrows nudge (Shift ×10)"],
   pad = 12, gap = 6, edge = 8, save = 110, exit = 140, height = 36 }
 
 -- Puts every saved spot back as it was when unlock started, places every frame again, tells what
@@ -29,7 +30,7 @@ function ns.ExitWithoutSaving()
   for _, m in ipairs(movers) do ns.PlaceMover(m.key) end
   for _, m in ipairs(movers) do ns.MoverChanged(m.key) end
   ns.Lock()
-  ns.Chat("Every frame is back where it was when you unlocked.")
+  ns.Chat(L["Every frame is back where it was when you unlocked."])
 end
 
 -- Whether the options window is open now.
@@ -51,9 +52,9 @@ end
 -- The bar's two buttons, at its right: Save and lock, and Exit without saving left of it.
 local function addButtons()
   local u = BAR
-  bar.save = W.Primary(bar, "Save and lock", thenBack(function() ns.Lock() end), u.save)
+  bar.save = W.Primary(bar, L["Save and lock"], thenBack(function() ns.Lock() end), u.save)
   bar.save:SetPoint("RIGHT", -u.edge, 0)
-  bar.exit = W.Button(bar, "Exit without saving", thenBack(function() ns.ExitWithoutSaving() end), u.exit)
+  bar.exit = W.Button(bar, L["Exit without saving"], thenBack(function() ns.ExitWithoutSaving() end), u.exit)
   bar.exit:SetPoint("RIGHT", bar.save, "LEFT", -u.gap, 0)
 end
 
@@ -84,7 +85,7 @@ end
 -- In a fight nothing unlocks, the window stays, and chat says why.
 ---@param page string
 function ns.UnlockFromOptions(page)
-  if ns.InCombat() then return ns.Chat("In combat. Try again once combat ends.") end
+  if ns.InCombat() then return ns.Chat(L["In combat. Try again once combat ends."]) end
   ns.Options.Hide()
   ns.Unlock()
   fromPage = page
