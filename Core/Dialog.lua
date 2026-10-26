@@ -64,6 +64,12 @@ local function hide(frame)
   frame:Hide()
 end
 
+-- A dialog's title: one line between the left pad and the close button's room, cut short with an ellipsis.
+local function oneLineTitle(f, w)
+  f.title:SetWidth(w - T.SPACE.pad - CLOSE_ROOM)
+  f.title:SetMaxLines(1)
+end
+
 -- A centered, themed dialog frame at the dialog alpha, with the one window chrome (ns.WindowTitle: its title, set
 -- by the caller unless given and kept short of the close X that hides it, and Escape), a layer above the options window (which is
 -- on the dialog strata itself, its cards high in it, so a dialog there opened under them). The X is
@@ -80,7 +86,7 @@ local function dialog(name, w, h, title)
   f:SetFrameStrata("FULLSCREEN_DIALOG")
   f:EnableMouse(true)
   f.chrome = ns.WindowTitle(f, title or name, { onClose = hide, escape = true })
-  f.title:SetWidth(w - T.SPACE.pad - CLOSE_ROOM)
+  oneLineTitle(f, w)
   if not title then f.title:SetText("") end
   f:Hide()
   return f
@@ -128,6 +134,7 @@ end
 local function hangTitle(f)
   f.title:ClearAllPoints()
   f.title:SetPoint("TOPLEFT", T.SPACE.pad, -T.SPACE.pad)
+  f.title:SetMaxLines(0)
 end
 
 -- The text dialog's title: two lines at most (its words are the sentence that says what to do with the box,

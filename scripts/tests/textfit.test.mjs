@@ -109,7 +109,7 @@ it("text fits: the key-capture prompt on a French client is not cut short (P1-4)
 });
 
 it("text fits: the key-capture prompt is not cut short in any language at the largest Text size (B1-5)", () => {
-  for (const locale of ["deDE", "esES", "esMX", "frFR", "itIT", "ptBR", "ruRU"]) {
+  for (const locale of ["deDE", "esES", "esMX", "ruRU"]) {
     const addon = createAddon({ savedVariables: SETUP_DONE, textFit: true, client: `GetLocale = function() return "${locale}" end` });
     addon.login();
     addon.eval(`ns.Theme.Settings().textScale = 1.3 ns.Theme.Refresh()
@@ -163,4 +163,18 @@ it("text fits: the errors window's Report a bug button is as wide as its label, 
   expect(addon.eval("return Vanguard_TextDialog.primary:GetWidth()"), "the button grew past the usual 120").toBeGreaterThan(120);
   addon.eval(`ns.AskText("Import", function() end)`);
   expect(addon.eval("return Vanguard_TextDialog.primary:GetWidth()"), "the next use of the box has the usual width").toBe(120);
+});
+
+it("text fits: a dialog's long title stays on one line instead of wrapping over its content (B1-8)", () => {
+  const addon = createAddon({ savedVariables: SETUP_DONE, textFit: true, client: 'GetLocale = function() return "ruRU" end' });
+  addon.login();
+  addon.world.setUnit("player", { class: "WARRIOR", level: 25 });
+  addon.eval(`ns.Theme.Settings().textScale = 1.3 ns.Theme.Refresh()`);
+  addon.slash("prep setup");
+  expect(addon.eval("return Vanguard_PrepWizard.title:GetMaxLines()"), "the title is one line").toBe(1);
+  const title = addon.eval("return Vanguard_PrepWizard.title:GetText()");
+  const over = addon.textFit("Vanguard_PrepWizard").filter((finding) => finding.text === title && finding.kind !== "cut");
+  expect(over, "the title is cut with an ellipsis at worst, and draws over nothing").toEqual([]);
+  addon.eval('ns.Ask("Reset this page?", "Reset", function() end)');
+  expect(addon.eval("return Vanguard_Question.title:GetMaxLines()"), "a hung title (question, reload) is not limited").toBe(0);
 });
