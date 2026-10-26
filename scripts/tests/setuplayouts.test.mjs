@@ -150,11 +150,12 @@ function layoutRects(addon, n, sw, sh) {
   for (const [key, row] of Object.entries(ATTACHED)) if (out[row[0]]) out[key] = attachedRect(out[row[0]], spots[row[0]][6], row);
   if (n > 0) out.raid = raidRect(addon, n, sw, sh);
   // Chat is a mover: its panel reaches a gap past the window's left, right and bottom (over the
-  // scroll column on the right) and the tab bar's height above its top, and its side buttons
-  // stack left of the panel. Its first-time size depends on the screen's width.
+  // scroll column on the right) and the tab bar's height above its top, its side buttons
+  // stack left of the panel, and its typing box hangs a gap and its height under the panel. Its
+  // first-time size depends on the screen's width.
   if (out.chat) {
     const [w, h, bar, column, gap, stack] = addon.eval(`local CH = ns.GetModule("Chat") local w, h = CH.DefaultSize(${sw}) return { w, h, CH.BAR, CH.SIDE_COLUMN, ns.Theme.SPACE.tight, CH.STACK_ROOM }`);
-    out.chat = { l: out.chat.l - gap - stack, b: out.chat.b - gap, r: out.chat.l + w + column + gap, t: out.chat.b + h + bar };
+    out.chat = { l: out.chat.l - gap - stack, b: out.chat.b - 2 * gap - bar, r: out.chat.l + w + column + gap, t: out.chat.b + h + bar };
   }
   return out;
 }
@@ -221,16 +222,19 @@ it("setup screens: with each screen preset, nothing overlaps or leaves its own s
 });
 // The frames whose default spots adapt to a canvas narrower than 1365 or shorter than 768 (P3-3 and the
 // narrow-screen fixes): on the canvases below, each is on screen and clear of the rest of the centered layout.
-const NARROW_FRAMES = ["uf_targettarget", "playerauras", "partyextras"];
+const NARROW_FRAMES = ["uf_targettarget", "playerauras", "partyextras", "chat"];
 // What the narrow canvases still have that these frames don't answer for: the raid grid's own spots (Modules/RaidFrames.lua);
 // on a canvas 668 tall the quest tracker and the 360 tall quest dialog reach into the HUD; under 1020 wide your
-// buffs' shortest row (five) meets the main tanks' spot, shown only in a raid.
+// buffs' shortest row (five) meets the main tanks' spot, shown only in a raid; under 1229 wide even the narrowest
+// default chat (296) meets the left end of action bars 1 to 3 and the XP or reputation bar (under 1020 the player's cast bar and swing timer too), and setup's Fit my screen is the answer there.
 const narrowExcused = (p, sw, sh) => / raid\b|raid off screen/.test(p) || (sh < 700 && /questtracker|questdialog/.test(p))
-  || (sw < 1020 && /playerauras \/ maintanks/.test(p));
+  || (sw < 1020 && /playerauras \/ maintanks/.test(p)) || (sw < 1229 && /chat \/ (bar[123]|repbar|xpbar)|(bar[123]|repbar|xpbar) \/ chat/.test(p))
+  || (sw < 1020 && /(cast_player|swing) \/ chat/.test(p));
 it("setup layouts: on canvases narrower than 1365 the adapted default spots stay on screen and clear, solo to 40-man", () => {
   for (const [sw, sh] of [[1280, 800], [1229, 768], [1024, 768], [835, 668]]) {
     const addon = wholeHud(`__wfgStub.setScreen(${sw}, ${sh}) `);
     expect(NARROW_FRAMES.filter((k) => !moverSpots(addon)[k]), `${sw} x ${sh}: every adapted frame is built`).toEqual([]);
+    expect(addon.eval("return { ns.GetModule('Chat').DefaultSize() }"), `${sw} x ${sh}: the default chat is as wide as the room left of bar 1 (296 at 1229; 320 at 1280, where bar 1 is 482 wide after pixel rounding; never under 296), at the small height`).toEqual([{ 1280: 320, 1229: 296, 1024: 296, 835: 296 }[sw], 132]);
     for (const layout of ["damage", "tank", "healing", "versus"]) {
       addon.eval(`ns.Setup.ApplyLayout("${layout}")`);
       const mine = problemsAt(addon, layout, sw, sh, `${layout}, ${sw}x${sh}`).filter((p) => (/off screen/.test(p) || NARROW_FRAMES.some((k) => p.includes(k))) && !narrowExcused(p, sw, sh));
