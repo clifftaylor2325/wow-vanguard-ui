@@ -695,6 +695,18 @@ it("Sort shows its whole label in German, Russian and Portuguese, and the search
   }
 });
 
+it("a section of one or two items is as wide as its translated header, so no header is cut (B10-7)", () => {
+  for (const locale of ["deDE", "ruRU"]) {
+    const addon = createAddon({ textFit: true, client: `__wfgWorld.locale = "${locale}"`, savedVariables: SETUP_DONE });
+    addon.eval([BAG_ENV, fill([8, 4, 0, 0, 0], { quest: 1, consumables: 1, trade: 2 })].join("\n"));
+    addon.login();
+    addon.eval("__openBag()");
+    const cut = addon.textFit("ns.GetModule('Bags').headers.quest").concat(addon.textFit("ns.GetModule('Bags').headers.consumables"), addon.textFit("ns.GetModule('Bags').headers.trade"));
+    expect(cut, `${locale}: no section header is cut`).toEqual([]);
+    expect(addon.eval("local h = ns.GetModule('Bags').headers return { h.quest:GetWidth() > 79, h.other == nil }"), `${locale}: a long header widens its section past two slots`).toEqual([true, true]);
+  }
+});
+
 it("the sectioned combined bag is clamped to the screen, so a bag taller than a short canvas keeps its title and Sort button; a plain bag is left alone", () => {
   // TEST-ONLY: frames record the clamp they are given (the stub's SetClampedToScreen keeps nothing); the game windows'
   // own clamp (Drag game windows by their title bar) is off, so only the sections' clamp is seen.

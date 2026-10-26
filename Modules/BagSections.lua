@@ -23,7 +23,7 @@ local BG = ns.GetModule("Bags")
 local GAP = 5
 -- Between sections side by side (the theme's gutter between columns, T.SPACE.col); above a header, under
 -- the section before it (the same, more than the header's own band holds under its text, so a header reads
--- with its own slots); and a section's narrowest width in columns (room for its header).
+-- with its own slots); and a section's narrowest width in columns (a longer header widens it, see blockSize).
 local SIDE_GAP, SHELF_GAP, MIN_COLS = T.SPACE.col, T.SPACE.col, 2
 -- The game's grid sits this far above the money line (its GetInitialItemAnchor).
 local ABOVE_MONEY = 4
@@ -127,10 +127,12 @@ local function gridOf(frame)
   return { cols = cols, w = w, slot = (w - (cols - 1) * GAP) / cols, top = frame:GetPaddingHeight() }
 end
 
--- A section's width and height in pixels: its columns (at least room for the
--- header) by its rows, plus the header.
-local function blockSize(n, g)
-  local cols, rows = math.max(MIN_COLS, math.min(n, g.cols)), math.ceil(n / g.cols)
+-- A section's width and height in pixels: its columns (at least MIN_COLS, and enough for its header's text in
+-- full, a translated header often running wider than two slots) by its rows, plus the header.
+local function blockSize(s, g)
+  local n, headerWidth = #s.buttons, T.FullWidth(BG.headers[s.key].text) + 2 * T.SPACE.tight
+  local fitting = math.ceil((headerWidth + GAP) / (g.slot + GAP))
+  local cols, rows = math.max(MIN_COLS, math.min(fitting, g.cols), math.min(n, g.cols)), math.ceil(n / g.cols)
   return cols * g.slot + (cols - 1) * GAP, g.head + rows * g.slot + (rows - 1) * GAP
 end
 
@@ -139,7 +141,7 @@ end
 local function shelve(list, g)
   local x, y, rowH = 0, 0, 0
   for _, s in ipairs(list) do
-    local w, h = blockSize(#s.buttons, g)
+    local w, h = blockSize(s, g)
     if x > 0 and x + w > g.w then x, y, rowH = 0, y + rowH + SHELF_GAP, 0 end
     s.x, s.y, s.w = x, y, w
     x, rowH = x + w + SIDE_GAP, math.max(rowH, h)
