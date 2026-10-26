@@ -165,3 +165,20 @@ it("P5-6: the officer roster's names stop before their notes", () => {
   const note = addon.eval("local f = Vanguard_OfficerRoster.rows[2].right return { f:GetLeft(), f:GetText() }");
   expect(name.right, "the name ends before it").toBeLessThanOrEqual(note[0]);
 });
+
+it("P5-9: the group board's hint wraps inside the window in French and German", () => {
+  // The real frFR and deDE hints (Locales/frFR.lua, Locales/deDE.lua), 571 and 547 wide on one line.
+  const hints = [
+    "Cliquez sur une annonce pour ouvrir un chuchotement avec un message prérempli. Rien n’est envoyé avant que vous appuyiez sur Entrée.",
+    "Klicke auf einen Beitrag, um ein Flüsterfenster mit vorausgefüllter Nachricht zu öffnen. Nichts wird gesendet, bis du Eingabe drückst.",
+  ];
+  const addon = fitClient();
+  addon.slash("lfg");
+  for (const hint of hints) {
+    addon.eval(`Vanguard_GroupBoard.hint:SetText(${JSON.stringify(hint)})`);
+    const mine = addon.textFit("Vanguard_GroupBoard").filter((f) => f.text.startsWith(hint.slice(0, 12)));
+    expect(mine, `${hint.slice(0, 12)}: the hint is not cut or spilling`).toEqual([]);
+    const [board, text] = ["Vanguard_GroupBoard", "Vanguard_GroupBoard.hint"].map((ref) => rectOf(addon, ref));
+    expect([text.left >= board.left, text.right <= board.right, text.bottom >= board.bottom, text.height], `${hint.slice(0, 12)}: inside the window, on two lines`).toEqual([true, true, true, 20]);
+  }
+});

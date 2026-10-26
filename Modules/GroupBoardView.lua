@@ -18,10 +18,11 @@ local GB = ns.GetModule("GroupBoard")
 -- kind's left edge to the age's right edge) and how far in the first cell sits, which the note lines up with.
 local PAD, SPAN, INDENT = T.SPACE.pad, 436, 2
 -- Where the filter row starts, down from the top (a column under the title's line), where the rows start (a gap
--- under its buttons), and the room under the rows for the note's two lines of small text and the hint's one.
+-- under its buttons), and the room under the rows for the note's two lines of small text and the hint's two
+-- (a translation of the hint wraps onto a second line).
 local FILTER_TOP = T.CONTROL.inset + T.SPACE.col
 local BODY_TOP = FILTER_TOP + T.BUTTON_H + T.SPACE.gap
-local NOTE_H, HINT_H = 24, 12
+local NOTE_H, HINT_H = 24, 24
 
 -- The board's width and height (the rows are T.ROW.height tall), the rows shown at most and the seconds between age updates.
 GB.W, GB.ROW_H, GB.ROWS, GB.AGE_EVERY = SPAN + 2 * PAD, T.ROW.height, 10, 10
@@ -82,10 +83,12 @@ local function addBody(f)
   f.note:SetWidth(SPAN - INDENT)
 end
 
--- The hint along the bottom: a note (small muted).
+-- The hint along the bottom: a note (small muted), wrapped inside the board's width.
 local function addHint(f)
   f.hint = T.Text(f:CreateFontString(nil, "OVERLAY"), "small", "muted")
   f.hint:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", PAD, PAD)
+  f.hint:SetWidth(SPAN)
+  f.hint:SetJustifyH("LEFT")
   f.hint:SetText(L["Click a post to open a whisper with a message filled in. Nothing is sent until you press Enter."])
 end
 
