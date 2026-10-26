@@ -623,6 +623,16 @@ it("quest tracker: nearest first, collapsing, too many quests, and switched off"
   const off = loggedIn(TRACK_ENV, { savedVariables: "VanguardDB.profiles = { Default = { QuestTracker = { own = false } } }" });
   expect(off.eval("return { Vanguard_QuestTrackerFrame == nil, ObjectiveTrackerFrame:IsShown() }"), "switched off: the game's tracker").toEqual([true, true]);
 });
+it("quest tracker: expanded on a short screen, the list stops above the screen's bottom and Show fewer stays on it", () => {
+  const addon = loggedIn(UNITS_ENV + TRACK_ENV + "__wfgStub.setScreen(835, 668)", { savedVariables: "VanguardDB.profiles = { Default = { QuestTracker = { expanded = true } } }" });
+  addon.eval(`for i = 1, 9 do local id = 90070 + i __quests[id] = { index = 10 + i, title = "TEST-ONLY Many " .. i, level = 5, dist = i, objectives = { { text = "a" }, { text = "b" }, { text = "c" } } } __watches[#__watches + 1] = id end`);
+  addon.fire("QUEST_WATCH_LIST_CHANGED");
+  addon.update(0);
+  const t = tracker(addon);
+  expect(t.blocks.length, "fewer than all nine fit under the spot").toBeLessThan(9);
+  expect(t.more, "with the way back").toMatch(/^Show fewer/);
+  expect(addon.frame("Vanguard_QuestTrackerFrame.moreBtn").rect.bottom, "the Show fewer button is on the screen").toBeGreaterThanOrEqual(0);
+});
 it("quest tracker: the Quests header is a collapsible section header with the count after it and the brass rule under it; \"+n more\" is a status line", () => {
   const addon = loggedIn(TRACK_ENV);
   const tight = layout(addon)[4];
