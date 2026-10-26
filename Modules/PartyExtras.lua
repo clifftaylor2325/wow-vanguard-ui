@@ -12,6 +12,10 @@ local PX = ns.Module("PartyExtras", { defaults = { show = false } })
 
 PX.W, PX.H, PX.GAP, PX.ROWS = 90, 16, 2, 4
 PX.COL_GAP = 4
+-- The column's spot: above the party frames. On a canvas under 676 tall (the UI scale slider's last notches) its
+-- top would leave the screen, and on such a small canvas the top left is full (boss frames, raid tools), so there
+-- it sits right of the party column instead (Healing's larger one too), above a party drawn as one row.
+PX.SPOT = { "BOTTOM", "BOTTOM", -240, 606, narrow = { h = 676, spot = { "BOTTOMLEFT", "BOTTOM", -66, 396 } } }
 
 -- One secure unit tile at row i, column col (0 = pet, 1 = target).
 local function tile(holder, unit, i, col)
@@ -30,7 +34,7 @@ end
 local function build()
   local holder = CreateFrame("Frame", "Vanguard_PartyExtras", UIParent, "SecureHandlerStateTemplate")
   holder:SetSize(2 * PX.W + PX.COL_GAP, PX.ROWS * (PX.H + PX.GAP) - PX.GAP)
-  ns.Mover(holder, "partyextras", L["Party pets and targets"], { "BOTTOM", "BOTTOM", -240, 606 })
+  ns.Mover(holder, "partyextras", L["Party pets and targets"], PX.SPOT)
   PX.tiles = {}
   for i = 1, PX.ROWS do
     PX.tiles[#PX.tiles + 1] = tile(holder, "partypet" .. i, i, 0)
