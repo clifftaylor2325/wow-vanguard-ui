@@ -19,7 +19,7 @@ Your threat on your target as a percent above the target frame (in the threat co
 
 ## Your buffs and debuffs
 
-Your buffs and debuffs replace the game's buff frame (and the external defensives and deadly debuff frames of newer clients, WoW Forever's among them): buffs in rows left of the minimap with timers, your debuffs on a new row under them (edged in their type's color); right-click a buff to cancel it. Weapon enchants (poisons, stones, oils, and a shaman's imbues on WoW Forever, which the game's own enchant cells miss) sit in front of the buffs. Move them with `/vg unlock`. Their settings (timer numbers, weapon enchants, icon size) are on the Unit frames page, after the target and focus auras; the Map page, where they used to be, points there.
+Your buffs and debuffs replace the game's buff frame (and the external defensives and deadly debuff frames of newer clients, WoW Forever's among them): buffs in rows left of the minimap with timers (12 to a row; on a screen too narrow for that beside the main tanks' spot, under 1254 UI units wide, fewer to a row, never under five, so the block grows down instead; a block you moved keeps its row), your debuffs on a new row under them (edged in their type's color); right-click a buff to cancel it. Weapon enchants (poisons, stones, oils, and a shaman's imbues on WoW Forever, which the game's own enchant cells miss) sit in front of the buffs. Move them with `/vg unlock`. Their settings (timer numbers, weapon enchants, icon size) are on the Unit frames page, after the target and focus auras; the Map page, where they used to be, points there.
 
 ## Nameplates
 

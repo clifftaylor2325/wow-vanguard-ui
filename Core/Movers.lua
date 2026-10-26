@@ -134,6 +134,15 @@ local function pointFor(m)
   return defaultPoint(m)
 end
 
+-- Whether a mover has a spot of its own in the profile in use (a drag, a nudge, a layout's or a link), so no
+-- default applies to it; a module that fits its frame to the default's room leaves such a frame as it is.
+---@param key string
+---@return boolean
+function ns.MoverSaved(key)
+  local p = saved()[key]
+  return type(p) == "table" and (POINTS[p.point] ~= nil or p.rel ~= nil)
+end
+
 -- Anchors a frame (or a mover handle) at the mover's point on UIParent. The offsets
 -- are saved in UIParent's units and a frame's own are its scale's, so they are
 -- divided by it: a scaled frame keeps its anchor point where it is and grows around it.

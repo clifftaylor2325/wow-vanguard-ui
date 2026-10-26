@@ -392,3 +392,20 @@ it("narrow canvases: the target of target sits over the target's cast bar, on sc
   }
 });
 
+it("narrow canvases: your buffs wrap in fewer columns, clear of the main tanks and raid tools; a moved block keeps its row", () => {
+  // Your buffs' block on a w x h canvas: its left edge, width and buffs to a row, and the main tanks' right edge.
+  const block = (w, h, saved = "") => {
+    const addon = loggedIn(`__wfgStub.setScreen(${w}, ${h})`, { savedVariables: saved });
+    const r = addon.frame("Vanguard_PlayerAuras").rect, tanks = addon.frame("Vanguard_MainTanksHolder").rect;
+    return { left: r.left, perRow: Math.round(r.width / 34), tanksRight: tanks.left + tanks.width };
+  };
+  expect(block(1365, 768).perRow, "1365 wide: a full row of 12").toBe(12);
+  for (const [w, h, n] of [[1229, 768, 11], [1024, 768, 5]]) {
+    const b = block(w, h);
+    expect([b.perRow, b.left >= b.tanksRight], `${w} x ${h}: ${n} to a row, left of it the main tanks' spot is clear`).toEqual([n, true]);
+  }
+  expect(block(835, 668).perRow, "835 wide: never fewer than five to a row (clear of the raid tools; the main tanks meet it)").toBe(5);
+  const moved = block(1229, 768, "VanguardDB = { profiles = { Default = { positions = { playerauras = { point = 'TOPLEFT', relPoint = 'TOPLEFT', x = 20, y = -300 } } } } }");
+  expect([moved.perRow, moved.left], "dragged elsewhere, the block keeps its 12 to a row").toEqual([12, 20]);
+});
+
