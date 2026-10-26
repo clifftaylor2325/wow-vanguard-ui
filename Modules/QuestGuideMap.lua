@@ -95,12 +95,14 @@ local function canvasScale(map)
 end
 
 -- Puts a pin on the map's canvas at the start's spot (fractions of the map, from its top left), at a steady size:
--- scaled against the canvas's zoom, and its offset (in the pin's own, scaled units) made up for.
+-- scaled against the canvas's zoom (its border painted again for the new scale), and its offset (in the pin's own,
+-- scaled units) made up for.
 local function placePin(p, map, mapID, start)
   p.start, p.mapID = start, mapID
   local canvas, scale = map:GetCanvas(), canvasScale(map)
   p:ClearAllPoints()
   p:SetScale(1 / scale)
+  T.RepaintFrame(p)
   p:SetPoint("CENTER", canvas, "TOPLEFT", start.x * canvas:GetWidth() * scale, -start.y * canvas:GetHeight() * scale)
   p:SetFrameLevel(canvas:GetFrameLevel() + 20)
   p:Show()

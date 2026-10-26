@@ -2552,6 +2552,12 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: the quest title stands on the panel's middle line and the distance line hangs under it, with a clear gap at every size and both inside the panel; pinned, the title still stops short of the Pin button. [Needs in-game check: whether the two lines were already drawn over each other at 100% before this change, and how they sit now.]
 - If it fails, paste: a screenshot of the arrow at 100% and 150%, and `/vg errors`.
 
+### 33.81 Quest-start map pins' edge at each zoom
+
+- Do: with quest-start pins showing (Quest guidance on), open the world map windowed, then maximized, then zoom in and out on a zone with several pins.
+- Expect: each pin's gold "!" sits on a small square whose edge stays one crisp pixel at every zoom, the same size throughout. [Needs in-game check: the client's real canvas scales and how the edge looks at them.]
+- If it fails, paste: a screenshot of the pins zoomed in and out, and `/vg errors`.
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ## When you are done

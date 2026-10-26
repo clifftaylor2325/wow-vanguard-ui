@@ -442,6 +442,21 @@ it("tooltip-like frames: a panel with a shadow and the game's NineSlice faded, o
   expect(out, "faded, painted once, and a frame without a NineSlice works too").toEqual([0, 1, true]);
 });
 
+it("T.RepaintFrame repaints one painted frame at its new scale, and leaves a frame that was never painted alone", () => {
+  const addon = loggedIn();
+  const out = addon.eval(`
+    local f = ns.Theme.Panel(CreateFrame("Frame", nil, UIParent), { inset = true, noSheen = true })
+    f:SetSize(40, 40)
+    local function edge() for _, w in ipairs(__wfgStub.frames) do if w.__parent == f and w.__layer == "BORDER" and w.__kind == "Texture" then return math.min(w:GetWidth(), w:GetHeight()) end end end
+    local before = edge()
+    f:SetScale(0.5)
+    local stale = edge()
+    ns.Theme.RepaintFrame(f)
+    ns.Theme.RepaintFrame(CreateFrame("Frame", nil, UIParent))
+    return { before, stale, edge() }`);
+  expect([out[1], out[2]], "a scale change leaves the border as it was until the frame is repainted, then it is twice as many units").toEqual([out[0], out[0] * 2]);
+});
+
 // TEST-ONLY scroll bar shaped like the game's MinimalScrollBar (thumb inside the
 // track) or WowTrimScrollBar (with a background and backplate).
 const SCROLL_LUA = `
