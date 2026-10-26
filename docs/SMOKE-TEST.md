@@ -2636,6 +2636,12 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: under 1838 wide target of target sits over the target's cast bar and the meter (bottom right, above the bags and menu bar) does not cover it; with the meter off target of target goes back to its spot outside the target at 1600 and wider. [Needs in-game check: the meter still meets the tooltip corner and the foot of the quest tracker at 1365 (the harness measured only target of target); say which draws on top.]
 - If it fails, paste: a screenshot at 1365x768 with the meter on, and `/vg errors`.
 
+### 33.78 Shaman totems above the player frame, chat tiles clickable
+
+- Do: on a shaman with Class bars on, at 1365x768 (or 1440x900) with the default chat, drop a totem or two, then click the chat's Find and Copy tiles at the right end of its tab bar, and right-click a totem to destroy it.
+- Expect: the totem row stands just above the player frame, over its left half, clear of the chat's tab bar and the Find and Copy tiles; both tiles open on a click and the right-click still destroys a totem; the cast bar, raid mark and pet frame are not covered by the row. [Needs in-game check: that nothing of the real client (the player's raid mark, the lifted cast bar) meets the row, and the Versus deck's top border.]
+- If it fails, paste: a screenshot of the player frame and chat with totems down, and `/vg errors`.
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ## When you are done

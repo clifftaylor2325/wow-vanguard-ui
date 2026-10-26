@@ -93,9 +93,21 @@ it("unit frame health text settings apply at once", () => {
   expect(addon.eval('return __click("Druid mana") and VanguardDB.profiles.Default.ClassBars.druidMana'), "and the druid mana switch").toBe(false);
 });
 
+it("class bars: the totem row sits above the player frame, clear of the chat's tab bar and its tiles at 1365 and 1440 wide (B4-1)", () => {
+  for (const [w, h] of [[1365, 768], [1440, 900]]) {
+    const addon = loggedIn(`__wfgStub.setScreen(${w}, ${h}) ` + UNITS_ENV + TOTEMS_ENV);
+    const [rowBottom, playerTop, chatTop, chatLeft, chatRight, rowLeft, rowRight] = addon.eval(`local CB, CH = ns.GetModule("ClassBars"), ns.GetModule("Chat")
+      local chat = ns.MoverFrame("chat")
+      return { CB.totems:GetBottom(), Vanguard_player:GetTop(), chat:GetTop() + CH.BAR, chat:GetLeft(), chat:GetRight(), CB.totems:GetLeft(), CB.totems:GetRight() }`);
+    expect(rowBottom, `${w} wide: the row stands just above the player frame`).toBeCloseTo(playerTop + 3, 5);
+    const clearOfChat = rowBottom >= chatTop || rowLeft >= chatRight || rowRight <= chatLeft;
+    expect(clearOfChat, `${w} wide: the row is off the chat panel and its tab bar`).toBe(true);
+  }
+});
+
 it("class bars: totems for shamans, mana in forms for druids", () => {
   const addon = loggedIn(UNITS_ENV + TOTEMS_ENV);
-  expect(addon.eval('local CB = ns.GetModule("ClassBars") return { #CB.cells, select(2, CB.totems:GetPoint()) == Vanguard_player }'), "a shaman gets four totem cells under the player frame").toEqual([4, true]);
+  expect(addon.eval('local CB = ns.GetModule("ClassBars") return { #CB.cells, select(2, CB.totems:GetPoint()) == Vanguard_player }'), "a shaman gets four totem cells above the player frame").toEqual([4, true]);
   expect(totemCell(addon, 1), "a totem that is down shows its icon, its sweep and the client's numbers").toMatchObject({ alpha: 1, icon: "TEST-ONLY-ICON-Totem", sweep: [100, 120], numbers: true, type2: "destroytotem", slot: 1 });
   expect(totemCell(addon, 2).alpha, "an empty slot is see-through (cells are secure, so alpha, not Hide)").toBe(0);
   addon.eval('GetTotemDuration = function(slot) return { __duration = slot } end __totems[2] = { true, "TEST-ONLY Totem 2", 200, 60, "TEST-ONLY-ICON-Two" }');

@@ -278,6 +278,7 @@
       "class bars: a right-click on a totem cell destroys it, with key-down casting on or off",
       "class bars: druid mana while a form shows rage or energy",
       "class bars: totems for shamans, mana in forms for druids",
+      "class bars: the totem row sits above the player frame, clear of the chat's tab bar and its tiles at 1365 and 1440 wide (B4-1)",
       "combo points for rogues and druids",
       "hovering a unit frame shows its unit's tooltip, as the game's frames do",
       "power ticks: energy every two seconds, and forms switch",
