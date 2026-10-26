@@ -2450,6 +2450,12 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: the player frame stays wholly on the screen after the scale change, and in unlock mode its handle sits over it. The chat handle stops short of each edge: with the chat on the left edge its column of side buttons is still on the screen; in the top-right corner the tab bar and its Copy and Find tiles are under the screen's top, the scroll column inside the right edge, and the edit box (press Enter) on the screen. [Needs in game: whether the client's clamp keeps protected frames on the screen, and that SetClampRectInsets grows the chat handle's clamp in the direction used (negative left and bottom, positive right and top).]
 - If it fails, paste: a screenshot with the handles showing, `/vg frame ChatFrame1` and `/vg errors`.
 
+### 33.48 Raid mark on the short frames
+
+- Do: in a group, mark your target's target and your pet (or a boss) with a raid target icon (Raid target icons on, under Raid frames), with long names on them.
+- Expect: on the target of target, pet and boss frames the mark sits a little higher than on the player and target frames, its bottom just over the top of the name, which stays readable; on the target, player and focus frames it is centred on the top edge as before. [Needs in game: the name's real height against the lifted mark.]
+- If it fails, paste: a screenshot of the frames and `/vg errors`.
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ## When you are done
