@@ -603,8 +603,10 @@ function T.OnScale(fn)
   scaleListeners[#scaleListeners + 1] = fn
 end
 
--- Rounds every T.PixelSize frame again for the scale now and tells the T.OnScale listeners.
+-- Repaints every painted frame and rounds every T.PixelSize frame again for the scale now,
+-- then tells the T.OnScale listeners.
 local function resizeAll()
+  T.Repaint()
   for frame, s in pairs(pixelSized) do frame:SetSize(T.PixelRound(frame, s[1], s[3]), T.PixelRound(frame, s[2], s[3])) end
   for _, fn in ipairs(scaleListeners) do fn() end
 end
@@ -1255,6 +1257,11 @@ local function repaint(frame, entry)
   if p.bevel then placeBevelLines(p.bevel, frame, entry.opts.pad, r) end
   for _, fill in ipairs(entry.fills or NO_PARTS) do repaintFill(frame, fill, entry.opts.pad, r) end
   if entry.paint then entry.paint(entry, frame) end
+end
+
+-- Repaints every painted frame at its pixel size now (a frame's own scale changed).
+function T.Repaint()
+  for frame, entry in pairs(painted) do repaint(frame, entry) end
 end
 
 -- A background texture over frame, `pad` units out past its edges.
@@ -2847,7 +2854,7 @@ end
 
 -- Repaints every painted frame, re-fonts styled text, re-tints remembered regions and tells the listeners.
 function T.Refresh()
-  for frame, entry in pairs(painted) do repaint(frame, entry) end
+  T.Repaint()
   T.RefreshText()
   refreshTints()
   applyFontObjects()

@@ -534,6 +534,21 @@ it("pixel sizes are rounded again after a UI scale, screen or frame scale change
   expect(addon.eval("return __scaled"), "a frame's own scale (unlock mode) rounds again too").toBe(3);
 });
 
+it("a painted frame's border stays one screen pixel after the frame's own scale changes (P1-1)", () => {
+  const addon = loggedIn("GetPhysicalScreenSize = function() return 2560, 1440 end");
+  addon.eval(`TEST_Scaled = ns.Theme.Panel(CreateFrame("Frame", nil, UIParent))`);
+  // The height of TEST_Scaled's first border line in screen pixels.
+  const edgePixels = () => addon.eval(`local k = TEST_Scaled:GetEffectiveScale() * 1440 / 768
+    for _, w in ipairs(__wfgStub.frames) do
+      if w.__parent == TEST_Scaled and w.__layer == "BORDER" and w.__height then return w.__height * k end
+    end`);
+  for (const scale of [0.6, 1.5]) {
+    addon.eval(`TEST_Scaled:SetScale(${scale}) ns.Theme.Rescale()`);
+    addon.update(0.1);
+    expect(edgePixels(), `at frame scale ${scale} the border is repainted to one pixel`).toBeCloseTo(1, 9);
+  }
+});
+
 it("pixel-perfect scale takes a whole multiple: 2 makes one UI unit two screen pixels (#225)", () => {
   const addon = loggedIn("GetPhysicalScreenSize = function() return 3840, 2160 end");
   addon.eval("ns.Theme.Settings().pixelMultiple = 2 ns.Theme.SetPixelScale(true)");
