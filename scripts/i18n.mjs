@@ -12,7 +12,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { LOCALES, exportCsv, extractKeys, importCsv, localeProblems, localeStatus, parseLocale, writeLocale } from "./lib/i18n.mjs";
+import { LOCALES, commandWords, exportCsv, extractKeys, importCsv, localeProblems, localeStatus, parseLocale, writeLocale } from "./lib/i18n.mjs";
 import { tocFiles } from "./lib/lua-harness.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -52,10 +52,12 @@ function exportLocale(keys, locale, file) {
   else process.stdout.write(csv);
 }
 
-// Writes one locale's file from a CSV's translated rows, keeping only rows the code still uses; exits 1 on a bad row.
+// Writes one locale's file from a CSV's translated rows, keeping only rows the code still uses; exits 1 on a
+// bad row (a /vg command typed differently from the English is one).
 function importLocale(keys, locale, file) {
   const entries = importCsv(fs.readFileSync(file, "utf8"));
-  const problems = localeProblems(entries, keys).filter((p) => !p.startsWith("orphaned"));
+  const words = commandWords(fs.readFileSync(path.join(root, "Core/Slash.lua"), "utf8"));
+  const problems = localeProblems(entries, keys, words).filter((p) => !p.startsWith("orphaned"));
   if (problems.length) (console.error(problems.join("\n")), process.exit(1));
   const kept = new Map([...entries].filter(([k]) => keys.has(k)));
   fs.writeFileSync(localeFile(localeArg(locale)), writeLocale(locale, kept));

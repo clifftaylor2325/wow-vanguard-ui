@@ -4,7 +4,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
 import { expect, it } from "vitest";
-import { LOCALES, exportCsv, extractKeys, importCsv, localeProblems, localeStatus, lookups, luaQuote, luaUnquote, parseCsv, parseLocale, writeLocale } from "./lib/i18n.mjs";
+import { LOCALES, commandWords, commandsIn, exportCsv, extractKeys, importCsv, localeProblems, localeStatus, lookups, luaQuote, luaUnquote, parseCsv, parseLocale, writeLocale } from "./lib/i18n.mjs";
 import { root, tocFiles } from "./lib/lua-harness.mjs";
 
 it("i18n: a Lua string round-trips through quoting, escapes and all", () => {
@@ -34,6 +34,21 @@ it("i18n: problems are orphaned keys, empty texts and placeholders that differ f
   expect(localeStatus(entries, keys)).toEqual({ translated: 2, missing: 0, orphaned: 1 });
 });
 
+it("i18n: the /vg commands in a text are read with the words their help line gives them, and nothing after", () => {
+  const words = commandWords('local HELP = {\n  { "graphics apply", L["x"] },\n  { "reset <frame|all>", L["y"] },\n}\nlocal COMMANDS = {\n  move = unlock,\n}');
+  expect([...words.keys()]).toEqual(["move", "graphics", "reset"]);
+  expect(commandsIn("/vg graphics apply sets it; /vg reset <frame|all> puts it back", words)).toEqual(["/vg graphics apply", "/vg reset <frame|all>"]);
+  expect(commandsIn("/vg graphics apply로 설정; /vg move", words)).toEqual(["/vg graphics apply", "/vg move"]);
+  expect(commandsIn("/vg opens the options; /vg <command>", words)).toEqual(["/vg", "/vg <command>"]);
+});
+
+it("i18n: a translation that types a /vg command differently from the English is a problem", () => {
+  const words = commandWords('local HELP = {\n  { "reset <frame|all>", L["y"] },\n}');
+  const keys = new Map([["/vg reset <frame|all> puts it back", "a:1"]]);
+  expect(localeProblems(new Map([["/vg reset <frame|all> puts it back", "/vg zurücksetzen <Rahmen|jeden>"]]), keys, words)).toEqual(["commands differ from the English: /vg reset <frame|all> puts it back"]);
+  expect(localeProblems(new Map([["/vg reset <frame|all> puts it back", "/vg reset <frame|all> setzt ihn zurück"]]), keys, words)).toEqual([]);
+});
+
 it("i18n: the CSV round-trips commas, quotes and line breaks; every translated row is imported, machine drafts too, and blank rows are not", () => {
   const keys = new Map([["a, b", "x.lua:1"], ['say "hi"', "x.lua:2"], ["two\nlines", "x.lua:3"]]);
   const csv = exportCsv(new Map([["a, b", "c, d"]]), keys);
@@ -52,12 +67,13 @@ it("i18n: every locale has its file, listed in the TOC after Core/Locale.lua and
   }
 });
 
-it("i18n: each locale file is as the import writes it, with no orphaned, empty or mismatched translation", () => {
+it("i18n: each locale file is as the import writes it, with no orphaned, empty or mismatched translation, and every /vg command as typed in English", () => {
   const keys = extractKeys(root, tocFiles());
+  const words = commandWords(fs.readFileSync(path.join(root, "Core/Slash.lua"), "utf8"));
   for (const locale of Object.keys(LOCALES)) {
     const text = fs.readFileSync(path.join(root, "Locales", `${locale}.lua`), "utf8");
     expect(text, `Locales/${locale}.lua is written by scripts/i18n.mjs import, never by hand`).toBe(writeLocale(locale, parseLocale(text)));
-    expect(localeProblems(parseLocale(text), keys), locale).toEqual([]);
+    expect(localeProblems(parseLocale(text), keys, words), locale).toEqual([]);
   }
 });
 
