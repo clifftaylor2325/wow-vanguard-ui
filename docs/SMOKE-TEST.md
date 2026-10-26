@@ -623,6 +623,12 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Also (objective rows): choose a quest with a counted objective (kill or collect) and one without a count (explore, talk to). Expect an `Objectives` header and one 28 px row each: a count at the right edge (`3/8`) with a thin accent bar under the row while it is open; a plain objective with no count and no bar; a done one with a check mark and muted text. Kill one more and the count and bar follow. [Needs in game: that objective text ends or starts with `x/y` on Forever; if it reads another way the row shows the whole text and no count.]
 - If it fails, paste: a screenshot and `/vg errors`.
 
+### 8.3b Quest log on a narrow window
+
+- Do: with the game in a windowed or 4:3 resolution under 1040 units wide (for instance 1024x768 at UI scale 1), open the quest log with `/vg quests` without having moved it.
+- Expect: the whole window is on the screen, its quest list column included (nothing cut at the left edge). [Needs in-game check: that the client moves the clamped, centre-anchored window fully on screen.]
+- If it fails, paste: a screenshot and `/vg frame Vanguard_QuestLog`.
+
 ### 8.3a Quest history
 
 - Do: turn in a quest on one character, then log in on another character on the same account and talk to a quest giver offering that quest (or open it in the quest log if you have it). Type `/vg quests history` and `/vg quests history 3`. Under `/vg` → Quests, switch off "Remember which character finished each quest" and turn in another quest.
