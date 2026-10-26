@@ -1,7 +1,8 @@
 // unlock: Vanguard's real Lua in the TEST-ONLY headless client (scripts/lib/lua-harness.mjs).
 
 import { expect, it } from "vitest";
-import { CLICK_LUA, UI_ENV, UP, chatHas, gridLines, isTok, key, loggedIn, px, setCombat } from "./helpers.mjs";
+import { createAddon } from "../lib/lua-harness.mjs";
+import { CLICK_LUA, SETUP_DONE, UI_ENV, UP, chatHas, gridLines, isTok, key, loggedIn, px, setCombat } from "./helpers.mjs";
 import { alphaOf, buttonOf, closeOf, escapes, insets, pressEscape, titleOf } from "./dialogs.mjs";
 
 it("unlock mode", () => {
@@ -32,7 +33,7 @@ it("unlock mode", () => {
   expect(JSON.stringify(saved()) === JSON.stringify(["TOP", -311, -160]), "the arrow keys nudge the selected handle 1 px").toBeTruthy();
   addon.eval(`IsShiftKeyDown = function() return true end; local h = ns.MoverHandleForTest("a"); h:GetScript("OnKeyDown")(h, "UP")`);
   expect(JSON.stringify(saved()) === JSON.stringify(["TOP", -311, -150]), "Shift nudges 10 px").toBeTruthy();
-  expect(/TOP -311, -150/.test(addon.eval(`return ns.MoverHandleForTest("a").label:GetText()`)), "the selected handle shows its point and offsets").toBeTruthy();
+  expect(addon.eval(`return ns.MoverHandleForTest("a").label:GetText()`), "a selected handle under 120 wide keeps to its label (the popover shows the numbers)").toBe("A");
   addon.slash("grid 64");
   expect(gridLines(addon) === 48, "/vg grid 64 redraws the grid (31 + 17)").toBeTruthy();
   addon.slash("grid off");
@@ -71,7 +72,7 @@ it("unlock popover: anchor, offsets, reset", () => {
   const pop = "Vanguard_MoverPopover";
   expect(titleOf(addon, pop), "a card's title: the heading role in the text colour, T.SPACE.gap in and down from its corner").toEqual({ size: addon.eval("return ns.Theme.RoleSize('heading')"), text: true, left: 8, mid: -15 });
   expect(closeOf(addon, pop, "close"), "with the X T.SPACE.gap in from the top-right corner").toEqual([8, 8, true]);
-  expect([escapes(addon, pop), alphaOf(addon, pop), addon.eval(`return ${pop}.title:GetWidth()`)], "Escape closes it; the dialog alpha (it has edit boxes); the title is kept short of the X").toEqual([true, 0.98, 236]);
+  expect([escapes(addon, pop), alphaOf(addon, pop), addon.eval(`return ${pop}.title:GetWidth()`)], "Escape closes it; the dialog alpha (it has edit boxes); the title is kept short of the X").toEqual([true, 0.98, 276]);
   const column = ["target", "anchor", "x", "y", "scale", "alpha", "matchWidth", "matchHeight"].map((field) => addon.eval(`local w = ${pop}.${field} return { w:GetWidth(), w:GetHeight(), ${pop}:GetRight() - w:GetRight() }`));
   expect(column, "the right column has one edge: dropdowns and number boxes alike 150 wide, an inline control (20) tall, T.SPACE.col in").toEqual(Array(8).fill([150, 20, 12]));
   // A widget's screen rect, and where its middle is up the screen.
@@ -150,7 +151,7 @@ it("unlock popover: anchored to another frame's side, offsets from it, matched s
   expect(state(), "a side puts it flush under the minimap; the popover shows the side and its offsets").toEqual(["Player cast bar  ·  Below Minimap", false, true, "0", "0", ""]);
   addon.eval('local p = Vanguard_MoverPopover p.x:SetText("-40") p.x:GetScript("OnEnterPressed")(p.x)');
   expect(addon.eval("return { ns.MoverAnchor('cast_player') }"), "an X offset is from the side it's anchored to").toEqual(["minimap", "BOTTOM", -40, 0]);
-  expect(addon.eval("return __h.label:GetText()"), "and the handle says so").toBe("Player cast bar\nBelow Minimap -40, 0");
+  expect(addon.eval("return __h.label:GetText()"), "and the handle says so, on one line as it is a thin bar").toBe("Player cast bar  ·  Below Minimap -40, 0");
   addon.slash("snap off");
   addon.eval('local h = __h h.__left, h.__bottom = h:GetLeft() + 3, h:GetBottom() - 8 h:GetScript("OnDragStop")(h)');
   expect(addon.eval("return { ns.MoverAnchor('cast_player') }").slice(2), "a drag keeps the link, with new offsets").toEqual([-37, -8]);
@@ -283,4 +284,79 @@ it("A-10 unlock from the options window: Save and lock and Exit without saving e
   addon.eval('__click("Move frames") Vanguard_Options:Show() ns.Options.Show("situations")');
   addon.eval("Vanguard_UnlockBar.save:GetScript('OnClick')(Vanguard_UnlockBar.save)");
   expect(addon.eval("return ns.Options.current"), "the window opened again meanwhile: it stays on its page").toBe("situations");
+});
+
+it("grid lines are one screen pixel thick, not one UI unit, at a UI scale that isn't pixel-perfect", () => {
+  const addon = loggedIn("UIParent:SetSize(1920, 1080) UIParent:SetScale(0.64)");
+  addon.eval("ns.ShowGrid(32)");
+  const widths = addon.eval("local out = {} for _, w in ipairs(__wfgStub.frames) do if w.__kind == 'Texture' and w:IsVisible() and w:GetHeight() == UIParent:GetHeight() then out[#out + 1] = w:GetWidth() end end return { out[1], ns.Theme.Pixel(UIParent) }");
+  expect(widths[0], "a vertical line is T.Pixel wide").toBe(widths[1]);
+  expect(widths[0], "which is not the 1 unit it was").not.toBe(1);
+});
+
+it("a selected handle shows its point and offsets inside itself: on a second line, on the label's line when thin, not at all when narrow", () => {
+  const addon = loggedIn(`
+    __wfgStub.setScreen(1920, 1080)
+    __frames = {}
+    for key, size in pairs({ tall = { 300, 60 }, thin = { 478, 14 }, narrow = { 40, 36 } }) do
+      __frames[key] = CreateFrame("Frame", nil, UIParent) __frames[key]:SetSize(size[1], size[2])
+      ns.Mover(__frames[key], key, key, { "CENTER", "CENTER", 0, 0 })
+    end
+  `);
+  addon.slash("unlock");
+  // Clicks the handle of mover `key` (selecting it) and reads its text.
+  const selected = (key) => addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.mover and w.mover.key == "${key}" then w:GetScript("OnMouseDown")(w) return w.label:GetText() end end`);
+  expect(selected("tall"), "a handle two lines tall shows the coordinates on a second line").toBe("tall\nCENTER 0, 0");
+  expect(selected("thin"), "a thin one puts them on the label's line").toBe("thin  \u00b7  CENTER 0, 0");
+  expect(selected("narrow"), "a narrow one shows its label only").toBe("narrow");
+});
+
+// An addon in the text-fit client (the real fonts' widths, every string a third longer) at this screen size and text
+// scale, with Edit Mode's window made, logged in.
+function fitClient(width, height, textScale) {
+  const addon = createAddon({ savedVariables: `${SETUP_DONE}VanguardDB.profiles = { Default = { theme = { textScale = ${textScale} } } }`, textFit: true });
+  addon.eval(`__wfgStub.setScreen(${width}, ${height}) ${UI_ENV}
+    EditModeManagerFrame = CreateFrame("Frame", "EditModeManagerFrame", UIParent) EditModeManagerFrame:SetSize(600, 400)
+    EditModeManagerFrame:SetPoint("CENTER") EditModeManagerFrame:Hide()`);
+  addon.login();
+  return addon;
+}
+
+// Opens the popover of mover `key` through its handle's right-click.
+const openPopover = (addon, key) => addon.eval(`ns.Unlock() for _, w in ipairs(__wfgStub.frames) do if w.mover and w.mover.key == "${key}" then w:GetScript("OnMouseDown")(w, "RightButton") end end`);
+
+it("the note under Edit Mode's window grows with its text, so it keeps both lines at 130% text", () => {
+  const addon = fitClient(1920, 1080, 1.3);
+  addon.eval("EditModeManagerFrame:Show()");
+  expect(addon.textFit("Vanguard_EditModeNote"), "nothing in the note is cut").toEqual([]);
+  expect(addon.eval("return Vanguard_EditModeNote:GetHeight() > 36"), "the note is taller than its 36 at 100%").toBe(true);
+});
+
+it("the unlock bar stays on a small screen at large text, its long note wrapping", () => {
+  const addon = fitClient(835, 668, 1.3);
+  addon.eval("ns.Unlock()");
+  const bar = addon.frame("Vanguard_UnlockBar").rect;
+  expect([bar.left >= 0, bar.left + bar.width <= 835], "the bar is inside the screen, both ends").toEqual([true, true]);
+  expect(addon.eval("return Vanguard_UnlockBar:GetHeight() > 36"), "the note took a second line, so the bar is taller").toBe(true);
+  expect(addon.textFit("Vanguard_UnlockBar").filter((f) => f.text.startsWith("Drag")), "the note is not cut or covered").toEqual([]);
+});
+
+it("the position popover's captions clear its dropdowns at 130% text", () => {
+  const addon = fitClient(1920, 1080, 1.3);
+  openPopover(addon, "cast_player");
+  expect(addon.textFit("Vanguard_MoverPopover"), "no caption runs under a dropdown").toEqual([]);
+});
+
+it("the position popover grows to hold the refusal line, clear of Reset and Done at 130% text", () => {
+  const addon = fitClient(1920, 1080, 1.3);
+  openPopover(addon, "uf_player");
+  addon.eval("ns.SetMoverAnchor('cast_player', 'uf_player')");
+  // The pseudo-locale lengthens every label, so the item is found by its start.
+  addon.eval(`local d = Vanguard_MoverPopover.target d:GetScript("OnClick")(d)
+    for _, b in ipairs(Vanguard_Menu.items) do if b:IsShown() and b.text:GetText():find("^Player cast bar") then b:GetScript("OnClick")(b) break end end`);
+  expect(addon.eval("return #Vanguard_MoverPopover.why:GetText()"), "the circle is refused, with its long message").toBeGreaterThan(80);
+  expect(addon.textFit("Vanguard_MoverPopover"), "the line is clear of Reset and Done").toEqual([]);
+  expect(addon.eval("return Vanguard_MoverPopover:GetHeight() > 372"), "the popover grew").toBe(true);
+  addon.eval("Vanguard_MoverPopover.reset:GetScript('OnClick')(Vanguard_MoverPopover.reset)");
+  expect(addon.eval("return Vanguard_MoverPopover:GetHeight()"), "and shrinks back once nothing is refused").toBe(372);
 });

@@ -335,3 +335,23 @@ it("a frame's own size under General → Layout: set for a frame Vanguard sizes,
   addon.eval(`local r = ${sliderRow("Its height")} r:Refresh() r:GetScript("OnEnter")(r)`);
   expect(tipLines(addon), "a frame that sizes itself: locked, and it says so").toEqual(["TEST-ONLY box sets its own height."]);
 });
+
+it("a frame anchored to another follows it when the screen size or UI scale changes", () => {
+  const addon = loggedIn(`
+    __wfgStub.setScreen(1920, 1080)
+    __a = CreateFrame("Frame", "TESTONLY_A", UIParent) __a:SetSize(200, 40)
+    __b = CreateFrame("Frame", "TESTONLY_B", UIParent) __b:SetSize(100, 20)
+    ns.Mover(__a, "a", "TEST-ONLY a", { "CENTER", "CENTER", 0, 0 })
+    ns.Mover(__b, "b", "TEST-ONLY b", { "BOTTOM", "BOTTOM", 0, 100 })
+    ns.SetMoverAnchor("b", "a", "BOTTOM", 10, -5)
+  `);
+  addon.slash("unlock");
+  // The left edges of a, b and b's handle.
+  const lefts = () => addon.eval("return { __a:GetLeft(), __b:GetLeft(), ns.MoverHandleForTest():GetLeft() }");
+  addon.eval(`function ns.MoverHandleForTest() for _, w in ipairs(__wfgStub.frames) do if w.mover and w.mover.key == "b" then return w end end end`);
+  expect(lefts(), "b and its handle hang 10 right of a's bottom center, at 1920 wide").toEqual([860, 920, 920]);
+  addon.eval("__wfgStub.setScreen(2560, 1080)");
+  addon.fire("DISPLAY_SIZE_CHANGED");
+  addon.advance(2);
+  expect(lefts(), "a's centre moved 320 right, and b and its handle followed it").toEqual([1180, 1240, 1240]);
+});
