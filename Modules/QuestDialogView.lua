@@ -69,11 +69,11 @@ local function addScroll(f)
   f.child = f.scroll.child
 end
 
--- The scrolling body: the text, the objectives under it, the needs line, the quest history line, then the numbered lines.
+-- The scrolling body: the text, the objectives under it, the needs line, the quest history line, the spell and currency rewards, then the numbered lines.
 local function addBody(f)
   addScroll(f)
   f.text, f.objectives, f.history = bodyText(f.child, "text"), bodyText(f.child, "text2"), bodyText(f.child, "muted")
-  f.needs = bodyText(f.child, "text2")
+  f.needs, f.extras = bodyText(f.child, "text2"), bodyText(f.child, "text2")
   f.text:SetPoint("TOPLEFT", f.child, "TOPLEFT", 0, -BODY_PAD)
   f.objectives:SetPoint("TOPLEFT", f.text, "BOTTOMLEFT", 0, -OBJECTIVES_GAP)
 end
@@ -158,6 +158,7 @@ local function bodyHeight(f, lineCount)
   if f.objectives:IsShown() then h = h + OBJECTIVES_GAP + f.objectives:GetStringHeight() end
   if f.needs:IsShown() then h = h + OBJECTIVES_GAP + f.needs:GetStringHeight() end
   if f.history:IsShown() then h = h + OBJECTIVES_GAP + f.history:GetStringHeight() end
+  if f.extras:IsShown() then h = h + OBJECTIVES_GAP + f.extras:GetStringHeight() end
   if lineCount > 0 then h = h + LINES_GAP + lineCount * QP.LINE_H end
   return h + BODY_PAD
 end
@@ -169,12 +170,26 @@ local function renderNeeds(f, p)
   f.needs:SetPoint("TOPLEFT", f.objectives:IsShown() and f.objectives or f.text, "BOTTOMLEFT", 0, -OBJECTIVES_GAP)
 end
 
+-- The lowest of the body's texts that shows above the history line and the rewards line: the needs line, the
+-- objectives or the text.
+local function lowestText(f)
+  return f.needs:IsShown() and f.needs or f.objectives:IsShown() and f.objectives or f.text
+end
+
 -- The quest history line ("Done on Thrall-Realm"), muted under the needs line, the objectives or the text; hidden for a quest not done.
 local function renderHistory(f, p)
-  local above = f.needs:IsShown() and f.needs or f.objectives:IsShown() and f.objectives or f.text
   f.history:SetShown(p.done ~= nil)
   f.history:SetText(p.done or "")
-  f.history:SetPoint("TOPLEFT", above, "BOTTOMLEFT", 0, -OBJECTIVES_GAP)
+  f.history:SetPoint("TOPLEFT", lowestText(f), "BOTTOMLEFT", 0, -OBJECTIVES_GAP)
+end
+
+-- The spells a quest teaches and the currencies it gives ("Teaches: Name  ·  3 Marks"), under the history line (or the
+-- lowest text above it), wrapping in the body so the whole of them shows before you accept; hidden for a page without any.
+local function renderExtras(f, p)
+  local text = table.concat(p.extras or {}, "  ·  ")
+  f.extras:SetShown(text ~= "")
+  f.extras:SetText(text)
+  f.extras:SetPoint("TOPLEFT", f.history:IsShown() and f.history or lowestText(f), "BOTTOMLEFT", 0, -OBJECTIVES_GAP)
 end
 
 -- The text and objectives, then the lines, scrolled back to the top; returns how tall they are.
@@ -184,6 +199,7 @@ local function renderBody(f, p)
   f.objectives:SetText(p.objectives and ns.Format(L["Objectives:  {objectives}"], { objectives = QP.Plain(p.objectives) }) or "")
   renderNeeds(f, p)
   renderHistory(f, p)
+  renderExtras(f, p)
   renderLines(f, p.lines)
   f.scroll:ScrollTo(0)
   return bodyHeight(f, #(p.lines or {}))

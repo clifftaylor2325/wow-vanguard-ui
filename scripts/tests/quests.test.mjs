@@ -270,7 +270,8 @@ it("quest dialog: late item details redraw the page; spell and currency rewards"
     C_QuestInfoSystem = { GetQuestRewardSpells = function() return { 90081 } end, GetQuestRewardSpellInfo = function() return { name = "TEST-ONLY Bolt" } end,
       GetQuestRewardCurrencies = function() return { { name = "TEST-ONLY Marks", totalRewardAmount = 3 } } end }`);
   addon.fire("QUEST_COMPLETE");
-  expect(dialog(addon).money, "spells it teaches and currencies, after the money and XP").toBe("+12s 0c  ·  450 XP  ·  Teaches: TEST-ONLY Bolt  ·  3 TEST-ONLY Marks");
+  expect(dialog(addon).money, "the money line keeps the money and XP only").toBe("+12s 0c  ·  450 XP");
+  expect(addon.eval("local x = Vanguard_QuestDialog.extras return { x:IsShown(), x:GetText() }"), "spells it teaches and currencies are in the body, under the text, to be read whole").toEqual([true, "Teaches: TEST-ONLY Bolt  ·  3 TEST-ONLY Marks"]);
   key(addon, "2");
   addon.eval('__choices[1][1] = "TEST-ONLY Better Boots"');
   addon.fire("QUEST_ITEM_UPDATE");
@@ -280,6 +281,22 @@ it("quest dialog: late item details redraw the page; spell and currency rewards"
   expect(dialog(addon).cards[0], "closed, nothing redraws").toBe("TEST-ONLY Better Boots");
   addon.eval("C_QuestInfoSystem = nil");
   expect(addon.eval("return #ns.GetModule('QuestDialog').ExtraRewards(90031)"), "a client without those calls shows none").toBe(0);
+});
+it("quest dialog: a spell reward is in the body of the detail page in French, not at the end of a money line that runs out of room", () => {
+  const spell = `GetQuestID = function() return 90031 end
+    C_QuestInfoSystem = { GetQuestRewardSpells = function() return { 90081 } end, GetQuestRewardSpellInfo = function() return { name = "Summon Felsteed" } end }
+    GetRewardMoney = function() return 123456 end GetRewardXP = function() return 12500 end`;
+  const addon = createAddon({ textFit: true, client: `__wfgWorld.locale = "frFR"`, savedVariables: SETUP_DONE });
+  addon.eval(QUEST_ENV + spell);
+  addon.login();
+  addon.fire("QUEST_DETAIL");
+  const text = addon.eval("local f = Vanguard_QuestDialog return { f.extras:IsShown(), f.extras:GetText(), f.money:GetText(), f.money:GetTextScale(), f.extras:GetTop() < f.text:GetBottom() }");
+  expect(text[0] && text[1].includes("Summon Felsteed"), "the spell's name is on the page").toBe(true);
+  expect([text[2].includes("Summon Felsteed"), text[3], text[4]], "and not on the money line, which keeps its size; the line hangs under the text").toEqual([false, 1, true]);
+  expect(addon.textFit("Vanguard_QuestDialog").filter((f) => f.kind === "cut" && f.text?.includes("Summon")), "nothing about the spell is cut").toEqual([]);
+  addon.eval("GetQuestID = function() return 0 end C_QuestInfoSystem = nil");
+  addon.fire("QUEST_DETAIL");
+  expect(addon.eval("return Vanguard_QuestDialog.extras:IsShown()"), "a quest with no such reward shows no line").toBe(false);
 });
 it("quest automation: accept, turn in, best reward, skip chatter; Shift skips it", () => {
   const on = "VanguardDB.profiles = { Default = { QuestAuto = { accept = true, turnIn = true, skipGossip = true } } }";

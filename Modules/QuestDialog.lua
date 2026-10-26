@@ -111,8 +111,7 @@ end
 
 -- The money and XP a quest gives, as "+1g 20s 0c · 450 XP" ("" for none).
 function QD.MoneyLine()
-  local money, xp = ns.PlainNumber(ns.CallIf(_G, "GetRewardMoney")), ns.PlainNumber(ns.CallIf(_G, "GetRewardXP"))
-  return QP.MoneyText(money, xp, QD.ExtraRewards(ns.PlainNumber(ns.CallIf(_G, "GetQuestID"))))
+  return QP.MoneyText(ns.PlainNumber(ns.CallIf(_G, "GetRewardMoney")), ns.PlainNumber(ns.CallIf(_G, "GetRewardXP")))
 end
 
 -- The spells a quest teaches, as "Teaches: Name".
@@ -134,6 +133,11 @@ function QD.ExtraRewards(questID)
     out[#out + 1] = (ns.PlainNumber(c.totalRewardAmount) or 0) .. " " .. QP.Plain(c.name)
   end
   return out
+end
+
+-- The open quest's spell and currency rewards, for the page to show under its text (QD.ExtraRewards).
+function QD.PageExtras()
+  return QD.ExtraRewards(ns.PlainNumber(ns.CallIf(_G, "GetQuestID")))
 end
 
 -- Closing --------------------------------------------------------------------------------------
@@ -192,7 +196,7 @@ function QD.DetailPage()
     needs = QP.Needs(0, ns.CallIf(_G, "GetSuggestedGroupSize")),
     done = ns.GetModule("QuestHistory").Line(ns.PlainNumber(ns.CallIf(_G, "GetQuestID"))),
     choices = QD.Items("choice", ns.CallIf(_G, "GetNumQuestChoices")), rewards = QD.Items("reward", ns.CallIf(_G, "GetNumQuestRewards")), money = QD.MoneyLine(),
-    primary = auto and { L["OK"], function() ns.CallIf(_G, "AcknowledgeAutoAcceptQuest") end } or { L["Accept"], function() ns.CallIf(_G, "AcceptQuest") end },
+    extras = QD.PageExtras(), primary = auto and { L["OK"], function() ns.CallIf(_G, "AcknowledgeAutoAcceptQuest") end } or { L["Accept"], function() ns.CallIf(_G, "AcceptQuest") end },
     secondary = not auto and { L["Decline"], function() ns.CallIf(_G, "DeclineQuest") end } or nil,
   }
 end
@@ -216,7 +220,7 @@ function QD.CompletePage()
   local choices = QD.Items("choice", ns.CallIf(_G, "GetNumQuestChoices"))
   return {
     title = ns.CallIf(_G, "GetTitleText"), text = ns.CallIf(_G, "GetRewardText"), choices = choices, rewards = QD.Items("reward", ns.CallIf(_G, "GetNumQuestRewards")),
-    money = QD.MoneyLine(), primary = { L["Complete"], QD.Complete, #choices <= 1 }, pick = #choices > 1,
+    money = QD.MoneyLine(), extras = QD.PageExtras(), primary = { L["Complete"], QD.Complete, #choices <= 1 }, pick = #choices > 1,
   }
 end
 
