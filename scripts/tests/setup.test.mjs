@@ -346,6 +346,7 @@ it("setup: a new character's profile step fits, and a choice's label stays on on
 it("the setup wizard's Skip button widens to its label when the first step shows, so German at 130% is not cut (B2-7)", () => {
   const addon = createAddon({ textFit: true, client: '__wfgWorld.locale = "deDE" UISpecialFrames = {}' });
   addon.login();
+  // Skip's width, the width its label needs at full size, and whether it stops short of Next with Back hidden.
   const skip = () => addon.eval("local f = Vanguard_Setup return { f.skip:GetWidth(), math.ceil(ns.Theme.FullWidth(f.skip.text)) + 2 * ns.Theme.SPACE.gap, f.skip:GetRight() < f.next:GetLeft() and not f.back:IsShown() }");
   const [normal] = skip();
   addon.eval("ns.Theme.Settings().textScale = 1.3 ns.Theme.Refresh()");

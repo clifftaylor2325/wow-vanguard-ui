@@ -1643,6 +1643,7 @@ it("options: in Russian at 115% a module row whose name wraps beside its reload 
 
 it("options: in German at 130% a choice or slider row whose caption wraps grows to hold it (B2-3)", () => {
   const addon = localeOptions("deDE", 1.3);
+  // On this page: how many choice and slider rows are taller than one line, then the captions that run past their row.
   const spill = (page) => addon.eval(`ns.Options.Show("${page}") local out = { tall = 0 }
     for _, w in ipairs(__wfgStub.frames) do
       local kind = w.source and w.source[1]
