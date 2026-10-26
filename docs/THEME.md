@@ -122,7 +122,7 @@ Vanguard shares its own fonts through LibSharedMedia as "Vanguard Fira Sans" and
 | `cell` | 11 (8 - 14) | SemiBold | - | No Vanguard window uses it now: the bag section headers became `small` `muted` section headers. Kept for skins (`S.Text`). |
 | `label` | 12 (8 - 16) | Medium | - | Body text, control labels, segment labels, options nav items, empty-state lines (in `muted`) and placeholders (in `disabled`). |
 | `number` | 12 (8 - 16) | Medium | - | Health and power values, counters, timers on frames. |
-| `section` | 10 (7 - 13) | Medium | - | Section headers (`W.SectionHeader`): the `small` size with the `upper` flag, so `T.SetText(fs, text)` shows the capitals instead of `:upper()` on the string. Always `muted`. |
+| `section` | 10 (7 - 13) | Medium | - | Section headers (`W.SectionHeader`): the `small` size with the `upper` flag, so `T.SetText(fs, text)` shows the capitals instead of `:upper()` on the string (`T.Upper`: ASCII by `string.upper`, then Latin-1 and Cyrillic letters by `T.UPPER_RANGES`). Always `muted`. |
 | `small` | 10 (7 - 13) | Medium | - | Secondary lines: notes and hints (in `muted`), counts and status lines (in `text2`), section headers (`muted` capitals), bar text, the info strip, keybinds. At a pixel-perfect scale a point is a screen pixel, so no role but `badge` goes under 10 (#258). |
 | `tiny` | 10 (7 - 13) | Medium | - | The floor for raid tile text that shrinks with the tile. |
 | `badge` | 9 (6 - 12) | Medium | - | The only role under 10: a count or mark on a tiny badge (the error badge, the backpack's free-slot count). |

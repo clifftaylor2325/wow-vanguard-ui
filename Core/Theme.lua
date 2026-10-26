@@ -2682,7 +2682,7 @@ T.ROLES = {
   chat = { size = 12 },
   -- The minimap's zone text: a bold 13 that never takes the faction look's display font (not in T.HEADING_ROLES).
   zone = { size = 13, bold = true },
-  -- A section header: small, and upper-cased by T.SetText instead of by :upper() on the string.
+  -- A section header: small, and upper-cased by T.SetText (T.Upper) instead of by :upper() on the string.
   section = { size = 10, bold = false, upper = true },
 }
 
@@ -2721,10 +2721,30 @@ function T.Text(fs, role, color)
   return fs
 end
 
+-- The lower case UTF-8 letters string.upper leaves alone (it changes ASCII bytes only), as { lead byte, first and last
+-- second byte, the capital's lead byte, how far its second byte moves, a second byte to skip }: Latin-1 à-þ (not
+-- the division sign), Cyrillic а-п, р-я and ѐ-џ (ё among them).
+T.UPPER_RANGES = {
+  { "\195", 160, 190, "\195", -32, "\183" }, { "\208", 176, 191, "\208", -32 },
+  { "\209", 128, 143, "\208", 32 }, { "\209", 144, 159, "\208", -16 },
+}
+
+-- A text in capitals, the Latin-1 and Cyrillic letters too (T.UPPER_RANGES).
+function T.Upper(text)
+  text = text:upper()
+  for _, r in ipairs(T.UPPER_RANGES) do
+    local pattern = r[1] .. "([" .. string.char(r[2]) .. "-" .. string.char(r[3]) .. "])"
+    text = text:gsub(pattern, function(second)
+      if second ~= r[6] then return r[4] .. string.char(second:byte() + r[5]) end
+    end)
+  end
+  return text
+end
+
 -- Sets a styled font string's text, in capitals when its role says so (T.ROLES.section).
 function T.SetText(fs, text)
   local r = T.ROLES[styled[fs]]
-  fs:SetText(r and r.upper and text:upper() or text)
+  fs:SetText(r and r.upper and T.Upper(text) or text)
 end
 
 -- A font's flags with SLUG added (#239) when the slugText setting is on and the text is world text
