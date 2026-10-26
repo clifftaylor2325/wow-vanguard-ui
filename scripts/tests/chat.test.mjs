@@ -174,6 +174,7 @@ it("chat text fades: lines stay 60 s then fade over 0.6 s by default, Never and 
 const CHAT_EDIT_ENV = `
   ChatTypeInfo = { SAY = { r = 1, g = 1, b = 1 }, GUILD = { r = 0.25, g = 1, b = 0.25 } }
   ChatFrame1EditBoxHeader = ChatFrame1EditBox:CreateFontString(nil, "ARTWORK")
+  ChatFrame1EditBoxHeaderSuffix = ChatFrame1EditBox:CreateFontString(nil, "ARTWORK")
   ChatFrame1EditBox:SetAttribute("chatType", "SAY")
   function ChatFrame1EditBox:UpdateHeader() local info = ChatTypeInfo[self:GetAttribute("chatType")] ChatFrame1EditBoxHeader:SetTextColor(info.r, info.g, info.b) end
   ChatFrame1EditBox:UpdateHeader()
@@ -183,6 +184,8 @@ it("chat edit box: under the panel in the chat role, a rail in the channel's col
   const F = "ns.GetModule('Chat').frames[ChatFrame1]";
   expect(addon.eval(`local b = ChatFrame1EditBox local p = b.__points return { p.TOPLEFT.rel == ${F}.outline, p.TOPLEFT.relPoint, p.TOPLEFT.y, p.TOPRIGHT.relPoint, b:GetHeight(), (select(2, b:GetFont())) }`),
     "a gap under the panel, as tall as the tab bar, the panel's width, in the chat role (12)").toEqual([true, "BOTTOMLEFT", -4, "BOTTOMRIGHT", 24, 12]);
+  expect(addon.eval("return { (select(2, ChatFrame1EditBoxHeader:GetFont())), (select(2, ChatFrame1EditBoxHeaderSuffix:GetFont())), select(1, ChatFrame1EditBoxHeader:GetFont()) == select(1, ChatFrame1EditBox:GetFont()) }"),
+    "the channel header and its suffix are in the chat role (12) and the box's face, not the game's chat font").toEqual([12, 12, true]);
   // A window's edit box rail: its colour and width.
   const rail = (i) => addon.eval(`local r = ns.FrameState("vgRail")[ChatFrame${i}EditBox] return { r.__vertexColor, r:GetWidth() == 2 * ns.Theme.Pixel(ChatFrame${i}EditBox) }`);
   expect(rail(1), "the rail is two pixels wide in the header's colour (Say, white)").toEqual([[1, 1, 1, 1], true]);

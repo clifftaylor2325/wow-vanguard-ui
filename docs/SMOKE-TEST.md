@@ -1331,6 +1331,12 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 - Expect: every one of those buttons sits on a small flat slate tile instead of the game's round art, the stack starting level with the tab bar's top, a tile's width apart, with no gap where a hidden button would be (no voice chat: text to speech follows Quick Join); the chat menu, minimize box and Quick Join show a quiet glyph that turns white on an accent tile under the mouse; the voice and text-to-speech buttons keep their own icon on the tile; scrolled up, a down-arrow glyph on a tile appears at the window's bottom-right, a thin accent-coloured edge round the tile while the game flashes it for a new line below (gone once you are back at the bottom), and a click on it returns to the newest line; the chat menu still opens and the floating window's minimize box still collapses it. [Needs in game: that the stack holds after a Quick Join toast and after the chat menu's Move buttons to the right, which mirrors it to the panel's right edge.]
 - If it fails, paste: a screenshot of the chat column and `/vg errors`.
 
+### 14.7.6a Chat typing box channel name
+
+- Do: press Enter to type in chat, then switch channel with `/g` (or `/1` for a numbered channel), and set Chat text size to Small and Large in turn.
+- Expect: the channel name before your text (`Guild:`, `1. General:`) is in the same face as the text you type, in the channel's colour; your text still starts clear of it. [Needs in-game check: the header's size against the typed text (both use the chat role's size, not the Chat text size), and that no overlap appears with a long channel name.]
+- If it fails, paste: a screenshot of the box and `/vg errors`.
+
 ### 14.7.7 Chat bubbles
 
 - Do: with chat bubbles on in the game's options (Options → Interface → Social → Chat Bubbles), say something in /say out in the world, then have a party or raid member or an NPC speak near you; then enter a dungeon and say something there. Afterwards tick Text-only bubbles (reload) under `/vg` → Chat, reload, and say something in the world again.

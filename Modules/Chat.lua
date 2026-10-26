@@ -543,12 +543,22 @@ local function editRail(box)
   return rail
 end
 
+-- Puts the game's channel header ("Say:") and its suffix (the channel's name) in the chat text role, so they
+-- match the typed text; colour is left alone, as the game sets it for the channel.
+local function fontHeaders(box)
+  for _, suffix in ipairs({ "Header", "HeaderSuffix" }) do
+    local fs = _G[(box:GetName() or "") .. suffix]
+    if type(fs) == "table" and type(fs.SetFont) == "function" then T.Text(fs, "chat", false) end
+  end
+end
+
 -- The edit box as part of the frame: a themed, rounded input under the panel in the chat text role,
 -- with a channel-coloured rail down its left edge; the game's header ("Say:") keeps its colour.
 local function skinEditBox(box, outline)
   T.EditBox(box)
   T.SetRound(box, true)
   T.Text(box, "chat")
+  fontHeaders(box)
   placeEditBox(box, outline)
   placeRail(editRail(box), box)
   tintRail(box)
