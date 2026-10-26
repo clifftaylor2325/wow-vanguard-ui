@@ -29,10 +29,12 @@ local function line(i)
 end
 
 -- Places line i: vertical at x (from center) or horizontal at y; accent for the center.
+-- A line is one screen pixel thick (T.Pixel), not one UI unit, so it draws even at any UI scale.
 local function place(i, vertical, offset)
   local t = line(i)
   t:ClearAllPoints()
-  t:SetSize(vertical and 1 or UIParent:GetWidth(), vertical and UIParent:GetHeight() or 1)
+  local thick = T.Pixel(grid)
+  t:SetSize(vertical and thick or UIParent:GetWidth(), vertical and UIParent:GetHeight() or thick)
   t:SetPoint("CENTER", grid, "CENTER", vertical and offset or 0, vertical and 0 or offset)
   T.Tint(t, offset == 0 and "accent" or "gridline")
   t:Show()

@@ -171,6 +171,12 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Expect: the window is about three quarters of your screen tall (at least as tall as before). The dot's tooltip has a second line, "Default: 100%" or the like. "move frames" lists Move frames, and clicking that line only marks the button (frames do not unlock). "square" lists Corners. "a" lists eight and ends with "N more: type more words". Vanguard meter says "On, but its own switch is off (Combat tools)" beside its name until you switch the meter on under Combat tools. After the UI scale change the window is still tall and fits the screen.
 - If it fails, paste: a screenshot of the window, your screen resolution and UI scale, and `/vg errors`.
 
+### 2.1f2 The options list's long page names and Text size changes
+
+- Do: in a non-English client (Italian, Spanish, Portuguese or Russian) type `/vg` and look at the list of pages on the left, changing a setting on a page with a long name (Combat tools, Town and gear) so its dot shows. Then open Modules, Unit frames and Combat tools, set Text size to 130% under General, and open those pages again.
+- Expect: each page name ends before the page's dot and the list's edge (a name too long is cut short), never over them. After the Text size change, each page you reopen is laid out for the new size: a module's description sits wholly inside its row, a "reload" tag sits after its caption without touching it, and a switch with a wrapped caption has the switch centred on the caption. [Needs in-game check: how far a real translation runs depends on the font's real widths.]
+- If it fails, paste: a screenshot of the list and the page, the client language, and `/vg errors`.
+
 ### 2.1g The addons button's tooltip and the AddOns list heading
 
 - Do: point at the addons button by the minimap without clicking. Then open the game's AddOns list from the character select screen or the game menu.
@@ -216,6 +222,12 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Expect: the chat line `Unlocked: drag the handles. /vg lock when done.`, labelled handles on the Vanguard frames, and `/vg frames` listing keys such as `minimap`, `infostrip`, `menustrip`, `bagstrip`, `raid` and `questtracker`.
 - If it fails, paste: the chat output and a screenshot.
 
+### 3.1b A selected handle's numbers
+
+- Do: type `/vg unlock`, then click the XP bar's handle (a thin one), a taller handle (the minimap's), and the vehicle exit's handle if it shows.
+- Expect: the selected thin handle shows its name and point and offsets on one line, inside itself; the taller one shows them on two lines; the vehicle exit's (40 wide) shows its name only. Nothing spills out of a handle. [Needs in-game check: the text's size against the handle.]
+- If it fails, paste: a screenshot of each handle.
+
 ### 3.2 Drag two frames and keep them
 
 - Do: drag the Minimap and Info strip handles somewhere new, type `/vg lock`, then `/reload`.
@@ -231,7 +243,7 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 ### 3.2b Move frames from the options, and back
 
 - Do: `/vg` → General → **Move frames**. Read the bar at the top, move a frame, click **Save and lock**. Again **Move frames**, then **Exit without saving**. Again **Move frames**, then `/vg lock`.
-- Expect: the bar's note reads in full ("Drag to move · right-click for anchor, scale, opacity · arrows nudge (Shift ×10)") with nothing over the buttons at your resolution; Save and lock and Exit without saving each lock and open `/vg` again on General; `/vg lock` just locks. [Needs in game: the bar's width at your resolution.]
+- Expect: the bar's note reads in full ("Drag to move · right-click for anchor, scale, opacity · arrows nudge (Shift ×10)") with nothing over the buttons at your resolution (on a 4:3 or 5:4 screen, or at 130% text, the note wraps onto a second line and the bar stays on screen); Save and lock and Exit without saving each lock and open `/vg` again on General; `/vg lock` just locks. [Needs in game: the bar's width at your resolution.]
 - If it fails, paste: a screenshot of the bar and `/vg errors`.
 
 ### 3.3 Combat while unlocked
@@ -243,7 +255,7 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 ### 3.4 Edit Mode
 
 - Do: make sure the frames are locked (`/vg lock`), press Escape, click Edit Mode, look, close Edit Mode. (If `/vg unlock` had the handles up already, closing Edit Mode leaves them up; that is intended.)
-- Expect: Vanguard's labelled handles appear too, with a note under the Edit Mode window reading `The labeled handles are Vanguard's frames: drag them here too (right-click one for more).` Edit Mode's window and its settings dialog stay on top of every handle (the quest dialog's too: try the layout dropdown over it): drag the window over a handle and it covers the handle, never the other way round. On closing, the handles hide and the Blizzard frames Vanguard pins (minimap, strips, tracker) return to their Vanguard spots.
+- Expect: Vanguard's labelled handles appear too, with a note under the Edit Mode window reading `The labeled handles are Vanguard's frames: drag them here too (right-click one for more).` Edit Mode's window and its settings dialog stay on top of every handle (the quest dialog's too: try the layout dropdown over it): drag the window over a handle and it covers the handle, never the other way round. On closing, the handles hide and the Blizzard frames Vanguard pins (minimap, strips, tracker) return to their Vanguard spots. With Text size at 130% (`/vg` → General) the note under the window still shows both lines of its text. [Needs in-game check: the note's height against the client's line height.]
 - If it fails, paste: a screenshot while Edit Mode is open and `/vg errors`.
 
 ### 3.5 Reset
@@ -257,6 +269,18 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Do: type `/vg unlock`, right-click the Player cast bar handle, set **Anchor to** to Player and **Side** to Bottom, type `-4` in Y offset and press Enter, click **Save and lock** on the bar at the top. Change spec (if your character has one), `/reload`, then turn Unit frames off under `/vg` → Modules, `/reload`, turn them on again and `/reload`.
 - Expect: the popover title reads `Player cast bar  ·  Below Player`, the cast bar sits 4 px under the player frame's bottom edge and stays there after the spec change and the reload; with Unit frames off it stays where it was (on screen), and with them on again it is under the player frame. No error.
 - If it fails, paste: a screenshot of each step that went wrong and `/vg errors`.
+
+### 3.6b The anchored cast bar after a UI scale change
+
+- Do: with the cast bar still anchored to the player frame (3.6), change the game's UI scale slider (or turn **Pixel-perfect** on under `/vg` → General).
+- Expect: the cast bar stays against the player frame's bottom edge (it used to stay at its old screen spot). [Needs in-game check: the client moving the player frame when the canvas changes.]
+- If it fails, paste: a screenshot of the cast bar and the player frame, and `/vg errors`.
+
+### 3.6c The popover's refusal line at a large text size
+
+- Do: at 130% text, `/vg unlock`, right-click the Player frame's handle and set its **Anchor to** to the Player cast bar (still anchored to the player frame, so the popover refuses the circle).
+- Expect: the red line saying it would go round in a circle sits clear of the Reset and Done buttons, the popover having grown taller to hold it. [Needs in-game check: the line's height against the client's font.]
+- If it fails, paste: a screenshot of the popover.
 
 ### 3.7 Exit without saving
 
@@ -2388,6 +2412,12 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Do: set the game's language to German, Russian or French (or run a client in one). Open your combined bag; open the auction house on the Posting tab with an item dropped on the sell card, then the Lists tab (after a scan, so the button counts down); open a mailbox with Mail tools on. Then, at the largest UI scale, add a dozen Keep-stocked items you lack (`/vg stock <itemID> 10`) and type `/vg prep`.
 - Expect: the bag's Sort button, the sell card's Post, Stop, Skip and Max buttons, the Restock button on the Lists toolbar, the scan button's countdown and each mail row's Take button show their whole label (the search box beside Sort is a little narrower; the guide's four steps follow one another with a gap, none over the next). The Instance prep card's title and close button stay on the screen however long the list grows: the card slides down from the top edge instead. [Needs in-game check: all of it, and whether the clamp moves the card down.] The + Add button in the mail panel's bottom row may still cut its label in German, Russian and Portuguese (known).
 - If it fails, paste: a screenshot of the button or card, the game's language, and `/vg errors`.
+
+### 33.43 Dropdown menus near the bottom, the French key prompt, the options search hint
+
+- Do: on a small screen (1024x768 or a window about 835 units tall), open `/vg` → General and click the Panel texture dropdown near the bottom of the page, then one higher up the page; click the first one again. Set the game to French (frFR), open `/vg` → Click casting, click Add key. Still in French, set General → Text size to 115 % and then 130 % and look at the search box in the options header.
+- Expect: the low dropdown's menu opens above it (its bottom edge on the dropdown's top), scrolls as before, never covers the dropdown's own value, and a second click on the dropdown closes it; the higher one opens below as before. The Add key button reads "Touche, clic ou molette…" in full while it waits. The search box shows "Rechercher dans les réglages" cut short with an ellipsis if it does not fit, never past the box's right edge or over the profile picker.
+- If it fails, paste: a screenshot of the menu, the button or the header and `/vg errors`.
 
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 

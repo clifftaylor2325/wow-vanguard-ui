@@ -150,6 +150,20 @@ local function place(m)
   end)
 end
 
+-- After a UI scale or screen change: puts every anchored mover (and its handle) at its link's spot again, since
+-- the frame it follows moved with its edge of the screen. Not through place(): that rescales, which runs this again.
+local function reanchorLinked()
+  for _, key in ipairs(order) do
+    local m, p = movers[key], saved()[key]
+    if type(p) == "table" and p.rel ~= nil then
+      ns.MoverLinks.Remember(key, p)
+      anchor(m.frame, m)
+      if m.handle then anchor(m.handle, m) end
+    end
+  end
+end
+T.OnScale(reanchorLinked)
+
 -- Registers a placeable frame. default = { point, relPoint, x, y } on UIParent.
 function ns.Mover(frame, key, label, default)
   local m = { frame = frame, key = key, label = label or key, default = default }
@@ -282,17 +296,19 @@ local function editNote(edit)
   note:SetSize(320, 36)
   note:SetPoint("TOP", edit, "BOTTOM", 0, -6)
   note.text = T.Text(note:CreateFontString(nil, "OVERLAY"), "small")
-  note.text:SetPoint("TOPLEFT", 8, -6) note.text:SetPoint("BOTTOMRIGHT", -8, 6)
+  note.text:SetPoint("TOPLEFT", 8, -T.SPACE.tight) note.text:SetPoint("TOPRIGHT", -8, -T.SPACE.tight)
   note.text:SetText(ns.EDIT_NOTE)
   editModeNote = note
   return note
 end
 
 -- Edit Mode opened: Vanguard's handles show too (without the grid: the game
--- draws its own), with the note, unless that's switched off.
+-- draws its own), with the note (as tall as its text needs at this text size), unless that's switched off.
 function ns.EditModeOpened(edit)
   if not unlocked and ns.MoverOptions().editMode then editUnlocked = ns.UnlockForEditMode() end
-  editNote(edit):SetShown(unlocked)
+  local note = editNote(edit)
+  note:SetHeight(note.text:GetStringHeight() + 2 * T.SPACE.tight)
+  note:SetShown(unlocked)
 end
 
 -- Edit Mode closed: its handles hide with the note, unless /vg unlock had them up already.
@@ -398,16 +414,29 @@ end
 
 -- Selection and keys ------------------------------------------------------------------
 
+-- Handles narrower than this show no coordinates when selected (the vehicle exit's, 40 wide): they would wrap
+-- into a tall column over the frames around, and the popover shows the numbers.
+local COORDS_MIN_WIDTH = 120
+
+-- A selected handle's text: its label, then the point and offsets after a line break; on the label's own line
+-- when the handle is under two lines tall (a thin bar), so the text stays inside it; just the label when narrow.
+local function selectedText(m, label)
+  local h = m.handle
+  if h:GetWidth() < COORDS_MIN_WIDTH then return label end
+  local point, _, x, y = pointFor(m)
+  local where, rx, ry = ns.MoverLinks.Where(m.key)
+  local thin = h:GetHeight() < 2 * h.label:GetLineHeight() + T.SPACE.tight
+  return string.format(thin and "%s  ·  %s %d, %d" or "%s\n%s %d, %d", label, where or point, rx or x, ry or y)
+end
+
 -- Shows the selected handle's point and offsets on it (for an anchored frame, the
 -- side it's anchored to and its offsets from it); others show their label.
 function ns.ShowCoords(m)
   if not m.handle then
     return
   end
-  local point, _, x, y = pointFor(m)
-  local where, rx, ry = ns.MoverLinks.Where(m.key)
   local label = m.label .. suffix
-  m.handle.label:SetText(m == selected and string.format("%s\n%s %d, %d", label, where or point, rx or x, ry or y) or label)
+  m.handle.label:SetText(m == selected and selectedText(m, label) or label)
 end
 
 -- Selects a handle for arrow-key nudging (and deselects the previous one).
