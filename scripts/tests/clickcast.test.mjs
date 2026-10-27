@@ -632,6 +632,32 @@ it("a rebuilt Click casting page's new test tile lets go of the keyboard when a 
   expect(addon.eval(`return __wfgStub.frames[${tile}].__kb`), "the rebuilt page's tile lets go").toBe(false);
 });
 
+// A priest's Click casting page open, its test tile's keyboard tracked in __kb; answers the tile and a reader of __kb.
+function tileWithKeyboard() {
+  const addon = priest();
+  addon.eval('ns.Options.Show("clickcast") ns.Options.ShowTab("Try it")');
+  const tile = widget(addon, "w.result ~= nil and w.bar ~= nil");
+  addon.eval(`__wfgStub.frames[${tile}].EnableKeyboard = function(self, on) self.__kb = on end`);
+  // Whether the tile has its keyboard on.
+  const keyboard = () => addon.eval(`return __wfgStub.frames[${tile}].__kb`);
+  return { addon, tile, keyboard };
+}
+it("the test tile reads keys again when the fight ends with the pointer still on it", () => {
+  const { addon, tile, keyboard } = tileWithKeyboard();
+  addon.hover(tile);
+  addon.world.combat(true);
+  expect(keyboard(), "the fight took the keyboard off").toBe(false);
+  addon.world.combat(false);
+  expect(keyboard(), "the pointer stayed on the tile, so it reads keys again").toBe(true);
+});
+it("the test tile stays off the keyboard when the fight ends with the pointer elsewhere", () => {
+  const { addon, tile, keyboard } = tileWithKeyboard();
+  addon.hover(tile);
+  addon.world.combat(true);
+  addon.hover(null);
+  addon.world.combat(false);
+  expect(keyboard(), "the pointer left in the fight").toBe(false);
+});
 it("a spell picker opened in a fight does not take the keyboard; one opened after it does", () => {
   const addon = priest();
   addon.eval('ns.Options.Show("clickcast")');
@@ -648,6 +674,7 @@ it("a spell picker opened in a fight does not take the keyboard; one opened afte
   addon.eval("Vanguard_SpellPicker:Hide()");
   expect(keyboardAfterOpening(), "opened after it, the keyboard is on again").toEqual([true, true]);
 });
+
 
 it("the Click casting page shows one Reset this page card however often the window opened before a rebuild", () => {
   const addon = loggedIn(CLICK_LUA + "C_ClickBindings = {}");

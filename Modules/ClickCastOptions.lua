@@ -663,10 +663,18 @@ local function wireTile(tile)
   tile:SetScript("OnMouseWheel", ns.Guard("wheel click-cast test tile", tileWheel))
 end
 
--- A fight starting lets go of the keyboard on the page's current test tile, whose pointer may already be on it.
--- Registered once for the file: the page's builder runs again on every rebuild.
+-- The fight is over: the page's current test tile reads keys again if it is up and the pointer is still on it
+-- (the pointer did not leave, so no OnEnter will turn the keyboard back on).
+local function regainTileKeys()
+  local tile = state.tile
+  if tile and tile:IsVisible() and tile:IsMouseOver() then tile:EnableKeyboard(true) end
+end
+
+-- A fight starting lets go of the keyboard on the page's current test tile, whose pointer may already be on it,
+-- and gives it back when the fight ends. Registered once for the file: the page's builder runs again on every rebuild.
 local function releaseTileKeys()
   if state.tile then state.tile:EnableKeyboard(false) end
+  ns.AfterCombat(regainTileKeys, "clickcast test tile keys")
 end
 ns.On("PLAYER_REGEN_DISABLED", releaseTileKeys)
 
