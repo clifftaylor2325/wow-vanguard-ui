@@ -473,13 +473,25 @@ local function rowY(row)
   return -(row - 0.5) * IS.Row()
 end
 
--- The lowest row with a block showing (0 when nothing shows).
-local function rowsShown()
-  local rows = 0
+-- How many rows have a block showing, counting the fixed rows down to upTo: the rows go up the strip with
+-- nothing left blank between, whichever block is off.
+local function shownRows(upTo)
+  local seen, count = {}, 0
   for key, fs in pairs(IS.fonts) do
-    if fs:IsShown() then rows = math.max(rows, IS.BLOCKS[key][1]) end
+    local row = IS.BLOCKS[key][1]
+    if fs:IsShown() and row <= upTo and not seen[row] then seen[row] = true count = count + 1 end
   end
-  return rows
+  return count
+end
+
+-- Where a block's row sits on the strip now: its fixed row less the rows above it with nothing showing.
+local function shownRow(key)
+  return math.max(1, shownRows(IS.BLOCKS[key][1]))
+end
+
+-- The rows that have a block showing (0 when nothing shows).
+local function rowsShown()
+  return shownRows(IS.MOST_ROWS)
 end
 
 -- How wide each row's shown blocks are side by side (units, by row): the edges' insets, each block's text and
@@ -501,13 +513,17 @@ local function stripWidth()
   return math.max(IS.Width(), math.ceil(widest + 2 * IS.SIDE - IS.DATE_GAP))
 end
 
--- Hides the strip while it has nothing to show (no empty box on screen) or its
--- visibility hides it, and grows it to a third (or fourth) row only while a block there shows, and wider when
--- a row needs it.
-local function fitRows()
-  local rows = rowsShown()
-  IS.frame:SetShown(rows > 0 and V.Shows(IS.frame))
-  IS.frame:SetSize(stripWidth(), IS.Row() * math.max(rows, 2) + IS.EDGE)
+-- Sets a block's text at its side of its row (IS.SIDE in from that edge).
+local function placeText(fs, key)
+  local point = IS.BLOCKS[key][2]
+  fs:ClearAllPoints()
+  fs:SetPoint(point, IS.frame, "TOP" .. point, point == "LEFT" and IS.SIDE or -IS.SIDE, rowY(shownRow(key)))
+end
+
+-- Sets the calendar button at the date row's right end.
+local function placeCalendar(b)
+  b:ClearAllPoints()
+  b:SetPoint("RIGHT", IS.frame, "TOPRIGHT", -IS.CALENDAR_GAP, rowY(shownRow("date")))
 end
 
 -- Sits the date right after the time, or at the row's left edge while the time is off.
@@ -515,7 +531,24 @@ function IS.PlaceDate()
   local date, clock = IS.fonts.date, IS.fonts.clock
   date:ClearAllPoints()
   if clock:IsShown() then date:SetPoint("LEFT", clock, "RIGHT", IS.DATE_GAP, 0)
-  else date:SetPoint("LEFT", IS.frame, "TOPLEFT", IS.SIDE, rowY(IS.BLOCKS.date[1])) end
+  else date:SetPoint("LEFT", IS.frame, "TOPLEFT", IS.SIDE, rowY(shownRow("date"))) end
+end
+
+-- Sets every block, and the calendar button beside the date, on its row as the rows now stand.
+local function placeBlocks()
+  for key, fs in pairs(IS.fonts) do placeText(fs, key) end
+  if IS.calendar then placeCalendar(IS.calendar) end
+  IS.PlaceDate()
+end
+
+-- Hides the strip while it has nothing to show (no empty box on screen) or its
+-- visibility hides it, and grows it to a third (or fourth) row only while a block there shows, and wider when
+-- a row needs it; the blocks close up the rows that show nothing.
+local function fitRows()
+  local rows = rowsShown()
+  IS.frame:SetShown(rows > 0 and V.Shows(IS.frame))
+  IS.frame:SetSize(stripWidth(), IS.Row() * math.max(rows, 2) + IS.EDGE)
+  placeBlocks()
 end
 
 -- The button that goes with a block, by its key on IS: the calendar with the date, the clock's hit area with the time.
@@ -537,7 +570,6 @@ function IS.Paint(key)
   showButton(key, text ~= nil)
   if text and text ~= fs.last then fs:SetText(text) fs.last = text end
   if color then T.Color(fs, color) end
-  if key == "clock" or key == "date" then IS.PlaceDate() end
   fitRows()
 end
 
@@ -552,13 +584,6 @@ function IS.PaintRates()
 end
 
 -- Building ----------------------------------------------------------------------------------
-
--- Sets a block's text at its side of its row (IS.SIDE in from that edge).
-local function placeText(fs, key)
-  local row, point = IS.BLOCKS[key][1], IS.BLOCKS[key][2]
-  fs:ClearAllPoints()
-  fs:SetPoint(point, IS.frame, "TOP" .. point, point == "LEFT" and IS.SIDE or -IS.SIDE, rowY(row))
-end
 
 -- One block's text, in its place.
 local function addText(key)
@@ -607,12 +632,6 @@ local function addInvites(b)
   back:SetPoint("TOPLEFT", fs, "TOPLEFT", -pad, pad)
   back:SetPoint("BOTTOMRIGHT", fs, "BOTTOMRIGHT", pad, -pad)
   IS.invites, IS.invitesBack = fs, back
-end
-
--- Sets the calendar button at the date row's right end.
-local function placeCalendar(b)
-  b:ClearAllPoints()
-  b:SetPoint("RIGHT", IS.frame, "TOPRIGHT", -IS.CALENDAR_GAP, rowY(IS.BLOCKS.date[1]))
 end
 
 -- The calendar button (shown with the date): a slot button of the minimap's kind at the date row's right end,
@@ -879,9 +898,6 @@ end
 -- calendar button beside the date (plain frames, so this is fine in a fight), then the rows that show.
 function IS.Layout()
   IS.frame:SetWidth(IS.Width())
-  for key, fs in pairs(IS.fonts) do placeText(fs, key) end
-  if IS.calendar then placeCalendar(IS.calendar) end
-  IS.PlaceDate()
   fitRows()
   ns.OutOfCombat(IS.MoveTracker, "infostrip-tracker")
 end

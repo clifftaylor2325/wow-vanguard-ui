@@ -123,7 +123,7 @@ it("unlock popover: scale and opacity in percent", () => {
   typeInto(addon, "scale", "150");
   typeInto(addon, "alpha", "40");
   expect(look(), "typing a percent sets the frame's scale and opacity").toEqual(["150", "40", 1.5, 0.4]);
-  expect(addon.eval("return { __h:GetScale(), VanguardDB.profiles.Default.positions.minimap.scale }"), "the handle follows, and it is saved").toEqual([1.5, 1.5]);
+  expect(addon.eval("local f = ns.MoverFrame('minimap') return { __h:GetScale(), __h:GetWidth() == f:GetWidth() * 1.5, VanguardDB.profiles.Default.positions.minimap.scale }"), "the handle grows to the frame's size on screen, and the scale is saved").toEqual([1, true, 1.5]);
   typeInto(addon, "scale", "TEST-ONLY");
   typeInto(addon, "alpha", "500");
   expect(look(), "a bad number is ignored and a big one stops at 100%").toEqual(["150", "100", 1.5, 1]);

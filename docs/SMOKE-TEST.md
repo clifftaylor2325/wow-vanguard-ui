@@ -520,8 +520,8 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 
 ### 7.2f Status chip (off until switched on: /vg > Unit frames > Readouts)
 
-- Do: tick **Status chip above your frame** under Unit frames, reload. Out of combat eat some food, then drink, then eat a food that gives Well Fed; wait until each buff ends. Then tick Instance prep's buff checks (`/vg` > Town and gear) and look at the chip with no flask or raid buffs. Start a fight with the chip showing.
-- Expect: above the player frame's top-left corner a small panel with the buff's own icon and Eating, Drinking or Well Fed while that buff is on you (Well Fed in the good color), going when the buff does; with the buff checks on and nothing of those, a warning triangle and Missing: and the first missing buff and how many more, in the warning color, matching `/vg prep`'s buff rows. It is gone the moment a fight starts and back after it, and gone while you are dead. If the buff names are wrong for this client (the chip stays hidden while you eat), paste the aura names from `/dump C_UnitAuras.GetAuraDataByIndex("player", 1, "HELPFUL")`. No error.
+- Do: tick **Status chip beside your frame** under Unit frames, reload. Out of combat eat some food, then drink, then eat a food that gives Well Fed; wait until each buff ends. Then tick Instance prep's buff checks (`/vg` > Town and gear) and look at the chip with no flask or raid buffs. Start a fight with the chip showing.
+- Expect: left of the player frame, level with it, a small panel with the buff's own icon and Eating, Drinking or Well Fed while that buff is on you (Well Fed in the good color), going when the buff does; with the buff checks on and nothing of those, a warning triangle and Missing: and the first missing buff and how many more, in the warning color, matching `/vg prep`'s buff rows. It is gone the moment a fight starts and back after it, and gone while you are dead. If the buff names are wrong for this client (the chip stays hidden while you eat), paste the aura names from `/dump C_UnitAuras.GetAuraDataByIndex("player", 1, "HELPFUL")`. No error.
 - If it fails, paste: a screenshot and `/vg errors`.
 
 ### 7.2g Energy spark stops when no tick comes
@@ -2521,6 +2521,42 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Do: set the game's language to German, Russian or Portuguese. Open the auction house on the Posting tab and look at the Your auctions toolbar (after Check undercuts, so its line shows "3 undercut"); open the Lists tab and look at the pane's buttons, then right-click a list item → Filters... and look at the Quality row. Open a mailbox with Mail tools on and look at + Add with no, one, two and three presets.
 - Expect: Check undercuts is as wide as its label; Cancel next undercut takes the room between the line beside the heading and Check undercuts, its label shrinking a little in a long language, never over the line; the Lists pane's six buttons are two to a row in three rows and show Umbenennen, Переименовать and Копировать whole; the pane lists two fewer entries than before; the filter dialog is a little wider and "Quality" is one line beside its dropdown; + Add shows its whole label in every place along the mail panel's bottom (the preset buttons are a little narrower) and stays inside the panel. [Needs in-game check: all of it.]
 - If it fails, paste: a screenshot of the toolbar, pane, dialog or panel, the game's language, and `/vg errors`.
+
+### 33.67 Cooldown numbers on the smallest action bar buttons
+
+- Do: set the action bar button size to 24 (`/vg` → Action bars), put a spell with a long cooldown (over 10 minutes) on bar 1, use it, and look at the number on the button; then set the button size to 36 and look again.
+- Expect: at 24 the number is the small bold size and stays inside the icon, even as "10m"; at 36 it is the larger size as before. [Needs in-game check: the client draws the number itself.]
+- If it fails, paste: a screenshot of the button at 24, the game's "Show numbers for cooldowns" setting, and `/vg errors`.
+
+### 33.68 Pet, stance and extra button texts in the theme font
+
+- Do: on a class with a pet bar or stances (hunter, warlock, druid, warrior), bind a key to a pet or stance button and look at its key name and, with an auto-cast or stacking ability, its count; compare with bar 1's key names. Then change into another form or call and dismiss the pet.
+- Expect: the key names and counts on the pet and stance buttons use the same small font and colours as the action bar buttons and keep them after the pet or the form changes. [Needs in-game check: the game may put its own font back when the bar updates; if so say which bar.]
+- If it fails, paste: a screenshot of the pet or stance bar next to bar 1, and `/vg errors`.
+
+### 33.69 Minimap button drawer ring
+
+- Do: with two or three addons that add a minimap button (the kind a LibDBIcon addon makes), look at the drawer opened from the "..." button on the map's edge, before and after this change if you can.
+- Expect: each button sits in its own cell with its round ring centred on its icon and not hanging into the next cell; four buttons to a row. [Needs in-game check: the harness has no LibDBIcon.]
+- If it fails, paste: a screenshot of the open drawer and the names of the addons whose buttons are in it.
+
+### 33.70 Unlock handles of scaled frames
+
+- Do: `/vg unlock`, right-click the XP bar's handle and set its Scale to 50%, then the player frame's to 200%; read their labels and drag each handle to a new spot and drop it; then `/vg lock`.
+- Expect: every handle label is the same size as the others' whatever the frame's Scale; the 50% bar's handle is at least 40 wide and 14 tall, easy to grab, and sits over the bar; each frame lands where its handle was dropped. [Needs in-game check: the drag maths changed.]
+- If it fails, paste: `/vg frame Vanguard_xpbar deep` and `/vg frame Vanguard_player deep` before and after the drag, and `/vg errors`.
+
+### 33.71 The position popover keeps off its own handle
+
+- Do: `/vg unlock`, right-click the handles of the minimap, the info strip and the quest tracker (the frames at the right edge), then of the chat window and a frame in the middle of the screen.
+- Expect: for a frame near the right edge the popover opens to the left of its handle, not over it, and its handle stays visible while you type in X and Y; for a frame with room on its right it opens to the right as before. [Needs in-game check: the client keeps the popover on screen.]
+- If it fails, paste: a screenshot with the popover open and the frame's name.
+
+### 33.72 Default spots after a UI scale change
+
+- Do: leave every frame at its default spot, then in the game's Video settings (or `/vg setup`'s screen step with Fit) change the UI Scale so the screen turns narrower (for example from 1920x1080 to a 1229 wide canvas), without reloading; look at the target of target, the Vanguard meter (if on) and the group threat panel (if on), then do `/reload` and compare.
+- Expect: those frames move to the narrower screen's default spots at once, where they sit after the reload (your buffs keep their row length until the reload); a frame you dragged does not move to a default. [Needs in-game check: the client's own scale events.]
+- If it fails, paste: `/vg frame Vanguard_targettarget` before and after the change and after the reload, and `/vg errors`.
 
 ### 33.64 Options: the own-switch note sits on the module name's line
 

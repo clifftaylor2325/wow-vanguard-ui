@@ -942,7 +942,8 @@ it("minimap drawer: addon buttons gathered beside the map", () => {
   expect(addon.eval("return Vanguard_MinimapDrawer:IsShown()"), "the toggle opens it").toBe(true);
   addon.eval('CreateFrame("Button", "LibDBIcon10_TestOnlyTwo", Minimap)');
   addon.fire("PLAYER_ENTERING_WORLD");
-  expect([spot("LibDBIcon10_TestOnlyTwo"), addon.eval("return Vanguard_MinimapDrawer:GetWidth()")], "a late button joins the next cell; the drawer fits").toEqual([["Vanguard_MinimapDrawer", 32, -4], 62]);
+  expect([spot("LibDBIcon10_TestOnlyTwo"), addon.eval("return Vanguard_MinimapDrawer:GetWidth()")], "a late button joins the next cell; the drawer fits").toEqual([["Vanguard_MinimapDrawer", 37, -4], 72]);
+  expect(addon.eval("return { LibDBIcon10_TestOnlyOne:GetWidth(), LibDBIcon10_TestOnlyOne:GetHeight() }"), "a gathered button keeps the 31 units LibDBIcon builds it at, so its ring stays centred").toEqual([31, 31]);
   addon.eval('LibDBIcon10_TestOnlyOne:ClearAllPoints() LibDBIcon10_TestOnlyOne:SetPoint("CENTER", Minimap, "CENTER")');
   expect(spot("LibDBIcon10_TestOnlyOne"), "when its addon moves it back, it returns to its cell").toEqual(["Vanguard_MinimapDrawer", 4, -4]);
   const off = loggedIn(UI_ENV + DRAWER_ENV, { savedVariables: "VanguardDB.profiles = { Default = { MinimapButtons = { drawer = false } } }" });
@@ -980,7 +981,7 @@ it("minimap drawer: buttons in name order, the toggle counts them, Escape closes
   const addon = loggedIn(UI_ENV + DRAWER_ENV + 'CreateFrame("Button", "LibDBIcon10_TestOnlyAlpha", Minimap) CreateFrame("Button", "LibDBIcon10_TestOnlyZeta", Minimap)');
   // A drawer button's offset across the drawer.
   const x = (name) => addon.eval(`return ${name}.__points.TOPLEFT.x`);
-  expect(["Alpha", "One", "Zeta"].map((n) => x(`LibDBIcon10_TestOnly${n}`)), "by name, whatever order they were made in").toEqual([4, 32, 60]);
+  expect(["Alpha", "One", "Zeta"].map((n) => x(`LibDBIcon10_TestOnly${n}`)), "by name, whatever order they were made in").toEqual([4, 37, 70]);
   addon.eval("local t = Vanguard_MinimapDrawerToggle t.__scripts.OnEnter(t)");
   expect(addon.eval("return GameTooltip.__lines[1].text"), "the toggle's tooltip counts them").toBe("Addon buttons (3)");
   addon.eval("local t = Vanguard_MinimapDrawerToggle t.__scripts.OnLeave(t)");

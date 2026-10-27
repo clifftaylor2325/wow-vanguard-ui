@@ -29,20 +29,37 @@ local GA = ns.Module("GameAlerts", { defaults = { lossOfControl = true, talkingH
 -- Each alert's mover: key, label, default point, and the spot's size. Loss of control sits a little above your
 -- character, under the Instance prep card; the talking head at the top left under the raid tools and main tanks,
 -- clear of the quest arrow, chat alert and boss timers in the top centre. On a canvas under 962 wide the talking
--- head moves left as far as it takes to keep clear of the minimap and info strip's column (182 wide, 12 in, and a gap).
+-- head moves left as far as it takes to keep clear of the minimap and info strip's column (182 wide at 100% Text size,
+-- wider with it: see talkingHeadSpot; 12 in, and a gap).
 GA.SPOTS = {
   LossOfControlFrame = { "lossofcontrol", L["Loss of control"], { "CENTER", "CENTER", 0, 96 }, 256, 58 },
   TalkingHeadFrame = { "talkinghead", L["Talking head"], { "TOPLEFT", "TOPLEFT", 186, -126, room = { right = 206 } }, 570, 155 },
 }
+-- The room the talking head keeps on its right besides the info strip's width: the strip's 12 in from the
+-- screen's edge and a gap (the strip is 182 wide at 100% Text size, so 24 + 182 = 206 is the base value above).
+GA.HEAD_ROOM = 24
 -- Loss of control's art that's hidden (the black band and its red lines).
 GA.LOC_ART = { "blackBg", "RedLineTop", "RedLineBottom" }
 
 -- Placing ----------------------------------------------------------------------------------------
 
+-- The talking head's default point at the current Text size: GA.SPOTS' point with the room on its right
+-- widened to the info strip, which grows with the text (IS.Width needs no strip, so it works while it is off).
+local function talkingHeadSpot()
+  local point = GA.SPOTS.TalkingHeadFrame[3]
+  return { point[1], point[2], point[3], point[4], room = { right = GA.HEAD_ROOM + ns.GetModule("InfoStrip").Width() } }
+end
+
 -- A movable spot for one of the game's alerts, with the alert kept centered on it.
 local function place(name)
   local tools = ns.GetModule("GameTools")
+  if name == "TalkingHeadFrame" then GA.SPOTS[name][3] = talkingHeadSpot() end
   tools.PlaceSpot(name, GA.SPOTS[name], tools.FitCenter)
+end
+
+-- Gives the talking head's spot the room the info strip needs at the new Text size, out of combat.
+local function refitTalkingHead()
+  ns.OutOfCombat(function() ns.SetMoverDefault("talkinghead", talkingHeadSpot()) end)
 end
 
 -- Hides a frame's named art parts. Hidden, not faded: the frame's own
@@ -88,6 +105,7 @@ local function talkingHead(choice)
   if choice == "hide" then return ns.GetModule("DataBars").Suppress("TalkingHeadFrame") end
   GA.SkinTalkingHead(f)
   ns.OutOfCombat(function() place("TalkingHeadFrame") end)
+  T.OnChanged(refitTalkingHead)
 end
 
 -- Fonts and Hardcore death notices ----------------------------------------------------------
