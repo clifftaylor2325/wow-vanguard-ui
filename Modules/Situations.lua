@@ -327,11 +327,19 @@ function SI.Apply()
   if ov then SI.ApplyOverride(ov) end
 end
 
+-- Re-reads the options widgets while the window is open; opening it re-reads them anyway, and
+-- a raid forming fires enough roster events that re-reading a closed window costs a frame.
+local function refreshShownOptions()
+  local window = ns.Options.Frame()
+  if window and window:IsShown() then ns.Options.Refresh() end
+end
+
 -- Applies the situation on the next frame (a burst of roster or zone events is one), out of combat, and updates the page.
+-- The page is always dropped: its rows name the situation you're in when they're built.
 function SI.Refresh()
   ns.Soon("situations", function()
     ns.OutOfCombat(SI.Apply, "situations")
-    ns.Options.Refresh()
+    refreshShownOptions()
     ns.Options.RebuildPage("situations")
   end)
 end
