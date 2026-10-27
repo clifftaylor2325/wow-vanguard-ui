@@ -144,7 +144,7 @@ end
 -- worked out again for it.
 local function setScale(frame, scale)
   frame:SetAlpha(select(2, ns.MoverLook("raid")))
-  if frame:GetScale() == scale then return end
+  if math.abs(frame:GetScale() - scale) < RF.SCALE_EPSILON then return end
   frame:SetScale(scale)
   T.Rescale()
 end

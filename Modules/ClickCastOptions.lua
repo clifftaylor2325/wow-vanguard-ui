@@ -116,7 +116,7 @@ local picker
 local function matching(spells, q)
   local out = {}
   for _, s in ipairs(spells) do
-    if q == "" or s.name:lower():find(q, 1, true) then out[#out + 1] = s end
+    if q == "" or ns.Lower(s.name):find(q, 1, true) then out[#out + 1] = s end
   end
   return out
 end
@@ -141,7 +141,7 @@ end
 
 -- The picker's items: headers, spells (with their ranks when open) and actions, filtered by the search text.
 local function pickerItems()
-  local items, groups, q = {}, CS.Groups(), (picker.search:GetText() or ""):lower()
+  local items, groups, q = {}, CS.Groups(), ns.Lower(picker.search:GetText() or "")
   for _, g in ipairs(CS.GROUPS) do spellItems(items, g, matching(groups[g], q)) end
   actionItems(items)
   return items

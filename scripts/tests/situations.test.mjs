@@ -521,3 +521,21 @@ it("every apply function an override runs for a module is one that module has", 
     return table.concat(out, " ")`);
   expect(missing, "a misspelt apply name would fail only when an override applies").toBe("");
 });
+
+it("Y6-1 situations: a roster change re-reads the options widgets only while the window is open, and the page still says where you are", () => {
+  const addon = situated(saved());
+  addon.slash("");
+  addon.eval('__click("Situations")');
+  addon.eval(`__refreshes = 0
+    local refresh = ns.Options.Refresh
+    ns.Options.Refresh = function() __refreshes = __refreshes + 1 refresh() end
+    ns.Options.Frame():Hide()`);
+  raid(addon);
+  expect(addon.eval("return __refreshes"), "closed: nothing re-read").toBe(0);
+  addon.slash("");
+  addon.eval('__click("Situations") ns.Options.ShowTab("Your situations")');
+  expect(addon.texts("Raid (now): 2 overrides (1 frame, info strip)").length, "opened again: the raid is the situation marked now").toBe(1);
+  addon.eval("__refreshes = 0");
+  raid(addon, false);
+  expect(addon.eval("return __refreshes"), "open: re-read").toBeGreaterThan(0);
+});

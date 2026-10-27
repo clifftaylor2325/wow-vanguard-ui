@@ -66,7 +66,7 @@ local function nameFits(e, id)
   if ns.IsSecret(name) or type(name) ~= "string" then return false end
   quality, level = ns.PlainNumber(quality), ns.PlainNumber(level) or 0
   if (e.quality and quality ~= e.quality) or (e.minLevel and level < e.minLevel) or (e.maxLevel and level > e.maxLevel) then return false end
-  local n, term = name:lower(), e.term:lower()
+  local n, term = ns.Lower(name), ns.Lower(e.term)
   return n == term or (not e.exact and n:find(term, 1, true) ~= nil)
 end
 

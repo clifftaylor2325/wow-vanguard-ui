@@ -640,3 +640,10 @@ it("price alerts: a scan or any search rings for named lists' entries by ID or n
   addon.click("Vanguard_ChatWatchToast");
   expect([alertRings(addon), sent(addon).length], "the house closed: nothing alerts, and the toast's click searches nothing").toEqual([2, queries]);
 });
+
+it("price alerts: a name entry typed in small letters alerts for a Russian item name", () => {
+  const lists = `VanguardDB.ah = { list = "TEST-ONLY Mats", recent = {}, lists = { ["TEST-ONLY Mats"] = { { term = "железная", maxPrice = 600, alert = true } } } }`;
+  const addon = atAuctionHouse(DUSTS + ALERT_ENV + '__wfgWorld.items[11083] = { name = "Железная руда", commodity = true }', { savedVariables: lists });
+  scan(addon, "{ { itemID = 11083, count = 1, buyoutPrice = 500 } }");
+  expect(alertRings(addon), "Железная руда rings for the term железная").toBe(1);
+});

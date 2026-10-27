@@ -30,7 +30,7 @@ CX.OVERLAPS = {
   Bartender4 = { "ActionBars", L["action bars"] }, Dominos = { "ActionBars", L["action bars"] },
   ShadowedUnitFrames = { "UnitFrames", L["unit frames"] }, PitBull4 = { "UnitFrames", L["unit frames"] },
   Grid2 = { "RaidFrames", L["raid frames"] }, VuhDo = { "RaidFrames", L["raid frames"] }, Cell = { "RaidFrames", L["raid frames"] },
-  Clique = { "ClickCast", L["click casting"] }, Quartz = { "CastBars", L["cast bars"] },
+  Clique = { "ClickCast", L["click casting"], also = L["Vanguard's unit and raid frames aren't signed up with Clique, so its click bindings don't work on them."] }, Quartz = { "CastBars", L["cast bars"] },
   EllesmereUIUnitFrames = { "UnitFrames", L["unit frames"] }, EllesmereUIActionBars = { "ActionBars", L["action bars"] },
   EllesmereUINameplates = { "Nameplates", L["nameplates"] }, EllesmereUIRaidFrames = { "RaidFrames", L["raid frames"] },
   SexyMap = { "Minimap", L["the minimap"] }, TipTac = { "Tooltips", L["tooltips"] },

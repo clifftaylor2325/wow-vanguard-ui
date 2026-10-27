@@ -2855,6 +2855,36 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: `/vg frame` prints lines with no Lua error. Both dumps print true (the game's own state is not tainted), and no "Interface action failed because of an AddOn" shows at the start of the fight. [Needs in-game check: if either dump prints false and "Vanguard", say so in the project: the third stability hunt has a fix ready for the layout switch (offer a reload after it), and the nameplate setting would need a decision.]
 - If it fails, paste: both dump lines, any blocked-action line, and `/vg errors`.
 
+### 33.115 A raid of 11 or more: roster changes, the open Officer roster, Group threat and buff refreshes
+
+- Do: in a raid of 11 or more (any raid scale; the Healing layout's 115% too), `/vg perf slow` and have members join, leave and move groups out of combat. Then open the Officer roster (`/vg loot roster`), pull a pack of mobs, and switch Group threat on for a boss fight. In a long fight, watch the raid frames' missing-buff marks as buffs are refreshed and fall off.
+- Expect: no hitch on a roster change, and `/vg perf slow` shows no pixel-size work per change. The roster redraws when the group changes, not with every mob. Group threat follows threat about four times a second and switches at once with your target. A buff falling off still shows its mark. [Needs in-game check: the client stores a frame's scale as a float32; the fix compares scales with a tolerance.]
+- If it fails, paste: the `/vg perf slow` lines and `/vg errors`.
+
+### 33.116 Action buttons' usable tint, and the cooldown gaps row's manager cooldowns
+
+- Do: run out of mana or rage with a spell on bar 1, then get it back; stand out of range of a target. With the Gaps row and "Add the manager's cooldowns" on, open the game's Cooldown Manager and compare its rows with the gaps row.
+- Expect: the icon dims (blue for power) and comes back exactly when the game's own buttons would; range red still works. The gaps row shows no cooldown the manager hides until you add it.
+- If it fails, paste: which button stayed the wrong colour, or which cooldown showed, and `/vg errors`.
+
+### 33.117 BigWigs, Clique and SexyMap alongside Vanguard
+
+- Do: with BigWigs only (no DBM), outside an instance, `/vg dock` and open the Combat tools page. With Clique loaded, look at its row on the Modules page's Other addons card. With SexyMap and Vanguard's Minimap off, look at a LibDBIcon minimap button and a Questie or TomTom minimap pin.
+- Expect: `/vg dock` says where to drag BigWigs' bars, and the Boss mods row is there. Clique's row says its bindings don't reach Vanguard's frames. The buttons and pins sit on SexyMap's (or the game's round) map edge.
+- If it fails, paste: the chat lines, a screenshot of the minimap, and `/vg errors`.
+
+### 33.118 German, French or Russian client: bag filters, searches in small letters, prices and /way
+
+- Do: on a non-English client, the bag Filter menu's Armor and Weapons; a bag, mail, click-cast spell and options search typed all in small letters for a name starting with a capital (Russian "о", German "ä"); a sell price typed "2,5" and (German) "1.500"; `/way 45,2 61,8`.
+- Expect: the filters light armour and weapons; each search finds the name; the price reads 2.5 gold and 1500 gold; the waypoint goes to 45.2, 61.8.
+- If it fails, paste: which one, what you typed, and `/vg errors`.
+
+### 33.119 Second character's setup, and the auction scan after a clock change
+
+- Do: on a new character of a set-up account, pick Share profile, then a layout, Next, and Back. At the auction house, if your computer's clock was ever wrong during a scan, look at the scan button.
+- Expect: Back stops at the layout step once the layout is applied. The scan button waits at most 15 minutes.
+- If it fails, paste: which step Back reached, the scan button's countdown, and `/vg errors`.
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ## When you are done

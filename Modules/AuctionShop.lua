@@ -853,13 +853,35 @@ AH.LIST_ACTIONS = {
 -- The dearest price a typed amount may be, in copper: the game's highest price, 999999g 99s 99c.
 AH.MAX_PRICE = 9999999999
 
+-- The text with the client's thousands mark dropped where it sits between groups of three digits and
+-- before an optional decimal part ("1.234,5" in German, "1,234.50" in English); else the text as it was.
+local function dropGroups(text, mark, decimal)
+  local digits, tail = text:match("^(%d%d?%d?)(" .. mark .. "%d%d%d.*)$")
+  if not digits then return text end
+  local step = #mark:gsub("%%", "") + 3
+  while tail:find("^" .. mark .. "%d%d%d") do digits, tail = digits .. tail:sub(step - 2, step), tail:sub(step + 1) end
+  if tail == "" or tail:find("^" .. decimal .. "%d+$") then return digits .. tail end
+  return text
+end
+
+-- A bare number of gold typed the client's way, as Lua reads it: the client's thousands mark between
+-- groups of three digits dropped ("1.500" in German) and its decimal comma made a point ("2,5"). A client
+-- without the marks (a missing global) reads English numbers: "," between thousands, "." for decimals.
+local function clientNumber(text)
+  local group, decimal = _G.LARGE_NUMBER_SEPERATOR or ",", _G.DECIMAL_SEPERATOR or "."
+  if type(decimal) ~= "string" or decimal == "" then decimal = "." end
+  if type(group) == "string" and group ~= "" then text = dropGroups(text, group:gsub("%p", "%%%0"), decimal:gsub("%p", "%%%0")) end
+  if decimal == "," then text = text:gsub("^(%d*),(%d+)$", "%1.%2") end
+  return text
+end
+
 -- Copper from a typed price: "1g 50s", "75s 20c", "12c" or a bare number of gold ("2.5"); nil for
 -- nothing, nothing above zero, more than the game's highest price, or text that isn't money (an
 -- exponent such as "1e5", hex such as "0x10" or "inf" is not a number here). Every price box reads
 -- it (the shop's max price, the sell card's price and bid), so a bare number is gold in all of them.
 -- (The sums are in floating point so a long number can't wrap around as a whole-number sum might.)
 function AH.ParseMoney(text)
-  text = trim(text):lower()
+  text = clientNumber(trim(text):lower())
   local copper = 0
   if text:match("^%d+%.?%d*$") or text:match("^%.%d+$") then
     copper = tonumber(text) * 10000.0

@@ -56,7 +56,7 @@ local function isQuestItem(bag, slot)
 end
 
 -- The item's class id (Enum.ItemClass), or nil while the client doesn't know the item.
-local function classOf(itemID)
+function BG.ClassOf(itemID)
   return ns.PlainNumber((select(6, C_Item.GetItemInfoInstant(itemID))))
 end
 
@@ -66,7 +66,7 @@ local function builtIn(info, bag, slot)
   local quality = ns.PlainNumber(info.quality)
   if quality == 0 then return "junk" end
   if isQuestItem(bag, slot) then return "quest" end
-  local class = classOf(info.itemID)
+  local class = BG.ClassOf(info.itemID)
   if quality and class then return CLASS_SECTION[class] or "other" end
   BG.pending[info.itemID] = true
   return "other"

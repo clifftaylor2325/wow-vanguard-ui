@@ -114,10 +114,20 @@ local function categoryIDs(category)
   return {}
 end
 
--- The spell a manager cooldown stands for (its override first), or nil when unknown to you or refused.
+-- True when the game's manager leaves a cooldown out of its rows until the player adds it (the
+-- HideByDefault flag, as the manager's own settings read it). A hidden or missing flag counts as no.
+local function hiddenByDefault(info)
+  local flags = ns.PlainNumber(info.flags)
+  local mask = Enum.CooldownSetSpellFlags and Enum.CooldownSetSpellFlags.HideByDefault
+  return flags ~= nil and mask ~= nil and math.floor(flags / mask) % 2 == 1
+end
+
+-- The spell a manager cooldown stands for (its override first), or nil when unknown to you, hidden
+-- by default in the manager, or refused.
 local function trackedSpell(cooldownID)
   local ok, info = pcall(C_CooldownViewer.GetCooldownViewerCooldownInfo, cooldownID)
   if not ok or type(info) ~= "table" or ns.IsSecret(info) or info.isKnown == false then return nil end
+  if hiddenByDefault(info) then return nil end
   return ns.PlainNumber(info.overrideSpellID) or ns.PlainNumber(info.spellID)
 end
 

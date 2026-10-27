@@ -317,3 +317,17 @@ it("waypoints: the world map's Clear waypoint button grows to its label in Frenc
     expect(addon.textFit("Vanguard_MapCoords").filter((f) => f.kind === "cut"), `${locale}: nothing on the map line is cut`).toEqual([]);
   }
 });
+
+it("waypoints: /way finds a zone with a Russian name typed in small letters", () => {
+  const addon = loggedIn(MAP_ENV + '__maps[13] = { mapID = 13, name = "Железногорье", parentMapID = 1 }');
+  expect(way(addon, "железногорье 30 40"), "the capital Ж is folded on both sides").toEqual([[13, 0.3, 0.4]]);
+});
+
+it("waypoints: a comma between two digits is a decimal comma while two coordinates are still to read", () => {
+  const addon = loggedIn(MAP_ENV);
+  expect(way(addon, "45,2 61,8"), "decimal commas in both coordinates").toEqual([[10, 0.452, 0.618]]);
+  expect(way(addon, "45,2, 61,8"), "and a comma between them").toEqual([[10, 0.452, 0.618]]);
+  expect(way(addon, "test-only elwynn forest 42,5 65,5 Inn"), "after a zone name").toEqual([[10, 0.425, 0.655]]);
+  expect(way(addon, "45,61 Inn"), "a pair with no space is still x,y").toEqual([[10, 0.45, 0.61]]);
+  expect(way(addon, "45,61 70"), "and with a number for a title").toEqual([[10, 0.45, 0.61]]);
+});

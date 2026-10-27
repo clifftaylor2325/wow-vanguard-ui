@@ -164,7 +164,8 @@ it("the roster lists the raid by role then name, with leader marks, offline and 
   ]]);
   expect(addon.eval("return Vanguard_OfficerRoster.rows[2].left.__textColor[1]"), "class color").toBeCloseTo(0.78);
   addon.world.setUnit("raid3", { connected: true });
-  expect(roster(addon)[1][3], "an event repaints it").toEqual(["Bob", "DPS"]);
+  addon.advance(0.5);
+  expect(roster(addon)[1][3], "an event repaints it on the next frame").toEqual(["Bob", "DPS"]);
   say(addon, "loot roster");
   expect(roster(addon)[0], "toggles off").toBe(false);
   press(addon, "Show or hide the roster");
@@ -180,11 +181,31 @@ it("the roster handles a solo player, a party and a hidden name", () => {
   expect(roster(addon)[1].map((x) => x[0]), "alone: just you").toEqual(["Roster 1", "Tester"]);
   addon.world.setUnit("party1", { name: "Pal", class: "MAGE", className: "Mage", isPlayer: true });
   addon.fire("GROUP_ROSTER_UPDATE");
+  addon.advance(0.5);
   expect(roster(addon)[1].map((x) => x[0]), "party").toEqual(["Roster 2", "Tester", "Pal"]);
   addon.eval('__wfgWorld.units.party1.name = __wfgWorld.secret("Pal")');
   addon.fire("GROUP_ROSTER_UPDATE");
+  addon.advance(0.5);
   expect(roster(addon)[1].map((x) => x[0]), "a hidden name is left out").toEqual(["Roster 1", "Tester"]);
   expect(addon.eval("return #ns.errors"), "no errors").toBe(0);
+});
+
+it("Y1-2 the open roster is drawn once a frame, and only for you and group members' unit events", () => {
+  const addon = loggedIn("", ON);
+  addon.world.setUnit("party1", { name: "Pal", class: "MAGE", className: "Mage", isPlayer: true });
+  say(addon, "loot roster");
+  addon.advance(0.5);
+  addon.eval(`__paints = 0 local OL = ns.GetModule("OfficerLoot") local draw = OL.DrawRows
+    OL.DrawRows = function(...) __paints = __paints + 1 return draw(...) end`);
+  for (let i = 1; i <= 30; i++) addon.fire("UNIT_FLAGS", `nameplate${i}`);
+  addon.fire("UNIT_FLAGS");
+  addon.advance(0.5);
+  expect(addon.eval("return __paints"), "30 mobs' flags (and one with no unit): not drawn").toBe(0);
+  addon.fire("UNIT_FLAGS", "party1");
+  addon.fire("UNIT_CONNECTION", "player");
+  addon.fire("GROUP_ROSTER_UPDATE");
+  addon.advance(0.5);
+  expect(addon.eval("return __paints"), "a member's, yours and the roster's: drawn once").toBe(1);
 });
 
 it("the roster: T.SPACE.gap in from the panel's edge on every side (a HUD card's padding), and as tall as its padding and lines", () => {
@@ -213,4 +234,12 @@ it("the roster of 40 stays on the screen: the lines are cut to the room under it
   expect([bottom668 >= 0, at668.length, at668[at668.length - 1]], "835x668: cut shorter still").toEqual([true, 32, "+10 more"]);
   const [bottom1080, at1080] = full(1920, 1080);
   expect([bottom1080 >= 0, at1080.length, at1080[at1080.length - 1]], "a tall screen: every member, and no count line").toEqual([true, 41, "Pal40"]);
+});
+
+it("reserves compare Russian names and item names without regard to case, and the ones saved before still match", () => {
+  const addon = loggedIn(ROLL_ENV, ON);
+  const norms = addon.eval('local OL = ns.GetModule("OfficerLoot") return { OL.Norm("Игрок-Realm"), OL.Same("Игрок", "игрок"), OL.Item("Железная руда").lname }');
+  expect(norms, "names and the saved item name are in small letters, the realm cut").toEqual(["игрок", true, "железная руда"]);
+  const old = addon.eval('local OL = ns.GetModule("OfficerLoot") return OL.Match({ lname = "Железная руда" }, OL.Item("железная РУДА"))');
+  expect(old, "a reserve saved with a Cyrillic capital still matches").toBe(true);
 });

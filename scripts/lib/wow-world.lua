@@ -90,6 +90,8 @@ function GetRealmName() return world.realm end
 -- Its name without spaces or hyphens (PlayerScriptDocumentation.lua's GetNormalizedRealmName).
 function GetNormalizedRealmName() return (world.realm:gsub("[ %-]", "")) end
 
+-- The marks the client writes numbers with (its GlobalStrings; the game spells both names this way): English reads 1,500.5.
+DECIMAL_SEPERATOR, LARGE_NUMBER_SEPERATOR = ".", ","
 -- The locale, frame rate, latency and screen size a test may change.
 function GetLocale() return world.locale end
 function GetFramerate() return 60 end

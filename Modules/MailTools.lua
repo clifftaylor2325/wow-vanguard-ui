@@ -77,8 +77,8 @@ end
 
 -- Whether a mail passes the filter and holds every word typed (in any case).
 function MT.Matches(m, query)
-  local hay = (m.sender .. " " .. m.subject .. " " .. m.link):lower()
-  for word in (query or ""):lower():gmatch("%S+") do
+  local hay = ns.Lower(m.sender .. " " .. m.subject .. " " .. m.link)
+  for word in ns.Lower(query or ""):gmatch("%S+") do
     if not hay:find(word, 1, true) then return false end
   end
   return keeps(MT.filter, m)
@@ -261,7 +261,7 @@ end
 -- The preset with a name (any case), and its place in the list.
 local function preset(name)
   for i, p in ipairs(MT.settings.presets) do
-    if p.name:lower() == (name or ""):lower() then return p, i end
+    if ns.Lower(p.name) == ns.Lower(name or "") then return p, i end
   end
 end
 
@@ -277,9 +277,9 @@ end
 -- Whether an item's name holds one of the preset's words (any word when there are none).
 local function wanted(name, words)
   local any = false
-  for word in words:lower():gmatch("[^,%s]+") do
+  for word in ns.Lower(words):gmatch("[^,%s]+") do
     any = true
-    if name:lower():find(word, 1, true) then return true end
+    if ns.Lower(name):find(word, 1, true) then return true end
   end
   return not any
 end

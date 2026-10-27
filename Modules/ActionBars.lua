@@ -280,9 +280,12 @@ local function usableState(slot)
   return "unusable"
 end
 
--- Dims an action that can't be used now; blue when it's for lack of power.
+-- Dims an action that can't be used now; blue when it's for lack of power. Two usable events
+-- come for most changes and each reaches every button, so an unchanged state paints nothing.
 local function updateUsable(b)
-  b.usable = usableState(b.action)
+  local state = usableState(b.action)
+  if state == b.usable then return end
+  b.usable = state
   paintIcon(b)
 end
 

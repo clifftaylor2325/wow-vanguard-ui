@@ -149,6 +149,15 @@ it("first-run setup: a profile of its own copies the shared one without a reload
   const fork = (name) => addon.eval(`return ns.ForkName(${JSON.stringify(name)})`);
   expect([fork("name"), fork("Ælfric"), fork("Ææ"), fork(undefined)], "a taken name is numbered; letters a profile can't hold are dropped").toEqual(["name 2", "lfric", "Character", "Character"]);
 });
+it("Y8-2 first-run setup: once setup changes the shared profile, Back doesn't reach the Profile step", () => {
+  const addon = loggedIn(CLICK_LUA, { firstRun: true, savedVariables: SET_UP_ACCOUNT });
+  setupClick(addon, "next");
+  addon.eval('__click("Centered: healing")');
+  setupClick(addon, "next");
+  setupClick(addon, "back");
+  expect([setupState(addon).step, addon.eval("return Vanguard_Setup.back:IsShown()")], "Back stops at the layout step, so the change can't be left in Default by a later profile of its own").toEqual([2, false]);
+});
+
 it("first-run setup: once a profile of its own is made, setup opened again doesn't offer the Profile step", () => {
   const addon = loggedIn(CLICK_LUA, { firstRun: true, savedVariables: SET_UP_ACCOUNT });
   addon.eval('__click("A profile of its own")');

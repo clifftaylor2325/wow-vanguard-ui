@@ -160,3 +160,12 @@ it("coexist: an off answer whose keys another row turned partly back on still of
   addon.eval('ns.Options.Show("modules") __click("Turn Vanguard\'s window looks back on")');
   expect(addon.eval('return ns.Settings("Windows").windows'), "and they come back").toBe(true);
 });
+
+it("Y3-2 coexist: Clique's row says its bindings don't reach Vanguard's unit and raid frames", () => {
+  const addon = loggedIn(CLICK_LUA + loadedEnv("Clique"));
+  expect(cardTexts(addon), "the click-casting question, with the also sentence").toEqual([
+    "Other addons",
+    "Clique is loaded and also does click casting. Vanguard's unit and raid frames aren't signed up with Clique, so its click bindings don't work on them.",
+    "Turn off Click casting", "Keep both",
+  ]);
+});

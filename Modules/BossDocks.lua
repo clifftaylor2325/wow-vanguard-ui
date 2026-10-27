@@ -34,9 +34,10 @@ function BD.HasDBM()
   return type(dbt) == "table" and type(dbt.SetOption) == "function"
 end
 
--- Whether BigWigs is loaded.
+-- Whether BigWigs is installed: its always-loaded BigWigsLoader, or its core, which loads on
+-- demand (in a raid zone or on a pull), so outside an instance only the loader is there.
 function BD.HasBigWigs()
-  return type(_G.BigWigs) == "table"
+  return type(_G.BigWigsLoader) == "table" or type(_G.BigWigs) == "table"
 end
 
 -- A spot's center as whole x, y from the middle of the screen, in UIParent's units.

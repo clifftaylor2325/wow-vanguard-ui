@@ -30,6 +30,9 @@ it("boss docks: BigWigs gets directions, neither loaded says so, and the module 
   const bigwigs = loggedIn("BigWigs = {}");
   bigwigs.slash("dock");
   expect([chatHas(bigwigs, /BigWigs: drag its normal bars' anchor to Boss timers \(360, -?\d+ from the middle of the screen\)\./), chatHas(bigwigs, /emphasized bars' anchor to Boss timers, soon/)], "where to drag each kind").toEqual([true, true]);
+  const loaderOnly = loggedIn("BigWigsLoader = {}");
+  loaderOnly.slash("dock");
+  expect(chatHas(loaderOnly, /BigWigs: drag its normal bars' anchor to Boss timers/), "Y3-1: only the loader (the core loads in a raid zone): directions too").toBe(true);
   const none = loggedIn();
   none.slash("dock");
   expect(chatHas(none, /Neither Deadly Boss Mods nor BigWigs is loaded\./), "neither").toBe(true);

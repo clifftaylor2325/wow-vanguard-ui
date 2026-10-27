@@ -1150,14 +1150,14 @@ end
 
 -- Whether a row's caption, as shown or in English (row.english), contains the (lower-case) text.
 local function captionHas(row, text)
-  return type(row[2]) == "string" and (row[2] .. " " .. (row.english or "")):lower():find(text, 1, true) ~= nil
+  return type(row[2]) == "string" and ns.Lower(row[2] .. " " .. (row.english or "")):find(text, 1, true) ~= nil
 end
 
 -- Whether a page's title (or its English) or any row's caption (a card title is no row's) contains the (lower-case)
 -- text, or the search lists one of its rows (O.RowMatches: keywords, choice names, a note), so the nav never dims a
 -- hit's page.
 local function pageMatches(page, text)
-  if O.BothTongues(page.title):lower():find(text, 1, true) then return true end
+  if ns.Lower(O.BothTongues(page.title)):find(text, 1, true) then return true end
   local rows = rowsOf(page)
   for i, row in ipairs(rows) do
     if row[1] ~= "header" and captionHas(row, text) then return true end
@@ -1204,7 +1204,7 @@ end
 -- Scrolls the current page to the first row with the text in its caption (a trailing " (reload)" is ignored), and marks it.
 function O.JumpTo(text)
   local view = pages[O.current]
-  local w = view and firstRow(view, ((text or ""):gsub(" %(reload%)$", "")):lower())
+  local w = view and firstRow(view, ns.Lower(((text or ""):gsub(" %(reload%)$", ""))))
   if not w then return end
   showCardOf(view, w)
   view:ScrollTo(w.pageY - JUMP_ABOVE)
@@ -1250,7 +1250,7 @@ end
 -- Filters the nav by search text: pages that don't match fade; the settings that match are listed under the box
 -- (Core/OptionsSearch.lua); Enter opens the first.
 function O.Search(text)
-  text = (text or ""):lower()
+  text = ns.Lower(text or "")
   if window and window.found then window.found:Hide() end
   matchPages(text)
   O.ShowHits(text)

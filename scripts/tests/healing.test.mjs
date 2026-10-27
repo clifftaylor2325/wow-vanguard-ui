@@ -69,6 +69,25 @@ it("buff watch: one aura pass per aura change, nothing on health, the names and 
   expect(healing(addon, 1).missing, "a fight that hides auras takes the marker away").toBe(false);
 });
 
+it("Y1-4 buff watch: an aura event that only refreshes auras reads no aura list; one that adds, removes or resets does", () => {
+  const addon = loggedIn(UNITS_ENV + RAID_ENV + HEALING_ENV + AURA_LIST);
+  addon.eval('__spawn(1, "raid1")');
+  buffCalls(addon);
+  // Fires UNIT_AURA for raid1 with the given update info (Lua).
+  const aura = (info) => addon.eval(`__wfgStub.fire("UNIT_AURA", "raid1", ${info})`);
+  aura("{ isFullUpdate = false, updatedAuraInstanceIDs = { 7, 8 } }");
+  aura("{ isFullUpdate = false, addedAuras = {}, removedAuraInstanceIDs = {}, updatedAuraInstanceIDs = { 9 } }");
+  expect(buffCalls(addon).list, "two refreshes: no pass over the buffs").toBe(0);
+  addon.eval("__buffs.raid1 = { ['Arcane Intellect'] = true }");
+  aura("{ isFullUpdate = false, addedAuras = { { auraInstanceID = 10 } } }");
+  expect([buffCalls(addon).list, healing(addon, 1).missing], "a buff added: read, and the marker goes").toEqual([1, false]);
+  aura("{ isFullUpdate = false, removedAuraInstanceIDs = { 10 } }");
+  aura("{ isFullUpdate = true }");
+  aura("nil");
+  aura("{ isFullUpdate = { __secret = true } }");
+  expect(buffCalls(addon).list, "removed, a full update, no info and a hidden flag: each read").toBe(4);
+});
+
 it("healing reads: a hidden number goes through untouched, a missing call or a non-number is nil, never tested for truth", () => {
   const addon = loggedIn(UNITS_ENV + RAID_ENV + CLICK_LUA + HEALING_ENV + "CreateUnitHealPredictionCalculator = nil");
   // Runs setup, then reads the fallback prediction and threat color: [incoming is the secret, shields is, incoming, shields, strip colored].

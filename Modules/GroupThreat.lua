@@ -17,8 +17,11 @@ local GT = ns.Module("GroupThreat", { defaults = { show = false } })
 
 -- The panel's width, a line's height, its padding (a HUD card's, T.SPACE.gap), and most rows.
 GT.WIDTH, GT.ROW, GT.PAD, GT.MAX = 150, 16, T.SPACE.gap, 5
--- The events that move threat or change who is compared.
-GT.EVENTS = { "UNIT_THREAT_LIST_UPDATE", "UNIT_THREAT_SITUATION_UPDATE", "PLAYER_TARGET_CHANGED", "GROUP_ROSTER_UPDATE" }
+-- The events that move threat: in a raid they come about every frame, so the panel reads them at most every
+-- GT.EVERY seconds. The events that change who is compared are drawn on the next frame.
+GT.THREAT_EVENTS = { "UNIT_THREAT_LIST_UPDATE", "UNIT_THREAT_SITUATION_UPDATE" }
+GT.NOW_EVENTS = { "PLAYER_TARGET_CHANGED", "GROUP_ROSTER_UPDATE" }
+GT.EVERY = 0.25
 
 -- Reading -------------------------------------------------------------------------------------
 
@@ -126,9 +129,29 @@ local function build()
   ns.Mover(f, "groupthreat", L["Group threat"], GT.SPOT)
 end
 
+-- A threat event came in: the next tick reads threat.
+function GT.Dirty()
+  GT.dirty = true
+end
+
+-- Reads threat and draws it when a threat event came in since the last tick. The job runs whether the
+-- panel shows or not: the panel hides itself when nobody has threat, and only this shows it again.
+function GT.Tick()
+  if not GT.dirty then return end
+  GT.dirty = false
+  GT.Update()
+end
+
+-- Draws the panel on the next frame (a target switch or a roster change shows at once).
+function GT.Soon()
+  ns.Soon("group threat", GT.Update)
+end
+
 -- Module entry point (Core/Modules.lua): built, and listening, only when switched on.
 function GT.Enable(settings)
   if not settings.show then return end
   build()
-  for _, event in ipairs(GT.EVENTS) do ns.On(event, function() ns.Soon("group threat", GT.Update) end) end
+  for _, event in ipairs(GT.THREAT_EVENTS) do ns.On(event, GT.Dirty) end
+  for _, event in ipairs(GT.NOW_EVENTS) do ns.On(event, GT.Soon) end
+  ns.Every("group threat", GT.EVERY, GT.Tick)
 end

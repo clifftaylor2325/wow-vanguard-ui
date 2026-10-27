@@ -46,6 +46,9 @@ RF.CLEAR_LEFT = 148
 RF.narrowSpots = {}
 -- How large the grid is drawn now: the compact size for the group times the raid mover's Scale (RF.Fit sets it).
 RF.tileScale = 1
+-- How close two scales must be to count as the same: the client keeps a scale as a float32, so GetScale
+-- comes back a hair off what SetScale was given (0.8 reads 0.80000001192093).
+RF.SCALE_EPSILON = 0.0001
 
 local MAX_UNITS = 40
 -- The class color's share of a softened bar; the rest is the panel color.
@@ -760,7 +763,7 @@ end
 -- inherits neither); when the scale changed, borders and pixel sizes are worked out again for it.
 local function scaleHeader()
   RF.header:SetAlpha(select(2, ns.MoverLook("raid")))
-  if RF.header:GetScale() == RF.tileScale then return end
+  if math.abs(RF.header:GetScale() - RF.tileScale) < RF.SCALE_EPSILON then return end
   RF.header:SetScale(RF.tileScale)
   T.Rescale()
 end

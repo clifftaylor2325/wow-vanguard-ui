@@ -578,3 +578,26 @@ it("raid frames: the raid mover's Scale and Opacity reach the tiles; a Scale abo
   addon.slash("preview 5");
   expect(addon.eval("return { Vanguard_RaidPreview:GetScale(), Vanguard_RaidPreview:GetAlpha() }"), "the preview is drawn at the same size and opacity").toEqual([1.5, 0.5]);
 });
+
+// TEST-ONLY float32 scales: the client keeps a widget's scale as a C float, so GetScale hands back the nearest float32.
+const FLOAT32_SCALE = `
+  local function f32(x)
+    if type(x) ~= "number" or x == 0 then return x end
+    local step = 2 ^ (math.floor(math.log(x) / math.log(2)) - 23)
+    return math.floor(x / step + 0.5) * step
+  end
+  __wfgStub.methods.SetScale = function(self, s) self.__scale = f32(s) end
+`;
+
+it("Y1-1 raid frames: a roster change at an unchanged scale works out no pixel sizes again, though the client rounds scales", () => {
+  const addon = loggedIn(FLOAT32_SCALE + UNITS_ENV + RAID_ENV + "__members = 25 GetNumGroupMembers = function() return __members end");
+  addon.eval(`ns.SetMoverScale("raid", 1.15)
+    __rescales = 0 local rescale = ns.Theme.Rescale ns.Theme.Rescale = function(...) __rescales = __rescales + 1 return rescale(...) end`);
+  addon.fire("GROUP_ROSTER_UPDATE");
+  addon.advance(0.1);
+  expect(addon.eval("return { Vanguard_Raid:GetScale() ~= ns.GetModule('RaidFrames').tileScale, __rescales }"), "the header's scale reads a hair off, and nothing is worked out again").toEqual([true, 0]);
+  addon.eval("__members = 40");
+  addon.fire("GROUP_ROSTER_UPDATE");
+  addon.advance(0.1);
+  expect(addon.eval("return __rescales"), "a real change (40 players: the compact size) still is").toBe(1);
+});

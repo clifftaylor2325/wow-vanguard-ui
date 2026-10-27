@@ -55,6 +55,15 @@ local function coordsAt(list)
   end
 end
 
+-- The words of a /way line, with decimal commas read as points when both coordinates have one
+-- ("45,2 61,8"; only the first two, so a title keeps its own); otherwise every comma is a space
+-- ("45,61", "45.2, 61.8" and "45,61 70", where 70 is the title).
+local function wordsOf(text)
+  text = text or ""
+  if text:find("%d,%d+,?%s+%d+,%d") then return words((text:gsub("(%d),(%d)", "%1.%2", 2))) end
+  return words(text)
+end
+
 -- The map the player is on, or nil.
 local function playerMap()
   return C_Map.GetBestMapForUnit and C_Map.GetBestMapForUnit("player")
@@ -73,10 +82,10 @@ end
 -- The map called name in the player's world: the exact name (any case), else
 -- the one map whose name starts with it; nil when none or several do.
 local function mapNamed(name)
-  local here, want, found = playerMap(), name:lower(), nil
+  local here, want, found = playerMap(), ns.Lower(name), nil
   if not here then return nil end
   for _, info in ipairs(C_Map.GetMapChildrenInfo(rootOf(here), nil, true) or {}) do
-    local n = info.name:lower()
+    local n = ns.Lower(info.name)
     if n == want then return info.mapID end
     if n:sub(1, #want) == want then found = found == nil and info.mapID or false end
   end
@@ -92,7 +101,7 @@ end
 
 -- A /way line as mapID, x and y (0 to 1) and title; nil and what chat says when it can't be read.
 function WP.Parse(text)
-  local list = words(text)
+  local list = wordsOf(text)
   local at = coordsAt(list)
   if not at then return nil, L["Can't set that waypoint: give the coordinates as x y, e.g. /way 45.2 61.8."] end
   local zone = table.concat(list, " ", 1, at - 1)

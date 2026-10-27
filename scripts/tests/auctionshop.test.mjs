@@ -722,3 +722,29 @@ const restrictedLog = (addon) => list(addon.eval(`local out = {}
   return out`));
 // A Lua list as a JS array (an empty Lua table comes back as {}).
 const list = (v) => (Array.isArray(v) ? v : []);
+
+// What ParseMoney reads each text as, with the client's number marks set (`marks` is Lua: the decimal mark, then the thousands mark).
+function pricesWith(marks, texts) {
+  const addon = atAuctionHouse(`DECIMAL_SEPERATOR, LARGE_NUMBER_SEPERATOR = ${marks}`);
+  return addon.eval(`local out = {} for i, t in ipairs({ ${texts.map((t) => JSON.stringify(t)).join(", ")} }) do out[i] = ${HELPER}.ParseMoney(t) or false end return out`);
+}
+
+it("a typed price is read with the client's number marks: German 1.500 is 1500 gold and 2,5 is 2.5 gold", () => {
+  const texts = ["2,5", "1.500", "12.345", "1.5", "2.50", "0,5", "1,500", "1g 50s", "2.5"];
+  expect(pricesWith('",", "."', texts), "decimal comma, thousands point").toEqual([25000, 15000000, 123450000, 15000, 25000, 5000, 15000, 15000, 25000]);
+});
+
+it("a typed price on a Russian or French client has a decimal comma and no thousands mark", () => {
+  expect(pricesWith('",", ""', ["2,5", "1.500", "1,500"]), "1.500 is one and a half gold, as Lua reads it").toEqual([25000, 15000, 15000]);
+});
+
+it("a typed price on an English client, or one with no number marks, reads 1,500 as 1500 gold and 2,5 as nothing", () => {
+  expect(pricesWith('".", ","', ["1,500", "2,5", "2.5"]), "English marks").toEqual([15000000, false, 25000]);
+  expect(pricesWith("nil, nil", ["1,500", "2,5"]), "missing globals fall back to English").toEqual([15000000, false]);
+});
+
+it("a typed price's thousands mark counts only between groups of three digits, with or without a decimal part after", () => {
+  expect(pricesWith('".", ","', ["1,2345", "12,3456", "1,234.50", "12,345,6", "123,456"]), "English: a bad group is refused; 1,234.50 is 1234.5 gold").toEqual([false, false, 12345000, false, 1234560000]);
+  expect(pricesWith('",", "."', ["1.234,5", "1.2345"]), "German: 1.234,5 is 1234.5 gold; a bad group reads as Lua reads it").toEqual([12345000, 12345]);
+});
+

@@ -320,6 +320,16 @@ local function onTile(fn)
   return function(_, unit) RF.ForUnit(unit, run) end
 end
 
+-- Whether a UNIT_AURA's update info says auras were only refreshed (none added or removed, no full update):
+-- that can't change whether a watched buff is on, so the buff list isn't read again.
+function RH.RefreshOnly(info)
+  if type(info) ~= "table" or ns.IsSecret(info.isFullUpdate) or info.isFullUpdate then return false end
+  return not (info.addedAuras and info.addedAuras[1]) and not (info.removedAuraInstanceIDs and info.removedAuraInstanceIDs[1])
+end
+
+-- The buff marker for the tile showing an aura event's unit.
+RH.OnAura = onTile(updateBuff)
+
 -- Event -> which part it refreshes (a health change refreshes the heal bars
 -- through RF.healthHooks: incoming heals are clamped to the missing health).
 local EVENTS = {
@@ -327,8 +337,8 @@ local EVENTS = {
   UNIT_HEAL_PREDICTION = onTile(updatePrediction),
   UNIT_ABSORB_AMOUNT_CHANGED = onTile(updatePrediction),
   UNIT_THREAT_SITUATION_UPDATE = onTile(updateThreat),
-  -- The buff marker follows the unit's auras and the roster (RF.Update), not health.
-  UNIT_AURA = onTile(updateBuff),
+  -- The buff marker follows the unit's auras and the roster (RF.Update), not health; a refresh is skipped.
+  UNIT_AURA = function(event, unit, info) if not RH.RefreshOnly(info) then RH.OnAura(event, unit) end end,
   SPELLS_CHANGED = onSpells,
   -- Logging in or zoning: read the list and your spells again.
   PLAYER_ENTERING_WORLD = function() RH.Forget() end,

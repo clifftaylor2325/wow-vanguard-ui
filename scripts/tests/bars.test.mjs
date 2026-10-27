@@ -796,3 +796,14 @@ it("an action button marks an item you wear with a thin ring, and drops it when 
   addon.eval("__actions[2].equipped = { __secret = true } ns.GetModule('ActionBars').UpdateButton(Vanguard_Bar1Button2)");
   expect(Object.values(ring(2)).includes(true), "a hidden answer counts as no").toBe(false);
 });
+
+it("Y2-4 bars: a usable event repaints only the buttons whose state changed", () => {
+  const addon = loggedIn(ACTIONS_ENV);
+  addon.eval("Vanguard_Bar1Button3.icon:SetVertexColor(1, 0, 0, 1)");
+  addon.fire("ACTIONBAR_UPDATE_USABLE");
+  addon.fire("SPELL_UPDATE_USABLE");
+  expect(button(addon, 1, 3).color.slice(0, 3), "still unusable: the icon not painted again").toEqual([1, 0, 0]);
+  addon.eval("__actions[3].usable = true");
+  addon.fire("ACTIONBAR_UPDATE_USABLE");
+  expect(button(addon, 1, 3).color[0] === 1 && button(addon, 1, 3).color[1] === 1, "usable now: painted, no longer dimmed").toBe(true);
+});

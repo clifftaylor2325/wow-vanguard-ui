@@ -18,14 +18,14 @@ end
 -- The position of the category called name (not case sensitive), or nil.
 local function find(name)
   for i, cat in ipairs(list()) do
-    if cat.name:lower() == name:lower() then return i end
+    if ns.Lower(cat.name) == ns.Lower(name) then return i end
   end
 end
 
 -- The sections of your categories, as BG.SECTIONS lists the built-in ones.
 function BG.CategorySections()
   local out = {}
-  for _, cat in ipairs(list()) do out[#out + 1] = { key = KEY .. cat.name:lower(), label = cat.name } end
+  for _, cat in ipairs(list()) do out[#out + 1] = { key = KEY .. ns.Lower(cat.name), label = cat.name } end
   return out
 end
 
@@ -34,7 +34,7 @@ function BG.CategoryOf(itemID)
   local id = ns.PlainNumber(itemID)
   if not id then return nil end
   for _, cat in ipairs(list()) do
-    if cat.items[id] then return KEY .. cat.name:lower() end
+    if cat.items[id] then return KEY .. ns.Lower(cat.name) end
   end
 end
 

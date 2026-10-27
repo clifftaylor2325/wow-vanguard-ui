@@ -218,6 +218,14 @@ it("with the switch on, the manager's essential and utility spells are drawn onc
   expect(shown(addon).map((c) => c.icon), "switched off: only the trinket").toEqual(["TEST-ONLY-ICON-Trinket"]);
 });
 
+it("Y2-3 the manager's cooldowns it hides until you add them are left out; other flags, a hidden or missing flag keep a spell", () => {
+  const addon = on(SPELLS_ENV + `Enum.CooldownSetSpellFlags = { HideAura = 1, HideByDefault = 2, SelectHighestLevelLinkedSpell = 4 }
+    __infos[11].flags = 2 __infos[12].flags = 5 __infos[14].flags = { __secret = true }
+    __sets[1] = { 13, 14, 15 } __infos[15] = { spellID = 502, isKnown = true, flags = 3 }`);
+  addon.eval("ns.GetModule('CooldownGaps').settings.tracked = true ns.GetModule('CooldownGaps').Rebuild()");
+  expect(addon.eval("local out = {} for i, id in ipairs(ns.GetModule('CooldownGaps').tracked) do out[i] = id end return out"), "Strike (hidden by default) and 502 with HideByDefault among other flags out; Rush (flags 5) and the hidden flag's spell in").toEqual([503, 501]);
+});
+
 it("a client without the manager's calls, or that refuses them, adds nothing and raises no error", () => {
   const settings = "ns.GetModule('CooldownGaps').settings.tracked = true ns.GetModule('CooldownGaps').Rebuild()";
   const none = on("");

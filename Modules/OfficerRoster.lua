@@ -175,10 +175,22 @@ function OL.ToggleRoster()
   OL.PaintRoster()
 end
 
+-- Draws the roster on the next frame, once however many events come in before then.
+function OL.SoonPaint()
+  ns.Soon("officer roster", OL.PaintRoster)
+end
+
+-- A unit event: drawn again only for you or a group member (a mob's or a nameplate's flags change all fight).
+function OL.SoonPaintMember(_, unit)
+  if type(unit) ~= "string" then return end
+  if unit == "player" or unit:find("^raid%d") or unit:find("^party%d") then OL.SoonPaint() end
+end
+
 -- Draws the roster again when the group changes.
 function OL.WatchRoster()
-  for _, event in ipairs({ "GROUP_ROSTER_UPDATE", "PLAYER_ROLES_ASSIGNED", "UNIT_CONNECTION", "UNIT_FLAGS", "PLAYER_DEAD", "PLAYER_ALIVE", "PLAYER_UNGHOST" }) do
-    ns.On(event, ns.Guard("officer roster", OL.PaintRoster))
+  for _, event in ipairs({ "GROUP_ROSTER_UPDATE", "PLAYER_ROLES_ASSIGNED", "PLAYER_DEAD", "PLAYER_ALIVE", "PLAYER_UNGHOST" }) do
+    ns.On(event, OL.SoonPaint)
   end
+  for _, event in ipairs({ "UNIT_CONNECTION", "UNIT_FLAGS" }) do ns.On(event, OL.SoonPaintMember) end
   T.OnChanged(OL.PaintRoster)
 end
