@@ -17,7 +17,10 @@ local I = ns.Inspect
 -- counted from 1).
 local function step(f, key)
   local n = tonumber(key:match("^#(%d+)$"))
-  if n and n >= 1 and type(f.GetChildren) == "function" then return (select(n, f:GetChildren())) end
+  if n and n >= 1 and type(f.GetChildren) == "function" then
+    local ok, child = pcall(function() return (select(n, f:GetChildren())) end)
+    return ok and child or nil
+  end
   return f[key]
 end
 

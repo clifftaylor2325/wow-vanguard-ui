@@ -291,7 +291,7 @@ local function refusal(phrase, list)
   if ns.TextLength(phrase) > CW.MAX_LENGTH then return ns.Format(L["A phrase can be at most {max} characters."], { max = CW.MAX_LENGTH }) end
   if #list >= CW.MAX_PHRASES then return ns.Format(L["Chat watch keeps at most {max} phrases; remove one first."], { max = CW.MAX_PHRASES }) end
   for _, p in ipairs(list) do
-    if p == phrase then return ns.Format(L['Already watching for "{phrase}".'], { phrase = phrase }) end
+    if ns.Lower(p) == phrase then return ns.Format(L['Already watching for "{phrase}".'], { phrase = phrase }) end
   end
 end
 

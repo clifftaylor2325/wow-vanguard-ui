@@ -2752,14 +2752,7 @@ T.UPPER_RANGES = {
 
 -- A text in capitals, the Latin-1 and Cyrillic letters too (T.UPPER_RANGES).
 function T.Upper(text)
-  text = text:upper()
-  for _, r in ipairs(T.UPPER_RANGES) do
-    local pattern = r[1] .. "([" .. string.char(r[2]) .. "-" .. string.char(r[3]) .. "])"
-    text = text:gsub(pattern, function(second)
-      if second ~= r[6] then return r[4] .. string.char(second:byte() + r[5]) end
-    end)
-  end
-  return text
+  return ns.FoldLetters(text:upper(), T.UPPER_RANGES)
 end
 
 -- Sets a styled font string's text, in capitals when its role says so (T.ROLES.section).
@@ -3241,6 +3234,7 @@ end
 function T.ApplyScale()
   if not T.Settings().pixelScale then return end
   ns.OutOfCombat(function()
+    if not T.Settings().pixelScale then return end
     UIParent:SetScale(T.PixelScale())
     T.Refresh()
     T.Rescale()

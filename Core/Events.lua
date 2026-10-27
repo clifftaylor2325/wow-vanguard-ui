@@ -89,7 +89,17 @@ ns.LOWER_RANGES = {
 function ns.Lower(text)
   text = text:lower()
   if not text:find("[\195\208]") then return text end
-  for _, r in ipairs(ns.LOWER_RANGES) do
+  return ns.FoldLetters(text, ns.LOWER_RANGES)
+end
+
+-- A text with the two-byte letters in ranges changed: each range is a lead byte, the second byte's range, the new
+-- lead byte, the step to the new second byte, and a second byte to leave alone. ns.Lower and the theme's capitals
+-- share it.
+---@param text string
+---@param ranges table[]
+---@return string
+function ns.FoldLetters(text, ranges)
+  for _, r in ipairs(ranges) do
     local pattern = r[1] .. "([" .. string.char(r[2]) .. "-" .. string.char(r[3]) .. "])"
     text = text:gsub(pattern, function(second)
       if second ~= r[6] then return r[4] .. string.char(second:byte() + r[5]) end

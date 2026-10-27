@@ -578,6 +578,14 @@ it("screen, scale and key changes in a fight queue their after-fight work once, 
   expect([addon.eval("return ns.QueuedCount()"), addon.eval("return #ns.errors")], "it all runs when the fight ends").toEqual([0, 0]);
 });
 
+it("pixel scale switched on and off again in a fight leaves the UI scale alone when it ends", () => {
+  const addon = loggedIn();
+  setCombat(addon, true);
+  addon.eval("UIParent:SetScale(0.9) ns.Theme.Settings().pixelScale = true ns.Theme.ApplyScale() ns.Theme.Settings().pixelScale = false");
+  setCombat(addon, false);
+  expect(addon.eval("return UIParent:GetScale()"), "the queued pixel scale sees the switch is off").toBe(0.9);
+});
+
 it("a painted frame's border stays one screen pixel after the frame's own scale changes (P1-1)", () => {
   const addon = loggedIn("GetPhysicalScreenSize = function() return 2560, 1440 end");
   addon.eval(`TEST_Scaled = ns.Theme.Panel(CreateFrame("Frame", nil, UIParent))`);

@@ -126,6 +126,8 @@ it("chat filter: your own words match in any case for Cyrillic and accented lett
   expect(deliver(addon, "ПРОДАМ золото дёшево", "Seller"), "a line in capitals is caught").toBe(true);
   addon.eval("table.insert(ns.Settings('ChatFilter').keywords, 'ÄRGER')");
   expect(deliver(addon, "viel ärger heute", "Old"), "a word saved in capitals by an older version still matches").toBe(true);
+  addon.slash("filter add ärger");
+  expect(addon.eval("return #ns.Settings('ChatFilter').keywords"), "and adding it again in small letters is refused as a duplicate").toBe(2);
 });
 
 it("chat filter: the repeat rule's shortest line counts letters, so a short Chinese line said twice passes", () => {
@@ -219,10 +221,14 @@ it("chat filter: a closed Filtered tab is made again on the next caught line, an
   deliver(addon, GOLD, "Goldy");
   addon.eval("ChatFrame3:Hide()");
   expect(deliver(addon, GOLD, "Goldy2"), "still caught").toBe(true);
+  // The Filtered window the filter sends to: its name, shown, and how many lines it holds.
   const window = () => addon.eval("local f = ns.GetModule('ChatFilter').window return { f:GetName(), f:IsShown(), #f.__messages }");
   expect(window(), "a new, shown Filtered window holds the line").toEqual(["ChatFrame4", true, 1]);
   deliver(addon, GOLD, "Goldy3");
   expect(window(), "the next line goes to it too, no third window").toEqual(["ChatFrame4", true, 2]);
+  addon.slash("filter hide");
+  addon.eval("ChatFrame4:Hide()");
+  expect([deliver(addon, GOLD, "Goldy4"), addon.eval("return ChatFrame5 == nil")], "in hide mode a closed tab is not made again").toEqual([true, true]);
   expect(addon.eval("return #ns.errors"), "no errors").toBe(0);
 });
 

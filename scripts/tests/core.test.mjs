@@ -257,6 +257,7 @@ it("/vg frame: #0 leads nowhere, and a frame that refuses its parent and parts s
     local function refuse() error("TEST-ONLY forbidden") end
     f.GetParent, f.GetRegions, f.GetChildren = refuse, refuse, refuse`);
   expect(said(addon, "frame UIParent.#0")[0], "a child step of 0 says no frame, not an error").toMatch(/^No frame called UIParent\.#0/);
+  expect(said(addon, "frame ProbeLocked.#1")[0], "a child step on a frame that refuses its children says no frame").toMatch(/^No frame called ProbeLocked\.#1/);
   expect(said(addon, "frame ProbeLocked deep"), "no parent, no ancestors, and no parts").toEqual([
     expect.stringMatching(/^ProbeLocked \(Frame\): .*, under nothing$/), "  no anchors", "  0 region(s):", "  0 child frame(s):"]);
   expect(addon.eval("return #ns.errors"), "no errors").toBe(0);

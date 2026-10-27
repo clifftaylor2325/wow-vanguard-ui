@@ -182,8 +182,9 @@ end
 -- Whether a caught line can go anywhere: hidden, or to a Filtered tab that is still there (a closed
 -- or renamed one is let go and made again when the fight is over).
 local function canCatch()
+  if CF.settings.mode == "hide" then return true end
   if CF.window and (CF.FindWindow() ~= CF.window or not isOpen(CF.window)) then reopen() end
-  return CF.settings.mode == "hide" or CF.window ~= nil
+  return CF.window ~= nil
 end
 
 -- Catches a line: sent to the Filtered tab, or just counted when hidden.
@@ -284,7 +285,7 @@ local function refusal(word, list)
   if ns.TextLength(word) > CF.MAX_LENGTH then return ns.Format(L["A word can be at most {max} characters."], { max = CF.MAX_LENGTH }) end
   if #list >= CF.MAX_KEYWORDS then return ns.Format(L["Chat filter keeps at most {max} words; remove one first."], { max = CF.MAX_KEYWORDS }) end
   for _, w in ipairs(list) do
-    if w == word then return ns.Format(L['Already filtering "{word}".'], { word = word }) end
+    if ns.Lower(w) == word then return ns.Format(L['Already filtering "{word}".'], { word = word }) end
   end
 end
 
