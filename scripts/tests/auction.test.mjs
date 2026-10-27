@@ -386,10 +386,33 @@ it("a finished scan spends the 15 minutes from its start, and your own listings 
   expect(chatHas(addon, /Auction house scanned: 6 listings, prices for 1 items\. 3 of them were yours and are left out\./), "says so").toBe(true);
   expect([addon.eval("return ns.AuctionPrices.House().lastScan"), lastLine(addon)], "the 15 minutes run from the start").toEqual([1790000000, "Scanned 2 min ago · 1 items"]);
 });
+// Closes the house, puts both scan stamps `ahead` seconds past the clock, and opens it again.
+function reopenWithStamps(addon, ahead) {
+  addon.world.closeAuctionHouse();
+  addon.eval(`ns.AuctionPrices.House().lastScan = __now + ${ahead} ns.AuctionPrices.Store().scannedAt = __now + ${ahead}`);
+  addon.world.openAuctionHouse();
+  addon.update(0);
+}
 it("Y6-2 a scan stamped in the future (the clock was ahead, then put right) waits one gap at most", () => {
   const addon = atAuctionHouse();
-  addon.eval("ns.AuctionPrices.House().lastScan = __now + 86400 ns.AuctionPrices.Store().scannedAt = __now + 86400");
+  reopenWithStamps(addon, 86400);
   expect(addon.eval(`return ${HELPER}.NextScanIn()`), "15 minutes, not a day and 15 minutes").toBe(900);
+});
+it("Z10-1 the wait after a stamp from the future runs down from the day the house opened", () => {
+  const addon = atAuctionHouse();
+  reopenWithStamps(addon, 3600);
+  addon.eval("__now = __now + 600");
+  expect(addon.eval(`return ${HELPER}.NextScanIn()`), "600 s later, 300 left (not 900 until the stamp passes)").toBe(300);
+  addon.eval("__now = __now + 300");
+  expect(addon.eval(`return ${HELPER}.NextScanIn()`), "the full gap later, the scan is open").toBe(0);
+});
+it("Z10-1 a scan stamped in the past is left alone, and so is any stamp while the client can't say the time", () => {
+  const addon = atAuctionHouse();
+  reopenWithStamps(addon, -300);
+  expect(addon.eval("return { ns.AuctionPrices.House().lastScan - __now, ns.AuctionPrices.Store().scannedAt - __now }"), "a real stamp stays where it was").toEqual([-300, -300]);
+  addon.eval("time = nil");
+  reopenWithStamps(addon, 3600);
+  expect(addon.eval("return { ns.AuctionPrices.House().lastScan - __now, #ns.errors }"), "no clock: nothing to clamp to, nothing wiped").toEqual([3600, 0]);
 });
 it("switches: no tabs, no scan button", () => {
   const off = atAuctionHouse("", { savedVariables: "VanguardDB.profiles = { Default = { AuctionHelper = { panel = false } } }" });
