@@ -1107,6 +1107,22 @@ it("auto-accept: summons, resurrections and duels, each off until switched on", 
   expect(chatHas(on, /summon from <name> to TEST-ONLY Vale/) && chatHas(on, /resurrection from <name>/) && chatHas(on, /duel from someone/), "and said in chat (a hidden name reads as someone)").toBe(true);
 });
 
+it("auto-accept: a resurrection waits out the corpse-recovery delay, and the game's prompt stays up", () => {
+  const SWITCH = { savedVariables: "VanguardDB.profiles = { Default = { AutoAccept = { resurrect = true } } }" };
+  // The answers recorded after a resurrection offer while the game reports `delay` (Lua expression).
+  const answersWith = (delay) => {
+    const addon = loggedIn(PROMPT_ENV + `GetCorpseRecoveryDelay = function() return ${delay} end`, SWITCH);
+    addon.fire("RESURRECT_REQUEST", "<name>");
+    return addon.eval("return table.concat(__answers, ',')");
+  };
+  expect(answersWith("90"), "a delay left: nothing answered, nothing closed").toBe("");
+  expect(answersWith("0"), "no delay: accepted").toContain("resurrect");
+  expect(answersWith("__wfgWorld.secret(30)"), "a hidden delay counts as none").toContain("resurrect");
+  const bare = loggedIn(PROMPT_ENV, SWITCH);
+  bare.fire("RESURRECT_REQUEST", "<name>");
+  expect(bare.eval("return __answers[1]"), "a client without the call: accepted").toBe("resurrect");
+});
+
 it("auto-accept: a summon offered in a fight is taken when the fight ends", () => {
   const addon = loggedIn("", { savedVariables: INVITE_SWITCHES_ON });
   addon.eval("__wfgWorld.summon = { summoner = '<name>', area = 'TEST-ONLY Vale' }");
