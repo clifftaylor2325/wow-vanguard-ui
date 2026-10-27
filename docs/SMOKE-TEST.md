@@ -2780,6 +2780,12 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: a small panel under the quantity window holds Stack and Max and a line saying what Max costs; Stack buys one merchant stack of the item; `/vg errors` is empty. [Needs in-game check: the Forever client's C_MerchantFrame.GetItemInfo gives the price, pack size and stock the panel needs, now that the old GetMerchantItemInfo is gone.]
 - If it fails, paste: the item, whether the panel showed and what its line read, and `/vg errors`.
 
+### 33.102 Click-cast Add key into a fight
+
+- Do: open `/vg` → Click casting → Keys while hovering a frame and click Add key, so it reads "Press a key, click or scroll...". Before pressing anything, get pulled into a fight (pull a mob with a second character, or stand where one aggroes). Press 1 (an ability on your bar). After the fight, click Add key in the fight's place again, in a fight. Run `/vg errors`.
+- Expect: as the fight starts, Add key reads "Add key" again; pressing 1 fires the ability on your bar and no spell picker opens; clicking Add key during a fight changes nothing; `/vg errors` is empty. [Needs in-game check: the button's keyboard is released as the fight starts, before the client's lockdown, so the first key of the fight reaches the game's binding.]
+- If it fails, paste: what Add key read when the fight started, whether 1 fired or a spell picker opened, and `/vg errors`.
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ## When you are done

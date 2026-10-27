@@ -69,12 +69,29 @@ function W.Modifiers()
   return (held(IsAltKeyDown) and "ALT-" or "") .. (held(IsControlKeyDown) and "CTRL-" or "") .. (held(IsShiftKeyDown) and "SHIFT-" or "")
 end
 
+-- The captures armed right now (weak keys: one that is gone drops out), each stopped when a fight starts.
+local armed = setmetatable({}, { __mode = "k" })
+
 -- Ends capturing: keyboard off, caption back.
 local function stopCapture(b)
+  armed[b] = nil
   b.capturing = false
   b:EnableKeyboard(false)
   b.text:SetText(b.caption)
 end
+
+-- Starts capturing: keyboard on, the caption says what to press. Not in a fight: the keyboard can't be set
+-- to pass keys on then, so an armed capture would eat the fight's first key.
+local function startCapture(b)
+  if ns.InCombat() then return end
+  armed[b] = true
+  b.capturing = true
+  b:EnableKeyboard(true)
+  b.text:SetText(L["Press a key, click or scroll..."])
+end
+
+-- A fight starting ends every armed capture, so no key of the fight is swallowed.
+ns.On("PLAYER_REGEN_DISABLED", function() for b in pairs(armed) do stopCapture(b) end end)
 
 -- Captured one binding: hand it over and stop.
 local function captured(b, key)
@@ -106,7 +123,7 @@ end
 function W.KeyCapture(parent, caption, onKey)
   local b = ns.DialogButton(parent, caption, 220)
   b.caption, b.onKey = caption, onKey
-  b:SetScript("OnClick", ns.Guard("click key capture", function(self) self.capturing = true; self:EnableKeyboard(true); self.text:SetText(L["Press a key, click or scroll..."]) end))
+  b:SetScript("OnClick", ns.Guard("click key capture", startCapture))
   b:SetScript("OnKeyDown", ns.Guard("key capture key", onKeyDown))
   b:SetScript("OnMouseDown", ns.Guard("key capture mouse", onMouseDown))
   b:EnableMouseWheel(true)
