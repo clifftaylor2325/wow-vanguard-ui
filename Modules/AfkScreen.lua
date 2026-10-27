@@ -171,6 +171,7 @@ end
 -- Something needs you (a ready check, a popup): the screen goes at once, with no fade, so your first click lands
 -- on the prompt, and stays away until you're next marked away (as a click puts it away).
 function AFK.StepAside()
+  if not AFK.Away() then return end
   AFK.dismissed = true
   AFK.frame:Hide()
   AFK.frame:SetAlpha(1)

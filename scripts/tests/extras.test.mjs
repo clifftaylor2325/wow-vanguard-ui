@@ -677,6 +677,16 @@ it("the AFK screen: clicks, keys and fights put it away; what the client can't s
   bare.eval("ns.GetModule('AfkScreen').Paint()");
   expect(bare.eval("local f = Vanguard_AfkScreen return { f.name:GetText(), f.who:GetText(), f.xp:IsShown() }"), "a client that can't say much gets a blank card, no errors").toEqual(["", "", false]);
 });
+it("the AFK screen: a ready check or popup while you're at the keyboard doesn't keep it away next time", () => {
+  const addon = loggedIn(UNITS_ENV + AFK_ENV);
+  addon.fire("READY_CHECK", "TEST-ONLY Leader", 30);
+  addon.eval("StaticPopup_Show('TEST-ONLY')");
+  addon.eval("__afk = true");
+  addon.fire("PLAYER_FLAGS_CHANGED", "player");
+  expect(addon.eval("return Vanguard_AfkScreen:IsShown()"), "marked away after both: the screen shows").toBe(true);
+  addon.fire("READY_CHECK", "TEST-ONLY Leader", 30);
+  expect(addon.eval("return { Vanguard_AfkScreen:IsShown(), Vanguard_AfkScreen:GetAlpha() }"), "a ready check while away still puts it away at once").toEqual([false, 1]);
+});
 it("the AFK screen's backdrop: your faction's passage under the card, in its heading font and crest color", () => {
   const addon = loggedIn(UNITS_ENV + AFK_ENV + CLICK_LUA + '__faction = "Alliance" UnitFactionGroup = function() return __faction end');
   addon.eval('ns.Theme.Settings().faction = "auto" ns.Theme.Refresh()');
