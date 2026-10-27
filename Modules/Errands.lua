@@ -22,6 +22,8 @@ local ER = ns.Module("Errands", {
 })
 
 ER.TRAIN_STEPS, ER.BUY_EVERY = 30, 0.2
+-- How long Keep stocked waits for a purchase to show in the bags before calling it short.
+ER.ARRIVE_WAIT = 3
 ER.FLIGHT_POLL, ER.FLIGHT_MAX, ER.TAKEOFF_WAIT = 0.5, 3600, 10
 ER.BAR_W, ER.BAR_H = 200, 14
 -- Where the flight and boat bars start, above the cluster: one spot, as you never ride both at once.
@@ -355,23 +357,42 @@ local function buyChunk(run)
   if not order or not ns.GetModule("Merchant").Sells(order.index, order.id) then return false end
   local count = wholeStacks(math.min(order.need, math.max(ns.PlainNumber(ask("GetMerchantItemMaxStack", order.index)) or 1, 1)), order.stack)
   if math.ceil(order.unit * count) > cash() then return false end
-  run.pending = { order = order, count = count, before = owned(order.id) }
+  run.pending = { order = order, count = count, before = owned(order.id), checks = 0 }
   ask("BuyMerchantItem", order.index, count)
   return true
 end
 
--- Notes what the last purchase brought (how many more of the item you carry now, up to what was bought); false
--- when it fell short (bags full, a stock limit, not enough money), which ends the run. A client that can't
--- count items is trusted. Running it twice notes nothing the second time.
-local function settle(run)
+-- How many of the pending purchase reached the bags (all of it on a client that can't count items).
+local function received(p)
+  local now = owned(p.order.id)
+  if not (now and p.before) then return p.count end
+  return math.max(0, math.min(now - p.before, p.count))
+end
+
+-- Notes what the pending purchase brought; false when it fell short (bags full, a stock limit, not
+-- enough money), which ends the run.
+local function note(run)
   local p = run.pending
-  if not p then return true end
   run.pending = nil
-  local now, got = owned(p.order.id), p.count
-  if now and p.before then got = math.max(0, math.min(now - p.before, p.count)) end
+  local got = received(p)
   if got > 0 then record(run, p.order, got, math.ceil(p.order.unit * got)) end
   if got < p.count then run.short = p.order.id end
   return got == p.count
+end
+
+-- Whether the pending purchase is still on its way: the server answers a buy a moment later, so less
+-- than all of it in the bags is not "short" until ER.ARRIVE_WAIT seconds (counted in checks) have passed.
+local function arriving(p)
+  p.checks = p.checks + 1
+  return received(p) < p.count and p.checks <= ER.ARRIVE_WAIT / ER.BUY_EVERY
+end
+
+-- Checks the last purchase: true when it arrived in full (or there was none), nil while it is still
+-- on its way (buy nothing more yet), false when it fell short. Running it again notes nothing twice.
+local function settle(run)
+  if not run.pending then return true end
+  if arriving(run.pending) then return nil end
+  return note(run)
 end
 
 -- The item IDs a run bought, in order (pairs order is undefined).
@@ -390,13 +411,19 @@ local function report(run)
   if run.short then ns.Chat(ns.Format(L["Stopped buying {item}: the last purchase did not arrive in full (bags full, a stock limit or not enough money?)."], { item = itemName(run.short) })) end
 end
 
--- Notes the last purchase, then buys a chunk and checks again shortly after; says what it bought once done
--- (or a purchase fell short, or out of money, or the merchant closed, or combat started). A run that
--- already ended (its merchant closed) does nothing.
+-- Checks again shortly.
+local function checkSoon(run)
+  return later(ER.BUY_EVERY, function() ER.StockNext(run) end)
+end
+
+-- Notes the last purchase (waiting while it is still on its way), then buys a chunk and checks again
+-- shortly after; says what it bought once done (or a purchase fell short, or out of money, or the
+-- merchant closed, or combat started). A run that already ended (its merchant closed) does nothing.
 function ER.StockNext(run)
   if ER.stocking ~= run then return end
   local arrived = settle(run)
-  if arrived and ER.merchantOpen and not ns.InCombat() and buyChunk(run) then return later(ER.BUY_EVERY, function() ER.StockNext(run) end) end
+  if arrived == nil then return checkSoon(run) end
+  if arrived and ER.merchantOpen and not ns.InCombat() and buyChunk(run) then return checkSoon(run) end
   ER.stocking = nil
   report(run)
 end
@@ -416,7 +443,7 @@ local function onMerchantClosed()
   local run = ER.stocking
   if not run then return end
   ER.stocking = nil
-  settle(run)
+  if run.pending then note(run) end
   run.short = nil
   report(run)
 end
