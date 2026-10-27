@@ -75,10 +75,16 @@ local FADE = {
   { "MinimapBackdrop" },
 }
 
--- Addons that place icons around the minimap (LibDBIcon and others) ask
--- this global for its shape; Vanguard's minimap is square unless it is built round.
+-- The answer a minimap addon loaded before Vanguard gave (SexyMap sets GetMinimapShape as it loads), if any.
+MM.earlierShape = GetMinimapShape
+
+-- Addons that place icons and pins around the minimap (LibDBIcon, HereBeDragons) ask this global for its
+-- shape. Vanguard's map is square unless it is built round (and until it is built, at login); with the
+-- module off the map is the game's round one, or another minimap addon's, whose own answer stands.
 function GetMinimapShape()
-  return MM.round and "ROUND" or "SQUARE"
+  if MM.round ~= nil then return MM.round and "ROUND" or "SQUARE" end
+  if ns.ModuleEnabled("Minimap") then return "SQUARE" end
+  return type(MM.earlierShape) == "function" and MM.earlierShape() or "ROUND"
 end
 
 -- Whether the map is built round: the Minimap shape setting says "round", or says "auto" (the
