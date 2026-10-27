@@ -128,7 +128,8 @@
       "Forever fixes: the newer calls for zone color, pet moods, breath bars, the minimap eye, the house icon and the build line"
     ],
     "scripts/tests/extras.test.mjs": [
-      "raid tools: calls, target icons and world markers for the leader and assistants"
+      "raid tools: calls, target icons and world markers for the leader and assistants",
+      "raid tools: in a raid the bar is sized by the three buttons showing, not the hidden Raid label (deDE 'Schlachtzug')"
     ],
     "scripts/tests/fallbacks.test.mjs": [],
     "scripts/tests/feedback.test.mjs": [],

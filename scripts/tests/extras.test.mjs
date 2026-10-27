@@ -490,6 +490,24 @@ it("raid tools: calls, target icons and world markers for the leader and assista
   const solo = loggedIn(UNITS_ENV + TOOLS_GROUP_ENV + "__inGroup = false");
   expect(solo.eval("return Vanguard_RaidTools:IsShown()"), "hidden out of a group").toBe(false);
 });
+it("raid tools: in a raid the bar is sized by the three buttons showing, not the hidden Raid label (deDE 'Schlachtzug')", () => {
+  const addon = loggedIn(UNITS_ENV + TOOLS_GROUP_ENV);
+  addon.eval("Vanguard_RaidTools.actions.ConvertToRaid.text:SetText('Schlachtzug')");
+  addon.fire("PLAYER_ENTERING_WORLD");
+  // The bar's width, its drawn width, the Ready button's width and where the Roles button ends from the bar's left.
+  const bar = () => addon.eval("local b = Vanguard_RaidTools return { b:GetWidth(), b:GetRight() - b:GetLeft(), b.actions.DoReadyCheck:GetWidth(), b.actions.InitiateRolePoll:GetRight() - b:GetLeft() }");
+  const party = bar();
+  expect(party[0], "in a party the long Raid label widens the buttons and the bar").toBeGreaterThan(addon.eval("return ns.GetModule('RaidTools').ROW_W"));
+  addon.eval("__inRaid, __leader, __assist = true, false, true");
+  addon.fire("GROUP_ROSTER_UPDATE");
+  const raid = bar();
+  expect(raid[0], "in a raid the bar is back at its icon rows' width").toBe(addon.eval("return ns.GetModule('RaidTools').ROW_W"));
+  expect(raid[2], "and the three buttons are narrower than with Raid").toBeLessThan(party[2]);
+  addon.eval("__inRaid, __leader, __assist = false, true, false");
+  addon.fire("GROUP_ROSTER_UPDATE");
+  expect(bar(), "back in a party it widens again").toEqual(party);
+});
+
 it("raid frames: groups as rows, and the main tank's shield", () => {
   const rows = loggedIn(UNITS_ENV + RAID_ENV, { savedVariables: "VanguardDB.profiles = { Default = { RaidFrames = { layout = 'rows' } } }" });
   expect(rows.eval(`local h = Vanguard_Raid return { h:GetAttribute("point"), h:GetAttribute("columnAnchorPoint"), h:GetAttribute("xOffset"), h:GetAttribute("yOffset"), Vanguard_RaidHolder:GetWidth(), Vanguard_RaidHolder:GetHeight() }`), "each group a row of five, groups stacked up; the holder is one row").toEqual(["LEFT", "BOTTOM", 4, 0, 516, 48]);

@@ -2522,6 +2522,18 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: Check undercuts is as wide as its label; Cancel next undercut takes the room between the line beside the heading and Check undercuts, its label shrinking a little in a long language, never over the line; the Lists pane's six buttons are two to a row in three rows and show Umbenennen, Переименовать and Копировать whole; the pane lists two fewer entries than before; the filter dialog is a little wider and "Quality" is one line beside its dropdown; + Add shows its whole label in every place along the mail panel's bottom (the preset buttons are a little narrower) and stays inside the panel. [Needs in-game check: all of it.]
 - If it fails, paste: a screenshot of the toolbar, pane, dialog or panel, the game's language, and `/vg errors`.
 
+### 33.73 Raid tile edges after the grid changes size
+
+- Do: with Raid frames on (or `/vg preview 25`), step the group or the preview from 25 to 40 players at the same spot, at a UI scale other than 1 (and at 1), and look at the edges of a tile with a zoomed screenshot.
+- Expect: the tile's one-pixel border and the one-pixel inset of the health bar inside it stay one sharp line each, the same thickness at 25 and at 40 players; none is blurred, doubled or missing. [Needs in-game check: whether a fractional edge blurs or drops a line is for the real client.]
+- If it fails, paste: a zoomed screenshot, the group size, the UI scale, and `/vg errors`.
+
+### 33.74 Incoming heals over the mana strip
+
+- Do: in a raid with power bars on the raid tiles, have a healer cast on a member who has a mana bar (and, if you can, a shield on them), and look at that tile's bottom edge while the heal is incoming.
+- Expect: the thin power strip along the bottom of the tile keeps its own colour for its whole width; the heal and shield tints end above it and never cover or tint it. [Needs in-game check: draw order between sibling frames is the client's.]
+- If it fails, paste: a zoomed screenshot of the tile and `/vg errors`.
+
 ### 33.67 Cooldown numbers on the smallest action bar buttons
 
 - Do: set the action bar button size to 24 (`/vg` → Action bars), put a spell with a long cooldown (over 10 minutes) on bar 1, use it, and look at the number on the button; then set the button size to 36 and look again.
