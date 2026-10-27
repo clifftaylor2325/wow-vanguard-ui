@@ -290,11 +290,13 @@ function AL.Summary(records)
   return n, units > 0 and math.floor(copper / units) or nil
 end
 
--- What your sales noted since login came to, in copper (0 before the ledger starts).
-function AL.SessionSales()
-  local sum = 0
+-- What your sales seen since a moment (the login without one) came to, in copper (0 before the ledger
+-- starts). Only a sale the auction house told of counts: one first read from the mail is stamped when
+-- the inbox was read, which may be days after it sold.
+function AL.SessionSales(since)
+  local sum, from = 0, since or AL.since
   for _, r in ipairs(AL.since and AL.Book().records or {}) do
-    if r.kind == "sold" and r.t >= AL.since then sum = sum + r.amount end
+    if r.kind == "sold" and r.auction and r.t >= from then sum = sum + r.amount end
   end
   return sum
 end

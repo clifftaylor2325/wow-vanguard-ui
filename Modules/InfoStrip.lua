@@ -444,9 +444,12 @@ function IS.TEXT.rank()
   if place and count > 1 then return ns.Format(L["#{place} of {count}"], { place = place, count = count }), place == 1 and "gold" or "text2" end
 end
 
--- What your auction sales noted this session came to ("AH +12g 5s"; the sales ledger, Modules/AuctionLedger.lua).
+-- What your auction sales came to since the strip's session started ("AH +12g 5s"; the sales ledger,
+-- Modules/AuctionLedger.lua), so a /reload carries it on as it does the rates.
 function IS.TEXT.ahgold()
-  local copper = ns.AuctionLedger.SessionSales()
+  local s, now = IS.session, ask("GetTime")
+  local since = s and now and ns.AuctionPrices.Now() - (now - s.start)
+  local copper = ns.AuctionLedger.SessionSales(since)
   if copper > 0 then return ns.Format(L["AH +{money}"], { money = IS.ShortMoney(copper) }), "gold" end
 end
 

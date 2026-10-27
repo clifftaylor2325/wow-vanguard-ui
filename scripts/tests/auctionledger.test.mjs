@@ -251,6 +251,12 @@ it("the info strip's auction sales: this session's, off until switched on, from 
   expect([block()[1], addon.eval("return Vanguard_InfoStrip:GetHeight()")], "a new sale counts at once, on the fourth row (rows with nothing to show close up); an expiry adds nothing").toEqual(["AH +12g 90s", 76]);
   addon.eval("ns.AuctionLedger.Book().records = {} ns.GetModule('InfoStrip').Paint('ahgold')");
   expect(block()[0], "no sales: hidden").toBe(false);
+  addon.eval(`ns.AuctionLedger.Note({ kind = "sold", id = 9999, qty = 1, amount = 90000, mail = __now + 86400, t = __now })
+    ns.GetModule('InfoStrip').Paint('ahgold')`);
+  expect(block()[0], "a sale first read from the mail may be days old: not this session's").toBe(false);
+  addon.eval(`ns.GetModule('InfoStrip').session.start = GetTime() - 600
+    ns.AuctionLedger.Note({ kind = "sold", id = 9999, qty = 1, amount = 5000, auction = 5, t = __now - 300 })`);
+  expect(block()[1], "the strip's session, carried on through a /reload, started before the ledger did").toBe("AH +50s 0c");
 });
 
 it("with the auction helper off, nothing is noted and the strip shows nothing", () => {
