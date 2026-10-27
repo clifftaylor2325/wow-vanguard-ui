@@ -2720,6 +2720,12 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: each page shows its name with Reset this page at the right, a row of tabs under it and one card at a time; the clicked tab is raised onto its card and plays the page sound; Left and Right walk the tabs and wrap; Chat extras wears the small accent dot after the change and Chat reopens on the tab shown last; Action bars' ten tabs run onto a second line with nothing cut; on Modules the note and Show stay above the tabs on every tab; the search opens Chat on the Chat history tab with the row marked; no tab name runs past its tab or the window, and the card under the tabs scrolls when it is taller than the window. [Needs in-game check: the real font widths decide where the tabs wrap and whether a long name is cut.]
 - If it fails, paste: a screenshot of the page, and `/vg errors`.
 
+### 33.93 Vehicle, possess, override and temporary shapeshift bars on action bar 1
+
+- Do: `/dump C_ActionBar.GetVehicleBarIndex()`, `/dump C_ActionBar.GetOverrideBarIndex()` and `/dump C_ActionBar.GetTempShapeshiftBarIndex()`. As a priest cast Mind Control on a mob, then get into a quest vehicle or get a quest's override bar, then take a quest's temporary shapeshift (a transform that swaps your bar), with action bars 6 and 7 turned on and holding spells.
+- Expect: the dumps print 16, 18 and 17; in each state action bar 1 shows and casts the abilities the game gives, not the spells of bar 6 or 7, and your own bar 1 comes back when the state ends; Mind Control (possess) shows the possess abilities on bar 1. [Needs in-game check: the real page numbers, and which page the possess state uses.]
+- If it fails, paste: the three dumps, a screenshot of bar 1 in the state, and `/vg errors`.
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ## When you are done
