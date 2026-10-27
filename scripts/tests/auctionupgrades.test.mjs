@@ -196,3 +196,12 @@ it("upgrades: the switch under Auction house, the Gear upgrades module off, and 
   scan(bare, SCAN);
   expect([card(bare)[1], addon.eval("return #ns.errors"), chatHas(bare, /Auction house scanned: 11 listings/)], "no links to judge by: the scan still records prices").toEqual([0, 0, true]);
 });
+
+it("Z1-2 the pane's Upgrades count is counted without sorting, and still equals the rows the list shows", () => {
+  const addon = warrior();
+  scan(addon, SCAN);
+  addon.eval(`__sorts = 0 local AH = ${HELPER} local sorted = AH.SortedUpgrades
+    AH.SortedUpgrades = function() __sorts = __sorts + 1 return sorted() end`);
+  const counted = card(addon)[1];
+  expect([counted, addon.eval("return __sorts"), addon.eval(`return #${HELPER}.Sources[${HELPER}.UPGRADES].items()`)], "gains and one fill per empty slot; the pane sorted nothing").toEqual([4, 0, 4]);
+});

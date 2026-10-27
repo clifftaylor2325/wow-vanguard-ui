@@ -342,6 +342,19 @@ it("flight timer: the first flight is timed, the next counts down", () => {
   const bare = loggedIn("");
   expect(bare.eval("return Vanguard_FlightTimer == nil and ns.GetModule('Errands').settings ~= nil"), "a client without taxi calls loads cleanly").toBe(true);
 });
+it("flight timer: a flight landed early with the exit button does not shorten the route's saved time", () => {
+  const addon = loggedIn(UNITS_ENV + TAXI_ENV + "TaxiRequestEarlyLanding = function() end");
+  // The seconds saved for the route.
+  const saved = () => addon.eval('return VanguardDB.profiles.Default.Errands.flights["TEST-ONLY Landing > TEST-ONLY Outpost"]');
+  addon.eval("TakeTaxiNode(2) __onTaxi = true __wfgStub.advance(1) __wfgStub.advance(90) __onTaxi = false __wfgStub.advance(1)");
+  expect(saved(), "the full flight is saved").toBe(91);
+  addon.eval("TakeTaxiNode(2) __onTaxi = true __wfgStub.advance(1) __wfgStub.advance(20) TaxiRequestEarlyLanding() __onTaxi = false __wfgStub.advance(1)");
+  expect([saved(), flightBar(addon).shown], "landing early keeps the old time and puts the bar away").toEqual([91, false]);
+  addon.eval("TakeTaxiNode(2) __onTaxi = true __wfgStub.advance(1) __wfgStub.advance(30) __onTaxi = false __wfgStub.advance(1)");
+  expect(saved(), "the next flight to its end is saved again, the early mark gone with the old flight").toBe(31);
+  const bare = loggedIn(UNITS_ENV + TAXI_ENV);
+  expect(bare.eval("return Vanguard_FlightTimer ~= nil"), "a client without the early landing call still times flights").toBe(true);
+});
 // The boat bar: shown, its text and max.
 const boatBar = (addon) => addon.eval("local b = Vanguard_BoatTimer return { shown = b:IsShown(), text = b.text:GetText(), max = select(2, b:GetMinMaxValues()) }");
 // TEST-ONLY: no map position while __pos is false (on a boat); the sub-zone is __sub.

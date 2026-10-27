@@ -56,11 +56,13 @@ function CP.Update()
 end
 
 -- Module entry point (Core/Modules.lua): rogues and druids only, after the unit
--- frames. Your points change with your own power events; another unit's don't count.
+-- frames. Your points change with your own power events and when they move to a new target at the
+-- same count (no power event then); another unit's don't count.
 function CP.Enable(settings)
   local _, class = UnitClass("player")
   if ns.IsSecret(class) or not CLASSES[class] then return end
   ns.OutOfCombat(function() build(settings) end)
   ns.OnUnit({ "UNIT_POWER_UPDATE", "UNIT_POWER_FREQUENT", "UNIT_MAXPOWER" }, CP.Update, "player")
   ns.On("PLAYER_TARGET_CHANGED", CP.Update)
+  ns.On("COMBO_TARGET_CHANGED", CP.Update)
 end

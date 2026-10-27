@@ -2885,6 +2885,24 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: Back stops at the layout step once the layout is applied. The scan button waits at most 15 minutes.
 - If it fails, paste: which step Back reached, the scan button's countdown, and `/vg errors`.
 
+### 33.120 Auction house: scan countdown after a clock change, many deals, German prices, price alerts
+
+- Do: at the auction house, if your computer's clock was ever ahead during a scan, open the house after putting the clock right and watch the scan button for a few minutes. After a scan that found many Deals and Upgrades, browse or search a few item lists whose names have not loaded yet, and look at the Lists pane's Deals and Upgrades counts and whether the window stutters. On a German client, type 0.125 in the Sell card's Price box, then 1.500. With a few shopping-list items that have a name (not an ID) and "Alert at or under the max price" on, scan the house.
+- Expect: the button's "Next scan in" minutes count down from the moment you opened the house and never stay at 15. The Deals and Upgrades counts match the rows each list shows, and names fill in without stutter. 0.125 reads 12s 50c and 1.500 reads 1500g. The scan ends without a long freeze, and the alerts ring once, on one toast.
+- If it fails, paste: the scan button's countdown at two moments, the count against the rows, what you typed and what the box showed, and `/vg errors`.
+
+### 33.121 Pet trainer, slow shops, a specialty bag and the key ring
+
+- Do: as a hunter with a pet, open a pet trainer; as a character with a profession slot free, open a profession trainer and click Train all. Put an item a merchant sells on your Keep stocked list for far more than one buy (for example 100 of an item that comes 20 a click) and open that merchant, ideally on a slow connection. With the general bags full and an empty quiver, ammo pouch or soul bag, shift-click water or food at a merchant, then arrows or shards if it sells them. With the Dungeon card on, carry a key on the key ring (Scarlet Key, Shadowforge Key or similar) and run `/vg prep`.
+- Expect: at the pet trainer, Train all is greyed out with "Nothing to learn here right now." in its tooltip, and the game's own Train button still works; at the profession trainer, Train all learns the other skills but not a profession you have not learned yet, and the game's own Train button asks before taking that one up. Keep stocked buys a stack, waits for it to show in your bags (up to about 3 seconds), then buys the next, until you carry the amount; chat gives "Bought ..." and no "Stopped buying" unless the bags really are full. For food or water the quantity window's line reads "Can't afford one" and Max does nothing, since the specialty bag's slots are not counted; for arrows (quiver) or shards (soul bag) Max counts that bag's free slots. The card's "Keys:" line names the key; if it does not, run `/dump C_Container.GetContainerNumSlots(-1)` and `/dump GetKeyRingSize()` and paste both.
+- If it fails, paste: which part, the chat lines and labels you saw, and `/vg errors`.
+
+### 33.122 Combo points after a target switch, Exit on a flight, and a quest's choice of a stack
+
+- Do: as a rogue (or a feral druid) with Combo points on, build points on one target, switch to another and hit it; the pips should follow. Take a flight path with action bars on, click Vanguard's Exit button part way, then fly the same route again to its end and again after that. Hand in a quest that offers a stack (10 bandages, say) against a single piece of gear that sells for more than one bandage but less than the stack, with "take the one that sells for most" on.
+- Expect: the pips light for the new target at once, without waiting for an energy tick. Exit lands you at the next flight point; the flight bar of the route flown to its end counts down its full time, not the shortened one from the early landing. The crown and the automatic hand-in both go to the stack.
+- If it fails, paste: what you clicked, the route, the bar's time, the two prices from the tooltips, and `/vg errors`.
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ## When you are done

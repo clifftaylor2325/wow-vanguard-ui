@@ -33,6 +33,20 @@ it("special bars", () => {
   expect(addon.eval("local out = {} for _, m in ipairs(ns.MoverList()) do out[m.key] = true end return out.vehicleexit") === true, "it is movable").toBeTruthy();
 });
 
+it("vehicle exit: on a flight a click also asks to land at the next stop, once, and not off a flight", () => {
+  const addon = createAddon();
+  addon.eval(ACTIONS_ENV + BUTTONS_ENV + "__early, __taxi = 0, false UnitOnTaxi = function() return __taxi end TaxiRequestEarlyLanding = function() __early = __early + 1 end");
+  addon.login();
+  // A mouse click on the exit: the press, then the release.
+  const clickExit = () => addon.eval("Vanguard_VehicleExit:Click('LeftButton', true) Vanguard_VehicleExit:Click('LeftButton', false) return __early");
+  expect(clickExit(), "off a flight: only the vehicle is left").toBe(0);
+  addon.eval("__taxi = true");
+  expect(clickExit(), "on a flight: one early landing for the click, not one per press").toBe(1);
+  addon.eval("__taxi = __wfgWorld.secret(1)");
+  expect(clickExit(), "a hidden taxi state asks for nothing").toBe(1);
+  expect(addon.eval("return Vanguard_VehicleExit:GetAttribute('macrotext')"), "the secure /leavevehicle macro is untouched").toBe("/leavevehicle");
+});
+
 it("pet and stance buttons take the theme's small font on their hotkey and count, as the action bars do", () => {
   const addon = createAddon();
   addon.eval(ACTIONS_ENV + BUTTONS_ENV + `
