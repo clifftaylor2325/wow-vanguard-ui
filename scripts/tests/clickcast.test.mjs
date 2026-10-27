@@ -253,6 +253,13 @@ it("the grid picks spells from the spellbook, with ranks, drops and clears", () 
   addon.click(cell(addon, "alt-BUTTON1"));
   expect(bindings(addon)["alt-BUTTON1"], "a spell dropped on a cell binds it").toBe("spell:Renew:139:nil");
   expect(addon.eval("return __wfgWorld.cursor")).toBe(null);
+  addon.eval('__wfgWorld.cursor = { type = "spell", id = 2061 }');
+  addon.click(cell(addon, "ctrl-BUTTON1"));
+  expect(bindings(addon)["ctrl-BUTTON1"], "a lower rank dropped on a cell binds that rank").toBe("spell:Flash Heal:2061:1");
+  expect(addon.eval(`return ${CC}.Binding("ctrl-BUTTON1").rank and 1`), "and casts by its id").toBe(1);
+  addon.eval('__wfgWorld.cursor = { type = "spell", id = 9472 }');
+  addon.click(cell(addon, "ctrl-BUTTON1"));
+  expect(bindings(addon)["ctrl-BUTTON1"], "the top rank still binds by name").toBe("spell:Flash Heal:9472:nil");
   addon.eval('__wfgWorld.cursor = { type = "item", id = 1 }');
   addon.eval(`local c = __wfgStub.frames[${cell(addon, "alt-BUTTON2")}] c:GetScript("OnReceiveDrag")(c)`);
   expect(bindings(addon)["alt-BUTTON2"], "an item on the cursor isn't a spell").toBe(undefined);
