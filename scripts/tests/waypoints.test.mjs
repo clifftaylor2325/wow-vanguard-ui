@@ -329,4 +329,5 @@ it("waypoints: a comma between two digits is a decimal comma while two coordinat
   expect(way(addon, "45,2, 61,8"), "and a comma between them").toEqual([[10, 0.452, 0.618]]);
   expect(way(addon, "test-only elwynn forest 42,5 65,5 Inn"), "after a zone name").toEqual([[10, 0.425, 0.655]]);
   expect(way(addon, "45,61 Inn"), "a pair with no space is still x,y").toEqual([[10, 0.45, 0.61]]);
+  expect(way(addon, "45,61 70"), "and with a number for a title").toEqual([[10, 0.45, 0.61]]);
 });

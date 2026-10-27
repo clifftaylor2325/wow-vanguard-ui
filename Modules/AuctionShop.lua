@@ -853,13 +853,24 @@ AH.LIST_ACTIONS = {
 -- The dearest price a typed amount may be, in copper: the game's highest price, 999999g 99s 99c.
 AH.MAX_PRICE = 9999999999
 
+-- The text with the client's thousands mark dropped where it sits between groups of three digits and
+-- before an optional decimal part ("1.234,5" in German, "1,234.50" in English); else the text as it was.
+local function dropGroups(text, mark, decimal)
+  local digits, tail = text:match("^(%d%d?%d?)(" .. mark .. "%d%d%d.*)$")
+  if not digits then return text end
+  local step = #mark:gsub("%%", "") + 3
+  while tail:find("^" .. mark .. "%d%d%d") do digits, tail = digits .. tail:sub(step - 2, step), tail:sub(step + 1) end
+  if tail == "" or tail:find("^" .. decimal .. "%d+$") then return digits .. tail end
+  return text
+end
+
 -- A bare number of gold typed the client's way, as Lua reads it: the client's thousands mark between
 -- groups of three digits dropped ("1.500" in German) and its decimal comma made a point ("2,5"). A client
 -- without the marks (a missing global) reads English numbers: "," between thousands, "." for decimals.
 local function clientNumber(text)
   local group, decimal = _G.LARGE_NUMBER_SEPERATOR or ",", _G.DECIMAL_SEPERATOR or "."
-  local mark = type(group) == "string" and group ~= "" and "%" .. group
-  if mark and (text:gsub(mark .. "%d%d%d", "")):match("^%d%d?%d?$") then text = text:gsub(mark, "") end
+  if type(decimal) ~= "string" or decimal == "" then decimal = "." end
+  if type(group) == "string" and group ~= "" then text = dropGroups(text, group:gsub("%p", "%%%0"), decimal:gsub("%p", "%%%0")) end
   if decimal == "," then text = text:gsub("^(%d*),(%d+)$", "%1.%2") end
   return text
 end

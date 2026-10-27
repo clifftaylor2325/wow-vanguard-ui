@@ -55,11 +55,12 @@ local function coordsAt(list)
   end
 end
 
--- The words of a /way line with a comma between two digits read as a decimal comma ("45,2 61,8") when that
--- still leaves two coordinates; otherwise every comma is a space ("45,61" and "45.2, 61.8").
+-- The words of a /way line, with decimal commas read as points when both coordinates have one
+-- ("45,2 61,8"; only the first two, so a title keeps its own); otherwise every comma is a space
+-- ("45,61", "45.2, 61.8" and "45,61 70", where 70 is the title).
 local function wordsOf(text)
-  local decimal = words(((text or ""):gsub("(%d),(%d)", "%1.%2")))
-  if coordsAt(decimal) then return decimal end
+  text = text or ""
+  if text:find("%d,%d+,?%s+%d+,%d") then return words((text:gsub("(%d),(%d)", "%1.%2", 2))) end
   return words(text)
 end
 

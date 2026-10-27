@@ -62,20 +62,21 @@ function BG.ParseSearch(text)
   return operators and tests or nil
 end
 
--- What the client says about an item: name, quality, item level, type words, class id and bind type.
+-- What the client says about an item: name, quality, item level, type words and bind type.
 local function factsOf(info)
   local name, _, quality, ilvl, _, kind, sub, _, _, _, _, _, _, bind = C_Item.GetItemInfo(info.itemID)
   return {
     name = ns.Lower(name or ""), quality = ns.PlainNumber(quality), ilvl = ns.PlainNumber(ilvl),
     type = ns.Lower((kind or "") .. " " .. (sub or "")), bind = ns.PlainNumber(bind), item = info.itemID,
-    class = BG.ClassOf(info.itemID),
   }
 end
 
--- Whether an item's type text holds the word of a `type:` test, or the word names the item's class.
+-- Whether an item's type text holds the word of a `type:` test, or the word names the item's class
+-- (asked of the client only then, not for every item on every search).
 local function typeMatches(test, facts)
   if facts.type:find(test.value, 1, true) ~= nil then return true end
-  return facts.class ~= nil and BG.TYPE_CLASSES[test.value] == facts.class
+  local class = BG.TYPE_CLASSES[test.value]
+  return class ~= nil and BG.ClassOf(facts.item) == class
 end
 
 -- Whether the facts of one item pass one test.
