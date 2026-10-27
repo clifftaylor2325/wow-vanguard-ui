@@ -366,8 +366,9 @@ it("your buffs: the enchant switch, and clients without enchant info", () => {
     __caught = {} local keep = ns.Report ns.Report = function(where, err) __caught[#__caught + 1] = where .. ": " .. err keep(where, err) end`);
   setCombat(combat, true);
   combat.login();
-  expect(combat.eval('return ns.GetModule("PlayerAuras").cells == nil and BuffFrame:IsShown() == false'), "logging in during a fight hides the game's frames and waits to build").toBe(true);
+  expect(combat.eval('return { ns.GetModule("PlayerAuras").cells == nil, BuffFrame:IsShown(), BuffFrame:IsEventRegistered("UNIT_AURA") }'), "logging in during a fight leaves the game's buff frame up and waits to build").toEqual([true, true, true]);
   setCombat(combat, false);
+  expect(combat.eval('return { BuffFrame:IsShown(), BuffFrame:IsEventRegistered("UNIT_AURA") }'), "after the fight the game's frame is put away").toEqual([false, false]);
   expect(combat.eval("return ns.GetModule('PlayerAuras').cells[1]:IsShown() and table.concat(__caught, '\\n')"), "an event this client lacks is skipped and noted").toMatch(/event WEAPON_ENCHANT_CHANGED: not on this client/);
 });
 

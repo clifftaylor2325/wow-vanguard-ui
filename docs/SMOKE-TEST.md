@@ -2720,6 +2720,12 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: each page shows its name with Reset this page at the right, a row of tabs under it and one card at a time; the clicked tab is raised onto its card and plays the page sound; Left and Right walk the tabs and wrap; Chat extras wears the small accent dot after the change and Chat reopens on the tab shown last; Action bars' ten tabs run onto a second line with nothing cut; on Modules the note and Show stay above the tabs on every tab; the search opens Chat on the Chat history tab with the row marked; no tab name runs past its tab or the window, and the card under the tabs scrolls when it is taller than the window. [Needs in-game check: the real font widths decide where the tabs wrap and whether a long name is cut.]
 - If it fails, paste: a screenshot of the page, and `/vg errors`.
 
+### 33.92 Buffs after a /reload during a fight
+
+- Do: with Vanguard's buffs on, start a fight with a training dummy or any mob (get into combat and stay there), type `/reload`, and watch the top right of the screen until you are in the world again. Stay in the fight for a while, look at the buffs and debuffs, then end the fight.
+- Expect: for the rest of the fight the game's own buff and debuff frames are still up, and nothing of Vanguard's buff block shows; after the fight ends Vanguard's buffs and debuffs replace them in one step, with none of the game's frames left behind. [Needs in-game check: whether the client reloads you with the combat lockdown on, and whether the game's buff frames come back on their own after the reload.]
+- If it fails, paste: a screenshot during the fight and one after it, and `/vg errors`.
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ## When you are done
