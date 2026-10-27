@@ -2726,6 +2726,12 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: the dumps print 16, 18 and 17; in each state action bar 1 shows and casts the abilities the game gives, not the spells of bar 6 or 7, and your own bar 1 comes back when the state ends; Mind Control (possess) shows the possess abilities on bar 1. [Needs in-game check: the real page numbers, and which page the possess state uses.]
 - If it fails, paste: the three dumps, a screenshot of bar 1 in the state, and `/vg errors`.
 
+### 33.94 Click-casting page open during a fight
+
+- Do: open `/vg` → Click casting and leave it open, start a fight, then move the pointer onto the test tile and press a movement key and an action keybind; also click a grid cell or capture a hover key during the fight to open the spell picker and press the same keys.
+- Expect: movement and your keybinds keep working while the pointer is on the test tile and while the spell picker is open; the tile and the picker still take clicks; out of the fight the tile and the picker read keys again. [Needs in-game check: that the game gets the keys the tile and the picker would otherwise swallow.]
+- If it fails, paste: which control held the keys, and `/vg errors`.
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ## When you are done

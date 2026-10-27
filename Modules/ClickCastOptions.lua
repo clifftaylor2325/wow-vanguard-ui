@@ -628,9 +628,10 @@ local function tileClick(tile, button)
   tile.result:SetText(describe(W.Modifiers():lower() .. "BUTTON" .. (W.MOUSE_BUTTONS[button] or 1)))
 end
 
--- The pointer is over the tile: it reads keys until the pointer leaves.
+-- The pointer is over the tile: it reads keys until the pointer leaves, or never in a fight, when it
+-- could not pass them on (movement and keybinds would be swallowed).
 local function tileEnter(tile)
-  tile:EnableKeyboard(true)
+  tile:EnableKeyboard(not ns.InCombat())
   tile.result:SetText(L["Press a key or click..."])
 end
 
@@ -654,6 +655,13 @@ local function wireTile(tile)
   tile:SetScript("OnClick", ns.Guard("click click-cast test tile", tileClick))
   tile:SetScript("OnMouseWheel", ns.Guard("wheel click-cast test tile", tileWheel))
 end
+
+-- A fight starting lets go of the keyboard on the page's current test tile, whose pointer may already be on it.
+-- Registered once for the file: the page's builder runs again on every rebuild.
+local function releaseTileKeys()
+  if state.tile then state.tile:EnableKeyboard(false) end
+end
+ns.On("PLAYER_REGEN_DISABLED", releaseTileKeys)
 
 -- The tile's health bar, mostly full, with the name over it.
 local function tileBar(tile)
@@ -695,6 +703,7 @@ local function testBuilder(parent, _, width)
   local r = CreateFrame("Frame", nil, parent)
   r:SetSize(width, 60)
   r.tile = sampleTile(r)
+  state.tile = r.tile
   r.tile:SetPoint("LEFT", T.SPACE.gap, 0)
   addResultLine(r)
   wireTile(r.tile)
