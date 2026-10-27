@@ -27,9 +27,11 @@ export const ADDON = "Vanguard";
 
 // The two clients the TOC declares (## Interface: 16001, 120007). The world
 // starts as WoW Forever; RETAIL_CLIENT, passed to createAddon as `client`,
-// makes it a Retail 12.x client before the addon's files load.
+// makes it a Retail 12.x client before the addon's files load: the interface
+// number, and GAME_RULES_CHANGED invalid, as Retail's C_EventUtils.IsEventValid
+// answers (the event is in Forever's GameRules docs only).
 export const FOREVER_CLIENT = "";
-export const RETAIL_CLIENT = '__wfgWorld.build.version, __wfgWorld.build.interface = "12.0.7", 120007';
+export const RETAIL_CLIENT = '__wfgWorld.build.version, __wfgWorld.build.interface = "12.0.7", 120007\n__wfgWorld.invalidEvents.GAME_RULES_CHANGED = true';
 export const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 
 // Lua 5.1 fidelity for `..`: the game prints a whole float as "3", fengari

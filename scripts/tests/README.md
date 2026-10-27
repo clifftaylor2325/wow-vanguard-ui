@@ -56,7 +56,8 @@ addon drew.** `scripts/tests/scenarios.test.mjs` has more.
 - `createAddon({ savedVariables, client })` (from `../lib/lua-harness.mjs`): the
   addon files are run, SavedVariables Lua is run after them, nothing has fired
   yet. `client` is Lua run before the addon's files: `FOREVER_CLIENT` (the
-  default) or `RETAIL_CLIENT` (interface 120007). `loggedIn(env, { client })`
+  default) or `RETAIL_CLIENT` (interface 120007, and GAME_RULES_CHANGED invalid,
+  as on Retail). `loggedIn(env, { client })`
   passes it on.
 - `loggedIn(env)` (from `./helpers.mjs`): a finished-setup account, `env` Lua
   run before login, then `login()` fires ADDON_LOADED, PLAYER_LOGIN and
