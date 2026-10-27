@@ -205,6 +205,18 @@ it("chat filter: hide mode drops lines without a tab; with no tab possible nothi
   expect(full.eval("return { __bare, __removed == nil }"), "the new tab hears no chat of its own: the game's call takes every group and channel off it, so nothing is removed twice").toEqual([true, true]);
 });
 
+it("chat filter: a closed Filtered tab is made again on the next caught line, and kept from then on", () => {
+  const addon = filtering();
+  deliver(addon, GOLD, "Goldy");
+  addon.eval("ChatFrame3:Hide()");
+  expect(deliver(addon, GOLD, "Goldy2"), "still caught").toBe(true);
+  const window = () => addon.eval("local f = ns.GetModule('ChatFilter').window return { f:GetName(), f:IsShown(), #f.__messages }");
+  expect(window(), "a new, shown Filtered window holds the line").toEqual(["ChatFrame4", true, 1]);
+  deliver(addon, GOLD, "Goldy3");
+  expect(window(), "the next line goes to it too, no third window").toEqual(["ChatFrame4", true, 2]);
+  expect(addon.eval("return #ns.errors"), "no errors").toBe(0);
+});
+
 it("chat filter: the filter waits for the end of a fight to make the tab; no GetChatWindowInfo means a new tab each time is not tried", () => {
   const addon = loggedIn();
   addon.eval("__wfgStub.inCombat = true");

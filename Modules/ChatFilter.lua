@@ -101,12 +101,24 @@ end
 
 -- The Filtered tab ----------------------------------------------------------------------------
 
--- The chat window called Filtered, or nil.
+-- Whether a chat window is open: shown, docked behind another tab, or minimized. The game keeps a closed
+-- window's name, so a closed Filtered tab is still found by name.
+local function isOpen(frame)
+  return frame:IsShown() or frame.isDocked or frame.minimized
+end
+
+-- The chat window called Filtered, an open one first, or nil.
 function CF.FindWindow()
   if type(GetChatWindowInfo) ~= "function" then return nil end
+  local closed
   for i = 1, NUM_CHAT_WINDOWS or 10 do
-    if GetChatWindowInfo(i) == CF.TAB then return _G["ChatFrame" .. i] end
+    local frame = _G["ChatFrame" .. i]
+    if GetChatWindowInfo(i) == CF.TAB and frame then
+      if isOpen(frame) then return frame end
+      closed = closed or frame
+    end
   end
+  return closed
 end
 
 -- A new window called Filtered that hears no chat of its own (FCF_OpenNewWindow's second argument takes
@@ -158,10 +170,19 @@ end
 
 -- The game's filter ---------------------------------------------------------------------------
 
+-- Takes another open window called Filtered, or makes one, after the tab was closed or renamed; out of combat.
+local function reopen()
+  CF.window = nil
+  ns.OutOfCombat(function()
+    local found = CF.FindWindow()
+    CF.window = found and isOpen(found) and found or openWindow()
+  end, "chatfilter window")
+end
+
 -- Whether a caught line can go anywhere: hidden, or to a Filtered tab that is still there (a closed
--- one is let go and made again when the fight is over).
+-- or renamed one is let go and made again when the fight is over).
 local function canCatch()
-  if CF.window and CF.FindWindow() ~= CF.window then CF.window = nil CF.Prepare() end
+  if CF.window and (CF.FindWindow() ~= CF.window or not isOpen(CF.window)) then reopen() end
   return CF.settings.mode == "hide" or CF.window ~= nil
 end
 
