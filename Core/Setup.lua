@@ -120,9 +120,11 @@ local function turnOn(name)
 end
 
 -- Before setup's first change in a run: copies the profile in use to its backup profile (once
--- per run) and says so in chat.
+-- per run) and says so in chat. From then on Back doesn't return to the Profile step: a profile
+-- of its own made after a change would leave that change in the shared profile.
 function S.Backup()
   if state.backup then return end
+  if state.order[1] == "profile" then state.floor = math.max(state.floor, 2) end
   state.backup = ns.BackupProfile()
   ns.Chat(ns.Format(L["Profile {profile} as it was before setup is saved as profile {backup}."], { profile = ns.ProfileName(), backup = state.backup }))
 end
