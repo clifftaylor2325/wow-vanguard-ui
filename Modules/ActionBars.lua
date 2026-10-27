@@ -60,12 +60,26 @@ local BARS = {
 -- place to space the stack again).
 local STACK_BASE, BAR_GAP = 24, 0
 
+-- The page the game gives a special bar state, from the C_ActionBar getter `getter`; `fallback` (the
+-- client's ActionBarType value) when the client has no such getter or it answers nothing plain.
+function AB.StatePage(getter, fallback)
+  local fn = C_ActionBar and C_ActionBar[getter]
+  local page = type(fn) == "function" and ns.PlainNumber(fn())
+  return page and page > 0 and math.floor(page) or fallback
+end
+
 -- Bar 1's page for each state: vehicle/possess, override, shapeshift, then
 -- Shift+number pages, then (on page 1 only, as the game's main bar does)
--- dragonriding and the class bonus bars (stances, stealth, forms).
-AB.PAGE_DRIVER = "[vehicleui][possessbar] 12; [overridebar] 14; [shapeshift] 13; "
-  .. "[bar:2] 2; [bar:3] 3; [bar:4] 4; [bar:5] 5; [bar:6] 6; "
-  .. "[bonusbar:5] 11; [bonusbar:1] 7; [bonusbar:2] 8; [bonusbar:3] 9; [bonusbar:4] 10; 1"
+-- dragonriding and the class bonus bars (stances, stealth, forms). The vehicle, override and temporary
+-- shapeshift pages are the game's own (16, 18 and 17 on the 12.x engine; pages 13 to 15 are bars 6 to 8).
+function AB.BuildPageDriver()
+  return "[vehicleui][possessbar] " .. AB.StatePage("GetVehicleBarIndex", 16)
+    .. "; [overridebar] " .. AB.StatePage("GetOverrideBarIndex", 18)
+    .. "; [shapeshift] " .. AB.StatePage("GetTempShapeshiftBarIndex", 17) .. "; "
+    .. "[bar:2] 2; [bar:3] 3; [bar:4] 4; [bar:5] 5; [bar:6] 6; "
+    .. "[bonusbar:5] 11; [bonusbar:1] 7; [bonusbar:2] 8; [bonusbar:3] 9; [bonusbar:4] 10; 1"
+end
+AB.PAGE_DRIVER = AB.BuildPageDriver()
 
 -- Runs in the secure environment when the page changes: re-points each button.
 AB.ON_PAGE = [[

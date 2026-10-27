@@ -1124,6 +1124,11 @@ C_ActionBar = {
   -- Range checks and the bar page, recorded.
   EnableActionRangeCheck = function(slot, on) world.rangeChecks = world.rangeChecks or {} world.rangeChecks[slot] = on end,
   GetActionBarPage = function() return world.page or 1 end,
+  -- The pages of the vehicle, override and temporary shapeshift bars (ActionBarFrameDocumentation.lua;
+  -- the values are Blizzard_ActionBar_Shared_ActionButtonUtil.lua's ActionBarType: 16, 18 and 17).
+  GetVehicleBarIndex = function() return world.vehicleBarIndex or 16 end,
+  GetOverrideBarIndex = function() return world.overrideBarIndex or 18 end,
+  GetTempShapeshiftBarIndex = function() return world.tempShapeshiftBarIndex or 17 end,
   HasAction = HasAction,
   -- Whether the slot's action is an item you wear (action.equipped); the client refuses a slot number
   -- outside the bars (ActionBarFrameDocumentation.lua: RequiresValidActionSlot).

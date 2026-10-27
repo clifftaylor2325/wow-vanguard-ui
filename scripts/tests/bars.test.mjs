@@ -733,7 +733,27 @@ it("bar 1 pages like the game's main bar: a Shift+number page wins over a stance
   const driver = loggedIn(ACTIONS_ENV).eval('return ns.GetModule("ActionBars").PAGE_DRIVER');
   expect([driverValue(driver, []), driverValue(driver, ["bonusbar:1"]), driverValue(driver, ["bonusbar:3"])], "page 1, and on page 1 a stance's or form's own page").toEqual(["1", "7", "9"]);
   expect([driverValue(driver, ["bonusbar:1", "bar:2"]), driverValue(driver, ["bonusbar:3", "bar:6"])], "in a stance or form, Shift+2 and Shift+6 show pages 2 and 6, as the game's main bar does").toEqual(["2", "6"]);
-  expect([driverValue(driver, ["vehicleui", "bar:2"]), driverValue(driver, ["overridebar", "bar:3"]), driverValue(driver, ["shapeshift", "bar:4", "bonusbar:1"])], "a vehicle, override or temporary shapeshift bar still wins").toEqual(["12", "14", "13"]);
+  expect([driverValue(driver, ["vehicleui", "bar:2"]), driverValue(driver, ["overridebar", "bar:3"]), driverValue(driver, ["shapeshift", "bar:4", "bonusbar:1"])], "a vehicle, override or temporary shapeshift bar still wins").toEqual(["16", "18", "17"]);
+});
+
+it("bar 1's special pages come from the client's bar indexes, so they never land on bars 6 and 7 (pages 13 and 14)", () => {
+  const addon = loggedIn(ACTIONS_ENV);
+  // The page driver after running `lua` (which may change the C_ActionBar getters).
+  const driver = (lua) => addon.eval(lua + ' return ns.GetModule("ActionBars").BuildPageDriver()');
+  const built = driver("C_ActionBar.GetVehicleBarIndex = function() return 21 end C_ActionBar.GetOverrideBarIndex = function() return 23 end C_ActionBar.GetTempShapeshiftBarIndex = function() return 22 end");
+  expect([driverValue(built, ["vehicleui"]), driverValue(built, ["possessbar"]), driverValue(built, ["overridebar"]), driverValue(built, ["shapeshift"])], "the vehicle, possess, override and shapeshift pages follow the getters").toEqual(["21", "21", "23", "22"]);
+});
+
+it("bar 1's special pages fall back to 16, 18 and 17 when the client has no getter or hides the answer", () => {
+  const addon = loggedIn(ACTIONS_ENV);
+  // The page driver after running `lua` (which may change the C_ActionBar getters).
+  const driver = (lua) => addon.eval(lua + ' return ns.GetModule("ActionBars").BuildPageDriver()');
+  // The pages a driver text gives the vehicle, override and shapeshift states.
+  const pages = (text) => [driverValue(text, ["vehicleui"]), driverValue(text, ["overridebar"]), driverValue(text, ["shapeshift"])];
+  expect(pages(driver("C_ActionBar = nil")), "no C_ActionBar").toEqual(["16", "18", "17"]);
+  expect(pages(driver("C_ActionBar = {}")), "no getters").toEqual(["16", "18", "17"]);
+  const secret = driver("C_ActionBar = { GetVehicleBarIndex = function() return { __secret = true } end, GetOverrideBarIndex = function() return nil end, GetTempShapeshiftBarIndex = function() return 0 end }");
+  expect(pages(secret), "a secret, a missing and a zero answer").toEqual(["16", "18", "17"]);
 });
 
 it("bar backing: a flat panel under each bar's buttons on Classic look or when asked for, live with the setting and the theme", () => {
