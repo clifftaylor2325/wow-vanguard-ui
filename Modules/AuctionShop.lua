@@ -392,14 +392,15 @@ function AH.SendShop(s)
 end
 
 -- Whether browse result r is a name entry's item on a pass (1: the same name; 2: a name containing
--- it, unless exact) and of its quality; nil while the client hasn't the result's name yet.
+-- it, unless exact) and of its quality; nil while the client hasn't the result's name yet. Case is
+-- folded with T.Upper, which knows the Latin-1 and Cyrillic letters string.lower leaves alone.
 local function nameMatches(term, f, r, pass)
   local info = C_AuctionHouse.GetItemKeyInfo(r.itemKey)
-  local name = info and type(info.itemName) == "string" and info.itemName:lower()
+  local name = info and type(info.itemName) == "string" and T.Upper(info.itemName)
   if not name then return nil end
   if f and f.quality and info.quality ~= f.quality then return false end
-  if pass == 1 then return name == term:lower() end
-  return not (f and f.exact) and name:find(term:lower(), 1, true) ~= nil
+  if pass == 1 then return name == T.Upper(term) end
+  return not (f and f.exact) and name:find(T.Upper(term), 1, true) ~= nil
 end
 
 -- Whether browse result r is the entry's item on a pass: its item ID (first pass), else by name.
@@ -447,9 +448,7 @@ end
 -- quality and price aside, so a "none up" answer still counts); true while the name isn't in yet.
 local function bearsOn(term, r)
   if type(term) == "number" then return r.itemKey.itemID == term end
-  local info = C_AuctionHouse.GetItemKeyInfo(r.itemKey)
-  local name = info and type(info.itemName) == "string" and info.itemName:lower()
-  return not name or name:find(term:lower(), 1, true) ~= nil
+  return nameMatches(term, nil, r, 2) ~= false
 end
 
 -- Whether a browse answer can be the entry's: empty (a true "none up") or holding something that bears

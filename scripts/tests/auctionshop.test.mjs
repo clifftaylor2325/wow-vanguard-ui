@@ -151,6 +151,18 @@ it("a browse answer that holds nothing is the entry's own none up", () => {
   addon.fire("AUCTION_HOUSE_BROWSE_RESULTS_UPDATED");
   expect(shopRow(addon, 1).slice(1, 3), "empty means nothing is up").toEqual(["Strange Dust", "none up"]);
 });
+it("a name typed in lower case matches a result named with a capital, Latin-1 and Cyrillic letters too", () => {
+  const addon = atAuctionHouse("__wfgWorld.items[90001] = { name = 'TEST-ONLY Ärmel' } __wfgWorld.items[90002] = { name = 'Изделие' }");
+  makeList(addon, "TEST-ONLY Mats", '{ "test-only ärmel", "изделие" }');
+  addon.eval("__wfgWorld.ah.browse = { { itemKey = { itemID = 90001 }, minPrice = 700, totalQuantity = 3 } }");
+  addon.click(`${HELPER}.shopCard.search`);
+  addon.fire("AUCTION_HOUSE_BROWSE_RESULTS_UPDATED");
+  expect(shopRow(addon, 1).slice(2, 4), "the German name answers the entry typed in lower case").toEqual(["7s 0c", "3"]);
+  addon.advance(1);
+  addon.eval("__wfgWorld.ah.browse = { { itemKey = { itemID = 90002 }, minPrice = 900, totalQuantity = 5 } }");
+  addon.fire("AUCTION_HOUSE_BROWSE_RESULTS_UPDATED");
+  expect(shopRow(addon, 2).slice(2, 4), "so does the Russian one").toEqual(["9s 0c", "5"]);
+});
 // The Lists pane's entries, by name.
 const choices = (addon) => addon.eval(`local c = {} for i, e in ipairs(${HELPER}.PaneEntries()) do c[i] = e.name end return c`);
 // The pane's action buttons that work now, by their text.
