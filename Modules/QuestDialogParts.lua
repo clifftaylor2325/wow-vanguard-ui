@@ -76,6 +76,11 @@ function QP.Cost()
   return cost or 0
 end
 
+-- Whether taking the open quest flags you for PvP (the game's own Accept asks first when it does).
+function QP.FlagsPVP()
+  return ns.IsTrue(ns.CallIf(_G, "QuestFlagsPVP"))
+end
+
 -- Lines ----------------------------------------------------------------------------------------
 
 -- An objective's text split into its label and its count ("Wolves slain: 3/8" or "3/8 Wolves slain" give
