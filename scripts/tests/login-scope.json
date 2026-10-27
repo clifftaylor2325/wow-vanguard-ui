@@ -294,6 +294,7 @@
       "class bars: the totem row sits above the player frame, clear of the chat's tab bar and its tiles at 1365 and 1440 wide (B4-1)",
       "class bars: totems for shamans, mana in forms for druids",
       "combo points for rogues and druids",
+      "combo points that follow you to a new target at the same count show at once",
       "hovering a unit frame shows its unit's tooltip, as the game's frames do",
       "power ticks: energy every two seconds, and forms switch",
       "power ticks: the energy spark stops its timer when no tick comes (full energy)",

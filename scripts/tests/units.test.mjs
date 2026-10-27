@@ -251,6 +251,16 @@ it("combo points for rogues and druids", () => {
   expect(noFrames.eval('local CP = ns.GetModule("ComboPoints") CP.Update() return CP.bar') === null, "no player frame, no pips").toBeTruthy();
 });
 
+it("combo points that follow you to a new target at the same count show at once", () => {
+  const addon = loggedIn(UNITS_ENV + `__units.player.class = "ROGUE" __cp = 0
+    GetComboPoints = function() return __cp end`, NO_RAID);
+  // How many pips are lit.
+  const lit = () => addon.eval(`local CP = ns.GetModule("ComboPoints") local n = 0 for _, p in ipairs(CP.pips) do if p.fill:IsShown() then n = n + 1 end end return n`);
+  addon.eval("__cp = 1");
+  addon.fire("COMBO_TARGET_CHANGED");
+  expect(lit(), "the points moved to the new target: no power event fires, the pip still lights").toBe(1);
+});
+
 it("power ticks: the five-second rule after a mana spell", () => {
   const addon = loggedIn(UNITS_ENV + TICKS_ENV);
   addon.eval("ns.GetModule('PowerTicks').bar:SetWidth(200)");
