@@ -116,6 +116,19 @@ it("on a German client the groups and the starter layout find the spells by id, 
   expect(bindings(addon).BUTTON2, "applied, it binds the spell's German name and its id").toBe("spell:Blitzheilung:2061:nil");
 });
 
+it("a name-bound spell made in another client language casts by the name this client gives its id", () => {
+  const addon = priest("__wfgWorld.spec = 1", {
+    // TEST-ONLY saved bindings made on an English client: Renew by its English name and id.
+    savedVariables: WITH_FRAMES + ' VanguardCharDB = { clickcast = { [1] = { { key = "shift-BUTTON2", action = "spell", value = "Renew", spellID = 139 } } } }',
+  });
+  // The shift-right-click spell attribute on the first click-cast frame.
+  const attr = () => addon.eval(`return ${CC}.frames[1]:GetAttribute("shift-spell2")`);
+  expect(attr(), "a name the client knows stays as saved").toBe("Renew");
+  addon.eval(`__wfgWorld.spells[139].name = "Erneuerung" ${CC}.ApplyAll()`);
+  expect(attr(), "the German client gets its own name for the id").toBe("Erneuerung");
+  expect(bindings(addon)["shift-BUTTON2"], "the saved name is left as it was").toBe("spell:Renew:139:nil");
+});
+
 it("a layout spell the client can't name is left out, not bound under an English name", () => {
   const addon = priest();
   addon.eval("__wfgWorld.spells[2061] = nil");
