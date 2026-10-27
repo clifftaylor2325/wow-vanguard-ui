@@ -853,13 +853,24 @@ AH.LIST_ACTIONS = {
 -- The dearest price a typed amount may be, in copper: the game's highest price, 999999g 99s 99c.
 AH.MAX_PRICE = 9999999999
 
+-- A bare number of gold typed the client's way, as Lua reads it: the client's thousands mark between
+-- groups of three digits dropped ("1.500" in German) and its decimal comma made a point ("2,5"). A client
+-- without the marks (a missing global) reads English numbers: "," between thousands, "." for decimals.
+local function clientNumber(text)
+  local group, decimal = _G.LARGE_NUMBER_SEPERATOR or ",", _G.DECIMAL_SEPERATOR or "."
+  local mark = type(group) == "string" and group ~= "" and "%" .. group
+  if mark and (text:gsub(mark .. "%d%d%d", "")):match("^%d%d?%d?$") then text = text:gsub(mark, "") end
+  if decimal == "," then text = text:gsub("^(%d*),(%d+)$", "%1.%2") end
+  return text
+end
+
 -- Copper from a typed price: "1g 50s", "75s 20c", "12c" or a bare number of gold ("2.5"); nil for
 -- nothing, nothing above zero, more than the game's highest price, or text that isn't money (an
 -- exponent such as "1e5", hex such as "0x10" or "inf" is not a number here). Every price box reads
 -- it (the shop's max price, the sell card's price and bid), so a bare number is gold in all of them.
 -- (The sums are in floating point so a long number can't wrap around as a whole-number sum might.)
 function AH.ParseMoney(text)
-  text = trim(text):lower()
+  text = clientNumber(trim(text):lower())
   local copper = 0
   if text:match("^%d+%.?%d*$") or text:match("^%.%d+$") then
     copper = tonumber(text) * 10000.0

@@ -92,6 +92,8 @@ function GetNormalizedRealmName() return (world.realm:gsub("[ %-]", "")) end
 
 -- The locale, frame rate, latency and screen size a test may change.
 function GetLocale() return world.locale end
+-- The marks the client writes numbers with (its GlobalStrings; the game spells both names this way): English reads 1,500.5.
+DECIMAL_SEPERATOR, LARGE_NUMBER_SEPERATOR = ".", ","
 function GetFramerate() return 60 end
 function GetNetStats() return 0, 0, 40, 60 end
 function GetPhysicalScreenSize() return stub.screen.width, stub.screen.height end

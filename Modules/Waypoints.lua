@@ -55,6 +55,14 @@ local function coordsAt(list)
   end
 end
 
+-- The words of a /way line with a comma between two digits read as a decimal comma ("45,2 61,8") when that
+-- still leaves two coordinates; otherwise every comma is a space ("45,61" and "45.2, 61.8").
+local function wordsOf(text)
+  local decimal = words(((text or ""):gsub("(%d),(%d)", "%1.%2")))
+  if coordsAt(decimal) then return decimal end
+  return words(text)
+end
+
 -- The map the player is on, or nil.
 local function playerMap()
   return C_Map.GetBestMapForUnit and C_Map.GetBestMapForUnit("player")
@@ -92,7 +100,7 @@ end
 
 -- A /way line as mapID, x and y (0 to 1) and title; nil and what chat says when it can't be read.
 function WP.Parse(text)
-  local list = words(text)
+  local list = wordsOf(text)
   local at = coordsAt(list)
   if not at then return nil, L["Can't set that waypoint: give the coordinates as x y, e.g. /way 45.2 61.8."] end
   local zone = table.concat(list, " ", 1, at - 1)
