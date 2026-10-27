@@ -26,6 +26,8 @@ local NOTE_H, HINT_H = 24, 24
 
 -- The board's width and height (the rows are T.ROW.height tall), the rows shown at most and the seconds between age updates.
 GB.W, GB.ROW_H, GB.ROWS, GB.AGE_EVERY = SPAN + 2 * PAD, T.ROW.height, 10, 10
+-- Seconds between looks while the mouse is on a row: the board holds still, then redraws once it leaves.
+GB.HOLD = 0.5
 GB.H = BODY_TOP + GB.ROWS * GB.ROW_H + T.SPACE.tight + NOTE_H + T.SPACE.gap + HINT_H + PAD
 -- The filter button's choices in order, and its caption for each.
 GB.FILTERS = {
@@ -92,12 +94,23 @@ local function addHint(f)
   f.hint:SetText(L["Click a post to open a whisper with a message filled in. Nothing is sent until you press Enter."])
 end
 
--- Every few seconds while the board shows: the ages move on and old posts go.
+-- Whether the mouse is on one of the posts: the board holds still then, so the tooltip and the click
+-- always belong to the post the player read.
+function GB.Reading(f)
+  for i = 1, f.rows.used do
+    if f.rows[i]:IsMouseOver() then return true end
+  end
+  return false
+end
+
+-- Every few seconds while the board shows: the ages move on and old posts go. While the mouse is on a post
+-- nothing moves; the next look comes soon, so the board catches up within GB.HOLD of the mouse leaving.
 local function ageTick(f, dt)
   f.vgWait = (f.vgWait or 0) - dt
   if f.vgWait > 0 then return end
-  f.vgWait = GB.AGE_EVERY
-  GB.Refresh()
+  local reading = GB.Reading(f)
+  f.vgWait = reading and GB.HOLD or GB.AGE_EVERY
+  if not reading then GB.Refresh() end
 end
 
 -- Builds the board (hidden), movable, closed by Escape; at a dialog's opacity (T.ALPHA.dialog), since a click hands you to the chat box.
@@ -211,9 +224,13 @@ function GB.Refresh()
   f.note:SetText(noteText(#shown, #GB.entries))
 end
 
--- A new post came in: redraw on the next frame while the board shows (a burst is one redraw).
+-- A new post came in: redraw on the next frame while the board shows (a burst is one redraw). With the mouse
+-- on a post the redraw waits for the next look (within GB.HOLD), so no post slides under the mouse.
 function GB.Changed()
-  if GB.frame and GB.frame:IsShown() then ns.Soon("groupboard", GB.Refresh) end
+  local f = GB.frame
+  if not (f and f:IsShown()) then return end
+  if GB.Reading(f) then f.vgWait = math.min(f.vgWait or 0, GB.HOLD) return end
+  ns.Soon("groupboard", GB.Refresh)
 end
 
 -- The filter button: all posts, then looking for more, then looking for a group, then needs my role.
