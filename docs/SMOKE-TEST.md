@@ -2624,6 +2624,42 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: each pin's gold "!" sits on a small square whose edge stays one crisp pixel at every zoom, the same size throughout. [Needs in-game check: the client's real canvas scales and how the edge looks at them.]
 - If it fails, paste: a screenshot of the pins zoomed in and out, and `/vg errors`.
 
+### 33.82 Chat spot: the typing box on screen, a narrower chat on small screens
+
+- Do: with a fresh profile (or `/vg reset chat`), press Enter in the main chat and type a few letters; then `/vg unlock` and drag the chat to the bottom-left corner and the bottom-right corner. On a small screen (1280x800 at the game's UI scale, 1024x768) log in on a new character and look at the chat beside action bar 1.
+- Expect: the typing box sits fully on the screen with its text whole, its bottom on the screen's edge; the chat's handle stays on its window at the default spot and stops with the box's bottom on the edge when dragged down; with the chat parked right, the side buttons stay in view after `/reload`. On the small screen the chat is 296 wide at 1229 units and about 320 at 1280, clear of action bar 1; a 1024 wide screen still meets the bars (setup's Fit my screen is the answer). The tab bar is at most as high as before and the pet bar is clear of the panel. [Needs in-game check: the client's clamp of the handle, and that the box is not cut at the bottom.]
+- If it fails, paste: `/vg frame ChatFrame1` and a screenshot of the bottom-left corner.
+
+### 33.83 Raid tiles: names, Scale and Opacity
+
+- Do: in a 25 or 40 player raid (or `/vg preview 25` and `/vg preview 40`) look at the tile names and the status text ("Dead", "Offline", missing health). Then `/vg unlock`, select the raid frames' handle and set Scale to 150% and Opacity to 50%; then apply the Healing layout in setup (raid frames 115%).
+- Expect: names keep seven or eight letters (a name like Aldren or Brielle is whole), and a long status such as "Offline" ends in "..."; the tiles follow the handle's Scale and Opacity (a party and a 25 grid grow, a raid of 26 to 40 keeps its compact size unless the Scale is below 100%), and the Healing layout's party and 25 grid look larger than before. With the Healing layout and party pets on, the party grid reaches the pets column (move either with unlock). [Needs in-game check: the real font's widths.]
+- If it fails, paste: a screenshot of the tiles and `/vg frame Vanguard_Raid`.
+
+### 33.84 Raid target icon on the tile's top edge
+
+- Do: mark a party member with the skull, then a raid member, on a party or 10-man tile at Text size 100%; also mark the group leader.
+- Expect: the mark is 10 wide, centered on the tile's top edge like the leader crown and clear of the name, and does not clash with the crown on a marked leader. [Needs in-game check: that the mark reads at 10 units.]
+- If it fails, paste: a screenshot of a marked tile.
+
+### 33.85 Meter spell panel beside the meter, over no action bar
+
+- Do: with the meter on, click a meter line at the default spot on a wide screen (1920x1080) and again at 1365x768; then drag the meter to the left edge of the screen and click a line.
+- Expect: on the wide screen the panel opens on the meter's right, on the screen and over no action bar; at 1365 wide it opens on the meter's left with its bottom a gap above bar 1; a meter at the left edge opens it on its right. Under 1110 wide the meter itself still meets the right end of bar 1 (setup's Fit my screen is the answer).
+- If it fails, paste: a screenshot of the panel and the bars.
+
+### 33.86 Quest dialog with many reward cards
+
+- Do: talk to a quest giver whose quest has a long text and six reward choices (a class or dungeon quest), at 1920x1080 and at a smaller canvas.
+- Expect: the dialog is taller than for a quest without cards, grows upward, and the quest text keeps a readable window (more than three lines); on a short screen it stops short of the screen's top and the text scrolls.
+- If it fails, paste: a screenshot of the dialog.
+
+### 33.87 Untrack in Portuguese and Russian
+
+- Do: set the game to Portuguese (Brazil) and then Russian, open the quest log (L), select a watched quest.
+- Expect: the button reads "Não rastrear" and "Не следить" whole, with nothing cut at the default Text size.
+- If it fails, paste: a screenshot of the quest log's buttons.
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ## When you are done
