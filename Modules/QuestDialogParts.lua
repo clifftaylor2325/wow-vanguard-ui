@@ -230,6 +230,16 @@ function QP.SellPrice(link)
   return ns.PlainNumber((select(11, info(link))))
 end
 
+-- What a stack of reward items sells for in all: the sell price of one times how many come (at least
+-- one when the count is hidden), or nil while the price is unknown. Choices are compared by this.
+---@param link string|nil
+---@param count number|nil
+---@return number|nil
+function QP.StackPrice(link, count)
+  local price = QP.SellPrice(link)
+  return price and price * math.max(1, ns.PlainNumber(count) or 1)
+end
+
 -- The place of the one price above the rest, from n prices (nil for unknown): nil while any is unknown,
 -- when two share the top, or when none is above 0. Quest automation and the reward crown both use it.
 ---@param prices table
@@ -250,7 +260,7 @@ end
 function QP.TopChoice(items)
   if #items < 2 or items[1].kind ~= "choice" then return nil end
   local prices = {}
-  for i, item in ipairs(items) do prices[i] = QP.SellPrice(item.link) end
+  for i, item in ipairs(items) do prices[i] = QP.StackPrice(item.link, item.count) end
   return QP.TopSeller(prices, #items)
 end
 

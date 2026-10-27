@@ -5,7 +5,7 @@
 --   * turn in finished quests: Continue, then Complete when there's no reward
 --     to choose (it never chooses for you, unless the next switch is on, and
 --     it leaves a quest that costs money to you);
---   * with a choice of rewards, take the one that sells for the most (on a tie,
+--   * with a choice of rewards, take the one that sells for the most, a stack by its whole worth (on a tie,
 --     or when none sells, you choose);
 --   * skip the gossip when an NPC has exactly one quest for you and nothing else to say.
 -- Each says in chat what it did. The quest dialog asks Claims(event) first,
@@ -44,11 +44,15 @@ end
 
 -- Rewards ---------------------------------------------------------------------------------------
 
--- The reward choice that sells for the most, or nil (you choose) while any price is unknown, when two
--- share the top price, or when none sells for anything: the choice the quest windows crown.
+-- The reward choice that sells for the most in all (a stack by what the whole stack sells for), or nil
+-- (you choose) while any price is unknown, when two share the top price, or when none sells for anything:
+-- the choice the quest windows crown.
 function QA.BestChoice()
   local QP, prices, n = ns.QuestParts, {}, count(ns.CallIf(_G, "GetNumQuestChoices"))
-  for i = 1, n do prices[i] = QP.SellPrice(ns.CallIf(_G, "GetQuestItemLink", "choice", i)) end
+  for i = 1, n do
+    local _, _, stack = ns.CallIf(_G, "GetQuestItemInfo", "choice", i)
+    prices[i] = QP.StackPrice(ns.CallIf(_G, "GetQuestItemLink", "choice", i), stack)
+  end
   return QP.TopSeller(prices, n)
 end
 

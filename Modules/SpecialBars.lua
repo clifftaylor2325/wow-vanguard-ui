@@ -170,11 +170,21 @@ local function addLeaveMacro(b)
   b:RegisterForClicks("AnyUp", "AnyDown")
 end
 
+-- On a flight the exit also asks the game to land at the next stop, as the game's own leave button does
+-- (/leavevehicle only leaves vehicles). It acts on the release alone: the button reports both presses.
+local function landEarlyOnTaxi(b)
+  b:HookScript("PostClick", function(_, _, down)
+    if down or not ns.IsTrue(ns.CallIf(_G, "UnitOnTaxi", "player")) then return end
+    ns.CallIf(_G, "TaxiRequestEarlyLanding")
+  end)
+end
+
 -- The vehicle exit: a secure /leavevehicle button the client shows only while you can leave.
 local function vehicleExit()
   local b = T.Button(CreateFrame("Button", "Vanguard_VehicleExit", UIParent, "SecureActionButtonTemplate"))
   b:SetSize(SB.EXIT_SIZE, SB.EXIT_SIZE)
   addLeaveMacro(b)
+  landEarlyOnTaxi(b)
   addLabel(b, L["Exit"])
   keepExitFitted(b)
   RegisterStateDriver(b, "visibility", "[canexitvehicle] show; hide")

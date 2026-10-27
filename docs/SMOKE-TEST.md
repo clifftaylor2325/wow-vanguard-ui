@@ -2903,6 +2903,12 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: the card's "Keys:" line names it. If it does not, run `/dump C_Container.GetContainerNumSlots(-1)` and `/dump GetKeyRingSize()` and paste both.
 - If it fails, paste: which part, the chat lines and labels you saw, and `/vg errors`.
 
+### 33.122 Combo points after a target switch, Exit on a flight, and a quest's choice of a stack
+
+- Do: as a rogue (or a feral druid) with Combo points on, build points on one target, switch to another and hit it; the pips should follow. Take a flight path with action bars on, click Vanguard's Exit button part way, then fly the same route again to its end and again after that. Hand in a quest that offers a stack (10 bandages, say) against a single piece of gear that sells for more than one bandage but less than the stack, with "take the one that sells for most" on.
+- Expect: the pips light for the new target at once, without waiting for an energy tick. Exit lands you at the next flight point; the flight bar of the route flown to its end counts down its full time, not the shortened one from the early landing. The crown and the automatic hand-in both go to the stack.
+- If it fails, paste: what you clicked, the route, the bar's time, the two prices from the tooltips, and `/vg errors`.
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ## When you are done
