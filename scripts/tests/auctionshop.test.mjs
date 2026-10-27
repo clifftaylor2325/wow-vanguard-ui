@@ -681,10 +681,13 @@ it("keys: Up and Down mark a listing, Enter opens it, only while the mouse is ov
   addon.hover(`${VIEW}.table.rows[2]`);
   expect(kb()[0], "from the view onto a row: still the view's").toBe(true);
   setCombat(addon, true);
+  addon.fire("PLAYER_REGEN_DISABLED");
+  expect(kb()[0], "a fight starts with the mouse over the view: it lets the keys go at once").toBe(false);
   addon.hover(`${VIEW}.table`);
   press("DOWN");
   expect([kb()[0], kb()[1]], "in combat: never takes the keys, never sets their passing").toEqual([false, true]);
   setCombat(addon, false);
+  expect(kb()[0], "the fight over with the mouse still on the view: the keys come back").toBe(true);
   addon.eval(`${VIEW}.table:Hide()`);
   expect(kb()[0], "hidden: none").toBe(false);
 });
