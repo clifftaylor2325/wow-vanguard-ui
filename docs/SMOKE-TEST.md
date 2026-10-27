@@ -2720,6 +2720,18 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: each page shows its name with Reset this page at the right, a row of tabs under it and one card at a time; the clicked tab is raised onto its card and plays the page sound; Left and Right walk the tabs and wrap; Chat extras wears the small accent dot after the change and Chat reopens on the tab shown last; Action bars' ten tabs run onto a second line with nothing cut; on Modules the note and Show stay above the tabs on every tab; the search opens Chat on the Chat history tab with the row marked; no tab name runs past its tab or the window, and the card under the tabs scrolls when it is taller than the window. [Needs in-game check: the real font widths decide where the tabs wrap and whether a long name is cut.]
 - If it fails, paste: a screenshot of the page, and `/vg errors`.
 
+### 33.95 Popups after a Bind-on-Pickup roll, then deleting an item
+
+- Do: type `/console taintLog 2` and `/reload`. In a group, roll Need or Greed on a Bind-on-Pickup item and confirm the popup that asks. Later in the same session, drag a bag item you don't want out of your bags, click Yes (type DELETE if asked), then open a few other popups (abandon a quest and cancel, try to log out and cancel).
+- Expect: the item is deleted with no "Interface action failed because of an AddOn" and nothing about Vanguard in the taint log; every popup has the flat Vanguard panel and shadow a little past its edges, its close button in the panel's corner, and is no taller than its text and buttons need (no empty band at the bottom); the panel shows and hides with its popup and never stays on screen after one closes. [Needs in-game check: the harness cannot follow taint carried by a value the game reads, nor draw order between the popup and its panel.]
+- If it fails, paste: `/vg errors`, a screenshot of the popup, and the lines naming Vanguard in Logs/taint.log.
+
+### 33.96 Edit Mode after a bar setting change, then a fight with shapeshift
+
+- Do: type `/console taintLog 2` and `/reload`. Open Edit Mode, look at the window and its options list, click an action bar or the stance bar and change a setting in its settings dialog (rows, icon padding or orientation), save and close Edit Mode. Then, as a druid, warrior or other class with a stance bar, fight and change form or stance a few times.
+- Expect: Edit Mode's window, its options list and the settings dialog keep the flat Vanguard panel, the line over the expander and the line between Revert and the extra buttons; Vanguard's note sits under the window as before; no window is taller than before; the fight shows no blocked action and nothing about Vanguard in the taint log. [Needs in-game check: the harness cannot follow taint carried by a value the game reads, nor the Edit Mode window's real draw order.]
+- If it fails, paste: `/vg errors`, a screenshot of Edit Mode, and the lines naming Vanguard in Logs/taint.log.
+
 ### 33.97 Turn in a quest with no reward choice
 
 - Do: take a quest that offers no choice of rewards (most low-level quests) and finish it. Turn it in once with Vanguard's quest dialog (press Complete or Space on the reward page), then switch on Turn in finished quests under `/vg` → Quests, finish a second such quest and talk to its giver. Run `/vg errors` after each.

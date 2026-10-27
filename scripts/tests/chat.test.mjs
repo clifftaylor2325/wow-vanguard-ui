@@ -1939,6 +1939,17 @@ it("H-08 popups: a first button without a label, or an odd Button1, is no error"
   showPopup(addon, "DELETE_MAIL");
   expect(addon.eval("return #ns.errors")).toBe(0);
 });
+// S6-1: the game's popup Layout (every StaticPopup_Show) reads each child's and region's ignoreInLayout, and a value
+// of Vanguard's there tainted the caller and later a protected Accept such as deleting an item.
+it("S6-1 popups: with every control skinned, nothing of Vanguard's is among the popup's own children and regions", () => {
+  const addon = loggedIn(DANGER_ENV + '__window("StaticPopup2")');
+  showPopup(addon, "DELETE_ITEM");
+  addon.eval("StaticPopup2:Show()");
+  expect(addon.eval(`local p = StaticPopup1
+    return { __vanguardPieces(p), ns.Theme.Padding(__panelHost(p)), __panelHost(p):GetParent() == UIParent, __panelHost(p):IsShown(), #ns.errors }`),
+    "no Vanguard frame or region in the popup; the panel (12 out past it) on a backdrop on UIParent, showing").toEqual([0, 12, true, true, 0]);
+  expect(addon.eval("return { __vanguardPieces(StaticPopup2), __panelHost(StaticPopup2) ~= StaticPopup2 }"), "nor in a second popup, which has its own backdrop").toEqual([0, true]);
+});
 it("R2.11 the ready check: the listener's tile and border faded, the portrait kept, title, prompt and buttons in the theme", () => {
   const addon = loggedIn(POPUP_ENV);
   addon.eval("ReadyCheckFrame:Show()");

@@ -238,20 +238,25 @@ const WIDGET_ENV = PVP_ENV + `
 it("S8.3 widget containers: a flat panel behind the widgets only while there are some, out of the layout", () => {
   const addon = loggedIn(WIDGET_ENV);
   const top = "UIWidgetTopCenterContainerFrame";
-  expect(addon.eval(`local b = ns.FrameState('vgBackdrop')[${top}] return { b:IsShown(), __panel(b), b.ignoreInLayout, b:GetFrameLevel() == ${top}:GetFrameLevel() }`),
-    "an empty container: its panel made but hidden, left out of the layout, behind the widgets").toEqual([false, true, true, true]);
+  expect(addon.eval(`local b = ns.FrameState('vgBackdrop')[${top}]
+    return { b:IsShown(), __panel(b), b:GetParent() == UIParent, b.ignoreInLayout == nil, b:GetFrameLevel() == ${top}:GetFrameLevel() - 1, __vanguardPieces(${top}) }`),
+    "an empty container: its panel made but hidden, on a backdrop of Vanguard's own on UIParent (never the container's child, so out of its layout), behind the widgets").toEqual([false, true, true, true, true, 0]);
   addon.eval(`${top}.numWidgetsShowing = 2 ${top}:UpdateWidgetLayout()`);
   expect(addon.eval(`return { ns.FrameState('vgBackdrop')[${top}]:IsShown(), ${top}.__layouts }`), "widgets laid out: the panel shows, the game's call ran").toEqual([true, 1]);
   addon.eval(`${top}.numWidgetsShowing = 0 ${top}.__scripts.OnSizeChanged(${top})`);
   expect(addon.eval(`return ns.FrameState('vgBackdrop')[${top}]:IsShown()`), "emptied: hidden again as it resizes").toBe(false);
   addon.eval(`${top}:Hide() ${top}:Show() ${top}:UpdateWidgetLayout()`);
-  expect(addon.eval(`return { ${top}.__layouts, select('#', ${top}:GetChildren()) }`), "showing again makes no second panel or hook").toEqual([2, 1]);
+  expect(addon.eval(`return { ${top}.__layouts, __vanguardPieces(${top}) }`), "showing again makes no second panel or hook").toEqual([2, 0]);
+  addon.eval(`${top}.numWidgetsShowing = 2 ${top}:UpdateWidgetLayout() ${top}:Hide()`);
+  expect(addon.eval(`return ns.FrameState('vgBackdrop')[${top}]:IsShown()`), "the container hidden with widgets in it: the panel hides with it").toBe(false);
+  addon.eval(`${top}:Show()`);
+  expect(addon.eval(`return ns.FrameState('vgBackdrop')[${top}]:IsShown()`), "and shows again with it").toBe(true);
 });
 
 it("S8.3 widget containers: without the game's mixin the children are counted; the group off adds nothing", () => {
   const addon = loggedIn(WIDGET_ENV);
   const box = "UIWidgetBelowMinimapContainerFrame";
-  expect(addon.eval(`return ns.FrameState('vgBackdrop')[${box}]:IsShown()`), "only Vanguard's backdrop in it").toBe(false);
+  expect(addon.eval(`return ns.FrameState('vgBackdrop')[${box}]:IsShown()`), "nothing in it").toBe(false);
   addon.eval(`CreateFrame("Frame", nil, ${box}) ${box}.__scripts.OnSizeChanged(${box})`);
   expect(addon.eval(`return ns.FrameState('vgBackdrop')[${box}]:IsShown()`), "a widget in it").toBe(true);
   const off = loggedIn(WIDGET_ENV, OFF);
