@@ -58,7 +58,7 @@ end
 local function haystack(row, note)
   local reload = row.reload and O.BothTongues(L["reload"]) or ""
   local words = { tostring(row[2]), row.english or "", O.BothTongues(row.tip or ""), keywordsOf(row), choiceNames(row), O.BothTongues(note or ""), reload }
-  return table.concat(words, " "):lower()
+  return ns.Lower(table.concat(words, " "))
 end
 
 -- Whether every word of the (lower-case) text is in the row's words (with the note under it).
@@ -115,7 +115,7 @@ end
 -- The settings that match a (lower-case) search text, and how many more the list has no room for; "changed" is
 -- the ones off their default.
 function O.FindSettings(text)
-  if text == "changed" or text == L["changed"]:lower() then return collect(function(row) return O.RowChanged(row) end) end
+  if text == "changed" or text == ns.Lower(L["changed"]) then return collect(function(row) return O.RowChanged(row) end) end
   local words = wordsOf(text)
   return collect(function(row, note) return matches(row, words, note) end)
 end

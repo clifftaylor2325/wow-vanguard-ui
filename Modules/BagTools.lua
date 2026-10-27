@@ -24,7 +24,7 @@ local function filterChoices()
   local out = {}
   for _, s in ipairs(SEARCHES) do out[#out + 1] = s end
   for _, section in ipairs(BG.CategorySections()) do
-    out[#out + 1] = { "cat:" .. section.label:lower(), ns.Format(L["Group: {name}"], { name = section.label }) }
+    out[#out + 1] = { "cat:" .. ns.Lower(section.label), ns.Format(L["Group: {name}"], { name = section.label }) }
   end
   return out
 end

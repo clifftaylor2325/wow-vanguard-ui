@@ -235,3 +235,11 @@ it("the roster of 40 stays on the screen: the lines are cut to the room under it
   const [bottom1080, at1080] = full(1920, 1080);
   expect([bottom1080 >= 0, at1080.length, at1080[at1080.length - 1]], "a tall screen: every member, and no count line").toEqual([true, 41, "Pal40"]);
 });
+
+it("reserves compare Russian names and item names without regard to case, and the ones saved before still match", () => {
+  const addon = loggedIn(ROLL_ENV, ON);
+  const norms = addon.eval('local OL = ns.GetModule("OfficerLoot") return { OL.Norm("Игрок-Realm"), OL.Same("Игрок", "игрок"), OL.Item("Железная руда").lname }');
+  expect(norms, "names and the saved item name are in small letters, the realm cut").toEqual(["игрок", true, "железная руда"]);
+  const old = addon.eval('local OL = ns.GetModule("OfficerLoot") return OL.Match({ lname = "Железная руда" }, OL.Item("железная РУДА"))');
+  expect(old, "a reserve saved with a Cyrillic capital still matches").toBe(true);
+});

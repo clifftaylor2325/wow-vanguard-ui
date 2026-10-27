@@ -27,7 +27,7 @@ OL.PART_SEP = " | "
 
 -- A player's name as compared: lower-case, without the "-Realm" the game adds across realms.
 function OL.Norm(name)
-  return (tostring(name):lower():gsub("%-.*$", ""))
+  return (ns.Lower(tostring(name)):gsub("%-.*$", ""))
 end
 
 -- Whether two names are the same player.
@@ -41,12 +41,12 @@ function OL.Item(text)
   text = text:match("^%s*(.-)%s*$")
   if text == "" then return nil end
   local name = text:match("|h%[(.-)%]|h") or text
-  return { id = tonumber(text:match("item:(%d+)")), name = name, lname = name:lower() }
+  return { id = tonumber(text:match("item:(%d+)")), name = name, lname = ns.Lower(name) }
 end
 
 -- Whether a stored reserve is for the item read by OL.Item: the same id, else the same name.
 function OL.Match(entry, item)
-  return (item.id ~= nil and entry.id == item.id) or entry.lname == item.lname
+  return (item.id ~= nil and entry.id == item.id) or (entry.lname ~= nil and ns.Lower(entry.lname) == item.lname)
 end
 
 -- The reserves kept on this character, a list of { player, item, id, lname }; made on first use.
@@ -125,7 +125,7 @@ end
 function OL.Groups()
   local out, at = {}, {}
   for _, e in ipairs(OL.Store()) do
-    local key = e.id or e.lname
+    local key = e.id or ns.Lower(e.lname)
     if not at[key] then out[#out + 1] = { item = e.item, names = {} } at[key] = out[#out] end
     table.insert(at[key].names, e.player)
   end

@@ -512,3 +512,16 @@ it("+ Add holds its label in German, Russian and Portuguese in every place along
     }
   }
 });
+
+it("mail search, presets and preset words ignore the case of Russian letters, not only of A-Z", () => {
+  const addon = mailer(`__wfgWorld.items[903] = { name = "Железная руда" } __wfgWorld.bags[0][3] = { itemID = 903 }`);
+  expect(addon.eval(`return ${MT}.Matches({ sender = "Торговец", subject = "Письмо", link = "", money = 0, items = 0 }, "торговец")`), "a small-letter query finds the capital").toBe(true);
+  addon.slash("mail preset add Кузнец Bobalt железная");
+  addon.slash("mail preset add кузнец Bobalt руда");
+  expect(addon.eval(`return #${MT}.settings.presets`), "the same name in small letters replaces the preset").toBe(1);
+  addon.world.openMailWindow();
+  addon.world.showSendMail();
+  addon.slash("mail preset add Кузнец Bobalt железная");
+  addon.slash("mail send кузнец");
+  expect(addon.eval("return __wfgWorld.usedItems"), "the preset found by its name, the item by a small-letter word").toEqual([[0, 3]]);
+});

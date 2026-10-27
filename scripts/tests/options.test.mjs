@@ -1898,3 +1898,37 @@ it("options tabs: a Text size change sizes the open page's tabs to their names a
   expect(after.map(([width, name]) => width - name), "each tab is its name and 12 of air each side again").toEqual(after.map(() => 24));
   expect([after[0][0] > before[0][0], after.every((t) => t[2] <= strip), rowsAfter > rowsBefore], "wider names, none past the strip, more lines").toEqual([true, true, true]);
 });
+
+it("options search on a Russian client finds a page by its title and a setting by its first word, typed in small letters", () => {
+  const addon = loggedIn(CLICK_LUA, { client: '__wfgWorld.locale = "ruRU"' });
+  addon.eval('ns.Options.Show("general")');
+  const lit = addon.eval(`local O = ns.Options
+    for _, page in ipairs(O.PAGES) do
+      if page.title:find("^\\208[\\144-\\175]") then
+        O.Search(ns.Lower(page.title))
+        return O.matched[page.key] == true
+      end
+    end`);
+  expect(lit, "a page whose title starts with a capital stays lit for its title in small letters").toBe(true);
+  const word = addon.eval(`local O = ns.Options
+    for _, row in ipairs(O.RowsOf(O.PAGES[1])) do
+      local first = row[1] == "check" and type(row[2]) == "string" and row[2]:match("^(\\208[\\144-\\175]%S*)")
+      if first then
+        for _, h in ipairs(O.FindSettings(ns.Lower(first))) do if h.row == row then return first end end
+        return false
+      end
+    end`);
+  expect(word, "a setting whose caption starts with a capital is found by that word in small letters").toBeTruthy();
+});
+
+it("options JumpTo marks the row for a Russian caption typed in small letters", () => {
+  const addon = loggedIn(CLICK_LUA, { client: '__wfgWorld.locale = "ruRU"' });
+  addon.eval('ns.Options.Show("general")');
+  const caption = addon.eval(`for _, row in ipairs(ns.Options.RowsOf(ns.Options.PAGES[1])) do
+      if row[1] == "check" and type(row[2]) == "string" and row[2]:find("^\\208[\\144-\\175]") then return row[2] end
+    end`);
+  addon.eval(`ns.Options.JumpTo(ns.Lower(${JSON.stringify(caption)}))`);
+  const marked = addon.eval("for _, w in ipairs(__wfgStub.frames) do if w.found and w.found:IsShown() and w.source then return w.source[2] end end");
+  expect(marked, "the marked row is the one with that caption").toBe(caption);
+});
+

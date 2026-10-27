@@ -55,7 +55,7 @@ end
 -- The tests of a search text, or nil when it holds no operator (the game's own search handles it).
 function BG.ParseSearch(text)
   local tests, operators = {}, false
-  for word in tostring(text or ""):lower():gmatch("%S+") do
+  for word in ns.Lower(tostring(text or "")):gmatch("%S+") do
     local test = testOf(word)
     tests[#tests + 1], operators = test, operators or test.key ~= "name"
   end
@@ -66,8 +66,8 @@ end
 local function factsOf(info)
   local name, _, quality, ilvl, _, kind, sub, _, _, _, _, _, _, bind = C_Item.GetItemInfo(info.itemID)
   return {
-    name = (name or ""):lower(), quality = ns.PlainNumber(quality), ilvl = ns.PlainNumber(ilvl),
-    type = ((kind or "") .. " " .. (sub or "")):lower(), bind = ns.PlainNumber(bind), item = info.itemID,
+    name = ns.Lower(name or ""), quality = ns.PlainNumber(quality), ilvl = ns.PlainNumber(ilvl),
+    type = ns.Lower((kind or "") .. " " .. (sub or "")), bind = ns.PlainNumber(bind), item = info.itemID,
     class = BG.ClassOf(info.itemID),
   }
 end

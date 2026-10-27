@@ -712,3 +712,12 @@ it("the Click casting page shows one Reset this page card however often the wind
       if w:IsVisible() and type(fs) == "table" and fs.__text == "Reset this page" then n = n + 1 end end return n`);
   expect(shown, "one reset button").toBe(1);
 });
+
+it("the spell picker finds a Russian spell typed in small letters", () => {
+  const addon = priest("", { client: '__wfgWorld.locale = "ruRU"' });
+  addon.world.learn(3001, { name: "Обновление", rank: 1, helpful: true });
+  addon.eval('ns.Options.Show("clickcast")');
+  addon.click(cell(addon, "ctrl-BUTTON2"));
+  addon.type("Vanguard_SpellPicker.search", "обновление");
+  expect(pickerRow(addon, "Обновление") !== undefined, "the capital О is folded on both sides").toBe(true);
+});

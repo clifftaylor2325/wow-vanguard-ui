@@ -775,3 +775,16 @@ it("the sectioned combined bag is clamped to the screen, so a bag taller than a 
   expect(clamp("__wfgStub.setScreen(1188, 668)"), "clamped once the sections watch it").toBe(true);
   expect(clamp("C_Item.GetItemInfoInstant = nil"), "a client that can't section keeps the game's frame as it is").toBeNull();
 });
+
+it("search words and group names ignore the case of Russian letters, so a small-letter word finds a name and cat: finds a group", () => {
+  const addon = loggedIn(ITEMS_ENV + fill([8, 4, 0, 0, 0], { quest: 1, equipment: 1, consumables: 2, junk: 1 }) + BAG_FRAME + SEARCH_ENV);
+  addon.eval(`local items = __wfgWorld.items
+    items[90001].name, items[90001].type = "Железный меч", "Оружие"
+    items[90002].name = "Ржавый кинжал"`);
+  addon.eval("__openBag()");
+  expect(lit(addon, "q>=2 железный"), "an item name by a small-letter word").toEqual([90001]);
+  expect(lit(addon, "type:оружие"), "the client's type word in small letters").toEqual([90001]);
+  addon.slash("bag add Оружие 90001");
+  expect(lit(addon, "cat:оружие"), "a group named with a capital, searched in small letters").toEqual([90001]);
+  expect(addon.eval(`return { ns.GetModule("Bags").CategoryOf(90001) }`), "the group key is in small letters").toEqual(["cat:оружие"]);
+});

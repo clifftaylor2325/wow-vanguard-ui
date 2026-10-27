@@ -73,10 +73,10 @@ end
 -- The map called name in the player's world: the exact name (any case), else
 -- the one map whose name starts with it; nil when none or several do.
 local function mapNamed(name)
-  local here, want, found = playerMap(), name:lower(), nil
+  local here, want, found = playerMap(), ns.Lower(name), nil
   if not here then return nil end
   for _, info in ipairs(C_Map.GetMapChildrenInfo(rootOf(here), nil, true) or {}) do
-    local n = info.name:lower()
+    local n = ns.Lower(info.name)
     if n == want then return info.mapID end
     if n:sub(1, #want) == want then found = found == nil and info.mapID or false end
   end
