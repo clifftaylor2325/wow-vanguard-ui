@@ -2732,6 +2732,12 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: a row never says "none up" for an item the answer was not about (a slow item stays blank until its own answer or the 2 second give-up); the scan finishes and stores prices though a fight began; the house opened in combat still gets the Lists and Posting tabs; in the fight the action bar keys work again at once. [Needs in-game check: how late a real realm answers, whether the client keeps the auction house open in combat, and how it routes keys after the table gave up the keyboard.]
 - If it fails, paste: the row that was wrong with its list, and `/vg errors`.
 
+### 33.99 Raid tools as leader: Ready, Pull and Raid
+
+- Do: lead a party (a second character or a friend), so the raid tools bar shows. Click Ready. Click Pull with the left button, then right-click Pull during the countdown. Click Raid. Run `/vg errors`.
+- Expect: Ready starts the game's ready check; Pull starts a 10 second countdown and the right-click cancels it; Raid turns the party into a raid; no "reserved for the Blizzard UI" message names Vanguard and `/vg errors` is empty. [Needs in-game check: whether a click from addon code may call C_PartyInfo.ConvertToRaid (Raid still does), and that the macro buttons start /readycheck and /countdown on Forever.]
+- If it fails, paste: the game's message word for word (which button), and `/vg errors`.
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ## When you are done
