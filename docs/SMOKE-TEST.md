@@ -2819,6 +2819,42 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: each time, every frame's handle shows (the Chat handle over the chat window) and the Exit bar is there; the printed line says what the client answers (note it, true or false, for each place); `/vg errors` is empty. [Needs in-game check: whether the 12.1 client ever hides the chat window's width, height or scale from addons; the guards that keep unlock mode and a frame anchored to Chat working only matter if it does.]
 - If it fails, paste: which handles showed, the printed line and where you were, and `/vg errors`.
 
+### 33.109 German client: the guild message of the day links its address
+
+- Do: on a German client in a guild whose message of the day holds a web address (set one with `/gmotd Raid um 8, discord.gg/abc` if you can), log in or `/reload`.
+- Expect: the "Gildennachricht des Tages" line shows the address as an accent link, its closing quote outside the link; clicking it opens the copy box. [Needs in-game check: the German template's `%1$s` and the quotes.]
+- If it fails, paste: the line as shown and `/vg errors`.
+
+### 33.110 Russian or Chinese client: chat watch, chat filter and click casting
+
+- Do: on a Russian (or Chinese) client, `/vg watch add` a 24-letter Cyrillic phrase, `/vg filter add Продам`, then have a friend say "ПРОДАМ" in a channel; open `/vg` → Click casting.
+- Expect: the phrase is added (not refused as too long); the line in capitals is caught by the filter; a binding without a spell icon (Target, Unit menu) shows its whole first letter, not a broken glyph.
+- If it fails, paste: the chat lines and a screenshot of the click-cast grid.
+
+### 33.111 A fight with a screen or key change, then the end of the fight
+
+- Do: with Pixel-perfect scale on, start a fight and in it change the game's UI scale slider a few times, or rebind a key twice; end the fight.
+- Expect: no long hitch when the fight ends (one repaint, not one per change); bars and keys are right afterwards; `/vg errors` is empty.
+- If it fails, paste: how long the hitch was and `/vg errors`.
+
+### 33.112 Boss fight with Vanguard's quest tracker and the game's boss frames
+
+- Do: with Vanguard's quest tracker on and Vanguard's boss frames off (so the game's are used), fight a boss while a quest objective updates (kill a quest mob in the fight, or loot a quest item).
+- Expect: no "Interface action failed because of an AddOn" and no blocked action in `/vg errors`; the game's tracker stays hidden and Vanguard's updates. [Needs in-game check: the game's tracker parked under a hidden frame in a boss fight.]
+- If it fails, paste: the blocked-action line and `/vg errors`.
+
+### 33.113 AFK screen after a ready check, and a closed Filtered tab
+
+- Do: while at the keyboard, accept a ready check (or any popup), then `/afk`. Then, with the chat filter on, close the Filtered tab (right-click it → Close Window) and wait for a caught line; `/reload` and wait for another.
+- Expect: the AFK screen shows after `/afk`. The Filtered tab comes back with the caught line, once (no second Filtered tab), and still after the reload.
+- If it fails, paste: whether the AFK screen showed, how many Filtered tabs there are, and `/vg errors`.
+
+### 33.114 `/vg frame` on a forbidden frame, and the Edit Mode layout switch on a profile load (launch-day checks)
+
+- Do: in a dungeon with a friendly nameplate shown, `/vg frame NamePlate1 deep`. Then, with a profile that remembers another Edit Mode layout, load it on a character that used a different profile last time; after the chat line "Edit Mode layout …, from profile …" run `/dump issecurevariable(EditModeManagerFrame, "layoutApplyInProgress")`, then start any fight. Also tick the health-percent row under `/vg` → Nameplates and run `/dump issecurevariable(CVarCallbackRegistry.cvarValueCache, "nameplateInfoDisplay")`.
+- Expect: `/vg frame` prints lines with no Lua error. Both dumps print true (the game's own state is not tainted), and no "Interface action failed because of an AddOn" shows at the start of the fight. [Needs in-game check: if either dump prints false and "Vanguard", say so in the project: the third stability hunt has a fix ready for the layout switch (offer a reload after it), and the nameplate setting would need a decision.]
+- If it fails, paste: both dump lines, any blocked-action line, and `/vg errors`.
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ## When you are done
