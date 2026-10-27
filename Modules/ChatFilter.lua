@@ -50,7 +50,7 @@ CF.allowed, CF.recent, CF.recentCount, CF.count, CF.counts = {}, {}, 0, 0, {}
 -- True when the line holds any of the words (as plain text).
 local function holdsAny(line, words)
   for _, word in ipairs(words) do
-    if line:find(word, 1, true) then return true end
+    if line:find(ns.Lower(word), 1, true) then return true end
   end
   return false
 end
@@ -95,18 +95,30 @@ function CF.Reason(text, sender, now)
   local line = ns.GetModule("ChatExtras").Matchable(text)
   local why = CF.Category(line)
   if not why and holdsAny(line, CF.settings.keywords) then why = L["Your word"] end
-  if not why and CF.settings.repeats and #line >= CF.MIN_REPEAT and repeated(sender, line, now) then why = L["Repeat"] end
+  if not why and CF.settings.repeats and #line >= CF.MIN_REPEAT and ns.TextLength(line) >= CF.MIN_REPEAT and repeated(sender, line, now) then why = L["Repeat"] end
   return why
 end
 
 -- The Filtered tab ----------------------------------------------------------------------------
 
--- The chat window called Filtered, or nil.
+-- Whether a chat window is open: shown, docked behind another tab, or minimized. The game keeps a closed
+-- window's name, so a closed Filtered tab is still found by name.
+local function isOpen(frame)
+  return frame:IsShown() or frame.isDocked or frame.minimized
+end
+
+-- The chat window called Filtered, an open one first, or nil.
 function CF.FindWindow()
   if type(GetChatWindowInfo) ~= "function" then return nil end
+  local closed
   for i = 1, NUM_CHAT_WINDOWS or 10 do
-    if GetChatWindowInfo(i) == CF.TAB then return _G["ChatFrame" .. i] end
+    local frame = _G["ChatFrame" .. i]
+    if GetChatWindowInfo(i) == CF.TAB and frame then
+      if isOpen(frame) then return frame end
+      closed = closed or frame
+    end
   end
+  return closed
 end
 
 -- A new window called Filtered that hears no chat of its own (FCF_OpenNewWindow's second argument takes
@@ -158,11 +170,21 @@ end
 
 -- The game's filter ---------------------------------------------------------------------------
 
+-- Takes another open window called Filtered, or makes one, after the tab was closed or renamed; out of combat.
+local function reopen()
+  CF.window = nil
+  ns.OutOfCombat(function()
+    local found = CF.FindWindow()
+    CF.window = found and isOpen(found) and found or openWindow()
+  end, "chatfilter window")
+end
+
 -- Whether a caught line can go anywhere: hidden, or to a Filtered tab that is still there (a closed
--- one is let go and made again when the fight is over).
+-- or renamed one is let go and made again when the fight is over).
 local function canCatch()
-  if CF.window and CF.FindWindow() ~= CF.window then CF.window = nil CF.Prepare() end
-  return CF.settings.mode == "hide" or CF.window ~= nil
+  if CF.settings.mode == "hide" then return true end
+  if CF.window and (CF.FindWindow() ~= CF.window or not isOpen(CF.window)) then reopen() end
+  return CF.window ~= nil
 end
 
 -- Catches a line: sent to the Filtered tab, or just counted when hidden.
@@ -260,16 +282,16 @@ end
 -- Why a keyword can't be added, or nil when it can.
 local function refusal(word, list)
   if word == "" then return L["Type a word to filter."] end
-  if #word > CF.MAX_LENGTH then return ns.Format(L["A word can be at most {max} characters."], { max = CF.MAX_LENGTH }) end
+  if ns.TextLength(word) > CF.MAX_LENGTH then return ns.Format(L["A word can be at most {max} characters."], { max = CF.MAX_LENGTH }) end
   if #list >= CF.MAX_KEYWORDS then return ns.Format(L["Chat filter keeps at most {max} words; remove one first."], { max = CF.MAX_KEYWORDS }) end
   for _, w in ipairs(list) do
-    if w == word then return ns.Format(L['Already filtering "{word}".'], { word = word }) end
+    if ns.Lower(w) == word then return ns.Format(L['Already filtering "{word}".'], { word = word }) end
   end
 end
 
 -- A keyword as typed: trimmed and lower-cased.
 local function clean(text)
-  return ((type(text) == "string" and text or ""):gsub("[%[%]|]", ""):match("^%s*(.-)%s*$")):lower()
+  return ns.Lower(((type(text) == "string" and text or ""):gsub("[%[%]|]", ""):match("^%s*(.-)%s*$")))
 end
 
 -- Adds a keyword; says in chat what happened. True when added.

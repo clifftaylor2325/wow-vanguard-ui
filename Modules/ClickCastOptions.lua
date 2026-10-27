@@ -61,7 +61,7 @@ local function setIcon(f, b)
   local icon = iconOf(b)
   f.icon:SetTexture(icon)
   f.icon:SetShown(icon ~= nil)
-  f.letter:SetText(b and not icon and CC.ActionText(b):sub(1, 1) or "")
+  f.letter:SetText(b and not icon and ns.TextPrefix(CC.ActionText(b), 1) or "")
   f:SetShown(b ~= nil)
 end
 

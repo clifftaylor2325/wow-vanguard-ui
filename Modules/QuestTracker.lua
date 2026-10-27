@@ -323,10 +323,12 @@ local function followRecipes()
   ns.On("GET_ITEM_INFO_RECEIVED", itemArrived)
 end
 
--- Builds the tracker (in its spot), hides the game's, and follows the quest log.
+-- Builds the tracker (in its spot), parks the game's under a hidden frame, as the unit frames park theirs (hidden
+-- in place, the game showing it in a fight made Vanguard's hide lay out the game's right-side column, boss frames
+-- and all, from addon code), and follows the quest log.
 local function build()
   QT.Build(ns.MoverFrame("questtracker"))
-  ns.GetModule("DataBars").Suppress("ObjectiveTrackerFrame")
+  ns.GetModule("UnitFrames").HideBlizzard("ObjectiveTrackerFrame")
   QT.ApplyOrder()
 end
 

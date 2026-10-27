@@ -119,6 +119,24 @@ it("chat filter: your own words, and the same line from one sender within a minu
   expect(deliver(addon, GOLD, "Goldy"), "a category switched off").toBe(false);
 });
 
+it("chat filter: your own words match in any case for Cyrillic and accented letters", () => {
+  const addon = filtering();
+  addon.slash("filter add Продам");
+  expect(addon.eval("return ns.Settings('ChatFilter').keywords"), "stored in small letters").toEqual(["продам"]);
+  expect(deliver(addon, "ПРОДАМ золото дёшево", "Seller"), "a line in capitals is caught").toBe(true);
+  addon.eval("table.insert(ns.Settings('ChatFilter').keywords, 'ÄRGER')");
+  expect(deliver(addon, "viel ärger heute", "Old"), "a word saved in capitals by an older version still matches").toBe(true);
+  addon.slash("filter add ärger");
+  expect(addon.eval("return #ns.Settings('ChatFilter').keywords"), "and adding it again in small letters is refused as a duplicate").toBe(2);
+});
+
+it("chat filter: the repeat rule's shortest line counts letters, so a short Chinese line said twice passes", () => {
+  const addon = filtering();
+  expect([deliver(addon, "组队打本", "Short"), deliver(addon, "组队打本", "Short")], "4 letters (12 bytes) are never a repeat").toEqual([false, false]);
+  const line = "组队打本缺一个治疗速度来吧";
+  expect([deliver(addon, line, "Long"), deliver(addon, line, "Long")], "13 letters said twice is a repeat").toEqual([false, true]);
+});
+
 it("chat filter: clicking a sender's name lets them through for the session", () => {
   const addon = filtering();
   deliver(addon, GOLD, "Goldy");
@@ -198,6 +216,22 @@ it("chat filter: hide mode drops lines without a tab; with no tab possible nothi
   expect(full.eval("return { __bare, __removed == nil }"), "the new tab hears no chat of its own: the game's call takes every group and channel off it, so nothing is removed twice").toEqual([true, true]);
 });
 
+it("chat filter: a closed Filtered tab is made again on the next caught line, and kept from then on", () => {
+  const addon = filtering();
+  deliver(addon, GOLD, "Goldy");
+  addon.eval("ChatFrame3:Hide()");
+  expect(deliver(addon, GOLD, "Goldy2"), "still caught").toBe(true);
+  // The Filtered window the filter sends to: its name, shown, and how many lines it holds.
+  const window = () => addon.eval("local f = ns.GetModule('ChatFilter').window return { f:GetName(), f:IsShown(), #f.__messages }");
+  expect(window(), "a new, shown Filtered window holds the line").toEqual(["ChatFrame4", true, 1]);
+  deliver(addon, GOLD, "Goldy3");
+  expect(window(), "the next line goes to it too, no third window").toEqual(["ChatFrame4", true, 2]);
+  addon.slash("filter hide");
+  addon.eval("ChatFrame4:Hide()");
+  expect([deliver(addon, GOLD, "Goldy4"), addon.eval("return ChatFrame5 == nil")], "in hide mode a closed tab is not made again").toEqual([true, true]);
+  expect(addon.eval("return #ns.errors"), "no errors").toBe(0);
+});
+
 it("chat filter: the filter waits for the end of a fight to make the tab; no GetChatWindowInfo means a new tab each time is not tried", () => {
   const addon = loggedIn();
   addon.eval("__wfgStub.inCombat = true");
@@ -236,6 +270,14 @@ it("chat filter: the /vg filter command and the keyword limits", () => {
   addon.slash("filter tab");
   expect(chatHas(addon, /go to the Filtered tab\./), "tab says so").toBe(true);
   expect(addon.eval("return #ns.errors"), "no errors").toBe(0);
+});
+
+it("chat filter: the 40-character word limit counts letters, not bytes, so a Russian word fits", () => {
+  const addon = loggedIn();
+  addon.slash(`filter add ${"я".repeat(24)}`);
+  expect(addon.eval("return #ns.Settings('ChatFilter').keywords"), "24 Cyrillic letters (48 bytes) are added").toBe(1);
+  addon.slash(`filter add ${"я".repeat(41)}`);
+  expect(chatHas(addon, /at most 40 characters/), "41 letters are too long").toBe(true);
 });
 
 it("chat filter: the options page switches it on and adds and removes a word", () => {

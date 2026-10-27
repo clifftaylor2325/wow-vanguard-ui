@@ -458,6 +458,15 @@ it("the grid's column headers are section headers centred over their cells, and 
   expect([letter[0], letter[1], isTok(addon, letter[2], "accentText")], "the left click's Target shows a T in the name role, in the accent's text colour").toEqual(["T", name, true]);
 });
 
+it("on a Russian client an action with no icon shows its whole first letter, not half of it", () => {
+  const addon = priest("", { client: '__wfgWorld.locale = "ruRU"' });
+  addon.eval('ns.Options.Show("clickcast")');
+  addon.eval('__click(ns.Format(ns.L["{class} healing layout"], { class = "Priest" }))');
+  const letter = addon.eval(`return __wfgStub.frames[${cell(addon, "BUTTON1")}].iconFrame.letter:GetText()`);
+  const action = addon.eval('return ns.GetModule("ClickCast").ActionText({ action = "target" })');
+  expect([letter, letter.length], "the first letter of the translated Target, one character").toEqual([action[0], 1]);
+});
+
 it("the picker's rows are list rows (T.ROW.height) and a group's name shows in a section header on its row", () => {
   const addon = priest();
   addon.eval('ns.Options.Show("clickcast")');

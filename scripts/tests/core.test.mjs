@@ -251,6 +251,17 @@ it("/vg frame: a frame's state, anchors and parents, and with deep its textures 
   expect(said(addon, "frame ProbeFrame.#1")[0], "#n is the nth child frame, for one with no key").toMatch(/^ProbeChild \(Frame\)/);
   expect(said(addon, "frame ProbeFrame.#9")[0], "a child that isn't there leads nowhere").toMatch(/^No frame called/);
 });
+it("/vg frame: #0 leads nowhere, and a frame that refuses its parent and parts still prints", () => {
+  const addon = loggedIn();
+  addon.eval(`local f = CreateFrame("Frame", "ProbeLocked", UIParent)
+    local function refuse() error("TEST-ONLY forbidden") end
+    f.GetParent, f.GetRegions, f.GetChildren = refuse, refuse, refuse`);
+  expect(said(addon, "frame UIParent.#0")[0], "a child step of 0 says no frame, not an error").toMatch(/^No frame called UIParent\.#0/);
+  expect(said(addon, "frame ProbeLocked.#1")[0], "a child step on a frame that refuses its children says no frame").toMatch(/^No frame called ProbeLocked\.#1/);
+  expect(said(addon, "frame ProbeLocked deep"), "no parent, no ancestors, and no parts").toEqual([
+    expect.stringMatching(/^ProbeLocked \(Frame\): .*, under nothing$/), "  no anchors", "  0 region(s):", "  0 child frame(s):"]);
+  expect(addon.eval("return #ns.errors"), "no errors").toBe(0);
+});
 // TEST-ONLY counters: Vanguard's CPU total (__cpu ms) and memory (2048 KB), each refreshed by its Update call (counted).
 const PERF_ENV = `
   __cpu, __updates = 0, { cpu = 0, mem = 0 }

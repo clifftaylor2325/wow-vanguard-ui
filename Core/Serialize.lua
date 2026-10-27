@@ -135,9 +135,10 @@ local function place(p, value, pos)
   p.pos = pos
 end
 
--- Opens a table at pos (its opening brace).
+-- Opens a table at pos (its opening brace). The cap matches the encoder's, so a string that imports can
+-- always be written again (one level deeper imported and then broke every export and the logout backup).
 local function open(p, pos)
-  if #p.stack > MAX_DEPTH then error("settings nest too deeply") end
+  if #p.stack >= MAX_DEPTH then error("settings nest too deeply") end
   p.stack[#p.stack + 1] = { t = {} }
   p.pos = skip(p.text, pos + 1)
 end

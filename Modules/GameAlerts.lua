@@ -59,7 +59,7 @@ end
 
 -- Gives the talking head's spot the room the info strip needs at the new Text size, out of combat.
 local function refitTalkingHead()
-  ns.OutOfCombat(function() ns.SetMoverDefault("talkinghead", talkingHeadSpot()) end)
+  ns.OutOfCombat(function() ns.SetMoverDefault("talkinghead", talkingHeadSpot()) end, "talking head spot")
 end
 
 -- Hides a frame's named art parts. Hidden, not faded: the frame's own

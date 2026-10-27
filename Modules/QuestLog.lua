@@ -237,7 +237,7 @@ function QL.BindKeys()
     for _, key in ipairs({ ns.CallIf(_G, "GetBindingKey", "TOGGLEQUESTLOG") }) do
       SetOverrideBindingClick(QL.toggle, false, key, "Vanguard_QuestLogToggle")
     end
-  end)
+  end, "quest log keys")
 end
 
 -- The button the quest log key clicks.

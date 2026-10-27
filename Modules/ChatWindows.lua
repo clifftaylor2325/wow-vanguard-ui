@@ -224,7 +224,7 @@ CW.MAX_FOUND = 200
 
 -- A line as plain lower-case text for matching (links and colors reduced to their words).
 local function plain(text)
-  return ns.GetModule("ChatExtras").Plain(text):lower()
+  return ns.Lower(ns.GetModule("ChatExtras").Plain(text))
 end
 
 -- Every readable line of a window as { text }: lines the game hides are left out.
@@ -274,7 +274,7 @@ end
 -- and the lines with each match in the accent's text colour. An empty word says so in chat and
 -- gives nothing (the box keeps its last lines).
 function CW.Find(query)
-  local needle = (type(query) == "string" and query or ""):match("^%s*(.-)%s*$"):lower()
+  local needle = ns.Lower((type(query) == "string" and query or ""):match("^%s*(.-)%s*$"))
   if needle == "" then ns.Chat(L["Type something to find."]) return end
   local found = CW.Search(needle)
   local CX = ns.GetModule("ChatExtras")

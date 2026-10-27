@@ -74,6 +74,40 @@ function ns.TextPrefix(s, n)
   return s
 end
 
+-- The capitals ns.Lower folds beyond A-Z, as byte ranges: a lead byte, the second byte's range, the small letter's
+-- lead byte and the step to its second byte, and a second byte to leave alone (× in Latin-1). The reverse of
+-- the theme's T.UPPER_RANGES.
+ns.LOWER_RANGES = {
+  { "\195", 128, 158, "\195", 32, "\151" }, { "\208", 144, 159, "\208", 32 },
+  { "\208", 160, 175, "\209", -32 }, { "\208", 128, 143, "\209", 16 },
+}
+
+-- A text in small letters, the Latin-1 and Cyrillic capitals too, so "ПРОДАМ" matches "продам" and "Über"
+-- matches "über". Every letter keeps its length in bytes, so positions found in the folded text fit the text.
+---@param text string
+---@return string
+function ns.Lower(text)
+  text = text:lower()
+  if not text:find("[\195\208]") then return text end
+  return ns.FoldLetters(text, ns.LOWER_RANGES)
+end
+
+-- A text with the two-byte letters in ranges changed: each range is a lead byte, the second byte's range, the new
+-- lead byte, the step to the new second byte, and a second byte to leave alone. ns.Lower and the theme's capitals
+-- share it.
+---@param text string
+---@param ranges table[]
+---@return string
+function ns.FoldLetters(text, ranges)
+  for _, r in ipairs(ranges) do
+    local pattern = r[1] .. "([" .. string.char(r[2]) .. "-" .. string.char(r[3]) .. "])"
+    text = text:gsub(pattern, function(second)
+      if second ~= r[6] then return r[4] .. string.char(second:byte() + r[5]) end
+    end)
+  end
+  return text
+end
+
 -- A place's name from its zone and subzone: "Zone, Subzone" when both are known, else whichever is; nil for neither.
 ---@param zone string|nil
 ---@param sub string|nil

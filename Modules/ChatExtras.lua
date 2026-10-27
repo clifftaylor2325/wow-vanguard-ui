@@ -43,8 +43,9 @@ local function accentCode()
   return "|c" .. T.Hex("accentText")
 end
 
--- The punctuation after an address that is left out of its link: "site.com/x." links "site.com/x".
-local TRAIL = "[%.,!%?;:%)]+$"
+-- The punctuation after an address that is left out of its link: "site.com/x." links "site.com/x", and a closing
+-- quote stays outside too (the guild message of the day is quoted).
+local TRAIL = "[%.,!%?;:%)\"']+$"
 
 -- An address as a clickable link in the accent color, with the punctuation after it (TRAIL) left outside.
 local function linkText(url, color)
@@ -153,13 +154,13 @@ end
 -- finds "WTS [Devilsaur Leggings]" sent as an item link. The chat filter and chat watch match on it.
 function CX.Matchable(text)
   local s = text:find("|", 1, true) and text:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|H.-|h", ""):gsub("|[hr]", "") or text
-  return (s:gsub("[%[%]]", "")):lower()
+  return ns.Lower((s:gsub("[%[%]]", "")))
 end
 
--- Removes the first entry of list equal to value; true when one was removed.
+-- Removes the first entry of list equal to value in any case; true when one was removed.
 function CX.RemoveValue(list, value)
   for i, entry in ipairs(list) do
-    if entry == value then
+    if ns.Lower(entry) == ns.Lower(value) then
       table.remove(list, i)
       return true
     end
@@ -205,7 +206,7 @@ end
 ---@param patterns string[]
 ---@return string
 function CX.Marked(text, patterns)
-  local hit, lower = {}, text:lower()
+  local hit, lower = {}, ns.Lower(text)
   for _, pattern in ipairs(patterns) do markHits(lower, pattern, hit) end
   return paintHits(text, hit)
 end
@@ -280,9 +281,10 @@ function CX.ShortChannels(text)
   return (text:gsub("(|Hchannel:[^|]+|h)%[([^%]]+)%](|h)", function(link, label, close) return link .. "[" .. CX.ShortName(label) .. "]" .. close end))
 end
 
--- The game's guild message of the day words ("Guild Message of the Day: "), or nil.
+-- The game's guild message of the day words ("Guild Message of the Day: "), or nil. Some clients number the
+-- value ("%1$s" in German).
 local function motdStart()
-  return type(GUILD_MOTD_TEMPLATE) == "string" and GUILD_MOTD_TEMPLATE:match("^(.-)%%s") or nil
+  return type(GUILD_MOTD_TEMPLATE) == "string" and GUILD_MOTD_TEMPLATE:match("^(.-)%%%d?%$?s") or nil
 end
 
 -- The guild message of the day line with its addresses linked (no chat filter sees it: the game adds it to the
