@@ -183,6 +183,9 @@ it("Max and Stack count a quiver's or soul bag's free slots only for an item tha
   expect(maxPacks(addon, 3, 2), "an item of two families (bits 1 and 2) goes in an ammo pouch (2)").toBe(12);
   expect(maxPacks(addon, "nil", 1), "an item the client has not cached: general bags only").toBe(0);
   expect(maxPacks(addon, 0, 0), "a general bag takes anything").toBe(12);
+  addon.eval("ns.GetModule('Merchant').CONTAINER_CLASS = select(6, C_Item.GetItemInfoInstant(GetMerchantItemLink(1)))");
+  expect(maxPacks(addon, 1, 1), "a bag for sale (the item's class stands in for a bag's) never goes in a quiver").toBe(0);
+  addon.eval("ns.GetModule('Merchant').CONTAINER_CLASS = 1");
   addon.eval("StackSplitFrame:Show()");
   addon.eval("__family, __bagFamily = 0, 1");
   addon.eval("StackSplitFrame:Hide() StackSplitFrame:Show()");

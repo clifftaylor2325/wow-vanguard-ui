@@ -406,6 +406,11 @@ it("Z10-1 the wait after a stamp from the future runs down from the day the hous
   addon.eval("__now = __now + 300");
   expect(addon.eval(`return ${HELPER}.NextScanIn()`), "the full gap later, the scan is open").toBe(0);
 });
+it("Z10-1 a clock set back while the house is open still waits one gap at most", () => {
+  const addon = atAuctionHouse();
+  addon.eval("ns.AuctionPrices.House().lastScan = __now ns.AuctionPrices.Store().scannedAt = __now __now = __now - 3600");
+  expect(addon.eval(`return ${HELPER}.NextScanIn()`), "15 minutes, not an hour and 15 minutes").toBe(900);
+});
 it("Z10-1 a scan stamped in the past is left alone, and so is any stamp while the client can't say the time", () => {
   const addon = atAuctionHouse();
   reopenWithStamps(addon, -300);

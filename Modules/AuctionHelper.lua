@@ -430,11 +430,12 @@ AH.COUNTDOWN_TICK = 15
 
 -- Seconds until the next scan may start: the game allows one whole-house query every 15 minutes for the
 -- account, so the account's last finished scan counts (and this house's, for scans kept before that).
--- A stamp from the future is brought back to now when the house opens (clampScanStamps), so the wait
--- never runs past one gap; if the server still refuses, the refusal starts its own countdown.
+-- A stamp from the future is brought back to now when the house opens (clampScanStamps), and a clock set
+-- back while it is open still never makes the wait run past one gap; if the server still refuses, the
+-- refusal starts its own countdown.
 function AH.NextScanIn()
   local last = math.max(ns.PlainNumber(AP.Store().scannedAt) or 0, AP.House().lastScan, AH.refusedAt or 0)
-  return math.max(0, last + AH.SCAN_GAP - AP.Now())
+  return math.max(0, math.min(AH.SCAN_GAP, last + AH.SCAN_GAP - AP.Now()))
 end
 
 -- How long ago a time was, in words: "2 min ago", "3 h ago", "2 days ago".

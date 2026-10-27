@@ -233,11 +233,15 @@ local function wares(index)
   if price and price > 0 and not MC.ExtendedCost(index) then return price, math.max(quantity, 1), left end
 end
 
+-- The item class of bags (Enum.ItemClass.Container): for a bag, GetItemFamily answers what the bag holds.
+MC.CONTAINER_CLASS = 1
+
 -- The bag families an item fits, as the client's bit set (C_Item.GetItemFamily); 0 for an item it has not
--- cached or one without a family, which then counts the general bags only.
+-- cached, one without a family or a bag (a quiver never goes in a quiver), which then counts the general bags only.
 local function itemFamily(link)
   local get = C_Item and C_Item.GetItemFamily
   if type(get) ~= "function" or type(link) ~= "string" then return 0 end
+  if select(6, C_Item.GetItemInfoInstant(link)) == MC.CONTAINER_CLASS then return 0 end
   return ns.PlainNumber(get(link)) or 0
 end
 
