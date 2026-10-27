@@ -1006,6 +1006,15 @@ it("quest dialog: the gold crown marks the one choice that sells for most, never
   addon.fire("QUEST_COMPLETE");
   expect(crowns(addon, "Vanguard_QuestDialog"), "a single choice: just received, no crown").toEqual([false, false]);
 });
+it("quest dialog: the crown goes by what each choice's whole stack sells for", () => {
+  const addon = loggedIn(QUEST_ENV);
+  addon.eval("__choices[1][3] = 20");
+  addon.fire("QUEST_COMPLETE");
+  expect(crowns(addon, "Vanguard_QuestDialog"), "20 Boots at 50 (1000) over one Gloves at 300; the Bread is never crowned").toEqual([true, false, false]);
+  addon.eval("__choices[1][3] = { __secret = true }");
+  addon.fire("QUEST_COMPLETE");
+  expect(crowns(addon, "Vanguard_QuestDialog"), "a hidden count counts as one: the Gloves win").toEqual([false, true, false]);
+});
 it("quest log: the chosen quest's top-selling choice wears the crown too", () => {
   const addon = loggedIn(TRACK_ENV + QLOG_ENV + ` GetNumQuestLogChoices = function(id) return id == 90051 and 2 or 0 end
     GetQuestLogItemLink = function(kind, i) return kind == "choice" and ("item:9002" .. i) or nil end
@@ -1773,6 +1782,17 @@ it("best reward: rewards that sell for nothing are left to you", () => {
 
 it("best reward: the one reward that sells for most is taken", () => {
   expect(calls(pricedRewards(300, 50))).toEqual(["reward 1"]);
+});
+
+it("best reward: a stack is judged by what the whole stack sells for", () => {
+  const addon = pricedRewards(50, 300);
+  expect(calls(addon), "boots worth 50 each in a stack of 1 lose to gloves worth 300").toEqual(["reward 2"]);
+  addon.eval(`__choices[1][3] = 20`);
+  addon.fire("QUEST_COMPLETE");
+  expect(calls(addon), "20 of them are worth 1000: they win").toEqual(["reward 1"]);
+  addon.eval(`__choices[1][3] = 6`);
+  addon.fire("QUEST_COMPLETE");
+  expect(calls(addon), "6 of them tie the gloves at 300: left to you").toEqual([]);
 });
 
 // W4-C-6: a count of 0 asked for no lines and then said the history was empty.
