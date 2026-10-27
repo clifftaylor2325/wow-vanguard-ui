@@ -113,7 +113,7 @@ const raidSpot = (addon, n) => addon.eval(`local RF = ns.GetModule("RaidFrames")
 function raidRect(addon, n, sw, sh) {
   const s = addon.eval(`local RF = ns.GetModule('RaidFrames') local s = RF.settings return { s.width, s.height, s.spacing, RF.LayoutFor(${n}) }`);
   const spot = raidSpot(addon, n);
-  const scale = addon.eval(`return ns.GetModule('RaidFrames').Scale(${n})`);
+  const scale = addon.eval(`local RF = ns.GetModule('RaidFrames') return RF.Scale(${n}) * RF.LookScale(${n})`);
   const groups = Math.ceil(n / 5), five = [5 * (s[0] + s[2]) - s[2], 5 * (s[1] + s[2]) - s[2]];
   const across = [groups * (s[0] + s[2]) - s[2], groups * (s[1] + s[2]) - s[2]];
   const w = (s[3] === "rows" ? five[0] : across[0]) * scale, h = (s[3] === "rows" ? across[1] : five[1]) * scale;
@@ -183,14 +183,18 @@ function presetRects(addon, layout, n, sw, sh) {
   return rects;
 }
 // The quest arrow sits at the top centre (Cliff's spot, 2026-10-19); on a screen under 1400 wide the top
-// of a full 40-player raid grid reaches it, so there it may cover the grid (either moves with /vg unlock).
-const arrowMayCover = (p, n, sw) => p === "questarrow / raid" && n === 40 && sw < 1400;
+// of a 25 or 40-player raid grid reaches it (the Healing layout's 115% lifts the 25 grid's top by 6), so there it
+// may cover the grid (either moves with /vg unlock).
+const arrowMayCover = (p, n, sw) => p === "questarrow / raid" && n >= 25 && sw < 1400;
+// The Healing layout draws a party of five at 115%, so its grid reaches 32 units into the party pets and targets column
+// (off unless switched on; either moves with /vg unlock), which sits where a party drawn at 100% ends.
+const petsMayMeetParty = (p, n, layout) => p === "partyextras / raid" && n === 5 && layout === "healing";
 // Overlaps and parts off an sw x sh screen in a layout preset, for each raid growth and group size (solo, 5, 25, 40).
 function problemsAt(addon, layout, sw, sh, label) {
   const bad = [];
   for (const grow of ["columns", "rows"]) {
     addon.eval(`ns.GetModule("RaidFrames").settings.layout = "${grow}"`);
-    for (const n of [0, 5, 25, 40]) for (const p of layoutProblems(presetRects(addon, layout, n, sw, sh), sw, sh)) if (!arrowMayCover(p, n, sw)) bad.push(`${label}, groups as ${grow}, ${n} players: ${p}`);
+    for (const n of [0, 5, 25, 40]) for (const p of layoutProblems(presetRects(addon, layout, n, sw, sh), sw, sh)) if (!arrowMayCover(p, n, sw) && !petsMayMeetParty(p, n, layout)) bad.push(`${label}, groups as ${grow}, ${n} players: ${p}`);
   }
   return bad;
 }
@@ -424,14 +428,16 @@ it("one bar material (#234): every Vanguard bar on the whole HUD uses the theme'
 it("setup layouts: each role sizes the frames its own way: a taller target for damage and more for tanking, a larger raid and smaller own frames for healing", () => {
   const addon = loggedIn(CLICK_LUA + UNITS_ENV + RAID_ENV, { firstRun: true });
   // The target frame's height (to the whole unit; it snaps to screen pixels), the player, target and raid scales, and the nameplates' buff row.
-  const sizes = () => addon.eval("local f = ns.GetModule('UnitFrames').frames return { math.floor(f.target:GetHeight() + 0.5), f.player:GetScale(), f.target:GetScale(), Vanguard_RaidHolder:GetScale(), ns.Settings('Nameplates').buffs }");
+  const sizes = () => addon.eval("local f = ns.GetModule('UnitFrames').frames return { math.floor(f.target:GetHeight() + 0.5), f.player:GetScale(), f.target:GetScale(), Vanguard_RaidHolder:GetScale(), ns.Settings('Nameplates').buffs, ns.GetModule('RaidFrames').header:GetEffectiveScale() }");
   expect(sizes().slice(0, 4), "Vanguard's defaults").toEqual([36, 1, 1, 1]);
   addon.eval("ns.Setup.ApplyLayout('damage')");
-  expect(sizes(), "damage: a taller target").toEqual([40, 1, 1, 1, 0]);
+  expect(sizes(), "damage: a taller target").toEqual([40, 1, 1, 1, 0, 1]);
   addon.eval("ns.Setup.ApplyLayout('tank')");
-  expect(sizes(), "tanking: the tallest target and the Tank preset (buff rows on nameplates)").toEqual([44, 1, 1, 1, 3]);
+  expect(sizes(), "tanking: the tallest target and the Tank preset (buff rows on nameplates)").toEqual([44, 1, 1, 1, 3, 1]);
   addon.eval("ns.Setup.ApplyLayout('healing')");
   expect(sizes().slice(0, 4), "healing: the target back to 36, your frames smaller, the raid larger").toEqual([36, 0.9, 0.9, 1.15]);
+  expect(sizes()[5], "the raid's tiles are drawn larger too (115%), not only its holder").toBe(1.15);
+  expect(addon.eval("local RF = ns.GetModule('RaidFrames') return { RF.LookScale(25), RF.LookScale(40) }"), "the larger raid grows the grid up to 25 players; a 40 grid keeps its compact size").toEqual([1.15, 1]);
   addon.eval("ns.Setup.ApplyLayout('versus')");
   expect(sizes().slice(0, 4), "Versus deck after Healing (no role says healer): your frame and your target's one size and height again").toEqual([36, 1, 1, 1]);
   addon.eval("ns.Setup.ApplyLayout('classic')");

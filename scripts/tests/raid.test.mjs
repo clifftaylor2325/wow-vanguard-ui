@@ -562,3 +562,19 @@ it("raid frames: on a big grid the tile's status takes 32 units on one line and 
   addon.slash("preview 25");
   expect(addon.eval("return Vanguard_RaidPreviewTile1.status.__noWrap"), "and the status is one line, ending in an ellipsis rather than wrapping into the icon strip").toBe(true);
 });
+
+it("raid frames: the raid mover's Scale and Opacity reach the tiles; a Scale above 100% grows the grid only up to 25 players", () => {
+  const addon = loggedIn(UNITS_ENV + RAID_ENV + "__members = 0 GetNumGroupMembers = function() return __members end");
+  // The tiles' size on screen (the header's effective scale: the tiles are drawn at 1 inside it) and the header's opacity with `n` players and the raid mover at `scale`, `alpha`.
+  const tile = (n, scale, alpha) => addon.eval(`__members = ${n} ns.SetMoverScale("raid", ${scale}) ns.SetMoverAlpha("raid", ${alpha})
+    local header = ns.GetModule('RaidFrames').header return { header:GetEffectiveScale(), header:GetAlpha() }`);
+  expect(tile(0, 1.15, 1), "solo (the Healing preset's 115%): the tiles are drawn at 115%").toEqual([1.15, 1]);
+  expect(tile(25, 1.15, 1), "25 players: the compact 80% times the Scale").toEqual([0.8 * 1.15, 1]);
+  expect(tile(40, 1.15, 1), "40 players keep their compact 72%: the grid does not grow into the main tanks").toEqual([0.72, 1]);
+  expect(tile(40, 0.5, 1), "but a smaller Scale still shrinks them").toEqual([0.36, 1]);
+  expect(tile(5, 1.5, 0.5), "the popover's Scale of 150% and Opacity of 50%: the tiles follow both").toEqual([1.5, 0.5]);
+  expect(addon.eval("return ns.GetModule('RaidFrames').tileScale"), "the texts are laid out for the size on screen").toBe(1.5);
+  addon.eval("ns.SetMoverScale('raid', 1.5) ns.SetMoverAlpha('raid', 0.5)");
+  addon.slash("preview 5");
+  expect(addon.eval("return { Vanguard_RaidPreview:GetScale(), Vanguard_RaidPreview:GetAlpha() }"), "the preview is drawn at the same size and opacity").toEqual([1.5, 0.5]);
+});
