@@ -550,14 +550,31 @@ it("raid frames: the narrow-canvas spot is one table per canvas, so the mover de
   expect(addon.eval("return { ns.MoverPoint('raid') }"), "a canvas with no size keeps the wide default").toEqual(["BOTTOMLEFT", "BOTTOM", -500, 344]);
 });
 
-it("raid frames: on a big grid the tile's status takes 40 units on one line and the name keeps the rest", () => {
+it("raid frames: on a big grid the tile's status takes 32 units on one line and the name keeps the rest", () => {
   const addon = loggedIn(UNITS_ENV + RAID_ENV);
   // The name's width, the status's left edge, width and justification in a w x h tile drawn at grid scale.
   const zones = (w, h, grid) => addon.eval(`local z = ns.GetModule("RaidFrames").Zones(${w}, ${h}, ${grid}) return { z.name[3], z.status[1], z.status[3], z.status[5] }`);
-  expect(zones(100, 48, 0.8), "25 players: status 40 wide at the tile's right, the name before it").toEqual([36, 44, 40, "RIGHT"]);
-  expect(zones(100, 48, 0.72), "40 players: the same").toEqual([36, 44, 40, "RIGHT"]);
-  expect(zones(72, 36, 0.72), "a narrow tile gives the status no more than 40% of it, so the name keeps its room").toEqual([20, 28, 28, "RIGHT"]);
+  expect(zones(100, 48, 0.8), "25 players: status 32 wide at the tile's right, the name before it").toEqual([44, 52, 32, "RIGHT"]);
+  expect(zones(100, 48, 0.72), "40 players: the same").toEqual([44, 52, 32, "RIGHT"]);
+  expect(zones(100, 48, 0.72)[0], "the 44 unit name zone leaves 31 after the role mark and its gap: Aldren, Brielle and Jorund (30.4 units at most in the game's font) fit").toBeGreaterThanOrEqual(44);
+  expect(zones(72, 36, 0.72), "a narrow tile gives the status no more than 40% of it (28 of 72), so the name keeps its room").toEqual([20, 28, 28, "RIGHT"]);
   expect(zones(100, 48, 1)[3], "a full-size tile keeps the status under the name").toBe("CENTER");
   addon.slash("preview 25");
   expect(addon.eval("return Vanguard_RaidPreviewTile1.status.__noWrap"), "and the status is one line, ending in an ellipsis rather than wrapping into the icon strip").toBe(true);
+});
+
+it("raid frames: the raid mover's Scale and Opacity reach the tiles; a Scale above 100% grows the grid only up to 25 players", () => {
+  const addon = loggedIn(UNITS_ENV + RAID_ENV + "__members = 0 GetNumGroupMembers = function() return __members end");
+  // The tiles' size on screen (the header's effective scale: the tiles are drawn at 1 inside it) and the header's opacity with `n` players and the raid mover at `scale`, `alpha`.
+  const tile = (n, scale, alpha) => addon.eval(`__members = ${n} ns.SetMoverScale("raid", ${scale}) ns.SetMoverAlpha("raid", ${alpha})
+    local header = ns.GetModule('RaidFrames').header return { header:GetEffectiveScale(), header:GetAlpha() }`);
+  expect(tile(0, 1.15, 1), "solo (the Healing preset's 115%): the tiles are drawn at 115%").toEqual([1.15, 1]);
+  expect(tile(25, 1.15, 1), "25 players: the compact 80% times the Scale").toEqual([0.8 * 1.15, 1]);
+  expect(tile(40, 1.15, 1), "40 players keep their compact 72%: the grid does not grow into the main tanks").toEqual([0.72, 1]);
+  expect(tile(40, 0.5, 1), "but a smaller Scale still shrinks them").toEqual([0.36, 1]);
+  expect(tile(5, 1.5, 0.5), "the popover's Scale of 150% and Opacity of 50%: the tiles follow both").toEqual([1.5, 0.5]);
+  expect(addon.eval("return ns.GetModule('RaidFrames').tileScale"), "the texts are laid out for the size on screen").toBe(1.5);
+  addon.eval("ns.SetMoverScale('raid', 1.5) ns.SetMoverAlpha('raid', 0.5)");
+  addon.slash("preview 5");
+  expect(addon.eval("return { Vanguard_RaidPreview:GetScale(), Vanguard_RaidPreview:GetAlpha() }"), "the preview is drawn at the same size and opacity").toEqual([1.5, 0.5]);
 });

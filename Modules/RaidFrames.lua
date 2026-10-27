@@ -26,6 +26,9 @@ local RF = ns.Module("RaidFrames", {
 
 -- Group size -> how large the grid is drawn when compact: up to 10 full size, up to 25 at 80%, more at 72%.
 RF.COMPACT = { { 10, 1 }, { 25, 0.8 }, { 40, 0.72 } }
+-- The most players a grid grows for when the raid mover's Scale is above 100% (the Healing preset's 115%):
+-- a bigger raid keeps its compact size so its grid stays clear of the main tanks and the raid tools.
+RF.GROW_MAX = 25
 -- Tiles in one group: a group is a column (or a row) of this many.
 RF.GROUP = 5
 -- More players than this is a big raid (Stack big raids moves its grid left of your character).
@@ -41,7 +44,7 @@ RF.SPOT_BIG = { "BOTTOMLEFT", "BOTTOM", -500, 344 }
 RF.CLEAR_LEFT = 148
 -- The big-raid spots made for narrow canvases, by their x, so the same canvas gets the same table (RF.PlaceFor compares them).
 RF.narrowSpots = {}
--- How large the grid is drawn now (RF.Fit sets it).
+-- How large the grid is drawn now: the compact size for the group times the raid mover's Scale (RF.Fit sets it).
 RF.tileScale = 1
 
 local MAX_UNITS = 40
@@ -387,9 +390,10 @@ local function strip(w, h)
   return icon, per, h - 1 - RF.POWER - 1 - icon
 end
 
--- The widest the status gets when it sits at the right of the name row (about "Offline" at 10 px on screen), and the
--- most of a narrow tile it takes, so the name keeps the rest.
-RF.STATUS_W, RF.STATUS_SHARE = 40, 0.4
+-- The widest the status gets when it sits at the right of the name row (about "Dead" or "-760" at 10 px on
+-- screen; "-1440" and "Offline" end in "..." on the smallest tiles), and the most of a narrow tile it takes,
+-- so the name keeps the rest: 31 units after the role mark on a 25 or 40 player tile, enough for a 7 letter name.
+RF.STATUS_W, RF.STATUS_SHARE = 32, 0.4
 
 -- The name row and status line (its text `size` tall, a pixel of air each
 -- side): status under the name when it fits above the icon strip, else at the
@@ -745,8 +749,17 @@ local function headerPoint()
 end
 RF.HeaderPoint = headerPoint
 
--- Sets the grid's scale; when it changed, borders and pixel sizes are worked out again for it.
+-- How large the raid mover's Scale draws the grid for n players: as set up to RF.GROW_MAX players, and for a
+-- bigger raid no larger than the compact size (a smaller Scale still shrinks it).
+function RF.LookScale(n)
+  local scale = ns.MoverLook("raid")
+  return n > RF.GROW_MAX and math.min(scale, 1) or scale
+end
+
+-- Sets the grid's scale and the mover's Opacity (the header is the holder's sibling, not its child, so it
+-- inherits neither); when the scale changed, borders and pixel sizes are worked out again for it.
 local function scaleHeader()
+  RF.header:SetAlpha(select(2, ns.MoverLook("raid")))
   if RF.header:GetScale() == RF.tileScale then return end
   RF.header:SetScale(RF.tileScale)
   T.Rescale()
@@ -758,7 +771,7 @@ function RF.Fit()
   if not RF.header then return end
   local n = type(GetNumGroupMembers) == "function" and ns.PlainNumber(GetNumGroupMembers()) or 0
   ns.OutOfCombat(function()
-    RF.tileScale = RF.Scale(n or 0)
+    RF.tileScale = RF.Scale(n or 0) * RF.LookScale(n or 0)
     RF.Arrange(n or 0)
     scaleHeader()
     RF.header:ClearAllPoints()

@@ -536,6 +536,14 @@ function AB.Bar1HalfWidth()
   return barWidth(AB.settings, bar1, 1) / 2
 end
 
+-- The width of the bottom stack's first bar in UIParent's units (0 before the module has its
+-- settings), for frames that keep clear of it.
+---@return number
+function AB.StackWidth()
+  local bar1 = AB.settings and AB.settings.bars[1]
+  return bar1 and barWidth(AB.settings, bar1, 1) or 0
+end
+
 -- Moves the vehicle exit button's default spot to clear bar 1's current width.
 local function fitVehicleExit()
   ns.GetModule("SpecialBars").FitExit(AB.Bar1HalfWidth())

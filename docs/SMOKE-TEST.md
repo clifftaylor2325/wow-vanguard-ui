@@ -521,7 +521,7 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 ### 7.2f Status chip (off until switched on: /vg > Unit frames > Readouts)
 
 - Do: tick **Status chip beside your frame** under Unit frames, reload. Out of combat eat some food, then drink, then eat a food that gives Well Fed; wait until each buff ends. Then tick Instance prep's buff checks (`/vg` > Town and gear) and look at the chip with no flask or raid buffs. Start a fight with the chip showing.
-- Expect: left of the player frame, level with it, a small panel with the buff's own icon and Eating, Drinking or Well Fed while that buff is on you (Well Fed in the good color), going when the buff does; with the buff checks on and nothing of those, a warning triangle and Missing: and the first missing buff and how many more, in the warning color, matching `/vg prep`'s buff rows. It is gone the moment a fight starts and back after it, and gone while you are dead. If the buff names are wrong for this client (the chip stays hidden while you eat), paste the aura names from `/dump C_UnitAuras.GetAuraDataByIndex("player", 1, "HELPFUL")`. No error.
+- Expect: left of the player frame, level with it (in the Like the game's layout, or on a screen with no room left of the frame, just above the frame's left end instead, clear of its level and name), a small panel with the buff's own icon and Eating, Drinking or Well Fed while that buff is on you (Well Fed in the good color), going when the buff does; with the buff checks on and nothing of those, a warning triangle and Missing: and the first missing buff and how many more, in the warning color, matching `/vg prep`'s buff rows. It is gone the moment a fight starts and back after it, and gone while you are dead. If the buff names are wrong for this client (the chip stays hidden while you eat), paste the aura names from `/dump C_UnitAuras.GetAuraDataByIndex("player", 1, "HELPFUL")`. No error.
 - If it fails, paste: a screenshot and `/vg errors`.
 
 ### 7.2g Energy spark stops when no tick comes
@@ -2405,7 +2405,7 @@ The order is the order to play in: looks you can check quickly first, then the g
 ### 33.39 Chat size and background
 
 - Do: with a fresh profile, look at the main chat window over a bright area (snow, desert) and over a dark one. Open `/vg` → Chat and cycle Chat background strength through Light, Medium and Dark, then untick Chat background. Look at the tabs and the Copy button. Under Chat, cycle Chat text fades to After 10 seconds, say something and wait; then Never.
-- Expect: the window is 200 tall and 416 wide on a 1080p screen at setup's 80 % scale (524 wide at 1920 units; 372 x 144 on a small screen), starting 40 units in from the screen's left edge so the side buttons' column fits between the edge and the panel, its panel ending a little short of the player frame's left edge, and the pet frame now sits over the player frame's right end (a profile that already sized chat keeps its size, except one still at 0.7.0's 500 x 154 or 420 x 154, which is set to the new first size once). One crisp rounded panel with a dark fill sits behind the text, the scroll bar and the tab bar (no soft fade at its edges), the text reads over bright ground at Medium (each line has a thin dark shadow down and to the right, and a little more air between lines than the game's chat), the strength follows the setting at once, and unticking Chat background (reload) swaps the panel for a soft dark band with no border: clear at the window's left edge, solid behind the lines, thinning out across the right quarter or so, with the tab bar, its rule and the Find and Copy tiles still there. With Soft shadows under frames ticked (General → Look; reload), a small soft shadow sits evenly round the panel, no wider than an action button's. Tab names show in full (General, not Gene…) the Copy tile sits at the right end of the tab bar with the Find tile left of it, and the scroll bar on the right is a slim thumb inside the panel with no boxed arrows (the scroll-to-bottom glyph still shows when scrolled up). Tab names are readable. Cycle Chat window size through Larger and Largest: the window resizes at once. On a 4K screen, switching Pixel-perfect scale on (General → Look, no setup) keeps the UI and chat about 1080p's size, not half of it. At After 10 seconds your line fades out about ten seconds after it arrived, over about half a second; at Never it stays; by default (After 60 seconds) lines go after a minute. [Needs in game: that Never really stops the client's own line fade, and that the game does not put its own fade time back on a window after a font size change.]
+- Expect: the window is 188 tall and 416 wide on a 1080p screen at setup's 80 % scale (524 wide at 1920 units; 372 x 132 on a small screen), starting 40 units in and 32 up from the screen's left edge so the side buttons' column fits between the edge and the panel, its panel ending a little short of the player frame's left edge, and the pet frame now sits over the player frame's right end (a profile that already sized chat keeps its size, except one still at 0.7.0's 500 x 154 or 420 x 154 or the small 372 x 144, which is set to the new first size once). One crisp rounded panel with a dark fill sits behind the text, the scroll bar and the tab bar (no soft fade at its edges), the text reads over bright ground at Medium (each line has a thin dark shadow down and to the right, and a little more air between lines than the game's chat), the strength follows the setting at once, and unticking Chat background (reload) swaps the panel for a soft dark band with no border: clear at the window's left edge, solid behind the lines, thinning out across the right quarter or so, with the tab bar, its rule and the Find and Copy tiles still there. With Soft shadows under frames ticked (General → Look; reload), a small soft shadow sits evenly round the panel, no wider than an action button's. Tab names show in full (General, not Gene…) the Copy tile sits at the right end of the tab bar with the Find tile left of it, and the scroll bar on the right is a slim thumb inside the panel with no boxed arrows (the scroll-to-bottom glyph still shows when scrolled up). Tab names are readable. Cycle Chat window size through Larger and Largest: the window resizes at once. On a 4K screen, switching Pixel-perfect scale on (General → Look, no setup) keeps the UI and chat about 1080p's size, not half of it. At After 10 seconds your line fades out about ten seconds after it arrived, over about half a second; at Never it stays; by default (After 60 seconds) lines go after a minute. [Needs in game: that Never really stops the client's own line fade, and that the game does not put its own fade time back on a window after a font size change.]
 - If it fails, paste: a screenshot over bright ground and `/vg errors`.
 
 ### 33.40 Options window: reload tags, search list, page reset, Modules groups
@@ -2641,6 +2641,78 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Do: at a vendor that sells stackable goods (a reagent or food vendor), with Town and gear, Merchants, "Stack and Max buttons on a merchant item's quantity window" on, shift-click an item in the middle of the list, then one at the top and one at the bottom; also try it with the item on the second column.
 - Expect: the game's quantity window opens with a dark panel hung from its bottom left holding Stack, Max and the "Max N for <money>" line, all inside the panel and nothing drawn bare over the merchant's rows; the panel covers the clicked row and the one below it (so you cannot click through to them) and closes with the window; shift-clicking an item in your bags shows no panel. [Needs in-game check: where the game puts the window (its bottom left on the clicked item), how much of the list the panel covers, and whether the panel is wide enough for the real window.]
 - If it fails, paste: a screenshot with the window open on the middle row, and `/vg errors`.
+
+### 33.82 Chat spot: the typing box on screen, a narrower chat on small screens
+
+- Do: with a fresh profile (or `/vg reset chat`), press Enter in the main chat and type a few letters; then `/vg unlock` and drag the chat to the bottom-left corner and the bottom-right corner. On a small screen (1280x800 at the game's UI scale, 1024x768) log in on a new character and look at the chat beside action bar 1.
+- Expect: the typing box sits fully on the screen with its text whole, its bottom on the screen's edge; the chat's handle stays on its window at the default spot and stops with the box's bottom on the edge when dragged down; with the chat parked right, the side buttons stay in view after `/reload`. On the small screen the chat is 296 wide at 1229 units and about 320 at 1280, clear of action bar 1; a 1024 wide screen still meets the bars (setup's Fit my screen is the answer). The tab bar is at most as high as before and the pet bar is clear of the panel. [Needs in-game check: the client's clamp of the handle, and that the box is not cut at the bottom.]
+- If it fails, paste: `/vg frame ChatFrame1` and a screenshot of the bottom-left corner.
+
+### 33.83 Raid tiles: names, Scale and Opacity
+
+- Do: in a 25 or 40 player raid (or `/vg preview 25` and `/vg preview 40`) look at the tile names and the status text ("Dead", "Offline", missing health). Then `/vg unlock`, select the raid frames' handle and set Scale to 150% and Opacity to 50%; then apply the Healing layout in setup (raid frames 115%).
+- Expect: names keep seven or eight letters (a name like Aldren or Brielle is whole), and a long status such as "Offline" ends in "..."; the tiles follow the handle's Scale and Opacity (a party and a 25 grid grow, a raid of 26 to 40 keeps its compact size unless the Scale is below 100%), and the Healing layout's party and 25 grid look larger than before. With the Healing layout and party pets on, the party grid reaches the pets column (move either with unlock). [Needs in-game check: the real font's widths.]
+- If it fails, paste: a screenshot of the tiles and `/vg frame Vanguard_Raid`.
+
+### 33.84 Raid target icon on the tile's top edge
+
+- Do: mark a party member with the skull, then a raid member, on a party or 10-man tile at Text size 100%; also mark the group leader.
+- Expect: the mark is 10 wide, centered on the tile's top edge like the leader crown and clear of the name, and does not clash with the crown on a marked leader. [Needs in-game check: that the mark reads at 10 units.]
+- If it fails, paste: a screenshot of a marked tile.
+
+### 33.85 Meter spell panel beside the meter, over no action bar
+
+- Do: with the meter on, click a meter line at the default spot on a wide screen (1920x1080) and again at 1365x768; then drag the meter to the left edge of the screen and click a line.
+- Expect: on the wide screen the panel opens on the meter's right, on the screen and over no action bar; at 1365 wide it opens on the meter's left with its bottom a gap above bar 1; a meter at the left edge opens it on its right. Under 1110 wide the meter itself still meets the right end of bar 1 (setup's Fit my screen is the answer).
+- If it fails, paste: a screenshot of the panel and the bars.
+
+### 33.86 Quest dialog with many reward cards
+
+- Do: talk to a quest giver whose quest has a long text and six reward choices (a class or dungeon quest), at 1920x1080 and at a smaller canvas.
+- Expect: the dialog is taller than for a quest without cards, grows upward, and the quest text keeps a readable window (more than three lines); on a short screen it stops short of the screen's top and the text scrolls.
+- If it fails, paste: a screenshot of the dialog.
+
+### 33.87 Untrack in Portuguese and Russian
+
+- Do: set the game to Portuguese (Brazil) and then Russian, open the quest log (L), select a watched quest.
+- Expect: the button reads "Não rastrear" and "Не следить" whole, with nothing cut at the default Text size.
+- If it fails, paste: a screenshot of the quest log's buttons.
+
+### 33.76 Scroll lists' soft edges over a panel texture
+
+- Do: General → Look → Panel texture "Carved stone" (then "Fine grain"); open the options window on a long page and scroll it a little down, then look at the strip under the header and over the bottom edge; do the same in What's new and the quest log.
+- Expect: the fade at each scrolled end blends into the window; no plainer, darker, untextured band about 24 units tall stands out from the textured panel beside it. [Needs in-game check: the harness can't composite alpha. If the band shows clearly, turn the soft edges off while a texture is drawn (B1-9 option a).]
+- If it fails, paste: a screenshot of the options window scrolled, with the texture name, and `/vg errors`.
+
+### 33.77 Meter on: target of target, tooltip corner and quest tracker at 1365 to 1833 wide
+
+- Do: turn the Vanguard meter on (`/vg meter on`) at 1365x768, then at 1920x1080 at UI scale 1 (1440 wide or 1600 wide if you have it), with a target and a target of target, a quest tracker with a few quests, and a unit tooltip showing in its corner; turn the meter off and on again.
+- Expect: under 1838 wide target of target sits over the target's cast bar and the meter (bottom right, above the bags and menu bar) does not cover it; with the meter off target of target goes back to its spot outside the target at 1600 and wider. [Needs in-game check: the meter still meets the tooltip corner and the foot of the quest tracker at 1365 (the harness measured only target of target); say which draws on top.]
+- If it fails, paste: a screenshot at 1365x768 with the meter on, and `/vg errors`.
+
+### 33.78 Shaman totems above the player frame, chat tiles clickable
+
+- Do: on a shaman with Class bars on, at 1365x768 (or 1440x900) with the default chat, drop a totem or two, then click the chat's Find and Copy tiles at the right end of its tab bar, and right-click a totem to destroy it.
+- Expect: the totem row stands just above the player frame, over its left half, clear of the chat's tab bar and the Find and Copy tiles; both tiles open on a click and the right-click still destroys a totem; the cast bar, raid mark and pet frame are not covered by the row. [Needs in-game check: that nothing of the real client (the player's raid mark, the lifted cast bar) meets the row, and the Versus deck's top border.]
+- If it fails, paste: a screenshot of the player frame and chat with totems down, and `/vg errors`.
+
+### 33.79 Aura icons: timer at the bottom, stack count top right, smaller type badge
+
+- Do: get a Magic, Curse, Disease or Poison debuff on yourself with timers on (the default for your own debuffs) and look at its icon; then look at a stacking debuff (Sunder Armor x5) on an enemy nameplate target at Text size 100% and 130%; also a buff with a timer on your player frame's row.
+- Expect: the timer digits sit on the icon's bottom edge, the stack count in its top right corner, and the small type letter in the top left corner is unhidden by either; on the 18-unit nameplate icons the count and the timer may still touch at 115% and up. [Needs in-game check: how much of the letter glyph and the digits is readable, and that the fallback icons' countdown numbers (made while in combat) also sit on the bottom edge.]
+- If it fails, paste: a screenshot of the icons at Text size 100% and 130%, and `/vg errors`.
+
+### 33.80 Round minimap: info strip and quest tracker under its band
+
+- Do: pick the Classic look (General → Look → Theme variant), reload, and look at the minimap's top right corner on 1365x768 and 1920x1080; then set Minimap shape to Square and reload again.
+- Expect: with the round map, the info strip starts below the map's bottom band (the coordinates text sits clear of the durability row) and the quest tracker follows under the strip; with the square map the strip sits right under the map as before. [Needs in-game check: the real round map's bottom band against the strip's first row.]
+- If it fails, paste: a screenshot of the minimap and strip, and `/vg errors`.
+
+### 33.81 Loss of control against the talking head on a 768-tall screen
+
+- Do: at 1365x768, get stunned or feared (a duel, a mob) while a talking head line plays (a quest giver's or an event's), and look at where the two panels meet; with `/vg unlock` note which of the loss-of-control and talking head handles is on top.
+- Expect: the loss-of-control panel (a little above your character) and the talking head (top left) touch by about 22 units and neither one's text is cut off. Which one draws on top is the thing to report: if the talking head covers the loss-of-control text, raise Loss of control's strata in `Modules/GameAlerts.lua`; if loss of control is already on top, leave it as it is. [Needs in-game check: the draw order of the two game frames, which the harness does not have.]
+- If it fails, paste: a screenshot of both panels, which one was on top, and `/vg errors`.
 
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 

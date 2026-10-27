@@ -130,14 +130,45 @@ local function showing(d, src)
   return key ~= nil and key == sourceKey(d.src)
 end
 
--- Puts the panel left of the meter, or right of it when the screen has no room on the left (a meter
--- moved to the left edge). Both sides are measured in screen pixels, since the meter may be scaled.
+-- The panel's anchors on each side of the meter: its own corner, the meter's corner, the side's sign.
+local DETAIL_SIDES = { left = { "BOTTOMRIGHT", "BOTTOMLEFT", -1 }, right = { "BOTTOMLEFT", "BOTTOMRIGHT", 1 } }
+
+-- The side of the meter away from the screen's middle (left for a meter on the left half), where the panel opens
+-- clear of the bars and frames round the character. Measured in screen pixels, since the meter may be scaled.
+local function farSide()
+  local left, right = MT.frame:GetLeft(), MT.frame:GetRight()
+  local middle = UIParent:GetWidth() * UIParent:GetEffectiveScale() / 2
+  if not (left and right) then return "left" end
+  return (left + right) / 2 * MT.frame:GetEffectiveScale() < middle and "left" or "right"
+end
+
+-- Whether the panel fits on a side of the meter on the screen (a meter that has no place yet fits).
+local function fitsOn(d, side)
+  local left, right = MT.frame:GetLeft(), MT.frame:GetRight()
+  if not (left and right) then return true end
+  local need, scale = (d:GetWidth() + MT.DETAIL_SPACE) * d:GetEffectiveScale(), MT.frame:GetEffectiveScale()
+  if side == "left" then return left * scale >= need end
+  return right * scale + need <= UIParent:GetWidth() * UIParent:GetEffectiveScale()
+end
+
+-- How far (in the panel's units) to lift it from the meter's bottom to clear the top of bar 1 by the gap: 0
+-- while the bars are off or the meter is above them already.
+local function liftAboveBars(d)
+  local bars, meter = ns.MoverFrame("bar1"), MT.frame
+  local top, bottom = bars and bars:GetTop(), meter:GetBottom()
+  if not (top and bottom) then return 0 end
+  local lift = top * bars:GetEffectiveScale() + MT.DETAIL_SPACE - bottom * meter:GetEffectiveScale()
+  return math.max(0, lift / d:GetEffectiveScale())
+end
+
+-- Puts the panel on the meter's side away from the screen's middle, level with its bottom, when it fits
+-- there; else on the other side, lifted above bar 1 (the meter sits beside the bars there).
 local function placeDetail(d)
-  local left = MT.frame:GetLeft()
-  local fits = not left or left * MT.frame:GetEffectiveScale() >= (d:GetWidth() + MT.DETAIL_SPACE) * d:GetEffectiveScale()
+  local side, lift = farSide(), 0
+  if not fitsOn(d, side) then side, lift = side == "left" and "right" or "left", liftAboveBars(d) end
+  local own, meter, sign = unpack(DETAIL_SIDES[side])
   d:ClearAllPoints()
-  if fits then return d:SetPoint("BOTTOMRIGHT", MT.frame, "BOTTOMLEFT", -MT.DETAIL_SPACE, 0) end
-  d:SetPoint("BOTTOMLEFT", MT.frame, "BOTTOMRIGHT", MT.DETAIL_SPACE, 0)
+  d:SetPoint(own, MT.frame, meter, sign * MT.DETAIL_SPACE, lift)
 end
 
 -- Opens the panel for a meter line (a click on the same player's row again closes it).

@@ -101,6 +101,8 @@ end
 
 -- The chip's icon size and its padding, and the gap between its icon and its text (units).
 UX.CHIP_ICON, UX.CHIP_PAD, UX.CHIP_GAP, UX.CHIP_HEIGHT = 14, 4, 4, 20
+-- Where the chip sits over the player frame's top left corner when there is no room left of it (units across and up).
+UX.CHIP_ABOVE_X, UX.CHIP_ABOVE_Y = 12, 3
 -- The buffs eating and drinking give, by spell id: Food and Drink (every food and drink shares the one name the
 -- client gives these ids). UNVERIFIED on a Forever client: check with the chip in game.
 UX.EATING, UX.DRINKING = { 433 }, { 430 }
@@ -145,6 +147,16 @@ function UX.Status()
   return missing, "warn", nil
 end
 
+-- Puts the chip level with the player frame, a gap to its left when the chip fits there on the screen, else
+-- just above the frame's left end (the Classic layout puts the frame 20 from the edge; a narrow canvas too).
+local function placeChip(chip, player)
+  chip:ClearAllPoints()
+  if (player:GetLeft() or 0) >= chip:GetWidth() + T.SPACE.gap then
+    return chip:SetPoint("RIGHT", player, "LEFT", -T.SPACE.gap, 0)
+  end
+  chip:SetPoint("BOTTOMLEFT", player, "TOPLEFT", UX.CHIP_ABOVE_X, UX.CHIP_ABOVE_Y)
+end
+
 -- Shows the chip with its icon and text, sized to them, or hides it for no text.
 function UX.PaintChip(text, token, icon)
   local f = UX.chip
@@ -155,6 +167,7 @@ function UX.PaintChip(text, token, icon)
   f.icon:SetTexture(icon or T.Icon(T.STATE_GLYPHS.warn))
   T.Tint(f.icon, icon and "white" or "warn")
   T.PixelSize(f, 2 * UX.CHIP_PAD + UX.CHIP_ICON + UX.CHIP_GAP + math.ceil(f.text:GetStringWidth()), UX.CHIP_HEIGHT)
+  placeChip(f, UF.frames.player)
 end
 
 -- Says what the chip should say now.
@@ -198,16 +211,9 @@ local function addHappiness(pet)
   UX.UpdateHappiness()
 end
 
--- Puts the chip level with the player frame, a gap to its left, kept on the screen.
-local function placeChip(chip, player)
-  chip:SetPoint("RIGHT", player, "LEFT", -T.SPACE.gap, 0)
-  chip:SetClampedToScreen(true)
-end
-
--- The status chip left of the player frame (clear of the pet frame, its cast bar and the combo points above it),
--- following your auras, your gear and the fight; kept on the screen, so on a narrow canvas it slides over the frame
--- rather than off the edge.
-local function addChip(player)
+-- The status chip left of the player frame (clear of the pet frame, its cast bar and the combo points above it), or
+-- above its left end where there is no room left of it; following your auras, your gear and the fight.
+local function addChip()
   local f = CreateFrame("Frame", "Vanguard_StatusChip", UIParent)
   T.HudPanel(f, { alpha = 0.9 })
   f.icon = T.Snap(f:CreateTexture(nil, "ARTWORK"), "icon")
@@ -215,7 +221,7 @@ local function addChip(player)
   f.icon:SetPoint("LEFT", f, "LEFT", UX.CHIP_PAD, 0)
   f.text = T.Text(f:CreateFontString(nil, "OVERLAY"), "small", "text")
   f.text:SetPoint("LEFT", f.icon, "RIGHT", UX.CHIP_GAP, 0)
-  placeChip(f, player)
+  f:SetClampedToScreen(true)
   UX.chip = f
   UX.WatchChip()
 end
@@ -238,7 +244,7 @@ local function attach()
   local s, frames = UX.settings, UF.frames
   if s.threat and frames.target and type(_G.UnitDetailedThreatSituation) == "function" then addThreat(frames.target) end
   if s.happiness and frames.pet and UX.HappinessCall() then addHappiness(frames.pet) end
-  if s.chip and frames.player then addChip(frames.player) end
+  if s.chip and frames.player then addChip() end
 end
 
 -- Module entry point (Core/Modules.lua): out of combat, once the unit frames are built.

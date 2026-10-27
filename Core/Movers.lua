@@ -93,9 +93,11 @@ end
 -- A default's spot on a canvas: its narrow spot (default.narrow = { w, h, spot }) on a canvas narrower than w or
 -- shorter than h, else the default itself. Most narrow spots name a canvas no bigger than 1365 x 768, so the
 -- screens the layout is made for keep every default as it is (the meter's, 1838 wide, needs more room beside the bars).
+-- A narrow w may be a function, for a spot whose width depends on another module (target of target and the meter).
 local function spotOn(default, screen)
   local n = default.narrow
-  if n and (screen.w < (n.w or 0) or screen.h < (n.h or 0)) then return n.spot end
+  local w = n and (type(n.w) == "function" and n.w() or n.w) or 0
+  if n and (screen.w < w or screen.h < (n.h or 0)) then return n.spot end
   return default
 end
 

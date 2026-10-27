@@ -112,16 +112,26 @@ it("status chip: on a German client it knows eating, drinking and Well Fed by th
   expect(chip(addon).text, "Satt is Well Fed").toBe("Well Fed");
 });
 
-it("status chip: a long hint sits left of the player frame, clear of the pet frame, and stays on the screen (P4-5)", () => {
-  for (const [w, h] of [[1920, 1080], [1365, 768], [1024, 768], [835, 668]]) {
+it("status chip: a long hint sits left of the player frame, clear of the pet frame, when there is room, else above its left end, on the screen (P4-5, B4-4)", () => {
+  for (const [w, h, room] of [[1920, 1080, true], [1365, 768, true], [1024, 768, false], [835, 668, false]]) {
     // TEST-ONLY: frames record the clamp they are given (the stub's SetClampedToScreen keeps nothing).
     const record = "__wfgStub.methods.SetClampedToScreen = function(self, on) self.__testClamped = on end";
     const addon = loggedIn(NAMES + record + "\n" + `__wfgStub.setScreen(${w}, ${h})`, { savedVariables: CHIP_AND_PREP });
     addon.eval("ns.GetModule('UnitExtras').PaintChip('Missing: Weapon oil or poison +3', 'warn')");
     const r = addon.eval(`local f, pet, player = Vanguard_StatusChip, Vanguard_pet, Vanguard_player
-      return { f:GetRight() <= pet:GetLeft() or f:GetTop() <= pet:GetBottom() or f:GetBottom() >= pet:GetTop(), f:GetRight() <= player:GetLeft(), f.__testClamped }`);
-    expect(r, `${w}x${h}: not over the pet frame, left of the player frame, and clamped to the screen`).toEqual([true, true, true]);
+      return { f:GetRight() <= pet:GetLeft() or f:GetTop() <= pet:GetBottom() or f:GetBottom() >= pet:GetTop(), f:GetRight() <= player:GetLeft(), f:GetBottom() >= player:GetTop(), f:GetLeft() >= 0, f.__testClamped }`);
+    expect(r, `${w}x${h}: ${room ? "left of the player frame, off the pet frame" : "above the player frame"}, on the screen and clamped to it`).toEqual(room ? [true, true, false, true, true] : [r[0], false, true, true, true]);
   }
+});
+
+it("status chip: in the Like the game's layout the chip sits above the player frame, not over its level and name (B4-4)", () => {
+  const addon = loggedIn(NAMES, { savedVariables: CHIP_AND_PREP });
+  addon.eval("ns.Setup.ApplyLayout('classic') ns.GetModule('UnitExtras').PaintChip('Missing: Mark of the Wild +3', 'warn')");
+  const r = addon.eval(`local f, player = Vanguard_StatusChip, Vanguard_player
+    return { f:GetBottom() >= player:GetTop(), f:GetLeft() >= 0, player:GetLeft() }`);
+  expect(r, "above the frame (its top left is 20 from the screen's edge), on the screen").toEqual([true, true, 20]);
+  addon.eval("ns.Setup.ApplyLayout('damage') ns.GetModule('UnitExtras').PaintChip('Missing: Mark of the Wild +3', 'warn')");
+  expect(addon.eval("return Vanguard_StatusChip:GetRight() <= Vanguard_player:GetLeft()"), "back in a centered layout it goes left of the frame again").toBe(true);
 });
 
 it("status chip: its switch on the Unit frames page says the chip sits beside the frame, not above it", () => {

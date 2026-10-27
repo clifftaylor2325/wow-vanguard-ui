@@ -42,13 +42,15 @@ CH.STACK_ROOM = T.SPACE.gap + T.CONTROL.tile
 -- that the game's layout and the player rule it. Its panel reaches SIDE_COLUMN
 -- and a gap past the window's right edge, a gap past its left edge (the stack
 -- starts STACK_ROOM left of that, eight units in from the screen's edge, level
--- with the pet bar) and BAR above its top.
-CH.SPOT = { 40, 20, 524, 200 }
+-- with the pet bar) and BAR above its top. y is CH.BAR + 2 * T.SPACE.tight (32), so the typing box,
+-- which hangs a gap and its height under the outline under the window, ends on the screen's edge;
+-- the height keeps the panel's top at 244, short of the pet bar's 250.
+CH.SPOT = { 40, 32, 524, 188 }
 
 -- Its size on a screen under SMALL_WIDTH units wide, where it tucks under the player frame (the
 -- layout tests keep them apart at 1365 x 768: the panel's top ends a gap short of the frame's
 -- bottom line, and its right edge short of the action bars).
-CH.SMALL = { 372, 144 }
+CH.SMALL = { 372, 132 }
 CH.SMALL_WIDTH = 1600
 
 -- How far left of the screen's centre the player frame's left edge is (Modules/UnitFrames.lua: the
@@ -63,13 +65,31 @@ local function roomWidth(width)
   return math.floor(room / 4) * 4
 end
 
+-- Under NARROW_WIDTH units wide the default panel gives way to the action bars, which start nearer
+-- the screen's left edge there; it is never narrower than MIN_WIDTH (the game's own smallest chat).
+CH.NARROW_WIDTH, CH.MIN_WIDTH = 1365, 296
+
+-- The widest the default panel can be on a screen `width` units wide (under NARROW_WIDTH) and still
+-- end a clearance short of bar 1's left end, in whole fours: the room left of the bar's left end, less
+-- the window's left margin and the panel's reach past its right edge. The small width when the bars
+-- are off, and MIN_WIDTH where even that meets the bars (1024 wide; setup's Fit my screen is the answer).
+local function narrowWidth(width)
+  local AB = ns.GetModule("ActionBars")
+  local stack = AB and ns.ModuleEnabled("ActionBars") and AB.StackWidth() or 0
+  if stack == 0 then return CH.SMALL[1] end
+  local room = width / 2 - stack / 2 - CH.CLEARANCE - CH.SPOT[1] - CH.SIDE_COLUMN - T.SPACE.tight
+  return math.max(CH.MIN_WIDTH, math.floor(room / 4) * 4)
+end
+
 -- The first-time size of the main chat window on a screen `width` units wide (UIParent's by
 -- default): the full height and as wide as the room left of the player frame allows, up to the
 -- widest (524 at 1920 units wide, 416 at 1707, a 1080p screen at setup's 80 % scale), or the small
 -- size on a narrow screen or where the room left of the player frame is shorter than the small width
--- (1600 to 1615 units wide), so the panel never touches the frame.
+-- (1600 to 1615 units wide), so the panel never touches the frame. Under NARROW_WIDTH it is the small
+-- height and as wide as the room left of bar 1 allows (296 at 1229 units wide, 324 at 1280 x 720).
 function CH.DefaultSize(width)
   width = width or ns.PlainNumber(UIParent:GetWidth()) or CH.SMALL_WIDTH
+  if width < CH.NARROW_WIDTH then return narrowWidth(width), CH.SMALL[2] end
   if width < CH.SMALL_WIDTH or roomWidth(width) < CH.SMALL[1] then return CH.SMALL[1], CH.SMALL[2] end
   return math.max(CH.SMALL[1], math.min(CH.SPOT[3], roomWidth(width))), CH.SPOT[4]
 end
@@ -1028,21 +1048,22 @@ function CH.ApplySize()
   frame:SetSize(w * scale, h * scale)
 end
 
--- The first sizes earlier versions gave the window (0.6's 420 x 140, 0.7.0's 500 x 154 and 420 x 154).
-CH.OLD_SIZES = { { 420, 140 }, { 500, 154 }, { 420, 154 } }
+-- The first sizes earlier versions gave the window (0.6's 420 x 140, 0.7.0's 500 x 154 and 420 x 154,
+-- and the small size before the typing box was lifted onto the screen, 372 x 144).
+CH.OLD_SIZES = { { 420, 140 }, { 500, 154 }, { 420, 154 }, { 372, 144 } }
 
 -- A profile 0.7.0 saved carries its grown flag (the window had grown to that version's first
--- size); widened takes its place, so a window still at that size is set to the new one once.
+-- size); shortened takes its place, so a window still at an earlier first size is set to the new one once.
 ns.Migrate("Chat", function(saved) saved.grown = nil end)
 
--- This character's own window flags (VanguardCharDB.chatSize: sized once, widened once), made on
+-- This character's own window flags (VanguardCharDB.chatSize: sized once, shortened once), made on
 -- first use: the game keeps each character's chat size, so one character's first size must not
 -- stop another's. A character that played before the flags moved here takes the profile's (they
 -- sized the window then); a new character starts with none.
 local function sizeFlags()
   if type(VanguardCharDB.chatSize) ~= "table" then
     local before = ns.NewCharacter() and {} or CH.settings
-    VanguardCharDB.chatSize = { sized = before.sized == true, widened = before.widened == true }
+    VanguardCharDB.chatSize = { sized = before.sized == true, shortened = before.shortened == true }
   end
   return VanguardCharDB.chatSize
 end
@@ -1063,8 +1084,8 @@ function CH.Size()
   local frame = _G.ChatFrame1
   if not CH.settings.place or type(frame) ~= "table" then return end
   local flags = sizeFlags()
-  local first, old = not flags.sized, not flags.widened and isOldDefault(frame)
-  flags.sized, flags.widened = true, true
+  local first, old = not flags.sized, not flags.shortened and isOldDefault(frame)
+  flags.sized, flags.shortened = true, true
   if first or old then CH.ApplySize() end
 end
 

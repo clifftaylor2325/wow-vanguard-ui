@@ -1376,3 +1376,16 @@ it("a selected row's rail is sized again after a UI scale change, two screen pix
   addon.update(0.1);
   expect(railPixels(), "still two pixels after the UI scale drops").toBeCloseTo(2, 9);
 });
+
+it("a disabled primary drops its accent fill and takes it back when enabled, through a theme refresh too (B1-1)", () => {
+  const addon = loggedIn();
+  addon.eval('TEST_Go = ns.DialogButton(CreateFrame("Button", nil, UIParent), "Go", 100, "primary") TEST_Plain = ns.DialogButton(CreateFrame("Button", nil, UIParent), "Plain", 100)');
+  // Whether the primary button's accent fill is drawn.
+  const fillShown = () => addon.eval("return TEST_Go.fill.bg:IsShown()");
+  expect(fillShown(), "enabled: the brass fill").toBe(true);
+  addon.eval("TEST_Go:Disable() ns.Theme.Refresh()");
+  expect(fillShown(), "disabled: the fill is gone, a refresh does not bring it back").toBe(false);
+  addon.eval("TEST_Go:Enable()");
+  expect(fillShown(), "enabled again: the brass fill is back").toBe(true);
+  expect(addon.eval("return TEST_Plain.fill"), "a secondary never had one").toBe(null);
+});

@@ -238,7 +238,7 @@ Depth is said by the fill, the one-pixel `edge` border, the sheen, the bevel on 
 | Hover | eases to a `raisedHover` fill with a `borderHi` top line (`T.EaseHover`, 0.1 s in, 0.13 s out); a check box's border goes `borderHi` | a `hover` wash (white at 8 %), at once (`T.Row`, `T.RowState`) | unchanged: hover never recolours text |
 | Pressed | `shade` at 30 % over the fill and the label one pixel down (`T.PRESS`, `T.PressButton`) | `shade` at 20 % over the row, the label still (`T.PRESS.row`, `T.PressRow`) | unchanged |
 | Selected or on | an `accent` fill with `void` text or knob for choose-one-of-few (segments, the switch, a radio); a check box, many-of-many, only its mark in `accentText` (`T.CHECK`) | a 2-pixel `accent` rail on the left over a lighter `raisedHover` fill for navigate (the nav, a list's current entry; `T.SELECT`, drawn only by `T.SelectRow`); a tab is the raised one (`T.Tab`) | `accentText` only where no fill can carry it (a dropdown menu's current item) |
-| Disabled | no hover, no press, the fill unchanged, text and glyphs in `disabled` at full alpha (`T.DisabledLook`); never an alpha fade over a bordered control, which blurs its border | the same | `disabled` |
+| Disabled | no hover, no press, the fill unchanged (a primary's accent fill goes, leaving the inset button), text and glyphs in `disabled` at full alpha (`T.DisabledLook`); never an alpha fade over a bordered control, which blurs its border | the same | `disabled` |
 | Focus (keyboard) | `T.FocusRing`: a one-pixel `accentText` ring two pixels out, over a one-pixel `edge` gap | the same | none |
 | Locked (a slider that cannot change) | the thumb in `disabled` (`T.SLIDER.thumbOff`), the fill unchanged, the caption `muted`; the tooltip says why | none | `muted` |
 

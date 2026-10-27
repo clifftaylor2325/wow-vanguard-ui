@@ -231,6 +231,13 @@ function MT.ToggleSession()
   MT.SetSession(after(MT.SESSION_ORDER, MT.settings.session))
 end
 
+-- The canvas width from which the meter, while it is on, sits at its wide spot (0 while it is off), for
+-- target of target to keep its narrow spot up to there (Modules/UnitFrames.lua).
+---@return number
+function ns.MeterWideFrom()
+  return MT.settings and MT.settings.on and MT.WIDE_FROM or 0
+end
+
 -- Builds the panel the first time it is wanted.
 local function ensure()
   if not MT.frame then build() end
@@ -239,6 +246,7 @@ end
 -- Builds the panel when it is switched on and not yet built, then draws it.
 function MT.Refresh()
   if MT.settings.on then ensure() end
+  ns.PlaceMover("uf_targettarget")
   MT.Paint()
 end
 

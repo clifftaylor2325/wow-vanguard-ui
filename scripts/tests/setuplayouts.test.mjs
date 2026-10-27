@@ -71,7 +71,7 @@ it("setup layouts: Like the game's puts your frames at the top left; another lay
   const home = spots();
   expect(addon.eval('return __click("Like the game\'s") and Vanguard_Setup.pages.layout.hint:GetText()'), "picking it says what it does").toMatch(/top left as the game has them/);
   setupClick(addon, "next");
-  expect(spots(), "player at the top left, focus beside the target of target, party and raid down the left, bosses on the right").toEqual([["TOPLEFT", "TOPLEFT", 20, -40], ["TOPLEFT", "TOPLEFT", 520, -94], ["BOTTOMLEFT", "BOTTOMLEFT", 20, 330], ["TOPRIGHT", "TOPRIGHT", -290, -200]]);
+  expect(spots(), "player at the top left, focus beside the target of target, party and raid down the left, bosses on the right").toEqual([["TOPLEFT", "TOPLEFT", 20, -40], ["TOPLEFT", "TOPLEFT", 540, -94], ["BOTTOMLEFT", "BOTTOMLEFT", 20, 330], ["TOPRIGHT", "TOPRIGHT", -290, -200]]);
   expect(addon.eval("return VanguardDB.profiles.Default.positions.maintanks"), "frames not built yet get their spot saved for later").toEqual({ point: "TOP", relPoint: "TOP", x: 100, y: -196 });
   for (let i = 0; i < 3; i += 1) setupClick(addon, "next");
   addon.slash("setup");
@@ -79,6 +79,15 @@ it("setup layouts: Like the game's puts your frames at the top left; another lay
   setupClick(addon, "next");
   expect(spots().slice(0, 2).concat([spots()[3]]), "Healing puts the frames back first").toEqual([home[0], home[1], home[3]]);
   expect([addon.eval("return VanguardDB.profiles.Default.positions.uf_player.point == nil"), spots()[2]], "and then places nothing: the raid frames keep their default spot").toEqual([true, home[2]]);
+});
+it("setup layouts: Like the game's keeps the target cast bar's interrupt mark off the focus frame (B4-5)", () => {
+  const addon = loggedIn(CLICK_LUA + UNITS_ENV + RAID_ENV, { firstRun: true });
+  addon.eval('__click("Like the game\'s")');
+  setupClick(addon, "next");
+  expect(["uf_targettarget", "cast_focus", "uf_focus"].map((key) => addon.eval(`return { ns.MoverPoint('${key}') }`)), "target of target, the focus cast bar and the focus sit 20 right of where they were")
+    .toEqual([["TOPLEFT", "TOPLEFT", 540, -46], ["TOPLEFT", "TOPLEFT", 540, -76], ["TOPLEFT", "TOPLEFT", 540, -94]]);
+  const [markRight, focusLeft] = addon.eval("local m = Vanguard_CastBar_target.mark return { m:GetRight(), Vanguard_focus:GetLeft() }");
+  expect(markRight, "the mark ends well left of the focus frame").toBeLessThan(focusLeft - 8);
 });
 // Where a point name sits across and up a rect (0 = left or bottom, 1 = right or top).
 const ACROSS = (point) => (/LEFT/.test(point) ? 0 : /RIGHT/.test(point) ? 1 : 0.5);
@@ -113,7 +122,7 @@ const raidSpot = (addon, n) => addon.eval(`local RF = ns.GetModule("RaidFrames")
 function raidRect(addon, n, sw, sh) {
   const s = addon.eval(`local RF = ns.GetModule('RaidFrames') local s = RF.settings return { s.width, s.height, s.spacing, RF.LayoutFor(${n}) }`);
   const spot = raidSpot(addon, n);
-  const scale = addon.eval(`return ns.GetModule('RaidFrames').Scale(${n})`);
+  const scale = addon.eval(`local RF = ns.GetModule('RaidFrames') return RF.Scale(${n}) * RF.LookScale(${n})`);
   const groups = Math.ceil(n / 5), five = [5 * (s[0] + s[2]) - s[2], 5 * (s[1] + s[2]) - s[2]];
   const across = [groups * (s[0] + s[2]) - s[2], groups * (s[1] + s[2]) - s[2]];
   const w = (s[3] === "rows" ? five[0] : across[0]) * scale, h = (s[3] === "rows" ? across[1] : five[1]) * scale;
@@ -150,11 +159,12 @@ function layoutRects(addon, n, sw, sh) {
   for (const [key, row] of Object.entries(ATTACHED)) if (out[row[0]]) out[key] = attachedRect(out[row[0]], spots[row[0]][6], row);
   if (n > 0) out.raid = raidRect(addon, n, sw, sh);
   // Chat is a mover: its panel reaches a gap past the window's left, right and bottom (over the
-  // scroll column on the right) and the tab bar's height above its top, and its side buttons
-  // stack left of the panel. Its first-time size depends on the screen's width.
+  // scroll column on the right) and the tab bar's height above its top, its side buttons
+  // stack left of the panel, and its typing box hangs a gap and its height under the panel. Its
+  // first-time size depends on the screen's width.
   if (out.chat) {
     const [w, h, bar, column, gap, stack] = addon.eval(`local CH = ns.GetModule("Chat") local w, h = CH.DefaultSize(${sw}) return { w, h, CH.BAR, CH.SIDE_COLUMN, ns.Theme.SPACE.tight, CH.STACK_ROOM }`);
-    out.chat = { l: out.chat.l - gap - stack, b: out.chat.b - gap, r: out.chat.l + w + column + gap, t: out.chat.b + h + bar };
+    out.chat = { l: out.chat.l - gap - stack, b: out.chat.b - 2 * gap - bar, r: out.chat.l + w + column + gap, t: out.chat.b + h + bar };
   }
   return out;
 }
@@ -168,8 +178,8 @@ function layoutProblems(rects, sw, sh) {
 // The whole HUD logged in on a new account (on the screen `screen`'s Lua sets, else the harness's 1920 x 1080),
 // party pets and targets on, the info strip at its tallest (with the leveling and DPS rows), the roll tracker at its
 // most lines and the bag and menu bar at its laid-out size (404 wide, 68 tall: the bags row over the menu row's 14 slots).
-function wholeHud(screen = "") {
-  const addon = loggedIn(screen + UI_ENV + ACTIONS_ENV + UNITS_ENV + RAID_ENV + SWING_ENV + TOOLS_ENV + TIDY_ENV + MICRO_ENV + STRIPS_ENV + SPECIAL_BARS_ENV + "TakeTaxiNode = function() end", { firstRun: true, savedVariables: "VanguardDB = { profiles = { Default = { PartyExtras = { show = true } } } }" });
+function wholeHud(screen = "", hud = "PartyExtras = { show = true }") {
+  const addon = loggedIn(screen + UI_ENV + ACTIONS_ENV + UNITS_ENV + RAID_ENV + SWING_ENV + TOOLS_ENV + TIDY_ENV + MICRO_ENV + STRIPS_ENV + SPECIAL_BARS_ENV + "TakeTaxiNode = function() end", { firstRun: true, savedVariables: `VanguardDB = { profiles = { Default = { ${hud} } } }` });
   addon.eval("Vanguard_InfoStrip:SetHeight(68)");
   addon.eval('local R = ns.GetModule("Rolls") Vanguard_Rolls:SetHeight(R.LINES * R.LINE + 2 * R.PAD)');
   addon.eval("MicroMenuContainer:Layout() BagsBar:Layout()");
@@ -182,14 +192,18 @@ function presetRects(addon, layout, n, sw, sh) {
   return rects;
 }
 // The quest arrow sits at the top centre (Cliff's spot, 2026-10-19); on a screen under 1400 wide the top
-// of a full 40-player raid grid reaches it, so there it may cover the grid (either moves with /vg unlock).
-const arrowMayCover = (p, n, sw) => p === "questarrow / raid" && n === 40 && sw < 1400;
+// of a 25 or 40-player raid grid reaches it (the Healing layout's 115% lifts the 25 grid's top by 6), so there it
+// may cover the grid (either moves with /vg unlock).
+const arrowMayCover = (p, n, sw) => p === "questarrow / raid" && n >= 25 && sw < 1400;
+// The Healing layout draws a party of five at 115%, so its grid reaches 32 units into the party pets and targets column
+// (off unless switched on; either moves with /vg unlock), which sits where a party drawn at 100% ends.
+const petsMayMeetParty = (p, n, layout) => p === "partyextras / raid" && n === 5 && layout === "healing";
 // Overlaps and parts off an sw x sh screen in a layout preset, for each raid growth and group size (solo, 5, 25, 40).
 function problemsAt(addon, layout, sw, sh, label) {
   const bad = [];
   for (const grow of ["columns", "rows"]) {
     addon.eval(`ns.GetModule("RaidFrames").settings.layout = "${grow}"`);
-    for (const n of [0, 5, 25, 40]) for (const p of layoutProblems(presetRects(addon, layout, n, sw, sh), sw, sh)) if (!arrowMayCover(p, n, sw)) bad.push(`${label}, groups as ${grow}, ${n} players: ${p}`);
+    for (const n of [0, 5, 25, 40]) for (const p of layoutProblems(presetRects(addon, layout, n, sw, sh), sw, sh)) if (!arrowMayCover(p, n, sw) && !petsMayMeetParty(p, n, layout)) bad.push(`${label}, groups as ${grow}, ${n} players: ${p}`);
   }
   return bad;
 }
@@ -221,22 +235,52 @@ it("setup screens: with each screen preset, nothing overlaps or leaves its own s
 });
 // The frames whose default spots adapt to a canvas narrower than 1365 or shorter than 768 (P3-3 and the
 // narrow-screen fixes): on the canvases below, each is on screen and clear of the rest of the centered layout.
-const NARROW_FRAMES = ["uf_targettarget", "playerauras", "partyextras"];
+const NARROW_FRAMES = ["uf_targettarget", "playerauras", "partyextras", "chat"];
 // What the narrow canvases still have that these frames don't answer for: the raid grid's own spots (Modules/RaidFrames.lua);
 // on a canvas 668 tall the quest tracker and the 360 tall quest dialog reach into the HUD; under 1020 wide your
-// buffs' shortest row (five) meets the main tanks' spot, shown only in a raid.
+// buffs' shortest row (five) meets the main tanks' spot, shown only in a raid; under 1229 wide even the narrowest
+// default chat (296) meets the left end of action bars 1 to 3 and the XP or reputation bar (under 1020 the player's cast bar and swing timer too), and setup's Fit my screen is the answer there.
 const narrowExcused = (p, sw, sh) => / raid\b|raid off screen/.test(p) || (sh < 700 && /questtracker|questdialog/.test(p))
-  || (sw < 1020 && /playerauras \/ maintanks/.test(p));
+  || (sw < 1020 && /playerauras \/ maintanks/.test(p)) || (sw < 1229 && /chat \/ (bar[123]|repbar|xpbar)|(bar[123]|repbar|xpbar) \/ chat/.test(p))
+  || (sw < 1020 && /(cast_player|swing) \/ chat/.test(p));
 it("setup layouts: on canvases narrower than 1365 the adapted default spots stay on screen and clear, solo to 40-man", () => {
   for (const [sw, sh] of [[1280, 800], [1229, 768], [1024, 768], [835, 668]]) {
     const addon = wholeHud(`__wfgStub.setScreen(${sw}, ${sh}) `);
     expect(NARROW_FRAMES.filter((k) => !moverSpots(addon)[k]), `${sw} x ${sh}: every adapted frame is built`).toEqual([]);
+    expect(addon.eval("return { ns.GetModule('Chat').DefaultSize() }"), `${sw} x ${sh}: the default chat is as wide as the room left of bar 1 (296 at 1229; 320 at 1280, where bar 1 is 482 wide after pixel rounding; never under 296), at the small height`).toEqual([{ 1280: 320, 1229: 296, 1024: 296, 835: 296 }[sw], 132]);
     for (const layout of ["damage", "tank", "healing", "versus"]) {
       addon.eval(`ns.Setup.ApplyLayout("${layout}")`);
       const mine = problemsAt(addon, layout, sw, sh, `${layout}, ${sw}x${sh}`).filter((p) => (/off screen/.test(p) || NARROW_FRAMES.some((k) => p.includes(k))) && !narrowExcused(p, sw, sh));
       expect(mine).toEqual([]);
     }
   }
+});
+// B3-2: with the Vanguard meter on, target of target keeps its narrow spot up to the meter's wide-spot width (1838), so the
+// meter's narrow spot (BOTTOMRIGHT -16,118) leaves it alone on the common 1365 to 1833 canvases; nothing moves with the meter off.
+it("setup layouts: with the meter on, target of target stays clear of it from 1365 to 1833 wide, solo to 40-man", () => {
+  for (const [sw, sh] of [[1365, 768], [1440, 900], [1600, 900], [1680, 1050]]) {
+    const addon = wholeHud(`__wfgStub.setScreen(${sw}, ${sh}) `, "PartyExtras = { show = true }, Meter = { on = true }");
+    for (const layout of ["damage", "tank", "healing", "versus"]) {
+      addon.eval(`ns.Setup.ApplyLayout("${layout}")`);
+      const mine = problemsAt(addon, layout, sw, sh, `${layout}, ${sw}x${sh}`).filter((p) => /uf_targettarget/.test(p) && !/questlog/.test(p));
+      expect(mine).toEqual([]);
+    }
+  }
+});
+it("meter: target of target takes its narrow spot while the meter is on and goes back when it is off, under 1838 wide only", () => {
+  // Where target of target sits now.
+  const spot = (addon) => addon.eval("return { ns.MoverPoint('uf_targettarget') }");
+  const home = ["BOTTOM", "BOTTOM", 426, 196], narrow = ["BOTTOM", "BOTTOM", 180, 280];
+  const addon = loggedIn(UI_ENV + UNITS_ENV + "__wfgStub.setScreen(1600, 900)");
+  expect(spot(addon), "meter off: the default spot at 1600 wide").toEqual(home);
+  addon.slash("meter on");
+  expect(spot(addon), "meter on: the narrow spot, at once").toEqual(narrow);
+  addon.slash("meter off");
+  expect(spot(addon), "meter off again: the default spot").toEqual(home);
+  addon.slash("meter on");
+  addon.eval("__wfgStub.setScreen(1920, 1080)");
+  addon.eval("ns.PlaceMover('uf_targettarget')");
+  expect(spot(addon), "meter on at 1920 wide, where the meter sits at its wide spot: the default spot").toEqual(home);
 });
 // The screen step's choices (their labels) and the hint under them.
 const screenPage = (addon) => addon.eval("local p = Vanguard_Setup.pages.screen local out = {} for i, b in ipairs(p.choices) do out[i] = b.text:GetText() end return { out, p.hint:GetText() }");
@@ -420,14 +464,16 @@ it("one bar material (#234): every Vanguard bar on the whole HUD uses the theme'
 it("setup layouts: each role sizes the frames its own way: a taller target for damage and more for tanking, a larger raid and smaller own frames for healing", () => {
   const addon = loggedIn(CLICK_LUA + UNITS_ENV + RAID_ENV, { firstRun: true });
   // The target frame's height (to the whole unit; it snaps to screen pixels), the player, target and raid scales, and the nameplates' buff row.
-  const sizes = () => addon.eval("local f = ns.GetModule('UnitFrames').frames return { math.floor(f.target:GetHeight() + 0.5), f.player:GetScale(), f.target:GetScale(), Vanguard_RaidHolder:GetScale(), ns.Settings('Nameplates').buffs }");
+  const sizes = () => addon.eval("local f = ns.GetModule('UnitFrames').frames return { math.floor(f.target:GetHeight() + 0.5), f.player:GetScale(), f.target:GetScale(), Vanguard_RaidHolder:GetScale(), ns.Settings('Nameplates').buffs, ns.GetModule('RaidFrames').header:GetEffectiveScale() }");
   expect(sizes().slice(0, 4), "Vanguard's defaults").toEqual([36, 1, 1, 1]);
   addon.eval("ns.Setup.ApplyLayout('damage')");
-  expect(sizes(), "damage: a taller target").toEqual([40, 1, 1, 1, 0]);
+  expect(sizes(), "damage: a taller target").toEqual([40, 1, 1, 1, 0, 1]);
   addon.eval("ns.Setup.ApplyLayout('tank')");
-  expect(sizes(), "tanking: the tallest target and the Tank preset (buff rows on nameplates)").toEqual([44, 1, 1, 1, 3]);
+  expect(sizes(), "tanking: the tallest target and the Tank preset (buff rows on nameplates)").toEqual([44, 1, 1, 1, 3, 1]);
   addon.eval("ns.Setup.ApplyLayout('healing')");
   expect(sizes().slice(0, 4), "healing: the target back to 36, your frames smaller, the raid larger").toEqual([36, 0.9, 0.9, 1.15]);
+  expect(sizes()[5], "the raid's tiles are drawn larger too (115%), not only its holder").toBe(1.15);
+  expect(addon.eval("local RF = ns.GetModule('RaidFrames') return { RF.LookScale(25), RF.LookScale(40) }"), "the larger raid grows the grid up to 25 players; a 40 grid keeps its compact size").toEqual([1.15, 1]);
   addon.eval("ns.Setup.ApplyLayout('versus')");
   expect(sizes().slice(0, 4), "Versus deck after Healing (no role says healer): your frame and your target's one size and height again").toEqual([36, 1, 1, 1]);
   addon.eval("ns.Setup.ApplyLayout('classic')");
