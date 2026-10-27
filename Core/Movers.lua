@@ -196,7 +196,7 @@ local function place(m)
     ns.MoverLinks.Remember(m.key, saved()[m.key])
     m.frame:SetClampedToScreen(true)
     anchor(m.frame, m)
-  end)
+  end, "place " .. m.key)
 end
 
 -- After a UI scale or screen change: puts every anchored mover (and its handle) at its link's spot again, since

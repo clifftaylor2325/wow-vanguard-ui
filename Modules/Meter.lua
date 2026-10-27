@@ -374,8 +374,10 @@ local function addHeaderButtons(f)
   f.reset = headerButton(f, L["Reset"], 1, MT.Reset)
 end
 
--- Applies the panel's visibility setting: now, or when combat ends.
+-- Applies the panel's visibility setting: now, or when combat ends. Nothing to do while the panel is not built (the
+-- meter is off): the saved setting is applied when the panel is.
 function MT.ApplyVisibility()
+  if not MT.frame then return end
   ns.OutOfCombat(function() V.ApplyNow(MT.frame, MT.settings.visibility, MT.settings.showWhen) end, MT.frame)
 end
 
