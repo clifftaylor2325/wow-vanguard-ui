@@ -674,7 +674,24 @@ it("a spell picker opened in a fight does not take the keyboard; one opened afte
   addon.eval("Vanguard_SpellPicker:Hide()");
   expect(keyboardAfterOpening(), "opened after it, the keyboard is on again").toEqual([true, true]);
 });
-
+it("a spell picker opened in a fight reads keys when the fight ends, if it is still up", () => {
+  const addon = priest();
+  addon.eval('ns.Options.Show("clickcast")');
+  addon.world.combat(true);
+  addon.click(cell(addon, "ctrl-BUTTON2"));
+  addon.eval("Vanguard_SpellPicker.EnableKeyboard = function(self, on) self.__kb = on end");
+  addon.world.combat(false);
+  expect(addon.eval("return Vanguard_SpellPicker.__kb"), "up at the end of the fight: the keyboard is on").toBe(true);
+});
+it("a spell picker closed during the fight it opened in stays off the keyboard", () => {
+  const addon = priest();
+  addon.eval('ns.Options.Show("clickcast")');
+  addon.world.combat(true);
+  addon.click(cell(addon, "ctrl-BUTTON2"));
+  addon.eval("Vanguard_SpellPicker.EnableKeyboard = function(self, on) self.__kb = on end Vanguard_SpellPicker.__kb = false Vanguard_SpellPicker:Hide()");
+  addon.world.combat(false);
+  expect(addon.eval("return Vanguard_SpellPicker.__kb"), "hidden at the end of the fight: left alone").toBe(false);
+});
 
 it("the Click casting page shows one Reset this page card however often the window opened before a rebuild", () => {
   const addon = loggedIn(CLICK_LUA + "C_ClickBindings = {}");

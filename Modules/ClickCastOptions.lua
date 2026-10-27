@@ -336,10 +336,18 @@ local function followAnchor(anchor)
   anchor:HookScript("OnHide", ns.Guard("hide spell picker anchor", function() if picker.anchor == anchor then closePicker() end end))
 end
 
+-- The fight is over: a picker opened during it, still up, reads keys again.
+local function regainPickerKeys()
+  if picker:IsShown() then picker:EnableKeyboard(true) end
+end
+
 -- Readies the picker for a key: back at the top with an empty search. It reads keys only out of a fight,
--- where it can't pass them on and would swallow movement and keybinds (closeOnCombat covers one open at the start).
+-- where it can't pass them on and would swallow movement and keybinds (closeOnCombat covers one open at the start;
+-- one opened in a fight gets its keyboard back when the fight ends).
 local function readyPicker(key)
-  picker:EnableKeyboard(not ns.InCombat())
+  local fight = ns.InCombat()
+  picker:EnableKeyboard(not fight)
+  if fight then ns.AfterCombat(regainPickerKeys, "clickcast spell picker keys") end
   state.pickKey = key
   picker.offset = 0
   picker.search:SetText("")
