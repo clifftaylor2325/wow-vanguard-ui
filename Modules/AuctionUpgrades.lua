@@ -234,7 +234,7 @@ local function onGearChanged()
   AH.PaintUpgrades()
 end
 
--- The Upgrades entry's events (on: the helper's, which ignores them in combat): item search
+-- The Upgrades entry's events (on: the helper's): item search
 -- results and closing the house (judging stopped); your gear
 -- changing, also in combat (the house is closed then, so that only forgets); the judging walker is made here.
 function AH.ListenUpgrades(on)

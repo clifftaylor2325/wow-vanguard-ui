@@ -41,8 +41,9 @@
 -- name the title; SetPostItem, to read the item the game's sell frame was
 -- given and, when Posting was open, show Posting again). Posting and cancelling run only inside a button's
 -- click, and a post the game wants confirmed waits for a second click (Confirm). Every price and
--- quantity goes through ns.PlainNumber before any arithmetic, and events are
--- ignored in combat (the house closes then).
+-- quantity goes through ns.PlainNumber before any arithmetic, and its events are
+-- followed in combat too (no handler touches a protected frame; a scan list or a house opened in a fight
+-- must not be lost).
 
 local ADDON, ns = ...
 local L = ns.L
@@ -76,10 +77,9 @@ AH.ROW_H, AH.UNKNOWN_ICON = T.CONTROL_H, "Interface\\Icons\\INV_Misc_QuestionMar
 
 -- Helpers ------------------------------------------------------------------------------------
 
--- Runs fn on an event, unless in combat (the auction house closes in combat).
-local function on(event, fn)
-  ns.On(event, function(...) if not ns.InCombat() then fn(...) end end)
-end
+-- Follows an event, in combat too: no auction house handler makes a protected call (posting and
+-- cancelling run only from a click), and a list that arrives during a fight must not be dropped.
+local on = ns.On
 
 -- A card's box on a column: a raised panel with the theme's border (the options window's card
 -- look), from y (down from the column's top), h units tall, AH.PAD in from the column's sides.
@@ -662,11 +662,10 @@ function AH.OnSearchEvent(event, arg)
   AH.OnCostResults(event, id, s)
 end
 
--- The auction house's events the helper follows (none in combat, but its closing: that only clears
--- Vanguard's own state, which must happen however the house closed), then each file's own.
+-- The auction house's events the helper follows, then each file's own.
 local function listen()
   on("AUCTION_HOUSE_SHOW", function() ns.Soon("auctionhelper", AH.OnShow) end)
-  ns.On("AUCTION_HOUSE_CLOSED", AH.OnClosed) -- not through on(): the house closes in combat, and this only clears state
+  ns.On("AUCTION_HOUSE_CLOSED", AH.OnClosed) -- only clears Vanguard's own state, however the house closed
   on("REPLICATE_ITEM_LIST_UPDATE", onReplicate)
   on("AUCTION_HOUSE_BROWSE_RESULTS_UPDATED", AH.OnBrowse)
   for _, e in ipairs(AH.SEARCH_EVENTS) do on(e, AH.OnSearchEvent) end

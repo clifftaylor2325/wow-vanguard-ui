@@ -386,16 +386,28 @@ it("a finished scan spends the 15 minutes from its start, and your own listings 
   expect(chatHas(addon, /Auction house scanned: 6 listings, prices for 1 items\. 3 of them were yours and are left out\./), "says so").toBe(true);
   expect([addon.eval("return ns.AuctionPrices.House().lastScan"), lastLine(addon)], "the 15 minutes run from the start").toEqual([1790000000, "Scanned 2 min ago · 1 items"]);
 });
-it("switches: no tabs, no scan button; nothing at all in combat", () => {
+it("switches: no tabs, no scan button", () => {
   const off = atAuctionHouse("", { savedVariables: "VanguardDB.profiles = { Default = { AuctionHelper = { panel = false } } }" });
   expect([off.frame("Vanguard_AuctionShopping"), off.eval("return #AuctionHouseFrame.Tabs")], "no pages, the game's three tabs alone").toEqual([null, 3]);
   const noButton = atAuctionHouse("", { savedVariables: "VanguardDB.profiles = { Default = { AuctionHelper = { scanButton = false } } }" });
   expect(noButton.eval(`return ${SCAN_BUTTON}:IsShown()`), "no scan button").toBe(false);
+});
+it("a house opened in combat still gets its tabs", () => {
   const fight = loggedIn(AH_ENV);
   setCombat(fight, true);
   fight.world.openAuctionHouse();
   fight.update(0);
-  expect(fight.frame("Vanguard_AuctionShopping"), "ignored in combat").toBe(null);
+  expect([fight.eval("return #AuctionHouseFrame.Tabs"), fight.eval("return #ns.errors")], "built in the fight: the game's three tabs and ours, no error").toEqual([5, 0]);
+});
+it("a scan's list that arrives during a fight is still read", () => {
+  const fight = atAuctionHouse(`__wfgWorld.ah.replicate = ${LINEN}`);
+  fight.slash("ah scan");
+  setCombat(fight, true);
+  fight.fire("REPLICATE_ITEM_LIST_UPDATE");
+  fight.update(0.01);
+  setCombat(fight, false);
+  fight.advance(91);
+  expect([fight.eval("return ns.AuctionPrices.House().lastScan"), chatHas(fight, /hasn't answered/)], "the list was read, not given up on").toEqual([1790000000, false]);
 });
 it("/vg ah says what it knows, scans at the auction house, and forgets prices", () => {
   const addon = loggedIn(AH_ENV);

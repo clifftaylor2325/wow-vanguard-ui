@@ -478,7 +478,7 @@ function AH.OnBrowse()
 end
 
 -- The auction house events the shop follows besides browse results and item search results
--- (on: Modules/AuctionHelper.lua's, which ignores them in combat; AH.OnSearchEvent hands the
+-- (on: Modules/AuctionHelper.lua's; AH.OnSearchEvent hands the
 -- search results to AH.OnListings).
 function AH.ListenShop(on)
   on("ITEM_KEY_ITEM_INFO_RECEIVED", function() AH.OnItemInfo() end)
