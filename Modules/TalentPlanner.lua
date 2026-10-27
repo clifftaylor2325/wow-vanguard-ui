@@ -41,7 +41,7 @@ TP.LEVEL_ABOVE = 5
 -- The next pick's ring, units wide.
 TP.RING = 6
 -- The bar: its size, where it sits from the window's bottom left, the Plan switch's and Spend planned's widths.
-TP.BAR_WIDTH, TP.BAR_HEIGHT, TP.BAR_X, TP.BAR_Y, TP.SWITCH_WIDTH, TP.SPEND_WIDTH = 520, 24, 14, 10, 100, 110
+TP.BAR_WIDTH, TP.BAR_HEIGHT, TP.BAR_X, TP.BAR_Y, TP.SWITCH_WIDTH, TP.SPEND_WIDTH = 520, 24, 14, 10, 120, 110
 -- The summary's room: how far short of the game's Apply Changes button it ends, and its lines at most.
 TP.APPLY_GAP, TP.SUMMARY_LINES = 12, 2
 TP.UNREACHABLE_NOTE = L["Unreachable: a talent or row it needs is not in the plan."]
@@ -514,7 +514,7 @@ local function barControls(bar, frame)
   bar.plan = W.Check(bar, L["Plan"], function() return TP.planning == true end, TP.SetPlanning, TP.SWITCH_WIDTH)
   bar.plan:SetHeight(TP.BAR_HEIGHT)
   bar.plan:SetPoint("LEFT", 0, 0)
-  bar.spend = W.Button(bar, L["Spend planned"], function() TP.SpendPlanned() end, TP.SPEND_WIDTH)
+  bar.spend = ns.WidenToLabel(W.Button(bar, L["Spend planned"], function() TP.SpendPlanned() end, TP.SPEND_WIDTH))
   bar.spend:SetHeight(TP.BAR_HEIGHT - 4)
   bar.spend:SetPoint("LEFT", bar.plan, "RIGHT", 8, 0)
   barSummary(bar, frame)

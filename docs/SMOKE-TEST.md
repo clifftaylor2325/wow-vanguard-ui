@@ -2528,6 +2528,18 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: the note ("On, but its own switch is off (...)") is on the same line as the module's name, just after the name (or its "Reload to apply" tag), and the description stays free under it, never covered. [Needs in-game check: which of its two anchors the real client honours; the harness always follows the left one.]
 - If it fails, paste: a screenshot of the row, the game's language, and `/vg errors`.
 
+### 33.60 A held primary button darkens
+
+- Do: find a primary (brass) button (the options footer's Reload now once a change waits for a reload, or a question's Yes), put the mouse on it and hold the left button down without letting go; then move off and let go.
+- Expect: while held, the brass button darkens by a visible shade (not only a label that sinks a pixel), and it goes back to normal on release. [Needs in-game check: the client decides the draw order of textures on one layer; the press shade now has a layer of its own above the fill and the hover.]
+- If it fails, paste: a screenshot of the held button and `/vg errors`.
+
+### 33.61 The character pane's side tabs when dragged to the right edge
+
+- Do: open the character pane (`C`), drag it by its title bar as far right as it goes, and look at the column of mode tabs (Character, Reputation, Skills) at its right side; then drag it to the other edges. Try the inspect window, a Communities, Professions or Guild bank window the same way.
+- Expect: the pane stops with its whole tab column on the screen (the panel border and the tabs under it too); dragged back, nothing is lost. [Needs in-game check: whether the real client clamps by these insets, and how far the other windows' side tabs reach; only the character pane is covered so far, the others wait for their widths.]
+- If it fails, paste: a screenshot with the pane at the edge, `/vg frame CharacterFrame deep`, and `/vg errors`.
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ## When you are done
