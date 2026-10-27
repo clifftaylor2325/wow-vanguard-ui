@@ -2522,107 +2522,107 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: Check undercuts is as wide as its label; Cancel next undercut takes the room between the line beside the heading and Check undercuts, its label shrinking a little in a long language, never over the line; the Lists pane's six buttons are two to a row in three rows and show Umbenennen, Переименовать and Копировать whole; the pane lists two fewer entries than before; the filter dialog is a little wider and "Quality" is one line beside its dropdown; + Add shows its whole label in every place along the mail panel's bottom (the preset buttons are a little narrower) and stays inside the panel. [Needs in-game check: all of it.]
 - If it fails, paste: a screenshot of the toolbar, pane, dialog or panel, the game's language, and `/vg errors`.
 
-### 33.76 Chat handles at the screen's edges
-
-- Do: `/vg unlock`, drag the chat handle against the bottom edge, then into the bottom-right corner and `/reload`. Turn on Chat → Move floating windows with /vg unlock (reload), pull the Combat Log (or a Loot window) out of the dock, and drag its handle to the top-left corner.
-- Expect: at the bottom edge the handle stops with the edit box's bottom on the screen's edge (press Enter to see it); parked at the right, the side buttons the game moves to the right of the window stay in view after the reload; a floating window's tab bar (and the Combat Log's filter strip above it) and its minimize tile stay on the screen at the top and left edges. [Needs in-game check: that the handle stops there, in the direction the insets use (negative left and bottom, positive right and top).]
-- If it fails, paste: a screenshot with the handle at the edge, and `/vg errors`.
-
-### 33.77 Chat tabs: label font, and the dock's overflow arrow and list
-
-- Do: set Text size to 130% (then back to 100%) and look at the chat's tab names against the chat lines; hover and click each tab. Then dock enough tabs (Combat Log, Trade, LFG, Loot, a whisper) that the bar cannot hold them all, look at the arrow at the bar's right end, and click it.
-- Expect: the tab names are in the same face as the chat lines and grow with Text size, and stay that way after a hover or a click. The overflow arrow is the theme's small down-arrow tile at the dock's right end, level with the tabs (not the game's gold arrow), and its list is a themed box with the theme's font on its rows. [Needs in-game check: whether a tab's label drops back to the game's face when the button repaints; the glyph's fit on the 16-unit arrow; the list's rows and highlight, and that its rows are the buttons the code finds.]
-- If it fails, paste: a screenshot of the bar at 100% and 130% Text size and of the open overflow list, and `/vg errors`.
-
-### 33.78 Chat Copy and Find tiles on every docked tab
-
-- Do: with General docked, click the Combat Log tab, then Trade (or a whisper tab), then General again. Hover the tiles at the bar's right end and click Copy on a tab other than General.
-- Expect: Copy and Find stay in the bar's right end on every tab, the tabs end before them, and the Copy window is titled with the shown tab's name ("Copy Trade (Ctrl+C)"). [Needs in-game check: that the tiles show on the other tabs' bars and are not drawn under them.]
-- If it fails, paste: a screenshot of the bar on the Combat Log tab, and `/vg errors`.
-
-### 33.79 Expanded quest tracker over the bags and menu strip
-
-- Do: watch seven or more quests (two or more objectives each), click the tracker's "+N more" to expand it, with the menu strip (bags and micro menu) shown, at 1365x768 and at 1920x1080; also on a window about 835 wide.
-- Expect: the last quest and the "Show fewer" button end above the menu strip's top (and above action bars 1 to 3 on the narrow window), none drawn under the bags or the micro buttons, and clicking "Show fewer" works; hide the strip (Menu strip off) and the list runs lower again. [Needs in-game check: the real micro menu's width and that no menu button covers the "Show fewer" line.]
-- If it fails, paste: a screenshot of the tracker and strip, and `/vg errors`.
-
-### 33.80 Quest arrow: title over the distance at larger Text sizes
-
-- Do: with the quest arrow showing, look at it at Text size 100%, 125% and 150%, pinned (Shift-click a quest in the tracker) and free.
-- Expect: the quest title stands on the panel's middle line and the distance line hangs under it, with a clear gap at every size and both inside the panel; pinned, the title still stops short of the Pin button. [Needs in-game check: whether the two lines were already drawn over each other at 100% before this change, and how they sit now.]
-- If it fails, paste: a screenshot of the arrow at 100% and 150%, and `/vg errors`.
-
-### 33.81 Quest-start map pins' edge at each zoom
-
-- Do: with quest-start pins showing (Quest guidance on), open the world map windowed, then maximized, then zoom in and out on a zone with several pins.
-- Expect: each pin's gold "!" sits on a small square whose edge stays one crisp pixel at every zoom, the same size throughout. [Needs in-game check: the client's real canvas scales and how the edge looks at them.]
-- If it fails, paste: a screenshot of the pins zoomed in and out, and `/vg errors`.
-
-### 33.73 Raid tile edges after the grid changes size
-
-- Do: with Raid frames on (or `/vg preview 25`), step the group or the preview from 25 to 40 players at the same spot, at a UI scale other than 1 (and at 1), and look at the edges of a tile with a zoomed screenshot.
-- Expect: the tile's one-pixel border and the one-pixel inset of the health bar inside it stay one sharp line each, the same thickness at 25 and at 40 players; none is blurred, doubled or missing. [Needs in-game check: whether a fractional edge blurs or drops a line is for the real client.]
-- If it fails, paste: a zoomed screenshot, the group size, the UI scale, and `/vg errors`.
-
-### 33.74 Incoming heals over the mana strip
-
-- Do: in a raid with power bars on the raid tiles, have a healer cast on a member who has a mana bar (and, if you can, a shield on them), and look at that tile's bottom edge while the heal is incoming.
-- Expect: the thin power strip along the bottom of the tile keeps its own colour for its whole width; the heal and shield tints end above it and never cover or tint it. [Needs in-game check: draw order between sibling frames is the client's.]
-- If it fails, paste: a zoomed screenshot of the tile and `/vg errors`.
-
-### 33.67 Cooldown numbers on the smallest action bar buttons
-
-- Do: set the action bar button size to 24 (`/vg` → Action bars), put a spell with a long cooldown (over 10 minutes) on bar 1, use it, and look at the number on the button; then set the button size to 36 and look again.
-- Expect: at 24 the number is the small bold size and stays inside the icon, even as "10m"; at 36 it is the larger size as before. [Needs in-game check: the client draws the number itself.]
-- If it fails, paste: a screenshot of the button at 24, the game's "Show numbers for cooldowns" setting, and `/vg errors`.
-
-### 33.68 Pet, stance and extra button texts in the theme font
-
-- Do: on a class with a pet bar or stances (hunter, warlock, druid, warrior), bind a key to a pet or stance button and look at its key name and, with an auto-cast or stacking ability, its count; compare with bar 1's key names. Then change into another form or call and dismiss the pet.
-- Expect: the key names and counts on the pet and stance buttons use the same small font and colours as the action bar buttons and keep them after the pet or the form changes. [Needs in-game check: the game may put its own font back when the bar updates; if so say which bar.]
-- If it fails, paste: a screenshot of the pet or stance bar next to bar 1, and `/vg errors`.
-
-### 33.69 Minimap button drawer ring
-
-- Do: with two or three addons that add a minimap button (the kind a LibDBIcon addon makes), look at the drawer opened from the "..." button on the map's edge, before and after this change if you can.
-- Expect: each button sits in its own cell with its round ring centred on its icon and not hanging into the next cell; four buttons to a row. [Needs in-game check: the harness has no LibDBIcon.]
-- If it fails, paste: a screenshot of the open drawer and the names of the addons whose buttons are in it.
-
-### 33.70 Unlock handles of scaled frames
-
-- Do: `/vg unlock`, right-click the XP bar's handle and set its Scale to 50%, then the player frame's to 200%; read their labels and drag each handle to a new spot and drop it; then `/vg lock`.
-- Expect: every handle label is the same size as the others' whatever the frame's Scale; the 50% bar's handle is at least 40 wide and 14 tall, easy to grab, and sits over the bar; each frame lands where its handle was dropped. [Needs in-game check: the drag maths changed.]
-- If it fails, paste: `/vg frame Vanguard_xpbar deep` and `/vg frame Vanguard_player deep` before and after the drag, and `/vg errors`.
-
-### 33.71 The position popover keeps off its own handle
-
-- Do: `/vg unlock`, right-click the handles of the minimap, the info strip and the quest tracker (the frames at the right edge), then of the chat window and a frame in the middle of the screen.
-- Expect: for a frame near the right edge the popover opens to the left of its handle, not over it, and its handle stays visible while you type in X and Y; for a frame with room on its right it opens to the right as before. [Needs in-game check: the client keeps the popover on screen.]
-- If it fails, paste: a screenshot with the popover open and the frame's name.
-
-### 33.72 Default spots after a UI scale change
-
-- Do: leave every frame at its default spot, then in the game's Video settings (or `/vg setup`'s screen step with Fit) change the UI Scale so the screen turns narrower (for example from 1920x1080 to a 1229 wide canvas), without reloading; look at the target of target, the Vanguard meter (if on) and the group threat panel (if on), then do `/reload` and compare.
-- Expect: those frames move to the narrower screen's default spots at once, where they sit after the reload (your buffs keep their row length until the reload); a frame you dragged does not move to a default. [Needs in-game check: the client's own scale events.]
-- If it fails, paste: `/vg frame Vanguard_targettarget` before and after the change and after the reload, and `/vg errors`.
-
-### 33.64 Options: the own-switch note sits on the module name's line
-
-- Do: open `/vg` → Modules, switch on a module that has a switch of its own inside (Party pets and targets, Group threat, Chat history) and leave that inner switch off, in any language, and look at where the note sits in the row.
-- Expect: the note ("On, but its own switch is off (...)") is on the same line as the module's name, just after the name (or its "Reload to apply" tag), and the description stays free under it, never covered. [Needs in-game check: which of its two anchors the real client honours; the harness always follows the left one.]
-- If it fails, paste: a screenshot of the row, the game's language, and `/vg errors`.
-
-### 33.60 A held primary button darkens
+### 33.59 A held primary button darkens
 
 - Do: find a primary (brass) button (the options footer's Reload now once a change waits for a reload, or a question's Yes), put the mouse on it and hold the left button down without letting go; then move off and let go.
 - Expect: while held, the brass button darkens by a visible shade (not only a label that sinks a pixel), and it goes back to normal on release. [Needs in-game check: the client decides the draw order of textures on one layer; the press shade now has a layer of its own above the fill and the hover.]
 - If it fails, paste: a screenshot of the held button and `/vg errors`.
 
-### 33.61 The character pane's side tabs when dragged to the right edge
+### 33.60 The character pane's side tabs when dragged to the right edge
 
 - Do: open the character pane (`C`), drag it by its title bar as far right as it goes, and look at the column of mode tabs (Character, Reputation, Skills) at its right side; then drag it to the other edges. Try the inspect window, a Communities, Professions or Guild bank window the same way.
 - Expect: the pane stops with its whole tab column on the screen (the panel border and the tabs under it too); dragged back, nothing is lost. [Needs in-game check: whether the real client clamps by these insets, and how far the other windows' side tabs reach; only the character pane is covered so far, the others wait for their widths.]
 - If it fails, paste: a screenshot with the pane at the edge, `/vg frame CharacterFrame deep`, and `/vg errors`.
+
+### 33.61 Options: the own-switch note sits on the module name's line
+
+- Do: open `/vg` → Modules, switch on a module that has a switch of its own inside (Party pets and targets, Group threat, Chat history) and leave that inner switch off, in any language, and look at where the note sits in the row.
+- Expect: the note ("On, but its own switch is off (...)") is on the same line as the module's name, just after the name (or its "Reload to apply" tag), and the description stays free under it, never covered. [Needs in-game check: which of its two anchors the real client honours; the harness always follows the left one.]
+- If it fails, paste: a screenshot of the row, the game's language, and `/vg errors`.
+
+### 33.62 Cooldown numbers on the smallest action bar buttons
+
+- Do: set the action bar button size to 24 (`/vg` → Action bars), put a spell with a long cooldown (over 10 minutes) on bar 1, use it, and look at the number on the button; then set the button size to 36 and look again.
+- Expect: at 24 the number is the small bold size and stays inside the icon, even as "10m"; at 36 it is the larger size as before. [Needs in-game check: the client draws the number itself.]
+- If it fails, paste: a screenshot of the button at 24, the game's "Show numbers for cooldowns" setting, and `/vg errors`.
+
+### 33.63 Pet, stance and extra button texts in the theme font
+
+- Do: on a class with a pet bar or stances (hunter, warlock, druid, warrior), bind a key to a pet or stance button and look at its key name and, with an auto-cast or stacking ability, its count; compare with bar 1's key names. Then change into another form or call and dismiss the pet.
+- Expect: the key names and counts on the pet and stance buttons use the same small font and colours as the action bar buttons and keep them after the pet or the form changes. [Needs in-game check: the game may put its own font back when the bar updates; if so say which bar.]
+- If it fails, paste: a screenshot of the pet or stance bar next to bar 1, and `/vg errors`.
+
+### 33.64 Minimap button drawer ring
+
+- Do: with two or three addons that add a minimap button (the kind a LibDBIcon addon makes), look at the drawer opened from the "..." button on the map's edge, before and after this change if you can.
+- Expect: each button sits in its own cell with its round ring centred on its icon and not hanging into the next cell; four buttons to a row. [Needs in-game check: the harness has no LibDBIcon.]
+- If it fails, paste: a screenshot of the open drawer and the names of the addons whose buttons are in it.
+
+### 33.65 Unlock handles of scaled frames
+
+- Do: `/vg unlock`, right-click the XP bar's handle and set its Scale to 50%, then the player frame's to 200%; read their labels and drag each handle to a new spot and drop it; then `/vg lock`.
+- Expect: every handle label is the same size as the others' whatever the frame's Scale; the 50% bar's handle is at least 40 wide and 14 tall, easy to grab, and sits over the bar; each frame lands where its handle was dropped. [Needs in-game check: the drag maths changed.]
+- If it fails, paste: `/vg frame Vanguard_xpbar deep` and `/vg frame Vanguard_player deep` before and after the drag, and `/vg errors`.
+
+### 33.66 The position popover keeps off its own handle
+
+- Do: `/vg unlock`, right-click the handles of the minimap, the info strip and the quest tracker (the frames at the right edge), then of the chat window and a frame in the middle of the screen.
+- Expect: for a frame near the right edge the popover opens to the left of its handle, not over it, and its handle stays visible while you type in X and Y; for a frame with room on its right it opens to the right as before. [Needs in-game check: the client keeps the popover on screen.]
+- If it fails, paste: a screenshot with the popover open and the frame's name.
+
+### 33.67 Default spots after a UI scale change
+
+- Do: leave every frame at its default spot, then in the game's Video settings (or `/vg setup`'s screen step with Fit) change the UI Scale so the screen turns narrower (for example from 1920x1080 to a 1229 wide canvas), without reloading; look at the target of target, the Vanguard meter (if on) and the group threat panel (if on), then do `/reload` and compare.
+- Expect: those frames move to the narrower screen's default spots at once, where they sit after the reload (your buffs keep their row length until the reload); a frame you dragged does not move to a default. [Needs in-game check: the client's own scale events.]
+- If it fails, paste: `/vg frame Vanguard_targettarget` before and after the change and after the reload, and `/vg errors`.
+
+### 33.68 Raid tile edges after the grid changes size
+
+- Do: with Raid frames on (or `/vg preview 25`), step the group or the preview from 25 to 40 players at the same spot, at a UI scale other than 1 (and at 1), and look at the edges of a tile with a zoomed screenshot.
+- Expect: the tile's one-pixel border and the one-pixel inset of the health bar inside it stay one sharp line each, the same thickness at 25 and at 40 players; none is blurred, doubled or missing. [Needs in-game check: whether a fractional edge blurs or drops a line is for the real client.]
+- If it fails, paste: a zoomed screenshot, the group size, the UI scale, and `/vg errors`.
+
+### 33.69 Incoming heals over the mana strip
+
+- Do: in a raid with power bars on the raid tiles, have a healer cast on a member who has a mana bar (and, if you can, a shield on them), and look at that tile's bottom edge while the heal is incoming.
+- Expect: the thin power strip along the bottom of the tile keeps its own colour for its whole width; the heal and shield tints end above it and never cover or tint it. [Needs in-game check: draw order between sibling frames is the client's.]
+- If it fails, paste: a zoomed screenshot of the tile and `/vg errors`.
+
+### 33.70 Chat handles at the screen's edges
+
+- Do: `/vg unlock`, drag the chat handle against the bottom edge, then into the bottom-right corner and `/reload`. Turn on Chat → Move floating windows with /vg unlock (reload), pull the Combat Log (or a Loot window) out of the dock, and drag its handle to the top-left corner.
+- Expect: at the bottom edge the handle stops with the edit box's bottom on the screen's edge (press Enter to see it); parked at the right, the side buttons the game moves to the right of the window stay in view after the reload; a floating window's tab bar (and the Combat Log's filter strip above it) and its minimize tile stay on the screen at the top and left edges. [Needs in-game check: that the handle stops there, in the direction the insets use (negative left and bottom, positive right and top).]
+- If it fails, paste: a screenshot with the handle at the edge, and `/vg errors`.
+
+### 33.71 Chat tabs: label font, and the dock's overflow arrow and list
+
+- Do: set Text size to 130% (then back to 100%) and look at the chat's tab names against the chat lines; hover and click each tab. Then dock enough tabs (Combat Log, Trade, LFG, Loot, a whisper) that the bar cannot hold them all, look at the arrow at the bar's right end, and click it.
+- Expect: the tab names are in the same face as the chat lines and grow with Text size, and stay that way after a hover or a click. The overflow arrow is the theme's small down-arrow tile at the dock's right end, level with the tabs (not the game's gold arrow), and its list is a themed box with the theme's font on its rows. [Needs in-game check: whether a tab's label drops back to the game's face when the button repaints; the glyph's fit on the 16-unit arrow; the list's rows and highlight, and that its rows are the buttons the code finds.]
+- If it fails, paste: a screenshot of the bar at 100% and 130% Text size and of the open overflow list, and `/vg errors`.
+
+### 33.72 Chat Copy and Find tiles on every docked tab
+
+- Do: with General docked, click the Combat Log tab, then Trade (or a whisper tab), then General again. Hover the tiles at the bar's right end and click Copy on a tab other than General.
+- Expect: Copy and Find stay in the bar's right end on every tab, the tabs end before them, and the Copy window is titled with the shown tab's name ("Copy Trade (Ctrl+C)"). [Needs in-game check: that the tiles show on the other tabs' bars and are not drawn under them.]
+- If it fails, paste: a screenshot of the bar on the Combat Log tab, and `/vg errors`.
+
+### 33.73 Expanded quest tracker over the bags and menu strip
+
+- Do: watch seven or more quests (two or more objectives each), click the tracker's "+N more" to expand it, with the menu strip (bags and micro menu) shown, at 1365x768 and at 1920x1080; also on a window about 835 wide.
+- Expect: the last quest and the "Show fewer" button end above the menu strip's top (and above action bars 1 to 3 on the narrow window), none drawn under the bags or the micro buttons, and clicking "Show fewer" works; hide the strip (Menu strip off) and the list runs lower again. [Needs in-game check: the real micro menu's width and that no menu button covers the "Show fewer" line.]
+- If it fails, paste: a screenshot of the tracker and strip, and `/vg errors`.
+
+### 33.74 Quest arrow: title over the distance at larger Text sizes
+
+- Do: with the quest arrow showing, look at it at Text size 100%, 125% and 150%, pinned (Shift-click a quest in the tracker) and free.
+- Expect: the quest title stands on the panel's middle line and the distance line hangs under it, with a clear gap at every size and both inside the panel; pinned, the title still stops short of the Pin button. [Needs in-game check: whether the two lines were already drawn over each other at 100% before this change, and how they sit now.]
+- If it fails, paste: a screenshot of the arrow at 100% and 150%, and `/vg errors`.
+
+### 33.75 Quest-start map pins' edge at each zoom
+
+- Do: with quest-start pins showing (Quest guidance on), open the world map windowed, then maximized, then zoom in and out on a zone with several pins.
+- Expect: each pin's gold "!" sits on a small square whose edge stays one crisp pixel at every zoom, the same size throughout. [Needs in-game check: the client's real canvas scales and how the edge looks at them.]
+- If it fails, paste: a screenshot of the pins zoomed in and out, and `/vg errors`.
 
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 

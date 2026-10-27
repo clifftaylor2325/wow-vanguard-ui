@@ -369,6 +369,14 @@ local function countText(found)
   return table.concat(parts, " · ")
 end
 
+-- Ends the heading's count MT.PAD short of the panel's right edge, on one line (a long translation is cut short
+-- there instead of running past the panel). Once the count is placed; a count not placed yet keeps its room.
+local function fitCount(f)
+  local left = f.count:GetLeft()
+  if left then f.count:SetWidth(math.max(1, f:GetRight() - MT.PAD - left)) end
+  ns.SingleLine(f.count)
+end
+
 -- The matching mails in the rows from the first the wheel has reached, the count in the heading, the filter's
 -- name, and the line shown when no row is.
 function MT.PaintRows(f)
@@ -376,6 +384,7 @@ function MT.PaintRows(f)
   MT.offset = math.max(0, math.min(MT.offset, #found - MT.ROWS))
   for i, row in ipairs(f.rows) do paintRow(row, found[MT.offset + i]) end
   f.count:SetText(countText(#found))
+  fitCount(f)
   f.filterButton.text:SetText(MT.FILTER_NAMES[MT.filter])
   MT.PaintEmpty(#found)
 end

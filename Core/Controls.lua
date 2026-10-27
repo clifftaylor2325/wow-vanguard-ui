@@ -20,11 +20,12 @@ local COLUMN_INSET = 8
 -- A slider's track: the column less the value slot and a gap.
 local TRACK_WIDTH = W.COLUMN - W.VALUE_SLOT - COLUMN_INSET
 
--- Limits a caption to the room left of the control column, less a gap (it wraps there), left-aligned. A row so
--- narrow that the gap would leave the caption under a value slot's width keeps all its room.
+-- Limits a caption to the room left of the control column (a dropdown's width, else W.COLUMN), less a gap (it wraps
+-- there), left-aligned. A row so narrow that the gap would leave the caption under a value slot's width keeps all
+-- its room.
 -- row.fixedLabel says its width was set (the options window narrows it to make room for a tag).
 local function fitCaption(r, width)
-  local room = (width or 400) - W.COLUMN - 2 * COLUMN_INSET
+  local room = (width or 400) - (r.dropdown and r.dropdown:GetWidth() or W.COLUMN) - 2 * COLUMN_INSET
   if room - T.SPACE.gap >= W.VALUE_SLOT then room = room - T.SPACE.gap end
   r.label:SetWidth(room)
   r.label:SetJustifyH("LEFT")
@@ -290,9 +291,11 @@ local DROPDOWN_TEXT = { left = 8, arrow = 12, edge = 6, gap = 4 }
 -- What the text's room each side adds up to: everything in the box but the text.
 DROPDOWN_TEXT.room = DROPDOWN_TEXT.left + DROPDOWN_TEXT.gap + DROPDOWN_TEXT.arrow + DROPDOWN_TEXT.edge
 
--- A dropdown on the right of a choice row; its Refresh is the row's.
+-- A dropdown on the right of a choice row, W.COLUMN wide or half the row in a row narrower than twice that (the
+-- caption keeps the other half); its Refresh is the row's.
 local function addDropdown(r, choices, get, set)
-  r.dropdown = W.Dropdown(r, choices, get, function(v) set(v); r:Refresh() end, W.COLUMN)
+  local width = math.min(W.COLUMN, math.floor(r:GetWidth() / 2))
+  r.dropdown = W.Dropdown(r, choices, get, function(v) set(v); r:Refresh() end, width)
   r.dropdown:SetPoint("RIGHT", -COLUMN_INSET, 0)
   -- The row shows its value through the dropdown.
   r.Refresh = function(self) self.dropdown:Refresh() end

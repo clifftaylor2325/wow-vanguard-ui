@@ -554,6 +554,20 @@ it("the sell card's Post, Stop, Skip and Max buttons and the guide's steps fit i
   }
 });
 
+it("the sell card's count and history lines sit under the buttons and end inside the card in real translations (B10-2, B10-3)", () => {
+  for (const locale of ["frFR", "deDE", "ruRU"]) {
+    const addon = postingTab(locale);
+    addon.eval(`local c = ${CARD} c.status:SetText(ns.Format(ns.L["posted {posted} of {stacks}"], { posted = 12, stacks = 12 })) c.historyLine:SetText(ns.L["No sales or expiries of this item yet."])`);
+    const place = addon.eval(`local c = ${CARD} local out = {}
+      for i, fs in ipairs({ c.status, c.historyLine }) do out[i] = { fs:GetRight() <= c:GetRight(), fs:GetTop() <= c.skip:GetBottom() } end
+      return { out[1][1], out[1][2], out[2][1], out[2][2], c.status:GetBottom() >= c.historyLine:GetTop() }`);
+    expect(place, `${locale}: both lines end inside the card, under the Skip button, the count above the history`).toEqual([true, true, true, true, true]);
+    const history = addon.eval(`return ${CARD}.historyLine:GetText()`);
+    const found = addon.textFit(CARD).filter((f) => f.text !== history || f.kind !== "cut");
+    expect(found, `${locale}: nothing overlaps or spills; the long history sentence ends in an ellipsis at the card's edge`).toEqual([]);
+  }
+});
+
 it("the scan button holds its countdown in Russian, French and Portuguese", () => {
   for (const locale of ["ruRU", "frFR", "ptBR"]) {
     const addon = postingTab(locale);

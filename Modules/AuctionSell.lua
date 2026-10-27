@@ -816,8 +816,15 @@ local function widenAll(...)
   for _, b in ipairs({ ... }) do ns.WidenToLabel(b) end
 end
 
--- The posting line: Skip, Stop and Post on the right, the count on the left under them, and the
--- item's history line (Modules/AuctionLedger.lua) under that.
+-- A small line at y across the whole card, on one line: a long translation stops at the card's right edge (TOPRIGHT,
+-- not a middle-of-the-card RIGHT, so its top stays where smallLine put it).
+local function wideLine(c, y)
+  local fs = smallLine(c, y)
+  fs:SetPoint("TOPRIGHT", c, "TOPRIGHT", 0, y)
+  return ns.SingleLine(fs)
+end
+
+-- The posting line: Skip, Stop and Post on the right, and the count and the item's history line under them.
 local function postRow(c)
   local y = AH.FORM_Y - 4 * AH.FORM_ROW - 32
   c.post = W.Primary(c, L["Post"], function() AH.Post() end, 60)
@@ -827,7 +834,7 @@ local function postRow(c)
   c.skip = W.Button(c, L["Skip"], function() AH.SkipStack() end, 44)
   c.skip:SetPoint("RIGHT", c.stop, "LEFT", -T.SPACE.tight, 0)
   widenAll(c.post, c.stop, c.skip)
-  c.status, c.historyLine = smallLine(c, y - 6), smallLine(c, y - 30)
+  c.status, c.historyLine = wideLine(c, y - 32), wideLine(c, y - 56)
 end
 
 -- A guide step after the one before it, a column gap on (a translated step can run wider than a fixed pitch
@@ -840,7 +847,7 @@ end
 
 -- The posting guide under the history line: its numbered steps in a row, and the line under them.
 local function guideRow(c)
-  local y = AH.FORM_Y - 4 * AH.FORM_ROW - 86
+  local y = AH.FORM_Y - 4 * AH.FORM_ROW - 110
   c.steps = {}
   for i, name in ipairs(AH.GUIDE_STEPS) do
     c.steps[i] = smallLine(c, y)
