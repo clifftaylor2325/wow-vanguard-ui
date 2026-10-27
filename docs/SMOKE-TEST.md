@@ -2802,6 +2802,11 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Do: lead a party (a second character or a friend), so the raid tools bar shows. Target a mob or your party member. On the bar's second row, click the skull, then click the skull again, then another icon, then the last button on the row. Do the same once during a fight. Run `/vg errors`.
 - Expect: the skull lands on your target and stays when clicked again, the other icon replaces it, the last button clears it, in the fight too; no "reserved for the Blizzard UI" message names Vanguard and `/vg errors` is empty. [Needs in-game check: that the game's secure raidtarget action sets and clears a mark from Vanguard's buttons on Forever, since SetRaidTarget is reserved for secure code there.]
 - If it fails, paste: which button did nothing or what the game's message said word for word, and `/vg errors`.
+### 33.106 Talking head and loss of control on their spots, then Edit Mode
+
+- Do: with Loss of control on and Talking head set to "move" (the defaults), type `/console taintLog 1` and `/reload`. Trigger a talking head (a quest or story line that plays one) and a loss of control (a stun or fear from a mob). Open Edit Mode (Escape, Edit Mode), move any game frame, click Save and close it. Run `/vg errors`, then `/console taintLog 0` and open `Logs/taint.log` in the game folder.
+- Expect: both alerts show on their Vanguard spots (the talking head at the top left, the loss of control band just above the screen's centre), before Edit Mode and again after it closes; no "Interface action failed because of an AddOn" message names Vanguard while Edit Mode is open or in the next fight; `/vg errors` is empty; the taint log has no line naming Vanguard and `editModeSystemAnchorDirty`. [Needs in-game check: that the client's SetPointBase and ClearAllPointsBase exist on the two frames once loaded, so Vanguard's placing never runs Edit Mode's own anchor code, and that the taint log stays clear of it.]
+- If it fails, paste: the game's message word for word, the taint log lines naming Vanguard, and `/vg errors`.
 
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
