@@ -443,13 +443,37 @@ function AH.OnItemInfo()
   AH.PaintShop()
 end
 
+-- Whether browse result r bears on an entry's term: its item ID, or a name containing the text (exact,
+-- quality and price aside, so a "none up" answer still counts); true while the name isn't in yet.
+local function bearsOn(term, r)
+  if type(term) == "number" then return r.itemKey.itemID == term end
+  local info = C_AuctionHouse.GetItemKeyInfo(r.itemKey)
+  local name = info and type(info.itemName) == "string" and info.itemName:lower()
+  return not name or name:find(term:lower(), 1, true) ~= nil
+end
+
+-- Whether a browse answer can be the entry's: empty (a true "none up") or holding something that bears
+-- on it. The event names no query, so a late answer to the last entry or the game's own query is told
+-- apart only this way.
+local function concerns(entry, results)
+  if #results == 0 then return true end
+  local term = AH.Term(entry)
+  for _, r in ipairs(results) do
+    if bearsOn(term, r) then return true end
+  end
+  return false
+end
+
 -- Browse results: their prices feed the price store (any browse, the game's too); the list entry
--- in flight takes its row; an item opened in the game's list is done.
+-- in flight takes its row unless the answer isn't about it (the fallback timer ends that entry); an
+-- item opened in the game's list is done.
 function AH.OnBrowse()
-  AP.RecordBrowse(C_AuctionHouse.GetBrowseResults())
+  local results = C_AuctionHouse.GetBrowseResults()
+  AP.RecordBrowse(results)
   local s = AH.pending
   if not (s and (s.entry or s.open)) then return end
-  if s.entry then AH.TakeBrowse(s.entry, C_AuctionHouse.GetBrowseResults()) end
+  if s.entry and not concerns(s.entry, results) then return end
+  if s.entry then AH.TakeBrowse(s.entry, results) end
   AH.Done()
 end
 

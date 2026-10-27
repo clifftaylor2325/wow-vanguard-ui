@@ -132,6 +132,25 @@ it("item names the client hasn't loaded yet, and a hidden price", () => {
   addon.fire("AUCTION_HOUSE_BROWSE_RESULTS_UPDATED");
   expect([shopRow(addon, 2)[2], addon.eval("return #ns.errors")], "a hidden price: nothing to show, no error").toEqual(["none up", 0]);
 });
+it("a late browse answer for the last entry is not taken by the next one", () => {
+  const addon = atAuctionHouse(DUSTS + " __wfgWorld.items[11083] = { name = 'Soul Dust' }");
+  makeList(addon, "TEST-ONLY Mats", '{ "Strange Dust", "Soul Dust" }');
+  addon.click(`${HELPER}.shopCard.search`);
+  addon.advance(2.1);
+  addon.eval("__wfgWorld.ah.browse = { { itemKey = { itemID = 10940 }, minPrice = 1250, totalQuantity = 240 } }");
+  addon.fire("AUCTION_HOUSE_BROWSE_RESULTS_UPDATED");
+  expect([shopRow(addon, 2).slice(1, 3), addon.eval(`return ${HELPER}.pending ~= nil`)], "Strange Dust's late answer is not Soul Dust's: no 'none up', still waiting").toEqual([["Soul Dust", ""], true]);
+  addon.eval("__wfgWorld.ah.browse = { { itemKey = { itemID = 11083 }, minPrice = 500, totalQuantity = 7 } }");
+  addon.fire("AUCTION_HOUSE_BROWSE_RESULTS_UPDATED");
+  expect(shopRow(addon, 2).slice(1, 4), "its own answer is taken").toEqual(["Soul Dust", "5s 0c", "7"]);
+});
+it("a browse answer that holds nothing is the entry's own none up", () => {
+  const addon = atAuctionHouse(DUSTS);
+  makeList(addon, "TEST-ONLY Mats", '{ "Strange Dust" }');
+  addon.click(`${HELPER}.shopCard.search`);
+  addon.fire("AUCTION_HOUSE_BROWSE_RESULTS_UPDATED");
+  expect(shopRow(addon, 1).slice(1, 3), "empty means nothing is up").toEqual(["Strange Dust", "none up"]);
+});
 // The Lists pane's entries, by name.
 const choices = (addon) => addon.eval(`local c = {} for i, e in ipairs(${HELPER}.PaneEntries()) do c[i] = e.name end return c`);
 // The pane's action buttons that work now, by their text.
@@ -362,10 +381,11 @@ it("a name matches only itself or a name containing it, never an unrelated resul
   addon.click(`${HELPER}.shopCard.search`);
   answer("{ { itemKey = { itemID = 2589 }, minPrice = 10, totalQuantity = 9 }, { itemKey = { itemID = 10941 }, minPrice = 900, totalQuantity = 3 } }");
   answer("{ { itemKey = { itemID = 2589 }, minPrice = 10, totalQuantity = 9 } }");
+  addon.advance(2);
   answer("{ { itemKey = { itemID = 4306 }, minPrice = 700, totalQuantity = 2 }, { itemKey = { itemID = 2589 }, minPrice = 10, totalQuantity = 9 } }");
   answer("{ { itemKey = { itemID = 2589 }, minPrice = 60, totalQuantity = 9 } }");
-  expect([1, 2, 3, 4].map((i) => shopRow(addon, i).slice(1, 4)), "the pouch contains the name; linen is no dust; silk waits for its name; an ID over its max").toEqual([
-    ["Strange Dust Pouch", "9s 0c", "3"], ["Vision Dust", "none up", ""], ["silk", "", ""], ["Linen Cloth", "none up", ""]]);
+  expect([1, 2, 3, 4].map((i) => shopRow(addon, i).slice(1, 4)), "the pouch contains the name; linen is no dust (not its answer: the entry gives up blank); silk waits for its name; an ID over its max").toEqual([
+    ["Strange Dust Pouch", "9s 0c", "3"], ["Vision Dust", "", ""], ["silk", "", ""], ["Linen Cloth", "none up", ""]]);
   expect(sent(addon)[3], "an ID entry with a max price still searches by its item key").toBe("SearchForItemKeys:2589");
   addon.eval("__wfgWorld.items[4306].pending = nil");
   addon.fire("ITEM_KEY_ITEM_INFO_RECEIVED", 4306);

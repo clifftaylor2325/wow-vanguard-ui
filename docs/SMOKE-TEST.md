@@ -2726,6 +2726,12 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: both quests are handed in and the reward is taken; no error line mentions GetQuestReward. [Needs in-game check: the client's argument check for the legacy GetQuestReward decides whether the number 0 is accepted; the harness accepts anything.]
 - If it fails, paste: `/vg errors` and the quest's name.
 
+### 33.98 Auction house: Search list on a slow realm, and fights at the house
+
+- Do: at the auction house on a busy realm, open Lists and press Search list on a list of five or more items, and watch the rows. Then start a full scan and walk into a fight (a pet or a damage-over-time effect keeps you in combat) before the scan finishes. Then, in combat, open the auction house. Last, with Search results showing, hover a listing, press Up and Down, then enter a fight with the mouse still over the table and press your action bar keys.
+- Expect: a row never says "none up" for an item the answer was not about (a slow item stays blank until its own answer or the 2 second give-up); the scan finishes and stores prices though a fight began; the house opened in combat still gets the Lists and Posting tabs; in the fight the action bar keys work again at once. [Needs in-game check: how late a real realm answers, whether the client keeps the auction house open in combat, and how it routes keys after the table gave up the keyboard.]
+- If it fails, paste: the row that was wrong with its list, and `/vg errors`.
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ## When you are done
