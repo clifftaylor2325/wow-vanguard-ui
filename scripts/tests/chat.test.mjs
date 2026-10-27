@@ -913,6 +913,12 @@ it("chat extras: bare addresses with a web ending become links, never inside a l
   expect(lastLine(addon), "both switches off: an added line is left as it is").toBe("|Hchannel:channel:2|h[2. Trade]|h hi");
   expect(addon.eval("return #ns.errors"), "no errors").toBe(0);
 });
+
+it("chat extras: a numbered template (German %1$s) still finds the guild message of the day", () => {
+  const addon = loggedIn(UI_ENV + CHAT_EXTRAS_ENV + CHAT_LINES_ENV + 'GUILD_MOTD_TEMPLATE = "Gildennachricht des Tages: \\"%1$s\\""');
+  addon.eval('ChatFrame1:AddMessage("Gildennachricht des Tages: \\"Raid um 8, discord.gg/abc\\"")');
+  expect(lastLine(addon), "the German line is linked, the closing quote left outside the link").toContain("|Haddon:Vanguard:url:discord.gg/abc|h[discord.gg/abc]|h|r\"");
+});
 it("chat extras: a hidden line never reaches the link filter's comparison, and a failing filter or click lets the line through", () => {
   const addon = loggedIn(UI_ENV + CHAT_EXTRAS_ENV);
   // The harness's secrets can't raise on ==, so prove the early return: LinkURLs is never reached for hidden or non-string text.

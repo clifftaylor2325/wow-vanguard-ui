@@ -43,8 +43,9 @@ local function accentCode()
   return "|c" .. T.Hex("accentText")
 end
 
--- The punctuation after an address that is left out of its link: "site.com/x." links "site.com/x".
-local TRAIL = "[%.,!%?;:%)]+$"
+-- The punctuation after an address that is left out of its link: "site.com/x." links "site.com/x", and a closing
+-- quote stays outside too (the guild message of the day is quoted).
+local TRAIL = "[%.,!%?;:%)\"']+$"
 
 -- An address as a clickable link in the accent color, with the punctuation after it (TRAIL) left outside.
 local function linkText(url, color)
@@ -280,9 +281,10 @@ function CX.ShortChannels(text)
   return (text:gsub("(|Hchannel:[^|]+|h)%[([^%]]+)%](|h)", function(link, label, close) return link .. "[" .. CX.ShortName(label) .. "]" .. close end))
 end
 
--- The game's guild message of the day words ("Guild Message of the Day: "), or nil.
+-- The game's guild message of the day words ("Guild Message of the Day: "), or nil. Some clients number the
+-- value ("%1$s" in German).
 local function motdStart()
-  return type(GUILD_MOTD_TEMPLATE) == "string" and GUILD_MOTD_TEMPLATE:match("^(.-)%%s") or nil
+  return type(GUILD_MOTD_TEMPLATE) == "string" and GUILD_MOTD_TEMPLATE:match("^(.-)%%%d?%$?s") or nil
 end
 
 -- The guild message of the day line with its addresses linked (no chat filter sees it: the game adds it to the
