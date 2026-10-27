@@ -154,6 +154,24 @@ it("your auctions: refused cancels, scrolling, unknown names, hidden costs, and 
   addon.wheel(`${OWNED_CARD}.table.rows[1]`, -5);
   expect([ownedRow(addon, 1)[2], ownedRow(addon, 7)[0], ownedRow(addon, 8)[0]], "seven auctions (one sold) on seven rows; the wheel has nothing to scroll").toEqual(["1s 50c", true, false]);
 });
+it("a random-suffix auction is undercut only by its own variant", () => {
+  const cloak = (suffix, buyout) => `{ itemKey = { itemID = 9999, itemLevel = 30, itemSuffix = ${suffix} }, buyoutAmount = ${buyout}, quantity = 1 }`;
+  const addon = atAuctionHouse(`__wfgWorld.ah.owned = { { auctionID = 502, itemKey = { itemID = 9999, itemLevel = 30, itemSuffix = -17 }, status = 0, quantity = 1, buyoutAmount = 4000 } }
+    __wfgWorld.ah.items[9999] = { ${cloak(-15, 1000)}, ${cloak(-17, 5000)} }`);
+  const check = () => {
+    addon.click(`${OWNED_CARD}.check`);
+    addon.fire("OWNED_AUCTIONS_UPDATED");
+    addon.advance(1);
+    addon.fire("ITEM_SEARCH_RESULTS_UPDATED", { itemID: 9999 });
+    addon.advance(1);
+  };
+  check();
+  expect(ownedRow(addon, 1)[3], "an \"of the Owl\" at 10s doesn't undercut your \"of the Monkey\" at 40s").toBe(false);
+  addon.eval(`table.insert(__wfgWorld.ah.items[9999], ${cloak(-17, 3000)})`);
+  check();
+  expect(ownedRow(addon, 1)[3], "another \"of the Monkey\" at 30s does").toBe(true);
+});
+
 // Two more dust auctions of yours: 2 at 1s 30c a unit (undercut by the 1s 20c up) and 2 at 1s 10c (not).
 const MORE_DUST = `table.insert(__wfgWorld.ah.owned, { auctionID = 506, itemKey = { itemID = 10940 }, status = 0, quantity = 2, buyoutAmount = 130 })
   table.insert(__wfgWorld.ah.owned, { auctionID = 507, itemKey = { itemID = 10940 }, status = 0, quantity = 2, buyoutAmount = 110 })`;
