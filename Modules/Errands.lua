@@ -450,10 +450,10 @@ function ER.PaintFlight(f)
   ER.PaintRoute(ER.bar, f, left, ns.Format(L["Timing this flight to {place}"], { place = f.to }))
 end
 
--- Landed: save the flight's time (a sane one) and put the bar away.
+-- Landed: save the flight's time (a sane one, and not one cut short by an early landing) and put the bar away.
 local function land(f)
   local took = (ask("GetTime") or 0) - f.start
-  if took > 0 and took <= ER.FLIGHT_MAX then ER.settings.flights[f.key] = math.floor(took + 0.5) end
+  if not f.early and took > 0 and took <= ER.FLIGHT_MAX then ER.settings.flights[f.key] = math.floor(took + 0.5) end
   ER.flight = nil
   ER.bar:Hide()
 end
@@ -490,10 +490,18 @@ local function buildBar()
   ER.bar = ER.TimerBar("Vanguard_FlightTimer", "flighttimer", L["Flight timer"])
 end
 
+-- You asked to land at the next stop: this flight's time is not the route's.
+function ER.OnEarlyLanding()
+  if ER.flight then ER.flight.early = true end
+end
+
 -- Times flights, where the client lets addons see you pick one.
 local function watchFlights()
   if type(hooksecurefunc) ~= "function" or type(_G.TakeTaxiNode) ~= "function" then return end
   hooksecurefunc("TakeTaxiNode", ns.Guard("hook TakeTaxiNode", ER.OnTakeTaxi))
+  if type(_G.TaxiRequestEarlyLanding) == "function" then
+    hooksecurefunc("TaxiRequestEarlyLanding", ns.Guard("hook early landing", ER.OnEarlyLanding))
+  end
   buildBar()
 end
 
