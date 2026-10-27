@@ -366,7 +366,7 @@ All are the client's own interface sounds (`SOUNDKIT`), played with `T.Sound` un
 | --- | --- | --- |
 | The options window opens | `IG_MAINMENU_OPEN` | Interface sounds |
 | The options window closes | `IG_MAINMENU_CLOSE` | Interface sounds |
-| Another options page opens | `IG_CHARACTER_INFO_TAB` | Interface sounds |
+| Another options page opens, or a tab on one is clicked | `IG_CHARACTER_INFO_TAB` | Interface sounds |
 | A switch is turned on in the options, a visibility condition is ticked or unticked, a click-cast starter layout is applied | `IG_MAINMENU_OPTION_CHECKBOX_ON` | Interface sounds |
 | A switch is turned off in the options, or a row's reset dot is clicked | `IG_MAINMENU_OPTION_CHECKBOX_OFF` | Interface sounds |
 | A rare shows up on the minimap (out of combat, once per rare) | `RAID_WARNING`, with one chat line | "A rare nearby: a sound and a chat line" (off by default; not Interface sounds, since it is an alert you asked for) |

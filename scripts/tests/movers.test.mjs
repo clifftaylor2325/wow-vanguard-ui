@@ -303,9 +303,9 @@ it("matching another frame's width or height: kept as it changes, refused with a
   expect([sizes(addon)[2], addon.eval("return #ns.errors")], "a loop in a hand-edited profile gives up on the match, without an error").toEqual([478, 0]);
 });
 
-// The visible options slider row whose caption is this text, as Lua.
+// The options slider row whose caption is this text, its tab shown, as Lua.
 const sliderRow = (text) => `(function() for _, w in ipairs(__wfgStub.frames) do
-  if w.track and w.label and w.label.__text == "${text}" and w:IsVisible() then return w end end end)()`;
+  if w.track and w.label and w.label.__text == "${text}" and ns.Options.RevealRow(w) then return w end end end)()`;
 // The default tooltip's lines' text.
 const tipLines = (addon) => addon.eval("local out = {} for i, l in ipairs(GameTooltip.__lines or {}) do out[i] = l.text end return out");
 

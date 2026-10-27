@@ -70,14 +70,15 @@ it("the game's click bindings: Vanguard's own step aside out of combat, and come
     b.vgWrapped == true, b:GetAttribute("*type1"), b:GetAttribute("*type2") }`);
   expect(state(), "off by default: Vanguard's bindings").toEqual(["spell", "spell", true, "target", "togglemenu"]);
   addon.eval('ns.Options.Show("clickcast")');
-  expect(addon.texts("THE GAME'S CLICK BINDINGS").length, "the page offers the game's click bindings").toBe(1);
+  expect(addon.eval(`return ns.Options.ShowTab("The game's click bindings")`), "the page offers the game's click bindings, on a tab of their own").toBe(true);
   addon.eval("__wfgStub.inCombat = true");
   addon.eval('__click("Use the game\'s click bindings")');
   expect([addon.eval(`return ${CC}.UsesGame()`), state()[0]], "switched on in combat: it waits for the fight to end").toEqual([true, "spell"]);
   addon.eval("__wfgStub.inCombat = false");
   addon.fire("PLAYER_REGEN_ENABLED");
   expect(state(), "then Vanguard's attributes and hover snippets go; the target and menu clicks the game's bindings use stay").toEqual(["none", "none", false, "target", "togglemenu"]);
-  expect(addon.texts("The game's click bindings are in use (below): these are kept for when you switch back.").length, "the page says Vanguard's bindings rest").toBe(1);
+  addon.eval('ns.Options.ShowTab("Click casting")');
+  expect(addon.texts("The game's click bindings are in use: these are kept for when you switch back.").length, "the page says Vanguard's bindings rest").toBe(1);
   addon.slash("binds");
   expect(chatHas(addon, /The game's click bindings are in use/) && chatHas(addon, /Shift \+ 1 \(hover\)  ->  TEST-ONLY Flash Heal/), "/vg binds says so, and still lists Vanguard's").toBe(true);
   addon.eval("__wfgStub.inCombat = true");

@@ -30,9 +30,9 @@ const state = (addon) => addon.eval(`local f = Vanguard_WhatsNew
 const found = (addon) => addon.eval(`local f = Vanguard_Options.found local w for _, x in ipairs(__wfgStub.frames) do if x.found == f and f then w = x end end
   return { ns.Options.current, w and w.caption, f ~= nil and f:IsShown() }`);
 
-// The visible options row whose caption is this text, as Lua.
+// The options row whose caption is this text, its tab shown, as Lua.
 const rowNamed = (text) => `(function() for _, w in ipairs(__wfgStub.frames) do
-  if w.caption == "${text}" and w:IsVisible() then return w end end end)()`;
+  if w.caption == "${text}" and ns.Options.RevealRow(w) then return w end end end)()`;
 
 it("after an update the first login shows what's new once, grouped by module", () => {
   const addon = loggedIn(ENV);

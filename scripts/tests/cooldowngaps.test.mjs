@@ -268,14 +268,14 @@ it("the tracked spells follow a spec or spellbook change, and the spell commands
   expect(chatHas(addon, /Chosen spells: none/), "cleared").toBe(true);
 });
 
-// TEST-ONLY: finds the Gaps card's rows on the open options page. __entry(name) is a chosen entry's row,
+// TEST-ONLY: finds the Gaps card's rows on the open options page (their tab shown). __entry(name) is a chosen entry's row,
 // __addRow() the add row; __chosen() the saved lists.
 const CARD_LUA = `
   function __entry(name)
-    for _, w in ipairs(__wfgStub.frames) do if w.remove and w.label and w.label.__text == name and w:IsVisible() then return w end end
+    for _, w in ipairs(__wfgStub.frames) do if w.remove and w.label and w.label.__text == name and ns.Options.RevealRow(w) then return w end end
   end
   function __addRow()
-    for _, w in ipairs(__wfgStub.frames) do if w.input and w.spell and w:IsVisible() then return w end end
+    for _, w in ipairs(__wfgStub.frames) do if w.input and w.spell and ns.Options.RevealRow(w) then return w end end
   end
   function __chosen() local s = ns.GetModule("CooldownGaps").settings return { s.items, s.spells } end
 `;

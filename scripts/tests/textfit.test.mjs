@@ -58,7 +58,8 @@ it("text fits: the setup wizard, every step", () => {
   expectFits("setup wizard", findings);
 });
 
-// Audits the options window on each of its pages from first to last (1-based, inclusive), in one client.
+// Audits the options window on each of its pages from first to last (1-based, inclusive), each tab of a page in
+// turn (a page shows one card at a time), in one client.
 function optionsPages(first, last) {
   const addon = fitClient();
   const pages = addon.eval("local out = {} for _, p in ipairs(ns.Options.PAGES) do out[#out + 1] = p.key end return out");
@@ -66,6 +67,7 @@ function optionsPages(first, last) {
   for (const page of pages.slice(first - 1, last)) {
     addon.eval(`ns.Options.Show(${JSON.stringify(page)})`);
     findings.push(...addon.textFit("Vanguard_Options"));
+    for (let tab = 2; addon.eval(`return ns.Options.ShowTab(${tab})`); tab++) findings.push(...addon.textFit("Vanguard_Options"));
   }
   return findings;
 }

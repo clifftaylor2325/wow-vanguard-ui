@@ -488,10 +488,9 @@ local function otherModules(listed)
   return out
 end
 
--- The top of the Modules page: its heading, what off means, and the filter.
+-- The top of the Modules page, above its tabs (no heading of its own): what off means, and the filter.
 local function moduleTop()
   return {
-    { "header", L["Modules"] },
     { "text", L["A module that's off builds nothing and costs nothing."] },
     { "cycle", L["Show"], MODULE_FILTERS, function() return O.moduleFilter end, function(v) O.moduleFilter = v O.RebuildPage("modules") end },
   }

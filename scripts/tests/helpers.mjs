@@ -225,19 +225,38 @@ export const bars = (addon) => addon.eval(`local x, r = Vanguard_xpbar, Vanguard
   return { xpShown = x:IsShown(), xp = x.__value, xpMax = x.__max, rested = x.rested.__width, xpText = x.text:GetText(), xpTextShown = x.text:IsShown(),
     repShown = r:IsShown(), rep = r.__value, repMax = r.__max, repColor = r.__barColor, repText = r.text:GetText() }`);
 
-// TEST-ONLY lookup: the shown control whose label or caption starts with a text, clicked.
+// TEST-ONLY lookup: the shown control whose label or caption starts with a text, clicked. A row of the options
+// window on a tab not shown is shown first (its tab picked, as a player would), when no shown control matches.
+// The tabs themselves are never matched (pick one with ns.Options.ShowTab).
 export const CLICK_LUA = `
-  function __click(text)
-    for _, w in ipairs(__wfgStub.frames) do
-      local fs = w.label or w.text
-      local shown, f = true, w
-      while f do if not f.__shown then shown = false end f = f.__parent end
-      if shown and type(fs) == "table" and type(fs.__text) == "string" and fs.__text:sub(1, #text) == text and w.__scripts.OnClick then
-        w.__scripts.OnClick(w, "LeftButton")
-        return true
-      end
+  local function __shownFrame(w)
+    local f = w
+    while f do if not f.__shown then return false end f = f.__parent end
+    return true
+  end
+  local function __isTab(w)
+    for _, v in ipairs(__wfgStub.frames) do
+      for _, card in ipairs(v.cards or {}) do if card.tab == w then return true end end
     end
-    return false
+  end
+  local function __named(w, text)
+    local fs = w.label or w.text
+    return type(fs) == "table" and type(fs.__text) == "string" and fs.__text:sub(1, #text) == text and w.__scripts.OnClick and not __isTab(w)
+  end
+  function __find(text)
+    for _, w in ipairs(__wfgStub.frames) do
+      if __named(w, text) and __shownFrame(w) then return w end
+    end
+    for _, w in ipairs(__wfgStub.frames) do
+      local row = w
+      while row and not row.card do row = row.__parent end
+      if __named(w, text) and row and ns.Options.RevealRow(row) and __shownFrame(w) then return w end
+    end
+  end
+  function __click(text)
+    local w = __find(text)
+    if w then w.__scripts.OnClick(w, "LeftButton") end
+    return w ~= nil
   end
 `;
 

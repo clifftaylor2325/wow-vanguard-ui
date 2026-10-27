@@ -291,7 +291,7 @@ const stockWindow = (addon) => {
 };
 it("keep stocked: Edit list... on Town and gear opens the window, empty at first", () => {
   const addon = loggedIn(CLICK_LUA + STOCK_WINDOW_ENV);
-  addon.eval('ns.Options.Show("town")');
+  addon.eval('ns.Options.Show("town") ns.Options.ShowTab("Errands")');
   addon.eval('for _, w in ipairs(__wfgStub.frames) do if w.caption == "Edit list..." and w:IsVisible() then w.__scripts.OnClick(w) end end');
   expect(stockWindow(addon), "open, no rows, the line saying how to add one").toEqual({ shown: true, rows: [], empty: true });
   expect(addon.eval("return Vanguard_StockList.title:GetText()")).toBe("Keep stocked");

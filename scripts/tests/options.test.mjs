@@ -16,12 +16,12 @@ it("options window", () => {
   expect(addon.eval('return __click("Action bars")'), "the nav switches pages").toBeTruthy();
   expect(addon.eval('return __click("Show bar 6")') && addon.eval("return VanguardDB.profiles.Default.ActionBars.bars[6].enabled") === true, "check boxes change settings").toBeTruthy();
   expect(addon.eval("return Vanguard_Options.reload:IsShown()") === true, "a change that needs a reload shows the Reload button").toBeTruthy();
-  expect(addon.eval('return __click("Visibility")') && addon.eval("return VanguardDB.profiles.Default.ActionBars.bars[1].visibility") === "mouseover", "cycle buttons step through choices").toBeTruthy();
+  expect(addon.eval('return __click("Visibility")') && addon.eval("return VanguardDB.profiles.Default.ActionBars.bars[6].visibility") === "mouseover", "cycle buttons step through choices (on the Bar 6 tab, still showing)").toBeTruthy();
   expect(addon.eval('return __click("Bar backing") and VanguardDB.profiles.Default.ActionBars.backing'), "the Bar backing cycle steps from Follow the theme to Always").toBe("on");
   expect(addon.eval('return __click("Button size")') && addon.eval("return VanguardDB.profiles.Default.ActionBars.bars[1].size") === 40, "a bar's size slider starts at the shared size and steps by 2").toBeTruthy();
   addon.eval('__click("Modules")');
   // The Modules page's row for unit frames: its description, and clicking it.
-  const moduleRow = addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.desc and w.label.__text == "Unit frames" and w:IsVisible() then
+  const moduleRow = addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.desc and w.label.__text == "Unit frames" and ns.Options.RevealRow(w) then
     local desc = w.desc.__text w.__scripts.OnClick(w, "LeftButton") return desc end end`);
   expect(moduleRow, "each module has a name and a line on what it does").toMatch(/^Player, target/);
   expect(addon.eval("return ns.ModuleEnabled('UnitFrames')"), "modules can be turned off").toBe(false);
@@ -158,16 +158,16 @@ it("options slider, search, scroll, special bars and profile switch", () => {
 
 // The visible profile row for a name: its caption and which buttons it has.
 const profileRow = (addon, name) => addon.eval(`for _, w in ipairs(__wfgStub.frames) do
-  if w.label and type(w.label.__text) == "string" and w.label.__text:sub(1, #"${name}") == "${name}" and w.card and w:IsVisible() then
+  if w.label and type(w.label.__text) == "string" and w.label.__text:sub(1, #"${name}") == "${name}" and w.card and ns.Options.RevealRow(w) then
     return { w.label.__text, w.use ~= nil, w.copy ~= nil, w.delete ~= nil } end end`);
 
 // Clicks one of a profile row's buttons.
 const profileButton = (addon, name, button) => addon.eval(`for _, w in ipairs(__wfgStub.frames) do
-  if w.label and w.label.__text == "${name}" and w.card and w:IsVisible() then local b = w.${button} b:GetScript("OnClick")(b) return b.text.__text end end`);
+  if w.label and w.label.__text == "${name}" and w.card and ns.Options.RevealRow(w) then local b = w.${button} b:GetScript("OnClick")(b) return b.text.__text end end`);
 
 // Runs one of a profile row's button scripts (OnEnter, OnLeave) and returns the tooltip: shown, first line.
 const profileHover = (addon, name, button, script) => addon.eval(`for _, w in ipairs(__wfgStub.frames) do
-  if w.label and w.label.__text == "${name}" and w.card and w:IsVisible() then local b = w.${button} b:GetScript("${script}")(b)
+  if w.label and w.label.__text == "${name}" and w.card and ns.Options.RevealRow(w) then local b = w.${button} b:GetScript("${script}")(b)
     return { GameTooltip:IsShown(), (GameTooltip.__lines[1] or {}).text or false } end end`);
 
 it("options: Delete, Copy here, Reset profile and Start over say what they lose; a reset asks and keeps a copy", () => {
@@ -177,7 +177,7 @@ it("options: Delete, Copy here, Reset profile and Start over say what they lose;
   expect(profileHover(addon, "TEST-ONLY Tank", "copy", "OnEnter"), "Copy here's tooltip").toEqual([true, "Replaces every setting in profile Default with profile TEST-ONLY Tank's. It can't be undone."]);
   expect(profileHover(addon, "TEST-ONLY Tank", "copy", "OnLeave")[0], "leaving hides it").toBe(false);
   addon.eval("GameTooltip = nil");
-  expect(addon.eval('for _, w in ipairs(__wfgStub.frames) do if w.delete and w:IsVisible() then w.delete:GetScript("OnEnter")(w.delete) w.delete:GetScript("OnLeave")(w.delete) return true end end'), "a client without the tooltip shows none, without an error").toBe(true);
+  expect(addon.eval('for _, w in ipairs(__wfgStub.frames) do if w.delete and ns.Options.RevealRow(w) then w.delete:GetScript("OnEnter")(w.delete) w.delete:GetScript("OnLeave")(w.delete) return true end end'), "a client without the tooltip shows none, without an error").toBe(true);
   addon.eval('__click("Reset profile")');
   expect(addon.eval("return Vanguard_Question.title:GetText()"), "Reset profile asks, saying what is lost and where the copy goes")
     .toBe("Reset this profile? Every setting in profile Default goes back to Vanguard's defaults, for every character that uses it. A copy is kept as profile Default backup.");
@@ -232,16 +232,17 @@ it("options: profiles in the window", () => {
     .toEqual(["Default", "TEST-ONLY Healer", ["TEST-ONLY Healer  (after reload)", false, false, false], true]);
   expect(profileRow(addon, "Default"), "the profile running until then can only be taken back with Use").toEqual(["Default  (in use until reload)", true, false, false]);
   expect(addon.eval('return ns.DeleteProfile("TEST-ONLY Healer")'), "the staged profile can't be deleted").toBe(false);
-  addon.eval('for _, w in ipairs(__wfgStub.frames) do if w.use and w.label.__text == "Default  (in use until reload)" and w:IsVisible() then w.use:GetScript("OnClick")(w.use) end end');
+  addon.eval('for _, w in ipairs(__wfgStub.frames) do if w.use and w.label.__text == "Default  (in use until reload)" and ns.Options.RevealRow(w) then w.use:GetScript("OnClick")(w.use) end end');
   expect([addon.eval("return ns.PendingProfileName()"), profileRow(addon, "Default")[0]], "Use on the running profile takes the switch back").toEqual([null, "Default  (in use)"]);
   profileButton(addon, "TEST-ONLY Healer", "use");
   // The new-profile row: types a name and presses Create (or Enter); returns the row's caption.
-  const create = (name, enter) => addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.input and w.create and w:IsVisible() then
+  const create = (name, enter) => addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.input and w.create and ns.Options.RevealRow(w) then
     w.input:SetText("${name}") local b = ${enter ? "w.input" : "w.create"} b:GetScript(${enter ? '"OnEnterPressed"' : '"OnClick"'})(b) return w.label.__text end end`);
   expect(create("TEST-ONLY Bad/Name"), "a bad name says why").toBe("Name taken or not allowed");
   create("TEST-ONLY Leveling", true);
   expect([addon.eval("return ns.SelectedProfileName()"), profileRow(addon, "TEST-ONLY Leveling")[0], profileRow(addon, "TEST-ONLY Healer")[0]], "a good name makes the profile and stages the switch to it").toEqual(["TEST-ONLY Leveling", "TEST-ONLY Leveling  (after reload)", "TEST-ONLY Healer"]);
-  expect(addon.texts("This character uses Default until you reload, then TEST-ONLY Leveling.").length, "and the page says what is used until then").toBe(1);
+  addon.eval('ns.Options.ShowTab("Profile")');
+  expect(addon.texts("This character uses Default until you reload, then TEST-ONLY Leveling.").length, "and the Profile tab says what is used until then").toBe(1);
   addon.eval('ns.Options.Hide() ns.Options.RebuildPage("profiles")');
   expect(addon.eval("return Vanguard_Options:IsShown()"), "rebuilding a page while the window is closed doesn't open it").toBe(false);
 });
@@ -263,7 +264,7 @@ it("options: search jumps to the row, and the page edges fade", () => {
   addon.eval('ns.Options.current = "nowhere" ns.Options.JumpTo("swing")');
   addon.eval('ns.Options.Show("unitframes")');
   // The page's view: its edges, after scrolling to a place.
-  const edges = (y) => addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.fadeTop and w:IsVisible() then
+  const edges = (y) => addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.fadeTop and ns.Options.RevealRow(w) then
     w.__height, w.__scrollChild.__height = 100, 800 w:SetVerticalScroll(${y}) w:GetScript("OnMouseWheel")(w, 0) return { w.fadeTop:IsShown(), w.fadeBottom:IsShown() } end end`);
   expect(edges(0), "at the top: only the bottom edge fades").toEqual([false, true]);
   expect(edges(300), "midway: both").toEqual([true, true]);
@@ -279,9 +280,9 @@ it("options: search reads each page's rows once per opening; a rebuilt page leav
   addon.eval('ns.NewProfile("TEST-ONLY Healer") ns.Options.Show("profiles")');
   reads();
   // How many rows the open page shows (each row keeps its card and its place on the page).
-  const shown = () => addon.frames("w.card ~= nil and w.pageY ~= nil and w:IsVisible()").length;
+  const shown = () => addon.frames("w.card ~= nil and w.pageY ~= nil and ns.Options.RevealRow(w)").length;
   const rows = shown();
-  addon.eval("__old = {} for _, w in ipairs(__wfgStub.frames) do if w.card and w.pageY and w:IsVisible() and w.Refresh then __old[#__old + 1] = w end end");
+  addon.eval("__old = {} for _, w in ipairs(__wfgStub.frames) do if w.card and w.pageY and ns.Options.RevealRow(w) and w.Refresh then __old[#__old + 1] = w end end");
   for (const text of ["h", "he", "hea", "heal"]) addon.eval(`ns.Options.Search("${text}")`);
   expect([reads(), addon.eval("return ns.Options.matched.profiles")], "opening the window read every page's rows once (for the nav's Changed dots), so four keystrokes read none, and still find a profile's name").toEqual([[0, 0], true]);
   addon.eval('ns.Options.RebuildPage("profiles")');
@@ -418,7 +419,7 @@ it("options: a slider drag and a key capture end when their window hides, and a 
 
 // The visible slider row whose caption starts with this text, as Lua.
 const sliderRow = (text) => `(function() for _, w in ipairs(__wfgStub.frames) do
-  if w.track and w.label and w.label.__text:sub(1, #"${text}") == "${text}" and w:IsVisible() then return w end end end)()`;
+  if w.track and w.label and w.label.__text:sub(1, #"${text}") == "${text}" and ns.Options.RevealRow(w) then return w end end end)()`;
 
 it("options: a frame's scale and opacity from the Layout card; a long menu scrolls", () => {
   const addon = loggedIn(UI_ENV + CLICK_LUA);
@@ -443,7 +444,7 @@ it("options: a frame's scale and opacity from the Layout card; a long menu scrol
 
 // The reset dot on the visible row whose caption starts with this text: { shown, has a dot }.
 const resetDot = (addon, text) => addon.eval(`for _, w in ipairs(__wfgStub.frames) do
-  if w.label and type(w.label.__text) == "string" and w.label.__text:sub(1, #"${text}") == "${text}" and w:IsVisible() then
+  if w.label and type(w.label.__text) == "string" and w.label.__text:sub(1, #"${text}") == "${text}" and ns.Options.RevealRow(w) then
     return { w.reset ~= nil and w.reset:IsShown(), w.reset ~= nil } end end`);
 
 it("options: a changed setting gets a dot that puts the default back", () => {
@@ -476,7 +477,7 @@ it("options: a changed setting gets a dot that puts the default back", () => {
 
 // Each visible row's caption and the default its reset dot names, as Lua.
 const DEFAULTS_LUA = `local out = {} for _, w in ipairs(__wfgStub.frames) do
-  if w.reset and w.label and w:IsVisible() then out[w.label.__text] = w.reset.defaultText end end return out`;
+  if w.reset and w.label and ns.Options.RevealRow(w) then out[w.label.__text] = w.reset.defaultText end end return out`;
 
 it("options: the changed dot names the default as the row shows it, for switches, choices and sliders", () => {
   const addon = loggedIn(CLICK_LUA);
@@ -489,7 +490,7 @@ it("options: the changed dot names the default as the row shows it, for switches
 
 // The own-switch note beside a visible module row's name, as Lua (nil for a row with no link).
 const ownSwitch = (name) => `(function() for _, w in ipairs(__wfgStub.frames) do
-  if w.ownSwitch ~= nil and w.label.__text == "${name}" and w:IsVisible() then return w.ownSwitch.__text end end end)()`;
+  if w.ownSwitch ~= nil and w.label.__text == "${name}" and ns.Options.RevealRow(w) then return w.ownSwitch.__text end end end)()`;
 
 it("options: a module that is on while its own switch inside is off says so beside its name, and the note goes with the switch", () => {
   const addon = loggedIn(CLICK_LUA);
@@ -503,11 +504,11 @@ it("options: a module that is on while its own switch inside is off says so besi
 });
 
 // The visible options page's scroll view, as Lua.
-const PAGE_VIEW = "(function() for _, w in ipairs(__wfgStub.frames) do if w.fadeTop and w:IsVisible() then return w end end end)()";
+const PAGE_VIEW = "(function() for _, w in ipairs(__wfgStub.frames) do if w.fadeTop and ns.Options.RevealRow(w) then return w end end end)()";
 
 // The visible row whose caption is this text, as Lua.
 const rowNamed = (text) => `(function() for _, w in ipairs(__wfgStub.frames) do
-  if w.label and w.label.__text == "${text}" and w:IsVisible() then return w end end end)()`;
+  if w.label and w.label.__text == "${text}" and ns.Options.RevealRow(w) then return w end end end)()`;
 
 it("options: a Width the presets don't list shows its value as a dropdown; a preset stays as segments", () => {
   const preset = loggedIn(CLICK_LUA, { savedVariables: 'VanguardDB = { profiles = { Default = { RaidFrames = { width = 90 } } } }' });
@@ -520,7 +521,7 @@ it("options: a Width the presets don't list shows its value as a dropdown; a pre
 
 it("options: the mouse wheel over a slider, a choice or a switch scrolls the page and never changes the value", () => {
   const addon = loggedIn(CLICK_LUA);
-  addon.eval('ns.Options.Show("actionbars")');
+  addon.eval('ns.Options.Show("actionbars") ns.Options.ShowTab("Bar 1")');
   // TEST-ONLY page taller than its view, so the wheel has somewhere to go.
   addon.eval(`local v = ${PAGE_VIEW} v.__height, v.__scrollChild.__height = 200, 1200`);
   // Turns the wheel over a row; returns bar 1's buttons, buttons per row and visibility, and the page's scroll.
@@ -531,7 +532,7 @@ it("options: the mouse wheel over a slider, a choice or a switch scrolls the pag
   expect(wheelOver("Buttons", -1), "down over the Buttons slider: the count stays, the page scrolls a notch (40)").toEqual([12, 12, "always", 40]);
   expect(wheelOver("Buttons per row", -1), "over Buttons per row: the same").toEqual([12, 12, "always", 80]);
   expect(wheelOver("Visibility", -1), "over a choice: the page scrolls, the choice stays").toEqual([12, 12, "always", 120]);
-  expect(wheelOver("Show bar 6", -1)[3], "over a switch: the page scrolls").toBe(160);
+  expect(wheelOver("Show bar 1", -1)[3], "over a switch: the page scrolls").toBe(160);
   expect(wheelOver("Buttons", 1), "up scrolls back").toEqual([12, 12, "always", 120]);
   expect(addon.eval(`return { ${rowNamed("Buttons")}:IsMouseWheelEnabled(), ${rowNamed("Visibility")}:IsMouseWheelEnabled(), ${PAGE_VIEW}:IsMouseWheelEnabled() }`), "no value row takes the wheel; the page does").toEqual([false, false, true]);
   addon.eval(`local r = ${rowNamed("Buttons")} r:GetScript("OnClick")(r)`);
@@ -541,7 +542,7 @@ it("options: the mouse wheel over a slider, a choice or a switch scrolls the pag
 it("options: Bar 1's Show when chips sit inside the card, inset like every other row's control", () => {
   const addon = loggedIn(CLICK_LUA);
   addon.eval('ns.Options.Show("actionbars")');
-  const fit = addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.chips and w:IsVisible() then
+  const fit = addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.chips and ns.Options.RevealRow(w) then
     local first, last, card = w.chips[1], w.chips[#w.chips], w.card
     return { last.text:GetText(), card:GetRight() - last:GetRight(), first:GetLeft() - w.label:GetRight() > 8 } end end`);
   expect(fit, "Resting, the last chip, ends 12 inside the card's edge (as the other rows' controls), and the first chip clears the caption").toEqual(["Resting", 12, true]);
@@ -560,7 +561,7 @@ it("options: a dot on the nav marks each page with changed settings, as rows cha
   expect(isTok(addon, addon.eval("return Vanguard_Options.nav.nameplates.changed.__vertexColor"), "accent"), "the dot is in the accent").toBe(true);
   addon.eval('__click("Unit frames") __click("Show health numbers")');
   expect(dotted(addon), "changing a row marks its page at once").toEqual(["nameplates", "unitframes"]);
-  addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.reset and w.reset:IsShown() and w:IsVisible() then __dot = w.reset end end __dot:GetScript("OnClick")(__dot)`);
+  addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.reset and w.reset:IsShown() and ns.Options.RevealRow(w) then __dot = w.reset end end __dot:GetScript("OnClick")(__dot)`);
   expect(dotted(addon), "putting the row back with its own dot clears the page's").toEqual(["nameplates"]);
   addon.eval('__click("Nameplates") __click("Width") __click("Width")');
   expect([addon.eval("return ns.Settings('Nameplates').width"), dotted(addon)], "stepping the width back to its default clears it too").toEqual([addon.eval("return ns.GetModule('Nameplates').defaults.width"), []]);
@@ -604,7 +605,7 @@ it("options: Up and Down walk the pages, Tab the rows, Enter presses one; other 
   press(addon, "TAB");
   addon.keys({ shift: false });
   const last = keyRow(addon);
-  expect([last[0], last[2], addon.eval("return Vanguard_Options.found:IsShown()")], "Shift-Tab goes back, and past the first wraps to the last row, scrolled into view").toEqual([addon.eval("local rows = {} for _, w in ipairs(__wfgStub.frames) do if w.card and w:IsVisible() and w:GetObjectType() == 'Button' then rows[#rows + 1] = w end end table.sort(rows, function(a, b) return a.pageY < b.pageY end) return rows[#rows].caption"), true, true]);
+  expect([last[0], last[2], addon.eval("return Vanguard_Options.found:IsShown()")], "Shift-Tab goes back, and past the first wraps to the last row: the page's Reset this page, in its bar").toEqual(["Reset this page", true, true]);
   press(addon, "TAB");
   expect(keyRow(addon), "and Tab from the last wraps to the first, scrolled back up").toEqual(["Safer colours", true, true]);
   press(addon, "TAB");
@@ -669,7 +670,7 @@ it("options: the General page's sample unit frame and button follow the accent, 
   const addon = loggedIn(CLICK_LUA + `LibStub("LibSharedMedia-3.0"):Register("statusbar", "TEST-ONLY Bar", [[Interface\\AddOns\\TestOnly\\Bar]])`);
   addon.eval('ns.Options.Show("general")');
   // The sample: bar textures, the name's font and size, the glow's color, and its texts.
-  const sample = () => addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.unit and w.button and w:IsVisible() then
+  const sample = () => addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.unit and w.button and ns.Options.RevealRow(w) then
     local u, b = w.unit, w.button local font, size = u.name:GetFont()
     return { u.health:GetStatusBarTexture():GetTexture(), u.power:GetStatusBarTexture():GetTexture(), font, size, b.glow[1].__vertexColor, b.glow[1]:IsShown(),
       u.name:GetText(), u.value:GetText(), b.hotkey:GetText(), b.count:GetText() } end end`);
@@ -679,11 +680,11 @@ it("options: the General page's sample unit frame and button follow the accent, 
   expect(isTok(addon, first[4], "accent"), "the glow is in the accent").toBe(true);
   addon.eval("ns.Theme.SetAccent(ns.Theme.PRESETS.jade[1], ns.Theme.PRESETS.jade[2], ns.Theme.PRESETS.jade[3])");
   expect(sample()[4].slice(0, 3), "a new accent shows at once").toEqual(addon.eval("return ns.Theme.PRESETS.jade").slice(0, 3));
-  addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.track and w.label and w.label.__text == "Text size" and w:IsVisible() then w.set(1.3) w:Refresh() end end`);
+  addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.track and w.label and w.label.__text == "Text size" and ns.Options.RevealRow(w) then w.set(1.3) w:Refresh() end end`);
   expect(sample()[3], "so does the text size (12 at 130%)").toBe(16);
-  addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.dropdown and w.caption == "Font" and w:IsVisible() then w.dropdown.set("client") end end`);
+  addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.dropdown and w.caption == "Font" and ns.Options.RevealRow(w) then w.dropdown.set("client") end end`);
   expect(sample()[2], "and the font").toBe(addon.eval("return STANDARD_TEXT_FONT or 'Fonts\\\\FRIZQT__.TTF'"));
-  addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.dropdown and w.caption == "Bar texture" and w:IsVisible() then w.dropdown.set("TEST-ONLY Bar") end end`);
+  addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.dropdown and w.caption == "Bar texture" and ns.Options.RevealRow(w) then w.dropdown.set("TEST-ONLY Bar") end end`);
   expect([sample().slice(0, 2), addon.eval("return Vanguard_Options.reload:IsShown()")], "a bar texture shared through LibSharedMedia shows on the sample at once (the HUD takes it on reload)")
     .toEqual([["Interface\\AddOns\\TestOnly\\Bar", "Interface\\AddOns\\TestOnly\\Bar"], true]);
 });
@@ -723,7 +724,7 @@ it("text that fits: chat size, tooltip fonts, the status line, name width", () =
 });
 
 // TEST-ONLY: the Healing page's buff list editor (its box and Save), or nil.
-const BUFF_EDITOR = "for _, w in ipairs(__wfgStub.frames) do if w.input and w.save and w:IsVisible() then __editor = w end end";
+const BUFF_EDITOR = "for _, w in ipairs(__wfgStub.frames) do if w.input and w.save and ns.Options.RevealRow(w) then __editor = w end end";
 
 it("options: the Healing page opens and saves its buff list with the raid heals module switched off", () => {
   const addon = loggedIn(spellNames(BUFF_NAMES), { savedVariables: "VanguardDB.profiles.Default = { modules = { RaidHealing = false } }" });
@@ -784,7 +785,7 @@ it("options: the scroll thumb drags its page, and the copy box opens above the w
   addon.eval('ns.Options.Show("general")');
   const out = addon.eval(`
     local view
-    for _, w in ipairs(__wfgStub.frames) do if w.__scrollChild and w.__scripts.OnMouseWheel and w:IsVisible() then view = w end end
+    for _, w in ipairs(__wfgStub.frames) do if w.__scrollChild and w.__scripts.OnMouseWheel and ns.Options.RevealRow(w) then view = w end end
     -- TEST-ONLY page taller than its view: the thumb is 24 tall and travels 76.
     view.__height, view.__scrollChild.__height = 100, 800
     view:GetScript("OnMouseWheel")(view, 0)
@@ -807,7 +808,7 @@ it("options: the pages, their nav order and each page's row count stay as they w
   const pages = addon.eval("local out = {} for i, p in ipairs(ns.Options.PAGES) do out[i] = p.key .. '|' .. p.title .. '|' .. p.order .. '|' .. #p.rows() end return out");
   // Adding or removing a row (or a module, which adds a row under Modules) changes these counts on purpose.
   expect(pages, "the page list and each page's row count (a new row is one more on its page)").toEqual([
-    "general|General|10|40", "modules|Modules|20|88", "unitframes|Unit frames|30|34", "raid|Raid frames|40|26",
+    "general|General|10|40", "modules|Modules|20|87", "unitframes|Unit frames|30|34", "raid|Raid frames|40|26",
     "actionbars|Action bars|60|74", "quests|Quests|70|29", "bars|Bars and bags|80|17", "map|Map|81|36", "chat|Chat|82|82", "windows|Game windows|83|47", "cooldowns|Cooldowns|83.5|13", "tools|Combat tools|84|39", "town|Town and gear|85|57", "profiles|Profiles|90|22",
     "feedback|Feedback|100|11", "healing|Healing|45|44", "talents|Talents|47|7", "nameplates|Nameplates|65|18",
     "situations|Situations|86|16", "clickcast|Click casting|46|11",
@@ -899,7 +900,7 @@ it("sliders: the pill track, the fill on the same frame under the thumb, the thu
   addon.eval(`ns.Options.Show("general")
     for _, w in ipairs(__wfgStub.frames) do
       if w.track and w.min and w.label and w.label.__text == "Text size" then __sl = w end
-      if w.knob and w.get and w:IsVisible() then __swRow = w end
+      if w.knob and w.get and ns.Options.RevealRow(w) then __swRow = w end
     end
     function __part(t) local layer, sub = t:GetDrawLayer() return { layer, sub, (t.__texture or ""):match("[^\\\\]+$"), t:GetParent() == __sl.track } end
     function __r3(x) return math.floor(x * 1000 + 0.5) / 1000 end`);
@@ -1050,8 +1051,8 @@ it("profiles: Use is a plain button, so Create is the page's one accent button",
   const addon = loggedIn(CLICK_LUA + 'VanguardDB.profiles["TEST-ONLY Healer"] = {}');
   addon.eval('ns.Options.Show("profiles")');
   const buttons = addon.eval(`local out = {} for _, w in ipairs(__wfgStub.frames) do
-    if w.use and w:IsVisible() then out.use = { w.use.fill ~= nil, w.use.text:GetText(), w.use.text.__textColor, w.use:GetHeight(), w.use:GetWidth() } end
-    if w.create and w:IsVisible() then out.create = { w.create.text.__textColor, w.create.text:GetText(), w.create:GetHeight(), w.create:GetWidth() } end end return out`);
+    if w.use and ns.Options.RevealRow(w) then out.use = { w.use.fill ~= nil, w.use.text:GetText(), w.use.text.__textColor, w.use:GetHeight(), w.use:GetWidth() } end
+    if w.create and ns.Options.RevealRow(w) then out.create = { w.create.text.__textColor, w.create.text:GetText(), w.create:GetHeight(), w.create:GetWidth() } end end return out`);
   expect(buttons.use, "Use: no accent fill, the text colour, a standalone button at the row's small width").toEqual([false, "Use", tok(addon, "text"), 26, 84]);
   expect(buttons.create, "Create: the primary kind (a dark label on the accent fill), the same size").toEqual([tok(addon, "void"), "Create", 26, 84]);
 });
@@ -1060,7 +1061,7 @@ it("options: the sample unit frame shows the player's own name, or You when the 
   const addon = loggedIn();
   addon.eval('ns.Options.Show("general")');
   // The sample row refreshed: the name shown and the button's icon.
-  const sample = () => addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.unit and w.button and w:IsVisible() then
+  const sample = () => addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.unit and w.button and ns.Options.RevealRow(w) then
     w:Refresh() return { w.unit.name:GetText(), w.button.icon:GetTexture(), w.button.icon.__texCoord == nil } end end`);
   expect(sample(), "the player's name, and the crest uncropped").toEqual(["Tester", "Interface\\AddOns\\Vanguard\\Media\\Textures\\Icon", true]);
   addon.eval("__wfgWorld.units.player.name = __wfgWorld.secret(1)");
@@ -1088,28 +1089,28 @@ it("options: the nav is a list of rows (T.ROW): the current page's row shows the
   expect(tallest <= height, "no nav row is taller than a list row").toBe(true);
 });
 
-it("options: a card's title is a section header: capitals in small muted text, an 18 high band 12 in from the card's edge and as wide as the card's inside", () => {
+it("options: a card's title (on a page of one card; tabs name the cards of the others) is a section header: capitals in small muted text, an 18 high band 12 in from the card's edge and as wide as the card's inside", () => {
   const addon = loggedIn(CLICK_LUA);
-  addon.eval('ns.Options.Show("general")');
-  const head = addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.text and w.text.__text == "LOOK" and w:IsVisible() then
+  addon.eval('ns.Options.Show("nameplates")');
+  const head = addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.text and w.text.__text == "NAMEPLATES" and ns.Options.RevealRow(w) then
     return { w.__kind, w:GetHeight(), w:GetWidth(), w.__points.TOPLEFT.x, w.__points.TOPLEFT.y, w.__parent:GetWidth() } end end`);
   expect(head, "a Button 18 tall, the card less its 12 of padding on both sides wide, at 12 across and 12 down in the card").toEqual(["Button", 18, 568 - 24, 12, -12, 568]);
-  const title = '(function() for _, w in ipairs(__wfgStub.frames) do if w.text and w.text.__text == "LOOK" and w:IsVisible() then return w.text end end end)()';
+  const title = '(function() for _, w in ipairs(__wfgStub.frames) do if w.text and w.text.__text == "NAMEPLATES" and ns.Options.RevealRow(w) then return w.text end end end)()';
   expect(lookOf(addon, title, "muted"), "the title is small muted text, in capitals").toEqual([addon.eval("return ns.Theme.RoleSize('small')"), true]);
 });
 
 it("options: a long page scrolls in the shared view: the thumb is T.SCROLL.thumb wide at the rest alpha, 12 right of the view, the wheel moves it 40 and the thumb and top edge follow; a short page has no thumb", () => {
   const addon = loggedIn(CLICK_LUA);
-  addon.eval('ns.Options.Show("general")');
+  addon.eval('ns.Options.Show("modules")');
   // The visible page view: scroll, child height, view height, thumb shown, width, alpha, offset right of the view, top edge shown.
-  const view = () => addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.fadeTop and w:IsVisible() then
+  const view = () => addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.fadeTop and ns.Options.RevealRow(w) then
     return { math.floor(w:GetVerticalScroll()), w.child:GetHeight() > w:GetHeight(), w.thumb:IsShown(), w.thumb:GetWidth(), w.thumb:GetAlpha(), (w.thumb.__points.TOPRIGHT or {}).x, w.fadeTop:IsShown() } end end`);
   const [scroll, overflows, shown, width, alpha, out, top] = view();
-  expect([scroll, overflows, shown, alpha, out, top], "General is taller than its view: the thumb shows at the rest alpha, 12 right of the view; at the top").toEqual([0, true, true, addon.eval("return ns.Theme.SCROLL.rest"), 12, false]);
+  expect([scroll, overflows, shown, alpha, out, top], "Modules' Unit frames tab is taller than its view: the thumb shows at the rest alpha, 12 right of the view; at the top").toEqual([0, true, true, addon.eval("return ns.Theme.SCROLL.rest"), 12, false]);
   expect(width, "T.SCROLL.thumb wide").toBe(addon.eval("return ns.Theme.SCROLL.thumb"));
   // How far down the view its thumb sits.
-  const thumbTop = () => addon.eval("for _, w in ipairs(__wfgStub.frames) do if w.fadeTop and w:IsVisible() then return -w.thumb.__points.TOPRIGHT.y end end");
-  addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.fadeTop and w:IsVisible() then __page = w end end`);
+  const thumbTop = () => addon.eval("for _, w in ipairs(__wfgStub.frames) do if w.fadeTop and ns.Options.RevealRow(w) then return -w.thumb.__points.TOPRIGHT.y end end");
+  addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.fadeTop and ns.Options.RevealRow(w) then __page = w end end`);
   addon.wheel("__page", -1);
   expect([view()[0], view()[6], thumbTop() > 0], "a notch down scrolls 40; the top edge shows and the thumb moves down").toEqual([40, true, true]);
   addon.eval('ns.Options.Show("feedback")');
@@ -1156,15 +1157,15 @@ it("options: the header keeps its bar but wears the window tier: 48 tall, the ti
 it("options: the General page's buttons are T.BUTTON_H tall in a 32 high row, and a module's description is small muted text", () => {
   const addon = loggedIn(CLICK_LUA);
   addon.eval('ns.Options.Show("general")');
-  // The three buttons of the General page's top card: caption, height and how far down their rows start.
-  const buttons = addon.eval(`local out = {} for _, w in ipairs(__wfgStub.frames) do if w.caption and w.__kind == "Button" and w:IsVisible() and w.__parent:GetHeight() == 472
+  // The three buttons of the General page's Layout tab: caption, height and how far down their rows start.
+  const buttons = addon.eval(`local out = {} for _, w in ipairs(__wfgStub.frames) do if w.caption and w.__kind == "Button" and ns.Options.RevealRow(w) and w.card.tabName == "Layout"
     and (w.caption == "Run setup" or w.caption == "What's new" or w.caption == "Move frames") then out[#out + 1] = { w.caption, w:GetHeight(), -w.__points.TOPLEFT.y } end end
     table.sort(out, function(a, b) return a[3] < b[3] end) return out`);
   const buttonH = addon.eval("return ns.Theme.BUTTON_H");
   expect(buttons.map((b) => b[1]), "each is T.BUTTON_H tall, not 28").toEqual([buttonH, buttonH, buttonH]);
   expect([buttons[1][2] - buttons[0][2], buttons[2][2] - buttons[1][2]], "and the rows stay 32 apart").toEqual([32, 32]);
   addon.eval('ns.Options.Show("modules")');
-  const desc = addon.eval('for _, w in ipairs(__wfgStub.frames) do if w.desc and w.label.__text == "Unit frames" and w:IsVisible() then return { select(2, w.desc:GetFont()), w.desc.__textColor } end end');
+  const desc = addon.eval('for _, w in ipairs(__wfgStub.frames) do if w.desc and w.label.__text == "Unit frames" and ns.Options.RevealRow(w) then return { select(2, w.desc:GetFont()), w.desc.__textColor } end end');
   expect([desc[0], isTok(addon, desc[1], "muted")], "a module's line on what it does is small and muted").toEqual([addon.eval("return ns.Theme.RoleSize('small')"), true]);
 });
 
@@ -1327,7 +1328,7 @@ it("Escape and a click outside close a dropdown menu", () => {
 it("Left and Right step a focused slider by its step", () => {
   const addon = loggedIn(CLICK_LUA);
   addon.eval('ns.Options.Show("general")');
-  addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.track and w.min and w.label and w.label.__text == "Text size" and w:IsVisible() then __sl = w end end`);
+  addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.track and w.min and w.label and w.label.__text == "Text size" and ns.Options.RevealRow(w) then __sl = w end end`);
   const before = addon.eval("return __sl.get()");
   addon.eval("Vanguard_Options.focusRow = __sl");
   addon.key("Vanguard_Options", "RIGHT");
@@ -1442,15 +1443,15 @@ it("Reset theme with Pixel-perfect scale on shows the reload notice, since its s
   addon.eval('ns.Theme.SetPixelScale(true) ns.Options.Show("general") __click("Reset theme")');
   expect([addon.eval("return ns.Theme.Settings().pixelScale"), reloadNotice(addon)]).toEqual([false, true]);
 });
-it("a page rebuilt while it shows (a chat tab picked on the Chat page) keeps its scroll", () => {
+it("a page rebuilt while it shows (a module filter picked on the Modules page) keeps its tab and its scroll", () => {
   const addon = loggedIn(CLICK_LUA);
-  addon.eval('ns.Options.Show("chat")');
+  addon.eval('ns.Options.Show("modules") ns.Options.ShowTab("Town and gear")');
   const out = addon.eval(`
-    local function view() for _, c in ipairs({ Vanguard_Options:GetChildren() }) do if c.child and c.child.pageKey == "chat" and c:IsShown() then return c end end end
-    local v = view() v:ScrollTo(400) local before = v:GetVerticalScroll()
-    ns.Options.RebuildPage("chat")
-    return { before, view() ~= v, view():GetVerticalScroll() }`);
-  expect(out, "a new view, at the old offset").toEqual([400, true, 400]);
+    local function view() for _, c in ipairs({ Vanguard_Options:GetChildren() }) do if c.child and c.child.pageKey == "modules" and c:IsShown() then return c end end end
+    local v = view() v:ScrollTo(200) local before = v:GetVerticalScroll()
+    ns.Options.RebuildPage("modules")
+    return { before, view() ~= v, view():GetVerticalScroll(), view().cards[view().tab].tabName }`);
+  expect(out, "a new view, on the same tab at the old offset").toEqual([200, true, 200, "Town and gear"]);
 });
 it("Window ornaments applies at once and asks for no reload", () => {
   const addon = loggedIn(CLICK_LUA);
@@ -1519,7 +1520,7 @@ it("options: a card's buttons share one width, wide enough for its longest label
   addon.eval('ns.Options.Show("tools")');
   // The width of the shown button whose label starts so, and its label's width as drawn.
   const width = (label) => addon.eval(`for _, w in ipairs(__wfgStub.frames) do
-    if w.text and w.card and w:IsVisible() and (w.text.__text or ""):sub(1, ${label.length}) == "${label}" then return { w:GetWidth(), w.text:GetUnboundedStringWidth() } end end`);
+    if w.text and w.card and ns.Options.RevealRow(w) and (w.text.__text or ""):sub(1, ${label.length}) == "${label}" then return { w:GetWidth(), w.text:GetUnboundedStringWidth() } end end`);
   const [party, partyText] = width("Put the list in the chat box for the party");
   expect(party, "the longest loot label sets its card's width, with 12 of air each side").toBe(partyText + 24);
   expect(width("Clear every reserve")[0], "the card's short labels take the same width").toBe(party);
@@ -1565,9 +1566,9 @@ it("options: a module row grows to hold a description that wraps past two lines,
   const addon = fitOptions(1.3);
   addon.eval('ns.Options.Show("modules")');
   const short = addon.eval(`local out = {} for _, w in ipairs(__wfgStub.frames) do
-    if w.desc and w.label and w:IsVisible() and w:GetHeight() < 12 + w.label:GetStringHeight() + ns.Theme.SPACE.tight + w.desc:GetStringHeight() then out[#out + 1] = w.label.__text end end return out`);
+    if w.desc and w.label and ns.Options.RevealRow(w) and w:GetHeight() < 12 + w.label:GetStringHeight() + ns.Theme.SPACE.tight + w.desc:GetStringHeight() then out[#out + 1] = w.label.__text end end return out`);
   expect(Object.values(short), "every module row is tall enough for its name and its whole description").toEqual([]);
-  const tall = addon.eval(`local n = 0 for _, w in ipairs(__wfgStub.frames) do if w.desc and w:IsVisible() and w:GetHeight() > 54 then n = n + 1 end end return n`);
+  const tall = addon.eval(`local n = 0 for _, w in ipairs(__wfgStub.frames) do if w.desc and ns.Options.RevealRow(w) and w:GetHeight() > 54 then n = n + 1 end end return n`);
   expect(tall, "at least one description wraps past the 54 units a row used to have").toBeGreaterThan(0);
 });
 
@@ -1575,9 +1576,9 @@ it("options: a switch whose caption wraps takes the whole row, so the caption an
   const addon = fitOptions(1.3);
   addon.eval('ns.Options.Show("unitframes")');
   const poking = addon.eval(`local out = {} for _, w in ipairs(__wfgStub.frames) do
-    if w.card and w.label and w.source and w.source[1] == "check" and w:IsVisible() and w.label:GetTop() > w:GetTop() + 0.01 then out[#out + 1] = w.caption end end return out`);
+    if w.card and w.label and w.source and w.source[1] == "check" and ns.Options.RevealRow(w) and w.label:GetTop() > w:GetTop() + 0.01 then out[#out + 1] = w.caption end end return out`);
   expect(Object.values(poking), "no caption starts above its row").toEqual([]);
-  const tall = addon.eval(`local n = 0 for _, w in ipairs(__wfgStub.frames) do if w.source and w.source[1] == "check" and w:IsVisible() and w:GetHeight() > ns.Theme.ROW.height then n = n + 1 end end return n`);
+  const tall = addon.eval(`local n = 0 for _, w in ipairs(__wfgStub.frames) do if w.source and w.source[1] == "check" and ns.Options.RevealRow(w) and w:GetHeight() > ns.Theme.ROW.height then n = n + 1 end end return n`);
   expect(tall, "a wrapped caption's row is taller than a one-line row").toBeGreaterThan(0);
 });
 
@@ -1588,7 +1589,7 @@ it("options: pages built at another Text size are built again the next time they
   // Opens the page and lists the captions whose reload tag starts before the caption ends.
   const crowded = (page) => addon.eval(`ns.Options.Show("${page}") local out = {}
     for _, w in ipairs(__wfgStub.frames) do
-      if w.tag and w.label and w:IsVisible() and w.tag:GetLeft() < w.label:GetLeft() + math.min(w.label:GetStringWidth(), w.label:GetWidth()) then out[#out + 1] = w.caption end
+      if w.tag and w.label and ns.Options.RevealRow(w) and w.tag:GetLeft() < w.label:GetLeft() + math.min(w.label:GetStringWidth(), w.label:GetWidth()) then out[#out + 1] = w.caption end
     end return out`);
   for (const page of ["unitframes", "tools", "town"]) expect(Object.values(crowded(page)), `${page}: no reload tag sits over its caption`).toEqual([]);
   expect(addon.eval("return ns.Options.current"), "the page opened is the one asked for").toBe("town");
@@ -1610,12 +1611,12 @@ it("options: in Russian a module's own-switch note ends before its switch, in on
   addon.eval('ns.Options.Show("modules")');
   // Every shown own-switch note that is not empty: its right edge against the switch's left edge, and whether it wraps.
   const notes = addon.eval(`local out = {} for _, w in ipairs(__wfgStub.frames) do
-    if w.ownSwitch and w:IsVisible() and (w.ownSwitch.__text or "") ~= "" then
+    if w.ownSwitch and ns.Options.RevealRow(w) and (w.ownSwitch.__text or "") ~= "" then
       out[#out + 1] = { w.ownSwitch:GetRight() <= w.track:GetLeft() - ns.Theme.SPACE.gap + 0.5, w.ownSwitch.__noWrap == true } end end return out`);
   expect(notes.length, "some linked module is on with its own switch off").toBeGreaterThan(0);
   expect(notes.filter((n) => !n[0] || !n[1]), "no note reaches its switch, and none wraps").toEqual([]);
   const tip = addon.eval(`for _, w in ipairs(__wfgStub.frames) do
-    if w.ownSwitch and w:IsVisible() and (w.ownSwitch.__text or "") ~= "" then
+    if w.ownSwitch and ns.Options.RevealRow(w) and (w.ownSwitch.__text or "") ~= "" then
       w.__scripts.OnEnter(w) local l = GameTooltip.__lines[2] and GameTooltip.__lines[2].text w.__scripts.OnLeave(w) return l == w.ownSwitch.__text end end`);
   expect(tip, "the tooltip's second line is the whole note").toBe(true);
 });
@@ -1626,7 +1627,7 @@ it("options: a choice row's dropdown widens into its caption's spare room to hol
   addon.eval('ns.Options.Show("chat")');
   // The dropdown's width, the caption's right edge and the dropdown's left edge, for the shown choice row with this caption.
   const row = (caption) => addon.eval(`for _, w in ipairs(__wfgStub.frames) do
-    if w.dropdown and w.caption == ns.L["${caption}"] and w:IsVisible() then return { w.dropdown:GetWidth(), w.label:GetRight(), w.dropdown:GetLeft() } end end`);
+    if w.dropdown and w.caption == ns.L["${caption}"] and ns.Options.RevealRow(w) then return { w.dropdown:GetWidth(), w.label:GetRight(), w.dropdown:GetLeft() } end end`);
   const [wide, captionEnd, dropdownStart] = row("Class-colored names in chat (the game's setting)") || [];
   expect(wide, "the French choice needs more than the 200 column").toBeGreaterThan(200);
   expect(captionEnd, "the caption still ends before the dropdown").toBeLessThanOrEqual(dropdownStart);
@@ -1647,7 +1648,7 @@ it("options: in Russian at 115% a module row whose name wraps beside its reload 
   addon.eval('ns.Options.Show("modules")');
   // Each shown module row whose description ends under the row's bottom (the row's air kept below it).
   const cut = addon.eval(`local out = {} for _, w in ipairs(__wfgStub.frames) do
-    if w.desc and w.label and w.source and w:IsVisible() and w.desc:GetBottom() < w:GetBottom() + 6 - 0.01 then out[#out + 1] = w.caption end end return out`);
+    if w.desc and w.label and w.source and ns.Options.RevealRow(w) and w.desc:GetBottom() < w:GetBottom() + 6 - 0.01 then out[#out + 1] = w.caption end end return out`);
   expect(Object.values(cut), "every description ends a little above its row's bottom, clear of the next name").toEqual([]);
 });
 
@@ -1657,7 +1658,7 @@ it("options: in German at 130% a choice or slider row whose caption wraps grows 
   const spill = (page) => addon.eval(`ns.Options.Show("${page}") local out = { tall = 0 }
     for _, w in ipairs(__wfgStub.frames) do
       local kind = w.source and w.source[1]
-      if w.card and w.label and (kind == "cycle" or kind == "slider") and w:IsVisible() then
+      if w.card and w.label and (kind == "cycle" or kind == "slider") and ns.Options.RevealRow(w) then
         if w:GetHeight() > ns.Theme.ROW.height then out.tall = out.tall + 1 end
         if w.label:GetTop() > w:GetTop() + 0.01 or w.label:GetBottom() < w:GetBottom() - 0.01 then out[#out + 1] = w.caption end
       end
@@ -1673,7 +1674,7 @@ it("options: a module's own-switch note shares the name's line at both ends and 
   addon.eval('ns.Options.Show("modules")');
   // For each shown note's box: its two anchors' targets and offsets, and its right edge against the switch.
   const boxes = addon.eval(`local out = {} for _, w in ipairs(__wfgStub.frames) do
-    if w.ownSwitchBox and w:IsVisible() then
+    if w.ownSwitchBox and ns.Options.RevealRow(w) then
       local p = w.ownSwitchBox.__points
       out[#out + 1] = { p.RIGHT.rel == w.label, p.RIGHT.y, p.LEFT.y, w.ownSwitchBox:GetRight(), w.track:GetLeft() - ns.Theme.SPACE.gap } end end return out`);
   expect(boxes.length, "some linked modules show").toBeGreaterThan(0);
@@ -1686,8 +1687,124 @@ it("options: profile rows and the click casting rows sit inside their card by a 
   // The kinds of shown rows that run past their card's edge less than the inset a switch keeps (T.SPACE.tight).
   const tight = (page) => addon.eval(`ns.Options.Show("${page}") local out = {}
     for _, w in ipairs(__wfgStub.frames) do
-      if w.card and w.source and w:IsVisible() and w:GetRight() > w.card:GetRight() - ns.Theme.SPACE.tight + 0.01 then out[#out + 1] = w.source[1] end
+      if w.card and w.source and ns.Options.RevealRow(w) and w:GetRight() > w.card:GetRight() - ns.Theme.SPACE.tight + 0.01 then out[#out + 1] = w.source[1] end
     end return out`);
   expect(Object.values(tight("profiles")), "the profile list and the New profile row").toEqual([]);
   expect(Object.values(tight("clickcast")), "the toolbar, the grid, the keys and the sharing rows").toEqual([]);
+});
+
+// The open page's tabs: { name, raised (checked), name colour is text } each, and the shown card's tab name.
+const tabsOf = (addon) => addon.eval(`local v for _, c in ipairs({ Vanguard_Options:GetChildren() }) do if c.cards and c:IsShown() then v = c end end
+  local out = {} for _, card in ipairs(v.cards) do if card.tab then out[#out + 1] = { card.tabName, ns.Theme.IsChecked(card.tab) == true, card:IsShown() } end end
+  return { out, v.cards[v.tab].tabName }`);
+// Clicks the open page's tab with this name, as a player would (CLICK_LUA's __click never picks a tab).
+const clickTab = (addon, name) => addon.eval(`local v for _, c in ipairs({ Vanguard_Options:GetChildren() }) do if c.cards and c:IsShown() then v = c end end
+  for _, card in ipairs(v.cards) do if card.tabName == "${name}" then card.tab:GetScript("OnClick")(card.tab, "LeftButton") return true end end return false`);
+
+it("options tabs: a page of several cards shows one at a time under a tab per card; a click shows its card raised and the page opens on it again", () => {
+  const addon = loggedIn(CLICK_LUA);
+  addon.eval('ns.Options.Show("chat")');
+  const [tabs, shown] = tabsOf(addon);
+  expect(tabs.map((t) => t[0]), "a tab per card, in the page's order").toEqual(["Chat", "Chat tabs", "Chat extras", "Chat watch", "Chat filter", "Chat history", "Chat windows", "Group board"]);
+  expect([shown, tabs.filter((t) => t[1]).length, tabs.filter((t) => t[2]).length], "the first tab is the raised one, its card the only one shown").toEqual(["Chat", 1, 1]);
+  expect([clickTab(addon, "Chat history"), addon.eval("return ns.Options.current")], "clicking a tab keeps the page").toEqual([true, "chat"]);
+  expect(tabsOf(addon)[1], "and shows that card").toBe("Chat history");
+  expect(addon.eval(`local v for _, c in ipairs({ Vanguard_Options:GetChildren() }) do if c.cards and c:IsShown() then v = c end end
+    local tab = v.cards[v.tab].tab return tab.text.__textColor`), "the shown tab's name is in the text colour").toEqual(addon.eval("return { ns.Theme.RGB('text') }"));
+  addon.eval('ns.Options.Show("general") ns.Options.Show("chat")');
+  expect(tabsOf(addon)[1], "back on the page, the tab shown last").toBe("Chat history");
+  addon.eval('ns.Options.Hide() Vanguard_Options:Hide() ns.Options.Show("chat")');
+  expect(tabsOf(addon)[1], "and after the window closes and opens again").toBe("Chat history");
+  expect(addon.eval('return { ns.Options.ShowTab(1), ns.Options.ShowTab("Group board"), ns.Options.ShowTab(99), ns.Options.ShowTab("TEST-ONLY none") }'), "ShowTab takes a place or a name; false for a tab the page lacks").toEqual([true, true, false, false]);
+});
+
+it("options tabs: a page of one card has no tabs and keeps its card's title; a heading with no rows under it makes no tab", () => {
+  const addon = loggedIn(CLICK_LUA);
+  addon.eval('ns.Options.Show("nameplates")');
+  expect([Object.keys(tabsOf(addon)[0]).length, addon.texts("NAMEPLATES").length], "Nameplates: one card, its title in it, no tabs").toEqual([0, 1]);
+  expect(addon.eval("return ns.Options.ShowTab(1)"), "so no tab to show").toBe(false);
+  addon.eval('ns.Options.Show("healing")');
+  const names = tabsOf(addon)[0].map((t) => t[0]);
+  expect([names.includes("Buffs to watch"), names[0], names[1]], "Healing: the Buffs to watch heading over the class cards is no tab of its own").toEqual([false, "On the raid frames", "Mage"]);
+});
+
+it("options tabs: the tabs wrap onto a new line where the next would run past the page, and the page's view starts under them", () => {
+  const addon = loggedIn(CLICK_LUA);
+  addon.eval('ns.Options.Show("actionbars")');
+  // Each tab's top-left offset in the strip and its width; the strip's height; the view's top below the strip's bottom.
+  const layout = addon.eval(`local v for _, c in ipairs({ Vanguard_Options:GetChildren() }) do if c.cards and c:IsShown() then v = c end end
+    local out = {} for _, card in ipairs(v.cards) do local p = card.tab.__points.TOPLEFT out[#out + 1] = { p.x, -p.y, card.tab:GetWidth() } end
+    return { out, v.strip:GetHeight(), v:GetTop() == v.strip:GetBottom() }`);
+  const [tabs, height, under] = layout;
+  const lines = new Set(tabs.map((t) => t[1]));
+  expect([lines.size, height, under], "Action bars' ten tabs take two lines: the strip is two tabs and a gap tall, the view right under it").toEqual([2, 2 * addon.eval("return ns.Theme.CONTROL_H + 4") + 2, true]);
+  expect(tabs.every((t) => t[0] + t[2] <= 568), "no tab runs past the page's width").toBe(true);
+  const firstOnTwo = tabs.findIndex((t) => t[1] > 0);
+  expect([tabs[firstOnTwo][0], tabs[firstOnTwo - 1][0] + tabs[firstOnTwo - 1][2] + tabs[firstOnTwo][2] > 568], "a new line starts at the left, where the tab would not fit on the line above").toEqual([0, true]);
+});
+
+it("options tabs: the Modules page keeps what off means and its Show choice above the tabs, whichever tab shows", () => {
+  const addon = loggedIn(CLICK_LUA);
+  addon.eval('ns.Options.Show("modules")');
+  // Whether the Show choice and the note show, and the shown tab.
+  const lead = () => [addon.texts("A module that's off builds nothing and costs nothing.").length, addon.eval('for _, w in ipairs(__wfgStub.frames) do if w.caption == "Show" and w.card and w.card.child.pageKey == "modules" then return w:IsVisible() end end'), tabsOf(addon)[1]];
+  expect(lead(), "on the first tab, Unit frames").toEqual([1, true, "Unit frames"]);
+  addon.eval('ns.Options.ShowTab("Combat tools")');
+  expect(lead(), "and on Combat tools").toEqual([1, true, "Combat tools"]);
+  addon.eval('ns.Options.Show("general")');
+  expect(lead().slice(0, 2), "another page hides it with the Modules page").toEqual([0, false]);
+});
+
+it("options tabs: a tab wears the changed dot while a setting on its card differs from its default", () => {
+  const addon = loggedIn(CLICK_LUA);
+  addon.eval('ns.Options.Show("actionbars")');
+  // Each tab's changed dot shown, by tab name.
+  const dots = () => Object.fromEntries(tabsOf(addon)[0].map((t) => [t[0], addon.eval(`local v for _, c in ipairs({ Vanguard_Options:GetChildren() }) do if c.cards and c:IsShown() then v = c end end
+    for _, card in ipairs(v.cards) do if card.tabName == "${t[0]}" then return card.tab.changed:IsShown() end end`)]));
+  expect([dots()["Bar 2"], dots()["Action bars"]], "nothing changed: no dots").toEqual([false, false]);
+  addon.eval('ns.Options.ShowTab("Bar 2") __click("Red when out of range")');
+  expect([dots()["Action bars"], dots()["Bar 2"], tabsOf(addon)[1]], "Red when out of range off: the Action bars tab has the dot").toEqual([true, false, "Action bars"]);
+  addon.eval('__click("Red when out of range")');
+  expect(dots()["Action bars"], "back to the default: the dot goes").toBe(false);
+});
+
+it("options tabs: search, What's new and Vanguard.OpenOptions show the tab that holds the row", () => {
+  const addon = loggedIn(CLICK_LUA);
+  addon.eval('ns.Options.Show("chat")');
+  addon.eval('local s = Vanguard_Options.search s:SetText("keep chat history") s:GetScript("OnTextChanged")(s) s:GetScript("OnEnterPressed")(s)');
+  expect([addon.eval("return ns.Options.current"), tabsOf(addon)[1]], "Enter on a search: its page, on the tab holding the row").toEqual(["chat", "Chat history"]);
+  addon.eval('Vanguard.OpenOptions("actionbars", "Restyle the pet")');
+  expect([addon.eval("return ns.Options.current"), tabsOf(addon)[1]], "OpenOptions: the page and the row's tab").toEqual(["actionbars", "Action bars"]);
+  addon.eval('ns.Options.ShowTab("Bar 8") ns.Options.JumpTo("Hide the default bars")');
+  expect(tabsOf(addon)[1], "JumpTo from another tab").toBe("Action bars");
+});
+
+it("options tabs: Left and Right step the tabs, wrapping, unless the keyboard's row steps; a page without tabs lets them go on to the game", () => {
+  const addon = loggedIn(CLICK_LUA);
+  addon.eval("local f = Vanguard_Options or {} ns.Options.Show('chat') Vanguard_Options.SetPropagateKeyboardInput = function(self, v) self.__passed = v end");
+  press(addon, "RIGHT");
+  expect([tabsOf(addon)[1], addon.eval("return Vanguard_Options.__passed")], "Right: the next tab, and the key stops there").toEqual(["Chat tabs", false]);
+  press(addon, "LEFT");
+  press(addon, "LEFT");
+  expect(tabsOf(addon)[1], "Left back, and from the first round to the last").toBe("Group board");
+  addon.eval('ns.Options.Show("general") ns.Options.ShowTab("Look")');
+  for (let i = 0; i < 4; i++) press(addon, "TAB");
+  const size = addon.eval("return ns.Theme.Settings().textScale");
+  press(addon, "RIGHT");
+  expect([tabsOf(addon)[1], addon.eval("return ns.Theme.Settings().textScale") !== size], "with the Text size slider under the keyboard, Right steps it and the tab stays").toEqual(["Look", true]);
+  addon.eval('ns.Options.Show("nameplates")');
+  expect(press(addon, "RIGHT"), "Nameplates has no tabs: Right goes on to the game").toEqual(["nameplates", true]);
+});
+
+it("options tabs: Reset this page sits at the right of the page's bar, the page's title at its left; a page with nothing to reset has the title alone", () => {
+  const addon = loggedIn(CLICK_LUA);
+  addon.eval('ns.Options.Show("chat")');
+  // The open page's bar: its title, the title's right anchor, and the reset button's anchor (or false).
+  const bar = () => addon.eval(`local v for _, c in ipairs({ Vanguard_Options:GetChildren() }) do if c.cards and c:IsShown() then v = c end end
+    local b = v.bar.buttons and v.bar.buttons[1]
+    return { v.bar.title:GetText(), v.bar.title.__points.RIGHT.rel == (b or v.bar), b and b.__points.RIGHT.point or false, b and b.text.__text or false }`);
+  expect(bar(), "Chat: the title, cut short before the button at the bar's right").toEqual(["Chat", true, "RIGHT", "Reset this page"]);
+  expect(addon.eval('return __click("Reset this page") and Vanguard_Question:IsShown()'), "and the button still asks first").toBe(true);
+  addon.eval('Vanguard_Question.no:GetScript("OnClick")(Vanguard_Question.no) ns.Options.Show("feedback")');
+  expect(bar(), "Feedback: no settings with defaults, so the title alone").toEqual(["Feedback", true, false, false]);
 });

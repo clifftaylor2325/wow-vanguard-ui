@@ -437,12 +437,6 @@ it("smoke-test checklist: every step has its Do, Expect and paste lines", () => 
   expect(lineCount(text, "- If it fails, paste:")).toBe(steps);
   expect(steps).toBeGreaterThanOrEqual(30);
 });
-// Whether any shown font string reads exactly `text`.
-const shownText = (addon, text) => addon.eval(`for _, w in ipairs(__wfgStub.frames) do
-  local shown, f = true, w
-  while f do if not f.__shown then shown = false end f = f.__parent end
-  if shown and w.__kind == "FontString" and w.__text == "${text}" then return true end
-end return false`);
 it("WoW Forever client: interface, hidden auras, no specializations", () => {
   const addon = loggedIn(UNITS_ENV + RAID_ENV + CLICK_LUA + HEALING_ENV + FOREVER_ENV);
   expect(addon.eval("return ns.IsForever()") === true, "a 1.x interface number (16001) is WoW Forever").toBeTruthy();
@@ -465,7 +459,7 @@ it("WoW Forever client: interface, hidden auras, no specializations", () => {
   addon.slash("spec Default");
   expect(chatHas(addon, /no specializations/), "/vg spec explains there are no specializations").toBeTruthy();
   addon.eval('ns.Options.Show("profiles")');
-  expect(shownText(addon, "YOUR PROFILES") && !shownText(addon, "SPECIALIZATION"), "the Profiles page has no spec section").toBeTruthy();
+  expect(addon.eval('return { ns.Options.ShowTab("Your profiles"), ns.Options.ShowTab("Specialization") }'), "the Profiles page has no spec tab").toEqual([true, false]);
   // The names are read once per login (or list change), so a paladin is a new login here.
   addon.eval('__names[25898] = "Greater Blessing of Kings" UnitClass = function() return "Paladin", "PALADIN" end ns.GetModule("RaidHealing").Forget()');
   expect(addon.eval('for _, n in ipairs(ns.GetModule("RaidHealing").BuffNames()) do if n == "Greater Blessing of Kings" then return true end end'), "any blessing counts for a paladin").toBeTruthy();

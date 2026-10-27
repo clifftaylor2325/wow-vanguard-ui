@@ -21,7 +21,7 @@ const shown = (addon) => addon.eval(`local out = {} for _, w in ipairs(${WZ}.fra
   out[#out + 1] = (w.label or w.text or w.caption).__text end return out`);
 // A row's tooltip on hover: the shown flag and the first line.
 const hover = (addon, caption) => addon.eval(`for _, w in ipairs(__wfgStub.frames) do
-  if w.label and w.label.__text == "${caption}" and w:IsVisible() and w.__scripts.OnEnter then w.__scripts.OnEnter(w)
+  if w.label and w.label.__text == "${caption}" and ns.Options.RevealRow(w) and w.__scripts.OnEnter then w.__scripts.OnEnter(w)
     return { GameTooltip:IsShown(), (GameTooltip.__lines[1] or {}).text or false } end end`);
 
 it("cooldowns page: the settings moved off Combat tools, which points here; the page has a card each and a setup button", () => {
@@ -47,7 +47,7 @@ it("cooldowns page: a row's detail is its tooltip, and a client with no tooltip 
   expect(hover(addon, "Gaps row"), "the gaps switch explains itself").toEqual([true, expect.stringContaining("A row of icons for what the game's manager misses")]);
   addon.eval("GameTooltip = nil");
   expect(addon.eval(`for _, w in ipairs(__wfgStub.frames) do
-    if w.label and w.label.__text == "Gaps row" and w:IsVisible() then w.__scripts.OnEnter(w) w.__scripts.OnLeave(w) return true end end`), "without GameTooltip nothing shows and nothing errors").toBe(true);
+    if w.label and w.label.__text == "Gaps row" and ns.Options.RevealRow(w) then w.__scripts.OnEnter(w) w.__scripts.OnLeave(w) return true end end`), "without GameTooltip nothing shows and nothing errors").toBe(true);
 });
 
 it("cooldowns page: the buttons and switches change the same saved settings as before", () => {
