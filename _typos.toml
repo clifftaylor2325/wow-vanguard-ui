@@ -35,3 +35,5 @@ mis = "mis" # the prefix in "mis-sized"
 
 [default.extend-identifiers]
 PNGs = "PNGs" # plural of PNG
+DECIMAL_SEPERATOR = "DECIMAL_SEPERATOR" # the client's own global, misspelt in its GlobalStrings
+LARGE_NUMBER_SEPERATOR = "LARGE_NUMBER_SEPERATOR" # the client's own global, misspelt in its GlobalStrings
