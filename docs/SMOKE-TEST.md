@@ -2885,6 +2885,12 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: Back stops at the layout step once the layout is applied. The scan button waits at most 15 minutes.
 - If it fails, paste: which step Back reached, the scan button's countdown, and `/vg errors`.
 
+### 33.121 Pet trainer, slow shops, a specialty bag and the key ring
+
+- Do: as a hunter with a pet, open a pet trainer. As a character with a profession slot free, open a profession trainer.
+- Expect: Train all is greyed out at the pet trainer, with "Nothing to learn here right now." in its tooltip, and the game's own Train button still works there. At the profession trainer, one click on Train all learns the other skills but not a profession you have not learned yet; the game's own Train button asks before taking that one up.
+- If it fails, paste: which trainer, the Train all label and tooltip, and `/vg errors`.
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ## When you are done

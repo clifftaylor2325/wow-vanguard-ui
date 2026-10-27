@@ -232,6 +232,28 @@ it("Train all in one click: no purchase twice, the budget counted before the gam
   plan.fire("TRAINER_SHOW");
   expect(plan.eval("return ns.GetModule('Errands').TrainPlan().count"), "the count it shows stops at the same cap").toBe(1);
 });
+// Z2-1: a pet trainer's costs are the pet's training points, and the game's own Train button asks before taking up a profession.
+const PET_TRAINER_ENV = FOREVER_TRAINER_ENV + `
+  Enum.TrainerType = { General = 0, Tradeskills = 2, Pet = 3 }
+  __trainerType = 3
+  C_Trainer = { GetTrainerType = function() return __trainerType end }
+`;
+it("Train all does nothing at a pet trainer: the costs are training points, not gold", () => {
+  const addon = loggedIn(PET_TRAINER_ENV + "__money = 100000");
+  addon.fire("TRAINER_SHOW");
+  addon.eval('ns.GetModule("Errands").trainButton.__scripts.OnClick()');
+  expect(addon.eval("return #__learned"), "no purchase at a pet trainer, however much gold").toBe(0);
+  expect(trainButton(addon), "the button has nothing to train").toMatchObject({ text: "Train all", enabled: false });
+  addon.eval("__trainerType = 0");
+  addon.fire("TRAINER_UPDATE");
+  expect(trainButton(addon).text, "the same list at a class trainer is bought from").toBe("Train all (3)");
+});
+it("Train all skips a profession to take up: the game's own Train button asks first", () => {
+  const addon = loggedIn(PET_TRAINER_ENV + "__money = 100000 __trainerType = 2 GetTrainerServiceCost = function(i) return __services[i][3], __services[i][1] == 'TEST-ONLY Blast' end");
+  addon.fire("TRAINER_SHOW");
+  addon.eval('ns.GetModule("Errands").trainButton.__scripts.OnClick()');
+  expect(addon.eval("return __learned"), "Blast is a profession; the others are learned").toEqual(["TEST-ONLY Bolt", "TEST-ONLY Gust"]);
+});
 // TEST-ONLY merchant stock: 90011 sells singly (5c, stacks of 20), 90012 in fives (40c for 5), 90013 is sold out.
 const STOCK_ENV = `
   __goods = { { id = 90011, price = 5, stack = 1, left = -1, max = 20 }, { id = 90012, price = 40, stack = 5, left = -1, max = 10 }, { id = 90013, price = 1, stack = 1, left = 0, max = 20 } }

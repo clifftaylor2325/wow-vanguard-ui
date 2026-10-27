@@ -69,11 +69,28 @@ end
 -- Narrow enough to sit between the trainer's money line (bottom left) and its Train button.
 ER.TRAIN_WIDTH = 96
 
--- The trainer's services you can learn now, as { index, cost, name }.
+-- Whether the open trainer is the pet's: its costs are training points, not gold, and the game's own
+-- Train button checks the pet's balance.
+local function petTrainer()
+  local get = C_Trainer and C_Trainer.GetTrainerType
+  local pet = type(Enum) == "table" and type(Enum.TrainerType) == "table" and Enum.TrainerType.Pet
+  return type(get) == "function" and pet ~= nil and ns.PlainNumber(get()) == pet
+end
+
+-- Whether service i takes up a profession (GetTrainerServiceCost's second answer): the game's own
+-- Train button asks to confirm that one, and refuses it when both slots are taken.
+local function newProfession(i)
+  local _, isProfession = ask("GetTrainerServiceCost", i)
+  return not ns.IsSecret(isProfession) and isProfession == true
+end
+
+-- The trainer's services you can learn now, as { index, cost, name }; none at a pet trainer, and a new
+-- profession is left to the game's own Train button.
 function ER.Trainable()
   local out = {}
+  if petTrainer() then return out end
   for i = 1, ns.PlainNumber(ask("GetNumTrainerServices")) or 0 do
-    if available(i) then out[#out + 1] = { index = i, cost = ns.PlainNumber(ask("GetTrainerServiceCost", i)) or 0, name = serviceName(i) } end
+    if available(i) and not newProfession(i) then out[#out + 1] = { index = i, cost = ns.PlainNumber(ask("GetTrainerServiceCost", i)) or 0, name = serviceName(i) } end
   end
   return out
 end
