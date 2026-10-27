@@ -33,10 +33,12 @@ local INNER = CARD_WIDTH - 2 * PAD
 local AIR, LINE, JUMP_ABOVE = 6, 20, 40
 -- Height of each row kind (Core/OptionsPreview.lua and modules add theirs with O.AddRowKind): a check, cycle or
 -- slider row is a list row (T.ROW.height); a button row has a standalone button (T.BUTTON_H) with 3 units of air
--- each side; a module row two lines, or taller when its description wraps further.
+-- each side; a module row two lines, or taller when its name or description wraps further (see rowHeight).
 local ROW_HEIGHT = { check = T.ROW.height, cycle = T.ROW.height, slider = T.ROW.height, button = T.BUTTON_H + 6, text = LINE, module = 54 }
 -- Row kinds laid out edge to edge in a card (the rest are indented).
-local FULL_WIDTH = { check = true, cycle = true, slider = true, swatches = true, module = true }
+local FULL_WIDTH = { check = true, cycle = true, slider = true, swatches = true, module = true, profile = true, newprofile = true }
+-- Row kinds that take the height of their wrapped caption (a module row, its description too).
+local GROWS = { check = true, cycle = true, slider = true, module = true }
 -- Where a row kind keeps its setter; the setting's default, if the row has one, comes right after it.
 local SETTER_AT = { check = 4, cycle = 5, slider = 5 }
 
@@ -62,10 +64,13 @@ local function addDescription(r, text, width)
 end
 
 -- Places the own-switch note's box just after the row's reload tag (dressRow adds it once the row is built), or just
--- after the name as it measures now (a font change moves it) while there is no tag yet. The box ends a gap short of
--- the switch, so the note (T.FitText) shrinks, then ends in "..." there (the row's tooltip says it in full).
+-- after the name as it measures now (a font change moves it) while there is no tag yet. Both ends sit on the name's
+-- line (the tag took room from the name, so the right end gives it back): the box ends where the caption's full room
+-- ends, a gap short of the switch, so the note (T.FitText) shrinks, then ends in "..." there (the row's tooltip says it
+-- in full).
 local function placeOwnSwitch(r)
-  r.ownSwitchBox:SetPoint("RIGHT", r.track, "LEFT", -T.SPACE.gap, 0)
+  local room = r.tag and (r.tag:GetStringWidth() + T.SPACE.gap) or 0
+  r.ownSwitchBox:SetPoint("RIGHT", r.label, "RIGHT", room, 0)
   if r.tag then r.ownSwitchBox:SetPoint("LEFT", r.tag, "RIGHT", T.SPACE.gap, 0) return end
   r.ownSwitchBox:SetPoint("LEFT", r.label, "LEFT", r.label:GetStringWidth() + T.SPACE.gap, 0)
 end
@@ -100,8 +105,6 @@ local function moduleRow(parent, row, width)
   r.label:ClearAllPoints()
   r.label:SetPoint("TOPLEFT", T.SPACE.gap, -AIR)
   addDescription(r, row[6], width)
-  r.grownHeight = 2 * AIR + r.label:GetStringHeight() + T.SPACE.tight + r.desc:GetStringHeight()
-  r:SetHeight(math.max(ROW_HEIGHT.module, r.grownHeight))
   addOwnSwitchNote(r, row[7])
   return r
 end
@@ -172,10 +175,12 @@ local BUILDERS = {
   module = moduleRow,
 }
 
--- Adds a row kind: builder(parent, row, width) returns the widget; height is its row height.
-function O.AddRowKind(kind, builder, height)
+-- Adds a row kind: builder(parent, row, width) returns the widget; height is its row height; full (optional) lays it
+-- edge to edge in its card, as a switch is, instead of indented (a kind re-added without it keeps what it had).
+function O.AddRowKind(kind, builder, height, full)
   BUILDERS[kind] = builder
   ROW_HEIGHT[kind] = height
+  if full then FULL_WIDTH[kind] = true end
 end
 
 -- Changed from the default ------------------------------------------------------------------
@@ -372,18 +377,21 @@ local function addCardTitle(card, title)
 end
 
 -- A row's height: its kind's, except a note or a switch with a long caption, which take the height of their wrapped text
--- (with a little air), and a row that grew to fit its parts (w.grownHeight: the visibility chips in lines).
+-- (with a little air), a module row also its description, and a row that grew to fit its parts (w.grownHeight: the
+-- visibility chips in lines).
 local function rowHeight(w, kind)
   if w.grownHeight then return math.max(ROW_HEIGHT[kind] or T.ROW.height, w.grownHeight) end
   if kind == "text" then return math.max(ROW_HEIGHT.text, w:GetStringHeight() + AIR) end
-  if kind == "check" and w.label then return math.max(ROW_HEIGHT.check, w.label:GetStringHeight() + 2 * AIR) end
+  if kind == "module" then return math.max(ROW_HEIGHT.module, 2 * AIR + w.label:GetStringHeight() + T.SPACE.tight + w.desc:GetStringHeight()) end
+  if GROWS[kind] and w.label then return math.max(ROW_HEIGHT[kind], w.label:GetStringHeight() + 2 * AIR) end
   return ROW_HEIGHT[kind] or T.ROW.height
 end
 
--- A row's height, also given to a switch row, so a wrapped caption and its switch centre in the room the row takes.
+-- A row's height, also given to a row that grows with its caption, so the caption and its control centre in the room
+-- the row takes.
 local function placeHeight(w, kind)
   local h = rowHeight(w, kind)
-  if kind == "check" then w:SetHeight(h) end
+  if GROWS[kind] then w:SetHeight(h) end
   return h
 end
 
