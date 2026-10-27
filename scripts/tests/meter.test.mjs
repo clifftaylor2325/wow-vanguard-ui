@@ -460,6 +460,18 @@ it("with the meter module off, the Combat tools Report button is greyed out", ()
   expect(enabled, "nothing to report from: the button can't be pressed").toBe(false);
 });
 
+it("changing the meter's visibility while its panel is off saves the choice without an error, and the panel uses it once it is switched on", () => {
+  const addon = loggedIn(METER_ENV + CLICK_LUA);
+  addon.eval('ns.Options.Show("tools")');
+  expect(addon.eval('return ns.GetModule("Meter").frame == nil'), "the default profile has the module on and the panel not built").toBe(true);
+  expect(addon.eval('return __click("Vanguard meter visibility")'), "the visibility row is on the meter's tab").toBe(true);
+  expect(addon.eval("return #ns.errors"), "choosing a visibility with no panel raises nothing").toBe(0);
+  const chosen = addon.eval('return ns.GetModule("Meter").settings.visibility');
+  expect(chosen, "the choice is saved").not.toBe("always");
+  addon.eval("ns.GetModule('Meter').settings.on = true ns.GetModule('Meter').Refresh()");
+  expect(addon.eval("return { #ns.errors, ns.GetModule('Meter').settings.visibility == " + JSON.stringify(chosen) + ", ns.Visibility.Fades(Vanguard_Meter) }"), "switching the meter on builds the panel with it, fading as On mouseover says").toEqual([0, true, true]);
+});
+
 it("a client without C_ChatInfo.SendChatMessage sends the report through the old SendChatMessage global", () => {
   const addon = loggedIn(FULL_ENV + "C_ChatInfo.SendChatMessage = nil SendChatMessage = function(text, channel) __sent = channel .. ': ' .. text end", METER_ON);
   setLines(addon, "{ { name = 'Tess', amountPerSecond = 300 } }");
