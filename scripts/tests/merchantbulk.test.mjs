@@ -254,6 +254,23 @@ it("a run stops when the merchant closes, combat starts or the gold runs out; on
   expect(bought(addon), "a client without timers buys the chunks one after another").toEqual([[1, 20], [1, 20]]);
 });
 
+it("Stack and Max buy nothing when the row changed item or price under the open quantity window", () => {
+  const addon = loggedIn(BUY_ENV);
+  addon.fire("MERCHANT_SHOW");
+  addon.eval("StackSplitFrame:Show()");
+  addon.eval(`__wfgWorld.items[161] = { name = "TEST-ONLY Elixir", stack = 20 }
+    table.remove(__wfgWorld.merchant.items, 1) table.insert(__wfgWorld.merchant.items, 1, { itemID = 161, name = "TEST-ONLY Elixir", price = 10, stack = 5, maxStack = 20 })`);
+  addon.fire("MERCHANT_UPDATE");
+  press(addon, "stack");
+  expect([bought(addon), chatHas(addon, /Nothing bought: the merchant closed or changed what it sells\./)], "another item moved into the row: nothing bought, and chat says why").toEqual([{}, true]);
+  addon.eval(`__wfgWorld.merchant.items[1] = { itemID = 159, name = "TEST-ONLY Water", price = 20, stack = 5, maxStack = 20 }`);
+  press(addon, "max");
+  expect(bought(addon), "the same item at a new price: nothing bought either").toEqual({});
+  addon.eval("StackSplitFrame:Hide() StackSplitFrame:Show()");
+  press(addon, "stack");
+  expect(bought(addon), "a window opened afterwards reads the new price and buys").toEqual([[1, 20]]);
+});
+
 it("a Buy question answered after the merchant closed, or at another merchant, buys nothing and says so", () => {
   const addon = loggedIn(BUY_ENV);
   addon.fire("MERCHANT_SHOW");
