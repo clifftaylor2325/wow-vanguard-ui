@@ -195,6 +195,14 @@ it("quest dialog: a long reward name takes two lines of its card at Text size 15
   expect(card[0], "the name is no taller than its card").toBeLessThanOrEqual(card[1]);
   expect(addon.textFit("Vanguard_QuestDialog").filter((f) => f.kind !== "more lines than it may draw" && f.kind !== "cut"), "nothing is drawn over the card below or the caption").toEqual([]);
 });
+it("quest dialog: held by its middle near the top of the screen, it grows both ways only as far as the nearer edge allows", () => {
+  const centre = `VanguardDB.profiles = { Default = { positions = { questdialog = { point = "CENTER", relPoint = "CENTER", x = 0, y = 260 } } } }`;
+  const longText = 'GetQuestText = function() return "TEST-ONLY " .. string.rep("A long sentence of quest text. ", 12) end';
+  const addon = loggedIn(QUEST_ENV + `__wfgStub.setScreen(1365, 768) ${longText}`, { savedVariables: centre });
+  addon.fire("QUEST_DETAIL");
+  const [top, bottom, view] = addon.eval("local f = Vanguard_QuestDialog return { f:GetTop(), f:GetBottom(), f.scroll:GetHeight() }");
+  expect([top <= 768, bottom >= 0, view >= 0], "the panel stays on the screen and its text view is never negative").toEqual([true, true, true]);
+});
 it("quest dialog: the header sits at the window inset, the NPC's name in the window title's role and colour, no X, a dialog-opacity panel", () => {
   const addon = loggedIn(QUEST_ENV);
   addon.fire("QUEST_DETAIL");
