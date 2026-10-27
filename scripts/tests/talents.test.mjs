@@ -1,6 +1,7 @@
 // talents: the Talent planner (Modules/TalentPlanner.lua) in the TEST-ONLY headless client.
 
 import { expect, it } from "vitest";
+import { createAddon } from "../lib/lua-harness.mjs";
 import { WINDOWS_ENV, chatHas, isTok, loggedIn } from "./helpers.mjs";
 
 // TEST-ONLY trait API: one tree (1) with two groups, Discipline (10) and Holy (20). Nodes by ID: their group,
@@ -300,3 +301,30 @@ it("talent planner: the summary stops short of the game's Apply Changes button, 
   plain.eval("Vanguard_TalentPlan.summary:SetText('') local t = Vanguard_TalentPlan.tip t:GetScript('OnEnter')(t)");
   expect(plain.eval("return GameTooltip:IsShown()"), "no summary (a client without the trait API): no tooltip").toBe(false);
 });
+
+// The planner bar opened in a language at a Text size, in the text-fit client (the fonts' real widths and the real translations).
+function barIn(locale, textScale) {
+  const saved = `VanguardDB = { version = 2, profiles = { Default = { theme = { textScale = ${textScale} } } }, setupDone = true }\nVanguardCharDB = {}\n`;
+  const addon = createAddon({ savedVariables: saved, textFit: true, client: `GetLocale = function() return "${locale}" end` });
+  addon.eval(TRAITS_ENV + WINDOW_ENV);
+  addon.login();
+  addon.eval("__open()");
+  addon.update(0.01);
+  return addon;
+}
+
+for (const [locale, textScale] of [["frFR", 1], ["frFR", 1.3], ["deDE", 1.3]]) {
+  it(`talent planner: in ${locale} at Text size ${textScale * 100}% the Plan caption is one line (B7-1)`, () => {
+    const addon = barIn(locale, textScale);
+    const [labelHeight, barHeight] = addon.eval("return { Vanguard_TalentPlan.plan.label:GetStringHeight(), Vanguard_TalentPlan:GetHeight() }");
+    expect(labelHeight, "the Plan caption is one line: shorter than the 24-tall bar, which two lines fill").toBeLessThan(barHeight);
+  });
+}
+
+for (const [locale, textScale] of [["deDE", 1.3], ["esES", 1.3], ["ruRU", 1], ["ruRU", 1.3]]) {
+  it(`talent planner: in ${locale} at Text size ${textScale * 100}% Spend planned shows its whole label (B7-2)`, () => {
+    const addon = barIn(locale, textScale);
+    const [natural, room] = addon.eval("local b = Vanguard_TalentPlan.spend return { ns.Theme.FullWidth(b.text), b:GetWidth() - 2 * ns.Theme.SPACE.gap }");
+    expect(natural, "the label at full size fits inside the button").toBeLessThanOrEqual(room + 1e-6);
+  });
+}

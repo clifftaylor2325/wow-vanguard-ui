@@ -145,6 +145,17 @@ it("motion: a pressed button goes one shade darker and drops its label a pixel, 
   expect(addon.eval("return { ns.Theme.PressOverlay(TEST_Protected):IsShown(), TEST_Protected.text.__points.CENTER.y }"), "a protected button darkens but keeps its label still; an unthemed one is left alone").toEqual([true, 0]);
 });
 
+it("motion: a primary button's press shade sits above its accent fill and its hover fill (B1-3)", () => {
+  const addon = loggedIn(PRESS_BUTTON.replace("ns.Theme.Button(b)", 'ns.Theme.Button(b, "primary")'));
+  const levels = addon.eval(`local out = {}
+    for _, w in ipairs(__wfgStub.frames) do
+      if w.__parent == TEST_Press and w.__kind == "Texture" and w.__layer == "BACKGROUND" and w ~= ns.Theme.PressOverlay(TEST_Press) then out[#out + 1] = w.__sublevel or 0 end
+    end
+    return { select(2, ns.Theme.PressOverlay(TEST_Press):GetDrawLayer()), out }`);
+  expect(levels[1].length, "the accent and hover fills are there").toBeGreaterThanOrEqual(2);
+  expect(levels[0], "the shade is above every other background part").toBeGreaterThan(Math.max(...levels[1]));
+});
+
 it("motion: a disabled button's label goes to the disabled tier with no hover, and gets its colour back when enabled (#257)", () => {
   const addon = loggedIn(FAKE_FADES + PRESS_BUTTON);
   // TEST_Press's label colour, as rgb.

@@ -461,6 +461,13 @@ local function addTopLine(b)
   b.topLine:Hide()
 end
 
+-- Pins the health bar one screen pixel in from the tile's edge, at the grid's scale now.
+local function placeInset(b)
+  local px = T.Pixel(b)
+  b.health:SetPoint("TOPLEFT", px, -px)
+  b.health:SetPoint("BOTTOMRIGHT", -px, px)
+end
+
 -- Lays a tile's texts out in its zones: where the name stops, the status
 -- line's spot, width, justification and size, and the top line one screen
 -- pixel tall at the grid's scale. Again whenever that scale changes.
@@ -485,10 +492,13 @@ local function addTexts(b, z)
   placeTexts(b, z)
 end
 
--- Lays every tile's texts out again for the grid's current scale (out of combat).
+-- Lays every tile's health inset and texts out again for the grid's current scale (out of combat).
 function RF.PlaceAllTexts()
   local z = RF.TileZones()
-  for _, b in ipairs(RF.buttons) do placeTexts(b, z) end
+  for _, b in ipairs(RF.buttons) do
+    placeInset(b)
+    placeTexts(b, z)
+  end
 end
 
 -- The layer above everything on the tile (auras included) for marks, and a
@@ -523,10 +533,8 @@ end
 -- The health bar filling the button, with its texts, power bar and overlay.
 local function addParts(b)
   local z = RF.TileZones()
-  local px = T.Pixel(b)
   b.health = T.StyleBar(CreateFrame("StatusBar", nil, b))
-  b.health:SetPoint("TOPLEFT", px, -px)
-  b.health:SetPoint("BOTTOMRIGHT", -px, px)
+  placeInset(b)
   addTextLayer(b)
   addTexts(b, z)
   addPower(b)
@@ -737,6 +745,13 @@ local function headerPoint()
 end
 RF.HeaderPoint = headerPoint
 
+-- Sets the grid's scale; when it changed, borders and pixel sizes are worked out again for it.
+local function scaleHeader()
+  if RF.header:GetScale() == RF.tileScale then return end
+  RF.header:SetScale(RF.tileScale)
+  T.Rescale()
+end
+
 -- Scales the grid to the group's size, pins it to the holder and lays the
 -- tiles' texts out for that scale (out of combat).
 function RF.Fit()
@@ -745,7 +760,7 @@ function RF.Fit()
   ns.OutOfCombat(function()
     RF.tileScale = RF.Scale(n or 0)
     RF.Arrange(n or 0)
-    RF.header:SetScale(RF.tileScale)
+    scaleHeader()
     RF.header:ClearAllPoints()
     RF.header:SetPoint(headerPoint(), RF.holder, headerPoint())
     RF.PlaceAllTexts()

@@ -410,12 +410,20 @@ local function addTexts(b)
   T.Color(b.hotkey, "text2")
 end
 
--- The client's cooldown numbers in the theme's font (they show when the game's
--- "Show numbers for cooldowns" option is on), not for the last second and a half.
-local function themeCountdown(cd)
-  local fs = ns.Client.Has("countdownText") and cd:GetCountdownFontString()
-  if fs then T.Text(fs, "cooldown", "white") end
+-- The client's cooldown numbers keep off the last second and a half.
+local function skipShortCountdown(cd)
   if ns.Client.Has("cooldownMin") then cd:SetMinimumCountdownDuration(1500) end
+end
+
+-- A button under this many units wide gets the aura timers' small countdown font: the plain one is
+-- wider than its icon with minute values.
+AB.SMALL_BUTTON = 30
+
+-- The client's cooldown numbers on a button in the theme's font (they show when the game's "Show numbers
+-- for cooldowns" option is on), sized to the button: the small timer font on a small one.
+function AB.ThemeCountdown(b, size)
+  local fs = ns.Client.Has("countdownText") and b.cooldown:GetCountdownFontString()
+  if fs then T.Text(fs, size < AB.SMALL_BUTTON and "auraTimerSmall" or "cooldown", "white") end
 end
 
 -- The icon, count, hotkey, cooldown and checked highlight on a button.
@@ -424,7 +432,7 @@ local function addRegions(b)
   addTexts(b)
   b.cooldown = CreateFrame("Cooldown", nil, b, "CooldownFrameTemplate")
   b.cooldown:SetAllPoints(b.icon)
-  themeCountdown(b.cooldown)
+  skipShortCountdown(b.cooldown)
   b.glow = T.Glow(b, 6)
   b:SetCheckedTexture(T.WHITE)
   T.Tint(b:GetCheckedTexture(), "checked")
@@ -520,6 +528,19 @@ local function barWidth(settings, barSettings, k)
   return (columns * (size + gap) - gap) * ns.MoverLook("bar" .. k)
 end
 
+-- Half of bar 1's width in UIParent's units (0 while bar 1 is off or the module is): the vehicle exit button
+-- sits beside it.
+function AB.Bar1HalfWidth()
+  local bar1 = AB.settings and AB.settings.bars[1]
+  if not (bar1 and bar1.enabled) then return 0 end
+  return barWidth(AB.settings, bar1, 1) / 2
+end
+
+-- Moves the vehicle exit button's default spot to clear bar 1's current width.
+local function fitVehicleExit()
+  ns.GetModule("SpecialBars").FitExit(AB.Bar1HalfWidth())
+end
+
 -- The room between the right-edge bars and the screen's edge, and between the two.
 AB.RIGHT_GAP = 4
 
@@ -578,6 +599,7 @@ function AB.Restack()
   for n in pairs(AB.bars) do restackBar(n) end
   AB.stackedTop = AB.StackTop(AB.settings)
   ns.GetModule("CastBars").FitPlayer()
+  fitVehicleExit()
 end
 
 -- Re-stacks after a scale change only what the bars' new rounded heights moved, the cast bar following
@@ -587,6 +609,7 @@ end
 function AB.RestackMoved()
   if not AB.settings then return end
   for n in pairs(AB.bars) do restackBar(n) end
+  fitVehicleExit()
   local top = AB.StackTop(AB.settings)
   if top == AB.stackedTop then return end
   AB.stackedTop = top

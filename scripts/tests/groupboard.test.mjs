@@ -3,7 +3,8 @@
 // chat on one board by dungeon, role and level; a click opens a whisper that the player sends.
 
 import { expect, it } from "vitest";
-import { CLICK_LUA, chatHas, isTok, loggedIn } from "./helpers.mjs";
+import { createAddon } from "../lib/lua-harness.mjs";
+import { CLICK_LUA, SETUP_DONE, chatHas, isTok, loggedIn } from "./helpers.mjs";
 import { alphaOf, closeOf, escapes, insets, pressEscape, titleOf } from "./dialogs.mjs";
 
 // TEST-ONLY whisper calls, recorded: the game's whisper-with-message call and the plain one.
@@ -69,6 +70,23 @@ it("group board: the board lists each sender's latest post, newest first, with i
   addon.update(0);
   expect(rows(addon)[0], "the sender's new post replaces the old one, on top").toEqual(["LFM", "Shadowfang Keep 22-30", "Tank", "Lightmend", "now"]);
   expect(addon.eval("return #ns.GetModule('GroupBoard').entries"), "three senders").toBe(3);
+});
+
+it("group board: a fresh post's age fits its cell in French ('maintenant'), and each cell ends before the next starts", () => {
+  const addon = createAddon({ textFit: true, client: '__wfgWorld.locale = "frFR"', savedVariables: SETUP_DONE });
+  addon.eval(WHISPER_ENV + CLICK_LUA);
+  addon.login();
+  addon.eval("__wfgWorld.units.player.level = 24");
+  post(addon, "LFG WC dps", "Rogue");
+  addon.slash("lfg");
+  const cells = addon.eval(`local b, out = Vanguard_GroupBoard.rows[1], {}
+    for i, name in ipairs({ "kind", "dungeon", "roles", "sender", "age" }) do
+      local fs = b[name] out[i] = { fs:GetText(), fs:GetUnboundedStringWidth(), fs:GetWidth(), fs:GetLeft(), fs:GetRight() }
+    end
+    return out`);
+  expect(cells[4][0], "the age reads 'maintenant'").toBe("maintenant");
+  expect(cells[4][1], "and fits its cell").toBeLessThanOrEqual(cells[4][2]);
+  for (let i = 1; i < cells.length; i++) expect(cells[i - 1][4], `cell ${i} ends before cell ${i + 1}`).toBeLessThanOrEqual(cells[i][3]);
 });
 
 it("group board: hidden chat, your own lines and channels you don't read are skipped", () => {

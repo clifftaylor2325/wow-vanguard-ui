@@ -1348,3 +1348,31 @@ it("theme: a fitted label (every dialog button's) shrinks to fit its button, no 
   expect(scale("__b:SetWidth(600) __b.__scripts.OnSizeChanged(__b, 600, 26)"), "a wider button gives it its size back").toBe(1);
   expect(scale("__b:SetWidth(120) ns.Theme.RefreshText()"), "a text size change fits it again").toBe(floor);
 });
+
+it("a button disabled and enabled again keeps its colour token: its label follows a variant change and a primary's has no shadow (B1-2)", () => {
+  const addon = loggedIn();
+  addon.eval(`
+    local function make(kind)
+      local b = ns.DialogButton(CreateFrame("Button", nil, UIParent), "Go", 100, kind)
+      b:Disable() b:Enable()
+      return b
+    end
+    TEST_Plain, TEST_Primary = make(), make("primary")`);
+  addon.eval('ns.Theme.Settings().variant = "vellum" ns.Theme.Refresh()');
+  const vellumText = tok(addon, "text").slice(0, 3);
+  expect(addon.eval("return { TEST_Plain.text:GetTextColor() }").slice(0, 3), "the label follows the variant's text").toEqual(vellumText);
+  expect(addon.eval("return TEST_Primary.text.__shadowColor[4]"), "a primary's void label has no shadow after the cycle").toBe(0);
+  expect(addon.eval("return ns.Theme.ColorToken(TEST_Plain.text)"), "the token is remembered again").toBe("text");
+});
+
+it("a selected row's rail is sized again after a UI scale change, two screen pixels wide (B1-4)", () => {
+  const addon = loggedIn("GetPhysicalScreenSize = function() return 2560, 1440 end");
+  addon.eval(`TEST_Row = ns.Widgets.Row(CreateFrame("Frame", nil, UIParent), nil, { width = 300 }) ns.Theme.SelectRow(TEST_Row, true)`);
+  // The rail's width in screen pixels now.
+  const railPixels = () => addon.eval("return ns.Theme.RowParts(TEST_Row).rail:GetWidth() * TEST_Row:GetEffectiveScale() * 1440 / 768");
+  expect(railPixels(), "two pixels at UI scale 1").toBeCloseTo(2, 9);
+  addon.eval("UIParent:SetScale(0.533)");
+  addon.fire("UI_SCALE_CHANGED");
+  addon.update(0.1);
+  expect(railPixels(), "still two pixels after the UI scale drops").toBeCloseTo(2, 9);
+});

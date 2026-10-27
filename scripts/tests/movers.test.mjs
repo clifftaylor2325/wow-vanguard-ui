@@ -120,21 +120,33 @@ it("per-frame scale: dragging a scaled handle, and combat", () => {
   addon.slash("unlock");
   addon.slash("snap off");
   addon.eval('for _, w in ipairs(__wfgStub.frames) do if w.mover and w.mover.key == "box" then __h = w end end');
-  expect(addon.eval("return { __h:GetScale(), __h:GetWidth() }"), "the handle takes the frame's scale and size").toEqual([2, 200]);
+  expect(addon.eval("return { __h:GetScale(), __h:GetWidth(), __h:GetHeight() }"), "the handle stays at UIParent's scale, as big as the frame is on screen").toEqual([1, 400, 80]);
   addon.eval('__h:GetScript("OnDragStart")(__h) __h:ClearAllPoints() __h:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 10, -20) __h:GetScript("OnDragStop")(__h)');
-  expect(addon.eval("return { ns.MoverPoint('box') }"), "a drop is saved in screen units (twice the handle's own)").toEqual(["TOPLEFT", "TOPLEFT", 20, -40]);
-  expect([addon.frame("TESTONLY_Box").rect.left, addon.frame("TESTONLY_Box").rect.top], "and the frame lands where the handle was dropped").toEqual([20, 1040]);
+  expect(addon.eval("return { ns.MoverPoint('box') }"), "a drop is saved as dropped").toEqual(["TOPLEFT", "TOPLEFT", 10, -20]);
+  expect([addon.frame("TESTONLY_Box").rect.left, addon.frame("TESTONLY_Box").rect.top], "and the frame lands where the handle was dropped").toEqual([10, 1060]);
   addon.eval("__h.GetLeft = function() return nil end");
   addon.eval('__h:GetScript("OnDragStart")(__h) __h:ClearAllPoints() __h:SetPoint("TOP", UIParent, "TOP", 5, -10) __h:GetScript("OnDragStop")(__h)');
-  expect(addon.eval("return { ns.MoverPoint('box') }"), "without geometry, the client's point is scaled to screen units too").toEqual(["TOP", "TOP", 10, -20]);
+  expect(addon.eval("return { ns.MoverPoint('box') }"), "without geometry, the client's point is saved as it is").toEqual(["TOP", "TOP", 5, -10]);
   addon.eval('ns.SetMoverScale("box", 1.5)');
-  expect(addon.eval("return __h:GetScale()"), "a new scale rescales the handle").toBe(1.5);
+  expect(addon.eval("return { __h:GetScale(), __h:GetWidth() }"), "a new scale resizes the handle, not rescales it").toEqual([1, 300]);
   addon.slash("lock");
   setCombat(addon, true);
   addon.eval('ns.SetMoverScale("box", 0.5)');
   expect([addon.eval("return __box:GetScale()"), addon.eval("return (ns.MoverLook('box'))")], "in combat the scale is saved and waits").toEqual([1.5, 0.5]);
   setCombat(addon, false);
   expect(addon.eval("return __box:GetScale()"), "and applies when combat ends").toBe(0.5);
+});
+
+it("handles stay readable and grabbable at any Scale %: their label keeps its size and a thin frame's handle its 40 x 14 minimum", () => {
+  const addon = loggedIn(BOX + "__thin = CreateFrame('Frame', 'TESTONLY_Thin', UIParent) __thin:SetSize(240, 10) ns.Mover(__thin, 'thin', 'TEST-ONLY thin', { 'BOTTOM', 'BOTTOM', 0, 300 })");
+  addon.eval('ns.SetMoverScale("box", 0.5) ns.SetMoverScale("thin", 0.5)');
+  addon.slash("unlock");
+  // A handle's scale against UIParent's, its width and height, and its label's scale against UIParent's.
+  const handle = (key) => addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.mover and w.mover.key == "${key}" then return { w:GetEffectiveScale() / UIParent:GetEffectiveScale(), w:GetWidth(), w:GetHeight(), w.label:GetEffectiveScale() / UIParent:GetEffectiveScale() } end end`);
+  expect(handle("box"), "50%: drawn at UIParent's scale, as big as the frame is on screen (100 x 20), the label at full size").toEqual([1, 100, 20, 1]);
+  expect(handle("thin"), "a 120 x 5 frame's handle is still 120 wide and at least 14 tall").toEqual([1, 120, 14, 1]);
+  addon.eval('ns.SetMoverScale("box", 2)');
+  expect(handle("box"), "200%: the label is not doubled").toEqual([1, 400, 80, 1]);
 });
 
 it("a damaged saved position (a hand-edited profile string) falls back to the default spot instead of failing the module", () => {
@@ -419,4 +431,40 @@ it("a mover's frame is kept on the screen, so a spot saved on a wider screen can
   expect(addon.eval("return __f.__testClamped"), "clamped when it is placed").toBe(true);
   addon.eval("__f.__testClamped = nil ns.SetMoverPoint('box', 'LEFT', 'LEFT', 1150, 0)");
   expect(addon.eval("return __f.__testClamped"), "and again when it moves").toBe(true);
+});
+
+it("a canvas change while playing works the unsaved default spots out again, as a fresh login on that canvas would", () => {
+  const meterOn = { savedVariables: "VanguardDB.profiles = { Default = { Meter = { on = true } } }" };
+  const env = "Enum.DamageMeterSessionType = { Current = 1 } Enum.DamageMeterType = { Dps = 1, Hps = 3 }\n";
+  // The target of target's and the meter's rectangles.
+  const rects = (addon) => ["Vanguard_targettarget", "Vanguard_Meter"].map((name) => rectOf(addon, name));
+  const resize = (addon, w, h) => { addon.eval(`__wfgStub.setScreen(${w}, ${h})`); addon.fire("UI_SCALE_CHANGED"); addon.fire("DISPLAY_SIZE_CHANGED"); addon.advance(1); };
+  const addon = loggedIn(env, meterOn);
+  resize(addon, 1229, 768);
+  expect(rects(addon), "1920 down to 1229 wide: where a login at 1229 puts them").toEqual(rects(loggedIn(env + "__wfgStub.setScreen(1229, 768)", meterOn)));
+  expect(addon.eval("return { ns.MoverPoint('uf_targettarget') }"), "the narrow spot over the target's cast bar").toEqual(["BOTTOM", "BOTTOM", 180, 280]);
+  resize(addon, 1920, 1080);
+  expect(rects(addon), "and back up: the wide spots again").toEqual(rects(loggedIn(env, meterOn)));
+  addon.eval("ns.SetMoverPoint('uf_targettarget', 'TOPLEFT', 'TOPLEFT', 50, -50)");
+  resize(addon, 1229, 768);
+  const [left, bottom, , height] = rectOf(addon, "Vanguard_targettarget");
+  expect([left, bottom + height], "a spot you saved stays 50 in from the top left corner, not moved to a default").toEqual([50, 718]);
+});
+
+it("the position popover opens on the side of a handle that has room, so it never covers the handle it belongs to", () => {
+  const addon = loggedIn("__wfgStub.setScreen(1365, 768)");
+  addon.slash("unlock");
+  // Right-clicks a mover's handle, as the player does, and gives the handle's and the popover's rects.
+  const open = (key) => {
+    addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.mover and w.mover.key == "${key}" then w:GetScript("OnMouseDown")(w, "RightButton") end end`);
+    const handle = addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.mover and w.mover.key == "${key}" then return { w:GetLeft(), w:GetRight() } end end`);
+    const popover = addon.frame("Vanguard_MoverPopover").rect;
+    return { handleLeft: handle[0], handleRight: handle[1], left: popover.left, right: popover.left + popover.width };
+  };
+  const minimap = open("minimap");
+  expect(minimap.right, "a right-edge frame: the popover ends at its handle's left edge").toBeLessThanOrEqual(minimap.handleLeft);
+  expect(minimap.left, "and starts on the screen").toBeGreaterThanOrEqual(0);
+  const chat = open("chat");
+  expect(chat.left, "a frame with room on its right: the popover starts right of its handle, as before").toBeGreaterThanOrEqual(chat.handleRight);
+  expect(chat.right, "and stays on the screen").toBeLessThanOrEqual(1365);
 });

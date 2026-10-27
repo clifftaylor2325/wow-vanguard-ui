@@ -13,37 +13,56 @@ local T, W = ns.Theme, ns.Widgets
 local WIDTH, HEIGHT = 420, 440
 -- The width of a switch row, which is the list's: the panel less its insets and the thumb's gutter.
 local ROW_WIDTH = WIDTH - 2 * T.SPACE.pad - T.SPACE.col
--- The width of the All and None buttons (the foot's two small ones; Cancel and Export take the standard 120).
+-- The least width of the All and None buttons (the foot's two small ones, which widen to a longer label; Cancel and
+-- Export take the standard 120).
 local SMALL_BUTTON = 60
 local TITLE = L["Export: what to include"]
 local panel
 
--- What the panel calls a part: a group part's label, else the module's name.
+-- What the panel calls a part: a group part's label, else the module's name as the Modules page shows it (its key
+-- when it has none).
 local function partLabel(part)
-  return ns.PART_LABELS[part] or part
+  return ns.PART_LABELS[part] or (ns.Options.MODULE_INFO[part] or {})[1] or part
 end
 
 -- The switch for the panel's i-th part, made once and reused as the parts change.
 local function partRow(i)
   if panel.rows[i] then return panel.rows[i] end
   local r = W.Check(panel.list, "", function() return panel.on[panel.parts[i]] end, function(on) panel.on[panel.parts[i]] = on end, ROW_WIDTH)
-  r:SetPoint("TOPLEFT", 0, -(i - 1) * T.ROW.height)
   panel.rows[i] = r
   return r
 end
 
--- Fills the panel with a switch for each part of the active profile, every one on.
+-- Anchors the i-th switch under the one above it (the first at the list's top).
+local function anchorRow(i, r)
+  r:ClearAllPoints()
+  if i == 1 then
+    r:SetPoint("TOPLEFT", 0, 0)
+  else
+    r:SetPoint("TOPLEFT", panel.rows[i - 1], "BOTTOMLEFT", 0, 0)
+  end
+end
+
+-- Sets up the i-th switch for its part (named, on, as tall as its caption); returns its height.
+local function placeRow(i, part)
+  local r = partRow(i)
+  r.label:SetText(partLabel(part))
+  anchorRow(i, r)
+  r:Show()
+  r:Refresh()
+  return W.GrowRow(r)
+end
+
+-- Fills the panel with a switch for each part of the active profile, every one on, stacked by their heights.
 local function fill()
   panel.parts, panel.on = ns.ProfileParts(), {}
+  local total = 0
   for i, part in ipairs(panel.parts) do
     panel.on[part] = true
-    local r = partRow(i)
-    r.label:SetText(partLabel(part))
-    r:Show()
-    r:Refresh()
+    total = total + placeRow(i, part)
   end
   for i = #panel.parts + 1, #panel.rows do panel.rows[i]:Hide() end
-  panel.view:Fit(#panel.parts * T.ROW.height)
+  panel.view:Fit(total)
 end
 
 -- Turns every switch on or off.
@@ -87,9 +106,9 @@ local function addButtons(f)
   f.export:SetPoint("BOTTOMRIGHT", -T.SPACE.pad, T.SPACE.pad)
   f.cancel = W.Button(f, L["Cancel"], function() f:Hide() end)
   f.cancel:SetPoint("RIGHT", f.export, "LEFT", -T.SPACE.gap, 0)
-  f.all = W.Button(f, L["All"], function() setAll(true) end, SMALL_BUTTON)
+  f.all = ns.WidenToLabel(W.Button(f, L["All"], function() setAll(true) end, SMALL_BUTTON))
   f.all:SetPoint("BOTTOMLEFT", T.SPACE.pad, T.SPACE.pad)
-  f.none = W.Button(f, L["None"], function() setAll(false) end, SMALL_BUTTON)
+  f.none = ns.WidenToLabel(W.Button(f, L["None"], function() setAll(false) end, SMALL_BUTTON))
   f.none:SetPoint("LEFT", f.all, "RIGHT", T.SPACE.gap, 0)
 end
 

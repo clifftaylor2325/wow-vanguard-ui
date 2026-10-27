@@ -114,12 +114,7 @@ end
 -- narrower one a big raid's grid reaches that corner (RaidFrames keeps its left edge at 148), so the panel sits at
 -- the right instead: left of the minimap (206 in from the edge) and under your buffs.
 GT.SPOT, GT.SPOT_NARROW, GT.NARROW = { "TOPLEFT", "TOPLEFT", 20, -186 }, { "TOPRIGHT", "TOPRIGHT", -206, -130 }, 1365
-
--- The default spot on a canvas `width` wide (the left spot when the canvas size is not known).
-function GT.SpotFor(width)
-  if type(width) ~= "number" or width <= 0 or width >= GT.NARROW then return GT.SPOT end
-  return GT.SPOT_NARROW
-end
+GT.SPOT.narrow = { w = GT.NARROW, spot = GT.SPOT_NARROW }
 
 -- The movable panel, hidden until there is something to show.
 local function build()
@@ -128,7 +123,7 @@ local function build()
   f.rows = {}
   f:Hide()
   GT.panel = f
-  ns.Mover(f, "groupthreat", L["Group threat"], GT.SpotFor(UIParent:GetWidth()))
+  ns.Mover(f, "groupthreat", L["Group threat"], GT.SPOT)
 end
 
 -- Module entry point (Core/Modules.lua): built, and listening, only when switched on.

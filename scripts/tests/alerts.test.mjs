@@ -34,6 +34,16 @@ it("game alerts: on a canvas under 962 wide the talking head moves left, clear o
   expect(at(1024, 768), "1024 wide: 186 in from the left, as before, clear of the minimap").toEqual([186, true]);
   expect(at(835, 668), "835 wide: moved left until it clears the minimap's column").toEqual([835 - 206 - 570, true]);
 });
+it("game alerts: at a larger Text size the talking head keeps clear of the wider info strip, also when the size changes while playing", () => {
+  // Whether the talking head's spot ends before the info strip's left edge.
+  const clear = (addon) => addon.eval("return Vanguard_TalkingHeadFrameSpot:GetRight() <= Vanguard_InfoStrip:GetLeft()");
+  const addon = loggedIn(ALERTS_ENV + "__wfgStub.setScreen(835, 668)");
+  expect(clear(addon), "100%: clear, as before").toBe(true);
+  addon.eval("ns.Theme.Settings().textScale = 1.3 ns.Theme.Refresh()");
+  expect(clear(addon), "130% set while playing: the spot moves left with the strip's width").toBe(true);
+  const later = loggedIn(ALERTS_ENV + "__wfgStub.setScreen(835, 668) ns.Theme.Settings().textScale = 1.3 ns.Theme.Refresh()");
+  expect(clear(later), "130% from the login: clear too").toBe(true);
+});
 it("game alerts: loss of control and the talking head, styled and placed (or hidden)", () => {
   const addon = loggedIn(ALERTS_ENV);
   const loc = addon.eval(`local f = LossOfControlFrame
