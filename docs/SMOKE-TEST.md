@@ -2518,8 +2518,8 @@ The order is the order to play in: looks you can check quickly first, then the g
 
 ### 33.58 Auction toolbars and lists in a long language, and the mail panel's + Add
 
-- Do: set the game's language to German, Russian or Portuguese. Open the auction house on the Posting tab and look at the Your auctions toolbar (after Check undercuts, so its line shows "3 undercut"); open the Lists tab and look at the pane's buttons, then right-click a list item → Filters... and look at the Quality row. Open a mailbox with Mail tools on and look at + Add with no, one, two and three presets.
-- Expect: Check undercuts is as wide as its label; Cancel next undercut takes the room between the line beside the heading and Check undercuts, its label shrinking a little in a long language, never over the line; the Lists pane's six buttons are two to a row in three rows and show Umbenennen, Переименовать and Копировать whole; the pane lists two fewer entries than before; the filter dialog is a little wider and "Quality" is one line beside its dropdown; + Add shows its whole label in every place along the mail panel's bottom (the preset buttons are a little narrower) and stays inside the panel. [Needs in-game check: all of it.]
+- Do: set the game's language to German, Russian or Portuguese. Open the auction house on the Posting tab and look at the Your auctions toolbar (after Check undercuts, so its heading reads like "Your auctions 12 · 3 undercut"); open the Lists tab and look at the pane's buttons, then right-click a list item → Filters... and look at the Quality row. Open a mailbox with Mail tools on and look at + Add with no, one, two and three presets.
+- Expect: Check undercuts and Cancel next undercut are each as wide as their labels, never cut; the count in the heading ("12 · 3 undercut") takes the room they leave, shrinking and ending in "..." in a long language, never over a button; the Lists pane's six buttons are two to a row in three rows and show Umbenennen, Переименовать and Копировать whole; the pane lists two fewer entries than before; the filter dialog is a little wider and "Quality" is one line beside its dropdown; + Add shows its whole label in every place along the mail panel's bottom (the preset buttons are a little narrower) and stays inside the panel. [Needs in-game check: all of it.]
 - If it fails, paste: a screenshot of the toolbar, pane, dialog or panel, the game's language, and `/vg errors`.
 
 ### 33.59 A held primary button darkens
@@ -2624,6 +2624,42 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: each pin's gold "!" sits on a small square whose edge stays one crisp pixel at every zoom, the same size throughout. [Needs in-game check: the client's real canvas scales and how the edge looks at them.]
 - If it fails, paste: a screenshot of the pins zoomed in and out, and `/vg errors`.
 
+### 33.76 Scroll lists' soft edges over a panel texture
+
+- Do: General → Look → Panel texture "Carved stone" (then "Fine grain"); open the options window on a long page and scroll it a little down, then look at the strip under the header and over the bottom edge; do the same in What's new and the quest log.
+- Expect: the fade at each scrolled end blends into the window; no plainer, darker, untextured band about 24 units tall stands out from the textured panel beside it. [Needs in-game check: the harness can't composite alpha. If the band shows clearly, turn the soft edges off while a texture is drawn (B1-9 option a).]
+- If it fails, paste: a screenshot of the options window scrolled, with the texture name, and `/vg errors`.
+
+### 33.77 Meter on: target of target, tooltip corner and quest tracker at 1365 to 1833 wide
+
+- Do: turn the Vanguard meter on (`/vg meter on`) at 1365x768, then at 1920x1080 at UI scale 1 (1440 wide or 1600 wide if you have it), with a target and a target of target, a quest tracker with a few quests, and a unit tooltip showing in its corner; turn the meter off and on again.
+- Expect: under 1838 wide target of target sits over the target's cast bar and the meter (bottom right, above the bags and menu bar) does not cover it; with the meter off target of target goes back to its spot outside the target at 1600 and wider. [Needs in-game check: the meter still meets the tooltip corner and the foot of the quest tracker at 1365 (the harness measured only target of target); say which draws on top.]
+- If it fails, paste: a screenshot at 1365x768 with the meter on, and `/vg errors`.
+
+### 33.78 Shaman totems above the player frame, chat tiles clickable
+
+- Do: on a shaman with Class bars on, at 1365x768 (or 1440x900) with the default chat, drop a totem or two, then click the chat's Find and Copy tiles at the right end of its tab bar, and right-click a totem to destroy it.
+- Expect: the totem row stands just above the player frame, over its left half, clear of the chat's tab bar and the Find and Copy tiles; both tiles open on a click and the right-click still destroys a totem; the cast bar, raid mark and pet frame are not covered by the row. [Needs in-game check: that nothing of the real client (the player's raid mark, the lifted cast bar) meets the row, and the Versus deck's top border.]
+- If it fails, paste: a screenshot of the player frame and chat with totems down, and `/vg errors`.
+
+### 33.79 Aura icons: timer at the bottom, stack count top right, smaller type badge
+
+- Do: get a Magic, Curse, Disease or Poison debuff on yourself with timers on (the default for your own debuffs) and look at its icon; then look at a stacking debuff (Sunder Armor x5) on an enemy nameplate target at Text size 100% and 130%; also a buff with a timer on your player frame's row.
+- Expect: the timer digits sit on the icon's bottom edge, the stack count in its top right corner, and the small type letter in the top left corner is unhidden by either; on the 18-unit nameplate icons the count and the timer may still touch at 115% and up. [Needs in-game check: how much of the letter glyph and the digits is readable, and that the fallback icons' countdown numbers (made while in combat) also sit on the bottom edge.]
+- If it fails, paste: a screenshot of the icons at Text size 100% and 130%, and `/vg errors`.
+
+### 33.80 Round minimap: info strip and quest tracker under its band
+
+- Do: pick the Classic look (General → Look → Theme variant), reload, and look at the minimap's top right corner on 1365x768 and 1920x1080; then set Minimap shape to Square and reload again.
+- Expect: with the round map, the info strip starts below the map's bottom band (the coordinates text sits clear of the durability row) and the quest tracker follows under the strip; with the square map the strip sits right under the map as before. [Needs in-game check: the real round map's bottom band against the strip's first row.]
+- If it fails, paste: a screenshot of the minimap and strip, and `/vg errors`.
+
+### 33.81 Loss of control against the talking head on a 768-tall screen
+
+- Do: at 1365x768, get stunned or feared (a duel, a mob) while a talking head line plays (a quest giver's or an event's), and look at where the two panels meet; with `/vg unlock` note which of the loss-of-control and talking head handles is on top.
+- Expect: the loss-of-control panel (a little above your character) and the talking head (top left) touch by about 22 units and neither one's text is cut off. Which one draws on top is the thing to report: if the talking head covers the loss-of-control text, raise Loss of control's strata in `Modules/GameAlerts.lua`; if loss of control is already on top, leave it as it is. [Needs in-game check: the draw order of the two game frames, which the harness does not have.]
+- If it fails, paste: a screenshot of both panels, which one was on top, and `/vg errors`.
+
 ### 33.82 Chat spot: the typing box on screen, a narrower chat on small screens
 
 - Do: with a fresh profile (or `/vg reset chat`), press Enter in the main chat and type a few letters; then `/vg unlock` and drag the chat to the bottom-left corner and the bottom-right corner. On a small screen (1280x800 at the game's UI scale, 1024x768) log in on a new character and look at the chat beside action bar 1.
@@ -2660,41 +2696,23 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: the button reads "Não rastrear" and "Не следить" whole, with nothing cut at the default Text size.
 - If it fails, paste: a screenshot of the quest log's buttons.
 
-### 33.76 Scroll lists' soft edges over a panel texture
+### 33.88 Posting guide steps wrap at larger Text sizes
 
-- Do: General → Look → Panel texture "Carved stone" (then "Fine grain"); open the options window on a long page and scroll it a little down, then look at the strip under the header and over the bottom edge; do the same in What's new and the quest log.
-- Expect: the fade at each scrolled end blends into the window; no plainer, darker, untextured band about 24 units tall stands out from the textured panel beside it. [Needs in-game check: the harness can't composite alpha. If the band shows clearly, turn the soft edges off while a texture is drawn (B1-9 option a).]
-- If it fails, paste: a screenshot of the options window scrolled, with the texture name, and `/vg errors`.
+- Do: open the auction house on the Posting tab with an item on the Sell card, in German (or French or Russian), and set Text size to 100%, then 115%, 130% and 150% with the card open.
+- Expect: at 100% the four steps (1 Item, 2 Preis, 3 Post, 4 Eingestellt) stand in one row; at the larger sizes the step that no longer fits starts a second row at the card's left, nothing runs past the card's right edge, and the line saying what to do next sits under the last row, clear of Your auctions. [Needs in-game check: the real font widths decide at which size each language wraps.]
+- If it fails, paste: a screenshot of the Sell card at 130%, and `/vg errors`.
 
-### 33.77 Meter on: target of target, tooltip corner and quest tracker at 1365 to 1833 wide
+### 33.89 Instance prep card: Buy list in a long language
 
-- Do: turn the Vanguard meter on (`/vg meter on`) at 1365x768, then at 1920x1080 at UI scale 1 (1440 wide or 1600 wide if you have it), with a target and a target of target, a quest tracker with a few quests, and a unit tooltip showing in its corner; turn the meter off and on again.
-- Expect: under 1838 wide target of target sits over the target's cast bar and the meter (bottom right, above the bags and menu bar) does not cover it; with the meter off target of target goes back to its spot outside the target at 1600 and wider. [Needs in-game check: the meter still meets the tooltip corner and the foot of the quest tracker at 1365 (the harness measured only target of target); say which draws on top.]
-- If it fails, paste: a screenshot at 1365x768 with the meter on, and `/vg errors`.
+- Do: set the game's language to Russian, then Spanish or French; carry less than the card asks of a reagent your class needs (with the Auction helper on) and type `/vg prep`.
+- Expect: Buy list shows its whole word beside the X, as wide as it needs; the title "Instance prep" in its translation ends before the button, with "..." where it does not fit, and never runs under it. [Needs in-game check: the real font widths of the title and the label.]
+- If it fails, paste: a screenshot of the card, and `/vg errors`.
 
-### 33.78 Shaman totems above the player frame, chat tiles clickable
+### 33.90 Merchant quantity window: the panel under Stack, Max and the cost line
 
-- Do: on a shaman with Class bars on, at 1365x768 (or 1440x900) with the default chat, drop a totem or two, then click the chat's Find and Copy tiles at the right end of its tab bar, and right-click a totem to destroy it.
-- Expect: the totem row stands just above the player frame, over its left half, clear of the chat's tab bar and the Find and Copy tiles; both tiles open on a click and the right-click still destroys a totem; the cast bar, raid mark and pet frame are not covered by the row. [Needs in-game check: that nothing of the real client (the player's raid mark, the lifted cast bar) meets the row, and the Versus deck's top border.]
-- If it fails, paste: a screenshot of the player frame and chat with totems down, and `/vg errors`.
-
-### 33.79 Aura icons: timer at the bottom, stack count top right, smaller type badge
-
-- Do: get a Magic, Curse, Disease or Poison debuff on yourself with timers on (the default for your own debuffs) and look at its icon; then look at a stacking debuff (Sunder Armor x5) on an enemy nameplate target at Text size 100% and 130%; also a buff with a timer on your player frame's row.
-- Expect: the timer digits sit on the icon's bottom edge, the stack count in its top right corner, and the small type letter in the top left corner is unhidden by either; on the 18-unit nameplate icons the count and the timer may still touch at 115% and up. [Needs in-game check: how much of the letter glyph and the digits is readable, and that the fallback icons' countdown numbers (made while in combat) also sit on the bottom edge.]
-- If it fails, paste: a screenshot of the icons at Text size 100% and 130%, and `/vg errors`.
-
-### 33.80 Round minimap: info strip and quest tracker under its band
-
-- Do: pick the Classic look (General → Look → Theme variant), reload, and look at the minimap's top right corner on 1365x768 and 1920x1080; then set Minimap shape to Square and reload again.
-- Expect: with the round map, the info strip starts below the map's bottom band (the coordinates text sits clear of the durability row) and the quest tracker follows under the strip; with the square map the strip sits right under the map as before. [Needs in-game check: the real round map's bottom band against the strip's first row.]
-- If it fails, paste: a screenshot of the minimap and strip, and `/vg errors`.
-
-### 33.81 Loss of control against the talking head on a 768-tall screen
-
-- Do: at 1365x768, get stunned or feared (a duel, a mob) while a talking head line plays (a quest giver's or an event's), and look at where the two panels meet; with `/vg unlock` note which of the loss-of-control and talking head handles is on top.
-- Expect: the loss-of-control panel (a little above your character) and the talking head (top left) touch by about 22 units and neither one's text is cut off. Which one draws on top is the thing to report: if the talking head covers the loss-of-control text, raise Loss of control's strata in `Modules/GameAlerts.lua`; if loss of control is already on top, leave it as it is. [Needs in-game check: the draw order of the two game frames, which the harness does not have.]
-- If it fails, paste: a screenshot of both panels, which one was on top, and `/vg errors`.
+- Do: at a vendor that sells stackable goods (a reagent or food vendor), with Town and gear, Merchants, "Stack and Max buttons on a merchant item's quantity window" on, shift-click an item in the middle of the list, then one at the top and one at the bottom; also try it with the item on the second column.
+- Expect: the game's quantity window opens with a dark panel hung from its bottom left holding Stack, Max and the "Max N for <money>" line, all inside the panel and nothing drawn bare over the merchant's rows; the panel covers the clicked row and the one below it (so you cannot click through to them) and closes with the window; shift-clicking an item in your bags shows no panel. [Needs in-game check: where the game puts the window (its bottom left on the clicked item), how much of the list the panel covers, and whether the panel is wide enough for the real window.]
+- If it fails, paste: a screenshot with the window open on the middle row, and `/vg errors`.
 
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 

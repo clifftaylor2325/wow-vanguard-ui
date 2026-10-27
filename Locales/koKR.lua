@@ -2329,6 +2329,7 @@ L["{count} talent points to spend; your plan's next pick is {talent} (/vg talent
 L["{count} trainer service(s) remembered for your class. /vg trainers next lists the next levels; clear forgets them."] = "내 직업의 기술 전문가 항목 {count}개를 기억합니다. /vg trainers next로 다음 레벨을 보고, clear로 지웁니다."
 L["{count} undercut"] = "최저가 밀림 {count}"
 L["{count} unreachable"] = "도달 불가 {count}"
+L["{count} · {note}"] = "{count} · {note}"
 L["{count}d"] = "{count}일"
 L["{count}h"] = "{count}시간"
 L["{days}d {hours}h"] = "{days}일 {hours}시간"

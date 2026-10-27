@@ -2329,6 +2329,7 @@ L["{count} talent points to spend; your plan's next pick is {talent} (/vg talent
 L["{count} trainer service(s) remembered for your class. /vg trainers next lists the next levels; clear forgets them."] = "已記住你職業的{count}項訓練師服務。/vg trainers next 列出接下來的等級；clear 清除它們。"
 L["{count} undercut"] = "{count}個被壓價"
 L["{count} unreachable"] = "{count}個無法達成"
+L["{count} · {note}"] = "{count} · {note}"
 L["{count}d"] = "{count}天"
 L["{count}h"] = "{count}小時"
 L["{days}d {hours}h"] = "{days}天{hours}小時"

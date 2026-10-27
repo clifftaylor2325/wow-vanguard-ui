@@ -259,11 +259,20 @@ local function paintInfo(lines, top)
   return #lines > 0 and y - top + PR.PAD or 0
 end
 
+-- The card's title on one line, ending before Buy list while it shows (before the close button otherwise): a long
+-- translation of the title ends in "..." instead of running under the button.
+local function endTitle(card)
+  local limit = card.buy:IsShown() and card.buy or card.close
+  card.title:SetPoint("TOPRIGHT", limit, "TOPLEFT", -T.SPACE.gap, 0)
+  ns.SingleLine(card.title)
+end
+
 -- Puts rows on the card ("Everything's packed." when there are none), with Buy list when one
 -- can be bought, and the dungeon card's lines under them, and sizes it to fit.
 function PR.Paint(rows, lines)
   local card = PR.card
   card.buy:SetShown(canBuy(rows))
+  endTitle(card)
   for i = #card.rows + 1, #rows do card.rows[i] = rowFrame(i) end
   for i, r in ipairs(card.rows) do paintRow(r, rows[i]) end
   card.packed:SetShown(#rows == 0)
@@ -280,11 +289,11 @@ local function cardParts(f)
   f.packed:SetText(L["Everything's packed."])
 end
 
--- The card's Buy list button (T.BUTTON_H tall), left of the close button and level with its top: what's short
--- that you can buy becomes the Auction helper's Restock shopping list (Modules/AuctionRestock.lua). Hidden
--- until PR.Paint shows it.
+-- The card's Buy list button (T.BUTTON_H tall), left of the close button and level with its top, as wide as its
+-- label needs: what's short that you can buy becomes the Auction helper's Restock shopping list
+-- (Modules/AuctionRestock.lua). Hidden until PR.Paint shows it.
 local function buyButton(f)
-  f.buy = W.Button(f, L["Buy list"], function() ns.GetModule("AuctionHelper").Restock() end, 64)
+  f.buy = ns.WidenToLabel(W.Button(f, L["Buy list"], function() ns.GetModule("AuctionHelper").Restock() end, 64))
   f.buy:SetPoint("TOPRIGHT", f.close, "TOPLEFT", -T.SPACE.tight, 0)
   f.buy:Hide()
 end

@@ -2329,6 +2329,7 @@ L["{count} talent points to spend; your plan's next pick is {talent} (/vg talent
 L["{count} trainer service(s) remembered for your class. /vg trainers next lists the next levels; clear forgets them."] = "Услуг учителей для вашего класса запомнено: {count}. /vg trainers next показывает следующие уровни; clear забывает их."
 L["{count} undercut"] = "Перебито: {count}"
 L["{count} unreachable"] = "Недоступно: {count}"
+L["{count} · {note}"] = "{count} · {note}"
 L["{count}d"] = "{count} д"
 L["{count}h"] = "{count} ч"
 L["{days}d {hours}h"] = "{days} д {hours} ч"

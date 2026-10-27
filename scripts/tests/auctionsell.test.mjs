@@ -554,6 +554,28 @@ it("the sell card's Post, Stop, Skip and Max buttons and the guide's steps fit i
   }
 });
 
+it("the posting guide's steps wrap to a second row inside the card at larger text, and sit in one row at 100% (B10-4)", () => {
+  for (const [locale, scale] of [["frFR", 1.15], ["deDE", 1.3], ["ruRU", 1.3], ["esES", 1.3], ["ptBR", 1.3]]) {
+    const addon = postingTab(locale);
+    // [guide line below the steps, inside the card, then for each step: ends inside the card, its top].
+    const rows = () => addon.eval(`local c = ${CARD} local out = { c.guide:GetTop() < c.steps[1]:GetBottom(), c.guide:GetBottom() >= c:GetBottom() }
+      for i, s in ipairs(c.steps) do out[#out + 1] = s:GetRight() <= c:GetRight() out[#out + 1] = s:GetTop() end return out`);
+    // How many different rows the steps stand in.
+    const rowTops = (r) => new Set(r.slice(2).filter((_, i) => i % 2 === 1)).size;
+    addon.eval(`ns.Theme.Settings().textScale = ${scale} ns.Theme.Refresh()`);
+    const big = rows();
+    expect(big.slice(0, 2), `${locale} at ${Math.round(scale * 100)}%: the guide's line under its steps, inside the card`).toEqual([true, true]);
+    expect([big[2], big[4], big[6], big[8]], `${locale} at ${Math.round(scale * 100)}%: every step ends inside the card`).toEqual([true, true, true, true]);
+    expect(addon.textFit(CARD).filter((f) => /^\d {2}/.test(f.text)), `${locale} at ${Math.round(scale * 100)}%: no step is cut or spills`).toEqual([]);
+    addon.eval("ns.Theme.Settings().textScale = 1 ns.Theme.Refresh()");
+    expect(rowTops(rows()), `${locale} at 100%: all four steps in one row`).toBe(1);
+  }
+  const wrapped = postingTab("deDE");
+  wrapped.eval("ns.Theme.Settings().textScale = 1.3 ns.Theme.Refresh()");
+  const tops = wrapped.eval(`local c = ${CARD} return { c.steps[1]:GetTop(), c.steps[4]:GetTop(), c.steps[4]:GetLeft() - c:GetLeft() }`);
+  expect([tops[1] < tops[0], tops[2]], "deDE at 130%: step 4 starts a second row at the card's left").toEqual([true, 0]);
+});
+
 it("the sell card's count and history lines sit under the buttons and end inside the card in real translations (B10-2, B10-3)", () => {
   for (const locale of ["frFR", "deDE", "ruRU"]) {
     const addon = postingTab(locale);
@@ -578,17 +600,40 @@ it("the scan button holds its countdown in Russian, French and Portuguese", () =
   }
 });
 
-it("the Your auctions toolbar holds Check undercuts and Cancel next undercut in real translations, clear of the summary (P10-5)", () => {
-  for (const locale of ["frFR", "deDE", "ruRU", "itIT", "esES", "ptBR"]) {
-    const addon = postingTab(locale);
-    expect(addon.eval(`return ${OWNED_CARD}.cancelNext:GetLeft() ~= nil`), `${locale}: before a check (no line yet) Cancel next undercut still has its place`).toBe(true);
-    addon.eval(`${HELPER}.checked = true ${HELPER}.PaintOwned()`);
-    expect(addon.eval(`return ${OWNED_CARD}.summary:GetText()`), `${locale}: the line beside the heading is up`).not.toBe("");
+// The Posting tab under a locale, one auction up (undercut when asked) and checked: the Your auctions card.
+function checkedOwned(locale, undercut) {
+  const addon = postingTab(locale);
+  addon.eval(`${HELPER}.checked = true ${HELPER}.owned = { { id = 1, status = "up", unit = 10, key = { itemID = 10940 }, undercut = ${undercut} } } ${HELPER}.PaintOwned()`);
+  return addon;
+}
+
+it("the Your auctions toolbar holds Check undercuts and Cancel next undercut, and the summary shows in the heading, in real translations (P10-5, B10-1)", () => {
+  for (const locale of ["enUS", "frFR", "ptBR", "deDE", "ruRU"]) {
+    const addon = checkedOwned(locale, true);
+    const count = addon.eval(`return ${OWNED_CARD}.count:GetText()`);
+    expect(count, `${locale}: the heading says how many are listed, then the summary`).toMatch(/^1 · \S/);
     const labels = addon.eval(`local c = ${OWNED_CARD} return { c.check.text:GetText(), c.cancelNext.text:GetText() }`);
-    const cut = addon.textFit(OWNED_CARD).filter((f) => labels.includes(f.text));
-    expect(cut, `${locale}: neither label is cut`).toEqual([]);
-    const room = addon.eval(`local c = ${OWNED_CARD} return { c.summary:GetRight() <= c.cancelNext:GetLeft(), c.cancelNext:GetRight() <= c.check:GetLeft(), c.check:GetRight() <= c:GetRight() }`);
-    expect(room, `${locale}: summary, Cancel next, Check undercuts in a row inside the card`).toEqual([true, true, true]);
+    expect(addon.textFit(OWNED_CARD).filter((f) => labels.includes(f.text)), `${locale}: neither button label is cut`).toEqual([]);
+    const room = addon.eval(`local c = ${OWNED_CARD} return { c.title:GetRight() < c.count:GetLeft(), c.count:GetWidth() > 1, c.count:GetRight() <= c.cancelNext:GetLeft(), c.cancelNext:GetRight() <= c.check:GetLeft(), c.check:GetRight() <= c:GetRight() }`);
+    expect(room, `${locale}: heading, count, Cancel next, Check undercuts in a row inside the card, the count with room to be drawn`).toEqual([true, true, true, true, true]);
+    const other = addon.textFit(OWNED_CARD).filter((f) => f.text === count && f.kind !== "cut");
+    expect(other, `${locale}: the count only ever ends in an ellipsis, never runs over its neighbours`).toEqual([]);
+  }
+});
+
+it("the count in the Your auctions heading is empty before a check, and shows in full where there is room (B10-1)", () => {
+  const addon = postingTab("enUS");
+  expect(addon.eval(`return ${OWNED_CARD}.count:GetText()`), "nothing listed yet: no count").toBe("");
+  addon.eval(`${HELPER}.checked = true ${HELPER}.owned = { { id = 1, status = "up", unit = 10, key = { itemID = 10940 }, undercut = true } } ${HELPER}.PaintOwned()`);
+  expect(addon.textFit(OWNED_CARD).filter((f) => f.text.startsWith("1 · ")), "the short summary fits whole beside the buttons").toEqual([]);
+});
+
+it("the Your auctions toolbar buttons keep their labels with the long summary too (B10-1)", () => {
+  for (const locale of ["frFR", "ptBR"]) {
+    const addon = checkedOwned(locale, false);
+    const labels = addon.eval(`local c = ${OWNED_CARD} return { c.check.text:GetText(), c.cancelNext.text:GetText() }`);
+    expect(addon.textFit(OWNED_CARD).filter((f) => labels.includes(f.text)), `${locale}: neither button label is cut`).toEqual([]);
+    expect(addon.eval(`return ${OWNED_CARD}.count:GetText()`), `${locale}: the summary is in the heading`).toMatch(/^1 · \S/);
   }
 });
 

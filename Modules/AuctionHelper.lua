@@ -93,13 +93,15 @@ end
 
 -- A card on a column, in its box (h tall from y): what it holds sits AH.INSET in from the box's
 -- border, its heading (a card's title, ns.WindowTitle kind "card", on the box at the same spot as the
--- card's own top left); the card (c.box its box) is what its parts hang on.
-function AH.Card(f, title, y, h)
+-- card's own top left, with c.count, a line beside it, when count is given); the card (c.box its box) is what
+-- its parts hang on.
+function AH.Card(f, title, y, h, count)
   local c = CreateFrame("Frame", nil, box(f, y, h))
   c.box = c:GetParent()
   c:SetPoint("TOPLEFT", AH.INSET, -AH.INSET)
   c:SetPoint("BOTTOMRIGHT", -AH.INSET, AH.INSET)
-  c.title = ns.WindowTitle(c.box, title, { kind = "card" }).title
+  local parts = ns.WindowTitle(c.box, title, { kind = "card", count = count })
+  c.title, c.count = parts.title, parts.count
   return c
 end
 
