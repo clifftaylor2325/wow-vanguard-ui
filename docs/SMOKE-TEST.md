@@ -2797,6 +2797,11 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Do: on Forever, in a dungeon with a party member, turn on friendly nameplates and their buffs in the game's nameplate settings, with Vanguard's tooltip anchor at its default (the corner). Mouse over a buff icon on the party member's nameplate, then over your own player frame. Run `/vg errors`.
 - Expect: the buff's tooltip opens where the game puts it (beside the icon, not in Vanguard's corner), the error badge stays off and `/vg errors` is empty; over the player frame the tooltip is in the corner as usual. [Needs in-game check: that the client restricts the tooltip's anchoring or forbids its owner there, so the hook leaves the tooltip alone, and that no "forbidden object" error reaches `/vg errors`.]
 - If it fails, paste: `/vg errors` and where the buff's tooltip opened.
+### 33.105 Raid target icons on the raid tools bar
+
+- Do: lead a party (a second character or a friend), so the raid tools bar shows. Target a mob or your party member. On the bar's second row, click the skull, then click the skull again, then another icon, then the last button on the row. Do the same once during a fight. Run `/vg errors`.
+- Expect: the skull lands on your target and stays when clicked again, the other icon replaces it, the last button clears it, in the fight too; no "reserved for the Blizzard UI" message names Vanguard and `/vg errors` is empty. [Needs in-game check: that the game's secure raidtarget action sets and clears a mark from Vanguard's buttons on Forever, since SetRaidTarget is reserved for secure code there.]
+- If it fails, paste: which button did nothing or what the game's message said word for word, and `/vg errors`.
 
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
