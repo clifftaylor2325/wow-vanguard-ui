@@ -34,19 +34,20 @@ end
 -- Which entries alert ------------------------------------------------------------------------
 
 -- Puts an entry that alerts (its switch on, with a max price) in the index: by its item ID, or
--- among the names.
+-- among the names, with its term in small letters (lowered here once, not for every item a scan sees).
 local function indexEntry(index, e)
   if type(e) ~= "table" or not (e.alert and e.maxPrice) then return end
-  if type(e.term) ~= "number" then
-    index.names[#index.names + 1] = e
+  if type(e.term) == "string" then
+    index.names[#index.names + 1] = { entry = e, term = ns.Lower(e.term) }
     return
   end
+  if type(e.term) ~= "number" then return end
   index.ids[e.term] = index.ids[e.term] or {}
   table.insert(index.ids[e.term], e)
 end
 
 -- The entries that alert, from every named list (not Recent's copies): { ids = { [itemID] = entries },
--- names = entries }, worked out once a frame (a scan records thousands of prices in one).
+-- names = { { entry, term in small letters } } }, worked out once a frame (a scan records thousands of prices in one).
 local function alertIndex()
   if AH.alertIndex then return AH.alertIndex end
   local index = { ids = {}, names = {} }
@@ -58,25 +59,39 @@ local function alertIndex()
   return index
 end
 
--- Whether item id is what a name entry finds: the same name (any case), or one containing it
--- unless exact; of the entry's quality and within its level range (the item's required level)
--- when it has them. False while the client hasn't the item's name.
-local function nameFits(e, id)
+-- What an item's name entries are judged by, worked out once for the item: its name in small letters,
+-- quality and required level. Nil while the client hasn't the item's name.
+local function itemFacts(id)
   local name, _, quality, _, level = C_Item.GetItemInfo(id)
-  if ns.IsSecret(name) or type(name) ~= "string" then return false end
-  quality, level = ns.PlainNumber(quality), ns.PlainNumber(level) or 0
-  if (e.quality and quality ~= e.quality) or (e.minLevel and level < e.minLevel) or (e.maxLevel and level > e.maxLevel) then return false end
-  local n, term = ns.Lower(name), ns.Lower(e.term)
-  return n == term or (not e.exact and n:find(term, 1, true) ~= nil)
+  if ns.IsSecret(name) or type(name) ~= "string" then return nil end
+  return { name = ns.Lower(name), quality = ns.PlainNumber(quality), level = ns.PlainNumber(level) or 0 }
+end
+
+-- Whether the item is what a name entry finds: the same name (any case), or one containing it
+-- unless exact; of the entry's quality and within its level range (the item's required level)
+-- when it has them.
+local function nameFits(named, item)
+  local e = named.entry
+  if (e.quality and item.quality ~= e.quality) or (e.minLevel and item.level < e.minLevel) or (e.maxLevel and item.level > e.maxLevel) then return false end
+  return item.name == named.term or (not e.exact and item.name:find(named.term, 1, true) ~= nil)
+end
+
+-- The highest max price among the name entries that find item id; nil when none does.
+local function maxNamePrice(index, id)
+  local item, best = #index.names > 0 and itemFacts(id), nil
+  if not item then return nil end
+  for _, named in ipairs(index.names) do
+    if nameFits(named, item) then best = math.max(best or 0, named.entry.maxPrice) end
+  end
+  return best
 end
 
 -- The highest max price among the alerting entries that find item id; nil when none does.
 local function maxPrice(id)
   local index, best = alertIndex(), nil
   for _, e in ipairs(index.ids[id] or {}) do best = math.max(best or 0, e.maxPrice) end
-  for _, e in ipairs(index.names) do
-    if nameFits(e, id) then best = math.max(best or 0, e.maxPrice) end
-  end
+  local named = maxNamePrice(index, id)
+  if named then best = math.max(best or 0, named) end
   return best
 end
 

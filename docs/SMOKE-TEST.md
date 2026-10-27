@@ -2885,6 +2885,12 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: Back stops at the layout step once the layout is applied. The scan button waits at most 15 minutes.
 - If it fails, paste: which step Back reached, the scan button's countdown, and `/vg errors`.
 
+### 33.120 Auction house: scan countdown after a clock change, many deals, German prices, price alerts
+
+- Do: at the auction house, if your computer's clock was ever ahead during a scan, open the house after putting the clock right and watch the scan button for a few minutes. After a scan that found many Deals and Upgrades, browse or search a few item lists whose names have not loaded yet, and look at the Lists pane's Deals and Upgrades counts and whether the window stutters. On a German client, type 0.125 in the Sell card's Price box, then 1.500. With a few shopping-list items that have a name (not an ID) and "Alert at or under the max price" on, scan the house.
+- Expect: the button's "Next scan in" minutes count down from the moment you opened the house and never stay at 15. The Deals and Upgrades counts match the rows each list shows, and names fill in without stutter. 0.125 reads 12s 50c and 1.500 reads 1500g. The scan ends without a long freeze, and the alerts ring once, on one toast.
+- If it fails, paste: the scan button's countdown at two moments, the count against the rows, what you typed and what the box showed, and `/vg errors`.
+
 ### 33.121 Pet trainer, slow shops, a specialty bag and the key ring
 
 - Do: as a hunter with a pet, open a pet trainer. As a character with a profession slot free, open a profession trainer and click Train all.

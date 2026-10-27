@@ -438,7 +438,8 @@ function AH.TakeBrowse(entry, results)
   AH.EntryFound(entry, best)
 end
 
--- Item names came in: the entries waiting on them are matched again, and the card repainted.
+-- Item names came in: the entries waiting on them are matched again, and the card repainted (the
+-- game sends these in bursts, so the listener asks for it once a frame: AH.ListenShop).
 function AH.OnItemInfo()
   for entry, results in pairs(AH.unnamed) do AH.TakeBrowse(entry, results) end
   AH.PaintShop()
@@ -480,7 +481,7 @@ end
 -- (on: Modules/AuctionHelper.lua's; AH.OnSearchEvent hands the
 -- search results to AH.OnListings).
 function AH.ListenShop(on)
-  on("ITEM_KEY_ITEM_INFO_RECEIVED", function() AH.OnItemInfo() end)
+  on("ITEM_KEY_ITEM_INFO_RECEIVED", function() ns.Soon("auction item info", AH.OnItemInfo) end)
   ns.On("AUCTION_HOUSE_CLOSED", function() AH.view = nil end) -- state only, so also in combat
 end
 
@@ -855,8 +856,9 @@ AH.MAX_PRICE = 9999999999
 
 -- The text with the client's thousands mark dropped where it sits between groups of three digits and
 -- before an optional decimal part ("1.234,5" in German, "1,234.50" in English); else the text as it was.
+-- A thousands group never starts with 0, so "0.125" stays a decimal.
 local function dropGroups(text, mark, decimal)
-  local digits, tail = text:match("^(%d%d?%d?)(" .. mark .. "%d%d%d.*)$")
+  local digits, tail = text:match("^([1-9]%d?%d?)(" .. mark .. "%d%d%d.*)$")
   if not digits then return text end
   local step = #mark:gsub("%%", "") + 3
   while tail:find("^" .. mark .. "%d%d%d") do digits, tail = digits .. tail:sub(step - 2, step), tail:sub(step + 1) end

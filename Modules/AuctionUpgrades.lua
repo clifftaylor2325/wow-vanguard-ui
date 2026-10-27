@@ -286,9 +286,19 @@ local function upgradeStatus(items)
   return L["None yet: a scan or an item search finds armor and weapons that beat what you wear."]
 end
 
+-- How many upgrades this visit lists, without sorting them: every gain, and one fill for each
+-- empty slot (AH.SortedUpgrades keeps only the best fill of a slot).
+function AH.UpgradeCount()
+  local count, filled = 0, {}
+  for _, u in pairs(AH.upgrades) do
+    if not u.empty then count = count + 1 elseif not filled[u.slot] then filled[u.slot], count = true, count + 1 end
+  end
+  return count
+end
+
 -- The pane's Upgrades entry with this visit's count, while the switch is on.
 local function paneEntry()
-  if AH.settings.upgrades then return { key = AH.UPGRADES, name = L["Upgrades"], count = #AH.SortedUpgrades() } end
+  if AH.settings.upgrades then return { key = AH.UPGRADES, name = L["Upgrades"], count = AH.UpgradeCount() } end
 end
 AH.PANE_EXTRAS[#AH.PANE_EXTRAS + 1] = paneEntry
 
