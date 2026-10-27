@@ -179,6 +179,18 @@ it("text fits: a dialog's long title stays on one line instead of wrapping over 
   expect(addon.eval("return Vanguard_Question.title:GetMaxLines()"), "a hung title (question, reload) is not limited").toBe(0);
 });
 
+it("text fits: the quest log's Untrack button is whole in Portuguese and Russian at the default Text size (B9-3)", () => {
+  for (const locale of ["ptBR", "ruRU"]) {
+    const addon = createAddon({ savedVariables: SETUP_DONE, textFit: true, client: `GetLocale = function() return "${locale}" end` });
+    addon.login();
+    addon.eval(`local f = CreateFrame("Frame", "TEST_UntrackHost", UIParent) f:SetSize(400, 40)
+      local b = ns.DialogButton(f, ns.L["Track"], ns.GetModule("QuestLog").BUTTON_W) b:SetPoint("LEFT", f, "LEFT", 0, 0)
+      b.text:SetText(ns.L["Untrack"]) __fit = { b.text:GetStringWidth(), b:GetWidth() - 2 * ns.Theme.SPACE.gap }`);
+    const [width, room] = addon.eval("return __fit");
+    expect(width, `${locale}: the label of a quest log details button fits the room between its insets (${room})`).toBeLessThanOrEqual(room);
+  }
+});
+
 // The options footer with 12 caught errors and a reload waiting, in a language at Text size 130%:
 // [error line's right edge, notice's left edge, the error text's right edge, reload button's whole-label cuts].
 function footerAt(locale, replaced) {
