@@ -171,10 +171,11 @@ local function cooldownOf(id)
   return spellCooldownOf(id)
 end
 
--- Notes the recipe's cooldown for this character (cleared when it has none).
+-- Notes the recipe's cooldown for this character (cleared when it has none). The schematic's
+-- isRecraft argument is not optional on Forever, so it is passed, as the crafting panel does.
 local function noteCooldown(cooldowns, id)
   local left = cooldownOf(id)
-  local s = C_TradeSkillUI.GetRecipeSchematic(id)
+  local s = C_TradeSkillUI.GetRecipeSchematic(id, false)
   cooldowns[id] = left > 0 and { name = type(s) == "table" and s.name or ns.Format(L["recipe {id}"], { id = id }), ready = now() + left } or nil
 end
 

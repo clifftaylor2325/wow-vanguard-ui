@@ -451,7 +451,7 @@ it("keep stocked: closing the merchant ends the run, and the next merchant's ite
 });
 // TEST-ONLY group: you lead a party; every raid tool call is recorded.
 const TOOLS_GROUP_ENV = `
-  __leader, __assist, __inGroup, __inRaid, __markable, __calls = true, false, true, false, true, {}
+  __leader, __assist, __inGroup, __inRaid, __calls = true, false, true, false, {}
   local function log(text) __calls[#__calls + 1] = text end
   IsInGroup = function() return __inGroup end
   IsInRaid = function() return __inRaid end
@@ -461,7 +461,6 @@ const TOOLS_GROUP_ENV = `
   C_PartyInfo = { DoReadyCheck = function() log("ready") end, DoCountdown = function(n) log("pull " .. n) end, ConvertToRaid = function() log("raid") end }
   InitiateRolePoll = function() log("roles") end
   SetRaidTarget = function(unit, i) log("mark " .. unit .. " " .. i) end
-  CanBeRaidTarget = function() return __markable end
   function __tool(i, button) local b = Vanguard_RaidTools.list[i] b.__scripts.OnClick(b, button or "LeftButton") end
 `;
 it("raid tools: calls, target icons and world markers for the leader and assistants", () => {
@@ -469,8 +468,8 @@ it("raid tools: calls, target icons and world markers for the leader and assista
   // Whether the bar shows, and whether its Raid button does.
   const state = () => addon.eval("local a = Vanguard_RaidTools.actions return { Vanguard_RaidTools:IsShown(), a.ConvertToRaid:IsShown() }");
   expect(state(), "a party's leader sees the bar, with Raid").toEqual([true, true]);
-  addon.eval("__tool(3) __tool(4) __tool(5) __tool(13)");
-  expect(addon.eval("return __calls"), "roles, convert; skull on the target, then clear (Ready and Pull are macros, never a C_PartyInfo call from the addon)").toEqual(["roles", "raid", "mark target 1", "mark target 0"]);
+  addon.eval("__tool(3) __tool(4)");
+  expect(addon.eval("return __calls"), "roles, convert (Ready and Pull are macros, never a C_PartyInfo call from the addon)").toEqual(["roles", "raid"]);
   expect(addon.eval(`local out = {}
     for i = 1, 4 do
       local b = Vanguard_RaidTools.list[i]
@@ -478,8 +477,14 @@ it("raid tools: calls, target icons and world markers for the leader and assista
     end
     return out`), "Ready and Pull are secure macro buttons (left: /readycheck, /countdown 10; right on Pull: /countdown 0) with no click handler; Roles and Raid stay plain").toEqual([
     ["macro", "/readycheck", false, false, false], ["macro", "/countdown 10", "/countdown 0", false, false], [false, false, false, false, true], [false, false, false, false, true]]);
-  addon.eval("__markable = false __calls = {} __tool(5)");
-  expect(addon.eval("return #__calls"), "a target that can't be marked is left alone").toBe(0);
+  expect(addon.eval(`local out = {}
+    for i = 5, 13 do
+      local b = Vanguard_RaidTools.list[i]
+      out[#out + 1] = { b:GetAttribute("type"), b:GetAttribute("marker") or false, b:GetAttribute("action"), b:GetAttribute("useOnKeyDown"), b.__scripts.OnClick ~= nil }
+    end
+    return out`), "the raid target icons are the game's secure raidtarget buttons (set icon 1 to 8; the ninth clears) acting on the release, with no click handler: SetRaidTarget is never the addon's call").toEqual([
+    ...[1, 2, 3, 4, 5, 6, 7, 8].map((i) => ["raidtarget", i, "set", false, false]), ["raidtarget", false, "clear", false, false]]);
+  expect(addon.eval("return #__calls"), "no raid target call came from addon code").toBe(2);
   expect(addon.eval(`local m, c = Vanguard_RaidTools.list[14], Vanguard_RaidTools.list[22]
     return { m:GetAttribute("type"), m:GetAttribute("marker"), m:GetAttribute("action1"), m:GetAttribute("action2"), c:GetAttribute("action") }`), "world markers are the game's secure marker buttons").toEqual(["worldmarker", 1, "toggle", "clear", "clear"]);
   expect(addon.eval("return { Vanguard_RaidTools.list[14]:GetAttribute('useOnKeyDown'), Vanguard_RaidTools.list[22]:GetAttribute('useOnKeyDown') }"), "the marker buttons act on the release they listen for, even with key-down casting on").toEqual([false, false]);

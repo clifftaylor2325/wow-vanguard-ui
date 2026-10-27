@@ -220,6 +220,26 @@ it("the game's tools: Cooldown Manager and damage meter styled and placed, stand
   expect(off.eval("return { ns.FrameState('vgSkinned')[EssentialCooldownViewer.items[1]] == nil, ns.FrameState('vgSkinned')[DamageMeterSessionWindow1] == nil, Vanguard_DamageMeterSpot == nil }"), "switched off, both stay the game's").toEqual([true, true, true]);
   expect(loggedIn("").eval("return ns.GetModule('GameTools') ~= nil"), "a client without these tools loads cleanly").toBe(true);
 });
+it("the game's tools: an Edit Mode system is fitted through the client's own SetPointBase, never Edit Mode's SetPoint override", () => {
+  const addon = loggedIn(TOOLS_ENV);
+  // TEST-ONLY: a frame as EditModeSystemMixin:OnSystemLoad leaves one: SetPoint and ClearAllPoints are Lua
+  // overrides (which mark Edit Mode's anchors dirty), with the client's methods kept aside as the Base pair.
+  addon.eval(`__ran = {}
+    local f = CreateFrame("Frame", "TESTONLY_EditModeSystem", UIParent)
+    local setPoint, clear = f.SetPoint, f.ClearAllPoints
+    f.SetPointBase = function(self, ...) __ran[#__ran + 1] = "SetPointBase " .. (...) return setPoint(self, ...) end
+    f.ClearAllPointsBase = function(self) __ran[#__ran + 1] = "ClearAllPointsBase" return clear(self) end
+    f.SetPoint = function(self, ...) __ran[#__ran + 1] = "SetPointOverride " .. (...) return setPoint(self, ...) end
+    f.ClearAllPoints = function(self) __ran[#__ran + 1] = "ClearAllPointsOverride" return clear(self) end
+    local GT = ns.GetModule("GameTools")
+    GT.PlaceSpot("TESTONLY_EditModeSystem", { "testonly_system", "TEST-ONLY system", { "CENTER", "CENTER", 0, 0 }, 100, 50 }, GT.FitCenter)`);
+  expect(addon.eval("return __ran"), "the pin's fit clears through Edit Mode (which drops a stale snap) and sets through the client's own method").toEqual(["ClearAllPointsOverride", "SetPointBase CENTER"]);
+  expect(addon.eval("return TESTONLY_EditModeSystem.__points.CENTER.rel == Vanguard_TESTONLY_EditModeSystemSpot"), "and the frame lands on its spot").toBe(true);
+  addon.eval('__ran = {} TESTONLY_EditModeSystem:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 0, 0)');
+  expect(addon.eval("return __ran"), "the game's own SetPoint (the override) still re-pins it the same way").toEqual(["SetPointOverride TOPLEFT", "ClearAllPointsOverride", "SetPointBase CENTER"]);
+  addon.eval("__ran = {} ns.GetModule('GameTools').FitFill(TESTONLY_EditModeSystem, Vanguard_TESTONLY_EditModeSystemSpot)");
+  expect(addon.eval("return __ran"), "filling a spot goes the same way").toEqual(["ClearAllPointsOverride", "SetPointBase TOPLEFT", "SetPointBase BOTTOMRIGHT"]);
+});
 it("damage meter: a pooled line set up again keeps its background faded, with one hook per line", () => {
   const addon = loggedIn(TOOLS_ENV);
   // The first line's background alpha.

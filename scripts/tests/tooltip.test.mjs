@@ -51,6 +51,25 @@ it("tooltips", () => {
   expect(addon.eval("local out = {} for _, m in ipairs(ns.MoverList()) do out[m.key] = true end return out.tooltip") === true, "the tooltip corner is movable").toBeTruthy();
 });
 
+it("tooltips: the default anchor is left to the client when the owner is forbidden or the tooltip's anchoring is restricted", () => {
+  const addon = loggedIn(UNITS_ENV + TOOLTIP_ENV);
+  // The client's own SetDefaultAnchor just owned the tooltip to `owner` (ANCHOR_NONE); then Vanguard's hook runs.
+  // Returns whether that owner is kept, the anchor, and whether the tooltip sits on Vanguard's corner.
+  const hooked = (owner) => addon.eval(`local owner = ${owner}
+    GameTooltip:ClearAllPoints() GameTooltip.__owner, GameTooltip.__anchor = owner, "ANCHOR_NONE"
+    __hooks.GameTooltip_SetDefaultAnchor(GameTooltip, owner)
+    return { GameTooltip.__owner == owner, GameTooltip.__anchor, select(2, GameTooltip:GetPoint(1)) == Vanguard_TooltipAnchor }`);
+  addon.eval('__plateBuff = CreateFrame("Frame", "TEST_ONLY_PlateBuff", UIParent) __plateBuff.IsForbidden = function() return true end');
+  expect(hooked("__plateBuff"), "a buff icon on a friendly plate in an instance (forbidden): the client's owner stays, no corner").toEqual([true, "ANCHOR_NONE", false]);
+  addon.eval("GameTooltip.IsAnchoringRestricted = function() return true end");
+  expect(hooked("UIParent"), "anchoring the client restricts: left alone too").toEqual([true, "ANCHOR_NONE", false]);
+  addon.eval('VanguardDB.profiles.Default.Tooltips.anchor = "cursor"');
+  expect(hooked("__plateBuff"), "and the cursor anchor is skipped the same way").toEqual([true, "ANCHOR_NONE", false]);
+  addon.eval('GameTooltip.IsAnchoringRestricted = nil VanguardDB.profiles.Default.Tooltips.anchor = "corner"');
+  expect(hooked("UIParent"), "an ordinary owner: the corner, as before").toEqual([true, "ANCHOR_NONE", true]);
+  expect(addon.eval("return #ns.errors"), "no error caught").toBe(0);
+});
+
 // TEST-ONLY items for the sell price: 90001 sells for 25c, 90002 has no value, 90003 isn't cached yet.
 const ITEM_TIP_ENV = `
   __prices = { ["item:90001"] = 25, ["item:90002"] = 0 }
@@ -129,6 +148,14 @@ it("item tooltips: with the Tooltips module on, the item hook is made once howev
   on.eval('local TT = ns.GetModule("Tooltips") TT.AddItemLines(function() end) TT.AddItemLines(function() end)');
   expect(on.eval("return __itemHooks"), "Enable and the added lines share one hook").toBe(1);
   expect(on.eval('return __showItem("item:90001", 2)[1].text'), "and the module's own price still shows").toBe("Sells for 0s 50c");
+});
+
+it("item tooltips: a tooltip the client keeps from addons gets no lines", () => {
+  const addon = loggedIn(UNITS_ENV + TOOLTIP_ENV + ITEM_TIP_ENV);
+  addon.eval("GameTooltip.IsForbidden = function() return true end");
+  expect(addon.eval('return #__showItem("item:90001", 20)'), "forbidden: not even the sell price").toBe(0);
+  addon.eval("GameTooltip.IsForbidden = nil");
+  expect(addon.eval('return { #__showItem("item:90001", 20), #ns.errors }'), "a plain one: the line, and no error either way").toEqual([1, 0]);
 });
 
 it("item tooltips: how many you have, and the item ID when asked", () => {

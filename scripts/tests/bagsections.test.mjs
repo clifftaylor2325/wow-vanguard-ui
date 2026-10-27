@@ -386,6 +386,26 @@ it("with a gamepad the backpack button stays the game's, and Sort sits beside it
   expect([other.eval("return GamepadBackpackButton:IsShown()"), searchRow(other).slice(-1)[0]], "a bar that isn't on the bag window: Sort the padding in").toEqual([true, PAD]);
 });
 
+// TEST-ONLY backpack window of separate bags: as the game's ContainerFrameMixin:UpdateSearchBox does for a backpack
+// without a gamepad, opening it takes the game's search box and sort button and shows them on it.
+const BACKPACK_WINDOW_ENV = `
+  local bp = CreateFrame("Frame", "ContainerFrame1", UIParent) bp:Hide() bp:SetSize(200, 200) bp:SetPoint("CENTER")
+  function __openBackpack()
+    bp:Show()
+    BagItemSearchBox:SetParent(bp) BagItemSearchBox:ClearAllPoints() BagItemSearchBox:SetPoint("TOPLEFT", bp, "TOPLEFT", 42, -37) BagItemSearchBox:Show()
+    BagItemAutoSortButton:SetParent(bp) BagItemAutoSortButton:SetPoint("TOPRIGHT", bp, "TOPRIGHT", -9, -34) BagItemAutoSortButton:Show()
+  end`;
+
+it("with separate bag windows the backpack keeps the game's sort button; on the combined bag it stays hidden (V3-1)", () => {
+  const addon = loggedIn(BAG_ENV + BACKPACK_WINDOW_ENV, { savedVariables: "VanguardDB.profiles = { Default = { Bags = { combined = false } } }" });
+  addon.eval("__openBackpack()");
+  expect(addon.eval("return { BagItemAutoSortButton:IsShown(), BagItemAutoSortButton:GetParent() == ContainerFrame1 }"), "the backpack's own sort button shows, where the game put it").toEqual([true, true]);
+  addon.eval("ContainerFrame1:Hide() __openBag()");
+  expect(addon.eval("return BagItemAutoSortButton:IsShown()"), "the combined bag taking the button: hidden, Vanguard's Sort takes its place").toBe(false);
+  addon.eval("ContainerFrameCombinedBags:Hide() __openBackpack()");
+  expect(addon.eval("return BagItemAutoSortButton:IsShown()"), "back to separate bags without a reload: the game's button again").toBe(true);
+});
+
 it("the combined bag's money line takes the theme font and its gold coin box becomes a flat inset, each time the bag is shown", () => {
   const addon = loggedIn(BAG_ENV);
   addon.eval("__openBag()");
@@ -501,8 +521,9 @@ it("search operators hold when the game fills the bag's slots again (an item mov
 
 // TEST-ONLY bank, as Mainline/BankFrameTemplates.lua builds it (BankFrame.xml loads BankPanelTemplate): a tab
 // (bag 6) holding the sword, 5 waters and the gray item; the panel's pooled slots (each knows its tab and slot,
-// and its Refresh sets its match from the game's own search); a page turn makes the slots again; the game's
-// own search, which doesn't know the search words, greys every slot while its box holds any text.
+// and its Refresh sets its match from the game's own search), walked as the pool's EnumerateActive yields them,
+// (button, true); a page turn makes the slots again; the game's own search, which doesn't know the search
+// words, greys every slot while its box holds any text.
 const BANK_ENV = `
   __wfgWorld.bagSizes[6] = 4
   __wfgWorld.bags[6] = { { itemID = 90001 }, { itemID = 159, count = 5 }, { itemID = 90002 } }
@@ -518,7 +539,7 @@ const BANK_ENV = `
     b.Refresh = function(self) self:SetMatchesSearch(gameMatch()) end
     return b
   end
-  function BankPanel:EnumerateValidItems() local i = 0 return function() i = i + 1 return __bankSlots[i] end end
+  function BankPanel:EnumerateValidItems() local t = {} for _, b in ipairs(__bankSlots) do t[b] = true end return pairs(t) end
   function BankPanel:GenerateItemSlotsForSelectedTab() for i = 1, 4 do __bankSlots[i] = __bankSlots[i] or slot(i) __bankSlots[i]:Refresh() end end
   function BankPanel:RefreshAllItemsForSelectedTab() for b in self:EnumerateValidItems() do b:Refresh() end end
   function BankPanel:UpdateSearchResults() for b in self:EnumerateValidItems() do b:SetMatchesSearch(gameMatch()) end end
@@ -543,6 +564,16 @@ it("the bank's search box takes the search words too, and they hold through a re
   expect(bankLit(addon), "words and a plain word together").toEqual([159]);
   addon.eval("BankItemSearchBox:SetText('sword') BankPanel:UpdateSearchResults()");
   expect(bankLit(addon), "a plain word alone is the game's own search").toEqual([]);
+});
+
+it("the bank's item slots get the Vanguard slot look as the bank opens and as it shows another tab (V3-R2)", () => {
+  const addon = loggedIn(ITEMS_ENV + BAG_FRAME + BANK_ENV);
+  // How many of the bank's slots Vanguard has skinned.
+  const skinned = () => addon.eval("local s, n = ns.FrameState('vgSkinned'), 0 for _, b in ipairs(__bankSlots) do if s[b] then n = n + 1 end end return n");
+  addon.eval("BankPanel:GenerateItemSlotsForSelectedTab() BankFrame:Show()");
+  expect([addon.eval("return #__bankSlots"), skinned()], "every slot of the open bank is skinned").toEqual([4, 4]);
+  addon.eval("for i = 1, 4 do __bankSlots[i] = nil end BankPanel:GenerateItemSlotsForSelectedTab()");
+  expect(skinned(), "another tab's new slots too").toBe(4);
 });
 
 it("/vg bag deposit sends a category's stacks to the open bank, out of combat only", () => {

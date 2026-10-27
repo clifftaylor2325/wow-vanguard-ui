@@ -4,8 +4,9 @@
 --   * the eight raid target icons (click one to mark your target; the last
 --     button clears it);
 --   * the eight world markers (click to place or remove one where you aim; the
---     last button clears them all). These are the game's own secure marker
---     buttons, so they work in combat.
+--     last button clears them all).
+-- Both icon rows are the game's own secure buttons (SetRaidTarget and the world
+-- marker calls are reserved for secure code), so they work in combat too.
 -- The bar shows while you're in a group and lead it or assist (or everyone
 -- assists). It holds secure buttons, so it only shows or hides out of combat.
 
@@ -142,20 +143,23 @@ local function iconButton(bar, template, index)
   return b
 end
 
--- Marks your target with raid icon i (0 clears it), if it can be marked.
-function RT.MarkTarget(i)
-  if type(SetRaidTarget) ~= "function" or not globalTrue("UnitExists", "target") then return end
-  if type(CanBeRaidTarget) == "function" and not globalTrue("CanBeRaidTarget", "target") then return end
-  SetRaidTarget("target", i)
+-- One secure raid target button: a click marks your target with raid icon i (the game's own
+-- "raidtarget" action, as SetRaidTarget is reserved for secure code; a missing target is a no-op).
+local function targetButton(bar, i)
+  local b = iconButton(bar, "SecureActionButtonTemplate", i)
+  b:SetAttribute("type", "raidtarget")
+  b:SetAttribute("marker", i)
+  b:SetAttribute("action", "set")
+  return b
 end
 
--- The row of raid target icons, then a button that clears your target's.
+-- The row of raid target icons, then a secure button that clears your target's.
 local function addTargetIcons(bar)
-  for i = 1, 9 do
-    local b = iconButton(bar, nil, i <= 8 and i or nil)
-    b:SetScript("OnClick", ns.Guard("click raid target icon", function() RT.MarkTarget(i <= 8 and i or 0) end))
-    RT.Place(bar, b, 2, i - 1)
-  end
+  for i = 1, 8 do RT.Place(bar, targetButton(bar, i), 2, i - 1) end
+  local clear = iconButton(bar, "SecureActionButtonTemplate")
+  clear:SetAttribute("type", "raidtarget")
+  clear:SetAttribute("action", "clear")
+  RT.Place(bar, clear, 2, 8)
 end
 
 -- One secure world marker button: left places or removes marker i, right clears it.

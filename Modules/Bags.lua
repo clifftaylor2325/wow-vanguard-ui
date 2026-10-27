@@ -118,7 +118,8 @@ BG.SkinItem = skinItem
 local function skinItems(frame)
   local pool = frame.itemButtonPool
   if type(frame.EnumerateValidItems) == "function" then
-    for _, button in frame:EnumerateValidItems() do skinItem(button) end
+    -- The combined bag yields (index, button); the bank's pool yields (button, true).
+    for first, second in frame:EnumerateValidItems() do skinItem(type(second) == "table" and second or first) end
   elseif type(pool) == "table" and type(pool.EnumerateActive) == "function" then
     for button in pool:EnumerateActive() do skinItem(button) end
   end
@@ -163,13 +164,19 @@ local function watchBank()
   end
 end
 
--- The game's own sort button, kept hidden (the game shows it on every update
--- of the bag's search row) because Vanguard's Sort takes its place.
+-- Hides the game's sort button while it sits on the combined bag, where Vanguard's Sort takes its place. On
+-- the backpack window of separate bags it is the game's own and the only sort there, so it stays.
+local function hideOnCombined(game)
+  if game:GetParent() == combinedFrame() then game:Hide() end
+end
+
+-- The game's own sort button, hidden again each time the game shows it on the combined bag (every update of
+-- a bag's search row hands the button to that bag before showing it, so the hook sees where it sits).
 local function hideGameSort()
   local game = _G.BagItemAutoSortButton
   if type(game) ~= "table" then return end
-  game:Hide()
-  if type(hooksecurefunc) == "function" then hooksecurefunc(game, "Show", ns.Guard("hook Show", game.Hide)) end
+  hideOnCombined(game)
+  if type(hooksecurefunc) == "function" then hooksecurefunc(game, "Show", ns.Guard("hook Show", hideOnCombined)) end
 end
 
 -- Puts the Sort button on the search row: right of the search box, or where the
@@ -255,7 +262,8 @@ local function watchSearchRow(frame)
   hooksecurefunc(frame, "UpdateSearchBox", ns.Guard("hook UpdateSearchBox", BG.FitSearch))
 end
 
--- A Sort button beside the search box, if the client can sort bags; the game's own is hidden.
+-- A Sort button beside the search box, if the client can sort bags; the game's own is hidden on the combined
+-- bag only (separate bag windows keep it on the backpack, see hideOnCombined).
 function BG.AddSort(frame)
   local sort = C_Container and C_Container.SortBags
   if type(sort) ~= "function" or BG.sort then return end

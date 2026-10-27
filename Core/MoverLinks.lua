@@ -124,10 +124,11 @@ local function matchedSize(key, dim)
   return size
 end
 
--- A frame's width or height (dim) as the client reports it now, or 0 while it can't say.
+-- A frame's width or height (dim) as the client reports it now, or 0 while it can't say (nil, or a
+-- secret: the chat mover is a frame of the game's, whose size the client may hide).
 local function frameSize(f, dim)
-  if dim == "width" then return f:GetWidth() or 0 end
-  return f:GetHeight() or 0
+  if dim == "width" then return ns.PlainNumber(f:GetWidth()) or 0 end
+  return ns.PlainNumber(f:GetHeight()) or 0
 end
 
 -- A mover's width or height (dim) in its own units as it should be now: for a frame Vanguard

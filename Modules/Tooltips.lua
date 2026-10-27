@@ -68,6 +68,11 @@ function TT.SkinAll()
   skinHealthBar()
 end
 
+-- Whether a frame is one the client keeps from addons (a friendly plate in an instance); nil and non-frames count as no.
+local function forbidden(f)
+  return type(f) == "table" and type(f.IsForbidden) == "function" and f:IsForbidden() == true
+end
+
 -- Units -------------------------------------------------------------------------------------
 
 -- The unit a tooltip shows, or nil (none, or hidden from addons).
@@ -205,7 +210,7 @@ end
 -- An item tooltip was filled in: add the switched-on lines, then other modules' (one
 -- that fails is reported and doesn't stop the rest).
 function TT.OnItem(tt)
-  if not tt.GetItem then return end
+  if forbidden(tt) or not tt.GetItem then return end
   local _, link = tt:GetItem()
   if ns.IsSecret(link) or type(link) ~= "string" then return end
   ownItemLines(tt, link)
@@ -244,8 +249,18 @@ end
 
 -- Anchoring --------------------------------------------------------------------------------
 
--- Moves a tooltip given the default anchor: to the corner frame, the cursor, or left alone.
+-- Whether the tooltip's anchors can't be changed now: it or its owner is forbidden, or the client restricts its
+-- anchoring while a forbidden frame (a buff on a friendly plate in an instance) owns it. Touching it then is
+-- the "forbidden object" error, caught by ns.Guard but lighting the error badge on every hover.
+local function anchorRestricted(tt, parent)
+  if forbidden(tt) or forbidden(parent) then return true end
+  return type(tt.IsAnchoringRestricted) == "function" and tt:IsAnchoringRestricted() == true
+end
+
+-- Moves a tooltip given the default anchor: to the corner frame, the cursor, or left alone (as it is when the
+-- client restricts its anchoring).
 function TT.Anchor(tt, parent)
+  if anchorRestricted(tt, parent) then return end
   local where = TT.settings.anchor
   if where == "cursor" then return tt:SetOwner(parent, "ANCHOR_CURSOR") end
   if where ~= "corner" then return end

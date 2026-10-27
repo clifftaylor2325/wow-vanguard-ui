@@ -417,6 +417,39 @@ it("options: a slider drag and a key capture end when their window hides, and a 
   expect(addon.eval("return ns.errors[1].text"), "a drag step that fails is caught under its name").toMatch(/^slider drag: .*TEST-ONLY drag$/);
 });
 
+// TEST-ONLY key captures, as a page would build them, with their keyboard calls logged ("calm:true", "fight:false").
+const CAPTURES_LUA = `
+  __caps = {}
+  for i = 1, 2 do
+    local cap = ns.Widgets.KeyCapture(UIParent, "Set key", function() end)
+    cap.__kb = {}
+    local enable = cap.EnableKeyboard
+    cap.EnableKeyboard = function(self, on) self.__kb[#self.__kb + 1] = (InCombatLockdown() and "fight:" or "calm:") .. tostring(on) return enable(self, on) end
+    __caps[i] = cap
+  end`;
+// Each capture's state: [capturing, caption, its keyboard calls].
+const captures = (addon) => addon.eval("local out = {} for i, c in ipairs(__caps) do out[i] = { c.capturing == true, c.text:GetText(), table.concat(c.__kb, ',') } end return out");
+
+it("a fight starting cancels every armed key capture, so the fight's first key is not swallowed (V6-1)", () => {
+  const addon = loggedIn(CLICK_LUA + CAPTURES_LUA);
+  addon.eval("for _, c in ipairs(__caps) do c:GetScript('OnClick')(c) end");
+  expect(captures(addon).map((c) => c[0]), "both armed").toEqual([true, true]);
+  addon.world.combat(true);
+  expect(captures(addon), "the fight: both off, captions back, the keyboard turned off as the fight starts (before lockdown)").toEqual([[false, "Set key", "calm:true,calm:false"], [false, "Set key", "calm:true,calm:false"]]);
+  addon.eval("__caps[1]:GetScript('OnKeyDown')(__caps[1], '1')");
+  expect(addon.eval("return Vanguard_SpellPicker and Vanguard_SpellPicker:IsShown() or false"), "a key in the fight is not captured").toBe(false);
+});
+
+it("clicking a key capture in a fight arms nothing", () => {
+  const addon = loggedIn(CLICK_LUA + CAPTURES_LUA);
+  addon.world.combat(true);
+  addon.eval("__caps[1]:GetScript('OnClick')(__caps[1])");
+  expect(captures(addon)[0], "not capturing, the caption unchanged, the keyboard never turned on").toEqual([false, "Set key", ""]);
+  addon.world.combat(false);
+  addon.eval("__caps[1]:GetScript('OnClick')(__caps[1])");
+  expect(captures(addon)[0].slice(0, 2), "after the fight it arms as before").toEqual([true, "Press a key, click or scroll..."]);
+});
+
 // The visible slider row whose caption starts with this text, as Lua.
 const sliderRow = (text) => `(function() for _, w in ipairs(__wfgStub.frames) do
   if w.track and w.label and w.label.__text:sub(1, #"${text}") == "${text}" and ns.Options.RevealRow(w) then return w end end end)()`;
@@ -440,6 +473,17 @@ it("options: a frame's scale and opacity from the Layout card; a long menu scrol
   expect(addon.eval(`return { ${sliderRow("Its opacity")}.reset:IsShown(), ${sliderRow("Its opacity")}.value:GetText() }`), "a changed one shows the reset dot, as a percent").toEqual([true, "50%"]);
   addon.eval('__click("Reset all positions")');
   expect(addon.eval(`return { ns.MoverLook("${first}") }`).concat(addon.eval(`return ${sliderRow("Its opacity")}.get()`)), "Reset all positions puts every scale and opacity back").toEqual([1, 1, 1]);
+});
+
+it("options: Frame to size picked as Chat while the client hides the chat window's size: the size sliders sit at their start, with no error", () => {
+  const addon = loggedIn(UI_ENV + CLICK_LUA);
+  addon.eval('ns.Options.Show("general")');
+  addon.world.secretGeometry("strict");
+  addon.eval('for _, w in ipairs(__wfgStub.frames) do if w.dropdown and w.caption == "Frame to size" then __d = w.dropdown end end __d:GetScript("OnClick")(__d)');
+  addon.eval('for _ = 1, 60 do for _, b in ipairs(Vanguard_Menu.items) do if b:IsShown() and b.text:GetText() == "Chat" then b:GetScript("OnClick")(b) return end end Vanguard_Menu:GetScript("OnMouseWheel")(Vanguard_Menu, -1) end');
+  expect(addon.eval("return ns.Options.sizedMover"), "Chat is the frame to size").toBe("chat");
+  const sliders = addon.eval(`local w, h = ${sliderRow("Its width")}, ${sliderRow("Its height")} w:Refresh() h:Refresh() return { w.get(), h.get(), #ns.errors }`);
+  expect(sliders, "its hidden width and height read 0 and the sliders refresh with nothing caught").toEqual([0, 0, 0]);
 });
 
 // The reset dot on the visible row whose caption starts with this text: { shown, has a dot }.

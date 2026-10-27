@@ -2768,6 +2768,57 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: Ready starts the game's ready check; Pull starts a 10 second countdown and the right-click cancels it; Raid turns the party into a raid; no "reserved for the Blizzard UI" message names Vanguard and `/vg errors` is empty. [Needs in-game check: whether a click from addon code may call C_PartyInfo.ConvertToRaid (Raid still does), and that the macro buttons start /readycheck and /countdown on Forever.]
 - If it fails, paste: the game's message word for word (which button), and `/vg errors`.
 
+### 33.100 Separate bag windows keep the game's Sort button, and the bank's slots take the Vanguard look
+
+- Do: turn off `/vg` → Bars and bags → Combined bag and reload (or pick separate bags in the game's own bag menu). Open the backpack. Then turn the combined bag back on, reload, and open the bag. Visit a banker, open the bank and turn to a second tab if you have one. Run `/vg errors`.
+- Expect: the backpack window of separate bags shows the game's own sort button in its top-right corner, and it sorts; the combined bag shows Vanguard's Sort beside the search box and not the game's; every bank slot is a square slot with a thin border in its item's quality color (no round game art), on each tab; `/vg errors` is empty. [Needs in-game check: the backpack's sort button is the game's and stays shown through a search and a bag change, and the bank's slots are skinned on every tab.]
+- If it fails, paste: which bag mode, whether a sort button shows on the backpack, what the bank's slots look like, and `/vg errors`.
+
+### 33.101 Bulk buy at a merchant on Forever
+
+- Do: at any merchant that sells a stackable item for gold (water, food), shift-click the item so the game's quantity window opens. Click Stack. Run `/vg errors`.
+- Expect: a small panel under the quantity window holds Stack and Max and a line saying what Max costs; Stack buys one merchant stack of the item; `/vg errors` is empty. [Needs in-game check: the Forever client's C_MerchantFrame.GetItemInfo gives the price, pack size and stock the panel needs, now that the old GetMerchantItemInfo is gone.]
+- If it fails, paste: the item, whether the panel showed and what its line read, and `/vg errors`.
+
+### 33.102 Click-cast Add key into a fight
+
+- Do: open `/vg` → Click casting → Keys while hovering a frame and click Add key, so it reads "Press a key, click or scroll...". Before pressing anything, get pulled into a fight (pull a mob with a second character, or stand where one aggroes). Press 1 (an ability on your bar). After the fight, click Add key in the fight's place again, in a fight. Run `/vg errors`.
+- Expect: as the fight starts, Add key reads "Add key" again; pressing 1 fires the ability on your bar and no spell picker opens; clicking Add key during a fight changes nothing; `/vg errors` is empty. [Needs in-game check: the button's keyboard is released as the fight starts, before the client's lockdown, so the first key of the fight reaches the game's binding.]
+- If it fails, paste: what Add key read when the fight started, whether 1 fired or a spell picker opened, and `/vg errors`.
+
+### 33.103 Retail login with no Vanguard error
+
+- Do: on a Retail 12.x client (not Forever), log in with Vanguard on, then `/reload`. Look at the chat and the error badge. Run `/vg errors`.
+- Expect: no "event GAME_RULES_CHANGED: not on this client" line in chat, the error badge stays off and `/vg errors` is empty; on Forever `/vg realm` still names the ruleset. [Needs in-game check: that Retail's C_EventUtils.IsEventValid is the only thing that reported the event, and that nothing else Forever-only is registered at a Retail login.]
+- If it fails, paste: the chat lines Vanguard printed at login and `/vg errors`.
+
+### 33.104 Tooltip on a friendly nameplate buff in a dungeon
+
+- Do: on Forever, in a dungeon with a party member, turn on friendly nameplates and their buffs in the game's nameplate settings, with Vanguard's tooltip anchor at its default (the corner). Mouse over a buff icon on the party member's nameplate, then over your own player frame. Run `/vg errors`.
+- Expect: the buff's tooltip opens where the game puts it (beside the icon, not in Vanguard's corner), the error badge stays off and `/vg errors` is empty; over the player frame the tooltip is in the corner as usual. [Needs in-game check: that the client restricts the tooltip's anchoring or forbids its owner there, so the hook leaves the tooltip alone, and that no "forbidden object" error reaches `/vg errors`.]
+- If it fails, paste: `/vg errors` and where the buff's tooltip opened.
+### 33.105 Raid target icons on the raid tools bar
+
+- Do: lead a party (a second character or a friend), so the raid tools bar shows. Target a mob or your party member. On the bar's second row, click the skull, then click the skull again, then another icon, then the last button on the row. Do the same once during a fight. Run `/vg errors`.
+- Expect: the skull lands on your target and stays when clicked again, the other icon replaces it, the last button clears it, in the fight too; no "reserved for the Blizzard UI" message names Vanguard and `/vg errors` is empty. [Needs in-game check: that the game's secure raidtarget action sets and clears a mark from Vanguard's buttons on Forever, since SetRaidTarget is reserved for secure code there.]
+- If it fails, paste: which button did nothing or what the game's message said word for word, and `/vg errors`.
+### 33.106 Talking head and loss of control on their spots, then Edit Mode
+
+- Do: with Loss of control on and Talking head set to "move" (the defaults), type `/console taintLog 1` and `/reload`. Trigger a talking head (a quest or story line that plays one) and a loss of control (a stun or fear from a mob). Open Edit Mode (Escape, Edit Mode), move any game frame, click Save and close it. Run `/vg errors`, then `/console taintLog 0` and open `Logs/taint.log` in the game folder.
+- Expect: both alerts show on their Vanguard spots (the talking head at the top left, the loss of control band just above the screen's centre), before Edit Mode and again after it closes; no "Interface action failed because of an AddOn" message names Vanguard while Edit Mode is open or in the next fight; `/vg errors` is empty; the taint log has no line naming Vanguard and `editModeSystemAnchorDirty`. [Needs in-game check: that the client's SetPointBase exists on the two frames once loaded, so Vanguard's placing never runs Edit Mode's SetPoint override, and that the taint log stays clear of it.]
+- If it fails, paste: the game's message word for word, the taint log lines naming Vanguard, and `/vg errors`.
+### 33.107 Craft cooldowns noted on opening a profession
+
+- Do: turn on `/vg` → Town and gear → Craft queue. On a character with a profession recipe on a cooldown (a transmute, a cloth speciality, a daily craft), open that profession window, then type `/vg craft cd`. Run `/vg errors`.
+- Expect: `/vg craft cd` lists the recipe with the time left (such as "2h 5m"), not "No profession cooldowns noted yet"; `/vg errors` is empty, with no "Usage: C_TradeSkillUI.GetRecipeSchematic" line. [Needs in-game check: that the Forever client reads the cooldown through GetRecipeSchematic with its isRecraft argument and names the recipe.]
+- If it fails, paste: the `/vg craft cd` line and `/vg errors`.
+
+### 33.108 Unlock with the Chat mover on, and whether the client hides the chat window's size
+
+- Do: with Chat on (its Chat frame is a mover by default), type `/vg unlock` right after login, then `/run print(issecretvalue(ChatFrame1:GetWidth()), issecretvalue(ChatFrame1:GetScale()))` and press Escape. Do the same after a fight ends, and again inside a dungeon. Run `/vg errors`.
+- Expect: each time, every frame's handle shows (the Chat handle over the chat window) and the Exit bar is there; the printed line says what the client answers (note it, true or false, for each place); `/vg errors` is empty. [Needs in-game check: whether the 12.1 client ever hides the chat window's width, height or scale from addons; the guards that keep unlock mode and a frame anchored to Chat working only matter if it does.]
+- If it fails, paste: which handles showed, the printed line and where you were, and `/vg errors`.
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ## When you are done

@@ -1,7 +1,7 @@
 // merchantbulk: the sell list, sell-all and the Stack/Max buttons at a merchant (Modules/MerchantBulk.lua), in the TEST-ONLY headless client.
 
 import { expect, it } from "vitest";
-import { chatHas, loggedIn, setCombat } from "./helpers.mjs";
+import { chatHas, loggedIn, RETAIL, setCombat } from "./helpers.mjs";
 
 // TEST-ONLY bags: slot 1 holds 5 of item 159 (listed), 2 holds item 4540 (not listed), 3 a set item (listed),
 // 4 a locked listed stack, 5 a hidden item, 6 another stack of item 159, and 7 seven more listed items.
@@ -277,4 +277,19 @@ it("the tenth item on a merchant page gets Stack and Max too", () => {
   addon.fire("MERCHANT_SHOW");
   addon.eval("StackSplitFrame:Show()");
   expect([addon.eval("return ns.GetModule('Merchant').SplitIndex(StackSplitFrame)"), split(addon)], "MerchantItem10ItemButton is item 10").toEqual([10, [true, true, true, "Max 40 for 0s 80c"]]);
+});
+
+it("bulk buy reads the 12.x merchant table: Stack, Max and the cost line without the old GetMerchantItemInfo, on Forever and retail (V3-R1)", () => {
+  for (const client of ["", RETAIL]) {
+    const addon = loggedIn(BUY_ENV + client);
+    addon.world.without("GetMerchantItemInfo");
+    addon.fire("MERCHANT_SHOW");
+    addon.eval("StackSplitFrame:Show()");
+    expect(split(addon), "C_MerchantFrame.GetItemInfo alone: the same buttons and cost line").toEqual([true, true, true, "Max 40 for 0s 80c"]);
+    expect(addon.eval("local MC = ns.GetModule('Merchant') return { MC.MaxPacks(1), MC.StackPacks(1) }"), "8 packs fit; Stack is 4 packs of 5").toEqual([8, 4]);
+  }
+  const old = loggedIn(BUY_ENV + "C_MerchantFrame = nil");
+  old.fire("MERCHANT_SHOW");
+  old.eval("StackSplitFrame:Show()");
+  expect(split(old), "a client with only the old call: read from it").toEqual([true, true, true, "Max 40 for 0s 80c"]);
 });
