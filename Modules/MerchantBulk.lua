@@ -391,11 +391,19 @@ local function costText(drawer, stack)
   return T.FitText(ns.SingleLine(line), drawer)
 end
 
+-- A Stack or Max press: buys only while the row still holds the item, at the pack price, that the cost
+-- line was worked out for (the list can shift under an open window, and a button reads its row by place).
+local function press(entry, frame, packsOf)
+  local same = MC.Sells(entry.index, entry.id) and wares(entry.index) == entry.price
+  if not same then return ns.Chat(L["Nothing bought: the merchant closed or changed what it sells."]) end
+  MC.Order(entry.index, packsOf(entry.index), frame)
+end
+
 -- The window's drawer with its Stack and Max buttons and the cost line, made once.
 local function makeBulk(frame)
   local entry = { drawer = makeDrawer(frame) }
-  entry.stack = W.Button(entry.drawer, L["Stack"], function() MC.Order(entry.index, MC.StackPacks(entry.index), frame) end, 60)
-  entry.max = W.Button(entry.drawer, L["Max"], function() MC.Order(entry.index, MC.MaxPacks(entry.index), frame) end, 60)
+  entry.stack = W.Button(entry.drawer, L["Stack"], function() press(entry, frame, MC.StackPacks) end, 60)
+  entry.max = W.Button(entry.drawer, L["Max"], function() press(entry, frame, MC.MaxPacks) end, 60)
   entry.stack:SetPoint("TOPLEFT", entry.drawer, "TOPLEFT", T.SPACE.gap, -T.SPACE.gap)
   entry.max:SetPoint("LEFT", entry.stack, "RIGHT", T.SPACE.gap, 0)
   entry.line = costText(entry.drawer, entry.stack)
@@ -410,7 +418,10 @@ function MC.OnSplitShow(frame)
   if not entry then return end
   entry.index = index
   for _, part in ipairs({ entry.drawer, entry.stack, entry.max, entry.line }) do part:SetShown(on) end
-  if on then costLine(entry, index) end
+  if on then
+    entry.id, entry.price = MC.ItemID(ask("GetMerchantItemLink", index)), wares(index)
+    costLine(entry, index)
+  end
 end
 
 -- Hooks the quantity window (once), when the game has made it.

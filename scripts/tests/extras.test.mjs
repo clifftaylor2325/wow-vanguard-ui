@@ -298,6 +298,14 @@ it("keep stocked: /vg stock sets the list, a merchant tops you up", () => {
   off.fire("MERCHANT_SHOW");
   expect(off.eval("return #__buys"), "switched off it buys nothing").toBe(0);
 });
+it("keep stocked: an item the merchant lists in two gold rows is bought once, from the first row in stock", () => {
+  const addon = loggedIn(STOCK_ENV + "__goods[#__goods + 1] = { id = 90011, price = 6, stack = 1, left = -1, max = 20 } __goods[1].left = 0", { savedVariables: "VanguardDB.profiles = { Default = { Errands = { stockList = { [90011] = 25 } } } }" });
+  addon.fire("MERCHANT_SHOW");
+  expect(addon.eval("return __buys"), "row 1 is sold out, so the goal of 20 more comes from row 4 only").toEqual([[90011, 20]]);
+  const both = loggedIn(STOCK_ENV + "__goods[#__goods + 1] = { id = 90011, price = 6, stack = 1, left = -1, max = 20 }", { savedVariables: "VanguardDB.profiles = { Default = { Errands = { stockList = { [90011] = 25 } } } }" });
+  both.fire("MERCHANT_SHOW");
+  expect(both.eval("return __have[90011]"), "both rows in stock: the first row fills the goal and the second adds nothing").toBe(25);
+});
 // TEST-ONLY item details for the Keep stocked window: 90011 stacks to 20 and has an icon; 90012's info isn't cached.
 const STOCK_WINDOW_ENV = STOCK_ENV + `
   C_Item.GetItemInfo = function(id) if id == 90011 then return "TEST-ONLY Bread", "", 1, 1, 1, "", "", 20 end end
