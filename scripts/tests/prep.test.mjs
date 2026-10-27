@@ -214,7 +214,7 @@ it("prep: /vg prep want sets the wanted amounts; the options page has the sectio
   expect(addon.chat().at(-1), "an unknown kind: the usage").toMatch(/Usage: \/vg prep want/);
   addon.slash("prep");
   expect(rows(addon), "the new amount counts").toEqual([["Food & drink", "20 / 30"]]);
-  addon.eval('ns.Options.Show("town")');
+  addon.eval('ns.Options.Show("town") ns.Options.ShowTab("Instance prep")');
   expect(addon.find("^Checklist when you enter a dungeon or raid").text, "the switches").toMatch(/only when something is low/);
   expect(addon.find("^20 s$").text, "Hide after, in seconds").toBe("20 s");
   expect(addon.find("^50%%$").text, "the durability warning, in percent").toBe("50%");

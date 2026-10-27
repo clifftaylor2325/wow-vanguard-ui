@@ -156,7 +156,7 @@ it("chat filter card: the senders let through are listed, and Filter them again 
 
 it("chat filter card: the shown card's lines follow catches and the Caught lines choice without a rebuild", () => {
   const addon = filtering(CLICK_LUA);
-  addon.eval('ns.Options.Show("chat")');
+  addon.eval('ns.Options.Show("chat") ns.Options.ShowTab("Chat filter")');
   expect(addon.texts("Nothing caught this session.").length, "the count line as the page opens").toBe(1);
   deliver(addon, GOLD, "Goldy");
   addon.eval('ns.Options.Hide() ns.Options.Show("chat")');

@@ -182,7 +182,7 @@ it("chat watch: /vg watch adds, lists, removes and clears; at most 20 phrases of
 
 it("chat watch: the options add a phrase from a dialog, list a Remove button per phrase, and switch channels", () => {
   const addon = watching();
-  addon.eval('ns.Options.Show("chat")');
+  addon.eval('ns.Options.Show("chat") ns.Options.ShowTab("Chat watch")');
   expect(addon.find("^Remove: lfm$").text, "a Remove button for the phrase").toBe("Remove: lfm");
   addon.eval('__click("Add a phrase")');
   expect(addon.frame("Vanguard_TextDialog").visible, "Add a phrase asks for it").toBe(true);

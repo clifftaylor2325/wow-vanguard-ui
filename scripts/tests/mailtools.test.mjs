@@ -255,7 +255,7 @@ it("the panel goes with the mail window however it closes: hidden with no MAIL_C
 
 it("the options have the switch", () => {
   const addon = mailer();
-  addon.eval('ns.Options.Show("town")');
+  addon.eval('ns.Options.Show("town") ns.Options.ShowTab("Mail tools")');
   expect(addon.find("^Search the inbox and send%-to%-alt presets").text, "under Town and gear").toMatch(/^Search the inbox/);
   addon.eval("ns.Settings('MailTools').on = false");
   addon.eval(`${MT}.Paint()`);

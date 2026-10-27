@@ -3,8 +3,8 @@
 import { expect, it } from "vitest";
 import { CLICK_LUA, loggedIn } from "./helpers.mjs";
 
-// The row widget (a shown one) with this caption, as Lua source: `w`.
-const FIND = (caption) => `local w for _, x in ipairs(__wfgStub.frames) do if x.label and x.label.__text == "${caption}" and x:IsVisible() then w = x end end`;
+// The row widget with this caption on the open page, its tab shown, as Lua source: `w`.
+const FIND = (caption) => `local w for _, x in ipairs(__wfgStub.frames) do if x.label and x.label.__text == "${caption}" and ns.Options.RevealRow(x) then w = x end end`;
 
 it("options: a setting that applies on reload wears a tag, not (reload) in its caption", () => {
   const addon = loggedIn(CLICK_LUA);
@@ -56,16 +56,16 @@ it("options: the Modules page is grouped like the nav, and a filter shows the on
   // The Modules page's rows as "kind|caption".
   const rows = () => addon.eval(`local out = {} for _, r in ipairs(ns.Options.PAGES[2].rows()) do out[#out + 1] = r[1] .. "|" .. tostring(r[2]) end return out`);
   const all = rows();
-  expect(all.filter((r) => r.startsWith("header|")).slice(0, 4), "headers follow the nav").toEqual(["header|Modules", "header|Unit frames", "header|Raid frames", "header|Action bars"]);
+  expect(all.filter((r) => r.startsWith("header|")).slice(0, 4), "headers follow the nav").toEqual(["header|Unit frames", "header|Raid frames", "header|Action bars", "header|Map and info"]);
   const names = addon.eval("return ns.ModuleNames()");
   expect(all.filter((r) => r.startsWith("module|")).length, "every module has exactly one switch").toBe(names.length);
   const stale = addon.eval(`local have = {} for _, n in ipairs(ns.ModuleNames()) do have[n] = true end
     local out = {} for _, g in ipairs(ns.Options.MODULE_GROUPS) do for _, n in ipairs(g[2]) do if not have[n] then out[#out + 1] = n end end end return out`);
   expect(Object.values(stale), "every module a group names exists (one in no group is listed under More)").toEqual([]);
-  addon.eval('ns.SetModuleEnabled("Chat", false) ns.Options.Show("modules") ns.Options.PAGES[2].rows()[3][5]("off")');
+  addon.eval('ns.SetModuleEnabled("Chat", false) ns.Options.Show("modules") ns.Options.PAGES[2].rows()[2][5]("off")');
   expect(addon.eval("return ns.Options.moduleFilter"), "the filter cycle sets the filter").toBe("off");
-  expect(rows().filter((r) => !r.startsWith("text|")).slice(1), "Off lists only the module that is off, under its group").toEqual(["cycle|Show", "header|Chat", "module|Chat"]);
-  addon.eval('ns.Options.PAGES[2].rows()[3][5]("on")');
+  expect(rows().filter((r) => !r.startsWith("text|")), "Off lists only the module that is off, under its group").toEqual(["cycle|Show", "header|Chat", "module|Chat"]);
+  addon.eval('ns.Options.PAGES[2].rows()[2][5]("on")');
   expect(rows().some((r) => r === "module|Chat"), "On leaves it out").toBe(false);
   addon.eval('ns.Options.moduleFilter = "all"');
 });

@@ -308,6 +308,7 @@ it("the starter layout, hover keys with collision notes, and the test tile", () 
   const addon = priest();
   addon.eval('ns.Options.Show("clickcast")');
   expect(addon.eval('return __click("Priest healing layout")')).toBe(true);
+  addon.eval('ns.Options.ShowTab("Keys while hovering a frame")');
   expect(bindings(addon)).toMatchObject({ BUTTON1: "target:nil:nil:nil", "ctrl-BUTTON1": "spell:Dispel Magic:527:nil" });
   expect(bindings(addon).BUTTON2.startsWith("spell:Flash Heal:")).toBe(true);
   const add = widget(addon, 'w.caption == "Add key" and w.onKey ~= nil');
@@ -325,7 +326,7 @@ it("the starter layout, hover keys with collision notes, and the test tile", () 
   expect(addon.texts("also Action bar 1 slot 1").length, "a key the action bar uses says so").toBe(1);
   addon.click(add);
   addon.eval(`local a = __wfgStub.frames[${add}] a:GetScript("OnMouseDown")(a, "RightButton")`);
-  expect(addon.texts("That's a mouse button: it lives in the grid above.").length).toBe(1);
+  expect(addon.texts("That's a mouse button: it lives in the Click casting grid.").length).toBe(1);
   for (let i = 1; i <= 9; i++) addon.eval(`${CC}.Add("F${i}", "target")`);
   addon.eval("ns.Options.Refresh()");
   expect(addon.texts("+3 more (/vg binds)").length, "rows past the list are counted").toBe(1);
@@ -398,7 +399,7 @@ it("sharing: export, import, copy to another spec, and the combat notice", () =>
   expect(addon.frame(copy).visible, "without other specs it hides").toBe(false);
   addon.world.combat(true);
   addon.eval(`${CC}.Add("BUTTON5", "menu")`);
-  addon.eval("ns.Options.Refresh()");
+  addon.eval('ns.Options.Refresh() ns.Options.ShowTab("Click casting")');
   expect(addon.texts("In combat: changes are kept and apply when the fight ends.").length).toBe(1);
   expect(addon.eval(`return ${CC}.frames[1]:GetAttribute("type5")`)).toBe(null);
   addon.click(cell(addon, "alt-BUTTON3"));
@@ -416,27 +417,26 @@ it("without specializations the page speaks of this character", () => {
   expect(addon.eval('return ns.Settings("ClickCast", ns.GetModule("ClickCast").defaults).unitFrames')).toBe(false);
 });
 
-it("the hover keys card shows Add key and its hint right under its title, inside the page as it opens", () => {
+it("the hover keys tab shows Add key and its hint at the top of its card, inside the page as it opens", () => {
   const addon = priest();
-  addon.eval('ns.Options.Show("clickcast")');
-  const title = addon.texts("KEYS WHILE HOVERING A FRAME")[0].rect;
+  addon.eval('ns.Options.Show("clickcast") ns.Options.ShowTab("Keys while hovering a frame")');
   const view = addon.frames('w.__kind == "ScrollFrame" and w:IsVisible()')[0].rect;
   const list = addon.frames("w.rows ~= nil and w.add ~= nil")[0].rect;
   const add = addon.frame(widget(addon, 'w.caption == "Add key" and w.onKey ~= nil'));
   const hint = addon.texts("No hover keys yet. Add one, press the key, pick the spell.")[0];
-  expect([add.visible, title.bottom - add.rect.top, add.rect.bottom >= view.bottom], "Add key sits a tight gap (4) under the card's 18-high header band, whose 14-high title is centred in it: 6 under the title, in the page before any scrolling").toEqual([true, 6, true]);
+  expect([add.visible, view.top - add.rect.top, add.rect.bottom >= view.bottom], "Add key is the card's first line, 16 under the page's top, in the page before any scrolling").toEqual([true, 16, true]);
   expect([hint.visible, hint.rect.bottom >= view.bottom, hint.rect.right <= list.right], "the hint beside it, inside the page and the card").toEqual([true, true, true]);
   // A mouse button pressed for the new key says it lives in the grid, in the hint's spot: the hint goes, not printed over.
   const addId = widget(addon, 'w.caption == "Add key" and w.onKey ~= nil');
   addon.click(addId);
   addon.eval(`local a = __wfgStub.frames[${addId}] a:GetScript("OnMouseDown")(a, "RightButton")`);
-  expect([addon.texts("No hover keys yet. Add one, press the key, pick the spell.").length, addon.texts("That's a mouse button: it lives in the grid above.").length], "with no keys yet, the empty line makes room for the mouse-button line").toEqual([0, 1]);
+  expect([addon.texts("No hover keys yet. Add one, press the key, pick the spell.").length, addon.texts("That's a mouse button: it lives in the Click casting grid.").length], "with no keys yet, the empty line makes room for the mouse-button line").toEqual([0, 1]);
   addon.eval(`${CC}.Add("SHIFT-Q", "target") ns.Options.Refresh()`);
   const row = addon.texts("Shift + Q")[0].rect;
   expect(row.top <= add.rect.bottom, "a hover key's row comes under the Add key line").toBe(true);
   addon.eval("ns.Client = ns.Client or {} ns.Client.ProbeSnippets = function() return false end ns.Options.Refresh()");
   const off = addon.texts("This client can't compile the secure code hover keys need; mouse bindings still work.")[0];
-  expect([off.visible, title.bottom - off.rect.top, off.rect.right <= list.right], "without snippets the note takes the top line, a gap (8) under the header band and 10 under its title, inside the card").toEqual([true, 10, true]);
+  expect([off.visible, view.top - off.rect.top, off.rect.right <= list.right], "without snippets the note takes the top line, inside the card").toEqual([true, 20, true]);
   addon.eval("ns.Client.ProbeSnippets = nil");
 });
 
@@ -472,7 +472,7 @@ it("the picker's rows are list rows (T.ROW.height) and a group's name shows in a
 
 it("the hover keys card: its key rows are list rows; the empty line is label text2, the count small text2, the off note small muted; an empty cell's mark is label disabled", () => {
   const addon = priest();
-  addon.eval('ns.Options.Show("clickcast")');
+  addon.eval('ns.Options.Show("clickcast") ns.Options.ShowTab("Keys while hovering a frame")');
   const [height, label, small] = addon.eval("return { ns.Theme.ROW.height, ns.Theme.RoleSize('label'), ns.Theme.RoleSize('small') }");
   const empty = fontOf(addon, "No hover keys yet. Add one, press the key, pick the spell.");
   expect([empty[0], isTok(addon, empty[1], "text2")], "the empty-state line: label, text2").toEqual([label, true]);

@@ -323,13 +323,13 @@ it("situations: the options page records, stops, clears and switches overrides o
   expect(addon.eval("return ns.GetModule('Situations').recording"), "then Off, which stops recording").toBe(null);
 });
 
-// TEST-ONLY: __row(text) is the shown options row whose caption starts with text; __point(text) keeps it in __hovered.
+// TEST-ONLY: __row(text) is the options row whose caption starts with text, on the open page (its tab shown);
+// __point(text) keeps it in __hovered.
 const ROW_LUA = `
   function __row(text)
     for _, w in ipairs(__wfgStub.frames) do
-      local fs, shown, f = w.label, true, w
-      while f do if not f.__shown then shown = false end f = f.__parent end
-      if shown and type(fs) == "table" and type(fs.__text) == "string" and fs.__text:sub(1, #text) == text and w.__scripts.OnClick then return w end
+      local fs = w.label
+      if type(fs) == "table" and type(fs.__text) == "string" and fs.__text:sub(1, #text) == text and w.__scripts.OnClick and ns.Options.RevealRow(w) then return w end
     end
   end
   function __point(text) __hovered = __row(text) end
@@ -449,7 +449,7 @@ it("situations: while recording, a setting an override can't hold is dimmed and 
 it("situations: the page lists what an override can hold and says everything else changes the base profile", () => {
   const addon = situated("", CLICK_LUA);
   addon.slash("");
-  addon.eval('__click("Situations")');
+  addon.eval('__click("Situations") ns.Options.ShowTab("What an override holds")');
   expect(addon.texts("Frame spots, scale and opacity (move frames with /vg unlock).").length, "frames first").toBe(1);
   const holds = addon.eval("local SI, out = ns.GetModule('Situations'), {} for _, m in ipairs(SI.ORDER) do out[#out + 1] = SI.HOLDS[m] end return out");
   expect(holds.length, "a line for every module an override can set").toBe(addon.eval("local n = 0 for _ in pairs(ns.GetModule('Situations').LIVE) do n = n + 1 end return n"));
@@ -487,7 +487,7 @@ it("A-11 situations: Your situations lists every override with Clear on each, (n
   addon.eval('__click("Situations")');
   addon.eval('__click("Record for") __click("Record for")');
   addon.eval("ns.SetMoverPoint('infostrip', 'BOTTOM', 'BOTTOM', 0, 300)");
-  addon.eval('__click("Stop recording and save")');
+  addon.eval('__click("Stop recording and save") ns.Options.ShowTab("Your situations")');
   expect([addon.texts("Raid (now): 2 overrides (1 frame, info strip)").length, addon.texts("Party: 1 override (1 frame)").length], "both, the one you're in marked").toEqual([1, 1]);
   // Whether the named Clear button can be clicked.
   const clearable = (name) => addon.frames(`w.text ~= nil and w.text.__text == "Clear ${name}"`).at(-1).enabled;

@@ -358,12 +358,26 @@ end
 
 -- Cards --------------------------------------------------------------------------------------
 
--- Splits rows into cards: each header starts one; rows before the first header make an untitled card.
+-- A new card for a header row (its title) or for the rows before the first header (untitled).
+local function newCard(row)
+  return { title = row[1] == "header" and row[2] or nil, rows = {} }
+end
+
+-- Adds a row to its card, listing the card with its first row (so a header with no rows under it, a heading over
+-- the cards after it, makes no card).
+local function addRow(cards, card, row)
+  if #card.rows == 0 then cards[#cards + 1] = card end
+  table.insert(card.rows, row)
+end
+
+-- Splits rows into cards: each header starts one; rows before the first header make an untitled card. The page's
+-- reset row goes in cards.reset (the page bar holds it).
 local function groupRows(rows)
-  local cards = {}
+  local cards, card = {}, nil
   for _, row in ipairs(rows) do
-    if row[1] == "header" or #cards == 0 then cards[#cards + 1] = { title = row[1] == "header" and row[2] or nil, rows = {} } end
-    if row[1] ~= "header" then table.insert(cards[#cards].rows, row) end
+    if row.isReset then cards.reset = row
+    elseif row[1] == "header" then card = newCard(row)
+    else card = card or newCard(row) addRow(cards, card, row) end
   end
   return cards
 end
@@ -396,12 +410,12 @@ local function placeHeight(w, kind)
 end
 
 -- Builds a card's rows top to bottom from y; returns the y below them. Each
--- row keeps its card, its caption and where it sits on the page (for search).
-local function placeRows(card, rows, y, cardY)
+-- row keeps its card, its caption and where it sits in the card (for search and the keyboard).
+local function placeRows(card, rows, y)
   for _, row in ipairs(rows) do
     local full = FULL_WIDTH[row[1]]
     local w = BUILDERS[row[1]](card, row, CARD_WIDTH - 2 * T.SPACE.tight)
-    w.card, w.caption, w.pageY, w.source = card, row[2], cardY + y, row
+    w.card, w.caption, w.pageY, w.source = card, row[2], y, row
     dressRow(w, row)
     w:SetPoint("TOPLEFT", card, "TOPLEFT", full and T.SPACE.tight or PAD, -y)
     widgets[#widgets + 1] = w
@@ -410,27 +424,92 @@ local function placeRows(card, rows, y, cardY)
   return y
 end
 
--- One card (a raised panel) at y on the page; returns its height.
-local function buildCard(child, spec, y)
+-- One card (a raised panel) at the top of the page, its rows under its title; on a page of tabs the tab names it
+-- (opts.tabbed), so it has no title of its own. Keeps its rows and height.
+local function buildCard(child, spec, tabbed)
   local card = T.Panel(CreateFrame("Frame", nil, child), { raised = true })
-  card:SetPoint("TOPLEFT", 0, -y)
+  card:SetPoint("TOPLEFT")
   card:SetWidth(CARD_WIDTH)
-  card.child = child
-  local top = spec.title and addCardTitle(card, spec.title) or PAD
-  local height = placeRows(card, spec.rows, top, y) + T.SPACE.gap
-  card:SetHeight(height)
-  return height
+  card.child, card.rows = child, spec.rows
+  local top = (spec.title and not tabbed) and addCardTitle(card, spec.title) or PAD
+  card.height = placeRows(card, spec.rows, top) + T.SPACE.gap
+  card:SetHeight(card.height)
+  return card
 end
 
--- Pages --------------------------------------------------------------------------------------
+-- Tabs ---------------------------------------------------------------------------------------
 
--- Stacks a page's cards down its view's content and sizes the content to fit.
-local function placeCards(view, rows)
-  local y = 0
-  quiet = true
-  for _, spec in ipairs(groupRows(rows)) do y = y + buildCard(view.child, spec, y) + PAD end
-  quiet = false
-  view:Fit(y - PAD)
+-- A page's tab strip (one tab per card, in lines that wrap): a tab's height, the air either side of its name, the
+-- room between tabs and between lines, and where the tab's changed dot sits in from its right edge.
+local TAB = { height = T.CONTROL_H + 4, pad = 10, gap = 2, dot = 4 }
+-- The tab each page showed last (its name), kept while the game runs, so a page opens again on it.
+local lastTab = {}
+
+-- Shows one card of a page (its tab marked, the others plain) at the top of the view, scrolled to the top.
+local function showCard(view, index)
+  view.tab = index
+  for i, card in ipairs(view.cards) do
+    card:SetShown(i == index)
+    if card.tab then T.SetChecked(card.tab, i == index) T.Tab(card.tab) T.Color(card.tab.text, i == index and "text" or "text2") end
+  end
+  lastTab[view.child.pageKey] = view.cards[index].tabName
+  view:Fit(view.cards[index].height)
+  view:ScrollTo(0)
+end
+
+-- Shows the card holding row w on its page (nothing changes when it shows already, or when w sits in the page bar).
+local function showCardOf(view, w)
+  local index = w.card and w.card.index
+  if index and index ~= view.tab then showCard(view, index) end
+end
+
+-- A tab's name, in text2 until it is the shown tab; the tab as wide as the name and its air, never wider than the
+-- strip (a longer name shrinks, then is cut short: T.FitText).
+local function tabLabel(tab, name)
+  tab.text = T.Text(tab:CreateFontString(nil, "OVERLAY"), "label", "text2")
+  tab.text:SetText(name)
+  tab:SetWidth(math.min(CARD_WIDTH, math.ceil(T.FullWidth(tab.text)) + 2 * TAB.pad))
+  T.FitText(tab.text, tab, TAB.pad)
+end
+
+-- One tab: the card's name (shrunk, then cut short, when it is wider than the strip), the flat tab look (T.Tab: the
+-- shown one raised onto its card), and a changed dot while a setting on its card differs from its default.
+local function addTab(view, card)
+  local tab = CreateFrame("Button", nil, view.strip)
+  tab:SetHeight(TAB.height)
+  tabLabel(tab, card.tabName)
+  tab.changed = W.Flat(tab, "OVERLAY", "accent")
+  tab.changed:SetSize(DOT, DOT)
+  tab.changed:SetPoint("RIGHT", -TAB.dot, 0)
+  tab:SetScript("OnClick", ns.Guard("click options tab", function() T.Sound("page") showCard(view, card.index) end))
+  card.tab = T.Tab(tab, { flat = true })
+end
+
+-- Lays the tabs out left to right, starting a new line where the next would run past the strip; sizes the strip.
+local function placeTabs(view)
+  local x, y = 0, 0
+  for _, card in ipairs(view.cards) do
+    local width = card.tab:GetWidth()
+    if x > 0 and x + width > CARD_WIDTH then x, y = 0, y + TAB.height + TAB.gap end
+    card.tab:SetPoint("TOPLEFT", view.strip, "TOPLEFT", x, -y)
+    x = x + width + TAB.gap
+  end
+  view.strip:SetHeight(y + TAB.height)
+end
+
+-- Shows each tab's changed dot while a setting on its card differs from its default, in the current accent.
+local function markTabs(view)
+  for _, card in ipairs(view.cards) do
+    if card.tab then card.tab.changed:SetShown(anyChanged(card.rows)) T.Tint(card.tab.changed, "accent") end
+  end
+end
+
+-- The card a page opens on: the one with the name it showed last, else the first.
+local function openingCard(view)
+  for i, card in ipairs(view.cards) do
+    if card.tabName == lastTab[view.child.pageKey] then return i end
+  end
+  return 1
 end
 
 -- A caption whose English ends in " (reload)": the window shows that as a tag beside the caption instead.
@@ -492,15 +571,12 @@ local function copiedRows(page)
   return rows
 end
 
--- A page's rows as the window uses them (copiedRows), and a reset button at the foot of a page that has
--- settings with defaults (a card of its own).
+-- A page's rows as the window uses them (copiedRows), and a reset button for a page that has settings with defaults
+-- (it sits in the page's bar, beside its title).
 local function preparedRows(page)
   local rows, defaults = copiedRows(page), false
   for _, row in ipairs(rows) do defaults = defaults or hasDefault(row) end
-  if defaults then
-    rows[#rows + 1] = { "header", L["This page"] }
-    rows[#rows + 1] = resetPageRow(page, rows)
-  end
+  if defaults then rows[#rows + 1] = resetPageRow(page, rows) end
   return rows
 end
 
@@ -514,13 +590,87 @@ end
 -- A page's rows for the search (Core/OptionsSearch.lua), and whether one differs from its default.
 O.RowsOf, O.RowChanged = rowsOf, rowChanged
 
--- A page: the shared scroll view (ns.ScrollView: the T.SCROLL thumb, soft edges, the wheel) right of the nav, holding its cards.
+-- Pages --------------------------------------------------------------------------------------
+
+-- The bar along the top of a page, with the page's title along it (cut short at the bar's end).
+local function addPageBar(view, page)
+  local bar = CreateFrame("Frame", nil, window)
+  bar:SetPoint("TOPLEFT", NAV_WIDTH + T.SPACE.col, -(HEAD + T.SPACE.col))
+  bar:SetSize(CARD_WIDTH, T.BUTTON_H)
+  bar.child, view.bar = view.child, bar
+  bar.title = T.Text(bar:CreateFontString(nil, "OVERLAY"), "heading", "text")
+  bar.title:SetPoint("LEFT")
+  bar.title:SetPoint("RIGHT")
+  bar.title:SetJustifyH("LEFT")
+  bar.title:SetWordWrap(false)
+  bar.title:SetText(page.title)
+end
+
+-- The page's Reset this page button at the right of its bar, the title then cut short a gap before it. Built after
+-- the cards, so it is the last row the keyboard's Tab reaches.
+local function addReset(bar, reset)
+  if not reset then return end
+  placeRows(bar, { reset }, 0)
+  local button = bar.buttons[1]
+  button:ClearAllPoints()
+  button:SetPoint("RIGHT")
+  bar.title:SetPoint("RIGHT", button, "LEFT", -T.SPACE.gap, 0)
+end
+
+-- A page's untitled first card on a page of tabs: its lead, shown above the tabs whichever tab is shown (Modules'
+-- Show choice, Cooldowns' setup button), out of the scrolling.
+local function addLead(view, specs)
+  if #specs < 2 or specs[1].title then return end
+  view.lead = buildCard(view.child, table.remove(specs, 1), true)
+  view.lead:SetParent(window)
+  view.lead:ClearAllPoints()
+  view.lead:SetPoint("TOPLEFT", view.bar, "BOTTOMLEFT", 0, -T.SPACE.gap)
+end
+
+-- The tab strip under the page bar (and the lead), with a tab per card; empty (and a unit tall) on a page of one card.
+local function addTabStrip(view, cards)
+  view.strip = CreateFrame("Frame", nil, window)
+  view.strip:SetPoint("TOPLEFT", view.lead or view.bar, "BOTTOMLEFT", 0, -T.SPACE.gap)
+  view.strip:SetSize(CARD_WIDTH, 1)
+  if #cards < 2 then return end
+  for i, spec in ipairs(cards) do
+    view.cards[i].index, view.cards[i].tabName = i, spec.title
+    addTab(view, view.cards[i])
+  end
+  placeTabs(view)
+  markTabs(view)
+end
+
+-- Builds a page's cards in its view, one shown at a time under its tab (the one it showed last), with its bar and strip.
+local function placeCards(view, page)
+  local specs = groupRows(rowsOf(page))
+  quiet = true
+  addPageBar(view, page)
+  addLead(view, specs)
+  view.cards = {}
+  for i, spec in ipairs(specs) do view.cards[i] = buildCard(view.child, spec, #specs > 1) end
+  addReset(view.bar, specs.reset)
+  addTabStrip(view, specs)
+  quiet = false
+  if #view.cards > 0 then showCard(view, openingCard(view)) end
+end
+
+-- Shows or hides a built page: its view, its bar, its lead and its tab strip.
+local function showView(view, shown)
+  view:SetShown(shown)
+  view.bar:SetShown(shown)
+  view.strip:SetShown(shown)
+  if view.lead then view.lead:SetShown(shown) end
+end
+
+-- A page: the shared scroll view (ns.ScrollView: the T.SCROLL thumb, soft edges, the wheel) right of the nav, under
+-- the page's bar and tab strip, holding the card its tab shows.
 local function buildPage(page)
   local view = ns.ScrollView(window, { width = CARD_WIDTH })
-  view:SetPoint("TOPLEFT", NAV_WIDTH + T.SPACE.col, -(HEAD + T.SPACE.col))
-  view:SetPoint("BOTTOMRIGHT", -VIEW_RIGHT, FOOT + T.SPACE.col)
   view.child.pageKey, view.textScale = page.key, T.Settings().textScale
-  placeCards(view, rowsOf(page))
+  placeCards(view, page)
+  view:SetPoint("TOPLEFT", view.strip, "BOTTOMLEFT", 0, view.strip:GetHeight() > 1 and 0 or 1 - T.SPACE.gap)
+  view:SetPoint("BOTTOMRIGHT", -VIEW_RIGHT, FOOT + T.SPACE.col)
   return view
 end
 
@@ -745,12 +895,24 @@ local function stepRow(dir)
   scrollToRow(pages[O.current], window.focusRow)
 end
 
--- What a key does in the window; true when it used it.
+-- Shows the current page's tab before (dir -1) or after (dir 1) the shown one, wrapping, with no keyboard row; false on
+-- a page without tabs.
+local function stepTab(dir)
+  local view = pages[O.current]
+  if not (view and #view.cards > 1) then return false end
+  setFocus(nil)
+  showCard(view, (view.tab - 1 + dir) % #view.cards + 1)
+  return true
+end
+
+-- What a key does in the window; true when it used it. Left and Right step the keyboard's row (a slider or a
+-- choice) while it has one that steps, else the page's tabs.
 local function useKey(key)
   if key == "UP" or key == "DOWN" then stepPage(key == "UP" and -1 or 1) return true end
   if key == "TAB" then stepRow(IsShiftKeyDown and IsShiftKeyDown() and -1 or 1) return true end
-  local w = window.focusRow
-  if (key == "LEFT" or key == "RIGHT") and w and w.Step then w:Step(key == "RIGHT" and 1 or -1) return true end
+  local w, dir = window.focusRow, key == "RIGHT" and 1 or -1
+  if (key == "LEFT" or key == "RIGHT") and w and w.Step then w:Step(dir) return true end
+  if key == "LEFT" or key == "RIGHT" then return stepTab(dir) end
   if not ((key == "ENTER" or key == "SPACE") and w) then return false end
   w:GetScript("OnClick")(w, "LeftButton")
   return true
@@ -905,7 +1067,7 @@ local function dropStale(key)
   if not view or view.textScale == T.Settings().textScale then return end
   rowCache[key] = nil
   forgetRows(view)
-  view:Hide()
+  showView(view, false)
   pages[key] = nil
 end
 
@@ -914,7 +1076,7 @@ local function showPage()
   dropStale(O.current)
   for _, page in ipairs(O.PAGES) do
     if page.key == O.current and not pages[page.key] then pages[page.key] = buildPage(page) end
-    if pages[page.key] then pages[page.key]:SetShown(page.key == O.current) end
+    if pages[page.key] then showView(pages[page.key], page.key == O.current) end
   end
 end
 
@@ -973,6 +1135,7 @@ function O.MarkChanged(key)
   for _, page in ipairs(O.PAGES) do
     local b = window.nav[page.key]
     if b and (key == nil or key == page.key) then b.changed:SetShown(pageChanged(page)) T.Tint(b.changed, "accent") end
+    if pages[page.key] and (key == nil or key == page.key) then markTabs(pages[page.key]) end
   end
 end
 
@@ -1005,7 +1168,7 @@ function O.RebuildPage(key)
   rowCache[key] = nil
   local old = pages[key]
   local scroll = old and old:GetVerticalScroll() or 0
-  if old then forgetRows(old) old:Hide() pages[key] = nil end
+  if old then forgetRows(old) showView(old, false) pages[key] = nil end
   if not (window and window:IsShown() and O.current == key) then return end
   O.Show(key)
   if pages[key] then pages[key]:ScrollTo(scroll) end
@@ -1034,16 +1197,34 @@ function O.JumpTo(text)
   local view = pages[O.current]
   local w = view and firstRow(view, ((text or ""):gsub(" %(reload%)$", "")):lower())
   if not w then return end
+  showCardOf(view, w)
   view:ScrollTo(w.pageY - JUMP_ABOVE)
   O.MarkRow(w)
 end
 
--- Opens a search hit: its page, scrolled to its row, which is marked.
+-- Shows the tab holding row w (a row's widget on a built page) and says whether the row shows now (a row the page
+-- hides, such as a module the Modules page's Show choice leaves out, doesn't).
+function O.RevealRow(w)
+  local view = w.card and w.card.child and pages[w.card.child.pageKey]
+  if view then showCardOf(view, w) end
+  return w:IsVisible()
+end
+
+-- Shows a tab of the current page, by its place (1 for the first) or its name; true when the page has that tab.
+function O.ShowTab(which)
+  local view = pages[O.current]
+  for i, card in ipairs(view and view.cards or {}) do
+    if card.tab and (which == i or which == card.tabName) then showCard(view, i) return true end
+  end
+  return false
+end
+
+-- Opens a search hit: its page and tab, scrolled to its row, which is marked.
 function O.OpenHit(hit)
   O.Show(hit.page)
   local view = pages[O.current]
   for _, w in ipairs(widgets) do
-    if view and w.source == hit.row and w:IsVisible() then view:ScrollTo(w.pageY - JUMP_ABOVE) O.MarkRow(w) return end
+    if view and w.source == hit.row and O.RevealRow(w) then view:ScrollTo(w.pageY - JUMP_ABOVE) O.MarkRow(w) return end
   end
 end
 

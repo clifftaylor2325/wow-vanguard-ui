@@ -559,7 +559,7 @@ end
 local function keyCaptured(list, key)
   if CC.MouseParts(key) then
     list.empty:Hide()
-    list.more:SetText(L["That's a mouse button: it lives in the grid above."])
+    list.more:SetText(L["That's a mouse button: it lives in the Click casting grid."])
     return
   end
   openPicker(list.add, key)
@@ -784,7 +784,7 @@ end
 -- The line over the grid: whose bindings, or the combat notice while a fight is on.
 local function title()
   if ns.InCombat() then return L["In combat: changes are kept and apply when the fight ends."] end
-  if CC.UsesGame() then return L["The game's click bindings are in use (below): these are kept for when you switch back."] end
+  if CC.UsesGame() then return L["The game's click bindings are in use: these are kept for when you switch back."] end
   local spec = ns.SpecIndex()
   if not spec then return L["Bindings for this character. Click a cell to pick a spell, right-click to clear, or drop a spell on it."] end
   return ns.Format(L["Bindings for spec {spec} on this character. Click a cell to pick a spell, right-click to clear, or drop a spell on it."], { spec = spec })
@@ -846,7 +846,7 @@ local WITH_GAME = {}
 for _, row in ipairs(ROWS) do WITH_GAME[#WITH_GAME + 1] = row end
 for _, row in ipairs({
   { "header", L["The game's click bindings"] },
-  { "text", L["The game has click casting of its own (its Click Casting window). Switched on, it works on the raid and unit frames and Vanguard's bindings and hover keys above rest."], "note" },
+  { "text", L["The game has click casting of its own (its Click Casting window). Switched on, it works on the raid and unit frames and Vanguard's bindings and hover keys rest."], "note" },
   { "check", L["Use the game's click bindings instead"], useGameOn, setUseGame, false },
   { "button", L["Open the game's click bindings"], openGameBindings },
 }) do WITH_GAME[#WITH_GAME + 1] = row end

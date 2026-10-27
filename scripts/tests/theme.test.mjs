@@ -261,11 +261,11 @@ it("fading a frame's art: template textures go, Vanguard's own parts and kept on
   expect(out, "only the two template textures fade; a later call on another frame touches only that frame's").toEqual([2, 0, 1, 1, 0, 1]);
 });
 
-// TEST-ONLY: opens the options row's dropdown with this caption, and reads what its menu shows.
+// TEST-ONLY: opens the options row's dropdown with this caption (its tab shown), and reads what its menu shows.
 const DROPDOWN_LUA = `
   function __dropdown(caption)
     for _, w in ipairs(__wfgStub.frames) do
-      if w.dropdown and w.label:GetText() == caption and w:IsVisible() then w.dropdown:GetScript("OnClick")(w.dropdown) return w end
+      if w.dropdown and w.label:GetText() == caption and ns.Options.RevealRow(w) then w.dropdown:GetScript("OnClick")(w.dropdown) return w end
     end
   end
   function __menuTexts()
