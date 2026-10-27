@@ -134,7 +134,7 @@ end
 -- Sizes the exit button to its label now and after every Text size change.
 local function keepExitFitted(b)
   SB.WidenExit(b)
-  T.OnChanged(function() ns.OutOfCombat(function() SB.WidenExit(b) end) end)
+  T.OnChanged(function() ns.OutOfCombat(function() SB.WidenExit(b) end, b) end)
 end
 
 -- The exit button's room beside bar 1 (it sits one half width of bar 1, plus this, from the centre) and its

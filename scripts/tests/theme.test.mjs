@@ -562,6 +562,22 @@ it("pixel sizes are rounded again after a UI scale, screen or frame scale change
   expect(addon.eval("return __scaled"), "a frame's own scale (unlock mode) rounds again too").toBe(3);
 });
 
+it("screen, scale and key changes in a fight queue their after-fight work once, however often they fire", () => {
+  const addon = loggedIn("ns.Theme.Settings().pixelScale = true");
+  setCombat(addon, true);
+  // One screen change, one UI scale change and one key change, each given a frame to settle.
+  const burst = () => {
+    for (const event of ["DISPLAY_SIZE_CHANGED", "UI_SCALE_CHANGED", "UPDATE_BINDINGS"]) addon.fire(event);
+    addon.update(0.1);
+  };
+  burst();
+  const once = addon.eval("return ns.QueuedCount()");
+  for (let i = 0; i < 10; i++) burst();
+  expect(addon.eval("return ns.QueuedCount()"), "ten more of each add nothing to the queue").toBe(once);
+  setCombat(addon, false);
+  expect([addon.eval("return ns.QueuedCount()"), addon.eval("return #ns.errors")], "it all runs when the fight ends").toEqual([0, 0]);
+});
+
 it("a painted frame's border stays one screen pixel after the frame's own scale changes (P1-1)", () => {
   const addon = loggedIn("GetPhysicalScreenSize = function() return 2560, 1440 end");
   addon.eval(`TEST_Scaled = ns.Theme.Panel(CreateFrame("Frame", nil, UIParent))`);

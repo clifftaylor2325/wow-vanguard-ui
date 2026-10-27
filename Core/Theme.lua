@@ -3244,7 +3244,7 @@ function T.ApplyScale()
     UIParent:SetScale(T.PixelScale())
     T.Refresh()
     T.Rescale()
-  end)
+  end, "pixel scale")
 end
 
 -- Turns the pixel-perfect scale on (applies now) or off (the client's own

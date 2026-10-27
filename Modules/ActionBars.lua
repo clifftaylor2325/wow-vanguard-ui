@@ -824,7 +824,7 @@ local EVENTS = {
   UPDATE_MACROS = refreshIcons,
   SPELL_UPDATE_ICON = refreshIcons,
   SPELL_UPDATE_CHARGES = function() each(updateCount) end,
-  UPDATE_BINDINGS = function() ns.OutOfCombat(AB.ApplyBindings) end,
+  UPDATE_BINDINGS = function() ns.OutOfCombat(AB.ApplyBindings, "action bar keys") end,
   ACTION_RANGE_CHECK_UPDATE = onRangeUpdate,
   SPELL_ACTIVATION_OVERLAY_GLOW_SHOW = onOverlay(true),
   SPELL_ACTIVATION_OVERLAY_GLOW_HIDE = onOverlay(false),
@@ -865,5 +865,5 @@ function AB.Enable(settings)
   end
   if settings.rangeTint and not rangeEvents() then pollRange() end
   ns.OnUnit("UNIT_INVENTORY_CHANGED", refreshCarried, "player")
-  T.OnChanged(function() ns.OutOfCombat(AB.UpdateBackings) end)
+  T.OnChanged(function() ns.OutOfCombat(AB.UpdateBackings, "action bar backings") end)
 end
