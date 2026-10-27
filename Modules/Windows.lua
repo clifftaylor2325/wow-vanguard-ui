@@ -164,6 +164,13 @@ do
     GW.FitBackdrop(frame)
     return back
   end
+
+  -- A frame's backdrop when GW.Backdrop has made one; nil before, and nothing is made.
+  ---@param frame table
+  ---@return table|nil
+  function GW.MadeBackdrop(frame)
+    return vgBackdrop[frame]
+  end
 end
 
 -- The frame a window's panel goes on: its backdrop (GW.Backdrop) for a window the game sizes from its parts
@@ -172,6 +179,15 @@ end
 ---@return table
 function GW.PanelHost(frame)
   return GW.LAYOUT_WINDOWS[frame:GetName() or ""] and GW.Backdrop(frame) or frame
+end
+
+-- How far a window's panel reaches out past it (T.Padding of GW.PanelHost's frame), read without making the backdrop
+-- of a window the game sizes from its parts: 0 until its panel is painted.
+---@param frame table
+---@return number
+function GW.PanelPad(frame)
+  if GW.LAYOUT_WINDOWS[frame:GetName() or ""] then return T.Padding(GW.MadeBackdrop(frame)) end
+  return T.Padding(frame)
 end
 
 -- Skinning ------------------------------------------------------------------------------------
@@ -240,7 +256,7 @@ end
 -- placed them for its wider art). A close button the game put anywhere else stays there.
 function GW.PlaceControls(frame, close)
   if not atCorner(close, frame) then return end
-  T.PlaceClose(close, frame, controlDrop(frame), T.Padding(GW.PanelHost(frame)))
+  T.PlaceClose(close, frame, controlDrop(frame), GW.PanelPad(frame))
   for _, key in ipairs(GW.MAX_MIN) do
     local box = frame[key]
     if type(box) == "table" and box.SetPoint then box:ClearAllPoints() box:SetPoint("CENTER", close, "CENTER", -T.CONTROL.step, 0) end

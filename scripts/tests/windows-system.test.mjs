@@ -1192,3 +1192,18 @@ it("popups: shown and hidden in a fight, the backdrop is nothing protected and n
   expect(addon.eval("return __panelHost(StaticPopup1):IsShown()"), "and shown and hidden with the popup in the fight").toBe(true);
   setCombat(addon, false);
 });
+
+it("placing a layout window's close button reads the panel's padding without making its backdrop", () => {
+  const addon = loggedIn(SYSTEM_ENV);
+  addon.eval(`local f = CreateFrame("Frame", "StaticPopup4", UIParent)
+    close = CreateFrame("Button", nil, f)
+    close:SetPoint("TOPRIGHT", f, "TOPRIGHT", 0, 0)`);
+  // Places the close button, answers its x offset and whether the window has a backdrop.
+  const placed = () => addon.eval(`local GW = ns.GetModule("Windows") GW.PlaceControls(StaticPopup4, close)
+    return { select(4, close:GetPoint(1)), GW.MadeBackdrop(StaticPopup4) ~= nil }`);
+  const [bare, made] = placed();
+  expect(made, "the backdrop is not made for the placement").toBe(false);
+  addon.eval(`ns.Theme.Panel(ns.GetModule("Windows").PanelHost(StaticPopup4), { pad = 12 })`);
+  const [padded, afterwards] = placed();
+  expect([afterwards, Math.round(padded - bare)], "once the panel is painted, the button sits its 12 padding closer to the window").toEqual([true, 12]);
+});
