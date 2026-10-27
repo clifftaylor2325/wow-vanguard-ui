@@ -36,6 +36,17 @@ it("profile strings with a number that is not finite are refused, never decoded 
   expect(err('{["x"]=-1e999}').err, "so would -1e999").toMatch(/can't be read|unexpected/);
   expect(err('{["x"]=1e3}').scope, "an ordinary exponent still reads").toBe("profile");
 });
+it("a profile string nested deeper than Vanguard can write is refused, and the deepest one it writes reads back", () => {
+  const addon = loggedIn();
+  // A table nested n deep, encoded with a checksum that matches, then decoded: { scope, err }.
+  const nested = (n) => addon.eval(`local S = ns.Serialize local body = S.Base64(string.rep("{[1]=", ${n}) .. "1" .. string.rep("}", ${n}))
+    local scope, err = S.Decode("VG1:profile:" .. S.Checksum(body) .. ":" .. body) return { scope = scope, err = err }`);
+  expect(nested(21).err, "21 tables: more than the encoder writes").toMatch(/can't be read/);
+  expect(nested(20).scope, "20 tables still read").toBe("profile");
+  const again = addon.eval(`local S = ns.Serialize local t = {} local at = t for _ = 1, 19 do at[1] = {} at = at[1] end at[1] = 1
+    local scope, back = S.Decode(S.Encode("profile", t)) return scope`);
+  expect(again, "the deepest table the encoder writes round-trips").toBe("profile");
+});
 it("profile strings keep big whole numbers", () => {
   const r = loggedIn().eval(`local S = ns.Serialize
     local realFormat = string.format
