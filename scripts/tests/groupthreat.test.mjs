@@ -181,3 +181,21 @@ it("group threat: the default spot stays clear of a 40-player raid grid on every
     expect([spot, hit], `${w}x${h}: top left as always, clear of the grid`).toEqual([["TOPLEFT", "TOPLEFT", 20, -186], [false, true]]);
   }
 });
+
+it("Y1-3 group threat: threat events read the group at most every quarter second; a target switch draws on the next frame", () => {
+  const addon = party();
+  addon.advance(0.5);
+  addon.eval(`__reads = 0 local GT = ns.GetModule("GroupThreat") local update = GT.Update
+    GT.Update = function(...) __reads = __reads + 1 return update(...) end`);
+  for (let frame = 0; frame < 60; frame++) {
+    addon.fire("UNIT_THREAT_LIST_UPDATE", "target");
+    addon.fire("UNIT_THREAT_SITUATION_UPDATE", "party1");
+    addon.update(1 / 60);
+  }
+  expect(addon.eval("return __reads"), "a second of threat events every frame: about four reads, not sixty").toBeLessThanOrEqual(5);
+  addon.advance(1);
+  addon.eval("__reads = 0");
+  addon.fire("PLAYER_TARGET_CHANGED");
+  addon.update(0.01);
+  expect(addon.eval("return __reads"), "a new target: read on the next frame").toBe(1);
+});
