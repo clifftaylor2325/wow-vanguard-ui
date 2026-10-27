@@ -386,6 +386,26 @@ it("with a gamepad the backpack button stays the game's, and Sort sits beside it
   expect([other.eval("return GamepadBackpackButton:IsShown()"), searchRow(other).slice(-1)[0]], "a bar that isn't on the bag window: Sort the padding in").toEqual([true, PAD]);
 });
 
+// TEST-ONLY backpack window of separate bags: as the game's ContainerFrameMixin:UpdateSearchBox does for a backpack
+// without a gamepad, opening it takes the game's search box and sort button and shows them on it.
+const BACKPACK_WINDOW_ENV = `
+  local bp = CreateFrame("Frame", "ContainerFrame1", UIParent) bp:Hide() bp:SetSize(200, 200) bp:SetPoint("CENTER")
+  function __openBackpack()
+    bp:Show()
+    BagItemSearchBox:SetParent(bp) BagItemSearchBox:ClearAllPoints() BagItemSearchBox:SetPoint("TOPLEFT", bp, "TOPLEFT", 42, -37) BagItemSearchBox:Show()
+    BagItemAutoSortButton:SetParent(bp) BagItemAutoSortButton:SetPoint("TOPRIGHT", bp, "TOPRIGHT", -9, -34) BagItemAutoSortButton:Show()
+  end`;
+
+it("with separate bag windows the backpack keeps the game's sort button; on the combined bag it stays hidden (V3-1)", () => {
+  const addon = loggedIn(BAG_ENV + BACKPACK_WINDOW_ENV, { savedVariables: "VanguardDB.profiles = { Default = { Bags = { combined = false } } }" });
+  addon.eval("__openBackpack()");
+  expect(addon.eval("return { BagItemAutoSortButton:IsShown(), BagItemAutoSortButton:GetParent() == ContainerFrame1 }"), "the backpack's own sort button shows, where the game put it").toEqual([true, true]);
+  addon.eval("ContainerFrame1:Hide() __openBag()");
+  expect(addon.eval("return BagItemAutoSortButton:IsShown()"), "the combined bag taking the button: hidden, Vanguard's Sort takes its place").toBe(false);
+  addon.eval("ContainerFrameCombinedBags:Hide() __openBackpack()");
+  expect(addon.eval("return BagItemAutoSortButton:IsShown()"), "back to separate bags without a reload: the game's button again").toBe(true);
+});
+
 it("the combined bag's money line takes the theme font and its gold coin box becomes a flat inset, each time the bag is shown", () => {
   const addon = loggedIn(BAG_ENV);
   addon.eval("__openBag()");
