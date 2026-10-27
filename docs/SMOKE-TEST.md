@@ -521,7 +521,7 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 ### 7.2f Status chip (off until switched on: /vg > Unit frames > Readouts)
 
 - Do: tick **Status chip beside your frame** under Unit frames, reload. Out of combat eat some food, then drink, then eat a food that gives Well Fed; wait until each buff ends. Then tick Instance prep's buff checks (`/vg` > Town and gear) and look at the chip with no flask or raid buffs. Start a fight with the chip showing.
-- Expect: left of the player frame, level with it, a small panel with the buff's own icon and Eating, Drinking or Well Fed while that buff is on you (Well Fed in the good color), going when the buff does; with the buff checks on and nothing of those, a warning triangle and Missing: and the first missing buff and how many more, in the warning color, matching `/vg prep`'s buff rows. It is gone the moment a fight starts and back after it, and gone while you are dead. If the buff names are wrong for this client (the chip stays hidden while you eat), paste the aura names from `/dump C_UnitAuras.GetAuraDataByIndex("player", 1, "HELPFUL")`. No error.
+- Expect: left of the player frame, level with it (in the Like the game's layout, or on a screen with no room left of the frame, just above the frame's left end instead, clear of its level and name), a small panel with the buff's own icon and Eating, Drinking or Well Fed while that buff is on you (Well Fed in the good color), going when the buff does; with the buff checks on and nothing of those, a warning triangle and Missing: and the first missing buff and how many more, in the warning color, matching `/vg prep`'s buff rows. It is gone the moment a fight starts and back after it, and gone while you are dead. If the buff names are wrong for this client (the chip stays hidden while you eat), paste the aura names from `/dump C_UnitAuras.GetAuraDataByIndex("player", 1, "HELPFUL")`. No error.
 - If it fails, paste: a screenshot and `/vg errors`.
 
 ### 7.2g Energy spark stops when no tick comes
@@ -2659,6 +2659,42 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Do: set the game to Portuguese (Brazil) and then Russian, open the quest log (L), select a watched quest.
 - Expect: the button reads "Não rastrear" and "Не следить" whole, with nothing cut at the default Text size.
 - If it fails, paste: a screenshot of the quest log's buttons.
+
+### 33.76 Scroll lists' soft edges over a panel texture
+
+- Do: General → Look → Panel texture "Carved stone" (then "Fine grain"); open the options window on a long page and scroll it a little down, then look at the strip under the header and over the bottom edge; do the same in What's new and the quest log.
+- Expect: the fade at each scrolled end blends into the window; no plainer, darker, untextured band about 24 units tall stands out from the textured panel beside it. [Needs in-game check: the harness can't composite alpha. If the band shows clearly, turn the soft edges off while a texture is drawn (B1-9 option a).]
+- If it fails, paste: a screenshot of the options window scrolled, with the texture name, and `/vg errors`.
+
+### 33.77 Meter on: target of target, tooltip corner and quest tracker at 1365 to 1833 wide
+
+- Do: turn the Vanguard meter on (`/vg meter on`) at 1365x768, then at 1920x1080 at UI scale 1 (1440 wide or 1600 wide if you have it), with a target and a target of target, a quest tracker with a few quests, and a unit tooltip showing in its corner; turn the meter off and on again.
+- Expect: under 1838 wide target of target sits over the target's cast bar and the meter (bottom right, above the bags and menu bar) does not cover it; with the meter off target of target goes back to its spot outside the target at 1600 and wider. [Needs in-game check: the meter still meets the tooltip corner and the foot of the quest tracker at 1365 (the harness measured only target of target); say which draws on top.]
+- If it fails, paste: a screenshot at 1365x768 with the meter on, and `/vg errors`.
+
+### 33.78 Shaman totems above the player frame, chat tiles clickable
+
+- Do: on a shaman with Class bars on, at 1365x768 (or 1440x900) with the default chat, drop a totem or two, then click the chat's Find and Copy tiles at the right end of its tab bar, and right-click a totem to destroy it.
+- Expect: the totem row stands just above the player frame, over its left half, clear of the chat's tab bar and the Find and Copy tiles; both tiles open on a click and the right-click still destroys a totem; the cast bar, raid mark and pet frame are not covered by the row. [Needs in-game check: that nothing of the real client (the player's raid mark, the lifted cast bar) meets the row, and the Versus deck's top border.]
+- If it fails, paste: a screenshot of the player frame and chat with totems down, and `/vg errors`.
+
+### 33.79 Aura icons: timer at the bottom, stack count top right, smaller type badge
+
+- Do: get a Magic, Curse, Disease or Poison debuff on yourself with timers on (the default for your own debuffs) and look at its icon; then look at a stacking debuff (Sunder Armor x5) on an enemy nameplate target at Text size 100% and 130%; also a buff with a timer on your player frame's row.
+- Expect: the timer digits sit on the icon's bottom edge, the stack count in its top right corner, and the small type letter in the top left corner is unhidden by either; on the 18-unit nameplate icons the count and the timer may still touch at 115% and up. [Needs in-game check: how much of the letter glyph and the digits is readable, and that the fallback icons' countdown numbers (made while in combat) also sit on the bottom edge.]
+- If it fails, paste: a screenshot of the icons at Text size 100% and 130%, and `/vg errors`.
+
+### 33.80 Round minimap: info strip and quest tracker under its band
+
+- Do: pick the Classic look (General → Look → Theme variant), reload, and look at the minimap's top right corner on 1365x768 and 1920x1080; then set Minimap shape to Square and reload again.
+- Expect: with the round map, the info strip starts below the map's bottom band (the coordinates text sits clear of the durability row) and the quest tracker follows under the strip; with the square map the strip sits right under the map as before. [Needs in-game check: the real round map's bottom band against the strip's first row.]
+- If it fails, paste: a screenshot of the minimap and strip, and `/vg errors`.
+
+### 33.81 Loss of control against the talking head on a 768-tall screen
+
+- Do: at 1365x768, get stunned or feared (a duel, a mob) while a talking head line plays (a quest giver's or an event's), and look at where the two panels meet; with `/vg unlock` note which of the loss-of-control and talking head handles is on top.
+- Expect: the loss-of-control panel (a little above your character) and the talking head (top left) touch by about 22 units and neither one's text is cut off. Which one draws on top is the thing to report: if the talking head covers the loss-of-control text, raise Loss of control's strata in `Modules/GameAlerts.lua`; if loss of control is already on top, leave it as it is. [Needs in-game check: the draw order of the two game frames, which the harness does not have.]
+- If it fails, paste: a screenshot of both panels, which one was on top, and `/vg errors`.
 
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 

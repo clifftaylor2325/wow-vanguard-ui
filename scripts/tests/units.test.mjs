@@ -93,9 +93,21 @@ it("unit frame health text settings apply at once", () => {
   expect(addon.eval('return __click("Druid mana") and VanguardDB.profiles.Default.ClassBars.druidMana'), "and the druid mana switch").toBe(false);
 });
 
+it("class bars: the totem row sits above the player frame, clear of the chat's tab bar and its tiles at 1365 and 1440 wide (B4-1)", () => {
+  for (const [w, h] of [[1365, 768], [1440, 900]]) {
+    const addon = loggedIn(`__wfgStub.setScreen(${w}, ${h}) ` + UNITS_ENV + TOTEMS_ENV);
+    const [rowBottom, playerTop, chatTop, chatLeft, chatRight, rowLeft, rowRight] = addon.eval(`local CB, CH = ns.GetModule("ClassBars"), ns.GetModule("Chat")
+      local chat = ns.MoverFrame("chat")
+      return { CB.totems:GetBottom(), Vanguard_player:GetTop(), chat:GetTop() + CH.BAR, chat:GetLeft(), chat:GetRight(), CB.totems:GetLeft(), CB.totems:GetRight() }`);
+    expect(rowBottom, `${w} wide: the row stands just above the player frame`).toBeCloseTo(playerTop + 3, 5);
+    const clearOfChat = rowBottom >= chatTop || rowLeft >= chatRight || rowRight <= chatLeft;
+    expect(clearOfChat, `${w} wide: the row is off the chat panel and its tab bar`).toBe(true);
+  }
+});
+
 it("class bars: totems for shamans, mana in forms for druids", () => {
   const addon = loggedIn(UNITS_ENV + TOTEMS_ENV);
-  expect(addon.eval('local CB = ns.GetModule("ClassBars") return { #CB.cells, select(2, CB.totems:GetPoint()) == Vanguard_player }'), "a shaman gets four totem cells under the player frame").toEqual([4, true]);
+  expect(addon.eval('local CB = ns.GetModule("ClassBars") return { #CB.cells, select(2, CB.totems:GetPoint()) == Vanguard_player }'), "a shaman gets four totem cells above the player frame").toEqual([4, true]);
   expect(totemCell(addon, 1), "a totem that is down shows its icon, its sweep and the client's numbers").toMatchObject({ alpha: 1, icon: "TEST-ONLY-ICON-Totem", sweep: [100, 120], numbers: true, type2: "destroytotem", slot: 1 });
   expect(totemCell(addon, 2).alpha, "an empty slot is see-through (cells are secure, so alpha, not Hide)").toBe(0);
   addon.eval('GetTotemDuration = function(slot) return { __duration = slot } end __totems[2] = { true, "TEST-ONLY Totem 2", 200, 60, "TEST-ONLY-ICON-Two" }');
@@ -594,17 +606,19 @@ it("a raid target icon sits on every unit frame's top edge, following the Raid t
   expect([addon.eval("return ns.Settings('RaidStatus').raidIcons"), icon("player")[0]], "the switch on the Raid frames page, off: no marks, at once").toEqual([false, false]);
 });
 
-it("a raid target icon on a short frame (target of target, pet, boss) is lifted so its bottom clears the name", () => {
+it("a raid target icon on a short frame (target of target, pet) is lifted so its bottom clears the name; boss frames keep it centred", () => {
   const addon = loggedIn(CLICK_LUA + UNITS_ENV, NO_RAID);
   // A frame's raid icon: how far its centre sits above the frame's top, and whether its bottom clears the name's top.
   const icon = (key) => addon.eval(`local f = Vanguard_${key} local _, _, _, _, y = f.raidIcon:GetPoint()
     local nameTop = (f.health:GetTop() + f.health:GetBottom()) / 2 + f.name:GetLineHeight() / 2
     return { y, f:GetTop() + y - f.raidIcon:GetHeight() / 2 >= nameTop - 0.01 }`);
   expect([icon("target")[0], icon("focus")[0]], "the 36 tall target and 30 tall focus: centred on their top edge").toEqual([0, 0]);
-  for (const key of ["targettarget", "pet", "boss1"]) {
+  for (const key of ["targettarget", "pet"]) {
     const [lift, clear] = icon(key);
     expect([lift > 0, clear], `${key}: lifted, its bottom over the name`).toEqual([true, true]);
   }
+  // Boss frames stack 6 apart: a lifted mark would cover the power bar of the frame above (B4-3).
+  expect(["boss1", "boss2", "boss5"].map((key) => icon(key)[0]), "boss frames keep the mark centred on their top edge").toEqual([0, 0, 0]);
 });
 it("threat is quiet solo: it shows in a group or with a pet", () => {
   const addon = loggedIn(UNITS_ENV + EXTRAS_ENV + "__grouped = false");

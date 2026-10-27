@@ -28,8 +28,8 @@ local IS = ns.Module("InfoStrip", {
 
 -- The strip's width and row height with text at 100 %; a larger Text size widens and heightens them in step.
 IS.WIDTH, IS.ROW = 182, 18
--- Where the strip sits (just under the minimap), the most rows it shows, the room it keeps under its rows,
--- and the gap from its last row down to the quest tracker's spot.
+-- Where the strip sits (just under a square minimap; IS.Home drops it under a round one's band), the most
+-- rows it shows, the room it keeps under its rows, and the gap from its last row down to the quest tracker's spot.
 IS.HOME = { "TOPRIGHT", "TOPRIGHT", -12, -200 }
 IS.MOST_ROWS, IS.EDGE, IS.TRACKER_GAP = 7, 4, 6
 -- Where each block sits: row, and its side of the row (two columns, so no two blocks run together).
@@ -881,10 +881,23 @@ local function watchVisibility(f)
   IS.ApplyVisibility()
 end
 
+-- How far under its home the strip starts: a round minimap's holder is a band (MM.BAND.top) taller than a
+-- square one's, so its bottom sits that far below the home; a square map, or none, leaves it (0).
+function IS.RoundExtra()
+  local map = ns.GetModule("Minimap")
+  return map and map.round and map.BAND.top or 0
+end
+
+-- Where the strip sits by default: IS.HOME, lower by IS.RoundExtra (the minimap is built before the strip, and
+-- its shape is a reload setting, so this needs no re-apply).
+function IS.Home()
+  return { IS.HOME[1], IS.HOME[2], IS.HOME[3], IS.HOME[4] - IS.RoundExtra() }
+end
+
 -- The quest tracker's default spot: under the strip's last row at the current Text size, so a larger Text
 -- size never runs the strip into the tracker.
 function IS.TrackerPoint()
-  local y = IS.HOME[4] - IS.Row() * IS.MOST_ROWS - IS.EDGE - IS.TRACKER_GAP
+  local y = IS.Home()[4] - IS.Row() * IS.MOST_ROWS - IS.EDGE - IS.TRACKER_GAP
   return { "TOPRIGHT", "TOPRIGHT", IS.HOME[3], y }
 end
 
@@ -907,7 +920,7 @@ local function build()
   local f = T.HudPanel(CreateFrame("Frame", "Vanguard_InfoStrip", UIParent))
   IS.frame = f
   f:SetSize(IS.Width(), IS.Row() * 2 + IS.EDGE)
-  ns.Mover(f, "infostrip", L["Info strip"], IS.HOME)
+  ns.Mover(f, "infostrip", L["Info strip"], IS.Home())
   IS.fonts = {}
   for key in pairs(IS.BLOCKS) do IS.fonts[key] = addText(key) end
   addButtons(f)

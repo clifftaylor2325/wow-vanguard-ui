@@ -11,6 +11,16 @@ const DPS_ENV = `
   Enum = Enum or {} Enum.DamageMeterSessionType = { Current = 1 } Enum.DamageMeterType = { Dps = 1 }
   C_DamageMeter = { GetCombatSessionFromType = function(kind, what) __asked = { kind, what } return __dps end }
 `;
+it("the info strip and the quest tracker start under a round minimap's band; a square map keeps today's spot (B6-1)", () => {
+  // The strip's top, the map holder's bottom, and the tracker's default spot, for a profile's minimap shape.
+  const spots = (shape) => loggedIn(UI_ENV + TIDY_ENV + UNITS_ENV, { savedVariables: `VanguardDB.profiles = { Default = { Minimap = { shape = "${shape}" } } }` })
+    .eval("return { Vanguard_InfoStrip:GetTop(), Vanguard_Minimap:GetBottom(), ns.GetModule('InfoStrip').TrackerPoint()[4], { ns.MoverPoint('infostrip') } }");
+  const [stripTop, mapBottom, tracker, spot] = spots("round");
+  expect(stripTop, "round: the strip starts at or under the holder's bottom, band included").toBeLessThanOrEqual(mapBottom);
+  expect([spot[3], tracker], "round: the strip's home and the tracker's default spot drop by the 20-unit band").toEqual([-220, -220 - 18 * 7 - 4 - 6]);
+  const square = spots("square");
+  expect([square[3][3], square[2]], "square: today's spots").toEqual([-200, -200 - 18 * 7 - 4 - 6]);
+});
 it("the info strip: your DPS in the last fight, from the game's damage meter", () => {
   const addon = loggedIn(UNITS_ENV + DPS_ENV + CLICK_LUA);
   const before = addon.eval("return Vanguard_InfoStrip:GetHeight()");

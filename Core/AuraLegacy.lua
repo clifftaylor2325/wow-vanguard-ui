@@ -23,6 +23,15 @@ function A.Countdown(cd, size)
   if fs then T.Text(fs, size >= 20 and "auraTimer" or "auraTimerSmall", "white") end
 end
 
+-- Moves an aura icon's countdown numbers to its bottom edge, where the engine icons' timer sits, clear of
+-- the type badge in the top left corner.
+function A.CountdownAtEdge(cd)
+  local fs = ns.Client.Has("countdownText") and cd:GetCountdownFontString()
+  if not fs then return end
+  fs:ClearAllPoints()
+  fs:SetPoint("BOTTOM", cd, "BOTTOM", 0, 1)
+end
+
 -- An icon frame, dressed (A.Dress) and hidden until used. style: size, debuff,
 -- dim, timer (the client's countdown numbers), as A.Style gives.
 function A.Icon(parent, size, style)
@@ -30,7 +39,7 @@ function A.Icon(parent, size, style)
   local f = CreateFrame("Frame", nil, parent)
   local parts = A.Dress(f, { size = size, debuff = style.debuff, dim = style.dim, masque = style.masque })
   f.icon, f.cooldown, f.count, f.ring, f.badge = parts.icon, parts.cooldown, parts.count, parts.ring, parts.badge
-  if style.timer then A.Countdown(f.cooldown, size) end
+  if style.timer then A.Countdown(f.cooldown, size) A.CountdownAtEdge(f.cooldown) end
   f:Hide()
   return f
 end

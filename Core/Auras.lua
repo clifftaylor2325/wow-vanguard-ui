@@ -155,7 +155,7 @@ end
 -- Dispel type -> its badge glyph under Media/Icons (#235): a letter, so a type reads without its hue.
 A.DISPEL_GLYPHS = { Magic = "DispelMagic", Curse = "DispelCurse", Disease = "DispelDisease", Poison = "DispelPoison" }
 -- The badge's side: a share of the icon's, and the least it may be (UI units).
-A.BADGE, A.BADGE_MIN = 0.6, 12
+A.BADGE, A.BADGE_MIN = 0.45, 8
 
 -- One badge letter on the badge's backing, in its type's color, hidden until shown.
 local function letter(f, back, kind)
@@ -199,15 +199,15 @@ local function sweep(f, px)
   return cd
 end
 
--- Text above the sweep: stacks bottom right, and the timer (centered) when asked for.
+-- Text above the sweep: stacks top right, and the timer (at the bottom edge, clear of the type badge) when asked for.
 local function texts(f, cd, size, timer)
   local carrier = CreateFrame("Frame", nil, f)
   carrier:SetAllPoints()
   carrier:SetFrameLevel(cd:GetFrameLevel() + 2)
   local count = T.Text(carrier:CreateFontString(nil, "OVERLAY"), "auraCount", "white")
-  count:SetPoint("BOTTOMRIGHT", 0, 1)
+  count:SetPoint("TOPRIGHT", -1, -1)
   local clock = timer and T.Text(carrier:CreateFontString(nil, "OVERLAY"), size >= 20 and "auraTimer" or "auraTimerSmall", "white") or nil
-  if clock then clock:SetPoint("CENTER", 0, 0) end
+  if clock then clock:SetPoint("BOTTOM", 0, 1) end
   return count, clock
 end
 

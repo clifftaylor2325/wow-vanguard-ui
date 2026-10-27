@@ -699,20 +699,40 @@ it("dispel badges (#235): a debuff icon carries its type's letter on a dark back
   expect(["DispelCurse", "DispelDisease", "DispelPoison"].map((g) => magic[g][1]), "the other letters are mapped clear").toEqual([0, 0, 0]);
   const curse = badgeOf(addon, "__g.buttons[2]");
   expect([curse.DispelCurse[1], curse.DispelMagic[1], isTok(addon, curse.DispelCurse.slice(2), "curse")], "a Curse debuff shows its C").toEqual([1, 0, true]);
-  expect(addon.eval("local b = __g.buttons[1].__dispel[5].texture return { b:GetWidth(), b.__points.TOPLEFT ~= nil }"), "0.6 of the icon (12 at the least), in its top-left corner").toEqual([Math.max(12, addon.eval("return __spec.groups[1].size") * 0.6), true]);
+  expect(addon.eval("local b = __g.buttons[1].__dispel[5].texture return { b:GetWidth(), b.__points.TOPLEFT ~= nil }"), "0.45 of the icon (8 at the least), in its top-left corner").toEqual([Math.max(8, addon.eval("return __spec.groups[1].size") * 0.45), true]);
 });
 
 it("dispel badges on Vanguard's own icons: shown for a type it can read, never for none or a hidden one (#235)", () => {
   const addon = loggedIn('__f = ns.Auras.Icon(UIParent, 12, { size = 12, debuff = true })');
   // The badge parts shown on __f: { back, the letters shown }.
   const shown = () => addon.eval(`local b, out = __f.badge, {} for k, t in pairs(__f.badge.letters) do if t:IsShown() then out[#out + 1] = k end end return { b.back:IsShown(), out[1] or false, #out }`);
-  expect(addon.eval("return __f.badge.back:GetWidth()"), "never smaller than 12 units").toBe(12);
+  expect(addon.eval("return __f.badge.back:GetWidth()"), "never smaller than 8 units").toBe(8);
   addon.eval('ns.Auras.Show(__f, "player", { icon = "P", dispelName = "Poison" })');
   expect(shown(), "a Poison debuff: the backing and its P").toEqual([true, "Poison", 1]);
   for (const kind of ["nil", "{ __secret = true }", '"Enrage"']) {
     addon.eval(`ns.Auras.Show(__f, "player", { icon = "X", dispelName = ${kind} })`);
     expect(shown(), `no badge for ${kind}`).toEqual([false, false, 0]);
   }
+});
+
+it("aura icons: the timer sits on the bottom edge, the stack count top right, the type badge smaller, none over another on a 30 icon (B4-2)", () => {
+  const addon = loggedIn(`__f = CreateFrame("Frame", nil, UIParent) __f:SetPoint("CENTER")
+    __p = ns.Auras.Dress(__f, { size = 30, debuff = true, timer = true })
+    __p.timer:SetText("29m") __p.count:SetText("5")
+    __p.badge.back:Show()`);
+  // The first anchor of one of the icon's texts: { point, x, y }.
+  const point = (part) => addon.eval(`local p = __p.${part}.__points local name = next(p) local q = p[name] return { name, q.x, q.y }`);
+  expect(point("timer"), "the timer on the icon's bottom edge").toEqual(["BOTTOM", 0, 1]);
+  expect(point("count"), "the stack count in the top right corner").toEqual(["TOPRIGHT", -1, -1]);
+  // A part's rect: { left, bottom, right, top }.
+  const box = (part) => addon.eval(`local r = __p.${part} return { r:GetLeft(), r:GetBottom(), r:GetRight(), r:GetTop() }`);
+  const [badge, timer, count] = [box("badge.back"), box("timer"), box("count")];
+  // Whether two rects share no area.
+  const apart = (a, b) => a[2] <= b[0] || b[2] <= a[0] || a[3] <= b[1] || b[3] <= a[1];
+  expect([apart(badge, timer), apart(badge, count), apart(timer, count)], "the badge, the timer and the count do not overlap").toEqual([true, true, true]);
+  expect(badge[2] - badge[0], "a 30 icon's badge is 0.45 of it").toBeCloseTo(13.5, 5);
+  const fallback = loggedIn('__i = ns.Auras.Icon(UIParent, 30, { size = 30, debuff = true, timer = true })');
+  expect(fallback.eval("local fs = __i.cooldown:GetCountdownFontString() local q = fs.__points.BOTTOM return { q.x, q.y }"), "the fallback icons' countdown numbers go to the bottom edge too").toEqual([0, 1]);
 });
 
 it("raid indicators: small icons down the tile's right edge, from the client's own filters", () => {
