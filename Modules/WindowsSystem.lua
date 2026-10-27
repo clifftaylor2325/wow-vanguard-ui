@@ -91,15 +91,21 @@ local function close(p, frame)
   GW.DressClose(frame, p)
 end
 
--- An inset panel behind a part of a layout frame (a scrolling well), its pieces kept out of the layout.
+-- An inset panel behind a part that is one of the game's layout frames (a scrolling well that sizes itself from its
+-- children), painted on Vanguard's backdrop for it (GW.Backdrop), so nothing of Vanguard's is among the part's own.
 local function layoutInset(p)
-  GW.InLayout(p, inset)
+  inset(GW.Backdrop(p))
 end
 
--- A divider line as one pixel of `divider`; the line is drawn on the frame the divider texture is on, which may be a
--- layout frame, so what it adds stays out of that layout.
+-- A divider line as one pixel of `divider`.
 local function divider(p)
-  if type(p.GetParent) == "function" and type(p:GetParent()) == "table" then GW.InLayout(p:GetParent(), function() T.Divider(p) end) else T.Divider(p) end
+  T.Divider(p)
+end
+
+-- A divider texture on one of the game's layout frames as one pixel of `divider`: its line drawn on Vanguard's
+-- backdrop for that frame (GW.Backdrop), never on the frame itself.
+local function layoutDivider(p)
+  T.Divider(p, { host = GW.Backdrop(p:GetParent()) })
 end
 
 -- The divider textures among a frame's regions (the game draws them with no key: an atlas whose name ends in
@@ -119,7 +125,8 @@ local STEPS = {
   { "edits", T.EditBox }, { "searches", GW.SkinSearch }, { "tabs", skinTab }, { "insets", inset }, { "layoutInsets", layoutInset },
   { "titles", GW.SkinTitle }, { "labels", label }, { "hints", hint }, { "sections", GW.SkinSection },
   { "bars", T.ScrollBar }, { "dropdowns", GW.SkinDropdown }, { "checks", GW.SkinCheck }, { "radios", GW.SkinRadio },
-  { "sliders", T.Slider }, { "dividers", divider }, { "plates", GW.SkinPlate }, { "keep", restore },
+  { "sliders", T.Slider }, { "dividers", divider }, { "layoutDividers", layoutDivider }, { "plates", GW.SkinPlate },
+  { "keep", restore },
 }
 
 -- Applies each listed step of a spec to the parts of the frame that exist.
@@ -132,11 +139,10 @@ local function dress(frame, spec)
   end
 end
 
--- Paints the flat panel with a shadow. On one of the game's layout frames (spec.layout: Edit
--- Mode's windows resize themselves from every child region, and the shadow reaches past the
--- edge) the pieces the panel adds stay out of the layout.
-local function paint(frame, spec)
-  if spec.layout then GW.InLayout(frame, T.Panel, { shadow = true }) else T.Panel(frame, { shadow = true }) end
+-- Paints the flat panel with a shadow: on the window, or on its backdrop for one of the game's layout frames
+-- (GW.PanelHost: Edit Mode's windows and the report window resize themselves from every child frame and region).
+local function paint(frame)
+  T.Panel(GW.PanelHost(frame), { shadow = true })
 end
 
 -- Builds a skin from a spec: the frame's own textures faded, a flat panel with a shadow
@@ -144,7 +150,7 @@ end
 local function skinner(spec)
   return function(frame)
     T.FadeRegions(frame)
-    if spec.panel ~= false then paint(frame, spec) end
+    if spec.panel ~= false then paint(frame) end
     dress(frame, spec)
   end
 end
@@ -451,15 +457,16 @@ GW.Add("system", { "NamePlatesTutorial" }, GW.SkinNamePlatesTutorial)
 -- The account settings' section titles (the Frames, Combat and Misc groups), under the options container's scroll child.
 local EDIT_SECTIONS = "AccountSettings.SettingsContainer.ScrollChild.AdvancedOptionsContainer."
 
--- Edit Mode's main window (a ResizeLayoutFrame): Border faded, the title in the theme font, the layout label light,
--- the layout dropdown, the close and the Save and Revert buttons themed, the grid spacing slider, the options well
--- (its ring faded, an inset panel kept out of the layout, its scroll bar), the section titles as section heads and
--- the line over the expander. Vanguard's note under it (Core/Movers.lua) is its own child frame and is left as it is.
+-- Edit Mode's main window (a ResizeLayoutFrame, so its panel is on a backdrop: GW.LAYOUT_WINDOWS): Border faded, the
+-- title in the theme font, the layout label light, the layout dropdown, the close and the Save and Revert buttons
+-- themed, the grid spacing slider, the options well (its ring faded, an inset panel on the well's own backdrop, its
+-- scroll bar), the section titles as section heads and the line over the expander (on the expander's backdrop).
+-- Vanguard's note under it (Core/Movers.lua) is a frame of its own on UIParent and is left as it is.
 local editMode = skinner({
-  layout = true, art = { "Border", "AccountSettings.SettingsContainer.BorderArt" }, titles = { "Title" }, labels = { "LayoutLabel" },
+  art = { "Border", "AccountSettings.SettingsContainer.BorderArt" }, titles = { "Title" }, labels = { "LayoutLabel" },
   close = { "CloseButton" }, buttons = { "SaveChangesButton", "RevertAllChangesButton" }, dropdowns = { "LayoutDropdown" },
   sliders = { "GridSpacingSlider.Slider" }, layoutInsets = { "AccountSettings.SettingsContainer" },
-  bars = { "AccountSettings.SettingsContainer.ScrollBar" }, dividers = { "AccountSettings.Expander.Divider" },
+  bars = { "AccountSettings.SettingsContainer.ScrollBar" }, layoutDividers = { "AccountSettings.Expander.Divider" },
   sections = { EDIT_SECTIONS .. "FramesTitle.Title", EDIT_SECTIONS .. "CombatTitle.Title", EDIT_SECTIONS .. "MiscTitle.Title" },
 })
 -- How many frames deep inside Edit Mode's window its check buttons are looked for (the account settings' rows keep
@@ -504,10 +511,10 @@ local function dressSettings(dialog)
   for _, setting in ipairs({ box:GetChildren() }) do dressSetting(setting) end
 end
 
--- A system's settings dialog (also a ResizeLayoutFrame): Border faded, title and close button, the line between
--- Revert and the extra buttons.
+-- A system's settings dialog (also a ResizeLayoutFrame, its panel on a backdrop): Border faded, title and close
+-- button, the line between Revert and the extra buttons (on the button row's backdrop).
 local editSettings = skinner({
-  layout = true, art = { "Border" }, titles = { "Title" }, close = { "CloseButton" }, dividers = { "Buttons.Divider" },
+  art = { "Border" }, titles = { "Title" }, close = { "CloseButton" }, layoutDividers = { "Buttons.Divider" },
 })
 -- The dialog's skin, its settings and its buttons, again whenever the game rebuilds them (UpdateSettings, UpdateExtraButtons).
 function GW.SkinEditSettings(dialog)
@@ -674,11 +681,11 @@ GW.REPORT_LABELS = {
   "ScreenshotReportingFrame.ScreenshotEmptyText",
 }
 
--- The report window (a ResizeLayoutFrame, so its panel stays out of the layout): the inset plates
+-- The report window (a ResizeLayoutFrame, so its panel is on a backdrop: GW.LAYOUT_WINDOWS): the inset plates
 -- and watermark faded, Border faded, the title and close button, the reason dropdown, the labels light, the
 -- comment box (its ring faded, an inset panel, its scroll bar), the Report and screenshot buttons.
 local reportFrame = skinner({
-  layout = true, art = { "Border" }, titles = { "TitleText" }, close = { "CloseButton" }, dropdowns = { "ReportingMajorCategoryDropdown" },
+  art = { "Border" }, titles = { "TitleText" }, close = { "CloseButton" }, dropdowns = { "ReportingMajorCategoryDropdown" },
   labels = GW.REPORT_LABELS, fade = { "Comment" }, insets = { "Comment" }, bars = { "Comment.ScrollBar" },
   buttons = { "ReportButton", "ScreenshotReportingFrame.TakeScreenshotButton" },
 })

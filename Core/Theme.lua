@@ -1795,10 +1795,13 @@ end
 
 -- Puts a close button T.CONTROL.inset in from a panel's top-right corner on both axes: the corner the
 -- eye sees, so a panel drawn out past its frame (T.Padding) counts its padding. drop (optional) is how far
--- down the middle goes instead, for a window whose title sits higher than the others'. Returns the button.
-function T.PlaceClose(close, panel, drop)
-  local inset = T.PixelRound(panel, T.CONTROL.inset - T.Padding(panel))
-  local down = drop and T.PixelRound(panel, drop - T.Padding(panel)) or inset
+-- down the middle goes instead, for a window whose title sits higher than the others'. pad (optional) is how far
+-- the panel reaches out past `panel` when it is painted on another frame filling it (a game window's backdrop), else
+-- T.Padding(panel). Returns the button.
+function T.PlaceClose(close, panel, drop, pad)
+  pad = pad or T.Padding(panel)
+  local inset = T.PixelRound(panel, T.CONTROL.inset - pad)
+  local down = drop and T.PixelRound(panel, drop - pad) or inset
   close:ClearAllPoints()
   close:SetPoint("CENTER", panel, "TOPRIGHT", -inset, -down)
   return close
@@ -2075,12 +2078,14 @@ end
 
 -- One of the game's dividers (a texture, or a frame of divider art: Options_HorizontalDivider, the
 -- mail window's bar, the quest log's separator) as one pixel of `divider` along it, the game's art
--- faded. opts.vertical (read on the first call): the line runs down it. A texture's line follows the
--- game showing and hiding it. Safe to run again.
+-- faded. opts.vertical (read on the first call): the line runs down it. opts.host (read on the first call): the
+-- frame a texture's line is drawn on instead of the texture's parent (the backdrop of a game frame that lays itself
+-- out from its children). A texture's line follows the game showing and hiding it. Safe to run again.
 function T.Divider(region, opts)
   local tex = isTexture(region)
   if not dividerOf[region] then
-    dividerOf[region] = dividerLine(region, tex and region:GetParent() or region, opts and opts.vertical)
+    local host = tex and (opts and opts.host or region:GetParent()) or region
+    dividerOf[region] = dividerLine(region, host, opts and opts.vertical)
     if tex then hookShown(region, "divider shown", followDivider) end
   end
   if tex then region:SetAlpha(0) else T.FadeRegions(region) end
