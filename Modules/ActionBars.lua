@@ -68,14 +68,19 @@ function AB.StatePage(getter, fallback)
   return page and page > 0 and math.floor(page) or fallback
 end
 
+-- The vehicle, override and temporary shapeshift pages on the 12.x engine (pages 13 to 15 are bars 6 to 8),
+-- used when the client does not name them (AB.StatePage).
+AB.FALLBACK_PAGES = { vehicle = 16, override = 18, shapeshift = 17 }
+
 -- Bar 1's page for each state: vehicle/possess, override, shapeshift, then
 -- Shift+number pages, then (on page 1 only, as the game's main bar does)
 -- dragonriding and the class bonus bars (stances, stealth, forms). The vehicle, override and temporary
--- shapeshift pages are the game's own (16, 18 and 17 on the 12.x engine; pages 13 to 15 are bars 6 to 8).
+-- shapeshift pages are the game's own.
 function AB.BuildPageDriver()
-  return "[vehicleui][possessbar] " .. AB.StatePage("GetVehicleBarIndex", 16)
-    .. "; [overridebar] " .. AB.StatePage("GetOverrideBarIndex", 18)
-    .. "; [shapeshift] " .. AB.StatePage("GetTempShapeshiftBarIndex", 17) .. "; "
+  local fallback = AB.FALLBACK_PAGES
+  return "[vehicleui][possessbar] " .. AB.StatePage("GetVehicleBarIndex", fallback.vehicle)
+    .. "; [overridebar] " .. AB.StatePage("GetOverrideBarIndex", fallback.override)
+    .. "; [shapeshift] " .. AB.StatePage("GetTempShapeshiftBarIndex", fallback.shapeshift) .. "; "
     .. "[bar:2] 2; [bar:3] 3; [bar:4] 4; [bar:5] 5; [bar:6] 6; "
     .. "[bonusbar:5] 11; [bonusbar:1] 7; [bonusbar:2] 8; [bonusbar:3] 9; [bonusbar:4] 10; 1"
 end
