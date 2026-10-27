@@ -438,7 +438,8 @@ function AH.TakeBrowse(entry, results)
   AH.EntryFound(entry, best)
 end
 
--- Item names came in: the entries waiting on them are matched again, and the card repainted.
+-- Item names came in: the entries waiting on them are matched again, and the card repainted (the
+-- game sends these in bursts, so the listener asks for it once a frame: AH.ListenShop).
 function AH.OnItemInfo()
   for entry, results in pairs(AH.unnamed) do AH.TakeBrowse(entry, results) end
   AH.PaintShop()
@@ -480,7 +481,7 @@ end
 -- (on: Modules/AuctionHelper.lua's; AH.OnSearchEvent hands the
 -- search results to AH.OnListings).
 function AH.ListenShop(on)
-  on("ITEM_KEY_ITEM_INFO_RECEIVED", function() AH.OnItemInfo() end)
+  on("ITEM_KEY_ITEM_INFO_RECEIVED", function() ns.Soon("auction item info", AH.OnItemInfo) end)
   ns.On("AUCTION_HOUSE_CLOSED", function() AH.view = nil end) -- state only, so also in combat
 end
 

@@ -199,9 +199,16 @@ local function dealTip(r)
   GameTooltip:Show()
 end
 
+-- How many deals this visit has (every one is listed, so no sorting is needed to count them).
+function AH.DealCount()
+  local count = 0
+  for _ in pairs(AH.deals) do count = count + 1 end
+  return count
+end
+
 -- The pane's Deals entry with this visit's count, while the switch is on.
 local function paneEntry()
-  if AH.settings.deals then return { key = AH.DEALS, name = L["Deals"], count = #AH.SortedDeals() } end
+  if AH.settings.deals then return { key = AH.DEALS, name = L["Deals"], count = AH.DealCount() } end
 end
 AH.PANE_EXTRAS[#AH.PANE_EXTRAS + 1] = paneEntry
 

@@ -126,6 +126,7 @@ it("item names the client hasn't loaded yet, and a hidden price", () => {
   expect(shopRow(addon, 1).slice(1, 3), "its name isn't in: the row waits, under the name typed").toEqual(["Strange Dust", ""]);
   addon.eval("__wfgWorld.items[10940].pending = nil __wfgWorld.items[10940].name = 'TEST-ONLY Strange Dust'");
   addon.fire("ITEM_KEY_ITEM_INFO_RECEIVED", 10940);
+  addon.advance(1);
   expect(shopRow(addon, 1).slice(1, 3), "matched once the name is in (it contains the one typed)").toEqual(["TEST-ONLY Strange Dust", "12s 50c"]);
   addon.eval("__wfgWorld.ah.browse = { { itemKey = { itemID = 11083 }, minPrice = __wfgWorld.secret(5), totalQuantity = 2 } }");
   addon.advance(1);
@@ -401,6 +402,7 @@ it("a name matches only itself or a name containing it, never an unrelated resul
   expect(sent(addon)[3], "an ID entry with a max price still searches by its item key").toBe("SearchForItemKeys:2589");
   addon.eval("__wfgWorld.items[4306].pending = nil");
   addon.fire("ITEM_KEY_ITEM_INFO_RECEIVED", 4306);
+  addon.advance(1);
   expect(shopRow(addon, 3).slice(1, 3), "its name came in and contains silk").toEqual(["TEST-ONLY Silk Bolt", "7s 0c"]);
   // An entry's best price among the silk bolt alone (false: no match).
   const best = (entry) => addon.eval(`local r = ${HELPER}.BestResult(${entry}, { { itemKey = { itemID = 4306 }, minPrice = 700, totalQuantity = 2 } }) return r and r.price or r`);
@@ -748,3 +750,22 @@ it("a typed price's thousands mark counts only between groups of three digits, w
   expect(pricesWith('",", "."', ["1.234,5", "1.2345"]), "German: 1.234,5 is 1234.5 gold; a bad group reads as Lua reads it").toEqual([12345000, 12345]);
 });
 
+
+it("Z1-2 a burst of item-name events repaints the Shopping card once a frame", () => {
+  const addon = atAuctionHouse();
+  addon.eval(`__paints = 0 local AH = ${HELPER} local paint = AH.PaintShop AH.PaintShop = function() __paints = __paints + 1 return paint() end`);
+  for (let i = 0; i < 6; i++) addon.fire("ITEM_KEY_ITEM_INFO_RECEIVED", 2589 + i);
+  expect(addon.eval("return __paints"), "nothing painted until the frame ends").toBe(0);
+  addon.advance(1);
+  expect([addon.eval("return __paints"), addon.eval("return #ns.errors")], "one repaint for the six events, no error").toEqual([1, 0]);
+});
+
+it("Z1-2 the Deals count in the pane is counted, not sorted", () => {
+  const addon = atAuctionHouse();
+  addon.eval(`local AH = ${HELPER} __sorts = 0
+    local sorted = AH.SortedDeals
+    AH.SortedDeals = function() __sorts = __sorts + 1 return sorted() end
+    for id = 1, 40 do AH.deals[id] = { id = id, off = id, found = __now } end`);
+  const deals = addon.eval(`local n for _, e in ipairs(${HELPER}.PaneEntries()) do if e.key == ${HELPER}.DEALS then n = e.count end end return n`);
+  expect([deals, addon.eval("return __sorts")], "all 40 counted, none sorted").toEqual([40, 0]);
+});
