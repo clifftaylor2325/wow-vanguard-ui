@@ -97,6 +97,23 @@ it("an item the client has not cached shows by its number; without a map listing
   expect(text(addon)[1], "the tagged quests stand in for the map's").toBe("Your quests here");
 });
 
+// Z5-3: a key on the key ring (bag -1) next to the ones in the backpack.
+const KEY_RING = `
+  __wfgWorld.items[7148] = { name = "TEST-ONLY Crescent Key", classID = 13, subClassID = 0 }
+  __wfgWorld.bags[-1] = { { itemID = 7148, count = 1 } }
+`;
+it("the Keys line lists the keys on the key ring too, whichever way the client gives its size", () => {
+  const sized = character(ON, KEY_RING + "__wfgWorld.bagSizes[-1] = 4");
+  sized.slash("prep");
+  expect(text(sized).slice(-1), "the key ring first, then the bags").toEqual(["Keys: TEST-ONLY Crescent Key, TEST-ONLY Skeleton Key, TEST-ONLY Gate Key"]);
+  const fallback = character(ON, KEY_RING + "GetKeyRingSize = function() return 4 end");
+  fallback.slash("prep");
+  expect(text(fallback).slice(-1), "a client that answers 0 slots for bag -1 gives the size through GetKeyRingSize").toEqual(["Keys: TEST-ONLY Crescent Key, TEST-ONLY Skeleton Key, TEST-ONLY Gate Key"]);
+  const none = character(ON, KEY_RING);
+  none.slash("prep");
+  expect([text(none).slice(-1), none.eval("return #ns.errors")], "no key ring size from either: the bags' keys only, no error").toEqual([["Keys: TEST-ONLY Skeleton Key, TEST-ONLY Gate Key"], 0]);
+});
+
 // The wall clock moved to `t` seconds, then a walk through the door (a new world) with the card on.
 const visit = (addon, t) => { addon.eval(`__t = ${t} time = function() return __t end`); addon.fire("PLAYER_ENTERING_WORLD"); addon.advance(0.25); };
 

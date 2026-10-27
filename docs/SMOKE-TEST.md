@@ -2887,13 +2887,15 @@ The order is the order to play in: looks you can check quickly first, then the g
 
 ### 33.121 Pet trainer, slow shops, a specialty bag and the key ring
 
-- Do: as a hunter with a pet, open a pet trainer. As a character with a profession slot free, open a profession trainer.
-- Expect: Train all is greyed out at the pet trainer, with "Nothing to learn here right now." in its tooltip, and the game's own Train button still works there. At the profession trainer, one click on Train all learns the other skills but not a profession you have not learned yet; the game's own Train button asks before taking that one up.
-- Do: put an item the merchant sells on your Keep stocked list for far more than one buy (for example 100 of an item that comes 20 a click), and open that merchant, ideally while the connection is slow.
-- Expect: it buys a stack, waits for it to show in your bags (up to about 3 seconds), and buys the next, until you carry the amount; chat gives one "Bought ..." line and no "Stopped buying" unless the bags really are full.
-- Do: as a hunter or warlock with the general bags full and an empty quiver, ammo pouch or soul bag, shift-click food or water at a merchant, then arrows or shards if it sells them.
-- Expect: for food or water, the quantity window's line reads "Can't afford one" and Max does nothing (the specialty bag's slots are not counted); for arrows in a quiver (or shards in a soul bag) Max counts that bag's free slots.
-- If it fails, paste: which trainer, the Train all label and tooltip, how many you asked for and how many you got, the chat lines, and `/vg errors`.
+- Do: as a hunter with a pet, open a pet trainer. As a character with a profession slot free, open a profession trainer and click Train all.
+- Expect: at the pet trainer, Train all is greyed out with "Nothing to learn here right now." in its tooltip, and the game's own Train button still works. At the profession trainer, Train all learns the other skills but not a profession you have not learned yet; the game's own Train button asks before taking that one up.
+- Do: put an item a merchant sells on your Keep stocked list for far more than one buy (for example 100 of an item that comes 20 a click), and open that merchant, ideally on a slow connection.
+- Expect: it buys a stack, waits for it to show in your bags (up to about 3 seconds), then buys the next, until you carry the amount; chat gives "Bought ..." and no "Stopped buying" unless the bags really are full.
+- Do: with the general bags full and an empty quiver, ammo pouch or soul bag, shift-click water or food at a merchant, then arrows or shards if it sells them.
+- Expect: for food or water the quantity window's line reads "Can't afford one" and Max does nothing, since the specialty bag's slots are not counted; for arrows (quiver) or shards (soul bag) Max counts that bag's free slots.
+- Do: with the Dungeon card on, carry a key on the key ring (Scarlet Key, Shadowforge Key or similar) and run `/vg prep`.
+- Expect: the card's "Keys:" line names it. If it does not, run `/dump C_Container.GetContainerNumSlots(-1)` and `/dump GetKeyRingSize()` and paste both.
+- If it fails, paste: which part, the chat lines and labels you saw, and `/vg errors`.
 
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
