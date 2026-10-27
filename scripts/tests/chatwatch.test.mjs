@@ -66,6 +66,16 @@ it("chat watch: matching ignores case and links' codes; unticked channels are no
   expect(rings(addon), "whispers are off by default").toBe(3);
 });
 
+it("chat watch: any case holds for Cyrillic and accented letters too, and the toast marks the word", () => {
+  const addon = watching("продам", "über");
+  say(addon, "CHANNEL", "ПРОДАМ кожу", "Trader");
+  expect(toast(addon)[1], "a Cyrillic line in capitals rings").toBe("Trader");
+  say(addon, "CHANNEL", "Über alles", "Other");
+  expect([toast(addon)[1], toast(addon)[2]], "an accented capital rings, the word marked as it was written").toEqual(["Other", `${accent(addon, "Über")} alles`]);
+  addon.slash("watch remove ПРОДАМ");
+  expect(addon.eval("return ns.Settings('ChatWatch').phrases"), "removed in any case").toEqual(["lfm", "über"]);
+});
+
 it("chat watch: with no phrase watched a line is not read, and a line without link codes skips the code strips", () => {
   const addon = loggedIn(WATCH_ENV + CLICK_LUA);
   // TEST-ONLY: counts the string functions a call makes, to show a busy channel makes no garbage when nothing is watched.

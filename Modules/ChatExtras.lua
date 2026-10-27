@@ -154,13 +154,13 @@ end
 -- finds "WTS [Devilsaur Leggings]" sent as an item link. The chat filter and chat watch match on it.
 function CX.Matchable(text)
   local s = text:find("|", 1, true) and text:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|H.-|h", ""):gsub("|[hr]", "") or text
-  return (s:gsub("[%[%]]", "")):lower()
+  return ns.Lower((s:gsub("[%[%]]", "")))
 end
 
--- Removes the first entry of list equal to value; true when one was removed.
+-- Removes the first entry of list equal to value in any case; true when one was removed.
 function CX.RemoveValue(list, value)
   for i, entry in ipairs(list) do
-    if entry == value then
+    if ns.Lower(entry) == ns.Lower(value) then
       table.remove(list, i)
       return true
     end
@@ -206,7 +206,7 @@ end
 ---@param patterns string[]
 ---@return string
 function CX.Marked(text, patterns)
-  local hit, lower = {}, text:lower()
+  local hit, lower = {}, ns.Lower(text)
   for _, pattern in ipairs(patterns) do markHits(lower, pattern, hit) end
   return paintHits(text, hit)
 end

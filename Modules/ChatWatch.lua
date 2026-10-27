@@ -59,7 +59,7 @@ end
 -- Each phrase's word patterns, made once per phrase (never per line; forgotten when the list changes).
 local patternsOf = setmetatable({}, { __index = function(cache, phrase)
   local patterns = {}
-  for i, word in ipairs(CW.Words(phrase)) do patterns[i] = wordPattern(word) end
+  for i, word in ipairs(CW.Words(ns.Lower(phrase))) do patterns[i] = wordPattern(word) end
   cache[phrase] = patterns
   return patterns
 end })
@@ -196,7 +196,7 @@ end
 function CW.ToastLine(text, phrase)
   local CX, patterns = ns.GetModule("ChatExtras"), patternsOf[phrase]
   local line = CX.Plain(text)
-  local start = leadStart(line:lower(), patterns)
+  local start = leadStart(ns.Lower(line), patterns)
   return (start > 1 and "\226\128\166" or "") .. CX.Marked(line:sub(start), patterns)
 end
 
@@ -297,7 +297,7 @@ end
 
 -- Adds a phrase to watch for (trimmed, lower-cased); says in chat what happened. True when added.
 function CW.Add(text)
-  local phrase, list = (type(text) == "string" and text or ""):match("^%s*(.-)%s*$"):lower(), phrases()
+  local phrase, list = ns.Lower((type(text) == "string" and text or ""):match("^%s*(.-)%s*$")), phrases()
   local why = refusal(phrase, list)
   if why then ns.Chat(why) return false end
   list[#list + 1] = phrase
@@ -308,7 +308,7 @@ end
 
 -- Stops watching for a phrase (any case); says in chat what happened.
 function CW.Remove(text)
-  local phrase = (type(text) == "string" and text or ""):match("^%s*(.-)%s*$"):lower()
+  local phrase = ns.Lower((type(text) == "string" and text or ""):match("^%s*(.-)%s*$"))
   if not ns.GetModule("ChatExtras").RemoveValue(phrases(), phrase) then return ns.Chat(ns.Format(L['Not watching for "{phrase}".'], { phrase = phrase })) end
   phrasesChanged()
   ns.Chat(ns.Format(L['No longer watching for "{phrase}".'], { phrase = phrase }))

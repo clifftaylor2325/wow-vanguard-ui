@@ -119,6 +119,15 @@ it("chat filter: your own words, and the same line from one sender within a minu
   expect(deliver(addon, GOLD, "Goldy"), "a category switched off").toBe(false);
 });
 
+it("chat filter: your own words match in any case for Cyrillic and accented letters", () => {
+  const addon = filtering();
+  addon.slash("filter add Продам");
+  expect(addon.eval("return ns.Settings('ChatFilter').keywords"), "stored in small letters").toEqual(["продам"]);
+  expect(deliver(addon, "ПРОДАМ золото дёшево", "Seller"), "a line in capitals is caught").toBe(true);
+  addon.eval("table.insert(ns.Settings('ChatFilter').keywords, 'ÄRGER')");
+  expect(deliver(addon, "so ein ärger hier", "Old"), "a word saved in capitals by an older version still matches").toBe(true);
+});
+
 it("chat filter: the repeat rule's shortest line counts letters, so a short Chinese line said twice passes", () => {
   const addon = filtering();
   expect([deliver(addon, "组队打本", "Short"), deliver(addon, "组队打本", "Short")], "4 letters (12 bytes) are never a repeat").toEqual([false, false]);

@@ -50,7 +50,7 @@ CF.allowed, CF.recent, CF.recentCount, CF.count, CF.counts = {}, {}, 0, 0, {}
 -- True when the line holds any of the words (as plain text).
 local function holdsAny(line, words)
   for _, word in ipairs(words) do
-    if line:find(word, 1, true) then return true end
+    if line:find(ns.Lower(word), 1, true) then return true end
   end
   return false
 end
@@ -290,7 +290,7 @@ end
 
 -- A keyword as typed: trimmed and lower-cased.
 local function clean(text)
-  return ((type(text) == "string" and text or ""):gsub("[%[%]|]", ""):match("^%s*(.-)%s*$")):lower()
+  return ns.Lower(((type(text) == "string" and text or ""):gsub("[%[%]|]", ""):match("^%s*(.-)%s*$")))
 end
 
 -- Adds a keyword; says in chat what happened. True when added.
