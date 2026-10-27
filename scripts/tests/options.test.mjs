@@ -1740,7 +1740,7 @@ it("options tabs: the tabs wrap onto a new line where the next would run past th
   expect([lines.size, height, under], "Action bars' ten tabs take two lines: the strip is two tabs and a gap tall, the view right under it").toEqual([2, 2 * addon.eval("return ns.Theme.CONTROL_H + 4") + 2, true]);
   expect(tabs.every((t) => t[0] + t[2] <= 568), "no tab runs past the page's width").toBe(true);
   const firstOnTwo = tabs.findIndex((t) => t[1] > 0);
-  expect([tabs[firstOnTwo][0], tabs[firstOnTwo - 1][0] + tabs[firstOnTwo - 1][2] + tabs[firstOnTwo][2] > 568], "a new line starts at the left, where the tab would not fit on the line above").toEqual([0, true]);
+  expect([tabs[firstOnTwo][0], tabs[firstOnTwo - 1][0] + tabs[firstOnTwo - 1][2] + 2 + tabs[firstOnTwo][2] > 568], "a new line starts at the left, where the tab and its gap would not fit on the line above").toEqual([0, true]);
 });
 
 it("options tabs: the Modules page keeps what off means and its Show choice above the tabs, whichever tab shows", () => {
@@ -1807,4 +1807,21 @@ it("options tabs: Reset this page sits at the right of the page's bar, the page'
   expect(addon.eval('return __click("Reset this page") and Vanguard_Question:IsShown()'), "and the button still asks first").toBe(true);
   addon.eval('Vanguard_Question.no:GetScript("OnClick")(Vanguard_Question.no) ns.Options.Show("feedback")');
   expect(bar(), "Feedback: no settings with defaults, so the title alone").toEqual(["Feedback", true, false, false]);
+});
+
+it("options tabs: a Text size change sizes the open page's tabs to their names again, and they wrap to fit the strip", () => {
+  // Font metrics, so a name's width follows its font size (the rough metrics count characters).
+  const addon = createAddon({ savedVariables: SETUP_DONE, textFit: true });
+  addon.login();
+  addon.eval('ns.Options.Show("modules")');
+  // The open page's tabs as { tab width, name width at full size, tab's right edge past the strip's left } each.
+  const tabs = () => addon.eval(`local v for _, c in ipairs({ Vanguard_Options:GetChildren() }) do if c.cards and c:IsShown() then v = c end end
+    local out = {} for _, card in ipairs(v.cards) do local t = card.tab
+      out[#out + 1] = { t:GetWidth(), math.ceil(ns.Theme.FullWidth(t.text)), t:GetRight() - v.strip:GetLeft() } end
+    return { out, v.strip:GetWidth(), v.strip:GetHeight() }`);
+  const [before, , rowsBefore] = tabs();
+  addon.eval("ns.Theme.Settings().textScale = 1.3 ns.Theme.Refresh()");
+  const [after, strip, rowsAfter] = tabs();
+  expect(after.map(([width, name]) => width - name), "each tab is its name and 12 of air each side again").toEqual(after.map(() => 24));
+  expect([after[0][0] > before[0][0], after.every((t) => t[2] <= strip), rowsAfter > rowsBefore], "wider names, none past the strip, more lines").toEqual([true, true, true]);
 });
