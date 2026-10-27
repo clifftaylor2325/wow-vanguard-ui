@@ -36,24 +36,25 @@ GT.VIEWERS = { "EssentialCooldownViewer", "UtilityCooldownViewer", "BuffIconCool
 
 -- Placing -------------------------------------------------------------------------------------
 
--- A frame's ClearAllPoints and SetPoint: on an Edit Mode system, the client's own methods the game keeps
--- aside as ClearAllPointsBase and SetPointBase, not Edit Mode's Lua overrides (those mark its anchors
--- dirty, and that flag written from addon code taints what Edit Mode reads when it next opens).
-local function anchorCalls(frame)
-  return frame.ClearAllPointsBase or frame.ClearAllPoints, frame.SetPointBase or frame.SetPoint
+-- A frame's SetPoint: on an Edit Mode system, the client's own method the game keeps aside as SetPointBase,
+-- not Edit Mode's Lua override (it marks Edit Mode's anchors dirty, and that flag written from addon code
+-- taints what Edit Mode reads when it next opens). ClearAllPoints stays Edit Mode's own, which also drops a
+-- snap the frame had to another system, so Edit Mode never keeps a stale one.
+local function setPointOf(frame)
+  return frame.SetPointBase or frame.SetPoint
 end
 
 -- Puts one of the game's frames centered on its spot (a cooldown row sizes itself to its icons).
 function GT.FitCenter(frame, spot)
-  local clear, set = anchorCalls(frame)
-  clear(frame)
+  local set = setPointOf(frame)
+  frame:ClearAllPoints()
   set(frame, "CENTER", spot, "CENTER")
 end
 
 -- Puts one of the game's frames over its spot, filling it (the damage meter).
 function GT.FitFill(frame, spot)
-  local clear, set = anchorCalls(frame)
-  clear(frame)
+  local set = setPointOf(frame)
+  frame:ClearAllPoints()
   set(frame, "TOPLEFT", spot, "TOPLEFT")
   set(frame, "BOTTOMRIGHT", spot, "BOTTOMRIGHT")
 end
