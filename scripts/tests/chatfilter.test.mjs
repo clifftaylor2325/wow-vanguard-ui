@@ -125,7 +125,7 @@ it("chat filter: your own words match in any case for Cyrillic and accented lett
   expect(addon.eval("return ns.Settings('ChatFilter').keywords"), "stored in small letters").toEqual(["продам"]);
   expect(deliver(addon, "ПРОДАМ золото дёшево", "Seller"), "a line in capitals is caught").toBe(true);
   addon.eval("table.insert(ns.Settings('ChatFilter').keywords, 'ÄRGER')");
-  expect(deliver(addon, "so ein ärger hier", "Old"), "a word saved in capitals by an older version still matches").toBe(true);
+  expect(deliver(addon, "viel ärger heute", "Old"), "a word saved in capitals by an older version still matches").toBe(true);
 });
 
 it("chat filter: the repeat rule's shortest line counts letters, so a short Chinese line said twice passes", () => {
