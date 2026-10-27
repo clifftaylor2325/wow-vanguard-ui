@@ -632,6 +632,23 @@ it("a rebuilt Click casting page's new test tile lets go of the keyboard when a 
   expect(addon.eval(`return __wfgStub.frames[${tile}].__kb`), "the rebuilt page's tile lets go").toBe(false);
 });
 
+it("a spell picker opened in a fight does not take the keyboard; one opened after it does", () => {
+  const addon = priest();
+  addon.eval('ns.Options.Show("clickcast")');
+  addon.click(cell(addon, "ctrl-BUTTON2"));
+  addon.eval("Vanguard_SpellPicker.EnableKeyboard = function(self, on) self.__kb = on end");
+  // Clicks the cell open and answers whether the picker shows, and whether its keyboard is on.
+  const keyboardAfterOpening = () => {
+    addon.click(cell(addon, "ctrl-BUTTON2"));
+    return [addon.frame("Vanguard_SpellPicker").visible, addon.eval("return Vanguard_SpellPicker.__kb")];
+  };
+  addon.world.combat(true);
+  expect(keyboardAfterOpening(), "opened in the fight, shown with the keyboard off").toEqual([true, false]);
+  addon.world.combat(false);
+  addon.eval("Vanguard_SpellPicker:Hide()");
+  expect(keyboardAfterOpening(), "opened after it, the keyboard is on again").toEqual([true, true]);
+});
+
 it("the Click casting page shows one Reset this page card however often the window opened before a rebuild", () => {
   const addon = loggedIn(CLICK_LUA + "C_ClickBindings = {}");
   for (let i = 0; i < 3; i++) addon.eval('ns.Options.Show("general") ns.Options.Hide() Vanguard_Options:Hide()');

@@ -336,12 +336,19 @@ local function followAnchor(anchor)
   anchor:HookScript("OnHide", ns.Guard("hide spell picker anchor", function() if picker.anchor == anchor then closePicker() end end))
 end
 
--- Opens the picker beside an anchor frame, for a key.
-local function openPicker(anchor, key)
-  pickerFrame()
+-- Readies the picker for a key: back at the top with an empty search. It reads keys only out of a fight,
+-- where it can't pass them on and would swallow movement and keybinds (closeOnCombat covers one open at the start).
+local function readyPicker(key)
+  picker:EnableKeyboard(not ns.InCombat())
   state.pickKey = key
   picker.offset = 0
   picker.search:SetText("")
+end
+
+-- Opens the picker beside an anchor frame, for a key.
+local function openPicker(anchor, key)
+  pickerFrame()
+  readyPicker(key)
   followAnchor(anchor)
   picker:ClearAllPoints()
   picker:SetPoint("TOPLEFT", anchor, "TOPRIGHT", T.SPACE.gap, 0)
