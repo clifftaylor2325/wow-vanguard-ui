@@ -91,7 +91,7 @@ it("item tooltips show what the stack sells for, unless the client already does"
   expect(line.text === "Sells for 5s 0c" && isTok(addon, line.left, "text2") && isTok(addon, line.right, "gold"), "a stack of 20 at 25c each, the price in gold").toBe(true);
   expect(addon.eval('return __showItem("item:90001", nil)[1].text'), "a single item").toBe("Sells for 0s 25c");
   expect(addon.eval('return { #__showItem("item:90002", 1), #__showItem("item:90003", 1), #__showItem({ __secret = true }, 1), #__showItem("item:90001", 1, 1) }'), "no value, not cached yet, hidden, or the client's own price: no line").toEqual([0, 0, 0, 0]);
-  addon.eval(`ITEM_SELL_PRICE = "Sell Price"
+  addon.eval(`SELL_PRICE = "Sell Price"
     GameTooltip.GetName = function() return "GameTooltip" end
     GameTooltip.NumLines = function() return 3 end
     local texts = { "TEST-ONLY Item", { __secret = true }, "Sell Price: 6s 1c" }
