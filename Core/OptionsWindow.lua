@@ -866,11 +866,12 @@ local function stepPage(dir)
 end
 
 -- The current page's rows that do something when pressed (switches, choices, sliders, buttons), top to bottom.
+-- A greyed-out button does nothing, so the keyboard skips it.
 local function pressableRows()
   local view, out = pages[O.current], {}
   for _, w in ipairs(widgets) do
     local button = w.GetObjectType and w:GetObjectType() == "Button"
-    if view and button and w.card.child == view.child and w:IsVisible() then out[#out + 1] = w end
+    if view and button and w.card.child == view.child and w:IsVisible() and w:IsEnabled() then out[#out + 1] = w end
   end
   return out
 end
@@ -921,6 +922,7 @@ local function useKey(key)
   if (key == "LEFT" or key == "RIGHT") and w and w.Step then w:Step(dir) return true end
   if key == "LEFT" or key == "RIGHT" then return stepTab(dir) end
   if not ((key == "ENTER" or key == "SPACE") and w) then return false end
+  if not w:IsEnabled() then return true end
   w:GetScript("OnClick")(w, "LeftButton")
   return true
 end
