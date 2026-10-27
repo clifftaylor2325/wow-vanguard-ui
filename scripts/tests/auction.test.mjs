@@ -386,6 +386,11 @@ it("a finished scan spends the 15 minutes from its start, and your own listings 
   expect(chatHas(addon, /Auction house scanned: 6 listings, prices for 1 items\. 3 of them were yours and are left out\./), "says so").toBe(true);
   expect([addon.eval("return ns.AuctionPrices.House().lastScan"), lastLine(addon)], "the 15 minutes run from the start").toEqual([1790000000, "Scanned 2 min ago · 1 items"]);
 });
+it("Y6-2 a scan stamped in the future (the clock was ahead, then put right) waits one gap at most", () => {
+  const addon = atAuctionHouse();
+  addon.eval("ns.AuctionPrices.House().lastScan = __now + 86400 ns.AuctionPrices.Store().scannedAt = __now + 86400");
+  expect(addon.eval(`return ${HELPER}.NextScanIn()`), "15 minutes, not a day and 15 minutes").toBe(900);
+});
 it("switches: no tabs, no scan button", () => {
   const off = atAuctionHouse("", { savedVariables: "VanguardDB.profiles = { Default = { AuctionHelper = { panel = false } } }" });
   expect([off.frame("Vanguard_AuctionShopping"), off.eval("return #AuctionHouseFrame.Tabs")], "no pages, the game's three tabs alone").toEqual([null, 3]);
