@@ -111,6 +111,20 @@ it("/vg sell sells every stack of one item after a question, only at a merchant"
   expect(used(addon), "Sell uses each stack").toEqual([1, 6]);
 });
 
+it("/vg sell with a random-suffix link sells only that variant; an item ID sells every one", () => {
+  const addon = loggedIn(BULK_ENV + `
+    __wfgWorld.items[15001] = { name = "TEST-ONLY Heavy Cloak", sellPrice = 50 }
+    __bag[14] = { itemID = 15001, hyperlink = "|cff1eff00|Hitem:15001::::::-17:::::::|h[TEST-ONLY Heavy Cloak of the Bear]|h|r" }
+    __bag[15] = { itemID = 15001, hyperlink = "|cff1eff00|Hitem:15001::::::-15:::::::|h[TEST-ONLY Heavy Cloak of the Owl]|h|r" }`);
+  addon.fire("MERCHANT_SHOW");
+  addon.slash("sell |cff1eff00|Hitem:15001::::::-17:::::::|h[TEST-ONLY Heavy Cloak of the Bear]|h|r");
+  addon.click("Vanguard_Question.confirm");
+  expect(used(addon), "the Bear cloak only").toEqual([14]);
+  addon.slash("sell 15001");
+  addon.click("Vanguard_Question.confirm");
+  expect(used(addon), "an item ID: the rest of them").toEqual([14, 15]);
+});
+
 it("the helpers are off when the Merchant module is", () => {
   const addon = loggedIn(BULK_ENV, { savedVariables: "VanguardDB.profiles = { Default = { modules = { Merchant = false } } }" });
   addon.slash("junk");
