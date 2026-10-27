@@ -83,11 +83,20 @@ end
 
 -- Lines ----------------------------------------------------------------------------------------
 
+-- An objective's text with its count inside it (French kills, "Sanglier : 3/8 personnages tués") as
+-- "Sanglier personnages tués", "3/8"; nil when there is none. A |4singular:plural; code left raw keeps its
+-- plural (moved into the label, it no longer follows a number the client could choose by).
+local function splitMiddle(text)
+  local before, count, after = text:match("^(.-)%s*:?%s*(%d+/%d+)%s+(.+)$")
+  if count then return before .. " " .. (after:gsub("|4[^:;]*:([^;]*);", "%1")), count end
+end
+
 -- An objective's text split into its label and its count ("Wolves slain: 3/8" or "3/8 Wolves slain" give
 -- "Wolves slain", "3/8"); the count is nil when it has none. The quest log and the tracker both show it so.
 function QP.SplitCount(text)
-  local label, count = text:match("^(.-):?%s*(%d+/%d+)$")
+  local label, count = text:match("^(.-)%s*:?%s*(%d+/%d+)%s*$")
   if not count then count, label = text:match("^(%d+/%d+)%s+(.+)$") end
+  if not count then label, count = splitMiddle(text) end
   return label and label ~= "" and label or text, count
 end
 

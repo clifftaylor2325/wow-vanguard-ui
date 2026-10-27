@@ -1027,15 +1027,17 @@ it("quest log: the chosen quest's top-selling choice wears the crown too", () =>
   addon.update(0);
   expect(crowns(addon, "Vanguard_QuestLog"), "it arrives: item:90022 (300) over item:90021 (50)").toEqual([false, true, false]);
 });
-it("quest log: an objective's count is found at either end, a text without one has none, and a done one is muted with a check", () => {
+it("quest log: an objective's count is found at either end or inside it (French kills), a text without one has none, and a done one is muted with a check", () => {
   const addon = loggedIn(TRACK_ENV + QLOG_ENV);
   addon.eval(`__quests[90051].objectives = { { text = "TEST-ONLY Wolf slain: 3/8", finished = false }, { text = "TEST-ONLY Explore the vale", finished = false },
-    { text = "2/2", finished = false }, { text = "TEST-ONLY Pelt: 1/1", finished = true } }`);
+    { text = "2/2", finished = false }, { text = "TEST-ONLY Pelt: 1/1", finished = true },
+    { text = "TEST-ONLY Sanglier : 3/8 |4TEST-ONLY tué:TEST-ONLY tués;", finished = false } }`);
   addon.eval("Vanguard_QuestLogToggle.__scripts.OnClick(Vanguard_QuestLogToggle)");
   expect(questLog(addon).rows, "label and count apart, no count and no bar for plain text, a lone count is its own label, done: check, no bar").toEqual([
     ["TEST-ONLY Wolf slain", "3/8", false, true, 3, 8], ["TEST-ONLY Explore the vale", "", false, false, 0, 1],
-    ["2/2", "2/2", false, true, 2, 2], ["TEST-ONLY Pelt", "1/1", true, false, 1, 1]]);
-  expect(addon.eval("local f = Vanguard_QuestLog return { f.objectiveBox:GetHeight(), select(5, f.objectiveRows[2]:GetPoint(1)) }"), "rows are 28 px apart in a box as tall as they are").toEqual([112, -28]);
+    ["2/2", "2/2", false, true, 2, 2], ["TEST-ONLY Pelt", "1/1", true, false, 1, 1],
+    ["TEST-ONLY Sanglier TEST-ONLY tués", "3/8", false, true, 3, 8]]);
+  expect(addon.eval("local f = Vanguard_QuestLog return { f.objectiveBox:GetHeight(), select(5, f.objectiveRows[2]:GetPoint(1)) }"), "rows are 28 px apart in a box as tall as they are").toEqual([140, -28]);
 });
 it("quest log: a long list and long quest text scroll, a short one does not", () => {
   const addon = loggedIn(TRACK_ENV + QLOG_ENV);
