@@ -2,6 +2,7 @@
 // realm, ruleset and side, the move from older keys, two-part names and /vg realm.
 
 import { expect, it } from "vitest";
+import { RETAIL_CLIENT } from "../lib/lua-harness.mjs";
 import { chatHas, loggedIn } from "./helpers.mjs";
 
 // TEST-ONLY ruleset calls: a season on (C_Seasons) and Hardcore rules (C_GameRules), as given.
@@ -125,6 +126,15 @@ it("home: a rules change that moves the data key says so once; one that does not
   expect(chatHas(addon, /The game's rules changed: Vanguard now keeps prices and characters under ForeverTest-Alliance\./), "the key moved").toBe(true);
   addon.fire("GAME_RULES_CHANGED");
   expect(addon.eval("return #ns.errors"), "and no errors").toBe(0);
+});
+
+it("home: on Retail, which lacks GAME_RULES_CHANGED, the login registers no rules handler and reports no error", () => {
+  const addon = loggedIn(rules({ season: 2 }), { client: RETAIL_CLIENT });
+  expect([addon.eval("return #ns.errors"), chatHas(addon, /not on this client/)], "no 'not on this client' error or chat line at login").toEqual([0, false]);
+  home(addon);
+  addon.eval("C_Seasons = nil");
+  addon.fire("GAME_RULES_CHANGED");
+  expect(chatHas(addon, /rules changed/), "the event is never registered there, so a fired one moves nothing").toBe(false);
 });
 
 // Seconds: the beta's last day, and the live game's first (launch is 1793833200).

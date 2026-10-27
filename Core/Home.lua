@@ -75,7 +75,9 @@ function H.OnRules()
   local now = H.Key()
   if before and before ~= now then ns.Chat(ns.Format(L["The game's rules changed: Vanguard now keeps prices and characters under {key}."], { key = now })) end
 end
-ns.On("GAME_RULES_CHANGED", ns.Guard("game rules", H.OnRules))
+-- Only WoW Forever has GAME_RULES_CHANGED (its GameRules docs; Retail's lack it), and ns.On reports an event
+-- the client lacks as an error, so Retail skips it: its only ruleset read that moves the key is Forever's too.
+if ns.IsForever() then ns.On("GAME_RULES_CHANGED", ns.Guard("game rules", H.OnRules)) end
 
 -- The keys older versions used for this home: "Realm-Faction" (prices and the sales ledger) and
 -- "Realm Name - Faction" with the faction as the client gives it (other characters' items).

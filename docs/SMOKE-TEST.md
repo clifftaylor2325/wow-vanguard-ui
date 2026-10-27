@@ -2768,6 +2768,12 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: Ready starts the game's ready check; Pull starts a 10 second countdown and the right-click cancels it; Raid turns the party into a raid; no "reserved for the Blizzard UI" message names Vanguard and `/vg errors` is empty. [Needs in-game check: whether a click from addon code may call C_PartyInfo.ConvertToRaid (Raid still does), and that the macro buttons start /readycheck and /countdown on Forever.]
 - If it fails, paste: the game's message word for word (which button), and `/vg errors`.
 
+### 33.103 Retail login with no Vanguard error
+
+- Do: on a Retail 12.x client (not Forever), log in with Vanguard on, then `/reload`. Look at the chat and the error badge. Run `/vg errors`.
+- Expect: no "event GAME_RULES_CHANGED: not on this client" line in chat, the error badge stays off and `/vg errors` is empty; on Forever `/vg realm` still names the ruleset. [Needs in-game check: that Retail's C_EventUtils.IsEventValid is the only thing that reported the event, and that nothing else Forever-only is registered at a Retail login.]
+- If it fails, paste: the chat lines Vanguard printed at login and `/vg errors`.
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ## When you are done
