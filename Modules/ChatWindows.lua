@@ -105,12 +105,13 @@ local function floating(i)
   return i > 1 and not docked(i)
 end
 
--- Keeps a floating window where its mover put it.
+-- Keeps a floating window where its mover put it (offsets divided by the window's scale, as the mover does).
 local function pinTo(frame, key)
   ns.Pin(frame, function(f)
     local point, relPoint, x, y = ns.MoverPoint(key)
+    local scale = f:GetScale() or 1
     f:ClearAllPoints()
-    f:SetPoint(point, UIParent, relPoint, x, y)
+    f:SetPoint(point, UIParent, relPoint, x / scale, y / scale)
   end)
 end
 
@@ -119,7 +120,8 @@ local function floatingMover(window)
   local frame, key = window.frame, "chat" .. window.index
   local point, _, relPoint, x, y = frame:GetPoint(1)
   if not point then return end
-  ns.Mover(frame, key, ns.Format(L["Chat: {tab}"], { tab = window.name }), { point, relPoint, x, y })
+  local m = ns.Mover(frame, key, ns.Format(L["Chat: {tab}"], { tab = window.name }), { point, relPoint, x, y })
+  m.insets = ns.GetModule("Chat").ClampInsets(frame)
   pinTo(frame, key)
 end
 

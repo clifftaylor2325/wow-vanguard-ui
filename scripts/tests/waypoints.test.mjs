@@ -1,7 +1,8 @@
 // waypoints: Vanguard's real Lua in the TEST-ONLY headless client (scripts/lib/lua-harness.mjs).
 
 import { expect, it } from "vitest";
-import { chatHas, isTok, loggedIn } from "./helpers.mjs";
+import { createAddon } from "../lib/lua-harness.mjs";
+import { SETUP_DONE, chatHas, isTok, loggedIn } from "./helpers.mjs";
 
 // TEST-ONLY maps: a world (1) holding two zones and a city whose names share a
 // start, the player on zone 10 at 45.67, 12.3. Every waypoint set is recorded.
@@ -303,4 +304,16 @@ it("waypoints: a /way title waits for its own spot's event, and the newest title
   expect(addon.eval("local WP = ns.GetModule('Waypoints') return { WP.settings.recent[1].title, #WP.settings.recent, WP.pending.title }"), "the click on the old spot: its newest title, one entry, Camp still waiting").toEqual(["TEST-ONLY New", 1, "TEST-ONLY Camp"]);
   click(addon, 10, 0.2, 0.2);
   expect(addon.eval("local WP = ns.GetModule('Waypoints') return { WP.settings.recent[1].title, WP.pending == nil }"), "Camp's own spot takes it").toEqual(["TEST-ONLY Camp", true]);
+});
+
+it("waypoints: the world map's Clear waypoint button grows to its label in French and Russian, which stays at full size", () => {
+  for (const locale of ["frFR", "ruRU", "enUS"]) {
+    const addon = createAddon({ textFit: true, client: `__wfgWorld.locale = "${locale}"`, savedVariables: SETUP_DONE });
+    addon.eval(MAP_ENV + WORLD_MAP_ENV);
+    addon.login();
+    const button = addon.eval("local b = ns.GetModule('Waypoints').clearButton return { b:GetWidth(), b.text:GetTextScale() }");
+    expect(button[1], `${locale}: the label is not shrunk`).toBe(1);
+    expect(button[0], `${locale}: never narrower than the 110 it was built at`).toBeGreaterThanOrEqual(110);
+    expect(addon.textFit("Vanguard_MapCoords").filter((f) => f.kind === "cut"), `${locale}: nothing on the map line is cut`).toEqual([]);
+  }
 });

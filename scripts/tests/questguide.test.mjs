@@ -189,6 +189,26 @@ it("quest guidance: quest-start pins keep their size as the world map zooms, and
   expect(addon.eval("return ns.QuestGuide.pins[1]:GetScale()"), "a scale the client hides counts as 1").toBe(1);
 });
 
+it("quest guidance: a quest-start pin's border stays one screen pixel when the canvas is zoomed (the pin repaints for its scale)", () => {
+  const zoom = "__scale = 0.6 __canvas:SetScale(0.6) WorldMapFrame.GetCanvasScale = function() return __scale end WorldMapFrame.OnCanvasScaleChanged = function() end";
+  const addon = loggedIn(QUESTS_ENV + ARROW_ENV + MAP_ENV + CLICK_LUA + zoom);
+  addon.eval("WorldMapFrame:Show()");
+  addon.update(0);
+  // The pin's border pieces' thickness in screen pixels, and the one pixel it should be, at the pin's effective scale.
+  const edge = () => addon.eval(`local p = ns.QuestGuide.pins[1] local out = {}
+    for _, w in ipairs(__wfgStub.frames) do
+      if w.__parent == p and w.__layer == "BORDER" and w.__kind == "Texture" then out[#out + 1] = math.min(w:GetWidth(), w:GetHeight()) * p:GetEffectiveScale() end
+    end
+    return { out[1], ns.Theme.Pixel(p) * p:GetEffectiveScale(), #out }`);
+  const [thin, one, pieces] = edge();
+  expect([pieces >= 4, thin].map(Number), "opened at 0.6: four border pieces, each one pixel thick").toEqual([1, one]);
+  addon.eval("__scale = 1.5 __canvas:SetScale(1.5) WorldMapFrame:OnCanvasScaleChanged() ns.QuestGuide.RefreshPins()");
+  addon.update(0);
+  const zoomed = edge();
+  expect(zoomed[0], "zoomed in to 1.5 (the pins are reused): still one pixel").toBeCloseTo(zoomed[1], 6);
+  expect(zoomed[0], "the same pixel as before the zoom").toBeCloseTo(thin, 6);
+});
+
 it("quest guidance: the quest-line answer and quest log changes redraw the pins without asking again", () => {
   const addon = loggedIn(QUESTS_ENV + ARROW_ENV + MAP_ENV + CLICK_LUA);
   addon.eval("WorldMapFrame:Show()");

@@ -1264,6 +1264,14 @@ function T.Repaint()
   for frame, entry in pairs(painted) do repaint(frame, entry) end
 end
 
+-- Repaints one painted frame at its pixel size now, after SetScale on it (T.Repaint does every frame); a frame
+-- T.Panel never painted is left alone.
+---@param frame table
+function T.RepaintFrame(frame)
+  local entry = painted[frame]
+  if entry then repaint(frame, entry) end
+end
+
 -- A background texture over frame, `pad` units out past its edges.
 local function background(frame, pad)
   local bg = solid(frame, "BACKGROUND", nil, "fill")

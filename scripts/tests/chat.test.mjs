@@ -643,7 +643,8 @@ it("chat's unlock handle is clamped past the window, so a drag to an edge keeps 
     ns.PlaceMover("chat")`);
   const CH = addon.eval("local CH, T = ns.GetModule('Chat'), ns.Theme return { CH.STACK_ROOM, CH.SIDE_COLUMN, CH.BAR, T.SPACE.tight }");
   const [stack, column, bar, tight] = CH;
-  expect(addon.eval("return __h.__testInsets"), "left past the side buttons, right past the scroll column, up past the tab bar, down past the edit box").toEqual([-(tight + stack), column + tight, bar, -(bar + tight)]);
+  expect(addon.eval("return __h.__testInsets"), "left past the side buttons, right past the scroll column and the stack the game puts there when the window is nearer that edge, up past the tab bar, down past the edit box (its gap, then its height, under the window's gap)").toEqual([-(tight + stack), column + tight + stack, bar, -(bar + 2 * tight)]);
+  expect(addon.eval("return ns.GetModule('Chat').ClampInsets(ChatFrame1)"), "the same table comes from CH.ClampInsets").toEqual([-(tight + stack), column + tight + stack, bar, -(bar + 2 * tight)]);
 });
 it("chat is a mover: placed once, sized once, kept where the player put it", () => {
   const addon = loggedIn(UI_ENV + TIDY_ENV);
@@ -661,6 +662,63 @@ it("chat is a mover: placed once, sized once, kept where the player put it", () 
   expect(addon.eval("return { VanguardCharDB.chatSize.sized, VanguardDB.profiles.Default.Chat.sized == nil }"), "the size is only set once for this character, noted in its own file, not the profile").toEqual([true, true]);
   expect(addon.eval('return ns.ResetMovers("chat")'), "/vg reset chat puts it back").toBe(1);
   expect(spot().slice(0, 3), "at the bottom-left").toEqual(["BOTTOMLEFT", 40, 20]);
+});
+it("chat keeps its spot when the mover's Scale is not 100 %: the pin divides the offsets by the window's scale", () => {
+  const addon = loggedIn(UI_ENV + TIDY_ENV);
+  addon.eval("ns.SetMoverScale('chat', 2)");
+  // The window put at a mover Scale and pushed away by the game: its scale, pin offsets and screen position.
+  const at = (scale) => addon.eval(`ns.SetMoverScale('chat', ${scale}) ChatFrame1:ClearAllPoints() ChatFrame1:SetPoint('CENTER')
+    local p = ChatFrame1.__points.BOTTOMLEFT return { ChatFrame1:GetScale(), p.x, p.y, ChatFrame1:GetLeft() * ChatFrame1:GetScale(), ChatFrame1:GetBottom() * ChatFrame1:GetScale() }`);
+  expect(at(2), "at 200 % the pin is 20, 10 in frame units: 40, 20 in UIParent's").toEqual([2, 20, 10, 40, 20]);
+  expect(at(0.5), "at 50 % it is 80, 40 in frame units").toEqual([0.5, 80, 40, 40, 20]);
+});
+it("chat tab labels are in the theme's label font and follow Text size, not the template's GameFontNormalSmall", () => {
+  const addon = loggedIn(UI_ENV);
+  // The first tab label's font path and size beside the theme's.
+  const fonts = () => addon.eval(`local path, size = ChatFrame1Tab.Text:GetFont() local T = ns.Theme return { path == T.Font(), size, T.RoleSize("label") }`);
+  const [fits, size, role] = fonts();
+  expect([fits, size], "the tab label takes the theme font at the label role's size").toEqual([true, role]);
+  addon.eval("ns.Theme.Settings().textScale = 1.5 ns.Theme.Refresh()");
+  const [bigFits, bigSize, bigRole] = fonts();
+  expect([bigFits, bigSize > size, bigSize], "and it follows Text size").toEqual([true, true, bigRole]);
+});
+it("chat bar tiles follow the shown docked window: Copy and Find ride its bar when the game hides the main window, and come back with it", () => {
+  const select = `function FCFDock_SelectWindow(dock, frame)
+    for _, w in ipairs(dock.DOCKED_CHAT_FRAMES) do w:SetShown(w == frame) end
+  end`;
+  const addon = loggedIn(UI_ENV + CHAT_DOCK_ENV + select);
+  const bars = "local F = ns.GetModule('Chat').frames local CX, CW = ns.GetModule('ChatExtras'), ns.GetModule('ChatWindows')";
+  // Whether Copy and Find show, on which bar, and where the dock's right end is anchored.
+  const tiles = (frame) => addon.eval(`${bars} FCFDock_SelectWindow(GENERAL_CHAT_DOCK, ${frame})
+    local copy, find = CX.copyButton, CW.findButton
+    return { copy:IsVisible(), find:IsVisible(), copy:GetParent() == F[${frame}].bar, find:GetParent() == F[${frame}].bar,
+      copy.__points.RIGHT.rel == F[${frame}].bar, find.__points.RIGHT.x, GENERAL_CHAT_DOCK.__points.RIGHT.rel == find }`);
+  expect(tiles("ChatFrame2"), "another docked tab shown: both tiles are on its bar, Find a tile and a gap left of Copy, and the dock ends before Find").toEqual([true, true, true, true, true, -28, true]);
+  expect(tiles("ChatFrame1"), "General shown again: they are back on its bar").toEqual([true, true, true, true, true, -28, true]);
+  expect(addon.eval("FCFDock_SelectWindow(GENERAL_CHAT_DOCK, nil) FCFDock_SelectWindow(GENERAL_CHAT_DOCK, {}) return #ns.errors"), "a window Vanguard hasn't dressed is left alone").toBe(0);
+});
+it("chat dock: the overflow arrow is a window control at the dock's right end and its list is a themed box with the theme's label font on its rows", () => {
+  const overflow = `GENERAL_CHAT_DOCK.overflowButton = CreateFrame("Button", nil, GENERAL_CHAT_DOCK)
+    GENERAL_CHAT_DOCK.overflowButton:SetSize(16, 16)
+    GENERAL_CHAT_DOCK.overflowButton:SetPoint("BOTTOMRIGHT", GENERAL_CHAT_DOCK, "BOTTOMRIGHT")
+    GENERAL_CHAT_DOCK.overflowButton.list = CreateFrame("Frame", nil, GENERAL_CHAT_DOCK.overflowButton)
+    GENERAL_CHAT_DOCK.overflowButton.list.NineSlice = CreateFrame("Frame", nil, GENERAL_CHAT_DOCK.overflowButton.list)
+    local row = CreateFrame("Button", nil, GENERAL_CHAT_DOCK.overflowButton.list)
+    row:SetFontString(row:CreateFontString(nil, "OVERLAY"))
+    GENERAL_CHAT_DOCK.overflowButton.list.buttons = { row }
+    function FCFDockOverflowList_Update(list, dock) end`;
+  const addon = loggedIn(UI_ENV + CHAT_DOCK_ENV + overflow);
+  // The overflow arrow: its size, anchor at the dock's right end, whether it is a window control, and the list's faded art.
+  const arrow = () => addon.eval(`local b = GENERAL_CHAT_DOCK.overflowButton local p = b.__points.RIGHT
+    return { b:GetWidth(), b:GetHeight(), p ~= nil and p.rel == GENERAL_CHAT_DOCK, b.__points.BOTTOMRIGHT == nil, ns.Theme.ControlGlyph(b) ~= nil, b.list.NineSlice.__alpha == 0 }`);
+  expect(arrow(), "the arrow keeps its 16 x 16, sits at the dock's right end instead of its bottom, and is dressed; the list is a themed box").toEqual([16, 16, true, true, true, true]);
+  // The first row's font path (as the theme's font or not) and size beside the label role's.
+  const row = () => addon.eval(`local path, size = GENERAL_CHAT_DOCK.overflowButton.list.buttons[1]:GetFontString():GetFont() return { path == ns.Theme.Font(), size == ns.Theme.RoleSize("label") }`);
+  expect(row(), "a row is not in the theme's font until the game fills the list").toEqual([false, false]);
+  addon.eval("FCFDockOverflowList_Update(GENERAL_CHAT_DOCK.overflowButton.list, GENERAL_CHAT_DOCK)");
+  expect(row(), "its rows are in the theme's label font at the label role's size once it does").toEqual([true, true]);
+  expect(addon.eval("ns.GetModule('Chat').SkinOverflow() GENERAL_CHAT_DOCK.overflowButton.list.buttons = 1 FCFDockOverflowList_Update(GENERAL_CHAT_DOCK.overflowButton.list) FCFDockOverflowList_Update(nil) return #ns.errors"), "dressed once, and a list without rows is left alone").toBe(0);
+  expect(loggedIn(UI_ENV + CHAT_DOCK_ENV).eval("ns.GetModule('Chat').SkinOverflow() return #ns.errors"), "a dock without the arrow is left alone").toBe(0);
 });
 it("bags", () => {
   const addon = loggedIn(UI_ENV);

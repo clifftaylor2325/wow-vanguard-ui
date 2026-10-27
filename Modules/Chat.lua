@@ -219,6 +219,15 @@ local function topInset(frame)
   return type(strip) == "table" and ns.PlainNumber(strip:GetHeight()) or 0
 end
 
+-- The clamp insets for a chat window's unlock handle (left, right, top, bottom): the side buttons' or the
+-- minimize column's room to the left; to the right the scroll column and the button stack's room (the
+-- game moves the buttons right when the window is nearer that edge); above, the bar and the Combat
+-- Log's filter strip; below, the edit box (a gap, then its height, under the window's gap).
+function CH.ClampInsets(frame)
+  local tight = T.SPACE.tight
+  return { -(tight + CH.STACK_ROOM), CH.SIDE_COLUMN + tight + CH.STACK_ROOM, CH.BAR + topInset(frame), -(CH.BAR + 2 * tight) }
+end
+
 -- Anchors a frame to the panel's footprint round a chat window: a gap out, the bar's height (and the
 -- filter strip's, on the Combat Log) above, the scroll column to the right.
 local function pinFootprint(f, frame)
@@ -328,14 +337,14 @@ local function tileSlots(tiles)
   return slots
 end
 
--- Lays a window's shown bar tiles out from the bar's right end in slot order with no gaps (a hidden
--- tile leaves none), and puts the dock's right end before the furthest one (CH.PlaceDock).
+-- Lays a window's shown bar tiles out from the right end of the bar they ride on in slot order with no
+-- gaps (a hidden tile leaves none), and puts the dock's right end before the furthest one (CH.PlaceDock).
 function CH.PlaceBarButtons(frame)
   local parts, tiles, n = CH.frames and CH.frames[frame], vgBarTiles[frame] or {}, 0
   if not parts then return end
   for _, slot in ipairs(tileSlots(tiles)) do
     local button = tiles[slot]
-    if button:IsShown() then n = n + 1 button:ClearAllPoints() button:SetPoint("RIGHT", parts.bar, "RIGHT", -slotInset(n), 0) end
+    if button:IsShown() then n = n + 1 button:ClearAllPoints() button:SetPoint("RIGHT", button:GetParent(), "RIGHT", -slotInset(n), 0) end
   end
   CH.PlaceDock()
 end
@@ -433,6 +442,13 @@ end
 -- only a repaint.
 local vgChatTab = ns.FrameState("vgChatTab")
 
+-- A tab's label in the theme's label role: the game's tab template draws it in GameFontNormalSmall at
+-- 10, which ignores the theme font and Text size. The colour stays T.Tab's.
+local function fontTab(tab)
+  local text = tab.Text
+  if type(text) == "table" and type(text.SetFont) == "function" then T.Text(text, "label", false) end
+end
+
 -- A tab as the theme's flat tab (raised with a lit top edge when selected, just its label on the bar
 -- otherwise, a faint hover, rounded) with its own art gone and its alert glow in the accent colour;
 -- the game's flash animation still drives the glow's alpha.
@@ -442,6 +458,7 @@ local function skinTab(tab)
   T.FadeRegions(tab, { [tab.Text or false] = true, [tabGlow(tab) or false] = true })
   local glow = tabGlow(tab)
   if glow then T.Tint(glow, "accent") end
+  fontTab(tab)
   sizeTab(tab)
   vgChatTab[tab] = true
 end
@@ -920,6 +937,34 @@ function CH.UpdateTabs()
   end
 end
 
+-- The docks whose overflow arrow is dressed (ns.FrameState), so it is done once.
+local vgOverflow = ns.FrameState("vgOverflow")
+
+-- The dock's overflow arrow (shown when more tabs are docked than fit the bar) as a window control and
+-- its list as a themed tooltip box, once. The arrow keeps its 16 x 16 (the game reads its width for the
+-- scroll room) and sits at the dock's right end, level with the tabs.
+function CH.SkinOverflow()
+  local dock = _G.GENERAL_CHAT_DOCK
+  local arrow = type(dock) == "table" and dock.overflowButton
+  if type(arrow) ~= "table" or vgOverflow[dock] then return end
+  vgOverflow[dock] = true
+  T.WindowControl(arrow, "Down")
+  arrow:ClearAllPoints()
+  arrow:SetPoint("RIGHT", dock, "RIGHT")
+  if type(arrow.list) == "table" then T.Tooltip(arrow.list) end
+end
+
+-- The rows of the overflow list in the theme's label font after the game fills the list (its buttons
+-- are the game's, in GameFontNormalSmallLeft); a row's colour stays the game's.
+local function fontOverflowRows(list)
+  local rows = type(list) == "table" and list.buttons
+  if type(rows) ~= "table" then return end
+  for _, row in ipairs(rows) do
+    local text = type(row.GetFontString) == "function" and row:GetFontString()
+    if type(text) == "table" then T.Text(text, "label", false) end
+  end
+end
+
 -- Skins every chat window this client has, and the chat frame's side buttons, and has the dock lay
 -- its tabs out again for the theme's font.
 function CH.SkinAll()
@@ -927,6 +972,7 @@ function CH.SkinAll()
     skinNamed(name, CH.settings)
   end
   CH.SkinButtons()
+  CH.SkinOverflow()
   CH.UpdateTabs()
   CH.PlaceDock()
   relayoutDock()
@@ -949,12 +995,14 @@ function CH.Refresh()
 end
 
 -- Keeps the main chat window where its mover put it: the game's Edit Mode
--- re-anchors it whenever a layout is applied.
+-- re-anchors it whenever a layout is applied. The offsets are in UIParent's units, so a scaled
+-- window divides them by its scale, as the mover does.
 local function pinChat(frame)
   ns.Pin(frame, function(f)
     local point, relPoint, x, y = ns.MoverPoint("chat")
+    local scale = f:GetScale() or 1
     f:ClearAllPoints()
-    f:SetPoint(point, UIParent, relPoint, x, y)
+    f:SetPoint(point, UIParent, relPoint, x / scale, y / scale)
   end)
 end
 
@@ -964,9 +1012,7 @@ function CH.Place()
   local frame = _G.ChatFrame1
   if not CH.settings.place or type(frame) ~= "table" then return end
   local m = ns.Mover(frame, "chat", L["Chat"], { "BOTTOMLEFT", "BOTTOMLEFT", CH.SPOT[1], CH.SPOT[2] })
-  -- The handle's clamp reaches over the side buttons, the scroll column, the tab bar and the edit box, so a
-  -- drag to an edge keeps them on the screen.
-  m.insets = { -(T.SPACE.tight + CH.STACK_ROOM), CH.SIDE_COLUMN + T.SPACE.tight, CH.BAR, -(CH.BAR + T.SPACE.tight) }
+  m.insets = CH.ClampInsets(frame)
   pinChat(frame)
 end
 
@@ -1047,12 +1093,25 @@ local function hookAlertFlash()
   after("FCF_StopAlertFlash", function(frame) setAlerting(frame, false) end)
 end
 
+-- Carries the main window's bar tiles onto the shown docked window's bar and lays them out there: the
+-- game hides every docked window but the selected one, the main window too, and its tiles with it.
+local function carryTiles(_, selected)
+  local main = _G.ChatFrame1
+  local parts = type(selected) == "table" and CH.frames and CH.frames[selected]
+  local tiles = vgBarTiles[main]
+  if not (parts and tiles) then return end
+  for _, tile in pairs(tiles) do tile:SetParent(parts.bar) end
+  CH.PlaceBarButtons(main)
+end
+
 -- Follows the game's anchoring of the dock, the edit boxes (its dock layout), a tab, the side
 -- buttons and a window's background (the Combat Log's band), and its colouring of a tab: each is
 -- put right after it.
 local function hookLayout()
   after("FloatingChatFrame_UpdateBackgroundAnchors", placeFootprint)
   after("FCFDock_SetPrimary", CH.PlaceDock)
+  after("FCFDock_SelectWindow", carryTiles)
+  after("FCFDockOverflowList_Update", fontOverflowRows)
   after("FCFDock_UpdateTabs", CH.PlaceEditBoxes)
   after("FCFTab_UpdateColors", restyleTab)
   after("FCF_SetTabPosition", placeFloatingTab)
