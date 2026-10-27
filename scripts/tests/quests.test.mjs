@@ -416,7 +416,11 @@ it("quest tracker: watched quests with levels, objectives and items", () => {
     return { row(b.lines[1]), row(b.lines[2]) }`);
   expect(rows, "each objective a row: its count at the right edge; a done one has its check, the text after it, the count muted with it").toEqual([[false, 0, true], [true, 14, true]]);
   expect(isTok(addon, addon.eval("return Vanguard_QuestTrackerFrame.blocks[1].lines[2].count.__textColor"), "muted"), "the done count muted too").toBe(true);
-  expect(addon.eval("return { ObjectiveTrackerFrame:IsShown(), ObjectiveTrackerFrame:GetParent() == UIParent, Vanguard_QuestTrackerFrame:GetParent() == Vanguard_QuestTracker }"), "the game's tracker is hidden in place; this one sits in the tracker's spot").toEqual([false, true, true]);
+  expect(addon.eval("return { ObjectiveTrackerFrame:IsVisible(), ObjectiveTrackerFrame:GetParent() == UIParent, Vanguard_QuestTrackerFrame:GetParent() == Vanguard_QuestTracker }"), "the game's tracker is parked under a hidden frame; this one sits in the tracker's spot").toEqual([false, false, true]);
+  setCombat(addon, true);
+  addon.eval("ObjectiveTrackerFrame:Show()");
+  expect(addon.eval("return { ObjectiveTrackerFrame:IsVisible(), ObjectiveTrackerFrame:IsShown(), #ns.errors }"), "the game showing it in a fight draws nothing, and no Vanguard hide runs after it").toEqual([false, true, 0]);
+  setCombat(addon, false);
   expect(addon.eval(`local b = Vanguard_QuestItem1 return { b:GetAttribute("type"), b:GetAttribute("item"), b.__points.TOPRIGHT.rel == Vanguard_QuestTrackerFrame.blocks[1], b:IsShown() }`), "the wolves' item, beside its quest").toEqual(["item", "item:90061", true, true]);
   expect(addon.eval("return { Vanguard_QuestTrackerFrame.__strata, Vanguard_QuestItem1.__strata }"),
     "the tracker (its clickable titles with it) and its items on LOW, as the game's tracker, under the game's windows (an open bag's items stay clickable)").toEqual(["LOW", "LOW"]);
