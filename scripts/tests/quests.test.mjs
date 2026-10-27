@@ -122,13 +122,28 @@ it("quest dialog: a long greeting or quest text scrolls, a short one does not", 
   expect(bodyScroll(addon)[2], "a new page starts at the top").toBe(0);
   addon.eval('GetQuestText = function() return "TEST-ONLY " .. string.rep("word ", 300) end');
   addon.fire("QUEST_DETAIL");
-  expect([panelHeights(addon), bodyScroll(addon)], "a quest's text and its objectives (24 + 14 px lines) count too; the choices' row and the reward's row (8 + 36 + 8 + 36 px) leave the body 158 px").toEqual([[360, 158], [278, 120, 0]]);
+  expect([panelHeights(addon), bodyScroll(addon)], "a quest's text and its objectives (24 + 14 px lines) count too; the choices' row and the reward's row (8 + 36 + 8 + 36 px) grow the panel (360 + 88 px of cards, B9-10), so the body keeps 246 px").toEqual([[448, 246], [278, 32, 0]]);
 });
 it("quest log: kept on the screen, so its default spot on a narrow canvas cannot hide the quest list", () => {
   // TEST-ONLY: frames record the clamp they are given (the stub's SetClampedToScreen keeps nothing).
   const record = "__wfgStub.methods.SetClampedToScreen = function(self, on) self.__testClamped = on end";
   const addon = loggedIn(QUEST_ENV + record);
   expect(addon.eval("return Vanguard_QuestLog.__testClamped"), "the window is clamped to the screen").toBe(true);
+});
+it("quest dialog: a page with many reward cards grows the panel by their height so the text keeps its room, still inside the screen (B9-10)", () => {
+  // The panel's height, its body's view and its top, with six choices and five rewards and a long quest text on a w x h screen.
+  const pageOn = (w, h) => {
+    const addon = loggedIn(QUEST_ENV + `__wfgStub.setScreen(${w}, ${h})`);
+    addon.eval(`GetQuestText = function() return "TEST-ONLY " .. string.rep("word ", 300) end
+      for i = 3, 6 do __choices[i] = __choices[1] end
+      for i = 1, 4 do __rewards[#__rewards + 1] = __rewards[1] end`);
+    addon.fire("QUEST_DETAIL");
+    return [...panelHeights(addon), addon.frame("Vanguard_QuestDialog").rect.top];
+  };
+  const [tall, view, top] = pageOn(1920, 1080);
+  expect([tall > 360, view >= 100, top <= 1080], "on a tall screen the panel is taller than 360 and the body keeps 100 or more").toEqual([true, true, true]);
+  const [short, shortView, shortTop] = pageOn(835, 668);
+  expect([short <= 668, shortTop <= 668, shortView > 0], "on a short screen it stops at the screen's top").toEqual([true, true, true]);
 });
 it("quest dialog: on a short screen its default spot stops it growing above the top", () => {
   const addon = loggedIn(QUEST_ENV + "__wfgStub.setScreen(835, 668)");
