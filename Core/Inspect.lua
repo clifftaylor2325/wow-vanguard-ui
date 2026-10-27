@@ -13,10 +13,11 @@ local ADDON, ns = ...
 ns.Inspect = {}
 local I = ns.Inspect
 
--- The next step of a dotted name from a frame: a key, or "#n" for the frame's nth child frame (an unnamed one).
+-- The next step of a dotted name from a frame: a key, or "#n" for the frame's nth child frame (an unnamed one,
+-- counted from 1).
 local function step(f, key)
   local n = tonumber(key:match("^#(%d+)$"))
-  if n and type(f.GetChildren) == "function" then return (select(n, f:GetChildren())) end
+  if n and n >= 1 and type(f.GetChildren) == "function" then return (select(n, f:GetChildren())) end
   return f[key]
 end
 
@@ -52,9 +53,11 @@ local function get(w, method)
   return ok and safe(v) or "?"
 end
 
--- A widget's parent, or nil.
+-- A widget's parent, or nil (also for a frame the client forbids addons to read).
 local function parentOf(w)
-  return type(w) == "table" and type(w.GetParent) == "function" and w:GetParent() or nil
+  if type(w) ~= "table" or type(w.GetParent) ~= "function" then return nil end
+  local ok, parent = pcall(w.GetParent, w)
+  return ok and parent or nil
 end
 
 -- A widget's name: its global name, its key under its parent, or its kind unnamed.
@@ -122,10 +125,18 @@ local function partLine(w)
   return string.format("  %s (%s): shown %s, alpha %s, %s x %s %s, %s", I.Name(w), get(w, "GetObjectType"), get(w, "IsShown"), get(w, "GetAlpha"), get(w, "GetWidth"), get(w, "GetHeight"), I.Rect(w), detail(w))
 end
 
+-- A frame's regions or child frames as a list; none when it lacks the method or the client refuses (a forbidden frame).
+local function partsOf(f, method)
+  local found = type(f[method]) == "function" and { pcall(f[method], f) } or { false }
+  if not found[1] then return {} end
+  table.remove(found, 1)
+  return found
+end
+
 -- The frame's regions and child frames (deep), counted, then one line each.
 function I.PartLines(f, out)
   for _, method in ipairs({ "GetRegions", "GetChildren" }) do
-    local parts = type(f[method]) == "function" and { f[method](f) } or {}
+    local parts = partsOf(f, method)
     out[#out + 1] = string.format("  %d %s", #parts, method == "GetRegions" and "region(s):" or "child frame(s):")
     for _, w in ipairs(parts) do out[#out + 1] = partLine(w) end
   end
