@@ -56,7 +56,9 @@ it("#201 the character pane: dragged by its title bar, its place is saved and pu
   addon.eval("__open(CharacterFrame)");
   expect(corner(addon, "CharacterFrame"), "opened where the panel manager puts it").toEqual([16, 964]);
   expect(addon.eval("return { CharacterFrame.__testMovable, CharacterFrame.__testClamped }"), "made movable and kept on the screen").toEqual([true, true]);
-  expect(addon.eval("return CharacterFrame.__testInsets"), "the clamp leaves room for the panel's border and the bottom tabs").toEqual([-12, 12, 12, -44]);
+  expect(addon.eval("return CharacterFrame.__testInsets"), "the clamp leaves room for the panel's border, the bottom tabs and the 64-wide mode tabs at the right").toEqual([-12, 76, 12, -44]);
+  addon.eval("__open(ContainerFrameCombinedBags)");
+  expect(addon.eval("return ContainerFrameCombinedBags.__testInsets"), "a window with no side tabs keeps the border and the bottom tabs only (B7-3)").toEqual([-12, 12, 12, -44]);
   const h = addon.frame("ns.FrameState('vgMoveHandle')[CharacterFrame]");
   expect([h.mouse, Math.round(h.rect.left), Math.round(h.rect.right), Math.round(h.rect.height)], "the drag area over the title bar, short of the close button").toEqual([true, 16 + 58, 16 + 384 - 24 - 40, 20]);
   expect(drag(addon, "CharacterFrame", 500, 700), "a drag moves it").toBe(true);

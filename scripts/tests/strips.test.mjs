@@ -18,7 +18,7 @@ it("the info strip: your DPS in the last fight, from the game's damage meter", (
   addon.slash("");
   addon.eval('ns.Options.Show("map")');
   addon.eval(`__click("Your DPS in the last fight (from the game's damage meter)")`);
-  expect([block(addon, "dps").text, addon.eval("return __asked"), addon.eval("return Vanguard_InfoStrip:GetHeight()")], "your line's figure, the current fight's DPS, on a seventh row").toEqual(["1.2K dps", [1, 1], 130]);
+  expect([block(addon, "dps").text, addon.eval("return __asked"), addon.eval("return Vanguard_InfoStrip:GetHeight()")], "your line's figure, the current fight's DPS, on a row of its own (the rows close up, so one more than before)").toEqual(["1.2K dps", [1, 1], before + 18]);
   setCombat(addon, true);
   addon.eval("__dps.combatSources[2].amountPerSecond = 2500");
   addon.fire("DAMAGE_METER_RESET");
@@ -39,11 +39,12 @@ it("the info strip: your DPS in the last fight, from the game's damage meter", (
 });
 it("the info strip: your place in the last fight's DPS, in a group", () => {
   const addon = loggedIn(UNITS_ENV + DPS_ENV + CLICK_LUA);
+  const before = addon.eval("return Vanguard_InfoStrip:GetHeight()");
   expect(block(addon, "rank").shown, "off until you turn it on").toBe(false);
   addon.slash("");
   addon.eval('ns.Options.Show("map")');
   addon.eval(`__click("Your place in the last fight's DPS")`);
-  expect([block(addon, "rank").text, isTok(addon, block(addon, "rank").color, "text2"), addon.eval("return Vanguard_InfoStrip:GetHeight()")], "second of two, on the seventh row").toEqual(["#2 of 2", true, 130]);
+  expect([block(addon, "rank").text, isTok(addon, block(addon, "rank").color, "text2"), addon.eval("return Vanguard_InfoStrip:GetHeight()")], "second of two, on a row of its own (the rows close up, so one more than before)").toEqual(["#2 of 2", true, before + 18]);
   addon.eval("__dps.combatSources = { __dps.combatSources[2], __dps.combatSources[1], { isLocalPlayer = false } }");
   addon.fire("PLAYER_REGEN_ENABLED");
   expect([block(addon, "rank").text, isTok(addon, block(addon, "rank").color, "gold")], "at the top of three, in gold").toEqual(["#1 of 3", true]);
@@ -531,6 +532,26 @@ it("the info strip: XP and gold per hour, and time to level", () => {
   addon.fire("PLAYER_XP_UPDATE", "player");
   expect(rates(), "hidden XP: the rate so far stays, the time to level hides").toEqual([true, false, false]);
   expect(addon.eval('local IS = ns.GetModule("InfoStrip") return { IS.ShortMoney(5), IS.ShortMoney(507), IS.Duration(30) }'), "short money and times").toEqual(["5c", "5s 7c", "1m"]);
+});
+it("the info strip: a hidden middle block leaves no empty row (gold per hour sits right under the time at the level cap)", () => {
+  const addon = loggedIn(UNITS_ENV + STRIP_ENV + LEVEL_ENV);
+  // The vertical middle of a block's text on the strip, measured down from the strip's top.
+  const middle = (key) => addon.eval(`local IS = ns.GetModule("InfoStrip") local fs = IS.fonts.${key} return IS.frame:GetTop() - (fs:GetTop() + fs:GetBottom()) / 2`);
+  addon.eval("__xp = 1900");
+  addon.fire("PLAYER_XP_UPDATE", "player");
+  later(addon, 10);
+  addon.fire("PLAYER_XP_UPDATE", "player");
+  later(addon, 1790);
+  addon.fire("PLAYER_XP_UPDATE", "player");
+  addon.eval("__money = 128407");
+  addon.fire("PLAYER_MONEY");
+  const row = addon.eval('return ns.GetModule("InfoStrip").Row()');
+  expect(middle("goldrate") - middle("clock"), "levelling: the XP rows between the time and gold per hour").toBeCloseTo(2 * row, 0);
+  addon.eval("__level = 60");
+  addon.fire("PLAYER_LEVEL_UP");
+  expect(block(addon, "xprate").shown, "at the cap the XP rows are gone").toBe(false);
+  expect(middle("goldrate") - middle("clock"), "and gold per hour moves up to the row under the time").toBeCloseTo(row, 0);
+  expect(addon.eval("return Vanguard_InfoStrip:GetHeight()"), "the strip is one row shorter than with the XP rows").toBe(row * 5 + 4);
 });
 it("the info strip counts a whole level gained in one update, landing at or above the old XP", () => {
   const addon = loggedIn(UNITS_ENV + STRIP_ENV + LEVEL_ENV);

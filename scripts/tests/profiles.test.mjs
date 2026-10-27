@@ -3,7 +3,7 @@
 import { expect, it } from "vitest";
 import { createAddon } from "../lib/lua-harness.mjs";
 import { luaValue } from "../lib/lua-emit.mjs";
-import { CLICK_LUA, RETAIL, UI_ENV, chatHas, expectErrors, isTok, loggedIn, px, setCombat } from "./helpers.mjs";
+import { CLICK_LUA, RETAIL, SETUP_DONE, UI_ENV, chatHas, expectErrors, isTok, loggedIn, px, setCombat } from "./helpers.mjs";
 import { alphaOf, buttonOf, closeOf, escapes, insets, pressEscape, thumbOf, titleOf, titleSize } from "./dialogs.mjs";
 
 it("profile strings", () => {
@@ -443,7 +443,7 @@ it("a partial string that carries the theme keeps this player's own Pixel-perfec
 });
 it("export with Include parts: /vg export <part ...>, and the export panel's switches", () => {
   const addon = loggedIn();
-  addon.eval('ns.Profile().positions = { uf_player = { point = "TOP", relPoint = "TOP", x = 1, y = -2 } }');
+  addon.eval('ns.Profile().positions = { uf_player = { point = "TOP", relPoint = "TOP", x = 1, y = -2 } } ns.Profile().ActionBars = { backing = "on" }');
   const parts = addon.eval("return ns.ProfileParts()");
   expect(parts.slice(0, 3), "the parts: layout, situations overrides and global settings first").toEqual(["layout", "situations", "global"]);
   expect(parts.slice(3), "then each module with saved settings, by name").toEqual([...parts.slice(3)].sort());
@@ -465,6 +465,9 @@ it("export with Include parts: /vg export <part ...>, and the export panel's swi
   const opened = panel();
   expect([opened.title, opened.shown, opened.rows.length], "/vg export pick opens the panel with a switch per part").toEqual(["Export: what to include", true, parts.length]);
   expect(opened.rows.slice(0, 3), "named for the player, every one on").toEqual([["Layout (positions and movers)", true], ["Situations overrides", true], ["Global settings (theme, modules list, skins)", true]]);
+  // The label of the row for this part, when the profile has it.
+  const labelOf = (part) => addon.eval(`for i, p in ipairs(ns.ProfileParts()) do if p == "${part}" then return Vanguard_ExportDialog.rows[i].label:GetText() end end`);
+  expect(labelOf("ActionBars"), "a module row reads as the Modules page names it, not by its key (B2-8)").toBe("Action bars");
   const dialog = "Vanguard_ExportDialog";
   expect(titleOf(addon, dialog), "a window title: the title role in the text colour, T.SPACE.pad in, on the close button's line").toEqual({ size: titleSize(addon), text: true, left: 16, mid: -24 });
   expect(closeOf(addon, dialog), "with the X where every window has it").toEqual([px(addon, 24), px(addon, 24), true]);
@@ -619,3 +622,19 @@ function relog(addon, { account, char, extra = CLICK_LUA } = {}) {
   next.login();
   return next;
 }
+
+it("export panel: in Spanish at 130% its rows stack by their heights and None holds its label (B2-4)", () => {
+  const addon = createAddon({ savedVariables: SETUP_DONE, textFit: true, client: '__wfgWorld.locale = "esES"' });
+  addon.login();
+  addon.eval("ns.Theme.Settings().textScale = 1.3 ns.Theme.Refresh() ns.ExportDialog()");
+  // For each shown switch: whether its caption is inside it, its height, and whether the next one starts at its bottom.
+  const rows = addon.eval(`local rows, out = Vanguard_ExportDialog.rows, {}
+    for i, r in ipairs(rows) do
+      if r:IsShown() then out[#out + 1] = { r.label:GetTop() <= r:GetTop() + 0.01 and r.label:GetBottom() >= r:GetBottom() - 0.01, r:GetHeight(),
+        not (rows[i + 1] and rows[i + 1]:IsShown()) or math.abs(rows[i + 1]:GetTop() - r:GetBottom()) < 0.01 } end
+    end return out`);
+  expect(rows.filter((r) => !r[0] || !r[2]), "every caption sits inside its row, and the next row starts where it ends").toEqual([]);
+  expect(Math.max(...rows.map((r) => r[1])), "a wrapped caption's row is taller than a one-line row").toBeGreaterThan(28);
+  const cut = addon.textFit("Vanguard_ExportDialog").filter((f) => f.text === "None" || f.text === "All");
+  expect(cut, "All and None are not cut short").toEqual([]);
+});

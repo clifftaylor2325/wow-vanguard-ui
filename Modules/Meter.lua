@@ -395,21 +395,18 @@ end
 -- three action bars (half their width, 239, past the screen's middle, and a gap); on a narrower canvas it takes
 -- the game meter's spot instead (16 in from the right edge, above the bags and menu bar), which this panel replaces in practice.
 MT.SPOT, MT.SPOT_NARROW, MT.BARS_HALF = { "BOTTOMRIGHT", "BOTTOMRIGHT", -372, 14 }, { "BOTTOMRIGHT", "BOTTOMRIGHT", -16, 118 }, 239
+-- The canvas width from which the wide spot clears the bars: its left edge, a screen's width less the spot's
+-- offset and the panel, is the bars' half width and a gap right of the middle (Core/Movers.lua applies it).
+MT.WIDE_FROM = 2 * (MT.BARS_HALF + T.SPACE.gap + MT.WIDTH - MT.SPOT[3])
+MT.SPOT.narrow = { w = MT.WIDE_FROM, spot = MT.SPOT_NARROW }
 
--- The default spot on a canvas `width` wide (the wide spot when the canvas size is not known).
-function MT.SpotFor(width)
-  if type(width) ~= "number" or width <= 0 then return MT.SPOT end
-  local left = width + MT.SPOT[3] - MT.WIDTH
-  return left >= width / 2 + MT.BARS_HALF + T.SPACE.gap and MT.SPOT or MT.SPOT_NARROW
-end
-
--- The movable panel, placed by MT.SpotFor so it clears the action bars. Built when
+-- The movable panel, placed by MT.SPOT so it clears the action bars. Built when
 -- first needed, so an unused meter has no mover.
 function build()
   local f = T.HudPanel(CreateFrame("Frame", "Vanguard_Meter", UIParent))
   MT.frame = f
   f:SetSize(MT.WIDTH, MT.HEAD)
-  ns.Mover(f, "meter", L["Vanguard meter"], MT.SpotFor(UIParent:GetWidth()))
+  ns.Mover(f, "meter", L["Vanguard meter"], MT.SPOT)
   addChrome(f)
   f.rows = {}
   for i = 1, MT.MAXROWS do f.rows[i] = clickable(addRow(f, i)) end

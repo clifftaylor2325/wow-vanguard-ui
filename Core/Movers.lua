@@ -91,8 +91,8 @@ local function canvas()
 end
 
 -- A default's spot on a canvas: its narrow spot (default.narrow = { w, h, spot }) on a canvas narrower than w or
--- shorter than h, else the default itself. Narrow spots name a canvas no bigger than 1365 x 768, so the screens
--- the layout is made for keep every default as it is.
+-- shorter than h, else the default itself. Most narrow spots name a canvas no bigger than 1365 x 768, so the
+-- screens the layout is made for keep every default as it is (the meter's, 1838 wide, needs more room beside the bars).
 local function spotOn(default, screen)
   local n = default.narrow
   if n and (screen.w < (n.w or 0) or screen.h < (n.h or 0)) then return n.spot end
@@ -198,18 +198,20 @@ local function place(m)
 end
 
 -- After a UI scale or screen change: puts every anchored mover (and its handle) at its link's spot again, since
--- the frame it follows moved with its edge of the screen. Not through place(): that rescales, which runs this again.
-local function reanchorLinked()
+-- the frame it follows moved with its edge of the screen, and every mover with no spot of its own at its default
+-- for the new canvas (the narrow-screen spots). Not through place(): that rescales, which runs this again.
+local function reanchor()
   for _, key in ipairs(order) do
     local m, p = movers[key], saved()[key]
-    if type(p) == "table" and p.rel ~= nil then
-      ns.MoverLinks.Remember(key, p)
+    local linked = type(p) == "table" and p.rel ~= nil
+    if linked then ns.MoverLinks.Remember(key, p) end
+    if linked or not ns.MoverSaved(key) then
       anchor(m.frame, m)
       if m.handle then anchor(m.handle, m) end
     end
   end
 end
-T.OnScale(reanchorLinked)
+T.OnScale(reanchor)
 
 -- Registers a placeable frame. default = { point, relPoint, x, y } on UIParent.
 function ns.Mover(frame, key, label, default)
@@ -559,15 +561,16 @@ function ns.SetMoverSuffix(text)
 end
 
 -- The handle for a mover, created on first use; sized and placed over its frame (at least 40 x 14, so a thin bar
--- can still be grabbed without its handle spilling onto the frame above it). A mover whose frame draws past its own
--- rect sets m.insets (SetClampRectInsets' left, right, top, bottom), so the handle can't be dropped where that part
--- would leave the screen.
+-- can still be grabbed without its handle spilling onto the frame above it). The handle is drawn at UIParent's
+-- scale with the frame's size on screen, so its label stays readable and its grab minimum holds at any Scale %.
+-- A mover whose frame draws past its own rect sets m.insets (SetClampRectInsets' left, right, top, bottom, in
+-- the frame's units), so the handle can't be dropped where that part would leave the screen.
 local function handleFor(m)
   m.handle = m.handle or createHandle(m)
   local f = m.frame
-  m.handle:SetScale(f:GetScale() or 1)
-  m.handle:SetSize(math.max(f:GetWidth() or 0, 40), math.max(f:GetHeight() or 0, 14))
-  if m.insets then m.handle:SetClampRectInsets(unpack(m.insets)) end
+  local s = f:GetScale() or 1
+  m.handle:SetSize(math.max((f:GetWidth() or 0) * s, 40), math.max((f:GetHeight() or 0) * s, 14))
+  if m.insets then m.handle:SetClampRectInsets(m.insets[1] * s, m.insets[2] * s, m.insets[3] * s, m.insets[4] * s) end
   anchor(m.handle, m)
   return m.handle
 end

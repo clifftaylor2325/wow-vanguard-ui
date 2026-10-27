@@ -96,6 +96,38 @@ it("P6-3: the keybind banner shows its whole instruction line in German and Fren
   expect(addon.eval("return Vanguard_KeybindMode:GetWidth() < UIParent:GetWidth()"), "and the banner fits the screen").toBe(true);
 });
 
+it("B6-4: the keybind banner widens to its instruction line above 100% Text size, within the screen", () => {
+  const key = "Hover a button, then press a key, a side mouse button or the wheel. Backspace clears, Escape leaves.";
+  const german = realText("deDE", key);
+  const addon = fitClient();
+  addon.eval(`ns.Theme.Settings().textScale = 1.05 ns.Theme.Refresh() local AB = ns.GetModule("ActionBars") AB.KeybindMode(true) Vanguard_KeybindMode.text:SetText(${JSON.stringify(german)}) AB.KeybindMode(false) AB.KeybindMode(true)`);
+  expect(addon.textFit("Vanguard_KeybindMode"), "German at 105%: the instruction is whole").toEqual([]);
+  expect(addon.eval("return Vanguard_KeybindMode:GetWidth() > 720"), "the banner grew past its 720 base").toBe(true);
+  addon.eval("UIParent:SetSize(500, 400) ns.GetModule('ActionBars').KeybindMode(false) ns.GetModule('ActionBars').KeybindMode(true)");
+  expect(addon.eval("return Vanguard_KeybindMode:GetWidth()"), "never wider than the screen less a margin each side").toBe(452);
+});
+
+it("B6-5: the vehicle exit button widens to a long label at larger Text sizes (German 'Verlassen' at 115%)", () => {
+  const addon = fitClient();
+  addon.eval(`ns.Theme.Settings().textScale = 1.15 Vanguard_VehicleExit.label:SetText(${JSON.stringify(realText("deDE", "Exit"))}) ns.Theme.Refresh()`);
+  const widths = addon.eval("local b = Vanguard_VehicleExit return { ns.Theme.FullWidth(b.label), b:GetWidth(), b:GetHeight(), b.label:GetTextScale() }");
+  expect(widths[1], "the button is wider than its square").toBeGreaterThan(36);
+  expect(widths[0], "and holds the label whole, a unit each side").toBeLessThanOrEqual(widths[1] - 2);
+  expect([widths[2], widths[3]], "still 36 tall, the label at full size").toEqual([36, 1]);
+  expect(addon.textFit("Vanguard_VehicleExit"), "nothing cut").toEqual([]);
+});
+
+it("B6-6: the vehicle exit button keeps clear of action bar 1 at big button sizes, and keeps its spot at 38 and below", () => {
+  // How far the exit's left edge stands right of bar 1's right edge.
+  const clear = (addon) => addon.eval("return Vanguard_VehicleExit:GetLeft() - Vanguard_Bar1:GetRight()");
+  const big = loggedIn("", { savedVariables: profile("ActionBars = { size = 40 }") });
+  expect(clear(big), "at size 40 the exit starts after bar 1 ends").toBeGreaterThanOrEqual(0);
+  const dflt = loggedIn("", { savedVariables: profile("ActionBars = { size = 38 }") });
+  expect(dflt.eval("return select(4, Vanguard_VehicleExit:GetPoint())"), "at 38 it stays at 260").toBe(260);
+  dflt.eval('local AB = ns.GetModule("ActionBars") AB.settings.size = 48 for n in pairs(AB.bars) do AB.Layout(n) end');
+  expect(clear(dflt), "a size change while playing moves it too").toBeGreaterThanOrEqual(0);
+});
+
 // A TEST-ONLY LibDataBroker-1.1 with one long feed, picked for the strip.
 const LONG_FEED_ENV = `
   local ldb = LibStub:NewLibrary("LibDataBroker-1.1", 4)

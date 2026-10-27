@@ -353,8 +353,8 @@ end
 -- The card's note with nothing chosen, and its note while the row is off (its settings load only then).
 CG.EMPTY = L["Nothing chosen yet. Drag an item or spell here, or type its name."]
 CG.OFF = L["The gaps row is off. Tick Gaps row and reload to choose its items and spells."]
--- A chosen entry's icon size, the name box's width and the small buttons' width on the card's rows.
-CG.ROW_ICON, CG.ROW_INPUT, CG.ROW_BUTTON = 20, 160, 84
+-- A chosen entry's icon size and the add buttons' width before they widen to their labels on the card's rows.
+CG.ROW_ICON, CG.ROW_BUTTON = 20, 84
 
 -- A chosen entry's icon and name; an item the client hasn't loaded yet reads "Item <id>".
 local function entryLook(kind, id)
@@ -439,14 +439,21 @@ local function addTyped(r, kind)
   CG.Add(text, kind)
 end
 
--- The add row's box and its Add item and Add spell buttons, right to left.
-local function addControls(r)
-  r.spell = W.Button(r, L["Add spell"], function() addTyped(r, "spells") end, CG.ROW_BUTTON)
+-- The add row's Add item and Add spell buttons, right to left, each widened to its label.
+local function addButtons(r)
+  r.spell = ns.WidenToLabel(W.Button(r, L["Add spell"], function() addTyped(r, "spells") end, CG.ROW_BUTTON))
   r.spell:SetPoint("RIGHT", -T.SPACE.gap, 0)
-  r.item = W.Button(r, L["Add item"], function() addTyped(r, "items") end, CG.ROW_BUTTON)
+  r.item = ns.WidenToLabel(W.Button(r, L["Add item"], function() addTyped(r, "items") end, CG.ROW_BUTTON))
   r.item:SetPoint("RIGHT", r.spell, "LEFT", -T.SPACE.gap, 0)
-  r.input = W.Input(r, CG.ROW_INPUT)
+end
+
+-- The add row's box and buttons: the box takes the room between the row's label and the buttons.
+local function addControls(r)
+  addButtons(r)
+  r.input = W.Input(r)
+  r.input:SetWidth(0)
   r.input:SetPoint("RIGHT", r.item, "LEFT", -T.SPACE.gap, 0)
+  r.input:SetPoint("LEFT", r.label, "RIGHT", T.SPACE.gap, 0)
 end
 
 -- The add row: the whole row takes a dragged item or spell, and the box takes a typed name or ID.

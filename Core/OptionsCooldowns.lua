@@ -92,7 +92,7 @@ O.AddPage({ key = "cooldowns", title = L["Cooldowns"], icon = "Legacy", order = 
 
 -- The wizard ----------------------------------------------------------------------------
 
-WZ.WIDTH, WZ.HEIGHT, WZ.PAD, WZ.ROW = 400, 280, T.SPACE.pad, T.ROW.height
+WZ.WIDTH, WZ.HEIGHT, WZ.PAD = 400, 280, T.SPACE.pad
 -- Where the step's note starts (under the caption), and where its switches start under that.
 WZ.TOP = ns.DIALOG.head + 16
 WZ.BODY = WZ.TOP + 64
@@ -115,14 +115,24 @@ local function widget(f, row)
   return w
 end
 
+-- Puts step n's i-th widget under the one before it (the first at the body), as tall as its caption needs.
+local function stackRow(f, n, i, w)
+  w:ClearAllPoints()
+  if i == 1 then
+    w:SetPoint("TOPLEFT", WZ.PAD, -WZ.BODY)
+  else
+    w:SetPoint("TOPLEFT", f.steps[n][i - 1], "BOTTOMLEFT", 0, 0)
+  end
+  W.GrowRow(w)
+end
+
 -- Shows step n: its note and widgets stacked from the body, the caption and the buttons that fit.
 function WZ.Show(n)
   local f, step = WZ.frame, WZ.STEPS[n]
   WZ.step = n
   for _, ws in ipairs(f.steps) do for _, w in ipairs(ws) do w:Hide() end end
   for i, w in ipairs(f.steps[n]) do
-    w:ClearAllPoints()
-    w:SetPoint("TOPLEFT", WZ.PAD, -WZ.BODY - (i - 1) * WZ.ROW)
+    stackRow(f, n, i, w)
     w:Show()
     w:Refresh()
   end
