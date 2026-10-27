@@ -81,7 +81,7 @@ end
 
 -- /vg craft add [n]: queues the recipe on display.
 function CQ.AddShown(arg)
-  local id, n = CR.recipe, math.max(1, math.floor(tonumber(arg) or 1))
+  local id, n = CR.recipe, CR.Crafts(arg)
   if not id or not CR.Form() or not CR.Form():IsVisible() then return ns.Chat(L["Open a recipe in the profession window first, then /vg craft add [number]."]) end
   local data = CR.Read(id)
   CQ.Add(id, n, data and data.name)

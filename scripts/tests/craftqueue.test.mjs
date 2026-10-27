@@ -85,6 +85,14 @@ it("queues the recipe on display, lists it with what's short, and takes crafts o
   expect(addon.eval("return #ns.errors"), "done on an empty queue is quiet").toBe(0);
 });
 
+it("/vg craft add caps a count at 999 crafts and takes nan as one", () => {
+  const addon = crafter();
+  addon.world.openProfession(100);
+  addon.slash("craft add 1e999");
+  addon.slash("craft add nan");
+  expect(queue(addon), "999, then one more").toEqual([[100, 1000]]);
+});
+
 it("next opens the first recipe with its count typed in; stock raises Keep stocked and makes the Restock list", () => {
   const addon = crafter();
   expect(say(addon, "craft next", /The craft queue is empty/), "empty").toBe(true);
