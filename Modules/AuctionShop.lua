@@ -341,11 +341,12 @@ AH.COMMANDS.recent = function()
   AH.ListCommand("")
 end
 
--- Keeps a searched term first in Recent (once, whatever its case), at most AH.MAX_RECENT of them.
+-- Keeps a searched term first in Recent (once, whatever its case, "Éclat" or "éclat"), at most
+-- AH.MAX_RECENT of them.
 function AH.Remember(entry)
-  local recent, key = AH.Recent(), AH.EntryText(entry):lower()
+  local recent, key = AH.Recent(), ns.Lower(AH.EntryText(entry))
   for i = #recent, 1, -1 do
-    if AH.EntryText(recent[i]):lower() == key then table.remove(recent, i) end
+    if ns.Lower(AH.EntryText(recent[i])) == key then table.remove(recent, i) end
   end
   table.insert(recent, 1, copyEntry(entry))
   for i = #recent, AH.MAX_RECENT + 1, -1 do recent[i] = nil end
