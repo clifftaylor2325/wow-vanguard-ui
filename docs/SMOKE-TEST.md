@@ -2807,6 +2807,11 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Do: with Loss of control on and Talking head set to "move" (the defaults), type `/console taintLog 1` and `/reload`. Trigger a talking head (a quest or story line that plays one) and a loss of control (a stun or fear from a mob). Open Edit Mode (Escape, Edit Mode), move any game frame, click Save and close it. Run `/vg errors`, then `/console taintLog 0` and open `Logs/taint.log` in the game folder.
 - Expect: both alerts show on their Vanguard spots (the talking head at the top left, the loss of control band just above the screen's centre), before Edit Mode and again after it closes; no "Interface action failed because of an AddOn" message names Vanguard while Edit Mode is open or in the next fight; `/vg errors` is empty; the taint log has no line naming Vanguard and `editModeSystemAnchorDirty`. [Needs in-game check: that the client's SetPointBase and ClearAllPointsBase exist on the two frames once loaded, so Vanguard's placing never runs Edit Mode's own anchor code, and that the taint log stays clear of it.]
 - If it fails, paste: the game's message word for word, the taint log lines naming Vanguard, and `/vg errors`.
+### 33.107 Craft cooldowns noted on opening a profession
+
+- Do: turn on `/vg` → Town and gear → Craft queue. On a character with a profession recipe on a cooldown (a transmute, a cloth speciality, a daily craft), open that profession window, then type `/vg craft cd`. Run `/vg errors`.
+- Expect: `/vg craft cd` lists the recipe with the time left (such as "2h 5m"), not "No profession cooldowns noted yet"; `/vg errors` is empty, with no "Usage: C_TradeSkillUI.GetRecipeSchematic" line. [Needs in-game check: that the Forever client reads the cooldown through GetRecipeSchematic with its isRecraft argument and names the recipe.]
+- If it fails, paste: the `/vg craft cd` line and `/vg errors`.
 
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 

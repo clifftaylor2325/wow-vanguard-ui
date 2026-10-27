@@ -15,6 +15,12 @@ const ENV = `
   items[4238] = { name = "TEST-ONLY Linen Bag" }
   items[1251] = { name = "TEST-ONLY Bandage" }
   local function slot(id, qty) return { reagents = { { itemID = id } }, quantityRequired = qty, reagentType = 1 } end
+  -- The schematic call insists on its isRecraft argument, as Forever's docs mark it (Nilable = false).
+  local schematic = C_TradeSkillUI.GetRecipeSchematic
+  C_TradeSkillUI.GetRecipeSchematic = function(id, isRecraft)
+    if type(isRecraft) ~= "boolean" then error("Usage: C_TradeSkillUI.GetRecipeSchematic(recipeSpellID, isRecraft [, recipeLevel])") end
+    return schematic(id)
+  end
   __wfgWorld.recipes = {
     [100] = { recipeID = 100, name = "TEST-ONLY Linen Bag", outputItemID = 4238, quantityMin = 1, quantityMax = 1, reagentSlotSchematics = { slot(2589, 3), slot(2320, 1) } },
     [102] = { recipeID = 102, name = "TEST-ONLY Bandage", outputItemID = 1251, quantityMin = 1, quantityMax = 3, reagentSlotSchematics = { slot(2589, 1) } },
