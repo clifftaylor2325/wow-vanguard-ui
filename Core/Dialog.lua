@@ -64,6 +64,12 @@ local function hide(frame)
   frame:Hide()
 end
 
+-- A dialog's title: one line between the left pad and the close button's room, cut short with an ellipsis.
+local function oneLineTitle(f, w)
+  f.title:SetWidth(w - T.SPACE.pad - CLOSE_ROOM)
+  f.title:SetMaxLines(1)
+end
+
 -- A centered, themed dialog frame at the dialog alpha, with the one window chrome (ns.WindowTitle: its title, set
 -- by the caller unless given and kept short of the close X that hides it, and Escape), a layer above the options window (which is
 -- on the dialog strata itself, its cards high in it, so a dialog there opened under them). The X is
@@ -80,7 +86,7 @@ local function dialog(name, w, h, title)
   f:SetFrameStrata("FULLSCREEN_DIALOG")
   f:EnableMouse(true)
   f.chrome = ns.WindowTitle(f, title or name, { onClose = hide, escape = true })
-  f.title:SetWidth(w - T.SPACE.pad - CLOSE_ROOM)
+  oneLineTitle(f, w)
   if not title then f.title:SetText("") end
   f:Hide()
   return f
@@ -128,6 +134,7 @@ end
 local function hangTitle(f)
   f.title:ClearAllPoints()
   f.title:SetPoint("TOPLEFT", T.SPACE.pad, -T.SPACE.pad)
+  f.title:SetMaxLines(0)
 end
 
 -- The text dialog's title: two lines at most (its words are the sentence that says what to do with the box,
@@ -146,11 +153,13 @@ local function titleText(f, text)
 end
 
 -- Puts text in the text dialog's box and shows its start (the thumb follows the new height as the client grows it).
--- The errors window's Clear goes, so a window opened over it shows only its own buttons.
+-- The errors window's Clear goes and its widened primary is back to the usual width, so a window opened over
+-- it shows only its own buttons (the find box has no primary).
 local function boxText(f, text)
   f.edit:SetText(text)
   f.view:ScrollTo(0)
   if f.clear then f.clear:Hide() end
+  if f.primary then f.primary:SetWidth(BUTTON_W) end
 end
 
 -- The text dialog's buttons: the primary at the bottom right and, left of it, the one that closes the box.
@@ -221,6 +230,7 @@ function ns.ShowErrors(title, text)
   ns.ShowText(title, text)
   local f = box
   f.primary.text:SetText(L["Report a bug"])
+  ns.WidenToLabel(f.primary)
   f.primary:SetScript("OnClick", ns.Guard("click report a bug", function() f:Hide() ns.Feedback.Open("bug") end))
   f.primary:Show()
   clearButton(f):Show()

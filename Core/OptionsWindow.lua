@@ -596,11 +596,10 @@ local function addFooter(f)
   f.version = T.Text(f.footer:CreateFontString(nil, "OVERLAY"), "small", "muted")
   f.version:SetPoint("LEFT", T.SPACE.pad, 0)
   f.version:SetText(version() and ("Vanguard " .. version() .. "  ·  /vg") or "Vanguard  ·  /vg")
-  f.reload = ns.ReloadButton(W.Primary(f.footer, L["Reload now"]))
+  f.reload = ns.WidenToLabel(ns.ReloadButton(W.Primary(f.footer, L["Reload now"])))
   f.reload:SetPoint("RIGHT", -T.SPACE.pad, 0)
   f.notice = T.Text(f.footer:CreateFontString(nil, "OVERLAY"), "label", "warn")
   f.notice:SetPoint("RIGHT", f.reload, "LEFT", -T.SPACE.col, 0)
-  f.notice:SetText(reloadNotice)
 end
 
 -- One nav entry (h tall): a list row (W.Row), one pixel in from the nav's edge; the current page wears its selected look.
@@ -847,7 +846,7 @@ end
 -- Marks a change that applies on reload, and shows the reload notice.
 function O.NeedReload()
   needsReload = true
-  if window then window.reload:SetShown(true) window.notice:SetShown(true) window.notice:SetText(reloadNotice) end
+  if window then ns.WidenToLabel(window.reload) window.reload:SetShown(true) window.notice:SetShown(true) window.notice:SetText(reloadNotice) end
 end
 
 -- The profile in use had its settings replaced (Copy here, Reset profile): the running modules keep the
@@ -927,8 +926,10 @@ end
 
 -- Shows the reload notice and button while a change needs a reload.
 local function showReloadNotice()
+  ns.WidenToLabel(window.reload)
   window.reload:SetShown(needsReload)
   window.notice:SetShown(needsReload)
+  window.notice:SetText(needsReload and reloadNotice or "")
 end
 
 -- Forgets the rows of the pages not built yet, so a new opening reads them afresh. A built page keeps
