@@ -199,8 +199,9 @@ end
 -- from its children, so the backdrop is never one of them), shown only while it has widgets, checked again as the
 -- container resizes and after the game lays its widgets out. The widgets themselves stay the game's.
 function GW.SkinWidgetBox(box)
+  local backdropMade = GW.MadeBackdrop(box) ~= nil
   T.HudPanel(GW.Backdrop(box, hasWidgets), { pad = GW.WIDGET_PAD })
-  GW.FitBackdrop(box)
+  if backdropMade then GW.FitBackdrop(box) end
   GW.HookScriptOnce(box, "OnSizeChanged", "hook OnSizeChanged", GW.FitBackdrop)
   GW.HookAfter(box, "UpdateWidgetLayout", GW.FitBackdrop)
 end

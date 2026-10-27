@@ -253,6 +253,16 @@ it("S8.3 widget containers: a flat panel behind the widgets only while there are
   expect(addon.eval(`return ns.FrameState('vgBackdrop')[${top}]:IsShown()`), "and shows again with it").toBe(true);
 });
 
+it("S8.3 widget containers: a new backdrop is fitted once, and skinning the container again fits it again", () => {
+  const addon = loggedIn(WIDGET_ENV);
+  addon.eval(`fits = 0 local GW = ns.GetModule("Windows") local fit = GW.FitBackdrop
+    GW.FitBackdrop = function(frame) fits = fits + 1 return fit(frame) end
+    box = CreateFrame("Frame", nil, UIParent) box:SetSize(10, 10) GW.SkinWidgetBox(box)`);
+  expect(addon.eval("return fits"), "a new backdrop: fitted as it is made, and not again by the skin").toBe(1);
+  addon.eval('ns.GetModule("Windows").SkinWidgetBox(box)');
+  expect(addon.eval("return fits"), "an existing backdrop: fitted again").toBe(2);
+});
+
 it("S8.3 widget containers: without the game's mixin the children are counted; the group off adds nothing", () => {
   const addon = loggedIn(WIDGET_ENV);
   const box = "UIWidgetBelowMinimapContainerFrame";
