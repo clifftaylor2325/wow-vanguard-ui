@@ -61,6 +61,16 @@ const tile2 = (addon) => addon.eval("local b = Vanguard_RaidUnitButton2 return {
 // A roster refresh in a fight: GROUP_ROSTER_UPDATE, then the queued update of every tile.
 const rosterInFight = (addon) => { addon.world.combat(true); addon.fire("GROUP_ROSTER_UPDATE"); addon.eval("__wfgStub.advance(0.3)"); };
 
+it("the raid target icon is 10 wide and sits on the tile's top edge, the leader crown's size and reach, clear of the name", () => {
+  const addon = loggedIn("C_Timer = nil " + UNITS_ENV + RAID_ENV + STATUS_ENV);
+  addon.eval('__spawn(1, "raid1")');
+  // The icon's and the crown's size and anchor offsets on the first tile.
+  const parts = (key) => addon.eval(`local t = Vanguard_RaidUnitButton1.${key} local p, _, rp, x, y = t:GetPoint() return { t:GetWidth(), t:GetHeight(), p, x, y }`);
+  expect(parts("raidIcon"), "10 x 10, its middle on the top edge, 5 above it").toEqual([10, 10, "TOP", 0, 5]);
+  expect(parts("leader").slice(0, 2), "the same size as the crown").toEqual([10, 10]);
+  expect(parts("raidIcon")[4], "and the same reach above the tile").toBe(parts("leader")[4]);
+});
+
 it("the Raid frames page's mark switches repaint the tiles at once", () => {
   const addon = loggedIn("C_Timer = nil " + UNITS_ENV + RAID_ENV + STATUS_ENV);
   addon.eval('__spawn(1, "raid1")');

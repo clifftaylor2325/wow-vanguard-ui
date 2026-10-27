@@ -165,11 +165,11 @@ local function centerMarks(b, big)
   addShadow(b, b.ready, big)
 end
 
--- Adds the marks to a raid button (RF setup hook): raid icon and leader crown
+-- Adds the marks to a raid button (RF setup hook): raid icon (10, centered) and leader crown (10, at the left)
 -- on the top edge, and the center marks.
 local function setup(b)
   followHeader()
-  b.raidIcon = mark(b, 12, "TOP", 0, 3)
+  b.raidIcon = mark(b, 10, "TOP", 0, 5)
   centerMarks(b, RF.TileZones().icon + 4)
   b.leader = mark(b, 10, "TOPLEFT", 2, 5)
   addShadow(b, b.leader, 10)
