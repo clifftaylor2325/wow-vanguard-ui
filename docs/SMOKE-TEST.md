@@ -2720,6 +2720,12 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: each page shows its name with Reset this page at the right, a row of tabs under it and one card at a time; the clicked tab is raised onto its card and plays the page sound; Left and Right walk the tabs and wrap; Chat extras wears the small accent dot after the change and Chat reopens on the tab shown last; Action bars' ten tabs run onto a second line with nothing cut; on Modules the note and Show stay above the tabs on every tab; the search opens Chat on the Chat history tab with the row marked; no tab name runs past its tab or the window, and the card under the tabs scrolls when it is taller than the window. [Needs in-game check: the real font widths decide where the tabs wrap and whether a long name is cut.]
 - If it fails, paste: a screenshot of the page, and `/vg errors`.
 
+### 33.97 Turn in a quest with no reward choice
+
+- Do: take a quest that offers no choice of rewards (most low-level quests) and finish it. Turn it in once with Vanguard's quest dialog (press Complete or Space on the reward page), then switch on Turn in finished quests under `/vg` → Quests, finish a second such quest and talk to its giver. Run `/vg errors` after each.
+- Expect: both quests are handed in and the reward is taken; no error line mentions GetQuestReward. [Needs in-game check: the client's argument check for the legacy GetQuestReward decides whether the number 0 is accepted; the harness accepts anything.]
+- If it fails, paste: `/vg errors` and the quest's name.
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ## When you are done

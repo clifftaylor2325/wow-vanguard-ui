@@ -76,6 +76,10 @@ it("quest dialog: turning in, picking a reward, closing, and handing the windows
   addon.fire("QUEST_COMPLETE");
   key(addon, "SPACE");
   expect(calls(addon), "one reward: no pick needed").toEqual(["reward 1"]);
+  addon.eval("__choices = {}");
+  addon.fire("QUEST_COMPLETE");
+  key(addon, "SPACE");
+  expect(calls(addon), "no choice at all: the game's own 0, never nil").toEqual(["reward 0"]);
   addon.fire("QUEST_GREETING");
   addon.eval("local b = Vanguard_QuestDialog.lines[1] b.__scripts.OnClick(b)");
   expect([dialog(addon).lines, calls(addon)], "a quest giver without gossip").toEqual([["1.  [5] TEST-ONLY Rats"], ["greetAvail 1"]]);
@@ -344,7 +348,7 @@ it("quest automation: accept, turn in, best reward, skip chatter; Shift skips it
   expect(calls(addon), "a price the game doesn't know yet: left to you").toEqual([]);
   addon.eval("__choices = {}");
   addon.fire("QUEST_COMPLETE");
-  expect(calls(addon), "no choice: just turned in").toEqual(["reward nil"]);
+  expect(calls(addon), "no choice: just turned in").toEqual(["reward 0"]);
   addon.fire("GOSSIP_SHOW");
   addon.eval("__options = {} __active = {}");
   addon.fire("GOSSIP_SHOW");
