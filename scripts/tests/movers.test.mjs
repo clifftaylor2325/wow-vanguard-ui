@@ -68,6 +68,28 @@ it("a mover's size the client can't give reads 0, not its height", () => {
   expect(addon.eval('return ns.MoverSize("nw", "height")'), "the height is still the frame's").toBe(40);
 });
 
+it("a frame anchored to the chat window while the client hides the window's size: placed and unlocked with every handle shown, with no error", () => {
+  const addon = loggedIn();
+  expect(addon.eval('return ns.SetMoverAnchor("uf_player", "chat", "TOP")'), "anchored while the size is plain").toBe(true);
+  addon.world.secretGeometry("strict");
+  expect(addon.eval("return ns.IsSecret(ChatFrame1:GetWidth())"), "the chat window's width is now hidden").toBe(true);
+  expect(addon.eval('return { pcall(ns.PlaceMover, "uf_player") }'), "placed again, the hidden size read as none").toEqual([true]);
+  expect(addon.eval('return { ns.MoverSize("chat", "width"), ns.MoverSize("chat", "height") }'), "the window's size reads 0 (the Layout card's sliders sit at their start)").toEqual([0, 0]);
+  expect(addon.eval('return ns.SetMoverAnchor("uf_target", "chat", "RIGHT")'), "another frame can still be anchored to it").toBe(true);
+  expect(addon.eval("return ns.Unlock()"), "unlock mode opens").toBe(true);
+  addon.advance(0.5);
+  const handles = addon.eval(`local all, shown, chat = 0, 0, nil
+    for _, w in ipairs(__wfgStub.frames) do
+      if w.mover then
+        all = all + 1
+        if w:IsShown() then shown = shown + 1 end
+        if w.mover.key == "chat" then chat = { w:GetWidth(), w:GetHeight() } end
+      end
+    end
+    return { all == #ns.MoverList(), shown == all, chat, #ns.errors }`);
+  expect(handles, "every mover's handle shows, the chat handle at its grab minimum, nothing caught").toEqual([true, true, [40, 14], 0]);
+});
+
 it("mover coordinates with no handle", () => {
   const addon = loggedIn();
   expect(addon.eval('return ns.ShowCoords({ label = "TEST-ONLY" })') === null, "a mover that has no handle yet shows nothing").toBeTruthy();

@@ -2813,6 +2813,12 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: `/vg craft cd` lists the recipe with the time left (such as "2h 5m"), not "No profession cooldowns noted yet"; `/vg errors` is empty, with no "Usage: C_TradeSkillUI.GetRecipeSchematic" line. [Needs in-game check: that the Forever client reads the cooldown through GetRecipeSchematic with its isRecraft argument and names the recipe.]
 - If it fails, paste: the `/vg craft cd` line and `/vg errors`.
 
+### 33.108 Unlock with the Chat mover on, and whether the client hides the chat window's size
+
+- Do: with Chat on (its Chat frame is a mover by default), type `/vg unlock` right after login, then `/run print(issecretvalue(ChatFrame1:GetWidth()), issecretvalue(ChatFrame1:GetScale()))` and press Escape. Do the same after a fight ends, and again inside a dungeon. Run `/vg errors`.
+- Expect: each time, every frame's handle shows (the Chat handle over the chat window) and the Exit bar is there; the printed line says what the client answers (note it, true or false, for each place); `/vg errors` is empty. [Needs in-game check: whether the 12.1 client ever hides the chat window's width, height or scale from addons; the guards that keep unlock mode and a frame anchored to Chat working only matter if it does.]
+- If it fails, paste: which handles showed, the printed line and where you were, and `/vg errors`.
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ## When you are done

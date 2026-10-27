@@ -475,6 +475,17 @@ it("options: a frame's scale and opacity from the Layout card; a long menu scrol
   expect(addon.eval(`return { ns.MoverLook("${first}") }`).concat(addon.eval(`return ${sliderRow("Its opacity")}.get()`)), "Reset all positions puts every scale and opacity back").toEqual([1, 1, 1]);
 });
 
+it("options: Frame to size picked as Chat while the client hides the chat window's size: the size sliders sit at their start, with no error", () => {
+  const addon = loggedIn(UI_ENV + CLICK_LUA);
+  addon.eval('ns.Options.Show("general")');
+  addon.world.secretGeometry("strict");
+  addon.eval('for _, w in ipairs(__wfgStub.frames) do if w.dropdown and w.caption == "Frame to size" then __d = w.dropdown end end __d:GetScript("OnClick")(__d)');
+  addon.eval('for _ = 1, 60 do for _, b in ipairs(Vanguard_Menu.items) do if b:IsShown() and b.text:GetText() == "Chat" then b:GetScript("OnClick")(b) return end end Vanguard_Menu:GetScript("OnMouseWheel")(Vanguard_Menu, -1) end');
+  expect(addon.eval("return ns.Options.sizedMover"), "Chat is the frame to size").toBe("chat");
+  const sliders = addon.eval(`local w, h = ${sliderRow("Its width")}, ${sliderRow("Its height")} w:Refresh() h:Refresh() return { w.get(), h.get(), #ns.errors }`);
+  expect(sliders, "its hidden width and height read 0 and the sliders refresh with nothing caught").toEqual([0, 0, 0]);
+});
+
 // The reset dot on the visible row whose caption starts with this text: { shown, has a dot }.
 const resetDot = (addon, text) => addon.eval(`for _, w in ipairs(__wfgStub.frames) do
   if w.label and type(w.label.__text) == "string" and w.label.__text:sub(1, #"${text}") == "${text}" and ns.Options.RevealRow(w) then

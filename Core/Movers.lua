@@ -150,7 +150,7 @@ end
 -- divided by it: a scaled frame keeps its anchor point where it is and grows around it.
 local function anchor(frame, m)
   local point, relPoint, x, y = pointFor(m)
-  local s = frame:GetScale() or 1
+  local s = ns.PlainNumber(frame:GetScale()) or 1
   frame:ClearAllPoints()
   frame:SetPoint(point, UIParent, relPoint, x / s, y / s)
 end
@@ -569,12 +569,13 @@ end
 -- can still be grabbed without its handle spilling onto the frame above it). The handle is drawn at UIParent's
 -- scale with the frame's size on screen, so its label stays readable and its grab minimum holds at any Scale %.
 -- A mover whose frame draws past its own rect sets m.insets (SetClampRectInsets' left, right, top, bottom, in
--- the frame's units), so the handle can't be dropped where that part would leave the screen.
+-- the frame's units), so the handle can't be dropped where that part would leave the screen. A frame of the
+-- game's (the chat window) may have a secret size or scale: the handle then takes its grab minimum.
 local function handleFor(m)
   m.handle = m.handle or createHandle(m)
   local f = m.frame
-  local s = f:GetScale() or 1
-  m.handle:SetSize(math.max((f:GetWidth() or 0) * s, 40), math.max((f:GetHeight() or 0) * s, 14))
+  local s = ns.PlainNumber(f:GetScale()) or 1
+  m.handle:SetSize(math.max((ns.PlainNumber(f:GetWidth()) or 0) * s, 40), math.max((ns.PlainNumber(f:GetHeight()) or 0) * s, 14))
   if m.insets then m.handle:SetClampRectInsets(m.insets[1] * s, m.insets[2] * s, m.insets[3] * s, m.insets[4] * s) end
   anchor(m.handle, m)
   return m.handle

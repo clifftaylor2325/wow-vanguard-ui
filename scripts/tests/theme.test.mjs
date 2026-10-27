@@ -63,6 +63,19 @@ it("window controls at rest: sized when the caller gave no size, a plain glyph i
     "an unsized close button takes the 20-unit tile's size in whole, even screen pixels (a sized one keeps its own); at rest its rounded tile is hidden under a plain cross in text2").toEqual([px(addon, 20, true), false, false, true, px(addon, 20, true), "CloseMark", "ControlTile", 30]);
 });
 
+it("window controls on a game button whose width the client hides: it keeps the size the game gave it and still gets its glyph, with no error", () => {
+  const addon = loggedIn();
+  addon.world.secretGeometry("strict");
+  // Made from outside the addon, so the harness owns them to the game: the dock's 16 x 16 overflow arrow, and one with no size yet.
+  addon.eval('__arrow = CreateFrame("Button", nil, UIParent) __arrow:SetSize(16, 16) __bare = CreateFrame("Button", nil, UIParent)');
+  expect(addon.eval("return ns.IsSecret(__arrow:GetWidth())"), "the game button's width is hidden").toBe(true);
+  expect(addon.eval('return { pcall(ns.Theme.WindowControl, __arrow, "Down") }')[0], "skinned with no error").toBe(true);
+  addon.eval('ns.Theme.WindowControl(__bare, "Down")');
+  addon.world.secretGeometry(null);
+  const out = addon.eval("return { __arrow:GetWidth(), __bare:GetWidth(), ns.Theme.ControlGlyph(__arrow) ~= nil, ns.Theme.ControlGlyph(__bare) ~= nil }");
+  expect(out, "the arrow keeps its 16 (the game reads it for the dock's scroll room), the unsized one is left as it was; both drawn").toEqual([16, 0, true, true]);
+});
+
 it("window controls under the mouse: a grey rounded tile with a borderHi line; close's cross turns vermilion, the others' glyph text", () => {
   const addon = loggedIn();
   const out = addon.eval(`${CONTROL_PARTS}

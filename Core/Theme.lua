@@ -1762,13 +1762,15 @@ end
 
 -- A window control drawn with one of the theme's icons (CloseMark, Maximize, Minimize): its template
 -- art faded, the glyph quiet in text2 with nothing behind it until the mouse is over it (T.CONTROL_TILES;
--- opts.tile "close" turns close's mark vermilion). Sized to the tile when it has no size yet. Safe to run again.
+-- opts.tile "close" turns close's mark vermilion). Sized to the tile when it has no size yet; a button whose
+-- width the client hides (one of the game's, on the chat window) keeps the size the game gave it. Safe to run again.
 function T.WindowControl(button, icon, opts)
   local entry = painted[button]
   if not entry then
     T.FadeRegions(button)
     entry = controlEntry(button, "control", icon, opts)
-    if (button:GetWidth() or 0) < 1 then T.PixelSize(button, T.CONTROL.tile, T.CONTROL.tile, true) end
+    local width = button:GetWidth()
+    if not ns.IsSecret(width) and (width or 0) < 1 then T.PixelSize(button, T.CONTROL.tile, T.CONTROL.tile, true) end
   end
   repaint(button, entry)
   return button
