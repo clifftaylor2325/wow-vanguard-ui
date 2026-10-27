@@ -118,7 +118,8 @@ BG.SkinItem = skinItem
 local function skinItems(frame)
   local pool = frame.itemButtonPool
   if type(frame.EnumerateValidItems) == "function" then
-    for _, button in frame:EnumerateValidItems() do skinItem(button) end
+    -- The combined bag yields (index, button); the bank's pool yields (button, true).
+    for first, second in frame:EnumerateValidItems() do skinItem(type(second) == "table" and second or first) end
   elseif type(pool) == "table" and type(pool.EnumerateActive) == "function" then
     for button in pool:EnumerateActive() do skinItem(button) end
   end

@@ -2768,11 +2768,11 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: Ready starts the game's ready check; Pull starts a 10 second countdown and the right-click cancels it; Raid turns the party into a raid; no "reserved for the Blizzard UI" message names Vanguard and `/vg errors` is empty. [Needs in-game check: whether a click from addon code may call C_PartyInfo.ConvertToRaid (Raid still does), and that the macro buttons start /readycheck and /countdown on Forever.]
 - If it fails, paste: the game's message word for word (which button), and `/vg errors`.
 
-### 33.100 Separate bag windows keep the game's Sort button
+### 33.100 Separate bag windows keep the game's Sort button, and the bank's slots take the Vanguard look
 
-- Do: turn off `/vg` → Bars and bags → Combined bag and reload (or pick separate bags in the game's own bag menu). Open the backpack. Then turn the combined bag back on, reload, and open the bag. Run `/vg errors`.
-- Expect: the backpack window of separate bags shows the game's own sort button in its top-right corner, and it sorts; the combined bag shows Vanguard's Sort beside the search box and not the game's; `/vg errors` is empty. [Needs in-game check: the backpack's sort button is the game's and stays shown through a search and a bag change.]
-- If it fails, paste: which bag mode, whether a sort button shows on the backpack, and `/vg errors`.
+- Do: turn off `/vg` → Bars and bags → Combined bag and reload (or pick separate bags in the game's own bag menu). Open the backpack. Then turn the combined bag back on, reload, and open the bag. Visit a banker, open the bank and turn to a second tab if you have one. Run `/vg errors`.
+- Expect: the backpack window of separate bags shows the game's own sort button in its top-right corner, and it sorts; the combined bag shows Vanguard's Sort beside the search box and not the game's; every bank slot is a square slot with a thin border in its item's quality color (no round game art), on each tab; `/vg errors` is empty. [Needs in-game check: the backpack's sort button is the game's and stays shown through a search and a bag change, and the bank's slots are skinned on every tab.]
+- If it fails, paste: which bag mode, whether a sort button shows on the backpack, what the bank's slots look like, and `/vg errors`.
 
 ### 33.101 Bulk buy at a merchant on Forever
 
