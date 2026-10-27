@@ -137,6 +137,16 @@ it("per-frame scale: dragging a scaled handle, and combat", () => {
   expect(addon.eval("return __box:GetScale()"), "and applies when combat ends").toBe(0.5);
 });
 
+it("scale and opacity steps in combat queue one placement per mover, and the last values apply when the fight ends", () => {
+  const addon = loggedIn(BOX);
+  setCombat(addon, true);
+  const before = addon.eval("return ns.QueuedCount()");
+  addon.eval('for i = 1, 50 do ns.SetMoverScale("box", 0.5 + i * 0.005) ns.SetMoverAlpha("box", 0.4 + i * 0.01) end');
+  expect(addon.eval("return ns.QueuedCount()") - before, "fifty steps of each wait as one entry").toBe(1);
+  setCombat(addon, false);
+  expect(addon.eval("return { __box:GetScale(), __box:GetAlpha() }"), "the latest scale and opacity are what the frame gets").toEqual([0.75, 0.9]);
+});
+
 it("handles stay readable and grabbable at any Scale %: their label keeps its size and a thin frame's handle its 40 x 14 minimum", () => {
   const addon = loggedIn(BOX + "__thin = CreateFrame('Frame', 'TESTONLY_Thin', UIParent) __thin:SetSize(240, 10) ns.Mover(__thin, 'thin', 'TEST-ONLY thin', { 'BOTTOM', 'BOTTOM', 0, 300 })");
   addon.eval('ns.SetMoverScale("box", 0.5) ns.SetMoverScale("thin", 0.5)');
