@@ -166,6 +166,29 @@ it("the quantity window of a merchant's item gets Stack, Max and a cost line; an
   expect(split(addon)[0], "switched off: hidden").toBe(false);
 });
 
+// Z5-1: bag 4 is an empty specialty bag of family `bagFamily` with 3 free slots; the general bags are full. The merchant's
+// item 1 (water, 20 to a stack, 5 to a pack) has item family `family` (nil: the client has not cached it).
+const maxPacks = (addon, family, bagFamily) => addon.eval(`__family, __bagFamily = ${family}, ${bagFamily}
+  return ns.GetModule("Merchant").MaxPacks(1)`);
+const SPECIALTY_ENV = BUY_ENV + `
+  C_Container = { GetContainerNumFreeSlots = function(bag) if bag == 4 then return 3, __bagFamily end return 0, 0 end }
+  C_Item.GetItemFamily = function() return __family end
+`;
+it("Max and Stack count a quiver's or soul bag's free slots only for an item that fits it", () => {
+  const addon = loggedIn(SPECIALTY_ENV);
+  addon.fire("MERCHANT_SHOW");
+  expect(maxPacks(addon, 0, 1), "water does not go in a quiver: no room").toBe(0);
+  expect(maxPacks(addon, 1, 1), "arrows do: 3 slots of 20 in packs of 5").toBe(12);
+  expect(maxPacks(addon, 1, 4), "arrows do not go in a soul bag").toBe(0);
+  expect(maxPacks(addon, 3, 2), "an item of two families (bits 1 and 2) goes in an ammo pouch (2)").toBe(12);
+  expect(maxPacks(addon, "nil", 1), "an item the client has not cached: general bags only").toBe(0);
+  expect(maxPacks(addon, 0, 0), "a general bag takes anything").toBe(12);
+  addon.eval("StackSplitFrame:Show()");
+  addon.eval("__family, __bagFamily = 0, 1");
+  addon.eval("StackSplitFrame:Hide() StackSplitFrame:Show()");
+  expect(split(addon)[3], "the cost line follows: no room for water in a quiver").toBe("Can't afford one");
+});
+
 // Presses one of the quantity window's buttons.
 const press = (addon, which) => addon.eval(`local b = ns.FrameState("vgSplitBulk")[StackSplitFrame].${which} b:GetScript("OnClick")(b)`);
 

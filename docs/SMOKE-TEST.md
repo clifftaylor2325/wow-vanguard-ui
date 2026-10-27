@@ -2891,6 +2891,8 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: Train all is greyed out at the pet trainer, with "Nothing to learn here right now." in its tooltip, and the game's own Train button still works there. At the profession trainer, one click on Train all learns the other skills but not a profession you have not learned yet; the game's own Train button asks before taking that one up.
 - Do: put an item the merchant sells on your Keep stocked list for far more than one buy (for example 100 of an item that comes 20 a click), and open that merchant, ideally while the connection is slow.
 - Expect: it buys a stack, waits for it to show in your bags (up to about 3 seconds), and buys the next, until you carry the amount; chat gives one "Bought ..." line and no "Stopped buying" unless the bags really are full.
+- Do: as a hunter or warlock with the general bags full and an empty quiver, ammo pouch or soul bag, shift-click food or water at a merchant, then arrows or shards if it sells them.
+- Expect: for food or water, the quantity window's line reads "Can't afford one" and Max does nothing (the specialty bag's slots are not counted); for arrows in a quiver (or shards in a soul bag) Max counts that bag's free slots.
 - If it fails, paste: which trainer, the Train all label and tooltip, how many you asked for and how many you got, the chat lines, and `/vg errors`.
 
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
