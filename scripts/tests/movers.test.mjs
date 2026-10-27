@@ -160,6 +160,14 @@ it("a damaged saved position (a hand-edited profile string) falls back to the de
   expect(addon.eval("return { ns.MoverPoint('box') }"), "a good point keeps; a bad relative point is the point; offsets that aren't numbers read as numbers or 0").toEqual(["TOPLEFT", "TOPLEFT", 12, 0]);
 });
 
+it("a saved position that is a number or a boolean leaves the unit frames loaded at their default spot", () => {
+  const clean = loggedIn().eval("return { ns.MoverPoint('uf_player') }");
+  const addon = loggedIn(BOX, { savedVariables: `VanguardDB.profiles = { Default = { positions = { uf_player = 5, uf_target = true } } }` });
+  expect(addon.eval("return { ns.GetModule('UnitFrames').enabled, #ns.errors }"), "the unit frames still load, with nothing to report").toEqual([true, 0]);
+  expect(addon.eval("return { ns.MoverPoint('uf_player') }"), "a number entry leaves the default").toEqual(clean);
+  expect(addon.eval("return { ns.MoverPoint('uf_target') }")[0], "a boolean entry leaves a default point").toBeTypeOf("string");
+});
+
 it("a saved offset that is infinite, NaN or absurd is kept to ns.MAX_OFFSET before it reaches SetPoint", () => {
   const addon = loggedIn(BOX);
   addon.eval('ns.Profile().positions.box = { point = "TOPLEFT", relPoint = "TOPLEFT", x = math.huge, y = -math.huge }');
