@@ -757,6 +757,14 @@ local function toggleMore()
   O.RebuildPage(PAGE)
 end
 
+-- Clear all asks first: it empties this spec's bindings for good.
+local function askClear()
+  ns.Ask(L["Clear every click-casting binding for this spec? This can't be undone."], L["Clear"], function()
+    CC.Clear()
+    changed()
+  end, nil, "danger")
+end
+
 -- The layout row kind: the class layout button (when the class has one), Clear all, and the modifier columns switch.
 local function layoutBuilder(parent, _, width)
   local r = CreateFrame("Frame", nil, parent)
@@ -764,7 +772,7 @@ local function layoutBuilder(parent, _, width)
   r.layout = W.Button(r, ns.Format(L["{class} healing layout"], { class = CS.ClassName() }), applyLayout, 200)
   r.layout:SetPoint("LEFT", T.SPACE.gap, 0)
   r.layout:SetShown(CS.HasLayout())
-  r.clear = W.Button(r, L["Clear all"], function() CC.Clear() changed() end)
+  r.clear = W.Button(r, L["Clear all"], askClear)
   r.clear:SetPoint("LEFT", r.layout, "RIGHT", T.SPACE.gap, 0)
   r.more = W.Button(r, state.more and L["Fewer modifiers"] or L["More modifiers"], toggleMore, 140)
   r.more:SetPoint("RIGHT", -T.SPACE.gap, 0)

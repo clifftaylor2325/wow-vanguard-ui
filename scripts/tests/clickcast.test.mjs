@@ -363,7 +363,16 @@ it("the starter layout, hover keys with collision notes, and the test tile", () 
   addon.key(tile, "F2");
   expect(addon.eval(`return __wfgStub.frames[${tile}].result:GetText()`)).toBe("F2 -> Target on you");
   addon.hover(null);
-  expect(addon.eval('return __click("Clear all")') && addon.eval(`return #${CC}.Bindings()`)).toBe(0);
+  // How many bindings this spec has.
+  const count = () => addon.eval(`return #${CC}.Bindings()`);
+  addon.eval('return __click("Clear all")');
+  expect(addon.eval("return Vanguard_Question:IsShown()"), "Clear all asks first").toBe(true);
+  expect(count(), "and clears nothing yet").toBeGreaterThan(0);
+  addon.click("Vanguard_Question.no");
+  expect(count(), "No keeps the bindings").toBeGreaterThan(0);
+  addon.eval('return __click("Clear all")');
+  addon.click("Vanguard_Question.confirm");
+  expect(count(), "Clear empties them").toBe(0);
 });
 
 it("the minus key can be a hover key: its name reads, with or without a modifier", () => {
