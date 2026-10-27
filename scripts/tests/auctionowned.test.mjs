@@ -647,3 +647,12 @@ it("price alerts: a name entry typed in small letters alerts for a Russian item 
   scan(addon, "{ { itemID = 11083, count = 1, buyoutPrice = 500 } }");
   expect(alertRings(addon), "Железная руда rings for the term железная").toBe(1);
 });
+
+it("Z10-3 a scan lowers each alert term once and each item name once, not once for every pair", () => {
+  const terms = ["dust", "pouch", "железная", "silk", "linen", "ore"].map((t) => `{ term = "${t}", maxPrice = 600, alert = true }`).join(", ");
+  const lists = `VanguardDB.ah = { list = "TEST-ONLY Mats", recent = {}, lists = { ["TEST-ONLY Mats"] = { ${terms} } } }`;
+  const addon = atAuctionHouse(DUSTS + ALERT_ENV + '__wfgWorld.items[11083] = { name = "Железная руда", commodity = true }', { savedVariables: lists });
+  addon.eval("__lowers = 0 local lower = ns.Lower ns.Lower = function(text) __lowers = __lowers + 1 return lower(text) end");
+  scan(addon, "{ { itemID = 10940, count = 1, buyoutPrice = 500 }, { itemID = 10941, count = 1, buyoutPrice = 500 }, { itemID = 11083, count = 1, buyoutPrice = 500 }, { itemID = 77777, count = 1, buyoutPrice = 1 } }");
+  expect([alertRings(addon), addon.eval("return __lowers")], "rang once for the dusts; 6 terms once, 3 named items once each (the unknown one not at all)").toEqual([1, 9]);
+});
