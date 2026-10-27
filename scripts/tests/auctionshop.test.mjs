@@ -769,3 +769,8 @@ it("Z1-2 the Deals count in the pane is counted, not sorted", () => {
   const deals = addon.eval(`local n for _, e in ipairs(${HELPER}.PaneEntries()) do if e.key == ${HELPER}.DEALS then n = e.count end end return n`);
   expect([deals, addon.eval("return __sorts")], "all 40 counted, none sorted").toEqual([40, 0]);
 });
+
+it("Z10-2 a leading 0 never starts a thousands group: German 0.125 is a fraction of a gold, not 125 gold", () => {
+  expect(pricesWith('",", "."', ["0.125", "0.005", "0.250", "2.125", "10.000"]), "0.125 gold is 12s 50c; 2.125 and 10.000 still have a thousands point").toEqual([1250, 50, 2500, 21250000, 100000000]);
+  expect(pricesWith('".", ","', ["0,125", "0,5", "1,125"]), "English: 0,125 is nothing a price can be; 1,125 is 1125 gold").toEqual([false, false, 11250000]);
+});

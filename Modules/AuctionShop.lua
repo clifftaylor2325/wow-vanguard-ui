@@ -856,8 +856,9 @@ AH.MAX_PRICE = 9999999999
 
 -- The text with the client's thousands mark dropped where it sits between groups of three digits and
 -- before an optional decimal part ("1.234,5" in German, "1,234.50" in English); else the text as it was.
+-- A thousands group never starts with 0, so "0.125" stays a decimal.
 local function dropGroups(text, mark, decimal)
-  local digits, tail = text:match("^(%d%d?%d?)(" .. mark .. "%d%d%d.*)$")
+  local digits, tail = text:match("^([1-9]%d?%d?)(" .. mark .. "%d%d%d.*)$")
   if not digits then return text end
   local step = #mark:gsub("%%", "") + 3
   while tail:find("^" .. mark .. "%d%d%d") do digits, tail = digits .. tail:sub(step - 2, step), tail:sub(step + 1) end
