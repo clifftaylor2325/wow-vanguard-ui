@@ -3,7 +3,7 @@
 --   * your quests for it: from your own quest log (in a dungeon, the quests the
 --     client puts on its map; anywhere else, the log's dungeon and raid quests),
 --     lowest level first, "done" when turned in ready;
---   * the keys in your bags;
+--   * the keys on your key ring and in your bags;
 --   * when you last came here before this visit (kept per character and dungeon).
 -- Everything comes from the client and your own log: no dungeon, quest or loot
 -- database ships. Any value the client hides or lacks is left out, never
@@ -16,8 +16,8 @@ local L = ns.L
 local DC = {}
 ns.DungeonCard = DC
 
--- Quest lines shown before "and N more"; bags scanned (backpack, four bags, reagent bag); the item class of keys (Enum.ItemClass.Key).
-DC.QUESTS, DC.LAST_BAG, DC.KEY_CLASS = 6, 5, 13
+-- Quest lines shown before "and N more"; bags scanned (the key ring, backpack, four bags, reagent bag); the item class of keys (Enum.ItemClass.Key).
+DC.QUESTS, DC.KEY_RING, DC.LAST_BAG, DC.KEY_CLASS = 6, -1, 5, 13
 -- The quest tags (Enum.QuestTag names) that make a log quest a dungeon quest.
 DC.TAGS = { "Dungeon", "Raid", "Group" }
 
@@ -181,11 +181,18 @@ local function nameOf(itemID)
   return plainText(name) or ns.Format(L["item {id}"], { id = itemID })
 end
 
--- The keys in your bags, by name, each once.
+-- How many slots a bag has. The key ring (bag -1) takes its size from GetKeyRingSize when the bag call says 0 for it.
+local function slotCount(bag)
+  local slots = ns.PlainNumber(call(C_Container, "GetContainerNumSlots", bag)) or 0
+  if slots == 0 and bag == DC.KEY_RING then return ns.PlainNumber(ask("GetKeyRingSize")) or 0 end
+  return slots
+end
+
+-- The keys on your key ring and in your bags, by name, each once.
 function DC.Keys()
   local out, seen = {}, {}
-  for bag = 0, DC.LAST_BAG do
-    for slot = 1, ns.PlainNumber(call(C_Container, "GetContainerNumSlots", bag)) or 0 do
+  for bag = DC.KEY_RING, DC.LAST_BAG do
+    for slot = 1, slotCount(bag) do
       local item = call(C_Container, "GetContainerItemInfo", bag, slot)
       local id = type(item) == "table" and ns.PlainNumber(item.itemID)
       if id and not seen[id] and isKey(id) then seen[id], out[#out + 1] = true, nameOf(id) end

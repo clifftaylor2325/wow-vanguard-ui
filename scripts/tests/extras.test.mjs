@@ -232,6 +232,28 @@ it("Train all in one click: no purchase twice, the budget counted before the gam
   plan.fire("TRAINER_SHOW");
   expect(plan.eval("return ns.GetModule('Errands').TrainPlan().count"), "the count it shows stops at the same cap").toBe(1);
 });
+// Z2-1: a pet trainer's costs are the pet's training points, and the game's own Train button asks before taking up a profession.
+const PET_TRAINER_ENV = FOREVER_TRAINER_ENV + `
+  Enum.TrainerType = { General = 0, Tradeskills = 2, Pet = 3 }
+  __trainerType = 3
+  C_Trainer = { GetTrainerType = function() return __trainerType end }
+`;
+it("Train all does nothing at a pet trainer: the costs are training points, not gold", () => {
+  const addon = loggedIn(PET_TRAINER_ENV + "__money = 100000");
+  addon.fire("TRAINER_SHOW");
+  addon.eval('ns.GetModule("Errands").trainButton.__scripts.OnClick()');
+  expect(addon.eval("return #__learned"), "no purchase at a pet trainer, however much gold").toBe(0);
+  expect(trainButton(addon), "the button has nothing to train").toMatchObject({ text: "Train all", enabled: false });
+  addon.eval("__trainerType = 0");
+  addon.fire("TRAINER_UPDATE");
+  expect(trainButton(addon).text, "the same list at a class trainer is bought from").toBe("Train all (3)");
+});
+it("Train all skips a profession to take up: the game's own Train button asks first", () => {
+  const addon = loggedIn(PET_TRAINER_ENV + "__money = 100000 __trainerType = 2 GetTrainerServiceCost = function(i) return __services[i][3], __services[i][1] == 'TEST-ONLY Blast' end");
+  addon.fire("TRAINER_SHOW");
+  addon.eval('ns.GetModule("Errands").trainButton.__scripts.OnClick()');
+  expect(addon.eval("return __learned"), "Blast is a profession; the others are learned").toEqual(["TEST-ONLY Bolt", "TEST-ONLY Gust"]);
+});
 // TEST-ONLY merchant stock: 90011 sells singly (5c, stacks of 20), 90012 in fives (40c for 5), 90013 is sold out.
 const STOCK_ENV = `
   __goods = { { id = 90011, price = 5, stack = 1, left = -1, max = 20 }, { id = 90012, price = 40, stack = 5, left = -1, max = 10 }, { id = 90013, price = 1, stack = 1, left = 0, max = 20 } }
@@ -433,6 +455,33 @@ it("keep stocked waits for each purchase to arrive before the next, and trusts a
   const blind = loggedIn(STOCK_ENV + "__have = {} C_Item.GetItemCount = nil BuyMerchantItem = function(i, n) __buys[#__buys + 1] = { __goods[i].id, n } end", WANT_5);
   blind.fire("MERCHANT_SHOW");
   expect([blind.eval("return #__buys"), chatHas(blind, /Bought 5 × TEST-ONLY Bread for 0s 25c\./)], "no item count: the purchase is taken as made").toEqual([1, true]);
+});
+// TEST-ONLY slow server: a buy of item 90011 (100 wanted, 20 a click) reaches the bags `latency` seconds after it is sent, or never (nil); real timers.
+const slowShop = (latency) => loggedIn("__realAfter = C_Timer.After\n" + STOCK_ENV + `
+  C_Timer = { After = __realAfter }
+  __goods = { { id = 90011, price = 5, stack = 1, left = -1, max = 20 } }
+  __have = {}
+  BuyMerchantItem = function(i, n)
+    local g = __goods[i]
+    __buys[#__buys + 1] = { g.id, n }
+    if ${latency} ~= nil then C_Timer.After(${latency}, function() __have[g.id] = (__have[g.id] or 0) + n end) end
+  end`, { savedVariables: "VanguardDB.profiles = { Default = { Errands = { stockList = { [90011] = 100 } } } }" });
+it("keep stocked keeps waiting for a slow server: no second buy before the first arrives, and the whole list in the end", () => {
+  const slow = slowShop(1.0);
+  slow.fire("MERCHANT_SHOW");
+  slow.advance(0.8);
+  expect(slow.eval("return #__buys"), "the first buy has not arrived: nothing more is bought").toBe(1);
+  slow.advance(20);
+  expect(slow.eval("return { #__buys, __have[90011] }"), "five buys of 20, each after the last arrived").toEqual([5, 100]);
+  expect([chatHas(slow, /Bought 100 × TEST-ONLY Bread/), chatHas(slow, /Stopped buying/)], "reported in full, no false stop").toEqual([true, false]);
+});
+it("keep stocked gives up on a purchase that never arrives, after about three seconds", () => {
+  const never = slowShop("nil");
+  never.fire("MERCHANT_SHOW");
+  never.advance(2);
+  expect(chatHas(never, /Stopped buying/), "still waiting at 2 s").toBe(false);
+  never.advance(2);
+  expect([never.eval("return #__buys"), chatHas(never, /Stopped buying TEST-ONLY Bread: the last purchase did not arrive in full/)], "one buy, then it says why it stopped").toEqual([1, true]);
 });
 it("keep stocked: closing the merchant ends the run, and the next merchant's item at that place is not bought", () => {
   const swap = loggedIn(STOCK_ENV + "__have = {} __goods[1].max = 2 __later = {} C_Timer = { After = function(s, fn) if s == 0.2 then __later[#__later + 1] = fn end end }", WANT_5);

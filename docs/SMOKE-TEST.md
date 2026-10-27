@@ -2885,6 +2885,18 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: Back stops at the layout step once the layout is applied. The scan button waits at most 15 minutes.
 - If it fails, paste: which step Back reached, the scan button's countdown, and `/vg errors`.
 
+### 33.121 Pet trainer, slow shops, a specialty bag and the key ring
+
+- Do: as a hunter with a pet, open a pet trainer. As a character with a profession slot free, open a profession trainer and click Train all.
+- Expect: at the pet trainer, Train all is greyed out with "Nothing to learn here right now." in its tooltip, and the game's own Train button still works. At the profession trainer, Train all learns the other skills but not a profession you have not learned yet; the game's own Train button asks before taking that one up.
+- Do: put an item a merchant sells on your Keep stocked list for far more than one buy (for example 100 of an item that comes 20 a click), and open that merchant, ideally on a slow connection.
+- Expect: it buys a stack, waits for it to show in your bags (up to about 3 seconds), then buys the next, until you carry the amount; chat gives "Bought ..." and no "Stopped buying" unless the bags really are full.
+- Do: with the general bags full and an empty quiver, ammo pouch or soul bag, shift-click water or food at a merchant, then arrows or shards if it sells them.
+- Expect: for food or water the quantity window's line reads "Can't afford one" and Max does nothing, since the specialty bag's slots are not counted; for arrows (quiver) or shards (soul bag) Max counts that bag's free slots.
+- Do: with the Dungeon card on, carry a key on the key ring (Scarlet Key, Shadowforge Key or similar) and run `/vg prep`.
+- Expect: the card's "Keys:" line names it. If it does not, run `/dump C_Container.GetContainerNumSlots(-1)` and `/dump GetKeyRingSize()` and paste both.
+- If it fails, paste: which part, the chat lines and labels you saw, and `/vg errors`.
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ## When you are done

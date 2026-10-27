@@ -233,10 +233,27 @@ local function wares(index)
   if price and price > 0 and not MC.ExtendedCost(index) then return price, math.max(quantity, 1), left end
 end
 
--- Room for items in your bags: free slots, times how many of the item stack.
+-- The bag families an item fits, as the client's bit set (C_Item.GetItemFamily); 0 for an item it has not
+-- cached or one without a family, which then counts the general bags only.
+local function itemFamily(link)
+  local get = C_Item and C_Item.GetItemFamily
+  if type(get) ~= "function" or type(link) ~= "string" then return 0 end
+  return ns.PlainNumber(get(link)) or 0
+end
+
+-- Whether a bag of this family takes an item of that kind: a general bag (0) takes anything, a quiver, ammo
+-- pouch or soul bag only an item with its bit (an item can carry several; Lua 5.1 has no bit library).
+local function bagFits(family, kind)
+  return family == 0 or math.floor(kind / family) % 2 == 1
+end
+
+-- Room for items in your bags: the free slots that can hold the item, times how many of it stack.
 local function bagRoom(link)
-  local free = 0
-  for bag = 0, 4 do free = free + (ns.PlainNumber((C_Container.GetContainerNumFreeSlots(bag))) or 0) end
+  local free, kind = 0, itemFamily(link)
+  for bag = 0, 4 do
+    local slots, family = C_Container.GetContainerNumFreeSlots(bag)
+    if bagFits(ns.PlainNumber(family) or 0, kind) then free = free + (ns.PlainNumber(slots) or 0) end
+  end
   local stack = ns.PlainNumber(select(8, C_Item.GetItemInfo(link or ""))) or 1
   return free * stack
 end
