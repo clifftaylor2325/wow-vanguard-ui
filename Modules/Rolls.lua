@@ -77,13 +77,17 @@ local function onSystem(_, text)
 end
 
 -- The latest round: the rolls sharing the newest roll's range, each within R.ROUND of the next; highest first.
--- A roll in another range between them is skipped, so a stray /roll 50 doesn't split a 1-100 round.
+-- A roll in another range between them is skipped, so a stray /roll 50 doesn't split a 1-100 round. A name
+-- rolling again starts a new round (the next item is being rolled for), so the rolls before its earlier
+-- one leave the panel; they stay in /vg rolls and in chat.
 function R.Round()
-  local round, last = {}, R.rolls[#R.rolls]
+  local round, seen, last = {}, {}, R.rolls[#R.rolls]
   for i = #R.rolls, 1, -1 do
     local r = R.rolls[i]
     if (round[#round] or last).at - r.at > R.ROUND then break end
-    if r.low == last.low and r.high == last.high then round[#round + 1] = r end
+    local same = r.low == last.low and r.high == last.high
+    if same and seen[r.name] then break end
+    if same then round[#round + 1], seen[r.name] = r, true end
   end
   table.sort(round, function(a, b) return a.roll > b.roll or (a.roll == b.roll and a.seq < b.seq) end)
   return round

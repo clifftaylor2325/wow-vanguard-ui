@@ -66,6 +66,27 @@ it("a stray roll in another range doesn't split a 1-100 round", () => {
   expect(panel(addon)[2].map((l) => l[0]), "the 1-100 round, with the stray roll left out").toEqual(["Rolls 1-100", "Jaina", "Sylvanas", "Thrall"]);
 });
 
+// The panel's names, in order, after the (name, roll) steps and waits (a number is seconds) given.
+const names = (steps) => {
+  const addon = loggedIn(ROLL_ENV);
+  for (const step of steps) { if (typeof step === "number") addon.advance(step); else roll(addon, ...step); }
+  return panel(addon)[2].map((l) => l[0]);
+};
+it("a second item rolled for within 30 seconds is its own round, so the first item's winner is not on top", () => {
+  const twoItems = [["Thrall", 95], 2, ["Jaina", 60], 2, ["Garrosh", 20], 24, ["Garrosh", 80], 1, ["Thrall", 40], 1, ["Jaina", 10]];
+  expect(names(twoItems), "only the second item's rolls").toEqual(["Rolls 1-100", "Garrosh", "Thrall", "Jaina"]);
+  expect(names(twoItems.slice(0, 5)), "the first item's rolls alone are one round").toEqual(["Rolls 1-100", "Thrall", "Jaina", "Garrosh"]);
+});
+it("a player who rolls twice starts a new round, so the rolls before their earlier one leave the panel", () => {
+  const doubleRoll = [["Jaina", 60], 1, ["Thrall", 40], 1, ["Garrosh", 70], 1, ["Thrall", 95]];
+  expect(names(doubleRoll), "Thrall's second roll heads the round").toEqual(["Rolls 1-100", "Thrall", "Garrosh"]);
+  const addon = loggedIn(ROLL_ENV);
+  for (const [n, r] of [["Jaina", 60], ["Thrall", 40], ["Thrall", 95]]) roll(addon, n, r);
+  expect(addon.eval("return #ns.GetModule('Rolls').rolls"), "every roll is still kept for /vg rolls").toBe(3);
+});
+it("a roll in another range between a name's two rolls doesn't make a repeat", () => {
+  expect(names([["Thrall", 95], 1, ["Thrall", 3, 1, 6], 1, ["Jaina", 60]]), "one name once in the 1-100 range: one round").toEqual(["Rolls 1-100", "Thrall", "Jaina"]);
+});
 it("a round older than 30 seconds is not part of the next one, and the panel goes when it falls quiet", () => {
   const addon = loggedIn(ROLL_ENV);
   roll(addon, "Thrall", 90);
