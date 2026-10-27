@@ -346,3 +346,19 @@ it("the Nameplates page mirrors the game's health number boxes and writes them o
   unwritable.eval("local _, set = ns.GetModule('Nameplates').InfoSetting('CurrentHealthValue') set(true)");
   expect(unwritable.eval('return C_CVar.GetCVarBitfield("nameplateInfoDisplay", 2)'), "a client that can't write the bit is left as it is").toBe(false);
 });
+it("the debuffs and buffs rows offer every count a role preset saves", () => {
+  const addon = loggedIn(UNITS_ENV + PLATE_ENV);
+  const missing = addon.eval(`local out = {}
+    local want = { [ns.L["Your debuffs shown"]] = "debuffs", [ns.L["Buffs on players (defensives, and yours on friends)"]] = "buffs" }
+    for _, row in ipairs(ns.GetModule("Nameplates").OptionRows()) do
+      local key = want[row[2]]
+      for role, parts in pairs(key and ns.ROLE_SETTINGS or {}) do
+        local value, found = parts.Nameplates[key], false
+        for _, choice in ipairs(row[3]) do found = found or choice[1] == value end
+        if value ~= nil and not found then out[#out + 1] = role .. " " .. key .. "=" .. value end
+      end
+    end
+    return out`);
+  // The Healer preset (and setup's Healing layout) saves two debuffs: the row must light it.
+  expect(Object.values(missing ?? {})).toEqual([]);
+});
