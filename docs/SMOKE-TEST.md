@@ -2774,6 +2774,12 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: no "event GAME_RULES_CHANGED: not on this client" line in chat, the error badge stays off and `/vg errors` is empty; on Forever `/vg realm` still names the ruleset. [Needs in-game check: that Retail's C_EventUtils.IsEventValid is the only thing that reported the event, and that nothing else Forever-only is registered at a Retail login.]
 - If it fails, paste: the chat lines Vanguard printed at login and `/vg errors`.
 
+### 33.104 Tooltip on a friendly nameplate buff in a dungeon
+
+- Do: on Forever, in a dungeon with a party member, turn on friendly nameplates and their buffs in the game's nameplate settings, with Vanguard's tooltip anchor at its default (the corner). Mouse over a buff icon on the party member's nameplate, then over your own player frame. Run `/vg errors`.
+- Expect: the buff's tooltip opens where the game puts it (beside the icon, not in Vanguard's corner), the error badge stays off and `/vg errors` is empty; over the player frame the tooltip is in the corner as usual. [Needs in-game check: that the client restricts the tooltip's anchoring or forbids its owner there, so the hook leaves the tooltip alone, and that no "forbidden object" error reaches `/vg errors`.]
+- If it fails, paste: `/vg errors` and where the buff's tooltip opened.
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ## When you are done
