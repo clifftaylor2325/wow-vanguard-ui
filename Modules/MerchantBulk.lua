@@ -216,10 +216,19 @@ function MC.ExtendedCost(index)
   return count ~= nil and count > 0
 end
 
+-- A merchant item's price, pack size and stock from the client's table (C_MerchantFrame.GetItemInfo, the 12.x
+-- call; the old GetMerchantItemInfo is gone there), else the old call on a client that still has it.
+local function itemFacts(index)
+  local api = C_MerchantFrame and C_MerchantFrame.GetItemInfo
+  local info = type(api) == "function" and api(index)
+  if type(info) == "table" then return info.price, info.stackCount, info.numAvailable end
+  return select(3, ask("GetMerchantItemInfo", index))
+end
+
 -- A merchant item's price per pack, pack size and stock left (-1 for no limit), or nil for one that
 -- can't be bought for gold alone.
 local function wares(index)
-  local _, _, price, quantity, left = ask("GetMerchantItemInfo", index)
+  local price, quantity, left = itemFacts(index)
   price, quantity, left = ns.PlainNumber(price), ns.PlainNumber(quantity) or 1, ns.PlainNumber(left) or -1
   if price and price > 0 and not MC.ExtendedCost(index) then return price, math.max(quantity, 1), left end
 end

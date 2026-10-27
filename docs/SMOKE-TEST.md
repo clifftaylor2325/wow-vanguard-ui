@@ -2774,6 +2774,12 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: the backpack window of separate bags shows the game's own sort button in its top-right corner, and it sorts; the combined bag shows Vanguard's Sort beside the search box and not the game's; `/vg errors` is empty. [Needs in-game check: the backpack's sort button is the game's and stays shown through a search and a bag change.]
 - If it fails, paste: which bag mode, whether a sort button shows on the backpack, and `/vg errors`.
 
+### 33.101 Bulk buy at a merchant on Forever
+
+- Do: at any merchant that sells a stackable item for gold (water, food), shift-click the item so the game's quantity window opens. Click Stack. Run `/vg errors`.
+- Expect: a small panel under the quantity window holds Stack and Max and a line saying what Max costs; Stack buys one merchant stack of the item; `/vg errors` is empty. [Needs in-game check: the Forever client's C_MerchantFrame.GetItemInfo gives the price, pack size and stock the panel needs, now that the old GetMerchantItemInfo is gone.]
+- If it fails, paste: the item, whether the panel showed and what its line read, and `/vg errors`.
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ## When you are done
