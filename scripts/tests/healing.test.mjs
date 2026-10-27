@@ -73,6 +73,7 @@ it("Y1-4 buff watch: an aura event that only refreshes auras reads no aura list;
   const addon = loggedIn(UNITS_ENV + RAID_ENV + HEALING_ENV + AURA_LIST);
   addon.eval('__spawn(1, "raid1")');
   buffCalls(addon);
+  // Fires UNIT_AURA for raid1 with the given update info (Lua).
   const aura = (info) => addon.eval(`__wfgStub.fire("UNIT_AURA", "raid1", ${info})`);
   aura("{ isFullUpdate = false, updatedAuraInstanceIDs = { 7, 8 } }");
   aura("{ isFullUpdate = false, addedAuras = {}, removedAuraInstanceIDs = {}, updatedAuraInstanceIDs = { 9 } }");
