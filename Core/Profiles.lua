@@ -11,9 +11,11 @@ local L = ns.L
 
 local S = ns.Serialize
 
--- Whether a profile name is usable: 1-32 letters, digits, spaces, - or _.
+-- Whether a profile name is usable: 1-32 letters, digits, spaces, - or _, not starting or ending with a
+-- space (so "   " or "Default " never makes a row that reads blank or as another profile).
 function ns.ValidProfileName(name)
-  return type(name) == "string" and #name >= 1 and #name <= 32 and not name:find("[^%w%s%-_]")
+  if type(name) ~= "string" or #name < 1 or #name > 32 or name:find("[^%w%s%-_]") then return false end
+  return name:match("^%s*(.-)%s*$") == name
 end
 
 -- Creates an empty profile. false if the name is taken or invalid.
