@@ -3,6 +3,14 @@
 import { expect, it } from "vitest";
 import { CLICK_LUA, HEALING_ENV, RAID_ENV, UNITS_ENV, healing, isTok, loggedIn } from "./helpers.mjs";
 
+it("the power bar sits above the incoming-heal and shield bars and under the tile's texts, so a prediction never covers the mana strip", () => {
+  const addon = loggedIn(UNITS_ENV + RAID_ENV + HEALING_ENV);
+  addon.eval('__spawn(1, "raid1")');
+  const levels = addon.eval("local b = Vanguard_RaidUnitButton1 return { b.heal:GetFrameLevel(), b.shield:GetFrameLevel(), b.power:GetFrameLevel(), b.texts:GetFrameLevel() }");
+  expect(levels[2] > levels[0] && levels[2] > levels[1], "power above heal and shield").toBe(true);
+  expect(levels[2] < levels[3], "and still under the texts").toBe(true);
+});
+
 it("heal prediction, aggro, buff watch", () => {
   const addon = loggedIn(UNITS_ENV + RAID_ENV + HEALING_ENV);
   addon.eval('__spawn(1, "raid1"); __spawn(2, "raid2"); __spawn(3, "raid3")');

@@ -1264,6 +1264,14 @@ function T.Repaint()
   for frame, entry in pairs(painted) do repaint(frame, entry) end
 end
 
+-- Repaints one painted frame at its pixel size now, after SetScale on it (T.Repaint does every frame); a frame
+-- T.Panel never painted is left alone.
+---@param frame table
+function T.RepaintFrame(frame)
+  local entry = painted[frame]
+  if entry then repaint(frame, entry) end
+end
+
 -- A background texture over frame, `pad` units out past its edges.
 local function background(frame, pad)
   local bg = solid(frame, "BACKGROUND", nil, "fill")
@@ -1478,17 +1486,17 @@ function T.DisabledLook(button, disabled)
   local fs = type(button.text) == "table" and button.text or button.GetFontString and button:GetFontString()
   if disabled then T.EaseHover(button, false, true) T.PressButton(button, false) end
   if not (fs and fs.GetTextColor) then return end
-  if disabled then labelBefore[button] = labelBefore[button] or { fs:GetTextColor() } return T.Color(fs, "disabled") end
+  if disabled then labelBefore[button] = labelBefore[button] or { token = T.ColorToken(fs), fs:GetTextColor() } return T.Color(fs, "disabled") end
   local c = labelBefore[button]
   labelBefore[button] = nil
-  if c then T.ColorRGB(fs, c[1], c[2], c[3]) end
+  if c and c.token then T.Color(fs, c.token) elseif c then T.ColorRGB(fs, c[1], c[2], c[3]) end
 end
 
 -- A button's press and disabled looks (#257): the hidden overlay (T.FillParts, so it follows rounded
 -- corners), and hooks on the mouse and on its state (pcall: a widget without OnEnable/OnDisable can't
 -- have them hooked).
 local function stateParts(button)
-  local fill = T.FillParts(button, "BACKGROUND", 2, T.PRESS.token, T.PRESS.alpha)
+  local fill = T.FillParts(button, "BACKGROUND", 3, T.PRESS.token, T.PRESS.alpha)
   T.ShowFill(fill, false)
   pressOf[button] = { overlay = fill.bg, fill = fill }
   button:HookScript("OnMouseDown", ns.Guard("button press", function(b) T.PressButton(b, true) end))
@@ -2428,6 +2436,12 @@ local function rowRail(row)
   return rail
 end
 
+-- Sizes every row's rail to T.SELECT.rail screen pixels again (after a UI, screen or frame scale change).
+function T.SizeRails()
+  for row, s in pairs(rowOf) do s.rail:SetWidth(T.SELECT.rail * T.Pixel(row)) end
+end
+T.OnScale(T.SizeRails)
+
 -- A row's layers, bottom to top: the selected fill, the hover wash, the press shade and the rail.
 local function rowParts(row)
   local fill = rowLayer(row, -1, T.SELECT.fill)
@@ -2847,6 +2861,9 @@ function T.Color(fs, r, g, b)
   shadowFor(fs, token)
   return fs
 end
+
+-- The colour token a font string was coloured with (T.Color), or nil.
+function T.ColorToken(fs) return colored[fs] end
 
 -- Colors a font string r, g, b (0-1 components). Forgotten: T.RefreshText does not repaint it.
 function T.ColorRGB(fs, r, g, b)

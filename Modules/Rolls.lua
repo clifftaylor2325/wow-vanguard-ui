@@ -224,11 +224,24 @@ function R.ItemLines(item)
   return out
 end
 
--- Every line to draw: the current round of rolls, then the loot items, newest last; cut to R.LINES.
+-- The loot items' lines, oldest item first, that fit in `room` lines: the newest item always (cut at its tail
+-- when it is longer than the room), then older ones only while each fits whole.
+local function itemLinesWithin(room)
+  local groups = {}
+  for i = #R.items, 1, -1 do
+    local lines = R.ItemLines(R.items[i])
+    if #groups > 0 and #lines > room then break end
+    room = room - #lines
+    table.insert(groups, 1, lines)
+  end
+  return groups
+end
+
+-- Every line to draw: the current round of rolls, then the loot items that fit, newest last; cut to R.LINES.
 function R.Lines()
   local out = R.Current() and R.RollLines() or {}
-  for _, item in ipairs(R.items) do
-    for _, line in ipairs(R.ItemLines(item)) do out[#out + 1] = line end
+  for _, lines in ipairs(itemLinesWithin(R.LINES - #out)) do
+    for _, line in ipairs(lines) do out[#out + 1] = line end
   end
   return { unpack(out, 1, R.LINES) }
 end

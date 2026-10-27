@@ -442,6 +442,21 @@ it("tooltip-like frames: a panel with a shadow and the game's NineSlice faded, o
   expect(out, "faded, painted once, and a frame without a NineSlice works too").toEqual([0, 1, true]);
 });
 
+it("T.RepaintFrame repaints one painted frame at its new scale, and leaves a frame that was never painted alone", () => {
+  const addon = loggedIn();
+  const out = addon.eval(`
+    local f = ns.Theme.Panel(CreateFrame("Frame", nil, UIParent), { inset = true, noSheen = true })
+    f:SetSize(40, 40)
+    local function edge() for _, w in ipairs(__wfgStub.frames) do if w.__parent == f and w.__layer == "BORDER" and w.__kind == "Texture" then return math.min(w:GetWidth(), w:GetHeight()) end end end
+    local before = edge()
+    f:SetScale(0.5)
+    local stale = edge()
+    ns.Theme.RepaintFrame(f)
+    ns.Theme.RepaintFrame(CreateFrame("Frame", nil, UIParent))
+    return { before, stale, edge() }`);
+  expect([out[1], out[2]], "a scale change leaves the border as it was until the frame is repainted, then it is twice as many units").toEqual([out[0], out[0] * 2]);
+});
+
 // TEST-ONLY scroll bar shaped like the game's MinimalScrollBar (thumb inside the
 // track) or WowTrimScrollBar (with a background and backplate).
 const SCROLL_LUA = `
@@ -1332,4 +1347,32 @@ it("theme: a fitted label (every dialog button's) shrinks to fit its button, no 
   expect(scale('__b.text:SetText("A caption far too long for any button of this width")'), "a much longer one stops at the floor").toBe(floor);
   expect(scale("__b:SetWidth(600) __b.__scripts.OnSizeChanged(__b, 600, 26)"), "a wider button gives it its size back").toBe(1);
   expect(scale("__b:SetWidth(120) ns.Theme.RefreshText()"), "a text size change fits it again").toBe(floor);
+});
+
+it("a button disabled and enabled again keeps its colour token: its label follows a variant change and a primary's has no shadow (B1-2)", () => {
+  const addon = loggedIn();
+  addon.eval(`
+    local function make(kind)
+      local b = ns.DialogButton(CreateFrame("Button", nil, UIParent), "Go", 100, kind)
+      b:Disable() b:Enable()
+      return b
+    end
+    TEST_Plain, TEST_Primary = make(), make("primary")`);
+  addon.eval('ns.Theme.Settings().variant = "vellum" ns.Theme.Refresh()');
+  const vellumText = tok(addon, "text").slice(0, 3);
+  expect(addon.eval("return { TEST_Plain.text:GetTextColor() }").slice(0, 3), "the label follows the variant's text").toEqual(vellumText);
+  expect(addon.eval("return TEST_Primary.text.__shadowColor[4]"), "a primary's void label has no shadow after the cycle").toBe(0);
+  expect(addon.eval("return ns.Theme.ColorToken(TEST_Plain.text)"), "the token is remembered again").toBe("text");
+});
+
+it("a selected row's rail is sized again after a UI scale change, two screen pixels wide (B1-4)", () => {
+  const addon = loggedIn("GetPhysicalScreenSize = function() return 2560, 1440 end");
+  addon.eval(`TEST_Row = ns.Widgets.Row(CreateFrame("Frame", nil, UIParent), nil, { width = 300 }) ns.Theme.SelectRow(TEST_Row, true)`);
+  // The rail's width in screen pixels now.
+  const railPixels = () => addon.eval("return ns.Theme.RowParts(TEST_Row).rail:GetWidth() * TEST_Row:GetEffectiveScale() * 1440 / 768");
+  expect(railPixels(), "two pixels at UI scale 1").toBeCloseTo(2, 9);
+  addon.eval("UIParent:SetScale(0.533)");
+  addon.fire("UI_SCALE_CHANGED");
+  addon.update(0.1);
+  expect(railPixels(), "still two pixels after the UI scale drops").toBeCloseTo(2, 9);
 });

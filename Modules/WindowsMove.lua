@@ -59,6 +59,9 @@ GW.MOVE_PAGES = { LFGParentFrame = { "LFGListingFrame", "LFGBrowseFrame", "LFGWh
 GW.MOVE_STRIP = { trim = 40, height = 24, left = 58, right = 64 }
 -- How far (units) a bottom tab hangs below its window: the height of a PanelTabButtonTemplate tab.
 GW.MOVE_TAB_HANG = 32
+-- How far (units) a column of tabs at a window's right side reaches past its edge, by window: the width of the
+-- character pane's ModeTabs (the Camelot pane's CharacterFrame.xml). Other windows' side tabs wait for their widths.
+GW.MOVE_SIDE_HANG = { CharacterFrame = 64 }
 -- The game's calls that place its windows again; every moved window is put back after each.
 GW.MOVE_LAYOUTS = { "UpdateUIPanelPositions", "UpdateContainerFrameAnchors" }
 -- The windows the game lays out with a call of their own (not the panel manager's), by window.
@@ -297,11 +300,13 @@ local function dropHidden(frame)
 end
 
 -- Makes a window movable and kept on the screen, dragged by its top edge. The clamp counts the panel Vanguard
--- paints GW.PAD past every side and the tabs that hang below, so neither is dragged off the screen.
+-- paints GW.PAD past every side, the tabs that hang below and, for the character pane, the tabs at its right side,
+-- so none of them is dragged off the screen.
 local function makeMovable(frame, name)
+  local side = GW.MOVE_SIDE_HANG[name] or 0
   frame:SetMovable(true)
   frame:SetClampedToScreen(true)
-  frame:SetClampRectInsets(-GW.PAD, GW.PAD, GW.PAD, -(GW.PAD + GW.MOVE_TAB_HANG))
+  frame:SetClampRectInsets(-GW.PAD, GW.PAD + side, GW.PAD, -(GW.PAD + GW.MOVE_TAB_HANG))
   frame:HookScript("OnMouseDown", ns.Guard("press " .. name, pressTop))
   frame:HookScript("OnMouseUp", ns.Guard("release " .. name, releaseTop))
   frame:HookScript("OnHide", ns.Guard("release " .. name, dropHidden))

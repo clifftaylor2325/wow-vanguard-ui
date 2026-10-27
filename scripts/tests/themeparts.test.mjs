@@ -78,9 +78,9 @@ it("fills: a button's hover fill and press overlay follow its rounded corners, a
   expect(fillAlphas(addon, "ns.Theme.HoverParts(__b).fill"), "leaving with Reduce motion clears every part at once").toEqual([0, 0, 0, 0, 0, 0, 0]);
   addon.eval("__b:GetScript('OnEnter')(__b)");
   expect([...fillAlphas(addon, "ns.Theme.HoverParts(__b).fill"), addon.eval("return ns.Theme.HoverParts(__b)[2]:GetAlpha()")], "and back on at once").toEqual([1, 1, 1, 1, 1, 1, 1, 1]);
-  // The press fill's textures: the button's BACKGROUND textures on sublevel 2 (the overlay's layer), with the centre first.
+  // The press fill's textures: the button's BACKGROUND textures on sublevel 3 (the overlay's layer, over the hover fill), with the centre first.
   addon.eval(`__pressFill = { textures = { ns.Theme.PressOverlay(__b) } }
-    for _, t in ipairs({ __b:GetRegions() }) do local _, sub = t:GetDrawLayer() if t.__layer == "BACKGROUND" and sub == 2 and t ~= __pressFill.textures[1] then table.insert(__pressFill.textures, t) end end`);
+    for _, t in ipairs({ __b:GetRegions() }) do local _, sub = t:GetDrawLayer() if t.__layer == "BACKGROUND" and sub == 3 and t ~= __pressFill.textures[1] then table.insert(__pressFill.textures, t) end end`);
   // The press fill's state: { the overlay shown, how many of its textures are shown, how many it has }.
   const press = () => addon.eval("local shown = 0 for _, t in ipairs(__pressFill.textures) do if t:IsShown() then shown = shown + 1 end end return { ns.Theme.PressOverlay(__b):IsShown(), shown, #__pressFill.textures }");
   expect(press(), "at rest: the press overlay and its six rounded parts are hidden").toEqual([false, 0, 7]);

@@ -270,3 +270,17 @@ it("quest arrow: the longest real distance lines fit beside the arrow, also with
   const rows = addon.eval("local f = Vanguard_QuestArrow return { f.pin:GetBottom() >= f.dist:GetTop(), f.title:GetRight() <= f.pin:GetLeft(), f.dist:GetRight() > f.pin:GetLeft() }");
   expect(rows, "the pin sits in the title's row, the title stops short of it, the distance line runs under it").toEqual([true, true, true]);
 });
+
+it("quest arrow: the title and the distance line grow away from the panel's middle, so they never draw over each other at Text size 125% to 150%", () => {
+  const addon = createAddon({ savedVariables: SETUP_DONE, textFit: true });
+  addon.eval(ARROW_ENV);
+  addon.login();
+  addon.eval("ns.QuestGuide.pointed = 90061 ns.QuestArrow.Pick()");
+  for (const scale of [1, 1.25, 1.5]) {
+    addon.eval(`ns.Theme.Settings().textScale = ${scale} ns.Theme.Refresh() ns.QuestArrow.Pick()`);
+    addon.update(0);
+    const lines = addon.eval("local f = Vanguard_QuestArrow return { f.title:GetBottom() >= f.dist:GetTop(), f.title:GetTop() <= f:GetTop(), f.dist:GetBottom() >= f:GetBottom() }");
+    expect(lines, `${scale * 100}%: the title stands over the distance line and both stay inside the panel`).toEqual([true, true, true]);
+    expect(addon.textFit("Vanguard_QuestArrow").filter((f) => f.kind === "overlap"), `${scale * 100}%: nothing overlaps in the text-fit audit`).toEqual([]);
+  }
+});

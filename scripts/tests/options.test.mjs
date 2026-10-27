@@ -1633,3 +1633,61 @@ it("options: a choice row's dropdown widens into its caption's spare room to hol
   const cut = addon.textFit("Vanguard_Options").filter((f) => f.text.startsWith("Selon le réglage"));
   expect(cut, "the long choice is no longer cut").toEqual([]);
 });
+
+// A client in this language, in the text-fit client with real font widths, logged in with the Text size set (1 = 100%).
+function localeOptions(locale, textScale) {
+  const addon = createAddon({ savedVariables: SETUP_DONE, textFit: true, client: `__wfgWorld.locale = "${locale}"` });
+  addon.login();
+  addon.eval(`ns.Theme.Settings().textScale = ${textScale} ns.Theme.Refresh()`);
+  return addon;
+}
+
+it("options: in Russian at 115% a module row whose name wraps beside its reload tag holds its description too (B2-1)", () => {
+  const addon = localeOptions("ruRU", 1.15);
+  addon.eval('ns.Options.Show("modules")');
+  // Each shown module row whose description ends under the row's bottom (the row's air kept below it).
+  const cut = addon.eval(`local out = {} for _, w in ipairs(__wfgStub.frames) do
+    if w.desc and w.label and w.source and w:IsVisible() and w.desc:GetBottom() < w:GetBottom() + 6 - 0.01 then out[#out + 1] = w.caption end end return out`);
+  expect(Object.values(cut), "every description ends a little above its row's bottom, clear of the next name").toEqual([]);
+});
+
+it("options: in German at 130% a choice or slider row whose caption wraps grows to hold it (B2-3)", () => {
+  const addon = localeOptions("deDE", 1.3);
+  // On this page: how many choice and slider rows are taller than one line, then the captions that run past their row.
+  const spill = (page) => addon.eval(`ns.Options.Show("${page}") local out = { tall = 0 }
+    for _, w in ipairs(__wfgStub.frames) do
+      local kind = w.source and w.source[1]
+      if w.card and w.label and (kind == "cycle" or kind == "slider") and w:IsVisible() then
+        if w:GetHeight() > ns.Theme.ROW.height then out.tall = out.tall + 1 end
+        if w.label:GetTop() > w:GetTop() + 0.01 or w.label:GetBottom() < w:GetBottom() - 0.01 then out[#out + 1] = w.caption end
+      end
+    end return out`);
+  for (const page of ["chat", "town"]) {
+    const found = spill(page);
+    expect(found.tall, `${page}: a wrapped caption's row is taller than a one-line row`).toBeGreaterThan(0);
+    expect(Object.values(found).filter((v) => typeof v === "string"), `${page}: no caption runs past its row`).toEqual([]);
+  }
+});
+it("options: a module's own-switch note shares the name's line at both ends and still ends before the switch (B2-6)", () => {
+  const addon = fitOptions();
+  addon.eval('ns.Options.Show("modules")');
+  // For each shown note's box: its two anchors' targets and offsets, and its right edge against the switch.
+  const boxes = addon.eval(`local out = {} for _, w in ipairs(__wfgStub.frames) do
+    if w.ownSwitchBox and w:IsVisible() then
+      local p = w.ownSwitchBox.__points
+      out[#out + 1] = { p.RIGHT.rel == w.label, p.RIGHT.y, p.LEFT.y, w.ownSwitchBox:GetRight(), w.track:GetLeft() - ns.Theme.SPACE.gap } end end return out`);
+  expect(boxes.length, "some linked modules show").toBeGreaterThan(0);
+  expect(boxes.filter((b) => !b[0] || b[1] !== 0 || b[2] !== 0), "the right end is on the name's line, as the left end is").toEqual([]);
+  expect(boxes.filter((b) => Math.abs(b[3] - b[4]) > 0.5), "the box ends a gap short of the switch").toEqual([]);
+});
+
+it("options: profile rows and the click casting rows sit inside their card by a gap, as a switch does (B2-5)", () => {
+  const addon = loggedIn(CLICK_LUA);
+  // The kinds of shown rows that run past their card's edge less than the inset a switch keeps (T.SPACE.tight).
+  const tight = (page) => addon.eval(`ns.Options.Show("${page}") local out = {}
+    for _, w in ipairs(__wfgStub.frames) do
+      if w.card and w.source and w:IsVisible() and w:GetRight() > w.card:GetRight() - ns.Theme.SPACE.tight + 0.01 then out[#out + 1] = w.source[1] end
+    end return out`);
+  expect(Object.values(tight("profiles")), "the profile list and the New profile row").toEqual([]);
+  expect(Object.values(tight("clickcast")), "the toolbar, the grid, the keys and the sharing rows").toEqual([]);
+});

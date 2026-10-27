@@ -1,7 +1,8 @@
 // quests: Vanguard's real Lua in the TEST-ONLY headless client (scripts/lib/lua-harness.mjs).
 
 import { expect, it } from "vitest";
-import { CLICK_LUA, DATA_ENV, PANEL_OPENERS, PLATE_ENV, QUEST_ENV, TIDY_ENV, UI_ENV, UNITS_ENV, borderOf, calls, chatHas, isTok, key, loggedIn, px, setCombat, WINDOWS_ENV } from "./helpers.mjs";
+import { createAddon } from "../lib/lua-harness.mjs";
+import { CLICK_LUA, DATA_ENV, strips, PANEL_OPENERS, PLATE_ENV, QUEST_ENV, SETUP_DONE, TIDY_ENV, UI_ENV, UNITS_ENV, borderOf, calls, chatHas, isTok, key, loggedIn, px, setCombat, WINDOWS_ENV } from "./helpers.mjs";
 
 // The theme's layout numbers the quest windows are built on: { inset, pad, col, gap, tight, buttonH, rowH, watermark, wash }.
 const layout = (addon) => addon.eval(`local T = ns.Theme
@@ -167,6 +168,41 @@ it("quest dialog: sized to its page, above the cast bars, cards under the text, 
   moved.fire("GOSSIP_SHOW");
   expect(moved.eval("local p, _, rp, x, y = Vanguard_QuestDialog:GetPoint() return { p, rp, x, y }"), "a spot the player saved stays").toEqual(["TOP", "TOP", 40, -120]);
 });
+it("quest dialog: held at the top of the screen it grows downward, so a long page after a short one keeps its full height and text", () => {
+  // A profile with the quest dialog held at the top of the screen, y down (none for the default spot).
+  const top = (y) => y === null ? "" : `VanguardDB.profiles = { Default = { positions = { questdialog = { point = "TOP", relPoint = "TOP", x = 0, y = ${y} } } } }`;
+  const longText = 'GetQuestText = function() return "TEST-ONLY " .. string.rep("A long sentence of quest text. ", 12) end';
+  // The panel's height and its text view's height on the long detail page, after a short gossip page.
+  const longPage = (y, size) => {
+    const addon = loggedIn(QUEST_ENV + `__wfgStub.setScreen(${size}) ${longText}`, { savedVariables: top(y) });
+    addon.eval("__greeting = 'TEST-ONLY Hello.' __avail, __active, __options = {}, {}, { __options[1], __options[1] }");
+    addon.fire("GOSSIP_SHOW");
+    addon.fire("QUEST_DETAIL");
+    return addon.eval("return { Vanguard_QuestDialog:GetHeight(), Vanguard_QuestDialog.scroll:GetHeight() }");
+  };
+  const [tall, view] = longPage(-100, "1920, 1080");
+  expect(view, "the long page after a short gossip shows all its text, not a slit").toBeGreaterThanOrEqual(96);
+  expect([tall, view], "and is as tall as at the default spot, which grows upward").toEqual(longPage(null, "1920, 1080"));
+  expect(longPage(-60, "1365, 768")[1], "on a short screen the text view is never negative").toBeGreaterThanOrEqual(0);
+});
+it("quest dialog: a long reward name takes two lines of its card at Text size 150%, over nothing", () => {
+  const addon = createAddon({ textFit: true, client: QUEST_ENV, savedVariables: SETUP_DONE });
+  addon.login();
+  addon.eval(`ns.Theme.Settings().textScale = 1.5 ns.Theme.Refresh()
+    __choices[1][1] = "TEST-ONLY Gebrochene Armschienen des Schattenwebers" __choices[2][1] = "TEST-ONLY Dark Iron Pulverizer's Gauntlets"`);
+  addon.fire("QUEST_COMPLETE");
+  const card = addon.eval("local c = Vanguard_QuestDialog.cards[1] return { c.name:GetHeight(), c:GetHeight() }");
+  expect(card[0], "the name is no taller than its card").toBeLessThanOrEqual(card[1]);
+  expect(addon.textFit("Vanguard_QuestDialog").filter((f) => f.kind !== "more lines than it may draw" && f.kind !== "cut"), "nothing is drawn over the card below or the caption").toEqual([]);
+});
+it("quest dialog: held by its middle near the top of the screen, it grows both ways only as far as the nearer edge allows", () => {
+  const centre = `VanguardDB.profiles = { Default = { positions = { questdialog = { point = "CENTER", relPoint = "CENTER", x = 0, y = 260 } } } }`;
+  const longText = 'GetQuestText = function() return "TEST-ONLY " .. string.rep("A long sentence of quest text. ", 12) end';
+  const addon = loggedIn(QUEST_ENV + `__wfgStub.setScreen(1365, 768) ${longText}`, { savedVariables: centre });
+  addon.fire("QUEST_DETAIL");
+  const [top, bottom, view] = addon.eval("local f = Vanguard_QuestDialog return { f:GetTop(), f:GetBottom(), f.scroll:GetHeight() }");
+  expect([top <= 768, bottom >= 0, view >= 0], "the panel stays on the screen and its text view is never negative").toEqual([true, true, true]);
+});
 it("quest dialog: the header sits at the window inset, the NPC's name in the window title's role and colour, no X, a dialog-opacity panel", () => {
   const addon = loggedIn(QUEST_ENV);
   addon.fire("QUEST_DETAIL");
@@ -243,7 +279,8 @@ it("quest dialog: late item details redraw the page; spell and currency rewards"
     C_QuestInfoSystem = { GetQuestRewardSpells = function() return { 90081 } end, GetQuestRewardSpellInfo = function() return { name = "TEST-ONLY Bolt" } end,
       GetQuestRewardCurrencies = function() return { { name = "TEST-ONLY Marks", totalRewardAmount = 3 } } end }`);
   addon.fire("QUEST_COMPLETE");
-  expect(dialog(addon).money, "spells it teaches and currencies, after the money and XP").toBe("+12s 0c  ·  450 XP  ·  Teaches: TEST-ONLY Bolt  ·  3 TEST-ONLY Marks");
+  expect(dialog(addon).money, "the money line keeps the money and XP only").toBe("+12s 0c  ·  450 XP");
+  expect(addon.eval("local x = Vanguard_QuestDialog.extras return { x:IsShown(), x:GetText() }"), "spells it teaches and currencies are in the body, under the text, to be read whole").toEqual([true, "Teaches: TEST-ONLY Bolt  ·  3 TEST-ONLY Marks"]);
   key(addon, "2");
   addon.eval('__choices[1][1] = "TEST-ONLY Better Boots"');
   addon.fire("QUEST_ITEM_UPDATE");
@@ -253,6 +290,22 @@ it("quest dialog: late item details redraw the page; spell and currency rewards"
   expect(dialog(addon).cards[0], "closed, nothing redraws").toBe("TEST-ONLY Better Boots");
   addon.eval("C_QuestInfoSystem = nil");
   expect(addon.eval("return #ns.GetModule('QuestDialog').ExtraRewards(90031)"), "a client without those calls shows none").toBe(0);
+});
+it("quest dialog: a spell reward is in the body of the detail page in French, not at the end of a money line that runs out of room", () => {
+  const spell = `GetQuestID = function() return 90031 end
+    C_QuestInfoSystem = { GetQuestRewardSpells = function() return { 90081 } end, GetQuestRewardSpellInfo = function() return { name = "Summon Felsteed" } end }
+    GetRewardMoney = function() return 123456 end GetRewardXP = function() return 12500 end`;
+  const addon = createAddon({ textFit: true, client: `__wfgWorld.locale = "frFR"`, savedVariables: SETUP_DONE });
+  addon.eval(QUEST_ENV + spell);
+  addon.login();
+  addon.fire("QUEST_DETAIL");
+  const text = addon.eval("local f = Vanguard_QuestDialog return { f.extras:IsShown(), f.extras:GetText(), f.money:GetText(), f.money:GetTextScale(), f.extras:GetTop() < f.text:GetBottom() }");
+  expect(text[0] && text[1].includes("Summon Felsteed"), "the spell's name is on the page").toBe(true);
+  expect([text[2].includes("Summon Felsteed"), text[3], text[4]], "and not on the money line, which keeps its size; the line hangs under the text").toEqual([false, 1, true]);
+  expect(addon.textFit("Vanguard_QuestDialog").filter((f) => f.kind === "cut" && f.text?.includes("Summon")), "nothing about the spell is cut").toEqual([]);
+  addon.eval("GetQuestID = function() return 0 end C_QuestInfoSystem = nil");
+  addon.fire("QUEST_DETAIL");
+  expect(addon.eval("return Vanguard_QuestDialog.extras:IsShown()"), "a quest with no such reward shows no line").toBe(false);
 });
 it("quest automation: accept, turn in, best reward, skip chatter; Shift skips it", () => {
   const on = "VanguardDB.profiles = { Default = { QuestAuto = { accept = true, turnIn = true, skipGossip = true } } }";
@@ -667,6 +720,18 @@ it("quest tracker: expanded on a short screen, the list stops above the screen's
   expect(t.blocks.length, "fewer than all nine fit under the spot").toBeLessThan(9);
   expect(t.more, "with the way back").toMatch(/^Show fewer/);
   expect(addon.frame("Vanguard_QuestTrackerFrame.moreBtn").rect.bottom, "the Show fewer button is on the screen").toBeGreaterThanOrEqual(0);
+});
+it("quest tracker: expanded, the list stops above the menu strip (the bags and micro menu) and Show fewer is not under it", () => {
+  const manyQuests = `for i = 1, 20 do local id = 90070 + i __quests[id] = { index = 10 + i, title = "TEST-ONLY Many " .. i, level = 5, dist = i, objectives = { { text = "a" }, { text = "b" } } } __watches[#__watches + 1] = id end`;
+  const addon = strips(UNITS_ENV + TRACK_ENV + "__wfgStub.setScreen(1365, 768)", { savedVariables: "VanguardDB.profiles = { Default = { QuestTracker = { expanded = true } } }" });
+  addon.eval(manyQuests);
+  addon.fire("QUEST_WATCH_LIST_CHANGED");
+  addon.update(0);
+  const strip = addon.frame("Vanguard_MenuStrip").rect;
+  const more = addon.frame("Vanguard_QuestTrackerFrame.moreBtn").rect;
+  expect(more.bottom, "the Show fewer button is above the strip's top").toBeGreaterThanOrEqual(strip.top);
+  expect(tracker(addon).more, "with some quests still shown and the way back").toMatch(/^Show fewer/);
+  expect(addon.eval("local QT = ns.GetModule('QuestTracker') Vanguard_MenuStrip:Hide() QT.Refresh() return Vanguard_QuestTrackerFrame.moreBtn:GetBottom()"), "with the strip hidden the stack is allowed to run lower").toBeLessThan(more.bottom);
 });
 it("quest tracker: the Quests header is a collapsible section header with the count after it and the brass rule under it; \"+n more\" is a status line", () => {
   const addon = loggedIn(TRACK_ENV);
@@ -1713,6 +1778,13 @@ it("quest tracker: kill XP redraws the XP-to-level line", () => {
   addon.fire("PLAYER_XP_UPDATE", "player");
   addon.advance(2);
   expect(levelLine(addon)).toBe("Quests: 100% of the XP to level");
+});
+
+it("quest tracker: the XP-to-level line ends inside the tracker's width, on one line, however long its text", () => {
+  const addon = halfwayToLevel();
+  addon.eval("Vanguard_QuestTrackerFrame.levelXp:SetText(string.rep('Missioni: 315% dell esperienza per salire di livello ', 2))");
+  const line = addon.eval("local f = Vanguard_QuestTrackerFrame return { f.levelXp:GetRight() <= f.body:GetRight(), f.levelXp:GetWidth(), f.levelXp:CanWordWrap() }");
+  expect(line, "the line is as wide as the tracker, at most, and does not wrap").toEqual([true, 260, false]);
 });
 
 it("quest tracker: a level-up redraws the XP-to-level line", () => {

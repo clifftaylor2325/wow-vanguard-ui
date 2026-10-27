@@ -128,7 +128,8 @@
       "Forever fixes: the newer calls for zone color, pet moods, breath bars, the minimap eye, the house icon and the build line"
     ],
     "scripts/tests/extras.test.mjs": [
-      "raid tools: calls, target icons and world markers for the leader and assistants"
+      "raid tools: calls, target icons and world markers for the leader and assistants",
+      "raid tools: in a raid the bar is sized by the three buttons showing, not the hidden Raid label (deDE 'Schlachtzug')"
     ],
     "scripts/tests/fallbacks.test.mjs": [],
     "scripts/tests/feedback.test.mjs": [],
@@ -271,6 +272,7 @@
       "a raid target icon on a short frame (target of target, pet, boss) is lifted so its bottom clears the name",
       "a raid target icon sits on every unit frame's top edge, following the Raid target icons switch",
       "a released player reads Ghost and a feigning hunter reads alive",
+      "an offline or dead unit's health bar goes dark, an online one keeps its class colour",
       "class bars: a right-click on a totem cell destroys it, with key-down casting on or off",
       "class bars: druid mana while a form shows rage or energy",
       "class bars: totems for shamans, mana in forms for druids",

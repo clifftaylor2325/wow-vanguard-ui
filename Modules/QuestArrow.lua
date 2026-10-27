@@ -100,7 +100,7 @@ end
 -- of it; the distance line below it keeps the whole width), and the arrow gold for a turn-in, else the accent.
 local function paintPick(f)
   f.pin:SetShown(QA.held == true)
-  if QA.held then f.title:SetPoint("RIGHT", f.pin, "LEFT", -T.SPACE.tight, 0) else f.title:SetPoint("RIGHT", f, "RIGHT", -QA.PAD, 0) end
+  if QA.held then f.title:SetPoint("BOTTOMRIGHT", f.pin, "BOTTOMLEFT", -T.SPACE.tight, 1) else f.title:SetPoint("BOTTOMRIGHT", f, "RIGHT", -QA.PAD, 1) end
   T.Tint(f.arrow, QA.ready and "gold" or "accent")
 end
 
@@ -254,6 +254,14 @@ end
 
 -- The frame ---------------------------------------------------------------------------------------
 
+-- The distance line, hanging from the panel's middle on edge points only (the title stands on it), so the
+-- two lines grow away from each other with Text size instead of toward each other.
+local function distLine(f)
+  f.dist = ns.SingleLine(T.Text(f:CreateFontString(nil, "OVERLAY"), "small", "text2"))
+  f.dist:SetPoint("TOPLEFT", f.arrow, "RIGHT", QA.PAD, -1)
+  f.dist:SetPoint("TOPRIGHT", f, "RIGHT", -QA.PAD, -1)
+end
+
 -- The arrow and its two lines of text on the frame.
 local function fill(f)
   f.arrow = f:CreateTexture(nil, "ARTWORK")
@@ -261,10 +269,9 @@ local function fill(f)
   f.arrow:SetPoint("LEFT", f, "LEFT", QA.PAD, 0)
   f.arrow:SetTexture(T.Icon("QuestArrow"))
   f.title = T.Text(f:CreateFontString(nil, "OVERLAY"), "small", "text")
-  f.title:SetPoint("TOPLEFT", f.arrow, "TOPRIGHT", QA.PAD, -2)
-  f.title:SetPoint("RIGHT", f, "RIGHT", -QA.PAD, 0)
-  f.title:SetJustifyH("LEFT")
-  f.title:SetWordWrap(false)
+  f.title:SetPoint("BOTTOMLEFT", f.arrow, "RIGHT", QA.PAD, 1)
+  f.title:SetPoint("BOTTOMRIGHT", f, "RIGHT", -QA.PAD, 1)
+  ns.SingleLine(f.title)
 end
 
 -- The Pin button at the panel's top right, the one part of the panel that takes the mouse (the rest lets
@@ -285,8 +292,7 @@ local function build()
   T.Panel(f, { shadow = true })
   f:SetSize(QA.WIDTH, QA.HEIGHT)
   fill(f)
-  f.dist = ns.EndAt(T.Text(f:CreateFontString(nil, "OVERLAY"), "small", "text2"), f, QA.PAD)
-  f.dist:SetPoint("BOTTOMLEFT", f.arrow, "BOTTOMRIGHT", QA.PAD, 2)
+  distLine(f)
   pinButton(f)
   f:Hide()
   QA.frame = f

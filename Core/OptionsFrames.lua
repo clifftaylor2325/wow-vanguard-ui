@@ -86,7 +86,7 @@ local function readoutRows()
     { "header", L["Readouts"] },
     check(L["Your threat on your target, above its frame (reload)"], reloadSetting("UnitExtras", "threat")),
     check(L["Your pet's happiness, a dot on the pet frame (reload)"], reloadSetting("UnitExtras", "happiness")),
-    check(L["Status chip above your frame: Eating, Drinking, Well Fed, or a missing buff from Instance prep's checks, out of combat (reload)"], reloadSetting("UnitExtras", "chip")),
+    check(L["Status chip beside your frame: Eating, Drinking, Well Fed, or a missing buff from Instance prep's checks, out of combat (reload)"], reloadSetting("UnitExtras", "chip")),
   }
 end
 

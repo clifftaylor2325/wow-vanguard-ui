@@ -17,6 +17,9 @@ local L = ns.L
 local RT = ns.Module("RaidTools", { defaults = {} })
 
 RT.ICON, RT.GAP, RT.PAD = 18, 2, T.SPACE.tight
+-- A text button's usual width, and the width of the bar's icon rows (nine icons).
+RT.ACTION_W = 44
+RT.ROW_W = 2 * RT.PAD + 9 * RT.ICON + 8 * RT.GAP
 -- The raid icon that matches each world marker's color (blue square, green
 -- triangle, purple diamond, red cross, yellow star, orange circle, silver moon, white skull).
 RT.MARKER_ICONS = { 6, 4, 3, 7, 1, 2, 5, 8 }
@@ -61,7 +64,7 @@ end
 
 -- One text button { label, click, call } on the first row, kept by its call's name.
 local function actionButton(bar, spec)
-  local b = ns.DialogButton(bar, spec[1], 44)
+  local b = ns.DialogButton(bar, spec[1], RT.ACTION_W)
   b:SetHeight(RT.ICON)
   b:RegisterForClicks("AnyUp")
   b:SetScript("OnClick", ns.Guard("click raid tools button", spec[2]))
@@ -69,17 +72,30 @@ local function actionButton(bar, spec)
   RT.Place(bar, b, 1, #bar.list)
 end
 
--- Gives the text buttons (the bar's first row, bar.list so far) one width: their usual, or what the widest label
--- needs (a translation often runs longer than the English), placed again at it, and the bar the width the row then
--- takes when that is more than its icon rows'.
-local function widenActions(bar)
-  local width = 0
-  for _, b in ipairs(bar.list) do width = math.max(width, ns.WidenToLabel(b):GetWidth()) end
-  for i, b in ipairs(bar.list) do
+-- The text buttons showing now, in their order (Raid hides in a raid).
+local function shownActions(bar)
+  local shown = {}
+  for _, spec in ipairs(RT.ACTIONS) do
+    local b = bar.actions[spec[3]]
+    if b and b:IsShown() then shown[#shown + 1] = b end
+  end
+  return shown
+end
+
+-- Gives the text buttons showing now one width: their usual, or what the widest shown label needs (a translation
+-- often runs longer than the English), placed side by side at it, and the bar the width the row then takes when
+-- that is more than its icon rows'. Runs again when a button hides or shows, so a hidden label asks for no room.
+function RT.WidenActions(bar)
+  local shown, width = shownActions(bar), RT.ACTION_W
+  for _, b in ipairs(shown) do
+    b:SetWidth(RT.ACTION_W)
+    width = math.max(width, ns.WidenToLabel(b):GetWidth())
+  end
+  for i, b in ipairs(shown) do
     b:SetWidth(width)
     b:SetPoint("TOPLEFT", bar, "TOPLEFT", RT.PAD + (i - 1) * (width + RT.GAP), -RT.PAD)
   end
-  bar:SetWidth(math.max(bar:GetWidth(), 2 * RT.PAD + #bar.list * (width + RT.GAP) - RT.GAP))
+  bar:SetWidth(math.max(RT.ROW_W, 2 * RT.PAD + #shown * (width + RT.GAP) - RT.GAP))
 end
 
 -- The row of text buttons this client can use, as wide as their labels need.
@@ -88,7 +104,7 @@ local function addActions(bar)
   for _, spec in ipairs(RT.ACTIONS) do
     if hasCall(spec[3]) then actionButton(bar, spec) end
   end
-  widenActions(bar)
+  RT.WidenActions(bar)
 end
 
 -- Icon buttons ---------------------------------------------------------------------------
@@ -158,6 +174,7 @@ function RT.Update()
     local raid = RT.bar.actions.ConvertToRaid
     RT.bar:SetShown(RT.CanLead())
     if raid then raid:SetShown(not globalTrue("IsInRaid") and globalTrue("UnitIsGroupLeader", "player")) end
+    RT.WidenActions(RT.bar)
   end, "raidtools")
 end
 
@@ -165,7 +182,7 @@ end
 local function build()
   local bar = T.HudPanel(CreateFrame("Frame", "Vanguard_RaidTools", UIParent))
   bar.list = {}
-  bar:SetSize(2 * RT.PAD + 9 * RT.ICON + 8 * RT.GAP, 2 * RT.PAD + 3 * RT.ICON + 2 * RT.GAP)
+  bar:SetSize(RT.ROW_W, 2 * RT.PAD + 3 * RT.ICON + 2 * RT.GAP)
   ns.Mover(bar, "raidtools", L["Raid tools"], { "TOPLEFT", "TOPLEFT", 186, -20 })
   addActions(bar)
   addTargetIcons(bar)

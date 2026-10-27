@@ -18,7 +18,7 @@ local SI = ns.GetModule("Situations")
 local B = {}
 SI.Banner = B
 
--- The strips' height, and their button's width.
+-- The strips' height, and their button's width before it widens to its label.
 local HEIGHT, BUTTON_WIDTH = 30, 110
 
 -- What the banner says while recording a situation (one of SI.NAMES).
@@ -44,7 +44,7 @@ local function strip(parent)
   f:SetHeight(HEIGHT)
   f.text = T.Text(f:CreateFontString(nil, "OVERLAY"), "label")
   f.text:SetPoint("LEFT", 10, 0)
-  f.button = W.Button(f, L["Stop and save"], stopAndSave, BUTTON_WIDTH)
+  f.button = ns.WidenToLabel(W.Button(f, L["Stop and save"], stopAndSave, BUTTON_WIDTH))
   f.button:SetPoint("RIGHT", -4, 0)
   f:Hide()
   return f
@@ -74,7 +74,7 @@ end
 local function show(f, on, text)
   if not f then return end
   f.text:SetText(text)
-  if f.fit then f:SetWidth(f.text:GetStringWidth() + BUTTON_WIDTH + 24) end
+  if f.fit then f:SetWidth(f.text:GetStringWidth() + f.button:GetWidth() + 24) end
   f:SetShown(on)
 end
 
