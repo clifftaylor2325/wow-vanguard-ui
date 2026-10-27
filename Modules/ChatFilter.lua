@@ -95,7 +95,7 @@ function CF.Reason(text, sender, now)
   local line = ns.GetModule("ChatExtras").Matchable(text)
   local why = CF.Category(line)
   if not why and holdsAny(line, CF.settings.keywords) then why = L["Your word"] end
-  if not why and CF.settings.repeats and #line >= CF.MIN_REPEAT and repeated(sender, line, now) then why = L["Repeat"] end
+  if not why and CF.settings.repeats and #line >= CF.MIN_REPEAT and ns.TextLength(line) >= CF.MIN_REPEAT and repeated(sender, line, now) then why = L["Repeat"] end
   return why
 end
 
@@ -260,7 +260,7 @@ end
 -- Why a keyword can't be added, or nil when it can.
 local function refusal(word, list)
   if word == "" then return L["Type a word to filter."] end
-  if #word > CF.MAX_LENGTH then return ns.Format(L["A word can be at most {max} characters."], { max = CF.MAX_LENGTH }) end
+  if ns.TextLength(word) > CF.MAX_LENGTH then return ns.Format(L["A word can be at most {max} characters."], { max = CF.MAX_LENGTH }) end
   if #list >= CF.MAX_KEYWORDS then return ns.Format(L["Chat filter keeps at most {max} words; remove one first."], { max = CF.MAX_KEYWORDS }) end
   for _, w in ipairs(list) do
     if w == word then return ns.Format(L['Already filtering "{word}".'], { word = word }) end

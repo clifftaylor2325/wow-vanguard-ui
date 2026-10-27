@@ -180,6 +180,14 @@ it("chat watch: /vg watch adds, lists, removes and clears; at most 20 phrases of
   expect(last(), "cleared: none").toMatch(/Chat watch has no phrases\. \/vg watch add/);
 });
 
+it("chat watch: the 40-character limit counts letters, not bytes, so a Russian phrase fits", () => {
+  const addon = watching();
+  addon.slash(`watch add ${"я".repeat(24)}`);
+  expect(addon.eval("return #ns.Settings('ChatWatch').phrases"), "24 Cyrillic letters (48 bytes) are added").toBe(2);
+  addon.slash(`watch add ${"я".repeat(41)}`);
+  expect(addon.chat().at(-1), "41 letters are too long").toMatch(/at most 40 characters/);
+});
+
 it("chat watch: the options add a phrase from a dialog, list a Remove button per phrase, and switch channels", () => {
   const addon = watching();
   addon.eval('ns.Options.Show("chat") ns.Options.ShowTab("Chat watch")');
