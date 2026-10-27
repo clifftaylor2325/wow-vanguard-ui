@@ -1,8 +1,9 @@
--- Class bars under the player frame, for what hiding the game's player frame
+-- Class bars on the player frame, for what hiding the game's player frame
 -- took with it (its totem frame and its druid mana bar live inside it):
---   * shamans: one cell per totem slot, with the totem's icon and time left;
+--   * shamans: one cell per totem slot, with the totem's icon and time left, in a row above
+--     the frame (under it the row met the chat's tab bar and its Find and Copy tiles, B4-1);
 --     right-click a cell to destroy that totem, as the game's own buttons do;
---   * druids: your mana while a form shows rage or energy instead.
+--   * druids: your mana under the frame while a form shows rage or energy instead.
 -- In instanced combat the client may hide totem values from addons. The icon
 -- and the client's duration object still go straight to the widgets; whether
 -- a totem is down is then left to the client too, where it offers that.
@@ -38,11 +39,11 @@ local function totemCell(bar, slot, size)
   return c
 end
 
--- The totem row, just under the player frame.
+-- The totem row, just above the player frame (the chat window reaches up beside it, so under it the cells covered the chat's tiles).
 local function buildTotems(player, size)
   CB.totems = CreateFrame("Frame", nil, player)
   CB.totems:SetSize(CB.SLOTS * (size + 3), size)
-  CB.totems:SetPoint("TOPLEFT", player, "BOTTOMLEFT", 0, -3)
+  CB.totems:SetPoint("BOTTOMLEFT", player, "TOPLEFT", 0, 3)
   CB.cells = {}
   for slot = 1, CB.SLOTS do CB.cells[slot] = totemCell(CB.totems, slot, size) end
   CB.UpdateTotems()
