@@ -441,7 +441,7 @@ end
 
 -- A page's tab strip (one tab per card, in lines that wrap): a tab's height, the air either side of its name, the
 -- room between tabs and between lines, and where the tab's changed dot sits in from its right edge.
-local TAB = { height = T.CONTROL_H + 4, pad = 10, gap = 2, dot = 4 }
+local TAB = { height = T.CONTROL_H + 4, pad = 12, gap = 2, dot = 4 }
 -- The tab each page showed last (its name), kept while the game runs, so a page opens again on it.
 local lastTab = {}
 
@@ -463,13 +463,18 @@ local function showCardOf(view, w)
   if index and index ~= view.tab then showCard(view, index) end
 end
 
--- A tab's name, in text2 until it is the shown tab; the tab as wide as the name and its air, never wider than the
--- strip (a longer name shrinks, then is cut short: T.FitText).
+-- Sizes a tab to its name at the font and Text size now, with its air each side, never wider than the strip.
+local function sizeTab(tab)
+  tab:SetWidth(math.min(CARD_WIDTH, math.ceil(T.FullWidth(tab.text)) + 2 * TAB.pad))
+end
+
+-- A tab's name, in text2 until it is the shown tab. Its box runs to the changed dot's room, wider than the name, so
+-- a name a little wider than measured still shows whole; one wider than the strip shrinks, then is cut (T.FitText).
 local function tabLabel(tab, name)
   tab.text = T.Text(tab:CreateFontString(nil, "OVERLAY"), "label", "text2")
   tab.text:SetText(name)
-  tab:SetWidth(math.min(CARD_WIDTH, math.ceil(T.FullWidth(tab.text)) + 2 * TAB.pad))
-  T.FitText(tab.text, tab, TAB.pad)
+  sizeTab(tab)
+  T.FitText(tab.text, tab, TAB.dot + DOT)
 end
 
 -- One tab: the card's name (shrunk, then cut short, when it is wider than the strip), the flat tab look (T.Tab: the
@@ -485,10 +490,12 @@ local function addTab(view, card)
   card.tab = T.Tab(tab, { flat = true })
 end
 
--- Lays the tabs out left to right, starting a new line where the next would run past the strip; sizes the strip.
+-- Sizes the tabs to their names and lays them out left to right, starting a new line where the next would run past
+-- the strip; sizes the strip.
 local function placeTabs(view)
   local x, y = 0, 0
   for _, card in ipairs(view.cards) do
+    sizeTab(card.tab)
     local width = card.tab:GetWidth()
     if x > 0 and x + width > CARD_WIDTH then x, y = 0, y + TAB.height + TAB.gap end
     card.tab:SetPoint("TOPLEFT", view.strip, "TOPLEFT", x, -y)
@@ -1261,10 +1268,19 @@ function O.Toggle()
   if window and window:IsShown() then O.Hide() else O.Show() end
 end
 
--- Accent changes recolor the window's switches, segments and nav at once.
+-- Lays out again the tabs of every built page that has them (a font or Text size change makes their names wider or
+-- narrower).
+local function replaceTabs()
+  for _, view in pairs(pages) do
+    if view.cards[1] and view.cards[1].tab then placeTabs(view) end
+  end
+end
+
+-- Accent changes recolor the window's switches, segments and nav at once; font and Text size changes re-lay the tabs.
 T.OnChanged(function()
   if window and window:IsShown() then
     O.Refresh()
     markNav(O.current)
+    replaceTabs()
   end
 end)
