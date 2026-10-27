@@ -108,7 +108,7 @@ function AH.Recheck()
   AH.CheckUndercuts()
 end
 
--- Your auctions' events, through the helper's on (no handler runs in combat): the list came in,
+-- Your auctions' events, through the helper's on: the list came in,
 -- an auction was cancelled, one was posted (AUCTION_HOUSE_AUCTION_CREATED, the game's own signal
 -- for addons), one ran out, and the game's notices (one sold or ran out).
 function AH.ListenOwned(on)

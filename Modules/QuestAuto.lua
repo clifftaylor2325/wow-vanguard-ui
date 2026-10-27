@@ -166,7 +166,7 @@ end
 function QA.Finish()
   local choice = QA.RewardChoice()
   local name = choice > 0 and ns.QuestParts.Plain((ns.CallIf(_G, "GetQuestItemInfo", "choice", choice)))
-  ns.CallIf(_G, "GetQuestReward", choice > 0 and choice or nil)
+  ns.CallIf(_G, "GetQuestReward", choice)
   if count(ns.CallIf(_G, "GetNumQuestChoices")) > 1 and name then
     return ns.Chat(ns.Format(L["Turned in: {quest} (took {reward}: sells for most)"], { quest = title(), reward = name }))
   end

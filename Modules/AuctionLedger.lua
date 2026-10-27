@@ -367,7 +367,7 @@ function AH.BuildHistory(c)
   c.historyToggle:SetPoint("TOPRIGHT", 0, 2)
 end
 
--- The ledger's events, through the helper's on (none in combat): your auctions list, the notices,
+-- The ledger's events, through the helper's on: your auctions list, the notices,
 -- an auction run out or cancelled, and the inbox. The session's sales count from now, and old
 -- records go.
 function AH.ListenLedger(on)

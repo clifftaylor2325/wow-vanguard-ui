@@ -591,14 +591,108 @@ it("the test tile keeps the keys it reads from the game, and passes Escape and m
   expect([passed("ESCAPE"), passed("LSHIFT")], "Escape and a lone modifier go on").toEqual([true, true]);
   addon.world.combat(true);
   expect(passed("F1"), "in a fight the call is left alone").toBe(null);
-  expect(addon.eval(`return __wfgStub.frames[${tile}].result:GetText()`), "though the key still reads").toBe("F1 -> nothing bound");
   addon.world.combat(false);
+  addon.hover(null);
   addon.eval("ns.Client.has.keyPropagate = false");
   expect(passed("F1"), "a client that cannot pass keys on is left alone").toBe(null);
   expect(addon.eval(`return __wfgStub.frames[${tile}].__kb`), "the tile reads keys while the pointer is on it").toBe(true);
   addon.hover(null);
   expect(addon.eval(`return __wfgStub.frames[${tile}].__kb`), "and gives the keyboard back when it leaves").toBe(false);
 });
+it("the test tile does not take the keyboard in a fight, whether the pointer was on it first or arrives later", () => {
+  const addon = priest();
+  addon.eval('ns.Options.Show("clickcast")');
+  const tile = widget(addon, "w.result ~= nil and w.bar ~= nil");
+  addon.eval(`__wfgStub.frames[${tile}].EnableKeyboard = function(self, on) self.__kb = on end`);
+  // Whether the tile has its keyboard on.
+  const keyboard = () => addon.eval(`return __wfgStub.frames[${tile}].__kb`);
+  addon.hover(tile);
+  expect(keyboard(), "out of a fight it reads keys").toBe(true);
+  addon.world.combat(true);
+  expect(keyboard(), "a fight starting with the pointer on it lets the keyboard go").toBe(false);
+  addon.hover(null);
+  addon.hover(tile);
+  expect(keyboard(), "entering it in the fight leaves the keyboard off").toBe(false);
+  addon.world.combat(false);
+  addon.hover(null);
+  addon.hover(tile);
+  expect(keyboard(), "and entering it after the fight reads keys again").toBe(true);
+});
+
+it("a rebuilt Click casting page's new test tile lets go of the keyboard when a fight starts", () => {
+  const addon = priest();
+  addon.eval('ns.Options.Show("clickcast")');
+  expect(addon.eval('return __click("More modifiers")'), "the columns button rebuilds the page").toBe(true);
+  const tiles = addon.frames("w.result ~= nil and w.bar ~= nil");
+  expect(tiles.length, "the old tile is still around beside the new one").toBe(2);
+  const tile = tiles[1].id;
+  addon.eval(`__wfgStub.frames[${tile}].EnableKeyboard = function(self, on) self.__kb = on end`);
+  addon.hover(tile);
+  addon.world.combat(true);
+  expect(addon.eval(`return __wfgStub.frames[${tile}].__kb`), "the rebuilt page's tile lets go").toBe(false);
+});
+
+// A priest's Click casting page open, its test tile's keyboard tracked in __kb; answers the tile and a reader of __kb.
+function tileWithKeyboard() {
+  const addon = priest();
+  addon.eval('ns.Options.Show("clickcast") ns.Options.ShowTab("Try it")');
+  const tile = widget(addon, "w.result ~= nil and w.bar ~= nil");
+  addon.eval(`__wfgStub.frames[${tile}].EnableKeyboard = function(self, on) self.__kb = on end`);
+  // Whether the tile has its keyboard on.
+  const keyboard = () => addon.eval(`return __wfgStub.frames[${tile}].__kb`);
+  return { addon, tile, keyboard };
+}
+it("the test tile reads keys again when the fight ends with the pointer still on it", () => {
+  const { addon, tile, keyboard } = tileWithKeyboard();
+  addon.hover(tile);
+  addon.world.combat(true);
+  expect(keyboard(), "the fight took the keyboard off").toBe(false);
+  addon.world.combat(false);
+  expect(keyboard(), "the pointer stayed on the tile, so it reads keys again").toBe(true);
+});
+it("the test tile stays off the keyboard when the fight ends with the pointer elsewhere", () => {
+  const { addon, tile, keyboard } = tileWithKeyboard();
+  addon.hover(tile);
+  addon.world.combat(true);
+  addon.hover(null);
+  addon.world.combat(false);
+  expect(keyboard(), "the pointer left in the fight").toBe(false);
+});
+it("a spell picker opened in a fight does not take the keyboard; one opened after it does", () => {
+  const addon = priest();
+  addon.eval('ns.Options.Show("clickcast")');
+  addon.click(cell(addon, "ctrl-BUTTON2"));
+  addon.eval("Vanguard_SpellPicker.EnableKeyboard = function(self, on) self.__kb = on end");
+  // Clicks the cell open and answers whether the picker shows, and whether its keyboard is on.
+  const keyboardAfterOpening = () => {
+    addon.click(cell(addon, "ctrl-BUTTON2"));
+    return [addon.frame("Vanguard_SpellPicker").visible, addon.eval("return Vanguard_SpellPicker.__kb")];
+  };
+  addon.world.combat(true);
+  expect(keyboardAfterOpening(), "opened in the fight, shown with the keyboard off").toEqual([true, false]);
+  addon.world.combat(false);
+  addon.eval("Vanguard_SpellPicker:Hide()");
+  expect(keyboardAfterOpening(), "opened after it, the keyboard is on again").toEqual([true, true]);
+});
+it("a spell picker opened in a fight reads keys when the fight ends, if it is still up", () => {
+  const addon = priest();
+  addon.eval('ns.Options.Show("clickcast")');
+  addon.world.combat(true);
+  addon.click(cell(addon, "ctrl-BUTTON2"));
+  addon.eval("Vanguard_SpellPicker.EnableKeyboard = function(self, on) self.__kb = on end");
+  addon.world.combat(false);
+  expect(addon.eval("return Vanguard_SpellPicker.__kb"), "up at the end of the fight: the keyboard is on").toBe(true);
+});
+it("a spell picker closed during the fight it opened in stays off the keyboard", () => {
+  const addon = priest();
+  addon.eval('ns.Options.Show("clickcast")');
+  addon.world.combat(true);
+  addon.click(cell(addon, "ctrl-BUTTON2"));
+  addon.eval("Vanguard_SpellPicker.EnableKeyboard = function(self, on) self.__kb = on end Vanguard_SpellPicker.__kb = false Vanguard_SpellPicker:Hide()");
+  addon.world.combat(false);
+  expect(addon.eval("return Vanguard_SpellPicker.__kb"), "hidden at the end of the fight: left alone").toBe(false);
+});
+
 it("the Click casting page shows one Reset this page card however often the window opened before a rebuild", () => {
   const addon = loggedIn(CLICK_LUA + "C_ClickBindings = {}");
   for (let i = 0; i < 3; i++) addon.eval('ns.Options.Show("general") ns.Options.Hide() Vanguard_Options:Hide()');

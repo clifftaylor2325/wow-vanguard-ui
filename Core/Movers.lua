@@ -196,7 +196,7 @@ local function place(m)
     ns.MoverLinks.Remember(m.key, saved()[m.key])
     m.frame:SetClampedToScreen(true)
     anchor(m.frame, m)
-  end)
+  end, "place " .. m.key)
 end
 
 -- After a UI scale or screen change: puts every anchored mover (and its handle) at its link's spot again, since
@@ -338,12 +338,12 @@ end
 ns.EDIT_NOTE = L["The labeled handles are Vanguard's frames: drag them here too (right-click one for more)."]
 
 -- The note under Edit Mode's window, made on first use (it shows and hides with that window). Edit Mode's window
--- resizes itself from every child frame, so the note is marked ignoreInLayout: hung below the window, it would
--- otherwise count as part of the window and stretch it each time the game lays it out.
+-- resizes itself from every child frame, reading each one's ignoreInLayout, so the note is a frame on UIParent, never
+-- the window's child: hung below the window, a child would count as part of the window, and a value of Vanguard's
+-- read there taints the game's own Edit Mode code (and later the bars it lays out).
 local function editNote(edit)
   if editModeNote then return editModeNote end
-  local note = T.Panel(CreateFrame("Frame", "Vanguard_EditModeNote", edit), { accent = true })
-  note.ignoreInLayout = true
+  local note = T.Panel(CreateFrame("Frame", "Vanguard_EditModeNote", UIParent), { accent = true })
   note:SetSize(320, 36)
   note:SetPoint("TOP", edit, "BOTTOM", 0, -6)
   note.text = T.Text(note:CreateFontString(nil, "OVERLAY"), "small")
@@ -354,10 +354,13 @@ local function editNote(edit)
 end
 
 -- Edit Mode opened: Vanguard's handles show too (without the grid: the game
--- draws its own), with the note (as tall as its text needs at this text size), unless that's switched off.
+-- draws its own), with the note (as tall as its text needs at this text size, in the window's strata just above
+-- it), unless that's switched off.
 function ns.EditModeOpened(edit)
   if not unlocked and ns.MoverOptions().editMode then editUnlocked = ns.UnlockForEditMode() end
   local note = editNote(edit)
+  note:SetFrameStrata(edit:GetFrameStrata())
+  note:SetFrameLevel(edit:GetFrameLevel() + 1)
   note:SetHeight(note.text:GetStringHeight() + 2 * T.SPACE.tight)
   note:SetShown(unlocked)
 end

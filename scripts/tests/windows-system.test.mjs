@@ -259,9 +259,9 @@ const EDIT_ENV = SYSTEM_ENV + `
 
 // A part's state in the Edit Mode windows: art faded, panelled, title in the theme font.
 const editState = (addon, name) => addon.eval(`local f = ${name}
-  return { art = __faded(f), border = f.Border.__alpha, panel = __panelled(f), title = __titled(f.Title), painted = ns.Theme.PaintedCount() }`);
+  return { art = __faded(f), border = f.Border.__alpha, panel = __panelled(__panelHost(f)), title = __titled(f.Title), painted = ns.Theme.PaintedCount() }`);
 
-it("Edit Mode window: skinned, its panel kept out of the game's layout, and Vanguard's note still shows", () => {
+it("Edit Mode window: skinned, its panel on a backdrop of Vanguard's own, and Vanguard's note still shows", () => {
   const addon = loggedIn(EDIT_ENV);
   addon.eval("EditModeManagerFrame:Show()");
   const first = editState(addon, "EditModeManagerFrame");
@@ -269,16 +269,18 @@ it("Edit Mode window: skinned, its panel kept out of the game's layout, and Vang
   expect(addon.eval(`local m = EditModeManagerFrame
     return { __looks(m.LayoutLabel, "label", "text"), __panelled(m.SaveChangesButton), __panelled(m.RevertAllChangesButton), m.CloseButton.__piece.__alpha }`),
     "the layout label, Save and Revert buttons and close button themed").toEqual([true, true, true, 0]);
-  expect(addon.eval(`local m, marked, own = EditModeManagerFrame, 0, 0
-    for _, piece in ipairs({ m.Border, m.SaveChangesButton, m.CloseButton }) do if piece.ignoreInLayout then own = own + 1 end end
-    for _, r in ipairs({ m:GetRegions() }) do if r.ignoreInLayout then marked = marked + 1 end end
-    return { marked > 0, own }`), "the panel's pieces are marked ignoreInLayout; the game's own parts are not").toEqual([true, 0]);
-  expect(addon.eval("return { Vanguard_EditModeNote ~= nil and Vanguard_EditModeNote:IsShown(), Vanguard_EditModeNote.text:GetText() == ns.EDIT_NOTE, Vanguard_EditModeNote.__points.TOP.rel == EditModeManagerFrame, Vanguard_EditModeNote.ignoreInLayout == true }"),
-    "Vanguard's Edit Mode note still shows under the window, with its text, and stays out of the window's layout").toEqual([true, true, true, true]);
+  expect(addon.eval(`local m = EditModeManagerFrame
+    local back = __panelHost(m)
+    return { __vanguardPieces(m), back ~= m and back:GetParent() == UIParent, back:GetFrameStrata() == m:GetFrameStrata(), back:GetFrameLevel() == m:GetFrameLevel() - 1 }`),
+    "nothing of Vanguard's among the window's own children and regions (the game lays it out from them): the panel is on a backdrop on UIParent, just under the window").toEqual([0, true, true, true]);
+  expect(addon.eval(`local n = Vanguard_EditModeNote
+    return { n ~= nil and n:IsShown(), n.text:GetText() == ns.EDIT_NOTE, n.__points.TOP.rel == EditModeManagerFrame, n:GetParent() == UIParent, n.ignoreInLayout == nil,
+      n:GetFrameStrata() == EditModeManagerFrame:GetFrameStrata(), n:GetFrameLevel() == EditModeManagerFrame:GetFrameLevel() + 1 }`),
+    "Vanguard's Edit Mode note still shows under the window, with its text, on UIParent (never the window's child) in the window's strata just above it").toEqual([true, true, true, true, true, true, true]);
   addon.eval("EditModeManagerFrame:Hide() EditModeManagerFrame:Show()");
   expect(editState(addon, "EditModeManagerFrame").painted, "showing it again paints nothing new").toBe(first.painted);
   addon.eval("EditModeManagerFrame:Hide()");
-  expect(addon.eval("return Vanguard_EditModeNote:IsShown()"), "and the note hides with the window").toBe(false);
+  expect(addon.eval("return { Vanguard_EditModeNote:IsShown(), __panelHost(EditModeManagerFrame):IsShown() }"), "and the note and the backdrop hide with the window").toEqual([false, false]);
 });
 
 it("Edit Mode window: switched off it stays the game's (the note still shows), and a bare client is fine", () => {
@@ -301,6 +303,7 @@ it("Edit Mode system settings: the dialog, its Revert button, and the extra butt
   addon.eval(`${d}:Hide() ${d}:Show()`);
   addon.eval(`${d}:UpdateExtraButtons()`);
   expect(addon.eval(`return { __panelled(${d}.Buttons.Extra1), #({ ${d}:GetChildren() }) > 0 }`), "a second show hooks once, a later button is still themed").toEqual([true, true]);
+  expect(addon.eval(`return { __vanguardPieces(${d}), __vanguardPieces(${d}.Buttons) }`), "nothing of Vanguard's among the dialog's or its button row's own children and regions").toEqual([0, 0]);
 });
 
 it("Edit Mode dialogs: layout, import, import link and unsaved changes get the panel, buttons and name box", () => {
@@ -589,10 +592,10 @@ it("help window, report window and ticket status in the theme, the ticket icon k
   addon.eval("HelpFrame:Show() ReportFrame:Show() TicketStatusFrame:Show()");
   expect(frameState(addon, "HelpFrame"), "help: the window skin").toMatchObject({ art: 0, nine: 0, panel: true, x: 0, title: true });
   expect(addon.eval(`local r = ReportFrame
-    return { __faded(r), r.Border.__alpha, __panelled(r), __titled(r.TitleText), r.CloseButton.__piece.__alpha, __panelled(r.ReportButton), __panelled(r.ScreenshotReportingFrame.TakeScreenshotButton) }`),
+    return { __faded(r), r.Border.__alpha, __panelled(__panelHost(r)), __titled(r.TitleText), r.CloseButton.__piece.__alpha, __panelled(r.ReportButton), __panelled(r.ScreenshotReportingFrame.TakeScreenshotButton) }`),
     "report: art and Border faded, panel, title, close, Report and screenshot buttons").toEqual([0, 0, true, true, 0, true, true]);
-  expect(addon.eval(`local marked = 0 for _, r in ipairs({ ReportFrame:GetRegions() }) do if r.ignoreInLayout then marked = marked + 1 end end
-    return { marked > 0, ReportFrame.Border.ignoreInLayout == nil }`), "the report window's panel pieces stay out of its layout").toEqual([true, true]);
+  expect(addon.eval("return { __vanguardPieces(ReportFrame), __panelled(__panelHost(ReportFrame)), __panelHost(ReportFrame):GetParent() == UIParent }"),
+    "nothing of Vanguard's among the report window's own children and regions: its panel is on a backdrop on UIParent").toEqual([0, true, true]);
   expect(addon.eval(`return { __faded(TicketStatusFrame), TicketStatusFrameIcon.__alpha ~= 0, __panelled(TicketStatusFrame), TicketStatusFrameButton.NineSlice.__piece.__alpha, __looks(TicketStatusTitleText, "small", "text") }`),
     "ticket status: art faded, the ticket icon kept, a panel, its button's backdrop faded, its title light").toEqual([0, true, true, 0, true]);
   expect(addon.eval(`local well = HelpFrame.Browser.BrowserInset
@@ -1067,15 +1070,14 @@ it("Edit Mode window: layout dropdown, the grid slider, the switches and the acc
   expect(addon.eval(`local well = EditModeManagerFrame.AccountSettings.SettingsContainer
     local rows = ({ well.ScrollChild.AdvancedOptionsContainer:GetChildren() })[4]
     local row = ({ rows:GetChildren() })[1]
-    local marked = 0 for _, r in ipairs({ well:GetRegions() }) do if r.ignoreInLayout then marked = marked + 1 end end
-    return { ns.Theme.CheckParts(row.Button) ~= nil, __panelled(well), well.BorderArt.__alpha, __barred(well.ScrollBar), marked > 0, well.BorderArt.ignoreInLayout == nil }`),
-    "an account settings row's check box, the options well an inset panel (its pieces out of the layout, the game's own parts not) with its ring faded, its scroll bar themed").toEqual([true, true, 0, true, true, true]);
+    return { ns.Theme.CheckParts(row.Button) ~= nil, __panelled(__panelHost(well)), well.BorderArt.__alpha, __barred(well.ScrollBar), __vanguardPieces(well), __panelHost(well):GetParent() == UIParent }`),
+    "an account settings row's check box, the options well an inset panel (on a backdrop on UIParent, nothing of Vanguard's in the well) with its ring faded, its scroll bar themed").toEqual([true, true, 0, true, 0, true]);
   expect(addon.eval(`local adv = EditModeManagerFrame.AccountSettings.SettingsContainer.ScrollChild.AdvancedOptionsContainer
     local fs = adv.CombatTitle.Title
     local x = EditModeManagerFrame.AccountSettings.Expander
-    local held = 0 for _, c in ipairs({ x:GetChildren() }) do if c.ignoreInLayout then held = held + 1 end end
-    return { ns.Theme.RoleSize("section") == select(2, fs:GetFont()), fs:GetText(), ns.Theme.DividerParts(x.Divider) ~= nil, x.Divider.__alpha, held }`),
-    "a section title a small capitals head; the expander's divider one pixel of divider, its line kept out of the expander's layout").toEqual([true, "COMBATTITLE", true, 0, 1]);
+    local line = ns.Theme.DividerParts(x.Divider)
+    return { ns.Theme.RoleSize("section") == select(2, fs:GetFont()), fs:GetText(), line ~= nil, x.Divider.__alpha, __vanguardPieces(x), line.holder:GetParent() == __panelHost(x) }`),
+    "a section title a small capitals head; the expander's divider one pixel of divider, its line on the expander's backdrop, nothing of Vanguard's in the expander").toEqual([true, "COMBATTITLE", true, 0, 0, true]);
   const painted = addon.eval("return ns.Theme.PaintedCount()");
   addon.eval("EditModeManagerFrame:Hide() EditModeManagerFrame:Show()");
   expect(addon.eval("return ns.Theme.PaintedCount()"), "showing it again paints nothing new").toBe(painted);
@@ -1147,9 +1149,61 @@ const LAYOUT_POPUP_ENV = `${TITLE_LUA}
 it("popups: the panel and shadow stay out of the popup's own layout, so a skinned popup is as tall as the game's", () => {
   const addon = loggedIn(LAYOUT_POPUP_ENV);
   addon.eval("StaticPopup1:Show() TestOnlyPopupTwin:Show()");
-  expect(addon.eval("return ns.Theme.Padding(StaticPopup1)"), "the popup has the window panel, out past its edges").toBe(12);
+  expect(addon.eval("return ns.Theme.Padding(__panelHost(StaticPopup1))"), "the popup has the window panel, out past its edges").toBe(12);
   const twin = addon.eval("return __layout(TestOnlyPopupTwin)");
   expect(twin, "the game's popup: its height, and its top to the buttons' bottom").toEqual([81, 65]);
   expect(addon.eval("return __layout(StaticPopup1)"), "the skinned popup lays out the same").toEqual(twin);
   expect(addon.eval("return { StaticPopup1.BG.ignoreInLayout == nil, StaticPopup1.Text.ignoreInLayout == nil }"), "the game's own parts are left in it").toEqual([true, true]);
+});
+
+// S6-1: StaticPopup_Show runs the popup's Layout, which reads every child's and region's ignoreInLayout; a value of
+// Vanguard's there tainted the caller, and later a protected Accept (deleting an item). The panel is on a backdrop.
+it("popups: nothing of Vanguard's among the popup's children and regions; its panel is on a backdrop on UIParent filling it", () => {
+  const addon = loggedIn(LAYOUT_POPUP_ENV);
+  addon.eval("StaticPopup1:Show()");
+  expect(addon.eval(`local p = StaticPopup1
+    local back = __panelHost(p)
+    return { __vanguardPieces(p), back ~= p and back:GetParent() == UIParent, back.__points.TOPLEFT.rel == p, back.__points.BOTTOMRIGHT.rel == p, back:IsShown() }`),
+    "no Vanguard piece in the popup; the backdrop is UIParent's, on the popup's corners, showing").toEqual([0, true, true, true, true]);
+  expect(addon.eval(`local p, inset = StaticPopup1, ns.Theme.PixelRound(StaticPopup1, ns.Theme.CONTROL.inset - 12)
+    local c = p.CloseButton.__points.CENTER
+    return { c.rel == p, c.x == -inset, c.y == -inset }`), "the close button stays the popup's, in the panel's corner as before (counting the panel's reach)").toEqual([true, true, true]);
+});
+
+it("popups: the backdrop follows the popup's strata and level on each show, and hides with it", () => {
+  const addon = loggedIn(LAYOUT_POPUP_ENV);
+  addon.eval("StaticPopup1:SetFrameStrata('DIALOG') StaticPopup1:SetFrameLevel(5) StaticPopup1:Show()");
+  // The backdrop's strata, level and whether it shows.
+  const place = () => addon.eval("local b = __panelHost(StaticPopup1) return { b:GetFrameStrata(), b:GetFrameLevel(), b:IsShown() }");
+  expect(place(), "in the popup's strata, one level under it").toEqual(["DIALOG", 4, true]);
+  addon.eval("StaticPopup1:Hide()");
+  expect(place()[2], "hidden with the popup").toBe(false);
+  addon.eval("StaticPopup1:SetFrameStrata('FULLSCREEN_DIALOG') StaticPopup1:SetFrameLevel(0) StaticPopup1:Show()");
+  expect(place(), "the game moved it: followed on the next show, never below level 0").toEqual(["FULLSCREEN_DIALOG", 0, true]);
+});
+
+it("popups: shown and hidden in a fight, the backdrop is nothing protected and nothing is blocked", () => {
+  const addon = loggedIn(LAYOUT_POPUP_ENV);
+  setCombat(addon, true);
+  addon.eval("StaticPopup1:Show()");
+  expect(addon.eval("return { ns.Theme.Padding(__panelHost(StaticPopup1)) == 12, __vanguardPieces(StaticPopup1), (__panelHost(StaticPopup1):IsProtected()) }"),
+    "painted, on an unprotected frame of Vanguard's own").toEqual([true, 0, false]);
+  addon.eval("StaticPopup1:Hide() StaticPopup1:Show()");
+  expect(addon.eval("return __panelHost(StaticPopup1):IsShown()"), "and shown and hidden with the popup in the fight").toBe(true);
+  setCombat(addon, false);
+});
+
+it("placing a layout window's close button reads the panel's padding without making its backdrop", () => {
+  const addon = loggedIn(SYSTEM_ENV);
+  addon.eval(`local f = CreateFrame("Frame", "StaticPopup4", UIParent)
+    close = CreateFrame("Button", nil, f)
+    close:SetPoint("TOPRIGHT", f, "TOPRIGHT", 0, 0)`);
+  // Places the close button, answers its x offset and whether the window has a backdrop.
+  const placed = () => addon.eval(`local GW = ns.GetModule("Windows") GW.PlaceControls(StaticPopup4, close)
+    return { select(4, close:GetPoint(1)), GW.MadeBackdrop(StaticPopup4) ~= nil }`);
+  const [bare, made] = placed();
+  expect(made, "the backdrop is not made for the placement").toBe(false);
+  addon.eval(`ns.Theme.Panel(ns.GetModule("Windows").PanelHost(StaticPopup4), { pad = 12 })`);
+  const [padded, afterwards] = placed();
+  expect([afterwards, Math.round(padded - bare)], "once the panel is painted, the button sits its 12 padding closer to the window").toEqual([true, 12]);
 });

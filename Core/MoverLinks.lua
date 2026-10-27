@@ -66,8 +66,9 @@ local function entry(key)
 end
 
 -- A field of a saved entry when it is a table: entry.rel or entry.match.
+-- A damaged entry that is not a table (a number or boolean) has none.
 local function part(p, field)
-  return p and type(p[field]) == "table" and p[field] or nil
+  return type(p) == "table" and type(p[field]) == "table" and p[field] or nil
 end
 
 -- The mover a frame is anchored to, or nil.

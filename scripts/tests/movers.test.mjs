@@ -137,6 +137,16 @@ it("per-frame scale: dragging a scaled handle, and combat", () => {
   expect(addon.eval("return __box:GetScale()"), "and applies when combat ends").toBe(0.5);
 });
 
+it("scale and opacity steps in combat queue one placement per mover, and the last values apply when the fight ends", () => {
+  const addon = loggedIn(BOX);
+  setCombat(addon, true);
+  const before = addon.eval("return ns.QueuedCount()");
+  addon.eval('for i = 1, 50 do ns.SetMoverScale("box", 0.5 + i * 0.005) ns.SetMoverAlpha("box", 0.4 + i * 0.01) end');
+  expect(addon.eval("return ns.QueuedCount()") - before, "fifty steps of each wait as one entry").toBe(1);
+  setCombat(addon, false);
+  expect(addon.eval("return { __box:GetScale(), __box:GetAlpha() }"), "the latest scale and opacity are what the frame gets").toEqual([0.75, 0.9]);
+});
+
 it("handles stay readable and grabbable at any Scale %: their label keeps its size and a thin frame's handle its 40 x 14 minimum", () => {
   const addon = loggedIn(BOX + "__thin = CreateFrame('Frame', 'TESTONLY_Thin', UIParent) __thin:SetSize(240, 10) ns.Mover(__thin, 'thin', 'TEST-ONLY thin', { 'BOTTOM', 'BOTTOM', 0, 300 })");
   addon.eval('ns.SetMoverScale("box", 0.5) ns.SetMoverScale("thin", 0.5)');
@@ -158,6 +168,14 @@ it("a damaged saved position (a hand-edited profile string) falls back to the de
   expect(addon.eval("return { ns.MoverLook('uf_target') }"), "a scale out of range is kept to it, an opacity that isn't a number is 1").toEqual([0.5, 1]);
   addon.eval('ns.Profile().positions.box = { point = "TOPLEFT", relPoint = "TEST-ONLY", x = "12", y = {} } ns.SetMoverDefault("box", { "BOTTOM", "BOTTOM", 0, 100 })');
   expect(addon.eval("return { ns.MoverPoint('box') }"), "a good point keeps; a bad relative point is the point; offsets that aren't numbers read as numbers or 0").toEqual(["TOPLEFT", "TOPLEFT", 12, 0]);
+});
+
+it("a saved position that is a number or a boolean leaves the unit frames loaded at their default spot", () => {
+  const clean = loggedIn().eval("return { ns.MoverPoint('uf_player') }");
+  const addon = loggedIn(BOX, { savedVariables: `VanguardDB.profiles = { Default = { positions = { uf_player = 5, uf_target = true } } }` });
+  expect(addon.eval("return { ns.GetModule('UnitFrames').enabled, #ns.errors }"), "the unit frames still load, with nothing to report").toEqual([true, 0]);
+  expect(addon.eval("return { ns.MoverPoint('uf_player') }"), "a number entry leaves the default").toEqual(clean);
+  expect(addon.eval("return { ns.MoverPoint('uf_target') }")[0], "a boolean entry leaves a default point").toBeTypeOf("string");
 });
 
 it("a saved offset that is infinite, NaN or absurd is kept to ns.MAX_OFFSET before it reaches SetPoint", () => {

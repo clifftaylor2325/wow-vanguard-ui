@@ -265,8 +265,19 @@ local function onKey(t, key)
   if not ns.InCombat() and ns.Client.Has("keyPropagate") then t:SetPropagateKeyboardInput(not used) end
 end
 
+-- A fight starts: the table lets the keyboard go (it keeps no hold into a fight; only EnableKeyboard, as
+-- SetPropagateKeyboardInput is restricted in a fight, and with the keyboard off its last setting is inert),
+-- and after the fight takes it back if the mouse is still over it.
+local function releaseInCombat(t)
+  ns.On("PLAYER_REGEN_DISABLED", function()
+    t:EnableKeyboard(false)
+    ns.AfterCombat(function() focusKeys(t, t:IsShown() and t:IsMouseOver()) end, t)
+  end)
+end
+
 -- The keys: the table has the keyboard while the mouse is over it, never once hidden.
 local function keyInput(t)
+  releaseInCombat(t)
   t:SetScript("OnKeyDown", onKey)
   t:SetScript("OnEnter", function(self) focusKeys(self, true) end)
   t:SetScript("OnLeave", function(self) focusKeys(self, self:IsMouseOver()) end)

@@ -10,7 +10,6 @@
 local ADDON, ns = ...
 
 -- Per-frame state kept off the game's frames (Core/Events.lua, ns.FrameState).
-local vgBackdrop = ns.FrameState("vgBackdrop")
 local vgTimer = ns.FrameState("vgTimer")
 
 local T = ns.Theme
@@ -189,38 +188,22 @@ GW.Add("pvp", { "PVPReadyPopup" }, GW.SkinPvPReadyPopup)
 -- How far the panel behind a widget container reaches out past its widgets (units).
 GW.WIDGET_PAD = 4
 
--- Whether a widget container shows any widget now: its own count, else whether it holds a frame besides
--- Vanguard's backdrop.
+-- Whether a widget container shows any widget now: its own count, else whether it holds any frame.
 local function hasWidgets(box)
   if type(box.HasAnyWidgetsShowing) == "function" then return box:HasAnyWidgetsShowing() == true end
-  return select("#", box:GetChildren()) > 1
-end
-
--- Shows the panel behind a widget container while it shows widgets, and hides it while it is empty.
-local function fitBackdrop(box)
-  vgBackdrop[box]:SetShown(hasWidgets(box))
-end
-
--- Vanguard's backdrop for a widget container: a frame of its own filling the container, at the container's level
--- (the widgets sit above it), left out of the container's layout (else the container could never shrink), with a
--- flat HUD panel.
-local function makeBackdrop(box)
-  local back = CreateFrame("Frame", nil, box)
-  back.ignoreInLayout = true
-  back:SetAllPoints(box)
-  back:SetFrameLevel(box:GetFrameLevel())
-  T.HudPanel(back, { pad = GW.WIDGET_PAD })
-  return back
+  return select("#", box:GetChildren()) > 0
 end
 
 -- A widget container (the flags, bases and scores at the top of the screen, the capture bars under the minimap):
--- the panel behind its widgets, shown only while it has some, checked again as the container resizes and after
--- the game lays its widgets out. The widgets themselves stay the game's.
+-- a flat HUD panel behind its widgets, on Vanguard's backdrop for it (GW.Backdrop: the container lays itself out
+-- from its children, so the backdrop is never one of them), shown only while it has widgets, checked again as the
+-- container resizes and after the game lays its widgets out. The widgets themselves stay the game's.
 function GW.SkinWidgetBox(box)
-  vgBackdrop[box] = vgBackdrop[box] or makeBackdrop(box)
-  fitBackdrop(box)
-  GW.HookScriptOnce(box, "OnSizeChanged", "hook OnSizeChanged", fitBackdrop)
-  GW.HookAfter(box, "UpdateWidgetLayout", fitBackdrop)
+  local backdropMade = GW.MadeBackdrop(box) ~= nil
+  T.HudPanel(GW.Backdrop(box, hasWidgets), { pad = GW.WIDGET_PAD })
+  if backdropMade then GW.FitBackdrop(box) end
+  GW.HookScriptOnce(box, "OnSizeChanged", "hook OnSizeChanged", GW.FitBackdrop)
+  GW.HookAfter(box, "UpdateWidgetLayout", GW.FitBackdrop)
 end
 
 GW.Add("pvp", { "UIWidgetTopCenterContainerFrame", "UIWidgetBelowMinimapContainerFrame" }, GW.SkinWidgetBox)

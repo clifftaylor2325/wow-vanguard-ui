@@ -25,8 +25,8 @@ const EXCEPTIONS = {
   LFGBrowseFrame: { hooked: true, why: "a page inside the group finder (which has the panel): its Inset is panelled" },
   LFGWhoListFrame: { hooked: true, why: "a page inside the group finder (which has the panel): its Inset is panelled" },
   PVPReadyPopup: { hooked: true, why: "it draws itself on its ReadyStatus child, which gets the panel" },
-  UIWidgetTopCenterContainerFrame: { hooked: true, why: "a HUD widget box: its panel is on a backdrop child, shown only while it has widgets" },
-  UIWidgetBelowMinimapContainerFrame: { hooked: true, why: "a HUD widget box: its panel is on a backdrop child, shown only while it has widgets" },
+  UIWidgetTopCenterContainerFrame: { hooked: true, why: "a HUD widget box: its panel is on a backdrop of its own, shown only while it has widgets" },
+  UIWidgetBelowMinimapContainerFrame: { hooked: true, why: "a HUD widget box: its panel is on a backdrop of its own, shown only while it has widgets" },
   TimerTracker: { hooked: true, why: "a full-screen holder: each countdown bar it makes gets the panel" },
   MirrorTimerContainer: { hooked: true, why: "the breath and fatigue bars' holder: each timer it holds gets the panel" },
   PvPObjectiveBannerFrame: { hooked: true, why: "a banner whose art is its animation: only its fonts change" },
@@ -63,11 +63,12 @@ const openAll = (group) => `
   end
 `;
 
-// Every window of the group, by name: { hooked (the skin watches it), panel (a Vanguard texture on it) }.
+// Every window of the group, by name: { hooked (the skin watches it), panel (a Vanguard texture on it, or on its
+// backdrop for a window the game lays out from its parts) }.
 const results = (addon, group) => addon.eval(`local GW, out = ns.GetModule("Windows"), {}
   for _, name in ipairs(GW.ORDER) do
     local f = _G[name]
-    if GW.REGISTERED[name].group == "${group}" then out[name] = { hooked = ns.FrameState('vgWindow')[f] == true, panel = __panel(f) } end
+    if GW.REGISTERED[name].group == "${group}" then out[name] = { hooked = ns.FrameState('vgWindow')[f] == true, panel = __panel(__panelHost(f)) } end
   end
   return out`);
 
@@ -92,5 +93,26 @@ for (const group of GROUPS) {
     expect(wrong(got), "windows not skinned as expected").toEqual([]);
     if (group === "tabs") expect(Object.keys(got), "the tabs group dresses the other groups' windows and registers none").toEqual([]);
     else expect(Object.keys(got).length, "the group has windows").toBeGreaterThan(0);
+  });
+}
+
+// S6-1: the windows the game lays out from their own children and regions (GW.LAYOUT_WINDOWS: the popups, Edit Mode's
+// windows, the report window) read every child's and region's ignoreInLayout, so a value of Vanguard's there taints
+// the game's code. Each one, shown and skinned, holds nothing of Vanguard's: its panel is on a backdrop of Vanguard's
+// own on UIParent, filling it.
+for (const group of ["popups", "system"]) {
+  it(`${group}: a window the game lays out from its parts holds nothing of Vanguard's, its panel on a backdrop of its own`, () => {
+    const addon = loggedIn(groupEnv(group));
+    addon.eval(openAll(group));
+    const got = addon.eval(`local GW, out = ns.GetModule("Windows"), {}
+      for name in pairs(GW.LAYOUT_WINDOWS) do
+        local f, back = _G[name], ns.FrameState("vgBackdrop")[_G[name]]
+        if GW.REGISTERED[name].group == "${group}" then
+          out[name] = { __vanguardPieces(f), back:GetParent() == UIParent, back.__points.TOPLEFT.rel == f, __panel(back) }
+        end
+      end
+      return out`);
+    expect(Object.keys(got).length, "the group has such windows").toBeGreaterThan(0);
+    for (const [name, r] of Object.entries(got)) expect(r, `${name}: no Vanguard piece in it; the backdrop on UIParent, filling it, painted`).toEqual([0, true, true, true]);
   });
 }

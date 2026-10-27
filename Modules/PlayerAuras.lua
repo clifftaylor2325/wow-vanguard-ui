@@ -176,11 +176,17 @@ local function onWeapons(_, unit)
   if unit == nil or unit == "player" then PA.UpdateEnchants() end
 end
 
--- Module entry point (Core/Modules.lua): hide the game's buff frames, build
--- out of combat, and follow weapon changes (the container follows UNIT_AURA itself).
+-- Puts the game's buff frames away and builds Vanguard's in their place. Both wait for the fight to end after a
+-- login in combat, so the player is never left without a buff display.
+local function replace(settings)
+  for _, name in ipairs(PA.BLIZZARD) do UF.HideBlizzard(name) end
+  build(settings)
+end
+
+-- Module entry point (Core/Modules.lua): replace the game's buff frames out of
+-- combat, and follow weapon changes (the container follows UNIT_AURA itself).
 function PA.Enable(settings)
   PA.settings = settings
-  for _, name in ipairs(PA.BLIZZARD) do UF.HideBlizzard(name) end
-  ns.OutOfCombat(function() build(settings) end)
+  ns.OutOfCombat(function() replace(settings) end)
   for _, e in ipairs({ "UNIT_INVENTORY_CHANGED", "WEAPON_ENCHANT_CHANGED", "WEAPON_SLOT_CHANGED", "PLAYER_ENTERING_WORLD" }) do ns.On(e, onWeapons) end
 end

@@ -605,7 +605,7 @@ it("options: Up and Down walk the pages, Tab the rows, Enter presses one; other 
   press(addon, "TAB");
   addon.keys({ shift: false });
   const last = keyRow(addon);
-  expect([last[0], last[2], addon.eval("return Vanguard_Options.found:IsShown()")], "Shift-Tab goes back, and past the first wraps to the last row: the page's Reset this page, in its bar").toEqual(["Reset this page", true, true]);
+  expect([last[0], last[2], addon.eval("return Vanguard_Options.found:IsShown()")], "Shift-Tab goes back, and past the first wraps to the last row that works: the page's Reset this page is greyed out until something changed, so it is skipped").toEqual(["Reset theme", true, true]);
   press(addon, "TAB");
   expect(keyRow(addon), "and Tab from the last wraps to the first, scrolled back up").toEqual(["Safer colours", true, true]);
   press(addon, "TAB");
@@ -639,6 +639,35 @@ it("options: Up and Down walk the pages, Tab the rows, Enter presses one; other 
   setCombat(addon, true);
   setCombat(addon, false);
   expect(addon.eval("return Vanguard_Options.__kb"), "and a fight ending while it is closed doesn't change that").toBe(false);
+});
+
+it("options: Tab skips a greyed-out button row, so Enter can never press the Meter's report with the meter off", () => {
+  const addon = loggedIn(CLICK_LUA, { savedVariables: "VanguardDB.profiles.Default = { modules = { Meter = false } }" });
+  addon.eval('ns.Options.Show("tools")');
+  const reached = addon.eval(`local f, seen = Vanguard_Options, {}
+    for tab = 1, 10 do
+      if not ns.Options.ShowTab(tab) then break end
+      for n = 1, 40 do
+        f.__scripts.OnKeyDown(f, "TAB")
+        if f.focusRow then seen[f.focusRow.caption or "?"] = true end
+      end
+    end
+    return seen`);
+  expect(reached[addon.eval("return ns.L[\"Report the meter's top lines\"]")], "the greyed-out row never gets the keyboard").toBeUndefined();
+  expect(addon.eval("return #ns.errors"), "and nothing ran").toBe(0);
+});
+
+it("options: Enter on a row that was disabled after it took the keyboard does not press it", () => {
+  const addon = loggedIn(CLICK_LUA);
+  addon.eval('ns.Options.Show("general")');
+  // TEST-ONLY spy on the window's keyboard call.
+  addon.eval("Vanguard_Options.SetPropagateKeyboardInput = function(self, v) self.__passed = v end");
+  press(addon, "TAB");
+  addon.eval("local w = Vanguard_Options.focusRow __pressed = 0 w:SetScript('OnClick', function() __pressed = __pressed + 1 end) w:Disable()");
+  expect([press(addon, "ENTER")[1], addon.eval("return __pressed")], "the key is used and the greyed-out row does nothing").toEqual([false, 0]);
+  addon.eval("Vanguard_Options.focusRow:Enable()");
+  press(addon, "ENTER");
+  expect(addon.eval("return __pressed"), "once it is enabled again, Enter presses it").toBe(1);
 });
 
 // The focus ring on a row: { shown, the ring's colour, its and the gap's top-left x } (false if it never had one).

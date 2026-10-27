@@ -114,8 +114,81 @@ GW.INSIDES = {}
 -- edge to edge, like the spellbook's pages, included), and keeps the close button 12 in from the window.
 GW.PAD = 12
 -- The windows the game sizes from their own regions and child frames (ResizeLayoutFrame: a popup grows to fit what it
--- shows), by name: the pieces of the panel painted on them, which reach past the window's edge, stay out of that layout.
-GW.LAYOUT_WINDOWS = { StaticPopup1 = true, StaticPopup2 = true, StaticPopup3 = true, StaticPopup4 = true }
+-- shows, reading every child's and region's ignoreInLayout as it does), by name: their panel goes on Vanguard's
+-- backdrop (GW.Backdrop), so nothing of Vanguard's is among their children or regions, and the game reads no value of
+-- Vanguard's (one would taint the popup's caller, and later a protected Accept such as deleting an item).
+GW.LAYOUT_WINDOWS = {
+  StaticPopup1 = true, StaticPopup2 = true, StaticPopup3 = true, StaticPopup4 = true,
+  EditModeManagerFrame = true, EditModeSystemSettingsDialog = true, ReportFrame = true,
+}
+
+-- Backdrops ---------------------------------------------------------------------------------------
+
+do
+  -- Each backdrop by the game's frame it is for, and what else it waits for before it shows (GW.Backdrop's `when`).
+  local vgBackdrop = ns.FrameState("vgBackdrop")
+  local vgBackdropWhen = ns.FrameState("vgBackdropWhen")
+
+  -- Lays a frame's backdrop just under it: in its strata, one level below it (the game moves a popup to another
+  -- parent and level as it shows one), shown while the frame is visible and has what the backdrop waits for.
+  -- A frame without a backdrop is skipped.
+  ---@param frame table
+  function GW.FitBackdrop(frame)
+    local back, when = vgBackdrop[frame], vgBackdropWhen[frame]
+    if not back then return end
+    back:SetFrameStrata(frame:GetFrameStrata())
+    back:SetFrameLevel(math.max(0, frame:GetFrameLevel() - 1))
+    back:SetShown(frame:IsVisible() and (when == nil or when(frame)))
+  end
+
+  -- Hides a frame's backdrop as the frame hides.
+  local function hideBackdrop(frame)
+    vgBackdrop[frame]:Hide()
+  end
+
+  -- Vanguard's backdrop for one of the game's layout frames (it sizes itself from every child frame and region,
+  -- reading their ignoreInLayout, so nothing of Vanguard's may be among them): a frame of Vanguard's own on
+  -- UIParent, never a child or region of the game's frame, filling it and laid just under it, shown and hidden
+  -- with it (GW.FitBackdrop, hooked as it is made). The frame is never protected, so this is safe in combat.
+  -- when(frame), optional: what else the backdrop waits for before it shows. Made once per frame.
+  ---@param frame table
+  ---@param when? fun(frame: table): boolean
+  ---@return table
+  function GW.Backdrop(frame, when)
+    if vgBackdrop[frame] then return vgBackdrop[frame] end
+    local back = CreateFrame("Frame", nil, UIParent)
+    back:SetAllPoints(frame)
+    vgBackdrop[frame], vgBackdropWhen[frame] = back, when
+    frame:HookScript("OnShow", ns.Guard("backdrop shown", GW.FitBackdrop))
+    frame:HookScript("OnHide", ns.Guard("backdrop hidden", hideBackdrop))
+    GW.FitBackdrop(frame)
+    return back
+  end
+
+  -- A frame's backdrop when GW.Backdrop has made one; nil before, and nothing is made.
+  ---@param frame table
+  ---@return table|nil
+  function GW.MadeBackdrop(frame)
+    return vgBackdrop[frame]
+  end
+end
+
+-- The frame a window's panel goes on: its backdrop (GW.Backdrop) for a window the game sizes from its parts
+-- (GW.LAYOUT_WINDOWS), else the window itself.
+---@param frame table
+---@return table
+function GW.PanelHost(frame)
+  return GW.LAYOUT_WINDOWS[frame:GetName() or ""] and GW.Backdrop(frame) or frame
+end
+
+-- How far a window's panel reaches out past it (T.Padding of GW.PanelHost's frame), read without making the backdrop
+-- of a window the game sizes from its parts: 0 until its panel is painted.
+---@param frame table
+---@return number
+function GW.PanelPad(frame)
+  if GW.LAYOUT_WINDOWS[frame:GetName() or ""] then return T.Padding(GW.MadeBackdrop(frame)) end
+  return T.Padding(frame)
+end
 
 -- Skinning ------------------------------------------------------------------------------------
 
@@ -183,7 +256,7 @@ end
 -- placed them for its wider art). A close button the game put anywhere else stays there.
 function GW.PlaceControls(frame, close)
   if not atCorner(close, frame) then return end
-  T.PlaceClose(close, frame, controlDrop(frame))
+  T.PlaceClose(close, frame, controlDrop(frame), GW.PanelPad(frame))
   for _, key in ipairs(GW.MAX_MIN) do
     local box = frame[key]
     if type(box) == "table" and box.SetPoint then box:ClearAllPoints() box:SetPoint("CENTER", close, "CENTER", -T.CONTROL.step, 0) end
@@ -271,29 +344,10 @@ local function paintInset(frame)
   if type(inset) == "table" and inset.CreateTexture then T.Panel(inset, { inset = true, noSheen = true }) end
 end
 
--- The frame's regions and child frames, as a set.
-local function members(frame)
-  local set = {}
-  for _, r in ipairs({ frame:GetRegions() }) do set[r] = true end
-  for _, c in ipairs({ frame:GetChildren() }) do set[c] = true end
-  return set
-end
-
--- Runs fn(frame, ...) on a layout frame (the game's ResizeLayoutFrame sizes itself from every child region and frame)
--- and marks the pieces fn added to it ignoreInLayout, so Layout() leaves them out.
-function GW.InLayout(frame, fn, ...)
-  local before = members(frame)
-  fn(frame, ...)
-  for piece in pairs(members(frame)) do
-    if not before[piece] then piece.ignoreInLayout = true end
-  end
-end
-
 -- A window's flat opaque panel (the world never shows through a window) with a soft shadow `pad` units (default
--- GW.PAD) out past it, kept out of the layout of a window the game sizes from its parts (GW.LAYOUT_WINDOWS).
-local function paintPanel(frame, name, pad)
-  local opts = { shadow = true, pad = pad or GW.PAD, alpha = 1 }
-  if GW.LAYOUT_WINDOWS[name or ""] then GW.InLayout(frame, T.Panel, opts) else T.Panel(frame, opts) end
+-- GW.PAD) out past it, on the window or, for a window the game sizes from its parts, on its backdrop (GW.PanelHost).
+local function paintPanel(frame, pad)
+  T.Panel(GW.PanelHost(frame), { shadow = true, pad = pad or GW.PAD, alpha = 1 })
 end
 
 -- Skins one window: art faded (its content art kept), its Inset painted as an inset panel, the window's panel
@@ -303,7 +357,7 @@ function GW.Skin(frame, pad)
   GW.FadeWindowArt(frame)
   paintInset(frame)
   keepContent(frame, name)
-  paintPanel(frame, name, pad)
+  paintPanel(frame, pad)
   dressParts(frame, name)
 end
 

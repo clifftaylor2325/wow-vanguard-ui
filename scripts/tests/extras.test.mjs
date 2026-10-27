@@ -469,8 +469,15 @@ it("raid tools: calls, target icons and world markers for the leader and assista
   // Whether the bar shows, and whether its Raid button does.
   const state = () => addon.eval("local a = Vanguard_RaidTools.actions return { Vanguard_RaidTools:IsShown(), a.ConvertToRaid:IsShown() }");
   expect(state(), "a party's leader sees the bar, with Raid").toEqual([true, true]);
-  addon.eval("for i = 1, 4 do __tool(i) end __tool(2, 'RightButton') __tool(5) __tool(13)");
-  expect(addon.eval("return __calls"), "ready check, pull 10 (right-click cancels), roles, convert; skull on the target, then clear").toEqual(["ready", "pull 10", "roles", "raid", "pull 0", "mark target 1", "mark target 0"]);
+  addon.eval("__tool(3) __tool(4) __tool(5) __tool(13)");
+  expect(addon.eval("return __calls"), "roles, convert; skull on the target, then clear (Ready and Pull are macros, never a C_PartyInfo call from the addon)").toEqual(["roles", "raid", "mark target 1", "mark target 0"]);
+  expect(addon.eval(`local out = {}
+    for i = 1, 4 do
+      local b = Vanguard_RaidTools.list[i]
+      out[i] = { b:GetAttribute("type") or false, b:GetAttribute("macrotext") or false, b:GetAttribute("macrotext2") or false, b:GetAttribute("useOnKeyDown") or false, b.__scripts.OnClick ~= nil }
+    end
+    return out`), "Ready and Pull are secure macro buttons (left: /readycheck, /countdown 10; right on Pull: /countdown 0) with no click handler; Roles and Raid stay plain").toEqual([
+    ["macro", "/readycheck", false, false, false], ["macro", "/countdown 10", "/countdown 0", false, false], [false, false, false, false, true], [false, false, false, false, true]]);
   addon.eval("__markable = false __calls = {} __tool(5)");
   expect(addon.eval("return #__calls"), "a target that can't be marked is left alone").toBe(0);
   expect(addon.eval(`local m, c = Vanguard_RaidTools.list[14], Vanguard_RaidTools.list[22]

@@ -132,6 +132,37 @@ it("item names the client hasn't loaded yet, and a hidden price", () => {
   addon.fire("AUCTION_HOUSE_BROWSE_RESULTS_UPDATED");
   expect([shopRow(addon, 2)[2], addon.eval("return #ns.errors")], "a hidden price: nothing to show, no error").toEqual(["none up", 0]);
 });
+it("a late browse answer for the last entry is not taken by the next one", () => {
+  const addon = atAuctionHouse(DUSTS + " __wfgWorld.items[11083] = { name = 'Soul Dust' }");
+  makeList(addon, "TEST-ONLY Mats", '{ "Strange Dust", "Soul Dust" }');
+  addon.click(`${HELPER}.shopCard.search`);
+  addon.advance(2.1);
+  addon.eval("__wfgWorld.ah.browse = { { itemKey = { itemID = 10940 }, minPrice = 1250, totalQuantity = 240 } }");
+  addon.fire("AUCTION_HOUSE_BROWSE_RESULTS_UPDATED");
+  expect([shopRow(addon, 2).slice(1, 3), addon.eval(`return ${HELPER}.pending ~= nil`)], "Strange Dust's late answer is not Soul Dust's: no 'none up', still waiting").toEqual([["Soul Dust", ""], true]);
+  addon.eval("__wfgWorld.ah.browse = { { itemKey = { itemID = 11083 }, minPrice = 500, totalQuantity = 7 } }");
+  addon.fire("AUCTION_HOUSE_BROWSE_RESULTS_UPDATED");
+  expect(shopRow(addon, 2).slice(1, 4), "its own answer is taken").toEqual(["Soul Dust", "5s 0c", "7"]);
+});
+it("a browse answer that holds nothing is the entry's own none up", () => {
+  const addon = atAuctionHouse(DUSTS);
+  makeList(addon, "TEST-ONLY Mats", '{ "Strange Dust" }');
+  addon.click(`${HELPER}.shopCard.search`);
+  addon.fire("AUCTION_HOUSE_BROWSE_RESULTS_UPDATED");
+  expect(shopRow(addon, 1).slice(1, 3), "empty means nothing is up").toEqual(["Strange Dust", "none up"]);
+});
+it("a name typed in lower case matches a result named with a capital, Latin-1 and Cyrillic letters too", () => {
+  const addon = atAuctionHouse("__wfgWorld.items[90001] = { name = 'TEST-ONLY Ärmel' } __wfgWorld.items[90002] = { name = 'Изделие' }");
+  makeList(addon, "TEST-ONLY Mats", '{ "test-only ärmel", "изделие" }');
+  addon.eval("__wfgWorld.ah.browse = { { itemKey = { itemID = 90001 }, minPrice = 700, totalQuantity = 3 } }");
+  addon.click(`${HELPER}.shopCard.search`);
+  addon.fire("AUCTION_HOUSE_BROWSE_RESULTS_UPDATED");
+  expect(shopRow(addon, 1).slice(2, 4), "the German name answers the entry typed in lower case").toEqual(["7s 0c", "3"]);
+  addon.advance(1);
+  addon.eval("__wfgWorld.ah.browse = { { itemKey = { itemID = 90002 }, minPrice = 900, totalQuantity = 5 } }");
+  addon.fire("AUCTION_HOUSE_BROWSE_RESULTS_UPDATED");
+  expect(shopRow(addon, 2).slice(2, 4), "so does the Russian one").toEqual(["9s 0c", "5"]);
+});
 // The Lists pane's entries, by name.
 const choices = (addon) => addon.eval(`local c = {} for i, e in ipairs(${HELPER}.PaneEntries()) do c[i] = e.name end return c`);
 // The pane's action buttons that work now, by their text.
@@ -362,10 +393,11 @@ it("a name matches only itself or a name containing it, never an unrelated resul
   addon.click(`${HELPER}.shopCard.search`);
   answer("{ { itemKey = { itemID = 2589 }, minPrice = 10, totalQuantity = 9 }, { itemKey = { itemID = 10941 }, minPrice = 900, totalQuantity = 3 } }");
   answer("{ { itemKey = { itemID = 2589 }, minPrice = 10, totalQuantity = 9 } }");
+  addon.advance(2);
   answer("{ { itemKey = { itemID = 4306 }, minPrice = 700, totalQuantity = 2 }, { itemKey = { itemID = 2589 }, minPrice = 10, totalQuantity = 9 } }");
   answer("{ { itemKey = { itemID = 2589 }, minPrice = 60, totalQuantity = 9 } }");
-  expect([1, 2, 3, 4].map((i) => shopRow(addon, i).slice(1, 4)), "the pouch contains the name; linen is no dust; silk waits for its name; an ID over its max").toEqual([
-    ["Strange Dust Pouch", "9s 0c", "3"], ["Vision Dust", "none up", ""], ["silk", "", ""], ["Linen Cloth", "none up", ""]]);
+  expect([1, 2, 3, 4].map((i) => shopRow(addon, i).slice(1, 4)), "the pouch contains the name; linen is no dust (not its answer: the entry gives up blank); silk waits for its name; an ID over its max").toEqual([
+    ["Strange Dust Pouch", "9s 0c", "3"], ["Vision Dust", "", ""], ["silk", "", ""], ["Linen Cloth", "none up", ""]]);
   expect(sent(addon)[3], "an ID entry with a max price still searches by its item key").toBe("SearchForItemKeys:2589");
   addon.eval("__wfgWorld.items[4306].pending = nil");
   addon.fire("ITEM_KEY_ITEM_INFO_RECEIVED", 4306);
@@ -661,10 +693,13 @@ it("keys: Up and Down mark a listing, Enter opens it, only while the mouse is ov
   addon.hover(`${VIEW}.table.rows[2]`);
   expect(kb()[0], "from the view onto a row: still the view's").toBe(true);
   setCombat(addon, true);
+  addon.fire("PLAYER_REGEN_DISABLED");
+  expect(kb()[0], "a fight starts with the mouse over the view: it lets the keys go at once").toBe(false);
   addon.hover(`${VIEW}.table`);
   press("DOWN");
   expect([kb()[0], kb()[1]], "in combat: never takes the keys, never sets their passing").toEqual([false, true]);
   setCombat(addon, false);
+  expect(kb()[0], "the fight over with the mouse still on the view: the keys come back").toBe(true);
   addon.eval(`${VIEW}.table:Hide()`);
   expect(kb()[0], "hidden: none").toBe(false);
 });

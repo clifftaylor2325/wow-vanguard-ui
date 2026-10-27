@@ -720,6 +720,16 @@ export const TITLE_LUA = `
   end
   function __titled(fs) return __looks(fs, "heading", "text") end
   function __headed(fs) return __looks(fs, "heading", "text") end
+  -- How many of a frame's own child frames and regions Vanguard made (the game's layout frames read every one).
+  function __vanguardPieces(f)
+    local n = 0
+    for _, list in ipairs({ { f:GetChildren() }, { f:GetRegions() } }) do
+      for _, piece in ipairs(list) do if not rawget(piece, "__byGame") then n = n + 1 end end
+    end
+    return n
+  end
+  -- The frame a window's panel is painted on: Vanguard's backdrop for it (a layout window's), else the window.
+  function __panelHost(f) return ns.FrameState("vgBackdrop")[f] or f end
 `;
 
 // TEST-ONLY game windows: a framed window built like the game's ButtonFrameTemplate (art textures,
@@ -807,7 +817,7 @@ export const INSIDES_LUA = `
 // A window's state: its own art faded, its Inset painted as an inset panel, its parts dressed, how many frames are painted.
 export const windowState = (addon, name) => addon.eval(`local f = ${name}
   local art for _, r in ipairs({ f:GetRegions() }) do if r.__texture == "TEST-ONLY-ART" then art = r.__alpha end end
-  local panel = 0 for _, r in ipairs({ f:GetRegions() }) do if r.__texture ~= "TEST-ONLY-ART" and r.__alpha ~= 0 then panel = panel + 1 end end
+  local panel = 0 for _, r in ipairs({ __panelHost(f):GetRegions() }) do if r.__texture ~= "TEST-ONLY-ART" and r.__alpha ~= 0 then panel = panel + 1 end end
   local c, inset = { ns.Theme.PanelColor(true) }, false
   for _, r in ipairs({ f.Inset:GetRegions() }) do
     local v = r.__vertexColor

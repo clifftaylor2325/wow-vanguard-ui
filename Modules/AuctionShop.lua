@@ -392,14 +392,15 @@ function AH.SendShop(s)
 end
 
 -- Whether browse result r is a name entry's item on a pass (1: the same name; 2: a name containing
--- it, unless exact) and of its quality; nil while the client hasn't the result's name yet.
+-- it, unless exact) and of its quality; nil while the client hasn't the result's name yet. Case is
+-- folded with T.Upper, which knows the Latin-1 and Cyrillic letters string.lower leaves alone.
 local function nameMatches(term, f, r, pass)
   local info = C_AuctionHouse.GetItemKeyInfo(r.itemKey)
-  local name = info and type(info.itemName) == "string" and info.itemName:lower()
+  local name = info and type(info.itemName) == "string" and T.Upper(info.itemName)
   if not name then return nil end
   if f and f.quality and info.quality ~= f.quality then return false end
-  if pass == 1 then return name == term:lower() end
-  return not (f and f.exact) and name:find(term:lower(), 1, true) ~= nil
+  if pass == 1 then return name == T.Upper(term) end
+  return not (f and f.exact) and name:find(T.Upper(term), 1, true) ~= nil
 end
 
 -- Whether browse result r is the entry's item on a pass: its item ID (first pass), else by name.
@@ -443,18 +444,40 @@ function AH.OnItemInfo()
   AH.PaintShop()
 end
 
+-- Whether browse result r bears on an entry's term: its item ID, or a name containing the text (exact,
+-- quality and price aside, so a "none up" answer still counts); true while the name isn't in yet.
+local function bearsOn(term, r)
+  if type(term) == "number" then return r.itemKey.itemID == term end
+  return nameMatches(term, nil, r, 2) ~= false
+end
+
+-- Whether a browse answer can be the entry's: empty (a true "none up") or holding something that bears
+-- on it. The event names no query, so a late answer to the last entry or the game's own query is told
+-- apart only this way.
+local function concerns(entry, results)
+  if #results == 0 then return true end
+  local term = AH.Term(entry)
+  for _, r in ipairs(results) do
+    if bearsOn(term, r) then return true end
+  end
+  return false
+end
+
 -- Browse results: their prices feed the price store (any browse, the game's too); the list entry
--- in flight takes its row; an item opened in the game's list is done.
+-- in flight takes its row unless the answer isn't about it (the fallback timer ends that entry); an
+-- item opened in the game's list is done.
 function AH.OnBrowse()
-  AP.RecordBrowse(C_AuctionHouse.GetBrowseResults())
+  local results = C_AuctionHouse.GetBrowseResults()
+  AP.RecordBrowse(results)
   local s = AH.pending
   if not (s and (s.entry or s.open)) then return end
-  if s.entry then AH.TakeBrowse(s.entry, C_AuctionHouse.GetBrowseResults()) end
+  if s.entry and not concerns(s.entry, results) then return end
+  if s.entry then AH.TakeBrowse(s.entry, results) end
   AH.Done()
 end
 
 -- The auction house events the shop follows besides browse results and item search results
--- (on: Modules/AuctionHelper.lua's, which ignores them in combat; AH.OnSearchEvent hands the
+-- (on: Modules/AuctionHelper.lua's; AH.OnSearchEvent hands the
 -- search results to AH.OnListings).
 function AH.ListenShop(on)
   on("ITEM_KEY_ITEM_INFO_RECEIVED", function() AH.OnItemInfo() end)

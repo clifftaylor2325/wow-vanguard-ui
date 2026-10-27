@@ -42,9 +42,10 @@ end
 
 -- A themed button on a dialog: T.BUTTON_H tall, 120 wide unless told otherwise, of a kind ("secondary"
 -- unless given, "primary" or "danger"). Its label fits across it (T.FitText), shrinking when it runs long.
-local function button(parent, label, width, kind)
+-- A template name (a secure one, say) makes the button from that template; it is then built out of combat.
+local function button(parent, label, width, kind, template)
   local look = KIND_LABELS[kind or "secondary"]
-  local b = T.Button(CreateFrame("Button", nil, parent), kind == "primary" and "primary" or nil)
+  local b = T.Button(CreateFrame("Button", nil, parent, template), kind == "primary" and "primary" or nil)
   b:SetSize(width or BUTTON_W, T.BUTTON_H)
   b.kind = kind or "secondary"
   if kind == "primary" then b.fill = primaryFill(b) end

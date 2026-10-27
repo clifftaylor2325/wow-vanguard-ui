@@ -227,8 +227,8 @@ end
 -- Takes the reward picked (or the only one) and finishes the quest. A quest that costs money asks first,
 -- naming the cost, as the game's own Complete does; No declines the hand-in, as the game's does.
 function QD.Complete()
-  local choice, cost = QD.choice or (QD.page.choices and #QD.page.choices == 1 and 1) or nil, QP.Cost()
-  -- Pays (when it costs) and takes the reward.
+  local choice, cost = QD.choice or (QD.page.choices and #QD.page.choices == 1 and 1) or 0, QP.Cost()
+  -- Pays (when it costs) and takes the reward; no choice is 0, as the game's own window passes.
   local function take() ns.CallIf(_G, "GetQuestReward", choice) end
   if cost <= 0 then return take() end
   local text = ns.Format(L["Completing {quest} costs {money}. Complete it?"], { quest = QP.Plain(ns.CallIf(_G, "GetTitleText")), money = ns.GetModule("InfoStrip").Money(cost) })

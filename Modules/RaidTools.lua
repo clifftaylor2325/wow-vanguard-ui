@@ -26,7 +26,9 @@ RT.MARKER_ICONS = { 6, 4, 3, 7, 1, 2, 5, 8 }
 -- The clear button's mark.
 RT.CLEAR = T.Icon("Close")
 
--- Calls a function from C_PartyInfo, else the global of that name; nil when neither exists.
+-- Calls a function from C_PartyInfo, else the global of that name; nil when neither exists. Only for a call
+-- the game lets addon code make: Ready and Pull run as macros instead (RT.ACTIONS), as the client reserves
+-- C_PartyInfo.DoReadyCheck and DoCountdown for secure code.
 local function party(name, ...)
   local fn = C_PartyInfo and C_PartyInfo[name]
   if type(fn) ~= "function" then fn = _G[name] end
@@ -49,10 +51,12 @@ end
 -- The pull countdown in seconds (a right-click sends 0 instead).
 RT.PULL_SECONDS = 10
 
--- Each text button: label, what a click does, and the client call it needs.
+-- Each text button: label, what a click does, the client call it needs (the button shows only where the
+-- client has it), and for a secure button the macro attributes it runs on a click instead of a handler
+-- (the game's own /readycheck and /countdown; a right-click on Pull cancels its countdown).
 RT.ACTIONS = {
-  { L["Ready"], function() party("DoReadyCheck") end, "DoReadyCheck" },
-  { L["Pull"], function(_, button) party("DoCountdown", button == "RightButton" and 0 or RT.PULL_SECONDS) end, "DoCountdown" },
+  { L["Ready"], false, "DoReadyCheck", { macrotext = "/readycheck" } },
+  { L["Pull"], false, "DoCountdown", { macrotext = "/countdown " .. RT.PULL_SECONDS, macrotext2 = "/countdown 0" } },
   { L["Roles"], function() _G.InitiateRolePoll() end, "InitiateRolePoll" },
   { L["Raid"], function() party("ConvertToRaid") end, "ConvertToRaid" },
 }
@@ -62,12 +66,21 @@ local function hasCall(name)
   return type(C_PartyInfo and C_PartyInfo[name]) == "function" or type(_G[name]) == "function"
 end
 
--- One text button { label, click, call } on the first row, kept by its call's name.
+-- Makes a secure button run the macro attributes in `macros` on a click's release, whatever the
+-- key-down casting setting says. Out of combat: the attributes of a secure frame are fixed in a fight.
+local function runMacros(b, macros)
+  b:SetAttribute("type", "macro")
+  b:SetAttribute("useOnKeyDown", false)
+  for name, text in pairs(macros) do b:SetAttribute(name, text) end
+end
+
+-- One text button { label, click, call, macros } on the first row, kept by its call's name: a secure
+-- button running its macros, else a plain one calling its click.
 local function actionButton(bar, spec)
-  local b = ns.DialogButton(bar, spec[1], RT.ACTION_W)
+  local b = ns.DialogButton(bar, spec[1], RT.ACTION_W, nil, spec[4] and "SecureActionButtonTemplate")
   b:SetHeight(RT.ICON)
   b:RegisterForClicks("AnyUp")
-  b:SetScript("OnClick", ns.Guard("click raid tools button", spec[2]))
+  if spec[4] then runMacros(b, spec[4]) else b:SetScript("OnClick", ns.Guard("click raid tools button", spec[2])) end
   bar.actions[spec[3]] = b
   RT.Place(bar, b, 1, #bar.list)
 end

@@ -150,6 +150,7 @@ it("MultiSearch searches each term through the shop's queue, only at the open au
   addon.eval("__wfgWorld.ah.browse = { { itemKey = { itemID = 10940 }, minPrice = 1250, totalQuantity = 240 } }");
   addon.fire("AUCTION_HOUSE_BROWSE_RESULTS_UPDATED");
   addon.advance(1);
+  addon.eval("__wfgWorld.ah.browse = {}");
   addon.fire("AUCTION_HOUSE_BROWSE_RESULTS_UPDATED");
   addon.advance(1);
   expect(sent(addon), "a second apart; an ID by its item key").toEqual(["SendBrowseQuery:Strange Dust", "SendBrowseQuery:Soul Dust", "SearchForItemKeys:2592"]);
