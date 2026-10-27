@@ -327,10 +327,15 @@ local function orderFor(i)
 end
 
 -- What this merchant can sell toward your list: { index, id, need, unit price, stack } per item.
+-- One order per item, the first row that sells it: a second row would carry the same full need.
 function ER.Orders()
-  local out = {}
+  local out, seen = {}, {}
   for i = 1, ns.PlainNumber(ask("GetMerchantNumItems")) or 0 do
-    out[#out + 1] = orderFor(i)
+    local order = orderFor(i)
+    if order and not seen[order.id] then
+      seen[order.id] = true
+      out[#out + 1] = order
+    end
   end
   return out
 end
