@@ -17,6 +17,12 @@ local COMPARE = {
   [">="] = function(a, b) return a >= b end, ["<="] = function(a, b) return a <= b end,
   ["="] = function(a, b) return a == b end, [":"] = function(a, b) return a == b end,
 }
+-- The English words of `type:` to the item class (Enum.ItemClass) they name. The client's own type names are in
+-- its language, so these words are matched on the class id; the client's own words still match its type text.
+BG.TYPE_CLASSES = {
+  consumable = 0, container = 1, weapon = 2, gem = 3, armor = 4, reagent = 5, projectile = 6, tradegoods = 7,
+  recipe = 9, quest = 12, key = 13, miscellaneous = 15,
+}
 -- Words for the keys: the long and the short form of each.
 local KEYS = { ilvl = "ilvl", level = "ilvl", q = "quality", quality = "quality", type = "type", bind = "bind", cat = "cat" }
 
@@ -56,19 +62,26 @@ function BG.ParseSearch(text)
   return operators and tests or nil
 end
 
--- What the client says about an item: name, quality, item level, type words and bind type.
+-- What the client says about an item: name, quality, item level, type words, class id and bind type.
 local function factsOf(info)
   local name, _, quality, ilvl, _, kind, sub, _, _, _, _, _, _, bind = C_Item.GetItemInfo(info.itemID)
   return {
     name = (name or ""):lower(), quality = ns.PlainNumber(quality), ilvl = ns.PlainNumber(ilvl),
     type = ((kind or "") .. " " .. (sub or "")):lower(), bind = ns.PlainNumber(bind), item = info.itemID,
+    class = BG.ClassOf(info.itemID),
   }
+end
+
+-- Whether an item's type text holds the word of a `type:` test, or the word names the item's class.
+local function typeMatches(test, facts)
+  if facts.type:find(test.value, 1, true) ~= nil then return true end
+  return facts.class ~= nil and BG.TYPE_CLASSES[test.value] == facts.class
 end
 
 -- Whether the facts of one item pass one test.
 local function passes(test, facts)
   if test.key == "name" then return facts.name:find(test.value, 1, true) ~= nil end
-  if test.key == "type" then return facts.type:find(test.value, 1, true) ~= nil end
+  if test.key == "type" then return typeMatches(test, facts) end
   if test.key == "cat" then return BG.CategoryOf ~= nil and BG.CategoryOf(facts.item) == "cat:" .. test.value end
   local have = facts[test.key]
   return have ~= nil and test.compare(have, test.value)

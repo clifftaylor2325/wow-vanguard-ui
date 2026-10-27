@@ -495,6 +495,18 @@ it("search operators: ilvl, quality, type, bind and category words combine with 
   expect(addon.eval(`local BG = ns.GetModule("Bags") return BG.ItemMatches(BG.ParseSearch("ilvl>1"), 1, 4)`), "an empty slot never matches").toBe(false);
 });
 
+it("type: words name the item class, so Armor and Weapons light on a client whose type names are not English", () => {
+  const addon = loggedIn(ITEMS_ENV + fill([8, 4, 0, 0, 0], { quest: 1, equipment: 1, consumables: 2, junk: 1 }) + BAG_FRAME + SEARCH_ENV);
+  addon.eval(`local items = __wfgWorld.items
+    items[90001].type, items[90001].subType = "Waffe", "Schwerter"
+    items[90002].classID, items[90002].type, items[90002].subType = 4, "Rüstung", "Stoff"`);
+  addon.eval("__openBag()");
+  expect(lit(addon, "type:weapon"), "weapon is class 2 though the client says Waffe").toEqual([90001]);
+  expect(lit(addon, "type:armor"), "armor is class 4 though the client says Rüstung").toEqual([90002]);
+  expect(lit(addon, "type:rüstung"), "the client's own word still matches its type text").toEqual([90002]);
+  expect(lit(addon, "type:key"), "no item is of that class").toEqual([]);
+});
+
 it("search operators wait for a client that has the search refresh, and skip buttons without a match call", () => {
   const addon = openFilled([8, 4, 0, 0, 0], { equipment: 1 });
   expect(addon.eval("return ContainerFrameCombinedBags.UpdateSearchResults"), "this client has none: nothing hooked, nothing broken").toBeNull();
