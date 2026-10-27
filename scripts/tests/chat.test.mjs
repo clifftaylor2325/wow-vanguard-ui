@@ -619,20 +619,35 @@ it("chat window size: a window left at an earlier first size is set to the new o
   const addon = loggedIn(UI_ENV + TIDY_ENV, { savedVariables: "VanguardDB.profiles = { Default = { Chat = { sized = true, grown = true } } }" });
   // The chat window's width and height.
   const size = () => addon.eval("return { ChatFrame1:GetWidth(), ChatFrame1:GetHeight() }");
-  addon.eval("ChatFrame1:SetSize(500, 154) VanguardCharDB.chatSize.widened = false");
+  addon.eval("ChatFrame1:SetSize(500, 154) VanguardCharDB.chatSize.shortened = false");
   addon.fire("PLAYER_ENTERING_WORLD");
-  expect(size(), "0.7.0's first size becomes the new default (524 x 200 on a 1920-unit screen)").toEqual([524, 200]);
-  expect(addon.eval("return { VanguardDB.profiles.Default.Chat.grown == nil, VanguardCharDB.chatSize.widened }"), "0.7.0's grown flag is dropped from the profile (ns.Migrate); widened is set in its place, for this character").toEqual([true, true]);
-  addon.eval("ChatFrame1:SetSize(420, 140) VanguardCharDB.chatSize.widened = false");
+  expect(size(), "0.7.0's first size becomes the new default (524 x 188 on a 1920-unit screen)").toEqual([524, 188]);
+  expect(addon.eval("return { VanguardDB.profiles.Default.Chat.grown == nil, VanguardCharDB.chatSize.shortened }"), "0.7.0's grown flag is dropped from the profile (ns.Migrate); shortened is set in its place, for this character").toEqual([true, true]);
+  addon.eval("ChatFrame1:SetSize(420, 140) VanguardCharDB.chatSize.shortened = false");
   addon.fire("PLAYER_ENTERING_WORLD");
-  expect(size(), "so is 0.6's first size, once").toEqual([524, 200]);
+  expect(size(), "so is 0.6's first size, once").toEqual([524, 188]);
   addon.eval("ChatFrame1:SetSize(600, 300)");
   addon.fire("PLAYER_ENTERING_WORLD");
   expect(size(), "a size the player set stays").toEqual([600, 300]);
   addon.eval("ns.GetModule('Chat').settings.windowScale = 1.5 ns.GetModule('Chat').ApplySize()");
-  expect(size(), "Larger is one and a half times the default").toEqual([786, 300]);
-  expect(addon.eval("local CH = ns.GetModule('Chat') return { { CH.DefaultSize(1707) }, { CH.DefaultSize(1365) }, { CH.DefaultSize(2560) }, { CH.DefaultSize(1600) }, { CH.DefaultSize(1615) }, { CH.DefaultSize(1616) } }"), "the first size fills the room left of the player frame, up to 524: 416 on a 1080p screen at setup's 80 % scale; under 1616 units (where the room left of the player frame is short of 372) it tucks under the frame at 372 x 144").toEqual([[416, 200], [372, 144], [524, 200], [372, 144], [372, 144], [372, 200]]);
+  expect(size(), "Larger is one and a half times the default").toEqual([786, 282]);
+  expect(addon.eval("local CH = ns.GetModule('Chat') return { { CH.DefaultSize(1707) }, { CH.DefaultSize(1365) }, { CH.DefaultSize(2560) }, { CH.DefaultSize(1600) }, { CH.DefaultSize(1615) }, { CH.DefaultSize(1616) } }"), "the first size fills the room left of the player frame, up to 524: 416 on a 1080p screen at setup's 80 % scale; under 1616 units (where the room left of the player frame is short of 372) it tucks under the frame at 372 x 132").toEqual([[416, 188], [372, 132], [524, 188], [372, 132], [372, 132], [372, 188]]);
+  addon.eval("ns.SetModuleEnabled('ActionBars', false)");
+  expect(addon.eval("local CH = ns.GetModule('Chat') return { { CH.DefaultSize(1229) }, { CH.DefaultSize(1280) }, { CH.DefaultSize(1364) } }"), "under 1365 with the action bars off there is no bar to clear: the small width").toEqual([[372, 132], [372, 132], [372, 132]]);
   addon.eval("ns.GetModule('Chat').settings.windowScale = 'x' ns.GetModule('Chat').ApplySize() ChatFrame1 = nil ns.GetModule('Chat').ApplySize()");
+});
+it("chat's first spot puts the typing box fully on screen, and a small window left at the old 372 x 144 is shortened once", () => {
+  const addon = loggedIn("__wfgStub.setScreen(1365, 768) " + UI_ENV + TIDY_ENV);
+  const CH = addon.eval("local CH, T = ns.GetModule('Chat'), ns.Theme return { CH.SPOT[2], CH.BAR + 2 * T.SPACE.tight, CH.SPOT[2] + CH.SMALL[2] + CH.BAR }");
+  expect(CH, "the spot is as high as the typing box hangs low (a bar's height and two tight gaps), and the small panel's top is still 188").toEqual([32, 32, 188]);
+  expect(addon.eval("local p = ChatFrame1.__points.BOTTOMLEFT return { p.y, ChatFrame1:GetHeight() }"), "the chat is built at that spot").toEqual([32, 132]);
+  expect(addon.eval("return ns.GetModule('Chat').ClampInsets(ChatFrame1)[4] + ns.GetModule('Chat').SPOT[2]"), "the unlock clamp lets the window down to the spot and no lower, so the handle is not pushed off its window").toBe(0);
+  addon.eval("ChatFrame1:SetSize(372, 144) VanguardCharDB.chatSize.shortened = false");
+  addon.fire("PLAYER_ENTERING_WORLD");
+  expect(addon.eval("return { ChatFrame1:GetWidth(), ChatFrame1:GetHeight(), VanguardCharDB.chatSize.shortened }"), "a window still at the old small size is set to 372 x 132 once").toEqual([372, 132, true]);
+  addon.eval("ChatFrame1:SetSize(372, 144)");
+  addon.fire("PLAYER_ENTERING_WORLD");
+  expect(addon.eval("return ChatFrame1:GetHeight()"), "and kept after that").toBe(144);
 });
 it("chat's unlock handle is clamped past the window, so a drag to an edge keeps its side buttons, column, tabs and edit box on screen", () => {
   const addon = loggedIn(UI_ENV + TIDY_ENV);
@@ -651,7 +666,7 @@ it("chat is a mover: placed once, sized once, kept where the player put it", () 
   // Chat's anchor point, offsets and size.
   const spot = () => addon.eval("local p = ChatFrame1.__points local k, v = next(p) return { k, v.x, v.y, ChatFrame1:GetWidth(), ChatFrame1:GetHeight() }");
   expect(addon.eval("local out = {} for _, m in ipairs(ns.MoverList()) do out[#out + 1] = m.key .. '=' .. m.label end return out").includes("chat=Chat"), "chat is in the unlock list").toBe(true);
-  expect(spot(), "first login: bottom-left, 40 in (room for the side buttons), 524 x 200").toEqual(["BOTTOMLEFT", 40, 20, 524, 200]);
+  expect(spot(), "first login: bottom-left, 40 in (room for the side buttons), 524 x 188").toEqual(["BOTTOMLEFT", 40, 32, 524, 188]);
   addon.eval('ns.SetMoverPoint("chat", "TOPLEFT", "TOPLEFT", 100, -50)');
   expect(spot().slice(0, 3), "dragging it in /vg unlock moves the window").toEqual(["TOPLEFT", 100, -50]);
   addon.eval('ChatFrame1:ClearAllPoints() ChatFrame1:SetPoint("CENTER")');
@@ -661,7 +676,7 @@ it("chat is a mover: placed once, sized once, kept where the player put it", () 
   expect(spot().slice(3), "entering the world again keeps the player's size").toEqual([600, 300]);
   expect(addon.eval("return { VanguardCharDB.chatSize.sized, VanguardDB.profiles.Default.Chat.sized == nil }"), "the size is only set once for this character, noted in its own file, not the profile").toEqual([true, true]);
   expect(addon.eval('return ns.ResetMovers("chat")'), "/vg reset chat puts it back").toBe(1);
-  expect(spot().slice(0, 3), "at the bottom-left").toEqual(["BOTTOMLEFT", 40, 20]);
+  expect(spot().slice(0, 3), "at the bottom-left").toEqual(["BOTTOMLEFT", 40, 32]);
 });
 it("chat keeps its spot when the mover's Scale is not 100 %: the pin divides the offsets by the window's scale", () => {
   const addon = loggedIn(UI_ENV + TIDY_ENV);
@@ -669,8 +684,8 @@ it("chat keeps its spot when the mover's Scale is not 100 %: the pin divides the
   // The window put at a mover Scale and pushed away by the game: its scale, pin offsets and screen position.
   const at = (scale) => addon.eval(`ns.SetMoverScale('chat', ${scale}) ChatFrame1:ClearAllPoints() ChatFrame1:SetPoint('CENTER')
     local p = ChatFrame1.__points.BOTTOMLEFT return { ChatFrame1:GetScale(), p.x, p.y, ChatFrame1:GetLeft() * ChatFrame1:GetScale(), ChatFrame1:GetBottom() * ChatFrame1:GetScale() }`);
-  expect(at(2), "at 200 % the pin is 20, 10 in frame units: 40, 20 in UIParent's").toEqual([2, 20, 10, 40, 20]);
-  expect(at(0.5), "at 50 % it is 80, 40 in frame units").toEqual([0.5, 80, 40, 40, 20]);
+  expect(at(2), "at 200 % the pin is 20, 16 in frame units: 40, 32 in UIParent's").toEqual([2, 20, 16, 40, 32]);
+  expect(at(0.5), "at 50 % it is 80, 64 in frame units").toEqual([0.5, 80, 64, 40, 32]);
 });
 it("chat tab labels are in the theme's label font and follow Text size, not the template's GameFontNormalSmall", () => {
   const addon = loggedIn(UI_ENV);
@@ -2178,7 +2193,7 @@ const size = (addon) => addon.eval("return { ChatFrame1:GetWidth(), ChatFrame1:G
 
 it("chat window size: the first size is each character's own: a new alt on a profile another character sized still gets the first size", () => {
   const addon = loggedIn(UI_ENV + TIDY_ENV, { savedVariables: "VanguardDB.profiles = { Default = { Chat = { sized = true, widened = true } } } VanguardCharDB = nil" });
-  expect([addon.eval("return ns.NewCharacter()"), size(addon)], "a new character: 524 x 200").toEqual([true, [524, 200]]);
+  expect([addon.eval("return ns.NewCharacter()"), size(addon)], "a new character: 524 x 188").toEqual([true, [524, 188]]);
 });
 
 it("chat window size: the first size is each character's own: a character that played before keeps the size it has, and the flags stay out of an export", () => {

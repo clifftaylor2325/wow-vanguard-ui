@@ -140,8 +140,10 @@ local function lay(k, s, z)
   b:Show()
 end
 
--- Sets the preview's scale; when it changed, borders and pixel sizes are worked out again for it.
+-- Sets the preview's scale (and the raid mover's Opacity); when the scale changed, borders and pixel sizes are
+-- worked out again for it.
 local function setScale(frame, scale)
+  frame:SetAlpha(select(2, ns.MoverLook("raid")))
   if frame:GetScale() == scale then return end
   frame:SetScale(scale)
   T.Rescale()
@@ -154,7 +156,7 @@ local function fit(n)
   RF.PlaceFor(n)
   local point = RF.HeaderPoint()
   RP.frame = RP.frame or CreateFrame("Frame", "Vanguard_RaidPreview", UIParent)
-  setScale(RP.frame, RF.Scale(n))
+  setScale(RP.frame, RF.Scale(n) * RF.LookScale(n))
   RP.frame:SetSize(gridSize(n, RF.settings))
   RP.frame:ClearAllPoints()
   RP.frame:SetPoint(point, RF.holder, point)
@@ -164,7 +166,7 @@ end
 local function draw()
   local n = RP.size
   fit(n)
-  local z = RF.Zones(RF.settings.width, RF.settings.height, RF.Scale(n))
+  local z = RF.Zones(RF.settings.width, RF.settings.height, RF.Scale(n) * RF.LookScale(n))
   for k, s in ipairs(roster(n)) do lay(k - 1, s, z) end
   for i = n + 1, #RP.tiles do RP.tiles[i]:Hide() end
   RP.frame:Show()

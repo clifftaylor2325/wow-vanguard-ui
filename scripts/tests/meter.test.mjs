@@ -313,18 +313,30 @@ it("spell lists fall back safely: no call, hidden list, hidden spells, unknown n
   expect(addon.eval("return #ns.errors"), "hidden totals raise nothing").toBe(0);
 });
 
-it("the spell panel opens left of the meter, or right of it when the meter sits at the screen's left edge", () => {
-  const addon = loggedIn(METER_ENV, METER_ON);
-  // The panel's and the meter's left and right edges after opening a line's panel with the meter put at `x` from the left (nil: where it is).
-  const open = (x) => addon.eval(`local MT = ns.GetModule("Meter") MT.CloseDetail()
-    if ${x} then MT.frame:ClearAllPoints() MT.frame:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", ${x}, 14) end
-    MT.OpenDetail({ name = "TEST-ONLY" })
-    local d = Vanguard_MeterDetail
-    return { d:GetLeft(), d:GetRight(), MT.frame:GetLeft(), MT.frame:GetRight() }`);
-  const [left, right, meterLeft] = open("nil");
-  expect([right, left >= 0], "at its default spot: on the meter's left, 4 apart, on screen").toEqual([meterLeft - 4, true]);
-  const [edgeLeft, , , meterRight] = open(10);
-  expect(edgeLeft, "at the left edge: on the meter's right, 4 apart").toBe(meterRight + 4);
+it("the spell panel opens on the meter's side away from the screen's middle, else on the other side above the action bars", () => {
+  // The panel's and the meter's edges, the panel's bottom, bar 1's top and whether the panel overlaps bars 1 to 3 or the menu bar,
+  // on a w x h canvas with the meter put at `x` from the left (nil: where it is) and opened.
+  const open = (w, h, x = "nil") => {
+    const addon = loggedIn(METER_ENV + `__wfgStub.setScreen(${w}, ${h})`, METER_ON);
+    return addon.eval(`local MT = ns.GetModule("Meter") MT.CloseDetail()
+      if ${x} then MT.frame:ClearAllPoints() MT.frame:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", ${x}, 14) end
+      MT.OpenDetail({ name = "TEST-ONLY" })
+      local d, hit = Vanguard_MeterDetail, {}
+      for _, key in ipairs({ "bar1", "bar2", "bar3", "menustrip" }) do
+        local f = ns.MoverFrame(key)
+        if f and d:GetLeft() < f:GetRight() and f:GetLeft() < d:GetRight() and d:GetBottom() < f:GetTop() and f:GetBottom() < d:GetTop() then hit[#hit + 1] = key end
+      end
+      return { d:GetLeft(), d:GetRight(), MT.frame:GetLeft(), MT.frame:GetRight(), d:GetBottom(), ns.MoverFrame("bar1"):GetTop(), table.concat(hit, ",") }`);
+  };
+  const [left1920, right1920, meterLeft1920, meterRight1920, bottom1920, , hit1920] = open(1920, 1080);
+  expect([left1920, hit1920], "1920: on the meter's right (it sits right of the middle), 4 apart, clear of the bars").toEqual([meterRight1920 + 4, ""]);
+  expect([right1920 <= 1920, bottom1920], "and on screen, level with the meter's bottom").toEqual([true, 14]);
+  expect(meterLeft1920, "the meter is where it always was").toBe(1248);
+  const [left1365, right1365, meterLeft1365, , bottom1365, barsTop, hit1365] = open(1365, 768);
+  expect([right1365, hit1365], "1365: no room on the right, so on the meter's left, 4 apart, clear of the bars").toEqual([meterLeft1365 - 4, ""]);
+  expect([left1365 >= 0, bottom1365], "on screen, lifted to bar 1's top and a gap").toEqual([true, barsTop + 4]);
+  const [edgeLeft, , , meterRight] = open(1920, 1080, 10);
+  expect(edgeLeft, "a meter at the left edge: its far side has no room, so on its right, 4 apart").toBe(meterRight + 4);
 });
 
 it("a spell row's name is the game's answer, handed on without a truth test; a refused one is empty", () => {
@@ -456,7 +468,7 @@ it("a client without C_ChatInfo.SendChatMessage sends the report through the old
   expect(addon.eval("return __sent"), "sent to the raid").toBe("RAID: Damage per second: 1. Tess 300");
 });
 
-it("the meter's default spot clears the action bars on any canvas: today's spot where it fits, the game meter's spot where it does not", () => {
+it("the meter's default spot clears the action bars on any canvas 1110 wide or more: today's spot where it fits, the game meter's spot where it does not", () => {
   // The meter's spot and whether its panel overlaps bar 1, 2 or 3 or the bags and menu bar, on a w x h canvas.
   const onCanvas = (w, h) => {
     const addon = loggedIn(METER_ENV + `__wfgStub.setScreen(${w}, ${h})`, METER_ON);
@@ -468,10 +480,16 @@ it("the meter's default spot clears the action bars on any canvas: today's spot 
       return { table.concat(out, ","), m:GetRight() <= UIParent:GetWidth() and m:GetTop() <= UIParent:GetHeight() }`);
     return [addon.eval("return { ns.MoverPoint('meter') }"), hit];
   };
-  for (const [w, h] of [[835, 668], [1024, 768], [1229, 768], [1280, 800], [1365, 768], [1600, 900]]) {
+  for (const [w, h] of [[1229, 768], [1280, 800], [1365, 768], [1600, 900]]) {
     const [spot, [hit, onScreen]] = onCanvas(w, h);
     expect(spot, `${w}x${h}: the game meter's spot, above the bags and menu bar`).toEqual(["BOTTOMRIGHT", "BOTTOMRIGHT", -16, 118]);
     expect([hit, onScreen], `${w}x${h}: clear of the action bars, and on screen`).toEqual(["", true]);
+  }
+  // Under 1110 wide the bars' right end reaches the meter's column (sw / 2 + 239 > sw - 316), which is accepted:
+  // setup's Fit my screen is the answer there, so the meter is on screen and meets bar 1 and nothing else.
+  for (const [w, h] of [[835, 668], [1024, 768]]) {
+    const [spot, [hit, onScreen]] = onCanvas(w, h);
+    expect([spot, hit, onScreen], `${w}x${h}: the same spot, meeting bar 1 only`).toEqual([["BOTTOMRIGHT", "BOTTOMRIGHT", -16, 118], "bar1", true]);
   }
   for (const [w, h] of [[1920, 1080], [2560, 1440]]) {
     const [spot, [hit]] = onCanvas(w, h);
