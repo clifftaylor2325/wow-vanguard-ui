@@ -215,6 +215,16 @@ it("swapping back to a spec with no profile of its own takes back the switch ano
   addon.fire("PLAYER_SPECIALIZATION_CHANGED", "player");
   expect(addon.eval("return VanguardCharDB.pendingProfile"), "a profile the player picked stays staged").toBe("Picked");
 });
+it("the craft queue and profession cooldowns of your characters stay out of an export, an import and a profile compare; the module's own settings travel", () => {
+  const src = loggedIn();
+  src.eval('ns.Profile().CraftQueue = { on = true, secs = 9, chars = { ["Alt-Realm"] = { queue = { { id = 1 } }, cooldowns = {} } } }');
+  const text = src.eval("return ns.ExportProfile()");
+  const dst = loggedIn();
+  dst.eval(`ns.ImportProfile(${JSON.stringify(text)})`);
+  expect(dst.eval("return VanguardDB.profiles.Imported.CraftQueue"), "the imported profile has the settings and no characters").toEqual({ on: true, secs: 9 });
+  expect(dst.eval("return ns.WithoutClientState({ CraftQueue = { on = true, chars = { A = {} } } }).CraftQueue"), "an incoming table loses its characters too").toEqual({ on: true });
+  expect(src.eval("return ns.Profile().CraftQueue.chars['Alt-Realm'] ~= nil"), "the exporter keeps its own").toBe(true);
+});
 it("a frame's scale and opacity travel with the profile: export, import and a staged switch", () => {
   const src = loggedIn(UI_ENV);
   src.eval('ns.SetMoverScale("minimap", 1.25) ns.SetMoverAlpha("minimap", 0.75)');
