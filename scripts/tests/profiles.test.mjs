@@ -128,6 +128,20 @@ it("spec profiles", () => {
   addon.slash("spec off");
   expect(addon.eval("return VanguardCharDB.specProfiles[2]") === null, "/vg spec off stops switching").toBeTruthy();
 });
+it("copying a profile over another keeps the craft queue and cooldowns of the characters the destination had", () => {
+  // A profile's craft queue holding one queued recipe for the character `key`.
+  const queue = (key, name) => `CraftQueue = { on = true, chars = { ["${key}"] = { queue = { { id = 1, n = 5, name = "${name}" } }, cooldowns = {} } } }`;
+  const saved = `VanguardDB.profiles = { Default = { ${queue("Alt-Realm", "Mine")} }, Main = { ${queue("Main-Realm", "Theirs")}, theme = { accent = { 1, 1, 1 } } }, Plain = { theme = {} } }`;
+  const addon = loggedIn("", { savedVariables: saved });
+  const chars = "local o = {} for k in pairs(VanguardDB.profiles.Default.CraftQueue.chars) do o[#o + 1] = k end table.sort(o) return o";
+  addon.eval('ns.CopyProfile("Main")');
+  expect(addon.eval(chars), "the destination's characters stay, the source's do not come").toEqual(["Alt-Realm"]);
+  expect(addon.eval("return VanguardDB.profiles.Default.theme.accent[1]"), "the settings are the source's").toBe(1);
+  addon.eval('ns.CopyProfile("Plain")');
+  expect(addon.eval(chars), "a source with no craft queue: the destination's characters still stay").toEqual(["Alt-Realm"]);
+  addon.eval('VanguardDB.profiles.Default.CraftQueue = nil ns.CopyProfile("Main")');
+  expect(addon.eval("return VanguardDB.profiles.Default.CraftQueue.chars"), "a destination with none: the source's characters do not come").toBeNull();
+});
 it("profile copy, empty export and a taken import name", () => {
   const addon = loggedIn();
   // TEST-ONLY profile name that was never created.

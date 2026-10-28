@@ -83,19 +83,22 @@ local function samePrice(r, o)
   return r.amount == o.amount or math.floor(r.amount / r.qty) == math.floor(o.amount / o.qty)
 end
 
--- Whether two reads put a mail's expiry time within AL.SAME_MAIL: as read, or once the change in the
--- computer's clock between them is taken off (its days left may count by the realm's clock, so a
--- clock put right moves the time read by as much). A record from before skews were kept has none.
-local function sameExpiry(r, o)
-  if math.abs(r.mail - o.mail) <= AL.SAME_MAIL then return true end
-  return type(r.skew) == "number" and o.skew ~= nil and math.abs(o.mail - r.mail - (o.skew - r.skew)) <= AL.SAME_MAIL
+-- How far apart two reads put a mail's expiry time: as read, or once the change in the computer's clock
+-- between them is taken off (its days left may count by the realm's clock, so a clock put right moves the
+-- time read by as much), whichever is less. A record from before skews were kept has none.
+local function expiryGap(r, o)
+  local gap = math.abs(r.mail - o.mail)
+  if type(r.skew) ~= "number" or type(o.skew) ~= "number" then return gap end
+  return math.min(gap, math.abs(o.mail - r.mail - (o.skew - r.skew)))
 end
 
--- Whether record r is the one o tells of again from the same source: the same auction, or the
--- same mail (sameExpiry, the same units and amount).
-local function sameSource(r, o)
-  if o.auction then return r.auction == o.auction end
-  return r.mail ~= nil and sameExpiry(r, o) and r.qty == o.qty and r.amount == o.amount
+-- How near record r is to being the one o tells of again from the same source (0 for the same auction;
+-- for a mail, its expiry gap within AL.SAME_MAIL with the same units and amount), or nil when it is not.
+local function sourceGap(r, o)
+  if o.auction then return r.auction == o.auction and 0 or nil end
+  if r.mail == nil or r.qty ~= o.qty or r.amount ~= o.amount then return nil end
+  local gap = expiryGap(r, o)
+  return gap <= AL.SAME_MAIL and gap or nil
 end
 
 -- Whether record r came from the other source only (an event's for a mail, a mail's for an
@@ -105,18 +108,20 @@ local function otherSource(r, o)
   return only and math.abs(r.t - o.t) <= AL.LINK_AGE and samePrice(r, o)
 end
 
--- The record o tells of again, else nil and the oldest record of the other source it joins (or
--- nil); records already matched in this read of the inbox (used) are passed over.
+-- The record o tells of again (the nearest, so alike mails a minute apart each keep their own), else nil
+-- and the oldest record of the other source it joins (or nil); records already matched in this read of
+-- the inbox (used) are passed over.
 local function find(book, o, used)
-  local other
+  local same, best, other = nil, math.huge, nil
   for i = #book.records, 1, -1 do
     local r = book.records[i]
     if not used[r] and r.kind == o.kind and sameItem(r, o) then
-      if sameSource(r, o) then return r end
-      if otherSource(r, o) then other = r end
+      local gap = sourceGap(r, o)
+      if gap and gap < best then same, best = r, gap end
+      if not gap and otherSource(r, o) then other = r end
     end
   end
-  return nil, other
+  return same, other
 end
 
 -- o joins record r from the other source: a mail's units and amount stand (the money it brought),
