@@ -109,6 +109,12 @@ it("presets: add, list, replace and remove; Send types the name and attaches the
   addon.slash("mail send smith");
   addon.world.combat(false);
   expect(addon.eval("return __wfgWorld.usedItems"), "in combat: nothing").toBe(null);
+  addon.slash("mail preset add bars Bobalt iron bar");
+  addon.eval("__wfgWorld.usedItems = nil");
+  addon.slash("mail send bars");
+  expect(addon.eval("return __wfgWorld.usedItems"), "every word of 'iron bar': the bar, not the ore").toEqual([[0, 1]]);
+  addon.slash("mail preset remove bars");
+  addon.eval("__wfgWorld.usedItems = nil");
   addon.slash("mail send everything");
   expect(addon.eval("return #__wfgWorld.usedItems"), "no words: every item").toBe(3);
   expect(addon.eval("local b = Vanguard_MailTools.presets return { b[1].text:GetText(), b[2]:IsShown(), b[3]:IsShown() }"), "buttons for the presets").toEqual(["smith", true, false]);
