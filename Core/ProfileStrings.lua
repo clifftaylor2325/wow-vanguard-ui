@@ -153,6 +153,29 @@ function ns.WithoutClientState(data)
   return data
 end
 
+-- Puts old's fields of one CLIENT_STATE table (key) into profile, making profile[key] only when old has one.
+local function keepFields(profile, old, key)
+  local from = type(old) == "table" and type(old[key]) == "table" and old[key] or {}
+  for field in pairs(CLIENT_STATE[key]) do
+    if from[field] ~= nil then
+      profile[key] = type(profile[key]) == "table" and profile[key] or {}
+      profile[key][field] = from[field]
+    end
+  end
+end
+
+-- This computer's own state (CLIENT_STATE) taken from old, the profile being replaced, into profile, its
+-- new settings: a reset or a copy over a profile keeps the only record of the player's own game settings
+-- (bag layout, camera zoom, graphics undo) and each character's craft queue, never the source's. Returns profile.
+---@param profile table
+---@param old table|nil
+---@return table
+function ns.KeepClientState(profile, old)
+  ns.WithoutClientState(profile)
+  for key in pairs(CLIENT_STATE) do keepFields(profile, old, key) end
+  return profile
+end
+
 -- Takes the payload's own keys (format, version, parts, display) out; returns it.
 function ns.StripPayload(data)
   for key in pairs(META) do data[key] = nil end
