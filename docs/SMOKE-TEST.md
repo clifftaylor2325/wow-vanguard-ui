@@ -2922,6 +2922,12 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: the roll panel starts a new list for the second item, its top roll lit; the board's rows don't move while the mouse is on them, the click whispers the player its tooltip names, and new posts appear once the mouse leaves; "AH +" still shows the sale after the reload; chat says "Keep stocked for 999 x ..." and the Keep stocked counts are 999 crafts' worth; the preset attaches the Iron Bar, not the Iron Ore.
 - If it fails, paste: the roll lines and the panel, who the whisper went to, the strip before and after the reload, the chat lines, what the preset attached, and `/vg errors`.
 
+### 33.126 A full auction scan on two realms, a window drag, an old mail preset
+
+- Do: run a full auction scan and note the number in chat's "prices for N items" line; log a character on another realm (or the other faction), scan there too, then log out and back in and wait 20 seconds before typing `/vg mem`. With the game windowed, drag its edge for a few seconds. Make a mail preset with the words "ore bar herb" (no commas, as 0.7.4 presets were) and send it at the Send Mail tab with ore and bars in your bags.
+- Expect: no chat line about dropping a price home, and `/vg mem` gives a size of a 16.0 MB budget; the drag doesn't stutter more than the game does without Vanguard; the preset attaches nothing and chat says it found nothing holding every word of "ore bar herb", with commas separating alternatives.
+- If it fails, paste: the "prices for N items" number from each scan, the `/vg mem` lines, how long the stutter lasted, the mail chat line, and `/vg errors`.
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ## When you are done
