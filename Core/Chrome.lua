@@ -395,12 +395,15 @@ local function pressFocused(b)
 end
 
 -- What a key does in a window with focus; true when it used the key. Tab and Shift-Tab step; Enter and Space press
--- the focused button (and do nothing with no focus: Enter then belongs to the window's own primary). Not in combat.
+-- the focused button (and do nothing with no focus: Enter then belongs to the window's own primary). Escape hides
+-- the window and stops there: passed on, it would close the window under it, or the game's Escape would hide in the
+-- same sweep a window this one's hide opens (the reload offer). Not in combat.
 ---@param frame table  a window given ns.TabFocus or ns.TabFocusOwnKeys
 ---@param key string
 ---@return boolean used
 function ns.FocusKey(frame, key)
   if ns.InCombat() or not focusOf[frame] then return false end
+  if key == "ESCAPE" then frame:Hide() return true end
   if key == "TAB" then stepFocus(frame, IsShiftKeyDown and IsShiftKeyDown() and -1 or 1) return true end
   if key == "ENTER" or key == "SPACE" then return pressFocused(focusOf[frame].at) end
   return false
