@@ -1452,6 +1452,7 @@ it("minimap coordinates: asked again only after the player moves", () => {
 });
 it("E6-2 minimap coordinates: a position the client hides whole is blank, a plain one is read, and nothing throws", () => {
   const addon = loggedIn("C_Map.GetPlayerMapPosition = function() return { GetXY = function() return 0.25, 0.5 end } end");
+  // The minimap coordinates text for map 10.
   const coords = () => addon.eval('return ns.GetModule("Minimap").CoordsText(10)');
   expect(coords(), "a plain position shows in percent").toBe("25.0, 50.0");
   addon.eval("C_Map.GetPlayerMapPosition = function() return __wfgWorld.secret(0) end");
