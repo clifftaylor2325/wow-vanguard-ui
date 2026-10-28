@@ -146,10 +146,11 @@ local function openWindow()
 end
 
 -- Finds or makes the Filtered window when the filter is on and sends to the tab; out of combat only.
--- Nothing while the module has not been enabled (switched off from login: no settings yet).
+-- Nothing while the module has not been enabled (switched off from login: no settings yet) or was
+-- switched off since: no tab while nothing is filtered.
 function CF.Prepare()
   local s = CF.settings
-  if not (s and s.on and s.mode == "tab") or CF.window then return end
+  if not (CF.active and s and s.on and s.mode == "tab") or CF.window then return end
   ns.OutOfCombat(function() CF.window = CF.FindWindow() or openWindow() end, "chatfilter window")
 end
 

@@ -364,6 +364,14 @@ it("chat filter: with the module off from login, /vg filter on, off, tab and hid
   expect(addon.eval("return ns.GetModule('ChatFilter').window == nil"), "no Filtered tab while the module is off").toBe(true);
 });
 
+it("chat filter: switched off on the Modules page, /vg filter on makes no empty Filtered tab", () => {
+  const addon = loggedIn();
+  addon.eval("ns.SetModuleEnabled('ChatFilter', false)");
+  addon.slash("filter on");
+  expect(addon.eval("return ns.GetModule('ChatFilter').window == nil"), "no Filtered tab while nothing is filtered").toBe(true);
+  expect(deliver(addon, GOLD), "nothing is caught").toBe(false);
+});
+
 it("chat filter: a client without the old ChatFrame_AddMessageEventFilter still filters, through ChatFrameUtil", () => {
   const addon = loggedIn("ChatFrame_AddMessageEventFilter = nil");
   addon.slash("filter on");
