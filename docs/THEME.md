@@ -290,7 +290,7 @@ All in the profile's `theme` table (`T.Settings()`), exported with the profile; 
 | `outline` | `""` | none | at once |
 | `textScale` | 1 | General → Look → Text size (70 % - 130 %, `T.TEXT_SCALE`; `T.TextScale()` keeps a hand-edited or imported value inside it) | at once |
 | `faction` | `"crest"` | General → Look → Faction look: `"crest"` (Crest only), `"auto"` (Crest and heading font), `"off"` | at once |
-| `pixelScale` | off | General → Look → Pixel-perfect scale | on: at once, out of combat; off: on reload |
+| `pixelScale` | off | General → Look → Pixel-perfect scale | on: at once, out of combat; off: on reload. A screen size or UI scale change repaints the theme once a frame (`ns.Soon("screen change")`, however many of the two events arrive), and with this on out of a fight the repaint is the one `T.ApplyScale` does after it sets the scale |
 | `pixelMultiple` | 0 | Setup → Pixel-perfect (sharpest) | with `pixelScale`, out of combat |
 | `texelSnap` | off | `/vg texelsnap` | at once |
 | `sliceRings` | off | `/vg nineslice` | on reload |

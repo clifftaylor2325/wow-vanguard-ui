@@ -3257,11 +3257,16 @@ function T.SetPixelScale(on)
   T.ApplyScale()
 end
 
--- The screen size or the client's UI scale changed: re-apply ours and resize borders.
+-- The screen size or the client's UI scale changed: re-apply ours and resize borders, once a frame however
+-- many of the two events arrive. With pixel-perfect scale on out of a fight, T.ApplyScale repaints after it
+-- sets the scale, so the repaint here would be a second one.
 local function onScaleChanged()
-  T.Refresh()
-  T.ApplyScale()
-  T.Rescale()
+  ns.Soon("screen change", function()
+    local applyRepaints = T.Settings().pixelScale and not ns.InCombat()
+    if not applyRepaints then T.Refresh() end
+    T.ApplyScale()
+    T.Rescale()
+  end)
 end
 
 ns.On("PLAYER_LOGIN", T.ApplyScale)

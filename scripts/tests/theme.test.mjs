@@ -574,6 +574,25 @@ it("pixel sizes are rounded again after a UI scale, screen or frame scale change
   expect(addon.eval("return __scaled"), "a frame's own scale (unlock mode) rounds again too").toBe(3);
 });
 
+it("a screen size and a UI scale change in one frame repaint the theme once; pixel-perfect scale's own repaint is the only one", () => {
+  const addon = loggedIn("__repaints = 0 ns.Theme.OnChanged(function() __repaints = __repaints + 1 end)");
+  // Fires both events, lets the frame pass and says how many repaints the theme did since.
+  const repaints = () => {
+    addon.eval("__repaints = 0");
+    addon.fire("DISPLAY_SIZE_CHANGED");
+    addon.fire("UI_SCALE_CHANGED");
+    expect(addon.eval("return __repaints"), "nothing repaints before the frame ends").toBe(0);
+    addon.update(0.1);
+    return addon.eval("return __repaints");
+  };
+  expect(repaints(), "with the client's own scale: one repaint").toBe(1);
+  addon.eval("ns.Theme.Settings().pixelScale = true");
+  expect(repaints(), "with pixel-perfect scale on: one, from setting the scale").toBe(1);
+  setCombat(addon, true);
+  expect(repaints(), "in a fight the scale waits, so the repaint stays here: one").toBe(1);
+  setCombat(addon, false);
+});
+
 it("screen, scale and key changes in a fight queue their after-fight work once, however often they fire", () => {
   const addon = loggedIn("ns.Theme.Settings().pixelScale = true");
   setCombat(addon, true);
