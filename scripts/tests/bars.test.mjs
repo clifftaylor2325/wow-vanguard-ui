@@ -695,6 +695,40 @@ it("keybind mode: the mouse's side buttons and wheel bind too; Backspace clears;
   expect([addon.eval("return Vanguard_KeybindMode:IsShown()"), tipLines(addon), binder(addon).mark], "a fight ends the mode, with its tooltip and mark").toEqual([false, null, false]);
 });
 
+it("keybind mode: a key the game refuses leaves the button's keys as they were; a key with no name is ignored", () => {
+  const addon = loggedIn(BIND_ENV + `
+    __wfgWorld.bindings.ACTIONBUTTON4 = { "F4" }
+    local set = SetBinding
+    SetBinding = function(key, command) if key == "F9" then return false end return set(key, command) end
+  `);
+  addon.slash("keybind");
+  addon.hover("Vanguard_Bar1Button4.vgCatcher");
+  addon.key("Vanguard_KeybindMode", "F9");
+  expect(boundTo(addon, "ACTIONBUTTON4"), "the refused key is not bound and the old key is back").toBe("F4");
+  expect([chatHas(addon, /F9 can't be bound\.$/), addon.eval("return __savedSet")], "chat says so, and nothing was saved").toEqual([true, null]);
+  expect(resultLine(addon, "warn"), "the banner says it too, in the warning colour").toEqual(["F9 can't be bound.", true]);
+  addon.key("Vanguard_KeybindMode", "UNKNOWN");
+  expect([boundTo(addon, "ACTIONBUTTON4"), chatHas(addon, /UNKNOWN/)], "a key named UNKNOWN binds nothing and says nothing").toEqual(["F4", false]);
+  addon.key("Vanguard_KeybindMode", "F5");
+  expect(boundTo(addon, "ACTIONBUTTON4"), "a key the game takes still replaces the old one").toBe("F5");
+});
+
+it("keybind mode: Cmd on a Mac is part of the key, after Shift in the game's order", () => {
+  const addon = loggedIn(BIND_ENV);
+  addon.slash("keybind");
+  addon.hover("Vanguard_Bar1Button4.vgCatcher");
+  addon.keys({ meta: true });
+  addon.key("Vanguard_KeybindMode", "Q");
+  expect(boundTo(addon, "ACTIONBUTTON4"), "Cmd-Q is bound as META-Q, not plain Q").toBe("META-Q");
+  addon.keys({ shift: true });
+  addon.key("Vanguard_KeybindMode", "Q");
+  addon.keys({ shift: false, meta: false });
+  expect(boundTo(addon, "ACTIONBUTTON4"), "with Shift too, in the game's order").toBe("SHIFT-META-Q");
+  addon.eval("IsMetaKeyDown = nil");
+  addon.key("Vanguard_KeybindMode", "Q");
+  expect(boundTo(addon, "ACTIONBUTTON4"), "a client without the call binds the plain key").toBe("Q");
+});
+
 it("keybind mode: out of combat only, ends when a fight starts; from the options; needs the bars", () => {
   const addon = loggedIn(BIND_ENV);
   addon.slash("keybind");

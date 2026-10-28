@@ -232,6 +232,62 @@ it("chat filter: a closed Filtered tab is made again on the next caught line, an
   expect(addon.eval("return #ns.errors"), "no errors").toBe(0);
 });
 
+// TEST-ONLY model of the game's chat dock (Blizzard_ChatFrameBase/Mainline/FloatingChatFrame.lua): FCF_OpenNewWindow ends in
+// FCFDock_SelectWindow, which selects the new window and hides every other docked one. selects: false is a client whose
+// open does not move the selection; the calls to FCFDock_SelectWindow are counted in __selectCalls.
+const DOCK_ENV = `
+  GENERAL_CHAT_DOCK = CreateFrame("Frame", "GeneralDockManager", UIParent)
+  GENERAL_CHAT_DOCK.selected, GENERAL_CHAT_DOCK.frames, __selectCalls = ChatFrame1, { ChatFrame1 }, 0
+  function FCFDock_SelectWindow(dock, frame)
+    __selectCalls = __selectCalls + 1
+    dock.selected = frame
+    for _, f in ipairs(dock.frames) do f:SetShown(f == frame) end
+  end
+  function FCFDock_GetSelectedWindow(dock) return dock.selected end
+  local open = FCF_OpenNewWindow
+  FCF_OpenNewWindow = function(...)
+    local frame = open(...)
+    table.insert(GENERAL_CHAT_DOCK.frames, frame)
+    if __SELECTS__ then GENERAL_CHAT_DOCK.selected = frame for _, f in ipairs(GENERAL_CHAT_DOCK.frames) do f:SetShown(f == frame) end end
+    return frame
+  end
+  ChatFrame1:Show()`;
+// The dock model above; selects false is a client whose new window does not take the selection.
+const dockEnv = (selects = true) => DOCK_ENV.replace("__SELECTS__", String(selects));
+// The dock's selected window, whether General is shown, and how often the dock was asked to select.
+const dockState = (addon) => addon.eval("return { GENERAL_CHAT_DOCK.selected:GetName(), ChatFrame1:IsShown(), __selectCalls }");
+
+it("chat filter: switching it on keeps the tab you are reading selected, not the new empty Filtered tab", () => {
+  const addon = loggedIn(dockEnv());
+  addon.slash("filter on");
+  expect(addon.eval("return ns.GetModule('ChatFilter').window:GetName()"), "the Filtered tab was made").toBe("ChatFrame3");
+  expect(dockState(addon), "General stays selected and shown").toEqual(["ChatFrame1", true, 1]);
+  expect(addon.eval("return #ns.errors"), "no errors").toBe(0);
+});
+
+it("chat filter: the closed Filtered tab coming back after a fight keeps the selected tab", () => {
+  const addon = filtering(dockEnv());
+  addon.eval("local w = ns.GetModule('ChatFilter').window w:Hide() table.remove(GENERAL_CHAT_DOCK.frames, 2) w.isDocked = nil");
+  addon.eval("__wfgStub.inCombat = true");
+  expect(deliver(addon, GOLD, "Goldy"), "in the fight the line passes and the tab is queued").toBe(false);
+  addon.eval("__wfgStub.inCombat = false");
+  addon.fire("PLAYER_REGEN_ENABLED");
+  expect(addon.eval("return ns.GetModule('ChatFilter').window:GetName()"), "a new Filtered tab is made").toBe("ChatFrame4");
+  expect(dockState(addon).slice(0, 2), "General is still the tab shown").toEqual(["ChatFrame1", true]);
+});
+
+it("chat filter: a game whose new window does not take the selection, or has no dock, is left alone", () => {
+  const stays = loggedIn(dockEnv(false));
+  stays.slash("filter on");
+  expect(dockState(stays), "the selection never moved, so nothing is selected again").toEqual(["ChatFrame1", true, 0]);
+  const noDock = loggedIn("FCFDock_GetSelectedWindow = nil");
+  noDock.slash("filter on");
+  expect(noDock.eval("return ns.GetModule('ChatFilter').window ~= nil"), "the tab is still made").toBe(true);
+  const noSelect = loggedIn(dockEnv() + " FCFDock_SelectWindow = nil");
+  noSelect.slash("filter on");
+  expect([noSelect.eval("return ns.GetModule('ChatFilter').window ~= nil"), noSelect.eval("return #ns.errors")], "no select call: no error").toEqual([true, 0]);
+});
+
 it("chat filter: the filter waits for the end of a fight to make the tab; no GetChatWindowInfo means a new tab each time is not tried", () => {
   const addon = loggedIn();
   addon.eval("__wfgStub.inCombat = true");

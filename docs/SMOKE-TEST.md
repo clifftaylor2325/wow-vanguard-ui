@@ -2940,6 +2940,24 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: each command prints its full report, with `?` where the game hides a value (a position, size, text or anchor), and `/vg errors` shows no `slash frame` line.
 - If it fails, paste: the `/vg frame` output, `/vg errors` and the client build.
 
+### 33.129 The chat filter and the Filtered tab's selection, and the Combat Log's Close
+
+- Do: with the chat filter off and Caught lines on the Filtered tab, tick the chat filter on in `/vg` > Chat while General is the selected chat tab. Then close the Filtered tab with its right-click menu, enter a fight, let a gold-selling line show in Trade (or have a friend send one), and wait for the fight to end. Last, in `/vg` > Chat > Chat tabs pick Combat Log in the Tab choice and press Close this tab, then try the same on a tab you made with New chat tab.
+- Expect: General stays the selected tab (shown, with its chat box) when the Filtered tab appears, both on ticking the filter and after the fight; Filtered is one click away and holds the caught line. Close this tab on the Combat Log closes nothing and chat says "The game's own chat tabs can't be closed."; your own tab still closes.
+- If it fails, paste: which tab was selected before and after each step, whether the chat box was still on screen, the chat line, `/dump IsBuiltinChatWindow(ChatFrame2)`, and `/vg errors`.
+
+### 33.130 A key the game refuses in keybind mode, and Cmd on a Mac
+
+- Do: bind Bar 1 button 1 to a key in `/vg keybind`, then hover it and press a key the game gives no name or won't bind (a media or other unusual key); note whether chat says "<key> can't be bound." and what the button's keys are in its tooltip. On a Mac, hover a button, hold Cmd and press 1, then hold Cmd and Shift and press 2, and look at the game's own Key Bindings list.
+- Expect: the refused key leaves the button's earlier key in place (tooltip "Keys: ..." unchanged, nothing lost) and chat and the banner say the key can't be bound; a key named UNKNOWN does nothing at all. On a Mac the buttons show and bind Cmd-1 and Shift-Cmd-2 (the game lists them as META-1 and SHIFT-META-2), and plain 1 keeps its old owner.
+- If it fails, paste: the key you pressed, the banner and chat lines, the button's tooltip before and after, the game's Key Bindings entry, and `/vg errors`.
+
+### 33.131 Whether enemy nameplates are set once per account or per character
+
+- Do: on a brand-new character (never logged in with Vanguard), log in, then type `/dump C_CVar.GetCVarInfo("nameplateShowEnemies")` and `/dump GetCVar("nameplateShowEnemies")`. Press V to turn enemy nameplates off, log out, log in a second new character and type the same two lines again.
+- Expect: nothing is decided by this step; it records the third value of the first line (true when the game stores the setting once for the whole account, false when each character has its own) and whether the second new character's `GetCVar` came back as 1 although you turned them off on the first (Vanguard turns enemy nameplates on once at a character's first login).
+- If it fails, paste: both new characters' output of both lines, in order, and `/vg errors`.
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ## When you are done
