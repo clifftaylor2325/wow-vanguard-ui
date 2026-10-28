@@ -129,6 +129,7 @@ it("spec profiles", () => {
   expect(addon.eval("return VanguardCharDB.specProfiles[2]") === null, "/vg spec off stops switching").toBeTruthy();
 });
 it("copying a profile over another keeps the craft queue and cooldowns of the characters the destination had", () => {
+  // A profile's craft queue holding one queued recipe for the character `key`.
   const queue = (key, name) => `CraftQueue = { on = true, chars = { ["${key}"] = { queue = { { id = 1, n = 5, name = "${name}" } }, cooldowns = {} } } }`;
   const saved = `VanguardDB.profiles = { Default = { ${queue("Alt-Realm", "Mine")} }, Main = { ${queue("Main-Realm", "Theirs")}, theme = { accent = { 1, 1, 1 } } }, Plain = { theme = {} } }`;
   const addon = loggedIn("", { savedVariables: saved });

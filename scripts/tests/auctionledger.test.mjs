@@ -113,6 +113,7 @@ it("mail: seller invoices and expired mail are noted once however often the inbo
 });
 
 it("mail: three alike mails a minute apart keep one record each however often the inbox is read", () => {
+  // The k-th of the alike mails, each 70 seconds older than the one before.
   const gap = (k) => expiredMail("Linen Cloth", 20, `29.5 - ${k * 70} / 86400`);
   const addon = loggedIn(ENV + `__wfgWorld.mail = { ${gap(0)}, ${gap(1)}, ${gap(2)} }`);
   addon.world.openMailbox();
