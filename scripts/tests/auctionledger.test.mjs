@@ -95,6 +95,15 @@ it("mail: seller invoices and expired mail are noted once however often the inbo
   addon.eval("for _, m in ipairs(__wfgWorld.mail) do m.daysLeft = m.daysLeft - 600 / 86400 end");
   addon.fire("MAIL_INBOX_UPDATE");
   expect(records(addon).length, "read again ten minutes on: the same four").toBe(4);
+  addon.eval("__server = __now GetServerTime = function() return __server end");
+  addon.fire("MAIL_INBOX_UPDATE");
+  addon.eval("__now = __now + 300");
+  addon.fire("MAIL_INBOX_UPDATE");
+  expect(records(addon).length, "the computer's clock put right by five minutes, the realm's and the days left unmoved: the same four").toBe(4);
+  addon.eval("__now, __server = __now + 300, __server + 300");
+  addon.eval("for _, m in ipairs(__wfgWorld.mail) do m.daysLeft = m.daysLeft - 300 / 86400 end");
+  addon.fire("MAIL_INBOX_UPDATE");
+  expect(records(addon).length, "both clocks on five minutes, the days left down as much: the same four").toBe(4);
   addon.eval("table.remove(__wfgWorld.mail, 1)");
   addon.fire("MAIL_INBOX_UPDATE");
   expect(records(addon).length, "a mail taken: its record stays").toBe(4);
