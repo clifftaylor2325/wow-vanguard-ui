@@ -82,6 +82,10 @@ it("options: search lists the settings that match under the box, opens one, and 
   expect(list()[0][0], "a word the caption doesn't say finds the setting, with its page").toBe("Safer colours|General");
   search("font size");
   expect(list()[0].some((l) => l.startsWith("Text size|")), "and so does font size").toBe(true);
+  for (const spelling of ["colourblind", "colorblind", "colour-blind", "color-blind", "colour blindness"]) {
+    search(spelling);
+    expect(list()[0], "and so does the spelling " + spelling).toContain("Safer colours|General");
+  }
   search("TEST-ONLY nothing");
   expect(list(), "no match says so").toEqual([{}, true]);
   search("");
