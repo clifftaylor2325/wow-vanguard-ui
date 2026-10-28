@@ -1,7 +1,7 @@
 // skins: Vanguard's real Lua in the TEST-ONLY headless client (scripts/lib/lua-harness.mjs).
 
 import { expect, it } from "vitest";
-import { chatHas, expectErrors, loggedIn } from "./helpers.mjs";
+import { chatHas, expectErrors, loggedIn, setCombat } from "./helpers.mjs";
 
 it("skin API", () => {
   expectErrors("skin for Broken: eval:5: oops");
@@ -125,4 +125,19 @@ it("S.FontObjects with a bare size is not remembered and refreshes still run", (
 it("S.Panel with an unknown fill token fails alone and refreshes still run", () => {
   const result = refreshAfterBadCall(`S.Panel(CreateFrame("Frame", nil, UIParent), { fill = "red" })`);
   expect(result, "the call fails, and the refresh still reaches the listener").toEqual([false, true, 1]);
+});
+
+it("a skin's window control on a secure button with no size is sized after the fight, not during it", () => {
+  const addon = loggedIn();
+  addon.eval(`
+    -- TEST-ONLY skin hands out S; the buttons are one secure and one plain, both without a size.
+    Vanguard.RegisterSkin("TESTONLY", function(S) __S = S end)
+    __secure = CreateFrame("Button", nil, UIParent, "SecureActionButtonTemplate")
+    __plain = CreateFrame("Button", nil, UIParent)
+  `);
+  setCombat(addon, true);
+  addon.eval("__S.CloseButton(__secure) __S.WindowControl(__plain, 'Maximize')");
+  expect(addon.eval("return { __secure:GetWidth() < 1, __plain:GetWidth() >= 1 }"), "in the fight only the plain button is sized").toEqual([true, true]);
+  setCombat(addon, false);
+  expect(addon.eval("return __secure:GetWidth() >= 1"), "the secure button is sized once the fight ends").toBe(true);
 });

@@ -1761,6 +1761,14 @@ local function controlEntry(button, kind, icon, opts)
   return entry
 end
 
+-- Sizes a window control to the tile. A protected button is sized once the fight is over (SetSize on it
+-- is blocked in combat); any other is sized at once.
+function T.SizeControl(button)
+  -- Does the sizing, now or later.
+  local function size() T.PixelSize(button, T.CONTROL.tile, T.CONTROL.tile, true) end
+  if button:IsProtected() then ns.OutOfCombat(size, button) else size() end
+end
+
 -- A window control drawn with one of the theme's icons (CloseMark, Maximize, Minimize): its template
 -- art faded, the glyph quiet in text2 with nothing behind it until the mouse is over it (T.CONTROL_TILES;
 -- opts.tile "close" turns close's mark vermilion). Sized to the tile when it has no size yet; a button whose
@@ -1771,7 +1779,7 @@ function T.WindowControl(button, icon, opts)
     T.FadeRegions(button)
     entry = controlEntry(button, "control", icon, opts)
     local width = button:GetWidth()
-    if not ns.IsSecret(width) and (width or 0) < 1 then T.PixelSize(button, T.CONTROL.tile, T.CONTROL.tile, true) end
+    if not ns.IsSecret(width) and (width or 0) < 1 then T.SizeControl(button) end
   end
   repaint(button, entry)
   return button
