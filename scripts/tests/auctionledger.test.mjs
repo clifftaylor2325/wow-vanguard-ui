@@ -112,6 +112,14 @@ it("mail: seller invoices and expired mail are noted once however often the inbo
   expect(records(addon)[4], "a later mail alike (another expiry time) is another sale").toEqual(["sold", 2589, "Linen Cloth", 20, 2000, false, true]);
 });
 
+it("mail: three alike mails a minute apart keep one record each however often the inbox is read", () => {
+  const gap = (k) => expiredMail("Linen Cloth", 20, `29.5 - ${k * 70} / 86400`);
+  const addon = loggedIn(ENV + `__wfgWorld.mail = { ${gap(0)}, ${gap(1)}, ${gap(2)} }`);
+  addon.world.openMailbox();
+  for (let i = 0; i < 5; i++) addon.fire("MAIL_INBOX_UPDATE");
+  expect(records(addon).length, "three mails, three records after six reads (the first-match pairing added one per read)").toBe(3);
+});
+
 it("mail: the subject line as the client words it, and hidden values", () => {
   const addon = loggedIn(ENV + 'AUCTION_EXPIRED_MAIL_SUBJECT = "TEST-ONLY (Expired) %s [back]."');
   addon.eval(`__wfgWorld.mail = { ${expiredMail("Strange Dust", 5)},
