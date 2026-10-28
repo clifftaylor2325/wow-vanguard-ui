@@ -223,13 +223,13 @@ function ns.ShowText(title, text)
 end
 
 -- The errors window's Clear button, left of Close, made the first time; it hides with the box and when another
--- text fills it, so only ns.ShowErrors shows it.
+-- text fills it, so only ns.ShowErrors shows it. A hide that comes down from UIParent (Alt-Z) leaves the box shown and keeps it.
 local function clearButton(f)
   if f.clear then return f.clear end
   f.clear = button(f, L["Clear"])
   f.clear:SetPoint("RIGHT", f.close, "LEFT", -T.SPACE.gap, 0)
   f.clear:SetScript("OnClick", ns.Guard("click clear errors", function() ns.ClearErrors() f:Hide() ns.Chat(L["Errors cleared."]) end))
-  f:HookScript("OnHide", ns.Guard("hide errors clear", function() f.clear:Hide() end))
+  f:HookScript("OnHide", ns.Guard("hide errors clear", function() if not f:IsShown() then f.clear:Hide() end end))
   return f.clear
 end
 

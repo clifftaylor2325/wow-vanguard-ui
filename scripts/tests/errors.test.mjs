@@ -417,6 +417,16 @@ it("the error badge: a count on the addons button and in the options footer, gon
   expect(plain.eval('return { Vanguard_ErrorBadge == nil, Vanguard_OptionsErrors.text:GetText() }'), "a client without the addons button: the footer still counts").toEqual([true, "1 error caught this session: click to list them"]);
 });
 
+it("E6-R2 the errors window keeps its Clear button through Alt-Z, and loses it when closed", () => {
+  expectErrors("TEST-ONLY alt: x");
+  const addon = loggedIn(CLICK_LUA);
+  addon.eval('ns.ClearErrors() ns.Report("TEST-ONLY alt", "x")');
+  addon.slash("errors");
+  addon.eval("UIParent:Hide() UIParent:Show()");
+  expect(addon.eval("return { Vanguard_TextDialog:IsShown(), Vanguard_TextDialog.clear:IsShown() }"), "Alt-Z twice: the window and its Clear button stay").toEqual([true, true]);
+  addon.eval("Vanguard_TextDialog:Hide()");
+  expect(addon.eval("return Vanguard_TextDialog.clear:IsShown()"), "closed, Clear hides with it").toBe(false);
+});
 it("A-14 the errors window: Report a bug opens the feedback form on a bug, Clear empties the list, and other text windows don't show them", () => {
   expectErrors("TEST-ONLY shown: x");
   const addon = loggedIn(CLICK_LUA);
