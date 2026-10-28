@@ -462,6 +462,7 @@ export const TOOLS_ENV = `
     local v = CreateFrame("Frame", name, UIParent) v.items = {}
     function v:GetItemFrames() return self.items end
     function v:RefreshLayout() __item(self, self == BuffBarCooldownViewer) end
+    function v:RefreshData() end
     __item(v, name == "BuffBarCooldownViewer")
   end
   function __box(w) return w.GetScrollBox and w:GetScrollBox() or w.ScrollBox end
