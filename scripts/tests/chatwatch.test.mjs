@@ -52,7 +52,8 @@ it("G4-1 chat watch: a phrase typed with an item link's brackets still finds the
   say(addon, "CHANNEL", "WTS |cff1eff00|Hitem:15062::::::::60:::::|h[Devilsaur Leggings]|h|r cheap", "Seller");
   expect([rings(addon), toast(addon)[1]], "the bracketed phrase rings on the link").toEqual([1, "Seller"]);
   addon.slash("watch add [ ]");
-  expect(addon.eval("return #ns.Settings('ChatWatch').phrases"), "brackets alone are no phrase").toBe(2);
+  addon.slash("watch add Devilsaur Leggings");
+  expect(addon.eval("return #ns.Settings('ChatWatch').phrases"), "brackets alone are no phrase, and the same words without them are already watched").toBe(2);
   addon.eval("table.insert(ns.Settings('ChatWatch').phrases, '[]')");
   addon.advance(3);
   say(addon, "CHANNEL", "anything at all", "Other");

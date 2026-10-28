@@ -91,7 +91,8 @@ end
 -- True when the client's watched-faction answer names one: the game's own bar takes an empty name or
 -- faction 0 for none watched.
 local function namesFaction(data)
-  return type(data) == "table" and type(data.name) == "string" and data.name ~= "" and data.factionID ~= 0
+  if type(data) ~= "table" or ns.PlainNumber(data.factionID) == 0 then return false end
+  return ns.IsSecret(data.name) or (type(data.name) == "string" and data.name ~= "")
 end
 
 -- { name, standing, cur, max } for the watched faction, or nil when none. The standing is nil while the

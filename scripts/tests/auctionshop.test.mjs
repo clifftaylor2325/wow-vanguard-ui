@@ -167,6 +167,17 @@ it("G7-1 item info for a long waiting browse list, arriving a little each frame,
   const stored = addon.eval("local p = ns.AuctionPrices.House().prices[20200] return p and p.min or false");
   expect([addon.eval("return __passes"), stored, addon.eval(`return ${HELPER}.lateBrowse == nil`)], "20 frames of arrivals over a second: the first pricing and two more (one per half second), the last item priced, the list let go").toEqual([3, 20200, true]);
 });
+it("G7-1 item info that comes in just before the house closes is still priced", () => {
+  const addon = atAuctionHouse("__wfgWorld.items[10945] = { name = 'TEST-ONLY Late', commodity = true, pending = true }");
+  addon.eval("__wfgWorld.ah.browse = { { itemKey = { itemID = 10945 }, minPrice = 70, totalQuantity = 5 } }");
+  addon.fire("AUCTION_HOUSE_BROWSE_RESULTS_UPDATED");
+  addon.eval("__wfgWorld.items[10945].pending = nil");
+  addon.fire("ITEM_KEY_ITEM_INFO_RECEIVED", 10945);
+  addon.advance(0.05, 0.05);
+  addon.fire("AUCTION_HOUSE_CLOSED");
+  addon.advance(1);
+  expect(addon.eval("local p = ns.AuctionPrices.House().prices[10945] return p and p.min or false"), "priced as the house closed").toBe(70);
+});
 it("a late browse answer for the last entry is not taken by the next one", () => {
   const addon = atAuctionHouse(DUSTS + " __wfgWorld.items[11083] = { name = 'Soul Dust' }");
   makeList(addon, "TEST-ONLY Mats", '{ "Strange Dust", "Soul Dust" }');

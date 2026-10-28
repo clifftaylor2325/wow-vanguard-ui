@@ -503,12 +503,20 @@ function AH.OnBrowse()
   AH.Done()
 end
 
+-- The auction house closed: its view and the browse list waiting on item info go, the list priced first when
+-- info came in for it since its last pricing (priceLate's wait would find it gone).
+local function shopClosed()
+  local late = AH.lateBrowse
+  AH.view, AH.lateBrowse = nil, nil
+  if late and late.due then AP.RecordBrowse(late.results) end
+end
+
 -- The auction house events the shop follows besides browse results and item search results
 -- (on: Modules/AuctionHelper.lua's; AH.OnSearchEvent hands the
 -- search results to AH.OnListings).
 function AH.ListenShop(on)
   on("ITEM_KEY_ITEM_INFO_RECEIVED", function() ns.Soon("auction item info", AH.OnItemInfo) end)
-  ns.On("AUCTION_HOUSE_CLOSED", function() AH.view, AH.lateBrowse = nil, nil end) -- state only, so also in combat
+  ns.On("AUCTION_HOUSE_CLOSED", shopClosed) -- state only, so also in combat
 end
 
 -- Listings ------------------------------------------------------------------------------------
