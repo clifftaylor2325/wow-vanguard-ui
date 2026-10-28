@@ -2928,6 +2928,24 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: no chat line about dropping a price home, and `/vg mem` gives a size of a 16.0 MB budget; the drag doesn't stutter more than the game does without Vanguard; the preset attaches nothing and chat says it found nothing holding every word of "ore bar herb", with commas separating alternatives.
 - If it fails, paste: the "prices for N items" number from each scan, the `/vg mem` lines, how long the stutter lasted, the mail chat line, and `/vg errors`.
 
+### 33.127 Setup open while the UI is hidden or an intro cinematic plays
+
+- Do: create a new character on an account that has finished setup (or run `/vg setup`), and while the wizard is open watch the intro cinematic start and end; then on the Move step press Alt-Z, press Alt-Z again, and keep using the wizard (Next, then Done).
+- Expect: the wizard is still open on the same step after the cinematic and after Alt-Z; frames stay unlocked on the Move step; chat never says "Setup opens again at your next login"; Done and the close button still end setup as before.
+- If it fails, paste: the step the wizard was on before and after, whether the frames were still unlocked, the chat lines, and `/vg errors`.
+
+### 33.128 Options and errors windows through Alt-Z twice
+
+- Do: open `/vg`, press Alt-Z, then Alt-Z again, then press Up, Down, Tab and Enter in the options window; then with an error logged open `/vg errors`, press Alt-Z twice and look at the buttons.
+- Expect: the arrow keys, Tab and Enter still walk the pages and settings without reopening the window, and the errors window still shows Clear beside Close (closing and reopening it behaves as before).
+- If it fails, paste: which keys stopped working, whether Clear was missing, and `/vg errors`.
+
+### 33.129 Minimap coordinates where the client hides your position
+
+- Do: turn on the minimap coordinates and the quest arrow with a quest tracked, then walk into an instance and fight a few pulls; run `/vg probe` and note any C_Map.GetPlayerMapPosition line.
+- Expect: the coordinates show numbers outside and go blank (not an error) wherever the client hides your position, the arrow keeps pointing or dims, and `/vg errors` lists nothing about "secret value" in the minimap coords ticker.
+- If it fails, paste: the `/vg probe` map position line, `/vg errors`, and where you were standing.
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ## When you are done
