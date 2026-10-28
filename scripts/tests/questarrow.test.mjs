@@ -63,6 +63,13 @@ it("quest arrow: a finished quest outranks a nearer objective; the pick holds un
   expect([pick(), chatHas(addon, /Arrow: TEST-ONLY Near\./)], "the turn-in gone: on to the next, with a word").toEqual([90061, true]);
 });
 
+it("E6-2 quest arrow: a map position the client hides whole gives no spot and no error", () => {
+  const addon = loggedIn(ARROW_ENV);
+  expect(addon.eval("return { ns.QuestArrow.PlayerSpot(10) }"), "a plain position is read").toEqual([0.5, 0.5]);
+  addon.eval("C_Map.GetPlayerMapPosition = function() return __wfgWorld.secret(0) end");
+  expect(addon.eval("return ns.QuestArrow.PlayerSpot(10) == nil"), "a hidden position is no spot").toBe(true);
+});
+
 it("quest arrow: no direction when the client won't say, another zone, no spot, hidden values and no quests", () => {
   const addon = loggedIn(ARROW_ENV);
   addon.update(0);
