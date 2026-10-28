@@ -3006,6 +3006,24 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: the handle stays where it was and does not jump to the cursor; the same for the options window when you close it by Escape while dragging its title.
 - If it fails, paste: which way you hid it, where the handle went, and `/vg errors`.
 
+### 33.140 Minimap coordinates fill in after a loading screen while you stand still
+
+- Do: with the minimap coordinates on, take a portal or hearth, and stand still once the loading screen ends; also `/reload` while standing still.
+- Expect: the coordinates show numbers within a second of the screen coming back, without taking a step.
+- If it fails, paste: where you were, how long the coordinates stayed blank, and `/vg errors`.
+
+### 33.141 A browsed item the game hadn't loaded is priced once it loads
+
+- Do: right after logging in, open the auction house and browse a trade goods category you haven't looked at this session; wait a few seconds, close the auction house, and hover one of the listed commodities in your bags or a vendor.
+- Expect: its tooltip shows the "AH" price from that browse, including items whose names filled in a moment after the list appeared.
+- If it fails, paste: the item, its tooltip lines, and `/vg errors`.
+
+### 33.142 Cooldown Manager key text follows a swap that keeps the icon count
+
+- Do: with the Cooldown Manager on and Cooldown Manager keys on, open the game's Cooldown Manager settings and swap two tracked spells in one row (or replace one with another), keeping the number of icons the same.
+- Expect: each icon's key text changes with its spell straight away, with no reload or bar change needed.
+- If it fails, paste: the two spells, their keys before and after, and `/vg errors`.
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ## When you are done

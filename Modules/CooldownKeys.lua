@@ -103,17 +103,22 @@ function CK.SetKeys(on)
   CK.Refresh()
 end
 
--- Repaints after a row lays itself out again (the game makes its items as you set what it tracks).
-local function watch(name)
-  local viewer = _G[name]
-  if type(viewer) == "table" and type(viewer.RefreshLayout) == "function" and type(hooksecurefunc) == "function" then
-    hooksecurefunc(viewer, "RefreshLayout", ns.Guard("hook RefreshLayout keys", CK.Refresh))
-  end
-end
-
 -- Repaints on the next frame, once for however many buttons changed in this one.
 local function refreshSoon()
   ns.Soon("cooldown keys", CK.Refresh)
+end
+
+-- Repaints after a row lays itself out again (the game makes its items as you set what it tracks),
+-- and on the next frame after it points the items it has at other cooldowns (a swap that keeps the count).
+local function watch(name)
+  local viewer = _G[name]
+  if type(viewer) ~= "table" or type(hooksecurefunc) ~= "function" then return end
+  if type(viewer.RefreshLayout) == "function" then
+    hooksecurefunc(viewer, "RefreshLayout", ns.Guard("hook RefreshLayout keys", CK.Refresh))
+  end
+  if type(viewer.RefreshData) == "function" then
+    hooksecurefunc(viewer, "RefreshData", ns.Guard("hook RefreshData keys", refreshSoon))
+  end
 end
 
 -- Repaints after a Vanguard bar button is pointed at another slot. A stance, form or

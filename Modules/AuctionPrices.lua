@@ -222,6 +222,16 @@ function AP.RecordBrowse(results, t)
   for id, price in pairs(low) do AP.RecordSeen(id, price, t) end
 end
 
+-- How many browse results can't be priced yet: the client hasn't loaded their item info, so
+-- browsePrice can't tell whether the price is per unit.
+function AP.Unloaded(results)
+  local n = 0
+  for _, r in ipairs(results or {}) do
+    if not C_AuctionHouse.GetItemKeyInfo(r.itemKey) then n = n + 1 end
+  end
+  return n
+end
+
 -- Whether item row a is worth keeping over b: priced more recently, and among items priced at the same
 -- moment (a scan prices thousands at once) the one with more listings. Strict, so a sort stays valid.
 local function keptFirst(a, b)

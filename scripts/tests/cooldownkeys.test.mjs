@@ -83,6 +83,18 @@ it("cooldown keys: /vg cdmkeys and the options switch it at once; the row's layo
   expect([addon.eval("return ns.GetModule('CooldownKeys').settings.keys"), key(addon, "EssentialCooldownViewer")], "the options switch turns it off").toEqual([false, ""]);
 });
 
+it("T2-1 cooldown keys: a row that points its icons at other cooldowns in place is repainted", () => {
+  const addon = loggedIn(UNITS_ENV + TOOLS_ENV + ITEMS, { savedVariables: ON });
+  addon.world.setAction(3, { type: "spell", id: 1234 });
+  addon.world.setAction(2, { type: "spell", id: 5678 });
+  addon.eval("EssentialCooldownViewer.items[1].GetSpellID = function() return 1234 end EssentialCooldownViewer:RefreshData()");
+  addon.update(0);
+  expect(key(addon, "EssentialCooldownViewer"), "the icon's spell is on key 3").toBe("3");
+  addon.eval("EssentialCooldownViewer.items[1].GetSpellID = function() return 5678 end EssentialCooldownViewer:RefreshData()");
+  addon.update(0);
+  expect(key(addon, "EssentialCooldownViewer"), "the same icon now tracks the spell on key 2").toBe("2");
+});
+
 it("cooldown keys: the command says so when the module is off", () => {
   const addon = loggedIn(UNITS_ENV + TOOLS_ENV + ITEMS + CLICK_LUA);
   addon.eval("ns.GetModule('CooldownKeys').settings = nil");

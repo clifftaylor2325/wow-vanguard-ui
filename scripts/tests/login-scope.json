@@ -62,8 +62,8 @@
       "empty slots take no mouse, so blank bar space passes clicks through; a drag turns it back on",
       "hotkey text stays on one line inside the button, right-aligned",
       "in combat an empty slot's mouse waits for the fight to end, one entry per button, the last state winning",
-      "keybind mode: a key the game refuses leaves the button's keys as they were; a key with no name is ignored",
       "keybind mode: Cmd on a Mac is part of the key, after Shift in the game's order",
+      "keybind mode: a key the game refuses leaves the button's keys as they were; a key with no name is ignored",
       "keybind mode: hover a button and press a key to bind it; a modifier alone waits; Escape leaves",
       "keybind mode: out of combat only, ends when a fight starts; from the options; needs the bars",
       "keybind mode: the mouse's side buttons and wheel bind too; Backspace clears; a taken key says whose it was",
@@ -107,6 +107,7 @@
     "scripts/tests/cooldowngaps.test.mjs": [],
     "scripts/tests/cooldownglow.test.mjs": [],
     "scripts/tests/cooldownkeys.test.mjs": [
+      "T2-1 cooldown keys: a row that points its icons at other cooldowns in place is repainted",
       "cooldown keys: /vg cdmkeys and the options switch it at once; the row's layout hook repaints",
       "cooldown keys: the key of the bar button that holds the spell, or a macro that casts it, follows moves and bindings",
       "cooldown keys: the labels follow bar 1 to its new page after a stance change or Shift+number"
