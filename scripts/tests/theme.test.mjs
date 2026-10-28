@@ -529,6 +529,7 @@ it("the game's font objects: the theme font at Text size, kept after a theme cha
 });
 
 it("a Text size outside the slider's range from a hand-edited profile is kept inside it: no font size of 0, below 1 or enormous", () => {
+  // The label role's size, and whether no font is below 1, with this saved Text size.
   const sizes = (textScale) => {
     const addon = loggedIn("", { savedVariables: `VanguardDB.profiles = { Default = { theme = { textScale = ${textScale} } } }` });
     addon.eval("ns.Theme.Refresh()");
