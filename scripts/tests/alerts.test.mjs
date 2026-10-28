@@ -200,10 +200,10 @@ it("the game's tools: Cooldown Manager and damage meter styled and placed, stand
   addon.eval("UtilityCooldownViewer:RefreshLayout()");
   expect(addon.eval("return ns.FrameState('vgSkinned')[UtilityCooldownViewer.items[2]]"), "items the game adds later are styled too").toBe(true);
   expect(addon.eval("return BuffBarCooldownViewer.items[1].Bar:GetStatusBarTexture() ~= nil and BuffBarCooldownViewer.items[1].Bar.Name.__font ~= nil"), "buff bars get the theme's bar and font").toBe(true);
-  const win = addon.eval("local w = DamageMeterSessionWindow1 local l = w.ScrollBox.lines[1] return { w.Header.__alpha, l.StatusBar.BackgroundRegions[1].__alpha, l.StatusBar.Name.__font ~= nil }");
+  const win = addon.eval("local w = DamageMeterSessionWindow1 local l = __box(w).lines[1] return { w.Header.__alpha, l.StatusBar.BackgroundRegions[1].__alpha, l.StatusBar.Name.__font ~= nil }");
   expect(win, "the meter's header and bar shading fade, its lines take the theme font").toEqual([0, 0, true]);
-  addon.eval("__line(DamageMeterSessionWindow1) DamageMeterSessionWindow1.ScrollBox:Update() DamageMeter:SetupSessionWindow() __line(DamageMeterSessionWindow2) DamageMeterSessionWindow2.ScrollBox:Update()");
-  expect(addon.eval("return { ns.FrameState('vgSkinned')[DamageMeterSessionWindow1.ScrollBox.lines[2]], ns.FrameState('vgSkinned')[DamageMeterSessionWindow2], ns.FrameState('vgSkinned')[DamageMeterSessionWindow2.ScrollBox.lines[1]] }"), "new lines and new windows are styled as they come").toEqual([true, true, true]);
+  addon.eval("__line(DamageMeterSessionWindow1) __box(DamageMeterSessionWindow1):Update() DamageMeter:SetupSessionWindow() __line(DamageMeterSessionWindow2) __box(DamageMeterSessionWindow2):Update()");
+  expect(addon.eval("return { ns.FrameState('vgSkinned')[__box(DamageMeterSessionWindow1).lines[2]], ns.FrameState('vgSkinned')[DamageMeterSessionWindow2], ns.FrameState('vgSkinned')[__box(DamageMeterSessionWindow2).lines[1]] }"), "new lines and new windows are styled as they come").toEqual([true, true, true]);
   // Where a game frame is anchored: { point, the spot it's on }.
   const spot = (name, point) => addon.eval(`local p = ${name}.__points.${point} return p and { p.relPoint, p.rel == Vanguard_${name}Spot } or false`);
   expect([spot("EssentialCooldownViewer", "CENTER"), spot("DamageMeter", "TOPLEFT"), spot("DamageMeter", "BOTTOMRIGHT")], "rows are centered on their spots; the meter fills its own").toEqual([["CENTER", true], ["TOPLEFT", true], ["BOTTOMRIGHT", true]]);
@@ -243,15 +243,15 @@ it("the game's tools: an Edit Mode system is fitted through the client's own Set
 it("damage meter: a pooled line set up again keeps its background faded, with one hook per line", () => {
   const addon = loggedIn(TOOLS_ENV);
   // The first line's background alpha.
-  const alpha = () => addon.eval("return DamageMeterSessionWindow1.ScrollBox.lines[1].StatusBar.BackgroundRegions[1].__alpha");
+  const alpha = () => addon.eval("return __box(DamageMeterSessionWindow1).lines[1].StatusBar.BackgroundRegions[1].__alpha");
   expect(alpha(), "faded when styled").toBe(0);
-  addon.eval("DamageMeterSessionWindow1.ScrollBox:Update() DamageMeterSessionWindow1.ScrollBox:Update()");
-  addon.eval("__sets = 0 local r = DamageMeterSessionWindow1.ScrollBox.lines[1].StatusBar.BackgroundRegions[1] local set = r.SetAlpha r.SetAlpha = function(self, a) __sets = __sets + 1 return set(self, a) end");
-  addon.eval("DamageMeterSessionWindow1.ScrollBox.lines[1]:SetBackgroundAlpha(1)");
+  addon.eval("__box(DamageMeterSessionWindow1):Update() __box(DamageMeterSessionWindow1):Update()");
+  addon.eval("__sets = 0 local r = __box(DamageMeterSessionWindow1).lines[1].StatusBar.BackgroundRegions[1] local set = r.SetAlpha r.SetAlpha = function(self, a) __sets = __sets + 1 return set(self, a) end");
+  addon.eval("__box(DamageMeterSessionWindow1).lines[1]:SetBackgroundAlpha(1)");
   expect(alpha(), "the game's reset as it sets the line up again is faded at once").toBe(0);
   expect(addon.eval("return __sets"), "the game's one SetAlpha, then one fade: redraws added no second hook").toBe(2);
-  addon.eval("local l = __line(DamageMeterSessionWindow1) l.StatusBar.BackgroundRegions = nil l.UpdateBackground = nil DamageMeterSessionWindow1.ScrollBox:Update()");
-  expect(addon.eval("return { ns.FrameState('vgSkinned')[DamageMeterSessionWindow1.ScrollBox.lines[2]], #ns.errors }"), "a line without background art or its reset is styled without them").toEqual([true, 0]);
+  addon.eval("local l = __line(DamageMeterSessionWindow1) l.StatusBar.BackgroundRegions = nil l.UpdateBackground = nil __box(DamageMeterSessionWindow1):Update()");
+  expect(addon.eval("return { ns.FrameState('vgSkinned')[__box(DamageMeterSessionWindow1).lines[2]], #ns.errors }"), "a line without background art or its reset is styled without them").toEqual([true, 0]);
 });
 // The glyph texture on a meter window control (nil when it has none).
 const glyphOf = (addon, path) => addon.eval(`local g = ns.Theme.ControlGlyph(${path}) return g and g:GetTexture()`);
@@ -279,12 +279,23 @@ it("damage meter: the breakdown window gets the flat panel, the meter's lines, t
   expect(out, "its art faded, styled once, a line it draws later styled with its background faded").toEqual([0, true, true, 0]);
   expect(glyphOf(addon, `${src}.CloseButton`), "the close button is the theme's cross").toMatch(/CloseMark$/);
 });
+it("damage meter: the own-player line, which a session window keeps in its MinimizeContainer, takes the theme too", () => {
+  const addon = loggedIn(TOOLS_ENV);
+  const out = addon.eval("local w = DamageMeterSessionWindow1 return { ns.FrameState('vgSkinned')[w:GetLocalPlayerEntry()] == true, w.ScrollBox == nil }");
+  expect(out, "the own-player line is styled although the window itself holds no list").toEqual([true, true]);
+});
+it("damage meter: a window with a list getter but no own-player getter still has its lines styled", () => {
+  const addon = loggedIn(TOOLS_ENV);
+  addon.eval("local s = DamageMeterSessionWindow1.MinimizeContainer.SourceWindow local box = s.ScrollBox s.GetScrollBox = function() return box end __line(s) box:Update() s:Show()");
+  const out = addon.eval("local s = DamageMeterSessionWindow1.MinimizeContainer.SourceWindow return { ns.FrameState('vgSkinned')[s.ScrollBox.lines[1]] == true, #ns.errors }");
+  expect(out, "the breakdown's lines are styled without a getter for the own-player line").toEqual([true, 0]);
+});
 it("damage meter: styling never reads a line's hidden name or amount", () => {
   const addon = loggedIn(TOOLS_ENV);
   addon.eval(`local w = DamageMeterSessionWindow1 local l = __line(w) local src = w.MinimizeContainer.SourceWindow local s = __line(src)
     for _, line in ipairs({ l, s }) do for _, key in ipairs({ "Name", "Value" }) do line.StatusBar[key].GetText = function() error("read a hidden value") end end end
-    w.ScrollBox:Update() src.ScrollBox:Update()`);
-  expect(addon.eval("local w, done = DamageMeterSessionWindow1, ns.FrameState('vgSkinned') return { #ns.errors, done[w.ScrollBox.lines[2]] == true, done[w.MinimizeContainer.SourceWindow.ScrollBox.lines[1]] == true }"), "both lines styled, without a GetText").toEqual([0, true, true]);
+    __box(w):Update() src.ScrollBox:Update()`);
+  expect(addon.eval("local w, done = DamageMeterSessionWindow1, ns.FrameState('vgSkinned') return { #ns.errors, done[__box(w).lines[2]] == true, done[w.MinimizeContainer.SourceWindow.ScrollBox.lines[1]] == true }"), "both lines styled, without a GetText").toEqual([0, true, true]);
 });
 it("Edit Mode shows Vanguard's handles too, with a note under its window", () => {
   const addon = loggedIn(TOOLS_ENV + CLICK_LUA);

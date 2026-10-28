@@ -117,11 +117,11 @@ local function sayOnce(kind, who, line)
   ns.Chat(line)
 end
 
--- Someone asks you to duel: decline, and say who (once in a while per sender).
-function AA.OnDuel(_, who)
+-- Someone asks you to duel (to the death too, on Hardcore realms): decline, and say who (once in a while per sender).
+function AA.OnDuel(event, who)
   if not AA.settings.duels or type(CancelDuel) ~= "function" then return end
   CancelDuel()
-  closePrompt("DUEL_REQUESTED")
+  closePrompt(event)
   who = plain(who, L["someone"])
   sayOnce("duel", who, ns.Format(L["Declined a duel from {who}."], { who = who }))
 end
@@ -214,6 +214,7 @@ function AA.Enable(settings)
   ns.On("CONFIRM_SUMMON", AA.OnSummon)
   ns.On("RESURRECT_REQUEST", AA.OnResurrect)
   ns.On("DUEL_REQUESTED", AA.OnDuel)
+  if ns.IsForever() then ns.On("DUEL_TO_THE_DEATH_REQUESTED", AA.OnDuel) end
   ns.On("LOOT_READY", AA.OnLootReady)
   ns.On("GUILD_INVITE_REQUEST", AA.OnGuildInvite)
   ns.On("PARTY_INVITE_REQUEST", AA.OnGroupInvite)

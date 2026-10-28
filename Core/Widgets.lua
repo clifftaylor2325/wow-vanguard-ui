@@ -106,9 +106,10 @@ local function onKeyDown(b, key)
   if not MODIFIER_KEYS[key] then captured(b, W.Modifiers() .. key) end
 end
 
--- A mouse button while capturing: "ctrl-BUTTON2" (mouse bindings use lower-case modifiers).
+-- A mouse button while capturing: "ctrl-BUTTON2" (mouse bindings use lower-case modifiers). The left
+-- button is taken on its click instead (onClick), or its release would arm the button again.
 local function onMouseDown(b, button)
-  if b.capturing and MOUSE_BUTTONS[button] then
+  if b.capturing and button ~= "LeftButton" and MOUSE_BUTTONS[button] then
     captured(b, W.Modifiers():lower() .. "BUTTON" .. MOUSE_BUTTONS[button])
   end
 end
@@ -118,12 +119,18 @@ local function onWheel(b, delta)
   if b.capturing then captured(b, W.Modifiers() .. (delta > 0 and "MOUSEWHEELUP" or "MOUSEWHEELDOWN")) end
 end
 
+-- A left click: arms an idle button, and is the captured BUTTON1 on an armed one.
+local function onClick(b)
+  if b.capturing then return captured(b, W.Modifiers():lower() .. "BUTTON1") end
+  startCapture(b)
+end
+
 -- A button that, once clicked, takes the next key, mouse click or wheel turn
 -- (with Shift/Ctrl/Alt) and passes it to onKey. Escape cancels.
 function W.KeyCapture(parent, caption, onKey)
   local b = ns.DialogButton(parent, caption, 220)
   b.caption, b.onKey = caption, onKey
-  b:SetScript("OnClick", ns.Guard("click key capture", startCapture))
+  b:SetScript("OnClick", ns.Guard("click key capture", onClick))
   b:SetScript("OnKeyDown", ns.Guard("key capture key", onKeyDown))
   b:SetScript("OnMouseDown", ns.Guard("key capture mouse", onMouseDown))
   b:EnableMouseWheel(true)

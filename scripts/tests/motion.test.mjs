@@ -46,6 +46,15 @@ it("motion: no fade lasts more than 0.15 s in combat", () => {
   expect(addon.eval("return ns.Theme.FadeTime(0.35)"), "and stops counting when it ends").toBe(0.35);
 });
 
+it("motion: work queued for the end of a fight already sees the fight as over (N4-2)", () => {
+  const addon = loggedIn(FAKE_FADES + 'local f = CreateFrame("Frame", "TEST_Late", UIParent) f:SetSize(200, 100) f:Hide() __fakeFader(f)');
+  setCombat(addon, true);
+  addon.fire("PLAYER_REGEN_DISABLED");
+  addon.eval("ns.OutOfCombat(function() __fades = {} __inside = ns.Theme.FadeTime(0.4) ns.Theme.OpenWindow(TEST_Late) end)");
+  setCombat(addon, false);
+  expect(addon.eval("return { __inside, #__fades > 0 and __fades[1].anims[1].kind }"), "full-length fades and the rise play when it runs").toEqual([0.4, "Translation"]);
+});
+
 // A themed test button with fake faders on its two hover parts; returns nothing.
 const HOVER_BUTTON = `local b = ns.Theme.Button(CreateFrame("Button", "TEST_Hover", UIParent)) b:SetSize(80, 22)
   for _, t in ipairs(ns.Theme.HoverParts(b)) do __fakeFader(t) end

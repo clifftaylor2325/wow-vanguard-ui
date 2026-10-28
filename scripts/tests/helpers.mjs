@@ -464,10 +464,16 @@ export const TOOLS_ENV = `
     function v:RefreshLayout() __item(self, self == BuffBarCooldownViewer) end
     __item(v, name == "BuffBarCooldownViewer")
   end
-  function __list(w)
-    w.ScrollBox = CreateFrame("Frame", nil, w) w.ScrollBox.lines = {}
-    function w.ScrollBox:ForEachFrame(fn) for _, l in ipairs(self.lines) do fn(l) end end
-    function w.ScrollBox:Update() end
+  function __box(w) return w.GetScrollBox and w:GetScrollBox() or w.ScrollBox end
+  function __list(w, holder)
+    holder = holder or w
+    holder.ScrollBox = CreateFrame("Frame", nil, w) holder.ScrollBox.lines = {}
+    function holder.ScrollBox:ForEachFrame(fn) for _, l in ipairs(self.lines) do fn(l) end end
+    function holder.ScrollBox:Update() end
+    if holder == w then return end
+    holder.LocalPlayerEntry = CreateFrame("Button", nil, holder) holder.LocalPlayerEntry.StatusBar = CreateFrame("StatusBar", nil, holder.LocalPlayerEntry)
+    w.GetScrollBox = function() return holder.ScrollBox end
+    w.GetLocalPlayerEntry = function() return holder.LocalPlayerEntry end
   end
   function __scrollBar(parent)
     local bar = CreateFrame("Frame", nil, parent) bar.Track = CreateFrame("Frame", nil, bar) bar.Track.Thumb = CreateFrame("Button", nil, bar.Track)
@@ -479,14 +485,14 @@ export const TOOLS_ENV = `
   function DamageMeter:ForEachSessionWindow(fn) for _, w in ipairs(self.windows) do fn(w) end end
   function DamageMeter:SetupSessionWindow()
     local w = CreateFrame("Frame", "DamageMeterSessionWindow" .. (#self.windows + 1), self)
-    w.Header = w:CreateTexture() __list(w)
+    w.Header = w:CreateTexture()
     w.MinimizeButton = CreateFrame("Button", nil, w) w.MinimizeButton:SetSize(18, 19) w.MinimizeButton.art = w.MinimizeButton:CreateTexture()
     w.isMinimized = __startMinimized
     function w:IsMinimized() return self.isMinimized end
     function w:SetMinimized(on) self.isMinimized = on end
     w.SettingsDropdown = CreateFrame("Button", nil, w) w.SettingsDropdown:SetSize(18, 18)
     for _, key in ipairs({ "SessionDropdown", "DamageMeterTypeDropdown" }) do w[key] = CreateFrame("Button", nil, w) w[key]:SetSize(80, 20) w[key].Arrow = w[key]:CreateTexture() end
-    w.MinimizeContainer = CreateFrame("Frame", nil, w) w.MinimizeContainer.ScrollBar = __scrollBar(w.MinimizeContainer)
+    w.MinimizeContainer = CreateFrame("Frame", nil, w) w.MinimizeContainer.ScrollBar = __scrollBar(w.MinimizeContainer) __list(w, w.MinimizeContainer)
     local src = CreateFrame("Frame", nil, w.MinimizeContainer) __list(src) src.Background = src:CreateTexture() src.ScrollBar = __scrollBar(src)
     src.CloseButton = CreateFrame("Button", nil, src) src.CloseButton:SetSize(20, 20) src:Hide()
     w.MinimizeContainer.SourceWindow = src
@@ -494,12 +500,12 @@ export const TOOLS_ENV = `
     return w
   end
   function __line(w)
-    local l = CreateFrame("Button", nil, w.ScrollBox) l.StatusBar = CreateFrame("StatusBar", nil, l)
+    local l = CreateFrame("Button", nil, __box(w)) l.StatusBar = CreateFrame("StatusBar", nil, l)
     l.StatusBar.BackgroundRegions = { l.StatusBar:CreateTexture() } l.StatusBar.Name = l.StatusBar:CreateFontString() l.StatusBar.Value = l.StatusBar:CreateFontString()
     l.Icon = CreateFrame("Frame", nil, l) l.Icon.Icon = l.Icon:CreateTexture()
     function l:UpdateBackground() for _, r in ipairs(self.StatusBar.BackgroundRegions) do r:SetAlpha(1) end end
     function l:SetBackgroundAlpha() self:UpdateBackground() end
-    w.ScrollBox.lines[#w.ScrollBox.lines + 1] = l
+    __box(w).lines[#__box(w).lines + 1] = l
     return l
   end
   __line(DamageMeter:SetupSessionWindow())
