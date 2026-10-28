@@ -60,7 +60,7 @@ uses are named in `SILHOUETTES` in `scripts/lib/media-sources.mjs`.
 ## Vanguard's own crest
 
 `brand/vanguard-crest.svg` is Vanguard's crest (two swords crossed behind a rimmed brass
-shield that bears a V), drawn for Vanguard; copyright Clifton Taylor, all rights reserved,
+shield that bears a V), drawn for Vanguard; copyright Cliff Hearthvale, all rights reserved,
 like the rest of the addon. The V is Cinzel's capital at weight 900 (the font below, SIL
 OFL; the licence allows its glyphs in a logo), converted to an outline. The build does not
 read the SVG: `scripts/lib/media-brand.mjs` draws the same shapes with `media-art.mjs` for
