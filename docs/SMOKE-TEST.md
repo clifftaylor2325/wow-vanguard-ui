@@ -2934,6 +2934,12 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: the first prints a number within a minute or two of the second, so the login prune of old prices can tell a computer clock far off the realm's from a right one; `/vg ah` still counts the same priced items as before the login.
 - If it fails, paste: both printed numbers, `/vg ah`, and `/vg errors`.
 
+### 33.128 /vg frame on a frame the game keeps secret in a fight
+
+- Do: start a fight in a dungeon, then type `/vg frame PlayerFrame deep` and `/vg frame Vanguard_Minimap deep`, and after the fight `/vg errors`.
+- Expect: each command prints its full report, with `?` where the game hides a value (a position, size, text or anchor), and `/vg errors` shows no `slash frame` line.
+- If it fails, paste: the `/vg frame` output, `/vg errors` and the client build.
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ## When you are done
