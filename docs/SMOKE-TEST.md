@@ -2994,6 +2994,18 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: the windows and text show in Fira Sans Condensed with no "Font not set" error; the import names "Font not found: Interface\AddOns\Gone\f.ttf" and the game's own tooltip, error and zone text still show.
 - If it fails, paste: `/vg errors`, the import lines in chat, and what `/dump (UIParent:CreateFontString():SetFont([[Interface\AddOns\Gone\f.ttf]], 12, ""))` prints.
 
+### 33.138 Damage meter lines wear the theme on Forever
+
+- Do: with GameTools and its Damage meter switch on, open the game's damage meter on WoW Forever, fight a dummy, then start a new fight so the list redraws, and open a player's breakdown.
+- Expect: the player bars and your own line at the bottom show the theme's bar, font and cropped icon with the game's gold shading faded, and stay themed after the list redraws; the breakdown's lines match.
+- If it fails, paste: a screenshot of the meter, `/vg status` and `/vg errors`.
+
+### 33.139 A handle hidden in the middle of a drag stops following the cursor
+
+- Do: run `/vg unlock`, hold the left button on a handle, and without letting go press Alt-Z (then repeat with a mob pull starting, and with Escape in setup's last step); release, show the UI, run `/vg unlock` again and move the mouse over the screen.
+- Expect: the handle stays where it was and does not jump to the cursor; the same for the options window when you close it by Escape while dragging its title.
+- If it fails, paste: which way you hid it, where the handle went, and `/vg errors`.
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ## When you are done

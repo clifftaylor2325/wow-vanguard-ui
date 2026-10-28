@@ -527,6 +527,7 @@ local function wire(h)
   h:RegisterForDrag("LeftButton")
   h:SetScript("OnDragStart", ns.Guard("drag mover handle", h.StartMoving))
   h:SetScript("OnDragStop", ns.Guard("drop mover handle", onDragStop))
+  h:HookScript("OnHide", ns.Guard("hide mover handle", h.StopMovingOrSizing))
   h:SetScript("OnMouseDown", ns.Guard("click mover handle", onMouseDown))
   h:EnableKeyboard(true)
   h:SetScript("OnKeyDown", ns.Guard("key on mover handle", onKeyDown))
@@ -675,9 +676,18 @@ local function resetOne(k)
   ns.MoverChanged(k)
 end
 
--- Forgets a saved position, scale, opacity and links (or all with "all") and puts frames back. Returns how many.
+-- Drops the saved entries of frames not registered this session (their module is off), so "all" really is all.
+local function forgetUnregistered()
+  local spots = saved()
+  for k in pairs(spots) do
+    if not movers[k] then spots[k] = nil end
+  end
+end
+
+-- Forgets a saved position, scale, opacity and links (or all with "all", switched-off modules' too) and puts frames back. Returns how many.
 function ns.ResetMovers(key)
   local n = 0
+  if key == "all" then forgetUnregistered() end
   for _, k in ipairs(order) do
     if key == "all" or key == k then
       resetOne(k)

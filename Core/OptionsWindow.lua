@@ -980,6 +980,7 @@ local function makeMovable(f)
   f.header:RegisterForDrag("LeftButton")
   f.header:SetScript("OnDragStart", ns.Guard("drag options", function() f:StartMoving() end))
   f.header:SetScript("OnDragStop", ns.Guard("drop options", function() dropped(f) end))
+  f.header:HookScript("OnHide", ns.Guard("hide options header", function() f:StopMovingOrSizing() end))
 end
 
 -- Puts the window where it was last dropped, or in the middle of the screen (after Reset window positions too).
