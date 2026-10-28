@@ -2928,6 +2928,12 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: no chat line about dropping a price home, and `/vg mem` gives a size of a 16.0 MB budget; the drag doesn't stutter more than the game does without Vanguard; the preset attaches nothing and chat says it found nothing holding every word of "ore bar herb", with commas separating alternatives.
 - If it fails, paste: the "prices for N items" number from each scan, the `/vg mem` lines, how long the stutter lasted, the mail chat line, and `/vg errors`.
 
+### 33.127 The realm's clock at login, for the auction price prune
+
+- Do: with the Auction helper on and prices from a scan, type `/run print(GetServerTime())` right after the loading screen on a fresh login (before opening anything), and compare it with `/run print(time())`.
+- Expect: the first prints a number within a minute or two of the second, so the login prune of old prices can tell a computer clock far off the realm's from a right one; `/vg ah` still counts the same priced items as before the login.
+- If it fails, paste: both printed numbers, `/vg ah`, and `/vg errors`.
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ## When you are done
