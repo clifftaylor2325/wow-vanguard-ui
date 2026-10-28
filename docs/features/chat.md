@@ -28,7 +28,7 @@ Under `/vg` → Chat, each chat window that is showing has a Width and a Height 
 
 ## Chat tabs
 
-Under `/vg` → Chat → Chat tabs, pick a tab from the Tab choice, then Rename this tab or Close this tab (the main tab can't be closed), make one with New chat tab (names are at most 16 characters), and switch what it shows with Show Say, Yell, Guild, Party, Raid, Whispers, Loot, System messages, Officer and Emotes. Channels (Trade, LookingForGroup) are set with the game's own menu: right-click the tab, then Settings (the card says so). Tabs are made and closed out of combat. Reordering tabs is still done by dragging them in the game. Chat tabs wear Vanguard's tab look (20 tall and rounded in the tab bar, the shown tab raised, the others sunk, a hover glow) with the game's alert glow on a tab that has new lines in the accent colour; the game still flashes it.
+Under `/vg` → Chat → Chat tabs, pick a tab from the Tab choice, then Rename this tab or Close this tab (the main tab and the Combat Log can't be closed, as in the game's own tab menu), make one with New chat tab (names are at most 16 characters), and switch what it shows with Show Say, Yell, Guild, Party, Raid, Whispers, Loot, System messages, Officer and Emotes. Channels (Trade, LookingForGroup) are set with the game's own menu: right-click the tab, then Settings (the card says so). Tabs are made and closed out of combat. Reordering tabs is still done by dragging them in the game. Chat tabs wear Vanguard's tab look (20 tall and rounded in the tab bar, the shown tab raised, the others sunk, a hover glow) with the game's alert glow on a tab that has new lines in the accent colour; the game still flashes it.
 
 ## Chat search
 

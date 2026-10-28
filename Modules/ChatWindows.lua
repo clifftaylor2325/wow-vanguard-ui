@@ -210,10 +210,18 @@ function CW.Rename(text)
   ns.Options.RebuildPage("chat")
 end
 
--- Closes the edited tab (never the main one), out of combat (each tab closed in a fight is closed after it).
+-- Whether the game never lets this window be closed (the main tab, the Combat Log, voice transcription): its
+-- own tab menu offers no Close for them, and nothing brings one back once closed.
+local function isBuiltin(frame)
+  return type(IsBuiltinChatWindow) == "function" and IsBuiltinChatWindow(frame) == true
+end
+
+-- Closes the edited tab (never the main one or another of the game's own), out of combat (each tab closed in a
+-- fight is closed after it).
 function CW.Close()
   local index, frame = CW.Editing()
   if not frame or index == 1 or type(FCF_Close) ~= "function" then return ns.Chat(L["The main chat tab can't be closed."]) end
+  if isBuiltin(frame) then return ns.Chat(L["The game's own chat tabs can't be closed."]) end
   ns.OutOfCombat(function() FCF_Close(frame) CW.editing = nil ns.Options.RebuildPage("chat") end, "chat close tab " .. index)
 end
 
