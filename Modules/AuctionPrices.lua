@@ -494,12 +494,21 @@ function AP.DisenchantLine(tt, link)
   if value then tt:AddLine(ns.Format(L["Disenchant: ~{money}"], { money = AP.Rough(value) }), T.RGB("text2")) end
 end
 
+-- Whether the computer's clock can be trusted to prune by: it reads a time, within a day of the realm's
+-- clock where the client gives one (GetServerTime). Under a clock far behind, every price would look
+-- noted in the future and be pulled back to it, then be lost once the clock is right.
+function AP.ClockTrusted(now)
+  local server = type(GetServerTime) == "function" and ns.PlainNumber(GetServerTime()) or nil
+  return now > 0 and (server == nil or math.abs(now - server) <= AP.DAY)
+end
+
 -- Starts with Auction helper's settings: the account-wide prices of older versions moved to this
 -- realm and faction (once), old prices pruned, and the tooltip lines (prices, disenchant value) added.
 function AP.Enable(settings)
   AP.settings = settings
   AP.Migrate()
-  AP.Prune(AP.Now())
+  local now = AP.Now()
+  if AP.ClockTrusted(now) then AP.Prune(now) end
   ns.GetModule("Tooltips").AddItemLines(AP.Line)
   ns.GetModule("Tooltips").AddItemLines(AP.DisenchantLine)
 end
