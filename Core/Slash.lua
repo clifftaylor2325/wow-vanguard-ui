@@ -508,14 +508,12 @@ end
 -- /vg spec [profile|off]
 local function specCommand(rest)
   if not ns.HasSpecs() then return chat(L["This client has no specializations, so profiles don't switch by spec."]) end
-  local spec = ns.SpecIndex()
+  local spec = ns.SpecKey()
   if not spec then return chat(L["No specialization on this character yet."]) end
-  if rest == "" then
-    return chat(ns.Format(L["Spec {spec} uses {profile}."], { spec = spec, profile = ns.SpecProfile(spec) or L["the character's profile (no spec profile set)"] }))
-  end
+  if rest == "" then return chat(ns.SpecUsesLine(spec, ns.SpecProfile(spec) or L["the character's profile (no spec profile set)"])) end
   if rest ~= "off" and not VanguardDB.profiles[rest] then return chat(ns.Format(L["No profile called {profile}. /vg profile new {profile} first."], { profile = rest })) end
   ns.SetSpecProfile(rest ~= "off" and rest or nil, spec)
-  chat(rest == "off" and L["This spec no longer switches profiles."] or ns.Format(L["Spec {spec} now uses profile {profile}."], { spec = spec, profile = rest }))
+  chat(rest == "off" and L["This spec no longer switches profiles."] or ns.SpecNowLine(spec, rest))
 end
 
 -- The addon version from the TOC (Core/WhatsNew.lua reads it).

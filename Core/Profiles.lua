@@ -311,15 +311,23 @@ end
 
 -- Specialization -------------------------------------------------------------------------
 
--- The client's specialization getter, or nil (WoW Forever has no specializations).
+-- The client's specialization getter, or nil.
 local function specGetter()
   local get = (C_SpecializationInfo and C_SpecializationInfo.GetSpecialization) or GetSpecialization
   return type(get) == "function" and get or nil
 end
 
--- True when the client has specializations at all.
+-- WoW Forever's talent group getter, or nil elsewhere. Forever has one specialization per class and its
+-- dual spec is the talent group (Primary, Secondary), so that is what spec profiles follow there.
+local function groupGetter()
+  local info = ns.IsForever() and C_SpecializationInfo
+  local get = info and info.GetActiveSpecGroup
+  return type(get) == "function" and get or nil
+end
+
+-- True when the client has specializations, or on WoW Forever talent groups.
 function ns.HasSpecs()
-  return specGetter() ~= nil
+  return specGetter() ~= nil or groupGetter() ~= nil
 end
 
 -- The active specialization index (1-4), or nil where the client has none.
@@ -327,6 +335,25 @@ function ns.SpecIndex()
   local get = specGetter()
   local index = get and ns.PlainNumber(get()) or nil
   return index and index > 0 and index or nil
+end
+
+-- The active talent group on WoW Forever (1 Primary, 2 Secondary), or nil elsewhere or while the client won't say it.
+function ns.TalentGroup()
+  local get = groupGetter()
+  if not get then return nil end
+  local ok, value = pcall(get)
+  local group = ok and ns.PlainNumber(value) or nil
+  return group and group > 0 and group or nil
+end
+
+-- What a talent group is called: "Primary talents" or "Secondary talents".
+function ns.TalentsName(group)
+  return group == 2 and L["Secondary talents"] or L["Primary talents"]
+end
+
+-- The key a spec's profile is stored under: the talent group on WoW Forever, else the specialization index.
+function ns.SpecKey()
+  return ns.TalentGroup() or ns.SpecIndex()
 end
 
 -- The client's role names (a specialization's or a group role) -> Vanguard's.
@@ -354,9 +381,9 @@ local function specMap()
   return VanguardCharDB.specProfiles
 end
 
--- Uses a profile for a spec (the current one when spec is nil); nil profile stops that.
+-- Uses a profile for a spec (the current one when spec is nil; a talent group on WoW Forever); nil profile stops that.
 function ns.SetSpecProfile(profile, spec)
-  spec = spec or ns.SpecIndex()
+  spec = spec or ns.SpecKey()
   if not spec then return false end
   specMap()[spec] = profile
   return true
@@ -364,7 +391,7 @@ end
 
 -- The profile a spec uses, if one is set and still exists.
 function ns.SpecProfile(spec)
-  local name = specMap()[spec or ns.SpecIndex() or 0]
+  local name = specMap()[spec or ns.SpecKey() or 0]
   return name and VanguardDB.profiles[name] and name or nil
 end
 
@@ -379,6 +406,18 @@ end
 -- True when the staged profile is one a spec uses, so a spec change staged it (not the player's own pick).
 local function specStaged()
   return isSpecProfile(ns.PendingProfileName())
+end
+
+-- "Spec 2 uses Healer." (on WoW Forever, "Primary talents use Healer.") for a spec key.
+function ns.SpecUsesLine(key, profile)
+  if not ns.TalentGroup() then return ns.Format(L["Spec {spec} uses {profile}."], { spec = key, profile = profile }) end
+  return ns.Format(L["{talents} use {profile}."], { talents = ns.TalentsName(key), profile = profile })
+end
+
+-- "Spec 2 now uses profile Healer." (on WoW Forever, "Primary talents now use profile Healer.") for a spec key.
+function ns.SpecNowLine(key, profile)
+  if not ns.TalentGroup() then return ns.Format(L["Spec {spec} now uses profile {profile}."], { spec = key, profile = profile }) end
+  return ns.Format(L["{talents} now use profile {profile}."], { talents = ns.TalentsName(key), profile = profile })
 end
 
 -- Remembers the profile the character picked, before a spec's profile takes over from it.

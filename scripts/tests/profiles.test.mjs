@@ -255,6 +255,43 @@ it("a spec with no profile of its own stays where it is when the character's pro
   changeSpec(addon, 1);
   expect(addon.eval("return { ns.ProfileName(), VanguardCharDB.pendingProfile == nil }"), "no switch to a profile that is gone").toEqual(["Heal", true]);
 });
+// WoW Forever's dual spec: one specialization (fixed index 1) and a talent group, in `group`.
+function foreverCharacter(group, specProfiles = "{ [2] = 'Heal' }") {
+  const sv = `VanguardDB = { version = 1, setupDone = true, profiles = { Default = {}, Heal = {} } }\nVanguardCharDB = { profile = "Default", setupDone = true, specProfiles = ${specProfiles} }`;
+  const addon = createAddon({ savedVariables: sv });
+  addon.eval(CLICK_LUA + `__wfgWorld.spec = 1 __wfgWorld.specGroup = ${group}`);
+  addon.login();
+  return addon;
+}
+// Swaps to talent group `group`, as the client announces it.
+function swapGroup(addon, group) {
+  const previous = addon.eval("return __wfgWorld.specGroup");
+  addon.eval(`__wfgWorld.specGroup = ${group}`);
+  addon.fire("ACTIVE_TALENT_GROUP_CHANGED", group, previous);
+}
+it("on WoW Forever a spec profile follows the talent group: swapping groups stages the other group's profile, and back", () => {
+  const addon = foreverCharacter(1);
+  expect(addon.eval("return ns.ProfileName()"), "the Primary group has no profile: the character's").toBe("Default");
+  swapGroup(addon, 2);
+  expect([addon.eval("return VanguardCharDB.pendingProfile"), addon.eval("return Vanguard_Reload:IsShown()")], "the Secondary group stages its profile and offers the reload").toEqual(["Heal", true]);
+  addon.eval("ns.ApplyPendingProfile()");
+  swapGroup(addon, 1);
+  expect(addon.eval("return VanguardCharDB.pendingProfile"), "back in the Primary group (after a reload) the character's profile is staged again").toBe("Default");
+});
+it("on WoW Forever /vg spec and the Profiles page name the talent group, not the specialization", () => {
+  const addon = foreverCharacter(2, "{}");
+  addon.slash("spec Heal");
+  expect(addon.eval("return VanguardCharDB.specProfiles[2]"), "the profile is stored under the talent group").toBe("Heal");
+  expect(chatHas(addon, /^.*Secondary talents now use profile Heal\.$/), "the command says so").toBe(true);
+  addon.slash("spec");
+  expect(chatHas(addon, /Secondary talents use Heal\.$/), "and /vg spec says what the group uses").toBe(true);
+  addon.eval('ns.Options.Show("profiles")');
+  expect(addon.eval('return __click("Use this profile for this spec")'), "the Profiles page has its button").toBe(true);
+  expect(addon.texts("Secondary talents use Default.").length, "and names the group beside it").toBe(1);
+  swapGroup(addon, 1);
+  addon.slash("spec");
+  expect(chatHas(addon, /Primary talents use the character's profile \(no spec profile set\)\.$/), "the Primary group has none").toBe(true);
+});
 it("the craft queue and profession cooldowns of your characters stay out of an export, an import and a profile compare; the module's own settings travel", () => {
   const src = loggedIn();
   src.eval('ns.Profile().CraftQueue = { on = true, secs = 9, chars = { ["Alt-Realm"] = { queue = { { id = 1 } }, cooldowns = {} } } }');

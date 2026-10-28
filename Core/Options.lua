@@ -516,11 +516,11 @@ local function moduleRows()
   return append(rows, groupSection(L["More"], otherModules(listed)))
 end
 
--- "Spec 2 uses Healer." or why there's no spec profile.
+-- "Spec 2 uses Healer." ("Primary talents use Healer." on WoW Forever) or why there's no spec profile.
 local function specText()
-  local spec = ns.SpecIndex()
+  local spec = ns.SpecKey()
   if not spec then return L["No specialization yet."] end
-  return ns.Format(L["Spec {spec} uses {profile}."], { spec = spec, profile = ns.SpecProfile(spec) or L["the character's profile"] })
+  return ns.SpecUsesLine(spec, ns.SpecProfile(spec) or L["the character's profile"])
 end
 
 -- Every profile, with its buttons, then the box for a new one (Core/OptionsProfiles.lua).
