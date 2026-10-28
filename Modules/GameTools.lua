@@ -172,17 +172,25 @@ function GT.SkinEntry(entry)
   if type(entry.Icon) == "table" and type(entry.Icon.Icon) == "table" then T.Crop(entry.Icon.Icon) end
 end
 
+-- A meter window's list and own-player line. A session window keeps them in its MinimizeContainer and
+-- hands them out by getter; the breakdown window has no GetLocalPlayerEntry and holds them itself.
+local function meterList(win)
+  if type(win.GetScrollBox) ~= "function" then return win.ScrollBox, win.LocalPlayerEntry end
+  local entry = type(win.GetLocalPlayerEntry) == "function" and win:GetLocalPlayerEntry() or nil
+  return win:GetScrollBox(), entry
+end
+
 -- Every line a meter window's list shows right now.
 local function skinLines(win)
-  local box = win.ScrollBox
+  local box, entry = meterList(win)
   if type(box) == "table" and box.ForEachFrame then box:ForEachFrame(GT.SkinEntry) end
-  if type(win.LocalPlayerEntry) == "table" then GT.SkinEntry(win.LocalPlayerEntry) end
+  if type(entry) == "table" then GT.SkinEntry(entry) end
 end
 
 -- A meter list's lines (a session window's or the breakdown's) in the theme now and whenever it redraws.
 local function watchLines(win)
   skinLines(win)
-  local box = win.ScrollBox
+  local box = meterList(win)
   if type(box) == "table" and type(box.Update) == "function" then hooksecurefunc(box, "Update", ns.Guard("hook Update", function() skinLines(win) end)) end
 end
 
