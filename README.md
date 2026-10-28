@@ -49,7 +49,7 @@ Every client call is checked before use, and values the client hides from addons
 
 ## License
 
-Copyright (c) 2026 Clifton Taylor. All rights reserved. You may download Vanguard and use it in your own game client; copying, modifying, redistributing or selling it, in whole or in part, needs the copyright holder's written permission. See `LICENSE`. Releases up to and including v0.4.0 were published under the MIT License, and copies of those releases stay available under its terms.
+Copyright (c) 2026 Cliff Hearthvale. All rights reserved. You may download Vanguard and use it in your own game client; copying, modifying, redistributing or selling it, in whole or in part, needs the copyright holder's written permission. See `LICENSE`. Releases up to and including v0.4.0 were published under the MIT License, and copies of those releases stay available under its terms.
 
 Third-party files keep their own licenses. The fonts: `Media/Fonts/FiraSansCondensed-*.ttf` are Fira Sans Condensed (Copyright 2012-2015 The Mozilla Foundation and Telefonica S.A.) under the SIL Open Font License 1.1, in `Media/Fonts/OFL.txt`; Vanguard ships them trimmed to Latin, Greek and Cyrillic, with the digits pointing at the font's tabular figures. The libraries in `Libs/` keep their own licenses (below); Vanguard's code only calls them, and LibSharedMedia-3.0 ships unmodified with its license text beside it, as the LGPL allows. The faction crests and the options nav and minimap icons are CC BY 3.0 (below).
 

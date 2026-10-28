@@ -11,7 +11,7 @@
 ## Notes-koKR: WoW Forever를 위해 처음부터 새로 만든 UI 모음: 테마, 창 이동, 개체창, 행동 단축바, 미니맵, 대화창, 가방.
 ## Notes-zhCN: 为 WoW Forever 从零打造的界面套件：主题、框体移动、单位框体、动作条、小地图、聊天、背包。
 ## Notes-zhTW: 為 WoW Forever 從零打造的介面套件：主題、框架移動、單位框架、快捷列、小地圖、聊天、背包。
-## Author: clifftaylor2325
+## Author: Cliff Hearthvale
 ## Version: 0.7.4
 ## SavedVariables: VanguardDB
 ## SavedVariablesPerCharacter: VanguardCharDB
