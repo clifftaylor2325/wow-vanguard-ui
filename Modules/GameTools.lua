@@ -176,7 +176,7 @@ end
 -- hands them out by getter; the breakdown window has no GetLocalPlayerEntry and holds them itself.
 local function meterList(win)
   if type(win.GetScrollBox) ~= "function" then return win.ScrollBox, win.LocalPlayerEntry end
-  local entry = type(win.GetLocalPlayerEntry) == "function" and win:GetLocalPlayerEntry() or nil
+  local entry = type(win.GetLocalPlayerEntry) == "function" and win:GetLocalPlayerEntry() or win.LocalPlayerEntry
   return win:GetScrollBox(), entry
 end
 

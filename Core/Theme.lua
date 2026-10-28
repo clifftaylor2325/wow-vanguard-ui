@@ -467,13 +467,13 @@ local function useClientFont(s)
 end
 
 -- True when the client can load the font file at path: Vanguard's own always, any other asked once of a
--- hidden FontString (SetFont may return false or raise an error for a file that is not there).
+-- hidden FontString (SetFont may return false or raise an error for a file that is not there; no answer counts as yes).
 function T.FontLoads(path)
   if path == T.FONTS.regular or path == T.FONTS.bold then return true end
   if T.fontLoads[path] == nil then
     T.fontTester = T.fontTester or UIParent:CreateFontString(nil, "BACKGROUND")
     local ok, set = pcall(T.fontTester.SetFont, T.fontTester, path, 12, "")
-    T.fontLoads[path] = ok and set == true
+    T.fontLoads[path] = ok and set ~= false
   end
   return T.fontLoads[path]
 end

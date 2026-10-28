@@ -214,7 +214,7 @@ function AA.Enable(settings)
   ns.On("CONFIRM_SUMMON", AA.OnSummon)
   ns.On("RESURRECT_REQUEST", AA.OnResurrect)
   ns.On("DUEL_REQUESTED", AA.OnDuel)
-  ns.On("DUEL_TO_THE_DEATH_REQUESTED", AA.OnDuel)
+  if ns.IsForever() then ns.On("DUEL_TO_THE_DEATH_REQUESTED", AA.OnDuel) end
   ns.On("LOOT_READY", AA.OnLootReady)
   ns.On("GUILD_INVITE_REQUEST", AA.OnGuildInvite)
   ns.On("PARTY_INVITE_REQUEST", AA.OnGroupInvite)
