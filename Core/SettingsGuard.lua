@@ -283,14 +283,16 @@ function G.Rows()
 end
 
 -- Saved data size -------------------------------------------------------------------------------
--- The game refuses an addon's SavedVariables file past a size it doesn't publish; its signal is the
--- event SAVED_VARIABLES_TOO_LARGE. Prices are the part that grows (a full price home is up to about
--- 3.5 MB of text), so a size estimate is kept under G.BUDGET by dropping the oldest price homes,
--- never the one in use. The numbers are estimates of the text the game writes, not readings.
+-- The game refuses an addon's SavedVariables file it cannot load for lack of memory, at a size it doesn't
+-- publish; its signal is the event SAVED_VARIABLES_TOO_LARGE, and it fires only after the load failed.
+-- Prices are the part that grows (a full price home is up to about 3.5 MB of text), so a size estimate is
+-- kept under G.BUDGET by dropping the oldest price homes, never the one in use. The numbers are estimates
+-- of the text the game writes, not readings.
 
--- The account file's budget in bytes (a guess well under any limit worth fearing), and the delay
--- after login before the size is checked, so the walk stays out of the login itself.
-G.BUDGET, G.AUDIT_AFTER = 6 * 1024 * 1024, 15
+-- The account file's budget in bytes (room for four full price homes at their worst mix, 13.3 MB, a guess
+-- under any limit worth fearing), and the delay after login before the size is checked, so the walk stays
+-- out of the login itself.
+G.BUDGET, G.AUDIT_AFTER = 16 * 1024 * 1024, 15
 
 -- Estimated bytes of a table as the game writes it: each key and value's text, plus indent and punctuation.
 local function tableBytes(t, depth, seen)

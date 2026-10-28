@@ -243,7 +243,7 @@ it("saved data size: SAVED_VARIABLES_TOO_LARGE for Vanguard trims to half the bu
 it("saved data size: /vg mem reports the saved files, and waits out of combat", () => {
   const addon = loggedIn(CLICK_LUA);
   addon.slash("mem");
-  expect(chatHas(addon, /Saved data \(estimate\): account file [\d.]+ [KM]B of a 6\.0 MB budget; largest: \w+ /), "the account file's estimate and its largest keys").toBe(true);
+  expect(chatHas(addon, /Saved data \(estimate\): account file [\d.]+ [KM]B of a 16\.0 MB budget; largest: \w+ /), "the account file's estimate and its largest keys").toBe(true);
   expect(chatHas(addon, /This character's file: [\d.]+ [KM]B \(/), "and this character's file").toBe(true);
   const fight = loggedIn(CLICK_LUA);
   setCombat(fight, true);
