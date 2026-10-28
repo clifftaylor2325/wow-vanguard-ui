@@ -121,11 +121,27 @@ function CF.FindWindow()
   return closed
 end
 
+-- The window the chat dock shows now, or nil on a client without the dock.
+local function dockSelection()
+  local dock = _G.GENERAL_CHAT_DOCK
+  if type(FCFDock_GetSelectedWindow) ~= "function" or type(dock) ~= "table" then return nil end
+  return FCFDock_GetSelectedWindow(dock)
+end
+
+-- Shows the window the dock showed before a new one was made, when the game moved the selection to the new
+-- one (FCF_OpenNewWindow selects it, which would hide the tab the player is reading); otherwise does nothing.
+local function keepSelection(before)
+  if not before or dockSelection() == before then return end
+  if type(FCFDock_SelectWindow) == "function" then FCFDock_SelectWindow(_G.GENERAL_CHAT_DOCK, before) end
+end
+
 -- A new window called Filtered that hears no chat of its own (FCF_OpenNewWindow's second argument takes
 -- every message group and channel off it), or nil on a client without the call.
 local function openWindow()
   if type(FCF_OpenNewWindow) ~= "function" then return nil end
+  local before = dockSelection()
   local frame = FCF_OpenNewWindow(CF.TAB, true)
+  keepSelection(before)
   return type(frame) == "table" and frame or nil
 end
 
