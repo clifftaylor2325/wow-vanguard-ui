@@ -292,6 +292,8 @@ it("a login with the computer's clock far behind the realm's keeps the prices an
   expect(alone.eval(kept), "no realm clock to check by: pruned by the computer's, as before").toEqual([946684800, 0]);
   const zero = loggedIn(AH_ENV + `time = function() return 0 end GetServerTime = function() return ${t} end`, { savedVariables: saved });
   expect(zero.eval(kept), "a clock that reads 0: not pruned").toEqual([t - 3600, 2]);
+  const unsynced = loggedIn(AH_ENV + "time = function() return 946684800 end GetServerTime = function() return 0 end", { savedVariables: saved });
+  expect(unsynced.eval(kept), "a realm clock not known yet (0): pruned by the computer's, as without one").toEqual([946684800, 0]);
 });
 it("a damaged saved price row is dropped at login and the helper stays on, whatever shape the row has", () => {
   const t = 1790000000;

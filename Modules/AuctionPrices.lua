@@ -497,11 +497,12 @@ function AP.DisenchantLine(tt, link)
 end
 
 -- Whether the computer's clock can be trusted to prune by: it reads a time, within a day of the realm's
--- clock where the client gives one (GetServerTime). Under a clock far behind, every price would look
--- noted in the future and be pulled back to it, then be lost once the clock is right.
+-- clock where the client gives one (GetServerTime; 0 before the realm's time is known counts as none).
+-- Under a clock far behind, every price would look noted in the future and be pulled back to it, then
+-- be lost once the clock is right.
 function AP.ClockTrusted(now)
   local server = type(GetServerTime) == "function" and ns.PlainNumber(GetServerTime()) or nil
-  return now > 0 and (server == nil or math.abs(now - server) <= AP.DAY)
+  return now > 0 and (server == nil or server <= 0 or math.abs(now - server) <= AP.DAY)
 end
 
 -- Starts with Auction helper's settings: the account-wide prices of older versions moved to this
