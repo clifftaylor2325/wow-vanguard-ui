@@ -261,11 +261,39 @@ it("settings-loss guard: after a lost account file every character is asked, not
   bravoBack.eval("ns.SettingsGuard.Restore()");
   expect(bravoBack.eval("return VanguardDB.profiles.Beta and VanguardDB.profiles.Beta.theme.accent[2]"), "Restore brings back Beta").toBe(0.9);
 });
-it("settings-loss guard: a backup whose profile is still missing is kept at logout, even after a fresh start", () => {
+it("settings-loss guard: a backup whose profile is still missing is kept at logout in the session that found a loss, even after a fresh start", () => {
   const addon = loggedIn(CLICK_LUA);
-  addon.eval('VanguardCharDB.guard = { stamp = 1, profile = "Beta", backup = "VG1:profile:kept" }');
+  addon.eval('VanguardCharDB.guard = { stamp = 1, profile = "Beta", backup = "VG1:profile:kept" } ns.SettingsGuard.lostSeen = "account"');
   addon.eval("ns.SettingsGuard.Save()");
   expect(addon.eval("return { VanguardCharDB.guard.profile, VanguardCharDB.guard.backup }"), "Beta's backup stays").toEqual(["Beta", "VG1:profile:kept"]);
   addon.eval('VanguardDB.profiles.Beta = {} ns.SettingsGuard.Save()');
   expect(addon.eval("return VanguardCharDB.guard.profile"), "once Beta exists, the profile in use is backed up").toBe("Default");
+});
+// The profile name the character's backup names, after `addon` logs out.
+const backupName = (addon) => (addon.fire("PLAYER_LOGOUT"), addon.eval("return VanguardCharDB.guard.profile"));
+it("settings-loss guard: deleting the profile a backup names does not freeze the backup on it", () => {
+  const profiles = 'VanguardDB.profiles = { Default = {}, Old = {}, Q = {} }\nVanguardCharDB.profile = "Old"\n';
+  let addon = relog(loggedIn(CLICK_LUA, { savedVariables: profiles }));
+  addon.eval("ns.UseProfile('Q')");
+  addon = relog(addon);
+  expect(addon.eval("return ns.DeleteProfile('Old')"), "Old is deleted").toBe(true);
+  expect(backupName(relog(addon)), "the next logouts back up Q, not Old").toBe("Q");
+});
+it("settings-loss guard: a loss does not freeze the backup through later sessions that lose nothing", () => {
+  let addon = relog(loggedIn(CLICK_LUA, { savedVariables: 'VanguardDB.profiles = { Default = {}, Main = {} }\nVanguardCharDB.profile = "Main"\n' }));
+  addon = relog(addon, { account: "nil" });
+  addon.eval("ns.NewProfile('Fresh') ns.UseProfile('Fresh')");
+  expect(backupName(addon), "picking a profile without answering keeps the only copy").toBe("Main");
+  addon = relog(addon);
+  expect(addon.eval("return ns.SettingsGuard.Lost()"), "the next session loses nothing").toBe(null);
+  expect(backupName(addon), "and backs up the profile in use again").toBe("Fresh");
+});
+it("settings-loss guard: a 0.7.4 profile name with a trailing space does not freeze the backup", () => {
+  const addon = loggedIn(CLICK_LUA, { savedVariables: 'VanguardDB.profiles = { Default = {}, ["Raid "] = {} }\nVanguardCharDB.profile = "Raid "\n' });
+  addon.fire("PLAYER_LOGOUT");
+  const before = addon.eval("return VanguardCharDB.guard.backup");
+  const next = relog(addon);
+  next.eval("ns.Profile().marker = 'second session'");
+  expect(backupName(next), "the name is kept as it is").toBe("Raid ");
+  expect(next.eval("return VanguardCharDB.guard.backup") !== before, "and the backup is of the latest settings").toBe(true);
 });
