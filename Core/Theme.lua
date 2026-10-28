@@ -2906,7 +2906,8 @@ function T.Refresh()
   applyFontObjects()
   repaintArt()
   reSnap()
-  for _, fn in ipairs(listeners) do fn() end
+  local count = #listeners
+  for i = 1, count do listeners[i]() end
 end
 
 -- The faction look ---------------------------------------------------------------------

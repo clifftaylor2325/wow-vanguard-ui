@@ -48,3 +48,48 @@ it("/vg skins switches a skin whose name has a space", () => {
   expect(addon.eval("return ns.Settings('skins')['TEST-ONLY My Addon']"), "the whole name before the state").toBe(false);
   expect(chatHas(addon, /Skin for TEST-ONLY My Addon off\./), "and says so").toBe(true);
 });
+
+it("a skin's erroring theme listener stops no other listener", () => {
+  expectErrors(/^skin theme change: eval:\d+: addon bug$/);
+  const addon = loggedIn();
+  addon.eval(`
+    -- TEST-ONLY skin whose listener errors, then a listener registered after it.
+    Vanguard.RegisterSkin("TESTONLY", function(S) S.OnChanged(function() error("addon bug") end) end)
+    __after = 0
+    ns.Theme.OnChanged(function() __after = __after + 1 end)
+    ns.Theme.Refresh()
+  `);
+  expect(addon.eval("return __after"), "the listener after the failing one still runs").toBe(1);
+});
+
+it("a skin theme listener that is not a function is ignored, and the same function is kept once", () => {
+  const addon = loggedIn();
+  const ran = addon.eval(`
+    -- TEST-ONLY skin: junk listeners, then one function registered twice.
+    __ran = 0
+    Vanguard.RegisterSkin("TESTONLY", function(S)
+      local count = function() __ran = __ran + 1 end
+      S.OnChanged(true) S.OnChanged("Refresh") S.OnChanged({}) S.OnChanged(count) S.OnChanged(count)
+    end)
+    ns.Theme.Refresh()
+    return __ran
+  `);
+  expect(ran, "a bad listener raises nothing and a repeat registration runs once").toBe(1);
+});
+
+it("a theme listener that registers another one does not run it in the same refresh", () => {
+  const addon = loggedIn();
+  const runs = addon.eval(`
+    -- TEST-ONLY listener that registers a new listener each time it runs.
+    __runs = { first = 0, second = 0 }
+    ns.Theme.OnChanged(function()
+      __runs.first = __runs.first + 1
+      if __runs.first == 1 then ns.Theme.OnChanged(function() __runs.second = __runs.second + 1 end) end
+    end)
+    ns.Theme.Refresh()
+    local afterOne = __runs.second
+    ns.Theme.Refresh()
+    return { afterOne, __runs.second }
+  `);
+  expect(runs, "the new listener first runs on the next refresh").toEqual([0, 1]);
+});
