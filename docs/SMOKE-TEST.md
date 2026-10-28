@@ -2928,6 +2928,12 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: no chat line about dropping a price home, and `/vg mem` gives a size of a 16.0 MB budget; the drag doesn't stutter more than the game does without Vanguard; the preset attaches nothing and chat says it found nothing holding every word of "ore bar herb", with commas separating alternatives.
 - If it fails, paste: the "prices for N items" number from each scan, the `/vg mem` lines, how long the stutter lasted, the mail chat line, and `/vg errors`.
 
+### 33.127 /vg frame on a frame the game keeps secret in a fight
+
+- Do: enter an instance fight (a dungeon or a delve), then type `/vg frame PlayerFrame deep` and `/vg frame Vanguard_Minimap deep`, and after the fight `/vg errors`.
+- Expect: each command prints its full report, with `?` where the game hides a value (a position, size, text or anchor), and `/vg errors` shows no `slash frame` line.
+- If it fails, paste: the `/vg frame` output, `/vg errors` and the client build.
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ## When you are done
