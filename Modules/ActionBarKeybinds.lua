@@ -38,8 +38,9 @@ AB.MOUSE_KEYS = { MiddleButton = "BUTTON3", Button4 = "BUTTON4", Button5 = "BUTT
 -- The banner's size, and the width of its Done button. 720 keeps the how-to-leave line whole in German and French.
 AB.BANNER = { w = 720, h = 76, done = 84 }
 
--- A key as a binding with the modifiers held, in the game's order ("ALT-CTRL-SHIFT-Q").
+-- A key as a binding with the modifiers held, in the game's order ("ALT-CTRL-SHIFT-META-Q"; Cmd is META on a Mac).
 function AB.KeyChord(key)
+  if type(IsMetaKeyDown) == "function" and IsMetaKeyDown() then key = "META-" .. key end
   if IsShiftKeyDown() then key = "SHIFT-" .. key end
   if IsControlKeyDown() then key = "CTRL-" .. key end
   if IsAltKeyDown() then key = "ALT-" .. key end

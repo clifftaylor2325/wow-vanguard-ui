@@ -158,6 +158,8 @@ UIPanelWindows = {}
 function IsShiftKeyDown() return world.keys.shift == true end
 function IsControlKeyDown() return world.keys.ctrl == true end
 function IsAltKeyDown() return world.keys.alt == true end
+-- Cmd on a Mac (Input documentation); a test sets world.keys.meta.
+function IsMetaKeyDown() return world.keys.meta == true end
 
 -- The cursor's screen position, in pixels.
 function GetCursorPosition() return world.mouse.x, world.mouse.y end
