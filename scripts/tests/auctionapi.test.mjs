@@ -195,3 +195,21 @@ it("a list the shop card shows is repainted when an addon changes it", () => {
   call(addon, "AlterShoppingListItems", "'TEST-ONLY Addon', 'TEST-ONLY Mats', { 'Linen Cloth', 'Soul Dust' }");
   expect(addon.eval(`local rows = ${HELPER}.shopCard.body.table.rows return { rows[1].name:GetText(), rows[2].name:GetText(), rows[3]:IsShown() }`)).toEqual(["Linen Cloth", "Soul Dust", false]);
 });
+
+it("RegisterForDBUpdate: a callback that registers another one doesn't make the pass longer", () => {
+  const addon = withApi();
+  addon.eval(`__heard = { first = 0, second = 0 }
+    Vanguard.API.v1.RegisterForDBUpdate("TEST-ONLY A", function()
+      __heard.first = __heard.first + 1
+      if __heard.first == 1 then Vanguard.API.v1.RegisterForDBUpdate("TEST-ONLY A", function() __heard.second = __heard.second + 1 end) end
+    end)`);
+  // Records a browse that saw this price, then lets the next frame tell the listeners.
+  const browse = (price) => {
+    addon.eval(`__wfgWorld.ah.browse = { { itemKey = { itemID = 10940 }, minPrice = ${price}, totalQuantity = 3 } }`);
+    addon.fire("AUCTION_HOUSE_BROWSE_RESULTS_UPDATED");
+    addon.update(0.01);
+    return addon.eval("return { __heard.first, __heard.second }");
+  };
+  expect(browse(95), "the new callback is not told in the pass that added it").toEqual([1, 0]);
+  expect(browse(90), "it is told in the next pass").toEqual([2, 1]);
+});

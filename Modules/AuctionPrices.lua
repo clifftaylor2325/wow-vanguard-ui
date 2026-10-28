@@ -150,9 +150,11 @@ function AP.OnChange(fn)
   AP.listeners[#AP.listeners + 1] = fn
 end
 
--- Tells every listener, in the order added.
+-- Tells the listeners there were when it began, in the order added: one that adds a listener
+-- while it runs doesn't make this pass longer, and the new one hears the next time.
 local function tellListeners()
-  for _, fn in ipairs(AP.listeners) do fn() end
+  local count = #AP.listeners
+  for i = 1, count do AP.listeners[i]() end
 end
 
 -- What hears of each price as it is recorded (AP.OnSeen): functions called with the item ID, its
