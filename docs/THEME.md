@@ -369,6 +369,7 @@ All are the client's own interface sounds (`SOUNDKIT`), played with `T.Sound` un
 | Another options page opens, or a tab on one is clicked | `IG_CHARACTER_INFO_TAB` | Interface sounds |
 | A switch is turned on in the options, a visibility condition is ticked or unticked, a click-cast starter layout is applied | `IG_MAINMENU_OPTION_CHECKBOX_ON` | Interface sounds |
 | A switch is turned off in the options, or a row's reset dot is clicked | `IG_MAINMENU_OPTION_CHECKBOX_OFF` | Interface sounds |
+| A talent rank is planned (left click) or taken back (right click) in the talent window's plan mode | `IG_MAINMENU_OPTION_CHECKBOX_ON` / `IG_MAINMENU_OPTION_CHECKBOX_OFF` | Interface sounds |
 | A rare shows up on the minimap (out of combat, once per rare) | `RAID_WARNING`, with one chat line | "A rare nearby: a sound and a chat line" (off by default; not Interface sounds, since it is an alert you asked for) |
 | A phrase you watch for is said in chat (Chat watch, at most once every 2 s; held in a fight, then rung once when it ends) | `TELL_MESSAGE` (`T.Sound("alert")`) | Interface sounds, and Chat watch's Sound switch |
 | A shopping list item is up at or under its max price (Auction helper's price alerts, sharing Chat watch's 2 s gap; held in a fight as Chat watch's) | `TELL_MESSAGE` (`T.Sound("alert")`) | Interface sounds, and the item's alert switch |
