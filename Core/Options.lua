@@ -209,7 +209,7 @@ end
 local MOVER_SCALES = { min = ns.MOVER_SCALE.min, max = ns.MOVER_SCALE.max, step = 0.05, format = percent }
 local MOVER_ALPHAS = { min = ns.MOVER_ALPHA.min, max = ns.MOVER_ALPHA.max, step = 0.05, format = percent }
 -- Text size: 70% to 130% in steps of 5.
-local TEXT_SIZES = { min = 0.7, max = 1.3, step = 0.05, format = function(v) return string.format("%d%%", math.floor(v * 100 + 0.5)) end }
+local TEXT_SIZES = { min = T.TEXT_SCALE.min, max = T.TEXT_SCALE.max, step = 0.05, format = function(v) return string.format("%d%%", math.floor(v * 100 + 0.5)) end }
 
 -- Look, the shape of things: variant, corners, panel texture and ornament rows.
 local function lookShapeRows()

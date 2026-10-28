@@ -524,8 +524,20 @@ it("the game's font objects: the theme font at Text size, kept after a theme cha
   const before = addon.eval("return { __FontA:GetFont() }");
   expect(before[0], "the bold theme font").toBe(addon.eval("return (ns.Theme.Font(true))"));
   expect(before[1], "at the size given").toBe(14);
-  addon.eval("ns.Theme.Settings().textScale = 1.5 ns.Theme.Refresh()");
-  expect(addon.eval("return select(2, __FontA:GetFont())"), "re-applied at the new Text size").toBe(21);
+  addon.eval("ns.Theme.Settings().textScale = 1.3 ns.Theme.Refresh()");
+  expect(addon.eval("return select(2, __FontA:GetFont())"), "re-applied at the new Text size").toBe(18);
+});
+
+it("a Text size outside the slider's range from a hand-edited profile is kept inside it: no font size of 0, below 1 or enormous", () => {
+  const sizes = (textScale) => {
+    const addon = loggedIn("", { savedVariables: `VanguardDB.profiles = { Default = { theme = { textScale = ${textScale} } } }` });
+    addon.eval("ns.Theme.Refresh()");
+    return addon.eval("local low = math.huge for _, w in ipairs(__wfgStub.frames) do if w.__font and w.__font[2] < low then low = w.__font[2] end end return { ns.Theme.RoleSize('label'), low >= 1 }");
+  };
+  expect(sizes(0), "0 counts as the smallest size on the slider (70%)").toEqual([8, true]);
+  expect(sizes(-2), "a negative one too").toEqual([8, true]);
+  expect(sizes(40), "a huge one as the largest (130%)").toEqual([16, true]);
+  expect(sizes(1.1), "a size inside the range is used as it is").toEqual([13, true]);
 });
 
 it("pixel rounding: sizes and offsets land on whole screen pixels, centred ones on an even count (#225)", () => {

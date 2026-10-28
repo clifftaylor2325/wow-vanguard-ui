@@ -14,7 +14,7 @@ On a screen narrower than 1365 UI units (a 16:10, 4:3 or 5:4 monitor at the game
 
 ## Text size
 
-One slider (/vg > General, 70% to 130%) sizes all of Vanguard's text, chat and tooltips included, and applies at once. Chat has its own Small, Medium or Large on top (or keeps the game's own chat size if you prefer). `/vg status` shows your UI scale and how many pixels tall chat text draws on your screen.
+One slider (/vg > General, 70% to 130%) sizes all of Vanguard's text, chat and tooltips included, and applies at once. A size outside that range, from an imported or hand-edited profile, is read as the nearest end of it. Chat has its own Small, Medium or Large on top (or keeps the game's own chat size if you prefer). `/vg status` shows your UI scale and how many pixels tall chat text draws on your screen.
 
 ## Theme variants
 

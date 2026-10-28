@@ -204,10 +204,10 @@ it("quest dialog: held at the top of the screen it grows downward, so a long pag
   expect([tall, view], "and is as tall as at the default spot, which grows upward").toEqual(longPage(null, "1920, 1080"));
   expect(longPage(-60, "1365, 768")[1], "on a short screen the text view is never negative").toBeGreaterThanOrEqual(0);
 });
-it("quest dialog: a long reward name takes two lines of its card at Text size 150%, over nothing", () => {
+it("quest dialog: a long reward name takes two lines of its card at Text size 130%, over nothing", () => {
   const addon = createAddon({ textFit: true, client: QUEST_ENV, savedVariables: SETUP_DONE });
   addon.login();
-  addon.eval(`ns.Theme.Settings().textScale = 1.5 ns.Theme.Refresh()
+  addon.eval(`ns.Theme.Settings().textScale = 1.3 ns.Theme.Refresh()
     __choices[1][1] = "TEST-ONLY Gebrochene Armschienen des Schattenwebers" __choices[2][1] = "TEST-ONLY Dark Iron Pulverizer's Gauntlets"`);
   addon.fire("QUEST_COMPLETE");
   const card = addon.eval("local c = Vanguard_QuestDialog.cards[1] return { c.name:GetHeight(), c:GetHeight() }");

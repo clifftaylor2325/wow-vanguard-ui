@@ -144,8 +144,8 @@ const hudFonts = (addon) => addon.eval(`local out = {}
 it("the error line and the zone text in the theme font, kept after a Text size change", () => {
   const addon = loggedIn(HUD_FONTS_ENV);
   expect(hudFonts(addon), "the theme font at the game's sizes, with the theme's shadow").toEqual([[true, 16, [1, -1]], [true, 32, [1, -1]], [true, 26, [1, -1]], [true, 22, [1, -1]]]);
-  addon.eval("ns.Theme.Settings().textScale = 1.5 ns.Theme.Refresh()");
-  expect(hudFonts(addon).map((f) => f[1]), "re-applied at the new Text size").toEqual([24, 48, 39, 33]);
+  addon.eval("ns.Theme.Settings().textScale = 1.3 ns.Theme.Refresh()");
+  expect(hudFonts(addon).map((f) => f[1]), "re-applied at the new Text size").toEqual([21, 42, 34, 29]);
   const off = loggedIn(HUD_FONTS_ENV, { savedVariables: "VanguardDB.profiles = { Default = { modules = { Merchant = false } } }" });
   expect(off.eval("return { ErrorFont:GetFont() }"), "with the module off they are the game's").toEqual(["TEST-ONLY-FRIZQT", 10, "THICK"]);
   const some = loggedIn('ZoneTextFont = CreateFrame("Frame"):CreateFontString()');
@@ -166,8 +166,8 @@ it("the scrolling combat text and the floating damage numbers in the theme font,
   expect(combatFont(addon)[0], "another part loading changes nothing").toBe(false);
   addon.fire("ADDON_LOADED", "Blizzard_CombatText");
   expect(combatFont(addon), "the part loaded: the theme's bold face at the game's own size, so the heights the game scales each line to stay sharp").toEqual([true, 64]);
-  addon.eval("ns.Theme.Settings().textScale = 1.5 ns.Theme.Refresh()");
-  expect(combatFont(addon)[1], "re-applied at the new Text size").toBe(96);
+  addon.eval("ns.Theme.Settings().textScale = 1.3 ns.Theme.Refresh()");
+  expect(combatFont(addon)[1], "re-applied at the new Text size").toBe(83);
   const already = loggedIn(COMBAT_TEXT_ENV + ' C_AddOns.IsAddOnLoaded = function(name) return name == "Vanguard" or name == "Blizzard_CombatText" end');
   expect(combatFont(already), "already loaded at login: themed at once").toEqual([true, 64]);
   const off = loggedIn(COMBAT_TEXT_ENV, { savedVariables: "VanguardDB.profiles = { Default = { modules = { Merchant = false } } }" });

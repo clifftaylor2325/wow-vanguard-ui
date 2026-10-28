@@ -2716,9 +2716,18 @@ local sizes = setmetatable({}, { __mode = "k" })
 -- them all, so a variant switch reaches text that was drawn before it (a light look needs dark text).
 local colored = setmetatable({}, { __mode = "k" })
 
+-- The range of the Text size setting (General -> Look; the slider and the setup presets stay inside it).
+T.TEXT_SCALE = { min = 0.7, max = 1.3 }
+
+-- The Text size setting, kept to its range: a crafted or hand-edited profile can hold any number.
+function T.TextScale()
+  local scale = T.Settings().textScale or 1
+  return math.max(T.TEXT_SCALE.min, math.min(T.TEXT_SCALE.max, scale))
+end
+
 -- A size after the text scale setting.
 function T.ScaledSize(size)
-  return math.floor(size * (T.Settings().textScale or 1) + 0.5)
+  return math.floor(size * T.TextScale() + 0.5)
 end
 
 -- A role's font size after the text scale setting.

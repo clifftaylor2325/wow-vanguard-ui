@@ -756,10 +756,10 @@ it("Filter, Groups and Sort refit when the Text size changes while the bag is op
     addon.eval(BAG_ENV);
     addon.login();
     addon.eval("__openBag()");
-    addon.eval("ns.Theme.Settings().textScale = 1.5 ns.Theme.Refresh()");
+    addon.eval("ns.Theme.Settings().textScale = 1.3 ns.Theme.Refresh()");
     const BG = "ns.GetModule('Bags')";
     const cut = ["filter", "groups"].flatMap((name) => addon.textFit(`${BG}.tools.${name}`)).concat(addon.textFit(`${BG}.sort`));
-    expect(cut, `${locale}: Filter, Groups and Sort show their whole labels at 150%`).toEqual([]);
+    expect(cut, `${locale}: Filter, Groups and Sort show their whole labels at 130%`).toEqual([]);
     const gap = addon.eval(`return ${BG}.tools.filter:GetLeft() - BagItemSearchBox:GetRight()`);
     expect(gap, `${locale}: the search box still ends before Filter`).toBeGreaterThanOrEqual(0);
   }

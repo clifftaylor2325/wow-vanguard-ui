@@ -288,7 +288,7 @@ All in the profile's `theme` table (`T.Settings()`), exported with the profile; 
 | `panel`, `inset`, `border` | see tokens | none | at once (`T.Refresh`) |
 | `font` | `""` (Fira Sans Condensed) | General → Look → Font | at once |
 | `outline` | `""` | none | at once |
-| `textScale` | 1 | General → Look → Text size (70 % - 130 %) | at once |
+| `textScale` | 1 | General → Look → Text size (70 % - 130 %, `T.TEXT_SCALE`; `T.TextScale()` keeps a hand-edited or imported value inside it) | at once |
 | `faction` | `"crest"` | General → Look → Faction look: `"crest"` (Crest only), `"auto"` (Crest and heading font), `"off"` | at once |
 | `pixelScale` | off | General → Look → Pixel-perfect scale | on: at once, out of combat; off: on reload |
 | `pixelMultiple` | 0 | Setup → Pixel-perfect (sharpest) | with `pixelScale`, out of combat |

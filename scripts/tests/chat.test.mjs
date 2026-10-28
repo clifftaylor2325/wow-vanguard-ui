@@ -699,7 +699,7 @@ it("chat tab labels are in the theme's label font and follow Text size, not the 
   const fonts = () => addon.eval(`local path, size = ChatFrame1Tab.Text:GetFont() local T = ns.Theme return { path == T.Font(), size, T.RoleSize("label") }`);
   const [fits, size, role] = fonts();
   expect([fits, size], "the tab label takes the theme font at the label role's size").toEqual([true, role]);
-  addon.eval("ns.Theme.Settings().textScale = 1.5 ns.Theme.Refresh()");
+  addon.eval("ns.Theme.Settings().textScale = 1.3 ns.Theme.Refresh()");
   const [bigFits, bigSize, bigRole] = fonts();
   expect([bigFits, bigSize > size, bigSize], "and it follows Text size").toEqual([true, true, bigRole]);
 });
