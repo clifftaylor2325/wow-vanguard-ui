@@ -2928,6 +2928,60 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: no chat line about dropping a price home, and `/vg mem` gives a size of a 16.0 MB budget; the drag doesn't stutter more than the game does without Vanguard; the preset attaches nothing and chat says it found nothing holding every word of "ore bar herb", with commas separating alternatives.
 - If it fails, paste: the "prices for N items" number from each scan, the `/vg mem` lines, how long the stutter lasted, the mail chat line, and `/vg errors`.
 
+### 33.127 The realm's clock at login, for the auction price prune
+
+- Do: with the Auction helper on and prices from a scan, type `/run print(GetServerTime())` right after the loading screen on a fresh login (before opening anything), and compare it with `/run print(time())`.
+- Expect: the first prints a number within a minute or two of the second, so the login prune of old prices can tell a computer clock far off the realm's from a right one; `/vg ah` still counts the same priced items as before the login.
+- If it fails, paste: both printed numbers, `/vg ah`, and `/vg errors`.
+
+### 33.128 /vg frame on a frame the game keeps secret in a fight
+
+- Do: start a fight in a dungeon, then type `/vg frame PlayerFrame deep` and `/vg frame Vanguard_Minimap deep`, and after the fight `/vg errors`.
+- Expect: each command prints its full report, with `?` where the game hides a value (a position, size, text or anchor), and `/vg errors` shows no `slash frame` line.
+- If it fails, paste: the `/vg frame` output, `/vg errors` and the client build.
+
+### 33.129 The chat filter and the Filtered tab's selection, and the Combat Log's Close
+
+- Do: with the chat filter off and Caught lines on the Filtered tab, tick the chat filter on in `/vg` > Chat while General is the selected chat tab. Then close the Filtered tab with its right-click menu, enter a fight, let a gold-selling line show in Trade (or have a friend send one), and wait for the fight to end. Last, in `/vg` > Chat > Chat tabs pick Combat Log in the Tab choice and press Close this tab, then try the same on a tab you made with New chat tab.
+- Expect: General stays the selected tab (shown, with its chat box) when the Filtered tab appears, both on ticking the filter and after the fight; Filtered is one click away and holds the caught line. Close this tab on the Combat Log closes nothing and chat says "The game's own chat tabs can't be closed."; your own tab still closes.
+- If it fails, paste: which tab was selected before and after each step, whether the chat box was still on screen, the chat line, `/dump IsBuiltinChatWindow(ChatFrame2)`, and `/vg errors`.
+
+### 33.130 A key the game refuses in keybind mode, and Cmd on a Mac
+
+- Do: bind Bar 1 button 1 to a key in `/vg keybind`, then hover it and press a key the game gives no name or won't bind (a media or other unusual key); note whether chat says "<key> can't be bound." and what the button's keys are in its tooltip. On a Mac, hover a button, hold Cmd and press 1, then hold Cmd and Shift and press 2, and look at the game's own Key Bindings list.
+- Expect: the refused key leaves the button's earlier key in place (tooltip "Keys: ..." unchanged, nothing lost) and chat and the banner say the key can't be bound; a key named UNKNOWN does nothing at all. On a Mac the buttons show and bind Cmd-1 and Shift-Cmd-2 (the game lists them as META-1 and SHIFT-META-2), and plain 1 keeps its old owner.
+- If it fails, paste: the key you pressed, the banner and chat lines, the button's tooltip before and after, the game's Key Bindings entry, and `/vg errors`.
+
+### 33.131 Whether enemy nameplates are set once per account or per character
+
+- Do: on a brand-new character (never logged in with Vanguard), log in, then type `/dump C_CVar.GetCVarInfo("nameplateShowEnemies")` and `/dump GetCVar("nameplateShowEnemies")`. Press V to turn enemy nameplates off, log out, log in a second new character and type the same two lines again.
+- Expect: nothing is decided by this step; it records the third value of the first line (true when the game stores the setting once for the whole account, false when each character has its own) and whether the second new character's `GetCVar` came back as 1 although you turned them off on the first (Vanguard turns enemy nameplates on once at a character's first login).
+- If it fails, paste: both new characters' output of both lines, in order, and `/vg errors`.
+
+### 33.132 Setup open while the UI is hidden or an intro cinematic plays
+
+- Do: create a new character on an account that has finished setup (or run `/vg setup`), and while the wizard is open watch the intro cinematic start and end; then on the Move step press Alt-Z, press Alt-Z again, and keep using the wizard (Next, then Done).
+- Expect: the wizard is still open on the same step after the cinematic and after Alt-Z; frames stay unlocked on the Move step; chat never says "Setup opens again at your next login"; Done and the close button still end setup as before.
+- If it fails, paste: the step the wizard was on before and after, whether the frames were still unlocked, the chat lines, and `/vg errors`.
+
+### 33.133 Options and errors windows through Alt-Z twice
+
+- Do: open `/vg`, press Alt-Z, then Alt-Z again, then press Up, Down, Tab and Enter in the options window; then with an error logged open `/vg errors`, press Alt-Z twice and look at the buttons.
+- Expect: the arrow keys, Tab and Enter still walk the pages and settings without reopening the window, and the errors window still shows Clear beside Close (closing and reopening it behaves as before).
+- If it fails, paste: which keys stopped working, whether Clear was missing, and `/vg errors`.
+
+### 33.134 Minimap coordinates where the client hides your position
+
+- Do: turn on the minimap coordinates and the quest arrow with a quest tracked, then walk into an instance and fight a few pulls; run `/vg probe` and note any C_Map.GetPlayerMapPosition line.
+- Expect: the coordinates show numbers outside and go blank (not an error) wherever the client hides your position, the arrow keeps pointing or dims, and `/vg errors` lists nothing about "secret value" in the minimap coords ticker.
+- If it fails, paste: the `/vg probe` map position line, `/vg errors`, and where you were standing.
+
+### 33.135 Spec profiles follow the talent group on WoW Forever
+
+- Do: on WoW Forever with dual spec unlocked, run `/dump C_SpecializationInfo.GetActiveSpecGroup(), GetNumSpecGroups()` in each talent group; in the Secondary group make a profile and open `/vg` > Profiles > Specialization, press "Use this profile for this spec", then swap to the Primary group in the talents window, and back, reloading when asked.
+- Expect: the dump shows 1 in the Primary group and 2 in the Secondary with a second group of 2; the Profiles page says "Secondary talents use <profile>."; swapping to Primary offers the reload for the character's profile ("Your specialization uses profile ..."), and back offers the other profile; after each reload that profile is in use.
+- If it fails, paste: the `/dump` lines in each group, the Specialization text on the Profiles page, the reload question, `/vg spec`, and `/vg errors`.
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ## When you are done

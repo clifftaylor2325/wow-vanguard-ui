@@ -41,9 +41,10 @@ local function text(v)
   return tostring(v)
 end
 
--- A value as text, "?" when it's nil or can't be read (a secret value).
+-- A value as text, "?" when it's nil or can't be read. A secret value is never compared or truth-tested
+-- here (type() is the one check that is safe on it), so it prints "?" before anything else touches it.
 local function safe(v)
-  if v == nil then return "?" end
+  if type(v) == "nil" or ns.IsSecret(v) then return "?" end
   local ok, s = pcall(text, v)
   return ok and s or "?"
 end
@@ -77,7 +78,7 @@ end
 -- it is drawn, nor is it. A zero-sized frame has none.
 function I.Rect(w)
   local ok, left, bottom = pcall(function() return w:GetRect() end)
-  if not ok or left == nil then return "no rect" end
+  if not ok or type(left) == "nil" then return "no rect" end
   return "at " .. safe(left) .. ", " .. safe(bottom)
 end
 
@@ -90,13 +91,20 @@ function I.StateLine(f)
     parent and I.Name(parent) or "nothing")
 end
 
--- The frame's anchors, one line each ("  RIGHT to Vanguard_MenuStrip TOPRIGHT 7.3, -13.4"); none: says so.
+-- One anchor as a line ("  RIGHT to Vanguard_MenuStrip TOPRIGHT 7.3, -13.4"). Anchoring to a secret value makes
+-- every part secret, so each is read through safe() and the frame it hangs on is named only when it is plain.
+local function anchorLine(point, rel, relPoint, x, y)
+  local named = type(rel) == "table" and not ns.IsSecret(rel) and I.Name(rel) or "its parent"
+  return string.format("  %s to %s %s %s, %s", safe(point), named, safe(relPoint), safe(x), safe(y))
+end
+
+-- The frame's anchors, one line each; none: says so.
 function I.PointLines(f, out)
   local first = #out
   for i = 1, 8 do
     local ok, point, rel, relPoint, x, y = pcall(f.GetPoint, f, i)
-    if not ok or not point then break end
-    out[#out + 1] = string.format("  %s to %s %s %s, %s", point, type(rel) == "table" and I.Name(rel) or "its parent", safe(relPoint), safe(x or 0), safe(y or 0))
+    if not ok or type(point) == "nil" then break end
+    out[#out + 1] = anchorLine(point, rel, relPoint, x, y)
   end
   if #out == first then out[#out + 1] = "  no anchors" end
 end

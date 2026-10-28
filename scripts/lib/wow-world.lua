@@ -158,6 +158,8 @@ UIPanelWindows = {}
 function IsShiftKeyDown() return world.keys.shift == true end
 function IsControlKeyDown() return world.keys.ctrl == true end
 function IsAltKeyDown() return world.keys.alt == true end
+-- Cmd on a Mac (Input documentation); a test sets world.keys.meta.
+function IsMetaKeyDown() return world.keys.meta == true end
 
 -- The cursor's screen position, in pixels.
 function GetCursorPosition() return world.mouse.x, world.mouse.y end
@@ -689,9 +691,11 @@ function GetPetHappiness()
 end
 C_PetInfo = { GetPetHappiness = viaGlobal("GetPetHappiness") }
 
--- Specializations: none on WoW Forever.
+-- Specializations: none on WoW Forever. Its dual spec is the talent group (C_SpecializationInfo.GetActiveSpecGroup,
+-- in Forever's SpecializationInfoDocumentation: a luaIndex, 1 Primary and 2 Secondary), which answers
+-- world.specGroup; nil until a test sets it, so a test that never mentions talent groups sees none.
 function GetSpecialization() return world.spec end
-C_SpecializationInfo = { GetSpecialization = viaGlobal("GetSpecialization") }
+C_SpecializationInfo = { GetSpecialization = viaGlobal("GetSpecialization"), GetActiveSpecGroup = function() return world.specGroup end }
 
 -- The watched faction (nil until a test sets world.watchedFaction).
 C_Reputation = { GetWatchedFactionData = function() return world.watchedFaction end }

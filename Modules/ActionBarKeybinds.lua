@@ -31,13 +31,16 @@ local AB = ns.GetModule("ActionBars")
 AB.MODIFIER_KEYS = { LSHIFT = true, RSHIFT = true, LCTRL = true, RCTRL = true, LALT = true, RALT = true, LMETA = true, RMETA = true }
 -- Keys that clear the button's keys instead of binding one.
 AB.CLEAR_KEYS = { BACKSPACE = true, DELETE = true }
+-- Keys the game's own binder ignores too: a key with no name binds nothing.
+AB.IGNORED_KEYS = { UNKNOWN = true }
 -- Mouse buttons as binding keys; left and right click (the game's own) bind nothing.
 AB.MOUSE_KEYS = { MiddleButton = "BUTTON3", Button4 = "BUTTON4", Button5 = "BUTTON5" }
 -- The banner's size, and the width of its Done button. 720 keeps the how-to-leave line whole in German and French.
 AB.BANNER = { w = 720, h = 76, done = 84 }
 
--- A key as a binding with the modifiers held, in the game's order ("ALT-CTRL-SHIFT-Q").
+-- A key as a binding with the modifiers held, in the game's order ("ALT-CTRL-SHIFT-META-Q"; Cmd is META on a Mac).
 function AB.KeyChord(key)
+  if type(IsMetaKeyDown) == "function" and IsMetaKeyDown() then key = "META-" .. key end
   if IsShiftKeyDown() then key = "SHIFT-" .. key end
   if IsControlKeyDown() then key = "CTRL-" .. key end
   if IsAltKeyDown() then key = "ALT-" .. key end
@@ -99,14 +102,24 @@ function AB.ShowResult(text, tone)
   T.Color(AB.binder.result, tone or "text2")
 end
 
+-- Moves the button's keys to key; when the game refuses it, puts the old keys back and answers false
+-- (the game's own binder does the same).
+local function bindOrRestore(b, key)
+  local old = { GetBindingKey(b.binding) }
+  dropKeys(b)
+  if SetBinding(key, b.binding) then return true end
+  for _, oldKey in ipairs(old) do SetBinding(oldKey, b.binding) end
+  return false
+end
+
 -- Binds key to the button's command in place of its keys, saves the binding
 -- set in use and repaints the hotkeys; says in chat what the key did before,
--- if anything. Out of combat only; false in a fight.
+-- if anything. Out of combat only; false in a fight, or when the game refuses the key (the
+-- button keeps its keys and the banner says so).
 function AB.BindKey(b, key)
   if ns.InCombat() then return false end
   local owner = keyOwner(key, b)
-  dropKeys(b)
-  SetBinding(key, b.binding)
+  if not bindOrRestore(b, key) then AB.ShowResult(ns.Format(L["{key} can't be bound."], { key = key }), "warn") return false end
   saved(b)
   AB.ShowResult(ns.Format(owner and L["{key} bound to {button}, taken from {owner}."] or L["{key} bound to {button}."], { key = key, button = buttonLabel(b), owner = owner }), owner and "warn")
   return true
@@ -124,15 +137,15 @@ function AB.ClearKeys(b)
   return true
 end
 
--- A key while keybind mode is on: Escape leaves, a modifier alone waits for its
--- key, Backspace or Delete clears the button under the mouse, any other key
+-- A key while keybind mode is on: Escape leaves, a modifier alone (or a key with no name) waits for
+-- its key, Backspace or Delete clears the button under the mouse, any other key
 -- binds it; with no button under the mouse, the key goes on to the game
 -- (passing keys on is restricted in combat, when the mode is off).
 function AB.OnBindKey(f, key)
   local hovered = AB.bindHover
   if not ns.InCombat() then f:SetPropagateKeyboardInput(key ~= "ESCAPE" and not hovered) end
   if key == "ESCAPE" then return AB.KeybindMode(false) end
-  if not hovered or AB.MODIFIER_KEYS[key] then return end
+  if not hovered or AB.MODIFIER_KEYS[key] or AB.IGNORED_KEYS[key] then return end
   if AB.CLEAR_KEYS[key] then AB.ClearKeys(hovered) else AB.BindKey(hovered, AB.KeyChord(key)) end
 end
 

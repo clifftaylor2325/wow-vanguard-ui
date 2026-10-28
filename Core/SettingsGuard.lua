@@ -204,7 +204,7 @@ end
 function G.OnLogin()
   local lost, detail = G.Check()
   if lost == "character" then return restoreCharacter(detail) end
-  G.lost = lost
+  G.lost, G.lostSeen = lost, lost
   if lost then announce(detail) end
 end
 ns.On("PLAYER_LOGIN", G.OnLogin)
@@ -232,11 +232,12 @@ local function backupString()
   return encodeOwn(ns.Profile())
 end
 
--- The backup this character keeps: the old one while the profile it names is still missing (a pasted
--- string or a fresh start must not erase its only copy), else one of the profile in use.
+-- The backup this character keeps: in a session that found a loss, the old one while the profile it
+-- names is still missing (a pasted string or a fresh start must not erase its only copy); else one
+-- of the profile in use (a deleted profile, or a name that restores as "Restored", must not freeze it).
 local function keptBackup()
   local old = G.Backup()
-  if old and not VanguardDB.profiles[restoreName(old)] then return old.profile, old.backup end
+  if old and G.lostSeen and not VanguardDB.profiles[restoreName(old)] then return old.profile, old.backup end
   return ns.ProfileName(), backupString()
 end
 

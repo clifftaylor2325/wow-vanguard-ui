@@ -42,7 +42,7 @@ function ns.CopyProfile(from)
   if not source or from == into then
     return false
   end
-  VanguardDB.profiles[into] = ownCopy(source)
+  VanguardDB.profiles[into] = ns.KeepClientState(ownCopy(source), VanguardDB.profiles[into])
   if into == ns.ProfileName() then ns.ProfileChanged() end
   return into
 end
@@ -57,9 +57,10 @@ function ns.DeleteProfile(name)
   return true
 end
 
--- Clears every setting in the active profile back to defaults.
+-- Clears every setting in the active profile back to defaults, keeping this computer's own state (ns.KeepClientState).
 function ns.ResetProfile()
-  VanguardDB.profiles[ns.ProfileName()] = {}
+  local name = ns.ProfileName()
+  VanguardDB.profiles[name] = ns.KeepClientState({}, VanguardDB.profiles[name])
   ns.ProfileChanged()
 end
 
@@ -311,15 +312,23 @@ end
 
 -- Specialization -------------------------------------------------------------------------
 
--- The client's specialization getter, or nil (WoW Forever has no specializations).
+-- The client's specialization getter, or nil.
 local function specGetter()
   local get = (C_SpecializationInfo and C_SpecializationInfo.GetSpecialization) or GetSpecialization
   return type(get) == "function" and get or nil
 end
 
--- True when the client has specializations at all.
+-- WoW Forever's talent group getter, or nil elsewhere. Forever has one specialization per class and its
+-- dual spec is the talent group (Primary, Secondary), so that is what spec profiles follow there.
+local function groupGetter()
+  local info = ns.IsForever() and C_SpecializationInfo
+  local get = info and info.GetActiveSpecGroup
+  return type(get) == "function" and get or nil
+end
+
+-- True when the client has specializations, or on WoW Forever talent groups.
 function ns.HasSpecs()
-  return specGetter() ~= nil
+  return specGetter() ~= nil or groupGetter() ~= nil
 end
 
 -- The active specialization index (1-4), or nil where the client has none.
@@ -327,6 +336,25 @@ function ns.SpecIndex()
   local get = specGetter()
   local index = get and ns.PlainNumber(get()) or nil
   return index and index > 0 and index or nil
+end
+
+-- The active talent group on WoW Forever (1 Primary, 2 Secondary), or nil elsewhere or while the client won't say it.
+function ns.TalentGroup()
+  local get = groupGetter()
+  if not get then return nil end
+  local ok, value = pcall(get)
+  local group = ok and ns.PlainNumber(value) or nil
+  return group and group > 0 and group or nil
+end
+
+-- What a talent group is called: "Primary talents" or "Secondary talents".
+function ns.TalentsName(group)
+  return group == 2 and L["Secondary talents"] or L["Primary talents"]
+end
+
+-- The key a spec's profile is stored under: the talent group on WoW Forever, else the specialization index.
+function ns.SpecKey()
+  return ns.TalentGroup() or ns.SpecIndex()
 end
 
 -- The client's role names (a specialization's or a group role) -> Vanguard's.
@@ -354,9 +382,9 @@ local function specMap()
   return VanguardCharDB.specProfiles
 end
 
--- Uses a profile for a spec (the current one when spec is nil); nil profile stops that.
+-- Uses a profile for a spec (the current one when spec is nil; a talent group on WoW Forever); nil profile stops that.
 function ns.SetSpecProfile(profile, spec)
-  spec = spec or ns.SpecIndex()
+  spec = spec or ns.SpecKey()
   if not spec then return false end
   specMap()[spec] = profile
   return true
@@ -364,29 +392,63 @@ end
 
 -- The profile a spec uses, if one is set and still exists.
 function ns.SpecProfile(spec)
-  local name = specMap()[spec or ns.SpecIndex() or 0]
+  local name = specMap()[spec or ns.SpecKey() or 0]
   return name and VanguardDB.profiles[name] and name or nil
 end
 
--- True when the staged profile is one a spec uses, so a spec change staged it (not the player's own pick).
-local function specStaged()
-  local pending = ns.PendingProfileName()
-  for _, name in pairs(specMap()) do
-    if name == pending then return true end
+-- True when a spec of this character uses the profile.
+local function isSpecProfile(name)
+  for _, used in pairs(specMap()) do
+    if used == name then return true end
   end
   return false
 end
 
--- Stages the current spec's profile (and applies it now when `now`, which is only safe before modules
--- read their settings); a spec with no profile of its own uses the character's, so it takes back a
--- switch another spec staged. Returns true if a switch was staged.
-local function followSpec(now)
+-- True when the staged profile is one a spec uses, so a spec change staged it (not the player's own pick).
+local function specStaged()
+  return isSpecProfile(ns.PendingProfileName())
+end
+
+-- "Spec 2 uses Healer." (on WoW Forever, "Primary talents use Healer.") for a spec key.
+function ns.SpecUsesLine(key, profile)
+  if not ns.TalentGroup() then return ns.Format(L["Spec {spec} uses {profile}."], { spec = key, profile = profile }) end
+  return ns.Format(L["{talents} use {profile}."], { talents = ns.TalentsName(key), profile = profile })
+end
+
+-- "Spec 2 now uses profile Healer." (on WoW Forever, "Primary talents now use profile Healer.") for a spec key.
+function ns.SpecNowLine(key, profile)
+  if not ns.TalentGroup() then return ns.Format(L["Spec {spec} now uses profile {profile}."], { spec = key, profile = profile }) end
+  return ns.Format(L["{talents} now use profile {profile}."], { talents = ns.TalentsName(key), profile = profile })
+end
+
+-- Remembers the profile the character picked, before a spec's profile takes over from it.
+local function rememberOwn()
+  local selected = ns.SelectedProfileName()
+  if not isSpecProfile(selected) then VanguardCharDB.ownProfile = selected end
+end
+
+-- The profile a spec with none of its own goes back to: the one the character picked before a spec's
+-- profile took over, while it still exists and a spec's profile is what is selected.
+local function ownTarget()
+  local own = VanguardCharDB.ownProfile
+  if own ~= ns.SelectedProfileName() and VanguardDB.profiles[own] and isSpecProfile(ns.SelectedProfileName()) then return own end
+end
+
+-- The profile the current spec switches to: its own, else (a spec with no profile of its own) the
+-- character's, which also takes back a switch another spec staged. Nil when it stays as it is.
+local function specTarget()
   local name = ns.SpecProfile()
-  if not name and specStaged() then ns.UseProfile(ns.ProfileName()) end
-  if not name or name == ns.SelectedProfileName() then
-    return false
-  end
-  ns.UseProfile(name)
+  if name then rememberOwn() return name end
+  if specStaged() then ns.StageProfile(ns.ProfileName()) end
+  return ownTarget()
+end
+
+-- Stages the current spec's profile (and applies it now when `now`, which is only safe before modules
+-- read their settings). Returns true if a switch was staged.
+local function followSpec(now)
+  local name = specTarget()
+  if not name or name == ns.SelectedProfileName() then return false end
+  ns.StageProfile(name)
   if now then ns.ApplyPendingProfile() end
   return true
 end

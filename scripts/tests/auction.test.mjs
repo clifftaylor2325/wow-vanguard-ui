@@ -281,6 +281,20 @@ it("migration keeps the newer price of each item; login forgets stale and broken
   const neutral = loggedIn(AH_ENV + "__wfgWorld.units.player.faction = 'Neutral' GetNormalizedRealmName = function() return nil end", { savedVariables: ACCOUNT_WIDE });
   expect(houses(neutral), "no side yet, and no normalized name: the realm's own name and 'none'").toEqual(["Forever Test-none:1"]);
 });
+it("a login with the computer's clock far behind the realm's keeps the prices and their day lows", () => {
+  const t = 1790000000;
+  const saved = `VanguardDB.ah = { houses = { ["ForeverTest-Alliance"] = { count = 1, lastScan = ${t - 3600}, prices = {
+    [1] = { min = 5, t = ${t - 3600}, listings = 3, days = { [math.floor(${t} / 86400)] = 5, [math.floor(${t} / 86400) - 2] = 4 } } } } } }`;
+  const kept = "local p = ns.AuctionPrices.House().prices[1] local n = 0 for _ in pairs(p.days) do n = n + 1 end return { p.t, n }";
+  const behind = loggedIn(AH_ENV + `time = function() return 946684800 end GetServerTime = function() return ${t} end`, { savedVariables: saved });
+  expect(behind.eval(kept), "the clock in 2000, the realm's right: the time and both day lows untouched").toEqual([t - 3600, 2]);
+  const alone = loggedIn(AH_ENV + "time = function() return 946684800 end", { savedVariables: saved });
+  expect(alone.eval(kept), "no realm clock to check by: pruned by the computer's, as before").toEqual([946684800, 0]);
+  const zero = loggedIn(AH_ENV + `time = function() return 0 end GetServerTime = function() return ${t} end`, { savedVariables: saved });
+  expect(zero.eval(kept), "a clock that reads 0: not pruned").toEqual([t - 3600, 2]);
+  const unsynced = loggedIn(AH_ENV + "time = function() return 946684800 end GetServerTime = function() return 0 end", { savedVariables: saved });
+  expect(unsynced.eval(kept), "a realm clock not known yet (0): pruned by the computer's, as without one").toEqual([946684800, 0]);
+});
 it("a damaged saved price row is dropped at login and the helper stays on, whatever shape the row has", () => {
   const t = 1790000000;
   const shapes = {

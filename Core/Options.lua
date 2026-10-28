@@ -516,11 +516,11 @@ local function moduleRows()
   return append(rows, groupSection(L["More"], otherModules(listed)))
 end
 
--- "Spec 2 uses Healer." or why there's no spec profile.
+-- "Spec 2 uses Healer." ("Primary talents use Healer." on WoW Forever) or why there's no spec profile.
 local function specText()
-  local spec = ns.SpecIndex()
+  local spec = ns.SpecKey()
   if not spec then return L["No specialization yet."] end
-  return ns.Format(L["Spec {spec} uses {profile}."], { spec = spec, profile = ns.SpecProfile(spec) or L["the character's profile"] })
+  return ns.SpecUsesLine(spec, ns.SpecProfile(spec) or L["the character's profile"])
 end
 
 -- Every profile, with its buttons, then the box for a new one (Core/OptionsProfiles.lua).
@@ -671,28 +671,36 @@ function O.AddRows(key, rowsFn, first)
   end
 end
 
--- The addons button by the minimap: left-click options, right-click move frames.
-function Vanguard_OnAddonCompartmentClick(_, button)
-  if button == "RightButton" then
-    if ns.Unlocked() then ns.Lock() else ns.Unlock() end
-  else
-    O.Toggle()
+-- The addons button's click, hover and leave run under ns.Guard: the game calls these three globals
+-- without a pcall, so an error would skip the error badge and /vg errors.
+do
+  -- The addons button by the minimap: left-click options, right-click move frames.
+  local function click(_, button)
+    if button == "RightButton" then
+      if ns.Unlocked() then ns.Lock() else ns.Unlock() end
+    else
+      O.Toggle()
+    end
   end
-end
 
--- The addons button's tooltip: Vanguard's version, what each click does, and the errors caught this session.
-function Vanguard_OnAddonCompartmentEnter(_, button)
-  if not GameTooltip then return end
-  GameTooltip:SetOwner(button, "ANCHOR_LEFT")
-  GameTooltip:SetText("Vanguard " .. ns.AddonVersion())
-  GameTooltip:AddLine(L["Left-click: options · Right-click: move frames (out of combat)"], T.RGB("text2"))
-  local n = #ns.errors
-  local caught = n == 1 and L["1 error caught this session (/vg errors)"] or L["{count} errors caught this session (/vg errors)"]
-  if n > 0 then GameTooltip:AddLine(ns.Format(caught, { count = n }), T.RGB("bad")) end
-  GameTooltip:Show()
-end
+  -- The addons button's tooltip: Vanguard's version, what each click does, and the errors caught this session.
+  local function enter(_, button)
+    if not GameTooltip then return end
+    GameTooltip:SetOwner(button, "ANCHOR_LEFT")
+    GameTooltip:SetText("Vanguard " .. ns.AddonVersion())
+    GameTooltip:AddLine(L["Left-click: options · Right-click: move frames (out of combat)"], T.RGB("text2"))
+    local n = #ns.errors
+    local caught = n == 1 and L["1 error caught this session (/vg errors)"] or L["{count} errors caught this session (/vg errors)"]
+    if n > 0 then GameTooltip:AddLine(ns.Format(caught, { count = n }), T.RGB("bad")) end
+    GameTooltip:Show()
+  end
 
--- Hides the addons button's tooltip, only while it is still the button's (another addon may own it by now).
-function Vanguard_OnAddonCompartmentLeave(_, button)
-  if GameTooltip and GameTooltip:GetOwner() == button then GameTooltip:Hide() end
+  -- Hides the addons button's tooltip, only while it is still the button's (another addon may own it by now).
+  local function leave(_, button)
+    if GameTooltip and GameTooltip:GetOwner() == button then GameTooltip:Hide() end
+  end
+
+  Vanguard_OnAddonCompartmentClick = ns.Guard("addons button click", click)
+  Vanguard_OnAddonCompartmentEnter = ns.Guard("addons button hover", enter)
+  Vanguard_OnAddonCompartmentLeave = ns.Guard("addons button leave", leave)
 end

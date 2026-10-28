@@ -290,7 +290,7 @@ end
 function MM.CoordsText(mapID)
   mapID = mapID or playerMap()
   local pos = mapID and C_Map.GetPlayerMapPosition(mapID, "player")
-  if not pos or not pos.GetXY then
+  if ns.IsSecret(pos) or not pos or not pos.GetXY then
     return ""
   end
   local x, y = pos:GetXY()

@@ -224,9 +224,18 @@ end
 -- tables until the reload, so VanguardCharDB.profile and the settings cache stay as they are (a drag
 -- or an accent change still lands in the profile on screen); ns.ApplyPendingProfile applies it.
 ---@param name string
-function ns.UseProfile(name)
+function ns.StageProfile(name)
   VanguardDB.profiles[name] = VanguardDB.profiles[name] or {}
   VanguardCharDB.pendingProfile = name ~= VanguardCharDB.profile and name or nil
+end
+
+-- Stages a profile the player picked (the list, the picker, a command, an import): it is also the
+-- character's own profile, the one a spec with no profile of its own goes back to. A spec change
+-- stages through ns.StageProfile instead, so it never counts as a pick.
+---@param name string
+function ns.UseProfile(name)
+  ns.StageProfile(name)
+  VanguardCharDB.ownProfile = name
 end
 
 -- The profile staged for the next reload, or nil.

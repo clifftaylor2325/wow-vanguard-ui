@@ -40,6 +40,7 @@ local function add(name, text, info, source)
   local old, at = find(name)
   if old and old.source == "Vanguard" and source ~= "Vanguard" then return false, "a built-in preset has that name" end
   local entry = { name = name, text = text, info = ns.TextPrefix((info or ""):gsub("|", ""), MAX_INFO), source = source }
+  if old and old.text == text and old.info == entry.info and old.source == source then return true end
   presets[at or (#presets + 1)] = entry
   return true
 end
@@ -47,8 +48,13 @@ end
 -- Offers a profile string (from /vg export, partial or whole) on the Profiles page as `name`,
 -- with an optional one-line `info` (at most 200 characters). A name already offered is
 -- replaced. Returns true, or false and why not. The string is checked when the player applies it.
+-- The Profiles page is rebuilt when an entry was added or changed, so it shows the current list.
 function Vanguard.RegisterPreset(name, text, info)
-  return add(name, text, info, "addon")
+  local clean = type(name) == "string" and (name:gsub("|", "")) or name
+  local before = ns.FindPreset(clean)
+  local ok, why = add(name, text, info, "addon")
+  if ok and ns.FindPreset(clean) ~= before and O.Frame() then O.RebuildPage("profiles") end
+  return ok, why
 end
 
 -- The presets on offer, a copy: { name, info, builtIn } in order.

@@ -941,11 +941,20 @@ local function onKey(f, key)
   if not ns.InCombat() and ns.Client.Has("keyPropagate") then f:SetPropagateKeyboardInput(not used) end
 end
 
+-- The window closed: it lets the keyboard go and clears the keyboard row and the search hits. A hide that
+-- comes down from UIParent (Alt-Z) leaves the window shown and is no close.
+local function closed(self)
+  if self:IsShown() then return end
+  self:EnableKeyboard(false)
+  setFocus(nil)
+  O.HideHits()
+end
+
 -- Takes the keyboard while shown and out of combat (it can't pass keys on in a fight), never while hidden;
 -- a fight lets it go, and the combat queue takes it back when the fight ends.
 local function wireKeys(f)
   f:SetScript("OnKeyDown", ns.Guard("key options", onKey))
-  f:SetScript("OnHide", ns.Guard("hide options", function(self) self:EnableKeyboard(false) setFocus(nil) O.HideHits() end))
+  f:SetScript("OnHide", ns.Guard("hide options", closed))
   ns.On("PLAYER_REGEN_DISABLED", function()
     f:EnableKeyboard(false)
     ns.AfterCombat(function() f:EnableKeyboard(f:IsShown()) end, "options keyboard")

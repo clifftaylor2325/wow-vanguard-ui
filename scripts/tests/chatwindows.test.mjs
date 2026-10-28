@@ -161,6 +161,16 @@ it("chat tabs: two new tabs asked for in one fight are both made when it ends", 
   expect(addon.eval("return { __wfgWorld.chatWindows[3], __wfgWorld.chatWindows[4] }"), "both tabs after it").toEqual(["Trade", "Barter"]);
 });
 
+it("chat tabs: the Combat Log and the game's other built-in windows are not closed, a tab of your own still is", () => {
+  const addon = loggedIn(ENV + TABS + "IsBuiltinChatWindow = function(frame) return frame == ChatFrame2 end");
+  addon.eval(`ns.GetModule("ChatWindows").New("Trade")`);
+  addon.eval(`local CW = ns.GetModule("ChatWindows") CW.editing = 2 CW.Close()`);
+  expect(addon.eval("return __closed"), "the Combat Log is not closed").toBe(null);
+  expect(chatHas(addon, /The game's own chat tabs can't be closed\./), "and says why").toBe(true);
+  addon.eval(`local CW = ns.GetModule("ChatWindows") CW.editing = 3 CW.Close()`);
+  expect(addon.eval("return __closed"), "a tab you made closes").toBe("ChatFrame3");
+});
+
 it("chat tabs: two tabs closed in one fight are both closed when it ends", () => {
   const addon = loggedIn(ENV + TABS + "local close = FCF_Close __allClosed = {} FCF_Close = function(f) close(f) table.insert(__allClosed, f:GetName()) end");
   addon.eval(`ns.GetModule("ChatWindows").New("Trade")`);

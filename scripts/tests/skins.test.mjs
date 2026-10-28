@@ -1,7 +1,7 @@
 // skins: Vanguard's real Lua in the TEST-ONLY headless client (scripts/lib/lua-harness.mjs).
 
 import { expect, it } from "vitest";
-import { chatHas, expectErrors, loggedIn } from "./helpers.mjs";
+import { chatHas, expectErrors, loggedIn, setCombat } from "./helpers.mjs";
 
 it("skin API", () => {
   expectErrors("skin for Broken: eval:5: oops");
@@ -47,4 +47,97 @@ it("/vg skins switches a skin whose name has a space", () => {
   addon.slash("skins TEST-ONLY My Addon off");
   expect(addon.eval("return ns.Settings('skins')['TEST-ONLY My Addon']"), "the whole name before the state").toBe(false);
   expect(chatHas(addon, /Skin for TEST-ONLY My Addon off\./), "and says so").toBe(true);
+});
+
+it("a skin's erroring theme listener stops no other listener", () => {
+  expectErrors(/^skin theme change: eval:\d+: addon bug$/);
+  const addon = loggedIn();
+  addon.eval(`
+    -- TEST-ONLY skin whose listener errors, then a listener registered after it.
+    Vanguard.RegisterSkin("TESTONLY", function(S) S.OnChanged(function() error("addon bug") end) end)
+    __after = 0
+    ns.Theme.OnChanged(function() __after = __after + 1 end)
+    ns.Theme.Refresh()
+  `);
+  expect(addon.eval("return __after"), "the listener after the failing one still runs").toBe(1);
+});
+
+it("a skin theme listener that is not a function is ignored, and the same function is kept once", () => {
+  const addon = loggedIn();
+  const ran = addon.eval(`
+    -- TEST-ONLY skin: junk listeners, then one function registered twice.
+    __ran = 0
+    Vanguard.RegisterSkin("TESTONLY", function(S)
+      local count = function() __ran = __ran + 1 end
+      S.OnChanged(true) S.OnChanged("Refresh") S.OnChanged({}) S.OnChanged(count) S.OnChanged(count)
+    end)
+    ns.Theme.Refresh()
+    return __ran
+  `);
+  expect(ran, "a bad listener raises nothing and a repeat registration runs once").toBe(1);
+});
+
+it("a theme listener that registers another one does not run it in the same refresh", () => {
+  const addon = loggedIn();
+  const runs = addon.eval(`
+    -- TEST-ONLY listener that registers a new listener each time it runs.
+    __runs = { first = 0, second = 0 }
+    ns.Theme.OnChanged(function()
+      __runs.first = __runs.first + 1
+      if __runs.first == 1 then ns.Theme.OnChanged(function() __runs.second = __runs.second + 1 end) end
+    end)
+    ns.Theme.Refresh()
+    local afterOne = __runs.second
+    ns.Theme.Refresh()
+    return { afterOne, __runs.second }
+  `);
+  expect(runs, "the new listener first runs on the next refresh").toEqual([0, 1]);
+});
+
+// Runs `call` (Lua, using S) on a client where a bad skin call just failed, then a theme refresh with a listener after it.
+const refreshAfterBadCall = (call) => {
+  const addon = loggedIn();
+  return addon.eval(`
+    local S -- TEST-ONLY skin hands out S so the bad call can be made with pcall
+    Vanguard.RegisterSkin("TESTONLY", function(skin) S = skin end)
+    __after = 0 ns.Theme.OnChanged(function() __after = __after + 1 end)
+    local badOk = pcall(function() ${call} end)
+    local refreshOk = pcall(ns.Theme.Refresh)
+    return { badOk, refreshOk, __after }
+  `);
+};
+
+it("S.Color with a colour name Vanguard lacks fails alone and refreshes still run", () => {
+  const result = refreshAfterBadCall(`S.Color(UIParent:CreateFontString(), "red")`);
+  expect(result, "the call fails, and the refresh still reaches the listener").toEqual([false, true, 1]);
+});
+
+it("S.Text on something that is not a font string fails alone and refreshes still run", () => {
+  const result = refreshAfterBadCall(`S.Text(CreateFrame("Frame", nil, UIParent), "title")`);
+  expect(result, "the call fails, and the refresh still reaches the listener").toEqual([false, true, 1]);
+});
+
+it("S.FontObjects with a bare size is not remembered and refreshes still run", () => {
+  const result = refreshAfterBadCall(`S.FontObjects({ MyFont = 12 })`);
+  expect(result, "the call does nothing, and the refresh still reaches the listener").toEqual([true, true, 1]);
+});
+
+it("S.Panel with an unknown fill token fails alone and refreshes still run", () => {
+  const result = refreshAfterBadCall(`S.Panel(CreateFrame("Frame", nil, UIParent), { fill = "red" })`);
+  expect(result, "the call fails, and the refresh still reaches the listener").toEqual([false, true, 1]);
+});
+
+it("a skin's window control on a secure button with no size is sized after the fight, not during it", () => {
+  const addon = loggedIn();
+  addon.eval(`
+    -- TEST-ONLY skin hands out S; the buttons are one secure and one plain, both without a size.
+    Vanguard.RegisterSkin("TESTONLY", function(S) __S = S end)
+    __secure = CreateFrame("Button", nil, UIParent, "SecureActionButtonTemplate")
+    __plain = CreateFrame("Button", nil, UIParent)
+  `);
+  setCombat(addon, true);
+  addon.eval("__S.CloseButton(__secure) __S.WindowControl(__plain, 'Maximize')");
+  expect(addon.eval("return { __secure:GetWidth() < 1, __plain:GetWidth() >= 1 }"), "in the fight only the plain button is sized").toEqual([true, true]);
+  setCombat(addon, false);
+  expect(addon.eval("return __secure:GetWidth() >= 1"), "the secure button is sized once the fight ends").toBe(true);
 });

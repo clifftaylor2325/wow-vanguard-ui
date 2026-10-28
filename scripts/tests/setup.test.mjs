@@ -100,6 +100,25 @@ it("/vg setup reopens setup; Back and the close button", () => {
   upgraded.eval("Vanguard_Setup:Hide()");
   expect(setupState(upgraded), "Escape (the client hides the frame) closes setup without finishing it").toEqual({ step: 0, done: false, unlocked: false });
 });
+it("E6-1 setup stays open when the whole UI is hidden (Alt-Z, a movie or a cinematic); Done and the close button still finish it", () => {
+  const addon = loggedIn(CLICK_LUA, { firstRun: true });
+  setupClick(addon, "next");
+  addon.eval("ns.Unlock()");
+  addon.clearChat();
+  addon.eval("UIParent:Hide()");
+  addon.eval("UIParent:Show()");
+  expect(setupState(addon), "the wizard stays on its step with the frames unlocked").toMatchObject({ step: 2, unlocked: true });
+  expect(chatHas(addon, /Setup opens again at your next login/), "and promises nothing").toBe(false);
+  setupClick(addon, "close");
+  expect(setupState(addon), "the close button still ends it").toMatchObject({ step: 0, unlocked: false });
+  expect(chatHas(addon, /Setup opens again at your next login/), "owed setup says it opens again").toBe(true);
+  addon.slash("setup");
+  for (let i = 0; i < 3; i++) setupClick(addon, "next");
+  addon.eval("UIParent:Hide() UIParent:Show()");
+  expect(setupState(addon), "on the last step the wizard is still open and unlocked").toMatchObject({ step: 4, unlocked: true });
+  setupClick(addon, "next");
+  expect(setupState(addon), "Done still finishes it").toMatchObject({ step: 0, done: true });
+});
 // TEST-ONLY saved variables: an account that ran setup, with a moved raid grid in Default, and no file for this character yet.
 const SET_UP_ACCOUNT = 'VanguardDB = { version = 2, setupDone = true, profiles = { Default = { positions = { raid = { point = "TOP", relPoint = "TOP", x = 0, y = -300 } } } } }\n';
 it("first-run setup: closing it early asks again at the next login; Skip setup ends it", () => {

@@ -121,20 +121,39 @@ function CF.FindWindow()
   return closed
 end
 
+-- The window the chat dock shows now, or nil on a client without the dock.
+local function dockSelection()
+  local dock = _G.GENERAL_CHAT_DOCK
+  if type(FCFDock_GetSelectedWindow) ~= "function" or type(dock) ~= "table" then return nil end
+  return FCFDock_GetSelectedWindow(dock)
+end
+
+-- Shows the window the dock showed before a new one was made, when the game moved the selection to the new
+-- one (FCF_OpenNewWindow selects it, which would hide the tab the player is reading); otherwise does nothing.
+local function keepSelection(before)
+  if not before or dockSelection() == before then return end
+  if type(FCFDock_SelectWindow) == "function" then FCFDock_SelectWindow(_G.GENERAL_CHAT_DOCK, before) end
+end
+
 -- A new window called Filtered that hears no chat of its own (FCF_OpenNewWindow's second argument takes
 -- every message group and channel off it), or nil on a client without the call.
 local function openWindow()
   if type(FCF_OpenNewWindow) ~= "function" then return nil end
+  local before = dockSelection()
   local frame = FCF_OpenNewWindow(CF.TAB, true)
+  keepSelection(before)
   return type(frame) == "table" and frame or nil
 end
 
 -- Finds or makes the Filtered window when the filter is on and sends to the tab; out of combat only.
--- Nothing while the module has not been enabled (switched off from login: no settings yet).
+-- Nothing while the module has not been enabled (switched off from login: no settings yet) or was
+-- switched off since: no tab while nothing is filtered.
 function CF.Prepare()
   local s = CF.settings
-  if not (s and s.on and s.mode == "tab") or CF.window then return end
-  ns.OutOfCombat(function() CF.window = CF.FindWindow() or openWindow() end, "chatfilter window")
+  if not (CF.active and s and s.on and s.mode == "tab") or CF.window then return end
+  ns.OutOfCombat(function()
+    if CF.active then CF.window = CF.FindWindow() or openWindow() end
+  end, "chatfilter window")
 end
 
 -- The tab's text with the count of lines caught, "Filtered (12)", and the tab refit to it (the

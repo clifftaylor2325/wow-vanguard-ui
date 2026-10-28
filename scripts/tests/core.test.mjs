@@ -262,6 +262,15 @@ it("/vg frame: #0 leads nowhere, and a frame that refuses its parent and parts s
     expect.stringMatching(/^ProbeLocked \(Frame\): .*, under nothing$/), "  no anchors", "  0 region(s):", "  0 child frame(s):"]);
   expect(addon.eval("return #ns.errors"), "no errors").toBe(0);
 });
+it("/vg frame: a secret text, anchor point, offset or anchor frame prints as ?, never as the value or an error", () => {
+  const addon = loggedIn();
+  addon.eval(`local f = CreateFrame("Frame", "ProbeSecret", UIParent) f:SetSize(30, 20)
+    local text = f:CreateFontString() text.GetText = function() return __wfgWorld.secret("hidden") end
+    f.GetPoint = function(_, i) if i == 1 then return __wfgWorld.secret("TOP"), __wfgWorld.secret(UIParent), __wfgWorld.secret("TOP"), __wfgWorld.secret(1), __wfgWorld.secret(2) end end`);
+  expect(said(addon, "frame ProbeSecret deep").filter((l) => /^  \? to|text/.test(l)), "each secret part is a ?, and the anchor frame is its parent").toEqual([
+    "  ? to its parent ? ?, ?", expect.stringMatching(/layer \S+, text \?$/)]);
+  expect(addon.eval("return #ns.errors"), "and no error").toBe(0);
+});
 // TEST-ONLY counters: Vanguard's CPU total (__cpu ms) and memory (2048 KB), each refreshed by its Update call (counted).
 const PERF_ENV = `
   __cpu, __updates = 0, { cpu = 0, mem = 0 }

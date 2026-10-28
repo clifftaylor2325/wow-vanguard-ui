@@ -32,7 +32,6 @@ local S = {
   Accent = T.Accent,
   PanelColor = T.PanelColor,
   Font = T.Font,
-  OnChanged = T.OnChanged,
   Tab = T.Tab,
   CheckBox = T.CheckBox,
   Radio = T.Radio,
@@ -46,6 +45,15 @@ local S = {
 
 local skins, order = {}, {}
 local loggedIn = false
+local heard = {}
+
+-- Registers a skin's theme-change listener once (the same function again is ignored), guarded so its
+-- error is reported and stops no other listener.
+function S.OnChanged(fn)
+  if type(fn) ~= "function" or heard[fn] then return end
+  heard[fn] = true
+  T.OnChanged(ns.Guard("skin theme change", fn))
+end
 
 -- Whether skinning is on for an addon (on unless /vg skins <name> off).
 local function skinEnabled(name)
