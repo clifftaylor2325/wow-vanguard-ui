@@ -158,15 +158,19 @@ function CW.TabChoices()
   return out
 end
 
+-- Runs a chat window's message-group call (Contains, Add or Remove) and returns its answer: the window's own
+-- method, else the old ChatFrame_<call> global, which the client keeps only with its deprecated chat calls loaded.
+local function groupCall(frame, call, group)
+  local fn = frame and (frame[call .. "MessageGroup"] or _G["ChatFrame_" .. call .. "MessageGroup"])
+  if type(fn) == "function" then return fn(frame, group) end
+end
+
 -- get/set for whether the edited tab shows a message group.
 function CW.GroupSetting(group)
   return function()
-    local _, frame = CW.Editing()
-    return frame ~= nil and type(ChatFrame_ContainsMessageGroup) == "function" and ChatFrame_ContainsMessageGroup(frame, group) == true
+    return groupCall(select(2, CW.Editing()), "Contains", group) == true
   end, function(v)
-    local _, frame = CW.Editing()
-    local call = v and ChatFrame_AddMessageGroup or ChatFrame_RemoveMessageGroup
-    if frame and type(call) == "function" then call(frame, group) end
+    groupCall(select(2, CW.Editing()), v and "Add" or "Remove", group)
   end
 end
 
