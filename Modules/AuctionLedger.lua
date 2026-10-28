@@ -36,7 +36,8 @@ ns.AuctionLedger = AL
 
 -- Records kept per realm and faction, and days a record is kept; how far apart (seconds) a mail
 -- and an event's record of one outcome may be, and how far a mail's expiry time may drift between
--- two reads of the inbox; how long an auction seen up is remembered (the longest lasts 48 hours).
+-- two reads of the inbox (past any change in the computer's clock, a mail's skew); how long an
+-- auction seen up is remembered (the longest lasts 48 hours).
 AL.MAX, AL.MAX_AGE = 2000, 90
 AL.LINK_AGE, AL.SAME_MAIL, AL.OPEN_AGE = 30 * 86400, 120, 3 * 86400
 
@@ -82,11 +83,19 @@ local function samePrice(r, o)
   return r.amount == o.amount or math.floor(r.amount / r.qty) == math.floor(o.amount / o.qty)
 end
 
+-- Whether two reads put a mail's expiry time within AL.SAME_MAIL: as read, or once the change in the
+-- computer's clock between them is taken off (its days left may count by the realm's clock, so a
+-- clock put right moves the time read by as much). A record from before skews were kept has none.
+local function sameExpiry(r, o)
+  if math.abs(r.mail - o.mail) <= AL.SAME_MAIL then return true end
+  return type(r.skew) == "number" and o.skew ~= nil and math.abs(o.mail - r.mail - (o.skew - r.skew)) <= AL.SAME_MAIL
+end
+
 -- Whether record r is the one o tells of again from the same source: the same auction, or the
--- same mail (its expiry time within AL.SAME_MAIL, the same units and amount).
+-- same mail (sameExpiry, the same units and amount).
 local function sameSource(r, o)
   if o.auction then return r.auction == o.auction end
-  return r.mail ~= nil and math.abs(r.mail - o.mail) <= AL.SAME_MAIL and r.qty == o.qty and r.amount == o.amount
+  return r.mail ~= nil and sameExpiry(r, o) and r.qty == o.qty and r.amount == o.amount
 end
 
 -- Whether record r came from the other source only (an event's for a mail, a mail's for an
@@ -113,7 +122,7 @@ end
 -- o joins record r from the other source: a mail's units and amount stand (the money it brought),
 -- an event's auction is kept, and what either knows of the item fills in.
 local function join(r, o)
-  if o.mail then r.mail, r.qty, r.amount = o.mail, o.qty, o.amount else r.auction = o.auction end
+  if o.mail then r.mail, r.skew, r.qty, r.amount = o.mail, o.skew, o.qty, o.amount else r.auction = o.auction end
   r.id, r.name = r.id or o.id, r.name or o.name
 end
 
@@ -124,13 +133,15 @@ local function add(book, o)
 end
 
 -- Notes the outcome o tells of (a record's fields; o.auction or o.mail says where from): nothing
--- when a record has it from the same source, joined to the other source's record of it, else a
--- new record. used (a read of the inbox's) keeps one record per mail; the card and strip follow.
+-- when a record has it from the same source but its mail's latest read (so the next read is matched
+-- against it, clock and all), joined to the other source's record of it, else a new record. used (a
+-- read of the inbox's) keeps one record per mail; the card and strip follow.
 function AL.Note(o, used)
   used = used or {}
   local same, other = find(AL.Book(), o, used)
   local r = same or other or o
   used[r] = true
+  if same and o.mail then same.mail, same.skew = o.mail, o.skew end
   if same then return end
   if other then join(other, o) else add(AL.Book(), o) end
   AL.Changed()
@@ -223,20 +234,28 @@ end
 
 -- What mail i tells of (a sale or an expiry), or nil; its mail is its expiry time (now plus its
 -- days left, GetInboxHeaderInfo's seventh return), which tells it apart on the next read.
-local function mailOf(i, pattern, now)
+local function mailOf(i, pattern, now, skew)
   local _, _, _, subject, _, _, days, _, _, _, _, _, _, firstQty = GetInboxHeaderInfo(i)
   days = ns.PlainNumber(days)
   local o = days and (invoiceOf(i) or expiryOf(plain(subject), pattern, ns.PlainNumber(firstQty)))
-  if o then o.mail, o.t, o.id = math.floor(now + days * AP.DAY), now, idOf(o.name) end
+  if o then o.mail, o.t, o.id, o.skew = math.floor(now + days * AP.DAY), now, idOf(o.name), skew end
   return o
+end
+
+-- How far the computer's clock (now) runs ahead of the realm's, in seconds, or nil when the client
+-- doesn't say (GetServerTime).
+local function clockSkew(now)
+  local server = type(GetServerTime) == "function" and ns.PlainNumber(GetServerTime()) or nil
+  return server and now - server
 end
 
 -- The inbox changed (MAIL_INBOX_UPDATE): what each mail tells of is noted, once per mail however
 -- often the inbox is read.
 function AL.ReadInbox()
   local n, pattern, now, used = ns.PlainNumber((GetInboxNumItems())) or 0, expiredPattern(), AP.Now(), {}
+  local skew = clockSkew(now)
   for i = 1, n do
-    local o = mailOf(i, pattern, now)
+    local o = mailOf(i, pattern, now, skew)
     if o then AL.Note(o, used) end
   end
 end
