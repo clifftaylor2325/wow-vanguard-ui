@@ -105,3 +105,25 @@ it("RegisterPreset counts characters, not bytes: an 11-character Chinese name is
     return { ok, tooLong, ns.TextLength(info), #info, info == string.rep("\\195\\169", 200) }`);
   expect(out, "11 characters pass, 33 don't; the info keeps 200 whole characters").toEqual([true, false, 200, 400, true]);
 });
+
+it("a preset registered after the Profiles page was built shows on it", () => {
+  const addon = loggedIn(CLICK_LUA);
+  addon.eval('Vanguard.OpenOptions("profiles")');
+  expect(addon.eval('return __find("Apply Late") ~= nil'), "not there before it is registered").toBe(false);
+  addon.eval('Vanguard.RegisterPreset("Late", "VG1:parts:0000:x")');
+  expect(addon.eval('return __find("Apply Late") ~= nil'), "the open page shows the new preset").toBe(true);
+});
+
+it("a re-registered preset's button applies the new string, and the same preset again leaves the page alone", () => {
+  const addon = loggedIn(CLICK_LUA);
+  addon.eval(`
+    ns.AskPreset = function(p) __asked = p.text end
+    Vanguard.RegisterPreset("Mine", "VG1:parts:OLD")
+    Vanguard.OpenOptions("profiles")
+    __button = __find("Apply Mine")
+    Vanguard.RegisterPreset("Mine", "VG1:parts:OLD")
+  `);
+  expect(addon.eval('return __find("Apply Mine") == __button'), "the same string again keeps the built page").toBe(true);
+  addon.eval('Vanguard.RegisterPreset("Mine", "VG1:parts:NEW") __click("Apply Mine")');
+  expect(addon.eval("return __asked"), "a changed string is what the button applies").toBe("VG1:parts:NEW");
+});

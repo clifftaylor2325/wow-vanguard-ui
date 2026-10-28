@@ -8,7 +8,7 @@ Record a different layout and settings for raids, PvP, instances or resting; the
 
 ## Presets and options links for other addons
 
-`/vg` → Profiles lists presets, profile strings you apply with one click (after a question, and a backup of your profile first): Vanguard's own Healer, Damage and Tank (raid frames, raid auras, raid healing and nameplates only; your layout and everything else stay; Healer and Damage are what setup's Healing and Damage and tanking layouts set) and any an addon offers with `Vanguard.RegisterPreset(name, string, info)`. `/vg preset <name>` does the same from chat or a macro, and `Vanguard.OpenOptions(page, setting)` lets an addon or macro open the options window on a page and row. Nothing is applied until you say yes, and not in combat. Addon authors: see [docs/API.md](../API.md).
+`/vg` → Profiles lists presets, profile strings you apply with one click (after a question, and a backup of your profile first): Vanguard's own Healer, Damage and Tank (raid frames, raid auras, raid healing and nameplates only; your layout and everything else stay; Healer and Damage are what setup's Healing and Damage and tanking layouts set) and any an addon offers with `Vanguard.RegisterPreset(name, string, info)`. `/vg preset <name>` does the same from chat or a macro, and `Vanguard.OpenOptions(page, setting)` lets an addon or macro open the options window on a page and row. A preset an addon offers after you opened the Profiles page shows there at once, and one it offers again with a changed string applies the new string. Nothing is applied until you say yes, and not in combat. Addon authors: see [docs/API.md](../API.md).
 
 ## Options
 
