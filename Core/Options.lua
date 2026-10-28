@@ -262,9 +262,9 @@ end
 -- General, part one: accent, safer colours, font, text size, variant, ornaments, scale and theme reset.
 local function lookRows()
   local rows = { { "header", L["Look"] }, { "preview" }, { "swatches" },
-    check(L["Safer colours (reload)"], themeSetting("colorAssist")),
+    check(L["Safer colours (reload)"], previewedSetting("colorAssist")),
     { "text", L["Friendly blue, neutral yellow, hostile vermilion, and colours for Magic, Curse, Disease and Poison that stay apart."], "note" },
-    check(L["Follow the game's colour-blind mode (reload)"], themeSetting("colorAssistGame")),
+    check(L["Follow the game's colour-blind mode (reload)"], previewedSetting("colorAssistGame")),
     { "text", L["Turns Safer colours on while the game's own colour-blind mode is on."], "note" } }
   for _, row in ipairs(lookTextRows()) do rows[#rows + 1] = row end
   rows[#rows + 1] = check(L["Pixel-perfect scale"], function() return T.Settings().pixelScale end,

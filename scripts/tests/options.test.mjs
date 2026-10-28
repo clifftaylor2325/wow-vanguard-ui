@@ -740,6 +740,24 @@ it("options: the keyboard's row wears a focus ring (accentText, outside a black 
   expect(ringOf(addon, "UIParent"), "hiding a ring a frame never had makes none").toBe(false);
 });
 
+it("options: ticking Safer colours or Follow the game's colour-blind mode repaints the sample's health bar at once, with the reload notice", () => {
+  // A logged-in window on General; `env` is Lua run before login.
+  const general = (env) => { const addon = loggedIn(CLICK_LUA + env); addon.eval('ns.Options.Show("general")'); return addon; };
+  // The sample health bar's colour, and the friendly colour the theme gives now.
+  const barAndFriendly = (addon) => addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.unit and w.button and ns.Options.RevealRow(w) then
+    return { w.unit.health.__barColor, { ns.Theme.RGB("friendly") } } end end`);
+  // Whether the sample bar wears the friendly colour the theme gives now.
+  const follows = (addon) => { const [bar, friendly] = barAndFriendly(addon); return [0, 1, 2].every((i) => Math.abs(bar[i] - friendly[i]) < 1e-6); };
+  const plain = general("");
+  const green = barAndFriendly(plain)[1];
+  plain.eval('__click("Safer colours")');
+  const blue = barAndFriendly(plain)[1];
+  expect([blue[2] > green[2], follows(plain), reloadNotice(plain)], "Safer colours turns the sample bar to the friendly blue at once, with the notice").toEqual([true, true, true]);
+  const game = general('SetCVar("colorblindMode", "1") ns.Theme.gameColorBlind = nil ns.Theme.Refresh()');
+  expect(barAndFriendly(game)[1][2], "with the game's mode on the sample is blue already").toBe(blue[2]);
+  game.eval('__click("Follow the game\'s colour-blind mode")');
+  expect([barAndFriendly(game)[1][2], follows(game), reloadNotice(game)], "unticking Follow puts the sample back to green at once, with the notice").toEqual([green[2], true, true]);
+});
 it("options: the General page's sample unit frame and button follow the accent, font, text size and bar texture as they change", () => {
   const addon = loggedIn(CLICK_LUA + `LibStub("LibSharedMedia-3.0"):Register("statusbar", "TEST-ONLY Bar", [[Interface\\AddOns\\TestOnly\\Bar]])`);
   addon.eval('ns.Options.Show("general")');
