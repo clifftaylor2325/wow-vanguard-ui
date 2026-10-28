@@ -9,7 +9,7 @@
 -- keeps no price history of its own (its item info has no prices), so this is
 -- the only one there is. A price not seen for 30 days is dropped at login (and
 -- a realm and faction left with none), and past AP.MAX_ITEMS items in one
--- house the ones priced longest ago go. Shopping lists stay account-wide.
+-- house the ones priced longest ago go (the least listed of a scan's). Shopping lists stay account-wide.
 -- From these prices it also works out what disenchanting a piece of gear is
 -- worth (AP.Disenchant, vanilla's disenchanting tables), for a tooltip line.
 
@@ -213,11 +213,18 @@ function AP.RecordBrowse(results, t)
   for id, price in pairs(low) do AP.RecordSeen(id, price, t) end
 end
 
--- Forgets the items priced longest ago, down to AP.KEEP of AP.MAX_ITEMS.
+-- Whether item row a is worth keeping over b: priced more recently, and among items priced at the same
+-- moment (a scan prices thousands at once) the one with more listings. Strict, so a sort stays valid.
+local function keptFirst(a, b)
+  if a[2] ~= b[2] then return a[2] > b[2] end
+  return a[3] > b[3]
+end
+
+-- Forgets the items priced longest ago (the least listed among those priced together), down to AP.KEEP of AP.MAX_ITEMS.
 function AP.Evict()
   local store, ids = AP.House(), {}
-  for id, p in pairs(store.prices) do ids[#ids + 1] = { id, p.t or 0 } end
-  table.sort(ids, function(a, b) return a[2] > b[2] end)
+  for id, p in pairs(store.prices) do ids[#ids + 1] = { id, tonumber(p.t) or 0, tonumber(p.listings) or 0 } end
+  table.sort(ids, keptFirst)
   local keep = math.floor(AP.MAX_ITEMS * AP.KEEP)
   for k = keep + 1, #ids do store.prices[ids[k][1]] = nil end
   store.count = math.min(#ids, keep)

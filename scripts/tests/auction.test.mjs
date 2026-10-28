@@ -259,6 +259,14 @@ it("each realm and faction keeps its own prices and its own cap", () => {
   addon.slash("ah prices clear");
   expect(list(houses(addon)), "prices clear forgets every house").toEqual([]);
 });
+it("a full price store forgets the least listed items of one scan, keeping the busiest, not an arbitrary half", () => {
+  const addon = atAuctionHouse();
+  addon.eval("local AP = ns.AuctionPrices AP.MAX_ITEMS = 100 for i = 1, 101 do AP.Record(1000 + i, 5, __now, { listings = i }) end");
+  const kept = addon.eval("local AP = ns.AuctionPrices local keep = math.floor(AP.MAX_ITEMS * AP.KEEP) local out = { keep, ns.AuctionPrices.House().count } for i = 1, 101 do out[#out + 1] = AP.House().prices[1000 + i] and i or 0 end return out");
+  const [keep, count, ...ids] = kept;
+  const present = ids.filter((i) => i > 0);
+  expect([count, present.length, Math.min(...present), Math.max(...present)], "the busiest `keep` items stay: the listing counts 101 down to 101 - keep + 1").toEqual([keep, keep, 101 - keep + 1, 101]);
+});
 it("migration keeps the newer price of each item; login forgets stale and broken houses", () => {
   const t = 1790000000;
   const saved = `VanguardDB.ah = { houses = {
