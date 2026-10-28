@@ -180,6 +180,17 @@ local function liveThemeSetting(key)
   end
 end
 
+-- get/set for the theme variant, applied at once; when it turns Safer colours on or off (High contrast does),
+-- the aura icons' type colours settle only after a reload, so the options notice shows.
+local function variantSetting()
+  local get, set = liveThemeSetting("variant")
+  return get, function(v)
+    local before = T.ColorAssist()
+    set(v)
+    if T.ColorAssist() ~= before then O.NeedReload() end
+  end
+end
+
 -- The built-in fonts and bar textures; the bar picker adds what LibSharedMedia shares (the font picker only the one in use).
 local FONT_CHOICES = { { "", "Fira Sans Condensed" }, { "client", L["the game's font"] } }
 -- The faction look: your faction's crest only (the default), the crest and heading font, or off.
@@ -203,7 +214,7 @@ local TEXT_SIZES = { min = 0.7, max = 1.3, step = 0.05, format = function(v) ret
 -- Look, the shape of things: variant, corners, panel texture and ornament rows.
 local function lookShapeRows()
   return {
-    { "cycle", L["Theme variant"], VARIANT_CHOICES, liveThemeSetting("variant") },
+    { "cycle", L["Theme variant"], VARIANT_CHOICES, variantSetting() },
     { "cycle", L["Corners"], CORNER_CHOICES, liveThemeSetting("corners") },
     { "cycle", L["Panel texture"], T.PanelTextureChoices(), liveThemeSetting("panelTexture") },
     check(L["Shield corners on unit frames"], liveThemeSetting("shield")),
@@ -227,10 +238,12 @@ end
 -- The theme settings that show fully only after a reload (pixel-perfect's scale stays on screen until then).
 O.RELOAD_THEME = { "colorAssist", "colorAssistGame", "hudShadow", "pixelScale" }
 
--- The reload-only theme settings' values now, in O.RELOAD_THEME's order.
+-- The reload-only theme settings' values now, in O.RELOAD_THEME's order, then whether Safer colours apply
+-- (a variant can turn them on, and Reset theme puts the variant back).
 local function reloadThemeValues()
   local theme, out = T.Settings(), {}
   for i, key in ipairs(O.RELOAD_THEME) do out[i] = theme[key] end
+  out[#out + 1] = T.ColorAssist()
   return out
 end
 

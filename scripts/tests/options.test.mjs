@@ -1512,6 +1512,34 @@ it("Reset theme with Safer colours on shows the reload notice, and /vg theme res
   addon.slash("theme reset");
   expect(chatHas(addon, /Theme back to defaults \(reload to apply\)\.$/), "the command says so").toBe(true);
 });
+it("Reset theme from High contrast shows the reload notice, since its Safer colours go off with it", () => {
+  const addon = loggedIn(CLICK_LUA);
+  addon.slash("variant contrast");
+  addon.eval('ns.Options.Show("general") __click("Reset theme")');
+  expect([addon.eval("return ns.Theme.ColorAssist()"), reloadNotice(addon)], "Safer colours is off, after a reload").toEqual([false, true]);
+  addon.slash("variant midnight");
+  addon.slash("theme reset");
+  expect(chatHas(addon, /Theme back to defaults\.$/), "a variant that never had Safer colours needs no reload").toBe(true);
+});
+it("picking High contrast in the Theme variant row shows the reload notice; a variant that leaves Safer colours alone does not", () => {
+  const addon = loggedIn(CLICK_LUA);
+  addon.eval('ns.Options.Show("general")');
+  addon.eval('__click("Theme variant")');
+  expect([addon.eval("return ns.Theme.Settings().variant"), reloadNotice(addon)], "default to High contrast turns Safer colours on, after a reload").toEqual(["contrast", true]);
+  addon.eval("Vanguard_Options.notice:Hide()");
+  addon.eval('__click("Theme variant")');
+  expect([addon.eval("return ns.Theme.Settings().variant"), reloadNotice(addon)], "High contrast to Vellum turns them off again, after a reload").toEqual(["vellum", true]);
+  addon.eval("Vanguard_Options.notice:Hide()");
+  addon.eval('__click("Theme variant")');
+  expect([addon.eval("return ns.Theme.Settings().variant"), reloadNotice(addon)], "Vellum to Classic changes nothing about Safer colours").toEqual(["classic", false]);
+});
+it("/vg variant offers a reload only when the variant turns Safer colours on or off", () => {
+  const addon = loggedIn(CLICK_LUA);
+  addon.slash("variant vellum");
+  expect(addon.eval("return Vanguard_Reload == nil"), "Vellum leaves Safer colours alone: no reload dialog is even built").toBe(true);
+  addon.slash("variant contrast");
+  expect([addon.eval("return Vanguard_Reload:IsShown()"), addon.eval("return Vanguard_Reload.title:GetText()")], "High contrast turns them on: the reload is offered, with the reason").toEqual([true, "Safer colours changed with this look; the debuff type colours on aura icons follow after a reload. Reload the UI now to apply it?"]);
+});
 it("Reset theme with Pixel-perfect scale on shows the reload notice, since its scale stays until then", () => {
   const addon = loggedIn(CLICK_LUA);
   addon.eval('ns.Theme.SetPixelScale(true) ns.Options.Show("general") __click("Reset theme")');
