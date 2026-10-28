@@ -373,12 +373,11 @@ local function scheduleAudit()
 end
 ns.On("PLAYER_LOGIN", scheduleAudit)
 
--- The client says an addon's saved file was too large: Vanguard trims to half its budget, so the next
--- save fits, and says what happened (the settings guard then reports a file that came back blank).
+-- The client says it could not load an addon's saved file (it ran out of memory) and will not save it at
+-- logout, so nothing Vanguard drops or restores now reaches the disk: chat says so and how to start fresh
+-- (the settings guard then reports the settings that came back blank).
 function G.OnTooLarge(_, name)
-  if name ~= ADDON or type(VanguardDB) ~= "table" then return end
-  local dropped = G.Trim(G.Bytes(VanguardDB) - G.BUDGET / 2)
-  local why = dropped > 0 and trimmedLine(dropped) or L["Vanguard has no price data left to drop; /vg mem lists what holds the most."]
-  ns.Chat(L["The game says Vanguard's saved data is too large."] .. " " .. why)
+  if name ~= ADDON then return end
+  ns.Chat(L["The game couldn't load Vanguard's saved file and won't save it this session, so changes made now are lost at logout. To start fresh, log out and move Vanguard.lua out of your account's SavedVariables folder (keep it to send with a report)."])
 end
 ns.On("SAVED_VARIABLES_TOO_LARGE", G.OnTooLarge)
