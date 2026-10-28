@@ -2928,6 +2928,12 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: no chat line about dropping a price home, and `/vg mem` gives a size of a 16.0 MB budget; the drag doesn't stutter more than the game does without Vanguard; the preset attaches nothing and chat says it found nothing holding every word of "ore bar herb", with commas separating alternatives.
 - If it fails, paste: the "prices for N items" number from each scan, the `/vg mem` lines, how long the stutter lasted, the mail chat line, and `/vg errors`.
 
+### 33.127 Spec profiles follow the talent group on WoW Forever
+
+- Do: on WoW Forever with dual spec unlocked, run `/dump C_SpecializationInfo.GetActiveSpecGroup(), GetNumSpecGroups()` in each talent group; in the Secondary group make a profile and open `/vg` > Profiles > Specialization, press "Use this profile for this spec", then swap to the Primary group in the talents window, and back, reloading when asked.
+- Expect: the dump shows 1 in the Primary group and 2 in the Secondary with a second group of 2; the Profiles page says "Secondary talents use <profile>."; swapping to Primary offers the reload for the character's profile ("Your specialization uses profile ..."), and back offers the other profile; after each reload that profile is in use.
+- If it fails, paste: the `/dump` lines in each group, the Specialization text on the Profiles page, the reload question, `/vg spec`, and `/vg errors`.
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ## When you are done
