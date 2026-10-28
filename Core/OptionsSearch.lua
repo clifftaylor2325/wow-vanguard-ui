@@ -11,7 +11,8 @@ local T, W, O = ns.Theme, ns.Widgets, ns.Options
 -- Words a player may type for a setting that its caption doesn't say, by the English caption in lower case; a
 -- translation gives the words a player of that language types, and the search reads both.
 O.KEYWORDS = {
-  ["safer colours"] = L["colour blind colorblind color blind colour vision deuteranopia protanopia tritanopia accessibility"],
+  ["safer colours"] = L["colour blind colorblind color blind colour vision deuteranopia protanopia tritanopia accessibility"]
+    .. " " .. L["colourblindness colorblindness colour-blindness color-blindness"],
   ["text size"] = L["font size bigger smaller larger readable zoom"],
   ["font"] = L["typeface lettering text"],
   ["reduce motion (no fades or flashes)"] = L["animation animations fades flashes accessibility"],

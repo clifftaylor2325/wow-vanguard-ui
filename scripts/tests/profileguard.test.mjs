@@ -227,23 +227,19 @@ it("saved data size: the check runs a while after login, out of combat, and a cl
   const bare = loggedIn("C_Timer = nil");
   expect(bare.eval("return ns.SettingsGuard.Bytes(VanguardDB) > 0"), "a client without timers still logs in").toBe(true);
 });
-it("saved data size: SAVED_VARIABLES_TOO_LARGE for Vanguard trims to half the budget; another addon's is ignored", () => {
+it("saved data size: SAVED_VARIABLES_TOO_LARGE for Vanguard says the file will not save and what to do, and drops nothing; another addon's is ignored", () => {
   const addon = crowded(1);
-  addon.eval("ns.SettingsGuard.BUDGET = ns.SettingsGuard.Bytes(VanguardDB)");
   addon.fire("SAVED_VARIABLES_TOO_LARGE", "SomeOtherAddon");
-  expect(homes(addon).length, "another addon's file is not ours").toBe(3);
+  expect([homes(addon).length, chatHas(addon, /won't save it this session/)], "another addon's file is not ours").toEqual([3, false]);
   addon.fire("SAVED_VARIABLES_TOO_LARGE", "Vanguard");
-  expect(homes(addon).length, "two homes go, to reach half the budget").toBe(1);
-  expect(chatHas(addon, /The game says Vanguard's saved data is too large\. Vanguard's saved data was too large: it dropped the auction prices of 2 realm/), "and chat says what happened").toBe(true);
-  const none = loggedIn(CLICK_LUA);
-  none.eval("VanguardDB.ah = nil ns.SettingsGuard.BUDGET = 1")
-  none.fire("SAVED_VARIABLES_TOO_LARGE", "Vanguard");
-  expect(chatHas(none, /no price data left to drop/), "with nothing to drop it says so").toBe(true);
+  expect(homes(addon).length, "the data in memory is not the file's, so nothing is dropped").toBe(3);
+  expect(chatHas(addon, /The game couldn't load Vanguard's saved file and won't save it this session, so changes made now are lost at logout\. To start fresh, log out and move Vanguard\.lua out of your account's SavedVariables folder/), "chat says what happened and what to do").toBe(true);
+  expect(chatHas(addon, /dropped the auction prices|no price data left/), "and does not claim a trim").toBe(false);
 });
 it("saved data size: /vg mem reports the saved files, and waits out of combat", () => {
   const addon = loggedIn(CLICK_LUA);
   addon.slash("mem");
-  expect(chatHas(addon, /Saved data \(estimate\): account file [\d.]+ [KM]B of a 6\.0 MB budget; largest: \w+ /), "the account file's estimate and its largest keys").toBe(true);
+  expect(chatHas(addon, /Saved data \(estimate\): account file [\d.]+ [KM]B of a 16\.0 MB budget; largest: \w+ /), "the account file's estimate and its largest keys").toBe(true);
   expect(chatHas(addon, /This character's file: [\d.]+ [KM]B \(/), "and this character's file").toBe(true);
   const fight = loggedIn(CLICK_LUA);
   setCombat(fight, true);

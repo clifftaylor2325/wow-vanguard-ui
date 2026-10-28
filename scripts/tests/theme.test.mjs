@@ -524,8 +524,21 @@ it("the game's font objects: the theme font at Text size, kept after a theme cha
   const before = addon.eval("return { __FontA:GetFont() }");
   expect(before[0], "the bold theme font").toBe(addon.eval("return (ns.Theme.Font(true))"));
   expect(before[1], "at the size given").toBe(14);
-  addon.eval("ns.Theme.Settings().textScale = 1.5 ns.Theme.Refresh()");
-  expect(addon.eval("return select(2, __FontA:GetFont())"), "re-applied at the new Text size").toBe(21);
+  addon.eval("ns.Theme.Settings().textScale = 1.3 ns.Theme.Refresh()");
+  expect(addon.eval("return select(2, __FontA:GetFont())"), "re-applied at the new Text size").toBe(18);
+});
+
+it("a Text size outside the slider's range from a hand-edited profile is kept inside it: no font size of 0, below 1 or enormous", () => {
+  // The label role's size, and whether no font is below 1, with this saved Text size.
+  const sizes = (textScale) => {
+    const addon = loggedIn("", { savedVariables: `VanguardDB.profiles = { Default = { theme = { textScale = ${textScale} } } }` });
+    addon.eval("ns.Theme.Refresh()");
+    return addon.eval("local low = math.huge for _, w in ipairs(__wfgStub.frames) do if w.__font and w.__font[2] < low then low = w.__font[2] end end return { ns.Theme.RoleSize('label'), low >= 1 }");
+  };
+  expect(sizes(0), "0 counts as the smallest size on the slider (70%)").toEqual([8, true]);
+  expect(sizes(-2), "a negative one too").toEqual([8, true]);
+  expect(sizes(40), "a huge one as the largest (130%)").toEqual([16, true]);
+  expect(sizes(1.1), "a size inside the range is used as it is").toEqual([13, true]);
 });
 
 it("pixel rounding: sizes and offsets land on whole screen pixels, centred ones on an even count (#225)", () => {
@@ -560,6 +573,25 @@ it("pixel sizes are rounded again after a UI scale, screen or frame scale change
   addon.eval("ns.SetMoverScale('minimap', 1.5)");
   addon.update(0.1);
   expect(addon.eval("return __scaled"), "a frame's own scale (unlock mode) rounds again too").toBe(3);
+});
+
+it("a screen size and a UI scale change in one frame repaint the theme once; pixel-perfect scale's own repaint is the only one", () => {
+  const addon = loggedIn("__repaints = 0 ns.Theme.OnChanged(function() __repaints = __repaints + 1 end)");
+  // Fires both events, lets the frame pass and says how many repaints the theme did since.
+  const repaints = () => {
+    addon.eval("__repaints = 0");
+    addon.fire("DISPLAY_SIZE_CHANGED");
+    addon.fire("UI_SCALE_CHANGED");
+    expect(addon.eval("return __repaints"), "nothing repaints before the frame ends").toBe(0);
+    addon.update(0.1);
+    return addon.eval("return __repaints");
+  };
+  expect(repaints(), "with the client's own scale: one repaint").toBe(1);
+  addon.eval("ns.Theme.Settings().pixelScale = true");
+  expect(repaints(), "with pixel-perfect scale on: one, from setting the scale").toBe(1);
+  setCombat(addon, true);
+  expect(repaints(), "in a fight the scale waits, so the repaint stays here: one").toBe(1);
+  setCombat(addon, false);
 });
 
 it("screen, scale and key changes in a fight queue their after-fight work once, however often they fire", () => {

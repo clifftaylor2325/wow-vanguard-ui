@@ -113,6 +113,9 @@ local function curve()
   return dispelCurve
 end
 
+-- A theme change (a variant that turns Safer colours on or off) colors the types anew: build the curve again.
+T.OnChanged(function() dispelCurve = nil end)
+
 -- r, g, b for a debuff's edge: its type's color. A hidden type is colored by
 -- the client through the curve (the result may itself be hidden: widgets take it).
 -- The client asks by the aura's id, which an addon may pass only when it is plain.

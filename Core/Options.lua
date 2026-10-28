@@ -180,6 +180,17 @@ local function liveThemeSetting(key)
   end
 end
 
+-- get/set for the theme variant, applied at once; when it turns Safer colours on or off (High contrast does),
+-- the aura icons' type colours settle only after a reload, so the options notice shows.
+local function variantSetting()
+  local get, set = liveThemeSetting("variant")
+  return get, function(v)
+    local before = T.ColorAssist()
+    set(v)
+    if T.ColorAssist() ~= before then O.NeedReload() end
+  end
+end
+
 -- The built-in fonts and bar textures; the bar picker adds what LibSharedMedia shares (the font picker only the one in use).
 local FONT_CHOICES = { { "", "Fira Sans Condensed" }, { "client", L["the game's font"] } }
 -- The faction look: your faction's crest only (the default), the crest and heading font, or off.
@@ -198,12 +209,12 @@ end
 local MOVER_SCALES = { min = ns.MOVER_SCALE.min, max = ns.MOVER_SCALE.max, step = 0.05, format = percent }
 local MOVER_ALPHAS = { min = ns.MOVER_ALPHA.min, max = ns.MOVER_ALPHA.max, step = 0.05, format = percent }
 -- Text size: 70% to 130% in steps of 5.
-local TEXT_SIZES = { min = 0.7, max = 1.3, step = 0.05, format = function(v) return string.format("%d%%", math.floor(v * 100 + 0.5)) end }
+local TEXT_SIZES = { min = T.TEXT_SCALE.min, max = T.TEXT_SCALE.max, step = 0.05, format = function(v) return string.format("%d%%", math.floor(v * 100 + 0.5)) end }
 
 -- Look, the shape of things: variant, corners, panel texture and ornament rows.
 local function lookShapeRows()
   return {
-    { "cycle", L["Theme variant"], VARIANT_CHOICES, liveThemeSetting("variant") },
+    { "cycle", L["Theme variant"], VARIANT_CHOICES, variantSetting() },
     { "cycle", L["Corners"], CORNER_CHOICES, liveThemeSetting("corners") },
     { "cycle", L["Panel texture"], T.PanelTextureChoices(), liveThemeSetting("panelTexture") },
     check(L["Shield corners on unit frames"], liveThemeSetting("shield")),
@@ -227,10 +238,12 @@ end
 -- The theme settings that show fully only after a reload (pixel-perfect's scale stays on screen until then).
 O.RELOAD_THEME = { "colorAssist", "colorAssistGame", "hudShadow", "pixelScale" }
 
--- The reload-only theme settings' values now, in O.RELOAD_THEME's order.
+-- The reload-only theme settings' values now, in O.RELOAD_THEME's order, then whether Safer colours apply
+-- (a variant can turn them on, and Reset theme puts the variant back).
 local function reloadThemeValues()
   local theme, out = T.Settings(), {}
   for i, key in ipairs(O.RELOAD_THEME) do out[i] = theme[key] end
+  out[#out + 1] = T.ColorAssist()
   return out
 end
 
@@ -249,9 +262,9 @@ end
 -- General, part one: accent, safer colours, font, text size, variant, ornaments, scale and theme reset.
 local function lookRows()
   local rows = { { "header", L["Look"] }, { "preview" }, { "swatches" },
-    check(L["Safer colours (reload)"], themeSetting("colorAssist")),
+    check(L["Safer colours (reload)"], previewedSetting("colorAssist")),
     { "text", L["Friendly blue, neutral yellow, hostile vermilion, and colours for Magic, Curse, Disease and Poison that stay apart."], "note" },
-    check(L["Follow the game's colour-blind mode (reload)"], themeSetting("colorAssistGame")),
+    check(L["Follow the game's colour-blind mode (reload)"], previewedSetting("colorAssistGame")),
     { "text", L["Turns Safer colours on while the game's own colour-blind mode is on."], "note" } }
   for _, row in ipairs(lookTextRows()) do rows[#rows + 1] = row end
   rows[#rows + 1] = check(L["Pixel-perfect scale"], function() return T.Settings().pixelScale end,

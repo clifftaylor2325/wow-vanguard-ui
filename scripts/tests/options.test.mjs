@@ -740,6 +740,24 @@ it("options: the keyboard's row wears a focus ring (accentText, outside a black 
   expect(ringOf(addon, "UIParent"), "hiding a ring a frame never had makes none").toBe(false);
 });
 
+it("options: ticking Safer colours or Follow the game's colour-blind mode repaints the sample's health bar at once, with the reload notice", () => {
+  // A logged-in window on General; `env` is Lua run before login.
+  const general = (env) => { const addon = loggedIn(CLICK_LUA + env); addon.eval('ns.Options.Show("general")'); return addon; };
+  // The sample health bar's colour, and the friendly colour the theme gives now.
+  const barAndFriendly = (addon) => addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.unit and w.button and ns.Options.RevealRow(w) then
+    return { w.unit.health.__barColor, { ns.Theme.RGB("friendly") } } end end`);
+  // Whether the sample bar wears the friendly colour the theme gives now.
+  const follows = (addon) => { const [bar, friendly] = barAndFriendly(addon); return [0, 1, 2].every((i) => Math.abs(bar[i] - friendly[i]) < 1e-6); };
+  const plain = general("");
+  const green = barAndFriendly(plain)[1];
+  plain.eval('__click("Safer colours")');
+  const blue = barAndFriendly(plain)[1];
+  expect([blue[2] > green[2], follows(plain), reloadNotice(plain)], "Safer colours turns the sample bar to the friendly blue at once, with the notice").toEqual([true, true, true]);
+  const game = general('SetCVar("colorblindMode", "1") ns.Theme.gameColorBlind = nil ns.Theme.Refresh()');
+  expect(barAndFriendly(game)[1][2], "with the game's mode on the sample is blue already").toBe(blue[2]);
+  game.eval('__click("Follow the game\'s colour-blind mode")');
+  expect([barAndFriendly(game)[1][2], follows(game), reloadNotice(game)], "unticking Follow puts the sample back to green at once, with the notice").toEqual([green[2], true, true]);
+});
 it("options: the General page's sample unit frame and button follow the accent, font, text size and bar texture as they change", () => {
   const addon = loggedIn(CLICK_LUA + `LibStub("LibSharedMedia-3.0"):Register("statusbar", "TEST-ONLY Bar", [[Interface\\AddOns\\TestOnly\\Bar]])`);
   addon.eval('ns.Options.Show("general")');
@@ -1511,6 +1529,34 @@ it("Reset theme with Safer colours on shows the reload notice, and /vg theme res
   addon.eval("ns.Theme.Settings().hudShadow = true");
   addon.slash("theme reset");
   expect(chatHas(addon, /Theme back to defaults \(reload to apply\)\.$/), "the command says so").toBe(true);
+});
+it("Reset theme from High contrast shows the reload notice, since its Safer colours go off with it", () => {
+  const addon = loggedIn(CLICK_LUA);
+  addon.slash("variant contrast");
+  addon.eval('ns.Options.Show("general") __click("Reset theme")');
+  expect([addon.eval("return ns.Theme.ColorAssist()"), reloadNotice(addon)], "Safer colours is off, after a reload").toEqual([false, true]);
+  addon.slash("variant midnight");
+  addon.slash("theme reset");
+  expect(chatHas(addon, /Theme back to defaults\.$/), "a variant that never had Safer colours needs no reload").toBe(true);
+});
+it("picking High contrast in the Theme variant row shows the reload notice; a variant that leaves Safer colours alone does not", () => {
+  const addon = loggedIn(CLICK_LUA);
+  addon.eval('ns.Options.Show("general")');
+  addon.eval('__click("Theme variant")');
+  expect([addon.eval("return ns.Theme.Settings().variant"), reloadNotice(addon)], "default to High contrast turns Safer colours on, after a reload").toEqual(["contrast", true]);
+  addon.eval("Vanguard_Options.notice:Hide()");
+  addon.eval('__click("Theme variant")');
+  expect([addon.eval("return ns.Theme.Settings().variant"), reloadNotice(addon)], "High contrast to Vellum turns them off again, after a reload").toEqual(["vellum", true]);
+  addon.eval("Vanguard_Options.notice:Hide()");
+  addon.eval('__click("Theme variant")');
+  expect([addon.eval("return ns.Theme.Settings().variant"), reloadNotice(addon)], "Vellum to Classic changes nothing about Safer colours").toEqual(["classic", false]);
+});
+it("/vg variant offers a reload only when the variant turns Safer colours on or off", () => {
+  const addon = loggedIn(CLICK_LUA);
+  addon.slash("variant vellum");
+  expect(addon.eval("return Vanguard_Reload == nil"), "Vellum leaves Safer colours alone: no reload dialog is even built").toBe(true);
+  addon.slash("variant contrast");
+  expect([addon.eval("return Vanguard_Reload:IsShown()"), addon.eval("return Vanguard_Reload.title:GetText()")], "High contrast turns them on: the reload is offered, with the reason").toEqual([true, "Safer colours changed with this look; the debuff type colours on aura icons follow after a reload. Reload the UI now to apply it?"]);
 });
 it("Reset theme with Pixel-perfect scale on shows the reload notice, since its scale stays until then", () => {
   const addon = loggedIn(CLICK_LUA);

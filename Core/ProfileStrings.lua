@@ -27,7 +27,8 @@ local META = { format = true, addonVersion = true, parts = true, display = true 
 -- Quiet.cameraPrior: the player's own furthest camera zoom here, from before Vanguard first changed it.
 -- Chat.sized and Chat.widened: whether the chat window got its first size, from before those flags
 -- moved to each character's own file.
-local CLIENT_STATE = { Graphics = { undo = true }, Bags = { applied = true, prior = true }, Quiet = { cameraPrior = true }, Chat = { sized = true, widened = true } }
+-- CraftQueue.chars: each character's craft queue and profession cooldowns, which are not for whoever imports a string.
+local CLIENT_STATE = { Graphics = { undo = true }, Bags = { applied = true, prior = true }, Quiet = { cameraPrior = true }, Chat = { sized = true, widened = true }, CraftQueue = { chars = true } }
 
 -- The group parts, in the export panel's order, and what it calls them. Every other
 -- table is a module's own part (its name), or global when no module goes by its name.

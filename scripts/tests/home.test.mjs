@@ -149,7 +149,8 @@ const SAVED = `
       open = { [11] = { id = 1, t = ${BETA_DAY} }, [12] = { id = 2, t = ${LIVE_DAY} } } }, junk = 1 } }
   VanguardDB.inventory = { ["ForeverTest-Alliance"] = { Old = { bags = {}, updated = ${BETA_DAY} }, New = { bags = {}, updated = ${LIVE_DAY} }, Unstamped = { bags = {} } }, junk = 1 }
 `;
-// Dates the logged-in character's own record on the live side (the harness clock is not the date).
+// Dates the logged-in character's own record on the live side (the harness clock is not the date). The
+// live price is dated in the test itself: the login prune pulls a time ahead of the clock back to it.
 const liveMe = (addon) => addon.eval(`local chars = VanguardDB.inventory["ForeverTest-Alliance"] chars.Tester = chars.Tester or {} chars.Tester.updated = ${LIVE_DAY}`);
 // The saved figures after a look or a clear: prices left, sales left, open left, characters left.
 const left = (addon) => addon.eval(`local h = VanguardDB.ah.houses["ForeverTest-Alliance"]
@@ -161,6 +162,7 @@ const left = (addon) => addon.eval(`local h = VanguardDB.ah.houses["ForeverTest-
 it("home: /vg launch counts what the beta left, and clears only data stamped before launch, once launch has passed", () => {
   const addon = loggedIn("", { savedVariables: SAVED });
   liveMe(addon);
+  addon.eval(`VanguardDB.ah.houses["ForeverTest-Alliance"].prices[2].t = ${LIVE_DAY}`);
   addon.eval("__now = " + (BETA_DAY + 10) + " time = function() return __now end");
   addon.slash("launch");
   expect(chatHas(addon, /Saved from before launch \(the beta\): 2 prices, 3 sales, 1 characters\. \/vg launch clear removes them\./), "sales count the open auction; unstamped and junk entries are not counted").toBe(true);

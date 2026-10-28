@@ -259,6 +259,14 @@ it("each realm and faction keeps its own prices and its own cap", () => {
   addon.slash("ah prices clear");
   expect(list(houses(addon)), "prices clear forgets every house").toEqual([]);
 });
+it("a full price store forgets the least listed items of one scan, keeping the busiest, not an arbitrary half", () => {
+  const addon = atAuctionHouse();
+  addon.eval("local AP = ns.AuctionPrices AP.MAX_ITEMS = 100 for i = 1, 101 do AP.Record(1000 + i, 5, __now, { listings = i }) end");
+  const kept = addon.eval("local AP = ns.AuctionPrices local keep = math.floor(AP.MAX_ITEMS * AP.KEEP) local out = { keep, ns.AuctionPrices.House().count } for i = 1, 101 do out[#out + 1] = AP.House().prices[1000 + i] and i or 0 end return out");
+  const [keep, count, ...ids] = kept;
+  const present = ids.filter((i) => i > 0);
+  expect([count, present.length, Math.min(...present), Math.max(...present)], "the busiest `keep` items stay: the listing counts 101 down to 101 - keep + 1").toEqual([keep, keep, 101 - keep + 1, 101]);
+});
 it("migration keeps the newer price of each item; login forgets stale and broken houses", () => {
   const t = 1790000000;
   const saved = `VanguardDB.ah = { houses = {
@@ -272,6 +280,35 @@ it("migration keeps the newer price of each item; login forgets stale and broken
   expect(houses(addon), "a house not seen for 30 days and the broken ones are gone").toEqual(["ForeverTest-Alliance:2"]);
   const neutral = loggedIn(AH_ENV + "__wfgWorld.units.player.faction = 'Neutral' GetNormalizedRealmName = function() return nil end", { savedVariables: ACCOUNT_WIDE });
   expect(houses(neutral), "no side yet, and no normalized name: the realm's own name and 'none'").toEqual(["Forever Test-none:1"]);
+});
+it("a damaged saved price row is dropped at login and the helper stays on, whatever shape the row has", () => {
+  const t = 1790000000;
+  const shapes = {
+    "a number": "5",
+    "a row without a time": "{ min = 5 }",
+    "a row whose days is a number": `{ min = 5, t = ${t}, days = 7 }`,
+    "a row whose time is text": '{ min = 5, t = "soon", days = {} }',
+  };
+  for (const [shape, row] of Object.entries(shapes)) {
+    const saved = `VanguardDB.ah = { houses = { ["ForeverTest-Alliance"] = { count = 2, lastScan = ${t}, prices = { [100] = ${row}, [101] = { min = 7, t = ${t}, days = {} } } } } }`;
+    const addon = loggedIn(AH_ENV, { savedVariables: saved });
+    const state = addon.eval("local p = ns.AuctionPrices.House().prices return { p[101] ~= nil, #ns.errors, ns.GetModule('AuctionHelper').settings ~= nil, ns.AuctionPrices.House().count }");
+    const kept = shape === "a row whose days is a number" ? [true, 0, true, 2] : [true, 0, true, 1];
+    expect(state, shape + ": no error, the helper on, the good row kept").toEqual(kept);
+    expect(addon.eval("return ns.AuctionPrices.House().prices[100] == nil or type(ns.AuctionPrices.House().prices[100].days) == 'table'"), shape + ": the damaged row is gone or whole").toBe(true);
+  }
+  const old = loggedIn(AH_ENV, { savedVariables: `VanguardDB.ah = { prices = { [100] = { min = 5 }, [101] = { min = 6, t = ${t}, days = {} } }, lastScan = 5 }` });
+  expect(old.eval("local p = ns.AuctionPrices.House().prices return { p[100] == nil, p[101].min, #ns.errors }"), "an old account-wide row with no time migrates without an error and is pruned").toEqual([true, 6, 0]);
+});
+it("a price noted under a clock set ahead stops counting once the clock is right, and a login clamps the time and drops the future days", () => {
+  const addon = atAuctionHouse();
+  addon.eval("local AP = ns.AuctionPrices AP.Record(2589, 9, __now + 3 * 86400) AP.Record(2589, 40, __now)");
+  expect(addon.eval("return ns.AuctionPrices.Low7(2589, __now)"), "the low of the last 7 days ignores the day still to come").toBe(40);
+  const t = 1790000000;
+  const day = addon.eval("return ns.AuctionPrices.Day(__now)") + 3;
+  const saved = `VanguardDB.ah = { houses = { ["ForeverTest-Alliance"] = { count = 1, lastScan = ${t}, prices = { [100] = { min = 5, t = ${t + 3 * 86400}, days = { [${day}] = 5, [${day - 3}] = 6 } } } } } }`;
+  const login = loggedIn(AH_ENV, { savedVariables: saved });
+  expect(login.eval("local p = ns.AuctionPrices.House().prices[100] local out = { p.t == __now, p.days[" + day + "] == nil } for _ in pairs(p.days) do out[#out + 1] = true end return out"), "the time is clamped to now, the future day is gone and today's stays").toEqual([true, true, true]);
 });
 it("a hidden number skips its listing without an error", () => {
   const addon = atAuctionHouse();

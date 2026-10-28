@@ -297,9 +297,11 @@ local iconsCommand = switchCommand({
 local function variantCommand(rest)
   if rest == "" then rest = T.Settings().variant end
   if rest ~= "default" and not T.VARIANTS[rest] then return chat(ns.Literal(L["Usage: /vg variant default|contrast|vellum|classic|midnight|obsidian|moss|ember"])) end
+  local assistBefore = T.ColorAssist()
   T.Settings().variant = rest
   T.Refresh()
   chat(ns.Format(L["Theme variant: {variant}."], { variant = T.VARIANTS[rest] and T.VARIANTS[rest].label or L["Slate and brass"] }))
+  if T.ColorAssist() ~= assistBefore then ns.OfferReload(L["Safer colours changed with this look; the debuff type colours on aura icons follow after a reload."]) end
 end
 
 -- /vg corners [square|rounded]: panel corners on every theme, repainted at once (no argument shows the current one).

@@ -672,6 +672,20 @@ it("aura colors and stacks when the client hides the values", () => {
   expect(noCurve.eval('return ns.Auras.DispelToken("Magic")') === "magic" && isTok(noCurve, noCurve.eval('return { ns.Auras.DispelColor("target", { dispelName = { __secret = true } }) }'), "bad"), "no curve support: a hidden type shows as 'bad'").toBeTruthy();
 });
 
+it("a hidden debuff type follows the Safer colours a High contrast variant turns on, as a plain type does", () => {
+  const addon = loggedIn(UNITS_ENV + `
+    C_UnitAuras = { GetAuraDispelTypeColor = function(unit, id, curve) return curve:Evaluate(1) end }`);
+  // The Magic color of a hidden-type aura and of a plain one, as a hex.
+  const magic = () => addon.eval(`local A = ns.Auras
+    local hidden = { A.DispelColor("target", { auraInstanceID = 5, dispelName = { __secret = true } }) }
+    return { hidden = ns.Theme.Hex("magic"), curve = string.format("%02x%02x%02x", hidden[1] * 255 + 0.5, hidden[2] * 255 + 0.5, hidden[3] * 255 + 0.5) }`);
+  const before = magic();
+  expect(before.curve, "before: the curve holds the plain Magic color").toBe(before.hidden.slice(2, 8));
+  addon.slash("variant contrast");
+  const after = magic();
+  expect([after.curve, after.hidden === before.hidden], "after High contrast: the hidden type takes the new Magic color at once").toEqual([after.hidden.slice(2, 8), false]);
+});
+
 it("a hidden aura id is never handed to the client's color, stack or duration calls (it refuses one from addons); the plain fallbacks show", () => {
   const addon = loggedIn(UNITS_ENV + ENGINE_ENV + `__asked = 0
     C_UnitAuras = { GetAuraDispelTypeColor = function() __asked = __asked + 1 return CreateColor(0.1, 0.2, 0.3) end,

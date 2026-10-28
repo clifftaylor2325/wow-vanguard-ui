@@ -283,14 +283,16 @@ function G.Rows()
 end
 
 -- Saved data size -------------------------------------------------------------------------------
--- The game refuses an addon's SavedVariables file past a size it doesn't publish; its signal is the
--- event SAVED_VARIABLES_TOO_LARGE. Prices are the part that grows (a full price home is up to about
--- 3.5 MB of text), so a size estimate is kept under G.BUDGET by dropping the oldest price homes,
--- never the one in use. The numbers are estimates of the text the game writes, not readings.
+-- The game refuses an addon's SavedVariables file it cannot load for lack of memory, at a size it doesn't
+-- publish; its signal is the event SAVED_VARIABLES_TOO_LARGE, and it fires only after the load failed.
+-- Prices are the part that grows (a full price home is up to about 3.5 MB of text), so a size estimate is
+-- kept under G.BUDGET by dropping the oldest price homes, never the one in use. The numbers are estimates
+-- of the text the game writes, not readings.
 
--- The account file's budget in bytes (a guess well under any limit worth fearing), and the delay
--- after login before the size is checked, so the walk stays out of the login itself.
-G.BUDGET, G.AUDIT_AFTER = 6 * 1024 * 1024, 15
+-- The account file's budget in bytes (room for four full price homes at their worst mix, 13.3 MB, a guess
+-- under any limit worth fearing), and the delay after login before the size is checked, so the walk stays
+-- out of the login itself.
+G.BUDGET, G.AUDIT_AFTER = 16 * 1024 * 1024, 15
 
 -- Estimated bytes of a table as the game writes it: each key and value's text, plus indent and punctuation.
 local function tableBytes(t, depth, seen)
@@ -371,12 +373,11 @@ local function scheduleAudit()
 end
 ns.On("PLAYER_LOGIN", scheduleAudit)
 
--- The client says an addon's saved file was too large: Vanguard trims to half its budget, so the next
--- save fits, and says what happened (the settings guard then reports a file that came back blank).
+-- The client says it could not load an addon's saved file (it ran out of memory) and will not save it at
+-- logout, so nothing Vanguard drops or restores now reaches the disk: chat says so and how to start fresh
+-- (the settings guard then reports the settings that came back blank).
 function G.OnTooLarge(_, name)
-  if name ~= ADDON or type(VanguardDB) ~= "table" then return end
-  local dropped = G.Trim(G.Bytes(VanguardDB) - G.BUDGET / 2)
-  local why = dropped > 0 and trimmedLine(dropped) or L["Vanguard has no price data left to drop; /vg mem lists what holds the most."]
-  ns.Chat(L["The game says Vanguard's saved data is too large."] .. " " .. why)
+  if name ~= ADDON then return end
+  ns.Chat(L["The game couldn't load Vanguard's saved file and won't save it this session, so changes made now are lost at logout. To start fresh, log out and move Vanguard.lua out of your account's SavedVariables folder (keep it to send with a report)."])
 end
 ns.On("SAVED_VARIABLES_TOO_LARGE", G.OnTooLarge)

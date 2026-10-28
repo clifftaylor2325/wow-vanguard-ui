@@ -2716,9 +2716,18 @@ local sizes = setmetatable({}, { __mode = "k" })
 -- them all, so a variant switch reaches text that was drawn before it (a light look needs dark text).
 local colored = setmetatable({}, { __mode = "k" })
 
+-- The range of the Text size setting (General -> Look; the slider and the setup presets stay inside it).
+T.TEXT_SCALE = { min = 0.7, max = 1.3 }
+
+-- The Text size setting, kept to its range: a crafted or hand-edited profile can hold any number.
+function T.TextScale()
+  local scale = T.Settings().textScale or 1
+  return math.max(T.TEXT_SCALE.min, math.min(T.TEXT_SCALE.max, scale))
+end
+
 -- A size after the text scale setting.
 function T.ScaledSize(size)
-  return math.floor(size * (T.Settings().textScale or 1) + 0.5)
+  return math.floor(size * T.TextScale() + 0.5)
 end
 
 -- A role's font size after the text scale setting.
@@ -3248,11 +3257,16 @@ function T.SetPixelScale(on)
   T.ApplyScale()
 end
 
--- The screen size or the client's UI scale changed: re-apply ours and resize borders.
+-- The screen size or the client's UI scale changed: re-apply ours and resize borders, once a frame however
+-- many of the two events arrive. With pixel-perfect scale on out of a fight, T.ApplyScale repaints after it
+-- sets the scale, so the repaint here would be a second one.
 local function onScaleChanged()
-  T.Refresh()
-  T.ApplyScale()
-  T.Rescale()
+  ns.Soon("screen change", function()
+    local applyRepaints = T.Settings().pixelScale and not ns.InCombat()
+    if not applyRepaints then T.Refresh() end
+    T.ApplyScale()
+    T.Rescale()
+  end)
 end
 
 ns.On("PLAYER_LOGIN", T.ApplyScale)

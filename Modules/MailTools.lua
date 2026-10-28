@@ -316,13 +316,22 @@ function MT.Attach(words)
   return n
 end
 
+-- What a send says: how many items went in, or, when a preset with words attached nothing, how the words
+-- match (a 0.7.4 preset "ore bar herb" meant any word; now an item holds every word, commas between alternatives).
+local function sentLine(p, count)
+  if count == 0 and p.words:find("%S") then
+    return ns.Format(L["{preset}: nothing you can mail has every word of {words} in its name. Commas separate alternatives, such as: ore, bar"], { preset = p.name, words = p.words })
+  end
+  return ns.Format(L["{preset}: {count} items attached for {to}. Press Send."], { preset = p.name, count = count, to = p.to })
+end
+
 -- Sends: the Send Mail tab (open) gets the character's name and the items; you press Send.
 function MT.Send(name)
   local p = preset(name)
   if not p then return ns.Chat(ns.Format(L["No preset called {name}. /vg mail preset lists them."], { name = tostring(name) })) end
   if ns.InCombat() or not (SendMailFrame and SendMailFrame:IsVisible()) then return ns.Chat(L["Open the Send Mail tab (out of combat) first."]) end
   SendMailNameEditBox:SetText(p.to)
-  ns.Chat(ns.Format(L["{preset}: {count} items attached for {to}. Press Send."], { preset = p.name, count = MT.Attach(p.words), to = p.to }))
+  ns.Chat(sentLine(p, MT.Attach(p.words)))
 end
 
 -- The panel ----------------------------------------------------------------------------------

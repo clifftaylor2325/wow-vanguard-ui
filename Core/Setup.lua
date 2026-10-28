@@ -405,7 +405,7 @@ function S.PixelPreset()
   local n = S.PixelMultiple(h > 0 and h or 768)
   local ui = T.PixelPerfectScale() * n
   local r = base.ui / ui
-  local text = math.max(0.7, math.min(1.3, math.floor(base.textScale * r * 20 + 0.5) / 20))
+  local text = math.max(T.TEXT_SCALE.min, math.min(T.TEXT_SCALE.max, math.floor(base.textScale * r * 20 + 0.5) / 20))
   return { key = S.PIXEL.key, ui = ui, pixel = n, button = grown(base.button, r), tile = base.tile, textScale = text }
 end
 

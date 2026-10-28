@@ -9,7 +9,7 @@
 -- keeps no price history of its own (its item info has no prices), so this is
 -- the only one there is. A price not seen for 30 days is dropped at login (and
 -- a realm and faction left with none), and past AP.MAX_ITEMS items in one
--- house the ones priced longest ago go. Shopping lists stay account-wide.
+-- house the ones priced longest ago go (the least listed of a scan's). Shopping lists stay account-wide.
 -- From these prices it also works out what disenchanting a piece of gear is
 -- worth (AP.Disenchant, vanilla's disenchanting tables), for a tooltip line.
 
@@ -40,9 +40,10 @@ function AP.Day(t)
   return math.floor(t / AP.DAY)
 end
 
--- Whether a day falls in the AP.DAYS days up to and including today.
+-- Whether a day falls in the AP.DAYS days up to and including today (a day still to come, from a
+-- clock that was set ahead, is not).
 function AP.WithinDays(day, today)
-  return day > today - AP.DAYS
+  return day > today - AP.DAYS and day <= today
 end
 
 -- The day a time falls on by the computer's own clock (whole days since 1970 in its time zone), so
@@ -79,6 +80,12 @@ function AP.House()
   return houses[key]
 end
 
+-- Whether a saved price row is usable: a table with a plain time. A damaged file (a number, a row
+-- without a time) must not stop the helper at every login.
+local function sound(p)
+  return type(p) == "table" and tonumber(p.t) ~= nil
+end
+
 -- Once: the prices kept for the whole account before they were kept per realm and faction
 -- (VanguardDB.ah.prices and lastScan) move into this realm and faction's house; an item the
 -- house already has keeps whichever was seen last. AP.Prune recounts.
@@ -88,7 +95,7 @@ function AP.Migrate()
   local house = AP.House()
   for id, p in pairs(store.prices) do
     local mine = house.prices[id]
-    if type(p) == "table" and (not mine or mine.t < p.t) then house.prices[id] = p end
+    if type(p) == "table" and (not sound(mine) or (tonumber(mine.t) or 0) < (tonumber(p.t) or 0)) then house.prices[id] = p end
   end
   house.lastScan = math.max(house.lastScan, tonumber(store.lastScan) or 0)
   store.prices, store.count, store.lastScan = nil, nil, nil
@@ -213,11 +220,18 @@ function AP.RecordBrowse(results, t)
   for id, price in pairs(low) do AP.RecordSeen(id, price, t) end
 end
 
--- Forgets the items priced longest ago, down to AP.KEEP of AP.MAX_ITEMS.
+-- Whether item row a is worth keeping over b: priced more recently, and among items priced at the same
+-- moment (a scan prices thousands at once) the one with more listings. Strict, so a sort stays valid.
+local function keptFirst(a, b)
+  if a[2] ~= b[2] then return a[2] > b[2] end
+  return a[3] > b[3]
+end
+
+-- Forgets the items priced longest ago (the least listed among those priced together), down to AP.KEEP of AP.MAX_ITEMS.
 function AP.Evict()
   local store, ids = AP.House(), {}
-  for id, p in pairs(store.prices) do ids[#ids + 1] = { id, p.t or 0 } end
-  table.sort(ids, function(a, b) return a[2] > b[2] end)
+  for id, p in pairs(store.prices) do ids[#ids + 1] = { id, tonumber(p.t) or 0, tonumber(p.listings) or 0 } end
+  table.sort(ids, keptFirst)
   local keep = math.floor(AP.MAX_ITEMS * AP.KEEP)
   for k = keep + 1, #ids do store.prices[ids[k][1]] = nil end
   store.count = math.min(#ids, keep)
@@ -232,12 +246,20 @@ local function trimDays(p, today)
   end
 end
 
--- Drops a house's prices last seen more than AP.MAX_AGE days before now, and old day lows;
+-- Makes a kept price row whole (its day tables are tables, its time not in the future) and drops its
+-- day lows older than AP.DAYS or still to come.
+local function keepRow(p, now, today)
+  ns.Fill(p, { days = {}, qtys = {}, markets = {} })
+  p.t = math.min(tonumber(p.t), now)
+  trimDays(p, today)
+end
+
+-- Drops a house's damaged prices, those last seen more than AP.MAX_AGE days before now, and old day lows;
 -- recounts, and returns how many are left.
 local function pruneHouse(house, now)
   local today, n = AP.Day(now), 0
   for id, p in pairs(house.prices) do
-    if p.t < now - AP.MAX_AGE * AP.DAY then house.prices[id] = nil else n = n + 1 trimDays(p, today) end
+    if not sound(p) or tonumber(p.t) < now - AP.MAX_AGE * AP.DAY then house.prices[id] = nil else n = n + 1 keepRow(p, now, today) end
   end
   house.count = n
   return n

@@ -90,9 +90,9 @@ it("game alerts: raid warnings take the theme font at the game's size; Hardcore 
   expect([death.font, death.size, isTok(addon, death.color, "bad"), death.death], "a death notice: the theme's title font, the theme's red").toEqual([addon.eval('local f = UIParent:CreateFontString() ns.Theme.ApplyRole(f, "title") return f.__font[1]'), addon.eval('return ns.Theme.RoleSize("title")'), true, true]);
   addon.fire("CHAT_MSG_RAID_WARNING", "TEST-ONLY Again");
   expect([line().size, line().death], "the next raid warning on that line: the warning font again, no longer a death notice").toEqual([20, false]);
-  addon.eval("ns.Theme.Settings().textScale = 1.5");
+  addon.eval("ns.Theme.Settings().textScale = 1.3");
   addon.fire("CHAT_MSG_RAID_WARNING", "TEST-ONLY Bigger");
-  expect(line().size, "Text size applies to the game's size").toBe(30);
+  expect(line().size, "Text size applies to the game's size").toBe(26);
   const off = loggedIn(WARNING_ENV, { savedVariables: "VanguardDB.profiles = { Default = { GameAlerts = { hardcore = false } } }" });
   off.fire("HARDCORE_DEATHS", "TEST-ONLY Bob has fallen.");
   expect(off.eval("local l = RaidWarningFrame.line return { l.__font[2], ns.FrameState('vgDeath')[l] or false }"), "deaths switched off: the warning font, not the death look").toEqual([20, false]);
@@ -117,9 +117,9 @@ it("game alerts: the screenshot status line and the frame rate readout take the 
   const first = look();
   expect([first[0][0], first[0][1], first[1][0], first[1][1], first[2][1]], "the status line bold at 16, the readout regular at 12").toEqual([bold, 16, regular, 12, 12]);
   expect(first[3], "the game's gold on the status line is left alone").toEqual([1, 0.82, 0, 1]);
-  addon.eval("ns.Theme.Settings().textScale = 1.5 ns.Theme.Refresh()");
+  addon.eval("ns.Theme.Settings().textScale = 1.3 ns.Theme.Refresh()");
   const scaled = look();
-  expect([scaled[0][1], scaled[1][1], scaled[2][1]], "a Text size change reaches them").toEqual([24, 18, 18]);
+  expect([scaled[0][1], scaled[1][1], scaled[2][1]], "a Text size change reaches them").toEqual([21, 16, 16]);
   const partial = loggedIn("ActionStatus = CreateFrame('Frame', 'ActionStatus', UIParent) FramerateFrame = {} ActionStatus.Text = {}");
   expect(partial.eval("return #ns.errors"), "frames without their texts, or texts that are not font strings: left alone, no error").toBe(0);
   expect(loggedIn("").eval("return #ns.errors"), "a client without them loads cleanly").toBe(0);
