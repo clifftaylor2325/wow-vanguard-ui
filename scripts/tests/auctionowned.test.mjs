@@ -155,9 +155,11 @@ it("your auctions: refused cancels, scrolling, unknown names, hidden costs, and 
   expect([ownedRow(addon, 1)[2], ownedRow(addon, 7)[0], ownedRow(addon, 8)[0]], "seven auctions (one sold) on seven rows; the wheel has nothing to scroll").toEqual(["1s 50c", true, false]);
 });
 it("a random-suffix auction is undercut only by its own variant", () => {
+  // An "of the ..." cloak (suffix) listed by someone else at a buyout.
   const cloak = (suffix, buyout) => `{ itemKey = { itemID = 9999, itemLevel = 30, itemSuffix = ${suffix} }, buyoutAmount = ${buyout}, quantity = 1 }`;
   const addon = atAuctionHouse(`__wfgWorld.ah.owned = { { auctionID = 502, itemKey = { itemID = 9999, itemLevel = 30, itemSuffix = -17 }, status = 0, quantity = 1, buyoutAmount = 4000 } }
     __wfgWorld.ah.items[9999] = { ${cloak(-15, 1000)}, ${cloak(-17, 5000)} }`);
+  // Check undercuts, your auctions arriving, and the cloak's price check answered.
   const check = () => {
     addon.click(`${OWNED_CARD}.check`);
     addon.fire("OWNED_AUCTIONS_UPDATED");
