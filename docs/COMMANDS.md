@@ -40,7 +40,7 @@ Every `/vg` command (`/vanguard` works too), grouped by what it does. `/vg help`
 | `/vg profile [name]` | Switch, or `new`, `copy`, `delete`, `reset` |
 | `/vg preset [name]` | Healer, Damage, Tank and any an addon offers |
 | `/vg export`, `/vg import` | Profile strings, whole or in parts |
-| `/vg spec [profile\|off]` | Use a profile in this specialization |
+| `/vg spec [profile\|off]` | Use a profile in this specialization (on WoW Forever, in this talent group) |
 
 ## Combat and groups
 
