@@ -34,6 +34,15 @@ local function ownCopy(profile)
   return ns.Copy(profile)
 end
 
+-- Each character's craft queue and profession cooldowns (CraftQueue.chars) are not settings: a copy keeps
+-- the ones the profile copied into had, never the source's.
+local function keepCharacters(copy, old)
+  local queue = type(old) == "table" and type(old.CraftQueue) == "table" and old.CraftQueue or nil
+  if type(copy.CraftQueue) ~= "table" then copy.CraftQueue = queue and {} or nil end
+  if copy.CraftQueue then copy.CraftQueue.chars = queue and queue.chars or nil end
+  return copy
+end
+
 -- Copies another profile's settings over the one this character uses after the next reload: the
 -- active one, or the one staged while a switch waits (so the profile running until then is never
 -- overwritten). Returns the name copied into, or false.
@@ -42,7 +51,7 @@ function ns.CopyProfile(from)
   if not source or from == into then
     return false
   end
-  VanguardDB.profiles[into] = ownCopy(source)
+  VanguardDB.profiles[into] = keepCharacters(ownCopy(source), VanguardDB.profiles[into])
   if into == ns.ProfileName() then ns.ProfileChanged() end
   return into
 end
