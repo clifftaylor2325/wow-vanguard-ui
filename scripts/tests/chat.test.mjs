@@ -1107,6 +1107,12 @@ it("auto-accept: summons, resurrections and duels, each off until switched on", 
   expect(chatHas(on, /summon from <name> to TEST-ONLY Vale/) && chatHas(on, /resurrection from <name>/) && chatHas(on, /duel from someone/), "and said in chat (a hidden name reads as someone)").toBe(true);
 });
 
+it("auto-accept: a duel to the death is declined and its prompt closed too", () => {
+  const on = loggedIn(PROMPT_ENV, { savedVariables: "VanguardDB.profiles = { Default = { AutoAccept = { duels = true } } }" });
+  on.fire("DUEL_TO_THE_DEATH_REQUESTED", "<name>");
+  expect(on.eval("return __answers")).toEqual(["decline", "close DUEL_TO_THE_DEATH_REQUESTED"]);
+});
+
 it("auto-accept: a resurrection waits out the corpse-recovery delay, and the game's prompt stays up", () => {
   const SWITCH = { savedVariables: "VanguardDB.profiles = { Default = { AutoAccept = { resurrect = true } } }" };
   // The answers recorded after a resurrection offer while the game reports `delay` (Lua expression).

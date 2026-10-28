@@ -295,6 +295,19 @@ const SHARED_LUA = `local lsm = LibStub("LibSharedMedia-3.0")
   lsm:Register("font", "TEST-ONLY Font", [[Interface\\AddOns\\TestOnly\\Font.ttf]])
   lsm:Register("statusbar", "TEST-ONLY Bar", [[Interface\\AddOns\\TestOnly\\Bar]])`;
 
+it("a font path the client can't load falls back to Fira, so text still sets (N7-1)", () => {
+  const FIRA = "Interface\\AddOns\\Vanguard\\Media\\Fonts\\FiraSansCondensed-";
+  const addon = loggedIn(CLICK_LUA + SHARED_LUA + `__wfgStub.missingFonts[ [[Interface\\AddOns\\Gone\\f.ttf]] ] = true __wfgStub.missingFonts[ [[Interface\\AddOns\\TestOnly\\Font.ttf]] ] = true
+    LibStub("LibSharedMedia-3.0"):Register("font", "TEST-ONLY Pathless", [[Interface\\AddOns\\Gone\\f.ttf]])`);
+  // The two weights the theme gives for a chosen font name.
+  const font = (name) => addon.eval(`ns.Theme.Settings().font = [[${name}]] return { (ns.Theme.Font()), (ns.Theme.Font(true)) }`);
+  expect(font("Interface\\AddOns\\Gone\\f.ttf"), "a missing path: Fira, both weights").toEqual([FIRA + "Medium.ttf", FIRA + "SemiBold.ttf"]);
+  expect(font("TEST-ONLY Pathless")[0], "a font another addon shares at a missing file: Fira").toBe(FIRA + "Medium.ttf");
+  expect(font("TEST-ONLY Font")[0], "a shared font whose file is missing: Fira").toBe(FIRA + "Medium.ttf");
+  expect(font("Fonts\\Here.ttf")[0], "a path the client loads is kept").toBe("Fonts\\Here.ttf");
+  expect(addon.eval("return pcall(function() local fs = UIParent:CreateFontString(nil, 'OVERLAY') fs:SetFont((ns.Theme.Font()), 12, '') ns.Theme.Settings().font = [[Interface\\AddOns\\Gone\\f.ttf]] fs:SetFont((ns.Theme.Font()), 12, '') fs:SetText('x') end)"), "text sets on a string given the fallback").toBe(true);
+});
+
 it("shared media: the bundled LibSharedMedia-3.0 carries Vanguard's font and bars, and the pickers offer what other addons share", () => {
   const FIRA = "Interface\\AddOns\\Vanguard\\Media\\Fonts\\FiraSansCondensed-";
   const addon = loggedIn(CLICK_LUA + DROPDOWN_LUA + SHARED_LUA);

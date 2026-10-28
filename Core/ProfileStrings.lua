@@ -230,11 +230,12 @@ end
 -- The bar textures Vanguard draws itself (Core/Theme.lua's T.BarTexture).
 local OWN_BARS = { vanguard = true, soft = true, flat = true }
 
--- True when a font name is one this client can't find: not the bundled font, the game's,
--- or a font path, and nothing shares it through LibSharedMedia (Core/SharedMedia.lua).
+-- True when a font name is one this client can't use: not the bundled font or the game's, and neither
+-- a font path nor a font shared through LibSharedMedia (Core/SharedMedia.lua) that the client can load.
 local function missingFont(name)
-  if type(name) ~= "string" or name == "" or name == "client" or name:find("\\", 1, true) then return false end
-  return not ns.Theme.SharedPath("font", name)
+  if type(name) ~= "string" or name == "" or name == "client" then return false end
+  local path = ns.Theme.SharedPath("font", name) or (name:find("\\", 1, true) and name)
+  return not (path and ns.Theme.FontLoads(path))
 end
 
 -- True when a bar texture name is neither Vanguard's own nor shared through LibSharedMedia.

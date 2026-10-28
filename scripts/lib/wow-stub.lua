@@ -482,8 +482,15 @@ function methods:HookScript(name, fn)
 end
 
 -- Fonts on font strings, edit boxes and chat frames: recorded and read back.
-function methods:SetFont(path, size, flags) self.__font = { path, size, flags } end
+-- Like the client, a file it can't load (a path in stub.missingFonts) is refused with false and leaves the font as it was.
+function methods:SetFont(path, size, flags)
+  if stub.missingFonts[path] then return false end
+  self.__font = { path, size, flags }
+  return true
+end
+-- The font read back.
 function methods:GetFont() local f = self.__font or {} return f[1], f[2], f[3] end
+-- Shadow offset and colour, recorded.
 function methods:SetShadowOffset(x, y) self.__shadowOffset = { x, y } end
 function methods:SetShadowColor(r, g, b, a) self.__shadowColor = { r, g, b, a } end
 
@@ -652,6 +659,7 @@ end
 function methods:GetScript(name) return self.__scripts[name] end
 -- The frames registered for each event, so firing one visits only them.
 stub.listeners = {}
+stub.missingFonts = {}
 -- The frames with an OnUpdate script, so a frame tick visits only them.
 stub.updaters = {}
 -- Puts a frame on (or takes it off) an event's list.
