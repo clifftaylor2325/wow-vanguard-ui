@@ -453,6 +453,14 @@ it("a fight starting cancels every armed key capture, so the fight's first key i
   expect(addon.eval("return Vanguard_SpellPicker and Vanguard_SpellPicker:IsShown() or false"), "a key in the fight is not captured").toBe(false);
 });
 
+it("clicking an armed key capture with the left button captures BUTTON1 and leaves it idle (N6-1)", () => {
+  const addon = loggedIn(CLICK_LUA + CAPTURES_LUA + "\n__cap = __caps[1] __got = {} __cap.onKey = function(k) __got[#__got + 1] = k end");
+  addon.click("__cap");
+  expect(captures(addon)[0].slice(0, 2), "the first click arms it").toEqual([true, "Press a key, click or scroll..."]);
+  addon.click("__cap");
+  expect([captures(addon)[0].slice(0, 2), addon.eval("return __got")], "the second hands over BUTTON1 and stays idle").toEqual([[false, "Set key"], ["BUTTON1"]]);
+});
+
 it("clicking a key capture in a fight arms nothing", () => {
   const addon = loggedIn(CLICK_LUA + CAPTURES_LUA);
   addon.world.combat(true);
