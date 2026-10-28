@@ -63,6 +63,8 @@ AH.ROW_CHOICES, AH.FILTER_W = { { "filters", L["Filters..."] }, { "remove", L["R
 AH.MONEY_UNITS = { g = 10000, s = 100, c = 1 }
 -- The Recent pseudo-list: its pane key, and how many searched terms it keeps.
 AH.RECENT, AH.MAX_RECENT = "\1recent", 20
+-- How long a browse list waiting on item info gathers arrivals before it is priced again (seconds).
+AH.LATE_WAIT = 0.5
 -- What chat says when an action needs a list and there's none in use.
 AH.NO_LIST = L["Pick a shopping list first (the Lists pane, or /vg ah list <name>)."]
 
@@ -447,11 +449,17 @@ function AH.PriceBrowse(results)
   AH.lateBrowse = waiting > 0 and { results = results, waiting = waiting } or nil
 end
 
--- Item info came in for some of the kept browse list: the whole list is priced again, so an
--- item's lowest key still wins.
+-- Item info came in for some of the kept browse list: the whole list is priced again (so an item's lowest
+-- key still wins) AH.LATE_WAIT after the first arrival, once for all that come in meanwhile. The info comes
+-- in bursts over many frames, and a pass per frame over a long list would price it hundreds of times.
 local function priceLate()
   local late = AH.lateBrowse
-  if late and AP.Unloaded(late.results) < late.waiting then AH.PriceBrowse(late.results) end
+  if not late or late.due then return end
+  late.due = true
+  C_Timer.After(AH.LATE_WAIT, ns.Guard("timer late browse prices", function()
+    late.due = nil
+    if AH.lateBrowse == late and AP.Unloaded(late.results) < late.waiting then AH.PriceBrowse(late.results) end
+  end))
 end
 
 -- Item names came in: the browse list waiting on them is priced, the entries waiting on them are
