@@ -86,6 +86,7 @@
     "scripts/tests/chatwindows.test.mjs": [],
     "scripts/tests/chrome.test.mjs": [],
     "scripts/tests/clickcast.test.mjs": [
+      "a name-bound spell made in another client language casts by the name this client gives its id",
       "bindings carry spell ids and ranks, move, copy, export and import",
       "sharing: export, import, copy to another spec, and the combat notice",
       "without specializations the page speaks of this character"

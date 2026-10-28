@@ -239,6 +239,7 @@ it("options: profiles in the window", () => {
   const create = (name, enter) => addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.input and w.create and ns.Options.RevealRow(w) then
     w.input:SetText("${name}") local b = ${enter ? "w.input" : "w.create"} b:GetScript(${enter ? '"OnEnterPressed"' : '"OnClick"'})(b) return w.label.__text end end`);
   expect(create("TEST-ONLY Bad/Name"), "a bad name says why").toBe("Name taken or not allowed");
+  expect([create("   "), create("Default ")], "blank, or a name with a space at an end: refused").toEqual(["Name taken or not allowed", "Name taken or not allowed"]);
   create("TEST-ONLY Leveling", true);
   expect([addon.eval("return ns.SelectedProfileName()"), profileRow(addon, "TEST-ONLY Leveling")[0], profileRow(addon, "TEST-ONLY Healer")[0]], "a good name makes the profile and stages the switch to it").toEqual(["TEST-ONLY Leveling", "TEST-ONLY Leveling  (after reload)", "TEST-ONLY Healer"]);
   addon.eval('ns.Options.ShowTab("Profile")');

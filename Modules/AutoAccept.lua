@@ -81,9 +81,16 @@ function AA.OnSummon()
   if AA.settings.summons then ns.OutOfCombat(AA.AcceptSummon, "accept summon") end
 end
 
--- Someone offers to resurrect you: accept, and say who.
+-- Whether the game still makes you wait before you may come back (its prompt keeps Accept off until the
+-- corpse-recovery delay is over); a hidden answer or a client without the call counts as no wait.
+local function mustWait()
+  return (ns.PlainNumber(ns.CallIf(_G, "GetCorpseRecoveryDelay")) or 0) > 0
+end
+
+-- Someone offers to resurrect you: accept, and say who. During the corpse-recovery delay the game's own
+-- prompt stays up with its countdown, for you to accept when it unlocks.
 function AA.OnResurrect(_, who)
-  if not AA.settings.resurrect or type(AcceptResurrect) ~= "function" then return end
+  if not AA.settings.resurrect or type(AcceptResurrect) ~= "function" or mustWait() then return end
   AcceptResurrect()
   closePrompt("RESURRECT")
   closePrompt("RESURRECT_NO_SICKNESS")

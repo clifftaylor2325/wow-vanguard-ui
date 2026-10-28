@@ -149,10 +149,10 @@ local function hasLine(tt, label)
 end
 
 -- Whether the client's own "Sell Price" is already on the tooltip: a money frame is up, or a line carries the
--- game's label (the price can arrive through tooltip data, with no money frame counted).
+-- game's label, SELL_PRICE (Forever's GameTooltip writes its price as a plain text line, no money frame).
 function TT.ShowsPrice(tt)
   if (tonumber(tt.shownMoneyFrames) or 0) > 0 then return true end
-  local label = _G.ITEM_SELL_PRICE
+  local label = _G.SELL_PRICE
   return type(label) == "string" and tt.GetName ~= nil and tt:GetName() ~= nil and hasLine(tt, label)
 end
 

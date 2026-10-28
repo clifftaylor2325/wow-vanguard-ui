@@ -337,8 +337,12 @@ end
 local TYPES = { spell = "spell", macro = "macro", target = "target", menu = "togglemenu", focus = "focus", assist = "assist" }
 
 -- What the secure spell attribute gets: the rank's id when a rank was picked, else the name (highest rank).
+-- A stored name this client doesn't know (made in another client language) gives way to the stored id's name here;
+-- the saved name is left alone, so switching back keeps working.
 local function spellValue(b)
-  return b.rank and b.spellID or b.value
+  if b.rank then return b.spellID or b.value end
+  if b.spellID and not spellID(b.value) then return ns.SpellName(b.spellID) or b.value end
+  return b.value
 end
 
 -- Sets type and spell/macro text for a binding, with the attribute prefix

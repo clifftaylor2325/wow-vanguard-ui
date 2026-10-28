@@ -136,7 +136,8 @@ end
 local function readNames()
   local names = {}
   for name in (ns.Settings("RaidHealing", RH.defaults).buffs or ""):gmatch("[^,]+") do
-    names[#names + 1] = name:match("^%s*(.-)%s*$")
+    local trimmed = name:match("^%s*(.-)%s*$")
+    if trimmed ~= "" then names[#names + 1] = trimmed end
   end
   if #names > 0 then return names end
   local _, class = UnitClass("player")

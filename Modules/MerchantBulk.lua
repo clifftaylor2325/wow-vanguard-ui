@@ -96,6 +96,26 @@ function MC.Listed(only)
   return scan(function(id) return not worn[id] and (only and id == only or (not only and list[id] == true)) end)
 end
 
+-- A link's random suffix ("of the Bear": the item string's seventh field, after the item, its enchant and
+-- four gems), 0 for none or anything but a link.
+function MC.LinkSuffix(link)
+  local suffix = type(link) == "string" and link:match("item:%-?%d+:[^:]*:[^:]*:[^:]*:[^:]*:[^:]*:(%-?%d+)")
+  return tonumber(suffix) or 0
+end
+
+-- The slots holding item id; for a random-suffix link only that variant's, so one "of the Bear" cloak
+-- sold never takes the "of the Owl" one with it.
+local function variantRows(id, suffix)
+  local rows, out = MC.Listed(id), {}
+  if suffix == 0 then return rows end
+  for _, r in ipairs(rows) do
+    local info = C_Container.GetContainerItemInfo(r.bag, r.slot)
+    local link = type(info) == "table" and not ns.IsSecret(info.hyperlink) and info.hyperlink
+    if MC.LinkSuffix(link) == suffix then out[#out + 1] = r end
+  end
+  return out
+end
+
 -- What the slots fetch in all, in copper.
 function MC.Worth(rows)
   local total = 0
@@ -201,10 +221,10 @@ end
 
 -- /vg sell <item>: sell every stack of an item in your bags (at a merchant), after a question.
 function MC.SellCommand(rest)
-  local id = MC.ItemID(rest)
+  local id, suffix = MC.ItemID(rest), MC.LinkSuffix(rest)
   if not id then return ns.Chat(L["Usage: /vg sell <shift-click an item>  (at a merchant)"]) end
   if not trading() then return ns.Chat(L["Open a merchant first."]) end
-  if not MC.OfferSale(function() return MC.Listed(id) end) then ns.Chat(ns.Format(L["You have no {item} to sell."], { item = itemName(id) })) end
+  if not MC.OfferSale(function() return variantRows(id, suffix) end) then ns.Chat(ns.Format(L["You have no {item} to sell."], { item = itemName(id) })) end
 end
 
 -- Buying ---------------------------------------------------------------------------------------
@@ -371,11 +391,19 @@ local function costText(drawer, stack)
   return T.FitText(ns.SingleLine(line), drawer)
 end
 
+-- A Stack or Max press: buys only while the row still holds the item, at the pack price, that the cost
+-- line was worked out for (the list can shift under an open window, and a button reads its row by place).
+local function press(entry, frame, packsOf)
+  local same = MC.Sells(entry.index, entry.id) and wares(entry.index) == entry.price
+  if not same then return ns.Chat(L["Nothing bought: the merchant closed or changed what it sells."]) end
+  MC.Order(entry.index, packsOf(entry.index), frame)
+end
+
 -- The window's drawer with its Stack and Max buttons and the cost line, made once.
 local function makeBulk(frame)
   local entry = { drawer = makeDrawer(frame) }
-  entry.stack = W.Button(entry.drawer, L["Stack"], function() MC.Order(entry.index, MC.StackPacks(entry.index), frame) end, 60)
-  entry.max = W.Button(entry.drawer, L["Max"], function() MC.Order(entry.index, MC.MaxPacks(entry.index), frame) end, 60)
+  entry.stack = W.Button(entry.drawer, L["Stack"], function() press(entry, frame, MC.StackPacks) end, 60)
+  entry.max = W.Button(entry.drawer, L["Max"], function() press(entry, frame, MC.MaxPacks) end, 60)
   entry.stack:SetPoint("TOPLEFT", entry.drawer, "TOPLEFT", T.SPACE.gap, -T.SPACE.gap)
   entry.max:SetPoint("LEFT", entry.stack, "RIGHT", T.SPACE.gap, 0)
   entry.line = costText(entry.drawer, entry.stack)
@@ -390,7 +418,10 @@ function MC.OnSplitShow(frame)
   if not entry then return end
   entry.index = index
   for _, part in ipairs({ entry.drawer, entry.stack, entry.max, entry.line }) do part:SetShown(on) end
-  if on then costLine(entry, index) end
+  if on then
+    entry.id, entry.price = MC.ItemID(ask("GetMerchantItemLink", index)), wares(index)
+    costLine(entry, index)
+  end
 end
 
 -- Hooks the quantity window (once), when the game has made it.

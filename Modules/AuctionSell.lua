@@ -224,12 +224,20 @@ local function resultUnit(r, commodity)
   return buyout and qty and qty > 0 and math.floor(buyout / qty) or nil
 end
 
+-- Whether a result is of the random-suffix variant asked for (any result when none is asked): the
+-- house answers a search for an item with every variant of it.
+local function ofSuffix(r, suffix)
+  local want = ns.PlainNumber(suffix) or 0
+  return want == 0 or (type(r.itemKey) == "table" and ns.PlainNumber(r.itemKey.itemSuffix) == want)
+end
+
 -- The cheapest unit price someone else asks for an item now (your listings left out), or nil:
--- from the commodity results or the item results, whichever the search brought.
-function AH.Cheapest(commodity, key)
+-- from the commodity results or the item results, whichever the search brought; of one random-suffix
+-- variant when a suffix is given.
+function AH.Cheapest(commodity, key, suffix)
   local best
   for _, r in ipairs(results(commodity, key)) do
-    local unit = not r.containsOwnerItem and resultUnit(r, commodity)
+    local unit = not r.containsOwnerItem and ofSuffix(r, suffix) and resultUnit(r, commodity)
     if unit and (not best or unit < best) then best = unit end
   end
   return best
@@ -318,7 +326,7 @@ function AH.OnSearchResults(event, id, s)
   local cheapest = AH.Cheapest(commodity, key)
   AP.RecordSeen(id, cheapest)
   if (s.card or s.more) and AH.sell and AH.sell.id == id then AH.ReadSale(AH.sell, commodity, cheapest) end
-  if s.check then AH.MarkUndercuts(id, cheapest, commodity) end
+  if s.check then AH.MarkUndercuts(id, commodity, key) end
   AH.Done()
   AH.PaintSell()
 end

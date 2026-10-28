@@ -540,6 +540,8 @@ it("Recent: the last 20 terms searched, newest first, kept for the account", () 
   addon.eval(`local AH = ${HELPER} AH.Remember("soul dust") AH.Remember({ term = "Soul Dust", exact = true }) for i = 1, 25 do AH.Remember("TEST-ONLY " .. i) end`);
   const recent = addon.eval("return VanguardDB.ah.recent");
   expect([recent.length, recent[0], recent[19]], "20 at most; the same term once, whatever its case").toEqual([20, "TEST-ONLY 25", "TEST-ONLY 6"]);
+  addon.eval(`local AH = ${HELPER} AH.Remember("Éclat") AH.Remember("éclat")`);
+  expect(addon.eval("local r = VanguardDB.ah.recent return { r[1], r[2] }"), "an accented capital folds too").toEqual(["éclat", "TEST-ONLY 25"]);
   pick(addon, `${HELPER}.RECENT`);
   act(addon, "Copy");
   expect(addon.eval("return { VanguardDB.ah.list, #VanguardDB.ah.lists['Recent copy'] }"), "copied into a list of its own").toEqual(["Recent copy", 20]);

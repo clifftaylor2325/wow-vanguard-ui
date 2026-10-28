@@ -111,6 +111,20 @@ it("/vg sell sells every stack of one item after a question, only at a merchant"
   expect(used(addon), "Sell uses each stack").toEqual([1, 6]);
 });
 
+it("/vg sell with a random-suffix link sells only that variant; an item ID sells every one", () => {
+  const addon = loggedIn(BULK_ENV + `
+    __wfgWorld.items[15001] = { name = "TEST-ONLY Heavy Cloak", sellPrice = 50 }
+    __bag[14] = { itemID = 15001, hyperlink = "|cff1eff00|Hitem:15001::::::-17:::::::|h[TEST-ONLY Heavy Cloak of the Bear]|h|r" }
+    __bag[15] = { itemID = 15001, hyperlink = "|cff1eff00|Hitem:15001::::::-15:::::::|h[TEST-ONLY Heavy Cloak of the Owl]|h|r" }`);
+  addon.fire("MERCHANT_SHOW");
+  addon.slash("sell |cff1eff00|Hitem:15001::::::-17:::::::|h[TEST-ONLY Heavy Cloak of the Bear]|h|r");
+  addon.click("Vanguard_Question.confirm");
+  expect(used(addon), "the Bear cloak only").toEqual([14]);
+  addon.slash("sell 15001");
+  addon.click("Vanguard_Question.confirm");
+  expect(used(addon), "an item ID: the rest of them").toEqual([14, 15]);
+});
+
 it("the helpers are off when the Merchant module is", () => {
   const addon = loggedIn(BULK_ENV, { savedVariables: "VanguardDB.profiles = { Default = { modules = { Merchant = false } } }" });
   addon.slash("junk");
@@ -238,6 +252,23 @@ it("a run stops when the merchant closes, combat starts or the gold runs out; on
   expect(bought(addon).length, "an item that costs honor, and one that isn't there, aren't bought").toBe(3);
   addon.eval(`C_Timer = nil __bought = {} __gold = 10000 ${MC}.Buy(1, 8)`);
   expect(bought(addon), "a client without timers buys the chunks one after another").toEqual([[1, 20], [1, 20]]);
+});
+
+it("Stack and Max buy nothing when the row changed item or price under the open quantity window", () => {
+  const addon = loggedIn(BUY_ENV);
+  addon.fire("MERCHANT_SHOW");
+  addon.eval("StackSplitFrame:Show()");
+  addon.eval(`__wfgWorld.items[161] = { name = "TEST-ONLY Elixir", stack = 20 }
+    table.remove(__wfgWorld.merchant.items, 1) table.insert(__wfgWorld.merchant.items, 1, { itemID = 161, name = "TEST-ONLY Elixir", price = 10, stack = 5, maxStack = 20 })`);
+  addon.fire("MERCHANT_UPDATE");
+  press(addon, "stack");
+  expect([bought(addon), chatHas(addon, /Nothing bought: the merchant closed or changed what it sells\./)], "another item moved into the row: nothing bought, and chat says why").toEqual([{}, true]);
+  addon.eval(`__wfgWorld.merchant.items[1] = { itemID = 159, name = "TEST-ONLY Water", price = 20, stack = 5, maxStack = 20 }`);
+  press(addon, "max");
+  expect(bought(addon), "the same item at a new price: nothing bought either").toEqual({});
+  addon.eval("StackSplitFrame:Hide() StackSplitFrame:Show()");
+  press(addon, "stack");
+  expect(bought(addon), "a window opened afterwards reads the new price and buys").toEqual([[1, 20]]);
 });
 
 it("a Buy question answered after the merchant closed, or at another merchant, buys nothing and says so", () => {

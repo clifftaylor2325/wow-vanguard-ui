@@ -188,6 +188,15 @@ QD.PAGES = {
   complete = function() return QD.CompletePage() end,
 }
 
+-- Accepts the offered quest. One that flags you for PvP asks first, in the game's own words, as its own
+-- Accept does (asked here, never with the game's popup, which would taint); No declines it, as the game's does.
+local function acceptOffer()
+  -- Takes the quest.
+  local function accept() ns.CallIf(_G, "AcceptQuest") end
+  if not QP.FlagsPVP() or type(CONFIRM_ACCEPT_PVP_QUEST) ~= "string" then return accept() end
+  ns.Ask(CONFIRM_ACCEPT_PVP_QUEST, L["Accept"], accept, function() ns.CallIf(_G, "DeclineQuest") end)
+end
+
 -- A quest's details: accept it (or acknowledge one the game already accepted), or decline.
 function QD.DetailPage()
   local auto = ns.CallIf(_G, "QuestGetAutoAccept") == true
@@ -196,7 +205,7 @@ function QD.DetailPage()
     needs = QP.Needs(0, ns.CallIf(_G, "GetSuggestedGroupSize")),
     done = ns.GetModule("QuestHistory").Line(ns.PlainNumber(ns.CallIf(_G, "GetQuestID"))),
     choices = QD.Items("choice", ns.CallIf(_G, "GetNumQuestChoices")), rewards = QD.Items("reward", ns.CallIf(_G, "GetNumQuestRewards")), money = QD.MoneyLine(),
-    extras = QD.PageExtras(), primary = auto and { L["OK"], function() ns.CallIf(_G, "AcknowledgeAutoAcceptQuest") end } or { L["Accept"], function() ns.CallIf(_G, "AcceptQuest") end },
+    extras = QD.PageExtras(), primary = auto and { L["OK"], function() ns.CallIf(_G, "AcknowledgeAutoAcceptQuest") end } or { L["Accept"], acceptOffer },
     secondary = not auto and { L["Decline"], function() ns.CallIf(_G, "DeclineQuest") end } or nil,
   }
 end

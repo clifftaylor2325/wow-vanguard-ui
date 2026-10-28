@@ -1027,15 +1027,17 @@ it("quest log: the chosen quest's top-selling choice wears the crown too", () =>
   addon.update(0);
   expect(crowns(addon, "Vanguard_QuestLog"), "it arrives: item:90022 (300) over item:90021 (50)").toEqual([false, true, false]);
 });
-it("quest log: an objective's count is found at either end, a text without one has none, and a done one is muted with a check", () => {
+it("quest log: an objective's count is found at either end or inside it (French kills), a text without one has none, and a done one is muted with a check", () => {
   const addon = loggedIn(TRACK_ENV + QLOG_ENV);
   addon.eval(`__quests[90051].objectives = { { text = "TEST-ONLY Wolf slain: 3/8", finished = false }, { text = "TEST-ONLY Explore the vale", finished = false },
-    { text = "2/2", finished = false }, { text = "TEST-ONLY Pelt: 1/1", finished = true } }`);
+    { text = "2/2", finished = false }, { text = "TEST-ONLY Pelt: 1/1", finished = true },
+    { text = "TEST-ONLY Sanglier : 3/8 |4TEST-ONLY tué:TEST-ONLY tués;", finished = false } }`);
   addon.eval("Vanguard_QuestLogToggle.__scripts.OnClick(Vanguard_QuestLogToggle)");
   expect(questLog(addon).rows, "label and count apart, no count and no bar for plain text, a lone count is its own label, done: check, no bar").toEqual([
     ["TEST-ONLY Wolf slain", "3/8", false, true, 3, 8], ["TEST-ONLY Explore the vale", "", false, false, 0, 1],
-    ["2/2", "2/2", false, true, 2, 2], ["TEST-ONLY Pelt", "1/1", true, false, 1, 1]]);
-  expect(addon.eval("local f = Vanguard_QuestLog return { f.objectiveBox:GetHeight(), select(5, f.objectiveRows[2]:GetPoint(1)) }"), "rows are 28 px apart in a box as tall as they are").toEqual([112, -28]);
+    ["2/2", "2/2", false, true, 2, 2], ["TEST-ONLY Pelt", "1/1", true, false, 1, 1],
+    ["TEST-ONLY Sanglier TEST-ONLY tués", "3/8", false, true, 3, 8]]);
+  expect(addon.eval("local f = Vanguard_QuestLog return { f.objectiveBox:GetHeight(), select(5, f.objectiveRows[2]:GetPoint(1)) }"), "rows are 28 px apart in a box as tall as they are").toEqual([140, -28]);
 });
 it("quest log: a long list and long quest text scroll, a short one does not", () => {
   const addon = loggedIn(TRACK_ENV + QLOG_ENV);
@@ -1615,6 +1617,55 @@ it("quest automation: a quest a player shares follows its own switch, and Shift 
   on.eval("__sharer = { __secret = true } UnitIsPlayer = function() return __sharer end");
   on.fire("QUEST_DETAIL");
   expect(calls(on), "a hidden answer counts as an NPC").toEqual([]);
+});
+// TEST-ONLY quest that flags you for PvP, with the game's own warning text.
+const PVP_ENV = `
+  __pvp = true
+  QuestFlagsPVP = function() return __pvp end
+  CONFIRM_ACCEPT_PVP_QUEST = "TEST-ONLY This quest will flag you for PvP. Accept it?"
+`;
+it("quest automation: a quest that flags you for PvP is left to you, with the dialog shown", () => {
+  const addon = loggedIn(QUEST_ENV + PVP_ENV, { savedVariables: "VanguardDB.profiles = { Default = { QuestAuto = { accept = true, acceptShared = true } } }" });
+  addon.fire("QUEST_DETAIL");
+  expect([dialog(addon).shown, calls(addon)], "nothing accepted, the page open").toEqual([true, []]);
+  addon.eval("__pvp = false");
+  addon.fire("QUEST_DETAIL");
+  expect(calls(addon), "the same quest without the flag is accepted").toEqual(["accept nil"]);
+  addon.eval("__pvp = { __secret = true }");
+  addon.fire("QUEST_DETAIL");
+  expect(calls(addon), "a hidden answer counts as no flag").toEqual(["accept nil"]);
+});
+// The quest dialog on a PvP-flagging quest with Accept pressed.
+const pvpAsked = () => {
+  const addon = loggedIn(QUEST_ENV + PVP_ENV);
+  addon.fire("QUEST_DETAIL");
+  key(addon, "SPACE");
+  return addon;
+};
+it("quest dialog: Accept on a quest that flags you for PvP asks first, in the game's words, and accepts nothing yet", () => {
+  const addon = pvpAsked();
+  expect([addon.eval("return Vanguard_Question.title:GetText()"), calls(addon)]).toEqual(["TEST-ONLY This quest will flag you for PvP. Accept it?", []]);
+});
+it("quest dialog: Yes on the PvP question accepts the quest", () => {
+  const addon = pvpAsked();
+  addon.click("Vanguard_Question.confirm");
+  expect(calls(addon)).toEqual(["accept nil"]);
+});
+it("quest dialog: No on the PvP question declines the quest, as the game's does", () => {
+  const addon = pvpAsked();
+  addon.click("Vanguard_Question.no");
+  expect(calls(addon)).toEqual(["decline nil"]);
+});
+it("quest dialog: Accept goes straight through without the flag, or without the game's warning text", () => {
+  const plain = loggedIn(QUEST_ENV + PVP_ENV);
+  plain.eval("__pvp = false");
+  plain.fire("QUEST_DETAIL");
+  key(plain, "SPACE");
+  expect([plain.eval("return Vanguard_Question"), calls(plain)], "no flag: accepted").toEqual([null, ["accept nil"]]);
+  const bare = loggedIn(QUEST_ENV + PVP_ENV + "CONFIRM_ACCEPT_PVP_QUEST = nil");
+  bare.fire("QUEST_DETAIL");
+  key(bare, "SPACE");
+  expect(calls(bare), "no warning text to ask with: accepted").toEqual(["accept nil"]);
 });
 it("quest log: each line shows its quest's XP at the right, with thousands set apart, and the switch turns it off", () => {
   const addon = loggedIn(TRACK_ENV + QLOG_ENV);

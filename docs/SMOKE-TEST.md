@@ -2903,6 +2903,24 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: the pips light for the new target at once, without waiting for an energy tick. Exit lands you at the next flight point; the flight bar of the route flown to its end counts down its full time, not the shortened one from the early landing. The crown and the automatic hand-in both go to the stack.
 - If it fails, paste: what you clicked, the route, the bar's time, the two prices from the tooltips, and `/vg errors`.
 
+### 33.123 Selling a random-suffix item, Keep stocked, the quantity window and undercuts
+
+- Do: carry two random-suffix items of one kind ("of the Bear" and "of the Owl"), open a merchant and type `/vg sell ` then shift-click the Bear one; answer Sell. At a merchant with a limited-stock stackable item, open its quantity window (shift-click), let the item sell out or buy the last ones elsewhere, then click Stack. Put a random-suffix item up at the auction house when the same item with another suffix is up cheaper, then click Check undercuts. On a vendor item, hover it in your bags.
+- Expect: only the Bear item is sold (the question names one); Stack buys nothing and chat says "Nothing bought: the merchant closed or changed what it sells."; your auction is not marked undercut by the other suffix (it is when the same suffix is up cheaper); the item's tooltip shows one sell price line, not the game's and Vanguard's "Sells for" both.
+- If it fails, paste: which part, the item links, what was sold, bought or marked, and `/vg errors`.
+
+### 33.124 Click casting ranks and Clear all, a resurrection while dead, a PvP quest, French objectives
+
+- Do: as a healer, drag a lower rank of a heal (Heal Rank 2) from the spellbook onto a Click casting cell, then click a party member with it; click Clear all on the Click casting page and answer No, then again and answer Clear. With "accept resurrections" on, die, release, and have someone resurrect you while the game's popup still counts down. Take a quest that warns about PvP if one exists, from Vanguard's quest window. On a French client, look at a kill objective in the tracker and the quest log.
+- Expect: the cast is Rank 2 (the combat log or the mana cost shows it); No keeps the bindings and Clear empties them; the resurrection is not taken until the countdown ends (the game's popup stays up until then); the quest shows the game's own PvP warning and waits for your answer before it is taken; the French objective shows its count at the right with a progress bar.
+- If it fails, paste: the spell and rank cast, `/dump GetCursorInfo()` while dragging the rank, what the popup and chat said, the objective's text, and `/vg errors`.
+
+### 33.125 Two rolls in a row, the group board under the mouse, AH + after a reload, a crafting count
+
+- Do: in a group, have three players /roll for one item, then within 30 seconds /roll again for a second item. With the group board open on a busy channel, rest the mouse on a row for a minute, then click it. With "Your auction sales this session" on and a sale today, /reload. Type 1e999 in the Crafts box beside Add reagents and click it. Make a mail preset with the words "iron bar" and send it with Iron Bar and Iron Ore in your bags.
+- Expect: the roll panel starts a new list for the second item, its top roll lit; the board's rows don't move while the mouse is on them, the click whispers the player its tooltip names, and new posts appear once the mouse leaves; "AH +" still shows the sale after the reload; chat says "Keep stocked for 999 x ..." and the Keep stocked counts are 999 crafts' worth; the preset attaches the Iron Bar, not the Iron Ore.
+- If it fails, paste: the roll lines and the panel, who the whisper went to, the strip before and after the reload, the chat lines, what the preset attached, and `/vg errors`.
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ## When you are done

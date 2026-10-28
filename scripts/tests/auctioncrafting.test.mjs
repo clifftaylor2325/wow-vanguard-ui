@@ -114,6 +114,9 @@ it("Add reagents keeps the reagents for the crafts typed in stock and makes the 
   addon.type("Vanguard_CraftingPanel.crafts", "lots");
   addon.click("Vanguard_CraftingPanel.add");
   expect(chatHas(addon, /Keep stocked for 1 x TEST-ONLY Linen Bag/), "anything but a number: one craft").toBe(true);
+  addon.type("Vanguard_CraftingPanel.crafts", "1e999");
+  addon.click("Vanguard_CraftingPanel.add");
+  expect(addon.eval("return VanguardCharDB.stockList[2320]"), "infinity: the 999-craft cap").toBe(999);
   const noErrands = crafter("", { savedVariables: "VanguardDB.profiles = { Default = { modules = { Errands = false } } }" });
   noErrands.world.openProfession(100);
   noErrands.click("Vanguard_CraftingPanel.add");

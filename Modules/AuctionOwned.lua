@@ -141,10 +141,11 @@ end
 
 -- An item's price check answered: each of your auctions of it is undercut when someone else
 -- asks less per unit (a commodity's buyout is per unit, an item's per auction).
-function AH.MarkUndercuts(id, cheapest, commodity)
+function AH.MarkUndercuts(id, commodity, key)
   if AH.pending then AH.pending.answered = true end
   for _, a in ipairs(AH.owned) do
     if a.key.itemID == id and up(a) then
+      local cheapest = AH.Cheapest(commodity, key, a.key.itemSuffix)
       a.unit = commodity and a.buyout or math.floor(a.buyout / a.qty)
       a.undercut = cheapest ~= nil and cheapest < a.unit
     end

@@ -37,6 +37,8 @@ CR.WIDTH, CR.PAD, CR.ROW, CR.LINE, CR.GAP, CR.TOP = 280, T.SPACE.gap, AH.ROW_H, 
 CR.ROWS = 8
 -- Enum.CraftingReagentType.Basic (ProfessionConstantsDocumentation.lua), for a client without the Enum.
 CR.BASIC = 1
+-- Crafts one Add reagents or /vg craft add takes at most (a typo or "1e999" stays a sane count).
+CR.MAX_CRAFTS = 999
 -- The total lines, by key and label.
 CR.LINES = { { "cost", L["Reagents"] }, { "worth", L["Sells for"] }, { "profit", L["Profit"] } }
 
@@ -140,9 +142,10 @@ end
 
 -- Add reagents -------------------------------------------------------------------------------
 
--- How many crafts the box asks for: a whole number from 1 (1 for anything else).
-local function crafts(box)
-  return math.max(1, math.floor(tonumber(box:GetText() or "") or 1))
+-- How many crafts a typed count asks for: a whole number from 1 to CR.MAX_CRAFTS (1 for anything else;
+-- max before min, so nan is 1).
+function CR.Crafts(text)
+  return math.min(CR.MAX_CRAFTS, math.max(1, math.floor(tonumber(text or "") or 1)))
 end
 
 -- Raises each reagent's Keep-stocked count to what n crafts need (a larger count stays); the
@@ -161,7 +164,7 @@ end
 function CR.AddReagents()
   local data, ER = CR.data, ns.GetModule("Errands")
   if not ER.settings then return ns.Chat(L["Keep stocked is part of Errands, which is off (/vg > Modules)."]) end
-  local n = crafts(CR.frame.crafts)
+  local n = CR.Crafts(CR.frame.crafts:GetText())
   ns.Chat(ns.Format(L["Keep stocked for {count} x {recipe}: {reagents}."], { count = n, recipe = data.name or L["this recipe"], reagents = keepStocked(ER.StockList(), data, n) }))
   ER.StockWindow.Refresh()
   AH.Restock()

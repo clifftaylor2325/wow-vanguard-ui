@@ -74,13 +74,21 @@ local function bindingIcon(parent, size)
   return f
 end
 
+-- The rank a dropped spell id is, when it is a lower rank than the highest one known (nil for the top rank or an unranked spell).
+local function droppedRank(name, id)
+  local spell = CS.Spell(name)
+  for _, r in ipairs(spell and spell.ranks or {}) do
+    if r.spellID == id and r.rank < spell.maxRank then return r.rank end
+  end
+end
+
 -- Binds the spell on the cursor (dragged from the spellbook or a bar) to a key; true when it did.
 local function dropSpell(key)
   local kind, _, _, id = GetCursorInfo()
   if kind ~= "spell" then return false end
   local name = ns.SpellName(id)
   if not name then return false end
-  CC.Add(key, "spell", name, id)
+  CC.Add(key, "spell", name, id, droppedRank(name, id))
   ClearCursor()
   return true
 end
@@ -749,6 +757,14 @@ local function toggleMore()
   O.RebuildPage(PAGE)
 end
 
+-- Clear all asks first: it empties this spec's bindings for good.
+local function askClear()
+  ns.Ask(L["Clear every click-casting binding for this spec? This can't be undone."], L["Clear"], function()
+    CC.Clear()
+    changed()
+  end, nil, "danger")
+end
+
 -- The layout row kind: the class layout button (when the class has one), Clear all, and the modifier columns switch.
 local function layoutBuilder(parent, _, width)
   local r = CreateFrame("Frame", nil, parent)
@@ -756,7 +772,7 @@ local function layoutBuilder(parent, _, width)
   r.layout = W.Button(r, ns.Format(L["{class} healing layout"], { class = CS.ClassName() }), applyLayout, 200)
   r.layout:SetPoint("LEFT", T.SPACE.gap, 0)
   r.layout:SetShown(CS.HasLayout())
-  r.clear = W.Button(r, L["Clear all"], function() CC.Clear() changed() end)
+  r.clear = W.Button(r, L["Clear all"], askClear)
   r.clear:SetPoint("LEFT", r.layout, "RIGHT", T.SPACE.gap, 0)
   r.more = W.Button(r, state.more and L["Fewer modifiers"] or L["More modifiers"], toggleMore, 140)
   r.more:SetPoint("RIGHT", -T.SPACE.gap, 0)

@@ -116,6 +116,19 @@ it("on a German client the groups and the starter layout find the spells by id, 
   expect(bindings(addon).BUTTON2, "applied, it binds the spell's German name and its id").toBe("spell:Blitzheilung:2061:nil");
 });
 
+it("a name-bound spell made in another client language casts by the name this client gives its id", () => {
+  const addon = priest("__wfgWorld.spec = 1", {
+    // TEST-ONLY saved bindings made on an English client: Renew by its English name and id.
+    savedVariables: WITH_FRAMES + ' VanguardCharDB = { clickcast = { [1] = { { key = "shift-BUTTON2", action = "spell", value = "Renew", spellID = 139 } } } }',
+  });
+  // The shift-right-click spell attribute on the first click-cast frame.
+  const attr = () => addon.eval(`return ${CC}.frames[1]:GetAttribute("shift-spell2")`);
+  expect(attr(), "a name the client knows stays as saved").toBe("Renew");
+  addon.eval(`__wfgWorld.spells[139].name = "Erneuerung" ${CC}.ApplyAll()`);
+  expect(attr(), "the German client gets its own name for the id").toBe("Erneuerung");
+  expect(bindings(addon)["shift-BUTTON2"], "the saved name is left as it was").toBe("spell:Renew:139:nil");
+});
+
 it("a layout spell the client can't name is left out, not bound under an English name", () => {
   const addon = priest();
   addon.eval("__wfgWorld.spells[2061] = nil");
@@ -253,6 +266,13 @@ it("the grid picks spells from the spellbook, with ranks, drops and clears", () 
   addon.click(cell(addon, "alt-BUTTON1"));
   expect(bindings(addon)["alt-BUTTON1"], "a spell dropped on a cell binds it").toBe("spell:Renew:139:nil");
   expect(addon.eval("return __wfgWorld.cursor")).toBe(null);
+  addon.eval('__wfgWorld.cursor = { type = "spell", id = 2061 }');
+  addon.click(cell(addon, "ctrl-BUTTON1"));
+  expect(bindings(addon)["ctrl-BUTTON1"], "a lower rank dropped on a cell binds that rank").toBe("spell:Flash Heal:2061:1");
+  expect(addon.eval(`return ${CC}.Binding("ctrl-BUTTON1").rank and 1`), "and casts by its id").toBe(1);
+  addon.eval('__wfgWorld.cursor = { type = "spell", id = 9472 }');
+  addon.click(cell(addon, "ctrl-BUTTON1"));
+  expect(bindings(addon)["ctrl-BUTTON1"], "the top rank still binds by name").toBe("spell:Flash Heal:9472:nil");
   addon.eval('__wfgWorld.cursor = { type = "item", id = 1 }');
   addon.eval(`local c = __wfgStub.frames[${cell(addon, "alt-BUTTON2")}] c:GetScript("OnReceiveDrag")(c)`);
   expect(bindings(addon)["alt-BUTTON2"], "an item on the cursor isn't a spell").toBe(undefined);
@@ -356,7 +376,16 @@ it("the starter layout, hover keys with collision notes, and the test tile", () 
   addon.key(tile, "F2");
   expect(addon.eval(`return __wfgStub.frames[${tile}].result:GetText()`)).toBe("F2 -> Target on you");
   addon.hover(null);
-  expect(addon.eval('return __click("Clear all")') && addon.eval(`return #${CC}.Bindings()`)).toBe(0);
+  // How many bindings this spec has.
+  const count = () => addon.eval(`return #${CC}.Bindings()`);
+  addon.eval('return __click("Clear all")');
+  expect(addon.eval("return Vanguard_Question:IsShown()"), "Clear all asks first").toBe(true);
+  expect(count(), "and clears nothing yet").toBeGreaterThan(0);
+  addon.click("Vanguard_Question.no");
+  expect(count(), "No keeps the bindings").toBeGreaterThan(0);
+  addon.eval('return __click("Clear all")');
+  addon.click("Vanguard_Question.confirm");
+  expect(count(), "Clear empties them").toBe(0);
 });
 
 it("the minus key can be a hover key: its name reads, with or without a modifier", () => {

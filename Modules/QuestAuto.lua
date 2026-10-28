@@ -1,6 +1,6 @@
 -- Quest automation, each switch off until you turn it on (hold Shift while
 -- talking to an NPC to skip all of it that time):
---   * accept quests you're offered;
+--   * accept quests you're offered (not one that flags you for PvP: the game asks you about that);
 --   * accept quests a party member shares with you (its own switch: the offer comes from a player, not an NPC);
 --   * turn in finished quests: Continue, then Complete when there's no reward
 --     to choose (it never chooses for you, unless the next switch is on, and
@@ -88,10 +88,16 @@ function QA.TurnsIn()
   return QA.settings.turnIn and ns.QuestParts.Cost() <= 0
 end
 
+-- Whether automation accepts the quest on offer: its switch is on (a quest shared by a player follows its
+-- own) and it does not flag you for PvP, which the game asks you about.
+function QA.OffersAccept()
+  return QA.settings[fromPlayer() and "acceptShared" or "accept"] and not ns.QuestParts.FlagsPVP()
+end
+
 -- What each event's automation would do, or nil when it leaves the page to you.
 QA.ACTIONS = {
-  -- A quest offered: accept it (a quest shared by a player follows its own switch).
-  QUEST_DETAIL = function() return QA.settings[fromPlayer() and "acceptShared" or "accept"] and QA.Accept or nil end,
+  -- A quest offered: accept it (a quest shared by a player follows its own switch), unless it flags you for PvP.
+  QUEST_DETAIL = function() return QA.OffersAccept() and QA.Accept or nil end,
   -- A finished quest's hand-in: continue (a quest that costs money is left to you).
   QUEST_PROGRESS = function() return QA.TurnsIn() and ns.CallIf(_G, "IsQuestCompletable") == true and QA.Continue or nil end,
   -- The reward page: finish, when the reward is settled (a quest that costs money is left to you).

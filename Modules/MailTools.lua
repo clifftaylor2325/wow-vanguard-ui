@@ -274,12 +274,24 @@ function MT.AddPreset(name, to, words)
   ns.Chat(ns.Format(said, { name = name, to = to, words = words }))
 end
 
--- Whether an item's name holds one of the preset's words (any word when there are none).
-local function wanted(name, words)
+-- Whether a (lowered) item name holds every word of one alternative ("iron bar": both words); false for
+-- an alternative with no words.
+local function holdsAll(name, alternative)
   local any = false
-  for word in ns.Lower(words):gmatch("[^,%s]+") do
+  for word in alternative:gmatch("%S+") do
     any = true
-    if ns.Lower(name):find(word, 1, true) then return true end
+    if not name:find(word, 1, true) then return false end
+  end
+  return any
+end
+
+-- Whether an item's name fits a preset's words: commas separate alternatives, each needing all its words
+-- ("iron bar" is Iron Bar but not Iron Ore; "ore, bar" either); every item when there are none.
+local function wanted(name, words)
+  local lowered, any = ns.Lower(name), false
+  for alternative in ns.Lower(words):gmatch("[^,]+") do
+    any = any or alternative:find("%S") ~= nil
+    if holdsAll(lowered, alternative) then return true end
   end
   return not any
 end

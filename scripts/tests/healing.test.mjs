@@ -116,6 +116,10 @@ it("healing fallbacks and options", () => {
   expect(addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.icon and w.label and w.label:GetText() == "Arcane Intellect" then return w.icon:GetTexture() end end`), "each class buff gets a row with its icon").toBe("TEST-ONLY-ICON-Arcane Intellect");
   expect(addon.eval('return __click("TEST-ONLY Aura")') && addon.eval("return VanguardDB.profiles.Default.RaidHealing.buffs"), "a buff's switch takes it off the list").toBe("Arcane Brilliance");
   expect(addon.eval('return __click("Aggro strip")') && addon.eval("return VanguardDB.profiles.Default.RaidHealing.aggro") === false, "the page's switches work").toBeTruthy();
+  addon.eval("ns.Settings('RaidHealing').buffs = '  , Arcane Brilliance,' ns.GetModule('RaidHealing').Forget()");
+  expect(addon.eval("return ns.GetModule('RaidHealing').BuffNames()"), "blank pieces (spaces, a trailing comma) are no buff names").toEqual(["Arcane Brilliance"]);
+  addon.eval("ns.Settings('RaidHealing').buffs = '   ' ns.GetModule('RaidHealing').Forget()");
+  expect(addon.eval("return #ns.GetModule('RaidHealing').BuffNames() > 0"), "only blanks: the class's own buffs, not none").toBe(true);
 });
 
 it("every healing buff has a static icon, so none shows a question mark", () => {

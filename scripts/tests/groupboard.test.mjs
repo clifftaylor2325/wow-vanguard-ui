@@ -214,6 +214,33 @@ it("group board: the filter, the level switch, the note, more posts than rows, a
   expect(addon.eval("return #ns.GetModule('GroupBoard').entries"), "at most GB.MAX posts").toBe(2);
 });
 
+// The senders on the board's rows, top to bottom, comma separated.
+const senders = (addon) => rows(addon).map((r) => r[3]).join(", ");
+it("group board: it holds still while the mouse is on a row, so a click opens the post that was read, and catches up soon after the mouse leaves", () => {
+  const addon = board();
+  post(addon, "LFM SFK need heals", "Healseeker");
+  post(addon, "LFM WC need dps", "Wcleader");
+  addon.slash("lfg");
+  expect(senders(addon), "the newest post first").toBe("Wcleader, Healseeker");
+  addon.hover('Vanguard_GroupBoard.rows[1]');
+  post(addon, "LFM BFD need tank", "Bfdtank");
+  addon.advance(1);
+  expect(senders(addon), "a new post waits while the mouse is on a row").toBe("Wcleader, Healseeker");
+  addon.eval('local b = Vanguard_GroupBoard.rows[1] b.__scripts.OnClick(b, "LeftButton")');
+  expect(addon.eval("return __tells[1]"), "the click opens the post under the mouse, the one that was read").toMatch(/^Wcleader \|/);
+  addon.hover(null);
+  addon.advance(0.6);
+  expect(senders(addon), "within half a second of leaving, the board catches up").toBe("Bfdtank, Wcleader, Healseeker");
+  expect(addon.eval("return #ns.errors"), "no errors").toBe(0);
+});
+it("group board: with the mouse off the rows a new post shows on the next frame, as before", () => {
+  const addon = board();
+  post(addon, "LFM SFK need heals", "Healseeker");
+  addon.slash("lfg");
+  post(addon, "LFM WC need dps", "Wcleader");
+  addon.update(0);
+  expect(senders(addon)).toBe("Wcleader, Healseeker");
+});
 it("group board: the tooltip, closing, the module off, and its options card", () => {
   const addon = board();
   post(addon, "LFM SFK need heals", "Lightmend-Ruleset");
