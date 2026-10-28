@@ -79,6 +79,12 @@ function AP.House()
   return houses[key]
 end
 
+-- Whether a saved price row is usable: a table with a plain time. A damaged file (a number, a row
+-- without a time) must not stop the helper at every login.
+local function sound(p)
+  return type(p) == "table" and tonumber(p.t) ~= nil
+end
+
 -- Once: the prices kept for the whole account before they were kept per realm and faction
 -- (VanguardDB.ah.prices and lastScan) move into this realm and faction's house; an item the
 -- house already has keeps whichever was seen last. AP.Prune recounts.
@@ -88,7 +94,7 @@ function AP.Migrate()
   local house = AP.House()
   for id, p in pairs(store.prices) do
     local mine = house.prices[id]
-    if type(p) == "table" and (not mine or mine.t < p.t) then house.prices[id] = p end
+    if type(p) == "table" and (not sound(mine) or (tonumber(mine.t) or 0) < (tonumber(p.t) or 0)) then house.prices[id] = p end
   end
   house.lastScan = math.max(house.lastScan, tonumber(store.lastScan) or 0)
   store.prices, store.count, store.lastScan = nil, nil, nil
@@ -239,12 +245,18 @@ local function trimDays(p, today)
   end
 end
 
--- Drops a house's prices last seen more than AP.MAX_AGE days before now, and old day lows;
+-- Makes a kept price row whole (its day tables are tables) and drops its old day lows.
+local function keepRow(p, today)
+  ns.Fill(p, { days = {}, qtys = {}, markets = {} })
+  trimDays(p, today)
+end
+
+-- Drops a house's damaged prices, those last seen more than AP.MAX_AGE days before now, and old day lows;
 -- recounts, and returns how many are left.
 local function pruneHouse(house, now)
   local today, n = AP.Day(now), 0
   for id, p in pairs(house.prices) do
-    if p.t < now - AP.MAX_AGE * AP.DAY then house.prices[id] = nil else n = n + 1 trimDays(p, today) end
+    if not sound(p) or tonumber(p.t) < now - AP.MAX_AGE * AP.DAY then house.prices[id] = nil else n = n + 1 keepRow(p, today) end
   end
   house.count = n
   return n
