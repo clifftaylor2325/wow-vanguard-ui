@@ -531,3 +531,14 @@ it("the options window's header lets go of the cursor when the window closes in 
   addon.eval("local o = Vanguard_Options o.header:GetScript('OnDragStart')(o.header) o:Hide()");
   expect(addon.eval("return { Vanguard_Options:IsShown(), Vanguard_Options.__moving, #ns.errors }"), "the closed window is no longer moving").toEqual([false, false, 0]);
 });
+
+it("Reset all positions also forgets the saved spot of a frame whose module is switched off, but a single reset does not", () => {
+  const addon = loggedIn(BOX);
+  addon.eval('local p = ns.Settings("positions") p.TESTONLY_off = { point = "TOP", relPoint = "TOP", x = 5, y = -5 } p.box = { point = "TOP", relPoint = "TOP", x = 1, y = 1 }');
+  const spots = () => addon.eval('local p = ns.Settings("positions") return { p.TESTONLY_off ~= nil, p.box ~= nil }');
+  addon.eval('ns.ResetMovers("box")');
+  expect(spots(), "resetting one frame leaves the others' spots").toEqual([true, false]);
+  addon.eval('ns.Settings("positions").box = { point = "TOP", relPoint = "TOP", x = 1, y = 1 }');
+  expect(addon.eval('return ns.ResetMovers("all") == #ns.MoverList()'), "the count stays the frames registered this session").toBe(true);
+  expect(spots(), "reset all forgets the switched-off module's spot too").toEqual([false, false]);
+});
