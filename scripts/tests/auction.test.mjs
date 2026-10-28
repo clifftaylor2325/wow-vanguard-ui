@@ -300,6 +300,16 @@ it("a damaged saved price row is dropped at login and the helper stays on, whate
   const old = loggedIn(AH_ENV, { savedVariables: `VanguardDB.ah = { prices = { [100] = { min = 5 }, [101] = { min = 6, t = ${t}, days = {} } }, lastScan = 5 }` });
   expect(old.eval("local p = ns.AuctionPrices.House().prices return { p[100] == nil, p[101].min, #ns.errors }"), "an old account-wide row with no time migrates without an error and is pruned").toEqual([true, 6, 0]);
 });
+it("a price noted under a clock set ahead stops counting once the clock is right, and a login clamps the time and drops the future days", () => {
+  const addon = atAuctionHouse();
+  addon.eval("local AP = ns.AuctionPrices AP.Record(2589, 9, __now + 3 * 86400) AP.Record(2589, 40, __now)");
+  expect(addon.eval("return ns.AuctionPrices.Low7(2589, __now)"), "the low of the last 7 days ignores the day still to come").toBe(40);
+  const t = 1790000000;
+  const day = addon.eval("return ns.AuctionPrices.Day(__now)") + 3;
+  const saved = `VanguardDB.ah = { houses = { ["ForeverTest-Alliance"] = { count = 1, lastScan = ${t}, prices = { [100] = { min = 5, t = ${t + 3 * 86400}, days = { [${day}] = 5, [${day - 3}] = 6 } } } } } }`;
+  const login = loggedIn(AH_ENV, { savedVariables: saved });
+  expect(login.eval("local p = ns.AuctionPrices.House().prices[100] local out = { p.t == __now, p.days[" + day + "] == nil } for _ in pairs(p.days) do out[#out + 1] = true end return out"), "the time is clamped to now, the future day is gone and today's stays").toEqual([true, true, true]);
+});
 it("a hidden number skips its listing without an error", () => {
   const addon = atAuctionHouse();
   scan(addon, "{ { itemID = 2589, count = __wfgWorld.secret(1), buyoutPrice = 90 }, { itemID = 2589, count = 2, buyoutPrice = 300 } }");

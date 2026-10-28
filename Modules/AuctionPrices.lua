@@ -40,9 +40,10 @@ function AP.Day(t)
   return math.floor(t / AP.DAY)
 end
 
--- Whether a day falls in the AP.DAYS days up to and including today.
+-- Whether a day falls in the AP.DAYS days up to and including today (a day still to come, from a
+-- clock that was set ahead, is not).
 function AP.WithinDays(day, today)
-  return day > today - AP.DAYS
+  return day > today - AP.DAYS and day <= today
 end
 
 -- The day a time falls on by the computer's own clock (whole days since 1970 in its time zone), so
@@ -245,9 +246,11 @@ local function trimDays(p, today)
   end
 end
 
--- Makes a kept price row whole (its day tables are tables) and drops its old day lows.
-local function keepRow(p, today)
+-- Makes a kept price row whole (its day tables are tables, its time not in the future) and drops its
+-- day lows older than AP.DAYS or still to come.
+local function keepRow(p, now, today)
   ns.Fill(p, { days = {}, qtys = {}, markets = {} })
+  p.t = math.min(tonumber(p.t), now)
   trimDays(p, today)
 end
 
@@ -256,7 +259,7 @@ end
 local function pruneHouse(house, now)
   local today, n = AP.Day(now), 0
   for id, p in pairs(house.prices) do
-    if not sound(p) or tonumber(p.t) < now - AP.MAX_AGE * AP.DAY then house.prices[id] = nil else n = n + 1 keepRow(p, today) end
+    if not sound(p) or tonumber(p.t) < now - AP.MAX_AGE * AP.DAY then house.prices[id] = nil else n = n + 1 keepRow(p, now, today) end
   end
   house.count = n
   return n
