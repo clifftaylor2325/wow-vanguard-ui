@@ -3024,6 +3024,30 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: each icon's key text changes with its spell straight away, with no reload or bar change needed.
 - If it fails, paste: the two spells, their keys before and after, and `/vg errors`.
 
+### 33.143 Escape on a dialog closes only that dialog
+
+- Do: on a new character, open setup, pick a layout and press Escape; then open `/vg`, click Reset this page (or delete a profile) and press Escape at the question; then answer an export question after setup with Escape.
+- Expect: each Escape closes only the dialog in front: the options window stays open behind the question, and the reload offer (or What's New) that follows setup or a No stays on screen instead of flashing away.
+- If it fails, paste: which dialog, what was left open or closed, and `/vg errors`.
+
+### 33.144 Late auction prices still fill in, without a stall
+
+- Do: right after logging in, open the auction house and browse a big trade goods category you haven't looked at this session; watch the frame rate while the names fill in, then hover a listed commodity in your bags.
+- Expect: no stutter while the names load, and the tooltip's "AH" price is there within a second of the names.
+- If it fails, paste: the category, how long the stutter lasted, and `/vg errors`.
+
+### 33.145 Chat tab switches work, and phrases in brackets ring
+
+- Do: under Chat → Chat tabs, tick and untick Show Officer (or another group) on a tab; then add the chat watch phrase `[Linen Cloth]` and have someone link Linen Cloth in a watched channel.
+- Expect: the tab shows and stops showing that group, and the switch reads what the tab does; the bracketed phrase rings and shows the toast.
+- If it fails, paste: the group, the tab, the phrase and the line, and `/vg errors`.
+
+### 33.146 XP lock, a blank faction and leaving a group (and Korean rolls)
+
+- Do: below the level cap, turn XP gain off and on at the XP-lock NPC if Forever has one; stop watching any faction; as a healer or tank in a group, leave it and hover gear in your bags; on a Korean client, `/roll` in a group.
+- Expect: the XP bar hides as XP is locked and comes back when unlocked; no blank reputation bar; after leaving, the upgrade lines use the damage weights (`/vg weights` says role damage); the roll shows in the roll tracker.
+- If it fails, paste: which part, what showed, and `/vg errors`.
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ## When you are done
