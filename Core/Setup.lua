@@ -851,8 +851,9 @@ end
 -- Setup ended (Done, Skip setup, the close button or Escape): lock the frames; after Done or Skip
 -- remember that setup ran, else (when it was owed) say it opens again; after a first run's Done
 -- suggest exporting a profile string; offer a reload when a module was turned on or the raid tiles changed size.
+-- A hide that comes down from UIParent (Alt-Z, a movie or a cinematic) leaves the wizard shown and is no end.
 local function finished()
-  if state.paused then return end
+  if state.paused or frame:IsShown() then return end
   if ns.Unlocked() then ns.Lock() end
   if state.complete then markDone() elseif state.owed then ns.Chat(LATER) end
   afterSetup(state.complete and state.owed and state.done, reloadReason())
