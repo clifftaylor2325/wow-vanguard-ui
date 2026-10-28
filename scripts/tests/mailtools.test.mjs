@@ -128,6 +128,21 @@ it("presets: add, list, replace and remove; Send types the name and attaches the
   expect(addon.eval("return #ns.errors"), "no errors").toBe(0);
 });
 
+it("a preset whose words no item holds together says how the words match, instead of attaching nothing in silence", () => {
+  const addon = mailer();
+  addon.world.openMailWindow();
+  addon.world.showSendMail();
+  addon.slash("mail preset add Mats Bobalt ore bar herb");
+  addon.slash("mail send mats");
+  expect(addon.eval("return __wfgWorld.usedItems"), "nothing holds all three words: nothing attached").toBe(null);
+  expect(chatHas(addon, /Mats: nothing you can mail has every word of ore bar herb in its name\. Commas separate alternatives, such as: ore, bar/), "chat says how the words match").toBe(true);
+  expect(chatHas(addon, /Mats: 0 items attached/), "and not that 0 items were attached").toBe(false);
+  addon.slash("mail preset add Alts Bobalt");
+  addon.eval("__wfgWorld.bags = { [0] = {} }");
+  addon.slash("mail send alts");
+  expect(chatHas(addon, /Alts: 0 items attached for Bobalt\. Press Send\./), "a preset with no words and nothing to send keeps the count line").toBe(true);
+});
+
 it("more matches than rows: the heading counts them, the wheel scrolls through them, and Take all takes every match", () => {
   const addon = mailer("__wfgWorld.mail = {} for i = 1, 12 do __wfgWorld.mail[i] = { sender = 'Alt' .. i, subject = 'Gold', money = 100 * i, itemCount = 0 } end");
   addon.world.openMailWindow();
@@ -180,7 +195,7 @@ it("presets attach only what can be mailed: a soulbound or locked item is passed
   addon.world.openMailWindow();
   addon.world.showSendMail();
   addon.slash("mail send smith");
-  expect([addon.eval("return __wfgWorld.usedItems"), chatHas(addon, /Smith: 0 items attached for Bobalt\./)], "every iron item is bound or locked").toEqual([null, true]);
+  expect([addon.eval("return __wfgWorld.usedItems"), chatHas(addon, /Smith: nothing you can mail has every word of iron in its name\./)], "every iron item is bound or locked").toEqual([null, true]);
   addon.eval("__wfgWorld.bags[0][2].locked = nil");
   addon.slash("mail send smith");
   expect([addon.eval("return __wfgWorld.usedItems"), chatHas(addon, /Smith: 1 items attached for Bobalt\./)], "the ore, once free").toEqual([[[0, 2]], true]);
