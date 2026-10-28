@@ -535,6 +535,7 @@ it("the options window's header lets go of the cursor when the window closes in 
 it("Reset all positions also forgets the saved spot of a frame whose module is switched off, but a single reset does not", () => {
   const addon = loggedIn(BOX);
   addon.eval('local p = ns.Settings("positions") p.TESTONLY_off = { point = "TOP", relPoint = "TOP", x = 5, y = -5 } p.box = { point = "TOP", relPoint = "TOP", x = 1, y = 1 }');
+  // Whether the switched-off module's spot and the box's spot are still saved.
   const spots = () => addon.eval('local p = ns.Settings("positions") return { p.TESTONLY_off ~= nil, p.box ~= nil }');
   addon.eval('ns.ResetMovers("box")');
   expect(spots(), "resetting one frame leaves the others' spots").toEqual([true, false]);
