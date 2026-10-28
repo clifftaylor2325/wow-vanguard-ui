@@ -120,6 +120,13 @@ it("the format works where a language reorders its placeholders", () => {
   expect(panel(addon)[2].map((l) => l.slice(0, 2)), "name and figures found by position").toEqual([["Rolls 1-100", ""], ["Thrall", "55"]]);
 });
 
+it("G2-1 a Korean roll line parses, with its grammar choice made or left as the format writes it", () => {
+  const addon = loggedIn('RANDOM_ROLL_RESULT = "%s 님이 주사위를 굴려 %d|1이;가; 나왔습니다. (%d-%d)"\n');
+  addon.fire("CHAT_MSG_SYSTEM", "Thrall 님이 주사위를 굴려 55가 나왔습니다. (1-100)");
+  addon.fire("CHAT_MSG_SYSTEM", "Jaina 님이 주사위를 굴려 42|1이;가; 나왔습니다. (1-100)");
+  expect(addon.eval("local out = {} for _, r in ipairs(ns.GetModule('Rolls').rolls) do out[#out + 1] = { r.name, r.roll } end return out"), "both rolls kept").toEqual([["Thrall", 55], ["Jaina", 42]]);
+});
+
 it("40 rolls are kept at most; /vg rolls lists them newest first and clear forgets them", () => {
   const addon = loggedIn(ROLL_ENV);
   expect(chatHas((addon.slash("rolls"), addon), /No rolls seen this session yet/), "nothing yet").toBe(true);

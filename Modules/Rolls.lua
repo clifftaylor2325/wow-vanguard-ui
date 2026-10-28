@@ -37,10 +37,11 @@ local function escape(text)
 end
 
 -- The Lua pattern for the game's format string and, by argument (name, roll, low, high), which capture holds it.
--- Placeholders are %s and %d, or %1$s style where the language reorders them.
+-- Placeholders are %s and %d, or %1$s style where the language reorders them. A grammar choice such as Korean's
+-- "|1이;가;" (the particle after the roll) matches whatever stands there, chosen or not.
 function R.Compile(format)
   local order, count = {}, 0
-  local body = escape(format):gsub("%%%%(%d?)%%?%$?([sd])", function(position, kind)
+  local body = escape(format):gsub("%%|%d.-%%;.-%%;", ".-"):gsub("%%%%(%d?)%%?%$?([sd])", function(position, kind)
     count = count + 1
     order[tonumber(position) or count] = count
     return kind == "s" and "(.-)" or "(%d+)"
