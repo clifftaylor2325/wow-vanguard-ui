@@ -41,6 +41,10 @@ function DB.Short(n)
   return thousands
 end
 
+-- The events that can change what the XP bar shows, or whether it shows (XP gain locked or unlocked, the cap moved).
+DB.XP_EVENTS = { "PLAYER_XP_UPDATE", "PLAYER_LEVEL_UP", "UPDATE_EXHAUSTION", "PLAYER_ENTERING_WORLD",
+  "ENABLE_XP_GAIN", "DISABLE_XP_GAIN", "PLAYER_MAX_LEVEL_UPDATE" }
+
 -- Values -------------------------------------------------------------------------------
 
 -- A plain number from a client call, or 0.
@@ -48,17 +52,16 @@ local function number(fn, ...)
   return type(fn) == "function" and ns.PlainNumber(fn(...)) or 0
 end
 
--- True at the level cap (so the XP bar has nothing to show).
-local function atMaxLevel()
-  if type(IsPlayerAtEffectiveMaxLevel) == "function" then
-    return IsPlayerAtEffectiveMaxLevel() == true
-  end
-  return type(IsXPUserDisabled) == "function" and IsXPUserDisabled() == true
+-- True when XP has nothing to show, as the game's own bar judges it: at the level cap, or with XP gain
+-- turned off at the XP-lock NPC.
+local function xpHidden()
+  local capped = type(IsPlayerAtEffectiveMaxLevel) == "function" and IsPlayerAtEffectiveMaxLevel() == true
+  return capped or (type(IsXPUserDisabled) == "function" and IsXPUserDisabled() == true)
 end
 
 -- { cur, max, rested, level } for the XP bar, or nil when it should hide.
 function DB.XP()
-  if atMaxLevel() then
+  if xpHidden() then
     return nil
   end
   local max = number(UnitXPMax, "player")
@@ -70,7 +73,7 @@ end
 
 -- The XP this level still needs, or nil at the level cap or when the client hides a value.
 function DB.XPToLevel()
-  if atMaxLevel() then return nil end
+  if xpHidden() then return nil end
   local cur, max = ns.PlainNumber(UnitXP("player")), ns.PlainNumber(UnitXPMax("player"))
   return cur and max and max > cur and max - cur or nil
 end
@@ -85,12 +88,19 @@ local function noNumbers(name, standing, fill)
   return { name = name, standing = standing, cur = fill, max = 1, noNumbers = true }
 end
 
+-- True when the client's watched-faction answer names one: the game's own bar takes an empty name or
+-- faction 0 for none watched.
+local function namesFaction(data)
+  if type(data) ~= "table" or ns.PlainNumber(data.factionID) == 0 then return false end
+  return ns.IsSecret(data.name) or (type(data.name) == "string" and data.name ~= "")
+end
+
 -- { name, standing, cur, max } for the watched faction, or nil when none. The standing is nil while the
 -- client hides it (the bar then takes Neutral's colour, and names no standing).
 function DB.Reputation()
   local get = C_Reputation and C_Reputation.GetWatchedFactionData
   local data = type(get) == "function" and get() or nil
-  if type(data) ~= "table" or not data.name then return nil end
+  if not namesFaction(data) then return nil end
   local standing = ns.PlainNumber(data.reaction)
   local low, high = ns.PlainNumber(data.currentReactionThreshold), ns.PlainNumber(data.nextReactionThreshold)
   local top = standing and standing >= DB.TOP_STANDING
@@ -379,7 +389,7 @@ local function enableXP(settings)
   DB.xpBar = createBar("xpbar", L["Experience"], DB.POINTS.xpbar, settings)
   DB.xpBar.vgOnState = DB.UpdateXP
   addRested(DB.xpBar)
-  for _, e in ipairs({ "PLAYER_XP_UPDATE", "PLAYER_LEVEL_UP", "UPDATE_EXHAUSTION", "PLAYER_ENTERING_WORLD" }) do ns.On(e, DB.UpdateXP) end
+  for _, e in ipairs(DB.XP_EVENTS) do ns.On(e, DB.UpdateXP) end
   ns.On("PLAYER_XP_UPDATE", DB.OnXPChange)
   ns.On("CHAT_MSG_COMBAT_XP_GAIN", DB.OnKillMessage)
   hoverTip(DB.xpBar, "show XP tooltip", DB.ShowXPTooltip)

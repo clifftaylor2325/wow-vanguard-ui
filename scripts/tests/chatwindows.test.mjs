@@ -105,6 +105,17 @@ it("chat tabs: Officer and Emotes switches show and hide those message groups on
   expect(addon.eval(`${chatRow("Show Officer")} return { r[3](), __groups.OFFICER == nil }`), "and taken off again").toEqual([false, true]);
 });
 
+it("G3-1 chat tabs: the group switches use the window's own message-group calls when the old global ones aren't loaded", () => {
+  const addon = loggedIn(ENV + `ChatFrame_ContainsMessageGroup, ChatFrame_AddMessageGroup, ChatFrame_RemoveMessageGroup = nil, nil, nil __groups = {}
+    ChatFrame1.ContainsMessageGroup = function(f, g) return __groups[g] == true end
+    ChatFrame1.AddMessageGroup = function(f, g) __groups[g] = true end
+    ChatFrame1.RemoveMessageGroup = function(f, g) __groups[g] = nil end`);
+  addon.eval(`${chatRow("Show Officer")} r[4](true)`);
+  expect(addon.eval(`${chatRow("Show Officer")} return { r[3](), __groups.OFFICER }`), "added, and the switch reads it").toEqual([true, true]);
+  addon.eval(`${chatRow("Show Officer")} r[4](false)`);
+  expect(addon.eval(`${chatRow("Show Officer")} return { r[3](), __groups.OFFICER == nil }`), "and taken off again").toEqual([false, true]);
+});
+
 it("chat page: empty phrase and word lists say so, and the hints go once there is one", () => {
   const addon = loggedIn(ENV);
   // The Chat page's text rows.

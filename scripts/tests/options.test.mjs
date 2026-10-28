@@ -1495,6 +1495,16 @@ it("the question's buttons take Tab focus: Tab and Shift-Tab move a ring, Space 
   expect([addon.eval("return __yes"), addon.eval("return __no")], "Enter on a focused button presses that one, here No").toEqual([1, 2]);
 });
 
+it("G6-1 G6-2 Escape on a question over the options window closes only the question, stops there, and the reload its No offers stays up", () => {
+  const addon = loggedIn("UISpecialFrames = {}");
+  addon.eval('ns.Options.Show("general")');
+  addon.eval(`__passed = {} ns.Ask("Sure?", "Yes", function() end, function() ns.OfferReload("x") end)
+    Vanguard_Question.SetPropagateKeyboardInput = function(self, v) __passed[#__passed + 1] = v end`);
+  addon.key("Vanguard_Question", "ESCAPE");
+  expect(addon.eval("return { Vanguard_Question:IsShown(), __passed[#__passed], Vanguard_Options:IsShown(), Vanguard_Reload:IsShown() }"),
+    "the question hides, the key stops there (the window under it stays), and the reload offer is up").toEqual([false, false, true, true]);
+});
+
 it("a Tab-focus window gives up the keyboard in a fight, takes it back after, and waits for the end of one it opens in", () => {
   const addon = loggedIn("UISpecialFrames = {}");
   spyOn(addon, 'ns.OfferReload("x")', "Vanguard_Reload");

@@ -68,6 +68,9 @@ it("upgrades: the role picks the weights, and /vg weights shows and changes them
   addon.eval("__wfgWorld.units.player.role = 'TANK'");
   addon.fire("PLAYER_ROLES_ASSIGNED");
   expect(addon.eval("local UP = ns.GetModule('Upgrades') return { select(2, UP.Current()), UP.Role() }"), "a tank role: the tank weights").toEqual(["tank", "tank"]);
+  addon.eval("__wfgWorld.units.player.role = 'NONE'");
+  addon.fire("GROUP_LEFT");
+  expect(addon.eval("return select(2, ns.GetModule('Upgrades').Current())"), "G2-2 out of the group: the damage weights again").toBe("strength");
   addon.eval("__wfgWorld.units.player.role = __wfgWorld.secret('TANK')");
   expect(addon.eval("return ns.GetModule('Upgrades').Role()"), "a hidden group role counts as none: damage").toBe("damage");
   addon.eval("ns.GetModule('Upgrades').settings.role = 'healer' ns.GetModule('Upgrades').Changed()");

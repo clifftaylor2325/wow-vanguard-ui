@@ -153,6 +153,31 @@ it("T3-1 a browsed item whose info comes in late gets its price remembered when 
   addon.fire("AUCTION_HOUSE_CLOSED");
   expect(addon.eval(`return ${HELPER}.lateBrowse == nil`), "closing the house lets a waiting list go").toBe(true);
 });
+it("G7-1 item info for a long waiting browse list, arriving a little each frame, prices the list once per wait, not once a frame", () => {
+  const addon = atAuctionHouse("for id = 20001, 20200 do __wfgWorld.items[id] = { name = 'TEST-ONLY Late ' .. id, commodity = true, pending = true } end");
+  addon.eval(`local list = {} for id = 20001, 20200 do list[#list + 1] = { itemKey = { itemID = id }, minPrice = id, totalQuantity = 1 } end __wfgWorld.ah.browse = list
+    __passes = 0 local record = ns.AuctionPrices.RecordBrowse ns.AuctionPrices.RecordBrowse = function(...) __passes = __passes + 1 return record(...) end`);
+  addon.fire("AUCTION_HOUSE_BROWSE_RESULTS_UPDATED");
+  for (let id = 20001; id <= 20200; id += 10) {
+    addon.eval(`for i = ${id}, ${id + 9} do __wfgWorld.items[i].pending = nil end`);
+    addon.fire("ITEM_KEY_ITEM_INFO_RECEIVED", id);
+    addon.advance(0.05, 0.05);
+  }
+  addon.advance(1);
+  const stored = addon.eval("local p = ns.AuctionPrices.House().prices[20200] return p and p.min or false");
+  expect([addon.eval("return __passes"), stored, addon.eval(`return ${HELPER}.lateBrowse == nil`)], "20 frames of arrivals over a second: the first pricing and two more (one per half second), the last item priced, the list let go").toEqual([3, 20200, true]);
+});
+it("G7-1 item info that comes in just before the house closes is still priced", () => {
+  const addon = atAuctionHouse("__wfgWorld.items[10945] = { name = 'TEST-ONLY Late', commodity = true, pending = true }");
+  addon.eval("__wfgWorld.ah.browse = { { itemKey = { itemID = 10945 }, minPrice = 70, totalQuantity = 5 } }");
+  addon.fire("AUCTION_HOUSE_BROWSE_RESULTS_UPDATED");
+  addon.eval("__wfgWorld.items[10945].pending = nil");
+  addon.fire("ITEM_KEY_ITEM_INFO_RECEIVED", 10945);
+  addon.advance(0.05, 0.05);
+  addon.fire("AUCTION_HOUSE_CLOSED");
+  addon.advance(1);
+  expect(addon.eval("local p = ns.AuctionPrices.House().prices[10945] return p and p.min or false"), "priced as the house closed").toBe(70);
+});
 it("a late browse answer for the last entry is not taken by the next one", () => {
   const addon = atAuctionHouse(DUSTS + " __wfgWorld.items[11083] = { name = 'Soul Dust' }");
   makeList(addon, "TEST-ONLY Mats", '{ "Strange Dust", "Soul Dust" }');

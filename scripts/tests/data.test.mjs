@@ -22,6 +22,19 @@ it("data bars", () => {
   expect(movers.includes("xpbar") && movers.includes("repbar"), "both bars are movable").toBeTruthy();
 });
 
+it("G1-1 G1-2 the XP bar follows XP gain locked and unlocked; an empty watched-faction answer is no faction", () => {
+  const addon = loggedIn(DATA_ENV);
+  addon.eval("__wfgWorld.units.player.xpDisabled = true");
+  addon.fire("DISABLE_XP_GAIN");
+  expect(bars(addon).xpShown, "XP gain locked: the bar hides at once").toBe(false);
+  addon.eval("__wfgWorld.units.player.xpDisabled = false");
+  addon.fire("ENABLE_XP_GAIN");
+  expect(bars(addon).xpShown, "unlocked: back").toBe(true);
+  addon.eval("__faction = { name = '', factionID = 0 }");
+  addon.fire("UPDATE_FACTION");
+  expect(bars(addon).repShown, "a blank faction: the reputation bar hides").toBe(false);
+});
+
 // Where each bar's text sits: its anchor point, the bar point it is on, and its x offset.
 const textPlace = (addon) => addon.eval(`local out = {}
   for i, bar in ipairs({ Vanguard_xpbar, Vanguard_repbar }) do local p, _, rel, x = bar.text:GetPoint(1) out[i] = { p, rel, x } end

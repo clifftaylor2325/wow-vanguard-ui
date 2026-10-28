@@ -100,6 +100,12 @@ it("/vg setup reopens setup; Back and the close button", () => {
   upgraded.eval("Vanguard_Setup:Hide()");
   expect(setupState(upgraded), "Escape (the client hides the frame) closes setup without finishing it").toEqual({ step: 0, done: false, unlocked: false });
 });
+it("G6-1 Escape on setup with a reload owed hides setup and stops there, so the reload offer it opens stays up", () => {
+  const addon = loggedIn("UISpecialFrames = {}", { firstRun: true });
+  addon.eval("ns.Setup.ApplyLayout('damage')");
+  addon.key("Vanguard_Setup", "ESCAPE");
+  expect(addon.eval("return { Vanguard_Setup:IsShown(), Vanguard_Reload ~= nil and Vanguard_Reload:IsShown() }"), "setup closed, the reload offer shown").toEqual([false, true]);
+});
 it("E6-1 setup stays open when the whole UI is hidden (Alt-Z, a movie or a cinematic); Done and the close button still finish it", () => {
   const addon = loggedIn(CLICK_LUA, { firstRun: true });
   setupClick(addon, "next");

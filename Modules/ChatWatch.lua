@@ -42,10 +42,11 @@ CW.recent, CW.recentCount, CW.lines, CW.lineCount = {}, 0, {}, 0
 
 -- Matching ------------------------------------------------------------------------------------
 
--- A phrase's words, in order.
+-- A phrase's words, in order, its brackets gone as a line's are (ChatExtras' Matchable), so
+-- "[Devilsaur Leggings]" typed with them still finds the link.
 function CW.Words(phrase)
   local words = {}
-  for word in phrase:gmatch("%S+") do words[#words + 1] = word end
+  for word in (phrase:gsub("[%[%]]", "")):gmatch("%S+") do words[#words + 1] = word end
   return words
 end
 
@@ -64,8 +65,9 @@ local patternsOf = setmetatable({}, { __index = function(cache, phrase)
   return patterns
 end })
 
--- True when the plain line holds every one of the phrase's words, in any order.
+-- True when the plain line holds every one of the phrase's words, in any order (a phrase with no words holds none).
 local function holds(line, phrase)
+  if #patternsOf[phrase] == 0 then return false end
   for _, pattern in ipairs(patternsOf[phrase]) do
     if not line:find(pattern) then return false end
   end
@@ -286,12 +288,13 @@ end
 
 -- Why a phrase can't be added, or nil when it can.
 local function refusal(phrase, list)
-  if phrase == "" then return L["Type a phrase to watch for."] end
+  if #CW.Words(phrase) == 0 then return L["Type a phrase to watch for."] end
   if phrase:find("|", 1, true) then return L["A phrase can't hold the | character."] end
   if ns.TextLength(phrase) > CW.MAX_LENGTH then return ns.Format(L["A phrase can be at most {max} characters."], { max = CW.MAX_LENGTH }) end
   if #list >= CW.MAX_PHRASES then return ns.Format(L["Chat watch keeps at most {max} phrases; remove one first."], { max = CW.MAX_PHRASES }) end
+  local words = table.concat(CW.Words(phrase), " ")
   for _, p in ipairs(list) do
-    if ns.Lower(p) == phrase then return ns.Format(L['Already watching for "{phrase}".'], { phrase = phrase }) end
+    if table.concat(CW.Words(ns.Lower(p)), " ") == words then return ns.Format(L['Already watching for "{phrase}".'], { phrase = phrase }) end
   end
 end
 

@@ -227,7 +227,7 @@ function UP.OnGearChanged()
   if bag and bag:IsShown() then UP.MarkBag(bag) end
 end
 
--- Your group role changed: new weights, and the bag marked again.
+-- Your group role changed, or you left the group: new weights, and the bag marked again.
 function UP.OnRolesChanged()
   UP.Changed()
   UP.OnGearChanged()
@@ -324,4 +324,5 @@ function UP.Enable(settings)
   if bag and type(hooksecurefunc) == "function" then hooksecurefunc(bag, "UpdateItems", ns.Guard("hook UpdateItems", markBagSafely)) end
   ns.On("PLAYER_EQUIPMENT_CHANGED", UP.OnGearChanged)
   ns.On("PLAYER_ROLES_ASSIGNED", UP.OnRolesChanged)
+  ns.On("GROUP_LEFT", UP.OnRolesChanged) -- out of a group the role is none again, which no role event may say
 end
