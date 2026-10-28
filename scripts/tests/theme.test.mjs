@@ -299,6 +299,7 @@ it("a font path the client can't load falls back to Fira, so text still sets (N7
   const FIRA = "Interface\\AddOns\\Vanguard\\Media\\Fonts\\FiraSansCondensed-";
   const addon = loggedIn(CLICK_LUA + SHARED_LUA + `__wfgStub.missingFonts[ [[Interface\\AddOns\\Gone\\f.ttf]] ] = true __wfgStub.missingFonts[ [[Interface\\AddOns\\TestOnly\\Font.ttf]] ] = true
     LibStub("LibSharedMedia-3.0"):Register("font", "TEST-ONLY Pathless", [[Interface\\AddOns\\Gone\\f.ttf]])`);
+  // The two weights the theme gives for a chosen font name.
   const font = (name) => addon.eval(`ns.Theme.Settings().font = [[${name}]] return { (ns.Theme.Font()), (ns.Theme.Font(true)) }`);
   expect(font("Interface\\AddOns\\Gone\\f.ttf"), "a missing path: Fira, both weights").toEqual([FIRA + "Medium.ttf", FIRA + "SemiBold.ttf"]);
   expect(font("TEST-ONLY Pathless")[0], "a font another addon shares at a missing file: Fira").toBe(FIRA + "Medium.ttf");

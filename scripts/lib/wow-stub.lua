@@ -488,7 +488,9 @@ function methods:SetFont(path, size, flags)
   self.__font = { path, size, flags }
   return true
 end
+-- The font read back.
 function methods:GetFont() local f = self.__font or {} return f[1], f[2], f[3] end
+-- Shadow offset and colour, recorded.
 function methods:SetShadowOffset(x, y) self.__shadowOffset = { x, y } end
 function methods:SetShadowColor(r, g, b, a) self.__shadowColor = { r, g, b, a } end
 
