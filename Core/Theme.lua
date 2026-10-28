@@ -466,10 +466,24 @@ local function useClientFont(s)
   return s.font == "client" or CLIENT_FONT_LOCALES[locale()] == true
 end
 
--- The font a chosen name stands for: a font shared through LibSharedMedia
--- (Core/SharedMedia.lua), a font path (older settings), or nil (its addon is gone).
+-- True when the client can load the font file at path: Vanguard's own always, any other asked once of a
+-- hidden FontString (SetFont may return false or raise an error for a file that is not there).
+function T.FontLoads(path)
+  if path == T.FONTS.regular or path == T.FONTS.bold then return true end
+  if T.fontLoads[path] == nil then
+    T.fontTester = T.fontTester or UIParent:CreateFontString(nil, "BACKGROUND")
+    local ok, set = pcall(T.fontTester.SetFont, T.fontTester, path, 12, "")
+    T.fontLoads[path] = ok and set == true
+  end
+  return T.fontLoads[path]
+end
+T.fontLoads = {}
+
+-- The font a chosen name stands for: a font shared through LibSharedMedia (Core/SharedMedia.lua) or a
+-- font path (older settings), when the client can load it; nil otherwise (its addon is gone).
 local function chosenFont(name)
-  return T.SharedPath("font", name) or (name:find("\\", 1, true) and name) or nil
+  local path = T.SharedPath("font", name) or (name:find("\\", 1, true) and name)
+  return path and T.FontLoads(path) and path or nil
 end
 
 -- The UI font path (bold: the SemiBold weight) and outline flag. Settings:

@@ -682,6 +682,13 @@ it("an import names each font, bar and panel texture this client doesn't have, a
   const found = (lua) => addon.eval(`return #ns.MissingMedia({ theme = ${lua} })`);
   expect([found('{ font = "TEST-ONLY Shared", barTexture = "soft", panelTexture = "stone" }'), found('{ panelTexture = "flat" }'), found('{ font = "client" }'), found('{ font = "" }'), found('{ font = [[Fonts\\TEST-ONLY.ttf]] }'), addon.eval("return #ns.MissingMedia({})")], "a shared font, Vanguard's bars and panel textures, Flat, the game's font and a font path are found").toEqual([0, 0, 0, 0, 0, 0]);
 });
+it("an import names a font path this client can't load (N7-1)", () => {
+  const addon = loggedIn("__wfgStub.missingFonts[ [[Interface\\AddOns\\Gone\\f.ttf]] ] = true");
+  const text = encoded(addon, "parts", '{ format = 2, parts = { "global" }, theme = { font = [[Interface\\AddOns\\Gone\\f.ttf]] } }');
+  addon.clearChat();
+  importText(addon, text);
+  expect(chatHas(addon, /Font not found: Interface\\AddOns\\Gone\\f\.ttf/), "the missing path is named").toBe(true);
+});
 // A TEST-ONLY profile big enough to take many frames at a small budget: its string.
 const BIG = `local t = {} for i = 1, 400 do t["TEST-ONLY key " .. i] = i end ns.Profile().TestOnlyBig = t return ns.ExportProfile()`;
 it("a large string is imported across frames, with its progress in the box's title", () => {
