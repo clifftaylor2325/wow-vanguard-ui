@@ -1309,11 +1309,12 @@ end
 
 -- A flat dark panel with a one-pixel border and a faint sheen along the
 -- top. opts: inset (darker) or raised (lighter), accent (accent border),
--- alpha (fill opacity), shadow (soft drop shadow, for floating windows),
--- pad (draw it all that many units out past the frame's edges: room around
+-- alpha (fill opacity), fill (a color name; an unknown one raises before anything is kept), shadow (soft drop shadow,
+-- for floating windows), pad (draw it all that many units out past the frame's edges: room around
 -- a game window's contents), gradient (the panel gradient without a shadow), noBorder, noBg, noSheen,
 -- noSurface (never the panel texture: the HUD).
 function T.Panel(frame, opts)
+  if opts and opts.fill ~= nil then T.RGB(opts.fill) end
   local entry = base(frame, "panel", opts)
   repaint(frame, entry)
   return frame
@@ -2647,7 +2648,9 @@ end
 -- Puts the theme font on the game's font objects in map ({ FontObjectName = { size,
 -- bold } }) now and after every theme change (font, Text size). The list only grows.
 function T.FontObjects(map)
-  for name, spec in pairs(map) do fontObjects[name] = spec end
+  for name, spec in pairs(map) do
+    if type(spec) == "table" and type(spec[1]) == "number" then fontObjects[name] = spec end
+  end
   applyFontObjects()
 end
 
@@ -2745,8 +2748,8 @@ end
 function T.Text(fs, role, color)
   local r = T.ROLES[role]
   if not r then error("Vanguard: no text role named " .. tostring(role), 2) end
-  styled[fs] = role
   T.ApplyRole(fs, role)
+  styled[fs] = role
   if color ~= false then T.Color(fs, color or "text") end
   return fs
 end
@@ -2865,8 +2868,8 @@ end
 function T.Color(fs, r, g, b)
   if type(r) == "number" then return T.ColorRGB(fs, r, g, b) end
   local token = r or "accentText"
-  colored[fs] = token
   fs:SetTextColor(T.RGB(token))
+  colored[fs] = token
   shadowFor(fs, token)
   return fs
 end

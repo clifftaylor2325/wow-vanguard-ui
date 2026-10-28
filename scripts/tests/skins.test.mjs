@@ -93,3 +93,36 @@ it("a theme listener that registers another one does not run it in the same refr
   `);
   expect(runs, "the new listener first runs on the next refresh").toEqual([0, 1]);
 });
+
+// Runs `call` (Lua, using S) on a client where a bad skin call just failed, then a theme refresh with a listener after it.
+const refreshAfterBadCall = (call) => {
+  const addon = loggedIn();
+  return addon.eval(`
+    local S -- TEST-ONLY skin hands out S so the bad call can be made with pcall
+    Vanguard.RegisterSkin("TESTONLY", function(skin) S = skin end)
+    __after = 0 ns.Theme.OnChanged(function() __after = __after + 1 end)
+    local badOk = pcall(function() ${call} end)
+    local refreshOk = pcall(ns.Theme.Refresh)
+    return { badOk, refreshOk, __after }
+  `);
+};
+
+it("S.Color with a colour name Vanguard lacks fails alone and refreshes still run", () => {
+  const result = refreshAfterBadCall(`S.Color(UIParent:CreateFontString(), "red")`);
+  expect(result, "the call fails, and the refresh still reaches the listener").toEqual([false, true, 1]);
+});
+
+it("S.Text on something that is not a font string fails alone and refreshes still run", () => {
+  const result = refreshAfterBadCall(`S.Text(CreateFrame("Frame", nil, UIParent), "title")`);
+  expect(result, "the call fails, and the refresh still reaches the listener").toEqual([false, true, 1]);
+});
+
+it("S.FontObjects with a bare size is not remembered and refreshes still run", () => {
+  const result = refreshAfterBadCall(`S.FontObjects({ MyFont = 12 })`);
+  expect(result, "the call does nothing, and the refresh still reaches the listener").toEqual([true, true, 1]);
+});
+
+it("S.Panel with an unknown fill token fails alone and refreshes still run", () => {
+  const result = refreshAfterBadCall(`S.Panel(CreateFrame("Frame", nil, UIParent), { fill = "red" })`);
+  expect(result, "the call fails, and the refresh still reaches the listener").toEqual([false, true, 1]);
+});
