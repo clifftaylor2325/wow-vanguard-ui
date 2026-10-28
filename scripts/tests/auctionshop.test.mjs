@@ -133,6 +133,26 @@ it("item names the client hasn't loaded yet, and a hidden price", () => {
   addon.fire("AUCTION_HOUSE_BROWSE_RESULTS_UPDATED");
   expect([shopRow(addon, 2)[2], addon.eval("return #ns.errors")], "a hidden price: nothing to show, no error").toEqual(["none up", 0]);
 });
+it("T3-1 a browsed item whose info comes in late gets its price remembered when it does", () => {
+  const addon = atAuctionHouse("__wfgWorld.items[10943] = { name = 'TEST-ONLY Late', commodity = true, pending = true } __wfgWorld.items[10944] = { name = 'TEST-ONLY Early', commodity = true }");
+  // The lowest price the store keeps for an item, or false.
+  const stored = (id) => addon.eval(`local p = ns.AuctionPrices.House().prices[${id}] return p and p.min or false`);
+  addon.eval("__wfgWorld.ah.browse = { { itemKey = { itemID = 10943 }, minPrice = 30, totalQuantity = 5 }, { itemKey = { itemID = 10944 }, minPrice = 40, totalQuantity = 5 } }");
+  addon.fire("AUCTION_HOUSE_BROWSE_RESULTS_UPDATED");
+  expect([stored(10943), stored(10944)], "the late item can't be priced yet").toEqual([false, 40]);
+  addon.fire("ITEM_KEY_ITEM_INFO_RECEIVED", 10944);
+  addon.advance(1);
+  expect(stored(10943), "info for another item: still waiting").toBe(false);
+  addon.eval("__wfgWorld.items[10943].pending = nil");
+  addon.fire("ITEM_KEY_ITEM_INFO_RECEIVED", 10943);
+  addon.advance(1);
+  expect([stored(10943), addon.eval(`return ${HELPER}.lateBrowse == nil`)], "its info came in: priced, and the list let go").toEqual([30, true]);
+  addon.fire("AUCTION_HOUSE_BROWSE_RESULTS_UPDATED");
+  addon.eval("__wfgWorld.items[10943].pending = true");
+  addon.fire("AUCTION_HOUSE_BROWSE_RESULTS_UPDATED");
+  addon.fire("AUCTION_HOUSE_CLOSED");
+  expect(addon.eval(`return ${HELPER}.lateBrowse == nil`), "closing the house lets a waiting list go").toBe(true);
+});
 it("a late browse answer for the last entry is not taken by the next one", () => {
   const addon = atAuctionHouse(DUSTS + " __wfgWorld.items[11083] = { name = 'Soul Dust' }");
   makeList(addon, "TEST-ONLY Mats", '{ "Strange Dust", "Soul Dust" }');

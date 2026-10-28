@@ -439,9 +439,26 @@ function AH.TakeBrowse(entry, results)
   AH.EntryFound(entry, best)
 end
 
--- Item names came in: the entries waiting on them are matched again, and the card repainted (the
--- game sends these in bursts, so the listener asks for it once a frame: AH.ListenShop).
+-- Prices a browse list; while some of its items wait on their item info, keeps the list and how
+-- many wait, so their prices are recorded when the info comes in (priceLate).
+function AH.PriceBrowse(results)
+  AP.RecordBrowse(results)
+  local waiting = AP.Unloaded(results)
+  AH.lateBrowse = waiting > 0 and { results = results, waiting = waiting } or nil
+end
+
+-- Item info came in for some of the kept browse list: the whole list is priced again, so an
+-- item's lowest key still wins.
+local function priceLate()
+  local late = AH.lateBrowse
+  if late and AP.Unloaded(late.results) < late.waiting then AH.PriceBrowse(late.results) end
+end
+
+-- Item names came in: the browse list waiting on them is priced, the entries waiting on them are
+-- matched again, and the card repainted (the game sends these in bursts, so the listener asks for
+-- it once a frame: AH.ListenShop).
 function AH.OnItemInfo()
+  priceLate()
   for entry, results in pairs(AH.unnamed) do AH.TakeBrowse(entry, results) end
   AH.PaintShop()
 end
@@ -470,7 +487,7 @@ end
 -- item opened in the game's list is done.
 function AH.OnBrowse()
   local results = C_AuctionHouse.GetBrowseResults()
-  AP.RecordBrowse(results)
+  AH.PriceBrowse(results)
   local s = AH.pending
   if not (s and (s.entry or s.open)) then return end
   if s.entry and not concerns(s.entry, results) then return end
@@ -483,7 +500,7 @@ end
 -- search results to AH.OnListings).
 function AH.ListenShop(on)
   on("ITEM_KEY_ITEM_INFO_RECEIVED", function() ns.Soon("auction item info", AH.OnItemInfo) end)
-  ns.On("AUCTION_HOUSE_CLOSED", function() AH.view = nil end) -- state only, so also in combat
+  ns.On("AUCTION_HOUSE_CLOSED", function() AH.view, AH.lateBrowse = nil, nil end) -- state only, so also in combat
 end
 
 -- Listings ------------------------------------------------------------------------------------
