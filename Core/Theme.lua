@@ -3054,23 +3054,13 @@ end
 -- The longest a fade lasts in combat, in seconds: mid-fight nothing lingers
 -- on screen or keeps you waiting on it (docs/THEME.md, Motion and sound).
 T.COMBAT_FADE = 0.15
--- True from a fight's PLAYER_REGEN_DISABLED, which comes just before the
--- client's combat lockdown starts, until PLAYER_REGEN_ENABLED.
-local fighting = false
 
 -- How long a fade lasts: seconds (0.12 by default), at most T.COMBAT_FADE in combat.
 function T.FadeTime(seconds)
   local t = seconds or 0.12
-  if fighting or ns.InCombat() then return math.min(t, T.COMBAT_FADE) end
+  if ns.Fighting() then return math.min(t, T.COMBAT_FADE) end
   return t
 end
-
--- A fight started or ended: fades are capped while it lasts.
-local function onFight(event)
-  fighting = event == "PLAYER_REGEN_DISABLED"
-end
-ns.On("PLAYER_REGEN_DISABLED", onFight)
-ns.On("PLAYER_REGEN_ENABLED", onFight)
 
 -- Shows a frame, fading it in (0.12 s by default, at most 0.15 s in combat)
 -- unless motion is off. Only for frames that aren't protected: animations
@@ -3137,7 +3127,7 @@ end
 -- Opens a window (#257): shown, fading in as it rises T.WINDOW_RISE screen pixels into its own
 -- spot (so it ends on the pixel grid); at once in combat or with Reduce motion.
 function T.OpenWindow(frame)
-  local r = not T.Settings().reduceMotion and not (fighting or ns.InCombat()) and riser(frame)
+  local r = not T.Settings().reduceMotion and not ns.Fighting() and riser(frame)
   T.StopFade(frame)
   frame:Show()
   if r then playRise(frame, r, T.Pixel(frame) * T.WINDOW_RISE) end
@@ -3198,7 +3188,7 @@ end
 
 -- True when a glide must not animate: Reduce motion, or a fight (docs/THEME.md, Motion and sound).
 local function glideOff()
-  return T.Settings().reduceMotion or fighting or ns.InCombat()
+  return T.Settings().reduceMotion or ns.Fighting()
 end
 
 -- Moves something (a knob, a thumb) to `to`, calling apply(x) with each position on the way: a 0.1 s ease out, or

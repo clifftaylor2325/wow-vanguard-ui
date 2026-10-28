@@ -241,8 +241,21 @@ function ns.QueuedCount()
   return #queue
 end
 
+-- True from a fight's PLAYER_REGEN_DISABLED, which comes just before the client's combat lockdown
+-- starts, until the work queued for its end begins to run.
+local fighting = false
+ns.On("PLAYER_REGEN_DISABLED", function() fighting = true end)
+
+-- True during a fight, so fades are capped and windows open without motion. Work queued for the
+-- end of a fight already sees false.
+---@return boolean
+function ns.Fighting()
+  return fighting or ns.InCombat()
+end
+
 -- Runs queued work; one failing function is reported (see ns.Report) and the rest still run.
 local function flush()
+  fighting = false
   local pending = queue
   queue, keyed = {}, {}
   for _, fn in ipairs(pending) do
