@@ -313,11 +313,13 @@ local function unmoved(mapID)
 end
 
 -- Refreshes the coordinates at most five times a second, and only after the
--- player moved: standing still asks the client for no new map position.
+-- player moved: standing still asks the client for no new map position, unless
+-- the last answer was blank (a map not ready after a loading screen fills in).
 local function coordsTicker(frame)
   ns.Every("minimap coords", 0.2, function()
     local mapID = playerMap()
-    if not unmoved(mapID) then MM.coords:SetText(MM.CoordsText(mapID)) end
+    local shown = unmoved(mapID) and (MM.coords:GetText() or "") ~= ""
+    if not shown then MM.coords:SetText(MM.CoordsText(mapID)) end
   end, frame)
 end
 

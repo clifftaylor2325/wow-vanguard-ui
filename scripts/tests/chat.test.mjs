@@ -1456,6 +1456,18 @@ it("minimap coordinates: asked again only after the player moves", () => {
   addon.advance(1);
   expect(asked(), "a hidden position can't be compared: looked up on every refresh, as before").toBe(4);
 });
+it("T4-1 minimap coordinates: a blank first answer is asked again while the player stands still", () => {
+  // TEST-ONLY world position, and a map that has no position for the player until __ready.
+  const addon = loggedIn(UI_ENV + `__pos = { 100, 200, 0, 1 } UnitPosition = function() return __pos[1], __pos[2], __pos[3], __pos[4] end
+    __ready = false local real = C_Map.GetPlayerMapPosition C_Map.GetPlayerMapPosition = function(...) if __ready then return real(...) end end`);
+  // The text under the map.
+  const coords = () => addon.eval('return ns.GetModule("Minimap").coords:GetText()');
+  addon.advance(1);
+  expect(coords(), "no position yet: blank").toBe("");
+  addon.eval("__ready = true");
+  addon.advance(0.25);
+  expect(coords(), "the position came in while standing still: shown").toBe("45.7, 12.3");
+});
 it("E6-2 minimap coordinates: a position the client hides whole is blank, a plain one is read, and nothing throws", () => {
   const addon = loggedIn("C_Map.GetPlayerMapPosition = function() return { GetXY = function() return 0.25, 0.5 end } end");
   // The minimap coordinates text for map 10.
