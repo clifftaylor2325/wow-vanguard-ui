@@ -698,6 +698,17 @@ it("options: Up and Down walk the pages, Tab the rows, Enter presses one; other 
   expect(addon.eval("return Vanguard_Options.__kb"), "and a fight ending while it is closed doesn't change that").toBe(false);
 });
 
+it("E6-R2 options: Alt-Z (UIParent hidden and shown) leaves the open window its keyboard; closing it still lets go", () => {
+  const addon = loggedIn(CLICK_LUA);
+  // TEST-ONLY spy on the window's keyboard calls.
+  addon.eval("ns.Options.Show('general') local f = Vanguard_Options f.EnableKeyboard = function(self, on) self.__kb = on end f:Hide() ns.Options.Show('general')");
+  expect(addon.eval("return Vanguard_Options.__kb"), "the open window takes the keyboard").toBe(true);
+  addon.eval("UIParent:Hide() UIParent:Show()");
+  expect(addon.eval("return { Vanguard_Options:IsShown(), Vanguard_Options.__kb }"), "Alt-Z twice: still shown, still holding it").toEqual([true, true]);
+  addon.eval("Vanguard_Options:Hide()");
+  expect(addon.eval("return Vanguard_Options.__kb"), "closed, it lets go").toBe(false);
+});
+
 it("options: Tab skips a greyed-out button row, so Enter can never press the Meter's report with the meter off", () => {
   const addon = loggedIn(CLICK_LUA, { savedVariables: "VanguardDB.profiles.Default = { modules = { Meter = false } }" });
   addon.eval('ns.Options.Show("tools")');

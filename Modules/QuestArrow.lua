@@ -137,7 +137,7 @@ end
 function QA.PlayerSpot(mapID)
   if ns.Restricted("Map") then return nil end
   local pos = ns.CallIf(C_Map, "GetPlayerMapPosition", mapID, "player")
-  if type(pos) ~= "table" or type(pos.GetXY) ~= "function" then return nil end
+  if ns.IsSecret(pos) or type(pos) ~= "table" or type(pos.GetXY) ~= "function" then return nil end
   local x, y = pos:GetXY()
   x, y = ns.PlainNumber(x), ns.PlainNumber(y)
   if x and y then return x, y end
