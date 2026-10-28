@@ -508,3 +508,26 @@ it("the position popover opens on the side of a handle that has room, so it neve
   expect(chat.left, "a frame with room on its right: the popover starts right of its handle, as before").toBeGreaterThanOrEqual(chat.handleRight);
   expect(chat.right, "and stays on the screen").toBeLessThanOrEqual(1365);
 });
+
+it("a handle hidden in the middle of a drag by a fight lets go of the cursor", () => {
+  const addon = loggedIn(BOX);
+  addon.slash("unlock");
+  addon.eval('for _, w in ipairs(__wfgStub.frames) do if w.mover and w.mover.key == "box" then __h = w end end __h:GetScript("OnDragStart")(__h)');
+  expect(addon.eval("return __h.__moving"), "the drag is live").toBe(true);
+  addon.fire("PLAYER_REGEN_DISABLED");
+  expect(addon.eval("return { __h:IsShown(), __h.__moving, #ns.errors }"), "the fight hides the handle and ends the drag").toEqual([false, false, 0]);
+});
+
+it("a handle hidden in the middle of a drag by locking out of combat lets go of the cursor", () => {
+  const addon = loggedIn(BOX);
+  addon.slash("unlock");
+  addon.eval('for _, w in ipairs(__wfgStub.frames) do if w.mover and w.mover.key == "box" then __h = w end end __h:GetScript("OnDragStart")(__h) ns.Lock()');
+  expect(addon.eval("return { __h:IsShown(), __h.__moving }"), "Lock hides the handle and ends the drag").toEqual([false, false]);
+});
+
+it("the options window's header lets go of the cursor when the window closes in the middle of a drag", () => {
+  const addon = loggedIn();
+  addon.eval('ns.Options.Show("general")');
+  addon.eval("local o = Vanguard_Options o.header:GetScript('OnDragStart')(o.header) o:Hide()");
+  expect(addon.eval("return { Vanguard_Options:IsShown(), Vanguard_Options.__moving, #ns.errors }"), "the closed window is no longer moving").toEqual([false, false, 0]);
+});
