@@ -370,6 +370,12 @@ it("chat filter: switched off on the Modules page, /vg filter on makes no empty 
   addon.slash("filter on");
   expect(addon.eval("return ns.GetModule('ChatFilter').window == nil"), "no Filtered tab while nothing is filtered").toBe(true);
   expect(deliver(addon, GOLD), "nothing is caught").toBe(false);
+  const fight = loggedIn();
+  fight.eval("__wfgStub.inCombat = true");
+  fight.slash("filter on");
+  fight.eval("ns.SetModuleEnabled('ChatFilter', false) __wfgStub.inCombat = false");
+  fight.fire("PLAYER_REGEN_ENABLED");
+  expect(fight.eval("return ns.GetModule('ChatFilter').window == nil"), "switched off during the fight: no tab when it ends").toBe(true);
 });
 
 it("chat filter: a client without the old ChatFrame_AddMessageEventFilter still filters, through ChatFrameUtil", () => {

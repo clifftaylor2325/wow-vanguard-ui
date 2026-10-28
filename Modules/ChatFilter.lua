@@ -151,7 +151,9 @@ end
 function CF.Prepare()
   local s = CF.settings
   if not (CF.active and s and s.on and s.mode == "tab") or CF.window then return end
-  ns.OutOfCombat(function() CF.window = CF.FindWindow() or openWindow() end, "chatfilter window")
+  ns.OutOfCombat(function()
+    if CF.active then CF.window = CF.FindWindow() or openWindow() end
+  end, "chatfilter window")
 end
 
 -- The tab's text with the count of lines caught, "Filtered (12)", and the tab refit to it (the
