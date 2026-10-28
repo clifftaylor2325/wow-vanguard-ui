@@ -57,6 +57,18 @@ it("options: pointing at the addons button says the version, what each click doe
   expect(addon.eval('Vanguard_OnAddonCompartmentEnter("Vanguard", __b) Vanguard_OnAddonCompartmentLeave("Vanguard", __b) local n = #ns.errors ns.errors[1], ns.errors[2] = nil, nil return n'), "a client without the tooltip: nothing breaks (no third error)").toBe(2);
 });
 
+it("options: an error from clicking or pointing at the addons button is caught and kept, not left to the game", () => {
+  const addon = loggedIn();
+  addon.eval('ns.Options.Toggle = function() error("TEST-ONLY toggle") end');
+  addon.eval('Vanguard_OnAddonCompartmentClick("Vanguard", "LeftButton")');
+  expect(addon.eval("return #ns.errors"), "the click's error reaches the error list").toBe(1);
+  expectErrors("addons button click: eval:2: TEST-ONLY toggle");
+  addon.eval('ns.AddonVersion = function() error("TEST-ONLY version") end Vanguard_OnAddonCompartmentEnter("Vanguard", CreateFrame("Button"))');
+  expectErrors("addons button hover: eval:2: TEST-ONLY version");
+  addon.eval('GameTooltip.GetOwner = function() error("TEST-ONLY owner") end Vanguard_OnAddonCompartmentLeave("Vanguard", CreateFrame("Button"))');
+  expectErrors("addons button leave: eval:2: TEST-ONLY owner");
+});
+
 it("options: the window opens three quarters of the screen tall (the screen less 50 at most, 600 at least) and fits again after a screen change", () => {
   const addon = loggedIn();
   addon.slash("");
