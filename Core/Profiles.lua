@@ -368,25 +368,47 @@ function ns.SpecProfile(spec)
   return name and VanguardDB.profiles[name] and name or nil
 end
 
--- True when the staged profile is one a spec uses, so a spec change staged it (not the player's own pick).
-local function specStaged()
-  local pending = ns.PendingProfileName()
-  for _, name in pairs(specMap()) do
-    if name == pending then return true end
+-- True when a spec of this character uses the profile.
+local function isSpecProfile(name)
+  for _, used in pairs(specMap()) do
+    if used == name then return true end
   end
   return false
 end
 
--- Stages the current spec's profile (and applies it now when `now`, which is only safe before modules
--- read their settings); a spec with no profile of its own uses the character's, so it takes back a
--- switch another spec staged. Returns true if a switch was staged.
-local function followSpec(now)
+-- True when the staged profile is one a spec uses, so a spec change staged it (not the player's own pick).
+local function specStaged()
+  return isSpecProfile(ns.PendingProfileName())
+end
+
+-- Remembers the profile the character picked, before a spec's profile takes over from it.
+local function rememberOwn()
+  local selected = ns.SelectedProfileName()
+  if not isSpecProfile(selected) then VanguardCharDB.ownProfile = selected end
+end
+
+-- The profile a spec with none of its own goes back to: the one the character picked before a spec's
+-- profile took over, while it still exists and a spec's profile is what is selected.
+local function ownTarget()
+  local own = VanguardCharDB.ownProfile
+  if own ~= ns.SelectedProfileName() and VanguardDB.profiles[own] and isSpecProfile(ns.SelectedProfileName()) then return own end
+end
+
+-- The profile the current spec switches to: its own, else (a spec with no profile of its own) the
+-- character's, which also takes back a switch another spec staged. Nil when it stays as it is.
+local function specTarget()
   local name = ns.SpecProfile()
-  if not name and specStaged() then ns.UseProfile(ns.ProfileName()) end
-  if not name or name == ns.SelectedProfileName() then
-    return false
-  end
-  ns.UseProfile(name)
+  if name then rememberOwn() return name end
+  if specStaged() then ns.StageProfile(ns.ProfileName()) end
+  return ownTarget()
+end
+
+-- Stages the current spec's profile (and applies it now when `now`, which is only safe before modules
+-- read their settings). Returns true if a switch was staged.
+local function followSpec(now)
+  local name = specTarget()
+  if not name or name == ns.SelectedProfileName() then return false end
+  ns.StageProfile(name)
   if now then ns.ApplyPendingProfile() end
   return true
 end

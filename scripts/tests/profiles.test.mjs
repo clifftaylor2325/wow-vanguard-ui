@@ -215,6 +215,46 @@ it("swapping back to a spec with no profile of its own takes back the switch ano
   addon.fire("PLAYER_SPECIALIZATION_CHANGED", "player");
   expect(addon.eval("return VanguardCharDB.pendingProfile"), "a profile the player picked stays staged").toBe("Picked");
 });
+// The reload that applies a staged profile, with the client in `spec` (what login does first).
+function reloadInSpec(addon, spec) {
+  addon.eval(`__spec = ${spec} ns.ApplyPendingProfile()`);
+}
+// A character on Default whose spec 2 uses Heal, logged in as spec `spec`.
+function specCharacter(spec) {
+  const sv = 'VanguardDB = { version = 1, setupDone = true, profiles = { Default = {}, Heal = {} } }\nVanguardCharDB = { profile = "Default", setupDone = true, specProfiles = { [2] = "Heal" } }';
+  const addon = createAddon({ savedVariables: sv });
+  addon.eval(`GetSpecialization = function() return __spec end __spec = ${spec}`);
+  addon.login();
+  return addon;
+}
+// Changes to `spec` mid-session.
+function changeSpec(addon, spec) {
+  addon.eval(`__spec = ${spec}`);
+  addon.fire("PLAYER_SPECIALIZATION_CHANGED", "player");
+}
+it("a spec with no profile of its own goes back to the character's profile after a reload in the other spec", () => {
+  const addon = specCharacter(1);
+  changeSpec(addon, 2);
+  reloadInSpec(addon, 2);
+  expect(addon.eval("return ns.ProfileName()"), "the reload in spec 2 runs its profile").toBe("Heal");
+  changeSpec(addon, 1);
+  expect([addon.eval("return VanguardCharDB.pendingProfile"), addon.eval("return Vanguard_Reload:IsShown()")], "spec 1 stages the character's profile and offers the reload").toEqual(["Default", true]);
+  reloadInSpec(addon, 1);
+  expect(addon.eval("return ns.ProfileName()"), "and it runs after the reload").toBe("Default");
+});
+it("a profile picked by hand is the one a spec with no profile of its own goes back to", () => {
+  const addon = specCharacter(2);
+  addon.eval("ns.UseProfile('Heal')");
+  reloadInSpec(addon, 2);
+  changeSpec(addon, 1);
+  expect(addon.eval("return VanguardCharDB.pendingProfile"), "the pick stays: spec 1 does not undo it").toBe(null);
+});
+it("a spec with no profile of its own stays where it is when the character's profile was deleted", () => {
+  const addon = specCharacter(2);
+  addon.eval("VanguardDB.profiles.Default = nil");
+  changeSpec(addon, 1);
+  expect(addon.eval("return { ns.ProfileName(), VanguardCharDB.pendingProfile == nil }"), "no switch to a profile that is gone").toEqual(["Heal", true]);
+});
 it("the craft queue and profession cooldowns of your characters stay out of an export, an import and a profile compare; the module's own settings travel", () => {
   const src = loggedIn();
   src.eval('ns.Profile().CraftQueue = { on = true, secs = 9, chars = { ["Alt-Realm"] = { queue = { { id = 1 } }, cooldowns = {} } } }');
