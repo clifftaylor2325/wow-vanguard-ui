@@ -39,6 +39,7 @@ local function knowsLater(spellID)
   return knowsNow(spellID) or not D.TALENTS[spellID]
 end
 KL.KnowsLater = knowsLater
+KL.KnowsNow = knowsNow
 
 -- A candidate's spell ID and the roles it is only for (nil for every role).
 local function candidate(c)

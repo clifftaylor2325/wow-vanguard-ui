@@ -44,6 +44,7 @@ end
 local function wireCap(cap, opts)
   cap:HookScript("OnEnter", ns.Guard("enter key", function(self) GameTooltip:SetOwner(self, "ANCHOR_RIGHT") opts.tip(self) GameTooltip:Show() end))
   cap:HookScript("OnLeave", ns.Guard("leave key", function() GameTooltip:Hide() end))
+  cap:HookScript("OnHide", ns.Guard("hide key", function(self) if GameTooltip:GetOwner() == self then GameTooltip:Hide() end end))
   if not opts.click then return end
   cap:RegisterForClicks("LeftButtonUp", "RightButtonUp")
   cap:SetScript("OnClick", ns.Guard("click key", opts.click))

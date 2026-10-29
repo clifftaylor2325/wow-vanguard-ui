@@ -180,14 +180,15 @@ end
 ns.On("PLAYER_REGEN_DISABLED", releaseHoverKeys)
 
 -- Makes one of the addon's frames read keys while the pointer is over it, out of combat: each key but Escape and a
--- lone modifier goes to onKey(frame, chord) and not to the game. The frame's own OnEnter and OnLeave stay (hooked),
--- so set them first.
+-- lone modifier goes to onKey(frame, chord) and not to the game. Hidden under the pointer (no OnLeave comes then),
+-- it lets go of the keyboard too. The frame's own OnEnter and OnLeave stay (hooked), so set them first.
 ---@param f table
 ---@param onKey function  onKey(frame, chord)
 function W.HoverKeys(f, onKey)
   f.vgOnHoverKey = onKey
   f:HookScript("OnEnter", ns.Guard("enter hover keys", hoverEnter))
   f:HookScript("OnLeave", ns.Guard("leave hover keys", hoverLeave))
+  f:HookScript("OnHide", ns.Guard("hide hover keys", hoverLeave))
   f:SetScript("OnKeyDown", ns.Guard("hover key", hoverKey))
 end
 

@@ -139,13 +139,25 @@ local KEPT_TEXT = {
   used = L["{key}: unchanged, another key already uses that button"], keys = L["{key}: unchanged, its button already has two keys"],
 }
 
--- One plan row in words, or nil for a row that needn't be listed (already set, or a spell not known yet).
+-- What a key a change takes does now, by name, when it is bound to something else: "Sit/Move Down", "Bar 1 button
+-- 4"; nil for a free key or one already on the change's button.
+local function nowText(row)
+  local now = GetBindingAction(row.key)
+  if not KA.WRITES[row.kind] or type(now) ~= "string" or now == "" or now == row.command then return nil end
+  local entry = KV.Lookup(row.key)
+  return entry and entry.place
+end
+
+-- One plan row in words, or nil for a row that needn't be listed (already set, or a spell not known yet); a change
+-- says what the key does now when it does something else.
 local function rowText(row, entry)
   local text = CHANGE_TEXT[row.kind] or KEPT_TEXT[row.why]
   if not text then return nil end
   local spell = row.kind == "command" and commandText(row.command) or spellText(row.spell)
   local moved = row.moved and spellText(row.moved)
-  return ns.Format(text, { key = KV.KeyText(row.key), spell = spell, bar = barOf(row.slot or entry.slot), moved = moved })
+  text = ns.Format(text, { key = KV.KeyText(row.key), spell = spell, bar = barOf(row.slot or entry.slot), moved = moved })
+  local now = nowText(row)
+  return now and ns.Format(L["{change} (now {what})"], { change = text, what = now }) or text
 end
 
 -- What a key will do, for the line under the keyboard: its change, or that it stays as it is.
@@ -286,6 +298,17 @@ local function shownChanges()
   return out
 end
 
+-- What the list says with no change on the tab and page shown: that the page's stance isn't learned yet, or that
+-- nothing changes here.
+local function noChanges()
+  local page = classData() and classData().pages[state.page]
+  for _, form in ipairs(page and page.forms or {}) do
+    if KL.KnowsNow(form) then return L["No key changes here."] end
+  end
+  if page and page.forms then return ns.Format(L["You haven't learned {stance} yet."], { stance = spellText(page.forms[1]) }) end
+  return L["No key changes here."]
+end
+
 -- Writes the changes into the list's lines: "and N more" on the last line when they don't all fit.
 local function fillLines(s)
   local changes = shownChanges()
@@ -293,7 +316,7 @@ local function fillLines(s)
     local more = i == SIZE.lines and #changes > SIZE.lines
     fs:SetText(more and ns.Format(L["and {n} more"], { n = #changes - SIZE.lines + 1 }) or changes[i] or "")
   end
-  if #changes == 0 then s.lines[1]:SetText(L["No key changes here."]) end
+  if #changes == 0 then s.lines[1]:SetText(noChanges()) end
 end
 
 -- Repaints step 2: the choices, the keyboard and the list.
@@ -348,6 +371,8 @@ local function buildPreview(f)
   local s = stepFrame(f)
   previewChoices(s)
   s.board = stack(s, KV.Keyboard(s, CONTENT_W, { paint = paintPreview, tip = tipPreview }), KV.KEYBOARD_H)
+  s.board:EnableMouse(true)
+  W.HoverKeys(s.board, pressed)
   for _, cap in ipairs(s.board.caps) do W.HoverKeys(cap, pressed) end
   s.result = textLine(s, "label", "text", SIZE.result)
   s.lines = {}
@@ -410,7 +435,7 @@ local function listRow(s, i, text, y)
   r.slot.i = i
   r.label:SetText(text)
   r:Refresh()
-  return W.ROW_HEIGHT
+  return W.GrowRow(r)
 end
 
 -- Lists every change and every key that stays, and hides the parts left over from a longer list.
@@ -448,13 +473,20 @@ local function buildReady(f)
   return s
 end
 
+-- What the line over the scope choice says for each choice.
+local SCOPE_TEXT = {
+  char = L["Your keys are shared. Only this character: it gets its own key set, and your other characters keep theirs."],
+  all = L["Your keys are shared: these keys change on all your characters."],
+}
+
 -- The scope choice under the list: Only this character or All my characters, for keys shared by every character.
 local function addScope(s)
   s.shared = T.Text(s:CreateFontString(nil, "OVERLAY"), "label", "warn")
   s.shared:SetPoint("BOTTOMLEFT", 0, SIZE.footnote + W.ROW_HEIGHT + 2 * T.SPACE.tight)
-  s.shared:SetText(L["Your keys are shared: these keys change on all your characters."])
+  s.shared:SetWidth(CONTENT_W)
+  s.shared:SetJustifyH("LEFT")
   local choices = { { "char", L["Only this character"] }, { "all", L["All my characters"] } }
-  s.scope = W.Choice(s, L["Change keys for"], choices, function() return state.scope end, function(v) state.scope = v end, CONTENT_W)
+  s.scope = W.Choice(s, L["Change keys for"], choices, function() return state.scope end, function(v) state.scope = v s.shared:SetText(SCOPE_TEXT[v]) end, CONTENT_W)
   s.scope:SetPoint("BOTTOMLEFT", 0, SIZE.footnote + T.SPACE.tight)
 end
 
@@ -463,6 +495,7 @@ end
 local function showReady(s)
   local shared = KA.SharesKeys()
   s.shared:SetShown(shared)
+  s.shared:SetText(SCOPE_TEXT[state.scope])
   s.scope:SetShown(shared)
   s.scope:Refresh()
   s.view:SetPoint("BOTTOMRIGHT", 0, SIZE.footnote + T.SPACE.tight + (shared and W.ROW_HEIGHT + SIZE.line + 2 * T.SPACE.tight or 0))
@@ -502,10 +535,12 @@ local function kept()
   return out
 end
 
--- Applies the kept changes in the scope picked; on success the window closes and the listeners hear of it.
+-- Applies the kept changes in the scope picked; on success the window closes and the listeners hear of it. With
+-- every change unticked it says so and stays.
 local function apply()
-  local set = KA.SharesKeys() and state.scope == "char" and Enum.BindingSet.Character or nil
-  if not KA.Apply(kept(), set) then return end
+  local set, entries = KA.SharesKeys() and state.scope == "char" and Enum.BindingSet.Character or nil, kept()
+  if #entries == 0 then return ns.Chat(L["Nothing is ticked, so no key changes."]) end
+  if not KA.Apply(entries, set) then return end
   WZ.frame:Hide()
   for _, fn in ipairs(WZ.onApply) do fn(state.preset) end
 end
@@ -561,6 +596,7 @@ function WZ.Open()
   if keyWindowOpen() then return ns.Chat(L["Close the game's Settings, Quick Keybind and Click Casting windows first."]) end
   VanguardCharDB.keysOffer = false
   state.preset = state.preset or KL.Preset()
+  state.lit, state.tab, state.page, state.later, state.scope = nil, "none", 1, false, "char"
   WZ.frame = WZ.frame or build()
   WZ.Show(1)
   WZ.frame:Show()
@@ -572,7 +608,7 @@ end
 local function resume()
   if not state.resume then return end
   state.resume = nil
-  if state.step > 1 then replan() end
+  if state.step > 1 then state.off = {} replan() end
   WZ.Show(state.step)
   WZ.frame:Show()
 end
@@ -599,7 +635,7 @@ end
 -- character can use it and setup and What's new are both out of the way (else it waits for a later login).
 local function offerOnce()
   if VanguardCharDB.keysOffer ~= true or not WZ.Offered() then return end
-  if ns.Setup.Step() or whatsNewShown() then return end
+  if ns.Setup.Step() or whatsNewShown() or ns.SettingsGuard.Lost() then return end
   WZ.Open()
 end
 ns.On("PLAYER_LOGIN", function() ns.OutOfCombat(offerOnce, "key setup offer") end)
