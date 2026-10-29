@@ -900,3 +900,58 @@ it("the notice follows the page: it appears when a talent group change brings th
   addon.eval('__click("Swap them")');
   expect(addon.texts(MENU_NOTICE).length).toBe(0);
 });
+
+// The old shape's bindings (Flash Heal on Right, the menu on Middle) over a game profile changed by Lua, the page open;
+// answers whether the swap is offered, what MenuClickNeedsFix says, and the two bindings after trying CC.FixMenuClick.
+function offeredOver(profileLua) {
+  const addon = priest(GAME_CLICKS_LUA + profileLua);
+  addon.eval(`${OLD_SHAPE} ns.Options.Show("clickcast")`);
+  const needs = addon.eval(`return ${CC}.MenuClickNeedsFix()`);
+  const offered = addon.texts(MENU_NOTICE).length === 1;
+  addon.eval(`${CC}.FixMenuClick()`);
+  return { needs, offered, after: [bindings(addon).BUTTON2, bindings(addon).BUTTON3] };
+}
+
+it("the swap is offered only where the Middle menu fails for want of cover and both clicks would then run", () => {
+  const before = ["spell:Flash Heal:2061:nil", "menu:nil:nil:nil"];
+  expect(offeredOver(""), "the default profile: offered").toMatchObject({ needs: true, offered: true, after: [before[1], before[0]] });
+  const spellOnMiddle = offeredOver('table.insert(__gameClicks, { type = Enum.ClickBindingType.Spell, actionID = 139, button = "MiddleButton", modifiers = 0 })');
+  expect(spellOnMiddle, "a game Spell on Middle would stay in the way: not offered, and nothing is swapped").toEqual({ needs: false, offered: false, after: before });
+  const rightIsSpell = offeredOver('table.remove(__gameClicks, 2) table.insert(__gameClicks, { type = Enum.ClickBindingType.Spell, actionID = 139, button = "RightButton", modifiers = 0 })');
+  expect(rightIsSpell, "the game's Spell on Right: the menu would not open there either: not offered").toEqual({ needs: false, offered: false, after: before });
+});
+
+it("a modifier mask whose text reads as no modifier raises no warning on the plain click", () => {
+  const addon = priest(GAME_CLICKS_LUA);
+  addon.eval(`${CC}.Add("BUTTON4", "focus") GetStringFromModifiers = function() return "" end
+    table.insert(__gameClicks, { type = Enum.ClickBindingType.Spell, actionID = 139, button = "Button4", modifiers = __wfgWorld.modifierBits.shift })`);
+  expect(addon.eval(`return ${CC}.WontRun(${CC}.Binding("BUTTON4"))`), "a shifted game binding is not the plain one").toBe(null);
+});
+
+it("hidden profile fields give no warning and no error", () => {
+  const addon = priest(GAME_CLICKS_LUA);
+  addon.eval(`${CC}.Add("BUTTON4", "focus") ${CC}.Add("shift-BUTTON4", "focus") ${CC}.Add("BUTTON5", "focus")
+    local secret = __wfgWorld.secret
+    table.insert(__gameClicks, { type = Enum.ClickBindingType.Spell, actionID = 1, button = "Button4", modifiers = secret(4) })
+    table.insert(__gameClicks, { type = secret(1), actionID = 1, button = "Button5", modifiers = 0 })
+    table.insert(__gameClicks, { type = Enum.ClickBindingType.Spell, actionID = 1, button = secret("Button4"), modifiers = 0 })`);
+  expect(addon.eval(`local out = {} for _, b in ipairs(${CC}.Bindings()) do out[#out + 1] = ${CC}.WontRun(b) or "" end return out`)).toEqual(["", "", ""]);
+  expect(addon.eval("return #ns.errors"), "no error on the way").toBe(0);
+});
+
+it("a talent group change re-reads the open window's rows, whichever page is open and whether or not the Click casting page is built", () => {
+  const addon = priest(GAME_CLICKS_LUA);
+  addon.eval(`ns.Options.Show("general") ${OLD_SHAPE} __refreshes = 0 local real = ns.Options.Refresh
+    ns.Options.Refresh = function(...) if debug.traceback():find("ClickCastOptions", 1, true) then __refreshes = __refreshes + 1 end return real(...) end`);
+  addon.fire("ACTIVE_TALENT_GROUP_CHANGED", 1, 2);
+  expect(addon.eval("return __refreshes"), "the window's rows were re-read although the Click casting page was never built").toBeGreaterThan(0);
+});
+
+it("Swap them fixes every talent group that has the old shape, and Dismiss is for the character", () => {
+  const addon = priest(GAME_CLICKS_LUA + "__wfgWorld.specGroup = 1", { savedVariables: 'VanguardCharDB = { clickcast = { [0] = { { key = "BUTTON2", action = "spell", value = "Flash Heal", spellID = 2061 }, { key = "BUTTON3", action = "menu" } } } }' });
+  addon.eval('ns.Options.Show("clickcast")');
+  expect(addon.eval('return __click("Swap them")')).toBe(true);
+  // A talent group's two bindings as "Right/Middle".
+  const pair = (group) => addon.eval(`local l = ${CC}.Bindings(${group}) local out = {} for _, b in ipairs(l) do out[b.key] = b.action end return out.BUTTON2 .. "/" .. out.BUTTON3`);
+  expect([pair(1), pair(2)], "Primary and Secondary both have the menu on Right and the spell on Middle").toEqual(["menu/spell", "menu/spell"]);
+});

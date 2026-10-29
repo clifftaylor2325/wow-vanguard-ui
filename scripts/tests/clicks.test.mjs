@@ -166,13 +166,13 @@ it("a Spell, Macro or PetAction the game binds to the same click is flagged: the
   // Why each binding does nothing, by key ("" when it works).
   const why = () => addon.eval(`local out = {} for _, b in ipairs(${CC}.Bindings()) do out[b.key] = ${CC}.WontRun(b) or "" end return out`);
   // Puts a binding in the game's profile: its type (Spell, Macro, PetAction, Interaction), button and modifier mask.
-  const game = (type, button, modifiers = 0) => addon.eval(`table.insert(__gameClicks, { type = Enum.ClickBindingType.${type}, actionID = 1, button = "${button}", modifiers = ${modifiers} })`);
+  const game = (type, button, modifiers = 0, actionID = 1) => addon.eval(`table.insert(__gameClicks, { type = Enum.ClickBindingType.${type}, actionID = ${actionID}, button = "${button}", modifiers = ${modifiers} })`);
   const none = { "shift-BUTTON2": "", "ctrl-BUTTON2": "", BUTTON4: "", "ctrl-shift-BUTTON1": "", "alt-BUTTON3": "", "SHIFT-Q": "" };
   expect(why(), "the game's default profile (Target on Left, the menu on Right) flags none of them").toEqual(none);
-  game("Interaction", "RightButton", SHIFT);
+  game("Interaction", "RightButton", ALT, 2);
   game("Spell", "LeftButton", SHIFT);
   game("Spell", "RightButton", CTRL | SHIFT);
-  expect(why(), "an interaction on Shift + Right, a spell on Shift + Left and one on Ctrl + Shift + Right are other clicks").toEqual(none);
+  expect(why(), "an interaction on Alt + Right, a spell on Shift + Left and one on Ctrl + Shift + Right are other clicks").toEqual(none);
   game("Spell", "RightButton", SHIFT);
   expect(why()["shift-BUTTON2"], "a game Spell on Shift + Right while Vanguard binds Renew there").toBe(override);
   game("Macro", "RightButton", CTRL);
@@ -205,7 +205,7 @@ it("a game binding whose modifier text can't be read raises no warning, and a cl
   expect(flagged("shift-BUTTON2"), "a secret text is no text").toBe(false);
   addon.eval('GetStringFromModifiers = function() return 5 end');
   expect(flagged("shift-BUTTON2"), "nor is a number").toBe(false);
-  addon.eval("GetStringFromModifiers = nil table.insert(__gameClicks, { type = Enum.ClickBindingType.Spell, actionID = 1, button = \"RightButton\", modifiers = 0 })");
+  addon.eval("GetStringFromModifiers = nil table.remove(__gameClicks, 2) table.insert(__gameClicks, { type = Enum.ClickBindingType.Spell, actionID = 1, button = \"RightButton\", modifiers = 0 })");
   expect([flagged("shift-BUTTON2"), flagged("BUTTON2")], "without the call a modified click can't be told, but a plain one needs no decoding").toEqual([false, true]);
   addon.eval("C_ClickBindings = nil");
   expect(flagged("BUTTON2"), "a client without the game's click bindings flags nothing").toBe(false);
@@ -234,4 +234,69 @@ it("every starter layout leaves a unit menu the game's default click profile run
     expect([klass, click("Left"), click("Right")], "Left targets and Right opens the menu").toEqual([klass, "target", "togglemenu"]);
     if (klass !== "MAGE" && klass !== "WARLOCK") expect([klass, click("Middle")], "the main heal is on Middle click").toEqual([klass, "spell"]);
   }
+});
+
+// A raid button with Vanguard's bindings for a Lua list of Add calls, over the game's default click profile (changed by
+// setup, Lua); answers what the game's SecureUnitButton_OnClick does with a click on it (see GAME_ENGINE_LUA).
+function bindingClicks(adds, setup = "") {
+  const addon = loggedIn(UNITS_ENV + RAID_ENV + CLICK_LUA + GAME_CLICKS_LUA + GAME_ENGINE_LUA);
+  addon.eval(`__spawn(1, "raid1") ${setup} local CC = ns.GetModule("ClickCast") ${adds}
+    Vanguard_RaidUnitButton1:SetAttribute("*type1", "target") Vanguard_RaidUnitButton1:SetAttribute("*type2", "togglemenu")`);
+  // The reason Vanguard gives for a binding by its key, then what a click does (button name, held modifiers).
+  const why = (key) => addon.eval(`local CC = ns.GetModule("ClickCast") return CC.WontRun(CC.Binding("${key}"))`);
+  const click = (button, prefix = "") => addon.eval(`return __engineClick(Vanguard_RaidUnitButton1, "${button}", "${prefix}")`);
+  return { addon, why, click };
+}
+
+it("an interaction the game moved to another click remaps that click: Vanguard says so, and the engine runs the other button's binding", () => {
+  const remap = "the game's own Click Casting window puts Target or the unit menu on this click, so your binding for the click it stands for runs instead";
+  const { why, click } = bindingClicks('CC.Add("BUTTON2", "spell", "TEST-ONLY Renew") CC.Add("BUTTON3", "menu")',
+    'table.remove(__gameClicks, 2) table.insert(__gameClicks, { type = Enum.ClickBindingType.Interaction, actionID = 2, button = "MiddleButton", modifiers = 0 })');
+  expect(click("MiddleButton"), "the engine reads the Right click's binding for a Middle click: the heal, not the menu").toBe("spell");
+  expect([why("BUTTON3"), why("BUTTON2")], "the Middle menu is flagged as remapped; the Right click is no longer the game's, and it casts only if it is bound").toEqual([remap, null]);
+});
+
+it("the game's coverage is by the exact modifiers: a Target on Ctrl + Left does not cover Shift + Left", () => {
+  const { why, click } = bindingClicks('CC.Add("shift-BUTTON1", "target") CC.Add("ctrl-BUTTON1", "target")',
+    'table.insert(__gameClicks, { type = Enum.ClickBindingType.Interaction, actionID = 1, button = "LeftButton", modifiers = __wfgWorld.modifierBits.ctrl })');
+  const click_ = "the game runs it only on a click its own Click Casting window binds";
+  expect([why("shift-BUTTON1"), why("ctrl-BUTTON1")], "Shift + Left is not covered, Ctrl + Left is").toEqual([click_, null]);
+  expect([click("LeftButton", "shift-"), click("LeftButton", "ctrl-")], "and the engine agrees").toEqual(["dropped", "target"]);
+});
+
+it("a hover key's virtual button is never covered by the game's profile, and a game binding stored under Button2 is the Right click", () => {
+  const { addon, why, click } = bindingClicks('CC.Add("SHIFT-Q", "target") CC.Add("SHIFT-E", "spell", "TEST-ONLY Renew") CC.Add("shift-BUTTON2", "spell", "TEST-ONLY Renew")',
+    'table.insert(__gameClicks, { type = Enum.ClickBindingType.Spell, actionID = 139, button = "Button2", modifiers = __wfgWorld.modifierBits.shift })');
+  expect([click("vg1"), click("vg2")], "the Target hover key is dropped by the engine, the spell hover key casts").toEqual(["dropped", "spell"]);
+  expect(why("SHIFT-Q"), "and Vanguard says so").toBe("the game won't run it from a key");
+  expect([click("RightButton", "shift-"), why("shift-BUTTON2") !== null], "the alias is the Right click for the engine and for the warning").toEqual(["game:1", true]);
+  expect(addon.eval("return #ns.errors"), "no error on the way").toBe(0);
+});
+
+it("once the lists are kept per talent group a client that doesn't name the group yet never sends edits to the list that predates it", () => {
+  const stamped = 'VanguardCharDB = { clickcastStamps = { talentGroups = true }, clickcastGroup = 2, clickcast = { [0] = { { key = "ctrl-BUTTON2", action = "spell", value = "TEST-ONLY Old" } }, [1] = { { key = "ctrl-BUTTON2", action = "spell", value = "TEST-ONLY Primary" } }, [2] = { { key = "ctrl-BUTTON2", action = "spell", value = "TEST-ONLY Secondary" } } } }';
+  const addon = loggedIn(UNITS_ENV + RAID_ENV + CLICK_LUA, { savedVariables: stamped });
+  const CCm = 'ns.GetModule("ClickCast")';
+  addon.eval('__spawn(1, "raid1")');
+  // The spell the first raid button casts on Ctrl + Right click now, and the saved spell of a list.
+  const cast = () => addon.eval('return Vanguard_RaidUnitButton1:GetAttribute("ctrl-spell2")');
+  const saved = (key) => addon.eval(`return VanguardCharDB.clickcast[${key}][1].value`);
+  expect(cast(), "the client names no group at login: the last known one (Secondary) applies, not the old list").toBe("TEST-ONLY Secondary");
+  addon.eval(`${CCm}.Add("ctrl-BUTTON1", "focus")`);
+  expect([addon.eval("return #VanguardCharDB.clickcast[2]"), addon.eval("return #VanguardCharDB.clickcast[0]")], "an edit goes to that group's list").toEqual([2, 1]);
+  addon.eval("__wfgWorld.specGroup = 1");
+  addon.fire("PLAYER_ENTERING_WORLD");
+  expect([cast(), addon.eval("return VanguardCharDB.clickcastGroup"), saved(0)], "when the group is named the frames follow it, and the old list is untouched").toEqual(["TEST-ONLY Primary", 1, "TEST-ONLY Old"]);
+});
+
+it("a client that names the talent group only after login applies that group's list then", () => {
+  const own = 'VanguardCharDB = { clickcast = { [0] = { { key = "ctrl-BUTTON2", action = "spell", value = "TEST-ONLY Old" } }, [2] = { { key = "ctrl-BUTTON2", action = "spell", value = "TEST-ONLY Own" } } } }';
+  const addon = loggedIn(UNITS_ENV + RAID_ENV + CLICK_LUA, { savedVariables: own });
+  addon.eval('__spawn(1, "raid1")');
+  // The spell the first raid button casts on Ctrl + Right click now.
+  const cast = () => addon.eval('return Vanguard_RaidUnitButton1:GetAttribute("ctrl-spell2")');
+  expect(cast(), "before the migration the single list applies").toBe("TEST-ONLY Old");
+  addon.eval("__wfgWorld.specGroup = 2");
+  addon.fire("PLAYER_ENTERING_WORLD");
+  expect(cast(), "the group named, its own list applies").toBe("TEST-ONLY Own");
 });

@@ -113,9 +113,9 @@ local function noticeNeeded()
 end
 
 -- Re-reads every row on the page after a binding changed; a page built with the notice when it no longer applies (or
--- without it when it now does) is built again.
+-- without it when it now does) is built again first. The other pages' rows are re-read either way.
 local function changed()
-  if noticeNeeded() ~= state.notice then return O.RebuildPage(PAGE) end
+  if noticeNeeded() ~= state.notice then O.RebuildPage(PAGE) end
   O.Refresh()
 end
 

@@ -118,11 +118,20 @@ local function migrateTalentGroups()
   CC.Stamp("talentGroups")
 end
 
--- This character's bindings for a spec key (the current talent group on WoW Forever, else the specialization;
--- the current one by default), created empty.
+-- The key this character's bindings are kept under now: the talent group on WoW Forever, which is remembered
+-- (VanguardCharDB.clickcastGroup) so that once the lists are kept per group a client that doesn't name the group yet
+-- (at login) never sends reads and edits back to the list that predates the groups; else the specialization index, else 0.
+local function currentKey()
+  local group = ns.TalentGroup()
+  if group and VanguardCharDB.clickcastGroup ~= group then VanguardCharDB.clickcastGroup = group end
+  if group or not CC.Stamped("talentGroups") then return group or ns.SpecIndex() or 0 end
+  return VanguardCharDB.clickcastGroup or CC.TALENT_GROUPS[1]
+end
+
+-- This character's bindings for a spec key (the current one by default), created empty.
 function CC.Bindings(spec)
   migrateTalentGroups()
-  spec = spec or ns.SpecKey() or 0
+  spec = spec or currentKey()
   local lists = savedLists()
   lists[spec] = lists[spec] or {}
   for _, b in ipairs(lists[spec]) do upgrade(b) end
@@ -206,28 +215,6 @@ function CC.ApplyLayout(layout)
     end
   end
   ns.OutOfCombat(CC.ApplyAll, "clickcast")
-end
-
--- Whether the saved list has a spell on plain Right click and the Unit menu on Middle click, the shape the starter
--- layouts had before "Click to select", and the game won't run that menu click: the units' click handler drops a menu
--- click its own profile doesn't cover, so the menu opens nowhere.
-function CC.MenuClickNeedsFix()
-  local right, middle = CC.Binding("BUTTON2"), CC.Binding("BUTTON3")
-  if not (right and middle and right.action == "spell" and middle.action == "menu") then return false end
-  return CC.WontRun(middle) ~= nil
-end
-
--- Moves the Unit menu from Middle click to plain Right click and the spell that was on Right click to Middle, then
--- applies (when the fight ends, in one). Nothing else in the list changes. False, changing nothing, when the list
--- isn't in the shape CC.MenuClickNeedsFix describes.
-function CC.FixMenuClick()
-  if not CC.MenuClickNeedsFix() then return false end
-  local heal = copyOf(CC.Binding("BUTTON2"))
-  heal.key = "BUTTON3"
-  put(CC.Bindings(), heal)
-  put(CC.Bindings(), { key = "BUTTON2", action = "menu" })
-  ns.OutOfCombat(CC.ApplyAll, "clickcast")
-  return true
 end
 
 -- Copies the current spec's bindings over another spec's.
@@ -362,6 +349,7 @@ local WONT_RUN = {
   key = L["the game won't run it from a key"],
   click = L["the game runs it only on a click its own Click Casting window binds"],
   override = L["the game's own Click Casting window binds a spell or macro to this click, and that runs instead"],
+  remap = L["the game's own Click Casting window puts Target or the unit menu on this click, so your binding for the click it stands for runs instead"],
 }
 -- A mouse button's number from the game's name for it (its profile may use either name).
 local GAME_BUTTONS = { LeftButton = 1, RightButton = 2, MiddleButton = 3, Button1 = 1, Button2 = 2, Button3 = 3, Button4 = 4, Button5 = 5 }
@@ -372,17 +360,6 @@ local function gameProfile()
   if type(api) ~= "table" or type(api.GetProfileInfo) ~= "function" or type(Enum.ClickBindingType) ~= "table" then return nil end
   local list = api.GetProfileInfo()
   return type(list) == "table" and list or nil
-end
-
--- Whether the game binds a click (a mouse prefix and button number) to one of its interactions (Target, Open menu).
--- Its modifier bits aren't documented, so a modified click counts as bound when the game binds any modified click
--- on that button: a warning is only given when it is sure.
-local function gameCovers(profile, prefix, n)
-  local interaction, modified = Enum.ClickBindingType.Interaction, prefix ~= ""
-  for _, info in ipairs(profile) do
-    if info.type == interaction and GAME_BUTTONS[info.button] == n and (info.modifiers ~= 0) == modified then return true end
-  end
-  return false
 end
 
 -- The words each modifier may be written as in the game's modifier text, in lower case: English names. The client's own
@@ -428,39 +405,121 @@ local function readModifierText(text)
   return prefixOf(found)
 end
 
--- The mouse prefix for the modifier mask of a game click binding, or nil when this client can't say or its text isn't
--- one this can read. The mask is decoded by GetStringFromModifiers, never MakeModifiers (which reads the keys held now).
+-- The mouse prefix for the modifier mask of a game click binding, or nil when this client can't say, the mask is hidden,
+-- or its text isn't one this can read (or reads as no modifier for a mask that has some). The mask is decoded by
+-- GetStringFromModifiers, never MakeModifiers (which reads the keys held now).
 local function modifierPrefix(modifiers)
+  modifiers = ns.PlainNumber(modifiers)
   if modifiers == 0 then return "" end
-  if type(modifiers) ~= "number" or type(GetStringFromModifiers) ~= "function" then return nil end
+  if not modifiers or type(GetStringFromModifiers) ~= "function" then return nil end
   local text = GetStringFromModifiers(modifiers)
   if ns.IsSecret(text) or type(text) ~= "string" then return nil end
-  return readModifierText(text)
+  local prefix = readModifierText(text)
+  return prefix ~= "" and prefix or nil
 end
 
--- Whether the game's profile binds a Spell, Macro or PetAction to a click (a mouse prefix and button number): the
--- units' click handler runs that and returns, so a Vanguard binding on the same click never runs.
-local function gameOverrides(profile, prefix, n)
-  local kind = Enum.ClickBindingType
-  for _, info in ipairs(profile) do
-    local runs = info.type == kind.Spell or info.type == kind.Macro or info.type == kind.PetAction
-    if runs and GAME_BUTTONS[info.button] == n and modifierPrefix(info.modifiers) == prefix then return true end
-  end
-  return false
+-- A profile entry as plain values ({ kind, n, modifiers, action }: its type, the button's number, its modifier mask and
+-- the interaction's id), or nil when it isn't a table or a field it needs is hidden or of another type.
+local function plainEntry(info)
+  if type(info) ~= "table" then return nil end
+  local button, kind = info.button, ns.PlainNumber(info.type)
+  if ns.IsSecret(button) or type(button) ~= "string" or not kind then return nil end
+  return { kind = kind, n = GAME_BUTTONS[button], modifiers = info.modifiers, action = ns.PlainNumber(info.actionID) }
 end
+
+-- The button an interaction of the game's profile stands for (the frames' attributes know only these): Target is Left
+-- click, Open menu is Right click. The engine reads the attribute of this button for a click bound to the interaction.
+local INTERACTION_BUTTON = { [1] = 1, [2] = 2 }
+
+-- What the game does with one profile entry on the click being asked about: "override" (a Spell, Macro or PetAction
+-- runs, and the engine returns before reading any attribute), "covered" (its interaction is on its own default button,
+-- so the frame's attribute runs), "remap" (an interaction the game moved here: the engine reads the default button's
+-- attribute instead), "unsure" (an interaction this doesn't know), or "unbound" (an entry that binds nothing).
+local function verdictOf(entry, n)
+  local kind = Enum.ClickBindingType
+  if entry.kind == kind.Spell or entry.kind == kind.Macro or entry.kind == kind.PetAction then return "override" end
+  if entry.kind ~= kind.Interaction then return "unbound" end
+  local home = INTERACTION_BUTTON[entry.action]
+  if not home then return "unsure" end
+  return home == n and "covered" or "remap"
+end
+
+-- How the game's profile treats a click (a mouse prefix and button number), by the exact modifiers of its entries:
+-- verdictOf for the entry on it, "unsure" when no entry is exact but one on that button has modifiers this can't read
+-- (it may be the one), else "unbound". Only a sure answer gives a warning.
+local function gameVerdict(profile, prefix, n)
+  local unsure = false
+  for _, info in ipairs(profile) do
+    local entry = plainEntry(info)
+    if entry and entry.n == n then
+      local own = modifierPrefix(entry.modifiers)
+      if own == prefix then return verdictOf(entry, n) end
+      unsure = unsure or own == nil
+    end
+  end
+  return unsure and "unsure" or "unbound"
+end
+
+-- The reasons a click's verdict gives a binding of any action (the Target and Unit menu "unbound" reason is by action).
+local VERDICT_REASONS = { override = WONT_RUN.override, remap = WONT_RUN.remap }
 
 -- Why a binding does nothing on this client, or nil when it works (or the client can't say). Where the game has
 -- click bindings of its own, a Spell, Macro or PetAction it binds to the same click runs instead of a mouse binding,
--- and the units' click handler drops Target and Unit menu on a click its own bindings don't cover (a hover key's
--- virtual button is never covered). While the game's bindings are in use, Vanguard's rest.
+-- an interaction it moved to the click makes the engine read another button's attribute, and the units' click handler
+-- drops Target and Unit menu on a click its own bindings don't cover (a hover key's virtual button is never covered).
+-- While the game's bindings are in use, Vanguard's rest.
 function CC.WontRun(b)
   local profile = not CC.UsesGame() and gameProfile()
   if not profile then return nil end
   local prefix, n = CC.MouseParts(b.key)
-  if prefix and gameOverrides(profile, prefix, n) then return WONT_RUN.override end
-  if not GAME_GATED[b.action] then return nil end
-  if not prefix then return WONT_RUN.key end
-  if not gameCovers(profile, prefix, n) then return WONT_RUN.click end
+  if not prefix then return GAME_GATED[b.action] and WONT_RUN.key or nil end
+  local verdict = gameVerdict(profile, prefix, n)
+  if verdict == "unbound" and GAME_GATED[b.action] then return WONT_RUN.click end
+  return VERDICT_REASONS[verdict]
+end
+
+-- The menu click of the old starter layouts ------------------------------------------------------
+
+-- A saved list's binding for a key, or nil.
+local function inList(list, key)
+  for _, b in ipairs(list) do
+    if b.key == key then return b end
+  end
+end
+
+-- Whether a list has a spell on plain Right click and the Unit menu on Middle click, the shape the starter layouts had
+-- before "Click to select", where the menu on Middle fails only because the game's profile doesn't cover that click
+-- (the units' click handler drops it) and, once the two are swapped, both clicks would run.
+local function oldShape(list)
+  local right, middle = inList(list, "BUTTON2"), inList(list, "BUTTON3")
+  if not (right and middle and right.action == "spell" and middle.action == "menu") then return false end
+  if CC.WontRun(middle) ~= WONT_RUN.click then return false end
+  return CC.WontRun({ key = "BUTTON2", action = "menu" }) == nil and CC.WontRun({ key = "BUTTON3", action = "spell" }) == nil
+end
+
+-- Whether the current list has the old shape (see oldShape), so the Click casting page offers the swap.
+function CC.MenuClickNeedsFix()
+  return oldShape(CC.Bindings())
+end
+
+-- Moves a list's Unit menu from Middle click to plain Right click and its Right click spell to Middle click.
+local function swapMenu(list)
+  local heal = copyOf(inList(list, "BUTTON2"))
+  heal.key = "BUTTON3"
+  put(list, heal)
+  put(list, { key = "BUTTON2", action = "menu" })
+end
+
+-- Swaps the menu and the spell in the current list and, on WoW Forever, in the other talent group's if it has the old
+-- shape too (the migration gave both the same list), then applies (when the fight ends, in one). Nothing else in a
+-- list changes. False, changing nothing, when the current list doesn't have the shape CC.MenuClickNeedsFix describes.
+function CC.FixMenuClick()
+  if not CC.MenuClickNeedsFix() then return false end
+  for _, key in ipairs(ns.TalentGroup() and CC.TALENT_GROUPS or { currentKey() }) do
+    if oldShape(CC.Bindings(key)) then swapMenu(CC.Bindings(key)) end
+  end
+  ns.OutOfCombat(CC.ApplyAll, "clickcast")
+  return true
 end
 
 -- Applying ---------------------------------------------------------------------------------
@@ -544,6 +603,7 @@ end
 
 -- Applies the current spec's bindings to one frame, or (using the game's click bindings) clears Vanguard's.
 function CC.ApplyFrame(f)
+  CC.appliedKey = currentKey()
   clearAttrs(f)
   if CC.UsesGame() then return unwrap(f) end
   local bindings = CC.Bindings()
@@ -593,4 +653,6 @@ function CC.Enable(settings)
   local function reapply() ns.OutOfCombat(CC.ApplyAll, "clickcast") end
   ns.On("PLAYER_SPECIALIZATION_CHANGED", reapply)
   ns.On("ACTIVE_TALENT_GROUP_CHANGED", reapply)
+  -- A client that names the talent group only after login: apply that group's list once it does.
+  ns.On("PLAYER_ENTERING_WORLD", function() if CC.appliedKey ~= currentKey() then reapply() end end)
 end
