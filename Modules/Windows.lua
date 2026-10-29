@@ -1531,13 +1531,15 @@ end
 -- The inspect window's lines over the model (the inspected player's title and guild, gold in the game).
 GW.INSPECT_TEXTS = { "InspectTitleText", "InspectGuildText" }
 
--- One inspect gear slot (Inspect<name>Slot; a slot the client lacks is skipped) in the bags' item look, the bronze
--- frame the game keeps in a child of the button faded.
+-- One inspect gear slot (Inspect<name>Slot; a slot the client lacks is skipped) in the bags' item look, its bronze
+-- frame faded: the Camelot slot keeps it in a child of the button, the retail slot in a texture named after the button
+-- (InspectHeadSlotFrame), which only its global name reaches.
 local function skinInspectSlot(name)
   local button = _G["Inspect" .. name .. "Slot"]
   if type(button) ~= "table" then return end
   GW.SkinItem(button)
   GW.FadeParts(button, { "BorderFrame" })
+  GW.FadeNamed({ "Inspect" .. name .. "SlotFrame" })
 end
 
 -- The inspect window's inside: the model's painted backdrop and bronze frame an inset, the gear slots, the View in
@@ -1631,7 +1633,7 @@ GW.JOURNAL_DROPDOWNS = { "FilterDropdown", "ClassDropdown" }
 GW.JOURNAL_BUTTONS = { "MountButton", "SummonButton" }
 
 -- A progress bar as a flat inset track whose fill is the dim accent (the game's green fill was made for its textured
--- bar and survives the texture swap); anything that is not a status bar is skipped.
+-- bar and survives the texture swap), following the accent and the variant; anything that is not a status bar is skipped.
 function GW.SkinAccentBar(bar)
   if type(bar) ~= "table" or not bar.SetStatusBarTexture then return end
   GW.SkinProgress(bar)
@@ -1868,11 +1870,19 @@ local function lightBlackTexts(list, key)
   end
 end
 
--- An open achievement's list of criteria and meta achievements, its black names light.
+-- The progress bars (retail: "700/1000") of an open achievement as flat accent bars; the game's pool makes them again
+-- each time it fills the list, so this runs after every fill.
+local function skinCriteriaBars(objectives)
+  if type(objectives.progressBars) ~= "table" then return end
+  for _, bar in ipairs(objectives.progressBars) do GW.SkinAccentBar(bar) end
+end
+
+-- An open achievement's list of criteria and meta achievements, its black names light and its progress bars flat.
 local function lightCriteria(objectives)
   if type(objectives) ~= "table" then return end
   lightBlackTexts(objectives.criterias, "Name")
   lightBlackTexts(objectives.metas, "Label")
+  skinCriteriaBars(objectives)
 end
 
 -- The criteria list light now and after the game fills it in for each achievement (it colours a completed criterion
@@ -1998,9 +2008,17 @@ local function after(owner, name, fn)
   hooksecurefunc(name, ns.Guard("hook " .. tostring(name), fn))
 end
 
+-- The turn-in page's "Required money" line light: the game colours it black or dark grey each time it fills the page
+-- (QuestFrameProgressItems_Update), in a dressed window only.
+local function lightProgressMoney()
+  local fs = _G.QuestProgressRequiredMoneyText
+  if type(fs) == "table" and fs.SetTextColor and inDressedWindow(fs) then T.Color(fs, "text") end
+end
+
 -- Keeps quest and gossip text readable: the game recolors it for parchment as
 -- each page shows, so Vanguard's colors go on after it does, every time.
 local function keepTextReadable()
+  after(nil, "QuestFrameProgressItems_Update", lightProgressMoney)
   after(nil, "QuestFrame_SetTextColor", function(fs) T.Color(fs, "text") end)
   after(nil, "QuestFrame_SetTitleTextColor", function(fs) T.Color(fs, "text") end)
   local box = gossipBox()

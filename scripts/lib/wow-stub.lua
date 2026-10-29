@@ -533,6 +533,7 @@ function methods:GetMinMaxValues() return self.__min or 0, self.__max or 0 end
 function methods:SetValue(v, ease) self.__value, self.__ease = v, ease end
 function methods:GetValue() return self.__value or 0 end
 function methods:SetStatusBarColor(r, g, b, a) self.__barColor = { r, g, b, a or 1 } end
+function methods:GetStatusBarColor() local c = self.__barColor or { 1, 1, 1, 1 } return c[1], c[2], c[3], c[4] end
 
 -- Sliders: the orientation (HORIZONTAL unless set).
 function methods:SetOrientation(o) self.__orientation = o end

@@ -26,10 +26,11 @@ CK.SPELL_CALLS = { "GetSpellID", "GetBaseSpellID" }
 -- Which spell a bar slot casts -------------------------------------------------------------
 
 -- The spell an action slot casts (directly or through a macro), or nil when it is none or hidden.
+-- The game hands back the spell itself for a macro that casts one; any other macro is asked.
 function CK.SlotSpell(slot)
-  local kind, id = GetActionInfo(slot)
-  if ns.IsSecret(kind) or ns.IsSecret(id) then return nil end
-  if kind == "macro" and type(GetMacroSpell) == "function" then id = GetMacroSpell(id) end
+  local kind, id, subType = GetActionInfo(slot)
+  if ns.IsSecret(kind) or ns.IsSecret(id) or ns.IsSecret(subType) then return nil end
+  if kind == "macro" and subType ~= "spell" and type(GetMacroSpell) == "function" then id = GetMacroSpell(id) end
   if kind ~= "spell" and kind ~= "macro" then return nil end
   return ns.PlainNumber(id)
 end

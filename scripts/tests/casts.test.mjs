@@ -226,6 +226,30 @@ it("a channel the client stops with an interrupter flashes red, one it lets run 
   expect(stop(null), "a channel that ran its course").toEqual([true, "green", "TEST-ONLY Spell"]);
 });
 
+it("an uninterruptible flag the client hides: the client picks the shielded or plain color, and no edge is drawn", () => {
+  const addon = loggedIn(CAST_ENV);
+  // The target bar's fill color and whether its edge is the shielded gray (the edge is the OVERLAY texture at sublevel 7).
+  const look = () => {
+    const got = addon.eval(`local b = Vanguard_CastBar_target local edge
+      for _, w in ipairs(__wfgStub.frames) do if w.__parent == b and w.__layer == "OVERLAY" and w.__sublevel == 7 then edge = w.__vertexColor break end end
+      return { color = b.__barColor, edge = edge }`);
+    return { color: got.color, edge: isTok(addon, got.edge, "shielded") };
+  };
+  // Starts a cast or channel on the target whose uninterruptible flag is hidden (true or false underneath), and reads the bar.
+  const cast = (flag, kind = "cast") => {
+    addon.eval(`__casts.target = { kind = "${kind}", start = 1000 * 1000, finish = 1000 * 1000 + 3000, shielded = __wfgWorld.secret(${flag}) }`);
+    addon.fire(kind === "cast" ? "UNIT_SPELLCAST_START" : "UNIT_SPELLCAST_CHANNEL_START", "target");
+    return look();
+  };
+  const hiddenYes = cast("true");
+  expect([isTok(addon, hiddenYes.color, "shielded"), hiddenYes.edge], "hidden and uninterruptible: the gray fill, but no gray edge (an edge cannot follow a hidden flag)").toEqual([true, false]);
+  const hiddenNo = cast("false");
+  expect([isTok(addon, hiddenNo.color, "cast"), hiddenNo.edge], "hidden and interruptible: the cast color").toEqual([true, false]);
+  expect(isTok(addon, cast("false", "channel").color, "channel"), "a hidden channel keeps the channel color").toBe(true);
+  addon.eval("C_CurveUtil.EvaluateColorFromBoolean = nil");
+  expect(isTok(addon, cast("true").color, "cast"), "a client without the call shows the plain color").toBe(true);
+});
+
 // TEST-ONLY the game's overlay cast bar (CastingBarFrame.xml): its art, finish flash and text, and the
 // two calls that redraw it (the fill's atlas at each cast's start and end, and the finish flash).
 const OVERLAY_ENV = `
@@ -260,6 +284,20 @@ it("the game's crafting cast bar stays, drawn in the theme, through every cast",
   expect([overlay(off).fill, overlay(off).art[0]], "with cast bars off it is the game's own").toEqual(["TEST-ONLY-ATLAS", undefined]);
   const bare = loggedIn('CreateFrame("StatusBar", "OverlayPlayerCastingBarFrame", UIParent)');
   expect([bare.eval("return ns.FrameState('vgSkinned')[OverlayPlayerCastingBarFrame]"), bare.eval("return #ns.errors"), loggedIn().eval("return #ns.errors")], "a bar without its parts, or a client without the bar, loads cleanly").toEqual([true, 0, 0]);
+});
+
+it("the game's crafting cast bar is not painted green when the cast is interrupted or fails", () => {
+  const addon = loggedIn(OVERLAY_ENV + 'CastingBarType = { Standard = "standard", Interrupted = "interrupted" }');
+  addon.eval("local b = OverlayPlayerCastingBarFrame b.barType = CastingBarType.Standard b:UpdateBarFillTexture(false) b:Show() b:UpdateBarFillTexture(true)");
+  expect(isTok(addon, overlay(addon).color, "good"), "a finished cast ends green").toBe(true);
+  addon.eval("local b = OverlayPlayerCastingBarFrame b.barType = CastingBarType.Interrupted b:UpdateBarFillTexture(true)");
+  expect(isTok(addon, overlay(addon).color, "bad"), "an interrupted or failed one, which the game also fills, ends red").toBe(true);
+  addon.eval("local b = OverlayPlayerCastingBarFrame b.barType = CastingBarType.Standard b:UpdateBarFillTexture(false)");
+  expect(isTok(addon, overlay(addon).color, "cast"), "the next cast starts in the cast color").toBe(true);
+  addon.eval("local b = OverlayPlayerCastingBarFrame b.barType = __wfgWorld.secret('interrupted') b:UpdateBarFillTexture(true)");
+  expect(isTok(addon, overlay(addon).color, "good"), "a hidden type is not read").toBe(true);
+  addon.eval("CastingBarType = nil local b = OverlayPlayerCastingBarFrame b.barType = 'interrupted' b:UpdateBarFillTexture(true)");
+  expect(isTok(addon, overlay(addon).color, "good"), "a client without the table paints as before").toBe(true);
 });
 
 // TEST-ONLY the client's duration objects for the global cooldown and your cast, and a global cooldown spell the call records.
@@ -441,6 +479,7 @@ it("the interrupt mark: which interrupt, by class and rank", () => {
   expect(pick("WARRIOR", [72]), "a warrior with only Shield Bash").toBe(72);
   expect(pick("WARRIOR", [72, 6552]), "Pummel before Shield Bash").toBe(6552);
   expect(pick("SHAMAN", [8042, 8044, 10412]), "a shaman's best Earth Shock").toBe(10412);
+  expect(pick("SHAMAN", [8042, 57994]), "a retail shaman's Wind Shear before Earth Shock").toBe(57994);
   expect(pick("PRIEST", [15487]), "a priest's Silence").toBe(15487);
   expect(pick("MAGE", [2139]), "a mage's Counterspell").toBe(2139);
   expect(pick("MAGE", []), "an interrupt you have not learned").toBe(false);

@@ -186,3 +186,26 @@ it("levelling: a quest you accept is watched, unless it is watched already or th
   addon.world.addQuest({ questID: 23, title: "Not watched", level: 5, objectives: [] });
   expect(addon.eval("return __adds"), "switched off: not watched").toBe(0);
 });
+it("levelling: a world quest or a bounty you accept is not watched, as the game's own tracker leaves them out", () => {
+  const addon = loggedIn();
+  addon.eval("__tasks, __bounties = { [31] = true }, { [32] = true } C_QuestLog.IsQuestTask = function(id) return __tasks[id] == true end C_QuestLog.IsQuestBounty = function(id) return __bounties[id] == true end");
+  for (const id of [31, 32, 33]) addon.world.addQuest({ questID: id, title: `Quest ${id}`, level: 5, objectives: [] });
+  // Whether the tracker watches the quest.
+  const watched = (id) => addon.eval(`return ns.GetModule('QuestTracker').IsWatched(${id})`);
+  expect([watched(31), watched(32), watched(33)], "only the ordinary quest is watched").toEqual([false, false, true]);
+  addon.eval("C_QuestLog.IsQuestTask = function() return __wfgWorld.secret() end");
+  addon.fire("QUEST_ACCEPTED", 31);
+  expect(watched(31), "a hidden answer counts as no: the quest is watched").toBe(true);
+});
+it("levelling: a new area puts the watch list in the game's order again, unless the tracker orders by distance", () => {
+  const addon = loggedIn();
+  addon.eval("__sorts = 0 C_QuestLog.SortQuestWatches = function() __sorts = __sorts + 1 end");
+  addon.fire("ZONE_CHANGED_NEW_AREA");
+  expect(addon.eval("return __sorts"), "sorted on a new area").toBe(1);
+  addon.eval("ns.GetModule('QuestTracker').settings.order = 'nearest'");
+  addon.fire("ZONE_CHANGED_NEW_AREA");
+  expect(addon.eval("return __sorts"), "nearest first sorts itself: the game's sort is left alone").toBe(1);
+  addon.eval("C_QuestLog.SortQuestWatches = nil ns.GetModule('QuestTracker').settings.order = 'game'");
+  addon.fire("ZONE_CHANGED_NEW_AREA");
+  expect(addon.eval("return #ns.errors"), "a client without the call is fine").toBe(0);
+});

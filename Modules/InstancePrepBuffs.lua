@@ -91,9 +91,9 @@ local function isWeapon(slot)
   return ns.PlainNumber((select(6, info(link)))) == PR.WEAPON
 end
 
--- Whether the client can list your weapon enchants (the call PlayerAuras reads them with).
+-- Whether the client can list your weapon enchants (the calls PlayerAuras reads them with).
 local function canListEnchants()
-  return type(C_Item and C_Item.GetWeaponEnchantInfo) == "function" and Enum and Enum.WeaponSlot ~= nil
+  return ns.GetModule("PlayerAuras").CanListEnchants()
 end
 
 -- The slots among your weapons' timed enchants (PlayerAuras reads them), as a set.

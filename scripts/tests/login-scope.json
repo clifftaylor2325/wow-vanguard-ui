@@ -30,16 +30,21 @@
       "target and focus auras",
       "your buffs and debuffs replace the game's, with weapon enchants in front",
       "your buffs: an enchant's sweep keeps its full length when it moves to another cell",
+      "your buffs: on retail, which asks C_PaperDollInfo by inventory slot, enchants show in front too",
       "your buffs: the enchant switch, and clients without enchant info",
       "your buffs: the game's external defensives and deadly debuff frames go with its buff frames"
     ],
     "scripts/tests/bagsections.test.mjs": [],
     "scripts/tests/bars.test.mjs": [
+      "Forever's bars carry no pet battle clause (its vanilla content has none)",
       "Hidden bar bindings stay intact",
       "In combat bars show during a drag out of combat; a drag that starts in combat leaves secure visibility alone",
       "Y2-4 bars: a usable event repaints only the buttons whose state changed",
+      "a button prints the client's own count text, such as spell charges, and keeps the use count where it has none",
       "a moved action bar keeps its spot until reset",
       "a paged bar 1 button's tooltip is for the slot it shows now, not its action attribute",
+      "a pet battle hands the number keys back to the game and hides the bars, then everything returns",
+      "a pet battle's opening alone takes the keys away, and its end waits for a fight to finish",
       "action bar cooldown numbers in the theme's font",
       "action bar dragging",
       "action bar empty slots hide until the grid shows",
@@ -109,6 +114,7 @@
     "scripts/tests/cooldownkeys.test.mjs": [
       "T2-1 cooldown keys: a row that points its icons at other cooldowns in place is repainted",
       "cooldown keys: /vg cdmkeys and the options switch it at once; the row's layout hook repaints",
+      "cooldown keys: a macro the game reports as casting a spell is that spell, not a macro number",
       "cooldown keys: the key of the bar button that holds the spell, or a macro that casts it, follows moves and bindings",
       "cooldown keys: the labels follow bar 1 to its new page after a stance change or Shift+number"
     ],
@@ -143,6 +149,7 @@
     "scripts/tests/frames.test.mjs": [
       "brass art: a calmer HUD, soft sparks, corner diamonds and role marks",
       "frames pass: bar texture, smoothing, raid style, shields, glows",
+      "proc glow on a macro that casts the spell, as the game's own buttons light it",
       "proc glow on action buttons"
     ],
     "scripts/tests/graphics.test.mjs": [],
@@ -199,6 +206,7 @@
       "prep buffs: a buff holding a check's name counts (a camp variant), an unrelated buff does not",
       "prep buffs: a packed character with buffs missing walks into a dungeon and the door card stays away",
       "prep buffs: a ready check lists the flask, food, enchants and raid buffs you lack",
+      "prep buffs: a retail client lists enchants by inventory slot, so a bare weapon gets its row",
       "prep buffs: nothing is guessed when the client hides auras or can't list them",
       "prep buffs: off until switched on",
       "prep buffs: on a German client the checks find the German names",
@@ -299,6 +307,7 @@
       "class bars: the totem row sits above the player frame, clear of the chat's tab bar and its tiles at 1365 and 1440 wide (B4-1)",
       "class bars: totems for shamans, mana in forms for druids",
       "combo points for rogues and druids",
+      "combo points on retail grow to your maximum, and WoW Forever stays at five",
       "combo points that follow you to a new target at the same count show at once",
       "hovering a unit frame shows its unit's tooltip, as the game's frames do",
       "power ticks: energy every two seconds, and forms switch",

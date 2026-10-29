@@ -469,6 +469,13 @@ local function fontTab(tab)
   if type(text) == "table" and type(text.SetFont) == "function" then T.Text(text, "label", false) end
 end
 
+-- A tab's alert glow in the accent colour. The game paints it in the tab's own colour again with every
+-- FCFTab_UpdateColors, so this runs after each of those too.
+local function tintGlow(tab)
+  local glow = tabGlow(tab)
+  if glow then T.Tint(glow, "accent") end
+end
+
 -- A tab as the theme's flat tab (raised with a lit top edge when selected, just its label on the bar
 -- otherwise, a faint hover, rounded) with its own art gone and its alert glow in the accent colour;
 -- the game's flash animation still drives the glow's alpha.
@@ -476,8 +483,7 @@ local function skinTab(tab)
   T.Tab(tab, { flat = true })
   T.SetRound(tab, true)
   T.FadeRegions(tab, { [tab.Text or false] = true, [tabGlow(tab) or false] = true })
-  local glow = tabGlow(tab)
-  if glow then T.Tint(glow, "accent") end
+  tintGlow(tab)
   fontTab(tab)
   sizeTab(tab)
   vgChatTab[tab] = true
@@ -486,11 +492,12 @@ end
 -- A tab after the game colours it (FCFTab_UpdateColors(tab, selected): the dock's layout, a tab
 -- click, a new window): its label is gold again, so the theme's tab is painted again, selected as
 -- the game says, which puts the label back in the theme's colours; a tab Vanguard hasn't dressed
--- yet gets the skin.
+-- yet gets the skin; the alert glow the game recoloured goes back to the accent.
 local function restyleTab(tab, selected)
   if type(tab) ~= "table" then return end
   T.SetChecked(tab, selected)
   if vgChatTab[tab] then T.Tab(tab) else skinTab(tab) end
+  tintGlow(tab)
 end
 
 -- Notes whether a window's tab is the selected one before it is skinned, as the game colours it: a

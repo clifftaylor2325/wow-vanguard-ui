@@ -117,11 +117,20 @@ function AB.Driver(n)
   return own
 end
 
+-- The clause that hides a bar in a pet battle (the game's own bars hide then, and the pet battle bar
+-- takes the bottom of the screen). Forever's vanilla content has no pet battles, so its bars go without it.
+AB.PET_BATTLE_CLAUSE = "[petbattle] hide; "
+
+-- What bar n's secure driver says: hidden in a pet battle on a client that has them, else the bar's own driver.
+function AB.BarDriver(n)
+  return (ns.IsForever() and "" or AB.PET_BATTLE_CLAUSE) .. AB.Driver(n)
+end
+
 -- Registers bar n's secure visibility driver, its state and mouse watching right now.
 local function visibilityNow(n)
   local bar = AB.bars[n]
   if not bar then return end
-  RegisterStateDriver(bar, "visibility", AB.Driver(n))
+  RegisterStateDriver(bar, "visibility", AB.BarDriver(n))
   V.ApplyNow(bar, AB.Visibility(n), AB.settings.bars[n].showWhen)
   bar:EnableMouse(V.Fades(bar))
   AB.UpdateAlpha(n)
@@ -130,7 +139,7 @@ end
 -- Re-registers the visibility driver of every bar shown on conditions right now (out of combat only).
 local function conditionalBarsNow()
   for n, bar in pairs(AB.bars) do
-    if V.Conditional(AB.OwnDriver(n)) then RegisterStateDriver(bar, "visibility", AB.Driver(n)) end
+    if V.Conditional(AB.OwnDriver(n)) then RegisterStateDriver(bar, "visibility", AB.BarDriver(n)) end
   end
 end
 

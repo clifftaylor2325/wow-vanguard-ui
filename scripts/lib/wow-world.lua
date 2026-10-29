@@ -481,6 +481,11 @@ C_CurveUtil = {
     end
     return curve
   end,
+  -- One of two colors by a boolean the client may hide (a hidden one is read through the harness's rawget, as a hidden number is).
+  EvaluateColorFromBoolean = function(flag, ifTrue, ifFalse)
+    if issecretvalue(flag) then flag = rawget(flag, "n") end
+    return flag and ifTrue or ifFalse
+  end,
 }
 
 -- Numeric rule formatters: a formatter object whose Format rounds a number.

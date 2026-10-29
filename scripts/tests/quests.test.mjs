@@ -1398,6 +1398,12 @@ const PARCHMENT_ENV = `
   function QuestFrame_SetTextColor(fs) fs:SetTextColor(0.2, 0.1, 0) end
   function QuestFrame_SetTitleTextColor(fs) fs:SetTextColor(0.2, 0.1, 0) end
   function QuestInfo_Display() QuestInfoDescriptionText:SetTextColor(0.2, 0.1, 0) end
+  -- The turn-in page's money line, and the game's own colouring of it (QuestFrame.lua QuestFrameProgressItems_Update):
+  -- black when you can't afford it, dark grey when you can, direct SetTextColor calls.
+  QuestFrame:CreateFontString("QuestProgressRequiredMoneyText") QuestProgressRequiredMoneyText = __wfgStub.frames[#__wfgStub.frames]
+  function QuestFrameProgressItems_Update()
+    if QuestProgressRequiredMoneyText then QuestProgressRequiredMoneyText:SetTextColor(0, 0, 0) end
+  end
   GossipFrame = CreateFrame("Frame", "GossipFrame", UIParent) GossipFrame:Hide()
   GossipFrame.GreetingPanel = CreateFrame("Frame", nil, GossipFrame)
   local box = CreateFrame("Frame", nil, GossipFrame.GreetingPanel)
@@ -1416,6 +1422,10 @@ it("game windows: quest and gossip text stays readable on the dark panel", () =>
   expect([isTok(addon, addon.eval("return QuestInfoDescriptionText.__textColor"), "text"), isTok(addon, addon.eval("return QuestInfoTitleHeader.__textColor"), "text")], "quest text and the headings (the quest's name too) go light after the game colors them").toEqual([true, true]);
   addon.eval("QuestInfoTitleHeader:SetTextColor(0.2, 0.1, 0) QuestFrame_SetTitleTextColor(QuestInfoTitleHeader)");
   expect(isTok(addon, addon.eval("return QuestInfoTitleHeader.__textColor"), "text"), "and when the game recolors a heading on its own").toBe(true);
+  addon.eval("QuestFrameProgressItems_Update()");
+  expect(isTok(addon, addon.eval("return QuestProgressRequiredMoneyText.__textColor"), "text"), "the turn-in page's money line goes light after the game colours it black").toBe(true);
+  addon.eval("QuestProgressRequiredMoneyText = nil QuestFrameProgressItems_Update()");
+  expect(addon.eval("return #ns.errors"), "a client without that line is fine").toBe(0);
   addon.eval("local fs = QuestFrame:CreateFontString() QuestFrame_SetTextColor(fs) __fs = fs");
   expect(isTok(addon, addon.eval("return __fs.__textColor"), "text"), "any text the game colors for parchment is lightened").toBe(true);
   addon.eval("GossipFrame.GreetingPanel.ScrollBox:Update()");
@@ -1425,6 +1435,8 @@ it("game windows: quest and gossip text stays readable on the dark panel", () =>
   const off = loggedIn(PARCHMENT_ENV, { savedVariables: "VanguardDB.profiles.Default = { modules = { QuestDialog = false }, Windows = { windows = false } }" });
   off.eval("QuestInfo_Display()");
   expect(off.eval("return QuestInfoDescriptionText.__textColor[1]"), "with game windows off, the game's colors stay").toBeCloseTo(0.2);
+  off.eval("QuestFrameProgressItems_Update()");
+  expect(off.eval("return QuestProgressRequiredMoneyText.__textColor[1]"), "and so does the turn-in money line's").toBe(0);
   expect(loggedIn("").eval("return ns.GetModule('Windows').LightGossip() == nil"), "a client without these windows is fine").toBe(true);
 });
 // TEST-ONLY the shared quest texts QuestInfo_Display colours for parchment (QuestInfo.xml): the named strings, the keys of
@@ -1496,6 +1508,11 @@ const TRACKER_ENV = `
     h.MinimizeButton = CreateFrame("Button", nil, h) h.MinimizeButton.normal = h.MinimizeButton:CreateTexture()
     h.MinimizeButton.GetNormalTexture = function(self) return self.normal end
     function h:SetCollapsed(collapsed) self.collapsed = collapsed end
+    -- The game's add animation (setToFinalAlpha): played, it ends by setting the band to full alpha unless stopped first.
+    h.Shine = h:CreateTexture()
+    h.AddAnim = { Restart = function(anim) anim.playing = true end, Stop = function(anim) anim.playing = false end,
+      Finish = function(anim) if anim.playing then h.Background:SetAlpha(1) h.Shine:SetAlpha(1) anim.playing = false end end }
+    function h:PlayAddAnimation() self.AddAnim:Restart() end
     return h
   end
   ObjectiveTrackerFrame.Header = __header(ObjectiveTrackerFrame)
@@ -1518,6 +1535,9 @@ it("the quest tracker in the Vanguard look: flat headers, brass lines, theme arr
   expect(addon.eval("return { ObjectiveTrackerLineFont.font[2], ObjectiveTrackerHeaderFont.font[2], ObjectiveTrackerHeaderFont.font[1]:find('SemiBold') ~= nil }"), "the tracker's fonts are the theme's (headers bold)").toEqual([12, 13, true]);
   addon.eval("ns.Theme.SetAccent(0.1, 0.2, 0.3)");
   expect(addon.eval("return ns.GetModule('MenuStrip').rules[2].__vertexColor[3]"), "the lines follow the accent").toBe(0.3);
+  // A section shown again: the game plays its header's add animation, which would fade the band and shine back in.
+  addon.eval("local h = ObjectiveTrackerFrame.modules[1].Header h:PlayAddAnimation() h.AddAnim:Finish()");
+  expect(addon.eval("local h = ObjectiveTrackerFrame.modules[1].Header return { h.Background.__alpha, h.Shine.__alpha, h.AddAnim.playing }"), "the game's add animation is stopped, so the band and shine stay faded").toEqual([0, 0, false]);
   addon.eval("ObjectiveTrackerFrame.modules[2] = { Header = __header(ObjectiveTrackerFrame) } ObjectiveTrackerFrame:Update()");
   expect(addon.eval("return ns.FrameState('vgHeader')[ObjectiveTrackerFrame.modules[2].Header]"), "a section the game adds later is styled on its next update").toBe(true);
   const own = loggedIn(UI_ENV + TIDY_ENV + TRACKER_ENV);

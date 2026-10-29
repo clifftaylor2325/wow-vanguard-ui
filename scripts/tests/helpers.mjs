@@ -592,6 +592,16 @@ export const STRIPS_ENV = `
   __bag:SetSize(45, 45)
   __keyring = CreateFrame("Button", "KeyRingButton", BagsBar) __keyring:SetSize(33, 45) __keyring.icon = __keyring:CreateTexture()
   CreateFrame("Button", "EJMicroButton", MicroMenuContainer)
+  -- The micro buttons the game lays out in a row: n of them shown (made as needed, under the game's names), the rest hidden.
+  __microNames = { "CharacterMicroButton", "MainMenuMicroButton", "EJMicroButton", "ProfessionMicroButton", "PlayerSpellsMicroButton",
+    "AchievementMicroButton", "QuestLogMicroButton", "HousingMicroButton", "GuildMicroButton", "LFDMicroButton", "CollectionsMicroButton",
+    "HelpMicroButton", "StoreMicroButton", "SpellbookMicroButton", "TalentMicroButton", "LegacyMicroButton", "WorldMapMicroButton" }
+  function __menuButtons(n)
+    for i, name in ipairs(__microNames) do
+      local b = _G[name] or __micro(name)
+      if i <= n then b:Show() else b:Hide() end
+    end
+  end
 `;
 
 // TEST-ONLY pet and stance bars, as the client has them, with the game's Edit Mode spot.

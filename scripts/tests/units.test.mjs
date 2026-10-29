@@ -251,6 +251,32 @@ it("combo points for rogues and druids", () => {
   expect(noFrames.eval('local CP = ns.GetModule("ComboPoints") CP.Update() return CP.bar') === null, "no player frame, no pips").toBeTruthy();
 });
 
+it("combo points on retail grow to your maximum, and WoW Forever stays at five", () => {
+  const retail = loggedIn(RETAIL + UNITS_ENV + `__units.player.class = "ROGUE" __cp, __max = 6, 7
+    GetComboPoints = nil Enum = Enum or {} Enum.PowerType = { ComboPoints = 4 } UnitPower = function(unit, kind) return kind == 4 and __cp or 0 end
+    UnitPowerMax = function(unit, kind) return kind == 4 and __max or 0 end`, NO_RAID);
+  // The row's width, how many pips show, and how many are lit.
+  const row = () => retail.eval(`local CP = ns.GetModule("ComboPoints") local shown, lit = 0, 0
+    for _, p in ipairs(CP.pips) do if p:IsShown() then shown = shown + 1 end if p.fill:IsShown() then lit = lit + 1 end end
+    return { w = CP.bar:GetWidth(), shown = shown, lit = lit, made = #CP.pips }`);
+  expect(row(), "seven combo points possible: seven pips (14 + 3 each), six lit").toEqual({ w: 7 * 17, shown: 7, lit: 6, made: 7 });
+  retail.eval("__max, __cp = 5, 2");
+  retail.fire("UNIT_MAXPOWER", "player");
+  expect(row(), "the maximum falls back to five: the row shrinks, the extra pips are kept hidden").toEqual({ w: 5 * 17, shown: 5, lit: 2, made: 7 });
+  retail.eval("__max, __cp = 12, 7");
+  retail.fire("UNIT_MAXPOWER", "player");
+  expect(row().shown, "never more than the cap of seven").toBe(7);
+  retail.eval("__max = 0");
+  retail.fire("UNIT_MAXPOWER", "player");
+  expect(row().shown, "a maximum the client cannot give counts as five").toBe(5);
+  retail.eval("__max = nil");
+  retail.fire("UNIT_MAXPOWER", "player");
+  expect(row().shown, "so does an answer of nothing").toBe(5);
+  const forever = loggedIn(UNITS_ENV + `__units.player.class = "ROGUE" __cp = 3
+    UnitPowerMax = function() return 7 end GetComboPoints = function() return __cp end`, NO_RAID);
+  expect(forever.eval('local CP = ns.GetModule("ComboPoints") return { #CP.pips, CP.Max() }'), "WoW Forever: five, whatever the power says").toEqual([5, 5]);
+});
+
 it("combo points that follow you to a new target at the same count show at once", () => {
   const addon = loggedIn(UNITS_ENV + `__units.player.class = "ROGUE" __cp = 0
     GetComboPoints = function() return __cp end`, NO_RAID);

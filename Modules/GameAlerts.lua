@@ -93,13 +93,30 @@ local function headString(f, holder, key)
   return type(box) == "table" and type(box[key]) == "table" and box[key] or nil
 end
 
--- The talking head in the theme: its parchment faded, a flat panel, the name and text in the theme font.
+-- The talking head's name in the accent and its text in the theme's text colour, the game's fade (the strings'
+-- alpha) kept. The game colours both for each line from its texture kit, dark browns and black for the Horde,
+-- Alliance and Neutral kits, made for the parchment that is faded here.
+function GA.PaintTalkingHead(f)
+  local name, text = headString(f, "NameFrame", "Name"), headString(f, "TextFrame", "Text")
+  if name then T.Color(name, "accentText") end
+  if text then T.Color(text, "text") end
+end
+
+-- Paints the talking head again after each line the game plays (it colours the strings anew every time).
+local function watchTalkingHead(f)
+  if type(f.PlayCurrent) ~= "function" or type(hooksecurefunc) ~= "function" then return end
+  hooksecurefunc(f, "PlayCurrent", ns.Guard("hook PlayCurrent", GA.PaintTalkingHead))
+end
+
+-- The talking head in the theme: its parchment faded, a flat panel, the name and text in the theme font and colours.
 function GA.SkinTalkingHead(f)
   if type(f.BackgroundFrame) == "table" then f.BackgroundFrame:SetAlpha(0) end
   T.Panel(f, { alpha = 0.92, shadow = true })
   local name, text = headString(f, "NameFrame", "Name"), headString(f, "TextFrame", "Text")
   if name then T.Text(name, "heading", false) end
   if text then T.Text(text, "label", false) end
+  GA.PaintTalkingHead(f)
+  watchTalkingHead(f)
 end
 
 -- The talking head, as chosen: moved and restyled, hidden, or left to the game. Done once at login:

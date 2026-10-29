@@ -235,10 +235,20 @@ local function useCount(slot)
   return call("GetActionCount", slot)
 end
 
--- Charges or item count: always for something that gets used up (so running
--- out shows 0, as the game's buttons do), otherwise only above 1. A hidden
--- count shows nothing.
+-- The client's own count text for a slot (charges of a spell, uses of an item), as its buttons print it;
+-- false on a client without the call. The text may be secret: only SetText takes it, so the
+-- answer says first whether there is one.
+local function displayCount(slot)
+  local text = call("GetActionDisplayCount", slot)
+  if ns.IsSecret(text) or text ~= nil then return true, text end
+  return false
+end
+
+-- Charges or item count: the client's own text when it has one; otherwise always for something that gets
+-- used up (so running out shows 0, as the game's buttons do), else only above 1. A hidden count shows nothing.
 local function updateCount(b)
+  local found, text = displayCount(b.action)
+  if found then return b.count:SetText(text) end
   local count = ns.PlainNumber(useCount(b.action))
   local shown = count ~= nil and (count > 1 or usesUp(b.action))
   b.count:SetText(shown and tostring(count) or "")
@@ -345,12 +355,14 @@ end
 
 -- Proc glow ----------------------------------------------------------------------------
 
--- The spell id on a button's action (nil for items, macros, empty or hidden).
+-- The spell id on a button's action: a spell, or a macro the game says casts a spell (as its own
+-- buttons do for the proc glow). Nil for items, other macros, empty or hidden.
 function AB.ActionSpell(b)
   if type(GetActionInfo) ~= "function" or not b.action then return nil end
-  local kind, id = GetActionInfo(b.action)
-  if ns.IsSecret(kind) or ns.IsSecret(id) or kind ~= "spell" then return nil end
-  return id
+  local kind, id, subType = GetActionInfo(b.action)
+  if ns.IsSecret(kind) or ns.IsSecret(id) or ns.IsSecret(subType) then return nil end
+  if kind == "spell" or (kind == "macro" and subType == "spell") then return id end
+  return nil
 end
 
 -- Whether the client says a spell is lit (proc'd) right now.
@@ -702,13 +714,19 @@ end
 
 local bindingOwner
 
+-- Whether a pet battle is on (or opening): the game's pet battle bar owns the number keys then.
+local function inPetBattle()
+  return AB.petBattleOpening == true or (C_PetBattles ~= nil and C_PetBattles.IsInBattle() == true)
+end
+
 -- Points every default action binding at the matching Vanguard button
 -- (only buttons the bar's layout shows). Override bindings are cleared and
--- rebuilt; protected, so out of combat.
+-- rebuilt; protected, so out of combat. In a pet battle none are set, so the
+-- keys reach the game's own pet battle abilities.
 function AB.ApplyBindings()
   bindingOwner = bindingOwner or CreateFrame("Frame")
   ClearOverrideBindings(bindingOwner)
-  for _, b in ipairs(AB.buttons) do
+  for _, b in ipairs(inPetBattle() and {} or AB.buttons) do
     for _, key in ipairs(b:IsShown() and { GetBindingKey(b.binding) } or {}) do
       SetOverrideBindingClick(bindingOwner, false, key, b:GetName(), "LeftButton")
     end
@@ -814,6 +832,15 @@ local function onEquipment()
   each(updateEquipped)
 end
 
+-- A pet battle opens (true) or closes (false): the keys go back to the game's pet battle bar, or to
+-- Vanguard's buttons (a pet battle cannot start in a fight, so this rarely waits).
+local function onPetBattle(opening)
+  return function()
+    AB.petBattleOpening = opening
+    ns.OutOfCombat(AB.ApplyBindings, "action bar keys")
+  end
+end
+
 -- Event -> what it refreshes.
 local EVENTS = {
   -- One handler per event; most refresh one part of every button.
@@ -834,6 +861,8 @@ local EVENTS = {
   SPELL_UPDATE_ICON = refreshIcons,
   SPELL_UPDATE_CHARGES = function() each(updateCount) end,
   UPDATE_BINDINGS = function() ns.OutOfCombat(AB.ApplyBindings, "action bar keys") end,
+  PET_BATTLE_OPENING_START = onPetBattle(true),
+  PET_BATTLE_CLOSE = onPetBattle(false),
   ACTION_RANGE_CHECK_UPDATE = onRangeUpdate,
   SPELL_ACTIVATION_OVERLAY_GLOW_SHOW = onOverlay(true),
   SPELL_ACTIVATION_OVERLAY_GLOW_HIDE = onOverlay(false),

@@ -27,9 +27,10 @@ it("a visibility setting compiles to one macro-conditional state; the old four m
   expect(modes, "a checklist is saved as the old mode it equals").toEqual(["always", "mouseover", "combat", "custom", "custom"]);
 });
 
-// Bar n's secure visibility driver, state driver, state, alpha and mouse.
+// Bar n's secure visibility driver (without the pet battle clause every bar's begins with, which
+// scripts/tests/bars.test.mjs checks), state driver, state, alpha and mouse.
 const bar = (addon, n = 2) => addon.eval(`local b = Vanguard_Bar${n}
-  return { driver = b.__states.visibility, state = b.__states.vgvis, now = b.vgState, alpha = b:GetAlpha(), mouse = b.__mouse == true }`);
+  return { driver = b.__states.visibility:gsub("^%[petbattle%] hide; ", ""), state = b.__states.vgvis, now = b.vgState, alpha = b:GetAlpha(), mouse = b.__mouse == true }`);
 
 // The visibility settings of bar n as saved.
 const saved = (addon, n = 2) => addon.eval(`local b = VanguardDB.profiles.Default.ActionBars.bars[${n}] return { b.visibility or "none", b.showWhen or {} }`);

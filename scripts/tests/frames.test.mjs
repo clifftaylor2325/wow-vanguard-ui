@@ -84,3 +84,15 @@ it("proc glow on action buttons", () => {
   addon.fire("SPELL_ACTIVATION_OVERLAY_GLOW_HIDE", 424242);
   expect(addon.eval("return Vanguard_Bar1Button2.glow[1]:IsShown()") === false, "and goes out when the proc ends").toBeTruthy();
 });
+
+it("proc glow on a macro that casts the spell, as the game's own buttons light it", () => {
+  const addon = loggedIn(ACTIONS_ENV + `GetActionInfo = function(slot)
+    if slot == 1 then return 'macro', 424242, 'spell' end
+    if slot == 2 then return 'macro', 424242, 'item' end
+    if slot == 3 then return 'macro', 424242, { __secret = true } end
+  end`);
+  addon.fire("SPELL_ACTIVATION_OVERLAY_GLOW_SHOW", 424242);
+  // Whether button i of bar 1 glows.
+  const lit = (i) => addon.eval(`return Vanguard_Bar1Button${i}.glow[1]:IsShown()`);
+  expect([lit(1), lit(2), lit(3)], "a macro whose action is that spell glows; a macro of anything else, or a hidden kind, does not").toEqual([true, false, false]);
+});

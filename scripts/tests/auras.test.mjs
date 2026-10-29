@@ -324,6 +324,29 @@ it("your buffs and debuffs replace the game's, with weapon enchants in front", (
   expect(addon.eval("return GameTooltip:IsShown()"), "and leaving hides it; an empty cell shows nothing").toBe(false);
 });
 
+// TEST-ONLY retail's way of asking: by inventory slot, one TemporaryItemEnchantInfo (or nothing) each.
+const RETAIL_ENCHANTS_ENV = `
+  C_Item.GetWeaponEnchantInfo = nil
+  __temp = { [16] = { enchantID = 5, remainingTimeMs = 1800000, chargesRemaining = 0, hasExpirationTime = true } }
+  C_PaperDollInfo = { GetTemporaryEnchantmentInfo = function(slot) return __temp[slot] end }
+`;
+
+it("your buffs: on retail, which asks C_PaperDollInfo by inventory slot, enchants show in front too", () => {
+  const addon = loggedIn(UNITS_ENV + ENGINE_ENV + WEAPONS_ENV + RETAIL_ENCHANTS_ENV + "GetTime = function() return 1000 end");
+  expect(playerAuras(addon).cells[0], "the main hand's poison: the weapon's icon and a sweep of its time left").toMatchObject({ shown: true, icon: "TEST-ONLY-ICON-Weapon16", sweep: [1000, 1800], inv: 16 });
+  addon.eval(`__temp[17] = { enchantID = 6, remainingTimeMs = 0, chargesRemaining = 0, hasExpirationTime = true }
+    __temp[18] = { enchantID = 7, remainingTimeMs = 5000, chargesRemaining = 3, hasExpirationTime = false }`);
+  addon.fire("UNIT_INVENTORY_CHANGED", "player");
+  expect(playerAuras(addon).cells.map((c) => c.shown), "an enchant with no time left, or without a timer, shows nothing").toEqual([true, false, false]);
+  addon.eval("__temp[17] = { remainingTimeMs = 5000, hasExpirationTime = { __secret = true } }");
+  addon.fire("UNIT_INVENTORY_CHANGED", "player");
+  expect(playerAuras(addon).cells[1].shown, "a hidden answer shows nothing").toBe(false);
+  addon.eval("__temp[17] = { __secret = true }");
+  addon.fire("UNIT_INVENTORY_CHANGED", "player");
+  expect(playerAuras(addon).cells[1].shown, "nor does a hidden answer for the whole slot").toBe(false);
+  expect(addon.eval("return ns.GetModule('PlayerAuras').CanListEnchants()"), "the client can list them").toBe(true);
+});
+
 it("your buffs: an enchant's sweep keeps its full length when it moves to another cell", () => {
   const addon = loggedIn(UNITS_ENV + ENGINE_ENV + WEAPONS_ENV + `GetTime = function() return 1000 end
     __enchants[1] = { { hasEnchant = true, timeLeft = 1800000, enchantIconID = "TEST-ONLY-ICON-Oil" } }`);

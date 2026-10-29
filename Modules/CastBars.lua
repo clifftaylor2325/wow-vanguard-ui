@@ -176,9 +176,25 @@ local function startTiming(bar, unit, startMS, endMS, channel)
   bar:SetScript("OnUpdate", onUpdate)
 end
 
--- A cast's look on its bar: the color and edge for its kind, its icon and name.
-local function paintCast(bar, name, icon, shielded, channel)
+-- Colors a bar whose uninterruptible flag the client hides: the client picks between the shielded
+-- color and the cast's own, since Lua cannot branch on a hidden flag. Without that call, the cast's own.
+local function paintHiddenKind(bar, shielded, channel)
+  local pick = C_CurveUtil and C_CurveUtil.EvaluateColorFromBoolean
+  local own = channel and "channel" or "cast"
+  if type(pick) ~= "function" or type(CreateColor) ~= "function" then return T.BarColor(bar, own) end
+  bar:SetStatusBarColor(pick(shielded, CreateColor(T.RGB("shielded")), CreateColor(T.RGB(own))):GetRGB())
+end
+
+-- A bar's fill color for a cast: shielded, or the cast's or channel's own.
+local function paintKind(bar, shielded, channel)
+  if ns.IsSecret(shielded) then return paintHiddenKind(bar, shielded, channel) end
   T.BarColor(bar, isTrue(shielded) and "shielded" or channel and "channel" or "cast")
+end
+
+-- A cast's look on its bar: the color and edge for its kind, its icon and name. A hidden flag gets no
+-- edge (an edge cannot follow it).
+local function paintCast(bar, name, icon, shielded, channel)
+  paintKind(bar, shielded, channel)
   T.SetBorder(bar, isTrue(shielded) and { T.RGB("shielded") } or nil)
   bar.icon:SetTexture(icon)
   bar.text:SetText(name)
@@ -272,8 +288,9 @@ CB.INTERRUPTS = {
   WARRIOR = { { 6554, 6552 }, { 1672, 1671, 72 } },
   -- Counterspell.
   MAGE = { { 2139 } },
-  -- Earth Shock.
-  SHAMAN = { { 10414, 10413, 10412, 8046, 8045, 8044, 8042 } },
+  -- Wind Shear (the retail interrupt, which comes first so a retail Shaman is not given Earth Shock's
+  -- shared shock cooldown), then Earth Shock.
+  SHAMAN = { { 57994 }, { 10414, 10413, 10412, 8046, 8045, 8044, 8042 } },
   -- Silence (a talent).
   PRIEST = { { 15487 } },
 }
@@ -416,11 +433,20 @@ end
 
 -- The game's overlay cast bar ---------------------------------------------------------
 
+-- The color token for the overlay bar's fill: "cast" while casting; once full, "good", or "bad" when the
+-- game has typed the cast Interrupted (it fills the bar for a failed cast too). A hidden type counts as good.
+local function overlayKind(bar, full)
+  if full ~= true then return "cast" end
+  local barType, interrupted = bar.barType, CastingBarType and CastingBarType.Interrupted
+  if interrupted ~= nil and not ns.IsSecret(barType) and barType == interrupted then return "bad" end
+  return "good"
+end
+
 -- The overlay bar's look: the theme's bar texture in the cast color (good once the cast is
 -- full, as Vanguard's own bar flashes), its art faded, its text in the theme font. The game
 -- sets its own fill again at each cast's start and end (UpdateBarFillTexture), so this follows.
 local function styleOverlay(bar, full)
-  T.BarColor(T.StyleBar(bar), full == true and "good" or "cast")
+  T.BarColor(T.StyleBar(bar), overlayKind(bar, full))
   for _, key in ipairs(CB.OVERLAY_ART) do
     if type(bar[key]) == "table" and bar[key].SetAlpha then bar[key]:SetAlpha(0) end
   end

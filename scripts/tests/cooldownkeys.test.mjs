@@ -35,6 +35,14 @@ it("cooldown keys: the key of the bar button that holds the spell, or a macro th
   expect(key(addon, "EssentialCooldownViewer"), "an item with the same number is not the spell").toBe("");
 });
 
+it("cooldown keys: a macro the game reports as casting a spell is that spell, not a macro number", () => {
+  const addon = loggedIn(UNITS_ENV + TOOLS_ENV + ITEMS + "function GetMacroSpell(id) return id == 1234 and 5678 or nil end", { savedVariables: ON });
+  addon.world.setAction(2, { type: "macro", id: 1234, subType: "spell" });
+  expect(key(addon, "EssentialCooldownViewer"), "the id is the spell (1234), so GetMacroSpell is not asked").toBe("2");
+  addon.world.setAction(2, { type: "macro", id: 1234, subType: { __secret: true } });
+  expect(key(addon, "EssentialCooldownViewer"), "a hidden kind is never read").toBe("");
+});
+
 it("cooldown keys: the labels follow bar 1 to its new page after a stance change or Shift+number", () => {
   const addon = loggedIn(UNITS_ENV + TOOLS_ENV + ITEMS, { savedVariables: ON });
   addon.world.setAction(3, { type: "spell", id: 1234 });

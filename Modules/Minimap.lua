@@ -17,6 +17,7 @@ local L = ns.L
 local vgGlyph = ns.FrameState("vgGlyph")
 local vgHover = ns.FrameState("vgHover")
 local vgSlot = ns.FrameState("vgSlot")
+local vgHybrid = ns.FrameState("vgHybrid")
 
 local T = ns.Theme
 
@@ -73,6 +74,7 @@ local FADE = {
   { "Minimap", "ZoomIn" },
   { "Minimap", "ZoomOut" },
   { "MinimapBackdrop" },
+  { "MinimapCluster", "MinimapContainer", "PlayerCoords" },
 }
 
 -- The answer a minimap addon loaded before Vanguard gave (SexyMap sets GetMinimapShape as it loads), if any.
@@ -378,15 +380,37 @@ local function keepMask()
   hooksecurefunc(cluster, "UpdateMinimapConfig", ns.Guard("hook UpdateMinimapConfig", applyMask))
 end
 
+-- How many frame levels the map sits over the holder: the game's hybrid map (a map drawn where the ground has
+-- no tiles) fits in the level between.
+MM.MAP_LEVEL = 2
+
 -- Moves the minimap into the holder, square and sized, a pixel in from its bottom edge.
 local function adoptMinimap(holder, size)
   Minimap:SetParent(holder)
+  Minimap:SetFrameLevel(holder:GetFrameLevel() + MM.MAP_LEVEL)
   Minimap:ClearAllPoints()
   Minimap:SetPoint("BOTTOM", holder, "BOTTOM", 0, 1)
   Minimap:SetSize(size, size)
   applyMask()
   keepMask()
   wheelZoom()
+end
+
+-- The game's hybrid map is a child of the minimap fixed at BACKGROUND strata, which stays there when the
+-- minimap moves into the holder, so it would be drawn under the holder's panel fill and the map would show
+-- empty. It goes on the map's strata one level under the map, over the fill.
+local function raiseHybrid(hybrid)
+  hybrid:SetFrameStrata(Minimap:GetFrameStrata())
+  hybrid:SetFrameLevel(math.max(0, Minimap:GetFrameLevel() - 1))
+end
+
+-- Raises the hybrid map, once it is loaded (the game loads it on demand), and again each time it shows.
+function MM.WatchHybrid()
+  local hybrid = _G.HybridMinimap
+  if type(hybrid) ~= "table" or type(hybrid.HookScript) ~= "function" or vgHybrid[hybrid] then return end
+  vgHybrid[hybrid] = true
+  hybrid:HookScript("OnShow", ns.Guard("show hybrid minimap", raiseHybrid))
+  raiseHybrid(hybrid)
 end
 
 -- On a round map: the disc mask the bands wear (so they stop at the edge) and the outline over the map's rim.
@@ -555,8 +579,9 @@ end
 
 -- Module entry point (Core/Modules.lua).
 function MM.Enable(settings)
-  ns.OutOfCombat(function() build(settings) end)
+  ns.OutOfCombat(function() build(settings) MM.WatchHybrid() end)
   for _, event in ipairs({ "ZONE_CHANGED", "ZONE_CHANGED_INDOORS", "ZONE_CHANGED_NEW_AREA", "PLAYER_ENTERING_WORLD" }) do
     ns.On(event, function() if MM.zone then MM.UpdateZone() end end)
   end
+  ns.On("ADDON_LOADED", function(_, name) if name == "Blizzard_HybridMinimap" then MM.WatchHybrid() end end)
 end
