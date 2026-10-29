@@ -126,6 +126,7 @@ Modules/GroupThreat.lua
 Modules/ActionBars.lua
 Modules/ActionBarLayout.lua
 Modules/ActionBarKeybinds.lua
+Modules/KeybindsApply.lua
 Modules/SpecialBars.lua
 Modules/Minimap.lua
 Modules/Waypoints.lua
@@ -228,6 +229,5 @@ Modules/ClickCast.lua
 Modules/ClickCastSpells.lua
 Modules/ClickCastOptions.lua
 Modules/Coexist.lua
-Modules/KeybindsApply.lua
 Modules/GroupBoard.lua
 Modules/GroupBoardView.lua
