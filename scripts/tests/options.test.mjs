@@ -519,6 +519,7 @@ it("options: a changed setting gets a dot that puts the default back", () => {
   expect(resetDot(addon, "Show health numbers"), "a setting at its default: no dot showing").toEqual([false, true]);
   addon.eval('__click("Show health numbers")');
   expect(resetDot(addon, "Show health numbers"), "changed: the dot shows").toEqual([true, true]);
+  expect(addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.reset and w.reset:IsShown() then return w.reset.mark.__texture:match("Icons\\\\(%a+)$") end end`), "the mark is the reset arrow").toBe("Reset");
   addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.reset and w.reset:IsShown() then __dot = w.reset end end
     __dot:GetScript("OnEnter")(__dot) __dot:GetScript("OnLeave")(__dot) __dot:GetScript("OnClick")(__dot)`);
   expect([addon.eval("return VanguardDB.profiles.Default.UnitFrames.healthText"), ...resetDot(addon, "Show health numbers")], "clicking it puts the default back and hides it").toEqual([true, false, true]);
@@ -624,6 +625,7 @@ it("options: a dot on the nav marks each page with changed settings, as rows cha
   addon.slash("");
   expect(dotted(addon), "on opening, only the page with a saved change (a nameplate width) is marked, though it isn't built yet").toEqual(["nameplates"]);
   expect(isTok(addon, addon.eval("return Vanguard_Options.nav.nameplates.changed.__vertexColor"), "accent"), "the dot is in the accent").toBe(true);
+  expect(addon.eval("return Vanguard_Options.nav.nameplates.changed.__texture:match('Textures\\\\(%a+)$')"), "a round dot").toBe("Dot");
   addon.eval('__click("Unit frames") __click("Show health numbers")');
   expect(dotted(addon), "changing a row marks its page at once").toEqual(["nameplates", "unitframes"]);
   addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.reset and w.reset:IsShown() and ns.Options.RevealRow(w) then __dot = w.reset end end __dot:GetScript("OnClick")(__dot)`);

@@ -167,7 +167,7 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 
 ### 2.1f The options window's height, search and changed dots
 
-- Do: type `/vg`. Note how tall the window is. Change Text size, then point at the small accent dot by its caption. Type "move frames", then "square", then "a" in the search box. On the Modules page, find Vanguard meter. Then run `/vg setup`, change the UI scale on its Screen step, and open `/vg` again.
+- Do: type `/vg`. Note how tall the window is. Change Text size, then point at the small accent reset arrow by its caption. Type "move frames", then "square", then "a" in the search box. On the Modules page, find Vanguard meter. Then run `/vg setup`, change the UI scale on its Screen step, and open `/vg` again.
 - Expect: the window is about three quarters of your screen tall (at least as tall as before). The dot's tooltip has a second line, "Default: 100%" or the like. "move frames" lists Move frames, and clicking that line only marks the button (frames do not unlock). "square" lists Corners. "a" lists eight and ends with "N more: type more words". Vanguard meter says "On, but its own switch is off (Combat tools)" beside its name until you switch the meter on under Combat tools. After the UI scale change the window is still tall and fits the screen.
 - If it fails, paste: a screenshot of the window, your screen resolution and UI scale, and `/vg errors`.
 
