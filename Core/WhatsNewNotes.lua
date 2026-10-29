@@ -10,6 +10,25 @@
 local ADDON, ns = ...
 
 ns.WHATS_NEW = {
+  { version = "0.7.5", groups = {
+    { module = "Other", label = "Language", items = {
+      { text = "Vanguard's own text shows in your client's language: German, French, Spanish, Italian, Brazilian Portuguese, Russian, Korean and Chinese. The translations are machine-drafted, so report a wrong line with /vg feedback. Commands and these notes stay English." },
+    } },
+    { module = "Other", label = "Options and look", items = {
+      { text = "Options pages show their cards as tabs, so the long pages fit one screen; Reset this page sits beside the page title." },
+      { text = "Every module switch says Reload to apply, and searching for reload finds them." },
+      { text = "A Panel texture choice (General, Look) draws a texture over every floating window; Flat is the default." },
+      { text = "The Feedback page has a Community card with Vanguard's Discord and X links to copy." },
+      { text = "Clearing loot reserves, a talent plan or saved chat asks first." },
+    } },
+    { module = "Windows", label = "Look and windows", items = {
+      { text = "Text fits its buttons, menus and windows at any text size and in longer translations." },
+      { text = "On narrow or short screens, default frame spots move just enough to stay on screen and clear of each other; wider screens are unchanged." },
+    } },
+    { module = "Other", label = "Safety and tools", items = {
+      { text = "Fixes from two bug hunts, a clean-code review and twelve stability hunts across combat, frames, chat, quests, bags, the auction house, mail, profiles and options." },
+    } },
+  } },
   { version = "0.7.4", groups = {
     { module = "Map", label = "Map and minimap", items = {
       { text = "The Map page's OpenMap card credits OpenMap's author, jiforever (jigrobbulus on CurseForge), and the README's credits list OpenMap." },
