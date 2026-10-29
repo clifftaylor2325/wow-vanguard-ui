@@ -3144,6 +3144,12 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: no bronze plates behind the inspect gear slots, and the greyed Guild tab's label is greyer than the others; the turn-in page's required money line reads light; the achievement's progress bar is a flat dim-accent bar with no bronze border; the achievement and collections bars take the new accent at once, without a reload, while class-coloured unit frames and cast bars keep their colours.
 - If it fails, paste: a screenshot, and `/vg errors`.
 
+### 33.163 Binding calls in a fight (probe for the keybind harness)
+
+- Do: on WoW Forever, out of combat, run a one-line test addon that prints the answers (there is no `/vg probe` step for this yet), and note what `GetNumBindings()` and `GetBinding(1)` answer; bind a key with `SetBindingSpell`, then look for it in the `GetBinding(i)` rows. Then start a fight with a training dummy and, from an addon, call `SetBinding("F9", nil)`, `SaveBindings(GetCurrentBindingSet())`, `LoadBindings(GetCurrentBindingSet())`, `C_Spell.PickupSpell(<a spell id>)` and `PlaceAction(120)`; also try `SetBinding("F9", "ACTIONBUTTON12")` out of combat after switching to a Character binding set, and a `SetBinding` with keys written `SHIFT-CTRL-A` and `a`.
+- Expect: (the harness's model, not yet seen in game) each call in the fight is refused with an ADDON_ACTION_BLOCKED line (or answers nothing); `GetBinding(i)` shows two keys at most and no `SPELL` row; `SetBinding` takes `SHIFT-CTRL-A` or refuses it, and refuses `a`. The harness (scripts/lib/wow-keybinds.lua, wow-taint.lua) models these answers as written there; a different answer is a task to change the model.
+- If it fails, paste: what the test addon printed, and `/vg errors`.
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ## When you are done
