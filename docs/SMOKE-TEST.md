@@ -929,6 +929,12 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Expect: the hotkey texts read Bs, SBs, N+, N1, Cmd4 and M4, each one different, none cut to a half word. No error.
 - If it fails, paste: a screenshot of the bar and the keys you bound.
 
+### 10.4c Your keys view
+
+- Do: open /vg, Action bars, the Your keys tab. Hover a key with a spell on it and a key with none. Hold Shift, then Ctrl, then Alt, then let go. Click each tab. Put a spell on a key, bind another key to a game command (for example B for the bags), reopen the tab. On an AZERTY or QWERTZ keyboard, look at which cap lights for the keys you press. Open the tab during a fight.
+- Expect: icons and short key names on bound keys, tooltips with the place ("Bar 2 button 1") and the spell; the tabs follow the held modifier; the list under the keyboard matches the caps; nothing is written (check Key Bindings is unchanged); the tab stays open in combat; no error.
+- If it fails, paste: a screenshot, your keyboard layout, and `/vg errors`.
+
 ### 10.4b Long keys stay on one line
 
 - Do: bind Page Up, Insert, Caps Lock and Shift+Ctrl+Alt+Delete to four bar 1 buttons in the game's Key Bindings, then look at the buttons at your smallest button size.

@@ -1,6 +1,6 @@
 -- Key setup's apply engine: what a key preset writes, and how it is put back.
 -- Nothing here runs by itself yet: the presets and the wizard that will call
--- it, and the Your keys card's put-back buttons, come in later keybind phases.
+-- it, and the Your keys tab's put-back buttons, come in later keybind phases.
 --
 -- A preset is a list of entries, { key, spell, slot } (bind the key to the
 -- button on that slot, holding that spell) or { key, command } (a stance or pet
