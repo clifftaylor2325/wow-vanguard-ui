@@ -213,8 +213,9 @@ local function buttons(frame, name)
   return out
 end
 
--- Where a window keeps its maximize and minimize buttons (MaximizeMinimizeButtonFrameTemplate), as parentKeys.
-GW.MAX_MIN = { "MaximizeMinimizeFrame", "MaximizeMinimizeButton" }
+-- Where a window keeps its maximize and minimize buttons (MaximizeMinimizeButtonFrameTemplate), as parentKeys (the
+-- professions window's is MaximizeMinimize).
+GW.MAX_MIN = { "MaximizeMinimizeFrame", "MaximizeMinimizeButton", "MaximizeMinimize" }
 
 -- The button at key in a maximize/minimize box as a window control with the icon, when the box has that button.
 local function maxMinButton(box, key, icon)
@@ -626,10 +627,13 @@ end
 
 -- An item-style icon button (a book entry, a Legacy card, a flattened icon): its bronze frame and other art faded (the
 -- icon and the game's hover highlight kept; a Legacy challenge's icon frame holds its picture as texture), the icon
--- cropped and a thin inset border round it, like an item slot.
-function GW.DressIcon(button)
+-- cropped and a thin inset border round it, like an item slot. alsoKeep (optional) lists more parentKeys whose art
+-- stays (a button's state markers).
+function GW.DressIcon(button, alsoKeep)
   if type(button) ~= "table" or not button.GetRegions or not button.CreateTexture then return end
-  T.FadeRegions(button, GW.KeepKeys(button, { "Icon", "icon", "texture", "IconHighlight", "Highlight" }))
+  local keep = GW.KeepKeys(button, { "Icon", "icon", "texture", "IconHighlight", "Highlight" })
+  for _, key in ipairs(alsoKeep or {}) do GW.KeepAlso(keep, button[key]) end
+  T.FadeRegions(button, keep)
   local icon = button.Icon or button.icon or button.texture
   if type(icon) == "table" and icon.SetTexCoord then T.Crop(icon) end
   T.Panel(button, { inset = true, noBg = true })
@@ -1280,16 +1284,24 @@ GW.TALENT_BUTTONS = { "ApplyButton", "InspectCopyButton" }
 GW.TALENT_ICONS = { "ResetButton", "UndoButton" }
 
 -- The spellbook's page methods that fill the pages with entries and section heads (PagedContentFrame and the book's
--- own); each is looked for on both, and one the client lacks is skipped.
-GW.BOOK_REFILLS = { "SetDataProvider", "SetCurrentPage", "UpdateFrames", "UpdateDisplay" }
+-- own); each is looked for on both, and one the client lacks is skipped. DisplayViewsForCurrentPage is the one the
+-- game runs on every page turn and every data change, after it has made or reused the entry frames.
+GW.BOOK_REFILLS = { "SetDataProvider", "DisplayViewsForCurrentPage", "UpdateFrames", "UpdateDisplay" }
+-- The state markers on a spellbook entry's icon button that the game shows by turn (the flyout arrow, the action bar
+-- and click-binding highlights, the glyph marks, the level-link lock and the covers over the icon): kept, not faded.
+GW.BOOK_MARKS = {
+  "Arrow", "ActionBarHighlight", "ClickBindingHighlight", "GlyphIcon", "GlyphActiveIcon", "GlyphHighlight",
+  "GlyphActivateHighlight", "LevelLinkLock", "LevelLinkIconCover", "ClickBindingIconCover", "AssistedCombatIconCover",
+}
 
 -- One spell entry of the book (a name, a rank line, the level an unlearned spell needs and an icon button on a smudged
 -- plate): the plate faded, under the mouse too (the game lights it by alpha on hover), the icon in the item-slot look,
 -- the name, rank and level in the theme's text roles (the game colours them for parchment, dark brown on the dark
--- panel). The level takes the brighter grey: the game dims an unlearned spell's lines to 60%.
+-- panel). The level takes the brighter grey: the game dims an unlearned spell's lines to 60%. The button's state
+-- markers (GW.BOOK_MARKS) stay as the game draws them.
 local function dressBookEntry(entry)
   GW.KeepFaded(entry.Backplate)
-  GW.DressIcon(entry.Button)
+  GW.DressIcon(entry.Button, GW.BOOK_MARKS)
   GW.SkinText(entry.Name, "label", "text")
   GW.SkinText(entry.SubName, "small", "muted")
   GW.SkinText(entry.RequiredLevel, "small", "text2")
@@ -1524,12 +1536,14 @@ local function skinInspectSlot(name)
 end
 
 -- The inspect window's inside: the model's painted backdrop and bronze frame an inset, the gear slots, the View in
--- Dressing Room button, and the level, title and guild lines. The tabs are in GW.TAB_WINDOWS.
+-- Dressing Room and Talents buttons (the Talents button is not in every client), and the level, title and guild
+-- lines. The tabs are in GW.TAB_WINDOWS.
 GW.INSIDES.InspectFrame = function()
   GW.InsetPanel(_G.InspectModelFrame)
   for _, name in ipairs(GW.EQUIP_SLOTS) do skinInspectSlot(name) end
   local paper = _G.InspectPaperDollFrame
   GW.SkinButton(type(paper) == "table" and paper.ViewButton or nil)
+  GW.SkinButton(GW.Part(_G, "InspectPaperDollItemsFrame.InspectTalents"))
   GW.TextNamed(GW.INSPECT_TEXTS, "small", "text2")
   GW.TextNamed({ "InspectLevelText" }, "heading", "text")
 end
@@ -1611,6 +1625,14 @@ GW.JOURNAL_SEARCH = { "searchBox", "SearchBox" }
 GW.JOURNAL_DROPDOWNS = { "FilterDropdown", "ClassDropdown" }
 GW.JOURNAL_BUTTONS = { "MountButton", "SummonButton" }
 
+-- A progress bar as a flat inset track whose fill is the dim accent (the game's green fill was made for its textured
+-- bar and survives the texture swap); anything that is not a status bar is skipped.
+function GW.SkinAccentBar(bar)
+  if type(bar) ~= "table" or not bar.SetStatusBarTexture then return end
+  GW.SkinProgress(bar)
+  T.BarColor(bar, "accentDim")
+end
+
 -- A count plate (CollectionsCountTemplate: a label and a figure on an inset frame) an inset, its gold label in small
 -- grey text; anything that is not a frame is skipped.
 local function skinJournalCount(count)
@@ -1625,7 +1647,7 @@ local function skinJournal(page)
   if type(page) ~= "table" then return end
   GW.EachKey(page, GW.JOURNAL_INSETS, GW.InsetPanel)
   GW.EachKey(page, GW.JOURNAL_COUNTS, skinJournalCount)
-  GW.SkinProgress(page.progressBar)
+  GW.SkinAccentBar(page.progressBar)
   GW.EachKey(page, GW.JOURNAL_SEARCH, GW.SkinSearch)
   GW.EachKey(page, GW.JOURNAL_DROPDOWNS, GW.SkinDropdown)
   GW.EachKey(page, GW.JOURNAL_BUTTONS, GW.SkinButton)
@@ -1682,11 +1704,16 @@ local function lightDescription(card)
   if type(text) == "table" and text.SetTextColor then T.Color(text, "text") end
 end
 
--- One achievement row: the card faded, the track check box a theme check box, the description light now and after
--- the game paints it as completed (Saturate).
+-- The parts of an achievement row the game sets the alpha of again each time it sets the row up (Init): the title bar
+-- and the two wave strips.
+GW.ACH_RESET = { "TitleBar", "BottomTsunami1", "TopTsunami1" }
+
+-- One achievement row: the card faded (and kept faded when the game sets the row up again), the track check box a
+-- theme check box, the description light now and after the game paints it as completed (Saturate).
 local function skinAchievementRow(row)
   if type(row) ~= "table" or not row.GetRegions then return end
   fadeCard(row, GW.KeepKeys(row, GW.ACH_KEEP))
+  GW.EachKey(row, GW.ACH_RESET, GW.KeepFaded)
   if type(row.Tracked) == "table" and row.Tracked.GetChecked then T.CheckBox(row.Tracked) end
   lightDescription(row)
   GW.HookAfter(row, "Saturate", lightDescription)
@@ -1702,20 +1729,31 @@ local function skinCategoryRow(row)
   GW.HookAfter(row, "Init", function() GW.SkinText(button.Label, "label", "text") end)
 end
 
--- One comparison row: the player's card and the friend's.
+-- One comparison row: the player's card and the friend's, the player's description light now and after the game
+-- paints a completed one black (Saturate; the friend's card has no description).
 local function skinComparisonRow(row)
   if type(row) ~= "table" then return end
   fadeCard(row.Player)
   fadeCard(row.Friend)
+  if type(row.Player) ~= "table" then return end
+  lightDescription(row.Player)
+  GW.HookAfter(row.Player, "Saturate", lightDescription)
+end
+
+-- A statistics row (the list's and the comparison's): its art faded, and its alternate-line stripe kept faded (the
+-- game shows it and sets its alpha again each time it sets the row up).
+local function skinStatRow(row)
+  GW.FadeArt(row)
+  if type(row) == "table" then GW.KeepFaded(row.Background) end
 end
 
 -- Every pooled list the window has: the categories, the achievements, the statistics and the comparison's two lists.
 local function watchAchievementRows(frame)
   GW.WatchRows(GW.Part(frame, "Categories.ScrollBox"), skinCategoryRow)
   GW.WatchRows(GW.Part(_G, "AchievementFrameAchievements.ScrollBox"), skinAchievementRow)
-  GW.WatchRows(GW.Part(_G, "AchievementFrameStats.ScrollBox"), GW.FadeArt)
+  GW.WatchRows(GW.Part(_G, "AchievementFrameStats.ScrollBox"), skinStatRow)
   GW.WatchRows(GW.Part(_G, "AchievementFrameComparison.AchievementContainer.ScrollBox"), skinComparisonRow)
-  GW.WatchRows(GW.Part(_G, "AchievementFrameComparison.StatContainer.ScrollBox"), GW.FadeArt)
+  GW.WatchRows(GW.Part(_G, "AchievementFrameComparison.StatContainer.ScrollBox"), skinStatRow)
 end
 
 -- One of the summary page's headers (a gold plate and its title, by the header's global name): the plate faded, the
@@ -1725,13 +1763,20 @@ local function skinSummaryHead(name)
   GW.SkinSection(_G[name .. "Title"])
 end
 
+-- The gold end caps a category bar's hover highlight draws: a frame the game shows under the mouse, found by the bar's
+-- global name (the completed bar has none), faded.
+local function fadeBarHighlight(bar)
+  local name = bar.GetName and bar:GetName()
+  if type(name) == "string" then GW.FadeArt(_G[name .. "ButtonHighlight"]) end
+end
+
 -- One of the summary's bars a flat bar on a dark track, its fill the dim accent (the game's raw green was made for its
 -- textured bar), its name and count in the text colour and centred on the bar (the game lifts them for its art's
 -- margin, so on a flat fill they ride its top edge); parts that are not there are skipped.
 local function skinSummaryBar(bar, name, count)
   if type(bar) ~= "table" or not bar.SetStatusBarTexture then return end
-  GW.SkinProgress(bar)
-  T.BarColor(bar, "accentDim")
+  GW.SkinAccentBar(bar)
+  fadeBarHighlight(bar)
   GW.SkinText(name, "label", "text")
   GW.SkinText(count, "number", "text")
   if type(name) == "table" and name.SetPoint then name:ClearAllPoints() name:SetPoint("LEFT", bar, "LEFT", T.SPACE.gap, 0) end
@@ -1749,7 +1794,7 @@ local function skinSummaryBars()
   for _, key in ipairs({ "Player", "Friend" }) do
     local card = GW.Part(_G, "AchievementFrameComparison.Summary." .. key)
     fadeCard(card)
-    GW.SkinProgress(card and card.StatusBar)
+    GW.SkinAccentBar(card and card.StatusBar)
   end
 end
 
@@ -1770,7 +1815,7 @@ local function skinAchievementHeader(details)
   GW.SkinDropdown(GW.Part(details, "Filters.FilterDropdown"))
   GW.SkinSearch(GW.Part(details, "Filters.SearchBox"))
   skinSearchPreview(GW.Part(details, "Filters.SearchBox"))
-  GW.SkinProgress(GW.Part(details, "Filters.SearchBox.SearchProgressBar"))
+  GW.SkinAccentBar(GW.Part(details, "Filters.SearchBox.SearchProgressBar"))
 end
 
 -- The header's title and points moved into the window's title row: the game hangs them on its plate above the window,
@@ -1796,6 +1841,38 @@ local function skinAchievementPlate(frame)
   placeAchievementTitle(frame, header.Title, header.Points)
 end
 
+-- Whether the game made a font string black (the colour it gives a completed criterion for its parchment); a part
+-- that is no font string, or has no readable colour, is not.
+local function isBlackText(text)
+  if type(text) ~= "table" or not text.GetTextColor then return false end
+  local r, g, b = text:GetTextColor()
+  return type(r) == "number" and type(g) == "number" and type(b) == "number" and r + g + b < 0.3
+end
+
+-- The texts under key of each item in list (the objectives' criteria and meta achievements) that the game made black
+-- in the text colour; green (done) and grey (open) ones keep the meaning the game gave them.
+local function lightBlackTexts(list, key)
+  if type(list) ~= "table" then return end
+  for _, item in ipairs(list) do
+    local text = type(item) == "table" and item[key]
+    if isBlackText(text) then T.Color(text, "text") end
+  end
+end
+
+-- An open achievement's list of criteria and meta achievements, its black names light.
+local function lightCriteria(objectives)
+  if type(objectives) ~= "table" then return end
+  lightBlackTexts(objectives.criterias, "Name")
+  lightBlackTexts(objectives.metas, "Label")
+end
+
+-- The criteria list light now and after the game fills it in for each achievement (it colours a completed criterion
+-- black), the hook added once.
+local function watchCriteria()
+  GW.HookGlobalOnce("AchievementObjectives_DisplayCriteria", "achievement criteria", lightCriteria)
+  lightCriteria(_G.AchievementFrameAchievementsObjectives)
+end
+
 -- The achievements window's inside. The full search results are a window of their own (their rows stay the game's).
 GW.INSIDES.AchievementFrame = function(frame)
   skinAchievementPlate(frame)
@@ -1806,6 +1883,7 @@ GW.INSIDES.AchievementFrame = function(frame)
   skinSummaryBars()
   skinAchievementHeader(frame.HeaderDetails)
   watchAchievementRows(frame)
+  watchCriteria()
   if type(frame.SearchResults) == "table" and frame.SearchResults.GetRegions then GW.Skin(frame.SearchResults) end
 end
 
