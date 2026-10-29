@@ -269,7 +269,9 @@ export const GAME_CLICKS_LUA = `
 `;
 
 // TEST-ONLY model of what the client's SecureUnitButton_OnClick does with a click on a unit button (from the forever
-// branch's SecureTemplates.lua), over GAME_CLICKS_LUA's profile. __engineClick(frame, button, prefix) answers what
+// branch's SecureTemplates.lua), over GAME_CLICKS_LUA's profile. UNVERIFIED: only the order of the checks is from
+// SecureTemplates.lua; the profile's modifier mask is built from the world's modifierBits, which is an unverified model
+// too (wow-world.lua), so a test that has this agree with the addon on a modified click shows the two models agree. __engineClick(frame, button, prefix) answers what
 // the click does: "game:<kind>" when the game's own Spell, Macro or PetAction binding for it runs (and returns before
 // the frame's attribute is read), "dropped" when the frame's type is target, menu or togglemenu and the game's profile
 // has no binding for the click, else the frame's type attribute (an Interaction binding first maps the click to the
