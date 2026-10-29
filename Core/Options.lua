@@ -325,10 +325,12 @@ local function motionRows()
   }
 end
 
--- General: the settings-loss notice when there is one (Core/SettingsGuard.lua), look, bars, motion, layout and frame sizes.
+-- General: the settings-loss notice when there is one (Core/SettingsGuard.lua), look, bars, motion, the Calm HUD
+-- (Core/OptionsFrames.lua), layout and frame sizes.
 local function generalRows()
   local rows = append(ns.SettingsGuard.Rows(), lookRows())
-  return append(append(append(append(rows, barRows()), motionRows()), layoutRows()), sizeRows())
+  for _, card in ipairs({ barRows(), motionRows(), O.CalmRows(), layoutRows(), sizeRows() }) do append(rows, card) end
+  return rows
 end
 
 -- Each module's name in the window and what it does (and what it needs, if anything).

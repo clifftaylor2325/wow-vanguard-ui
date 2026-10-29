@@ -383,7 +383,7 @@ end
 
 -- Follows the panel's visibility from the start: its state's changes repaint it.
 local function watchVisibility(f)
-  f.vgOnState = MT.Paint
+  f.vgOnState, f.vgCalm = MT.Paint, "meter"
   V.WatchHover(f)
   V.Track(f, MT.ApplyVisibility)
   MT.ApplyVisibility()

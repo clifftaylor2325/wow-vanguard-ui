@@ -1,7 +1,8 @@
 -- When a frame is seen: Always, On mouseover, In combat, Hidden, or a checklist
 -- of conditions (combat, mouseover, in a group, in a raid, in an instance, in a
 -- vehicle, resting), shown while any checked one holds. Used by the action
--- bars, the info strip, the data bars and the menu strip.
+-- bars, the info strip, the data bars and the menu strip. The Calm HUD (below)
+-- quiets a frame shown Always out of combat, and the parts with no setting of their own.
 --
 -- A setting compiles to one macro-conditional string, its state:
 --   "[combat] show; [group] show; hide"   shown in combat or in a group
@@ -164,6 +165,41 @@ end
 function V.Shows(frame) return frame.vgState ~= "hide" end
 function V.Fades(frame) return frame.vgStateString ~= nil and frame.vgStateString:find("fade") ~= nil end
 
+-- Calm HUD -------------------------------------------------------------------------------------
+
+-- The Calm HUD quiets the HUD out of combat: each part dims, or fades away, until a fight, a living
+-- hostile target or the mouse brings it back. The client runs the state (in combat too) and only
+-- alpha changes, so a calm frame stays clickable. Its switch and each part's choice are unit frame
+-- settings (calm, calmBars, ...: Modules/UnitFrames.lua), where it began.
+V.CALM = { dim = "[combat] show; [harm,nodead] show; dim", hide = "[combat] show; [harm,nodead] show; fade" }
+-- Each part: its setting and the choices it allows (any other is Leave). Your unit frames only dim,
+-- since a frame faded away would still take a click where nothing shows.
+V.CALM_PARTS = {
+  frames = { key = "calmFrames", allows = { dim = true } },
+  bars = { key = "calmBars", allows = { dim = true, hide = true } },
+  auras = { key = "calmAuras", allows = { dim = true, hide = true } },
+  strips = { key = "calmStrips", allows = { dim = true, hide = true } },
+  xp = { key = "calmXP", allows = { dim = true, hide = true } },
+  meter = { key = "calmMeter", allows = { dim = true, hide = true } },
+  minimap = { key = "calmMinimap", allows = { dim = true, hide = true } },
+}
+
+-- The Calm HUD's state for a part (a V.CALM_PARTS key): its choice's state while the Calm HUD is on, else nil (Leave).
+function V.CalmState(part)
+  local p, UF = V.CALM_PARTS[part], ns.GetModule("UnitFrames")
+  local s = ns.Settings("UnitFrames", UF.defaults)
+  if not (p and s.calm == true and p.allows[s[p.key]]) then return nil end
+  return V.CALM[s[p.key]]
+end
+
+-- A visibility setting's state on frame: the Calm HUD's for its part (frame.vgCalm) when the setting
+-- shows it always, else the setting's own (any other choice of yours wins over the Calm HUD).
+function V.Calmed(frame, mode, when)
+  local state = V.State(mode, when)
+  if state ~= "show" or next(V.Checked(mode, when)) then return state end
+  return V.CalmState(frame.vgCalm) or state
+end
+
 -- Paints the frame's alpha and tells its owner the state (to show or hide it).
 function V.Refresh(frame)
   frame:SetAlpha(V.Alpha(frame))
@@ -177,20 +213,26 @@ local function onAttribute(frame, name, value)
   V.Refresh(frame)
 end
 
--- Lets a frame feel the mouse (not its clicks) while it fades with it.
-local function motion(frame)
-  if frame.vgMotion or not V.Fades(frame) then return end
+-- Lets a frame feel the mouse (not its clicks), once. A frame that takes clicks already (the reputation
+-- bar, a unit frame) is left as it is, so it keeps them.
+local function feelMouse(frame)
+  if frame.vgMotion or frame:IsMouseClickEnabled() then return end
   frame.vgMotion = true
   frame:SetMouseMotionEnabled(true)
   frame:SetMouseClickEnabled(false)
 end
 
+-- Lets a frame feel the mouse while it fades with it.
+local function motion(frame)
+  if V.Fades(frame) then feelMouse(frame) end
+end
+
 -- Keeps the frame's instance and auto-hide flags for a setting (ApplyNow and ApplySecureNow read them back);
--- returns the setting's state.
+-- returns the setting's state, quieted by the Calm HUD when it shows always.
 local function noteMode(frame, mode, when)
   frame.vgInstance = V.Mode(mode) ~= "hidden" and V.Checked(mode, when).instance == true
   frame.vgAutoHide = V.Mode(mode) == "autohide"
-  return V.State(mode, when)
+  return V.Calmed(frame, mode, when)
 end
 
 -- Repaints a frame after its state is applied; an Auto-hide frame lingers first.
@@ -265,6 +307,32 @@ end
 function V.WatchHover(frame)
   frame.vgHoverRoot = frame
   hookHover(frame, frame)
+end
+
+-- Gives a frame with no visibility setting of its own its Calm HUD state now (out of combat only):
+-- its part's, or "show" once it was calm. A frame never made calm is left alone.
+function V.CalmNow(frame)
+  local state = V.CalmState(frame.vgCalm)
+  if not (state or frame.vgStateString) then return end
+  if not frame.vgHoverRoot then V.WatchHover(frame) end
+  feelMouse(frame)
+  V.ApplyState(frame, state or "show")
+  V.Refresh(frame)
+end
+
+-- Makes frame (one with no visibility setting of its own) part of the Calm HUD's `part`: it takes the
+-- part's state now, or when combat ends, and again on every Calm HUD change (V.ApplyCalm).
+function V.Calm(frame, part)
+  frame.vgCalm = part
+  V.Track(frame, function() V.CalmNow(frame) end)
+  ns.OutOfCombat(function() V.CalmNow(frame) end, frame)
+end
+
+-- The Calm HUD changed: every frame of a part takes its state again, now or when combat ends.
+function V.ApplyCalm()
+  for frame, reapply in pairs(V.tracked) do
+    if frame.vgCalm then ns.OutOfCombat(reapply, frame) end
+  end
 end
 
 -- Options --------------------------------------------------------------------------------------

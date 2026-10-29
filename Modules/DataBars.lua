@@ -318,7 +318,7 @@ end
 -- A themed status bar with its text, movable as `key`; Vanguard may set its size.
 local function createBar(key, label, point, settings)
   local bar = CreateFrame("StatusBar", "Vanguard_" .. key, UIParent)
-  bar.vgKey = key
+  bar.vgKey, bar.vgCalm = key, "xp"
   bar:SetSize(settings.width, settings.height)
   T.StyleBar(bar)
   T.HudPanel(bar, { inset = true })

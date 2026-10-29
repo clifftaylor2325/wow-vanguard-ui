@@ -196,6 +196,7 @@ local function build(s)
   PA.cells = {}
   for i = 1, #PA.WEAPONS do PA.cells[i] = enchantCell(PA.holder, i, s.size) end
   PA.UpdateEnchants()
+  ns.Visibility.Calm(PA.holder, "auras")
 end
 
 -- A weapon or inventory event: only yours matters.
