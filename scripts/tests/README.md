@@ -27,7 +27,8 @@ Everything here is TEST-ONLY: nothing in `scripts/lib/wow-*.lua` ships in game.
 | `scripts/lib/wow-textfit.lua` | The text-fit audit and the pseudo-locale (see "Text fit" below). |
 | `scripts/lib/wow-layout.lua` | Anchors, sizes and scale resolved to screen rects (1920x1080, origin bottom-left). |
 | `scripts/lib/wow-world.lua` | The world: units, auras, actions, spells, quests, bags, the map, timers, Blizzard frames. |
-| `scripts/lib/wow-taint.lua` | Taint and combat rules: who owns each frame, field writes on the game's frames, protected calls blocked in combat, secret arguments to aura calls, secret geometry. |
+| `scripts/lib/wow-keybinds.lua` | Key bindings (the Default (a placeholder), Account and Character sets, `GetBinding(i)`, `CLICK`/`SPELL` bindings), the cursor swap on action slots, stances, level and modifier events, and `C_ClickBindings`. |
+| `scripts/lib/wow-taint.lua` | Taint and combat rules: who owns each frame, field writes on the game's frames, protected calls blocked in combat, binding and placement calls refused in combat, secret arguments to aura calls, secret geometry. |
 | `scripts/lib/wow-inspect.lua` | A widget as a plain snapshot: what it draws, where, and its children. |
 | `scripts/lua-engine.test.mjs` | The client's own tests (5.1 printing, layout, events, timers, input, inspectors). |
 | `scripts/tests/smoke.test.mjs` | The harness cases a pull request's CI runs (`npm run test:quick`): load, login, unlock, lock and no errors, once as WoW Forever and once as Retail, then a fight with secret geometry on. |
@@ -163,6 +164,13 @@ change fires the events the client would.
 | `world.spec`, `world.specGroup` (Lua, through `addon.eval`) | The specialization index `GetSpecialization` answers, and the talent group `C_SpecializationInfo.GetActiveSpecGroup` answers (1 Primary, 2 Secondary, WoW Forever's dual spec). Both nil by default, so spec profiles have no key until a test sets one; with `world.specGroup` set on the Forever client they follow the talent group (fire `ACTIVE_TALENT_GROUP_CHANGED(group, previous)` after changing it), else the specialization index. |
 | `world.professions` | Your two primary professions, `{ name, skillLine, profession }` each (`profession` an `Enum.Profession`, Enchanting 9): `GetProfessions`, `GetProfessionInfo` and `C_TradeSkillUI.GetProfessionInfoBySkillLineID` answer from it. Empty by default. |
 | `world.skills` | `world.skills[skillID] = { name, rank, maxRank }`: `C_SkillInfo.GetSkillLineInfoByID` answers from it (rank 0 for an unknown skill). Empty by default. |
+| `SetBinding(key, command)` and the binding sets (`world.bindings`, `world.bindingSets`, `world.bindingSet`) | `SetBinding` writes the live bindings and answers false for a key the client doesn't take (`""`, lower case, `F25`, `SHIFT-SHIFT-A`); `SaveBindings(1 or 2)` keeps them in that set and `LoadBindings(0, 1, 2 or 3)` loads Default (the current set stays), Account, Character (a copy of Account the first time) or the current set, so a key nobody saved is gone after a load. A wrong set number raises `Usage: SaveBindings(which)`. `world.bindingsSaved()` says whether the live bindings are what the current set holds. UPDATE_BINDINGS fires on a write and on a load. |
+| `GetBinding(i)`, `GetNumBindings()`, `world.registerBinding(command, category)` | The listed commands: 12 action buttons and two bag commands, plus whatever a test registers. `GetBinding` answers the command, its category and its first two keys. `SetBindingClick`, `SetBindingSpell`, `SetBindingMacro` and `SetBindingItem` bind `CLICK name:button`, `SPELL x`, `MACRO x` and `ITEM x`: `GetBindingKey` and `GetBindingAction` see them, `GetBinding(i)` doesn't, as in game. |
+| `PickupAction(slot)`, `PlaceAction(slot)`, `C_ActionBar.PutActionInSlot(slot)` | The cursor swaps with the slot: the cursor's action goes in, the old action comes up on the cursor (nothing for an empty slot), an empty cursor changes nothing, and a slot outside 1 to 180 raises `Invalid action slot`. A picked-up action keeps its fields. `world.starterBars[class] = { [slot] = fields }` and `world.useStarterBar(class)` fill the slots a new character starts with (empty until the in-game check lists them). |
+| `world.keyPreimage()`, `world.discarded`, `world.combatAfterCalls(n)` | For tests of code that rewrites keys and bars: every bound key and its command (CLICK and SPELL keys too) to compare a restore with; the actions `ClearCursor` threw away after they came off a bar; and combat starting at the n-th guarded binding or placement call, to cut a sequence of writes in half. |
+| `world.setKeys(held)` (what `keys()` calls), `world.levelUp(level)`, `world.pushSpellToActionBar(spellID, slot)` | MODIFIER_STATE_CHANGED(`LSHIFT`, 1 or 0) for each modifier that changes; UNIT_LEVEL then PLAYER_LEVEL_UP(level); a spell placed and SPELL_PUSHED_TO_ACTIONBAR(spellID, slot). |
+| `world.setStances(forms)` | The stance strip, `{ icon, spellID, active, castable }` per form: `GetNumShapeshiftForms`, `GetShapeshiftFormInfo(i)` (icon, active, castable, spellID) and `GetShapeshiftForm` answer from it, and UPDATE_SHAPESHIFT_FORMS fires. |
+| `C_ClickBindings`, `world.clickProfile` | The game's click profile: plain Left = Target and Right = Open menu by default; `GetProfileInfo` hands out a copy, `SetProfileByInfo` and `ResetCurrentProfile` change it, `GetBindingType`, `CanSpellBeClickBound` and the tutorial flag answer, and `ExecuteBinding` is recorded in `world.clickExecuted`. |
 | `secret(n)` | A secret value (as the client hides numbers in instanced combat): `set("units.player.hp", secret(100))`. It raises on arithmetic, ordering comparison (`<`, `>`), concatenation, length, a call and any field read or write, but not on `==` or `~=` (equality with another value is just false), so a guard that only compares needs reading by eye; `issecretvalue` is the one way to look at it. |
 | `secretGeometry(mode)` | Secret positions and sizes, as the client hides them: `"derived"` (a bar's fill while its value is secret, a font string showing secret text, and anything anchored to those), `"strict"` (those, and every frame of the game's but UIParent), or off (`null`). Geometry getters then answer with secrets. |
 | `secretReads` (Lua, through `addon.eval`) | A set of client reads that answer with `secret(0)` while on, as the client does in instanced combat: `__wfgWorld.secretReads.UnitOnTaxi = true`. Names: `UnitOnTaxi`, `UnitLevel`, `UnitXP`, `UnitIsDeadOrGhost`, `C_Map.GetPlayerMapPosition`, `C_QuestLog.GetDistanceSqToQuest`. Empty by default. A read the world lacks (`GetPlayerFacing`, `UnitPosition`) is stubbed in the test instead. |
@@ -259,6 +267,17 @@ error: the test fails unless `expectErrors` names it.
   CheckProtectedFunctionsAllowed), so a button that calls `ToggleWorldMap` or
   the like in a fight fails its test; `PANEL_OPENERS` in helpers.mjs gives the
   game's openers that reach them.
+- **Binding and placement calls.** In combat, addon code that calls `SetBinding`,
+  `SetBindingSpell`, `SetBindingMacro`, `SetBindingItem`, `SetBindingClick`,
+  `SaveBindings`, `LoadBindings`, `PlaceAction`, `C_ActionBar.PutActionInSlot`,
+  `C_Spell.PickupSpell` or the `C_ClickBindings` writes (`SetProfileByInfo`,
+  `ResetCurrentProfile`, `ExecuteBinding`) is blocked: nothing happens, the call
+  answers nothing, ADDON_ACTION_BLOCKED fires and `blocked in combat: ... called
+  SetBinding(), which the client refuses addon code in a fight` is recorded. The
+  wiki tags `SetBinding` and `PickupSpell` `#nocombat`; the rest follow them
+  unverified, and the keybind phases' in-game probe settles them. Game and test
+  code are never blocked. A call in tail position (`return SetBinding(...)`)
+  reads as the code above it, so call, then return.
 - **Secret arguments.** Addon code that passes a secret (a hidden aura instance
   id) to a `C_UnitAuras` call Blizzard documents as `SecretArguments =
   "AllowedWhenUntainted"` gets the client's error (`bad argument #2 to '?' (...

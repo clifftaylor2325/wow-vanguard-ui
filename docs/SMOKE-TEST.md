@@ -948,6 +948,12 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Expect: the hotkey texts read Bs, SBs, N+, N1, Cmd4 and M4, each one different, none cut to a half word. No error.
 - If it fails, paste: a screenshot of the bar and the keys you bound.
 
+### 10.4c Your keys view
+
+- Do: open /vg, Action bars, the Your keys tab. Hover a key with a spell on it and a key with none. Hold Shift, then Ctrl, then Alt, then let go. Click each tab. Put a spell on a key, bind another key to a game command (for example B for the bags), reopen the tab. On an AZERTY or QWERTZ keyboard, look at which cap lights for the keys you press. Open the tab during a fight.
+- Expect: icons and short key names on bound keys, tooltips with the place ("Bar 2 button 1") and the spell; the tabs follow the held modifier; the list under the keyboard matches the caps; nothing is written (check Key Bindings is unchanged); the tab stays open in combat; no error.
+- If it fails, paste: a screenshot, your keyboard layout, and `/vg errors`.
+
 ### 10.4b Long keys stay on one line
 
 - Do: bind Page Up, Insert, Caps Lock and Shift+Ctrl+Alt+Delete to four bar 1 buttons in the game's Key Bindings, then look at the buttons at your smallest button size.
@@ -3162,6 +3168,18 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Do: on retail inspect a player with no guild; with Vanguard's quest dialog off, turn in a quest that asks for money; open an achievement with a counted criterion ("700/1000"); then change the accent colour under General with Achievements and Collections open.
 - Expect: no bronze plates behind the inspect gear slots, and the greyed Guild tab's label is greyer than the others; the turn-in page's required money line reads light; the achievement's progress bar is a flat dim-accent bar with no bronze border; the achievement and collections bars take the new accent at once, without a reload, while class-coloured unit frames and cast bars keep their colours.
 - If it fails, paste: a screenshot, and `/vg errors`.
+
+### 33.163 Binding calls in a fight (probe for the keybind harness)
+
+- Do: on WoW Forever, out of combat, run a one-line test addon that prints the answers (there is no `/vg probe` step for this yet), and note what `GetNumBindings()` and `GetBinding(1)` answer; bind a key with `SetBindingSpell`, then look for it in the `GetBinding(i)` rows. Then start a fight with a training dummy and, from an addon, call `SetBinding("F9", nil)`, `SaveBindings(GetCurrentBindingSet())`, `LoadBindings(GetCurrentBindingSet())`, `C_Spell.PickupSpell(<a spell id>)` and `PlaceAction(120)`; also try `SetBinding("F9", "ACTIONBUTTON12")` out of combat after switching to a Character binding set, and a `SetBinding` with keys written `SHIFT-CTRL-A` and `a`.
+- Expect: (the harness's model, not yet seen in game) each call in the fight is refused with an ADDON_ACTION_BLOCKED line (or answers nothing); `GetBinding(i)` shows two keys at most and no `SPELL` row; `SetBinding` takes `SHIFT-CTRL-A` or refuses it, and refuses `a`. The harness (scripts/lib/wow-keybinds.lua, wow-taint.lua) models these answers as written there; a different answer is a task to change the model.
+- If it fails, paste: what the test addon printed, and `/vg errors`.
+
+### 33.164 Key setup's apply engine (not runnable yet: it needs the key setup wizard)
+
+- Do: once the key setup wizard is in, on WoW Forever, apply a class preset on a new character (Attack and a first spell on bar 1) and note the bars and keys. Put back one key, then put everything back. Apply again with "Only this character", then switch the character back to account keys in the game's Key Bindings and try to put everything back. Apply once more, start a fight with a training dummy and try to apply or put back during it. Finally apply on one character with account keys, put everything back on a second character, and log in as the first again. On a warrior, apply a key on two stance pages and switch stances.
+- Expect: (the harness's model, not yet seen in game) Attack moves to bar 3 and the preset's keys work at once; a put-back leaves the bars and keys as before, the macros untouched; the account keys don't change with "Only this character", and the mismatch refuses with its chat line; in the fight both are refused with a chat line and no ADDON_ACTION_BLOCKED; the first character's moved spells are back after its login; the stance key fires each page's spell. `/vg errors` stays empty. The engine assumes things only the game can show, so also check: the action slots are readable at the load screen (the login put-back reads them); LoadBindings switches the key set; `/dump GetBindingKey("ACTIONBUTTON1")` after binding a third key to it with the game's own key bindings (does one drop out?); a preset key written `SHIFT-CTRL-G` comes back from `/dump GetBindingAction("CTRL-SHIFT-G")`; `/dump GetBindingAction("F")` after Apply names the bar button (no binding context needed); and a lower spell rank on the button a preset moves aside goes back on put-back.
+- If it fails, paste: what chat said, a screenshot of the bars, and `/vg errors`.
 
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 

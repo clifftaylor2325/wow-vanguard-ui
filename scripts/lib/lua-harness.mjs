@@ -230,7 +230,7 @@ function traceback(L) {
   const msg = lua.lua_tojsstring(L, 1) ?? "<non-string error>";
   lauxlib.luaL_traceback(L, L, to_luastring(msg), 1);
   const [first, ...rest] = lua.lua_tojsstring(L, -1).split("\n");
-  const lines = [first, ...rest.filter((l) => !/\[C\]: in \?$|wow-stub\.lua|wow-world\.lua|wow-layout\.lua|wow-taint\.lua|wow-inspect\.lua/.test(l))];
+  const lines = [first, ...rest.filter((l) => !/\[C\]: in \?$|wow-stub\.lua|wow-world\.lua|wow-keybinds\.lua|wow-layout\.lua|wow-taint\.lua|wow-inspect\.lua/.test(l))];
   lua.lua_pushstring(L, to_luastring(lines.join("\n")));
   return 1;
 }
@@ -320,7 +320,7 @@ function loadText(L) {
   runLib(L, "wow-textfit.lua");
 }
 
-// Loads the widget API list, the WoW stub, its layout, the world, the taint rules, and an empty addon namespace.
+// Loads the widget API list, the WoW stub, its layout, the world, its key bindings, the taint rules, and an empty addon namespace.
 function loadStub(L) {
   lua.lua_pushjsfunction(L, newUserdata);
   lua.lua_setglobal(L, to_luastring("__wfgUserdata"));
@@ -329,8 +329,7 @@ function loadStub(L) {
   runLib(L, "wow-stub.lua");
   loadText(L);
   runLib(L, "wow-layout.lua");
-  runLib(L, "wow-world.lua");
-  runLib(L, "wow-taint.lua");
+  for (const file of ["wow-world.lua", "wow-keybinds.lua", "wow-taint.lua"]) runLib(L, file);
   run(L, "__wfgNs = {}; __wfgStub.firstAddonFrame = #__wfgStub.frames", "=ns", false, 0);
 }
 
@@ -486,7 +485,7 @@ function input(addon) {
     click: (ref, button, down) => inputCall(addon, "click", ref, [button ?? "LeftButton", down ?? false]),
     wheel: (ref, delta = 1) => inputCall(addon, "wheel", ref, [delta]),
     // Holds or releases modifier keys: keys({ shift: true }).
-    keys: (held) => addon.eval(`for k, v in pairs(${luaValue(held)}) do __wfgWorld.keys[k] = v end`),
+    keys: (held) => addon.eval(`__wfgWorld.setKeys(${luaValue(held)})`),
     // Puts the mouse at screen pixels (for sliders and drags).
     mouse: (x, y) => addon.eval(`__wfgWorld.mouse = { x = ${Number(x)}, y = ${Number(y)} }`),
   };
