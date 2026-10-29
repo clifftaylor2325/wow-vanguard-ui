@@ -1,5 +1,5 @@
 -- The Action bars page (/vg): the shared card (locking, range, the
--- default and special bars, keybind mode), then one card per bar.
+-- default and special bars, keybind mode), the Your keys card, then one card per bar.
 -- Core/Options.lua has the helpers and the page list.
 
 local ADDON, ns = ...
@@ -68,6 +68,15 @@ local function actionBarRows()
   }
 end
 
+-- Your keys (Modules/KeysViewCard.lua): what every key does now, read-only.
+local function yourKeysRows()
+  return {
+    { "header", L["Your keys"] },
+    { "text", L["What every key does now. Hold Shift, Ctrl or Alt to see those keys, and hover a key for what it does."] },
+    { "keystabs" }, { "keyboard" }, { "keylist" },
+  }
+end
+
 -- Buttons on a bar, and per row: 1 to 12.
 local BAR_BUTTONS = { min = 1, max = 12, step = 1 }
 -- Button size: 24 to 48 px in steps of 2.
@@ -113,6 +122,7 @@ end
 -- The action bar page: the shared card, then one card per bar.
 local function actionBarPageRows()
   local rows = actionBarRows()
+  append(rows, yourKeysRows())
   for n = 1, 8 do append(rows, oneBarRows(n)) end
   return rows
 end
