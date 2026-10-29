@@ -4,6 +4,31 @@ What changed for players in each release, newest first. In game, the same notes 
 
 Nothing here has been checked in the game by the people who wrote it down: see the batch checklist (issue #284) and [SMOKE-TEST.md](SMOKE-TEST.md).
 
+## 0.7.5
+
+Nothing in this release has been checked in the game; see the batch checklist (issue #284).
+
+### Language (0.7.5)
+
+- Vanguard's own text shows in your client's language: German, French, Spanish, Italian, Brazilian Portuguese, Russian, Korean and Chinese. The translations are machine-drafted, so report a wrong line with /vg feedback. Commands and these notes stay English.
+
+### Options and look (0.7.5)
+
+- Options pages show their cards as tabs, so the long pages fit one screen; Reset this page sits beside the page title.
+- Every module switch says Reload to apply, and searching for reload finds them.
+- A Panel texture choice (General, Look) draws a texture over every floating window; Flat is the default.
+- The Feedback page has a Community card with Vanguard's Discord and X links to copy.
+- Clearing loot reserves, a talent plan or saved chat asks first.
+
+### Fit and layout (0.7.5)
+
+- Text fits its buttons, menus and windows at any text size and in longer translations.
+- On narrow or short screens, default frame spots move just enough to stay on screen and clear of each other; wider screens are unchanged.
+
+### Fixes (0.7.5)
+
+- Fixes from two bug hunts, a clean-code review and twelve stability hunts across combat, frames, chat, quests, bags, the auction house, mail, profiles and options.
+
 ## 0.7.4
 
 Nothing in this release has been checked in the game; see the batch checklist (issue #284).
