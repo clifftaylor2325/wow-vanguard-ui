@@ -343,15 +343,20 @@ it("quest panel in the map: dressed even while Vanguard's quest log is on (its M
 // TEST-ONLY reward tiles as the game builds them (QuestInfo.xml): the quest window's QuestInfoRewardsFrame with two item
 // tiles in its RewardButtons list (named "$parentQuestInfoItem<n>", so never the global QuestInfoItem<n>) and its XP tile
 // (the global QuestInfoXPFrame, with a ReputationBG plate), the map's MapQuestInfoRewardsFrame with its own item tile, XP
-// tile and a money tile (unnamed keys of the frame), made by the game as QuestInfo_Display runs.
+// tile and a money tile (unnamed keys of the frame), made by the game as QuestInfo_Display runs. Both sit in the map's
+// details (the game parents the rewards frame to the page that shows it); a third frame on the game's parchment, outside
+// any dressed window, holds one more tile.
 const QUEST_REWARDS_ENV = QUEST_MAP_ENV + `
   local function tile(parent, name) local t = CreateFrame("Button", name, parent) t.NameFrame, t.Icon = t:CreateTexture(), t:CreateTexture() t.NameFrame:SetAlpha(1) return t end
-  local big = CreateFrame("Frame", "QuestInfoRewardsFrame", UIParent)
+  local details = QuestMapFrame.QuestsFrame.DetailsFrame
+  local big = CreateFrame("Frame", "QuestInfoRewardsFrame", details)
   big.RewardButtons = { tile(big, "QuestInfoRewardsFrameQuestInfoItem1"), tile(big, "QuestInfoRewardsFrameQuestInfoItem2") }
   big.XPFrame = CreateFrame("Frame", "QuestInfoXPFrame", big) big.XPFrame.ReputationBG = big.XPFrame:CreateTexture()
-  local map = CreateFrame("Frame", "MapQuestInfoRewardsFrame", UIParent)
+  __parchment = tile(CreateFrame("Frame", nil, UIParent))
+  big.RewardButtons[4] = __parchment
+  local map = CreateFrame("Frame", "MapQuestInfoRewardsFrame", details)
   map.RewardButtons = { tile(map, "MapQuestInfoRewardsFrameQuestInfoItem1") }
-  map.XPFrame, map.MoneyFrame = tile(map), tile(map)
+  map.XPFrame, map.MoneyFrame, map.TitleFrame = tile(map), tile(map), tile(map)
   for _, key in ipairs({ "AbandonButton", "TrackButton" }) do
     local b = QuestMapFrame.QuestsFrame.DetailsFrame[key] local fs = b:CreateFontString(nil, "OVERLAY") fs:SetFont("TEST-ONLY-GAME", 12, "") b:SetFontString(fs)
   end
@@ -365,7 +370,8 @@ it("quest panel in the map: the reward tiles lose their plates and the buttons' 
   const addon = loggedIn(QUEST_REWARDS_ENV);
   addon.eval("QuestMapFrame:Show()");
   expect(addon.eval("local b = QuestInfoRewardsFrame return { b.RewardButtons[1].NameFrame:GetAlpha(), b.RewardButtons[2].NameFrame:GetAlpha(), b.XPFrame.ReputationBG:GetAlpha() }"), "the quest window's name plates and XP plate are faded").toEqual([0, 0, 0]);
-  expect(addon.eval("local m = MapQuestInfoRewardsFrame return { m.RewardButtons[1].NameFrame:GetAlpha(), m.XPFrame.NameFrame:GetAlpha(), m.MoneyFrame.NameFrame:GetAlpha() }"), "so are the map's item, XP and money tiles").toEqual([0, 0, 0]);
+  expect(addon.eval("local m = MapQuestInfoRewardsFrame return { m.RewardButtons[1].NameFrame:GetAlpha(), m.XPFrame.NameFrame:GetAlpha(), m.MoneyFrame.NameFrame:GetAlpha(), m.TitleFrame.NameFrame:GetAlpha() }"), "so are the map's item, XP, money and title tiles").toEqual([0, 0, 0, 0]);
+  expect(addon.eval("return __parchment.NameFrame:GetAlpha()"), "a tile outside a dressed window keeps the game's plate").toBe(1);
   addon.eval("QuestInfo_Display()");
   expect(addon.eval("return QuestInfoRewardsFrame.RewardButtons[3].NameFrame:GetAlpha()"), "a tile the game makes as a quest is shown is dressed after QuestInfo_Display").toBe(0);
   const d = "QuestMapFrame.QuestsFrame.DetailsFrame";

@@ -323,11 +323,15 @@ end
 -- The plates behind a reward tile's name and the XP tile's figure (the dark boxes with a gold edge): faded.
 GW.QUEST_REWARD_PLATES = { "NameFrame", "ReputationBG" }
 -- The named tiles both rewards frames (the quest window's and the map's) have besides their item tiles.
-GW.QUEST_REWARD_EXTRAS = { "XPFrame", "HonorFrame", "ArtifactXPFrame", "WarModeBonusFrame", "MoneyFrame", "SkillPointFrame", "TitleFrame" }
+GW.QUEST_REWARD_EXTRAS = { "XPFrame", "HonorFrame", "ArtifactXPFrame", "WarModeBonusFrame", "SkillPointFrame" }
+-- The map's own extra tiles: its money and title rewards are item tiles there (the quest window's are a money line and a
+-- title plate, left as they are).
+GW.MAP_REWARD_EXTRAS = { "MoneyFrame", "TitleFrame" }
 
--- One reward tile (an item the quest gives or lets you choose): its plate faded, the item look on its icon.
+-- One reward tile (an item the quest gives or lets you choose): its plate faded, the item look on its icon; only in a
+-- window Vanguard dressed (a tile on the game's parchment is left as it is).
 local function skinRewardTile(tile)
-  if not isFrame(tile) then return end
+  if not isFrame(tile) or not GW.InDressedWindow(tile) then return end
   GW.FadeParts(tile, GW.QUEST_REWARD_PLATES)
   if tile.CreateTexture and tile.Icon then GW.SkinItem(tile) end
 end
@@ -346,6 +350,7 @@ end
 function GW.SkinQuestRewards()
   skinRewardsFrame(_G.QuestInfoRewardsFrame)
   skinRewardsFrame(_G.MapQuestInfoRewardsFrame)
+  GW.EachKey(_G.MapQuestInfoRewardsFrame, GW.MAP_REWARD_EXTRAS, skinRewardTile)
 end
 
 -- Keeps the reward tiles dressed after each QuestInfo_Display, hooked once.

@@ -1242,9 +1242,7 @@ GW.INSIDES.ItemTextFrame = function()
   GW.InsetPanel(_G.ItemTextScrollFrame)
   GW.SkinPager(_G.ItemTextPrevPageButton, "left")
   GW.SkinPager(_G.ItemTextNextPageButton, "right")
-  local bar = _G.ItemTextStatusBar
-  GW.SkinProgress(bar)
-  if type(bar) == "table" and bar.SetStatusBarColor then T.BarColor(bar, "accentDim") end
+  GW.SkinAccentBar(_G.ItemTextStatusBar)
   GW.TextNamed({ "ItemTextCurrentPage" }, "small", "text2")
 end
 
@@ -1848,12 +1846,16 @@ local function skinAchievementPlate(frame)
   placeAchievementTitle(frame, header.Title, header.Points)
 end
 
+-- How dark a criterion's text is (its red, green and blue added) before it counts as the game's black: under it is the
+-- black of a completed criterion on parchment, its grey (0.6 each) and green stay above.
+GW.BLACK_TEXT = 0.3
+
 -- Whether the game made a font string black (the colour it gives a completed criterion for its parchment); a part
 -- that is no font string, or has no readable colour, is not.
 local function isBlackText(text)
   if type(text) ~= "table" or not text.GetTextColor then return false end
   local r, g, b = text:GetTextColor()
-  return type(r) == "number" and type(g) == "number" and type(b) == "number" and r + g + b < 0.3
+  return type(r) == "number" and type(g) == "number" and type(b) == "number" and r + g + b < GW.BLACK_TEXT
 end
 
 -- The texts under key of each item in list (the objectives' criteria and meta achievements) that the game made black
@@ -1912,6 +1914,7 @@ local function inDressedWindow(region)
   while f and not vgWindow[f] do f = f:GetParent() end
   return f ~= nil
 end
+GW.InDressedWindow = inDressedWindow
 
 -- The quest texts' light colours, each only where its window has the dark panel (left as the game colours them on
 -- its parchment).
@@ -1947,12 +1950,14 @@ local function lightObjectives()
 end
 
 -- The quest window's texts in light body text and light headings (the quest's name included), its rewards and
--- objective lines too.
+-- objective lines too, and its reward tiles (GW.SkinQuestRewards, in Modules/WindowsMap.lua: the map's details share
+-- them, so whichever group dresses its window dresses them).
 function GW.LightQuestText()
   lightDressed(GW.QUEST_BODY)
   lightDressed(GW.QUEST_HEADS)
   lightRewardTexts()
   lightObjectives()
+  GW.SkinQuestRewards()
 end
 
 -- The gossip window's list of lines (greeting and options), or nil on a client without it.
