@@ -73,11 +73,29 @@ GW.MAIL_INVOICE_TEXTS = {
   "OpenMailInvoiceAmountReceived", "OpenMailInvoiceNotYetSent", "OpenMailInvoiceMoneyDelay",
 }
 GW.MAIL_INVOICE_MONEY = { "OpenMailTransactionAmountMoneyFrame", "OpenMailDepositMoneyFrame", "OpenMailHouseCutMoneyFrame", "OpenMailSalePriceMoneyFrame" }
+-- A crafting order mail's texts (retail; ConsortiumMailFrame, dark brown like the invoice's), as parentKey paths in it.
+GW.MAIL_CONSORTIUM_TEXTS = {
+  "OpeningText", "CrafterText", "CommissionReceived", "CrafterNote", "ConsortiumNote", "CommissionPaidDisplay.CommissionPaidText",
+}
+
+-- A crafting order mail in the theme: its texts and the "-" the game draws unnamed beside the commission paid in the text
+-- colour, its two money displays in the number font. The game only sets and hides these, so one paint holds. A client
+-- without the mail, or without a part of it, is skipped.
+local function dressConsortium()
+  local box = _G.ConsortiumMailFrame
+  if type(box) ~= "table" then return end
+  for _, path in ipairs(GW.MAIL_CONSORTIUM_TEXTS) do paintText(GW.Part(box, path), "text") end
+  local paid = GW.Part(box, "CommissionPaidDisplay.MoneyDisplayFrame")
+  GW.SkinMoneyDisplay(box.CommissionReceivedDisplay)
+  GW.SkinMoneyDisplay(paid)
+  paintRegions(paid, "text")
+end
 
 -- The invoice in the theme: its labels and the strings beside its money lines (the + and - the game draws unnamed) in the text
--- colour, the four money lines in the number font, the sum line one pixel of divider.
+-- colour, the four money lines in the number font, the sum line one pixel of divider; a crafting order mail's texts too.
 local function dressInvoice()
   GW.PaintNamed(GW.MAIL_INVOICE_TEXTS, "text")
+  dressConsortium()
   for _, name in ipairs(GW.MAIL_INVOICE_MONEY) do
     GW.SkinMoney(_G[name])
     paintRegions(_G[name], "text")
@@ -1041,6 +1059,21 @@ local function dressCardNames(card)
   end
 end
 
+-- A quick join card's names in the text colour now and after each SetEntry: the game makes the lines a group needs beyond
+-- the card's first (more queues, more members) while it fills the card, after the card is dressed.
+local function watchCardNames(card)
+  dressCardNames(card)
+  GW.HookAfter(card, "SetEntry", dressCardNames)
+end
+
+-- A card as a theme row: the game's plate faded, its icon kept, its hover plate (a Highlight the game sets the alpha of at
+-- each fill) kept faded, its selected look following the game's own SetSelected.
+local function dressCardRow(card)
+  GW.DressRow(card, GW.CARD_KEEP)
+  GW.KeepFaded(card.Highlight)
+  GW.FollowSelected(card, "SetSelected")
+end
+
 -- How the game placed a card's presence dot and its name block (the dot's centre from the card's top-left
 -- corner, the block's top-left from the dot's bottom-right), or nil once they are placed otherwise (centred already).
 local function gamePresenceAnchors(card, dot, text)
@@ -1071,14 +1104,13 @@ end
 -- plate (a spacer) is left alone.
 local function dressCard(card)
   if type(card) ~= "table" or not card.CreateTexture or type(card.Background) ~= "table" then return end
-  GW.DressRow(card, GW.CARD_KEEP)
+  dressCardRow(card)
   centrePresence(card)
   GW.HookAfter(card, "LayoutScaledTextHolderAnchors", centrePresence)
-  GW.FollowSelected(card, "SetSelected")
   dressCardAction(card.PartyButton)
   dressCardAction(card.RAFSummonButton)
   GW.SkinButton(card.AcceptButton)
-  dressCardNames(card)
+  watchCardNames(card)
 end
 
 -- The reward card above the recruit list: its backdrop faded (the watermark kept) under a panel, its claim button flat, its gold counts light.

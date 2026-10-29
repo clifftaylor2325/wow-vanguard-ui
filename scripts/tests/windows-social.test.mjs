@@ -47,6 +47,28 @@ const INVOICE_ENV = MAIL_ENV + INSIDES_LUA + `
   OpenMailSalePriceMoneyFrame.Count = __text(OpenMailSalePriceMoneyFrame, "1")
 `;
 
+// A crafting order mail (retail MailFrame.xml): ConsortiumMailFrame with its brown texts, a received-commission money display and
+// a paid one with its own "-" string; MoneyDisplayFrameTemplate has no GoldButton keys, and the game sets its font on each fill.
+const CONSORTIUM_ENV = INVOICE_ENV + `
+  function __display(parent)
+    local m = CreateFrame("Frame", nil, parent)
+    for _, key in ipairs({ "GoldDisplay", "SilverDisplay", "CopperDisplay" }) do
+      local d = CreateFrame("Frame", nil, m) d.Text = __text(d, "12") m[key] = d
+    end
+    function m:SetFontObject() for _, key in ipairs({ "GoldDisplay", "SilverDisplay", "CopperDisplay" }) do self[key].Text:SetFont("TEST-ONLY-GAME", 13, "") end end
+    return m
+  end
+  local box = CreateFrame("Frame", "ConsortiumMailFrame", OpenMailFrame)
+  for _, key in ipairs(ns.GetModule("Windows").MAIL_CONSORTIUM_TEXTS) do
+    if not key:find("%.") then box[key] = __text(box, "TEST-ONLY") box[key]:SetTextColor(0.18, 0.12, 0.06) end
+  end
+  box.CommissionReceivedDisplay = __display(box)
+  box.CommissionPaidDisplay = CreateFrame("Frame", nil, box)
+  box.CommissionPaidDisplay.CommissionPaidText = __text(box.CommissionPaidDisplay, "TEST-ONLY") box.CommissionPaidDisplay.CommissionPaidText:SetTextColor(0.18, 0.12, 0.06)
+  box.CommissionPaidDisplay.MoneyDisplayFrame = __display(box.CommissionPaidDisplay)
+  box.CommissionPaidDisplay.MoneyDisplayFrame.Dash = __text(box.CommissionPaidDisplay.MoneyDisplayFrame, "-") box.CommissionPaidDisplay.MoneyDisplayFrame.Dash:SetTextColor(0.18, 0.12, 0.06)
+`;
+
 it("open mail: the letter window in the theme, its stationery faded, body text light, buttons and items dressed", () => {
   const addon = loggedIn(MAIL_ENV);
   addon.eval("OpenMailFrame:Show()");
@@ -100,10 +122,25 @@ it("open mail: the letter's page is a sunk area, the subject, sender and invoice
   expect([isText(addon, "OpenMailInvoiceDeposit"), windowErrors(addon), addon.eval("return #ns.errors")], "light again after the game redraws the letter").toEqual([true, "none", 0]);
 });
 
+it("open mail: a crafting order mail's texts and its money displays are in the theme, again after a redraw", () => {
+  const addon = loggedIn(CONSORTIUM_ENV);
+  addon.eval("OpenMailFrame:Show()");
+  const box = "ConsortiumMailFrame";
+  expect([isText(addon, `${box}.OpeningText`), isText(addon, `${box}.CrafterText`), isText(addon, `${box}.CommissionReceived`), isText(addon, `${box}.CrafterNote`), isText(addon, `${box}.ConsortiumNote`),
+    isText(addon, `${box}.CommissionPaidDisplay.CommissionPaidText`)], "the brown order texts go to the text colour").toEqual([true, true, true, true, true, true]);
+  expect(isText(addon, `${box}.CommissionPaidDisplay.MoneyDisplayFrame.Dash`), "the unnamed - beside the paid commission").toBe(true);
+  expect(addon.eval(`local r, p = ${box}.CommissionReceivedDisplay, ${box}.CommissionPaidDisplay.MoneyDisplayFrame return { __themed(r.GoldDisplay.Text), __themed(p.CopperDisplay.Text) }`), "both money displays in the number font").toEqual([true, true]);
+  addon.eval(`local p = ${box}.CommissionPaidDisplay.MoneyDisplayFrame p:SetFontObject("NumberFontNormalRightRed") ${box}.OpeningText:SetTextColor(0.18, 0.12, 0.06) OpenMailFrame:Update()`);
+  expect([addon.eval(`return __themed(${box}.CommissionPaidDisplay.MoneyDisplayFrame.GoldDisplay.Text)`), isText(addon, `${box}.OpeningText`), windowErrors(addon)], "the game's font set on each fill is put back; the text light again after a redraw").toEqual([true, true, "none"]);
+});
+
 it("open mail: a letter window missing its page, invoice or sum line loads cleanly, and the switch off leaves the invoice the game's", () => {
   const odd = loggedIn(MAIL_ENV + INSIDES_LUA + `OpenMailFrame.ScrollFrame = {} OpenMailSubject = {} OpenMailSender = {} OpenMailDepositMoneyFrame = {} OpenMailArithmeticLine = {}`);
   odd.eval("OpenMailFrame:Show()");
   expect([windowErrors(odd), odd.eval("return #ns.errors")]).toEqual(["none", 0]);
+  const hollow = loggedIn(INVOICE_ENV + `ConsortiumMailFrame = {} ConsortiumMailFrame.CommissionPaidDisplay = {}`);
+  hollow.eval("OpenMailFrame:Show()");
+  expect([windowErrors(hollow), hollow.eval("return #ns.errors")], "a crafting order mail without its parts").toEqual(["none", 0]);
   const off = loggedIn(INVOICE_ENV, OFF);
   off.eval("OpenMailFrame:Show()");
   expect([isText(off, "OpenMailInvoiceDeposit"), off.eval("return ns.Theme.DividerParts(OpenMailArithmeticLine) == nil and OpenMailFrame.ScrollFrame.__alpha ~= 0")], "with the group off").toEqual([false, true]);
@@ -1533,10 +1570,13 @@ const SOCIAL_CARDS_ENV = SOCIAL_ENV + INSIDES_LUA + PART_HELPERS_LUA + `
   for _, k in ipairs({ "FriendsList", "RecentAlliesList", "QuickJoinFrame", "FriendRequestsList", "RecruitAFriendFrame" }) do listbox(f[k]) end
   function __card(parent)
     local c = CreateFrame("Button", nil, parent) c.Background, c.HighlightTexture, c.Icon = __art(c), __art(c), __art(c)
+    c.Highlight = __art(c, "BORDER") -- the quick join card's hover plate (QuickJoin.lua)
     for _, k in ipairs({ "PartyButton", "RAFSummonButton" }) do c[k] = CreateFrame("Button", nil, c) c[k].NormalTexture, c[k].ActionIcon = __art(c[k]), __art(c[k]) end
     __btn(c, "Accept", "AcceptButton")
     c.Members, c.Queues = { __gold(c, nil, "member") }, { __gold(c, nil, "queue") }
-    function c:SetSelected(on) end
+    function c:SetSelected(on) self.Highlight:SetAlpha(on and 0 or 0.5) end
+    -- QuickJoinButtonMixin:SetEntry: the game adds a second queue line while it fills the card (CreateFontString in ApplyToFrame).
+    function c:SetEntry() if not self.Queues[2] then self.Queues[2] = __gold(self, nil, "queue 2") end end
     return c
   end
   __k1 = __card(f.FriendsList.ScrollBox) table.insert(f.FriendsList.ScrollBox.rows, __k1) __spacer = CreateFrame("Frame", nil, f.FriendsList.ScrollBox) table.insert(f.FriendsList.ScrollBox.rows, __spacer)
@@ -1572,6 +1612,8 @@ it("social window cards: each list sits in an inset, its cards are theme rows wi
     expect(card(c), `${c}: a theme row, plate and hover texture faded, the icon and the action icon kept, the square plates faded, Accept flat, the names light`).toEqual([true, 0, 0, 1, 0, 1, 0, 0, true, true, false]);
   }
   expect(addon.eval("return ns.Theme.RowParts(__spacer) == nil"), "a spacer without a plate is left alone").toBe(true);
+  expect(addon.eval("__k3:SetSelected(false) return { __k3.Highlight:GetAlpha(), __k3.Highlight.__alpha }"), "the game's init lights the hover plate at 0.5 after the card is dressed: it stays faded").toEqual([0, 0]);
+  expect(addon.eval("__k3:SetEntry() return { #__k3.Queues, __lit(__k3.Queues[2]), __lit(__k3.Queues[1]) }"), "a queue line the game makes while filling the card is in the text colour too").toEqual([2, true, true]);
   addon.eval("__k1:SetSelected(true) __k3:SetSelected(true)");
   expect([card("__k1")[10], card("__k3")[10], card("__k2")[10]], "the game selecting a card lights it").toEqual([true, true, false]);
   addon.eval("__k1:SetSelected(false)");
