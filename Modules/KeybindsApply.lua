@@ -1,6 +1,6 @@
 -- Key setup's apply engine: what a key preset writes, and how it is put back.
--- Nothing here runs by itself yet: the presets and the wizard that will call
--- it, and the Your keys tab's put-back buttons, come in later keybind phases.
+-- The wizard calls KA.Apply; Modules/KeybindsLearn.lua calls KA.Update quietly
+-- as new spells are learned, with the same plan, record and rollback.
 --
 -- A preset is a list of entries, { key, spell, slot } (bind the key to the
 -- button on that slot, holding that spell) or { key, command } (a stance or pet
@@ -14,7 +14,9 @@
 -- spell goes there; else when it holds a spell the character knows, that spell
 -- moves to a free slot of bar 3's 5 to 12 and the new one takes its place;
 -- anything else (a macro, an item, a mount) is never touched and the key stays
--- as it was. One key may take several bar 1 pages (the same game command).
+-- as it was. A moved spell that another row of the plan places on its own key,
+-- or that the entry's spell replaces, is overwritten instead of kept on bar 3.
+-- One key may take several bar 1 pages (the same game command).
 --
 -- Apply and putting back are refused, never queued: in combat, under an
 -- add-on restriction, on a client that isn't WoW Forever, while the game's
@@ -279,10 +281,17 @@ local function chord(key)
   return table.concat(held, "-")
 end
 
--- Works out one entry into a row: { key, spell, slot, command, kind, why, to, moved }. An entry without a key is
--- "unchanged" ("invalid").
+-- A key chord with its modifiers in the game's order, or nil when it isn't a key (KeybindsLearn compares keys).
+---@param key any
+---@return string|nil
+function KA.Chord(key)
+  return chord(key)
+end
+
+-- Works out one entry into a row: { key, spell, slot, command, replaces, kind, why, to, moved }. An entry without a
+-- key is "unchanged" ("invalid").
 local function planEntry(plan, entry)
-  local row = { key = chord(entry.key), spell = entry.spell, slot = entry.slot, command = entry.command }
+  local row = { key = chord(entry.key), spell = entry.spell, slot = entry.slot, command = entry.command, replaces = entry.replaces }
   if not row.key then row.kind, row.why = "unchanged", "invalid" plan.rows[#plan.rows + 1] = row return end
   row.kind, row.why = classify(plan, row)
   row.command = row.command or KA.CommandFor(row.slot)
@@ -291,12 +300,50 @@ local function planEntry(plan, entry)
   plan.rows[#plan.rows + 1] = row
 end
 
--- What a preset's entries would do now, in the key set in use, one row per entry, in order; nothing changes.
----@param entries table[]  { key, spell, slot } or { key, command }
----@return table[] rows  { key, spell, slot, command, kind, why, to, moved }; kind: bind, place, move, command, unchanged
+-- Whether two spell IDs are the same spell: the same ID, or the same name (another rank).
+local function sameSpell(a, b)
+  return holdsSpell({ kind = "spell", id = a }, b)
+end
+
+-- Whether any item of a list passes `test`.
+local function any(list, test)
+  for _, item in ipairs(list) do
+    if test(item) then return true end
+  end
+  return false
+end
+
+-- Whether a row's entry lists a spell among those it replaces.
+local function replaces(row, spellID)
+  return type(row.replaces) == "table" and any(row.replaces, function(id) return sameSpell(id, spellID) end)
+end
+
+-- Why a moved spell needn't go to bar 3, while no row binds a key to the bar 3 slot it would go to: "replaced" when
+-- the row's entry replaces it (Ice Armor for Frost Armor), "placed" when another row of the plan places it on its
+-- own key; nil when it must go.
+local function moveNeedless(rows, row)
+  if any(rows, function(r) return r.kind == "bind" and r.slot == row.to end) then return nil end
+  if replaces(row, row.moved) then return "replaced" end
+  if any(rows, function(r) return r ~= row and (r.kind == "place" or r.kind == "move") and sameSpell(r.spell, row.moved) end) then return "placed" end
+end
+
+-- A move whose spell needn't go to bar 3 becomes a place over it: the slot's spell is overwritten (`over`), and
+-- either the other row puts it back on the bars or the new spell replaces it (`replaced`).
+local function dropNeedlessMoves(rows)
+  for _, row in ipairs(rows) do
+    local why = row.kind == "move" and moveNeedless(rows, row)
+    if why then row.kind, row.over, row.replaced, row.to, row.moved = "place", row.moved, why == "replaced", nil, nil end
+  end
+end
+
+-- What a preset's entries would do now, in the key set in use, one row per entry, in order; nothing changes. An
+-- entry may list the spells it replaces (`replaces`, spell IDs): one of them on its slot is overwritten, not moved.
+---@param entries table[]  { key, spell, slot, replaces } or { key, command }
+---@return table[] rows  { key, spell, slot, command, kind, why, to, moved, over, replaced }; kind: bind, place, move, command, unchanged
 function KA.Plan(entries)
   local plan = { rows = {}, view = {}, keys = {}, added = {}, taken = {}, claimed = {} }
   for _, entry in ipairs(entries) do planEntry(plan, entry) end
+  dropNeedlessMoves(plan.rows)
   return plan.rows
 end
 
@@ -637,7 +684,7 @@ local function keepSlots(run, slots, row)
   end
 end
 
--- Saves the record of a run that succeeded (each key once), and says how many keys changed.
+-- Saves the record of a run that succeeded (each key once); answers how many keys changed.
 local function keep(run)
   local rec, slots, seen, count = ensureRecord(run.set), slotRecord(), {}, 0
   for _, row in ipairs(run.rows) do
@@ -647,7 +694,7 @@ local function keep(run)
       keepSlots(run, slots, row)
     end
   end
-  ns.Chat(ns.Format(L["{count} key(s) set. Vanguard kept what the keys did before, so you can put them back."], { count = count }))
+  return count
 end
 
 -- Whether any row writes.
@@ -658,15 +705,23 @@ local function writes(rows)
   return false
 end
 
--- Ends a run: keeps its record when it succeeded; with nothing to change, no record and no set switch. Else puts it
--- back, after the fight if one began. Answers whether it succeeded.
+-- Ends a run: keeps its record when it succeeded (run.count, the keys it set); with nothing to change, no record and
+-- no set switch. Else puts it back, after the fight if one began. Sets run.ok, whether it succeeded.
 local function finish(run, ok)
-  KA.run = nil
-  if ok and not writes(run.rows) then switchBack(run) ns.Chat(L["No key needs changing."]) return true end
-  if ok then keep(run) return true end
+  KA.run, run.ok, run.count = nil, ok, 0
+  if ok and not writes(run.rows) then return switchBack(run) end
+  if ok then run.count = keep(run) return end
   if ns.InCombat() then ns.Chat(L["No key changed: a fight began, so Vanguard puts your buttons back after it."]) end
   ns.OutOfCombat(function() undoRun(run) end)
-  return false
+end
+
+-- Runs a preset's entries in key set `set` (nil: the one in use) as one all-or-nothing run, and returns the run.
+local function execute(entries, set, where)
+  local run = { entries = entries, set = set, keys = {}, slots = {}, placed = {} }
+  KA.run = run
+  local done, ok = ns.Try(where, runSteps, run)
+  finish(run, done and ok == true)
+  return run
 end
 
 -- The key sets Apply takes: the one in use (nil), Account or Character.
@@ -684,10 +739,29 @@ function KA.Apply(entries, set)
   if not knownSet(set) then error("KA.Apply: set is Enum.BindingSet.Account, Character or nil", 2) end
   local why = KA.Refusal() or switchRefusal(set)
   if why then ns.Chat(why) return false end
-  local run = { entries = entries, set = set, keys = {}, slots = {}, placed = {} }
-  KA.run = run
-  local done, ok = ns.Try("key setup apply", runSteps, run)
-  return finish(run, done and ok)
+  local run = execute(entries, set, "key setup apply")
+  if run.ok and run.count == 0 then ns.Chat(L["No key needs changing."]) end
+  if run.count > 0 then ns.Chat(ns.Format(L["{count} key(s) set. Vanguard kept what the keys did before, so you can put them back."], { count = run.count })) end
+  return run.ok
+end
+
+-- Whether Vanguard's record holds keys it set in the key set the game uses now.
+---@return boolean
+function KA.Recorded()
+  local rec = recordFor(GetCurrentBindingSet())
+  return rec ~= nil and next(rec.keys) ~= nil
+end
+
+-- Applies entries again in the key set in use, quietly, as new spells are learned (Modules/KeybindsLearn.lua): the
+-- same plan, record and all-or-nothing run as Apply, with no chat line unless it fails. Nil, with nothing changed,
+-- when KA.Refusal says no or Vanguard has no keys recorded in that set; else the rows when it succeeded, false when
+-- it didn't (and everything it changed goes back).
+---@param entries table[]
+---@return table[]|false|nil
+function KA.Update(entries)
+  if KA.Refusal() or not KA.Recorded() then return nil end
+  local run = execute(entries, nil, "key setup update")
+  return run.ok and run.rows
 end
 
 -- Putting back ------------------------------------------------------------------------------------
