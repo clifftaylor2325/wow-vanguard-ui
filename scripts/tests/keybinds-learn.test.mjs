@@ -237,8 +237,37 @@ it("three refused updates in a row turn the switch off, and say so", () => {
   const addon = warrior();
   applyPreset(addon);
   addon.eval('local set = SetBinding SetBinding = function(key, command) if key == "2" then return false end return set(key, command) end');
-  for (const id of [772, 6343, 7384]) learn(addon, id);
+  for (const id of [772, 6343]) learn(addon, id);
+  expect(kn(addon, "return KN.IsOn()"), "two refusals: still on").toBe(true);
+  learn(addon, 7384);
   expect([kn(addon, "return KN.IsOn()"), said(addon)]).toEqual([false, expect.stringContaining("Vanguard stopped putting new spells on keys.")]);
+  kn(addon, "KN.SetOn(true)");
+  learn(addon, 12294);
+  expect(kn(addon, "return KN.IsOn()"), "on again, the count starts afresh").toBe(true);
+});
+
+it("the switch turns on only for keys set up with a preset and still there", () => {
+  const bare = warrior();
+  kn(bare, "KN.SetOn(true)");
+  expect([kn(bare, "return KN.IsOn()"), said(bare)]).toEqual([false, "Set up keys first: Vanguard places new spells on the keys it set up."]);
+  const addon = warrior();
+  applyPreset(addon);
+  addon.eval("ns.KeybindsApply.PutBackAll()");
+  kn(addon, "KN.SetOn(true)");
+  expect(kn(addon, "return KN.IsOn()"), "after putting everything back").toBe(false);
+});
+
+it("the Your keys tab's switch, once the wizard is in, turns it on and off", () => {
+  const addon = warrior();
+  applyPreset(addon, false);
+  addon.eval('ns.Options.Show("actionbars") ns.Options.ShowTab("Your keys")');
+  // Clicks the switch row, and answers whether it was there.
+  const click = () => addon.eval(`for _, w in ipairs(__wfgStub.frames) do
+    if w.track and w.label and w.label:GetText() == "Place new spells as I learn them" then w:GetScript("OnClick")(w) return true end end`);
+  expect(click(), "the row is there").toBe(true);
+  expect(kn(addon, "return KN.IsOn()")).toBe(true);
+  click();
+  expect(kn(addon, "return KN.IsOn()")).toBe(false);
 });
 
 it("an Apply with nothing to change still places new spells", () => {
@@ -254,7 +283,8 @@ it("an Apply with nothing to change still places new spells", () => {
 it("a key another character's key setup set in the account's keys isn't taken for the player's", () => {
   const addon = warrior();
   applyPreset(addon);
-  addon.eval("ns.KeybindsApply.Apply({ { key = 'F', spell = 6673, slot = 63 } })");
+  addon.eval(`SetBinding("F", "MULTIACTIONBAR1BUTTON3") SaveBindings(1)
+    VanguardDB.keyRestore.keys["F"] = { before = "", after = "MULTIACTIONBAR1BUTTON3", by = { ["Other-ForeverTest"] = true } }`);
   learn(addon, 72);
   expect([keys(addon, ["F"]), slots(addon, [61])]).toEqual([["MULTIACTIONBAR1BUTTON1"], [72]]);
 });
@@ -268,13 +298,16 @@ it("the game's placement arriving after the look still counts as the game's", ()
   expect(addon.savedVariables().char.keysLearn.ownSlots["4"], "a change before the event").toBe(true);
   addon.eval("__wfgWorld.pushSpellToActionBar(6673, 4)");
   expect(addon.savedVariables().char.keysLearn.ownSlots["4"], "the event gives it back to the game").toBe(undefined);
+  learn(addon, 7384);
+  expect(slots(addon, [3, 4]), "so Thunder Clap may take 4 over the game's Battle Shout").toEqual([7384, 6343]);
 });
 
-it("an update left waiting runs once a new session's login settles", () => {
+it("an update left waiting is saved, and runs once a later login settles", () => {
   const addon = warrior();
   applyPreset(addon);
   addon.eval('__wfgWorld.cursor = { type = "item", id = 929 }');
   learn(addon, 772);
+  expect(addon.savedVariables().char.keysLearn.pending, "saved").toBe(true);
   addon.eval("__wfgWorld.cursor = nil ns.KeybindsLearn.settled = false");
   addon.fire("PLAYER_ENTERING_WORLD", true, false);
   addon.advance(4);

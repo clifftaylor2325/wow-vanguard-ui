@@ -767,10 +767,14 @@ local function finish(run, ok)
   ns.OutOfCombat(function() undoRun(run) end)
 end
 
--- Runs a preset's entries in key set `set` (nil: the one in use), leaving out the slots in `skip`, as one
--- all-or-nothing run (`quiet`: no chat line when it fails), and returns the run.
-local function execute(entries, set, where, skip)
-  local run = { entries = entries, set = set, skip = skip, quiet = where == "key setup update", keys = {}, slots = {}, placed = {} }
+-- A new run of a preset's entries in key set `set` (nil: the one in use).
+local function newRun(entries, set)
+  return { entries = entries, set = set, keys = {}, slots = {}, placed = {} }
+end
+
+-- Runs a run as one all-or-nothing run (its `skip` slots left out; `quiet`: no chat line when it fails), and
+-- returns it.
+local function execute(run, where)
   KA.run = run
   local done, ok = ns.Try(where, runSteps, run)
   finish(run, done and ok == true)
@@ -792,7 +796,7 @@ function KA.Apply(entries, set)
   if not knownSet(set) then error("KA.Apply: set is Enum.BindingSet.Account, Character or nil", 2) end
   local why = KA.Refusal() or switchRefusal(set)
   if why then ns.Chat(why) return false end
-  local run = execute(entries, set, "key setup apply")
+  local run = execute(newRun(entries, set), "key setup apply")
   if run.ok and run.count == 0 then ns.Chat(L["No key needs changing."]) end
   if run.count > 0 then ns.Chat(ns.Format(L["{count} key(s) set. Vanguard kept what the keys did before, so you can put them back."], { count = run.count })) end
   return run.ok
@@ -815,7 +819,9 @@ end
 ---@return table[]|false|nil
 function KA.Update(entries, skip)
   if KA.Refusal() then return nil end
-  local run = execute(entries, nil, "key setup update", skip)
+  local run = newRun(entries, nil)
+  run.skip, run.quiet = skip, true
+  execute(run, "key setup update")
   return run.ok and run.rows
 end
 

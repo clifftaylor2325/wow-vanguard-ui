@@ -12,14 +12,17 @@
 -- so a spell the game placed on a preset's button counts as the game's and may move (a copy it placed on another
 -- button is left there, as the game has it). A button that holds something else the next time,
 -- or a key that does something else, was changed by the player and is theirs for good: later updates leave it out
--- (its spell goes to the next key that lists it, and a moved spell never lands on it). Applying a preset again
--- starts afresh. A key that did something else before an update says what it does now.
+-- (its spell goes to the next key that lists it, and a moved spell never lands on it), except a key that does what
+-- Vanguard's record set (another character's key setup in the account's keys) and a button the game then fills by
+-- itself. Applying a preset again starts afresh. A key that did something else before an update says what it does now.
 --
 -- A player who never applied a preset gets one question instead, the first time they train a spell or reach level 10:
 -- "Set up keys" opens the wizard with the switch ticked. It is never asked again.
 --
 -- Nothing runs before login has settled or in combat (it waits for the fight to end), and the apply engine's
--- refusals are checked each time it runs: a refused update tries again at the next spell, level or load screen.
+-- refusals are checked each time it runs: a refused update tries again at the next spell, level or load screen (a
+-- later session's too). An update the game refuses goes back and tries again the same way; the third in a row, or
+-- the recorded keys gone, turns the switch off with a chat line.
 -- WoW Forever only. State: VanguardCharDB.keysLearn.
 -- UNVERIFIED on a Forever client (docs/SMOKE-TEST.md): whether the game places new spells on the bars by itself and
 -- under which setting, SPELL_PUSHED_TO_ACTIONBAR's payload, and whether a talent's spell fires
@@ -75,18 +78,26 @@ function KN.Ticked()
   return state().yes == true or (now ~= nil and now < KN.LEVEL)
 end
 
--- Whether the switch is on: on, and not since Vanguard's recorded keys went (Put everything back, or the game now
--- uses the other key set), so it shows off at once.
+-- Whether the keys Vanguard recorded since the Apply are gone (Put everything back, or the game now uses the other
+-- key set): placing new spells then needs keys set up again.
+local function keysGone(s)
+  return s.recorded == true and not KA.Recorded()
+end
+
+-- Whether the switch is on: keys were set up with a preset, the switch is on, and their keys are still there.
 ---@return boolean
 function KN.IsOn()
   local s = state()
-  return s.on == true and not (s.recorded and not KA.Recorded())
+  return s.preset ~= nil and s.on == true and not keysGone(s)
 end
 
--- Turns the switch on or off (the Your keys tab). It does nothing until keys are set up with a preset.
+-- Turns the switch on or off (the Your keys tab). On needs keys set up with a preset and still there (else chat
+-- says to set them up), and starts the count of refused updates afresh.
 ---@param on boolean
 function KN.SetOn(on)
-  state().on = on == true
+  local s = state()
+  if on and (s.preset == nil or keysGone(s)) then return ns.Chat(L["Set up keys first: Vanguard places new spells on the keys it set up."]) end
+  s.on, s.fails, s.pending = on == true, 0, false
 end
 
 -- Looking at the bars and keys ---------------------------------------------------------------------
@@ -292,7 +303,7 @@ end
 -- Runs the preset again for the spells known now, without the buttons and keys the player took over; a refused
 -- update waits (pending).
 local function update(s)
-  if s.recorded and not KA.Recorded() then return stop(s) end
+  if keysGone(s) then return stop(s) end
   local entries, skip = entriesNow(s)
   local rows = KA.Update(entries, skip)
   if rows == nil then s.pending = true return end
@@ -348,12 +359,13 @@ local function onSpells(event)
 end
 for _, event in ipairs(KN.EVENTS) do ns.On(event, onSpells) end
 
--- The game placed a spell on a button by itself: it counts as the game's, so a later update may move it (even when
--- the look before this event already took the button for the player's).
+-- The game placed a spell on a button by itself: it counts as the game's, so a later update may move it (even on a
+-- button the player had changed or emptied before).
 local function onPushed(_, spellID, slot)
-  if type(VanguardCharDB) ~= "table" or not state().preset then return end
+  local s = type(VanguardCharDB) == "table" and state()
+  if not (s and s.preset) then return end
   local id, place = ns.PlainNumber(spellID), ns.PlainNumber(slot)
-  if id and place and KA.CommandFor(place) then state().slots[place], state().ownSlots[place] = id, nil end
+  if id and place and KA.CommandFor(place) then s.slots[place], s.ownSlots[place] = id, nil end
 end
 ns.On("SPELL_PUSHED_TO_ACTIONBAR", onPushed)
 

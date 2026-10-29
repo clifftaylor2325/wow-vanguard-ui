@@ -68,9 +68,9 @@ local function actionBarRows()
   }
 end
 
--- "Place new spells as I learn them" (Modules/KeybindsLearn.lua), on WoW Forever, where key setup runs.
+-- "Place new spells as I learn them" (Modules/KeybindsLearn.lua), on WoW Forever once key setup's wizard is in.
 local function newSpellsRows()
-  if not ns.IsForever() then return {} end
+  if not (ns.IsForever() and ns.KeybindsWizard) then return {} end
   local KN = ns.KeybindsLearn
   return {
     check(L["Place new spells as I learn them"], KN.IsOn, KN.SetOn, false),
