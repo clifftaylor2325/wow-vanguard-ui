@@ -3102,6 +3102,48 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: only Vanguard's line icons and bag slots show, before and after the hover, the click and the bag change, with no game icon or highlight showing under them; a quick join card shows no gold glow under the mouse and every queue line reads light; the talking head's name and text are in the theme fonts and still fade in.
 - If it fails, paste: a screenshot, and `/vg errors`.
 
+### 33.156 Action bars: pet battles, charges, macros (retail)
+
+- Do: on a retail client, put a spell with charges (Fire Blast, Roll) and a `#showtooltip` macro for a spell that procs on a bar; fight until it procs; turn on Cooldowns' key labels and put that macro on a bar; start a pet battle and press 1 to 3, then finish it.
+- Expect: the charged spell shows its charge count; the macro button glows when the spell procs and the Cooldown Manager icon for that spell shows the macro's key; in the pet battle Vanguard's bars are hidden and keys 1 to 3 use the pet's abilities; after it the bars and keys are back.
+- If it fails, paste: `/dump GetActionInfo(<slot>)` for the macro button, which step failed, and `/vg errors`.
+
+### 33.157 Cast bars, combo points and weapon enchants (retail)
+
+- Do: on a retail client, as a shaman target a caster; as a rogue build past five combo points with a talent that allows it; apply a weapon oil or poison; start a profession craft and move to interrupt it; target an enemy casting something you can't interrupt.
+- Expect: the shaman's interrupt diamond follows Wind Shear; the combo row shows six or seven pips; the weapon enchant shows in front of your buffs with its time; the interrupted craft's bar turns red, not green; the uninterruptible cast is grey.
+- If it fails, paste: a screenshot, and `/vg errors`.
+
+### 33.158 The bag and menu bar's slots
+
+- Do: on retail, queue for a dungeon so the queue eye shows, then leave the queue; on Forever (Nov 4+), open and close bags, rearrange them, enter Edit Mode and drag the bag padding slider, then leave.
+- Expect: on retail the menu row has exactly one slot per menu button, eye or not, and the bar is no wider than its buttons; on Forever the key ring slot stays a full square, no brass dividers show between bag slots, and the bags stay one slot and a gap apart after the padding change.
+- If it fails, paste: a screenshot of the bar, and `/vg errors`.
+
+### 33.159 The talking head and the game's quest tracker
+
+- Do: trigger a Horde, an Alliance or a neutral talking head line (a faction quest NPC); then switch Vanguard's quest tracker off, reload, track a first quest and travel to a new zone so a tracker section appears.
+- Expect: the talking head's name and text read light on the dark panel for every line; the game's tracker headers stay flat with no gold band or shine flashing back when a section appears.
+- If it fails, paste: a screenshot, and `/vg errors`.
+
+### 33.160 Minimap and Vanguard's tracker
+
+- Do: turn on the game's own minimap coordinates in its Settings (Interface), where the client has them; on retail visit a place that uses the hybrid minimap (if you know one); with the tracker's order set to Like the game's, watch quests in two zones and travel between them; on retail accept a world or bounty quest.
+- Expect: no second coordinates line under the minimap; the hybrid map shows over the panel with the markers on top; the watch list re-sorts on the new zone; the world or bounty quest is not added to the tracker.
+- If it fails, paste: a screenshot, and `/vg errors`.
+
+### 33.161 Tooltips and chat tabs
+
+- Do: click an item link in chat; shift-hover a piece of gear so the comparison tooltips show; on retail click a battle pet link; hover a quest reward or a tooltip with styled edges; have someone whisper you while another chat tab is selected, then switch tabs.
+- Expect: the Links window has the theme's close cross and its title still clears it; the "Currently Equipped" label is on a flat panel with light text; the battle pet tooltips are themed; no decorative edge art draws over a tooltip; the tab's new-message glow stays in your accent colour.
+- If it fails, paste: a screenshot, and `/vg errors`.
+
+### 33.162 Inspect, greyed tabs, quest money and achievement bars
+
+- Do: on retail inspect a player with no guild; with Vanguard's quest dialog off, turn in a quest that asks for money; open an achievement with a counted criterion ("700/1000"); then change the accent colour under General with Achievements and Collections open.
+- Expect: no bronze plates behind the inspect gear slots, and the greyed Guild tab's label is greyer than the others; the turn-in page's required money line reads light; the achievement's progress bar is a flat dim-accent bar with no bronze border; the achievement and collections bars take the new accent at once, without a reload, while class-coloured unit frames and cast bars keep their colours.
+- If it fails, paste: a screenshot, and `/vg errors`.
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ## When you are done

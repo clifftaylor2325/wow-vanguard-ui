@@ -2,7 +2,7 @@
 
 import { expect, it } from "vitest";
 import { createAddon } from "../lib/lua-harness.mjs";
-import { ACTIONS_ENV, SETUP_DONE, UNITS_ENV, bars, button, chatHas, key, loggedIn, overlaps, px, setCombat } from "./helpers.mjs";
+import { ACTIONS_ENV, RETAIL, SETUP_DONE, UNITS_ENV, bars, button, chatHas, key, loggedIn, overlaps, px, setCombat } from "./helpers.mjs";
 
 it("action bars", () => {
   const addon = loggedIn(ACTIONS_ENV);
@@ -179,7 +179,7 @@ const getBarOption = (addon, n, label) => addon.eval(`
     if card and card:match("^Bar ${n}") and row[2] == ${JSON.stringify(label)} then return row[#row - 1]() end
   end`);
 
-// Bar 2's secure visibility driver (without the pet battle clause every bar's begins with; `raw` keeps it),
+// Bar 2's secure visibility driver (without the pet battle clause a retail bar's begins with; `raw` keeps it),
 // alpha, and whether it takes the mouse.
 const barVis = (addon, n = 2) => addon.eval(`local bar = Vanguard_Bar${n}
   local raw = bar.__states.visibility
@@ -338,7 +338,7 @@ it("Hidden bar bindings stay intact", () => {
 });
 
 it("a pet battle hands the number keys back to the game and hides the bars, then everything returns", () => {
-  const addon = loggedIn(ACTIONS_ENV);
+  const addon = loggedIn(RETAIL + ACTIONS_ENV);
   // What key 1 is bound to click (nil: nothing of Vanguard's).
   const keyOne = () => addon.eval("return __overrides['1']");
   expect([keyOne(), barVis(addon).raw], "outside a battle: key 1 clicks Vanguard's button, and the bar's driver hides it in a pet battle").toEqual(["Vanguard_Bar1Button1:LeftButton", "[petbattle] hide; show"]);
@@ -350,6 +350,10 @@ it("a pet battle hands the number keys back to the game and hides the bars, then
   addon.eval("C_PetBattles.IsInBattle = function() return false end");
   addon.fire("PET_BATTLE_CLOSE");
   expect(keyOne(), "when it closes the keys return").toBe("Vanguard_Bar1Button1:LeftButton");
+});
+
+it("Forever's bars carry no pet battle clause (its vanilla content has none)", () => {
+  expect(barVis(loggedIn(ACTIONS_ENV), 1).raw).toBe("show");
 });
 
 it("a pet battle's opening alone takes the keys away, and its end waits for a fight to finish", () => {

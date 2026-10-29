@@ -36,6 +36,7 @@
     ],
     "scripts/tests/bagsections.test.mjs": [],
     "scripts/tests/bars.test.mjs": [
+      "Forever's bars carry no pet battle clause (its vanilla content has none)",
       "Hidden bar bindings stay intact",
       "In combat bars show during a drag out of combat; a drag that starts in combat leaves secure visibility alone",
       "Y2-4 bars: a usable event repaints only the buttons whose state changed",

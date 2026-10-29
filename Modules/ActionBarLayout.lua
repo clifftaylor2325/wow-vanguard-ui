@@ -117,10 +117,13 @@ function AB.Driver(n)
   return own
 end
 
--- What bar n's secure driver says: hidden in a pet battle (the game's own bars hide then, and the
--- pet battle bar takes the bottom of the screen), else the bar's own driver.
+-- The clause that hides a bar in a pet battle (the game's own bars hide then, and the pet battle bar
+-- takes the bottom of the screen). Forever's vanilla content has no pet battles, so its bars go without it.
+AB.PET_BATTLE_CLAUSE = "[petbattle] hide; "
+
+-- What bar n's secure driver says: hidden in a pet battle on a client that has them, else the bar's own driver.
 function AB.BarDriver(n)
-  return "[petbattle] hide; " .. AB.Driver(n)
+  return (ns.IsForever() and "" or AB.PET_BATTLE_CLAUSE) .. AB.Driver(n)
 end
 
 -- Registers bar n's secure visibility driver, its state and mouse watching right now.
