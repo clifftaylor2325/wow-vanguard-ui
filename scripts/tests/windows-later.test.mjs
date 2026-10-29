@@ -329,18 +329,21 @@ const INSPECT_ENV = `${READERS_ENV}
   for _, name in ipairs(ns.GetModule("Windows").EQUIP_SLOTS) do
     if name ~= "Ammo" then
       local slot = __itemButton("Inspect" .. name .. "Slot", paper) slot.BorderFrame = CreateFrame("Frame", nil, slot) __art(slot.BorderFrame)
+      -- The retail slot's bronze plate: a texture named after the button (InspectPaperDollFrame.xml "$parentFrame").
+      __art(slot, "Inspect" .. name .. "SlotFrame")
     end
   end
   for _, name in ipairs({ "InspectTitleText", "InspectGuildText", "InspectLevelText" }) do _G[name] = __text(paper, name) end
   -- TEST-ONLY reader of the inspect window (see inspectState).
   function __inspectState()
-    local slots, plates = 0, 0
+    local slots, plates, named = 0, 0, 0
     for _, name in ipairs(ns.GetModule("Windows").EQUIP_SLOTS) do
       local slot = _G["Inspect" .. name .. "Slot"]
       if slot and slot.icon.__texCoord ~= nil then slots = slots + 1 end
       if slot and __faded(slot.BorderFrame) then plates = plates + 1 end
+      if slot and _G["Inspect" .. name .. "SlotFrame"].__alpha == 0 then named = named + 1 end
     end
-    return { model = __faded(model) and model.BackgroundOverlay.__alpha == 0 and model.NineSlice.__alpha == 0 and __sunk(model), slots = slots, plates = plates,
+    return { model = __faded(model) and model.BackgroundOverlay.__alpha == 0 and model.NineSlice.__alpha == 0 and __sunk(model), slots = slots, plates = plates, named = named,
       view = __button(paper.ViewButton), talents = __button(items.InspectTalents), title = __lit(InspectTitleText, "small", "text2"), guild = __lit(InspectGuildText, "small", "text2"),
       level = __lit(InspectLevelText, "heading", "text"), painted = ns.Theme.PaintedCount(), errors = #ns.errors }
   end
@@ -353,7 +356,7 @@ it("R2.16 the inspect window: model on an inset, nineteen gear slots in the item
   addon.eval("InspectFrame:Show()");
   const first = inspectState(addon);
   expect(first, "the model's backdrop and border faded and sunk; the slots and their bronze frames; the View button; the lines").toMatchObject({
-    model: true, slots: 19, plates: 19, view: true, talents: true, title: true, guild: true, level: true, errors: 0,
+    model: true, slots: 19, plates: 19, named: 19, view: true, talents: true, title: true, guild: true, level: true, errors: 0,
   });
   expect(windowState(addon, "InspectFrame"), "and the window skin as ever").toMatchObject({ art: 0, panel: true, title: true });
   addon.eval("InspectFrame:Hide() InspectFrame:Show()");
@@ -603,6 +606,8 @@ const ACHIEVEMENT_ENV = `${READERS_ENV}
     objectives.criterias[i] = { Name = __text(objectives, "Kill it") }
     objectives.metas[i] = { Label = __text(objectives, "Meta") }
   end
+  -- A progress bar of the open achievement ("700/1000"): the game's raw green bar in its pool (AchievementProgressBarTemplate).
+  objectives.progressBars = { bar(objectives) }
   function AchievementObjectives_DisplayCriteria(frame)
     local colours = { { 0, 0, 0 }, { 0, 1, 0 }, { 0.6, 0.6, 0.6 } }
     for i, c in ipairs(colours) do
@@ -686,6 +691,12 @@ const ACHIEVEMENT_ENV = `${READERS_ENV}
     for i = 1, 12 do local b = _G["AchievementFrameSummaryCategoriesCategory" .. i] check(b, b.Label, b.Text) end
     return { title = { tp, trel == f, trelp, tx, ty, title:GetWidth(), title:GetNumPoints() }, points = { pp, prel == title, prelp, px, points:GetNumPoints() }, bars = ok }
   end
+  -- TEST-ONLY reader of the open achievement's progress bar: its art faded and its fill the dim accent.
+  function __criteriaBar()
+    local b, d = objectives.progressBars[1], { ns.Theme.RGB("accentDim") }
+    local r, g, bl = unpack(b.__barColor)
+    return { b.Left.__alpha == 0 and __sunk(b), r == d[1] and g == d[2] and bl == d[3] }
+  end
   -- TEST-ONLY reader of a pooled row (see rowState).
   function __achievementRow(row)
     local tracked = ns.Theme.CheckParts(row.Tracked) ~= nil and row.Tracked.Art.__alpha == 0
@@ -766,6 +777,7 @@ it("R2.19 the achievements window: black criteria and meta labels become light, 
   addon.eval("AchievementObjectives_DisplayCriteria(AchievementFrameAchievementsObjectives, 1)");
   const [names, labels, text] = addon.eval("return __criteriaReds()");
   expect([names.map((c) => c[0]), labels.map((c) => c[0])], "a completed criterion and meta label in the text colour, a done one still green, an open one still grey").toEqual([[text, 0, 0.6], [text, 0, 0.6]]);
+  expect(addon.eval("return __criteriaBar()"), "the open achievement's progress bar is a flat track with the dim accent fill, not the game's raw green").toEqual([true, true]);
   addon.eval("AchievementFrame:Hide() AchievementFrame:Show() AchievementObjectives_DisplayCriteria(AchievementFrameAchievementsObjectives, 2)");
   expect([addon.eval("return __criteriaReds()[1][1][1]"), addon.eval("return #ns.errors")], "the hook is added once however often the window opens, and the next achievement is lit again").toEqual([text, 0]);
 });
@@ -782,12 +794,15 @@ it("R2.19 the achievements window: the windows group off leaves it the game's; a
     AchievementFrameSummaryAchievementsHeader = 1 AchievementFrameSummaryCategoriesStatusBar = 1 AchievementFrameComparison.Summary = 1 AchievementFrameAchievements.ScrollBox = {}`);
   odd.fire("ADDON_LOADED", "Blizzard_AchievementUI");
   odd.eval("AchievementFrame:Show()");
+  const oddBars = loggedIn(`${ACHIEVEMENT_ENV} AchievementFrameAchievementsObjectives.progressBars = 1`);
+  oddBars.fire("ADDON_LOADED", "Blizzard_AchievementUI");
+  oddBars.eval("AchievementFrame:Show() AchievementObjectives_DisplayCriteria(AchievementFrameAchievementsObjectives, 1)");
   const oddRows = loggedIn(ACHIEVEMENT_ENV + `
     local box = AchievementFrameAchievements.ScrollBox box:Acquire(1) box:Acquire({}) AchievementFrame.Categories.ScrollBox:Acquire({ Button = 1 }) AchievementFrameComparison.AchievementContainer.ScrollBox:Acquire(1)
     local plain = CreateFrame("Button", nil, box) plain.Tracked = {} box:Acquire(plain) AchievementFrame.Header.Title = 1 AchievementFrameSummaryCategoriesHeaderTitle = {}`);
   oddRows.fire("ADDON_LOADED", "Blizzard_AchievementUI");
   oddRows.eval("AchievementFrame:Show()");
-  expect([odd, oddRows].map((a) => a.eval("return #ns.errors")), "odd parts are skipped").toEqual([0, 0]);
+  expect([odd, oddRows, oddBars].map((a) => a.eval("return #ns.errors")), "odd parts are skipped").toEqual([0, 0, 0]);
 });
 
 // TEST-ONLY auction house panels (Shared/Blizzard_AuctionHouseFrame.xml, SearchBar, SellFrame, ItemBuyFrame, CommoditiesBuyFrame,

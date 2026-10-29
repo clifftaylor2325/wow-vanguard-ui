@@ -426,12 +426,14 @@ it("game tabs: art faded, icon kept, a panel, and the selected tab raised while 
   expect(panelTab, "a panel tab: art faded, icon left, raised only while the game has it disabled (selected)").toEqual([0, 0, true, false, true, false]);
   const greyedTab = addon.eval(`
     local tab = __tab({ "Left", "Middle", "Right" })
+    tab.__fontString = tab:CreateFontString(nil, "OVERLAY")
     ns.Theme.Tab(tab)
-    tab.isDisabled = 1 tab:Disable() local greyed = __raised(tab)
-    tab.isDisabled = nil tab:Enable() tab:Disable() local selected = __raised(tab)
+    tab.isDisabled = 1 tab:Disable() local greyed, greyLabel = __raised(tab), ns.Theme.ColorToken(tab.__fontString)
+    tab.isDisabled = nil tab:Enable() local openLabel = ns.Theme.ColorToken(tab.__fontString)
+    tab:Disable() local selected, selectedLabel = __raised(tab), ns.Theme.ColorToken(tab.__fontString)
     tab:Enable() tab.isDisabled = 1 tab:Disable() tab.isDisabled = nil tab:Enable()
-    return { greyed, selected, __raised(tab) }`);
-  expect(greyedTab, "a tab the game disabled with PanelTemplates_DisableTab (isDisabled set) is not raised, the selected one is, and it is inset again once enabled").toEqual([false, true, false]);
+    return { greyed, selected, __raised(tab), greyLabel, openLabel, selectedLabel, ns.Theme.ColorToken(tab.__fontString) }`);
+  expect(greyedTab, "a tab the game disabled with PanelTemplates_DisableTab (isDisabled set) is not raised and its label is the disabled grey, the selected one is raised in the text colour, and it is inset in text2 again once enabled").toEqual([false, true, false, "disabled", "text2", "text", "text2"]);
   const sideTab = addon.eval(`
     local tab = __tab({ "Background", "SelectedTexture", "HighlightTexture" })
     function tab:SetChecked(on) self.SelectedTexture:SetShown(on) end
@@ -875,6 +877,25 @@ it("ornaments (#238): off by default; /vg ornaments puts a rule on the options w
   expect(addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.__parent == Vanguard_QuestLog and tostring(w.__texture):find("OrnamentCorner") then return w.__vertexColor end end`)[1], "follows the accent").not.toBeCloseTo(dim[0], 2);
   addon.slash("ornaments off");
   expect([shown(), chatHas(addon, /Window ornaments off/)]).toEqual([[0, 0, 0], true]);
+});
+
+it("T.BarColor (14th hunt M6-4): a bar follows the accent and the variant, one recoloured by hand is left alone and forgotten", () => {
+  const addon = loggedIn("");
+  addon.eval(`local T = ns.Theme
+    __bar, __hand, __dark = CreateFrame("StatusBar", nil, UIParent), CreateFrame("StatusBar", nil, UIParent), CreateFrame("StatusBar", nil, UIParent)
+    T.BarColor(__bar, "accentDim") T.BarColor(__hand, "accentDim") T.BarColor(__dark, "darkBar")
+    __hand:SetStatusBarColor(0.9, 0.1, 0.1, 1)
+    T.Settings().accent = { 0.2, 0.9, 0.4 } T.Refresh()`);
+  const dim = tok(addon, "accentDim");
+  // A bar's fill colour (r, g, b, a) from its global name.
+  const color = (name) => addon.eval(`return { _G.${name}:GetStatusBarColor() }`);
+  expect(color("__bar").slice(0, 3), "the bar took the new dim accent").toEqual(dim.slice(0, 3));
+  expect(color("__hand"), "the bar recoloured by hand kept its colour").toEqual([0.9, 0.1, 0.1, 1]);
+  expect(color("__dark").slice(0, 3), "a bar of a fixed token is unchanged").toEqual(tok(addon, "darkBar").slice(0, 3));
+  addon.eval('ns.Theme.Settings().accent = { 0.9, 0.2, 0.2 } ns.Theme.Refresh()');
+  expect(color("__hand"), "and was forgotten, so a second change leaves it alone too").toEqual([0.9, 0.1, 0.1, 1]);
+  expect(color("__bar").slice(0, 3), "the other bar follows again").toEqual(tok(addon, "accentDim").slice(0, 3));
+  expect(addon.eval("ns.Theme.BarColor({ SetStatusBarColor = function() end }, 'accent') ns.Theme.Refresh() return #ns.errors"), "a bar that cannot say its colour is dropped, not an error").toBe(0);
 });
 
 // The border thickness of a painted frame, in screen pixels: its thickest thin BORDER-layer line (the sheen is one pixel).

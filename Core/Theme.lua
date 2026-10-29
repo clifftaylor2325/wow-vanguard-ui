@@ -414,6 +414,10 @@ end
 -- re-tints it after an accent or variant change, and forgets one recoloured by hand since (refreshTints).
 local tinted = setmetatable({}, { __mode = "k" })
 
+-- Every status bar T.BarColor coloured (weak): bar -> { token, r, g, b, a } as last set (a table on T, not a local:
+-- this file is close to Lua's limit on top-level locals).
+T.barColored = setmetatable({}, { __mode = "k" })
+
 -- Colors a region with a named color (vertex color), at an optional alpha; remembered, so the
 -- colour follows the accent and the variant (a region recoloured by hand since is left alone).
 function T.Tint(region, name, alpha)
@@ -426,12 +430,13 @@ function T.Tint(region, name, alpha)
   return region
 end
 
--- Whether a region's vertex colour is still the one T.Tint last set on it, within a 255th on each channel
--- (a client that can't say gives no colour, or a hidden one such as the dispel engine's on a debuff badge,
--- and the region is forgotten: a hidden value is never compared).
+-- Whether a region's vertex colour (a status bar's fill colour) is still the one T.Tint (T.BarColor) last set on it,
+-- within a 255th on each channel (a client that can't say gives no colour, or a hidden one such as the dispel engine's
+-- on a debuff badge, and the region is forgotten: a hidden value is never compared).
 local function stillTinted(region, m)
-  if not region.GetVertexColor then return false end
-  local r, g, b, a = region:GetVertexColor()
+  local get = region.GetVertexColor or region.GetStatusBarColor
+  if not get then return false end
+  local r, g, b, a = get(region)
   if ns.IsSecret(r) or ns.IsSecret(g) or ns.IsSecret(b) or ns.IsSecret(a) then return false end
   return type(r) == "number" and math.abs(r - m.r) < 0.004 and math.abs(g - m.g) < 0.004
     and math.abs(b - m.b) < 0.004 and math.abs((a or 1) - m.a) < 0.004
@@ -443,11 +448,19 @@ local function refreshTints()
   for region, m in pairs(tinted) do
     if stillTinted(region, m) then T.Tint(region, m.token, m.alpha) else tinted[region] = nil end
   end
+  for bar, m in pairs(T.barColored) do
+    if stillTinted(bar, m) then T.BarColor(bar, m.token) else T.barColored[bar] = nil end
+  end
 end
 
--- Colors a status bar's fill with a named color.
+-- Colors a status bar's fill with a named color; remembered (weak), so the fill follows the accent and the variant
+-- (a bar recoloured by hand since is left alone and forgotten, as for T.Tint).
 function T.BarColor(bar, name)
-  bar:SetStatusBarColor(T.RGB(name))
+  local r, g, b, a = T.RGB(name)
+  bar:SetStatusBarColor(r, g, b, a)
+  local m = T.barColored[bar] or {}
+  m.token, m.r, m.g, m.b, m.a = name, r, g, b, a
+  T.barColored[bar] = m
   return bar
 end
 
@@ -2342,11 +2355,13 @@ local function dimIcon(button, dim)
   icon:SetAlpha(dim and T.TAB_DIM or 1)
 end
 
--- A tab's label in the text colour while it is selected and text2 while it is not (the game paints it gold, and its
--- font objects put the gold back as the tab's state changes); a tab with no label is skipped.
+-- A tab's label in the text colour while it is selected, text2 while it is not and the disabled grey while the game has
+-- it greyed out (PanelTemplates_DisableTab sets isDisabled; the game paints the label gold, and its font objects put
+-- the gold back as the tab's state changes); a tab with no label is skipped.
 local function paintTabLabel(frame, on)
   local label = type(frame.GetFontString) == "function" and frame:GetFontString() or nil
-  if type(label) == "table" and label.SetTextColor then T.Color(label, on and "text" or "text2") end
+  local token = on and "text" or (frame.isDisabled and "disabled" or "text2")
+  if type(label) == "table" and label.SetTextColor then T.Color(label, token) end
 end
 
 -- A flat tab (opts.flat, the chat tab bar): no fill or border until it is selected, then its raised
