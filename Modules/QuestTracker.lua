@@ -80,6 +80,22 @@ local function questItem(logIndex)
   if type(link) == "string" then return { link = link, texture = texture } end
 end
 
+-- Opens every zone folded in the game's own quest list, since the log hides the quests under a folded
+-- zone: Vanguard's lists read the whole log. The bottom zone first, so the places above it stay put.
+function QT.OpenFolds()
+  if type(ExpandQuestHeader) ~= "function" then return end
+  for i = ns.PlainNumber((ns.CallIf(C_QuestLog, "GetNumQuestLogEntries"))) or 0, 1, -1 do
+    local info = ns.CallIf(C_QuestLog, "GetInfo", i)
+    if type(info) == "table" and ns.IsTrue(info.isHeader) and ns.IsTrue(info.isCollapsed) then ExpandQuestHeader(i) end
+  end
+end
+
+-- The game folds every zone off the current map as you zone in (QuestMapFrame_ResetFilters, on
+-- PLAYER_ENTERING_WORLD): they are opened on the next frame, after it, so the quest log, the XP lines, the
+-- dungeon card and the tracker read every quest. Shared by those modules, so it holds whichever are on;
+-- a zone folded by hand afterwards stays folded until the next zone-in or until Vanguard's log opens.
+ns.On("PLAYER_ENTERING_WORLD", ns.Guard("quest folds", function() ns.Soon("quest folds", QT.OpenFolds) end))
+
 -- A quest's place in the log (it moves as quests come and go), or nil when the log doesn't have it.
 function QT.LogIndex(id)
   return ns.PlainNumber(ns.CallIf(C_QuestLog, "GetLogIndexForQuestID", id))

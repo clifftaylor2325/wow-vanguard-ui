@@ -106,7 +106,16 @@ local function decorate(tt, unit)
   if TT.settings.targetLine then addTarget(tt, unit) end
 end
 
--- A unit tooltip was filled in: decorate it, or hide it in combat if asked.
+-- Before the client fills a unit tooltip: in a fight with Hide in combat on, hides it and stops the fill (true).
+-- The client shows a tooltip again after its post-calls, so only a hide before the fill holds.
+function TT.BeforeUnit(tt)
+  if tt ~= _G.GameTooltip or not (TT.settings.hideInCombat and ns.InCombat()) then return false end
+  tt:Hide()
+  return true
+end
+
+-- A unit tooltip was filled in: decorate it, or hide it in combat if asked (the old script path; the data
+-- API's fill is stopped before this by TT.BeforeUnit).
 function TT.OnUnit(tt)
   if tt ~= _G.GameTooltip then return end
   local unit = TT.Unit(tt)
@@ -230,6 +239,14 @@ local function hookFilled(kind, script, fn)
   if tt and tt.HasScript and tt:HasScript(script) then tt:HookScript(script, fn) end
 end
 
+-- Calls fn before the client fills a tooltip of one kind, where the client has the data API; fn's true stops the fill.
+local function hookBefore(kind, fn)
+  local processor, kinds = _G.TooltipDataProcessor, _G.Enum and _G.Enum.TooltipDataType
+  if type(processor) == "table" and processor.AddTooltipPreCall and kinds and kinds[kind] then
+    processor.AddTooltipPreCall(kinds[kind], ns.GuardResult("tooltip " .. kind .. " before", fn, false))
+  end
+end
+
 -- Whether the item tooltip hook is in place: it is made once, by the first item line added
 -- (other modules') or by Enable, whichever comes first, and does not depend on this module being on.
 local itemsHooked = false
@@ -243,6 +260,7 @@ end
 
 -- Decorates unit tooltips and adds sell prices to item tooltips as the client fills them.
 local function hookTooltips()
+  hookBefore("Unit", TT.BeforeUnit)
   hookFilled("Unit", "OnTooltipSetUnit", TT.OnUnit)
   TT.HookItems()
 end

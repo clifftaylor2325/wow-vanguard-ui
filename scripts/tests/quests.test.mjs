@@ -832,6 +832,30 @@ const logLine = (addon, i) => addon.eval(`local b = Vanguard_QuestLog.lines[${i}
 const logZone = (addon, i) => addon.eval(`local z = Vanguard_QuestLog.zones[${i}] z.__scripts.OnClick(z)`);
 // Clicks one of the quest log's buttons by key.
 const logButton = (addon, key) => addon.eval(`local b = Vanguard_QuestLog.buttons.${key} b.__scripts.OnClick(b)`);
+// TEST-ONLY game fold (on top of QLOG_ENV): the Hills zone folded in the game's own quest list, as the game folds
+// each zone off the current map, so the log lists its header but not its quest until ExpandQuestHeader opens it.
+const FOLDED_ENV = `
+  __log[4].isCollapsed = true
+  local function shown() local out, folded = {}, false
+    for _, e in ipairs(__log) do if e.isHeader then folded = e.isCollapsed out[#out + 1] = e elseif not folded then out[#out + 1] = e end end return out end
+  C_QuestLog.GetNumQuestLogEntries = function() return #shown() end
+  local all = C_QuestLog.GetInfo
+  C_QuestLog.GetInfo = function(i) local e = shown()[i] for n, x in ipairs(__log) do if x == e then return all(n) end end end
+  ExpandQuestHeader = function(i) local e = shown()[i] __expanded = (__expanded or 0) + 1 e.isCollapsed = false end
+`;
+it("quest log: a zone the game folded in its own list is opened as you zone in and as the log opens, so its quests are listed and counted", () => {
+  const addon = loggedIn(TRACK_ENV + QLOG_ENV + FOLDED_ENV);
+  addon.eval("Vanguard_QuestLogToggle.__scripts.OnClick(Vanguard_QuestLogToggle)");
+  const q = questLog(addon);
+  expect([q.count, q.lines, addon.eval("return __log[4].isCollapsed")], "the Hills quest is back under its zone").toEqual(["3 quests", ["[8] TEST-ONLY Wolves", "[12] TEST-ONLY Letter", "[3] TEST-ONLY Far"], false]);
+  addon.eval("Vanguard_QuestLog:Hide() __log[4].isCollapsed = true");
+  expect(addon.eval("return ns.GetModule('QuestLog').Count()"), "a zone folded by hand stays folded while the log is closed").toBe(2);
+  addon.fire("PLAYER_ENTERING_WORLD");
+  addon.advance(0.25);
+  expect(addon.eval("return { __log[4].isCollapsed, ns.GetModule('QuestLog').Count() }"), "zoning in, after the game folds the zones off the map, opens them again").toEqual([false, 3]);
+  addon.eval("__expanded = 0 ExpandQuestHeader = nil __log[4].isCollapsed = true");
+  expect(addon.eval("local QL = ns.GetModule('QuestLog') return QL.Count()"), "a client without ExpandQuestHeader reads what the log lists").toBe(2);
+});
 it("quest log: zones, a quest's details, and its buttons", () => {
   const addon = loggedIn(TRACK_ENV + QLOG_ENV);
   expect(addon.eval("return __overrides"), "the game's quest log keys open this log").toEqual({ L: "Vanguard_QuestLogToggle:LeftButton", "SHIFT-L": "Vanguard_QuestLogToggle:LeftButton" });

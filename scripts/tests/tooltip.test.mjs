@@ -5,11 +5,11 @@ import { UNITS_ENV, calls, expectErrors, isTok, loggedIn, tooltip } from "./help
 
 // TEST-ONLY tooltip: GameTooltip as a plain frame with the tooltip calls the module uses.
 const TOOLTIP_ENV = `
-  __hooks, __post = {}, {}
+  __hooks, __post, __pre = {}, {}, {}
   hooksecurefunc = function(name, fn) __hooks[name] = fn end
   GameTooltip_SetDefaultAnchor = function() end
   Enum = Enum or {} Enum.TooltipDataType = { Item = 0, Unit = 2 }
-  TooltipDataProcessor = { AddTooltipPostCall = function(kind, fn) __post[kind] = fn end }
+  TooltipDataProcessor = { AddTooltipPostCall = function(kind, fn) __post[kind] = fn end, AddTooltipPreCall = function(kind, fn) __pre[kind] = fn end }
   local tt = CreateFrame("Frame", "GameTooltip", UIParent)
   tt.NineSlice = CreateFrame("Frame", nil, tt)
   tt:CreateFontString("GameTooltipTextLeft1", "ARTWORK")
@@ -19,7 +19,8 @@ const TOOLTIP_ENV = `
   tt.SetOwner = function(self, owner, anchor) self.__owner, self.__anchor = owner, anchor end
   GameTooltipStatusBar = CreateFrame("StatusBar", "GameTooltipStatusBar", tt)
   __units.targettarget = __units.player
-  function __showUnit(unit) tt.__unit, tt.__lines = unit, {} tt:Show() __post[2](tt) end
+  -- As the client's TooltipDataHandler fills a unit tooltip: the pre-calls (true stops it), the post-calls, then Show.
+  function __showUnit(unit) tt.__unit, tt.__lines = unit, {} if __pre[2] and __pre[2](tt) then return end __post[2](tt) tt:Show() end
 `;
 
 it("tooltips", () => {
@@ -47,7 +48,11 @@ it("tooltips", () => {
   addon.eval('VanguardDB.profiles.Default.Tooltips.anchor = "cursor"; __hooks.GameTooltip_SetDefaultAnchor(GameTooltip, UIParent)');
   expect(tooltip(addon).anchor === "ANCHOR_CURSOR", "or follows the cursor").toBeTruthy();
   addon.eval("VanguardDB.profiles.Default.Tooltips.hideInCombat = true; __wfgStub.inCombat = true; __showUnit('target')");
-  expect(tooltip(addon).shown === false, "unit tooltips can hide in combat").toBeTruthy();
+  expect(tooltip(addon).shown === false, "unit tooltips can hide in combat, though the client shows a tooltip after its post-calls").toBeTruthy();
+  addon.eval("__wfgStub.inCombat = false __showUnit('target')");
+  expect(tooltip(addon).shown, "out of the fight they show").toBe(true);
+  addon.eval("__wfgStub.inCombat = true GameTooltip:Show() __post[2](GameTooltip)");
+  expect(tooltip(addon).shown, "a client that only calls after the fill (the old script) has it hidden there").toBe(false);
   expect(addon.eval("local out = {} for _, m in ipairs(ns.MoverList()) do out[m.key] = true end return out.tooltip") === true, "the tooltip corner is movable").toBeTruthy();
 });
 

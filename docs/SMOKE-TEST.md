@@ -167,7 +167,7 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 
 ### 2.1f The options window's height, search and changed dots
 
-- Do: type `/vg`. Note how tall the window is. Change Text size, then point at the small accent dot by its caption. Type "move frames", then "square", then "a" in the search box. On the Modules page, find Vanguard meter. Then run `/vg setup`, change the UI scale on its Screen step, and open `/vg` again.
+- Do: type `/vg`. Note how tall the window is. Change Text size, then point at the small accent reset arrow by its caption. Type "move frames", then "square", then "a" in the search box. On the Modules page, find Vanguard meter. Then run `/vg setup`, change the UI scale on its Screen step, and open `/vg` again.
 - Expect: the window is about three quarters of your screen tall (at least as tall as before). The dot's tooltip has a second line, "Default: 100%" or the like. "move frames" lists Move frames, and clicking that line only marks the button (frames do not unlock). "square" lists Corners. "a" lists eight and ends with "N more: type more words". Vanguard meter says "On, but its own switch is off (Combat tools)" beside its name until you switch the meter on under Combat tools. After the UI scale change the window is still tall and fits the screen.
 - If it fails, paste: a screenshot of the window, your screen resolution and UI scale, and `/vg errors`.
 
@@ -3047,6 +3047,24 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Do: below the level cap, turn XP gain off and on at the XP-lock NPC if Forever has one; stop watching any faction; as a healer or tank in a group, leave it and hover gear in your bags; on a Korean client, `/roll` in a group.
 - Expect: the XP bar hides as XP is locked and comes back when unlocked; no blank reputation bar; after leaving, the upgrade lines use the damage weights (`/vg weights` says role damage); the roll shows in the roll tracker.
 - If it fails, paste: which part, what showed, and `/vg errors`.
+
+### 33.147 The bag bar on retail, and the changed-setting mark
+
+- Do: on a retail client, look at the bag bar's top row with bags in some slots; then open `/vg`, change a switch and look left of its caption, at the page list and at the tab.
+- Expect: the backpack and every bag sit on slots of one size, the backpack shows a backpack icon with only Vanguard's free count in its corner, and the game's fold arrow sits between it and the bags; the changed switch has a small accent reset arrow left of its caption (click it: the default comes back and the arrow goes), and its page and tab each show a small round dot.
+- If it fails, paste: a screenshot of the bar or the row, and `/vg errors`.
+
+### 33.148 Quests in other zones, and tooltips hidden in a fight
+
+- Do: with quests in two zones, zone into one of them and open Vanguard's quest log (L); then switch on Hide unit tooltips in combat (Game windows → Tooltips) and mouse over a mob during a fight.
+- Expect: the other zone's quests are listed under their header and counted, and the XP bar's quest lines include them; in the fight no unit tooltip shows, and out of it they show with the class border.
+- If it fails, paste: the zones and quests missing, or what the tooltip did, and `/vg errors`.
+
+### 33.149 Keybind mode's Screenshot key, and dragging a bar spell to a macro icon
+
+- Do: in keybind mode, point at a bar button and press Print Screen; then open the macro window, start a new macro and drag a spell from a Vanguard bar onto the icon picker.
+- Expect: a screenshot is taken and the button keeps its keys; the spell's icon is picked and the spell stays on the bar.
+- If it fails, paste: what was bound or removed, and `/vg errors`.
 
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 

@@ -194,6 +194,8 @@ export const TEXTURES = {
   // about two pixels on a 180-unit map).
   RoundDisc: () => disc(0),
   RoundRing: () => disc(3),
+  // A small filled disc (the options window's changed-setting mark on a page or a tab), on a 16-unit grid.
+  Dot: () => draw(image(16, 16), 16, [poly(arc(8, 8, 7, 7, 0, 360, 32))]),
   // A small filled diamond (minimap corners, the assist mark), on a 16-unit grid.
   Diamond: () => draw(image(16, 16), 16, [poly([[8, 1], [15, 8], [8, 15], [1, 8]])]),
   // Shadow (filled) and glow (hollow) share the soft falloff.
@@ -272,6 +274,9 @@ const ICON_SHAPES = {
   Up: [path([[4, 9.5], [8, 5.5], [12, 9.5]], STROKE)],
   Right: [path([[6.5, 4], [10.5, 8], [6.5, 12]], STROKE)],
   Search: [ring(7, 7, 4, STROKE), line(10.5, 10.5, 14, 14, STROKE)],
+  // Reset (an options row's changed-setting mark: click to put the default back): a round arrow turning back
+  // (anticlockwise), from the top right round to the right, its filled head pointing up.
+  Reset: [path(arc(8, 8.5, 5, 5, 45, 345, 20), STROKE), poly([[13, 4], [10.5, 8.5], [15, 8.5]])],
   // Copy (the chat bar's Copy tile): two sheets, the front one whole over the back one's corner, all on whole units.
   Copy: [rect(2, 5, 11, 14), crisp([[5, 5], [5, 2], [14, 2], [14, 11], [11, 11]])],
   // Raid marks, filled so they read at 10 px: a tank's shield, a healer's cross,

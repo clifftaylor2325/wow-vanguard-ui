@@ -137,15 +137,22 @@ function AB.ClearKeys(b)
   return true
 end
 
+-- Whether the key (with the modifiers held) takes a screenshot: it always goes on to the game, as the
+-- game's own key binder lets it through, so a shot of the bars with their keys binds nothing.
+local function takesScreenshot(key)
+  return type(GetBindingAction) == "function" and GetBindingAction(AB.KeyChord(key)) == "SCREENSHOT"
+end
+
 -- A key while keybind mode is on: Escape leaves, a modifier alone (or a key with no name) waits for
 -- its key, Backspace or Delete clears the button under the mouse, any other key
--- binds it; with no button under the mouse, the key goes on to the game
+-- binds it; with no button under the mouse, or the Screenshot key, the key goes on to the game
 -- (passing keys on is restricted in combat, when the mode is off).
 function AB.OnBindKey(f, key)
   local hovered = AB.bindHover
-  if not ns.InCombat() then f:SetPropagateKeyboardInput(key ~= "ESCAPE" and not hovered) end
+  local passes = key ~= "ESCAPE" and (not hovered or takesScreenshot(key))
+  if not ns.InCombat() then f:SetPropagateKeyboardInput(passes) end
   if key == "ESCAPE" then return AB.KeybindMode(false) end
-  if not hovered or AB.MODIFIER_KEYS[key] or AB.IGNORED_KEYS[key] then return end
+  if passes or AB.MODIFIER_KEYS[key] or AB.IGNORED_KEYS[key] then return end
   if AB.CLEAR_KEYS[key] then AB.ClearKeys(hovered) else AB.BindKey(hovered, AB.KeyChord(key)) end
 end
 

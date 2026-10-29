@@ -21,7 +21,7 @@ local FIT = { share = 0.75, margin = 50 }
 local HEAD, FOOT = 2 * T.CONTROL.inset, T.BUTTON_H + 14
 -- The logo beside the title, a nav icon, and the dot that marks a page or a row with a changed setting (units);
 -- and how far the nav dims a page the search misses.
-local LOGO, NAV_ICON, DOT, DIM = 28, 16, 4, 0.35
+local LOGO, NAV_ICON, DOT, DIM = 28, 16, 6, 0.35
 -- Right of a page: its scroll thumb sits T.SPACE.col out from the view (ns.ScrollView) and T.SPACE.col in from the window's edge.
 local VIEW_RIGHT = 2 * T.SPACE.col
 -- A card's width (the page is T.SPACE.col in from the nav), its inset (T.SPACE.col: a card inside a window) and its
@@ -185,6 +185,14 @@ end
 
 -- Changed from the default ------------------------------------------------------------------
 
+-- A page's or a tab's changed-setting mark: a small round dot in the accent.
+local function changedDot(parent)
+  local t = T.Tint(parent:CreateTexture(nil, "OVERLAY"), "accent")
+  t:SetTexture(T.Texture("Dot"))
+  t:SetSize(DOT, DOT)
+  return t
+end
+
 -- The reset dot's tooltip, where the client has one: what a click does, then the default in the row's words.
 local function dotTooltip(d)
   if not GameTooltip then return end
@@ -208,14 +216,24 @@ local function defaultText(w, kind, initial)
   return choiceLabel(w.choices, initial) or tostring(initial)
 end
 
--- A small accent dot left of a row's caption; clicking it puts the default back.
+-- The reset arrow's side, and its button's size: the arrow sits in the card's margin, left of the row's caption (pixels).
+O.RESET = { icon = 12, width = 14, height = 16, x = -6 }
+
+-- The reset arrow itself, centered on its button, in the accent.
+local function resetMark(d)
+  local mark = T.Tint(d:CreateTexture(nil, "OVERLAY"), "accent")
+  mark:SetTexture(T.Icon("Reset"))
+  mark:SetSize(O.RESET.icon, O.RESET.icon)
+  mark:SetPoint("CENTER")
+  return mark
+end
+
+-- A small accent reset arrow left of a row's caption; clicking it puts the default back.
 local function resetDot(w, set, initial)
   local d = CreateFrame("Button", nil, w)
-  d:SetSize(8, 16)
-  d:SetPoint("LEFT", 0, 0)
-  d.mark = W.Flat(d, "OVERLAY", "accent")
-  d.mark:SetSize(DOT, DOT)
-  d.mark:SetPoint("CENTER")
+  d:SetSize(O.RESET.width, O.RESET.height)
+  d:SetPoint("LEFT", O.RESET.x, 0)
+  d.mark = resetMark(d)
   d:SetScript("OnClick", ns.Guard("click reset setting", function() set(initial); T.Sound("off"); w:Refresh() end))
   d:SetScript("OnEnter", ns.Guard("reset dot tip", dotTooltip))
   d:SetScript("OnLeave", ns.Guard("reset dot tip", function() if GameTooltip then GameTooltip:Hide() end end))
@@ -483,8 +501,7 @@ local function addTab(view, card)
   local tab = CreateFrame("Button", nil, view.strip)
   tab:SetHeight(TAB.height)
   tabLabel(tab, card.tabName)
-  tab.changed = W.Flat(tab, "OVERLAY", "accent")
-  tab.changed:SetSize(DOT, DOT)
+  tab.changed = changedDot(tab)
   tab.changed:SetPoint("RIGHT", -TAB.dot, 0)
   tab:SetScript("OnClick", ns.Guard("click options tab", function() T.Sound("page") showCard(view, card.index) end))
   card.tab = T.Tab(tab, { flat = true })
@@ -776,8 +793,7 @@ end
 
 -- A nav entry's changed-setting dot at its right edge, and its title between the icon and the dot (never past it).
 local function navTitle(b, title)
-  b.changed = W.Flat(b, "OVERLAY", "accent")
-  b.changed:SetSize(DOT, DOT)
+  b.changed = changedDot(b)
   b.changed:SetPoint("RIGHT", -T.SPACE.col, 0)
   b.text = T.Text(b:CreateFontString(nil, "OVERLAY"), "label", "text2")
   b.text:SetPoint("LEFT", b.icon, "RIGHT", T.SPACE.gap, 0)

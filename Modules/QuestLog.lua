@@ -217,9 +217,10 @@ end
 
 -- Opening -----------------------------------------------------------------------------------------
 
--- Opens the log, on a quest when given one.
+-- Opens the log, on a quest when given one, with every zone the game folded opened (QT.OpenFolds).
 function QL.Open(id)
   QL.selected = id or QL.selected
+  ns.GetModule("QuestTracker").OpenFolds()
   QL.frame:Show()
   QL.Refresh()
 end
