@@ -3072,6 +3072,36 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: each "Level N" line under an unlearned spell reads in light grey on the dark page, lined up under the spell's name; no grey smudge shows behind a spell under the mouse.
 - If it fails, paste: a screenshot of the page, and `/vg errors`.
 
+### 33.151 Quest text and reward tiles on the dark panel
+
+- Do: with Vanguard's own quest dialog switched off, talk to an NPC who offers a quest with item rewards, read its details and rewards pages, then open a quest you are on in the map's quest log (M) and look at its details.
+- Expect: every line reads light on the dark panel: the objectives ("0/8 Boars slain", a finished one in muted grey), the Rewards heading, "You will receive" and "Choose one of these rewards", and any timer, group size or required money line; each reward tile is a square with a thin border and no gold name plate, in the quest window and in the map's details.
+- If it fails, paste: a screenshot of the page, and `/vg errors`.
+
+### 33.152 Spellbook pages, achievements and collections bars
+
+- Do: open the spellbook (P) and turn a few pages; open the achievements window (Y), scroll a category, open a completed achievement with criteria, hover the summary's category bars and run a search; open the collections window's toy box and heirlooms.
+- Expect: every page you turn to is dressed like the first (no parchment plates, light names), and a spell's flyout arrow, glyph mark or "not on your bars" glow still shows; achievement cards keep no bronze title bar or wave strips as you scroll, completed criteria read light (open ones stay grey, done ones green), the statistics rows have no stripes, the summary bars show no gold caps under the mouse, and every progress bar there and in the collections is a dim accent fill, not bright green.
+- If it fails, paste: a screenshot, and `/vg errors`.
+
+### 33.153 The character sheet and inspect window on retail
+
+- Do: on a retail client, open the character sheet (C), its reputation tab, its titles and equipment sets lists (scroll them), and close and reopen it; inspect a player with no guild.
+- Expect: no bronze plate behind any gear slot, no bronze corner pieces at the ends of the stats/titles/sets tab strip, no dark box over the model after reopening, and no faint stripe on every other title or set row; each reputation bar is a flat bar in a flat inset box, in its standing colour, with its text readable; in the inspect window the Talents button is themed and the greyed Guild tab sits inset, not raised like the open tab.
+- If it fails, paste: a screenshot, and `/vg errors`.
+
+### 33.154 Small windows on retail: ready check, rolls, mail, map and professions
+
+- Do: on a retail client, be in a group for a ready check and a loot roll; open a mailbox with more than seven letters (and a crafting order mail, if you have one); open the world map; open a profession.
+- Expect: the ready check's Ready and Not Ready are themed buttons; the roll window's Need, Greed, Pass and Transmog buttons sit on control tiles; the inbox page arrows are flat tiles; a crafting order mail's text reads light; the map's tracking filter and pin buttons carry Vanguard's icons with no gold ring or disc; the profession window's maximize and minimize buttons are Vanguard's glyphs.
+- If it fails, paste: a screenshot, and `/vg errors`.
+
+### 33.155 Menu icons, quick join cards and the talking head
+
+- Do: with Vanguard's line icons on, hover and leave a few menu buttons, click one, and loot an item into a bag; open Social's Quick Join with a group listed and hover a card; trigger a talking head line.
+- Expect: only Vanguard's line icons and bag slots show, before and after the hover, the click and the bag change, with no game icon or highlight showing under them; a quick join card shows no gold glow under the mouse and every queue line reads light; the talking head's name and text are in the theme fonts and still fade in.
+- If it fails, paste: a screenshot, and `/vg errors`.
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ## When you are done
