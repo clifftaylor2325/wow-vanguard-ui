@@ -36,7 +36,7 @@ SI.LIVE = {
   MenuStrip = { keys = { "menu", "menuWhen" }, apply = { "ApplyVisibility" } },
   DataBars = { keys = { "visibility", "showWhen" }, apply = { "ApplyVisibility" } },
   Nameplates = { keys = { "level", "threat", "targetBorder", "questMarks" }, apply = { "RefreshAll" } },
-  UnitFrames = { keys = { "calm" }, apply = { "ApplyCalm" } },
+  UnitFrames = { keys = { "calm", "calmFrames", "calmBars", "calmAuras", "calmStrips", "calmXP", "calmMeter", "calmMinimap" }, apply = { "ApplyCalm" } },
 }
 -- The live modules in the order the status line names them, and the names it uses.
 SI.ORDER = { "InfoStrip", "MenuStrip", "DataBars", "Nameplates", "UnitFrames" }
@@ -480,7 +480,7 @@ SI.HOLDS = {
   MenuStrip = L["Menu bar: when it shows."],
   DataBars = L["XP bars: when they show."],
   Nameplates = L["Nameplates: levels, threat colors, target border and quest marks."],
-  UnitFrames = L["Unit frames: the Calm HUD."],
+  UnitFrames = L["Calm HUD: whether it is on, and what each part does."],
 }
 -- What the page says about every other setting.
 SI.ELSEWHERE = L["Everything else, including any setting that needs a reload, changes your base profile even while recording. While recording, most of them are dimmed and say so when you point at them."]

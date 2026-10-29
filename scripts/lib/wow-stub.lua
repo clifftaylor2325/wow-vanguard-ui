@@ -372,6 +372,11 @@ function methods:SetMouseMotionEnabled(on) self.__mouseMotion = on == true end
 -- Whether clicks land on the frame (false lets them through to what's under it).
 function methods:SetMouseClickEnabled(on) self.__mouseClick = on == true end
 function methods:IsMouseOver() return self.__mouseOver == true end
+-- Whether clicks land on it: as set, else whether it takes the mouse (a Button does from the start, as in game).
+function methods:IsMouseClickEnabled()
+  if self.__mouseClick ~= nil then return self.__mouseClick end
+  return self.__mouse == true or (self.__mouse == nil and self.__kind == "Button")
+end
 -- The mouse wheel: whether the frame takes it (a frame with an OnMouseWheel script does too, as in game).
 function methods:EnableMouseWheel(on) self.__mouseWheel = on ~= false end
 function methods:IsMouseWheelEnabled() return self.__mouseWheel == true or self.__scripts.OnMouseWheel ~= nil end

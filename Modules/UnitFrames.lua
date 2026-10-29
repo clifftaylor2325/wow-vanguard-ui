@@ -14,7 +14,8 @@ local L = ns.L
 local T, V = ns.Theme, ns.Visibility
 
 local UF = ns.Module("UnitFrames", {
-  defaults = { hideBlizzard = true, healthText = true, powerHeight = 6, boss = true, calm = false, deck = false, targetHeight = 36, tagMark = true },
+  defaults = { hideBlizzard = true, healthText = true, powerHeight = 6, boss = true, calm = false, deck = false, targetHeight = 36, tagMark = true,
+    calmFrames = "dim", calmBars = "dim", calmAuras = "dim", calmStrips = "dim", calmXP = "hide", calmMeter = "dim", calmMinimap = "leave" },
 })
 
 -- Target classification -> the color of its diamond (none for normal units).
@@ -728,30 +729,34 @@ end
 
 -- Calm HUD ---------------------------------------------------------------------------------
 
--- The Calm HUD (off unless switched on): your frames dim out of combat and come back in a
--- fight, on a living hostile target or under the mouse. The client runs the state (macro
--- conditions, in combat too) and only alpha changes, so the secure buttons stay clickable.
-UF.CALM_STATE = "[combat] show; [harm,nodead] show; dim"
+-- Your frames and the Versus deck are the Calm HUD's "frames" part (Core/Visibility.lua): they
+-- dim out of combat and come back in a fight, on a living hostile target or under the mouse.
 UF.CALM_KEYS = { "player", "pet", "target", "targettarget", "focus" }
+-- The Calm HUD's choices for the rest of the HUD (V.CALM_PARTS), which a profile saved before they came keeps on Leave.
+UF.CALM_OTHERS = { "calmBars", "calmAuras", "calmStrips", "calmXP", "calmMeter", "calmMinimap" }
 
--- Gives one calm frame its state (a frame never made calm is left alone while it is off).
-local function calmOne(f, state)
-  if not f or not (UF.settings.calm or f.vgStateString) then return end
-  if not f.vgHoverRoot then V.WatchHover(f) end
-  V.ApplyState(f, state)
-  V.Refresh(f)
+-- After 0.7.5: the Calm HUD grew from your frames to the whole HUD. A profile that had it on keeps it on
+-- your frames only, so nothing else changes under the player until they pick it.
+ns.Migrate("UnitFrames", function(saved)
+  if saved.calm ~= true or saved.calmBars ~= nil then return end
+  for _, key in ipairs(UF.CALM_OTHERS) do saved[key] = "leave" end
+end)
+
+-- Hands one frame to the Calm HUD, once.
+local function calmFrame(f)
+  if f and not f.vgCalm then V.Calm(f, "frames") end
 end
 
--- Gives each calm frame (and the Versus deck) its state now (out of combat only): dimmed, or shown again when off.
-local function calmNow()
-  local state = UF.settings.calm and UF.CALM_STATE or "show"
-  for _, key in ipairs(UF.CALM_KEYS) do calmOne(UF.frames[key], state) end
-  calmOne(UF.deck, state)
+-- Hands your frames and the Versus deck (once it is built) to the Calm HUD.
+local function joinCalm()
+  for _, key in ipairs(UF.CALM_KEYS) do calmFrame(UF.frames[key]) end
+  calmFrame(UF.deck)
 end
 
--- Applies the Calm HUD setting: now, or when combat ends.
+-- Applies the Calm HUD to the whole HUD: now, or when combat ends (after a Versus deck waiting for it is built).
 function UF.ApplyCalm()
-  if UF.settings then ns.OutOfCombat(calmNow) end
+  if UF.settings then ns.OutOfCombat(joinCalm, "join calm") end
+  V.ApplyCalm()
 end
 
 -- WoW Forever players read levels and health percent on every frame (as its
