@@ -15,7 +15,8 @@
 -- ignores ActionButtonUseKeyDown, so registering AnyDown as well would cast
 -- twice (key down and key up); the raid buttons stay AnyUp.
 --
--- Bindings are per character and per specialization. Everything here sets
+-- Bindings are per character and per specialization (on WoW Forever, whose dual
+-- spec is the talent group, per talent group: ns.SpecKey). Everything here sets
 -- secure attributes and secure enter/leave snippets, so it only changes out
 -- of combat; in combat, the bindings you set earlier keep working. Hover keys
 -- need secure snippets: when the client can't compile them (Core/Client.lua
@@ -62,13 +63,70 @@ local function upgrade(b)
   if b.action == "spell" and b.spellID == nil then b.spellID = spellID(b.value) end
 end
 
--- This character's bindings for a spec (the current one by default), created empty.
-function CC.Bindings(spec)
-  spec = spec or ns.SpecIndex() or 0
+-- A copy of a binding record, so a stored binding never shares a table with the one it came from.
+local function copyOf(b)
+  return { key = b.key, action = b.action, value = b.value, spellID = b.spellID, rank = b.rank }
+end
+
+-- This character's one-time stamps (VanguardCharDB.clickcastStamps): what click casting has already migrated or told them.
+local function stamps()
+  VanguardCharDB.clickcastStamps = type(VanguardCharDB.clickcastStamps) == "table" and VanguardCharDB.clickcastStamps or {}
+  return VanguardCharDB.clickcastStamps
+end
+
+-- Whether a one-time step (a migration, a notice) has been done for this character.
+function CC.Stamped(name)
+  return stamps()[name] == true
+end
+
+-- Marks a one-time step as done for this character.
+function CC.Stamp(name)
+  stamps()[name] = true
+end
+
+-- This character's saved lists of bindings, by spec key.
+local function savedLists()
   VanguardCharDB.clickcast = type(VanguardCharDB.clickcast) == "table" and VanguardCharDB.clickcast or {}
-  VanguardCharDB.clickcast[spec] = VanguardCharDB.clickcast[spec] or {}
-  for _, b in ipairs(VanguardCharDB.clickcast[spec]) do upgrade(b) end
-  return VanguardCharDB.clickcast[spec]
+  return VanguardCharDB.clickcast
+end
+
+-- WoW Forever's talent groups (Primary, Secondary): its dual spec, and the keys its bindings are stored under.
+CC.TALENT_GROUPS = { 1, 2 }
+
+-- Whether a saved list holds a binding.
+local function hasBindings(list)
+  return type(list) == "table" and #list > 0
+end
+
+-- A copy of a saved list of bindings.
+local function copyList(list)
+  local out = {}
+  for i, b in ipairs(list) do out[i] = copyOf(b) end
+  return out
+end
+
+-- On a client with talent groups, gives each group that has no bindings a copy of the list saved before the lists
+-- were kept per group (under the specialization index, else 0), once. The old list stays where it is, so the change
+-- can be reversed for a version. Until the client names a talent group nothing is done or stamped.
+local function migrateTalentGroups()
+  if CC.Stamped("talentGroups") or not ns.TalentGroup() then return end
+  local lists = savedLists()
+  local old = lists[ns.SpecIndex() or 0]
+  for _, group in ipairs(CC.TALENT_GROUPS) do
+    if hasBindings(old) and not hasBindings(lists[group]) then lists[group] = copyList(old) end
+  end
+  CC.Stamp("talentGroups")
+end
+
+-- This character's bindings for a spec key (the current talent group on WoW Forever, else the specialization;
+-- the current one by default), created empty.
+function CC.Bindings(spec)
+  migrateTalentGroups()
+  spec = spec or ns.SpecKey() or 0
+  local lists = savedLists()
+  lists[spec] = lists[spec] or {}
+  for _, b in ipairs(lists[spec]) do upgrade(b) end
+  return lists[spec]
 end
 
 -- The current spec's binding for a key, or nil.
@@ -100,11 +158,6 @@ local function drop(list, key)
   for i = #list, 1, -1 do
     if list[i].key == key then table.remove(list, i) end
   end
-end
-
--- A copy of a binding record, so a stored binding never shares a table with the one it came from.
-local function copyOf(b)
-  return { key = b.key, action = b.action, value = b.value, spellID = b.spellID, rank = b.rank }
 end
 
 -- Puts a checked binding record in a spec's list, replacing the key's old one (nothing is applied).
@@ -439,10 +492,11 @@ function CC.SetUseGame(on)
   ns.OutOfCombat(CC.ApplyAll, "clickcast")
 end
 
--- Module entry point (Core/Modules.lua): a secure handler, the frames, spec changes.
+-- Module entry point (Core/Modules.lua): a secure handler, the talent-group migration, the frames, spec changes.
 function CC.Enable(settings)
   CC.settings = settings
   CC.handler = CreateFrame("Frame", "Vanguard_ClickCastHandler", UIParent, "SecureHandlerBaseTemplate")
+  migrateTalentGroups()
   ns.OutOfCombat(function() registerFrames(settings) end)
   -- A new spec has its own bindings: apply them (spec changes happen out of combat).
   local function reapply() ns.OutOfCombat(CC.ApplyAll, "clickcast") end

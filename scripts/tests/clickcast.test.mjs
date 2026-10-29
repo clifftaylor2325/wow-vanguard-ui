@@ -750,3 +750,60 @@ it("the spell picker finds a Russian spell typed in small letters", () => {
   addon.type("Vanguard_SpellPicker.search", "обновление");
   expect(pickerRow(addon, "Обновление") !== undefined, "the capital О is folded on both sides").toBe(true);
 });
+
+// TEST-ONLY saved click-casting lists from before the lists were kept per talent group: Renew and Target, under
+// the key given (the specialization index, or 0 where the client has none).
+const oldList = (key) => `VanguardCharDB = { clickcast = { [${key}] = { { key = "BUTTON2", action = "spell", value = "Renew", spellID = 139 }, { key = "BUTTON1", action = "target" } } } }`;
+
+// The keys of a saved list (by its spec key), in order, or null when there is no such list.
+const savedKeys = (addon, key) => addon.eval(`local l = VanguardCharDB.clickcast[${key}] if not l then return nil end local out = {} for i, b in ipairs(l) do out[i] = b.key end return out`);
+
+// Whether the character's talent-group migration has been stamped.
+const migrated = (addon) => addon.eval("return VanguardCharDB.clickcastStamps ~= nil and VanguardCharDB.clickcastStamps.talentGroups == true");
+
+it("the talent-group migration copies the old single list to each group without one, once, and keeps the old key", () => {
+  const addon = priest("__wfgWorld.specGroup = 1", { savedVariables: oldList(0) });
+  expect([savedKeys(addon, 1), savedKeys(addon, 2)], "both groups start from the old list").toEqual([["BUTTON2", "BUTTON1"], ["BUTTON2", "BUTTON1"]]);
+  expect([savedKeys(addon, 0), migrated(addon)], "the old key is kept for a version, and the step is stamped").toEqual([["BUTTON2", "BUTTON1"], true]);
+  addon.eval(`${CC}.Remove("BUTTON1")`);
+  expect([savedKeys(addon, 1), savedKeys(addon, 2), savedKeys(addon, 0)], "the copies are separate lists").toEqual([["BUTTON2"], ["BUTTON2", "BUTTON1"], ["BUTTON2", "BUTTON1"]]);
+  addon.eval("__wfgWorld.specGroup = 2");
+  addon.eval(`${CC}.Clear() VanguardCharDB.clickcast[0] = nil`);
+  addon.eval("__wfgWorld.specGroup = 1");
+  expect([addon.eval(`return #${CC}.Bindings(2)`), savedKeys(addon, 1)], "stamped, it does not run again: a cleared group stays empty").toEqual([0, ["BUTTON2"]]);
+});
+
+it("the talent-group migration leaves a group that has its own list alone, and uses the specialization index where there is one", () => {
+  const own = ' VanguardCharDB.clickcast[2] = { { key = "BUTTON4", action = "focus" } }';
+  const addon = priest("__wfgWorld.specGroup = 1", { savedVariables: oldList(0) + own });
+  expect([savedKeys(addon, 1), savedKeys(addon, 2)], "Secondary keeps its own; Primary gets the old list").toEqual([["BUTTON2", "BUTTON1"], ["BUTTON4"]]);
+  const indexed = priest("__wfgWorld.specGroup = 1 __wfgWorld.spec = 1", { savedVariables: oldList(1) });
+  expect([savedKeys(indexed, 1), savedKeys(indexed, 2), savedKeys(indexed, 0)], "the list saved under specialization 1 is Primary's, and Secondary gets a copy").toEqual([["BUTTON2", "BUTTON1"], ["BUTTON2", "BUTTON1"], null]);
+});
+
+it("the talent-group migration waits for a client that names a talent group, and does nothing without one", () => {
+  const addon = priest("", { savedVariables: oldList(0) });
+  expect([savedKeys(addon, 1), migrated(addon)], "no talent groups: the list stays where it was, unstamped").toEqual([null, false]);
+  expect(addon.eval(`return #${CC}.Bindings()`), "and it is still the character's list").toBe(2);
+  addon.eval("__wfgWorld.specGroup = 2");
+  addon.fire("ACTIVE_TALENT_GROUP_CHANGED", 2, 1);
+  expect([addon.eval(`return #${CC}.Bindings()`), savedKeys(addon, 1), migrated(addon)], "once the client names a group, the next read migrates").toEqual([2, ["BUTTON2", "BUTTON1"], true]);
+});
+
+it("on WoW Forever the Click casting page speaks of talent groups, and Copy to goes across them", () => {
+  const addon = priest("__wfgWorld.specGroup = 1 GetNumSpecializations = function() return 3 end");
+  addon.eval(`${CC}.Add("BUTTON2", "spell", "Renew", 139)`);
+  addon.eval('ns.Options.Show("clickcast")');
+  const sentence = " on this character. Click a cell to pick a spell, right-click to clear, or drop a spell on it.";
+  expect(addon.texts(`Bindings for Primary talents${sentence}`).length, "the line over the grid names the talent group").toBe(1);
+  const copy = widget(addon, 'w.choices ~= nil and w.text ~= nil and w.text.__text == "Copy to spec..."');
+  expect(addon.eval(`return __wfgStub.frames[${copy}].choices()`), "the other talent group, not the client's specializations").toEqual([[2, "Copy to Secondary talents"]]);
+  addon.clearChat();
+  addon.eval(`__wfgStub.frames[${copy}].set(2)`);
+  expect([chatHas(addon, /Click-casting bindings copied to Secondary talents\./), addon.eval(`return #${CC}.Bindings(2)`)], "copied across, and said").toEqual([true, 1]);
+  addon.eval("__wfgWorld.specGroup = 2");
+  addon.fire("ACTIVE_TALENT_GROUP_CHANGED", 2, 1);
+  addon.eval("ns.Options.Refresh()");
+  expect(addon.texts(`Bindings for Secondary talents${sentence}`).length, "the line follows the group").toBe(1);
+  expect(addon.eval(`return __wfgStub.frames[${copy}].choices()`), "and the copy goes back to Primary").toEqual([[1, "Copy to Primary talents"]]);
+});

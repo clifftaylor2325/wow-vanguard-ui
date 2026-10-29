@@ -134,3 +134,21 @@ it("/vg binds says which Target and Unit menu bindings the game's own click bind
   addon.eval("C_ClickBindings = {}");
   expect(lines().some((l) => l.includes("does nothing")), "nor one without the profile call").toBe(false);
 });
+
+it("on WoW Forever the two talent groups keep their own click-casting lists, and a group change applies that group's", () => {
+  const addon = loggedIn(UNITS_ENV + RAID_ENV + CLICK_LUA + "__wfgWorld.specGroup = 1");
+  const CC = 'ns.GetModule("ClickCast")';
+  addon.eval(`__spawn(1, "raid1") ${CC}.Add("ctrl-BUTTON2", "spell", "TEST-ONLY Renew")`);
+  // The spell the first raid button casts on Ctrl + Right click now.
+  const spell = () => addon.eval('return Vanguard_RaidUnitButton1:GetAttribute("ctrl-spell2")');
+  expect(spell(), "Primary talents: the binding applies").toBe("TEST-ONLY Renew");
+  addon.eval("__wfgWorld.specGroup = 2");
+  addon.fire("ACTIVE_TALENT_GROUP_CHANGED", 2, 1);
+  expect(spell(), "Secondary talents start with no list of their own, and the frames follow").toBe(null);
+  addon.eval(`${CC}.Add("ctrl-BUTTON2", "spell", "TEST-ONLY Shield")`);
+  expect(spell(), "a binding made in the Secondary group applies").toBe("TEST-ONLY Shield");
+  addon.eval("__wfgWorld.specGroup = 1");
+  addon.fire("ACTIVE_TALENT_GROUP_CHANGED", 1, 2);
+  expect(spell(), "back in Primary, its own spell is cast again").toBe("TEST-ONLY Renew");
+  expect(addon.eval("local c = VanguardCharDB.clickcast return { c[1][1].value, c[2][1].value, c[0] == nil }"), "saved under the groups' own keys").toEqual(["TEST-ONLY Renew", "TEST-ONLY Shield", true]);
+});

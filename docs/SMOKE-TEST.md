@@ -893,6 +893,12 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Expect: the Middle / Plain cell's "Unit menu" is in the warning colour and its tooltip says "Does nothing: the game runs it only on a click its own Click Casting window binds."; the Shift + Q row says "does nothing: the game won't run it from a key"; `/vg binds` adds "(does nothing: ...)" with the same reasons to those two lines, and not to Left click (Target) or Right click. Middle click and Shift+Q open no menu (the warning is right). [Needs in game: that the game's default profile binds only plain Left and Right, and that a Target or Unit menu click it covers still works.]
 - If it fails, paste: the `/vg binds` output, what the clicks did, and `/vg errors`.
 
+### 10.1e Each talent group keeps its own click bindings
+
+- Do: on WoW Forever with dual spec, `/vg` > Click casting on your Primary talents and bind a spell to Ctrl + Right click; look at the line over the grid. Switch to your Secondary talents (out of combat), look at the grid, bind a different spell to Ctrl + Right click, and click a raid or party tile with Ctrl held. Switch back to Primary and click a tile again. Then, still on Primary, open **Copy to...** under Share and pick the other group; `/vg binds` on each group.
+- Expect: the line reads "Bindings for Primary talents on this character..." (and "Secondary talents" on the other group); the Secondary grid starts with its own list (empty, or a copy of what you had before this version on a character that used click casting first), and each group casts its own spell; **Copy to...** offers only the other talent group ("Copy to Secondary talents"), chat says "Click-casting bindings copied to Secondary talents.", and `/vg binds` then lists the same bindings on both. [Needs in game: that `/vg spec`'s talent group is what the client reports on each swap, and that a character that had bindings before shows them on both groups the first time.]
+- If it fails, paste: `/vg binds` on each group, `/vg spec` and `/vg errors`.
+
 ### 10.2 Use it
 
 - Do: out of combat, hover a party or raid tile (or your own frame) and press the key or click.

@@ -786,19 +786,35 @@ local function importText(text)
   if n then ns.HideText() changed() end
 end
 
--- The other specs (as { index, "Copy to spec n" } choices), where the client has specializations.
-local function otherSpecs()
+-- The keys bindings are kept under on this client: the talent groups on WoW Forever, else the specializations (none
+-- where the client has none).
+local function specKeys()
+  if ns.TalentGroup() then return CC.TALENT_GROUPS end
   local out, n = {}, type(GetNumSpecializations) == "function" and GetNumSpecializations() or 0
-  for i = 1, n do
-    if i ~= ns.SpecIndex() then out[#out + 1] = { i, ns.Format(L["Copy to spec {spec}"], { spec = i }) } end
+  for i = 1, n do out[i] = i end
+  return out
+end
+
+-- "Copy to Secondary talents" for a talent group, "Copy to spec 2" for a specialization.
+local function copyLabel(key)
+  if ns.TalentGroup() then return ns.Format(L["Copy to {talents}"], { talents = ns.TalentsName(key) }) end
+  return ns.Format(L["Copy to spec {spec}"], { spec = key })
+end
+
+-- The other talent groups or specs (as { key, "Copy to ..." } choices), where the client has them.
+local function otherSpecs()
+  local out = {}
+  for _, key in ipairs(specKeys()) do
+    if key ~= ns.SpecKey() then out[#out + 1] = { key, copyLabel(key) } end
   end
   return out
 end
 
--- Copies the bindings to another spec and says so.
-local function copyToSpec(spec)
-  CC.CopyToSpec(spec)
-  ns.Chat(ns.Format(L["Click-casting bindings copied to spec {spec}."], { spec = spec }))
+-- Copies the bindings to another talent group or spec and says so.
+local function copyToSpec(key)
+  CC.CopyToSpec(key)
+  if not ns.TalentGroup() then return ns.Chat(ns.Format(L["Click-casting bindings copied to spec {spec}."], { spec = key })) end
+  ns.Chat(ns.Format(L["Click-casting bindings copied to {talents}."], { talents = ns.TalentsName(key) }))
 end
 
 -- Shows the copy dropdown's caption, and the dropdown only while there is another spec.
@@ -829,13 +845,20 @@ local function shareBuilder(parent, _, width)
   return r
 end
 
+-- The line over the grid, for whose bindings these are: this character's, the talent group's or the spec's.
+local function scopeLine(key)
+  if not key then return L["Bindings for this character. Click a cell to pick a spell, right-click to clear, or drop a spell on it."] end
+  if ns.TalentGroup() then
+    return ns.Format(L["Bindings for {talents} on this character. Click a cell to pick a spell, right-click to clear, or drop a spell on it."], { talents = ns.TalentsName(key) })
+  end
+  return ns.Format(L["Bindings for spec {spec} on this character. Click a cell to pick a spell, right-click to clear, or drop a spell on it."], { spec = key })
+end
+
 -- The line over the grid: whose bindings, or the combat notice while a fight is on.
 local function title()
   if ns.InCombat() then return L["In combat: changes are kept and apply when the fight ends."] end
   if CC.UsesGame() then return L["The game's click bindings are in use: these are kept for when you switch back."] end
-  local spec = ns.SpecIndex()
-  if not spec then return L["Bindings for this character. Click a cell to pick a spell, right-click to clear, or drop a spell on it."] end
-  return ns.Format(L["Bindings for spec {spec} on this character. Click a cell to pick a spell, right-click to clear, or drop a spell on it."], { spec = spec })
+  return scopeLine(ns.SpecKey())
 end
 
 -- Whether click casting also covers the unit frames.
