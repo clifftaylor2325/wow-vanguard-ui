@@ -154,6 +154,7 @@ end
 function DB.QuestXP()
   local log, total = C_QuestLog, 0
   if type(log) ~= "table" or type(log.GetNumQuestLogEntries) ~= "function" or type(log.IsComplete) ~= "function" then return 0 end
+  ns.GetModule("QuestTracker").OpenFolds()
   for i = 1, ns.PlainNumber((log.GetNumQuestLogEntries())) or 0 do total = total + readyXP(log.GetInfo(i)) end
   return total
 end
@@ -169,6 +170,7 @@ end
 function DB.LogXP()
   local log, total = C_QuestLog, 0
   if type(log) ~= "table" or type(log.GetNumQuestLogEntries) ~= "function" or type(log.GetInfo) ~= "function" then return 0 end
+  ns.GetModule("QuestTracker").OpenFolds()
   for i = 1, ns.PlainNumber((log.GetNumQuestLogEntries())) or 0 do total = total + entryXP(log.GetInfo(i)) end
   return total
 end

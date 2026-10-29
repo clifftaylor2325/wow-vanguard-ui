@@ -153,6 +153,7 @@ end
 -- Your log's quests for the card, lowest level first.
 function DC.Quests(inside)
   local out, onThisMap, tags = {}, inside and onMap(mapNow()), tagSet()
+  ns.GetModule("QuestTracker").OpenFolds()
   for i = 1, ns.PlainNumber((call(C_QuestLog, "GetNumQuestLogEntries"))) or 0 do
     local e = entry(call(C_QuestLog, "GetInfo", i))
     if e and wanted(e, onThisMap, tags) then out[#out + 1] = e end

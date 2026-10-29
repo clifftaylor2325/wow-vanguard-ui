@@ -80,6 +80,17 @@ local function questItem(logIndex)
   if type(link) == "string" then return { link = link, texture = texture } end
 end
 
+-- Opens every zone the game folded in its own quest list (it folds each zone off the current map as you
+-- zone in), since the log hides the quests under a folded zone: Vanguard's lists read the whole log. The
+-- bottom zone first, so the places above it stay put; the game's list shows them open until it folds them again.
+function QT.OpenFolds()
+  if type(ExpandQuestHeader) ~= "function" then return end
+  for i = ns.PlainNumber((ns.CallIf(C_QuestLog, "GetNumQuestLogEntries"))) or 0, 1, -1 do
+    local info = ns.CallIf(C_QuestLog, "GetInfo", i)
+    if type(info) == "table" and ns.IsTrue(info.isHeader) and ns.IsTrue(info.isCollapsed) then ExpandQuestHeader(i) end
+  end
+end
+
 -- A quest's place in the log (it moves as quests come and go), or nil when the log doesn't have it.
 function QT.LogIndex(id)
   return ns.PlainNumber(ns.CallIf(C_QuestLog, "GetLogIndexForQuestID", id))
@@ -134,6 +145,7 @@ end
 -- Every watched quest, in the chosen order, each timed one with its seconds left; and whether any is timed.
 function QT.Quests()
   local out, timers, timed = {}, QT.Timers(), false
+  QT.OpenFolds()
   for _, id in ipairs(QT.Watched()) do
     local q = QT.Quest(id)
     if q then q.timer = timers[id] timed = timed or q.timer ~= nil out[#out + 1] = q end
