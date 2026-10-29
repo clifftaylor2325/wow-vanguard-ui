@@ -168,7 +168,7 @@ end
 
 -- Follows the strip's visibility from the start: its state's changes repaint it.
 local function watchVisibility(f)
-  f.vgOnState = FH.Paint
+  f.vgOnState, f.vgCalm = FH.Paint, "meter"
   V.WatchHover(f)
   V.Track(f, FH.ApplyVisibility)
   FH.ApplyVisibility()

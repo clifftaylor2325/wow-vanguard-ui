@@ -878,7 +878,7 @@ end
 -- Follows the strip's visibility from the start: the mouse over it, the state's
 -- changes (fitRows shows or hides it), and zone changes for In an instance.
 local function watchVisibility(f)
-  f.vgOnState = fitRows
+  f.vgOnState, f.vgCalm = fitRows, "strips"
   V.WatchHover(f)
   V.Track(f, IS.ApplyVisibility)
   IS.ApplyVisibility()

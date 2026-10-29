@@ -334,6 +334,7 @@ end
 -- Follows the bar's visibility from the start: the mouse over it and the
 -- frames in it, and zone changes for In an instance.
 local function watchVisibility(strip)
+  strip.vgCalm = "strips"
   V.WatchHover(strip)
   V.Track(strip, MS.ApplyVisibility)
   MS.ApplyVisibility()

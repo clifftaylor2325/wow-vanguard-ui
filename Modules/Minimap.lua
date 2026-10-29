@@ -579,7 +579,7 @@ end
 
 -- Module entry point (Core/Modules.lua).
 function MM.Enable(settings)
-  ns.OutOfCombat(function() build(settings) MM.WatchHybrid() end)
+  ns.OutOfCombat(function() build(settings) MM.WatchHybrid() ns.Visibility.Calm(MM.holder, "minimap") end)
   for _, event in ipairs({ "ZONE_CHANGED", "ZONE_CHANGED_INDOORS", "ZONE_CHANGED_NEW_AREA", "PLAYER_ENTERING_WORLD" }) do
     ns.On(event, function() if MM.zone then MM.UpdateZone() end end)
   end
