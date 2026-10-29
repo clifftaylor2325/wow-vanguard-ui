@@ -371,6 +371,14 @@ function GW.FadeParts(frame, keys)
   end
 end
 
+-- Fades a texture and keeps it faded each time the game sets its alpha again (a plate or highlight the game lights by
+-- alpha on hover or selection rather than by showing it); anything that is not a region is skipped.
+function GW.KeepFaded(part)
+  if type(part) ~= "table" or not part.SetAlpha then return end
+  part:SetAlpha(0)
+  GW.HookAfter(part, "SetAlpha", function(p, alpha) if alpha ~= 0 then p:SetAlpha(0) end end)
+end
+
 -- Fades each global texture or frame named in names that this client has (by alpha).
 function GW.FadeNamed(names)
   for _, name in ipairs(names) do
@@ -1275,14 +1283,16 @@ GW.TALENT_ICONS = { "ResetButton", "UndoButton" }
 -- own); each is looked for on both, and one the client lacks is skipped.
 GW.BOOK_REFILLS = { "SetDataProvider", "SetCurrentPage", "UpdateFrames", "UpdateDisplay" }
 
--- One spell entry of the book (a name, a rank line and an icon button on a smudged plate): the plate faded, the
--- icon in the item-slot look, the name and rank in the theme's text roles (the game colours them for parchment,
--- dark brown on the dark panel).
+-- One spell entry of the book (a name, a rank line, the level an unlearned spell needs and an icon button on a smudged
+-- plate): the plate faded, under the mouse too (the game lights it by alpha on hover), the icon in the item-slot look,
+-- the name, rank and level in the theme's text roles (the game colours them for parchment, dark brown on the dark
+-- panel). The level takes the brighter grey: the game dims an unlearned spell's lines to 60%.
 local function dressBookEntry(entry)
-  GW.FadeParts(entry, { "Backplate" })
+  GW.KeepFaded(entry.Backplate)
   GW.DressIcon(entry.Button)
   GW.SkinText(entry.Name, "label", "text")
   GW.SkinText(entry.SubName, "small", "muted")
+  GW.SkinText(entry.RequiredLevel, "small", "text2")
 end
 
 -- One section head of the book (a name over a rule, on a smudged plate): the plate and rule faded, the name a heading.
@@ -1894,7 +1904,7 @@ local function followSelected(row)
   for _, name in ipairs({ "SetShown", "Show", "Hide" }) do
     GW.HookAfter(mark, name, function() GW.FollowMark(row, mark) end)
   end
-  GW.HookAfter(mark, "SetAlpha", function(m, alpha) if alpha ~= 0 then m:SetAlpha(0) end end)
+  GW.KeepFaded(mark)
 end
 
 -- One result line (AuctionHouseItemListLineTemplate) or summary line as a selectable theme row: the stripe and the

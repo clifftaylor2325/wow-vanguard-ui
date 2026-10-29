@@ -3066,6 +3066,12 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: a screenshot is taken and the button keeps its keys; the spell's icon is picked and the spell stays on the bar.
 - If it fails, paste: what was bound or removed, and `/vg errors`.
 
+### 33.150 The spellbook's level lines, and its plates under the mouse
+
+- Do: on a low-level character, open the spellbook (P) on a page with spells you haven't learned yet, and move the mouse over a few spells.
+- Expect: each "Level N" line under an unlearned spell reads in light grey on the dark page, lined up under the spell's name; no grey smudge shows behind a spell under the mouse.
+- If it fails, paste: a screenshot of the page, and `/vg errors`.
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ## When you are done
