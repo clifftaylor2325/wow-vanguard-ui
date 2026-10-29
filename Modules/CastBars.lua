@@ -295,19 +295,10 @@ CB.INTERRUPTS = {
   PRIEST = { { 15487 } },
 }
 
--- The client's "does the player know this spell" call: C_SpellBook.IsSpellKnown, else the older
--- IsPlayerSpell (on Forever only loaded with the game's deprecation fallbacks), else nil.
-local function spellKnownCall()
-  local fn = C_SpellBook and C_SpellBook.IsSpellKnown
-  if type(fn) == "function" then return fn end
-  if type(IsPlayerSpell) == "function" then return IsPlayerSpell end
-  return nil
-end
-
 -- The interrupt you know and would use (the best rank of the first family you have), or nil.
 function CB.InterruptSpell()
   local _, class = UnitClass("player")
-  local known = spellKnownCall()
+  local known = ns.SpellKnownCall()
   if not known then return nil end
   for _, family in ipairs(CB.INTERRUPTS[class] or {}) do
     for _, id in ipairs(family) do
