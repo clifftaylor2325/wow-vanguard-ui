@@ -77,6 +77,8 @@ read_globals = {
   "C_ChatBubbles",
   -- P3.4 Keybind mode: binding a key to a button's command and saving it in the binding set in use.
   "SetBinding", "SaveBindings", "GetCurrentBindingSet",
+  -- P4a Key setup's apply engine: loading a key set (the switch to "Only this character", and a rollback).
+  "LoadBindings",
   -- P3.5 Shared media: the bundled libraries' loader (Libs/LibStub).
   "LibStub",
   -- P3.8 Chat: the game's time formatter and clock (chat timestamps), its chat windows list.

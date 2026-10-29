@@ -126,6 +126,7 @@ Modules/GroupThreat.lua
 Modules/ActionBars.lua
 Modules/ActionBarLayout.lua
 Modules/ActionBarKeybinds.lua
+Modules/KeybindsApply.lua
 Modules/KeysView.lua
 Modules/KeysViewCard.lua
 Modules/SpecialBars.lua

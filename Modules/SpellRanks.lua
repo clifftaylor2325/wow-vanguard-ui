@@ -65,28 +65,12 @@ function SR.Describe(s)
   return ns.Format(L["{button}: {spell} Rank {old} -> Rank {new}"], { button = slotLabel(s.slot), spell = s.name, old = s.old, new = s.new })
 end
 
--- Picks the spell up onto the cursor; whether the cursor holds a spell now.
-local function pickup(spellID)
-  local api = type(C_Spell) == "table" and C_Spell.PickupSpell
-  if type(api) == "function" then api(spellID) else ns.Client.Call("PickupSpell", spellID) end
-  return ns.Client.Call("GetCursorInfo") == "spell"
-end
-
--- Puts spellID on a button, leaving the cursor empty; whether it worked. Never with something already on the cursor.
-local function place(slot, spellID)
-  if ns.Client.Call("GetCursorInfo") then return false end
-  local ok = pickup(spellID)
-  if ok then ns.Client.Call("PlaceAction", slot) end
-  ns.Client.Call("ClearCursor")
-  return ok
-end
-
 -- /vg ranks swap: every older rank on the bars becomes the newest, out of combat.
 function SR.Swap()
   if ns.InCombat() then return ns.Chat(L["Bars can't change in combat. Try again after the fight."]) end
   local done = 0
   for _, s in ipairs(SR.Stale()) do
-    if place(s.slot, s.to) then done = done + 1 end
+    if ns.PlaceSpell(s.slot, s.to) then done = done + 1 end
   end
   ns.Chat(done > 0 and ns.Format(L["Put the newest rank on {count} button(s)."], { count = done }) or L["No button changed."])
 end
