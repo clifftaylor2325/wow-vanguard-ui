@@ -153,6 +153,8 @@ it("action bar dragging", () => {
   expect(drag() === null, "locked buttons don't drag without Shift").toBeTruthy();
   addon.eval("IsShiftKeyDown = function() return true end");
   expect(drag() === 2, "Shift-drag picks the action up").toBeTruthy();
+  addon.eval("PickupAction = function(slot, copy) __picked, __copy = slot, copy end IsAnyIconSelectorPopupFrameShown = function() return true end");
+  expect([drag(), addon.eval("return __copy")], "with a macro's icon picker open, the drag only copies the action, as the game's buttons do").toEqual([2, true]);
   addon.eval("local b = Vanguard_Bar2Button5; b:GetScript('OnReceiveDrag')(b)");
   expect(addon.eval("return __placed") === 65, "dropping onto a button places the action in its slot").toBeTruthy();
 });

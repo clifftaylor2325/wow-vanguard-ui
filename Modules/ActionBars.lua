@@ -389,10 +389,16 @@ end
 
 -- Building ------------------------------------------------------------------------------
 
+-- Whether a drag only copies the action to the cursor and leaves it on the bar: while an icon picker
+-- (a new macro's) is open, as the game's own buttons do, so dragging a spell to it for its icon keeps it.
+local function copiesOnly()
+  return type(IsAnyIconSelectorPopupFrameShown) == "function" and IsAnyIconSelectorPopupFrameShown() == true
+end
+
 -- Drag an action off the button (Shift needed while buttons are locked).
 local function onDragStart(b)
   if not AB.settings.lockButtons or (IsShiftKeyDown and IsShiftKeyDown()) then
-    call("PickupAction", b.action)
+    call("PickupAction", b.action, copiesOnly())
     AB.UpdateButton(b)
   end
 end
