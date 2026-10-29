@@ -194,6 +194,38 @@ function ns.ItemName(id)
   return "item " .. id
 end
 
+-- The client's "does the player know this spell" call: C_SpellBook.IsSpellKnown, else the older
+-- IsPlayerSpell (on Forever only loaded with the game's deprecation fallbacks), else nil.
+---@return function|nil
+function ns.SpellKnownCall()
+  local fn = C_SpellBook and C_SpellBook.IsSpellKnown
+  if type(fn) == "function" then return fn end
+  if type(IsPlayerSpell) == "function" then return IsPlayerSpell end
+  return nil
+end
+
+-- Picks a spell up onto the cursor from the spellbook (C_Spell, else the old global); whether the cursor holds a spell now.
+local function pickupSpell(spellID)
+  local api = type(C_Spell) == "table" and C_Spell.PickupSpell
+  if type(api) == "function" then api(spellID) else C.Call("PickupSpell", spellID) end
+  return C.Call("GetCursorInfo") == "spell"
+end
+
+-- Puts a spell on an action slot from the spellbook and leaves the cursor empty. PlaceAction swaps, so what the slot
+-- held comes up on the cursor and is dropped: call it only over an empty slot or a spell the player can pick up again
+-- from the spellbook. Refuses when the cursor already holds something. Out of combat only (the client refuses both
+-- calls in a fight). True when the spell was picked up and placed.
+---@param slot number
+---@param spellID number
+---@return boolean
+function ns.PlaceSpell(slot, spellID)
+  if C.Call("GetCursorInfo") then return false end
+  local ok = pickupSpell(spellID)
+  if ok then C.Call("PlaceAction", slot) end
+  C.Call("ClearCursor")
+  return ok
+end
+
 -- Group headers without snippets ------------------------------------------------------------
 -- The raid and main tank headers configure each button they make through an
 -- init snippet. Without snippets the header copies the clicks itself

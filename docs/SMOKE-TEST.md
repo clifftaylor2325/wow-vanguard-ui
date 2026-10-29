@@ -3150,6 +3150,12 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: (the harness's model, not yet seen in game) each call in the fight is refused with an ADDON_ACTION_BLOCKED line (or answers nothing); `GetBinding(i)` shows two keys at most and no `SPELL` row; `SetBinding` takes `SHIFT-CTRL-A` or refuses it, and refuses `a`. The harness (scripts/lib/wow-keybinds.lua, wow-taint.lua) models these answers as written there; a different answer is a task to change the model.
 - If it fails, paste: what the test addon printed, and `/vg errors`.
 
+### 33.164 Key setup's apply engine (once the key setup wizard ships)
+
+- Do: on WoW Forever, with the wizard that phase 4b adds, apply a class preset on a new character (Attack and a first spell on bar 1); note the bars and keys. Put back one key, then put everything back. Apply again with "Only this character", then switch the character back to account keys in the game's Key Bindings and try to put everything back. Apply once more, start a fight with a training dummy and try to apply or put back during it. Finally apply on one character with account keys, put everything back on a second character, and log in as the first again.
+- Expect: (the harness's model, not yet seen in game) Attack moves to bar 3 and keys 1 to 4 work at once; a put-back leaves the bars and keys exactly as before, the bar 1 macro untouched; the account keys don't change with "Only this character", and the mismatch refuses with its chat line; in the fight both are refused with a chat line and no ADDON_ACTION_BLOCKED; the first character's moved spells are back after its login. `/vg errors` stays empty. The engine assumes two things this checks: the action slots are readable at the load screen (the login put-back reads them), and LoadBindings switches the key set.
+- If it fails, paste: what chat said, a screenshot of the bars, and `/vg errors`.
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ## When you are done
