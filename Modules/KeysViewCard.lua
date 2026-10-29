@@ -2,7 +2,9 @@
 -- key shows the icon of the spell, macro or item on it and a short key name, with the
 -- None, Shift, Ctrl and Alt tabs over it and the tab's bound keys listed under it. The
 -- tabs follow the modifier held. Hover a key for what it does. It only reads: no key is
--- written, so it stays open in combat. Data: Modules/KeysView.lua.
+-- written, so it stays open in combat. On WoW Forever, right-click a key key setup changed to
+-- put it back (Modules/KeybindsApply.lua). The drawn keyboard, KV.Keyboard, is shared with key
+-- setup (Modules/KeybindsWizard.lua). Data: Modules/KeysView.lua.
 
 local ADDON, ns = ...
 
@@ -16,21 +18,11 @@ local AB = ns.GetModule("ActionBars")
 -- Sizes (units): a key, the gap between keys, a tab's width, and the list's lines and line height.
 local SIZE = { cap = 34, gap = 3, tab = 84, tabRow = 30, lines = 8, line = 16 }
 -- The keyboard picture's height: its rows (the space bar's included), then the mouse row.
-local KEYBOARD_H = (#KV.ROWS + 1) * (SIZE.cap + SIZE.gap) + T.SPACE.gap
+KV.KEYBOARD_H = (#KV.ROWS + 1) * (SIZE.cap + SIZE.gap) + T.SPACE.gap
 -- How faint a free key is drawn, so it reads as free without its colour.
 local FREE_ALPHA = 0.55
 -- The page's current frames, replaced when the page is built again.
 local view = {}
-
--- Shows what a key does in a tooltip beside it.
-local function showTip(cap)
-  GameTooltip:SetOwner(cap, "ANCHOR_RIGHT")
-  GameTooltip:SetText(KV.KeyText(cap.chord))
-  local entry = cap.entry
-  GameTooltip:AddLine(entry and entry.place or L["Nothing is bound to this key."], T.RGB("text"))
-  if entry and entry.name then GameTooltip:AddLine(entry.name, T.RGB("text2")) end
-  GameTooltip:Show()
-end
 
 -- Puts a key's label where its state wants it: in the corner over an icon, else in the middle.
 local function placeLabel(cap, hasIcon)
@@ -38,27 +30,28 @@ local function placeLabel(cap, hasIcon)
   cap.label:SetPoint(hasIcon and "TOPLEFT" or "CENTER", hasIcon and 3 or 0, hasIcon and -2 or 0)
 end
 
--- Paints a key for what it holds now: the icon and label of what is on it, or the muted label of a free key.
-local function paintCap(cap)
-  cap.chord = KV.Chord(KV.TabById(KV.tab), cap.key)
-  cap.entry = KV.Lookup(cap.chord)
-  local icon = cap.entry and cap.entry.icon
+-- Shows an icon on a key (nil for none), with its label in the corner over it or in the middle without.
+---@param cap table  a key of KV.Keyboard
+---@param icon any|nil
+function KV.SetCapIcon(cap, icon)
   cap.icon:SetTexture(icon)
   cap.icon:SetShown(icon ~= nil)
   placeLabel(cap, icon ~= nil)
-  T.Color(cap.label, cap.entry and (icon and "text" or "accentText") or "disabled")
-  cap:SetAlpha(cap.entry and 1 or FREE_ALPHA)
 end
 
--- A key shows its tooltip under the mouse (hooked, so the button look keeps its hover).
-local function wireTip(cap)
-  cap:HookScript("OnEnter", ns.Guard("enter key", showTip))
+-- A key's scripts: its tooltip under the mouse (hooked, so the button look keeps its hover) and, when the
+-- keyboard's owner takes clicks, a left or right click.
+local function wireCap(cap, opts)
+  cap:HookScript("OnEnter", ns.Guard("enter key", function(self) GameTooltip:SetOwner(self, "ANCHOR_RIGHT") opts.tip(self) GameTooltip:Show() end))
   cap:HookScript("OnLeave", ns.Guard("leave key", function() GameTooltip:Hide() end))
+  if not opts.click then return end
+  cap:RegisterForClicks("LeftButtonUp", "RightButtonUp")
+  cap:SetScript("OnClick", ns.Guard("click key", opts.click))
 end
 
 -- A key: a themed button with its icon and short name, wide for the space bar.
-local function newCap(parent, key, width)
-  local cap = T.Button(CreateFrame("Button", nil, parent))
+local function newCap(r, key, width)
+  local cap = T.Button(CreateFrame("Button", nil, r))
   cap:SetSize(width, SIZE.cap)
   cap.key = key
   cap.icon = cap:CreateTexture(nil, "ARTWORK")
@@ -66,7 +59,7 @@ local function newCap(parent, key, width)
   cap.icon:SetPoint("CENTER")
   cap.label = T.Text(cap:CreateFontString(nil, "OVERLAY"), "barSmall")
   cap.label:SetText(AB.ShortKey(key))
-  wireTip(cap)
+  wireCap(cap, r.opts)
   return cap
 end
 
@@ -91,9 +84,58 @@ local function buildMouse(r, y)
   end
 end
 
--- Repaints every key for the tab showing now.
+-- Repaints every key with the keyboard's painter.
 local function refreshKeyboard(r)
-  for _, cap in ipairs(r.caps) do paintCap(cap) end
+  for _, cap in ipairs(r.caps) do r.opts.paint(cap) end
+end
+
+-- The drawn keyboard and mouse, width wide and KV.KEYBOARD_H tall: r.caps holds its keys (each with key, icon and
+-- label), r:Refresh() repaints them. opts: paint(cap) paints a key, tip(cap) fills the tooltip GameTooltip shows
+-- over it, click(cap, button) (optional) takes a left or right click. Shared by the Your keys card and key setup.
+---@param parent table
+---@param width number
+---@param opts table  paint, tip, click
+---@return table r
+function KV.Keyboard(parent, width, opts)
+  local r = CreateFrame("Frame", nil, parent)
+  r:SetSize(width, KV.KEYBOARD_H)
+  r.caps, r.opts, r.Refresh = {}, opts, refreshKeyboard
+  for i, row in ipairs(KV.ROWS) do buildRow(r, row, (i - 1) * (SIZE.cap + SIZE.gap)) end
+  buildMouse(r, #KV.ROWS * (SIZE.cap + SIZE.gap) + T.SPACE.gap)
+  return r
+end
+
+-- The Your keys card ------------------------------------------------------------------------------
+
+-- Whether Vanguard's key setup changed the key, so it can be put back (WoW Forever only).
+local function changedHere(chord)
+  return ns.IsForever() and ns.KeybindsApply.Changed(chord)
+end
+
+-- What a key does, in the tooltip; a key key setup changed says how to put it back.
+local function showTip(cap)
+  GameTooltip:SetText(KV.KeyText(cap.chord))
+  local entry = cap.entry
+  GameTooltip:AddLine(entry and entry.place or L["Nothing is bound to this key."], T.RGB("text"))
+  if entry and entry.name then GameTooltip:AddLine(entry.name, T.RGB("text2")) end
+  if changedHere(cap.chord) then GameTooltip:AddLine(L["Right-click to put back what this key did before key setup."], T.RGB("accentText")) end
+end
+
+-- Paints a key for what it holds now: the icon and label of what is on it, or the muted label of a free key.
+local function paintCap(cap)
+  cap.chord = KV.Chord(KV.TabById(KV.tab), cap.key)
+  cap.entry = KV.Lookup(cap.chord)
+  local icon = cap.entry and cap.entry.icon
+  KV.SetCapIcon(cap, icon)
+  T.Color(cap.label, cap.entry and (icon and "text" or "accentText") or "disabled")
+  cap:SetAlpha(cap.entry and 1 or FREE_ALPHA)
+end
+
+-- A right-click on a key key setup changed asks, then puts back what it did before.
+local function clickCap(cap, button)
+  if button ~= "RightButton" or not changedHere(cap.chord) then return end
+  local chord = cap.chord
+  ns.Ask(ns.Format(L["Put back what {key} did before key setup changed it?"], { key = KV.KeyText(chord) }), L["Put back"], function() ns.KeybindsApply.PutBack(chord) end)
 end
 
 -- The tab to show now: the modifier held, else the one picked.
@@ -112,14 +154,9 @@ local function syncTab()
   KV.tab = wantedTab()
 end
 
--- The keyboard row kind: the letter rows, the space bar and the mouse.
+-- The keyboard row kind: the card's keyboard, painted with what every key does now.
 local function keyboardBuilder(parent, _, width)
-  local r = CreateFrame("Frame", nil, parent)
-  r:SetSize(width, KEYBOARD_H)
-  r.caps = {}
-  for i, row in ipairs(KV.ROWS) do buildRow(r, row, (i - 1) * (SIZE.cap + SIZE.gap)) end
-  buildMouse(r, #KV.ROWS * (SIZE.cap + SIZE.gap) + T.SPACE.gap)
-  r.Refresh = refreshKeyboard
+  local r = KV.Keyboard(parent, width, { paint = paintCap, tip = showTip, click = clickCap })
   r:HookScript("OnShow", ns.Guard("show keys card", syncTab))
   view.keyboard = r
   return r
@@ -208,7 +245,7 @@ local function listBuilder(parent, _, width)
 end
 
 O.AddRowKind("keystabs", tabsBuilder, SIZE.tabRow)
-O.AddRowKind("keyboard", keyboardBuilder, KEYBOARD_H + T.SPACE.gap)
+O.AddRowKind("keyboard", keyboardBuilder, KV.KEYBOARD_H + T.SPACE.gap)
 O.AddRowKind("keylist", listBuilder, SIZE.lines * SIZE.line + T.SPACE.gap)
 
 -- Holding one of Shift, Ctrl or Alt shows that tab and letting go goes back to the one picked, while the

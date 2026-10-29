@@ -187,6 +187,29 @@ function GetBinding(i)
   return row.command, row.category, keys[1], keys[2]
 end
 
+-- Key names: GetBindingText(key) ---------------------------------------------------------------
+-- The key as the player reads it, from the enUS client's KEY_ strings (GlobalStrings: KEY_BUTTON4 "Mouse Button 4",
+-- KEY_SPACE "Spacebar"); a key without one keeps its own name, and the modifiers stay as written ("SHIFT-Mouse
+-- Button 4"; unverified on a Forever client, whose casing the keybind phases' in-game checks settle).
+
+local KEY_NAMES = {
+  BUTTON3 = "Middle Mouse", BUTTON4 = "Mouse Button 4", BUTTON5 = "Mouse Button 5", MOUSEWHEELUP = "Mouse Wheel Up",
+  MOUSEWHEELDOWN = "Mouse Wheel Down", SPACE = "Spacebar", ESCAPE = "Escape", BACKSPACE = "Backspace", TAB = "Tab",
+  ENTER = "Enter",
+}
+
+-- GetBindingText(key): the key's text; "" for no key.
+function GetBindingText(key)
+  if type(key) ~= "string" then return "" end
+  local mods, base = "", key
+  repeat
+    local mod, rest = base:match("^(%u+%-)(.+)$")
+    local known = mod == "ALT-" or mod == "CTRL-" or mod == "SHIFT-" or mod == "META-"
+    if known then mods, base = mods .. mod, rest end
+  until not known
+  return mods .. (KEY_NAMES[base] or base)
+end
+
 -- Modifier keys: MODIFIER_STATE_CHANGED(key, down) fires for each one a test changes ---------
 
 -- The key name each held modifier fires, the left one.

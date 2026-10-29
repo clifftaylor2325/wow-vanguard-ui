@@ -638,12 +638,9 @@ local function describe(key)
   return ns.Format(L["{key} -> {action} on {name}"], { key = CC.KeyName(b.key), action = CC.ActionText(b), name = playerName() })
 end
 
--- A key on the tile, as the binding it would be. A key the tile reads is kept from the game (so testing 1 casts
--- nothing); Escape, which still closes the window, and a lone modifier, which waits, go on to the game.
-local function tileKey(tile, k)
-  local keep = k ~= "ESCAPE" and not W.MODIFIER_KEYS[k]
-  if not ns.InCombat() and ns.Client.Has("keyPropagate") then tile:SetPropagateKeyboardInput(not keep) end
-  if keep then tile.result:SetText(describe(W.Modifiers() .. k)) end
+-- A key on the tile (W.HoverKeys keeps it from the game, so testing 1 casts nothing), as the binding it would be.
+local function tileKey(tile, chord)
+  tile.result:SetText(describe(chord))
 end
 
 -- A click on the tile, as the mouse binding it would be.
@@ -651,16 +648,9 @@ local function tileClick(tile, button)
   tile.result:SetText(describe(W.Modifiers():lower() .. "BUTTON" .. (W.MOUSE_BUTTONS[button] or 1)))
 end
 
--- The pointer is over the tile: it reads keys until the pointer leaves, or never in a fight, when it
--- could not pass them on (movement and keybinds would be swallowed).
+-- The pointer is over the tile: it asks for a press (W.HoverKeys reads keys until the pointer leaves).
 local function tileEnter(tile)
-  tile:EnableKeyboard(not ns.InCombat())
   tile.result:SetText(L["Press a key or click..."])
-end
-
--- The pointer left the tile: it stops reading keys, so the game has them all again.
-local function tileLeave(tile)
-  tile:EnableKeyboard(false)
 end
 
 -- The wheel over the tile, as the wheel binding it would be.
@@ -668,31 +658,15 @@ local function tileWheel(tile, delta)
   tile.result:SetText(describe(W.Modifiers() .. (delta > 0 and "MOUSEWHEELUP" or "MOUSEWHEELDOWN")))
 end
 
--- The tile's scripts: keyboard while hovered; keys, clicks and the wheel resolve against the bindings.
+-- The tile's scripts: keys while hovered (W.HoverKeys); keys, clicks and the wheel resolve against the bindings.
 local function wireTile(tile)
   tile:RegisterForClicks("AnyUp")
   tile:EnableMouseWheel(true)
   tile:SetScript("OnEnter", ns.Guard("enter click-cast test tile", tileEnter))
-  tile:SetScript("OnLeave", ns.Guard("leave click-cast test tile", tileLeave))
-  tile:SetScript("OnKeyDown", ns.Guard("key click-cast test tile", tileKey))
   tile:SetScript("OnClick", ns.Guard("click click-cast test tile", tileClick))
   tile:SetScript("OnMouseWheel", ns.Guard("wheel click-cast test tile", tileWheel))
+  W.HoverKeys(tile, tileKey)
 end
-
--- The fight is over: the page's current test tile reads keys again if it is up and the pointer is still on it
--- (the pointer did not leave, so no OnEnter will turn the keyboard back on).
-local function regainTileKeys()
-  local tile = state.tile
-  if tile and tile:IsVisible() and tile:IsMouseOver() then tile:EnableKeyboard(true) end
-end
-
--- A fight starting lets go of the keyboard on the page's current test tile, whose pointer may already be on it,
--- and gives it back when the fight ends. Registered once for the file: the page's builder runs again on every rebuild.
-local function releaseTileKeys()
-  if state.tile then state.tile:EnableKeyboard(false) end
-  ns.AfterCombat(regainTileKeys, "clickcast test tile keys")
-end
-ns.On("PLAYER_REGEN_DISABLED", releaseTileKeys)
 
 -- The tile's health bar, mostly full, with the name over it.
 local function tileBar(tile)
@@ -734,7 +708,6 @@ local function testBuilder(parent, _, width)
   local r = CreateFrame("Frame", nil, parent)
   r:SetSize(width, 60)
   r.tile = sampleTile(r)
-  state.tile = r.tile
   r.tile:SetPoint("LEFT", T.SPACE.gap, 0)
   addResultLine(r)
   wireTile(r.tile)

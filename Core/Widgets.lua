@@ -139,6 +139,58 @@ function W.KeyCapture(parent, caption, onKey)
   return b
 end
 
+-- Hover keys -------------------------------------------------------------------------------
+
+-- The frames the pointer is over that read keys (weak), which a fight makes let go.
+local hovering = setmetatable({}, { __mode = "k" })
+
+-- The pointer is over the frame: it reads keys until the pointer leaves, but never in a fight, when it could not
+-- pass them on (movement and keybinds would be swallowed).
+local function hoverEnter(f)
+  hovering[f] = true
+  f:EnableKeyboard(not ns.InCombat())
+end
+
+-- The pointer left the frame: it stops reading keys, so the game has them all again.
+local function hoverLeave(f)
+  hovering[f] = nil
+  f:EnableKeyboard(false)
+end
+
+-- A key over the frame: Escape (which still closes the window) and a lone modifier (which waits) go on to the game;
+-- any other is kept from it (so pressing 1 casts nothing) and handed over with the modifiers held ("SHIFT-1").
+local function hoverKey(f, key)
+  local keep = key ~= "ESCAPE" and not MODIFIER_KEYS[key]
+  if not ns.InCombat() and ns.Client.Has("keyPropagate") then f:SetPropagateKeyboardInput(not keep) end
+  if keep then f.vgOnHoverKey(f, W.Modifiers() .. key) end
+end
+
+-- The fight is over: a frame still under the pointer reads keys again (no OnEnter will come to turn them back on).
+local function regainHoverKeys()
+  for f in pairs(hovering) do
+    if f:IsVisible() and f:IsMouseOver() then f:EnableKeyboard(true) end
+  end
+end
+
+-- A fight starting: every frame under the pointer lets go of the keyboard, and takes it back when the fight ends.
+local function releaseHoverKeys()
+  for f in pairs(hovering) do f:EnableKeyboard(false) end
+  ns.AfterCombat(regainHoverKeys, "hover keys")
+end
+ns.On("PLAYER_REGEN_DISABLED", releaseHoverKeys)
+
+-- Makes one of the addon's frames read keys while the pointer is over it, out of combat: each key but Escape and a
+-- lone modifier goes to onKey(frame, chord) and not to the game. The frame's own OnEnter and OnLeave stay (hooked),
+-- so set them first.
+---@param f table
+---@param onKey function  onKey(frame, chord)
+function W.HoverKeys(f, onKey)
+  f.vgOnHoverKey = onKey
+  f:HookScript("OnEnter", ns.Guard("enter hover keys", hoverEnter))
+  f:HookScript("OnLeave", ns.Guard("leave hover keys", hoverLeave))
+  f:SetScript("OnKeyDown", ns.Guard("hover key", hoverKey))
+end
+
 -- Text input -------------------------------------------------------------------------------
 
 -- A one-line themed text input, T.CONTROL_H tall.

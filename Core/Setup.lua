@@ -822,9 +822,11 @@ local function reloadReason()
   if state.complete and state.done then return L["Setup is done."] end
 end
 
--- Remembers that setup ran, on the account and for this character, and says how to run it again.
+-- Remembers that setup ran, on the account and for this character, and says how to run it again. On WoW Forever
+-- it also leaves key setup's note (Modules/KeybindsWizard.lua), which offers it once at the next login.
 local function markDone()
   VanguardDB.setupDone, VanguardCharDB.setupDone, VanguardCharDB.pickProfile = true, true, nil
+  if ns.IsForever() and VanguardCharDB.keysOffer == nil then VanguardCharDB.keysOffer = true end
   ns.Chat(AGAIN)
 end
 
