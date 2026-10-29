@@ -78,7 +78,12 @@ GW.ITEM_TEXT_ART = { "ItemTextMaterialTopLeft", "ItemTextMaterialTopRight", "Ite
 GW.ITEM_TEXT_TAGS = { P = "text", H1 = "text", H2 = "text", H3 = "text" }
 -- Quest window texts the game colors for its parchment (dark brown, unreadable
 -- on the dark panel): body text and headings go light.
-GW.QUEST_BODY = { "QuestInfoDescriptionText", "QuestInfoObjectivesText", "QuestInfoRewardText", "QuestProgressText", "GreetingText" }
+GW.QUEST_BODY = {
+  "QuestInfoDescriptionText", "QuestInfoObjectivesText", "QuestInfoRewardText", "QuestProgressText", "GreetingText",
+  "QuestInfoQuestType", "QuestInfoGroupSize", "QuestInfoTimerText", "QuestInfoRequiredMoneyText", "QuestInfoSpellObjectiveLearnLabel",
+}
+-- The strings of the quest rewards frame (keys of QuestInfoRewardsFrame) the game colors for its parchment too.
+GW.QUEST_REWARD_TEXTS = { "Header", "ItemChooseText", "ItemReceiveText", "PlayerTitleText", "QuestSessionBonusReward", "XPFrame.ReceiveText" }
 GW.QUEST_HEADS = { "QuestInfoTitleHeader", "QuestInfoDescriptionHeader", "QuestInfoObjectivesHeader", "QuestProgressTitleText", "CurrentQuestsText", "AvailableQuestsText" }
 -- Push buttons a window keeps outside its button row (the mail's Open All, Cancel and Send; the trade's Trade and Cancel; the dressing room's Close and Reset).
 GW.EXTRA_BUTTONS = {
@@ -1024,8 +1029,8 @@ local function skinInbox()
   for i = 1, 7 do skinMailRow(i) end
   local inbox = _G.InboxFrame
   if type(inbox) ~= "table" then return end
-  GW.SkinPager(inbox.PrevPageButton, "left")
-  GW.SkinPager(inbox.NextPageButton, "right")
+  GW.SkinPager(inbox.PrevPageButton or _G.InboxPrevPageButton, "left")
+  GW.SkinPager(inbox.NextPageButton or _G.InboxNextPageButton, "right")
   GW.TextNamed({ "InboxCurrentPage" }, "small", "text2")
 end
 
@@ -1072,14 +1077,14 @@ end
 
 -- The group loot rolls ------------------------------------------------------------------------
 
--- A roll window's four buttons (the dice, coin and pass keys of LootButtonContainer).
+-- A roll window's four buttons (the dice, coin and pass keys of LootButtonContainer on Forever, of the roll window on retail).
 GW.LOOT_ROLLS = { "NeedButton", "GreedButton", "PassButton", "TransmogButton" }
 
 -- One roll window's inside: its four buttons on control tiles (the game sets their icons), the countdown as a
 -- flat track, and the item's icon in the item look (the game's quality ring faded: the item's name keeps its colour).
 local function rollInside(frame)
-  local box = frame.LootButtonContainer
-  for _, key in ipairs(GW.LOOT_ROLLS) do GW.SkinPlate(type(box) == "table" and box[key] or nil) end
+  local box = frame.LootButtonContainer or frame
+  for _, key in ipairs(GW.LOOT_ROLLS) do GW.SkinPlate(box[key]) end
   GW.SkinProgress(frame.Timer)
   if type(frame.IconFrame) ~= "table" then return end
   GW.FadeParts(frame.IconFrame, { "Border" })
@@ -1175,8 +1180,8 @@ GW.INSIDES.ReadyCheckFrame = function()
   GW.FadeParts(listener, { "Bg", "NineSlice" })
   GW.FadeFrame(GW.Part(listener, "NineSlice"))
   GW.SkinTitle(type(listener.TitleContainer) == "table" and listener.TitleContainer.TitleText or nil)
-  GW.SkinButton(listener.YesButton)
-  GW.SkinButton(listener.NoButton)
+  GW.SkinButton(listener.YesButton or _G.ReadyCheckFrameYesButton)
+  GW.SkinButton(listener.NoButton or _G.ReadyCheckFrameNoButton)
   GW.TextNamed({ "ReadyCheckFrameText" }, "label", "text")
 end
 
@@ -1232,12 +1237,14 @@ end
 -- Books and letters ---------------------------------------------------------------------------
 
 -- A book or letter's inside: the page area an inset (its parchment is faded with the text, GW.LightItemText),
--- the page arrows and the reading bar, and the page count in small text.
+-- the page arrows and the reading bar (its fill the dim accent), and the page count in small text.
 GW.INSIDES.ItemTextFrame = function()
   GW.InsetPanel(_G.ItemTextScrollFrame)
   GW.SkinPager(_G.ItemTextPrevPageButton, "left")
   GW.SkinPager(_G.ItemTextNextPageButton, "right")
-  GW.SkinProgress(_G.ItemTextStatusBar)
+  local bar = _G.ItemTextStatusBar
+  GW.SkinProgress(bar)
+  if type(bar) == "table" and bar.SetStatusBarColor then T.BarColor(bar, "accentDim") end
   GW.TextNamed({ "ItemTextCurrentPage" }, "small", "text2")
 end
 
@@ -1915,10 +1922,37 @@ local function lightDressed(names)
   end
 end
 
--- The quest window's texts in light body text and light headings (the quest's name included).
+-- The rewards frame's own texts (the Rewards heading, "You will receive", "Choose one of these"), each light in a
+-- dressed window.
+local function lightRewardTexts()
+  for _, path in ipairs(GW.QUEST_REWARD_TEXTS) do
+    local fs = GW.Part(_G.QuestInfoRewardsFrame, path)
+    if fs and fs.SetTextColor and inDressedWindow(fs) then T.Color(fs, "text") end
+  end
+end
+
+-- Whether the game marked an objective line done: it adds " (Complete)" to the text, which can be secret.
+local function objectiveDone(fs)
+  local text = fs:GetText()
+  if type(text) ~= "string" or ns.IsSecret(text) or type(COMPLETE) ~= "string" then return false end
+  return string.find(text, " (" .. COMPLETE .. ")", 1, true) ~= nil
+end
+
+-- The objective lines the game shows in a dressed window: a done line muted, every other line in the text colour.
+local function lightObjectives()
+  local lines = GW.Part(_G.QuestInfoObjectivesFrame, "Objectives")
+  for _, fs in ipairs(lines or {}) do
+    if fs:IsShown() and inDressedWindow(fs) then T.Color(fs, objectiveDone(fs) and "muted" or "text") end
+  end
+end
+
+-- The quest window's texts in light body text and light headings (the quest's name included), its rewards and
+-- objective lines too.
 function GW.LightQuestText()
   lightDressed(GW.QUEST_BODY)
   lightDressed(GW.QUEST_HEADS)
+  lightRewardTexts()
+  lightObjectives()
 end
 
 -- The gossip window's list of lines (greeting and options), or nil on a client without it.

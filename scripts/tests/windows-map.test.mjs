@@ -221,6 +221,18 @@ it("world map: the crumbs' labels are light and their dropdown arrows keep the a
   expect(addon.eval("return { #ns.errors, ns.Theme.PaintedCount() - " + painted + " }"), "the game's redraws add only the new crumb").toEqual([0, 1]);
 });
 
+it("world map on retail: the tracking buttons are no keys of the map, only entries of its overlayFrames list (found by their mixin methods)", () => {
+  const addon = loggedIn(MAP_PARTS_ENV + `
+    local map = WorldMapFrame
+    local filter, pin = map.WorldMapTrackingOptionsButton, map.WorldMapTrackingPinButton
+    filter.GetActiveFilters = function() end pin.SetActive = function() end
+    map.WorldMapTrackingOptionsButton, map.WorldMapTrackingPinButton = nil, nil
+    map.overlayFrames = { CreateFrame("Frame", nil, map), filter, pin }`);
+  addon.eval("WorldMapFrame:Show()");
+  expect(addon.eval("local o = WorldMapFrame.overlayFrames return { o[2].Icon:GetAlpha(), o[3].Icon:GetAlpha(), o[3].Background:GetAlpha(), o[3].Border:GetAlpha() }"), "the filter's and pin's yellow icons, the pin's disc and ring are faded").toEqual([0, 0, 0, 0]);
+  expect(addon.eval("local o = WorldMapFrame.overlayFrames return { ns.FrameState('vgMapGlyph')[o[2]] ~= nil, ns.FrameState('vgMapGlyph')[o[3]] ~= nil, ns.FrameState('vgMapGlyph')[o[1]] == nil, #ns.errors }"), "each gets its theme glyph, the other overlay frame is left alone").toEqual([true, true, true, 0]);
+});
+
 it("world map: a client without the floor dropdown, the tracking buttons or the crumbs' arrows loads cleanly", () => {
   const bare = loggedIn(WORLD_MAP_ENV + "WorldMapFrame.WorldMapTrackingPinButton = {} WorldMapFrame.NavBar.home.MenuArrowButton = {} WorldMapFrame.SidePanelToggle.OpenButton.GetPushedTexture = nil");
   bare.eval("WorldMapFrame:Show()");
@@ -328,27 +340,34 @@ it("quest panel in the map: dressed even while Vanguard's quest log is on (its M
 });
 
 
-// TEST-ONLY reward tiles of the quest details (QuestInfoItem1-2 with a name plate and an icon, and the XP tile with a
-// ReputationBG plate), made by the game as QuestInfo_Display runs.
+// TEST-ONLY reward tiles as the game builds them (QuestInfo.xml): the quest window's QuestInfoRewardsFrame with two item
+// tiles in its RewardButtons list (named "$parentQuestInfoItem<n>", so never the global QuestInfoItem<n>) and its XP tile
+// (the global QuestInfoXPFrame, with a ReputationBG plate), the map's MapQuestInfoRewardsFrame with its own item tile, XP
+// tile and a money tile (unnamed keys of the frame), made by the game as QuestInfo_Display runs.
 const QUEST_REWARDS_ENV = QUEST_MAP_ENV + `
-  for i = 1, 2 do
-    local tile = CreateFrame("Button", "QuestInfoItem" .. i, UIParent) tile.NameFrame, tile.Icon = tile:CreateTexture(), tile:CreateTexture()
-    tile.NameFrame:SetAlpha(1)
-  end
-  QuestInfoXPFrame = CreateFrame("Frame", "QuestInfoXPFrame", UIParent) QuestInfoXPFrame.ReputationBG = QuestInfoXPFrame:CreateTexture()
+  local function tile(parent, name) local t = CreateFrame("Button", name, parent) t.NameFrame, t.Icon = t:CreateTexture(), t:CreateTexture() t.NameFrame:SetAlpha(1) return t end
+  local big = CreateFrame("Frame", "QuestInfoRewardsFrame", UIParent)
+  big.RewardButtons = { tile(big, "QuestInfoRewardsFrameQuestInfoItem1"), tile(big, "QuestInfoRewardsFrameQuestInfoItem2") }
+  big.XPFrame = CreateFrame("Frame", "QuestInfoXPFrame", big) big.XPFrame.ReputationBG = big.XPFrame:CreateTexture()
+  local map = CreateFrame("Frame", "MapQuestInfoRewardsFrame", UIParent)
+  map.RewardButtons = { tile(map, "MapQuestInfoRewardsFrameQuestInfoItem1") }
+  map.XPFrame, map.MoneyFrame = tile(map), tile(map)
   for _, key in ipairs({ "AbandonButton", "TrackButton" }) do
     local b = QuestMapFrame.QuestsFrame.DetailsFrame[key] local fs = b:CreateFontString(nil, "OVERLAY") fs:SetFont("TEST-ONLY-GAME", 12, "") b:SetFontString(fs)
   end
   __made = false
-  function QuestInfo_Display() if not __made then __made = true CreateFrame("Button", "QuestInfoItem3", UIParent).NameFrame = UIParent:CreateTexture() end end
+  function QuestInfo_Display()
+    if not __made then __made = true QuestInfoRewardsFrame.RewardButtons[3] = tile(QuestInfoRewardsFrame, "QuestInfoRewardsFrameQuestInfoItem3") end
+  end
 `;
 
 it("quest panel in the map: the reward tiles lose their plates and the buttons' labels are in the theme (Abandon in the danger colour)", () => {
   const addon = loggedIn(QUEST_REWARDS_ENV);
   addon.eval("QuestMapFrame:Show()");
-  expect(addon.eval("return { QuestInfoItem1.NameFrame:GetAlpha(), QuestInfoItem2.NameFrame:GetAlpha(), QuestInfoXPFrame.ReputationBG:GetAlpha() }"), "the name plates and the XP plate are faded").toEqual([0, 0, 0]);
+  expect(addon.eval("local b = QuestInfoRewardsFrame return { b.RewardButtons[1].NameFrame:GetAlpha(), b.RewardButtons[2].NameFrame:GetAlpha(), b.XPFrame.ReputationBG:GetAlpha() }"), "the quest window's name plates and XP plate are faded").toEqual([0, 0, 0]);
+  expect(addon.eval("local m = MapQuestInfoRewardsFrame return { m.RewardButtons[1].NameFrame:GetAlpha(), m.XPFrame.NameFrame:GetAlpha(), m.MoneyFrame.NameFrame:GetAlpha() }"), "so are the map's item, XP and money tiles").toEqual([0, 0, 0]);
   addon.eval("QuestInfo_Display()");
-  expect(addon.eval("return QuestInfoItem3.NameFrame:GetAlpha()"), "a tile the game makes as a quest is shown is dressed after QuestInfo_Display").toBe(0);
+  expect(addon.eval("return QuestInfoRewardsFrame.RewardButtons[3].NameFrame:GetAlpha()"), "a tile the game makes as a quest is shown is dressed after QuestInfo_Display").toBe(0);
   const d = "QuestMapFrame.QuestsFrame.DetailsFrame";
   expect(addon.eval(`return { __looks(${d}.AbandonButton:GetFontString(), 'label', 'bad'), __looks(${d}.TrackButton:GetFontString(), 'label', 'text') }`), "Abandon is the danger kind, the others light").toEqual([true, true]);
   addon.eval("QuestMapFrame:Hide() QuestMapFrame:Show()");
