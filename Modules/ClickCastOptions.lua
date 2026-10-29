@@ -32,8 +32,9 @@ local KEYS_HEIGHT = KEYS_TOP + MAX_KEYS * ROW_H + T.SPACE.gap
 local PICKER_W, PICKER_TOP = 280, T.CONTROL_H + 2 * T.SPACE.gap
 local PLAIN_ACTIONS = { { "target", L["Target"] }, { "menu", L["Unit menu"] }, { "focus", L["Focus"] }, { "assist", L["Assist"] } }
 
--- Page state: whether the extra modifier columns show, the key the picker is for, and whether the page was built with the menu-click notice.
-local state = { more = false, pickKey = nil, notice = false }
+-- Page state: whether the extra modifier columns show, the key the picker is for, and the notice (see noticeSignature)
+-- the page was built with.
+local state = { more = false, pickKey = nil, built = "" }
 
 -- Shared pieces -----------------------------------------------------------------------------
 
@@ -106,16 +107,24 @@ local function hideTooltip()
   if GameTooltip then GameTooltip:Hide() end
 end
 
--- Whether the page offers to fix the menu click: the saved list has the old layouts' shape (a spell on Right click,
--- the Unit menu on Middle) where the game won't run it, and the notice hasn't been dismissed.
-local function noticeNeeded()
-  return not CC.Stamped("menuNotice") and CC.MenuClickNeedsFix()
+-- What the menu-click notice says now, as a short text that changes when its words would: the list it is for and the
+-- lists the swap changes (the saved list has the old layouts' shape, a spell or macro on Right click and the Unit menu
+-- on Middle, where the game won't run it); "" when there is no notice (none applies, or it was dismissed).
+local function noticeSignature()
+  if CC.Stamped("menuNotice") then return "" end
+  local keys = CC.MenuFixKeys()
+  return #keys > 0 and (CC.CurrentKey() .. ":" .. table.concat(keys, ",")) or ""
 end
 
--- Re-reads every row on the page after a binding changed; a page built with the notice when it no longer applies (or
--- without it when it now does) is built again first. The other pages' rows are re-read either way.
+-- Whether the page offers to fix the menu click.
+local function noticeNeeded()
+  return noticeSignature() ~= ""
+end
+
+-- Re-reads every row on the page after a binding changed; a page built with another notice than the one that applies
+-- now (none, or other words) is built again first. The other pages' rows are re-read either way.
 local function changed()
-  if noticeNeeded() ~= state.notice then O.RebuildPage(PAGE) end
+  if state.built ~= noticeSignature() then O.RebuildPage(PAGE) end
   O.Refresh()
 end
 
@@ -491,9 +500,18 @@ local function gridRow(grid, row, cols, cellW)
   end
 end
 
+-- Builds the page again on the next frame when it was built with another notice than the one that applies now: the
+-- window shows a page it built earlier and only re-reads it, so a notice that began or ended since (a stamp cleared,
+-- the game's bindings edited in its own window) would otherwise wait for a /reload. Not at once: this runs inside the
+-- window's refresh of its rows.
+local function rebuildForNotice()
+  if state.built ~= noticeSignature() then ns.Soon("clickcast notice", function() O.RebuildPage(PAGE) end) end
+end
+
 -- Re-reads every cell.
 local function refreshGrid(grid)
   for _, c in ipairs(grid.cells) do refreshCell(c) end
+  rebuildForNotice()
 end
 
 -- The grid row kind: headers, five mouse rows, cells for the current columns.
@@ -505,6 +523,7 @@ local function gridBuilder(parent, _, width)
   grid.cells, grid.Refresh = {}, refreshGrid
   gridHeaders(grid, cols, cellW)
   for row = 1, #MOUSE do gridRow(grid, row, cols, cellW) end
+  state.built = noticeSignature()
   grid:Refresh()
   return grid
 end
@@ -767,8 +786,10 @@ end
 
 -- The Clear all question: it names the talent group where the lists are kept per group.
 local function clearQuestion()
-  if not CC.PerGroup() then return L["Clear every click-casting binding for this spec? This can't be undone."] end
-  return ns.Format(L["Clear every click-casting binding for {talents}? This can't be undone."], { talents = ns.TalentsName(CC.CurrentKey()) })
+  return CC.ListSentence({
+    spec = L["Clear every click-casting binding for this spec? This can't be undone."],
+    talents = L["Clear every click-casting binding for {talents}? This can't be undone."],
+  }, CC.CurrentKey())
 end
 
 -- Clear all asks first: it empties this spec's bindings for good.
@@ -795,71 +816,77 @@ end
 
 -- The menu-click notice -------------------------------------------------------------------
 
--- Where the notice sits in the page's rows (under the card's title and the line over the grid), and its buttons' width.
-local NOTICE_AT, NOTICE_BUTTON_W = 3, 130
+do
+  local BUTTON_W = 130
 
--- Says in chat that a list's menu and Right click binding were swapped: which talent group's, where the lists are
--- kept per group (the swap may have changed the other group's too).
-local function sayMoved(key)
-  if not CC.PerGroup() then return ns.Chat(L["Unit menu moved to Right click, and what was on Right click to Middle click."]) end
-  ns.Chat(ns.Format(L["Unit menu moved to Right click, and what was on Right click to Middle click ({talents})."], { talents = ns.TalentsName(key) }))
-end
-
--- Swaps the menu and the Right click binding to where the game runs them (when the fight ends, in one), says which
--- lists it changed, then re-reads the page.
-local function fixMenuClick()
-  for _, key in ipairs(CC.FixMenuClick()) do sayMoved(key) end
-  changed()
-end
-
--- Puts the notice away for good (stamped for this character), then re-reads the page.
-local function dismissNotice()
-  CC.Stamp("menuNotice")
-  changed()
-end
-
--- The notice's words: the question, with a second sentence when the other talent group's list would be swapped too.
-local function noticeWords()
-  for _, key in ipairs(CC.MenuFixKeys()) do
-    if key ~= CC.CurrentKey() then
-      return ns.Format(L["Middle click can't open the unit menu on your raid frames: the game only runs it on a click its own Click Casting window binds. Put the menu on Right click and what is on Right click now on Middle click? This also fixes {talents}, which has the same bindings."], { talents = ns.TalentsName(key) })
-    end
+  -- Says in chat that a list's menu and Right click binding were swapped, naming the list where there are several
+  -- (the swap may have changed the other talent group's too).
+  local function sayMoved(key)
+    ns.Chat(CC.ListSentence({
+      spec = L["Unit menu moved to Right click, and what was on Right click to Middle click."],
+      talents = L["Unit menu moved to Right click, and what was on Right click to Middle click ({talents})."],
+    }, key))
   end
-  return L["Middle click can't open the unit menu on your raid frames: the game only runs it on a click its own Click Casting window binds. Put the menu on Right click and what is on Right click now on Middle click?"]
-end
 
--- The notice's text, wrapped across the row.
-local function noticeText(r, width)
-  r.text = T.Text(r:CreateFontString(nil, "OVERLAY"), "label", "warn")
-  r.text:SetPoint("TOPLEFT", T.SPACE.gap, -T.SPACE.tight)
-  r.text:SetWidth(width - 2 * T.SPACE.gap)
-  r.text:SetJustifyH("LEFT")
-  r.text:SetText(noticeWords())
-end
+  -- Swaps the menu and the Right click binding to where the game runs them (when the fight ends, in one), says which
+  -- lists it changed (or that it changed none, the notice being out of date), then re-reads the page.
+  local function fixMenuClick()
+    local keys = CC.FixMenuClick()
+    for _, key in ipairs(keys) do sayMoved(key) end
+    if #keys == 0 then ns.Chat(L["Nothing was swapped: your bindings or the game's click bindings changed since this notice."]) end
+    changed()
+  end
 
--- The notice's buttons under its text: Swap them (the fix, in the accent) and Dismiss.
-local function noticeButtons(r)
-  r.fix = W.Primary(r, L["Swap them"], fixMenuClick, NOTICE_BUTTON_W)
-  r.fix:SetPoint("TOPLEFT", r.text, "BOTTOMLEFT", 0, -T.SPACE.gap)
-  r.dismiss = W.Button(r, L["Dismiss"], dismissNotice, NOTICE_BUTTON_W)
-  r.dismiss:SetPoint("LEFT", r.fix, "RIGHT", T.SPACE.gap, 0)
-end
+  -- Puts the notice away for good (stamped for this character), then re-reads the page.
+  local function dismissNotice()
+    CC.Stamp("menuNotice")
+    changed()
+  end
 
--- Puts the fix button's fill in the current accent again (the options window refreshes its rows after a theme change).
-local function refreshNotice(r)
-  r.fix:Refresh()
-end
+  -- The notice's words: the question, with a second sentence when the other talent group's list would be swapped too.
+  local function noticeWords()
+    local words = L["Middle click can't open the unit menu on your raid frames: the game only runs it on a click its own Click Casting window binds. Put the menu on Right click and what is on Right click now on Middle click?"]
+    for _, key in ipairs(CC.MenuFixKeys()) do
+      if key ~= CC.CurrentKey() then return words .. " " .. ns.Format(L["This also fixes {talents}, which have the same bindings."], { talents = ns.TalentsName(key) }) end
+    end
+    return words
+  end
 
--- The notice row kind: its text with the buttons under it; the row is as tall as they need.
-local function noticeBuilder(parent, _, width)
-  local r = CreateFrame("Frame", nil, parent)
-  r:SetWidth(width)
-  noticeText(r, width)
-  noticeButtons(r)
-  r.grownHeight = r.text:GetStringHeight() + T.BUTTON_H + 2 * T.SPACE.gap
-  r:SetHeight(r.grownHeight)
-  r.Refresh = refreshNotice
-  return r
+  -- The notice's text, wrapped across the row.
+  local function noticeText(r, width)
+    r.text = T.Text(r:CreateFontString(nil, "OVERLAY"), "label", "warn")
+    r.text:SetPoint("TOPLEFT", T.SPACE.gap, -T.SPACE.tight)
+    r.text:SetWidth(width - 2 * T.SPACE.gap)
+    r.text:SetJustifyH("LEFT")
+    r.text:SetText(noticeWords())
+  end
+
+  -- The notice's buttons under its text: Swap them (the fix, in the accent) and Dismiss.
+  local function noticeButtons(r)
+    r.fix = W.Primary(r, L["Swap them"], fixMenuClick, BUTTON_W)
+    r.fix:SetPoint("TOPLEFT", r.text, "BOTTOMLEFT", 0, -T.SPACE.gap)
+    r.dismiss = W.Button(r, L["Dismiss"], dismissNotice, BUTTON_W)
+    r.dismiss:SetPoint("LEFT", r.fix, "RIGHT", T.SPACE.gap, 0)
+  end
+
+  -- Puts the fix button's fill in the current accent again (the options window refreshes its rows after a theme change).
+  local function refreshNotice(r)
+    r.fix:Refresh()
+  end
+
+  -- The notice row kind: its text with the buttons under it; the row is as tall as they need.
+  local function noticeBuilder(parent, _, width)
+    local r = CreateFrame("Frame", nil, parent)
+    r:SetWidth(width)
+    noticeText(r, width)
+    noticeButtons(r)
+    r.grownHeight = r.text:GetStringHeight() + T.BUTTON_H + 2 * T.SPACE.gap
+    r:SetHeight(r.grownHeight)
+    r.Refresh = refreshNotice
+    return r
+  end
+
+  O.AddRowKind("bindnotice", noticeBuilder, 2 * T.BUTTON_H, true)
 end
 
 -- Imports a bindings string from the text dialog, saying how it went in chat.
@@ -880,8 +907,7 @@ end
 
 -- "Copy to Secondary talents" for a talent group, "Copy to spec 2" for a specialization.
 local function copyLabel(key)
-  if CC.PerGroup() then return ns.Format(L["Copy to {talents}"], { talents = ns.TalentsName(key) }) end
-  return ns.Format(L["Copy to spec {spec}"], { spec = key })
+  return CC.ListSentence({ spec = L["Copy to spec {spec}"], talents = L["Copy to {talents}"] }, key)
 end
 
 -- The other talent groups or specs (as { key, "Copy to ..." } choices), where the client has them: never the list the
@@ -897,26 +923,36 @@ end
 -- Copies the bindings to another talent group or spec and says so.
 local function doCopy(key)
   CC.CopyToSpec(key)
-  if not CC.PerGroup() then return ns.Chat(ns.Format(L["Click-casting bindings copied to spec {spec}."], { spec = key })) end
-  ns.Chat(ns.Format(L["Click-casting bindings copied to {talents}."], { talents = ns.TalentsName(key) }))
+  ns.Chat(CC.ListSentence({
+    spec = L["Click-casting bindings copied to spec {spec}."],
+    talents = L["Click-casting bindings copied to {talents}."],
+  }, key))
 end
 
 -- The question before a copy replaces a list that has bindings.
 local function replaceQuestion(key)
-  if not CC.PerGroup() then return ns.Format(L["Replace the bindings of spec {spec} with these?"], { spec = key }) end
-  return ns.Format(L["Replace the bindings of {talents} with these?"], { talents = ns.TalentsName(key) })
+  return CC.ListSentence({
+    spec = L["Replace the bindings of spec {spec} with these?"],
+    talents = L["Replace the bindings of {talents} with these?"],
+  }, key)
+end
+
+-- Copies, then re-reads the page (the copy may bring the old shape to the other list, and the notice with it).
+local function copyAndShow(key)
+  doCopy(key)
+  changed()
 end
 
 -- Copies the bindings to another talent group or spec, asking first when that one has bindings of its own.
 local function copyToSpec(key)
-  if #CC.Bindings(key) == 0 then return doCopy(key) end
-  ns.Ask(replaceQuestion(key), L["Replace"], function() doCopy(key) changed() end, nil, "danger")
+  if #CC.Bindings(key) == 0 then return copyAndShow(key) end
+  ns.Ask(replaceQuestion(key), L["Replace"], function() copyAndShow(key) end, nil, "danger")
 end
 
 -- Shows the copy dropdown's caption (the group or spec it copies to is in the choices), and the dropdown only while
 -- there is another one.
 local function refreshCopy(d)
-  d.text:SetText(CC.PerGroup() and L["Copy to..."] or L["Copy to spec..."])
+  d.text:SetText(CC.ListSentence({ spec = L["Copy to spec..."], talents = L["Copy to..."] }))
   d:SetShown(#otherSpecs() > 0)
 end
 
@@ -945,10 +981,10 @@ end
 -- The line over the grid, for whose bindings these are: this character's, the talent group's or the spec's.
 local function scopeLine(key)
   if key == 0 then return L["Bindings for this character. Click a cell to pick a spell, right-click to clear, or drop a spell on it."] end
-  if CC.PerGroup() then
-    return ns.Format(L["Bindings for {talents} on this character. Click a cell to pick a spell, right-click to clear, or drop a spell on it."], { talents = ns.TalentsName(key) })
-  end
-  return ns.Format(L["Bindings for spec {spec} on this character. Click a cell to pick a spell, right-click to clear, or drop a spell on it."], { spec = key })
+  return CC.ListSentence({
+    spec = L["Bindings for spec {spec} on this character. Click a cell to pick a spell, right-click to clear, or drop a spell on it."],
+    talents = L["Bindings for {talents} on this character. Click a cell to pick a spell, right-click to clear, or drop a spell on it."],
+  }, key)
 end
 
 -- The line over the grid: whose bindings, or the combat notice while a fight is on.
@@ -974,7 +1010,6 @@ O.AddRowKind("bindgrid", gridBuilder, 18 + #MOUSE * CELL_H + 8, true)
 O.AddRowKind("bindkeys", keysBuilder, KEYS_HEIGHT + T.SPACE.tight, true)
 O.AddRowKind("bindtest", testBuilder, 64, true)
 O.AddRowKind("bindshare", shareBuilder, 36, true)
-O.AddRowKind("bindnotice", noticeBuilder, 2 * T.BUTTON_H, true)
 
 -- The page's rows: the grid and its tools, the hover keys, the test tile, sharing, the unit-frame switch.
 local ROWS = {
@@ -1024,11 +1059,12 @@ for _, row in ipairs({
 -- game's click bindings are offered where the client has them, and the menu-click notice while it applies.
 local function rows()
   local base = type(C_ClickBindings) == "table" and WITH_GAME or ROWS
-  state.notice = noticeNeeded()
-  if not state.notice then return base end
+  if not noticeNeeded() then return base end
   local out = {}
-  for i, row in ipairs(base) do out[i] = row end
-  table.insert(out, NOTICE_AT, { "bindnotice" })
+  for _, row in ipairs(base) do
+    if row[1] == "bindlayout" then out[#out + 1] = { "bindnotice" } end
+    out[#out + 1] = row
+  end
   return out
 end
 
