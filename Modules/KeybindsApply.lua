@@ -18,8 +18,8 @@
 --
 -- Apply and putting back are refused, never queued: in combat, under an
 -- add-on restriction, on a client that isn't WoW Forever, while the game's
--- Settings or Quick Keybind window or Vanguard's keybind mode is open, and
--- while the cursor holds something. Inside Apply the order is fixed: switch the
+-- Settings, Quick Keybind or Click Casting window or Vanguard's keybind mode is
+-- open, and while the cursor holds something. Inside Apply the order is fixed: switch the
 -- key set when asked ("Only this character"), work the plan out in that set,
 -- take the record, place spells, set keys, save. A step that fails or errors,
 -- or a write the client blocks, puts back everything this Apply changed (after
@@ -29,19 +29,22 @@
 -- The record is split by where things live: key rows go with the key set
 -- (VanguardDB.keyRestore for the Account set, VanguardCharDB.keyRestore for
 -- the Character set), slot rows always with the character
--- (VanguardCharDB.slotRestore, each naming its key and key set). A key or slot
--- that a later Apply changes again keeps its first pre-image while it still
--- held what Vanguard put there, and takes the new one when the player changed
--- it in between. Putting back skips a key or slot the player changed since, and
--- refuses when the game now uses the other key set. A key another character set
--- puts back here, and its spells go back on that character's bars at its next
--- login (VanguardDB.keyPending). At logout this character keeps a copy of both,
+-- (VanguardCharDB.slotRestore: per button, its first pre-image and a layer for
+-- each key that changed it, with its key set). A key or button that a later
+-- Apply changes again keeps its first pre-image while it still held what
+-- Vanguard put there, and takes the new one when the player changed it in
+-- between; putting one key back peels its layer, so the button shows what that
+-- key found, and a button a later key still uses keeps its spell. Putting back
+-- skips a key or slot the player changed since, and refuses when the game now
+-- uses the other key set. An account key another character set puts back here,
+-- and its spells go back on every character the record names at its next login
+-- (VanguardDB.keyPending), unless the key was set again since. At logout this character keeps a copy of both,
 -- which comes back at login when the settings guard finds the account's saved
 -- settings didn't load.
 -- UNVERIFIED on a Forever client (docs/SMOKE-TEST.md): which of these calls the
 -- client refuses in combat, that LoadBindings switches the key set, and whether
--- a command takes a third key (if the client drops one, putting back can't
--- bring the dropped key back).
+-- a command takes a third key (a preset never gives one a third), and that the
+-- action slots are readable at the load screen.
 
 local ADDON, ns = ...
 local L = ns.L
@@ -62,8 +65,10 @@ KA.RANGES = {
 KA.SPARE = { first = 53, last = 60, bar = 3 }
 KA.SEARCH = { first = 49, last = 72 }
 -- The add-on restrictions that refuse an Apply (ns.Restricted), and the game windows that change keys themselves.
-KA.RESTRICTIONS = { "Combat", "Encounter", "ChallengeMode", "PvPMatch" }
-KA.KEY_WINDOWS = { "SettingsPanel", "QuickKeybindFrame" }
+KA.RESTRICTIONS = { "Combat", "Encounter", "ChallengeMode", "PvPMatch", "Map" }
+KA.KEY_WINDOWS = { "SettingsPanel", "QuickKeybindFrame", "ClickBindingFrame" }
+-- The modifiers of a key chord, in the order the game writes them ("ALT-CTRL-SHIFT-META-1", BindingUtil.lua).
+KA.MODIFIERS = { "ALT", "CTRL", "SHIFT", "META" }
 -- The row kinds that write: bind a key to a button that already holds the spell, place the spell on an empty slot,
 -- move a known spell aside and place, or bind a key to a game command.
 KA.WRITES = { bind = true, place = true, move = true, command = true }
@@ -75,7 +80,7 @@ KA.BACKED_UP = { "keyRestore", "keyPending" }
 -- The range a slot is in, or nil when a preset may not write it.
 local function rangeOf(slot)
   for _, r in ipairs(KA.RANGES) do
-    if type(slot) == "number" and slot >= r.first and slot <= r.last then return r end
+    if type(slot) == "number" and slot % 1 == 0 and slot >= r.first and slot <= r.last then return r end
   end
 end
 
@@ -224,13 +229,25 @@ local function changesOf(row)
   return {}
 end
 
+-- Whether a command already has two keys and this isn't one of them: the game shows two keys a command, and a third
+-- may push one out (unverified), which a put-back couldn't bring back.
+local function keysFull(row)
+  local keys = { GetBindingKey(row.command) }
+  for _, key in ipairs(keys) do
+    if key == row.key then return false end
+  end
+  return #keys >= 2
+end
+
 -- A writing row's last word: a key this plan gave another command stays with that ("used"); a row that writes no
--- slot and binds a key to the command it already has is "unchanged" ("already").
+-- slot and binds a key to the command it already has is "unchanged" ("already"); a command with two other keys
+-- takes no third ("keys").
 local function settle(plan, row)
   if not KA.WRITES[row.kind] then return end
   local taken = plan.keys[row.key]
   if taken and taken ~= row.command then row.kind, row.why = "unchanged", "used" return end
-  if #changesOf(row) == 0 and GetBindingAction(row.key) == row.command then row.kind, row.why = "unchanged", "already" end
+  if #changesOf(row) == 0 and GetBindingAction(row.key) == row.command then row.kind, row.why = "unchanged", "already" return end
+  if keysFull(row) then row.kind, row.why = "unchanged", "keys" end
 end
 
 -- Takes a row's key and button in the plan (an "already" row too, so no later row takes them), and its slots' new
@@ -244,9 +261,24 @@ local function commit(plan, row)
   end
 end
 
--- Works out one entry into a row: { key, spell, slot, command, kind, why, to, moved }.
+-- A key chord with its modifiers in the game's order ("SHIFT-CTRL-1" becomes "CTRL-SHIFT-1"), or nil when it isn't
+-- a key (not a string, or nothing after the modifiers).
+local function chord(key)
+  if type(key) ~= "string" then return nil end
+  local held, base = {}, key
+  for _, mod in ipairs(KA.MODIFIERS) do
+    base = base:gsub("%f[%w]" .. mod .. "%-", function() held[#held + 1] = mod return "" end)
+  end
+  if base == "" then return nil end
+  held[#held + 1] = base
+  return table.concat(held, "-")
+end
+
+-- Works out one entry into a row: { key, spell, slot, command, kind, why, to, moved }. An entry without a key is
+-- "unchanged" ("invalid").
 local function planEntry(plan, entry)
-  local row = { key = entry.key, spell = entry.spell, slot = entry.slot, command = entry.command }
+  local row = { key = chord(entry.key), spell = entry.spell, slot = entry.slot, command = entry.command }
+  if not row.key then row.kind, row.why = "unchanged", "invalid" plan.rows[#plan.rows + 1] = row return end
   row.kind, row.why = classify(plan, row)
   row.command = row.command or KA.CommandFor(row.slot)
   settle(plan, row)
@@ -337,7 +369,8 @@ local function storeFor(set)
   return set == Enum.BindingSet.Account and VanguardDB or VanguardCharDB
 end
 
--- The key record kept for a set, { set, keys = { [key] = { before, after, by } } }, or nil.
+-- The key record kept for a set, { set, keys = { [key] = { before, after, by = { [character] = true } } } }, or
+-- nil. `by` names every character whose bars hold spells Vanguard placed for that key.
 local function recordFor(set)
   local rec = storeFor(set).keyRestore
   return type(rec) == "table" and rec.set == set and type(rec.keys) == "table" and rec or nil
@@ -350,11 +383,22 @@ local function ensureRecord(set)
   return rec
 end
 
--- This character's slot record, { [slot] = { before = a spell ID or false for empty, after = a spell ID, key,
--- set } }; a row with no key is a button a failed Apply couldn't put back.
+-- This character's slot record: { [slot] = { before = the first pre-image (a spell ID, or false for empty),
+-- layers = { { key, after = a spell ID, set }, ... } } }, the top layer being what Vanguard last put there and
+-- which key it was for. A layer with no key is a button a failed Apply couldn't put back.
 local function slotRecord()
   if type(VanguardCharDB.slotRestore) ~= "table" then VanguardCharDB.slotRestore = {} end
   return VanguardCharDB.slotRestore
+end
+
+-- Whether a slot row is whole (a hand-edited file may hold anything).
+local function rowOk(row)
+  return type(row) == "table" and type(row.layers) == "table" and type(row.layers[1]) == "table"
+end
+
+-- What Vanguard last put on a slot row's button.
+local function shownBy(row)
+  return row.layers[#row.layers].after
 end
 
 -- Whether Vanguard's record says it changed this key, in the key set the game uses now (Your keys will mark it).
@@ -367,6 +411,16 @@ end
 
 -- Writing slots -----------------------------------------------------------------------------------
 
+-- A slot's content as a pre-image: its spell ID, or false when empty (Apply only ever writes those two).
+local function preimage(content)
+  return content and content.id or false
+end
+
+-- Whether a slot now holds exactly this pre-image (a spell ID, or false for empty).
+local function slotIs(slot, want)
+  return preimage(readSlot(slot)) == want
+end
+
 -- Empties a slot: its action comes up on the cursor and is dropped (only ever a spell Vanguard put there). Refuses
 -- while the cursor holds something, which the pickup would swap onto the slot.
 local function clearSlot(slot)
@@ -376,28 +430,59 @@ local function clearSlot(slot)
   return true
 end
 
+-- Puts a spell on a slot and checks the slot took it (the client may decline a spell, a passive one say).
+local function placeExactly(slot, spellID)
+  return ns.PlaceSpell(slot, spellID) and slotIs(slot, spellID)
+end
+
 -- Puts a slot back to a pre-image: empty (false), or the spell picked up again from the spellbook. Whether it did.
 local function restoreSlot(slot, before)
-  if before then return ns.PlaceSpell(slot, before) end
-  return clearSlot(slot)
+  if before then return placeExactly(slot, before) end
+  return clearSlot(slot) and slotIs(slot, false)
 end
 
--- A slot's content as a pre-image: its spell ID, or false when empty (Apply only ever writes those two).
-local function preimage(content)
-  return content and content.id or false
+-- The layers `matches` doesn't pick, in order.
+local function without(layers, matches)
+  local kept = {}
+  for _, layer in ipairs(layers) do
+    if type(layer) ~= "table" or not matches(layer) then kept[#kept + 1] = layer end
+  end
+  return kept
 end
 
--- Puts back this character's slot rows that `matches` picks, each only while it still holds what Vanguard put
--- there (else it is the player's now), and forgets them. Answers how many went back.
+-- Takes off a slot row's layers that `matches` picks and shows the new top (or the first pre-image) on the button,
+-- while it still shows what Vanguard last put there; a row the player changed since is forgotten, and one whose
+-- button can't be read or written now is kept as it was. Answers whether the button went back.
+local function peel(slots, slot, row, matches)
+  local kept, shown, content = without(row.layers, matches), shownBy(row), readSlot(slot)
+  if #kept == #row.layers or (content and content.kind == "hidden") then return false end
+  if preimage(content) ~= shown then slots[slot] = nil return false end
+  local want = kept[1] and kept[#kept].after or row.before
+  if want ~= shown and not restoreSlot(slot, want) then return false end
+  row.layers = kept
+  if #kept == 0 then slots[slot] = nil end
+  return true
+end
+
+-- Peels the layers `matches` picks off every row of this character's slot record (see peel); a broken row is
+-- dropped. Answers how many buttons went back.
 local function restoreRows(matches)
   local slots, count = slotRecord(), 0
   for slot, row in pairs(slots) do
-    if type(row) == "table" and matches(row) then
-      if holdsSpell(readSlot(slot), row.after) and restoreSlot(slot, row.before) then count = count + 1 end
-      slots[slot] = nil
-    end
+    if not rowOk(row) then slots[slot] = nil elseif peel(slots, slot, row, matches) then count = count + 1 end
   end
   return count
+end
+
+-- Puts a layer on a slot's row: on top while the button still showed what Vanguard last put there (pre, its
+-- pre-image now), else a new row whose first pre-image is pre (the player changed it, or Vanguard never had it).
+local function addLayer(slots, slot, pre, layer)
+  local row = slots[slot]
+  if rowOk(row) and shownBy(row) == pre then
+    row.layers[#row.layers + 1] = layer
+  else
+    slots[slot] = { before = pre, layers = { layer } }
+  end
 end
 
 -- Applying ----------------------------------------------------------------------------------------
@@ -412,8 +497,8 @@ end
 ns.On("ADDON_ACTION_BLOCKED", onBlocked)
 ns.On("ADDON_ACTION_FORBIDDEN", onBlocked)
 
--- Switches to the key set the Apply asked for as the game's own switch does (save the old, load, save the new),
--- noting the old one for a rollback; nothing when it is the set in use already.
+-- Switches to the key set the Apply asked for as the game's own switch does (Settings.SelectCharacterBindings:
+-- save the old, load, save the new), noting the old one for a rollback; nothing when it is the set in use already.
 local function switchSet(run)
   local from = GetCurrentBindingSet()
   run.set = run.set or from
@@ -444,7 +529,7 @@ end
 local function placeSpells(run)
   for _, row in ipairs(run.rows) do
     for _, change in ipairs(changesOf(row)) do
-      if not ns.PlaceSpell(change.slot, change.spell) or run.blocked then return false end
+      if not placeExactly(change.slot, change.spell) or run.blocked then return false end
       run.placed[change.slot] = change.spell
     end
   end
@@ -475,54 +560,66 @@ local function runSteps(run)
   return true
 end
 
--- Keeps the buttons a rollback couldn't put back as slot rows with no key, for "Put everything back".
+-- Goes back to the key set a run switched from, as the game's own switch does (load it, save it).
+local function switchBack(run)
+  if not run.from then return end
+  LoadBindings(run.from)
+  SaveBindings(run.from)
+end
+
+-- Keeps the buttons a rollback couldn't put back as layers with no key, for "Put everything back".
 local function keepLeft(run, left)
   local slots = slotRecord()
   for _, slot in ipairs(left) do
-    slots[slot] = { before = run.slots[slot], after = run.placed[slot], set = run.from or run.set }
+    addLayer(slots, slot, run.slots[slot], { after = run.placed[slot], set = run.from or run.set })
   end
 end
 
--- Puts back what a failed run changed: each slot that still holds the spell it put there, then the keys by loading
--- the saved set (which drops the unsaved ones); a run that switched loads and saves the old set again.
+-- Puts back what a failed run changed: each slot that still holds exactly the spell it put there, then the keys by
+-- loading the saved set (which drops the unsaved ones), or the set it switched from.
 local function undoRun(run)
   local left = {}
   for slot, placed in pairs(run.placed) do
-    if holdsSpell(readSlot(slot), placed) and not restoreSlot(slot, run.slots[slot]) then left[#left + 1] = slot end
+    if slotIs(slot, placed) and not restoreSlot(slot, run.slots[slot]) then left[#left + 1] = slot end
   end
-  LoadBindings(run.from or GetCurrentBindingSet())
-  if run.from then SaveBindings(run.from) end
+  if run.from then switchBack(run) else LoadBindings(GetCurrentBindingSet()) end
   keepLeft(run, left)
   if #left == 0 then return ns.Chat(L["No key changed: the game refused one of the changes, so Vanguard put everything back."]) end
   ns.Chat(ns.Format(L["No key changed, but {count} button(s) couldn't be put back yet. Put everything back restores them."], { count = #left }))
 end
 
--- Records one applied key: its first pre-image while the key still did what Vanguard last set, else the one this
--- run took (the player changed it in between).
+-- Records one applied key: its first pre-image, and every character it placed spells for, while the key still did
+-- what Vanguard last set; else the pre-image this run took (the player changed it in between).
 local function keepKey(run, rec, row)
-  local old, now = rec.keys[row.key], run.keys[row.key]
+  local old, now, by = rec.keys[row.key], run.keys[row.key], { [me()] = true }
   local before = now
-  if old and now == old.after then before = old.before end
-  rec.keys[row.key] = { before = before, after = row.command, by = me() }
+  if type(old) == "table" and now == old.after then
+    before = old.before
+    for name in pairs(type(old.by) == "table" and old.by or {}) do by[name] = true end
+  end
+  rec.keys[row.key] = { before = before, after = row.command, by = by }
 end
 
--- Records the slots one applied row changed, each keeping its first pre-image the same way.
+-- Records the slots one applied row changed as layers for its key; a bind row also takes a layer on a button
+-- Vanguard placed a spell on before, so putting back the earlier key leaves the button to this one.
 local function keepSlots(run, slots, row)
   for _, change in ipairs(changesOf(row)) do
-    local old, before = slots[change.slot], run.slots[change.slot]
-    if type(old) == "table" and before == old.after then before = old.before end
-    slots[change.slot] = { before = before, after = change.spell, key = row.key, set = run.set }
+    addLayer(slots, change.slot, run.slots[change.slot], { key = row.key, after = change.spell, set = run.set })
+  end
+  local shared = row.kind == "bind" and slots[row.slot]
+  if rowOk(shared) and slotIs(row.slot, shownBy(shared)) then
+    shared.layers[#shared.layers + 1] = { key = row.key, after = shownBy(shared), set = run.set }
   end
 end
 
--- Saves the record of a run that succeeded, and says how many keys changed.
+-- Saves the record of a run that succeeded (each key once), and says how many keys changed.
 local function keep(run)
-  local rec, slots, count = ensureRecord(run.set), slotRecord(), 0
+  local rec, slots, seen, count = ensureRecord(run.set), slotRecord(), {}, 0
   for _, row in ipairs(run.rows) do
     if KA.WRITES[row.kind] then
-      keepKey(run, rec, row)
+      if not seen[row.key] then keepKey(run, rec, row) count = count + 1 end
+      seen[row.key] = true
       keepSlots(run, slots, row)
-      count = count + 1
     end
   end
   ns.Chat(ns.Format(L["{count} key(s) set. Vanguard kept what the keys did before, so you can put them back."], { count = count }))
@@ -536,15 +633,20 @@ local function writes(rows)
   return false
 end
 
--- Ends a run: keeps its record when it succeeded (none when nothing needed changing); else puts it back, after the
--- fight if one began. Answers whether it succeeded.
+-- Ends a run: keeps its record when it succeeded; with nothing to change, no record and no set switch. Else puts it
+-- back, after the fight if one began. Answers whether it succeeded.
 local function finish(run, ok)
   KA.run = nil
-  if ok and not writes(run.rows) then ns.Chat(L["No key needs changing."]) return true end
+  if ok and not writes(run.rows) then switchBack(run) ns.Chat(L["No key needs changing."]) return true end
   if ok then keep(run) return true end
   if ns.InCombat() then ns.Chat(L["No key changed: a fight began, so Vanguard puts your buttons back after it."]) end
   ns.OutOfCombat(function() undoRun(run) end)
   return false
+end
+
+-- The key sets Apply takes: the one in use (nil), Account or Character.
+local function knownSet(set)
+  return set == nil or set == Enum.BindingSet.Account or set == Enum.BindingSet.Character
 end
 
 -- Applies a preset's entries as KA.Plan works them out in key set `set` (Enum.BindingSet.Character for "Only this
@@ -554,6 +656,7 @@ end
 ---@param set number|nil
 ---@return boolean
 function KA.Apply(entries, set)
+  if not knownSet(set) then error("KA.Apply: set is Enum.BindingSet.Account, Character or nil", 2) end
   local why = KA.Refusal() or switchRefusal(set)
   if why then ns.Chat(why) return false end
   local run = { entries = entries, set = set, keys = {}, slots = {}, placed = {} }
@@ -571,34 +674,35 @@ local function commandOrNil(before)
   return type(before) == "string" and before ~= "" and before or nil
 end
 
--- Notes another character's key whose spells go back at that character's next login.
-local function markPending(by, key, result)
+-- Notes, for every other character a key placed spells for, that they go back at its next login.
+local function markOthers(by, key, result)
   VanguardDB.keyPending = type(VanguardDB.keyPending) == "table" and VanguardDB.keyPending or {}
-  local pending = type(VanguardDB.keyPending[by]) == "table" and VanguardDB.keyPending[by] or {}
-  pending[key] = true
-  VanguardDB.keyPending[by] = pending
-  result.others[by] = true
+  for name in pairs(type(by) == "table" and by or {}) do
+    if name ~= me() then
+      local pending = type(VanguardDB.keyPending[name]) == "table" and VanguardDB.keyPending[name] or {}
+      pending[key], VanguardDB.keyPending[name], result.others[name] = true, pending, true
+    end
+  end
 end
 
 -- Puts one recorded key back to its old command while it still does what Vanguard set (else it stays as the player
--- set it), and its spells: here, or at the next login of the character that applied it. False, with the row kept,
--- when the game refuses the key.
+-- set it), and its spells: on this character's bars now, on the others' at their next login. False, with the row
+-- and its spells kept, when the game refuses the key.
 local function putBackKey(rec, key, row, result)
   local ours = GetBindingAction(key) == row.after
   if ours and not SetBinding(key, commandOrNil(row.before)) then result.failed[#result.failed + 1] = key return false end
-  if row.by == me() then
-    restoreRows(function(r) return r.set == rec.set and r.key == key end)
-  else
-    markPending(row.by, key, result)
-  end
+  restoreRows(function(layer) return layer.key == key and layer.set == rec.set end)
+  markOthers(row.by, key, result)
   if ours then result.back = result.back + 1 else result.kept[#result.kept + 1] = key end
   return true
 end
 
--- Whether this character has buttons a failed Apply couldn't put back (slot rows with no key).
+-- Whether this character has buttons a failed Apply couldn't put back (layers with no key).
 local function hasLeftovers()
   for _, row in pairs(slotRecord()) do
-    if type(row) == "table" and row.key == nil then return true end
+    for _, layer in ipairs(rowOk(row) and row.layers or {}) do
+      if layer.key == nil then return true end
+    end
   end
   return false
 end
@@ -627,8 +731,8 @@ local function report(result)
   if #result.failed > 0 then
     ns.Chat(ns.Format(L["The game refused to put back: {keys}."], { keys = table.concat(result.failed, ", ") }))
   end
-  for by in pairs(result.others) do
-    ns.Chat(ns.Format(L["Spells moved on {name}'s bars go back when you log in as {name}."], { name = by:match("^[^-]+") or by }))
+  for name in pairs(result.others) do
+    ns.Chat(ns.Format(L["Spells moved on {name}'s bars go back when you log in as {name}."], { name = name:match("^[^-]+") or name }))
   end
 end
 
@@ -639,8 +743,8 @@ local function finishPutBack(rec, result)
   report(result)
 end
 
--- Puts one key back as it was before Vanguard changed it ("Put back what I had"), with the spells it moved.
--- False, after a chat line, when it can't now or Vanguard didn't change that key.
+-- Puts one key back as it was before Vanguard changed it ("Put back what I had"), with the spells it placed or moved.
+-- False, after a chat line, when it can't now, Vanguard didn't change that key, or the game refused it.
 ---@param key string
 ---@return boolean
 function KA.PutBack(key)
@@ -653,9 +757,9 @@ function KA.PutBack(key)
   return #result.failed == 0
 end
 
--- Puts back every key Vanguard changed in the key set in use, and every spell it moved on this character's bars
--- for that set, with any button a failed Apply left ("Put everything back"). False, after a chat line, when it
--- can't now or there is nothing to put back.
+-- Puts back every key Vanguard changed in the key set in use, and every spell it changed on this character's bars
+-- for that set, with any button a failed Apply left ("Put everything back"); a key the game refuses keeps its spells.
+-- False, after a chat line, when it can't now, there is nothing to put back, or the game refused a key.
 ---@return boolean
 function KA.PutBackAll()
   local rec, why = usableRecord()
@@ -664,21 +768,43 @@ function KA.PutBackAll()
   for key, row in pairs(rec.keys) do
     if putBackKey(rec, key, row, result) then rec.keys[key] = nil end
   end
-  restoreRows(function(r) return r.set == rec.set or r.key == nil end)
+  restoreRows(function(layer) return layer.key == nil or (layer.set == rec.set and rec.keys[layer.key] == nil) end)
   finishPutBack(rec, result)
   return #result.failed == 0
 end
 
 -- Login and logout --------------------------------------------------------------------------------
 
--- This character's spells another character's put-back left waiting go back, when nothing refuses it now (else
--- they wait for the next load screen).
+-- Whether this character's slot record still has an Account layer for a key.
+local function hasLayerFor(key)
+  for _, row in pairs(slotRecord()) do
+    for _, layer in ipairs(rowOk(row) and row.layers or {}) do
+      if layer.key == key and layer.set == Enum.BindingSet.Account then return true end
+    end
+  end
+  return false
+end
+
+-- A waiting key some character set again since (it is in the account's record): its spells stay, and the record
+-- names this character again so the next put-back reaches it. Answers whether the key is live.
+local function relink(live, key)
+  local row = live[key]
+  if type(row) ~= "table" then return false end
+  if type(row.by) ~= "table" then row.by = {} end
+  row.by[me()] = true
+  return true
+end
+
+-- This character's spells another character's put-back left waiting go back, when nothing refuses it now; a key
+-- whose buttons can't be read or written yet keeps waiting for the next load screen.
 function KA.RestorePending()
   local pending = type(VanguardDB.keyPending) == "table" and VanguardDB.keyPending[me()]
   if type(pending) ~= "table" or KA.Refusal() then return end
-  VanguardDB.keyPending[me()] = nil
-  local account = Enum.BindingSet.Account
-  local count = restoreRows(function(r) return r.set == account and pending[r.key] == true end)
+  local live, account = (recordFor(Enum.BindingSet.Account) or { keys = {} }).keys, Enum.BindingSet.Account
+  for key in pairs(pending) do pending[key] = not relink(live, key) or nil end
+  local count = restoreRows(function(layer) return layer.set == account and pending[layer.key] == true end)
+  for key in pairs(pending) do pending[key] = hasLayerFor(key) or nil end
+  if next(pending) == nil then VanguardDB.keyPending[me()] = nil end
   if count > 0 then ns.Chat(L["The spells Vanguard moved on this character's bars are back where they were."]) end
 end
 

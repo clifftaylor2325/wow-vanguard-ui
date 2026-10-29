@@ -33,7 +33,7 @@ const ka = (addon, lua) => addon.eval(`local KA = ns.KeybindsApply ${lua}`);
 
 // The plan's rows as "key kind why slot to" strings.
 const plan = (addon, preset = PRESET) => ka(addon, `local out = {} for i, r in ipairs(KA.Plan(${preset})) do
-  out[i] = table.concat({ r.key, r.kind, r.why or "-", tostring(r.slot or "-"), tostring(r.to or "-") }, " ") end return out`);
+  out[i] = table.concat({ r.key or "-", r.kind, r.why or "-", tostring(r.slot or "-"), tostring(r.to or "-") }, " ") end return out`);
 
 // The spell or action ID on each slot, 0 for an empty one.
 const slots = (addon, list) => addon.eval(`local out = {} for i, s in ipairs({ ${list.join(",")} }) do out[i] = select(2, GetActionInfo(s)) or 0 end return out`);
@@ -130,8 +130,8 @@ it("Apply: the record is split, keys with the Account set and slots with the cha
   ka(addon, `KA.Apply(${PRESET})`);
   const sv = addon.savedVariables();
   expect(Object.keys(sv.account.keyRestore.keys).sort()).toEqual(["2", "F", "G", "`"]);
-  expect(sv.account.keyRestore.keys["2"], "a key row: what it did, what it does, who applied it").toEqual({ before: "ACTIONBUTTON2", after: "ACTIONBUTTON2", by: "Aren-ForeverTest" });
-  expect(sv.char.slotRestore["53"] ?? sv.char.slotRestore[53], "a slot row: empty before, its key and key set").toEqual({ before: false, after: 6603, key: "2", set: 1 });
+  expect(sv.account.keyRestore.keys["2"], "a key row: what it did, what it does, who applied it").toEqual({ before: "ACTIONBUTTON2", after: "ACTIONBUTTON2", by: { "Aren-ForeverTest": true } });
+  expect(sv.char.slotRestore["53"] ?? sv.char.slotRestore[53], "a slot row: empty before, then a layer for its key and key set").toEqual({ before: false, layers: [{ key: "2", after: 6603, set: 1 }] });
   expect(ka(addon, 'return { KA.Changed("F"), KA.Changed("1") }'), "the record marks what Vanguard changed").toEqual([true, false]);
 });
 
@@ -413,7 +413,7 @@ it("a second character puts the account's keys back; the first one's spells go b
 });
 
 it("waiting spells stay waiting while the cursor holds something, and go back at the next load screen", () => {
-  const addon = rogue("VanguardDB.keyPending = { ['Aren-ForeverTest'] = { F = true } }\nVanguardCharDB = { slotRestore = { [61] = { before = false, after = 1766, key = 'F', set = 1 } } }\n");
+  const addon = rogue("VanguardDB.keyPending = { ['Aren-ForeverTest'] = { F = true } }\nVanguardCharDB = { slotRestore = { [61] = { before = false, layers = { { key = 'F', after = 1766, set = 1 } } } } }\n");
   addon.eval("__wfgWorld.setAction(61, { id = 1766 }) C_Spell.PickupSpell(1784)");
   addon.fire("PLAYER_ENTERING_WORLD", false, false);
   expect(slots(addon, [61]), "the cursor is full: it waits").toEqual([1766]);
@@ -434,4 +434,116 @@ it("the settings guard's backup: logout keeps a copy of the account's key record
   expect(lost.savedVariables().account.keyRestore, "the record is back").toEqual(saved.account.keyRestore);
   const fine = loggedIn("", { savedVariables: `VanguardDB = ${dump(addon, "VanguardDB")}\nVanguardCharDB = { keyBackup = { keyRestore = { set = 1, keys = {} } } }\n` });
   expect(Object.keys(fine.savedVariables().account.keyRestore.keys).length, "no loss: the account's own record stays").toBe(4);
+});
+
+it("two characters set the same account key: putting it back reaches both", () => {
+  const first = rogue();
+  ka(first, `KA.Apply({ { key = "F", spell = 1766, slot = 61 } })`);
+  const second = loggedIn('__wfgWorld.setUnit("player", { name = "Thrall" })', { savedVariables: `VanguardDB = ${dump(first, "VanguardDB")}\nVanguardCharDB = {}\n` });
+  second.eval(`__wfgWorld.bindingSets[1] = ${dump(first, "__wfgWorld.bindingSets[1]")} LoadBindings(1)`);
+  second.world.learn(1766, { name: "Kick" });
+  ka(second, `KA.Apply({ { key = "F", spell = 1766, slot = 61 } })`);
+  expect(second.savedVariables().account.keyRestore.keys.F.by, "both are named").toEqual({ "Aren-ForeverTest": true, "Thrall-ForeverTest": true });
+  ka(second, "KA.PutBackAll()");
+  expect([slots(second, [61]), keys(second, ["F"])], "Thrall's bars and the key are back").toEqual([[0], [""]]);
+  expect(chatHas(second, /Spells moved on Aren's bars go back when you log in as Aren\.$/)).toBe(true);
+});
+
+it("a key bound to a button another key placed a spell on keeps it when the first key is put back", () => {
+  const addon = rogue();
+  ka(addon, `KA.Apply({ { key = "F", spell = 1766, slot = 61 } })`);
+  ka(addon, `KA.Apply({ { key = "V", spell = 1766, slot = 62 } })`);
+  expect(keys(addon, ["V"]), "V found Kick on bar 2's first button").toEqual(["MULTIACTIONBAR1BUTTON1"]);
+  ka(addon, 'KA.PutBack("F")');
+  expect([slots(addon, [61]), keys(addon, ["F", "V"])], "Kick stays for V").toEqual([[1766], ["", "MULTIACTIONBAR1BUTTON1"]]);
+  ka(addon, 'KA.PutBack("V")');
+  expect(slots(addon, [61]), "then it goes").toEqual([0]);
+});
+
+it("one key put back after chained moves brings back what that key found", () => {
+  const addon = rogue();
+  const before = state(addon);
+  ka(addon, `KA.Apply({ { key = "2", spell = 1776, slot = 2 } })`);
+  ka(addon, `KA.Apply({ { key = "X", spell = 1766, slot = 53 } })`);
+  expect(slots(addon, [2, 53, 54]), "Attack moved twice").toEqual([1776, 1766, 6603]);
+  ka(addon, 'KA.PutBack("X")');
+  expect(slots(addon, [2, 53, 54]), "Attack is back on 53, where X found it").toEqual([1776, 6603, 0]);
+  ka(addon, 'KA.PutBack("2")');
+  expect(state(addon)).toEqual(before);
+});
+
+it("Put everything back leaves a key the game refuses with its spells, so it can still go back later", () => {
+  const addon = rogue();
+  const before = state(addon);
+  ka(addon, `KA.Apply(${PRESET})`);
+  addon.eval('__set = SetBinding SetBinding = function(key, command) if key == "F" then return false end return __set(key, command) end');
+  expect(ka(addon, "return KA.PutBackAll()")).toBe(false);
+  expect([slots(addon, [61]), ka(addon, 'return KA.Changed("F")')], "Kick stays for F").toEqual([[1766], true]);
+  addon.eval("SetBinding = __set");
+  expect(ka(addon, "return KA.PutBackAll()")).toBe(true);
+  expect(state(addon)).toEqual(before);
+});
+
+it("put-back matches the exact spell: a rank the player put on the button stays", () => {
+  const addon = rogue();
+  ka(addon, `KA.Apply({ { key = "F", spell = 1766, slot = 61 } })`);
+  addon.world.learn(1767, { name: "Kick", rank: 2 });
+  addon.eval("__wfgWorld.setAction(61, { id = 1767 })");
+  ka(addon, "KA.PutBackAll()");
+  expect([slots(addon, [61]), addon.eval("return #__wfgWorld.discarded")]).toEqual([[1767], 0]);
+});
+
+it("a rollback that can't finish keeps the earlier Apply's pre-image", () => {
+  const addon = rogue();
+  const before = state(addon);
+  ka(addon, `KA.Apply({ { key = "F", spell = 1766, slot = 61 } })`);
+  // Stealth's move of Kick to 53 takes four calls; the fifth, its key, starts the fight.
+  addon.eval("__wfgWorld.combatAfterCalls(5)");
+  expectErrors(/^blocked in combat: Modules\/KeybindsApply\.lua:\d+ called SetBinding\(\), which the client refuses addon code in a fight$/);
+  ka(addon, `KA.Apply({ { key = "G", spell = 1784, slot = 61 } })`);
+  addon.eval("__wfgWorld.cursor = { type = 'item', id = 929 }");
+  setCombat(addon, false);
+  addon.eval("ClearCursor()");
+  ka(addon, "KA.PutBackAll()");
+  expect(state(addon), "61 is empty again, as before the first Apply").toEqual(before);
+});
+
+it("a waiting key set again since keeps its spells, and the next put-back reaches this character again", () => {
+  const addon = rogue("VanguardDB.keyPending = { ['Aren-ForeverTest'] = { F = true } }\nVanguardDB.keyRestore = { set = 1, keys = { F = { before = '', after = 'MULTIACTIONBAR1BUTTON1', by = { ['Thrall-ForeverTest'] = true } } } }\nVanguardCharDB = { slotRestore = { [61] = { before = false, layers = { { key = 'F', after = 1766, set = 1 } } } } }\n");
+  addon.eval("__wfgWorld.setAction(61, { id = 1766 })");
+  addon.fire("PLAYER_ENTERING_WORLD", false, false);
+  const sv = addon.savedVariables().account;
+  expect([slots(addon, [61]), sv.keyPending, sv.keyRestore.keys.F.by["Aren-ForeverTest"]]).toEqual([[1766], {}, true]);
+});
+
+it("the slot must take the spell: a button the client declines fails the Apply", () => {
+  const addon = rogue();
+  const before = state(addon);
+  addon.eval("local place = PlaceAction PlaceAction = function(slot) if slot ~= 62 then place(slot) end end");
+  expect(ka(addon, `return KA.Apply(${PRESET})`)).toBe(false);
+  expect(state(addon)).toEqual(before);
+});
+
+it("Plan: a command with two other keys takes no third, a chord is written in the game's order, and an entry with no key is invalid", () => {
+  const addon = rogue();
+  addon.eval('SetBinding("N", "MULTIACTIONBAR1BUTTON1") SetBinding("M", "MULTIACTIONBAR1BUTTON1")');
+  expect(plan(addon, `{ { key = "F", spell = 1766, slot = 61 }, { key = "SHIFT-CTRL-G", spell = 1784, slot = 62 }, { spell = 1776, slot = 63 } }`))
+    .toEqual(["F unchanged keys 61 -", "CTRL-SHIFT-G place - 62 -", "- unchanged invalid 63 -"]);
+  expect(() => ka(addon, `KA.Apply(${PRESET}, 3)`), "a set Apply doesn't take is the caller's mistake").toThrow(/set is Enum\.BindingSet\.Account, Character or nil/);
+});
+
+it("Only this character with nothing to change leaves the key set as it was", () => {
+  const addon = rogue();
+  expect(ka(addon, `return KA.Apply({ { key = "1", spell = 1752, slot = 1 } }, Enum.BindingSet.Character)`)).toBe(true);
+  expect([addon.eval("return GetCurrentBindingSet()"), chatHas(addon, /No key needs changing\.$/)]).toEqual([1, true]);
+});
+
+it("a waiting button the client hides keeps waiting for the next load screen", () => {
+  const addon = rogue("VanguardDB.keyPending = { ['Aren-ForeverTest'] = { F = true } }\nVanguardCharDB = { slotRestore = { [61] = { before = false, layers = { { key = 'F', after = 1766, set = 1 } } } } }\n");
+  addon.eval("__wfgWorld.setAction(61, { id = 1766 }) __info = GetActionInfo GetActionInfo = function(s) if s == 61 then return __wfgWorld.secret(1) end return __info(s) end");
+  addon.fire("PLAYER_ENTERING_WORLD", false, false);
+  expect(addon.savedVariables().account.keyPending["Aren-ForeverTest"], "still waiting").toEqual({ F: true });
+  addon.eval("GetActionInfo = __info");
+  addon.fire("PLAYER_ENTERING_WORLD", false, false);
+  expect([slots(addon, [61]), addon.savedVariables().account.keyPending], "then it goes back").toEqual([[0], {}]);
 });
