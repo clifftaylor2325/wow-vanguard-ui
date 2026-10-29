@@ -338,11 +338,24 @@ local function alerts(b)
   return keep
 end
 
--- Fades the button's state textures (the game swaps their art, never their alpha).
+-- Fades the button's state textures. The game puts their alpha back as the button changes (a mouse-leave,
+-- SetPushed, SetNormal, a bag's UpdateTextures), so keepStatesFaded runs this again after each of those.
 local function fadeStates(b)
   for _, get in ipairs(STATES) do
     local t = b[get] and b[get](b)
     if t then t:SetAlpha(0) end
+  end
+end
+
+-- The game's methods that set a button's state textures' alpha again, by the kind of button.
+MS.ALPHA_RESETS = { menu = { "SetPushed", "SetNormal" }, bag = { "UpdateTextures" } }
+
+-- Fades a button's state textures now, and again after each game method in MS.ALPHA_RESETS[kind] it has, so the
+-- game's own icon or highlight does not show back under Vanguard's. Once per button.
+local function keepStatesFaded(b, kind)
+  fadeStates(b)
+  for _, method in ipairs(MS.ALPHA_RESETS[kind]) do
+    if type(b[method]) == "function" then hooksecurefunc(b, method, ns.Guard("hook " .. method, fadeStates)) end
   end
 end
 
@@ -467,12 +480,12 @@ end
 -- art is faded, its alerts kept), lit in the accent under the mouse.
 local function addGlyph(b, icon)
   T.FadeRegions(b, alerts(b))
-  fadeStates(b)
+  keepStatesFaded(b, "menu")
   vgGlyph[b] = T.Snap(vgSlot[b]:CreateTexture(nil, "OVERLAY"))
   vgGlyph[b]:SetTexture(icon)
   vgGlyph[b]:SetPoint("CENTER", vgSlot[b], "CENTER")
   b:HookScript("OnEnter", function(self) hover(self, true) end)
-  b:HookScript("OnLeave", function(self) hover(self, false) end)
+  b:HookScript("OnLeave", function(self) hover(self, false) fadeStates(self) end)
 end
 
 -- Whether an atlas is one of the game's menu icons (not the portrait's art).
@@ -674,7 +687,7 @@ function MS.SkinBag(b)
   local icon = bagIcon(b)
   if vgSlot[b] or not icon then return end
   T.FadeRegions(b, alerts(b))
-  fadeStates(b)
+  keepStatesFaded(b, "bag")
   if b == _G.MainMenuBarBackpackButton then fitBackpack(b, icon) end
   fitBag(b, icon)
   addSlot(b, MS.ROWS[1])
