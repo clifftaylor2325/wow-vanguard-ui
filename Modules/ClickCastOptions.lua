@@ -33,8 +33,8 @@ local PICKER_W, PICKER_TOP = 280, T.CONTROL_H + 2 * T.SPACE.gap
 local PLAIN_ACTIONS = { { "target", L["Target"] }, { "menu", L["Unit menu"] }, { "focus", L["Focus"] }, { "assist", L["Assist"] } }
 
 -- Page state: whether the extra modifier columns show, the key the picker is for, and the notice (see noticeSignature)
--- the page was built with.
-local state = { more = false, pickKey = nil, built = "" }
+-- the page was built with (nil until it is built).
+local state = { more = false, pickKey = nil, built = nil }
 
 -- Shared pieces -----------------------------------------------------------------------------
 
@@ -122,9 +122,10 @@ local function noticeNeeded()
 end
 
 -- Re-reads every row on the page after a binding changed; a page built with another notice than the one that applies
--- now (none, or other words) is built again first. The other pages' rows are re-read either way.
+-- now (none, or other words) is built again first; a page not built yet has nothing to rebuild (and the event can come
+-- before the saved variables load). The other pages' rows are re-read either way.
 local function changed()
-  if state.built ~= noticeSignature() then O.RebuildPage(PAGE) end
+  if state.built ~= nil and state.built ~= noticeSignature() then O.RebuildPage(PAGE) end
   O.Refresh()
 end
 

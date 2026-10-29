@@ -91,7 +91,7 @@ it("the menu-click notice is not shown while the game's own bindings are in use,
   expect(addon.texts(MENU_NOTICE).length, "while the game's own bindings are in use the menu click works").toBe(0);
   addon.eval(`${CC}.settings.useGame = false Enum.ClickBindingType = nil ns.Options.RebuildPage("clickcast")`);
   expect(addon.texts(MENU_NOTICE).length, "a client that can't say what the game binds shows nothing").toBe(0);
-  expect(priest(`${OLD_SHAPE} ns.Options.Show("clickcast")`).texts(MENU_NOTICE).length, "nor does a client without the game's click bindings").toBe(0);
+  expect(priest(`C_ClickBindings = nil ${OLD_SHAPE} ns.Options.Show("clickcast")`).texts(MENU_NOTICE).length, "nor does a client without the game's click bindings").toBe(0);
 });
 
 it("the notice follows the page: it appears when a talent group change brings the old shape, and goes with the fix", () => {
