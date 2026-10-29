@@ -32,8 +32,8 @@ local KEYS_HEIGHT = KEYS_TOP + MAX_KEYS * ROW_H + T.SPACE.gap
 local PICKER_W, PICKER_TOP = 280, T.CONTROL_H + 2 * T.SPACE.gap
 local PLAIN_ACTIONS = { { "target", L["Target"] }, { "menu", L["Unit menu"] }, { "focus", L["Focus"] }, { "assist", L["Assist"] } }
 
--- Page state: whether the extra modifier columns show, and the key the picker is for.
-local state = { more = false, pickKey = nil }
+-- Page state: whether the extra modifier columns show, the key the picker is for, and whether the page was built with the menu-click notice.
+local state = { more = false, pickKey = nil, notice = false }
 
 -- Shared pieces -----------------------------------------------------------------------------
 
@@ -106,8 +106,16 @@ local function hideTooltip()
   if GameTooltip then GameTooltip:Hide() end
 end
 
--- Re-reads every row on the page after a binding changed.
+-- Whether the page offers to fix the menu click: the saved list has the old layouts' shape (a spell on Right click,
+-- the Unit menu on Middle) where the game won't run it, and the notice hasn't been dismissed.
+local function noticeNeeded()
+  return not CC.Stamped("menuNotice") and CC.MenuClickNeedsFix()
+end
+
+-- Re-reads every row on the page after a binding changed; a page built with the notice when it no longer applies (or
+-- without it when it now does) is built again.
 local function changed()
+  if noticeNeeded() ~= state.notice then return O.RebuildPage(PAGE) end
   O.Refresh()
 end
 
@@ -779,6 +787,57 @@ local function layoutBuilder(parent, _, width)
   return r
 end
 
+-- The menu-click notice -------------------------------------------------------------------
+
+-- Where the notice sits in the page's rows (under the card's title and the line over the grid), and its buttons' width.
+local NOTICE_AT, NOTICE_BUTTON_W = 3, 130
+
+-- Swaps the menu and the spell to where the game runs them (when the fight ends, in one), then re-reads the page.
+local function fixMenuClick()
+  CC.FixMenuClick()
+  changed()
+end
+
+-- Puts the notice away for good (stamped for this character), then re-reads the page.
+local function dismissNotice()
+  CC.Stamp("menuNotice")
+  changed()
+end
+
+-- The notice's text, wrapped across the row.
+local function noticeText(r, width)
+  r.text = T.Text(r:CreateFontString(nil, "OVERLAY"), "label", "warn")
+  r.text:SetPoint("TOPLEFT", T.SPACE.gap, -T.SPACE.tight)
+  r.text:SetWidth(width - 2 * T.SPACE.gap)
+  r.text:SetJustifyH("LEFT")
+  r.text:SetText(L["Middle click won't open the unit menu here: the game only runs it on the clicks its own Click Casting window covers. Put the menu on Right click and your Right click spell on Middle click?"])
+end
+
+-- The notice's buttons under its text: Swap them (the fix, in the accent) and Dismiss.
+local function noticeButtons(r)
+  r.fix = W.Primary(r, L["Swap them"], fixMenuClick, NOTICE_BUTTON_W)
+  r.fix:SetPoint("TOPLEFT", r.text, "BOTTOMLEFT", 0, -T.SPACE.gap)
+  r.dismiss = W.Button(r, L["Dismiss"], dismissNotice, NOTICE_BUTTON_W)
+  r.dismiss:SetPoint("LEFT", r.fix, "RIGHT", T.SPACE.gap, 0)
+end
+
+-- Puts the fix button's fill in the current accent again (the options window refreshes its rows after a theme change).
+local function refreshNotice(r)
+  r.fix:Refresh()
+end
+
+-- The notice row kind: its text with the buttons under it; the row is as tall as they need.
+local function noticeBuilder(parent, _, width)
+  local r = CreateFrame("Frame", nil, parent)
+  r:SetWidth(width)
+  noticeText(r, width)
+  noticeButtons(r)
+  r.grownHeight = r.text:GetStringHeight() + T.BUTTON_H + 2 * T.SPACE.gap
+  r:SetHeight(r.grownHeight)
+  r.Refresh = refreshNotice
+  return r
+end
+
 -- Imports a bindings string from the text dialog, saying how it went in chat.
 local function importText(text)
   local n, err = CC.Import(text)
@@ -877,6 +936,7 @@ O.AddRowKind("bindgrid", gridBuilder, 18 + #MOUSE * CELL_H + 8, true)
 O.AddRowKind("bindkeys", keysBuilder, KEYS_HEIGHT + T.SPACE.tight, true)
 O.AddRowKind("bindtest", testBuilder, 64, true)
 O.AddRowKind("bindshare", shareBuilder, 36, true)
+O.AddRowKind("bindnotice", noticeBuilder, 2 * T.BUTTON_H, true)
 
 -- The page's rows: the grid and its tools, the hover keys, the test tile, sharing, the unit-frame switch.
 local ROWS = {
@@ -922,10 +982,16 @@ for _, row in ipairs({
   { "button", L["Open the game's click bindings"], openGameBindings },
 }) do WITH_GAME[#WITH_GAME + 1] = row end
 
--- The page's rows (built again after the modifier columns change); the game's
--- click bindings are offered where the client has them.
+-- The page's rows (built again after the modifier columns change, or when the notice starts or stops applying); the
+-- game's click bindings are offered where the client has them, and the menu-click notice while it applies.
 local function rows()
-  return type(C_ClickBindings) == "table" and WITH_GAME or ROWS
+  local base = type(C_ClickBindings) == "table" and WITH_GAME or ROWS
+  state.notice = noticeNeeded()
+  if not state.notice then return base end
+  local out = {}
+  for i, row in ipairs(base) do out[i] = row end
+  table.insert(out, NOTICE_AT, { "bindnotice" })
+  return out
 end
 
 O.AddPage({ key = PAGE, title = L["Click casting"], icon = "NavClickCasting", order = 46, rows = rows })
@@ -935,6 +1001,9 @@ local function pickerFollows()
   if picker and picker:IsShown() then picker:Refresh() end
 end
 
--- When a fight ends the queued changes apply: re-read the page; the picker follows the bindings too.
+-- When a fight ends the queued changes apply: re-read the page; the picker follows the bindings too. So does
+-- a change of talent group or spec, whose list may or may not need the notice.
 ns.On("PLAYER_REGEN_ENABLED", changed)
+ns.On("ACTIVE_TALENT_GROUP_CHANGED", changed)
+ns.On("PLAYER_SPECIALIZATION_CHANGED", changed)
 CC.OnApplied = pickerFollows

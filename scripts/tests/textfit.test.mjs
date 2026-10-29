@@ -13,7 +13,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterAll, expect, it } from "vitest";
 import { createAddon } from "../lib/lua-harness.mjs";
-import { SETUP_DONE, expectErrors } from "./helpers.mjs";
+import { GAME_CLICKS_LUA, SETUP_DONE, expectErrors } from "./helpers.mjs";
 import { SCENES, buildScene } from "../lib/preview-scenes.mjs";
 
 const BASELINE = path.join(path.dirname(fileURLToPath(import.meta.url)), "textfit-baseline.json");
@@ -99,6 +99,17 @@ it("text fits: the dialogs", () => {
   open('ns.ShowText(ns.L["Export profile"], "Vanguard:1:abc")', "Vanguard_TextDialog");
   open('ns.ShowFind(ns.L["Find"], function() return {} end)', "Vanguard_FindDialog");
   expectFits("dialogs", findings);
+});
+
+it("text fits: the Click casting page's menu-click notice and its buttons (KB1-3)", () => {
+  // TEST-ONLY saved list in the old layouts' shape: a spell on Right click, the Unit menu on Middle click.
+  const old = 'VanguardCharDB = { clickcast = { [0] = { { key = "BUTTON2", action = "spell", value = "Flash Heal" }, { key = "BUTTON3", action = "menu" } } } }';
+  const addon = createAddon({ savedVariables: SETUP_DONE + old, textFit: true, client: GAME_CLICKS_LUA });
+  addon.login();
+  addon.eval('ns.Options.Show("clickcast")');
+  expect(addon.eval('return ns.GetModule("ClickCast").MenuClickNeedsFix()'), "the page has the notice to audit").toBe(true);
+  expect(addon.frames('w.fix ~= nil and w.dismiss ~= nil and w:IsVisible()').length, "the notice row is on the page").toBe(1);
+  expect(addon.textFit("Vanguard_Options"), "its text and both buttons fit, with every string a third longer").toEqual([]);
 });
 
 it("text fits: the key-capture prompt on a French client is not cut short (P1-4)", () => {

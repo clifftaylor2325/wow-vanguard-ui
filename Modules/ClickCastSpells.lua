@@ -18,7 +18,7 @@ ns.ClickCastSpells = CS
 CS.GROUPS = { "heals", "cleanse", "buffs", "other" }
 CS.GROUP_NAMES = { heals = L["Heals"], cleanse = L["Protect & cleanse"], buffs = L["Buffs"], other = L["Other"] }
 
--- Per class: the spell ids of each group, and the starter layout (mouse button -> spell id).
+-- Per class: the spell ids of each group, and the starter layout (mouse button -> spell id), the main heal on the middle click.
 -- The names in the comments are the English client's, for reading only: the client names each id.
 -- UNVERIFIED on a Forever client: the ids are the classic database's; check them in the click-casting picker.
 CS.CLASSES = {
@@ -32,7 +32,7 @@ CS.CLASSES = {
     -- Prayer of Shadow Protection, Levitate, Mind Vision.
     buffs = { 1243, 14752, 976, 21562, 27681, 27683, 1706, 2096 },
     -- Flash Heal, Greater Heal, Renew, Dispel Magic, Cure Disease, Power Word: Shield, Resurrection.
-    layout = { BUTTON2 = 2061, ["shift-BUTTON1"] = 2060, ["shift-BUTTON2"] = 139, ["ctrl-BUTTON1"] = 527, ["ctrl-BUTTON2"] = 528, ["alt-BUTTON1"] = 17, ["alt-BUTTON2"] = 2006 },
+    layout = { BUTTON3 = 2061, ["shift-BUTTON1"] = 2060, ["shift-BUTTON2"] = 139, ["ctrl-BUTTON1"] = 527, ["ctrl-BUTTON2"] = 528, ["alt-BUTTON1"] = 17, ["alt-BUTTON2"] = 2006 },
   },
   DRUID = {
     -- Healing Touch, Regrowth, Rejuvenation, Tranquility, Swiftmend, Lifebloom, Nourish, Wild Growth.
@@ -42,7 +42,7 @@ CS.CLASSES = {
     -- Mark of the Wild, Gift of the Wild, Thorns, Innervate.
     buffs = { 1126, 21849, 467, 29166 },
     -- Rejuvenation, Healing Touch, Regrowth, Remove Curse, Abolish Poison, Swiftmend, Rebirth.
-    layout = { BUTTON2 = 774, ["shift-BUTTON1"] = 5185, ["shift-BUTTON2"] = 8936, ["ctrl-BUTTON1"] = 2782, ["ctrl-BUTTON2"] = 2893, ["alt-BUTTON1"] = 18562, ["alt-BUTTON2"] = 20484 },
+    layout = { BUTTON3 = 774, ["shift-BUTTON1"] = 5185, ["shift-BUTTON2"] = 8936, ["ctrl-BUTTON1"] = 2782, ["ctrl-BUTTON2"] = 2893, ["alt-BUTTON1"] = 18562, ["alt-BUTTON2"] = 20484 },
   },
   PALADIN = {
     -- Holy Light, Flash of Light, Lay on Hands, Holy Shock, Word of Glory, Light of Dawn.
@@ -53,7 +53,7 @@ CS.CLASSES = {
     -- Blessing of Might, Wisdom, Kings, Salvation, Light, Sanctuary, then the Greater Blessing of each.
     buffs = { 19740, 19742, 20217, 1038, 19977, 20911, 25782, 25894, 25898, 25895, 25890, 25899 },
     -- Flash of Light, Holy Light, Blessing of Protection, Cleanse, Purify, Lay on Hands, Redemption.
-    layout = { BUTTON2 = 19750, ["shift-BUTTON1"] = 635, ["shift-BUTTON2"] = 1022, ["ctrl-BUTTON1"] = 4987, ["ctrl-BUTTON2"] = 1152, ["alt-BUTTON1"] = 633, ["alt-BUTTON2"] = 7328 },
+    layout = { BUTTON3 = 19750, ["shift-BUTTON1"] = 635, ["shift-BUTTON2"] = 1022, ["ctrl-BUTTON1"] = 4987, ["ctrl-BUTTON2"] = 1152, ["alt-BUTTON1"] = 633, ["alt-BUTTON2"] = 7328 },
   },
   SHAMAN = {
     -- Healing Wave, Lesser Healing Wave (Healing Surge on later clients), Chain Heal, Riptide, Earth Shield.
@@ -63,7 +63,7 @@ CS.CLASSES = {
     -- Water Walking, Water Breathing.
     buffs = { 546, 131 },
     -- Lesser Healing Wave, Healing Wave, Chain Heal, Cure Poison, Cure Disease, Ancestral Spirit, Nature's Swiftness.
-    layout = { BUTTON2 = 8004, ["shift-BUTTON1"] = 331, ["shift-BUTTON2"] = 1064, ["ctrl-BUTTON1"] = 526, ["ctrl-BUTTON2"] = 2870, ["alt-BUTTON1"] = 2008, ["alt-BUTTON2"] = 16188 },
+    layout = { BUTTON3 = 8004, ["shift-BUTTON1"] = 331, ["shift-BUTTON2"] = 1064, ["ctrl-BUTTON1"] = 526, ["ctrl-BUTTON2"] = 2870, ["alt-BUTTON1"] = 2008, ["alt-BUTTON2"] = 16188 },
   },
   -- Remove Lesser Curse (Remove Curse on later clients); Arcane Intellect, Arcane Brilliance, Dampen Magic, Amplify Magic,
   -- Slow Fall; the layout: Arcane Intellect, Remove Lesser Curse.
@@ -72,8 +72,10 @@ CS.CLASSES = {
   WARLOCK = { heals = {}, cleanse = {}, buffs = { 5697, 2970, 132, 11743 }, layout = { ["shift-BUTTON1"] = 5697 } },
 }
 
--- Every layout targets by plain left click and opens the unit menu on middle click.
-local COMMON_LAYOUT = { BUTTON1 = { action = "target" }, BUTTON3 = { action = "menu" } }
+-- Every layout is "Click to select": plain left click targets and plain right click opens the unit menu. These are the
+-- clicks the game's own click profile covers by default, and the units' click handler drops a Target or Unit menu
+-- click it doesn't cover, so the menu can't sit on Middle. A class's main heal takes the middle click.
+local COMMON_LAYOUT = { BUTTON1 = { action = "target" }, BUTTON2 = { action = "menu" } }
 
 -- Catalog -------------------------------------------------------------------------------------
 

@@ -1,7 +1,7 @@
 // clicks: Vanguard's real Lua in the TEST-ONLY headless client (scripts/lib/lua-harness.mjs).
 
 import { expect, it } from "vitest";
-import { CLICK_LUA, GAME_CLICKS_LUA, RAID_ENV, UNITS_ENV, chatHas, loggedIn } from "./helpers.mjs";
+import { CLICK_LUA, GAME_CLICKS_LUA, GAME_ENGINE_LUA, RAID_ENV, UNITS_ENV, chatHas, loggedIn } from "./helpers.mjs";
 
 it("click casting", () => {
   const addon = loggedIn(UNITS_ENV + RAID_ENV + CLICK_LUA + "GetSpecialization = function() return __spec end __spec = 1");
@@ -102,7 +102,7 @@ it("the game's click bindings: Vanguard's own step aside out of combat, and come
 it("/vg binds says which Target and Unit menu bindings the game's own click bindings won't run, and why", () => {
   const addon = loggedIn(GAME_CLICKS_LUA);
   const CC = 'ns.GetModule("ClickCast")';
-  addon.eval(`${CC}.ApplyLayout(ns.ClickCastSpells.Layout()) ${CC}.Add("BUTTON2", "menu") ${CC}.Add("ctrl-BUTTON1", "target")
+  addon.eval(`${CC}.ApplyLayout(ns.ClickCastSpells.Layout()) ${CC}.Add("BUTTON3", "menu") ${CC}.Add("ctrl-BUTTON1", "target")
     ${CC}.Add("SHIFT-Q", "menu") ${CC}.Add("BUTTON4", "focus") ${CC}.Add("alt-BUTTON3", "spell", "TEST-ONLY Renew")`);
   const warn = addon.eval('return "|c" .. ns.Theme.Hex("warn")');
   const click = `  ${warn}(does nothing: the game runs it only on a click its own Click Casting window binds)|r`;
@@ -209,4 +209,29 @@ it("a game binding whose modifier text can't be read raises no warning, and a cl
   expect([flagged("shift-BUTTON2"), flagged("BUTTON2")], "without the call a modified click can't be told, but a plain one needs no decoding").toEqual([false, true]);
   addon.eval("C_ClickBindings = nil");
   expect(flagged("BUTTON2"), "a client without the game's click bindings flags nothing").toBe(false);
+});
+
+// A raid button with a class's starter layout applied over the game's default click profile; answers what a click on it does.
+function layoutClicks(klass, apply) {
+  const addon = loggedIn(UNITS_ENV + RAID_ENV + CLICK_LUA + GAME_CLICKS_LUA + GAME_ENGINE_LUA);
+  const ids = addon.eval(`local out = {} for _, id in pairs(ns.ClickCastSpells.CLASSES.${klass}.layout) do out[#out + 1] = id end return out`);
+  for (const id of ids) addon.world.learn(id, { name: `TEST-ONLY Spell ${id}`, helpful: true });
+  addon.eval(`__units.player.class = "${klass}" __spawn(1, "raid1")
+    Vanguard_RaidUnitButton1:SetAttribute("*type1", "target") Vanguard_RaidUnitButton1:SetAttribute("*type2", "togglemenu")`);
+  addon.eval(apply);
+  // What a click does: the button's name (Left, Right, Middle) and the held modifiers ("shift-").
+  return (button, prefix = "") => addon.eval(`return __engineClick(Vanguard_RaidUnitButton1, "${button}Button", "${prefix}")`);
+}
+
+it("a menu on Middle click is dropped over the game's default click profile, a spell on Right click taking its place (the old layouts)", () => {
+  const click = layoutClicks("PRIEST", 'local CC = ns.GetModule("ClickCast") CC.Add("BUTTON2", "spell", "TEST-ONLY Spell 2061") CC.Add("BUTTON3", "menu")');
+  expect([click("Left"), click("Right"), click("Middle")], "Right casts, and the Middle menu click is thrown away by the engine").toEqual(["target", "spell", "dropped"]);
+});
+
+it("every starter layout leaves a unit menu the game's default click profile runs, and the healers' main heal on Middle click", () => {
+  for (const klass of ["PRIEST", "DRUID", "PALADIN", "SHAMAN", "MAGE", "WARLOCK"]) {
+    const click = layoutClicks(klass, 'local CS = ns.ClickCastSpells ns.GetModule("ClickCast").ApplyLayout(CS.Layout())');
+    expect([klass, click("Left"), click("Right")], "Left targets and Right opens the menu").toEqual([klass, "target", "togglemenu"]);
+    if (klass !== "MAGE" && klass !== "WARLOCK") expect([klass, click("Middle")], "the main heal is on Middle click").toEqual([klass, "spell"]);
+  }
 });

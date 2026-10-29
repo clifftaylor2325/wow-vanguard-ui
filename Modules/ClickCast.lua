@@ -208,6 +208,28 @@ function CC.ApplyLayout(layout)
   ns.OutOfCombat(CC.ApplyAll, "clickcast")
 end
 
+-- Whether the saved list has a spell on plain Right click and the Unit menu on Middle click, the shape the starter
+-- layouts had before "Click to select", and the game won't run that menu click: the units' click handler drops a menu
+-- click its own profile doesn't cover, so the menu opens nowhere.
+function CC.MenuClickNeedsFix()
+  local right, middle = CC.Binding("BUTTON2"), CC.Binding("BUTTON3")
+  if not (right and middle and right.action == "spell" and middle.action == "menu") then return false end
+  return CC.WontRun(middle) ~= nil
+end
+
+-- Moves the Unit menu from Middle click to plain Right click and the spell that was on Right click to Middle, then
+-- applies (when the fight ends, in one). Nothing else in the list changes. False, changing nothing, when the list
+-- isn't in the shape CC.MenuClickNeedsFix describes.
+function CC.FixMenuClick()
+  if not CC.MenuClickNeedsFix() then return false end
+  local heal = copyOf(CC.Binding("BUTTON2"))
+  heal.key = "BUTTON3"
+  put(CC.Bindings(), heal)
+  put(CC.Bindings(), { key = "BUTTON2", action = "menu" })
+  ns.OutOfCombat(CC.ApplyAll, "clickcast")
+  return true
+end
+
 -- Copies the current spec's bindings over another spec's.
 function CC.CopyToSpec(spec)
   local from, to = CC.Bindings(), CC.Bindings(spec)

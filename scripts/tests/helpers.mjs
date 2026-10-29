@@ -268,6 +268,42 @@ export const GAME_CLICKS_LUA = `
   C_ClickBindings = { GetProfileInfo = function() return __gameClicks end }
 `;
 
+// TEST-ONLY model of what the client's SecureUnitButton_OnClick does with a click on a unit button (from the forever
+// branch's SecureTemplates.lua), over GAME_CLICKS_LUA's profile. __engineClick(frame, button, prefix) answers what
+// the click does: "game:<kind>" when the game's own Spell, Macro or PetAction binding for it runs (and returns before
+// the frame's attribute is read), "dropped" when the frame's type is target, menu or togglemenu and the game's profile
+// has no binding for the click, else the frame's type attribute (an Interaction binding first maps the click to the
+// button its action defaults to: Target to Left, Open menu to Right). prefix is the held modifiers ("shift-").
+export const GAME_ENGINE_LUA = `
+  local BUTTON_NUMBERS = { LeftButton = 1, RightButton = 2, MiddleButton = 3, Button4 = 4, Button5 = 5 }
+  local function maskOf(prefix)
+    local mask = 0
+    for name, bit in pairs(__wfgWorld.modifierBits) do
+      if prefix:find(name .. "-", 1, true) then mask = mask + bit end
+    end
+    return mask
+  end
+  local function boundTo(button, mask)
+    for _, info in ipairs(C_ClickBindings.GetProfileInfo()) do
+      if info.button == button and info.modifiers == mask then return info end
+    end
+  end
+  local function typeOf(frame, prefix, button)
+    local n = BUTTON_NUMBERS[button]
+    return frame:GetAttribute(prefix .. "type" .. n) or frame:GetAttribute("*type" .. n) or frame:GetAttribute("type" .. n)
+  end
+  function __engineClick(frame, button, prefix)
+    prefix = prefix or ""
+    local bound = boundTo(button, maskOf(prefix))
+    local kind, Kinds = bound and bound.type or 0, Enum.ClickBindingType
+    if kind == Kinds.Spell or kind == Kinds.Macro or kind == Kinds.PetAction then return "game:" .. kind end
+    if kind == Kinds.Interaction then button = bound.actionID == 1 and "LeftButton" or "RightButton" end
+    local type = typeOf(frame, prefix, button)
+    if (type == "target" or type == "menu" or type == "togglemenu") and kind == Kinds.None then return "dropped" end
+    return type
+  end
+`;
+
 // TEST-ONLY raid: three members; raid2 is you. The stub has no secure
 // header, so tests create buttons the way the header would and call its setup.
 export const RAID_ENV = `
