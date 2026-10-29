@@ -92,11 +92,14 @@ function KA.CommandFor(slot)
   return r and r.command .. ((slot - r.first) % 12 + 1)
 end
 
--- Whether Vanguard draws bar 1, 2 or 3 now: its action bars are on and the profile has the bar switched on.
-local function barOn(bar)
-  local AB = ns.GetModule("ActionBars")
-  local bars = AB and AB.settings and AB.settings.bars
-  return type(bars) == "table" and type(bars[bar]) == "table" and bars[bar].enabled == true
+-- Whether Vanguard draws a slot's button now: its action bars are on, the profile has the slot's bar (1, 2 or 3)
+-- switched on, and the bar shows that many buttons (a hidden button gets no key).
+local function buttonOn(slot)
+  local AB, r = ns.GetModule("ActionBars"), rangeOf(slot)
+  local bars = r and AB and AB.settings and AB.settings.bars
+  local bar = type(bars) == "table" and bars[r.bar]
+  if type(bar) ~= "table" or bar.enabled ~= true then return false end
+  return (slot - r.first) % 12 + 1 <= (tonumber(bar.buttons) or 12)
 end
 
 -- What a slot holds, as { kind, id } with the id plain (nil when hidden); nil for an empty slot. A hidden kind
@@ -156,15 +159,14 @@ end
 -- The first slot on a shown bar that holds the spell, by searchSlots, or nil.
 local function foundAt(plan, row)
   for _, s in ipairs(searchSlots(row.slot)) do
-    if barOn(rangeOf(s).bar) and holdsSpell(viewOf(plan, s), row.spell) then return s end
+    if buttonOn(s) and holdsSpell(viewOf(plan, s), row.spell) then return s end
   end
 end
 
--- A free slot of bar 3's 5 to 12 (empty, and not taken by this plan) while Vanguard draws bar 3, or nil.
+-- A free slot of bar 3's 5 to 12 (empty, shown, and not taken by this plan), or nil.
 local function spareSlot(plan)
-  if not barOn(KA.SPARE.bar) then return nil end
   for s = KA.SPARE.first, KA.SPARE.last do
-    if not viewOf(plan, s) and not plan.taken[s] then return s end
+    if buttonOn(s) and not viewOf(plan, s) and not plan.taken[s] and not plan.claimed[s] then return s end
   end
 end
 
@@ -179,7 +181,7 @@ end
 local function slotShown(_, row)
   local r = rangeOf(row.slot)
   if not r then return "unchanged", "outside" end
-  if not barOn(r.bar) then return "unchanged", "barOff" end
+  if not buttonOn(row.slot) then return "unchanged", "barOff" end
 end
 
 -- A spell the character doesn't know yet gets no key.
@@ -187,12 +189,12 @@ local function spellKnown(_, row)
   if not knows(row.spell) then return "unchanged", "unknown" end
 end
 
--- A spell already on the bars: the key is bound to that button (its slot becomes the row's), unless this plan
--- already uses it.
+-- A spell already on the bars (a spell this plan moved aside too): the key is bound to that button (its slot
+-- becomes the row's), unless this plan already gave that button a key.
 local function alreadyOnBars(plan, row)
   local s = foundAt(plan, row)
   if not s then return nil end
-  if plan.taken[s] then return "unchanged", "used" end
+  if plan.claimed[s] then return "unchanged", "used" end
   row.slot = s
   return "bind"
 end
@@ -200,7 +202,7 @@ end
 -- The entry's own slot: taken by this plan, empty (the spell goes there), or a known spell (moved aside when bar
 -- 3 has room; the row notes where to and what); anything else is kept.
 local function ownSlot(plan, row)
-  if plan.taken[row.slot] then return "unchanged", "used" end
+  if plan.taken[row.slot] or plan.claimed[row.slot] then return "unchanged", "used" end
   local content = viewOf(plan, row.slot)
   if not content then return "place" end
   if content.kind ~= "spell" or not knows(content.id) then return "unchanged", "kept" end
@@ -229,14 +231,15 @@ local function changesOf(row)
   return {}
 end
 
--- Whether a command already has two keys and this isn't one of them: the game shows two keys a command, and a third
--- may push one out (unverified), which a put-back couldn't bring back.
-local function keysFull(row)
-  local keys = { GetBindingKey(row.command) }
-  for _, key in ipairs(keys) do
-    if key == row.key then return false end
-  end
-  return #keys >= 2
+-- Whether a command already has two keys, counting those this plan gives it, and this isn't one of them: the game
+-- shows two keys a command, and a third may push one out (unverified), which a put-back couldn't bring back.
+local function keysFull(plan, row)
+  local keys, count = {}, 0
+  for _, key in ipairs({ GetBindingKey(row.command) }) do keys[key] = true end
+  for key in pairs(plan.added[row.command] or {}) do keys[key] = true end
+  if keys[row.key] then return false end
+  for _ in pairs(keys) do count = count + 1 end
+  return count >= 2
 end
 
 -- A writing row's last word: a key this plan gave another command stays with that ("used"); a row that writes no
@@ -247,14 +250,16 @@ local function settle(plan, row)
   local taken = plan.keys[row.key]
   if taken and taken ~= row.command then row.kind, row.why = "unchanged", "used" return end
   if #changesOf(row) == 0 and GetBindingAction(row.key) == row.command then row.kind, row.why = "unchanged", "already" return end
-  if keysFull(row) then row.kind, row.why = "unchanged", "keys" end
+  if keysFull(plan, row) then row.kind, row.why = "unchanged", "keys" end
 end
 
--- Takes a row's key and button in the plan (an "already" row too, so no later row takes them), and its slots' new
--- contents into the view.
+-- Takes a row's key, its command's new key and its button in the plan (an "already" row too, so no later row takes
+-- them), and its slots' new contents into the view: `claimed` buttons have a key, `taken` slots were written.
 local function commit(plan, row)
   plan.keys[row.key] = row.command
-  if row.slot then plan.taken[row.slot] = true end
+  plan.added[row.command] = plan.added[row.command] or {}
+  plan.added[row.command][row.key] = true
+  if row.slot then plan.claimed[row.slot] = true end
   for _, change in ipairs(changesOf(row)) do
     plan.taken[change.slot] = true
     plan.view[change.slot] = { kind = "spell", id = change.spell }
@@ -290,7 +295,7 @@ end
 ---@param entries table[]  { key, spell, slot } or { key, command }
 ---@return table[] rows  { key, spell, slot, command, kind, why, to, moved }; kind: bind, place, move, command, unchanged
 function KA.Plan(entries)
-  local plan = { rows = {}, view = {}, keys = {}, taken = {} }
+  local plan = { rows = {}, view = {}, keys = {}, added = {}, taken = {}, claimed = {} }
   for _, entry in ipairs(entries) do planEntry(plan, entry) end
   return plan.rows
 end
@@ -319,7 +324,7 @@ end
 -- The game's own key windows, or Vanguard's keybind mode, open.
 local function bindingOpen()
   for _, name in ipairs(KA.KEY_WINDOWS) do
-    if windowShown(name) then return L["Close the game's Settings and Quick Keybind windows first."] end
+    if windowShown(name) then return L["Close the game's Settings, Quick Keybind and Click Casting windows first."] end
   end
   local AB = ns.GetModule("ActionBars")
   if AB and AB.binding then return L["Leave keybind mode first."] end
@@ -405,15 +410,22 @@ end
 ---@param key string
 ---@return boolean
 function KA.Changed(key)
-  local rec = recordFor(GetCurrentBindingSet())
-  return rec ~= nil and rec.keys[key] ~= nil
+  local rec, name = recordFor(GetCurrentBindingSet()), chord(key)
+  return rec ~= nil and name ~= nil and rec.keys[name] ~= nil
 end
 
 -- Writing slots -----------------------------------------------------------------------------------
 
--- A slot's content as a pre-image: its spell ID, or false when empty (Apply only ever writes those two).
+-- A slot's content as a pre-image: its spell ID, false when empty, or "other" for anything else (a macro, an item,
+-- a spell whose ID is hidden), which never matches what Vanguard put there.
 local function preimage(content)
-  return content and content.id or false
+  if not content then return false end
+  return content.kind == "spell" and content.id or "other"
+end
+
+-- Whether a slot's content can't be read plainly now (a hidden kind, or a spell whose ID is hidden).
+local function unreadable(content)
+  return content ~= nil and (content.kind == "hidden" or (content.kind == "spell" and content.id == nil))
 end
 
 -- Whether a slot now holds exactly this pre-image (a spell ID, or false for empty).
@@ -455,7 +467,7 @@ end
 -- button can't be read or written now is kept as it was. Answers whether the button went back.
 local function peel(slots, slot, row, matches)
   local kept, shown, content = without(row.layers, matches), shownBy(row), readSlot(slot)
-  if #kept == #row.layers or (content and content.kind == "hidden") then return false end
+  if #kept == #row.layers or unreadable(content) then return false end
   if preimage(content) ~= shown then slots[slot] = nil return false end
   local want = kept[1] and kept[#kept].after or row.before
   if want ~= shown and not restoreSlot(slot, want) then return false end
@@ -525,21 +537,34 @@ local function takeRecord(run)
   return true
 end
 
--- Places every row's spells, in order, noting each; false at the first that doesn't take or is blocked.
+-- Places one spell and notes what the slot holds after, whenever that changed (even a spell it didn't ask for), so
+-- a rollback finds it; whether the slot holds exactly the spell.
+local function placeOne(run, change)
+  local placed = ns.PlaceSpell(change.slot, change.spell)
+  local now = preimage(readSlot(change.slot))
+  if now ~= run.slots[change.slot] then run.placed[change.slot] = now end
+  return placed and now == change.spell
+end
+
+-- Places every row's spells, in order; false at the first that doesn't take or is blocked.
 local function placeSpells(run)
   for _, row in ipairs(run.rows) do
     for _, change in ipairs(changesOf(row)) do
-      if not placeExactly(change.slot, change.spell) or run.blocked then return false end
-      run.placed[change.slot] = change.spell
+      if not placeOne(run, change) or run.blocked then return false end
     end
   end
   return true
 end
 
+-- Binds a key to its command and reads it back (a blocked write whose event comes later still shows here).
+local function bindOne(row)
+  return SetBinding(row.key, row.command) and GetBindingAction(row.key) == row.command
+end
+
 -- Binds every writing row's key to its command; false at the first the client refuses.
 local function setKeys(run)
   for _, row in ipairs(run.rows) do
-    if KA.WRITES[row.kind] and (not SetBinding(row.key, row.command) or run.blocked) then return false end
+    if KA.WRITES[row.kind] and (not bindOne(row) or run.blocked) then return false end
   end
   return true
 end
@@ -707,6 +732,16 @@ local function hasLeftovers()
   return false
 end
 
+-- Whether a key record holds a key this character set: any key of its own set's record, a key that names it in the
+-- account's.
+local function mine(rec)
+  if not rec then return false end
+  for _, row in pairs(rec.keys) do
+    if rec.set == Enum.BindingSet.Character or (type(row.by) == "table" and row.by[me()]) then return true end
+  end
+  return false
+end
+
 -- The record a put-back works on: the one for the key set in use (an empty one when only a failed Apply's buttons
 -- are left). Nil and why when keys can't change now, when Vanguard set its keys in the other set (the player
 -- switched since), or when there is nothing to put back.
@@ -717,7 +752,7 @@ local function usableRecord()
   local rec = recordFor(set)
   if rec then return rec end
   local other = set == sets.Account and sets.Character or sets.Account
-  if recordFor(other) then return nil, L["Vanguard set these keys in your other key set (account-wide, or this character's own). Switch back in the game's key bindings to put them back."] end
+  if mine(recordFor(other)) then return nil, L["Vanguard set these keys in your other key set (account-wide, or this character's own). Switch back in the game's key bindings to put them back."] end
   if hasLeftovers() then return { set = set, keys = {} } end
   return nil, L["Vanguard hasn't changed any of your keys."]
 end
@@ -749,7 +784,8 @@ end
 ---@return boolean
 function KA.PutBack(key)
   local rec, why = usableRecord()
-  local row = rec and rec.keys[key]
+  key = chord(key)
+  local row = rec and key and rec.keys[key]
   if not row then ns.Chat(why or L["Vanguard didn't change that key."]) return false end
   local result = { back = 0, kept = {}, failed = {}, others = {} }
   if putBackKey(rec, key, row, result) then rec.keys[key] = nil end

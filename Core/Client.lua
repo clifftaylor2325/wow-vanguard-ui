@@ -204,11 +204,19 @@ function ns.SpellKnownCall()
   return nil
 end
 
+-- What the cursor holds, as the first value GetCursorInfo gives ("spell", "item"...), nil for nothing, or "hidden"
+-- when the client hides it.
+local function cursorKind()
+  local kind = C.Call("GetCursorInfo")
+  if ns.IsSecret(kind) then return "hidden" end
+  return kind
+end
+
 -- Picks a spell up onto the cursor from the spellbook (C_Spell, else the old global); whether the cursor holds a spell now.
 local function pickupSpell(spellID)
   local api = type(C_Spell) == "table" and C_Spell.PickupSpell
   if type(api) == "function" then api(spellID) else C.Call("PickupSpell", spellID) end
-  return C.Call("GetCursorInfo") == "spell"
+  return cursorKind() == "spell"
 end
 
 -- Puts a spell on an action slot from the spellbook and leaves the cursor empty. PlaceAction swaps, so what the slot
@@ -219,7 +227,7 @@ end
 ---@param spellID number
 ---@return boolean
 function ns.PlaceSpell(slot, spellID)
-  if C.Call("GetCursorInfo") then return false end
+  if cursorKind() ~= nil then return false end
   local ok = pickupSpell(spellID)
   if ok then C.Call("PlaceAction", slot) end
   C.Call("ClearCursor")
