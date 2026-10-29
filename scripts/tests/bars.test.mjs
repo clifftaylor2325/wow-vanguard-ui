@@ -656,6 +656,7 @@ it("keybind mode: the mouse's side buttons and wheel bind too; Backspace clears;
   const addon = loggedIn(BIND_ENV + `
     __wfgWorld.bindings.MOVEFORWARD = { "W" }
     __wfgWorld.bindings.JUMP = { "SPACE" }
+    __wfgWorld.bindings.SCREENSHOT = { "PRINTSCREEN" }
     BINDING_NAME_MOVEFORWARD = "Move Forward"
   `);
   addon.slash("keybind");
@@ -684,6 +685,9 @@ it("keybind mode: the mouse's side buttons and wheel bind too; Backspace clears;
   expect(resultLine(addon, "warn"), "the banner says it too, in the warning colour").toEqual(["W bound to Bar 1 button 4, taken from Move Forward.", true]);
   addon.key("Vanguard_KeybindMode", "SPACE");
   expect(chatHas(addon, /SPACE bound to Bar 1 button 4, taken from JUMP\.$/), "a command with no name is named as is").toBe(true);
+  addon.eval("Vanguard_KeybindMode.SetPropagateKeyboardInput = function(self, v) self.__passed = v end");
+  addon.key("Vanguard_KeybindMode", "PRINTSCREEN");
+  expect([boundTo(addon, "ACTIONBUTTON4"), boundTo(addon, "SCREENSHOT"), binder(addon).passed], "the Screenshot key goes on to the game and binds nothing, as the game's own binder does").toEqual(["SPACE", "PRINTSCREEN", true]);
   addon.key("Vanguard_KeybindMode", "1");
   expect([boundTo(addon, "ACTIONBUTTON1"), chatHas(addon, /1 bound to Bar 1 button 4, taken from Bar 1 button 1\.$/)], "a key from another Vanguard button names that button").toEqual(["", true]);
   addon.key("Vanguard_KeybindMode", "1");
