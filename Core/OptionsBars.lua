@@ -69,6 +69,11 @@ local function actionBarRows()
   }
 end
 
+-- Put everything back asks first: every key key setup changed, and the spells it moved, go back.
+local function putBackAll()
+  ns.Ask(L["Put back every key key setup changed, and the spells it moved?"], L["Put back"], function() ns.KeybindsApply.PutBackAll() end)
+end
+
 -- Key setup's buttons on WoW Forever (Modules/KeybindsWizard.lua, Modules/KeybindsApply.lua): set up recommended
 -- keys, and put back every key it changed.
 local function keySetupRows()
@@ -76,7 +81,7 @@ local function keySetupRows()
   return {
     { "text", L["Key setup suggests keys for your class and changes nothing until you press Apply. Right-click a key it changed to put that key back."] },
     { "button", L["Set up keys"], function() ns.KeybindsWizard.Open() end },
-    { "button", L["Put everything back"], function() ns.KeybindsApply.PutBackAll() end },
+    { "button", L["Put everything back"], putBackAll },
   }
 end
 

@@ -61,8 +61,9 @@ const ready = (addon) => addon.eval(`local s = Vanguard_KeysWizard.steps.ready l
 // The default tooltip's lines, as one text.
 const tipText = (addon) => JSON.stringify(addon.eval("return GameTooltip.__lines"));
 
-// The keyboard's frame, for hover and key presses.
+// The keyboard's frame, and its first key (the pointer on any key lets the keyboard read keys).
 const BOARD = "ns.KeybindsWizard.frame.steps.preview.board";
+const KEY = `${BOARD}.caps[1]`;
 
 // The commands of some keys.
 const keys = (addon, list) => addon.eval(`local out = {} for i, k in ipairs({ ${list.map((k) => `"${k}"`).join(",")} }) do out[i] = GetBindingAction(k) end return out`);
@@ -108,22 +109,25 @@ it("step 2: a key pressed over the keyboard lights up and says what it will do, 
   const addon = warrior();
   open(addon);
   addon.eval('__click("Show me")');
-  addon.hover(BOARD);
-  expect(addon.eval(`return ${BOARD}:IsKeyboardEnabled()`), "the keyboard reads keys while the pointer is over it").toBe(true);
-  addon.key(BOARD, "F");
+  addon.hover(KEY);
+  expect(addon.eval(`return ${KEY}:IsKeyboardEnabled()`), "the keyboard reads keys while the pointer is over it").toBe(true);
+  addon.key(KEY, "F");
   expect(preview(addon).result).toBe("F: Shield Bash added to your bar");
   expect(cap(addon, "F").color, "the key pressed is lit").toBe("accent");
   addon.keys({ shift: true });
-  addon.key(BOARD, "W");
+  addon.key(KEY, "W");
   expect([preview(addon).result, cap(addon, "W").chord], "Shift-W shows the Shift tab").toEqual(["SHIFT-W: Battle Shout added to your bar", "SHIFT-W"]);
   addon.keys({ shift: true, ctrl: true });
-  addon.key(BOARD, "Q");
+  addon.key(KEY, "Q");
   expect([preview(addon).result, cap(addon, "Q").chord], "a chord no tab shows keeps the tab").toEqual(["CTRL-SHIFT-Q: stays as it is", "SHIFT-Q"]);
+  addon.keys({ shift: true });
+  addon.key(KEY, "-");
+  expect(cap(addon, "-").chord, "Shift and the minus key show the Shift tab").toBe("SHIFT--");
   addon.keys({});
-  addon.key(BOARD, "ESCAPE");
-  expect(addon.eval(`return ${BOARD}.__propagate`), "Escape goes on to the game").toBe(true);
+  addon.key(KEY, "ESCAPE");
+  expect(addon.eval(`return ${KEY}.__propagate`), "Escape goes on to the game").toBe(true);
   addon.hover(null);
-  expect(addon.eval(`return ${BOARD}:IsKeyboardEnabled()`)).toBe(false);
+  expect(addon.eval(`return ${KEY}:IsKeyboardEnabled()`)).toBe(false);
 });
 
 it("step 2: Show what comes later greys in the spells the character will learn", () => {
@@ -186,6 +190,7 @@ it("step 3: a bar that is off and a rogue without roles", () => {
   addon.world.learn(1752, { name: "Sinister Strike" });
   open(addon);
   expect(addon.eval("return Vanguard_KeysWizard.steps.start.role:IsShown()"), "a rogue picks no role").toBe(false);
+  expect(addon.eval("return select(5, Vanguard_KeysWizard.steps.start.sides:GetPoint(1))"), "the mouse switch moves up into the role's place").toBe(-92);
   addon.eval('__click("Show me")');
   expect(addon.eval("return Vanguard_KeysWizard.steps.preview.page:IsShown()"), "the stealth page shows once Stealth is known").toBe(true);
 });
@@ -195,11 +200,16 @@ it("why it changes nothing: a bar addon, Vanguard's bars off, a gamepad; and ret
   open(bartender);
   expect(bartender.texts("You use Bartender4 for your bars, so Vanguard won't change your keys. Your keys on the Action bars page still shows what every key does.").length).toBe(1);
   expect(win(bartender)).toMatchObject({ left: "Close", main: false });
+  bartender.eval('__click("Close")');
+  expect([win(bartender).shown, chatHas(bartender, /Nothing has changed/)], "Close says nothing more").toEqual([false, false]);
   expect(bartender.eval("return ns.KeybindsWizard.Offered()")).toBe(false);
   const noBars = warrior("", { savedVariables: "VanguardDB.profiles.Default = { modules = { ActionBars = false } }" });
   expect(noBars.eval("return ns.KeybindsWizard.Blocked()")).toBe("Vanguard's action bars are off, so key setup has no bars to put spells on.");
   const pad = warrior("InputUtil = { IsGamepadUIEnabled = function() return true end }");
   expect(pad.eval("return ns.KeybindsWizard.Blocked()")).toBe("You play with a gamepad, so Vanguard won't change your keys.");
+  const classless = warrior();
+  classless.eval('__wfgWorld.setUnit("player", { class = "TEST-ONLY", className = "Tester" })');
+  expect(classless.eval("return ns.KeybindsWizard.Blocked()")).toBe("Key setup has no layout for your class yet.");
   const retail = loggedIn(CLICK_LUA, { client: RETAIL });
   expect([open(retail), cardButton(retail, "Put everything back")], "no key setup buttons on retail").toEqual([false, false]);
   retail.eval("ns.KeybindsWizard.Open()");
@@ -250,5 +260,16 @@ it("the Your keys card: right-click a key key setup changed to put it back, and 
   addon.eval('__click("Put back")');
   expect(keys(addon, ["F", "T"])).toEqual(["", "MULTIACTIONBAR1BUTTON2"]);
   cardButton(addon, "Put everything back");
+  expect(addon.texts("Put back every key key setup changed, and the spells it moved?").length, "Put everything back asks first").toBe(1);
+  addon.eval('__click("Put back")');
   expect(keys(addon, ["T", "G"])).toEqual(["", ""]);
+});
+
+it("a warlock: the pet keys are listed by what they press", () => {
+  const addon = warrior();
+  addon.eval('__wfgWorld.setUnit("player", { class = "WARLOCK", className = "Warlock", level = 4 })');
+  addon.world.learn(686, { name: "Shadow Bolt" });
+  open(addon);
+  addon.eval('__click("Show me") __click("Next")');
+  expect(ready(addon)).toEqual(expect.arrayContaining(["[x] `: Pet Attack", "[x] SHIFT-`: Pet Follow", "[x] 1: Shadow Bolt added to your bar"]));
 });

@@ -231,3 +231,10 @@ it("the probe's key bindings and action slots: every bound command with its keys
   expect(slots).toContain("stance 1: number 7, boolean false, boolean true, number 2457");
   expect(addon.eval(`GetNumBindings = nil for _, s in ipairs(ns.Probe.SECTIONS) do if s[1] == "Key bindings" then return s[2]() end end`)).toEqual(["GetBinding: missing"]);
 });
+
+it("a stance-bar button at another rank counts as its form, by the client's name", () => {
+  const addon = client();
+  addon.eval(`__wfgWorld.learn(465, { name = "Devotion Aura" }) __wfgWorld.learn(10290, { name = "Devotion Aura" })
+    __wfgWorld.setStances({ { spellID = 10290, icon = 1 } })`);
+  expect(addon.eval("return { ns.KeybindsLayouts.FormIndex(465), ns.KeybindsLayouts.FormIndex(7294) }")).toEqual([1]);
+});

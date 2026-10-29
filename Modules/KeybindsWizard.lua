@@ -46,6 +46,7 @@ end
 
 -- Why key setup won't change keys on this character, as step 1 says it; nil when it will.
 function WZ.Blocked()
+  if not D.CLASSES[(state.preset or KL.Preset()).class] then return L["Key setup has no layout for your class yet."] end
   local bars = ns.GetModule("Coexist").Overlaps("ActionBars")
   if bars[1] then return ns.Format(L["You use {addon} for your bars, so Vanguard won't change your keys. Your keys on the Action bars page still shows what every key does."], { addon = bars[1] }) end
   local AB = ns.GetModule("ActionBars")
@@ -93,12 +94,22 @@ local function indexFor(entries, chord)
   end
 end
 
+-- The modifiers a chord starts with, in the game's order ("SHIFT-" for "SHIFT--", the minus key with Shift).
+local function modifiersOf(chord)
+  local mods = ""
+  for _, mod in ipairs(KA.MODIFIERS) do
+    local prefix = mod .. "-"
+    if chord:sub(#mods + 1, #mods + #prefix) == prefix and #chord > #mods + #prefix then mods = mods .. prefix end
+  end
+  return mods
+end
+
 -- The tab a chord belongs to: none, shift, ctrl or alt (a chord with two modifiers belongs to none of them).
 local function tabOf(chord)
+  local mods = modifiersOf(chord)
   for _, tab in ipairs(KV.TABS) do
-    if tab.prefix ~= "" and chord:sub(1, #tab.prefix) == tab.prefix and not chord:find("-", #tab.prefix + 1, true) then return tab.id end
+    if tab.prefix == mods then return tab.id end
   end
-  return not chord:find("-", 1, true) and "none" or nil
 end
 
 -- Words for the plan --------------------------------------------------------------------------------
@@ -146,11 +157,23 @@ end
 
 -- The step frames ------------------------------------------------------------------------------------
 
--- Puts a part on a step under the parts before it, h units tall (s.y is where the next one goes).
+-- Puts a part on a step under the parts before it, h units tall (s.y is where the next one goes); relayout moves
+-- the shown ones up over a hidden one.
 local function stack(s, part, h)
   part:SetPoint("TOPLEFT", 0, -s.y)
   s.y = s.y + h + T.SPACE.tight
+  s.parts[#s.parts + 1] = { part = part, h = h }
   return part
+end
+
+-- Lays a step's stacked parts out again from the top, leaving no gap where one is hidden.
+local function relayout(s)
+  local y = 0
+  for _, p in ipairs(s.parts) do
+    p.part:ClearAllPoints()
+    p.part:SetPoint("TOPLEFT", 0, -y)
+    if p.part:IsShown() then y = y + p.h + T.SPACE.tight end
+  end
 end
 
 -- A wrapping line of text across a step, in a role and colour.
@@ -166,7 +189,7 @@ local function stepFrame(f)
   local s = CreateFrame("Frame", nil, f)
   s:SetPoint("TOPLEFT", T.SPACE.pad, -(ns.DIALOG.head + SIZE.caption))
   s:SetPoint("BOTTOMRIGHT", -T.SPACE.pad, ns.DIALOG.foot)
-  s.y = 0
+  s.y, s.parts = 0, {}
   return s
 end
 
@@ -203,6 +226,7 @@ local function showStart(s)
   s.sides:SetShown(not blocked)
   s.role:Refresh()
   s.sides:Refresh()
+  relayout(s)
 end
 
 -- Step 2: the drawn keyboard -------------------------------------------------------------------------
@@ -324,7 +348,7 @@ local function buildPreview(f)
   local s = stepFrame(f)
   previewChoices(s)
   s.board = stack(s, KV.Keyboard(s, CONTENT_W, { paint = paintPreview, tip = tipPreview }), KV.KEYBOARD_H)
-  W.HoverKeys(s.board, pressed)
+  for _, cap in ipairs(s.board.caps) do W.HoverKeys(cap, pressed) end
   s.result = textLine(s, "label", "text", SIZE.result)
   s.lines = {}
   for i = 1, SIZE.lines do s.lines[i] = textLine(s, "label", "text2", SIZE.line) end
@@ -334,6 +358,7 @@ end
 -- Fills step 2 for the plan: the bar page choice only for a class with more than one page.
 local function showPreview(s)
   s.page:SetShown(#pageChoices() > 1)
+  relayout(s)
   s.result:SetText(L["Hover the keyboard and press a key to see what it will do. Nothing is cast."])
   refreshPreview()
 end
@@ -371,9 +396,16 @@ local function nextPart(s, kind, y)
   return part
 end
 
+-- A key that stays, y units down, in as many lines as its words take (at least two). Answers the room it took.
+local function keptLine(s, text, y)
+  local fs = nextPart(s, "line", y)
+  fs:SetText(text)
+  return math.max(2 * SIZE.line, math.ceil(fs:GetStringHeight()) + T.SPACE.tight)
+end
+
 -- One listed row y units down: a change with its tick box, or a key that stays. Answers the room it took.
 local function listRow(s, i, text, y)
-  if not KA.WRITES[state.rows[i].kind] then nextPart(s, "line", y):SetText(text) return 2 * SIZE.line end
+  if not KA.WRITES[state.rows[i].kind] then return keptLine(s, text, y) end
   local r = nextPart(s, "check", y)
   r.slot.i = i
   r.label:SetText(text)
@@ -412,7 +444,6 @@ local function buildReady(f)
   s.view = ns.ScrollView(s, { width = CONTENT_W })
   s.pools = { check = {}, line = {} }
   s.view:SetPoint("TOPLEFT", 0, -s.y)
-  s.view:SetPoint("BOTTOMRIGHT", 0, SIZE.footnote + W.ROW_HEIGHT + SIZE.line + 3 * T.SPACE.tight)
   addFootnote(s)
   return s
 end
@@ -427,13 +458,15 @@ local function addScope(s)
   s.scope:SetPoint("BOTTOMLEFT", 0, SIZE.footnote + T.SPACE.tight)
 end
 
--- Fills step 3: the list, and the scope choice only while the game uses the account's keys.
+-- Fills step 3: the list, and the scope choice only while the game uses the account's keys (the list takes its room
+-- when it is hidden).
 local function showReady(s)
-  fillReady(s)
   local shared = KA.SharesKeys()
   s.shared:SetShown(shared)
   s.scope:SetShown(shared)
   s.scope:Refresh()
+  s.view:SetPoint("BOTTOMRIGHT", 0, SIZE.footnote + T.SPACE.tight + (shared and W.ROW_HEIGHT + SIZE.line + 2 * T.SPACE.tight or 0))
+  fillReady(s)
 end
 
 -- The window ----------------------------------------------------------------------------------------
@@ -484,10 +517,10 @@ function WZ.Next()
   WZ.Show(state.step + 1)
 end
 
--- Not now or Keep my keys: closes, and says once how to come back.
+-- Not now or Keep my keys: closes, and says once how to come back (Close, when key setup changes nothing here, just closes).
 local function notNow()
   WZ.frame:Hide()
-  ns.Chat(NOT_NOW)
+  if not WZ.Blocked() then ns.Chat(NOT_NOW) end
 end
 
 -- The footer: Not now on the left; Back and the step's main button on the right.
@@ -535,10 +568,11 @@ end
 
 -- In a fight ----------------------------------------------------------------------------------------
 
--- The fight is over: key setup comes back on the step it was on.
+-- The fight is over: key setup comes back on the step it was on, its plan worked out again.
 local function resume()
   if not state.resume then return end
   state.resume = nil
+  if state.step > 1 then replan() end
   WZ.Show(state.step)
   WZ.frame:Show()
 end

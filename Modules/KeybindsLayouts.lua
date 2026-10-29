@@ -76,13 +76,19 @@ local function addShared(ctx, class)
   end
 end
 
+-- Whether a stance-bar button's spell is this form: the same ID, or a spell of the same name (another rank).
+local function sameForm(id, spell)
+  if id == nil then return false end
+  return id == spell or (ns.SpellName(id) ~= nil and ns.SpellName(id) == ns.SpellName(spell))
+end
+
 -- The position on the game's stance bar of a form (one spell, or a list: a form at two ranks), or nil.
 function KL.FormIndex(form)
   local wanted = type(form) == "table" and form or { form }
   for i = 1, (ns.PlainNumber(GetNumShapeshiftForms()) or 0) do
     local id = ns.PlainNumber(select(4, GetShapeshiftFormInfo(i)))
     for _, spell in ipairs(wanted) do
-      if id == spell then return i end
+      if sameForm(id, spell) then return i end
     end
   end
 end
