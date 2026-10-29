@@ -34,7 +34,6 @@ end
 -- Your quests under their zone headers (a collapsed zone keeps its header, without its quests).
 function QL.Entries()
   local out, zone = {}, nil
-  ns.GetModule("QuestTracker").OpenFolds()
   for i = 1, ns.PlainNumber(questLog("GetNumQuestLogEntries")) or 0 do
     local e = entry(questLog("GetInfo", i))
     if e and e.header then zone = e.title end
@@ -46,7 +45,6 @@ end
 -- Every quest in your log in log order, those under a folded zone too (headers aside).
 local function allQuests()
   local out = {}
-  ns.GetModule("QuestTracker").OpenFolds()
   for i = 1, ns.PlainNumber(questLog("GetNumQuestLogEntries")) or 0 do
     local e = entry(questLog("GetInfo", i))
     if e and not e.header then out[#out + 1] = e end
@@ -219,9 +217,10 @@ end
 
 -- Opening -----------------------------------------------------------------------------------------
 
--- Opens the log, on a quest when given one.
+-- Opens the log, on a quest when given one, with every zone the game folded opened (QT.OpenFolds).
 function QL.Open(id)
   QL.selected = id or QL.selected
+  ns.GetModule("QuestTracker").OpenFolds()
   QL.frame:Show()
   QL.Refresh()
 end

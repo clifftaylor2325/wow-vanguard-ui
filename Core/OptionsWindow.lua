@@ -216,8 +216,8 @@ local function defaultText(w, kind, initial)
   return choiceLabel(w.choices, initial) or tostring(initial)
 end
 
--- The reset arrow's side, and its button's: the arrow sits in the card's margin, left of the row's caption (pixels).
-O.RESET = { icon = 12, width = 14, x = -6 }
+-- The reset arrow's side, and its button's size: the arrow sits in the card's margin, left of the row's caption (pixels).
+O.RESET = { icon = 12, width = 14, height = 16, x = -6 }
 
 -- The reset arrow itself, centered on its button, in the accent.
 local function resetMark(d)
@@ -231,7 +231,7 @@ end
 -- A small accent reset arrow left of a row's caption; clicking it puts the default back.
 local function resetDot(w, set, initial)
   local d = CreateFrame("Button", nil, w)
-  d:SetSize(O.RESET.width, 16)
+  d:SetSize(O.RESET.width, O.RESET.height)
   d:SetPoint("LEFT", O.RESET.x, 0)
   d.mark = resetMark(d)
   d:SetScript("OnClick", ns.Guard("click reset setting", function() set(initial); T.Sound("off"); w:Refresh() end))
