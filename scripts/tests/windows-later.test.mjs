@@ -46,9 +46,13 @@ const SPELLS_ENV = `${READERS_ENV}
   for _, key in ipairs({ "TopBar", "BookBGLeft", "BookBGRight", "Bookmark" }) do book[key] = __art(book) end
   book.PagedSpellsFrame = __well(nil, book) book.PagedSpellsFrame.PagingControls = __mkpaging(book.PagedSpellsFrame)
   book.SearchBox, book.SettingsDropdown = __mkbox(book), __mkbutton(book, "Icon")
-  -- TEST-ONLY page contents: a section head (a plate and rule, a name) and spell entries (a smudged plate, a name and a rank line),
-  -- made again as the game turns a page (SetCurrentPage).
-  local function mkEntry(parent) local e = CreateFrame("Frame", nil, parent) e.Backplate, e.Name, e.SubName = __art(e), __text(e, "Cure Disease"), __text(e, "Rank 1") return e end
+  -- TEST-ONLY page contents: a section head (a plate and rule, a name) and spell entries (a smudged plate, a name, a rank line
+  -- and the level an unlearned spell needs), made again as the game turns a page (SetCurrentPage).
+  local function mkEntry(parent)
+    local e = CreateFrame("Frame", nil, parent)
+    e.Backplate, e.Name, e.SubName, e.RequiredLevel = __art(e), __text(e, "Cure Disease"), __text(e, "Rank 1"), __text(e, "Level 14")
+    return e
+  end
   local head = CreateFrame("Frame", nil, book.PagedSpellsFrame) head.Plate, head.Rule, head.Text = __art(head), __art(head), __text(head, "Holy")
   local entry = mkEntry(book.PagedSpellsFrame) entry.Button = CreateFrame("Button", nil, entry) entry.Button.Icon, entry.Button.Border = __art(entry.Button), __art(entry.Button)
   function book.PagedSpellsFrame:SetCurrentPage() book.late = mkEntry(book.PagedSpellsFrame) end
@@ -67,7 +71,7 @@ const SPELLS_ENV = `${READERS_ENV}
     local backdrop = 0
     for _, key in ipairs({ "Background", "ClassBackground", "BackgroundBorder", "DividerHorizontalLeft", "OverlayBackgroundMid" }) do if t[key].__alpha == 0 then backdrop = backdrop + 1 end end
     local paged, paging = book.PagedSpellsFrame, book.PagedSpellsFrame.PagingControls
-    local pages = { head = __faded(head) and __lit(head.Text, "heading", "text"), entry = entry.Backplate.__alpha == 0 and entry.Button.Border.__alpha == 0 and entry.Button.Icon.__alpha ~= 0 and entry.Button.Icon.__texCoord ~= nil and ns.Theme.PaintedCount() > 0 and __lit(entry.Name, "label", "text") and __lit(entry.SubName, "small", "muted"),
+    local pages = { head = __faded(head) and __lit(head.Text, "heading", "text"), entry = entry.Backplate.__alpha == 0 and entry.Button.Border.__alpha == 0 and entry.Button.Icon.__alpha ~= 0 and entry.Button.Icon.__texCoord ~= nil and ns.Theme.PaintedCount() > 0 and __lit(entry.Name, "label", "text") and __lit(entry.SubName, "small", "muted") and __lit(entry.RequiredLevel, "small", "text2"),
       late = book.late == nil or (book.late.Backplate.__alpha == 0 and __lit(book.late.Name, "label", "text")) }
     return { pages = pages, parchment = __faded(book), paged = __faded(paged) and paged.NineSlice.__alpha == 0 and __sunk(paged), search = __box(book.SearchBox),
       settings = __button(book.SettingsDropdown) and book.SettingsDropdown.Icon.__alpha == 0, arrows = __arrow(paging.PrevPageButton) and __arrow(paging.NextPageButton),
@@ -98,6 +102,17 @@ it("R2.14 the spellbook and the talents: parchment faded to an inset, controls a
   expect(windowState(addon, "PlayerSpellsFrame"), "and the window skin as ever").toMatchObject({ art: 0, panel: true, title: true });
   addon.eval("PlayerSpellsFrame:Hide() PlayerSpellsFrame:Show()");
   expect(spellsState(addon).painted, "a second show paints nothing new").toBe(first.painted);
+});
+it("a spellbook entry's smudged plate stays faded when the game lights it under the mouse", () => {
+  const addon = loggedIn(SPELLS_ENV);
+  addon.fire("ADDON_LOADED", "Blizzard_PlayerSpells");
+  addon.eval("PlayerSpellsFrame:Show()");
+  const plate = "PlayerSpellsFrame.SpellBookFrame.late.Backplate";
+  addon.eval("PlayerSpellsFrame.SpellBookFrame.PagedSpellsFrame:SetCurrentPage()");
+  addon.eval(`${plate}:SetAlpha(1)`);
+  expect(addon.eval(`return ${plate}:GetAlpha()`), "the game's hover alpha (1) is faded again").toBe(0);
+  addon.eval(`${plate}:SetAlpha(0.25)`);
+  expect([addon.eval(`return ${plate}:GetAlpha()`), addon.eval("return #ns.errors")], "and its rest alpha (0.25) too, with no error").toEqual([0, 0]);
 });
 it("the spellbook's page hook is added once however often the book opens", () => {
   const addon = loggedIn(`${SPELLS_ENV}
