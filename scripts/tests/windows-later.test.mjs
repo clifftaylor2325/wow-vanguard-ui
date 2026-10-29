@@ -534,11 +534,20 @@ const ACHIEVEMENT_ENV = `${READERS_ENV}
   local f = __window("AchievementFrame")
   local function border(parent) local b = CreateFrame("Frame", nil, parent) b.NineSlice = CreateFrame("Frame", nil, b) b.NineSlice:CreateTexture() return b end
   local function bar(parent) local b = CreateFrame("StatusBar", nil, parent) b.Left = __art(b) b:SetStatusBarTexture("TEST-ONLY-ART") return b end
+  -- A summary bar (by global name): the game's green fill and its name and count (Label, Text) lifted for its art's margin.
+  local function summaryBar(name)
+    local b = bar(f) _G[name] = b b:SetStatusBarColor(0, 1, 0)
+    b.Label, b.Text = __text(b, "Quests"), __text(b, "242/518")
+    b.Label:SetPoint("LEFT", b, "LEFT", 6, 4) b.Text:SetPoint("RIGHT", b, "RIGHT", -5, 3)
+    return b
+  end
   local function area(name, scroll)
     local a = __well(name, f) a.border = border(a) if scroll then a.ScrollBox = __list(a) end
     return a
   end
   f.Header = CreateFrame("Frame", nil, f) f.Header.Left, f.Header.Shield, f.Header.Title = __art(f.Header), __art(f.Header), __text(f.Header, "Achievement Points")
+  f.Header.Points = __text(f.Header, "26,615") f.Header.Title:SetWidth(150)
+  f.Header.Title:SetPoint("TOP", f, "TOP", 20, 29) f.Header.Points:SetPoint("TOP", f, "TOP", 20, 4)
   f.Categories = area(nil, true)
   local d = CreateFrame("Frame", nil, f) f.HeaderDetails = d __art(d)
   d.Back, d.Filters = __mkbutton(d), CreateFrame("Frame", nil, d)
@@ -550,8 +559,10 @@ const ACHIEVEMENT_ENV = `${READERS_ENV}
   for _, name in ipairs(ns.GetModule("Windows").ACH_HEADS) do
     local head = CreateFrame("Frame", name, f) __art(head) _G[name .. "Title"] = __text(head, "Latest Unlocked")
   end
-  AchievementFrameSummaryCategoriesStatusBar = bar(f)
-  for i = 1, 12 do _G["AchievementFrameSummaryCategoriesCategory" .. i] = bar(f) end
+  -- The completed bar's name and count are globals only (no parent keys).
+  local done = summaryBar("AchievementFrameSummaryCategoriesStatusBar")
+  AchievementFrameSummaryCategoriesStatusBarTitle, AchievementFrameSummaryCategoriesStatusBarText, done.Label, done.Text = done.Label, done.Text, nil, nil
+  for i = 1, 12 do summaryBar("AchievementFrameSummaryCategoriesCategory" .. i) end
   local c = AchievementFrameComparison
   c.Summary = CreateFrame("Frame", nil, c) c.Summary.Player, c.Summary.Friend = border(c.Summary), border(c.Summary)
   c.Summary.Player.StatusBar, c.Summary.Friend.StatusBar = bar(c.Summary.Player), bar(c.Summary.Friend)
@@ -596,6 +607,22 @@ const ACHIEVEMENT_ENV = `${READERS_ENV}
       stats = __faded(AchievementFrameStatsBG), results = __faded(f.SearchResults) and panelled(f.SearchResults) and __titled(f.SearchResults.TitleText) and __plate(f.SearchResults.CloseButton),
       painted = ns.Theme.PaintedCount(), errors = #ns.errors }
   end
+  -- TEST-ONLY reader of the title line and the summary bars (see the title-row test): where the title and points sit,
+  -- and how many of the thirteen bars have the dim accent fill and their name and count centred in the text colour.
+  function __achievementLayout()
+    local title, points = f.Header.Title, f.Header.Points
+    local tp, trel, trelp, tx, ty = title:GetPoint(1)
+    local pp, prel, prelp, px = points:GetPoint(1)
+    local dim, ok = { ns.Theme.RGB("accentDim") }, 0
+    local function centred(fs, point, role) local p, _, _, _, y = fs:GetPoint(1) return fs:GetNumPoints() == 1 and p == point and y == 0 and __lit(fs, role, "text") end
+    local function check(b, name, count)
+      local r, g, bl = unpack(b.__barColor)
+      if r == dim[1] and g == dim[2] and bl == dim[3] and centred(name, "LEFT", "label") and centred(count, "RIGHT", "number") then ok = ok + 1 end
+    end
+    check(AchievementFrameSummaryCategoriesStatusBar, AchievementFrameSummaryCategoriesStatusBarTitle, AchievementFrameSummaryCategoriesStatusBarText)
+    for i = 1, 12 do local b = _G["AchievementFrameSummaryCategoriesCategory" .. i] check(b, b.Label, b.Text) end
+    return { title = { tp, trel == f, trelp, tx, ty, title:GetWidth(), title:GetNumPoints() }, points = { pp, prel == title, prelp, px, points:GetNumPoints() }, bars = ok }
+  end
   -- TEST-ONLY reader of a pooled row (see rowState).
   function __achievementRow(row)
     local tracked = ns.Theme.CheckParts(row.Tracked) ~= nil and row.Tracked.Art.__alpha == 0
@@ -624,6 +651,19 @@ it("R2.19 the achievements window: plate, areas, header row, summary and the sea
   expect(windowState(addon, "AchievementFrame"), "and the window skin as ever").toMatchObject({ art: 0, panel: true, title: true });
   addon.eval("AchievementFrame:Hide() AchievementFrame:Show()");
   expect(read().painted, "a second show paints nothing new").toBe(first.painted);
+});
+it("R2.19 the achievements window: its title and points sit in the title row, the summary bars are dim accent with their labels centred", () => {
+  const addon = loggedIn(ACHIEVEMENT_ENV);
+  addon.fire("ADDON_LOADED", "Blizzard_AchievementUI");
+  addon.eval("AchievementFrame:Show()");
+  const layout = addon.eval("return __achievementLayout()");
+  const drop = addon.eval("return ns.Theme.CONTROL.inset - ns.Theme.Padding(AchievementFrame)");
+  const [point, onWindow, relPoint, x, y, width, points] = layout.title;
+  expect([point, onWindow, relPoint, x, width, points], "the title on one line, centred on the window's top (not on the faded plate above it)").toEqual(["CENTER", true, "TOP", 0, 0, 1]);
+  expect(y, "level with the close button's middle, to the pixel").toBeCloseTo(-drop, 0);
+  expect(layout.points, "the points just right of the title (the shield follows them)").toEqual(["LEFT", true, "RIGHT", 8, 1]);
+  expect(layout.bars, "all thirteen bars: the dim accent, not the game's raw green, and the name and count centred in the text colour").toBe(13);
+  expect(addon.eval("return #ns.errors"), "no errors").toBe(0);
 });
 it("R2.19 the achievements window: pooled rows are dressed as the lists make them, categories are selectable rows", () => {
   const addon = loggedIn(ACHIEVEMENT_ENV + `

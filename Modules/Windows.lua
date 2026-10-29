@@ -1725,11 +1725,27 @@ local function skinSummaryHead(name)
   GW.SkinSection(_G[name .. "Title"])
 end
 
--- The summary page's bars: the completed bar and the twelve category bars flat on dark tracks, and the comparison's
--- two cards (player and friend) with theirs.
+-- One of the summary's bars a flat bar on a dark track, its fill the dim accent (the game's raw green was made for its
+-- textured bar), its name and count in the text colour and centred on the bar (the game lifts them for its art's
+-- margin, so on a flat fill they ride its top edge); parts that are not there are skipped.
+local function skinSummaryBar(bar, name, count)
+  if type(bar) ~= "table" or not bar.SetStatusBarTexture then return end
+  GW.SkinProgress(bar)
+  T.BarColor(bar, "accentDim")
+  GW.SkinText(name, "label", "text")
+  GW.SkinText(count, "number", "text")
+  if type(name) == "table" and name.SetPoint then name:ClearAllPoints() name:SetPoint("LEFT", bar, "LEFT", T.SPACE.gap, 0) end
+  if type(count) == "table" and count.SetPoint then count:ClearAllPoints() count:SetPoint("RIGHT", bar, "RIGHT", -T.SPACE.gap, 0) end
+end
+
+-- The summary page's bars (skinSummaryBar): the completed bar and the twelve category bars, and the comparison's two
+-- cards (player and friend) with theirs flat on dark tracks.
 local function skinSummaryBars()
-  GW.SkinProgress(_G.AchievementFrameSummaryCategoriesStatusBar)
-  for i = 1, GW.ACH_BARS do GW.SkinProgress(_G["AchievementFrameSummaryCategoriesCategory" .. i]) end
+  skinSummaryBar(_G.AchievementFrameSummaryCategoriesStatusBar, _G.AchievementFrameSummaryCategoriesStatusBarTitle, _G.AchievementFrameSummaryCategoriesStatusBarText)
+  for i = 1, GW.ACH_BARS do
+    local bar = _G["AchievementFrameSummaryCategoriesCategory" .. i]
+    skinSummaryBar(bar, type(bar) == "table" and bar.Label, type(bar) == "table" and bar.Text)
+  end
   for _, key in ipairs({ "Player", "Friend" }) do
     local card = GW.Part(_G, "AchievementFrameComparison.Summary." .. key)
     fadeCard(card)
@@ -1757,16 +1773,32 @@ local function skinAchievementHeader(details)
   GW.SkinProgress(GW.Part(details, "Filters.SearchBox.SearchProgressBar"))
 end
 
--- The window's header plate (its bronze ends and points border faded, the small shield kept) and its title line.
-local function skinAchievementPlate(header)
+-- The header's title and points moved into the window's title row: the game hangs them on its plate above the window,
+-- which the theme fades, so they would float over the world. The title goes on one line, centred level with the close
+-- button's middle (T.PlaceClose), and the points beside it (the shield follows the points); a part that is not a font
+-- string leaves both where the game put them.
+local function placeAchievementTitle(frame, title, points)
+  if type(title) ~= "table" or not title.SetPoint or type(points) ~= "table" or not points.SetPoint then return end
+  title:ClearAllPoints()
+  title:SetWidth(0)
+  title:SetPoint("CENTER", frame, "TOP", 0, -T.PixelRound(frame, T.CONTROL.inset - GW.PanelPad(frame)))
+  points:ClearAllPoints()
+  points:SetPoint("LEFT", title, "RIGHT", T.SPACE.gap, 0)
+end
+
+-- The window's header plate (its bronze ends and points border faded, the small shield kept) and its title line, inside
+-- the window (placeAchievementTitle).
+local function skinAchievementPlate(frame)
+  local header = frame.Header
   if type(header) ~= "table" or not header.GetRegions then return end
   T.FadeRegions(header, GW.KeepKeys(header, { "Shield" }))
   GW.SkinTitle(header.Title)
+  placeAchievementTitle(frame, header.Title, header.Points)
 end
 
 -- The achievements window's inside. The full search results are a window of their own (their rows stay the game's).
 GW.INSIDES.AchievementFrame = function(frame)
-  skinAchievementPlate(frame.Header)
+  skinAchievementPlate(frame)
   skinAchievementArea(frame.Categories)
   eachNamed(GW.ACH_AREAS, skinAchievementArea)
   GW.FadeArt(_G.AchievementFrameStatsBG)
