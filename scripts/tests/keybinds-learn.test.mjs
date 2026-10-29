@@ -347,6 +347,15 @@ it("waits: nothing before login has settled, and a spell learned in a fight land
   expect(slots(addon, [2, 3]), "after the fight, both").toEqual([772, 6343]);
 });
 
+it("a client without timers settles at once, and a spell learned then lands", () => {
+  const addon = loggedIn(`C_Timer = nil ${STANDINS}`);
+  addon.eval('__wfgWorld.setUnit("player", { name = "Brakk", level = 1 })');
+  teach(addon, 78);
+  expect(applyPreset(addon)).toBe(true);
+  learn(addon, 772);
+  expect(slots(addon, [2])).toEqual([772]);
+});
+
 it("a refused update waits for the next load screen", () => {
   const addon = warrior();
   applyPreset(addon);

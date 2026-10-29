@@ -375,9 +375,11 @@ local function settle()
   if state().pending then soon() end
 end
 
--- The first load screen starts the settling time; a later one tries a refused update again.
+-- The first load screen starts the settling time (a client without timers settles at once); a later one tries a
+-- refused update again.
 local function onWorld()
-  if not KN.settled then return C_Timer.After(KN.SETTLE, ns.Guard("keys learn settle", settle)) end
-  if state().pending then soon() end
+  if KN.settled then return state().pending and soon() end
+  if type(C_Timer) ~= "table" or type(C_Timer.After) ~= "function" then return settle() end
+  C_Timer.After(KN.SETTLE, ns.Guard("keys learn settle", settle))
 end
 ns.On("PLAYER_ENTERING_WORLD", onWorld)
