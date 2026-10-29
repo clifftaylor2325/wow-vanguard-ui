@@ -8,7 +8,7 @@
 -- (the auction house, the profession window...), and what test code makes to
 -- stand in for the game's frames.
 --
--- Four rules, always on:
+-- Five rules, always on:
 --  * Field writes: addon code that stores a new field on a game widget plants
 --    taint in game (frame.vgSkinned = true). Keep such state in a weak-keyed
 --    side table instead. Replacing a game widget's script (SetScript) is
@@ -20,6 +20,8 @@
 --    a Secure template, is one of the game's protected frames, is marked with
 --    __wfgStub.protect(frame), or holds a protected frame.
 --    ShowUIPanel and HideUIPanel refuse any run with addon code in it, in combat.
+--  * Binding and placement: SetBinding, SaveBindings, LoadBindings, PickupSpell, PlaceAction and the
+--    click-profile writes from addon code in combat are blocked and fire ADDON_ACTION_BLOCKED.
 --  * Secret arguments: addon code that passes a secret to an aura call the
 --    client only lets secure code give one to, or asks for a hidden aura's
 --    data by its id, raises the client's error.
@@ -267,6 +269,57 @@ local function panelCall(name, call)
   end
 end
 for _, name in ipairs({ "ShowUIPanel", "HideUIPanel" }) do _G[name] = panelCall(name, _G[name]) end
+
+-- Binding, placement and click-profile calls: the client refuses them in combat when addon code makes
+-- them (wiki: SetBinding and PickupSpell are #nocombat; SetBindingSpell, SetBindingMacro, SetBindingItem,
+-- SaveBindings, LoadBindings and PlaceAction are blocked the same way, unverified; the click-bindings calls
+-- carry HasRestrictions in ClickBindingsDocumentation.lua). The model: nothing happens, the call answers nothing,
+-- and ADDON_ACTION_BLOCKED fires (what a blocked SetBinding answers, false or nothing, is unverified); the in-game probe in docs/SMOKE-TEST.md settles the unverified ones.
+-- Game and test code may call them. Override bindings and a secure handler's own calls are not covered, and a call
+-- in tail position (`return SetBinding(...)`) drops the caller's frame, so it reads as the code above it.
+
+-- world.combatAfterCalls(n): the fight starts when the n-th guarded call is made (that call is the first refused), so a
+-- test can start combat in the middle of a sequence of writes.
+function world.combatAfterCalls(n)
+  stub.callsUntilCombat = n
+end
+
+-- Counts a guarded call down, and starts the fight when it was the n-th.
+local function startFightAfterCalls()
+  local left = stub.callsUntilCombat
+  if not left then return end
+  stub.callsUntilCombat = left > 1 and left - 1 or nil
+  if left <= 1 then world.combat(true) end
+end
+
+-- Wraps a global or namespace function so addon code's call in combat is blocked and recorded.
+local function refusedInCombat(name, call)
+  return function(...)
+    startFightAfterCalls()
+    local at = stub.inCombat and callerOf(1) or nil
+    if byAddon(at) then
+      violate(string.format("blocked in combat: %s called %s(), which the client refuses addon code in a fight", where(at), name))
+      stub.fire("ADDON_ACTION_BLOCKED", "Vanguard", name .. "()")
+      return
+    end
+    return call(...)
+  end
+end
+
+-- Wraps holder[key], when the client has it, under the name the addon writes.
+local function guardCall(holder, key, name)
+  if holder and type(holder[key]) == "function" then holder[key] = refusedInCombat(name, holder[key]) end
+end
+
+for _, name in ipairs({ "SetBinding", "SetBindingSpell", "SetBindingMacro", "SetBindingItem", "SetBindingClick", "SaveBindings", "LoadBindings", "PickupSpell", "PlaceAction" }) do
+  guardCall(_G, name, name)
+end
+for _, row in ipairs({
+  { C_Spell, "PickupSpell", "C_Spell.PickupSpell" }, { C_ActionBar, "PutActionInSlot", "C_ActionBar.PutActionInSlot" },
+  { C_ClickBindings, "SetProfileByInfo", "C_ClickBindings.SetProfileByInfo" },
+  { C_ClickBindings, "ResetCurrentProfile", "C_ClickBindings.ResetCurrentProfile" },
+  { C_ClickBindings, "ExecuteBinding", "C_ClickBindings.ExecuteBinding" },
+}) do guardCall(row[1], row[2], row[3]) end
 
 -- Secret arguments --------------------------------------------------------------------------
 -- The aura calls Blizzard documents with SecretArguments = "AllowedWhenUntainted" take a

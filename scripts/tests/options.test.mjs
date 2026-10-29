@@ -936,7 +936,7 @@ it("options: the pages, their nav order and each page's row count stay as they w
     "general|General|10|40", "modules|Modules|20|87", "unitframes|Unit frames|30|34", "raid|Raid frames|40|26",
     "actionbars|Action bars|60|74", "quests|Quests|70|29", "bars|Bars and bags|80|17", "map|Map|81|36", "chat|Chat|82|82", "windows|Game windows|83|47", "cooldowns|Cooldowns|83.5|13", "tools|Combat tools|84|39", "town|Town and gear|85|57", "profiles|Profiles|90|22",
     "feedback|Feedback|100|11", "healing|Healing|45|44", "talents|Talents|47|7", "nameplates|Nameplates|65|18",
-    "situations|Situations|86|16", "clickcast|Click casting|46|11",
+    "situations|Situations|86|16", "clickcast|Click casting|46|15",
   ]);
   addon.eval('ns.Options.Show("general")');
   // The nav entries top to bottom, by each one's offset from the top of the nav.
@@ -1846,7 +1846,9 @@ it("options: a module's own-switch note shares the name's line at both ends and 
 });
 
 it("options: profile rows and the click casting rows sit inside their card by a gap, as a switch does (B2-5)", () => {
-  const addon = loggedIn(CLICK_LUA);
+  // Without the game's click bindings: with them (the harness's default since the keybind harness) a button row of the
+  // "Use the game's click bindings" group sits closer to its card's edge than a switch; that is for the click casting phase to look at.
+  const addon = loggedIn(CLICK_LUA + "C_ClickBindings = nil");
   // The kinds of shown rows that run past their card's edge less than the inset a switch keeps (T.SPACE.tight).
   const tight = (page) => addon.eval(`ns.Options.Show("${page}") local out = {}
     for _, w in ipairs(__wfgStub.frames) do
