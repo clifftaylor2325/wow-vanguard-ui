@@ -158,17 +158,17 @@ local function searchSlots(slot)
   return out
 end
 
--- The first slot on a shown bar that holds the spell, by searchSlots, or nil.
+-- The first slot on a shown bar that holds the spell, by searchSlots, or nil (a slot the player took over is skipped).
 local function foundAt(plan, row)
   for _, s in ipairs(searchSlots(row.slot)) do
-    if buttonOn(s) and holdsSpell(viewOf(plan, s), row.spell) then return s end
+    if buttonOn(s) and not plan.skip[s] and holdsSpell(viewOf(plan, s), row.spell) then return s end
   end
 end
 
--- A free slot of bar 3's 5 to 12 (empty, shown, and not taken by this plan), or nil.
+-- A free slot of bar 3's 5 to 12 (empty, shown, not taken by this plan nor by the player), or nil.
 local function spareSlot(plan)
   for s = KA.SPARE.first, KA.SPARE.last do
-    if buttonOn(s) and not viewOf(plan, s) and not plan.taken[s] and not plan.claimed[s] then return s end
+    if buttonOn(s) and not viewOf(plan, s) and not plan.taken[s] and not plan.claimed[s] and not plan.skip[s] then return s end
   end
 end
 
@@ -179,11 +179,12 @@ local function commandOnly(_, row)
   if row.spell == nil and type(row.command) == "string" then return "command" end
 end
 
--- A slot outside bars 1 to 3, or on one Vanguard doesn't draw, is left alone.
-local function slotShown(_, row)
+-- A slot outside bars 1 to 3, on one Vanguard doesn't draw, or one the player took over, is left alone.
+local function slotShown(plan, row)
   local r = rangeOf(row.slot)
   if not r then return "unchanged", "outside" end
   if not buttonOn(row.slot) then return "unchanged", "barOff" end
+  if plan.skip[row.slot] then return "unchanged", "owned" end
 end
 
 -- A spell the character doesn't know yet gets no key.
@@ -201,13 +202,16 @@ local function alreadyOnBars(plan, row)
   return "bind"
 end
 
--- The entry's own slot: taken by this plan, empty (the spell goes there), or a known spell (moved aside when bar
--- 3 has room; the row notes where to and what); anything else is kept.
+-- The entry's own slot: taken by this plan, empty (the spell goes there), or a known spell: overwritten when the
+-- first pass found its move needless (`over`), else moved aside when bar 3 has room (the row notes where to and
+-- what); anything else is kept.
 local function ownSlot(plan, row)
   if plan.taken[row.slot] or plan.claimed[row.slot] then return "unchanged", "used" end
   local content = viewOf(plan, row.slot)
   if not content then return "place" end
   if content.kind ~= "spell" or not knows(content.id) then return "unchanged", "kept" end
+  local needless = plan.needless[plan.index]
+  if needless then row.over, row.replaced = content.id, needless == "replaced" return "place" end
   local to = spareSlot(plan)
   if not to then return "unchanged", "full" end
   row.to, row.moved = to, content.id
@@ -318,33 +322,68 @@ local function replaces(row, spellID)
   return type(row.replaces) == "table" and any(row.replaces, function(id) return sameSpell(id, spellID) end)
 end
 
+-- The first slot of the 12-slot page a slot is on.
+local function pageOf(slot)
+  return slot - (slot - 1) % 12
+end
+
+-- Whether a spell on slot `to` can be reached wherever one on slot `from` could: `to` on bar 2 or 3, or on the
+-- same bar 1 page as `from` (a spell placed on another stance page only works in that stance).
+local function inReach(to, from)
+  local r = rangeOf(to)
+  if not r or r.bar ~= 1 then return r ~= nil end
+  return rangeOf(from) ~= nil and rangeOf(from).bar == 1 and pageOf(to) == pageOf(from)
+end
+
+-- Whether another row of the plan places the spell a row moves, in reach of where it was.
+local function placedElsewhere(rows, row)
+  return any(rows, function(r)
+    return r ~= row and (r.kind == "place" or r.kind == "move") and sameSpell(r.spell, row.moved) and inReach(r.slot, row.slot)
+  end)
+end
+
 -- Why a moved spell needn't go to bar 3, while no row binds a key to the bar 3 slot it would go to: "replaced" when
--- the row's entry replaces it (Ice Armor for Frost Armor), "placed" when another row of the plan places it on its
--- own key; nil when it must go.
+-- the row's entry replaces it (Ice Armor for Frost Armor), "placed" when another row places it in reach; nil when
+-- it must go.
 local function moveNeedless(rows, row)
   if any(rows, function(r) return r.kind == "bind" and r.slot == row.to end) then return nil end
   if replaces(row, row.moved) then return "replaced" end
-  if any(rows, function(r) return r ~= row and (r.kind == "place" or r.kind == "move") and sameSpell(r.spell, row.moved) end) then return "placed" end
+  if placedElsewhere(rows, row) then return "placed" end
 end
 
--- A move whose spell needn't go to bar 3 becomes a place over it: the slot's spell is overwritten (`over`), and
--- either the other row puts it back on the bars or the new spell replaces it (`replaced`).
-local function dropNeedlessMoves(rows)
-  for _, row in ipairs(rows) do
+-- The moves of a pass that needn't go to bar 3, by entry index (see moveNeedless), or nil when there are none.
+local function needlessMoves(rows)
+  local out
+  for i, row in ipairs(rows) do
     local why = row.kind == "move" and moveNeedless(rows, row)
-    if why then row.kind, row.over, row.replaced, row.to, row.moved = "place", row.moved, why == "replaced", nil, nil end
+    if why then out = out or {} out[i] = why end
   end
+  return out
+end
+
+-- One pass over the entries, with the slots the player took over (`skip`) and the moves an earlier pass found
+-- needless (`needless`, by entry index).
+local function planPass(entries, skip, needless)
+  local plan = { rows = {}, view = {}, keys = {}, added = {}, taken = {}, claimed = {}, skip = skip or {}, needless = needless or {} }
+  for i, entry in ipairs(entries) do
+    plan.index = i
+    planEntry(plan, entry)
+  end
+  return plan.rows
 end
 
 -- What a preset's entries would do now, in the key set in use, one row per entry, in order; nothing changes. An
--- entry may list the spells it replaces (`replaces`, spell IDs): one of them on its slot is overwritten, not moved.
+-- entry may list the spells it replaces (`replaces`, spell IDs). A known spell moved off its slot is overwritten
+-- instead (kind "place", `over`) when the entry replaces it (`replaced`) or another row places it in reach: the
+-- plan is worked out a second time so no bar 3 slot is held for it. Slots in `skip` (the player's) are never
+-- written, searched or moved to.
 ---@param entries table[]  { key, spell, slot, replaces } or { key, command }
+---@param skip table|nil  { [slot] = true }
 ---@return table[] rows  { key, spell, slot, command, kind, why, to, moved, over, replaced }; kind: bind, place, move, command, unchanged
-function KA.Plan(entries)
-  local plan = { rows = {}, view = {}, keys = {}, added = {}, taken = {}, claimed = {} }
-  for _, entry in ipairs(entries) do planEntry(plan, entry) end
-  dropNeedlessMoves(plan.rows)
-  return plan.rows
+function KA.Plan(entries, skip)
+  local rows = planPass(entries, skip)
+  local needless = needlessMoves(rows)
+  return needless and planPass(entries, skip, needless) or rows
 end
 
 -- When it can run ------------------------------------------------------------------------------
@@ -571,14 +610,15 @@ end
 
 -- Works the plan out in the key set the run now uses.
 local function planRows(run)
-  run.rows = KA.Plan(run.entries)
+  run.rows = KA.Plan(run.entries, run.skip)
   return true
 end
 
--- Takes the pre-image of every key and slot the rows write, before anything changes.
+-- Takes the pre-image of every key and slot the rows write, before anything changes (a writing row keeps what its
+-- key did as `was`, for KeybindsLearn's chat line).
 local function takeRecord(run)
   for _, row in ipairs(run.rows) do
-    if KA.WRITES[row.kind] and run.keys[row.key] == nil then run.keys[row.key] = GetBindingAction(row.key) end
+    if KA.WRITES[row.kind] then row.was = GetBindingAction(row.key) run.keys[row.key] = run.keys[row.key] or row.was end
     for _, change in ipairs(changesOf(row)) do run.slots[change.slot] = preimage(readSlot(change.slot)) end
   end
   return true
@@ -715,9 +755,10 @@ local function finish(run, ok)
   ns.OutOfCombat(function() undoRun(run) end)
 end
 
--- Runs a preset's entries in key set `set` (nil: the one in use) as one all-or-nothing run, and returns the run.
-local function execute(entries, set, where)
-  local run = { entries = entries, set = set, keys = {}, slots = {}, placed = {} }
+-- Runs a preset's entries in key set `set` (nil: the one in use), leaving out the slots in `skip`, as one
+-- all-or-nothing run, and returns the run.
+local function execute(entries, set, where, skip)
+  local run = { entries = entries, set = set, skip = skip, keys = {}, slots = {}, placed = {} }
   KA.run = run
   local done, ok = ns.Try(where, runSteps, run)
   finish(run, done and ok == true)
@@ -753,14 +794,16 @@ function KA.Recorded()
 end
 
 -- Applies entries again in the key set in use, quietly, as new spells are learned (Modules/KeybindsLearn.lua): the
--- same plan, record and all-or-nothing run as Apply, with no chat line unless it fails. Nil, with nothing changed,
--- when KA.Refusal says no or Vanguard has no keys recorded in that set; else the rows when it succeeded, false when
+-- same plan, record and all-or-nothing run as Apply, with no chat line unless it fails, never writing, searching or
+-- moving to a slot in `skip` (the player's). Nil, with nothing changed, when KA.Refusal says no or Vanguard has no
+-- keys recorded in that set; else the rows (each writing row's old command as `was`) when it succeeded, false when
 -- it didn't (and everything it changed goes back).
 ---@param entries table[]
+---@param skip table|nil  { [slot] = true }
 ---@return table[]|false|nil
-function KA.Update(entries)
+function KA.Update(entries, skip)
   if KA.Refusal() or not KA.Recorded() then return nil end
-  local run = execute(entries, nil, "key setup update")
+  local run = execute(entries, nil, "key setup update", skip)
   return run.ok and run.rows
 end
 

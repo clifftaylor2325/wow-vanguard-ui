@@ -614,6 +614,12 @@ it("Plan: a known spell another row places isn't copied to bar 3, and one the en
     .toEqual(["place", 6603, true]);
   expect(plan(addon, `{ { key = "2", spell = 1776, slot = 2 }, { key = "Z", spell = 6603, slot = 49 }, { key = "5", spell = 6603, slot = 5 } }`),
     "a key binds to Attack where it moved, so it stays there").toEqual(["2 move - 2 53", "Z bind - 53 -", "5 place - 5 -"]);
+  expect(plan(addon, `{ { key = "2", spell = 1776, slot = 2 }, { key = "5", spell = 6603, slot = 77 } }`), "Attack on a stealth page only still goes to bar 3")
+    .toEqual(["2 move - 2 53", "5 place - 77 -"]);
+  expect(plan(addon, `{ { key = "1", spell = 1766, slot = 1 }, { key = "4", spell = 1752, slot = 4 }, { key = "Z", spell = 1776, slot = 53 } }`),
+    "no bar 3 slot is held for a move that isn't needed").toEqual(["1 place - 1 -", "4 place - 4 -", "Z place - 53 -"]);
+  expect(ka(addon, `local out = {} for i, r in ipairs(KA.Plan({ { key = "2", spell = 1776, slot = 2 }, { key = "G", spell = 1784, slot = 62 } }, { [53] = true, [62] = true })) do
+    out[i] = r.kind .. " " .. (r.why or "-") .. " " .. tostring(r.to or "-") end return out`), "skipped slots are never written nor moved to").toEqual(["move - 54", "unchanged owned -"]);
 });
 
 it("Apply: a spell another row places goes straight there, with no copy on bar 3, and putting back restores both buttons", () => {

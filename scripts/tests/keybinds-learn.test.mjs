@@ -11,7 +11,7 @@ import { loggedIn, RETAIL, setCombat } from "./helpers.mjs";
 // TEST-ONLY spells and the level each is trained at (remembered vanilla levels; Mortal Strike stands for a talent).
 const SPELLS = {
   78: ["Heroic Strike", 1], 6673: ["Battle Shout", 1], 772: ["Rend", 4], 6343: ["Thunder Clap", 6], 168: ["Frost Armor", 1],
-  7384: ["Overpower", 12], 72: ["Shield Bash", 12], 7302: ["Ice Armor", 30], 12294: ["Mortal Strike", 40],
+  7384: ["Overpower", 12], 72: ["Shield Bash", 12], 7302: ["Ice Armor", 30], 12294: ["Mortal Strike", 40], 71: ["Defensive Stance", 10],
 };
 
 // A test-only preset: each key's list, best first; Ice Armor replaces Frost Armor on Shift-W.
@@ -23,6 +23,7 @@ const DATA = `{
   { key = "F", slot = 61, list = { 72 } },
   { key = "SHIFT-W", slot = 49, list = { 7302, 168 }, replaces = { [7302] = { 168 } } },
   { key = "\`", command = "SHAPESHIFTBUTTON1" },
+  { key = "SHIFT-\`", command = "SHAPESHIFTBUTTON2", needs = 71 },
 }`;
 
 // The stand-ins: the resolver (each key takes the first spell on its list the character knows that no earlier key
@@ -32,7 +33,8 @@ const STANDINS = `__keys = ${DATA}
     __resolved = { preset = preset, skip = skip }
     local out, taken, known = {}, {}, ns.SpellKnownCall()
     for _, k in ipairs(__keys) do
-      if k.command then out[#out + 1] = { key = k.key, command = k.command }
+      if k.command then
+        if not k.needs or known(k.needs) then out[#out + 1] = { key = k.key, command = k.command } end
       elseif not skip[k.slot] then
         for _, id in ipairs(k.list) do
           if not taken[id] and known(id) then
@@ -187,6 +189,55 @@ it("a key free at Apply that the player binds later is theirs; one the game had 
   addon.eval('SetBinding("SHIFT-T", "TOGGLEAUTORUN") SaveBindings(GetCurrentBindingSet())');
   learn(addon, 72);
   expect([keys(addon, ["F"]), slots(addon, [61])], "F was the game's at Apply, so Shield Bash takes it").toEqual([["MULTIACTIONBAR1BUTTON1"], [72]]);
+  expect(said(addon), "and chat says so, since F did something else").toBe("Shield Bash is now on F.");
+});
+
+it("a stance key that did something else before says what it does now", () => {
+  const addon = warrior();
+  addon.eval('SetBinding("SHIFT-`", "ASSISTTARGET") SaveBindings(GetCurrentBindingSet())');
+  applyPreset(addon);
+  learn(addon, 71);
+  expect([keys(addon, ["SHIFT-`"]), said(addon)]).toEqual([["SHAPESHIFTBUTTON2"], "SHIFT-` now does SHAPESHIFTBUTTON2."]);
+});
+
+it("a key the player rebound leaves its button out too, so its spell goes to the next key that lists it", () => {
+  const addon = warrior();
+  applyPreset(addon);
+  addon.eval('SetBinding("3", "TOGGLEAUTORUN") SaveBindings(GetCurrentBindingSet())');
+  learn(addon, 6343);
+  expect([slots(addon, [3, 4]), keys(addon, ["3"])], "Thunder Clap goes on 4; 3 stays the player's").toEqual([[0, 6343], ["TOGGLEAUTORUN"]]);
+});
+
+it("a bar 3 or bar 2 button the player took over is never moved to, nor bound", () => {
+  const addon = warrior();
+  applyPreset(addon);
+  addon.eval("__wfgWorld.setAction(53, { id = 6673 }) __wfgWorld.setAction(62, { id = 72 })");
+  for (const id of [772, 6343, 7384]) learn(addon, id);
+  addon.eval("__wfgWorld.setAction(53, nil)");
+  learn(addon, 72);
+  expect([keys(addon, ["F"]), slots(addon, [61, 62])], "F gets its own button, not the player's Shield Bash on 62").toEqual([["MULTIACTIONBAR1BUTTON1"], [72, 72]]);
+  learn(addon, 12294);
+  expect(slots(addon, [53, 54]), "Heroic Strike skips the emptied 53").toEqual([0, 78]);
+});
+
+it("an update the game refuses goes back, says so, and tries again at the next load screen", () => {
+  const addon = warrior();
+  applyPreset(addon);
+  addon.eval('__set = SetBinding SetBinding = function(key, command) if key == "2" then return false end return __set(key, command) end');
+  learn(addon, 772);
+  expect([slots(addon, [2]), said(addon)]).toEqual([[0], expect.stringContaining("Vanguard couldn't put your new spells on keys this time.")]);
+  addon.eval("SetBinding = __set");
+  addon.fire("PLAYER_ENTERING_WORLD", false, false);
+  addon.advance(0.5);
+  expect(slots(addon, [2])).toEqual([772]);
+});
+
+it("put everything back shows the switch off at once", () => {
+  const addon = warrior();
+  applyPreset(addon);
+  expect(kn(addon, "return KN.IsOn()")).toBe(true);
+  addon.eval("ns.KeybindsApply.PutBackAll()");
+  expect(kn(addon, "return KN.IsOn()")).toBe(false);
 });
 
 it("with the switch off, learning a spell changes nothing; the Your keys switch turns it on", () => {
@@ -236,6 +287,18 @@ it("the question: asked once, when a player who never applied trains a spell; Se
   expect([addon.eval("return __opened"), kn(addon, "return KN.Ticked()")], "the wizard opens, its box ticked").toEqual([1, true]);
   learn(addon, 6343);
   expect([addon.eval("return Vanguard_Question:IsShown()"), addon.eval("return __opened")], "never again").toEqual([false, 1]);
+});
+
+it("the question waits while the wizard is due after first-run setup, or while another question shows", () => {
+  const addon = warrior({ level: 12, savedVariables: "VanguardCharDB.keysOffer = true" });
+  learn(addon, 772);
+  expect(addon.eval("return Vanguard_Question and Vanguard_Question:IsShown() or false"), "the wizard opens by itself").toBe(false);
+  addon.eval('VanguardCharDB.keysOffer = false ns.Ask("Another question?", "Yes", function() end)');
+  learn(addon, 6343);
+  expect(addon.eval("return Vanguard_Question.title:GetText()"), "the other question stays").toBe("Another question?");
+  addon.click("Vanguard_Question.no");
+  learn(addon, 7384);
+  expect(addon.eval("return Vanguard_Question.title:GetText()")).toMatch(/^Want Vanguard to put your new spells on keys\?/);
 });
 
 it("the question: a level below 10 alone doesn't ask, reaching 10 does; never when the wizard isn't offered", () => {

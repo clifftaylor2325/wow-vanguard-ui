@@ -9,9 +9,11 @@
 --
 -- What is whose. Vanguard remembers what every button of bars 1 to 3 held and what every key did when it last
 -- looked: after an Apply, after an update, and when the game places a spell by itself (SPELL_PUSHED_TO_ACTIONBAR),
--- so a spell the game placed counts as the game's and may move. A button that holds something else the next time,
+-- so a spell the game placed on a preset's button counts as the game's and may move (a copy it placed on another
+-- button is left there, as the game has it). A button that holds something else the next time,
 -- or a key that does something else, was changed by the player and is theirs for good: later updates leave it out
--- (a button's spell goes to the next key that lists it). Applying a preset again starts afresh.
+-- (its spell goes to the next key that lists it, and a moved spell never lands on it). Applying a preset again
+-- starts afresh. A key that did something else before an update says what it does now.
 --
 -- A player who never applied a preset gets one question instead, the first time they train a spell or reach level 10:
 -- "Set up keys" opens the wizard with the switch ticked. It is never asked again.
@@ -39,6 +41,8 @@ KN.LEVEL = 10
 KN.EVENTS = { "LEARNED_SPELL_IN_SKILL_LINE", "PLAYER_LEVEL_UP" }
 -- The tables of the saved state, each reset to empty when it isn't a table (a hand-edited file may hold anything).
 KN.TABLES = { "slots", "keys", "ownSlots", "ownKeys" }
+-- How many times the resolver runs at most while keys the player took over leave more slots out.
+KN.PASSES = 8
 
 -- The saved state ---------------------------------------------------------------------------------
 
@@ -68,10 +72,12 @@ function KN.Ticked()
   return state().yes == true or (now ~= nil and now < KN.LEVEL)
 end
 
--- Whether the switch is on.
+-- Whether the switch is on: on, and (once a preset was applied) Vanguard still has keys recorded, so Put everything
+-- back shows it off at once.
 ---@return boolean
 function KN.IsOn()
-  return state().on == true
+  local s = state()
+  return s.on == true and (s.preset == nil or KA.Recorded())
 end
 
 -- Turns the switch on or off (the Your keys tab). It does nothing until keys are set up with a preset.
@@ -168,6 +174,29 @@ local function withoutOwnKeys(s, entries)
   return out
 end
 
+-- Adds to `skip` the slot of every entry whose key the player took over; whether it added one.
+local function skipOwnKeys(s, entries, skip)
+  local added = false
+  for _, entry in ipairs(entries) do
+    local owned = s.ownKeys[KA.Chord(entry.key) or ""] and entry.slot and not skip[entry.slot]
+    if owned then skip[entry.slot], added = true, true end
+  end
+  return added
+end
+
+-- The entries for the spells known now, without the player's buttons and keys, and the slots left out: a key the
+-- player took over leaves its slot out too, so its spell goes to the next key (resolved again until no new slot
+-- is left out, KN.PASSES times at most).
+local function entriesNow(s)
+  local skip, entries = ns.Copy(s.ownSlots), {}
+  for _ = 1, KN.PASSES do
+    entries = ns.KeybindsLayouts.Resolve(s.preset, skip)
+    claimKeys(s, entries)
+    if not skipOwnKeys(s, entries, skip) then break end
+  end
+  return withoutOwnKeys(s, entries), skip
+end
+
 -- Telling the player ---------------------------------------------------------------------------------
 
 -- A key's name as the player reads it.
@@ -197,14 +226,24 @@ local function movedOff(rows, old, told, out)
     or ns.Format(L["{spell} moved to bar 3."], { spell = name })
 end
 
--- What a row tells the player: nothing for a spell on an empty button, a command or a replaced spell; else where
--- the new spell is and where the old one went.
+-- Whether a row's key did something else before (not nothing, not the row's own command).
+local function tookKey(row)
+  return type(row.was) == "string" and row.was ~= "" and row.was ~= row.command
+end
+
+-- The clause for a stance or pet key that did something else before.
+local function commandOn(row, out)
+  local what = _G["BINDING_NAME_" .. row.command] or row.command
+  out[#out + 1] = ns.Format(L["{key} now does {what}."], { key = keyName(row.key), what = what })
+end
+
+-- What a row tells the player: nothing for a spell on an empty button with a free key, or a replaced spell; else
+-- where the new spell is (a stance or pet key, what it does now) and where the old one went.
 local function tell(rows, row, told, out)
+  if row.kind == "command" then return tookKey(row) and commandOn(row, out) end
   local old = row.moved or (not row.replaced and row.over)
-  if row.kind == "bind" then return newOn(row, told, out) end
-  if not old then return end
-  newOn(row, told, out)
-  movedOff(rows, old, told, out)
+  if row.kind == "bind" or old or tookKey(row) then newOn(row, told, out) end
+  if old then movedOff(rows, old, told, out) end
 end
 
 -- Says in one chat line what an update moved under the player's fingers (nothing when it only filled empty buttons).
@@ -224,25 +263,34 @@ local function rememberUpdate(s, rows)
   end
 end
 
--- Runs the preset again for the spells known now, without the buttons and keys the player took over. Put
--- everything back (no keys left in the record) turns the switch off; a refused update waits (KN.pending).
+-- After an update that didn't run (rows nil) or failed (false): a refusal or a failure waits for the next try
+-- (KN.pending; a failure says so); no keys left in the record (Put everything back) turns the switch off.
+local function notUpdated(s, rows)
+  KN.pending = rows == false or KA.Refusal() ~= nil
+  if rows == false then ns.Chat(L["Vanguard couldn't put your new spells on keys this time. It tries again at the next spell, level or load screen."]) end
+  if not KN.pending then s.on = false end
+end
+
+-- Runs the preset again for the spells known now, without the buttons and keys the player took over.
 local function update(s)
-  local entries = ns.KeybindsLayouts.Resolve(s.preset, s.ownSlots)
-  claimKeys(s, entries)
-  local rows = KA.Update(withoutOwnKeys(s, entries))
-  KN.pending = rows == nil and KA.Refusal() ~= nil
-  if rows == nil and not KN.pending then s.on = false end
-  if rows then rememberUpdate(s, rows) report(rows) end
+  local entries, skip = entriesNow(s)
+  local rows = KA.Update(entries, skip)
+  if not rows then return notUpdated(s, rows) end
+  KN.pending = false
+  rememberUpdate(s, rows)
+  report(rows)
 end
 
 -- The one question -----------------------------------------------------------------------------------
 
 -- Asks a player who never applied a preset, once, whether Vanguard should put their new spells on keys, when the
--- wizard would be offered: a spell was learned, or a level of 10 or more reached. "Set up keys" opens the wizard.
+-- wizard would be offered: a spell was learned, or a level of 10 or more reached. Not while the wizard waits to
+-- open after first-run setup (keysOffer) or another question shows (it waits for the next try). "Set up keys"
+-- opens the wizard.
 local function ask(s, learned)
   local KW, now = ns.KeybindsWizard, level()
   if s.asked or not (learned or (now ~= nil and now >= KN.LEVEL)) then return end
-  if not (KW and KW.Offered()) then return end
+  if not (KW and KW.Offered()) or VanguardCharDB.keysOffer == true or ns.Asking() then return end
   s.asked = true
   ns.Ask(L["Want Vanguard to put your new spells on keys? It won't ask again: you can set up keys any time from Action bars, Your keys."],
     L["Set up keys"], function() state().yes = true KW.Open() end)
