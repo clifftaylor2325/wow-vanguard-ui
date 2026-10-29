@@ -484,8 +484,14 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 
 ### 7.2a Calm HUD
 
-- Do: `/vg` → Unit frames, switch on **Calm HUD**. Stand in town with no target, then hover your player frame, then target a hostile mob, then pull it and kill it. Click your dimmed player frame and right-click it.
-- Expect: with no fight and no hostile target your player, pet, target of target and focus frames are faint (about a third); under the mouse the hovered frame is at full strength at once; targeting a living hostile mob or entering combat brings them all up at once and they stay up through the fight; after the fight with no hostile target they go faint again. A friendly target's frame stays faint. Clicking a faint frame still targets, right-clicking opens the menu. Switching Calm HUD off brings every frame back to full at once. No error.
+- Do: `/vg` → General → Calm HUD, switch on **Calm HUD** and leave each part on its default. Stand in town with no target, then hover your player frame, your buffs and the XP bar, then target a hostile mob, then pull it and kill it. Click your dimmed player frame and right-click it. Press a key bound to action bar 1 and click a dimmed button.
+- Expect: with no fight and no hostile target your player, pet, target of target and focus frames, the action bars, your buffs, the info strip, menu bar and broker strip and the damage meter are faint (about a third), and the XP and reputation bars are gone; the minimap is unchanged. Under the mouse the hovered part is at full strength at once (the XP bar shows again). Targeting a living hostile mob or entering combat brings everything up at once and it stays up through the fight; after the fight with no hostile target it goes quiet again. A friendly target leaves it quiet. Clicking a faint frame still targets, right-clicking opens the menu; the bound key and a click on a dimmed button both cast. Switching Calm HUD off brings every part back to full at once. No error.
+- If it fails, paste: a screenshot and `/vg errors`.
+
+### 7.2a1 Calm HUD choices
+
+- Do: with Calm HUD on, set **Action bars** to Hide and **Minimap** to Dim on the Calm HUD card, then stand out of combat. Press a key bound to action bar 1. Hover where bar 1 is. Then set the info strip's own visibility (`/vg` → Map, Strip visibility) to In combat. Then click the reputation bar while it shows.
+- Expect: the action bars are gone and come back under the mouse; the bound key still casts with the bar gone. The minimap is faint, and full under the mouse; clicking it still pings. The info strip follows In combat (hidden out of combat), not the Calm HUD. The reputation list opens from the bar. No error.
 - If it fails, paste: a screenshot and `/vg errors`.
 
 ### 7.2b Versus deck

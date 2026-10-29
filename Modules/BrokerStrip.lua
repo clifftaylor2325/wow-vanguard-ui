@@ -246,4 +246,5 @@ function BS.Enable()
   BS.Hook()
   ns.On("ADDON_LOADED", BS.Hook)
   T.OnChanged(BS.Restyle)
+  ns.Visibility.Calm(BS.frame, "strips")
 end
